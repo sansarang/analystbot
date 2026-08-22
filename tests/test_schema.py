@@ -33,16 +33,18 @@ async def test_expert_ledger_aggregates(db_pool):
         datetime(2026, 8, 22, 23, 0, tzinfo=UTC),
     )
     picks = [
-        ("Alice", "win", 2.0), ("Alice", "win", 1.8),
-        ("Alice", "loss", 1.9), ("Alice", "push", 1.9),
+        ("Alice", "win", 2.0, "h2h:New York Yankees"),
+        ("Alice", "win", 1.8, "totals:Over:8.5"),
+        ("Alice", "loss", 1.9, "spreads:New York Yankees:-1.5"),
+        ("Alice", "push", 1.9, "totals:Under:9"),
     ]
-    for expert, result, odds in picks:
+    for expert, result, odds, pick in picks:
         await db_pool.execute(
             """
             INSERT INTO expert_picks (game_id, expert, site, pick, odds, result)
-            VALUES ($1, $2, 'Covers', 'h2h:New York Yankees', $3, $4)
+            VALUES ($1, $2, 'Covers', $3, $4, $5)
             """,
-            game_id, expert, odds, result,
+            game_id, expert, pick, odds, result,
         )
 
     row = await db_pool.fetchrow("SELECT * FROM expert_ledger WHERE expert = 'Alice'")
