@@ -82,10 +82,23 @@ async def _collect_soccer_stats(client: APIFootballClient) -> dict:
 async def _collect_research(
     pool: asyncpg.Pool, games: list[dict], date: str, league: str = "MLB"
 ) -> tuple[list[dict], str]:
+    """딥서치는 보조 신호 — 실패(무효 키·타임아웃 등)해도 파이프라인은 계속 간다."""
     picks_task = fetch_expert_picks(games, date, league=league, client=PerplexityClient())
     news_task = GrokClient().live_briefing(games, date, league=league)
-    (picks, _citations), news = await asyncio.gather(picks_task, news_task)
-    await save_expert_picks(pool, picks)
+    picks_res, news_res = await asyncio.gather(picks_task, news_task, return_exceptions=True)
+
+    if isinstance(picks_res, BaseException):
+        logger.error("[pipeline] perplexity research failed, continuing without picks: %s", picks_res)
+        picks: list[dict] = []
+    else:
+        picks, _citations = picks_res
+        await save_expert_picks(pool, picks)
+
+    if isinstance(news_res, BaseException):
+        logger.error("[pipeline] grok briefing failed, continuing without news: %s", news_res)
+        news = ""
+    else:
+        news = news_res
     return picks, news
 
 

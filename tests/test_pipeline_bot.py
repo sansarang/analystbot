@@ -26,6 +26,22 @@ async def test_pipeline_soccer_does_not_crash(db_pool, redis_client):
     assert await db_pool.fetchval("SELECT count(*) FROM games WHERE sport='soccer'") == 5
 
 
+async def test_pipeline_survives_research_failure(db_pool, redis_client, monkeypatch):
+    """딥서치가 무효 키 등으로 실패해도 리포트는 나온다 (크래시 금지)."""
+    from app.research.grok import GrokClient
+    from app.research.perplexity import PerplexityClient
+
+    async def boom(self, *a, **kw):
+        raise RuntimeError("401 invalid key")
+
+    monkeypatch.setattr(GrokClient, "live_briefing", boom)
+    monkeypatch.setattr(PerplexityClient, "chat", boom)
+
+    report = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
+    assert "오늘 경기 15건" in report
+    assert await db_pool.fetchval("SELECT count(*) FROM expert_picks") == 0
+
+
 async def test_pipeline_uses_cache(db_pool, redis_client):
     first = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
     preds = await db_pool.fetchval("SELECT count(*) FROM predictions")
