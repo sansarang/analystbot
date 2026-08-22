@@ -10,6 +10,8 @@ import json
 import logging
 import re
 
+from datetime import datetime, timedelta
+
 import anthropic
 import redis.asyncio as aioredis
 
@@ -17,7 +19,7 @@ from app.collectors.base import ApiQuotaError, is_quota_error
 from app.config import get_settings
 from app.db import close_pool, get_pool
 from app.notify import notify_quota
-from app.pipeline import run_pipeline, today_kst
+from app.pipeline import mlb_slate_date, run_pipeline, today_kst
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +46,24 @@ def split_message(text: str, limit: int = TELEGRAM_LIMIT) -> list[str]:
     if current.strip():
         chunks.append(current.rstrip("\n"))
     return chunks
+
+
+def resolve_date_arg(arg: str | None, sport: str) -> str | None:
+    """'/mlb tomorrow', '/mlb 2026-08-25' 식 날짜 인자 해석.
+
+    기준일: MLB=미국 동부 오늘, 축구=KST 오늘. 해석 불가·없음 → None(기본 날짜).
+    """
+    if not arg:
+        return None
+    a = arg.strip().lower()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", a):
+        return a
+    base = mlb_slate_date() if sport == "mlb" else today_kst()
+    offsets = {"today": 0, "오늘": 0, "tomorrow": 1, "내일": 1, "yesterday": -1, "어제": -1}
+    if a in offsets:
+        d = datetime.strptime(base, "%Y-%m-%d") + timedelta(days=offsets[a])
+        return d.strftime("%Y-%m-%d")
+    return None
 
 
 def parse_intent_mock(text: str) -> dict:
@@ -107,7 +127,8 @@ async def answer_query(sport: str, date: str | None = None) -> str:
     pool = await get_pool()
     redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
     try:
-        return await run_pipeline(pool, redis, sport=sport, date=date or today_kst())
+        # date=None이면 run_pipeline이 종목별 기본(MLB=미 동부, 축구=KST)을 적용
+        return await run_pipeline(pool, redis, sport=sport, date=date)
     except ApiQuotaError as exc:
         logger.error("[bot] quota exhausted: %s", exc)
         await notify_quota(exc.service, exc.detail)
@@ -124,7 +145,7 @@ async def answer_query(sport: str, date: str | None = None) -> str:
 
 def build_dispatcher():
     from aiogram import Dispatcher, Router
-    from aiogram.filters import Command, CommandStart
+    from aiogram.filters import Command, CommandObject, CommandStart
     from aiogram.types import Message
 
     router = Router()
@@ -144,16 +165,17 @@ def build_dispatcher():
         )
 
     @router.message(Command("mlb"))
-    async def on_mlb(message: Message) -> None:
-        await _reply(message, await answer_query("mlb"))
+    async def on_mlb(message: Message, command: CommandObject) -> None:
+        # 기본: 미국 동부 오늘. 인자: tomorrow/내일/어제 또는 YYYY-MM-DD
+        await _reply(message, await answer_query("mlb", resolve_date_arg(command.args, "mlb")))
 
     @router.message(Command("soccer"))
     async def on_soccer(message: Message) -> None:
-        await _reply(message, await answer_query("soccer"))
+        await _reply(message, await answer_query("soccer"))  # 기본: KST 오늘
 
     @router.message(Command("today"))
     async def on_today(message: Message) -> None:
-        await _reply(message, await answer_query("mlb", today_kst()))
+        await _reply(message, await answer_query("mlb"))
 
     @router.message()
     async def on_free_text(message: Message) -> None:
@@ -185,11 +207,12 @@ async def run_bot() -> None:
 async def simulate(text: str) -> str:
     """텔레그램 없이 동일 로직 실행 — 봇이 보낼 응답 텍스트 반환."""
     if text.startswith("/mlb"):
-        reply = await answer_query("mlb")
+        arg = text[len("/mlb"):].strip() or None
+        reply = await answer_query("mlb", resolve_date_arg(arg, "mlb"))
     elif text.startswith("/soccer"):
         reply = await answer_query("soccer")
     elif text.startswith("/today"):
-        reply = await answer_query("mlb", today_kst())
+        reply = await answer_query("mlb")
     else:
         intent = await parse_intent(text)
         reply = await answer_query(intent["sport"], intent["date"])

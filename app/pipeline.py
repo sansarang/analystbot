@@ -41,6 +41,10 @@ def kst_hhmm(dt: datetime) -> str:
     return dt.astimezone(KST).strftime("%m/%d %H:%M")
 
 
+# 시작 전(scheduled) 경기만 분석 대상. 나머지는 목록에 라벨만 붙인다.
+STATUS_LABELS = {"live": "진행 중", "final": "종료"}
+
+
 # ---------------------------------------------------------------- 수집 (숫자 + 의견)
 
 async def _collect_mlb_stats(client: MLBClient, schedule: dict) -> dict:
@@ -192,6 +196,8 @@ async def build_analysis(pool: asyncpg.Pool, sport: str, date: str) -> dict:
             "game_id": g["id"],
             "home": g["home"], "away": g["away"],
             "starts_at_kst": kst_hhmm(g["starts_at"]),
+            "status": g["status"],
+            "status_label": STATUS_LABELS.get(g["status"], ""),
             "p_model": round(p_model, 4),
             "p_market": round(p_market, 4) if p_market is not None else None,
             "best_odds": best_odds,
@@ -209,20 +215,26 @@ async def build_analysis(pool: asyncpg.Pool, sport: str, date: str) -> dict:
             ),
         })
 
-    # 4) Claude 판정 — 크레딧 소진 시 알림 후 목 판정으로 폴백 (크래시 금지)
+    # 4) Claude 판정 — 시작 전 경기만. 크레딧 소진 시 알림 후 목 판정 폴백 (크래시 금지)
+    upcoming = [g for g in judge_games if g["status"] == "scheduled"]
     judge_payload = {"date": date, "sport": sport,
-                     "games": judge_games, "breaking_news": news}
-    try:
-        verdict = await Judge().judge(judge_payload)
-    except ApiQuotaError as exc:
-        logger.error("[pipeline] judge quota exhausted — falling back to mock verdict: %s", exc)
-        await notify_quota(exc.service, exc.detail)
-        verdict = Judge._mock_verdict(judge_payload)
+                     "games": upcoming, "breaking_news": news}
+    if not upcoming:
+        verdict: dict = {"games": []}
+    else:
+        try:
+            verdict = await Judge().judge(judge_payload)
+        except ApiQuotaError as exc:
+            logger.error("[pipeline] judge quota exhausted — falling back to mock verdict: %s", exc)
+            await notify_quota(exc.service, exc.detail)
+            verdict = Judge._mock_verdict(judge_payload)
     p_claude_by_id = {g["game_id"]: g for g in verdict["games"]}
 
     # 5) 앙상블 → EV/켈리 → predictions 적재 + 파레이
     legs, picks_out = [], []
     for jg in judge_games:
+        if jg["status"] != "scheduled":
+            continue  # 이미 시작/종료된 경기는 분석 대상 아님
         v = p_claude_by_id.get(jg["game_id"])
         if v is None or jg["p_market"] is None:
             continue
@@ -270,14 +282,16 @@ async def build_analysis(pool: asyncpg.Pool, sport: str, date: str) -> dict:
 REPORT_SYSTEM = """너는 스포츠 분석 리포트 작성자다. 입력 JSON(판정·계산 결과)만 근거로 한국어 리포트를 작성한다.
 - 입력에 없는 수치를 만들어내지 않는다.
 - 구성: ① 오늘 경기 목록(KST 시각) ② EV 상위 픽 (확률·배당·EV·켈리 비중) ③ 추천 조합(파레이) ④ 속보 요약 ⑤ 한 줄 주의 문구.
+- 경기 시각은 전부 KST다. status_label이 있는 경기('진행 중'/'종료')는 목록에 라벨을 붙여 표기하고, 분석·픽 대상이 아님을 알 수 있게 하라. 픽·조합은 시작 전 경기만 다룬다.
 - 텔레그램 메시지용 플레인 텍스트, 이모지 절제, 4000자 이내."""
 
 
 def _mock_report(analysis: dict) -> str:
     lines = [f"[AnalystBot] {analysis['date']} {analysis['sport'].upper()} 분석 (KST 기준)", ""]
-    lines.append(f"■ 오늘 경기 {len(analysis['games'])}건")
+    lines.append(f"■ 오늘 경기 {len(analysis['games'])}건 (시작 전 경기만 분석 대상)")
     for g in analysis["games"]:
-        lines.append(f"  {g['starts_at_kst']}  {g['away']} @ {g['home']}")
+        label = f" [{g['status_label']}]" if g.get("status_label") else ""
+        lines.append(f"  {g['starts_at_kst']}  {g['away']} @ {g['home']}{label}")
     top = analysis["picks"][:5]
     lines += ["", "■ EV 상위 픽"]
     if top:
@@ -338,7 +352,8 @@ async def run_pipeline(
     force_refresh: bool = False,
 ) -> str:
     settings = get_settings()
-    date = date or today_kst()
+    # 날짜 기준: MLB=미국 동부 오늘(슬레이트 날짜), 축구=KST 오늘. 표기는 항상 KST.
+    date = date or (mlb_slate_date() if sport == "mlb" else today_kst())
     cache_key = f"report:{sport}:{date}"
     if not force_refresh:
         cached = await redis.get(cache_key)

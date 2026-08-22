@@ -1,14 +1,66 @@
 """파이프라인 왕복 + 캐시 + 봇 유틸(분할·의도·시뮬레이터) 검증. 전부 목 모드."""
 
 import re
+from datetime import datetime, timedelta
 
 import app.bot.main as botmod
-from app.bot.main import parse_intent_mock, split_message
-from app.pipeline import mlb_slate_date, run_pipeline
+import app.pipeline as pipemod
+from app.bot.main import parse_intent_mock, resolve_date_arg, split_message
+from app.pipeline import mlb_slate_date, run_pipeline, today_kst
 
 
 def test_mlb_slate_date_format():
     assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", mlb_slate_date())
+
+
+def test_resolve_date_arg():
+    assert resolve_date_arg(None, "mlb") is None
+    assert resolve_date_arg("2026-08-25", "mlb") == "2026-08-25"
+    base = datetime.strptime(mlb_slate_date(), "%Y-%m-%d")
+    assert resolve_date_arg("tomorrow", "mlb") == (base + timedelta(days=1)).strftime("%Y-%m-%d")
+    assert resolve_date_arg("내일", "mlb") == (base + timedelta(days=1)).strftime("%Y-%m-%d")
+    assert resolve_date_arg("어제", "mlb") == (base - timedelta(days=1)).strftime("%Y-%m-%d")
+    assert resolve_date_arg("nonsense", "mlb") is None  # 해석 불가 → 기본 날짜
+
+
+async def test_run_pipeline_default_dates(db_pool, redis_client, monkeypatch):
+    """MLB=미국 동부 오늘, 축구=KST 오늘이 기본 날짜."""
+    captured = {}
+
+    async def fake_build(pool, sport, date):
+        captured[sport] = date
+        return {}
+
+    async def fake_report(analysis):
+        return "r"
+
+    monkeypatch.setattr(pipemod, "build_analysis", fake_build)
+    monkeypatch.setattr(pipemod, "generate_report", fake_report)
+    await run_pipeline(db_pool, redis_client, "mlb")
+    await run_pipeline(db_pool, redis_client, "soccer")
+    assert captured["mlb"] == mlb_slate_date()
+    assert captured["soccer"] == today_kst()
+
+
+async def test_started_games_labeled_and_excluded(db_pool, redis_client, monkeypatch):
+    """진행 중/종료 경기는 KST 목록에 라벨만 붙고 분석(픽·predictions) 대상에서 제외."""
+    from app.collectors.mlb import MLBClient, upsert_games
+
+    await upsert_games(db_pool, DATE, client=MLBClient(mock=True))
+    await db_pool.execute(
+        "UPDATE games SET status='final', home_score=5, away_score=3 WHERE ext_id='750000'")
+    await db_pool.execute("UPDATE games SET status='live' WHERE ext_id='750001'")
+
+    async def noop_upsert(pool, date, client=None, schedule=None):
+        return 0  # 파이프라인이 상태를 scheduled로 되돌리지 않게
+
+    monkeypatch.setattr(pipemod, "upsert_games", noop_upsert)
+    report = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    assert "[종료]" in report and "[진행 중]" in report
+    started_preds = await db_pool.fetchval(
+        "SELECT count(*) FROM predictions p JOIN games g ON g.id = p.game_id "
+        "WHERE g.status != 'scheduled'")
+    assert started_preds == 0
 
 DATE = "2026-08-22"
 
