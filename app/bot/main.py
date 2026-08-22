@@ -135,6 +135,9 @@ def build_dispatcher():
 
     @router.message(CommandStart())
     async def on_start(message: Message) -> None:
+        # 운영 알림용 TELEGRAM_ADMIN_CHAT_ID 설정을 돕기 위해 채팅 ID를 로그로 남긴다
+        logger.info("[bot] /start from chat_id=%s (%s)", message.chat.id,
+                    message.from_user.username if message.from_user else "?")
         await message.answer(
             "AnalystBot입니다. /mlb /soccer /today 또는 자유 질문으로 분석을 요청하세요.\n"
             "※ 분석 정보용 도구이며 베팅 손실 책임은 이용자에게 있습니다."
