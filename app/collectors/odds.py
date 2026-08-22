@@ -1,6 +1,13 @@
-"""The Odds API v4 수집기 — h2h/spreads/totals decimal 배당을 odds_snapshots에 적재."""
+"""The Odds API v4 수집기 — h2h/spreads/totals decimal 배당을 odds_snapshots에 적재.
+
+주의 (실사고 이력):
+- 이미 시작한 경기는 인플레이 배당(스코어 따라 요동)이 내려오므로 적재하지 않는다.
+- 같은 매치업이 연전으로 여러 경기 있을 수 있어 (home, away) 이름만으로 매칭하면
+  다른 날짜 경기에 배당이 붙는다 → 시작 시각(±2h)까지 맞는 경기에만 매칭한다.
+"""
 
 import logging
+from datetime import UTC, datetime, timedelta
 
 import asyncpg
 
@@ -10,6 +17,8 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 SPORT_KEYS = {"mlb": "baseball_mlb", "soccer": "soccer_epl"}
+
+MATCH_WINDOW = timedelta(hours=2)  # 이벤트 commence_time ↔ games.starts_at 허용 오차
 
 
 class OddsClient(BaseAPIClient):
@@ -35,23 +44,45 @@ class OddsClient(BaseAPIClient):
         )
 
 
+def _match_game(candidates: list, commence: datetime) -> int | None:
+    """같은 매치업 후보 중 시작 시각이 ±2h 내에서 가장 가까운 경기를 고른다."""
+    best_id, best_diff = None, MATCH_WINDOW
+    for game_id, starts_at in candidates:
+        diff = abs(starts_at - commence)
+        if diff <= best_diff:
+            best_id, best_diff = game_id, diff
+    return best_id
+
+
 async def snapshot_odds(
     pool: asyncpg.Pool, sport: str = "mlb", client: OddsClient | None = None
 ) -> int:
-    """이벤트를 (home, away)로 games와 매칭해 스냅샷 행 적재. 적재 행 수 반환."""
+    """이벤트를 (home, away, 시작시각)으로 games와 매칭해 스냅샷 적재. 적재 행 수 반환."""
     client = client or OddsClient()
     events = await client.fetch_odds(SPORT_KEYS[sport])
 
     rows = await pool.fetch(
-        "SELECT id, home, away FROM games WHERE sport = $1 AND status != 'final'", sport
+        "SELECT id, home, away, starts_at FROM games WHERE sport = $1 AND status = 'scheduled'",
+        sport,
     )
-    game_ids = {(r["home"], r["away"]): r["id"] for r in rows}
+    game_ids: dict[tuple[str, str], list] = {}
+    for r in rows:
+        game_ids.setdefault((r["home"], r["away"]), []).append((r["id"], r["starts_at"]))
 
-    inserted = 0
+    now = datetime.now(UTC)
+    inserted = skipped_inplay = 0
     for ev in events:
-        game_id = game_ids.get((ev["home_team"], ev["away_team"]))
+        commence = datetime.fromisoformat(ev["commence_time"].replace("Z", "+00:00"))
+        # 인플레이 배당 배제 (목 모드는 고정 샘플이라 시간 비교를 건너뜀)
+        if not client.mock and commence <= now:
+            skipped_inplay += 1
+            continue
+        game_id = _match_game(game_ids.get((ev["home_team"], ev["away_team"]), []), commence)
         if game_id is None:
-            logger.warning("[odds] no game match: %s @ %s", ev["away_team"], ev["home_team"])
+            logger.warning(
+                "[odds] no game match: %s @ %s (%s)",
+                ev["away_team"], ev["home_team"], ev["commence_time"],
+            )
             continue
         for bm in ev.get("bookmakers", []):
             for market in bm.get("markets", []):
@@ -65,5 +96,8 @@ async def snapshot_odds(
                         outcome["name"], outcome.get("point"), outcome["price"],
                     )
                     inserted += 1
-    logger.info("[odds] inserted %d snapshot rows (%s)", inserted, sport)
+    logger.info(
+        "[odds] inserted %d snapshot rows (%s), skipped %d in-play events",
+        inserted, sport, skipped_inplay,
+    )
     return inserted

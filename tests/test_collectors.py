@@ -60,6 +60,47 @@ async def test_odds_snapshot(db_pool):
     assert orphan == 0
 
 
+async def test_odds_skips_inplay_and_matches_by_start_time(db_pool):
+    """인플레이 이벤트 제외 + 연전(같은 매치업 복수 경기)은 시작 시각으로 매칭."""
+    from datetime import UTC, datetime, timedelta
+
+    now = datetime.now(UTC)
+    # 같은 매치업 두 경기: 어제(연전 1차전)와 내일(2차전)
+    ids = {}
+    for ext, delta in (("g_yesterday", timedelta(days=-1)), ("g_tomorrow", timedelta(days=1))):
+        ids[ext] = await db_pool.fetchval(
+            "INSERT INTO games (sport, league, ext_id, starts_at, home, away) "
+            "VALUES ('mlb', 'MLB', $1, $2, 'Home Nine', 'Away Nine') RETURNING id",
+            ext, now + delta,
+        )
+
+    def make_event(commence):
+        return {
+            "home_team": "Home Nine", "away_team": "Away Nine",
+            "commence_time": commence.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "bookmakers": [{"key": "dk", "markets": [{"key": "h2h", "outcomes": [
+                {"name": "Home Nine", "price": 1.5}, {"name": "Away Nine", "price": 2.6}]}]}],
+        }
+
+    class FakeClient:
+        mock = False  # 인플레이 필터 활성화 경로
+
+        async def fetch_odds(self, sport_key):
+            return [
+                make_event(now - timedelta(hours=3)),   # 인플레이 → 스킵
+                make_event(now + timedelta(days=1)),    # 내일 경기 → g_tomorrow에 매칭
+            ]
+
+    inserted = await snapshot_odds(db_pool, "mlb", client=FakeClient())
+    assert inserted == 2  # 이벤트 1건 × h2h 2아웃컴
+    rows = await db_pool.fetch(
+        "SELECT game_id, count(*) c FROM odds_snapshots "
+        "WHERE game_id = ANY($1::bigint[]) GROUP BY game_id",
+        list(ids.values()),
+    )
+    assert {r["game_id"]: r["c"] for r in rows} == {ids["g_tomorrow"]: 2}
+
+
 async def test_football_fixtures(db_pool):
     n = await upsert_soccer(db_pool, DATE, client=APIFootballClient(mock=True))
     assert n == 5
