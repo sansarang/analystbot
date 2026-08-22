@@ -55,10 +55,11 @@ class APIFootballClient(BaseAPIClient):
 
 
 async def upsert_games(
-    pool: asyncpg.Pool, date: str, client: APIFootballClient | None = None
+    pool: asyncpg.Pool, date: str, client: APIFootballClient | None = None,
+    fixtures: dict | None = None,
 ) -> int:
     client = client or APIFootballClient()
-    data = await client.fetch_fixtures(date)
+    data = fixtures or await client.fetch_fixtures(date)
     count = 0
     for item in data.get("response", []):
         fx, teams, goals = item["fixture"], item["teams"], item["goals"]

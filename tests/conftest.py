@@ -1,7 +1,13 @@
 """테스트 공용 픽스처: 격리된 analystbot_test DB 생성 후 스키마 적용."""
 
+import os
+
+# 테스트는 외부 API를 절대 치지 않는다 — config를 읽기 전에 강제 목 모드 고정.
+os.environ.setdefault("FORCE_MOCK", "true")
+
 import asyncpg
 import pytest
+import redis.asyncio as aioredis
 
 from app.db import apply_schema
 
@@ -22,3 +28,12 @@ async def db_pool():
         await apply_schema(conn)
     yield pool
     await pool.close()
+
+
+@pytest.fixture
+async def redis_client():
+    r = aioredis.from_url("redis://localhost:6379/15", decode_responses=True)
+    await r.flushdb()
+    yield r
+    await r.flushdb()
+    await r.aclose()

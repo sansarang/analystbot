@@ -93,10 +93,13 @@ def _parse_games(schedule: dict) -> list[dict]:
     return out
 
 
-async def upsert_games(pool: asyncpg.Pool, date: str, client: MLBClient | None = None) -> int:
+async def upsert_games(
+    pool: asyncpg.Pool, date: str, client: MLBClient | None = None,
+    schedule: dict | None = None,
+) -> int:
     """일정(+최종 스코어)을 games에 upsert. 적재 행 수 반환."""
     client = client or MLBClient()
-    games = _parse_games(await client.fetch_schedule(date))
+    games = _parse_games(schedule or await client.fetch_schedule(date))
     for g in games:
         await pool.execute(
             """
