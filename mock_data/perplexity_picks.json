@@ -1,0 +1,26 @@
+{
+ "id": "pplx-mock-001",
+ "model": "sonar-pro",
+ "citations": [
+  "https://www.covers.com/mlb/picks/2026-08-22/750000",
+  "https://www.rotowire.com/mlb/picks/2026-08-22/750001",
+  "https://www.athlon.com/mlb/picks/2026-08-22/750002",
+  "https://www.dimers.com/mlb/picks/2026-08-22/750003",
+  "https://www.sbr.com/mlb/picks/2026-08-22/750004",
+  "https://www.covers.com/mlb/picks/2026-08-22/750005"
+ ],
+ "choices": [
+  {
+   "index": 0,
+   "finish_reason": "stop",
+   "message": {
+    "role": "assistant",
+    "content": "Here are today's expert MLB picks:\n\n```json\n[\n {\n  \"expert\": \"Mike Ranieri\",\n  \"site\": \"Covers\",\n  \"source_url\": \"https://www.covers.com/mlb/picks/2026-08-22/750000\",\n  \"game\": \"Atlanta Braves @ Arizona Diamondbacks\",\n  \"pick\": \"Diamondbacks ML\",\n  \"reasoning\": \"Arizona Diamondbacks have the pitching edge with Tyler Glasnow on the mound.\",\n  \"record\": \"61-42\"\n },\n {\n  \"expert\": \"Sara Kim\",\n  \"site\": \"RotoWire\",\n  \"source_url\": \"https://www.rotowire.com/mlb/picks/2026-08-22/750001\",\n  \"game\": \"Boston Red Sox @ Baltimore Orioles\",\n  \"pick\": \"Over 8.5\",\n  \"reasoning\": \"Both bullpens are taxed; Boston Red Sox and Baltimore Orioles have combined for 21 runs in their last two meetings.\",\n  \"record\": \"88-71\"\n },\n {\n  \"expert\": \"Dan Alvarez\",\n  \"site\": \"Athlon\",\n  \"source_url\": \"https://www.athlon.com/mlb/picks/2026-08-22/750002\",\n  \"game\": \"Chicago White Sox @ Chicago Cubs\",\n  \"pick\": \"Sox +1.5\",\n  \"reasoning\": \"Chicago White Sox keep games close on the road and the run line offers value.\",\n  \"record\": \"45-39\"\n },\n {\n  \"expert\": \"Peter Novak\",\n  \"site\": \"Dimers\",\n  \"source_url\": \"https://www.dimers.com/mlb/picks/2026-08-22/750003\",\n  \"game\": \"Cleveland Guardians @ Cincinnati Reds\",\n  \"pick\": \"Reds ML\",\n  \"reasoning\": \"Cincinnati Reds have the pitching edge with Carlos Rodon on the mound.\",\n  \"record\": \"102-88\"\n },\n {\n  \"expert\": \"J.T. Brooks\",\n  \"site\": \"SBR\",\n  \"source_url\": \"https://www.sbr.com/mlb/picks/2026-08-22/750004\",\n  \"game\": \"Detroit Tigers @ Colorado Rockies\",\n  \"pick\": \"Over 8.5\",\n  \"reasoning\": \"Both bullpens are taxed; Detroit Tigers and Colorado Rockies have combined for 21 runs in their last two meetings.\",\n  \"record\": \"57-50\"\n },\n {\n  \"expert\": \"Mike Ranieri\",\n  \"site\": \"Covers\",\n  \"source_url\": \"https://www.covers.com/mlb/picks/2026-08-22/750005\",\n  \"game\": \"Kansas City Royals @ Houston Astros\",\n  \"pick\": \"Royals +1.5\",\n  \"reasoning\": \"Kansas City Royals keep games close on the road and the run line offers value.\",\n  \"record\": \"61-42\"\n }\n]\n```"
+   }
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 412,
+  "completion_tokens": 655
+ }
+}

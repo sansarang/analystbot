@@ -1,0 +1,18 @@
+{
+ "id": "grok-mock-001",
+ "model": "grok-3-latest",
+ "choices": [
+  {
+   "index": 0,
+   "finish_reason": "stop",
+   "message": {
+    "role": "assistant",
+    "content": "[2026-08-22 live update]\n- CONFIRMED LINEUP: Arizona Diamondbacks activate their starting catcher off the IL; batting 5th tonight.\n- INJURY: Chicago White Sox scratch their starting SS (back tightness); utility infielder starts.\n- LINE MOVE: Baltimore Orioles ML steamed from 1.95 to 1.78 in the last 3 hours on sharp money.\n- WEATHER: 15mph out-blowing wind at Rockies Park; totals ticking up 0.5 across books."
+   }
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 300,
+  "completion_tokens": 180
+ }
+}

@@ -1,0 +1,288 @@
+{
+ "records": [
+  {
+   "league": {
+    "id": 103
+   },
+   "teamRecords": [
+    {
+     "team": {
+      "id": 100,
+      "name": "Arizona Diamondbacks"
+     },
+     "wins": 84,
+     "losses": 44,
+     "winningPercentage": "0.656"
+    },
+    {
+     "team": {
+      "id": 101,
+      "name": "Atlanta Braves"
+     },
+     "wins": 50,
+     "losses": 78,
+     "winningPercentage": "0.391"
+    },
+    {
+     "team": {
+      "id": 102,
+      "name": "Baltimore Orioles"
+     },
+     "wins": 55,
+     "losses": 73,
+     "winningPercentage": "0.430"
+    },
+    {
+     "team": {
+      "id": 103,
+      "name": "Boston Red Sox"
+     },
+     "wins": 65,
+     "losses": 63,
+     "winningPercentage": "0.508"
+    },
+    {
+     "team": {
+      "id": 104,
+      "name": "Chicago Cubs"
+     },
+     "wins": 60,
+     "losses": 68,
+     "winningPercentage": "0.469"
+    },
+    {
+     "team": {
+      "id": 105,
+      "name": "Chicago White Sox"
+     },
+     "wins": 76,
+     "losses": 52,
+     "winningPercentage": "0.594"
+    },
+    {
+     "team": {
+      "id": 106,
+      "name": "Cincinnati Reds"
+     },
+     "wins": 81,
+     "losses": 47,
+     "winningPercentage": "0.633"
+    },
+    {
+     "team": {
+      "id": 107,
+      "name": "Cleveland Guardians"
+     },
+     "wins": 80,
+     "losses": 48,
+     "winningPercentage": "0.625"
+    },
+    {
+     "team": {
+      "id": 108,
+      "name": "Colorado Rockies"
+     },
+     "wins": 63,
+     "losses": 65,
+     "winningPercentage": "0.492"
+    },
+    {
+     "team": {
+      "id": 109,
+      "name": "Detroit Tigers"
+     },
+     "wins": 75,
+     "losses": 53,
+     "winningPercentage": "0.586"
+    },
+    {
+     "team": {
+      "id": 110,
+      "name": "Houston Astros"
+     },
+     "wins": 53,
+     "losses": 75,
+     "winningPercentage": "0.414"
+    },
+    {
+     "team": {
+      "id": 111,
+      "name": "Kansas City Royals"
+     },
+     "wins": 60,
+     "losses": 68,
+     "winningPercentage": "0.469"
+    },
+    {
+     "team": {
+      "id": 112,
+      "name": "Los Angeles Angels"
+     },
+     "wins": 74,
+     "losses": 54,
+     "winningPercentage": "0.578"
+    },
+    {
+     "team": {
+      "id": 113,
+      "name": "Los Angeles Dodgers"
+     },
+     "wins": 50,
+     "losses": 78,
+     "winningPercentage": "0.391"
+    },
+    {
+     "team": {
+      "id": 114,
+      "name": "Miami Marlins"
+     },
+     "wins": 74,
+     "losses": 54,
+     "winningPercentage": "0.578"
+    }
+   ]
+  },
+  {
+   "league": {
+    "id": 104
+   },
+   "teamRecords": [
+    {
+     "team": {
+      "id": 115,
+      "name": "Milwaukee Brewers"
+     },
+     "wins": 66,
+     "losses": 62,
+     "winningPercentage": "0.516"
+    },
+    {
+     "team": {
+      "id": 116,
+      "name": "Minnesota Twins"
+     },
+     "wins": 79,
+     "losses": 49,
+     "winningPercentage": "0.617"
+    },
+    {
+     "team": {
+      "id": 117,
+      "name": "New York Mets"
+     },
+     "wins": 68,
+     "losses": 60,
+     "winningPercentage": "0.531"
+    },
+    {
+     "team": {
+      "id": 118,
+      "name": "New York Yankees"
+     },
+     "wins": 77,
+     "losses": 51,
+     "winningPercentage": "0.602"
+    },
+    {
+     "team": {
+      "id": 119,
+      "name": "Athletics"
+     },
+     "wins": 85,
+     "losses": 43,
+     "winningPercentage": "0.664"
+    },
+    {
+     "team": {
+      "id": 120,
+      "name": "Philadelphia Phillies"
+     },
+     "wins": 81,
+     "losses": 47,
+     "winningPercentage": "0.633"
+    },
+    {
+     "team": {
+      "id": 121,
+      "name": "Pittsburgh Pirates"
+     },
+     "wins": 59,
+     "losses": 69,
+     "winningPercentage": "0.461"
+    },
+    {
+     "team": {
+      "id": 122,
+      "name": "San Diego Padres"
+     },
+     "wins": 62,
+     "losses": 66,
+     "winningPercentage": "0.484"
+    },
+    {
+     "team": {
+      "id": 123,
+      "name": "San Francisco Giants"
+     },
+     "wins": 68,
+     "losses": 60,
+     "winningPercentage": "0.531"
+    },
+    {
+     "team": {
+      "id": 124,
+      "name": "Seattle Mariners"
+     },
+     "wins": 63,
+     "losses": 65,
+     "winningPercentage": "0.492"
+    },
+    {
+     "team": {
+      "id": 125,
+      "name": "St. Louis Cardinals"
+     },
+     "wins": 53,
+     "losses": 75,
+     "winningPercentage": "0.414"
+    },
+    {
+     "team": {
+      "id": 126,
+      "name": "Tampa Bay Rays"
+     },
+     "wins": 84,
+     "losses": 44,
+     "winningPercentage": "0.656"
+    },
+    {
+     "team": {
+      "id": 127,
+      "name": "Texas Rangers"
+     },
+     "wins": 53,
+     "losses": 75,
+     "winningPercentage": "0.414"
+    },
+    {
+     "team": {
+      "id": 128,
+      "name": "Toronto Blue Jays"
+     },
+     "wins": 70,
+     "losses": 58,
+     "winningPercentage": "0.547"
+    },
+    {
+     "team": {
+      "id": 129,
+      "name": "Washington Nationals"
+     },
+     "wins": 53,
+     "losses": 75,
+     "winningPercentage": "0.414"
+    }
+   ]
+  }
+ ]
+}

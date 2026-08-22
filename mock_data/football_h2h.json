@@ -1,0 +1,109 @@
+{
+ "response": [
+  {
+   "fixture": {
+    "id": 980000,
+    "date": "2026-03-10T15:00:00+00:00",
+    "status": {
+     "short": "FT"
+    }
+   },
+   "teams": {
+    "home": {
+     "name": "Manchester City"
+    },
+    "away": {
+     "name": "Arsenal"
+    }
+   },
+   "goals": {
+    "home": 1,
+    "away": 3
+   }
+  },
+  {
+   "fixture": {
+    "id": 980001,
+    "date": "2026-04-10T15:00:00+00:00",
+    "status": {
+     "short": "FT"
+    }
+   },
+   "teams": {
+    "home": {
+     "name": "Manchester City"
+    },
+    "away": {
+     "name": "Arsenal"
+    }
+   },
+   "goals": {
+    "home": 1,
+    "away": 2
+   }
+  },
+  {
+   "fixture": {
+    "id": 980002,
+    "date": "2026-05-10T15:00:00+00:00",
+    "status": {
+     "short": "FT"
+    }
+   },
+   "teams": {
+    "home": {
+     "name": "Manchester City"
+    },
+    "away": {
+     "name": "Arsenal"
+    }
+   },
+   "goals": {
+    "home": 3,
+    "away": 3
+   }
+  },
+  {
+   "fixture": {
+    "id": 980003,
+    "date": "2026-06-10T15:00:00+00:00",
+    "status": {
+     "short": "FT"
+    }
+   },
+   "teams": {
+    "home": {
+     "name": "Manchester City"
+    },
+    "away": {
+     "name": "Arsenal"
+    }
+   },
+   "goals": {
+    "home": 0,
+    "away": 3
+   }
+  },
+  {
+   "fixture": {
+    "id": 980004,
+    "date": "2026-07-10T15:00:00+00:00",
+    "status": {
+     "short": "FT"
+    }
+   },
+   "teams": {
+    "home": {
+     "name": "Manchester City"
+    },
+    "away": {
+     "name": "Arsenal"
+    }
+   },
+   "goals": {
+    "home": 2,
+    "away": 3
+   }
+  }
+ ]
+}

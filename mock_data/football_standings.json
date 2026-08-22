@@ -1,0 +1,164 @@
+{
+ "response": [
+  {
+   "league": {
+    "id": 39,
+    "name": "Premier League",
+    "standings": [
+     [
+      {
+       "rank": 1,
+       "team": {
+        "id": 50,
+        "name": "Manchester City"
+       },
+       "points": 90,
+       "all": {
+        "played": 38,
+        "win": 26,
+        "draw": 6,
+        "lose": 6
+       },
+       "form": "WWDWL"
+      },
+      {
+       "rank": 2,
+       "team": {
+        "id": 51,
+        "name": "Arsenal"
+       },
+       "points": 86,
+       "all": {
+        "played": 38,
+        "win": 24,
+        "draw": 6,
+        "lose": 8
+       },
+       "form": "WWDWL"
+      },
+      {
+       "rank": 3,
+       "team": {
+        "id": 52,
+        "name": "Liverpool"
+       },
+       "points": 82,
+       "all": {
+        "played": 38,
+        "win": 22,
+        "draw": 6,
+        "lose": 10
+       },
+       "form": "WWDWL"
+      },
+      {
+       "rank": 4,
+       "team": {
+        "id": 53,
+        "name": "Chelsea"
+       },
+       "points": 78,
+       "all": {
+        "played": 38,
+        "win": 20,
+        "draw": 6,
+        "lose": 12
+       },
+       "form": "WWDWL"
+      },
+      {
+       "rank": 5,
+       "team": {
+        "id": 54,
+        "name": "Tottenham"
+       },
+       "points": 74,
+       "all": {
+        "played": 38,
+        "win": 18,
+        "draw": 6,
+        "lose": 14
+       },
+       "form": "WWDWL"
+      },
+      {
+       "rank": 6,
+       "team": {
+        "id": 55,
+        "name": "Manchester United"
+       },
+       "points": 70,
+       "all": {
+        "played": 38,
+        "win": 16,
+        "draw": 6,
+        "lose": 16
+       },
+       "form": "WWDWL"
+      },
+      {
+       "rank": 7,
+       "team": {
+        "id": 56,
+        "name": "Newcastle"
+       },
+       "points": 66,
+       "all": {
+        "played": 38,
+        "win": 14,
+        "draw": 6,
+        "lose": 18
+       },
+       "form": "WWDWL"
+      },
+      {
+       "rank": 8,
+       "team": {
+        "id": 57,
+        "name": "Aston Villa"
+       },
+       "points": 62,
+       "all": {
+        "played": 38,
+        "win": 12,
+        "draw": 6,
+        "lose": 20
+       },
+       "form": "WWDWL"
+      },
+      {
+       "rank": 9,
+       "team": {
+        "id": 58,
+        "name": "Brighton"
+       },
+       "points": 58,
+       "all": {
+        "played": 38,
+        "win": 10,
+        "draw": 6,
+        "lose": 22
+       },
+       "form": "WWDWL"
+      },
+      {
+       "rank": 10,
+       "team": {
+        "id": 59,
+        "name": "West Ham"
+       },
+       "points": 54,
+       "all": {
+        "played": 38,
+        "win": 8,
+        "draw": 6,
+        "lose": 24
+       },
+       "form": "WWDWL"
+      }
+     ]
+    ]
+   }
+  }
+ ]
+}

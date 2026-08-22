@@ -1,0 +1,505 @@
+{
+ "dates": [
+  {
+   "date": "2026-08-22",
+   "totalGames": 15,
+   "games": [
+    {
+     "gamePk": 750000,
+     "gameDate": "2026-08-22T17:00:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 101,
+        "name": "Atlanta Braves"
+       },
+       "probablePitcher": {
+        "id": 600001,
+        "fullName": "Logan Maeda Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 100,
+        "name": "Arizona Diamondbacks"
+       },
+       "probablePitcher": {
+        "id": 600000,
+        "fullName": "Tyler Glasnow"
+       }
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     }
+    },
+    {
+     "gamePk": 750001,
+     "gameDate": "2026-08-22T18:07:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 103,
+        "name": "Boston Red Sox"
+       },
+       "probablePitcher": {
+        "id": 600003,
+        "fullName": "Hunter Darvish Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 102,
+        "name": "Baltimore Orioles"
+       },
+       "probablePitcher": {
+        "id": 600002,
+        "fullName": "Jacob deGrom"
+       }
+      }
+     },
+     "venue": {
+      "name": "Orioles Park"
+     }
+    },
+    {
+     "gamePk": 750002,
+     "gameDate": "2026-08-22T19:14:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 105,
+        "name": "Chicago White Sox"
+       },
+       "probablePitcher": {
+        "id": 600005,
+        "fullName": "Marcus Valdez Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 104,
+        "name": "Chicago Cubs"
+       },
+       "probablePitcher": {
+        "id": 600004,
+        "fullName": "Luis Castillo"
+       }
+      }
+     },
+     "venue": {
+      "name": "Cubs Park"
+     }
+    },
+    {
+     "gamePk": 750003,
+     "gameDate": "2026-08-22T20:21:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 107,
+        "name": "Cleveland Guardians"
+       },
+       "probablePitcher": {
+        "id": 600007,
+        "fullName": "Kenta Cease Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 106,
+        "name": "Cincinnati Reds"
+       },
+       "probablePitcher": {
+        "id": 600006,
+        "fullName": "Carlos Rodon"
+       }
+      }
+     },
+     "venue": {
+      "name": "Reds Park"
+     }
+    },
+    {
+     "gamePk": 750004,
+     "gameDate": "2026-08-22T21:28:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 109,
+        "name": "Detroit Tigers"
+       },
+       "probablePitcher": {
+        "id": 600009,
+        "fullName": "Yu Rodriguez Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 108,
+        "name": "Colorado Rockies"
+       },
+       "probablePitcher": {
+        "id": 600008,
+        "fullName": "Shane Bieber"
+       }
+      }
+     },
+     "venue": {
+      "name": "Rockies Park"
+     }
+    },
+    {
+     "gamePk": 750005,
+     "gameDate": "2026-08-22T22:35:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 111,
+        "name": "Kansas City Royals"
+       },
+       "probablePitcher": {
+        "id": 600011,
+        "fullName": "Framber Strider Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 110,
+        "name": "Houston Astros"
+       },
+       "probablePitcher": {
+        "id": 600010,
+        "fullName": "Logan Webb"
+       }
+      }
+     },
+     "venue": {
+      "name": "Astros Park"
+     }
+    },
+    {
+     "gamePk": 750006,
+     "gameDate": "2026-08-22T17:42:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 113,
+        "name": "Los Angeles Dodgers"
+       },
+       "probablePitcher": {
+        "id": 600013,
+        "fullName": "Dylan Gallen Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 112,
+        "name": "Los Angeles Angels"
+       },
+       "probablePitcher": {
+        "id": 600012,
+        "fullName": "Hunter Greene"
+       }
+      }
+     },
+     "venue": {
+      "name": "Angels Park"
+     }
+    },
+    {
+     "gamePk": 750007,
+     "gameDate": "2026-08-22T18:49:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 115,
+        "name": "Milwaukee Brewers"
+       },
+       "probablePitcher": {
+        "id": 600015,
+        "fullName": "Grayson Glasnow Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 114,
+        "name": "Miami Marlins"
+       },
+       "probablePitcher": {
+        "id": 600014,
+        "fullName": "Marcus Stroman"
+       }
+      }
+     },
+     "venue": {
+      "name": "Marlins Park"
+     }
+    },
+    {
+     "gamePk": 750008,
+     "gameDate": "2026-08-22T19:56:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 117,
+        "name": "New York Mets"
+       },
+       "probablePitcher": {
+        "id": 600017,
+        "fullName": "Spencer deGrom Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 116,
+        "name": "Minnesota Twins"
+       },
+       "probablePitcher": {
+        "id": 600016,
+        "fullName": "Kenta Maeda"
+       }
+      }
+     },
+     "venue": {
+      "name": "Twins Park"
+     }
+    },
+    {
+     "gamePk": 750009,
+     "gameDate": "2026-08-22T20:03:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 119,
+        "name": "Athletics"
+       },
+       "probablePitcher": {
+        "id": 600019,
+        "fullName": "Zac Castillo Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 118,
+        "name": "New York Yankees"
+       },
+       "probablePitcher": {
+        "id": 600018,
+        "fullName": "Yu Darvish"
+       }
+      }
+     },
+     "venue": {
+      "name": "Yankees Park"
+     }
+    },
+    {
+     "gamePk": 750010,
+     "gameDate": "2026-08-22T21:10:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 121,
+        "name": "Pittsburgh Pirates"
+       },
+       "probablePitcher": {
+        "id": 600021,
+        "fullName": "Tyler Rodon Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 120,
+        "name": "Philadelphia Phillies"
+       },
+       "probablePitcher": {
+        "id": 600020,
+        "fullName": "Framber Valdez"
+       }
+      }
+     },
+     "venue": {
+      "name": "Phillies Park"
+     }
+    },
+    {
+     "gamePk": 750011,
+     "gameDate": "2026-08-22T22:17:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 123,
+        "name": "San Francisco Giants"
+       },
+       "probablePitcher": {
+        "id": 600023,
+        "fullName": "Jacob Bieber Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 122,
+        "name": "San Diego Padres"
+       },
+       "probablePitcher": {
+        "id": 600022,
+        "fullName": "Dylan Cease"
+       }
+      }
+     },
+     "venue": {
+      "name": "Padres Park"
+     }
+    },
+    {
+     "gamePk": 750012,
+     "gameDate": "2026-08-22T17:24:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 125,
+        "name": "St. Louis Cardinals"
+       },
+       "probablePitcher": {
+        "id": 600025,
+        "fullName": "Luis Webb Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 124,
+        "name": "Seattle Mariners"
+       },
+       "probablePitcher": {
+        "id": 600024,
+        "fullName": "Grayson Rodriguez"
+       }
+      }
+     },
+     "venue": {
+      "name": "Mariners Park"
+     }
+    },
+    {
+     "gamePk": 750013,
+     "gameDate": "2026-08-22T18:31:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 127,
+        "name": "Texas Rangers"
+       },
+       "probablePitcher": {
+        "id": 600027,
+        "fullName": "Carlos Greene Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 126,
+        "name": "Tampa Bay Rays"
+       },
+       "probablePitcher": {
+        "id": 600026,
+        "fullName": "Spencer Strider"
+       }
+      }
+     },
+     "venue": {
+      "name": "Rays Park"
+     }
+    },
+    {
+     "gamePk": 750014,
+     "gameDate": "2026-08-22T19:38:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 129,
+        "name": "Washington Nationals"
+       },
+       "probablePitcher": {
+        "id": 600029,
+        "fullName": "Shane Stroman Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 128,
+        "name": "Toronto Blue Jays"
+       },
+       "probablePitcher": {
+        "id": 600028,
+        "fullName": "Zac Gallen"
+       }
+      }
+     },
+     "venue": {
+      "name": "Jays Park"
+     }
+    }
+   ]
+  }
+ ]
+}
