@@ -325,6 +325,11 @@ async def generate_report(analysis: dict) -> str:
 
 # ---------------------------------------------------------------- 진입점
 
+def mlb_slate_date() -> str:
+    """MLB 슬레이트 날짜 = 미국 동부 기준 오늘 (KST 새벽·아침엔 전날 미국 경기)."""
+    return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+
+
 async def run_pipeline(
     pool: asyncpg.Pool,
     redis: aioredis.Redis,
@@ -341,6 +346,45 @@ async def run_pipeline(
             logger.info("[pipeline] cache hit: %s", cache_key)
             return cached
     analysis = await build_analysis(pool, sport, date)
-    report = await generate_report(analysis)
+    try:
+        report = await generate_report(analysis)
+    except ApiQuotaError as exc:
+        logger.error("[pipeline] report quota exhausted — template fallback: %s", exc)
+        await notify_quota(exc.service, exc.detail)
+        report = _mock_report(analysis)
     await redis.set(cache_key, report, ex=settings.report_cache_ttl)
     return report
+
+
+async def _cli() -> None:
+    """텔레그램 없이 파이프라인 직접 호출: python -m app.pipeline --sport mlb"""
+    import argparse
+    import time
+
+    import redis.asyncio as aioredis_
+
+    from app.db import close_pool, get_pool
+
+    parser = argparse.ArgumentParser(description="AnalystBot pipeline CLI")
+    parser.add_argument("--sport", default="mlb", choices=["mlb", "soccer"])
+    parser.add_argument("--date", default=None, help="YYYY-MM-DD (기본: MLB는 미국 동부 오늘)")
+    parser.add_argument("--force-refresh", action="store_true")
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO)
+
+    date = args.date or (mlb_slate_date() if args.sport == "mlb" else today_kst())
+    pool = await get_pool()
+    redis = aioredis_.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        t0 = time.monotonic()
+        report = await run_pipeline(pool, redis, args.sport, date, args.force_refresh)
+        elapsed = time.monotonic() - t0
+        print(report)
+        print(f"\n[elapsed {elapsed:.2f}s]")
+    finally:
+        await redis.aclose()
+        await close_pool()
+
+
+if __name__ == "__main__":
+    asyncio.run(_cli())

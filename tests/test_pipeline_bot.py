@@ -1,8 +1,14 @@
 """파이프라인 왕복 + 캐시 + 봇 유틸(분할·의도·시뮬레이터) 검증. 전부 목 모드."""
 
+import re
+
 import app.bot.main as botmod
 from app.bot.main import parse_intent_mock, split_message
-from app.pipeline import run_pipeline
+from app.pipeline import mlb_slate_date, run_pipeline
+
+
+def test_mlb_slate_date_format():
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", mlb_slate_date())
 
 DATE = "2026-08-22"
 
