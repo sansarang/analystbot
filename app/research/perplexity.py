@@ -112,15 +112,17 @@ async def save_expert_picks(pool: asyncpg.Pool, picks: list[dict]) -> int:
             logger.warning("[perplexity] unparseable pick: %r", p.get("pick"))
             continue
         odds = await _latest_odds_for_pick(pool, row["id"], normalized)
-        await pool.execute(
+        result = await pool.execute(
             """
             INSERT INTO expert_picks (game_id, expert, site, source_url, pick,
                                       reasoning, record, odds)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (game_id, expert, site, pick) DO NOTHING
             """,
             row["id"], p.get("expert", "unknown"), p.get("site", "unknown"),
             p.get("source_url"), normalized, p.get("reasoning"), p.get("record"), odds,
         )
-        saved += 1
+        if result.endswith("1"):
+            saved += 1
     logger.info("[perplexity] saved %d expert picks", saved)
     return saved

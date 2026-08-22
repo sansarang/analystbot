@@ -459,7 +459,8 @@ async def generate_report(analysis: dict) -> str:
     try:
         response = await client.messages.create(
             model=settings.report_model,
-            max_tokens=4000,
+            # sonnet-5는 adaptive thinking 기본 활성 — max_tokens가 thinking+본문 합산 상한
+            max_tokens=16000,
             system=REPORT_SYSTEM,
             messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=False, default=str)}],
         )
@@ -469,7 +470,14 @@ async def generate_report(analysis: dict) -> str:
             await notify_quota("anthropic(report)", str(exc))
             return _mock_report(analysis)
         raise
-    return next(b.text for b in response.content if b.type == "text")
+    text = "".join(b.text for b in response.content if b.type == "text")
+    if not text.strip():
+        logger.warning(
+            "[pipeline] report model returned no text (stop_reason=%s) — template fallback",
+            response.stop_reason,
+        )
+        return _mock_report(analysis)
+    return text
 
 
 # ---------------------------------------------------------------- 진입점

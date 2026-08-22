@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS expert_picks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_expert_picks_game ON expert_picks (game_id);
+-- 파이프라인 재실행 시 같은 픽 중복 적재 방지 (저장은 ON CONFLICT DO NOTHING)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_expert_picks
+    ON expert_picks (game_id, expert, site, pick);
 
 CREATE TABLE IF NOT EXISTS predictions (
     id         BIGSERIAL PRIMARY KEY,
