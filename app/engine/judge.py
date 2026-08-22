@@ -15,6 +15,7 @@ import logging
 
 import anthropic
 
+from app.collectors.base import ApiQuotaError, is_quota_error
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -126,10 +127,15 @@ class Judge:
         payload_json = json.dumps(payload, ensure_ascii=False, default=str)
 
         try:
-            response = await self._create(payload_json, force_tool=False)
-        except anthropic.NotFoundError:
-            self._model = await self._resolve_fallback_model()
-            response = await self._create(payload_json, force_tool=False)
+            try:
+                response = await self._create(payload_json, force_tool=False)
+            except anthropic.NotFoundError:
+                self._model = await self._resolve_fallback_model()
+                response = await self._create(payload_json, force_tool=False)
+        except anthropic.APIStatusError as exc:
+            if is_quota_error(exc.status_code, str(exc)):
+                raise ApiQuotaError("anthropic(judge)", str(exc)) from exc
+            raise
 
         verdict = self._extract_verdict(response)
         if verdict is None:

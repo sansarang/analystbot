@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     # API 키 — 없으면 해당 모듈은 mock_data/ 목 모드로 동작한다.
     telegram_bot_token: str | None = None
+    telegram_admin_chat_id: str | None = None  # 쿼터 소진 등 운영 알림 수신 채팅
     anthropic_api_key: str | None = None
     pplx_api_key: str | None = None
     xai_api_key: str | None = None
@@ -25,6 +26,7 @@ class Settings(BaseSettings):
     judge_model: str = "claude-opus-4-6"
     report_model: str = "claude-sonnet-5"
     intent_model: str = "claude-haiku-4-5"
+    grok_model: str = "grok-4.3-latest"
 
     # 인프라
     database_url: str = "postgresql://analyst:analyst@localhost:5432/analystbot"

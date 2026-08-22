@@ -14,6 +14,7 @@ import anthropic
 import asyncpg
 import redis.asyncio as aioredis
 
+from app.collectors.base import ApiQuotaError, is_quota_error
 from app.collectors.football import APIFootballClient
 from app.collectors.football import upsert_games as upsert_soccer_games
 from app.collectors.mlb import MLBClient, upsert_games
@@ -23,6 +24,7 @@ from app.engine.consensus import consensus_scores, load_expert_weights
 from app.engine.judge import Judge
 from app.engine.parlay import best_parlays
 from app.engine.value import devig, ensemble, ev, heuristic_model_prob, implied_prob, kelly
+from app.notify import notify_quota
 from app.research.grok import GrokClient
 from app.research.perplexity import PerplexityClient, fetch_expert_picks, save_expert_picks
 
@@ -89,6 +91,8 @@ async def _collect_research(
 
     if isinstance(picks_res, BaseException):
         logger.error("[pipeline] perplexity research failed, continuing without picks: %s", picks_res)
+        if isinstance(picks_res, ApiQuotaError):
+            await notify_quota(picks_res.service, picks_res.detail)
         picks: list[dict] = []
     else:
         picks, _citations = picks_res
@@ -96,6 +100,8 @@ async def _collect_research(
 
     if isinstance(news_res, BaseException):
         logger.error("[pipeline] grok briefing failed, continuing without news: %s", news_res)
+        if isinstance(news_res, ApiQuotaError):
+            await notify_quota(news_res.service, news_res.detail)
         news = ""
     else:
         news = news_res
@@ -203,9 +209,15 @@ async def build_analysis(pool: asyncpg.Pool, sport: str, date: str) -> dict:
             ),
         })
 
-    # 4) Claude 판정
-    verdict = await Judge().judge({"date": date, "sport": sport,
-                                   "games": judge_games, "breaking_news": news})
+    # 4) Claude 판정 — 크레딧 소진 시 알림 후 목 판정으로 폴백 (크래시 금지)
+    judge_payload = {"date": date, "sport": sport,
+                     "games": judge_games, "breaking_news": news}
+    try:
+        verdict = await Judge().judge(judge_payload)
+    except ApiQuotaError as exc:
+        logger.error("[pipeline] judge quota exhausted — falling back to mock verdict: %s", exc)
+        await notify_quota(exc.service, exc.detail)
+        verdict = Judge._mock_verdict(judge_payload)
     p_claude_by_id = {g["game_id"]: g for g in verdict["games"]}
 
     # 5) 앙상블 → EV/켈리 → predictions 적재 + 파레이
@@ -295,12 +307,19 @@ async def generate_report(analysis: dict) -> str:
         return _mock_report(analysis)
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     payload = {k: analysis[k] for k in ("date", "sport", "games", "picks", "parlays", "news")}
-    response = await client.messages.create(
-        model=settings.report_model,
-        max_tokens=4000,
-        system=REPORT_SYSTEM,
-        messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=False, default=str)}],
-    )
+    try:
+        response = await client.messages.create(
+            model=settings.report_model,
+            max_tokens=4000,
+            system=REPORT_SYSTEM,
+            messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=False, default=str)}],
+        )
+    except anthropic.APIStatusError as exc:
+        if is_quota_error(exc.status_code, str(exc)):
+            logger.error("[pipeline] report quota exhausted — falling back to template")
+            await notify_quota("anthropic(report)", str(exc))
+            return _mock_report(analysis)
+        raise
     return next(b.text for b in response.content if b.type == "text")
 
 

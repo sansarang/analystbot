@@ -24,32 +24,38 @@ class GrokClient(BaseAPIClient):
         settings = get_settings()
         super().__init__(settings.mock_grok if mock is None else mock)
         self.api_key = settings.xai_api_key
+        self.model = settings.grok_model
 
     async def live_briefing(
         self, games: list[dict], date: str, league: str = "MLB"
     ) -> str:
-        """당일 속보 요약 텍스트 반환."""
+        """당일 속보 요약 텍스트 반환.
+
+        xAI Live Search(search_parameters)는 폐기됨 → Agent Tools API
+        (/v1/responses + web_search·x_search 툴) 사용. 날짜 필터는 프롬프트로 제약.
+        """
         if self.mock:
             resp = self.load_mock("grok_live.json")
-        else:
-            games_block = "\n".join(f"- {g['away']} @ {g['home']}" for g in games)
-            resp = await self._post(
-                "/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json_body={
-                    "model": "grok-3-latest",
-                    "messages": [{
-                        "role": "user",
-                        "content": PROMPT.format(
-                            league=league, date=date, games_block=games_block
-                        ),
-                    }],
-                    "search_parameters": {
-                        "mode": "on",
-                        "sources": [{"type": "x"}, {"type": "news"}],
-                        "from_date": date,
-                        "to_date": date,
-                    },
-                },
-            )
-        return resp["choices"][0]["message"]["content"]
+            return resp["choices"][0]["message"]["content"]
+        games_block = "\n".join(f"- {g['away']} @ {g['home']}" for g in games)
+        resp = await self._post(
+            "/responses",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json_body={
+                "model": self.model,
+                "input": PROMPT.format(league=league, date=date, games_block=games_block),
+                "tools": [{"type": "web_search"}, {"type": "x_search"}],
+            },
+        )
+        return extract_output_text(resp)
+
+
+def extract_output_text(resp: dict) -> str:
+    """Responses API output 배열에서 output_text만 이어붙인다."""
+    parts = [
+        c["text"]
+        for item in resp.get("output", [])
+        for c in (item.get("content") or [])
+        if c.get("type") == "output_text"
+    ]
+    return "\n".join(parts).strip()

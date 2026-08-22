@@ -13,10 +13,12 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
+from app.collectors.base import ApiQuotaError
 from app.collectors.odds import snapshot_odds
 from app.config import get_settings
 from app.db import get_pool
 from app.grader import grade_date
+from app.notify import notify_quota
 from app.pipeline import run_pipeline, today_kst
 
 logger = logging.getLogger(__name__)
@@ -34,10 +36,14 @@ async def prefetch_job() -> None:
     redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
     try:
         for sport in ("mlb", "soccer"):
-            report = await run_pipeline(
-                pool, redis, sport=sport, date=today_kst(), force_refresh=True
-            )
-            logger.info("[scheduler] prefetched %s report (%d chars)", sport, len(report))
+            try:
+                report = await run_pipeline(
+                    pool, redis, sport=sport, date=today_kst(), force_refresh=True
+                )
+                logger.info("[scheduler] prefetched %s report (%d chars)", sport, len(report))
+            except ApiQuotaError as exc:
+                logger.error("[scheduler] prefetch %s halted by quota: %s", sport, exc)
+                await notify_quota(exc.service, exc.detail)
     finally:
         await redis.aclose()
 
@@ -45,15 +51,23 @@ async def prefetch_job() -> None:
 async def odds_snapshot_job() -> None:
     """30분마다 배당 스냅샷 적재 (라인 무브먼트 추적)."""
     pool = await get_pool()
-    n = await snapshot_odds(pool, "mlb")
-    logger.info("[scheduler] odds snapshot: %d rows", n)
+    try:
+        n = await snapshot_odds(pool, "mlb")
+        logger.info("[scheduler] odds snapshot: %d rows", n)
+    except ApiQuotaError as exc:
+        logger.error("[scheduler] odds snapshot halted by quota: %s", exc)
+        await notify_quota(exc.service, exc.detail)
 
 
 async def grading_job() -> None:
     """전날 결과 채점 — expert_ledger는 뷰라 자동 갱신."""
     pool = await get_pool()
-    counts = await grade_date(pool, yesterday_kst(), "mlb")
-    logger.info("[scheduler] graded yesterday: %s", counts)
+    try:
+        counts = await grade_date(pool, yesterday_kst(), "mlb")
+        logger.info("[scheduler] graded yesterday: %s", counts)
+    except ApiQuotaError as exc:
+        logger.error("[scheduler] grading halted by quota: %s", exc)
+        await notify_quota(exc.service, exc.detail)
 
 
 def build_scheduler() -> AsyncIOScheduler:

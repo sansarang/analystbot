@@ -5,12 +5,20 @@ from datetime import datetime
 
 import asyncpg
 
-from app.collectors.base import BaseAPIClient
+from app.collectors.base import ApiQuotaError, BaseAPIClient
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 EPL_LEAGUE_ID = 39
+
+
+def check_apifootball_quota(data: dict) -> dict:
+    """API-Football은 쿼터 초과를 HTTP 200 + errors 필드로 반환한다."""
+    errors = data.get("errors")
+    if errors and any(k in str(errors).lower() for k in ("limit", "request", "subscription")):
+        raise ApiQuotaError("football", str(errors)[:300])
+    return data
 
 
 class APIFootballClient(BaseAPIClient):
@@ -25,33 +33,33 @@ class APIFootballClient(BaseAPIClient):
     async def fetch_fixtures(self, date: str, league: int = EPL_LEAGUE_ID) -> dict:
         if self.mock:
             return self.load_mock("football_fixtures.json")
-        return await self._get(
+        return check_apifootball_quota(await self._get(
             "/fixtures", params={"date": date, "league": league}, headers=self.headers
-        )
+        ))
 
     async def fetch_standings(self, league: int = EPL_LEAGUE_ID, season: int = 2026) -> dict:
         if self.mock:
             return self.load_mock("football_standings.json")
-        return await self._get(
+        return check_apifootball_quota(await self._get(
             "/standings", params={"league": league, "season": season}, headers=self.headers
-        )
+        ))
 
     async def fetch_team_form(self, team_id: int, last: int = 5) -> dict:
         """최근 폼 = 해당 팀의 최근 N경기."""
         if self.mock:
             return self.load_mock("football_h2h.json")
-        return await self._get(
+        return check_apifootball_quota(await self._get(
             "/fixtures", params={"team": team_id, "last": last}, headers=self.headers
-        )
+        ))
 
     async def fetch_h2h(self, home_id: int, away_id: int, last: int = 5) -> dict:
         if self.mock:
             return self.load_mock("football_h2h.json")
-        return await self._get(
+        return check_apifootball_quota(await self._get(
             "/fixtures/headtohead",
             params={"h2h": f"{home_id}-{away_id}", "last": last},
             headers=self.headers,
-        )
+        ))
 
 
 async def upsert_games(

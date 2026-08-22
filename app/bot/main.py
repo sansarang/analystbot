@@ -13,8 +13,10 @@ import re
 import anthropic
 import redis.asyncio as aioredis
 
+from app.collectors.base import ApiQuotaError, is_quota_error
 from app.config import get_settings
 from app.db import close_pool, get_pool
+from app.notify import notify_quota
 from app.pipeline import run_pipeline, today_kst
 
 logger = logging.getLogger(__name__)
@@ -59,6 +61,17 @@ async def parse_intent(text: str) -> dict:
     settings = get_settings()
     if settings.mock_judge:  # ANTHROPIC_API_KEY 기준
         return parse_intent_mock(text)
+    try:
+        return await _parse_intent_live(text, settings)
+    except anthropic.APIStatusError as exc:
+        if is_quota_error(exc.status_code, str(exc)):
+            await notify_quota("anthropic(intent)", str(exc))
+        else:
+            logger.warning("[bot] live intent parse failed, using rule-based: %s", exc)
+        return parse_intent_mock(text)
+
+
+async def _parse_intent_live(text: str, settings) -> dict:
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     response = await client.messages.create(
         model=settings.intent_model,
@@ -86,11 +99,23 @@ async def parse_intent(text: str) -> dict:
 
 
 async def answer_query(sport: str, date: str | None = None) -> str:
-    """파이프라인 실행(캐시 우선) → 리포트 텍스트."""
+    """파이프라인 실행(캐시 우선) → 리포트 텍스트.
+
+    API 크레딧/쿼터 소진 시 크래시 대신 사용자에게 상황을 알리는 메시지를 반환하고,
+    관리자 채팅으로도 알림을 보낸다.
+    """
     pool = await get_pool()
     redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
     try:
         return await run_pipeline(pool, redis, sport=sport, date=date or today_kst())
+    except ApiQuotaError as exc:
+        logger.error("[bot] quota exhausted: %s", exc)
+        await notify_quota(exc.service, exc.detail)
+        return (
+            f"⚠️ {exc.service} API 사용량/크레딧이 소진되어 분석을 완료하지 못했습니다.\n"
+            f"키를 충전하거나 교체한 뒤 다시 시도해 주세요.\n"
+            f"(상세: {exc.detail[:120]})"
+        )
     finally:
         await redis.aclose()
 

@@ -18,6 +18,31 @@ MOCK_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / "mock_data"
 
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 
+# 크레딧/쿼터 소진으로 판정하는 신호 (상태코드 + 본문 키워드)
+QUOTA_KEYWORDS = (
+    "credit", "quota", "billing", "insufficient", "payment required",
+    "usage limit", "limit reached", "out_of_usage", "request limit",
+    "exceeded", "구독", "잔액",
+)
+
+
+class ApiQuotaError(RuntimeError):
+    """API 크레딧/쿼터 소진 — 재시도 무의미, 사용자에게 알려야 하는 상태."""
+
+    def __init__(self, service: str, detail: str):
+        self.service = service
+        self.detail = detail
+        super().__init__(f"{service}: {detail}")
+
+
+def is_quota_error(status: int, body: str) -> bool:
+    if status == 402:
+        return True
+    if status in (401, 403, 429):
+        lowered = body.lower()
+        return any(k in lowered for k in QUOTA_KEYWORDS)
+    return False
+
 
 class BaseAPIClient:
     name: str = "base"
@@ -56,8 +81,11 @@ class BaseAPIClient:
                 resp.raise_for_status()
                 return resp.json()
             except httpx.HTTPStatusError as exc:
-                if exc.response.status_code not in RETRYABLE_STATUS:
-                    raise  # 4xx(429 제외)는 재시도 무의미
+                code, body = exc.response.status_code, exc.response.text
+                if code not in RETRYABLE_STATUS:
+                    if is_quota_error(code, body):
+                        raise ApiQuotaError(self.name, body[:300]) from exc
+                    raise  # 그 외 4xx는 재시도 무의미
                 last_exc = exc
             except httpx.TransportError as exc:
                 last_exc = exc
@@ -68,6 +96,11 @@ class BaseAPIClient:
                     self.name, attempt + 1, self.max_retries, delay, last_exc,
                 )
                 await asyncio.sleep(delay)
+        # 재시도 소진 — 429가 쿼터성 메시지였다면 쿼터 에러로 승격
+        if isinstance(last_exc, httpx.HTTPStatusError) and is_quota_error(
+            last_exc.response.status_code, last_exc.response.text
+        ):
+            raise ApiQuotaError(self.name, last_exc.response.text[:300]) from last_exc
         raise last_exc  # type: ignore[misc]
 
     async def _get(self, path: str, **kwargs: Any) -> Any:
