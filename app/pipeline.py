@@ -206,8 +206,9 @@ async def _noop_progress(step: int, total: int, label: str) -> None:
 
 async def build_analysis(
     pool: asyncpg.Pool, sport: str, date: str,
-    team: str | None = None, progress=None,
+    team: str | None = None, league_key: str | None = None, progress=None,
 ) -> dict:
+    """league_key 지정 시 그 리그만 수집·판정 (요청 범위 밖 API 호출 금지)."""
     settings = get_settings()
     progress = progress or _noop_progress
     await progress(1, 4, "일정·스탯 수집")
@@ -232,13 +233,16 @@ async def build_analysis(
             # 1순위 football-data.org(메이저), 2순위 Odds API 이벤트(마이너, 중복 제외)
             from app.collectors.football import FootballDataClient, upsert_games_from_football_data
             from app.collectors.odds import upsert_games_from_odds_events
+            from app.leagues import LEAGUES
 
+            only_keys = [LEAGUES[league_key]["odds_key"]] if league_key else None
             fd = FootballDataClient()
             if not fd.mock:
-                ext_ids += await upsert_games_from_football_data(pool, date, client=fd)
-            ext_ids += await upsert_games_from_odds_events(pool, date)
+                ext_ids += await upsert_games_from_football_data(
+                    pool, date, client=fd, league_key=league_key)
+            ext_ids += await upsert_games_from_odds_events(pool, date, only_keys=only_keys)
         stats_coro = _collect_soccer_stats()
-        league = "soccer (EPL·J1·수페르리가 등)"
+        league = "soccer"
 
     game_rows = await pool.fetch(
         """
@@ -249,17 +253,34 @@ async def build_analysis(
         sport, ext_ids,
     )
     games = [dict(r) for r in game_rows]
+    if league_key:  # 리그 지정 요청 — 그 리그 경기만 (다른 리그 언급 금지)
+        from app.leagues import LEAGUES
+
+        games = [g for g in games if g["league"] == LEAGUES[league_key]["label"]]
     if team:  # 특정 팀 질문 — 그 경기 1건만 분석 (전체 파이프라인 낭비 금지)
-        games = [g for g in games if team in (g["home"], g["away"])]
-        if not games:
-            return {"sport": sport, "date": date, "games": [], "picks": [],
-                    "parlays": [], "news": "", "sources": [], "verdict": {"games": []}}
+        from app.collectors.football import similar_team
+
+        games = [g for g in games
+                 if similar_team(g["home"], team) or similar_team(g["away"], team)]
+    if (team or league_key) and not games:
+        return {"sport": sport, "date": date, "games": [], "picks": [],
+                "parlays": [], "combos": {}, "news": "", "sources": [],
+                "verdict": {"games": []}, "mode": {"name": settings.report_mode}}
+
+    # 배당 조회는 경기가 있는 리그 키만 (크레딧 절약)
+    if sport == "mlb":
+        active_keys = ["baseball_mlb"]
+    else:
+        from app.leagues import LEAGUES as _L
+
+        labels_present = {g["league"] for g in games}
+        active_keys = [c["odds_key"] for c in _L.values() if c["label"] in labels_present]
 
     await progress(2, 4, "배당·딥서치 수집")
-    # 2) 스탯 ∥ 배당 ∥ 딥서치 병렬 수집
+    # 2) 스탯 ∥ 배당 ∥ 딥서치 병렬 수집 (딥서치도 요청 범위의 경기로만 한정)
     stats, _, (raw_picks, news, news_urls) = await asyncio.gather(
         stats_coro,
-        snapshot_odds(pool, sport, client=OddsClient()),
+        snapshot_odds(pool, sport, client=OddsClient(), only_keys=active_keys),
         _collect_research(pool, games, date, league, sport=sport),
     )
 
@@ -363,13 +384,33 @@ async def build_analysis(
             seen_urls.add(url)
             sources.append({"site": "Grok 검색", "url": url})
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
+    stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
+
+    # 등급제 조합 재료: 판정 통과 단식 + 저분산 마켓 레그 (실배당)
+    from app.engine.parlay import build_tiered_parlays
+
+    low_var: list[dict] = []
+    for jg in judge_games:
+        if jg["status"] != "scheduled" or "p_claude" not in jg:
+            continue
+        if jg.get("judge_pass") or jg.get("judge_confidence") == "low":
+            continue  # 판정 제외·저신뢰 경기 레그는 어떤 조합에도 금지
+        jg["low_var"] = await _low_var_candidates(pool, jg)
+        low_var.extend(jg["low_var"])
+    singles_pool = [
+        {"game_id": p["game_id"], "side": p["side"], "desc": f"{_kr(p['side'])} 승",
+         "odds": p["odds"], "p": p["p"], "confidence": p["confidence"],
+         "league": p["league"], "starts_at_kst": p["starts_at_kst"]}
+        for p in picks_out if not p["flags"] and not p["judge_excluded"]
+    ]
+    combos = build_tiered_parlays(singles_pool, low_var, stake_krw)
+
     return {
         "sport": sport, "date": date,
         "mode": {"name": settings.report_mode, **mode,
-                 "stake_krw": int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None,
-                 "bankroll_krw": settings.bankroll_krw},
+                 "stake_krw": stake_krw, "bankroll_krw": settings.bankroll_krw},
         "games": judge_games, "picks": picks_out,
-        "parlays": parlays,
+        "parlays": parlays, "combos": combos,
         "news": news, "sources": sources, "verdict": verdict,
     }
 
@@ -497,13 +538,13 @@ def _compute_picks(
         pick = f"h2h:{side}"
         pick_kelly = kelly(p_side, odds, settings.kelly_fraction, settings.kelly_cap)
 
-        # 데이터 검증 가드
+        # 데이터 검증 가드 — 기준 확률은 앙상블 p_final 하나로 통일 (자기모순 금지)
         implied = implied_prob(odds)
         flags = []
         if pick_ev > EV_FLAG_MAX:
             flags.append(f"EV {pick_ev:+.1%} > +20% (배당 데이터 이상 의심)")
-        if p_model_s is not None and abs(p_model_s - implied) > MODEL_GAP_MAX:
-            flags.append(f"모델 {p_model_s:.0%} vs 배당 암시 {implied:.0%} 괴리 >25%p")
+        if abs(p_side - implied) > MODEL_GAP_MAX:
+            flags.append(f"p_final {p_side:.0%} vs 배당 암시 {implied:.0%} 괴리 >25%p")
         # 판정 제외: Claude가 패스 권장/저신뢰로 본 경기는 추천 목록에서 뺀다
         judge_excluded = None
         if jg.get("judge_pass"):
@@ -513,15 +554,22 @@ def _compute_picks(
 
         entry = {
             "game_id": jg["game_id"], "home": jg["home"], "away": jg["away"],
+            "league": jg.get("league") or ("MLB" if sport == "mlb" else "?"),
             "starts_at_kst": jg["starts_at_kst"], "pick": pick, "side": side,
             "p": round(p_side, 4), "p_claude": jg["p_claude"],
             "model_valid": jg["model_valid"],
+            "confidence": jg.get("judge_confidence", "medium"),
             "odds": odds, "ev": round(pick_ev, 4), "kelly": round(pick_kelly, 4),
             "stake_krw": stake_krw,
             "verdict": jg["verdict"], "excluded_picks": jg["excluded_picks"],
             "flags": flags, "judge_excluded": judge_excluded,
         }
         picks_out.append(entry)
+        # 카드·심층이 같은 숫자를 인용하도록 요약을 경기 객체에도 부착 [단일 확률 소스]
+        jg["pick_summary"] = {
+            "side": side, "odds": odds, "p_final": round(p_side, 4),
+            "ev": round(pick_ev, 4), "flags": flags,
+        }
         if flags:
             logger.warning(
                 "[pipeline] suspicious pick flagged — %s @ %s | %s odds=%.2f: %s",
@@ -545,44 +593,92 @@ def _compute_picks(
 
 # ---------------------------------------------------------------- 리포트 생성
 
-CARD_SYSTEM = """너는 20년 경력의 스포츠 베팅 수석 애널리스트다. 입력 JSON(경기·픽·조합·판정)만을 근거로 텔레그램 '결론 카드' 하나를 작성한다.
+# 영어 문장 검출 (한국어 출력 규율 검증용): 5단어 이상 연속 영단어
+_EN_SENT_RE = re.compile(r"\b[A-Za-z][a-z]+(?:\s+[A-Za-z'’\-]+){4,}")
 
-[데이터 규율]
-- 입력에 없는 수치·팀·근거를 만들어내지 마라. 근거 한 줄에도 수치를 1개 이상 병기하라 ("우세" 단독 금지).
-- 한국어, 팀명 한국어 표기 통일, 시각은 KST.
+# 보이지 않는 문자 (URL 병합 버그 원인: U+FFFC·제로폭 등)
+_INVISIBLE = dict.fromkeys(map(ord, "\ufffc\u200b\u200c\u200d\u200e\u200f\ufeff\u2060"))
 
-[결론 카드 — 유일한 출력, 최대 20줄, 4096자 미만. 초과 시 분할이 아니라 압축]
-구성 순서:
-1) 헤더 3줄: "📌 {날짜} {종목} {경기수}경기" / "확신도 최고: {경기} — {근거 수치 한 줄}" / "논쟁: {경기} — {갈리는 지점 한 줄}"
-2) games[].breaking_note 가 있으면 그대로 각 1줄 ("🔄 속보 반영: ..."). parlay_rebuilt_note 가 있으면 그 줄도.
-3) 🎯 오늘의 추천 (카드의 마지막 섹션):
-   - 단식: recommended=true 픽마다 "· {팀} 승 @{배당} — {근거 한 줄} (권장 {stake_krw:,}원)" — 최대 2줄
-   - 조합: parlays 배열 순서대로 "조합 {n}: {팀A+팀B(+...)} @{합산배당} (적중률 {p:.0%})" 각 1줄, 최대 3줄
-   - 조합이 1개 이상이면 바로 아래 고정 문구: "⚠️ 조합은 고분산 — 단식 권장액의 절반 이하 소액만"
-   - recommended가 없으면: "오늘은 기준(EV +5%↑)을 넘는 픽 없음 — 관망 권장"
-- 경기별 심층·전문가 인용·속보 상세·출처는 카드에 쓰지 마라 (버튼 섹션 전용).
-- 켈리 % 표기 금지(모드가 flat일 때). 인사말·마무리 문구 불필요."""
+
+def contains_english_sentence(text: str) -> bool:
+    return bool(_EN_SENT_RE.search(text))
+
+
+def clean_invisible(text: str) -> str:
+    return (text or "").translate(_INVISIBLE).strip()
+
+
+def _kr(name: str) -> str:
+    from app.bot.aliases import kr_team
+
+    return kr_team(name)
 
 
 def _team_news_lines(news: str, home: str, away: str) -> list[str]:
-    keys = {home.lower(), away.lower(), home.split()[-1].lower(), away.split()[-1].lower()}
+    keys = {home.lower(), away.lower(), home.split()[-1].lower(), away.split()[-1].lower(),
+            _kr(home).lower(), _kr(away).lower()}
     return [ln for ln in news.splitlines() if any(k in ln.lower() for k in keys)]
 
 
+async def _low_var_candidates(pool: asyncpg.Pool, jg: dict) -> list[dict]:
+    """저분산 마켓 레그 후보 — 실배당 스프레드(+1.5)·토탈, 2-way 디빅 확률 ≥58%만."""
+    from collections import defaultdict
+
+    rows = await pool.fetch(
+        "SELECT DISTINCT ON (book, market, side, line) book, market, side, line, odds "
+        "FROM odds_snapshots WHERE game_id = $1 AND market IN ('spreads', 'totals') "
+        "ORDER BY book, market, side, line, captured_at DESC",
+        jg["game_id"],
+    )
+    pair: dict = defaultdict(dict)
+    best: dict = {}
+    for r in rows:
+        if r["line"] is None:
+            continue
+        line, odds = float(r["line"]), float(r["odds"])
+        pair[(r["book"], r["market"], abs(line))][(r["side"], line)] = odds
+        bk = (r["market"], r["side"], line)
+        best[bk] = max(best.get(bk, 0.0), odds)
+    probs: dict = defaultdict(list)
+    for k, sides in pair.items():
+        if len(sides) != 2:
+            continue
+        (s1, o1), (s2, o2) = list(sides.items())
+        p1, p2 = devig([implied_prob(o1), implied_prob(o2)])
+        probs[(k[1], s1[0], s1[1])].append(p1)
+        probs[(k[1], s2[0], s2[1])].append(p2)
+    out = []
+    for (market, side, line), ps in probs.items():
+        p = sum(ps) / len(ps)
+        if p < 0.58:
+            continue
+        if market == "spreads":
+            desc = f"{_kr(side)} {line:+g}"
+        else:
+            desc = f"{'오버' if side == 'Over' else '언더'} {line:g}"
+        out.append({
+            "game_id": jg["game_id"], "desc": desc, "market": market,
+            "side": side, "line": line, "odds": best[(market, side, line)],
+            "p": round(p, 4), "confidence": jg.get("judge_confidence", "medium"),
+            "league": jg.get("league"), "starts_at_kst": jg["starts_at_kst"],
+        })
+    out.sort(key=lambda x: x["p"], reverse=True)
+    return out[:2]
+
+
 def render_game_section(jg: dict, news: str = "") -> str:
-    """경기 1건 심층 ①~⑦ (버튼 응답·팀 질문 공용). 25줄 상한."""
+    """경기 1건 심층 ①~⑦ (버튼 응답·팀 질문 공용). 25줄 상한. 전면 한국어."""
+    home_kr, away_kr = _kr(jg["home"]), _kr(jg["away"])
     ho = jg.get("best_odds", {}).get(jg["home"])
     ao = jg.get("best_odds", {}).get(jg["away"])
-    matchup = (
-        f"{jg['home']}({ho:.2f}) vs {jg['away']}({ao:.2f})"
-        if ho and ao else f"{jg['home']} vs {jg['away']}"
-    )
+    matchup = (f"{home_kr}({ho:.2f}) vs {away_kr}({ao:.2f})"
+               if ho and ao else f"{home_kr} vs {away_kr}")
     st = jg.get("stats") or {}
     pitchers = ""
     if st.get("home_pitcher") or st.get("away_pitcher"):
         pitchers = f" | {st.get('home_pitcher') or '?'} vs {st.get('away_pitcher') or '?'}"
     label = f" [{jg['status_label']}]" if jg.get("status_label") else ""
-    lines = [f"{jg['starts_at_kst']} {matchup}{pitchers}{label}"]
+    lines = [f"{jg['starts_at_kst']} [{jg.get('league', '?')}] {matchup}{pitchers}{label}"]
 
     probs = []
     if jg.get("p_market") is not None:
@@ -594,14 +690,19 @@ def render_game_section(jg: dict, news: str = "") -> str:
         probs.append("시장: 배당 미수집")
     if jg.get("model_valid"):
         p3 = jg.get("p_model3")
-        probs.append(
-            f"모델: {p3[0]:.0%}/{p3[1]:.0%}/{p3[2]:.0%}" if p3 else f"모델: {jg['p_model']:.1%}"
-        )
+        probs.append(f"모델: {p3[0]:.0%}/{p3[1]:.0%}/{p3[2]:.0%}" if p3 else f"모델: {jg['p_model']:.1%}")
     else:
         probs.append("모델: 무효(데이터 없음)")
     if jg.get("p_claude") is not None:
         probs.append(f"Claude: {jg['p_claude']:.0%}")
     lines.append(". ".join(probs) + ".")
+
+    ps = jg.get("pick_summary")
+    if ps:  # 카드와 동일한 앙상블(p_final) 수치만 인용 — 확률 소스 단일화
+        flag_txt = f" ⚠️{ps['flags'][0]}" if ps.get("flags") else ""
+        lines.append(
+            f"밸류: {_kr(ps['side'])} @{ps['odds']:.2f} — p_final {ps['p_final']:.0%}, "
+            f"EV {ps['ev']:+.1%}{flag_txt}")
 
     eps = jg.get("expert_picks") or []
     if eps:
@@ -613,7 +714,7 @@ def render_game_section(jg: dict, news: str = "") -> str:
         lines.append("전문가: 전문가 픽 미수집")
 
     news_hits = _team_news_lines(news or "", jg["home"], jg["away"])
-    lines.append("속보(Grok): " + (news_hits[0].strip()[:200] if news_hits else "특이사항 없음"))
+    lines.append("속보: " + (news_hits[0].strip()[:200] if news_hits else "특이사항 없음"))
     for note in jg.get("breaking_changes", []) or []:
         lines.append(f"🔄 {note[:150]}")
     if jg.get("verdict"):
@@ -627,95 +728,196 @@ def render_game_section(jg: dict, news: str = "") -> str:
 
 
 def render_news(analysis: dict) -> str:
-    """📰 부상·속보 섹션 — 15줄 상한."""
+    """📰 부상·속보 — 분석 대상 경기 관련만, 경기별 매핑. 15줄 상한."""
     news = (analysis.get("news") or "").strip()
-    if not news:
-        return "수집된 속보가 없습니다."
-    return "\n".join(news.splitlines()[:15])
+    scheduled = [g for g in analysis.get("games", []) if g.get("status") == "scheduled"]
+    lines: list[str] = []
+    for g in scheduled:
+        hits = _team_news_lines(news, g["home"], g["away"])
+        for h in hits[:2]:
+            lines.append(f"[{_kr(g['home'])} vs {_kr(g['away'])}] {h.strip()[:160]}")
+    if not lines:
+        return "분석 대상 경기 관련 속보가 없습니다."
+    return "\n".join(lines[:15])
 
 
 def render_sources(analysis: dict) -> str:
-    """📎 출처 — '- 사이트명: URL' 플레인 텍스트."""
+    """📎 출처 — 항목별 리스트를 개행으로만 연결 + 보이지 않는 문자 제거 (플레인)."""
     sources = analysis.get("sources") or []
     if not sources:
         return "이번 분석에 수집된 출처가 없습니다."
-    return "\n".join(f"- {s['site']}: {s['url']}" for s in sources[:30])
+    items = [
+        f"- {clean_invisible(s['site'])}: {clean_invisible(s['url'])}"
+        for s in sources[:30]
+    ]
+    return "\n".join(items)
 
 
 def default_date(sport: str) -> str:
     return mlb_slate_date() if sport == "mlb" else today_kst()
 
 
-def _mock_card(analysis: dict) -> str:
-    games = [g for g in analysis["games"] if g["status"] == "scheduled"]
-    picks = analysis["picks"]
+def _render_card(analysis: dict) -> str:
+    """결론 카드 — 결정적 한국어 렌더 (20줄·4096자 상한). 초과 시 압축(절삭)."""
+    games = analysis.get("games", [])
+    scheduled = [g for g in games if g.get("status") == "scheduled"]
+    picks = analysis.get("picks", [])
     recommended = [p for p in picks if p.get("recommended")]
-    lines = [f"📌 {analysis['date']} {analysis['sport'].upper()} {len(analysis['games'])}경기"]
-    scored = [g for g in games if g.get("p_market") is not None and g.get("model_valid")]
+    mode = analysis.get("mode", {})
+    combos_info = analysis.get("combos") or {}
+    sport_kr = "MLB" if analysis.get("sport") == "mlb" else "축구"
+    league_set = {g.get("league") for g in games}
+    scope = f" ({next(iter(league_set))})" if len(league_set) == 1 and games else ""
+
+    lines = [f"📌 {analysis.get('date')} {sport_kr}{scope} {len(games)}경기"]
+    if analysis.get("quota_warning"):
+        lines.append("⚠️ 배당 데이터 잔여 쿼터 부족 — 배당 갱신이 지연될 수 있습니다")
+    scored = [g for g in scheduled if g.get("p_market") is not None and g.get("p_claude") is not None]
     if scored:
-        surest = min(scored, key=lambda g: abs(g["p_model"] - g["p_market"]))
-        disputed = max(scored, key=lambda g: abs(g["p_model"] - g["p_market"]))
-        lines.append(
-            f"확신도 최고: {surest['home']} vs {surest['away']} — "
-            f"모델 {surest['p_model']:.0%} vs 시장 {surest['p_market']:.0%} 수렴")
-        lines.append(
-            f"논쟁: {disputed['home']} vs {disputed['away']} — "
-            f"모델 {disputed['p_model']:.0%} vs 시장 {disputed['p_market']:.0%} 괴리")
-    for g in games:
+        surest = max(scored, key=lambda g: {"high": 2, "medium": 1, "low": 0}.get(g.get("judge_confidence", "medium"), 1) * 100 - abs(g["p_claude"] - g["p_market"]) * 100)
+        disputed = max(scored, key=lambda g: abs(g["p_claude"] - g["p_market"]))
+        lines.append(f"확신도 최고: {_kr(surest['home'])} vs {_kr(surest['away'])} — "
+                     f"시장 {surest['p_market']:.0%}·판정 {surest['p_claude']:.0%} 수렴, 신뢰도 {surest.get('judge_confidence', '?')}")
+        lines.append(f"논쟁: {_kr(disputed['home'])} vs {_kr(disputed['away'])} — "
+                     f"시장 {disputed['p_market']:.0%} vs 판정 {disputed['p_claude']:.0%} 괴리")
+    for g in scheduled:
         if g.get("breaking_note"):
             lines.append(g["breaking_note"])
     if analysis.get("parlay_rebuilt_note"):
         lines.append(analysis["parlay_rebuilt_note"])
+
     lines.append("")
     lines.append("🎯 오늘의 추천")
     if recommended:
         for p in recommended:
             opp = p["away"] if p["side"] == p["home"] else p["home"]
             stake = f" (권장 {p['stake_krw']:,}원)" if p.get("stake_krw") else ""
-            lines.append(f"· {p['side']} 승 @{p['odds']:.2f} — vs {opp}, p={p['p']:.0%} EV{p['ev']:+.1%}{stake}")
-        for i, pl in enumerate(analysis.get("parlays", [])[:3], 1):
-            names = "+".join(leg["pick"].split(":", 1)[1] for leg in pl["legs"])
-            lines.append(f"조합 {i}: {names} @{pl['odds']:.2f} (적중률 {pl['p']:.0%})")
-        if analysis.get("parlays"):
-            lines.append("⚠️ 조합은 고분산 — 단식 권장액의 절반 이하 소액만")
+            lines.append(f"· {_kr(p['side'])} 승 @{p['odds']:.2f} — {_kr(opp)}전, "
+                         f"p {p['p']:.0%}·EV {p['ev']:+.1%} [{p.get('league', '?')} {p['starts_at_kst'][-5:]}]{stake}")
     else:
-        lines.append("오늘은 기준(EV +5%↑)을 넘는 픽 없음 — 관망 권장")
-    return "\n".join(lines[:20])
+        lines.append("오늘은 기준(EV +5%↑)을 넘는 단식 픽 없음 — 관망 권장")
+
+    if combos_info.get("reason"):
+        lines.append(f"조합: {combos_info['reason']}")
+    else:
+        for i, c in enumerate(combos_info.get("combos", []), 1):
+            if not c.get("ok"):
+                lines.append(f"조합{i}({c['tier']}): {c['reason']}")
+                continue
+            legs_txt = " + ".join(
+                f"{leg['desc']}[{leg.get('league', '?')} {leg['starts_at_kst'][-5:]}]"
+                for leg in c["legs"])
+            relax = " (범위 완화)" if c.get("relaxed") else ""
+            lines.append(f"조합{i}({c['tier']}): {legs_txt} @{c['odds']:.2f} "
+                         f"(적중률 {c['p']:.0%}) — {c['stake_note']}{relax}")
+        if combos_info.get("all_fail_prob") is not None:
+            lines.append(f"세 조합 모두 실패 확률 ≈ {combos_info['all_fail_prob']:.0%}")
+        if combos_info.get("low_confidence"):
+            lines.append("⚠️ 오늘은 확신도 낮음 — 권장액 절반")
+    lines.append("⚠️ 조합은 고분산 — 단식 권장액의 절반 이하 소액만")
+
+    card = "\n".join(lines[:20])
+    return card[:4096]
 
 
 async def generate_card(analysis: dict) -> str:
-    """결론 카드 생성 — Sonnet. 키 없으면 결정적 목 카드."""
+    """결론 카드 생성 — 결정적 렌더 (LLM 미사용: 한국어·수치 일관성 보장)."""
+    return _render_card(analysis)
+
+
+def rescope_analysis(analysis: dict, league_label: str) -> dict:
+    """전체 슬레이트 분석 → 리그 스코프 뷰 (재계산·API 콜 없음, 캐시 추출 전용)."""
+    from app.engine.parlay import build_tiered_parlays
+
     settings = get_settings()
-    if settings.mock_judge:
-        return _mock_card(analysis)
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-    payload = {k: analysis[k] for k in
-               ("date", "sport", "mode", "picks", "parlays")}
-    payload["parlay_rebuilt_note"] = analysis.get("parlay_rebuilt_note")
-    payload["games"] = [
-        {k: g.get(k) for k in ("game_id", "home", "away", "league", "starts_at_kst",
-                               "status", "p_model", "model_valid", "p_market",
-                               "p_claude", "judge_confidence", "breaking_note", "verdict")}
-        for g in analysis["games"]
+    games = [g for g in analysis["games"] if g.get("league") == league_label]
+    ids = {g["game_id"] for g in games}
+    picks = [dict(p) for p in analysis.get("picks", []) if p["game_id"] in ids]
+    mode = MODES.get(settings.report_mode, MODES["live_conservative"])
+    clean = [p for p in picks if not p["flags"] and not p["judge_excluded"]
+             and p["ev"] > settings.ev_threshold]
+    clean.sort(key=lambda x: x["ev"], reverse=True)
+    recommended = clean[: mode["max_picks"]]
+    for p in picks:
+        p["recommended"] = p in recommended
+    stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
+    low_var = [
+        lv for g in games
+        if g.get("status") == "scheduled" and not g.get("judge_pass")
+        and g.get("judge_confidence") != "low"
+        for lv in g.get("low_var", [])
     ]
-    try:
-        response = await client.messages.create(
-            model=settings.report_model,
-            max_tokens=16000,
-            system=CARD_SYSTEM,
-            messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=False, default=str)}],
-        )
-    except anthropic.APIStatusError as exc:
-        if is_quota_error(exc.status_code, str(exc)):
-            logger.error("[pipeline] card quota exhausted — falling back to template")
-            await notify_quota("anthropic(report)", str(exc))
-            return _mock_card(analysis)
-        raise
-    text = "".join(b.text for b in response.content if b.type == "text").strip()
-    if not text:
-        logger.warning("[pipeline] card model returned no text (stop_reason=%s)", response.stop_reason)
-        return _mock_card(analysis)
-    return text
+    singles_pool = [
+        {"game_id": p["game_id"], "side": p["side"], "desc": f"{_kr(p['side'])} 승",
+         "odds": p["odds"], "p": p["p"], "confidence": p["confidence"],
+         "league": p["league"], "starts_at_kst": p["starts_at_kst"]}
+        for p in picks if not p["flags"] and not p["judge_excluded"]
+    ]
+    urls = {ep.get("source_url") for g in games for ep in g.get("expert_picks", [])}
+    sources = [s for s in analysis.get("sources", []) if s["url"] in urls]
+    return {
+        **analysis, "games": games, "picks": picks,
+        "combos": build_tiered_parlays(singles_pool, low_var, stake_krw),
+        "sources": sources,
+    }
+
+
+def render_full_reco(analyses: list[dict]) -> str:
+    """🎯 전체 추천 카드 — 후보 풀은 그날 전체 슬레이트(MLB+축구 전 리그)."""
+    from app.engine.parlay import build_tiered_parlays
+
+    settings = get_settings()
+    mode = MODES.get(settings.report_mode, MODES["live_conservative"])
+    stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
+    all_picks = [p for a in analyses for p in a.get("picks", [])]
+    clean = [p for p in all_picks if not p["flags"] and not p["judge_excluded"]]
+    ev_ok = sorted([p for p in clean if p["ev"] > settings.ev_threshold],
+                   key=lambda x: x["ev"], reverse=True)
+    singles = ev_ok[: mode["max_picks"]]
+    low_var = [
+        lv for a in analyses for g in a.get("games", [])
+        if g.get("status") == "scheduled" and not g.get("judge_pass")
+        and g.get("judge_confidence") != "low"
+        for lv in g.get("low_var", [])
+    ]
+    singles_pool = [
+        {"game_id": p["game_id"], "side": p["side"], "desc": f"{_kr(p['side'])} 승",
+         "odds": p["odds"], "p": p["p"], "confidence": p["confidence"],
+         "league": p["league"], "starts_at_kst": p["starts_at_kst"]}
+        for p in clean
+    ]
+    combos = build_tiered_parlays(singles_pool, low_var, stake_krw)
+
+    covered = " + ".join(
+        ("MLB" if a["sport"] == "mlb" else "축구") for a in analyses)
+    lines = [f"🎯 오늘 전체 추천픽 (후보 풀: {covered} 전체 슬레이트)"]
+    if singles:
+        for p in singles:
+            opp = p["away"] if p["side"] == p["home"] else p["home"]
+            stake = f" (권장 {p['stake_krw']:,}원)" if p.get("stake_krw") else ""
+            lines.append(f"· {_kr(p['side'])} 승 @{p['odds']:.2f} — {_kr(opp)}전, "
+                         f"p {p['p']:.0%}·EV {p['ev']:+.1%} [{p.get('league', '?')} {p['starts_at_kst'][-5:]}]{stake}")
+    else:
+        lines.append("기준(EV +5%↑)을 넘는 단식 픽 없음 — 관망 권장")
+    if combos.get("reason"):
+        lines.append(f"조합: {combos['reason']}")
+    else:
+        for i, c in enumerate(combos.get("combos", []), 1):
+            if not c.get("ok"):
+                lines.append(f"조합{i}({c['tier']}): {c['reason']}")
+                continue
+            legs_txt = " + ".join(
+                f"{leg['desc']}[{leg.get('league', '?')} {leg['starts_at_kst'][-5:]}]"
+                for leg in c["legs"])
+            relax = " (범위 완화)" if c.get("relaxed") else ""
+            lines.append(f"조합{i}({c['tier']}): {legs_txt} @{c['odds']:.2f} "
+                         f"(적중률 {c['p']:.0%}) — {c['stake_note']}{relax}")
+        if combos.get("all_fail_prob") is not None:
+            lines.append(f"세 조합 모두 실패 확률 ≈ {combos['all_fail_prob']:.0%}")
+        if combos.get("low_confidence"):
+            lines.append("⚠️ 오늘은 확신도 낮음 — 권장액 절반")
+    lines.append("⚠️ 조합은 고분산 — 단식 권장액의 절반 이하 소액만")
+    return "\n".join(lines[:20])[:4096]
 
 
 # ---------------------------------------------------------------- 진입점
@@ -792,6 +994,24 @@ async def _rejudge_after_breaking(analysis: dict, changes: list[dict]) -> dict:
 
     picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], analysis["sport"])
     analysis["picks"], analysis["parlays"] = picks_out, parlays
+    # 조합도 재구성 (판정 뒤집힌 레그 반영)
+    from app.engine.parlay import build_tiered_parlays
+
+    mode = MODES.get(settings.report_mode, MODES["live_conservative"])
+    stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
+    low_var = [
+        lv for jg in analysis["games"]
+        if jg.get("status") == "scheduled" and not jg.get("judge_pass")
+        and jg.get("judge_confidence") != "low"
+        for lv in jg.get("low_var", [])
+    ]
+    singles_pool = [
+        {"game_id": p["game_id"], "side": p["side"], "desc": f"{_kr(p['side'])} 승",
+         "odds": p["odds"], "p": p["p"], "confidence": p["confidence"],
+         "league": p["league"], "starts_at_kst": p["starts_at_kst"]}
+        for p in picks_out if not p["flags"] and not p["judge_excluded"]
+    ]
+    analysis["combos"] = build_tiered_parlays(singles_pool, low_var, stake_krw)
     flipped = old_reco - {p["pick"] for p in picks_out if p.get("recommended")}
     if flipped & old_parlay_legs:
         analysis["parlay_rebuilt_note"] = (
@@ -860,12 +1080,10 @@ async def run_pipeline(
             return await _freshness_gate(redis, sport, date, cached)
     analysis = await build_analysis(pool, sport, date, progress=progress)
     await (progress or _noop_progress)(4, 4, "결론 카드 작성")
-    try:
-        card = await generate_card(analysis)
-    except ApiQuotaError as exc:
-        logger.error("[pipeline] card quota exhausted — template fallback: %s", exc)
-        await notify_quota(exc.service, exc.detail)
-        card = _mock_card(analysis)
+    remaining = await redis.get("odds_quota_remaining")
+    if remaining is not None and int(remaining) < 100:
+        analysis["quota_warning"] = True
+    card = await generate_card(analysis)
     if settings.report_banner:
         card = f"{settings.report_banner}\n\n{card}"
     await _save_caches(redis, analysis, card)

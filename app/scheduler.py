@@ -49,14 +49,49 @@ async def prefetch_job() -> None:
 
 
 async def odds_snapshot_job() -> None:
-    """30분마다 배당 스냅샷 적재 (라인 무브먼트 추적)."""
+    """배당 스냅샷 — 크레딧 예산 관리:
+
+    경기가 있는 리그만 조회. 킥오프 3시간 전부터는 30분 간격(매 실행),
+    그 외 시간대는 리그당 3시간 간격. 사용량·잔여량은 snapshot 시 로그·Redis 기록.
+    """
+    import redis.asyncio as aioredis
+
+    from app.leagues import LEAGUES
+
     pool = await get_pool()
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
     try:
-        n = await snapshot_odds(pool, "mlb")
-        logger.info("[scheduler] odds snapshot: %d rows", n)
+        rows = await pool.fetch(
+            "SELECT sport, league, min(starts_at) AS next_kick FROM games "
+            "WHERE status = 'scheduled' AND starts_at > now() - interval '1 hour' "
+            "GROUP BY sport, league"
+        )
+        label_to_key = {c["label"]: c["odds_key"] for c in LEAGUES.values()}
+        due: dict[str, list[str]] = {"mlb": [], "soccer": []}
+        now = datetime.now(KST)
+        for r in rows:
+            key = "baseball_mlb" if r["sport"] == "mlb" else label_to_key.get(r["league"])
+            if key is None:
+                continue
+            within_3h = (r["next_kick"].astimezone(KST) - now) <= timedelta(hours=3)
+            last = await redis.get(f"oddsnap:{key}")
+            stale = last is None or (now.timestamp() - float(last)) >= 3 * 3600
+            if within_3h or stale:
+                due[r["sport"]].append(key)
+        total = 0
+        for sport, keys in due.items():
+            if not keys:
+                continue
+            total += await snapshot_odds(pool, sport, only_keys=sorted(set(keys)))
+            for key in keys:
+                await redis.set(f"oddsnap:{key}", str(now.timestamp()), ex=86400)
+        logger.info("[scheduler] odds snapshot: %d rows (keys=%s)",
+                    total, {s: sorted(set(k)) for s, k in due.items() if k})
     except ApiQuotaError as exc:
         logger.error("[scheduler] odds snapshot halted by quota: %s", exc)
         await notify_quota(exc.service, exc.detail)
+    finally:
+        await redis.aclose()
 
 
 async def elo_refresh_job() -> None:

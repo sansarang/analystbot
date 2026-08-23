@@ -154,11 +154,23 @@ def resolve_date_arg(arg: str | None, sport: str) -> str | None:
 SCOPE_STOPWORDS = {"오늘", "내일", "어제", "야구", "축구", "mlb", "MLB", "엠엘비", "전체", "모든", "이번"}
 
 
-def route_query(text: str, llm_teams: list | None = None) -> tuple[str, tuple[str, str] | None]:
-    """자유 질문의 범위 인식: team(1경기) | picks(EV 픽만) | ask(되묻기) | full(전체)."""
+def route_query(text: str, llm_teams: list | None = None) -> tuple[str, object]:
+    """자유 질문의 3단계 범위 인식.
+
+    team(1경기) | league(리그만) | league_unsupported(미지원 안내) |
+    picks(전체 추천 카드) | ask(되묻기) | full(종목 전체)
+    """
+    from app.leagues import find_league, find_unsupported_league
+
     team = find_team(text)
     if team:
         return "team", team
+    unsupported = find_unsupported_league(text)  # '세리에B' 오매칭 방지 — 리그 매칭보다 먼저
+    if unsupported:
+        return "league_unsupported", unsupported
+    league = find_league(text)
+    if league:
+        return "league", league
     if re.search(r"픽|추천|언더독|베팅|배당", text):
         return "picks", None
     if llm_teams:  # LLM이 팀을 인식했지만 별칭 사전에 없음 → 전체 리포트 발사 금지
@@ -272,8 +284,13 @@ async def answer_team_query(sport: str, team: str, progress=None) -> str:
         cached = await redis.get(f"analysis:{sport}:{date}")
         if cached:
             data = json.loads(cached)
+            from app.collectors.football import similar_team
+
             game = next(
-                (g for g in data.get("games", []) if team in (g["home"], g["away"])), None
+                (g for g in data.get("games", [])
+                 if team in (g["home"], g["away"])
+                 or similar_team(g["home"], team) or similar_team(g["away"], team)),
+                None,
             )
             if game:
                 logger.info("[bot] team query served from slate cache: %s", team)
@@ -290,22 +307,109 @@ async def answer_team_query(sport: str, team: str, progress=None) -> str:
         await redis.aclose()
 
 
-async def answer_picks_only(sport: str = "mlb", progress=None) -> str:
-    """'오늘 픽/언더독' 류 질문 → 결론 카드 자체가 픽 중심이라 카드로 응답."""
-    return await answer_query(sport, progress=progress)
+UNSUPPORTED_LEAGUE_TEXT = None  # 아래 함수로 생성
+
+
+def unsupported_league_text() -> str:
+    from app.leagues import supported_league_list
+
+    return f"그 리그는 아직 데이터 소스에 없습니다. 현재 지원: {supported_league_list()}"
+
+
+async def answer_full_reco() -> str:
+    """/픽 · '오늘 추천' — 분석 없이 그날 전체 슬레이트 캐시 기준 추천 카드만."""
+    from app.pipeline import render_full_reco
+
+    analyses = []
+    for sport in ("mlb", "soccer"):
+        a = await load_analysis(sport, default_date(sport))
+        if a and a.get("picks") is not None:
+            analyses.append(a)
+    if not analyses:
+        return ("오늘 분석 캐시가 아직 없습니다. /mlb 또는 /soccer 로 먼저 분석을 실행해 주세요.")
+    return render_full_reco(analyses)
+
+
+async def _next_game_message(league_key: str) -> str:
+    """오늘 경기 없는 리그 — 다음 경기 안내 (다른 리그 대체 발송 금지)."""
+    from datetime import UTC, datetime
+
+    from app.bot.aliases import kr_team
+    from app.collectors.odds import OddsClient
+    from app.leagues import LEAGUES
+    from app.pipeline import KST
+
+    cfg = LEAGUES[league_key]
+    try:
+        events = await OddsClient().fetch_events(cfg["odds_key"])
+    except Exception:
+        events = []
+    now = datetime.now(UTC)
+    future = sorted(
+        (e for e in events
+         if datetime.fromisoformat(e["commence_time"].replace("Z", "+00:00")) > now),
+        key=lambda e: e["commence_time"],
+    )
+    if not future:
+        return f"오늘 {cfg['label']} 경기가 없습니다. 예정된 다음 경기 정보도 아직 없습니다."
+    ev0 = future[0]
+    kick = datetime.fromisoformat(ev0["commence_time"].replace("Z", "+00:00")).astimezone(KST)
+    return (f"오늘 {cfg['label']} 경기가 없습니다. 다음 경기: "
+            f"{kick.strftime('%m/%d %H:%M')} {kr_team(ev0['home_team'])} vs {kr_team(ev0['away_team'])}")
+
+
+async def answer_league_query(league_key: str, progress=None) -> str:
+    """리그 지정 분석 — 그 리그만. 전체 캐시가 있으면 추출(재계산 금지)."""
+    from app.leagues import LEAGUES
+    from app.pipeline import generate_card, rescope_analysis
+
+    label = LEAGUES[league_key]["label"]
+    date = today_kst()
+    pool = await get_pool()
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        full = await load_analysis("soccer", date)
+        if full:
+            if not any(g.get("league") == label for g in full["games"]):
+                return await _next_game_message(league_key)
+            scoped = rescope_analysis(full, label)
+            await redis.set(f"analysis:soccer:{date}:{league_key}",
+                            json.dumps(scoped, ensure_ascii=False, default=str),
+                            ex=get_settings().report_cache_ttl)
+            return await generate_card(scoped)
+        # 전체 캐시 없음 → 그 리그만 수집·딥서치·판정 (전체 슬레이트 재계산 금지)
+        analysis = await build_analysis(pool, "soccer", date,
+                                        league_key=league_key, progress=progress)
+        if not analysis["games"]:
+            return await _next_game_message(league_key)
+        card = await generate_card(analysis)
+        await redis.set(f"analysis:soccer:{date}:{league_key}",
+                        json.dumps(analysis, ensure_ascii=False, default=str),
+                        ex=get_settings().report_cache_ttl)
+        return card
+    except ApiQuotaError as exc:
+        await notify_quota(exc.service, exc.detail)
+        return _quota_reply(exc)
+    finally:
+        await redis.aclose()
 
 
 # ---------------------------------------------------------------- 텔레그램 연결
 
-def card_keyboard(sport: str, date: str):
+def card_keyboard(sport: str, date: str, league_key: str | None = None):
     from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+    suffix = f":{league_key}" if league_key else ""
+
     def btn(label: str, section: str):
-        return InlineKeyboardButton(text=label, callback_data=f"sec:{sport}:{date}:{section}")
+        return InlineKeyboardButton(
+            text=label, callback_data=f"sec:{sport}:{date}:{section}{suffix}")
 
     return InlineKeyboardMarkup(inline_keyboard=[
         [btn("📊 경기별 심층", "deep"), btn("📰 부상·속보", "news")],
         [btn("📎 출처", "src"), btn("📈 성적표", "perf")],
+        [InlineKeyboardButton(text="🎯 오늘 전체 추천픽",
+                              callback_data=f"sec:{sport}:{date}:reco")],
     ])
 
 
@@ -406,20 +510,65 @@ def build_dispatcher():
         # 기본: 미국 동부 오늘. 인자: tomorrow/내일/어제 또는 YYYY-MM-DD
         await _card_flow(message, "mlb", resolve_date_arg(command.args, "mlb"))
 
+    async def _league_flow(message: Message, league_key: str) -> None:
+        state, progress = _make_progress(message)
+        try:
+            card = await answer_league_query(league_key, progress=progress)
+        finally:
+            if state["msg"] is not None:
+                try:
+                    await state["msg"].delete()
+                except Exception:
+                    pass
+        await message.answer(
+            card[:4096],
+            reply_markup=card_keyboard("soccer", today_kst(), league_key=league_key))
+
     @router.message(Command("soccer"))
-    async def on_soccer(message: Message) -> None:
+    async def on_soccer(message: Message, command: CommandObject) -> None:
+        # '/soccer 분데스리가' — 리그 인자 지원
+        if command.args:
+            from app.leagues import find_league, find_unsupported_league
+
+            if find_unsupported_league(command.args):
+                await message.answer(unsupported_league_text())
+                return
+            league_key = find_league(command.args)
+            if league_key:
+                await _league_flow(message, league_key)
+                return
         await _card_flow(message, "soccer", None)
 
     @router.message(Command("today"))
     async def on_today(message: Message) -> None:
         await _card_flow(message, "mlb", None)
 
+    @router.message(Command("픽"))
+    async def on_pick_command(message: Message) -> None:
+        await message.answer((await answer_full_reco())[:4096])
+
     # ---------------- 인라인 버튼 콜백 (캐시에서 즉답 — 재계산 금지) ----------------
 
     @router.callback_query(F.data.startswith("sec:"))
     async def on_section(cb: CallbackQuery) -> None:
-        _, sport, date, section = cb.data.split(":", 3)
-        analysis = await load_analysis(sport, date)
+        parts = cb.data.split(":")
+        sport, date, section = parts[1], parts[2], parts[3]
+        league_key = parts[4] if len(parts) > 4 else None
+        if section == "reco":
+            await cb.message.answer(await answer_full_reco())
+            await _safe_cb_answer(cb)
+            return
+        cache_key_league = league_key
+        analysis = None
+        if cache_key_league:
+            redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+            try:
+                raw = await redis.get(f"analysis:{sport}:{date}:{cache_key_league}")
+                analysis = json.loads(raw) if raw else None
+            finally:
+                await redis.aclose()
+        if analysis is None:
+            analysis = await load_analysis(sport, date)
         if analysis is None:
             await cb.message.answer(expired_text(sport))
             await _safe_cb_answer(cb)
@@ -433,8 +582,11 @@ def build_dispatcher():
             await cb.message.answer(
                 collapsed("📰 부상·속보", render_news(analysis)), parse_mode="HTML")
         elif section == "src":
+            # 접힌 인용문 + 링크 프리뷰 차단. 내용은 escape된 플레인 텍스트라
+            # 마크다운 파싱을 타지 않아 URL 병합이 발생하지 않는다.
             await cb.message.answer(
-                "📎 출처\n" + render_sources(analysis),
+                collapsed("📎 출처 (펼쳐서 보기)", render_sources(analysis)),
+                parse_mode="HTML",
                 link_preview_options=LinkPreviewOptions(is_disabled=True),
             )
         elif section == "perf":
@@ -478,8 +630,14 @@ def build_dispatcher():
             await _run_with_progress(
                 message, lambda p: answer_team_query(sport, team, progress=p))
             return
+        if scope == "league":
+            await _league_flow(message, team_info)
+            return
+        if scope == "league_unsupported":
+            await message.answer(unsupported_league_text())
+            return
         if scope == "picks":
-            await _card_flow(message, "mlb", None)
+            await message.answer((await answer_full_reco())[:4096])
             return
         if scope == "ask":
             await message.answer(ASK_TEAM_TEXT)
@@ -526,8 +684,12 @@ async def simulate(text: str) -> str:
     if scope == "team":
         sport, team = team_info
         return await answer_team_query(sport, team)
+    if scope == "league":
+        return await answer_league_query(team_info)
+    if scope == "league_unsupported":
+        return unsupported_league_text()
     if scope == "picks":
-        return await answer_picks_only("mlb")
+        return await answer_full_reco()
     if scope == "ask":
         return ASK_TEAM_TEXT
     intent = await parse_intent(text)

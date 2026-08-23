@@ -90,13 +90,26 @@ class FootballDataClient(BaseAPIClient):
 
 
 async def upsert_games_from_football_data(
-    pool: asyncpg.Pool, date_kst: str, client: FootballDataClient | None = None
+    pool: asyncpg.Pool, date_kst: str, client: FootballDataClient | None = None,
+    league_key: str | None = None,
 ) -> list[str]:
-    """football-data.org 경기를 games에 upsert (KST 날짜 필터). ext_id 목록 반환."""
+    """football-data.org 경기를 games에 upsert — 화이트리스트 리그만 (KST 날짜 필터)."""
+    from app.leagues import LEAGUES
+
+    # fd 대회명 → 화이트리스트 라벨 매핑 (화이트리스트 밖 리그는 수집 금지)
+    fd_to_label = {
+        fd_name: cfg["label"]
+        for key, cfg in LEAGUES.items()
+        for fd_name in cfg["fd_names"]
+        if league_key is None or key == league_key
+    }
     client = client or FootballDataClient()
     data = await client.fetch_matches(date_kst)
     ext_ids: list[str] = []
     for m in data.get("matches", []):
+        label = fd_to_label.get(m["competition"]["name"])
+        if label is None:
+            continue  # 화이트리스트 밖 리그 (리그앙·브라질 등) 제외
         starts = datetime.fromisoformat(m["utcDate"].replace("Z", "+00:00"))
         if starts.astimezone(KST).strftime("%Y-%m-%d") != date_kst:
             continue
@@ -113,7 +126,7 @@ async def upsert_games_from_football_data(
                 away_score = coalesce(EXCLUDED.away_score, games.away_score),
                 updated_at = now()
             """,
-            m["competition"]["name"], ext_id, starts,
+            label, ext_id, starts,
             m["homeTeam"]["name"], m["awayTeam"]["name"],
             FD_STATUS.get(m["status"], "scheduled"),
             score.get("home"), score.get("away"),

@@ -7,12 +7,19 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-PROMPT = """Search X and news for {league} updates on {date} ONLY about these games:
+PROMPT = """Search X and news for {league} updates on {date} STRICTLY LIMITED to these games (do NOT report on any other league or match):
 
 {games_block}
 
-Summarize ONLY: (1) confirmed lineups, (2) breaking injury news, (3) sharp betting line moves.
-Skip opinions and predictions. Bullet points, one line each, prefix each with CONFIRMED LINEUP / INJURY / LINE MOVE / WEATHER."""
+Summarize ONLY: (1) confirmed lineups, (2) breaking injury news, (3) sharp betting line moves, (4) weather issues.
+Skip opinions and predictions.
+
+출력 규칙 (반드시 준수):
+- 전부 한국어로 작성하라. 영어 문장 출력 금지. 선수 이름만 원어 병기 허용.
+- 형식: 한 줄에 하나, "확정 라인업: ..." / "부상: ..." / "라인 이동: ..." / "날씨: ..." 접두어.
+- 위 경기 목록에 없는 경기·리그는 절대 언급하지 마라."""
+
+KOREAN_RETRY_SUFFIX = "\n\n이전 답변에 영어 문장이 포함됐다. 반드시 전부 한국어로만 다시 작성하라 (선수 이름 원어만 허용)."
 
 
 COUNTER_PROMPT = """You are a research assistant (NOT a judge). For each verdict below, search X and news for CONCRETE COUNTER-EVIDENCE only — facts that would weaken the stated conclusion (injuries, lineup changes, form data, sharp line moves). Do NOT give your own prediction.
@@ -58,16 +65,17 @@ class GrokClient(BaseAPIClient):
             resp = self.load_mock("grok_live.json")
             return resp["choices"][0]["message"]["content"]
         games_block = "\n".join(f"- {g['away']} @ {g['home']}" for g in games)
-        resp = await self._post(
-            "/responses",
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            json_body={
-                "model": self.model,
-                "input": PROMPT.format(league=league, date=date, games_block=games_block),
-                "tools": [{"type": "web_search"}, {"type": "x_search"}],
-            },
-        )
-        return extract_output_text(resp)
+        prompt = PROMPT.format(league=league, date=date, games_block=games_block)
+        text = await self._search_call(prompt)
+        # 한국어 규율 검증 — 영어 문장 검출 시 1회 재생성
+        from app.pipeline import contains_english_sentence
+
+        if contains_english_sentence(text):
+            logger.warning("[grok] english detected in briefing — regenerating once")
+            text = await self._search_call(prompt + KOREAN_RETRY_SUFFIX)
+            if contains_english_sentence(text):
+                logger.warning("[grok] english still present after retry")
+        return text
 
     async def _search_call(self, prompt: str) -> str:
         resp = await self._post(

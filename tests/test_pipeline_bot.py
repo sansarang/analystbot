@@ -262,8 +262,8 @@ async def test_team_query_uses_slate_cache(monkeypatch, db_pool, redis_client):
 
     monkeypatch.setattr(botmod, "build_analysis", boom)
     reply = await botmod.answer_team_query("mlb", "Los Angeles Dodgers")
-    assert "Los Angeles Dodgers(1.41)" in reply
+    assert "LA 다저스(1.41)" in reply  # 한국어 표기
     assert "SBR" in reply and "런라인" in reply       # 전문가 픽 + 근거
     assert "https://sbr.com/x" in reply               # 출처
     assert "판단:" in reply and "전체 슬레이트는 /mlb" in reply
-    assert "속보(Grok): LINE MOVE: Dodgers ML steamed to 1.41" in reply
+    assert "속보: LINE MOVE: Dodgers ML steamed to 1.41" in reply

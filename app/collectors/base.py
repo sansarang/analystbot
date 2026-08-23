@@ -53,6 +53,7 @@ class BaseAPIClient:
 
     def __init__(self, mock: bool):
         self.mock = mock
+        self.last_headers: dict = {}  # 직전 응답 헤더 (쿼터 추적용)
         logger.info("[%s] client mode: %s", self.name, "MOCK" if mock else "LIVE")
 
     def load_mock(self, filename: str) -> Any:
@@ -79,6 +80,7 @@ class BaseAPIClient:
                 if resp.status_code in RETRYABLE_STATUS:
                     resp.raise_for_status()
                 resp.raise_for_status()
+                self.last_headers = dict(resp.headers)
                 return resp.json()
             except httpx.HTTPStatusError as exc:
                 code, body = exc.response.status_code, exc.response.text

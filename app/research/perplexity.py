@@ -23,7 +23,8 @@ SPORT_SOURCES = {
 }
 
 MINOR_LEAGUE_FALLBACK = """
-If those sites have no picks for a match (common for minor leagues like the Danish Superliga or J1 League), search generally for "<league name> <home team> vs <away team> prediction" and use any reputable prediction site you find — include its real URL."""
+If those sites have no picks for a match (common for minor leagues like the Danish Superliga or J1 League), search generally for "<league name> <home team> vs <away team> prediction" and use any reputable prediction site you find — include its real URL.
+For K League 1 matches, search KOREAN sources instead: "K리그 분석", "K리그 예상", 네이버 스포츠, 스포츠조선 등 — cite their real URLs."""
 
 PROMPT = """Find published expert picks for these {league} games on {date} (UTC), focusing on {sources}:
 
@@ -31,7 +32,8 @@ PROMPT = """Find published expert picks for these {league} games on {date} (UTC)
 {fallback}
 Output ONLY a JSON array (no prose), one object per pick:
 [{{"expert": "...", "site": "...", "source_url": "...", "game": "<away> @ <home>", "pick": "...", "reasoning": "...", "record": "..."}}]
-"pick" must be one of: "<team> ML", "<team> +/-<line>", "Over <line>", "Under <line>"."""
+"pick" must be one of: "<team> ML", "<team> +/-<line>", "Over <line>", "Under <line>".
+"reasoning" MUST be written in KOREAN (한국어로 근거를 요약·번역하라; 선수·팀 이름만 원어 허용). Do not output English sentences in "reasoning"."""
 
 RETRY_SUFFIX = "\n\nYour previous answer was not parseable JSON. Return ONLY the JSON array, nothing else."
 

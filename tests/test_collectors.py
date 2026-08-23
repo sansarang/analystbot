@@ -84,6 +84,7 @@ async def test_odds_skips_inplay_and_matches_by_start_time(db_pool):
 
     class FakeClient:
         mock = False  # 인플레이 필터 활성화 경로
+        last_headers: dict = {}
 
         async def fetch_odds(self, sport_key):
             return [
@@ -91,7 +92,8 @@ async def test_odds_skips_inplay_and_matches_by_start_time(db_pool):
                 make_event(now + timedelta(days=1)),    # 내일 경기 → g_tomorrow에 매칭
             ]
 
-    inserted = await snapshot_odds(db_pool, "mlb", client=FakeClient())
+    inserted = await snapshot_odds(db_pool, "mlb", client=FakeClient(),
+                                   only_keys=["baseball_mlb"])
     assert inserted == 2  # 이벤트 1건 × h2h 2아웃컴
     rows = await db_pool.fetch(
         "SELECT game_id, count(*) c FROM odds_snapshots "

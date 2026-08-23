@@ -16,15 +16,32 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+from app.leagues import LEAGUES
+
 SPORT_KEYS: dict[str, list[str]] = {
     "mlb": ["baseball_mlb"],
-    "soccer": ["soccer_epl", "soccer_japan_j_league", "soccer_denmark_superliga"],
+    "soccer": [cfg["odds_key"] for cfg in LEAGUES.values()],  # 화이트리스트 7개 리그
 }
-SOCCER_LEAGUE_LABELS = {
-    "soccer_epl": "EPL",
-    "soccer_japan_j_league": "J1 리그",
-    "soccer_denmark_superliga": "덴마크 수페르리가",
-}
+SOCCER_LEAGUE_LABELS = {cfg["odds_key"]: cfg["label"] for cfg in LEAGUES.values()}
+
+
+async def record_odds_quota(client: "OddsClient") -> None:
+    """일일 크레딧 사용량·잔여량을 로그 + Redis 기록 (카드 경고용)."""
+    remaining = client.last_headers.get("x-requests-remaining")
+    used = client.last_headers.get("x-requests-used")
+    if remaining is None:
+        return
+    logger.info("[odds] quota: used=%s remaining=%s", used, remaining)
+    try:
+        import redis.asyncio as aioredis
+
+        from app.config import get_settings
+
+        r = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+        await r.set("odds_quota_remaining", remaining, ex=86400)
+        await r.aclose()
+    except Exception as exc:
+        logger.debug("[odds] quota record skipped: %s", exc)
 
 MATCH_WINDOW = timedelta(hours=2)  # 이벤트 commence_time ↔ games.starts_at 허용 오차
 
@@ -85,16 +102,22 @@ def _match_game(rows: list, home: str, away: str, commence: datetime) -> int | N
 
 
 async def snapshot_odds(
-    pool: asyncpg.Pool, sport: str = "mlb", client: OddsClient | None = None
+    pool: asyncpg.Pool, sport: str = "mlb", client: OddsClient | None = None,
+    only_keys: list[str] | None = None,
 ) -> int:
-    """이벤트를 (home, away, 시작시각)으로 games와 매칭해 스냅샷 적재. 적재 행 수 반환."""
+    """이벤트를 (home, away, 시작시각)으로 games와 매칭해 스냅샷 적재. 적재 행 수 반환.
+
+    only_keys: 크레딧 절약용 — 경기가 있는 리그 키만 조회.
+    """
     client = client or OddsClient()
-    keys = SPORT_KEYS[sport]
+    keys = only_keys if only_keys is not None else SPORT_KEYS[sport]
     if client.mock:
-        keys = keys[:1]  # 목 파일은 리그 구분 없이 하나 — 중복 적재 방지
+        keys = SPORT_KEYS[sport][:1]  # 목 파일은 리그 구분 없이 하나 — 중복 적재 방지
     events: list[dict] = []
     for sport_key in keys:
         events.extend(await client.fetch_odds(sport_key))
+    if not client.mock:
+        await record_odds_quota(client)
 
     rows = await pool.fetch(
         "SELECT id, home, away, starts_at FROM games WHERE sport = $1 AND status = 'scheduled'",
@@ -136,7 +159,8 @@ async def snapshot_odds(
 
 
 async def upsert_games_from_odds_events(
-    pool: asyncpg.Pool, date: str, client: OddsClient | None = None
+    pool: asyncpg.Pool, date: str, client: OddsClient | None = None,
+    only_keys: list[str] | None = None,
 ) -> list[str]:
     """축구 일정 폴백 — API-Football이 현재 시즌을 못 줄 때 Odds API 이벤트로 적재.
 
@@ -149,9 +173,9 @@ async def upsert_games_from_odds_events(
 
     kst = ZoneInfo("Asia/Seoul")
     client = client or OddsClient()
-    keys = SPORT_KEYS["soccer"]
+    keys = only_keys if only_keys is not None else SPORT_KEYS["soccer"]
     if client.mock:
-        keys = keys[:1]
+        keys = SPORT_KEYS["soccer"][:1]
     # 타 소스(football-data 등)로 이미 적재된 경기는 중복 생성 금지 (이름 표기 상이 대비 퍼지 매칭)
     existing = await pool.fetch(
         "SELECT home, starts_at FROM games WHERE sport = 'soccer' AND ext_id NOT LIKE 'odds:%'"
