@@ -45,7 +45,16 @@ VERDICT_TOOL = {
                     "properties": {
                         "game_id": {"type": "integer"},
                         "p_claude": {"type": "number", "description": "홈팀 승리 확률 0~1"},
-                        "verdict": {"type": "string", "description": "시장/모델/전문가 충돌 판정과 근거"},
+                        "verdict": {"type": "string", "description": "3자 대조·승패/가치 분리 판단·저분산 대안·리스크 (근거 수치 포함)"},
+                        "pass_recommended": {
+                            "type": "boolean",
+                            "description": "⑤에서 '패스 권장' 결론이면 true — 이 경기 픽은 추천 목록에서 제외된다",
+                        },
+                        "confidence": {
+                            "type": "string",
+                            "enum": ["high", "medium", "low"],
+                            "description": "판정 신뢰도. 데이터가 반반이거나 부실하면 low — low는 추천에서 제외된다",
+                        },
                         "excluded_picks": {
                             "type": "array",
                             "items": {
@@ -59,7 +68,8 @@ VERDICT_TOOL = {
                             },
                         },
                     },
-                    "required": ["game_id", "p_claude", "verdict", "excluded_picks"],
+                    "required": ["game_id", "p_claude", "verdict", "pass_recommended",
+                                 "confidence", "excluded_picks"],
                     "additionalProperties": False,
                 },
             },
@@ -183,6 +193,8 @@ class Judge:
                 "game_id": g["game_id"],
                 "p_claude": round(p, 4),
                 "verdict": "[mock] 모델과 시장 확률의 평균을 채택 (목 모드 판정)",
+                "pass_recommended": False,
+                "confidence": "medium",
                 "excluded_picks": [],
             })
         return {"games": games}

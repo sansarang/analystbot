@@ -85,7 +85,9 @@ async def test_grade_date_roundtrip(db_pool):
 def test_scheduler_jobs_registered():
     scheduler = build_scheduler()
     jobs = {j.id: j for j in scheduler.get_jobs()}
-    assert set(jobs) == {"prefetch_daily", "odds_snapshot_30m", "grade_yesterday"}
+    assert set(jobs) == {"prefetch_daily", "odds_snapshot_30m", "grade_yesterday",
+                         "elo_refresh_weekly"}
+    assert "day_of_week='mon'" in str(jobs["elo_refresh_weekly"].trigger)
     assert str(jobs["prefetch_daily"].trigger) == "cron[hour='4', minute='0']"
     assert str(jobs["grade_yesterday"].trigger) == "cron[hour='13', minute='0']"
     assert "0:30:00" in str(jobs["odds_snapshot_30m"].trigger)

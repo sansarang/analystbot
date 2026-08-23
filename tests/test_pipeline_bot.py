@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import app.bot.main as botmod
 import app.pipeline as pipemod
 from app.bot.main import parse_intent_mock, resolve_date_arg, split_message
-from app.pipeline import mlb_slate_date, run_pipeline, today_kst
+from app.pipeline import SECTION_SEP, mlb_slate_date, run_pipeline, today_kst
 
 
 def test_mlb_slate_date_format():
@@ -72,8 +72,8 @@ async def test_pipeline_end_to_end(db_pool, redis_client):
 
     assert report.count(SECTION_SEP) == 2  # ①일정+픽 ②심층 ③속보+출처
     assert "오늘 경기 15건" in report
-    assert "EV 상위 픽" in report
-    assert "추천 조합" in report
+    assert "추천 픽" in report
+    assert "추천 조합" not in report  # live_conservative 기본 모드 — 파레이 금지
     assert "경기별 심층 분석" in report
     assert "📎 출처" in report and "http" in report
     assert "베팅 손실 책임" in report
@@ -89,6 +89,58 @@ async def test_suspicious_picks_flagged_not_recommended(db_pool, redis_client):
     assert "데이터 검증 필요" in report  # 목 데이터에 EV 20% 초과 픽 존재
     bad = await db_pool.fetchval("SELECT count(*) FROM predictions WHERE ev > 0.20")
     assert bad == 0
+
+
+async def test_mode_snapshots(db_pool, redis_client, monkeypatch):
+    """모드별 리포트 스냅샷: 보수 모드=조합 금지·플랫 원화·픽 상한 / 리서치=조합 허용."""
+    from app.config import get_settings
+
+    settings = get_settings()
+    # live_conservative (기본)
+    monkeypatch.setattr(settings, "report_mode", "live_conservative")
+    report = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    assert "추천 조합" not in report        # 파레이 섹션 제거
+    assert "켈리" not in report.split(SECTION_SEP)[0]  # 켈리 표기 금지
+    assert "원(자금 1%)" in report          # 플랫 스테이크 원화 표기
+    preds = await db_pool.fetchval(
+        "SELECT count(*) FROM predictions WHERE created_at > now() - interval '1 minute'")
+    assert preds <= 2                        # 하루 최대 2픽 상한
+
+    # research 모드
+    monkeypatch.setattr(settings, "report_mode", "research")
+    report2 = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    assert "추천 조합" in report2
+    assert "켈리" in report2.split(SECTION_SEP)[0]
+
+
+async def test_judge_pass_excluded_from_recommendations(db_pool, redis_client, monkeypatch):
+    """Claude 판정이 '패스 권장'인 픽은 추천 목록·predictions에서 빠지고 사유 표기."""
+    from app.engine.judge import Judge
+
+    original = Judge._mock_verdict
+
+    def pass_all(payload):
+        verdict = original(payload)
+        for g in verdict["games"]:
+            g["pass_recommended"] = True
+            g["verdict"] = "데이터 반반, 저신뢰 경기 — 패스 권장"
+        return verdict
+
+    monkeypatch.setattr(Judge, "_mock_verdict", staticmethod(pass_all))
+    report = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    assert "판정 제외" in report and "패스 권장" in report
+    assert "기준(EV>+3%)을 넘는 추천 픽이 없습니다" in report
+    assert await db_pool.fetchval(
+        "SELECT count(*) FROM predictions WHERE created_at > now() - interval '1 minute'"
+    ) == 0
+
+
+def test_strip_md_links():
+    from app.pipeline import extract_urls, strip_md_links
+
+    text = "라인 이동 확인[[1]](https://x.com/a/1) 및 [기사](https://news.com/b)."
+    assert strip_md_links(text) == "라인 이동 확인 및 기사."
+    assert extract_urls(text) == ["https://x.com/a/1", "https://news.com/b"]
 
 
 async def test_pipeline_soccer_does_not_crash(db_pool, redis_client):

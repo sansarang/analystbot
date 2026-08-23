@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     xai_api_key: str | None = None
     odds_api_key: str | None = None
     apifootball_key: str | None = None
+    football_data_key: str | None = None  # football-data.org (메이저 12개 대회 무료)
 
     # 모델 ID
     judge_model: str = "claude-opus-4-6"
@@ -39,6 +40,11 @@ class Settings(BaseSettings):
     ensemble_w_model: float = 0.45
     ensemble_w_market: float = 0.30
     ensemble_w_claude: float = 0.25
+
+    # 리포트 모드: live_conservative(운영 보수) | research(연구·전량 표시)
+    report_mode: str = "live_conservative"
+    bankroll_krw: int = 1_000_000   # 플랫 스테이크 원화 환산 기준 자금
+    report_banner: str = ""         # 비상 배너 (예: EV 점검 중) — 비면 미표시
 
     ev_threshold: float = 0.03      # 이 이상 EV일 때만 추천 픽
     kelly_fraction: float = 0.5     # 하프 켈리

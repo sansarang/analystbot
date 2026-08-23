@@ -16,10 +16,19 @@ from app.research.normalize import normalize_pick
 
 logger = logging.getLogger(__name__)
 
-PROMPT = """Find published expert picks for these {league} games on {date} (UTC), focusing on Covers, RotoWire, Athlon Sports, Dimers, and SBR (Sportsbook Review):
+# 종목별 소스 목록 — 야구는 미국 사이트, 축구는 유럽/글로벌 사이트가 픽을 낸다.
+SPORT_SOURCES = {
+    "mlb": "Covers, RotoWire, Athlon Sports, Dimers, and SBR (Sportsbook Review)",
+    "soccer": "SportsGambler, MightyTips, Sports Mole, Dimers, Forebet, and WhoScored",
+}
+
+MINOR_LEAGUE_FALLBACK = """
+If those sites have no picks for a match (common for minor leagues like the Danish Superliga or J1 League), search generally for "<league name> <home team> vs <away team> prediction" and use any reputable prediction site you find — include its real URL."""
+
+PROMPT = """Find published expert picks for these {league} games on {date} (UTC), focusing on {sources}:
 
 {games_block}
-
+{fallback}
 Output ONLY a JSON array (no prose), one object per pick:
 [{{"expert": "...", "site": "...", "source_url": "...", "game": "<away> @ <home>", "pick": "...", "reasoning": "...", "record": "..."}}]
 "pick" must be one of: "<team> ML", "<team> +/-<line>", "Over <line>", "Under <line>"."""
@@ -60,13 +69,21 @@ def extract_json_array(content: str) -> list[dict]:
 
 
 async def fetch_expert_picks(
-    games: list[dict], date: str, league: str = "MLB",
+    games: list[dict], date: str, league: str = "MLB", sport: str = "mlb",
     client: PerplexityClient | None = None,
 ) -> tuple[list[dict], list[str]]:
     """games: [{home, away}, ...] → (픽 리스트, citations). 파싱 실패 시 1회 재요청."""
     client = client or PerplexityClient()
-    games_block = "\n".join(f"- {g['away']} @ {g['home']}" for g in games)
-    prompt = PROMPT.format(league=league, date=date, games_block=games_block)
+    games_block = "\n".join(
+        f"- {g['away']} @ {g['home']}"
+        + (f" ({g['league']})" if g.get("league") else "")
+        for g in games
+    )
+    prompt = PROMPT.format(
+        league=league, date=date, games_block=games_block,
+        sources=SPORT_SOURCES.get(sport, SPORT_SOURCES["mlb"]),
+        fallback=MINOR_LEAGUE_FALLBACK if sport == "soccer" else "",
+    )
 
     resp = await client.chat(prompt)
     try:

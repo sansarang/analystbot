@@ -59,6 +59,14 @@ async def odds_snapshot_job() -> None:
         await notify_quota(exc.service, exc.detail)
 
 
+async def elo_refresh_job() -> None:
+    """주 1회 축구 Elo 데이터 갱신 (football-data.co.uk CSV + 재피팅). 리포트 발송 없음."""
+    from app.models.soccer_elo import refresh
+
+    params = await asyncio.to_thread(refresh)
+    logger.info("[scheduler] elo refreshed: %s", list(params))
+
+
 async def grading_job() -> None:
     """전날 결과 채점 — expert_ledger는 뷰라 자동 갱신."""
     pool = await get_pool()
@@ -78,6 +86,9 @@ def build_scheduler() -> AsyncIOScheduler:
                       id="odds_snapshot_30m")
     scheduler.add_job(grading_job, CronTrigger(hour=13, minute=0, timezone=KST),
                       id="grade_yesterday")
+    scheduler.add_job(elo_refresh_job,
+                      CronTrigger(day_of_week="mon", hour=5, minute=0, timezone=KST),
+                      id="elo_refresh_weekly")
     return scheduler
 
 

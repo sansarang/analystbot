@@ -60,14 +60,28 @@ class OddsClient(BaseAPIClient):
         )
 
 
-def _match_game(candidates: list, commence: datetime) -> int | None:
-    """같은 매치업 후보 중 시작 시각이 ±2h 내에서 가장 가까운 경기를 고른다."""
-    best_id, best_diff = None, MATCH_WINDOW
-    for game_id, starts_at in candidates:
-        diff = abs(starts_at - commence)
-        if diff <= best_diff:
-            best_id, best_diff = game_id, diff
-    return best_id
+def _match_game(rows: list, home: str, away: str, commence: datetime) -> int | None:
+    """홈/원정 퍼지 매칭 + 시작 시각 ±2h 내에서 가장 가까운 경기를 고른다.
+
+    (소스별 팀명 표기가 다르고, 같은 매치업이 연전으로 여러 경기일 수 있다.)
+    """
+    from app.collectors.football import similar_team
+
+    for exact in (True, False):  # 정확 일치 우선, 표기 상이 시 퍼지
+        best_id, best_diff = None, MATCH_WINDOW
+        for r in rows:
+            diff = abs(r["starts_at"] - commence)
+            if diff > best_diff:
+                continue
+            if exact:
+                ok = r["home"] == home and r["away"] == away
+            else:
+                ok = similar_team(r["home"], home) and similar_team(r["away"], away)
+            if ok:
+                best_id, best_diff = r["id"], diff
+        if best_id is not None:
+            return best_id
+    return None
 
 
 async def snapshot_odds(
@@ -86,9 +100,6 @@ async def snapshot_odds(
         "SELECT id, home, away, starts_at FROM games WHERE sport = $1 AND status = 'scheduled'",
         sport,
     )
-    game_ids: dict[tuple[str, str], list] = {}
-    for r in rows:
-        game_ids.setdefault((r["home"], r["away"]), []).append((r["id"], r["starts_at"]))
 
     now = datetime.now(UTC)
     inserted = skipped_inplay = 0
@@ -98,7 +109,7 @@ async def snapshot_odds(
         if not client.mock and commence <= now:
             skipped_inplay += 1
             continue
-        game_id = _match_game(game_ids.get((ev["home_team"], ev["away_team"]), []), commence)
+        game_id = _match_game(rows, ev["home_team"], ev["away_team"], commence)
         if game_id is None:
             logger.warning(
                 "[odds] no game match: %s @ %s (%s)",
@@ -134,16 +145,28 @@ async def upsert_games_from_odds_events(
     """
     from zoneinfo import ZoneInfo
 
+    from app.collectors.football import similar_team
+
     kst = ZoneInfo("Asia/Seoul")
     client = client or OddsClient()
     keys = SPORT_KEYS["soccer"]
     if client.mock:
         keys = keys[:1]
+    # 타 소스(football-data 등)로 이미 적재된 경기는 중복 생성 금지 (이름 표기 상이 대비 퍼지 매칭)
+    existing = await pool.fetch(
+        "SELECT home, starts_at FROM games WHERE sport = 'soccer' AND ext_id NOT LIKE 'odds:%'"
+    )
     ext_ids: list[str] = []
     for sport_key in keys:
         for ev in await client.fetch_events(sport_key):
             commence = datetime.fromisoformat(ev["commence_time"].replace("Z", "+00:00"))
             if commence.astimezone(kst).strftime("%Y-%m-%d") != date:
+                continue
+            if any(
+                abs(r["starts_at"] - commence) <= MATCH_WINDOW
+                and similar_team(r["home"], ev["home_team"])
+                for r in existing
+            ):
                 continue
             ext_id = f"odds:{ev['id']}"
             await pool.execute(
