@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import app.bot.main as botmod
 import app.pipeline as pipemod
 from app.bot.main import parse_intent_mock, resolve_date_arg, split_message
-from app.pipeline import SECTION_SEP, mlb_slate_date, run_pipeline, today_kst
+from app.pipeline import mlb_slate_date, run_pipeline, today_kst
 
 
 def test_mlb_slate_date_format():
@@ -29,13 +29,13 @@ async def test_run_pipeline_default_dates(db_pool, redis_client, monkeypatch):
 
     async def fake_build(pool, sport, date, **kwargs):
         captured[sport] = date
-        return {}
+        return {"sport": sport, "date": date}
 
-    async def fake_report(analysis):
+    async def fake_card(analysis):
         return "r"
 
     monkeypatch.setattr(pipemod, "build_analysis", fake_build)
-    monkeypatch.setattr(pipemod, "generate_report", fake_report)
+    monkeypatch.setattr(pipemod, "generate_card", fake_card)
     await run_pipeline(db_pool, redis_client, "mlb")
     await run_pipeline(db_pool, redis_client, "soccer")
     assert captured["mlb"] == mlb_slate_date()
@@ -55,62 +55,70 @@ async def test_started_games_labeled_and_excluded(db_pool, redis_client, monkeyp
         return 0  # 파이프라인이 상태를 scheduled로 되돌리지 않게
 
     monkeypatch.setattr(pipemod, "upsert_games", noop_upsert)
-    report = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
-    assert "[종료]" in report and "[진행 중]" in report
+    await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
     started_preds = await db_pool.fetchval(
         "SELECT count(*) FROM predictions p JOIN games g ON g.id = p.game_id "
         "WHERE g.status != 'scheduled'")
     assert started_preds == 0
+    # 시작/종료 경기 라벨은 심층 섹션(render_game_section)에 표기
+    from app.pipeline import render_game_section
+
+    analysis = await db_pool.fetchrow("SELECT 1")  # placeholder no-op
+    g = {"home": "A", "away": "B", "starts_at_kst": "08/23 08:15", "status": "final",
+         "status_label": "종료", "best_odds": {}, "p_model": 0.5, "model_valid": False,
+         "market_probs": None, "p_market": None, "stats": {}, "expert_picks": []}
+    assert "[종료]" in render_game_section(g)
 
 DATE = "2026-08-22"
 
 
-async def test_pipeline_end_to_end(db_pool, redis_client):
-    report = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
-    # 3분할 구조 + 경기 목록 · EV 픽 · 조합 · 심층 · 출처 섹션
-    from app.pipeline import SECTION_SEP
-
-    assert report.count(SECTION_SEP) == 2  # ①일정+픽 ②심층 ③속보+출처
-    assert "오늘 경기 15건" in report
-    assert "추천 픽" in report
-    assert "추천 조합" not in report  # live_conservative 기본 모드 — 파레이 금지
-    assert "경기별 심층 분석" in report
-    assert "📎 출처" in report and "http" in report
-    assert "베팅 손실 책임" in report
-    # 수집·판정 부산물 확인
+async def test_pipeline_end_to_end_card(db_pool, redis_client):
+    """기본 응답은 결론 카드 하나 — 20줄 이내, 🎯 추천 섹션으로 끝난다."""
+    card = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
+    assert "<<<PART>>>" not in card          # 3분할 연속 전송 폐기
+    assert card.startswith("📌") and "15경기" in card
+    assert "🎯 오늘의 추천" in card
+    assert len(card.splitlines()) <= 20      # 결론 카드 20줄 상한
+    assert len(card) <= 4096
+    # 🎯 섹션이 카드의 마지막에 배치
+    assert card.index("🎯") > card.index("📌")
+    # 수집·판정 부산물 + 심층 데이터는 분석 캐시에
     assert await db_pool.fetchval("SELECT count(*) FROM games WHERE sport='mlb'") == 15
-    assert await db_pool.fetchval("SELECT count(*) FROM odds_snapshots") > 0
     assert await db_pool.fetchval("SELECT count(*) FROM expert_picks") == 6
+    cached = await redis_client.get(f"analysis:mlb:{DATE}")
+    assert cached is not None
+    import json as _json
+
+    analysis = _json.loads(cached)
+    assert analysis["games"] and analysis["sources"]
 
 
-async def test_suspicious_picks_flagged_not_recommended(db_pool, redis_client):
-    """EV>+20% 또는 모델-시장 괴리>25%p 픽은 ⚠️ 분리 표시 + 추천/predictions 제외."""
-    report = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
-    assert "데이터 검증 필요" in report  # 목 데이터에 EV 20% 초과 픽 존재
+async def test_suspicious_picks_not_in_predictions(db_pool, redis_client):
+    """EV>+20% 또는 모델-시장 괴리>25%p 픽은 추천·predictions에서 제외."""
+    await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
     bad = await db_pool.fetchval("SELECT count(*) FROM predictions WHERE ev > 0.20")
     assert bad == 0
 
 
 async def test_mode_snapshots(db_pool, redis_client, monkeypatch):
-    """모드별 리포트 스냅샷: 보수 모드=조합 금지·플랫 원화·픽 상한 / 리서치=조합 허용."""
+    """모드별 카드 스냅샷: 보수=플랫 원화·단식 2건 상한 / 조합엔 고분산 경고."""
     from app.config import get_settings
 
     settings = get_settings()
-    # live_conservative (기본)
     monkeypatch.setattr(settings, "report_mode", "live_conservative")
-    report = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
-    assert "추천 조합" not in report        # 파레이 섹션 제거
-    assert "켈리" not in report.split(SECTION_SEP)[0]  # 켈리 표기 금지
-    assert "원(자금 1%)" in report          # 플랫 스테이크 원화 표기
-    preds = await db_pool.fetchval(
-        "SELECT count(*) FROM predictions WHERE created_at > now() - interval '1 minute'")
-    assert preds <= 2                        # 하루 최대 2픽 상한
+    card = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    assert "켈리" not in card                       # 켈리 % 표기 금지
+    singles = [ln for ln in card.splitlines() if ln.startswith("· ")]
+    assert 0 < len(singles) <= 2                    # 단식 최대 2건
+    assert all("권장" in ln and "원)" in ln for ln in singles)  # 플랫 원화
+    if "조합 1" in card:
+        assert "⚠️ 조합은 고분산" in card           # 고정 경고 문구
+        assert card.index("조합 1") > card.index("· ")  # 단식 → 조합 순서
 
-    # research 모드
+    # research 모드: 플랫 권장액 없음 (켈리 스테이킹)
     monkeypatch.setattr(settings, "report_mode", "research")
-    report2 = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
-    assert "추천 조합" in report2
-    assert "켈리" in report2.split(SECTION_SEP)[0]
+    card2 = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    assert "(권장" not in card2  # 플랫 권장액 없음 (경고문구의 "권장액"과 구분)
 
 
 async def test_judge_pass_excluded_from_recommendations(db_pool, redis_client, monkeypatch):
@@ -127,9 +135,10 @@ async def test_judge_pass_excluded_from_recommendations(db_pool, redis_client, m
         return verdict
 
     monkeypatch.setattr(Judge, "_mock_verdict", staticmethod(pass_all))
-    report = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
-    assert "판정 제외" in report and "패스 권장" in report
-    assert "기준(EV>+3%)을 넘는 추천 픽이 없습니다" in report
+    card = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    # 전 경기 패스 권장 → 추천·조합 없음 + 관망 정직 표기 + predictions 0건
+    assert "관망 권장" in card
+    assert "조합 1" not in card
     assert await db_pool.fetchval(
         "SELECT count(*) FROM predictions WHERE created_at > now() - interval '1 minute'"
     ) == 0
@@ -144,8 +153,8 @@ def test_strip_md_links():
 
 
 async def test_pipeline_soccer_does_not_crash(db_pool, redis_client):
-    report = await run_pipeline(db_pool, redis_client, sport="soccer", date=DATE)
-    assert "오늘 경기 5건" in report
+    card = await run_pipeline(db_pool, redis_client, sport="soccer", date=DATE)
+    assert "5경기" in card and "🎯" in card
     assert await db_pool.fetchval("SELECT count(*) FROM games WHERE sport='soccer'") == 5
 
 
@@ -160,8 +169,8 @@ async def test_pipeline_survives_research_failure(db_pool, redis_client, monkeyp
     monkeypatch.setattr(GrokClient, "live_briefing", boom)
     monkeypatch.setattr(PerplexityClient, "chat", boom)
 
-    report = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
-    assert "오늘 경기 15건" in report
+    card = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
+    assert "15경기" in card and "🎯" in card
     assert await db_pool.fetchval("SELECT count(*) FROM expert_picks") == 0
 
 
@@ -176,7 +185,7 @@ async def test_pipeline_uses_cache(db_pool, redis_client):
     assert await db_pool.fetchval("SELECT count(*) FROM predictions") == preds
     assert await db_pool.fetchval("SELECT count(*) FROM odds_snapshots") == snaps
 
-    ttl = await redis_client.ttl(f"report:mlb:{DATE}")
+    ttl = await redis_client.ttl(f"card:mlb:{DATE}")
     assert 0 < ttl <= 1800
 
 

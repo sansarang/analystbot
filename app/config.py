@@ -44,9 +44,10 @@ class Settings(BaseSettings):
     # 리포트 모드: live_conservative(운영 보수) | research(연구·전량 표시)
     report_mode: str = "live_conservative"
     bankroll_krw: int = 1_000_000   # 플랫 스테이크 원화 환산 기준 자금
+    weekly_stop_loss_pct: float = 0.05  # 주간 손절선 (자금 대비)
     report_banner: str = ""         # 비상 배너 (예: EV 점검 중) — 비면 미표시
 
-    ev_threshold: float = 0.03      # 이 이상 EV일 때만 추천 픽
+    ev_threshold: float = 0.05      # 이 이상 EV일 때만 추천 픽 (기준 EV +5%↑)
     kelly_fraction: float = 0.5     # 하프 켈리
     kelly_cap: float = 0.05         # 뱅크롤 5% 상한
     report_cache_ttl: int = 1800    # 리포트 Redis 캐시 30분

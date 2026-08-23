@@ -15,6 +15,26 @@ Summarize ONLY: (1) confirmed lineups, (2) breaking injury news, (3) sharp betti
 Skip opinions and predictions. Bullet points, one line each, prefix each with CONFIRMED LINEUP / INJURY / LINE MOVE / WEATHER."""
 
 
+COUNTER_PROMPT = """You are a research assistant (NOT a judge). For each verdict below, search X and news for CONCRETE COUNTER-EVIDENCE only — facts that would weaken the stated conclusion (injuries, lineup changes, form data, sharp line moves). Do NOT give your own prediction.
+
+{items}
+
+Reply in Korean, one bullet per game: "- {{매치업}}: {{반대 근거 팩트}} (출처)". If no substantive counter-evidence exists for a game, write "- {{매치업}}: 반대 근거 없음". Keep it under 12 lines total."""
+
+DELTA_PROMPT = """Compare the situation NOW against this earlier briefing for {date} games:
+
+--- EARLIER BRIEFING ---
+{old_news}
+--- GAMES ---
+{games_block}
+
+Search X and news for MATERIAL changes since then, ONLY these categories:
+starter pitcher scratched/replaced, confirmed lineup missing a key player, odds moved 5%+ sharply, weather turned bad.
+
+Output ONLY a JSON array (no prose). Empty array [] if nothing material changed:
+[{{"game": "<away> @ <home>", "change": "<한국어 한 줄: 무엇이 바뀌었나>"}}]"""
+
+
 class GrokClient(BaseAPIClient):
     name = "grok"
     base_url = "https://api.x.ai/v1"
@@ -48,6 +68,44 @@ class GrokClient(BaseAPIClient):
             },
         )
         return extract_output_text(resp)
+
+    async def _search_call(self, prompt: str) -> str:
+        resp = await self._post(
+            "/responses",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json_body={
+                "model": self.model,
+                "input": prompt,
+                "tools": [{"type": "web_search"}, {"type": "x_search"}],
+            },
+        )
+        return extract_output_text(resp)
+
+    async def counter_briefing(self, items: list[str]) -> str:
+        """[정보 수집 전용] 논쟁 경기 판정의 '반대 근거' 팩트만 수집 (판정 아님)."""
+        if self.mock:
+            return ""  # 목 모드: 반대 근거 없음 → 재판정 스킵
+        return await self._search_call(COUNTER_PROMPT.format(items="\n".join(items)))
+
+    async def delta_check(self, old_news: str, games: list[dict], date: str) -> list[dict]:
+        """이전 브리핑 대비 중대 변화만 JSON으로. 변화 없으면 []."""
+        if self.mock:
+            return []
+        games_block = "\n".join(f"- {g['away']} @ {g['home']}" for g in games)
+        text = await self._search_call(
+            DELTA_PROMPT.format(date=date, old_news=old_news[:2500], games_block=games_block)
+        )
+        import json as _json
+        import re as _re
+
+        m = _re.search(r"\[.*\]", text, _re.S)
+        if not m:
+            return []
+        try:
+            data = _json.loads(m.group(0))
+            return [d for d in data if isinstance(d, dict) and d.get("game") and d.get("change")]
+        except _json.JSONDecodeError:
+            return []
 
 
 def extract_output_text(resp: dict) -> str:

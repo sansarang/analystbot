@@ -15,16 +15,20 @@ from datetime import datetime, timedelta
 import anthropic
 import redis.asyncio as aioredis
 
+import html as html_mod
+
 from app.bot.aliases import find_team
 from app.collectors.base import ApiQuotaError, is_quota_error
 from app.config import get_settings
 from app.db import close_pool, get_pool
 from app.notify import notify_quota
 from app.pipeline import (
-    SECTION_SEP,
     build_analysis,
+    default_date,
     mlb_slate_date,
     render_game_section,
+    render_news,
+    render_sources,
     run_pipeline,
     today_kst,
 )
@@ -33,6 +37,74 @@ ASK_TEAM_TEXT = (
     "어느 팀 경기인지 못 찾았어요. 예: 다저스, 양키스, 맨시티\n"
     "전체 리포트는 /mlb 또는 /soccer 를 입력하세요."
 )
+
+
+def expired_text(sport: str) -> str:
+    return f"분석이 만료됐어요. /{sport if sport in ('mlb', 'soccer') else 'soccer'} 로 새로 요청해 주세요."
+
+
+def collapsed(title: str, body: str) -> str:
+    """제목만 보이고 본문은 접힌 인용문 (Telegram expandable blockquote, HTML)."""
+    return (
+        f"{html_mod.escape(title)}\n"
+        f"<blockquote expandable>{html_mod.escape(body)}</blockquote>"
+    )
+
+
+async def load_analysis(sport: str, date: str) -> dict | None:
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        raw = await redis.get(f"analysis:{sport}:{date}")
+        return json.loads(raw) if raw else None
+    finally:
+        await redis.aclose()
+
+
+async def render_performance(pool) -> str:
+    """📈 성적표 — 누적 방향 적중률·실현 손익·CLV·주간 손절선."""
+    settings = get_settings()
+    stake = int(settings.bankroll_krw * 0.01)
+    row = await pool.fetchrow(
+        """
+        SELECT count(*) FILTER (WHERE result IN ('win','loss','push')) AS graded,
+               count(*) FILTER (WHERE result = 'win')  AS wins,
+               count(*) FILTER (WHERE result = 'loss') AS losses,
+               coalesce(sum(pnl), 0) AS pnl_units
+        FROM predictions
+        """
+    )
+    clv = await pool.fetchval(
+        """
+        SELECT avg(p.odds / o.odds - 1)
+        FROM predictions p
+        JOIN LATERAL (
+            SELECT odds FROM odds_snapshots os
+            WHERE os.game_id = p.game_id AND os.market = split_part(p.pick, ':', 1)
+              AND os.side = split_part(p.pick, ':', 2)
+            ORDER BY os.captured_at DESC LIMIT 1
+        ) o ON true
+        WHERE p.result IS NOT NULL
+        """
+    )
+    week_units = await pool.fetchval(
+        "SELECT coalesce(sum(pnl), 0) FROM predictions "
+        "WHERE result IS NOT NULL AND created_at >= date_trunc('week', now())"
+    )
+    graded, wins, losses = row["graded"], row["wins"], row["losses"]
+    hit = f"{wins / (wins + losses):.1%}" if (wins + losses) else "표본 없음"
+    pnl_krw = int(float(row["pnl_units"]) * stake)
+    week_krw = int(float(week_units) * stake)
+    stop_line = int(settings.bankroll_krw * settings.weekly_stop_loss_pct)
+    stop_status = "🟢 정상" if week_krw > -stop_line else "🔴 손절선 도달 — 이번 주 베팅 중지 권장"
+    clv_txt = f"{float(clv):+.1%}" if clv is not None else "데이터 부족"
+    return (
+        "📈 성적표 (플랫 1% 기준)\n"
+        f"- 채점 완료: {graded}픽 ({wins}승 {losses}패 {graded - wins - losses}푸시)\n"
+        f"- 방향 적중률: {hit}\n"
+        f"- 실현 손익: {pnl_krw:+,}원 ({float(row['pnl_units']):+.2f}유닛)\n"
+        f"- CLV(마감가 대비): {clv_txt}\n"
+        f"- 이번 주 손익: {week_krw:+,}원 / 손절선 -{stop_line:,}원 → {stop_status}"
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -219,27 +291,53 @@ async def answer_team_query(sport: str, team: str, progress=None) -> str:
 
 
 async def answer_picks_only(sport: str = "mlb", progress=None) -> str:
-    """'오늘 픽/언더독' 류 질문 → 일정+EV픽+조합 파트만."""
-    report = await answer_query(sport, progress=progress)
-    part1 = report.split(SECTION_SEP)[0]
-    return part1 + "\n\n(경기별 심층 분석과 출처는 /mlb 전체 리포트에서)"
+    """'오늘 픽/언더독' 류 질문 → 결론 카드 자체가 픽 중심이라 카드로 응답."""
+    return await answer_query(sport, progress=progress)
 
 
 # ---------------------------------------------------------------- 텔레그램 연결
 
+def card_keyboard(sport: str, date: str):
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+    def btn(label: str, section: str):
+        return InlineKeyboardButton(text=label, callback_data=f"sec:{sport}:{date}:{section}")
+
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [btn("📊 경기별 심층", "deep"), btn("📰 부상·속보", "news")],
+        [btn("📎 출처", "src"), btn("📈 성적표", "perf")],
+    ])
+
+
+def games_keyboard(analysis: dict):
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+    rows = [
+        [InlineKeyboardButton(
+            text=f"{g['starts_at_kst'][-5:]} {g['home']} vs {g['away']}"[:60],
+            callback_data=f"game:{g['game_id']}",
+        )]
+        for g in analysis["games"] if g["status"] == "scheduled"
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=rows or [[
+        InlineKeyboardButton(text="분석 대상(시작 전) 경기 없음", callback_data="noop")
+    ]])
+
+
 def build_dispatcher():
-    from aiogram import Dispatcher, Router
+    from aiogram import Dispatcher, F, Router
     from aiogram.filters import Command, CommandObject, CommandStart
-    from aiogram.types import Message
+    from aiogram.types import CallbackQuery, LinkPreviewOptions, Message
 
     router = Router()
 
     async def _reply(message: Message, text: str) -> None:
-        # 3분할(<<<PART>>>) 우선, 각 파트가 4096자를 넘으면 추가 분할
-        for part in text.split(SECTION_SEP):
-            for chunk in split_message(part.strip()):
-                if chunk:
-                    await message.answer(chunk)
+        for chunk in split_message(text):
+            if chunk:
+                await message.answer(chunk)
+
+    async def _send_card(message: Message, card: str, sport: str, date: str) -> None:
+        await message.answer(card[:4096], reply_markup=card_keyboard(sport, date))
 
     def _make_progress(message: Message):
         """'⏳ 1/4 ...' 상태 메시지를 만들고 단계마다 edit_message_text로 갱신.
@@ -282,19 +380,86 @@ def build_dispatcher():
             "※ 분석 정보용 도구이며 베팅 손실 책임은 이용자에게 있습니다."
         )
 
+    async def _card_flow(message: Message, sport: str, date: str | None) -> None:
+        date = date or default_date(sport)
+        state, progress = _make_progress(message)
+        try:
+            card = await answer_query(sport, date, progress=progress)
+        finally:
+            if state["msg"] is not None:
+                try:
+                    await state["msg"].delete()
+                except Exception:
+                    pass
+        await _send_card(message, card, sport, date)
+
     @router.message(Command("mlb"))
     async def on_mlb(message: Message, command: CommandObject) -> None:
         # 기본: 미국 동부 오늘. 인자: tomorrow/내일/어제 또는 YYYY-MM-DD
-        date = resolve_date_arg(command.args, "mlb")
-        await _run_with_progress(message, lambda p: answer_query("mlb", date, progress=p))
+        await _card_flow(message, "mlb", resolve_date_arg(command.args, "mlb"))
 
     @router.message(Command("soccer"))
     async def on_soccer(message: Message) -> None:
-        await _run_with_progress(message, lambda p: answer_query("soccer", progress=p))
+        await _card_flow(message, "soccer", None)
 
     @router.message(Command("today"))
     async def on_today(message: Message) -> None:
-        await _run_with_progress(message, lambda p: answer_query("mlb", progress=p))
+        await _card_flow(message, "mlb", None)
+
+    # ---------------- 인라인 버튼 콜백 (캐시에서 즉답 — 재계산 금지) ----------------
+
+    @router.callback_query(F.data.startswith("sec:"))
+    async def on_section(cb: CallbackQuery) -> None:
+        _, sport, date, section = cb.data.split(":", 3)
+        analysis = await load_analysis(sport, date)
+        if analysis is None:
+            await cb.message.answer(expired_text(sport))
+            await cb.answer()
+            return
+        if section == "deep":
+            await cb.message.answer(
+                "📊 경기를 선택하세요 (시작 전 경기만):",
+                reply_markup=games_keyboard(analysis),
+            )
+        elif section == "news":
+            await cb.message.answer(
+                collapsed("📰 부상·속보", render_news(analysis)), parse_mode="HTML")
+        elif section == "src":
+            await cb.message.answer(
+                "📎 출처\n" + render_sources(analysis),
+                link_preview_options=LinkPreviewOptions(is_disabled=True),
+            )
+        elif section == "perf":
+            pool = await get_pool()
+            await cb.message.answer(await render_performance(pool))
+        await cb.answer()  # 로딩 표시 닫기
+
+    @router.callback_query(F.data.startswith("game:"))
+    async def on_game(cb: CallbackQuery) -> None:
+        game_id = int(cb.data.split(":", 1)[1])
+        found = None
+        for sport in ("mlb", "soccer"):
+            analysis = await load_analysis(sport, default_date(sport))
+            if analysis:
+                for g in analysis["games"]:
+                    if g["game_id"] == game_id:
+                        found = (g, analysis)
+                        break
+            if found:
+                break
+        if not found:
+            await cb.message.answer(expired_text("soccer"))
+            await cb.answer()
+            return
+        g, analysis = found
+        section = render_game_section(g, analysis.get("news", ""))
+        title, _, body = section.partition("\n")
+        await cb.message.answer(collapsed(title, body or "(내용 없음)"), parse_mode="HTML")
+        await cb.answer()
+
+    @router.callback_query(F.data == "noop")
+    async def on_noop(cb: CallbackQuery) -> None:
+        await cb.answer()
 
     @router.message()
     async def on_free_text(message: Message) -> None:
@@ -306,7 +471,7 @@ def build_dispatcher():
                 message, lambda p: answer_team_query(sport, team, progress=p))
             return
         if scope == "picks":
-            await _run_with_progress(message, lambda p: answer_picks_only("mlb", progress=p))
+            await _card_flow(message, "mlb", None)
             return
         if scope == "ask":
             await message.answer(ASK_TEAM_TEXT)
@@ -315,8 +480,7 @@ def build_dispatcher():
         if intent.get("teams"):  # LLM이 팀을 봤는데 별칭 사전 매칭 실패 → 전체 발사 금지
             await message.answer(ASK_TEAM_TEXT)
             return
-        await _run_with_progress(
-            message, lambda p: answer_query(intent["sport"], intent["date"], progress=p))
+        await _card_flow(message, intent["sport"], intent["date"])
 
     dp = Dispatcher()
     dp.include_router(router)
@@ -374,14 +538,9 @@ async def _main() -> None:
             reply = await simulate(args.simulate)
         finally:
             await close_pool()
-        i = 0
-        for part in reply.split(SECTION_SEP):
-            for chunk in split_message(part.strip()):
-                if not chunk:
-                    continue
-                i += 1
-                print(f"--- message {i} ({len(chunk)} chars) ---")
-                print(chunk)
+        for i, chunk in enumerate(split_message(reply.strip()), 1):
+            print(f"--- message {i} ({len(chunk)} chars) ---")
+            print(chunk)
     else:
         await run_bot()
 

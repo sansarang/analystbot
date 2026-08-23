@@ -84,5 +84,5 @@ async def test_pipeline_falls_back_to_mock_judge_on_quota(db_pool, redis_client,
     monkeypatch.setattr(pipemod, "notify_quota", fake_notify)
 
     report = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
-    assert "오늘 경기 15건" in report          # 목 판정 폴백으로 리포트는 나온다
+    assert "15경기" in report and "🎯" in report  # 목 판정 폴백으로 카드는 나온다
     assert "anthropic(judge)" in sent          # 알림은 발송됐다
