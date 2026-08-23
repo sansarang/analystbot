@@ -324,6 +324,14 @@ def games_keyboard(analysis: dict):
     ]])
 
 
+async def _safe_cb_answer(cb) -> None:
+    """answer_callback_query — 만료/무효 ID여도 본 응답 흐름을 깨지 않는다."""
+    try:
+        await cb.answer()
+    except Exception as exc:
+        logger.debug("[bot] callback answer skipped: %s", exc)
+
+
 def build_dispatcher():
     from aiogram import Dispatcher, F, Router
     from aiogram.filters import Command, CommandObject, CommandStart
@@ -414,7 +422,7 @@ def build_dispatcher():
         analysis = await load_analysis(sport, date)
         if analysis is None:
             await cb.message.answer(expired_text(sport))
-            await cb.answer()
+            await _safe_cb_answer(cb)
             return
         if section == "deep":
             await cb.message.answer(
@@ -432,7 +440,7 @@ def build_dispatcher():
         elif section == "perf":
             pool = await get_pool()
             await cb.message.answer(await render_performance(pool))
-        await cb.answer()  # 로딩 표시 닫기
+        await _safe_cb_answer(cb)  # 로딩 표시 닫기
 
     @router.callback_query(F.data.startswith("game:"))
     async def on_game(cb: CallbackQuery) -> None:
@@ -449,17 +457,17 @@ def build_dispatcher():
                 break
         if not found:
             await cb.message.answer(expired_text("soccer"))
-            await cb.answer()
+            await _safe_cb_answer(cb)
             return
         g, analysis = found
         section = render_game_section(g, analysis.get("news", ""))
         title, _, body = section.partition("\n")
         await cb.message.answer(collapsed(title, body or "(내용 없음)"), parse_mode="HTML")
-        await cb.answer()
+        await _safe_cb_answer(cb)
 
     @router.callback_query(F.data == "noop")
     async def on_noop(cb: CallbackQuery) -> None:
-        await cb.answer()
+        await _safe_cb_answer(cb)
 
     @router.message()
     async def on_free_text(message: Message) -> None:
