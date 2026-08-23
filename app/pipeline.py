@@ -263,6 +263,7 @@ async def build_analysis(
         games = [g for g in games
                  if similar_team(g["home"], team) or similar_team(g["away"], team)]
     if (team or league_key) and not games:
+        stats_coro.close()  # 미사용 코루틴 정리
         return {"sport": sport, "date": date, "games": [], "picks": [],
                 "parlays": [], "combos": {}, "news": "", "sources": [],
                 "verdict": {"games": []}, "mode": {"name": settings.report_mode}}

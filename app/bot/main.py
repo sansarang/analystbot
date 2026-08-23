@@ -297,7 +297,9 @@ async def answer_team_query(sport: str, team: str, progress=None) -> str:
                 return _format_team_reply(game, data.get("news", ""), sport)
         analysis = await build_analysis(pool, sport, date, team=team, progress=progress)
         if not analysis["games"]:
-            return f"오늘({date}) {team} 경기를 찾지 못했습니다."
+            from app.bot.aliases import kr_team
+
+            return f"오늘({date}) {kr_team(team)} 경기를 찾지 못했습니다."
         return _format_team_reply(analysis["games"][0], analysis["news"], sport)
     except ApiQuotaError as exc:
         logger.error("[bot] quota exhausted: %s", exc)
