@@ -101,6 +101,32 @@ async def test_odds_skips_inplay_and_matches_by_start_time(db_pool):
     assert {r["game_id"]: r["c"] for r in rows} == {ids["g_tomorrow"]: 2}
 
 
+async def test_soccer_schedule_fallback_from_odds_events(db_pool):
+    """API-Football이 시즌 미지원일 때 Odds API 이벤트로 KST 당일 경기만 적재."""
+    from app.collectors.odds import upsert_games_from_odds_events
+
+    class FakeClient:
+        mock = False
+
+        async def fetch_events(self, sport_key):
+            if sport_key != "soccer_japan_j_league":
+                return []
+            return [
+                {"id": "ev1", "commence_time": "2026-08-23T10:30:00Z",   # KST 8/23 19:30
+                 "home_team": "FC Machida Zelvia", "away_team": "Urawa Red Diamonds"},
+                {"id": "ev2", "commence_time": "2026-08-23T16:00:00Z",   # KST 8/24 01:00 → 제외
+                 "home_team": "Gamba Osaka", "away_team": "FC Tokyo"},
+            ]
+
+    ext_ids = await upsert_games_from_odds_events(db_pool, "2026-08-23", client=FakeClient())
+    assert ext_ids == ["odds:ev1"]
+    row = await db_pool.fetchrow("SELECT * FROM games WHERE ext_id = 'odds:ev1'")
+    assert row["home"] == "FC Machida Zelvia" and row["league"] == "J1 리그"
+    # 멱등
+    await upsert_games_from_odds_events(db_pool, "2026-08-23", client=FakeClient())
+    assert await db_pool.fetchval("SELECT count(*) FROM games WHERE sport='soccer'") == 1
+
+
 async def test_football_fixtures(db_pool):
     n = await upsert_soccer(db_pool, DATE, client=APIFootballClient(mock=True))
     assert n == 5
