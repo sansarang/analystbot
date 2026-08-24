@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
 KST = ZoneInfo("Asia/Seoul")
 
 
+def _pct(v: float | None) -> str:
+    return "—" if v is None else f"{v:.0%}"
+
+
 def yesterday_kst() -> str:
     return (datetime.now(KST) - timedelta(days=1)).strftime("%Y-%m-%d")
 
@@ -43,8 +47,10 @@ async def prefetch_job() -> None:
     import time
 
     from app.pipeline import default_date
+    from app.research.crosscheck import crosscheck_report
     from app.research.deep import (
         drain_retry_queue,
+        fill_report,
         log_cost_summary,
         research_calls_today,
         research_failure_report,
@@ -73,6 +79,23 @@ async def prefetch_job() -> None:
         logger.info("[scheduler] prefetch 총 소요 %.1fs · 금일 리서치 %d콜 (상한 60) · "
                     "큐 복구 %d경기 · 실패 %s",
                     time.monotonic() - t0, calls, recovered, fails or "없음")
+        # [감시] 채움률·무효율 — 금지문 과잉(채움률 급락)·지어내기(교차검증 불일치) 신호
+        today = today_kst()
+        fill = await fill_report(redis, today)
+        cross = await crosscheck_report(redis, today)
+        logger.info(
+            "[scheduler] 리서치 품질 · 경기 %s건 무효율 %s · 채움률 form %s / absences %s / "
+            "splits %s / bullpen %s / form_reversal %s · 교차검증 %s항목 불일치 %s",
+            fill["games"], _pct(fill["invalid_rate"]), _pct(fill["form_rate"]),
+            _pct(fill["absences_rate"]), _pct(fill["splits_rate"]),
+            _pct(fill["bullpen_rate"]), _pct(fill["form_reversal_rate"]),
+            cross["checked"], cross["mismatch"])
+        if fill["invalid_rate"] is not None and fill["invalid_rate"] > 0.30:
+            logger.warning("[scheduler] ⚠️ 무효율 %s > 30%% — 무효 키워드 과잉 의심 "
+                           "(docs/RESEARCH_VALIDATION.md 튜닝 기준)", _pct(fill["invalid_rate"]))
+        if cross["mismatch"]:
+            logger.warning("[scheduler] ⚠️ 교차검증 불일치 %d건 — 지어내기 의심, "
+                           "반복되면 프롬프트 금지문 롤백 검토", cross["mismatch"])
         await log_cost_summary(redis)
     finally:
         await redis.aclose()

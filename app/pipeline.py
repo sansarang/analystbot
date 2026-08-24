@@ -394,6 +394,15 @@ async def build_analysis(
                           sequential=sequential_research),
     )
 
+    # [감시] 리서치 수치 ↔ statsapi 실데이터 교차검증 표본 (지어내기 감시)
+    if redis is not None:
+        from app.research.crosscheck import crosscheck_sample
+
+        try:
+            await crosscheck_sample(redis, games, research_map, stats, sport)
+        except Exception as exc:   # 감시 실패가 분석을 막지 않는다
+            logger.warning("[pipeline] crosscheck 실패: %s", exc)
+
     # 3) 경기별 p_model / p_market / 전문가 컨센서스 (+마켓별 전적 분리 [5])
     from app.engine.consensus import expert_pick_adopted, load_expert_market_ledger
 

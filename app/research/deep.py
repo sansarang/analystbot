@@ -61,7 +61,7 @@ Find: {targets}
 Output ONLY one JSON object (no prose) with this exact shape:
 {schema}
 
-Rules: every free-text value must be KOREAN (team/player names may stay original). If something cannot be found, use null/empty — never invent numbers. "form_reversal" must flag any metric where recent form contradicts the season-long number."""
+Rules: every free-text value must be KOREAN (team/player names may stay original). If something cannot be found, use null/empty — never invent numbers. Do NOT restate the question or explain what you could not find — use null for anything you cannot verify with a real number. "form_reversal" must flag any metric where recent form contradicts the season-long number."""
 
 TARGETS = {
     "mlb": ("both starters' last 5-7 outings (ERA, opponent OPS, innings) vs season averages; "
@@ -113,9 +113,9 @@ async def deep_research_game(game: dict, sport: str, client: PerplexityClient | 
         logger.warning("[deep] 응답 무효 (%s) — 1회 재요청", exc)
         return await _ask_and_validate(
             client,
-            prompt + "\n\nReturn ONLY the JSON object, nothing else. "
-                     "Do NOT restate the question or explain what you could not find — "
-                     "use null for anything you cannot verify with a real number.",
+            prompt + "\n\nYour previous answer contained explanations instead of data. "
+                     "Return ONLY the JSON object, nothing else. Every field you cannot "
+                     "verify with a real number must be null — do not describe why.",
             sport,
         )
 
@@ -218,6 +218,66 @@ async def research_failure_report(redis, date: str) -> dict[str, int]:
         v = await redis.get(_fail_key(date, reason))
         if v:
             out[reason] = int(v)
+    return out
+
+
+# ---------------------------------------------------------------- 채움률 계측
+
+FILL_FIELDS = ("form", "absences", "splits", "bullpen", "form_reversal")
+
+
+def _fill_key(date: str) -> str:
+    return f"research_fill:{date}"
+
+
+def _filled_fields(data: dict | None) -> dict[str, bool]:
+    """정제본에서 필드별 실제 채움 여부. 지어내기 감시의 기준선이 된다.
+
+    프롬프트 금지문("못 찾은 이유를 설명하지 말고 null을 써라")이 과하면 채움률이
+    급락하고, 반대로 모델이 빈칸을 지어내기 시작하면 채움률만 치솟는다.
+    """
+    d = data or {}
+    return {
+        "form": any((d.get(s) or {}).get("form") for s in
+                    ("home_recent_form", "away_recent_form")),
+        "absences": bool(d.get("absences")),
+        "splits": bool(d.get("splits") or (d.get("home_recent_form") or {}).get("home_split")
+                       or (d.get("away_recent_form") or {}).get("away_split")),
+        "bullpen": bool(d.get("bullpen")),
+        "form_reversal": bool(d.get("form_reversal")),
+    }
+
+
+async def record_fill_stats(redis, data: dict | None, *, invalid: bool = False,
+                            date: str | None = None) -> None:
+    """경기 1건의 필드 채움 여부를 일자별 해시에 누적."""
+    from app.pipeline import today_kst
+
+    key = _fill_key(date or today_kst())
+    await redis.hincrby(key, "games_total", 1)
+    if invalid:
+        await redis.hincrby(key, "games_invalid", 1)
+    else:
+        for field, filled in _filled_fields(data).items():
+            if filled:
+                await redis.hincrby(key, f"{field}_filled", 1)
+    await redis.expire(key, 86400 * 30)
+
+
+async def fill_report(redis, date: str) -> dict:
+    """해당 날짜의 필드별 채움률 + 무효율. 프리페치 로그·튜닝 판단 근거."""
+    raw = await redis.hgetall(_fill_key(date)) or {}
+    total = int(raw.get("games_total", 0) or 0)
+    invalid = int(raw.get("games_invalid", 0) or 0)
+    out = {
+        "games": total,
+        "invalid": invalid,
+        "invalid_rate": round(invalid / total, 3) if total else None,
+    }
+    usable = total - invalid
+    for field in FILL_FIELDS:
+        n = int(raw.get(f"{field}_filled", 0) or 0)
+        out[f"{field}_rate"] = round(n / usable, 3) if usable else None
     return out
 
 
@@ -326,7 +386,7 @@ async def get_game_research(
             return cached_data, ("quota" if quota_out else "fresh")
         if cached_empty:
             # 6시간 내 조사했는데 재료가 없었다 — 곧바로 재조사해도 같은 결과다(콜 낭비 방지)
-            return None, "invalid"
+            return None, "invalid"  # 계측은 최초 조사 시점에 이미 반영됐다
     if quota_out:
         return cached_data, "quota" if cached_data else "missing"
 
@@ -342,6 +402,7 @@ async def get_game_research(
         await redis.set(key, json.dumps(
             {"at": datetime.now(UTC).isoformat(), "data": data}, ensure_ascii=False,
             default=str), ex=CACHE_TTL)
+        await record_fill_stats(redis, data)
         return data, "refreshed"
     except Exception as exc:
         from app.notify import notify_api_error
@@ -354,6 +415,8 @@ async def get_game_research(
         await notify_api_error(exc)
         if reason == "rate_limit":
             await queue_for_retry(redis, game, sport)
+        if reason == "parse":
+            await record_fill_stats(redis, None, invalid=True)
         if cached_data is not None:
             return cached_data, "stale_fallback"
         return None, "invalid" if reason == "parse" else "missing"
