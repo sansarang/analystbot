@@ -1,0 +1,13 @@
+{
+  "home_recent_form": {"form": "WWDLW", "last5_detail": "최근 5경기 3승 1무 1패", "gf5": 9, "ga5": 5, "rank": 4, "home_split": "홈 3승 1패", "runs_avg": 4.6, "note": "최근 30일 우완 상대 OPS .780"},
+  "away_recent_form": {"form": "LDLWL", "last5_detail": "최근 5경기 1승 1무 3패", "gf5": 4, "ga5": 9, "rank": 12, "away_split": "원정 1승 3패", "runs_avg": 3.4, "note": "최근 30일 좌완 상대 OPS .640"},
+  "home_pitcher": {"name": "Mock Starter A", "last5": "최근 5경기 ERA 3.10, 피OPS .660, 평균 5.8이닝", "era_recent": 3.10, "era_season": 3.45, "trend": "개선"},
+  "away_pitcher": {"name": "Mock Starter B", "last5": "최근 5경기 ERA 5.20, 피OPS .810, 평균 4.9이닝", "era_recent": 5.20, "era_season": 4.10, "trend": "악화"},
+  "splits": "홈팀은 홈에서 강하고 원정팀은 원정 성적이 부진",
+  "bullpen": "양 팀 불펜 최근 3일 소모 보통",
+  "h2h_history": "최근 맞대결 홈팀 3승 2패",
+  "absences": [],
+  "expert_picks": [],
+  "predicted_scores": ["2-1"],
+  "form_reversal": []
+}

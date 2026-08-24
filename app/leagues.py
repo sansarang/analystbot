@@ -5,22 +5,22 @@ odds_key는 The Odds API /v4/sports 실조회로 확인된 정확한 키 (2026-0
 
 LEAGUES: dict[str, dict] = {
     "epl": {
-        "odds_key": "soccer_epl", "label": "EPL", "elo": "E0",
+        "fd_code": "PL", "odds_key": "soccer_epl", "label": "EPL", "elo": "E0",
         "fd_names": ["Premier League"],
         "aliases": ["epl", "프리미어리그", "프리미어", "영국", "잉글랜드"],
     },
     "la_liga": {
-        "odds_key": "soccer_spain_la_liga", "label": "라리가", "elo": "SP1",
+        "fd_code": "PD", "odds_key": "soccer_spain_la_liga", "label": "라리가", "elo": "SP1",
         "fd_names": ["Primera Division", "La Liga"],
         "aliases": ["라리가", "스페인", "라 리가"],
     },
     "serie_a": {
-        "odds_key": "soccer_italy_serie_a", "label": "세리에A", "elo": "I1",
+        "fd_code": "SA", "odds_key": "soccer_italy_serie_a", "label": "세리에A", "elo": "I1",
         "fd_names": ["Serie A"],
         "aliases": ["세리에a", "세리에", "이탈리아"],
     },
     "bundesliga": {
-        "odds_key": "soccer_germany_bundesliga", "label": "분데스리가", "elo": "D1",
+        "fd_code": "BL1", "odds_key": "soccer_germany_bundesliga", "label": "분데스리가", "elo": "D1",
         "fd_names": ["Bundesliga"],
         "aliases": ["분데스리가", "분데스", "독일"],
     },

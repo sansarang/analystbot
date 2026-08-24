@@ -1,6 +1,6 @@
 """경기 결과 채점기 — 최종 스코어로 expert_picks.result / predictions.result·pnl 채점.
 
-정규 픽 포맷: h2h:<팀> | spreads:<팀>:<라인> | totals:Over|Under:<라인>
+정규 픽 포맷: h2h:<팀> | dc:<팀>(더블찬스) | spreads:<팀>:<라인> | totals:Over|Under:<라인>
 expert_ledger 뷰는 expert_picks 갱신 시 자동 반영된다.
 """
 
@@ -26,6 +26,15 @@ def grade_pick(pick: str, home: str, away: str, home_score: int, away_score: int
             return None
         if home_score == away_score:
             return "loss"  # 무승부(축구 3-way) — ML 픽은 패 처리
+        winner = home if home_score > away_score else away
+        return "win" if team == winner else "loss"
+
+    if market == "dc" and len(parts) == 2:  # 더블찬스: 승 또는 무
+        team = parts[1]
+        if team not in (home, away):
+            return None
+        if home_score == away_score:
+            return "win"
         winner = home if home_score > away_score else away
         return "win" if team == winner else "loss"
 

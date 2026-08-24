@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS predictions (
     odds       NUMERIC     NOT NULL,
     ev         NUMERIC     NOT NULL,
     kelly      NUMERIC     NOT NULL,                -- 하프 켈리, 뱅크롤 5% 상한
+    p_market   NUMERIC,                             -- 픽 시점 시장 확률 (λ 재추정용)
+    p_ensemble NUMERIC,                             -- 수축 전 앙상블 확률 (λ 재추정용)
     result     TEXT,                                -- NULL | 'win' | 'loss' | 'push'
     pnl        NUMERIC,                             -- 1유닛 기준 손익 (win: odds-1, loss: -1, push: 0)
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()

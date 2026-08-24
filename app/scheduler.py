@@ -31,19 +31,34 @@ def yesterday_kst() -> str:
 
 
 async def prefetch_job() -> None:
-    """오늘 슬레이트 프리페치 — 수집+딥서치+판정까지 캐시에 적재."""
+    """[1] 새벽 프리페치 = 심층 리서치 파이프라인.
+
+    전 경기 심층 리서치(경기당 Perplexity 1콜, 세마포어 동시 처리) + 2단 판정
+    (잠정 결론 → 반박 검증)까지 실행해 캐시. 실패 경기는 '리서치 미완' 마킹 —
+    첫 요청 시 신선도 게이트가 온디맨드로 보완한다.
+    """
+    import time
+
+    from app.pipeline import default_date
+    from app.research.deep import log_cost_summary, research_calls_today
+
     pool = await get_pool()
     redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    t0 = time.monotonic()
     try:
         for sport in ("mlb", "soccer"):
             try:
                 report = await run_pipeline(
-                    pool, redis, sport=sport, date=today_kst(), force_refresh=True
+                    pool, redis, sport=sport, date=default_date(sport), force_refresh=True
                 )
                 logger.info("[scheduler] prefetched %s report (%d chars)", sport, len(report))
             except ApiQuotaError as exc:
                 logger.error("[scheduler] prefetch %s halted by quota: %s", sport, exc)
                 await notify_quota(exc.service, exc.detail)
+        calls = await research_calls_today(redis)
+        logger.info("[scheduler] prefetch 총 소요 %.1fs · 금일 리서치 %d콜 (상한 60)",
+                    time.monotonic() - t0, calls)
+        await log_cost_summary(redis)
     finally:
         await redis.aclose()
 

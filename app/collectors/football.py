@@ -136,6 +136,36 @@ async def upsert_games_from_football_data(
     return ext_ids
 
 
+async def fetch_league_seasons(
+    client: FootballDataClient, fd_code: str,
+) -> dict[str, dict]:
+    """순위표 → 팀명 → {position, points, played, gf, ga, form} (판정 실데이터 입력용)."""
+    try:
+        data = await client.fetch_standings(fd_code)
+    except Exception as exc:
+        logger.warning("[football_data] standings fetch failed for %s: %s", fd_code, exc)
+        return {}
+    out: dict[str, dict] = {}
+    for standing in data.get("standings", []):
+        if standing.get("type") != "TOTAL":
+            continue
+        for row in standing.get("table", []):
+            out[row["team"]["name"]] = {
+                "position": row.get("position"), "points": row.get("points"),
+                "played": row.get("playedGames"), "gf": row.get("goalsFor"),
+                "ga": row.get("goalsAgainst"), "form": (row.get("form") or "").replace(",", ""),
+            }
+    return out
+
+
+def season_for_team(seasons: dict[str, dict], team: str) -> dict | None:
+    """팀명 표기 차이를 퍼지 매칭으로 흡수해 시즌 데이터 조회."""
+    if team in seasons:
+        return seasons[team]
+    matched = match_team_name(team, list(seasons))
+    return seasons.get(matched) if matched else None
+
+
 def check_apifootball_quota(data: dict) -> dict:
     """API-Football은 쿼터 초과를 HTTP 200 + errors 필드로 반환한다."""
     errors = data.get("errors")

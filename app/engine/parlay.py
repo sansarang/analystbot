@@ -42,46 +42,47 @@ def _pick_combo(cands: list[dict], sizes: tuple[int, ...],
 
 
 def build_tiered_parlays(
-    singles: list[dict], low_var: list[dict], flat_stake_krw: int | None,
+    legs: list[dict], flat_stake_krw: int | None = None,
 ) -> dict:
-    """리스크 등급제 조합 1(안정)·2(균형)·3(고배당).
+    """[9] 전 마켓 승인 레그 풀에서 리스크 등급제 조합 1(안정)·2(균형)·3(고배당).
 
-    singles: 판정 통과(제외·플래그 아님) 승패 픽 [{game_id, side, odds, p, confidence, league, starts_at_kst}]
-    low_var: 저분산 마켓 레그 [{game_id, desc, odds, p, confidence, league, starts_at_kst}]
-    규칙: 동일 레그 최대 2개 조합, 판정 제외/저신뢰 레그 금지(입력 전 필터),
-          기준 미달 시 억지로 채우지 않고 '성립 안 됨'.
+    legs: [{game_id, desc, market, odds, p, confidence, league, starts_at_kst}]
+    - 안정형: 레그당 확률 60%+ (더블찬스·+핸디·강한 언더오버 위주), 합산 1.8~2.5
+    - 균형형: 승패+토탈 혼합, 3~6
+    - 고배당형: 역배·-1.5 허용, 8~20
+    규칙: 동일 레그 최대 2개 조합, 같은 경기 레그 2개(상관 마켓)는 한 조합에 금지
+          (_pick_combo의 game_id 중복 배제), 기준 미달 시 억지로 채우지 않는다.
+    '조합 성립 불가'는 전 마켓 검토 후 승인 레그 2개 미만일 때만 — 사유에 검토 범위 명시.
     """
-    def key(leg):
-        return f"{leg['game_id']}:{leg.get('desc') or leg.get('side')}"
-
-    h2h = sorted(
-        [{**s, "key": key(s), "desc": s.get("desc") or f"{s['side']} 승"} for s in singles],
+    reviewed = "승패·더블찬스·핸디캡·언더오버 전 마켓 검토"
+    cands = sorted(
+        [{**l, "key": f"{l['game_id']}:{l.get('desc') or l.get('side')}",
+          "desc": l.get("desc") or f"{l.get('side')} 승"} for l in legs],
         key=lambda x: (CONF_RANK.get(x.get("confidence", "medium"), 1), x["p"]),
         reverse=True,
     )
-    lv = sorted(
-        [{**s, "key": key(s)} for s in low_var],
-        key=lambda x: (CONF_RANK.get(x.get("confidence", "medium"), 1), x["p"]),
-        reverse=True,
-    )
-    all_cands = h2h + lv
-    if len({c["key"] for c in all_cands}) < 2:
-        return {"combos": [], "reason": "판정 통과 레그가 2개 미만 — 조합 성립 불가",
+    distinct_games = len({c["game_id"] for c in cands})
+    if distinct_games < 2:
+        return {"combos": [],
+                "reason": f"{reviewed} — 승인 레그가 {distinct_games}경기분뿐이라 조합 성립 불가",
                 "all_fail_prob": None}
 
+    stable = [c for c in cands if c["p"] >= 0.60]
+    mixed = [c for c in cands if c.get("market") in ("h2h", "totals", None)]
     usage: dict[str, int] = {}
     combos, relaxed_any = [], False
     tiers = [
-        ("안정형", lv[:8] or h2h[:8], (2,), 1.8, 2.5,
+        ("안정형", stable[:10], (2,), 1.8, 2.5,
          f"권장 {flat_stake_krw:,}원 (플랫 100%)" if flat_stake_krw else "플랫 100%"),
-        ("균형형", h2h[:8], (2, 3), 3.0, 6.0,
+        ("균형형", mixed[:10], (2, 3), 3.0, 6.0,
          f"권장 {flat_stake_krw // 2:,}원 (50%)" if flat_stake_krw else "플랫 50%"),
-        ("고배당형·고위험 로또형", (h2h + lv)[:10], (3, 4), 8.0, 20.0, "소액 고정 (자금 0.3%)"),
+        ("고배당형·고위험 로또형", cands[:12], (3, 4), 8.0, 20.0, "소액 고정 (자금 0.3%)"),
     ]
     for name, pool_, sizes, lo, hi, stake_note in tiers:
         combo, relaxed = _pick_combo(pool_, sizes, lo, hi, usage)
         if combo is None:
-            combos.append({"tier": name, "ok": False, "reason": "오늘은 성립 안 됨 (레그 부족)"})
+            combos.append({"tier": name, "ok": False,
+                           "reason": f"오늘은 성립 안 됨 ({reviewed} 후 조건 맞는 레그 부족)"})
             continue
         for leg in combo["legs"]:
             usage[leg["key"]] = usage.get(leg["key"], 0) + 1

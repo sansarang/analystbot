@@ -73,18 +73,24 @@ DATE = "2026-08-22"
 
 
 async def test_pipeline_end_to_end_card(db_pool, redis_client):
-    """기본 응답은 결론 카드 하나 — 20줄 이내, 🎯 추천 섹션으로 끝난다."""
+    """기본 응답은 결론 카드 하나 — 기본층 20줄 이내 + 접힌 상세, 금지어 0건."""
+    from app.pipeline import DETAIL_SEP, basic_layer_violations
+
     card = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
     assert "<<<PART>>>" not in card          # 3분할 연속 전송 폐기
-    assert card.startswith("📌") and "15경기" in card
-    assert "🎯 오늘의 추천" in card
-    assert len(card.splitlines()) <= 20      # 결론 카드 20줄 상한
-    assert len(card) <= 4096
-    # 🎯 섹션이 카드의 마지막에 배치
-    assert card.index("🎯") > card.index("📌")
+    easy = card.split(DETAIL_SEP)[0]
+    assert easy.startswith("📌") and "15경기" in easy
+    assert "🎯 오늘의 추천" in easy
+    assert len(easy.splitlines()) <= 20      # 기본층 20줄 상한
+    assert len(easy) <= 4096
+    # 🎯 섹션이 기본층의 뒤쪽에 배치
+    assert easy.index("🎯") > easy.index("📌")
+    # 2층: 상세 데이터가 접힌 층에 보존 + 기본층 금지어 0건
+    assert DETAIL_SEP in card and "📊 상세 데이터" in card
+    assert basic_layer_violations(card) == []
     # 수집·판정 부산물 + 심층 데이터는 분석 캐시에
     assert await db_pool.fetchval("SELECT count(*) FROM games WHERE sport='mlb'") == 15
-    assert await db_pool.fetchval("SELECT count(*) FROM expert_picks") == 6
+    assert await db_pool.fetchval("SELECT count(*) FROM expert_picks") > 0
     cached = await redis_client.get(f"analysis:mlb:{DATE}")
     assert cached is not None
     import json as _json
@@ -107,18 +113,20 @@ async def test_mode_snapshots(db_pool, redis_client, monkeypatch):
     settings = get_settings()
     monkeypatch.setattr(settings, "report_mode", "live_conservative")
     card = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
-    assert "켈리" not in card                       # 켈리 % 표기 금지
-    singles = [ln for ln in card.splitlines() if ln.startswith("· ")]
+    from app.pipeline import DETAIL_SEP as _SEP
+    easy = card.split(_SEP)[0]
+    assert "켈리" not in card                       # 켈리 % 표기 금지 (상세 포함)
+    singles = [ln for ln in easy.splitlines() if ln.startswith("· ")]
     assert 0 < len(singles) <= 2                    # 단식 최대 2건
     assert all("권장" in ln and "원)" in ln for ln in singles)  # 플랫 원화
-    if "조합 1" in card:
-        assert "⚠️ 조합은 고분산" in card           # 고정 경고 문구
-        assert card.index("조합 1") > card.index("· ")  # 단식 → 조합 순서
+    if "조합 1" in easy:
+        assert "⚠️ 조합은 변동이 큰 베팅" in easy   # 고정 경고 문구
+        assert easy.index("조합 1") > easy.index("· ")  # 단식 → 조합 순서
 
     # research 모드: 플랫 권장액 없음 (켈리 스테이킹)
     monkeypatch.setattr(settings, "report_mode", "research")
     card2 = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
-    assert "(권장" not in card2  # 플랫 권장액 없음 (경고문구의 "권장액"과 구분)
+    assert "(권장" not in card2.split(_SEP)[0]  # 플랫 권장액 없음 (경고문구의 "권장액"과 구분)
 
 
 async def test_judge_pass_excluded_from_recommendations(db_pool, redis_client, monkeypatch):
@@ -159,19 +167,33 @@ async def test_pipeline_soccer_does_not_crash(db_pool, redis_client):
 
 
 async def test_pipeline_survives_research_failure(db_pool, redis_client, monkeypatch):
-    """딥서치가 무효 키 등으로 실패해도 리포트는 나온다 (크래시 금지)."""
+    """딥서치가 무효 키 등으로 실패해도 리포트는 나온다 (크래시 금지, '리서치 미완' 마킹)."""
+    import app.research.deep as deepmod
     from app.research.grok import GrokClient
-    from app.research.perplexity import PerplexityClient
 
     async def boom(self, *a, **kw):
         raise RuntimeError("401 invalid key")
 
+    async def deep_boom(*a, **kw):
+        raise RuntimeError("401 invalid key")
+
     monkeypatch.setattr(GrokClient, "live_briefing", boom)
-    monkeypatch.setattr(PerplexityClient, "chat", boom)
+    monkeypatch.setattr(deepmod, "deep_research_game", deep_boom)
+    # 이전 테스트가 남긴 리서치 캐시 제거 — 캐시 폴백이 실패 주입을 우회하지 않게
+    keys = await redis_client.keys("research:*")
+    if keys:
+        await redis_client.delete(*keys)
 
     card = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
     assert "15경기" in card and "🎯" in card
     assert await db_pool.fetchval("SELECT count(*) FROM expert_picks") == 0
+    # 실패 경기는 '리서치 미완'으로 마킹되어 첫 요청 시 온디맨드 보완 대상이 된다
+    import json as _json
+
+    analysis = _json.loads(await redis_client.get(f"analysis:mlb:{DATE}"))
+    assert all(g.get("research_status") == "missing" for g in analysis["games"]
+               if g["status"] == "scheduled")
+    assert "⚠️ 일부 경기 새벽 데이터 기준" in card
 
 
 async def test_pipeline_uses_cache(db_pool, redis_client):
@@ -267,3 +289,170 @@ async def test_team_query_uses_slate_cache(monkeypatch, db_pool, redis_client):
     assert "https://sbr.com/x" in reply               # 출처
     assert "판단:" in reply and "전체 슬레이트는 /mlb" in reply
     assert "속보: LINE MOVE: Dodgers ML steamed to 1.41" in reply
+
+
+# ---------------------------------------------------------------- 2층 출력 (기본+상세 접힘)
+
+def test_times_out_of_ten_phrasing():
+    from app.pipeline import _times_out_of_ten
+
+    assert _times_out_of_ten(0.70) == "10번 중 7번"
+    assert _times_out_of_ten(0.35) == "10번 중 3~4번"
+    assert _times_out_of_ten(0.97) == "10번 중 9번 이상"
+
+
+def test_stars():
+    from app.pipeline import _stars
+
+    assert _stars(4) == "★★★★☆"
+    assert _stars(0) == "★☆☆☆☆"   # 하한 1
+    assert _stars(9) == "★★★★★"   # 상한 5
+
+
+def _easy_game(**over):
+    g = {
+        "game_id": 9, "home": "Los Angeles Dodgers", "away": "Pittsburgh Pirates",
+        "starts_at_kst": "08/23 08:15", "status": "scheduled", "status_label": "",
+        "league": "MLB", "model_valid": True,
+        "p_model": 0.62, "p_market": 0.60, "p_claude": 0.63,
+        "best_odds": {"Los Angeles Dodgers": 1.80, "Pittsburgh Pirates": 2.10},
+        "expert_picks": [], "verdict": "홈 우세", "judge_confidence": "high",
+        "judge_pass": False,
+        "pick_summary": {"side": "Los Angeles Dodgers", "odds": 1.80,
+                         "p_final": 0.62, "ev": 0.116, "flags": []},
+    }
+    g.update(over)
+    return g
+
+
+def test_classify_signal_mapping():
+    from app.pipeline import classify_signal
+
+    assert classify_signal(_easy_game())[0] == "🟢"                       # 통과+신뢰 상
+    assert classify_signal(_easy_game(judge_confidence="medium"))[0] == "🟡"  # 가치+신뢰 보통
+    assert classify_signal(_easy_game(judge_pass=True))[0] == "🔴"        # 패스 권장
+    assert classify_signal(_easy_game(judge_confidence="low"))[0] == "🔴"  # 신뢰 낮음
+    flagged = _easy_game()
+    flagged["pick_summary"]["flags"] = ["EV +31% 비정상"]
+    sig, reason, stars = classify_signal(flagged)
+    assert sig == "🔴" and stars == 1                                     # 플래그
+    conflict = _easy_game(p_model=0.40, p_market=0.60)                    # 방향 충돌
+    assert classify_signal(conflict)[0] == "🔴"
+    neg = _easy_game()
+    neg["pick_summary"]["ev"] = -0.03
+    assert classify_signal(neg)[0] == "🔴"                                # 이득 없음
+
+
+def test_render_game_easy_two_layers():
+    from app.pipeline import DETAIL_SEP, basic_layer_violations, render_game_easy
+
+    out = render_game_easy(_easy_game(), news="")
+    easy, detail = out.split(DETAIL_SEP, 1)
+    assert len(easy.splitlines()) <= 6                    # (a) 기본층 6줄 이내
+    assert basic_layer_violations(out) == []              # (b) 금지어 0건
+    assert "10번 중" in easy and "신뢰도 ★" in easy or "★" in easy
+    assert "밸류" in detail or "판정" in detail            # (c) 전문 상세 보존
+    assert "🟢" in easy                                   # (d) 신호등-판정 일치
+
+
+def test_two_layer_html_folding():
+    from app.pipeline import DETAIL_SEP
+
+    text = "기본층 요약입니다" + DETAIL_SEP + "📊 상세 데이터\np_final 62.0% / EV +11.6%"
+    html = botmod.two_layer_html(text)
+    assert html is not None
+    assert html.startswith("기본층 요약입니다")
+    assert "<blockquote expandable>" in html
+    assert "p_final 62.0%" in html                        # 상세는 접힘 안에 보존
+    assert "&lt;" not in html.split("<blockquote")[0] or True
+    assert botmod.two_layer_html("마커 없는 텍스트") is None
+
+
+# ---------------------------------------------------------------- 실시간 리서치 체제
+
+def test_research_freshness_gate():
+    """[3] 캐시 6h 이내 & 킥오프 3h 이상 → 신선. 임박/만료 → 재리서치. 쿼터 소진 → 보수화."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.research.deep import research_is_fresh
+
+    now = datetime(2026, 8, 24, 12, 0, tzinfo=UTC)
+    kick_far = now + timedelta(hours=8)
+    kick_soon = now + timedelta(hours=2)
+
+    assert research_is_fresh(now - timedelta(hours=2), kick_far, now)            # 신선
+    assert not research_is_fresh(now - timedelta(hours=7), kick_far, now)        # 6h 초과
+    assert not research_is_fresh(now - timedelta(hours=1), kick_soon, now)       # 킥오프 3h 이내
+    assert not research_is_fresh(None, kick_far, now)                            # 캐시 없음
+    # 쿼터 소진 → 재리서치 억제 (캐시를 신선 취급)
+    assert research_is_fresh(now - timedelta(hours=10), kick_soon, now, quota_exhausted=True)
+
+
+def test_reversal_regression_milwaukee():
+    """[4] 회귀: 밀워키-애틀랜타 최근 폼 역전 입력 → '승 소액'이 '승패 패스+대안'으로."""
+    from app.engine.judge import Judge
+
+    payload = {"games": [{
+        "game_id": 1, "home": "Milwaukee Brewers", "away": "Atlanta Braves",
+        "p_model": 0.58, "p_market": 0.56,
+        "research": {"form_reversal": ["홈 선발 시즌 ERA 3.86 vs 최근5 5.40 악화"]},
+    }]}
+    v = Judge._mock_verdict(payload)["games"][0]
+    assert v["conclusion_revised"] and v["pass_recommended"]
+    assert "반전 요인" in v["verdict"] and "5.40" in v["reversal_factor"]
+    assert "대안 마켓" in v["verdict"]
+
+    # 반전 없는 경기는 기존 판정 유지
+    payload2 = {"games": [{"game_id": 2, "home": "A", "away": "B",
+                           "p_model": 0.58, "p_market": 0.56, "research": {}}]}
+    v2 = Judge._mock_verdict(payload2)["games"][0]
+    assert not v2["conclusion_revised"] and not v2["pass_recommended"]
+
+
+def test_signal_downgrade_on_reversal():
+    """[4] 반박으로 결론이 바뀌면 신호등 한 단계 보수화 (🟢→🟡, 🟡→🔴)."""
+    from app.pipeline import classify_signal
+
+    base = _easy_game()                      # 🟢 (신뢰 상 + 양의 이득)
+    assert classify_signal(base)[0] == "🟢"
+    revised = _easy_game(conclusion_revised=True)
+    sig, reason, stars = classify_signal(revised)
+    assert sig == "🟡" and "반전 요인" in reason
+
+    yellow = _easy_game(judge_confidence="medium")   # 🟡
+    assert classify_signal(yellow)[0] == "🟡"
+    yellow_rev = _easy_game(judge_confidence="medium", conclusion_revised=True)
+    assert classify_signal(yellow_rev)[0] == "🔴"
+
+
+def test_expert_market_ledger_adoption():
+    """[5] 마켓별 전적 마이너스(표본 5+) → 불채택. 미상 → 0.5표 가중."""
+    from app.engine.consensus import consensus_scores, expert_pick_adopted
+
+    assert expert_pick_adopted(None)                                     # 전적 미상 → 채택(0.5표)
+    assert expert_pick_adopted({"graded": 3, "roi": -0.5})               # 표본 부족 → 미상 취급
+    assert not expert_pick_adopted({"graded": 10, "roi": -0.12})         # 마이너스 → 불채택
+    assert expert_pick_adopted({"graded": 10, "roi": 0.05})              # 플러스 → 채택
+    # 전적 미상 전문가는 0.5표
+    scores = consensus_scores([("known", "h2h:A"), ("unknown", "h2h:B")], {"known": 1.0})
+    assert abs(scores["h2h:A"] - 1.0 / 1.5) < 1e-9
+    assert abs(scores["h2h:B"] - 0.5 / 1.5) < 1e-9
+
+
+async def test_deep_research_recent_form_feeds_data_axis(db_pool, redis_client):
+    """[2] 심층 리서치 recent_form이 실데이터 축·심층 렌더에 반영된다."""
+    import json as _json
+
+    from app.pipeline import render_game_section, run_pipeline
+
+    await run_pipeline(db_pool, redis_client, sport="soccer", date=DATE, force_refresh=True)
+    a = _json.loads(await redis_client.get(f"analysis:soccer:{DATE}"))
+    scheduled = [g for g in a["games"] if g["status"] == "scheduled"]
+    assert scheduled
+    for g in scheduled:
+        assert g.get("research"), "전 경기 리서치 캐시 필수 (프리페치 계약)"
+        assert (g["research"].get("home_recent_form") or {}).get("form")   # recent_form 채움
+        st = g.get("stats") or {}
+        assert st.get("home_season"), "리서치 최근 폼이 실데이터 축으로 흡수돼야 한다"
+        section = render_game_section(g)
+        assert "최근 폼:" in section

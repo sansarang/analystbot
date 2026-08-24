@@ -86,3 +86,59 @@ async def test_pipeline_falls_back_to_mock_judge_on_quota(db_pool, redis_client,
     report = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
     assert "15경기" in report and "🎯" in report  # 목 판정 폴백으로 카드는 나온다
     assert "anthropic(judge)" in sent          # 알림은 발송됐다
+
+
+async def test_quota_notify_includes_recharge_guidance(monkeypatch):
+    """크레딧 소진 알림에 '충전' 안내와 서비스별 충전 URL이 포함된다."""
+    import app.notify as notify
+
+    notify.reset_notified()
+    sent = []
+
+    async def fake_send(text):
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr(notify, "send_telegram", fake_send)
+    assert await notify.notify_quota("perplexity", "402 Payment Required")
+    assert "충전이 필요합니다" in sent[0]
+    assert "https://www.perplexity.ai/settings/api" in sent[0]
+
+    assert await notify.notify_quota("anthropic(judge)", "credit balance too low")
+    assert "console.anthropic.com" in sent[1]
+
+    # 미등록 서비스도 충전 안내 문구는 나온다
+    assert await notify.notify_quota("unknown-svc", "quota exceeded")
+    assert "충전" in sent[2]
+
+    # 같은 서비스는 1회만
+    assert not await notify.notify_quota("perplexity", "again")
+    notify.reset_notified()
+
+
+async def test_deep_research_quota_error_notifies(monkeypatch, redis_client):
+    """심층 리서치 경로에서 크레딧 소진 시 충전 알림이 발송된다."""
+    from datetime import UTC, datetime
+
+    import app.notify as notify
+    import app.research.deep as deepmod
+    from app.collectors.base import ApiQuotaError
+
+    notify.reset_notified()
+    sent = []
+
+    async def fake_send(text):
+        sent.append(text)
+        return True
+
+    async def quota_boom(*a, **kw):
+        raise ApiQuotaError("perplexity", "402 Payment Required — 잔액 부족")
+
+    monkeypatch.setattr(notify, "send_telegram", fake_send)
+    monkeypatch.setattr(deepmod, "deep_research_game", quota_boom)
+    game = {"game_id": 999999, "home": "A", "away": "B",
+            "starts_at": datetime.now(UTC).isoformat()}
+    data, status = await deepmod.get_game_research(redis_client, game, "soccer")
+    assert data is None and status == "missing"
+    assert sent and "충전이 필요합니다" in sent[0] and "perplexity" in sent[0]
+    notify.reset_notified()

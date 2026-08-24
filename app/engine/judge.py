@@ -55,6 +55,14 @@ VERDICT_TOOL = {
                             "enum": ["high", "medium", "low"],
                             "description": "판정 신뢰도. 데이터가 반반이거나 부실하면 low — low는 추천에서 제외된다",
                         },
+                        "reversal_factor": {
+                            "type": "string",
+                            "description": "2차 반박 검증에서 발견된 실체적 반전 요인 (한국어, 근거 수치 포함). 없으면 빈 문자열",
+                        },
+                        "conclusion_revised": {
+                            "type": "boolean",
+                            "description": "반박 검증으로 1차 잠정 결론이 수정되었으면 true — 신호등이 한 단계 보수화된다",
+                        },
                         "excluded_picks": {
                             "type": "array",
                             "items": {
@@ -69,7 +77,8 @@ VERDICT_TOOL = {
                         },
                     },
                     "required": ["game_id", "p_claude", "verdict", "pass_recommended",
-                                 "confidence", "excluded_picks"],
+                                 "confidence", "reversal_factor", "conclusion_revised",
+                                 "excluded_picks"],
                     "additionalProperties": False,
                 },
             },
@@ -94,6 +103,14 @@ SYSTEM = """너는 20년 경력의 스포츠 베팅 수석 애널리스트다. �
 ⑤ 판단: 반드시 두 가지를 분리해서 결론 내라 — (a) 누가 이길 것인가 (b) 배당 대비 가치가 있는가. "이길 확률은 높지만 배당 1.45라 가치는 없다" 같은 결론이 정상이며 자주 나와야 한다. EV가 +20%를 넘으면 가치가 아니라 데이터 오류를 의심하고 플래그를 세워라.
 ⑥ 저분산 대안: 승패 단식이 고분산이면 핸디캡(+1.5 런라인, 더블찬스)이나 토탈 중 근거가 있는 저분산 마켓을 하나 제시하라.
 ⑦ 리스크 한 줄: 이 판단이 틀린다면 무엇 때문일지를 스스로 명시하라 (표본 부족, 불펜 소모, 로테이션 피로, 신인 변동성 등).
+
+[2단 판정 — 반박 의무 (전 경기)]
+모든 경기에서 반드시 두 단계로 판단하라.
+(1차) 입력 데이터로 잠정 결론을 세운다.
+(2차) 그 결론을 "반박"하는 데이터를 research(최근 폼·선발 최근 성적·결장·불펜)에서 의도적으로 찾아라. 특히 form_reversal 플래그(시즌 평균-최근 폼 역전)는 반드시 검토한다. 반박이 실체적이면 결론을 수정하고 reversal_factor에 근거 수치와 함께 명시하며 conclusion_revised=true로 제출한다. 시즌 평균이 좋아도 최근 폼이 무너진 픽(예: 선발 시즌 ERA 3.86 vs 최근5 5.40)은 승패 추천을 접고 대안 마켓 또는 패스로 전환하는 것이 정상이다. 반박이 실체가 없으면 reversal_factor는 빈 문자열, conclusion_revised=false.
+
+[전문가 전적 분리]
+각 expert_picks 항목에 ledger(마켓별 전적: graded/hit_rate/roi)와 adopted 플래그가 있다. adopted=false(해당 마켓 전적 마이너스)인 픽은 "불채택 — 인용 데이터만 참고"로 처리하고 판단문에 그렇게 명시하라. 전적 미상 전문가는 0.5표 가중으로만 취급한다.
 
 [문체]
 - 한국어. 팀명은 한국어 표기 통일. 시각은 KST.
@@ -183,18 +200,35 @@ class Judge:
 
     @staticmethod
     def _mock_verdict(payload: dict) -> dict:
-        """결정적 목 판정: p_claude = (p_model + p_market) / 2."""
+        """결정적 목 판정: p_claude = (p_model + p_market) / 2.
+
+        research.form_reversal 플래그가 있으면 2단 판정 규칙대로 결론을 보수 전환
+        (승패 패스 + 대안 마켓) — 회귀 테스트의 결정적 재현 경로.
+        """
         games = []
         for g in payload.get("games", []):
             p_model = float(g.get("p_model", 0.5))
-            p_market = float(g.get("p_market", 0.5))
+            p_market = float(g.get("p_market") or 0.5)
             p = max(0.05, min(0.95, (p_model + p_market) / 2))
+            reversal = (g.get("research") or {}).get("form_reversal") or []
+            if reversal:
+                games.append({
+                    "game_id": g["game_id"], "p_claude": round(p, 4),
+                    "verdict": (f"[mock] 반전 요인: {reversal[0]} — 잠정 '승 소액' 결론을 "
+                                "철회, 승패 패스. 대안 마켓(더블찬스·토탈)만 검토"),
+                    "pass_recommended": True, "confidence": "medium",
+                    "reversal_factor": str(reversal[0]), "conclusion_revised": True,
+                    "excluded_picks": [],
+                })
+                continue
             games.append({
                 "game_id": g["game_id"],
                 "p_claude": round(p, 4),
                 "verdict": "[mock] 모델과 시장 확률의 평균을 채택 (목 모드 판정)",
                 "pass_recommended": False,
                 "confidence": "medium",
+                "reversal_factor": "",
+                "conclusion_revised": False,
                 "excluded_picks": [],
             })
         return {"games": games}

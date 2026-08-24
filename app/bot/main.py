@@ -23,15 +23,48 @@ from app.config import get_settings
 from app.db import close_pool, get_pool
 from app.notify import notify_quota
 from app.pipeline import (
+    DETAIL_SEP,
     build_analysis,
     default_date,
+    ensure_game_fresh,
     mlb_slate_date,
-    render_game_section,
+    render_game_easy,
     render_news,
     render_sources,
     run_pipeline,
     today_kst,
 )
+
+
+async def _game_needs_refresh(jg: dict) -> bool:
+    """[3] 이 경기 리서치가 신선도 게이트를 위반하는지 (재리서치 필요 여부)."""
+    import json as _json
+    from datetime import datetime as _dt
+
+    from app.research.deep import (
+        DAILY_RESEARCH_CAP, research_calls_today, research_is_fresh,
+    )
+
+    if jg.get("status") != "scheduled":
+        return False
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        raw = await redis.get(f"research:{jg['game_id']}")
+        cached_at = None
+        if raw:
+            try:
+                cached_at = _dt.fromisoformat(_json.loads(raw)["at"])
+            except (KeyError, ValueError):
+                pass
+        starts = jg.get("starts_at")
+        if isinstance(starts, str):
+            starts = _dt.fromisoformat(starts)
+        if starts is None:
+            return cached_at is None
+        quota_out = (await research_calls_today(redis)) >= DAILY_RESEARCH_CAP
+        return not research_is_fresh(cached_at, starts, quota_exhausted=quota_out)
+    finally:
+        await redis.aclose()
 
 ASK_TEAM_TEXT = (
     "어느 팀 경기인지 못 찾았어요. 예: 다저스, 양키스, 맨시티\n"
@@ -49,6 +82,38 @@ def collapsed(title: str, body: str) -> str:
         f"{html_mod.escape(title)}\n"
         f"<blockquote expandable>{html_mod.escape(body)}</blockquote>"
     )
+
+
+def two_layer_html(text: str) -> str | None:
+    """<<DETAIL>> 마커가 있으면 기본층(보임) + 상세(접힌 인용문) HTML로 변환."""
+    if DETAIL_SEP not in text:
+        return None
+    easy, detail = text.split(DETAIL_SEP, 1)
+    easy, detail = easy.strip(), detail.strip()
+    if detail.startswith("📊 상세 데이터"):
+        detail = detail.split("\n", 1)[1] if "\n" in detail else ""
+    body = collapsed("📊 상세 데이터 (펼쳐서 보기)", detail or "(내용 없음)")
+    html = f"{html_mod.escape(easy)}\n\n{body}"
+    if len(html) > TELEGRAM_LIMIT:  # 접힌 상세만 잘라서 4096 안에 맞춘다
+        cut = len(html) - TELEGRAM_LIMIT + 40
+        detail = detail[:-cut] + "\n…(생략)"
+        html = f"{html_mod.escape(easy)}\n\n" + collapsed("📊 상세 데이터 (펼쳐서 보기)", detail)
+    return html
+
+
+async def send_two_layer(message, text: str, reply_markup=None) -> None:
+    """2층 텍스트 전송 — HTML 실패 시 마커만 바꿔 플레인으로 폴백."""
+    html = two_layer_html(text)
+    if html is None:
+        await message.answer(text[:TELEGRAM_LIMIT], reply_markup=reply_markup)
+        return
+    try:
+        await message.answer(html[:TELEGRAM_LIMIT], parse_mode="HTML", reply_markup=reply_markup)
+    except Exception as exc:
+        logger.warning("[bot] two-layer HTML send failed, plain fallback: %s", exc)
+        await message.answer(
+            text.replace(DETAIL_SEP, "\n\n— 상세 데이터 —\n")[:TELEGRAM_LIMIT],
+            reply_markup=reply_markup)
 
 
 async def load_analysis(sport: str, date: str) -> dict | None:
@@ -261,14 +326,14 @@ async def answer_query(sport: str, date: str | None = None, progress=None) -> st
 
 
 def _format_team_reply(game: dict, news: str, sport: str) -> str:
-    text = render_game_section(game, news)
+    easy, detail = render_game_easy(game, news).split(DETAIL_SEP, 1)
     urls = sorted({
         ep["source_url"] for ep in game.get("expert_picks", []) if ep.get("source_url")
     })
     if urls:
-        text += "\n📎 출처\n" + "\n".join(f"  {u}" for u in urls)
-    text += f"\n\n전체 슬레이트는 /{'mlb' if sport == 'mlb' else 'soccer'}"
-    return text
+        detail += "\n📎 출처\n" + "\n".join(f"  {u}" for u in urls)
+    easy += f"\n\n전체 슬레이트는 /{'mlb' if sport == 'mlb' else 'soccer'}"
+    return easy + DETAIL_SEP + detail
 
 
 async def answer_team_query(sport: str, team: str, progress=None) -> str:
@@ -294,6 +359,14 @@ async def answer_team_query(sport: str, team: str, progress=None) -> str:
             )
             if game:
                 logger.info("[bot] team query served from slate cache: %s", team)
+                if await _game_needs_refresh(game):
+                    if progress:
+                        await progress(1, 1, "🔍 최신 조사")
+                    fresh, refreshed = await ensure_game_fresh(sport, date, game["game_id"])
+                    if fresh is not None:
+                        game = next((x for x in fresh["games"]
+                                     if x["game_id"] == game["game_id"]), game)
+                        data = fresh
                 return _format_team_reply(game, data.get("news", ""), sport)
         analysis = await build_analysis(pool, sport, date, team=team, progress=progress)
         if not analysis["games"]:
@@ -446,12 +519,15 @@ def build_dispatcher():
     router = Router()
 
     async def _reply(message: Message, text: str) -> None:
+        if DETAIL_SEP in text:
+            await send_two_layer(message, text)
+            return
         for chunk in split_message(text):
             if chunk:
                 await message.answer(chunk)
 
     async def _send_card(message: Message, card: str, sport: str, date: str) -> None:
-        await message.answer(card[:4096], reply_markup=card_keyboard(sport, date))
+        await send_two_layer(message, card, reply_markup=card_keyboard(sport, date))
 
     def _make_progress(message: Message):
         """'⏳ 1/4 ...' 상태 메시지를 만들고 단계마다 edit_message_text로 갱신.
@@ -522,8 +598,8 @@ def build_dispatcher():
                     await state["msg"].delete()
                 except Exception:
                     pass
-        await message.answer(
-            card[:4096],
+        await send_two_layer(
+            message, card,
             reply_markup=card_keyboard("soccer", today_kst(), league_key=league_key))
 
     @router.message(Command("soccer"))
@@ -547,7 +623,7 @@ def build_dispatcher():
 
     @router.message(Command("픽"))
     async def on_pick_command(message: Message) -> None:
-        await message.answer((await answer_full_reco())[:4096])
+        await send_two_layer(message, await answer_full_reco())
 
     # ---------------- 인라인 버튼 콜백 (캐시에서 즉답 — 재계산 금지) ----------------
 
@@ -557,7 +633,7 @@ def build_dispatcher():
         sport, date, section = parts[1], parts[2], parts[3]
         league_key = parts[4] if len(parts) > 4 else None
         if section == "reco":
-            await cb.message.answer(await answer_full_reco())
+            await send_two_layer(cb.message, await answer_full_reco())
             await _safe_cb_answer(cb)
             return
         cache_key_league = league_key
@@ -614,9 +690,20 @@ def build_dispatcher():
             await _safe_cb_answer(cb)
             return
         g, analysis = found
-        section = render_game_section(g, analysis.get("news", ""))
-        title, _, body = section.partition("\n")
-        await cb.message.answer(collapsed(title, body or "(내용 없음)"), parse_mode="HTML")
+        if await _game_needs_refresh(g):
+            status_msg = await cb.message.answer("🔍 최신 조사 중... (킥오프 임박/캐시 만료 재리서치)")
+            sport2 = "mlb" if any(x["game_id"] == g["game_id"] for x in analysis["games"]) and analysis.get("sport") == "mlb" else analysis.get("sport", "soccer")
+            fresh, refreshed = await ensure_game_fresh(sport2, analysis.get("date", default_date(sport2)), g["game_id"])
+            try:
+                await status_msg.delete()
+            except Exception:
+                pass
+            if fresh is not None:
+                analysis = fresh
+                g = next((x for x in analysis["games"] if x["game_id"] == g["game_id"]), g)
+            if not refreshed:
+                g = {**g, "research_status": g.get("research_status") or "stale_fallback"}
+        await send_two_layer(cb.message, render_game_easy(g, analysis.get("news", "")))
         await _safe_cb_answer(cb)
 
     @router.callback_query(F.data == "noop")
@@ -639,7 +726,7 @@ def build_dispatcher():
             await message.answer(unsupported_league_text())
             return
         if scope == "picks":
-            await message.answer((await answer_full_reco())[:4096])
+            await send_two_layer(message, await answer_full_reco())
             return
         if scope == "ask":
             await message.answer(ASK_TEAM_TEXT)

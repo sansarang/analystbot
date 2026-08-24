@@ -24,14 +24,16 @@ SPORT_SOURCES = {
 
 MINOR_LEAGUE_FALLBACK = """
 If those sites have no picks for a match (common for minor leagues like the Danish Superliga or J1 League), search generally for "<league name> <home team> vs <away team> prediction" and use any reputable prediction site you find — include its real URL.
-For K League 1 matches, search KOREAN sources instead: "K리그 분석", "K리그 예상", 네이버 스포츠, 스포츠조선 등 — cite their real URLs."""
+For K League 1 matches, search KOREAN sources instead: "K리그 분석", "K리그 예상", 네이버 스포츠, 스포츠조선 등 — cite their real URLs.
+For Danish Superliga, J1 League and K League matches you MUST also find and include each team's LAST 5 MATCH RESULTS and CURRENT LEAGUE POSITION — put them in the "home_form"/"away_form"/"home_rank"/"away_rank" fields. This is mandatory, not optional."""
 
 PROMPT = """Find published expert picks for these {league} games on {date} (UTC), focusing on {sources}:
 
 {games_block}
 {fallback}
 Output ONLY a JSON array (no prose), one object per pick:
-[{{"expert": "...", "site": "...", "source_url": "...", "game": "<away> @ <home>", "pick": "...", "reasoning": "...", "record": "..."}}]
+[{{"expert": "...", "site": "...", "source_url": "...", "game": "<away> @ <home>", "pick": "...", "reasoning": "...", "record": "...", "home_form": "WDLWW or null", "away_form": "...", "home_rank": 3, "away_rank": 9, "predicted_score": "2-1 or null"}}]
+Include "home_form"/"away_form" (last 5 results, most recent first) and "home_rank"/"away_rank" (league table position) whenever the source or your search provides them. Include "predicted_score" when the site publishes one.
 "pick" must be one of: "<team> ML", "<team> +/-<line>", "Over <line>", "Under <line>".
 "reasoning" MUST be written in KOREAN (한국어로 근거를 요약·번역하라; 선수·팀 이름만 원어 허용). Do not output English sentences in "reasoning"."""
 
