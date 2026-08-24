@@ -28,6 +28,10 @@ UNAVAILABLE_MARKERS = (
     "미확인", "미상", "불가합니다", "불가하다", "불가능", "확정 불가", "파악 불가",
     "not available", "unable to", "cannot access", "can't access", "no data",
     "unavailable", "n/a", "not found", "insufficient data",
+    # 2026-08-25 프리페치 감사에서 통과해 버린 미탐 표현 보강
+    "제공되지 않", "확보되지 않", "포함되어 있지 않", "노출되지 않", "제시하지 않",
+    "찾기 어려", "설명하기 어려", "계산할 수 없", "파악할 수 없", "집계할 수 없",
+    "데이터가 없", "로그가 없", "직접 데이터가 없", "한계가 있",
 )
 
 # 결장 정보에 정상적으로 등장하는 "불가" 표현 — 미확보 산문으로 오판하지 않도록 제외
@@ -68,6 +72,13 @@ def _prompt_corpus() -> list[set[str]]:
     return _corpus_cache
 
 
+# "…하기 어렵다/어려움" 형태의 미확보 진술. '타선 공략이 어렵다' 같은 정상 평가와
+# 섞이지 않도록 '<동작>하기 어렵'으로 한정한다 (어렵/어려 두 활용형 모두 커버).
+_HARD_TO_RE = re.compile(
+    r"(확인|파악|산출|제시|설명|비교|요약|특정|집계|판단|조회|검증|추정|재구성|찾)하?기\s*(가\s*)?어[렵려]"
+)
+
+
 def _strip_keep_phrases(text: str) -> str:
     for phrase in _KEEP_PHRASES:
         text = text.replace(phrase, "")
@@ -76,7 +87,10 @@ def _strip_keep_phrases(text: str) -> str:
 
 def is_unavailable_prose(text: str) -> bool:
     """'데이터를 못 찾았다'는 진술인가."""
-    lowered = _strip_keep_phrases(str(text)).lower()
+    stripped = _strip_keep_phrases(str(text))
+    if _HARD_TO_RE.search(stripped):
+        return True
+    lowered = stripped.lower()
     return any(m.lower() in lowered for m in UNAVAILABLE_MARKERS)
 
 
@@ -93,6 +107,27 @@ def is_prompt_echo(text: str) -> bool:
         if len(tokens & ref) / len(tokens | ref) >= _ECHO_JACCARD:
             return True
     return False
+
+
+# 문장 분리 — 소수점(2.80, .781)에서 끊기지 않도록 마침표 뒤 공백/개행만 경계로 본다
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+|\n+")
+
+
+def filter_sentences(text) -> str | None:
+    """문장 단위로 미확보 진술만 걷어내고 실데이터 문장은 남긴다.
+
+    딥서치는 "A는 24.2이닝을 소화했다. 다만 3일 단위 분리는 불가능하다."처럼
+    실수치와 '못 찾았다' 단서를 한 값에 섞어 보낸다. 통째로 버리면 실데이터가
+    같이 사라지고, 통째로 살리면 비데이터가 데이터인 척 나간다 — 문장으로 가른다.
+    (단, '최근 5경기'처럼 구간을 단언하는 필드는 이 함수를 쓰지 않는다. 시즌 수치만
+     남아 최근 성적인 척 표기되는 새로운 오표기를 만들기 때문.)
+    """
+    parts = [s.strip() for s in _SENTENCE_RE.split(str(text)) if s.strip()]
+    kept = [s for s in parts if not is_unavailable_prose(s)]
+    if not kept:
+        return None
+    joined = " ".join(kept)
+    return joined if re.search(r"\d", joined) else None
 
 
 def invalid_reason(text, *, require_number: bool = True) -> str | None:
@@ -114,9 +149,17 @@ def invalid_reason(text, *, require_number: bool = True) -> str | None:
     return None
 
 
-def clean_text(text, *, require_number: bool = True) -> str | None:
-    """유효하면 원문, 무효면 None."""
-    return None if invalid_reason(text, require_number=require_number) else str(text).strip()
+def clean_text(text, *, require_number: bool = True, sentencewise: bool = False) -> str | None:
+    """유효하면 원문, 무효면 None.
+
+    sentencewise=True(자유서술 필드)는 미확보 문장만 걷어내고 나머지를 남긴다.
+    """
+    reason = invalid_reason(text, require_number=require_number)
+    if reason is None:
+        return str(text).strip()
+    if sentencewise and reason == "unavailable":
+        return filter_sentences(text)
+    return None
 
 
 def clean_form(value) -> str | None:
@@ -166,7 +209,7 @@ def _clean_form_block(block, dropped: list[str], prefix: str) -> dict:
                 dropped.append(f"{prefix}.{key}")
     for key in _TEXT_FIELDS_NUM:
         if key in block:
-            val = clean_text(block.get(key))
+            val = clean_text(block.get(key), sentencewise=True)
             if val:
                 out[key] = val
             elif block.get(key):
@@ -211,7 +254,7 @@ def sanitize_research(data: dict | None, sport: str = "mlb") -> tuple[dict, list
             out[side] = block
 
     for key in ("splits", "bullpen", "h2h_history"):
-        val = clean_text(data.get(key))
+        val = clean_text(data.get(key), sentencewise=True)
         if val:
             out[key] = val
         elif data.get(key):

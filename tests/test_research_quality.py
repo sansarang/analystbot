@@ -299,3 +299,61 @@ async def test_material_less_cache_does_not_burn_quota(redis_client, monkeypatch
     data, status = await deepmod.get_game_research(redis_client, game, "mlb")
     assert data is None and status == "invalid"
     assert called == []
+
+
+# ---------------------------------------------------------------- 문장 단위 필터 (오탐 방지)
+
+MIXED_BULLPEN = (
+    "전용 불펜 사용량 트래커에 따르면 Reds 불펜은 최근 7일 기준 약 24.2이닝을 소화한 것으로 집계된다. "
+    "다만 '지난 3일'만 분리해 재집계하는 것은 현재 데이터만으로 불가능해 수치를 제시할 수는 없음."
+)
+
+
+def test_mixed_sentence_keeps_real_numbers():
+    """[1] 오탐 방지: 실수치 문장 + '못 찾았다' 문장이 섞이면 앞만 남긴다."""
+    from app.research.validate import clean_text
+
+    out = clean_text(MIXED_BULLPEN, sentencewise=True)
+    assert out and "24.2이닝" in out
+    assert "불가능" not in out
+
+
+def test_all_prose_value_is_fully_dropped():
+    """[1] 전부 미확보 진술이면 문장 필터를 거쳐도 남는 게 없다."""
+    from app.research.validate import clean_text
+
+    prose = ("최신 데이터는 제공된 자료에 포함되어 있지 않습니다. "
+             "좌·우완 스플릿을 정확히 추적하기 어렵습니다. "
+             "따라서 '불명'으로 처리하는 것이 합리적입니다.")
+    assert clean_text(prose, sentencewise=True) is None
+
+
+def test_window_asserting_field_is_all_or_nothing():
+    """[1] '최근 5경기'를 단언하는 last5는 문장 필터를 쓰지 않는다.
+
+    시즌 수치만 남겨 두면 '선발 최근' 자리에 시즌 성적이 표기되는 새 오표기가 생긴다.
+    """
+    from app.research.validate import sanitize_research
+
+    payload = {
+        "home_pitcher": {
+            "name": "Jose Urena", "era_season": 2.80,
+            "last5": ("Ureña는 시즌 성적이 8-9, ERA 2.80, WHIP 1.24, 112.2이닝이다. "
+                      "다만 최근 5~7경기별 게임로그는 이 턴에서 접근이 불가능하다."),
+        },
+        "home_recent_form": {"form": "WLWLW"}, "absences": [], "expert_picks": [],
+    }
+    clean, _ = sanitize_research(payload, "mlb")
+    assert "last5" not in clean["home_pitcher"]
+    assert clean["home_pitcher"]["era_season"] == 2.80   # 수치 필드는 유지
+
+
+def test_normal_analysis_with_difficult_is_not_dropped():
+    """[1] 오탐 방지: '공략하기 어렵다' 같은 정상 평가는 미확보 진술이 아니다."""
+    from app.research.validate import is_unavailable_prose
+
+    assert not is_unavailable_prose("Rasmussen의 구위는 상대 타선이 공략하기 어렵다는 평가가 많다")
+    assert not is_unavailable_prose("Wrigley Field는 바람 탓에 타구 판단이 어렵다")
+    # 반면 '<동작>하기 어렵' 형태의 미확보 진술은 잡는다
+    assert is_unavailable_prose("구체적으로 숫자를 들어 설명하기 어렵다")
+    assert is_unavailable_prose("최근 3일 불펜 피로도를 수치로 비교하기 어려움")
