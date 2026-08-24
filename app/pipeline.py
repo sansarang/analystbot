@@ -15,7 +15,7 @@ import anthropic
 import asyncpg
 import redis.asyncio as aioredis
 
-from app.collectors.base import ApiQuotaError, is_quota_error
+from app.collectors.base import ApiAuthError, ApiQuotaError, ApiRateLimitError
 from app.collectors.football import APIFootballClient
 from app.collectors.football import upsert_games as upsert_soccer_games
 from app.collectors.mlb import MLBClient, upsert_games
@@ -25,7 +25,7 @@ from app.engine.consensus import consensus_scores, load_expert_weights
 from app.engine.judge import Judge
 from app.engine.parlay import best_parlays
 from app.engine.value import devig, ensemble, ev, heuristic_model_prob, implied_prob, kelly
-from app.notify import notify_quota
+from app.notify import notify_api_error
 from app.research.grok import GrokClient
 from app.research.perplexity import PerplexityClient, fetch_expert_picks, save_expert_picks
 
@@ -148,12 +148,15 @@ async def _collect_soccer_stats(labels: set[str] | None = None) -> dict:
 
 async def _collect_research(
     pool: asyncpg.Pool, games: list[dict], date: str, league: str = "MLB",
-    sport: str = "mlb", redis=None,
+    sport: str = "mlb", redis=None, sequential: bool = False,
 ) -> tuple[str, list[str], dict, dict]:
-    """Grok 속보(슬레이트 1콜) ∥ 경기별 심층 리서치(세마포어 동시 처리).
+    """Grok 속보(슬레이트 1콜) ∥ 경기별 심층 리서치.
 
     반환: (news, news_urls, research_map{game_id: dict}, statuses{game_id: str}).
     리서치는 보조 신호 — 실패해도 파이프라인은 계속 간다 ('리서치 미완' 마킹).
+
+    sequential=True(프리페치)는 전 경기 동시 실행 대신 **경기 단위 순차** 처리다.
+    실사고: MLB 10경기 + 축구 17경기를 동시에 리서치해 Perplexity 429를 유발했다.
     """
     import redis.asyncio as aioredis
 
@@ -182,14 +185,24 @@ async def _collect_research(
                 logger.warning("[pipeline] expert pick save failed: %s", exc)
 
     scheduled = [g for g in games if g.get("status") == "scheduled"]
-    results = await asyncio.gather(
-        news_task, *(one(g) for g in scheduled), return_exceptions=True)
-    news_res = results[0]
+    if sequential:
+        # 리그·경기 단위 순차 — 속보 1콜만 병행하고 리서치는 한 건씩 (레이트리밋 방어)
+        news_fut = asyncio.ensure_future(news_task)
+        for g in scheduled:
+            try:
+                await one(g)
+            except Exception as exc:  # 개별 경기 실패는 전체를 막지 않는다
+                logger.warning("[pipeline] 순차 리서치 실패 %s: %s", g.get("home"), exc)
+                statuses[g["id"]] = "missing"
+        news_res = (await asyncio.gather(news_fut, return_exceptions=True))[0]
+    else:
+        results = await asyncio.gather(
+            news_task, *(one(g) for g in scheduled), return_exceptions=True)
+        news_res = results[0]
     try:
         if isinstance(news_res, BaseException):
             logger.error("[pipeline] grok briefing failed, continuing without news: %s", news_res)
-            if isinstance(news_res, ApiQuotaError):
-                await notify_quota(news_res.service, news_res.detail)
+            await notify_api_error(news_res)
             news = ""
         else:
             news = news_res
@@ -295,9 +308,12 @@ async def _noop_progress(step: int, total: int, label: str) -> None:
 async def build_analysis(
     pool: asyncpg.Pool, sport: str, date: str,
     team: str | None = None, league_key: str | None = None, progress=None,
-    redis=None,
+    redis=None, sequential_research: bool = False,
 ) -> dict:
-    """league_key 지정 시 그 리그만 수집·판정 (요청 범위 밖 API 호출 금지)."""
+    """league_key 지정 시 그 리그만 수집·판정 (요청 범위 밖 API 호출 금지).
+
+    sequential_research=True(프리페치)는 경기별 리서치를 순차 처리해 429를 피한다.
+    """
     settings = get_settings()
     progress = progress or _noop_progress
     await progress(1, 4, "일정·스탯 수집")
@@ -374,7 +390,8 @@ async def build_analysis(
     stats, _, (news, news_urls, research_map, research_statuses) = await asyncio.gather(
         stats_coro,
         snapshot_odds(pool, sport, client=OddsClient(), only_keys=active_keys),
-        _collect_research(pool, games, date, league, sport=sport, redis=redis),
+        _collect_research(pool, games, date, league, sport=sport, redis=redis,
+                          sequential=sequential_research),
     )
 
     # 3) 경기별 p_model / p_market / 전문가 컨센서스 (+마켓별 전적 분리 [5])
@@ -416,6 +433,7 @@ async def build_analysis(
             eps.append(ep)
         judge_games.append({
             "game_id": g["id"],
+            "sport": sport,   # [4] 출력 문구의 종목 분기 기준 (야구/축구 용어 오용 방지)
             "home": g["home"], "away": g["away"], "league": g["league"],
             "starts_at": g["starts_at"].isoformat(),
             "starts_at_kst": kst_hhmm(g["starts_at"]),
@@ -449,9 +467,10 @@ async def build_analysis(
     else:
         try:
             verdict = await Judge().judge(judge_payload)
-        except ApiQuotaError as exc:
-            logger.error("[pipeline] judge quota exhausted — falling back to mock verdict: %s", exc)
-            await notify_quota(exc.service, exc.detail)
+        except (ApiQuotaError, ApiAuthError, ApiRateLimitError) as exc:
+            logger.error("[pipeline] judge 실패(%s) — 목 판정으로 폴백: %s",
+                         type(exc).__name__, exc)
+            await notify_api_error(exc)   # 레이트리밋은 알림 없이 내부 처리
             verdict = Judge._mock_verdict(judge_payload)
     _attach_verdicts(judge_games, verdict)
 
@@ -492,7 +511,7 @@ async def build_analysis(
     # [9] 등급제 조합 — 전 마켓 승인 레그 풀에서 구성 (승무패 전용 구조 폐지)
     from app.engine.parlay import build_tiered_parlays
 
-    combos = build_tiered_parlays(approved_market_legs(judge_games), stake_krw)
+    combos = build_tiered_parlays(approved_market_legs(judge_games), stake_krw, sport)
 
     from app.research.deep import DAILY_RESEARCH_CAP, research_calls_today
     if redis is not None:
@@ -937,12 +956,141 @@ def _guard_basic(text: str, where: str) -> str:
     return text
 
 
-def render_game_easy(jg: dict, news: str = "") -> str:
+NO_MATERIAL_MSG = "최신 데이터 수집에 실패해 분석할 수 없습니다."
+
+# [4] 종목별 용어 — 야구는 라인업 발표, 축구는 킥오프
+LINEUP_MOMENT = {"mlb": "경기 시작 전 라인업 발표", "soccer": "킥오프 직전"}
+
+_DIGIT_RE = re.compile(r"\d")
+
+
+def _sport_of(jg: dict) -> str:
+    """[4] 경기 객체에서 종목 판정 — 문구의 종목 오용(야구에 '킥오프')을 막는다."""
+    if jg.get("sport") in ("mlb", "soccer"):
+        return jg["sport"]
+    if jg.get("league") == "MLB":
+        return "mlb"
+    st = jg.get("stats") or {}
+    if st.get("home_pitcher") or st.get("away_pitcher") or jg.get("home_pitcher"):
+        return "mlb"
+    return "soccer"
+
+
+def _player_names(jg: dict, research: dict) -> list[str]:
+    """그 경기 고유 식별에 쓸 선수 이름 (선발·결장자)."""
+    names: list[str] = []
+    st = jg.get("stats") or {}
+    for key in ("home_pitcher", "away_pitcher"):
+        if st.get(key):
+            names.append(str(st[key]))
+        block = research.get(key) or {}
+        if isinstance(block, dict) and block.get("name"):
+            names.append(str(block["name"]))
+    for item in research.get("absences") or []:
+        names += re.findall(r"[A-Z][a-z]+(?: [A-Z][a-z]+)+", str(item))
+    return [n for n in names if n]
+
+
+def line_is_game_specific(line: str, names: list[str]) -> bool:
+    """[3] 각 줄은 그 경기 고유의 숫자나 선수 이름을 최소 1개 포함해야 한다."""
+    return bool(_DIGIT_RE.search(line)) or any(n in line for n in names)
+
+
+def _pick_line(candidates: list[str], names: list[str], used: set[str] | None) -> str | None:
+    """[3] 고유 수치/이름을 포함하고 다른 경기와 겹치지 않는 첫 문장. 없으면 None(줄 생략)."""
+    for cand in candidates:
+        if not cand or not line_is_game_specific(cand, names):
+            continue
+        if used is not None and cand in used:
+            continue  # 다른 경기에서 이미 쓴 문장 → 다음 후보로 재생성
+        if used is not None:
+            used.add(cand)
+        return cand
+    return None
+
+
+def _value_candidates(jg: dict, home_kr: str, away_kr: str) -> list[str]:
+    """[3] '걸 만한가' 후보 — 전부 그 경기의 배당·확률 수치를 품는다."""
+    ps = jg.get("pick_summary") or {}
+    ev, odds = ps.get("ev"), ps.get("odds")
+    side_kr = _kr(ps.get("side")) if ps.get("side") else ""
+    desc = ps.get("desc") or side_kr
+    out: list[str] = []
+    if ps.get("flags"):
+        out.append(f"걸 만한가? 숫자가 이상해서({ps['flags'][0]}) 이 경기는 계산을 신뢰하지 않습니다.")
+    elif ev is None or odds is None:
+        out.append(f"걸 만한가? {home_kr} vs {away_kr} 배당이 아직 수집되지 않아 이득 계산이 불가능합니다.")
+    elif ps.get("approved"):
+        pf = ps.get("p_final")
+        hit = f"적중 계산 {pf:.0%}, " if pf is not None else ""
+        if ps.get("market") == "h2h":
+            out.append(f"걸 만한가? {side_kr} 승 배당 @{odds:.2f}({hit}이득 {ev:+.1%})이 "
+                       f"실력보다 후해 걸어볼 만합니다.")
+        else:
+            out.append(f"걸 만한가? 승패보다는 {desc} @{odds:.2f}({hit}이득 {ev:+.1%})가 "
+                       f"걸 만한 자리입니다.")
+    else:
+        rr = ps.get("reject_reason") or ""
+        pm, pmo = jg.get("p_model"), jg.get("p_market")
+        if "시장이 아는" in rr and pm is not None and pmo is not None:
+            out.append(f"걸 만한가? 봇 계산 {pm:.0%} vs 시장 {pmo:.0%}로 벌어진 만큼 "
+                       f"시장만 아는 정보가 있을 수 있어 피하는 게 안전합니다.")
+        elif "저분산" in rr:
+            out.append(f"걸 만한가? 확신이 부족해 {desc} @{odds:.2f} 같은 안전한 마켓만 볼 자리입니다.")
+        elif "근거 부족" in rr or "지지 축" in rr:
+            out.append(f"걸 만한가? {desc} @{odds:.2f}는 근거가 한 축뿐이라 "
+                       f"추천 기준(독립 근거 2개)에 못 미칩니다.")
+        elif ev > 0:
+            out.append(f"걸 만한가? {desc} @{odds:.2f}의 이득이 {ev:+.1%}에 그쳐 무리할 이유는 없습니다.")
+        else:
+            out.append(f"걸 만한가? {desc} @{odds:.2f}는 이득이 {ev:+.1%}입니다 — "
+                       f"이겨도 남는 게 없는 가격입니다.")
+        if odds is not None and ev is not None:
+            out.append(f"걸 만한가? 이 경기 최선의 자리인 {desc} @{odds:.2f}조차 "
+                       f"이득 {ev:+.1%}이라 관망이 낫습니다.")
+    return out
+
+
+def _caution_candidates(jg: dict, research: dict, sport: str) -> list[str]:
+    """[3][4] '조심할 점' 후보 — 그 경기 고유 수치·이름 기반, 종목 용어 분리."""
+    out: list[str] = []
+    absences = research.get("absences") or []
+    if absences:
+        out.append(f"결장 변수: {str(absences[0])[:70]}")
+    reversal = research.get("form_reversal") or []
+    if reversal:
+        out.append(f"시즌 평균과 최근 폼이 어긋납니다 — {str(reversal[0])[:70]}")
+    draw_p = (jg.get("market_probs") or {}).get("Draw") or 0
+    if sport == "soccer" and draw_p >= 0.28:
+        out.append(f"무승부 확률이 {draw_p:.0%}로 높은 유형의 경기입니다.")
+    if not jg.get("model_valid") and jg.get("p_market") is not None:
+        out.append(f"이 리그는 통계 표본이 부족해 시장 확률({jg['p_market']:.0%}) 외에 "
+                   f"기댈 숫자가 거의 없습니다.")
+    if sport == "mlb":
+        st = jg.get("stats") or {}
+        hp = st.get("home_pitcher") or (research.get("home_pitcher") or {}).get("name")
+        ap = st.get("away_pitcher") or (research.get("away_pitcher") or {}).get("name")
+        if hp or ap:
+            out.append(f"선발 예고({hp or '?'} vs {ap or '?'})는 "
+                       f"{LINEUP_MOMENT['mlb']}에서 바뀔 수 있습니다.")
+    elif jg.get("starts_at_kst"):
+        out.append(f"부상·라인업 변수는 {LINEUP_MOMENT['soccer']}({jg['starts_at_kst']})에 "
+                   f"바뀔 수 있습니다.")
+    return out
+
+
+def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> str:
     """심층 분석 2층 출력: 쉬운 요약 6줄 + <<DETAIL>> 뒤에 전문 상세(접힘용).
 
     데이터를 줄이지 않는다 — 표현만 바꾼다. 전문 수치는 전부 상세에 보존.
+    used: 여러 경기를 함께 낼 때 문장 중복을 막는 공유 집합 ([3]).
     """
+    from app.research.validate import research_materials, sanitize_research
+
     home_kr, away_kr = _kr(jg["home"]), _kr(jg["away"])
+    sport = _sport_of(jg)
+    research, _ = sanitize_research(jg.get("research") or {}, sport)
+    names = _player_names(jg, research)
     signal, reason, stars = classify_signal(jg)
     lines = [f"{jg['starts_at_kst']} {home_kr} vs {away_kr} [{jg.get('league', '?')}]"]
     lines.append(f"{signal} {reason}")
@@ -961,69 +1109,78 @@ def render_game_easy(jg: dict, news: str = "") -> str:
         lines.append("누가 이길까? 데이터가 부족해 저희도 판단을 보류합니다.")
 
     # 걸 만한가 — 전 마켓 중 최적 하나를 골라 결론까지 문장으로 ([8])
-    ps = jg.get("pick_summary") or {}
-    if ps.get("flags"):
-        lines.append("걸 만한가? 숫자가 이상해서 이 경기는 계산을 신뢰하지 않습니다.")
-    elif ps.get("ev") is None:
-        lines.append("걸 만한가? 배당이 아직 없어 이득 계산이 불가능합니다.")
-    elif ps.get("approved"):
-        if ps.get("market") == "h2h":
-            lines.append(f"걸 만한가? {_kr(ps['side'])} 승 배당(@{ps['odds']:.2f})이 실력보다 후하게 붙어 있어 걸어볼 만합니다.")
-        else:
-            lines.append(f"걸 만한가? 승패보다는 {ps.get('desc')}(@{ps['odds']:.2f})가 걸 만한 자리입니다.")
-    else:
-        rr = ps.get("reject_reason") or ""
-        if "시장이 아는" in rr:
-            lines.append("걸 만한가? 배당 움직임에 시장만 아는 정보가 있을 수 있어 피하는 게 안전합니다.")
-        elif "저분산" in rr:
-            lines.append("걸 만한가? 확신이 부족해 승패 단식은 피하는 날입니다.")
-        elif "근거 부족" in rr or "지지 축" in rr:
-            lines.append("걸 만한가? 근거가 한 축뿐이라 추천 기준(독립 근거 2개)에 못 미칩니다.")
-        elif ps.get("ev", 0) > 0:
-            lines.append("걸 만한가? 이득이 아주 약간 있는 정도라 무리할 이유는 없습니다.")
-        else:
-            lines.append("걸 만한가? 지금 배당엔 이득이 없습니다. 이겨도 남는 게 없는 가격입니다.")
+    value_line = _pick_line(_value_candidates(jg, home_kr, away_kr), names, used)
+    if value_line:
+        lines.append(value_line)
 
-    # 조심할 점
-    draw_p = (jg.get("market_probs") or {}).get("Draw") or 0
-    if not jg.get("model_valid"):
-        caution = "이 리그는 통계 데이터가 부족해서 감으로 잡은 부분이 있습니다."
-    elif draw_p >= 0.28:
-        caution = "무승부가 자주 나오는 유형의 경기입니다."
+    # 조심할 점 — 고유 수치·이름이 없으면 줄 자체를 생략 ([3])
+    if not any(research_materials(research).values()) and jg.get("p_market") is not None:
+        caution = _pick_line(
+            [f"조심할 점: 최신 데이터(최근 폼·전문가 픽·결장) 수집에 실패해 "
+             f"시장 확률 {jg['p_market']:.0%} 외에 근거가 없습니다."], names, used)
     else:
-        caution = "부상·라인업 변수는 킥오프 직전에 바뀔 수 있습니다."
-    lines.append(f"조심할 점: {caution}")
+        caution = _pick_line(_caution_candidates(jg, research, sport), names, used)
+        caution = f"조심할 점: {caution}" if caution else None
+    if caution:
+        lines.append(caution)
     lines.append(f"신뢰도 {_stars(stars)}")
 
     detail = render_game_section(jg, news)
     return _guard_basic("\n".join(lines[:6]) + DETAIL_SEP + detail, "game_easy")
 
 
+def render_games_easy(games: list[dict], news: str = "") -> list[str]:
+    """[3] 여러 경기를 함께 낼 때 — 경기 간 동일 문장이 나오지 않도록 공유 집합으로 렌더."""
+    used: set[str] = set()
+    return [render_game_easy(g, news, used=used) for g in games]
+
+
 def render_game_section(jg: dict, news: str = "") -> str:
-    """경기 1건 심층 ①~⑦ (버튼 응답·팀 질문 공용). 25줄 상한. 전면 한국어."""
+    """경기 1건 심층 ①~⑦ (버튼 응답·팀 질문 공용). 25줄 상한. 전면 한국어.
+
+    [1] 리서치 값은 렌더 직전 sanitize_research를 통과한다 — 프롬프트 문구·
+        "확인 불가" 산문이 데이터 자리에 출력되는 것을 캐시 구데이터까지 포함해 차단.
+    [2] recent_form·전문가 픽·결장 정보가 모두 비면 심층 분석을 만들지 않는다.
+    """
+    from app.research.validate import research_materials, sanitize_research
+
     home_kr, away_kr = _kr(jg["home"]), _kr(jg["away"])
+    sport = _sport_of(jg)
     ho = jg.get("best_odds", {}).get(jg["home"])
     ao = jg.get("best_odds", {}).get(jg["away"])
     matchup = (f"{home_kr}({ho:.2f}) vs {away_kr}({ao:.2f})"
                if ho and ao else f"{home_kr} vs {away_kr}")
     st = jg.get("stats") or {}
     pitchers = ""
-    if st.get("home_pitcher") or st.get("away_pitcher"):
+    if sport == "mlb" and (st.get("home_pitcher") or st.get("away_pitcher")):
         pitchers = f" | {st.get('home_pitcher') or '?'} vs {st.get('away_pitcher') or '?'}"
     label = f" [{jg['status_label']}]" if jg.get("status_label") else ""
-    lines = [f"{jg['starts_at_kst']} [{jg.get('league', '?')}] {matchup}{pitchers}{label}"]
+    header = f"{jg['starts_at_kst']} [{jg.get('league', '?')}] {matchup}{pitchers}{label}"
 
-    research = jg.get("research") or {}
+    research, dropped = sanitize_research(jg.get("research") or {}, sport)
+    mats = research_materials(research)
+    if not any(mats.values()):
+        # [2] 재료 없음 → 분석 생성 금지. 실패 사실만 알린다.
+        why = " (수집된 응답이 데이터가 아니라 무효 처리)" if dropped else ""
+        return "\n".join([header, f"⚠️ 리서치 실패{why}", NO_MATERIAL_MSG])
+
+    lines = [header]
     hr, ar = research.get("home_recent_form") or {}, research.get("away_recent_form") or {}
     if hr.get("form") or ar.get("form"):
         lines.append(f"최근 폼: {home_kr} {hr.get('form') or '?'} · {away_kr} {ar.get('form') or '?'}")
-    hp, ap = research.get("home_pitcher") or {}, research.get("away_pitcher") or {}
-    if hp.get("last5") or ap.get("last5"):
-        lines.append(f"선발 최근: 홈 {str(hp.get('last5') or '?')[:80]} / 원정 {str(ap.get('last5') or '?')[:80]}")
+    if sport == "mlb":
+        hp, ap = research.get("home_pitcher") or {}, research.get("away_pitcher") or {}
+        if hp.get("last5") or ap.get("last5"):
+            lines.append(f"선발 최근: 홈 {str(hp.get('last5') or '?')[:80]} "
+                         f"/ 원정 {str(ap.get('last5') or '?')[:80]}")
+    if research.get("absences"):
+        lines.append("결장: " + "; ".join(str(x) for x in research["absences"][:2])[:180])
     if research.get("form_reversal"):
         lines.append("⚠️ 폼 역전: " + "; ".join(str(x) for x in research["form_reversal"][:2])[:180])
-    if jg.get("research_status") in ("missing", "stale_fallback"):
-        lines.append("⚠️ 리서치 미완 — 새벽 데이터/시즌 평균 기준")
+    if jg.get("research_status") in ("missing", "invalid"):
+        lines.append("⚠️ 리서치 실패 — 최신 데이터를 수집하지 못했습니다")
+    elif jg.get("research_status") == "stale_fallback":
+        lines.append("⚠️ 리서치 미완 — 새벽 데이터 기준")
 
     probs = []
     if jg.get("p_market") is not None:
@@ -1221,7 +1378,8 @@ def rescope_analysis(analysis: dict, league_label: str) -> dict:
     sources = [s for s in analysis.get("sources", []) if s["url"] in urls]
     return {
         **analysis, "games": games, "picks": picks,
-        "combos": build_tiered_parlays(approved_market_legs(games), stake_krw),
+        "combos": build_tiered_parlays(approved_market_legs(games), stake_krw,
+                                       analysis.get("sport")),
         "sources": sources,
     }
 
@@ -1358,7 +1516,8 @@ async def _rejudge_after_breaking(analysis: dict, changes: list[dict]) -> dict:
 
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
     stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
-    analysis["combos"] = build_tiered_parlays(approved_market_legs(analysis["games"]), stake_krw)
+    analysis["combos"] = build_tiered_parlays(
+        approved_market_legs(analysis["games"]), stake_krw, analysis.get("sport"))
     flipped = old_reco - {p["pick"] for p in picks_out if p.get("recommended")}
     if flipped & old_parlay_legs:
         analysis["parlay_rebuilt_note"] = (
@@ -1411,8 +1570,7 @@ async def _refresh_stale_research(
         _attach_verdicts(refreshed, verdict)
     except Exception as exc:
         logger.warning("[pipeline] refresh re-judge failed, keeping verdicts: %s", exc)
-        if isinstance(exc, ApiQuotaError):
-            await notify_quota(exc.service, exc.detail)
+        await notify_api_error(exc)
     _enforce_data_rules(analysis["games"])
     picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport)
     analysis["picks"], analysis["parlays"] = picks_out, parlays
@@ -1420,7 +1578,8 @@ async def _refresh_stale_research(
 
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
     stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
-    analysis["combos"] = build_tiered_parlays(approved_market_legs(analysis["games"]), stake_krw)
+    analysis["combos"] = build_tiered_parlays(
+        approved_market_legs(analysis["games"]), stake_krw, analysis.get("sport"))
     meta["refreshed"] = len(refreshed)
     logger.info("[pipeline] freshness gate: %d games re-researched & re-judged", len(refreshed))
     return len(refreshed)
@@ -1457,8 +1616,7 @@ async def ensure_game_fresh(sport: str, date: str, game_id: int) -> tuple[dict |
             _attach_verdicts([jg], verdict)
         except Exception as exc:
             logger.warning("[pipeline] single-game re-judge failed: %s", exc)
-            if isinstance(exc, ApiQuotaError):
-                await notify_quota(exc.service, exc.detail)
+            await notify_api_error(exc)
         _enforce_data_rules(analysis["games"])
         picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport)
         analysis["picks"], analysis["parlays"] = picks_out, parlays
@@ -1533,8 +1691,12 @@ async def run_pipeline(
     date: str | None = None,
     force_refresh: bool = False,
     progress=None,
+    sequential_research: bool = False,
 ) -> str:
-    """결론 카드(단일 메시지)를 반환. 심층·속보·출처는 분석 캐시에서 버튼으로 제공."""
+    """결론 카드(단일 메시지)를 반환. 심층·속보·출처는 분석 캐시에서 버튼으로 제공.
+
+    sequential_research: 프리페치용 — 경기별 리서치를 순차 처리(레이트리밋 방어).
+    """
     settings = get_settings()
     # 날짜 기준: MLB=미국 동부 오늘(슬레이트 날짜), 축구=KST 오늘. 표기는 항상 KST.
     date = date or default_date(sport)
@@ -1544,7 +1706,8 @@ async def run_pipeline(
             logger.info("[pipeline] cache hit: card:%s:%s", sport, date)
             # 속보의 결론 반영: 캐시 응답 전에 최신 체크 → 중대 변화 시 재판정
             return await _freshness_gate(redis, sport, date, cached)
-    analysis = await build_analysis(pool, sport, date, progress=progress, redis=redis)
+    analysis = await build_analysis(pool, sport, date, progress=progress, redis=redis,
+                                    sequential_research=sequential_research)
     await (progress or _noop_progress)(4, 4, "결론 카드 작성")
     remaining = await redis.get("odds_quota_remaining")
     if remaining is not None and int(remaining) < 100:

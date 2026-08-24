@@ -86,7 +86,7 @@ def test_scheduler_jobs_registered():
     scheduler = build_scheduler()
     jobs = {j.id: j for j in scheduler.get_jobs()}
     assert set(jobs) == {"prefetch_daily", "odds_snapshot_30m", "grade_yesterday",
-                         "elo_refresh_weekly"}
+                         "elo_refresh_weekly", "research_retry_45m"}
     assert "day_of_week='mon'" in str(jobs["elo_refresh_weekly"].trigger)
     assert str(jobs["prefetch_daily"].trigger) == "cron[hour='4', minute='0']"
     assert str(jobs["grade_yesterday"].trigger) == "cron[hour='13', minute='0']"

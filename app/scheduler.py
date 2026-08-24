@@ -13,12 +13,12 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from app.collectors.base import ApiQuotaError
+from app.collectors.base import ApiAuthError, ApiQuotaError, ApiRateLimitError
 from app.collectors.odds import snapshot_odds
 from app.config import get_settings
 from app.db import get_pool
 from app.grader import grade_date
-from app.notify import notify_quota
+from app.notify import notify_api_error
 from app.pipeline import run_pipeline, today_kst
 
 logger = logging.getLogger(__name__)
@@ -33,32 +33,60 @@ def yesterday_kst() -> str:
 async def prefetch_job() -> None:
     """[1] 새벽 프리페치 = 심층 리서치 파이프라인.
 
-    전 경기 심층 리서치(경기당 Perplexity 1콜, 세마포어 동시 처리) + 2단 판정
-    (잠정 결론 → 반박 검증)까지 실행해 캐시. 실패 경기는 '리서치 미완' 마킹 —
-    첫 요청 시 신선도 게이트가 온디맨드로 보완한다.
+    전 경기 심층 리서치(경기당 Perplexity 1콜) + 2단 판정(잠정 결론 → 반박 검증)까지
+    실행해 캐시. 실패 경기는 '리서치 미완' 마킹 — 첫 요청 시 신선도 게이트가 온디맨드 보완.
+
+    레이트리밋 방어(실사고: MLB 10경기 + 축구 17경기 동시 리서치 → 429 폭주):
+    종목(리그) 단위로 순차 실행하고, 종목 안에서도 경기 단위 순차 처리한다.
+    마지막에 429로 실패해 큐에 쌓인 경기를 한 번 더 순차 재시도한다.
     """
     import time
 
     from app.pipeline import default_date
-    from app.research.deep import log_cost_summary, research_calls_today
+    from app.research.deep import (
+        drain_retry_queue,
+        log_cost_summary,
+        research_calls_today,
+        research_failure_report,
+    )
 
     pool = await get_pool()
     redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
     t0 = time.monotonic()
     try:
-        for sport in ("mlb", "soccer"):
+        for sport in ("mlb", "soccer"):   # 종목 단위 순차 (동시 실행 금지)
             try:
                 report = await run_pipeline(
-                    pool, redis, sport=sport, date=default_date(sport), force_refresh=True
+                    pool, redis, sport=sport, date=default_date(sport),
+                    force_refresh=True, sequential_research=True,
                 )
                 logger.info("[scheduler] prefetched %s report (%d chars)", sport, len(report))
-            except ApiQuotaError as exc:
-                logger.error("[scheduler] prefetch %s halted by quota: %s", sport, exc)
-                await notify_quota(exc.service, exc.detail)
+            except ApiRateLimitError as exc:   # 알림 대상 아님 — 큐 재시도로 흡수
+                logger.warning("[scheduler] prefetch %s 레이트리밋 — 큐 재시도 예정: %s", sport, exc)
+            except (ApiQuotaError, ApiAuthError) as exc:
+                logger.error("[scheduler] prefetch %s halted (%s): %s",
+                             sport, type(exc).__name__, exc)
+                await notify_api_error(exc)
+        recovered = await drain_retry_queue(redis)
         calls = await research_calls_today(redis)
-        logger.info("[scheduler] prefetch 총 소요 %.1fs · 금일 리서치 %d콜 (상한 60)",
-                    time.monotonic() - t0, calls)
+        fails = await research_failure_report(redis, today_kst())
+        logger.info("[scheduler] prefetch 총 소요 %.1fs · 금일 리서치 %d콜 (상한 60) · "
+                    "큐 복구 %d경기 · 실패 %s",
+                    time.monotonic() - t0, calls, recovered, fails or "없음")
         await log_cost_summary(redis)
+    finally:
+        await redis.aclose()
+
+
+async def research_retry_job() -> None:
+    """[6] 레이트리밋으로 밀린 리서치를 다음 사이클에 순차 재시도."""
+    from app.research.deep import drain_retry_queue
+
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        recovered = await drain_retry_queue(redis)
+        if recovered:
+            logger.info("[scheduler] research retry: %d경기 복구", recovered)
     finally:
         await redis.aclose()
 
@@ -102,9 +130,9 @@ async def odds_snapshot_job() -> None:
                 await redis.set(f"oddsnap:{key}", str(now.timestamp()), ex=86400)
         logger.info("[scheduler] odds snapshot: %d rows (keys=%s)",
                     total, {s: sorted(set(k)) for s, k in due.items() if k})
-    except ApiQuotaError as exc:
-        logger.error("[scheduler] odds snapshot halted by quota: %s", exc)
-        await notify_quota(exc.service, exc.detail)
+    except (ApiQuotaError, ApiAuthError) as exc:
+        logger.error("[scheduler] odds snapshot halted (%s): %s", type(exc).__name__, exc)
+        await notify_api_error(exc)
     finally:
         await redis.aclose()
 
@@ -123,9 +151,9 @@ async def grading_job() -> None:
     try:
         counts = await grade_date(pool, yesterday_kst(), "mlb")
         logger.info("[scheduler] graded yesterday: %s", counts)
-    except ApiQuotaError as exc:
-        logger.error("[scheduler] grading halted by quota: %s", exc)
-        await notify_quota(exc.service, exc.detail)
+    except (ApiQuotaError, ApiAuthError) as exc:
+        logger.error("[scheduler] grading halted (%s): %s", type(exc).__name__, exc)
+        await notify_api_error(exc)
 
 
 def build_scheduler() -> AsyncIOScheduler:
@@ -136,6 +164,8 @@ def build_scheduler() -> AsyncIOScheduler:
                       id="odds_snapshot_30m")
     scheduler.add_job(grading_job, CronTrigger(hour=13, minute=0, timezone=KST),
                       id="grade_yesterday")
+    scheduler.add_job(research_retry_job, IntervalTrigger(minutes=45),
+                      id="research_retry_45m")
     scheduler.add_job(elo_refresh_job,
                       CronTrigger(day_of_week="mon", hour=5, minute=0, timezone=KST),
                       id="elo_refresh_weekly")

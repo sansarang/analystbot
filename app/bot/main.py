@@ -18,10 +18,15 @@ import redis.asyncio as aioredis
 import html as html_mod
 
 from app.bot.aliases import find_team
-from app.collectors.base import ApiQuotaError, is_quota_error
+from app.collectors.base import (
+    ApiAuthError,
+    ApiRateLimitError,
+    ApiServiceError,
+    is_quota_error,
+)
 from app.config import get_settings
 from app.db import close_pool, get_pool
-from app.notify import notify_quota
+from app.notify import notify_api_error, notify_quota
 from app.pipeline import (
     DETAIL_SEP,
     build_analysis,
@@ -265,7 +270,7 @@ async def parse_intent(text: str) -> dict:
         return await _parse_intent_live(text, settings)
     except anthropic.APIStatusError as exc:
         if is_quota_error(exc.status_code, str(exc)):
-            await notify_quota("anthropic(intent)", str(exc))
+            await notify_quota("anthropic(intent)", str(exc))   # 크레딧 소진만 알림
         else:
             logger.warning("[bot] live intent parse failed, using rule-based: %s", exc)
         return parse_intent_mock(text)
@@ -298,7 +303,19 @@ async def _parse_intent_live(text: str, settings) -> dict:
     return json.loads(next(b.text for b in response.content if b.type == "text"))
 
 
-def _quota_reply(exc: ApiQuotaError) -> str:
+def _quota_reply(exc: ApiServiceError) -> str:
+    """[6] 실패 종류에 맞는 사용자 문구 — 429를 '충전 필요'로 안내하지 않는다."""
+    if isinstance(exc, ApiRateLimitError):
+        return (
+            f"⏳ {exc.service} 요청이 몰려 잠시 제한됐습니다(레이트리밋).\n"
+            f"크레딧 문제가 아니며, 자동 재시도로 이어집니다. 잠시 후 다시 시도해 주세요."
+        )
+    if isinstance(exc, ApiAuthError):
+        return (
+            f"⚠️ {exc.service} API 키 인증에 실패했습니다 (잔액 문제 아님).\n"
+            f"키 값을 확인하거나 교체한 뒤 다시 시도해 주세요.\n"
+            f"(상세: {exc.detail[:120]})"
+        )
     return (
         f"⚠️ {exc.service} API 사용량/크레딧이 소진되어 분석을 완료하지 못했습니다.\n"
         f"키를 충전하거나 교체한 뒤 다시 시도해 주세요.\n"
@@ -317,9 +334,9 @@ async def answer_query(sport: str, date: str | None = None, progress=None) -> st
     try:
         # date=None이면 run_pipeline이 종목별 기본(MLB=미 동부, 축구=KST)을 적용
         return await run_pipeline(pool, redis, sport=sport, date=date, progress=progress)
-    except ApiQuotaError as exc:
-        logger.error("[bot] quota exhausted: %s", exc)
-        await notify_quota(exc.service, exc.detail)
+    except ApiServiceError as exc:
+        logger.error("[bot] API 실패(%s): %s", type(exc).__name__, exc)
+        await notify_api_error(exc)   # 레이트리밋은 알림 없이 재시도 안내만
         return _quota_reply(exc)
     finally:
         await redis.aclose()
@@ -374,9 +391,9 @@ async def answer_team_query(sport: str, team: str, progress=None) -> str:
 
             return f"오늘({date}) {kr_team(team)} 경기를 찾지 못했습니다."
         return _format_team_reply(analysis["games"][0], analysis["news"], sport)
-    except ApiQuotaError as exc:
-        logger.error("[bot] quota exhausted: %s", exc)
-        await notify_quota(exc.service, exc.detail)
+    except ApiServiceError as exc:
+        logger.error("[bot] API 실패(%s): %s", type(exc).__name__, exc)
+        await notify_api_error(exc)   # 레이트리밋은 알림 없이 재시도 안내만
         return _quota_reply(exc)
     finally:
         await redis.aclose()
@@ -462,8 +479,8 @@ async def answer_league_query(league_key: str, progress=None) -> str:
                         json.dumps(analysis, ensure_ascii=False, default=str),
                         ex=get_settings().report_cache_ttl)
         return card
-    except ApiQuotaError as exc:
-        await notify_quota(exc.service, exc.detail)
+    except ApiServiceError as exc:
+        await notify_api_error(exc)
         return _quota_reply(exc)
     finally:
         await redis.aclose()
@@ -691,7 +708,8 @@ def build_dispatcher():
             return
         g, analysis = found
         if await _game_needs_refresh(g):
-            status_msg = await cb.message.answer("🔍 최신 조사 중... (킥오프 임박/캐시 만료 재리서치)")
+            # [4] 종목 중립 문구 — 야구 경기에 '킥오프'가 나가지 않도록
+            status_msg = await cb.message.answer("🔍 최신 조사 중... (경기 임박/캐시 만료 재리서치)")
             sport2 = "mlb" if any(x["game_id"] == g["game_id"] for x in analysis["games"]) and analysis.get("sport") == "mlb" else analysis.get("sport", "soccer")
             fresh, refreshed = await ensure_game_fresh(sport2, analysis.get("date", default_date(sport2)), g["game_id"])
             try:

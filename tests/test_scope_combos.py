@@ -203,6 +203,11 @@ def _soccer_jg(**over):
         "p_market": 0.52, "market_probs": {"Home FC": 0.52, "Draw": 0.25, "Away FC": 0.23},
         "best_odds": {"Home FC": 1.85, "Draw": 3.80, "Away FC": 4.20},
         "stats": {}, "expert_picks": [], "judge_confidence": "medium",
+        "research": {  # [2] 심층 분석은 재료가 있을 때만 생성된다
+            "home_recent_form": {"form": "WWDLW", "gf5": 9, "ga5": 4, "rank": 3},
+            "away_recent_form": {"form": "LDLWL", "gf5": 4, "ga5": 9, "rank": 11},
+            "absences": ["Away FC의 John Smith 햄스트링 결장"],
+        },
     }
     jg.update(over)
     return jg

@@ -226,7 +226,23 @@ def axes_label(axes: dict) -> str:
 
 # ---------------------------------------------------------------- 후보 생성·승인
 
+# [4] 종목별 마켓 용어 — 야구엔 더블찬스가 없고, 핸디캡은 '런라인'이라 부른다
 REVIEWED_MARKETS_KR = "승패·더블찬스·핸디캡·언더오버"
+REVIEWED_MARKETS_BY_SPORT = {
+    "mlb": "승패·런라인·언더오버",
+    "soccer": "승패·더블찬스·핸디캡·언더오버",
+}
+
+
+def reviewed_markets_kr(sport: str | None = None) -> str:
+    """검토 대상 마켓 표기 — 종목 미상(혼합 슬레이트)이면 전체 표기."""
+    return REVIEWED_MARKETS_BY_SPORT.get(sport or "", REVIEWED_MARKETS_KR)
+
+
+def spread_desc(sport: str, side_kr: str, line: float) -> str:
+    """핸디캡 마켓 표기 — 야구는 런라인, 축구는 핸디."""
+    label = "런라인" if sport == "mlb" else "핸디"
+    return f"{side_kr} {label} {line:+g}"
 
 
 def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[dict]:
@@ -279,7 +295,7 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
     for alt in jg.get("alt_markets", []):
         m, side, line = alt["market"], alt["side"], alt["line"]
         if m == "spreads":
-            desc = f"{kr_team(side)} 핸디 {line:+g}"
+            desc = spread_desc(sport, kr_team(side), line)
         else:
             desc = f"{'오버' if side == 'Over' else '언더'} {line:g}"
         basis = "시장 기준"

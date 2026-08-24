@@ -318,6 +318,15 @@ def _easy_game(**over):
         "best_odds": {"Los Angeles Dodgers": 1.80, "Pittsburgh Pirates": 2.10},
         "expert_picks": [], "verdict": "홈 우세", "judge_confidence": "high",
         "judge_pass": False,
+        "stats": {"home_pitcher": "Yoshinobu Yamamoto", "away_pitcher": "Paul Skenes"},
+        "research": {  # [2] 심층 분석은 재료가 있을 때만 생성된다
+            "home_recent_form": {"form": "WWLWW", "runs_avg": 5.1},
+            "away_recent_form": {"form": "LLWLL", "runs_avg": 3.2},
+            "home_pitcher": {"name": "Yoshinobu Yamamoto",
+                             "last5": "최근 5경기 ERA 2.41, 피OPS .610, 평균 6.2이닝",
+                             "era_recent": 2.41, "era_season": 2.90},
+            "absences": ["Mookie Betts 손목 부상 결장"],
+        },
         "pick_summary": {"side": "Los Angeles Dodgers", "odds": 1.80,
                          "p_final": 0.62, "ev": 0.116, "flags": []},
     }

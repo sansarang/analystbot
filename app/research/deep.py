@@ -7,21 +7,26 @@
 - 비용 가드: Perplexity 일 상한 60콜. 초과 시 게이트 보수화(재리서치 억제) + 카드 경고.
 """
 
+import asyncio
 import json
 import logging
 import re
 from datetime import UTC, datetime
 
+import httpx
+
 from app.config import get_settings
 from app.research.perplexity import PerplexityClient
+from app.research.validate import has_material, sanitize_research
 
 logger = logging.getLogger(__name__)
 
 RESEARCH_FRESH_HOURS = 6      # 캐시 신선 기준
 KICKOFF_GUARD_HOURS = 3       # 킥오프 임박 기준 — 이내면 무조건 재리서치
 DAILY_RESEARCH_CAP = 60       # Perplexity 일 상한 (초과 시 캐시 기준)
-RESEARCH_CONCURRENCY = 4      # 프리페치/일괄 재리서치 세마포어
+RESEARCH_CONCURRENCY = 2      # 일괄 재리서치 세마포어 (레이트리밋 방어로 축소)
 CACHE_TTL = 36 * 3600
+RETRY_QUEUE_KEY = "research_retry_queue"   # 레이트리밋 최종 실패분 — 다음 사이클 재시도
 EST_COST_PER_CALL_USD = 0.01  # sonar-pro 대략 단가 (주간 비용 추정 로그용)
 
 _SCHEMA_MLB = """{
@@ -67,6 +72,10 @@ TARGETS = {
 }
 
 
+class ResearchUnusableError(RuntimeError):
+    """응답은 왔지만 데이터가 아니다 — 프롬프트 반향/미확보 산문뿐인 경우."""
+
+
 def _extract_json_object(content: str) -> dict:
     m = re.search(r"```json\s*(\{.*?\})\s*```", content, re.S)
     if not m:
@@ -86,9 +95,10 @@ async def deep_research_game(game: dict, sport: str, client: PerplexityClient | 
             {"expert": "MockExpert", "site": "Covers", "source_url": "https://covers.com/mock",
              "pick": f"{game['home']} ML", "reasoning": "홈 최근 폼 우세 (목)", "record": "10-5"},
             {"expert": "MockTotals", "site": "Dimers", "source_url": "https://dimers.com/mock",
-             "pick": "Under 9.5", "reasoning": "양 선발 최근 호조 (목)", "record": None},
+             "pick": "Under 9.5", "reasoning": "양 팀 최근 득점력 저하 (목)", "record": None},
         ]
-        return data
+        clean, _ = sanitize_research(data, sport)
+        return clean
     kick = game.get("starts_at")
     prompt = PROMPT.format(
         sport_kr="MLB baseball" if sport == "mlb" else "football(soccer)",
@@ -97,13 +107,31 @@ async def deep_research_game(game: dict, sport: str, client: PerplexityClient | 
         kickoff=str(kick), targets=TARGETS[sport],
         schema=_SCHEMA_MLB if sport == "mlb" else _SCHEMA_SOCCER,
     )
-    resp = await client.chat(prompt)
     try:
-        return _extract_json_object(resp["choices"][0]["message"]["content"])
-    except (ValueError, json.JSONDecodeError, KeyError) as exc:
-        logger.warning("[deep] JSON parse failed (%s) — re-requesting once", exc)
-        resp = await client.chat(prompt + "\n\nReturn ONLY the JSON object, nothing else.")
-        return _extract_json_object(resp["choices"][0]["message"]["content"])
+        return await _ask_and_validate(client, prompt, sport)
+    except (ValueError, json.JSONDecodeError, KeyError, ResearchUnusableError) as exc:
+        logger.warning("[deep] 응답 무효 (%s) — 1회 재요청", exc)
+        return await _ask_and_validate(
+            client,
+            prompt + "\n\nReturn ONLY the JSON object, nothing else. "
+                     "Do NOT restate the question or explain what you could not find — "
+                     "use null for anything you cannot verify with a real number.",
+            sport,
+        )
+
+
+async def _ask_and_validate(client: PerplexityClient, prompt: str, sport: str) -> dict:
+    """1콜 → JSON 파싱 → 무효 값 제거 → 재료가 하나도 없으면 실패로 취급.
+
+    [1] 프롬프트 문구·"확인 불가" 산문이 recent_form 자리에 실리는 경로를 여기서 끊는다.
+    """
+    resp = await client.chat(prompt)
+    data = _extract_json_object(resp["choices"][0]["message"]["content"])
+    clean, dropped = sanitize_research(data, sport)
+    if not has_material(clean):
+        raise ResearchUnusableError(
+            f"재료 없음 — 무효 필드 {len(dropped)}개 제거 후 recent_form·전문가 픽·결장 정보 전무")
+    return clean
 
 
 # ---------------------------------------------------------------- 신선도 게이트
@@ -136,12 +164,101 @@ async def research_calls_today(redis) -> int:
     return int(v) if v else 0
 
 
-async def _record_call(redis) -> int:
-    n = await redis.incr(_quota_key())
+async def _record_call(redis, n_calls: int = 1) -> int:
+    """실제 발생한 HTTP 콜 수만큼 일 사용량을 올린다 (재요청 1콜도 비용이다)."""
+    n = await redis.incrby(_quota_key(), n_calls)
     await redis.expire(_quota_key(), 86400 * 2)
-    if n == DAILY_RESEARCH_CAP:
+    if n >= DAILY_RESEARCH_CAP > n - n_calls:
         logger.warning("[deep] 일 리서치 상한 %d콜 도달 — 이후 재리서치 억제", DAILY_RESEARCH_CAP)
     return n
+
+
+# ---------------------------------------------------------------- 실패 계측·재시도 큐
+
+FAIL_REASONS = ("rate_limit", "timeout", "parse", "credit", "auth", "other")
+
+
+def classify_research_failure(exc: BaseException) -> str:
+    """리서치 실패 원인 분류 — 레이트리밋/타임아웃/파싱/크레딧/인증/기타."""
+    from app.collectors.base import ApiAuthError, ApiQuotaError, ApiRateLimitError
+
+    if isinstance(exc, ApiRateLimitError):
+        return "rate_limit"
+    if isinstance(exc, ApiQuotaError):
+        return "credit"
+    if isinstance(exc, ApiAuthError):
+        return "auth"
+    if isinstance(exc, (httpx.TimeoutException, asyncio.TimeoutError)):
+        return "timeout"
+    if isinstance(exc, (ResearchUnusableError, ValueError, json.JSONDecodeError, KeyError)):
+        return "parse"
+    if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429:
+        return "rate_limit"
+    return "other"
+
+
+def _fail_key(date: str, reason: str) -> str:
+    return f"research_fail:{date}:{reason}"
+
+
+async def record_research_failure(redis, reason: str, date: str | None = None) -> None:
+    """원인별 실패 카운터 — 일일 실패 리포트(레이트리밋/타임아웃/파싱)의 소스."""
+    from app.pipeline import today_kst
+
+    date = date or today_kst()
+    key = _fail_key(date, reason)
+    await redis.incr(key)
+    await redis.expire(key, 86400 * 14)
+
+
+async def research_failure_report(redis, date: str) -> dict[str, int]:
+    """해당 날짜의 원인별 리서치 실패 건수."""
+    out: dict[str, int] = {}
+    for reason in FAIL_REASONS:
+        v = await redis.get(_fail_key(date, reason))
+        if v:
+            out[reason] = int(v)
+    return out
+
+
+async def queue_for_retry(redis, game: dict, sport: str) -> None:
+    """레이트리밋 최종 실패 경기를 큐에 적재 — 다음 사이클에서 재시도."""
+    item = json.dumps({
+        "game_id": game.get("game_id") or game.get("id"),
+        "home": game.get("home"), "away": game.get("away"),
+        "league": game.get("league"), "sport": sport,
+        # 킥오프 미상이면 None을 유지한다 — "None" 문자열이 되면 재시도 시 파싱이 깨진다
+        "starts_at": (str(game["starts_at"]) if game.get("starts_at") is not None else None),
+    }, ensure_ascii=False)
+    await redis.rpush(RETRY_QUEUE_KEY, item)
+    await redis.expire(RETRY_QUEUE_KEY, 86400)
+    logger.info("[deep] 레이트리밋 실패 → 재시도 큐 적재: %s vs %s",
+                game.get("home"), game.get("away"))
+
+
+async def drain_retry_queue(redis, limit: int = 20) -> int:
+    """큐에 쌓인 경기를 **순차** 재리서치. 성공 건수 반환.
+
+    레이트리밋으로 실패한 건이므로 동시 실행하지 않는다 (다시 429를 부른다).
+    """
+    done = 0
+    for _ in range(limit):
+        raw = await redis.lpop(RETRY_QUEUE_KEY)
+        if not raw:
+            break
+        try:
+            item = json.loads(raw)
+        except ValueError:
+            continue
+        data, status = await get_game_research(
+            redis, item, item.get("sport", "mlb"), force=True)
+        if status == "refreshed" and data is not None:
+            done += 1
+        elif status in ("missing", "invalid"):
+            logger.info("[deep] 큐 재시도 실패 유지: %s vs %s", item.get("home"), item.get("away"))
+    if done:
+        logger.info("[deep] 재시도 큐 처리 — %d경기 복구", done)
+    return done
 
 
 async def log_cost_summary(redis) -> None:
@@ -168,22 +285,34 @@ async def get_game_research(
 
     반환 status: 'fresh'(캐시 즉답) | 'refreshed'(재리서치 성공) |
                  'stale_fallback'(재리서치 실패 → 구캐시) | 'missing'(캐시·리서치 모두 없음) |
-                 'quota'(상한 도달 → 캐시 기준)
+                 'invalid'(응답은 왔으나 데이터가 아님 — 리서치 실패) | 'quota'(상한 도달)
+
+    캐시된 구데이터도 반환 전에 sanitize_research를 통과시킨다 — 이전 버전이 저장한
+    프롬프트 반향/미확보 산문이 그대로 화면에 나가지 않도록.
     """
     key = f"research:{game['game_id'] if 'game_id' in game else game['id']}"
     raw = await redis.get(key)
     cached_at, cached_data = None, None
+    cached_empty = False   # 조사는 했으나 재료가 없던 캐시
     if raw:
         try:
             obj = json.loads(raw)
             cached_at = datetime.fromisoformat(obj["at"])
-            cached_data = obj["data"]
+            clean, _ = sanitize_research(obj["data"], sport)
+            if has_material(clean):
+                cached_data = clean
+            else:
+                cached_empty = True   # 재료 없는 캐시는 폴백 가치가 없다
         except (KeyError, ValueError):
             pass
 
     starts_at = game.get("starts_at")
     if isinstance(starts_at, str):
-        starts_at = datetime.fromisoformat(starts_at)
+        try:
+            starts_at = datetime.fromisoformat(starts_at)
+        except ValueError:   # 깨진 값은 킥오프 미상으로 취급 (캐시 연령만으로 판정)
+            logger.warning("[deep] starts_at 파싱 실패(%r) — 킥오프 미상 처리", starts_at)
+            starts_at = None
     if starts_at is None:  # 구버전 캐시 — 킥오프 미상이면 캐시 연령만으로 판정
         from datetime import timedelta
         starts_at = datetime.now(UTC) + timedelta(days=2)
@@ -193,26 +322,38 @@ async def get_game_research(
     calls = await research_calls_today(redis)
     quota_out = calls >= DAILY_RESEARCH_CAP
     if not force and research_is_fresh(cached_at, starts_at, quota_exhausted=quota_out):
-        return cached_data, ("quota" if quota_out and cached_data else "fresh")
+        if cached_data is not None:
+            return cached_data, ("quota" if quota_out else "fresh")
+        if cached_empty:
+            # 6시간 내 조사했는데 재료가 없었다 — 곧바로 재조사해도 같은 결과다(콜 낭비 방지)
+            return None, "invalid"
     if quota_out:
         return cached_data, "quota" if cached_data else "missing"
 
     try:
         client = PerplexityClient()
-        if not client.mock:
-            await _record_call(redis)
-        data = await deep_research_game({**game, "starts_at": starts_at}, sport, client)
+        try:
+            data = await deep_research_game({**game, "starts_at": starts_at}, sport, client)
+        finally:
+            # 재요청까지 포함한 실제 콜 수를 반영 (실패해도 비용은 발생했다)
+            if not client.mock and client.calls:
+                await _record_call(redis, client.calls)
+        data, _ = sanitize_research(data, sport)
         await redis.set(key, json.dumps(
             {"at": datetime.now(UTC).isoformat(), "data": data}, ensure_ascii=False,
             default=str), ex=CACHE_TTL)
         return data, "refreshed"
     except Exception as exc:
-        from app.collectors.base import ApiQuotaError
-        from app.notify import notify_quota
+        from app.notify import notify_api_error
 
-        logger.error("[deep] research failed for %s vs %s: %s", game.get("home"), game.get("away"), exc)
-        if isinstance(exc, ApiQuotaError):  # 크레딧 소진 → 관리자에게 충전 안내 발송
-            await notify_quota(exc.service, exc.detail)
+        reason = classify_research_failure(exc)
+        logger.error("[deep] research failed for %s vs %s (%s): %s",
+                     game.get("home"), game.get("away"), reason, exc)
+        await record_research_failure(redis, reason)
+        # 크레딧 소진/키 오류만 알림 — 레이트리밋은 내부 재시도·큐 재처리로 흡수한다
+        await notify_api_error(exc)
+        if reason == "rate_limit":
+            await queue_for_retry(redis, game, sport)
         if cached_data is not None:
             return cached_data, "stale_fallback"
-        return None, "missing"
+        return None, "invalid" if reason == "parse" else "missing"

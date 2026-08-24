@@ -21,11 +21,70 @@
 
 ## 실시간 리서치 체제 (app/research/deep.py)
 
-- 새벽 프리페치(04:00 KST)가 전 경기 심층 리서치(경기당 Perplexity 1콜, 세마포어 4) + 2단 판정(잠정 결론 → 반박 검증, `reversal_factor`)을 캐시. 실패 경기는 '리서치 미완' 마킹 후 첫 요청 시 온디맨드 보완.
+- 새벽 프리페치(04:00 KST)가 전 경기 심층 리서치(경기당 Perplexity 1콜, **리그·경기 단위 순차**) + 2단 판정(잠정 결론 → 반박 검증, `reversal_factor`)을 캐시. 실패 경기는 '리서치 미완' 마킹 후 첫 요청 시 온디맨드 보완.
 - 신선도 게이트: 리서치 캐시 6시간 이내 & 킥오프 3시간 이상 → 캐시 즉답. 킥오프 3시간 이내 or 캐시 6시간 초과 → 재리서치+재판정. 실패 시 캐시 폴백("새벽 데이터 기준" 표기).
 - 반박 검증으로 결론이 바뀌면 신호등 한 단계 보수화 (🟢→🟡→🔴).
 - 비용 가드: Perplexity 일 상한 60콜(`research_calls:{date}`), 초과 시 재리서치 억제 + 카드 경고. 주간 예상 비용은 프리페치 로그.
 - 전문가 전적은 마켓별 분리(`load_expert_market_ledger`): 해당 마켓 ROI 마이너스(표본 5+)면 불채택, 전적 미상은 0.5표.
+
+## 리서치 응답 검증 (app/research/validate.py)
+
+딥서치가 데이터를 못 찾으면 **우리가 보낸 요청 문구를 되풀이하는 산문**을 돌려준다
+("최근 5~7경기별 일자·상대·이닝·실점·피OPS 등을 확인할 수 있는 로그에 접근할 수 없어…").
+이 값이 `recent_form`/`last5` 자리에 담겨 데이터인 척 출력된 사고가 있었다. 규칙:
+
+- **무효 판정 3종**: ①미확보 산문("확인 불가", "접근할 수 없", "미확인" 등) ②프롬프트/스키마
+  반향(지시 문구 포함 또는 프롬프트 토큰과 자카드 0.72↑) ③수치 요구 필드에 숫자 0개.
+- 무효 값은 필드에서 제거하고, **재료(recent_form·전문가 픽·결장 정보)가 하나도 없으면
+  리서치 실패**로 처리한다 (`ResearchUnusableError` → 1회 재요청 → status `invalid`).
+- 출처 URL도 전문가 이름도 없는 전문가 픽은 인용 불가 — 2-소스 룰의 '전문가 축'이 못 된다.
+- **캐시 구데이터도 렌더 직전에 재검증**한다 (이전 버전이 저장한 오염 데이터 차단).
+- **재료 0이면 심층 분석을 만들지 않는다.** "최신 데이터 수집에 실패해 분석할 수 없습니다"만 출력.
+
+## 출력 문구 규칙
+
+- **경기 고유성**: "조심할 점"·"걸 만한가" 각 줄은 그 경기 고유의 숫자나 선수 이름을 최소 1개
+  포함해야 한다(`line_is_game_specific`). 만들 수 없으면 그 줄을 **생략**한다 — 빈말 금지.
+  여러 경기를 함께 낼 때는 `render_games_easy`가 공유 집합으로 중복 문장을 재생성한다.
+- **종목별 용어 분리**: 야구는 "경기 시작 전 라인업 발표"·"런라인", 축구는 "킥오프 직전"·
+  "핸디"·"더블찬스". 분기 기준은 `_sport_of(jg)` (jg["sport"] → 리그 → 선발 투수 유무 순).
+
+## 외부 API 에러 분류 (app/collectors/base.py)
+
+`classify_api_error(status, body)` → `credit` | `auth` | `rate_limit` | `server` | `other`.
+
+| 상황 | 분류 | 예외 | 사용자 알림 |
+|---|---|---|---|
+| 402 / 잔액·사용량 상한 문구 | credit | `ApiQuotaError` | 충전 안내 |
+| 401·403 (인증 실패) | auth | `ApiAuthError` | 키 교체 안내 |
+| **429 (레이트리밋)** | rate_limit | `ApiRateLimitError` | **없음** — 내부 재시도·큐 재처리 |
+| 5xx | server | 원 예외 | 없음 (지수 백오프) |
+
+429를 "크레딧 소진 — 충전 필요"로 안내하던 오분류가 실사고였다(잔액 $6.90 잔존).
+알림은 반드시 `notify_api_error(exc)`로 라우팅한다 — `notify_quota` 직접 호출 금지.
+
+## Perplexity 레이트리밋·마이그레이션
+
+- **레이트리밋 방어**: 동시 실행 `PPLX_MAX_CONCURRENCY`(기본 2), 요청 간 최소 간격
+  `PPLX_MIN_INTERVAL`(기본 1.5s), 429는 Retry-After 우선 + 2s→6s→15s 3회 재시도,
+  최종 실패는 `research_retry_queue`에 적재해 다음 사이클(45분 간격 잡)에 순차 재시도.
+- **프리페치는 순차**: 종목(리그) 단위 순차 + 경기 단위 순차(`sequential_research=True`).
+  전 경기 동시 리서치(MLB 10 + 축구 17)가 429를 유발한 실사고 반영.
+- **실패 계측**: `research_fail:{date}:{reason}` — reason은 rate_limit/timeout/parse/credit/auth/other.
+  `research_failure_report(redis, date)`로 원인별 집계.
+- **⚠️ 마이그레이션 필수 (기한 2026-09-27)**: Perplexity가 Sonar Chat Completions를 종료하고
+  Agent API로 이전한다. 엔드포인트·모델은 config로 분리돼 있어 **코드 수정 없이 .env로 전환**한다:
+
+  ```
+  PPLX_API_MODE=agent          # chat → agent
+  PPLX_AGENT_PATH=/v1/agent
+  PPLX_AGENT_PRESET=medium     # fast|low|medium|high|xhigh
+  ```
+
+  요청은 `{"model", "messages"}` → `{"preset", "input"}`, 응답은 `choices[]` → typed `output[]`
+  (`{"type":"message","content":[{"text":…}]}` / `{"type":"search_results","results":[…]}`)로 바뀌며,
+  `perplexity.normalize_response()`가 두 형태를 Sonar 형태로 흡수한다.
+  전환 시 확인할 것: ①Agent 프리셋별 단가·품질 ②`citations` 대체(search_results) ③일 상한 재산정.
 
 ## 기술 스택
 
@@ -89,5 +148,10 @@ pytest tests/test_engine.py -x -q    # 단일 파일 빠른 실행
 | `ODDS_API_KEY` | The Odds API (배당) |
 | `APIFOOTBALL_KEY` | API-Football (축구 스탯) |
 | `JUDGE_MODEL` | 판정에 쓸 Claude 모델 ID |
+| `PPLX_API_MODE` | `chat`(현행 Sonar) \| `agent`(2026-09-27 이후 필수) |
+| `PPLX_BASE_URL` / `PPLX_CHAT_PATH` / `PPLX_AGENT_PATH` | 엔드포인트 (마이그레이션용) |
+| `PPLX_MODEL` / `PPLX_AGENT_PRESET` | 모델명 / Agent 프리셋 |
+| `PPLX_MAX_CONCURRENCY` / `PPLX_MIN_INTERVAL` | 레이트리밋 방어 (기본 2 / 1.5초) |
+| `TELEGRAM_ADMIN_CHAT_ID` | 크레딧·키 오류 알림 수신 채팅 |
 
 키가 하나라도 없으면 해당 모듈은 `mock_data/` 목 모드로 폴백한다.

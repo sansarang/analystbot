@@ -40,27 +40,83 @@ Include "home_form"/"away_form" (last 5 results, most recent first) and "home_ra
 RETRY_SUFFIX = "\n\nYour previous answer was not parseable JSON. Return ONLY the JSON array, nothing else."
 
 
+def normalize_response(raw: dict) -> dict:
+    """Sonar/Agent 응답을 공통 {choices:[{message:{content}}], citations:[...]} 형태로.
+
+    Agent API는 typed output 배열(`{"type": "message", "content":[{"text": ...}]}`,
+    `{"type": "search_results", "results":[{"url": ...}]}`)을 돌려준다 —
+    호출부가 응답 형태에 의존하지 않도록 여기서 한 겹 흡수한다.
+    """
+    if not isinstance(raw, dict) or "output" not in raw:
+        return raw
+    text_parts: list[str] = []
+    citations: list[str] = list(raw.get("citations") or [])
+    for item in raw.get("output") or []:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "message":
+            for block in item.get("content") or []:
+                if isinstance(block, dict) and block.get("text"):
+                    text_parts.append(str(block["text"]))
+                elif isinstance(block, str):
+                    text_parts.append(block)
+        elif item.get("type") == "search_results":
+            citations += [
+                r["url"] for r in item.get("results") or []
+                if isinstance(r, dict) and r.get("url")
+            ]
+    return {
+        "choices": [{"message": {"role": "assistant", "content": "\n".join(text_parts)}}],
+        "citations": list(dict.fromkeys(citations)),
+    }
+
+
 class PerplexityClient(BaseAPIClient):
+    """Perplexity 클라이언트 — 엔드포인트·모델은 config에서 주입(마이그레이션 대비).
+
+    레이트리밋 방어: 동시 실행 pplx_max_concurrency(기본 2), 요청 간 최소 간격
+    pplx_min_interval(기본 1.5s), 429는 Retry-After 우선 + 2s→6s→15s 3회 재시도.
+
+    2026-09-27 Sonar Chat Completions 종료 → PPLX_API_MODE=agent 로 전환하면
+    {"preset", "input"} 요청 + typed output 응답을 쓰고, 호출부는 그대로 둔다.
+    """
+
     name = "perplexity"
-    base_url = "https://api.perplexity.ai"
     timeout = 60.0
+    rate_limit_backoff = (2.0, 6.0, 15.0)
 
     def __init__(self, mock: bool | None = None):
         settings = get_settings()
         super().__init__(settings.mock_perplexity if mock is None else mock)
         self.api_key = settings.pplx_api_key
+        self.base_url = settings.pplx_base_url
+        self.mode = settings.pplx_api_mode
+        self.model = settings.pplx_model
+        self.agent_preset = settings.pplx_agent_preset
+        self.chat_path = settings.pplx_chat_path
+        self.agent_path = settings.pplx_agent_path
+        self.max_concurrency = settings.pplx_max_concurrency
+        self.min_interval = settings.pplx_min_interval
+        self.calls = 0   # 실제 발생 콜 수 (재요청 포함) — 일 상한 집계용
 
     async def chat(self, prompt: str) -> dict:
+        """프롬프트 1콜 → Sonar 형태({choices, citations})로 정규화해 반환."""
         if self.mock:
             return self.load_mock("perplexity_picks.json")
-        return await self._post(
-            "/chat/completions",
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            json_body={
-                "model": "sonar-pro",
-                "messages": [{"role": "user", "content": prompt}],
-            },
-        )
+        self.calls += 1
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        if self.mode == "agent":
+            raw = await self._post(
+                self.agent_path, headers=headers,
+                json_body={"preset": self.agent_preset, "input": prompt},
+            )
+        else:
+            raw = await self._post(
+                self.chat_path, headers=headers,
+                json_body={"model": self.model,
+                           "messages": [{"role": "user", "content": prompt}]},
+            )
+        return normalize_response(raw)
 
 
 def extract_json_array(content: str) -> list[dict]:

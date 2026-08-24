@@ -42,7 +42,7 @@ def _pick_combo(cands: list[dict], sizes: tuple[int, ...],
 
 
 def build_tiered_parlays(
-    legs: list[dict], flat_stake_krw: int | None = None,
+    legs: list[dict], flat_stake_krw: int | None = None, sport: str | None = None,
 ) -> dict:
     """[9] 전 마켓 승인 레그 풀에서 리스크 등급제 조합 1(안정)·2(균형)·3(고배당).
 
@@ -53,8 +53,11 @@ def build_tiered_parlays(
     규칙: 동일 레그 최대 2개 조합, 같은 경기 레그 2개(상관 마켓)는 한 조합에 금지
           (_pick_combo의 game_id 중복 배제), 기준 미달 시 억지로 채우지 않는다.
     '조합 성립 불가'는 전 마켓 검토 후 승인 레그 2개 미만일 때만 — 사유에 검토 범위 명시.
+    sport: 검토 범위 문구의 종목 분기 ('mlb'는 더블찬스 없음·핸디캡=런라인). None이면 전체 표기.
     """
-    reviewed = "승패·더블찬스·핸디캡·언더오버 전 마켓 검토"
+    from app.engine.markets import reviewed_markets_kr
+
+    reviewed = f"{reviewed_markets_kr(sport)} 전 마켓 검토"  # [4] 종목별 용어
     cands = sorted(
         [{**l, "key": f"{l['game_id']}:{l.get('desc') or l.get('side')}",
           "desc": l.get("desc") or f"{l.get('side')} 승"} for l in legs],

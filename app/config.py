@@ -23,6 +23,21 @@ class Settings(BaseSettings):
     apifootball_key: str | None = None
     football_data_key: str | None = None  # football-data.org (메이저 12개 대회 무료)
 
+    # Perplexity 엔드포인트/모델 — Sonar Chat Completions는 2026-09-27 종료.
+    # Agent API 전환은 코드 수정 없이 .env만으로 가능하도록 config로 분리한다.
+    # (chat) POST {base}{path} {"model": ..., "messages": [...]}
+    # (agent) POST {base}{agent_path} {"preset": ..., "input": "..."}
+    pplx_api_mode: str = "chat"                    # chat | agent
+    pplx_base_url: str = "https://api.perplexity.ai"
+    pplx_chat_path: str = "/chat/completions"
+    pplx_agent_path: str = "/v1/agent"
+    pplx_model: str = "sonar-pro"                  # chat 모드 모델명
+    pplx_agent_preset: str = "medium"              # agent 모드 프리셋(fast|low|medium|high|xhigh)
+
+    # Perplexity 레이트리밋 방어 — 동시 실행/최소 간격/429 백오프
+    pplx_max_concurrency: int = 2
+    pplx_min_interval: float = 1.5                 # 요청 간 최소 간격(초)
+
     # 모델 ID
     judge_model: str = "claude-opus-4-6"
     report_model: str = "claude-sonnet-5"
