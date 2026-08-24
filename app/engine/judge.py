@@ -127,8 +127,11 @@ SYSTEM = """너는 20년 경력의 스포츠 베팅 수석 애널리스트다. �
 # adaptive thinking이 사고에 토큰을 다 쓰면 tool_use 블록을 못 낸다.
 # 실사고(2026-08-25): 10경기 페이로드 · max_tokens 16000에서 1차 호출이 도구 호출 없이
 # 끝나거나 도구 입력이 잘려, 판정 0건인 채로 "관망 권장" 카드가 발송됐다.
-JUDGE_MAX_TOKENS = 32000
-JUDGE_BATCH = 5   # 한 번에 판정할 경기 수 — 배치가 작아야 사고 여유가 남는다
+# max_tokens를 크게 잡으면 SDK가 "Streaming is required for operations that may take
+# longer than 10 minutes"로 비스트리밍 호출을 거부한다. 토큰을 키우는 대신
+# **배치를 줄여** 호출당 페이로드를 작게 만드는 쪽이 옳다.
+JUDGE_MAX_TOKENS = 16000
+JUDGE_BATCH = 4   # 한 번에 판정할 경기 수 — 배치가 작아야 사고 여유가 남는다
 
 
 class Judge:

@@ -5,11 +5,13 @@
 """
 
 from app.engine.markets import (
+    GRADE_BLANK,
     GRADE_GREEN,
     GRADE_RED,
     GRADE_YELLOW,
     best_market,
     board_grade,
+    build_board,
     build_candidates,
     grade_candidate,
     rejection_summary,
@@ -29,7 +31,11 @@ def test_grade_reflects_market_not_game():
     assert grade_candidate(_c(ev=0.02))[0] == GRADE_YELLOW               # 이득 얇음
     assert grade_candidate(_c(ev=-0.08))[0] == GRADE_RED                 # 가치 없음
     assert grade_candidate(_c(approved=False, reject_reason="근거 부족"))[0] == GRADE_RED
-    assert grade_candidate(_c(odds=None, ev=None))[0] == GRADE_RED       # 배당 미수집
+    # 배당 자체가 없으면 ⚪ (평가 불가) — 행은 남기고 재평가 대상으로 표시
+    assert grade_candidate(_c(odds=None, ev=None, p=None))[0] == GRADE_BLANK
+    # 배당은 있는데 확률 근거가 없으면 🔴 근거 부족
+    blank_p = grade_candidate(_c(p=None, ev=None))
+    assert blank_p[0] == GRADE_RED and "근거" in blank_p[1]
 
 
 def test_yellow_note_marks_low_variance_alternative():
@@ -77,18 +83,44 @@ def test_totals_survive_when_h2h_odds_missing():
     jg = _jg(market_probs=None, best_odds={},
              alt_markets=[{"market": "totals", "side": "Under", "line": 7.5,
                            "odds": 1.98, "p": 0.56}])
-    cands = build_candidates(jg, "mlb", {})           # p_final 없음 = h2h 평가 불가
-    assert [c["market"] for c in cands] == ["totals"]
-    assert "승패" in jg["markets_unpriced"]           # 없는 마켓만 미수집으로 기록
-    assert "언더오버" not in jg["markets_unpriced"]
+    board = build_board(jg, "mlb", {})                # p_final 없음 = h2h 평가 불가
+    priced = [c for c in board if c.get("odds")]
+    assert [c["market"] for c in priced] == ["totals"]
+    # 배당 없는 마켓도 행으로 남는다 (지우지 않는다)
+    assert any(c["market"] == "h2h" and c.get("placeholder") for c in board)
 
 
-def test_unpriced_markets_are_listed_not_fatal():
-    """[A-2] 배당 없는 마켓만 '미수집'으로 빠지고 경기는 살아 있다."""
-    jg = _jg(alt_markets=[])
-    cands = build_candidates(jg, "mlb", {"Detroit Tigers": 0.46, "Tampa Bay Rays": 0.56})
-    assert [c["market"] for c in cands] == ["h2h", "h2h"]
-    assert set(jg["markets_unpriced"]) == {"런라인", "언더오버"}
+def test_board_always_contains_every_required_market():
+    """[2] '평가 가능한 마켓 없음'은 금지 — 배당이 하나도 없어도 전 마켓이 행으로 나온다."""
+    jg = _jg(market_probs=None, best_odds={}, alt_markets=[])
+    board = build_board(jg, "mlb", {})
+    kinds = {c["market"] for c in board}
+    assert kinds == {"h2h", "spreads", "totals", "f5"}
+    assert all(c["grade"] == GRADE_BLANK for c in board)
+    assert len(board) == 7          # 승패2 + 런라인2 + 언더오버1 + F5 2
+
+
+def test_soccer_board_covers_dc_and_btts():
+    """[2] 축구 보드는 승·무·패 / 핸디 ±0.5·±1.5 / 언더오버 / 더블찬스 3종 / BTTS."""
+    jg = _jg(sport="soccer", home="Fulham", away="Chelsea",
+             market_probs={"Fulham": 0.30, "Draw": 0.30, "Chelsea": 0.40},
+             best_odds={"Fulham": 3.30, "Draw": 3.40, "Chelsea": 2.20}, alt_markets=[])
+    board = build_board(jg, "soccer", {"Fulham": 0.31, "Chelsea": 0.41})
+    assert sum(1 for c in board if c["market"] == "h2h") == 3        # 승·무·패
+    assert sum(1 for c in board if c["market"] == "dc") == 3         # 1X · X2 · 12
+    assert any(c["market"] == "btts" for c in board)
+    assert sum(1 for c in board if c["market"] == "spreads") == 4    # ±0.5 · ±1.5
+
+
+def test_h2h_row_survives_without_judge():
+    """[1] 판정을 못 받아도 배당이 있으면 승패 행은 '근거 부족'으로 남는다."""
+    jg = _jg(judge_missing=True)
+    board = build_board(jg, "mlb", {})
+    h2h = [c for c in board if c["market"] == "h2h"]
+    assert len(h2h) == 2
+    assert all(c["odds"] for c in h2h)          # 배당은 그대로 표시
+    assert all(c["p"] is None and c["grade"] == GRADE_RED for c in h2h)
+    assert all("근거" in (c.get("grade_note") or "") for c in h2h)
 
 
 def test_stale_snapshot_is_labelled_opening_odds():
@@ -143,22 +175,25 @@ def _rendered_jg(**over):
 
 
 def test_board_is_always_rendered_as_table():
-    """[A-4] 상세에 마켓 보드를 항상 표로 출력한다 (마켓 배당 → 등급 EV 사유)."""
+    """[2] 마켓 | 배당 | 봇확률 | EV | 신호등 | 근거 | ★ 형식으로 전 행 출력."""
     from app.pipeline import render_game_section
 
     out = render_game_section(_rendered_jg())
-    assert "⑧ 마켓 보드:" in out
-    assert "승패 홈 1.81 → 🔴 EV -8.0%" in out
-    assert "언더 8.5 1.87 → 🟢 EV +7.0%" in out
-    assert "런라인 +1.5 1.55 → 🟡" in out and "저분산 대안" in out
+    assert "⑧ 마켓 보드" in out
+    assert "승패 홈 | 1.81 | 47% | -8.0% | 🔴" in out
+    assert "언더 8.5 | 1.87 | 58% | +7.0% | 🟢" in out
+    assert "텍사스 레인저스 런라인 +1.5 | 1.55 | 66% | +2.3% | 🟡" in out
+    assert "★" in out                                   # [3] 마켓별 신뢰도
+    assert "평가 가능한 마켓 없음" not in out            # [2] 금지 출력
 
 
-def test_board_shows_unpriced_markets():
-    """[A-4] 배당이 없어 평가 못 한 마켓도 보드에 남긴다."""
-    from app.pipeline import render_game_section
+def test_board_shows_unpriced_markets_as_rows():
+    """[2] 배당이 없는 마켓은 행을 지우지 말고 '배당 미수집'으로 남긴다."""
+    from app.pipeline import board_row
 
-    out = render_game_section(_rendered_jg(markets_unpriced=["런라인"]))
-    assert "런라인 → ⚪ 배당 미수집" in out
+    row = board_row({"desc": "언더 7.5", "odds": None, "p": 0.58, "ev": None,
+                     "grade": "⚪", "grade_note": "배당 확보 시 재평가"})
+    assert row.startswith("언더 7.5 | 배당 미수집 | 58% | — | ⚪ | 배당 확보 시 재평가")
 
 
 def test_easy_layer_points_to_best_market_when_moneyline_dead():
@@ -195,3 +230,75 @@ def test_recommendation_pool_includes_non_moneyline(db_pool=None):
     legs = approved_market_legs([jg])
     assert legs and all(l["market"] != "h2h" for l in legs)
     assert {l["desc"] for l in legs} == {"언더 8.5", "텍사스 레인저스 런라인 +1.5"}
+
+
+# ---------------------------------------------------------------- [1] 회귀: 배당↔보드 일관성
+
+def test_header_odds_imply_non_empty_board():
+    """[1] 회귀: 헤더에 배당이 찍히면 마켓 보드가 비어 있을 수 없다.
+
+    실사고: 상세 헤더에 에인절스(2.47) vs 클리블랜드(1.63)가 표시되는데
+    마켓 보드는 "(평가 가능한 마켓 없음)"이었다. 판정(p_claude) 미수신 시
+    _compute_picks가 경기를 통째로 건너뛰어 board를 만들지 않은 탓이다.
+    """
+    from app.pipeline import _compute_picks
+    from app.config import Settings
+
+    jg = {
+        "game_id": 410, "sport": "mlb", "status": "scheduled",
+        "home": "Los Angeles Angels", "away": "Cleveland Guardians", "league": "MLB",
+        "starts_at_kst": "08/25 10:38", "model_valid": True, "p_model": 0.42,
+        "p_market": 0.40,
+        "market_probs": {"Los Angeles Angels": 0.40, "Cleveland Guardians": 0.60},
+        "best_odds": {"Los Angeles Angels": 2.47, "Cleveland Guardians": 1.63},
+        "alt_markets": [{"market": "totals", "side": "Under", "line": 8.5,
+                         "odds": 1.87, "p": 0.55}],
+        "expert_picks": [], "stats": {},
+        # p_claude 없음 = 판정 미수신
+    }
+    _compute_picks(Settings(_env_file=None), [jg], "mlb")
+    board = jg["market_board"]
+    assert board, "헤더에 배당이 있는데 보드가 비면 안 된다"
+    priced = [c for c in board if c.get("odds")]
+    assert {c["odds"] for c in priced} >= {2.47, 1.63, 1.87}   # 헤더와 같은 값이 보드에도
+    assert all(not c.get("approved") for c in board)           # 판정 미수신 → 추천은 전부 제외
+
+
+def test_display_and_calculation_share_one_odds_source():
+    """[1] 표시용(best_odds)과 계산용(마켓 보드)이 같은 객체에서 나온다."""
+    from app.config import Settings
+    from app.pipeline import _compute_picks
+
+    best = {"Los Angeles Angels": 2.47, "Cleveland Guardians": 1.63}
+    jg = {
+        "game_id": 410, "sport": "mlb", "status": "scheduled",
+        "home": "Los Angeles Angels", "away": "Cleveland Guardians", "league": "MLB",
+        "starts_at_kst": "08/25 10:38", "model_valid": True, "p_model": 0.42,
+        "p_market": 0.40, "p_claude": 0.44,
+        "market_probs": {"Los Angeles Angels": 0.40, "Cleveland Guardians": 0.60},
+        "best_odds": best, "alt_markets": [], "expert_picks": [], "stats": {},
+        "judge_confidence": "medium",
+    }
+    _compute_picks(Settings(_env_file=None), [jg], "mlb")
+    h2h = {c["side"]: c["odds"] for c in jg["market_board"] if c["market"] == "h2h"}
+    assert h2h == {k: round(v, 2) for k, v in best.items()}
+
+
+def test_board_never_says_no_markets():
+    """[2] '평가 가능한 마켓 없음' 문구는 어떤 경로로도 출력되지 않는다."""
+    from app.config import Settings
+    from app.pipeline import _compute_picks, render_game_section
+
+    jg = {
+        "game_id": 1, "sport": "mlb", "status": "scheduled", "status_label": "",
+        "home": "Los Angeles Angels", "away": "Cleveland Guardians", "league": "MLB",
+        "starts_at_kst": "08/25 10:38", "model_valid": False, "p_model": 0.5,
+        "p_market": None, "market_probs": None, "best_odds": {}, "alt_markets": [],
+        "expert_picks": [], "stats": {},
+        "research": {"home_recent_form": {"form": "WLWLL"}},
+    }
+    _compute_picks(Settings(_env_file=None), [jg], "mlb")
+    out = render_game_section(jg)
+    assert "평가 가능한 마켓 없음" not in out
+    assert out.count("배당 미수집") >= 5        # 전 마켓 행이 남아 있다
+    assert "F5(5이닝)" in out                    # 야구 필수 마켓까지 행으로

@@ -6,6 +6,7 @@
 
 from app.engine.narrator import (
     BAD_EXAMPLE,
+    NARRATIVE_TOOL,
     GOOD_EXAMPLE,
     SYSTEM,
     Narrator,
@@ -161,3 +162,31 @@ def test_detail_uses_compressed_expert_note():
 
     out = render_game_section(_jg_with_narrative())
     assert "전문가 요약: 3명 중 2명이 다저스 승" in out
+
+
+# ---------------------------------------------------------------- [4] 추천 마켓 근거
+
+def test_prompt_requires_top_market_rationale_and_order():
+    """[4] 최고 등급 마켓의 근거를 서술에 녹이고, 맥락→인과→승부처→추천 마켓 순."""
+    assert "최고 등급 마켓의 근거를 서술에 반드시 녹여라" in SYSTEM
+    assert "맥락 → 인과 → 승부처 → 추천 마켓" in SYSTEM
+    assert "4~6줄" in SYSTEM
+    props = NARRATIVE_TOOL["input_schema"]["properties"]["games"]["items"]
+    assert "market_case" in props["properties"]
+    assert "market_case" in props["required"]
+
+
+def test_easy_layer_includes_market_case_after_decider():
+    """[4] 기본층 순서: 맥락 → 인과 → 걸 만한가 → 승부처 → 추천 마켓 근거."""
+    from app.pipeline import DETAIL_SEP, render_game_easy
+
+    jg = _jg_with_narrative()
+    jg["narrative"]["market_case"] = (
+        "두 선발 모두 QS 기대치가 낮아 난타전 가능성이 크고, 이 때문에 오버 9.0에 무게가 실린다.")
+    easy = render_game_easy(jg).split(DETAIL_SEP)[0]
+    ls = easy.splitlines()
+    i_decider = next(i for i, l in enumerate(ls) if l.startswith("승부처:"))
+    i_case = next(i for i, l in enumerate(ls) if "오버 9.0에 무게" in l)
+    i_value = next(i for i, l in enumerate(ls) if l.startswith("걸 만한가?"))
+    assert i_value < i_decider < i_case
+    assert 6 <= len(ls) <= 9

@@ -732,7 +732,7 @@ def _compute_picks(
     [5] p_final = λ*p_market + (1-λ)*p_ensemble (리그 성숙도 연동 수축).
     경기 대표 픽 = 승인 후보 중 EV 최대 (없으면 진단용 최고 EV 후보, 미승인 표기).
     """
-    from app.engine.markets import build_candidates, shrink
+    from app.engine.markets import build_board, shrink
 
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
     stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
@@ -749,8 +749,14 @@ def _compute_picks(
 
     picks_out = []
     for jg in judge_games:
-        if jg["status"] != "scheduled" or "p_claude" not in jg:
+        if jg["status"] != "scheduled":
             continue
+        # 판정을 못 받아도 마켓 보드는 만든다 — 다만 어떤 마켓도 추천하지 않는다.
+        jg["judge_missing"] = "p_claude" not in jg
+        if jg["judge_missing"]:
+            logger.warning("[pipeline] game %s 판정 미수신 — 배당 %d개/알트 %d개로 "
+                           "보드만 구성 (추천 제외)", jg["game_id"],
+                           len(jg.get("best_odds") or {}), len(jg.get("alt_markets") or []))
         # [A-2] h2h 배당이 없다고 경기 전체를 죽이지 않는다 — 없는 마켓만 빠진다.
         market = jg.get("market_probs") or {}
         h2h_priced = bool(market) and jg["home"] in market and jg["away"] in market
@@ -759,7 +765,9 @@ def _compute_picks(
         p_draw_m = market.get("Draw", 0.0)
         p_final: dict[str, float] = {}
         p_ens: dict[str, float] = {}
-        p_claude_home = jg["p_claude"]
+        if jg["judge_missing"]:
+            h2h_priced = False        # 앙상블 확률을 만들 수 없다 → h2h는 '근거 부족' 행
+        p_claude_home = jg.get("p_claude") or 0.5
         p_claude_away = max(0.0, min(1.0, 1.0 - p_claude_home - p_draw_m))
         p3 = jg.get("p_model3")
         league_lam = "MLB" if sport == "mlb" else jg.get("league")
@@ -777,15 +785,17 @@ def _compute_picks(
             p_final[side] = round(shrink(pe, p_market_s, league_lam), 4)
 
         # [7][8] 전 마켓 후보 생성·승인 → 마켓 보드
-        cands = build_candidates(jg, sport, p_final)
+        # [2] 전 마켓 보드 — 판정 유무·배당 유무와 무관하게 항상 전 행을 만든다
+        cands = build_board(jg, sport, p_final)
         jg["market_board"] = cands
-        if not cands:
-            continue
-        approved = [c for c in cands if c.get("approved")]
+        priced = [c for c in cands if c.get("ev") is not None]
+        if not priced:
+            continue                       # 대표 픽은 못 뽑지만 보드는 이미 채워졌다
+        approved = [c for c in priced if c.get("approved")]
         rep = (max(approved, key=lambda c: c["ev"]) if approved
-               else max((c for c in cands if c["market"] == "h2h"),
+               else max((c for c in priced if c["market"] == "h2h"),
                         key=lambda c: c["ev"],
-                        default=max(cands, key=lambda c: c["ev"])))
+                        default=max(priced, key=lambda c: c["ev"])))
 
         pick = f"{rep['market']}:{rep['side']}" + (
             f":{rep['line']:g}" if rep.get("line") is not None else "")
@@ -802,7 +812,7 @@ def _compute_picks(
             "league": jg.get("league") or ("MLB" if sport == "mlb" else "?"),
             "starts_at_kst": jg["starts_at_kst"], "pick": pick,
             "market": rep["market"], "side": rep["side"], "line": rep.get("line"),
-            "desc": rep["desc"], "p": rep["p"], "p_claude": jg["p_claude"],
+            "desc": rep["desc"], "p": rep["p"], "p_claude": jg.get("p_claude"),
             "model_valid": jg["model_valid"],
             "confidence": jg.get("judge_confidence", "medium"),
             "odds": rep["odds"], "ev": rep["ev"], "kelly": round(pick_kelly, 4),
@@ -1043,28 +1053,28 @@ def classify_signal(jg: dict) -> tuple[str, str, int]:
 
 
 def _classify_base(jg: dict) -> tuple[str, str, int]:
-    """[A-1] 신호등은 **마켓 단위** 판정의 최고 등급이다 — 경기 단위 일괄 패스 금지.
+    """[3] 신호등은 **마켓 단위** 판정의 최고 등급이다 — 경기 단위 일괄 패스 금지.
 
     승패에 가치가 없어도 언더 8.5가 승인되면 그 경기는 🟢이다.
     진짜 🔴은 "전 마켓을 검토했으나 어느 마켓도 승인 기준을 못 넘김"일 때뿐이며,
-    그 경우 검토한 마켓과 각각의 탈락 사유를 한 줄로 밝힌다.
+    그때도 마켓 보드는 전 행이 출력되고 신호등 옆에 사유를 밝힌다.
     """
-    from app.engine.markets import best_market, board_grade, rejection_summary
+    from app.engine.markets import GRADE_BLANK, best_market, board_grade, rejection_summary
 
     board = jg.get("market_board") or []
-    unpriced = jg.get("markets_unpriced") or []
-
     if not board:
-        why = ("배당을 한 마켓도 수집하지 못했습니다" if unpriced
-               else "판정을 받지 못해 마켓을 평가하지 못했습니다")
-        detail = f" ({' / '.join(unpriced)})" if unpriced else ""
-        return "🔴", f"패스 — {why}{detail}", 1
+        return "🔴", "패스 — 마켓 보드를 만들지 못했습니다 (파이프라인 오류)", 1
+
+    if all(c.get("grade") == GRADE_BLANK for c in board):
+        return "🔴", "패스 — 전 마켓 배당을 한 건도 수집하지 못했습니다", 1
+    if jg.get("judge_missing"):
+        return ("🔴", "패스 — 판정 미수신으로 전 마켓 추천 불가 (배당은 아래 보드에 표시)", 1)
 
     grade = board_grade(board)
     top = best_market(board) or {}
-    if grade == "🔴":
-        return "🔴", "패스 — 전 마켓 검토 결과 승인 기준을 넘는 자리가 없습니다: " \
-                     + rejection_summary(board, unpriced), 2
+    if grade in ("🔴", GRADE_BLANK):
+        return "🔴", ("패스 — 전 마켓 검토 결과 기준 미달: "
+                      + rejection_summary(board)), 2
 
     conf = jg.get("judge_confidence", "medium")
     desc, note = top.get("desc", "?"), top.get("grade_note", "")
@@ -1254,6 +1264,13 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
     if decider:
         lines.append(f"승부처: {decider}")
 
+    # [4] ④ 추천 마켓 근거 — 최고 등급 마켓을 왜 그 자리로 보는지
+    market_case = clip_sentences(_narr_clean(nar.get("market_case")), 200)
+    if market_case and (used is None or market_case not in used):
+        if used is not None:
+            used.add(market_case)
+        lines.append(market_case)
+
     # 조심할 점 — 고유 수치·이름이 없으면 줄 자체를 생략 ([3])
     if not any(research_materials(research).values()) and jg.get("p_market") is not None:
         caution = _pick_line(
@@ -1279,6 +1296,30 @@ def render_games_easy(games: list[dict], news: str = "") -> list[str]:
     """[3] 여러 경기를 함께 낼 때 — 경기 간 동일 문장이 나오지 않도록 공유 집합으로 렌더."""
     used: set[str] = set()
     return [render_game_easy(g, news, used=used) for g in games]
+
+
+def sorted_board(jg: dict) -> list[dict]:
+    """마켓 보드 정렬 — 등급 높은 순, 같은 등급이면 EV 큰 순. 배당 미수집 행은 뒤로."""
+    from app.engine.markets import GRADE_RANK
+
+    return sorted(
+        jg.get("market_board") or [],
+        key=lambda c: (-GRADE_RANK.get(c.get("grade"), 0), -(c.get("ev") if c.get("ev") is not None else -9)),
+    )
+
+
+def board_row(c: dict, confidence: str | None = None) -> str:
+    """[2][3] 마켓 보드 1행 — 배당이 없어도 '배당 미수집'으로 남기고 ★까지 붙인다."""
+    from app.engine.markets import row_stars
+
+    odds = f"{c['odds']:.2f}" if c.get("odds") else "배당 미수집"
+    prob = f"{c['p']:.0%}" if c.get("p") is not None else "—"
+    ev = f"{c['ev']:+.1%}" if c.get("ev") is not None else "—"
+    grade = c.get("grade") or "⚪"
+    note = c.get("grade_note") or c.get("reject_reason") or "—"
+    stars = row_stars(c, confidence)
+    star_txt = _stars(stars) if stars else "—"
+    return f"{c['desc']} | {odds} | {prob} | {ev} | {grade} | {note} | {star_txt}"
 
 
 def render_game_section(jg: dict, news: str = "") -> str:
@@ -1359,23 +1400,11 @@ def render_game_section(jg: dict, news: str = "") -> str:
             f"밸류: {ps.get('desc') or _kr(ps['side'])} @{ps['odds']:.2f} — p_final {ps['p_final']:.0%}, "
             f"EV {ps['ev']:+.1%} (근거: {ps.get('axes') or '?'}){ok_txt}{flag_txt}")
 
-    # [A-4] ⑧ 마켓 보드 — 항상 출력. 평가한 전 마켓을 등급·EV·사유와 함께 표로 남긴다.
-    from app.engine.markets import GRADE_RANK
-
-    board = jg.get("market_board") or []
-    unpriced = jg.get("markets_unpriced") or []
-    lines.append("⑧ 마켓 보드:")
-    if board:
-        ordered = sorted(board, key=lambda c: (-GRADE_RANK.get(c.get("grade"), 0), -c["ev"]))
-        for c in ordered[:8]:
-            basis = "(시장 기준)" if c.get("basis") == "시장 기준" else ""
-            note = c.get("grade_note") or ""
-            lines.append(f"  {c['desc']} {c['odds']:.2f} → {c.get('grade', '🔴')} "
-                         f"EV {c['ev']:+.1%} ({note}){basis}")
-    else:
-        lines.append("  (평가 가능한 마켓 없음)")
-    for m in unpriced:
-        lines.append(f"  {m} → ⚪ 배당 미수집")
+    # [2] ⑧ 마켓 보드 — 전 마켓을 **항상** 행으로. 배당이 없어도 행을 지우지 않는다.
+    #     형식: 마켓명 | 배당 | 봇 확률 | EV | 신호등 | 근거 한 줄 | ★
+    lines.append("⑧ 마켓 보드 (마켓 | 배당 | 봇확률 | EV | 신호등 | 근거 | 신뢰도):")
+    for c in sorted_board(jg):
+        lines.append("  " + board_row(c, jg.get("judge_confidence")))
 
     from app.engine.narrator import clean_line as _nclean
 

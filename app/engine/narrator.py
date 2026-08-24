@@ -53,6 +53,14 @@ NARRATIVE_TOOL = {
                             "type": "string",
                             "description": "③ 승부처 — 이 경기가 어디서 갈리는지 한 문장.",
                         },
+                        "market_case": {
+                            "type": "string",
+                            "description": "④ 추천 마켓 — 마켓 보드에서 등급이 가장 높은 마켓을 "
+                                           "왜 그 마켓으로 보는지 인과로 설명한 한 문장. "
+                                           "예: '두 선발 모두 QS 기대치가 낮아 난타전 가능성이 "
+                                           "커서 오버 9.0에 무게가 실린다.' 승인 마켓이 없으면 "
+                                           "왜 전 마켓이 기준 미달인지 한 문장.",
+                        },
                         "expert_note": {
                             "type": "string",
                             "description": "전문가 픽 요약 1줄(한국어, 핵심 수치만). 없으면 빈 문자열.",
@@ -63,7 +71,7 @@ NARRATIVE_TOOL = {
                                            "충분하면 빈 문자열.",
                         },
                     },
-                    "required": ["game_id", "causal", "decider"],
+                    "required": ["game_id", "causal", "decider", "market_case"],
                 },
             }
         },
@@ -106,6 +114,13 @@ SYSTEM = f"""너는 스포츠 분석 리포트의 **서술** 담당이다. 판�
    숫자나 선수 이름이 없는 문장은 아예 쓰지 마라.
 8. 재료가 부족하면 길이를 채우지 말고 짧게 쓰되, missing에 무엇이 없는지 밝혀라.
 9. 사실을 지어내지 마라. 입력에 없는 이적·부상·기록을 만들어내면 안 된다.
+
+10. **최고 등급 마켓의 근거를 서술에 반드시 녹여라.** market_board에서 등급이 가장 높은
+    마켓(🟢 > 🟡 > 🔴)이 왜 그 자리인지 인과로 설명하라 — 배당·EV 숫자를 반복하지 말고
+    "왜 그 마켓인가"를 써라. 예: "두 선발 모두 QS 기대치가 낮아 난타전 가능성이 크고,
+    이 때문에 오버 9.0에 무게가 실린다."
+
+서술은 **맥락 → 인과 → 승부처 → 추천 마켓** 순서로 읽히게 쓰고, 전체 4~6줄 분량으로 맞춰라.
 
 반드시 narrative 도구를 정확히 한 번 호출해 제출하라."""
 
@@ -241,6 +256,7 @@ def _normalize(raw: dict) -> dict[int, dict]:
             "context": clean_line(g.get("context")),
             "causal": clean_line(g.get("causal")),
             "decider": clean_line(g.get("decider")),
+            "market_case": clean_line(g.get("market_case")),
             "expert_note": clean_line(g.get("expert_note")),
             "missing": clean_line(g.get("missing")),
         }

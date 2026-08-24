@@ -369,11 +369,18 @@ def test_classify_signal_mapping():
     assert classify_signal(_easy_game())[0] == "🟢"                       # 승인 + EV 충분
     assert classify_signal(_easy_game(judge_pass=True))[0] == "🔴"        # 전 마켓 게이트
     assert classify_signal(_easy_game(judge_confidence="low"))[0] == "🔴"  # 전 마켓 게이트
-    # 보드가 비면(배당 미수집) 🔴 — 사유에 미수집 마켓을 밝힌다
-    empty = _easy_game()
-    empty["market_board"], empty["markets_unpriced"] = [], ["승패", "언더오버"]
-    sig, reason, _ = classify_signal(empty)
-    assert sig == "🔴" and "승패" in reason and "배당" in reason
+    # [2] 전 행이 '배당 미수집'이면 🔴이지만 보드 자체는 비지 않는다
+    blank = _easy_game()
+    for c in blank["market_board"]:
+        c.update(odds=None, p=None, ev=None, placeholder=True)
+    _grade_board(blank)
+    sig, reason, _ = classify_signal(blank)
+    assert sig == "🔴" and "배당" in reason
+
+    # [1] 판정 미수신은 배당 유무와 무관하게 별도 사유로 밝힌다
+    nojudge = _easy_game(judge_missing=True)
+    sig, reason, _ = classify_signal(nojudge)
+    assert sig == "🔴" and "판정 미수신" in reason
 
 
 def test_signal_uses_best_market_not_moneyline():
@@ -396,11 +403,15 @@ def test_all_markets_rejected_lists_each_reason():
     g = _easy_game()
     g["market_board"][0].update(approved=True, ev=-0.08)          # 승패 가치 없음
     g["market_board"][1].update(approved=False, reject_reason="근거 부족 — 2-소스 미달")
-    g["markets_unpriced"] = ["런라인"]
+    g["market_board"].append({"market": "spreads", "side": "LAD", "line": -1.5,
+                              "desc": "LA 다저스 런라인 -1.5", "odds": None, "p": None,
+                              "ev": None, "placeholder": True})
     _grade_board(g)
     sig, reason, _ = classify_signal(g)
     assert sig == "🔴"
-    assert "LA 다저스 승" in reason and "언더 8.5" in reason and "런라인 배당 미수집" in reason
+    assert "전 마켓 검토 결과 기준 미달" in reason
+    assert "LA 다저스 승" in reason and "언더 8.5" in reason
+    assert "런라인 -1.5 배당 미수집" in reason
 
 
 def test_render_game_easy_two_layers():
@@ -578,10 +589,10 @@ async def test_judge_batches_large_slates(monkeypatch):
 
     monkeypatch.setattr(Judge, "_judge_once", fake_once)
     j = Judge(mock=False)
-    payload = {"games": [{"game_id": i} for i in range(12)]}
-    out = await j.judge(payload)
-    assert len(out["games"]) == 12
-    assert seen == [JUDGE_BATCH, JUDGE_BATCH, 12 - 2 * JUDGE_BATCH]
+    n = JUDGE_BATCH * 2 + 2
+    out = await j.judge({"games": [{"game_id": i} for i in range(n)]})
+    assert len(out["games"]) == n
+    assert seen == [JUDGE_BATCH, JUDGE_BATCH, 2]
 
 
 async def test_judge_batch_failure_keeps_other_batches(monkeypatch):
@@ -598,9 +609,12 @@ async def test_judge_batch_failure_keeps_other_batches(monkeypatch):
                           for g in payload["games"]]}
 
     monkeypatch.setattr(Judge, "_judge_once", flaky_once)
-    out = await Judge(mock=False).judge({"games": [{"game_id": i} for i in range(9)]})
-    assert len(out["games"]) == 4            # 첫 배치 5경기는 잃고 나머지 4경기는 살았다
-    assert {g["game_id"] for g in out["games"]} == {5, 6, 7, 8}
+    from app.engine.judge import JUDGE_BATCH
+
+    n = JUDGE_BATCH * 2 + 1
+    out = await Judge(mock=False).judge({"games": [{"game_id": i} for i in range(n)]})
+    # 첫 배치만 잃고 나머지 배치의 판정은 살아 있다
+    assert {g["game_id"] for g in out["games"]} == set(range(JUDGE_BATCH, n))
 
 
 def test_attach_verdicts_matches_string_game_ids():

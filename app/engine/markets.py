@@ -245,8 +245,22 @@ def spread_desc(sport: str, side_kr: str, line: float) -> str:
     return f"{side_kr} {label} {line:+g}"
 
 
-GRADE_GREEN, GRADE_YELLOW, GRADE_RED = "🟢", "🟡", "🔴"
-GRADE_RANK = {GRADE_GREEN: 3, GRADE_YELLOW: 2, GRADE_RED: 1}
+GRADE_GREEN, GRADE_YELLOW, GRADE_RED, GRADE_BLANK = "🟢", "🟡", "🔴", "⚪"
+GRADE_RANK = {GRADE_GREEN: 3, GRADE_YELLOW: 2, GRADE_RED: 1, GRADE_BLANK: 0}
+
+# 마켓 보드는 **항상 전 마켓을 행으로** 출력한다. 배당이 없으면 행을 지우는 대신
+# '배당 미수집'으로 남긴다 — "평가 가능한 마켓 없음"이라는 출력은 금지다.
+STARS_BY_GRADE = {GRADE_GREEN: 4, GRADE_YELLOW: 3, GRADE_RED: 1, GRADE_BLANK: 0}
+
+
+def row_stars(c: dict, confidence: str | None = None) -> int:
+    """[3] 마켓별 신뢰도 ★ 개수 (0~5). 판정 신뢰도가 높으면 한 칸 올린다."""
+    stars = STARS_BY_GRADE.get(c.get("grade"), 0)
+    if stars and confidence == "high":
+        stars = min(5, stars + 1)
+    elif stars > 1 and confidence == "low":
+        stars -= 1
+    return stars
 
 
 def grade_candidate(c: dict, ev_threshold: float = 0.05) -> tuple[str, str]:
@@ -256,8 +270,10 @@ def grade_candidate(c: dict, ev_threshold: float = 0.05) -> tuple[str, str]:
     🟢 승인 + EV 기준 초과 / 🟡 승인이나 이득이 얇음 / 🔴 미승인 또는 이득 없음.
     """
     ev = c.get("ev")
-    if ev is None or not c.get("odds"):
-        return GRADE_RED, "배당 미수집"
+    if not c.get("odds"):
+        return GRADE_BLANK, "배당 확보 시 재평가"
+    if ev is None or c.get("p") is None:
+        return GRADE_RED, c.get("reject_reason") or "근거 부족"
     if not c.get("approved"):
         return GRADE_RED, c.get("reject_reason") or "제외"
     if ev <= 0:
@@ -288,10 +304,15 @@ def rejection_summary(board: list[dict], unpriced: list[str] | None = None) -> s
     """[A-1] 전 마켓 탈락 시 검토 목록과 사유를 한 줄로.
 
     예: "승패 EV -12% / 언더 8.5 근거 부족 / 핸디 배당 미수집"
+    보드가 이미 배당 미수집 행을 포함하므로 unpriced는 보조 인자다(하위호환).
     """
-    parts = [f"{c['desc']} {c.get('grade_note') or '제외'}" for c in board[:5]]
-    parts += [f"{m} 배당 미수집" for m in (unpriced or [])]
-    return " / ".join(parts) if parts else "평가 가능한 마켓 없음"
+    parts = []
+    for c in board[:6]:
+        note = "배당 미수집" if c.get("placeholder") else (c.get("grade_note") or "제외")
+        parts.append(f"{c['desc']} {note}")
+    seen = {c["desc"] for c in board}
+    parts += [f"{m} 배당 미수집" for m in (unpriced or []) if m not in seen]
+    return " / ".join(parts) if parts else "평가한 마켓 없음"
 
 
 def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[dict]:
@@ -310,10 +331,19 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
     stale = bool(jg.get("odds_stale"))   # [A-3] 오래된 스냅샷 폴백은 라벨을 붙인다
 
     def add(market, side, line, desc, odds, p, basis):
-        if not odds or p is None:
-            return
+        if not odds:
+            return                       # 배당이 없는 마켓은 build_board가 placeholder로 채운다
         if stale:
             desc = f"{desc} (개장 배당)"
+        if p is None:
+            # 배당은 있는데 확률 추정 근거가 없다 — 행은 남기고 '근거 부족'으로 표기
+            out.append({
+                "market": market, "side": side, "line": line, "desc": desc,
+                "odds": round(float(odds), 2), "p": None, "ev": None, "basis": basis,
+                "axes": {}, "axes_n": 0, "axes_kr": "없음",
+                "reject_reason": "근거 부족 — 확률 추정 불가",
+            })
+            return
         p = max(0.02, min(0.98, p))
         pm_side = None
         if market == "h2h":
@@ -330,19 +360,32 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
             "axes": axes, "axes_n": sum(axes.values()), "axes_kr": axes_label(axes),
         })
 
-    # 1) 승패 (h2h)
-    for side in (jg["home"], jg["away"]):
-        if side in p_final and best_odds.get(side):
-            add("h2h", side, None, f"{kr_team(side)} 승", best_odds[side],
-                p_final[side], "앙상블")
+    # 1) 승패 (h2h) — 판정을 못 받아 p_final이 없어도 배당이 있으면 행은 남긴다
+    h2h_sides = [jg["home"], jg["away"]]
+    if sport == "soccer" and best_odds.get("Draw"):
+        h2h_sides.insert(1, "Draw")
+    for side in h2h_sides:
+        if not best_odds.get(side):
+            continue
+        desc = "무승부" if side == "Draw" else f"{kr_team(side)} 승"
+        add("h2h", side, None, desc, best_odds[side], p_final.get(side), "앙상블")
 
-    # 2) 더블찬스 (축구, 3-way 배당에서 합성)
-    if sport == "soccer" and p_draw_m is not None and best_odds.get("Draw"):
+    # 2) 더블찬스 3종 (축구, 3-way 배당에서 합성) — 1X · X2 · 12
+    if sport == "soccer" and best_odds.get("Draw"):
         for side in (jg["home"], jg["away"]):
-            if side in p_final and best_odds.get(side):
-                add("dc", side, None, f"{kr_team(side)} 더블찬스(승/무)",
-                    synth_dc_odds(best_odds[side], best_odds["Draw"]),
-                    min(0.98, p_final[side] + p_draw_m), "앙상블+합성배당")
+            if best_odds.get(side):
+                pf = p_final.get(side)
+                p_dc = (min(0.98, pf + p_draw_m)
+                        if pf is not None and p_draw_m is not None else None)
+                label = "승/무" if side == jg["home"] else "무/승"
+                add("dc", side, None, f"{kr_team(side)} 더블찬스({label})",
+                    synth_dc_odds(best_odds[side], best_odds["Draw"]), p_dc, "앙상블+합성배당")
+        if best_odds.get(jg["home"]) and best_odds.get(jg["away"]):
+            ph, pa = p_final.get(jg["home"]), p_final.get(jg["away"])
+            p_12 = min(0.98, ph + pa) if ph is not None and pa is not None else None
+            add("dc", "12", None, "더블찬스(홈/원정 — 무승부만 제외)",
+                synth_dc_odds(best_odds[jg["home"]], best_odds[jg["away"]]), p_12,
+                "앙상블+합성배당")
 
     # 3) 핸디캡·토탈 (수집 배당 디빅 — 시장 기준)
     for alt in jg.get("alt_markets", []):
@@ -361,22 +404,89 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
         _approve(jg, c, sport)
         c["grade"], c["grade_note"] = grade_candidate(c)
 
-    # [A-2] 배당이 없어 아예 평가하지 못한 마켓만 따로 기록한다 (경기 전체를 죽이지 않는다)
-    unpriced: list[str] = []
-    if not any(c["market"] == "h2h" for c in out):
-        unpriced.append("승패")
-    if sport == "soccer" and not any(c["market"] == "dc" for c in out):
-        unpriced.append("더블찬스")
-    if not any(c["market"] == "spreads" for c in out):
-        unpriced.append("핸디캡" if sport == "soccer" else "런라인")
-    if not any(c["market"] == "totals" for c in out):
-        unpriced.append("언더오버")
-    jg["markets_unpriced"] = unpriced
     return out
+
+
+# ---------------------------------------------------------------- 전 마켓 보드
+
+def _required_specs(jg: dict, sport: str) -> list[tuple]:
+    """[2] 경기마다 반드시 행으로 나와야 하는 마켓 목록 (market, side, line, desc)."""
+    from app.bot.aliases import kr_team
+
+    home, away = jg["home"], jg["away"]
+    if sport == "mlb":
+        return [
+            ("h2h", home, None, f"{kr_team(home)} 승"),
+            ("h2h", away, None, f"{kr_team(away)} 승"),
+            ("spreads", home, -1.5, spread_desc("mlb", kr_team(home), -1.5)),
+            ("spreads", away, 1.5, spread_desc("mlb", kr_team(away), 1.5)),
+            ("totals", "Under", None, "언더오버"),
+            ("f5", home, None, f"{kr_team(home)} F5(5이닝) 승"),
+            ("f5", away, None, f"{kr_team(away)} F5(5이닝) 승"),
+        ]
+    return [
+        ("h2h", home, None, f"{kr_team(home)} 승"),
+        ("h2h", "Draw", None, "무승부"),
+        ("h2h", away, None, f"{kr_team(away)} 승"),
+        ("spreads", home, -0.5, spread_desc("soccer", kr_team(home), -0.5)),
+        ("spreads", away, 0.5, spread_desc("soccer", kr_team(away), 0.5)),
+        ("spreads", home, -1.5, spread_desc("soccer", kr_team(home), -1.5)),
+        ("spreads", away, 1.5, spread_desc("soccer", kr_team(away), 1.5)),
+        ("totals", "Under", None, "언더오버"),
+        ("dc", home, None, f"{kr_team(home)} 더블찬스(승/무)"),
+        ("dc", away, None, f"{kr_team(away)} 더블찬스(무/승)"),
+        ("dc", "12", None, "더블찬스(홈/원정 — 무승부만 제외)"),
+        ("btts", "Yes", None, "양팀 득점(BTTS)"),
+    ]
+
+
+def _placeholder(market, side, line, desc) -> dict:
+    """[2] 배당 미수집 마켓 행 — 지우지 않고 남겨 '무엇을 못 봤는지'를 드러낸다."""
+    return {
+        "market": market, "side": side, "line": line, "desc": desc,
+        "odds": None, "p": None, "ev": None, "basis": "배당 미수집",
+        "axes": {}, "axes_n": 0, "axes_kr": "없음",
+        "approved": False, "reject_reason": "배당 미수집",
+        "grade": GRADE_BLANK, "grade_note": "배당 확보 시 재평가", "placeholder": True,
+    }
+
+
+def build_board(jg: dict, sport: str, p_final: dict[str, float]) -> list[dict]:
+    """[2] 전 마켓 보드 — 판정 유무·배당 유무와 무관하게 **항상** 전 마켓을 행으로 낸다.
+
+    가격이 붙은 마켓은 평가 결과를, 배당이 없는 마켓은 '배당 미수집' 행을 남긴다.
+    "평가 가능한 마켓 없음"이라는 출력은 이 함수를 쓰는 한 나올 수 없다.
+    """
+    priced = build_candidates(jg, sport, p_final)
+    have = {(c["market"], c["side"]) for c in priced}
+    have_market = {c["market"] for c in priced}
+
+    rows = list(priced)
+    for market, side, line, desc in _required_specs(jg, sport):
+        if market == "totals":
+            if "totals" not in have_market:      # 라인은 수집분으로 채워지므로 마켓 단위로 판단
+                rows.append(_placeholder(market, side, line, desc))
+            continue
+        if (market, side) not in have:
+            rows.append(_placeholder(market, side, line, desc))
+
+    jg["markets_unpriced"] = [r["desc"] for r in rows if r.get("placeholder")]
+    return rows
 
 
 def _approve(jg: dict, c: dict, sport: str) -> None:
     """후보 1건의 승인/제외 판정 — 사유를 한국어로 남긴다."""
+    if c.get("ev") is None or c.get("p") is None:
+        c["approved"] = False
+        c.setdefault("reject_reason", "근거 부족 — 확률 추정 불가")
+        c["flags"] = []
+        return
+    # 판정을 못 받은 경기는 어떤 마켓도 추천하지 않는다 (보드에는 남긴다)
+    if jg.get("judge_missing"):
+        c["approved"] = False
+        c["reject_reason"] = "판정 미수신 — 추천 불가"
+        c["flags"] = []
+        return
     flags = []
     if c["ev"] > 0.20:
         flags.append(f"EV {c['ev']:+.1%} > +20% (배당 데이터 이상 의심)")
