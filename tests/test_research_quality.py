@@ -128,6 +128,14 @@ def _mlb_jg(**over):
         "pick_summary": {"side": "Tampa Bay Rays", "desc": "탬파베이 레이스 승",
                          "market": "h2h", "odds": 1.79, "p_final": 0.56, "ev": -0.001,
                          "flags": [], "approved": False, "reject_reason": "판정 패스 권장 경기"},
+        "market_board": [
+            {"market": "h2h", "side": "Tampa Bay Rays", "line": None,
+             "desc": "탬파베이 레이스 승", "odds": 1.79, "p": 0.56, "ev": -0.001,
+             "axes_kr": "실데이터+모델", "approved": True, "reject_reason": None},
+            {"market": "totals", "side": "Under", "line": 7.5, "desc": "언더 7.5",
+             "odds": 1.98, "p": 0.54, "ev": 0.069, "axes_kr": "전문가+시장",
+             "approved": True, "reject_reason": None},
+        ],
         "research": {
             "home_recent_form": {"form": "WLWLL", "runs_avg": 3.9},
             "away_recent_form": {"form": "WWLWW", "runs_avg": 5.2},
@@ -136,7 +144,15 @@ def _mlb_jg(**over):
         },
     }
     jg.update(over)
+    _grade(jg)
     return jg
+
+
+def _grade(jg: dict) -> None:
+    from app.engine.markets import grade_candidate
+
+    for c in jg.get("market_board") or []:
+        c["grade"], c["grade_note"] = grade_candidate(c)
 
 
 def _mlb_jg2(**over):
@@ -149,6 +165,14 @@ def _mlb_jg2(**over):
         pick_summary={"side": "Miami Marlins", "desc": "마이애미 말린스 승",
                       "market": "h2h", "odds": 2.12, "p_final": 0.49, "ev": 0.035,
                       "flags": [], "approved": False, "reject_reason": "판정 패스 권장 경기"},
+        market_board=[
+            {"market": "h2h", "side": "Miami Marlins", "line": None,
+             "desc": "마이애미 말린스 승", "odds": 2.12, "p": 0.49, "ev": 0.035,
+             "axes_kr": "모델", "approved": True, "reject_reason": None},
+            {"market": "spreads", "side": "Miami Marlins", "line": 1.5,
+             "desc": "마이애미 말린스 런라인 +1.5", "odds": 1.65, "p": 0.60, "ev": -0.01,
+             "axes_kr": "시장", "approved": True, "reject_reason": None},
+        ],
         research={
             "home_recent_form": {"form": "WWWLL", "runs_avg": 4.4},
             "away_recent_form": {"form": "WWLWW", "runs_avg": 4.8},
@@ -157,6 +181,7 @@ def _mlb_jg2(**over):
         },
     )
     jg.update(over)
+    _grade(jg)
     return jg
 
 
@@ -180,6 +205,7 @@ def _soccer_jg(**over):
         },
     }
     jg.update(over)
+    _grade(jg)
     return jg
 
 
@@ -357,3 +383,54 @@ def test_normal_analysis_with_difficult_is_not_dropped():
     # 반면 '<동작>하기 어렵' 형태의 미확보 진술은 잡는다
     assert is_unavailable_prose("구체적으로 숫자를 들어 설명하기 어렵다")
     assert is_unavailable_prose("최근 3일 불펜 피로도를 수치로 비교하기 어려움")
+
+
+# ---------------------------------------------------------------- [C] 속보 매칭·문장 완결성
+
+def test_news_does_not_leak_across_teams_sharing_a_token():
+    """[C] 회귀: 'sox' 공유 토큰 때문에 레드삭스 속보가 화이트삭스 경기에 붙었다."""
+    from app.pipeline import _team_news_lines
+
+    news = ("확정 라인업: Boston Red Sox — Devers 3번\n"
+            "라인 이동: TEX @ CWS - White Sox ML -110 to -118")
+    ws = _team_news_lines(news, "Chicago White Sox", "Texas Rangers")
+    assert len(ws) == 1 and "White Sox ML" in ws[0]
+    assert not any("Boston" in ln for ln in ws)
+
+    rs = _team_news_lines(news, "Boston Red Sox", "Miami Marlins")
+    assert len(rs) == 1 and "Boston Red Sox" in rs[0]
+
+
+def test_news_matches_korean_and_full_name():
+    from app.pipeline import _team_news_lines
+
+    news = "시카고 화이트삭스 선발 교체\nLos Angeles Dodgers 불펜 소모"
+    assert len(_team_news_lines(news, "Chicago White Sox", "Texas Rangers")) == 1
+    assert len(_team_news_lines(news, "Los Angeles Dodgers", "Chicago Cubs")) == 1
+
+
+def test_clip_sentences_drops_incomplete_tail():
+    """[C] 회귀: '최근 구간에서도 경 / 원정 ?'처럼 단어 중간에서 끊긴 출력 금지."""
+    from app.pipeline import clip_sentences
+
+    s = ("Kelly는 시즌 8승 11패, ERA 5.37이다. 최근 5경기 중 3경기에서 5이닝을 못 채웠다. "
+         "불펜이 일찍 가동돼 후반 실점 위험이 커진다.")
+    out = clip_sentences(s, 45)
+    assert out.endswith("다.") and "채웠" not in out      # 완결 문장까지만
+    assert clip_sentences("완결 문장이 없는 아주 긴 한 덩어리 텍스트입니다", 10) == ""
+    assert clip_sentences("짧은 문장.", 100) == "짧은 문장."
+    assert clip_sentences(None, 50) == ""
+
+
+def test_truncated_pitcher_line_is_omitted():
+    """[C] 잘린 문장만 남으면 '선발 최근' 줄 자체를 내지 않는다."""
+    from app.pipeline import render_game_section
+
+    jg = _mlb_jg(research={
+        "home_recent_form": {"form": "WLWLL"},
+        "home_pitcher": {"name": "Framber Valdez",
+                         "last5": "매우 길게 이어지는 완결되지 않은 서술이 계속 이어지고 또 이어지며"},
+        "absences": ["Riley Greene 결장"],
+    })
+    out = render_game_section(jg)
+    assert "선발 최근:" not in out

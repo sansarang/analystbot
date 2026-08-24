@@ -245,6 +245,55 @@ def spread_desc(sport: str, side_kr: str, line: float) -> str:
     return f"{side_kr} {label} {line:+g}"
 
 
+GRADE_GREEN, GRADE_YELLOW, GRADE_RED = "🟢", "🟡", "🔴"
+GRADE_RANK = {GRADE_GREEN: 3, GRADE_YELLOW: 2, GRADE_RED: 1}
+
+
+def grade_candidate(c: dict, ev_threshold: float = 0.05) -> tuple[str, str]:
+    """[A-1] 마켓 1건의 등급과 한 줄 사유 — **경기 단위가 아니라 마켓 단위로** 판정한다.
+
+    승패에 가치가 없어도 언더/핸디캡이 살아 있으면 그 마켓은 🟢일 수 있다.
+    🟢 승인 + EV 기준 초과 / 🟡 승인이나 이득이 얇음 / 🔴 미승인 또는 이득 없음.
+    """
+    ev = c.get("ev")
+    if ev is None or not c.get("odds"):
+        return GRADE_RED, "배당 미수집"
+    if not c.get("approved"):
+        return GRADE_RED, c.get("reject_reason") or "제외"
+    if ev <= 0:
+        return GRADE_RED, f"이득 {ev:+.1%} — 가치 없음"
+    if ev >= ev_threshold:
+        return GRADE_GREEN, f"이득 {ev:+.1%}, 근거 {c.get('axes_kr') or '?'}"
+    low_var = c["market"] in ("dc", "totals") or (
+        c["market"] == "spreads" and (c.get("line") or 0) > 0)
+    kind = "저분산 대안" if low_var else "소액"
+    return GRADE_YELLOW, f"{kind}, 이득 {ev:+.1%}"
+
+
+def board_grade(board: list[dict]) -> str:
+    """[A-1] 경기 신호등 = 전 마켓 중 최고 등급. 보드가 비면 🔴."""
+    if not board:
+        return GRADE_RED
+    return max((c.get("grade") or GRADE_RED for c in board), key=lambda g: GRADE_RANK.get(g, 0))
+
+
+def best_market(board: list[dict]) -> dict | None:
+    """[A-1][A-4] 기본층이 인용할 대표 마켓 — 등급 우선, 같은 등급이면 EV 최대."""
+    if not board:
+        return None
+    return max(board, key=lambda c: (GRADE_RANK.get(c.get("grade"), 0), c.get("ev") or -9))
+
+
+def rejection_summary(board: list[dict], unpriced: list[str] | None = None) -> str:
+    """[A-1] 전 마켓 탈락 시 검토 목록과 사유를 한 줄로.
+
+    예: "승패 EV -12% / 언더 8.5 근거 부족 / 핸디 배당 미수집"
+    """
+    parts = [f"{c['desc']} {c.get('grade_note') or '제외'}" for c in board[:5]]
+    parts += [f"{m} 배당 미수집" for m in (unpriced or [])]
+    return " / ".join(parts) if parts else "평가 가능한 마켓 없음"
+
+
 def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[dict]:
     """한 경기의 전 마켓 후보 목록. p_final: h2h 사이드별 수축 완료 앙상블 확률.
 
@@ -258,9 +307,13 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
     p_draw_m = market_probs.get("Draw")
     out: list[dict] = []
 
+    stale = bool(jg.get("odds_stale"))   # [A-3] 오래된 스냅샷 폴백은 라벨을 붙인다
+
     def add(market, side, line, desc, odds, p, basis):
         if not odds or p is None:
             return
+        if stale:
+            desc = f"{desc} (개장 배당)"
         p = max(0.02, min(0.98, p))
         pm_side = None
         if market == "h2h":
@@ -303,9 +356,22 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
             basis = "시장+전문가"
         add(m, side, line, desc, alt["odds"], alt["p"], basis)
 
-    # 승인/제외 판정 (마켓 단위)
+    # 승인/제외 판정 + 등급 (마켓 단위)
     for c in out:
         _approve(jg, c, sport)
+        c["grade"], c["grade_note"] = grade_candidate(c)
+
+    # [A-2] 배당이 없어 아예 평가하지 못한 마켓만 따로 기록한다 (경기 전체를 죽이지 않는다)
+    unpriced: list[str] = []
+    if not any(c["market"] == "h2h" for c in out):
+        unpriced.append("승패")
+    if sport == "soccer" and not any(c["market"] == "dc" for c in out):
+        unpriced.append("더블찬스")
+    if not any(c["market"] == "spreads" for c in out):
+        unpriced.append("핸디캡" if sport == "soccer" else "런라인")
+    if not any(c["market"] == "totals" for c in out):
+        unpriced.append("언더오버")
+    jg["markets_unpriced"] = unpriced
     return out
 
 

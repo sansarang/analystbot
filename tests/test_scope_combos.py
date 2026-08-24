@@ -210,7 +210,19 @@ def _soccer_jg(**over):
         },
     }
     jg.update(over)
+    if "market_board" in jg:
+        _graded(jg["market_board"])
     return jg
+
+def _graded(board: list[dict]) -> list[dict]:
+    """[A-1] 마켓 보드에 등급을 채워 반환 (신호등이 마켓 단위가 됐다)."""
+    from app.engine.markets import grade_candidate
+
+    for c in board:
+        c.setdefault("axes_kr", "시장")
+        c["grade"], c["grade_note"] = grade_candidate(c)
+    return board
+
 
 
 def test_two_source_rule_model_only_rejected():
@@ -347,8 +359,9 @@ def test_market_board_rendered_in_deep_section():
     )
     out = render_game_section(jg)
     assert "⑧ 마켓 보드:" in out
-    assert "언더 2.5 @1.85 (✅추천후보" in out
-    assert "제외 — 근거 부족" in out
+    # [A-4] 마켓별로 등급·EV·사유를 한 줄씩
+    assert "언더 2.5 1.85 → 🟢" in out and "EV +9.0%" in out
+    assert "Home FC 승 1.85 → 🔴" in out and "근거 부족" in out
 
 
 def test_easy_layer_recommends_best_market():
@@ -361,6 +374,14 @@ def test_easy_layer_recommends_best_market():
         pick_summary={"side": "Under", "desc": "언더 2.5", "market": "totals",
                       "odds": 1.85, "p_final": 0.62, "ev": 0.09, "flags": [],
                       "approved": True, "reject_reason": None, "axes": "전문가+시장"},
+        market_board=[
+            {"market": "totals", "side": "Under", "line": 2.5, "desc": "언더 2.5",
+             "odds": 1.85, "p": 0.62, "ev": 0.09, "axes_kr": "전문가+시장",
+             "approved": True, "reject_reason": None},
+            {"market": "h2h", "side": "Home FC", "line": None, "desc": "Home FC 승",
+             "odds": 1.85, "p": 0.52, "ev": -0.04, "axes_kr": "시장",
+             "approved": False, "reject_reason": "근거 부족 — 2-소스 미달"},
+        ],
     )
     easy = render_game_easy(jg).split(DETAIL_SEP)[0]
-    assert "승패보다는 언더 2.5" in easy and "걸 만한 자리" in easy
+    assert "언더 2.5" in easy and "걸 만합니다" in easy

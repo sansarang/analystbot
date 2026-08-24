@@ -124,6 +124,13 @@ SYSTEM = """너는 20년 경력의 스포츠 베팅 수석 애널리스트다. �
 도구 호출 외 장문 출력은 불필요하다."""
 
 
+# adaptive thinking이 사고에 토큰을 다 쓰면 tool_use 블록을 못 낸다.
+# 실사고(2026-08-25): 10경기 페이로드 · max_tokens 16000에서 1차 호출이 도구 호출 없이
+# 끝나거나 도구 입력이 잘려, 판정 0건인 채로 "관망 권장" 카드가 발송됐다.
+JUDGE_MAX_TOKENS = 32000
+JUDGE_BATCH = 5   # 한 번에 판정할 경기 수 — 배치가 작아야 사고 여유가 남는다
+
+
 class Judge:
     def __init__(self, mock: bool | None = None):
         self.settings = get_settings()
@@ -150,7 +157,7 @@ class Judge:
     async def _create(self, payload_json: str, *, force_tool: bool) -> anthropic.types.Message:
         kwargs: dict = {
             "model": self._model,
-            "max_tokens": 16000,
+            "max_tokens": JUDGE_MAX_TOKENS,
             "system": SYSTEM,
             "tools": [VERDICT_TOOL],
             "messages": [{"role": "user", "content": payload_json}],
@@ -163,7 +170,29 @@ class Judge:
         return await self.client.messages.create(**kwargs)
 
     async def judge(self, payload: dict) -> dict:
-        """payload → {"games": [{game_id, p_claude, verdict, excluded_picks}]}"""
+        """payload → {"games": [{game_id, p_claude, verdict, excluded_picks}]}.
+
+        경기가 많으면 JUDGE_BATCH 단위로 나눠 호출한다 — 한 호출의 페이로드가 클수록
+        adaptive thinking이 토큰을 다 써 도구 호출을 못 내는 사고가 난다. 배치가 실패해도
+        나머지 배치의 판정은 살린다(전부 아니면 전무 금지).
+        """
+        games = payload.get("games") or []
+        if not self.mock and len(games) > JUDGE_BATCH:
+            merged: list[dict] = []
+            for i in range(0, len(games), JUDGE_BATCH):
+                batch = games[i:i + JUDGE_BATCH]
+                try:
+                    part = await self._judge_once({**payload, "games": batch})
+                    merged += part.get("games") or []
+                except Exception as exc:
+                    logger.error("[judge] 배치 %d~%d 판정 실패 — 나머지는 계속: %s",
+                                 i + 1, i + len(batch), exc)
+            logger.info("[judge] 배치 판정 완료 — 요청 %d경기 → 판정 %d경기",
+                        len(games), len(merged))
+            return {"games": merged}
+        return await self._judge_once(payload)
+
+    async def _judge_once(self, payload: dict) -> dict:
         if self.mock:
             return self._mock_verdict(payload)
 
@@ -189,6 +218,17 @@ class Judge:
             verdict = self._extract_verdict(response)
         if verdict is None:
             raise RuntimeError("judge did not return a verdict tool call")
+        # 진단: 판정이 몇 경기를 돌려줬는지·왜 끊겼는지 남긴다.
+        # (실사고: 200 OK + 도구 호출은 왔는데 games가 비어 전 경기 p_claude 미부착 →
+        #  분석이 텅 빈 채로 '관망 권장' 카드가 발송됐다)
+        n_in = len(payload.get("games") or [])
+        n_out = len(verdict.get("games") or [])
+        logger.info("[judge] stop_reason=%s · 요청 %d경기 → 판정 %d경기",
+                    getattr(response, "stop_reason", "?"), n_in, n_out)
+        if n_out < n_in:
+            logger.warning("[judge] 판정 누락 %d경기 (stop_reason=%s) — max_tokens 초과나 "
+                           "도구 입력 절단 가능성", n_in - n_out,
+                           getattr(response, "stop_reason", "?"))
         return verdict
 
     @staticmethod

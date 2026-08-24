@@ -8,7 +8,8 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime
+from functools import lru_cache
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import anthropic
@@ -491,7 +492,18 @@ async def build_analysis(
     # 4c) [7] 전 마켓 배당 부착 + [4d] 데이터 제로 강등 → 5) 마켓 풀 픽 계산
     await _attach_alt_markets(pool, judge_games)
     _enforce_data_rules(judge_games)
+
     picks_out, parlays, recommended = _compute_picks(settings, judge_games, sport)
+
+    # [B-1] 판정과 서술을 분리 — 판정 결론 + 마켓 보드 + 리서치를 입력으로 별도 서술 단계.
+    #       마켓 보드가 만들어진 뒤에 실행해야 서술이 '어느 마켓이 살았는지'를 안다.
+    from app.engine.narrator import attach_narratives
+
+    try:
+        await attach_narratives(judge_games, sport)
+    except Exception as exc:   # 서술 실패는 분석을 막지 않는다 (결정적 렌더로 폴백)
+        logger.warning("[pipeline] 서술 단계 실패, 결정적 렌더로 진행: %s", exc)
+
     for p in recommended:
         await pool.execute(
             """
@@ -549,12 +561,34 @@ async def build_analysis(
     }
 
 
+def _to_gid(value):
+    """판정이 game_id를 문자열로 돌려줘도 매칭되게 정규화."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return value
+
+
+async def _renarrate(games: list[dict], sport: str) -> None:
+    """재판정된 경기의 서술을 다시 쓴다 — 판정이 바뀌었는데 글이 그대로면 안 된다."""
+    if not games:
+        return
+    from app.engine.narrator import attach_narratives
+
+    try:
+        await attach_narratives(games, sport)
+    except Exception as exc:
+        logger.warning("[pipeline] 재서술 실패, 기존 서술 유지: %s", exc)
+
+
 def _attach_verdicts(judge_games: list[dict], verdict: dict) -> None:
-    by_id = {g["game_id"]: g for g in verdict.get("games", [])}
+    by_id = {_to_gid(g.get("game_id")): g for g in verdict.get("games", [])}
+    matched = 0
     for jg in judge_games:
-        v = by_id.get(jg["game_id"])
+        v = by_id.get(_to_gid(jg["game_id"]))
         if v is None:
             continue
+        matched += 1
         jg["p_claude"] = v["p_claude"]
         jg["verdict"] = v["verdict"]
         jg["excluded_picks"] = v.get("excluded_picks", [])
@@ -562,6 +596,13 @@ def _attach_verdicts(judge_games: list[dict], verdict: dict) -> None:
         jg["judge_confidence"] = v.get("confidence", "medium")
         jg["reversal_factor"] = v.get("reversal_factor") or ""
         jg["conclusion_revised"] = bool(v.get("conclusion_revised"))
+    targets = [g for g in judge_games if g.get("status") == "scheduled"]
+    if targets and matched == 0:
+        logger.error("[pipeline] 판정 부착 0건 — 분석 대상 %d경기 중 매칭 실패 "
+                     "(판정 game_id=%s)", len(targets), list(by_id)[:5])
+    elif matched < len(targets):
+        logger.warning("[pipeline] 판정 부착 %d/%d경기 — 일부 경기 판정 누락",
+                       matched, len(targets))
 
 
 def _enforce_data_rules(judge_games: list[dict]) -> None:
@@ -579,12 +620,27 @@ def _enforce_data_rules(judge_games: list[dict]) -> None:
                                  + " [자동 강등: 올 시즌 실데이터 0건 — 신뢰도 낮음, 추천 제외]")
 
 
+ODDS_STALE_HOURS = 3   # 이보다 오래된 스냅샷은 '개장 배당'으로 표기
+
+
 async def _attach_alt_markets(pool: asyncpg.Pool, judge_games: list[dict]) -> None:
-    """[7] 핸디캡·토탈 수집 배당을 경기 객체에 부착 (디빅 확률 + 사이드별 최고 배당)."""
+    """[7] 핸디캡·토탈 수집 배당 부착 + [A-3] 스냅샷 신선도 라벨.
+
+    배당 조회는 북별 최신 스냅샷을 모으므로 (a)다른 북메이커 (b)마지막 프리게임
+    스냅샷 폴백이 이미 내장돼 있다. 다만 그 스냅샷이 오래됐으면 현재가가 아니므로
+    '(개장 배당)'으로 표기해 사용자가 구분할 수 있게 한다.
+    """
     for jg in judge_games:
         if jg.get("status") != "scheduled":
             continue
         jg["alt_markets"] = await _alt_market_rows(pool, jg["game_id"], jg["home"], jg["away"])
+        newest = await pool.fetchval(
+            "SELECT max(captured_at) FROM odds_snapshots WHERE game_id = $1", jg["game_id"])
+        if newest is not None:
+            age_h = (datetime.now(UTC) - newest).total_seconds() / 3600
+            jg["odds_stale"] = age_h > ODDS_STALE_HOURS
+        else:
+            jg["odds_stale"] = False
 
 
 def approved_market_legs(games: list[dict]) -> list[dict]:
@@ -695,25 +751,25 @@ def _compute_picks(
     for jg in judge_games:
         if jg["status"] != "scheduled" or "p_claude" not in jg:
             continue
-        market = jg.get("market_probs")
-        if not market or jg["home"] not in market or jg["away"] not in market:
-            jg["market_board"] = []
-            continue
+        # [A-2] h2h 배당이 없다고 경기 전체를 죽이지 않는다 — 없는 마켓만 빠진다.
+        market = jg.get("market_probs") or {}
+        h2h_priced = bool(market) and jg["home"] in market and jg["away"] in market
 
         # 사이드별 확률: 축구는 무승부 질량 때문에 1-p_home ≠ p_away — 시장 3-way 기준
         p_draw_m = market.get("Draw", 0.0)
+        p_final: dict[str, float] = {}
+        p_ens: dict[str, float] = {}
         p_claude_home = jg["p_claude"]
         p_claude_away = max(0.0, min(1.0, 1.0 - p_claude_home - p_draw_m))
         p3 = jg.get("p_model3")
         league_lam = "MLB" if sport == "mlb" else jg.get("league")
-        p_final: dict[str, float] = {}
-        p_ens: dict[str, float] = {}
-        for side, p_model_s, p_market_s, p_claude_s in (
+        sides = (
             (jg["home"], (p3[0] if p3 else (jg["p_model"] if jg.get("model_valid") else None)),
-             market[jg["home"]], p_claude_home),
+             market.get(jg["home"], 0.5), p_claude_home),
             (jg["away"], (p3[2] if p3 else ((1 - jg["p_model"]) if jg.get("model_valid") and sport == "mlb" else None)),
-             market[jg["away"]], p_claude_away),
-        ):
+             market.get(jg["away"], 0.5), p_claude_away),
+        ) if h2h_priced else ()
+        for side, p_model_s, p_market_s, p_claude_s in sides:
             if not (jg.get("best_odds") or {}).get(side):
                 continue
             pe = blend(p_model_s, p_market_s, p_claude_s)
@@ -756,6 +812,7 @@ def _compute_picks(
             "approved": bool(rep.get("approved")),
             "reject_reason": rep.get("reject_reason"),
             "axes": rep.get("axes_kr"),
+            "grade": rep.get("grade"),
             "p_market_side": market.get(rep["side"]) if rep["market"] == "h2h" else None,
             "p_ensemble_side": p_ens.get(rep["side"]),
         }
@@ -811,10 +868,73 @@ def _kr(name: str) -> str:
     return kr_team(name)
 
 
+_GENERIC_TEAM_TOKENS = frozenset({
+    "fc", "cf", "sc", "ac", "club", "united", "city", "town", "de", "the", "and", "st.",
+})
+
+
+@lru_cache(maxsize=1)
+def _shared_team_tokens() -> frozenset[str]:
+    """둘 이상의 구단이 공유하는 팀명 토큰.
+
+    실사고: `home.split()[-1]` = "sox"로 매칭해 **Boston Red Sox 속보가
+    Chicago White Sox 경기 카드에 붙었다.** 공유 토큰은 식별자가 될 수 없다.
+    """
+    from collections import Counter
+
+    from app.bot.aliases import TEAM_ALIASES
+
+    officials = {official for _sport, official in TEAM_ALIASES.values()}
+    counts: Counter[str] = Counter()
+    for name in officials:
+        counts.update(set(name.lower().split()))
+    return frozenset(tok for tok, n in counts.items() if n > 1)
+
+
+def _news_keys(team: str) -> set[str]:
+    """그 팀만 가리키는 매칭 키 — 정식명·한국어명 + 공유되지 않는 고유 토큰."""
+    keys = {team.lower().strip(), _kr(team).lower().strip()}
+    shared = _shared_team_tokens() | _GENERIC_TEAM_TOKENS
+    for tok in team.lower().split():
+        tok = tok.strip(".")
+        if len(tok) >= 4 and tok not in shared:
+            keys.add(tok)
+    return {k for k in keys if k}
+
+
+_SENT_END = re.compile(r"[.!?]['\")\]]?\s|[다요음함짐움됨]\.\s*$|[.!?]$")
+
+
+def clip_sentences(text, limit: int) -> str:
+    """[C] 문장 완결성 보장 절단 — 잘린 문장은 버린다.
+
+    실사고: "선발 최근: … 최근 구간에서도 경 / 원정 ?"처럼 단어 중간에서 끊긴 문장이
+    데이터인 척 출력됐다. 한도 안에 들어가는 **마지막 완결 문장까지만** 남기고,
+    완결 문장이 하나도 없으면 빈 문자열을 돌려 그 줄 자체를 생략하게 한다.
+    """
+    s = str(text or "").strip()
+    if not s:
+        return ""
+    if len(s) <= limit:
+        return s
+    head = s[:limit]
+    cut = -1
+    for m in re.finditer(r"[.!?]|[다요음함짐움됨](?=\s|$)", head):
+        cut = m.end()
+    if cut <= 0:
+        return ""      # 완결 문장 없음 → 줄 생략
+    return head[:cut].strip()
+
+
 def _team_news_lines(news: str, home: str, away: str) -> list[str]:
-    keys = {home.lower(), away.lower(), home.split()[-1].lower(), away.split()[-1].lower(),
-            _kr(home).lower(), _kr(away).lower()}
-    return [ln for ln in news.splitlines() if any(k in ln.lower() for k in keys)]
+    """이 경기 두 팀을 실제로 가리키는 속보 줄만 고른다 (다른 경기 속보 혼입 금지)."""
+    keys = _news_keys(home) | _news_keys(away)
+    out = []
+    for ln in news.splitlines():
+        low = ln.lower()
+        if any(re.search(rf"(?<![0-9a-z]){re.escape(k)}(?![0-9a-z])", low) for k in keys):
+            out.append(ln)
+    return out
 
 
 async def _alt_market_rows(
@@ -923,38 +1043,36 @@ def classify_signal(jg: dict) -> tuple[str, str, int]:
 
 
 def _classify_base(jg: dict) -> tuple[str, str, int]:
-    """신호등 판정 → (이모지, 굵은 한 문장 이유, 별점 1~5).
+    """[A-1] 신호등은 **마켓 단위** 판정의 최고 등급이다 — 경기 단위 일괄 패스 금지.
 
-    🟢 판정 통과+신뢰도 상 / 🟡 가치 있으나 고분산·신뢰 보통 /
-    🔴 플래그·방향충돌·신뢰 낮음·이득 없음.
+    승패에 가치가 없어도 언더 8.5가 승인되면 그 경기는 🟢이다.
+    진짜 🔴은 "전 마켓을 검토했으나 어느 마켓도 승인 기준을 못 넘김"일 때뿐이며,
+    그 경우 검토한 마켓과 각각의 탈락 사유를 한 줄로 밝힌다.
     """
-    ps = jg.get("pick_summary") or {}
+    from app.engine.markets import best_market, board_grade, rejection_summary
+
+    board = jg.get("market_board") or []
+    unpriced = jg.get("markets_unpriced") or []
+
+    if not board:
+        why = ("배당을 한 마켓도 수집하지 못했습니다" if unpriced
+               else "판정을 받지 못해 마켓을 평가하지 못했습니다")
+        detail = f" ({' / '.join(unpriced)})" if unpriced else ""
+        return "🔴", f"패스 — {why}{detail}", 1
+
+    grade = board_grade(board)
+    top = best_market(board) or {}
+    if grade == "🔴":
+        return "🔴", "패스 — 전 마켓 검토 결과 승인 기준을 넘는 자리가 없습니다: " \
+                     + rejection_summary(board, unpriced), 2
+
     conf = jg.get("judge_confidence", "medium")
-    ev_val = ps.get("ev")
-    conflict = (
-        jg.get("model_valid") and jg.get("p_market") is not None
-        and (jg["p_model"] - 0.5) * (jg["p_market"] - 0.5) < 0
-    )
-    if ps.get("flags"):
-        return "🔴", "패스 — 배당 숫자가 이상해서 계산에서 제외한 경기입니다", 1
-    if jg.get("judge_pass") or conf == "low":
-        return "🔴", "패스 — 데이터끼리 서로 싸우는 경기입니다. 저희도 모르겠으면 안 거는 게 답입니다", 2
-    if ps and ps.get("approved") is False:
-        rr = ps.get("reject_reason") or ""
-        if "시장이 아는" in rr:
-            return "🔴", "패스 — 시장이 아는 정보가 있을 수 있는 가격입니다", 2
-        if "저분산" in rr:
-            return "🟡", "소액만 — 승패 대신 안전한 마켓만 볼 경기입니다", 3
-        return "🔴", "패스 — 근거가 한 축뿐이라 추천 기준(독립 근거 2개)에 못 미칩니다", 2
-    if conflict:
-        return "🔴", "패스 — 시장과 통계가 서로 반대 방향을 보고 있습니다", 2
-    if ev_val is None or jg.get("p_market") is None:
-        return "🔴", "패스 — 배당 정보가 없어 판단할 수 없습니다", 2
-    if ev_val <= 0:
-        return "🔴", "패스 — 이길 팀은 보이는데 배당이 박해서 남는 게 없습니다", 3 if conf == "high" else 2
-    if conf == "high":
-        return "🟢", "추천 — 배당이 실력보다 후하게 붙어 있습니다", 4
-    return "🟡", "소액만 — 이득은 보이지만 확신이 부족한 경기입니다", 3
+    desc, note = top.get("desc", "?"), top.get("grade_note", "")
+    if grade == "🟢":
+        stars = 5 if conf == "high" else 4
+        return "🟢", f"추천 — {desc}가 걸 만합니다 ({note})", stars
+    stars = 3 if conf == "high" else 2
+    return "🟡", f"소액만 — {desc} 정도가 볼 만한 자리입니다 ({note})", stars
 
 
 def _guard_basic(text: str, where: str) -> str:
@@ -1019,44 +1137,40 @@ def _pick_line(candidates: list[str], names: list[str], used: set[str] | None) -
 
 
 def _value_candidates(jg: dict, home_kr: str, away_kr: str) -> list[str]:
-    """[3] '걸 만한가' 후보 — 전부 그 경기의 배당·확률 수치를 품는다."""
-    ps = jg.get("pick_summary") or {}
-    ev, odds = ps.get("ev"), ps.get("odds")
-    side_kr = _kr(ps.get("side")) if ps.get("side") else ""
-    desc = ps.get("desc") or side_kr
+    """[A-1][A-4] '걸 만한가' — 마켓 보드의 **최고 등급 마켓 하나**를 골라 말한다.
+
+    승패가 🔴이어도 언더/핸디캡이 살아 있으면 그쪽을 말한다
+    ("승패는 볼 게 없지만 언더 8.5가 걸 만합니다"). 경기 전체를 죽이지 않는다.
+    """
+    from app.engine.markets import best_market, rejection_summary
+
+    board = jg.get("market_board") or []
+    unpriced = jg.get("markets_unpriced") or []
     out: list[str] = []
-    if ps.get("flags"):
-        out.append(f"걸 만한가? 숫자가 이상해서({ps['flags'][0]}) 이 경기는 계산을 신뢰하지 않습니다.")
-    elif ev is None or odds is None:
-        out.append(f"걸 만한가? {home_kr} vs {away_kr} 배당이 아직 수집되지 않아 이득 계산이 불가능합니다.")
-    elif ps.get("approved"):
-        pf = ps.get("p_final")
-        hit = f"적중 계산 {pf:.0%}, " if pf is not None else ""
-        if ps.get("market") == "h2h":
-            out.append(f"걸 만한가? {side_kr} 승 배당 @{odds:.2f}({hit}이득 {ev:+.1%})이 "
-                       f"실력보다 후해 걸어볼 만합니다.")
-        else:
-            out.append(f"걸 만한가? 승패보다는 {desc} @{odds:.2f}({hit}이득 {ev:+.1%})가 "
-                       f"걸 만한 자리입니다.")
-    else:
-        rr = ps.get("reject_reason") or ""
-        pm, pmo = jg.get("p_model"), jg.get("p_market")
-        if "시장이 아는" in rr and pm is not None and pmo is not None:
-            out.append(f"걸 만한가? 봇 계산 {pm:.0%} vs 시장 {pmo:.0%}로 벌어진 만큼 "
-                       f"시장만 아는 정보가 있을 수 있어 피하는 게 안전합니다.")
-        elif "저분산" in rr:
-            out.append(f"걸 만한가? 확신이 부족해 {desc} @{odds:.2f} 같은 안전한 마켓만 볼 자리입니다.")
-        elif "근거 부족" in rr or "지지 축" in rr:
-            out.append(f"걸 만한가? {desc} @{odds:.2f}는 근거가 한 축뿐이라 "
-                       f"추천 기준(독립 근거 2개)에 못 미칩니다.")
-        elif ev > 0:
-            out.append(f"걸 만한가? {desc} @{odds:.2f}의 이득이 {ev:+.1%}에 그쳐 무리할 이유는 없습니다.")
-        else:
-            out.append(f"걸 만한가? {desc} @{odds:.2f}는 이득이 {ev:+.1%}입니다 — "
-                       f"이겨도 남는 게 없는 가격입니다.")
-        if odds is not None and ev is not None:
-            out.append(f"걸 만한가? 이 경기 최선의 자리인 {desc} @{odds:.2f}조차 "
-                       f"이득 {ev:+.1%}이라 관망이 낫습니다.")
+    if not board:
+        miss = f" ({' / '.join(unpriced)})" if unpriced else ""
+        out.append(f"걸 만한가? {home_kr} vs {away_kr}는 배당을 수집하지 못해 "
+                   f"이득 계산이 불가능합니다{miss}.")
+        return out
+
+    top = best_market(board) or {}
+    grade, desc, odds = top.get("grade"), top.get("desc", "?"), top.get("odds")
+    h2h = next((c for c in board if c["market"] == "h2h"), None)
+    h2h_dead = h2h is not None and h2h.get("grade") == "🔴"
+
+    if grade in ("🟢", "🟡"):
+        p_txt = f"적중 계산 {top['p']:.0%}, " if top.get("p") is not None else ""
+        lead = ("승패는 볼 게 없지만 " if h2h_dead and top["market"] != "h2h" else "")
+        verb = "걸 만합니다" if grade == "🟢" else "소액이면 볼 만합니다"
+        out.append(f"걸 만한가? {lead}{desc} @{odds:.2f}({p_txt}이득 {top['ev']:+.1%})가 {verb}.")
+        if top["market"] != "h2h":
+            out.append(f"걸 만한가? 승패 대신 {desc} @{odds:.2f}가 이 경기에서 가장 나은 자리입니다"
+                       f"(이득 {top['ev']:+.1%}).")
+        return out
+
+    # 전 마켓 🔴 — 검토한 마켓과 사유를 밝힌다 (막연한 '패스' 금지)
+    out.append(f"걸 만한가? 전 마켓을 봤지만 걸 자리가 없습니다 — "
+               f"{rejection_summary(board, unpriced)}.")
     return out
 
 
@@ -1117,10 +1231,28 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
     else:
         lines.append("누가 이길까? 데이터가 부족해 저희도 판단을 보류합니다.")
 
+    # [B-2] ① 맥락 · ② 인과 — 서술 단계(narrator) 결과.
+    # 서술 줄은 narrator.clean_line이 이미 각주·필드나열·빈말을 걸렀다. 여기서는
+    # 문장 완결성과 경기 간 중복만 본다 (한국어 선수명은 names에 없으므로 수치 검사 미적용).
+    from app.engine.narrator import clean_line as _narr_clean
+
+    nar = jg.get("narrative") or {}
+    for key in ("context", "causal"):
+        line = clip_sentences(_narr_clean(nar.get(key)), 220)
+        if line and (used is None or line not in used):
+            if used is not None:
+                used.add(line)
+            lines.append(line)
+
     # 걸 만한가 — 전 마켓 중 최적 하나를 골라 결론까지 문장으로 ([8])
     value_line = _pick_line(_value_candidates(jg, home_kr, away_kr), names, used)
     if value_line:
         lines.append(value_line)
+
+    # [B-2] ③ 승부처 — 이 경기가 어디서 갈리는지 한 문장
+    decider = clip_sentences(_narr_clean(nar.get("decider")), 200)
+    if decider:
+        lines.append(f"승부처: {decider}")
 
     # 조심할 점 — 고유 수치·이름이 없으면 줄 자체를 생략 ([3])
     if not any(research_materials(research).values()) and jg.get("p_market") is not None:
@@ -1134,8 +1266,13 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
         lines.append(caution)
     lines.append(f"신뢰도 {_stars(stars)}")
 
+    # [B-5] 재료가 부족하면 길이를 채우지 말고, 왜 짧은지 밝힌다
+    missing = clip_sentences((jg.get("narrative") or {}).get("missing"), 160)
+    if missing and len(lines) <= 5:
+        lines.append(f"({missing})")
+
     detail = render_game_section(jg, news)
-    return _guard_basic("\n".join(lines[:6]) + DETAIL_SEP + detail, "game_easy")
+    return _guard_basic("\n".join(lines[:9]) + DETAIL_SEP + detail, "game_easy")
 
 
 def render_games_easy(games: list[dict], news: str = "") -> list[str]:
@@ -1180,12 +1317,18 @@ def render_game_section(jg: dict, news: str = "") -> str:
     if sport == "mlb":
         hp, ap = research.get("home_pitcher") or {}, research.get("away_pitcher") or {}
         if hp.get("last5") or ap.get("last5"):
-            lines.append(f"선발 최근: 홈 {str(hp.get('last5') or '?')[:80]} "
-                         f"/ 원정 {str(ap.get('last5') or '?')[:80]}")
+            h5 = clip_sentences(hp.get("last5"), 110)
+            a5 = clip_sentences(ap.get("last5"), 110)
+            if h5 or a5:   # 잘린 문장만 남는 경우 줄째로 생략
+                lines.append(f"선발 최근: 홈 {h5 or '—'} / 원정 {a5 or '—'}")
     if research.get("absences"):
-        lines.append("결장: " + "; ".join(str(x) for x in research["absences"][:2])[:180])
+        absent = clip_sentences("; ".join(str(x) for x in research["absences"][:2]), 180)
+        if absent:
+            lines.append(f"결장: {absent}")
     if research.get("form_reversal"):
-        lines.append("⚠️ 폼 역전: " + "; ".join(str(x) for x in research["form_reversal"][:2])[:180])
+        rev = clip_sentences("; ".join(str(x) for x in research["form_reversal"][:2]), 180)
+        if rev:
+            lines.append(f"⚠️ 폼 역전: {rev}")
     if jg.get("research_status") in ("missing", "invalid"):
         lines.append("⚠️ 리서치 실패 — 최신 데이터를 수집하지 못했습니다")
     elif jg.get("research_status") == "stale_fallback":
@@ -1216,38 +1359,54 @@ def render_game_section(jg: dict, news: str = "") -> str:
             f"밸류: {ps.get('desc') or _kr(ps['side'])} @{ps['odds']:.2f} — p_final {ps['p_final']:.0%}, "
             f"EV {ps['ev']:+.1%} (근거: {ps.get('axes') or '?'}){ok_txt}{flag_txt}")
 
-    board = jg.get("market_board") or []
-    if board:  # ⑧ 마켓 보드 — 전 마켓 한 줄 판정
-        lines.append("⑧ 마켓 보드:")
-        ordered = sorted(board, key=lambda c: (not c.get("approved"), -c["ev"]))
-        for c in ordered[:6]:
-            if c.get("approved"):
-                verdict_txt = f"✅추천후보 EV {c['ev']:+.1%} · 근거 {c.get('axes_kr', '?')}"
-                if c.get("basis") == "시장 기준":
-                    verdict_txt += "(시장 기준)"
-            else:
-                verdict_txt = f"제외 — {c.get('reject_reason')}"
-            lines.append(f"  {c['desc']} @{c['odds']:.2f} ({verdict_txt})")
+    # [A-4] ⑧ 마켓 보드 — 항상 출력. 평가한 전 마켓을 등급·EV·사유와 함께 표로 남긴다.
+    from app.engine.markets import GRADE_RANK
 
+    board = jg.get("market_board") or []
+    unpriced = jg.get("markets_unpriced") or []
+    lines.append("⑧ 마켓 보드:")
+    if board:
+        ordered = sorted(board, key=lambda c: (-GRADE_RANK.get(c.get("grade"), 0), -c["ev"]))
+        for c in ordered[:8]:
+            basis = "(시장 기준)" if c.get("basis") == "시장 기준" else ""
+            note = c.get("grade_note") or ""
+            lines.append(f"  {c['desc']} {c['odds']:.2f} → {c.get('grade', '🔴')} "
+                         f"EV {c['ev']:+.1%} ({note}){basis}")
+    else:
+        lines.append("  (평가 가능한 마켓 없음)")
+    for m in unpriced:
+        lines.append(f"  {m} → ⚪ 배당 미수집")
+
+    from app.engine.narrator import clean_line as _nclean
+
+    expert_note = clip_sentences(_nclean((jg.get("narrative") or {}).get("expert_note")), 200)
     eps = jg.get("expert_picks") or []
+    if expert_note:
+        lines.append(f"전문가 요약: {expert_note}")
     if eps:
         for ep in eps[:3]:
             rec = f" (전적 {ep['record']})" if ep.get("record") else " (전적 미상 — 0.5표)"
-            reason = f" — {ep['reasoning'][:150]}" if ep.get("reasoning") else ""
+            ep_reason = clip_sentences(ep.get("reasoning"), 150)
+            reason = f" — {ep_reason}" if ep_reason else ""
             adopt = "" if ep.get("adopted", True) else " [불채택 — 해당 마켓 전적 마이너스, 인용 데이터만 참고]"
             lines.append(f"전문가: [{ep.get('site', '?')}] {ep.get('expert', '?')}: {ep['pick']}{reason}{rec}{adopt}")
     else:
         lines.append("전문가: 전문가 픽 미수집")
 
     news_hits = _team_news_lines(news or "", jg["home"], jg["away"])
-    lines.append("속보: " + (news_hits[0].strip()[:200] if news_hits else "특이사항 없음"))
+    hit = clip_sentences(news_hits[0], 200) if news_hits else ""
+    lines.append(f"속보: {hit or '특이사항 없음'}")
     for note in jg.get("breaking_changes", []) or []:
         lines.append(f"🔄 {note[:150]}")
     if jg.get("verdict"):
         v = jg["verdict"]
-        lines.append(f"판단: {v[:600]}" + ("…" if len(v) > 600 else ""))
+        verdict_txt = clip_sentences(v, 600)
+        if verdict_txt:
+            lines.append(f"판단: {verdict_txt}" + ("…" if len(verdict_txt) < len(v) else ""))
         if jg.get("reversal_factor"):
-            lines.append(f"반전 요인: {jg['reversal_factor'][:200]}")
+            rf = clip_sentences(jg["reversal_factor"], 200)
+            if rf:
+                lines.append(f"반전 요인: {rf}")
         if jg.get("judge_confidence"):
             tag = {"high": "높음", "medium": "보통", "low": "낮음(참고만)"}
             second = " · 2차 검증 반영" if jg.get("second_opinion") else ""
@@ -1320,6 +1479,15 @@ def _render_card(analysis: dict) -> str:
             lines.append(g["breaking_note"])
     if analysis.get("parlay_rebuilt_note"):
         lines.append(analysis["parlay_rebuilt_note"])
+
+    # 판정 실패를 '추천 없음'으로 위장하지 않는다 — 재료 없으면 정직하게 실패를 알린다
+    judged = [g for g in scheduled if g.get("p_claude") is not None]
+    if scheduled and not judged:
+        lines.append("")
+        lines.append("⚠️ 판정 실패 — 오늘 경기 판정을 받지 못해 분석을 완료하지 못했습니다.")
+        lines.append("추천·조합을 낼 수 없습니다. (관망 권장이 아니라 '분석 미완'입니다)")
+        detail.append(f"판정 부착 0건 / 분석 대상 {len(scheduled)}경기 — judge 응답 확인 필요")
+        return _guard_basic("\n".join(lines[:20])[:3500] + DETAIL_SEP + "\n".join(detail[:20]), "card")
 
     lines.append("")
     lines.append("🎯 오늘의 추천")
@@ -1583,6 +1751,7 @@ async def _refresh_stale_research(
     _enforce_data_rules(analysis["games"])
     picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport)
     analysis["picks"], analysis["parlays"] = picks_out, parlays
+    await _renarrate(refreshed, sport)   # [B-1] 재판정된 경기는 서술도 다시 쓴다
     from app.engine.parlay import build_tiered_parlays
 
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
@@ -1629,6 +1798,7 @@ async def ensure_game_fresh(sport: str, date: str, game_id: int) -> tuple[dict |
         _enforce_data_rules(analysis["games"])
         picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport)
         analysis["picks"], analysis["parlays"] = picks_out, parlays
+        await _renarrate([jg], sport)    # [B-1] 재판정된 경기는 서술도 다시 쓴다
         meta = analysis.setdefault("research_meta", {})
         meta["refreshed"] = (meta.get("refreshed") or 0) + 1
         await redis.set(f"analysis:{sport}:{date}", json.dumps(analysis, ensure_ascii=False, default=str),

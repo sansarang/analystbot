@@ -327,29 +327,80 @@ def _easy_game(**over):
                              "era_recent": 2.41, "era_season": 2.90},
             "absences": ["Mookie Betts 손목 부상 결장"],
         },
-        "pick_summary": {"side": "Los Angeles Dodgers", "odds": 1.80,
-                         "p_final": 0.62, "ev": 0.116, "flags": []},
+        "pick_summary": {"side": "Los Angeles Dodgers", "desc": "LA 다저스 승",
+                         "market": "h2h", "odds": 1.80, "p_final": 0.62, "ev": 0.116,
+                         "flags": [], "approved": True, "reject_reason": None},
+        # [A-1] 신호등은 마켓 보드에서 나온다
+        "market_board": [
+            {"market": "h2h", "side": "Los Angeles Dodgers", "line": None,
+             "desc": "LA 다저스 승", "odds": 1.80, "p": 0.62, "ev": 0.116,
+             "axes_kr": "실데이터+모델", "approved": True, "reject_reason": None},
+            {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
+             "odds": 1.87, "p": 0.55, "ev": 0.029, "axes_kr": "전문가+시장",
+             "approved": True, "reject_reason": None},
+        ],
     }
     g.update(over)
+    _grade_board(g)
     return g
 
 
+def _grade_board(g: dict) -> None:
+    """[A-1] 마켓 보드에 등급을 채운다 — 판정 게이트(패스·저신뢰)는 전 마켓 제외."""
+    from app.engine.markets import grade_candidate
+
+    gate = None
+    if g.get("judge_pass"):
+        gate = "판정 패스 권장 경기"
+    elif g.get("judge_confidence") == "low":
+        gate = "판정 저신뢰 경기"
+    for c in g.get("market_board") or []:
+        if gate:
+            c["approved"], c["reject_reason"] = False, gate
+        if (g.get("pick_summary") or {}).get("flags") and c["market"] == "h2h":
+            c["approved"], c["reject_reason"] = False, "플래그 — 배당 데이터 이상 의심"
+        c["grade"], c["grade_note"] = grade_candidate(c)
+
+
 def test_classify_signal_mapping():
+    """[A-1] 신호등 = 전 마켓 중 최고 등급."""
     from app.pipeline import classify_signal
 
-    assert classify_signal(_easy_game())[0] == "🟢"                       # 통과+신뢰 상
-    assert classify_signal(_easy_game(judge_confidence="medium"))[0] == "🟡"  # 가치+신뢰 보통
-    assert classify_signal(_easy_game(judge_pass=True))[0] == "🔴"        # 패스 권장
-    assert classify_signal(_easy_game(judge_confidence="low"))[0] == "🔴"  # 신뢰 낮음
-    flagged = _easy_game()
-    flagged["pick_summary"]["flags"] = ["EV +31% 비정상"]
-    sig, reason, stars = classify_signal(flagged)
-    assert sig == "🔴" and stars == 1                                     # 플래그
-    conflict = _easy_game(p_model=0.40, p_market=0.60)                    # 방향 충돌
-    assert classify_signal(conflict)[0] == "🔴"
-    neg = _easy_game()
-    neg["pick_summary"]["ev"] = -0.03
-    assert classify_signal(neg)[0] == "🔴"                                # 이득 없음
+    assert classify_signal(_easy_game())[0] == "🟢"                       # 승인 + EV 충분
+    assert classify_signal(_easy_game(judge_pass=True))[0] == "🔴"        # 전 마켓 게이트
+    assert classify_signal(_easy_game(judge_confidence="low"))[0] == "🔴"  # 전 마켓 게이트
+    # 보드가 비면(배당 미수집) 🔴 — 사유에 미수집 마켓을 밝힌다
+    empty = _easy_game()
+    empty["market_board"], empty["markets_unpriced"] = [], ["승패", "언더오버"]
+    sig, reason, _ = classify_signal(empty)
+    assert sig == "🔴" and "승패" in reason and "배당" in reason
+
+
+def test_signal_uses_best_market_not_moneyline():
+    """[A-1] 회귀: 승패가 🔴이어도 다른 마켓이 승인되면 경기 신호등은 그 등급을 따른다."""
+    from app.pipeline import classify_signal
+
+    g = _easy_game()
+    g["market_board"][0].update(approved=False, reject_reason="근거 부족 — 2-소스 미달")
+    g["market_board"][1].update(ev=0.07)          # 언더 8.5는 승인 + EV 충분
+    _grade_board(g)
+    sig, reason, _ = classify_signal(g)
+    assert sig == "🟢", "승패 탈락이 경기 전체를 죽이면 안 된다"
+    assert "언더 8.5" in reason
+
+
+def test_all_markets_rejected_lists_each_reason():
+    """[A-1] 진짜 🔴은 전 마켓 검토 후에만 — 마켓별 탈락 사유를 한 줄로 밝힌다."""
+    from app.pipeline import classify_signal
+
+    g = _easy_game()
+    g["market_board"][0].update(approved=True, ev=-0.08)          # 승패 가치 없음
+    g["market_board"][1].update(approved=False, reject_reason="근거 부족 — 2-소스 미달")
+    g["markets_unpriced"] = ["런라인"]
+    _grade_board(g)
+    sig, reason, _ = classify_signal(g)
+    assert sig == "🔴"
+    assert "LA 다저스 승" in reason and "언더 8.5" in reason and "런라인 배당 미수집" in reason
 
 
 def test_render_game_easy_two_layers():
@@ -428,10 +479,13 @@ def test_signal_downgrade_on_reversal():
     sig, reason, stars = classify_signal(revised)
     assert sig == "🟡" and "반전 요인" in reason
 
-    yellow = _easy_game(judge_confidence="medium")   # 🟡
+    yellow = _easy_game()                            # EV를 기준 미만으로 낮추면 🟡
+    for c in yellow["market_board"]:
+        c["ev"] = 0.02
+    _grade_board(yellow)
     assert classify_signal(yellow)[0] == "🟡"
-    yellow_rev = _easy_game(judge_confidence="medium", conclusion_revised=True)
-    assert classify_signal(yellow_rev)[0] == "🔴"
+    yellow["conclusion_revised"] = True
+    assert classify_signal(yellow)[0] == "🔴"
 
 
 def test_expert_market_ledger_adoption():
@@ -465,3 +519,95 @@ async def test_deep_research_recent_form_feeds_data_axis(db_pool, redis_client):
         assert st.get("home_season"), "리서치 최근 폼이 실데이터 축으로 흡수돼야 한다"
         section = render_game_section(g)
         assert "최근 폼:" in section
+
+
+def test_card_reports_judge_failure_instead_of_pass_recommendation():
+    """[정직성] 판정이 한 경기도 붙지 않으면 '관망 권장'이 아니라 '판정 실패'로 쓴다.
+
+    실사고: 판정이 200 OK로 왔지만 games가 비어 전 경기 p_claude가 없었는데,
+    카드는 "이득 기준을 넘는 단식 픽이 없습니다 — 관망 권장"이라고 출력했다.
+    분석을 못 한 것과 분석 결과 픽이 없는 것은 다르다.
+    """
+    from app.pipeline import DETAIL_SEP, _render_card
+
+    analysis = {
+        "date": "2026-08-24", "sport": "mlb",
+        "games": [{"game_id": 1, "home": "Detroit Tigers", "away": "Tampa Bay Rays",
+                   "league": "MLB", "status": "scheduled", "starts_at_kst": "08/25 10:38",
+                   "p_market": 0.45, "model_valid": True, "p_model": 0.44}],
+        "picks": [], "combos": {}, "research_meta": {},
+    }
+    easy = _render_card(analysis).split(DETAIL_SEP)[0]
+    assert "판정 실패" in easy and "분석 미완" in easy
+    # '픽이 없다'는 결론 문장은 나오면 안 된다 (분석을 못 한 것이지 결론이 아니다)
+    assert "이득 기준을 넘는 단식 픽이 없습니다" not in easy
+    assert "🎯 오늘의 추천" not in easy
+
+
+def test_card_still_says_pass_when_judged_but_no_value():
+    """[정직성] 판정은 됐는데 밸류가 없으면 기존대로 '관망 권장'."""
+    from app.pipeline import DETAIL_SEP, _render_card
+
+    analysis = {
+        "date": "2026-08-24", "sport": "mlb",
+        "games": [{"game_id": 1, "home": "Detroit Tigers", "away": "Tampa Bay Rays",
+                   "league": "MLB", "status": "scheduled", "starts_at_kst": "08/25 10:38",
+                   "p_market": 0.45, "p_claude": 0.47, "model_valid": True, "p_model": 0.44,
+                   "judge_confidence": "medium"}],
+        "picks": [], "combos": {}, "research_meta": {},
+    }
+    easy = _render_card(analysis).split(DETAIL_SEP)[0]
+    assert "관망 권장" in easy and "판정 실패" not in easy
+
+
+async def test_judge_batches_large_slates(monkeypatch):
+    """[판정 안정화] 경기가 많으면 배치로 나눠 호출하고 결과를 합친다.
+
+    실사고: 10경기를 한 번에 보내자 adaptive thinking이 max_tokens를 다 써
+    tool_use 없이 끝났고, 판정 0건인 채 "관망 권장" 카드가 나갔다.
+    """
+    from app.engine.judge import JUDGE_BATCH, Judge
+
+    seen = []
+
+    async def fake_once(self, payload):
+        batch = payload["games"]
+        seen.append(len(batch))
+        return {"games": [{"game_id": g["game_id"], "p_claude": 0.5, "verdict": "v"}
+                          for g in batch]}
+
+    monkeypatch.setattr(Judge, "_judge_once", fake_once)
+    j = Judge(mock=False)
+    payload = {"games": [{"game_id": i} for i in range(12)]}
+    out = await j.judge(payload)
+    assert len(out["games"]) == 12
+    assert seen == [JUDGE_BATCH, JUDGE_BATCH, 12 - 2 * JUDGE_BATCH]
+
+
+async def test_judge_batch_failure_keeps_other_batches(monkeypatch):
+    """[판정 안정화] 배치 하나가 실패해도 나머지 판정은 살린다 (전부 아니면 전무 금지)."""
+    from app.engine.judge import Judge
+
+    calls = {"n": 0}
+
+    async def flaky_once(self, payload):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("judge did not return a verdict tool call")
+        return {"games": [{"game_id": g["game_id"], "p_claude": 0.5, "verdict": "v"}
+                          for g in payload["games"]]}
+
+    monkeypatch.setattr(Judge, "_judge_once", flaky_once)
+    out = await Judge(mock=False).judge({"games": [{"game_id": i} for i in range(9)]})
+    assert len(out["games"]) == 4            # 첫 배치 5경기는 잃고 나머지 4경기는 살았다
+    assert {g["game_id"] for g in out["games"]} == {5, 6, 7, 8}
+
+
+def test_attach_verdicts_matches_string_game_ids():
+    """[판정 안정화] 판정이 game_id를 문자열로 돌려줘도 부착된다."""
+    from app.pipeline import _attach_verdicts
+
+    games = [{"game_id": 409, "status": "scheduled"}]
+    _attach_verdicts(games, {"games": [{"game_id": "409", "p_claude": 0.55,
+                                        "verdict": "테스트"}]})
+    assert games[0]["p_claude"] == 0.55
