@@ -11,12 +11,22 @@ PROMPT = """Search X and news for {league} updates on {date} STRICTLY LIMITED to
 
 {games_block}
 
-Summarize ONLY: (1) confirmed lineups, (2) breaking injury news, (3) sharp betting line moves, (4) weather issues.
-Skip opinions and predictions.
+Summarize ONLY these, from the clubs' own accounts and local beat reporters:
+(1) CONFIRMED starting lineups (batting order / XI) and the actual starting pitcher —
+    say explicitly whether it is confirmed or still projected,
+(2) same-day scratches, late injuries and returns from injury, with the player's role,
+(3) team mood — quotes after a winning/losing streak, internal issues, manager comments,
+(4) beat reporter observations that would change how the game is played,
+(5) weather at game time.
+Skip opinions, predictions and betting advice.
 
 출력 규칙 (반드시 준수):
 - 전부 한국어로 작성하라. 영어 문장 출력 금지. 선수 이름만 원어 병기 허용.
-- 형식: 한 줄에 하나, "확정 라인업: ..." / "부상: ..." / "라인 이동: ..." / "날씨: ..." 접두어.
+- 형식: 한 줄에 하나, 다음 접두어를 쓴다:
+  "확정 라인업: ..." (확정일 때만) / "예상 라인업: ..." (미확정)
+  / "부상: ..." / "복귀: ..." / "팀 분위기: ..." / "기자: ..." / "날씨: ..." / "라인 이동: ..."
+- **확정과 예상을 절대 섞지 마라.** 공식 발표 전이면 반드시 "예상 라인업"으로 쓴다.
+- 각 줄 앞에 해당 팀명을 붙여라 (다른 경기와 섞이지 않도록).
 - 위 경기 목록에 없는 경기·리그는 절대 언급하지 마라."""
 
 KOREAN_RETRY_SUFFIX = "\n\n이전 답변에 영어 문장이 포함됐다. 반드시 전부 한국어로만 다시 작성하라 (선수 이름 원어만 허용)."

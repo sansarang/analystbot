@@ -1367,6 +1367,13 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
     if decider:
         lines.append(f"승부처: {decider}")
 
+    # [5] 승률 조정 근거 — 무엇이 승률을 얼마나 움직였는지
+    adj_case = clip_sentences(_narr_clean(nar.get("adjustment_case")), 200)
+    if adj_case and (used is None or adj_case not in used):
+        if used is not None:
+            used.add(adj_case)
+        lines.append(adj_case)
+
     # [4] ④ 추천 마켓 근거 — 최고 등급 마켓을 왜 그 자리로 보는지
     market_case = clip_sentences(_narr_clean(nar.get("market_case")), 200)
     if market_case and (used is None or market_case not in used):
@@ -1392,7 +1399,7 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
         lines.append(f"({missing})")
 
     detail = render_game_section(jg, news)
-    return _guard_basic("\n".join(lines[:8]) + DETAIL_SEP + detail, "game_easy")
+    return _guard_basic("\n".join(lines[:9]) + DETAIL_SEP + detail, "game_easy")
 
 
 def render_games_easy(games: list[dict], news: str = "") -> list[str]:
@@ -1481,9 +1488,16 @@ def render_game_section(jg: dict, news: str = "") -> str:
     elif jg.get("research_status") == "stale_fallback":
         lines.append("⚠️ 리서치 미완 — 새벽 데이터 기준")
 
+    # [1-2] 승률 조정 과정 — 수집 정보가 확률을 어떻게 움직였는지 전부 보여준다
+    adjust = jg.get("prob_adjust") or {}
+    if adjust.get("trace"):
+        lines.append("승률 조정: " + " → ".join(adjust["trace"]))
+    if adjust.get("unused"):
+        lines.append("(확률 미반영) " + ", ".join(adjust["unused"]) + " — 서술 참고용")
+
     probs = []
     if jg.get("p_market") is not None:
-        probs.append(f"시장: 홈 {jg['p_market']:.0%}")
+        probs.append(f"시장(참고·판정 미사용): 홈 {jg['p_market']:.0%}")
         draw = (jg.get("market_probs") or {}).get("Draw")
         if draw:
             probs.append(f"무 {draw:.0%}")

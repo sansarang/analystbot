@@ -140,8 +140,17 @@ class WinProbAdjuster:
         if a_delta:
             step(-a_delta, "원정 " + ", ".join(a_notes) + "(홈에 유리)")
 
-        # ④ 불펜 소모 (양 팀 공통 서술이면 홈 기준으로만 반영)
-        step(self.bullpen_overuse(research.get("bullpen")), "불펜 과소모")
+        # ④ 불펜 소모 — 전용 필드(bullpen_overused)가 있으면 어느 쪽인지까지 반영
+        side_flag = str(research.get("bullpen_overused") or "").strip()
+        pen = self.s.adj_bullpen_overuse
+        if side_flag == "홈":
+            step(-pen, "홈 불펜 과소모")
+        elif side_flag == "원정":
+            step(pen, "원정 불펜 과소모(홈에 유리)")
+        elif side_flag == "양팀":
+            trace.append("양 팀 불펜 과소모 — 상쇄, 조정 없음")
+        else:
+            step(self.bullpen_overuse(research.get("bullpen")), "불펜 과소모")
 
         # ⑤ 최근 폼
         step(self.recent_form((research.get("home_recent_form") or {}).get("form")), "홈 최근 폼")
@@ -176,7 +185,12 @@ def _era5(block: dict) -> tuple[float | None, str]:
 
 
 def _ip_avg(block: dict) -> float | None:
-    """last5 서술에서 '평균 N이닝'을 읽어낸다 (없으면 None)."""
+    """선발 최근 평균 이닝 — 전용 필드 우선, 없으면 last5 서술에서 읽어낸다."""
+    if block.get("ip_avg_recent") is not None:
+        try:
+            return float(block["ip_avg_recent"])
+        except (TypeError, ValueError):
+            pass
     m = re.search(r"평균\s*([0-9]+(?:\.[0-9])?)\s*이닝", str(block.get("last5") or ""))
     return float(m.group(1)) if m else None
 
@@ -198,16 +212,39 @@ def _split_absences(items: list[str], jg: dict) -> tuple[list[str], list[str]]:
     return home_out, away_out
 
 
+# [4-3] 수집 정보 → 조정 계수 매핑표. 여기 없는 필드는 확률에 반영되지 않는다.
+FIELD_TO_COEFFICIENT = {
+    "home_pitcher.era_recent": "선발 매치업 (adj_starter_era_per_run)",
+    "away_pitcher.era_recent": "선발 매치업 (adj_starter_era_per_run)",
+    "home_pitcher.ip_avg_recent": "이닝 소화력 (adj_short_start)",
+    "away_pitcher.ip_avg_recent": "이닝 소화력 (adj_short_start)",
+    "absences": "결장 (adj_key_batter_out / adj_top_batter_out / adj_key_reliever_out)",
+    "bullpen_overused": "불펜 소모 (adj_bullpen_overuse)",
+    "bullpen": "불펜 소모 (adj_bullpen_overuse, 서술에서 추출)",
+    "home_recent_form.form": "최근 폼 (adj_form_hot / adj_form_cold)",
+    "away_recent_form.form": "최근 폼 (adj_form_hot / adj_form_cold)",
+}
+
+# 서술에는 쓰이지만 확률 계수가 없는 필드 — 반드시 '(확률 미반영)'으로 표기한다
+UNMAPPED_FIELDS = {
+    "splits": "홈/원정 스플릿",
+    "h2h_history": "상대전적",
+    "rotation_plan": "로테이션 계획",
+    "park": "구장 특성",
+    "weather": "날씨",
+    "predicted_scores": "예상 스코어",
+}
+
+
 def _unused_material(research: dict, applied: list[dict]) -> list[str]:
-    """[4-3] 서술에는 있으나 확률에 반영되지 않은 재료 — '(확률 미반영)' 표기용."""
+    """[4-3] 서술에는 있으나 확률에 반영되지 않은 재료 — '(확률 미반영)' 표기용.
+
+    ①매핑 계수가 아예 없는 필드 ②매핑은 있으나 이번에 적용되지 않은 필드 둘 다 잡는다.
+    """
     labels = " ".join(a["label"] for a in applied)
-    out = []
+    out = [name for key, name in UNMAPPED_FIELDS.items() if research.get(key)]
     if research.get("absences") and "결장" not in labels:
-        out.append("결장 정보")
-    if research.get("bullpen") and "불펜" not in labels:
+        out.append("결장 정보(소속 불명으로 미적용)")
+    if (research.get("bullpen") or research.get("bullpen_overused")) and "불펜" not in labels:
         out.append("불펜 소모")
-    if research.get("splits"):
-        out.append("홈/원정 스플릿")
-    if research.get("h2h_history"):
-        out.append("상대전적")
     return out

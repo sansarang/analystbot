@@ -140,7 +140,8 @@ def test_easy_layer_carries_context_causal_decider():
     assert "스쿠발의 홈 등판" in easy                      # ① 맥락
     assert "볼넷이 20개뿐" in easy                          # ② 인과
     assert easy.count("승부처:") == 1 and "존스가 초반" in easy   # ③ 승부처
-    assert 6 <= len(easy.splitlines()) <= 8                 # [B-5] 분량
+    assert any(l.startswith(("🕐", "✅")) for l in easy.splitlines())   # [2-1] 픽 상태
+    assert 6 <= len(easy.splitlines()) <= 9                 # [B-5] 분량
 
 
 def test_easy_layer_drops_generic_narrative_lines():
@@ -189,4 +190,4 @@ def test_easy_layer_includes_market_case_after_decider():
     i_case = next(i for i, l in enumerate(ls) if "오버 9.0에 무게" in l)
     i_value = next(i for i, l in enumerate(ls) if l.startswith("걸 만한가?"))
     assert i_value < i_decider < i_case
-    assert 6 <= len(ls) <= 8
+    assert 6 <= len(ls) <= 9

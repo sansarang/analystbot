@@ -144,3 +144,47 @@ def test_absences_split_by_team():
         ["San Diego Padres의 Jason Adam 결장", "Pittsburgh Pirates의 Oneil Cruz 결장",
          "소속 불명 선수 결장"], _jg())
     assert len(home) == 1 and len(away) == 1        # 소속 불명은 어느 쪽에도 넣지 않는다
+
+
+# ---------------------------------------------------------------- [4-3] 정보 → 계수 매핑
+
+def test_every_mapped_field_has_a_coefficient():
+    """[4-3] 수집 필드가 어느 조정 계수로 가는지 표로 명시돼 있어야 한다."""
+    from app.engine.performance import FIELD_TO_COEFFICIENT, UNMAPPED_FIELDS
+
+    assert "absences" in FIELD_TO_COEFFICIENT
+    assert "adj_key_reliever_out" in FIELD_TO_COEFFICIENT["absences"]
+    assert "bullpen_overused" in FIELD_TO_COEFFICIENT
+    # 계수가 없는 필드는 미반영 목록에 있어야 한다 (양쪽에 동시에 있으면 안 됨)
+    assert set(FIELD_TO_COEFFICIENT) & set(UNMAPPED_FIELDS) == set()
+    for key in ("splits", "h2h_history", "park", "weather", "rotation_plan"):
+        assert key in UNMAPPED_FIELDS
+
+
+def test_unmapped_fields_are_reported_as_unused():
+    """[4-3] 서술에 쓰였지만 확률에 반영되지 않은 정보는 반드시 표기된다."""
+    research = {"park": "쿠어스필드 — 타자 친화", "weather": "기온 28도 맞바람",
+                "rotation_plan": "불펜데이 예고", "splits": "홈 12승 5패"}
+    out = adj().adjust(0.5, _jg(), research, "mlb")
+    for name in ("구장 특성", "날씨", "로테이션 계획", "홈/원정 스플릿"):
+        assert name in out["unused"]
+
+
+def test_bullpen_side_flag_moves_the_right_team():
+    """[4-1] bullpen_overused가 어느 쪽인지 알려주면 방향까지 정확히 반영한다."""
+    a = adj()
+    home_worn = a.adjust(0.50, _jg(), {"bullpen_overused": "홈"}, "mlb")
+    away_worn = a.adjust(0.50, _jg(), {"bullpen_overused": "원정"}, "mlb")
+    both = a.adjust(0.50, _jg(), {"bullpen_overused": "양팀"}, "mlb")
+    assert home_worn["p"] < 0.50 < away_worn["p"]
+    assert both["p"] == 0.50                       # 상쇄 — 조정 없음
+    assert any("상쇄" in s for s in both["trace"])
+
+
+def test_ip_avg_uses_dedicated_field_first():
+    """[4-1] 전용 필드(ip_avg_recent)가 있으면 서술 파싱보다 우선한다."""
+    from app.engine.performance import _ip_avg
+
+    assert _ip_avg({"ip_avg_recent": 4.1, "last5": "평균 6.0이닝"}) == 4.1
+    assert _ip_avg({"last5": "최근 5경기 평균 4.2이닝"}) == 4.2
+    assert _ip_avg({}) is None

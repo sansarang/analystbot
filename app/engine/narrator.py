@@ -53,6 +53,13 @@ NARRATIVE_TOOL = {
                             "type": "string",
                             "description": "③ 승부처 — 이 경기가 어디서 갈리는지 한 문장.",
                         },
+                        "adjustment_case": {
+                            "type": "string",
+                            "description": "⑤ 승률 조정 근거 — win_prob_adjustment에서 가장 크게 "
+                                           "움직인 항목을 사건으로 설명한 한 문장. "
+                                           "예: '핵심 불펜 3명이 이탈해 기본 승률에서 6%p를 깎았다.' "
+                                           "조정이 없었으면 빈 문자열.",
+                        },
                         "market_case": {
                             "type": "string",
                             "description": "④ 추천 마켓 — 마켓 보드에서 등급이 가장 높은 마켓을 "
@@ -115,7 +122,14 @@ SYSTEM = f"""너는 스포츠 분석 리포트의 **서술** 담당이다. 판�
 8. 재료가 부족하면 길이를 채우지 말고 짧게 쓰되, missing에 무엇이 없는지 밝혀라.
 9. 사실을 지어내지 마라. 입력에 없는 이적·부상·기록을 만들어내면 안 된다.
 
-10. **최고 등급 마켓의 근거를 서술에 반드시 녹여라.** market_board에서 등급이 가장 높은
+10. **승률 조정 근거를 반드시 인용하라.** 입력의 win_prob_adjustment는 기준 승률에서
+    무엇이 몇 %p를 움직였는지를 담은 계산 과정이다. 그중 가장 크게 움직인 항목을
+    서술에 그대로 녹여라. 예: "파드리스는 핵심 불펜 3명이 이탈해 기본 승률에서 6%p를
+    깎았다. 그럼에도 54%로 앞서는 건 레이의 최근 5경기 ERA 2.80이 애쉬크래프트(4.10)를
+    크게 앞서기 때문이다."
+11. **배당·시장 확률을 서술에 쓰지 마라.** 승률과 경기력 근거로만 말한다.
+    (배당은 다른 칸에서 "1만 원당 얼마"로 이미 보여준다)
+12. **최고 등급 마켓의 근거를 서술에 반드시 녹여라.** market_board에서 등급이 가장 높은
     마켓(🟢 > 🟡 > 🔴)이 왜 그 자리인지 인과로 설명하라 — 배당·EV 숫자를 반복하지 말고
     "왜 그 마켓인가"를 써라. 예: "두 선발 모두 QS 기대치가 낮아 난타전 가능성이 크고,
     이 때문에 오버 9.0에 무게가 실린다."
@@ -168,6 +182,10 @@ def _payload_game(jg: dict, research: dict) -> dict:
     return {
         "game_id": jg["game_id"],
         "matchup": f"{jg['away']} @ {jg['home']}",
+        # [5] 승률이 어떻게 조정됐는지 — 서술이 이 근거를 반드시 인용해야 한다
+        "win_prob_adjustment": (jg.get("prob_adjust") or {}).get("trace"),
+        "unused_material": (jg.get("prob_adjust") or {}).get("unused"),
+        "lineup_status": jg.get("lineup_status"),
         "league": jg.get("league"),
         "starts_at_kst": jg.get("starts_at_kst"),
         "verdict": jg.get("verdict"),
@@ -256,6 +274,7 @@ def _normalize(raw: dict) -> dict[int, dict]:
             "context": clean_line(g.get("context")),
             "causal": clean_line(g.get("causal")),
             "decider": clean_line(g.get("decider")),
+            "adjustment_case": clean_line(g.get("adjustment_case")),
             "market_case": clean_line(g.get("market_case")),
             "expert_note": clean_line(g.get("expert_note")),
             "missing": clean_line(g.get("missing")),

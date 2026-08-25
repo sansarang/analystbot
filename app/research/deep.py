@@ -32,11 +32,15 @@ EST_COST_PER_CALL_USD = 0.01  # sonar-pro 대략 단가 (주간 비용 추정 �
 _SCHEMA_MLB = """{
  "home_recent_form": {"form": "WWLWL (최근 5경기, 최신부터)", "runs_avg": 4.2, "note": "최근 30일 좌/우완 상대 타선 성적 요약(한국어)"},
  "away_recent_form": {...동일...},
- "home_pitcher": {"name": "...", "last5": "최근 5~7경기 ERA·피OPS·이닝 요약(한국어)", "era_recent": 5.40, "era_season": 3.86, "trend": "악화|개선|유지"},
+ "home_pitcher": {"name": "...", "last5": "최근 5~7경기 ERA·피OPS·이닝 요약(한국어)", "era_recent": 5.40, "era_season": 3.86, "ip_avg_recent": 5.2, "trend": "악화|개선|유지"},
  "away_pitcher": {...동일...},
  "splits": "홈/원정 스플릿 요약(한국어)",
- "bullpen": "양 팀 불펜 최근 3일 소모 상황(한국어)",
- "absences": ["핵심 결장자와 중요도(한국어)"],
+ "bullpen": "양 팀 불펜 최근 3일 소모 상황 — 소화 이닝과 연투 여부를 숫자로(한국어)",
+ "bullpen_overused": "홈|원정|양팀|없음 (최근 3일 소모가 리그 평균 대비 과다한 쪽)",
+ "absences": ["핵심 결장자와 중요도(한국어). 반드시 '팀명 + 선수명 + 역할(주전 타자/마무리/셋업/선발) + 팀 내 기여도'를 포함. 예: 'San Diego Padres의 Jason Adam(마무리) 부상 결장 — 9회 담당'"],
+ "rotation_plan": "감독의 로테이션·불펜 휴식 계획, 오프너 여부(한국어). 없으면 null",
+ "park": "구장 특성 — 타자친화/투수친화와 그 근거(한국어). 없으면 null",
+ "weather": "경기 시각 날씨 — 기온·풍향·강수 확률(한국어). 없으면 null",
  "expert_picks": [{"expert": "...", "site": "...", "source_url": "...", "pick": "<team> ML | <team> +/-1.5 | Over/Under <line>", "reasoning": "한국어", "record": "시즌 전적 예: 61-42"}],
  "predicted_scores": ["4-2"],
  "form_reversal": ["시즌 평균과 최근 폼이 역전된 항목. 예: '홈 선발 시즌 ERA 3.86 vs 최근5 5.40 악화'. 없으면 빈 배열"]
@@ -46,7 +50,9 @@ _SCHEMA_SOCCER = """{
  "home_recent_form": {"form": "WWDLW (최근 5경기, 최신부터)", "last5_detail": "상대·스코어 나열(한국어)", "gf5": 9, "ga5": 4, "rank": 3, "home_split": "홈 성적 요약(한국어)"},
  "away_recent_form": {...동일 (away_split)...},
  "h2h_history": "최근 상대전적 요약(한국어)",
- "absences": ["핵심 결장자와 중요도(한국어)"],
+ "absences": ["핵심 결장자와 중요도(한국어). '팀명 + 선수명 + 포지션 + 주전 여부'를 포함"],
+ "park": "구장·잔디 상태(한국어). 없으면 null",
+ "weather": "경기 시각 날씨(한국어). 없으면 null",
  "expert_picks": [{"expert": "...", "site": "...", "source_url": "...", "pick": "<team> ML | Double Chance <team> | Over/Under <line>", "reasoning": "한국어", "record": "전적"}],
  "predicted_scores": ["2-1", "1-1"],
  "form_reversal": ["시즌 순위와 최근 폼이 역전된 항목(한국어). 없으면 빈 배열"]
@@ -63,12 +69,21 @@ Output ONLY one JSON object (no prose) with this exact shape:
 
 Rules: every free-text value must be KOREAN (team/player names may stay original). If something cannot be found, use null/empty — never invent numbers. Do NOT restate the question or explain what you could not find — use null for anything you cannot verify with a real number. "form_reversal" must flag any metric where recent form contradicts the season-long number."""
 
+# [4-1] 승률 조정 계수(performance.py)에 직접 매핑되는 항목을 명시적으로 요구한다.
+#       수집은 됐는데 확률에 못 쓰이는 정보가 생기지 않도록 필드를 계수에 맞춰 잡았다.
 TARGETS = {
-    "mlb": ("both starters' last 5-7 outings (ERA, opponent OPS, innings) vs season averages; "
-            "home/away splits; each lineup's last-30-day performance vs LHP/RHP; bullpen usage last 3 days; "
+    "mlb": ("both starters' LAST 5 STARTS in detail — game-by-game ERA, innings pitched, "
+            "opponent OPS — and their AVERAGE innings per start (this drives bullpen exposure); "
+            "home/away splits; each lineup's last-30-day performance vs LHP/RHP; "
+            "bullpen innings used in the LAST 3 DAYS and whether either bullpen is overworked; "
+            "every absence WITH the player's role (everyday hitter / closer / setup / starter) and "
+            "how much of the team's offense or leverage innings they account for; "
+            "the manager's stated rotation and bullpen rest plan; ballpark run environment; "
+            "game-time weather (temperature, wind direction, precipitation); "
             "published expert picks WITH each expert's season record"),
     "soccer": ("last 5 match results and goals for both teams; home/away splits; head-to-head record; "
-               "key absences and their importance; published expert picks WITH records; predicted scorelines"),
+               "every absence WITH position and whether the player is a regular starter; "
+               "pitch and weather conditions; published expert picks WITH records; predicted scorelines"),
 }
 
 

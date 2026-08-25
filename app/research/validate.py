@@ -188,6 +188,9 @@ def clean_number(value) -> float | int | None:
 
 _TEXT_FIELDS_NUM = ("last5", "note", "home_split", "away_split", "last5_detail",
                     "splits", "bullpen", "h2h_history")
+
+# [4-1] 신규 자유서술 필드 — 문장 필터 대상(수치 요구 없음: 정성 정보라도 가치가 있다)
+_TEXT_FIELDS_FREE = ("rotation_plan", "park", "weather")
 _NUM_FIELDS = ("runs_avg", "gf5", "ga5", "rank", "era_recent", "era_season")
 
 
@@ -259,6 +262,24 @@ def sanitize_research(data: dict | None, sport: str = "mlb") -> tuple[dict, list
             out[key] = val
         elif data.get(key):
             dropped.append(key)
+
+    # 로테이션 계획·구장·날씨는 수치가 없어도 의미가 있다 (숫자 요구 없이 문장 필터만)
+    for key in _TEXT_FIELDS_FREE:
+        val = clean_text(data.get(key), require_number=False, sentencewise=True)
+        if val:
+            out[key] = val
+        elif data.get(key):
+            dropped.append(key)
+
+    if str(data.get("bullpen_overused") or "").strip() in ("홈", "원정", "양팀"):
+        out["bullpen_overused"] = data["bullpen_overused"].strip()
+
+    for side in ("home_pitcher", "away_pitcher"):
+        src, dst = data.get(side), out.get(side)
+        if isinstance(src, dict) and isinstance(dst, dict):
+            ip = clean_number(src.get("ip_avg_recent"))
+            if ip is not None:
+                dst["ip_avg_recent"] = ip
 
     absences = []
     for item in data.get("absences") or []:
