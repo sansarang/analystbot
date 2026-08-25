@@ -14,6 +14,12 @@ def _pct(x):
     return "—" if x is None else f"{x:.1%}"
 
 
+def h2h_probs(g) -> dict:
+    """최종 승률(p_final)은 jg가 아니라 마켓 보드 h2h 행에 실린다."""
+    return {c["side"]: c["p"] for c in (g.get("market_board") or [])
+            if c.get("market") == "h2h" and c.get("p") is not None}
+
+
 async def load(redis, sport):
     raw = await redis.get(f"analysis:{sport}:{default_date(sport)}")
     return json.loads(raw) if raw else None
@@ -24,10 +30,15 @@ def sec_a(games, sport, settings):
     from app.engine.scoring import prob_bounds
     lo, hi = prob_bounds(sport, settings)
     print(f"{SEP}\n(a) λ·승률 — 상한 [{lo:.2f}, {hi:.2f}]\n{SEP}")
+    # 이미 시작/종료된 경기는 λ 대상이 아니다 — 분모에 넣으면 가동률이 왜곡된다
+    skipped = [g for g in games if g.get("status") != "scheduled"]
+    games = [g for g in games if g.get("status") == "scheduled"]
+    if skipped:
+        print(f"  (분석 대상 아님 {len(skipped)}경기 — 진행 중/종료)")
     capped, no_dist = [], []
     for g in games:
         d = g.get("distribution")
-        pf = g.get("p_final") or {}
+        pf = h2h_probs(g)
         home, away = g["home"], g["away"]
         if not d:
             no_dist.append(f"{away}@{home}: {', '.join(g.get('lambda_missing') or ['사유 미기록'])}")
@@ -42,7 +53,7 @@ def sec_a(games, sport, settings):
         print(f"  {away}@{home}: λ {la:.2f}/{lh:.2f} · 승률 {_pct(pf.get(away))}/{_pct(pf.get(home))}{flag}")
         if note:
             capped.append(f"{away}@{home}: {note} (원값 홈 {_pct(g.get('prob_raw_home'))})")
-    print(f"\n  분포 산출: {len(games) - len(no_dist)}/{len(games)}경기")
+    print(f"\n  λ 가동률: {len(games) - len(no_dist)}/{len(games)}경기 (예정 경기 기준)")
     print(f"  상한 초과(절사): {len(capped)}건" + (" ✅ 0건" if not capped else ""))
     for c in capped:
         print(f"    - {c}")
@@ -126,7 +137,7 @@ def sec_e(games):
     print(f"{SEP}\n(e) 새 모델 vs 기존 모델 승률 차이 상위 3\n{SEP}")
     rows = []
     for g in games:
-        pf, pl = g.get("p_final") or {}, g.get("p_legacy") or {}
+        pf, pl = h2h_probs(g), (g.get("p_legacy") or {})
         home = g["home"]
         if home in pf and home in pl:
             rows.append((abs(pf[home] - pl[home]), g, pf[home], pl[home]))
@@ -160,8 +171,8 @@ def sec_f(games):
             print(f"    신뢰도 {lm.get('confidence_before')} → {lm.get('confidence_after')}"
                   + (f"  ⚠️ {lm['warning']}" if lm.get("warning") else ""))
             # 계약 확인: 라인 무브는 확률을 건드리지 않는다
-            pf, ph = g.get("p_final") or {}, g.get("p_heuristic") or {}
-            print(f"    p_final(홈) {_pct(pf.get(g['home']))} — 라인 무브 반영 전후 동일해야 함")
+            print(f"    p_final(홈) {_pct(h2h_probs(g).get(g['home']))} "
+                  f"— 라인 무브 반영 전후 동일해야 함")
         else:
             print(f"\n  [{label}] 사례 없음")
     if none_:

@@ -137,3 +137,22 @@
 2026-08-25 16:12:44,133 INFO HTTP Request: GET https://api.football-data.org/v4/competitions/SA/standings "HTTP/1.1 200 "
 2026-08-25 16:13:02,026 INFO HTTP Request: POST https://api.x.ai/v1/responses "HTTP/1.1 200 OK"
 2026-08-25 16:13:02,029 WARNING [grok] english detected in briefing — regenerating once
+2026-08-25 16:13:22,978 INFO HTTP Request: POST https://api.x.ai/v1/responses "HTTP/1.1 200 OK"
+2026-08-25 16:13:23,007 INFO [crosscheck] soccer는 대조 대상 아님 (statsapi 미적용) — 생략
+2026-08-25 16:13:23,056 INFO [judge] mode: LIVE
+2026-08-25 16:17:07,459 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:17:07,888 INFO [judge] stop_reason=tool_use · 요청 3경기 → 판정 3경기
+2026-08-25 16:17:07,894 INFO [grok] client mode: LIVE
+2026-08-25 16:17:19,782 INFO HTTP Request: POST https://api.x.ai/v1/responses "HTTP/1.1 200 OK"
+2026-08-25 16:17:19,809 INFO [pipeline] second opinion for 1 disputed games
+2026-08-25 16:17:19,809 INFO [judge] mode: LIVE
+2026-08-25 16:18:40,569 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:18:40,586 INFO [judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+2026-08-25 16:18:40,659 INFO [linemove] game=347 agree → 신뢰도 low → medium
+2026-08-25 16:18:40,662 INFO [linemove] game=349 agree → 신뢰도 low → medium
+2026-08-25 16:19:09,730 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:19:09,736 INFO [narrator] 서술 3/3경기
+2026-08-25 16:19:09,747 INFO [scheduler] prefetched soccer report (569 chars)
+2026-08-25 16:19:09,752 INFO [scheduler] prefetch 총 소요 1174.9s · 금일 리서치 61콜 (상한 60) · 큐 복구 0경기 · 실패 {'parse': 7}
+2026-08-25 16:19:09,753 INFO [scheduler] 리서치 품질 · 경기 32건 무효율 22% · 채움률 form 24% / absences 40% / splits 28% / bullpen 44% / form_reversal 20% · 교차검증 16항목 불일치 0
+2026-08-25 16:19:09,758 INFO [deep] 최근 7일 리서치 72콜 — 주간 예상 비용 ≈ $0.72 (콜당 $0.010 가정)

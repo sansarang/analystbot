@@ -490,6 +490,11 @@ async def build_analysis(
             "game_id": g["id"],
             "sport": sport,   # [4] 출력 문구의 종목 분기 기준 (야구/축구 용어 오용 방지)
             "home": g["home"], "away": g["away"], "league": g["league"],
+            # [§2] 선발 투수명 — Statcast 투수 지표(허용 xwOBA)를 붙이는 키다.
+            #      이게 빠지면 merge_into_research가 투수를 못 찾아 λ의
+            #      '상대 선발 억제력'이 통째로 누락된다 (2026-08-25 실측: 14/14경기).
+            "home_pitcher": g.get("home_pitcher"),
+            "away_pitcher": g.get("away_pitcher"),
             "starts_at": g["starts_at"].isoformat(),
             "starts_at_kst": kst_hhmm(g["starts_at"]),
             "status": g["status"],

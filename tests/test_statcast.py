@@ -176,3 +176,33 @@ async def test_load_gives_up_beyond_window():
 
     off, pit = await load(R(), "2026-08-25")
     assert off == {} and pit == {}
+
+
+def test_merge_uses_game_starter_name():
+    """선발 투수명이 jg에 있으면 Statcast 투수 지표가 붙어야 한다.
+
+    실사고(2026-08-25): judge_games에 home_pitcher/away_pitcher를 싣지 않아
+    투수 캐시 556명이 있는데도 λ의 '상대 선발 억제력'이 14/14경기 누락됐다.
+    """
+    from app.collectors.statcast import merge_into_research
+
+    jg = {"home": "Detroit Tigers", "away": "Tampa Bay Rays",
+          "home_pitcher": "Jackson Jobe", "away_pitcher": "Ian Seymour"}
+    pitchers = {"Jackson Jobe": {"xwoba_allowed": 0.291, "velo": 96.2},
+                "Ian Seymour": {"xwoba_allowed": 0.318}}
+    research: dict = {}
+    filled = merge_into_research(research, jg, {}, pitchers)
+    assert research["home_pitcher"]["xwoba_allowed"] == 0.291
+    assert research["away_pitcher"]["xwoba_allowed"] == 0.318
+    assert any("선발" in f for f in filled)
+
+
+def test_merge_without_starter_name_skips_pitcher():
+    """선발 미정이면 조용히 건너뛴다 — 없는 데이터를 지어내지 않는다."""
+    from app.collectors.statcast import merge_into_research
+
+    jg = {"home": "Detroit Tigers", "away": "Tampa Bay Rays"}
+    research: dict = {}
+    filled = merge_into_research(research, jg, {}, {"Jackson Jobe": {"xwoba_allowed": 0.29}})
+    assert "home_pitcher" not in research
+    assert not any("선발" in f for f in filled)
