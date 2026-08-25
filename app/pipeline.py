@@ -1009,6 +1009,43 @@ def _news_keys(team: str) -> set[str]:
 _SENT_END = re.compile(r"[.!?]['\")\]]?\s|[다요음함짐움됨]\.\s*$|[.!?]$")
 
 
+_PCT_RE = re.compile(r"(\d{1,3}(?:\.\d)?)\s*%")
+
+
+def scrub_conflicting_probs(text, allowed: set[int]) -> str:
+    """[2] 확률 소스 단일화 — p_final과 다른 승률 수치를 판정문에서 걷어낸다.
+
+    같은 경기·같은 팀의 확률이 두 개 나오면 읽는 사람은 무엇을 믿을지 모른다.
+    판정문이 자기 추정치를 다시 쓰면(예: "모델 레즈 63.2%") 보드의 77%와 충돌한다.
+    허용 목록(p_final에서 나온 값)에 없는 % 수치가 든 **절**을 통째로 버린다.
+    (ERA·WHIP·승률 .592 같은 %가 아닌 수치는 건드리지 않는다)
+    """
+    s = str(text or "")
+    if not s:
+        return ""
+    out = []
+    for chunk in re.split(r"(?<=[.!?。])\s+|(?<=다\.)\s*", s):
+        hits = [round(float(m.group(1))) for m in _PCT_RE.finditer(chunk)]
+        if hits and any(h not in allowed for h in hits):
+            continue        # p_final과 다른 확률이 섞인 문장은 버린다
+        out.append(chunk)
+    return " ".join(x for x in out if x.strip()).strip()
+
+
+def allowed_prob_pcts(jg: dict) -> set[int]:
+    """이 경기에서 인용이 허용되는 승률 퍼센트 — p_final 계열만."""
+    allowed: set[int] = set()
+    for c in jg.get("market_board") or []:
+        if c.get("p") is not None:
+            allowed.add(round(c["p"] * 100))
+    adj = jg.get("prob_adjust") or {}
+    for key in ("p_home", "p_away"):
+        if adj.get(key) is not None:
+            allowed.add(round(adj[key] * 100))
+    # 반올림 경계 흡수
+    return {v + d for v in list(allowed) for d in (-1, 0, 1)}
+
+
 def clip_sentences(text, limit: int) -> str:
     """[C] 문장 완결성 보장 절단 — 잘린 문장은 버린다.
 
@@ -1488,37 +1525,33 @@ def render_game_section(jg: dict, news: str = "") -> str:
     elif jg.get("research_status") == "stale_fallback":
         lines.append("⚠️ 리서치 미완 — 새벽 데이터 기준")
 
-    # [1-2] 승률 조정 과정 — 수집 정보가 확률을 어떻게 움직였는지 전부 보여준다
+    # [1] 승률 조정 과정 — **대표 마켓의 대상팀 기준**으로 통일해 출력한다.
+    #     보드는 대상팀 승률을 쓰는데 조정 과정만 홈 기준이면 두 기준이 섞여 읽을 수 없다.
+    from app.engine.markets import best_market
+    from app.engine.performance import trace_for
+
     adjust = jg.get("prob_adjust") or {}
     if adjust.get("trace"):
-        lines.append("승률 조정: " + " → ".join(adjust["trace"]))
+        target = (best_market(jg.get("market_board") or []) or {}).get("side") or jg["home"]
+        if target not in (jg["home"], jg["away"]):
+            target = jg["home"]          # 토탈·핸디 등 팀이 아닌 사이드는 홈 기준 유지
+        lines.append("승률 조정: " + " → ".join(trace_for(adjust, target)))
     if adjust.get("unused"):
         lines.append("(확률 미반영) " + ", ".join(adjust["unused"]) + " — 서술 참고용")
 
-    probs = []
-    if jg.get("p_market") is not None:
-        probs.append(f"시장(참고·판정 미사용): 홈 {jg['p_market']:.0%}")
-        draw = (jg.get("market_probs") or {}).get("Draw")
-        if draw:
-            probs.append(f"무 {draw:.0%}")
-    else:
-        probs.append("시장: 배당 미수집")
-    if jg.get("model_valid"):
-        p3 = jg.get("p_model3")
-        probs.append(f"모델: {p3[0]:.0%}/{p3[1]:.0%}/{p3[2]:.0%}" if p3 else f"모델: {jg['p_model']:.1%}")
-    else:
-        probs.append("모델: 무효(데이터 없음)")
-    if jg.get("p_claude") is not None:
-        probs.append(f"Claude: {jg['p_claude']:.0%}")
-    lines.append(". ".join(probs) + ".")
+    # [2] 확률 소스 단일화 — 같은 팀 승률이 화면에 2개 이상 나오면 안 된다.
+    #     모델·Claude·시장 확률은 p_final의 **입력값**이지 별도 결론이 아니므로 표기하지 않는다.
+    #     (시장 확률은 predictions.p_market에 기록돼 병렬 채점에 쓰인다)
+    if not jg.get("model_valid"):
+        lines.append("모델: 무효(올 시즌 실데이터 없음) — 판정·전문가 근거로만 평가")
 
     ps = jg.get("pick_summary")
-    if ps:  # 카드와 동일한 앙상블(p_final) 수치만 인용 — 확률 소스 단일화
+    if ps:  # 보드·카드와 동일한 p_final 하나만 인용
         flag_txt = f" ⚠️{ps['flags'][0]}" if ps.get("flags") else ""
         ok_txt = "" if ps.get("approved") else f" [제외: {ps.get('reject_reason')}]"
         lines.append(
-            f"밸류: {ps.get('desc') or _kr(ps['side'])} @{ps['odds']:.2f} — p_final {ps['p_final']:.0%}, "
-            f"EV {ps['ev']:+.1%} (근거: {ps.get('axes') or '?'}){ok_txt}{flag_txt}")
+            f"대표 마켓: {ps.get('desc') or _kr(ps['side'])} @{ps['odds']:.2f} — "
+            f"승률 {ps['p_final']:.0%} (근거: {ps.get('axes') or '?'}){ok_txt}{flag_txt}")
 
     # [2] ⑧ 마켓 보드 — 전 마켓을 **항상** 행으로. 배당이 없어도 행을 지우지 않는다.
     #     형식: 마켓명 | 배당 | 봇 확률 | EV | 신호등 | 근거 한 줄 | ★
@@ -1548,12 +1581,14 @@ def render_game_section(jg: dict, news: str = "") -> str:
     for note in jg.get("breaking_changes", []) or []:
         lines.append(f"🔄 {note[:150]}")
     if jg.get("verdict"):
-        v = jg["verdict"]
+        # [2] 판정문이 자기 확률을 다시 쓰면 보드와 충돌한다 — p_final 계열만 남긴다
+        v = scrub_conflicting_probs(jg["verdict"], allowed_prob_pcts(jg))
         verdict_txt = clip_sentences(v, 600)
         if verdict_txt:
             lines.append(f"판단: {verdict_txt}" + ("…" if len(verdict_txt) < len(v) else ""))
         if jg.get("reversal_factor"):
-            rf = clip_sentences(jg["reversal_factor"], 200)
+            rf = clip_sentences(
+                scrub_conflicting_probs(jg["reversal_factor"], allowed_prob_pcts(jg)), 200)
             if rf:
                 lines.append(f"반전 요인: {rf}")
         if jg.get("judge_confidence"):

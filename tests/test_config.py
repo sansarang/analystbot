@@ -62,7 +62,9 @@ def test_legacy_weights_kept_for_parallel_scoring():
 def test_recommendation_thresholds_are_config_driven():
     """[3-1] 추천 자격은 승률·배당 하한 두 값으로만 결정된다."""
     s = make()
-    assert s.min_win_prob == 0.58 and s.min_odds == 1.60
+    assert s.min_win_prob == 0.58 and s.min_odds == 1.55
     assert s.signal_green_prob == 0.62
-    # 58% × 1.60 = 0.928 → EV -7.2%. 손익분기 배당은 1/0.58 ≈ 1.724다.
+    # 58% × 1.55 = 0.899 → EV -10.1%. 손익분기 배당은 1/0.58 ≈ 1.724다.
     assert s.min_win_prob * s.min_odds < 1.0
+    # [3] 승률 추정 상한 — MLB 단일 경기 77%는 비현실적이다
+    assert s.prob_cap_mlb == 0.70 and s.prob_cap_soccer == 0.75

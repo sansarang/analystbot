@@ -158,6 +158,43 @@ def _predicted_totals(jg: dict) -> list[int]:
     return out
 
 
+EXPERT_STRONG_N = 3   # [4] 같은 방향 전문가가 이 수 이상이면 독립 축 2개로 계산
+
+
+def expert_support_count(jg: dict, market: str, side: str, line: float | None) -> int:
+    """[4] 이 마켓·사이드를 지지하는 전문가 수.
+
+    전문가가 몰리면 그 자체로 독립적인 근거가 된다 — 8명이 같은 방향을 봤는데
+    '전문가 단독 1축'으로 탈락시키면 실제 신호를 버리게 된다.
+    """
+    n = 0
+    for ep in jg.get("expert_picks", []):
+        if ep.get("adopted") is False:      # 해당 마켓 전적 마이너스는 세지 않는다
+            continue
+        parts = (ep.get("pick") or "").split(":")
+        if len(parts) < 2:
+            continue
+        m, s = parts[0], parts[1]
+        try:
+            ln = float(parts[2]) if len(parts) > 2 else None
+        except ValueError:
+            ln = None
+        if m == "h2h" and s == side and (
+            market in ("h2h", "dc")
+            or (market == "spreads" and line is not None and line > 0)
+        ):
+            n += 1
+        elif m == market == "totals" and s == side and (
+            line is None or ln is None or abs(ln - line) <= 0.5
+        ):
+            n += 1
+        elif m == market == "spreads" and s == side and (
+            ln is None or line is None or abs(ln - line) <= 0.5
+        ):
+            n += 1
+    return n
+
+
 def _axis_expert(jg: dict, market: str, side: str, line: float | None) -> bool:
     # 토탈은 전문가 스코어 예측(2건 이상 같은 방향)도 지지 근거로 인정
     if market == "totals" and line is not None:
@@ -207,12 +244,18 @@ def _axis_model(jg: dict, market: str, side: str) -> bool:
 
 def support_axes(jg: dict, market: str, side: str, line: float | None,
                  p_market_side: float | None) -> dict:
-    """후보 픽의 독립 근거 축 4종 판정."""
+    """후보 픽의 독립 근거 축 판정.
+
+    [4] 전문가가 EXPERT_STRONG_N명 이상 같은 방향이면 expert_strong을 세워
+    축 수를 2로 계산한다 (전문가 쏠림 자체가 독립 신호다).
+    시장 축은 판정 철학 교체(시장 배제)로 더 이상 세지 않는다.
+    """
+    n_expert = expert_support_count(jg, market, side, line)
     return {
         "data": _axis_data(jg, market, side, line),
-        "expert": _axis_expert(jg, market, side, line),
+        "expert": bool(n_expert) or _axis_expert(jg, market, side, line),
+        "expert_strong": n_expert >= EXPERT_STRONG_N,
         "model": _axis_model(jg, market, side),
-        "market": p_market_side is not None and p_market_side > 0.5,
     }
 
 
@@ -220,8 +263,18 @@ AXIS_KR = {"data": "실데이터", "expert": "전문가", "model": "모델", "ma
 
 
 def axes_label(axes: dict) -> str:
-    on = [AXIS_KR[k] for k, v in axes.items() if v]
+    on = [AXIS_KR[k] for k, v in axes.items() if v and k in AXIS_KR]
+    if axes.get("expert_strong"):
+        on = [f"전문가 다수({EXPERT_STRONG_N}명+)" if x == "전문가" else x for x in on]
     return "+".join(on) if on else "지지 축 없음"
+
+
+def axes_count(axes: dict) -> int:
+    """독립 축 수 — 전문가 다수 지지는 2축으로 센다 ([4])."""
+    n = sum(1 for k in ("data", "expert", "model") if axes.get(k))
+    if axes.get("expert_strong"):
+        n += 1
+    return n
 
 
 # ---------------------------------------------------------------- 후보 생성·승인
@@ -297,9 +350,9 @@ def grade_candidate(c: dict, settings=None) -> tuple[str, str]:
 
     money = f"1만원당 {payout_10k(odds):,}원"
     if odds < s.min_odds:
-        return GRADE_RED, f"배당 {odds:.2f} — 기준 {s.min_odds:.2f} 미달({money})"
+        return GRADE_RED, f"배당 {odds:.2f} < 하한 {s.min_odds:.2f}"
     if prob < s.min_win_prob:
-        return GRADE_RED, f"승률 {prob:.0%} — 기준 {s.min_win_prob:.0%} 미달"
+        return GRADE_RED, f"승률 {prob:.0%} < 하한 {s.min_win_prob:.0%}"
     if prob >= s.signal_green_prob:
         return GRADE_GREEN, f"승률 {prob:.0%}, {money}"
     return GRADE_YELLOW, f"승률 {prob:.0%} — 소액, {money}"
@@ -376,7 +429,7 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
             "market": market, "side": side, "line": line, "desc": desc,
             "odds": round(float(odds), 2), "p": round(p, 4),
             "ev": round(p * float(odds) - 1, 4), "basis": basis,
-            "axes": axes, "axes_n": sum(axes.values()), "axes_kr": axes_label(axes),
+            "axes": axes, "axes_n": axes_count(axes), "axes_kr": axes_label(axes),
         })
 
     # 1) 승패 (h2h) — 판정을 못 받아 p_final이 없어도 배당이 있으면 행은 남긴다
@@ -506,14 +559,14 @@ def _approve(jg: dict, c: dict, sport: str) -> None:
         c["reject_reason"] = "판정 미수신 — 추천 불가"
         c["flags"] = []
         return
-    # 이상치 플래그 — 판정 근거가 아니라 **배당 데이터 검증**용으로만 남긴다.
-    # (3-way를 2-way로 디빅해 전 경기가 +EV로 보였던 실사고를 잡은 장치)
+    # [3] EV 기반 이상치 플래그는 제거했다 — EV를 판정에서 뺐으므로 플래그도 함께 뺀다.
+    #     (실사고: 배당 1.59가 하한에 0.01 미달해 탈락했는데 사유가 "수익률 이상치"로
+    #      잘못 표기됐다. EV 플래그가 먼저 걸려 진짜 사유를 가린 것이다)
+    #     배당 데이터 자체가 깨진 경우만 남긴다 — 승률과 배당 환산값의 괴리.
     flags = []
-    if c["ev"] is not None and c["ev"] > 0.20:
-        flags.append(f"수익률 이상치 (배당 데이터 의심)")
     implied = 1 / c["odds"]
-    if abs(c["p"] - implied) > 0.25:
-        flags.append(f"승률 {c['p']:.0%} vs 배당 환산 {implied:.0%} 괴리 >25%p (데이터 확인 필요)")
+    if abs(c["p"] - implied) > 0.30:
+        flags.append(f"승률 {c['p']:.0%} vs 배당 환산 {implied:.0%} 괴리 >30%p (배당 데이터 확인 필요)")
     c["flags"] = flags
 
     def reject(reason):
@@ -526,13 +579,9 @@ def _approve(jg: dict, c: dict, sport: str) -> None:
         return reject("판정 패스 권장 경기")
     if jg.get("judge_confidence") == "low":
         return reject("판정 저신뢰 경기")
-    # [2] 모델-시장 괴리 검증 — 모델 엣지에 의존하는 승패 단식만.
-    #     (더블찬스는 무승부 쿠션이 있어 [9]의 저분산 대체 취지대로 살린다)
-    if c["market"] == "h2h" and jg.get("model_valid") and jg.get("p_market") is not None:
-        gap = abs(jg["p_model"] - jg["p_market"])
-        if gap >= GAP_UNVERIFIED and not c["axes"]["expert"]:
-            return reject(
-                f"시장이 아는 정보가 있을 가능성 (모델-시장 괴리 {gap * 100:.0f}%p 원인 미검증)")
+    # [1-2 폐기] 모델-시장 괴리 검증 — 시장 배제 전환(2026-08-25)으로 삭제됐다.
+    #   시장 확률을 기준점으로 쓰는 규칙이라 시장을 판정에서 빼면 성립하지 않는다.
+    #   남는 위험(시장이 아는 정보를 우리가 못 봄)은 경기력 정보 수집으로 대체 방어한다.
     # [1] 2-소스 룰 — 모델 단독은 EV 무관 금지
     if c["axes_n"] < 2:
         only = axes_label(c["axes"])

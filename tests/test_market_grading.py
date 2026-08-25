@@ -46,7 +46,8 @@ def test_grade_note_speaks_in_money():
     assert "승률 64%" in note and "1만원당 8,700원" in note
     assert "EV" not in note and "이득" not in note
     miss = grade_candidate(_c(odds=1.45))[1]
-    assert "배당 1.45" in miss and "기준 1.60 미달" in miss
+    # [3] 탈락 사유는 실제 사유를 정확히 — "이상치" 같은 엉뚱한 문구 금지
+    assert miss == "배당 1.45 < 하한 1.55"
 
 
 def test_payout_and_breakeven_helpers():
@@ -197,7 +198,7 @@ def test_board_is_always_rendered_as_table():
     # [3-3] 마켓 | 배당 | 승률 | 1만원 수익 | 신호등 | 근거 | ★
     assert "승패 홈 | 1.81 | 47% | 8,100원 | 🔴" in out
     assert "언더 8.5 | 1.87 | 64% | 8,700원 | 🟢" in out
-    assert "텍사스 레인저스 런라인 +1.5 | 1.55 | 66% | 5,500원 | 🔴" in out   # 배당 미달
+    assert "텍사스 레인저스 런라인 +1.5 | 1.55 | 66% | 5,500원 | 🟢" in out   # 하한 1.55 통과
     assert "★" in out                                   # [3] 마켓별 신뢰도
     assert "평가 가능한 마켓 없음" not in out            # [2] 금지 출력
 
@@ -236,7 +237,7 @@ def test_easy_layer_lists_reasons_when_all_markets_dead():
     easy = render_game_easy(jg).split(DETAIL_SEP)[0]
     assert "🔴" in easy
     assert "전 마켓" in easy and "승패 홈" in easy
-    assert "승률 58%·배당 1.60 기준" in easy
+    assert "승률 58%·배당 1.55 기준" in easy
 
 
 def test_recommendation_pool_includes_non_moneyline(db_pool=None):
@@ -248,7 +249,7 @@ def test_recommendation_pool_includes_non_moneyline(db_pool=None):
     legs = approved_market_legs([jg])
     # [3-5] 레그도 승률 58%↑·배당 1.60↑ 기준을 통과한 것만 (런라인 1.55는 배당 미달)
     assert legs and all(l["market"] != "h2h" for l in legs)
-    assert {l["desc"] for l in legs} == {"언더 8.5"}
+    assert {l["desc"] for l in legs} == {"언더 8.5", "텍사스 레인저스 런라인 +1.5"}
 
 
 # ---------------------------------------------------------------- [1] 회귀: 배당↔보드 일관성

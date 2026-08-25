@@ -28,6 +28,36 @@ def _pp(v: float) -> str:
     return f"{v * 100:+.0f}%p"
 
 
+def trace_for(adjust: dict, side: str) -> list[str]:
+    """[1] 조정 과정을 **대상팀 기준**으로 다시 쓴다.
+
+    adjust()의 계산은 홈 기준이다. 마켓 보드가 원정팀 승률을 표시하는데 조정 과정만
+    홈 기준이면 같은 화면에 두 기준이 섞여 읽을 수 없다 — 여기서 뒤집는다.
+    상대팀 승률은 (100 - 대상팀)이므로 따로 계산하지 않는다.
+    """
+    if not adjust or not adjust.get("trace"):
+        return []
+    home, away = adjust.get("home"), adjust.get("away")
+    if side == home or side is None:
+        return list(adjust["trace"])
+
+    out = [f"{away} 기준 {1 - _base_of(adjust):.0%}"]
+    for step in adjust.get("applied") or []:
+        label = step["label"]
+        # 홈 기준 라벨의 방향 주석을 대상팀 관점으로 정리
+        label = label.replace("(홈에 유리)", "").strip()
+        out.append(f"{label} {_pp(-step['delta'])}")
+    if adjust.get("capped"):
+        out.append("추정 상한 적용")
+    out.append(f"최종 {away} {adjust['p_away']:.0%} / {home} {adjust['p_home']:.0%}")
+    return out
+
+
+def _base_of(adjust: dict) -> float:
+    """조정 전 기준 확률(홈 기준) 복원."""
+    return adjust.get("p_home", 0.5) - (adjust.get("net_delta") or 0.0)
+
+
 class WinProbAdjuster:
     """경기력 정보를 승률 조정으로 옮기는 계산기. 계수는 config에서만 온다."""
 
@@ -158,7 +188,17 @@ class WinProbAdjuster:
         step(-self.recent_form((research.get("away_recent_form") or {}).get("form")),
              "원정 최근 폼(반대 방향)")
 
-        # [3] 홈/원정 혼동 방지 — 최종 줄에 양 팀 승률을 함께 적는다.
+        # [3] 승률 추정 상한 — MLB 단일 경기 77%는 비현실적이다(리그 최강팀도 65% 안팎).
+        cap = self.s.prob_cap_mlb if sport == "mlb" else self.s.prob_cap_soccer
+        capped = False
+        if p > cap:
+            trace.append(f"추정 상한 적용 ({p:.0%} → {cap:.0%})")
+            p, capped = cap, True
+        elif p < 1 - cap:
+            trace.append(f"추정 상한 적용 ({p:.0%} → {1 - cap:.0%})")
+            p, capped = 1 - cap, True
+
+        # [1] 홈/원정 혼동 방지 — 최종 줄에 양 팀 승률을 함께 적는다.
         away_kr = jg.get("away", "원정")
         trace.append(f"최종 {home_kr} {p:.0%} / {away_kr} {1 - p:.0%}")
         unused = _unused_material(research, applied)
@@ -166,7 +206,7 @@ class WinProbAdjuster:
             "p": round(p, 4), "trace": trace, "applied": applied, "unused": unused,
             "basis": "home",                       # trace의 확률은 홈 기준이다
             "home": home_kr, "away": away_kr,
-            "p_home": round(p, 4), "p_away": round(1 - p, 4),
+            "p_home": round(p, 4), "p_away": round(1 - p, 4), "capped": capped,
             "net_delta": round(p - base_p, 4),     # 조정 총량 (홈 기준)
         }
 

@@ -99,10 +99,19 @@ async def test_pipeline_end_to_end_card(db_pool, redis_client):
     assert analysis["games"] and analysis["sources"]
 
 
-async def test_suspicious_picks_not_in_predictions(db_pool, redis_client):
-    """EV>+20% 또는 모델-시장 괴리>25%p 픽은 추천·predictions에서 제외."""
+async def test_recommended_picks_meet_win_prob_and_odds_floor(db_pool, redis_client):
+    """[3-1] predictions에 들어간 픽은 전부 승률·배당 하한을 넘는다.
+
+    (EV 기준은 폐기됐다 — 승률 58%↑ AND 배당 1.55↑ 두 조건만 본다)
+    """
+    from app.config import get_settings
+
+    s = get_settings()
     await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
-    bad = await db_pool.fetchval("SELECT count(*) FROM predictions WHERE ev > 0.20")
+    bad = await db_pool.fetchval(
+        "SELECT count(*) FROM predictions "
+        "WHERE method = 'performance' AND (model_p < $1 OR odds < $2)",
+        s.min_win_prob, s.min_odds)
     assert bad == 0
 
 
@@ -425,7 +434,7 @@ def test_render_game_easy_two_layers():
     assert len(easy.splitlines()) <= 8                    # (a) 기본층 8줄 이내
     assert basic_layer_violations(out) == []              # (b) 금지어 0건
     assert "10번 중" in easy and "신뢰도 ★" in easy or "★" in easy
-    assert "밸류" in detail or "판정" in detail            # (c) 전문 상세 보존
+    assert "대표 마켓" in detail or "판정" in detail        # (c) 전문 상세 보존
     assert "🟢" in easy                                   # (d) 신호등-판정 일치
 
 
@@ -572,7 +581,7 @@ def test_card_still_says_pass_when_judged_but_no_value():
     }
     easy = _render_card(analysis).split(DETAIL_SEP)[0]
     # [3-1] '픽 없음'으로 끝내지 않고 승률·배당 기준을 밝힌다
-    assert "승률 58%·배당 1.60 기준을 넘는 픽이 없습니다" in easy
+    assert "승률 58%·배당 1.55 기준을 넘는 픽이 없습니다" in easy
     assert "판정 실패" not in easy
 
 

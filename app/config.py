@@ -66,7 +66,10 @@ class Settings(BaseSettings):
     # 추천 자격: 승률 하한 AND 배당 하한 (EV 기준 폐기)
     # 주의: 0.58 × 1.60 = 0.928 → EV -7.2%. 승률 58%의 손익분기 배당은 1.724다.
     min_win_prob: float = 0.58
-    min_odds: float = 1.60
+    min_odds: float = 1.55            # 1.60 → 1.55 (0.01 미달 탈락이 잦아 완화)
+    # 승률 추정 상한 — MLB 단일 경기 77%는 비현실적이다(리그 최강팀도 65% 안팎)
+    prob_cap_mlb: float = 0.70
+    prob_cap_soccer: float = 0.75
     signal_green_prob: float = 0.62      # 🟢 승률 하한 (배당 하한은 min_odds 공용)
 
     # ── 경기력 승률 조정 계수 (%p 단위, [1-2]) ────────────────────────────

@@ -121,10 +121,11 @@ async def test_flagged_pick_never_recommended_regression(db_pool, redis_client, 
         for c in g.get("market_board") or [] if not c.get("approved")
     ]
     assert rejected, "목 데이터에 미승인 후보가 있어야 회귀 테스트 성립"
-    # [2] 괴리 미검증 라벨과 [1] 2-소스 미달 사유가 실제로 발생한다
+    # 탈락 사유는 실제 사유여야 한다 — 승률/배당 하한 미달 또는 2-소스 미달
+    # ([1-2] 괴리 검증 룰은 시장 배제 전환으로 폐기됐다)
     reasons = " | ".join(str(c.get("reject_reason")) for _, c in rejected)
-    assert "시장이 아는 정보가 있을 가능성" in reasons
-    assert "2-소스 미달" in reasons
+    assert "2-소스 미달" in reasons or "하한" in reasons
+    assert "시장이 아는 정보가 있을 가능성" not in reasons
     reco_keys = {(p["game_id"], p["pick"]) for p in analysis["picks"] if p.get("recommended")}
     combo_keys = {
         (leg["game_id"], leg["desc"])
@@ -141,12 +142,19 @@ async def test_flagged_pick_never_recommended_regression(db_pool, redis_client, 
         jg = next(g for g in analysis["games"] if g["game_id"] == rep["game_id"])
         assert jg["pick_summary"]["ev"] == rep["ev"]
         assert jg["pick_summary"]["p_final"] == rep["p"]
-    bad = await db_pool.fetchval("SELECT count(*) FROM predictions WHERE ev > 0.20")
+    # [3-1] predictions에 들어간 픽은 승률·배당 하한을 넘는다 (EV 기준은 폐기)
+    from app.config import get_settings
+
+    s = get_settings()
+    bad = await db_pool.fetchval(
+        "SELECT count(*) FROM predictions "
+        "WHERE method = 'performance' AND (model_p < $1 OR odds < $2)",
+        s.min_win_prob, s.min_odds)
     assert bad == 0
 
 
-def test_ev_flag_still_fires_on_pathological_odds():
-    """플래그 가드 유닛 회귀: 수축 후에도 EV +20% 초과 후보는 플래그·미승인."""
+def test_ev_flag_removed_but_prob_gap_flag_remains():
+    """[3] EV 기반 플래그는 제거됐다 — 승률-배당환산 괴리만 데이터 검증으로 남는다."""
     from app.engine.markets import build_candidates
 
     jg = {
@@ -160,7 +168,8 @@ def test_ev_flag_still_fires_on_pathological_odds():
     }
     cands = build_candidates(jg, "mlb", {"A": 0.60, "B": 0.40})
     home = next(c for c in cands if c["market"] == "h2h" and c["side"] == "A")
-    assert home["ev"] > 0.20 and home["flags"] and not home["approved"]
+    # [3] EV 기반 이상치 플래그 제거 — 승률-배당환산 괴리만 데이터 검증으로 남는다
+    assert home["ev"] > 0.20 and not home["flags"]
 
 
 def test_korean_and_invisible_utils():
@@ -258,24 +267,33 @@ def test_two_source_rule_machida_style_passes():
     cands = build_candidates(jg, "soccer", {"Home FC": 0.58, "Away FC": 0.18})
     home = next(c for c in cands if c["market"] == "h2h" and c["side"] == "Home FC")
     assert home["approved"], home["reject_reason"]
-    assert home["axes"]["data"] and home["axes"]["expert"] and home["axes"]["market"]
+    # [4] 시장 축은 판정 철학 교체로 제거됐다
+    assert home["axes"]["data"] and home["axes"]["expert"]
+    assert "market" not in home["axes"]
 
 
-def test_gap_unverified_label():
-    """[2] 모델-시장 괴리 ≥10%p + 전문가 미지지 → '시장이 아는 정보' 라벨 제외."""
+def test_gap_verification_rule_is_retired():
+    """[1-2 폐기] 모델-시장 괴리 검증은 시장 배제 전환으로 삭제됐다.
+
+    시장 확률을 기준점으로 쓰는 규칙이라 시장을 판정에서 빼면 성립하지 않는다.
+    남는 위험(시장이 아는 정보를 우리가 못 봄)은 경기력 정보 수집으로 대체 방어한다.
+    """
     from app.engine.markets import build_candidates
 
     jg = _soccer_jg(
-        judge_confidence="high", p_model=0.68, p_model3=[0.68, 0.20, 0.12], p_market=0.52,
+        p_model=0.75, p_model3=[0.75, 0.15, 0.10], p_market=0.52,
+        judge_confidence="high",
         stats={"home_season": {"form": "WWWWW", "position": 1, "points": 60,
-                               "played": 25, "gf": 50, "ga": 10},
-               "away_season": {"form": "LLLLL", "position": 18, "points": 10,
+                               "played": 25, "gf": 50, "ga": 12},
+               "away_season": {"form": "LLLLL", "position": 18, "points": 12,
                                "played": 25, "gf": 15, "ga": 45}},
+        expert_picks=[{"pick": "h2h:Home FC"}],
     )
-    cands = build_candidates(jg, "soccer", {"Home FC": 0.60, "Away FC": 0.18})
+    cands = build_candidates(jg, "soccer", {"Home FC": 0.70, "Away FC": 0.15})
     home = next(c for c in cands if c["market"] == "h2h" and c["side"] == "Home FC")
-    assert not home["approved"]
-    assert "시장이 아는 정보가 있을 가능성" in home["reject_reason"]
+    reasons = str(home.get("reject_reason") or "")
+    assert "시장이 아는 정보" not in reasons
+    assert "market" not in home["axes"]
 
 
 def test_soccer_h2h_requires_high_confidence():
