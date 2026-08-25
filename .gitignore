@@ -5,4 +5,9 @@ __pycache__/
 .pytest_cache/
 .serena/cache/
 data/
-uv.lock
+
+# uv.lock은 **추적해야 한다.** 잠금 파일이 없으면 배포 빌드가 의존성을 고정할 수
+# 없고(uv sync --frozen 실패), 로컬과 서버가 다른 버전을 설치하게 된다.
+# 실사고(2026-08-26): gitignore에 있어 Railway 업로드에서 빠져 빌드가 깨졌다.
+#   Build Failed: "/uv.lock": not found
+
