@@ -160,6 +160,10 @@ async def render_performance(pool) -> str:
         "SELECT coalesce(sum(pnl), 0) FROM predictions "
         "WHERE result IS NOT NULL AND created_at >= date_trunc('week', now())"
     )
+    # [6] 두 방식 비교 — 경기력 기반(현행) vs 시장 반영(참고). 어느 쪽이 맞히는지 본다.
+    from app.grader import method_ledger
+
+    ledger = await method_ledger(pool)
     graded, wins, losses = row["graded"], row["wins"], row["losses"]
     hit = f"{wins / (wins + losses):.1%}" if (wins + losses) else "표본 없음"
     pnl_krw = int(float(row["pnl_units"]) * stake)
@@ -167,14 +171,29 @@ async def render_performance(pool) -> str:
     stop_line = int(settings.bankroll_krw * settings.weekly_stop_loss_pct)
     stop_status = "🟢 정상" if week_krw > -stop_line else "🔴 손절선 도달 — 이번 주 베팅 중지 권장"
     clv_txt = f"{float(clv):+.1%}" if clv is not None else "데이터 부족"
-    return (
-        "📈 성적표 (플랫 1% 기준)\n"
-        f"- 채점 완료: {graded}픽 ({wins}승 {losses}패 {graded - wins - losses}푸시)\n"
-        f"- 방향 적중률: {hit}\n"
-        f"- 실현 손익: {pnl_krw:+,}원 ({float(row['pnl_units']):+.2f}유닛)\n"
-        f"- CLV(마감가 대비): {clv_txt}\n"
-        f"- 이번 주 손익: {week_krw:+,}원 / 손절선 -{stop_line:,}원 → {stop_status}"
-    )
+    lines = [
+        "📈 성적표 (플랫 1% 기준)",
+        f"- 채점 완료: {graded}픽 ({wins}승 {losses}패 {graded - wins - losses}푸시)",
+        f"- 방향 적중률: {hit}",
+        f"- 실현 손익: {pnl_krw:+,}원 ({float(row['pnl_units']):+.2f}유닛)",
+        f"- CLV(마감가 대비): {clv_txt}",
+        f"- 이번 주 손익: {week_krw:+,}원 / 손절선 -{stop_line:,}원 → {stop_status}",
+    ]
+    # [6] 두 방식 병렬 비교 — 표본이 쌓이기 전엔 결론 내지 않는다
+    if ledger:
+        lines.append("")
+        lines.append("🔬 판정 방식 비교 (경기력 기반 vs 시장 반영)")
+        label = {"performance": "경기력 기반(현행)", "legacy": "시장 반영(참고)"}
+        for m in ledger:
+            hit_m = f"{m['hit_rate']:.1%}" if m["hit_rate"] is not None else "표본 없음"
+            krw = int(m["pnl_units"] * stake)
+            lines.append(
+                f"- {label.get(m['method'], m['method'])}: {m['graded']}픽 "
+                f"{m['wins']}승 {m['losses']}패 · 적중률 {hit_m} · {krw:+,}원")
+        total_graded = sum(m["graded"] for m in ledger)
+        if total_graded < 200:
+            lines.append(f"  ⚠️ 누적 {total_graded}픽 — 200~300픽 전에는 우열을 판단하지 않습니다")
+    return "\n".join(lines)
 
 logger = logging.getLogger(__name__)
 

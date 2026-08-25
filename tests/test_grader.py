@@ -91,3 +91,56 @@ def test_scheduler_jobs_registered():
     assert str(jobs["prefetch_daily"].trigger) == "cron[hour='4', minute='0']"
     assert str(jobs["grade_yesterday"].trigger) == "cron[hour='13', minute='0']"
     assert "0:30:00" in str(jobs["odds_snapshot_30m"].trigger)
+
+
+# ---------------------------------------------------------------- [6] 병렬 채점
+
+async def _pred(db_pool, method, result, pnl, p=0.60, odds=1.80):
+    row = await db_pool.fetchrow(
+        """
+        INSERT INTO games (sport, league, ext_id, starts_at, home, away)
+        VALUES ('mlb', 'MLB', $1, now(), 'H', 'A')
+        ON CONFLICT (sport, ext_id) DO UPDATE SET home = EXCLUDED.home
+        RETURNING id
+        """,
+        f"parallel-{method}-{result}-{pnl}",
+    )
+    await db_pool.execute(
+        """
+        INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
+                                 method, result, pnl)
+        VALUES ($1, 'h2h:H', $2, $3, 0.0, 0.0, $4, $5, $6)
+        """,
+        row["id"], p, odds, method, result, pnl,
+    )
+
+
+async def test_method_ledger_separates_two_approaches(db_pool):
+    """[6] 경기력 기반과 시장 반영 픽을 따로 집계해 나란히 비교할 수 있어야 한다."""
+    from app.grader import method_ledger
+
+    await db_pool.execute("DELETE FROM predictions")
+    await _pred(db_pool, "performance", "win", 0.80)
+    await _pred(db_pool, "performance", "loss", -1.0)
+    await _pred(db_pool, "legacy", "win", 0.90)
+
+    ledger = {m["method"]: m for m in await method_ledger(db_pool)}
+    assert set(ledger) == {"performance", "legacy"}
+    assert ledger["performance"]["graded"] == 2
+    assert ledger["performance"]["hit_rate"] == 0.5
+    assert ledger["legacy"]["hit_rate"] == 1.0
+    assert abs(ledger["performance"]["pnl_units"] - (-0.2)) < 1e-6
+
+
+async def test_performance_report_shows_both_methods(db_pool):
+    """[6] 성적표에 두 방식이 나란히 표시되고, 표본이 적으면 판단 보류를 명시한다."""
+    from app.bot.main import render_performance
+
+    await db_pool.execute("DELETE FROM predictions")
+    await _pred(db_pool, "performance", "win", 0.80)
+    await _pred(db_pool, "legacy", "loss", -1.0)
+
+    out = await render_performance(db_pool)
+    assert "판정 방식 비교" in out
+    assert "경기력 기반(현행)" in out and "시장 반영(참고)" in out
+    assert "200~300픽 전에는 우열을 판단하지 않습니다" in out

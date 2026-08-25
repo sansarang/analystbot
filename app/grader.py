@@ -84,6 +84,7 @@ async def grade_date(pool: asyncpg.Pool, date: str, sport: str = "mlb") -> dict:
         sport,
     )
     counts = {"expert_picks": 0, "predictions": 0, "unparseable": 0}
+    # [6] 병렬 채점 — 방식별(performance / legacy) 집계도 함께 센다
     for g in finals:
         args = (g["home"], g["away"], g["home_score"], g["away_score"])
 
@@ -101,7 +102,8 @@ async def grade_date(pool: asyncpg.Pool, date: str, sport: str = "mlb") -> dict:
             counts["expert_picks"] += 1
 
         for row in await pool.fetch(
-            "SELECT id, pick, odds FROM predictions WHERE game_id = $1 AND result IS NULL",
+            "SELECT id, pick, odds, method FROM predictions "
+            "WHERE game_id = $1 AND result IS NULL",
             g["id"],
         ):
             result = grade_pick(row["pick"], *args)
@@ -113,6 +115,44 @@ async def grade_date(pool: asyncpg.Pool, date: str, sport: str = "mlb") -> dict:
                 row["id"], result, pnl_for(result, row["odds"] and float(row["odds"])),
             )
             counts["predictions"] += 1
+            key = f"predictions:{row.get('method') or 'performance'}"
+            counts[key] = counts.get(key, 0) + 1
 
     logger.info("[grader] %s %s -> %s", sport, date, counts)
     return counts
+
+
+# ---------------------------------------------------------------- [6] 방식별 집계
+
+async def method_ledger(pool) -> list[dict]:
+    """[6] 경기력 기반 vs 시장 반영 — 어느 쪽이 실제로 맞히는지 나란히 집계.
+
+    2~3주 뒤 판별이 목적이므로 표본 수를 함께 돌려준다 (적은 표본으로 결론 금지).
+    """
+    rows = await pool.fetch(
+        """
+        SELECT method,
+               count(*) FILTER (WHERE result IN ('win','loss','push')) AS graded,
+               count(*) FILTER (WHERE result = 'win')  AS wins,
+               count(*) FILTER (WHERE result = 'loss') AS losses,
+               coalesce(sum(pnl), 0)                   AS pnl_units,
+               avg(model_p) FILTER (WHERE result IS NOT NULL) AS avg_p
+        FROM predictions
+        GROUP BY method
+        ORDER BY method
+        """
+    )
+    out = []
+    for r in rows:
+        graded = r["graded"] or 0
+        decided = (r["wins"] or 0) + (r["losses"] or 0)
+        out.append({
+            "method": r["method"] or "performance",
+            "graded": graded,
+            "wins": r["wins"] or 0,
+            "losses": r["losses"] or 0,
+            "hit_rate": round((r["wins"] or 0) / decided, 4) if decided else None,
+            "pnl_units": float(r["pnl_units"] or 0),
+            "avg_p": float(r["avg_p"]) if r["avg_p"] is not None else None,
+        })
+    return out
