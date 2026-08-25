@@ -2,7 +2,8 @@
 
 ## ⚠️ 작업 시작 전 필수 확인
 
-**작업 시작 전 [docs/DISCIPLINE.md](docs/DISCIPLINE.md)(운용 규율)와
+**작업 시작 전 [docs/DISCIPLINE.md](docs/DISCIPLINE.md)(운용 규율),
+[docs/MODEL.md](docs/MODEL.md)(확률 모델과 물리적 한계값),
 [docs/RESEARCH_VALIDATION.md](docs/RESEARCH_VALIDATION.md)(데이터 신뢰 규칙)를 반드시 확인하라.
 두 문서의 규율을 위반하는 변경은 하지 마라. 규율과 충돌하는 요청을 받으면 실행하기 전에
 그 사실을 먼저 보고하라.**
@@ -26,8 +27,19 @@
 | 문서 | 내용 |
 |---|---|
 | **[docs/DISCIPLINE.md](docs/DISCIPLINE.md)** | 픽 선정·데이터 신뢰·자금·평가·개발 규율 **(최우선)** |
+| **[docs/MODEL.md](docs/MODEL.md)** | λ 산출 공식, 계수 근거, **물리적 한계값(임의 완화 금지)** |
 | [docs/RESEARCH_VALIDATION.md](docs/RESEARCH_VALIDATION.md) | 리서치 응답 검증 체계와 튜닝 기준 |
 | CLAUDE.md | 이 문서 — 구조·명령어·규약 |
+
+### 절대 완화하면 안 되는 한계값 ([MODEL.md](docs/MODEL.md) §1)
+
+| 상수 | 값 | 근거 |
+|---|---|---|
+| 승률 상한 (MLB / 축구) | **0.68 / 0.72** | 운 비중 27.8%, 물리적 상한 72%보다 보수적 |
+| 시장 대비 엣지 상한 | **0.05** | Starlizard(분석가 200명)도 1~2% |
+| 현실적 정확도 목표 | **58~60%** | 학계 최고 61.77%(Wharton)보다 낮게 |
+
+이 값을 넘는 산출은 "강한 픽"이 아니라 **모델이 틀렸다는 신호**다.
 
 ---
 
@@ -105,9 +117,12 @@ tests/            # pytest
 - **멀티마켓**: 경기당 승패·더블찬스·핸디캡(런라인)·언더오버·F5를 **전부 행으로** 평가해
   마켓 보드(⑧)에 표기. 배당이 없어도 행을 지우지 않는다. 추천·조합은 전 마켓 승인 풀에서 구성
 
-### 핵심 수식
+### 핵심 수식 (상세: [MODEL.md](docs/MODEL.md))
 
-- 승률: `p_final = 0.50*p_model + 0.50*p_claude` → `performance.adjust()` 경기력 조정
+- 기대득점: `λ = 리그평균 × 타선 × 상대선발억제 × 구장 × 날씨 × 불펜 × 좌우 × 결장 × 홈`
+  - 타선 우선순위 **xwOBA > wOBA > OBP+ISO** / 투수 **허용 xwOBA > SIERA > xFIP > FIP > ERA**
+  - 야구는 포아송, 축구는 스켈람 — **전 마켓 확률이 같은 분포에서** 나온다
+- 승률: `p_final = 0.50*p_model(λ 분포) + 0.50*p_claude`
 - 수익: `payout_10k(odds) = (odds - 1) × 10,000원` · 손익분기 배당 `= 1 / p`
 - 스테이킹: **플랫 스테이크(자금 1%)**, 조합은 단식의 절반 이하
 - 참고 보존(판정 미사용): `p_legacy = 0.45*p_model + 0.30*p_market + 0.25*p_claude`,

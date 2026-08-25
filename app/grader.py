@@ -124,6 +124,55 @@ async def grade_date(pool: asyncpg.Pool, date: str, sport: str = "mlb") -> dict:
 
 # ---------------------------------------------------------------- [6] 방식별 집계
 
+CALIBRATION_BANDS = ((0.50, 0.55), (0.55, 0.60), (0.60, 0.65), (0.65, 0.70), (0.70, 1.01))
+
+
+def brier_score(rows) -> float | None:
+    """[§7] Brier score = mean((예측확률 - 실제결과)^2). 낮을수록 좋다.
+
+    적중률만 보면 "60% 픽을 60% 맞혔다"와 "60% 픽을 90% 맞혔다"를 구분 못 한다.
+    Brier는 확률 자체가 얼마나 잘 캘리브레이션됐는지를 잰다.
+    기준선: 항상 0.5를 찍으면 0.25. 그보다 낮아야 예측에 값이 있다.
+    """
+    vals = []
+    for r in rows:
+        p, res = r.get("model_p"), r.get("result")
+        if p is None or res not in ("win", "loss"):
+            continue
+        vals.append((float(p) - (1.0 if res == "win" else 0.0)) ** 2)
+    return round(sum(vals) / len(vals), 4) if vals else None
+
+
+def calibration_bands(rows) -> list[dict]:
+    """[§7] 예측 확률 구간별 실제 승률 — "60%라고 한 픽이 정말 60% 이겼나".
+
+    캘리브레이션이 무너지면(예측 65% 구간의 실제 승률 45%) 적중률이 좋아도
+    확률을 믿을 수 없다는 뜻이다.
+    """
+    buckets: dict[tuple, list] = {b: [] for b in CALIBRATION_BANDS}
+    for r in rows:
+        p, res = r.get("model_p"), r.get("result")
+        if p is None or res not in ("win", "loss"):
+            continue
+        p = float(p)
+        for lo, hi in CALIBRATION_BANDS:
+            if lo <= p < hi:
+                buckets[(lo, hi)].append(1 if res == "win" else 0)
+                break
+    out = []
+    for (lo, hi), hits in buckets.items():
+        if not hits:
+            continue
+        actual = sum(hits) / len(hits)
+        out.append({
+            "band": f"{lo:.0%}~{min(hi, 1.0):.0%}", "n": len(hits),
+            "predicted": round((lo + min(hi, 1.0)) / 2, 3),
+            "actual": round(actual, 3),
+            "gap": round(actual - (lo + min(hi, 1.0)) / 2, 3),
+        })
+    return out
+
+
 async def method_ledger(pool) -> list[dict]:
     """[6] 경기력 기반 vs 시장 반영 — 어느 쪽이 실제로 맞히는지 나란히 집계.
 
@@ -144,15 +193,23 @@ async def method_ledger(pool) -> list[dict]:
     )
     out = []
     for r in rows:
+        method = r["method"] or "performance"
         graded = r["graded"] or 0
         decided = (r["wins"] or 0) + (r["losses"] or 0)
+        detail = await pool.fetch(
+            "SELECT model_p, result FROM predictions "
+            "WHERE method = $1 AND result IN ('win','loss')", method)
+        detail = [dict(d) for d in detail]
         out.append({
-            "method": r["method"] or "performance",
+            "method": method,
             "graded": graded,
             "wins": r["wins"] or 0,
             "losses": r["losses"] or 0,
             "hit_rate": round((r["wins"] or 0) / decided, 4) if decided else None,
             "pnl_units": float(r["pnl_units"] or 0),
             "avg_p": float(r["avg_p"]) if r["avg_p"] is not None else None,
+            # [§7] 적중률만으로는 확률의 질을 못 잰다
+            "brier": brier_score(detail),
+            "calibration": calibration_bands(detail),
         })
     return out

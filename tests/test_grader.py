@@ -145,3 +145,57 @@ async def test_performance_report_shows_both_methods(db_pool):
     assert "판정 방식 비교" in out
     assert "경기력 기반(현행)" in out and "시장 반영(참고)" in out
     assert "200~300픽 전에는 우열을 판단하지 않습니다" in out
+
+
+# ---------------------------------------------------------------- [§7] Brier·캘리브레이션
+
+def test_brier_score_rewards_calibration():
+    """[§7] Brier = mean((예측 - 실제)^2). 항상 50%를 찍으면 0.250이 기준선이다."""
+    from app.grader import brier_score
+
+    # 자신 있게 맞힌 예측이 가장 좋다
+    confident_right = brier_score([{"model_p": 0.90, "result": "win"}] * 4)
+    coin_flip = brier_score([{"model_p": 0.50, "result": "win"}] * 4)
+    confident_wrong = brier_score([{"model_p": 0.90, "result": "loss"}] * 4)
+    assert confident_right < coin_flip < confident_wrong
+    assert coin_flip == 0.25          # 기준선
+    assert brier_score([]) is None
+    # 미채점·푸시는 세지 않는다
+    assert brier_score([{"model_p": 0.6, "result": None},
+                        {"model_p": 0.6, "result": "push"}]) is None
+
+
+def test_calibration_bands_report_actual_vs_predicted():
+    """[§7] "60%라고 한 픽이 정말 60% 이겼나" — 구간별 실제 승률."""
+    from app.grader import calibration_bands
+
+    rows = ([{"model_p": 0.62, "result": "win"}] * 6
+            + [{"model_p": 0.62, "result": "loss"}] * 4
+            + [{"model_p": 0.72, "result": "loss"}] * 2)
+    bands = {b["band"]: b for b in calibration_bands(rows)}
+    b60 = bands["60%~65%"]
+    assert b60["n"] == 10 and b60["actual"] == 0.6
+    assert abs(b60["gap"]) < 0.03            # 예측 62.5% vs 실제 60% — 잘 맞음
+    b70 = bands["70%~100%"]
+    assert b70["actual"] == 0.0 and b70["gap"] < -0.5   # 과신 구간이 드러난다
+
+
+def test_calibration_skips_empty_bands():
+    from app.grader import calibration_bands
+
+    assert calibration_bands([]) == []
+    bands = calibration_bands([{"model_p": 0.51, "result": "win"}])
+    assert len(bands) == 1 and bands[0]["band"] == "50%~55%"
+
+
+async def test_method_ledger_includes_brier_and_calibration(db_pool):
+    """[§7] 두 방식 비교에 Brier와 캘리브레이션이 함께 나온다."""
+    from app.grader import method_ledger
+
+    await db_pool.execute("DELETE FROM predictions")
+    for res, pnl, p in (("win", 0.8, 0.62), ("loss", -1.0, 0.61), ("win", 0.7, 0.63)):
+        await _pred(db_pool, "performance", res, pnl, p=p)
+    ledger = {m["method"]: m for m in await method_ledger(db_pool)}
+    perf = ledger["performance"]
+    assert perf["brier"] is not None and 0 < perf["brier"] < 0.5
+    assert perf["calibration"] and perf["calibration"][0]["band"] == "60%~65%"

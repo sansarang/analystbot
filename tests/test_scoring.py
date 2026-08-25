@@ -292,3 +292,29 @@ def test_absence_names_exclude_team():
         absences=["San Diego Padres의 Manny Machado 팀 최다 홈런 타자 결장"]), S)
     joined = " ".join(out.trace)
     assert "Manny Machado" in joined
+
+
+# ---------------------------------------------------------------- §8 문서 계약
+
+def test_model_doc_records_the_hard_limits():
+    """[§8] 한계값이 문서에 근거와 함께 박혀 있어야 임의 완화를 막을 수 있다."""
+    import pathlib
+
+    doc = pathlib.Path("docs/MODEL.md").read_text()
+    assert "임의로 완화하지 마라" in doc
+    assert "61.77" in doc                       # 학계 최고 정확도
+    assert "27.8" in doc                        # MLB 운 비중
+    assert "Starlizard" in doc and "1~2%" in doc
+    for token in ("0.68", "0.72", "0.05", "58~60%"):
+        assert token in doc, token
+    # 미완 항목을 숨기지 않는다
+    assert "계수 학습이 미완" in doc
+
+
+def test_claude_md_registers_model_doc():
+    """[§8] 향후 세션이 MODEL.md를 먼저 읽도록 CLAUDE.md에 등재돼 있어야 한다."""
+    import pathlib
+
+    doc = pathlib.Path("CLAUDE.md").read_text()
+    assert "docs/MODEL.md" in doc
+    assert "절대 완화하면 안 되는 한계값" in doc

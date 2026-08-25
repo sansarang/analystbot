@@ -187,12 +187,18 @@ async def render_performance(pool) -> str:
         for m in ledger:
             hit_m = f"{m['hit_rate']:.1%}" if m["hit_rate"] is not None else "표본 없음"
             krw = int(m["pnl_units"] * stake)
+            brier = f" · Brier {m['brier']:.3f}" if m.get("brier") is not None else ""
             lines.append(
                 f"- {label.get(m['method'], m['method'])}: {m['graded']}픽 "
-                f"{m['wins']}승 {m['losses']}패 · 적중률 {hit_m} · {krw:+,}원")
+                f"{m['wins']}승 {m['losses']}패 · 적중률 {hit_m} · {krw:+,}원{brier}")
+            for band in m.get("calibration") or []:
+                lines.append(
+                    f"    {band['band']} 예측 {band['n']}픽 → 실제 {band['actual']:.0%} "
+                    f"({band['gap']:+.0%})")
         total_graded = sum(m["graded"] for m in ledger)
         if total_graded < 200:
             lines.append(f"  ⚠️ 누적 {total_graded}픽 — 200~300픽 전에는 우열을 판단하지 않습니다")
+        lines.append("  (Brier: 낮을수록 좋음. 항상 50%를 찍으면 0.250)")
     return "\n".join(lines)
 
 logger = logging.getLogger(__name__)
