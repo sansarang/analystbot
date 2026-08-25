@@ -128,6 +128,9 @@ def extract_json_array(content: str) -> list[dict]:
     return json.loads(m.group(1))
 
 
+# ⚠️ 미사용 — 실운영 경로는 deep_research_game의 응답에 expert_picks가 함께 온다.
+#    (2026-08-25 확인: app/ 안에 호출처 없음. 테스트만 참조한다.)
+#    별도 슬레이트 조회가 필요해지면 반드시 `_record_call`로 쿼터에 집계할 것.
 async def fetch_expert_picks(
     games: list[dict], date: str, league: str = "MLB", sport: str = "mlb",
     client: PerplexityClient | None = None,

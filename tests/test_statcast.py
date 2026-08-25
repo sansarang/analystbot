@@ -148,10 +148,10 @@ async def test_load_falls_back_to_recent_day():
         async def get(self, k):
             return store.get(k)
 
-    off, pit, bp = await load(R(), "2026-08-25")
+    off, pit, bp, bat = await load(R(), "2026-08-25")
     assert off["Reds"]["xwoba_30d"] == 0.33
     assert pit["Greene"]["xwoba_allowed"] == 0.29
-    assert bp == {}          # 그날 불펜 캐시가 없으면 빈 dict
+    assert bp == {} and bat == {}      # 그날 불펜·타자 캐시가 없으면 빈 dict
 
 
 @pytest.mark.asyncio
@@ -166,7 +166,7 @@ async def test_load_prefers_same_day_over_fallback():
         async def get(self, k):
             return store.get(k)
 
-    off, _pit, _bp = await load(R(), "2026-08-25")
+    off, _pit, _bp, _bat = await load(R(), "2026-08-25")
     assert off["Reds"]["xwoba_30d"] == 0.35
 
 
@@ -181,8 +181,8 @@ async def test_load_gives_up_beyond_window():
         async def get(self, k):
             return store.get(k)
 
-    off, pit, bp = await load(R(), "2026-08-25")
-    assert off == {} and pit == {} and bp == {}
+    off, pit, bp, bat = await load(R(), "2026-08-25")
+    assert off == {} and pit == {} and bp == {} and bat == {}
 
 
 def test_merge_uses_game_starter_name():
@@ -351,3 +351,72 @@ def test_merge_does_not_override_research_park():
     merge_into_research(research, {"home": "Colorado Rockies", "away": "X"},
                         {}, {}, None, {"Colorado Rockies": 1.264})
     assert research["park_factor"] == 1.11
+
+
+# --- [1][2] 결장·날씨를 정식 API로 (Perplexity 대체) ---
+
+def test_absences_from_injured_marks_top_hitters():
+    """타석 상위 2명은 '주포'(-4%p), 3~9위는 '주전 타자'(-2%p)로 문장이 갈린다."""
+    from app.collectors.absences import from_injured
+
+    batters = [{"id": i, "pa": 100 - i} for i in range(1, 12)]
+    injured = [{"id": 1, "name": "Star Man", "position": "CF", "status": "10일 IL"},
+               {"id": 5, "name": "Regular Guy", "position": "2B", "status": "10일 IL"},
+               {"id": 99, "name": "Bench Guy", "position": "LF", "status": "10일 IL"}]
+    out = from_injured("Reds", batters, injured)
+    assert "주포" in out[0] and "Star Man" in out[0]
+    assert "주전 타자" in out[1]
+    assert "(선수)" in out[2], "랭킹 밖 선수는 주전으로 보지 않는다"
+
+
+def test_absences_prefers_lineup_when_confirmed():
+    """라인업이 확정되면 IL이 아니라 타순 기준으로 판정하고 근거를 밝힌다."""
+    from app.collectors.absences import collect
+
+    jg = {"home": "Reds", "away": "Giants"}
+    batters = {"Reds": [{"id": i, "pa": 100 - i} for i in range(1, 10)]}
+    lineup = {"confirmed": True,
+              "home": {"batting_order_ids": [2, 3, 4, 5, 6, 7, 8, 9, 20]},
+              "away": {"batting_order_ids": [1, 2, 3, 4, 5, 6, 7, 8, 9]}}
+    sentences, basis = collect(jg, batters, lineup, {})
+    assert basis == "라인업 확정"
+    assert any("라인업 제외" in x for x in sentences)
+
+
+def test_absences_falls_back_to_il_when_not_confirmed():
+    from app.collectors.absences import collect
+
+    jg = {"home": "Reds", "away": "Giants"}
+    batters = {"Reds": [{"id": 1, "pa": 90}]}
+    injured = {"home": [{"id": 1, "name": "Star", "position": "CF", "status": "60일 IL"}]}
+    sentences, basis = collect(jg, batters, {"confirmed": False}, injured)
+    assert basis == "IL 명단" and sentences
+
+
+def test_weather_skips_domed_parks():
+    """돔구장은 날씨 보정을 걸지 않는다 — 없는 근거로 λ가 움직이면 안 된다."""
+    from app.collectors.weather import merge_into_research
+
+    research: dict = {}
+    note = merge_into_research(research, {"game_id": 1, "home": "Toronto Blue Jays"},
+                               {1: {"dome": True, "text": None}})
+    assert "돔구장" in note
+    assert "weather" not in research
+
+
+def test_weather_text_is_parseable_by_scoring():
+    """생성 문장이 scoring._weather_factor의 정규식에 걸려야 한다."""
+    from app.collectors.weather import describe
+    from app.config import get_settings
+    from app.engine.scoring import _weather_factor
+
+    text = describe(29.0, 3.2)
+    assert _weather_factor({"weather": text}, get_settings()) is not None
+
+
+def test_weather_omits_wind_direction():
+    """풍향은 검증 불가라 문장에 넣지 않는다 (부호 뒤집힘 위험)."""
+    from app.collectors.weather import describe
+
+    text = describe(25.0, 5.0)
+    assert "맞바람" not in text and "뒷바람" not in text

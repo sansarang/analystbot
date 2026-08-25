@@ -381,6 +381,22 @@ async def log_cost_summary(redis) -> None:
 
 # ---------------------------------------------------------------- 캐시 접근
 
+def needs_refresh(game: dict) -> str | None:
+    """[3] 신선도와 무관하게 **강제 재조사**해야 하는 사유. 없으면 None.
+
+    캐시가 6시간 이내라도 아래가 바뀌면 리서치 내용이 실제로 달라진다:
+    - 라인업이 새로 확정됨 → 결장·타순이 확정치로 바뀐다
+    - 선발이 변경됨 → 상대 선발 분석이 통째로 무의미해진다
+
+    반대로 "6시간 내 두 번 조사"는 결장·전문가 픽이 거의 바뀌지 않아 콜 낭비다.
+    """
+    if game.get("lineup_just_confirmed"):
+        return "라인업 확정"
+    if game.get("starter_changed"):
+        return "선발 변경"
+    return None
+
+
 async def get_game_research(
     redis, game: dict, sport: str, force: bool = False,
 ) -> tuple[dict | None, str]:
@@ -424,6 +440,10 @@ async def get_game_research(
 
     calls = await research_calls_today(redis)
     quota_out = calls >= DAILY_RESEARCH_CAP
+    reason = needs_refresh(game)
+    if reason and not quota_out:
+        force = True
+        logger.info("[deep] 강제 재조사 game=%s — %s", game.get("game_id"), reason)
     if not force and research_is_fresh(cached_at, starts_at, quota_exhausted=quota_out):
         if cached_data is not None:
             return cached_data, ("quota" if quota_out else "fresh")

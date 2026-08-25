@@ -434,3 +434,25 @@ def test_truncated_pitcher_line_is_omitted():
     })
     out = render_game_section(jg)
     assert "선발 최근:" not in out
+
+
+# --- [3] 조건부 강제 재조사 (2026-08-25) ---
+
+def test_needs_refresh_on_lineup_confirmed():
+    """라인업이 방금 확정되면 6시간 캐시라도 다시 조사한다."""
+    from app.research.deep import needs_refresh
+
+    assert needs_refresh({"lineup_just_confirmed": True}) == "라인업 확정"
+
+
+def test_needs_refresh_on_starter_change():
+    from app.research.deep import needs_refresh
+
+    assert needs_refresh({"starter_changed": True}) == "선발 변경"
+
+
+def test_needs_refresh_none_for_ordinary_game():
+    """평범한 경기는 재조사하지 않는다 — 6시간 내 두 번 조사는 콜 낭비다."""
+    from app.research.deep import needs_refresh
+
+    assert needs_refresh({"home": "A", "away": "B"}) is None

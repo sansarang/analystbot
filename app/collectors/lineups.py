@@ -64,6 +64,7 @@ def parse_injured(roster: dict) -> list[dict]:
         if not name:
             continue
         out.append({
+            "id": (entry.get("person") or {}).get("id"),   # MLBAM id — Statcast와 동일 체계
             "name": name,
             "position": ((entry.get("position") or {}).get("abbreviation") or "").strip(),
             "status": status.get("description") or code,
@@ -114,7 +115,11 @@ def parse_boxscore(data: dict) -> dict:
         for note in team.get("info") or []:
             if str(note.get("label", note.get("title", ""))).upper().startswith("NOT"):
                 scratches += [f.get("value", "") for f in note.get("fieldList") or []]
-        out[side] = {"starter": starter, "batting_order": names, "scratches": scratches,
+        out[side] = {"starter": starter, "batting_order": names,
+                     # id로도 남긴다 — 결장 판정은 이름이 아니라 id로 대조한다
+                     "batting_order_ids": [int(str(p).replace("ID", "")) for p in order_ids
+                                           if str(p).replace("ID", "").isdigit()],
+                     "scratches": scratches,
                      "team_id": ((team.get("team") or {}).get("id"))}
     out["confirmed"] = all(len(out[s]["batting_order"]) >= 9 for s in ("home", "away"))
     return out

@@ -28,7 +28,7 @@ from app.engine.parlay import best_parlays
 from app.engine.value import devig, ensemble, ev, heuristic_model_prob, implied_prob, kelly
 from app.notify import notify_api_error
 from app.research.grok import GrokClient
-from app.research.perplexity import PerplexityClient, fetch_expert_picks, save_expert_picks
+from app.research.perplexity import PerplexityClient, save_expert_picks
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ async def _collect_soccer_stats(labels: set[str] | None = None) -> dict:
 
 async def _collect_research(
     pool: asyncpg.Pool, games: list[dict], date: str, league: str = "MLB",
-    sport: str = "mlb", redis=None, sequential: bool = False,
+    sport: str = "mlb", redis=None, sequential: bool = False, force: bool = False,
 ) -> tuple[str, list[str], dict, dict]:
     """Grok 속보(슬레이트 1콜) ∥ 경기별 심층 리서치.
 
@@ -174,7 +174,7 @@ async def _collect_research(
     async def one(g: dict) -> None:
         async with sem:
             data, status = await get_game_research(
-                redis, {**g, "game_id": g["id"]}, sport)
+                redis, {**g, "game_id": g["id"]}, sport, force=force)
         research_map[g["id"]] = data
         statuses[g["id"]] = status
         if data and data.get("expert_picks"):
@@ -318,7 +318,7 @@ async def build_analysis(
     pool: asyncpg.Pool, sport: str, date: str,
     team: str | None = None, league_key: str | None = None, progress=None,
     redis=None, sequential_research: bool = False,
-    stages_out: list | None = None,
+    stages_out: list | None = None, force_research: bool = False,
 ) -> dict:
     """league_key 지정 시 그 리그만 수집·판정 (요청 범위 밖 API 호출 금지).
 
@@ -426,7 +426,7 @@ async def build_analysis(
         stats_coro,
         snapshot_odds(pool, sport, client=OddsClient(), only_keys=active_keys),
         _collect_research(pool, games, date, league, sport=sport, redis=redis,
-                          sequential=sequential_research),
+                          sequential=sequential_research, force=force_research),
     )
 
     await record("경기 적재", len(games), len(games) or 1,
@@ -498,6 +498,13 @@ async def build_analysis(
             "starts_at": g["starts_at"].isoformat(),
             "starts_at_kst": kst_hhmm(g["starts_at"]),
             "status": g["status"],
+            # [3] 강제 재조사 트리거 — 라인업이 방금 확정됐거나 선발이 바뀌면
+            #     6시간 캐시라도 내용이 실제로 달라진다 (deep.needs_refresh)
+            "lineup_just_confirmed": bool(
+                g.get("lineup_status") == "confirmed"
+                and g.get("lineup_confirmed_at") is not None
+                and (datetime.now(UTC) - g["lineup_confirmed_at"]).total_seconds() < 3600),
+            "starter_changed": bool(g.get("lineup_status") == "conflict"),
             "research": research_map.get(g["id"]),
             "research_status": research_statuses.get(g["id"], "missing"),
             "status_label": STATUS_LABELS.get(g["status"], ""),
@@ -573,15 +580,34 @@ async def build_analysis(
     if redis is not None:
         try:
             if sport == "mlb":
-                from app.collectors.statcast import load as load_statcast
-
+                from app.collectors.absences import fetch_for_games as fetch_absences
                 from app.collectors.park import load as load_parks
+                from app.collectors.statcast import load as load_statcast
+                from app.collectors.weather import fetch_for_games as fetch_weather
 
-                statcast_data = (*await load_statcast(redis, date), await load_parks(redis))
-                if statcast_data and statcast_data[0]:
-                    logger.info("[pipeline] Statcast 캐시 — 팀 %d개 / 투수 %d명 / "
-                                "불펜 %d팀 / 구장 %d개",
-                                *(len(x) for x in statcast_data))
+                off, pit, bp, bat = await load_statcast(redis, date)
+                # [§2] 수치는 전부 정식 API로 — Perplexity 쿼터와 무관하다.
+                #      실패해도 해당 항목만 비고 파이프라인은 계속 간다.
+                upcoming_rows = [g for g in judge_games if g.get("status") == "scheduled"]
+                try:
+                    weather = await fetch_weather(upcoming_rows)
+                except Exception as exc:
+                    logger.warning("[pipeline] 날씨 수집 실패: %s", exc)
+                    weather = {}
+                try:
+                    absences = await fetch_absences(upcoming_rows)
+                except Exception as exc:
+                    logger.warning("[pipeline] 결장 수집 실패: %s", exc)
+                    absences = {}
+                statcast_data = {
+                    "offense": off, "pitchers": pit, "bullpen": bp, "batters": bat,
+                    "parks": await load_parks(redis),
+                    "weather": weather, "absences": absences,
+                }
+                logger.info("[pipeline] 정식 API 입력 — 타선 %d팀 / 투수 %d명 / 불펜 %d팀 / "
+                            "타자랭킹 %d팀 / 구장 %d개 / 날씨 %d경기 / 결장 %d경기",
+                            len(off), len(pit), len(bp), len(bat),
+                            len(statcast_data["parks"]), len(weather), len(absences))
             else:
                 from app.collectors.soccer_stats import load_xg, supported
 
@@ -1012,9 +1038,9 @@ def _compute_picks(
         research_clean, _ = sanitize_research(jg.get("research") or {}, sport)
         # [2-1] Statcast 지표를 얹는다 — 리서치 산문보다 정확한 1차 소스
         if sport == "mlb" and statcast_data:
-            from app.collectors.statcast import merge_into_research
+            from app.collectors.statcast import enrich_mlb_research
 
-            filled = merge_into_research(research_clean, jg, *statcast_data)
+            filled = enrich_mlb_research(research_clean, jg, statcast_data)
             if filled:
                 jg["statcast_filled"] = filled
         # [§2-3] Understat xG — 축구 λ의 1차 입력 (산문 파싱 대체)
@@ -2430,6 +2456,7 @@ async def run_pipeline(
     progress=None,
     sequential_research: bool = False,
     stages_out: list | None = None,
+    force_research: bool = False,
 ) -> str:
     """결론 카드(단일 메시지)를 반환. 심층·속보·출처는 분석 캐시에서 버튼으로 제공.
 
@@ -2446,7 +2473,8 @@ async def run_pipeline(
             return await _freshness_gate(redis, sport, date, cached)
     analysis = await build_analysis(pool, sport, date, progress=progress, redis=redis,
                                     sequential_research=sequential_research,
-                                    stages_out=stages_out)
+                                    stages_out=stages_out,
+                                    force_research=force_research)
     await (progress or _noop_progress)(4, 4, "결론 카드 작성")
     remaining = await redis.get("odds_quota_remaining")
     if remaining is not None and int(remaining) < 100:
@@ -2470,7 +2498,10 @@ async def _cli() -> None:
     parser = argparse.ArgumentParser(description="AnalystBot pipeline CLI")
     parser.add_argument("--sport", default="mlb", choices=["mlb", "soccer"])
     parser.add_argument("--date", default=None, help="YYYY-MM-DD (기본: MLB는 미국 동부 오늘)")
-    parser.add_argument("--force-refresh", action="store_true")
+    parser.add_argument("--force-refresh", action="store_true",
+                        help="카드 캐시를 건너뛰고 다시 렌더 (리서치는 신선도 게이트 유지)")
+    parser.add_argument("--force", action="store_true",
+                        help="전 경기 리서치를 강제 재조사 (콜 비용 발생 — 수동 실행 전용)")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
 
@@ -2479,7 +2510,9 @@ async def _cli() -> None:
     redis = aioredis_.from_url(get_settings().redis_url, decode_responses=True)
     try:
         t0 = time.monotonic()
-        report = await run_pipeline(pool, redis, args.sport, date, args.force_refresh)
+        report = await run_pipeline(pool, redis, args.sport, date,
+                                    args.force_refresh or args.force,
+                                    force_research=args.force)
         elapsed = time.monotonic() - t0
         print(report)
         print(f"\n[elapsed {elapsed:.2f}s]")

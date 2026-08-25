@@ -138,6 +138,37 @@ def _with_fielding_team(df):
     return d[d["fld_team"].notna()]
 
 
+def aggregate_batters(df) -> dict[str, list[dict]]:
+    """팀별 타자 랭킹 — 타석 수 내림차순. 결장자 '주전 여부' 판정의 기준.
+
+    IL 명단만으로는 그 선수가 팀에 얼마나 중요한지 알 수 없다. 최근 30일
+    타석 상위 9명이면 사실상 주전 라인업이므로, 그 안의 결장은 λ를 크게 움직인다.
+
+    **선수 식별은 MLBAM id로 한다** — Statcast의 `player_name`은 투수 이름이라
+    타자에는 쓸 수 없고, statsapi도 같은 id 체계를 쓰므로 이름 매칭보다 정확하다.
+    반환: {팀: [{"id", "pa", "xwoba"}, ...]}
+    """
+    import pandas as pd
+
+    if df is None or len(df) == 0 or "batter" not in df:
+        return {}
+    d = df.copy()
+    d["team"] = d.apply(_team_of_batter, axis=1)
+    d = d[d["team"].notna() & d["batter"].notna()]
+    pa = d[d["events"].notna() & (d["events"] != "")]
+    if pa.empty:
+        return {}
+    out: dict[str, list[dict]] = {}
+    for team, g in pa.groupby("team"):
+        rows = []
+        for bid, gb in g.groupby("batter"):
+            rows.append({"id": int(bid), "pa": int(len(gb)),
+                         "xwoba": _round(_xwoba(gb, pd), 3)})
+        rows.sort(key=lambda r: -r["pa"])
+        out[str(team)] = rows[:20]      # 상위 20명이면 주전 판정에 충분하다
+    return out
+
+
 def aggregate_bullpen(df) -> dict[str, dict]:
     """팀별 불펜 최근 소모 — 3일 투구 수와 과소모 여부.
 
@@ -306,8 +337,9 @@ async def refresh(redis, date: str | None = None) -> dict:
     for name, ip in starter_innings(df).items():
         if name in pitchers:
             pitchers[name]["ip_avg_recent"] = ip
+    batters = aggregate_batters(df)
     for kind, payload in (("offense", offense), ("pitchers", pitchers),
-                          ("bullpen", bullpen)):
+                          ("bullpen", bullpen), ("batters", batters)):
         await redis.set(_key(kind, date), json.dumps(payload, ensure_ascii=False),
                         ex=CACHE_TTL)
     logger.info("[statcast] %s 갱신 — 팀 %d개, 투수 %d명, 불펜 %d팀 (원본 %d행)",
@@ -321,7 +353,7 @@ async def refresh(redis, date: str | None = None) -> dict:
 STALE_FALLBACK_DAYS = 3
 
 
-async def load(redis, date: str | None = None) -> tuple[dict, dict, dict]:
+async def load(redis, date: str | None = None) -> tuple[dict, dict, dict, dict]:
     """캐시된 (팀 타선, 투수 지표). 없으면 빈 dict — 모델은 해당 보정을 건너뛴다.
 
     당일 키가 없으면 최근 STALE_FALLBACK_DAYS일 안의 키로 폴백한다.
@@ -339,7 +371,7 @@ async def load(redis, date: str | None = None) -> tuple[dict, dict, dict]:
     for back in range(STALE_FALLBACK_DAYS + 1):
         day = (base - timedelta(days=back)).strftime("%Y-%m-%d")
         raws = [await redis.get(_key(kind, day))
-                for kind in ("offense", "pitchers", "bullpen")]
+                for kind in ("offense", "pitchers", "bullpen", "batters")]
         if not any(raws):
             continue
         if back:
@@ -348,7 +380,7 @@ async def load(redis, date: str | None = None) -> tuple[dict, dict, dict]:
         return tuple(json.loads(x) if x else {} for x in raws)
     logger.warning("[statcast] %s 기준 최근 %d일 캐시가 모두 없다 — λ 산출 불가",
                    date, STALE_FALLBACK_DAYS)
-    return {}, {}, {}
+    return {}, {}, {}, {}
 
 
 def merge_into_research(research: dict, jg: dict, offense: dict, pitchers: dict,
@@ -389,4 +421,31 @@ def merge_into_research(research: dict, jg: dict, offense: dict, pitchers: dict,
         note = merge_park(research, jg, parks)
         if note:
             filled.append(note)
+    return filled
+
+
+def enrich_mlb_research(research: dict, jg: dict, ctx: dict) -> list[str]:
+    """[§2] 정식 API 입력을 리서치 페이로드에 한 번에 얹는다.
+
+    ctx: {"offense","pitchers","bullpen","batters","parks","weather","absences"}
+    리서치(Perplexity)가 이미 채운 값은 어느 항목도 덮지 않는다 — 이 함수는
+    **수집 실패 항목을 메우는** 역할이지 리서치를 대체하는 게 아니다.
+    """
+    from app.collectors.absences import merge_into_research as merge_absences
+    from app.collectors.weather import merge_into_research as merge_weather
+
+    filled = merge_into_research(
+        research, jg,
+        ctx.get("offense") or {}, ctx.get("pitchers") or {},
+        ctx.get("bullpen") or {}, ctx.get("parks") or {},
+    )
+    note = merge_weather(research, jg, ctx.get("weather") or {})
+    if note:
+        filled.append(note)
+    gid = jg.get("game_id")
+    info = (ctx.get("absences") or {}).get(gid) or {}
+    note = merge_absences(research, jg, ctx.get("batters") or {},
+                          info.get("lineup"), info.get("injured"))
+    if note:
+        filled.append(note)
     return filled
