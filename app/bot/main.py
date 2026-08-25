@@ -199,6 +199,17 @@ async def render_performance(pool) -> str:
         if total_graded < 200:
             lines.append(f"  ⚠️ 누적 {total_graded}픽 — 200~300픽 전에는 우열을 판단하지 않습니다")
         lines.append("  (Brier: 낮을수록 좋음. 항상 50%를 찍으면 0.250)")
+
+    # [§6-4] 같은 표본에서 세 방식이 같은 경기를 어떻게 봤는지 비교
+    from app.grader import three_way_ledger
+
+    three = [m for m in await three_way_ledger(pool) if m.get("n")]
+    if three:
+        lines.append("")
+        lines.append("🧪 확률 산출 방식 3종 비교 (동일 픽 기준)")
+        for m in three:
+            lines.append(f"- {m['label']}: {m['n']}픽 · 적중률 {m['accuracy']:.1%} "
+                         f"· Brier {m['brier']:.3f}")
     return "\n".join(lines)
 
 logger = logging.getLogger(__name__)

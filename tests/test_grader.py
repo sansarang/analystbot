@@ -199,3 +199,46 @@ async def test_method_ledger_includes_brier_and_calibration(db_pool):
     perf = ledger["performance"]
     assert perf["brier"] is not None and 0 < perf["brier"] < 0.5
     assert perf["calibration"] and perf["calibration"][0]["band"] == "60%~65%"
+
+
+# ---------------------------------------------------------------- [§6-4] 3방식 병렬 기록
+
+async def _pred3(db_pool, result, pnl, ph, pl, pc):
+    row = await db_pool.fetchrow(
+        "INSERT INTO games (sport, league, ext_id, starts_at, home, away) "
+        "VALUES ('mlb','MLB',$1, now(), 'H','A') "
+        "ON CONFLICT (sport, ext_id) DO UPDATE SET home = EXCLUDED.home RETURNING id",
+        f"three-{result}-{ph}-{pl}-{pc}")
+    await db_pool.execute(
+        """
+        INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly, result, pnl,
+                                 p_heuristic, p_learned, p_claude)
+        VALUES ($1, 'h2h:H', $2, 1.80, 0.0, 0.0, $3, $4, $5, $6, $7)
+        """,
+        row["id"], ph, result, pnl, ph, pl, pc)
+
+
+async def test_three_way_ledger_compares_same_sample(db_pool):
+    """[§6-4] 세 방식이 **같은 픽**을 어떻게 봤는지 비교한다 (표본이 갈리지 않는다)."""
+    from app.grader import three_way_ledger
+
+    await db_pool.execute("DELETE FROM predictions")
+    await _pred3(db_pool, "win", 0.8, 0.62, 0.55, 0.70)
+    await _pred3(db_pool, "loss", -1.0, 0.61, 0.52, 0.68)
+
+    ledger = {m["method"]: m for m in await three_way_ledger(db_pool)}
+    assert set(ledger) == {"p_heuristic", "p_learned", "p_claude"}
+    assert all(m["n"] == 2 for m in ledger.values())      # 동일 표본
+    assert ledger["p_heuristic"]["label"] == "임의 계수 λ"
+    assert all(m["brier"] is not None for m in ledger.values())
+
+
+async def test_three_way_ledger_handles_missing_column(db_pool):
+    """[§6-4] 학습 아티팩트가 없으면 p_learned가 비어 있다 — 그 방식만 n=0."""
+    from app.grader import three_way_ledger
+
+    await db_pool.execute("DELETE FROM predictions")
+    await _pred3(db_pool, "win", 0.8, 0.62, None, 0.70)
+    ledger = {m["method"]: m for m in await three_way_ledger(db_pool)}
+    assert ledger["p_learned"]["n"] == 0
+    assert ledger["p_heuristic"]["n"] == 1

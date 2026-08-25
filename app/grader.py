@@ -173,6 +173,34 @@ def calibration_bands(rows) -> list[dict]:
     return out
 
 
+async def three_way_ledger(pool) -> list[dict]:
+    """[§6-4] 세 방식(임의 계수 / 학습 계수 / Claude 판정)을 실전 결과로 비교.
+
+    같은 픽 행에 세 확률이 함께 기록돼 있으므로 **동일 표본**에서 비교된다
+    (방식별로 다른 픽을 고른 게 아니라, 같은 경기를 셋이 어떻게 봤는지를 본다).
+    """
+    rows = await pool.fetch(
+        "SELECT p_heuristic, p_learned, p_claude, result FROM predictions "
+        "WHERE result IN ('win','loss')")
+    out = []
+    for col, label in (("p_heuristic", "임의 계수 λ"), ("p_learned", "학습 계수 λ"),
+                       ("p_claude", "Claude 판정")):
+        detail = [{"model_p": float(r[col]), "result": r["result"]}
+                  for r in rows if r[col] is not None]
+        if not detail:
+            out.append({"method": col, "label": label, "n": 0})
+            continue
+        hits = sum(1 for d in detail
+                   if (d["model_p"] >= 0.5) == (d["result"] == "win"))
+        out.append({
+            "method": col, "label": label, "n": len(detail),
+            "accuracy": round(hits / len(detail), 4),
+            "brier": brier_score(detail),
+            "calibration": calibration_bands(detail),
+        })
+    return out
+
+
 async def method_ledger(pool) -> list[dict]:
     """[6] 경기력 기반 vs 시장 반영 — 어느 쪽이 실제로 맞히는지 나란히 집계.
 

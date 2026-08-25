@@ -98,6 +98,12 @@ ALTER TABLE predictions ADD COLUMN IF NOT EXISTS lineup_status TEXT NOT NULL DEF
 ALTER TABLE predictions ADD COLUMN IF NOT EXISTS p_legacy NUMERIC;
 ALTER TABLE predictions ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'performance';
 
+-- [§6-4] 세 방식의 확률을 한 행에 함께 기록해 실전 결과로 비교한다.
+--   p_heuristic = 임의 계수 λ 모델 / p_learned = 학습 계수 λ 모델 / p_claude = 판정
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS p_heuristic NUMERIC;
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS p_learned NUMERIC;
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS p_claude NUMERIC;
+
 -- 전문가별 적중률·ROI 집계. ROI는 1유닛 플랫 베팅 기준, 배당 없으면 -110(1.91) 가정.
 CREATE OR REPLACE VIEW expert_ledger AS
 SELECT

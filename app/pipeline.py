@@ -552,12 +552,15 @@ async def build_analysis(
         await pool.execute(
             """
             INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
-                                     p_market, p_ensemble, lineup_status, p_legacy, method)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'performance')
+                                     p_market, p_ensemble, lineup_status, p_legacy, method,
+                                     p_heuristic, p_learned, p_claude)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'performance',
+                    $11, $12, $13)
             """,
             p["game_id"], p["pick"], p["p"], p["odds"], p["ev"], p["kelly"],
             p.get("p_market_side"), p.get("p_ensemble_side"),
             p.get("lineup_status") or "none", p.get("p_legacy"),
+            p.get("p_heuristic"), p.get("p_learned"), p.get("p_claude"),
         )
     for p in _legacy_recommended(settings, picks_out):
         await pool.execute(
@@ -716,6 +719,22 @@ def _pick_state(jg: dict) -> tuple[str, str]:
     from app.collectors.lineups import pick_state
 
     return pick_state(jg.get("lineup_status"))
+
+
+def _learned_probs(jg: dict, research: dict, sport: str, settings) -> dict | None:
+    """[§6-4] 학습 계수 λ 모델의 승패 확률. 아티팩트가 없으면 None.
+
+    **추천에는 쓰지 않는다** — 병렬 채점으로 실전 성능을 비교하기 위한 기록이다.
+    반영 여부는 검증 결과를 보고 사용자가 판단한다.
+    """
+    if sport != "mlb":
+        return None
+    try:
+        from app.models.lambda_model import predict_game
+
+        return predict_game(jg, research, settings)
+    except Exception:
+        return None
 
 
 def qualifies(pick: dict, settings=None) -> bool:
@@ -920,6 +939,16 @@ def _compute_picks(
                 jg["xg_filled"] = filled
         dist = game_distribution(jg, research_clean, sport, settings)
         jg["distribution"] = dist
+        # [§6-4] (a) 임의 계수 모델의 확률을 따로 보존 (분포 = 현행 모델)
+        if dist is not None:
+            jg["p_heuristic"] = {
+                jg["home"]: dist["probs"]["h2h"]["home"],
+                jg["away"]: dist["probs"]["h2h"]["away"],
+            }
+        # [§6-4] (b) 학습 계수 모델 — 아티팩트가 있을 때만. 없으면 None으로 남는다.
+        learned = _learned_probs(jg, research_clean, sport, settings)
+        if learned:
+            jg["p_learned"] = learned
         if dist is not None:
             jg["lambda_trace"] = dist["lam"].trace
             jg["lambda_missing"] = dist["lam"].missing
@@ -999,6 +1028,9 @@ def _compute_picks(
             "axes": rep.get("axes_kr"),
             "grade": rep.get("grade"),
             # 추천 자격 판정에 쓰이는 필드 — 빠지면 qualifies()가 무력화된다
+            # [§6-4] 세 방식 확률을 함께 실어 실전 결과로 비교한다
+            "p_heuristic": (jg.get("p_heuristic") or {}).get(rep["side"]),
+            "p_learned": (jg.get("p_learned") or {}).get(rep["side"]),
             "two_source": rep.get("two_source"),
             "required_prob": rep.get("required_prob"),
             "edge": rep.get("edge"),
