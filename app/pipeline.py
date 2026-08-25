@@ -508,16 +508,29 @@ async def build_analysis(
                 logger.warning("[pipeline] 라인 이동 계산 실패 game=%s: %s", g.get("game_id"), exc)
 
     statcast_data = None
-    if sport == "mlb" and redis is not None:
-        from app.collectors.statcast import load as load_statcast
-
+    if redis is not None:
         try:
-            statcast_data = await load_statcast(redis, date)
-            if statcast_data and statcast_data[0]:
-                logger.info("[pipeline] Statcast 캐시 사용 — 팀 %d개 / 투수 %d명",
-                            len(statcast_data[0]), len(statcast_data[1]))
+            if sport == "mlb":
+                from app.collectors.statcast import load as load_statcast
+
+                statcast_data = await load_statcast(redis, date)
+                if statcast_data and statcast_data[0]:
+                    logger.info("[pipeline] Statcast 캐시 — 팀 %d개 / 투수 %d명",
+                                len(statcast_data[0]), len(statcast_data[1]))
+            else:
+                from app.collectors.soccer_stats import load_xg, supported
+
+                by_league = {}
+                for label in {g.get("league") for g in judge_games if g.get("league")}:
+                    if supported(label):
+                        by_league[label] = await load_xg(redis, label, date)
+                statcast_data = (by_league, {})
+                total = sum(len(v) for v in by_league.values())
+                if total:
+                    logger.info("[pipeline] Understat xG 캐시 — %d리그 %d팀",
+                                len(by_league), total)
         except Exception as exc:
-            logger.warning("[pipeline] Statcast 로드 실패, 리서치 지표만 사용: %s", exc)
+            logger.warning("[pipeline] 통계 소스 로드 실패, 리서치 지표만 사용: %s", exc)
 
     picks_out, parlays, recommended = _compute_picks(settings, judge_games, sport, statcast_data)
     # 라인 이동으로 신뢰도가 바뀌면 등급·추천이 달라지므로 픽을 다시 계산한다
@@ -897,6 +910,14 @@ def _compute_picks(
             filled = merge_into_research(research_clean, jg, *statcast_data)
             if filled:
                 jg["statcast_filled"] = filled
+        # [§2-3] Understat xG — 축구 λ의 1차 입력 (산문 파싱 대체)
+        elif sport == "soccer" and statcast_data:
+            from app.collectors.soccer_stats import merge_xg_into_research
+
+            windows = (statcast_data[0] or {}).get(jg.get("league")) or {}
+            filled = merge_xg_into_research(research_clean, jg, windows)
+            if filled:
+                jg["xg_filled"] = filled
         dist = game_distribution(jg, research_clean, sport, settings)
         jg["distribution"] = dist
         if dist is not None:

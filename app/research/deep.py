@@ -56,8 +56,7 @@ _SCHEMA_MLB = """{
 }"""
 
 _SCHEMA_SOCCER = """{
- "home_recent_form": {"form": "WWDLW (최근 5경기, 최신부터)", "last5_detail": "상대·스코어 나열(한국어)", "gf5": 9, "ga5": 4, "rank": 3, "xg6": 1.62, "xga6": 1.10, "home_split": "홈 성적 요약(한국어)"},
- // xg6/xga6 = 최근 6경기 경기당 기대득점(xG)·기대실점(xGA). 확률 계산에 직접 쓰인다.
+ "home_recent_form": {"form": "WWDLW (최근 5경기, 최신부터)", "last5_detail": "상대·스코어 나열(한국어)", "gf5": 9, "ga5": 4, "rank": 3, "home_split": "홈 성적 요약(한국어)"},
  "away_recent_form": {...동일 (away_split)...},
  "h2h_history": "최근 상대전적 요약(한국어)",
  "absences": ["핵심 결장자와 중요도(한국어). '팀명 + 선수명 + 포지션 + 주전 여부'를 포함"],
@@ -85,7 +84,6 @@ CRITICAL — these NUMERIC fields drive the win-probability model. Fill them wit
 - Bullpen: ERA/FIP and innings pitched in the last 3 days, whether the closer is available.
 - Park run factor (1.00 = neutral) and home-run factor.
 - Game-time temperature in Celsius and wind direction (맞바람/뒷바람).
-For soccer: xG and xGA per match over the last 6 matches (xg6 / xga6).
 
 "era_recent" (last-5-start ERA) and "ip_avg_recent" (average innings per start over
 those outings) must be NUMBERS, not prose. If you can describe the recent form in words, you can
@@ -111,9 +109,7 @@ TARGETS = {
             "the manager's stated rotation and bullpen rest plan; ballpark run environment; "
             "game-time weather (temperature, wind direction, precipitation); "
             "published expert picks WITH each expert's season record"),
-    "soccer": ("each team's xG and xGA per match over the LAST 6 MATCHES (xg6/xga6) — these drive "
-               "the probability model, so give numbers; "
-               "last 5 match results and goals for both teams; home/away splits; head-to-head record; "
+    "soccer": ("last 5 match results and goals for both teams; home/away splits; head-to-head record; "
                "every absence WITH position and whether the player is a regular starter; "
                "pitch and weather conditions; published expert picks WITH records; predicted scorelines"),
 }

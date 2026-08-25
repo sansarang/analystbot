@@ -114,6 +114,29 @@ async def statcast_refresh_job() -> None:
         await redis.aclose()
 
 
+async def soccer_stats_refresh_job() -> None:
+    """[§2-3] Understat xG + Club Elo 일 1회 갱신. 스크래핑이라 느려 새벽에만 돈다."""
+    from app.collectors.soccer_stats import UNSUPPORTED, refresh_elo, refresh_league
+    from app.pipeline import today_kst
+
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    date = today_kst()
+    try:
+        pool = await get_pool()
+        labels = [r["league"] for r in await pool.fetch(
+            "SELECT DISTINCT league FROM games WHERE sport = 'soccer' "
+            "AND starts_at > now() - interval '1 day'")]
+        results = {}
+        for label in labels:
+            results[label] = await refresh_league(redis, label, date)
+        results["elo"] = await refresh_elo(redis, date)
+        skipped = [l for l in labels if l in UNSUPPORTED]
+        logger.info("[scheduler] soccerdata 갱신: %s%s", results,
+                    f" · 미지원(Perplexity 유지) {skipped}" if skipped else "")
+    finally:
+        await redis.aclose()
+
+
 async def research_retry_job() -> None:
     """[6] 레이트리밋으로 밀린 리서치를 다음 사이클에 순차 재시도."""
     from app.research.deep import drain_retry_queue
@@ -245,6 +268,8 @@ def build_scheduler() -> AsyncIOScheduler:
                       id="lineup_poll_30m")
     scheduler.add_job(statcast_refresh_job, CronTrigger(hour=3, minute=30, timezone=KST),
                       id="statcast_daily")
+    scheduler.add_job(soccer_stats_refresh_job, CronTrigger(hour=3, minute=40, timezone=KST),
+                      id="soccerdata_daily")
     scheduler.add_job(elo_refresh_job,
                       CronTrigger(day_of_week="mon", hour=5, minute=0, timezone=KST),
                       id="elo_refresh_weekly")
