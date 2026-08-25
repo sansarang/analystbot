@@ -122,6 +122,11 @@ SYSTEM = f"""너는 스포츠 분석 리포트의 **서술** 담당이다. 판�
 8. 재료가 부족하면 길이를 채우지 말고 짧게 쓰되, missing에 무엇이 없는지 밝혀라.
 9. 사실을 지어내지 마라. 입력에 없는 이적·부상·기록을 만들어내면 안 된다.
 
+10-0. **홈/원정을 헷갈리지 마라.** win_prob_adjustment의 확률은 **전부 홈팀 기준**이다.
+    추천 마켓이 원정팀이면 그 팀의 승률은 (100% − 홈 승률)이다. win_prob_home /
+    win_prob_away에 양쪽 값이 이미 계산돼 있으니 **그 값을 그대로 인용**하고,
+    "홈팀 기준 수치이며 실제로는…" 같은 변명 문장을 쓰지 마라. 조정 항목의 부호도
+    홈팀 기준이므로, 원정팀을 말할 때는 방향을 뒤집어 서술하라.
 10. **승률 조정 근거를 반드시 인용하라.** 입력의 win_prob_adjustment는 기준 승률에서
     무엇이 몇 %p를 움직였는지를 담은 계산 과정이다. 그중 가장 크게 움직인 항목을
     서술에 그대로 녹여라. 예: "파드리스는 핵심 불펜 3명이 이탈해 기본 승률에서 6%p를
@@ -182,8 +187,13 @@ def _payload_game(jg: dict, research: dict) -> dict:
     return {
         "game_id": jg["game_id"],
         "matchup": f"{jg['away']} @ {jg['home']}",
-        # [5] 승률이 어떻게 조정됐는지 — 서술이 이 근거를 반드시 인용해야 한다
+        # [5] 승률이 어떻게 조정됐는지 — 서술이 이 근거를 반드시 인용해야 한다.
+        #     확률은 **홈팀 기준**이므로 추천 팀과 방향이 다를 수 있다 → 명시해서 넘긴다.
         "win_prob_adjustment": (jg.get("prob_adjust") or {}).get("trace"),
+        "win_prob_basis": "위 확률은 모두 홈팀 기준이다. 원정팀 승률은 (100% - 홈 승률)이다.",
+        "win_prob_home": (jg.get("prob_adjust") or {}).get("p_home"),
+        "win_prob_away": (jg.get("prob_adjust") or {}).get("p_away"),
+        "recommended_side": ((jg.get("pick_summary") or {}).get("desc")),
         "unused_material": (jg.get("prob_adjust") or {}).get("unused"),
         "lineup_status": jg.get("lineup_status"),
         "league": jg.get("league"),

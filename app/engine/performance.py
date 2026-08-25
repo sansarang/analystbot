@@ -104,8 +104,9 @@ class WinProbAdjuster:
 
         p는 홈 승리 확률. trace는 화면에 그대로 찍을 수 있는 문자열 목록이다.
         """
+        home_kr = jg.get("home", "홈")
         p = base_p
-        trace = [f"기준 {base_p:.0%}"]
+        trace = [f"{home_kr} 기준 {base_p:.0%}"]
         applied: list[dict] = []
 
         def step(delta: float, label: str) -> None:
@@ -157,9 +158,17 @@ class WinProbAdjuster:
         step(-self.recent_form((research.get("away_recent_form") or {}).get("form")),
              "원정 최근 폼(반대 방향)")
 
-        trace.append(f"최종 {p:.0%}")
+        # [3] 홈/원정 혼동 방지 — 최종 줄에 양 팀 승률을 함께 적는다.
+        away_kr = jg.get("away", "원정")
+        trace.append(f"최종 {home_kr} {p:.0%} / {away_kr} {1 - p:.0%}")
         unused = _unused_material(research, applied)
-        return {"p": round(p, 4), "trace": trace, "applied": applied, "unused": unused}
+        return {
+            "p": round(p, 4), "trace": trace, "applied": applied, "unused": unused,
+            "basis": "home",                       # trace의 확률은 홈 기준이다
+            "home": home_kr, "away": away_kr,
+            "p_home": round(p, 4), "p_away": round(1 - p, 4),
+            "net_delta": round(p - base_p, 4),     # 조정 총량 (홈 기준)
+        }
 
 
 # ---------------------------------------------------------------- 헬퍼
@@ -175,10 +184,40 @@ def _name_of(text: str, team: str = "") -> str:
     return m.group(1) if m else s.strip()[:18]
 
 
+# 서술에서 최근 ERA 숫자를 건져내는 패턴 ("최근 5경기 ERA 2.41", "최근5 4.35")
+_RECENT_ERA_RE = re.compile(
+    r"최근\s*\d*\s*(?:경기|등판|선발)?\s*(?:평균\s*)?ERA\s*([0-9]+\.[0-9]+)|"
+    r"최근\s*\d+\s*[:：]?\s*([0-9]+\.[0-9]+)\s*(?:ERA|자책)"
+)
+
+
+def _era_from_prose(text) -> float | None:
+    """last5 서술에 숫자가 있으면 건져낸다 — era_recent가 비어도 최근 폼을 쓰기 위해.
+
+    "2점대 중후반" 같은 서술형은 숫자가 아니므로 쓰지 않는다 (추정 금지).
+    """
+    m = _RECENT_ERA_RE.search(str(text or ""))
+    if not m:
+        return None
+    val = m.group(1) or m.group(2)
+    try:
+        era = float(val)
+    except (TypeError, ValueError):
+        return None
+    return era if 0.0 <= era <= 15.0 else None
+
+
 def _era5(block: dict) -> tuple[float | None, str]:
-    """선발 ERA — 최근 5경기 우선, 없으면 시즌."""
+    """선발 ERA — 최근 5경기 우선, 서술에서 추출 시도, 마지막이 시즌.
+
+    [1-2]는 '시즌이 아니라 최근 폼 우선'이다. era_recent가 비면 서술에서 숫자를 건져
+    최근 폼을 살리고, 그것도 없을 때만 시즌으로 폴백한다(폴백은 trace에 표기된다).
+    """
     if block.get("era_recent") is not None:
         return float(block["era_recent"]), "recent"
+    prose = _era_from_prose(block.get("last5"))
+    if prose is not None:
+        return prose, "recent"
     if block.get("era_season") is not None:
         return float(block["era_season"]), "season"
     return None, "none"

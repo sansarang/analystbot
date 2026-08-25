@@ -106,9 +106,13 @@ def test_trace_shows_every_step_with_base_and_final():
     """[1-2] 조정 과정을 상세 데이터에 그대로 찍을 수 있어야 한다."""
     research = {"home_recent_form": {"form": "WWWWL"}, "absences": []}
     out = adj().adjust(0.55, _jg(), research, "mlb")
-    assert out["trace"][0].startswith("기준 55%")
-    assert out["trace"][-1].startswith("최종 ")
+    # [3] 홈/원정 혼동 방지 — 기준·최종 줄에 어느 팀 기준인지 적힌다
+    assert out["trace"][0] == "San Diego Padres 기준 55%"
+    assert out["trace"][-1].startswith("최종 San Diego Padres ")
+    assert "Pittsburgh Pirates" in out["trace"][-1]
     assert all("%p" in s for s in out["trace"][1:-1])
+    assert out["basis"] == "home"
+    assert abs(out["p_home"] + out["p_away"] - 1.0) < 1e-6
 
 
 def test_opponent_absence_helps_home():
@@ -188,3 +192,34 @@ def test_ip_avg_uses_dedicated_field_first():
     assert _ip_avg({"ip_avg_recent": 4.1, "last5": "평균 6.0이닝"}) == 4.1
     assert _ip_avg({"last5": "최근 5경기 평균 4.2이닝"}) == 4.2
     assert _ip_avg({}) is None
+
+
+# ---------------------------------------------------------------- 검증에서 발견한 3건
+
+def test_recent_era_is_extracted_from_prose_when_field_empty():
+    """[1-2] era_recent가 비어도 서술에서 숫자를 건져 '최근 폼 우선'을 지킨다.
+
+    실사고(2026-08-25 검증): 6경기 전부 era_recent가 null이라 조정이 시즌 ERA로만
+    돌았다 — 설계의 핵심 계수가 폴백으로만 작동했다.
+    """
+    from app.engine.performance import _era5, _era_from_prose
+
+    assert _era_from_prose("최근 5경기 ERA 2.41, 피OPS .610") == 2.41
+    assert _era_from_prose("최근5 4.35 ERA") == 4.35
+    # 숫자가 아닌 서술은 추정하지 않는다
+    assert _era_from_prose("최근 ERA 4점대 중반") is None
+    assert _era_from_prose(None) is None
+    # 비정상 값은 버린다
+    assert _era_from_prose("최근 5경기 ERA 99.99") is None
+
+    assert _era5({"last5": "최근 5경기 ERA 2.41", "era_season": 3.90}) == (2.41, "recent")
+    assert _era5({"era_recent": 2.10, "last5": "최근 5경기 ERA 2.41"}) == (2.10, "recent")
+    assert _era5({"era_season": 3.90}) == (3.90, "season")
+
+
+def test_trace_labels_both_sides_to_prevent_confusion():
+    """[3] 서술이 홈/원정을 헷갈리지 않도록 양 팀 승률을 함께 준다."""
+    out = adj().adjust(0.60, _jg(), {}, "mlb")
+    assert out["p_home"] == 0.60 and out["p_away"] == 0.40
+    assert "San Diego Padres 60%" in out["trace"][-1]
+    assert "Pittsburgh Pirates 40%" in out["trace"][-1]

@@ -1951,6 +1951,15 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
         before = (jg.get("pick_summary") or {}).get("desc")
         jg["lineup_status"] = lineup["status"]
         jg["lineup_notes"] = lineup.get("notes") or []
+        # statsapi 부상자 명단을 리서치 결장자에 병합 — 승률 조정이 읽는 경로다.
+        # (리서치가 결장자를 놓쳐도 1차 소스로 메운다)
+        il = [s for side in ("home", "away") for s in (lineup.get("injuries") or {}).get(side, [])]
+        if il:
+            research = jg.setdefault("research", {})
+            existing = research.get("absences") or []
+            known = " ".join(str(x) for x in existing)
+            research["absences"] = existing + [s for s in il if s.split("의 ")[-1][:12] not in known]
+            jg["il_source"] = "statsapi"
         state, label = pick_state(lineup["status"])
         jg["pick_state"], jg["pick_state_label"] = state, label
         # 확정 선발이 바뀌었으면 그 선발의 최근 성적을 다시 조회한다

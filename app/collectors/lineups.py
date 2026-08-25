@@ -38,6 +38,53 @@ class MLBLineupClient(BaseAPIClient):
             return {"teams": {}}
         return await self._get(f"/game/{game_pk}/boxscore")
 
+    async def fetch_roster(self, team_id: int) -> dict:
+        """팀 로스터 + 상태 — 부상자 명단(IL)을 여기서 얻는다.
+
+        boxscore의 info 섹션은 실전에서 비어 있어 결장자를 못 준다(2026-08-25 확인).
+        roster의 status.code가 D7/D10/D15/D60이면 부상자 리스트다.
+        """
+        if self.mock:
+            return {"roster": []}
+        return await self._get(f"/teams/{team_id}/roster", params={"rosterType": "fullSeason"})
+
+
+IL_CODES = ("D7", "D10", "D15", "D60", "DL")   # statsapi 부상자 리스트 코드
+
+
+def parse_injured(roster: dict) -> list[dict]:
+    """로스터에서 부상자만 추출 → [{name, position, status}]."""
+    out = []
+    for entry in (roster or {}).get("roster") or []:
+        status = (entry.get("status") or {})
+        code = str(status.get("code") or "")
+        if not any(code.startswith(c) for c in IL_CODES):
+            continue
+        name = ((entry.get("person") or {}).get("fullName") or "").strip()
+        if not name:
+            continue
+        out.append({
+            "name": name,
+            "position": ((entry.get("position") or {}).get("abbreviation") or "").strip(),
+            "status": status.get("description") or code,
+        })
+    return out
+
+
+def injury_sentences(injured: list[dict], team: str) -> list[str]:
+    """부상자 목록 → performance.absences가 읽는 문장으로 변환.
+
+    역할(마무리/선발/주전)을 문장에 넣어야 조정 계수가 제대로 잡힌다.
+    """
+    role = {"P": "투수", "RP": "불펜", "SP": "선발", "C": "포수",
+            "1B": "주전 내야", "2B": "주전 내야", "3B": "주전 내야", "SS": "주전 내야",
+            "LF": "주전 외야", "CF": "주전 외야", "RF": "주전 외야", "DH": "주전 타자"}
+    return [
+        f"{team}의 {p['name']}({role.get(p['position'], p['position'] or '선수')}) "
+        f"{p['status']}로 결장"
+        for p in injured
+    ]
+
 
 def parse_boxscore(data: dict) -> dict:
     """boxscore → {'home': {...}, 'away': {...}, 'confirmed': bool}.
@@ -62,11 +109,13 @@ def parse_boxscore(data: dict) -> dict:
             if person.get("fullName"):
                 starter = person["fullName"]
                 break
+        # boxscore info 섹션은 실전에서 비어 있다 — 결장자는 roster(IL)에서 따로 받는다
         scratches = []
         for note in team.get("info") or []:
-            if str(note.get("title", "")).upper().startswith("NOT"):
+            if str(note.get("label", note.get("title", ""))).upper().startswith("NOT"):
                 scratches += [f.get("value", "") for f in note.get("fieldList") or []]
-        out[side] = {"starter": starter, "batting_order": names, "scratches": scratches}
+        out[side] = {"starter": starter, "batting_order": names, "scratches": scratches,
+                     "team_id": ((team.get("team") or {}).get("id"))}
     out["confirmed"] = all(len(out[s]["batting_order"]) >= 9 for s in ("home", "away"))
     return out
 
@@ -113,13 +162,29 @@ async def refresh_mlb_lineup(pool: asyncpg.Pool, game: dict,
     except Exception as exc:
         logger.warning("[lineup] boxscore 실패 game=%s: %s", game.get("id"), exc)
         return {"status": game.get("lineup_status") or STATUS_NONE,
-                "changed": False, "notes": [], "starters": {}}
+                "changed": False, "notes": [], "starters": {}, "injuries": {}}
 
     parsed = parse_boxscore(box)
     status = STATUS_CONFIRMED if parsed.get("confirmed") else STATUS_PREDICTED
     notes: list[str] = []
     starters: dict[str, str | None] = {}
+    injuries: dict[str, list[str]] = {}
     conflict = False
+
+    # 부상자 명단 — boxscore가 아니라 roster에서 (info 섹션은 비어 있다)
+    for side, team_key in (("home", "home"), ("away", "away")):
+        team_id = (parsed.get(side) or {}).get("team_id")
+        if not team_id:
+            continue
+        try:
+            roster = await client.fetch_roster(team_id)
+        except Exception as exc:
+            logger.warning("[lineup] roster 실패 team=%s: %s", team_id, exc)
+            continue
+        injured = parse_injured(roster)
+        if injured:
+            injuries[side] = injury_sentences(injured, game.get(team_key) or side)
+            logger.info("[lineup] game=%s %s 부상자 %d명", game.get("id"), side, len(injured))
 
     for side, col in (("home", "home_pitcher"), ("away", "away_pitcher")):
         block = parsed.get(side) or {}
@@ -147,7 +212,8 @@ async def refresh_mlb_lineup(pool: asyncpg.Pool, game: dict,
     )
     if changed:
         logger.info("[lineup] game=%s %s → %s %s", game["id"], prev, status, notes or "")
-    return {"status": status, "changed": changed, "notes": notes, "starters": starters}
+    return {"status": status, "changed": changed, "notes": notes,
+            "starters": starters, "injuries": injuries}
 
 
 def pick_state(lineup_status: str | None) -> tuple[str, str]:

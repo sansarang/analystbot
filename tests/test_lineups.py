@@ -156,3 +156,41 @@ def test_predictions_records_lineup_status_and_both_methods():
     assert "ADD COLUMN IF NOT EXISTS lineup_status" in sql
     assert "ADD COLUMN IF NOT EXISTS p_legacy" in sql
     assert "ADD COLUMN IF NOT EXISTS method" in sql
+
+
+# ---------------------------------------------------------------- 부상자(IL) 수집
+
+def test_injured_list_parsed_from_roster():
+    """[검증 후속] boxscore info가 비어 있어 결장자를 못 얻던 문제 — roster에서 받는다."""
+    from app.collectors.lineups import injury_sentences, parse_injured
+
+    roster = {"roster": [
+        {"person": {"fullName": "Shaun Anderson"}, "position": {"abbreviation": "P"},
+         "status": {"code": "D15", "description": "Injured 15-Day"}},
+        {"person": {"fullName": "Wade Meckler"}, "position": {"abbreviation": "CF"},
+         "status": {"code": "D7", "description": "Injured 7-Day"}},
+        {"person": {"fullName": "Mike Trout"}, "position": {"abbreviation": "RF"},
+         "status": {"code": "A", "description": "Active"}},          # 정상 선수는 제외
+        {"person": {"fullName": "Sam Aldegheri"}, "position": {"abbreviation": "P"},
+         "status": {"code": "RM", "description": "Reassigned to Minors"}},  # 부상 아님
+    ]}
+    injured = parse_injured(roster)
+    assert [p["name"] for p in injured] == ["Shaun Anderson", "Wade Meckler"]
+
+    sentences = injury_sentences(injured, "Los Angeles Angels")
+    assert "Los Angeles Angels의 Shaun Anderson(투수)" in sentences[0]
+    assert "결장" in sentences[0]                  # performance.absences가 읽는 형식
+
+
+def test_injury_sentences_carry_role_for_coefficient_mapping():
+    """[1-2] 역할이 문장에 있어야 조정 계수(불펜/주전)가 제대로 잡힌다."""
+    from app.collectors.lineups import injury_sentences
+    from app.engine.performance import WinProbAdjuster
+
+    sents = injury_sentences(
+        [{"name": "Jason Adam", "position": "P", "status": "Injured 15-Day"},
+         {"name": "Ha-Seong Kim", "position": "SS", "status": "Injured 10-Day"}],
+        "San Diego Padres")
+    total, notes = WinProbAdjuster().absences(sents, "San Diego Padres")
+    assert total < 0
+    assert any("Jason Adam" in n for n in notes)

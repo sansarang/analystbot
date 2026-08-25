@@ -33,6 +33,8 @@ _SCHEMA_MLB = """{
  "home_recent_form": {"form": "WWLWL (최근 5경기, 최신부터)", "runs_avg": 4.2, "note": "최근 30일 좌/우완 상대 타선 성적 요약(한국어)"},
  "away_recent_form": {...동일...},
  "home_pitcher": {"name": "...", "last5": "최근 5~7경기 ERA·피OPS·이닝 요약(한국어)", "era_recent": 5.40, "era_season": 3.86, "ip_avg_recent": 5.2, "trend": "악화|개선|유지"},
+ // era_recent와 ip_avg_recent는 **반드시 숫자**로 채운다. 서술에 "최근 ERA 2점대 중후반"처럼
+ // 쓸 수 있으면 그 수치를 계산해 era_recent에 숫자로 넣어라. 정말 모를 때만 null.
  "away_pitcher": {...동일...},
  "splits": "홈/원정 스플릿 요약(한국어)",
  "bullpen": "양 팀 불펜 최근 3일 소모 상황 — 소화 이닝과 연투 여부를 숫자로(한국어)",
@@ -66,6 +68,11 @@ Find: {targets}
 
 Output ONLY one JSON object (no prose) with this exact shape:
 {schema}
+
+CRITICAL: "era_recent" (last-5-start ERA) and "ip_avg_recent" (average innings per start over
+those outings) must be NUMBERS, not prose. If you can describe the recent form in words, you can
+compute the number — do it. Leave them null ONLY if you truly found no game logs. These two fields
+drive the win-probability calculation; prose in "last5" alone is not usable.
 
 Rules: every free-text value must be KOREAN (team/player names may stay original). If something cannot be found, use null/empty — never invent numbers. Do NOT restate the question or explain what you could not find — use null for anything you cannot verify with a real number. "form_reversal" must flag any metric where recent form contradicts the season-long number."""
 
