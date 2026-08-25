@@ -242,3 +242,45 @@ async def test_three_way_ledger_handles_missing_column(db_pool):
     ledger = {m["method"]: m for m in await three_way_ledger(db_pool)}
     assert ledger["p_learned"]["n"] == 0
     assert ledger["p_heuristic"]["n"] == 1
+
+
+async def _fake_pool():
+    return None
+
+
+# --- grading_job은 야구·축구 둘 다 채점한다 (2026-08-25: 축구가 영원히 미채점) ---
+
+@pytest.mark.asyncio
+async def test_grading_job_covers_both_sports(monkeypatch):
+    seen: list[str] = []
+
+    async def fake_grade_date(pool, date, sport="mlb"):
+        seen.append(sport)
+        return {"predictions": 1, "expert_picks": 0, "unparseable": 0}
+
+    import app.scheduler as sched
+
+    monkeypatch.setattr(sched, "grade_date", fake_grade_date)
+    monkeypatch.setattr(sched, "get_pool", _fake_pool)
+    await sched.grading_job()
+    assert seen == ["mlb", "soccer"]
+
+
+@pytest.mark.asyncio
+async def test_grading_job_continues_after_one_sport_fails(monkeypatch):
+    """한 종목이 터져도 다른 종목 채점은 계속돼야 한다."""
+    seen: list[str] = []
+
+    async def fake_grade_date(pool, date, sport="mlb"):
+        seen.append(sport)
+        if sport == "mlb":
+            raise RuntimeError("statsapi 다운")
+        return {"predictions": 2, "expert_picks": 0, "unparseable": 0}
+
+    import app.scheduler as sched
+
+    monkeypatch.setattr(sched, "grade_date", fake_grade_date)
+    monkeypatch.setattr(sched, "get_pool", _fake_pool)
+    out = await sched.grading_job()
+    assert seen == ["mlb", "soccer"]
+    assert "soccer" in out and "mlb" not in out

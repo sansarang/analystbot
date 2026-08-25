@@ -1,0 +1,24 @@
+INFO:app.config:module mlb        -> LIVE
+INFO:app.config:module odds       -> LIVE
+INFO:app.config:module football   -> LIVE
+INFO:app.config:module perplexity -> LIVE
+INFO:app.config:module grok       -> LIVE
+INFO:app.config:module judge      -> LIVE
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Added job "prefetch_job" to job store "default"
+INFO:apscheduler.scheduler:Added job "odds_snapshot_job" to job store "default"
+INFO:apscheduler.scheduler:Added job "grading_job" to job store "default"
+INFO:apscheduler.scheduler:Added job "research_retry_job" to job store "default"
+INFO:apscheduler.scheduler:Added job "lineup_poll_job" to job store "default"
+INFO:apscheduler.scheduler:Added job "statcast_refresh_job" to job store "default"
+INFO:apscheduler.scheduler:Added job "soccer_stats_refresh_job" to job store "default"
+INFO:apscheduler.scheduler:Added job "elo_refresh_job" to job store "default"
+INFO:apscheduler.scheduler:Scheduler started
+INFO:__main__:scheduler started: ['odds_snapshot_30m', 'lineup_poll_30m', 'research_retry_45m', 'statcast_daily', 'soccerdata_daily', 'prefetch_daily', 'grade_yesterday', 'elo_refresh_weekly']

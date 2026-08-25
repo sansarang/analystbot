@@ -250,14 +250,25 @@ async def elo_refresh_job() -> None:
 
 
 async def grading_job() -> None:
-    """전날 결과 채점 — expert_ledger는 뷰라 자동 갱신."""
+    """전날 결과 채점 — expert_ledger는 뷰라 자동 갱신.
+
+    **야구·축구 둘 다 채점한다.** 이전에는 "mlb" 고정이라 축구 픽이
+    영원히 미채점으로 남았다(2026-08-25 발견: 축구 픽 result 전부 NULL).
+    한 종목이 실패해도 다른 종목은 계속 채점한다.
+    """
     pool = await get_pool()
-    try:
-        counts = await grade_date(pool, yesterday_kst(), "mlb")
-        logger.info("[scheduler] graded yesterday: %s", counts)
-    except (ApiQuotaError, ApiAuthError) as exc:
-        logger.error("[scheduler] grading halted (%s): %s", type(exc).__name__, exc)
-        await notify_api_error(exc)
+    totals: dict[str, dict] = {}
+    for sport in ("mlb", "soccer"):
+        try:
+            totals[sport] = await grade_date(pool, yesterday_kst(), sport)
+        except (ApiQuotaError, ApiAuthError) as exc:
+            logger.error("[scheduler] grading %s halted (%s): %s",
+                         sport, type(exc).__name__, exc)
+            await notify_api_error(exc)
+        except Exception as exc:
+            logger.exception("[scheduler] grading %s 실패 — 다음 종목 계속: %s", sport, exc)
+    logger.info("[scheduler] graded yesterday: %s", totals)
+    return totals
 
 
 def build_scheduler() -> AsyncIOScheduler:

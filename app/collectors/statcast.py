@@ -181,18 +181,39 @@ async def refresh(redis, date: str | None = None) -> dict:
     return {"ok": True, "teams": len(offense), "pitchers": len(pitchers), "rows": len(df)}
 
 
+# 당일 키가 없을 때 거슬러 올라갈 최대 일수. 30일 누적 지표라 하루이틀 차이는
+# 무의미하지만, 오래된 값을 쓰면 최근 폼을 놓치므로 3일로 제한한다.
+STALE_FALLBACK_DAYS = 3
+
+
 async def load(redis, date: str | None = None) -> tuple[dict, dict]:
-    """캐시된 (팀 타선, 투수 지표). 없으면 빈 dict — 모델은 해당 보정을 건너뛴다."""
+    """캐시된 (팀 타선, 투수 지표). 없으면 빈 dict — 모델은 해당 보정을 건너뛴다.
+
+    당일 키가 없으면 최근 STALE_FALLBACK_DAYS일 안의 키로 폴백한다.
+    실사고(2026-08-25): 03:30 갱신 잡이 돌지 않아 당일 키가 없었고,
+    폴백이 없어 15경기 **전부** λ 산출에 실패했다. 30일 누적 지표이므로
+    하루 지난 값이 값 없음보다 훨씬 낫다.
+    """
     import json
+    from datetime import datetime, timedelta
 
     from app.pipeline import mlb_slate_date
 
     date = date or mlb_slate_date()
-    out = []
-    for kind in ("offense", "pitchers"):
-        raw = await redis.get(_key(kind, date))
-        out.append(json.loads(raw) if raw else {})
-    return out[0], out[1]
+    base = datetime.strptime(date, "%Y-%m-%d")
+    for back in range(STALE_FALLBACK_DAYS + 1):
+        day = (base - timedelta(days=back)).strftime("%Y-%m-%d")
+        raws = [await redis.get(_key(kind, day)) for kind in ("offense", "pitchers")]
+        if not any(raws):
+            continue
+        if back:
+            logger.warning("[statcast] %s 캐시 없음 — %s 캐시로 폴백(%d일 전). "
+                           "03:30 갱신 잡 점검 필요", date, day, back)
+        return (json.loads(raws[0]) if raws[0] else {},
+                json.loads(raws[1]) if raws[1] else {})
+    logger.warning("[statcast] %s 기준 최근 %d일 캐시가 모두 없다 — λ 산출 불가",
+                   date, STALE_FALLBACK_DAYS)
+    return {}, {}
 
 
 def merge_into_research(research: dict, jg: dict, offense: dict, pitchers: dict) -> list[str]:

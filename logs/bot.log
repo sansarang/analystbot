@@ -1,0 +1,3 @@
+INFO:app.bot.main:starting polling
+INFO:aiogram.dispatcher:Start polling
+INFO:aiogram.dispatcher:Run polling for bot @sports_analyst_2026_bot id=8917065606 - 'sports_analyst_bot'

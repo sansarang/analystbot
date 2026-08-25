@@ -906,6 +906,11 @@ def _compute_picks(
             h2h_priced = False        # 앙상블 확률을 만들 수 없다 → h2h는 '근거 부족' 행
         p_claude_home = jg.get("p_claude") or 0.5
         p_claude_away = max(0.0, min(1.0, 1.0 - p_claude_home - p_draw_m))
+        # [§6-4] jg["p_claude"]는 **홈 기준 스칼라**다. 병렬 채점이 원정 픽에
+        #        홈 확률을 기록하면 세 방식 비교가 통째로 어긋나므로
+        #        사이드별로 풀어 둔다 (p_heuristic·p_learned와 기준을 맞춘다).
+        jg["p_claude_side"] = {jg["home"]: round(p_claude_home, 4),
+                               jg["away"]: round(p_claude_away, 4)}
         p3 = jg.get("p_model3")
         league_lam = "MLB" if sport == "mlb" else jg.get("league")
         sides = (
@@ -1019,7 +1024,9 @@ def _compute_picks(
             "league": jg.get("league") or ("MLB" if sport == "mlb" else "?"),
             "starts_at_kst": jg["starts_at_kst"], "pick": pick,
             "market": rep["market"], "side": rep["side"], "line": rep.get("line"),
-            "desc": rep["desc"], "p": rep["p"], "p_claude": jg.get("p_claude"),
+            "desc": rep["desc"], "p": rep["p"],
+            "p_claude": ((jg.get("p_claude_side") or {}).get(rep["side"])
+                         if rep["market"] == "h2h" else None),
             "model_valid": jg.get("model_valid", False),
             "confidence": jg.get("judge_confidence", "medium"),
             "odds": rep["odds"], "ev": rep["ev"], "kelly": round(pick_kelly, 4),
@@ -1032,8 +1039,12 @@ def _compute_picks(
             "grade": rep.get("grade"),
             # 추천 자격 판정에 쓰이는 필드 — 빠지면 qualifies()가 무력화된다
             # [§6-4] 세 방식 확률을 함께 실어 실전 결과로 비교한다
-            "p_heuristic": (jg.get("p_heuristic") or {}).get(rep["side"]),
-            "p_learned": (jg.get("p_learned") or {}).get(rep["side"]),
+            # 세 방식 확률은 **승패(h2h) 기준**이다. 토탈·핸디 픽에 h2h 확률을
+            # 기록하면 그 픽의 결과로 채점돼 원장이 오염된다 → h2h일 때만 기록.
+            "p_heuristic": ((jg.get("p_heuristic") or {}).get(rep["side"])
+                            if rep["market"] == "h2h" else None),
+            "p_learned": ((jg.get("p_learned") or {}).get(rep["side"])
+                          if rep["market"] == "h2h" else None),
             "two_source": rep.get("two_source"),
             "required_prob": rep.get("required_prob"),
             "edge": rep.get("edge"),

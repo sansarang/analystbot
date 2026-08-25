@@ -4,6 +4,7 @@ xwOBA는 타구 질에서 계산돼 수비 시프트·구장·시퀀싱 같은 �
 Wharton 논문의 "타선 지표가 예측력이 높다"를 가장 깨끗하게 구현하는 값이다.
 """
 
+import json
 import pytest
 
 from app.collectors.statcast import (
@@ -125,3 +126,53 @@ def test_allowed_xwoba_takes_priority_in_lambda():
 
     without = mlb_lambdas(jg, {**base, "away_pitcher": {"siera": 5.00}}, s)
     assert with_xw.home < without.home      # 좋은 투수(xwOBA .270)면 상대 득점이 낮다
+
+
+# --- 당일 키 부재 시 3일 폴백 (2026-08-25 실사고: λ 0/15) ---
+
+@pytest.mark.asyncio
+async def test_load_falls_back_to_recent_day():
+    """당일 키가 없으면 최근 3일 안의 키를 쓴다."""
+    from app.collectors.statcast import load
+
+    store = {"statcast:offense:2026-08-24": json.dumps({"Reds": {"xwoba_30d": 0.33}}),
+             "statcast:pitchers:2026-08-24": json.dumps({"Greene": {"xwoba_allowed": 0.29}})}
+
+    class R:
+        async def get(self, k):
+            return store.get(k)
+
+    off, pit = await load(R(), "2026-08-25")
+    assert off["Reds"]["xwoba_30d"] == 0.33
+    assert pit["Greene"]["xwoba_allowed"] == 0.29
+
+
+@pytest.mark.asyncio
+async def test_load_prefers_same_day_over_fallback():
+    """당일 키가 있으면 그것을 쓴다 — 폴백이 최신 데이터를 덮으면 안 된다."""
+    from app.collectors.statcast import load
+
+    store = {"statcast:offense:2026-08-25": json.dumps({"Reds": {"xwoba_30d": 0.35}}),
+             "statcast:offense:2026-08-24": json.dumps({"Reds": {"xwoba_30d": 0.33}})}
+
+    class R:
+        async def get(self, k):
+            return store.get(k)
+
+    off, _ = await load(R(), "2026-08-25")
+    assert off["Reds"]["xwoba_30d"] == 0.35
+
+
+@pytest.mark.asyncio
+async def test_load_gives_up_beyond_window():
+    """4일 이상 지난 캐시는 쓰지 않는다 — 최근 폼을 놓치기 때문."""
+    from app.collectors.statcast import load
+
+    store = {"statcast:offense:2026-08-20": json.dumps({"Reds": {"xwoba_30d": 0.33}})}
+
+    class R:
+        async def get(self, k):
+            return store.get(k)
+
+    off, pit = await load(R(), "2026-08-25")
+    assert off == {} and pit == {}
