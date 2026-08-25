@@ -287,3 +287,18 @@ async def test_grading_job_continues_after_one_sport_fails(monkeypatch):
     out = await sched.grading_job()
     assert seen == ["mlb", "soccer", "kbo"]
     assert "soccer" in out and "kbo" in out and "mlb" not in out
+
+
+def test_jobs_survive_missed_run_window():
+    """★ 실사고(2026-08-26): 04:00 프리페치가 10분 늦었다고 건너뛰어졌다.
+
+    APScheduler 기본 misfire_grace_time은 1초다 — 노트북이 잠들면
+    하루 1회 잡이 매일 사라진다.
+    """
+    scheduler = build_scheduler()
+    for job in scheduler.get_jobs():
+        assert job.misfire_grace_time and job.misfire_grace_time >= 60, job.id
+        assert job.coalesce is True, f"{job.id}: 밀린 실행이 쌓이면 안 된다"
+        assert job.max_instances == 1, f"{job.id}: 동시 실행 금지"
+    pf = {j.id: j for j in scheduler.get_jobs()}["prefetch_daily"]
+    assert pf.misfire_grace_time >= 3600, "일 1회 잡은 넉넉한 유예가 필요하다"

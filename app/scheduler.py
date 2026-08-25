@@ -388,6 +388,12 @@ def _instrument(job_id: str, fn):
 
 _JOB_TRIGGERS: dict = {}
 
+# 실사고(2026-08-26): 04:00 프리페치가 `was missed by 0:09:58`로 **건너뛰어졌다**.
+# APScheduler 기본 misfire_grace_time은 1초라, 노트북 절전·부하로 조금만 늦어도
+# 그날 잡이 통째로 사라진다. 하루 1회짜리 잡에는 치명적이다.
+# 6시간이면 새벽 프리페치가 아침까지 늦게라도 돌고, coalesce로 밀린 실행은 1회만 한다.
+MISFIRE_GRACE_SEC = 6 * 3600
+
 
 # (잡 id, 함수, 트리거) — 실행 기록·실패 알림 래퍼를 일괄로 씌운다.
 def _job_specs() -> list[tuple]:
@@ -413,9 +419,12 @@ def build_scheduler() -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone=KST)
     for job_id, fn, trigger in _job_specs():
         _JOB_TRIGGERS[job_id] = trigger
-        scheduler.add_job(_instrument(job_id, fn), trigger, id=job_id)
+        scheduler.add_job(_instrument(job_id, fn), trigger, id=job_id,
+                          misfire_grace_time=MISFIRE_GRACE_SEC, coalesce=True,
+                          max_instances=1)
     # [7-5] 하트비트 — 이게 살아 있어야 /health가 "스케줄러 실행 중"이라고 말한다
-    scheduler.add_job(heartbeat_job, IntervalTrigger(minutes=2), id="heartbeat_2m")
+    scheduler.add_job(heartbeat_job, IntervalTrigger(minutes=2), id="heartbeat_2m",
+                      misfire_grace_time=60, coalesce=True, max_instances=1)
     return scheduler
 
 

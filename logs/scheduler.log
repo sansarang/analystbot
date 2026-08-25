@@ -455,3 +455,5 @@ INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval
 INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:50:32 KST)" executed successfully
 INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:52:32 KST)" (scheduled at 2026-08-26 06:50:32.536976+09:00)
 INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:52:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:54:32 KST)" (scheduled at 2026-08-26 06:52:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:54:32 KST)" executed successfully
