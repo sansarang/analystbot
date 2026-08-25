@@ -153,3 +153,48 @@ def test_training_set_drops_ties():
     rows += [_pitch(999, "2026-08-20", "H", "A", "Top", 0.320, 4, 4, 4)] * 20
     recs = build_training_set(_pitches(rows))
     assert all(r["game_pk"] != 999 for r in recs)
+
+
+# ---------------------------------------------------------------- park_factor 누수
+
+def test_rolling_park_factor_excludes_the_game_itself():
+    """[§6-2] 파크팩터에 그 경기 자체 득점이 들어가면 자기 참조 누수다."""
+    from app.models.features import rolling_park_factors
+
+    rows = []
+    for i in range(40):                      # 평범한 경기 40건 (총득점 8)
+        rows.append({"game_pk": i, "date": pd.Timestamp(f"2026-04-{i % 28 + 1:02d}"),
+                     "home": "PARK", "away": "X", "home_runs": 4, "away_runs": 4})
+    # 41번째 경기만 30득점 — 이 경기의 파크팩터에 반영되면 안 된다
+    rows.append({"game_pk": 999, "date": pd.Timestamp("2026-06-01"),
+                 "home": "PARK", "away": "X", "home_runs": 20, "away_runs": 10})
+    games = pd.DataFrame(rows)
+    pf = rolling_park_factors(games)
+    assert pf[(999, "PARK")] == pytest.approx(1.0, abs=0.001)   # 이전 40경기만 반영
+
+
+def test_park_factor_neutral_until_sample_builds():
+    """표본이 얇으면 1.0(중립) — 없는 정보를 지어내지 않는다."""
+    from app.models.features import rolling_park_factors
+
+    games = pd.DataFrame([{"game_pk": i, "date": pd.Timestamp("2026-04-01"),
+                           "home": "NEW", "away": "X", "home_runs": 9, "away_runs": 9}
+                          for i in range(5)])
+    pf = rolling_park_factors(games)
+    assert all(v == 1.0 for v in pf.values())
+
+
+def test_park_factors_before_cutoff_excludes_later_games():
+    """[§6-2] before를 주면 그 시점 이후 경기는 계산에 들어가지 않는다."""
+    from app.models.features import park_factors
+
+    games = pd.DataFrame(
+        [{"game_pk": i, "date": pd.Timestamp("2026-04-01"), "home": "A", "away": "B",
+          "home_runs": 4, "away_runs": 4} for i in range(30)]
+        + [{"game_pk": 900 + i, "date": pd.Timestamp("2026-09-01"), "home": "A",
+            "away": "B", "home_runs": 15, "away_runs": 15} for i in range(30)])
+    early = park_factors(games, before="2026-06-01")
+    both = park_factors(games)
+    assert early["A"] == pytest.approx(1.0, abs=0.001)
+    assert both["A"] == pytest.approx(1.0, abs=0.001)   # 리그 평균도 함께 오르므로 비율은 1
+    assert len(park_factors(games, before="2026-01-01")) == 0

@@ -117,7 +117,65 @@ def game_probabilities(model, records: list[dict], X) -> list[dict]:
             "game_pk": gp, "p_home": round(p_home, 4),
             "home_win": 1 if slot["home_runs"] > slot["away_runs"] else 0,
             "lam_home": round(slot["home"], 3), "lam_away": round(slot["away"], 3),
+            "total_runs": float(slot["home_runs"] + slot["away_runs"]),
         })
+    return out
+
+
+TOTAL_LINES = (7.5, 8.5, 9.5)
+
+
+def evaluate_totals(games: list[dict], lines=TOTAL_LINES) -> dict:
+    """[§6] 토탈(언더오버) 예측을 승패와 **분리해** 평가한다.
+
+    파크팩터는 양 팀 λ를 함께 올리므로 승패 확률을 거의 바꾸지 않는다(절제 실험에서
+    확인). 반면 총득점은 직접 움직이므로 토탈 마켓에서는 유효할 수 있다 — 그 가설을
+    여기서 검증한다.
+
+    시장 라인의 과거 데이터가 없으므로 대표 라인 몇 개로 평가한다.
+    """
+    from app.config import get_settings
+    from app.engine.scoring import mlb_market_probs
+    from app.grader import brier_score, calibration_bands
+
+    s = get_settings()
+    out: dict = {"lines": {}}
+    all_rows = []
+    for line in lines:
+        rows = []
+        for g in games:
+            if g.get("total_runs") is None:
+                continue
+            probs = mlb_market_probs(g["lam_home"], g["lam_away"],
+                                     lines={"totals": [line]}, settings=s)
+            block = probs["totals"].get(line)
+            if not block:
+                continue
+            rows.append({"model_p": block["Over"],
+                         "result": "win" if g["total_runs"] > line else "loss"})
+        if not rows:
+            continue
+        hits = sum(1 for r in rows
+                   if (r["model_p"] >= 0.5) == (r["result"] == "win"))
+        out["lines"][line] = {
+            "n": len(rows),
+            "accuracy": round(hits / len(rows), 4),
+            "brier": brier_score(rows),
+            "over_rate_actual": round(
+                sum(1 for r in rows if r["result"] == "win") / len(rows), 4),
+            "over_rate_predicted": round(
+                sum(r["model_p"] for r in rows) / len(rows), 4),
+        }
+        all_rows += rows
+    if all_rows:
+        hits = sum(1 for r in all_rows
+                   if (r["model_p"] >= 0.5) == (r["result"] == "win"))
+        out["overall"] = {
+            "n": len(all_rows),
+            "accuracy": round(hits / len(all_rows), 4),
+            "brier": brier_score(all_rows),
+            "calibration": calibration_bands(all_rows),
+        }
     return out
 
 
@@ -252,13 +310,6 @@ def _live_features(jg: dict, research: dict, side: str, opp: str) -> dict:
         val = src.get(name)
         if val is not None:
             out[key] = float(val)
-    for key, src, name, scale in (
-        ("off_barrel", off, "barrel_pct", 0.01), ("off_hardhit", off, "hardhit_pct", 0.01)):
-        val = src.get(name)
-        if val is not None:
-            out[key] = float(val) * scale
     if research.get("park_factor") is not None:
         out["park_factor"] = float(research["park_factor"])
-    if sp.get("ip_avg_recent") is not None:
-        out["sp_prev_pitches"] = float(sp["ip_avg_recent"]) * 16.0   # 이닝 → 투구 수 근사
     return out

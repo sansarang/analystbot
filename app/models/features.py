@@ -23,9 +23,10 @@ STARTER_INNING = 1        # 1회에 던진 투수를 선발로 본다
 # 학습에 쓰는 피처 순서 (모델 계수 해석·중요도 출력에 그대로 쓰인다)
 FEATURES = [
     # 타선 (해당 팀, 경기 이전 30일)
-    "off_xwoba", "off_barrel", "off_hardhit", "off_k_pct", "off_bb_pct", "off_split_woba",
+    # [§6-5] off_barrel·off_hardhit·sp_prev_pitches는 중요도가 음수로 나와 제거했다
+    "off_xwoba", "off_k_pct", "off_bb_pct", "off_split_woba",
     # 상대 선발 (경기 이전)
-    "sp_xwoba_allowed", "sp_velo", "sp_velo_drop", "sp_rest_days", "sp_prev_pitches",
+    "sp_xwoba_allowed", "sp_velo", "sp_velo_drop", "sp_rest_days",
     # 상대 불펜 (경기 이전)
     "bp_xwoba_allowed", "bp_pitches_3d",
     # 피로·스케줄 (해당 팀)
@@ -168,39 +169,53 @@ def bullpen_prior(pg, team, date):
     }
 
 
-def schedule_prior(games, team, date, game_pk):
-    """피로·스케줄 — 연속 경기 일수, 원정 연전 차수, getaway day."""
-    import pandas as pd
+def team_schedules(games) -> dict[str, list]:
+    """팀별 경기 일정을 한 번만 만들어 둔다 — 레코드마다 전체 스캔하면 O(n²)가 된다.
 
-    hist = games[((games["home"] == team) | (games["away"] == team))
-                 & (games["date"] < date)].sort_values("date")
+    반환: {팀: [(date, game_pk, is_home), ...]} (날짜순)
+    """
+    sched: dict[str, list] = {}
+    for _i, g in games.sort_values(["date", "game_pk"]).iterrows():
+        gp, date = int(g["game_pk"]), g["date"]
+        sched.setdefault(str(g["home"]), []).append((date, gp, True))
+        sched.setdefault(str(g["away"]), []).append((date, gp, False))
+    return sched
+
+
+def schedule_prior(sched: dict, team: str, date, game_pk: int) -> dict:
+    """피로·스케줄 — 연속 경기 일수, 원정 연전 차수, getaway day.
+
+    sched는 team_schedules()가 만든 사전 계산 결과다 (레코드마다 재계산하지 않는다).
+    """
+    rows = sched.get(str(team)) or []
+    idx = next((i for i, (_d, gp, _h) in enumerate(rows) if gp == game_pk), None)
+    if idx is None:
+        return {"days_in_a_row": 0.0, "road_trip_game": 0.0,
+                "getaway_day": 0.0, "is_home": 0.0}
+    is_home = rows[idx][2]
+
     days_in_a_row = 0
     cursor = date
-    for d in reversed(hist["date"].tolist()):
+    for d, _gp, _h in reversed(rows[:idx]):
         if (cursor - d).days <= 1:
             days_in_a_row += 1
             cursor = d
         else:
             break
 
-    row = games[games["game_pk"] == game_pk].iloc[0]
-    is_home = row["home"] == team
     road_trip = 0
     if not is_home:
-        for d, h, a in zip(reversed(hist["date"].tolist()),
-                           reversed(hist["home"].tolist()),
-                           reversed(hist["away"].tolist())):
-            if a == team and (date - d).days <= 12:
+        for d, _gp, home in reversed(rows[:idx]):
+            if not home and (date - d).days <= 12:
                 road_trip += 1
             else:
                 break
+
     # getaway day — 이 원정 연전의 마지막 경기(다음 경기가 홈이거나 3일 이상 공백)
-    future = games[((games["home"] == team) | (games["away"] == team))
-                   & (games["date"] > date)].sort_values("date")
     getaway = 0.0
-    if not is_home and len(future):
-        nxt = future.iloc[0]
-        if nxt["home"] == team or (nxt["date"] - date).days >= 3:
+    if not is_home and idx + 1 < len(rows):
+        nd, _gp, nhome = rows[idx + 1]
+        if nhome or (nd - date).days >= 3:
             getaway = 1.0
     return {
         "days_in_a_row": float(days_in_a_row),
@@ -210,8 +225,17 @@ def schedule_prior(games, team, date, game_pk):
     }
 
 
-def park_factors(games, min_games: int = 30) -> dict[str, float]:
-    """구장 파크팩터 — 구장별 경기당 총득점 / 리그 평균. 외부 소스 없이 자체 산출."""
+def park_factors(games, min_games: int = 30, before=None) -> dict[str, float]:
+    """구장 파크팩터 — 구장별 경기당 총득점 / 리그 평균. 외부 소스 없이 자체 산출.
+
+    [§6-2] `before`가 주어지면 **그 시점 이전** 경기만 쓴다. 전 기간으로 계산하면
+    (a) 예측 대상 경기 자체의 득점이 그 경기 피처에 들어가고
+    (b) 검증 기간 득점이 학습에 새어 들어간다 — 둘 다 누수다.
+    """
+    import pandas as pd
+
+    if before is not None:
+        games = games[games["date"] < pd.Timestamp(before)]
     total = (games["home_runs"] + games["away_runs"])
     league = float(total.mean()) if len(games) else 0.0
     if league <= 0:
@@ -221,6 +245,35 @@ def park_factors(games, min_games: int = 30) -> dict[str, float]:
         if len(g) < min_games:
             continue
         out[str(park)] = round(float((g["home_runs"] + g["away_runs"]).mean()) / league, 4)
+    return out
+
+
+def rolling_park_factors(games, min_games: int = 30) -> dict[tuple, float]:
+    """[§6-2] 경기별 파크팩터 — **그 경기 이전**까지의 누적으로만 계산한다.
+
+    반환: {(game_pk, home_team): factor}. 표본이 얇으면 1.0(중립)을 준다.
+    """
+    import pandas as pd
+
+    ordered = games.sort_values("date")
+    runs_by_park: dict[str, list] = {}
+    all_runs: list = []
+    out: dict[tuple, float] = {}
+    for _i, g in ordered.iterrows():
+        park = str(g["home"])
+        hist = runs_by_park.get(park, [])
+        if len(hist) >= min_games and all_runs:
+            league = sum(all_runs) / len(all_runs)
+            out[(int(g["game_pk"]), park)] = (
+                round((sum(hist) / len(hist)) / league, 4) if league > 0 else 1.0)
+        else:
+            out[(int(g["game_pk"]), park)] = 1.0
+        try:
+            total = float(g["home_runs"]) + float(g["away_runs"])
+        except (TypeError, ValueError):
+            continue
+        runs_by_park.setdefault(park, []).append(total)
+        all_runs.append(total)
     return out
 
 
@@ -272,7 +325,8 @@ def build_dataset(df) -> tuple[list[dict], dict]:
     games = game_frame(d)
     sm = starters(d)
     pg = pitcher_game_stats(d, sm)
-    parks = park_factors(games)
+    # [§6-2] 경기 이전 누적으로만 계산 — 자기 참조·검증기간 누수 차단
+    parks = rolling_park_factors(games)
 
     # 팀-일자 타선 집계 (롤링 재료)
     team_day = (d.groupby(["bat_team", "game_date"], as_index=False)
@@ -283,6 +337,7 @@ def build_dataset(df) -> tuple[list[dict], dict]:
 
     starter_by = {(int(r["game_pk"]), str(r["team"])): r["pitcher"]
                   for _i, r in sm.iterrows()}
+    sched = team_schedules(games)
 
     records: list[dict] = []
     for _i, g in games.iterrows():
@@ -299,12 +354,12 @@ def build_dataset(df) -> tuple[list[dict], dict]:
             opp_sp_id = starter_by.get((gp, str(opp)))
             sp = pitcher_prior(pg, opp_sp_id, date) if opp_sp_id is not None else None
             bp = bullpen_prior(pg, str(opp), date)
-            sched = schedule_prior(games, str(team), date, gp)
+            sched_feats = schedule_prior(sched, str(team), date, gp)
             if sp is None or bp is None:
                 continue
             rec = {"game_pk": gp, "date": date, "team": str(team), "opp": str(opp),
-                   "runs": runs, **off, **sp, **bp, **sched}
-            rec["park_factor"] = parks.get(str(g["home"]), 1.0)
+                   "runs": runs, **off, **sp, **bp, **sched_feats}
+            rec["park_factor"] = parks.get((gp, str(g["home"])), 1.0)
             # 좌우 스플릿 — 상대 선발 손잡이에 대한 그 팀 사전 wOBA
             rec["off_split_woba"] = _split_prior(d, team, date, opp_sp_id, pg)
             records.append(rec)
