@@ -114,6 +114,45 @@ async def research_retry_job() -> None:
         await redis.aclose()
 
 
+async def lineup_poll_job() -> None:
+    """[2-2] 확정 라인업 폴링 — 경기 4시간 전부터 30분 간격, 확정되면 중단.
+
+    확정을 수신하면 그 경기만 재판정해 예비 픽을 최종 픽으로 갱신한다.
+    """
+    from app.collectors.lineups import STATUS_CONFIRMED, MLBLineupClient, refresh_mlb_lineup
+    from app.pipeline import rejudge_after_lineup
+
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT id, ext_id, sport, home, away, home_pitcher, away_pitcher,
+               lineup_status, starts_at
+        FROM games
+        WHERE sport = 'mlb' AND status = 'scheduled'
+          AND starts_at BETWEEN now() AND now() + interval '4 hours'
+          AND lineup_status IS DISTINCT FROM 'confirmed'
+        ORDER BY starts_at
+        """
+    )
+    if not rows:
+        return
+    client = MLBLineupClient()
+    updated = []
+    for r in rows:
+        res = await refresh_mlb_lineup(pool, dict(r), client)
+        if res["changed"]:
+            updated.append((dict(r), res))
+    logger.info("[scheduler] 라인업 폴링 %d경기 확인 · 변경 %d건", len(rows), len(updated))
+    for game, res in updated:
+        try:
+            await rejudge_after_lineup(game, res)
+        except Exception as exc:
+            logger.warning("[scheduler] 라인업 재판정 실패 game=%s: %s", game["id"], exc)
+    confirmed = sum(1 for _g, r in updated if r["status"] == STATUS_CONFIRMED)
+    if confirmed:
+        logger.info("[scheduler] 라인업 확정 %d경기 — 최종 픽으로 갱신", confirmed)
+
+
 async def odds_snapshot_job() -> None:
     """배당 스냅샷 — 크레딧 예산 관리:
 
@@ -189,6 +228,8 @@ def build_scheduler() -> AsyncIOScheduler:
                       id="grade_yesterday")
     scheduler.add_job(research_retry_job, IntervalTrigger(minutes=45),
                       id="research_retry_45m")
+    scheduler.add_job(lineup_poll_job, IntervalTrigger(minutes=30),
+                      id="lineup_poll_30m")
     scheduler.add_job(elo_refresh_job,
                       CronTrigger(day_of_week="mon", hour=5, minute=0, timezone=KST),
                       id="elo_refresh_weekly")

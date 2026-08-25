@@ -21,6 +21,27 @@ CREATE TABLE IF NOT EXISTS games (
 
 CREATE INDEX IF NOT EXISTS idx_games_starts_at ON games (starts_at);
 
+-- [2] 라인업 확정 상태 — 예상(predicted)과 확정(confirmed)을 반드시 구분한다.
+--     예상을 확정으로 취급하면 픽이 뒤집힐 정보를 놓친다.
+ALTER TABLE games ADD COLUMN IF NOT EXISTS lineup_status TEXT NOT NULL DEFAULT 'none';
+    -- none | predicted | confirmed | conflict (소스 불일치)
+ALTER TABLE games ADD COLUMN IF NOT EXISTS lineup_confirmed_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS lineups (
+    id           BIGSERIAL PRIMARY KEY,
+    game_id      BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+    side         TEXT        NOT NULL,              -- 'home' | 'away'
+    status       TEXT        NOT NULL,              -- 'predicted' | 'confirmed'
+    source       TEXT        NOT NULL,              -- 'statsapi' | 'research' | 'grok'
+    starter      TEXT,                              -- 실제 등판 선발 (probablePitcher가 아님)
+    batting_order JSONB,                            -- 타순 9명 (이름 배열)
+    scratches    JSONB,                             -- 결장자 이름 배열
+    captured_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (game_id, side, source, status)
+);
+
+CREATE INDEX IF NOT EXISTS idx_lineups_game ON lineups (game_id);
+
 CREATE TABLE IF NOT EXISTS odds_snapshots (
     id          BIGSERIAL PRIMARY KEY,
     game_id     BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
@@ -69,6 +90,13 @@ CREATE TABLE IF NOT EXISTS predictions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_predictions_game ON predictions (game_id);
+
+-- [2] 픽 시점의 라인업 상태 — 예비 픽과 최종 픽을 구분해 채점한다
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS lineup_status TEXT NOT NULL DEFAULT 'none';
+-- [6] 병렬 채점: 경기력 기반(model_p)과 시장 반영(p_legacy) 두 방식을 함께 기록해
+--     2~3주 뒤 어느 쪽이 실제로 맞히는지 판별한다.
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS p_legacy NUMERIC;
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS method TEXT NOT NULL DEFAULT 'performance';
 
 -- 전문가별 적중률·ROI 집계. ROI는 1유닛 플랫 베팅 기준, 배당 없으면 -110(1.91) 가정.
 CREATE OR REPLACE VIEW expert_ledger AS

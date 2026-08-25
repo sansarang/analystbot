@@ -420,7 +420,9 @@ def test_render_game_easy_two_layers():
 
     out = render_game_easy(_easy_game(), news="")
     easy, detail = out.split(DETAIL_SEP, 1)
-    assert len(easy.splitlines()) <= 6                    # (a) 기본층 6줄 이내
+    # [2-1] 신호등 바로 밑에 픽 상태(예비/최종)가 온다
+    assert easy.splitlines()[2].startswith("🕐 잠정")
+    assert len(easy.splitlines()) <= 8                    # (a) 기본층 8줄 이내
     assert basic_layer_violations(out) == []              # (b) 금지어 0건
     assert "10번 중" in easy and "신뢰도 ★" in easy or "★" in easy
     assert "밸류" in detail or "판정" in detail            # (c) 전문 상세 보존

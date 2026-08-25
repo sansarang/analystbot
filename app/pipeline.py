@@ -451,6 +451,7 @@ async def build_analysis(
             "research": research_map.get(g["id"]),
             "research_status": research_statuses.get(g["id"], "missing"),
             "status_label": STATUS_LABELS.get(g["status"], ""),
+            "lineup_status": g.get("lineup_status") or "none",
             "p_model": round(p_model, 4),
             "model_valid": model_valid,
             "p_model3": [round(x, 4) for x in p_model3] if p_model3 else None,
@@ -504,15 +505,29 @@ async def build_analysis(
     except Exception as exc:   # 서술 실패는 분석을 막지 않는다 (결정적 렌더로 폴백)
         logger.warning("[pipeline] 서술 단계 실패, 결정적 렌더로 진행: %s", exc)
 
+    # [6] 병렬 채점 — 경기력 기반 픽과 시장 반영 픽을 **둘 다** 기록해
+    #     2~3주 뒤 어느 방식이 실제로 맞히는지 비교한다.
     for p in recommended:
         await pool.execute(
             """
             INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
-                                     p_market, p_ensemble)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                                     p_market, p_ensemble, lineup_status, p_legacy, method)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'performance')
             """,
             p["game_id"], p["pick"], p["p"], p["odds"], p["ev"], p["kelly"],
             p.get("p_market_side"), p.get("p_ensemble_side"),
+            p.get("lineup_status") or "none", p.get("p_legacy"),
+        )
+    for p in _legacy_recommended(settings, picks_out):
+        await pool.execute(
+            """
+            INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
+                                     p_market, p_ensemble, lineup_status, p_legacy, method)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'legacy')
+            """,
+            p["game_id"], p["pick"], p.get("p_legacy") or p["p"], p["odds"], p["ev"],
+            p["kelly"], p.get("p_market_side"), p.get("p_ensemble_side"),
+            p.get("lineup_status") or "none", p.get("p_legacy"),
         )
 
     sources, seen_urls = [], set()
@@ -641,6 +656,25 @@ async def _attach_alt_markets(pool: asyncpg.Pool, judge_games: list[dict]) -> No
             jg["odds_stale"] = age_h > ODDS_STALE_HOURS
         else:
             jg["odds_stale"] = False
+
+
+def _legacy_recommended(settings, picks: list[dict], n: int = 2) -> list[dict]:
+    """[6] 참고용 시장 반영 방식이 골랐을 픽 — 기존 EV 기준으로 상위 N개.
+
+    실제 추천에는 쓰지 않는다. 채점기가 두 방식을 나란히 집계하기 위한 기록이다.
+    """
+    pool = [p for p in picks
+            if p.get("approved") and not p.get("judge_excluded")
+            and p.get("ev") is not None and p["ev"] > settings.ev_threshold]
+    pool.sort(key=lambda x: x["ev"], reverse=True)
+    return pool[:n]
+
+
+def _pick_state(jg: dict) -> tuple[str, str]:
+    """[2-1] 픽 상태 — 라인업 확정 전은 예비 픽, 확정 후만 최종 픽."""
+    from app.collectors.lineups import pick_state
+
+    return pick_state(jg.get("lineup_status"))
 
 
 def qualifies(pick: dict, settings=None) -> bool:
@@ -880,6 +914,9 @@ def _compute_picks(
             "reject_reason": rep.get("reject_reason"),
             "axes": rep.get("axes_kr"),
             "grade": rep.get("grade"),
+            "lineup_status": jg.get("lineup_status") or "none",
+            "pick_state": _pick_state(jg)[0], "pick_state_label": _pick_state(jg)[1],
+            "p_legacy": (jg.get("p_legacy") or {}).get(rep["side"]),
             "p_market_side": market.get(rep["side"]) if rep["market"] == "h2h" else None,
             "p_ensemble_side": p_ens.get(rep["side"]),
         }
@@ -1286,6 +1323,10 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
     signal, reason, stars = classify_signal(jg)
     lines = [f"{jg['starts_at_kst']} {home_kr} vs {away_kr} [{jg.get('league', '?')}]"]
     lines.append(f"{signal} {reason}")
+    state_label = jg.get("pick_state_label") or _pick_state(jg)[1]
+    if jg.get("lineup_confirmed_kst"):
+        state_label += f" (확정 {jg['lineup_confirmed_kst']})"
+    lines.append(state_label)
 
     # 누가 이길까 — 우세한 쪽 기준 '10번 중 N번' 화법
     ph = None
@@ -1867,6 +1908,83 @@ async def _refresh_stale_research(
     meta["refreshed"] = len(refreshed)
     logger.info("[pipeline] freshness gate: %d games re-researched & re-judged", len(refreshed))
     return len(refreshed)
+
+
+async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
+    """[2-3] 확정 라인업 수신 → 그 경기만 재판정. 승률·신호등·추천·조합을 갱신한다.
+
+    확정 선발이 예고와 다르면 그 선발의 최근 성적을 다시 조회해야 하므로
+    리서치를 강제 갱신한 뒤 판정을 다시 받는다.
+    """
+    from app.collectors.lineups import pick_state
+    from app.db import get_pool
+    from app.research.deep import get_game_research
+
+    settings = get_settings()
+    sport = game.get("sport", "mlb")
+    date = default_date(sport)
+    pool = await get_pool()
+    redis = aioredis.from_url(settings.redis_url, decode_responses=True)
+    try:
+        raw = await redis.get(f"analysis:{sport}:{date}")
+        if not raw:
+            return False
+        analysis = json.loads(raw)
+        jg = next((g for g in analysis["games"] if g["game_id"] == game["id"]), None)
+        if jg is None or jg.get("status") != "scheduled":
+            return False
+
+        before = (jg.get("pick_summary") or {}).get("desc")
+        jg["lineup_status"] = lineup["status"]
+        jg["lineup_notes"] = lineup.get("notes") or []
+        state, label = pick_state(lineup["status"])
+        jg["pick_state"], jg["pick_state_label"] = state, label
+        # 확정 선발이 바뀌었으면 그 선발의 최근 성적을 다시 조회한다
+        if any("선발 변경" in n or "불일치" in n for n in jg["lineup_notes"]):
+            for side, key in (("home", "home_pitcher"), ("away", "away_pitcher")):
+                if lineup["starters"].get(side):
+                    jg.setdefault("stats", {})[key] = lineup["starters"][side]
+            data, _status = await get_game_research(redis, jg, sport, force=True)
+            if data:
+                jg["research"] = data
+
+        payload = {
+            "date": date, "sport": sport, "games": [jg],
+            "breaking_news": analysis.get("news", ""),
+            "instruction": ("확정 라인업이 수신됐다. 확정 선발·타순·결장을 반영해 "
+                            "경기력 기준으로 승률을 재산출하라. 배당은 보지 마라."),
+        }
+        try:
+            verdict = await Judge().judge(payload)
+            _attach_verdicts([jg], verdict)
+        except Exception as exc:
+            logger.warning("[pipeline] 라인업 재판정 실패: %s", exc)
+            await notify_api_error(exc)
+
+        _enforce_data_rules(analysis["games"])
+        picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport)
+        analysis["picks"], analysis["parlays"] = picks_out, parlays
+        analysis["combos"] = build_tiered_parlays(
+            approved_market_legs(analysis["games"]),
+            int(settings.bankroll_krw * MODES[settings.report_mode]["flat_pct"])
+            if MODES.get(settings.report_mode, {}).get("staking") == "flat" else None,
+            sport)
+        await _renarrate([jg], sport)
+
+        after = (jg.get("pick_summary") or {}).get("desc")
+        note = "🔄 라인업 반영: " + "; ".join(jg["lineup_notes"][:2]) if jg["lineup_notes"] else \
+               "🔄 라인업 확정 반영"
+        if before != after:
+            note += f" — 픽 변경: {before or '없음'} → {after or '없음'}"
+        jg["breaking_changes"] = (jg.get("breaking_changes") or []) + [note]
+        analysis.setdefault("lineup_notes", []).append(note)
+
+        card = await generate_card(analysis)
+        await _save_caches(redis, analysis, card)
+        logger.info("[pipeline] 라인업 재판정 완료 game=%s (%s)", game["id"], note[:80])
+        return True
+    finally:
+        await redis.aclose()
 
 
 async def ensure_game_fresh(sport: str, date: str, game_id: int) -> tuple[dict | None, bool]:
