@@ -40,6 +40,8 @@ def test_boot_info_is_frozen_at_first_call(monkeypatch):
 
 def test_commits_behind_counts_gap(monkeypatch):
     def fake_git(*args):
+        if args[:2] == ("rev-parse", "--git-dir"):
+            return ".git"          # 저장소 안에서 도는 상황
         if args[:2] == ("rev-parse", "--short"):
             return "newhead" if version._BOOT is not None else "oldboot"
         if args[0] == "log":
@@ -206,3 +208,27 @@ async def test_health_warns_on_quota_exhaustion():
     r = FakeRedis({f"research_calls:{today}": "61", "odds_quota_remaining": "284"})
     text = await build_health(None, r)
     assert "61/60" in text and "상한 초과" in text
+
+
+def test_boot_info_prefers_deploy_env(monkeypatch):
+    """컨테이너에는 .git이 없다 — 배포 플랫폼이 준 커밋을 써야 한다.
+
+    이게 없으면 배포 후 '지금 어떤 코드가 도는가'를 알 수 없어
+    [6]의 버전 추적이 통째로 무력해진다.
+    """
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "abcdef1234567890")
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_MESSAGE", "배포된 커밋 제목")
+    monkeypatch.setattr(version, "_git", lambda *a: "")   # git 없음
+    info = version.boot_info()
+    assert info.commit == "abcdef1"
+    assert info.subject == "배포된 커밋 제목"
+    assert info.dirty is False
+
+
+def test_commits_behind_zero_without_repo(monkeypatch):
+    """저장소가 없으면 뒤처짐을 계산할 수 없다 — 0으로 두고 오탐하지 않는다."""
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "abcdef1234567890")
+    monkeypatch.setattr(version, "_git", lambda *a: "")
+    version.boot_info()
+    assert version.commits_behind() == 0
+    assert version.staleness_line() is None

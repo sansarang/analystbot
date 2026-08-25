@@ -8,6 +8,7 @@
 """
 
 import logging
+import os
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -45,11 +46,36 @@ def _git(*args: str) -> str:
         return ""
 
 
+def _from_env() -> BuildInfo | None:
+    """컨테이너 배포용 — 빌드 플랫폼이 주입한 커밋 정보.
+
+    이미지에는 `.git`이 없다(비밀·용량 때문에 .dockerignore로 제외). git 호출은
+    반드시 실패하므로, 배포 환경이 주는 환경변수를 1순위로 본다.
+    이게 없으면 "지금 어떤 코드가 도는가"를 배포 후에 알 수 없어
+    [6]에서 만든 버전 추적이 통째로 무력해진다.
+    """
+    sha = (os.getenv("RAILWAY_GIT_COMMIT_SHA")
+           or os.getenv("GIT_COMMIT_SHA")
+           or os.getenv("SOURCE_COMMIT"))
+    if not sha:
+        return None
+    return BuildInfo(
+        commit=sha[:7],
+        subject=(os.getenv("RAILWAY_GIT_COMMIT_MESSAGE") or "(배포 커밋)")[:120],
+        committed_at="",
+        dirty=False,
+        started_at=datetime.now(timezone.utc),
+    )
+
+
 def boot_info() -> BuildInfo:
-    """이 프로세스의 빌드 정보. 최초 호출 시점의 git 상태로 고정된다."""
+    """이 프로세스의 빌드 정보. 최초 호출 시점으로 고정된다.
+
+    우선순위: 배포 환경변수 → git → unknown.
+    """
     global _BOOT
     if _BOOT is None:
-        _BOOT = BuildInfo(
+        _BOOT = _from_env() or BuildInfo(
             commit=_git("rev-parse", "--short", "HEAD") or "unknown",
             subject=_git("log", "-1", "--format=%s") or "(git 정보 없음)",
             committed_at=_git("log", "-1", "--format=%cI") or "",
@@ -64,6 +90,8 @@ def commits_behind() -> int:
     info = boot_info()
     if info.commit == "unknown":
         return 0
+    if not _git("rev-parse", "--git-dir"):
+        return 0      # 컨테이너 배포 — 비교 대상 저장소가 없다
     head = _git("rev-parse", "--short", "HEAD")
     if not head or head == info.commit:
         return 0

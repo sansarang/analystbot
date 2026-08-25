@@ -1,0 +1,19 @@
+# 이미지에 들어가면 안 되는 것 — 비밀·로컬 상태·빌드 산출물
+.env
+.env.*
+.git
+.venv
+logs/
+*.log
+
+# 테스트·문서는 런타임에 불필요 (이미지 크기·빌드 시간 절약)
+tests/
+docs/
+*.md
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# 로컬 전용
+docker-compose.yml
+.claude/
