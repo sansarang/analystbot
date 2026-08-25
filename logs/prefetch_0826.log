@@ -1,0 +1,214 @@
+2026-08-26 06:54:09,284 INFO [mlb] client mode: LIVE
+2026-08-26 06:54:10,031 INFO HTTP Request: GET https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-08-25&hydrate=probablePitcher "HTTP/1.1 200 OK"
+2026-08-26 06:54:10,059 INFO [mlb] upserted 15 games for 2026-08-25
+2026-08-26 06:54:10,063 INFO [odds] client mode: LIVE
+2026-08-26 06:54:10,072 INFO [grok] client mode: LIVE
+2026-08-26 06:54:10,082 INFO [perplexity] client mode: LIVE
+2026-08-26 06:54:10,747 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/baseball_mlb/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
+2026-08-26 06:54:10,749 INFO [odds] quota: used=281 remaining=219
+2026-08-26 06:54:10,758 INFO HTTP Request: GET https://statsapi.mlb.com/api/v1/standings?leagueId=103%2C104 "HTTP/1.1 200 OK"
+2026-08-26 06:54:11,470 INFO HTTP Request: GET https://statsapi.mlb.com/api/v1/people?personIds=695549%2C668984%2C663969%2C801139%2C674841%2C690279%2C701542%2C814490%2C453286%2C607625&hydrate=stats%28group%3D%5Bpitching%5D%2Ctype%3D%5Bseason%5D%29 "HTTP/1.1 200 OK"
+2026-08-26 06:54:11,540 WARNING [odds] no game match: Tampa Bay Rays @ Detroit Tigers (2026-08-26T17:11:00Z)
+2026-08-26 06:54:11,540 WARNING [odds] no game match: Chicago Cubs @ Arizona Diamondbacks (2026-08-26T19:41:00Z)
+2026-08-26 06:54:11,540 WARNING [odds] no game match: Cincinnati Reds @ San Francisco Giants (2026-08-26T19:46:00Z)
+2026-08-26 06:54:11,540 WARNING [odds] no game match: Cleveland Guardians @ Los Angeles Angels (2026-08-26T20:08:00Z)
+2026-08-26 06:54:11,540 WARNING [odds] no game match: Philadelphia Phillies @ Seattle Mariners (2026-08-26T20:11:00Z)
+2026-08-26 06:54:11,540 WARNING [odds] no game match: Pittsburgh Pirates @ San Diego Padres (2026-08-26T20:11:00Z)
+2026-08-26 06:54:11,540 WARNING [odds] no game match: Boston Red Sox @ Miami Marlins (2026-08-26T22:41:00Z)
+2026-08-26 06:54:11,540 WARNING [odds] no game match: Kansas City Royals @ Toronto Blue Jays (2026-08-26T23:08:00Z)
+2026-08-26 06:54:11,541 WARNING [odds] no game match: Milwaukee Brewers @ New York Mets (2026-08-26T23:11:00Z)
+2026-08-26 06:54:11,541 WARNING [odds] no game match: Los Angeles Dodgers @ Atlanta Braves (2026-08-26T23:16:00Z)
+2026-08-26 06:54:11,541 WARNING [odds] no game match: Texas Rangers @ Chicago White Sox (2026-08-26T23:41:00Z)
+2026-08-26 06:54:11,541 WARNING [odds] no game match: Baltimore Orioles @ St. Louis Cardinals (2026-08-26T23:46:00Z)
+2026-08-26 06:54:11,541 WARNING [odds] no game match: Minnesota Twins @ Athletics (2026-08-27T01:06:00Z)
+2026-08-26 06:54:11,541 INFO [odds] inserted 808 snapshot rows (mlb), skipped 0 in-play events
+2026-08-26 06:54:12,234 INFO HTTP Request: GET https://statsapi.mlb.com/api/v1/people?personIds=804267%2C690986%2C693821%2C607192%2C641743%2C594798%2C669461%2C605135%2C700712%2C668909&hydrate=stats%28group%3D%5Bpitching%5D%2Ctype%3D%5Bseason%5D%29 "HTTP/1.1 200 OK"
+2026-08-26 06:54:13,012 INFO HTTP Request: GET https://statsapi.mlb.com/api/v1/people?personIds=694297%2C605280%2C650633%2C694973%2C695611%2C671737%2C669923%2C605400%2C605288%2C663903&hydrate=stats%28group%3D%5Bpitching%5D%2Ctype%3D%5Bseason%5D%29 "HTTP/1.1 200 OK"
+2026-08-26 06:54:19,489 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:54:19,492 WARNING [deep] 응답 무효 (재료 없음 — 무효 필드 0개 제거 후 recent_form·전문가 픽·결장 정보 전무) — 1회 재요청
+2026-08-26 06:54:27,024 INFO HTTP Request: POST https://api.x.ai/v1/responses "HTTP/1.1 200 OK"
+2026-08-26 06:54:27,027 WARNING [grok] english detected in briefing — regenerating once
+2026-08-26 06:54:32,127 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:54:32,132 ERROR [deep] research failed for Miami Marlins vs Boston Red Sox (parse): 재료 없음 — 무효 필드 0개 제거 후 recent_form·전문가 픽·결장 정보 전무
+2026-08-26 06:54:32,136 INFO [perplexity] client mode: LIVE
+2026-08-26 06:54:45,091 INFO HTTP Request: POST https://api.x.ai/v1/responses "HTTP/1.1 200 OK"
+2026-08-26 06:55:13,503 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:55:13,553 INFO [perplexity] saved 4 expert picks
+2026-08-26 06:55:13,554 INFO [perplexity] client mode: LIVE
+2026-08-26 06:55:37,926 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:55:37,929 WARNING [validate] 무효 리서치 필드 7개 제거: ['home_recent_form.note', 'away_recent_form.note', 'away_pitcher.last5', 'splits', 'rotation_plan', 'absences[]', 'absences[]']
+2026-08-26 06:55:37,944 INFO [perplexity] saved 1 expert picks
+2026-08-26 06:55:37,946 INFO [perplexity] client mode: LIVE
+2026-08-26 06:56:17,598 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:56:17,606 WARNING [validate] 무효 리서치 필드 3개 제거: ['splits', 'absences[]', 'absences[]']
+2026-08-26 06:56:17,643 INFO [perplexity] saved 2 expert picks
+2026-08-26 06:56:17,645 INFO [perplexity] client mode: LIVE
+2026-08-26 06:56:42,159 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:56:42,161 WARNING [validate] 무효 리서치 필드 12개 제거: ['home_recent_form.form', 'home_recent_form.note', 'away_recent_form.form', 'away_recent_form.note', 'home_pitcher.last5', 'away_pitcher.last5', 'splits', 'bullpen']
+2026-08-26 06:56:42,161 WARNING [deep] 응답 무효 (재료 없음 — 무효 필드 12개 제거 후 recent_form·전문가 픽·결장 정보 전무) — 1회 재요청
+2026-08-26 06:56:58,147 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:56:58,154 WARNING [validate] 무효 리서치 필드 4개 제거: ['home_recent_form.note', 'away_recent_form.note', 'splits', 'rotation_plan']
+2026-08-26 06:56:58,179 INFO [perplexity] saved 2 expert picks
+2026-08-26 06:56:58,181 INFO [perplexity] client mode: LIVE
+2026-08-26 06:57:04,657 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:57:04,661 WARNING [deep] 응답 무효 (재료 없음 — 무효 필드 0개 제거 후 recent_form·전문가 픽·결장 정보 전무) — 1회 재요청
+2026-08-26 06:57:12,106 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:57:12,113 ERROR [deep] research failed for New York Mets vs Milwaukee Brewers (parse): 재료 없음 — 무효 필드 0개 제거 후 recent_form·전문가 픽·결장 정보 전무
+2026-08-26 06:57:12,118 INFO [perplexity] client mode: LIVE
+2026-08-26 06:57:33,989 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:57:33,994 WARNING [validate] 무효 리서치 필드 7개 제거: ['home_recent_form.note', 'home_pitcher.last5', 'away_pitcher.last5', 'bullpen', 'rotation_plan', 'weather', 'form_reversal[]']
+2026-08-26 06:57:34,019 INFO [perplexity] saved 2 expert picks
+2026-08-26 06:57:34,020 INFO [perplexity] client mode: LIVE
+2026-08-26 06:57:59,078 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:57:59,083 WARNING [validate] 무효 리서치 필드 2개 제거: ['absences[]', 'form_reversal[]']
+2026-08-26 06:57:59,119 INFO [perplexity] saved 3 expert picks
+2026-08-26 06:57:59,120 INFO [perplexity] client mode: LIVE
+2026-08-26 06:58:05,170 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:58:05,173 WARNING [deep] 응답 무효 (재료 없음 — 무효 필드 0개 제거 후 recent_form·전문가 픽·결장 정보 전무) — 1회 재요청
+2026-08-26 06:58:24,180 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:58:24,193 WARNING [validate] 무효 리서치 필드 6개 제거: ['splits', 'rotation_plan', 'park', 'weather', 'form_reversal[]', 'form_reversal[]']
+2026-08-26 06:58:24,229 INFO [perplexity] saved 3 expert picks
+2026-08-26 06:58:24,230 INFO [perplexity] client mode: LIVE
+2026-08-26 06:58:45,872 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:58:45,875 WARNING [validate] 무효 리서치 필드 9개 제거: ['home_recent_form.form', 'home_recent_form.note', 'away_recent_form.form', 'home_pitcher.last5', 'away_pitcher.last5', 'splits', 'rotation_plan', 'weather']
+2026-08-26 06:58:45,885 INFO [perplexity] client mode: LIVE
+2026-08-26 06:59:22,284 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:59:22,288 WARNING [validate] 무효 리서치 필드 2개 제거: ['bullpen', 'park']
+2026-08-26 06:59:22,299 INFO [perplexity] client mode: LIVE
+2026-08-26 06:59:45,536 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 06:59:45,540 WARNING [validate] 무효 리서치 필드 9개 제거: ['home_recent_form.form', 'away_recent_form.form', 'home_pitcher.last5', 'away_pitcher.last5', 'splits', 'bullpen', 'park', 'weather']
+2026-08-26 06:59:45,557 INFO [perplexity] client mode: LIVE
+2026-08-26 07:00:00,790 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 07:00:00,792 WARNING [validate] 무효 리서치 필드 10개 제거: ['home_recent_form.form', 'home_recent_form.note', 'away_recent_form.form', 'away_recent_form.note', 'home_pitcher.last5', 'away_pitcher.last5', 'splits', 'bullpen']
+2026-08-26 07:00:00,797 INFO [perplexity] client mode: LIVE
+2026-08-26 07:00:17,828 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 07:00:17,833 WARNING [deep] 응답 무효 (재료 없음 — 무효 필드 0개 제거 후 recent_form·전문가 픽·결장 정보 전무) — 1회 재요청
+2026-08-26 07:00:34,224 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 07:00:34,270 INFO [perplexity] saved 6 expert picks
+2026-08-26 07:00:34,272 INFO [perplexity] client mode: LIVE
+2026-08-26 07:01:14,592 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 07:01:14,601 WARNING [validate] 무효 리서치 필드 2개 제거: ['home_recent_form.form', 'away_recent_form.form']
+2026-08-26 07:01:14,635 INFO [perplexity] saved 3 expert picks
+2026-08-26 07:01:14,647 INFO [alerts] 억제(stage:리서치:missing)
+2026-08-26 07:01:14,648 INFO [crosscheck] 표본 4항목 전부 API와 일치 (불일치 0)
+2026-08-26 07:01:14,698 INFO [judge] mode: LIVE
+2026-08-26 07:04:58,353 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:04:58,386 INFO [judge] stop_reason=tool_use · 요청 4경기 → 판정 4경기
+2026-08-26 07:08:44,512 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:08:44,520 INFO [judge] stop_reason=tool_use · 요청 4경기 → 판정 4경기
+2026-08-26 07:13:11,883 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:13:12,027 INFO [judge] stop_reason=tool_use · 요청 4경기 → 판정 4경기
+2026-08-26 07:16:20,587 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:16:20,595 INFO [judge] stop_reason=tool_use · 요청 3경기 → 판정 3경기
+2026-08-26 07:16:20,596 INFO [judge] 배치 판정 완료 — 요청 15경기 → 판정 15경기
+2026-08-26 07:16:20,596 INFO [grok] client mode: LIVE
+2026-08-26 07:16:38,926 INFO HTTP Request: POST https://api.x.ai/v1/responses "HTTP/1.1 200 OK"
+2026-08-26 07:16:38,929 INFO [pipeline] second opinion for 5 disputed games
+2026-08-26 07:16:38,929 INFO [judge] mode: LIVE
+2026-08-26 07:20:17,967 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:20:17,976 INFO [judge] stop_reason=tool_use · 요청 4경기 → 판정 4경기
+2026-08-26 07:22:03,942 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:22:03,951 INFO [judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+2026-08-26 07:22:03,951 INFO [judge] 배치 판정 완료 — 요청 5경기 → 판정 5경기
+2026-08-26 07:22:04,059 INFO [open_meteo] client mode: LIVE
+2026-08-26 07:22:05,230 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=42.339&longitude=-83.0485&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-25&end_date=2026-08-25&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:06,188 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=38.873&longitude=-77.0074&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-25&end_date=2026-08-25&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:07,116 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=40.8296&longitude=-73.9262&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-25&end_date=2026-08-25&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:08,074 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=40.7571&longitude=-73.8458&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-25&end_date=2026-08-25&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:09,074 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=33.8907&longitude=-84.4677&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-25&end_date=2026-08-25&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:10,030 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=41.8299&longitude=-87.6338&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-25&end_date=2026-08-25&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:10,961 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=38.6226&longitude=-90.1928&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-25&end_date=2026-08-25&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:11,914 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=33.8003&longitude=-117.8827&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-26&end_date=2026-08-26&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:12,882 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=32.7076&longitude=-117.157&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-26&end_date=2026-08-26&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:13,906 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=47.5914&longitude=-122.3325&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-26&end_date=2026-08-26&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:14,941 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=39.5432&longitude=-119.748&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-26&end_date=2026-08-26&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:15,985 INFO HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=37.7786&longitude=-122.3893&hourly=temperature_2m%2Cwind_speed_10m&start_date=2026-08-26&end_date=2026-08-26&timezone=UTC "HTTP/1.1 200 OK"
+2026-08-26 07:22:15,987 INFO [mlb_lineup] client mode: LIVE
+2026-08-26 07:22:15,992 INFO [pipeline] 정식 API 입력 — 타선 29팀 / 투수 556명 / 불펜 29팀 / 타자랭킹 0팀 / 구장 30개 / 날씨 15경기 / 결장 0경기
+2026-08-26 07:22:16,016 WARNING [scoring] 핵심 지표 부족으로 λ 산출 불가 game=514 missing=['home 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', 'home 선발 억제 지표']
+2026-08-26 07:22:16,026 INFO [linemove] game=505 diverge → 신뢰도 medium → low (시장이 반대로 움직임 — 우리가 모르는 정보 가능성)
+2026-08-26 07:22:16,034 INFO [linemove] game=508 diverge → 신뢰도 medium → low (시장이 반대로 움직임 — 우리가 모르는 정보 가능성)
+2026-08-26 07:22:16,041 INFO [linemove] game=513 agree → 신뢰도 low → medium
+2026-08-26 07:22:16,066 WARNING [scoring] 핵심 지표 부족으로 λ 산출 불가 game=514 missing=['home 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', 'home 선발 억제 지표']
+2026-08-26 07:22:16,982 INFO HTTP Request: POST https://api.telegram.org/bot8917065606:AAFNVcvr-9utcNkffJxcNIiN9I_j3fpHMLI/sendMessage "HTTP/1.1 200 OK"
+2026-08-26 07:22:56,233 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:23:37,013 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:24:10,638 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:24:10,641 INFO [narrator] 서술 15/15경기
+2026-08-26 07:24:10,667 INFO [scheduler] prefetched mlb report (1082 chars)
+2026-08-26 07:24:10,669 INFO [football] client mode: LIVE
+2026-08-26 07:24:11,175 INFO HTTP Request: GET https://v3.football.api-sports.io/fixtures?date=2026-08-26&league=39 "HTTP/1.1 200 OK"
+2026-08-26 07:24:11,176 INFO [football] upserted 0 fixtures for 2026-08-26
+2026-08-26 07:24:11,176 INFO [football_data] client mode: LIVE
+2026-08-26 07:24:26,183 WARNING [football_data] retry 1/3 in 0.5s: 
+2026-08-26 07:24:28,646 INFO HTTP Request: GET https://api.football-data.org/v4/matches?dateFrom=2026-08-25&dateTo=2026-08-26 "HTTP/1.1 200 "
+2026-08-26 07:24:28,653 INFO [football_data] upserted 1 matches for 2026-08-26 (KST)
+2026-08-26 07:24:28,654 INFO [odds] client mode: LIVE
+2026-08-26 07:24:29,242 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_epl/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-26 07:24:29,864 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_spain_la_liga/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-26 07:24:30,486 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_italy_serie_a/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-26 07:24:31,072 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_germany_bundesliga/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-26 07:24:31,325 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_japan_j_league/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-26 07:24:31,592 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_denmark_superliga/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-26 07:24:32,185 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_korea_kleague1/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-26 07:24:32,192 INFO [odds] soccer schedule fallback: 3 games for 2026-08-26 (KST)
+2026-08-26 07:24:32,194 INFO [odds] client mode: LIVE
+2026-08-26 07:24:32,203 INFO [grok] client mode: LIVE
+2026-08-26 07:24:32,209 INFO [football_data] client mode: LIVE
+2026-08-26 07:24:32,216 INFO [perplexity] client mode: LIVE
+2026-08-26 07:24:32,813 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_spain_la_liga/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
+2026-08-26 07:24:33,039 INFO HTTP Request: GET https://api.football-data.org/v4/competitions/PD/standings "HTTP/1.1 200 "
+2026-08-26 07:24:33,418 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_korea_kleague1/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
+2026-08-26 07:24:33,418 INFO [odds] quota: used=293 remaining=207
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Real Sociedad @ Real Madrid (2026-08-26T19:00:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: CA Osasuna @ Celta Vigo (2026-08-27T18:30:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Athletic Bilbao @ Barcelona (2026-08-27T19:00:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Elche CF @ Real Racing Club de Santander (2026-08-28T17:00:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Villarreal @ Alavés (2026-08-28T19:30:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Real Betis @ Levante (2026-08-29T15:00:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Espanyol @ Real Sociedad (2026-08-29T17:00:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Atlético Madrid @ Sevilla (2026-08-29T19:30:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Málaga @ Real Madrid (2026-08-30T15:00:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Valencia @ Deportivo La Coruña (2026-08-30T17:30:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Athletic Bilbao @ Celta Vigo (2026-08-30T19:30:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Getafe @ CA Osasuna (2026-08-31T17:30:00Z)
+2026-08-26 07:24:33,430 WARNING [odds] no game match: Rayo Vallecano @ Barcelona (2026-08-31T19:30:00Z)
+2026-08-26 07:24:33,567 WARNING [odds] no game match: FC Anyang @ Bucheon FC 1995 (2026-08-29T10:30:00Z)
+2026-08-26 07:24:33,567 WARNING [odds] no game match: Sangju Sangmu FC @ Ulsan Hyundai FC (2026-08-29T10:30:00Z)
+2026-08-26 07:24:33,567 WARNING [odds] no game match: Daejeon Citizen @ Jeju United FC (2026-08-30T10:30:00Z)
+2026-08-26 07:24:33,567 WARNING [odds] no game match: FC Seoul @ Gwangju FC (2026-08-30T10:30:00Z)
+2026-08-26 07:24:33,567 WARNING [odds] no game match: Gangwon FC @ Pohang Steelers (2026-08-30T10:30:00Z)
+2026-08-26 07:24:33,567 WARNING [odds] no game match: Jeonbuk Hyundai Motors @ Incheon United (2026-08-30T10:30:00Z)
+2026-08-26 07:24:33,567 INFO [odds] inserted 102 snapshot rows (soccer), skipped 0 in-play events
+2026-08-26 07:24:49,951 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 07:24:49,958 WARNING [validate] 무효 리서치 필드 1개 제거: ['absences[]']
+2026-08-26 07:24:49,994 INFO [perplexity] saved 2 expert picks
+2026-08-26 07:24:49,996 INFO [perplexity] client mode: LIVE
+2026-08-26 07:24:57,420 INFO HTTP Request: POST https://api.x.ai/v1/responses "HTTP/1.1 200 OK"
+2026-08-26 07:25:08,461 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 07:25:08,465 WARNING [validate] 무효 리서치 필드 4개 제거: ['h2h_history', 'weather', 'absences[]', 'absences[]']
+2026-08-26 07:25:08,488 INFO [perplexity] saved 2 expert picks
+2026-08-26 07:25:08,490 INFO [perplexity] client mode: LIVE
+2026-08-26 07:25:37,257 INFO HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-08-26 07:25:37,279 WARNING [validate] 무효 리서치 필드 6개 제거: ['park', 'absences[]', 'absences[]', 'absences[]', 'absences[]', 'absences[]']
+2026-08-26 07:25:37,299 INFO [perplexity] saved 3 expert picks
+2026-08-26 07:25:38,276 INFO HTTP Request: POST https://api.telegram.org/bot8917065606:AAFNVcvr-9utcNkffJxcNIiN9I_j3fpHMLI/sendMessage "HTTP/1.1 200 OK"
+2026-08-26 07:25:38,276 INFO [crosscheck] soccer는 대조 대상 아님 (statsapi 미적용) — 생략
+2026-08-26 07:25:38,306 INFO [judge] mode: LIVE
+2026-08-26 07:29:22,519 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:29:22,529 INFO [judge] stop_reason=tool_use · 요청 3경기 → 판정 3경기
+2026-08-26 07:29:22,529 INFO [grok] client mode: LIVE
+2026-08-26 07:29:38,593 INFO HTTP Request: POST https://api.x.ai/v1/responses "HTTP/1.1 200 OK"
+2026-08-26 07:29:38,597 INFO [pipeline] second opinion for 1 disputed games
+2026-08-26 07:29:38,597 INFO [judge] mode: LIVE
+2026-08-26 07:31:32,958 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:31:32,968 INFO [judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+2026-08-26 07:31:33,031 INFO [linemove] game=663 agree → 신뢰도 low → medium
+2026-08-26 07:31:33,046 INFO [alerts] 억제(stage:λ 산출:missing)
+2026-08-26 07:31:56,860 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-26 07:31:56,864 INFO [narrator] 서술 3/3경기
+2026-08-26 07:31:56,883 INFO [scheduler] prefetched soccer report (644 chars)
+2026-08-26 07:31:56,889 INFO [scheduler] prefetch 총 소요 2267.6s · 금일 리서치 37콜 (상한 60) · 큐 복구 0경기 · 실패 {'parse': 4}
+2026-08-26 07:31:56,891 INFO [scheduler] 리서치 품질 · 경기 29건 무효율 14% · 채움률 form 72% / absences 60% / splits 36% / bullpen 64% / form_reversal 64% · 교차검증 6항목 불일치 0
+2026-08-26 07:31:56,895 INFO [deep] 최근 7일 리서치 98콜 — 주간 예상 비용 ≈ $0.98 (콜당 $0.010 가정)
+2026-08-26 07:31:58,014 INFO HTTP Request: POST https://api.telegram.org/bot8917065606:AAFNVcvr-9utcNkffJxcNIiN9I_j3fpHMLI/sendMessage "HTTP/1.1 200 OK"

@@ -79,7 +79,7 @@ def _ratio(value: float | None, league: float, exponent: float,
     return max(lo, min(hi, (value / league) ** exponent))
 
 
-def _suppression(pitcher: dict, s) -> tuple[float | None, str]:
+def _suppression(pitcher: dict, s, research: dict | None = None) -> tuple[float | None, str]:
     """상대 선발 억제력 계수 — SIERA > xFIP > FIP > ERA 순.
 
     값이 클수록(=투수가 나쁠수록) 우리 팀 기대득점이 올라간다.
@@ -87,7 +87,7 @@ def _suppression(pitcher: dict, s) -> tuple[float | None, str]:
     # Statcast 허용 xwOBA가 있으면 최우선 — 타구 질 기반이라 운 오염이 가장 적다
     xw = pitcher.get("xwoba_allowed")
     if xw is not None:
-        coef = _ratio(float(xw), s.league_woba, s.exp_offense,
+        coef = _ratio(float(xw), _baseline(research, "xwoba_allowed", s), s.exp_offense,
                       lo=s.pit_coef_min, hi=s.pit_coef_max)
         return coef, f"허용 xwOBA {float(xw):.3f}"
     for key, label in (("siera", "SIERA"), ("xfip", "xFIP"), ("fip", "FIP"),
@@ -101,15 +101,28 @@ def _suppression(pitcher: dict, s) -> tuple[float | None, str]:
     return None, ""
 
 
-def _offense(block: dict, s) -> tuple[float | None, str]:
+def _baseline(research: dict, key: str, s) -> float:
+    """계수의 분모 — 같은 데이터셋의 리그 평균이 있으면 그것을 쓴다.
+
+    상수(`league_woba=0.320`)는 wOBA 기준값이라 **xwOBA에 쓰면 틀린다**.
+    실측(2026-08-26): 실제 팀 xwOBA 평균 0.309 → 평균 팀도 계수 0.959배,
+    전 팀 일괄 −4% 하향 → λ 합계가 리그 평균보다 0.63점 낮아짐.
+    """
+    base = (research or {}).get("league_baselines") or {}
+    val = base.get(key)
+    return float(val) if val else s.league_woba
+
+
+def _offense(block: dict, s, research: dict | None = None) -> tuple[float | None, str]:
     """[1-1] 타선 계수 — 우선순위 **xwOBA > wOBA > OBP+ISO**.
 
     Wharton 논문 변수 중요도가 OBP > ISO > WHIP/FIP 순이고, xwOBA는 타구 질
     기반이라 운(수비 시프트·구장·시퀀싱) 오염이 가장 적다. 최근 30일이 시즌보다 앞선다.
     """
-    for key, label, league in (("xwoba_30d", "xwOBA", s.league_woba),
+    xw = _baseline(research, "xwoba", s)
+    for key, label, league in (("xwoba_30d", "xwOBA", xw),
                                ("woba_30d", "wOBA", s.league_woba),
-                               ("xwoba", "xwOBA(시즌)", s.league_woba),
+                               ("xwoba", "xwOBA(시즌)", xw),
                                ("woba", "wOBA(시즌)", s.league_woba)):
         val = block.get(key)
         if val is not None:
@@ -150,7 +163,7 @@ def mlb_lambdas(jg: dict, research: dict, settings=None) -> LambdaResult:
 
     # ① 타선 (Wharton 변수 중요도 1·2위)
     for side in ("home", "away"):
-        coef, label = _offense(off[side], s)
+        coef, label = _offense(off[side], s, research)
         if coef is None:
             missing.append(f"{side} 타선 지표(wOBA/OBP)")
             continue
@@ -160,7 +173,7 @@ def mlb_lambdas(jg: dict, research: dict, settings=None) -> LambdaResult:
 
     # ② 상대 선발 억제력 (SIERA/xFIP/FIP 우선, ERA는 최후)
     for side, opp in (("home", "away"), ("away", "home")):
-        coef, label = _suppression(pit[opp], s)
+        coef, label = _suppression(pit[opp], s, research)
         if coef is None:
             missing.append(f"{opp} 선발 억제 지표")
             continue

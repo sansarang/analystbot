@@ -148,10 +148,10 @@ async def test_load_falls_back_to_recent_day():
         async def get(self, k):
             return store.get(k)
 
-    off, pit, bp, bat = await load(R(), "2026-08-25")
+    off, pit, bp, bat, lg = await load(R(), "2026-08-25")
     assert off["Reds"]["xwoba_30d"] == 0.33
     assert pit["Greene"]["xwoba_allowed"] == 0.29
-    assert bp == {} and bat == {}      # 그날 불펜·타자 캐시가 없으면 빈 dict
+    assert bp == {} and bat == {} and lg == {}   # 없는 캐시는 빈 dict
 
 
 @pytest.mark.asyncio
@@ -166,7 +166,7 @@ async def test_load_prefers_same_day_over_fallback():
         async def get(self, k):
             return store.get(k)
 
-    off, _pit, _bp, _bat = await load(R(), "2026-08-25")
+    off, _pit, _bp, _bat, _lg = await load(R(), "2026-08-25")
     assert off["Reds"]["xwoba_30d"] == 0.35
 
 
@@ -181,7 +181,7 @@ async def test_load_gives_up_beyond_window():
         async def get(self, k):
             return store.get(k)
 
-    off, pit, bp, bat = await load(R(), "2026-08-25")
+    off, pit, bp, bat, lg = await load(R(), "2026-08-25")
     assert off == {} and pit == {} and bp == {} and bat == {}
 
 

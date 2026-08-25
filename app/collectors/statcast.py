@@ -138,6 +138,30 @@ def _with_fielding_team(df):
     return d[d["fld_team"].notna()]
 
 
+def league_baselines(offense: dict, pitchers: dict) -> dict:
+    """같은 데이터셋에서 뽑은 리그 평균 — 계수의 분모로 쓴다.
+
+    실사고(2026-08-26): config의 `league_woba = 0.320`을 xwOBA의 분모로 썼는데
+    실제 팀 xwOBA 평균은 **0.309**였다. 0.011 차이가 지수 1.2로 증폭돼
+    **평균적인 팀도 계수 0.959배**를 받았고, 전 팀 타선이 일괄 −4% 하향됐다.
+    그 결과 λ 합계가 리그 평균(8.80)보다 0.63점 낮아져 토탈이 언더로 쏠렸고,
+    시장 대비 엣지가 ±26%까지 벌어져 엣지 가드에 대량 탈락했다.
+
+    상수는 지표가 바뀌면 틀린다(wOBA용 상수를 xwOBA에 쓴 것이 이 사고다).
+    **같은 데이터에서 계산한 평균**을 쓰면 이 종류의 불일치가 원천적으로 없다.
+    """
+    xs = [v["xwoba_30d"] for v in (offense or {}).values()
+          if v.get("xwoba_30d") is not None]
+    ps = [v["xwoba_allowed"] for v in (pitchers or {}).values()
+          if v.get("xwoba_allowed") is not None and not v.get("low_sample")]
+    out = {}
+    if xs:
+        out["xwoba"] = round(sum(xs) / len(xs), 4)
+    if ps:
+        out["xwoba_allowed"] = round(sum(ps) / len(ps), 4)
+    return out
+
+
 def aggregate_batters(df) -> dict[str, list[dict]]:
     """팀별 타자 랭킹 — 타석 수 내림차순. 결장자 '주전 여부' 판정의 기준.
 
@@ -338,8 +362,10 @@ async def refresh(redis, date: str | None = None) -> dict:
         if name in pitchers:
             pitchers[name]["ip_avg_recent"] = ip
     batters = aggregate_batters(df)
+    baselines = league_baselines(offense, pitchers)
     for kind, payload in (("offense", offense), ("pitchers", pitchers),
-                          ("bullpen", bullpen), ("batters", batters)):
+                          ("bullpen", bullpen), ("batters", batters),
+                          ("league", baselines)):
         await redis.set(_key(kind, date), json.dumps(payload, ensure_ascii=False),
                         ex=CACHE_TTL)
     logger.info("[statcast] %s 갱신 — 팀 %d개, 투수 %d명, 불펜 %d팀 (원본 %d행)",
@@ -353,7 +379,7 @@ async def refresh(redis, date: str | None = None) -> dict:
 STALE_FALLBACK_DAYS = 3
 
 
-async def load(redis, date: str | None = None) -> tuple[dict, dict, dict, dict]:
+async def load(redis, date: str | None = None) -> tuple[dict, dict, dict, dict, dict]:
     """캐시된 (팀 타선, 투수 지표). 없으면 빈 dict — 모델은 해당 보정을 건너뛴다.
 
     당일 키가 없으면 최근 STALE_FALLBACK_DAYS일 안의 키로 폴백한다.
@@ -371,7 +397,7 @@ async def load(redis, date: str | None = None) -> tuple[dict, dict, dict, dict]:
     for back in range(STALE_FALLBACK_DAYS + 1):
         day = (base - timedelta(days=back)).strftime("%Y-%m-%d")
         raws = [await redis.get(_key(kind, day))
-                for kind in ("offense", "pitchers", "bullpen", "batters")]
+                for kind in ("offense", "pitchers", "bullpen", "batters", "league")]
         if not any(raws):
             continue
         if back:
@@ -380,17 +406,21 @@ async def load(redis, date: str | None = None) -> tuple[dict, dict, dict, dict]:
         return tuple(json.loads(x) if x else {} for x in raws)
     logger.warning("[statcast] %s 기준 최근 %d일 캐시가 모두 없다 — λ 산출 불가",
                    date, STALE_FALLBACK_DAYS)
-    return {}, {}, {}, {}
+    return {}, {}, {}, {}, {}
 
 
 def merge_into_research(research: dict, jg: dict, offense: dict, pitchers: dict,
                         bullpen: dict | None = None,
-                        parks: dict | None = None) -> list[str]:
+                        parks: dict | None = None,
+                        baselines: dict | None = None) -> list[str]:
     """Statcast 지표를 리서치 페이로드에 얹는다. 반환: 실제로 채운 항목.
 
     리서치가 이미 채운 값은 덮지 않는다(setdefault) — 수집 실패 항목만 메운다.
     """
     filled: list[str] = []
+    # 계수의 분모 — 상수 대신 같은 데이터셋의 리그 평균을 쓴다
+    if baselines and not research.get("league_baselines"):
+        research["league_baselines"] = baselines
     for side, team_key in (("home", "home"), ("away", "away")):
         team = jg.get(team_key)
         stats = offense.get(team)
@@ -438,6 +468,7 @@ def enrich_mlb_research(research: dict, jg: dict, ctx: dict) -> list[str]:
         research, jg,
         ctx.get("offense") or {}, ctx.get("pitchers") or {},
         ctx.get("bullpen") or {}, ctx.get("parks") or {},
+        ctx.get("league") or {},
     )
     note = merge_weather(research, jg, ctx.get("weather") or {})
     if note:

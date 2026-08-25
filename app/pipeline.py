@@ -495,6 +495,9 @@ async def build_analysis(
             #      '상대 선발 억제력'이 통째로 누락된다 (2026-08-25 실측: 14/14경기).
             "home_pitcher": g.get("home_pitcher"),
             "away_pitcher": g.get("away_pitcher"),
+            # [§2] 결장 수집(boxscore 조회)의 키. 빠지면 absences가 통째로 0이 된다
+            # — 선발 투수명 누락과 같은 유형의 사고였다(2026-08-26 실측: 결장 0경기).
+            "ext_id": g.get("ext_id"),
             "starts_at": g["starts_at"].isoformat(),
             "starts_at_kst": kst_hhmm(g["starts_at"]),
             "status": g["status"],
@@ -585,7 +588,7 @@ async def build_analysis(
                 from app.collectors.statcast import load as load_statcast
                 from app.collectors.weather import fetch_for_games as fetch_weather
 
-                off, pit, bp, bat = await load_statcast(redis, date)
+                off, pit, bp, bat, league = await load_statcast(redis, date)
                 # [§2] 수치는 전부 정식 API로 — Perplexity 쿼터와 무관하다.
                 #      실패해도 해당 항목만 비고 파이프라인은 계속 간다.
                 upcoming_rows = [g for g in judge_games if g.get("status") == "scheduled"]
@@ -601,13 +604,15 @@ async def build_analysis(
                     absences = {}
                 statcast_data = {
                     "offense": off, "pitchers": pit, "bullpen": bp, "batters": bat,
-                    "parks": await load_parks(redis),
+                    "league": league, "parks": await load_parks(redis),
                     "weather": weather, "absences": absences,
                 }
                 logger.info("[pipeline] 정식 API 입력 — 타선 %d팀 / 투수 %d명 / 불펜 %d팀 / "
-                            "타자랭킹 %d팀 / 구장 %d개 / 날씨 %d경기 / 결장 %d경기",
+                            "타자랭킹 %d팀 / 구장 %d개 / 날씨 %d경기 / 결장 %d경기 / "
+                            "리그평균 %s",
                             len(off), len(pit), len(bp), len(bat),
-                            len(statcast_data["parks"]), len(weather), len(absences))
+                            len(statcast_data["parks"]), len(weather), len(absences),
+                            league or "없음(상수 사용)")
             else:
                 from app.collectors.soccer_stats import load_xg, supported
 
@@ -895,6 +900,70 @@ def approved_market_legs(games: list[dict]) -> list[dict]:
     return legs
 
 
+def qualified_singles(games: list[dict], settings=None,
+                      per_game: int = 1) -> list[dict]:
+    """[단식 후보] 조합과 **같은 풀**(마켓 보드 전체)에서 자격을 통과한 픽.
+
+    실사고(2026-08-26): 단식은 `picks`(경기당 대표 1건)에서만 뽑았다.
+    대표는 EV 최고 마켓이 자동 선정되는데, 그것이 자격 미달이면 같은 경기의
+    **자격을 통과하는 다른 마켓이 통째로 심사에서 빠졌다.**
+    실제로 "워싱턴 승 62.1% @1.70 (3축 지지)"이 자격을 넉넉히 통과하는데도
+    같은 경기 "언더 8.5"가 대표로 뽑히는 바람에 단식 0건이 됐고,
+    사용자에게는 "단식 없음 — 관망"이라 하면서 **같은 베팅을 조합 레그로 추천**했다.
+
+    per_game: 한 경기에서 최대 몇 개까지 — 기본 1.
+      같은 경기의 두 마켓은 상관돼 있어(승패와 런라인) 둘 다 추천하면
+      실제 노출이 권장액의 2배가 된다. 승률 높은 쪽 하나만 남긴다.
+    """
+    from app.config import get_settings
+
+    settings = settings or get_settings()
+    by_game: dict = {}
+    for jg in games:
+        if jg.get("status") != "scheduled":
+            continue
+        for c in jg.get("market_board") or []:
+            if not (c.get("approved") and qualifies(c, settings)):
+                continue
+            # 다운스트림(DB 적재·속보 비교·렌더)이 쓰는 필드를 전부 채운다.
+            # 대표 픽 엔트리와 같은 계약이어야 한다 — 빠지면 KeyError로 죽는다.
+            rep = next((x for x in (jg.get("pick_summary"),) if x), {}) or {}
+            entry = {
+                "game_id": jg["game_id"], "home": jg["home"], "away": jg["away"],
+                "pick": f"{c['market']}:{c.get('side')}",
+                "desc": c["desc"], "market": c["market"], "side": c.get("side"),
+                "line": c.get("line"), "odds": c["odds"], "p": c["p"],
+                "ev": c.get("ev") if c.get("ev") is not None else 0.0,
+                "kelly": 0.0,
+                "axes": c.get("axes_kr"), "grade": c.get("grade"),
+                "confidence": jg.get("judge_confidence", "medium"),
+                "judge_excluded": None,
+                "league": jg.get("league"), "starts_at_kst": jg["starts_at_kst"],
+                "lineup_status": jg.get("lineup_status") or "none",
+                "p_legacy": (jg.get("p_legacy") or {}).get(c.get("side")),
+                "p_market_side": None,
+                "p_ensemble_side": None,
+                # 세 방식 확률은 승패 기준이므로 h2h일 때만 기록한다
+                "p_heuristic": ((jg.get("p_heuristic") or {}).get(c.get("side"))
+                                if c["market"] == "h2h" else None),
+                "p_learned": ((jg.get("p_learned") or {}).get(c.get("side"))
+                              if c["market"] == "h2h" else None),
+                "p_claude": ((jg.get("p_claude_side") or {}).get(c.get("side"))
+                             if c["market"] == "h2h" else None),
+                "approved": True,
+                "reject_reason": None,
+                "stake_krw": None,
+                "_rep": rep,
+            }
+            by_game.setdefault(jg["game_id"], []).append(entry)
+    out: list[dict] = []
+    for entries in by_game.values():
+        entries.sort(key=lambda x: -x["p"])
+        out += entries[:per_game]
+    out.sort(key=lambda x: -x["p"])
+    return out
+
+
 DISPUTE_GAP = 0.10  # |모델 - 시장| 10%p 이상이면 논쟁 경기
 
 
@@ -1180,16 +1249,17 @@ def _compute_picks(
                 )
 
     picks_out.sort(key=lambda x: x["ev"], reverse=True)
-    # 단식 추천 = [1]~[3] 승인 + 판정 통과 + EV 임계 통과 + 모드별 픽 수 상한
-    clean = [
-        p for p in picks_out
-        if p["approved"] and not p["judge_excluded"] and qualifies(p, settings)
-    ]
+    # 단식 추천 = **마켓 보드 전체**에서 자격 통과 (조합과 같은 풀).
+    # 경기당 대표 픽 1건에서만 뽑으면 자격 있는 다른 마켓이 심사에서 빠진다.
+    board = qualified_singles(judge_games, settings)
+    excluded_games = {p["game_id"] for p in picks_out if p.get("judge_excluded")}
+    clean = [b for b in board if b["game_id"] not in excluded_games]
     recommended = clean[: mode["max_picks"]]
+    rec_keys = {(r["game_id"], r["desc"]) for r in recommended}
     for p in picks_out:
-        p["recommended"] = p in recommended
+        p["recommended"] = (p["game_id"], p.get("desc")) in rec_keys
     legs = [{"game_id": p["game_id"], "pick": p["pick"], "p": p["p"],
-             "odds": p["odds"], "ev": p["ev"]} for p in clean]
+             "odds": p["odds"], "ev": p.get("ev") or 0.0} for p in clean]
     return picks_out, best_parlays(legs), recommended
 
 
@@ -2059,6 +2129,40 @@ def rescope_analysis(analysis: dict, league_label: str) -> dict:
     }
 
 
+def _reco_reject_detail(games: list[dict], settings, top: int = 8) -> list[str]:
+    """단식이 0건일 때 '왜 없는지'를 상세에 적는다.
+
+    마켓 보드에서 승인됐지만 자격을 통과하지 못한 행을 승률 순으로 보여 주고,
+    각 행이 어느 조건에 걸렸는지 밝힌다. "없습니다"만 남기면 사용자는
+    기준이 빡빡한 건지 데이터가 없는 건지 구분할 수 없다.
+    """
+    rows = []
+    for jg in games:
+        if jg.get("status") != "scheduled":
+            continue
+        for c in jg.get("market_board") or []:
+            if not c.get("approved") or c.get("p") is None or not c.get("odds"):
+                continue
+            if qualifies(c, settings):
+                continue
+            req = c.get("required_prob") or settings.min_win_prob
+            why = []
+            if c["p"] < req:
+                why.append(f"승률 {c['p']:.0%}<{req:.0%}")
+            if c["odds"] < settings.min_odds:
+                why.append(f"배당 {c['odds']:.2f}<{settings.min_odds}")
+            if not c.get("two_source"):
+                why.append("2소스 미달")
+            if c.get("edge_excess"):
+                why.append(f"시장 대비 괴리 {c.get('edge', 0):+.0%}")
+            rows.append((c["p"], f"   · {c['desc']}: {', '.join(why) or '기타'}"))
+    if not rows:
+        return ["  자격을 통과하지 못한 마켓도 없습니다 — 배당·판정이 부족한 슬레이트입니다."]
+    rows.sort(key=lambda x: -x[0])
+    return ([f"── 단식 0건 사유 (승인 {len(rows)}행 중 상위 {min(top, len(rows))})"]
+            + [t for _, t in rows[:top]])
+
+
 def render_full_reco(analyses: list[dict]) -> str:
     """🎯 전체 추천 카드 — 후보 풀은 그날 전체 슬레이트(MLB+축구 전 리그)."""
     from app.engine.parlay import build_tiered_parlays
@@ -2066,12 +2170,15 @@ def render_full_reco(analyses: list[dict]) -> str:
     settings = get_settings()
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
     stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
-    all_picks = [p for a in analyses for p in a.get("picks", [])]
-    clean = [p for p in all_picks if p.get("approved") and not p["judge_excluded"]]
-    ev_ok = sorted([p for p in clean if qualifies(p, settings)],
-                   key=lambda x: x["p"], reverse=True)
-    singles = ev_ok[: mode["max_picks"]]
     all_games = [g for a in analyses for g in a.get("games", [])]
+    # 조합과 **같은 풀**에서 단식을 뽑는다 — 경기당 대표 픽 1건에 묶으면
+    # 자격 있는 마켓이 심사에서 빠져 "단식 없음"과 "조합 추천"이 모순된다.
+    excluded = {p["game_id"] for a in analyses for p in a.get("picks", [])
+                if p.get("judge_excluded")}
+    singles = [b for b in qualified_singles(all_games, settings)
+               if b["game_id"] not in excluded][: mode["max_picks"]]
+    for b in singles:
+        b["stake_krw"] = stake_krw
     combos = build_tiered_parlays(approved_market_legs(all_games), stake_krw)
 
     covered = " + ".join(
@@ -2089,6 +2196,9 @@ def render_full_reco(analyses: list[dict]) -> str:
                           f"배당에 깔린 확률 {1 / p['odds']:.1%} / 근거 {p.get('axes') or '?'}")
     else:
         lines.append("오늘은 배당 대비 이득 기준을 넘는 단식 픽이 없습니다 — 관망 권장")
+        # 단식이 없을 때야말로 "왜 없는지"가 상세의 핵심이다.
+        # 이게 없으면 접힌 영역이 헤더만 남아 '(내용 없음)'으로 보인다.
+        detail += _reco_reject_detail(all_games, settings)
     if combos.get("reason"):
         lines.append(f"조합: {combos['reason']}")
     else:
@@ -2106,6 +2216,17 @@ def render_full_reco(analyses: list[dict]) -> str:
             lines.append(f"세 조합 모두 실패 확률 ≈ {combos['all_fail_prob']:.0%}")
         if combos.get("low_confidence"):
             lines.append("⚠️ 오늘은 확신도 낮음 — 권장액 절반")
+        # 조합 레그의 근거를 상세에 남긴다 — 보이는 층은 한 줄이라 판단 재료가 없다
+        for i, c in enumerate(combos.get("combos", []), 1):
+            if not c.get("ok"):
+                continue
+            detail.append(f"── 조합 {i}({c['tier']}) 합산 @{c['odds']:.2f} "
+                          f"· 적중률 {c['p']:.1%} · 1만원당 {c.get('payout_10k', 0):,}원")
+            for leg in c["legs"]:
+                detail.append(
+                    f"   · {leg['desc']}: p {leg['p']:.1%} / 배당 {leg['odds']:.2f}"
+                    f" (배당 내재 {1 / leg['odds']:.1%}) / 신뢰도 "
+                    f"{leg.get('confidence', '?')}")
     lines.append("⚠️ 조합은 변동이 큰 베팅 — 단식 권장액의 절반 이하 소액만")
     return _guard_basic("\n".join(lines[:20])[:3500] + DETAIL_SEP + "\n".join(detail[:15]), "full_reco")
 

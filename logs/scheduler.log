@@ -13,56 +13,300 @@ INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly schedul
 INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
 INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
 INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
 INFO:apscheduler.scheduler:Added job "prefetch_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "odds_snapshot_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "grading_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "research_retry_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "lineup_poll_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "statcast_refresh_job" to job store "default"
+INFO:apscheduler.scheduler:Added job "park_refresh_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "soccer_stats_refresh_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "elo_refresh_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "heartbeat_job" to job store "default"
 INFO:apscheduler.scheduler:Scheduler started
-INFO:__main__:scheduler started: ['heartbeat_2m', 'odds_snapshot_30m', 'lineup_poll_30m', 'research_retry_45m', 'statcast_daily', 'soccerdata_daily', 'prefetch_daily', 'grade_yesterday', 'elo_refresh_weekly']
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:46:32 KST)" (scheduled at 2026-08-25 16:44:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:46:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:48:32 KST)" (scheduled at 2026-08-25 16:46:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:48:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:50:32 KST)" (scheduled at 2026-08-25 16:48:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:50:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:52:32 KST)" (scheduled at 2026-08-25 16:50:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:52:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:54:32 KST)" (scheduled at 2026-08-25 16:52:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:54:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:56:32 KST)" (scheduled at 2026-08-25 16:54:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:56:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:58:32 KST)" (scheduled at 2026-08-25 16:56:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:58:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:00:32 KST)" (scheduled at 2026-08-25 16:58:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:00:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:02:32 KST)" (scheduled at 2026-08-25 17:00:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:02:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:04:32 KST)" (scheduled at 2026-08-25 17:02:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:04:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:06:32 KST)" (scheduled at 2026-08-25 17:04:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:06:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:08:32 KST)" (scheduled at 2026-08-25 17:06:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:08:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:10:32 KST)" (scheduled at 2026-08-25 17:08:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:10:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:12:32 KST)" (scheduled at 2026-08-25 17:10:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:12:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 17:42:32 KST)" (scheduled at 2026-08-25 17:12:32.536633+09:00)
-INFO:apscheduler.executors.default:Running job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 17:42:32 KST)" (scheduled at 2026-08-25 17:12:32.536669+09:00)
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:14:32 KST)" (scheduled at 2026-08-25 17:12:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:14:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 17:42:32 KST)" executed successfully
+INFO:__main__:scheduler started: ['heartbeat_2m', 'odds_snapshot_30m', 'lineup_poll_30m', 'research_retry_45m', 'grade_yesterday', 'statcast_daily', 'soccerdata_daily', 'prefetch_daily', 'park_weekly', 'elo_refresh_weekly']
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:58:01 KST)" (scheduled at 2026-08-26 06:56:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:58:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:00:01 KST)" (scheduled at 2026-08-26 06:58:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:00:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:02:01 KST)" (scheduled at 2026-08-26 07:00:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:02:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:04:01 KST)" (scheduled at 2026-08-26 07:02:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:04:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:06:01 KST)" (scheduled at 2026-08-26 07:04:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:06:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:08:01 KST)" (scheduled at 2026-08-26 07:06:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:08:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:10:01 KST)" (scheduled at 2026-08-26 07:08:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:10:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:12:01 KST)" (scheduled at 2026-08-26 07:10:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:12:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:14:01 KST)" (scheduled at 2026-08-26 07:12:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:14:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:16:01 KST)" (scheduled at 2026-08-26 07:14:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:16:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:18:01 KST)" (scheduled at 2026-08-26 07:16:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:18:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:20:01 KST)" (scheduled at 2026-08-26 07:18:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:20:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:22:01 KST)" (scheduled at 2026-08-26 07:20:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:22:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:24:01 KST)" (scheduled at 2026-08-26 07:22:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:24:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 07:54:01 KST)" (scheduled at 2026-08-26 07:24:01.069957+09:00)
+INFO:apscheduler.executors.default:Running job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 07:54:01 KST)" (scheduled at 2026-08-26 07:24:01.069993+09:00)
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:26:01 KST)" (scheduled at 2026-08-26 07:24:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:26:01 KST)" executed successfully
+INFO:app.collectors.base:[mlb_lineup] client mode: LIVE
+INFO:app.collectors.base:[odds] client mode: LIVE
+INFO:httpx:HTTP Request: GET https://api.the-odds-api.com/v4/sports/baseball_mlb/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
+INFO:app.collectors.odds:[odds] quota: used=287 remaining=213
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/823826/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/146/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=505 home 부상자 6명
+WARNING:app.collectors.odds:[odds] no game match: Tampa Bay Rays @ Detroit Tigers (2026-08-26T17:11:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Chicago Cubs @ Arizona Diamondbacks (2026-08-26T19:41:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Cincinnati Reds @ San Francisco Giants (2026-08-26T19:46:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Cleveland Guardians @ Los Angeles Angels (2026-08-26T20:08:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Philadelphia Phillies @ Seattle Mariners (2026-08-26T20:11:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Pittsburgh Pirates @ San Diego Padres (2026-08-26T20:11:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Boston Red Sox @ Miami Marlins (2026-08-26T22:41:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Kansas City Royals @ Toronto Blue Jays (2026-08-26T23:08:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Milwaukee Brewers @ New York Mets (2026-08-26T23:11:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Los Angeles Dodgers @ Atlanta Braves (2026-08-26T23:16:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Texas Rangers @ Chicago White Sox (2026-08-26T23:41:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Baltimore Orioles @ St. Louis Cardinals (2026-08-26T23:46:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Minnesota Twins @ Athletics (2026-08-27T01:06:00Z)
+INFO:app.collectors.odds:[odds] inserted 808 snapshot rows (mlb), skipped 0 in-play events
+INFO:__main__:[scheduler] odds snapshot: 808 rows (keys={'mlb': ['baseball_mlb']})
+INFO:apscheduler.executors.default:Job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 07:54:01 KST)" executed successfully
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/111/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=505 away 부상자 10명
+INFO:app.collectors.lineups:[lineup] game=505 none → confirmed 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/824233/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/116/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=504 home 부상자 10명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/139/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=504 away 부상자 6명
+INFO:app.collectors.lineups:[lineup] game=504 none → confirmed 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/822693/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/120/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=506 home 부상자 6명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/115/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=506 away 부상자 6명
+INFO:app.collectors.lineups:[lineup] game=506 none → confirmed 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/823505/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/147/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=507 home 부상자 6명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/117/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=507 away 부상자 3명
+INFO:app.collectors.lineups:[lineup] game=507 none → confirmed 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/822773/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/141/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=508 home 부상자 10명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/118/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=508 away 부상자 9명
+INFO:app.collectors.lineups:[lineup] game=508 none → confirmed 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/823585/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/121/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=509 home 부상자 5명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/158/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=509 away 부상자 5명
+INFO:app.collectors.lineups:[lineup] game=509 none → confirmed 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/824881/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/144/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=510 home 부상자 3명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/119/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=510 away 부상자 8명
+INFO:app.collectors.lineups:[lineup] game=510 none → confirmed 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/824556/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/145/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=511 home 부상자 7명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/140/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=511 away 부상자 9명
+INFO:app.collectors.lineups:[lineup] game=511 none → confirmed 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/823016/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/138/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=512 home 부상자 5명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/110/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=512 away 부상자 5명
+INFO:app.collectors.lineups:[lineup] game=512 none → confirmed 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/823989/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/108/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=513 home 부상자 8명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/114/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=513 away 부상자 3명
+INFO:app.collectors.lineups:[lineup] game=513 none → predicted 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/823098/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/136/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=517 home 부상자 7명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/143/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=517 away 부상자 6명
+INFO:app.collectors.lineups:[lineup] game=517 none → predicted 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/825042/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/109/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=514 home 부상자 7명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/112/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=514 away 부상자 10명
+INFO:app.collectors.lineups:[lineup] game=514 none → confirmed 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/823259/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/135/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=515 home 부상자 6명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/134/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=515 away 부상자 4명
+INFO:app.collectors.lineups:[lineup] game=515 none → predicted 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/824962/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/133/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=516 home 부상자 12명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/142/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=516 away 부상자 6명
+INFO:app.collectors.lineups:[lineup] game=516 none → confirmed 
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/823181/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/137/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=518 home 부상자 13명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/113/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=518 away 부상자 6명
+INFO:app.collectors.lineups:[lineup] game=518 none → confirmed 
+INFO:__main__:[scheduler] 라인업 폴링 15경기 확인 · 변경 15건
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=505: 'NoneType' object has no attribute 'get'
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:28:01 KST)" (scheduled at 2026-08-26 07:26:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:28:01 KST)" executed successfully
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=505 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', 'home 선발 억제 지표']
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=509 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', 'home 선발 억제 지표']
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=514 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', 'home 선발 억제 지표']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=504: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:30:01 KST)" (scheduled at 2026-08-26 07:28:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:30:01 KST)" executed successfully
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=506: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:32:01 KST)" (scheduled at 2026-08-26 07:30:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:32:01 KST)" executed successfully
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=507: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:34:01 KST)" (scheduled at 2026-08-26 07:32:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:34:01 KST)" executed successfully
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=508: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:36:01 KST)" (scheduled at 2026-08-26 07:34:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:36:01 KST)" executed successfully
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=509: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:38:01 KST)" (scheduled at 2026-08-26 07:36:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:38:01 KST)" executed successfully
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=510: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:40:01 KST)" (scheduled at 2026-08-26 07:38:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:40:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 08:24:01 KST)" (scheduled at 2026-08-26 07:39:01.069990+09:00)
+INFO:apscheduler.executors.default:Job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 08:24:01 KST)" executed successfully
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=511: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:42:01 KST)" (scheduled at 2026-08-26 07:40:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:42:01 KST)" executed successfully
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=512: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:44:01 KST)" (scheduled at 2026-08-26 07:42:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:44:01 KST)" executed successfully
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=513: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=517: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:46:01 KST)" (scheduled at 2026-08-26 07:44:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:46:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:48:01 KST)" (scheduled at 2026-08-26 07:46:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:48:01 KST)" executed successfully
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=514: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=515: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:50:01 KST)" (scheduled at 2026-08-26 07:48:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:50:01 KST)" executed successfully
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=516: name 'build_tiered_parlays' is not defined
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 400 Bad Request"
+WARNING:app.pipeline:[pipeline] 라인업 재판정 실패: anthropic(judge): Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeQHK3Enq5XYPRU3Ggbjw'}
+INFO:httpx:HTTP Request: POST https://api.telegram.org/bot8917065606:AAFNVcvr-9utcNkffJxcNIiN9I_j3fpHMLI/sendMessage "HTTP/1.1 200 OK"
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=518: name 'build_tiered_parlays' is not defined
+INFO:__main__:[scheduler] 라인업 확정 12경기 — 최종 픽으로 갱신
+INFO:apscheduler.executors.default:Job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 07:54:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:52:01 KST)" (scheduled at 2026-08-26 07:50:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:52:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:54:01 KST)" (scheduled at 2026-08-26 07:52:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:54:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 08:24:01 KST)" (scheduled at 2026-08-26 07:54:01.069957+09:00)
+INFO:apscheduler.executors.default:Running job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 08:24:01 KST)" (scheduled at 2026-08-26 07:54:01.069993+09:00)
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:56:01 KST)" (scheduled at 2026-08-26 07:54:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:56:01 KST)" executed successfully
+INFO:app.collectors.base:[mlb_lineup] client mode: LIVE
+INFO:app.collectors.base:[odds] client mode: LIVE
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/823989/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://api.the-odds-api.com/v4/sports/baseball_mlb/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
+INFO:app.collectors.odds:[odds] quota: used=296 remaining=204
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/108/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=513 home 부상자 8명
+WARNING:app.collectors.odds:[odds] no game match: Tampa Bay Rays @ Detroit Tigers (2026-08-26T17:11:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Chicago Cubs @ Arizona Diamondbacks (2026-08-26T19:41:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Cincinnati Reds @ San Francisco Giants (2026-08-26T19:46:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Cleveland Guardians @ Los Angeles Angels (2026-08-26T20:08:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Philadelphia Phillies @ Seattle Mariners (2026-08-26T20:11:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Pittsburgh Pirates @ San Diego Padres (2026-08-26T20:11:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Boston Red Sox @ Miami Marlins (2026-08-26T22:41:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Kansas City Royals @ Toronto Blue Jays (2026-08-26T23:08:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Milwaukee Brewers @ New York Mets (2026-08-26T23:11:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Los Angeles Dodgers @ Atlanta Braves (2026-08-26T23:16:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Texas Rangers @ Chicago White Sox (2026-08-26T23:41:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Baltimore Orioles @ St. Louis Cardinals (2026-08-26T23:46:00Z)
+WARNING:app.collectors.odds:[odds] no game match: Minnesota Twins @ Athletics (2026-08-27T01:06:00Z)
+INFO:app.collectors.odds:[odds] inserted 646 snapshot rows (mlb), skipped 3 in-play events
 INFO:app.collectors.base:[odds] client mode: LIVE
 INFO:httpx:HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_korea_kleague1/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
-INFO:app.collectors.odds:[odds] quota: used=237 remaining=263
-WARNING:app.collectors.odds:[odds] no game match: Ulsan Hyundai FC @ Daejeon Citizen (2026-08-26T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Incheon United @ FC Anyang (2026-08-26T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Gwangju FC @ Gangwon FC (2026-08-26T10:30:00Z)
+INFO:app.collectors.odds:[odds] quota: used=299 remaining=201
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/114/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=513 away 부상자 3명
+INFO:app.collectors.lineups:[lineup] game=513 predicted → confirmed 
 WARNING:app.collectors.odds:[odds] no game match: FC Anyang @ Bucheon FC 1995 (2026-08-29T10:30:00Z)
 WARNING:app.collectors.odds:[odds] no game match: Sangju Sangmu FC @ Ulsan Hyundai FC (2026-08-29T10:30:00Z)
 WARNING:app.collectors.odds:[odds] no game match: Daejeon Citizen @ Jeju United FC (2026-08-30T10:30:00Z)
@@ -70,390 +314,26 @@ WARNING:app.collectors.odds:[odds] no game match: FC Seoul @ Gwangju FC (2026-08
 WARNING:app.collectors.odds:[odds] no game match: Gangwon FC @ Pohang Steelers (2026-08-30T10:30:00Z)
 WARNING:app.collectors.odds:[odds] no game match: Jeonbuk Hyundai Motors @ Incheon United (2026-08-30T10:30:00Z)
 INFO:app.collectors.odds:[odds] inserted 102 snapshot rows (soccer), skipped 0 in-play events
-INFO:__main__:[scheduler] odds snapshot: 102 rows (keys={'soccer': ['soccer_korea_kleague1']})
-INFO:apscheduler.executors.default:Job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 17:42:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:16:32 KST)" (scheduled at 2026-08-25 17:14:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:16:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:18:32 KST)" (scheduled at 2026-08-25 17:16:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:18:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:20:32 KST)" (scheduled at 2026-08-25 17:18:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:20:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:22:32 KST)" (scheduled at 2026-08-25 17:20:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:22:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:24:32 KST)" (scheduled at 2026-08-25 17:22:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:24:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:26:32 KST)" (scheduled at 2026-08-25 17:24:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:26:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:28:32 KST)" (scheduled at 2026-08-25 17:26:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:28:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 18:12:32 KST)" (scheduled at 2026-08-25 17:27:32.536666+09:00)
-INFO:apscheduler.executors.default:Job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 18:12:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:30:32 KST)" (scheduled at 2026-08-25 17:28:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:30:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:32:32 KST)" (scheduled at 2026-08-25 17:30:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:32:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:34:32 KST)" (scheduled at 2026-08-25 17:32:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:34:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:36:32 KST)" (scheduled at 2026-08-25 17:34:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:36:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:38:32 KST)" (scheduled at 2026-08-25 17:36:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:38:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:40:32 KST)" (scheduled at 2026-08-25 17:38:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:40:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:42:32 KST)" (scheduled at 2026-08-25 17:40:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:42:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 18:12:32 KST)" (scheduled at 2026-08-25 17:42:32.536633+09:00)
-INFO:apscheduler.executors.default:Running job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 18:12:32 KST)" (scheduled at 2026-08-25 17:42:32.536669+09:00)
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:44:32 KST)" (scheduled at 2026-08-25 17:42:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:44:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 18:12:32 KST)" executed successfully
-INFO:app.collectors.base:[odds] client mode: LIVE
-INFO:httpx:HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_korea_kleague1/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
-INFO:app.collectors.odds:[odds] quota: used=240 remaining=260
-WARNING:app.collectors.odds:[odds] no game match: Ulsan Hyundai FC @ Daejeon Citizen (2026-08-26T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Incheon United @ FC Anyang (2026-08-26T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Gwangju FC @ Gangwon FC (2026-08-26T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: FC Anyang @ Bucheon FC 1995 (2026-08-29T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Sangju Sangmu FC @ Ulsan Hyundai FC (2026-08-29T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Daejeon Citizen @ Jeju United FC (2026-08-30T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: FC Seoul @ Gwangju FC (2026-08-30T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Gangwon FC @ Pohang Steelers (2026-08-30T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Jeonbuk Hyundai Motors @ Incheon United (2026-08-30T10:30:00Z)
-INFO:app.collectors.odds:[odds] inserted 102 snapshot rows (soccer), skipped 0 in-play events
-INFO:__main__:[scheduler] odds snapshot: 102 rows (keys={'soccer': ['soccer_korea_kleague1']})
-INFO:apscheduler.executors.default:Job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 18:12:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:46:32 KST)" (scheduled at 2026-08-25 17:44:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:46:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:48:32 KST)" (scheduled at 2026-08-25 17:46:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:48:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:50:32 KST)" (scheduled at 2026-08-25 17:48:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:50:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:52:32 KST)" (scheduled at 2026-08-25 17:50:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:52:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:54:32 KST)" (scheduled at 2026-08-25 17:52:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:54:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:56:32 KST)" (scheduled at 2026-08-25 17:54:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:56:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:58:32 KST)" (scheduled at 2026-08-25 17:56:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:58:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:00:32 KST)" (scheduled at 2026-08-25 17:58:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:00:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:02:32 KST)" (scheduled at 2026-08-25 18:00:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:02:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:04:32 KST)" (scheduled at 2026-08-25 18:02:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:04:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:06:32 KST)" (scheduled at 2026-08-25 18:04:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:06:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:08:32 KST)" (scheduled at 2026-08-25 18:06:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:08:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:10:32 KST)" (scheduled at 2026-08-25 18:08:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:10:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:12:32 KST)" (scheduled at 2026-08-25 18:10:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:12:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 18:42:32 KST)" (scheduled at 2026-08-25 18:12:32.536633+09:00)
-INFO:apscheduler.executors.default:Running job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 18:57:32 KST)" (scheduled at 2026-08-25 18:12:32.536666+09:00)
-INFO:apscheduler.executors.default:Running job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 18:42:32 KST)" (scheduled at 2026-08-25 18:12:32.536669+09:00)
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:14:32 KST)" (scheduled at 2026-08-25 18:12:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:14:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 18:57:32 KST)" executed successfully
-INFO:app.collectors.base:[odds] client mode: LIVE
-INFO:apscheduler.executors.default:Job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 18:42:32 KST)" executed successfully
-INFO:httpx:HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_korea_kleague1/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
-INFO:app.collectors.odds:[odds] quota: used=275 remaining=225
-WARNING:app.collectors.odds:[odds] no game match: Ulsan Hyundai FC @ Daejeon Citizen (2026-08-26T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Incheon United @ FC Anyang (2026-08-26T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Gwangju FC @ Gangwon FC (2026-08-26T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: FC Anyang @ Bucheon FC 1995 (2026-08-29T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Sangju Sangmu FC @ Ulsan Hyundai FC (2026-08-29T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Daejeon Citizen @ Jeju United FC (2026-08-30T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: FC Seoul @ Gwangju FC (2026-08-30T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Gangwon FC @ Pohang Steelers (2026-08-30T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Jeonbuk Hyundai Motors @ Incheon United (2026-08-30T10:30:00Z)
-INFO:app.collectors.odds:[odds] inserted 102 snapshot rows (soccer), skipped 0 in-play events
-INFO:__main__:[scheduler] odds snapshot: 102 rows (keys={'soccer': ['soccer_korea_kleague1']})
-INFO:apscheduler.executors.default:Job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 18:42:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:16:32 KST)" (scheduled at 2026-08-25 18:14:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:16:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:18:32 KST)" (scheduled at 2026-08-25 18:16:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:18:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:20:32 KST)" (scheduled at 2026-08-25 18:18:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:20:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:22:32 KST)" (scheduled at 2026-08-25 18:20:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:22:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:24:32 KST)" (scheduled at 2026-08-25 18:22:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:24:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:26:32 KST)" (scheduled at 2026-08-25 18:24:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:26:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:28:32 KST)" (scheduled at 2026-08-25 18:26:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:28:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:30:32 KST)" (scheduled at 2026-08-25 18:28:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:30:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:32:32 KST)" (scheduled at 2026-08-25 18:30:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:32:32 KST)" executed successfully
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:34:32 KST)" was missed by 0:00:41.410293
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:54:32 KST)" was missed by 0:00:34.254450
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 19:12:32 KST)" was missed by 0:10:34.255508
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 19:12:32 KST)" was missed by 0:10:34.255522
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 19:02:32 KST)" was missed by 0:01:41.614330
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 19:42:32 KST)" was missed by 0:04:41.616049
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 19:06:32 KST)" was missed by 0:00:40.360537
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 20:24:32 KST)" was missed by 0:01:44.262190
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 20:42:32 KST)" was missed by 0:11:44.266381
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 20:42:32 KST)" was missed by 0:11:44.266497
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 20:27:32 KST)" was missed by 0:41:44.266557
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 20:50:32 KST)" was missed by 0:00:18.951230
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 21:12:32 KST)" was missed by 0:21:19.008379
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 21:12:32 KST)" was missed by 0:06:19.010445
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 21:12:32 KST)" was missed by 0:06:19.013344
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 23:12:32 KST)" was missed by 0:01:05.931018
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 23:12:32 KST)" was missed by 0:29:05.932683
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 23:27:32 KST)" was missed by 0:29:05.932750
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 23:12:32 KST)" was missed by 0:29:05.932793
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 23:42:32 KST)" was missed by 0:07:43.690686
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 23:42:32 KST)" was missed by 0:07:43.692062
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 23:20:32 KST)" was missed by 0:01:43.691882
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 23:22:32 KST)" was missed by 0:00:10.514599
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:12:32 KST)" was missed by 0:01:50.431069
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 00:12:32 KST)" was missed by 0:44:50.432731
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:12:32 KST)" was missed by 0:29:50.432892
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:12:32 KST)" was missed by 0:29:50.432913
-INFO:apscheduler.executors.default:Running job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:42:32 KST)" (scheduled at 2026-08-26 00:12:32.536633+09:00)
-INFO:apscheduler.executors.default:Running job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 00:57:32 KST)" (scheduled at 2026-08-26 00:12:32.536666+09:00)
-INFO:apscheduler.executors.default:Running job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:42:32 KST)" (scheduled at 2026-08-26 00:12:32.536669+09:00)
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:14:32 KST)" (scheduled at 2026-08-26 00:12:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:14:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 00:57:32 KST)" executed successfully
-INFO:app.collectors.base:[odds] client mode: LIVE
-INFO:apscheduler.executors.default:Job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:42:32 KST)" executed successfully
-WARNING:app.collectors.base:[odds] retry 1/3 in 0.5s: [Errno 8] nodename nor servname provided, or not known
-WARNING:app.collectors.base:[odds] retry 2/3 in 1.0s: [Errno 8] nodename nor servname provided, or not known
-ERROR:__main__:[scheduler] 잡 odds_snapshot_30m 실패: [Errno 8] nodename nor servname provided, or not known
-Traceback (most recent call last):
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
-    yield
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 394, in handle_async_request
-    resp = await self._pool.handle_async_request(req)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 256, in handle_async_request
-    raise exc from None
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 236, in handle_async_request
-    response = await connection.handle_async_request(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 101, in handle_async_request
-    raise exc
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 78, in handle_async_request
-    stream = await self._connect(request)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 124, in _connect
-    stream = await self._network_backend.connect_tcp(**kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_backends/auto.py", line 31, in connect_tcp
-    return await self._backend.connect_tcp(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 113, in connect_tcp
-    with map_exceptions(exc_map):
-         ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
-    self.gen.throw(value)
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
-    raise to_exc(exc) from exc
-httpcore.ConnectError: [Errno 8] nodename nor servname provided, or not known
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/youngjinjung/Desktop/analystbot/app/scheduler.py", line 347, in wrapper
-  File "/Users/youngjinjung/Desktop/analystbot/app/scheduler.py", line 271, in odds_snapshot_job
-    for r in rows:
-                 ^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/odds.py", line 118, in snapshot_odds
-    events.extend(await client.fetch_odds(sport_key))
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/odds.py", line 61, in fetch_odds
-    return await self._get(
-           ^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 232, in _get
-    return await self._request("GET", path, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 229, in _request
-    raise last_exc  # type: ignore[misc]
-    ^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 192, in _request
-    resp = await self._send(method, url, params, headers, json_body)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 168, in _send
-    return await client.request(
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1540, in request
-    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1629, in send
-    response = await self._send_handling_auth(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1657, in _send_handling_auth
-    response = await self._send_handling_redirects(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1694, in _send_handling_redirects
-    response = await self._send_single_request(request)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1730, in _send_single_request
-    response = await transport.handle_async_request(request)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 393, in handle_async_request
-    with map_httpcore_exceptions():
-         ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
-    self.gen.throw(value)
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
-    raise mapped_exc(message) from exc
-httpx.ConnectError: [Errno 8] nodename nor servname provided, or not known
-ERROR:app.notify:[notify] telegram 발송 실패: [Errno 8] nodename nor servname provided, or not known
-ERROR:apscheduler.executors.default:Job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:42:32 KST)" raised an exception
-Traceback (most recent call last):
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
-    yield
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 394, in handle_async_request
-    resp = await self._pool.handle_async_request(req)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 256, in handle_async_request
-    raise exc from None
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 236, in handle_async_request
-    response = await connection.handle_async_request(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 101, in handle_async_request
-    raise exc
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 78, in handle_async_request
-    stream = await self._connect(request)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 124, in _connect
-    stream = await self._network_backend.connect_tcp(**kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_backends/auto.py", line 31, in connect_tcp
-    return await self._backend.connect_tcp(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 113, in connect_tcp
-    with map_exceptions(exc_map):
-         ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
-    self.gen.throw(value)
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
-    raise to_exc(exc) from exc
-httpcore.ConnectError: [Errno 8] nodename nor servname provided, or not known
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/apscheduler/executors/base.py", line 181, in run_coroutine_job
-    retval = await job.func(*job.args, **job.kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/scheduler.py", line 347, in wrapper
-  File "/Users/youngjinjung/Desktop/analystbot/app/scheduler.py", line 271, in odds_snapshot_job
-    for r in rows:
-                 ^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/odds.py", line 118, in snapshot_odds
-    events.extend(await client.fetch_odds(sport_key))
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/odds.py", line 61, in fetch_odds
-    return await self._get(
-           ^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 232, in _get
-    return await self._request("GET", path, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 229, in _request
-    raise last_exc  # type: ignore[misc]
-    ^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 192, in _request
-    resp = await self._send(method, url, params, headers, json_body)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 168, in _send
-    return await client.request(
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1540, in request
-    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1629, in send
-    response = await self._send_handling_auth(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1657, in _send_handling_auth
-    response = await self._send_handling_redirects(
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1694, in _send_handling_redirects
-    response = await self._send_single_request(request)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1730, in _send_single_request
-    response = await transport.handle_async_request(request)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 393, in handle_async_request
-    with map_httpcore_exceptions():
-         ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/youngjinjung/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
-    self.gen.throw(value)
-  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
-    raise mapped_exc(message) from exc
-httpx.ConnectError: [Errno 8] nodename nor servname provided, or not known
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:22:32 KST)" was missed by 0:00:13.493639
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:30:32 KST)" was missed by 0:01:47.160869
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:32:32 KST)" (scheduled at 2026-08-26 00:30:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:32:32 KST)" executed successfully
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:40:32 KST)" was missed by 0:00:26.093914
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:48:32 KST)" was missed by 0:00:55.005143
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 01:12:32 KST)" was missed by 0:04:55.008057
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 01:12:32 KST)" was missed by 0:04:55.008250
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:56:32 KST)" was missed by 0:00:44.430103
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 01:36:32 KST)" was missed by 0:01:39.117414
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 01:42:32 KST)" was missed by 0:38:39.119357
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 01:42:32 KST)" was missed by 0:23:39.119459
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 01:42:32 KST)" was missed by 0:23:39.119475
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 02:34:32 KST)" was missed by 0:00:57.964675
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 02:42:32 KST)" was missed by 0:20:57.967050
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 03:12:32 KST)" was missed by 0:05:57.967113
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 02:42:32 KST)" was missed by 0:20:57.967203
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 02:50:32 KST)" was missed by 0:00:31.442993
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 03:12:32 KST)" was missed by 0:06:31.445501
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 03:12:32 KST)" was missed by 0:06:31.445614
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 03:20:32 KST)" was missed by 0:00:49.135367
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 03:42:32 KST)" was missed by 0:06:49.138052
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 03:57:32 KST)" was missed by 0:06:49.138166
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 03:42:32 KST)" was missed by 0:06:49.138256
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 04:10:32 KST)" was missed by 0:01:26.302504
-WARNING:apscheduler.executors.default:Run time of job "statcast_refresh_job (trigger: cron[hour='3', minute='30'], next run at: 2026-08-27 03:30:00 KST)" was missed by 0:39:58.840536
-WARNING:apscheduler.executors.default:Run time of job "soccer_stats_refresh_job (trigger: cron[hour='3', minute='40'], next run at: 2026-08-27 03:40:00 KST)" was missed by 0:29:58.840744
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 04:12:32 KST)" was missed by 0:27:26.304190
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 04:12:32 KST)" was missed by 0:27:26.304240
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 04:42:32 KST)" was missed by 0:12:26.304292
-WARNING:apscheduler.executors.default:Run time of job "prefetch_job (trigger: cron[hour='4', minute='0'], next run at: 2026-08-27 04:00:00 KST)" was missed by 0:09:58.841006
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 04:22:32 KST)" was missed by 0:00:31.182745
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 04:42:32 KST)" was missed by 0:08:31.188583
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 04:42:32 KST)" was missed by 0:08:31.188651
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 05:20:32 KST)" was missed by 0:00:56.486322
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 05:42:32 KST)" was missed by 0:06:56.488712
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 05:27:32 KST)" was missed by 0:36:56.488805
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 05:42:32 KST)" was missed by 0:06:56.488881
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:10:32 KST)" was missed by 0:01:10.760636
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 06:12:32 KST)" was missed by 0:42:10.762022
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 06:12:32 KST)" was missed by 0:27:10.762159
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 06:12:32 KST)" was missed by 0:27:10.762179
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:14:32 KST)" was missed by 0:01:00.476765
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 06:42:32 KST)" was missed by 0:01:00.478851
-WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 06:57:32 KST)" was missed by 0:01:00.478951
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 06:42:32 KST)" was missed by 0:01:00.479012
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:16:32 KST)" was missed by 0:00:39.315383
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:20:32 KST)" was missed by 0:01:54.665088
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:22:32 KST)" was missed by 0:00:02.779781
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:30:32 KST)" was missed by 0:00:13.205594
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:32:32 KST)" was missed by 0:00:01.149039
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:34:32 KST)" was missed by 0:00:26.832149
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:36:32 KST)" was missed by 0:00:01.983342
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:38:32 KST)" was missed by 0:00:02.408120
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:40:32 KST)" was missed by 0:00:04.186414
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:42:32 KST)" was missed by 0:00:05.456302
-WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 07:12:32 KST)" was missed by 0:00:14.481457
-WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 07:12:32 KST)" was missed by 0:00:14.482874
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:44:32 KST)" was missed by 0:00:14.482717
-WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:48:32 KST)" was missed by 0:01:12.858597
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:50:32 KST)" (scheduled at 2026-08-26 06:48:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:50:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:52:32 KST)" (scheduled at 2026-08-26 06:50:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:52:32 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:54:32 KST)" (scheduled at 2026-08-26 06:52:32.536976+09:00)
-INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:54:32 KST)" executed successfully
+INFO:__main__:[scheduler] odds snapshot: 748 rows (keys={'mlb': ['baseball_mlb'], 'soccer': ['soccer_korea_kleague1']})
+INFO:apscheduler.executors.default:Job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 08:24:01 KST)" executed successfully
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/823259/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/135/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=515 home 부상자 6명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/134/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=515 away 부상자 4명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/game/823098/boxscore "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/136/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=517 home 부상자 7명
+INFO:httpx:HTTP Request: GET https://statsapi.mlb.com/api/v1/teams/143/roster?rosterType=fullSeason "HTTP/1.1 200 OK"
+INFO:app.collectors.lineups:[lineup] game=517 away 부상자 6명
+INFO:app.collectors.lineups:[lineup] game=517 predicted → confirmed 
+INFO:__main__:[scheduler] 라인업 폴링 3경기 확인 · 변경 2건
+INFO:app.engine.judge:[judge] mode: LIVE
+INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:app.engine.judge:[judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+WARNING:app.engine.scoring:[scoring] 핵심 지표 부족으로 λ 산출 불가 game=506 missing=['home 타선 지표(wOBA/OBP)', 'away 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', '날씨']
+WARNING:__main__:[scheduler] 라인업 재판정 실패 game=513: name 'build_tiered_parlays' is not defined
+INFO:__main__:[scheduler] 라인업 확정 2경기 — 최종 픽으로 갱신
+INFO:apscheduler.executors.default:Job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 08:24:01 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:58:01 KST)" (scheduled at 2026-08-26 07:56:01.070337+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 07:58:01 KST)" executed successfully

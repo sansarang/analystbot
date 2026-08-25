@@ -412,3 +412,86 @@ def test_easy_layer_recommends_best_market():
     )
     easy = render_game_easy(jg).split(DETAIL_SEP)[0]
     assert "언더 2.5" in easy and "걸 만합니다" in easy
+
+
+# --- 단식 후보 풀 = 조합과 같은 마켓 보드 (2026-08-26 실사고) ---
+
+def _game_with_board():
+    return {
+        "game_id": 1, "home": "Washington Nationals", "away": "Colorado Rockies",
+        "league": "MLB", "starts_at_kst": "08/26 07:45", "status": "scheduled",
+        "judge_confidence": "high",
+        "market_board": [
+            # 자격 통과 — 그러나 EV는 낮아 대표 픽이 되지 못한다
+            {"market": "h2h", "side": "Washington Nationals", "desc": "워싱턴 내셔널스 승",
+             "p": 0.621, "odds": 1.70, "ev": 0.056, "approved": True,
+             "two_source": True, "axes_kr": "실데이터+전문가+모델"},
+            # EV는 높지만 자격 미달(시장 대비 괴리 과다)
+            {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
+             "p": 0.634, "odds": 1.95, "ev": 0.236, "approved": True,
+             "two_source": True, "edge_excess": 0.14, "edge": 0.14,
+             "axes_kr": "전문가+모델"},
+        ],
+    }
+
+
+def test_single_pool_uses_full_market_board():
+    """★ 실사고: 단식을 경기당 대표 픽 1건에서만 뽑아 자격 있는 마켓이 빠졌다.
+
+    같은 시스템이 '단식 없음'이라 하면서 그 베팅을 조합 레그로 추천했다.
+    """
+    from app.config import get_settings
+    from app.pipeline import qualified_singles
+
+    out = qualified_singles([_game_with_board()], get_settings())
+    assert len(out) == 1
+    assert out[0]["desc"] == "워싱턴 내셔널스 승", "자격 통과 마켓이 뽑혀야 한다"
+
+
+def test_single_pool_caps_one_per_game():
+    """같은 경기 두 마켓은 상관돼 있다 — 둘 다 추천하면 노출이 2배가 된다."""
+    from app.config import get_settings
+    from app.pipeline import qualified_singles
+
+    g = _game_with_board()
+    g["market_board"][1].pop("edge_excess")   # 둘 다 자격 통과시킨다
+    g["market_board"][1].pop("edge")
+    out = qualified_singles([g], get_settings())
+    assert len(out) == 1
+    assert out[0]["p"] == 0.634, "승률 높은 쪽이 남아야 한다"
+
+
+def test_single_entry_carries_downstream_contract():
+    """추천 엔트리는 DB 적재·속보 비교가 쓰는 필드를 전부 가져야 한다."""
+    from app.config import get_settings
+    from app.pipeline import qualified_singles
+
+    e = qualified_singles([_game_with_board()], get_settings())[0]
+    for key in ("pick", "game_id", "p", "odds", "ev", "kelly",
+                "judge_excluded", "lineup_status", "approved"):
+        assert key in e, f"{key} 누락 — 다운스트림이 KeyError로 죽는다"
+
+
+def test_started_game_is_not_a_single_candidate():
+    from app.config import get_settings
+    from app.pipeline import qualified_singles
+
+    g = _game_with_board()
+    g["status"] = "live"
+    assert qualified_singles([g], get_settings()) == []
+
+
+# --- /픽 상세 데이터가 비지 않는다 ---
+
+def test_full_reco_detail_explains_zero_singles():
+    """단식 0건일 때 '왜 없는지'가 상세에 남아야 한다 — 헤더만 남으면 '(내용 없음)'."""
+    from app.pipeline import DETAIL_SEP, render_full_reco
+
+    g = _game_with_board()
+    g["market_board"][0]["odds"] = 1.20        # 배당 미달로 전부 탈락시킨다
+    analysis = {"sport": "mlb", "date": "2026-08-26", "games": [g], "picks": [],
+                "combos": {}, "mode": {"name": "live_conservative"}}
+    body = render_full_reco([analysis])
+    detail = body.split(DETAIL_SEP, 1)[1]
+    assert "단식 0건 사유" in detail
+    assert "배당" in detail and len(detail.strip().splitlines()) > 1
