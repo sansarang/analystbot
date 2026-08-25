@@ -66,8 +66,11 @@ def test_recommendation_thresholds_are_config_driven():
     assert s.signal_green_prob == 0.62
     # 58% × 1.55 = 0.899 → EV -10.1%. 손익분기 배당은 1/0.58 ≈ 1.724다.
     assert s.min_win_prob * s.min_odds < 1.0
-    # [1] 승률 상한 — 학계 최고 모델도 정확도 61.77%(Wharton), 최강팀도 65% 안팎
-    assert s.prob_cap_mlb == 0.65 and s.prob_cap_soccer == 0.70
-    assert s.prob_cap_alert_n == 3            # 하루 3건 초과 시 로직 점검 경고
+    # §0 승률 상한 — 운 비중 MLB 27.8%, 완벽 정보 상한 72%보다 보수적으로
+    assert (s.max_win_prob_mlb, s.min_win_prob_mlb) == (0.68, 0.32)
+    assert (s.max_win_prob_soccer, s.min_win_prob_soccer) == (0.72, 0.10)
+    # §0 시장 대비 엣지 상한 — Starlizard(분석가 200명)도 1~2%다
+    assert s.max_edge_vs_market == 0.05
+    assert s.prob_cap_alert_n == 3            # 하루 3건 초과 시 모델 점검 경고
     # [4] 원정 비대칭 — 분데스리가 연구: 원정 베팅 ROI -17%
     assert s.away_prob_penalty == 0.05

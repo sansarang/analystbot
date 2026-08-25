@@ -118,10 +118,12 @@ async def test_flagged_pick_never_recommended_regression(db_pool, redis_client, 
     analysis = _json.loads(await redis_client.get("analysis:mlb:2026-08-22"))
     # [6] 2-소스 미달·기준 미달은 보드에서 지우지 않고 🔴/🟡로 남긴다.
     #     추천·조합·predictions에서만 빠져야 한다.
+    from app.pipeline import qualifies
+
     rejected = [
         (g, c) for g in analysis["games"]
         for c in g.get("market_board") or []
-        if not c.get("approved") or c.get("grade") == "🔴" or c.get("two_source") is False
+        if not c.get("approved") or not qualifies(c)
     ]
     assert rejected, "목 데이터에 제외 대상 후보가 있어야 회귀 테스트 성립"
     reasons = " | ".join(
@@ -139,7 +141,10 @@ async def test_flagged_pick_never_recommended_regression(db_pool, redis_client, 
     for g, c in rejected:
         pick_key = f"{c['market']}:{c['side']}" + (
             f":{c['line']:g}" if c.get("line") is not None else "")
-        assert (g["game_id"], pick_key) not in reco_keys   # 추천에 없다
+        assert (g["game_id"], pick_key) not in reco_keys, (
+            f"제외 대상이 추천에 있다: {c['desc']} p={c.get('p')} odds={c.get('odds')} "
+            f"grade={c.get('grade')} two_source={c.get('two_source')} "
+            f"edge={c.get('edge')} need={c.get('required_prob')}")
         assert (g["game_id"], c["desc"]) not in combo_keys  # 조합 레그에도 없다
     # 카드·심층이 같은 숫자를 인용 (자기모순 금지): 대표 픽과 pick_summary 일치
     for rep in analysis["picks"]:
@@ -367,11 +372,11 @@ def test_market_board_rendered_in_deep_section():
         p_claude=0.55, verdict="테스트 판정", starts_at_kst="08/24 20:00",
         status_label="",
         pick_summary={"side": "Home FC", "desc": "언더 2.5", "market": "totals",
-                      "odds": 1.85, "p_final": 0.62, "ev": 0.09, "flags": [],
+                      "odds": 1.68, "p_final": 0.62, "ev": 0.042, "flags": [],
                       "approved": True, "reject_reason": None, "axes": "전문가+시장"},
         market_board=[
             {"market": "totals", "side": "Under", "line": 2.5, "desc": "언더 2.5",
-             "odds": 1.85, "p": 0.62, "ev": 0.09, "basis": "시장+전문가",
+             "odds": 1.68, "p": 0.62, "ev": 0.042, "basis": "시장+전문가",
              "axes_kr": "전문가+시장", "approved": True, "reject_reason": None},
             {"market": "h2h", "side": "Home FC", "line": None, "desc": "Home FC 승",
              "odds": 1.85, "p": 0.52, "ev": -0.04, "basis": "앙상블",
@@ -382,7 +387,7 @@ def test_market_board_rendered_in_deep_section():
     out = render_game_section(jg)
     assert "⑧ 마켓 보드" in out
     # [3-3] 마켓 | 배당 | 승률 | 1만원 수익 | 신호등 | 근거 | ★
-    assert "언더 2.5 | 1.85 | 62% | 8,500원 | 🟢" in out
+    assert "언더 2.5 | 1.68 | 62% | 6,800원 | 🟢" in out
     assert "Home FC 승 | 1.85 | 52% | 8,500원 | 🔴" in out and "근거 부족" in out
 
 
@@ -394,11 +399,11 @@ def test_easy_layer_recommends_best_market():
         p_claude=0.55, verdict="테스트", starts_at_kst="08/24 20:00", status_label="",
         judge_confidence="high",
         pick_summary={"side": "Under", "desc": "언더 2.5", "market": "totals",
-                      "odds": 1.85, "p_final": 0.62, "ev": 0.09, "flags": [],
+                      "odds": 1.68, "p_final": 0.62, "ev": 0.042, "flags": [],
                       "approved": True, "reject_reason": None, "axes": "전문가+시장"},
         market_board=[
             {"market": "totals", "side": "Under", "line": 2.5, "desc": "언더 2.5",
-             "odds": 1.85, "p": 0.62, "ev": 0.09, "axes_kr": "전문가+시장",
+             "odds": 1.68, "p": 0.62, "ev": 0.042, "axes_kr": "전문가+시장",
              "approved": True, "reject_reason": None},
             {"market": "h2h", "side": "Home FC", "line": None, "desc": "Home FC 승",
              "odds": 1.85, "p": 0.52, "ev": -0.04, "axes_kr": "시장",

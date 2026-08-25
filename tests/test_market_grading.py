@@ -20,7 +20,7 @@ from app.engine.markets import (
 
 def _c(**over):
     c = {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
-         "odds": 1.87, "p": 0.64, "ev": 0.20, "axes_kr": "전문가+실데이터",
+         "odds": 1.62, "p": 0.64, "ev": 0.037, "axes_kr": "전문가+실데이터",
          "approved": True, "reject_reason": None}
     c.update(over)
     return c
@@ -31,7 +31,7 @@ def test_grade_uses_win_prob_and_odds_floor_not_ev():
     assert grade_candidate(_c())[0] == GRADE_GREEN                  # 64% + 1.87
     assert grade_candidate(_c(p=0.59))[0] == GRADE_YELLOW           # 58~62%
     assert grade_candidate(_c(p=0.55))[0] == GRADE_RED              # 승률 미달
-    assert grade_candidate(_c(odds=1.45))[0] == GRADE_RED           # 배당 미달
+    assert grade_candidate(_c(odds=1.45, p=0.60))[0] == GRADE_RED   # 배당 미달
     assert grade_candidate(_c(approved=False, reject_reason="근거 부족"))[0] == GRADE_RED
     assert grade_candidate(_c(odds=None, ev=None, p=None))[0] == GRADE_BLANK
     blank_p = grade_candidate(_c(p=None, ev=None))
@@ -43,9 +43,9 @@ def test_grade_uses_win_prob_and_odds_floor_not_ev():
 def test_grade_note_speaks_in_money():
     """[3-3] 등급 사유는 승률과 1만 원 기준 실수령액으로 말한다."""
     note = grade_candidate(_c())[1]
-    assert "승률 64%" in note and "1만원당 8,700원" in note
+    assert "승률 64%" in note and "1만원당 6,200원" in note
     assert "EV" not in note and "이득" not in note
-    miss = grade_candidate(_c(odds=1.45))[1]
+    miss = grade_candidate(_c(odds=1.45, p=0.60))[1]
     # [3] 탈락 사유는 실제 사유를 정확히 — "이상치" 같은 엉뚱한 문구 금지
     assert miss == "배당 1.45 < 하한 1.55"
 
@@ -175,7 +175,7 @@ def _rendered_jg(**over):
              "odds": 1.81, "p": 0.47, "ev": -0.15, "axes_kr": "모델",
              "approved": True, "reject_reason": None},          # 승률 미달 → 🔴
             {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
-             "odds": 1.87, "p": 0.64, "ev": 0.20, "axes_kr": "전문가+실데이터",
+             "odds": 1.62, "p": 0.64, "ev": 0.037, "axes_kr": "전문가+실데이터",
              "approved": True, "reject_reason": None},          # 62%↑·1.60↑ → 🟢
             {"market": "spreads", "side": "Texas Rangers", "line": 1.5,
              "desc": "텍사스 레인저스 런라인 +1.5", "odds": 1.55, "p": 0.66, "ev": 0.023,
@@ -197,7 +197,7 @@ def test_board_is_always_rendered_as_table():
     assert "⑧ 마켓 보드" in out
     # [3-3] 마켓 | 배당 | 승률 | 1만원 수익 | 신호등 | 근거 | ★
     assert "승패 홈 | 1.81 | 47% | 8,100원 | 🔴" in out
-    assert "언더 8.5 | 1.87 | 64% | 8,700원 | 🟢" in out
+    assert "언더 8.5 | 1.62 | 64% | 6,200원 | 🟢" in out
     assert "텍사스 레인저스 런라인 +1.5 | 1.55 | 66% | 5,500원 | 🟢" in out   # 하한 1.55 통과
     assert "★" in out                                   # [3] 마켓별 신뢰도
     assert "평가 가능한 마켓 없음" not in out            # [2] 금지 출력
@@ -220,7 +220,7 @@ def test_easy_layer_points_to_best_market_when_moneyline_dead():
     assert "🟢" in easy
     assert "승패는 볼 게 없지만" in easy and "언더 8.5" in easy
     # [3-3] 돈으로 말한다
-    assert "1만 원당 8,700원" in easy and "이기는 계산" in easy
+    assert "1만 원당 6,200원" in easy and "이기는 계산" in easy
     assert "EV" not in easy and "기대값" not in easy
 
 

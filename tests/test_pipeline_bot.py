@@ -324,7 +324,7 @@ def _easy_game(**over):
         "starts_at_kst": "08/23 08:15", "status": "scheduled", "status_label": "",
         "league": "MLB", "model_valid": True,
         "p_model": 0.62, "p_market": 0.60, "p_claude": 0.63,
-        "best_odds": {"Los Angeles Dodgers": 1.80, "Pittsburgh Pirates": 2.10},
+        "best_odds": {"Los Angeles Dodgers": 1.62, "Pittsburgh Pirates": 2.40},
         "expert_picks": [], "verdict": "홈 우세", "judge_confidence": "high",
         "judge_pass": False,
         "stats": {"home_pitcher": "Yoshinobu Yamamoto", "away_pitcher": "Paul Skenes"},
@@ -337,16 +337,16 @@ def _easy_game(**over):
             "absences": ["Mookie Betts 손목 부상 결장"],
         },
         "pick_summary": {"side": "Los Angeles Dodgers", "desc": "LA 다저스 승",
-                         "market": "h2h", "odds": 1.80, "p_final": 0.62, "ev": 0.116,
+                         "market": "h2h", "odds": 1.62, "p_final": 0.64, "ev": 0.037,
                          "flags": [], "approved": True, "reject_reason": None},
         # [A-1] 신호등은 마켓 보드에서 나온다
         "market_board": [
             # 승률 62%↑·배당 1.60↑ → 🟢 / 승률 58~62% → 🟡
             {"market": "h2h", "side": "Los Angeles Dodgers", "line": None,
-             "desc": "LA 다저스 승", "odds": 1.80, "p": 0.64, "ev": 0.152,
+             "desc": "LA 다저스 승", "odds": 1.62, "p": 0.64, "ev": 0.037,
              "axes_kr": "실데이터+모델", "approved": True, "reject_reason": None},
             {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
-             "odds": 1.87, "p": 0.59, "ev": 0.103, "axes_kr": "전문가+실데이터",
+             "odds": 1.78, "p": 0.59, "ev": 0.050, "axes_kr": "전문가+실데이터",
              "approved": True, "reject_reason": None},
         ],
     }
@@ -399,7 +399,7 @@ def test_signal_uses_best_market_not_moneyline():
 
     g = _easy_game()
     g["market_board"][0].update(approved=False, reject_reason="근거 부족 — 2-소스 미달")
-    g["market_board"][1].update(p=0.65)           # 언더 8.5는 승인 + 승률 충분
+    g["market_board"][1].update(p=0.65, odds=1.60)  # 언더 8.5 승인 + 승률·엣지 정상
     _grade_board(g)
     sig, reason, _ = classify_signal(g)
     assert sig == "🟢", "승패 탈락이 경기 전체를 죽이면 안 된다"

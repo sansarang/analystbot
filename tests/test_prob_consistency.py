@@ -27,7 +27,7 @@ def _jg(**over):
         "starts_at_kst": "08/25 10:45", "model_valid": True,
         "p_model": 0.368, "p_market": 0.396, "p_claude": 0.35,
         "market_probs": {"San Francisco Giants": 0.396, "Cincinnati Reds": 0.604},
-        "best_odds": {"San Francisco Giants": 2.53, "Cincinnati Reds": 1.61},
+        "best_odds": {"San Francisco Giants": 2.53, "Cincinnati Reds": 1.57},
         "judge_confidence": "high", "expert_picks": [],
         "stats": {"home_pitcher": "Carson Whisenhunt", "away_pitcher": "Chase Burns"},
         "research": {"home_recent_form": {"form": "LLWLL"},
@@ -35,7 +35,7 @@ def _jg(**over):
         "verdict": "번스는 시즌 ERA 2.51, WHIP 1.11로 안정적이다.",
         "market_board": [
             {"market": "h2h", "side": "Cincinnati Reds", "line": None,
-             "desc": "신시내티 레즈 승", "odds": 1.61, "p": 0.68, "ev": 0.095,
+             "desc": "신시내티 레즈 승", "odds": 1.57, "p": 0.68, "ev": 0.068,
              "axes_kr": "실데이터+전문가", "approved": True, "reject_reason": None},
             {"market": "h2h", "side": "San Francisco Giants", "line": None,
              "desc": "샌프란시스코 자이언츠 승", "odds": 2.53, "p": 0.32, "ev": -0.19,
@@ -51,7 +51,7 @@ def _jg(**over):
             "net_delta": -0.08, "capped": False,
         },
         "pick_summary": {"side": "Cincinnati Reds", "desc": "신시내티 레즈 승",
-                         "market": "h2h", "odds": 1.61, "p_final": 0.68, "ev": 0.095,
+                         "market": "h2h", "odds": 1.57, "p_final": 0.68, "ev": 0.068,
                          "flags": [], "approved": True, "reject_reason": None,
                          "axes": "실데이터+전문가"},
     }
@@ -164,24 +164,24 @@ def test_model_and_market_probs_not_printed():
 # ---------------------------------------------------------------- [3] 승률 상한
 
 def test_probability_cap_applied_and_labelled():
-    """[1] MLB 단일 경기 77%는 비현실적 — 65%로 절사하고 원값을 표기한다."""
+    """§0 MLB 단일 경기 77%는 비현실적 — 68%로 절사하고 원값을 표기한다."""
     from app.config import Settings
 
     s = Settings(_env_file=None)
     a = WinProbAdjuster(s)
     jg = {"home": "H", "away": "A"}
     out = a.adjust(0.77, jg, {}, "mlb")
-    assert out["p"] == s.prob_cap_mlb == 0.65
+    assert out["p"] == s.max_win_prob_mlb == 0.68
     assert out["capped"] is True
     assert any("추정 상한 적용" in x for x in out["trace"])
 
-    # 반대편도 절사된다 (0.23 → 0.35)
+    # 반대편도 절사된다 (0.23 → 0.32)
     low = a.adjust(0.23, jg, {}, "mlb")
-    assert low["p"] == round(1 - s.prob_cap_mlb, 4)
+    assert low["p"] == s.min_win_prob_mlb == 0.32
 
     # 축구는 상한이 더 높다
     soccer = a.adjust(0.80, jg, {}, "soccer")
-    assert soccer["p"] == s.prob_cap_soccer == 0.70
+    assert soccer["p"] == s.max_win_prob_soccer == 0.72
 
 
 def test_no_cap_when_within_range():

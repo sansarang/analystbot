@@ -419,20 +419,46 @@ def soccer_market_probs(lam_home: float, lam_away: float, lines: dict | None = N
 
 # ---------------------------------------------------------------- [1] 상한/하한
 
-def cap_probability(p: float, sport: str, settings=None) -> tuple[float, str | None]:
-    """[1] 승률 절사 — 계산 오류를 화면에 내보내지 않는다.
+def prob_bounds(sport: str, settings=None) -> tuple[float, float]:
+    """§0 종목별 승률 상·하한. 축구는 3-way라 하한이 비대칭이다."""
+    s = settings or get_settings()
+    if sport == "mlb":
+        return s.min_win_prob_mlb, s.max_win_prob_mlb
+    return s.min_win_prob_soccer, s.max_win_prob_soccer
 
-    근거: 학계 최고 수준 MLB 모델도 정확도 61.77%이고 최강팀도 단일 경기 승률이
-    65%를 넘지 않는다. 상한 초과는 '강한 픽'이 아니라 **모델이 틀렸다는 신호**다.
+
+def cap_probability(p: float, sport: str, settings=None) -> tuple[float, str | None]:
+    """§0 승률 절사 — 계산 오류를 화면에 내보내지 않는다.
+
+    근거: 운의 비중이 MLB 27.8%, EPL 31.4%다. 완벽한 정보를 가져도 MLB 단일 경기
+    예측 상한은 약 72%이고 학계 최고 모델은 61.77%다. 상한 초과는 '강한 픽'이 아니라
+    **모델이 틀렸다는 신호**다.
     반환: (절사된 확률, 표기 문구 또는 None)
     """
-    s = settings or get_settings()
-    cap = s.prob_cap_mlb if sport == "mlb" else s.prob_cap_soccer
-    if p > cap:
-        return cap, f"추정 상한 적용(원값 {p:.0%})"
-    if p < 1 - cap:
-        return 1 - cap, f"추정 하한 적용(원값 {p:.0%})"
+    lo, hi = prob_bounds(sport, settings)
+    if p > hi:
+        return hi, f"추정 상한 적용(원값 {p:.0%})"
+    if p < lo:
+        return lo, f"추정 하한 적용(원값 {p:.0%})"
     return p, None
+
+
+def edge_vs_market(p: float | None, odds: float | None) -> float | None:
+    """§0 시장 대비 엣지 = 우리 확률 − 배당 환산 확률."""
+    if p is None or not odds:
+        return None
+    return round(p - 1.0 / float(odds), 4)
+
+
+def edge_exceeds_limit(p: float | None, odds: float | None, settings=None) -> tuple[bool, float | None]:
+    """§0 엣지가 현실 상한(5%)을 넘는가.
+
+    Starlizard(분석가 200명)의 시장 대비 엣지가 1~2%다. 5% 초과는 우리가 더 똑똑한
+    것이 아니라 데이터가 틀린 것이다 — 추천에서 빼고 검증 대상으로 분리한다.
+    """
+    s = settings or get_settings()
+    e = edge_vs_market(p, odds)
+    return (e is not None and e > s.max_edge_vs_market), e
 
 
 async def record_cap_hit(redis, date: str, game_id, raw: float, sport: str) -> int:

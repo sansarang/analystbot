@@ -190,13 +190,30 @@ def test_soccer_lambda_from_xg():
 # ---------------------------------------------------------------- 상한·비대칭
 
 def test_cap_blocks_impossible_probabilities():
-    """[1] 야구 65%/35%, 축구 70% 상한 — 초과는 강한 픽이 아니라 계산 오류다."""
+    """§0 야구 68%/32%, 축구 72%/10% — 초과는 강한 픽이 아니라 계산 오류다.
+
+    근거: 운의 비중 MLB 27.8%. 완벽한 정보를 가져도 예측 상한은 약 72%이고
+    학계 최고 모델은 61.77%다.
+    """
     p, note = cap_probability(0.778, "mlb", S)
-    assert p == 0.65 and "원값 78%" in note
+    assert p == S.max_win_prob_mlb == 0.68 and "원값 78%" in note
     low, note2 = cap_probability(0.234, "mlb", S)
-    assert low == 0.35 and "원값 23%" in note2
+    assert low == S.min_win_prob_mlb == 0.32 and "원값 23%" in note2
     assert cap_probability(0.62, "mlb", S) == (0.62, None)
-    assert cap_probability(0.74, "soccer", S)[0] == 0.70
+    assert cap_probability(0.80, "soccer", S)[0] == 0.72
+    # 축구는 3-way라 하한이 비대칭이다 (원정 승 확률은 낮게 나올 수 있다)
+    assert cap_probability(0.05, "soccer", S)[0] == 0.10
+
+
+def test_edge_vs_market_limit():
+    """§0 세계 최고 조직도 시장 대비 엣지가 1~2%다. 5% 초과는 데이터 오류로 본다."""
+    from app.engine.scoring import edge_exceeds_limit, edge_vs_market
+
+    assert edge_vs_market(0.62, 1.72) == pytest.approx(0.0386, abs=1e-3)
+    over, edge = edge_exceeds_limit(0.70, 1.72, S)
+    assert over is True and edge > S.max_edge_vs_market
+    assert edge_exceeds_limit(0.60, 1.72, S)[0] is False
+    assert edge_exceeds_limit(None, 1.72, S)[0] is False
 
 
 def test_away_threshold_is_five_points_higher():

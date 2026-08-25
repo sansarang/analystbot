@@ -353,6 +353,14 @@ def grade_candidate(c: dict, settings=None) -> tuple[str, str]:
         return GRADE_RED, c.get("reject_reason") or "제외"
 
     money = f"1만원당 {payout_10k(odds):,}원"
+
+    # §0 시장 대비 엣지 상한 — Starlizard도 1~2%다. 5% 초과는 데이터 오류로 본다.
+    from app.engine.scoring import edge_exceeds_limit
+
+    over_edge, edge = edge_exceeds_limit(prob, odds, s)
+    if over_edge:
+        return GRADE_RED, (f"시장 대비 괴리 과다({edge:+.1%}) — 데이터 검증 필요")
+
     if odds < s.min_odds:
         return GRADE_RED, f"배당 {odds:.2f} < 하한 {s.min_odds:.2f}"
 
@@ -496,8 +504,13 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
     from app.engine.scoring import is_away_underdog, required_prob
 
     for c in out:
+        from app.config import get_settings
+        from app.engine.scoring import edge_vs_market
+
         c["required_prob"] = required_prob(c["market"], c["side"], jg)
         c["away_underdog"] = is_away_underdog(c["market"], c["side"], jg, c.get("odds"))
+        c["edge"] = edge_vs_market(c.get("p"), c.get("odds"))
+        c["edge_excess"] = bool(c["edge"] is not None and c["edge"] > get_settings().max_edge_vs_market)
         _approve(jg, c, sport)
         c["grade"], c["grade_note"] = grade_candidate(c)
 

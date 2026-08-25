@@ -67,12 +67,27 @@ class Settings(BaseSettings):
     # 주의: 0.58 × 1.60 = 0.928 → EV -7.2%. 승률 58%의 손익분기 배당은 1.724다.
     min_win_prob: float = 0.58
     min_odds: float = 1.55            # 1.60 → 1.55 (0.01 미달 탈락이 잦아 완화)
-    # ── 승률 상한/하한 ([1]) ─────────────────────────────────────────────
-    # 근거: 학계 최고 수준 MLB 모델도 정확도 61.77%(Wharton). 최강팀도 단일 경기
-    # 승률이 65%를 넘지 않는다. 이를 넘는 값은 계산 오류로 본다.
-    prob_cap_mlb: float = 0.65        # 야구 상한 (하한은 1 - 상한 = 0.35)
-    prob_cap_soccer: float = 0.70     # 축구 승 확률 상한
-    prob_cap_alert_n: int = 3         # 하루 이만큼 초과하면 "계산 로직 점검 필요" 경고
+    # ── §0 시스템 상수 — 물리적 한계 (임의 완화 금지, docs/MODEL.md 참조) ──
+    # 근거: 운의 비중 연구 MLB 27.8% / EPL 31.4%. 완벽한 정보를 가져도 MLB 단일 경기
+    # 예측 상한은 약 72%이며, 학계 최고 모델 정확도는 61.77%(Wharton)다.
+    # 우리 상한은 그보다 보수적으로 잡는다. 이를 넘는 값은 '강한 픽'이 아니라 계산 오류다.
+    max_win_prob_mlb: float = 0.68
+    min_win_prob_mlb: float = 0.32
+    max_win_prob_soccer: float = 0.72
+    min_win_prob_soccer: float = 0.10   # 3-way라 원정 승 확률은 낮게 나올 수 있다
+    # 세계 최고 조직(Starlizard, 분석가 200명)의 시장 대비 엣지가 1~2%다.
+    # 5% 초과는 우리가 더 똑똑한 게 아니라 데이터가 틀린 것이다.
+    max_edge_vs_market: float = 0.05
+    prob_cap_alert_n: int = 3         # 하루 이만큼 초과하면 "모델 점검 필요" 경고
+
+    # 하위호환 별칭 (기존 호출부)
+    @property
+    def prob_cap_mlb(self) -> float:
+        return self.max_win_prob_mlb
+
+    @property
+    def prob_cap_soccer(self) -> float:
+        return self.max_win_prob_soccer
 
     # 원정 비대칭 ([4]) — 분데스리가 연구: 홈 승 ROI +10~15%, 원정 -17%
     away_prob_penalty: float = 0.05   # 원정 픽은 승률 임계를 이만큼 높게 적용

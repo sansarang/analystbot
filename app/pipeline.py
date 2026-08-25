@@ -686,6 +686,8 @@ def qualifies(pick: dict, settings=None) -> bool:
     need = pick.get("required_prob") or s.min_win_prob
     if pick.get("two_source") is False:      # [6] 2-소스 룰은 추천 자격에만 적용
         return False
+    if pick.get("edge_excess"):              # §0 시장 대비 괴리 과다 = 데이터 오류 의심
+        return False
     return p is not None and odds is not None and p >= need and odds >= s.min_odds
 
 
@@ -940,6 +942,11 @@ def _compute_picks(
             "reject_reason": rep.get("reject_reason"),
             "axes": rep.get("axes_kr"),
             "grade": rep.get("grade"),
+            # 추천 자격 판정에 쓰이는 필드 — 빠지면 qualifies()가 무력화된다
+            "two_source": rep.get("two_source"),
+            "required_prob": rep.get("required_prob"),
+            "edge": rep.get("edge"),
+            "edge_excess": rep.get("edge_excess"),
             "lineup_status": jg.get("lineup_status") or "none",
             "pick_state": _pick_state(jg)[0], "pick_state_label": _pick_state(jg)[1],
             "p_legacy": (jg.get("p_legacy") or {}).get(rep["side"]),
