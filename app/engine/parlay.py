@@ -90,9 +90,13 @@ def build_tiered_parlays(
         for leg in combo["legs"]:
             usage[leg["key"]] = usage.get(leg["key"], 0) + 1
         relaxed_any = relaxed_any or relaxed
+        from app.engine.markets import payout_10k
+
         combos.append({
             "tier": name, "ok": True, "stake_note": stake_note,
             "relaxed": relaxed, **combo,
+            # [3-5] 조합도 돈으로 말한다 — 합산 배당 기준 1만 원 실수령액
+            "payout_10k": payout_10k(combo["odds"]),
         })
     ok_combos = [c for c in combos if c.get("ok")]
     all_fail = round(prod(1 - c["p"] for c in ok_combos), 4) if ok_combos else None

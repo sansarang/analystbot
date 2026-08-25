@@ -20,34 +20,48 @@ from app.engine.markets import (
 
 def _c(**over):
     c = {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
-         "odds": 1.87, "p": 0.58, "ev": 0.07, "axes_kr": "전문가+시장",
+         "odds": 1.87, "p": 0.64, "ev": 0.20, "axes_kr": "전문가+실데이터",
          "approved": True, "reject_reason": None}
     c.update(over)
     return c
 
 
-def test_grade_reflects_market_not_game():
-    assert grade_candidate(_c())[0] == GRADE_GREEN                       # 승인 + EV 충분
-    assert grade_candidate(_c(ev=0.02))[0] == GRADE_YELLOW               # 이득 얇음
-    assert grade_candidate(_c(ev=-0.08))[0] == GRADE_RED                 # 가치 없음
+def test_grade_uses_win_prob_and_odds_floor_not_ev():
+    """[3-2] 등급은 승률 + 배당 하한으로만 — EV는 판정에서 제외."""
+    assert grade_candidate(_c())[0] == GRADE_GREEN                  # 64% + 1.87
+    assert grade_candidate(_c(p=0.59))[0] == GRADE_YELLOW           # 58~62%
+    assert grade_candidate(_c(p=0.55))[0] == GRADE_RED              # 승률 미달
+    assert grade_candidate(_c(odds=1.45))[0] == GRADE_RED           # 배당 미달
     assert grade_candidate(_c(approved=False, reject_reason="근거 부족"))[0] == GRADE_RED
-    # 배당 자체가 없으면 ⚪ (평가 불가) — 행은 남기고 재평가 대상으로 표시
     assert grade_candidate(_c(odds=None, ev=None, p=None))[0] == GRADE_BLANK
-    # 배당은 있는데 확률 근거가 없으면 🔴 근거 부족
     blank_p = grade_candidate(_c(p=None, ev=None))
     assert blank_p[0] == GRADE_RED and "근거" in blank_p[1]
+    # EV가 아무리 커도 승률이 기준 미달이면 🔴
+    assert grade_candidate(_c(p=0.50, ev=0.40))[0] == GRADE_RED
 
 
-def test_yellow_note_marks_low_variance_alternative():
-    """[A-1] 저분산 마켓의 🟡은 '저분산 대안'으로 표기한다."""
-    assert "저분산 대안" in grade_candidate(_c(ev=0.02))[1]
-    assert "저분산 대안" in grade_candidate(_c(market="spreads", line=1.5, ev=0.02))[1]
-    assert "저분산" not in grade_candidate(_c(market="spreads", line=-1.5, ev=0.02))[1]
+def test_grade_note_speaks_in_money():
+    """[3-3] 등급 사유는 승률과 1만 원 기준 실수령액으로 말한다."""
+    note = grade_candidate(_c())[1]
+    assert "승률 64%" in note and "1만원당 8,700원" in note
+    assert "EV" not in note and "이득" not in note
+    miss = grade_candidate(_c(odds=1.45))[1]
+    assert "배당 1.45" in miss and "기준 1.60 미달" in miss
+
+
+def test_payout_and_breakeven_helpers():
+    from app.engine.markets import breakeven_odds, payout_10k
+
+    assert payout_10k(1.61) == 6100
+    assert payout_10k(2.00) == 10000
+    assert payout_10k(None) == 0
+    assert breakeven_odds(0.58) == 1.724      # 승률 58%의 손익분기 배당
+    assert breakeven_odds(None) is None
 
 
 def test_board_grade_takes_best_market():
     """[A-1] 승패 🔴 + 언더 🟢 → 경기 신호등은 🟢."""
-    board = [_c(market="h2h", desc="홈 승", ev=-0.08), _c()]
+    board = [_c(market="h2h", desc="홈 승", p=0.50), _c()]
     for c in board:
         c["grade"], c["grade_note"] = grade_candidate(c)
     assert board_grade(board) == GRADE_GREEN
@@ -56,12 +70,12 @@ def test_board_grade_takes_best_market():
 
 def test_rejection_summary_lists_each_market_and_unpriced():
     """[A-1] 전 마켓 🔴이면 검토 목록과 사유를 한 줄로 밝힌다."""
-    board = [_c(market="h2h", desc="승패 홈", ev=-0.12),
+    board = [_c(market="h2h", desc="승패 홈", p=0.51),
              _c(desc="언더 8.5", approved=False, reject_reason="근거 부족 — 2-소스 미달")]
     for c in board:
         c["grade"], c["grade_note"] = grade_candidate(c)
     s = rejection_summary(board, ["런라인"])
-    assert "승패 홈" in s and "-12.0%" in s
+    assert "승패 홈" in s and "승률 51%" in s
     assert "언더 8.5" in s and "근거 부족" in s
     assert "런라인 배당 미수집" in s
 
@@ -157,14 +171,14 @@ def _rendered_jg(**over):
                      "absences": ["Texas Rangers의 Josh Jung 결장"]},
         "market_board": [
             {"market": "h2h", "side": "Chicago White Sox", "line": None, "desc": "승패 홈",
-             "odds": 1.81, "p": 0.47, "ev": -0.08, "axes_kr": "시장",
-             "approved": True, "reject_reason": None},
+             "odds": 1.81, "p": 0.47, "ev": -0.15, "axes_kr": "모델",
+             "approved": True, "reject_reason": None},          # 승률 미달 → 🔴
             {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
-             "odds": 1.87, "p": 0.58, "ev": 0.07, "axes_kr": "전문가+시장",
-             "approved": True, "reject_reason": None},
+             "odds": 1.87, "p": 0.64, "ev": 0.20, "axes_kr": "전문가+실데이터",
+             "approved": True, "reject_reason": None},          # 62%↑·1.60↑ → 🟢
             {"market": "spreads", "side": "Texas Rangers", "line": 1.5,
              "desc": "텍사스 레인저스 런라인 +1.5", "odds": 1.55, "p": 0.66, "ev": 0.023,
-             "axes_kr": "시장", "approved": True, "reject_reason": None},
+             "axes_kr": "실데이터", "approved": True, "reject_reason": None},  # 배당 미달 → 🔴
         ],
         "markets_unpriced": [],
     }
@@ -180,9 +194,10 @@ def test_board_is_always_rendered_as_table():
 
     out = render_game_section(_rendered_jg())
     assert "⑧ 마켓 보드" in out
-    assert "승패 홈 | 1.81 | 47% | -8.0% | 🔴" in out
-    assert "언더 8.5 | 1.87 | 58% | +7.0% | 🟢" in out
-    assert "텍사스 레인저스 런라인 +1.5 | 1.55 | 66% | +2.3% | 🟡" in out
+    # [3-3] 마켓 | 배당 | 승률 | 1만원 수익 | 신호등 | 근거 | ★
+    assert "승패 홈 | 1.81 | 47% | 8,100원 | 🔴" in out
+    assert "언더 8.5 | 1.87 | 64% | 8,700원 | 🟢" in out
+    assert "텍사스 레인저스 런라인 +1.5 | 1.55 | 66% | 5,500원 | 🔴" in out   # 배당 미달
     assert "★" in out                                   # [3] 마켓별 신뢰도
     assert "평가 가능한 마켓 없음" not in out            # [2] 금지 출력
 
@@ -203,22 +218,25 @@ def test_easy_layer_points_to_best_market_when_moneyline_dead():
     easy = render_game_easy(_rendered_jg()).split(DETAIL_SEP)[0]
     assert "🟢" in easy
     assert "승패는 볼 게 없지만" in easy and "언더 8.5" in easy
+    # [3-3] 돈으로 말한다
+    assert "1만 원당 8,700원" in easy and "이기는 계산" in easy
+    assert "EV" not in easy and "기대값" not in easy
 
 
 def test_easy_layer_lists_reasons_when_all_markets_dead():
     """[A-1] 전 마켓 🔴일 때만 패스이고, 마켓별 사유를 밝힌다."""
     from app.pipeline import DETAIL_SEP, render_game_easy
 
+    from app.engine.markets import grade_candidate
+
     jg = _rendered_jg()
     for c in jg["market_board"]:
-        c["ev"] = -0.05
-    from app.engine.markets import grade_candidate
-    for c in jg["market_board"]:
+        c["p"] = 0.50                       # 전 마켓 승률 기준 미달
         c["grade"], c["grade_note"] = grade_candidate(c)
-    jg["markets_unpriced"] = ["언더오버"]
     easy = render_game_easy(jg).split(DETAIL_SEP)[0]
     assert "🔴" in easy
-    assert "전 마켓" in easy and "승패 홈" in easy and "언더오버 배당 미수집" in easy
+    assert "전 마켓" in easy and "승패 홈" in easy
+    assert "승률 58%·배당 1.60 기준" in easy
 
 
 def test_recommendation_pool_includes_non_moneyline(db_pool=None):
@@ -228,8 +246,9 @@ def test_recommendation_pool_includes_non_moneyline(db_pool=None):
     jg = _rendered_jg()
     jg["market_board"][0].update(approved=False, reject_reason="근거 부족")
     legs = approved_market_legs([jg])
+    # [3-5] 레그도 승률 58%↑·배당 1.60↑ 기준을 통과한 것만 (런라인 1.55는 배당 미달)
     assert legs and all(l["market"] != "h2h" for l in legs)
-    assert {l["desc"] for l in legs} == {"언더 8.5", "텍사스 레인저스 런라인 +1.5"}
+    assert {l["desc"] for l in legs} == {"언더 8.5"}
 
 
 # ---------------------------------------------------------------- [1] 회귀: 배당↔보드 일관성

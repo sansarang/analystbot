@@ -263,27 +263,46 @@ def row_stars(c: dict, confidence: str | None = None) -> int:
     return stars
 
 
-def grade_candidate(c: dict, ev_threshold: float = 0.05) -> tuple[str, str]:
-    """[A-1] 마켓 1건의 등급과 한 줄 사유 — **경기 단위가 아니라 마켓 단위로** 판정한다.
+def payout_10k(odds: float | None) -> int:
+    """[3-3] 1만 원 걸었을 때 실수령 수익 (원금 제외). 돈으로 말하기 위한 단위."""
+    if not odds:
+        return 0
+    return int(round((float(odds) - 1.0) * 10000))
 
-    승패에 가치가 없어도 언더/핸디캡이 살아 있으면 그 마켓은 🟢일 수 있다.
-    🟢 승인 + EV 기준 초과 / 🟡 승인이나 이득이 얇음 / 🔴 미승인 또는 이득 없음.
+
+def breakeven_odds(p: float | None) -> float | None:
+    """승률 p의 손익분기 배당 (1/p). 참고 표기용 — 판정에는 쓰지 않는다."""
+    if not p:
+        return None
+    return round(1.0 / p, 3)
+
+
+def grade_candidate(c: dict, settings=None) -> tuple[str, str]:
+    """[3-2] 마켓 1건의 등급 — **승률과 배당 하한**으로만 판정한다. EV는 쓰지 않는다.
+
+    🟢 승률 62%↑ + 배당 1.60↑ / 🟡 승률 58~62% + 배당 1.60↑
+    🔴 승률 58% 미만 **또는** 배당 1.60 미만 / ⚪ 배당 미수집
+    기준값은 config(min_win_prob·min_odds·signal_green_prob)에서만 온다.
     """
-    ev = c.get("ev")
-    if not c.get("odds"):
+    from app.config import get_settings
+
+    s = settings or get_settings()
+    odds, prob = c.get("odds"), c.get("p")
+    if not odds:
         return GRADE_BLANK, "배당 확보 시 재평가"
-    if ev is None or c.get("p") is None:
+    if prob is None:
         return GRADE_RED, c.get("reject_reason") or "근거 부족"
     if not c.get("approved"):
         return GRADE_RED, c.get("reject_reason") or "제외"
-    if ev <= 0:
-        return GRADE_RED, f"이득 {ev:+.1%} — 가치 없음"
-    if ev >= ev_threshold:
-        return GRADE_GREEN, f"이득 {ev:+.1%}, 근거 {c.get('axes_kr') or '?'}"
-    low_var = c["market"] in ("dc", "totals") or (
-        c["market"] == "spreads" and (c.get("line") or 0) > 0)
-    kind = "저분산 대안" if low_var else "소액"
-    return GRADE_YELLOW, f"{kind}, 이득 {ev:+.1%}"
+
+    money = f"1만원당 {payout_10k(odds):,}원"
+    if odds < s.min_odds:
+        return GRADE_RED, f"배당 {odds:.2f} — 기준 {s.min_odds:.2f} 미달({money})"
+    if prob < s.min_win_prob:
+        return GRADE_RED, f"승률 {prob:.0%} — 기준 {s.min_win_prob:.0%} 미달"
+    if prob >= s.signal_green_prob:
+        return GRADE_GREEN, f"승률 {prob:.0%}, {money}"
+    return GRADE_YELLOW, f"승률 {prob:.0%} — 소액, {money}"
 
 
 def board_grade(board: list[dict]) -> str:
@@ -487,12 +506,14 @@ def _approve(jg: dict, c: dict, sport: str) -> None:
         c["reject_reason"] = "판정 미수신 — 추천 불가"
         c["flags"] = []
         return
+    # 이상치 플래그 — 판정 근거가 아니라 **배당 데이터 검증**용으로만 남긴다.
+    # (3-way를 2-way로 디빅해 전 경기가 +EV로 보였던 실사고를 잡은 장치)
     flags = []
-    if c["ev"] > 0.20:
-        flags.append(f"EV {c['ev']:+.1%} > +20% (배당 데이터 이상 의심)")
+    if c["ev"] is not None and c["ev"] > 0.20:
+        flags.append(f"수익률 이상치 (배당 데이터 의심)")
     implied = 1 / c["odds"]
     if abs(c["p"] - implied) > 0.25:
-        flags.append(f"확률 {c['p']:.0%} vs 배당 암시 {implied:.0%} 괴리 >25%p")
+        flags.append(f"승률 {c['p']:.0%} vs 배당 환산 {implied:.0%} 괴리 >25%p (데이터 확인 필요)")
     c["flags"] = flags
 
     def reject(reason):

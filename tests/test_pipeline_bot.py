@@ -145,7 +145,7 @@ async def test_judge_pass_excluded_from_recommendations(db_pool, redis_client, m
     monkeypatch.setattr(Judge, "_mock_verdict", staticmethod(pass_all))
     card = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
     # 전 경기 패스 권장 → 추천·조합 없음 + 관망 정직 표기 + predictions 0건
-    assert "관망 권장" in card
+    assert "기준을 넘는 픽이 없습니다" in card
     assert "조합 1" not in card
     assert await db_pool.fetchval(
         "SELECT count(*) FROM predictions WHERE created_at > now() - interval '1 minute'"
@@ -332,11 +332,12 @@ def _easy_game(**over):
                          "flags": [], "approved": True, "reject_reason": None},
         # [A-1] 신호등은 마켓 보드에서 나온다
         "market_board": [
+            # 승률 62%↑·배당 1.60↑ → 🟢 / 승률 58~62% → 🟡
             {"market": "h2h", "side": "Los Angeles Dodgers", "line": None,
-             "desc": "LA 다저스 승", "odds": 1.80, "p": 0.62, "ev": 0.116,
+             "desc": "LA 다저스 승", "odds": 1.80, "p": 0.64, "ev": 0.152,
              "axes_kr": "실데이터+모델", "approved": True, "reject_reason": None},
             {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
-             "odds": 1.87, "p": 0.55, "ev": 0.029, "axes_kr": "전문가+시장",
+             "odds": 1.87, "p": 0.59, "ev": 0.103, "axes_kr": "전문가+실데이터",
              "approved": True, "reject_reason": None},
         ],
     }
@@ -389,7 +390,7 @@ def test_signal_uses_best_market_not_moneyline():
 
     g = _easy_game()
     g["market_board"][0].update(approved=False, reject_reason="근거 부족 — 2-소스 미달")
-    g["market_board"][1].update(ev=0.07)          # 언더 8.5는 승인 + EV 충분
+    g["market_board"][1].update(p=0.65)           # 언더 8.5는 승인 + 승률 충분
     _grade_board(g)
     sig, reason, _ = classify_signal(g)
     assert sig == "🟢", "승패 탈락이 경기 전체를 죽이면 안 된다"
@@ -401,7 +402,7 @@ def test_all_markets_rejected_lists_each_reason():
     from app.pipeline import classify_signal
 
     g = _easy_game()
-    g["market_board"][0].update(approved=True, ev=-0.08)          # 승패 가치 없음
+    g["market_board"][0].update(approved=True, p=0.51)            # 승패 승률 미달
     g["market_board"][1].update(approved=False, reject_reason="근거 부족 — 2-소스 미달")
     g["market_board"].append({"market": "spreads", "side": "LAD", "line": -1.5,
                               "desc": "LA 다저스 런라인 -1.5", "odds": None, "p": None,
@@ -490,9 +491,9 @@ def test_signal_downgrade_on_reversal():
     sig, reason, stars = classify_signal(revised)
     assert sig == "🟡" and "반전 요인" in reason
 
-    yellow = _easy_game()                            # EV를 기준 미만으로 낮추면 🟡
+    yellow = _easy_game()                            # 승률을 58~62%로 낮추면 🟡
     for c in yellow["market_board"]:
-        c["ev"] = 0.02
+        c["p"] = 0.59
     _grade_board(yellow)
     assert classify_signal(yellow)[0] == "🟡"
     yellow["conclusion_revised"] = True
@@ -556,7 +557,7 @@ def test_card_reports_judge_failure_instead_of_pass_recommendation():
 
 
 def test_card_still_says_pass_when_judged_but_no_value():
-    """[정직성] 판정은 됐는데 밸류가 없으면 기존대로 '관망 권장'."""
+    """[정직성] 판정은 됐는데 기준 미달이면 사유를 밝힌다 (판정 실패와 구분)."""
     from app.pipeline import DETAIL_SEP, _render_card
 
     analysis = {
@@ -568,7 +569,9 @@ def test_card_still_says_pass_when_judged_but_no_value():
         "picks": [], "combos": {}, "research_meta": {},
     }
     easy = _render_card(analysis).split(DETAIL_SEP)[0]
-    assert "관망 권장" in easy and "판정 실패" not in easy
+    # [3-1] '픽 없음'으로 끝내지 않고 승률·배당 기준을 밝힌다
+    assert "승률 58%·배당 1.60 기준을 넘는 픽이 없습니다" in easy
+    assert "판정 실패" not in easy
 
 
 async def test_judge_batches_large_slates(monkeypatch):

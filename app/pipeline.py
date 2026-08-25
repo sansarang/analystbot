@@ -643,6 +643,33 @@ async def _attach_alt_markets(pool: asyncpg.Pool, judge_games: list[dict]) -> No
             jg["odds_stale"] = False
 
 
+def qualifies(pick: dict, settings=None) -> bool:
+    """[3-1] 추천 자격 = 승률 하한 AND 배당 하한. EV는 쓰지 않는다."""
+    from app.config import get_settings
+
+    s = settings or get_settings()
+    p, odds = pick.get("p"), pick.get("odds")
+    return p is not None and odds is not None and p >= s.min_win_prob and odds >= s.min_odds
+
+
+def near_miss_picks(picks: list[dict], settings=None, n: int = 3) -> list[dict]:
+    """[3-1] 자격 미달이어도 승률 상위 N개는 사유와 함께 보여준다 ('픽 없음'으로 끝내지 않는다)."""
+    from app.config import get_settings
+
+    s = settings or get_settings()
+    pool = [p for p in picks if p.get("p") is not None and not qualifies(p, s)]
+    pool.sort(key=lambda x: x["p"], reverse=True)
+    out = []
+    for p in pool[:n]:
+        reasons = []
+        if p["p"] < s.min_win_prob:
+            reasons.append(f"승률 {p['p']:.0%} < {s.min_win_prob:.0%}")
+        if (p.get("odds") or 0) < s.min_odds:
+            reasons.append(f"배당 {p.get('odds') or 0:.2f} < {s.min_odds:.2f}")
+        out.append({**p, "miss_reason": " · ".join(reasons) or "미승인"})
+    return out
+
+
 def approved_market_legs(games: list[dict]) -> list[dict]:
     """[9] 조합 후보 풀 = 전 마켓 승인 픽 (판정 제외·저신뢰 경기는 이미 미승인)."""
     legs = []
@@ -650,7 +677,7 @@ def approved_market_legs(games: list[dict]) -> list[dict]:
         if jg.get("status") != "scheduled":
             continue
         for c in jg.get("market_board") or []:
-            if c.get("approved"):
+            if c.get("approved") and qualifies(c):
                 legs.append({
                     "game_id": jg["game_id"], "desc": c["desc"], "market": c["market"],
                     "odds": c["odds"], "p": c["p"],
@@ -875,7 +902,7 @@ def _compute_picks(
     # 단식 추천 = [1]~[3] 승인 + 판정 통과 + EV 임계 통과 + 모드별 픽 수 상한
     clean = [
         p for p in picks_out
-        if p["approved"] and not p["judge_excluded"] and p["ev"] > settings.ev_threshold
+        if p["approved"] and not p["judge_excluded"] and qualifies(p, settings)
     ]
     recommended = clean[: mode["max_picks"]]
     for p in picks_out:
@@ -1037,6 +1064,8 @@ DETAIL_SEP = "\n<<DETAIL>>\n"
 FORBIDDEN_BASIC_TERMS = [
     r"\bp_final\b", r"\bp_model\b", r"\bp_claude\b", r"\bEV\b", r"켈리",
     r"디비그", r"암시\s*확률", r"3자\s*대조", r"플래그", r"괴리",
+    # [3-2] EV·기대값 표현 전면 금지 — 기본층은 승률과 실수령액으로만 말한다
+    r"기대값", r"기댓값", r"이득\s*[+\-]", r"기대\s*수익률",
 ]
 _FORBIDDEN_RES = [re.compile(p) for p in FORBIDDEN_BASIC_TERMS]
 
@@ -1177,40 +1206,40 @@ def _pick_line(candidates: list[str], names: list[str], used: set[str] | None) -
 
 
 def _value_candidates(jg: dict, home_kr: str, away_kr: str) -> list[str]:
-    """[A-1][A-4] '걸 만한가' — 마켓 보드의 **최고 등급 마켓 하나**를 골라 말한다.
+    """[3-3] '걸 만한가' — 마켓 보드 최고 등급 마켓 하나를 **돈으로** 말한다.
 
-    승패가 🔴이어도 언더/핸디캡이 살아 있으면 그쪽을 말한다
-    ("승패는 볼 게 없지만 언더 8.5가 걸 만합니다"). 경기 전체를 죽이지 않는다.
+    "레즈 승 @1.61 — 10번 중 6번 이기는 계산, 이기면 1만 원당 6,100원 수익"
+    EV·기대값 표현은 쓰지 않는다 (기본층 금지어).
     """
-    from app.engine.markets import best_market, rejection_summary
+    from app.config import get_settings
+    from app.engine.markets import best_market, payout_10k, rejection_summary
 
+    s = get_settings()
     board = jg.get("market_board") or []
-    unpriced = jg.get("markets_unpriced") or []
     out: list[str] = []
     if not board:
-        miss = f" ({' / '.join(unpriced)})" if unpriced else ""
-        out.append(f"걸 만한가? {home_kr} vs {away_kr}는 배당을 수집하지 못해 "
-                   f"이득 계산이 불가능합니다{miss}.")
+        out.append(f"걸 만한가? {home_kr} vs {away_kr}는 배당을 수집하지 못해 판단할 수 없습니다.")
         return out
 
     top = best_market(board) or {}
-    grade, desc, odds = top.get("grade"), top.get("desc", "?"), top.get("odds")
+    grade, desc, odds, prob = (top.get("grade"), top.get("desc", "?"),
+                               top.get("odds"), top.get("p"))
     h2h = next((c for c in board if c["market"] == "h2h"), None)
     h2h_dead = h2h is not None and h2h.get("grade") == "🔴"
 
-    if grade in ("🟢", "🟡"):
-        p_txt = f"적중 계산 {top['p']:.0%}, " if top.get("p") is not None else ""
-        lead = ("승패는 볼 게 없지만 " if h2h_dead and top["market"] != "h2h" else "")
-        verb = "걸 만합니다" if grade == "🟢" else "소액이면 볼 만합니다"
-        out.append(f"걸 만한가? {lead}{desc} @{odds:.2f}({p_txt}이득 {top['ev']:+.1%})가 {verb}.")
+    if grade in ("🟢", "🟡") and odds and prob is not None:
+        lead = "승패는 볼 게 없지만 " if h2h_dead and top["market"] != "h2h" else ""
+        tail = "걸 만합니다" if grade == "🟢" else "소액이면 볼 만합니다"
+        out.append(f"걸 만한가? {lead}{desc} @{odds:.2f} — {_times_out_of_ten(prob)} "
+                   f"이기는 계산, 이기면 1만 원당 {payout_10k(odds):,}원 수익. {tail}.")
         if top["market"] != "h2h":
-            out.append(f"걸 만한가? 승패 대신 {desc} @{odds:.2f}가 이 경기에서 가장 나은 자리입니다"
-                       f"(이득 {top['ev']:+.1%}).")
+            out.append(f"걸 만한가? 승패 대신 {desc} @{odds:.2f}가 이 경기 최선입니다 — "
+                       f"{_times_out_of_ten(prob)} 적중, 1만 원당 {payout_10k(odds):,}원.")
         return out
 
-    # 전 마켓 🔴 — 검토한 마켓과 사유를 밝힌다 (막연한 '패스' 금지)
-    out.append(f"걸 만한가? 전 마켓을 봤지만 걸 자리가 없습니다 — "
-               f"{rejection_summary(board, unpriced)}.")
+    # 전 마켓 기준 미달 — 무엇이 왜 미달인지 밝힌다
+    out.append(f"걸 만한가? 전 마켓을 봤지만 승률 {s.min_win_prob:.0%}·배당 {s.min_odds:.2f} "
+               f"기준을 넘는 자리가 없습니다 — {rejection_summary(board)}.")
     return out
 
 
@@ -1342,17 +1371,20 @@ def sorted_board(jg: dict) -> list[dict]:
 
 
 def board_row(c: dict, confidence: str | None = None) -> str:
-    """[2][3] 마켓 보드 1행 — 배당이 없어도 '배당 미수집'으로 남기고 ★까지 붙인다."""
-    from app.engine.markets import row_stars
+    """[2][3-3] 마켓 보드 1행 — 돈으로 말한다. 배당이 없어도 행은 남긴다.
+
+    형식: 마켓 | 배당 | 승률 | 1만원 수익 | 신호등 | 근거 | ★
+    """
+    from app.engine.markets import payout_10k, row_stars
 
     odds = f"{c['odds']:.2f}" if c.get("odds") else "배당 미수집"
     prob = f"{c['p']:.0%}" if c.get("p") is not None else "—"
-    ev = f"{c['ev']:+.1%}" if c.get("ev") is not None else "—"
+    money = f"{payout_10k(c['odds']):,}원" if c.get("odds") else "—"
     grade = c.get("grade") or "⚪"
     note = c.get("grade_note") or c.get("reject_reason") or "—"
     stars = row_stars(c, confidence)
     star_txt = _stars(stars) if stars else "—"
-    return f"{c['desc']} | {odds} | {prob} | {ev} | {grade} | {note} | {star_txt}"
+    return f"{c['desc']} | {odds} | {prob} | {money} | {grade} | {note} | {star_txt}"
 
 
 def render_game_section(jg: dict, news: str = "") -> str:
@@ -1435,7 +1467,7 @@ def render_game_section(jg: dict, news: str = "") -> str:
 
     # [2] ⑧ 마켓 보드 — 전 마켓을 **항상** 행으로. 배당이 없어도 행을 지우지 않는다.
     #     형식: 마켓명 | 배당 | 봇 확률 | EV | 신호등 | 근거 한 줄 | ★
-    lines.append("⑧ 마켓 보드 (마켓 | 배당 | 봇확률 | EV | 신호등 | 근거 | 신뢰도):")
+    lines.append("⑧ 마켓 보드 (마켓 | 배당 | 승률 | 1만원 수익 | 신호등 | 근거 | 신뢰도):")
     for c in sorted_board(jg):
         lines.append("  " + board_row(c, jg.get("judge_confidence")))
 
@@ -1556,17 +1588,28 @@ def _render_card(analysis: dict) -> str:
     if recommended:
         for p in recommended:
             stake = f" (권장 {p['stake_krw']:,}원)" if p.get("stake_krw") else ""
+            from app.engine.markets import breakeven_odds, payout_10k
+
             lines.append(
                 f"· {p.get('desc') or _kr(p['side'])} @{p['odds']:.2f} — "
                 f"{_kr(p['home'])} vs {_kr(p['away'])}, "
-                f"{_times_out_of_ten(p['p'])} 적중하는 계산인데 배당이 후한 편입니다"
+                f"{_times_out_of_ten(p['p'])} 이기는 계산, "
+                f"이기면 1만 원당 {payout_10k(p['odds']):,}원 수익"
                 f" [{p.get('league', '?')} {p['starts_at_kst'][-5:]}]{stake}")
+            be = breakeven_odds(p["p"])
             detail.append(
-                f"{p.get('desc')}: p_final {p['p']:.1%} / EV {p['ev']:+.1%} / "
-                f"배당에 깔린 확률 {1 / p['odds']:.1%} / 근거 {p.get('axes') or '?'} / "
-                f"판정 신뢰도 {p.get('confidence')}")
+                f"{p.get('desc')}: 승률 {p['p']:.1%} / 배당 {p['odds']:.2f} / "
+                f"손익분기 배당 {be} / 시장 환산 {1 / p['odds']:.1%} / "
+                f"근거 {p.get('axes') or '?'} / 판정 신뢰도 {p.get('confidence')}")
     else:
-        lines.append("오늘은 배당 대비 이득 기준을 넘는 단식 픽이 없습니다 — 관망 권장")
+        s = get_settings()
+        lines.append(f"승률 {s.min_win_prob:.0%}·배당 {s.min_odds:.2f} 기준을 넘는 픽이 없습니다.")
+        near = near_miss_picks(picks, s)
+        if near:
+            lines.append(f"— 조건 미달 · 승률 상위 {len(near)}:")
+            for p in near:
+                lines.append(f"  · {p.get('desc') or _kr(p['side'])} @{(p.get('odds') or 0):.2f} "
+                             f"승률 {p['p']:.0%} — {p['miss_reason']}")
     if combos_info.get("reason"):
         lines.append(f"조합: {combos_info['reason']}")
     else:
@@ -1578,9 +1621,10 @@ def _render_card(analysis: dict) -> str:
                 f"{leg['desc']}[{leg.get('league', '?')} {leg['starts_at_kst'][-5:]}]"
                 for leg in c["legs"])
             relax = " (범위 완화)" if c.get("relaxed") else ""
+            money = f"1만 원당 {c.get('payout_10k', 0):,}원" if c.get("payout_10k") else ""
             lines.append(f"조합 {i}({c['tier']}): {legs_txt} @{c['odds']:.2f} "
-                         f"(적중률 {c['p']:.0%}) — {c['stake_note']}{relax}")
-            detail.append(f"조합 {i} 레그별 확률: " + ", ".join(
+                         f"(적중률 {c['p']:.0%}, {money}) — {c['stake_note']}{relax}")
+            detail.append(f"조합 {i} 레그별 승률: " + ", ".join(
                 f"{leg['desc']} {leg['p']:.0%}@{leg['odds']:.2f}" for leg in c["legs"]))
         if combos_info.get("all_fail_prob") is not None:
             lines.append(f"세 조합 모두 실패할 확률 ≈ {combos_info['all_fail_prob']:.0%}")
@@ -1607,7 +1651,7 @@ def rescope_analysis(analysis: dict, league_label: str) -> dict:
     picks = [dict(p) for p in analysis.get("picks", []) if p["game_id"] in ids]
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
     clean = [p for p in picks if p.get("approved") and not p["judge_excluded"]
-             and p["ev"] > settings.ev_threshold]
+             and qualifies(p, settings)]
     clean.sort(key=lambda x: x["ev"], reverse=True)
     recommended = clean[: mode["max_picks"]]
     for p in picks:
@@ -1632,8 +1676,8 @@ def render_full_reco(analyses: list[dict]) -> str:
     stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
     all_picks = [p for a in analyses for p in a.get("picks", [])]
     clean = [p for p in all_picks if p.get("approved") and not p["judge_excluded"]]
-    ev_ok = sorted([p for p in clean if p["ev"] > settings.ev_threshold],
-                   key=lambda x: x["ev"], reverse=True)
+    ev_ok = sorted([p for p in clean if qualifies(p, settings)],
+                   key=lambda x: x["p"], reverse=True)
     singles = ev_ok[: mode["max_picks"]]
     all_games = [g for a in analyses for g in a.get("games", [])]
     combos = build_tiered_parlays(approved_market_legs(all_games), stake_krw)

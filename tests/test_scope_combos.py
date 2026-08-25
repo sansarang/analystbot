@@ -359,9 +359,9 @@ def test_market_board_rendered_in_deep_section():
     )
     out = render_game_section(jg)
     assert "⑧ 마켓 보드" in out
-    # [2] 마켓 | 배당 | 봇확률 | EV | 신호등 | 근거 | ★
-    assert "언더 2.5 | 1.85 | 62% | +9.0% | 🟢" in out
-    assert "Home FC 승 | 1.85 | 52% | -4.0% | 🔴" in out and "근거 부족" in out
+    # [3-3] 마켓 | 배당 | 승률 | 1만원 수익 | 신호등 | 근거 | ★
+    assert "언더 2.5 | 1.85 | 62% | 8,500원 | 🟢" in out
+    assert "Home FC 승 | 1.85 | 52% | 8,500원 | 🔴" in out and "근거 부족" in out
 
 
 def test_easy_layer_recommends_best_market():
