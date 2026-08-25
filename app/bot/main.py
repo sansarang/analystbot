@@ -6,6 +6,7 @@
 
 import argparse
 import asyncio
+import time
 import json
 import logging
 import re
@@ -670,6 +671,24 @@ def build_dispatcher():
                 return
         await _card_flow(message, "soccer", None)
 
+    @router.message(Command("health"))
+    async def on_health(message: Message) -> None:
+        """[7-5] 지금 시스템 상태 — 조회만 한다."""
+        from app.health import build_health
+
+        poll_tick()
+        redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+        try:
+            pool = await get_pool()
+            text = await build_health(pool, redis)
+        except Exception as exc:
+            logger.exception("[bot] /health 실패: %s", exc)
+            text = f"🩺 상태 점검 실패\n{type(exc).__name__}: {str(exc)[:200]}"
+        finally:
+            await redis.aclose()
+        for chunk in split_message(text):
+            await message.answer(chunk)
+
     @router.message(Command("today"))
     async def on_today(message: Message) -> None:
         await _card_flow(message, "mlb", None)
@@ -796,6 +815,49 @@ def build_dispatcher():
     return dp
 
 
+# [7-3] 폴링 하트비트 — 핸들러가 돌 때마다 갱신하고, 워치독이 정체를 감시한다.
+_last_poll_tick: float = 0.0
+POLL_STALL_SEC = 180        # 3분 이상 조용하면 "폴링 중단 감지"
+
+
+def poll_tick() -> None:
+    """폴링이 살아 있음을 표시. 업데이트 수신·주기 확인 시 호출."""
+    global _last_poll_tick
+    _last_poll_tick = time.monotonic()
+
+
+async def _polling_watchdog() -> None:
+    """폴링이 POLL_STALL_SEC 이상 멈추면 알린다.
+
+    aiogram이 조용히 죽는 경우(네트워크·토큰 문제) 사용자는 봇이 죽은 줄도 모른다.
+    """
+    from app.alerts import _send
+
+    poll_tick()
+    notified = False
+    while True:
+        await asyncio.sleep(30)
+        try:
+            # getUpdates는 롱폴링이라 조용할 수 있다 → 봇 API 자체가 살아있는지로 판정
+            from aiogram import Bot
+
+            bot = Bot(token=get_settings().telegram_bot_token)
+            try:
+                await bot.get_me()
+                poll_tick()
+                notified = False
+            finally:
+                await bot.session.close()
+        except Exception as exc:
+            idle = time.monotonic() - _last_poll_tick
+            if idle >= POLL_STALL_SEC and not notified:
+                notified = True
+                await _send("poll:stall",
+                            f"🔌 폴링 중단 감지 — {int(idle // 60)}분째 응답 없음\n"
+                            f"{type(exc).__name__}: {str(exc)[:150]}",
+                            bypass_suppression=True)
+
+
 async def run_bot() -> None:
     from aiogram import Bot
 
@@ -807,7 +869,20 @@ async def run_bot() -> None:
         )
     bot = Bot(token=settings.telegram_bot_token)
     dp = build_dispatcher()
+    # [6] 어떤 코드가 도는지 기동 즉시 남긴다.
+    #     실사고(2026-08-25): 26커밋 뒤처진 봇이 하루 넘게 돌았는데 아무도 몰랐다.
+    from app.version import boot_line, staleness_line
+
+    logger.info(boot_line("bot"))
+    stale = staleness_line()
+    if stale:
+        logger.warning(stale)
+        from app.notify import send_telegram
+
+        await send_telegram(stale)
     logger.info("starting polling")
+    # [7-3] 폴링 하트비트 — 3분 이상 멈추면 알린다
+    asyncio.create_task(_polling_watchdog())
     await dp.start_polling(bot)
 
 

@@ -15,3 +15,125 @@
 2026-08-25 16:00:22,352 INFO [judge] mode: LIVE
 2026-08-25 16:02:15,169 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
 2026-08-25 16:02:15,194 INFO [judge] stop_reason=tool_use · 요청 4경기 → 판정 4경기
+2026-08-25 16:03:54,919 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:03:54,925 INFO [judge] stop_reason=tool_use · 요청 4경기 → 판정 4경기
+2026-08-25 16:05:42,242 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:05:42,246 INFO [judge] stop_reason=tool_use · 요청 4경기 → 판정 4경기
+2026-08-25 16:07:17,908 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:07:17,912 INFO [judge] stop_reason=tool_use · 요청 3경기 → 판정 3경기
+2026-08-25 16:07:17,912 INFO [judge] 배치 판정 완료 — 요청 15경기 → 판정 15경기
+2026-08-25 16:07:17,913 INFO [grok] client mode: LIVE
+2026-08-25 16:07:37,067 INFO HTTP Request: POST https://api.x.ai/v1/responses "HTTP/1.1 200 OK"
+2026-08-25 16:07:37,069 INFO [pipeline] second opinion for 5 disputed games
+2026-08-25 16:07:37,069 INFO [judge] mode: LIVE
+2026-08-25 16:10:03,208 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:10:03,213 INFO [judge] stop_reason=tool_use · 요청 4경기 → 판정 4경기
+2026-08-25 16:11:04,983 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:11:04,988 INFO [judge] stop_reason=tool_use · 요청 1경기 → 판정 1경기
+2026-08-25 16:11:04,988 INFO [judge] 배치 판정 완료 — 요청 5경기 → 판정 5경기
+2026-08-25 16:11:05,079 INFO [pipeline] Statcast 캐시 — 팀 29개 / 투수 556명
+2026-08-25 16:11:05,091 WARNING [scoring] 핵심 지표 부족으로 λ 산출 불가 game=514 missing=['home 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', 'home 선발 억제 지표', '파크팩터']
+2026-08-25 16:11:05,112 INFO [linemove] game=510 agree → 신뢰도 medium → high
+2026-08-25 16:11:05,124 WARNING [scoring] 핵심 지표 부족으로 λ 산출 불가 game=514 missing=['home 타선 지표(wOBA/OBP)', 'away 선발 억제 지표', 'home 선발 억제 지표', '파크팩터']
+2026-08-25 16:11:32,638 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:12:04,165 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:12:35,692 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:12:35,698 INFO [narrator] 서술 15/15경기
+2026-08-25 16:12:35,749 INFO [scheduler] prefetched mlb report (590 chars)
+2026-08-25 16:12:35,749 INFO [football] client mode: LIVE
+2026-08-25 16:12:36,139 INFO HTTP Request: GET https://v3.football.api-sports.io/fixtures?date=2026-08-25&league=39 "HTTP/1.1 200 OK"
+2026-08-25 16:12:36,140 INFO [football] upserted 0 fixtures for 2026-08-25
+2026-08-25 16:12:36,140 INFO [football_data] client mode: LIVE
+2026-08-25 16:12:38,938 INFO HTTP Request: GET https://api.football-data.org/v4/matches?dateFrom=2026-08-24&dateTo=2026-08-25 "HTTP/1.1 200 "
+2026-08-25 16:12:38,952 INFO [football_data] upserted 5 matches for 2026-08-25 (KST)
+2026-08-25 16:12:38,952 INFO [odds] client mode: LIVE
+2026-08-25 16:12:39,258 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_epl/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-25 16:12:39,878 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_spain_la_liga/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-25 16:12:40,486 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_italy_serie_a/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-25 16:12:40,729 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_germany_bundesliga/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-25 16:12:40,997 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_japan_j_league/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-25 16:12:41,258 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_denmark_superliga/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-25 16:12:41,939 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_korea_kleague1/events?apiKey=e6084d8151f17becac5a0f6577b3760f "HTTP/1.1 200 OK"
+2026-08-25 16:12:41,946 INFO [odds] soccer schedule fallback: 3 games for 2026-08-25 (KST)
+2026-08-25 16:12:41,949 INFO [odds] client mode: LIVE
+2026-08-25 16:12:41,958 INFO [grok] client mode: LIVE
+2026-08-25 16:12:41,965 INFO [football_data] client mode: LIVE
+2026-08-25 16:12:41,988 INFO [perplexity] saved 0 expert picks
+2026-08-25 16:12:42,000 WARNING [perplexity] unparseable pick: 'Double Chance Jeju United or Draw | Under/Over 라인 미확인'
+2026-08-25 16:12:42,000 INFO [perplexity] saved 0 expert picks
+2026-08-25 16:12:42,003 WARNING [perplexity] unparseable pick: 'Sangju Sangmu win 1st half | Double Chance Sangju Sangmu or Draw'
+2026-08-25 16:12:42,006 INFO [perplexity] saved 0 expert picks
+2026-08-25 16:12:42,233 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_epl/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
+2026-08-25 16:12:42,601 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_spain_la_liga/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
+2026-08-25 16:12:42,683 INFO HTTP Request: GET https://api.football-data.org/v4/competitions/PL/standings "HTTP/1.1 200 "
+2026-08-25 16:12:42,889 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_italy_serie_a/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
+2026-08-25 16:12:43,137 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_korea_kleague1/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
+2026-08-25 16:12:43,138 INFO [odds] quota: used=228 remaining=272
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Manchester City @ Crystal Palace (2026-08-28T19:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Nottingham Forest @ Liverpool (2026-08-29T11:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Everton @ Bournemouth (2026-08-29T14:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Hull City @ Coventry City (2026-08-29T14:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Newcastle United @ Tottenham Hotspur (2026-08-29T16:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Brentford @ Leeds United (2026-08-30T13:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Brighton and Hove Albion @ Chelsea (2026-08-30T13:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Fulham @ Sunderland (2026-08-30T13:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Ipswich Town @ Manchester United (2026-08-30T15:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Arsenal @ Aston Villa (2026-08-31T19:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Liverpool @ Ipswich Town (2026-09-04T19:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Bournemouth @ Newcastle United (2026-09-05T11:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Sunderland @ Brentford (2026-09-05T14:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Leeds United @ Brighton and Hove Albion (2026-09-05T14:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Coventry City @ Manchester City (2026-09-05T14:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Crystal Palace @ Fulham (2026-09-05T14:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Tottenham Hotspur @ Nottingham Forest (2026-09-05T14:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Aston Villa @ Hull City (2026-09-05T16:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Manchester United @ Everton (2026-09-06T13:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Chelsea @ Arsenal (2026-09-06T15:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Real Betis @ Valencia (2026-08-25T19:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Real Sociedad @ Real Madrid (2026-08-26T19:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: CA Osasuna @ Celta Vigo (2026-08-27T18:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Athletic Bilbao @ Barcelona (2026-08-27T19:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Elche CF @ Real Racing Club de Santander (2026-08-28T17:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Villarreal @ Alavés (2026-08-28T19:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Real Betis @ Levante (2026-08-29T15:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Espanyol @ Real Sociedad (2026-08-29T17:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Atlético Madrid @ Sevilla (2026-08-29T19:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Málaga @ Real Madrid (2026-08-30T15:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Valencia @ Deportivo La Coruña (2026-08-30T17:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Athletic Bilbao @ Celta Vigo (2026-08-30T19:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Getafe @ CA Osasuna (2026-08-31T17:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Rayo Vallecano @ Barcelona (2026-08-31T19:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Venezia @ AC Milan (2026-08-28T18:45:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Frosinone @ Fiorentina (2026-08-29T16:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Udinese @ Monza (2026-08-29T16:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Torino @ Sassuolo (2026-08-29T16:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Parma @ Juventus (2026-08-29T18:45:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Como @ Napoli (2026-08-30T16:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Inter Milan @ Cagliari (2026-08-30T18:45:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Genoa @ Lazio (2026-08-30T18:45:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: AS Roma @ Lecce (2026-08-31T16:30:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Bologna @ Atalanta BC (2026-08-31T18:45:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Como @ Genoa (2026-09-04T18:45:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Torino @ Fiorentina (2026-09-05T13:00:00Z)
+2026-08-25 16:12:43,155 WARNING [odds] no game match: Napoli @ Inter Milan (2026-09-05T16:00:00Z)
+2026-08-25 16:12:43,156 WARNING [odds] no game match: Atalanta BC @ AS Roma (2026-09-05T18:45:00Z)
+2026-08-25 16:12:43,156 WARNING [odds] no game match: Venezia @ Frosinone (2026-09-06T13:00:00Z)
+2026-08-25 16:12:43,156 WARNING [odds] no game match: Monza @ Parma (2026-09-06T13:00:00Z)
+2026-08-25 16:12:43,156 WARNING [odds] no game match: Sassuolo @ Bologna (2026-09-06T16:00:00Z)
+2026-08-25 16:12:43,156 WARNING [odds] no game match: AC Milan @ Juventus (2026-09-06T18:45:00Z)
+2026-08-25 16:12:43,156 WARNING [odds] no game match: Lecce @ Cagliari (2026-09-07T16:00:00Z)
+2026-08-25 16:12:43,156 WARNING [odds] no game match: Lazio @ Udinese (2026-09-07T18:45:00Z)
+2026-08-25 16:12:43,260 WARNING [odds] no game match: Ulsan Hyundai FC @ Daejeon Citizen (2026-08-26T10:30:00Z)
+2026-08-25 16:12:43,260 WARNING [odds] no game match: Incheon United @ FC Anyang (2026-08-26T10:30:00Z)
+2026-08-25 16:12:43,260 WARNING [odds] no game match: Gwangju FC @ Gangwon FC (2026-08-26T10:30:00Z)
+2026-08-25 16:12:43,260 WARNING [odds] no game match: FC Anyang @ Bucheon FC 1995 (2026-08-29T10:30:00Z)
+2026-08-25 16:12:43,260 WARNING [odds] no game match: Sangju Sangmu FC @ Ulsan Hyundai FC (2026-08-29T10:30:00Z)
+2026-08-25 16:12:43,260 WARNING [odds] no game match: Daejeon Citizen @ Jeju United FC (2026-08-30T10:30:00Z)
+2026-08-25 16:12:43,260 WARNING [odds] no game match: FC Seoul @ Gwangju FC (2026-08-30T10:30:00Z)
+2026-08-25 16:12:43,260 WARNING [odds] no game match: Gangwon FC @ Pohang Steelers (2026-08-30T10:30:00Z)
+2026-08-25 16:12:43,260 WARNING [odds] no game match: Jeonbuk Hyundai Motors @ Incheon United (2026-08-30T10:30:00Z)
+2026-08-25 16:12:43,260 INFO [odds] inserted 102 snapshot rows (soccer), skipped 0 in-play events
+2026-08-25 16:12:43,388 INFO HTTP Request: GET https://api.football-data.org/v4/competitions/PD/standings "HTTP/1.1 200 "
+2026-08-25 16:12:44,133 INFO HTTP Request: GET https://api.football-data.org/v4/competitions/SA/standings "HTTP/1.1 200 "
+2026-08-25 16:13:02,026 INFO HTTP Request: POST https://api.x.ai/v1/responses "HTTP/1.1 200 OK"
+2026-08-25 16:13:02,029 WARNING [grok] english detected in briefing — regenerating once

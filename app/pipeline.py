@@ -306,10 +306,19 @@ async def _noop_progress(step: int, total: int, label: str) -> None:
     return None
 
 
+def _count_by(values) -> dict:
+    """[7-2] 상태 문자열 빈도 — 실패 사유 분포를 알림에 싣기 위한 집계."""
+    out: dict = {}
+    for v in values:
+        out[v] = out.get(v, 0) + 1
+    return out
+
+
 async def build_analysis(
     pool: asyncpg.Pool, sport: str, date: str,
     team: str | None = None, league_key: str | None = None, progress=None,
     redis=None, sequential_research: bool = False,
+    stages_out: list | None = None,
 ) -> dict:
     """league_key 지정 시 그 리그만 수집·판정 (요청 범위 밖 API 호출 금지).
 
@@ -317,6 +326,31 @@ async def build_analysis(
     """
     settings = get_settings()
     progress = progress or _noop_progress
+
+    # [7-2] 단계별 계측 — 실패를 즉시 알리고, 끝나면 실행 리포트로 합산한다.
+    from app.alerts import StageResult, stage_failed
+
+    stages: list = stages_out if stages_out is not None else []
+
+    async def record(name, ok, total, *, cause=None, detail="", impact="", exc=None):
+        """단계 결과를 기록하고, 실패면 그 자리에서 알린다."""
+        from app.alerts import classify_exception, our_frames
+
+        st = StageResult(
+            name=name, ok=ok, total=total,
+            cause=cause or (classify_exception(exc) if exc is not None else None),
+            detail=detail or (f"{type(exc).__name__}: {exc}" if exc is not None else ""),
+            frames=our_frames(exc) if exc is not None else [],
+            impact=impact,
+        )
+        stages.append(st)
+        if st.failed:
+            try:
+                await stage_failed(st)
+            except Exception as notify_exc:   # 알림 실패가 분석을 막지 않는다
+                logger.warning("[pipeline] 단계 알림 실패: %s", notify_exc)
+        return st
+
     await progress(1, 4, "일정·스탯 수집")
 
     # 1) 일정 fetch + upsert (이후 단계가 games 행에 의존)
@@ -394,6 +428,17 @@ async def build_analysis(
         _collect_research(pool, games, date, league, sport=sport, redis=redis,
                           sequential=sequential_research),
     )
+
+    await record("경기 적재", len(games), len(games) or 1,
+                 cause=None if games else "missing",
+                 impact="분석할 경기가 없습니다")
+    _ok_research = sum(1 for st in research_statuses.values()
+                       if st in ("refreshed", "cached"))
+    await record("리서치", _ok_research, len(games),
+                 cause=None if _ok_research == len(games) else "missing",
+                 detail=", ".join(f"{k}:{v}" for k, v in sorted(
+                     _count_by(research_statuses.values()).items()) if k not in ("refreshed", "cached")),
+                 impact="해당 경기는 결장·불펜 정보 없이 판정됩니다")
 
     # [감시] 리서치 수치 ↔ statsapi 실데이터 교차검증 표본 (지어내기 감시)
     if redis is not None:
@@ -483,6 +528,18 @@ async def build_analysis(
                          type(exc).__name__, exc)
             await notify_api_error(exc)   # 레이트리밋은 알림 없이 내부 처리
             verdict = Judge._mock_verdict(judge_payload)
+            await record("판정", 0, len(upcoming), exc=exc,
+                         impact="추천·조합이 생성되지 않습니다 (마켓 보드만 표시)")
+        except Exception as exc:
+            logger.exception("[pipeline] judge 예기치 못한 실패: %s", exc)
+            verdict = {"games": []}
+            await record("판정", 0, len(upcoming), exc=exc,
+                         impact="추천·조합이 생성되지 않습니다 (마켓 보드만 표시)")
+    if upcoming and not any(st.name == "판정" for st in stages):
+        _judged = len(verdict.get("games") or [])
+        await record("판정", _judged, len(upcoming),
+                     cause=None if _judged == len(upcoming) else "missing",
+                     impact="판정 못 받은 경기는 추천에서 제외됩니다")
     _attach_verdicts(judge_games, verdict)
 
     # 4b) 2차 검증 — 논쟁 경기(저신뢰 또는 |모델-시장|≥10%p)만 Grok에 반대 근거 1콜.
@@ -541,10 +598,25 @@ async def build_analysis(
     #       마켓 보드가 만들어진 뒤에 실행해야 서술이 '어느 마켓이 살았는지'를 안다.
     from app.engine.narrator import attach_narratives
 
+    # [7-2] λ 가동률 — 분포가 선 경기 수. 폴백 경로로 떨어졌는지 여기서 드러난다.
+    _scheduled = [g for g in judge_games if g.get("status") == "scheduled"]
+    _lam_ok = sum(1 for g in _scheduled if g.get("distribution"))
+    if _scheduled:
+        await record("λ 산출", _lam_ok, len(_scheduled),
+                     cause=None if _lam_ok == len(_scheduled) else "missing",
+                     detail=(", ".join(sorted({m for g in _scheduled
+                                               for m in (g.get("lambda_missing") or [])}))[:150]),
+                     impact="확률이 폴백(경기력 %p 조정)으로 계산됩니다")
     try:
-        await attach_narratives(judge_games, sport)
+        _narrated = await attach_narratives(judge_games, sport)
+        if _scheduled:
+            await record("서술", _narrated, len(_scheduled),
+                         cause=None if _narrated else "missing",
+                         impact="심층 서술 없이 결정적 렌더로 나갑니다")
     except Exception as exc:   # 서술 실패는 분석을 막지 않는다 (결정적 렌더로 폴백)
         logger.warning("[pipeline] 서술 단계 실패, 결정적 렌더로 진행: %s", exc)
+        await record("서술", 0, len(_scheduled) or 1, exc=exc,
+                     impact="심층 서술 없이 결정적 렌더로 나갑니다")
 
     # [6] 병렬 채점 — 경기력 기반 픽과 시장 반영 픽을 **둘 다** 기록해
     #     2~3주 뒤 어느 방식이 실제로 맞히는지 비교한다.
@@ -612,6 +684,9 @@ async def build_analysis(
     return {
         "sport": sport, "date": date,
         "research_meta": research_meta,
+        # [7-4] 이 리포트를 만든 데이터의 결함 — 카드 상단 경고의 근거
+        "stages": [{"name": st.name, "ok": st.ok, "total": st.total,
+                    "cause": st.cause, "impact": st.impact} for st in stages],
         "mode": {"name": settings.report_mode, **mode,
                  "stake_krw": stake_krw, "bankroll_krw": settings.bankroll_krw},
         "games": judge_games, "picks": picks_out,
@@ -1778,6 +1853,44 @@ def default_date(sport: str) -> str:
     return mlb_slate_date() if sport == "mlb" else today_kst()
 
 
+# [7-4] 단계 실패 → 사용자가 읽을 한계 문구 (없으면 None)
+_STAGE_LIMIT_KR = {
+    "판정": "판정 미수행",
+    "λ 산출": "λ 미산출",
+    "리서치": "리서치 미완",
+    "서술": "심층 서술 없음",
+    "경기 적재": "일정 수집 실패",
+}
+_CAUSE_KR = {
+    "credit": "크레딧 부족", "auth": "키 오류", "rate_limit": "레이트리밋",
+    "parse": "파싱 실패", "timeout": "타임아웃", "missing": "데이터 없음",
+    "exception": "오류",
+}
+
+
+def data_limitation_line(analysis: dict) -> str | None:
+    """[7-4] 이 리포트를 만든 데이터의 결함 한 줄. 결함이 없으면 None.
+
+    실사고(2026-08-25): λ 0/15 · judge 0/15로 사실상 빈 리포트가 나갔는데
+    카드에는 아무 표시도 없었다. 사용자가 정상 분석으로 오해할 수 있었다.
+    """
+    stages = analysis.get("stages") or []
+    bad = []
+    for st in stages:
+        total, ok = st.get("total") or 0, st.get("ok") or 0
+        if not total or ok >= total:
+            continue
+        label = _STAGE_LIMIT_KR.get(st.get("name"), st.get("name"))
+        cause = _CAUSE_KR.get(st.get("cause") or "", "")
+        scope = "" if ok == 0 else f" {total - ok}경기"
+        bad.append(f"{label}{scope}" + (f"({cause})" if cause else ""))
+    if not bad:
+        return None
+    basis = ("시장 배당과 폼 데이터만 반영됨"
+             if any("판정" in b or "λ" in b for b in bad) else "일부 근거가 얕음")
+    return f"⚠️ 이 리포트의 한계: {' · '.join(bad)} — {basis}"
+
+
 def _render_card(analysis: dict) -> str:
     """결론 카드 2층: 보이는 줄은 쉬운 말(20줄), 수치 근거는 <<DETAIL>> 뒤(접힘)."""
     games = analysis.get("games", [])
@@ -1790,6 +1903,11 @@ def _render_card(analysis: dict) -> str:
     scope = f" ({next(iter(league_set))})" if len(league_set) == 1 and games else ""
 
     lines = [f"📌 {analysis.get('date')} {sport_kr}{scope} {len(games)}경기"]
+    # [7-4] 데이터에 결함이 있으면 **반드시 맨 위에** 표시한다.
+    #       결함이 있는데 정상 리포트처럼 내보내는 것을 금지한다.
+    limit_line = data_limitation_line(analysis)
+    if limit_line:
+        lines.append(limit_line)
     detail = ["📊 상세 데이터"]
     meta = analysis.get("research_meta") or {}
     if meta.get("refreshed"):
@@ -2303,6 +2421,7 @@ async def run_pipeline(
     force_refresh: bool = False,
     progress=None,
     sequential_research: bool = False,
+    stages_out: list | None = None,
 ) -> str:
     """결론 카드(단일 메시지)를 반환. 심층·속보·출처는 분석 캐시에서 버튼으로 제공.
 
@@ -2318,7 +2437,8 @@ async def run_pipeline(
             # 속보의 결론 반영: 캐시 응답 전에 최신 체크 → 중대 변화 시 재판정
             return await _freshness_gate(redis, sport, date, cached)
     analysis = await build_analysis(pool, sport, date, progress=progress, redis=redis,
-                                    sequential_research=sequential_research)
+                                    sequential_research=sequential_research,
+                                    stages_out=stages_out)
     await (progress or _noop_progress)(4, 4, "결론 카드 작성")
     remaining = await redis.get("odds_quota_remaining")
     if remaining is not None and int(remaining) < 100:

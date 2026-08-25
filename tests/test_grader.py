@@ -87,7 +87,10 @@ def test_scheduler_jobs_registered():
     jobs = {j.id: j for j in scheduler.get_jobs()}
     assert set(jobs) == {"prefetch_daily", "odds_snapshot_30m", "grade_yesterday",
                          "elo_refresh_weekly", "research_retry_45m", "lineup_poll_30m",
-                         "statcast_daily", "soccerdata_daily"}
+                         "statcast_daily", "soccerdata_daily",
+                         # [7-5] 하트비트가 있어야 /health가 스케줄러 생존을 안다
+                         "heartbeat_2m"}
+    assert "0:02:00" in str(jobs["heartbeat_2m"].trigger)
     assert "day_of_week='mon'" in str(jobs["elo_refresh_weekly"].trigger)
     assert str(jobs["prefetch_daily"].trigger) == "cron[hour='4', minute='0']"
     assert str(jobs["grade_yesterday"].trigger) == "cron[hour='13', minute='0']"

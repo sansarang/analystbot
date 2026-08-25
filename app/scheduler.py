@@ -56,29 +56,61 @@ async def prefetch_job() -> None:
         research_failure_report,
     )
 
+    from app.alerts import (
+        StageResult,
+        crashed,
+        overall_verdict,
+        prefetch_report,
+    )
+
     pool = await get_pool()
     redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
     t0 = time.monotonic()
+    all_stages: list[StageResult] = []
     try:
         for sport in ("mlb", "soccer"):   # 종목 단위 순차 (동시 실행 금지)
+            sport_kr = "MLB" if sport == "mlb" else "축구"
+            stages: list[StageResult] = []
             try:
                 report = await run_pipeline(
                     pool, redis, sport=sport, date=default_date(sport),
                     force_refresh=True, sequential_research=True,
+                    stages_out=stages,
                 )
                 logger.info("[scheduler] prefetched %s report (%d chars)", sport, len(report))
             except ApiRateLimitError as exc:   # 알림 대상 아님 — 큐 재시도로 흡수
                 logger.warning("[scheduler] prefetch %s 레이트리밋 — 큐 재시도 예정: %s", sport, exc)
+                stages.append(StageResult(name=f"{sport_kr} 파이프라인", ok=0, total=1,
+                                          cause="rate_limit", detail=str(exc)[:150],
+                                          impact="45분 뒤 재시도 큐가 보완합니다"))
             except (ApiQuotaError, ApiAuthError) as exc:
                 logger.error("[scheduler] prefetch %s halted (%s): %s",
                              sport, type(exc).__name__, exc)
                 await notify_api_error(exc)
+                stages.append(StageResult(
+                    name=f"{sport_kr} 파이프라인", ok=0, total=1,
+                    cause="credit" if isinstance(exc, ApiQuotaError) else "auth",
+                    detail=str(exc)[:150], impact=f"오늘 {sport_kr} 리포트가 없습니다"))
             except Exception as exc:
                 # 한 종목의 예상 못 한 실패가 다른 종목까지 죽이면 안 된다.
                 # (실사고: Anthropic 크레딧 소진이 400으로 와 분류를 빠져나가
                 #  축구 judge에서 prefetch_job 전체가 크래시했다)
                 logger.exception("[scheduler] prefetch %s 예기치 못한 실패 — 다음 종목 계속: %s",
                                  sport, exc)
+                # [7-3] 크래시는 억제 없이 즉시 발송 (스택 트레이스 포함)
+                await crashed(f"프리페치 {sport_kr}", exc, next_retry="내일 04:00 KST")
+                from app.alerts import classify_exception, our_frames
+
+                stages.append(StageResult(
+                    name=f"{sport_kr} 파이프라인", ok=0, total=1,
+                    cause=classify_exception(exc),
+                    detail=f"{type(exc).__name__}: {exc}"[:150],
+                    frames=our_frames(exc),
+                    impact=f"오늘 {sport_kr} 리포트가 없습니다"))
+            all_stages += [StageResult(name=f"[{sport_kr}] {st.name}", ok=st.ok,
+                                       total=st.total, cause=st.cause, detail=st.detail,
+                                       frames=st.frames, impact=st.impact)
+                           for st in stages]
         recovered = await drain_retry_queue(redis)
         calls = await research_calls_today(redis)
         fails = await research_failure_report(redis, today_kst())
@@ -104,6 +136,13 @@ async def prefetch_job() -> None:
                            "반복되면 프롬프트 금지문 롤백 검토", cross["mismatch"])
         await log_cost_summary(redis)
     finally:
+        # [7-1] 성공·실패 무관하게 **항상** 실행 리포트를 보낸다.
+        #       조용한 실패 금지 — 이 발송이 실패해도 잡은 끝나야 한다.
+        try:
+            await prefetch_report(all_stages, time.monotonic() - t0,
+                                  overall_verdict(all_stages))
+        except Exception as exc:
+            logger.warning("[scheduler] 프리페치 리포트 발송 실패: %s", exc)
         await redis.aclose()
 
 
@@ -279,25 +318,88 @@ async def grading_job() -> None:
     return totals
 
 
+async def heartbeat_job() -> None:
+    """[7-5] 스케줄러가 살아있음을 Redis에 남긴다 — /health가 이걸 본다.
+
+    실사고(2026-08-25): 스케줄러가 꺼져 있었는데 알 방법이 없었다.
+    """
+    from app.health import touch_heartbeat
+
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        await touch_heartbeat(redis)
+    finally:
+        await redis.aclose()
+
+
+def _instrument(job_id: str, fn):
+    """잡 실행 결과를 기록하고, 실패하면 [7-3] 알림까지 보낸다."""
+    import functools
+
+    @functools.wraps(fn)
+    async def wrapper():
+        from app.alerts import job_failed
+        from app.health import record_job_run
+
+        redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+        note, ok = "", True
+        try:
+            result = await fn()
+            note = str(result)[:200] if result is not None else ""
+            return result
+        except Exception as exc:
+            ok = False
+            note = f"{type(exc).__name__}: {exc}"[:200]
+            logger.exception("[scheduler] 잡 %s 실패: %s", job_id, exc)
+            nxt = ""
+            try:
+                from datetime import datetime as _dt
+
+                trig = _JOB_TRIGGERS.get(job_id)
+                if trig is not None:
+                    t = trig.get_next_fire_time(None, _dt.now(KST))
+                    nxt = f"{t:%m-%d %H:%M} KST" if t else ""
+            except Exception:
+                nxt = ""
+            await job_failed(job_id, exc, nxt)
+            raise
+        finally:
+            try:
+                await record_job_run(redis, job_id, ok, note)
+            except Exception as rec_exc:
+                logger.warning("[scheduler] 잡 기록 실패 %s: %s", job_id, rec_exc)
+            await redis.aclose()
+
+    return wrapper
+
+
+_JOB_TRIGGERS: dict = {}
+
+
+# (잡 id, 함수, 트리거) — 실행 기록·실패 알림 래퍼를 일괄로 씌운다.
+def _job_specs() -> list[tuple]:
+    return [
+        ("prefetch_daily", prefetch_job, CronTrigger(hour=4, minute=0, timezone=KST)),
+        ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
+        ("grade_yesterday", grading_job, CronTrigger(hour=13, minute=0, timezone=KST)),
+        ("research_retry_45m", research_retry_job, IntervalTrigger(minutes=45)),
+        ("lineup_poll_30m", lineup_poll_job, IntervalTrigger(minutes=30)),
+        ("statcast_daily", statcast_refresh_job,
+         CronTrigger(hour=3, minute=30, timezone=KST)),
+        ("soccerdata_daily", soccer_stats_refresh_job,
+         CronTrigger(hour=3, minute=40, timezone=KST)),
+        ("elo_refresh_weekly", elo_refresh_job,
+         CronTrigger(day_of_week="mon", hour=5, minute=0, timezone=KST)),
+    ]
+
+
 def build_scheduler() -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone=KST)
-    scheduler.add_job(prefetch_job, CronTrigger(hour=4, minute=0, timezone=KST),
-                      id="prefetch_daily")
-    scheduler.add_job(odds_snapshot_job, IntervalTrigger(minutes=30),
-                      id="odds_snapshot_30m")
-    scheduler.add_job(grading_job, CronTrigger(hour=13, minute=0, timezone=KST),
-                      id="grade_yesterday")
-    scheduler.add_job(research_retry_job, IntervalTrigger(minutes=45),
-                      id="research_retry_45m")
-    scheduler.add_job(lineup_poll_job, IntervalTrigger(minutes=30),
-                      id="lineup_poll_30m")
-    scheduler.add_job(statcast_refresh_job, CronTrigger(hour=3, minute=30, timezone=KST),
-                      id="statcast_daily")
-    scheduler.add_job(soccer_stats_refresh_job, CronTrigger(hour=3, minute=40, timezone=KST),
-                      id="soccerdata_daily")
-    scheduler.add_job(elo_refresh_job,
-                      CronTrigger(day_of_week="mon", hour=5, minute=0, timezone=KST),
-                      id="elo_refresh_weekly")
+    for job_id, fn, trigger in _job_specs():
+        _JOB_TRIGGERS[job_id] = trigger
+        scheduler.add_job(_instrument(job_id, fn), trigger, id=job_id)
+    # [7-5] 하트비트 — 이게 살아 있어야 /health가 "스케줄러 실행 중"이라고 말한다
+    scheduler.add_job(heartbeat_job, IntervalTrigger(minutes=2), id="heartbeat_2m")
     return scheduler
 
 
