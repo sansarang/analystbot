@@ -186,3 +186,272 @@ INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval
 INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:26:32 KST)" executed successfully
 INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:28:32 KST)" (scheduled at 2026-08-25 18:26:32.536976+09:00)
 INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:28:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:30:32 KST)" (scheduled at 2026-08-25 18:28:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:30:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:32:32 KST)" (scheduled at 2026-08-25 18:30:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:32:32 KST)" executed successfully
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:34:32 KST)" was missed by 0:00:41.410293
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 18:54:32 KST)" was missed by 0:00:34.254450
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 19:12:32 KST)" was missed by 0:10:34.255508
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 19:12:32 KST)" was missed by 0:10:34.255522
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 19:02:32 KST)" was missed by 0:01:41.614330
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 19:42:32 KST)" was missed by 0:04:41.616049
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 19:06:32 KST)" was missed by 0:00:40.360537
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 20:24:32 KST)" was missed by 0:01:44.262190
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 20:42:32 KST)" was missed by 0:11:44.266381
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 20:42:32 KST)" was missed by 0:11:44.266497
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 20:27:32 KST)" was missed by 0:41:44.266557
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 20:50:32 KST)" was missed by 0:00:18.951230
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 21:12:32 KST)" was missed by 0:21:19.008379
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 21:12:32 KST)" was missed by 0:06:19.010445
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 21:12:32 KST)" was missed by 0:06:19.013344
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 23:12:32 KST)" was missed by 0:01:05.931018
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 23:12:32 KST)" was missed by 0:29:05.932683
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 23:27:32 KST)" was missed by 0:29:05.932750
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 23:12:32 KST)" was missed by 0:29:05.932793
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 23:42:32 KST)" was missed by 0:07:43.690686
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 23:42:32 KST)" was missed by 0:07:43.692062
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 23:20:32 KST)" was missed by 0:01:43.691882
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 23:22:32 KST)" was missed by 0:00:10.514599
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:12:32 KST)" was missed by 0:01:50.431069
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 00:12:32 KST)" was missed by 0:44:50.432731
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:12:32 KST)" was missed by 0:29:50.432892
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:12:32 KST)" was missed by 0:29:50.432913
+INFO:apscheduler.executors.default:Running job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:42:32 KST)" (scheduled at 2026-08-26 00:12:32.536633+09:00)
+INFO:apscheduler.executors.default:Running job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 00:57:32 KST)" (scheduled at 2026-08-26 00:12:32.536666+09:00)
+INFO:apscheduler.executors.default:Running job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:42:32 KST)" (scheduled at 2026-08-26 00:12:32.536669+09:00)
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:14:32 KST)" (scheduled at 2026-08-26 00:12:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:14:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 00:57:32 KST)" executed successfully
+INFO:app.collectors.base:[odds] client mode: LIVE
+INFO:apscheduler.executors.default:Job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:42:32 KST)" executed successfully
+WARNING:app.collectors.base:[odds] retry 1/3 in 0.5s: [Errno 8] nodename nor servname provided, or not known
+WARNING:app.collectors.base:[odds] retry 2/3 in 1.0s: [Errno 8] nodename nor servname provided, or not known
+ERROR:__main__:[scheduler] 잡 odds_snapshot_30m 실패: [Errno 8] nodename nor servname provided, or not known
+Traceback (most recent call last):
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 101, in handle_async_request
+    raise exc
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 124, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_backends/auto.py", line 31, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 113, in connect_tcp
+    with map_exceptions(exc_map):
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectError: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/youngjinjung/Desktop/analystbot/app/scheduler.py", line 347, in wrapper
+  File "/Users/youngjinjung/Desktop/analystbot/app/scheduler.py", line 271, in odds_snapshot_job
+    for r in rows:
+                 ^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/odds.py", line 118, in snapshot_odds
+    events.extend(await client.fetch_odds(sport_key))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/odds.py", line 61, in fetch_odds
+    return await self._get(
+           ^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 232, in _get
+    return await self._request("GET", path, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 229, in _request
+    raise last_exc  # type: ignore[misc]
+    ^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 192, in _request
+    resp = await self._send(method, url, params, headers, json_body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 168, in _send
+    return await client.request(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: [Errno 8] nodename nor servname provided, or not known
+ERROR:app.notify:[notify] telegram 발송 실패: [Errno 8] nodename nor servname provided, or not known
+ERROR:apscheduler.executors.default:Job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 00:42:32 KST)" raised an exception
+Traceback (most recent call last):
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 101, in handle_async_request
+    raise exc
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 124, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_backends/auto.py", line 31, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 113, in connect_tcp
+    with map_exceptions(exc_map):
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectError: [Errno 8] nodename nor servname provided, or not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/apscheduler/executors/base.py", line 181, in run_coroutine_job
+    retval = await job.func(*job.args, **job.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/scheduler.py", line 347, in wrapper
+  File "/Users/youngjinjung/Desktop/analystbot/app/scheduler.py", line 271, in odds_snapshot_job
+    for r in rows:
+                 ^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/odds.py", line 118, in snapshot_odds
+    events.extend(await client.fetch_odds(sport_key))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/odds.py", line 61, in fetch_odds
+    return await self._get(
+           ^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 232, in _get
+    return await self._request("GET", path, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 229, in _request
+    raise last_exc  # type: ignore[misc]
+    ^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 192, in _request
+    resp = await self._send(method, url, params, headers, json_body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/app/collectors/base.py", line 168, in _send
+    return await client.request(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/youngjinjung/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/Users/youngjinjung/Desktop/analystbot/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: [Errno 8] nodename nor servname provided, or not known
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:22:32 KST)" was missed by 0:00:13.493639
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:30:32 KST)" was missed by 0:01:47.160869
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:32:32 KST)" (scheduled at 2026-08-26 00:30:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:32:32 KST)" executed successfully
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:40:32 KST)" was missed by 0:00:26.093914
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:48:32 KST)" was missed by 0:00:55.005143
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 01:12:32 KST)" was missed by 0:04:55.008057
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 01:12:32 KST)" was missed by 0:04:55.008250
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 00:56:32 KST)" was missed by 0:00:44.430103
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 01:36:32 KST)" was missed by 0:01:39.117414
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 01:42:32 KST)" was missed by 0:38:39.119357
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 01:42:32 KST)" was missed by 0:23:39.119459
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 01:42:32 KST)" was missed by 0:23:39.119475
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 02:34:32 KST)" was missed by 0:00:57.964675
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 02:42:32 KST)" was missed by 0:20:57.967050
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 03:12:32 KST)" was missed by 0:05:57.967113
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 02:42:32 KST)" was missed by 0:20:57.967203
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 02:50:32 KST)" was missed by 0:00:31.442993
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 03:12:32 KST)" was missed by 0:06:31.445501
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 03:12:32 KST)" was missed by 0:06:31.445614
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 03:20:32 KST)" was missed by 0:00:49.135367
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 03:42:32 KST)" was missed by 0:06:49.138052
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 03:57:32 KST)" was missed by 0:06:49.138166
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 03:42:32 KST)" was missed by 0:06:49.138256
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 04:10:32 KST)" was missed by 0:01:26.302504
+WARNING:apscheduler.executors.default:Run time of job "statcast_refresh_job (trigger: cron[hour='3', minute='30'], next run at: 2026-08-27 03:30:00 KST)" was missed by 0:39:58.840536
+WARNING:apscheduler.executors.default:Run time of job "soccer_stats_refresh_job (trigger: cron[hour='3', minute='40'], next run at: 2026-08-27 03:40:00 KST)" was missed by 0:29:58.840744
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 04:12:32 KST)" was missed by 0:27:26.304190
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 04:12:32 KST)" was missed by 0:27:26.304240
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 04:42:32 KST)" was missed by 0:12:26.304292
+WARNING:apscheduler.executors.default:Run time of job "prefetch_job (trigger: cron[hour='4', minute='0'], next run at: 2026-08-27 04:00:00 KST)" was missed by 0:09:58.841006
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 04:22:32 KST)" was missed by 0:00:31.182745
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 04:42:32 KST)" was missed by 0:08:31.188583
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 04:42:32 KST)" was missed by 0:08:31.188651
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 05:20:32 KST)" was missed by 0:00:56.486322
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 05:42:32 KST)" was missed by 0:06:56.488712
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 05:27:32 KST)" was missed by 0:36:56.488805
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 05:42:32 KST)" was missed by 0:06:56.488881
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:10:32 KST)" was missed by 0:01:10.760636
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 06:12:32 KST)" was missed by 0:42:10.762022
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 06:12:32 KST)" was missed by 0:27:10.762159
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 06:12:32 KST)" was missed by 0:27:10.762179
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:14:32 KST)" was missed by 0:01:00.476765
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 06:42:32 KST)" was missed by 0:01:00.478851
+WARNING:apscheduler.executors.default:Run time of job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-26 06:57:32 KST)" was missed by 0:01:00.478951
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 06:42:32 KST)" was missed by 0:01:00.479012
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:16:32 KST)" was missed by 0:00:39.315383
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:20:32 KST)" was missed by 0:01:54.665088
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:22:32 KST)" was missed by 0:00:02.779781
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:30:32 KST)" was missed by 0:00:13.205594
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:32:32 KST)" was missed by 0:00:01.149039
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:34:32 KST)" was missed by 0:00:26.832149
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:36:32 KST)" was missed by 0:00:01.983342
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:38:32 KST)" was missed by 0:00:02.408120
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:40:32 KST)" was missed by 0:00:04.186414
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:42:32 KST)" was missed by 0:00:05.456302
+WARNING:apscheduler.executors.default:Run time of job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-26 07:12:32 KST)" was missed by 0:00:14.481457
+WARNING:apscheduler.executors.default:Run time of job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-26 07:12:32 KST)" was missed by 0:00:14.482874
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:44:32 KST)" was missed by 0:00:14.482717
+WARNING:apscheduler.executors.default:Run time of job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:48:32 KST)" was missed by 0:01:12.858597
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:50:32 KST)" (scheduled at 2026-08-26 06:48:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:50:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:52:32 KST)" (scheduled at 2026-08-26 06:50:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-26 06:52:32 KST)" executed successfully

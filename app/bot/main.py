@@ -217,9 +217,52 @@ logger = logging.getLogger(__name__)
 
 TELEGRAM_LIMIT = 4096
 
+# ⚠️ `.format()`을 쓰지 않는다 — 스키마의 JSON 중괄호를 치환 필드로 오해해 KeyError가 난다.
+#    기준일은 `intent_system()`이 문자열 결합으로 붙인다.
 INTENT_SYSTEM = """사용자의 스포츠 분석 요청에서 의도를 추출해 JSON으로만 답하라.
 스키마: {"sport": "mlb"|"soccer", "date": "YYYY-MM-DD"|null, "teams": [문자열], "depth": "brief"|"full"}
-날짜 언급이 없으면 null. 팀 언급이 없으면 빈 배열."""
+
+오늘 날짜: MLB 슬레이트 __MLB_TODAY__ / 축구 __SOCCER_TODAY__ (KST)
+**"오늘"·"today"처럼 오늘을 뜻하는 말이거나 날짜 언급이 아예 없으면 date는 반드시 null이다.**
+날짜를 추측해 채우지 마라 — 시스템이 기본 날짜를 적용한다.
+"내일"·"어제"처럼 상대 날짜만 위 기준일로 계산해 YYYY-MM-DD로 답하라.
+팀 언급이 없으면 빈 배열."""
+
+# LLM이 만들어낸 날짜를 그대로 쓰지 않기 위한 허용 범위(기준일 대비 일수).
+# 실사고(2026-08-26): 프롬프트에 오늘 날짜가 없어 모델이 **2024-08-26**을 반환했고,
+# 검증이 없어 2년 전 종료 경기 12건이 분석돼 사용자에게 나갔다.
+INTENT_DATE_WINDOW_DAYS = 7
+
+
+def intent_system() -> str:
+    """오늘 기준일을 박아 넣은 의도 파싱 시스템 프롬프트."""
+    return (INTENT_SYSTEM
+            .replace("__MLB_TODAY__", mlb_slate_date())
+            .replace("__SOCCER_TODAY__", today_kst()))
+
+
+def sanitize_intent_date(date: str | None, sport: str) -> str | None:
+    """LLM이 준 날짜를 기준일 대비 허용 범위로 검증. 벗어나면 None(기본 날짜).
+
+    CLAUDE.md 절대규칙 2번의 적용이다 — LLM 출력은 API 기준값과 대조하고,
+    충돌하면 API가 이긴다. 날짜도 예외가 아니다.
+    """
+    if not date:
+        return None
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(date)):
+        logger.warning("[bot] intent 날짜 형식 이상 — 무시: %r", date)
+        return None
+    base = mlb_slate_date() if sport == "mlb" else today_kst()
+    try:
+        delta = (datetime.strptime(date, "%Y-%m-%d")
+                 - datetime.strptime(base, "%Y-%m-%d")).days
+    except ValueError:
+        return None
+    if abs(delta) > INTENT_DATE_WINDOW_DAYS:
+        logger.warning("[bot] intent 날짜 %s가 기준일 %s에서 %d일 벗어남 — 기본 날짜 사용",
+                       date, base, delta)
+        return None
+    return date
 
 
 def split_message(text: str, limit: int = TELEGRAM_LIMIT) -> list[str]:
@@ -293,7 +336,7 @@ def parse_intent_mock(text: str) -> dict:
     t = text.lower()
     sport = "soccer" if re.search(r"soccer|축구|epl|프리미어", t) else "mlb"
     m = re.search(r"(\d{4}-\d{2}-\d{2})", t)
-    date = m.group(1) if m else None
+    date = sanitize_intent_date(m.group(1) if m else None, sport)
     depth = "brief" if re.search(r"짧게|간단|요약|brief", t) else "full"
     return {"sport": sport, "date": date, "teams": [], "depth": depth}
 
@@ -318,7 +361,7 @@ async def _parse_intent_live(text: str, settings) -> dict:
     response = await client.messages.create(
         model=settings.intent_model,
         max_tokens=300,
-        system=INTENT_SYSTEM,
+        system=intent_system(),
         messages=[{"role": "user", "content": text}],
         output_config={
             "format": {
@@ -337,7 +380,10 @@ async def _parse_intent_live(text: str, settings) -> dict:
             }
         },
     )
-    return json.loads(next(b.text for b in response.content if b.type == "text"))
+    out = json.loads(next(b.text for b in response.content if b.type == "text"))
+    # 모델이 만들어낸 날짜를 그대로 신뢰하지 않는다
+    out["date"] = sanitize_intent_date(out.get("date"), out.get("sport", "mlb"))
+    return out
 
 
 def _quota_reply(exc: ApiServiceError) -> str:

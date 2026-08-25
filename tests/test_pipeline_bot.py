@@ -639,3 +639,48 @@ def test_attach_verdicts_matches_string_game_ids():
     _attach_verdicts(games, {"games": [{"game_id": "409", "p_claude": 0.55,
                                         "verdict": "테스트"}]})
     assert games[0]["p_claude"] == 0.55
+
+
+# --- LLM이 만들어낸 날짜 차단 (2026-08-26 실사고) ---
+
+def test_intent_date_far_in_past_is_rejected():
+    """★ 실사고: 프롬프트에 오늘 날짜가 없어 모델이 2024-08-26을 반환했고,
+    검증이 없어 2년 전 종료 경기 12건이 분석돼 사용자에게 나갔다."""
+    from app.bot.main import sanitize_intent_date
+
+    assert sanitize_intent_date("2024-08-26", "mlb") is None
+
+
+def test_intent_date_within_window_is_kept():
+    from app.bot.main import sanitize_intent_date
+    from app.pipeline import mlb_slate_date
+
+    today = mlb_slate_date()
+    assert sanitize_intent_date(today, "mlb") == today
+
+
+def test_intent_date_far_future_is_rejected():
+    from app.bot.main import sanitize_intent_date
+
+    assert sanitize_intent_date("2099-01-01", "mlb") is None
+
+
+def test_intent_date_garbage_is_rejected():
+    from app.bot.main import sanitize_intent_date
+
+    assert sanitize_intent_date("엉터리", "mlb") is None
+    assert sanitize_intent_date("", "mlb") is None
+    assert sanitize_intent_date(None, "mlb") is None
+
+
+def test_intent_system_prompt_carries_today():
+    """프롬프트에 기준일이 들어가야 모델이 날짜를 지어내지 않는다."""
+    from app.bot.main import intent_system
+    from app.pipeline import mlb_slate_date
+
+    filled = intent_system()
+    assert mlb_slate_date() in filled
+    assert "null" in filled
+    assert "__MLB_TODAY__" not in filled
+    # 스키마의 JSON 중괄호가 그대로 남아 있어야 한다 (.format을 쓰면 KeyError가 난다)
+    assert '{"sport"' in filled
