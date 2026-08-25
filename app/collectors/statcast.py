@@ -55,6 +55,37 @@ def _team_of_batter(row) -> str | None:
     return TEAM_CODE_TO_NAME.get(str(code))
 
 
+# [§2] 표본 가드 — 타선 스플릿과 같은 기준을 투수에도 적용한다.
+#      가드가 없어 허용 xwOBA 분포가 0.012~1.010까지 벌어졌다(실력값일 수 없다).
+MIN_PITCHER_PITCHES = 50       # 이만큼 던졌거나
+MIN_PITCHER_APPEARANCES = 3    # 이만큼 등판했으면 채택
+LOW_SAMPLE_NOTE = "표본 부족 — 리그 평균 적용"
+
+
+def _xwoba(frame, pd) -> float | None:
+    """정식 xwOBA — **삼진·볼넷을 포함한다**.
+
+    `estimated_woba_using_speedangle`은 인플레이 타구에만 값이 있다. 그것만
+    평균 내면 삼진(wOBA 0)이 통째로 빠져 **부호가 뒤집힌다**: 삼진이 많은
+    투수가 나쁘게, 삼진을 많이 당하는 타선이 좋게 나온다.
+    (실측 2026-08-25: Paul Skenes 0.368 > 리그 중앙 0.310 — 정반대 결과)
+
+    정식 정의: Σ(타구는 추정치, 그 외는 실제 woba_value) / Σ woba_denom
+    """
+    if "woba_denom" not in frame or "woba_value" not in frame:
+        return None
+    denom = pd.to_numeric(frame["woba_denom"], errors="coerce")
+    mask = denom.notna() & (denom > 0)
+    total = denom[mask].sum()
+    if not total:
+        return None
+    actual = pd.to_numeric(frame["woba_value"], errors="coerce")
+    est = pd.to_numeric(frame.get("estimated_woba_using_speedangle"), errors="coerce")
+    # 타구는 추정치 우선, 삼진·볼넷 등은 실제값
+    num = est.fillna(actual)[mask].fillna(0).sum()
+    return float(num / total)
+
+
 def aggregate_team_offense(df) -> dict[str, dict]:
     """팀별 최근 30일 타선 지표 — xwOBA·배럴률·하드히트율·평균 타구속도·K%/BB%·좌우 스플릿."""
     import pandas as pd
@@ -70,7 +101,7 @@ def aggregate_team_offense(df) -> dict[str, dict]:
         # 타석 종료 이벤트만으로 비율 지표를 만든다
         pa = g[g["events"].notna() & (g["events"] != "")]
         bip = g[g["launch_speed"].notna()]
-        xwoba = pd.to_numeric(g["estimated_woba_using_speedangle"], errors="coerce").mean()
+        xwoba = _xwoba(g, pd)      # 삼진 포함 정식 계산
         stats = {
             "xwoba_30d": _round(xwoba, 3),
             "barrel_pct": _pct(bip, lambda x: x["launch_speed_angle"] == 6),
@@ -83,36 +114,46 @@ def aggregate_team_offense(df) -> dict[str, dict]:
         for hand, key in (("L", "vs_lhp_woba"), ("R", "vs_rhp_woba")):
             sub = g[g["p_throws"] == hand]
             if len(sub) >= 50:      # 표본이 얇으면 스플릿을 만들지 않는다
-                stats[key] = _round(
-                    pd.to_numeric(sub["estimated_woba_using_speedangle"],
-                                  errors="coerce").mean(), 3)
+                stats[key] = _round(_xwoba(sub, pd), 3)
         out[team] = {k: v for k, v in stats.items() if v is not None}
     return out
 
 
 def aggregate_pitchers(df) -> dict[str, dict]:
-    """선발별 최근 지표 — 허용 xwOBA·평균 구속(피로 신호)·던진 손·최근 등판 수."""
+    """선발별 최근 지표 — 허용 xwOBA·평균 구속(피로 신호)·던진 손·최근 등판 수.
+
+    표본 가드: 50투구 또는 3등판 미만이면 허용 xwOBA를 **리그 평균으로 대체**하고
+    `low_sample` 플래그와 사유를 남긴다. 가드 없이 쓰면 1~2등판 투수의 잡음이
+    그대로 λ에 들어가 상·하한을 때린다(실측: 0.012~1.010).
+    """
     import pandas as pd
 
     if df is None or len(df) == 0:
         return {}
     d = df[df["pitcher"].notna()].copy()
+    league = _xwoba(d, pd)          # 같은 구간의 리그 평균 — 대체값의 기준
     out: dict[str, dict] = {}
-    for pid, g in d.groupby("pitcher"):
+    for _pid, g in d.groupby("pitcher"):
         name = _pitcher_name(g)
         if not name:
             continue
         games = g["game_pk"].nunique() if "game_pk" in g else 0
+        pitches = len(g)
         recent = g.sort_values("game_date").tail(400)
+        enough = pitches >= MIN_PITCHER_PITCHES or games >= MIN_PITCHER_APPEARANCES
+        own = _xwoba(g, pd)
         stats = {
-            "xwoba_allowed": _round(
-                pd.to_numeric(g["estimated_woba_using_speedangle"], errors="coerce").mean(), 3),
+            "xwoba_allowed": _round(own if enough else league, 3),
             "velo_recent": _round(
                 pd.to_numeric(recent["release_speed"], errors="coerce").mean(), 1),
             "velo_window": _round(
                 pd.to_numeric(g["release_speed"], errors="coerce").mean(), 1),
             "appearances": int(games),
+            "pitches": int(pitches),
         }
+        if not enough:
+            stats["low_sample"] = True
+            stats["sample_note"] = LOW_SAMPLE_NOTE
         hand = g["p_throws"].dropna()
         if len(hand):
             stats["throws"] = str(hand.iloc[0])

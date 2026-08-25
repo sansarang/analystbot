@@ -22,11 +22,13 @@ def _pitches(rows):
 
 
 def _row(**over):
+    # woba_value/woba_denom은 정식 xwOBA 계산의 분자·분모다 (삼진·볼넷 포함)
     r = {"inning_topbot": "Bot", "home_team": "CIN", "away_team": "SF",
          "estimated_woba_using_speedangle": 0.320, "launch_speed": 96.0,
          "launch_speed_angle": 6, "events": "single", "p_throws": "R",
          "pitcher": 1, "player_name": "Burns, Chase", "release_speed": 96.5,
-         "game_pk": 1, "game_date": "2026-08-20"}
+         "game_pk": 1, "game_date": "2026-08-20",
+         "woba_value": 0.9, "woba_denom": 1}
     r.update(over)
     return r
 
@@ -45,11 +47,15 @@ def test_offense_computes_model_inputs():
     df = _pitches([
         _row(estimated_woba_using_speedangle=0.400, launch_speed=100.0, launch_speed_angle=6),
         _row(estimated_woba_using_speedangle=0.200, launch_speed=80.0, launch_speed_angle=3),
-        _row(events="strikeout", launch_speed=None, launch_speed_angle=None),
-        _row(events="walk", launch_speed=None, launch_speed_angle=None),
+        # 삼진·볼넷은 타구 추정치가 없다 → 실제 woba_value를 쓴다
+        _row(events="strikeout", launch_speed=None, launch_speed_angle=None,
+             estimated_woba_using_speedangle=None, woba_value=0.0),
+        _row(events="walk", launch_speed=None, launch_speed_angle=None,
+             estimated_woba_using_speedangle=None, woba_value=0.69),
     ])
     reds = aggregate_team_offense(df)["Cincinnati Reds"]
-    assert reds["xwoba_30d"] == pytest.approx(0.31, abs=0.005)
+    # (0.400 + 0.200 + 0.0 + 0.69) / 4 = 0.3225 — 삼진이 분모에 들어간다
+    assert reds["xwoba_30d"] == pytest.approx(0.3225, abs=0.001)
     assert reds["barrel_pct"] == 50.0        # 타구 2개 중 1개가 배럴
     assert reds["hardhit_pct"] == 50.0       # 95mph 이상 1개
     assert reds["k_pct"] == 25.0 and reds["bb_pct"] == 25.0
@@ -206,3 +212,67 @@ def test_merge_without_starter_name_skips_pitcher():
     filled = merge_into_research(research, jg, {}, {"Jackson Jobe": {"xwoba_allowed": 0.29}})
     assert "home_pitcher" not in research
     assert not any("선발" in f for f in filled)
+
+
+# --- 삼진 제외 버그 회귀 방지 (2026-08-25: 부호가 뒤집혔다) ---
+
+def test_strikeouts_lower_allowed_xwoba():
+    """삼진이 많은 투수가 **좋게** 나와야 한다.
+
+    실사고: estimated_woba_using_speedangle만 평균 내면 삼진이 분모에서 빠져
+    탈삼진형 투수가 오히려 나쁘게 계산됐다(Paul Skenes 0.368 > 리그 중앙 0.310).
+    """
+    contact = _pitches([_row(pitcher=1, player_name="Contact, Guy", game_pk=g,
+                             estimated_woba_using_speedangle=0.350, woba_value=0.9)
+                        for g in range(1, 6)] * 12)
+    strikeout = _pitches(
+        [_row(pitcher=2, player_name="Whiff, King", game_pk=g,
+              estimated_woba_using_speedangle=0.350, woba_value=0.9)
+         for g in range(1, 6)] * 6
+        + [_row(pitcher=2, player_name="Whiff, King", game_pk=g, events="strikeout",
+                estimated_woba_using_speedangle=None, woba_value=0.0,
+                launch_speed=None, launch_speed_angle=None)
+           for g in range(1, 6)] * 6)
+    c = aggregate_pitchers(contact)["Guy Contact"]["xwoba_allowed"]
+    k = aggregate_pitchers(strikeout)["King Whiff"]["xwoba_allowed"]
+    assert k < c, "삼진을 잡을수록 허용 xwOBA가 낮아야 한다 — 아니면 부호가 뒤집힌 것"
+    assert k == pytest.approx(0.175, abs=0.01)
+
+
+def test_strikeouts_raise_offense_xwoba_cost():
+    """삼진을 많이 당하는 타선은 **나쁘게** 나와야 한다."""
+    good = _pitches([_row(estimated_woba_using_speedangle=0.350, woba_value=0.9)] * 20)
+    whiffy = _pitches(
+        [_row(estimated_woba_using_speedangle=0.350, woba_value=0.9)] * 10
+        + [_row(events="strikeout", estimated_woba_using_speedangle=None, woba_value=0.0,
+                launch_speed=None, launch_speed_angle=None)] * 10)
+    g = aggregate_team_offense(good)["Cincinnati Reds"]["xwoba_30d"]
+    w = aggregate_team_offense(whiffy)["Cincinnati Reds"]["xwoba_30d"]
+    assert w < g, "삼진이 많은 타선의 xwOBA가 더 낮아야 한다"
+
+
+# --- 표본 가드 (2026-08-25: 0.012~1.010 잡음) ---
+
+def test_thin_sample_pitcher_gets_league_average():
+    """50투구·3등판 미만이면 리그 평균으로 대체하고 사유를 남긴다."""
+    rows = [_row(pitcher=1, player_name="Bulk, Guy", game_pk=g,
+                 estimated_woba_using_speedangle=0.300, woba_value=0.9)
+            for g in range(1, 11)] * 10
+    rows += [_row(pitcher=99, player_name="Tiny, Sample", game_pk=500,
+                  estimated_woba_using_speedangle=1.500, woba_value=2.0)]
+    out = aggregate_pitchers(_pitches(rows))
+    tiny = out["Sample Tiny"]
+    assert tiny["low_sample"] is True
+    assert tiny["sample_note"] == "표본 부족 — 리그 평균 적용"
+    assert tiny["xwoba_allowed"] != pytest.approx(1.500, abs=0.01), "잡음이 그대로 새면 안 된다"
+    assert "low_sample" not in out["Guy Bulk"]
+
+
+def test_enough_by_appearances_alone():
+    """3등판이면 투구 수가 적어도 채택한다 (기준은 OR)."""
+    rows = [_row(pitcher=7, player_name="Short, Start", game_pk=g,
+                 estimated_woba_using_speedangle=0.280, woba_value=0.9)
+            for g in (1, 2, 3)]
+    p = aggregate_pitchers(_pitches(rows))["Start Short"]
+    assert "low_sample" not in p
+    assert p["appearances"] == 3

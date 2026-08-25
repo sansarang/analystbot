@@ -318,3 +318,26 @@ def test_claude_md_registers_model_doc():
     doc = pathlib.Path("CLAUDE.md").read_text()
     assert "docs/MODEL.md" in doc
     assert "절대 완화하면 안 되는 한계값" in doc
+
+
+def test_low_sample_starter_is_marked_in_trace():
+    """표본 부족으로 리그 평균이 대체된 투수는 트레이스에 사유가 보여야 한다.
+
+    값이 채워졌다는 것과 그 투수를 안다는 것은 다르다 — 구분이 안 되면
+    '리그 평균 투수'를 실제 실력으로 오해하게 된다.
+    """
+    from app.config import get_settings
+    from app.engine.scoring import mlb_lambdas
+
+    s = get_settings()
+    jg = {"home": "Detroit Tigers", "away": "Tampa Bay Rays"}
+    research = {
+        "home_offense": {"xwoba_30d": 0.320},
+        "away_offense": {"xwoba_30d": 0.320},
+        "home_pitcher": {"xwoba_allowed": 0.320},
+        "away_pitcher": {"xwoba_allowed": 0.320, "low_sample": True,
+                         "sample_note": "표본 부족 — 리그 평균 적용"},
+    }
+    lam = mlb_lambdas(jg, research, s)
+    joined = " ".join(lam.trace)
+    assert "표본 부족 — 리그 평균 적용" in joined

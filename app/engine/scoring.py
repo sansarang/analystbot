@@ -166,7 +166,12 @@ def mlb_lambdas(jg: dict, research: dict, settings=None) -> LambdaResult:
             continue
         lam[side] *= coef
         have_core[side] = True
-        trace.append(f"{side} 상대 선발 {label} → ×{coef:.3f}")
+        # 표본 미달로 리그 평균이 대체된 투수는 그 사실을 트레이스에 남긴다 —
+        # 값이 채워졌다는 것과 그 투수를 안다는 것은 다르다.
+        note = pit[opp].get("sample_note")
+        trace.append(f"{side} 상대 선발 {label}"
+                     + (f" ({note})" if note else "")
+                     + f" → ×{coef:.3f}")
 
     # ③ 구장 계수 (양 팀 공통)
     park = _park_factor(research, s)
