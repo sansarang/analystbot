@@ -950,6 +950,9 @@ def _compute_picks(
         if learned:
             jg["p_learned"] = learned
         if dist is not None:
+            # [§9] λ 값 자체를 스칼라로 남긴다 — LambdaResult는 JSON 캐시에서
+            #      default=str로 뭉개져 검증 때 읽을 수 없다.
+            jg["lam"] = {"home": dist["lam"].home, "away": dist["lam"].away}
             jg["lambda_trace"] = dist["lam"].trace
             jg["lambda_missing"] = dist["lam"].missing
             jg["prob_cap_note"] = dist["capped"]
