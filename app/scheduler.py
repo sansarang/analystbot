@@ -73,6 +73,12 @@ async def prefetch_job() -> None:
                 logger.error("[scheduler] prefetch %s halted (%s): %s",
                              sport, type(exc).__name__, exc)
                 await notify_api_error(exc)
+            except Exception as exc:
+                # 한 종목의 예상 못 한 실패가 다른 종목까지 죽이면 안 된다.
+                # (실사고: Anthropic 크레딧 소진이 400으로 와 분류를 빠져나가
+                #  축구 judge에서 prefetch_job 전체가 크래시했다)
+                logger.exception("[scheduler] prefetch %s 예기치 못한 실패 — 다음 종목 계속: %s",
+                                 sport, exc)
         recovered = await drain_retry_queue(redis)
         calls = await research_calls_today(redis)
         fails = await research_failure_report(redis, today_kst())

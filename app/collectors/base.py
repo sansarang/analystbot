@@ -81,6 +81,11 @@ def classify_api_error(status: int, body: str) -> str:
         if any(k in lowered for k in CREDIT_MARKERS):
             return "credit"
         return "rate_limit"
+    if status == 400:
+        # Anthropic은 크레딧 소진을 402가 아니라 **400 invalid_request_error**로 준다
+        # ("Your credit balance is too low..."). 400은 보통 진짜 잘못된 요청이므로
+        # 본문이 명시적으로 잔액·결제를 말할 때만 credit으로 승격한다.
+        return "credit" if any(k in lowered for k in CREDIT_MARKERS) else "other"
     if status in (401, 403):
         return "credit" if any(k in lowered for k in QUOTA_KEYWORDS) else "auth"
     if status in SERVER_STATUS:

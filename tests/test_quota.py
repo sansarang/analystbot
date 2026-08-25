@@ -4,7 +4,7 @@ import pytest
 
 import app.bot.main as botmod
 import app.pipeline as pipemod
-from app.collectors.base import ApiQuotaError, is_quota_error
+from app.collectors.base import ApiQuotaError, classify_api_error, is_quota_error
 from app.collectors.football import check_apifootball_quota
 from app.engine.judge import Judge
 from app.notify import notify_quota, reset_notified
@@ -456,3 +456,29 @@ async def test_retry_queue_survives_missing_kickoff(redis_client, monkeypatch):
     assert _json.loads(await redis_client.lindex(RETRY_QUEUE_KEY, 0))["starts_at"] is None
     assert await drain_retry_queue(redis_client) == 1
     assert await redis_client.llen(RETRY_QUEUE_KEY) == 0
+
+
+# --- Anthropic 크레딧 소진은 402가 아니라 400으로 온다 (2026-08-25 실사고) ---
+
+ANTHROPIC_CREDIT_400 = (
+    "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', "
+    "'message': 'Your credit balance is too low to access the Anthropic API. "
+    "Please go to Plans & Billing to upgrade or purchase credits.'}}"
+)
+
+
+def test_400_credit_balance_is_credit():
+    """400 + 잔액 문구 → credit. 실사고: 분류를 빠져나가 알림 없이 프리페치가 죽었다."""
+    assert classify_api_error(400, ANTHROPIC_CREDIT_400) == "credit"
+    assert is_quota_error(400, ANTHROPIC_CREDIT_400) is True
+
+
+def test_400_ordinary_bad_request_is_not_credit():
+    """반대 위험 측정 — 평범한 400을 크레딧으로 오분류하면 안 된다."""
+    for body in (
+        "max_tokens: must be greater than 0",
+        "messages.0.content: field required",
+        "streaming is required for operations that may take longer than 10 minutes",
+    ):
+        assert classify_api_error(400, body) == "other", body
+        assert is_quota_error(400, body) is False, body
