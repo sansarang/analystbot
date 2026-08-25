@@ -70,6 +70,50 @@ def pnl_for(result: str, odds: float | None) -> float:
     return 0.0  # push
 
 
+STALE_AFTER_HOURS = 6      # 시작 후 이만큼 지났는데 final이 아니면 상태가 밀린 것
+
+
+async def reconcile_stale_games(pool: asyncpg.Pool) -> dict:
+    """시작 후 STALE_AFTER_HOURS 지났는데 final이 아닌 경기의 상태를 다시 받아온다.
+
+    실사고(2026-08-25): 8/22~8/23 경기가 'live'(점수는 있음)·'scheduled'(점수 없음)로
+    멈춰 있었다. 점수 갱신이 **채점 대상 날짜에만** 돌아 그 전날들이 영영 밀렸다.
+    채점은 status='final'만 보므로, 밀린 경기의 픽은 영원히 미채점으로 남는다.
+    """
+    rows = await pool.fetch(
+        """
+        SELECT DISTINCT sport, (starts_at AT TIME ZONE 'UTC')::date AS d
+        FROM games
+        WHERE status <> 'final'
+          AND starts_at < now() - make_interval(hours => $1)
+        ORDER BY 1, 2
+        """,
+        STALE_AFTER_HOURS,
+    )
+    fixed = {"mlb": 0, "soccer": 0}
+    for r in rows:
+        sport, day = r["sport"], r["d"].strftime("%Y-%m-%d")
+        try:
+            if sport == "mlb":
+                fixed["mlb"] += await upsert_final_scores(pool, day)
+            else:
+                from app.collectors.football import (
+                    FootballDataClient,
+                    upsert_games_from_football_data,
+                )
+
+                # 축구는 KST 날짜 기준으로 조회한다 (수집기 계약)
+                kst_day = (r["d"]).strftime("%Y-%m-%d")
+                ids = await upsert_games_from_football_data(
+                    pool, kst_day, client=FootballDataClient())
+                fixed["soccer"] += len(ids)
+        except Exception as exc:   # 정합 실패가 채점을 막지 않는다
+            logger.warning("[grader] stale 정합 실패 %s %s: %s", sport, day, exc)
+    if any(fixed.values()):
+        logger.info("[grader] stale 경기 정합 — %s", fixed)
+    return fixed
+
+
 async def grade_date(pool: asyncpg.Pool, date: str, sport: str = "mlb") -> dict:
     """해당 날짜 final 경기의 미채점 픽·예측을 채점. 집계 카운트 반환."""
     if sport == "mlb":

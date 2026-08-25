@@ -256,7 +256,15 @@ async def grading_job() -> None:
     영원히 미채점으로 남았다(2026-08-25 발견: 축구 픽 result 전부 NULL).
     한 종목이 실패해도 다른 종목은 계속 채점한다.
     """
+    from app.grader import reconcile_stale_games
+
     pool = await get_pool()
+    # 상태가 밀린 경기를 먼저 정합한다 — 채점은 status='final'만 보기 때문에
+    # 이걸 건너뛰면 밀린 날짜의 픽이 영원히 미채점으로 남는다.
+    try:
+        await reconcile_stale_games(pool)
+    except Exception as exc:
+        logger.warning("[scheduler] stale 정합 실패 — 채점은 계속: %s", exc)
     totals: dict[str, dict] = {}
     for sport in ("mlb", "soccer"):
         try:

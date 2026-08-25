@@ -1,0 +1,17 @@
+2026-08-25 15:59:34,874 INFO [mlb] client mode: LIVE
+2026-08-25 15:59:35,744 INFO HTTP Request: GET https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2026-08-25&hydrate=probablePitcher "HTTP/1.1 200 OK"
+2026-08-25 15:59:35,770 INFO [mlb] upserted 15 games for 2026-08-25
+2026-08-25 15:59:35,773 INFO [odds] client mode: LIVE
+2026-08-25 15:59:35,782 INFO [grok] client mode: LIVE
+2026-08-25 15:59:36,655 INFO HTTP Request: GET https://api.the-odds-api.com/v4/sports/baseball_mlb/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
+2026-08-25 15:59:36,656 INFO HTTP Request: GET https://statsapi.mlb.com/api/v1/standings?leagueId=103%2C104 "HTTP/1.1 200 OK"
+2026-08-25 15:59:36,659 INFO [odds] quota: used=216 remaining=284
+2026-08-25 15:59:37,492 INFO HTTP Request: GET https://statsapi.mlb.com/api/v1/people?personIds=695549%2C693855%2C801139%2C674841%2C701542%2C814490%2C453286%2C607625%2C804267%2C690986&hydrate=stats%28group%3D%5Bpitching%5D%2Ctype%3D%5Bseason%5D%29 "HTTP/1.1 200 OK"
+2026-08-25 15:59:37,544 INFO [odds] inserted 790 snapshot rows (mlb), skipped 0 in-play events
+2026-08-25 15:59:38,230 INFO HTTP Request: GET https://statsapi.mlb.com/api/v1/people?personIds=693821%2C607192%2C641743%2C594798%2C605135%2C700712%2C668909%2C694297%2C605280%2C650633&hydrate=stats%28group%3D%5Bpitching%5D%2Ctype%3D%5Bseason%5D%29 "HTTP/1.1 200 OK"
+2026-08-25 15:59:38,954 INFO HTTP Request: GET https://statsapi.mlb.com/api/v1/people?personIds=694973%2C695611%2C671737%2C669923%2C605400%2C605288%2C663903&hydrate=stats%28group%3D%5Bpitching%5D%2Ctype%3D%5Bseason%5D%29 "HTTP/1.1 200 OK"
+2026-08-25 16:00:22,266 INFO HTTP Request: POST https://api.x.ai/v1/responses "HTTP/1.1 200 OK"
+2026-08-25 16:00:22,274 INFO [crosscheck] 표본 0항목 전부 API와 일치 (불일치 0)
+2026-08-25 16:00:22,352 INFO [judge] mode: LIVE
+2026-08-25 16:02:15,169 INFO HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-08-25 16:02:15,194 INFO [judge] stop_reason=tool_use · 요청 4경기 → 판정 4경기
