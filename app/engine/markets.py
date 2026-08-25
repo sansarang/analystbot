@@ -229,6 +229,10 @@ def _axis_expert(jg: dict, market: str, side: str, line: float | None) -> bool:
 
 
 def _axis_model(jg: dict, market: str, side: str) -> bool:
+    # [6] 기대득점 분포에서 확률이 나온 마켓은 모델이 실제로 평가한 것이다.
+    #     (분포 도입 전에는 핸디캡·토탈에 모델 축이 없어 전 마켓이 "2-소스 미달"로 탈락했다)
+    if jg.get("distribution") is not None:
+        return True
     if not jg.get("model_valid"):
         return False
     p3 = jg.get("p_model3")
@@ -351,11 +355,20 @@ def grade_candidate(c: dict, settings=None) -> tuple[str, str]:
     money = f"1만원당 {payout_10k(odds):,}원"
     if odds < s.min_odds:
         return GRADE_RED, f"배당 {odds:.2f} < 하한 {s.min_odds:.2f}"
-    if prob < s.min_win_prob:
-        return GRADE_RED, f"승률 {prob:.0%} < 하한 {s.min_win_prob:.0%}"
-    if prob >= s.signal_green_prob:
-        return GRADE_GREEN, f"승률 {prob:.0%}, {money}"
-    return GRADE_YELLOW, f"승률 {prob:.0%} — 소액, {money}"
+
+    # [4] 원정 픽은 임계를 5%p 높게 — 분데스리가 연구: 원정 베팅 ROI -17%
+    need = c.get("required_prob") or s.min_win_prob
+    away_tag = " (원정 픽 — 임계 +5%p)" if need > s.min_win_prob else ""
+    if prob < need:
+        return GRADE_RED, f"승률 {prob:.0%} < 하한 {need:.0%}{away_tag}"
+
+    dog = " ⚠️원정 언더독 — 통계적으로 가장 불리한 유형" if c.get("away_underdog") else ""
+    # [6] 2-소스 미달은 보드에서 지우지 않고 '추천 제외'만 표기한다
+    axes_note = "" if c.get("two_source", True) else f" (근거 {c.get('axes_kr')} 1축 — 추천 제외)"
+    if prob >= s.signal_green_prob + (need - s.min_win_prob):
+        grade = GRADE_YELLOW if axes_note else GRADE_GREEN
+        return grade, f"승률 {prob:.0%}, {money}{away_tag}{dog}{axes_note}"
+    return GRADE_YELLOW, f"승률 {prob:.0%} — 소액, {money}{away_tag}{dog}{axes_note}"
 
 
 def board_grade(board: list[dict]) -> str:
@@ -401,10 +414,18 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
     out: list[dict] = []
 
     stale = bool(jg.get("odds_stale"))   # [A-3] 오래된 스냅샷 폴백은 라벨을 붙인다
+    dist = jg.get("distribution")        # [6] 포아송/스켈람 분포 — 전 마켓 확률의 단일 소스
 
     def add(market, side, line, desc, odds, p, basis):
         if not odds:
             return                       # 배당이 없는 마켓은 build_board가 placeholder로 채운다
+        # [6] 분포가 있으면 그 확률을 쓴다 — 마켓별로 근거를 따로 만들지 않는다
+        if dist is not None:
+            from app.engine.scoring import market_probability
+
+            p_dist = market_probability(dist, market, side, line, jg)
+            if p_dist is not None:
+                p, basis = p_dist, "기대득점 분포"
         if stale:
             desc = f"{desc} (개장 배당)"
         if p is None:
@@ -472,7 +493,11 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
         add(m, side, line, desc, alt["odds"], alt["p"], basis)
 
     # 승인/제외 판정 + 등급 (마켓 단위)
+    from app.engine.scoring import is_away_underdog, required_prob
+
     for c in out:
+        c["required_prob"] = required_prob(c["market"], c["side"], jg)
+        c["away_underdog"] = is_away_underdog(c["market"], c["side"], jg, c.get("odds"))
         _approve(jg, c, sport)
         c["grade"], c["grade_note"] = grade_candidate(c)
 
@@ -563,9 +588,11 @@ def _approve(jg: dict, c: dict, sport: str) -> None:
     #     (실사고: 배당 1.59가 하한에 0.01 미달해 탈락했는데 사유가 "수익률 이상치"로
     #      잘못 표기됐다. EV 플래그가 먼저 걸려 진짜 사유를 가린 것이다)
     #     배당 데이터 자체가 깨진 경우만 남긴다 — 승률과 배당 환산값의 괴리.
+    #     괴리 검사는 **승패(h2h)에만** 적용한다. 핸디캡·토탈은 모델과 시장이 다른 것이
+    #     정상이며(모델을 갖는 이유가 그것이다), 여기서 걸면 정상 픽을 지운다.
     flags = []
     implied = 1 / c["odds"]
-    if abs(c["p"] - implied) > 0.30:
+    if c["market"] in ("h2h", "dc") and abs(c["p"] - implied) > 0.30:
         flags.append(f"승률 {c['p']:.0%} vs 배당 환산 {implied:.0%} 괴리 >30%p (배당 데이터 확인 필요)")
     c["flags"] = flags
 
@@ -582,8 +609,12 @@ def _approve(jg: dict, c: dict, sport: str) -> None:
     # [1-2 폐기] 모델-시장 괴리 검증 — 시장 배제 전환(2026-08-25)으로 삭제됐다.
     #   시장 확률을 기준점으로 쓰는 규칙이라 시장을 판정에서 빼면 성립하지 않는다.
     #   남는 위험(시장이 아는 정보를 우리가 못 봄)은 경기력 정보 수집으로 대체 방어한다.
-    # [1] 2-소스 룰 — 모델 단독은 EV 무관 금지
-    if c["axes_n"] < 2:
+    # [6] 2-소스 룰은 **추천 자격**에만 적용한다 — 확률 산출 가능 여부와 무관하다.
+    #     분포에서 확률이 나온 마켓을 "근거 부족"으로 보드에서 지우면, 실제로 평가된
+    #     마켓을 화면에서 없애는 셈이다. 보드에는 남기고 추천 풀에서만 뺀다.
+    c["two_source"] = c["axes_n"] >= 2
+    if not c["two_source"] and jg.get("distribution") is None:
+        # 분포조차 없으면 확률 근거 자체가 없다 — 이때만 보드에서도 제외
         only = axes_label(c["axes"])
         return reject(f"근거 부족 — 2-소스 미달 ({only} 단독)" if c["axes_n"] == 1
                       else "근거 부족 — 지지 축 없음")

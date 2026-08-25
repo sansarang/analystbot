@@ -116,15 +116,19 @@ async def test_flagged_pick_never_recommended_regression(db_pool, redis_client, 
     import json as _json
 
     analysis = _json.loads(await redis_client.get("analysis:mlb:2026-08-22"))
+    # [6] 2-소스 미달·기준 미달은 보드에서 지우지 않고 🔴/🟡로 남긴다.
+    #     추천·조합·predictions에서만 빠져야 한다.
     rejected = [
         (g, c) for g in analysis["games"]
-        for c in g.get("market_board") or [] if not c.get("approved")
+        for c in g.get("market_board") or []
+        if not c.get("approved") or c.get("grade") == "🔴" or c.get("two_source") is False
     ]
-    assert rejected, "목 데이터에 미승인 후보가 있어야 회귀 테스트 성립"
-    # 탈락 사유는 실제 사유여야 한다 — 승률/배당 하한 미달 또는 2-소스 미달
-    # ([1-2] 괴리 검증 룰은 시장 배제 전환으로 폐기됐다)
-    reasons = " | ".join(str(c.get("reject_reason")) for _, c in rejected)
-    assert "2-소스 미달" in reasons or "하한" in reasons
+    assert rejected, "목 데이터에 제외 대상 후보가 있어야 회귀 테스트 성립"
+    reasons = " | ".join(
+        f"{c.get('reject_reason')} {c.get('grade_note')}" for _, c in rejected)
+    # 사유는 실제 사유여야 한다 — 하한 미달 / 근거 축 부족 / 배당 미수집
+    assert any(k in reasons for k in ("하한", "근거", "배당 미수집"))
+    # [1-2 폐기] 괴리 검증 룰 문구는 더 이상 나오지 않는다
     assert "시장이 아는 정보가 있을 가능성" not in reasons
     reco_keys = {(p["game_id"], p["pick"]) for p in analysis["picks"] if p.get("recommended")}
     combo_keys = {

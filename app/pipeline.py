@@ -678,12 +678,15 @@ def _pick_state(jg: dict) -> tuple[str, str]:
 
 
 def qualifies(pick: dict, settings=None) -> bool:
-    """[3-1] 추천 자격 = 승률 하한 AND 배당 하한. EV는 쓰지 않는다."""
+    """[3-1][4] 추천 자격 = 승률 하한 AND 배당 하한. 원정 픽은 임계가 5%p 높다."""
     from app.config import get_settings
 
     s = settings or get_settings()
     p, odds = pick.get("p"), pick.get("odds")
-    return p is not None and odds is not None and p >= s.min_win_prob and odds >= s.min_odds
+    need = pick.get("required_prob") or s.min_win_prob
+    if pick.get("two_source") is False:      # [6] 2-소스 룰은 추천 자격에만 적용
+        return False
+    return p is not None and odds is not None and p >= need and odds >= s.min_odds
 
 
 def near_miss_picks(picks: list[dict], settings=None, n: int = 3) -> list[dict]:
@@ -849,27 +852,50 @@ def _compute_picks(
             (jg["away"], (p3[2] if p3 else ((1 - jg["p_model"]) if jg.get("model_valid") and sport == "mlb" else None)),
              market.get(jg["away"], 0.5), p_claude_away),
         ) if h2h_priced else ()
-        # [1-2] 경기력 조정 — 기준 승률(앙상블)에 결장·불펜·선발폼을 실제로 반영한다
+        # [2][3] 기대득점(λ) 분포 — 학술 방법론(포아송/스켈람)이 1순위 확률 소스다.
+        #        분포가 서면 전 마켓 확률이 같은 분포에서 나오고, 경기력 조정(%p 가산)은
+        #        중복 계산이 되므로 쓰지 않는다. 핵심 지표가 없을 때만 조정 방식으로 폴백.
         from app.engine.performance import WinProbAdjuster
+        from app.engine.scoring import game_distribution
         from app.research.validate import sanitize_research
 
         research_clean, _ = sanitize_research(jg.get("research") or {}, sport)
+        dist = game_distribution(jg, research_clean, sport, settings)
+        jg["distribution"] = dist
+        if dist is not None:
+            jg["lambda_trace"] = dist["lam"].trace
+            jg["lambda_missing"] = dist["lam"].missing
+            jg["prob_cap_note"] = dist["capped"]
+            jg["prob_raw_home"] = dist["raw_home"]
+        else:
+            jg["lambda_missing"] = (jg.get("lambda_missing") or []) + ["핵심 지표(타선·선발) 전무"]
         adjuster = WinProbAdjuster(settings)
         p_legacy: dict[str, float] = {}
         home_adj = None
         for side, p_model_s, p_market_s, p_claude_s in sides:
             if not (jg.get("best_odds") or {}).get(side):
                 continue
+            if dist is not None:
+                # 모델 확률 = 기대득점 분포. Claude 판정과 반반으로 결합한다.
+                p_model_s = (dist["probs"]["h2h"]["home"] if side == jg["home"]
+                             else dist["probs"]["h2h"]["away"])
             pe = blend(p_model_s, p_market_s, p_claude_s)
             p_ens[side] = round(pe, 4)
             p_legacy[side] = round(blend_legacy(p_model_s, p_market_s, p_claude_s), 4)
-            if side == jg["home"]:
+            if dist is not None:
+                from app.engine.scoring import cap_probability
+
+                capped, note = cap_probability(pe, sport, settings)
+                p_final[side] = round(capped, 4)
+                if note and side == jg["home"]:
+                    jg["prob_cap_note"] = note
+            elif side == jg["home"]:
                 home_adj = adjuster.adjust(pe, jg, research_clean, sport)
                 p_final[side] = home_adj["p"]
             else:
                 p_final[side] = round(pe, 4)   # 원정은 홈 조정폭을 반대로 받는다(아래)
-        # 홈 조정폭을 원정에 대칭 반영 (3-way는 무승부 질량을 건드리지 않는다)
-        if home_adj is not None and jg["away"] in p_final:
+        # 홈 조정폭을 원정에 대칭 반영 (분포 경로는 이미 양쪽이 계산돼 있다)
+        if dist is None and home_adj is not None and jg["away"] in p_final:
             shift = home_adj["p"] - p_ens.get(jg["home"], home_adj["p"])
             p_final[jg["away"]] = round(max(0.02, min(0.96, p_final[jg["away"]] - shift)), 4)
         jg["prob_adjust"] = home_adj          # 조정 과정 trace (상세 데이터 표시용)
@@ -904,7 +930,7 @@ def _compute_picks(
             "starts_at_kst": jg["starts_at_kst"], "pick": pick,
             "market": rep["market"], "side": rep["side"], "line": rep.get("line"),
             "desc": rep["desc"], "p": rep["p"], "p_claude": jg.get("p_claude"),
-            "model_valid": jg["model_valid"],
+            "model_valid": jg.get("model_valid", False),
             "confidence": jg.get("judge_confidence", "medium"),
             "odds": rep["odds"], "ev": rep["ev"], "kelly": round(pick_kelly, 4),
             "stake_krw": stake_krw,
@@ -1525,13 +1551,21 @@ def render_game_section(jg: dict, news: str = "") -> str:
     elif jg.get("research_status") == "stale_fallback":
         lines.append("⚠️ 리서치 미완 — 새벽 데이터 기준")
 
+    # [2-3] 기대득점 λ 산출 과정 — 타선→선발→구장→날씨→불펜→좌우→홈 순서 그대로
+    if jg.get("lambda_trace"):
+        lines.append("λ 산출: " + " → ".join(jg["lambda_trace"]))
+    if jg.get("prob_cap_note"):
+        lines.append(f"⚠️ {jg['prob_cap_note']} — 계산 결과가 현실 범위를 벗어나 절사했습니다")
+    if jg.get("lambda_missing"):
+        lines.append("(미수집·보정 생략) " + ", ".join(jg["lambda_missing"][:6]))
+
     # [1] 승률 조정 과정 — **대표 마켓의 대상팀 기준**으로 통일해 출력한다.
     #     보드는 대상팀 승률을 쓰는데 조정 과정만 홈 기준이면 두 기준이 섞여 읽을 수 없다.
     from app.engine.markets import best_market
     from app.engine.performance import trace_for
 
     adjust = jg.get("prob_adjust") or {}
-    if adjust.get("trace"):
+    if adjust.get("trace") and not jg.get("lambda_trace"):
         target = (best_market(jg.get("market_board") or []) or {}).get("side") or jg["home"]
         if target not in (jg["home"], jg["away"]):
             target = jg["home"]          # 토탈·핸디 등 팀이 아닌 사이드는 홈 기준 유지

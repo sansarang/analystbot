@@ -274,12 +274,59 @@ def sanitize_research(data: dict | None, sport: str = "mlb") -> tuple[dict, list
     if str(data.get("bullpen_overused") or "").strip() in ("홈", "원정", "양팀"):
         out["bullpen_overused"] = data["bullpen_overused"].strip()
 
+    # 확률 모델(포아송 λ)이 직접 쓰는 수치 필드 — 숫자로 파싱되면 그대로 보존한다.
+    # 산문 검증(문장 필터)은 적용하지 않는다: 수치는 산문이 아니다.
     for side in ("home_pitcher", "away_pitcher"):
         src, dst = data.get(side), out.get(side)
         if isinstance(src, dict) and isinstance(dst, dict):
-            ip = clean_number(src.get("ip_avg_recent"))
-            if ip is not None:
-                dst["ip_avg_recent"] = ip
+            for key in ("ip_avg_recent", "siera", "xfip", "fip"):
+                val = clean_number(src.get(key))
+                if val is not None:
+                    dst[key] = val
+            hand = str(src.get("throws") or "").strip().upper()[:1]
+            if hand in ("L", "R"):
+                dst["throws"] = hand
+
+    for side in ("home_offense", "away_offense"):
+        block = data.get(side)
+        if not isinstance(block, dict):
+            continue
+        kept = {}
+        for key in ("woba_30d", "obp_30d", "iso_30d", "k_pct", "bb_pct",
+                    "vs_lhp_woba", "vs_rhp_woba", "woba", "obp"):
+            val = clean_number(block.get(key))
+            if val is not None:
+                kept[key] = val
+        if kept:
+            out[side] = kept
+
+    for side in ("home_bullpen", "away_bullpen"):
+        block = data.get(side)
+        if not isinstance(block, dict):
+            continue
+        kept = {}
+        for key in ("era", "fip", "ip_last3d"):
+            val = clean_number(block.get(key))
+            if val is not None:
+                kept[key] = val
+        if isinstance(block.get("closer_available"), bool):
+            kept["closer_available"] = block["closer_available"]
+        if kept:
+            out[side] = kept
+
+    for key in ("park_factor", "park_hr"):
+        val = clean_number(data.get(key))
+        if val is not None:
+            out[key] = val
+
+    # 축구 xG — recent_form 블록 안의 수치
+    for side in ("home_recent_form", "away_recent_form"):
+        src, dst = data.get(side), out.get(side)
+        if isinstance(src, dict) and isinstance(dst, dict):
+            for key in ("xg6", "xga6"):
+                val = clean_number(src.get(key))
+                if val is not None:
+                    dst[key] = val
 
     absences = []
     for item in data.get("absences") or []:

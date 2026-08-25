@@ -164,24 +164,24 @@ def test_model_and_market_probs_not_printed():
 # ---------------------------------------------------------------- [3] 승률 상한
 
 def test_probability_cap_applied_and_labelled():
-    """[3] MLB 단일 경기 77%는 비현실적 — 70%로 절사하고 표기한다."""
+    """[1] MLB 단일 경기 77%는 비현실적 — 65%로 절사하고 원값을 표기한다."""
     from app.config import Settings
 
     s = Settings(_env_file=None)
     a = WinProbAdjuster(s)
     jg = {"home": "H", "away": "A"}
     out = a.adjust(0.77, jg, {}, "mlb")
-    assert out["p"] == s.prob_cap_mlb == 0.70
+    assert out["p"] == s.prob_cap_mlb == 0.65
     assert out["capped"] is True
     assert any("추정 상한 적용" in x for x in out["trace"])
 
-    # 반대편도 절사된다 (0.23 → 0.30)
+    # 반대편도 절사된다 (0.23 → 0.35)
     low = a.adjust(0.23, jg, {}, "mlb")
     assert low["p"] == round(1 - s.prob_cap_mlb, 4)
 
     # 축구는 상한이 더 높다
     soccer = a.adjust(0.80, jg, {}, "soccer")
-    assert soccer["p"] == s.prob_cap_soccer == 0.75
+    assert soccer["p"] == s.prob_cap_soccer == 0.70
 
 
 def test_no_cap_when_within_range():

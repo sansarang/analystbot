@@ -32,13 +32,20 @@ EST_COST_PER_CALL_USD = 0.01  # sonar-pro 대략 단가 (주간 비용 추정 �
 _SCHEMA_MLB = """{
  "home_recent_form": {"form": "WWLWL (최근 5경기, 최신부터)", "runs_avg": 4.2, "note": "최근 30일 좌/우완 상대 타선 성적 요약(한국어)"},
  "away_recent_form": {...동일...},
- "home_pitcher": {"name": "...", "last5": "최근 5~7경기 ERA·피OPS·이닝 요약(한국어)", "era_recent": 5.40, "era_season": 3.86, "ip_avg_recent": 5.2, "trend": "악화|개선|유지"},
+ // ↓ 확률 계산(포아송 λ)에 직접 쓰이는 수치. 반드시 **숫자**로 채운다.
+ "home_offense": {"woba_30d": 0.318, "obp_30d": 0.322, "iso_30d": 0.155, "k_pct": 22.4, "bb_pct": 8.1, "vs_lhp_woba": 0.330, "vs_rhp_woba": 0.312},
+ "away_offense": {...동일...},
+ "home_pitcher": {"name": "...", "throws": "L|R", "last5": "최근 5~7경기 ERA·피OPS·이닝 요약(한국어)", "siera": 3.95, "xfip": 4.02, "fip": 4.10, "era_recent": 5.40, "era_season": 3.86, "ip_avg_recent": 5.2, "home_away_split": "홈/원정 스플릿(한국어)", "trend": "악화|개선|유지"},
  // era_recent와 ip_avg_recent는 **반드시 숫자**로 채운다. 서술에 "최근 ERA 2점대 중후반"처럼
  // 쓸 수 있으면 그 수치를 계산해 era_recent에 숫자로 넣어라. 정말 모를 때만 null.
  "away_pitcher": {...동일...},
  "splits": "홈/원정 스플릿 요약(한국어)",
  "bullpen": "양 팀 불펜 최근 3일 소모 상황 — 소화 이닝과 연투 여부를 숫자로(한국어)",
  "bullpen_overused": "홈|원정|양팀|없음 (최근 3일 소모가 리그 평균 대비 과다한 쪽)",
+ "home_bullpen": {"era": 3.85, "fip": 4.02, "ip_last3d": 8.2, "closer_available": true},
+ "away_bullpen": {...동일...},
+ "park_factor": 1.03,   // 구장 득점 파크팩터 (1.00=중립). 홈런 파크팩터는 park_hr
+ "park_hr": 1.08,
  "absences": ["핵심 결장자와 중요도(한국어). 반드시 '팀명 + 선수명 + 역할(주전 타자/마무리/셋업/선발) + 팀 내 기여도'를 포함. 예: 'San Diego Padres의 Jason Adam(마무리) 부상 결장 — 9회 담당'"],
  "rotation_plan": "감독의 로테이션·불펜 휴식 계획, 오프너 여부(한국어). 없으면 null",
  "park": "구장 특성 — 타자친화/투수친화와 그 근거(한국어). 없으면 null",
@@ -49,7 +56,8 @@ _SCHEMA_MLB = """{
 }"""
 
 _SCHEMA_SOCCER = """{
- "home_recent_form": {"form": "WWDLW (최근 5경기, 최신부터)", "last5_detail": "상대·스코어 나열(한국어)", "gf5": 9, "ga5": 4, "rank": 3, "home_split": "홈 성적 요약(한국어)"},
+ "home_recent_form": {"form": "WWDLW (최근 5경기, 최신부터)", "last5_detail": "상대·스코어 나열(한국어)", "gf5": 9, "ga5": 4, "rank": 3, "xg6": 1.62, "xga6": 1.10, "home_split": "홈 성적 요약(한국어)"},
+ // xg6/xga6 = 최근 6경기 경기당 기대득점(xG)·기대실점(xGA). 확률 계산에 직접 쓰인다.
  "away_recent_form": {...동일 (away_split)...},
  "h2h_history": "최근 상대전적 요약(한국어)",
  "absences": ["핵심 결장자와 중요도(한국어). '팀명 + 선수명 + 포지션 + 주전 여부'를 포함"],
@@ -69,7 +77,17 @@ Find: {targets}
 Output ONLY one JSON object (no prose) with this exact shape:
 {schema}
 
-CRITICAL: "era_recent" (last-5-start ERA) and "ip_avg_recent" (average innings per start over
+CRITICAL — these NUMERIC fields drive the win-probability model. Fill them with numbers:
+- Batting (last 30 days, NOT season): wOBA, OBP, ISO, K%, BB%, and split wOBA vs LHP / vs RHP.
+  Research shows batting metrics predict outcomes better than pitching metrics — do not skip them.
+- Starters: SIERA, xFIP, FIP if published (these are luck-adjusted; plain ERA is the last resort),
+  the hand they throw with (L/R), and average innings per start over the last 5.
+- Bullpen: ERA/FIP and innings pitched in the last 3 days, whether the closer is available.
+- Park run factor (1.00 = neutral) and home-run factor.
+- Game-time temperature in Celsius and wind direction (맞바람/뒷바람).
+For soccer: xG and xGA per match over the last 6 matches (xg6 / xga6).
+
+"era_recent" (last-5-start ERA) and "ip_avg_recent" (average innings per start over
 those outings) must be NUMBERS, not prose. If you can describe the recent form in words, you can
 compute the number — do it. Leave them null ONLY if you truly found no game logs. These two fields
 drive the win-probability calculation; prose in "last5" alone is not usable.
@@ -79,7 +97,12 @@ Rules: every free-text value must be KOREAN (team/player names may stay original
 # [4-1] 승률 조정 계수(performance.py)에 직접 매핑되는 항목을 명시적으로 요구한다.
 #       수집은 됐는데 확률에 못 쓰이는 정보가 생기지 않도록 필드를 계수에 맞춰 잡았다.
 TARGETS = {
-    "mlb": ("both starters' LAST 5 STARTS in detail — game-by-game ERA, innings pitched, "
+    "mlb": ("each team's LAST-30-DAY batting line — wOBA, OBP, ISO, K%, BB% — and their "
+            "wOBA split against left-handed and right-handed starters; "
+            "both starters' SIERA / xFIP / FIP (luck-adjusted metrics beat raw ERA) and throwing hand; "
+            "both bullpens' ERA and innings pitched in the last 3 days, closer availability; "
+            "the ballpark's run and home-run park factors; game-time temperature and wind; "
+            "both starters' LAST 5 STARTS in detail — game-by-game ERA, innings pitched, "
             "opponent OPS — and their AVERAGE innings per start (this drives bullpen exposure); "
             "home/away splits; each lineup's last-30-day performance vs LHP/RHP; "
             "bullpen innings used in the LAST 3 DAYS and whether either bullpen is overworked; "
@@ -88,7 +111,9 @@ TARGETS = {
             "the manager's stated rotation and bullpen rest plan; ballpark run environment; "
             "game-time weather (temperature, wind direction, precipitation); "
             "published expert picks WITH each expert's season record"),
-    "soccer": ("last 5 match results and goals for both teams; home/away splits; head-to-head record; "
+    "soccer": ("each team's xG and xGA per match over the LAST 6 MATCHES (xg6/xga6) — these drive "
+               "the probability model, so give numbers; "
+               "last 5 match results and goals for both teams; home/away splits; head-to-head record; "
                "every absence WITH position and whether the player is a regular starter; "
                "pitch and weather conditions; published expert picks WITH records; predicted scorelines"),
 }

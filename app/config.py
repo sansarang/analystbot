@@ -67,9 +67,42 @@ class Settings(BaseSettings):
     # 주의: 0.58 × 1.60 = 0.928 → EV -7.2%. 승률 58%의 손익분기 배당은 1.724다.
     min_win_prob: float = 0.58
     min_odds: float = 1.55            # 1.60 → 1.55 (0.01 미달 탈락이 잦아 완화)
-    # 승률 추정 상한 — MLB 단일 경기 77%는 비현실적이다(리그 최강팀도 65% 안팎)
-    prob_cap_mlb: float = 0.70
-    prob_cap_soccer: float = 0.75
+    # ── 승률 상한/하한 ([1]) ─────────────────────────────────────────────
+    # 근거: 학계 최고 수준 MLB 모델도 정확도 61.77%(Wharton). 최강팀도 단일 경기
+    # 승률이 65%를 넘지 않는다. 이를 넘는 값은 계산 오류로 본다.
+    prob_cap_mlb: float = 0.65        # 야구 상한 (하한은 1 - 상한 = 0.35)
+    prob_cap_soccer: float = 0.70     # 축구 승 확률 상한
+    prob_cap_alert_n: int = 3         # 하루 이만큼 초과하면 "계산 로직 점검 필요" 경고
+
+    # 원정 비대칭 ([4]) — 분데스리가 연구: 홈 승 ROI +10~15%, 원정 -17%
+    away_prob_penalty: float = 0.05   # 원정 픽은 승률 임계를 이만큼 높게 적용
+
+    # ── 기대득점(λ) 모델 계수 ([2][3]) ──────────────────────────────────
+    league_runs_per_game: float = 4.40    # MLB 팀당 평균 득점
+    league_woba: float = 0.320            # 리그 평균 wOBA
+    league_obp: float = 0.318             # 리그 평균 OBP
+    league_era: float = 4.20              # 리그 평균 ERA/FIP 계열
+    # 계수 지수와 클램프 — 단일 요인이 λ를 지배하지 않도록 폭을 제한한다.
+    # 선발 한 명이 팀 기대득점을 ±35% 흔든다는 계산은 현실과 맞지 않는다.
+    exp_offense: float = 1.20             # 타선 계수 지수 (Wharton: 타선 영향이 크다)
+    exp_pitcher: float = 0.50             # 선발 억제 계수 지수
+    off_coef_min: float = 0.82
+    off_coef_max: float = 1.22
+    pit_coef_min: float = 0.85
+    pit_coef_max: float = 1.18
+    lam_min: float = 2.80                 # 팀 기대득점 하한 (MLB 현실 범위)
+    lam_max: float = 6.20                 # 팀 기대득점 상한
+    park_hitter: float = 1.06             # 타자친화 구장 (수치 미수집 시 폴백)
+    park_pitcher: float = 0.94            # 투수친화 구장
+    weather_temp_per_deg: float = 0.004   # 기온 1도당 득점 계수
+    weather_wind: float = 0.03            # 맞바람/뒷바람 계수
+    bullpen_short_start: float = 0.05     # 상대 선발 5이닝 미만 → 득점 기대 상향
+    bullpen_overuse_runs: float = 0.04    # 상대 불펜 과소모 → 득점 기대 상향
+    home_run_edge: float = 0.03           # 홈 득점 이점 (야구)
+    f5_share: float = 0.55                # 5이닝까지의 득점 비중 (5/9 근사)
+    league_goals_per_team: float = 1.40   # 축구 팀당 평균 득점
+    home_goal_edge: float = 0.10          # 홈 득점 이점 (축구)
+    score_dispersion: float | None = None # 과분산 관찰 시 음이항 r 값 (None=포아송)
     signal_green_prob: float = 0.62      # 🟢 승률 하한 (배당 하한은 min_odds 공용)
 
     # ── 경기력 승률 조정 계수 (%p 단위, [1-2]) ────────────────────────────
