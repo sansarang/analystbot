@@ -494,6 +494,19 @@ async def build_analysis(
     await _attach_alt_markets(pool, judge_games)
     _enforce_data_rules(judge_games)
 
+    # [§3] 라인 무브먼트 — 확률이 아니라 **신뢰도**만 조정한다.
+    #      확률 계산(_compute_picks) 이후에 실행해야 확률에 스며들지 않는다.
+    async def _apply_line_moves(games: list[dict]) -> None:
+        from app.engine.linemove import attach_line_move
+
+        for g in games:
+            if g.get("status") != "scheduled" or not g.get("market_board"):
+                continue
+            try:
+                await attach_line_move(pool, g)
+            except Exception as exc:
+                logger.warning("[pipeline] 라인 이동 계산 실패 game=%s: %s", g.get("game_id"), exc)
+
     statcast_data = None
     if sport == "mlb" and redis is not None:
         from app.collectors.statcast import load as load_statcast
@@ -506,6 +519,9 @@ async def build_analysis(
         except Exception as exc:
             logger.warning("[pipeline] Statcast 로드 실패, 리서치 지표만 사용: %s", exc)
 
+    picks_out, parlays, recommended = _compute_picks(settings, judge_games, sport, statcast_data)
+    # 라인 이동으로 신뢰도가 바뀌면 등급·추천이 달라지므로 픽을 다시 계산한다
+    await _apply_line_moves(judge_games)
     picks_out, parlays, recommended = _compute_picks(settings, judge_games, sport, statcast_data)
 
     # [B-1] 판정과 서술을 분리 — 판정 결론 + 마켓 보드 + 리서치를 입력으로 별도 서술 단계.
@@ -1584,6 +1600,13 @@ def render_game_section(jg: dict, news: str = "") -> str:
         lines.append(f"⚠️ {jg['prob_cap_note']} — 계산 결과가 현실 범위를 벗어나 절사했습니다")
     if jg.get("lambda_missing"):
         lines.append("(미수집·보정 생략) " + ", ".join(jg["lambda_missing"][:6]))
+
+    # [§3] 라인 이동 — 확률이 아니라 신뢰도 근거로만 표시한다
+    lm = jg.get("line_move") or {}
+    if lm.get("line"):
+        lines.append(f"{lm['desc']} {lm['line']}")
+        if lm.get("warning"):
+            lines.append(f"⚠️ {lm['warning']}")
 
     # [1] 승률 조정 과정 — **대표 마켓의 대상팀 기준**으로 통일해 출력한다.
     #     보드는 대상팀 승률을 쓰는데 조정 과정만 홈 기준이면 두 기준이 섞여 읽을 수 없다.
