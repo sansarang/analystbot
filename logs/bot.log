@@ -1,3 +1,4 @@
+INFO:app.bot.main:[version] bot 기동 — 커밋 7b0123a+dirty (2026-08-25T16:42) fix(7-6): 알림 억제를 Redis 공유 상태로 이전 — 프로세스 경계를 넘게
 INFO:app.bot.main:starting polling
 INFO:aiogram.dispatcher:Start polling
 INFO:aiogram.dispatcher:Run polling for bot @sports_analyst_2026_bot id=8917065606 - 'sports_analyst_bot'

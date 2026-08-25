@@ -146,6 +146,19 @@ async def prefetch_job() -> None:
         await redis.aclose()
 
 
+async def park_refresh_job() -> None:
+    """[§2] 파크팩터 주 1회 갱신 — statsapi 날짜범위 1콜. 구장 득점환경은 천천히 변한다."""
+    from app.collectors.park import refresh
+
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        result = await refresh(redis)
+        logger.info("[scheduler] 파크팩터 갱신: %s", result)
+        return result
+    finally:
+        await redis.aclose()
+
+
 async def statcast_refresh_job() -> None:
     """[2-1] Statcast 일 1회 갱신 — 조회가 무거워 프리페치 직전에만 돌린다."""
     from app.collectors.statcast import refresh
@@ -386,6 +399,9 @@ def _job_specs() -> list[tuple]:
         ("lineup_poll_30m", lineup_poll_job, IntervalTrigger(minutes=30)),
         ("statcast_daily", statcast_refresh_job,
          CronTrigger(hour=3, minute=30, timezone=KST)),
+        # 파크팩터는 시즌 누적이라 천천히 변한다 — 주 1회면 충분하고 statsapi 1콜이다
+        ("park_weekly", park_refresh_job,
+         CronTrigger(day_of_week="mon", hour=3, minute=20, timezone=KST)),
         ("soccerdata_daily", soccer_stats_refresh_job,
          CronTrigger(hour=3, minute=40, timezone=KST)),
         ("elo_refresh_weekly", elo_refresh_job,

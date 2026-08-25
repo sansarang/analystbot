@@ -119,6 +119,94 @@ def aggregate_team_offense(df) -> dict[str, dict]:
     return out
 
 
+# [§2] 불펜 소모 — 최근 3일 구원 투구 수. 리그 중앙값 대비 이 배수를 넘으면 '과소모'.
+#      그동안 이 신호는 Perplexity 산문에서만 왔다(리서치 없으면 통째로 누락).
+#      Statcast 원본에 이미 있는 값이라 리서치 콜을 쓸 이유가 없다.
+BULLPEN_RECENT_DAYS = 3
+BULLPEN_OVERUSE_RATIO = 1.30
+
+
+def _with_fielding_team(df):
+    """투구 행에 수비 팀(fld_team)을 붙인다. 'Top'이면 홈이 수비다."""
+    if df is None or len(df) == 0 or "inning_topbot" not in df or "game_pk" not in df:
+        return None
+    d = df[df["pitcher"].notna() & df["game_pk"].notna()].copy()
+    d["fld_team"] = d.apply(
+        lambda r: TEAM_CODE_TO_NAME.get(str(
+            r.get("home_team") if str(r.get("inning_topbot") or "").startswith("Top")
+            else r.get("away_team"))), axis=1)
+    return d[d["fld_team"].notna()]
+
+
+def aggregate_bullpen(df) -> dict[str, dict]:
+    """팀별 불펜 최근 소모 — 3일 투구 수와 과소모 여부.
+
+    선발/구원 구분: 경기별로 그 팀의 **첫 투수**를 선발로 보고 나머지를 불펜으로 센다
+    (Statcast에 선발 플래그가 없다).
+    """
+    import pandas as pd
+
+    if df is None or len(df) == 0:
+        return {}
+    d = _with_fielding_team(df)
+    if d is None or d.empty:
+        return {}
+    d["game_date"] = pd.to_datetime(d["game_date"], errors="coerce")
+    # 경기·팀별 첫 등판 투수 = 선발
+    order = (d.sort_values(["game_pk", "fld_team", "at_bat_number"])
+             if "at_bat_number" in d else d.sort_values(["game_pk", "fld_team"]))
+    first = order.groupby(["game_pk", "fld_team"])["pitcher"].first().rename("starter")
+    j = order.join(first, on=["game_pk", "fld_team"])
+    relief = j[j["pitcher"] != j["starter"]]
+    if relief.empty:
+        return {}
+    cutoff = d["game_date"].max() - pd.Timedelta(days=BULLPEN_RECENT_DAYS)
+    recent = relief[relief["game_date"] > cutoff]
+    counts = recent.groupby("fld_team").size()
+    if counts.empty:
+        return {}
+    median = float(counts.median())
+    out: dict[str, dict] = {}
+    for team, n in counts.items():
+        out[str(team)] = {
+            "bp_pitches_3d": int(n),
+            "bp_overused": bool(median > 0 and n >= median * BULLPEN_OVERUSE_RATIO),
+        }
+    return out
+
+
+def starter_innings(df) -> dict[str, float]:
+    """선발별 등판당 평균 이닝 — 불펜 노출 신호(`ip_avg_recent`).
+
+    `_bullpen_factor`가 "상대 선발이 5이닝을 못 채우면 불펜 노출↑"에 쓴다.
+    그동안 Perplexity 산문에서만 왔지만 Statcast 원본으로 계산할 수 있다.
+    근사: 그 등판에서 던진 **서로 다른 이닝 수**(6이닝 선발은 1~6회에 등장).
+    """
+    import pandas as pd
+
+    if df is None or len(df) == 0 or "inning" not in df:
+        return {}
+    d = _with_fielding_team(df)
+    if d is None or d.empty:
+        return {}
+    order = (d.sort_values(["game_pk", "fld_team", "at_bat_number"])
+             if "at_bat_number" in d else d.sort_values(["game_pk", "fld_team"]))
+    first = order.groupby(["game_pk", "fld_team"])["pitcher"].first().rename("starter")
+    j = order.join(first, on=["game_pk", "fld_team"])
+    st = j[j["pitcher"] == j["starter"]]
+    if st.empty:
+        return {}
+    per_start = st.groupby(["pitcher", "game_pk"])["inning"].nunique()
+    avg = per_start.groupby("pitcher").mean()
+    names = st.groupby("pitcher").apply(_pitcher_name, include_groups=False)
+    out: dict[str, float] = {}
+    for pid, ip in avg.items():
+        nm = names.get(pid)
+        if nm:
+            out[str(nm)] = round(float(ip), 2)
+    return out
+
+
 def aggregate_pitchers(df) -> dict[str, dict]:
     """선발별 최근 지표 — 허용 xwOBA·평균 구속(피로 신호)·던진 손·최근 등판 수.
 
@@ -214,12 +302,18 @@ async def refresh(redis, date: str | None = None) -> dict:
 
     offense = aggregate_team_offense(df)
     pitchers = aggregate_pitchers(df)
-    for kind, payload in (("offense", offense), ("pitchers", pitchers)):
+    bullpen = aggregate_bullpen(df)
+    for name, ip in starter_innings(df).items():
+        if name in pitchers:
+            pitchers[name]["ip_avg_recent"] = ip
+    for kind, payload in (("offense", offense), ("pitchers", pitchers),
+                          ("bullpen", bullpen)):
         await redis.set(_key(kind, date), json.dumps(payload, ensure_ascii=False),
                         ex=CACHE_TTL)
-    logger.info("[statcast] %s 갱신 — 팀 %d개, 투수 %d명 (원본 %d행)",
-                date, len(offense), len(pitchers), len(df))
-    return {"ok": True, "teams": len(offense), "pitchers": len(pitchers), "rows": len(df)}
+    logger.info("[statcast] %s 갱신 — 팀 %d개, 투수 %d명, 불펜 %d팀 (원본 %d행)",
+                date, len(offense), len(pitchers), len(bullpen), len(df))
+    return {"ok": True, "teams": len(offense), "pitchers": len(pitchers),
+            "bullpen": len(bullpen), "rows": len(df)}
 
 
 # 당일 키가 없을 때 거슬러 올라갈 최대 일수. 30일 누적 지표라 하루이틀 차이는
@@ -227,7 +321,7 @@ async def refresh(redis, date: str | None = None) -> dict:
 STALE_FALLBACK_DAYS = 3
 
 
-async def load(redis, date: str | None = None) -> tuple[dict, dict]:
+async def load(redis, date: str | None = None) -> tuple[dict, dict, dict]:
     """캐시된 (팀 타선, 투수 지표). 없으면 빈 dict — 모델은 해당 보정을 건너뛴다.
 
     당일 키가 없으면 최근 STALE_FALLBACK_DAYS일 안의 키로 폴백한다.
@@ -244,21 +338,26 @@ async def load(redis, date: str | None = None) -> tuple[dict, dict]:
     base = datetime.strptime(date, "%Y-%m-%d")
     for back in range(STALE_FALLBACK_DAYS + 1):
         day = (base - timedelta(days=back)).strftime("%Y-%m-%d")
-        raws = [await redis.get(_key(kind, day)) for kind in ("offense", "pitchers")]
+        raws = [await redis.get(_key(kind, day))
+                for kind in ("offense", "pitchers", "bullpen")]
         if not any(raws):
             continue
         if back:
             logger.warning("[statcast] %s 캐시 없음 — %s 캐시로 폴백(%d일 전). "
                            "03:30 갱신 잡 점검 필요", date, day, back)
-        return (json.loads(raws[0]) if raws[0] else {},
-                json.loads(raws[1]) if raws[1] else {})
+        return tuple(json.loads(x) if x else {} for x in raws)
     logger.warning("[statcast] %s 기준 최근 %d일 캐시가 모두 없다 — λ 산출 불가",
                    date, STALE_FALLBACK_DAYS)
-    return {}, {}
+    return {}, {}, {}
 
 
-def merge_into_research(research: dict, jg: dict, offense: dict, pitchers: dict) -> list[str]:
-    """Statcast 지표를 리서치 페이로드에 얹는다. 반환: 실제로 채운 항목."""
+def merge_into_research(research: dict, jg: dict, offense: dict, pitchers: dict,
+                        bullpen: dict | None = None,
+                        parks: dict | None = None) -> list[str]:
+    """Statcast 지표를 리서치 페이로드에 얹는다. 반환: 실제로 채운 항목.
+
+    리서치가 이미 채운 값은 덮지 않는다(setdefault) — 수집 실패 항목만 메운다.
+    """
     filled: list[str] = []
     for side, team_key in (("home", "home"), ("away", "away")):
         team = jg.get(team_key)
@@ -275,4 +374,19 @@ def merge_into_research(research: dict, jg: dict, offense: dict, pitchers: dict)
             for k, v in pstats.items():
                 block.setdefault(k, v)
             filled.append(f"{side} 선발 {name}")
+    # [§2] 불펜 소모 — _bullpen_factor는 research["bullpen_overused"]를 '홈'/'원정'으로 읽는다
+    if bullpen and research.get("bullpen_overused") is None:
+        pair = [(label, (bullpen.get(jg.get(k)) or {}))
+                for label, k in (("홈", "home"), ("원정", "away"))]
+        over = [(label, b) for label, b in pair if b.get("bp_overused")]
+        if len(over) == 1:   # 양쪽 다 과소모면 상대적 이점이 없다 → 표기하지 않는다
+            research["bullpen_overused"] = over[0][0]
+            filled.append(f"불펜 과소모 {over[0][0]} ({over[0][1]['bp_pitches_3d']}구/3일)")
+    # [§2] 파크팩터 — statsapi 기반 자체 산출값
+    if parks:
+        from app.collectors.park import merge_into_research as merge_park
+
+        note = merge_park(research, jg, parks)
+        if note:
+            filled.append(note)
     return filled

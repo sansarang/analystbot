@@ -148,9 +148,10 @@ async def test_load_falls_back_to_recent_day():
         async def get(self, k):
             return store.get(k)
 
-    off, pit = await load(R(), "2026-08-25")
+    off, pit, bp = await load(R(), "2026-08-25")
     assert off["Reds"]["xwoba_30d"] == 0.33
     assert pit["Greene"]["xwoba_allowed"] == 0.29
+    assert bp == {}          # 그날 불펜 캐시가 없으면 빈 dict
 
 
 @pytest.mark.asyncio
@@ -165,7 +166,7 @@ async def test_load_prefers_same_day_over_fallback():
         async def get(self, k):
             return store.get(k)
 
-    off, _ = await load(R(), "2026-08-25")
+    off, _pit, _bp = await load(R(), "2026-08-25")
     assert off["Reds"]["xwoba_30d"] == 0.35
 
 
@@ -180,8 +181,8 @@ async def test_load_gives_up_beyond_window():
         async def get(self, k):
             return store.get(k)
 
-    off, pit = await load(R(), "2026-08-25")
-    assert off == {} and pit == {}
+    off, pit, bp = await load(R(), "2026-08-25")
+    assert off == {} and pit == {} and bp == {}
 
 
 def test_merge_uses_game_starter_name():
@@ -276,3 +277,77 @@ def test_enough_by_appearances_alone():
     p = aggregate_pitchers(_pitches(rows))["Start Short"]
     assert "low_sample" not in p
     assert p["appearances"] == 3
+
+
+# --- 불펜·선발이닝·파크팩터를 Statcast/statsapi로 자체 산출 (Perplexity 대체) ---
+
+def _pitch(pid, name, gp, inning, top="Top", **over):
+    r = _row(pitcher=pid, player_name=name, game_pk=gp, inning=inning,
+             inning_topbot=top, at_bat_number=inning * 3)
+    r.update(over)
+    return r
+
+
+def test_bullpen_overuse_from_statcast():
+    """리그 중앙값의 1.3배 이상 던진 불펜만 '과소모'로 본다."""
+    from app.collectors.statcast import aggregate_bullpen
+
+    rows = []
+    for gp in (1, 2, 3):
+        # CIN 불펜을 많이 굴린다 (선발 1명 + 구원 다수)
+        rows.append(_pitch(1, "Starter, Cin", gp, 1))
+        rows += [_pitch(9, "Relief, Cin", gp, i) for i in range(2, 10)] * 4
+        # SF 불펜은 적게
+        rows.append(_pitch(2, "Starter, Sf", gp, 1, top="Bot"))
+        rows.append(_pitch(8, "Relief, Sf", gp, 8, top="Bot"))
+    out = aggregate_bullpen(_pitches(rows))
+    assert out["Cincinnati Reds"]["bp_overused"] is True
+    assert out["San Francisco Giants"]["bp_overused"] is False
+    assert out["Cincinnati Reds"]["bp_pitches_3d"] > out["San Francisco Giants"]["bp_pitches_3d"]
+
+
+def test_starter_innings_average():
+    """등판당 서로 다른 이닝 수의 평균 = 평균 이닝 근사."""
+    from app.collectors.statcast import starter_innings
+
+    rows = []
+    for gp, last in ((1, 6), (2, 4)):     # 6이닝, 4이닝 → 평균 5.0
+        rows += [_pitch(1, "Burns, Chase", gp, i) for i in range(1, last + 1)]
+    assert starter_innings(_pitches(rows))["Chase Burns"] == pytest.approx(5.0)
+
+
+def test_merge_attaches_bullpen_and_park():
+    """불펜 과소모·파크팩터가 리서치에 실려 λ가 읽을 수 있어야 한다."""
+    from app.collectors.statcast import merge_into_research
+
+    jg = {"home": "Colorado Rockies", "away": "Seattle Mariners"}
+    bullpen = {"Seattle Mariners": {"bp_pitches_3d": 260, "bp_overused": True},
+               "Colorado Rockies": {"bp_pitches_3d": 120, "bp_overused": False}}
+    parks = {"Colorado Rockies": 1.264}
+    research: dict = {}
+    filled = merge_into_research(research, jg, {}, {}, bullpen, parks)
+    assert research["bullpen_overused"] == "원정"
+    assert research["park_factor"] == 1.264
+    assert any("파크팩터" in f for f in filled)
+
+
+def test_merge_skips_bullpen_when_both_overused():
+    """양쪽 다 과소모면 상대적 이점이 없다 — 표기하지 않는다."""
+    from app.collectors.statcast import merge_into_research
+
+    jg = {"home": "A", "away": "B"}
+    bullpen = {"A": {"bp_pitches_3d": 260, "bp_overused": True},
+               "B": {"bp_pitches_3d": 255, "bp_overused": True}}
+    research: dict = {}
+    merge_into_research(research, jg, {}, {}, bullpen, None)
+    assert "bullpen_overused" not in research
+
+
+def test_merge_does_not_override_research_park():
+    """리서치가 이미 파크팩터를 채웠으면 덮지 않는다."""
+    from app.collectors.statcast import merge_into_research
+
+    research = {"park_factor": 1.11}
+    merge_into_research(research, {"home": "Colorado Rockies", "away": "X"},
+                        {}, {}, None, {"Colorado Rockies": 1.264})
+    assert research["park_factor"] == 1.11

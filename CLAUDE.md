@@ -86,25 +86,6 @@ PYTHONPATH=. nohup uv run python -m app.scheduler > logs/scheduler.log 2>&1 &
 
 ## 아키텍처 요약
 
-```
-app/
-  collectors/     # 숫자 수집 — statsapi.mlb.com, The Odds API, football-data.org, API-Football
-    base.py       #   공통 HTTP: 재시도·백오프·스로틀·에러 분류(credit/auth/rate_limit)
-  research/       # 딥서치 — Perplexity sonar(deep.py), Grok Live Search(grok.py)
-    validate.py   #   응답 검증 (프롬프트 반향·미확보 산문 차단) ★
-    crosscheck.py #   리서치 수치 ↔ statsapi 교차검증 샘플링 (지어내기 감시)
-  engine/         # value · consensus · parlay · markets · judge
-    markets.py    #   추천 자격 판정 (2-소스 룰·괴리 검증·마켓 보드)
-  pipeline.py     # 수집 → 리서치 → 판정 오케스트레이션 + 렌더
-  bot/            # aiogram 텔레그램 봇
-  scheduler.py    # APScheduler 잡
-  grader.py       # 경기 결과 채점
-db/schema.sql     # DB 스키마 (마이그레이션 원본)
-mock_data/        # API 키 없을 때 쓰는 목 데이터
-docs/             # DISCIPLINE.md · RESEARCH_VALIDATION.md
-tests/            # pytest
-```
-
 **스케줄러 잡**: 프리페치 04:00 KST(종목·경기 단위 **순차**) · 배당 스냅샷 30분 ·
 리서치 재시도 큐 45분 · 채점 13:00 KST · Elo 갱신 주 1회(월 05:00).
 
@@ -203,19 +184,11 @@ Perplexity는 동시 실행 2 · 요청 간 1.5초 · 429는 Retry-After 우선 
 
 ---
 
-## 기술 스택
-
-Python 3.12 · FastAPI · aiogram 3.x · httpx(비동기) · PostgreSQL · Redis · APScheduler · pytest
-
 ## 명령어
 
 ```bash
 docker compose up -d                  # PostgreSQL 16 + Redis 7 기동 (colima 환경이면 colima start 먼저)
-uvicorn app.main:app --reload         # FastAPI 개발 서버
-python -m app.bot                     # 텔레그램 봇 실행 (polling)
-python -m app.scheduler               # 스케줄러 실행
 python -m app.pipeline --sport mlb    # 봇 없이 파이프라인 직접 호출
-pytest                                # 전체 테스트
 pytest tests/test_engine.py -x -q     # 단일 파일 빠른 실행
 
 # 프리페치 1회 수동 실행 (라이브 API 호출 — 비용 발생)

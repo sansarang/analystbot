@@ -12,6 +12,7 @@ INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly schedul
 INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
 INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
 INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
 INFO:apscheduler.scheduler:Added job "prefetch_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "odds_snapshot_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "grading_job" to job store "default"
@@ -20,29 +21,24 @@ INFO:apscheduler.scheduler:Added job "lineup_poll_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "statcast_refresh_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "soccer_stats_refresh_job" to job store "default"
 INFO:apscheduler.scheduler:Added job "elo_refresh_job" to job store "default"
+INFO:apscheduler.scheduler:Added job "heartbeat_job" to job store "default"
 INFO:apscheduler.scheduler:Scheduler started
-INFO:__main__:scheduler started: ['odds_snapshot_30m', 'lineup_poll_30m', 'research_retry_45m', 'statcast_daily', 'soccerdata_daily', 'prefetch_daily', 'grade_yesterday', 'elo_refresh_weekly']
-INFO:apscheduler.executors.default:Running job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 16:54:38 KST)" (scheduled at 2026-08-25 16:24:38.823470+09:00)
-INFO:apscheduler.executors.default:Running job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 16:54:38 KST)" (scheduled at 2026-08-25 16:24:38.823636+09:00)
-INFO:apscheduler.executors.default:Job "lineup_poll_job (trigger: interval[0:30:00], next run at: 2026-08-25 16:54:38 KST)" executed successfully
-INFO:app.collectors.base:[odds] client mode: LIVE
-INFO:httpx:HTTP Request: GET https://api.the-odds-api.com/v4/sports/baseball_mlb/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
-INFO:app.collectors.odds:[odds] quota: used=231 remaining=269
-INFO:app.collectors.odds:[odds] inserted 790 snapshot rows (mlb), skipped 0 in-play events
-INFO:app.collectors.base:[odds] client mode: LIVE
-INFO:httpx:HTTP Request: GET https://api.the-odds-api.com/v4/sports/soccer_korea_kleague1/odds?apiKey=e6084d8151f17becac5a0f6577b3760f&regions=us&markets=h2h%2Cspreads%2Ctotals&oddsFormat=decimal "HTTP/1.1 200 OK"
-INFO:app.collectors.odds:[odds] quota: used=234 remaining=266
-WARNING:app.collectors.odds:[odds] no game match: Ulsan Hyundai FC @ Daejeon Citizen (2026-08-26T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Incheon United @ FC Anyang (2026-08-26T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Gwangju FC @ Gangwon FC (2026-08-26T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: FC Anyang @ Bucheon FC 1995 (2026-08-29T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Sangju Sangmu FC @ Ulsan Hyundai FC (2026-08-29T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Daejeon Citizen @ Jeju United FC (2026-08-30T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: FC Seoul @ Gwangju FC (2026-08-30T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Gangwon FC @ Pohang Steelers (2026-08-30T10:30:00Z)
-WARNING:app.collectors.odds:[odds] no game match: Jeonbuk Hyundai Motors @ Incheon United (2026-08-30T10:30:00Z)
-INFO:app.collectors.odds:[odds] inserted 102 snapshot rows (soccer), skipped 0 in-play events
-INFO:__main__:[scheduler] odds snapshot: 892 rows (keys={'mlb': ['baseball_mlb'], 'soccer': ['soccer_korea_kleague1']})
-INFO:apscheduler.executors.default:Job "odds_snapshot_job (trigger: interval[0:30:00], next run at: 2026-08-25 16:54:38 KST)" executed successfully
-INFO:apscheduler.executors.default:Running job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 17:24:38 KST)" (scheduled at 2026-08-25 16:39:38.823607+09:00)
-INFO:apscheduler.executors.default:Job "research_retry_job (trigger: interval[0:45:00], next run at: 2026-08-25 17:24:38 KST)" executed successfully
+INFO:__main__:scheduler started: ['heartbeat_2m', 'odds_snapshot_30m', 'lineup_poll_30m', 'research_retry_45m', 'statcast_daily', 'soccerdata_daily', 'prefetch_daily', 'grade_yesterday', 'elo_refresh_weekly']
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:46:32 KST)" (scheduled at 2026-08-25 16:44:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:46:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:48:32 KST)" (scheduled at 2026-08-25 16:46:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:48:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:50:32 KST)" (scheduled at 2026-08-25 16:48:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:50:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:52:32 KST)" (scheduled at 2026-08-25 16:50:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:52:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:54:32 KST)" (scheduled at 2026-08-25 16:52:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:54:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:56:32 KST)" (scheduled at 2026-08-25 16:54:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:56:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:58:32 KST)" (scheduled at 2026-08-25 16:56:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 16:58:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:00:32 KST)" (scheduled at 2026-08-25 16:58:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:00:32 KST)" executed successfully
+INFO:apscheduler.executors.default:Running job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:02:32 KST)" (scheduled at 2026-08-25 17:00:32.536976+09:00)
+INFO:apscheduler.executors.default:Job "heartbeat_job (trigger: interval[0:02:00], next run at: 2026-08-25 17:02:32 KST)" executed successfully

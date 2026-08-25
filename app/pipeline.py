@@ -575,10 +575,13 @@ async def build_analysis(
             if sport == "mlb":
                 from app.collectors.statcast import load as load_statcast
 
-                statcast_data = await load_statcast(redis, date)
+                from app.collectors.park import load as load_parks
+
+                statcast_data = (*await load_statcast(redis, date), await load_parks(redis))
                 if statcast_data and statcast_data[0]:
-                    logger.info("[pipeline] Statcast 캐시 — 팀 %d개 / 투수 %d명",
-                                len(statcast_data[0]), len(statcast_data[1]))
+                    logger.info("[pipeline] Statcast 캐시 — 팀 %d개 / 투수 %d명 / "
+                                "불펜 %d팀 / 구장 %d개",
+                                *(len(x) for x in statcast_data))
             else:
                 from app.collectors.soccer_stats import load_xg, supported
 
