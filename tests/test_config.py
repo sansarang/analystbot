@@ -44,9 +44,25 @@ def test_force_mock_overrides_keys():
     assert s.mock_mlb and s.mock_odds and s.mock_judge
 
 
-def test_ensemble_weights_default():
+def test_ensemble_weights_exclude_market():
+    """[1-1] 승률 판정에서 시장 가중치는 0 — 배당은 수익 계산·표시에만 쓴다."""
     s = make()
-    assert (s.ensemble_w_model, s.ensemble_w_market, s.ensemble_w_claude) == (
-        0.45, 0.30, 0.25,
-    )
-    assert abs(s.ensemble_w_model + s.ensemble_w_market + s.ensemble_w_claude - 1.0) < 1e-9
+    assert s.ensemble_w_market == 0.0
+    assert (s.ensemble_w_model, s.ensemble_w_claude) == (0.50, 0.50)
+    assert abs(s.ensemble_w_model + s.ensemble_w_claude - 1.0) < 1e-9
+
+
+def test_legacy_weights_kept_for_parallel_scoring():
+    """[6] 기존 시장 반영 앙상블은 병렬 채점용으로 보존한다."""
+    s = make()
+    assert (s.legacy_w_model, s.legacy_w_market, s.legacy_w_claude) == (0.45, 0.30, 0.25)
+    assert abs(sum((s.legacy_w_model, s.legacy_w_market, s.legacy_w_claude)) - 1.0) < 1e-9
+
+
+def test_recommendation_thresholds_are_config_driven():
+    """[3-1] 추천 자격은 승률·배당 하한 두 값으로만 결정된다."""
+    s = make()
+    assert s.min_win_prob == 0.58 and s.min_odds == 1.60
+    assert s.signal_green_prob == 0.62
+    # 58% × 1.60 = 0.928 → EV -7.2%. 손익분기 배당은 1/0.58 ≈ 1.724다.
+    assert s.min_win_prob * s.min_odds < 1.0

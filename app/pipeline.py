@@ -732,20 +732,31 @@ def _compute_picks(
     [5] p_final = λ*p_market + (1-λ)*p_ensemble (리그 성숙도 연동 수축).
     경기 대표 픽 = 승인 후보 중 EV 최대 (없으면 진단용 최고 EV 후보, 미승인 표기).
     """
-    from app.engine.markets import build_board, shrink
+    from app.engine.markets import build_board
 
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
     stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
 
     def blend(p_model_s: float | None, p_market_s: float, p_claude_s: float) -> float:
-        if p_model_s is None:  # 모델 무효 → 시장+Claude만으로 재정규화
-            w = settings.ensemble_w_market + settings.ensemble_w_claude
-            return (settings.ensemble_w_market * p_market_s
-                    + settings.ensemble_w_claude * p_claude_s) / w
-        return ensemble(
-            p_model_s, p_market_s, p_claude_s,
-            settings.ensemble_w_model, settings.ensemble_w_market, settings.ensemble_w_claude,
-        )
+        """[1-1] 경기력 앙상블 — **시장 확률은 쓰지 않는다**.
+
+        p_final = 0.5*p_model + 0.5*p_claude. 배당은 "이기면 얼마 받는가"에만 쓴다.
+        모델이 무효면 Claude 단독. (p_market_s는 병렬 채점·표시용으로만 받는다)
+        """
+        if p_model_s is None:
+            return p_claude_s
+        w_m, w_c = settings.ensemble_w_model, settings.ensemble_w_claude
+        return (w_m * p_model_s + w_c * p_claude_s) / (w_m + w_c)
+
+    def blend_legacy(p_model_s: float | None, p_market_s: float, p_claude_s: float) -> float:
+        """[6] 병렬 채점용 — 기존 시장 반영 앙상블. 판정에는 쓰지 않는다."""
+        if p_model_s is None:
+            w = settings.legacy_w_market + settings.legacy_w_claude
+            return (settings.legacy_w_market * p_market_s
+                    + settings.legacy_w_claude * p_claude_s) / w
+        return ensemble(p_model_s, p_market_s, p_claude_s,
+                        settings.legacy_w_model, settings.legacy_w_market,
+                        settings.legacy_w_claude)
 
     picks_out = []
     for jg in judge_games:
@@ -777,12 +788,31 @@ def _compute_picks(
             (jg["away"], (p3[2] if p3 else ((1 - jg["p_model"]) if jg.get("model_valid") and sport == "mlb" else None)),
              market.get(jg["away"], 0.5), p_claude_away),
         ) if h2h_priced else ()
+        # [1-2] 경기력 조정 — 기준 승률(앙상블)에 결장·불펜·선발폼을 실제로 반영한다
+        from app.engine.performance import WinProbAdjuster
+        from app.research.validate import sanitize_research
+
+        research_clean, _ = sanitize_research(jg.get("research") or {}, sport)
+        adjuster = WinProbAdjuster(settings)
+        p_legacy: dict[str, float] = {}
+        home_adj = None
         for side, p_model_s, p_market_s, p_claude_s in sides:
             if not (jg.get("best_odds") or {}).get(side):
                 continue
             pe = blend(p_model_s, p_market_s, p_claude_s)
             p_ens[side] = round(pe, 4)
-            p_final[side] = round(shrink(pe, p_market_s, league_lam), 4)
+            p_legacy[side] = round(blend_legacy(p_model_s, p_market_s, p_claude_s), 4)
+            if side == jg["home"]:
+                home_adj = adjuster.adjust(pe, jg, research_clean, sport)
+                p_final[side] = home_adj["p"]
+            else:
+                p_final[side] = round(pe, 4)   # 원정은 홈 조정폭을 반대로 받는다(아래)
+        # 홈 조정폭을 원정에 대칭 반영 (3-way는 무승부 질량을 건드리지 않는다)
+        if home_adj is not None and jg["away"] in p_final:
+            shift = home_adj["p"] - p_ens.get(jg["home"], home_adj["p"])
+            p_final[jg["away"]] = round(max(0.02, min(0.96, p_final[jg["away"]] - shift)), 4)
+        jg["prob_adjust"] = home_adj          # 조정 과정 trace (상세 데이터 표시용)
+        jg["p_legacy"] = p_legacy             # [6] 병렬 채점용 시장 반영 확률
 
         # [7][8] 전 마켓 후보 생성·승인 → 마켓 보드
         # [2] 전 마켓 보드 — 판정 유무·배당 유무와 무관하게 항상 전 행을 만든다
@@ -1234,11 +1264,14 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
         ph = jg["p_claude"]
     elif jg.get("p_market") is not None:
         ph = jg["p_market"]
-    if ph is not None:
+    # 서술(맥락·인과)이 붙은 경기는 그 줄이 '누가 이길까'의 역할을 대신한다 —
+    # 기본층 분량을 6~8줄로 유지하기 위해 중복 줄을 넣지 않는다.
+    has_narrative = bool((jg.get("narrative") or {}).get("causal"))
+    if ph is not None and not has_narrative:
         fav, p_fav = (home_kr, ph) if ph >= 0.5 else (away_kr, 1 - ph - ((jg.get("market_probs") or {}).get("Draw", 0)))
         p_fav = max(0.05, min(0.95, p_fav))
         lines.append(f"누가 이길까? 봇 계산으론 {fav}{_ga(fav)} {_times_out_of_ten(p_fav)} 이기는 그림입니다.")
-    else:
+    elif ph is None and not has_narrative:
         lines.append("누가 이길까? 데이터가 부족해 저희도 판단을 보류합니다.")
 
     # [B-2] ① 맥락 · ② 인과 — 서술 단계(narrator) 결과.
@@ -1289,7 +1322,7 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
         lines.append(f"({missing})")
 
     detail = render_game_section(jg, news)
-    return _guard_basic("\n".join(lines[:9]) + DETAIL_SEP + detail, "game_easy")
+    return _guard_basic("\n".join(lines[:8]) + DETAIL_SEP + detail, "game_easy")
 
 
 def render_games_easy(games: list[dict], news: str = "") -> list[str]:

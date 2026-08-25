@@ -51,10 +51,37 @@ class Settings(BaseSettings):
     # 전 모듈 강제 목 모드 (테스트/데모)
     force_mock: bool = False
 
-    # 앙상블 가중치: p_final = w_model*p_model + w_market*p_market + w_claude*p_claude
-    ensemble_w_model: float = 0.45
-    ensemble_w_market: float = 0.30
-    ensemble_w_claude: float = 0.25
+    # ── 승률 판정 (2026-08-25 철학 교체: 시장 배제, 경기력만) ──────────────
+    # p_final = w_model*p_model + w_claude*p_claude. **시장 가중치 0**.
+    # 배당은 "이기면 얼마 받는가" 계산·표시에만 쓰고 승률 추정에 넣지 않는다.
+    ensemble_w_model: float = 0.50
+    ensemble_w_claude: float = 0.50
+    ensemble_w_market: float = 0.00      # 판정 미사용 (참고 표기·병렬 채점용으로만 보존)
+
+    # 병렬 채점용 기존(시장 반영) 앙상블 가중치 — 어느 방식이 맞히는지 비교한다
+    legacy_w_model: float = 0.45
+    legacy_w_market: float = 0.30
+    legacy_w_claude: float = 0.25
+
+    # 추천 자격: 승률 하한 AND 배당 하한 (EV 기준 폐기)
+    # 주의: 0.58 × 1.60 = 0.928 → EV -7.2%. 승률 58%의 손익분기 배당은 1.724다.
+    min_win_prob: float = 0.58
+    min_odds: float = 1.60
+    signal_green_prob: float = 0.62      # 🟢 승률 하한 (배당 하한은 min_odds 공용)
+
+    # ── 경기력 승률 조정 계수 (%p 단위, [1-2]) ────────────────────────────
+    adj_starter_era_per_run: float = 0.03    # 선발 최근 5경기 ERA 차 1.00당 ±3%p
+    adj_starter_era_cap: float = 0.09        # 선발 매치업 보정 상한 ±9%p
+    adj_short_start: float = 0.02            # 최근 평균 5이닝 미만 → -2%p
+    adj_key_batter_out: float = 0.02         # 주전 타자 결장 1명당 -2%p
+    adj_top_batter_out: float = 0.04         # 팀 최다 득점 기여자면 -4%p
+    adj_key_reliever_out: float = 0.02       # 마무리·셋업 결장 1명당 -2%p
+    adj_bullpen_overuse: float = 0.03        # 최근 3일 불펜 과소모 -3%p
+    adj_form_hot: float = 0.02               # 최근 5경기 4승 이상 +2%p
+    adj_form_cold: float = 0.02              # 최근 5경기 4패 이상 -2%p
+    adj_home_mlb: float = 0.03               # 홈 이점 (야구)
+    adj_home_soccer: float = 0.05            # 홈 이점 (축구)
+    adj_absence_cap: float = 0.12            # 결장 관련 누적 보정 상한
 
     # 리포트 모드: live_conservative(운영 보수) | research(연구·전량 표시)
     report_mode: str = "live_conservative"
