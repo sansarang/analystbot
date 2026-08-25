@@ -17,3 +17,7 @@ __pycache__/
 # 로컬 전용
 docker-compose.yml
 .claude/
+
+# data/: .gitignore에 있어 배포 업로드에 포함되지 않는다.
+# 로컬 빌드에서도 같게 동작하도록 여기서도 제외한다 (환경 간 차이 제거).
+data/

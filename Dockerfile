@@ -27,8 +27,13 @@ COPY app/ ./app/
 COPY db/ ./db/
 COPY mock_data/ ./mock_data/
 COPY tools/ ./tools/
-# data/: 학습된 λ 계수·Elo 피팅값. 없으면 해당 기능만 건너뛴다(크래시 금지 규칙)
-COPY data/ ./data/
+
+# data/ 는 **이미지에 넣지 않는다.** .gitignore에 있어 배포 업로드에서 빠지므로
+# COPY 하면 빌드가 깨진다(실사고 2026-08-26: `"/data": not found`).
+# 내용물(학습 λ 계수·Elo 피팅값)은 스케줄러 잡이 다시 만들고, 없으면 해당 보정만
+# 건너뛴다 — "키가 없으면 크래시하지 않는다"는 규칙과 같은 취급이다.
+# 영구 보관이 필요하면 볼륨을 붙여 이 경로에 마운트한다.
+RUN mkdir -p /app/data
 
 ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1 \

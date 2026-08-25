@@ -126,3 +126,6 @@ INFO:httpx2:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 2
 INFO:app.engine.narrator:[narrator] 서술 15/15경기
 INFO:aiogram.event:Update id=276017649 is handled. Duration 1571239 ms by bot id=8917065606
 INFO:aiogram.event:Update id=276017650 is handled. Duration 890 ms by bot id=8917065606
+ERROR:aiogram.dispatcher:Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+WARNING:aiogram.dispatcher:Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8917065606)
+INFO:aiogram.dispatcher:Connection established (tryings = 1, bot id = 8917065606)
