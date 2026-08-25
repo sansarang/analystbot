@@ -22,8 +22,53 @@ def _clean():
     alerts.reset()
 
 
+class FakeRedis:
+    """프로세스 밖 공유 저장소 — 여러 '프로세스'가 같은 인스턴스를 본다."""
+
+    def __init__(self):
+        self.store: dict = {}
+
+    async def set(self, k, v, nx=False, ex=None):
+        if nx and k in self.store:
+            return None
+        self.store[k] = v
+        return True
+
+    async def get(self, k):
+        return self.store.get(k)
+
+    async def incr(self, k):
+        self.store[k] = int(self.store.get(k, 0)) + 1
+        return self.store[k]
+
+    async def expire(self, k, sec):
+        return True
+
+    async def delete(self, *ks):
+        for k in ks:
+            self.store.pop(k, None)
+
+    async def keys(self, pattern):
+        return list(self.store)
+
+    async def aclose(self):
+        pass
+
+
 @pytest.fixture
-def sent(monkeypatch):
+def shared(monkeypatch):
+    """모든 발송이 공유하는 Redis — 프로세스 경계를 넘는 억제를 재현한다."""
+    r = FakeRedis()
+
+    async def fake_redis():
+        return r
+
+    monkeypatch.setattr(alerts, "_redis", fake_redis)
+    return r
+
+
+@pytest.fixture
+def sent(monkeypatch, shared):
     """발송된 메시지를 모은다 — 실제 텔레그램은 부르지 않는다."""
     box: list[str] = []
 
@@ -116,15 +161,39 @@ async def test_same_error_suppressed_within_window(sent):
 
 
 @pytest.mark.asyncio
-async def test_suppressed_count_is_reported_after_window(sent, monkeypatch):
+async def test_suppressed_count_is_reported_after_window(sent, shared):
     st = StageResult("판정", ok=0, total=15, cause="credit")
     await stage_failed(st)
     await stage_failed(st)      # 억제 1건
     await stage_failed(st)      # 억제 2건
-    # 창이 지난 것처럼 만든다
-    alerts._last_sent.clear()
+    # 30분 창이 만료된 것처럼 (TTL 만료 = 키 소멸)
+    shared.store.pop("alert:sup:stage:판정:credit")
     await stage_failed(st)
     assert "2건" in sent[-1], "억제한 건수를 밝히지 않으면 사고 규모를 숨기게 된다"
+
+
+@pytest.mark.asyncio
+async def test_suppression_survives_process_restart(sent, shared):
+    """★ 실사고 회귀: 알림 주체가 매 실행마다 새 프로세스여도 억제돼야 한다.
+
+    억제 상태를 프로세스 메모리에 두면 스케줄러 잡·CLI 실행처럼
+    짧게 살다 죽는 프로세스에서는 전혀 억제되지 않는다.
+    (2026-08-25: 같은 실패 알림이 1분 간격으로 30분 넘게 반복 발송됐다)
+    """
+    st = StageResult("판정", ok=0, total=15, cause="credit")
+    for _ in range(10):
+        alerts.reset()          # 프로세스가 새로 뜬 상황을 재현
+        await stage_failed(st)
+    assert len(sent) == 1, f"프로세스가 바뀌어도 1건이어야 하는데 {len(sent)}건 발송됨"
+
+
+@pytest.mark.asyncio
+async def test_global_budget_blocks_flood(sent, shared):
+    """어떤 이유로든 폭주하면 전역 예산이 막는다 — 마지막 방어선."""
+    for i in range(40):
+        alerts.reset()
+        await stage_failed(StageResult(f"단계{i}", ok=0, total=5, cause="missing"))
+    assert len(sent) <= alerts.GLOBAL_BUDGET, f"{len(sent)}건 — 전역 예산이 무력하다"
 
 
 @pytest.mark.asyncio

@@ -23,7 +23,21 @@ logger = logging.getLogger(__name__)
 KST = ZoneInfo("Asia/Seoul")
 
 SUPPRESS_WINDOW_SEC = 30 * 60      # [7-6] 동일 오류는 30분에 1회
-_last_sent: dict[str, float] = {}
+
+# ⚠️ 억제 상태는 **반드시 프로세스 밖(Redis)** 에 둔다.
+#    실사고(2026-08-25): 프로세스 메모리 딕셔너리로 구현했더니 전혀 억제되지 않았다.
+#    알림을 보내는 주체가 매번 새 프로세스(스케줄러 잡·CLI·프리페치)라
+#    딕셔너리가 매번 비어 있었기 때문이다. 단일 프로세스 테스트만으로는
+#    이 결함이 드러나지 않는다 — 억제는 프로세스 경계를 넘어야 의미가 있다.
+SUP_KEY = "alert:sup:{}"
+HELD_KEY = "alert:held:{}"
+
+# 폭주 방어: 어떤 이유로든 10분 안에 이 수를 넘으면 전부 막는다.
+GLOBAL_BUDGET = 12
+GLOBAL_WINDOW_SEC = 600
+BUDGET_KEY = "alert:budget"
+
+_last_sent: dict[str, float] = {}      # Redis 불가 시 폴백 (단일 프로세스 한정)
 _suppressed: dict[str, int] = {}
 
 # 원인 분류 라벨 — 사용자가 "충전하면 되는지 기다리면 되는지"를 즉시 알 수 있게
@@ -39,9 +53,22 @@ CAUSE_LABELS = {
 
 
 def reset() -> None:
-    """테스트용 — 억제 상태 초기화."""
+    """테스트용 — 프로세스 내 폴백 상태 초기화."""
     _last_sent.clear()
     _suppressed.clear()
+
+
+async def reset_shared() -> None:
+    """운영용 — Redis에 남은 억제 키를 지운다 (알림 재개)."""
+    r = await _redis()
+    if r is None:
+        return
+    try:
+        keys = await r.keys("alert:*")
+        if keys:
+            await r.delete(*keys)
+    finally:
+        await r.aclose()
 
 
 def classify_exception(exc: BaseException) -> str:
@@ -88,20 +115,80 @@ def our_frames(exc: BaseException, limit: int = 5) -> list[str]:
     return out
 
 
-async def _send(key: str, text: str, *, bypass_suppression: bool = False) -> bool:
-    """억제 규칙을 적용해 발송. key가 같으면 30분에 1회."""
-    now = time.monotonic()
-    if not bypass_suppression:
+async def _redis():
+    """알림용 Redis. 실패해도 알림 자체를 막지 않는다 (None 반환)."""
+    try:
+        import redis.asyncio as aioredis
+
+        from app.config import get_settings
+
+        return aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    except Exception as exc:
+        logger.warning("[alerts] Redis 연결 불가 — 프로세스 내 억제로 폴백: %s", exc)
+        return None
+
+
+async def _over_budget(r) -> int | None:
+    """10분 창의 전역 알림 예산. 초과하면 초과 건수를 반환한다."""
+    if r is None:
+        return None
+    try:
+        n = await r.incr(BUDGET_KEY)
+        if n == 1:
+            await r.expire(BUDGET_KEY, GLOBAL_WINDOW_SEC)
+        return n - GLOBAL_BUDGET if n > GLOBAL_BUDGET else None
+    except Exception:
+        return None
+
+
+async def _claim(r, key: str) -> tuple[bool, int]:
+    """이 키로 지금 보내도 되는가. (보내도 됨, 그동안 억제된 건수)."""
+    if r is None:      # Redis 없음 — 프로세스 내 폴백 (억제가 약해진다)
+        now = time.monotonic()
         last = _last_sent.get(key)
         if last is not None and now - last < SUPPRESS_WINDOW_SEC:
             _suppressed[key] = _suppressed.get(key, 0) + 1
-            logger.info("[alerts] 억제(%s) — 누적 %d건", key, _suppressed[key])
+            return False, 0
+        _last_sent[key] = now
+        return True, _suppressed.pop(key, 0)
+    try:
+        # SET NX EX — 창이 비어 있을 때만 선점한다 (프로세스가 달라도 공유된다)
+        got = await r.set(SUP_KEY.format(key), "1", nx=True, ex=SUPPRESS_WINDOW_SEC)
+        if not got:
+            await r.incr(HELD_KEY.format(key))
+            await r.expire(HELD_KEY.format(key), SUPPRESS_WINDOW_SEC * 2)
+            return False, 0
+        held = await r.get(HELD_KEY.format(key))
+        await r.delete(HELD_KEY.format(key))
+        return True, int(held or 0)
+    except Exception as exc:
+        logger.warning("[alerts] 억제 상태 조회 실패 — 발송은 진행: %s", exc)
+        return True, 0
+
+
+async def _send(key: str, text: str, *, bypass_suppression: bool = False) -> bool:
+    """억제 규칙을 적용해 발송. key가 같으면 30분에 1회 — **프로세스 경계를 넘어서**."""
+    r = await _redis()
+    try:
+        over = await _over_budget(r)
+        if over is not None and not bypass_suppression:
+            logger.warning("[alerts] 전역 예산 초과(%d분 %d건) — 억제: %s",
+                           GLOBAL_WINDOW_SEC // 60, GLOBAL_BUDGET, key)
             return False
-    held = _suppressed.pop(key, 0)
-    if held:
-        text += f"\n\n(같은 오류 {held}건은 30분 억제 후 합산 표기)"
-    _last_sent[key] = now
-    return await send_telegram(text)
+        if not bypass_suppression:
+            ok, held = await _claim(r, key)
+            if not ok:
+                logger.info("[alerts] 억제(%s)", key)
+                return False
+            if held:
+                text += f"\n\n(같은 오류 {held}건은 30분 억제 후 합산 표기)"
+        return await send_telegram(text)
+    finally:
+        if r is not None:
+            try:
+                await r.aclose()
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------- [7-2] 단계 실패
