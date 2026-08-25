@@ -318,7 +318,7 @@ async def grading_job() -> None:
     except Exception as exc:
         logger.warning("[scheduler] stale 정합 실패 — 채점은 계속: %s", exc)
     totals: dict[str, dict] = {}
-    for sport in ("mlb", "soccer"):
+    for sport in ("mlb", "soccer", "kbo"):
         try:
             totals[sport] = await grade_date(pool, yesterday_kst(), sport)
         except (ApiQuotaError, ApiAuthError) as exc:

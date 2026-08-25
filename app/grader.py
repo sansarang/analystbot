@@ -118,6 +118,12 @@ async def grade_date(pool: asyncpg.Pool, date: str, sport: str = "mlb") -> dict:
     """해당 날짜 final 경기의 미채점 픽·예측을 채점. 집계 카운트 반환."""
     if sport == "mlb":
         await upsert_final_scores(pool, date, client=MLBClient())
+    elif sport == "kbo":
+        # KBO는 statsapi가 껍데기라 공식 기록실이 유일한 점수 경로다.
+        # 최근 7일을 훑는 이유: 우천 순연이 잦아 어제 경기가 오늘 확정되기도 한다.
+        from app.collectors.kbo import upsert_final_scores as kbo_finals
+
+        await kbo_finals(pool, date, days=7)
 
     finals = await pool.fetch(
         """

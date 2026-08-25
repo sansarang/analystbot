@@ -254,7 +254,7 @@ async def _fake_pool():
 # --- grading_job은 야구·축구 둘 다 채점한다 (2026-08-25: 축구가 영원히 미채점) ---
 
 @pytest.mark.asyncio
-async def test_grading_job_covers_both_sports(monkeypatch):
+async def test_grading_job_covers_all_sports(monkeypatch):
     seen: list[str] = []
 
     async def fake_grade_date(pool, date, sport="mlb"):
@@ -266,7 +266,7 @@ async def test_grading_job_covers_both_sports(monkeypatch):
     monkeypatch.setattr(sched, "grade_date", fake_grade_date)
     monkeypatch.setattr(sched, "get_pool", _fake_pool)
     await sched.grading_job()
-    assert seen == ["mlb", "soccer"]
+    assert seen == ["mlb", "soccer", "kbo"]
 
 
 @pytest.mark.asyncio
@@ -285,5 +285,5 @@ async def test_grading_job_continues_after_one_sport_fails(monkeypatch):
     monkeypatch.setattr(sched, "grade_date", fake_grade_date)
     monkeypatch.setattr(sched, "get_pool", _fake_pool)
     out = await sched.grading_job()
-    assert seen == ["mlb", "soccer"]
-    assert "soccer" in out and "mlb" not in out
+    assert seen == ["mlb", "soccer", "kbo"]
+    assert "soccer" in out and "kbo" in out and "mlb" not in out

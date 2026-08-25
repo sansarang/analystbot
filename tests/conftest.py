@@ -70,6 +70,46 @@ def _no_outbound_telegram(monkeypatch, request):
 
     monkeypatch.setattr(notify_mod, "send_telegram", _blocked)
     monkeypatch.setattr(alerts_mod, "send_telegram", _blocked)
+
+    # 억제 상태도 격리한다. 안 하면 테스트가 **운영 Redis의 알림 예산**
+    # (alert:budget, 10분 12건)을 갉아먹어 실제 장애 알림이 막힌다.
+    # 실측(2026-08-25): 테스트를 돌린 뒤 KBO 파싱 실패 알림이 예산 초과로 억제됐다.
+    class _MemRedis:
+        def __init__(self):
+            self.store: dict = {}
+
+        async def set(self, k, v, nx=False, ex=None):
+            if nx and k in self.store:
+                return None
+            self.store[k] = v
+            return True
+
+        async def get(self, k):
+            return self.store.get(k)
+
+        async def incr(self, k):
+            self.store[k] = int(self.store.get(k, 0)) + 1
+            return self.store[k]
+
+        async def expire(self, k, sec):
+            return True
+
+        async def delete(self, *ks):
+            for k in ks:
+                self.store.pop(k, None)
+
+        async def keys(self, pattern):
+            return list(self.store)
+
+        async def aclose(self):
+            pass
+
+    _mem = _MemRedis()
+
+    async def _fake_redis():
+        return _mem
+
+    monkeypatch.setattr(alerts_mod, "_redis", _fake_redis)
     yield
     if blocked:
         # 새 코드가 알림 경로를 늘렸다는 신호 — 조용히 넘기지 않는다
