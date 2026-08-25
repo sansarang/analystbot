@@ -231,3 +231,64 @@ def test_away_underdog_detected():
     assert is_away_underdog("h2h", "A", jg, 2.30) is True
     assert is_away_underdog("h2h", "H", jg, 1.70) is False
     assert is_away_underdog("totals", "Over", jg, 2.30) is False
+
+
+# ---------------------------------------------------------------- §1 타선 우선순위·결장
+
+def test_offense_priority_xwoba_first():
+    """[1-1] 타선 우선순위 xwOBA > wOBA > OBP+ISO — xwOBA가 운 오염이 가장 적다."""
+    with_x = mlb_lambdas(_jg(), _res(home_offense={"xwoba_30d": 0.345, "woba_30d": 0.300}), S)
+    assert "xwOBA 0.345" in " ".join(with_x.trace)
+
+    only_woba = mlb_lambdas(_jg(), _res(home_offense={"woba_30d": 0.300}), S)
+    assert "wOBA 0.300" in " ".join(only_woba.trace)
+    assert with_x.home > only_woba.home     # 더 좋은 지표를 썼으므로 λ가 높다
+
+
+def test_offense_falls_back_to_obp_plus_iso():
+    """[1-1] xwOBA·wOBA가 없으면 OBP와 ISO를 결합해 대용한다."""
+    r = mlb_lambdas(_jg(), _res(home_offense={"obp_30d": 0.340, "iso_30d": 0.200}), S)
+    joined = " ".join(r.trace)
+    assert "OBP 0.340" in joined and "ISO 0.200" in joined
+    # 장타력이 높으면 λ도 높다
+    low_iso = mlb_lambdas(_jg(), _res(home_offense={"obp_30d": 0.340, "iso_30d": 0.110}), S)
+    assert r.home > low_iso.home
+
+
+def test_recent_30d_beats_season():
+    """[1-1] 최근 30일 지표가 시즌 누적보다 우선한다."""
+    r = mlb_lambdas(_jg(), _res(home_offense={"woba_30d": 0.350, "woba": 0.290}), S)
+    assert "wOBA 0.350" in " ".join(r.trace)
+
+
+def test_absences_move_lambda_directly():
+    """[1-7] 결장이 λ에 직접 반영된다 — 핵심 타자 -2%, 최다 기여자 -4%."""
+    base = mlb_lambdas(_jg(), _res(), S)
+    top_out = mlb_lambdas(_jg(), _res(
+        absences=["H의 Manny Machado 팀 최다 홈런 타자 결장"]), S)
+    reg_out = mlb_lambdas(_jg(), _res(absences=["H의 Ha-Seong Kim 결장"]), S)
+    assert top_out.home < reg_out.home < base.home
+
+
+def test_closer_absence_raises_opponent_lambda():
+    """[1-7] 마무리 결장은 **상대 팀** λ를 올린다 (그 팀 불펜 억제력이 떨어진다)."""
+    base = mlb_lambdas(_jg(), _res(), S)
+    out = mlb_lambdas(_jg(), _res(absences=["H의 Jason Adam 마무리 부상 결장"]), S)
+    assert out.away > base.away          # 홈 마무리가 빠지면 원정 득점 기대가 오른다
+    assert any("상대 불펜 결장" in x for x in out.trace)
+
+
+def test_absence_effect_is_capped():
+    """[1-7] 결장 누적 보정에 상한 — 한 요소가 λ를 무너뜨리지 않게."""
+    many = [f"H의 Player{i} 결장" for i in range(12)]
+    out = mlb_lambdas(_jg(), _res(absences=many), S)
+    base = mlb_lambdas(_jg(), _res(), S)
+    assert out.home >= base.home * (1 - S.absence_cap) - 1e-6
+
+
+def test_absence_names_exclude_team():
+    """결장 사유에 팀명이 아니라 선수명이 들어간다."""
+    out = mlb_lambdas({"home": "San Diego Padres", "away": "A"}, _res(
+        absences=["San Diego Padres의 Manny Machado 팀 최다 홈런 타자 결장"]), S)
+    joined = " ".join(out.trace)
+    assert "Manny Machado" in joined

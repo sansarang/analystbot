@@ -101,6 +101,19 @@ async def prefetch_job() -> None:
         await redis.aclose()
 
 
+async def statcast_refresh_job() -> None:
+    """[2-1] Statcast 일 1회 갱신 — 조회가 무거워 프리페치 직전에만 돌린다."""
+    from app.collectors.statcast import refresh
+    from app.pipeline import mlb_slate_date
+
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        result = await refresh(redis, mlb_slate_date())
+        logger.info("[scheduler] statcast 갱신: %s", result)
+    finally:
+        await redis.aclose()
+
+
 async def research_retry_job() -> None:
     """[6] 레이트리밋으로 밀린 리서치를 다음 사이클에 순차 재시도."""
     from app.research.deep import drain_retry_queue
@@ -230,6 +243,8 @@ def build_scheduler() -> AsyncIOScheduler:
                       id="research_retry_45m")
     scheduler.add_job(lineup_poll_job, IntervalTrigger(minutes=30),
                       id="lineup_poll_30m")
+    scheduler.add_job(statcast_refresh_job, CronTrigger(hour=3, minute=30, timezone=KST),
+                      id="statcast_daily")
     scheduler.add_job(elo_refresh_job,
                       CronTrigger(day_of_week="mon", hour=5, minute=0, timezone=KST),
                       id="elo_refresh_weekly")

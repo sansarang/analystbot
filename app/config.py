@@ -97,6 +97,13 @@ class Settings(BaseSettings):
     league_woba: float = 0.320            # 리그 평균 wOBA
     league_obp: float = 0.318             # 리그 평균 OBP
     league_era: float = 4.20              # 리그 평균 ERA/FIP 계열
+    league_iso: float = 0.160             # 리그 평균 ISO (장타력)
+    exp_iso: float = 0.60                 # ISO 계수 지수 (OBP 보조)
+    # [1-7] 결장의 λ 반영 — 핵심 타자 -2%, 최다 기여자 -4%, 마무리 결장 시 상대 λ +2%
+    absence_hitter: float = 0.02
+    absence_top_hitter: float = 0.04
+    absence_reliever: float = 0.02
+    absence_cap: float = 0.10             # 결장 누적 보정 상한
     # 계수 지수와 클램프 — 단일 요인이 λ를 지배하지 않도록 폭을 제한한다.
     # 선발 한 명이 팀 기대득점을 ±35% 흔든다는 계산은 현실과 맞지 않는다.
     exp_offense: float = 1.20             # 타선 계수 지수 (Wharton: 타선 영향이 크다)

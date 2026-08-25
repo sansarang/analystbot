@@ -494,7 +494,19 @@ async def build_analysis(
     await _attach_alt_markets(pool, judge_games)
     _enforce_data_rules(judge_games)
 
-    picks_out, parlays, recommended = _compute_picks(settings, judge_games, sport)
+    statcast_data = None
+    if sport == "mlb" and redis is not None:
+        from app.collectors.statcast import load as load_statcast
+
+        try:
+            statcast_data = await load_statcast(redis, date)
+            if statcast_data and statcast_data[0]:
+                logger.info("[pipeline] Statcast 캐시 사용 — 팀 %d개 / 투수 %d명",
+                            len(statcast_data[0]), len(statcast_data[1]))
+        except Exception as exc:
+            logger.warning("[pipeline] Statcast 로드 실패, 리서치 지표만 사용: %s", exc)
+
+    picks_out, parlays, recommended = _compute_picks(settings, judge_games, sport, statcast_data)
 
     # [B-1] 판정과 서술을 분리 — 판정 결론 + 마켓 보드 + 리서치를 입력으로 별도 서술 단계.
     #       마켓 보드가 만들어진 뒤에 실행해야 서술이 '어느 마켓이 살았는지'를 안다.
@@ -789,7 +801,7 @@ async def _second_opinion(
 
 
 def _compute_picks(
-    settings, judge_games: list[dict], sport: str
+    settings, judge_games: list[dict], sport: str, statcast_data: tuple | None = None,
 ) -> tuple[list[dict], list[dict], list[dict]]:
     """jg(판정 부착 완료) → (전체 픽, 파레이, 추천 픽). DB 접근 없음 — 재판정 시 재사용.
 
@@ -862,6 +874,13 @@ def _compute_picks(
         from app.research.validate import sanitize_research
 
         research_clean, _ = sanitize_research(jg.get("research") or {}, sport)
+        # [2-1] Statcast 지표를 얹는다 — 리서치 산문보다 정확한 1차 소스
+        if sport == "mlb" and statcast_data:
+            from app.collectors.statcast import merge_into_research
+
+            filled = merge_into_research(research_clean, jg, *statcast_data)
+            if filled:
+                jg["statcast_filled"] = filled
         dist = game_distribution(jg, research_clean, sport, settings)
         jg["distribution"] = dist
         if dist is not None:

@@ -84,6 +84,12 @@ def _suppression(pitcher: dict, s) -> tuple[float | None, str]:
 
     값이 클수록(=투수가 나쁠수록) 우리 팀 기대득점이 올라간다.
     """
+    # Statcast 허용 xwOBA가 있으면 최우선 — 타구 질 기반이라 운 오염이 가장 적다
+    xw = pitcher.get("xwoba_allowed")
+    if xw is not None:
+        coef = _ratio(float(xw), s.league_woba, s.exp_offense,
+                      lo=s.pit_coef_min, hi=s.pit_coef_max)
+        return coef, f"허용 xwOBA {float(xw):.3f}"
     for key, label in (("siera", "SIERA"), ("xfip", "xFIP"), ("fip", "FIP"),
                        ("era_recent", "최근5 ERA"), ("era_season", "시즌 ERA")):
         val = pitcher.get(key)
@@ -96,17 +102,35 @@ def _suppression(pitcher: dict, s) -> tuple[float | None, str]:
 
 
 def _offense(block: dict, s) -> tuple[float | None, str]:
-    """타선 계수 — Wharton 변수 중요도대로 wOBA > OBP > ISO 순."""
-    for key, label, league in (("woba_30d", "wOBA", s.league_woba),
-                               ("obp_30d", "OBP", s.league_obp),
-                               ("woba", "wOBA(시즌)", s.league_woba),
-                               ("obp", "OBP(시즌)", s.league_obp)):
+    """[1-1] 타선 계수 — 우선순위 **xwOBA > wOBA > OBP+ISO**.
+
+    Wharton 논문 변수 중요도가 OBP > ISO > WHIP/FIP 순이고, xwOBA는 타구 질
+    기반이라 운(수비 시프트·구장·시퀀싱) 오염이 가장 적다. 최근 30일이 시즌보다 앞선다.
+    """
+    for key, label, league in (("xwoba_30d", "xwOBA", s.league_woba),
+                               ("woba_30d", "wOBA", s.league_woba),
+                               ("xwoba", "xwOBA(시즌)", s.league_woba),
+                               ("woba", "wOBA(시즌)", s.league_woba)):
         val = block.get(key)
         if val is not None:
             coef = _ratio(float(val), league, s.exp_offense,
                           lo=s.off_coef_min, hi=s.off_coef_max)
             return coef, f"{label} {float(val):.3f}"
-    return None, ""
+
+    # xwOBA·wOBA가 없으면 OBP와 ISO를 결합해 대용한다 (출루 + 장타)
+    obp = block.get("obp_30d") if block.get("obp_30d") is not None else block.get("obp")
+    iso = block.get("iso_30d") if block.get("iso_30d") is not None else block.get("iso")
+    if obp is None:
+        return None, ""
+    coef = _ratio(float(obp), s.league_obp, s.exp_offense,
+                  lo=s.off_coef_min, hi=s.off_coef_max)
+    label = f"OBP {float(obp):.3f}"
+    if iso is not None and coef is not None:
+        iso_coef = _ratio(float(iso), s.league_iso, s.exp_iso, lo=0.92, hi=1.10)
+        if iso_coef is not None:
+            coef *= iso_coef
+            label += f" + ISO {float(iso):.3f}"
+    return coef, label
 
 
 def mlb_lambdas(jg: dict, research: dict, settings=None) -> LambdaResult:
@@ -178,7 +202,21 @@ def mlb_lambdas(jg: dict, research: dict, settings=None) -> LambdaResult:
         lam[side] *= coef
         trace.append(f"{side} 좌우 스플릿 {label} → ×{coef:.3f}")
 
-    # ⑦ 홈 이점
+    # ⑦ 결장 — 핵심 타자는 그 팀 λ를, 마무리·셋업 결장은 상대 λ를 움직인다
+    from app.engine.performance import _split_absences
+
+    home_out, away_out = _split_absences(research.get("absences") or [], jg)
+    for side, items in (("home", home_out), ("away", away_out)):
+        bat_coef, pen_coef, notes = _absence_factors(items, s, jg.get(side, ""))
+        if bat_coef != 1.0:
+            lam[side] *= bat_coef
+            trace.append(f"{side} 결장({', '.join(notes['bat'])}) → ×{bat_coef:.3f}")
+        if pen_coef != 1.0:
+            opp = "away" if side == "home" else "home"
+            lam[opp] *= pen_coef
+            trace.append(f"{opp} 상대 불펜 결장({', '.join(notes['pen'])}) → ×{pen_coef:.3f}")
+
+    # ⑧ 홈 이점
     lam["home"] *= 1 + s.home_run_edge
     trace.append(f"홈 이점 → ×{1 + s.home_run_edge:.3f}")
 
@@ -197,6 +235,40 @@ def mlb_lambdas(jg: dict, research: dict, settings=None) -> LambdaResult:
                        jg.get("game_id"), missing[:4])
     return LambdaResult(home=round(lam["home"], 3), away=round(lam["away"], 3),
                         trace=trace, missing=missing, usable=usable)
+
+
+def _absence_factors(items: list[str], s, team: str = "") -> tuple[float, float, dict]:
+    """[1-7] 결장자 → (타선 계수, 상대 불펜 노출 계수, 사유).
+
+    핵심 타자 1명당 λ -2%, 팀 최다 기여자 -4%. 마무리·셋업 결장은 **상대 팀 λ 상향**
+    (그 팀 불펜 억제력이 떨어지므로).
+    """
+    from app.engine.performance import (
+        _CLOSER_MARKERS,
+        _STARTER_MARKERS,
+        _TOP_HITTER_MARKERS,
+        _name_of,
+    )
+
+    bat, pen = 1.0, 1.0
+    notes: dict[str, list[str]] = {"bat": [], "pen": []}
+    for raw in items or []:
+        text, low = str(raw), str(raw).lower()
+        if any(m in text or m in low for m in _TOP_HITTER_MARKERS):
+            bat *= 1 - s.absence_top_hitter
+            notes["bat"].append(f"{_name_of(text, team)} 주포")
+        elif any(m in text or m in low for m in _CLOSER_MARKERS):
+            pen *= 1 + s.absence_reliever
+            notes["pen"].append(_name_of(text, team))
+        elif any(m in text or m in low for m in _STARTER_MARKERS):
+            continue          # 선발 이탈은 이미 상대 선발 억제력에 반영돼 있다
+        else:
+            bat *= 1 - s.absence_hitter
+            notes["bat"].append(_name_of(text, team))
+    # 누적 상한 — 결장 한 요소가 λ를 무너뜨리지 않게
+    bat = max(1 - s.absence_cap, bat)
+    pen = min(1 + s.absence_cap, pen)
+    return round(bat, 4), round(pen, 4), notes
 
 
 def _park_factor(research: dict, s) -> float | None:
