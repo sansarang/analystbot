@@ -327,6 +327,29 @@ def _count_by(values) -> dict:
     return out
 
 
+# [§9 게이트 ③] 출처는 **수집기가 아니라 원본(origin)** 기준이다.
+#   네이버를 파이썬 수집기와 Go 크롤러가 각각 긁었다고 "2개 소스 일치(교차)"로
+#   세면 **같은 원본이 스스로를 확증**하는 가짜 교차검증이 된다.
+SRC_KBO_OFFICIAL = "official_record"   # koreabaseball.com 기록실·일정
+SRC_PORTAL = "portal"                  # 네이버 스포츠 · Yahoo!スポーツ
+SRC_WEATHER = "weather_api"            # Open-Meteo (다투는 값이 아니다)
+
+
+def _absorb(research: dict, filled: list[str], source: str) -> list[tuple]:
+    """[§9] 병합된 필드를 **게이트① 통과 → 출처 각인** 순서로 흡수한다.
+
+    ⚠️ 순서가 중요하다. 물리 범위 밖 값을 먼저 버리지 않으면, 그 값에 출처가
+       각인돼 게이트③에서 "단일 소스지만 사용 가능"으로 통과해버린다.
+    """
+    from app.engine.physical import screen
+    from app.engine.provenance import stamp
+
+    dropped = screen(research, filled)
+    bad = {d[0] for d in dropped}
+    stamp(research, [f for f in (filled or []) if f not in bad], source)
+    return dropped
+
+
 def merge_source_data(research: dict, jg: dict, sport: str,
                       statcast_data: dict | None) -> list[str]:
     """[§8-30] 수집 소스를 research에 병합한다. 반환: 실행된 병합 이름들.
@@ -360,21 +383,23 @@ def merge_source_data(research: dict, jg: dict, sport: str,
         from app.collectors.kbo_stats import merge_into_research as _mk
         from app.collectors.naver_kbo import merge_into_research as _mn
 
-        _mk(research, jg, statcast_data.get("kbo_teams") or {},
-            statcast_data.get("kbo_pitchers") or {})
+        _absorb(research, _mk(research, jg, statcast_data.get("kbo_teams") or {},
+                            statcast_data.get("kbo_pitchers") or {}),
+              SRC_KBO_OFFICIAL)
         done.append("kbo_stats")
         # 파크팩터가 `park`를 확정값으로 쓰고 네이버는 setdefault라,
         # 이 순서(_mp → _mn)를 지켜야 구장 표기가 덮이지 않는다.
-        _mp(research, jg, statcast_data.get("parks") or {})
+        _absorb(research, _mp(research, jg, statcast_data.get("parks") or {}),
+              SRC_KBO_OFFICIAL)
         done.append("kbo_park")
         nv = (statcast_data.get("naver") or {}).get(gkey)
         if nv:
-            _mn(research, jg, nv)
+            _absorb(research, _mn(research, jg, nv), SRC_PORTAL)
             done.append("naver")
         if statcast_data.get("kbo_usage"):
             from app.collectors.kbo_usage import merge_into_research as _mu
 
-            _mu(research, jg, statcast_data["kbo_usage"])
+            _absorb(research, _mu(research, jg, statcast_data["kbo_usage"]), SRC_PORTAL)
             done.append("kbo_usage")
         # [§8-34] 카드 ④칸("무게") — 순위·게임차·잔여경기.
         #   그날 프리뷰 5경기가 10팀 순위를 모두 담고 있어 **추가 HTTP가 없다**
@@ -383,27 +408,31 @@ def merge_source_data(research: dict, jg: dict, sport: str,
             from app.collectors.naver_kbo import build_standings
             from app.collectors.naver_kbo import merge_standings_into_research as _ms
 
-            _ms(research, jg, build_standings(statcast_data["naver"]))
+            _absorb(research, _ms(research, jg, build_standings(statcast_data["naver"])),
+                  SRC_PORTAL)
             done.append("standings")
     elif sport == "npb":
         from app.collectors.yahoo_npb import merge_into_research as _my
 
         yv = (statcast_data.get("yahoo") or {}).get(gkey)
         if yv:
-            _my(research, jg, yv)
+            _absorb(research, _my(research, jg, yv), SRC_PORTAL)
             done.append("yahoo")
 
     if statcast_data.get("weather"):
         from app.collectors.weather import merge_into_research as _mw
 
         _mw(research, jg, statcast_data["weather"])
+        _absorb(research, ["weather"], SRC_WEATHER)
         done.append("weather")
     if statcast_data.get("crawler"):
         from app.collectors.crawler_feed import merge_into_research as _mc
 
         # [§8-35] 변화 이력을 함께 넘긴다 — **언제 바뀌었는지가 정보다.**
-        _mc(research, jg, statcast_data["crawler"],
-            statcast_data.get("crawler_changes") or [])
+        # ⚠️ 크롤러도 **네이버·Yahoo를 긁는다** — 같은 출처다. 수집기가 다르다고
+        #    다른 소스로 세면 가짜 교차검증이 된다(같은 원본이 스스로를 확증한다).
+        _absorb(research, _mc(research, jg, statcast_data["crawler"],
+                            statcast_data.get("crawler_changes") or []), SRC_PORTAL)
         done.append("crawler")
     return done
 
@@ -857,14 +886,40 @@ async def build_analysis(
     #   `_compute_picks`는 지역 사본(research_clean)에만 병합해서 λ는 크롤링 값을
     #   쓰지만 **판정 페이로드는 원본**을 봤다. 같은 재료로 판단해야 한다.
     if statcast_data:
+        from collections import Counter
+
+        from app.engine.provenance import distribution, strip_unusable
         from app.research.validate import sanitize_research
+
+        _prov_dist: Counter = Counter()
+        _prov_blocked: list[str] = []
 
         for _jg in judge_games:
             if _jg.get("status") != "scheduled":
                 continue
             _r, _ = sanitize_research(_jg.get("research") or {}, sport)
             merge_source_data(_r, _jg, sport, statcast_data)
+            # [§9 게이트 ③] 미확인·모순 값은 **판정 입력에서 실제로 뺀다.**
+            #   표시만 하고 남겨두면 다음 단계가 그것을 사실로 읽는다.
+            _blocked = strip_unusable(_r)
+            if _blocked:
+                logger.info("[pipeline] 게이트③ 차단 %s — %s",
+                            _jg.get("game_id"), ", ".join(_blocked[:6]))
+                _prov_blocked.extend(_blocked)
+            _prov_dist.update(distribution(_r))
             _jg["research"] = _r
+
+        # [§9 게이트 ③] 라벨 분포를 남긴다.
+        #   ⚠️ **단일이 압도적이면 교차검증이 실질적으로 작동하지 않는다는 신호다** —
+        #     소스가 사실상 하나뿐이라는 뜻이고, 그 소스가 틀리면 걸러낼 방법이 없다.
+        _n = sum(_prov_dist.values())
+        if _n:
+            _cross = _prov_dist.get("확정", 0) + _prov_dist.get("교차", 0)
+            await record("출처 대조", _cross, _n,
+                         cause=None if _cross else "missing",
+                         detail=" · ".join(f"{k} {_prov_dist.get(k, 0)}"
+                                           for k in ("확정", "교차", "단일", "미확인", "모순")),
+                         impact="단일 소스 비중이 높으면 그 소스가 틀려도 걸러낼 수 없습니다")
 
     # [§8-22] 빈칸 보충 — 크롤링·정식기록이 못 채운 것만 **짧게** 다시 묻는다.
     #   전체 스키마를 재조회하지 않으므로 쿼터가 남고 채움률도 높다

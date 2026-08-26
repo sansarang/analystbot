@@ -223,6 +223,14 @@ python -c "import asyncio; from app.scheduler import prefetch_job; asyncio.run(p
 
 ## MCP 사용 규약
 
+- ⚠️ **Serena LSP 상태 (2026-08-27)** — `.serena/project.yml`의 `language_servers`가
+  **빈 목록**이어서 언어 서버가 하나도 안 떴다(`Active language servers: []`).
+  의존성 문제가 아니라 설정 누락이었다. `python`·`go`를 넣어 고쳤으나
+  **설정은 기동 시점에만 읽히므로 MCP 서버를 재시작해야 반영된다.**
+  재시작 전까지는 `find_symbol`·`replace_symbol_body`가 전부 실패하며 표준
+  도구로 작업해야 한다. ⚠️ `pipeline.py`가 2,300줄이 넘어 심볼 편집 없이는
+  **전체 재작성 위험**이 크다 — 재시작 후 반드시 `get_symbols_overview`로
+  실제 연결을 확인하고 작업하라.
 - **코드 탐색·수정은 Serena 우선**: `find_symbol` → `replace_symbol_body`로 심볼 단위 정밀
   편집. **파일 전체 재작성 금지.** collectors/research/engine 간 의존이 많으므로 참조 확인은
   `find_referencing_symbols`를 쓴다.
