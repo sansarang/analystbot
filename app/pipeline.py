@@ -432,9 +432,13 @@ async def build_analysis(
     await record("경기 적재", len(games), len(games) or 1,
                  cause=None if games else "missing",
                  impact="분석할 경기가 없습니다")
-    _ok_research = sum(1 for st in research_statuses.values()
-                       if st in ("refreshed", "cached"))
-    await record("리서치", _ok_research, len(games),
+    # 분모는 **예정 경기**다. 리서치는 scheduled 경기만 조사하므로 전체 경기를
+    # 분모로 쓰면 저녁 시간대(진행 중 경기 다수)에 "5/15 실패"처럼 잘못 경보한다.
+    # (실측 2026-08-26 10:00: 15경기 중 6경기만 예정이었는데 5/15로 표시됐다)
+    _sched_ids = {g["id"] for g in games if g.get("status") == "scheduled"}
+    _ok_research = sum(1 for gid, st in research_statuses.items()
+                       if gid in _sched_ids and st in ("refreshed", "cached"))
+    await record("리서치", _ok_research, len(_sched_ids) or len(games),
                  cause=None if _ok_research == len(games) else "missing",
                  detail=", ".join(f"{k}:{v}" for k, v in sorted(
                      _count_by(research_statuses.values()).items()) if k not in ("refreshed", "cached")),
