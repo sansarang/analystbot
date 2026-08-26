@@ -226,20 +226,16 @@ async def upsert_games(pool, games: list[dict]) -> int:
                 hour=int(hh), minute=int(mm), tzinfo=kst)
         except (ValueError, AttributeError):
             continue
-        await pool.execute(
-            """
-            INSERT INTO games (sport, league, ext_id, starts_at, home, away,
-                               status, home_score, away_score)
-            VALUES ('kbo', 'KBO', $1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT (sport, ext_id) DO UPDATE SET
-                status = EXCLUDED.status,
-                home_score = COALESCE(EXCLUDED.home_score, games.home_score),
-                away_score = COALESCE(EXCLUDED.away_score, games.away_score),
-                updated_at = now()
-            """,
-            g["ext_id"], starts.astimezone(UTC),
-            g["home"], g["away"], g["status"], g["home_score"], g["away_score"],
-        )
+        # [§8-37] ext_id가 아니라 **경기 자체**로 찾아 갱신한다.
+        #   같은 경기가 소스마다 다른 ext_id를 받아 두 행으로 갈라지면,
+        #   예측이 붙은 행은 영원히 미채점으로 남는다(실측 2026-08-27).
+        from app.collectors.game_match import apply_result
+
+        await apply_result(
+            pool, sport="kbo", league="KBO", ext_id=g["ext_id"],
+            starts_at=starts.astimezone(UTC), home=g["home"], away=g["away"],
+            status=g["status"], home_score=g["home_score"],
+            away_score=g["away_score"])
         n += 1
     return n
 

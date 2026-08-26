@@ -197,8 +197,16 @@ def test_grader_prefers_yahoo_for_npb():
     """[§8-28] 채점기가 Yahoo를 1순위로 부르는지 — 배선이 빠지면 조용히 Odds로 간다."""
     from pathlib import Path
 
+    # [§8-36] 종목 분기는 `ingest_finals` **한 곳**에만 있다. 두 곳에 두었더니
+    #   한쪽(reconcile_stale_games)이 갱신되지 않아 KBO·NPB가 축구 수집기로
+    #   보내졌고, 8/26 경기가 'scheduled'로 굳어 영원히 미채점이 됐다.
     src = Path("app/grader.py").read_text(encoding="utf-8")
-    i = src.index('elif sport in ("kbo", "npb")')
-    block = src[i:i + 1600]
+    i = src.index("async def ingest_finals")
+    block = src[i:i + 2200]
     assert "yahoo_npb import upsert_final_scores" in block
-    assert block.index("yahoo_finals") < block.index("odds_finals(pool, date, days=2, sport=\"npb\")")
+    assert block.index("yahoo_finals") < block.index('odds_finals(pool, date, days=2, sport="npb")')
+    # 분기가 다시 복제되지 않았는지 — reconcile은 ingest_finals를 불러야 한다
+    rec = src[src.index("async def reconcile_stale_games"):]
+    assert "ingest_finals" in rec, "reconcile이 종목 분기를 다시 갖게 됐다"
+    assert "football" not in rec.split("async def ", 2)[0], \
+        "reconcile에 축구 전용 경로가 다시 생겼다"

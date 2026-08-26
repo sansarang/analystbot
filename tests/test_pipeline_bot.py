@@ -172,14 +172,20 @@ async def test_judge_pass_excluded_from_recommendations(db_pool, redis_client, m
 
     monkeypatch.setattr(Judge, "_mock_verdict", staticmethod(pass_all))
     card = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
-    # 전 경기 패스 권장 → 자격 통과 0건 + 조합 없음 + predictions 0건
+    # 전 경기 패스 권장 → 자격 통과 0건 + 조합 없음
     #   (보드 자체는 남는다 — 판단 재료를 지우지 않는다)
     assert "통과한 마켓 없음" in card
     assert "📋 경기별 마켓" in card
     assert "조합 1" not in card
+    # [§8-38] **추천 경로는 0건**이어야 한다 — 패스 권장이니 추천이 나오면 안 된다.
+    recent = "created_at > now() - interval '1 minute'"
     assert await db_pool.fetchval(
-        "SELECT count(*) FROM predictions WHERE created_at > now() - interval '1 minute'"
-    ) == 0
+        f"SELECT count(*) FROM predictions WHERE {recent} "
+        "AND method IN ('performance','legacy')") == 0
+    # 반면 **기록은 남아야 한다.** 추천 0건이면 저장 0건 → 채점 0건 →
+    # 판정 성능을 영원히 측정할 수 없었던 것이 이 프로젝트의 실제 사고였다.
+    assert await db_pool.fetchval(
+        f"SELECT count(*) FROM predictions WHERE {recent} AND method='shadow'") > 0
 
 
 def test_strip_md_links():

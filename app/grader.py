@@ -90,25 +90,23 @@ async def reconcile_stale_games(pool: asyncpg.Pool) -> dict:
         """,
         STALE_AFTER_HOURS,
     )
-    fixed = {"mlb": 0, "soccer": 0}
+    fixed: dict[str, int] = {}
     for r in rows:
         sport, day = r["sport"], r["d"].strftime("%Y-%m-%d")
+        # ⚠️ 날짜 파라미터는 **date 객체**로 넘긴다. 문자열을 넘기면
+        #    asyncpg가 타입을 못 맞춰 DataError로 정합이 통째로 죽는다.
+        count_sql = ("SELECT count(*) FROM games WHERE sport=$1 "
+                     "AND (starts_at AT TIME ZONE 'UTC')::date = $2 AND status='final'")
+        before = await pool.fetchval(count_sql, sport, r["d"])
         try:
-            if sport == "mlb":
-                fixed["mlb"] += await upsert_final_scores(pool, day)
-            else:
-                from app.collectors.football import (
-                    FootballDataClient,
-                    upsert_games_from_football_data,
-                )
-
-                # 축구는 KST 날짜 기준으로 조회한다 (수집기 계약)
-                kst_day = (r["d"]).strftime("%Y-%m-%d")
-                ids = await upsert_games_from_football_data(
-                    pool, kst_day, client=FootballDataClient())
-                fixed["soccer"] += len(ids)
+            # ⚠️ 종목 분기를 여기서 다시 쓰지 않는다 — 두 곳에 두면 한쪽만
+            #    갱신돼 KBO·NPB가 축구 수집기로 가는 사고가 난다(§8-36).
+            await ingest_finals(pool, day, sport)
         except Exception as exc:   # 정합 실패가 채점을 막지 않는다
             logger.warning("[grader] stale 정합 실패 %s %s: %s", sport, day, exc)
+            continue
+        after = await pool.fetchval(count_sql, sport, r["d"])
+        fixed[sport] = fixed.get(sport, 0) + max(0, (after or 0) - (before or 0))
     if any(fixed.values()):
         logger.info("[grader] stale 경기 정합 — %s", fixed)
     return fixed
@@ -121,35 +119,56 @@ async def reconcile_stale_games(pool: asyncpg.Pool) -> dict:
 #   (predictions.closing_odds 컬럼은 과거 기록 보존을 위해 남기되 더 이상 채우지 않는다)
 
 
-async def grade_date(pool: asyncpg.Pool, date: str, sport: str = "mlb") -> dict:
-    """해당 날짜 final 경기의 미채점 픽·예측을 채점. 집계 카운트 반환."""
+async def ingest_finals(pool: asyncpg.Pool, date: str, sport: str) -> None:
+    """[§8-36] 그 종목의 **결과 적재**. 종목 분기는 여기 한 곳에만 둔다.
+
+    실사고(2026-08-27): 이 분기가 `grade_date`와 `reconcile_stale_games`에
+    **각각** 있었고, reconcile 쪽은 `if sport == "mlb" ... else 축구`로만 갈라져
+    **KBO·NPB가 축구 수집기(football-data.org)로 보내졌다.**
+    그 결과 8/26 KBO 5경기·NPB 6경기가 'scheduled'로 굳어 영원히 미채점이 됐다.
+    (같은 유형: §8-14 KBO가 축구 λ로, §8-20 NPB가 축구 마켓으로 간 사고)
+
+    → 분기를 하나로 모은다. 종목이 늘어도 고칠 곳이 한 곳이다.
+    """
+    from app.collectors.odds import upsert_final_scores as odds_finals
+
     if sport == "mlb":
         await upsert_final_scores(pool, date, client=MLBClient())
-    elif sport in ("kbo", "npb"):
-        # [§8-14] statsapi가 껍데기(sportId 31/32는 팀 명단만)라 외부 소스가 필요하다.
-        #   KBO: 공식 기록실 1순위 → 실패하면 Odds API `/scores` 폴백
-        #   NPB: 공식 파서가 없다 → Odds API `/scores`가 유일한 경로
-        #   최근 7일(KBO)·2일(Odds)을 훑는 이유: 우천 순연으로 어제 경기가 오늘 확정된다.
-        from app.collectors.odds import upsert_final_scores as odds_finals
+        return
+    if sport == "kbo":
+        # 공식 기록실 1순위 → 실패하면 Odds `/scores` 폴백.
+        # 7일을 훑는 이유: 우천 순연으로 어제 경기가 오늘 확정된다.
+        try:
+            from app.collectors.kbo import upsert_final_scores as kbo_finals
 
-        if sport == "kbo":
-            try:
-                from app.collectors.kbo import upsert_final_scores as kbo_finals
+            await kbo_finals(pool, date, days=7)
+        except Exception as exc:      # 공식 사이트 구조 변경 — 채점을 멈추지 않는다
+            logger.warning("[grader] KBO 공식 기록실 실패, Odds 폴백: %s", exc)
+            await odds_finals(pool, date, days=2, sport="kbo")
+        return
+    if sport == "npb":
+        # [§8-28] Yahoo가 1순위다. Odds `/scores`는 완료 경기가 한 건도 안 잡혀
+        #   채점이 증명되지 않았다(실측 2026-08-26).
+        try:
+            from app.collectors.yahoo_npb import upsert_final_scores as yahoo_finals
 
-                await kbo_finals(pool, date, days=7)
-            except Exception as exc:      # 공식 사이트 구조 변경 — 채점을 멈추지 않는다
-                logger.warning("[grader] KBO 공식 기록실 실패, Odds 폴백: %s", exc)
-                await odds_finals(pool, date, days=2, sport="kbo")
-        else:
-            # [§8-28] NPB는 **Yahoo가 1순위**다. Odds `/scores`는 완료 경기가
-            #   한 건도 안 잡혀 채점이 증명되지 않았다(실측 2026-08-26).
-            try:
-                from app.collectors.yahoo_npb import upsert_final_scores as yahoo_finals
+            await yahoo_finals(pool, date, days=3)
+        except Exception as exc:
+            logger.warning("[grader] Yahoo NPB 실패, Odds 폴백: %s", exc)
+            await odds_finals(pool, date, days=2, sport="npb")
+        return
+    # 축구 — football-data.org
+    from app.collectors.football import (
+        FootballDataClient,
+        upsert_games_from_football_data,
+    )
 
-                await yahoo_finals(pool, date, days=3)
-            except Exception as exc:
-                logger.warning("[grader] Yahoo NPB 실패, Odds 폴백: %s", exc)
-                await odds_finals(pool, date, days=2, sport="npb")
+    await upsert_games_from_football_data(pool, date, client=FootballDataClient())
+
+
+async def grade_date(pool: asyncpg.Pool, date: str, sport: str = "mlb") -> dict:
+    """해당 날짜 final 경기의 미채점 픽·예측을 채점. 집계 카운트 반환."""
+    await ingest_finals(pool, date, sport)
 
     finals = await pool.fetch(
         """

@@ -1092,6 +1092,50 @@ async def build_analysis(
             p.get("p_heuristic"), p.get("p_learned"), p.get("p_claude"),
             p.get("lam_total"),          # [§8-18] 점수 MAE의 근거
         )
+    # [§8-38] **전 경기·전 마켓을 기록한다** (method='shadow').
+    #   실사고(2026-08-27): `for p in recommended`만 저장해서, 추천이 0건이면
+    #   저장도 0건 → 채점 대상 0건 → **판정 성능을 영원히 측정할 수 없었다.**
+    #   실제로 predictions 20행 전부 p_claude가 NULL이었고, 그 때문에
+    #   "불펜 과소모 문턱을 얼마로 할까" 같은 질문에 답할 방법이 없었다.
+    #   → 추천 여부와 무관하게 전부 남긴다. 임계값은 이 기록 위에서 실측으로 정한다.
+    #   ⚠️ 같은 슬레이트를 여러 번 돌리면 중복되므로 **먼저 지우고 넣는다.**
+    _shadow_gids = [g["game_id"] for g in judge_games
+                    if g.get("status") == "scheduled" and g.get("market_board")]
+    if _shadow_gids:
+        await pool.execute(
+            "DELETE FROM predictions WHERE method = 'shadow' AND game_id = ANY($1::int[])",
+            _shadow_gids)
+        _n_shadow = 0
+        for jg in judge_games:
+            if jg.get("status") != "scheduled":
+                continue
+            for c in jg.get("market_board") or []:
+                if c.get("p") is None:
+                    continue          # 확률을 못 낸 행은 채점 대상이 아니다
+                await pool.execute(
+                    """
+                    INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
+                                             p_market, p_ensemble, lineup_status,
+                                             p_legacy, method, p_heuristic, p_learned,
+                                             p_claude, lam_total)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'shadow',
+                            $11, $12, $13, $14)
+                    """,
+                    # odds/ev/kelly는 없을 수 있다(배당 미수집 마켓). 스테이킹은
+                    # §8-18에서 제거됐고 배당 의존도 없앴으므로 **NULL 그대로 둔다** —
+                    # 0으로 채우면 "배당 1.00"·"EV 0"으로 오독된다.
+                    jg["game_id"], c.get("pick") or c.get("desc"), c["p"],
+                    c.get("odds"), c.get("ev"), c.get("kelly"),
+                    c.get("p_market_side"), c.get("p_ensemble_side"),
+                    jg.get("lineup_status") or "none", c.get("p_legacy"),
+                    c.get("p_heuristic"), c.get("p_learned"),
+                    jg.get("p_claude"), jg.get("lam_total"))
+                _n_shadow += 1
+        await record("예측 기록", _n_shadow, max(1, _n_shadow),
+                     cause=None if _n_shadow else "missing",
+                     detail=f"전 마켓 {_n_shadow}행 ({len(_shadow_gids)}경기)",
+                     impact="기록이 없으면 임계값을 실측으로 정할 수 없습니다")
+
     for p in _legacy_recommended(settings, picks_out):
         await pool.execute(
             """

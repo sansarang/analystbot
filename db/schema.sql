@@ -117,6 +117,13 @@ ALTER TABLE predictions ADD COLUMN IF NOT EXISTS closing_odds NUMERIC;
 --   돈·시장 지표를 전부 뺀 뒤 남은 평가 축이 ①방향 적중률 ②점수 MAE 두 개다.
 ALTER TABLE predictions ADD COLUMN IF NOT EXISTS lam_total NUMERIC;
 
+-- [§8-38] 배당 의존을 제거(§8-18)했으므로 **배당 없이도 예측을 기록**할 수 있어야
+--   한다. odds/ev/kelly가 NOT NULL이면 배당 미수집 마켓이 통째로 기록에서 빠지고,
+--   그러면 임계값을 실측으로 정할 표본이 반쪽이 된다.
+ALTER TABLE predictions ALTER COLUMN odds  DROP NOT NULL;
+ALTER TABLE predictions ALTER COLUMN ev    DROP NOT NULL;
+ALTER TABLE predictions ALTER COLUMN kelly DROP NOT NULL;
+
 -- CLV 원장: 마감 대비 우리 배당의 우위. beat_close = 마감보다 좋은 값을 잡은 픽.
 --   clv_pct = 확률 환산 차이 (1/odds - 1/closing) — 양수면 우리가 유리한 가격을 잡았다.
 CREATE OR REPLACE VIEW clv_ledger AS

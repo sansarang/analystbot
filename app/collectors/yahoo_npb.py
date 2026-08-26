@@ -235,19 +235,15 @@ async def upsert_final_scores(pool, date: str, days: int = 3,
             continue
         for g in finals:
             starts = datetime.fromisoformat(f"{day}T18:00:00").replace(tzinfo=jst)
-            await pool.execute(
-                """
-                INSERT INTO games (sport, league, ext_id, starts_at, home, away,
-                                   status, home_score, away_score)
-                VALUES ('npb', 'NPB', $1, $2, $3, $4, 'final', $5, $6)
-                ON CONFLICT (sport, ext_id) DO UPDATE SET
-                    status = 'final',
-                    home_score = EXCLUDED.home_score,
-                    away_score = EXCLUDED.away_score,
-                    updated_at = now()
-                """,
-                f"yahoo:{g['game_id']}", starts.astimezone(UTC),
-                g["home"], g["away"], g["home_score"], g["away_score"])
+            # [§8-37] ext_id가 아니라 **경기 자체**로 찾아 갱신한다 — 같은 경기가
+            #   소스마다 다른 ext_id를 받아 갈라지면 예측이 붙은 행이 미채점으로 남는다.
+            from app.collectors.game_match import apply_result
+
+            await apply_result(
+                pool, sport="npb", league="NPB", ext_id=f"yahoo:{g['game_id']}",
+                starts_at=starts.astimezone(UTC), home=g["home"], away=g["away"],
+                status="final", home_score=g["home_score"],
+                away_score=g["away_score"])
             n += 1
     logger.info("[yahoo_npb] 종료 경기 %d건 적재 (%s 기준 %d일)", n, date, days)
     return n
