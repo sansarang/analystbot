@@ -398,7 +398,18 @@ MISFIRE_GRACE_SEC = 6 * 3600
 # (잡 id, 함수, 트리거) — 실행 기록·실패 알림 래퍼를 일괄로 씌운다.
 def _job_specs() -> list[tuple]:
     return [
-        ("prefetch_daily", prefetch_job, CronTrigger(hour=4, minute=0, timezone=KST)),
+        # [프리페치 2회] 실측 킥오프 분포(KST)에 맞춘다:
+        #   유럽 축구 20~04시(22시 최다 19건) · MLB 05~10시(08시 최다 11건)
+        #   · 아시아(J1·KBO·K리그1) 18~19시
+        # 신선도 게이트가 "캐시 6h 이내 & 킥오프 3h 이상"일 때만 즉답하므로
+        # 각 덩어리의 3~7시간 전에 돌아야 캐시가 실제로 쓰인다.
+        #
+        # 3회 이상으로 늘리면 Perplexity 일 상한 60콜을 넘긴다(실측: 1회 37콜).
+        # 아시아 리그는 21:00 시점에 이미 종료돼 다음 회차 대상이 된다.
+        ("prefetch_evening", prefetch_job,
+         CronTrigger(hour=21, minute=0, timezone=KST)),   # 유럽 축구 (20~04시 킥오프)
+        ("prefetch_dawn", prefetch_job,
+         CronTrigger(hour=4, minute=30, timezone=KST)),   # MLB (05~10시 킥오프)
         ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
         ("grade_yesterday", grading_job, CronTrigger(hour=13, minute=0, timezone=KST)),
         ("research_retry_45m", research_retry_job, IntervalTrigger(minutes=45)),

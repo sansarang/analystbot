@@ -150,7 +150,12 @@ class Settings(BaseSettings):
     ev_threshold: float = 0.05      # 이 이상 EV일 때만 추천 픽 (기준 EV +5%↑)
     kelly_fraction: float = 0.5     # 하프 켈리
     kelly_cap: float = 0.05         # 뱅크롤 5% 상한
-    report_cache_ttl: int = 1800    # 리포트 Redis 캐시 30분
+    # 리포트 캐시. 프리페치가 만든 결과를 사용자가 물어볼 때까지 보관한다.
+    # 30분이었을 때: 04:00 프리페치 → 04:30 소멸 → 06:48 요청이 전 과정을
+    # 다시 돌아 53.9초가 걸렸다(실사고 2026-08-26). 38분과 API 비용을 들여
+    # 만든 결과물이 사용자가 묻기 전에 사라지는 구조였다.
+    # 신선도는 TTL이 아니라 신선도 게이트·라인업 폴링·속보 재판정이 담당한다.
+    report_cache_ttl: int = 43200   # 12시간 (프리페치 2회 간격을 덮는다)
 
     # statsapi.mlb.com은 무키 API — 강제 목 모드일 때만 목으로 동작
     @property

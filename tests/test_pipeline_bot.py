@@ -216,8 +216,11 @@ async def test_pipeline_uses_cache(db_pool, redis_client):
     assert await db_pool.fetchval("SELECT count(*) FROM predictions") == preds
     assert await db_pool.fetchval("SELECT count(*) FROM odds_snapshots") == snaps
 
+    # TTL은 설정값을 따른다 — 상수를 박아 두면 값이 바뀔 때마다 테스트가 깨진다
+    from app.config import get_settings
+
     ttl = await redis_client.ttl(f"card:mlb:{DATE}")
-    assert 0 < ttl <= 1800
+    assert 0 < ttl <= get_settings().report_cache_ttl
 
 
 def test_split_message_respects_limit():
