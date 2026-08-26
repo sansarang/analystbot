@@ -146,6 +146,12 @@ def merge_into_research(research: dict, jg: dict, roster: dict) -> list[str]:
     ⚠️ 기존 `absences`(딥서치 산문)를 **덮지 않고 합친다.** 공시는 말소만 알고,
        딥서치는 부상·휴식 같은 다른 사유를 알 수 있다. 둘은 배타적이지 않다.
     """
+    from app.research.crosscheck_sources import mark_collected
+
+    if not roster:
+        return []          # 명단을 못 받았으면 조사했다고 하지 않는다
+    # 결장자가 0명이어도 **조사는 했다** — 그래야 딥서치를 다시 부르지 않는다.
+    mark_collected(research, "absences")
     filled = []
     lines: list[str] = list(research.get("absences") or [])
     seen = {str(x) for x in lines}

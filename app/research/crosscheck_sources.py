@@ -144,14 +144,37 @@ def apply(research: dict, jg: dict, sources: dict[str, dict]) -> dict:
     return summary
 
 
+#: 수집기가 **성공적으로 조사했다**고 표시하는 자리. 결과가 0건이어도 채워둔다.
+COLLECTED_KEY = "_collected"
+
+
+def mark_collected(research: dict, *fields: str) -> None:
+    """그 필드를 조사했다고 표시한다 — **결과가 비어도** 호출한다.
+
+    ⚠️ "결장자 0명"과 "결장 정보를 못 구했다"는 완전히 다른 상태인데, 빈 목록으로는
+       구분되지 않는다. 구분하지 못하면 빈칸이 영원히 남아 딥서치를 계속 부른다
+       (실측 2026-08-27: 말소 0건인 날에도 absences가 빈칸으로 잡혀 5콜이 그대로였다).
+    """
+    research.setdefault(COLLECTED_KEY, [])
+    for f in fields:
+        if f not in research[COLLECTED_KEY]:
+            research[COLLECTED_KEY].append(f)
+
+
 def missing_fields(research: dict, required: tuple[str, ...]) -> list[str]:
     """[§8-22] 아직 빈 필드 목록 — **딥서치를 여기에만 쓴다.**
 
     크롤링이 채운 것을 다시 묻지 않으면 쿼터가 남고, 짧은 질문이라 채움률도 높다
     (실측: 프롬프트가 길수록 모델이 검색을 포기한다).
+
+    ⚠️ `mark_collected`로 표시된 필드는 **값이 비어도 빈칸이 아니다.**
+       조사했고 결과가 없었다는 뜻이므로 다시 물을 이유가 없다.
     """
+    collected = set(research.get(COLLECTED_KEY) or [])
     out = []
     for path in required:
+        if path in collected:
+            continue
         cur: object = research
         for part in path.split("."):
             cur = (cur or {}).get(part) if isinstance(cur, dict) else None

@@ -333,6 +333,7 @@ def _count_by(values) -> dict:
 SRC_KBO_OFFICIAL = "official_record"   # koreabaseball.com 기록실·일정
 SRC_PORTAL = "portal"                  # 네이버 스포츠 · Yahoo!スポーツ
 SRC_WEATHER = "weather_api"            # Open-Meteo (다투는 값이 아니다)
+SRC_NEWS = "news"                      # 스포츠조선 등 기사 — 원문 인용 발췌
 
 
 def _absorb(research: dict, filled: list[str], source: str) -> list[tuple]:
@@ -409,6 +410,12 @@ def merge_source_data(research: dict, jg: dict, sport: str,
             _absorb(research, _mr(research, jg, statcast_data["kbo_roster"]),
                     SRC_KBO_OFFICIAL)
             done.append("kbo_roster")
+        if statcast_data.get("kbo_news") is not None:
+            from app.collectors.kbo_news import merge_into_research as _mnews
+
+            _absorb(research, _mnews(research, jg, statcast_data["kbo_news"]),
+                    SRC_NEWS)
+            done.append("kbo_news")
         # [§8-34] 카드 ④칸("무게") — 순위·게임차·잔여경기.
         #   그날 프리뷰 5경기가 10팀 순위를 모두 담고 있어 **추가 HTTP가 없다**
         #   (순위 전용 엔드포인트는 403이다 — 2026-08-27 실측).
@@ -842,9 +849,20 @@ async def build_analysis(
                     except Exception as exc:
                         logger.warning("[pipeline] KBO 등록 명단 수집 실패: %s", exc)
                         roster = {}
+                # [A-3단계] 경기 전 기사 **원문 발췌**. 요약하지 않는다.
+                #   직접 인용만 뽑으므로 기자의 전망·평가가 섞이지 않는다.
+                #   ⚠️ 게시 시각이 경기 시작 **이전**인 것만 — 경기 후 기사는 누출이다.
+                from app.collectors.kbo_news import fetch_for_games as fetch_news
+
+                try:
+                    news_quotes = await fetch_news(_up, date)
+                except Exception as exc:      # 기사 실패가 분석을 막지 않는다
+                    logger.warning("[pipeline] KBO 기사 발췌 실패: %s", exc)
+                    news_quotes = {}
                 statcast_data = {"kbo_teams": kteams, "kbo_pitchers": kpitchers,
                                  "naver": naver, "parks": parks, "weather": kweather,
                                  "kbo_usage": usage, "kbo_roster": roster,
+                                 "kbo_news": news_quotes,
                                  "crawler": await load_snapshot(redis, "kbo", date),
                                  "crawler_changes": await load_changes(redis, "kbo", date)}
                 await record("날씨", len(kweather), max(1, len(_up)),
@@ -860,6 +878,10 @@ async def build_analysis(
                              cause=None if usage else "missing",
                              detail=f"{len(usage)}팀 · 최근 3경기 등판 (LLM 0회)",
                              impact="카드 ①칸(불펜 가용)이 '모름'으로 나갑니다")
+                await record("기사 발췌", len(news_quotes), max(1, len(_up)),
+                             cause=None if news_quotes else "missing",
+                             detail=f"{len(news_quotes)}경기 인용 (원문 그대로·LLM 0회)",
+                             impact="감독 발언·로테이션 계획이 빠집니다")
                 await record("1군 등록", len(roster), 10,
                              cause=None if roster else "missing",
                              detail=f"{len(roster)}팀 명단 (LLM 0회)",
@@ -945,7 +967,16 @@ async def build_analysis(
                 logger.info("[pipeline] 게이트③ 차단 %s — %s",
                             _jg.get("game_id"), ", ".join(_blocked[:6]))
                 _prov_blocked.extend(_blocked)
-            _prov_dist.update(distribution(_r))
+            _d = distribution(_r)
+            # [§9 게이트③] **모순은 즉시 보이게 한다.** 두 공식 소스가 처음으로
+            #   갈리는 날이 라벨 체계의 실증 시점이다 — 조용히 지나가면 안 된다.
+            #   (실측 2026-08-27: 2소스 대조 20건 전부 일치. 불일치는 아직 0건이다)
+            if _d.get("모순"):
+                logger.warning(
+                    "[pipeline] 🔬 출처 모순 %d건 — 소스가 처음으로 갈렸다 "
+                    "(경기 %s). 라벨 체계 실증 시점이다.",
+                    _d["모순"], _jg.get("game_id"))
+            _prov_dist.update(_d)
             _jg["research"] = _r
 
         # [§9 게이트 ③] 라벨 분포를 남긴다.
@@ -970,7 +1001,10 @@ async def build_analysis(
         from app.research.crosscheck_sources import missing_fields
         from app.research.deep import DAILY_RESEARCH_CAP, fill_gaps, research_calls_today
 
-        _need = ("absences", "bullpen", "motivation", "rotation_plan",
+        # ⚠️ `bullpen`은 뺐다 — 산문 소모 설명은 λ에서 제거됐고(불펜 문턱 보류,
+        #   #77) 카드 ①칸이 `{side}_usage`의 숫자로 대체했다. 쓰지 않는 필드를
+        #   빈칸으로 두면 **영원히 딥서치를 부른다.**
+        _need = ("absences", "motivation", "rotation_plan",
                  "home_recent_form.form", "away_recent_form.form")
         _gap_ok = 0
         for _jg in judge_games:
