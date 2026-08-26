@@ -16,9 +16,7 @@ import json
 import logging
 import re
 
-import anthropic
 
-from app.collectors.base import ApiQuotaError, is_quota_error
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -216,13 +214,9 @@ class Narrator:
     def __init__(self, mock: bool | None = None):
         self.settings = get_settings()
         self.mock = self.settings.mock_judge if mock is None else mock
-        self._client: anthropic.AsyncAnthropic | None = None
-
-    @property
-    def client(self) -> anthropic.AsyncAnthropic:
-        if self._client is None:
-            self._client = anthropic.AsyncAnthropic(api_key=self.settings.anthropic_api_key)
-        return self._client
+        # [B-4] 실제로 응답한 provider. 폴백이 조용히 일어나면 문체·품질이
+        #       바뀐 것을 아무도 모른다 — 리포트까지 따라가야 한다.
+        self.last_provider: str = ""
 
     async def narrate(self, games: list[dict], sport: str) -> dict[int, dict]:
         """[{jg}] → {game_id: {context, causal, decider, expert_note, missing}}.
@@ -253,24 +247,23 @@ class Narrator:
         return out
 
     async def _call(self, payload: dict) -> dict[int, dict]:
-        try:
-            resp = await self.client.messages.create(
-                model=self.settings.report_model,
-                max_tokens=MAX_TOKENS,
-                system=SYSTEM,
-                tools=[NARRATIVE_TOOL],
-                tool_choice={"type": "tool", "name": "narrative"},
-                messages=[{"role": "user",
-                           "content": json.dumps(payload, ensure_ascii=False, default=str)}],
-            )
-        except anthropic.APIStatusError as exc:
-            if is_quota_error(exc.status_code, str(exc)):
-                raise ApiQuotaError("anthropic(narrator)", str(exc)) from exc
-            raise
-        for block in resp.content:
-            if block.type == "tool_use" and block.name == "narrative":
-                return _normalize(block.input)
-        raise RuntimeError("narrator did not return a narrative tool call")
+        """[B-1] provider 계층을 거친다 — `.env`의 `NARRATOR_PROVIDER`로 갈아끼운다.
+
+        ⚠️ 어느 provider가 서술했는지 `self.last_provider`에 남긴다.
+           폴백이 조용히 일어나면 문체·품질이 바뀐 것을 아무도 모른다.
+        """
+        from app.llm import complete
+
+        res = await complete(
+            "narrator",
+            [{"role": "user",
+              "content": json.dumps(payload, ensure_ascii=False, default=str)}],
+            system=SYSTEM, schema=NARRATIVE_TOOL["input_schema"],
+            max_tokens=MAX_TOKENS, settings=self.settings)
+        self.last_provider = res.label
+        if res.data is None:
+            raise RuntimeError("narrator did not return a narrative payload")
+        return _normalize(res.data)
 
 
 def _normalize(raw: dict) -> dict[int, dict]:

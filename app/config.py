@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     pplx_api_key: str | None = None
     xai_api_key: str | None = None
     odds_api_key: str | None = None
+    # [B-2] 추가 LLM provider — 없으면 그 provider는 쓰지 않는다(크래시 금지).
+    gemini_api_key: str | None = None
+    groq_api_key: str | None = None
+    deepseek_api_key: str | None = None
     apifootball_key: str | None = None
     football_data_key: str | None = None  # football-data.org (메이저 12개 대회 무료)
 
@@ -43,6 +47,33 @@ class Settings(BaseSettings):
     report_model: str = "claude-sonnet-5"
     intent_model: str = "claude-haiku-4-5"
     grok_model: str = "grok-4.3-latest"
+
+    # ── [B-2] 단계별 provider 라우팅 ──────────────────────────────────────
+    # **코드를 고치지 않고 .env만 바꿔 Anthropic ↔ Gemini ↔ 자체호스팅 전환**이
+    # 되어야 한다. 그것이 이 설정의 존재 이유다.
+    #   provider 종류: anthropic | gemini | groq | deepseek | ollama | xai | mock
+    #   빈 문자열 = 그 역할 비활성 (예: judge_b를 안 쓰는 경우)
+    #   *_fallback: "gemini,groq:llama-3.3-70b" 처럼 콤마 구분. `종류:모델` 형식도 가능.
+    # ⚠️ 폴백이 일어나면 **어느 provider가 답했는지 리포트·DB에 남는다.**
+    #    조용히 다른 모델이 판정하면 품질 변화를 아무도 알 수 없다.
+    interpreter_provider: str = "mock"      # 2단 해석봇 — 칸 단위 판정
+    interpreter_model: str = ""
+    interpreter_fallback: str = ""
+    judge_a_provider: str = "anthropic"     # 3단 대조봇 A
+    judge_a_model: str = ""                 # 비우면 judge_model을 쓴다
+    judge_a_fallback: str = ""
+    judge_b_provider: str = ""              # 3단 대조봇 B (병렬 비교군) — 기본 꺼짐
+    judge_b_model: str = ""
+    judge_b_fallback: str = ""
+    narrator_provider: str = "anthropic"    # 서술
+    narrator_model: str = ""                # 비우면 report_model을 쓴다
+    narrator_fallback: str = ""
+    # 자체호스팅·프록시 주소 (Ollama·사내 게이트웨이 등)
+    gemini_base_url: str | None = None
+    groq_base_url: str | None = None
+    deepseek_base_url: str | None = None
+    ollama_base_url: str | None = None
+    xai_base_url: str | None = None
 
     # 인프라
     database_url: str = "postgresql://analyst:analyst@localhost:5432/analystbot"
