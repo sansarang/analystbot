@@ -419,11 +419,24 @@ def merge_source_data(research: dict, jg: dict, sport: str,
             _absorb(research, _my(research, jg, yv), SRC_PORTAL)
             done.append("yahoo")
 
+    # [A-1단계] 딥서치가 주던 필드를 **이미 수집한 값으로 직접 산출**한다.
+    #   빈칸만 채운다 — MLB·유럽은 아직 딥서치가 채우므로 덮으면 안 된다.
+    #   ⚠️ 소스는 파생이므로 원본 소스를 그대로 각인한다(새 출처가 아니다).
+    if sport in ("kbo", "npb"):
+        from app.engine.derive import apply as _derive
+
+        _absorb(research, _derive(research, jg, statcast_data.get("kbo_usage")),
+                SRC_PORTAL)
+
     if statcast_data.get("weather"):
         from app.collectors.weather import merge_into_research as _mw
 
         _mw(research, jg, statcast_data["weather"])
-        _absorb(research, ["weather"], SRC_WEATHER)
+        # ⚠️ **채워진 경우에만** 각인한다. 돔구장은 `weather`를 채우지 않는데
+        #   그대로 각인하면 게이트 ③이 "관측 없음 → 미확인"으로 잡아 분포를
+        #   오염시킨다(실측 2026-08-27: 미확인 4건이 전부 이것이었다).
+        if research.get("weather"):
+            _absorb(research, ["weather"], SRC_WEATHER)
         done.append("weather")
     if statcast_data.get("crawler"):
         from app.collectors.crawler_feed import merge_into_research as _mc
@@ -3251,8 +3264,20 @@ async def _freshness_gate(
             card = f"{settings.report_banner}\n\n{card}"
         await _save_caches(redis, analysis, card)
         cached_card = card
+    # [A-1단계] 변화 감지를 **Go 크롤러 diff로 대체**한다 (LLM 0회).
+    #   종전에는 Grok에게 "이전 브리핑 대비 뭐가 바뀌었나"를 물었다. 그런데
+    #   크롤러가 이미 10분마다 스냅샷을 비교해 선발 교체·라인업 변경·경기 상태를
+    #   **필드 단위로 정확히** 잡고 있다. LLM에게 산문을 비교시키는 것보다
+    #   정확하고, 비용이 0이며, 크레딧이 끊겨도 동작한다.
+    #   ⚠️ KBO·NPB만 대체한다 — MLB·유럽은 크롤러 소스가 없어 Grok을 유지한다.
     try:
-        changes = await GrokClient().delta_check(analysis.get("news", ""), upcoming, date)
+        if sport in ("kbo", "npb"):
+            from app.collectors.crawler_feed import load_changes, notable_rows
+
+            changes = notable_rows(await load_changes(redis, sport, date))
+        else:
+            changes = await GrokClient().delta_check(
+                analysis.get("news", ""), upcoming, date)
     except Exception as exc:
         logger.warning("[pipeline] delta check failed, serving cache: %s", exc)
         return cached_card

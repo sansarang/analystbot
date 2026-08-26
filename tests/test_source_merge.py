@@ -187,3 +187,32 @@ def test_crawler_merge_labels_lineup_sides():
     assert research["home_lineup"]["order"] == "가-나-다"
     assert research["away_lineup"]["order"] == "라-마-바"
     assert "lineup" not in research, "레이블 없는 합본이 남아 있다"
+
+
+def test_notable_rows_keeps_game_alignment():
+    """🔴 변화 감지가 재판정을 트리거한다 — 경기가 어긋나면 조용한 오판이 된다.
+
+    `notable_changes()`는 걸러낸 문장만 돌려주므로 원본 목록과 zip하면
+    다른 경기의 변화가 엉뚱한 경기에 붙는다.
+    """
+    from app.collectors.crawler_feed import notable_changes, notable_rows
+
+    changes = [
+        {"game": "A@B", "field": "weather", "kind": "changed", "at": "2026-08-26T17:00:00+09:00"},
+        {"game": "C@D", "field": "home_pitcher", "kind": "changed",
+         "at": "2026-08-26T18:10:00+09:00", "from": "황동하", "to": "김태형"},
+        {"game": "E@F", "field": "stadium", "kind": "changed", "at": "2026-08-26T18:20:00+09:00"},
+        {"game": "G@H", "field": "lineup_home", "kind": "changed",
+         "at": "2026-08-26T18:30:00+09:00", "from": "가-나", "to": "나-가"},
+    ]
+    rows = notable_rows(changes)
+    assert [r["game"] for r in rows] == ["C@D", "G@H"], "경기 키가 어긋났다"
+    assert "황동하 → 김태형" in rows[0]["change"]
+    # 문장 버전과 건수가 같아야 한다 — 한쪽만 필터가 달라지면 정렬이 깨진다
+    assert len(rows) == len(notable_changes(changes))
+
+
+def test_notable_rows_empty_is_empty():
+    from app.collectors.crawler_feed import notable_rows
+
+    assert notable_rows([]) == [] and notable_rows(None) == []

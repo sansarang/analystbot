@@ -72,23 +72,46 @@ async def is_alive(redis) -> tuple[bool, str]:
     return True, f"크롤러 정상 (마지막 {at:%H:%M})"
 
 
+# 사람이 즉시 알아야 할 필드. ⚠️ 여기서 **중요도를 점수화하지 않는다** —
+# "무엇이 바뀌었다"만 사실로 전하고, 영향 판단은 판정이 한다.
+_NOTABLE_LABEL = {"home_pitcher": "홈 선발", "away_pitcher": "원정 선발",
+                  "lineup_home": "홈 라인업", "lineup_away": "원정 라인업",
+                  "starter_status": "선발 발표", "status": "경기 상태"}
+
+
+def notable_rows(changes: list[dict]) -> list[dict]:
+    """[A-1단계] 사람이 읽을 문장 **과 함께 경기 키를 유지**한 변화 목록.
+
+    ⚠️ `notable_changes()`는 걸러낸 문장만 돌려주므로 원본 목록과 **짝이 맞지
+       않는다.** 둘을 zip하면 다른 경기의 변화가 엉뚱한 경기에 붙는다.
+       변화 감지가 재판정을 트리거하므로 이 오배치는 조용한 오판이 된다.
+    """
+    out = []
+    for c in changes or []:
+        f = c.get("field")
+        if f not in _NOTABLE_LABEL:
+            continue
+        at = (c.get("at") or "")[11:16]
+        frm, to = c.get("from") or "없음", c.get("to") or "없음"
+        out.append({"game": c.get("game", "?"),
+                    "change": f"{at} {_NOTABLE_LABEL[f]}: {frm} → {to}"})
+    return out
+
+
 def notable_changes(changes: list[dict]) -> list[str]:
     """[§8-23] 사람이 즉시 알아야 할 변화만 한국어 한 줄로.
 
     ⚠️ 중요도를 점수화하지 않는다 — "무엇이 바뀌었다"만 사실로 전하고,
        경기에 어떤 영향인지는 판정이 결정한다.
     """
-    label = {"home_pitcher": "홈 선발", "away_pitcher": "원정 선발",
-             "lineup_home": "홈 라인업", "lineup_away": "원정 라인업",
-             "starter_status": "선발 발표", "status": "경기 상태"}
     out = []
     for c in changes:
         f = c.get("field")
-        if f not in label:
+        if f not in _NOTABLE_LABEL:
             continue
         at = (c.get("at") or "")[11:16]
         frm, to = c.get("from") or "없음", c.get("to") or "없음"
-        out.append(f"{at} {c.get('game','?')} {label[f]}: {frm} → {to}")
+        out.append(f"{at} {c.get('game','?')} {_NOTABLE_LABEL[f]}: {frm} → {to}")
     return out
 
 

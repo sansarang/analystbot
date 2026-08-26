@@ -44,14 +44,12 @@ _SCHEMA_MLB = """{
  "bullpen_overused": "홈|원정|양팀|없음 (최근 3일 소모가 리그 평균 대비 과다한 쪽)",
  "home_bullpen": {"era": 3.85, "fip": 4.02, "ip_last3d": 8.2, "closer_available": true},
  "away_bullpen": {...동일...},
- "park_factor": 1.03,   // 구장 득점 파크팩터 (1.00=중립). 홈런 파크팩터는 park_hr
- "park_hr": 1.08,
+ "park_factor": 1.03,   // 구장 득점 파크팩터 (1.00=중립)
  "absences": ["핵심 결장자와 중요도(한국어). 반드시 '팀명 + 선수명 + 역할(주전 타자/마무리/셋업/선발) + 팀 내 기여도'를 포함. 예: 'San Diego Padres의 Jason Adam(마무리) 부상 결장 — 9회 담당'"],
  "lineup": {"status": "confirmed|projected|unknown", "home": "홈 선발 라인업/타순(한국어). 미발표면 null", "away": "원정 동일", "source": "출처 매체명"},
  "motivation": "양 팀의 이 경기 동기 — 순위 경쟁·와일드카드·소화 경기·매각 후 리빌딩 여부(한국어). 없으면 null",
  "schedule_load": "일정 부담 — 연전 몇 번째·직전 경기 종료 시각·이동 거리·시차·더블헤더 여부(한국어). 없으면 null",
  "umpire": "주심과 스트라이크존 성향 — 존이 넓은 편인지 좁은 편인지, 삼진율/볼넷율 경향(한국어). 없으면 null",
- "line_move_reason": "배당이 움직였다면 그 사유 — 라인업 발표·선발 교체·부상 속보·자금 유입 중 무엇인지(한국어). 없으면 null",
  "rotation_plan": "감독의 로테이션·불펜 휴식 계획, 오프너 여부(한국어). 없으면 null",
  "park": "구장 특성 — 타자친화/투수친화와 그 근거(한국어). 없으면 null",
  "weather": "경기 시각 날씨 — 기온·풍향·강수 확률(한국어). 없으면 null",
@@ -68,7 +66,6 @@ _SCHEMA_SOCCER = """{
  "lineup": {"status": "confirmed|projected|unknown", "home": "홈 선발 라인업/타순(한국어). 미발표면 null", "away": "원정 동일", "source": "출처 매체명"},
  "motivation": "양 팀의 이 경기 동기 — 우승/유럽대항권/강등 경쟁, 이미 확정돼 느슨한지, 다음 경기 대비 로테이션 예고(한국어). 없으면 null",
  "schedule_load": "일정 부담 — 직전 경기 이후 휴식일·미드위크 대항전·이동 거리·시차(한국어). 없으면 null",
- "line_move_reason": "배당이 움직였다면 그 사유(한국어). 없으면 null",
  "park": "구장·잔디 상태(한국어). 없으면 null",
  "weather": "경기 시각 날씨(한국어). 없으면 null",
  "expert_picks": [{"expert": "...", "site": "...", "source_url": "...", "pick": "<team> ML | Double Chance <team> | Over/Under <line>", "reasoning": "한국어", "record": "전적"}],
@@ -352,7 +349,6 @@ def _filled_fields(data: dict | None) -> dict[str, bool]:
         "motivation": bool(d.get("motivation")),
         "schedule_load": bool(d.get("schedule_load")),
         "umpire": bool(d.get("umpire")),
-        "line_move_reason": bool(d.get("line_move_reason")),
         "lineup": bool((d.get("lineup") or {}).get("status") in ("confirmed", "projected")),
     }
 

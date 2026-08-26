@@ -231,13 +231,13 @@ _TEXT_FIELDS_NUM = ("last5", "note", "home_split", "away_split", "last5_detail",
 
 # [4-1] 신규 자유서술 필드 — 문장 필터 대상(수치 요구 없음: 정성 정보라도 가치가 있다)
 #
-# [§8-7] motivation·schedule_load·umpire·line_move_reason도 여기에 둔다.
+# [§8-7] motivation·schedule_load·umpire도 여기에 둔다.
 #   정책 판단 근거(CLAUDE.md: "라벨이 무엇을 단언하는가로 나눈다"):
 #   이 넷은 **구간을 단언하지 않는다** — last5("최근 5경기")처럼 표본 범위를
 #   못 박는 라벨이 아니라 상황 서술이다. 따라서 전량 폐기가 아니라 문장 필터가 맞다.
 #   미확보 문장("정보를 찾을 수 없습니다")만 걷어내고 나머지는 살린다.
 _TEXT_FIELDS_FREE = ("rotation_plan", "park", "weather",
-                     "motivation", "schedule_load", "umpire", "line_move_reason")
+                     "motivation", "schedule_load", "umpire")
 _NUM_FIELDS = ("runs_avg", "gf5", "ga5", "rank", "era_recent", "era_season")
 
 
@@ -384,7 +384,7 @@ def sanitize_research(data: dict | None, sport: str = "mlb") -> tuple[dict, list
         if kept:
             out[side] = kept
 
-    for key in ("park_factor", "park_hr"):
+    for key in ("park_factor",):     # park_hr은 소비처가 0곳이라 폐기했다
         val = clean_number(data.get(key))
         if val is not None:
             out[key] = val

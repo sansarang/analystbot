@@ -461,7 +461,9 @@ def test_needs_refresh_none_for_ordinary_game():
 
 # ---------------------------------------------------------------- [§8-7] 신규 맥락 필드
 
-_NEW_CONTEXT = ("motivation", "schedule_load", "umpire", "line_move_reason")
+# [A-1단계] `line_move_reason`은 폐기했다 — 배당 의존 제거 후 판정에
+#   아무 역할이 없다. 쓰이지 않는 필드를 요구하면 프롬프트만 길어진다.
+_NEW_CONTEXT = ("motivation", "schedule_load", "umpire")
 
 
 def test_new_context_fields_survive_sanitize():
@@ -475,7 +477,6 @@ def test_new_context_fields_survive_sanitize():
         "motivation": "홈은 와일드카드 1경기 차 추격 중이고 원정은 이미 탈락이 확정됐다.",
         "schedule_load": "원정은 3연전 마지막 경기이며 직전 경기가 연장 12회로 끝났다.",
         "umpire": "주심 Angel Hernandez는 존이 넓은 편으로 삼진율이 리그 평균보다 높다.",
-        "line_move_reason": "홈 선발이 경기 2시간 전 교체되며 배당이 1.70에서 1.92로 밀렸다.",
     }
     out, dropped = sanitize_research(data, "mlb")
     for key in _NEW_CONTEXT:
@@ -526,7 +527,7 @@ def test_new_fields_present_in_both_schemas():
     """MLB·축구 프롬프트 스키마 양쪽에 들어가야 한다 — 한쪽만 넣으면 조용히 반쪽이다."""
     from app.research.deep import _SCHEMA_MLB, _SCHEMA_SOCCER
 
-    for key in ("motivation", "schedule_load", "line_move_reason"):
+    for key in ("motivation", "schedule_load"):
         assert key in _SCHEMA_MLB, f"MLB 스키마에 {key} 없음"
         assert key in _SCHEMA_SOCCER, f"축구 스키마에 {key} 없음"
     # 주심 스트라이크존은 야구 고유 개념이다 (종목별 용어 분리 규칙)
