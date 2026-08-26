@@ -601,7 +601,15 @@ def _approve(jg: dict, c: dict, sport: str) -> None:
     # [6] 2-소스 룰은 **추천 자격**에만 적용한다 — 확률 산출 가능 여부와 무관하다.
     #     분포에서 확률이 나온 마켓을 "근거 부족"으로 보드에서 지우면, 실제로 평가된
     #     마켓을 화면에서 없애는 셈이다. 보드에는 남기고 추천 풀에서만 뺀다.
-    c["two_source"] = c["axes_n"] >= 2
+    # [A-4단계] 종목마다 **살아 있는 축의 수가 다르다.**
+    #   KBO·NPB는 전문가 픽을 수집하지 않으므로(실측: KBO 0/5) 축이 2개뿐이고,
+    #   축이 줄었으면 문턱이 높아져야 한다 — 살아 있는 축이 **전부** 같은
+    #   방향일 때만 추천 자격을 준다.
+    #   ⚠️ 종전 `axes_n >= 2`는 KBO에서 **우연히** data+model을 요구했다.
+    #     우연에 기대면 나중에 전문가 축이 살아났을 때 조용히 느슨해진다.
+    from app.engine.coverage import qualifies_axes
+
+    c["two_source"] = qualifies_axes(sport, c["axes"])
     if not c["two_source"] and jg.get("distribution") is None:
         # 분포조차 없으면 확률 근거 자체가 없다 — 이때만 보드에서도 제외
         only = axes_label(c["axes"])

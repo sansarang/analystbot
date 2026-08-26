@@ -48,6 +48,15 @@ class Settings(BaseSettings):
     intent_model: str = "claude-haiku-4-5"
     grok_model: str = "grok-4.3-latest"
 
+    # ── [A-5단계] 리그별 딥서치 스위치 ─────────────────────────────────────
+    # 콤마 구분 종목 목록. 여기 없는 종목은 **딥서치를 부르지 않는다.**
+    #   KBO·NPB는 크롤링으로 완전 대체됐다(2026-08-27): 공식 기록실·네이버·
+    #   Yahoo·1군 공시·경기 전 기사. 딥서치 콜이 5 → 0이 됐다.
+    #   MLB·유럽축구는 전문가 픽이 웹에 흩어져 있어 검색이 필요하다
+    #   (실측: MLB expert_picks 10/15 · 축구 3/3 vs KBO 0/5).
+    # ⚠️ 이 값을 비우면 전 종목에서 딥서치가 꺼진다 — 의도한 경우에만 그렇게 하라.
+    deepsearch_sports: str = "mlb,soccer"
+
     # ── [B-2] 단계별 provider 라우팅 ──────────────────────────────────────
     # **코드를 고치지 않고 .env만 바꿔 Anthropic ↔ Gemini ↔ 자체호스팅 전환**이
     # 되어야 한다. 그것이 이 설정의 존재 이유다.
@@ -257,6 +266,11 @@ class Settings(BaseSettings):
     @property
     def mock_perplexity(self) -> bool:
         return self.force_mock or not self.pplx_api_key
+
+    def deepsearch_enabled(self, sport: str) -> bool:
+        """그 종목에서 딥서치(Perplexity)를 쓰는가."""
+        allow = {x.strip().lower() for x in (self.deepsearch_sports or "").split(",")}
+        return bool(sport) and sport.lower() in allow
 
     @property
     def mock_grok(self) -> bool:

@@ -166,11 +166,24 @@ async def _collect_research(
 
     from app.research.deep import RESEARCH_CONCURRENCY, get_game_research
 
-    _grok = GrokClient()
-    news_task = _grok.live_briefing(games, date, league=league)
-    # [§8-21] X·커뮤니티 여론 — **별도 호출**이다. 속보 프롬프트에 얹으면
-    #   요구가 쌓여 모델이 검색을 포기한다(실사고: 채움률 6/10 → 0/10).
-    sentiment_task = _grok.sentiment(games, date, league=league)
+    # [A-5단계] 리그별 스위치. 꺼진 종목은 **외부 유료 API를 한 번도 부르지 않는다.**
+    #   KBO·NPB는 크롤링으로 완전 대체됐다(2026-08-27). 팬 여론(Grok)도
+    #   `coverage.UNCOLLECTED`에 '미수집'으로 선언돼 있으므로 함께 끈다 —
+    #   카드가 "미수집"이라고 말하면서 뒤에서 호출하면 표기가 거짓이 된다.
+    _use_deep = get_settings().deepsearch_enabled(sport)
+
+    async def _empty() -> str:
+        return ""
+
+    if _use_deep:
+        _grok = GrokClient()
+        news_task = _grok.live_briefing(games, date, league=league)
+        # [§8-21] X·커뮤니티 여론 — **별도 호출**이다. 속보 프롬프트에 얹으면
+        #   요구가 쌓여 모델이 검색을 포기한다(실사고: 채움률 6/10 → 0/10).
+        sentiment_task = _grok.sentiment(games, date, league=league)
+    else:
+        logger.info("[pipeline] %s — 딥서치·여론 비활성(크롤링 전용)", sport)
+        news_task, sentiment_task = _empty(), _empty()
     own_redis = redis is None
     if own_redis:
         redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
@@ -179,6 +192,12 @@ async def _collect_research(
     statuses: dict[int, str] = {}
 
     async def one(g: dict) -> None:
+        if not _use_deep:
+            # 딥서치를 안 부른다. 상태를 'off'로 남겨 계측이 "실패"와 구분한다 —
+            # 끈 것과 못 받은 것을 섞으면 리포트가 거짓 경보를 낸다.
+            research_map[g["id"]] = None
+            statuses[g["id"]] = "off"
+            return
         async with sem:
             data, status = await get_game_research(
                 redis, {**g, "game_id": g["id"]}, sport, force=force)
@@ -618,16 +637,25 @@ async def build_analysis(
     # 분모로 쓰면 저녁 시간대(진행 중 경기 다수)에 "5/15 실패"처럼 잘못 경보한다.
     # (실측 2026-08-26 10:00: 15경기 중 6경기만 예정이었는데 5/15로 표시됐다)
     _sched_ids = {g["id"] for g in games if g.get("status") == "scheduled"}
+    # [A-5단계] `off`는 **끈 것**이지 실패가 아니다. 섞으면 거짓 경보가 난다 —
+    #   "리서치 0/5 실패"라고 알리면서 실제로는 의도대로 크롤링만 쓰고 있는 상황.
+    _OK_STATES = ("refreshed", "cached", "off")
     _ok_research = sum(1 for gid, st in research_statuses.items()
-                       if gid in _sched_ids and st in ("refreshed", "cached"))
-    await record("여론 수집", 1 if sentiment.strip() else 0, 1,
-                 cause=None if sentiment.strip() else "missing",
-                 detail=f"{len(sentiment)}자" if sentiment else "",
-                 impact="팬 여론·목격담 없이 판정합니다")
+                       if gid in _sched_ids and st in _OK_STATES)
+    _deep_off = not get_settings().deepsearch_enabled(sport)
+    if not _deep_off:
+        await record("여론 수집", 1 if sentiment.strip() else 0, 1,
+                     cause=None if sentiment.strip() else "missing",
+                     detail=f"{len(sentiment)}자" if sentiment else "",
+                     impact="팬 여론·목격담 없이 판정합니다")
+    _research_detail = "딥서치 비활성 — 크롤링 전용"
+    if not _deep_off:
+        _bad = {k: v for k, v in _count_by(research_statuses.values()).items()
+                if k not in _OK_STATES}
+        _research_detail = ", ".join(f"{k}:{v}" for k, v in sorted(_bad.items()))
     await record("리서치", _ok_research, len(_sched_ids) or len(games),
                  cause=None if _ok_research == len(games) else "missing",
-                 detail=", ".join(f"{k}:{v}" for k, v in sorted(
-                     _count_by(research_statuses.values()).items()) if k not in ("refreshed", "cached")),
+                 detail=_research_detail,
                  impact="해당 경기는 결장·불펜 정보 없이 판정됩니다")
 
     # [감시] 리서치 수치 ↔ statsapi 실데이터 교차검증 표본 (지어내기 감시)
@@ -997,7 +1025,10 @@ async def build_analysis(
     # [§8-22] 빈칸 보충 — 크롤링·정식기록이 못 채운 것만 **짧게** 다시 묻는다.
     #   전체 스키마를 재조회하지 않으므로 쿼터가 남고 채움률도 높다
     #   (실측: 프롬프트가 길수록 모델이 검색을 포기한다 — 6/10 → 0/10).
-    if sport in ("kbo", "npb") and redis is not None:
+    # [A-5단계] **리그별 스위치.** KBO·NPB는 크롤링으로 완전 대체돼 기본 off다
+    #   (딥서치 콜 5 → 0, 2026-08-27 실측). MLB·유럽은 전문가 픽 때문에 on.
+    if (sport in ("kbo", "npb") and redis is not None
+            and settings.deepsearch_enabled(sport)):
         from app.research.crosscheck_sources import missing_fields
         from app.research.deep import DAILY_RESEARCH_CAP, fill_gaps, research_calls_today
 
@@ -2822,6 +2853,13 @@ def _render_card(analysis: dict) -> str:
     limit_line = data_limitation_line(analysis)
     if limit_line:
         lines.append(limit_line)
+    # [A-4단계] **어떤 근거 위에 선 판정인지 밝힌다.** 축이 줄어든 사실을 숨기면
+    #   같은 신호등이 종목마다 다른 무게를 갖게 된다(KBO는 전문가 축이 없다).
+    from app.engine.coverage import coverage_note
+
+    _cov = coverage_note(analysis.get("sport") or "")
+    if _cov:
+        lines.append(_cov)
     detail = ["📊 상세 데이터"]
     meta = analysis.get("research_meta") or {}
     if meta.get("refreshed"):
