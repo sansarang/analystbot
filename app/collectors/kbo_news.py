@@ -28,15 +28,35 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-INDEX = "https://sports.chosun.com/baseball/"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
-CACHE_TTL = 3 * 3600
-MAX_ARTICLES = 25          # 하루 야구 기사 상한 — 전부 받으면 느리고 대부분 무관하다
+CACHE_TTL = 20 * 60        # 감독 발언은 **경기 19분 전**에도 나온다(실측 2026-08-26).
+                           # 길게 잡으면 그 발언을 통째로 놓친다.
+MAX_PER_OUTLET = 14        # 매체당 기사 상한 — 전부 받으면 느리고 대부분 무관하다
 MAX_QUOTES_PER_GAME = 4
 
-# 기사 URL에 날짜가 박혀 있다 — 다른 날 기사를 거르는 1차 관문
-_ART = re.compile(r'href="(https://www\.sportschosun\.com/baseball/(\d{4}-\d{2}-\d{2})/\d+)"')
-_PUBLISHED = re.compile(r'"datePublished"\s*:\s*"([^"]+)"')
+# 매체 등록부: (이름, 인덱스 URL, 기사 링크 정규식, 상대경로 기준 도메인)
+#   ⚠️ 한 매체만 쓰면 수율이 낮다 — 실측(2026-08-26): 스포츠조선 단독으로
+#      13건 중 경기 전 인용이 **1건**뿐이었다(5경기 중 1경기).
+#      매체를 늘리는 것이 유일한 해법이다.
+OUTLETS: tuple[tuple[str, str, str, str], ...] = (
+    ("스포츠조선", "https://sports.chosun.com/baseball/",
+     r'href="(https://www\.sportschosun\.com/baseball/\d{4}-\d{2}-\d{2}/\d+)"', ""),
+    ("스포츠경향", "https://sports.khan.co.kr/baseball",
+     r'href="(https?://sports\.khan\.co\.kr/article/\d+)"', ""),
+    ("OSEN", "https://osen.mt.co.kr/baseball",
+     r'href="(/article/G\d+)"', "https://osen.mt.co.kr"),
+    ("스포티비뉴스",
+     "https://www.spotvnews.co.kr/news/articleList.html?sc_section_code=S1N2",
+     r'href="(https://www\.spotvnews\.co\.kr/news/articleView\.html\?idxno=\d+)"', ""),
+)
+
+# 게시 시각 — 매체마다 표기가 다르다. 하나라도 못 읽으면 **그 기사는 버린다**
+# (시각을 모르면 경기 전인지 후인지 알 수 없고, 그것은 누출 위험이다).
+_PUBLISHED_PATS = (
+    re.compile(r'"datePublished"\s*:\s*"([^"]+)"'),
+    re.compile(r'property="article:published_time"\s+content="([^"]+)"'),
+    re.compile(r'name="article:published_time"\s+content="([^"]+)"'),
+)
 _TITLE = re.compile(r'<meta[^>]+og:title[^>]+content="([^"]*)"')
 _TAG = re.compile(r"<[^>]+>")
 _SCRIPT = re.compile(r"<(script|style)[^>]*>.*?</\1>", re.S)
@@ -57,12 +77,58 @@ def _plain(html: str) -> str:
     return re.sub(r"\s+", " ", _TAG.sub(" ", _SCRIPT.sub("", html))).strip()
 
 
+# 기사 본문이 끝나고 네비게이션·추천기사가 시작되는 지점. 여기서 자르지 않으면
+# 연예 기사 제목이 인용문에 섞인다(실측 2026-08-27: "주요 기사 [단독] 박수홍…").
+_TAIL_MARKS = ("주요 기사", "많이 본 기사", "관련기사", "추천기사", "인기기사",
+               "Copyright", "저작권자", "무단전재")
+
+
+def body_text(html: str, title: str = "") -> str:
+    """네비게이션·추천기사를 뺀 **본문 구간**.
+
+    ⚠️ 꼬리 표식("많이 본 기사" 등)은 **사이트 네비게이션에도 있다.** 그냥 처음
+       나오는 것에서 자르면 본문이 통째로 날아간다 — 실측(2026-08-27):
+       스포츠경향 기사에서 "많이 본 기사"가 309자 지점(메뉴)에 있어
+       4,734자 본문이 309자로 잘렸고, 그 결과 수율이 0이 됐다.
+
+    → 기사 제목이 본문 직전에 한 번 더 나온다는 점을 이용해 **제목 이후**만
+      본다. 제목을 못 찾으면 꼬리 절단을 포기한다(자르지 않는 편이 안전하다 —
+      게이트 ②가 어차� 무관한 문장을 걸러낸다).
+    """
+    text = _plain(html)
+    head = 0
+    if title:
+        key = re.sub(r"\s+", " ", title).strip()[:24]
+        if key:
+            i = text.rfind(key)
+            if i > 0:
+                head = i
+    if head == 0:
+        return text
+    cut = len(text)
+    for mark in _TAIL_MARKS:
+        i = text.find(mark, head)
+        if 0 <= i < cut:
+            cut = i
+    return text[head:cut]
+
+
 def _sentences(text: str) -> list[str]:
-    """마침표 기준 문장 분리. 인용부호 안의 마침표는 자르지 않는다."""
+    """마침표 기준 문장 분리. 인용부호 안의 마침표는 자르지 않는다.
+
+    ⚠️ 한국어 기사는 **곡선 따옴표**(“ ”)를 쓴다. 여는 따옴표만 토글로 세면
+       깊이가 영원히 풀리지 않아 문장이 300자 넘게 뭉치고, 뒤의 네비게이션까지
+       한 문장으로 딸려온다(실측 2026-08-27: 327자 문장에 연예 기사 제목이 섞였다).
+       여는 것과 닫는 것을 **구분해서** 센다.
+    """
     out, buf, depth = [], [], 0
     for ch in text:
-        if ch in '“"':
-            depth = 1 - depth
+        if ch == "“":
+            depth += 1
+        elif ch == "”":
+            depth = max(0, depth - 1)
+        elif ch == '"':
+            depth = 1 - depth if depth <= 1 else depth
         buf.append(ch)
         if ch in ".!?" and depth == 0:
             s = "".join(buf).strip()
@@ -74,7 +140,37 @@ def _sentences(text: str) -> list[str]:
     return out
 
 
-def extract_quotes(html: str, names: set[str]) -> list[str]:
+def article_teams(html: str, title: str = "") -> dict[str, int]:
+    """기사가 **주로 어느 팀 이야기인가** — 팀별 언급 횟수.
+
+    게이트 ②를 문장 단위로만 걸면 부수적 언급에 걸린다. 실측(2026-08-27):
+    삼성 후라도 기사가 "KIA와의 2군 경기"라는 한 마디 때문에 롯데-KIA 칸에
+    들어갔다. 기사 전체의 무게중심을 함께 봐야 한다.
+    """
+    text = body_text(html, title)
+    counts: dict[str, int] = {}
+    for kr, odds in TEAM_KR.items():
+        n = text.count(kr)
+        if n:
+            counts[odds] = counts.get(odds, 0) + n
+    return counts
+
+
+def article_is_about(html: str, teams: set[str], title: str = "") -> bool:
+    """이 기사가 그 경기 팀들에 **관한** 기사인가.
+
+    가장 많이 언급된 팀이 우리 팀이거나, 우리 팀 언급이 최다의 절반 이상이면
+    관련 기사로 본다. 한 마디 스쳐 지나간 팀은 걸러진다.
+    """
+    counts = article_teams(html, title)
+    if not counts:
+        return False
+    top = max(counts.values())
+    ours = max((counts.get(t, 0) for t in teams), default=0)
+    return ours >= max(2, top * 0.5)
+
+
+def extract_quotes(html: str, names: set[str], title: str = "") -> list[str]:
     """[A-3] 직접 인용이 있고 **그 경기와 관련된** 문장만 원문 그대로.
 
     ⚠️ `names`가 비면 **빈 목록**이다. 관련성을 확인할 수 없는데 넣으면
@@ -83,7 +179,7 @@ def extract_quotes(html: str, names: set[str]) -> list[str]:
     if not names:
         return []
     out = []
-    for s in _sentences(_plain(html)):
+    for s in _sentences(body_text(html, title)):
         if len(s) > 400 or not _QUOTE.search(s):
             continue
         if not any(v in s for v in _SAID):
@@ -116,21 +212,35 @@ class ChosunClient:
         return r.text
 
     async def index(self, date: str) -> list[str]:
-        """그 날짜 기사 URL 목록. **URL의 날짜로 1차로 거른다.**"""
-        html = await self._get(INDEX)
-        urls = [u for u, d in dict.fromkeys(_ART.findall(html)) if d == date]
-        return urls[:MAX_ARTICLES]
+        """등록된 **모든 매체**의 기사 URL 목록.
+
+        ⚠️ URL에 날짜가 있는 매체는 스포츠조선뿐이다. 날짜 판정은 기사의
+           게시 시각으로 통일한다 — 그래야 매체를 늘려도 같은 규칙이 적용된다.
+        """
+        urls: list[str] = []
+        for name, index_url, pat, base in OUTLETS:
+            try:
+                html = await self._get(index_url)
+            except Exception as exc:      # 한 매체 실패가 나머지를 막지 않는다
+                logger.warning("[kbo_news] %s 인덱스 실패: %s", name, exc)
+                continue
+            found = list(dict.fromkeys(re.findall(pat, html)))[:MAX_PER_OUTLET]
+            urls += [(base + u) if u.startswith("/") else u for u in found]
+        return urls
 
     async def article(self, url: str) -> tuple[str, datetime | None, str]:
-        """(HTML, 게시 시각, 제목)."""
+        """(HTML, 게시 시각, 제목). 시각을 못 읽으면 None — 호출부가 버린다."""
         html = await self._get(url)
-        m = _PUBLISHED.search(html)
         at = None
-        if m:
+        for pat in _PUBLISHED_PATS:
+            m = pat.search(html)
+            if not m:
+                continue
             try:
                 at = datetime.fromisoformat(m.group(1))
+                break
             except ValueError:
-                at = None
+                continue
         t = _TITLE.search(html)
         return html, at, (t.group(1) if t else "")
 
@@ -157,6 +267,12 @@ async def fetch_for_games(games: list[dict], date: str,
         except Exception as exc:
             logger.debug("[kbo_news] 기사 조회 실패 %s: %s", u, exc)
             continue
+        if at is None:
+            # ⚠️ 시각을 모르면 경기 전인지 후인지 알 수 없다 → **버린다.**
+            #    "아마 경기 전일 것"이라고 넘기면 그것이 누출 경로가 된다.
+            continue
+        if at.date().isoformat() != date:
+            continue                      # 다른 날 기사
         articles.append((u, at, title, html))
 
     seen: set[str] = set()          # 게이트 ③ — 경기 간 중복 발췌 방지
@@ -171,10 +287,13 @@ async def fetch_for_games(games: list[dict], date: str,
                 starts = None
         names = _game_names(g)
         picked: list[dict] = []
+        teams = {g.get("home") or "", g.get("away") or ""} - {""}
         for url, at, _title, html in articles:
-            if starts is not None and at is not None and at >= starts:
+            if starts is not None and at >= starts:
                 continue            # 게이트 ① — 경기 시작 후 기사는 누출이다
-            for s in extract_quotes(html, names):
+            if not article_is_about(html, teams, _title):
+                continue            # 게이트 ②-a — 기사 전체의 무게중심
+            for s in extract_quotes(html, names, _title):
                 k = quote_key(s)
                 if k in seen:
                     continue

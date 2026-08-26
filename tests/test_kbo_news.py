@@ -160,3 +160,81 @@ def test_merge_keeps_text_unprocessed():
     assert research["news_quotes"][0]["text"].startswith("김 감독은")
     assert research["news_quotes"][0]["url"] == "http://x"
     assert "이이무라가 마무리다" in research["rotation_plan"]
+
+
+# ---------------------------------------------------------------- 본문 구간
+
+NAV_HTML = """<html><head><title>롯데, 마무리 김원중 포기 - 스포츠경향</title></head>
+<body><nav>홈 연예 야구 축구 많이 본 기사 랭킹</nav>
+<h1>롯데, 마무리 김원중 포기</h1>
+<p>김태형 롯데 감독은 "이이무라가 앞으로 마무리다"라고 밝혔다.</p>
+<p>롯데는 롯데답게 롯데의 뒷문을 정리했다.</p>
+<div>많이 본 기사 30대 여배우 체포 아이유 음모론</div></body></html>"""
+
+
+def test_body_text_survives_navigation_tail_marks():
+    """🔴 꼬리 표식은 **네비게이션에도 있다.**
+
+    처음 나오는 것에서 자르면 본문이 통째로 날아간다 — 실측(2026-08-27):
+    4,734자 기사가 309자로 잘려 수율이 0이 됐다.
+    """
+    from app.collectors.kbo_news import body_text
+
+    out = body_text(NAV_HTML, "롯데, 마무리 김원중 포기")
+    assert "이이무라가 앞으로 마무리다" in out, "본문이 잘렸다"
+    assert "여배우" not in out, "추천기사가 남았다"
+
+
+def test_body_text_without_title_does_not_truncate():
+    """제목을 못 찾으면 자르지 않는다 — 자르는 편이 더 위험하다."""
+    from app.collectors.kbo_news import body_text
+
+    out = body_text(NAV_HTML, "전혀 다른 제목")
+    assert "이이무라가 앞으로 마무리다" in out
+
+
+def test_article_level_gate_rejects_incidental_mentions():
+    """🔴 실측 오염: 삼성 후라도 기사가 'KIA와의 2군 경기' 한 마디로 롯데-KIA 칸에 들어갔다."""
+    from app.collectors.kbo_news import article_is_about, article_teams
+
+    samsung = """<html><head><title>삼성 후라도 복귀</title></head><body>
+    <h1>삼성 후라도 복귀</h1>
+    <p>이종열 삼성 단장은 "후라도가 1~2번 더 던진다"고 말했다.</p>
+    <p>삼성은 삼성대로 삼성의 로테이션을 짠다. 후라도는 KIA와의 2군 경기에 등판했다.</p>
+    </body></html>"""
+    counts = article_teams(samsung, "삼성 후라도 복귀")
+    assert counts["Samsung Lions"] > counts["Kia Tigers"]
+    assert article_is_about(samsung, {"Samsung Lions"}) is True
+    assert article_is_about(samsung, {"Lotte Giants", "Kia Tigers"}) is False, \
+        "부수적 언급으로 다른 경기 기사가 통과했다"
+
+
+def test_curly_quotes_do_not_merge_sentences():
+    """🔴 한국어 기사는 곡선 따옴표를 쓴다 — 여는 것만 세면 문장이 뭉친다."""
+    from app.collectors.kbo_news import _sentences
+
+    text = '김 감독은 “이이무라가 마무리다”라고 말했다. 롯데는 3연패를 당했다.'
+    out = _sentences(text)
+    assert len(out) == 2, f"문장이 뭉쳤다: {out}"
+    assert "마무리다" in out[0] and "3연패" in out[1]
+
+
+def test_article_without_published_time_is_dropped():
+    """시각을 모르면 경기 전인지 후인지 알 수 없다 — 누출 경로가 된다."""
+    import asyncio
+
+    from app.collectors.kbo_news import fetch_for_games
+
+    class _NoTime:
+        mock = False
+
+        async def index(self, date):
+            return ["u/1"]
+
+        async def article(self, url):
+            return (NAV_HTML, None, "롯데, 마무리 김원중 포기")
+
+    games = [{"home": "Kia Tigers", "away": "Lotte Giants",
+              "starts_at": "2026-08-26T18:30:00+09:00", "research": {}}]
+    out = asyncio.run(fetch_for_games(games, "2026-08-26", client=_NoTime()))
+    assert out == {}, "게시 시각 없는 기사가 통과했다"

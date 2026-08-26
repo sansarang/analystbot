@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"analystbot/crawler/internal/diff"
@@ -31,6 +33,13 @@ func main() {
 	sport := flag.String("sport", "", "kbo | npb (비우면 전부)")
 	date := flag.String("date", "", "YYYY-MM-DD (비우면 KST 오늘)")
 	interval := flag.Duration("interval", 0, "주기 실행 간격 (0이면 1회)")
+	// [§9-10] **경기 임박에 가속한다.** 감독 발언·선발 교체·라인업 확정은
+	//   경기 직전에 나온다 — 실측(2026-08-26): 롯데 감독의 마무리 교체 발언이
+	//   경기 **19분 전**(18:11)에 나왔다. 10분 주기로는 놓치거나 늦는다.
+	//   기본 구간은 KBO 18:30 · NPB 18:00 시작 기준으로 잡았다.
+	fastFrom := flag.String("fast-from", "15:30", "가속 시작 (KST HH:MM)")
+	fastUntil := flag.String("fast-until", "19:30", "가속 종료 (KST HH:MM)")
+	fastInterval := flag.Duration("fast-interval", 2*time.Minute, "가속 구간 간격")
 	flag.Parse()
 
 	redisURL := os.Getenv("REDIS_URL")
@@ -61,11 +70,48 @@ func main() {
 	if *interval <= 0 {
 		return
 	}
-	tick := time.NewTicker(*interval)
-	defer tick.Stop()
-	for range tick.C {
+	// ⚠️ 고정 Ticker를 쓰지 않는다 — 구간마다 간격이 달라야 하기 때문이다.
+	//    타이머를 매번 다시 잡아 "지금이 가속 구간인가"를 그때그때 판단한다.
+	for {
+		d := *interval
+		if inFastWindow(time.Now(), *fastFrom, *fastUntil) {
+			d = *fastInterval
+		}
+		time.Sleep(d)
 		run()
 	}
+}
+
+// inFastWindow 는 지금이 경기 임박 가속 구간인지 본다 (KST 기준).
+//
+// 파싱에 실패하면 **가속하지 않는다** — 잘못된 설정으로 소스를 과하게
+// 두드리는 것보다 평시 주기로 도는 편이 안전하다.
+func inFastWindow(now time.Time, from, until string) bool {
+	kst := time.FixedZone("KST", 9*3600)
+	cur := now.In(kst)
+	f, okF := parseHHMM(from)
+	u, okU := parseHHMM(until)
+	if !okF || !okU {
+		return false
+	}
+	m := cur.Hour()*60 + cur.Minute()
+	if f <= u {
+		return m >= f && m < u
+	}
+	return m >= f || m < u // 자정을 넘는 구간
+}
+
+func parseHHMM(v string) (int, bool) {
+	parts := strings.SplitN(strings.TrimSpace(v), ":", 2)
+	if len(parts) != 2 {
+		return 0, false
+	}
+	h, err1 := strconv.Atoi(parts[0])
+	m, err2 := strconv.Atoi(parts[1])
+	if err1 != nil || err2 != nil || h < 0 || h > 23 || m < 0 || m > 59 {
+		return 0, false
+	}
+	return h*60 + m, true
 }
 
 func once(ctx context.Context, st *store.Store, sport string, fn fetcher, date string) error {
