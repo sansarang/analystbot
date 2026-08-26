@@ -17,11 +17,11 @@
       "outcomes": [
        {
         "name": "Arizona Diamondbacks",
-        "price": 2.22
+        "price": 1.72
        },
        {
         "name": "Atlanta Braves",
-        "price": 1.67
+        "price": 2.15
        }
       ]
      },
@@ -67,11 +67,11 @@
       "outcomes": [
        {
         "name": "Arizona Diamondbacks",
-        "price": 2.25
+        "price": 1.74
        },
        {
         "name": "Atlanta Braves",
-        "price": 1.7
+        "price": 2.18
        }
       ]
      },
@@ -117,11 +117,11 @@
       "outcomes": [
        {
         "name": "Arizona Diamondbacks",
-        "price": 2.23
+        "price": 1.71
        },
        {
         "name": "Atlanta Braves",
-        "price": 1.68
+        "price": 2.14
        }
       ]
      },

@@ -37,37 +37,6 @@ def shrink(p_ensemble: float, p_market: float | None, league: str | None) -> flo
     return lam * p_market + (1 - lam) * p_ensemble
 
 
-async def calibrated_lambda(pool, league: str) -> float:
-    """채점 데이터 ≥300픽이면 리그별 λ를 Brier 최소화 그리드로 실측 재추정.
-
-    미달이면 성숙도 기본값. (p_market·p_ensemble 컬럼은 지금부터 적재된다.)
-    """
-    rows = await pool.fetch(
-        """
-        SELECT p.p_market, p.p_ensemble, (p.result = 'win')::int AS y
-        FROM predictions p JOIN games g ON g.id = p.game_id
-        WHERE p.result IN ('win', 'loss') AND g.league = $1
-          AND p.p_market IS NOT NULL AND p.p_ensemble IS NOT NULL
-        """,
-        league,
-    )
-    if len(rows) < CALIBRATION_MIN_PICKS:
-        return shrink_lambda(league)
-    best_lam, best_brier = shrink_lambda(league), float("inf")
-    for i in range(0, 21):
-        lam = i / 20
-        brier = sum(
-            (lam * float(r["p_market"]) + (1 - lam) * float(r["p_ensemble"]) - r["y"]) ** 2
-            for r in rows
-        ) / len(rows)
-        if brier < best_brier:
-            best_lam, best_brier = lam, brier
-    logger.info("[markets] λ 재추정 %s: %.2f (Brier %.4f, n=%d)",
-                league, best_lam, best_brier, len(rows))
-    return best_lam
-
-
-# ---------------------------------------------------------------- 합성 배당
 
 def synth_dc_odds(o_side: float, o_draw: float) -> float:
     """3-way 배당에서 더블찬스 배당 합성: 1/o_dc = 1/o1 + 1/oX."""
@@ -298,7 +267,9 @@ def reviewed_markets_kr(sport: str | None = None) -> str:
 
 def spread_desc(sport: str, side_kr: str, line: float) -> str:
     """핸디캡 마켓 표기 — 야구는 런라인, 축구는 핸디."""
-    label = "런라인" if sport == "mlb" else "핸디"
+    from app.engine.scoring import BASEBALL_SPORTS
+
+    label = "런라인" if sport in BASEBALL_SPORTS else "핸디"
     return f"{side_kr} {label} {line:+g}"
 
 
@@ -320,63 +291,40 @@ def row_stars(c: dict, confidence: str | None = None) -> int:
     return stars
 
 
-def payout_10k(odds: float | None) -> int:
-    """[3-3] 1만 원 걸었을 때 실수령 수익 (원금 제외). 돈으로 말하기 위한 단위."""
-    if not odds:
-        return 0
-    return int(round((float(odds) - 1.0) * 10000))
-
-
-def breakeven_odds(p: float | None) -> float | None:
-    """승률 p의 손익분기 배당 (1/p). 참고 표기용 — 판정에는 쓰지 않는다."""
-    if not p:
-        return None
-    return round(1.0 / p, 3)
-
-
 def grade_candidate(c: dict, settings=None) -> tuple[str, str]:
-    """[3-2] 마켓 1건의 등급 — **승률과 배당 하한**으로만 판정한다. EV는 쓰지 않는다.
+    """[§8-18] 마켓 1건의 등급 — **승률만으로** 판정한다.
 
-    🟢 승률 62%↑ + 배당 1.60↑ / 🟡 승률 58~62% + 배당 1.60↑
-    🔴 승률 58% 미만 **또는** 배당 1.60 미만 / ⚪ 배당 미수집
-    기준값은 config(min_win_prob·min_odds·signal_green_prob)에서만 온다.
+    🟢 승률 62%↑ / 🟡 58~62% / 🔴 58% 미만 / ⚪ 확률 미산출
+
+    제거된 것과 이유:
+      - 배당 하한(min_odds) → 시장 기준이다. 우리가 답할 질문이 아니다.
+      - 시장 괴리 상한(5%)   → **우리 판단을 시장으로 재단했다.** 실사고: 판정이
+        구체적 근거로 지바 롯데 70%를 냈는데 시장 환산 37%와 어긋난다는 이유로
+        '데이터 오류'로 삭제됐다. 그러면 시장을 넘어설 방법이 영원히 없다.
+      - 1만원당 수익 표기     → 봇은 돈 얘기를 하지 않는다.
+    ⚠️ 라인(핸디 ±1.5·토탈 8.5)은 남는다 — 가격이 아니라 **질문**이다.
     """
     from app.config import get_settings
 
     s = settings or get_settings()
-    odds, prob = c.get("odds"), c.get("p")
-    if not odds:
-        return GRADE_BLANK, "배당 확보 시 재평가"
+    prob = c.get("p")
     if prob is None:
-        return GRADE_RED, c.get("reject_reason") or "근거 부족"
+        return GRADE_BLANK, c.get("reject_reason") or "확률 미산출"
     if not c.get("approved"):
         return GRADE_RED, c.get("reject_reason") or "제외"
 
-    money = f"1만원당 {payout_10k(odds):,}원"
-
-    # §0 시장 대비 엣지 상한 — Starlizard도 1~2%다. 5% 초과는 데이터 오류로 본다.
-    from app.engine.scoring import edge_exceeds_limit
-
-    over_edge, edge = edge_exceeds_limit(prob, odds, s)
-    if over_edge:
-        return GRADE_RED, (f"시장 대비 괴리 과다({edge:+.1%}) — 데이터 검증 필요")
-
-    if odds < s.min_odds:
-        return GRADE_RED, f"배당 {odds:.2f} < 하한 {s.min_odds:.2f}"
-
-    # [4] 원정 픽은 임계를 5%p 높게 — 분데스리가 연구: 원정 베팅 ROI -17%
+    # [4] 원정 픽은 임계를 5%p 높게 — 분데스리가 연구: 원정 승률 실현이 나빴다
     need = c.get("required_prob") or s.min_win_prob
     away_tag = " (원정 픽 — 임계 +5%p)" if need > s.min_win_prob else ""
     if prob < need:
         return GRADE_RED, f"승률 {prob:.0%} < 하한 {need:.0%}{away_tag}"
 
     dog = " ⚠️원정 언더독 — 통계적으로 가장 불리한 유형" if c.get("away_underdog") else ""
-    # [6] 2-소스 미달은 보드에서 지우지 않고 '추천 제외'만 표기한다
-    axes_note = "" if c.get("two_source", True) else f" (근거 {c.get('axes_kr')} 1축 — 추천 제외)"
+    axes_note = "" if c.get("two_source", True) else f" (근거 {c.get('axes_kr')} 1축)"
     if prob >= s.signal_green_prob + (need - s.min_win_prob):
         grade = GRADE_YELLOW if axes_note else GRADE_GREEN
-        return grade, f"승률 {prob:.0%}, {money}{away_tag}{dog}{axes_note}"
-    return GRADE_YELLOW, f"승률 {prob:.0%} — 소액, {money}{away_tag}{dog}{axes_note}"
+        return grade, f"승률 {prob:.0%}{away_tag}{dog}{axes_note}"
+    return GRADE_YELLOW, f"승률 {prob:.0%}{away_tag}{dog}{axes_note}"
 
 
 def board_grade(board: list[dict]) -> str:
@@ -425,8 +373,11 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
     dist = jg.get("distribution")        # [6] 포아송/스켈람 분포 — 전 마켓 확률의 단일 소스
 
     def add(market, side, line, desc, odds, p, basis):
-        if not odds:
-            return                       # 배당이 없는 마켓은 build_board가 placeholder로 채운다
+        # [§8-27] **배당이 없어도 행을 만든다.**
+        #   돈·시장을 판정에서 뺐으므로(§8-18) 배당은 더 이상 마켓 존재의 전제가
+        #   아니다. 종전에는 `if not odds: return`이라 Odds API가 죽으면 마켓 보드가
+        #   통째로 비었다 — 우리가 확률을 낼 수 있는데도 아무것도 못 보여줬다.
+        #   배당은 "라인이 어디 그어졌나"를 알려줄 뿐이며, 없으면 λ 기본 라인을 쓴다.
         # [6] 분포가 있으면 그 확률을 쓴다 — 마켓별로 근거를 따로 만들지 않는다
         if dist is not None:
             from app.engine.scoring import market_probability
@@ -434,13 +385,14 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
             p_dist = market_probability(dist, market, side, line, jg)
             if p_dist is not None:
                 p, basis = p_dist, "기대득점 분포"
-        if stale:
+        if stale and odds:
             desc = f"{desc} (개장 배당)"
         if p is None:
-            # 배당은 있는데 확률 추정 근거가 없다 — 행은 남기고 '근거 부족'으로 표기
+            # 확률 추정 근거가 없다 — 행은 남기고 '근거 부족'으로 표기
             out.append({
                 "market": market, "side": side, "line": line, "desc": desc,
-                "odds": round(float(odds), 2), "p": None, "ev": None, "basis": basis,
+                "odds": round(float(odds), 2) if odds else None,
+                "p": None, "ev": None, "basis": basis,
                 "axes": {}, "axes_n": 0, "axes_kr": "없음",
                 "reject_reason": "근거 부족 — 확률 추정 불가",
             })
@@ -456,8 +408,10 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
         axes = support_axes(jg, market, side, line, pm_side)
         out.append({
             "market": market, "side": side, "line": line, "desc": desc,
-            "odds": round(float(odds), 2), "p": round(p, 4),
-            "ev": round(p * float(odds) - 1, 4), "basis": basis,
+            "odds": round(float(odds), 2) if odds else None, "p": round(p, 4),
+            # ev는 배당이 있어야 계산된다 — 판정에는 쓰지 않는 참고값이다(§8-18)
+            "ev": round(p * float(odds) - 1, 4) if odds else None,
+            "basis": basis,
             "axes": axes, "axes_n": axes_count(axes), "axes_kr": axes_label(axes),
         })
 
@@ -466,10 +420,9 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
     if sport == "soccer" and best_odds.get("Draw"):
         h2h_sides.insert(1, "Draw")
     for side in h2h_sides:
-        if not best_odds.get(side):
-            continue
         desc = "무승부" if side == "Draw" else f"{kr_team(side)} 승"
-        add("h2h", side, None, desc, best_odds[side], p_final.get(side), "앙상블")
+        # [§8-27] 배당이 없어도 확률은 낼 수 있다 — 행을 만든다
+        add("h2h", side, None, desc, best_odds.get(side), p_final.get(side), "앙상블")
 
     # 2) 더블찬스 3종 (축구, 3-way 배당에서 합성) — 1X · X2 · 12
     if sport == "soccer" and best_odds.get("Draw"):
@@ -488,9 +441,13 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
                 synth_dc_odds(best_odds[jg["home"]], best_odds[jg["away"]]), p_12,
                 "앙상블+합성배당")
 
-    # 3) 핸디캡·토탈 (수집 배당 디빅 — 시장 기준)
+    # 3) 핸디캡·토탈
+    #   [§8-27] 수집 라인이 있으면 **그 라인**을 쓴다(시장이 던진 질문이 더 정확하다).
+    #   없으면 **분포에서 라인을 만든다** — 배당이 없다고 마켓이 사라지면 안 된다.
+    seen_alt: set[tuple] = set()
     for alt in jg.get("alt_markets", []):
         m, side, line = alt["market"], alt["side"], alt["line"]
+        seen_alt.add((m, side, line))
         if m == "spreads":
             desc = spread_desc(sport, kr_team(side), line)
         else:
@@ -500,17 +457,32 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
             basis = "시장+전문가"
         add(m, side, line, desc, alt["odds"], alt["p"], basis)
 
+    if dist is not None:
+        probs = dist.get("probs") or {}
+        for line in sorted((probs.get("totals") or {})):
+            for side in ("Over", "Under"):
+                if ("totals", side, line) in seen_alt:
+                    continue
+                desc = f"{'오버' if side == 'Over' else '언더'} {line:g}"
+                add("totals", side, line, desc, None, None, "기대득점 분포")
+        for line in sorted((probs.get("spreads") or {})):
+            for side, key in ((jg["home"], "home_minus"), (jg["away"], "away_plus"),
+                              (jg["away"], "away_minus"), (jg["home"], "home_plus")):
+                signed = -abs(line) if key.endswith("minus") else abs(line)
+                if ("spreads", side, signed) in seen_alt:
+                    continue
+                add("spreads", side, signed,
+                    spread_desc(sport, kr_team(side), signed), None, None, "기대득점 분포")
+
     # 승인/제외 판정 + 등급 (마켓 단위)
     from app.engine.scoring import is_away_underdog, required_prob
 
     for c in out:
-        from app.config import get_settings
-        from app.engine.scoring import edge_vs_market
-
         c["required_prob"] = required_prob(c["market"], c["side"], jg)
         c["away_underdog"] = is_away_underdog(c["market"], c["side"], jg, c.get("odds"))
-        c["edge"] = edge_vs_market(c.get("p"), c.get("odds"))
-        c["edge_excess"] = bool(c["edge"] is not None and c["edge"] > get_settings().max_edge_vs_market)
+        # [§8-18] 시장 대비 엣지 계산·판정 제거
+        c["edge"] = None
+        c["edge_excess"] = False
         _approve(jg, c, sport)
         c["grade"], c["grade_note"] = grade_candidate(c)
 
@@ -524,7 +496,11 @@ def _required_specs(jg: dict, sport: str) -> list[tuple]:
     from app.bot.aliases import kr_team
 
     home, away = jg["home"], jg["away"]
-    if sport == "mlb":
+    # [§8-14] KBO·NPB도 야구다 — **무승부 행이 없어야 한다.**
+    #   종목 문자열만 보고 축구로 흘려보내면 "무승부" 행이 생겨 야구에 없는 마켓을 낸다.
+    from app.engine.scoring import BASEBALL_SPORTS
+
+    if sport in BASEBALL_SPORTS:
         return [
             ("h2h", home, None, f"{kr_team(home)} 승"),
             ("h2h", away, None, f"{kr_team(away)} 승"),

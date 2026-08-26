@@ -20,12 +20,12 @@ from app.collectors.base import ApiAuthError, ApiQuotaError, ApiRateLimitError
 from app.collectors.football import APIFootballClient
 from app.collectors.football import upsert_games as upsert_soccer_games
 from app.collectors.mlb import MLBClient, upsert_games
-from app.collectors.odds import OddsClient, snapshot_odds
+from app.collectors.odds import LEAGUE_LABEL_BY_SPORT, OddsClient, snapshot_odds
 from app.config import get_settings
 from app.engine.consensus import consensus_scores, load_expert_weights
 from app.engine.judge import Judge
 from app.engine.parlay import best_parlays
-from app.engine.value import devig, ensemble, ev, heuristic_model_prob, implied_prob, kelly
+from app.engine.value import devig, ensemble, ev, heuristic_model_prob, implied_prob
 from app.notify import notify_api_error
 from app.research.grok import GrokClient
 from app.research.perplexity import PerplexityClient, save_expert_picks
@@ -49,16 +49,11 @@ STATUS_LABELS = {"live": "진행 중", "final": "종료"}
 # 리포트 3분할 구분자: ①일정+픽 ②경기별 심층 ③속보+출처
 SECTION_SEP = "\n<<<PART>>>\n"
 
-# 리포트 모드 — live_conservative: 조합 금지·플랫 스테이크(자금 1%)·하루 최대 2픽
+# 리포트 모드 — live_conservative: 조합 금지·하루 최대 2픽
+# [§8-18] 스테이킹(staking·flat_pct)을 뺐다 — 봇은 얼마를 걸라고 말하지 않는다.
 MODES = {
-    "live_conservative": {
-        "allow_parlays": False, "max_picks": 2,
-        "staking": "flat", "flat_pct": 0.01,
-    },
-    "research": {
-        "allow_parlays": True, "max_picks": 10,
-        "staking": "kelly", "flat_pct": 0.0,
-    },
+    "live_conservative": {"allow_parlays": False, "max_picks": 2},
+    "research": {"allow_parlays": True, "max_picks": 10},
 }
 
 # 마크다운 링크 정리: [[1]](url) 인용 마커 제거, [텍스트](url) → 텍스트
@@ -124,6 +119,14 @@ async def _collect_mlb_stats(client: MLBClient, schedule: dict) -> dict:
     return {"win_pct": win_pct, "era": era}
 
 
+async def _empty_stats() -> dict:
+    """[§8-14] KBO·NPB용 빈 스탯. 순위표·ERA 소스가 없으므로 '실데이터 축'이 서지 않는다.
+
+    없는 것을 있는 척하지 않는다 — 2-소스 룰이 그만큼 엄격해지는 것이 정상이다.
+    """
+    return {"elo": None, "win_pct": {}, "era": {}, "seasons": {}}
+
+
 async def _collect_soccer_stats(labels: set[str] | None = None) -> dict:
     """축구 모델(Elo) + [4a] football-data.org 리그 순위·폼 (경기 있는 메이저 리그만).
 
@@ -163,7 +166,11 @@ async def _collect_research(
 
     from app.research.deep import RESEARCH_CONCURRENCY, get_game_research
 
-    news_task = GrokClient().live_briefing(games, date, league=league)
+    _grok = GrokClient()
+    news_task = _grok.live_briefing(games, date, league=league)
+    # [§8-21] X·커뮤니티 여론 — **별도 호출**이다. 속보 프롬프트에 얹으면
+    #   요구가 쌓여 모델이 검색을 포기한다(실사고: 채움률 6/10 → 0/10).
+    sentiment_task = _grok.sentiment(games, date, league=league)
     own_redis = redis is None
     if own_redis:
         redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
@@ -189,17 +196,20 @@ async def _collect_research(
     if sequential:
         # 리그·경기 단위 순차 — 속보 1콜만 병행하고 리서치는 한 건씩 (레이트리밋 방어)
         news_fut = asyncio.ensure_future(news_task)
+        sent_fut = asyncio.ensure_future(sentiment_task)
         for g in scheduled:
             try:
                 await one(g)
             except Exception as exc:  # 개별 경기 실패는 전체를 막지 않는다
                 logger.warning("[pipeline] 순차 리서치 실패 %s: %s", g.get("home"), exc)
                 statuses[g["id"]] = "missing"
-        news_res = (await asyncio.gather(news_fut, return_exceptions=True))[0]
+        news_res, sent_res = await asyncio.gather(
+            news_fut, sent_fut, return_exceptions=True)
     else:
         results = await asyncio.gather(
-            news_task, *(one(g) for g in scheduled), return_exceptions=True)
-        news_res = results[0]
+            news_task, sentiment_task, *(one(g) for g in scheduled),
+            return_exceptions=True)
+        news_res, sent_res = results[0], results[1]
     try:
         if isinstance(news_res, BaseException):
             logger.error("[pipeline] grok briefing failed, continuing without news: %s", news_res)
@@ -207,13 +217,16 @@ async def _collect_research(
             news = ""
         else:
             news = news_res
+        sentiment = "" if isinstance(sent_res, BaseException) else (sent_res or "")
+        if isinstance(sent_res, BaseException):
+            logger.warning("[pipeline] 여론 수집 실패, 없이 진행: %s", sent_res)
     finally:
         if own_redis:
             await redis.aclose()
     # 마크다운 링크 병합 깨짐 방지: 본문에서 링크 제거, URL은 출처로 분리 수집
     news_urls = extract_urls(news)
     news = strip_md_links(news)
-    return news, news_urls, research_map, statuses
+    return news, news_urls, research_map, statuses, strip_md_links(sentiment)
 
 
 async def _market_probs(
@@ -314,6 +327,76 @@ def _count_by(values) -> dict:
     return out
 
 
+def merge_source_data(research: dict, jg: dict, sport: str,
+                      statcast_data: dict | None) -> list[str]:
+    """[§8-30] 수집 소스를 research에 병합한다. 반환: 실행된 병합 이름들.
+
+    **종목 숫자 소스와 날씨·크롤러는 서로 독립이다.** 하나가 없다고 다른 하나가
+    건너뛰어지면 안 된다.
+
+    실사고(2026-08-27) — 조용한 데이터 손실 2건:
+      이 로직이 `build_analysis` 안에 인라인으로 있을 때, 네이버 병합이
+      `if statcast_data.get("weather"):` **안에** 들어가 있었고
+      `elif sport == "npb"`가 `if sport == "kbo"`가 아니라 **그 날씨 if**에
+      붙어 있었다. 조건 도달을 실행으로 확인한 결과:
+
+      · **NPB** — 돔경기가 하나라도 있으면 `weather`가 truthy가 돼
+        **Yahoo 병합이 아예 실행되지 않았다.** NPB 12팀 중 5팀이 돔이라
+        사실상 상시 발생했고, Yahoo는 NPB의 **유일한** 숫자 소스다
+        (선발 ERA·타선·최근폼이 통째로 사라진다).
+      · **KBO** — 날씨 조회가 실패하면 네이버 병합이 함께 날아갔다
+        (선발 ERA·WHIP·평균이닝·손잡이·구종·최근폼·순위).
+
+      둘 다 로그에도 상태값에도 흔적이 남지 않는다. 그래서 **함수로 빼
+      테스트가 조건 도달을 직접 확인**하게 했다(test_source_merge.py).
+    """
+    if not isinstance(statcast_data, dict):
+        return []
+    done: list[str] = []
+    gkey = f"{jg.get('away')}@{jg.get('home')}"
+
+    if sport == "kbo":
+        from app.collectors.kbo_park import merge_into_research as _mp
+        from app.collectors.kbo_stats import merge_into_research as _mk
+        from app.collectors.naver_kbo import merge_into_research as _mn
+
+        _mk(research, jg, statcast_data.get("kbo_teams") or {},
+            statcast_data.get("kbo_pitchers") or {})
+        done.append("kbo_stats")
+        # 파크팩터가 `park`를 확정값으로 쓰고 네이버는 setdefault라,
+        # 이 순서(_mp → _mn)를 지켜야 구장 표기가 덮이지 않는다.
+        _mp(research, jg, statcast_data.get("parks") or {})
+        done.append("kbo_park")
+        nv = (statcast_data.get("naver") or {}).get(gkey)
+        if nv:
+            _mn(research, jg, nv)
+            done.append("naver")
+        if statcast_data.get("kbo_usage"):
+            from app.collectors.kbo_usage import merge_into_research as _mu
+
+            _mu(research, jg, statcast_data["kbo_usage"])
+            done.append("kbo_usage")
+    elif sport == "npb":
+        from app.collectors.yahoo_npb import merge_into_research as _my
+
+        yv = (statcast_data.get("yahoo") or {}).get(gkey)
+        if yv:
+            _my(research, jg, yv)
+            done.append("yahoo")
+
+    if statcast_data.get("weather"):
+        from app.collectors.weather import merge_into_research as _mw
+
+        _mw(research, jg, statcast_data["weather"])
+        done.append("weather")
+    if statcast_data.get("crawler"):
+        from app.collectors.crawler_feed import merge_into_research as _mc
+
+        _mc(research, jg, statcast_data["crawler"])
+        done.append("crawler")
+    return done
+
+
 async def build_analysis(
     pool: asyncpg.Pool, sport: str, date: str,
     team: str | None = None, league_key: str | None = None, progress=None,
@@ -363,6 +446,25 @@ async def build_analysis(
         ]
         stats_coro = _collect_mlb_stats(mlb, schedule)
         league = "MLB"
+    elif sport in ("kbo", "npb"):
+        # [§8-14] KBO·NPB — statsapi가 껍데기라 Odds API `/scores`가 일정·점수의
+        #   유일한 소스다. 같은 호출이 **채점 경로**도 겸한다(픽보다 채점이 먼저라는 규율).
+        #   ⚠️ Statcast에 해당하는 타구 데이터가 없다 → λ를 산출할 수 없다.
+        #      p_model은 무효가 되고 확률은 **판정(p_claude) 단독**으로 간다.
+        #      그래서 2-소스 룰의 '모델' 축이 서지 않으며, 추천 자격은 대부분
+        #      통과하지 못한다 — 이는 버그가 아니라 **의도된 보수성**이다.
+        from app.collectors.odds import upsert_games_from_scores
+
+        counts = await upsert_games_from_scores(pool, sport, date=date,
+                                                client=OddsClient())
+        rows = await pool.fetch(
+            "SELECT ext_id FROM games WHERE sport = $1 AND status = 'scheduled'"
+            "  AND starts_at >= now() - interval '12 hours'", sport)
+        ext_ids = [r["ext_id"] for r in rows]
+        stats_coro = _empty_stats()
+        league = LEAGUE_LABEL_BY_SPORT.get(sport, sport.upper())
+        logger.info("[pipeline] %s 일정 %d건 (예정 %d / 종료 %d)",
+                    league, len(ext_ids), counts["scheduled"], counts["final"])
     else:
         fb = APIFootballClient()
         fixtures = await fb.fetch_fixtures(date)
@@ -412,6 +514,10 @@ async def build_analysis(
     # 배당 조회는 경기가 있는 리그 키만 (크레딧 절약)
     if sport == "mlb":
         active_keys = ["baseball_mlb"]
+    elif sport in ("kbo", "npb"):
+        from app.collectors.odds import SPORT_KEYS
+
+        active_keys = SPORT_KEYS[sport]
     else:
         from app.leagues import LEAGUES as _L
 
@@ -422,7 +528,8 @@ async def build_analysis(
     if stats_coro is None:
         stats_coro = _collect_soccer_stats({g["league"] for g in games})
     # 2) 스탯 ∥ 배당 ∥ 딥서치 병렬 수집 (딥서치도 요청 범위의 경기로만 한정)
-    stats, _, (news, news_urls, research_map, research_statuses) = await asyncio.gather(
+    stats, _odds_rows, (news, news_urls, research_map, research_statuses,
+                        sentiment) = await asyncio.gather(
         stats_coro,
         snapshot_odds(pool, sport, client=OddsClient(), only_keys=active_keys),
         _collect_research(pool, games, date, league, sport=sport, redis=redis,
@@ -432,12 +539,23 @@ async def build_analysis(
     await record("경기 적재", len(games), len(games) or 1,
                  cause=None if games else "missing",
                  impact="분석할 경기가 없습니다")
+    # [§8-10] 배당 수집 — 종전 미계측. 0건이면 전 마켓이 ⚪(배당 미수집)로 나가는데
+    #         그 사실이 어디에도 기록되지 않았다.
+    _sched_now = [g for g in games if g.get("status") == "scheduled"]
+    await record("배당 수집", int(_odds_rows or 0), max(1, len(_sched_now)),
+                 cause=None if _odds_rows else "missing",
+                 detail=f"스냅샷 {_odds_rows or 0}행 / 예정 {len(_sched_now)}경기",
+                 impact="배당 없이는 추천 자격(배당 하한)을 판정할 수 없습니다")
     # 분모는 **예정 경기**다. 리서치는 scheduled 경기만 조사하므로 전체 경기를
     # 분모로 쓰면 저녁 시간대(진행 중 경기 다수)에 "5/15 실패"처럼 잘못 경보한다.
     # (실측 2026-08-26 10:00: 15경기 중 6경기만 예정이었는데 5/15로 표시됐다)
     _sched_ids = {g["id"] for g in games if g.get("status") == "scheduled"}
     _ok_research = sum(1 for gid, st in research_statuses.items()
                        if gid in _sched_ids and st in ("refreshed", "cached"))
+    await record("여론 수집", 1 if sentiment.strip() else 0, 1,
+                 cause=None if sentiment.strip() else "missing",
+                 detail=f"{len(sentiment)}자" if sentiment else "",
+                 impact="팬 여론·목격담 없이 판정합니다")
     await record("리서치", _ok_research, len(_sched_ids) or len(games),
                  cause=None if _ok_research == len(games) else "missing",
                  detail=", ".join(f"{k}:{v}" for k, v in sorted(
@@ -531,12 +649,247 @@ async def build_analysis(
             ),
         })
 
+    # [§8-24] 🔴 **수집을 판정보다 먼저** 한다.
+    #   실사고(2026-08-26): 이 블록이 판정 뒤에 있어 **판정이 크롤링 데이터를 아예
+    #   못 봤다.** 네이버가 류현진 ERA 4.02·황동하 4.82를 받아왔는데 판정은
+    #   "ERA 미수집으로 비교 불가"라며 전 경기를 저신뢰로 내렸다.
+    #   수집한 정보가 판정에 도달하지 않으면 수집한 의미가 없다.
+    statcast_data = None
+    if redis is not None:
+        try:
+            if sport == "mlb":
+                from app.collectors.absences import fetch_for_games as fetch_absences
+                from app.collectors.park import load as load_parks
+                from app.collectors.statcast import load as load_statcast
+                from app.collectors.weather import fetch_for_games as fetch_weather
+
+                off, pit, bp, bat, league = await load_statcast(redis, date)
+                # [§2] 수치는 전부 정식 API로 — Perplexity 쿼터와 무관하다.
+                #      실패해도 해당 항목만 비고 파이프라인은 계속 간다.
+                upcoming_rows = [g for g in judge_games if g.get("status") == "scheduled"]
+                try:
+                    weather = await fetch_weather(upcoming_rows)
+                except Exception as exc:
+                    logger.warning("[pipeline] 날씨 수집 실패: %s", exc)
+                    weather = {}
+                try:
+                    absences = await fetch_absences(upcoming_rows)
+                except Exception as exc:
+                    logger.warning("[pipeline] 결장 수집 실패: %s", exc)
+                    absences = {}
+                statcast_data = {
+                    "offense": off, "pitchers": pit, "bullpen": bp, "batters": bat,
+                    "league": league, "parks": await load_parks(redis),
+                    "weather": weather, "absences": absences,
+                }
+                logger.info("[pipeline] 정식 API 입력 — 타선 %d팀 / 투수 %d명 / 불펜 %d팀 / "
+                            "타자랭킹 %d팀 / 구장 %d개 / 날씨 %d경기 / 결장 %d경기 / "
+                            "리그평균 %s",
+                            len(off), len(pit), len(bp), len(bat),
+                            len(statcast_data["parks"]), len(weather), len(absences),
+                            league or "없음(상수 사용)")
+                # [§8-10] 종전 미계측 3단계. 결장 0/15 사고가 늦게 발견된 이유가 이것이다
+                #         — 조용히 비어도 아무 데도 기록되지 않았다.
+                _n = max(1, len(upcoming_rows))
+                await record("날씨", len(weather), _n,
+                             cause=None if weather else "missing",
+                             impact="구장 날씨가 토탈 λ에 반영되지 않습니다")
+                await record("결장", len(absences), _n,
+                             cause=None if absences else "missing",
+                             impact="결장 선수가 승률 조정에 반영되지 않습니다")
+                await record("구장", len(statcast_data["parks"]),
+                             max(1, len(statcast_data["parks"]) or 1),
+                             cause=None if statcast_data["parks"] else "missing",
+                             impact="파크팩터 없이 리그 평균으로 λ를 냅니다")
+            elif sport == "kbo":
+                # [§8-14] KBO 공식 기록실 숫자 지표 — 딥서치가 숫자를 못 가져오는
+                #   것이 실측으로 확인돼(2026-08-26) 정식 기록을 1차 소스로 쓴다.
+                #   ⚠️ **시즌 누적**이다 — MLB의 15경기 창(§8-6)과 성격이 다르며
+                #      research에 window="season"으로 표기된다.
+                from app.collectors.kbo_stats import load as load_kbo_stats
+                from app.collectors.kbo_stats import refresh as refresh_kbo_stats
+
+                # [§8-19] 네이버 크롤링 — **LLM 0회.** 선발·구종·폼·순위·상대전적.
+                #   딥서치보다 먼저 돌려 빈칸을 줄인다(딥서치는 남은 것만 조회).
+                from app.collectors.naver_kbo import load as load_naver
+                from app.collectors.naver_kbo import refresh as refresh_naver
+
+                naver = await load_naver(redis, date)
+                if not naver:
+                    try:
+                        await refresh_naver(redis, date)
+                        naver = await load_naver(redis, date)
+                    except Exception as exc:
+                        logger.warning("[pipeline] 네이버 KBO 수집 실패: %s", exc)
+                        naver = {}
+                kteams, kpitchers = await load_kbo_stats(redis, date)
+                if not kteams:
+                    try:
+                        await refresh_kbo_stats(redis, date)
+                        kteams, kpitchers = await load_kbo_stats(redis, date)
+                    except Exception as exc:
+                        logger.warning("[pipeline] KBO 지표 수집 실패: %s", exc)
+                # [§8-25] 파크팩터 — 잠실 0.89 vs 사직 1.21. 이게 빠지면
+                #   λ가 구장 효과를 통째로 놓친다(매번 '파크팩터 미확보'였다).
+                from app.collectors.crawler_feed import load_snapshot
+                from app.collectors.kbo_park import load as load_park
+                from app.collectors.kbo_park import refresh as refresh_park
+
+                parks = await load_park(redis)
+                if not parks:
+                    try:
+                        await refresh_park(redis)
+                        parks = await load_park(redis)
+                    except Exception as exc:
+                        logger.warning("[pipeline] KBO 파크팩터 산출 실패: %s", exc)
+                # [§8-26] 날씨 — 구장 좌표를 넣어 MLB 수집기를 그대로 쓴다.
+                #   고척은 돔이라 조회하지 않는다(dome=True만 남긴다).
+                from app.collectors.weather import fetch_for_games as fetch_weather
+
+                _up = [g for g in judge_games if g.get("status") == "scheduled"]
+                try:
+                    kweather = await fetch_weather(_up, redis=redis)
+                except Exception as exc:
+                    logger.warning("[pipeline] KBO 날씨 수집 실패: %s", exc)
+                    kweather = {}
+                # [§8-33] 투수 소모 — 카드 ①칸. **가장 중요한 칸이다.**
+                #   "어제 불펜 5명이 26타자를 상대했다"는 시즌 ERA보다 오늘 승패를
+                #   잘 설명하는데, λ는 시즌 누적만 봐서 통째로 놓쳤다.
+                #   실측(2026-08-26): KIA 투수 9명·구원 37타자 vs 삼성 4명·11타자.
+                from app.collectors.kbo_usage import load as load_usage
+                from app.collectors.kbo_usage import refresh as refresh_usage
+
+                usage = await load_usage(redis, date)
+                if not usage:
+                    try:
+                        await refresh_usage(redis, date)
+                        usage = await load_usage(redis, date)
+                    except Exception as exc:
+                        logger.warning("[pipeline] KBO 투수 소모 수집 실패: %s", exc)
+                        usage = {}
+                statcast_data = {"kbo_teams": kteams, "kbo_pitchers": kpitchers,
+                                 "naver": naver, "parks": parks, "weather": kweather,
+                                 "kbo_usage": usage,
+                                 "crawler": await load_snapshot(redis, "kbo", date)}
+                await record("날씨", len(kweather), max(1, len(_up)),
+                             cause=None if kweather else "missing",
+                             impact="기온·바람이 토탈 λ에 반영되지 않습니다")
+                logger.info("[pipeline] KBO 지표 — 팀 %d / 투수 %d",
+                            len(kteams), len(kpitchers))
+                await record("네이버 수집", len(naver), max(1, len(games)),
+                             cause=None if naver else "missing",
+                             detail=f"{len(naver)}경기 · 선발·폼·순위 (LLM 0회)",
+                             impact="선발·최근폼을 딥서치에만 의존하게 됩니다")
+                await record("투수 소모", len(usage), 10,
+                             cause=None if usage else "missing",
+                             detail=f"{len(usage)}팀 · 최근 3경기 등판 (LLM 0회)",
+                             impact="카드 ①칸(불펜 가용)이 '모름'으로 나갑니다")
+                await record("파크팩터", len(parks), 9,
+                             cause=None if parks else "missing",
+                             detail=f"구장 {len(parks)}/9 실측",
+                             impact="구장 효과 없이 λ를 냅니다 (잠실 0.89 · 사직 1.21)")
+                await record("KBO 지표", len(kteams), 10,
+                             cause=None if kteams else "missing",
+                             detail=f"팀 {len(kteams)}/10 · 투수 {len(kpitchers)}명",
+                             impact="숫자 지표 없이 서술만으로 판정하게 됩니다")
+            elif sport == "npb":
+                # [§8-20] Yahoo!スポーツ 크롤링 — LLM 0회. 선발·상대전적ERA·불펜 명단.
+                #   NPB는 이것이 **유일한 지표 소스**다(공식 기록 API가 없다).
+                from app.collectors.yahoo_npb import load as load_yahoo
+                from app.collectors.yahoo_npb import refresh as refresh_yahoo
+
+                yh = await load_yahoo(redis, date)
+                if not yh:
+                    try:
+                        await refresh_yahoo(redis, date)
+                        yh = await load_yahoo(redis, date)
+                    except Exception as exc:
+                        logger.warning("[pipeline] Yahoo NPB 수집 실패: %s", exc)
+                        yh = {}
+                from app.collectors.crawler_feed import load_snapshot
+
+                from app.collectors.weather import fetch_for_games as fetch_weather
+
+                _up = [g for g in judge_games if g.get("status") == "scheduled"]
+                try:
+                    nweather = await fetch_weather(_up, redis=redis)
+                except Exception as exc:
+                    logger.warning("[pipeline] NPB 날씨 수집 실패: %s", exc)
+                    nweather = {}
+                statcast_data = {"yahoo": yh, "weather": nweather,
+                                 "crawler": await load_snapshot(redis, "npb", date)}
+                await record("날씨", len(nweather), max(1, len(_up)),
+                             cause=None if nweather else "missing",
+                             impact="기온·바람이 토탈 λ에 반영되지 않습니다")
+                await record("Yahoo 수집", len(yh), max(1, len(games)),
+                             cause=None if yh else "missing",
+                             detail=f"{len(yh)}경기 · 선발·불펜 (LLM 0회)",
+                             impact="NPB는 선발 지표 없이 판정 단독으로 갑니다")
+            else:
+                from app.collectors.soccer_stats import load_xg, supported
+
+                by_league = {}
+                for label in {g.get("league") for g in judge_games if g.get("league")}:
+                    if supported(label):
+                        by_league[label] = await load_xg(redis, label, date)
+                statcast_data = (by_league, {})
+                total = sum(len(v) for v in by_league.values())
+                if total:
+                    logger.info("[pipeline] Understat xG 캐시 — %d리그 %d팀",
+                                len(by_league), total)
+        except Exception as exc:
+            logger.warning("[pipeline] 통계 소스 로드 실패, 리서치 지표만 사용: %s", exc)
+
+    # [§8-24] 병합 결과를 **jg["research"]에 되돌린다.**
+    #   `_compute_picks`는 지역 사본(research_clean)에만 병합해서 λ는 크롤링 값을
+    #   쓰지만 **판정 페이로드는 원본**을 봤다. 같은 재료로 판단해야 한다.
+    if statcast_data:
+        from app.research.validate import sanitize_research
+
+        for _jg in judge_games:
+            if _jg.get("status") != "scheduled":
+                continue
+            _r, _ = sanitize_research(_jg.get("research") or {}, sport)
+            merge_source_data(_r, _jg, sport, statcast_data)
+            _jg["research"] = _r
+
+    # [§8-22] 빈칸 보충 — 크롤링·정식기록이 못 채운 것만 **짧게** 다시 묻는다.
+    #   전체 스키마를 재조회하지 않으므로 쿼터가 남고 채움률도 높다
+    #   (실측: 프롬프트가 길수록 모델이 검색을 포기한다 — 6/10 → 0/10).
+    if sport in ("kbo", "npb") and redis is not None:
+        from app.research.crosscheck_sources import missing_fields
+        from app.research.deep import DAILY_RESEARCH_CAP, fill_gaps, research_calls_today
+
+        _need = ("absences", "bullpen", "motivation", "rotation_plan",
+                 "home_recent_form.form", "away_recent_form.form")
+        _gap_ok = 0
+        for _jg in judge_games:
+            if _jg.get("status") != "scheduled":
+                continue
+            _r = _jg.get("research") or {}
+            _gaps = missing_fields(_r, _need)
+            if not _gaps:
+                continue
+            try:
+                if await research_calls_today(redis) >= DAILY_RESEARCH_CAP:
+                    break                       # 쿼터 소진 — 남은 경기는 건너뛴다
+                _res = await fill_gaps(_jg, sport, _r, _gaps)
+                if _res.get("filled"):
+                    _gap_ok += 1
+            except Exception as exc:            # 보충 실패가 분석을 막지 않는다
+                logger.warning("[pipeline] 빈칸 보충 실패 game=%s: %s",
+                               _jg.get("game_id"), exc)
+        if _gap_ok:
+            logger.info("[pipeline] 빈칸 보충 %d경기", _gap_ok)
+
     await progress(3, 4, "Claude 판정")
     # 4) Claude 판정 — JUDGE_MODEL 고정. Grok은 정보 수집 전용(판정 금지).
     #    시작 전 경기만. 크레딧 소진 시 알림 후 목 판정 폴백 (크래시 금지)
     upcoming = [g for g in judge_games if g["status"] == "scheduled"]
-    judge_payload = {"date": date, "sport": sport,
-                     "games": upcoming, "breaking_news": news}
+    # [§8-21] 여론을 판정에 넘긴다. **확률 계수로 만들지 않는다** — 동조 신호인지
+    #   역행 신호(팬심 편향)인지 측정된 적이 없다. 판정이 읽고 스스로 판단한다.
+    judge_payload = {"date": date, "sport": sport, "games": upcoming,
+                     "breaking_news": news, "fan_sentiment": sentiment}
     if not upcoming:
         verdict: dict = {"games": []}
     else:
@@ -583,59 +936,13 @@ async def build_analysis(
             except Exception as exc:
                 logger.warning("[pipeline] 라인 이동 계산 실패 game=%s: %s", g.get("game_id"), exc)
 
-    statcast_data = None
-    if redis is not None:
-        try:
-            if sport == "mlb":
-                from app.collectors.absences import fetch_for_games as fetch_absences
-                from app.collectors.park import load as load_parks
-                from app.collectors.statcast import load as load_statcast
-                from app.collectors.weather import fetch_for_games as fetch_weather
 
-                off, pit, bp, bat, league = await load_statcast(redis, date)
-                # [§2] 수치는 전부 정식 API로 — Perplexity 쿼터와 무관하다.
-                #      실패해도 해당 항목만 비고 파이프라인은 계속 간다.
-                upcoming_rows = [g for g in judge_games if g.get("status") == "scheduled"]
-                try:
-                    weather = await fetch_weather(upcoming_rows)
-                except Exception as exc:
-                    logger.warning("[pipeline] 날씨 수집 실패: %s", exc)
-                    weather = {}
-                try:
-                    absences = await fetch_absences(upcoming_rows)
-                except Exception as exc:
-                    logger.warning("[pipeline] 결장 수집 실패: %s", exc)
-                    absences = {}
-                statcast_data = {
-                    "offense": off, "pitchers": pit, "bullpen": bp, "batters": bat,
-                    "league": league, "parks": await load_parks(redis),
-                    "weather": weather, "absences": absences,
-                }
-                logger.info("[pipeline] 정식 API 입력 — 타선 %d팀 / 투수 %d명 / 불펜 %d팀 / "
-                            "타자랭킹 %d팀 / 구장 %d개 / 날씨 %d경기 / 결장 %d경기 / "
-                            "리그평균 %s",
-                            len(off), len(pit), len(bp), len(bat),
-                            len(statcast_data["parks"]), len(weather), len(absences),
-                            league or "없음(상수 사용)")
-            else:
-                from app.collectors.soccer_stats import load_xg, supported
-
-                by_league = {}
-                for label in {g.get("league") for g in judge_games if g.get("league")}:
-                    if supported(label):
-                        by_league[label] = await load_xg(redis, label, date)
-                statcast_data = (by_league, {})
-                total = sum(len(v) for v in by_league.values())
-                if total:
-                    logger.info("[pipeline] Understat xG 캐시 — %d리그 %d팀",
-                                len(by_league), total)
-        except Exception as exc:
-            logger.warning("[pipeline] 통계 소스 로드 실패, 리서치 지표만 사용: %s", exc)
-
-    picks_out, parlays, recommended = _compute_picks(settings, judge_games, sport, statcast_data)
+    picks_out, parlays, recommended = _compute_picks(
+        settings, judge_games, sport, statcast_data, news=news, sentiment=sentiment)
     # 라인 이동으로 신뢰도가 바뀌면 등급·추천이 달라지므로 픽을 다시 계산한다
     await _apply_line_moves(judge_games)
-    picks_out, parlays, recommended = _compute_picks(settings, judge_games, sport, statcast_data)
+    picks_out, parlays, recommended = _compute_picks(
+        settings, judge_games, sport, statcast_data, news=news, sentiment=sentiment)
 
     # [B-1] 판정과 서술을 분리 — 판정 결론 + 마켓 보드 + 리서치를 입력으로 별도 서술 단계.
     #       마켓 보드가 만들어진 뒤에 실행해야 서술이 '어느 마켓이 살았는지'를 안다.
@@ -650,6 +957,32 @@ async def build_analysis(
                      detail=(", ".join(sorted({m for g in _scheduled
                                                for m in (g.get("lambda_missing") or [])}))[:150]),
                      impact="확률이 폴백(경기력 %p 조정)으로 계산됩니다")
+    if _scheduled:
+        # [§8-10] 라인업 확정률 — 종전 미계측. "잠정/최종" 2단계 표시의 근거인데
+        #         소스가 통째로 죽어도 조용히 전부 '잠정'으로 나갔다.
+        # [§8-16] KBO·NPB도 잰다. 네이티브 API가 없을 뿐 **딥서치가 소스다** —
+        #         계측을 끄면 "라인업을 못 받고 있다"는 사실 자체가 안 보인다.
+        _lineup_ok = sum(1 for g in _scheduled
+                         if (g.get("lineup_status") or "none") != "none")
+        await record("라인업", _lineup_ok, len(_scheduled),
+                     cause=None if _lineup_ok else "missing",
+                     detail=", ".join(f"{k}:{v}" for k, v in sorted(_count_by(
+                         (g.get("lineup_status") or "none") for g in _scheduled).items())),
+                     impact="전 경기가 '잠정'으로 표기되어 최종 픽 자격을 얻지 못합니다")
+        # [§8-10] 픽 선정 — 0건이 '오늘은 관망'인지 '파이프라인이 깨졌는지' 구분되지
+        #         않았다. 실사고(2026-08-26): 추천 6건이 렌더에서 통째로 사라졌는데
+        #         카드는 "기준 넘는 픽 없음"이라고만 했다(§8-9).
+        # [§8-15] **추천 0건은 실패가 아니다.** 자격 미달(판정 저신뢰·승률 미달)은
+        #   정상 동작이며, 그것을 실패로 알리면 "오늘은 걸 만한 게 없다"는 정상 결과가
+        #   매번 🔴 알림으로 나간다(실사고 2026-08-26 14:48: KBO 1경기 판정 저신뢰로
+        #   전 마켓 제외 → '픽 선정 0/1 실패' 알림 발송).
+        #   진짜 실패는 **마켓 보드 자체가 비었을 때**다 — 그건 확률을 못 만든 것이다.
+        _board_rows = sum(len(g.get("market_board") or []) for g in _scheduled)
+        await record("픽 선정", _board_rows, max(1, _board_rows),
+                     cause=None if _board_rows else "missing",
+                     detail=f"보드 {_board_rows}행 / 추천 {len(recommended)}건 / "
+                            f"예정 {len(_scheduled)}경기",
+                     impact="마켓 보드가 비어 확률을 만들지 못했습니다")
     try:
         _narrated = await attach_narratives(judge_games, sport)
         if _scheduled:
@@ -668,14 +1001,15 @@ async def build_analysis(
             """
             INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
                                      p_market, p_ensemble, lineup_status, p_legacy, method,
-                                     p_heuristic, p_learned, p_claude)
+                                     p_heuristic, p_learned, p_claude, lam_total)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'performance',
-                    $11, $12, $13)
+                    $11, $12, $13, $14)
             """,
             p["game_id"], p["pick"], p["p"], p["odds"], p["ev"], p["kelly"],
             p.get("p_market_side"), p.get("p_ensemble_side"),
             p.get("lineup_status") or "none", p.get("p_legacy"),
             p.get("p_heuristic"), p.get("p_learned"), p.get("p_claude"),
+            p.get("lam_total"),          # [§8-18] 점수 MAE의 근거
         )
     for p in _legacy_recommended(settings, picks_out):
         await pool.execute(
@@ -701,12 +1035,23 @@ async def build_analysis(
             seen_urls.add(url)
             sources.append({"site": "Grok 검색", "url": url})
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
-    stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
+    stake_krw = None    # [§8-18] 스테이킹 제거
 
     # [9] 등급제 조합 — 전 마켓 승인 레그 풀에서 구성 (승무패 전용 구조 폐지)
     from app.engine.parlay import build_tiered_parlays
 
-    combos = build_tiered_parlays(approved_market_legs(judge_games), stake_krw, sport)
+    _legs = approved_market_legs(judge_games)
+    combos = build_tiered_parlays(_legs, stake_krw, sport)
+    # [§8-10] 조합 구성 — 종전 미계측. 레그 풀이 비면 조합이 조용히 0건이 되는데
+    #         단식과 **같은 풀**을 쓴다는 계약이 깨졌는지 여기서 드러난다(§8-9 사고).
+    # [§8-15] 승인 레그가 0이면 조합 0이 **정상 결과**다(자격 미달). 실패로 알리지 않는다.
+    #   레그가 있는데 조합이 0일 때만 구성 로직 실패다.
+    _combo_n = len((combos or {}).get("combos") or [])
+    if _legs:
+        await record("조합 구성", _combo_n, max(1, _combo_n),
+                     cause=None if _combo_n else "missing",
+                     detail=f"조합 {_combo_n}건 / 승인 레그 {len(_legs)}개",
+                     impact="승인 레그가 있는데 조합을 만들지 못했습니다")
 
     from app.research.deep import DAILY_RESEARCH_CAP, research_calls_today
     if redis is not None:
@@ -731,10 +1076,17 @@ async def build_analysis(
         "stages": [{"name": st.name, "ok": st.ok, "total": st.total,
                     "cause": st.cause, "impact": st.impact} for st in stages],
         "mode": {"name": settings.report_mode, **mode,
-                 "stake_krw": stake_krw, "bankroll_krw": settings.bankroll_krw},
+                 },
         "games": judge_games, "picks": picks_out,
+        # [§8-9] 추천 단식을 **목록 그대로** 싣는다.
+        #   실사고(2026-08-26): 카드가 `picks`(경기당 대표 1건)에서 recommended
+        #   플래그로 다시 걸러냈는데, 자격을 통과한 단식이 대표와 **다른 마켓**이면
+        #   플래그가 붙을 자리가 없어 항상 0건이 됐다. 그러면서 같은 픽을 조합
+        #   레그로는 추천했다 — 문서에 기록된 그 사고의 재발이다.
+        "recommended": recommended,
         "parlays": parlays, "combos": combos,
-        "news": news, "sources": sources, "verdict": verdict,
+        "news": news, "sentiment": sentiment,
+        "sources": sources, "verdict": verdict,
     }
 
 
@@ -864,9 +1216,8 @@ def qualifies(pick: dict, settings=None) -> bool:
     need = pick.get("required_prob") or s.min_win_prob
     if pick.get("two_source") is False:      # [6] 2-소스 룰은 추천 자격에만 적용
         return False
-    if pick.get("edge_excess"):              # §0 시장 대비 괴리 과다 = 데이터 오류 의심
-        return False
-    return p is not None and odds is not None and p >= need and odds >= s.min_odds
+    # [§8-18] 배당 하한·시장 괴리 조건 제거 — 시장 기준으로 우리 판단을 재단하지 않는다
+    return p is not None and p >= need
 
 
 def near_miss_picks(picks: list[dict], settings=None, n: int = 3) -> list[dict]:
@@ -881,8 +1232,7 @@ def near_miss_picks(picks: list[dict], settings=None, n: int = 3) -> list[dict]:
         reasons = []
         if p["p"] < s.min_win_prob:
             reasons.append(f"승률 {p['p']:.0%} < {s.min_win_prob:.0%}")
-        if (p.get("odds") or 0) < s.min_odds:
-            reasons.append(f"배당 {p.get('odds') or 0:.2f} < {s.min_odds:.2f}")
+
         out.append({**p, "miss_reason": " · ".join(reasons) or "미승인"})
     return out
 
@@ -917,7 +1267,7 @@ def qualified_singles(games: list[dict], settings=None,
 
     per_game: 한 경기에서 최대 몇 개까지 — 기본 1.
       같은 경기의 두 마켓은 상관돼 있어(승패와 런라인) 둘 다 추천하면
-      실제 노출이 권장액의 2배가 된다. 승률 높은 쪽 하나만 남긴다.
+      같은 경기를 두 번 세는 셈이 된다. 승률 높은 쪽 하나만 남긴다.
     """
     from app.config import get_settings
 
@@ -939,6 +1289,8 @@ def qualified_singles(games: list[dict], settings=None,
                 "line": c.get("line"), "odds": c["odds"], "p": c["p"],
                 "ev": c.get("ev") if c.get("ev") is not None else 0.0,
                 "kelly": 0.0,
+                "lam_total": ((jg.get("lam") or {}).get("home", 0)
+                              + (jg.get("lam") or {}).get("away", 0)) or None,
                 "axes": c.get("axes_kr"), "grade": c.get("grade"),
                 "confidence": jg.get("judge_confidence", "medium"),
                 "judge_excluded": None,
@@ -1032,6 +1384,7 @@ async def _second_opinion(
 
 def _compute_picks(
     settings, judge_games: list[dict], sport: str, statcast_data: tuple | None = None,
+    news: str = "", sentiment: str = "",
 ) -> tuple[list[dict], list[dict], list[dict]]:
     """jg(판정 부착 완료) → (전체 픽, 파레이, 추천 픽). DB 접근 없음 — 재판정 시 재사용.
 
@@ -1043,7 +1396,7 @@ def _compute_picks(
     from app.engine.markets import build_board
 
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
-    stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
+    stake_krw = None    # [§8-18] 스테이킹 제거
 
     def blend(p_model_s: float | None, p_market_s: float, p_claude_s: float) -> float:
         """[1-1] 경기력 앙상블 — **시장 확률은 쓰지 않는다**.
@@ -1116,6 +1469,39 @@ def _compute_picks(
             filled = enrich_mlb_research(research_clean, jg, statcast_data)
             if filled:
                 jg["statcast_filled"] = filled
+        # [§8-14] KBO 공식 기록 — 딥서치 산문보다 정식 기록이 우선이다
+        elif sport == "kbo" and statcast_data:
+            from app.collectors.kbo_stats import merge_into_research as merge_kbo
+            from app.collectors.naver_kbo import merge_into_research as merge_naver
+
+            from app.collectors.kbo_park import merge_into_research as merge_park
+
+            filled = merge_kbo(research_clean, jg,
+                               statcast_data.get("kbo_teams") or {},
+                               statcast_data.get("kbo_pitchers") or {})
+            filled += merge_park(research_clean, jg, statcast_data.get("parks") or {})
+            from app.collectors.weather import merge_into_research as merge_wx
+
+            if merge_wx(research_clean, jg, statcast_data.get("weather") or {}):
+                filled.append("weather")
+            # [§8-19] 네이버 크롤링이 **가장 마지막**에 얹힌다 — 선발 시즌 성적·구종·
+            #   최근 폼은 구단 발표 기반이라 공식 집계보다도 그 경기에 가깝다.
+            nv = (statcast_data.get("naver") or {}).get(f"{jg['away']}@{jg['home']}")
+            if nv:
+                filled += merge_naver(research_clean, jg, nv)
+            if filled:
+                jg["kbo_filled"] = filled
+        elif sport == "npb" and statcast_data:
+            from app.collectors.yahoo_npb import merge_into_research as merge_yahoo
+
+            yv = (statcast_data.get("yahoo") or {}).get(f"{jg['away']}@{jg['home']}")
+            f2 = merge_yahoo(research_clean, jg, yv) if yv else []
+            from app.collectors.weather import merge_into_research as merge_wx
+
+            if merge_wx(research_clean, jg, statcast_data.get("weather") or {}):
+                f2 = list(f2) + ["weather"]
+            if f2:
+                jg["npb_filled"] = f2
         # [§2-3] Understat xG — 축구 λ의 1차 입력 (산문 파싱 대체)
         elif sport == "soccer" and statcast_data:
             from app.collectors.soccer_stats import merge_xg_into_research
@@ -1124,6 +1510,68 @@ def _compute_picks(
             filled = merge_xg_into_research(research_clean, jg, windows)
             if filled:
                 jg["xg_filled"] = filled
+        from app.collectors.lineups import STATUS_CONFIRMED, STATUS_PREDICTED
+
+        # [§8-23] Go 크롤러 스냅샷 — 10분 주기라 **가장 최신**이다.
+        #   경기 직전 선발 교체는 시장이 늦게 반영하는 몇 안 되는 신호다.
+        #   ⚠️ 축구는 statcast_data가 **튜플**이다(xG 캐시). dict가 아니면 건너뛴다.
+        _crawl_snap = (statcast_data.get("crawler") or {}
+                       if isinstance(statcast_data, dict) else {})
+        if _crawl_snap:
+            from app.collectors.crawler_feed import merge_into_research as merge_crawl
+
+            _cf = merge_crawl(research_clean, jg, _crawl_snap)
+            if _cf:
+                jg["crawler_filled"] = _cf
+
+        # [§8-22] 소스 교차검증 — 크롤링·딥서치·X가 같은 선발을 말하는지 대조한다.
+        #   실사고(2026-08-26 NC@LG): 딥서치·네이버는 "구창모", X 구단 공식은 "박준현".
+        #   한쪽을 조용히 고르면 왜 틀렸는지 영원히 모른다 — 갈리면 표시하고
+        #   **최종 픽 자격을 박탈**한다(라인업 2단계 규율).
+        if sport in ("kbo", "npb"):
+            from app.research.crosscheck_sources import apply as crosscheck_apply
+            from app.research.crosscheck_sources import extract_starters_from_text
+
+            _srcs: dict[str, dict] = {}
+            _crawl = (statcast_data or {}).get("naver") or (statcast_data or {}).get("yahoo") or {}
+            _cv = _crawl.get(f"{jg['away']}@{jg['home']}") or {}
+            if _cv:
+                _srcs["portal"] = {
+                    "home": (_cv.get("home_pitcher") or {}).get("name"),
+                    "away": (_cv.get("away_pitcher") or {}).get("name")}
+            if _crawl_snap:
+                _cg = _crawl_snap.get(f"{jg['away']}@{jg['home']}") or {}
+                if _cg.get("home_pitcher") or _cg.get("away_pitcher"):
+                    # 10분 주기 크롤러가 포털 스냅샷보다 최신이다
+                    _srcs["official_x"] = {"home": _cg.get("home_pitcher"),
+                                           "away": _cg.get("away_pitcher")}
+            _rp = research_clean or {}
+            if _rp.get("home_pitcher") or _rp.get("away_pitcher"):
+                _srcs["deep_search"] = {
+                    "home": (_rp.get("home_pitcher") or {}).get("name"),
+                    "away": (_rp.get("away_pitcher") or {}).get("name")}
+            # X·속보 텍스트에서 선발 언급을 뽑는다 (구단 공식 계정이 가장 빠르다)
+            _x = extract_starters_from_text(f"{news}\n{sentiment}",
+                                            (jg["home"], jg["away"]))
+            if _x.get("any"):
+                jg["x_starter_mention"] = _x["any"]
+            if len(_srcs) >= 2:
+                jg["crosscheck"] = crosscheck_apply(research_clean, jg, _srcs)
+
+        # [§8-16] 라인업 — 네이티브 API(statsapi)는 MLB 전용이다. KBO·NPB는
+        #   **딥서치가 소스다**(Perplexity 스키마 lineup + Grok 속보 브리핑).
+        #   "다른 곳을 찾으면 된다" — 소스가 없는 게 아니라 경로가 없었을 뿐이다.
+        #   ⚠️ projected를 confirmed로 승격하지 않는다(라인업 2단계 규율).
+        if (jg.get("lineup_status") or "none") == "none":
+            _lu = (research_clean or {}).get("lineup") or {}
+            if _lu.get("status") == "confirmed":
+                jg["lineup_status"] = STATUS_CONFIRMED
+                jg["lineup_source"] = _lu.get("source") or "딥서치"
+            elif _lu.get("status") == "projected":
+                # ⚠️ 기존 상수는 "predicted"다. "projected"를 쓰면 pick_state가
+                #    모르는 값이라 조용히 '잠정'으로만 떨어진다 — 계약을 맞춘다.
+                jg["lineup_status"] = STATUS_PREDICTED
+                jg["lineup_source"] = _lu.get("source") or "딥서치"
         dist = game_distribution(jg, research_clean, sport, settings)
         jg["distribution"] = dist
         # [§6-4] (a) 임의 계수 모델의 확률을 따로 보존 (분포 = 현행 모델)
@@ -1193,7 +1641,7 @@ def _compute_picks(
 
         pick = f"{rep['market']}:{rep['side']}" + (
             f":{rep['line']:g}" if rep.get("line") is not None else "")
-        pick_kelly = kelly(rep["p"], rep["odds"], settings.kelly_fraction, settings.kelly_cap)
+        pick_kelly = 0.0        # [§8-18] 켈리 제거
         # 판정 제외: Claude가 패스 권장/저신뢰로 본 경기는 추천 목록에서 뺀다
         judge_excluded = None
         if jg.get("judge_pass"):
@@ -1212,6 +1660,8 @@ def _compute_picks(
             "model_valid": jg.get("model_valid", False),
             "confidence": jg.get("judge_confidence", "medium"),
             "odds": rep["odds"], "ev": rep["ev"], "kelly": round(pick_kelly, 4),
+            "lam_total": ((jg.get("lam") or {}).get("home", 0)
+                          + (jg.get("lam") or {}).get("away", 0)) or None,
             "stake_krw": stake_krw,
             "verdict": jg.get("verdict", ""), "excluded_picks": jg.get("excluded_picks", []),
             "flags": rep.get("flags", []), "judge_excluded": judge_excluded,
@@ -1230,7 +1680,6 @@ def _compute_picks(
             "two_source": rep.get("two_source"),
             "required_prob": rep.get("required_prob"),
             "edge": rep.get("edge"),
-            "edge_excess": rep.get("edge_excess"),
             "lineup_status": jg.get("lineup_status") or "none",
             "pick_state": _pick_state(jg)[0], "pick_state_label": _pick_state(jg)[1],
             "p_legacy": (jg.get("p_legacy") or {}).get(rep["side"]),
@@ -1259,6 +1708,9 @@ def _compute_picks(
     excluded_games = {p["game_id"] for p in picks_out if p.get("judge_excluded")}
     clean = [b for b in board if b["game_id"] not in excluded_games]
     recommended = clean[: mode["max_picks"]]
+    # [§8-18] 스테이킹 제거 — 봇은 얼마를 걸라고 말하지 않는다.
+    for r in recommended:
+        r["stake_krw"] = stake_krw
     rec_keys = {(r["game_id"], r["desc"]) for r in recommended}
     for p in picks_out:
         p["recommended"] = (p["game_id"], p.get("desc")) in rec_keys
@@ -1282,6 +1734,19 @@ def contains_english_sentence(text: str) -> bool:
 
 def clean_invisible(text: str) -> str:
     return (text or "").translate(_INVISIBLE).strip()
+
+
+def matchup(jg: dict) -> str:
+    """[§8-29] 경기 표기 — **원정 @ 홈.**
+
+    실사고(2026-08-27): 카드가 `홈 vs 원정` 순서로 찍혀 읽는 사람이 정반대로 이해했다.
+    한국·일본·미국 스포츠 매체는 모두 **원정을 먼저** 쓴다("NC vs LG" = LG 홈).
+    데이터는 정확했는데(KBO 공식·크롤러 모두 KIA 홈) **표기만 뒤집혀 있었다** —
+    조용한 오독이라 아무도 알아채지 못했다.
+
+    → 관례에 기대지 않고 `@`로 못 박는다. `A @ B`는 B가 홈이다.
+    """
+    return f"{_kr(jg.get('away') or '?')} @ {_kr(jg.get('home') or '?')}"
 
 
 def _kr(name: str) -> str:
@@ -1452,6 +1917,15 @@ async def _alt_market_rows(
 # 기본층(항상 보이는 부분)과 접힌 전문층을 나누는 마커 — 봇이 blockquote로 변환
 DETAIL_SEP = "\n<<DETAIL>>\n"
 
+# [§8-13] 카드 길이 상한. 종전 20줄/3500자는 "추천 2건"만 싣던 시절 값이다.
+#   전 경기·전 마켓 보드는 경기당 2~3줄이라 15경기면 40줄을 넘는다.
+#   텔레그램 4096자 분할은 bot.main.split_message가 담당한다.
+# [§8-27] 배당 없이도 마켓 행을 만들면서 경기당 줄이 늘었다 — 상한을 올린다.
+#   텔레그램 4096자 분할은 bot.main.split_message가 담당한다.
+CARD_MAX_LINES = 140
+CARD_MAX_CHARS = 20000
+DETAIL_MAX_LINES = 200
+
 # 기본층 금지어 — 전문 용어는 접힌 상세에서만 (치환 검증기)
 FORBIDDEN_BASIC_TERMS = [
     r"\bp_final\b", r"\bp_model\b", r"\bp_claude\b", r"\bEV\b", r"켈리",
@@ -1497,7 +1971,7 @@ def classify_signal(jg: dict) -> tuple[str, str, int]:
     sig, reason, stars = _classify_base(jg)
     if jg.get("conclusion_revised"):
         if sig == "🟢":
-            return "🟡", "소액만 — 반박 검증에서 반전 요인이 나와 한 단계 보수 전환했습니다", max(1, stars - 1)
+            return "🟡", "보수 — 반박 검증에서 반전 요인이 나와 한 단계 낮췄습니다", max(1, stars - 1)
         if sig == "🟡":
             return "🔴", "패스 — 반박 검증에서 반전 요인이 나와 보수 전환했습니다", max(1, stars - 1)
     return sig, reason, stars
@@ -1536,6 +2010,138 @@ def _classify_base(jg: dict) -> tuple[str, str, int]:
     return "🟡", f"소액만 — {desc} 정도가 볼 만한 자리입니다 ({note})", stars
 
 
+
+# ---------------------------------------------------------------- [§8-13] 경기별 별점 보드
+
+# 마켓 표기 축약 — 한 줄에 여러 마켓을 담기 위한 것. 종목 용어는 그대로 지킨다.
+_MARKET_ORDER = {"h2h": 0, "dc": 1, "spreads": 2, "totals": 3, "f5": 4, "btts": 5}
+
+
+def _short_desc(c: dict, jg: dict) -> str:
+    """보드 한 줄에 들어갈 짧은 마켓 표기. 원문 desc가 길면 줄인다."""
+    d = c.get("desc") or "?"
+    return d.replace("(5이닝) ", "").replace(" 더블찬스", "DC").strip()
+
+
+def board_stars(c: dict, jg: dict, s) -> tuple[int, str]:
+    """[§8-13] 보드용 별점 — **가중 모델이 아니라 충족한 조건의 개수**다.
+
+    별 하나 = 사용자가 직접 확인할 수 있는 조건 하나. 임의 가중치를 발명하지 않는다
+    (측정된 근거가 없는 가중치는 DISCIPLINE 5-1 위반이다).
+
+      ★ 승률 ≥ min_win_prob (58%)
+      ★ 승률 ≥ signal_green_prob (62%)
+      ★ 근거 축 2개 이상 (2-소스 룰)
+      ★ 판정 신뢰도 high
+    [§8-18] 배당 조건은 뺐다 — 시장 기준이다.
+
+    ⚠ 는 별을 깎지 않고 **따로 표시**한다 — 종전 등급 방식은 시장 괴리 하나로
+    전 행이 🔴(★1)이 되어 보드에 변별력이 사라졌다(실측: 15경기 중 12경기가 전부 ★1).
+    """
+    p = c.get("p")
+    if p is None:
+        return 0, ""
+    # 하한: 승률 50% 미만이면 별을 주지 않는다.
+    #   배당·근거 축만으로 별이 붙으면 "승률 39.6%인데 ★★"처럼 오해를 부른다
+    #   (실측 렌더에서 실제로 나왔다). 지는 쪽이 더 많은 마켓은 조건 충족이 아니다.
+    #   ⚠️ EV로 자르지 않는다 — EV 기준은 폐기됐다(승률·배당 하한만 본다).
+    if p < 0.50:
+        return 0, ""
+    n = 0
+    if p >= s.min_win_prob:
+        n += 1
+    if p >= s.signal_green_prob:
+        n += 1
+    from app.engine.markets import axes_count
+
+    if axes_count(c.get("axes") or {}) >= 2:
+        n += 1
+    if jg.get("judge_confidence") == "high":
+        n += 1
+    warn = ""
+    if jg.get("judge_confidence") == "low" or jg.get("judge_pass"):
+        warn = "⚠"          # 판정 저신뢰·패스 권장
+    return n, warn
+
+
+def star_rows(jg: dict) -> list[dict]:
+    """[§8-13] 한 경기의 전 마켓을 **별점 순**으로. 배당 미수집 행도 버리지 않는다.
+
+    봇이 2건을 고르는 대신 **전 마켓을 나열하고 판단은 사용자가 한다**는 원칙의 구현.
+    """
+    from app.config import get_settings
+
+    s = get_settings()
+    rows = []
+    for c in jg.get("market_board") or []:
+        stars, warn = board_stars(c, jg, s)
+        rows.append({
+            "stars": stars, "warn": warn,
+            "desc": _short_desc(c, jg),
+            "p": c.get("p"), "odds": c.get("odds"),
+            "grade": c.get("grade"), "axes": c.get("axes_kr"),
+            "reject": c.get("reject_reason"), "market": c.get("market"),
+            "order": _MARKET_ORDER.get(c.get("market"), 9),
+        })
+    rows.sort(key=lambda r: (-r["stars"], -(r["p"] or 0), r["order"]))
+    return rows
+
+
+def render_star_board(games: list[dict]) -> tuple[list[str], list[str]]:
+    """[§8-13] 전 경기 · 전 마켓 별점 보드. 반환 (기본층 줄, 심층 줄).
+
+    기본층: 경기당 2줄(헤더 + 마켓 나열). 심층: 마켓 행마다 근거 1줄 + λ 산출 과정.
+    """
+    lines: list[str] = []
+    detail: list[str] = []
+    scheduled = [g for g in games if g.get("status") == "scheduled"]
+    if not scheduled:
+        return lines, detail
+
+    lines.append("")
+    lines.append("📋 경기별 마켓 — 별점 순 (판단은 직접 하십시오)")
+    for i, g in enumerate(scheduled, 1):
+        rows = star_rows(g)
+        if not rows:
+            continue
+        kick = (g.get("starts_at_kst") or "")[-5:]
+        head = f"{i}. {matchup(g)}" + (f" [{kick}]" if kick else "")
+        lines.append(head)
+        priced = [r for r in rows if r["p"] is not None]
+        unpriced = [r for r in rows if r["p"] is None]
+        if priced:
+            cells = [f"{('★' * r['stars']) if r['stars'] else '─'}{r['warn']} "
+                     f"{r['desc']} {r['p']:.0%}" for r in priced]
+            # 한 줄에 3개씩 — 6개를 한 줄에 넣으면 180자가 되어 모바일에서 깨진다
+            for k in range(0, len(cells), 3):
+                lines.append("   " + " │ ".join(cells[k:k + 3]))
+        if unpriced:
+            lines.append("   ⚪ 확률 미산출: " + ", ".join(r["desc"] for r in unpriced))
+
+        # ── 심층: 이 경기의 근거를 마켓 행마다 1:1로 남긴다 ──
+        detail.append(f"■ {matchup(g)}")
+        for r in priced:
+            # [§8-18] 돈·손익분기·시장 환산을 뺐다. 남는 것은 확률과 근거뿐이다.
+            detail.append(
+                f"  {('★' * r['stars']) if r['stars'] else '─'}{r['warn']} {r['desc']}: "
+                f"승률 {r['p']:.1%} / 근거 {r['axes'] or '없음'}"
+                + (f" / 제외: {r['reject']}" if r.get("reject") else ""))
+        for r in unpriced:
+            detail.append(f"  ─ {r['desc']}: 확률 미산출 — 재료 부족")
+        if g.get("lambda_trace"):
+            detail.append("  λ 산출: " + " → ".join(g["lambda_trace"]))
+        if g.get("lambda_missing"):
+            detail.append("  λ 미확보 입력: " + ", ".join(g["lambda_missing"]))
+        if g.get("p_claude") is not None:
+            detail.append(f"  판정 승률(홈) {g['p_claude']:.1%} "
+                          f"· 신뢰도 {g.get('judge_confidence') or '?'}")
+        if g.get("verdict"):
+            detail.append(f"  판정 근거: {str(g['verdict'])[:300]}")
+        unused = ((g.get("prob_adjust") or {}).get("unused")) or []
+        if unused:
+            detail.append("  (확률 미반영) " + ", ".join(unused))
+    return lines, detail
+
 def _guard_basic(text: str, where: str) -> str:
     """기본층 금지어 런타임 검증 — 위반은 코드 버그이므로 에러 로그로 즉시 드러낸다."""
     v = basic_layer_violations(text)
@@ -1553,10 +2159,16 @@ _DIGIT_RE = re.compile(r"\d")
 
 
 def _sport_of(jg: dict) -> str:
-    """[4] 경기 객체에서 종목 판정 — 문구의 종목 오용(야구에 '킥오프')을 막는다."""
+    """[4] 경기 객체에서 종목 판정 — 문구의 종목 오용(야구에 '킥오프')을 막는다.
+
+    [§8-14] KBO·NPB도 야구다. 여기서 'soccer'로 떨어지면 카드에 '킥오프 직전'·'핸디'
+    같은 축구 용어가 나간다 — 종목별 용어 분리 규율 위반이다.
+    """
     if jg.get("sport") in ("mlb", "soccer"):
         return jg["sport"]
-    if jg.get("league") == "MLB":
+    if jg.get("sport") in ("kbo", "npb"):
+        return "mlb"                      # 야구 용어(런라인·라인업 발표)를 쓴다
+    if jg.get("league") in ("MLB", "KBO", "NPB"):
         return "mlb"
     st = jg.get("stats") or {}
     if st.get("home_pitcher") or st.get("away_pitcher") or jg.get("home_pitcher"):
@@ -1600,17 +2212,17 @@ def _pick_line(candidates: list[str], names: list[str], used: set[str] | None) -
 def _value_candidates(jg: dict, home_kr: str, away_kr: str) -> list[str]:
     """[3-3] '걸 만한가' — 마켓 보드 최고 등급 마켓 하나를 **돈으로** 말한다.
 
-    "레즈 승 @1.61 — 10번 중 6번 이기는 계산, 이기면 1만 원당 6,100원 수익"
+    "레즈 승 — 10번 중 6번 이기는 계산"
     EV·기대값 표현은 쓰지 않는다 (기본층 금지어).
     """
     from app.config import get_settings
-    from app.engine.markets import best_market, payout_10k, rejection_summary
+    from app.engine.markets import best_market, rejection_summary
 
     s = get_settings()
     board = jg.get("market_board") or []
     out: list[str] = []
     if not board:
-        out.append(f"걸 만한가? {home_kr} vs {away_kr}는 배당을 수집하지 못해 판단할 수 없습니다.")
+        out.append(f"걸 만한가? {away_kr} @ {home_kr}는 배당을 수집하지 못해 판단할 수 없습니다.")
         return out
 
     top = best_market(board) or {}
@@ -1623,14 +2235,14 @@ def _value_candidates(jg: dict, home_kr: str, away_kr: str) -> list[str]:
         lead = "승패는 볼 게 없지만 " if h2h_dead and top["market"] != "h2h" else ""
         tail = "걸 만합니다" if grade == "🟢" else "소액이면 볼 만합니다"
         out.append(f"걸 만한가? {lead}{desc} @{odds:.2f} — {_times_out_of_ten(prob)} "
-                   f"이기는 계산, 이기면 1만 원당 {payout_10k(odds):,}원 수익. {tail}.")
+                   f"이기는 계산. {tail}.")
         if top["market"] != "h2h":
             out.append(f"걸 만한가? 승패 대신 {desc} @{odds:.2f}가 이 경기 최선입니다 — "
-                       f"{_times_out_of_ten(prob)} 적중, 1만 원당 {payout_10k(odds):,}원.")
+                       f"{_times_out_of_ten(prob)} 적중.")
         return out
 
     # 전 마켓 기준 미달 — 무엇이 왜 미달인지 밝힌다
-    out.append(f"걸 만한가? 전 마켓을 봤지만 승률 {s.min_win_prob:.0%}·배당 {s.min_odds:.2f} "
+    out.append(f"걸 만한가? 전 마켓을 봤지만 승률 {s.min_win_prob:.0%} "
                f"기준을 넘는 자리가 없습니다 — {rejection_summary(board)}.")
     return out
 
@@ -1676,7 +2288,7 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
     research, _ = sanitize_research(jg.get("research") or {}, sport)
     names = _player_names(jg, research)
     signal, reason, stars = classify_signal(jg)
-    lines = [f"{jg['starts_at_kst']} {home_kr} vs {away_kr} [{jg.get('league', '?')}]"]
+    lines = [f"{jg['starts_at_kst']} {away_kr} @ {home_kr} [{jg.get('league', '?')}]"]
     lines.append(f"{signal} {reason}")
     state_label = jg.get("pick_state_label") or _pick_state(jg)[1]
     if jg.get("lineup_confirmed_kst"):
@@ -1776,18 +2388,17 @@ def sorted_board(jg: dict) -> list[dict]:
 def board_row(c: dict, confidence: str | None = None) -> str:
     """[2][3-3] 마켓 보드 1행 — 돈으로 말한다. 배당이 없어도 행은 남긴다.
 
-    형식: 마켓 | 배당 | 승률 | 1만원 수익 | 신호등 | 근거 | ★
+    형식: 마켓 | 승률 | 신호등 | 근거 | ★
+    [§8-18] 배당·1만원 수익 열을 뺐다 — 봇은 가격도 돈도 말하지 않는다.
     """
-    from app.engine.markets import payout_10k, row_stars
+    from app.engine.markets import row_stars
 
-    odds = f"{c['odds']:.2f}" if c.get("odds") else "배당 미수집"
-    prob = f"{c['p']:.0%}" if c.get("p") is not None else "—"
-    money = f"{payout_10k(c['odds']):,}원" if c.get("odds") else "—"
+    prob = f"{c['p']:.0%}" if c.get("p") is not None else "확률 미산출"
     grade = c.get("grade") or "⚪"
     note = c.get("grade_note") or c.get("reject_reason") or "—"
     stars = row_stars(c, confidence)
     star_txt = _stars(stars) if stars else "—"
-    return f"{c['desc']} | {odds} | {prob} | {money} | {grade} | {note} | {star_txt}"
+    return f"{c['desc']} | {prob} | {grade} | {note} | {star_txt}"
 
 
 def render_game_section(jg: dict, news: str = "") -> str:
@@ -1804,11 +2415,12 @@ def render_game_section(jg: dict, news: str = "") -> str:
     ho = jg.get("best_odds", {}).get(jg["home"])
     ao = jg.get("best_odds", {}).get(jg["away"])
     matchup = (f"{home_kr}({ho:.2f}) vs {away_kr}({ao:.2f})"
-               if ho and ao else f"{home_kr} vs {away_kr}")
+               if ho and ao else f"{away_kr} @ {home_kr}")
     st = jg.get("stats") or {}
     pitchers = ""
     if sport == "mlb" and (st.get("home_pitcher") or st.get("away_pitcher")):
-        pitchers = f" | {st.get('home_pitcher') or '?'} vs {st.get('away_pitcher') or '?'}"
+        # [§8-29] 팀 표기가 '원정 @ 홈'이므로 선발도 원정 먼저 — 순서가 엇갈리면 더 헷갈린다
+        pitchers = f" | {st.get('away_pitcher') or '?'} vs {st.get('home_pitcher') or '?'}"
     label = f" [{jg['status_label']}]" if jg.get("status_label") else ""
     header = f"{jg['starts_at_kst']} [{jg.get('league', '?')}] {matchup}{pitchers}{label}"
 
@@ -1939,7 +2551,7 @@ def render_news(analysis: dict) -> str:
     for g in scheduled:
         hits = _team_news_lines(news, g["home"], g["away"])
         for h in hits[:2]:
-            lines.append(f"[{_kr(g['home'])} vs {_kr(g['away'])}] {h.strip()[:160]}")
+            lines.append(f"[{matchup(g)}] {h.strip()[:160]}")
     if not lines:
         return "분석 대상 경기 관련 속보가 없습니다."
     return "\n".join(lines[:15])
@@ -2004,9 +2616,15 @@ def _render_card(analysis: dict) -> str:
     games = analysis.get("games", [])
     scheduled = [g for g in games if g.get("status") == "scheduled"]
     picks = analysis.get("picks", [])
-    recommended = [p for p in picks if p.get("recommended")]
+    # [§8-9] 추천은 파이프라인이 만든 목록을 그대로 쓴다. `picks`에서 플래그로
+    #        재계산하면 대표 픽과 다른 마켓의 추천이 통째로 사라진다.
+    #        (옛 캐시 호환: 목록이 없으면 종전 플래그 방식으로 폴백)
+    recommended = analysis.get("recommended")
+    if recommended is None:
+        recommended = [p for p in picks if p.get("recommended")]
     combos_info = analysis.get("combos") or {}
-    sport_kr = "MLB" if analysis.get("sport") == "mlb" else "축구"
+    sport_kr = {"mlb": "MLB", "kbo": "KBO", "npb": "NPB"}.get(
+        analysis.get("sport"), "축구")
     league_set = {g.get("league") for g in games}
     scope = f" ({next(iter(league_set))})" if len(league_set) == 1 and games else ""
 
@@ -2030,10 +2648,10 @@ def _render_card(analysis: dict) -> str:
     if scored:
         surest = max(scored, key=lambda g: {"high": 2, "medium": 1, "low": 0}.get(g.get("judge_confidence", "medium"), 1) * 100 - abs(g["p_claude"] - g["p_market"]) * 100)
         disputed = max(scored, key=lambda g: abs(g["p_claude"] - g["p_market"]))
-        lines.append(f"가장 자신 있는 경기: {_kr(surest['home'])} vs {_kr(surest['away'])} — 시장과 봇 판단이 같은 곳을 봅니다")
-        lines.append(f"데이터가 갈리는 경기: {_kr(disputed['home'])} vs {_kr(disputed['away'])} — 서로 다른 답을 내놓은 경기입니다")
-        detail.append(f"확신도 최고: {_kr(surest['home'])} vs {_kr(surest['away'])} — 시장 {surest['p_market']:.0%} / 판정 {surest['p_claude']:.0%} (신뢰도 {surest.get('judge_confidence')})")
-        detail.append(f"논쟁: {_kr(disputed['home'])} vs {_kr(disputed['away'])} — 시장 {disputed['p_market']:.0%} vs 판정 {disputed['p_claude']:.0%}")
+        lines.append(f"가장 자신 있는 경기: {matchup(surest)} — 시장과 봇 판단이 같은 곳을 봅니다")
+        lines.append(f"데이터가 갈리는 경기: {matchup(disputed)} — 서로 다른 답을 내놓은 경기입니다")
+        detail.append(f"확신도 최고: {matchup(surest)} — 시장 {surest['p_market']:.0%} / 판정 {surest['p_claude']:.0%} (신뢰도 {surest.get('judge_confidence')})")
+        detail.append(f"논쟁: {matchup(disputed)} — 시장 {disputed['p_market']:.0%} vs 판정 {disputed['p_claude']:.0%}")
     for g in scheduled:
         if g.get("breaking_note"):
             lines.append(g["breaking_note"])
@@ -2049,33 +2667,32 @@ def _render_card(analysis: dict) -> str:
         detail.append(f"판정 부착 0건 / 분석 대상 {len(scheduled)}경기 — judge 응답 확인 필요")
         return _guard_basic("\n".join(lines[:20])[:3500] + DETAIL_SEP + "\n".join(detail[:20]), "card")
 
+    # [§8-13] **봇이 고르지 않는다.** 전 경기·전 마켓을 별점 순으로 나열하고
+    #   판단은 사용자가 한다. 근거 수치는 심층(<<DETAIL>>)에 마켓 행마다 1:1로 붙는다.
+    #   종전에는 봇이 상위 2건만 "오늘의 추천"으로 골라 내보내, 자격을 통과한 나머지
+    #   마켓이 기본층에서 통째로 보이지 않았다.
+    board_lines, board_detail = render_star_board(games)
+    lines.extend(board_lines)
+    detail.extend(board_detail)
+    _s = get_settings()
     lines.append("")
-    lines.append("🎯 오늘의 추천")
+    lines.append(f"★ = 충족한 조건 수: 승률 {_s.min_win_prob:.0%}↑ / {_s.signal_green_prob:.0%}↑ / "
+                 f"근거 2축↑ / 판정 신뢰도 높음")
+    lines.append("⚠ = 판정 신뢰도가 낮음 — 별점과 별개로 한 번 더 확인하십시오")
+    # 자격 통과 여부는 **기본층**에 쓴다 — "기준을 넘는 게 있었나"는 접으면 안 되는 정보다.
     if recommended:
-        for p in recommended:
-            stake = f" (권장 {p['stake_krw']:,}원)" if p.get("stake_krw") else ""
-            from app.engine.markets import breakeven_odds, payout_10k
-
-            lines.append(
-                f"· {p.get('desc') or _kr(p['side'])} @{p['odds']:.2f} — "
-                f"{_kr(p['home'])} vs {_kr(p['away'])}, "
-                f"{_times_out_of_ten(p['p'])} 이기는 계산, "
-                f"이기면 1만 원당 {payout_10k(p['odds']):,}원 수익"
-                f" [{p.get('league', '?')} {p['starts_at_kst'][-5:]}]{stake}")
-            be = breakeven_odds(p["p"])
-            detail.append(
-                f"{p.get('desc')}: 승률 {p['p']:.1%} / 배당 {p['odds']:.2f} / "
-                f"손익분기 배당 {be} / 시장 환산 {1 / p['odds']:.1%} / "
-                f"근거 {p.get('axes') or '?'} / 판정 신뢰도 {p.get('confidence')}")
+        _stake = next((r.get("stake_krw") for r in recommended if r.get("stake_krw")), None)
+        lines.append("자격 통과(승률 + 2-소스): "
+                     + ", ".join(f"{r['desc']} {r['p']:.0%}"
+                                 for r in recommended)
+                     + (f" — 건당 플랫 {_stake:,}원" if _stake else ""))
+        detail.extend(
+            f"{r['desc']}: 승률 {r['p']:.1%} / 배당 {r['odds']:.2f} / "
+            f"근거 {r.get('axes') or '?'} / 판정 신뢰도 {r.get('confidence')}"
+            for r in recommended)
     else:
-        s = get_settings()
-        lines.append(f"승률 {s.min_win_prob:.0%}·배당 {s.min_odds:.2f} 기준을 넘는 픽이 없습니다.")
-        near = near_miss_picks(picks, s)
-        if near:
-            lines.append(f"— 조건 미달 · 승률 상위 {len(near)}:")
-            for p in near:
-                lines.append(f"  · {p.get('desc') or _kr(p['side'])} @{(p.get('odds') or 0):.2f} "
-                             f"승률 {p['p']:.0%} — {p['miss_reason']}")
+        lines.append(f"자격(승률 {_s.min_win_prob:.0%}·2-소스)을 "
+                     f"통과한 마켓 없음 — 위 보드의 별점은 상대 비교용입니다")
     if combos_info.get("reason"):
         lines.append(f"조합: {combos_info['reason']}")
     else:
@@ -2087,19 +2704,22 @@ def _render_card(analysis: dict) -> str:
                 f"{leg['desc']}[{leg.get('league', '?')} {leg['starts_at_kst'][-5:]}]"
                 for leg in c["legs"])
             relax = " (범위 완화)" if c.get("relaxed") else ""
-            money = f"1만 원당 {c.get('payout_10k', 0):,}원" if c.get("payout_10k") else ""
-            lines.append(f"조합 {i}({c['tier']}): {legs_txt} @{c['odds']:.2f} "
+            money = ""
+            lines.append(f"참고 조합 {i}({c['tier']}): {legs_txt} @{c['odds']:.2f} "
                          f"(적중률 {c['p']:.0%}, {money}) — {c['stake_note']}{relax}")
             detail.append(f"조합 {i} 레그별 승률: " + ", ".join(
                 f"{leg['desc']} {leg['p']:.0%}@{leg['odds']:.2f}" for leg in c["legs"]))
         if combos_info.get("all_fail_prob") is not None:
             lines.append(f"세 조합 모두 실패할 확률 ≈ {combos_info['all_fail_prob']:.0%}")
         if combos_info.get("low_confidence"):
-            lines.append("⚠️ 오늘은 확신이 낮은 날 — 권장액 절반만")
-    lines.append("⚠️ 조합은 변동이 큰 베팅 — 단식 권장액의 절반 이하 소액만")
+            lines.append("⚠️ 오늘은 확신이 낮은 날입니다")
+    lines.append("⚠️ 조합은 하나만 빗나가도 전부 실패합니다")
 
-    easy = "\n".join(lines[:20])[:3500]
-    return _guard_basic(easy + DETAIL_SEP + "\n".join(detail[:20]), "card")
+    # [§8-13] 전 경기·전 마켓을 싣기 때문에 20줄 상한으로는 잘린다.
+    #   텔레그램 4096자 분할은 bot.main.split_message가 처리하므로 여기서 자르지 않는다.
+    #   심층도 경기당 여러 줄이 붙으므로 함께 올린다.
+    easy = "\n".join(lines[:CARD_MAX_LINES])[:CARD_MAX_CHARS]
+    return _guard_basic(easy + DETAIL_SEP + "\n".join(detail[:DETAIL_MAX_LINES]), "card")
 
 
 async def generate_card(analysis: dict) -> str:
@@ -2116,17 +2736,20 @@ def rescope_analysis(analysis: dict, league_label: str) -> dict:
     ids = {g["game_id"] for g in games}
     picks = [dict(p) for p in analysis.get("picks", []) if p["game_id"] in ids]
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
-    clean = [p for p in picks if p.get("approved") and not p["judge_excluded"]
-             and qualifies(p, settings)]
-    clean.sort(key=lambda x: x["ev"], reverse=True)
-    recommended = clean[: mode["max_picks"]]
+    # [§8-9] 스코프 뷰도 **마켓 보드 전체**에서 뽑는다 — 전체 슬레이트와 같은 풀이어야
+    #        "전체에선 추천인데 리그로 좁히면 사라진다"는 모순이 생기지 않는다.
+    recommended = qualified_singles(games, settings)[: mode["max_picks"]]
+    _stake = None       # [§8-18] 스테이킹 제거
+    for r in recommended:
+        r["stake_krw"] = _stake
+    rec_keys = {(r["game_id"], r["desc"]) for r in recommended}
     for p in picks:
-        p["recommended"] = p in recommended
-    stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
+        p["recommended"] = (p["game_id"], p.get("desc")) in rec_keys
+    stake_krw = None    # [§8-18] 스테이킹 제거
     urls = {ep.get("source_url") for g in games for ep in g.get("expert_picks", [])}
     sources = [s for s in analysis.get("sources", []) if s["url"] in urls]
     return {
-        **analysis, "games": games, "picks": picks,
+        **analysis, "games": games, "picks": picks, "recommended": recommended,
         "combos": build_tiered_parlays(approved_market_legs(games), stake_krw,
                                        analysis.get("sport")),
         "sources": sources,
@@ -2153,11 +2776,10 @@ def _reco_reject_detail(games: list[dict], settings, top: int = 8) -> list[str]:
             why = []
             if c["p"] < req:
                 why.append(f"승률 {c['p']:.0%}<{req:.0%}")
-            if c["odds"] < settings.min_odds:
-                why.append(f"배당 {c['odds']:.2f}<{settings.min_odds}")
+
             if not c.get("two_source"):
                 why.append("2소스 미달")
-            if c.get("edge_excess"):
+            if False:
                 why.append(f"시장 대비 괴리 {c.get('edge', 0):+.0%}")
             rows.append((c["p"], f"   · {c['desc']}: {', '.join(why) or '기타'}"))
     if not rows:
@@ -2173,7 +2795,7 @@ def render_full_reco(analyses: list[dict]) -> str:
 
     settings = get_settings()
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
-    stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
+    stake_krw = None    # [§8-18] 스테이킹 제거
     all_games = [g for a in analyses for g in a.get("games", [])]
     # 조합과 **같은 풀**에서 단식을 뽑는다 — 경기당 대표 픽 1건에 묶으면
     # 자격 있는 마켓이 심사에서 빠져 "단식 없음"과 "조합 추천"이 모순된다.
@@ -2193,7 +2815,7 @@ def render_full_reco(analyses: list[dict]) -> str:
         for p in singles:
             stake = f" (권장 {p['stake_krw']:,}원)" if p.get("stake_krw") else ""
             lines.append(f"· {p.get('desc') or _kr(p['side'])} @{p['odds']:.2f} — "
-                         f"{_kr(p['home'])} vs {_kr(p['away'])}, "
+                         f"{matchup(p)}, "
                          f"{_times_out_of_ten(p['p'])} 적중하는 계산이고 배당이 후한 편입니다"
                          f" [{p.get('league', '?')} {p['starts_at_kst'][-5:]}]{stake}")
             detail.append(f"{p.get('desc')}: p_final {p['p']:.1%} / EV {p['ev']:+.1%} / "
@@ -2214,7 +2836,7 @@ def render_full_reco(analyses: list[dict]) -> str:
                 f"{leg['desc']}[{leg.get('league', '?')} {leg['starts_at_kst'][-5:]}]"
                 for leg in c["legs"])
             relax = " (범위 완화)" if c.get("relaxed") else ""
-            lines.append(f"조합 {i}({c['tier']}): {legs_txt} @{c['odds']:.2f} "
+            lines.append(f"참고 조합 {i}({c['tier']}): {legs_txt} @{c['odds']:.2f} "
                          f"(적중률 {c['p']:.0%}) — {c['stake_note']}{relax}")
         if combos.get("all_fail_prob") is not None:
             lines.append(f"세 조합 모두 실패 확률 ≈ {combos['all_fail_prob']:.0%}")
@@ -2225,13 +2847,13 @@ def render_full_reco(analyses: list[dict]) -> str:
             if not c.get("ok"):
                 continue
             detail.append(f"── 조합 {i}({c['tier']}) 합산 @{c['odds']:.2f} "
-                          f"· 적중률 {c['p']:.1%} · 1만원당 {c.get('payout_10k', 0):,}원")
+                          f"· 적중률 {c['p']:.1%}")
             for leg in c["legs"]:
                 detail.append(
                     f"   · {leg['desc']}: p {leg['p']:.1%} / 배당 {leg['odds']:.2f}"
                     f" (배당 내재 {1 / leg['odds']:.1%}) / 신뢰도 "
                     f"{leg.get('confidence', '?')}")
-    lines.append("⚠️ 조합은 변동이 큰 베팅 — 단식 권장액의 절반 이하 소액만")
+    lines.append("⚠️ 조합은 하나만 빗나가도 전부 실패합니다")
     return _guard_basic("\n".join(lines[:20])[:3500] + DETAIL_SEP + "\n".join(detail[:15]), "full_reco")
 
 
@@ -2309,13 +2931,15 @@ async def _rejudge_after_breaking(analysis: dict, changes: list[dict]) -> dict:
             + (", 패스로 전환" if jg["judge_pass"] else "")
         )
 
-    picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], analysis["sport"])
+    picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], analysis["sport"],
+                                            news=analysis.get("news") or "",
+                                            sentiment=analysis.get("sentiment") or "")
     analysis["picks"], analysis["parlays"] = picks_out, parlays
     # 조합도 재구성 (판정 뒤집힌 레그 반영) — 전 마켓 승인 풀 기준
     from app.engine.parlay import build_tiered_parlays
 
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
-    stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
+    stake_krw = None    # [§8-18] 스테이킹 제거
     analysis["combos"] = build_tiered_parlays(
         approved_market_legs(analysis["games"]), stake_krw, analysis.get("sport"))
     flipped = old_reco - {p["pick"] for p in picks_out if p.get("recommended")}
@@ -2372,13 +2996,15 @@ async def _refresh_stale_research(
         logger.warning("[pipeline] refresh re-judge failed, keeping verdicts: %s", exc)
         await notify_api_error(exc)
     _enforce_data_rules(analysis["games"])
-    picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport)
+    picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport,
+                                            news=analysis.get("news") or "",
+                                            sentiment=analysis.get("sentiment") or "")
     analysis["picks"], analysis["parlays"] = picks_out, parlays
     await _renarrate(refreshed, sport)   # [B-1] 재판정된 경기는 서술도 다시 쓴다
     from app.engine.parlay import build_tiered_parlays
 
     mode = MODES.get(settings.report_mode, MODES["live_conservative"])
-    stake_krw = int(settings.bankroll_krw * mode["flat_pct"]) if mode["staking"] == "flat" else None
+    stake_krw = None    # [§8-18] 스테이킹 제거
     analysis["combos"] = build_tiered_parlays(
         approved_market_legs(analysis["games"]), stake_krw, analysis.get("sport"))
     meta["refreshed"] = len(refreshed)
@@ -2447,12 +3073,13 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             await notify_api_error(exc)
 
         _enforce_data_rules(analysis["games"])
-        picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport)
+        picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport,
+                                            news=analysis.get("news") or "",
+                                            sentiment=analysis.get("sentiment") or "")
         analysis["picks"], analysis["parlays"] = picks_out, parlays
         analysis["combos"] = build_tiered_parlays(
             approved_market_legs(analysis["games"]),
-            int(settings.bankroll_krw * MODES[settings.report_mode]["flat_pct"])
-            if MODES.get(settings.report_mode, {}).get("staking") == "flat" else None,
+            None,    # [§8-18] 스테이킹 제거
             sport)
         await _renarrate([jg], sport)
 
@@ -2505,7 +3132,9 @@ async def ensure_game_fresh(sport: str, date: str, game_id: int) -> tuple[dict |
             logger.warning("[pipeline] single-game re-judge failed: %s", exc)
             await notify_api_error(exc)
         _enforce_data_rules(analysis["games"])
-        picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport)
+        picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport,
+                                            news=analysis.get("news") or "",
+                                            sentiment=analysis.get("sentiment") or "")
         analysis["picks"], analysis["parlays"] = picks_out, parlays
         await _renarrate([jg], sport)    # [B-1] 재판정된 경기는 서술도 다시 쓴다
         meta = analysis.setdefault("research_meta", {})

@@ -114,16 +114,42 @@ async def reconcile_stale_games(pool: asyncpg.Pool) -> dict:
     return fixed
 
 
+# [§8-18] CLV(마감 배당 대비 가치) 수집 삭제.
+#   우리 가격을 시장 마감가와 비교하는 지표라 **시장에 앵커링**된다.
+#   "시장보다 좋은 가격을 잡았나"가 아니라 **"우리가 맞혔나"**가 유일한 질문이다.
+#   남은 평가 축은 ①방향 적중률 ②점수 오차(MAE) 둘뿐이다.
+#   (predictions.closing_odds 컬럼은 과거 기록 보존을 위해 남기되 더 이상 채우지 않는다)
+
+
 async def grade_date(pool: asyncpg.Pool, date: str, sport: str = "mlb") -> dict:
     """해당 날짜 final 경기의 미채점 픽·예측을 채점. 집계 카운트 반환."""
     if sport == "mlb":
         await upsert_final_scores(pool, date, client=MLBClient())
-    elif sport == "kbo":
-        # KBO는 statsapi가 껍데기라 공식 기록실이 유일한 점수 경로다.
-        # 최근 7일을 훑는 이유: 우천 순연이 잦아 어제 경기가 오늘 확정되기도 한다.
-        from app.collectors.kbo import upsert_final_scores as kbo_finals
+    elif sport in ("kbo", "npb"):
+        # [§8-14] statsapi가 껍데기(sportId 31/32는 팀 명단만)라 외부 소스가 필요하다.
+        #   KBO: 공식 기록실 1순위 → 실패하면 Odds API `/scores` 폴백
+        #   NPB: 공식 파서가 없다 → Odds API `/scores`가 유일한 경로
+        #   최근 7일(KBO)·2일(Odds)을 훑는 이유: 우천 순연으로 어제 경기가 오늘 확정된다.
+        from app.collectors.odds import upsert_final_scores as odds_finals
 
-        await kbo_finals(pool, date, days=7)
+        if sport == "kbo":
+            try:
+                from app.collectors.kbo import upsert_final_scores as kbo_finals
+
+                await kbo_finals(pool, date, days=7)
+            except Exception as exc:      # 공식 사이트 구조 변경 — 채점을 멈추지 않는다
+                logger.warning("[grader] KBO 공식 기록실 실패, Odds 폴백: %s", exc)
+                await odds_finals(pool, date, days=2, sport="kbo")
+        else:
+            # [§8-28] NPB는 **Yahoo가 1순위**다. Odds `/scores`는 완료 경기가
+            #   한 건도 안 잡혀 채점이 증명되지 않았다(실측 2026-08-26).
+            try:
+                from app.collectors.yahoo_npb import upsert_final_scores as yahoo_finals
+
+                await yahoo_finals(pool, date, days=3)
+            except Exception as exc:
+                logger.warning("[grader] Yahoo NPB 실패, Odds 폴백: %s", exc)
+                await odds_finals(pool, date, days=2, sport="npb")
 
     finals = await pool.fetch(
         """

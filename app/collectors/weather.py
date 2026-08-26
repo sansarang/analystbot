@@ -27,9 +27,41 @@ CACHE_TTL = 3 * 3600          # 예보는 자주 바뀐다 — 3시간
 DOMED = {
     "Tampa Bay Rays", "Toronto Blue Jays", "Milwaukee Brewers",
     "Arizona Diamondbacks", "Houston Astros", "Miami Marlins", "Texas Rangers",
+    # [§8-26] KBO 돔구장 — 고척스카이돔이 유일하다. 날씨 조회 대상이 아니다.
+    "Kiwoom Heroes",
+    # [§8-26] NPB 돔구장 — 6곳. 나머지는 야외다.
+    "Yomiuri Giants",              # 東京ドーム
+    "Fukuoka SoftBank Hawks",      # みずほPayPayドーム
+    "Saitama Seibu Lions",         # ベルーナドーム(준돔 — 지붕만 있고 측면 개방)
+    "Chunichi Dragons",            # バンテリンドーム
+    "Orix Buffaloes",              # 京セラドーム大阪
+    "Hokkaido Nippon-Ham Fighters",  # エスコンフィールド(개폐식 — 통상 폐쇄)
 }
 
-# 홈 구장 좌표 (위도, 경도). 30구장.
+# [§8-26] KBO 9구장 좌표 (위도, 경도). 고척은 돔이라 조회하지 않는다.
+KBO_COORDS = {
+    "LG Twins": (37.5122, 127.0719),        # 잠실
+    "Doosan Bears": (37.5122, 127.0719),    # 잠실 (공용)
+    "NC Dinos": (35.2225, 128.5822),        # 창원NC파크
+    "Kia Tigers": (35.1682, 126.8891),      # 광주-기아 챔피언스필드
+    "Lotte Giants": (35.1940, 129.0615),    # 사직
+    "SSG Landers": (37.4370, 126.6932),     # 인천SSG랜더스필드(문학)
+    "Hanwha Eagles": (36.3172, 127.4290),   # 대전 한화생명볼파크
+    "KT Wiz": (37.2997, 127.0097),          # 수원KT위즈파크
+    "Samsung Lions": (35.8411, 128.6819),   # 대구 삼성라이온즈파크
+}
+
+# [§8-26] NPB 야외 구장 좌표. 돔 6곳은 DOMED에 있어 조회 대상이 아니다.
+NPB_COORDS = {
+    "Hanshin Tigers": (34.7215, 135.3617),          # 甲子園
+    "Hiroshima Toyo Carp": (34.3919, 132.4847),     # マツダスタジアム
+    "Yokohama DeNA BayStars": (35.4433, 139.6400),  # 横浜スタジアム
+    "Tokyo Yakult Swallows": (35.7014, 139.7172),   # 神宮
+    "Chiba Lotte Marines": (35.6453, 140.0311),     # ZOZOマリン(해풍이 강하다)
+    "Tohoku Rakuten Golden Eagles": (38.2564, 140.9022),  # 楽天モバイルパーク
+}
+
+# 홈 구장 좌표 (위도, 경도). MLB 30구장 + KBO 9 + NPB 6.
 PARK_COORDS = {
     "Arizona Diamondbacks": (33.4455, -112.0667),
     "Atlanta Braves": (33.8907, -84.4677),
@@ -62,6 +94,10 @@ PARK_COORDS = {
     "Toronto Blue Jays": (43.6414, -79.3894),
     "Washington Nationals": (38.8730, -77.0074),
 }
+
+
+PARK_COORDS.update(KBO_COORDS)
+PARK_COORDS.update(NPB_COORDS)
 
 
 class OpenMeteoClient(BaseAPIClient):

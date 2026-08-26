@@ -18,6 +18,7 @@ from app.pipeline import (
     render_games_easy,
 )
 from app.research.validate import (
+    clean_text,
     has_material,
     invalid_reason,
     is_prompt_echo,
@@ -456,3 +457,220 @@ def test_needs_refresh_none_for_ordinary_game():
     from app.research.deep import needs_refresh
 
     assert needs_refresh({"home": "A", "away": "B"}) is None
+
+
+# ---------------------------------------------------------------- [§8-7] 신규 맥락 필드
+
+_NEW_CONTEXT = ("motivation", "schedule_load", "umpire", "line_move_reason")
+
+
+def test_new_context_fields_survive_sanitize():
+    """동기·일정부담·주심·라인무브 사유가 정제를 통과해야 판정이 볼 수 있다.
+
+    이 넷은 λ 계수로 쓰지 않는다(측정된 계수가 없다 — 임의 튜닝 금지).
+    대신 judge 페이로드로 들어가 `p_claude`를 움직인다. 정제에서 떨어지면
+    수집만 하고 아무것도 못 움직이는 상태가 된다.
+    """
+    data = {
+        "motivation": "홈은 와일드카드 1경기 차 추격 중이고 원정은 이미 탈락이 확정됐다.",
+        "schedule_load": "원정은 3연전 마지막 경기이며 직전 경기가 연장 12회로 끝났다.",
+        "umpire": "주심 Angel Hernandez는 존이 넓은 편으로 삼진율이 리그 평균보다 높다.",
+        "line_move_reason": "홈 선발이 경기 2시간 전 교체되며 배당이 1.70에서 1.92로 밀렸다.",
+    }
+    out, dropped = sanitize_research(data, "mlb")
+    for key in _NEW_CONTEXT:
+        assert key in out, f"{key}가 정제에서 사라졌다 (dropped={dropped})"
+
+
+def test_new_context_fields_drop_unavailable_prose():
+    """'못 찾았다'는 산문은 걷어낸다 — 200 OK 산문 사고의 방어선이다."""
+    data = {k: "해당 정보를 찾을 수 없습니다." for k in _NEW_CONTEXT}
+    out, dropped = sanitize_research(data, "mlb")
+    for key in _NEW_CONTEXT:
+        assert key not in out
+        assert key in dropped
+
+
+def test_new_context_fields_keep_qualitative_only():
+    """수치가 없어도 남긴다 — 정성 정보라도 판정에는 가치가 있다.
+
+    (구간을 단언하는 필드가 아니므로 전량 폐기 대상이 아니다 — CLAUDE.md 정책 분기)
+    """
+    out, _ = sanitize_research(
+        {"motivation": "원정은 이미 포스트시즌 진출이 확정돼 주전을 아낄 가능성이 있다."}, "mlb")
+    assert "motivation" in out
+
+
+def test_new_context_fields_partial_sentence_filter():
+    """한 필드 안에서 미확보 문장만 빠지고 실제 정보는 살아남는다."""
+    out, _ = sanitize_research({
+        "schedule_load": "원정은 4연전 마지막이며 이동 없이 같은 구장이다. "
+                         "직전 경기 종료 시각은 확인할 수 없습니다."}, "mlb")
+    assert "schedule_load" in out
+    assert "4연전" in out["schedule_load"]
+    assert "확인할 수 없" not in out["schedule_load"]
+
+
+def test_fill_stats_track_new_fields():
+    """채움률 감시에 신규 필드가 들어가야 프롬프트 과잉 금지문을 탐지할 수 있다."""
+    from app.research.deep import _filled_fields
+
+    empty = _filled_fields({})
+    for key in _NEW_CONTEXT:
+        assert key in empty and empty[key] is False
+    filled = _filled_fields({"motivation": "순위 경쟁 중"})
+    assert filled["motivation"] is True
+
+
+def test_new_fields_present_in_both_schemas():
+    """MLB·축구 프롬프트 스키마 양쪽에 들어가야 한다 — 한쪽만 넣으면 조용히 반쪽이다."""
+    from app.research.deep import _SCHEMA_MLB, _SCHEMA_SOCCER
+
+    for key in ("motivation", "schedule_load", "line_move_reason"):
+        assert key in _SCHEMA_MLB, f"MLB 스키마에 {key} 없음"
+        assert key in _SCHEMA_SOCCER, f"축구 스키마에 {key} 없음"
+    # 주심 스트라이크존은 야구 고유 개념이다 (종목별 용어 분리 규칙)
+    assert "umpire" in _SCHEMA_MLB and "umpire" not in _SCHEMA_SOCCER
+
+
+# ---------------------------------------------------------------- [§8-14] KBO·NPB
+
+def test_unavailable_prose_with_digits_is_dropped():
+    """숫자가 섞인 미확보 산문도 걸러야 한다.
+
+    실사고(2026-08-26 KBO 첫 실호출): Perplexity가
+      "…세부 로그에 현재 바로 접근이 되지 않아, 구체적인 최근 5경기 ERA·피OPS·
+       평균 소화 이닝을 숫자로 정리하기 어렵다"
+    를 보냈는데, 문장에 숫자([13]·5경기)가 있어 **숫자 요구 조건을 통과**했고
+    '접근이 되지 않'·'정리하기 어렵'이 키워드 목록에 없어 미확보 판정도 피했다.
+    결과적으로 '못 찾았다'는 문장이 선발 지표(last5)로 판정에 들어갈 뻔했다.
+    """
+    text = ("KBO 공시 자료에서 8월 26일 잠실 NC전 선발로 예고된 임찬규는[13], "
+            "시즌 전체 성적(ERA·WHIP, 최근 5경기 이닝·자책·투구수)까지 포함한 "
+            "세부 로그에 현재 바로 접근이 되지 않아, 구체적인 최근 5경기 "
+            "ERA·피OPS·평균 소화 이닝을 숫자로 정리하기 어렵다")
+    assert clean_text(text, sentencewise=True) is None
+
+
+def test_new_markers_do_not_eat_real_numbers():
+    """⚠️ 반대 위험 측정 — 새 키워드가 정상 수치 문장을 폐기하면 안 된다.
+
+    (규율: 새 필터·가드를 추가할 때는 반대 위험을 함께 측정한다)
+    """
+    good = ("임찬규는 최근 5경기에서 평균자책점 3.42, 이닝당 출루허용 1.21을 기록했고 "
+            "평균 5.2이닝을 소화했다. 직전 등판은 8월 20일 두산전 6이닝 2실점이었다.")
+    out = clean_text(good, sentencewise=True)
+    assert out is not None
+    assert "3.42" in out and "6이닝 2실점" in out
+
+
+def test_mixed_sentence_keeps_only_the_real_one():
+    """한 필드 안에서 실수치 문장은 살고 미확보 문장만 빠진다."""
+    mixed = ("구창모는 최근 3경기 평균자책점 2.70을 기록했다. "
+             "다만 투구수 세부 로그는 접근이 되지 않아 확인하지 못했다.")
+    out = clean_text(mixed, sentencewise=True)
+    assert out is not None
+    assert "2.70" in out and "접근이 되지 않" not in out
+
+
+def test_kbo_npb_have_research_targets_and_labels():
+    """[§8-14] KBO·NPB 조사 목표·리그 라벨이 있어야 한다.
+
+    없으면 `TARGETS[sport]`가 KeyError로 죽고(실제로 죽었다), 라벨이 없으면
+    "football(soccer)"로 폴백해 야구 경기를 축구로 조사한다.
+    """
+    from app.research.deep import _SCHEMA_MLB, _SPORT_LABEL, TARGETS
+
+    for sport in ("kbo", "npb"):
+        assert sport in TARGETS, f"{sport} 조사 목표 없음"
+        assert sport in _SPORT_LABEL, f"{sport} 리그 라벨 없음"
+    # MLB 기사로 새지 않게 리그를 명시하고 현지 소스를 지정한다
+    assert "Korea" in _SPORT_LABEL["kbo"] and "한국프로야구" in _SPORT_LABEL["kbo"]
+    assert "Nippon" in _SPORT_LABEL["npb"] and "日本プロ野球" in _SPORT_LABEL["npb"]
+    assert "koreabaseball.com" in TARGETS["kbo"]
+    assert "npb.jp" in TARGETS["npb"]
+    assert "do NOT return MLB" in TARGETS["kbo"]
+    assert "do NOT return MLB" in TARGETS["npb"]
+    # KBO/NPB는 야구 스키마를 쓴다 (축구 스키마면 선발투수 필드가 통째로 없다)
+    assert "home_pitcher" in _SCHEMA_MLB
+
+
+def test_kbo_targets_avoid_unavailable_metrics():
+    """KBO·NPB에 SIERA·xFIP를 요구하지 않는다.
+
+    공개 매체가 거의 제공하지 않는 지표를 요구하면 Perplexity는 200 OK로
+    '왜 못 찾았는지'를 산문으로 채워 보내고, 그것이 전량 폐기돼 재료가 0이 된다.
+    """
+    from app.research.deep import TARGETS
+
+    for sport in ("kbo", "npb"):
+        assert "SIERA" not in TARGETS[sport]
+        assert "xFIP" not in TARGETS[sport]
+        assert "ERA" in TARGETS[sport]          # 공개되는 지표는 요구한다
+
+
+# ---------------------------------------------------------------- [§8-17] 한국어/일본어 폼 표기
+
+def test_form_accepts_korean_and_japanese_notation():
+    """[§8-17] 딥서치는 **한국어로 답한다** — 필터가 영문 W/L만 받으면 통째로 버려진다.
+
+    실사고(2026-08-26 KBO): '승승패승패'가 `clean_form`에서 None이 돼
+    home/away_recent_form.form이 매번 폐기됐다. "못 가져왔다"가 아니라
+    "가져왔는데 버렸다"였다.
+    """
+    from app.research.validate import clean_form
+
+    assert clean_form("승승패승패") == "WWLWL"
+    assert clean_form("승-패-승-승-패") == "WLWWL"
+    assert clean_form("勝勝敗分勝") == "WWLDW"
+    assert clean_form("WWLWL") == "WWLWL"           # 기존 동작 유지
+    assert clean_form("W W L W L") == "WWLWL"
+
+
+def test_form_rejects_tally_without_order():
+    """⚠️ 반대 위험 — '3승 2패'는 **집계**다. 순서 정보가 없으므로 폼이 아니다.
+
+    이걸 받으면 'WWLL' 같은 가짜 시퀀스가 만들어져 최근 폼 판정이 오염된다.
+    """
+    from app.research.validate import clean_form
+
+    assert clean_form("5경기 3승 2패") is None
+    assert clean_form("최근 3승 2패") is None
+    assert clean_form("10경기 6승 4패") is None
+
+
+def test_form_still_rejects_unavailable_prose():
+    from app.research.validate import clean_form
+
+    assert clean_form("최근 폼 정보를 찾을 수 없습니다") is None
+    assert clean_form("") is None and clean_form(None) is None
+
+
+def test_kbo_prompt_stays_lean():
+    """[§8-17] 프롬프트 과잉은 채움률을 무너뜨린다 — 길이를 MLB 수준으로 묶는다.
+
+    실사고(2026-08-26): KBO 조사 목표를 962→1442자로 늘리고 "한 소스에 없으면
+    다른 곳을 확인하라"를 넣었더니 **채움률이 6/10 → 0/10으로 붕괴**했다.
+    응답이 전부 "이 턴에서 조회가 불가"라는 변명 산문이 됐다.
+    (CLAUDE.md 튜닝 기준: 채움률 급락 = 프롬프트 금지문 과잉 → 롤백)
+    """
+    from app.research.deep import TARGETS
+
+    mlb_len = len(TARGETS["mlb"])
+    for sport in ("kbo", "npb"):
+        assert len(TARGETS[sport]) <= mlb_len * 1.15, (
+            f"{sport} 조사 목표가 MLB보다 15% 넘게 길다 — 채움률 붕괴 위험")
+
+
+def test_kbo_prompt_keeps_measured_wins():
+    """롤백하되 **효과가 확인된 것**은 남긴다."""
+    from app.research.deep import TARGETS
+
+    kbo = TARGETS["kbo"]
+    assert "승/패/무" in kbo                    # 필터와 표기 계약을 맞춘다
+    assert "SEQUENCE" in kbo and "not a tally" in kbo
+    assert "1군 등록·말소" in kbo                # KBO는 말소로 결장을 알린다
+    assert "네이버 스포츠" in kbo                 # 포털이 가장 빠르다
+    assert "do NOT return MLB" in kbo
+    npb = TARGETS["npb"]
+    assert "勝/敗/分" in npb and "出場選手登録・抹消" in npb

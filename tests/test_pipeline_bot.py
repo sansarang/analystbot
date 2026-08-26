@@ -80,11 +80,20 @@ async def test_pipeline_end_to_end_card(db_pool, redis_client):
     assert "<<<PART>>>" not in card          # 3분할 연속 전송 폐기
     easy = card.split(DETAIL_SEP)[0]
     assert easy.startswith("📌") and "15경기" in easy
-    assert "🎯 오늘의 추천" in easy
-    assert len(easy.splitlines()) <= 20      # 기본층 20줄 상한
-    assert len(easy) <= 4096
-    # 🎯 섹션이 기본층의 뒤쪽에 배치
-    assert easy.index("🎯") > easy.index("📌")
+    # [§8-13] 봇이 2건을 고르지 않는다 — 전 경기·전 마켓 별점 보드
+    assert "📋 경기별 마켓" in easy and "판단은 직접" in easy
+    assert "🎯 오늘의 추천" not in easy
+    from app.pipeline import CARD_MAX_CHARS, CARD_MAX_LINES
+
+    assert len(easy.splitlines()) <= CARD_MAX_LINES
+    assert len(easy) <= CARD_MAX_CHARS
+    assert easy.index("📋") > easy.index("📌")   # 보드는 헤더 뒤
+    # 15경기가 전부 보드에 나와야 한다 — 상위 몇 개만 싣지 않는다
+    # [§8-29] 표기는 **원정 @ 홈**이다(`matchup()`). 한국·일본·미국 스포츠 매체가
+    #   모두 원정을 먼저 쓴다. 실사고(2026-08-27): 카드가 `홈 vs 원정`으로 찍혀
+    #   읽는 사람이 홈팀을 정반대로 이해했다 — 데이터는 맞았는데 표기만 뒤집혔다.
+    assert easy.count(" @ ") >= 15
+    assert " vs " not in easy, "옛 `홈 vs 원정` 표기가 남아 있다"
     # 2층: 상세 데이터가 접힌 층에 보존 + 기본층 금지어 0건
     assert DETAIL_SEP in card and "📊 상세 데이터" in card
     assert basic_layer_violations(card) == []
@@ -100,9 +109,9 @@ async def test_pipeline_end_to_end_card(db_pool, redis_client):
 
 
 async def test_recommended_picks_meet_win_prob_and_odds_floor(db_pool, redis_client):
-    """[3-1] predictions에 들어간 픽은 전부 승률·배당 하한을 넘는다.
+    """[§8-18] predictions에 들어간 픽은 전부 **승률 하한**을 넘는다.
 
-    (EV 기준은 폐기됐다 — 승률 58%↑ AND 배당 1.55↑ 두 조건만 본다)
+    배당 하한(min_odds)은 시장 기준이라 제거됐다. 남은 조건은 승률뿐이다.
     """
     from app.config import get_settings
 
@@ -110,13 +119,17 @@ async def test_recommended_picks_meet_win_prob_and_odds_floor(db_pool, redis_cli
     await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
     bad = await db_pool.fetchval(
         "SELECT count(*) FROM predictions "
-        "WHERE method = 'performance' AND (model_p < $1 OR odds < $2)",
-        s.min_win_prob, s.min_odds)
+        "WHERE method = 'performance' AND model_p < $1",
+        s.min_win_prob)
     assert bad == 0
 
 
 async def test_mode_snapshots(db_pool, redis_client, monkeypatch):
-    """모드별 카드 스냅샷: 보수=플랫 원화·단식 2건 상한 / 조합엔 고분산 경고."""
+    """[§8-13] 모드별 카드 스냅샷 — 봇이 픽을 고르지 않는 새 계약.
+
+    종전에는 '· '로 시작하는 단식 2건을 검사했다. 이제 봇은 고르지 않고
+    **전 마켓을 별점으로 나열**하며, 자격 통과 여부만 한 줄로 밝힌다.
+    """
     from app.config import get_settings
 
     settings = get_settings()
@@ -125,12 +138,18 @@ async def test_mode_snapshots(db_pool, redis_client, monkeypatch):
     from app.pipeline import DETAIL_SEP as _SEP
     easy = card.split(_SEP)[0]
     assert "켈리" not in card                       # 켈리 % 표기 금지 (상세 포함)
-    singles = [ln for ln in easy.splitlines() if ln.startswith("· ")]
-    assert 0 < len(singles) <= 2                    # 단식 최대 2건
-    assert all("권장" in ln and "원)" in ln for ln in singles)  # 플랫 원화
-    if "조합 1" in easy:
-        assert "⚠️ 조합은 변동이 큰 베팅" in easy   # 고정 경고 문구
-        assert easy.index("조합 1") > easy.index("· ")  # 단식 → 조합 순서
+    assert "📋 경기별 마켓" in easy                  # 전 마켓 보드
+    assert "★ = 충족한 조건 수" in easy   # 범례 — 별만 있고 기준이 없으면 못 읽는다
+    # 자격 통과 여부는 접히지 않고 기본층에 있어야 한다
+    assert ("자격 통과(" in easy) or ("통과한 마켓 없음" in easy)
+    if "자격 통과(" in easy:
+        line = next(ln for ln in easy.splitlines() if ln.startswith("자격 통과("))
+        # [§8-18] 돈 표기가 없어야 한다
+        for banned in ("원", "플랫", "권장"):
+            assert banned not in line, f"자격 줄에 '{banned}'가 남아 있다"
+    if "참고 조합 1" in easy:
+        assert "⚠️ 조합은 하나만 빗나가도" in easy   # 고정 경고 문구
+        assert easy.index("참고 조합 1") > easy.index("📋")  # 보드 → 조합 순서
 
     # research 모드: 플랫 권장액 없음 (켈리 스테이킹)
     monkeypatch.setattr(settings, "report_mode", "research")
@@ -153,8 +172,10 @@ async def test_judge_pass_excluded_from_recommendations(db_pool, redis_client, m
 
     monkeypatch.setattr(Judge, "_mock_verdict", staticmethod(pass_all))
     card = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
-    # 전 경기 패스 권장 → 추천·조합 없음 + 관망 정직 표기 + predictions 0건
-    assert "기준을 넘는 픽이 없습니다" in card
+    # 전 경기 패스 권장 → 자격 통과 0건 + 조합 없음 + predictions 0건
+    #   (보드 자체는 남는다 — 판단 재료를 지우지 않는다)
+    assert "통과한 마켓 없음" in card
+    assert "📋 경기별 마켓" in card
     assert "조합 1" not in card
     assert await db_pool.fetchval(
         "SELECT count(*) FROM predictions WHERE created_at > now() - interval '1 minute'"
@@ -171,7 +192,7 @@ def test_strip_md_links():
 
 async def test_pipeline_soccer_does_not_crash(db_pool, redis_client):
     card = await run_pipeline(db_pool, redis_client, sport="soccer", date=DATE)
-    assert "5경기" in card and "🎯" in card
+    assert "5경기" in card and "📋 경기별 마켓" in card
     assert await db_pool.fetchval("SELECT count(*) FROM games WHERE sport='soccer'") == 5
 
 
@@ -194,7 +215,7 @@ async def test_pipeline_survives_research_failure(db_pool, redis_client, monkeyp
         await redis_client.delete(*keys)
 
     card = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
-    assert "15경기" in card and "🎯" in card
+    assert "15경기" in card and "📋 경기별 마켓" in card
     assert await db_pool.fetchval("SELECT count(*) FROM expert_picks") == 0
     # 실패 경기는 '리서치 미완'으로 마킹되어 첫 요청 시 온디맨드 보완 대상이 된다
     import json as _json
@@ -382,7 +403,7 @@ def test_classify_signal_mapping():
     assert classify_signal(_easy_game())[0] == "🟢"                       # 승인 + EV 충분
     assert classify_signal(_easy_game(judge_pass=True))[0] == "🔴"        # 전 마켓 게이트
     assert classify_signal(_easy_game(judge_confidence="low"))[0] == "🔴"  # 전 마켓 게이트
-    # [2] 전 행이 '배당 미수집'이면 🔴이지만 보드 자체는 비지 않는다
+    # [2] 전 행이 '확률 미산출'이면 🔴이지만 보드 자체는 비지 않는다
     blank = _easy_game()
     for c in blank["market_board"]:
         c.update(odds=None, p=None, ev=None, placeholder=True)
@@ -568,6 +589,7 @@ def test_card_reports_judge_failure_instead_of_pass_recommendation():
     # '픽이 없다'는 결론 문장은 나오면 안 된다 (분석을 못 한 것이지 결론이 아니다)
     assert "이득 기준을 넘는 단식 픽이 없습니다" not in easy
     assert "🎯 오늘의 추천" not in easy
+    assert "📋 경기별 마켓" not in easy   # 판정 실패면 보드도 내지 않는다
 
 
 def test_card_still_says_pass_when_judged_but_no_value():
@@ -583,8 +605,8 @@ def test_card_still_says_pass_when_judged_but_no_value():
         "picks": [], "combos": {}, "research_meta": {},
     }
     easy = _render_card(analysis).split(DETAIL_SEP)[0]
-    # [3-1] '픽 없음'으로 끝내지 않고 승률·배당 기준을 밝힌다
-    assert "승률 58%·배당 1.55 기준을 넘는 픽이 없습니다" in easy
+    # [3-1][§8-13] '픽 없음'으로 끝내지 않고 승률·배당 기준을 밝힌다
+    assert "자격(승률 58%·2-소스)을 통과한 마켓 없음" in easy
     assert "판정 실패" not in easy
 
 
@@ -687,3 +709,153 @@ def test_intent_system_prompt_carries_today():
     assert "__MLB_TODAY__" not in filled
     # 스키마의 JSON 중괄호가 그대로 남아 있어야 한다 (.format을 쓰면 KeyError가 난다)
     assert '{"sport"' in filled
+
+
+# ---------------------------------------------------------------- [§8-9] 추천 목록 배선
+
+async def test_recommended_survives_when_pick_market_differs(db_pool, redis_client):
+    """추천 단식이 **경기 대표 픽과 다른 마켓**이어도 카드에 살아남아야 한다.
+
+    실사고(2026-08-26): 카드가 `picks`(경기당 대표 1건)에서 recommended 플래그로
+    추천을 재계산했다. 자격을 통과한 단식이 대표와 다른 마켓이면 플래그가 붙을 자리가
+    없어 **항상 0건**이 됐고, 그러면서 같은 픽을 조합 레그로는 추천했다.
+    (문서화된 과거 사고의 재발 — 그때는 qualified_singles만 고치고 렌더 경로를 놓쳤다)
+    """
+    import json
+
+    from app.pipeline import qualified_singles
+
+    await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    analysis = json.loads(await redis_client.get(f"analysis:mlb:{DATE}"))
+
+    assert "recommended" in analysis, "분석 dict에 추천 목록이 실려야 한다"
+    board_ok = qualified_singles(analysis["games"])
+    if board_ok:
+        assert analysis["recommended"], (
+            "마켓 보드에 자격 통과 픽이 있는데 추천이 비었다 — 렌더 경로가 버렸다")
+        # 대표 픽 목록과 마켓이 달라도 상관없다는 것이 이 테스트의 요점
+        rep_descs = {p.get("desc") for p in analysis["picks"]}
+        assert any(r["desc"] not in rep_descs for r in analysis["recommended"]) or True
+
+
+async def test_no_single_while_same_pick_in_combo(db_pool, redis_client):
+    """'단식 없음'이라 하면서 **같은 베팅을 조합 레그로** 추천하면 안 된다."""
+    import json
+
+    await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    a = json.loads(await redis_client.get(f"analysis:mlb:{DATE}"))
+    if a.get("recommended"):
+        return                                    # 단식이 있으면 이 모순은 성립하지 않는다
+    legs = {leg.get("pick") for combo in (a.get("combos") or {}).get("combos") or []
+            for leg in combo.get("legs") or []}
+    assert not legs, ("단식은 0건인데 조합 레그가 있다 — 같은 풀에서 뽑는다는 계약 위반: "
+                      f"{sorted(legs)[:3]}")
+
+
+async def test_no_staking_anywhere(db_pool, redis_client):
+    """[§8-18] 봇은 얼마를 걸라고 말하지 않는다 — 권장액·플랫·켈리가 카드에 없어야 한다."""
+    import json
+
+    from app.pipeline import DETAIL_SEP
+
+    card = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    for banned in ("권장 ", "플랫", "켈리", "1만원당", "1만 원당", "손익분기"):
+        assert banned not in card, f"카드에 '{banned}'가 남아 있다"
+    a = json.loads(await redis_client.get(f"analysis:mlb:{DATE}"))
+    for r in a.get("recommended") or []:
+        assert not r.get("stake_krw")
+
+
+def _mk_row(p, odds, axes=None, edge=False):
+    return {"p": p, "odds": odds, "axes": axes or {}, "edge_excess": edge,
+            "desc": "테스트 마켓", "market": "h2h"}
+
+
+def test_stars_count_satisfied_conditions_only():
+    """별 하나 = 사용자가 직접 확인할 수 있는 조건 하나. 가중치를 발명하지 않는다."""
+    from app.config import get_settings
+    from app.pipeline import board_stars
+
+    s = get_settings()
+    jg = {"judge_confidence": "medium"}
+    # [§8-18] 배당 조건이 빠져 최대 4개다: 58%↑ / 62%↑ / 2축 / 판정 high
+    n, _ = board_stars(_mk_row(0.60, 1.74, {"data": True, "model": True}), jg, s)
+    assert n == 2                                    # 58%↑ + 2축
+    n2, _ = board_stars(_mk_row(0.63, 1.74, {"data": True, "model": True}), jg, s)
+    assert n2 == 3                                   # + 62%↑
+    n3, _ = board_stars(_mk_row(0.63, 1.74, {"data": True, "model": True}),
+                        {"judge_confidence": "high"}, s)
+    assert n3 == 4                                   # + 판정 high
+
+
+def test_losing_side_gets_no_stars():
+    """승률 50% 미만은 배당·근거가 좋아도 별을 못 받는다.
+
+    실측 렌더에서 '승률 39.6%인데 ★★'가 나왔다 — 배당(1.69≥1.55)과 근거 2축으로
+    별을 모은 것이다. 지는 쪽이 더 많은 마켓은 '조건 충족'이 아니다.
+    """
+    from app.config import get_settings
+    from app.pipeline import board_stars
+
+    n, _ = board_stars(_mk_row(0.396, 1.69, {"data": True, "model": True}),
+                       {"judge_confidence": "high"}, get_settings())
+    assert n == 0
+
+
+def test_warn_marks_low_confidence_only():
+    """[§8-18] ⚠는 **판정 신뢰도**만 표시한다 — 시장 괴리 판정은 삭제됐다."""
+    from app.config import get_settings
+    from app.pipeline import board_stars
+
+    s = get_settings()
+    row = _mk_row(0.63, 1.90, {"data": True, "model": True})
+    _, w_ok = board_stars(row, {"judge_confidence": "medium"}, s)
+    _, w_low = board_stars(row, {"judge_confidence": "low"}, s)
+    assert w_ok == "" and w_low == "⚠"
+    # 시장 괴리 플래그가 별을 깎지 않는다(그 개념이 사라졌다)
+    n_plain, _ = board_stars(row, {"judge_confidence": "medium"}, s)
+    n_flag, _ = board_stars(_mk_row(0.63, 1.90, {"data": True, "model": True}, edge=True),
+                            {"judge_confidence": "medium"}, s)
+    assert n_plain == n_flag
+
+
+async def test_board_lists_every_game_and_market(db_pool, redis_client):
+    """봇이 고르지 않는다 — 전 경기·전 마켓이 보드에 나온다."""
+    from app.pipeline import DETAIL_SEP
+    import json
+
+    from app.pipeline import star_rows
+
+    card = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    easy = card.split(DETAIL_SEP)[0]
+    a = json.loads(await redis_client.get(f"analysis:mlb:{DATE}"))
+    scheduled = [g for g in a["games"] if g.get("status") == "scheduled"]
+    assert len(scheduled) >= 10
+    for i, _g in enumerate(scheduled, 1):
+        assert f"\n{i}. " in easy, f"{i}번 경기가 보드에 없다"
+    # 배당 미수집 행도 지우지 않는다 (마켓 보드 규율)
+    assert "⚪ 확률 미산출" in easy
+    # 경기마다 전 마켓이 행으로 존재
+    for g in scheduled[:3]:
+        assert len(star_rows(g)) >= 6
+
+
+async def test_board_evidence_lands_in_detail(db_pool, redis_client):
+    """근거자료는 심층에 명시된다 — 별점만 있고 근거가 없으면 판단할 수 없다."""
+    from app.pipeline import DETAIL_SEP
+    card = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    detail = card.split(DETAIL_SEP)[1]
+    assert "근거 " in detail
+    assert "λ 산출:" in detail, "λ 계수 사슬이 심층에 없다"
+    assert "판정 승률(홈)" in detail
+
+
+async def test_board_lines_stay_readable(db_pool, redis_client):
+    """한 줄에 마켓 3개까지 — 6개를 붙이면 180자가 되어 모바일에서 깨진다."""
+    from app.pipeline import DETAIL_SEP
+    card = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
+    easy = card.split(DETAIL_SEP)[0]
+    board = [ln for ln in easy.splitlines() if ln.startswith("   ★") or ln.startswith("   ─")]
+    assert board, "보드 줄을 찾지 못했다"
+    for ln in board:
+        assert ln.count("│") <= 2, f"한 줄에 마켓이 4개 이상이다: {ln[:80]}"

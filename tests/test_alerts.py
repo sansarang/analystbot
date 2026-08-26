@@ -246,3 +246,103 @@ def test_verdict_calls_out_missing_lambda():
 
 def test_verdict_clean_when_all_ok():
     assert "정상" in overall_verdict([StageResult("판정", 15, 15)])
+
+
+# ---------------------------------------------------------------- [§8-10] 단계 계측 커버리지
+
+def test_all_pipeline_stages_are_instrumented():
+    """파이프라인의 모든 주요 단계가 `record()`로 계측돼야 한다.
+
+    실사고(2026-08-26 점검): 12단계 중 **5개만** 계측돼 있었다. 결장 0/15 사고가
+    늦게 발견된 이유가 이것이다 — 조용히 비어도 어디에도 기록되지 않았다.
+    조용한 실패는 실패가 아니라 **성공으로 보인다**는 것이 이 프로젝트의 최대 위험이다.
+    """
+    import re
+    from pathlib import Path
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    recorded = set(re.findall(r'await record\("([^"]+)"', src))
+    required = {
+        "경기 적재", "배당 수집", "리서치", "판정", "λ 산출",
+        "날씨", "결장", "구장", "라인업", "픽 선정", "조합 구성", "서술",
+    }
+    missing = required - recorded
+    assert not missing, f"계측이 빠진 단계: {sorted(missing)}"
+
+
+def test_every_stage_declares_impact():
+    """실패 시 '무엇이 나빠지는가'를 반드시 적는다 — 알림이 행동으로 이어지게."""
+    import re
+    from pathlib import Path
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    # ⚠️ 블록 경계는 **전방탐색**으로 잡는다. 소비형으로 쓰면 연속된 record() 중
+    #    뒤쪽이 앞 매치에 먹혀 검사에서 통째로 빠진다(실제로 '결장'이 빠졌었다).
+    blocks = re.findall(r'await record\("([^"]+)"(.*?)(?=\n\s*(?:await |try:|if |#|\w+ =))',
+                        src, re.S)
+    names = [n for n, _ in blocks]
+    assert len(blocks) >= 12, f"record 블록을 {len(blocks)}개만 찾았다 — 정규식 점검 필요"
+    for key in ("결장", "날씨", "구장", "라인업", "픽 선정", "조합 구성"):
+        assert key in names, f"'{key}' 블록이 검사 대상에서 빠졌다"
+    for name, body in blocks:
+        assert "impact=" in body, f"'{name}' 단계에 impact 설명이 없다"
+
+
+async def test_stage_records_appear_in_analysis(db_pool, redis_client):
+    """실제 파이프라인 1회 실행에서 계측이 실제로 쌓이는지 — 선언만으로는 부족하다."""
+    import json
+
+    from app.pipeline import run_pipeline
+
+    await run_pipeline(db_pool, redis_client, "mlb", "2026-08-22", force_refresh=True)
+    a = json.loads(await redis_client.get("analysis:mlb:2026-08-22"))
+    names = {st["name"] for st in a.get("stages") or []}
+    for key in ("경기 적재", "배당 수집", "리서치", "λ 산출", "픽 선정", "조합 구성"):
+        assert key in names, f"'{key}' 계측이 실행 결과에 없다 (수집된: {sorted(names)})"
+
+
+def test_zero_picks_is_not_a_failure():
+    """[§8-15] 추천 0건은 **정상 결과**다 — 실패로 알리면 안 된다.
+
+    실사고(2026-08-26 14:48): KBO 1경기가 판정 저신뢰로 전 마켓 제외되자
+    '픽 선정 0/1 실패' 알림이 나갔다. "오늘은 걸 만한 게 없다"는 정상 결론이
+    매번 🔴으로 나가면 알림이 무의미해진다.
+    진짜 실패는 **마켓 보드 자체가 비었을 때**다.
+    """
+    import re
+    from pathlib import Path
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    m = re.search(r'await record\("픽 선정",\s*([^,]+),', src)
+    assert m, "픽 선정 계측을 찾지 못했다"
+    assert "recommended" not in m.group(1), (
+        "추천 건수를 성공 지표로 쓰고 있다 — 0건이 실패로 알림된다")
+    assert "_board_rows" in m.group(1)
+
+
+def test_lineup_stage_is_not_disabled_by_sport():
+    """[§8-16] 라인업 계측을 종목으로 끄지 않는다.
+
+    한때 "KBO엔 라인업 수집기가 없으니 계측을 끄자"고 고쳤는데 방향이 틀렸다.
+    **소스가 없는 게 아니라 경로가 없었을 뿐이다** — statsapi는 MLB 전용이지만
+    딥서치(Perplexity `lineup` 필드 + Grok 속보)가 KBO·NPB의 라인업 소스다.
+    계측을 끄면 "라인업을 못 받고 있다"는 사실 자체가 보이지 않게 된다.
+    """
+    from pathlib import Path
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    i = src.index('await record("라인업"')
+    guard = src[max(0, i - 700):i]
+    assert 'sport in ("mlb", "soccer")' not in guard, "라인업 계측이 종목으로 막혀 있다"
+    # 딥서치 폴백 경로가 실제로 있어야 한다
+    assert '_lu.get("status") == "confirmed"' in src, "딥서치 라인업 폴백이 없다"
+
+
+def test_combo_stage_only_fails_with_legs():
+    """승인 레그가 0이면 조합 0이 정상이다 — 그때는 알리지 않는다."""
+    import re
+    from pathlib import Path
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    i = src.index('await record("조합 구성"')
+    assert "if _legs:" in src[max(0, i - 400):i], "레그 유무 가드가 없다"

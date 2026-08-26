@@ -32,6 +32,14 @@ UNAVAILABLE_MARKERS = (
     "제공되지 않", "확보되지 않", "포함되어 있지 않", "노출되지 않", "제시하지 않",
     "찾기 어려", "설명하기 어려", "계산할 수 없", "파악할 수 없", "집계할 수 없",
     "데이터가 없", "로그가 없", "직접 데이터가 없", "한계가 있",
+    # [§8-14] 2026-08-26 KBO 실호출에서 통과해 버린 미탐 표현.
+    #   실제 응답: "…세부 로그에 현재 바로 접근이 되지 않아, 구체적인 최근 5경기
+    #   ERA·피OPS·평균 소화 이닝을 숫자로 정리하기 어렵다"
+    #   → 문장에 숫자([13]·5경기)가 있어 숫자 요구 조건을 통과했고,
+    #     "접근이 되지 않"·"정리하기 어렵"이 목록에 없어 미확보 판정도 피했다.
+    #   ⚠️ 반대 위험(정상 문장 폐기)을 함께 재야 한다 — 아래 테스트가 그 역할이다.
+    "접근이 되지 않", "접근되지 않", "정리하기 어렵", "정리할 수 없",
+    "확보하기 어렵", "수집되지 않", "기재되어 있지 않", "명시되어 있지 않",
 )
 
 # 결장 정보에 정상적으로 등장하는 "불가" 표현 — 미확보 산문으로 오판하지 않도록 제외
@@ -162,15 +170,47 @@ def clean_text(text, *, require_number: bool = True, sentencewise: bool = False)
     return None
 
 
+# [§8-17] 한국어·일본어 승패 표기 → W/L/D.
+#   실사고(2026-08-26 KBO): 딥서치는 한국어로 답하는데 필터가 **영문 W/L만** 받아
+#   '승승패승패'가 통째로 폐기됐다. "못 가져왔다"가 아니라 "가져왔는데 버렸다"였다.
+#   구분자(-·,·공백)도 흔하다: '승-패-승-승-패'.
+_FORM_CHARS = {"승": "W", "패": "L", "무": "D",      # 한국어
+               "勝": "W", "敗": "L", "分": "D",      # 일본어
+               "W": "W", "L": "L", "D": "D",
+               "w": "W", "l": "L", "d": "D"}
+_FORM_SEP = " -·,/|>→"
+
+
 def clean_form(value) -> str | None:
-    """폼 문자열에서 W/L/D 시퀀스만 추출 ('WWLWL (최근 5경기, 최신부터)' → 'WWLWL')."""
+    """폼 문자열에서 W/L/D 시퀀스 추출. 한국어(승패무)·일본어(勝敗分)도 받는다.
+
+    'WWLWL (최근 5경기, 최신부터)' → 'WWLWL'
+    '승승패승패' · '승-패-승-승-패' → 'WWLWL' / 'WLWWL'
+    ⚠️ '5경기 3승 2패'처럼 **집계 서술**은 순서 정보가 없다 — 폼이 아니므로 받지 않는다.
+    """
     if not value:
         return None
     s = str(value).strip()
     if is_unavailable_prose(s):
         return None
     m = _FORM_RE.search(s.upper())
-    return m.group(1) if m else None
+    if m:
+        return m.group(1)
+    # 한/일 표기: 승패무와 구분자만으로 이뤄진 연속 구간을 찾는다.
+    #   숫자가 앞에 붙은 '3승 2패'는 집계이므로 제외한다(숫자+승패 패턴 차단).
+    if re.search(r"\d\s*[승패무勝敗分]", s):
+        return None
+    best = ""
+    cur = ""
+    for ch in s:
+        if ch in _FORM_CHARS:
+            cur += _FORM_CHARS[ch]
+        elif ch in _FORM_SEP and cur:
+            continue                      # 구분자는 시퀀스를 끊지 않는다
+        else:
+            best, cur = (cur if len(cur) > len(best) else best), ""
+    best = cur if len(cur) > len(best) else best
+    return best[:10] if 2 <= len(best) <= 10 else None
 
 
 def clean_number(value) -> float | int | None:
@@ -190,7 +230,14 @@ _TEXT_FIELDS_NUM = ("last5", "note", "home_split", "away_split", "last5_detail",
                     "splits", "bullpen", "h2h_history")
 
 # [4-1] 신규 자유서술 필드 — 문장 필터 대상(수치 요구 없음: 정성 정보라도 가치가 있다)
-_TEXT_FIELDS_FREE = ("rotation_plan", "park", "weather")
+#
+# [§8-7] motivation·schedule_load·umpire·line_move_reason도 여기에 둔다.
+#   정책 판단 근거(CLAUDE.md: "라벨이 무엇을 단언하는가로 나눈다"):
+#   이 넷은 **구간을 단언하지 않는다** — last5("최근 5경기")처럼 표본 범위를
+#   못 박는 라벨이 아니라 상황 서술이다. 따라서 전량 폐기가 아니라 문장 필터가 맞다.
+#   미확보 문장("정보를 찾을 수 없습니다")만 걷어내고 나머지는 살린다.
+_TEXT_FIELDS_FREE = ("rotation_plan", "park", "weather",
+                     "motivation", "schedule_load", "umpire", "line_move_reason")
 _NUM_FIELDS = ("runs_avg", "gf5", "ga5", "rank", "era_recent", "era_season")
 
 
@@ -273,6 +320,29 @@ def sanitize_research(data: dict | None, sport: str = "mlb") -> tuple[dict, list
 
     if str(data.get("bullpen_overused") or "").strip() in ("홈", "원정", "양팀"):
         out["bullpen_overused"] = data["bullpen_overused"].strip()
+
+    # [§8-16] 라인업 — **'확정'은 강한 단언이다.** 상태값이 정확히 confirmed/projected일
+    #   때만 받고, 명단 문장은 문장 필터를 통과한 것만 남긴다.
+    #   예상을 확정으로 받으면 '최종 픽' 자격이 잘못 부여된다(라인업 2단계 규율).
+    lu = data.get("lineup")
+    if isinstance(lu, dict):
+        status = str(lu.get("status") or "").strip().lower()
+        if status in ("confirmed", "projected"):
+            block = {"status": status}
+            for side in ("home", "away"):
+                txt = clean_text(lu.get(side), require_number=False, sentencewise=True)
+                if txt:
+                    block[side] = txt
+            src = str(lu.get("source") or "").strip()
+            if src and src.lower() not in ("null", "none", "unknown"):
+                block["source"] = src[:80]
+            # 명단이 한쪽도 없으면 '확정'이라 주장할 근거가 없다 — 상태만 남기지 않는다
+            if block.get("home") or block.get("away"):
+                out["lineup"] = block
+            else:
+                dropped.append("lineup(명단 없음)")
+        elif lu:
+            dropped.append("lineup")
 
     # 확률 모델(포아송 λ)이 직접 쓰는 수치 필드 — 숫자로 파싱되면 그대로 보존한다.
     # 산문 검증(문장 필터)은 적용하지 않는다: 수치는 산문이 아니다.

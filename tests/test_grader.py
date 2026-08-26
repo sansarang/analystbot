@@ -147,9 +147,9 @@ async def test_performance_report_shows_both_methods(db_pool):
     await _pred(db_pool, "legacy", "loss", -1.0)
 
     out = await render_performance(db_pool)
-    assert "판정 방식 비교" in out
-    assert "경기력 기반(현행)" in out and "시장 반영(참고)" in out
-    assert "200~300픽 전에는 우열을 판단하지 않습니다" in out
+    assert "방식 비교" in out
+    assert "경기력 기반(현행)" in out and "참고 방식" in out
+    assert "200~300건 전에는 우열을 판단하지 않습니다" in out
 
 
 # ---------------------------------------------------------------- [§7] Brier·캘리브레이션
@@ -268,7 +268,7 @@ async def test_grading_job_covers_all_sports(monkeypatch):
     monkeypatch.setattr(sched, "grade_date", fake_grade_date)
     monkeypatch.setattr(sched, "get_pool", _fake_pool)
     await sched.grading_job()
-    assert seen == ["mlb", "soccer", "kbo"]
+    assert seen == ["mlb", "soccer", "kbo", "npb"]   # [§8-14] NPB 추가
 
 
 @pytest.mark.asyncio
@@ -287,7 +287,7 @@ async def test_grading_job_continues_after_one_sport_fails(monkeypatch):
     monkeypatch.setattr(sched, "grade_date", fake_grade_date)
     monkeypatch.setattr(sched, "get_pool", _fake_pool)
     out = await sched.grading_job()
-    assert seen == ["mlb", "soccer", "kbo"]
+    assert seen == ["mlb", "soccer", "kbo", "npb"]   # [§8-14] NPB 추가
     assert "soccer" in out and "kbo" in out and "mlb" not in out
 
 
@@ -304,3 +304,25 @@ def test_jobs_survive_missed_run_window():
         assert job.max_instances == 1, f"{job.id}: 동시 실행 금지"
     pf = {j.id: j for j in scheduler.get_jobs()}["prefetch_dawn"]
     assert pf.misfire_grace_time >= 3600, "일 1회 잡은 넉넉한 유예가 필요하다"
+
+
+# ---------------------------------------------------------------- [§8-18] CLV 제거
+
+def test_clv_is_removed():
+    """[§8-18] CLV(마감 배당 대비 가치) 수집을 삭제했다.
+
+    우리 가격을 시장 마감가와 비교하는 지표라 **시장에 앵커링**된다.
+    "시장보다 좋은 가격을 잡았나"가 아니라 **"우리가 맞혔나"**가 유일한 질문이다.
+    """
+    import app.grader as g
+
+    assert not hasattr(g, "closing_odds_for")
+    assert not hasattr(g, "clv_ledger")
+
+
+def test_grading_records_result_without_money(db_pool):
+    """채점은 적중/빗나감만 남긴다 — 마감 배당을 더 이상 채우지 않는다."""
+    from pathlib import Path
+
+    src = Path("app/grader.py").read_text(encoding="utf-8")
+    assert "closing_odds = $" not in src, "채점이 아직 마감 배당을 쓰고 있다"

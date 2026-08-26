@@ -1,0 +1,570 @@
+<title>상태 대조 분석봇</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #F7F4EE;
+    --card: #FFFDF8;
+    --ink: #1A1815;
+    --ink-soft: #5C564C;
+    --rule: #DDD6C7;
+    --rule-soft: #EAE4D7;
+    --home: #A8323C;
+    --home-soft: #F6E7E6;
+    --away: #2E5A87;
+    --away-soft: #E4ECF4;
+    --warn: #9A6B12;
+    --warn-soft: #F7EEDA;
+    --code-bg: #211E1A;
+    --code-ink: #E8E2D6;
+    --code-key: #D9A441;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #16140F;
+      --card: #1E1B16;
+      --ink: #E6E0D4;
+      --ink-soft: #9A9284;
+      --rule: #353026;
+      --rule-soft: #262219;
+      --home: #D4707A;
+      --home-soft: #2E1D1E;
+      --away: #7BA6CF;
+      --away-soft: #17242F;
+      --warn: #D9A441;
+      --warn-soft: #2B2211;
+      --code-bg: #0E0C09;
+      --code-ink: #E8E2D6;
+      --code-key: #D9A441;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #16140F;
+    --card: #1E1B16;
+    --ink: #E6E0D4;
+    --ink-soft: #9A9284;
+    --rule: #353026;
+    --rule-soft: #262219;
+    --home: #D4707A;
+    --home-soft: #2E1D1E;
+    --away: #7BA6CF;
+    --away-soft: #17242F;
+    --warn: #D9A441;
+    --warn-soft: #2B2211;
+    --code-bg: #0E0C09;
+    --code-ink: #E8E2D6;
+    --code-key: #D9A441;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Noto Sans KR", -apple-system, sans-serif;
+    line-height: 1.8;
+    margin: 0;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 56px 24px 100px; }
+
+  header.doc { margin-bottom: 56px; }
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 0 0 16px;
+  }
+  h1 {
+    font-family: "Gowun Batang", serif;
+    font-size: clamp(32px, 6vw, 46px); line-height: 1.3; margin: 0 0 20px;
+    font-weight: 700; text-wrap: balance; letter-spacing: -0.01em;
+  }
+  .lede { color: var(--ink-soft); max-width: 60ch; margin: 0; font-size: 17px; }
+  .rule-thick { border: 0; border-top: 3px double var(--ink); margin: 28px 0 0; }
+
+  h2 {
+    font-family: "Gowun Batang", serif;
+    font-size: 26px; font-weight: 700; margin: 72px 0 6px;
+    padding-top: 24px; border-top: 1px solid var(--rule);
+    letter-spacing: -0.01em;
+  }
+  h2 .no {
+    font-family: "JetBrains Mono", monospace; font-size: 12px;
+    color: var(--ink-soft); display: block; margin-bottom: 8px;
+    letter-spacing: 0.14em; font-weight: 400;
+  }
+  h3 { font-size: 17px; font-weight: 700; margin: 34px 0 6px; }
+  p { margin: 12px 0; max-width: 66ch; }
+  .muted { color: var(--ink-soft); }
+  strong { font-weight: 700; }
+
+  figure { margin: 32px 0; }
+  figure svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+  figcaption {
+    font-size: 13.5px; color: var(--ink-soft); margin-top: 14px;
+    border-left: 3px solid var(--rule); padding-left: 12px; max-width: 68ch;
+  }
+  .scroll { overflow-x: auto; }
+
+  pre {
+    background: var(--code-bg); color: var(--code-ink);
+    font-family: "JetBrains Mono", monospace; font-size: 12.5px; line-height: 1.7;
+    padding: 20px 22px; border-radius: 3px; overflow-x: auto; margin: 18px 0;
+  }
+  pre .k { color: var(--code-key); }
+  pre .c { color: #7D7466; }
+  code { font-family: "JetBrains Mono", monospace; }
+  p code, li code, td code {
+    background: var(--rule-soft); padding: 1px 6px; border-radius: 2px; font-size: 13px;
+  }
+
+  table {
+    border-collapse: collapse; width: 100%; font-size: 14px; margin: 18px 0;
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    text-align: left; font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-soft); border-bottom: 2px solid var(--ink); padding: 9px 12px;
+    font-family: "JetBrains Mono", monospace; font-weight: 500; white-space: nowrap;
+  }
+  td { border-bottom: 1px solid var(--rule); padding: 11px 12px; vertical-align: top; }
+  td.mono, .mono { font-family: "JetBrains Mono", monospace; font-size: 13px; }
+  .up { color: var(--home); font-weight: 700; }
+  .down { color: var(--away); font-weight: 700; }
+
+  .callout {
+    background: var(--card); border: 1px solid var(--rule);
+    border-left: 4px solid var(--warn);
+    border-radius: 3px; padding: 16px 20px; margin: 24px 0; font-size: 14.5px;
+  }
+  .callout strong { color: var(--warn); }
+  .callout p { margin: 6px 0; }
+
+  ul, ol { padding-left: 24px; margin: 12px 0; }
+  li { margin: 8px 0; max-width: 64ch; }
+
+  /* 카드 미리보기 */
+  .matchcard {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 3px;
+    padding: 24px 26px; margin: 24px 0;
+    font-family: "JetBrains Mono", monospace; font-size: 13px; line-height: 1.9;
+  }
+  .matchcard .hd {
+    font-family: "Noto Sans KR", sans-serif; font-size: 15px; font-weight: 700;
+    border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 14px;
+  }
+  .matchcard table { font-size: 12.5px; margin: 0; }
+  .matchcard th { border-bottom: 1px solid var(--rule); font-size: 10.5px; }
+  .matchcard td { border-bottom: 1px solid var(--rule-soft); padding: 8px 10px; }
+  .matchcard .concl {
+    margin-top: 16px; padding-top: 14px; border-top: 2px solid var(--ink);
+    font-family: "Noto Sans KR", sans-serif; font-size: 14px; line-height: 1.75;
+  }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin: 22px 0; }
+  .box {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 3px;
+    padding: 18px 20px;
+  }
+  .box h4 { margin: 0 0 8px; font-size: 15px; }
+  .box p { font-size: 13.5px; margin: 5px 0; color: var(--ink-soft); }
+
+  .tag {
+    display: inline-block; font-family: "JetBrains Mono", monospace; font-size: 11px;
+    background: var(--rule-soft); border-radius: 2px;
+    padding: 2px 8px; margin-right: 6px; letter-spacing: 0.03em;
+  }
+  .tag.ok { background: var(--away-soft); color: var(--away); }
+  .tag.no { background: var(--home-soft); color: var(--home); }
+</style>
+
+<div class="wrap">
+<header class="doc">
+  <p class="eyebrow">System Architecture · v2 · 상태 대조 방식</p>
+  <h1>상태 대조 분석봇</h1>
+  <p class="lede">날짜와 두 팀만 주면 다섯 칸 카드를 채우고 결론까지 내는 봇. 확률을 만들지 않고, 두 팀 중 어느 쪽이 오늘 더 나은 상태로 나오는가만 판정한다.</p>
+  <hr class="rule-thick">
+</header>
+
+<h2><span class="no">서론</span>왜 확률을 버리는가</h2>
+<p>기존 시스템은 λ 포아송으로 승률 숫자를 만들었다. 3시즌 11,803 레코드로 학습한 결과 검증 정확도 <strong>52.3%</strong>, Brier 0.2489 — 동전 던지기(50%, 0.2500)를 겨우 넘겼다. 운의 비중이 27.8%인 종목에서 이것이 이 데이터로 도달 가능한 한계였다.</p>
+<p>더 큰 문제는 <strong>그 52.3%가 어디서 왔는지 알 수 없다</strong>는 것이다. 계수 8개가 곱해져 하나의 숫자가 나오는 구조에서는 어느 요소가 기여했는지 영원히 분리되지 않는다. 파크팩터가 중요도 1위였는데 빼도 성능이 그대로였던 것(52.35% → 52.29%)이 그 증거다.</p>
+<p>상태 대조는 반대로 간다. 다섯 칸을 <strong>따로 판정하고 따로 채점한다.</strong> 불펜 칸이 실제로 승패를 설명하는지, 최근 3경기 칸이 무의미한지가 한 달이면 데이터로 나온다. 숫자 하나를 얻는 대신, 무엇이 진짜 신호인지를 얻는다.</p>
+
+<h2><span class="no">01</span>3단 분리 — 이 설계의 전부</h2>
+<p>봇을 셋으로 쪼갠다. 그리고 <strong>단 사이에 정보 차단벽을 세운다.</strong> 이것이 나머지 모든 설계의 근거다.</p>
+
+<figure>
+<svg viewBox="0 0 880 470" role="img" aria-label="3단 파이프라인: 수집봇이 사실을 넣고, 해석봇은 한 팀 한 칸만 보며 상대를 모른 채 판정하고, 대조봇은 확정된 카드만 받아 원본 사실에 접근하지 못한 채 결론을 낸다" font-family="'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- 1단 -->
+  <rect x="20" y="30" width="200" height="150" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="120" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">1단 · 수집봇</text>
+  <text x="120" y="78" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65">LLM 0회</text>
+  <line x1="40" y1="90" x2="200" y2="90" stroke="currentColor" opacity="0.3"/>
+  <text x="40" y="112" font-size="11.5" fill="currentColor">투구수 · 이닝</text>
+  <text x="40" y="132" font-size="11.5" fill="currentColor">등록·말소 명단</text>
+  <text x="40" y="152" font-size="11.5" fill="currentColor">스코어보드 · 순위</text>
+  <text x="40" y="172" font-size="11.5" fill="currentColor">수집 시각</text>
+
+  <line x1="220" y1="105" x2="272" y2="105" stroke="currentColor" marker-end="url(#a1)"/>
+  <text x="246" y="96" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">사실</text>
+
+  <!-- 2단 -->
+  <rect x="275" y="30" width="230" height="230" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="390" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">2단 · 해석봇</text>
+  <text x="390" y="78" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65">한 팀 · 한 칸만</text>
+  <line x1="295" y1="90" x2="485" y2="90" stroke="currentColor" opacity="0.3"/>
+  <rect x="295" y="102" width="190" height="26" rx="2" fill="none" stroke="currentColor" opacity="0.55"/>
+  <text x="305" y="119" font-size="11" fill="currentColor">KIA · 불펜 → ▼</text>
+  <rect x="295" y="134" width="190" height="26" rx="2" fill="none" stroke="currentColor" opacity="0.55"/>
+  <text x="305" y="151" font-size="11" fill="currentColor">KIA · 타선 → ▲</text>
+  <rect x="295" y="166" width="190" height="26" rx="2" fill="none" stroke="currentColor" opacity="0.55"/>
+  <text x="305" y="183" font-size="11" fill="currentColor">롯데 · 불펜 → ▲</text>
+  <text x="390" y="212" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.6">… 10칸 병렬</text>
+  <text x="390" y="240" text-anchor="middle" font-size="11" style="fill: var(--home)" font-weight="700">상대가 누군지 모른다</text>
+
+  <line x1="505" y1="145" x2="557" y2="145" stroke="currentColor" marker-end="url(#a1)"/>
+  <text x="531" y="136" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">카드</text>
+
+  <!-- 3단 -->
+  <rect x="560" y="30" width="200" height="150" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="660" y="58" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">3단 · 대조봇</text>
+  <text x="660" y="78" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65">카드만 본다</text>
+  <line x1="580" y1="90" x2="740" y2="90" stroke="currentColor" opacity="0.3"/>
+  <text x="580" y="112" font-size="11.5" fill="currentColor">▲▼ 5칸 × 2팀</text>
+  <text x="580" y="132" font-size="11.5" fill="currentColor">→ 우세 판정</text>
+  <text x="580" y="152" font-size="11.5" fill="currentColor">→ 뒤집힐 조건</text>
+  <text x="660" y="172" text-anchor="middle" font-size="11" style="fill: var(--home)" font-weight="700">사실에 재접근 불가</text>
+
+  <line x1="660" y1="180" x2="660" y2="222" stroke="currentColor" marker-end="url(#a1)"/>
+  <rect x="560" y="224" width="200" height="44" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="660" y="251" text-anchor="middle" font-size="12.5" font-weight="700" fill="currentColor">결론 카드</text>
+
+  <!-- 차단벽 -->
+  <line x1="246" y1="290" x2="246" y2="330" stroke="currentColor" stroke-dasharray="4 4" opacity="0.5"/>
+  <line x1="531" y1="290" x2="531" y2="330" stroke="currentColor" stroke-dasharray="4 4" opacity="0.5"/>
+  <rect x="20" y="332" width="740" height="112" rx="3" fill="none" stroke="currentColor" stroke-dasharray="5 4" opacity="0.75"/>
+  <text x="40" y="358" font-size="12" font-weight="700" style="fill: var(--home)">차단벽이 하는 일</text>
+  <text x="40" y="382" font-size="11.5" fill="currentColor">2단은 승패를 모른다 — 상대 정보가 없으니 결론에 맞춰 칸을 채울 수가 없다.</text>
+  <text x="40" y="404" font-size="11.5" fill="currentColor">3단은 원본에 못 닿는다 — 확정된 ▲▼만 받으므로 사실을 재해석할 수 없다.</text>
+  <text x="40" y="428" font-size="11.5" fill="currentColor" opacity="0.75">한 번에 시키면 LLM은 먼저 결론을 세우고 칸을 거기 맞춘다. 이 벽이 그것을 물리적으로 막는다.</text>
+</svg>
+<figcaption>정보 차단벽이 편향을 구조로 막는다. 기존 시스템에서 λ가 한쪽으로 기울자 모든 서술이 그쪽으로 정렬됐던 실패 — 그것은 프롬프트를 고쳐서 막을 수 없고, 판단 단계가 사실에 접근하지 못하게 해야 막힌다.</figcaption>
+</figure>
+
+<h2><span class="no">02</span>카드 한 칸의 구조</h2>
+<p>칸 하나는 네 층이다. 그리고 <strong>층마다 쓸 수 있는 주체가 다르다.</strong></p>
+
+<figure>
+<svg viewBox="0 0 800 320" role="img" aria-label="카드 한 칸의 4층 구조: 사실은 크롤러만 쓸 수 있고 LLM은 읽기만 하며, 해석과 기호는 LLM이 쓰되 사실의 숫자를 인용해야 통과한다" font-family="'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <text x="30" y="28" font-size="13" font-weight="700" fill="currentColor">불펜 가용 · KIA</text>
+
+  <rect x="30" y="42" width="480" height="52" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="46" y="64" font-size="11" font-weight="700" fill="currentColor" opacity="0.6">사실</text>
+  <text x="46" y="84" font-size="12" class="mono" fill="currentColor">8/25 김재윤 28구 · 정해영 15구</text>
+  <text x="530" y="72" font-size="11.5" style="fill: var(--away)" font-weight="700">크롤러만 쓴다</text>
+  <text x="530" y="90" font-size="10.5" fill="currentColor" opacity="0.65">LLM은 읽기만</text>
+
+  <rect x="30" y="102" width="480" height="52" rx="2" fill="none" stroke="currentColor"/>
+  <text x="46" y="124" font-size="11" font-weight="700" fill="currentColor" opacity="0.6">해석</text>
+  <text x="46" y="144" font-size="12" fill="currentColor">마무리 2연투 — 접전 시 3연투 부담</text>
+  <text x="530" y="132" font-size="11.5" style="fill: var(--home)" font-weight="700">LLM이 쓴다</text>
+  <text x="530" y="150" font-size="10.5" fill="currentColor" opacity="0.65">숫자 인용 필수</text>
+
+  <rect x="30" y="162" width="480" height="44" rx="2" fill="none" stroke="currentColor"/>
+  <text x="46" y="182" font-size="11" font-weight="700" fill="currentColor" opacity="0.6">기호</text>
+  <text x="46" y="199" font-size="14" style="fill: var(--away)" font-weight="700">▼</text>
+  <text x="530" y="190" font-size="11.5" style="fill: var(--home)" font-weight="700">LLM이 쓴다</text>
+
+  <rect x="30" y="214" width="480" height="44" rx="2" fill="none" stroke="currentColor"/>
+  <text x="46" y="234" font-size="11" font-weight="700" fill="currentColor" opacity="0.6">출처</text>
+  <text x="46" y="251" font-size="11.5" class="mono" fill="currentColor">네이버 박스스코어 · 수집 18:02</text>
+  <text x="530" y="242" font-size="11.5" style="fill: var(--away)" font-weight="700">크롤러만 쓴다</text>
+
+  <line x1="30" y1="278" x2="510" y2="278" stroke="currentColor" opacity="0.3"/>
+  <text x="30" y="300" font-size="11.5" fill="currentColor">사실 칸이 비면 해석을 쓸 수 없다 — 그 칸은 <tspan font-weight="700">모름</tspan>으로 나간다. 지어내지 않는다.</text>
+</svg>
+<figcaption>지어내기는 프롬프트로 막는 것이 아니라 권한으로 막는다. 현재 시스템은 research 전체를 던져주고 "알아서 판단하라"고 시키기 때문에 없는 것을 만들어낸다.</figcaption>
+</figure>
+
+<h3>지어내기 방지 3중 장치</h3>
+<ul>
+  <li><strong>권한 분리</strong> — 사실 칸에 LLM이 쓰기 접근을 갖지 않는다. 크롤러가 넣은 값만 들어간다.</li>
+  <li><strong>인용 강제</strong> — 해석 문장에 그 칸 사실의 숫자나 이름이 최소 1개 없으면 칸을 버린다. "컨디션이 좋아 보인다"는 통과하지 못한다.</li>
+  <li><strong>모름 허용</strong> — 다섯 칸 중 셋 이상이 모름이면 판정 자체를 하지 않는다. 재료 없이 결론을 내는 것보다 침묵이 낫다.</li>
+</ul>
+
+<h2><span class="no">03</span>다섯 칸 — 무엇을 보는가</h2>
+<div class="scroll">
+<table>
+  <tr><th>칸</th><th>수집 항목</th><th>소스</th><th>현재 상태</th></tr>
+  <tr>
+    <td><strong>① 투수 가용성</strong></td>
+    <td>최근 3경기 투수별 투구수·이닝, 마무리 연투 여부, 오늘 예고 선발</td>
+    <td class="mono">네이버 record API · Yahoo 一球速報</td>
+    <td><span class="tag no">미수집</span></td>
+  </tr>
+  <tr>
+    <td><strong>② 타선 가용성</strong></td>
+    <td>1군 등록·말소 공시, 라인업과 발표 시각</td>
+    <td class="mono">KBO 공시 · npb.jp 登録抹消 · 구단 공식 X</td>
+    <td><span class="tag">수집됨 · 소비 경로 없음</span></td>
+  </tr>
+  <tr>
+    <td><strong>③ 최근 3경기 내용</strong></td>
+    <td>이닝별 스코어보드 — 역전패인가 완봉패인가</td>
+    <td class="mono">네이버·Yahoo 박스스코어</td>
+    <td><span class="tag no">미수집</span></td>
+  </tr>
+  <tr>
+    <td><strong>④ 무게</strong></td>
+    <td>순위·승차·잔여경기</td>
+    <td class="mono">순위표</td>
+    <td><span class="tag no">미수집</span></td>
+  </tr>
+  <tr>
+    <td><strong>⑤ 상성</strong></td>
+    <td>상대전적, 이 투수 대 이 팀</td>
+    <td class="mono">네이버 맞대결</td>
+    <td><span class="tag no">미수집</span></td>
+  </tr>
+</table>
+</div>
+<p><strong>①이 가장 중요하다.</strong> "어제 마무리가 28구 던졌다"는 시즌 ERA 100개보다 오늘 승패를 잘 설명한다. 지금 크롤러(619줄, 소스 2개)는 이것을 아예 보지 않는다.</p>
+
+<div class="callout">
+  <p><strong>선행 조건.</strong> 지금 이 봇을 만들면 다섯 칸 중 셋이 모름으로 나온다. 크롤러 확대(①③④)가 먼저다. 순서를 바꾸면 봇이 빈 카드를 들고 추측하게 되고, 그것은 지금과 똑같은 실패다.</p>
+</div>
+
+<h2><span class="no">04</span>참·거짓 — 4단 게이트</h2>
+<p>크롤링한 값을 그대로 믿지 않는다. 네 개의 문을 통과시키고, <strong>마지막 문은 경기가 끝난 뒤에 열린다.</strong></p>
+
+<figure>
+<svg viewBox="0 0 880 400" role="img" aria-label="4단 게이트: 물리 검사와 자기 일관성은 Go 크롤러가, 소스 대조와 사후 채점은 파이썬이 담당하며 각 게이트에서 걸러진 데이터의 처리가 다르다" font-family="'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <rect x="20" y="70" width="110" height="56" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="75" y="94" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">긁은 값</text>
+  <text x="75" y="112" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">날것</text>
+
+  <line x1="130" y1="98" x2="172" y2="98" stroke="currentColor" marker-end="url(#a3)"/>
+
+  <!-- G1 -->
+  <rect x="175" y="60" width="140" height="76" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="245" y="82" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">① 물리 검사</text>
+  <text x="245" y="102" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.7">투구수 200개?</text>
+  <text x="245" y="120" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.7">ERA 189.00?</text>
+  <line x1="245" y1="136" x2="245" y2="176" stroke="currentColor" marker-end="url(#a3)"/>
+  <text x="252" y="160" font-size="10.5" style="fill: var(--home)">폐기</text>
+  <rect x="180" y="178" width="130" height="34" rx="2" fill="none" stroke="currentColor" opacity="0.6" stroke-dasharray="3 3"/>
+  <text x="245" y="200" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.75">파싱이 깨진 신호</text>
+
+  <line x1="315" y1="98" x2="357" y2="98" stroke="currentColor" marker-end="url(#a3)"/>
+
+  <!-- G2 -->
+  <rect x="360" y="60" width="140" height="76" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="430" y="82" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">② 자기 일관성</text>
+  <text x="430" y="102" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.7">라인업 9명?</text>
+  <text x="430" y="120" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.7">승+패+무 = 경기수?</text>
+  <line x1="430" y1="136" x2="430" y2="176" stroke="currentColor" marker-end="url(#a3)"/>
+  <text x="437" y="160" font-size="10.5" style="fill: var(--home)">블록 폐기</text>
+
+  <line x1="500" y1="98" x2="542" y2="98" stroke="currentColor" marker-end="url(#a3)"/>
+
+  <!-- G3 -->
+  <rect x="545" y="60" width="140" height="76" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="615" y="82" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">③ 소스 대조</text>
+  <text x="615" y="102" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.7">확정 · 교차 · 단일</text>
+  <text x="615" y="120" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.7">미확인 · 모순</text>
+
+  <line x1="685" y1="98" x2="727" y2="98" stroke="currentColor" marker-end="url(#a3)"/>
+  <rect x="730" y="70" width="130" height="56" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="795" y="94" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">사실 칸</text>
+  <text x="795" y="112" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">라벨 부착</text>
+
+  <!-- 담당 구분 -->
+  <line x1="510" y1="30" x2="510" y2="240" stroke="currentColor" stroke-dasharray="6 5" opacity="0.45"/>
+  <text x="265" y="44" text-anchor="middle" font-size="11" font-weight="700" style="fill: var(--away)">Go 크롤러 — 싸고 즉시</text>
+  <text x="690" y="44" text-anchor="middle" font-size="11" font-weight="700" style="fill: var(--home)">파이썬 — 이력·DB 필요</text>
+
+  <!-- G4 -->
+  <rect x="20" y="270" width="840" height="112" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="44" y="298" font-size="13" font-weight="700" fill="currentColor">④ 사후 채점 — 경기가 끝난 뒤 열리는 문</text>
+  <text x="44" y="322" font-size="11.5" fill="currentColor">경기 전에 크롤링이 말한 것을 실제와 대조한다. 예고 선발은 실제로 나왔나 · 라인업은 몇 명 맞았나 · 결장 정보는 맞았나.</text>
+  <text x="44" y="350" font-size="11.5" class="mono" fill="currentColor">네이버 프리뷰 선발 47/50 94%  ·  구단 공식 X 라인업 31/31 100%  ·  기사 결장 12/19 63%  ·  커뮤니티 4/17 24%</text>
+  <text x="44" y="372" font-size="11.5" style="fill: var(--home)" font-weight="700">소스 신뢰도가 추측이 아니라 기록이 된다 — "참이냐 거짓이냐"에 대한 유일하게 정직한 답.</text>
+</svg>
+<figcaption>①②는 Go가 즉시 처리해 쓰레기를 Redis 이전에 걸러낸다. 지금은 날것을 넣고 파이썬이 뒷수습한다. ④는 경기 종료 후 역방향으로 흐르며, 이것만이 소스 신뢰도를 데이터로 만든다.</figcaption>
+</figure>
+
+<h3>③ 소스 대조 — 라벨 체계</h3>
+<div class="scroll">
+<table>
+  <tr><th>라벨</th><th>조건</th><th>판정 사용</th></tr>
+  <tr><td><strong>확정</strong></td><td>공식 발표 + 게이트 ①② 통과</td><td>✅ 사용</td></tr>
+  <tr><td><strong>교차</strong></td><td>독립 2소스 일치</td><td>✅ 사용</td></tr>
+  <tr><td><strong>단일</strong></td><td>1소스만</td><td>△ 사용하되 표시</td></tr>
+  <tr><td><strong>미확인</strong></td><td>커뮤니티·목격담</td><td>❌ 표시만</td></tr>
+  <tr><td><strong>모순</strong></td><td>소스 충돌</td><td>❌ 양쪽 버리고 "모름"</td></tr>
+</table>
+</div>
+<div class="callout">
+  <p><strong>모순일 때 다수결을 쓰지 않는다.</strong> 오래된 소스 둘이 새 소스 하나를 이기기 때문이다. 모든 값에 수집 시각을 함께 저장해 신선한 쪽이 이기게 한다.</p>
+</div>
+
+<h2><span class="no">05</span>출력 — 결론 카드</h2>
+
+<div class="matchcard">
+  <div class="hd">📅 2026-08-26 (수) 18:30 · 광주 &nbsp;|&nbsp; 롯데 @ KIA</div>
+  <table>
+    <tr><th></th><th>KIA</th><th>롯데</th></tr>
+    <tr><td>불펜 가용</td><td><span class="down">▼</span> 마무리 2연투(28구)</td><td><span class="up">▲</span> 이틀 휴식</td></tr>
+    <tr><td>선발 상태</td><td>= 황동하 정상 로테이션</td><td>= 로드리게스 정상</td></tr>
+    <tr><td>타선</td><td><span class="up">▲</span> 주전 전원 출장</td><td><span class="down">▼</span> 전민재 1군 말소</td></tr>
+    <tr><td>최근 3경기</td><td><span class="up">▲</span> 역전승 2회, 회당 6.7득점</td><td><span class="down">▼</span> 완봉패 1회, 회당 2.3득점</td></tr>
+    <tr><td>무게</td><td><span class="up">▲</span> 4위 사수 (5위와 1.5G)</td><td>= 6위 고정</td></tr>
+  </table>
+  <div class="concl">
+    <strong>결론 — KIA 우세</strong> (▲3 · =1 · ▼1 &nbsp;vs&nbsp; ▲1 · =2 · ▼2)<br>
+    <span class="muted">근거</span> 타선이 살아 있다(회당 6.7 vs 2.3) · 롯데는 전민재 말소로 내야가 얇다 · 순위 동기가 KIA에만 있다<br>
+    <span class="muted">뒤집힐 조건</span> 접전으로 가면 KIA 마무리 3연투 — 8회 이후 뒤집힐 수 있다<br>
+    <span class="muted">못 채운 칸</span> 없음
+  </div>
+</div>
+<p>승률 58.7% 같은 숫자를 내지 않는다. <strong>뒤집힐 조건</strong>을 함께 내는 것이 이 출력의 핵심이다 — 결론이 어떤 가정 위에 서 있는지가 결론 자체보다 유용하다.</p>
+
+<h2><span class="no">06</span>칸별 사후 채점 — 자기 검증</h2>
+<p>한 달이 지나면 다섯 칸 중 어느 칸이 실제로 승패를 설명하는지가 나온다.</p>
+<pre><code>        <span class="c">▲를 준 팀이 실제로 이긴 비율</span>
+불펜      31/44   70%   <span class="k">← 진짜 신호</span>
+선발      28/44   64%
+타선      24/44   55%
+최근3경기  22/44   50%   <span class="c">← 무의미. 빼는 게 낫다</span>
+무게      19/44   43%   <span class="c">← 역신호? 표본 더 필요</span></code></pre>
+<p>λ 모델은 계수 8개 중 무엇이 기여했는지 영원히 알 수 없었다. 칸을 쪼개면 <strong>무의미한 칸을 잘라내고 살아있는 칸에 무게를 실을 수 있다.</strong> 이것이 확률 하나를 포기하고 얻는 것이다.</p>
+
+<h2><span class="no">07</span>왜 규칙이 아니라 LLM인가</h2>
+<p>계수로 환산되지 않는 것들이기 때문이다.</p>
+<div class="grid2">
+  <div class="box">
+    <h4>"3연승"은 좋은 건가</h4>
+    <p>매번 8점 차 완승 = 타선 폭발 ▲</p>
+    <p>매번 1점 차 진땀승 = 불펜 소모 ▼</p>
+    <p>같은 3연승이 정반대다. 내용을 읽어야 안다.</p>
+  </div>
+  <div class="box">
+    <h4>"4번이 8번으로 내려갔다"</h4>
+    <p>부상 관리인가, 부진인가, 상대 좌완 대비인가.</p>
+    <p>규칙으로 쓸 수 없다.</p>
+  </div>
+  <div class="box">
+    <h4>"5선발을 당겨썼다"</h4>
+    <p>로테이션 붕괴 ▼ 또는 이 경기를 잡겠다는 의지 ▲</p>
+    <p>맥락이 부호를 뒤집는다.</p>
+  </div>
+</div>
+
+<h2><span class="no">08</span>모델 배치와 크롤링 분담</h2>
+<div class="scroll">
+<table>
+  <tr><th>단</th><th>일</th><th>모델</th><th>근거</th></tr>
+  <tr><td>1단 수집봇</td><td>사실 수집</td><td class="mono">LLM 0회</td><td>실패해도 비용 0. Go 크롤러</td></tr>
+  <tr><td>2단 해석봇</td><td>칸 단위 판정</td><td class="mono">저가 모델 · 10칸 병렬</td><td>칸이 작고 사실이 주어짐</td></tr>
+  <tr><td>3단 대조봇</td><td>결론</td><td class="mono">상위 모델 · 2종 병렬</td><td>진짜 판단. 두 모델을 나란히 기록해 적중률 측정</td></tr>
+</table>
+</div>
+<p>칸을 쪼개면 프롬프트가 짧아진다. <strong>프롬프트가 길수록 모델이 검색·추론을 포기한 실측</strong>(6/10 → 0/10)이 있었고, 이 구조는 그 문제도 함께 해결한다.</p>
+
+<h3>크롤링과 딥서치의 경계</h3>
+<ul>
+  <li><strong>크롤링</strong> — 구조화된 사실. 숫자·명단·시각. LLM 0회, 실패해도 비용 0.</li>
+  <li><strong>딥서치</strong> — 왜·의도·분위기. 크롤링이 못 채운 칸만.</li>
+  <li><strong>충돌 시</strong> — 크롤링이 이긴다. 기존 규율 그대로.</li>
+</ul>
+
+<h3>수집 주기 — 경기 임박에 가속</h3>
+<div class="scroll">
+<table>
+  <tr><th>구간</th><th>주기</th><th>이유</th></tr>
+  <tr><td>평시</td><td class="mono">10분</td><td>바뀌는 것이 거의 없다</td></tr>
+  <tr><td>킥오프 3시간 전 ~ 시작</td><td class="mono">2분</td><td>라인업·선발 교체가 여기서 난다</td></tr>
+  <tr><td>경기 종료 후</td><td class="mono">1회</td><td>박스스코어 확정 → 게이트 ④ 입력</td></tr>
+</table>
+</div>
+<p><strong>언제 바뀌었는지가 정보다.</strong> "18:05에 4번 타자가 빠졌다"는 그 자체로 신호이므로, 값과 함께 변경 시각을 저장한다.</p>
+
+<h2><span class="no">09</span>배당의 자리</h2>
+<figure>
+<svg viewBox="0 0 700 160" role="img" aria-label="배당은 확률 입력이 아니라 재점검 트리거로만 쓰인다. 카드 결론과 배당이 반대면 재점검하고, 이유를 대지 못하면 그 경기를 접는다" font-family="'Noto Sans KR', sans-serif">
+  <defs>
+    <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <rect x="20" y="52" width="150" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="95" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">카드 결론</text>
+  <text x="95" y="94" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">KIA 우세</text>
+
+  <rect x="20" y="8" width="150" height="34" rx="3" fill="none" stroke="currentColor" opacity="0.6"/>
+  <text x="95" y="30" text-anchor="middle" font-size="11.5" fill="currentColor">배당 — 롯데 우세</text>
+
+  <line x1="170" y1="78" x2="222" y2="78" stroke="currentColor" marker-end="url(#a4)"/>
+  <line x1="170" y1="25" x2="200" y2="25" stroke="currentColor"/>
+  <path d="M 200 25 L 200 70 L 220 70" fill="none" stroke="currentColor" marker-end="url(#a4)"/>
+
+  <rect x="225" y="52" width="160" height="52" rx="3" fill="none" style="stroke: var(--warn)" stroke-width="2"/>
+  <text x="305" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">🔎 재점검</text>
+  <text x="305" y="94" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.7">"우리가 뭘 못 봤나"</text>
+
+  <line x1="385" y1="78" x2="427" y2="78" stroke="currentColor" marker-end="url(#a4)"/>
+  <rect x="430" y="30" width="120" height="42" rx="3" fill="none" stroke="currentColor"/>
+  <text x="490" y="56" text-anchor="middle" font-size="11.5" fill="currentColor">이유를 댄다 → 유지</text>
+  <rect x="430" y="84" width="120" height="42" rx="3" fill="none" stroke="currentColor"/>
+  <text x="490" y="110" text-anchor="middle" font-size="11.5" fill="currentColor">못 댄다 → 접는다</text>
+
+  <text x="600" y="72" text-anchor="middle" font-size="11.5" style="fill: var(--home)" font-weight="700">확률 입력이</text>
+  <text x="600" y="92" text-anchor="middle" font-size="11.5" style="fill: var(--home)" font-weight="700">아니다</text>
+</svg>
+<figcaption>배당은 p_final에 들어가지 않는다. 카드 결론과 방향이 다를 때만 "우리가 못 본 것이 있는가"를 되묻는 트리거로 쓰인다.</figcaption>
+</figure>
+
+<h2><span class="no">10</span>구현 순서</h2>
+<ol>
+  <li><strong>게이트 ①② 를 Go에 넣는다</strong> — 지금 NPB 수집기에만 있는 ERA 상한 검사를 전 필드로 확대. 이것을 건너뛰면 쓰레기가 카드에 들어간다.</li>
+  <li><strong>투수 소모 수집(①)</strong> — 최근 3경기 투수별 투구수. 가장 큰 효과.</li>
+  <li><strong>이닝별 스코어보드(③) · 순위표(④)</strong> — 나머지 빈 칸을 채운다.</li>
+  <li><strong>라인업 소비 경로(②)</strong> — 크롤러에는 있으나 읽는 코드가 없다.</li>
+  <li><strong>1단 수집봇</strong> — 사실 칸 채우기. LLM 0회.</li>
+  <li><strong>게이트 ③</strong> — 모든 값에 소스명 + 수집 시각 부착.</li>
+  <li><strong>2단 해석봇</strong> — 칸 단위, 인용 강제.</li>
+  <li><strong>3단 대조봇</strong> — 카드만 보고 결론.</li>
+  <li><strong>게이트 ④ · 칸별 사후 채점</strong> — 소스 신뢰도 테이블과 무의미한 칸 제거.</li>
+  <li><strong>주기 가속</strong> — 킥오프 3시간 전부터 2분 간격.</li>
+</ol>
+
+<h2><span class="no">11</span>미결 — 결정이 필요한 3건</h2>
+<div class="callout">
+  <p><strong>① MIN_WIN_PROB = 0.58 을 어떻게 할 것인가.</strong> 이 임계값은 확률이 있어야 성립한다. 상태 대조는 "KIA 우세"까지만 내지 58%를 내지 않는다. → 임계값을 폐기할지, ▲▼ 개수를 확률로 환산할지 정해야 한다.</p>
+  <p><strong>② 배당을 확률에 넣을 것인가.</strong> 현재 p_final의 시장 가중치는 0이다. 위 §09처럼 되짚기용으로만 둘지, 확률 계산에 넣을지.</p>
+  <p><strong>③ 포아송을 어디까지 남길 것인가.</strong> 승패만 상태 대조로 바꾸고 언더오버·핸디캡은 분포가 필요하다. 승패만 교체할지, 전부 교체할지.</p>
+</div>
+
+<p class="muted" style="margin-top:56px; font-size:13.5px; border-top:1px solid var(--rule); padding-top:18px;">
+이 설계는 λ 포아송 모델이 검증 정확도 52.3%에 머물고 어느 계수가 기여했는지 분리되지 않는다는 실측 위에서 나왔다. 확률 하나를 포기하고, 무엇이 진짜 신호인지 아는 쪽을 택한 구조다.
+</p>
+</div>

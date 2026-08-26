@@ -223,3 +223,25 @@ def test_trace_labels_both_sides_to_prevent_confusion():
     assert out["p_home"] == 0.60 and out["p_away"] == 0.40
     assert "San Diego Padres 60%" in out["trace"][-1]
     assert "Pittsburgh Pirates 40%" in out["trace"][-1]
+
+
+def test_new_context_fields_marked_unapplied():
+    """[§8-7] 신규 맥락 필드는 계수가 없다 — 반드시 '(확률 미반영)'으로 나가야 한다.
+
+    실사고(파드리스전): 핵심 4명 이탈을 서술에 써놓고 승률은 그대로였다.
+    수집했는데 확률을 못 움직였으면 **그 사실을 표시**하는 것이 규율이다.
+    """
+    from app.engine.performance import FIELD_TO_COEFFICIENT, UNMAPPED_FIELDS
+
+    new = ("motivation", "schedule_load", "umpire", "line_move_reason")
+    for key in new:
+        assert key in UNMAPPED_FIELDS, f"{key}가 미반영 목록에 없다"
+        assert key not in FIELD_TO_COEFFICIENT, (
+            f"{key}에 측정되지 않은 계수가 붙었다 — DISCIPLINE 5-1 위반")
+
+    out = adj().adjust(0.5, _jg(), {
+        "motivation": "홈은 와일드카드 경쟁 중", "schedule_load": "원정 3연전 마지막",
+        "umpire": "존이 넓은 주심", "line_move_reason": "선발 교체로 배당 이동"}, "mlb")
+    for name in ("동기·경기 중요도", "일정 부담·이동",
+                 "주심 스트라이크존 성향", "라인 무브 사유"):
+        assert name in out["unused"]

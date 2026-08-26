@@ -31,6 +31,12 @@ MAX_GOALS = 10         # 축구
 
 # ---------------------------------------------------------------- 분포
 
+# [§8-20] 야구 계열 종목 — 무승부가 없고 득점 분포가 포아송/음이항이다.
+#   분기가 여러 곳(λ·마켓확률·승률상한·마켓구성·용어)에 흩어져 있어 한 곳만 고치면
+#   나머지가 조용히 축구로 샌다. **여기 한 곳에서만 정의한다.**
+BASEBALL_SPORTS = ("mlb", "kbo", "npb")
+
+
 def poisson_pmf(lam: float, k: int) -> float:
     if lam <= 0:
         return 1.0 if k == 0 else 0.0
@@ -79,11 +85,13 @@ def _ratio(value: float | None, league: float, exponent: float,
     return max(lo, min(hi, (value / league) ** exponent))
 
 
-def _suppression(pitcher: dict, s, research: dict | None = None) -> tuple[float | None, str]:
+def _suppression(pitcher: dict, s, research: dict | None = None,
+                 league_era: float | None = None) -> tuple[float | None, str]:
     """상대 선발 억제력 계수 — SIERA > xFIP > FIP > ERA 순.
 
     값이 클수록(=투수가 나쁠수록) 우리 팀 기대득점이 올라간다.
     """
+    league_era = league_era if league_era is not None else s.league_era
     # Statcast 허용 xwOBA가 있으면 최우선 — 타구 질 기반이라 운 오염이 가장 적다
     xw = pitcher.get("xwoba_allowed")
     if xw is not None:
@@ -101,7 +109,7 @@ def _suppression(pitcher: dict, s, research: dict | None = None) -> tuple[float 
     return None, ""
 
 
-def _baseline(research: dict, key: str, s) -> float:
+def _baseline(research: dict, key: str, s, fallback: float | None = None) -> float:
     """계수의 분모 — 같은 데이터셋의 리그 평균이 있으면 그것을 쓴다.
 
     상수(`league_woba=0.320`)는 wOBA 기준값이라 **xwOBA에 쓰면 틀린다**.
@@ -110,7 +118,11 @@ def _baseline(research: dict, key: str, s) -> float:
     """
     base = (research or {}).get("league_baselines") or {}
     val = base.get(key)
-    return float(val) if val else s.league_woba
+    if val:
+        return float(val)
+    # [§8-14] 폴백 상수는 **키마다 다르다.** 전부 league_woba로 떨어뜨리면
+    #   OBP(0.318)에 wOBA 기준(0.320)이 쓰여 조용히 어긋난다.
+    return float(fallback if fallback is not None else s.league_woba)
 
 
 def _offense(block: dict, s, research: dict | None = None) -> tuple[float | None, str]:
@@ -135,24 +147,41 @@ def _offense(block: dict, s, research: dict | None = None) -> tuple[float | None
     iso = block.get("iso_30d") if block.get("iso_30d") is not None else block.get("iso")
     if obp is None:
         return None, ""
-    coef = _ratio(float(obp), s.league_obp, s.exp_offense,
+    # 리그 평균이 research에 있으면 그것을 쓴다 — KBO는 OBP 평균이 0.355 수준이라
+    # MLB 상수(0.318)를 쓰면 전 팀이 일괄 +14% 부풀어 오른다(실측 사고).
+    coef = _ratio(float(obp), _baseline(research, "obp", s, s.league_obp), s.exp_offense,
                   lo=s.off_coef_min, hi=s.off_coef_max)
     label = f"OBP {float(obp):.3f}"
     if iso is not None and coef is not None:
-        iso_coef = _ratio(float(iso), s.league_iso, s.exp_iso, lo=0.92, hi=1.10)
+        iso_coef = _ratio(float(iso), _baseline(research, "iso", s, s.league_iso),
+                          s.exp_iso, lo=0.92, hi=1.10)
         if iso_coef is not None:
             coef *= iso_coef
             label += f" + ISO {float(iso):.3f}"
     return coef, label
 
 
-def mlb_lambdas(jg: dict, research: dict, settings=None) -> LambdaResult:
-    """양 팀 기대득점 λ와 산출 과정.
+def league_baseline_runs(sport: str, settings=None) -> float:
+    """[§8-14] 종목별 리그 평균 득점. KBO는 MLB보다 0.69점 높다(실측 5.094 vs 4.40).
+
+    한 상수를 두 리그에 쓰면 KBO λ가 통째로 낮게 나오고, 그 오차가 승패·토탈
+    전 마켓으로 번진다.
+    """
+    s = settings or get_settings()
+    if sport == "kbo":
+        return s.kbo_runs_per_game
+    if sport == "npb":
+        return s.npb_runs_per_game
+    return s.league_runs_per_game
+
+
+def mlb_lambdas(jg: dict, research: dict, settings=None, sport: str = "mlb") -> LambdaResult:
+    """양 팀 기대득점 λ와 산출 과정. 야구 계열(MLB·KBO) 공용.
 
     순서: 기본 λ → 타선 → 상대 선발 억제력 → 구장 → 날씨 → 불펜 → 좌우 스플릿 → 홈 이점
     """
     s = settings or get_settings()
-    base = s.league_runs_per_game
+    base = league_baseline_runs(sport, s)
     lam = {"home": base, "away": base}
     trace: list[str] = [f"기본 λ {base:.2f} (리그 평균 득점)"]
     missing: list[str] = []
@@ -162,18 +191,36 @@ def mlb_lambdas(jg: dict, research: dict, settings=None) -> LambdaResult:
     pit = {"home": research.get("home_pitcher") or {}, "away": research.get("away_pitcher") or {}}
 
     # ① 타선 (Wharton 변수 중요도 1·2위)
+    # [§8-5] 기본은 **대칭 적용** — 양 팀 계수를 평균 내 둘 다에 곱한다.
+    #        타선 지표는 두 팀의 '차이'를 틀리게 잡고 '합계'는 맞게 잡기 때문이다.
+    #        승패 이득(+0.98%p)은 얻고 토탈 손실은 피한다. `offense_symmetric=False`면
+    #        종전 비대칭 동작.
+    off_coefs: dict[str, float] = {}
+    off_labels: dict[str, str] = {}
     for side in ("home", "away"):
         coef, label = _offense(off[side], s, research)
         if coef is None:
             missing.append(f"{side} 타선 지표(wOBA/OBP)")
             continue
-        lam[side] *= coef
+        off_coefs[side] = coef
+        off_labels[side] = label
+    symmetric = getattr(s, "offense_symmetric", False) and len(off_coefs) == 2
+    shared = (sum(off_coefs.values()) / 2) if symmetric else None
+    for side, coef in off_coefs.items():
+        applied = shared if symmetric else coef
+        lam[side] *= applied
         have_core[side] = True
-        trace.append(f"{side} 타선 {label} → ×{coef:.3f}")
+        if symmetric:
+            trace.append(f"{side} 타선 {off_labels[side]} → 양 팀 평균 ×{applied:.3f}")
+        else:
+            trace.append(f"{side} 타선 {off_labels[side]} → ×{applied:.3f}")
 
     # ② 상대 선발 억제력 (SIERA/xFIP/FIP 우선, ERA는 최후)
     for side, opp in (("home", "away"), ("away", "home")):
-        coef, label = _suppression(pit[opp], s, research)
+        coef, label = _suppression(
+            pit[opp], s, research,
+            league_era=(s.kbo_league_era if sport == "kbo"
+                        else s.npb_league_era if sport == "npb" else s.league_era))
         if coef is None:
             missing.append(f"{opp} 선발 억제 지표")
             continue
@@ -417,9 +464,16 @@ def mlb_market_probs(lam_home: float, lam_away: float, lines: dict | None = None
 
 
 def _default_total_lines(expected_total: float) -> list[float]:
-    """수집 라인이 없을 때 기대 총득점 주변 라인을 만든다."""
-    center = round(expected_total * 2) / 2
-    return [center - 1.0, center - 0.5, center, center + 0.5, center + 1.0]
+    """[§8-27] 수집 라인이 없을 때 기대 총득점 주변 **반 점 라인**을 만든다.
+
+    ⚠️ 정수 라인(9.0·10.0)은 넣지 않는다. 두 가지 이유다:
+      ① 총득점이 정확히 그 값이면 **푸시**인데 현재 산출은 그것을 언더에 합산한다
+         (실측: 라인 9.0 언더가 41.3%로 나왔으나 실제 언더는 29.3%, 푸시가 12.0%).
+      ② 오버 확률은 9.0과 9.5가 **완전히 같다**(둘 다 "10점 이상"). 중복 행만 늘어난다.
+    반 점 라인은 푸시가 없어 오버/언더 합이 정확히 1이다.
+    """
+    center = round(expected_total - 0.5) + 0.5      # 가장 가까운 x.5
+    return [center - 1.0, center, center + 1.0]
 
 
 # ---------------------------------------------------------------- 축구 (xG · 스켈람)
@@ -512,7 +566,8 @@ def soccer_market_probs(lam_home: float, lam_away: float, lines: dict | None = N
 def prob_bounds(sport: str, settings=None) -> tuple[float, float]:
     """§0 종목별 승률 상·하한. 축구는 3-way라 하한이 비대칭이다."""
     s = settings or get_settings()
-    if sport == "mlb":
+    # [§8-14] KBO도 야구다 — 무승부가 없으므로 축구의 비대칭 하한을 쓰면 안 된다.
+    if sport in BASEBALL_SPORTS:
         return s.min_win_prob_mlb, s.max_win_prob_mlb
     return s.min_win_prob_soccer, s.max_win_prob_soccer
 
@@ -533,22 +588,10 @@ def cap_probability(p: float, sport: str, settings=None) -> tuple[float, str | N
     return p, None
 
 
-def edge_vs_market(p: float | None, odds: float | None) -> float | None:
-    """§0 시장 대비 엣지 = 우리 확률 − 배당 환산 확률."""
-    if p is None or not odds:
-        return None
-    return round(p - 1.0 / float(odds), 4)
-
-
-def edge_exceeds_limit(p: float | None, odds: float | None, settings=None) -> tuple[bool, float | None]:
-    """§0 엣지가 현실 상한(5%)을 넘는가.
-
-    Starlizard(분석가 200명)의 시장 대비 엣지가 1~2%다. 5% 초과는 우리가 더 똑똑한
-    것이 아니라 데이터가 틀린 것이다 — 추천에서 빼고 검증 대상으로 분리한다.
-    """
-    s = settings or get_settings()
-    e = edge_vs_market(p, odds)
-    return (e is not None and e > s.max_edge_vs_market), e
+# [§8-18] `edge_vs_market` · `edge_exceeds_limit` 삭제.
+#   우리 확률을 시장 환산값과 비교해 5% 넘게 벗어나면 '데이터 오류'로 지웠다.
+#   그러면 시장을 넘어설 방법이 영원히 없다. 실사고: 판정이 근거를 대고 낸
+#   지바 롯데 70%가 시장 37%와 어긋난다는 이유로 삭제됐다(2026-08-26).
 
 
 async def record_cap_hit(redis, date: str, game_id, raw: float, sport: str) -> int:
@@ -597,13 +640,36 @@ def is_away_underdog(market: str, side: str, jg: dict, odds: float | None) -> bo
 
 # ---------------------------------------------------------------- 파이프라인 진입점
 
+def dispersion_for(sport: str, settings=None) -> float | None:
+    """[§8-8] 종목별 득점 분산모수. 전역 `score_dispersion`이 있으면 그것이 이긴다.
+
+    야구는 과분산(실측 분산/평균 2.302)이라 음이항, 축구는 **미측정이라 포아송**이다.
+    한 값을 두 종목에 같이 쓰면 측정하지 않은 쪽에 임의 튜닝이 들어간다.
+    """
+    s = settings or get_settings()
+    if s.score_dispersion is not None:
+        return s.score_dispersion
+    if sport == "mlb":
+        return s.score_dispersion_mlb
+    # [§8-14] KBO·NPB 과분산은 **측정한 적이 없다.** 야구라는 이유로 MLB의 3.3을
+    #   빌려오면 측정되지 않은 튜닝이다. 채점 표본이 쌓이면 그때 재서 정한다.
+    return s.score_dispersion_soccer
+
+
 def game_distribution(jg: dict, research: dict, sport: str, settings=None) -> dict | None:
     """경기 1건의 λ와 전 마켓 확률. 핵심 지표가 없으면 None(=데이터 부족).
 
     반환: {"lam": LambdaResult, "probs": {...}, "capped": str|None, "raw_home": float}
     """
     s = settings or get_settings()
-    lam = mlb_lambdas(jg, research, s) if sport == "mlb" else soccer_lambdas(jg, research, s)
+    # [§8-14] KBO도 야구다 — 축구 λ(스켈람)로 보내면 득점 분포가 통째로 틀린다.
+    #   NPB는 지표 소스가 없어 λ를 만들지 않는다(재료 없으면 분석 생성 금지).
+    if sport in BASEBALL_SPORTS:
+        # [§8-20] NPB도 λ를 산출한다 — Yahoo 크롤링으로 선발 지표가 생겼다.
+        #   ⚠️ 리그 평균 득점은 KBO와 다르다. NPB는 투수 친화 리그라 더 낮다.
+        lam = mlb_lambdas(jg, research, s, sport=sport)
+    else:
+        lam = soccer_lambdas(jg, research, s)
     if not lam.usable:
         return None
     lines = {
@@ -612,9 +678,16 @@ def game_distribution(jg: dict, research: dict, sport: str, settings=None) -> di
         "spreads": sorted({abs(a["line"]) for a in jg.get("alt_markets") or []
                            if a["market"] == "spreads" and a.get("line") is not None}),
     }
-    probs = (mlb_market_probs if sport == "mlb" else soccer_market_probs)(
-        lam.home, lam.away, lines or None, s.score_dispersion,
-        **({"settings": s} if sport == "mlb" else {}))
+    # [§8-14] **λ만 야구로 바꾸고 마켓 확률을 축구 함수로 보내면** 무승부 행이 생기고
+    #   토탈 기본 라인이 축구값(1.5/2.5/3.5)으로 나온다. 실측으로 잡은 사고다:
+    #   KBO 승패가 43.6%/43.8%(합 87.4%)로 나오고 토탈이 1.5점 라인으로 찍혔다.
+    # [§8-20] **NPB를 빠뜨려 축구 함수로 갔다**(실측: h2h에 draw 0.1634가 생기고
+    #   홈 승률이 51.4% → 43.3%로 뒤집혔다). KBO에서 같은 사고를 겪고도
+    #   NPB λ를 켜면서 이 목록을 갱신하지 않았다 — 종목 목록은 **한 곳으로 모은다.**
+    is_baseball = sport in BASEBALL_SPORTS
+    probs = (mlb_market_probs if is_baseball else soccer_market_probs)(
+        lam.home, lam.away, lines or None, dispersion_for(sport, s),
+        **({"settings": s} if is_baseball else {}))
     raw_home = probs["h2h"]["home"]
     capped_home, note = cap_probability(raw_home, sport, s)
     if note:

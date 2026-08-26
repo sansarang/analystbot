@@ -194,3 +194,63 @@ def test_injury_sentences_carry_role_for_coefficient_mapping():
     total, notes = WinProbAdjuster().absences(sents, "San Diego Padres")
     assert total < 0
     assert any("Jason Adam" in n for n in notes)
+
+
+# ---------------------------------------------------------------- [§8-16] 딥서치 라인업
+
+def test_research_lineup_requires_valid_status():
+    """[§8-16] '확정'은 강한 단언 — 상태값이 정확할 때만 받는다."""
+    from app.research.validate import sanitize_research
+
+    ok, _ = sanitize_research(
+        {"lineup": {"status": "confirmed", "home": "1번 홍창기(우익수) 2번 신민재(2루수)",
+                    "source": "스포츠조선"}}, "kbo")
+    assert ok["lineup"]["status"] == "confirmed"
+    assert ok["lineup"]["source"] == "스포츠조선"
+
+    bad, dropped = sanitize_research(
+        {"lineup": {"status": "아마도 확정", "home": "1번 홍창기"}}, "kbo")
+    assert "lineup" not in bad and "lineup" in dropped
+
+
+def test_research_lineup_needs_actual_names():
+    """상태만 'confirmed'라고 하고 명단이 없으면 근거가 없다 — 받지 않는다."""
+    from app.research.validate import sanitize_research
+
+    out, dropped = sanitize_research({"lineup": {"status": "confirmed"}}, "kbo")
+    assert "lineup" not in out
+    assert any("lineup" in d for d in dropped)
+
+
+def test_research_lineup_drops_unavailable_prose():
+    """'라인업을 찾을 수 없습니다'가 명단으로 들어가면 안 된다."""
+    from app.research.validate import sanitize_research
+
+    out, _ = sanitize_research(
+        {"lineup": {"status": "confirmed", "home": "라인업 정보를 찾을 수 없습니다."}}, "kbo")
+    assert "lineup" not in out
+
+
+def test_projected_is_not_promoted_to_confirmed():
+    """[§8-16] 예상을 확정으로 승격하지 않는다 — '최종 픽' 자격이 잘못 부여된다."""
+    from app.collectors.lineups import STATUS_CONFIRMED, STATUS_PREDICTED, pick_state
+
+    assert pick_state(STATUS_CONFIRMED)[0] == "final"
+    assert pick_state(STATUS_PREDICTED)[0] == "preliminary"
+    # 파이프라인이 쓰는 값이 실제 상수와 같아야 한다 (오타면 조용히 '잠정'이 된다)
+    import re
+    from pathlib import Path
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    i = src.index('_lu.get("status") == "projected"')
+    assert "STATUS_PREDICTED" in src[i:i + 300], "예상 라인업이 미지의 문자열로 저장된다"
+
+
+def test_lineup_stage_measured_for_all_sports():
+    """[§8-16] KBO·NPB도 라인업을 계측한다 — 끄면 '못 받고 있다'는 사실이 안 보인다."""
+    from pathlib import Path
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    i = src.index('await record("라인업"')
+    guard = src[max(0, i - 700):i]
+    assert 'sport in ("mlb", "soccer")' not in guard, "라인업 계측이 종목으로 막혀 있다"

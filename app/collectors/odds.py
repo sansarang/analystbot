@@ -21,7 +21,14 @@ from app.leagues import LEAGUES
 SPORT_KEYS: dict[str, list[str]] = {
     "mlb": ["baseball_mlb"],
     "soccer": [cfg["odds_key"] for cfg in LEAGUES.values()],  # 화이트리스트 7개 리그
+    # [§8-14] KBO·NPB — statsapi가 껍데기(sportId 31/32는 팀 명단만, totalGames=0)라
+    #   일정·점수를 받을 다른 경로가 없다. Odds API `/scores`가 **일정·완료여부·점수**를
+    #   한 번에 주므로 이것이 두 리그의 유일한 채점 경로다.
+    #   (실조회 2026-08-26: baseball_kbo·baseball_npb 모두 active=True)
+    "kbo": ["baseball_kbo"],
+    "npb": ["baseball_npb"],
 }
+LEAGUE_LABEL_BY_SPORT = {"kbo": "KBO", "npb": "NPB", "mlb": "MLB"}
 SOCCER_LEAGUE_LABELS = {cfg["odds_key"]: cfg["label"] for cfg in LEAGUES.values()}
 
 
@@ -66,6 +73,21 @@ class OddsClient(BaseAPIClient):
                 "markets": "h2h,spreads,totals",
                 "oddsFormat": "decimal",
             },
+        )
+
+    async def fetch_scores(self, sport_key: str, days_from: int = 2) -> list[dict]:
+        """[§8-14] 최근·예정 경기의 **일정 + 완료여부 + 점수**.
+
+        `/scores`는 commence_time·home_team·away_team·completed·scores를 함께 준다.
+        KBO·NPB는 이것이 유일한 점수 소스이며, **채점 경로 없이 픽을 내지 않는다**는
+        규율상 이 엔드포인트가 두 리그 지원의 전제다.
+        ⚠️ daysFrom을 쓰면 요청 비용이 2배다(무료 쿼터 관리 주의).
+        """
+        if self.mock:
+            return self.load_mock(f"scores_{sport_key}.json")
+        return await self._get(
+            f"/sports/{sport_key}/scores",
+            params={"apiKey": self.api_key, "daysFrom": days_from},
         )
 
     async def fetch_events(self, sport_key: str) -> list[dict]:
@@ -206,3 +228,79 @@ async def upsert_games_from_odds_events(
             ext_ids.append(ext_id)
     logger.info("[odds] soccer schedule fallback: %d games for %s (KST)", len(ext_ids), date)
     return ext_ids
+
+
+# ---------------------------------------------------------------- [§8-14] KBO·NPB 일정·점수
+
+def _scores_map(ev: dict) -> dict[str, int]:
+    """`scores` 배열 → {팀명: 점수}. 숫자로 못 바꾸면 버린다(지어내지 않는다)."""
+    out: dict[str, int] = {}
+    for row in ev.get("scores") or []:
+        try:
+            out[row["name"]] = int(row["score"])
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out
+
+
+async def upsert_games_from_scores(
+    pool: asyncpg.Pool, sport: str, date: str | None = None,
+    client: OddsClient | None = None, days_from: int = 2,
+) -> dict:
+    """[§8-14] Odds API `/scores`로 KBO·NPB 일정과 최종 점수를 함께 적재.
+
+    반환: {"scheduled": n, "final": n, "total": n}
+
+    - `date`(KST)를 주면 그날 경기만 일정으로 센다. 점수 반영은 날짜와 무관하게
+      완료된 전 경기에 적용한다(우천 순연으로 어제 경기가 오늘 확정되기도 한다).
+    - 시간대: commence_time은 UTC다. DB는 UTC 저장 규약이므로 그대로 넣는다.
+    - **completed=True이고 점수가 둘 다 있을 때만 final**로 본다. 진행 중 0-0을
+      종료로 오판하면 채점이 오염된다(KBO 공식 파서에서 겪은 사고와 같은 유형).
+    """
+    from zoneinfo import ZoneInfo
+
+    client = client or OddsClient()
+    label = LEAGUE_LABEL_BY_SPORT.get(sport, sport.upper())
+    kst = ZoneInfo("Asia/Seoul")
+    counts = {"scheduled": 0, "final": 0, "total": 0}
+    for sport_key in SPORT_KEYS.get(sport, []):
+        for ev in await client.fetch_scores(sport_key, days_from=days_from):
+            try:
+                commence = datetime.fromisoformat(ev["commence_time"].replace("Z", "+00:00"))
+            except (KeyError, ValueError):
+                continue
+            counts["total"] += 1
+            sc = _scores_map(ev)
+            hs, as_ = sc.get(ev.get("home_team")), sc.get(ev.get("away_team"))
+            done = bool(ev.get("completed")) and hs is not None and as_ is not None
+            status = "final" if done else "scheduled"
+            if not done and date is not None:
+                if commence.astimezone(kst).strftime("%Y-%m-%d") != date:
+                    continue          # 그날 경기가 아니면 일정으로 세지 않는다
+            await pool.execute(
+                """
+                INSERT INTO games (sport, league, ext_id, starts_at, home, away,
+                                   status, home_score, away_score)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT (sport, ext_id) DO UPDATE SET
+                    starts_at  = EXCLUDED.starts_at,
+                    status     = EXCLUDED.status,
+                    home_score = COALESCE(EXCLUDED.home_score, games.home_score),
+                    away_score = COALESCE(EXCLUDED.away_score, games.away_score),
+                    updated_at = now()
+                """,
+                sport, label, f"odds:{ev['id']}", commence,
+                ev.get("home_team"), ev.get("away_team"), status, hs, as_,
+            )
+            counts["final" if done else "scheduled"] += 1
+    logger.info("[odds] %s 일정·점수 적재 — 예정 %d / 종료 %d (조회 %d)",
+                label, counts["scheduled"], counts["final"], counts["total"])
+    return counts
+
+
+async def upsert_final_scores(pool: asyncpg.Pool, date: str, days: int = 2,
+                              sport: str = "kbo", client: OddsClient | None = None) -> int:
+    """채점기 진입점 — `grader.grade_date`가 MLB·KBO와 같은 계약으로 부른다."""
+    counts = await upsert_games_from_scores(pool, sport, date=None,
+                                            client=client, days_from=days)
+    return counts["final"]

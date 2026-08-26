@@ -131,74 +131,82 @@ async def load_analysis(sport: str, date: str) -> dict | None:
         await redis.aclose()
 
 
+async def _has_column(pool, table: str, col: str) -> bool:
+    """구버전 DB 호환 — 없는 컬럼을 조회해 성적표가 죽지 않게 한다."""
+    return bool(await pool.fetchval(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name = $1 AND column_name = $2", table, col))
+
+
+# [§8-18] CLV 헬퍼 삭제 — 우리 가격을 시장 마감가와 비교하는 지표라 시장에 앵커링된다.
+#   "시장보다 좋은 가격을 잡았나"가 아니라 "우리가 맞혔나"가 유일한 질문이다.
+
+
 async def render_performance(pool) -> str:
-    """📈 성적표 — 누적 방향 적중률·실현 손익·CLV·주간 손절선."""
-    settings = get_settings()
-    stake = int(settings.bankroll_krw * 0.01)
+    """[§8-18] 📈 성적표 — **정확도와 점수 오차만.** 돈·시장 지표는 전부 뺐다.
+
+    제거: 실현 손익(원) · 유닛 · 주간 손절선 · CLV(마감가 대비)
+    이유: 봇은 얼마를 걸라고도, 얼마 벌었다고도 말하지 않는다. 그리고 CLV는
+      우리 가격을 시장 마감가와 비교하는 지표라 **시장에 앵커링**된다.
+    남는 질문은 하나다 — **우리가 리그 기준선보다 나은가.**
+    """
     row = await pool.fetchrow(
         """
         SELECT count(*) FILTER (WHERE result IN ('win','loss','push')) AS graded,
                count(*) FILTER (WHERE result = 'win')  AS wins,
-               count(*) FILTER (WHERE result = 'loss') AS losses,
-               coalesce(sum(pnl), 0) AS pnl_units
+               count(*) FILTER (WHERE result = 'loss') AS losses
         FROM predictions
         """
     )
-    clv = await pool.fetchval(
+    # [§8-18] 점수 오차 — "몇 점이나 날까"를 우리가 얼마나 맞혔나.
+    #   승패 적중률만으로는 λ가 좋은지 알 수 없다. 총득점 MAE가 그 답이다.
+    score = await pool.fetchrow(
         """
-        SELECT avg(p.odds / o.odds - 1)
-        FROM predictions p
-        JOIN LATERAL (
-            SELECT odds FROM odds_snapshots os
-            WHERE os.game_id = p.game_id AND os.market = split_part(p.pick, ':', 1)
-              AND os.side = split_part(p.pick, ':', 2)
-            ORDER BY os.captured_at DESC LIMIT 1
-        ) o ON true
-        WHERE p.result IS NOT NULL
+        SELECT count(*) AS n,
+               avg(abs(p.lam_total - (g.home_score + g.away_score))) AS mae,
+               avg(g.home_score + g.away_score) AS actual_avg,
+               avg(p.lam_total) AS pred_avg
+        FROM (
+            SELECT DISTINCT ON (game_id) game_id,
+                   (model_p * 0 + lam_total) AS lam_total
+            FROM predictions WHERE lam_total IS NOT NULL
+        ) p JOIN games g ON g.id = p.game_id
+        WHERE g.status = 'final' AND g.home_score IS NOT NULL
         """
-    )
-    week_units = await pool.fetchval(
-        "SELECT coalesce(sum(pnl), 0) FROM predictions "
-        "WHERE result IS NOT NULL AND created_at >= date_trunc('week', now())"
-    )
-    # [6] 두 방식 비교 — 경기력 기반(현행) vs 시장 반영(참고). 어느 쪽이 맞히는지 본다.
+    ) if await _has_column(pool, "predictions", "lam_total") else None
+
     from app.grader import method_ledger
 
     ledger = await method_ledger(pool)
     graded, wins, losses = row["graded"], row["wins"], row["losses"]
     hit = f"{wins / (wins + losses):.1%}" if (wins + losses) else "표본 없음"
-    pnl_krw = int(float(row["pnl_units"]) * stake)
-    week_krw = int(float(week_units) * stake)
-    stop_line = int(settings.bankroll_krw * settings.weekly_stop_loss_pct)
-    stop_status = "🟢 정상" if week_krw > -stop_line else "🔴 손절선 도달 — 이번 주 베팅 중지 권장"
-    clv_txt = f"{float(clv):+.1%}" if clv is not None else "데이터 부족"
     lines = [
-        "📈 성적표 (플랫 1% 기준)",
-        f"- 채점 완료: {graded}픽 ({wins}승 {losses}패 {graded - wins - losses}푸시)",
+        "📈 성적표 — 정확도 기준",
+        f"- 채점 완료: {graded}건 ({wins}적중 {losses}빗나감 {graded - wins - losses}무효)",
         f"- 방향 적중률: {hit}",
-        f"- 실현 손익: {pnl_krw:+,}원 ({float(row['pnl_units']):+.2f}유닛)",
-        f"- CLV(마감가 대비): {clv_txt}",
-        f"- 이번 주 손익: {week_krw:+,}원 / 손절선 -{stop_line:,}원 → {stop_status}",
     ]
-    # [6] 두 방식 병렬 비교 — 표본이 쌓이기 전엔 결론 내지 않는다
+    if score and score["n"]:
+        lines.append(
+            f"- 점수 오차(MAE): {float(score['mae']):.2f}점 "
+            f"(예상 평균 {float(score['pred_avg']):.2f} / 실제 {float(score['actual_avg']):.2f}) "
+            f"· {score['n']}경기")
     if ledger:
         lines.append("")
-        lines.append("🔬 판정 방식 비교 (경기력 기반 vs 시장 반영)")
-        label = {"performance": "경기력 기반(현행)", "legacy": "시장 반영(참고)"}
+        lines.append("🔬 방식 비교 — 어느 쪽이 더 맞히나")
+        label = {"performance": "경기력 기반(현행)", "legacy": "참고 방식"}
         for m in ledger:
             hit_m = f"{m['hit_rate']:.1%}" if m["hit_rate"] is not None else "표본 없음"
-            krw = int(m["pnl_units"] * stake)
             brier = f" · Brier {m['brier']:.3f}" if m.get("brier") is not None else ""
             lines.append(
-                f"- {label.get(m['method'], m['method'])}: {m['graded']}픽 "
-                f"{m['wins']}승 {m['losses']}패 · 적중률 {hit_m} · {krw:+,}원{brier}")
+                f"- {label.get(m['method'], m['method'])}: {m['graded']}건 "
+                f"{m['wins']}적중 {m['losses']}빗나감 · 적중률 {hit_m}{brier}")
             for band in m.get("calibration") or []:
                 lines.append(
-                    f"    {band['band']} 예측 {band['n']}픽 → 실제 {band['actual']:.0%} "
+                    f"    {band['band']} 예측 {band['n']}건 → 실제 {band['actual']:.0%} "
                     f"({band['gap']:+.0%})")
         total_graded = sum(m["graded"] for m in ledger)
         if total_graded < 200:
-            lines.append(f"  ⚠️ 누적 {total_graded}픽 — 200~300픽 전에는 우열을 판단하지 않습니다")
+            lines.append(f"  ⚠️ 누적 {total_graded}건 — 200~300건 전에는 우열을 판단하지 않습니다")
         lines.append("  (Brier: 낮을수록 좋음. 항상 50%를 찍으면 0.250)")
 
     # [§6-4] 같은 표본에서 세 방식이 같은 경기를 어떻게 봤는지 비교

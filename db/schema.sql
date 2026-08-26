@@ -104,6 +104,34 @@ ALTER TABLE predictions ADD COLUMN IF NOT EXISTS p_heuristic NUMERIC;
 ALTER TABLE predictions ADD COLUMN IF NOT EXISTS p_learned NUMERIC;
 ALTER TABLE predictions ADD COLUMN IF NOT EXISTS p_claude NUMERIC;
 
+-- [§8-11] CLV(마감 배당 대비 가치). 장기 수익성의 **가장 이른 신호**다 —
+--   적중률은 표본 200~300건 전에는 잡음이지만, CLV는 픽마다 즉시 측정된다.
+--   우리가 잡은 배당이 마감 배당보다 좋았다면(= 시장이 우리 쪽으로 움직였다면)
+--   그 픽은 결과와 무관하게 '시장보다 먼저 봤다'는 증거다.
+--   closing_odds는 킥오프 **직전 마지막 스냅샷**에서 채점 시점에 역산한다
+--   (별도 잡 불필요 — odds_snapshots에 이미 시계열이 쌓인다).
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS closing_odds NUMERIC;
+
+-- [§8-18] 예상 총득점(λ 합계). **점수 오차(MAE)를 재는 유일한 근거다.**
+--   승패 적중률만으로는 "몇 점이나 날지"를 우리가 맞히는지 알 수 없다.
+--   돈·시장 지표를 전부 뺀 뒤 남은 평가 축이 ①방향 적중률 ②점수 MAE 두 개다.
+ALTER TABLE predictions ADD COLUMN IF NOT EXISTS lam_total NUMERIC;
+
+-- CLV 원장: 마감 대비 우리 배당의 우위. beat_close = 마감보다 좋은 값을 잡은 픽.
+--   clv_pct = 확률 환산 차이 (1/odds - 1/closing) — 양수면 우리가 유리한 가격을 잡았다.
+CREATE OR REPLACE VIEW clv_ledger AS
+SELECT
+    p.method,
+    count(*)                                                          AS picks_with_close,
+    count(*) FILTER (WHERE p.odds > p.closing_odds)                   AS beat_close,
+    round(avg(1.0 / p.closing_odds - 1.0 / p.odds)::numeric, 5)       AS clv_avg,
+    round((count(*) FILTER (WHERE p.odds > p.closing_odds))::numeric
+          / NULLIF(count(*), 0), 4)                                   AS beat_close_rate,
+    round(avg(p.pnl)::numeric, 4)                                     AS pnl_avg
+FROM predictions p
+WHERE p.closing_odds IS NOT NULL AND p.closing_odds > 0 AND p.odds > 0
+GROUP BY p.method;
+
 -- 전문가별 적중률·ROI 집계. ROI는 1유닛 플랫 베팅 기준, 배당 없으면 -110(1.91) 가정.
 CREATE OR REPLACE VIEW expert_ledger AS
 SELECT

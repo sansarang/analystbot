@@ -47,6 +47,11 @@ _SCHEMA_MLB = """{
  "park_factor": 1.03,   // 구장 득점 파크팩터 (1.00=중립). 홈런 파크팩터는 park_hr
  "park_hr": 1.08,
  "absences": ["핵심 결장자와 중요도(한국어). 반드시 '팀명 + 선수명 + 역할(주전 타자/마무리/셋업/선발) + 팀 내 기여도'를 포함. 예: 'San Diego Padres의 Jason Adam(마무리) 부상 결장 — 9회 담당'"],
+ "lineup": {"status": "confirmed|projected|unknown", "home": "홈 선발 라인업/타순(한국어). 미발표면 null", "away": "원정 동일", "source": "출처 매체명"},
+ "motivation": "양 팀의 이 경기 동기 — 순위 경쟁·와일드카드·소화 경기·매각 후 리빌딩 여부(한국어). 없으면 null",
+ "schedule_load": "일정 부담 — 연전 몇 번째·직전 경기 종료 시각·이동 거리·시차·더블헤더 여부(한국어). 없으면 null",
+ "umpire": "주심과 스트라이크존 성향 — 존이 넓은 편인지 좁은 편인지, 삼진율/볼넷율 경향(한국어). 없으면 null",
+ "line_move_reason": "배당이 움직였다면 그 사유 — 라인업 발표·선발 교체·부상 속보·자금 유입 중 무엇인지(한국어). 없으면 null",
  "rotation_plan": "감독의 로테이션·불펜 휴식 계획, 오프너 여부(한국어). 없으면 null",
  "park": "구장 특성 — 타자친화/투수친화와 그 근거(한국어). 없으면 null",
  "weather": "경기 시각 날씨 — 기온·풍향·강수 확률(한국어). 없으면 null",
@@ -60,12 +65,26 @@ _SCHEMA_SOCCER = """{
  "away_recent_form": {...동일 (away_split)...},
  "h2h_history": "최근 상대전적 요약(한국어)",
  "absences": ["핵심 결장자와 중요도(한국어). '팀명 + 선수명 + 포지션 + 주전 여부'를 포함"],
+ "lineup": {"status": "confirmed|projected|unknown", "home": "홈 선발 라인업/타순(한국어). 미발표면 null", "away": "원정 동일", "source": "출처 매체명"},
+ "motivation": "양 팀의 이 경기 동기 — 우승/유럽대항권/강등 경쟁, 이미 확정돼 느슨한지, 다음 경기 대비 로테이션 예고(한국어). 없으면 null",
+ "schedule_load": "일정 부담 — 직전 경기 이후 휴식일·미드위크 대항전·이동 거리·시차(한국어). 없으면 null",
+ "line_move_reason": "배당이 움직였다면 그 사유(한국어). 없으면 null",
  "park": "구장·잔디 상태(한국어). 없으면 null",
  "weather": "경기 시각 날씨(한국어). 없으면 null",
  "expert_picks": [{"expert": "...", "site": "...", "source_url": "...", "pick": "<team> ML | Double Chance <team> | Over/Under <line>", "reasoning": "한국어", "record": "전적"}],
  "predicted_scores": ["2-1", "1-1"],
  "form_reversal": ["시즌 순위와 최근 폼이 역전된 항목(한국어). 없으면 빈 배열"]
 }"""
+
+# [§8-14] 리그명을 정확히 박아야 현지 소스(스포츠조선·닛칸스포츠 등)를 찾는다.
+#   "baseball"만 주면 MLB 기사를 물어온다 — 실제로 팀명이 겹치는 경우가 있다
+#   (Lotte: KBO 롯데 자이언츠 / NPB 지바 롯데 마린스, Tigers: KIA / 한신 / 디트로이트).
+_SPORT_LABEL = {
+    "mlb": "MLB baseball",
+    "kbo": "KBO (Korea Baseball Organization, 한국프로야구) baseball",
+    "npb": "NPB (Nippon Professional Baseball, 日本プロ野球) baseball",
+    "soccer": "football(soccer)",
+}
 
 PROMPT = """Research the {sport_kr} match below as of RIGHT NOW ({now} UTC). Use the most recent data you can find — recent form matters more than season averages.
 
@@ -112,6 +131,46 @@ TARGETS = {
     "soccer": ("last 5 match results and goals for both teams; home/away splits; head-to-head record; "
                "every absence WITH position and whether the player is a regular starter; "
                "pitch and weather conditions; published expert picks WITH records; predicted scorelines"),
+    # [§8-14] KBO·NPB — MLB 목록을 그대로 쓰면 **없는 지표를 요구**하게 된다.
+    #   SIERA·xFIP·wOBA는 KBO/NPB 공개 매체가 거의 쓰지 않는다(스탯티즈·1.02 등
+    #   일부만 제공). 요구했다가 못 찾으면 Perplexity는 200 OK로 "왜 못 찾았는지"를
+    #   산문으로 채워 보내고, 그것이 validate에서 전량 폐기돼 **재료 0**이 된다.
+    #   → 실제로 공개되는 지표(평균자책점·타율·OPS·최근 등판)만 요구한다.
+    #   현지 매체를 명시해 MLB 기사로 새는 것을 막는다(팀명이 겹친다: Lotte·Tigers·Giants).
+    # ⚠️ 라인업은 **확정과 예상을 절대 섞지 마라.** 예상을 확정으로 취급하면
+    #   '최종 픽' 자격이 잘못 부여된다(라인업 2단계 규율).
+    "kbo": ("the starting lineup — say explicitly whether it is 공식 발표(confirmed) "
+            "or 예상(projected), and name the source; "
+            "each team's last 5 results as a SEQUENCE newest-first in 승/패/무 "
+            "(e.g. '승승패승패'), not a tally; "
+            "both teams' recent form (last 5~10 games, W/L and runs scored/allowed); "
+            "team batting average, OPS and runs per game over the last month; "
+            "both probable starting pitchers — season ERA, WHIP, recent 3~5 starts "
+            "(innings, earned runs, pitch count), and throwing hand; "
+            "bullpen usage over the last 3 days and whether the closer is available; "
+            "injuries and absences WITH each player's role — 1군 등록·말소와 부상자 명단을 "
+            "함께 보라(KBO는 말소로 결장을 알린다); "
+            "the ballpark's run environment (잠실·고척 are pitcher-friendly, 대구·인천 hitter-friendly); "
+            "game-time weather; standings position and remaining-games context. "
+            "PREFER Korean sources: 네이버 스포츠, KBO 공식(koreabaseball.com), 스포츠조선, "
+            "OSEN, 엠스플뉴스, 스탯티즈(statiz.sporki.com), 각 구단 공식 사이트. "
+            "This is KOREAN professional baseball — do NOT return MLB information."),
+    "npb": ("the starting lineup — say explicitly whether it is 公式発表(confirmed) "
+            "or 予想(projected), and name the source; "
+            "each team's last 5 results as a SEQUENCE newest-first in 勝/敗/分 "
+            "(e.g. '勝勝敗勝敗'), not a tally; "
+            "both teams' recent form (last 5~10 games, W/L and runs scored/allowed); "
+            "team batting average, OPS and runs per game over the last month; "
+            "both probable starting pitchers — season ERA, WHIP, recent 3~5 starts "
+            "(innings, earned runs, pitch count), and throwing hand; "
+            "bullpen usage over the last 3 days and whether the closer is available; "
+            "injuries and absences WITH each player's role — 出場選手登録・抹消も見よ"
+            "(NPBは抹消で欠場を知らせる); "
+            "the ballpark's run environment (東京ドーム·甲子園 etc.); "
+            "game-time weather; standings position (セ・リーグ / パ・リーグ). "
+            "PREFER Japanese sources: Yahoo!スポーツ(baseball.yahoo.co.jp), NPB公式(npb.jp), "
+            "日刊スポーツ, スポニチ, デイリースポーツ, 各球団公式サイト. "
+            "This is JAPANESE professional baseball — do NOT return MLB information."),
 }
 
 
@@ -144,11 +203,11 @@ async def deep_research_game(game: dict, sport: str, client: PerplexityClient | 
         return clean
     kick = game.get("starts_at")
     prompt = PROMPT.format(
-        sport_kr="MLB baseball" if sport == "mlb" else "football(soccer)",
+        sport_kr=_SPORT_LABEL.get(sport, "football(soccer)"),
         now=datetime.now(UTC).strftime("%Y-%m-%d %H:%M"),
         away=game["away"], home=game["home"], league=game.get("league", "?"),
         kickoff=str(kick), targets=TARGETS[sport],
-        schema=_SCHEMA_MLB if sport == "mlb" else _SCHEMA_SOCCER,
+        schema=_SCHEMA_MLB if sport in ("mlb", "kbo", "npb") else _SCHEMA_SOCCER,
     )
     try:
         return await _ask_and_validate(client, prompt, sport)
@@ -288,6 +347,13 @@ def _filled_fields(data: dict | None) -> dict[str, bool]:
                        or (d.get("away_recent_form") or {}).get("away_split")),
         "bullpen": bool(d.get("bullpen")),
         "form_reversal": bool(d.get("form_reversal")),
+        # [§8-7] 신규 맥락 필드 — λ 계수로 쓰지 않고 **판정(p_claude)이 본다**.
+        #        계수 없이 λ를 건드리면 측정되지 않은 튜닝이 된다(DISCIPLINE 5-1).
+        "motivation": bool(d.get("motivation")),
+        "schedule_load": bool(d.get("schedule_load")),
+        "umpire": bool(d.get("umpire")),
+        "line_move_reason": bool(d.get("line_move_reason")),
+        "lineup": bool((d.get("lineup") or {}).get("status") in ("confirmed", "projected")),
     }
 
 
@@ -395,6 +461,73 @@ def needs_refresh(game: dict) -> str | None:
     if game.get("starter_changed"):
         return "선발 변경"
     return None
+
+
+# [§8-22] 빈칸 보충 조사. 크롤링이 채우지 못한 것만 **짧게** 묻는다.
+#   실측(2026-08-26): 프롬프트가 길수록 모델이 검색을 포기한다
+#   (962→1442자에서 채움률 6/10 → 0/10). 그래서 전체 스키마를 다시 묻지 않고
+#   빠진 항목만 한 줄로 묻는다.
+GAP_PROMPT = """{sport_kr} 경기 {away} @ {home} ({kickoff} 시작)에 대해 다음만 찾아라.
+
+{gaps}
+
+{locale}
+확인된 사실만 한국어로 간단히. 못 찾은 항목은 그냥 빼라 — 왜 못 찾았는지 쓰지 마라."""
+
+GAP_LABEL = {
+    "absences": "오늘 결장·부상자와 그 선수의 역할(주전/마무리/선발)",
+    "bullpen": "양 팀 불펜 최근 3일 소화 이닝과 마무리 등판 가능 여부",
+    "motivation": "양 팀의 이 경기 동기 — 순위 경쟁·소화 경기 여부",
+    "rotation_plan": "감독이 밝힌 로테이션·불펜 운용 계획",
+    "umpire": "주심과 그 심판의 스트라이크존 성향",
+    "home_recent_form.form": "홈팀 최근 5경기 승패 순서(승/패/무로, 최신부터)",
+    "away_recent_form.form": "원정팀 최근 5경기 승패 순서(승/패/무로, 최신부터)",
+}
+
+
+async def fill_gaps(game: dict, sport: str, research: dict,
+                    gaps: list[str], client: PerplexityClient | None = None) -> dict:
+    """[§8-22] 빈칸만 보충 조사해 research에 얹는다. 반환: 채운 필드 목록 포함 요약.
+
+    ⚠️ 이미 있는 값은 **덮어쓰지 않는다.** 크롤링·공식 기록이 딥서치보다 정확하다.
+    """
+    labels = [GAP_LABEL[g] for g in gaps if g in GAP_LABEL]
+    if not labels:
+        return {"asked": [], "filled": []}
+    client = client or PerplexityClient()
+    if client.mock:
+        return {"asked": labels, "filled": []}
+    prompt = GAP_PROMPT.format(
+        sport_kr=_SPORT_LABEL.get(sport, sport),
+        away=game.get("away"), home=game.get("home"),
+        kickoff=str(game.get("starts_at") or ""),
+        gaps="\n".join(f"- {x}" for x in labels),
+        locale=("한국어 매체(네이버 스포츠·스포츠조선·OSEN)를 우선하라."
+                if sport == "kbo" else
+                "日本語メディア(日刊スポーツ·スポニチ)を優先せよ。"
+                if sport == "npb" else ""))
+    try:
+        raw = await client.chat(prompt)
+        text = normalize_response(raw)
+        text = text if isinstance(text, str) else _extract_text(text)
+    except Exception as exc:                       # 보충 실패가 분석을 막지 않는다
+        logger.warning("[deep] 빈칸 보충 실패 %s: %s", gaps, exc)
+        return {"asked": labels, "filled": [], "error": str(exc)[:120]}
+    from app.research.validate import clean_text
+
+    cleaned = clean_text(text, require_number=False, sentencewise=True)
+    if not cleaned:
+        return {"asked": labels, "filled": []}
+    research["gap_fill"] = cleaned[:1200]          # 판정이 읽는 자유서술
+    return {"asked": labels, "filled": ["gap_fill"]}
+
+
+def _extract_text(obj) -> str:
+    """normalize_response가 dict를 돌려줄 때 본문만 꺼낸다."""
+    try:
+        return obj["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        return ""
 
 
 async def get_game_research(

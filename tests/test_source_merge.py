@@ -1,0 +1,127 @@
+"""[§8-30] 소스 병합의 **조건 도달**을 직접 확인한다.
+
+실사고(2026-08-27): 네이버 병합이 `if weather:` 안에 있었고 `elif sport == "npb"`가
+그 날씨 if에 붙어 있었다. 결과는 **조용한 데이터 손실**이었다 —
+NPB는 돔경기가 하나만 있어도 Yahoo(유일한 숫자 소스)가 병합되지 않았고,
+KBO는 날씨 조회가 실패하면 선발 ERA·WHIP·폼이 함께 사라졌다.
+로그에도 상태값에도 흔적이 없어 아무도 알 수 없었다.
+
+이 테스트는 **소스 병합이 날씨와 독립임**을 못 박는다. 두 관심사를 다시 엮으면
+아래 중 하나가 반드시 깨진다.
+"""
+
+import pytest
+
+from app.pipeline import merge_source_data
+
+NPB_JG = {"home": "Yomiuri Giants", "away": "Hanshin Tigers"}
+KBO_JG = {"home": "Kia Tigers", "away": "Lotte Giants"}
+NPB_KEY = "Hanshin Tigers@Yomiuri Giants"
+KBO_KEY = "Lotte Giants@Kia Tigers"
+
+YAHOO = {NPB_KEY: {"home_pitcher": {"name": "戸郷翔征", "era_season": 2.80},
+                   "away_pitcher": {"name": "村上頌樹", "era_season": 3.10}}}
+NAVER = {KBO_KEY: {"home_pitcher": {"name": "황동하", "era_season": 4.82,
+                                    "whip": 1.49, "ip_avg_recent": 3.82, "throws": "R"},
+                   "home_form": "WLLWW", "stadium": "광주"}}
+# 돔구장은 조회를 건너뛰고도 **참 값**을 돌려준다 — 이게 사고의 방아쇠였다.
+DOME_WEATHER = {1: {"text": None, "dome": True, "temp_c": None, "wind_ms": None}}
+REAL_WEATHER = {1: {"text": "기온 31도, 풍속 2.6m/s", "dome": False,
+                    "temp_c": 31.0, "wind_ms": 2.6}}
+
+
+def test_npb_yahoo_merges_even_when_weather_present():
+    """🔴 회귀 핵심 — 돔경기가 있어 날씨가 채워져도 Yahoo는 병합돼야 한다.
+
+    옛 구조에서는 `elif`가 날씨 if에 붙어 있어 이 경우 Yahoo가 **통째로 누락**됐다.
+    NPB 12팀 중 5팀이 돔이므로 사실상 상시 발생했다.
+    """
+    research: dict = {}
+    done = merge_source_data(research, NPB_JG, "npb",
+                             {"yahoo": YAHOO, "weather": DOME_WEATHER})
+    assert "yahoo" in done, "돔경기(날씨 있음)에서 Yahoo 병합이 건너뛰어졌다"
+    assert research["home_pitcher"]["era_season"] == 2.80
+
+
+def test_npb_yahoo_merges_when_weather_absent():
+    research: dict = {}
+    done = merge_source_data(research, NPB_JG, "npb", {"yahoo": YAHOO, "weather": {}})
+    assert "yahoo" in done
+    assert research["away_pitcher"]["era_season"] == 3.10
+
+
+def test_kbo_naver_merges_when_weather_fails():
+    """🔴 회귀 핵심 — 날씨 조회가 실패해도 네이버 선발 지표는 살아야 한다.
+
+    옛 구조에서는 날씨가 빈 dict면 네이버 병합 자체가 실행되지 않아
+    선발 ERA·WHIP·평균이닝·손잡이·최근폼이 전부 사라졌다.
+    """
+    research: dict = {}
+    done = merge_source_data(research, KBO_JG, "kbo",
+                             {"naver": NAVER, "weather": {}, "kbo_teams": {},
+                              "kbo_pitchers": {}, "parks": {}})
+    assert "naver" in done, "날씨 실패가 네이버 병합을 함께 죽였다"
+    assert research["home_pitcher"]["era_season"] == 4.82
+    assert research["home_pitcher"]["ip_avg_recent"] == 3.82
+    assert research["home_recent_form"]["form"] == "WLLWW"
+
+
+def test_kbo_naver_merges_with_weather():
+    research: dict = {}
+    done = merge_source_data(research, KBO_JG, "kbo",
+                             {"naver": NAVER, "weather": REAL_WEATHER, "kbo_teams": {},
+                              "kbo_pitchers": {}, "parks": {}})
+    assert {"naver", "weather"} <= set(done)
+
+
+@pytest.mark.parametrize("sport,payload,expect", [
+    ("npb", {"yahoo": YAHOO}, "yahoo"),
+    ("kbo", {"naver": NAVER, "kbo_teams": {}, "kbo_pitchers": {}, "parks": {}}, "naver"),
+])
+def test_source_merge_needs_no_weather_key_at_all(sport, payload, expect):
+    """날씨 키가 아예 없어도 종목 소스는 병합된다 — 두 관심사는 독립이다."""
+    jg = NPB_JG if sport == "npb" else KBO_JG
+    assert expect in merge_source_data({}, jg, sport, payload)
+
+
+def test_weather_merges_independently_of_sport_source():
+    """반대 방향 — 종목 소스가 비어도 날씨는 들어가야 한다."""
+    research: dict = {}
+    jg = dict(KBO_JG, game_id=1)
+    done = merge_source_data(research, jg, "kbo",
+                             {"weather": REAL_WEATHER, "kbo_teams": {},
+                              "kbo_pitchers": {}, "parks": {}})
+    assert "weather" in done
+    assert research.get("weather") == "기온 31도, 풍속 2.6m/s"
+
+
+def test_kbo_usage_merges_independently_of_weather():
+    """[§8-33] 카드 ①칸 재료도 날씨와 독립이다 — 같은 사고를 반복하지 않는다."""
+    usage = {"Kia Tigers": {"relief_ip_l3": 6.33, "relief_batters_l3": 37,
+                            "back_to_back_count": 3},
+             "Lotte Giants": {"relief_ip_l3": 4.33, "relief_batters_l3": 25,
+                              "back_to_back_count": 0}}
+    for weather in ({}, REAL_WEATHER):
+        research: dict = {}
+        done = merge_source_data(research, KBO_JG, "kbo",
+                                 {"kbo_usage": usage, "weather": weather,
+                                  "kbo_teams": {}, "kbo_pitchers": {}, "parks": {}})
+        assert "kbo_usage" in done, f"날씨={bool(weather)}일 때 소모 병합이 건너뛰어졌다"
+        assert research["home_usage"]["relief_batters_l3"] == 37
+        assert research["away_usage"]["back_to_back_count"] == 0
+
+
+def test_no_statcast_data_is_safe():
+    """수집이 통째로 없어도 죽지 않는다.
+
+    반환값은 **도달한 병합**을 뜻한다(무엇을 채웠는지가 아니다) — 버그가
+    '실행 자체가 안 됐다'는 성격이었으므로 도달 여부를 기록한다.
+    빈 입력에서도 kbo 계열 병합은 도달하되 아무것도 채우지 않는다.
+    """
+    assert merge_source_data({}, KBO_JG, "kbo", None) == []
+    research: dict = {}
+    assert merge_source_data(research, KBO_JG, "kbo", {}) == ["kbo_stats", "kbo_park"]
+    assert research == {}, "빈 입력인데 값이 생겼다"
+    # 소스가 없는 종목은 아무 병합도 도달하지 않는다
+    assert merge_source_data({}, NPB_JG, "npb", {}) == []
+    assert merge_source_data({}, {"home": "A", "away": "B"}, "mlb", {}) == []

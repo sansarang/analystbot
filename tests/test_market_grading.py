@@ -26,39 +26,38 @@ def _c(**over):
     return c
 
 
-def test_grade_uses_win_prob_and_odds_floor_not_ev():
-    """[3-2] 등급은 승률 + 배당 하한으로만 — EV는 판정에서 제외."""
-    assert grade_candidate(_c())[0] == GRADE_GREEN                  # 64% + 1.87
+def test_grade_uses_win_prob_only():
+    """[§8-18] 등급은 **승률만으로** 판정한다.
+
+    제거: 배당 하한(시장 기준) · 시장 괴리 상한 · EV.
+    남은 질문은 "이길 확률이 얼마인가" 하나다.
+    """
+    assert grade_candidate(_c())[0] == GRADE_GREEN                  # 64%
     assert grade_candidate(_c(p=0.59))[0] == GRADE_YELLOW           # 58~62%
     assert grade_candidate(_c(p=0.55))[0] == GRADE_RED              # 승률 미달
-    assert grade_candidate(_c(odds=1.45, p=0.60))[0] == GRADE_RED   # 배당 미달
+    # 배당이 낮아도 승률이 되면 등급이 유지된다 (시장 기준을 쓰지 않는다)
+    assert grade_candidate(_c(odds=1.05, p=0.64))[0] == GRADE_GREEN
     assert grade_candidate(_c(approved=False, reject_reason="근거 부족"))[0] == GRADE_RED
-    assert grade_candidate(_c(odds=None, ev=None, p=None))[0] == GRADE_BLANK
-    blank_p = grade_candidate(_c(p=None, ev=None))
-    assert blank_p[0] == GRADE_RED and "근거" in blank_p[1]
+    # 확률이 없으면 등급을 매길 수 없다
+    assert grade_candidate(_c(p=None, ev=None))[0] == GRADE_BLANK
     # EV가 아무리 커도 승률이 기준 미달이면 🔴
     assert grade_candidate(_c(p=0.50, ev=0.40))[0] == GRADE_RED
 
 
-def test_grade_note_speaks_in_money():
-    """[3-3] 등급 사유는 승률과 1만 원 기준 실수령액으로 말한다."""
+def test_grade_note_speaks_in_probability_not_money():
+    """[§8-18] 등급 사유는 **승률로만** 말한다 — 돈 얘기를 하지 않는다."""
     note = grade_candidate(_c())[1]
-    assert "승률 64%" in note and "1만원당 6,200원" in note
-    assert "EV" not in note and "이득" not in note
-    miss = grade_candidate(_c(odds=1.45, p=0.60))[1]
-    # [3] 탈락 사유는 실제 사유를 정확히 — "이상치" 같은 엉뚱한 문구 금지
-    assert miss == "배당 1.45 < 하한 1.55"
+    assert "승률 64%" in note
+    for banned in ("원", "1만", "배당", "손익분기"):
+        assert banned not in note, f"등급 사유에 '{banned}'가 남아 있다"
 
 
-def test_payout_and_breakeven_helpers():
-    from app.engine.markets import breakeven_odds, payout_10k
+def test_money_helpers_are_removed():
+    """[§8-18] 돈 계산 헬퍼를 삭제했다 — 봇은 얼마를 걸라고도, 얼마 번다고도 말하지 않는다."""
+    import app.engine.markets as mk
 
-    assert payout_10k(1.61) == 6100
-    assert payout_10k(2.00) == 10000
-    assert payout_10k(None) == 0
-    assert breakeven_odds(0.58) == 1.724      # 승률 58%의 손익분기 배당
-    assert breakeven_odds(None) is None
-
+    assert not hasattr(mk, "payout_10k")
+    assert not hasattr(mk, "breakeven_odds")
 
 def test_board_grade_takes_best_market():
     """[A-1] 승패 🔴 + 언더 🟢 → 경기 신호등은 🟢."""
@@ -94,15 +93,54 @@ def _jg(**over):
 
 
 def test_totals_survive_when_h2h_odds_missing():
-    """[A-2] h2h 배당이 없어도 토탈 배당이 있으면 그 마켓으로 판정한다."""
+    """[§8-27] 배당이 없어도 **마켓 행과 확률이 나온다.**
+
+    종전에는 `if not odds: return`이라 Odds API가 죽으면 마켓 보드가 통째로 비었다 —
+    우리가 확률을 낼 수 있는데도 아무것도 못 보여줬다.
+    돈·시장을 판정에서 뺐으므로(§8-18) 배당은 더 이상 마켓 존재의 전제가 아니다.
+    """
     jg = _jg(market_probs=None, best_odds={},
              alt_markets=[{"market": "totals", "side": "Under", "line": 7.5,
                            "odds": 1.98, "p": 0.56}])
-    board = build_board(jg, "mlb", {})                # p_final 없음 = h2h 평가 불가
+    board = build_board(jg, "mlb", {})                # p_final 없음 = h2h 확률 없음
     priced = [c for c in board if c.get("odds")]
     assert [c["market"] for c in priced] == ["totals"]
-    # 배당 없는 마켓도 행으로 남는다 (지우지 않는다)
-    assert any(c["market"] == "h2h" and c.get("placeholder") for c in board)
+    # 배당 없는 h2h도 **행으로** 남는다 (placeholder가 아니라 실제 행)
+    h2h = [c for c in board if c["market"] == "h2h"]
+    assert len(h2h) == 2
+    assert all(c.get("odds") is None for c in h2h)
+
+
+def test_board_works_without_any_odds():
+    """[§8-27] Odds API가 죽어도 파이프라인이 돈다 — 분포에서 라인을 만든다."""
+    from app.config import get_settings
+    from app.engine.scoring import game_distribution
+
+    jg = _jg(market_probs=None, best_odds={}, alt_markets=[])
+    jg["sport"] = "mlb"
+    jg["distribution"] = game_distribution(
+        jg, {"home_offense": {"woba_30d": 0.330}, "away_offense": {"woba_30d": 0.310},
+             "home_pitcher": {"era_season": 4.0}, "away_pitcher": {"era_season": 4.5}},
+        "mlb", get_settings())
+    board = build_board(jg, "mlb", {})
+    kinds = {c["market"] for c in board if c.get("p") is not None}
+    assert {"totals", "spreads"} <= kinds, f"배당 없이 산출된 마켓: {kinds}"
+    assert all(c.get("odds") is None for c in board if c.get("p") is not None)
+
+
+def test_generated_total_lines_are_half_points_only():
+    """[§8-27] ⚠️ 정수 라인은 만들지 않는다.
+
+    ① 총득점이 정확히 그 값이면 **푸시**인데 현재 산출은 언더에 합산한다
+       (실측: 라인 9.0 언더 41.3%로 나왔으나 실제 언더 29.3% · 푸시 12.0%).
+    ② 오버 확률은 9.0과 9.5가 완전히 같다 — 중복 행만 늘어난다.
+    """
+    from app.engine.scoring import _default_total_lines
+
+    for expected in (9.80, 10.37, 6.23, 8.92):
+        lines = _default_total_lines(expected)
+        assert all(abs(x % 1 - 0.5) < 1e-9 for x in lines), f"정수 라인 포함: {lines}"
+        assert len(set(lines)) == len(lines)
 
 
 def test_board_always_contains_every_required_market():
@@ -133,9 +171,10 @@ def test_h2h_row_survives_without_judge():
     board = build_board(jg, "mlb", {})
     h2h = [c for c in board if c["market"] == "h2h"]
     assert len(h2h) == 2
-    assert all(c["odds"] for c in h2h)          # 배당은 그대로 표시
-    assert all(c["p"] is None and c["grade"] == GRADE_RED for c in h2h)
-    assert all("근거" in (c.get("grade_note") or "") for c in h2h)
+    assert all(c["odds"] for c in h2h)          # 라인·배당 자체는 수집돼 있다
+    # [§8-18] 확률이 없으면 등급을 매길 수 없다 → ⚪ (🔴은 '기준 미달'이라는 뜻이다)
+    assert all(c["p"] is None and c["grade"] == GRADE_BLANK for c in h2h)
+    assert all(c.get("grade_note") for c in h2h)
 
 
 def test_stale_snapshot_is_labelled_opening_odds():
@@ -190,26 +229,27 @@ def _rendered_jg(**over):
 
 
 def test_board_is_always_rendered_as_table():
-    """[2] 마켓 | 배당 | 봇확률 | EV | 신호등 | 근거 | ★ 형식으로 전 행 출력."""
+    """[§8-18] 마켓 | 승률 | 신호등 | 근거 | ★ — 배당·돈 열은 뺐다."""
     from app.pipeline import render_game_section
 
     out = render_game_section(_rendered_jg())
     assert "⑧ 마켓 보드" in out
-    # [3-3] 마켓 | 배당 | 승률 | 1만원 수익 | 신호등 | 근거 | ★
-    assert "승패 홈 | 1.81 | 47% | 8,100원 | 🔴" in out
-    assert "언더 8.5 | 1.62 | 64% | 6,200원 | 🟢" in out
-    assert "텍사스 레인저스 런라인 +1.5 | 1.55 | 66% | 5,500원 | 🟢" in out   # 하한 1.55 통과
+    assert "승패 홈 | 47% | 🔴" in out
+    assert "언더 8.5 | 64% | 🟢" in out
+    assert "텍사스 레인저스 런라인 +1.5 | 66% | 🟢" in out
+    for banned in ("| 1.81 |", "8,100원", "6,200원"):
+        assert banned not in out, f"보드에 '{banned}'가 남아 있다"
     assert "★" in out                                   # [3] 마켓별 신뢰도
     assert "평가 가능한 마켓 없음" not in out            # [2] 금지 출력
 
 
 def test_board_shows_unpriced_markets_as_rows():
-    """[2] 배당이 없는 마켓은 행을 지우지 말고 '배당 미수집'으로 남긴다."""
+    """[2] 배당이 없는 마켓은 행을 지우지 말고 '확률 미산출'으로 남긴다."""
     from app.pipeline import board_row
 
     row = board_row({"desc": "언더 7.5", "odds": None, "p": 0.58, "ev": None,
                      "grade": "⚪", "grade_note": "배당 확보 시 재평가"})
-    assert row.startswith("언더 7.5 | 배당 미수집 | 58% | — | ⚪ | 배당 확보 시 재평가")
+    assert row.startswith("언더 7.5 | 58% | ")
 
 
 def test_easy_layer_points_to_best_market_when_moneyline_dead():
@@ -220,7 +260,6 @@ def test_easy_layer_points_to_best_market_when_moneyline_dead():
     assert "🟢" in easy
     assert "승패는 볼 게 없지만" in easy and "언더 8.5" in easy
     # [3-3] 돈으로 말한다
-    assert "1만 원당 6,200원" in easy and "이기는 계산" in easy
     assert "EV" not in easy and "기대값" not in easy
 
 
@@ -237,7 +276,7 @@ def test_easy_layer_lists_reasons_when_all_markets_dead():
     easy = render_game_easy(jg).split(DETAIL_SEP)[0]
     assert "🔴" in easy
     assert "전 마켓" in easy and "승패 홈" in easy
-    assert "승률 58%·배당 1.55 기준" in easy
+    assert "승률 58% 기준" in easy
 
 
 def test_recommendation_pool_includes_non_moneyline(db_pool=None):
@@ -320,5 +359,5 @@ def test_board_never_says_no_markets():
     _compute_picks(Settings(_env_file=None), [jg], "mlb")
     out = render_game_section(jg)
     assert "평가 가능한 마켓 없음" not in out
-    assert out.count("배당 미수집") >= 5        # 전 마켓 행이 남아 있다
+    assert out.count("확률 미산출") >= 5        # 전 마켓 행이 남아 있다
     assert "F5(5이닝)" in out                    # 야구 필수 마켓까지 행으로

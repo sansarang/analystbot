@@ -210,6 +210,16 @@ async def build_health(pool, redis) -> str:
         except Exception as exc:
             L.append(f"\n🗄 DB 조회 실패: {exc}")
 
+    # ---- 크롤러 생사 [§8-23] ------------------------------------------
+    #  조용한 정지가 가장 위험하다 — 데이터가 어제 값으로 굳어도 아무도 모른다.
+    try:
+        from app.collectors.crawler_feed import is_alive
+
+        ok, msg = await is_alive(redis)
+        L.append(f"{'🟢' if ok else '🔴'} {msg}")
+    except Exception as exc:      # 관측 장치가 본체를 죽이면 안 된다
+        L.append(f"⚪ 크롤러 상태 확인 실패: {str(exc)[:60]}")
+
     return "\n".join(L)
 
 

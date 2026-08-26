@@ -23,7 +23,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def build_research(row, off_prior, sp_prior, park):
-    """운영 파이프라인이 만드는 research 페이로드를 과거 시점으로 재현."""
+    """운영 파이프라인이 만드는 research 페이로드를 과거 시점으로 재현.
+
+    ⚠️ 키 계약(2026-08-26 실사고): `{side}_pitcher`는 **그 side 팀의 선발**이다.
+       `mlb_lambdas`가 `lam[side] *= _suppression(pit[opp])`로 쓰므로,
+       상대 선발을 여기 넣으면 부호가 뒤집힌다.
+    """
     res = {}
     for side in ("home", "away"):
         o = off_prior.get(side)
@@ -79,8 +84,11 @@ def main():
         ok = True
         for side, team in (("home", g["home"]), ("away", g["away"])):
             off[side] = F.team_offense_prior(team_day, team, g["date"]) or {}
-            opp = g["away"] if side == "home" else g["home"]
-            pid = starter_map.get((int(g["game_pk"]), str(opp)))
+            # ⚠️ 그 팀의 **자기 선발**을 넣는다. 운영 정의가 그렇다
+            #    (collectors/mlb.py: home_pitcher = 홈팀 probablePitcher).
+            #    opp의 선발을 넣으면 mlb_lambdas가 pit[opp]를 쓰면서 각 팀 타선을
+            #    **자기 팀 선발**로 억제하게 된다 — 부호가 뒤집힌다.
+            pid = starter_map.get((int(g["game_pk"]), str(team)))
             sp[side] = (F.pitcher_prior(pg, pid, g["date"]) or {}) if pid else {}
             if not off[side].get("off_xwoba"):
                 ok = False

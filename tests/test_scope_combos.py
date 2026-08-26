@@ -43,7 +43,7 @@ def test_tiered_parlays_ranges_and_reuse():
         _leg(6, "F 핸디 +1.5", 1.35, 0.72, market="spreads"),
         _leg(7, "언더 8.5", 1.55, 0.63, market="totals"),
     ]
-    result = build_tiered_parlays(legs, flat_stake_krw=10_000)
+    result = build_tiered_parlays(legs, flat_stake_krw=None)
     combos = result["combos"]
     assert len(combos) == 3
     tiers = [c["tier"] for c in combos]
@@ -52,7 +52,6 @@ def test_tiered_parlays_ranges_and_reuse():
     # 안정형: 저분산 2폴더, 배당 1.8~2.5 (완화 없이 성립: 1.35*1.55=2.09)
     c1 = combos[0]
     assert c1["ok"] and 1.8 <= c1["odds"] <= 2.5 and not c1["relaxed"]
-    assert c1["stake_note"].startswith("권장 10,000원")
     # 균형형 3~6, 고배당형 8~20 또는 최근접 완화 표시
     for c, lo, hi in ((combos[1], 3.0, 6.0), (combos[2], 8.0, 20.0)):
         if c["ok"] and not c.get("relaxed"):
@@ -100,7 +99,7 @@ def test_tiered_parlays_forms_from_non_h2h_only():
         _leg(101, "언더 2.5", 1.70, 0.63, market="totals", league="J1 리그"),
         _leg(103, "언더 3.5", 1.30, 0.74, market="totals", league="EPL"),
     ]
-    result = build_tiered_parlays(legs, flat_stake_krw=10_000)
+    result = build_tiered_parlays(legs, flat_stake_krw=None)
     c1 = result["combos"][0]
     assert c1["tier"] == "안정형" and c1["ok"], "저분산 레그만으로 안정형이 성립해야 한다"
     assert 1.8 <= c1["odds"] <= 2.5 or c1.get("relaxed")
@@ -129,7 +128,7 @@ async def test_flagged_pick_never_recommended_regression(db_pool, redis_client, 
     reasons = " | ".join(
         f"{c.get('reject_reason')} {c.get('grade_note')}" for _, c in rejected)
     # 사유는 실제 사유여야 한다 — 하한 미달 / 근거 축 부족 / 배당 미수집
-    assert any(k in reasons for k in ("하한", "근거", "배당 미수집"))
+    assert any(k in reasons for k in ("하한", "근거", "확률 미산출"))
     # [1-2 폐기] 괴리 검증 룰 문구는 더 이상 나오지 않는다
     assert "시장이 아는 정보가 있을 가능성" not in reasons
     reco_keys = {(p["game_id"], p["pick"]) for p in analysis["picks"] if p.get("recommended")}
@@ -151,14 +150,14 @@ async def test_flagged_pick_never_recommended_regression(db_pool, redis_client, 
         jg = next(g for g in analysis["games"] if g["game_id"] == rep["game_id"])
         assert jg["pick_summary"]["ev"] == rep["ev"]
         assert jg["pick_summary"]["p_final"] == rep["p"]
-    # [3-1] predictions에 들어간 픽은 승률·배당 하한을 넘는다 (EV 기준은 폐기)
+    # [§8-18] predictions에 들어간 픽은 **승률 하한**만 넘으면 된다 (배당 하한 제거)
     from app.config import get_settings
 
     s = get_settings()
     bad = await db_pool.fetchval(
         "SELECT count(*) FROM predictions "
-        "WHERE method = 'performance' AND (model_p < $1 OR odds < $2)",
-        s.min_win_prob, s.min_odds)
+        "WHERE method = 'performance' AND model_p < $1",
+        s.min_win_prob)
     assert bad == 0
 
 
@@ -387,8 +386,8 @@ def test_market_board_rendered_in_deep_section():
     out = render_game_section(jg)
     assert "⑧ 마켓 보드" in out
     # [3-3] 마켓 | 배당 | 승률 | 1만원 수익 | 신호등 | 근거 | ★
-    assert "언더 2.5 | 1.68 | 62% | 6,800원 | 🟢" in out
-    assert "Home FC 승 | 1.85 | 52% | 8,500원 | 🔴" in out and "근거 부족" in out
+    assert "언더 2.5 | 62% | 🟢" in out
+    assert "Home FC 승 | 52% | 🔴" in out and "근거 부족" in out
 
 
 def test_easy_layer_recommends_best_market():
@@ -426,11 +425,11 @@ def _game_with_board():
             {"market": "h2h", "side": "Washington Nationals", "desc": "워싱턴 내셔널스 승",
              "p": 0.621, "odds": 1.70, "ev": 0.056, "approved": True,
              "two_source": True, "axes_kr": "실데이터+전문가+모델"},
-            # EV는 높지만 자격 미달(시장 대비 괴리 과다)
+            # [§8-18] 시장 괴리 탈락은 사라졌다 — 살아있는 규율(2-소스)로 바꾼다.
+            #   확률·EV는 높지만 근거가 1축뿐이라 추천 자격이 없다.
             {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
              "p": 0.634, "odds": 1.95, "ev": 0.236, "approved": True,
-             "two_source": True, "edge_excess": 0.14, "edge": 0.14,
-             "axes_kr": "전문가+모델"},
+             "two_source": False, "axes_kr": "모델"},
         ],
     }
 
@@ -454,8 +453,7 @@ def test_single_pool_caps_one_per_game():
     from app.pipeline import qualified_singles
 
     g = _game_with_board()
-    g["market_board"][1].pop("edge_excess")   # 둘 다 자격 통과시킨다
-    g["market_board"][1].pop("edge")
+    g["market_board"][1]["two_source"] = True   # [§8-18] 둘 다 자격 통과시킨다
     out = qualified_singles([g], get_settings())
     assert len(out) == 1
     assert out[0]["p"] == 0.634, "승률 높은 쪽이 남아야 한다"
@@ -488,10 +486,12 @@ def test_full_reco_detail_explains_zero_singles():
     from app.pipeline import DETAIL_SEP, render_full_reco
 
     g = _game_with_board()
-    g["market_board"][0]["odds"] = 1.20        # 배당 미달로 전부 탈락시킨다
+    # [§8-18] 배당 하한이 사라졌다 — 승률 미달로 전부 탈락시킨다
+    for c in g["market_board"]:
+        c["p"] = 0.51
     analysis = {"sport": "mlb", "date": "2026-08-26", "games": [g], "picks": [],
                 "combos": {}, "mode": {"name": "live_conservative"}}
     body = render_full_reco([analysis])
     detail = body.split(DETAIL_SEP, 1)[1]
     assert "단식 0건 사유" in detail
-    assert "배당" in detail and len(detail.strip().splitlines()) > 1
+    assert "승률" in detail and len(detail.strip().splitlines()) > 1

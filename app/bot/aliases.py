@@ -203,6 +203,41 @@ KR_TEAM_NAMES: dict[str, str] = {
 }
 
 
+# [§8-14] KBO 10팀 — Odds API 표기 기준(실조회 2026-08-26)
+KR_TEAM_NAMES.update({
+    "LG Twins": "LG 트윈스",
+    "Doosan Bears": "두산 베어스",
+    "KT Wiz": "KT 위즈",
+    "SSG Landers": "SSG 랜더스",
+    "NC Dinos": "NC 다이노스",
+    "Kiwoom Heroes": "키움 히어로즈",
+    "Hanwha Eagles": "한화 이글스",
+    "Samsung Lions": "삼성 라이온즈",
+    "Lotte Giants": "롯데 자이언츠",
+    "Kia Tigers": "KIA 타이거즈",
+    "KIA Tigers": "KIA 타이거즈",
+})
+
+# [§8-14] NPB 12팀 — Odds API 표기 기준(실조회 2026-08-26)
+#   ⚠️ '롯데'가 KBO(롯데 자이언츠)와 NPB(지바 롯데 마린스) 양쪽에 있다.
+#      Odds 표기가 다르므로 사전 키로는 충돌하지 않지만, 사용자 질의에서
+#      '롯데'만 오면 종목으로 구분해야 한다.
+KR_TEAM_NAMES.update({
+    "Yomiuri Giants": "요미우리 자이언츠",
+    "Hanshin Tigers": "한신 타이거스",
+    "Chunichi Dragons": "주니치 드래건스",
+    "Tokyo Yakult Swallows": "야쿠르트 스왈로스",
+    "Yokohama DeNA BayStars": "요코하마 DeNA 베이스타스",
+    "Hiroshima Toyo Carp": "히로시마 도요 카프",
+    "Fukuoka SoftBank Hawks": "소프트뱅크 호크스",
+    "Chiba Lotte Marines": "지바 롯데 마린스",
+    "Saitama Seibu Lions": "세이부 라이온스",
+    "Hokkaido Nippon-Ham Fighters": "니혼햄 파이터스",
+    "Tohoku Rakuten Golden Eagles": "라쿠텐 골든이글스",
+    "Orix Buffaloes": "오릭스 버펄로스",
+})
+
+
 def kr_team(name: str) -> str:
     """영문 팀명 → 한국어 표기. 정확 일치 → 퍼지 → 원문 유지(로그)."""
     if name in KR_TEAM_NAMES:

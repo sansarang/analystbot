@@ -86,8 +86,27 @@ def _xwoba(frame, pd) -> float | None:
     return float(num / total)
 
 
-def aggregate_team_offense(df) -> dict[str, dict]:
-    """팀별 최근 30일 타선 지표 — xwOBA·배럴률·하드히트율·평균 타구속도·K%/BB%·좌우 스플릿."""
+def _tail_games(g, n: int, key: str = "game_date"):
+    """그 그룹의 **최근 n경기** 행만 남긴다. n이 0 이하면 그대로 둔다.
+
+    [§8-6] 관측 창을 일수가 아니라 경기 수로 자른다. 팀마다 휴식일이 달라
+    "최근 30일"이 팀별로 다른 경기 수를 뜻했다 — 창 길이 비교가 불가능했다.
+    """
+    if not n or n <= 0 or key not in g:
+        return g
+    keys = sorted(g[key].dropna().unique())
+    if len(keys) <= n:
+        return g
+    return g[g[key].isin(set(keys[-n:]))]
+
+
+def aggregate_team_offense(df, window_games: int = 0) -> dict[str, dict]:
+    """팀별 타선 지표 — xwOBA·배럴률·하드히트율·평균 타구속도·K%/BB%·좌우 스플릿.
+
+    `window_games`가 양수면 각 팀의 **최근 그 경기 수**만 집계한다(기본 0 = 전량).
+    ⚠️ 출력 키 `xwoba_30d`는 창이 30일이 아니어도 **이름을 바꾸지 않는다** —
+       scoring·merge_into_research가 이 키로 읽는다. 이름 변경은 계약 파손이다.
+    """
     import pandas as pd
 
     if df is None or len(df) == 0:
@@ -97,7 +116,8 @@ def aggregate_team_offense(df) -> dict[str, dict]:
     d = d[d["team"].notna()]
 
     out: dict[str, dict] = {}
-    for team, g in d.groupby("team"):
+    for team, g_all in d.groupby("team"):
+        g = _tail_games(g_all, window_games)
         # 타석 종료 이벤트만으로 비율 지표를 만든다
         pa = g[g["events"].notna() & (g["events"] != "")]
         bip = g[g["launch_speed"].notna()]
@@ -110,6 +130,7 @@ def aggregate_team_offense(df) -> dict[str, dict]:
             "k_pct": _pct(pa, lambda x: x["events"].astype(str).str.startswith("strikeout")),
             "bb_pct": _pct(pa, lambda x: x["events"].astype(str) == "walk"),
             "pa": int(len(pa)),
+            "games": int(g["game_date"].nunique()),
         }
         for hand, key in (("L", "vs_lhp_woba"), ("R", "vs_rhp_woba")):
             sub = g[g["p_throws"] == hand]
@@ -262,7 +283,7 @@ def starter_innings(df) -> dict[str, float]:
     return out
 
 
-def aggregate_pitchers(df) -> dict[str, dict]:
+def aggregate_pitchers(df, window_starts: int = 0) -> dict[str, dict]:
     """선발별 최근 지표 — 허용 xwOBA·평균 구속(피로 신호)·던진 손·최근 등판 수.
 
     표본 가드: 50투구 또는 3등판 미만이면 허용 xwOBA를 **리그 평균으로 대체**하고
@@ -276,7 +297,8 @@ def aggregate_pitchers(df) -> dict[str, dict]:
     d = df[df["pitcher"].notna()].copy()
     league = _xwoba(d, pd)          # 같은 구간의 리그 평균 — 대체값의 기준
     out: dict[str, dict] = {}
-    for _pid, g in d.groupby("pitcher"):
+    for _pid, g_all in d.groupby("pitcher"):
+        g = _tail_games(g_all, window_starts)
         name = _pitcher_name(g)
         if not name:
             continue
@@ -355,8 +377,13 @@ async def refresh(redis, date: str | None = None) -> dict:
         logger.error("[statcast] 수집 실패 %s~%s: %s", start, end, exc)
         return {"ok": False, "error": str(exc)[:200]}
 
-    offense = aggregate_team_offense(df)
-    pitchers = aggregate_pitchers(df)
+    # [§8-6] 원본은 30일치를 받되 **집계는 최근 N경기로 자른다.**
+    #        30일을 받는 이유: 15경기(≈17일)를 담고도 휴식일·우천취소 여유가 필요하다.
+    from app.config import get_settings
+
+    _s = get_settings()
+    offense = aggregate_team_offense(df, window_games=_s.recent_window_games)
+    pitchers = aggregate_pitchers(df, window_starts=_s.recent_window_starts)
     bullpen = aggregate_bullpen(df)
     for name, ip in starter_innings(df).items():
         if name in pitchers:

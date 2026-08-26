@@ -28,7 +28,7 @@ for _, g in games.iterrows():
     ok = True
     for side, team, opp in (("home", g["home"], g["away"]), ("away", g["away"], g["home"])):
         o = F.team_offense_prior(team_day, team, g["date"])
-        pid = starter_map.get((int(g["game_pk"]), str(opp)))
+        pid = starter_map.get((int(g["game_pk"]), str(team)))   # 자기 팀 선발
         p = F.pitcher_prior(pg, pid, g["date"]) if pid else None
         if not o: ok = False
         off[side], sp[side] = o, p

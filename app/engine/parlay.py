@@ -76,10 +76,10 @@ def build_tiered_parlays(
     combos, relaxed_any = [], False
     tiers = [
         ("안정형", stable[:10], (2,), 1.8, 2.5,
-         f"권장 {flat_stake_krw:,}원 (플랫 100%)" if flat_stake_krw else "플랫 100%"),
+         ""),   # [§8-18] 스테이킹 문구 제거
         ("균형형", mixed[:10], (2, 3), 3.0, 6.0,
-         f"권장 {flat_stake_krw // 2:,}원 (50%)" if flat_stake_krw else "플랫 50%"),
-        ("고배당형·고위험 로또형", cands[:12], (3, 4), 8.0, 20.0, "소액 고정 (자금 0.3%)"),
+         ""),
+        ("고배당형·고위험 로또형", cands[:12], (3, 4), 8.0, 20.0, "변동 매우 큼"),
     ]
     for name, pool_, sizes, lo, hi, stake_note in tiers:
         combo, relaxed = _pick_combo(pool_, sizes, lo, hi, usage)
@@ -90,13 +90,10 @@ def build_tiered_parlays(
         for leg in combo["legs"]:
             usage[leg["key"]] = usage.get(leg["key"], 0) + 1
         relaxed_any = relaxed_any or relaxed
-        from app.engine.markets import payout_10k
-
         combos.append({
             "tier": name, "ok": True, "stake_note": stake_note,
             "relaxed": relaxed, **combo,
             # [3-5] 조합도 돈으로 말한다 — 합산 배당 기준 1만 원 실수령액
-            "payout_10k": payout_10k(combo["odds"]),
         })
     ok_combos = [c for c in combos if c.get("ok")]
     all_fail = round(prod(1 - c["p"] for c in ok_combos), 4) if ok_combos else None

@@ -420,3 +420,68 @@ def test_weather_omits_wind_direction():
 
     text = describe(25.0, 5.0)
     assert "맞바람" not in text and "뒷바람" not in text
+
+
+# ---------------------------------------------------------------- [§8-6] 관측 창
+
+def _game(day: str, pk: int, **over):
+    return _row(game_date=day, game_pk=pk, **over)
+
+
+def test_offense_window_keeps_only_recent_games():
+    """창을 경기 수로 자른다 — 일수가 아니다.
+
+    팀마다 휴식일이 달라 '최근 30일'은 팀별로 다른 경기 수를 뜻했다.
+    실측(1496경기)에서 15경기 창이 30일 창보다 승패 +1.34%p 나았다.
+    """
+    rows = [_game(f"2026-08-{d:02d}", d) for d in range(1, 11)]
+    full = aggregate_team_offense(_pitches(rows))["Cincinnati Reds"]
+    win3 = aggregate_team_offense(_pitches(rows), window_games=3)["Cincinnati Reds"]
+    assert full["games"] == 10
+    assert win3["games"] == 3
+
+
+def test_offense_window_zero_means_no_trim():
+    """0이면 자르지 않는다 — 종전 동작으로 복귀할 수 있어야 한다."""
+    rows = [_game(f"2026-08-{d:02d}", d) for d in range(1, 8)]
+    assert aggregate_team_offense(_pitches(rows), window_games=0)[
+        "Cincinnati Reds"]["games"] == 7
+
+
+def test_offense_window_larger_than_history_is_safe():
+    """보유 경기보다 큰 창을 요구해도 있는 만큼만 쓴다 — 크래시 금지."""
+    rows = [_game("2026-08-01", 1), _game("2026-08-02", 2)]
+    assert aggregate_team_offense(_pitches(rows), window_games=15)[
+        "Cincinnati Reds"]["games"] == 2
+
+
+def test_offense_window_actually_changes_the_metric():
+    """자른 구간이 지표를 바꿔야 한다 — 자르는 시늉만 하면 안 된다."""
+    old = [_game(f"2026-08-{d:02d}", d, estimated_woba_using_speedangle=0.250,
+                 woba_value=0.0) for d in range(1, 6)]
+    new = [_game(f"2026-08-{d:02d}", d, estimated_woba_using_speedangle=0.450,
+                 woba_value=2.0) for d in range(6, 11)]
+    df = _pitches(old + new)
+    recent = aggregate_team_offense(df, window_games=5)["Cincinnati Reds"]
+    whole = aggregate_team_offense(df)["Cincinnati Reds"]
+    assert recent["xwoba_30d"] > whole["xwoba_30d"], (
+        "최근 5경기가 좋았는데 창을 잘라도 지표가 오르지 않았다")
+
+
+def test_pitcher_window_trims_to_recent_starts():
+    """선발도 등판 수로 자른다."""
+    rows = [_game(f"2026-08-{d:02d}", d) for d in range(1, 11)]
+    full = aggregate_pitchers(_pitches(rows))["Chase Burns"]
+    win3 = aggregate_pitchers(_pitches(rows), window_starts=3)["Chase Burns"]
+    assert full["appearances"] == 10
+    assert win3["appearances"] == 3
+
+
+def test_window_key_name_unchanged():
+    """⚠️ 창이 30일이 아니어도 출력 키는 `xwoba_30d`를 유지한다.
+
+    scoring._offense와 merge_into_research가 이 키로 읽는다. 이름을 바꾸면
+    조용히 λ에서 타선이 통째로 빠진다 — 2026-08-26 선발 뒤집힘과 같은 유형의 사고다.
+    """
+    out = aggregate_team_offense(_pitches([_row()]), window_games=15)
+    assert "xwoba_30d" in out["Cincinnati Reds"]
