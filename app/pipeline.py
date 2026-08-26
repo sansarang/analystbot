@@ -376,6 +376,15 @@ def merge_source_data(research: dict, jg: dict, sport: str,
 
             _mu(research, jg, statcast_data["kbo_usage"])
             done.append("kbo_usage")
+        # [§8-34] 카드 ④칸("무게") — 순위·게임차·잔여경기.
+        #   그날 프리뷰 5경기가 10팀 순위를 모두 담고 있어 **추가 HTTP가 없다**
+        #   (순위 전용 엔드포인트는 403이다 — 2026-08-27 실측).
+        if statcast_data.get("naver"):
+            from app.collectors.naver_kbo import build_standings
+            from app.collectors.naver_kbo import merge_standings_into_research as _ms
+
+            _ms(research, jg, build_standings(statcast_data["naver"]))
+            done.append("standings")
     elif sport == "npb":
         from app.collectors.yahoo_npb import merge_into_research as _my
 
@@ -392,7 +401,9 @@ def merge_source_data(research: dict, jg: dict, sport: str,
     if statcast_data.get("crawler"):
         from app.collectors.crawler_feed import merge_into_research as _mc
 
-        _mc(research, jg, statcast_data["crawler"])
+        # [§8-35] 변화 이력을 함께 넘긴다 — **언제 바뀌었는지가 정보다.**
+        _mc(research, jg, statcast_data["crawler"],
+            statcast_data.get("crawler_changes") or [])
         done.append("crawler")
     return done
 
@@ -731,7 +742,7 @@ async def build_analysis(
                         logger.warning("[pipeline] KBO 지표 수집 실패: %s", exc)
                 # [§8-25] 파크팩터 — 잠실 0.89 vs 사직 1.21. 이게 빠지면
                 #   λ가 구장 효과를 통째로 놓친다(매번 '파크팩터 미확보'였다).
-                from app.collectors.crawler_feed import load_snapshot
+                from app.collectors.crawler_feed import load_changes, load_snapshot
                 from app.collectors.kbo_park import load as load_park
                 from app.collectors.kbo_park import refresh as refresh_park
 
@@ -770,7 +781,8 @@ async def build_analysis(
                 statcast_data = {"kbo_teams": kteams, "kbo_pitchers": kpitchers,
                                  "naver": naver, "parks": parks, "weather": kweather,
                                  "kbo_usage": usage,
-                                 "crawler": await load_snapshot(redis, "kbo", date)}
+                                 "crawler": await load_snapshot(redis, "kbo", date),
+                                 "crawler_changes": await load_changes(redis, "kbo", date)}
                 await record("날씨", len(kweather), max(1, len(_up)),
                              cause=None if kweather else "missing",
                              impact="기온·바람이 토탈 λ에 반영되지 않습니다")
@@ -806,7 +818,7 @@ async def build_analysis(
                     except Exception as exc:
                         logger.warning("[pipeline] Yahoo NPB 수집 실패: %s", exc)
                         yh = {}
-                from app.collectors.crawler_feed import load_snapshot
+                from app.collectors.crawler_feed import load_changes, load_snapshot
 
                 from app.collectors.weather import fetch_for_games as fetch_weather
 
@@ -817,7 +829,8 @@ async def build_analysis(
                     logger.warning("[pipeline] NPB 날씨 수집 실패: %s", exc)
                     nweather = {}
                 statcast_data = {"yahoo": yh, "weather": nweather,
-                                 "crawler": await load_snapshot(redis, "npb", date)}
+                                 "crawler": await load_snapshot(redis, "npb", date),
+                                 "crawler_changes": await load_changes(redis, "npb", date)}
                 await record("날씨", len(nweather), max(1, len(_up)),
                              cause=None if nweather else "missing",
                              impact="기온·바람이 토탈 λ에 반영되지 않습니다")

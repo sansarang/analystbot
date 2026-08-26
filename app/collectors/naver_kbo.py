@@ -166,6 +166,70 @@ def parse_preview(pv: dict) -> dict | None:
     return out
 
 
+# KBO 정규시즌 경기 수 — 잔여 경기 계산의 분모.
+# ⚠️ 시즌 제도가 바뀌면 여기를 고쳐야 한다. 틀리면 '잔여 경기'가 조용히 틀어진다.
+KBO_SEASON_GAMES = 144
+
+
+def build_standings(table: dict) -> dict[str, dict]:
+    """[§8-34] 하루치 프리뷰 전체 → 팀별 순위표. 카드 ④칸("무게")의 재료.
+
+    **추가 HTTP가 없다.** 그날 5경기 프리뷰가 10팀 순위를 모두 담고 있으므로
+    캐시된 값에서 조립한다. 네이버·KBO의 순위 전용 엔드포인트는 403이라
+    쓸 수 없었다(2026-08-27 실측).
+
+    게임차는 직접 계산한다 — 응답에 없다.
+        GB = ((선두승 - 팀승) + (팀패 - 선두패)) / 2
+
+    ⚠️ 순위는 응답값을 그대로 쓴다. 승률로 다시 매기면 무승부 처리 규칙 차이로
+       공식 순위와 어긋날 수 있다 — 있는 값을 재계산하지 않는다.
+    """
+    rows: dict[str, dict] = {}
+    for key, parsed in (table or {}).items():
+        if "@" not in key or not isinstance(parsed, dict):
+            continue
+        away, home = key.split("@", 1)
+        for side, team in (("home", home), ("away", away)):
+            t = parsed.get(f"{side}_team") or {}
+            w, l, d = t.get("w"), t.get("l"), t.get("d")
+            if w is None or l is None:
+                continue
+            rows[team] = {"rank": t.get("rank"), "w": w, "l": l, "d": d or 0}
+    if not rows:
+        return {}
+    # ⚠️ 게임차는 **1위 팀이 표에 있을 때만** 낸다.
+    #   부분 표에서 가장 높은 순위를 선두로 삼으면 조용히 틀린 값이 나온다
+    #   (테스트가 실제로 잡았다: 4위·6위만 있는 표에서 4위 게임차가 0.0).
+    #   못 구하는 값은 만들지 않는다 — 빈칸이 틀린 값보다 낫다.
+    lead = next((r for r in rows.values() if r.get("rank") == 1), None)
+    for r in rows.values():
+        if lead is not None:
+            r["games_behind"] = round(
+                ((lead["w"] - r["w"]) + (r["l"] - lead["l"])) / 2, 1)
+        played = r["w"] + r["l"] + r["d"]
+        r["played"] = played
+        r["remaining"] = max(0, KBO_SEASON_GAMES - played)
+    return rows
+
+
+def merge_standings_into_research(research: dict, jg: dict, table: dict) -> list[str]:
+    """순위·게임차·잔여를 research에 얹는다.
+
+    ⚠️ '총력전'·'정리 모드' 같은 **해석을 넣지 않는다** — 2단 해석봇의 일이다.
+    """
+    filled = []
+    for side in ("home", "away"):
+        row = (table or {}).get(jg.get(side) or "")
+        if not row:
+            continue
+        blk = research.setdefault(f"{side}_standing", {})
+        for k, v in row.items():
+            if v is not None and blk.get(k) != v:
+                blk[k] = v
+                filled.append(f"{side}_standing.{k}")
+    return filled
+
+
 def merge_into_research(research: dict, jg: dict, data: dict) -> list[str]:
     """[§8-19] 크롤링 결과를 research에 얹는다. 반환: 채운 필드 목록.
 

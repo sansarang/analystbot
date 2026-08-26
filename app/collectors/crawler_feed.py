@@ -92,7 +92,54 @@ def notable_changes(changes: list[dict]) -> list[str]:
     return out
 
 
-def merge_into_research(research: dict, jg: dict, snap: dict) -> list[str]:
+_LINEUP_FIELDS = ("lineup_home", "lineup_away")
+_STARTER_FIELDS = ("home_pitcher", "away_pitcher")
+
+
+def _hhmm(at: str) -> str:
+    """RFC3339 → "HH:MM" (KST). 크롤러가 KST로 찍으므로 변환하지 않는다."""
+    return (at or "")[11:16]
+
+
+def lineup_timeline(changes: list[dict], jg: dict) -> dict:
+    """[§8-35] 이 경기의 라인업·선발 **변화 이력**. 카드 ②칸의 시각 정보.
+
+    **언제 바뀌었는지가 정보다.** "18:05에 4번 타자가 빠졌다"는 그 자체로 신호이며,
+    경기 직전 교체는 다른 소스가 늦게 반영하는 몇 안 되는 사실이다.
+    스냅샷 하나만 보는 구조로는 영원히 볼 수 없다.
+
+    ⚠️ 중요도를 매기지 않는다 — "무엇이 언제 바뀌었다"만 사실로 낸다.
+       그것이 경기에 어떤 영향인지는 해석 단계가 정한다.
+    """
+    key = f"{jg.get('away')}@{jg.get('home')}"
+    out: dict = {}
+    lineup_changes, starter_changes = [], []
+    for c in changes or []:
+        if c.get("game") != key:
+            continue
+        f, kind, at = c.get("field"), c.get("kind"), _hhmm(c.get("at"))
+        if f in _LINEUP_FIELDS:
+            side = "홈" if f.endswith("home") else "원정"
+            if kind == "added":
+                # 첫 등장 = 발표 시각. 이미 있으면 더 이른 것을 남긴다.
+                prev = out.get("lineup_announced_at")
+                if not prev or (at and at < prev):
+                    out["lineup_announced_at"] = at
+            elif kind == "changed":
+                lineup_changes.append(f"{at} {side} 라인업 변경")
+        elif f in _STARTER_FIELDS and kind == "changed":
+            side = "홈" if f.startswith("home") else "원정"
+            starter_changes.append(
+                f"{at} {side} 선발 {c.get('from') or '없음'} → {c.get('to') or '없음'}")
+    if lineup_changes:
+        out["lineup_changes"] = lineup_changes
+    if starter_changes:
+        out["starter_changes"] = starter_changes
+    return out
+
+
+def merge_into_research(research: dict, jg: dict, snap: dict,
+                        changes: list[dict] | None = None) -> list[str]:
     """크롤러 스냅샷을 research에 얹는다. 반환: 채운 필드 목록.
 
     ⚠️ 선발 **이름만** 넘긴다. 성적(ERA·WHIP)은 파이썬 수집기가 공식 소스에서
@@ -134,4 +181,8 @@ def merge_into_research(research: dict, jg: dict, snap: dict) -> list[str]:
         if research.get("starter_status") != status:
             research["starter_status"] = status
             filled.append("starter_status")
+    for k, v in (lineup_timeline(changes or [], jg) or {}).items():
+        if research.get(k) != v:
+            research[k] = v
+            filled.append(k)
     return filled

@@ -91,6 +91,62 @@ def parse_pitchers(record: dict, side: str) -> list[dict]:
     return out
 
 
+def parse_scoreboard(record: dict, side: str) -> dict | None:
+    """[§8-34] 그 경기의 이닝별 득점. 카드 ③칸("최근 3경기 내용")의 재료.
+
+    **승패만으로는 상태를 알 수 없다.** 같은 3연승도
+      · 매번 8점 차 완승 = 타선 폭발
+      · 매번 1점 차 진땀승 = 불펜 소모
+    로 정반대다. 이닝별 득점이 있어야 그 차이가 보인다.
+
+    ⚠️ 홈팀은 이기고 있으면 9회말을 치지 않는다 — 이닝 배열 길이가 다를 수 있다.
+       짧은 쪽을 0으로 채우지 말고 길이 차이를 그대로 다뤄야 한다.
+    """
+    sb = record.get("scoreBoard") or {}
+    inn, rheb = sb.get("inn") or {}, sb.get("rheb") or {}
+    opp = "home" if side == "away" else "away"
+    mine, theirs = inn.get(side), inn.get(opp)
+    if not isinstance(mine, list) or not isinstance(theirs, list):
+        return None
+    box, obox = rheb.get(side) or {}, rheb.get(opp) or {}
+    out = {
+        "runs_by_inning": [int(x or 0) for x in mine],
+        "runs": int(box.get("r") or sum(int(x or 0) for x in mine)),
+        "hits": int(box.get("h") or 0),
+        "opp_runs": int(obox.get("r") or sum(int(x or 0) for x in theirs)),
+    }
+    out.update(classify_game([int(x or 0) for x in mine],
+                             [int(x or 0) for x in theirs]))
+    return out
+
+
+def classify_game(mine: list[int], theirs: list[int]) -> dict:
+    """이닝별 득점 → 경기의 **성격**. 전부 결정적으로 유도되는 사실이다.
+
+    역전승/역전패는 이닝별 누적 리드를 따라가야만 나온다 — 최종 스코어만으로는
+    "9회에 뒤집혔다"와 "처음부터 앞섰다"가 구분되지 않는다.
+    """
+    cum_m = cum_t = 0
+    was_behind = was_ahead = False
+    for i in range(max(len(mine), len(theirs))):
+        cum_m += mine[i] if i < len(mine) else 0
+        cum_t += theirs[i] if i < len(theirs) else 0
+        if cum_m < cum_t:
+            was_behind = True
+        elif cum_m > cum_t:
+            was_ahead = True
+    result = "W" if cum_m > cum_t else "L" if cum_m < cum_t else "D"
+    return {
+        "result": result,
+        "margin": cum_m - cum_t,
+        "comeback_win": result == "W" and was_behind,
+        "blown_lead": result == "L" and was_ahead,
+        "shutout_loss": result == "L" and cum_m == 0,
+        "shutout_win": result == "W" and cum_t == 0,
+        "one_run": abs(cum_m - cum_t) == 1,
+    }
+
+
 def summarize(games: list[dict]) -> dict:
     """경기별 등판 기록(최신순) → 카드 ①칸의 **사실** 층.
 
@@ -116,7 +172,23 @@ def summarize(games: list[dict]) -> dict:
     # 연투 = 최근 두 경기에 **모두** 등판. 역할 추정 없이 관측만으로 나온다.
     b2b = sorted(per_game_names[0] & per_game_names[1]) if len(per_game_names) >= 2 else []
     last = recent[0]
+    # 카드 ③ — 최근 3경기의 **내용**. 승패가 아니라 어떻게 이기고 졌는가.
+    scores = [g["score"] for g in recent if g.get("score")]
+    card3: dict = {}
+    if scores:
+        card3 = {
+            "runs_l3": sum(s["runs"] for s in scores),
+            "runs_allowed_l3": sum(s["opp_runs"] for s in scores),
+            "runs_per_game_l3": round(sum(s["runs"] for s in scores) / len(scores), 2),
+            "results_l3": "".join(s["result"] for s in scores),   # 최신순
+            "comeback_wins_l3": sum(1 for s in scores if s["comeback_win"]),
+            "blown_leads_l3": sum(1 for s in scores if s["blown_lead"]),
+            "shutout_losses_l3": sum(1 for s in scores if s["shutout_loss"]),
+            "one_run_games_l3": sum(1 for s in scores if s["one_run"]),
+            "score_games": len(scores),
+        }
     return {
+        **card3,
         "window_games": len(recent),
         "last_game_date": last["date"],
         "pitchers_used_last": len(last["pitchers"]),
@@ -176,7 +248,9 @@ async def fetch_recent_usage(date: str, client: NaverRecordClient | None = None,
                 if not rows:
                     continue
                 if len(by_team.setdefault(team, [])) < RECENT_GAMES:
-                    by_team[team].append({"date": d, "pitchers": rows})
+                    # 스코어보드는 **같은 응답**에서 뽑는다 — 추가 HTTP가 없다.
+                    by_team[team].append({"date": d, "pitchers": rows,
+                                          "score": parse_scoreboard(rec, side)})
 
     out = {t: summarize(v) for t, v in by_team.items() if v}
     logger.info("[kbo_usage] %s 기준 %d팀 소모 산출", date, len(out))

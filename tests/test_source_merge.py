@@ -111,6 +111,23 @@ def test_kbo_usage_merges_independently_of_weather():
         assert research["away_usage"]["back_to_back_count"] == 0
 
 
+def test_standings_merge_reaches_regardless_of_weather():
+    """[§8-34] 카드 ④칸 재료도 날씨와 독립이다."""
+    # 게임차는 1위가 표에 있어야 나온다 — 실제로도 그날 프리뷰가 10팀을 다 준다
+    naver = {KBO_KEY: {"home_team": {"rank": 4, "w": 62, "l": 50, "d": 2},
+                       "away_team": {"rank": 6, "w": 50, "l": 60, "d": 2}},
+             "Samsung Lions@KT Wiz": {"home_team": {"rank": 1, "w": 65, "l": 42, "d": 3},
+                                      "away_team": {"rank": 2, "w": 66, "l": 44, "d": 3}}}
+    for weather in ({}, REAL_WEATHER):
+        research: dict = {}
+        done = merge_source_data(research, KBO_JG, "kbo",
+                                 {"naver": naver, "weather": weather,
+                                  "kbo_teams": {}, "kbo_pitchers": {}, "parks": {}})
+        assert "standings" in done, f"날씨={bool(weather)}일 때 순위 병합이 건너뛰어졌다"
+        assert research["home_standing"]["games_behind"] == 5.5
+        assert research["away_standing"]["rank"] == 6
+
+
 def test_no_statcast_data_is_safe():
     """수집이 통째로 없어도 죽지 않는다.
 
@@ -125,3 +142,48 @@ def test_no_statcast_data_is_safe():
     # 소스가 없는 종목은 아무 병합도 도달하지 않는다
     assert merge_source_data({}, NPB_JG, "npb", {}) == []
     assert merge_source_data({}, {"home": "A", "away": "B"}, "mlb", {}) == []
+
+
+# ---------------------------------------------------------------- [§8-35] 변화 이력
+
+def test_lineup_timeline_records_when_not_just_what():
+    """**언제 바뀌었는지가 정보다.** 스냅샷 하나만 보면 영원히 못 본다."""
+    from app.collectors.crawler_feed import lineup_timeline
+
+    changes = [
+        {"game": KBO_KEY, "field": "lineup_home", "kind": "added",
+         "at": "2026-08-26T17:43:00+09:00", "from": "", "to": "가-나-다"},
+        {"game": KBO_KEY, "field": "lineup_away", "kind": "added",
+         "at": "2026-08-26T17:51:00+09:00", "from": "", "to": "라-마-바"},
+        {"game": KBO_KEY, "field": "lineup_home", "kind": "changed",
+         "at": "2026-08-26T18:05:00+09:00", "from": "가-나-다", "to": "가-다-나"},
+        {"game": KBO_KEY, "field": "home_pitcher", "kind": "changed",
+         "at": "2026-08-26T18:10:00+09:00", "from": "황동하", "to": "김태형"},
+        {"game": "다른@경기", "field": "lineup_home", "kind": "added",
+         "at": "2026-08-26T17:00:00+09:00", "from": "", "to": "x"},
+    ]
+    t = lineup_timeline(changes, KBO_JG)
+    assert t["lineup_announced_at"] == "17:43", "가장 이른 발표 시각이어야 한다"
+    assert t["lineup_changes"] == ["18:05 홈 라인업 변경"]
+    assert t["starter_changes"] == ["18:10 홈 선발 황동하 → 김태형"]
+
+
+def test_lineup_timeline_ignores_other_games():
+    from app.collectors.crawler_feed import lineup_timeline
+
+    other = [{"game": "X@Y", "field": "lineup_home", "kind": "added",
+              "at": "2026-08-26T17:00:00+09:00"}]
+    assert lineup_timeline(other, KBO_JG) == {}
+
+
+def test_crawler_merge_labels_lineup_sides():
+    """🔴 종전에는 `홈|원정` 합본이라 어느 쪽이 어느 팀인지 알 수 없었다."""
+    from app.collectors.crawler_feed import merge_into_research
+
+    research: dict = {}
+    snap = {KBO_KEY: {"lineup_home": "가-나-다", "lineup_away": "라-마-바",
+                      "home_pitcher": "황동하"}}
+    merge_into_research(research, KBO_JG, snap)
+    assert research["home_lineup"]["order"] == "가-나-다"
+    assert research["away_lineup"]["order"] == "라-마-바"
+    assert "lineup" not in research, "레이블 없는 합본이 남아 있다"
