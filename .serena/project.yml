@@ -36,8 +36,14 @@ project_name: "analystbot"
 # The first language server is the default language and the respective language server will be used as a fallback.
 # Note that when using the JetBrains backend, language servers are not used and this list is correspondingly ignored.
 language_servers:
-  - python      # 본체 (app/, tests/) — pipeline.py 2,353줄이라 심볼 편집이 필수다
-  - go          # crawler/ (Go 1.26)
+  # 본체(app/, tests/). pipeline.py가 2,300줄이 넘어 심볼 편집이 없으면
+  # 전체 재작성 위험이 크다 — 이 한 줄이 그것을 막는다.
+  - python
+  # ⚠️ go는 넣지 않는다. Go 모듈이 `crawler/go.mod`에 있는데 gopls는 저장소
+  #   루트에서 main module을 찾다 실패한다(실측 2026-08-27:
+  #   "cannot find main module, but found .git/config"). Python 서버는 정상
+  #   동작하므로 치명적이지 않지만, 매 기동마다 오류 로그만 쌓인다.
+  #   crawler/는 619줄뿐이라 심볼 편집이 필요하지도 않다.
 
 # the encoding used by text files in the project
 # For a list of possible encodings, see https://docs.python.org/3.11/library/codecs.html#standard-encodings
