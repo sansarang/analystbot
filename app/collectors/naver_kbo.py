@@ -254,9 +254,21 @@ def merge_into_research(research: dict, jg: dict, data: dict) -> list[str]:
             if blk.get("form") != form:
                 blk["form"] = form
                 filled.append(f"{side}_recent_form.form")
+        # [§9 게이트③] 공식 기록실과 **같은 필드**에 넣는다. 그래야 두 소스가
+        #   같은 값을 봤는지(교차) 다른 값을 봤는지(모순) 대조된다.
+        #   ⚠️ 값이 이미 같아도 **채운 목록에 넣는다.** 빼면 각인이 안 되고,
+        #      각인이 없으면 "두 소스가 일치했다"는 사실이 기록되지 않아
+        #      교차 라벨이 영원히 0%가 된다(실측 2026-08-27: 교차 0/405).
         t = data.get(f"{side}_team")
-        if t and t.get("team_era") is not None:
-            research.setdefault(f"{side}_bullpen", {}).setdefault("era", t["team_era"])
+        if t:
+            if t.get("team_era") is not None:
+                research.setdefault(f"{side}_bullpen", {}).setdefault(
+                    "era", t["team_era"])
+                filled.append(f"{side}_bullpen.era")
+            if t.get("avg") is not None:
+                research.setdefault(f"{side}_offense", {}).setdefault(
+                    "avg", t["avg"])
+                filled.append(f"{side}_offense.avg")
     if data.get("stadium"):
         research.setdefault("park", f"{data['stadium']} 구장")
     return filled

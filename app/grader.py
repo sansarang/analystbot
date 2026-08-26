@@ -296,6 +296,65 @@ async def three_way_ledger(pool) -> list[dict]:
     return out
 
 
+async def shadow_ledger(pool, days: int = 30) -> dict:
+    """[§8-38] 전 마켓 기록(`method='shadow'`)에서 **임계값을 실측으로 정하기 위한** 표.
+
+    2주쯤 쌓이면 이 표로 승률 하한·배당 하한·불펜 문턱을 전부 교체한다.
+    지금까지 그 값들은 근거 없이 정해져 있었다.
+
+    돌려주는 세 갈래:
+      ① 마켓별   — 승패 vs 언더오버 vs 핸디캡 중 **어디가 우리 강점인가**
+      ② 추천 여부 — 추천 기준이 실제로 걸러내고 있는가
+                    (추천 = performance·legacy / 미추천 = shadow)
+      ③ 확률 구간 — 높은 확률이 실제로 더 맞는가 (보정이 되고 있는가)
+
+    ⚠️ ③은 **신호등이 아니라 확률 구간**이다. 신호등 색은 predictions에 저장되지
+       않고, 애초에 우리가 교체하려는 임계값(58%·62%·배당 1.60)으로 정해진다.
+       그 임계값으로 구간을 나눠 그 임계값을 검증하면 순환논증이 된다.
+       → 임계값과 무관한 고정 구간으로 나눠 **경계가 어디여야 하는지**를 본다.
+    """
+    since = f"created_at > now() - interval '{int(days)} days'"
+    graded = f"result IN ('win','loss')"
+
+    by_market = await pool.fetch(f"""
+        SELECT split_part(pick, ':', 1) AS market,
+               count(*) FILTER (WHERE {graded}) AS graded,
+               count(*) FILTER (WHERE result = 'win') AS wins,
+               avg(model_p) FILTER (WHERE {graded}) AS avg_p
+        FROM predictions WHERE method = 'shadow' AND {since}
+        GROUP BY 1 HAVING count(*) FILTER (WHERE {graded}) > 0
+        ORDER BY 2 DESC""")
+
+    by_recommended = await pool.fetch(f"""
+        SELECT (method <> 'shadow') AS recommended,
+               count(*) FILTER (WHERE {graded}) AS graded,
+               count(*) FILTER (WHERE result = 'win') AS wins,
+               avg(model_p) FILTER (WHERE {graded}) AS avg_p
+        FROM predictions WHERE {since}
+        GROUP BY 1 ORDER BY 1 DESC""")
+
+    by_band = await pool.fetch(f"""
+        SELECT width_bucket(model_p, 0.40, 0.80, 8) AS bucket,
+               count(*) FILTER (WHERE {graded}) AS graded,
+               count(*) FILTER (WHERE result = 'win') AS wins,
+               min(model_p) AS lo, max(model_p) AS hi
+        FROM predictions WHERE method = 'shadow' AND {since} AND model_p IS NOT NULL
+        GROUP BY 1 HAVING count(*) FILTER (WHERE {graded}) > 0
+        ORDER BY 1""")
+
+    def _rate(rows):
+        out = []
+        for r in rows:
+            g, w = int(r["graded"] or 0), int(r["wins"] or 0)
+            out.append({**dict(r), "hit_rate": round(w / g, 4) if g else None})
+        return out
+
+    return {"by_market": _rate(by_market),
+            "by_recommended": _rate(by_recommended),
+            "by_probability": _rate(by_band),
+            "days": days}
+
+
 async def method_ledger(pool) -> list[dict]:
     """[6] 경기력 기반 vs 시장 반영 — 어느 쪽이 실제로 맞히는지 나란히 집계.
 

@@ -401,6 +401,14 @@ def merge_source_data(research: dict, jg: dict, sport: str,
 
             _absorb(research, _mu(research, jg, statcast_data["kbo_usage"]), SRC_PORTAL)
             done.append("kbo_usage")
+        # ⚠️ 등록 명단 병합은 **투수 소모 뒤**여야 한다 — 주전(타석 상위 9명)이
+        #    먼저 산출돼야 "주전인데 말소됐다"를 판정할 수 있다.
+        if statcast_data.get("kbo_roster"):
+            from app.collectors.kbo_roster import merge_into_research as _mr
+
+            _absorb(research, _mr(research, jg, statcast_data["kbo_roster"]),
+                    SRC_KBO_OFFICIAL)
+            done.append("kbo_roster")
         # [§8-34] 카드 ④칸("무게") — 순위·게임차·잔여경기.
         #   그날 프리뷰 5경기가 10팀 순위를 모두 담고 있어 **추가 HTTP가 없다**
         #   (순위 전용 엔드포인트는 403이다 — 2026-08-27 실측).
@@ -820,9 +828,23 @@ async def build_analysis(
                     except Exception as exc:
                         logger.warning("[pipeline] KBO 투수 소모 수집 실패: %s", exc)
                         usage = {}
+                # [A-2단계] 1군 등록 명단 — 결장 판정의 절반. **LLM 0회.**
+                #   KBO는 **말소로 결장을 알린다.** 그동안 이 정보는 Perplexity
+                #   산문에서만 왔는데, 공식 명단이 공개돼 있고 파싱하면 끝난다.
+                from app.collectors.kbo_roster import load as load_roster
+                from app.collectors.kbo_roster import refresh as refresh_roster
+
+                roster = await load_roster(redis, date)
+                if not roster:
+                    try:
+                        await refresh_roster(redis, date)
+                        roster = await load_roster(redis, date)
+                    except Exception as exc:
+                        logger.warning("[pipeline] KBO 등록 명단 수집 실패: %s", exc)
+                        roster = {}
                 statcast_data = {"kbo_teams": kteams, "kbo_pitchers": kpitchers,
                                  "naver": naver, "parks": parks, "weather": kweather,
-                                 "kbo_usage": usage,
+                                 "kbo_usage": usage, "kbo_roster": roster,
                                  "crawler": await load_snapshot(redis, "kbo", date),
                                  "crawler_changes": await load_changes(redis, "kbo", date)}
                 await record("날씨", len(kweather), max(1, len(_up)),
@@ -838,6 +860,10 @@ async def build_analysis(
                              cause=None if usage else "missing",
                              detail=f"{len(usage)}팀 · 최근 3경기 등판 (LLM 0회)",
                              impact="카드 ①칸(불펜 가용)이 '모름'으로 나갑니다")
+                await record("1군 등록", len(roster), 10,
+                             cause=None if roster else "missing",
+                             detail=f"{len(roster)}팀 명단 (LLM 0회)",
+                             impact="결장 판정이 딥서치 산문에만 의존합니다")
                 await record("파크팩터", len(parks), 9,
                              cause=None if parks else "missing",
                              detail=f"구장 {len(parks)}/9 실측",
@@ -925,13 +951,16 @@ async def build_analysis(
         # [§9 게이트 ③] 라벨 분포를 남긴다.
         #   ⚠️ **단일이 압도적이면 교차검증이 실질적으로 작동하지 않는다는 신호다** —
         #     소스가 사실상 하나뿐이라는 뜻이고, 그 소스가 틀리면 걸러낼 방법이 없다.
+        # `대조됨`은 라벨 합계에 들어가면 안 된다 — 라벨과 **직교하는** 지표다.
+        _crosschecked = _prov_dist.pop("대조됨", 0)
         _n = sum(_prov_dist.values())
         if _n:
-            _cross = _prov_dist.get("확정", 0) + _prov_dist.get("교차", 0)
+            _cross = _crosschecked
             await record("출처 대조", _cross, _n,
                          cause=None if _cross else "missing",
-                         detail=" · ".join(f"{k} {_prov_dist.get(k, 0)}"
-                                           for k in ("확정", "교차", "단일", "미확인", "모순")),
+                         detail=(f"2소스 대조 {_crosschecked} · " + " · ".join(
+                             f"{k} {_prov_dist.get(k, 0)}"
+                             for k in ("확정", "교차", "단일", "미확인", "모순"))),
                          impact="단일 소스 비중이 높으면 그 소스가 틀려도 걸러낼 수 없습니다")
 
     # [§8-22] 빈칸 보충 — 크롤링·정식기록이 못 채운 것만 **짧게** 다시 묻는다.

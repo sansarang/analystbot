@@ -147,6 +147,44 @@ def classify_game(mine: list[int], theirs: list[int]) -> dict:
     }
 
 
+def parse_batters(record: dict, side: str) -> list[dict]:
+    """한 팀의 그 경기 타자 기록. 반환: [{"name", "pa"}].
+
+    타석(PA)은 응답에 없어 **타수 + 볼넷**으로 센다. 희생타·사구가 빠지므로
+    정확한 PA는 아니지만, 우리가 쓰는 용도(**누가 주전인가**)에는 순위가
+    같으면 충분하다. 정확한 값인 척하지 않으려고 이름을 `pa`로 쓰되
+    산출 방식을 여기 적어둔다.
+
+    ⚠️ 같은 타순에 여러 명이 나온다(선발 + 교체). 둘 다 센다 — 교체로만 나온
+       선수는 타석이 적어 상위 9명에 들지 않는다.
+    """
+    rows = ((record.get("battersBoxscore") or {}).get(side)) or []
+    out = []
+    for b in rows:
+        name = (b.get("name") or "").strip()
+        if not name:
+            continue
+        pa = int(b.get("ab") or 0) + int(b.get("bb") or 0)
+        out.append({"name": name, "pa": pa})
+    return out
+
+
+def regulars_from(games: list[dict], top: int = 9) -> list[dict]:
+    """[A-2단계] 최근 경기 **타석 상위 9명** = 주전.
+
+    결장의 '중요도'를 출전 기록으로 판단한다 — IL 명단만으로는 그 선수가 팀에
+    얼마나 중요한지 알 수 없다(MLB 쪽 `absences.py`가 같은 이유로 타석 상위
+    9명을 쓴다).
+    """
+    tally: dict[str, int] = {}
+    for g in games:
+        for b in g.get("batters") or []:
+            tally[b["name"]] = tally.get(b["name"], 0) + int(b.get("pa") or 0)
+    ranked = sorted(tally.items(), key=lambda kv: (-kv[1], kv[0]))[:top]
+    return [{"name": n, "pa": pa, "rank": i + 1}
+            for i, (n, pa) in enumerate(ranked) if pa > 0]
+
+
 def summarize(games: list[dict]) -> dict:
     """경기별 등판 기록(최신순) → 카드 ①칸의 **사실** 층.
 
@@ -189,6 +227,7 @@ def summarize(games: list[dict]) -> dict:
         }
     return {
         **card3,
+        "regulars": regulars_from(recent),
         "window_games": len(recent),
         "last_game_date": last["date"],
         "pitchers_used_last": len(last["pitchers"]),
@@ -250,6 +289,7 @@ async def fetch_recent_usage(date: str, client: NaverRecordClient | None = None,
                 if len(by_team.setdefault(team, [])) < RECENT_GAMES:
                     # 스코어보드는 **같은 응답**에서 뽑는다 — 추가 HTTP가 없다.
                     by_team[team].append({"date": d, "pitchers": rows,
+                                          "batters": parse_batters(rec, side),
                                           "score": parse_scoreboard(rec, side)})
 
     out = {t: summarize(v) for t, v in by_team.items() if v}

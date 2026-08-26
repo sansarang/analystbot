@@ -131,7 +131,7 @@ def test_labels_are_per_value_not_per_source_or_game():
     assert label_field(research, "home_pitcher.name").label == CONFIRMED
     assert label_field(research, "absences").label == SINGLE
     assert distribution(research) == {CONFIRMED: 1, CROSS: 0, SINGLE: 1,
-                                      UNVERIFIED: 0, CONFLICT: 0}
+                                      UNVERIFIED: 0, CONFLICT: 0, "대조됨": 1}
 
 
 def test_stamp_accumulates_instead_of_overwriting():
@@ -174,3 +174,26 @@ def test_naive_datetime_is_rejected():
     """시각에 timezone이 없으면 모순 해소가 조용히 틀어진다."""
     with pytest.raises(ValueError):
         Observation("x", "portal", datetime(2026, 8, 26, 9, 0))
+
+
+def test_crosschecked_counts_multi_source_values_separately():
+    """🔴 `교차` 라벨만 보면 대조가 되는지 알 수 없다 — 공식이 끼면 `확정`이 이긴다.
+
+    실측(2026-08-27): 교차 라벨 0건인데 실제로는 20개 값을 두 소스가 보고 있었다.
+    라벨과 **직교하는** 지표가 있어야 교차검증의 작동 여부가 보인다.
+    """
+    research = {"home_offense": {"avg": 0.274}}
+    stamp(research, ["home_offense.avg"], "official_record", T0)
+    stamp(research, ["home_offense.avg"], "portal", T0 + timedelta(minutes=1))
+    d = distribution(research)
+    assert d[CONFIRMED] == 1, "공식이 끼면 확정이 우선이다"
+    assert d[CROSS] == 0
+    assert d["대조됨"] == 1, "두 소스가 본 사실이 안 보인다"
+
+
+def test_crosschecked_ignores_same_source_twice():
+    """같은 원본을 두 수집기가 긁은 것은 대조가 아니다 — 스스로를 확증한다."""
+    research = {"home_pitcher": {"name": "황동하"}}
+    stamp(research, ["home_pitcher.name"], "portal", T0)
+    stamp(research, ["home_pitcher.name"], "portal", T0 + timedelta(minutes=1))
+    assert distribution(research)["대조됨"] == 0

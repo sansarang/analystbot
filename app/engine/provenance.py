@@ -245,8 +245,19 @@ def strip_unusable(research: dict) -> list[str]:
 
 
 def distribution(research: dict) -> dict[str, int]:
-    """라벨 분포. **단일이 압도적이면 교차검증이 실질적으로 작동하지 않는다는 신호다.**"""
+    """라벨 분포. **단일이 압도적이면 교차검증이 실질적으로 작동하지 않는다는 신호다.**
+
+    ⚠️ `교차` 라벨만 보면 대조가 되고 있는지 알 수 없다. 공식 소스가 끼면
+       `확정`이 우선 붙기 때문이다(확정 > 교차). 실측(2026-08-27): 교차 라벨은
+       0건인데 실제로는 20개 값을 두 소스가 관측하고 있었다.
+       → `대조됨`(2개 이상 소스가 본 값)을 따로 센다. 이것이 교차검증이
+         실제로 작동하는지 보는 지표다.
+    """
     counts = {CONFIRMED: 0, CROSS: 0, SINGLE: 0, UNVERIFIED: 0, CONFLICT: 0}
-    for r in label_all(research).values():
+    crosschecked = 0
+    for f, r in label_all(research).items():
         counts[r.label] = counts.get(r.label, 0) + 1
+        if len({o.source for o in observations_for(research, f)}) >= 2:
+            crosschecked += 1
+    counts["대조됨"] = crosschecked
     return counts

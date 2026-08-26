@@ -266,13 +266,17 @@ def merge_into_research(research: dict, jg: dict, teams: dict, pitchers: dict) -
         if not t:
             continue
         blk = research.setdefault(f"{side}_offense", {})
+        # `avg`를 포함한다 — 네이버도 같은 값을 주므로 **교차 대조 지점**이 된다.
         for src, dst in (("ops", "ops"), ("obp", "obp_30d"), ("slg", "slg"),
-                         ("runs_per_game", "runs_per_game")):
-            if t.get(src) is not None and blk.get(dst) != t[src]:
+                         ("avg", "avg"), ("runs_per_game", "runs_per_game")):
+            if t.get(src) is None:
+                continue
+            if blk.get(dst) != t[src]:
                 blk[dst] = t[src]          # 공식 값이 이긴다 — 덮어쓴다
-                filled.append(f"{side}_offense.{dst}")
+            filled.append(f"{side}_offense.{dst}")   # 값이 같아도 '관측'은 기록한다
         if t.get("team_era") is not None:
             research.setdefault(f"{side}_bullpen", {}).setdefault("era", t["team_era"])
+            filled.append(f"{side}_bullpen.era")
     # 선발 — 이름은 딥서치가 준다(공식 기록실에 '오늘 선발' 필드가 없다)
     for side in ("home", "away"):
         blk = research.get(f"{side}_pitcher") or {}

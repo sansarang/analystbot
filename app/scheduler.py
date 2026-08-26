@@ -317,6 +317,20 @@ async def grading_job() -> None:
         await reconcile_stale_games(pool)
     except Exception as exc:
         logger.warning("[scheduler] stale 정합 실패 — 채점은 계속: %s", exc)
+    # [§8-37] 중복 경기 행 자가 복구. **한 번 고쳐두면 끝나는 문제가 아니다** —
+    #   소스가 늘어날 때마다 같은 경기가 다른 ext_id로 다시 갈라질 수 있고,
+    #   그러면 예측이 붙은 행과 결과가 들어온 행이 또 남남이 돼 채점이 조용히
+    #   멈춘다(실측 2026-08-27: KBO 5 · MLB 10 · NPB 6 중복).
+    #   매일 채점 직전에 합쳐서 그 상태가 하루 이상 지속되지 않게 한다.
+    try:
+        from app.collectors.game_match import merge_duplicate_games
+
+        merged = await merge_duplicate_games(pool)
+        if merged.get("merged"):
+            logger.warning("[scheduler] 중복 경기 %d행 재발 — 병합함 (예측 %d건 이관)",
+                           merged["merged"], merged.get("moved_predictions", 0))
+    except Exception as exc:
+        logger.warning("[scheduler] 중복 병합 실패 — 채점은 계속: %s", exc)
     totals: dict[str, dict] = {}
     for sport in ("mlb", "soccer", "kbo", "npb"):
         try:
