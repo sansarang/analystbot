@@ -5,6 +5,7 @@
 
 import asyncio
 import logging
+from dataclasses import replace
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -110,9 +111,7 @@ async def prefetch_job() -> None:
                     detail=f"{type(exc).__name__}: {exc}"[:150],
                     frames=our_frames(exc),
                     impact=f"오늘 {sport_kr} 리포트가 없습니다"))
-            all_stages += [StageResult(name=f"[{sport_kr}] {st.name}", ok=st.ok,
-                                       total=st.total, cause=st.cause, detail=st.detail,
-                                       frames=st.frames, impact=st.impact)
+            all_stages += [replace(st, name=f"[{sport_kr}] {st.name}")
                            for st in stages]
         recovered = await drain_retry_queue(redis)
         calls = await research_calls_today(redis)

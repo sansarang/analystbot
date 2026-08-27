@@ -79,7 +79,7 @@ def test_off_is_not_a_failure_state():
     from pathlib import Path
 
     src = Path("app/pipeline.py").read_text(encoding="utf-8")
-    assert '_OK_STATES = ("refreshed", "cached", "off")' in src
+    assert '_OK_STATES = ("refreshed", "cached", "off", "stale_fallback")' in src
     assert "딥서치 비활성 — 크롤링 전용" in src
 
 

@@ -672,6 +672,18 @@ def test_attach_verdicts_matches_string_game_ids():
     assert games[0]["p_claude"] == 0.55
 
 
+def test_verdict_hits_never_exceeds_upcoming():
+    """🔴 판정 8/7 — 분자에 중복·초과 ID가 들어가면 분모를 넘는다."""
+    from app.pipeline import _verdict_hits
+
+    upcoming = [{"game_id": i} for i in range(7)]
+    extra = {"games": [{"game_id": i} for i in range(8)]}
+    assert _verdict_hits(extra, upcoming) == 7
+    dups = {"games": [{"game_id": 0}, {"game_id": "0"}, {"game_id": 1},
+                      {"game_id": 99}]}
+    assert _verdict_hits(dups, upcoming) == 2
+
+
 # --- LLM이 만들어낸 날짜 차단 (2026-08-26 실사고) ---
 
 def test_intent_date_far_in_past_is_rejected():

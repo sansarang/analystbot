@@ -263,3 +263,54 @@ def test_no_stage_declares_an_unknown_unit():
     allowed = {"경기", "팀", "구장", "값", "행", "건"}
     for name, _num, _total, unit, line in _record_calls():
         assert unit in allowed, f"{name}(L{line}): 모르는 단위 {unit!r}"
+
+
+# ---------------------------------------------------- ⑤ 프리페치 계측이 사실을 말하는가
+
+def test_prefetch_copy_keeps_unit_and_zero_ok():
+    """스케줄러가 필드를 빼면 구장 30개가 '30/30경기'가 되고, 라인업 0이 🔴이 된다."""
+    from dataclasses import replace
+
+    park = StageResult(name="구장", ok=30, total=30, unit="구장")
+    assert "30/30구장" in replace(park, name="[MLB] 구장").line()
+    intent = StageResult(name="라인업 의도", ok=0, total=7, unit="경기",
+                         expect_full=False, zero_ok=True)
+    dropped = StageResult(name="[MLB] 라인업 의도", ok=intent.ok, total=intent.total,
+                          cause=intent.cause, detail=intent.detail)
+    assert dropped.failed and dropped.icon == "🔴"
+    kept = replace(intent, name="[MLB] 라인업 의도")
+    assert not kept.failed and kept.icon == "✅"
+    src = (ROOT / "app/scheduler.py").read_text(encoding="utf-8")
+    assert "replace(st, name=" in src
+    assert "StageResult(name=f\"[{sport_kr}] {st.name}\", ok=st.ok" not in src
+
+
+def test_research_cause_is_not_compared_to_all_games():
+    """분모는 예정 경기인데 실패 여부를 전체 경기 수와 비교하면 끝난 경기 때문에 🔴."""
+    src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
+    i = src.index('await record("리서치"')
+    block = src[max(0, i - 900):i + 200]
+    assert "_research_total" in block
+    assert "_ok_research == len(games)" not in block
+    assert '_OK_STATES = ("refreshed", "cached", "off", "stale_fallback")' in src
+
+
+def test_judge_record_uses_hits_not_raw_len():
+    src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
+    i = src.index('await record("판정", _judged')
+    assert "_verdict_hits" in src[i - 400:i]
+
+
+def test_lineup_intent_zero_ok_is_not_overridden_by_cause():
+    """cause가 있으면 zero_ok는 죽은 코드다 — 0건이 정상인데도 🔴."""
+    src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
+    i = src.index('await record("라인업 의도"')
+    block = src[i:i + 400]
+    assert "zero_ok=not compared" in block
+    assert 'cause=None if compared else "missing"' not in block
+
+
+def test_research_partial_is_yellow_not_red():
+    """일부만 받은 리서치는 전량 실패가 아니다."""
+    st = StageResult(name="리서치", ok=3, total=7, unit="경기")
+    assert st.icon == "🟡" and st.partial and not st.failed

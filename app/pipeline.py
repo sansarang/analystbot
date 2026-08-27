@@ -687,18 +687,28 @@ async def build_analysis(
     #   계측하면 매 리포트에 없는 한계가 실린다 — 실제로 "배당 수집(데이터 없음)"이
     #   KBO 카드 상단에 계속 나갔다(실측 2026-08-27).
     if active_keys:
-        await record("배당 수집", int(_odds_rows or 0), max(1, len(_sched_now)),
-                     cause=None if _odds_rows else "missing",
-                     detail=f"스냅샷 {_odds_rows or 0}행 / 예정 {len(_sched_now)}경기",
-                     unit="경기", expect_full=False,
-                     impact="배당 없이는 추천 자격(배당 하한)을 판정할 수 없습니다")
+        from app.api_guard import is_blocked, is_disabled
+
+        _odds_unusable = is_disabled("odds") or await is_blocked("odds")
+        if _odds_unusable:
+            await record("배당 수집", 0, max(1, len(_sched_now)),
+                         cause=None,
+                         detail="odds 미사용 또는 크레딧 차단",
+                         unit="경기", expect_full=False, zero_ok=True,
+                         impact="배당 없이는 추천 자격(배당 하한)을 판정할 수 없습니다")
+        else:
+            await record("배당 수집", int(_odds_rows or 0), max(1, len(_sched_now)),
+                         cause=None if _odds_rows else "missing",
+                         detail=f"스냅샷 {_odds_rows or 0}행 / 예정 {len(_sched_now)}경기",
+                         unit="경기", expect_full=False,
+                         impact="배당 없이는 추천 자격(배당 하한)을 판정할 수 없습니다")
     # 분모는 **예정 경기**다. 리서치는 scheduled 경기만 조사하므로 전체 경기를
     # 분모로 쓰면 저녁 시간대(진행 중 경기 다수)에 "5/15 실패"처럼 잘못 경보한다.
     # (실측 2026-08-26 10:00: 15경기 중 6경기만 예정이었는데 5/15로 표시됐다)
     _sched_ids = {g["id"] for g in games if g.get("status") == "scheduled"}
-    # [A-5단계] `off`는 **끈 것**이지 실패가 아니다. 섞으면 거짓 경보가 난다 —
-    #   "리서치 0/5 실패"라고 알리면서 실제로는 의도대로 크롤링만 쓰고 있는 상황.
-    _OK_STATES = ("refreshed", "cached", "off")
+    # [A-5단계] `off`는 **끈 것**이지 실패가 아니다. `stale_fallback`은 구캐시가
+    #   있어 분석은 된다 — 못 받은 것(`missing`)과 섞으면 거짓 경보다.
+    _OK_STATES = ("refreshed", "cached", "off", "stale_fallback")
     _ok_research = sum(1 for gid, st in research_statuses.items()
                        if gid in _sched_ids and st in _OK_STATES)
     _deep_off = (not get_settings().deepsearch_enabled(sport)
@@ -714,8 +724,19 @@ async def build_analysis(
         _bad = {k: v for k, v in _count_by(research_statuses.values()).items()
                 if k not in _OK_STATES}
         _research_detail = ", ".join(f"{k}:{v}" for k, v in sorted(_bad.items()))
-    await record("리서치", _ok_research, len(_sched_ids) or len(games),
-                 cause=None if _ok_research == len(games) else "missing",
+    # 분모는 예정 경기다. 전체 경기 수와 비교하면 끝난 경기 때문에 🔴가 된다.
+    _research_total = len(_sched_ids) or len(games)
+    if _deep_off:
+        _research_cause = None
+        _ok_research = _research_total
+    elif _ok_research == _research_total:
+        _research_cause = None
+    elif _ok_research == 0:
+        _research_cause = "missing"
+    else:
+        _research_cause = None     # 일부만 실패 → 🟡 부분. 전량만 🔴
+    await record("리서치", _ok_research, _research_total,
+                 cause=_research_cause,
                  detail=_research_detail,
                  unit="경기",
                  impact="해당 경기는 결장·불펜 정보 없이 판정됩니다")
@@ -1174,9 +1195,11 @@ async def build_analysis(
                          unit="경기",
                          impact="추천·조합이 생성되지 않습니다 (마켓 보드만 표시)")
     if upcoming and not any(st.name == "판정" for st in stages):
-        _judged = len(verdict.get("games") or [])
+        _judged = _verdict_hits(verdict, upcoming)
+        _j_cause = None if _judged == len(upcoming) else (
+            "missing" if _judged == 0 else None)
         await record("판정", _judged, len(upcoming),
-                     cause=None if _judged == len(upcoming) else "missing",
+                     cause=_j_cause,
                      unit="경기",
                      impact="판정 못 받은 경기는 추천에서 제외됩니다")
     _attach_verdicts(judge_games, verdict)
@@ -1440,6 +1463,16 @@ def _to_gid(value):
         return int(value)
     except (TypeError, ValueError):
         return value
+
+
+def _verdict_hits(verdict: dict, upcoming: list[dict]) -> int:
+    """판정이 요청 예정 경기 중 몇 건을 돌려줬는가. 중복·초과 ID는 세지 않는다.
+
+    실측: `len(verdict["games"])`를 분자로 쓰면 8/7이 나온다. 분자는 분모를
+    넘을 수 없다.
+    """
+    got = {_to_gid(g.get("game_id")) for g in (verdict.get("games") or [])}
+    return sum(1 for g in upcoming if _to_gid(g.get("game_id")) in got)
 
 
 async def _renarrate(games: list[dict], sport: str) -> None:
@@ -3978,7 +4011,7 @@ async def _attach_lineup_intent(pool, judge_games: list[dict], sport: str,
         changed += it.get("_new", 0)
     if record is not None:
         await record("라인업 의도", compared, len(live),
-                     cause=None if compared else "missing",
+                     cause=None,
                      detail=f"평소 대조 {sides}팀 · 새 라인업 관측 {changed}건",
                      unit="경기", expect_full=False, zero_ok=not compared,
                      impact="평소 대비 변경점을 읽지 못해 감독 의도가 빠집니다")
