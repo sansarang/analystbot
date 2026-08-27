@@ -202,10 +202,21 @@ def build_standings(table: dict) -> dict[str, dict]:
     #   (테스트가 실제로 잡았다: 4위·6위만 있는 표에서 4위 게임차가 0.0).
     #   못 구하는 값은 만들지 않는다 — 빈칸이 틀린 값보다 낫다.
     lead = next((r for r in rows.values() if r.get("rank") == 1), None)
+    # [§9 카드 ④칸] **컷(가을야구 진출선) 대비 게임차**도 낸다.
+    #   선두 게임차만으로는 경쟁권을 판정할 수 없다 — 선두와 16게임 차여도
+    #   5위와 1게임 차면 그 팀은 명백히 경쟁 중이다.
+    from app.config import get_settings
+
+    cut_rank = get_settings().contention_cut_rank
+    cut = next((r for r in rows.values() if r.get("rank") == cut_rank), None)
     for r in rows.values():
         if lead is not None:
             r["games_behind"] = round(
                 ((lead["w"] - r["w"]) + (r["l"] - lead["l"])) / 2, 1)
+        if cut is not None:
+            # 컷보다 위면 음수가 된다(= 여유). 그대로 둔다 — 부호가 정보다.
+            r["games_behind_cut"] = round(
+                ((cut["w"] - r["w"]) + (r["l"] - cut["l"])) / 2, 1)
         played = r["w"] + r["l"] + r["d"]
         r["played"] = played
         r["remaining"] = max(0, KBO_SEASON_GAMES - played)
