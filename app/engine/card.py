@@ -15,6 +15,7 @@
    "소모 0"은 "충분함 ▲"으로 오독된다. 모름이 셋 이상이면 판정하지 않는다.
 """
 
+import re
 from dataclasses import dataclass, field
 
 # 칸 정의 — 순서가 카드 출력 순서다.
@@ -334,22 +335,159 @@ def render_state_card(jg: dict) -> list[str]:
     return lines
 
 
-def compare_line(jg: dict) -> str | None:
-    """[§9-3단] 대조 결론 한 줄. 판정이 없으면 None(빈말을 만들지 않는다).
+_CONF_ICON = {"높음": "🟢", "보통": "🟡", "낮음": "⚪"}
+_NUM = re.compile(r"\d")
 
-    ⚠️ **확률을 쓰지 않는다.** 3단은 우세한 쪽과 확신도만 준다 — 여기서
-       "63%" 같은 숫자를 붙이면 3단이 말하지 않은 것을 말한 것이 된다.
+# 부호의 수치값 — 칸 기울기 계산의 유일한 정의. comparator도 이것을 쓴다.
+SYM_VALUE = {"▲": 1, "=": 0, "▼": -1}
+
+
+def tilt_by_cell(cells: dict) -> dict[str, str | None]:
+    """칸별로 어느 쪽으로 기우는가. {cell: "home"|"away"|"even"|None}.
+
+    ⚠️ 한쪽이라도 판정이 없으면 **None**이다 — 기울기를 모른다. 한쪽 ▼만 보고
+       "상대가 우위"라고 쓰면 거짓이 된다(상대도 ▼일 수 있다).
+    """
+    out: dict[str, str | None] = {}
+    for key, _ in CELLS:
+        h = ((cells.get("home") or {}).get(key) or {}).get("symbol")
+        a = ((cells.get("away") or {}).get(key) or {}).get("symbol")
+        if h is None or a is None:
+            out[key] = None
+            continue
+        diff = SYM_VALUE.get(h, 0) - SYM_VALUE.get(a, 0)
+        out[key] = "home" if diff > 0 else "away" if diff < 0 else "even"
+    return out
+
+
+# 짝이 있어야 하는 기호 — 한쪽만 남으면 읽을 수 없는 조각이 된다.
+_PAIRS = (("‘", "’"), ("“", "”"), ("[", "]"))
+# 숫자 앞에 붙는 짧은 수식어는 함께 남긴다 ("ERA 3.89" · "팀 OPS .792")
+_UNIT_HEAD = re.compile(r"^(?:팀|시즌|평균|직전|최근|리그)$|^[A-Za-z]{2,5}$")
+
+
+def _snippet(reason: str, label: str = "", max_tokens: int = 4) -> str:
+    """긴 사유에서 **숫자가 든 짧은 구절**만 뽑는다.
+
+    3단·2단 사유는 한 문단이 되기 쉽다. 결론 줄에 문단을 실으면 결론이 파묻힌다
+    — 사용자가 실제로 겪은 문제다. 숫자가 근거의 알맹이이므로 그것을 남긴다.
+
+    ⚠️ **글자 수로 자르지 않는다.** 24자에서 끔었더니 "리그 상위권 수준의 타"처럼
+       단어 중간에서 잘렸다(실측 2026-08-27). 토큰 경계로만 자른다.
+    ⚠️ **숫자로 끝난다.** 마지막이 "득점이"·"소모가" 같은 문장 조각이면
+       끝나지 않은 말처럼 읽힌다.
+    ⚠️ 라벨과 겹치는 앞머리는 지운다 — "최근 3경기 최근 3경기 WWL"이 나갔다.
+    """
+    text = (reason or "").strip()
+    if label and text.startswith(label):
+        text = text[len(label):].lstrip(" :·-—")
+    # 괄호 안은 부연 설명이다 — 통째로 버린다. 기호만 지우면
+    # "득점력(회당 10.33점)" → "득점력회당"처럼 단어가 붙어버린다.
+    text = re.sub(r"\([^)]*\)|（[^）]*）", " ", text)
+    toks = text.replace("·", " ").split()
+    at = next((i for i, t in enumerate(toks) if _NUM.search(t)), None)
+    if at is None:
+        picked = toks[:max_tokens]
+    else:
+        if at and _UNIT_HEAD.match(toks[at - 1]):
+            at -= 1                       # "ERA"·"팀" 같은 수식어를 함께 남긴다
+        picked = toks[at:at + max_tokens]
+        # 숫자로 끝나게 다듬되, **두 토큰 아래로는 줄이지 않는다** —
+        # "2경기 연속 등판 없음"이 "2경기"만 남으면 뜻이 사라진다.
+        while len(picked) > 2 and not _NUM.search(picked[-1]):
+            picked.pop()
+    out = " ".join(picked)
+    for lo, hi in _PAIRS:
+        if out.count(lo) != out.count(hi):
+            out = out.replace(lo, "").replace(hi, "")
+    # 끝에 남은 조사는 뗀다 — "5실점으로"·"OPS .792로"가 말이 끊긴 것처럼 읽힌다.
+    out = re.sub(r"(으로|로|와|과|이|가|은|는|을|를)$", "", out.strip())
+    return out.strip(" ·,;.…-—→")
+
+
+def _cells_for(jg: dict, side: str) -> list[str]:
+    """`side`로 기운 칸들의 "라벨 짧은근거".
+
+    ⚠️ **칸 기울기로 고른다.** 그 팀의 부호만 보고 고르면, 양쪽 다 ▼인 칸이
+       "상대 우위"로 둔갑한다(실측 2026-08-27: 한화·SSG 선발이 둘 다 ▼인데
+       "한화 우위"로 나갔다).
+    """
+    labels = dict(CELLS)
+    tilt = tilt_by_cell(jg.get("cells") or {})
+    out = []
+    for key, _ in CELLS:
+        if tilt.get(key) != side:
+            continue
+        v = ((jg.get("cells") or {}).get(side) or {}).get(key) or {}
+        snip = _snippet(v.get("reason") or "", labels[key])
+        out.append(f"{labels[key]} {snip}".strip())
+    return out
+
+
+def compare_lines(jg: dict) -> list[str]:
+    """[§9-3단] 결론 **3줄**. 첫 줄이 결론이고, 긴 서술은 상세로 내려간다.
+
+        KIA 타이거즈 우세  (3칸 대 1칸 · 확신 보통)
+        ▲ 타선 OPS .792 · 최근 3경기 31득점
+        ▼ 선발은 롯데 자이언츠 우위
+
+    ⚠️ **확률을 쓰지 않는다.** 3단은 우세한 쪽과 칸 격차만 준다.
+    ⚠️ 반대 방향 칸을 숨기지 않는다 — 짧게라도 셋째 줄에 남긴다.
     """
     v = jg.get("compare") or {}
-    fav, why = v.get("favored"), (v.get("reason") or "").strip()
+    fav = v.get("favored")
     if not fav:
-        return None
+        return []
     conf = v.get("confidence") or "보통"
+    icon = _CONF_ICON.get(conf, "🟡")
+    c = v.get("counts") or {}
+    gap = f"{c.get(fav, 0)}칸 대 {c.get('away' if fav == 'home' else 'home', 0)}칸 · " \
+        if fav in ("home", "away") and c else ""
     if fav == "none":
-        return f"⚖️ 카드로는 우열을 가리기 어렵다 (확신 {conf})" + (f" — {why}" if why else "")
+        head = f"⚖️ 우열을 가리기 어렵다 ({gap}확신 {conf})"
+        return [head]
     name = jg.get(f"{fav}_kr") or jg.get(fav) or fav
-    icon = {"높음": "🟢", "보통": "🟡", "낮음": "⚪"}.get(conf, "🟡")
-    return f"{icon} 카드 우세: {name} (확신 {conf})" + (f" — {why}" if why else "")
+    other = "away" if fav == "home" else "home"
+    other_name = jg.get(f"{other}_kr") or jg.get(other) or other
+    lines = [f"{icon} {name} 우세 ({gap}확신 {conf})"]
+    up = _cells_for(jg, fav)
+    if up:
+        lines.append("▲ " + " · ".join(up[:3]))
+    # 반대 방향 — **상대 쪽으로 기운 칸**만. 숨기지 않되 짧게.
+    down = _cells_for(jg, other)
+    if down:
+        lines.append(f"▼ {other_name} 우위 — " + " · ".join(down[:2]))
+    return lines
+
+
+def compare_line(jg: dict) -> str | None:
+    """한 줄 요약 — 슬레이트 목록·판정 실패 경로용. 없으면 None."""
+    lines = compare_lines(jg)
+    return lines[0] if lines else None
+
+
+def slate_compare_row(jg: dict) -> str:
+    """슬레이트 첫 화면의 경기 1줄.
+
+    ⚠️ **판정 못 한 경기도 남긴다.** 조용히 빠지면 분석된 것으로 오인된다
+       — 몇 경기가 빠졌는지 사용자가 알 수 있어야 한다.
+    """
+    away = jg.get("away_kr") or jg.get("away") or "?"
+    home = jg.get("home_kr") or jg.get("home") or "?"
+    head = f"· {away} @ {home} — "
+    v = jg.get("compare") or {}
+    fav = v.get("favored")
+    if not fav:
+        why = ("LLM 응답 없음" if (jg.get("cells_status") or "") != "판정"
+               else "카드 대조 실패")
+        return head + f"판정 미수행 ({why})"
+    conf = v.get("confidence") or "보통"
+    c = v.get("counts") or {}
+    if fav == "none":
+        return head + f"우열 없음 ({c.get('home', 0)}:{c.get('away', 0)}, {conf})"
+    name = jg.get(f"{fav}_kr") or jg.get(fav) or fav
+    lose = c.get("away" if fav == "home" else "home", 0)
+    return head + f"{name} 우세 ({c.get(fav, 0)}:{lose}, {conf})"
 
 
 def card_summary_line(jg: dict) -> str | None:

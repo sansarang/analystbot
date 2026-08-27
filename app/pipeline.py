@@ -2794,16 +2794,16 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
     #   ⚠️ 상한을 10으로 올리면 카드가 없는 경기까지 서술 한 줄이 더 새어 나간다
     #     (실측: 카드 없는 MLB 경기가 9줄 → 10줄이 됐다). 예산은 그대로 두고
     #     카드 줄만 추가한다 — 새 기능이 기존 출력을 바꾸면 안 된다.
-    from app.engine.card import card_summary_line, compare_line
+    from app.engine.card import card_summary_line, compare_lines
 
     visible = lines[:9]
     _card_line = card_summary_line(jg)
     if _card_line:
         visible.insert(2, _card_line)
-    # [§9-3단] 대조 결론은 카드 요약 **바로 위**다 — 결론이 먼저, 근거가 뒤.
-    _cmp_line = compare_line(jg)
-    if _cmp_line:
-        visible.insert(2, _cmp_line)      # 신호등 바로 아래
+    # [§9-3단] **결론이 맨 위다.** 3줄(우세·유리 칸·반대 칸)로 고정하고
+    #   긴 서술은 접힌 상세로 내린다 — 문단 안에 결론이 파묻히면 안 보인다.
+    for _i, _ln in enumerate(compare_lines(jg)):
+        visible.insert(_i, _ln)      # 신호등 바로 아래
     return _guard_basic("\n".join(visible) + DETAIL_SEP + detail, "game_easy")
 
 
@@ -2872,17 +2872,19 @@ def render_game_section(jg: dict, news: str = "") -> str:
     lines = [header]
     # [§9-2단] **상태 카드가 먼저다.** 5칸 ▲▼가 이 봇의 결론 근거이고,
     #   서술은 그 뒤를 설명할 뿐이다. 판정이 없으면 사실만 나가되 그 사실을 밝힌다.
-    from app.engine.card import compare_line, render_state_card
+    from app.engine.card import CELLS as _CELLS, compare_lines, render_state_card
 
-    _cmp = compare_line(jg)
+    _cmp = compare_lines(jg)
     if _cmp:
-        lines.append(_cmp)
-        _basis = (jg.get("compare") or {}).get("basis_cells") or []
+        lines.extend(_cmp)
+        _v = jg.get("compare") or {}
+        _basis = _v.get("basis_cells") or []
         if _basis:
-            from app.engine.card import CELLS as _CELLS
-
             _labels = dict(_CELLS)
             lines.append("  근거 칸: " + ", ".join(_labels.get(k, k) for k in _basis))
+        # 긴 서술은 **여기**(접힌 상세)에만 둔다 — 기본층은 3줄로 끝낸다.
+        if _v.get("reason"):
+            lines.append(f"  판정 근거: {_v['reason']}")
     lines.extend(render_state_card(jg))
     hr, ar = research.get("home_recent_form") or {}, research.get("away_recent_form") or {}
     if hr.get("form") or ar.get("form"):
@@ -3131,6 +3133,20 @@ def _render_card(analysis: dict) -> str:
             lines.append(g["breaking_note"])
     if analysis.get("parlay_rebuilt_note"):
         lines.append(analysis["parlay_rebuilt_note"])
+
+    # [§9-3단] **첫 화면에 경기별 결론을 한 줄씩.** 드릴다운을 눌러야 결론이
+    #   보이면 결론이 없는 것과 다르지 않다.
+    #   ⚠️ 판정 못 한 경기도 남긴다 — 조용히 빠지면 분석된 것으로 오인된다.
+    if scheduled:
+        from app.engine.card import slate_compare_row
+
+        _rows = [slate_compare_row(g) for g in scheduled]
+        if any("우세" in r or "우열" in r for r in _rows):
+            lines.append("")
+            lines.extend(_rows)
+            _none = sum(1 for r in _rows if "판정 미수행" in r)
+            if _none:
+                lines.append(f"({_none}경기는 판정을 받지 못했습니다)")
 
     # 판정 실패를 '추천 없음'으로 위장하지 않는다 — 재료 없으면 정직하게 실패를 알린다
     judged = [g for g in scheduled if g.get("p_claude") is not None]

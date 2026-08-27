@@ -70,11 +70,11 @@ SYSTEM = """너는 야구 분석가다. **두 팀의 상태 카드만** 보고 �
 1. 칸별로 두 팀을 맞대어 본다. ▲ vs ▼는 뚜렷한 차이, ▲ vs ▲는 차이가 아니다.
 2. 유리한 쪽을 고른다. **가릴 수 없으면 none을 골라라** — 억지로 고르는 것이
    가장 나쁘다.
-3. 확신도를 매긴다.
-   - 높음: 여러 칸이 같은 방향을 가리키고, 반대 방향 칸이 없다
-   - 보통: 방향이 갈리지만 한쪽이 더 무겁다
-   - 낮음: 차이가 작거나, 미수집 칸이 많아 카드가 얇다
-4. 근거가 된 칸을 basis_cells에 적는다. 보지 않은 칸을 적지 마라.
+3. 근거가 된 칸을 basis_cells에 적는다. 보지 않은 칸을 적지 마라.
+
+⚠️ **확신도는 네가 정하지 않는다.** 칸 격차와 미수집 칸 수를 보고 코드가
+   계산한다. confidence 필드는 형식상 필요하니 아무 값이나 넣어도 되고,
+   그 값은 쓰이지 않는다. 대신 **어느 쪽이 유리한지와 그 이유**에 집중하라.
 
 [반드시 지킬 것]
 - **팀을 부를 때는 주어진 팀 이름을 쓴다.** "홈"·"원정"이라고 쓰지 마라 —
@@ -162,13 +162,59 @@ def basis_is_real(basis: list, payload: dict) -> list[str]:
     return [k for k in (basis or []) if k in real]
 
 
-def thin_card_caps_confidence(payload: dict, confidence: str) -> str:
-    """미수집 칸이 절반을 넘으면 확신도를 '낮음'으로 내린다.
+from app.engine.card import SYM_VALUE as _SYM_VALUE   # 부호 수치값의 정의는 한 곳
 
-    ⚠️ 절반은 실측값이 아니라 **카드 구조에서 나온 값**이다 — 다섯 칸 중 셋
-       이상이 비면 남은 둘로 다섯 칸짜리 판단을 하는 셈이다. 채점 데이터가
-       쌓이면 미수집 칸 수와 적중률의 관계를 보고 교체한다.
+
+def cell_counts(payload: dict) -> dict:
+    """칸별로 두 팀 부호를 맞대어 어느 쪽으로 기우는지 센다.
+
+    한 칸은 **양쪽 부호를 비교해야** 기울기를 안다. 한쪽만 ▲인 것과 양쪽 다
+    ▲인 것은 다르다 — 후자는 차이가 아니다.
+
+    ⚠️ 한쪽이라도 판정이 없는 칸은 어느 쪽으로도 세지 않는다(`unknown`).
+       모르는 것을 유리·불리로 세면 얇은 카드가 두꺼운 카드처럼 보인다.
     """
+    rows = {side: {r["cell"]: r["symbol"]
+                   for r in payload.get("cards", {}).get(side) or []}
+            for side in SIDES}
+    out = {"home": 0, "away": 0, "even": 0, "unknown": 0}
+    for key, _ in CELLS:
+        h, a = rows["home"].get(key), rows["away"].get(key)
+        if h is None or a is None:
+            out["unknown"] += 1
+            continue
+        diff = _SYM_VALUE.get(h, 0) - _SYM_VALUE.get(a, 0)
+        out["home" if diff > 0 else "away" if diff < 0 else "even"] += 1
+    return out
+
+
+# [확신도] **코드가 정한다.** LLM에 맡기면 같은 격차를 매번 다르게 부른다.
+#   기준은 우세한 쪽이 가져간 칸 수다.
+#   ⚠️ 이 경계(4 / 2~3 / 1)는 사용자가 정한 운용 규칙이지 실측이 아니다.
+#      `cell_ledger`에 칸별 적중률이 쌓이면 "몇 칸 차이부터 실제로 잘 맞는가"를
+#      보고 교체한다. 그 전까지 이 숫자로 "확신도가 정확하다"고 말하지 마라.
+CONF_HIGH_CELLS = 4        # 이만큼 가져가면 높음
+CONF_MID_CELLS = 2         # 이만큼부터 보통 (그 아래는 낮음)
+
+
+def confidence_from(counts: dict, favored: str) -> str:
+    """칸 격차 → 확신도. 미수집이 절반을 넘으면 한 단계 내린다.
+
+    ⚠️ 격차만 보면 5칸 중 3칸이 미수집인데 남은 2칸이 갈려 "2:0 = 높음"이 된다.
+       채워진 칸이 얼마나 되는지를 함께 봐야 한다.
+    """
+    if favored not in SIDES:
+        return "낮음"
+    won = counts.get(favored, 0)
+    level = ("높음" if won >= CONF_HIGH_CELLS
+             else "보통" if won >= CONF_MID_CELLS else "낮음")
+    if counts.get("unknown", 0) * 2 > len(CELLS):
+        level = {"높음": "보통", "보통": "낮음"}.get(level, "낮음")
+    return level
+
+
+def thin_card_caps_confidence(payload: dict, confidence: str) -> str:
+    """[구버전 호환] 미수집이 절반을 넘으면 '낮음'. 새 경로는 `confidence_from`."""
     if len(payload.get("uncollected") or []) * 2 > len(CELLS):
         return "낮음"
     return confidence if confidence in CONFIDENCE else "보통"
@@ -202,9 +248,21 @@ async def compare_game(jg: dict, settings=None) -> dict:
     if favored != "none" and not cites_cards(reason, payload):
         logger.warning("[3단] 카드 인용 없음 — 폐기: %s", reason[:80])
         return {}
+    counts = cell_counts(payload)
+    conf = confidence_from(counts, favored)
+    # LLM이 고른 쪽과 칸 셈이 어긋나면 **확신도를 낮춘다.** 어느 한쪽을 무조건
+    # 믿지 않는다 — LLM은 칸의 무게를 다르게 볼 수 있고(그게 3단의 일이다),
+    # 그렇더라도 셈과 어긋난다는 사실 자체가 확신을 낮출 이유다.
+    lead = ("home" if counts["home"] > counts["away"]
+            else "away" if counts["away"] > counts["home"] else "none")
+    if favored in SIDES and lead in SIDES and favored != lead:
+        logger.warning("[3단] 판정(%s)과 칸 셈(%s)이 어긋남 %s — 확신도 낮음",
+                       favored, lead, counts)
+        conf = "낮음"
     return {
         "favored": favored,
-        "confidence": thin_card_caps_confidence(payload, data.get("confidence")),
+        "confidence": conf,
+        "counts": counts,
         "basis_cells": basis_is_real(data.get("basis_cells"), payload),
         "reason": reason,
         "provider": res.label,
