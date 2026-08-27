@@ -4,7 +4,7 @@
 # 손으로 하면 빠뜨린다(실사고 2026-08-26: 커밋 주입을 잊어 /health가
 # "코드 unknown"으로 나왔고, 봇만 구버전으로 남아 잡 이름이 옛것으로 보였다).
 #
-# 사용: tools/deploy.sh [bot|scheduler|all]
+# 사용: tools/deploy.sh [bot|scheduler|crawler|all]
 set -euo pipefail
 
 PROJ=d29edc63-4309-4656-a8af-543b8b773437
@@ -41,20 +41,25 @@ SUBJ=$(git log -1 --format=%s)
 echo "▶ 배포 커밋 ${SHA:0:7} — $SUBJ"
 
 deploy_one() {
-  local svc="$1" cmd="$2"
+  local svc="$1" cmd="$2" path="${3:-.}"
   railway variables --project "$PROJ" --environment "$ENVIRON" --service "$svc" \
     --set "GIT_COMMIT_SHA=$SHA" --set "RAILWAY_GIT_COMMIT_MESSAGE=$SUBJ" \
     --skip-deploys >/dev/null
   echo "▶ $svc 배포 ($cmd)"
-  railway up --project "$PROJ" --environment "$ENVIRON" --service "$svc" --detach
+  ( cd "$path" && railway up --project "$PROJ" --environment "$ENVIRON" \
+      --service "$svc" --detach )
 }
 
+# ⚠️ **스케줄러를 먼저** 배포한다 — 기동 시 DB 스키마를 적용하므로,
+#    봇이 먼저 새 코드로 뜨면 아직 없는 컬럼을 참조할 수 있다.
 case "$TARGET" in
   bot)       deploy_one analystbot-bot "python -m app.bot" ;;
   scheduler) deploy_one analystbot-scheduler "python -m app.scheduler" ;;
-  all)       deploy_one analystbot-bot "python -m app.bot"
-             deploy_one analystbot-scheduler "python -m app.scheduler" ;;
-  *) echo "사용: $0 [bot|scheduler|all]"; exit 1 ;;
+  crawler)   deploy_one analystbot-crawler "crawler -interval 10m" crawler ;;
+  all)       deploy_one analystbot-scheduler "python -m app.scheduler"
+             deploy_one analystbot-bot "python -m app.bot"
+             deploy_one analystbot-crawler "crawler -interval 10m" crawler ;;
+  *) echo "사용: $0 [bot|scheduler|crawler|all]"; exit 1 ;;
 esac
 
 echo "✅ 배포 요청 완료 — 상태는 Railway 대시보드나 /health 로 확인하라"

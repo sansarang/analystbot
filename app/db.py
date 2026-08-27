@@ -35,7 +35,13 @@ async def _init() -> None:
     pool = await get_pool()
     await apply_schema(pool)
     await close_pool()
-    print("schema applied:", get_settings().database_url)
+    # ⚠️ 접속 문자열을 그대로 찍지 않는다 — **비밀번호가 배포 로그에 남는다.**
+    #   실사고(2026-08-27): Railway pre-deploy 로그에 DB 비밀번호가 평문으로
+    #   찍혀 있었다. 로그는 보관되고 공유되므로 한 번 새면 되돌릴 수 없다.
+    from urllib.parse import urlparse
+
+    u = urlparse(get_settings().database_url)
+    print(f"schema applied: {u.hostname}:{u.port or 5432}/{(u.path or '/').lstrip('/')}")
 
 
 if __name__ == "__main__":
