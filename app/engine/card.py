@@ -31,6 +31,82 @@ CELL_KEYS = tuple(k for k, _ in CELLS)
 MAX_UNKNOWN = 2
 
 
+# [§9-2단] 칸별 **수치 지표와 방향** — 기계적 오독 검증의 근거.
+#   (지표명, 클수록 유리한가)
+# ⚠️ 2단은 상대를 못 본다(차단벽). 그래서 비교 기준은 상대가 아니라
+#   **리그 기준선**이다 — "평소보다 유리한가"를 묻는 것과 같다.
+CELL_METRICS: dict[str, tuple[tuple[str, bool], ...]] = {
+    "bullpen": (("relief_batters_l3", False),      # 많이 던졌을수록 소모 = 불리
+                ("back_to_back_count", False),
+                ("pitchers_used_last", False)),
+    "starter": (("era_season", False), ("whip", False), ("ip_avg_recent", True)),
+    "batting": (("ops", True),),
+    "recent3": (("run_diff_l3", True), ("runs_per_game_l3", True)),
+    "weight":  (("games_behind_cut", False),),     # 컷과 가까울수록 경쟁 중 = 유리
+}
+
+
+def cell_metrics(research: dict, side: str, key: str) -> dict[str, float]:
+    """그 칸의 수치 지표. 없는 값은 넣지 않는다."""
+    u = research.get(f"{side}_usage") or {}
+    p = research.get(f"{side}_pitcher") or {}
+    o = research.get(f"{side}_offense") or {}
+    st = research.get(f"{side}_standing") or {}
+    src: dict[str, object] = {}
+    if key == "bullpen":
+        src = {k: u.get(k) for k in ("relief_batters_l3", "back_to_back_count",
+                                     "pitchers_used_last")}
+    elif key == "starter":
+        src = {k: p.get(k) for k in ("era_season", "whip", "ip_avg_recent")}
+    elif key == "batting":
+        src = {"ops": o.get("ops")}
+    elif key == "recent3":
+        r, ra = u.get("runs_l3"), u.get("runs_allowed_l3")
+        src = {"runs_per_game_l3": u.get("runs_per_game_l3"),
+               "run_diff_l3": (r - ra) if (r is not None and ra is not None) else None}
+    elif key == "weight":
+        src = {"games_behind_cut": st.get("games_behind_cut")}
+    return {k: float(v) for k, v in src.items()
+            if isinstance(v, (int, float)) and not isinstance(v, bool)}
+
+
+def _quantile(vals: list[float], q: float) -> float:
+    vals = sorted(vals)
+    if len(vals) == 1:
+        return vals[0]
+    pos = q * (len(vals) - 1)
+    lo = int(pos)
+    hi = min(lo + 1, len(vals) - 1)
+    return vals[lo] + (vals[hi] - vals[lo]) * (pos - lo)
+
+
+def league_baselines(research_by_side: list[dict]) -> dict[str, dict[str, float]]:
+    """지표별 **사분위**. 기준선이 없으면 방향 검증을 못 한다.
+
+    ⚠️ 평균이 아니라 중앙값·사분위다 — 한 팀의 이상치(한화 선발 ERA 13.5)가
+       기준선을 밀어버리면 나머지 팀 판정이 전부 틀어진다.
+
+    ⚠️ **중앙값 하나만으로는 부족하다.** 중앙값보다 크기만 하면 "불리"로 세면
+       0.004 차이도 오독으로 잡힌다(실측 2026-08-27: OPS 0.760 vs 기준 0.756이
+       "방향 오독"으로 폐기됐다 — 가드가 정상 판정을 버렸다).
+       → 사분위 **밖**일 때만 "명백히 평소와 다르다"로 본다. 임의 여유값을
+         만들지 않고 **데이터 자체의 산포**를 쓴다.
+    """
+    pool: dict[str, list[float]] = {}
+    for res, side in research_by_side:
+        for key in CELL_METRICS:
+            for name, val in cell_metrics(res, side, key).items():
+                pool.setdefault(name, []).append(val)
+    out: dict[str, dict[str, float]] = {}
+    for name, vals in pool.items():
+        if len(vals) < 4:
+            continue          # 사분위를 낼 표본이 아니다
+        out[name] = {"q1": _quantile(vals, 0.25),
+                     "median": _quantile(vals, 0.5),
+                     "q3": _quantile(vals, 0.75)}
+    return out
+
+
 @dataclass
 class Cell:
     """한 팀·한 칸. 사실 층만 채워진 상태."""
@@ -39,6 +115,7 @@ class Cell:
     label: str
     facts: list[str] = field(default_factory=list)
     source: str = ""
+    metrics: dict = field(default_factory=dict)
 
     @property
     def known(self) -> bool:
@@ -46,7 +123,8 @@ class Cell:
 
     def as_dict(self) -> dict:
         return {"key": self.key, "label": self.label, "facts": list(self.facts),
-                "source": self.source, "known": self.known}
+                "source": self.source, "known": self.known,
+                "metrics": dict(self.metrics)}
 
 
 def _f(v, digits: int = 2):
@@ -179,7 +257,8 @@ def build_side(research: dict, side: str) -> dict[str, Cell]:
     out: dict[str, Cell] = {}
     for key, label in CELLS:
         facts, source = _BUILDERS[key](research or {}, side)
-        out[key] = Cell(key=key, label=label, facts=facts, source=source)
+        out[key] = Cell(key=key, label=label, facts=facts, source=source,
+                        metrics=cell_metrics(research or {}, side, key))
     return out
 
 

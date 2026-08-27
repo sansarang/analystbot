@@ -73,6 +73,17 @@ SYSTEM = """너는 야구 분석가다. **한 팀의 상태만** 본다.
 3. 사실이 애매하면 =를 써라. 억지로 부호를 만드는 것이 가장 나쁘다.
 4. 한국어로, 한 줄로 쓴다.
 
+[칸별 방향 — 이 지표가 커지면 어느 쪽인가]
+- 불펜 가용: **투입 인원·상대 타자 수·연투 인원이 많을수록 ▼** (많이 던졌다 = 소모가 크다)
+- 선발 상태: **ERA·WHIP가 낮을수록 ▲**, **평균 이닝이 길수록 ▲**
+- 타선: **팀 OPS가 높을수록 ▲**
+- 최근 3경기: **득점이 많고 실점이 적을수록 ▲**
+- 무게: **순위 경쟁 중일수록 ▲** (선두·5위와 가까울수록). 단 양쪽이 모두
+  경쟁권 밖이면 순위 차이가 동기 차이가 아니므로 =다.
+
+⚠️ 방향을 반대로 읽는 것이 가장 흔한 실수다. "구원 37타자를 상대했다"는
+   **많이 던졌다 = ▼**이지 "적게 던졌다"가 아니다.
+
 [해석의 예]
 - "직전 경기 투수 9명 투입 · 구원 6.33이닝 37타자" → ▼
   "직전 경기에 투수 9명·구원 37타자를 썼다 — 오늘 뒷문이 얇다"
@@ -118,7 +129,53 @@ def cites_facts(reason: str, facts: list[str]) -> bool:
     return bool(have & used)
 
 
-async def interpret_side(card_side: dict, team_kr: str, settings=None) -> dict:
+def direction_check(key: str, metrics: dict, baselines: dict,
+                    symbol: str) -> str | None:
+    """[§9-2단] 수치가 가리키는 방향과 LLM 판정이 **반대인가**. 반대면 사유.
+
+    실사고(2026-08-27): KIA 불펜 사실이 "직전 9명 투입·구원 37타자·연투 3명"
+    (= 명백한 과소모)인데 모델이 "사용량이 적어 유리" **▲**로 읽었다.
+    숫자는 인용했으므로 인용 강제를 통과했다 — **인용 강제는 지어내기를 막지,
+    그 숫자를 어떻게 읽는지는 못 막는다.**
+
+    ⚠️ `=`는 오독으로 치지 않는다. 판단 보류이지 반대가 아니다.
+    ⚠️ 기준선이 없거나 지표가 없으면 **검증하지 않는다** — 못 재는 것을
+       틀렸다고 하면 정상 판정을 버린다.
+    """
+    from app.engine.card import CELL_METRICS
+
+    if symbol not in ("▲", "▼"):
+        return None
+    votes = []
+    detail = []
+    for name, higher_is_better in CELL_METRICS.get(key, ()):
+        val, band = metrics.get(name), baselines.get(name)
+        if val is None or not isinstance(band, dict):
+            continue
+        q1, q3 = band.get("q1"), band.get("q3")
+        if q1 is None or q3 is None:
+            continue
+        # ⚠️ **사분위 안은 "평소"다.** 중앙값보다 조금 크다고 불리로 세면
+        #    0.004 차이도 오독으로 잡혀 정상 판정을 버린다(실측 2026-08-27).
+        if q1 <= val <= q3:
+            continue
+        high = val > q3
+        favorable = high == higher_is_better
+        votes.append(favorable)
+        detail.append(f"{name} {val:g}({'상위' if high else '하위'} "
+                      f"사분위 {q1:g}~{q3:g})")
+    if not votes:
+        return None
+    # 지표가 **한 방향으로 일치**할 때만 판정한다. 갈리면 사람도 애매한 칸이다.
+    if all(votes) and symbol == "▼":
+        return f"수치는 유리를 가리킨다 — {' · '.join(detail)}"
+    if not any(votes) and symbol == "▲":
+        return f"수치는 불리를 가리킨다 — {' · '.join(detail)}"
+    return None
+
+
+async def interpret_side(card_side: dict, team_kr: str, settings=None,
+                         baselines: dict | None = None) -> dict:
     """한 팀의 다섯 칸 → {칸키: {"symbol", "reason"}}. **한 콜.**
 
     인용이 없는 칸은 **버린다** — 반환에 들어가지 않으므로 3단은 그 칸을
@@ -136,20 +193,71 @@ async def interpret_side(card_side: dict, team_kr: str, settings=None) -> dict:
                 "content": json.dumps(payload, ensure_ascii=False)}],
         system=SYSTEM, schema=VERDICT_SCHEMA, max_tokens=1500, settings=s)
     out: dict = {}
-    dropped: list[str] = []
+    # 폐기 사유를 **구분해서** 센다 — 지어내기와 오독은 다른 문제이고
+    # 대응도 다르다(전자는 인용 강제, 후자는 방향 규칙·채점).
+    dropped: dict[str, list[str]] = {"인용 없음": [], "방향 오독": []}
     facts_of = {c["key"]: c["facts"] for c in payload["cells"]}
+    base = baselines or {}
     for row in (res.data or {}).get("cells") or []:
         key, sym, why = row.get("key"), row.get("symbol"), (row.get("reason") or "").strip()
         if key not in facts_of or sym not in SYMBOLS:
             continue
         if not cites_facts(why, facts_of[key]):
-            dropped.append(key)
+            dropped["인용 없음"].append(key)
+            continue
+        metrics = (card_side.get(key) or {}).get("metrics") or {}
+        wrong = direction_check(key, metrics, base, sym)
+        if wrong:
+            dropped["방향 오독"].append(key)
+            logger.warning("[2단] %s/%s 방향 오독 — 판정 %s · %s | 사유: %s",
+                           team_kr, key, sym, wrong, why[:70])
             continue
         out[key] = {"symbol": sym, "reason": why, "provider": res.label}
-    if dropped:
-        logger.info("[2단] %s — 인용 없는 칸 폐기: %s", team_kr, ", ".join(dropped))
+    for why_dropped, keys in dropped.items():
+        if keys:
+            logger.info("[2단] %s — %s 폐기: %s", team_kr, why_dropped, ", ".join(keys))
     return out
 
+
+async def interpret_slate(pairs: list, settings=None, pool=None) -> dict:
+    """슬레이트 전체를 한 번에 해석한다. `pairs`는 [(jg, research), ...].
+
+    **왜 슬레이트 단위인가.** 방향 검증의 기준선(리그 사분위)은 그날 슬레이트의
+    전 팀 지표에서 나온다. 경기 하나만 보고는 "평소보다 많이 던졌다"를 말할 수
+    없다 — 비교 대상이 없기 때문이다.
+
+    돌려주는 값: {game_id: {"home": {...}, "away": {...}}}
+    아울러 pool이 있으면 판정을 `cell_verdicts`에 적재한다(#63).
+    """
+    from app.engine.card import build_card, league_baselines
+    from app.engine.cell_grade import record_verdicts
+
+    baselines = league_baselines([(res, side) for _, res in pairs
+                                  for side in ("home", "away")])
+    out: dict = {}
+    for jg, res in pairs:
+        card = build_card(jg, res)
+        per_game: dict = {}
+        for side in ("home", "away"):
+            try:
+                v = await interpret_side(card[side], jg.get(f"{side}_kr")
+                                         or jg.get(side), settings=settings,
+                                         baselines=baselines)
+            except Exception as exc:      # 한 팀이 죽어도 슬레이트는 계속 간다
+                logger.warning("[2단] %s 판정 실패: %s", jg.get(side), exc)
+                v = {}
+            per_game[side] = v
+            gid = jg.get("db_id") or jg.get("game_id")
+            if pool and v and gid:
+                try:
+                    await record_verdicts(pool, gid, side,
+                                          jg.get(f"{side}_kr") or jg.get(side),
+                                          v, card[side])
+                except Exception as exc:
+                    logger.warning("[2단] 칸 판정 기록 실패 %s/%s: %s",
+                                   gid, side, exc)
+        out[jg.get("game_id")] = per_game
+    return out
 
 # ---------------------------------------------------------------- 카드 대조 규칙
 

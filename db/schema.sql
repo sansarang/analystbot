@@ -170,3 +170,56 @@ SELECT
     END                                                             AS roi_90d
 FROM expert_picks
 GROUP BY expert;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- [#63] 칸별 사후 채점 — 2단 해석봇의 ▲▼를 경기 결과와 대조한다.
+--
+--   목적은 하나: **"▲를 준 팀이 실제로 이겼는가"를 칸별로 집계**해
+--   5칸 중 어느 칸이 진짜 신호이고 어느 칸이 잡음인지 2주 뒤에 판별하는 것.
+--
+--   ⚠️ predictions에 넣지 않는다. 저 표는 픽 단위(마켓·배당·손익)이고
+--      이건 (경기 × 팀 × 칸) 단위다. 억지로 합치면 둘 다 못 쓴다.
+CREATE TABLE IF NOT EXISTS cell_verdicts (
+    id          BIGSERIAL PRIMARY KEY,
+    game_id     BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+    side        TEXT        NOT NULL,          -- 'home' | 'away'
+    team        TEXT,                          -- 표시용 팀명(한글)
+    cell        TEXT        NOT NULL,          -- bullpen | starter | batting | recent3 | weight
+    symbol      TEXT        NOT NULL,          -- ▲ | ▼ | =
+    reason      TEXT,                          -- 인용 근거 (칸 사실 인용 강제 통과분)
+    fact_count  INT         NOT NULL DEFAULT 0,-- 그 칸이 몇 개의 사실 위에 서 있었나
+    model       TEXT,                          -- 판정에 쓰인 provider/model
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (game_id, side, cell)               -- 재판정하면 최신 판정으로 덮는다
+);
+
+CREATE INDEX IF NOT EXISTS idx_cell_verdicts_game ON cell_verdicts (game_id);
+
+-- 칸별 적중률. ▲를 준 쪽이 이겼으면 hit, 졌으면 miss, 무승부는 push.
+--   '=' 판정은 방향을 걸지 않았으므로 적중률 분모에서 뺀다(따로 센다).
+CREATE OR REPLACE VIEW cell_ledger AS
+WITH graded AS (
+    SELECT v.cell, v.symbol, g.sport,
+           CASE WHEN g.home_score = g.away_score THEN 'push'
+                WHEN (v.side = 'home') = (g.home_score > g.away_score)
+                     THEN CASE v.symbol WHEN '▲' THEN 'hit'
+                                        WHEN '▼' THEN 'miss' END
+                ELSE      CASE v.symbol WHEN '▲' THEN 'miss'
+                                        WHEN '▼' THEN 'hit'  END
+           END AS outcome
+    FROM cell_verdicts v
+    JOIN games g ON g.id = v.game_id
+    WHERE g.status = 'final'
+      AND g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+)
+SELECT cell, sport,
+       count(*) FILTER (WHERE outcome IN ('hit', 'miss'))          AS decided,
+       count(*) FILTER (WHERE outcome = 'hit')                     AS hits,
+       count(*) FILTER (WHERE outcome = 'push')                    AS pushes,
+       count(*) FILTER (WHERE symbol = '=')                        AS neutrals,
+       CASE WHEN count(*) FILTER (WHERE outcome IN ('hit', 'miss')) > 0
+            THEN round(count(*) FILTER (WHERE outcome = 'hit')::numeric
+                 / count(*) FILTER (WHERE outcome IN ('hit', 'miss')), 4)
+       END                                                          AS hit_rate
+FROM graded
+GROUP BY cell, sport;

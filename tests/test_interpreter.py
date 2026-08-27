@@ -201,3 +201,110 @@ def test_threshold_is_config_driven_not_hardcoded():
     loose = Settings(anthropic_api_key="k", contention_gb=8.0)
     assert I.out_of_contention(_st(16.5, 9.0), loose) is True, \
         "config로 문턱을 낮췄는데 반영되지 않았다"
+
+
+# ---------------------------------------------------------------- 🔴 방향 오독
+
+# 실사고(2026-08-27): KIA 불펜 사실은 "직전 9명 투입 · 구원 37타자 · 연투 3명"
+# (= 명백한 과소모)인데 모델이 "사용량이 적어 유리" ▲로 읽었다.
+# **숫자는 인용했으므로 인용 강제를 통과했다.**
+KIA_BULLPEN = {"relief_batters_l3": 69.0, "back_to_back_count": 3.0,
+               "pitchers_used_last": 9.0}
+def _band(q1, med, q3):
+    return {"q1": q1, "median": med, "q3": q3}
+
+
+# ⚠️ 기준선은 중앙값 하나가 아니라 **사분위 구간**이다.
+#    사분위 안(=평소)은 표를 던지지 않는다 — OPS 0.760 vs 0.756 같은
+#    오차 범위가 "방향 오독"으로 폐기된 실사고(2026-08-27) 때문이다.
+LEAGUE = {"relief_batters_l3": _band(38.0, 43.0, 48.0),
+          "back_to_back_count": _band(0.0, 0.0, 1.0),
+          "pitchers_used_last": _band(4.0, 5.0, 6.0),
+          "era_season": _band(3.9, 4.4, 4.9),
+          "whip": _band(1.30, 1.44, 1.58),
+          "ip_avg_recent": _band(4.3, 4.8, 5.3),
+          "ops": _band(0.720, 0.752, 0.784),
+          "run_diff_l3": _band(-3.0, 0.0, 3.0),
+          "runs_per_game_l3": _band(3.7, 4.5, 5.3),
+          "games_behind_cut": _band(0.0, 0.0, 3.0)}
+
+
+def test_kia_bullpen_misread_is_caught():
+    """🔴 회귀 핵심 — 인용 강제로는 못 막는 유형이다.
+
+    인용 강제는 *지어내기*를 막지, 그 숫자를 *어떻게 읽는지*는 못 막는다.
+    """
+    why = I.direction_check("bullpen", KIA_BULLPEN, LEAGUE, "▲")
+    assert why and "불리를 가리킨다" in why
+    assert "relief_batters_l3 69" in why, "근거 수치가 사유에 없다"
+    # 같은 사실에 ▼는 정상이다
+    assert I.direction_check("bullpen", KIA_BULLPEN, LEAGUE, "▼") is None
+
+
+def test_equal_is_never_a_misread():
+    """`=`는 판단 보류이지 반대가 아니다 — 오독으로 세면 정상 판정을 버린다."""
+    assert I.direction_check("bullpen", KIA_BULLPEN, LEAGUE, "=") is None
+
+
+def test_no_baseline_means_no_verdict():
+    """🔴 못 재는 것을 틀렸다고 하면 정상 판정을 버린다(반대 방향 위험)."""
+    assert I.direction_check("bullpen", KIA_BULLPEN, {}, "▲") is None
+    assert I.direction_check("bullpen", {}, LEAGUE, "▲") is None
+
+
+def test_mixed_metrics_are_left_alone():
+    """지표가 갈리면 사람도 애매한 칸이다 — 기계가 단정하지 않는다."""
+    mixed = {"era_season": 3.0, "whip": 1.44, "ip_avg_recent": 3.0}  # ERA 좋고 이닝 짧다
+    assert I.direction_check("starter", mixed, LEAGUE, "▲") is None
+    assert I.direction_check("starter", mixed, LEAGUE, "▼") is None
+
+
+def test_direction_rules_are_in_the_prompt():
+    """프롬프트만으로는 재발하지만, 없으면 더 자주 난다."""
+    for must in ("많을수록 ▼", "낮을수록 ▲", "높을수록 ▲", "방향을 반대로 읽는"):
+        assert must in I.SYSTEM, f"방향 규칙 '{must}'이 프롬프트에 없다"
+
+
+def test_misread_cell_is_dropped_with_its_own_reason(monkeypatch):
+    """폐기 사유를 구분한다 — 지어내기와 오독은 대응이 다르다."""
+    cells = [{"key": "bullpen", "symbol": "▲",
+              "reason": "구원 69타자·연투 3명이라 여유롭다"}]
+    fake = _Fake(cells)
+    monkeypatch.setattr(I, "complete", fake)
+    monkeypatch.setattr(I, "role_enabled", lambda *a, **k: True)
+    card = build_card(JG, RESEARCH)
+    out = asyncio.run(I.interpret_side(card["home"], "KIA", baselines=LEAGUE))
+    assert "bullpen" not in out, "방향 오독이 살아남았다"
+
+
+def test_league_baseline_uses_median_not_mean():
+    """🔴 한 팀의 이상치가 기준선을 밀면 나머지 팀 판정이 전부 틀어진다.
+
+    실제로 한화 선발 ERA 13.5 같은 값이 있다.
+    """
+    from app.engine.card import league_baselines
+
+    sides = [({"home_pitcher": {"era_season": e}}, "home")
+             for e in (3.5, 4.0, 4.2, 4.5, 13.5)]
+    base = league_baselines(sides)
+    assert base["era_season"]["median"] == 4.2, f"중앙값이 아니다: {base['era_season']}"
+    # 이상치 13.5는 상위 사분위 **밖**으로 밀려나야 한다 — 구간을 넓히면 안 된다
+    assert base["era_season"]["q3"] < 13.5
+
+
+def test_inside_the_quartile_band_is_not_a_misread():
+    """🔴 오차 범위를 오독으로 잡으면 가드가 정상 판정을 버린다.
+
+    실사고 2026-08-27: OPS 0.760 vs 기준 0.756(0.004 차이)이 "방향 오독"으로
+    폐기됐다. 한 방향만 고치면 반대편에서 새 오류가 난다.
+    """
+    near = {"ops": 0.760}          # 사분위 0.720~0.784 한복판
+    assert I.direction_check("batting", near, LEAGUE, "▼") is None
+    assert I.direction_check("batting", near, LEAGUE, "▲") is None
+
+
+def test_outside_the_band_still_gets_caught():
+    """다만 구간 **밖**이면 여전히 잡아야 한다 — 완화가 아니라 정밀화다."""
+    clear = {"ops": 0.850}          # 상위 사분위 0.784 밖
+    assert I.direction_check("batting", clear, LEAGUE, "▼")
+    assert I.direction_check("batting", clear, LEAGUE, "▲") is None
