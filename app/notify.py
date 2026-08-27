@@ -51,18 +51,32 @@ def recharge_url(service: str) -> str | None:
     return None
 
 
+async def _suppressed_send(key: str, text: str) -> bool:
+    """30분 억제를 **프로세스 경계를 넘어** 적용해 발송한다.
+
+    🔴 종전에는 프로세스 내 집합(`_notified`)으로만 막았다. 봇·스케줄러·수동
+       실행이 각자 자기 집합을 갖고, 재기동하면 집합이 비므로 **같은 알림이
+       11:05·11:15·11:26 세 번 나갔다**(실측 2026-08-27).
+       억제는 Redis에 있어야 한다 — `alerts._send`가 이미 그 장치다.
+
+    Redis가 없으면 `alerts._claim`이 프로세스 내 시간 기반 폴백으로 내려간다.
+    그때도 최소한 **같은 프로세스에서 30분에 1회**는 지켜진다.
+    """
+    from app.alerts import _send
+
+    return await _send(key, text)
+
+
 async def notify_quota(service: str, detail: str) -> bool:
-    """크레딧/쿼터 소진 알림 — 충전 페이지까지 안내. 같은 서비스는 프로세스당 1회만 발송.
+    """크레딧/쿼터 소진 알림 — 충전 페이지까지 안내. 같은 서비스는 30분에 1회.
 
     주의: 레이트리밋(429)은 잔액 문제가 아니므로 이 알림 대상이 아니다.
     분류는 collectors.base.classify_api_error가 담당한다.
     """
-    if service in _notified:
-        return False
-    _notified.add(service)
     url = recharge_url(service)
     charge_line = f"💳 여기서 충전하세요: {url}\n" if url else "💳 해당 서비스 콘솔에서 크레딧을 충전하세요.\n"
-    return await send_telegram(
+    return await _suppressed_send(
+        f"quota:{service}",
         f"⚠️ [AnalystBot] {service} API 크레딧/쿼터 소진 — 충전이 필요합니다\n"
         f"{detail[:300]}\n"
         f"{charge_line}"
@@ -71,12 +85,9 @@ async def notify_quota(service: str, detail: str) -> bool:
 
 
 async def notify_auth(service: str, detail: str) -> bool:
-    """키 오류(401/403) 알림 — 충전이 아니라 키 확인·교체 안내."""
-    key = f"auth:{service}"
-    if key in _notified:
-        return False
-    _notified.add(key)
-    return await send_telegram(
+    """키 오류(401/403) 알림 — 충전이 아니라 키 확인·교체 안내. 30분에 1회."""
+    return await _suppressed_send(
+        f"auth:{service}",
         f"⚠️ [AnalystBot] {service} API 키 오류 — 인증에 실패했습니다 (잔액 문제 아님)\n"
         f"{detail[:300]}\n"
         f"🔑 .env의 키 값이 유효한지 확인하거나 새 키로 교체해 주세요."
@@ -103,9 +114,12 @@ async def notify_api_error(exc: Exception) -> bool:
     return False
 
 
-_notified: set[str] = set()
+_notified: set[str] = set()      # 옛 호환용 — 억제는 alerts(Redis)가 담당한다
 
 
 def reset_notified() -> None:
-    """테스트/재기동 시 발송 이력 초기화."""
+    """테스트/재기동 시 발송 이력 초기화. 억제 상태도 함께 비운다."""
     _notified.clear()
+    from app.alerts import reset
+
+    reset()

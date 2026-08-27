@@ -68,8 +68,12 @@ def _no_outbound_telegram(monkeypatch, request):
     import app.alerts as alerts_mod
     import app.notify as notify_mod
 
+    # 발송 지점은 **하나**다 — alerts는 notify 모듈 속성으로 부른다.
+    #   (종전에는 alerts가 함수를 자기 이름공간에 묶어 두 곳을 다 막아야 했고,
+    #    한쪽만 막으면 조용히 새어 나갔다.)
     monkeypatch.setattr(notify_mod, "send_telegram", _blocked)
-    monkeypatch.setattr(alerts_mod, "send_telegram", _blocked)
+    assert not hasattr(alerts_mod, "send_telegram"), \
+        "alerts가 send_telegram을 다시 자기 이름공간에 묶었다 — 발송 지점이 갈라진다"
 
     # 억제 상태도 격리한다. 안 하면 테스트가 **운영 Redis의 알림 예산**
     # (alert:budget, 10분 12건)을 갉아먹어 실제 장애 알림이 막힌다.

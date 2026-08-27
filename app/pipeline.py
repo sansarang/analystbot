@@ -497,13 +497,22 @@ async def build_analysis(
     settings = get_settings()
     progress = progress or _noop_progress
 
-    # [7-2] 단계별 계측 — 실패를 즉시 알리고, 끝나면 실행 리포트로 합산한다.
-    from app.alerts import StageResult, stage_failed
+    # [7-2] 단계별 계측 — 끝나면 실패 **요약 1건**으로 묶어 알린다.
+    from app.alerts import StageResult
 
     stages: list = stages_out if stages_out is not None else []
 
-    async def record(name, ok, total, *, cause=None, detail="", impact="", exc=None):
-        """단계 결과를 기록하고, 실패면 그 자리에서 알린다."""
+    async def record(name, ok, total, *, cause=None, detail="", impact="",
+                     exc=None, unit="경기", expect_full=True):
+        """단계 결과를 기록한다. **여기서 발송하지 않는다.**
+
+        🔴 종전에는 단계마다 즉시 발송해 한 번의 분석에서 알림이 7~8건 쏟아졌고,
+           정작 카드가 안 보였다(실측 2026-08-27).
+
+        ⚠️ `unit`은 ok/total이 무엇을 세는지다. 기본 "경기"를 그대로 두고 팀 수·
+           값 개수를 넣으면 "출처 대조 438경기" 같은 거짓 숫자가 나간다.
+        ⚠️ `expect_full=False`는 부분 수집이 정상인 단계(기사·결장·날씨 등).
+        """
         from app.alerts import classify_exception, our_frames
 
         st = StageResult(
@@ -511,14 +520,11 @@ async def build_analysis(
             cause=cause or (classify_exception(exc) if exc is not None else None),
             detail=detail or (f"{type(exc).__name__}: {exc}" if exc is not None else ""),
             frames=our_frames(exc) if exc is not None else [],
-            impact=impact,
+            impact=impact, unit=unit, expect_full=expect_full,
         )
         stages.append(st)
-        if st.failed:
-            try:
-                await stage_failed(st)
-            except Exception as notify_exc:   # 알림 실패가 분석을 막지 않는다
-                logger.warning("[pipeline] 단계 알림 실패: %s", notify_exc)
+        if st.severity != "정상":
+            logger.warning("[pipeline] 단계 %s — %s", st.severity, st.line())
         return st
 
     await progress(1, 4, "일정·스탯 수집")
@@ -655,6 +661,7 @@ async def build_analysis(
 
     await record("경기 적재", len(games), len(games) or 1,
                  cause=None if games else "missing",
+                 unit="경기",
                  impact="분석할 경기가 없습니다")
     # [§8-10] 배당 수집 — 종전 미계측. 0건이면 전 마켓이 ⚪(배당 미수집)로 나가는데
     #         그 사실이 어디에도 기록되지 않았다.
@@ -662,6 +669,7 @@ async def build_analysis(
     await record("배당 수집", int(_odds_rows or 0), max(1, len(_sched_now)),
                  cause=None if _odds_rows else "missing",
                  detail=f"스냅샷 {_odds_rows or 0}행 / 예정 {len(_sched_now)}경기",
+                 unit="경기", expect_full=False,
                  impact="배당 없이는 추천 자격(배당 하한)을 판정할 수 없습니다")
     # 분모는 **예정 경기**다. 리서치는 scheduled 경기만 조사하므로 전체 경기를
     # 분모로 쓰면 저녁 시간대(진행 중 경기 다수)에 "5/15 실패"처럼 잘못 경보한다.
@@ -677,6 +685,7 @@ async def build_analysis(
         await record("여론 수집", 1 if sentiment.strip() else 0, 1,
                      cause=None if sentiment.strip() else "missing",
                      detail=f"{len(sentiment)}자" if sentiment else "",
+                     unit="건",
                      impact="팬 여론·목격담 없이 판정합니다")
     _research_detail = "딥서치 비활성 — 크롤링 전용"
     if not _deep_off:
@@ -686,6 +695,7 @@ async def build_analysis(
     await record("리서치", _ok_research, len(_sched_ids) or len(games),
                  cause=None if _ok_research == len(games) else "missing",
                  detail=_research_detail,
+                 unit="경기",
                  impact="해당 경기는 결장·불펜 정보 없이 판정됩니다")
 
     # [감시] 리서치 수치 ↔ statsapi 실데이터 교차검증 표본 (지어내기 감시)
@@ -819,13 +829,16 @@ async def build_analysis(
                 _n = max(1, len(upcoming_rows))
                 await record("날씨", len(weather), _n,
                              cause=None if weather else "missing",
+                             unit="경기", expect_full=False,
                              impact="구장 날씨가 토탈 λ에 반영되지 않습니다")
                 await record("결장", len(absences), _n,
                              cause=None if absences else "missing",
+                             unit="경기", expect_full=False,
                              impact="결장 선수가 승률 조정에 반영되지 않습니다")
                 await record("구장", len(statcast_data["parks"]),
                              max(1, len(statcast_data["parks"]) or 1),
                              cause=None if statcast_data["parks"] else "missing",
+                             unit="구장",
                              impact="파크팩터 없이 리그 평균으로 λ를 냅니다")
             elif sport == "kbo":
                 # [§8-14] KBO 공식 기록실 숫자 지표 — 딥서치가 숫자를 못 가져오는
@@ -925,32 +938,39 @@ async def build_analysis(
                                  "crawler_changes": await load_changes(redis, "kbo", date)}
                 await record("날씨", len(kweather), max(1, len(_up)),
                              cause=None if kweather else "missing",
+                             unit="경기", expect_full=False,
                              impact="기온·바람이 토탈 λ에 반영되지 않습니다")
                 logger.info("[pipeline] KBO 지표 — 팀 %d / 투수 %d",
                             len(kteams), len(kpitchers))
                 await record("네이버 수집", len(naver), max(1, len(games)),
                              cause=None if naver else "missing",
                              detail=f"{len(naver)}경기 · 선발·폼·순위 (LLM 0회)",
+                             unit="경기",
                              impact="선발·최근폼을 딥서치에만 의존하게 됩니다")
                 await record("투수 소모", len(usage), 10,
                              cause=None if usage else "missing",
                              detail=f"{len(usage)}팀 · 최근 3경기 등판 (LLM 0회)",
+                             unit="팀",
                              impact="카드 ①칸(불펜 가용)이 '모름'으로 나갑니다")
                 await record("기사 발췌", len(news_quotes), max(1, len(_up)),
                              cause=None if news_quotes else "missing",
                              detail=f"{len(news_quotes)}경기 인용 (원문 그대로·LLM 0회)",
+                             unit="경기", expect_full=False,
                              impact="감독 발언·로테이션 계획이 빠집니다")
                 await record("1군 등록", len(roster), 10,
                              cause=None if roster else "missing",
                              detail=f"{len(roster)}팀 명단 (LLM 0회)",
+                             unit="팀",
                              impact="결장 판정이 딥서치 산문에만 의존합니다")
                 await record("파크팩터", len(parks), 9,
                              cause=None if parks else "missing",
                              detail=f"구장 {len(parks)}/9 실측",
+                             unit="구장",
                              impact="구장 효과 없이 λ를 냅니다 (잠실 0.89 · 사직 1.21)")
                 await record("KBO 지표", len(kteams), 10,
                              cause=None if kteams else "missing",
                              detail=f"팀 {len(kteams)}/10 · 투수 {len(kpitchers)}명",
+                             unit="팀",
                              impact="숫자 지표 없이 서술만으로 판정하게 됩니다")
             elif sport == "npb":
                 # [§8-20] Yahoo!スポーツ 크롤링 — LLM 0회. 선발·상대전적ERA·불펜 명단.
@@ -981,10 +1001,12 @@ async def build_analysis(
                                  "crawler_changes": await load_changes(redis, "npb", date)}
                 await record("날씨", len(nweather), max(1, len(_up)),
                              cause=None if nweather else "missing",
+                             unit="경기", expect_full=False,
                              impact="기온·바람이 토탈 λ에 반영되지 않습니다")
                 await record("Yahoo 수집", len(yh), max(1, len(games)),
                              cause=None if yh else "missing",
                              detail=f"{len(yh)}경기 · 선발·불펜 (LLM 0회)",
+                             unit="경기",
                              impact="NPB는 선발 지표 없이 판정 단독으로 갑니다")
             else:
                 from app.collectors.soccer_stats import load_xg, supported
@@ -1050,6 +1072,7 @@ async def build_analysis(
                          detail=(f"2소스 대조 {_crosschecked} · " + " · ".join(
                              f"{k} {_prov_dist.get(k, 0)}"
                              for k in ("확정", "교차", "단일", "미확인", "모순"))),
+                         unit="값", expect_full=False,
                          impact="단일 소스 비중이 높으면 그 소스가 틀려도 걸러낼 수 없습니다")
 
     # [§8-22] 빈칸 보충 — 크롤링·정식기록이 못 채운 것만 **짧게** 다시 묻는다.
@@ -1112,16 +1135,19 @@ async def build_analysis(
             await notify_api_error(exc)   # 레이트리밋은 알림 없이 내부 처리
             verdict = Judge._mock_verdict(judge_payload)
             await record("판정", 0, len(upcoming), exc=exc,
+                         unit="경기",
                          impact="추천·조합이 생성되지 않습니다 (마켓 보드만 표시)")
         except Exception as exc:
             logger.exception("[pipeline] judge 예기치 못한 실패: %s", exc)
             verdict = {"games": []}
             await record("판정", 0, len(upcoming), exc=exc,
+                         unit="경기",
                          impact="추천·조합이 생성되지 않습니다 (마켓 보드만 표시)")
     if upcoming and not any(st.name == "판정" for st in stages):
         _judged = len(verdict.get("games") or [])
         await record("판정", _judged, len(upcoming),
                      cause=None if _judged == len(upcoming) else "missing",
+                     unit="경기",
                      impact="판정 못 받은 경기는 추천에서 제외됩니다")
     _attach_verdicts(judge_games, verdict)
 
@@ -1167,6 +1193,7 @@ async def build_analysis(
                      cause=None if _lam_ok == len(_scheduled) else "missing",
                      detail=(", ".join(sorted({m for g in _scheduled
                                                for m in (g.get("lambda_missing") or [])}))[:150]),
+                     unit="경기",
                      impact="확률이 폴백(경기력 %p 조정)으로 계산됩니다")
     if _scheduled:
         # [§8-10] 라인업 확정률 — 종전 미계측. "잠정/최종" 2단계 표시의 근거인데
@@ -1179,6 +1206,7 @@ async def build_analysis(
                      cause=None if _lineup_ok else "missing",
                      detail=", ".join(f"{k}:{v}" for k, v in sorted(_count_by(
                          (g.get("lineup_status") or "none") for g in _scheduled).items())),
+                     unit="경기", expect_full=False,
                      impact="전 경기가 '잠정'으로 표기되어 최종 픽 자격을 얻지 못합니다")
         # [§8-10] 픽 선정 — 0건이 '오늘은 관망'인지 '파이프라인이 깨졌는지' 구분되지
         #         않았다. 실사고(2026-08-26): 추천 6건이 렌더에서 통째로 사라졌는데
@@ -1193,16 +1221,19 @@ async def build_analysis(
                      cause=None if _board_rows else "missing",
                      detail=f"보드 {_board_rows}행 / 추천 {len(recommended)}건 / "
                             f"예정 {len(_scheduled)}경기",
+                     unit="행",
                      impact="마켓 보드가 비어 확률을 만들지 못했습니다")
     try:
         _narrated = await attach_narratives(judge_games, sport)
         if _scheduled:
             await record("서술", _narrated, len(_scheduled),
                          cause=None if _narrated else "missing",
+                         unit="경기",
                          impact="심층 서술 없이 결정적 렌더로 나갑니다")
     except Exception as exc:   # 서술 실패는 분석을 막지 않는다 (결정적 렌더로 폴백)
         logger.warning("[pipeline] 서술 단계 실패, 결정적 렌더로 진행: %s", exc)
         await record("서술", 0, len(_scheduled) or 1, exc=exc,
+                     unit="경기",
                      impact="심층 서술 없이 결정적 렌더로 나갑니다")
 
     # [6] 병렬 채점 — 경기력 기반 픽과 시장 반영 픽을 **둘 다** 기록해
@@ -1264,6 +1295,7 @@ async def build_analysis(
         await record("예측 기록", _n_shadow, max(1, _n_shadow),
                      cause=None if _n_shadow else "missing",
                      detail=f"전 마켓 {_n_shadow}행 ({len(_shadow_gids)}경기)",
+                     unit="건",
                      impact="기록이 없으면 임계값을 실측으로 정할 수 없습니다")
 
     for p in _legacy_recommended(settings, picks_out):
@@ -1306,6 +1338,7 @@ async def build_analysis(
         await record("조합 구성", _combo_n, max(1, _combo_n),
                      cause=None if _combo_n else "missing",
                      detail=f"조합 {_combo_n}건 / 승인 레그 {len(_legs)}개",
+                     unit="건",
                      impact="승인 레그가 있는데 조합을 만들지 못했습니다")
 
     from app.research.deep import DAILY_RESEARCH_CAP, research_calls_today
@@ -1324,12 +1357,26 @@ async def build_analysis(
         "missing": sum(1 for s in research_statuses.values() if s == "missing"),
         "quota": calls_today >= DAILY_RESEARCH_CAP,
     }
+    # [7-2] **분석 1회 = 실패 알림 1건.** 단계마다 보내지 않는다.
+    #   프리페치는 `prefetch_report`가 전 단계를 이미 싣고 나가므로(stages_out을
+    #   넘겨준다) 여기서 또 보내면 같은 내용이 두 번 간다.
+    if stages_out is None:
+        from app.alerts import stages_summary
+
+        try:
+            await stages_summary(stages, where=f"{sport} 분석")
+        except Exception as exc:          # 알림 실패가 분석을 막지 않는다
+            logger.warning("[pipeline] 단계 요약 알림 실패: %s", exc)
+
     return {
         "sport": sport, "date": date,
         "research_meta": research_meta,
         # [7-4] 이 리포트를 만든 데이터의 결함 — 카드 상단 경고의 근거
         "stages": [{"name": st.name, "ok": st.ok, "total": st.total,
-                    "cause": st.cause, "impact": st.impact} for st in stages],
+                    "cause": st.cause, "impact": st.impact,
+                    # 단위·심각도를 함께 실어야 표시 계층이 "N경기"를 잘못 붙이지
+                    # 않는다. 팀 수·값 개수를 경기로 표시한 사고가 있었다.
+                    "unit": st.unit, "severity": st.severity} for st in stages],
         "mode": {"name": settings.report_mode, **mode,
                  },
         "games": judge_games, "picks": picks_out,
@@ -1467,6 +1514,7 @@ async def _attach_cell_verdicts(pool, judge_games: list[dict], sport: str,
                      cause=None if games_judged else "missing",
                      detail=f"제시 {offered}칸 → 판정 {judged}칸 "
                             f"(인용 없음·방향 오독은 폐기)",
+                     unit="경기",
                      impact="판정이 0이면 카드에 ▲▼가 없고 사실만 나갑니다")
 
 
@@ -2931,11 +2979,24 @@ def data_limitation_line(analysis: dict) -> str | None:
     bad = []
     for st in stages:
         total, ok = st.get("total") or 0, st.get("ok") or 0
-        if not total or ok >= total:
+        # ⚠️ **부분 수집은 한계가 아니다.** 5경기 중 3경기에만 기사가 있는 것은
+        #   정상인데 종전에는 이 줄에 "기사 발췌 2경기"로 실려 나갔다.
+        #   심각도가 '정상'이면 싣지 않는다(옛 캐시는 severity가 없으므로 폴백).
+        sev = st.get("severity")
+        if sev == "정상":
+            continue
+        if sev is None and (not total or ok >= total):
+            continue
+        if sev is not None and sev not in ("부분", "실패"):
+            continue
+        if not total and sev is None:
             continue
         label = _STAGE_LIMIT_KR.get(st.get("name"), st.get("name"))
         cause = _CAUSE_KR.get(st.get("cause") or "", "")
-        scope = "" if ok == 0 else f" {total - ok}경기"
+        # ⚠️ 단위는 스테이지가 선언한 것을 쓴다. 기본 "경기"를 하드코딩하면
+        #   팀 수·값 개수가 경기로 둔갑한다(실측: 5경기 슬레이트에 438경기).
+        unit = st.get("unit") or "경기"
+        scope = "" if ok == 0 else f" {total - ok}{unit}"
         bad.append(f"{label}{scope}" + (f"({cause})" if cause else ""))
     if not bad:
         return None

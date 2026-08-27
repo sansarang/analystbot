@@ -76,7 +76,10 @@ def sent(monkeypatch, shared):
         box.append(text)
         return True
 
-    monkeypatch.setattr(alerts, "send_telegram", fake_send)
+    # 발송 지점은 notify 하나다 — alerts는 그 모듈 속성을 부른다.
+    import app.notify as notify_mod
+
+    monkeypatch.setattr(notify_mod, "send_telegram", fake_send)
     return box
 
 

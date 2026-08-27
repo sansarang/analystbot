@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from app.notify import send_telegram
+from app import notify as _notify_mod
 
 logger = logging.getLogger(__name__)
 KST = ZoneInfo("Asia/Seoul")
@@ -182,7 +182,10 @@ async def _send(key: str, text: str, *, bypass_suppression: bool = False) -> boo
                 return False
             if held:
                 text += f"\n\n(같은 오류 {held}건은 30분 억제 후 합산 표기)"
-        return await send_telegram(text)
+        # ⚠️ **모듈 속성으로 부른다.** `from app.notify import send_telegram`으로
+        #   묶으면 발송 지점이 둘로 갈라져, 한쪽만 막으면 다른 쪽으로 새어 나간다.
+        #   실제 발송을 막는 자리는 하나여야 한다.
+        return await _notify_mod.send_telegram(text)
     finally:
         if r is not None:
             try:
@@ -195,7 +198,16 @@ async def _send(key: str, text: str, *, bypass_suppression: bool = False) -> boo
 
 @dataclass
 class StageResult:
-    """한 단계의 결과. 실행 리포트와 즉시 알림이 같은 객체를 쓴다."""
+    """한 단계의 결과. 실행 리포트와 요약 알림이 같은 객체를 쓴다.
+
+    ⚠️ **단위(`unit`)를 반드시 맞춰라.** 표시 계층이 "N경기"를 붙이는데 팀 수나
+       값 개수를 넣으면 5경기 슬레이트에 "출처 대조 438경기"가 나간다
+       (실측 2026-08-27). 숫자가 한 번 틀리면 그 숫자를 근거로 한 판단이
+       전부 틀어진다.
+
+    ⚠️ **부분 수집은 실패가 아니다.** 5경기 중 3경기에만 기사가 있는 것은 정상이다.
+       그런 단계는 `expect_full=False`로 선언한다 — 짐작이 아니라 선언이다.
+    """
 
     name: str
     ok: int = 0
@@ -204,19 +216,35 @@ class StageResult:
     detail: str = ""               # 예외 메시지 등
     frames: list[str] = field(default_factory=list)
     impact: str = ""               # 이것이 최종 결과에 주는 영향 한 줄
+    unit: str = "경기"             # ok/total이 무엇을 세는가 (경기·팀·구장·값·건)
+    expect_full: bool = True       # 전량 수집이 정상인가 (False면 부분도 정상)
+
+    @property
+    def severity(self) -> str:
+        """정상 · 부분 · 실패. **이 셋을 뭉뚱그리면 화면이 못 쓰게 된다.**"""
+        if self.cause is not None:
+            return "실패"
+        if self.total > 0 and self.ok == 0:
+            return "실패"
+        if self.total > 0 and self.ok < self.total:
+            return "부분" if self.expect_full else "정상"
+        return "정상"
 
     @property
     def failed(self) -> bool:
-        return self.cause is not None or (self.total > 0 and self.ok < self.total)
+        return self.severity == "실패"
+
+    @property
+    def partial(self) -> bool:
+        return self.severity == "부분"
 
     @property
     def icon(self) -> str:
-        if not self.failed:
-            return "✅"
-        return "🔴" if self.ok == 0 else "🟡"
+        return {"정상": "✅", "부분": "🟡", "실패": "🔴"}[self.severity]
 
     def line(self) -> str:
-        count = f"{self.ok}/{self.total}" if self.total else ("실패" if self.failed else "완료")
+        count = (f"{self.ok}/{self.total}{self.unit}" if self.total
+                 else ("실패" if self.failed else "완료"))
         parts = [f"{self.icon} {self.name} {count}"]
         if self.cause:
             parts.append(f"— {CAUSE_LABELS.get(self.cause, self.cause)}")
@@ -226,12 +254,20 @@ class StageResult:
 
 
 async def stage_failed(stage: StageResult) -> bool:
-    """[7-2] 단계 실패 즉시 알림. 원인·영향까지 담는다."""
-    if not stage.failed:
+    """[7-2] **전면 중단만** 즉시 알린다 — 그 수집기가 통째로 0건인 경우.
+
+    ⚠️ 부분 실패는 여기로 오면 안 된다. `stages_summary`가 분석 끝에 한 건으로
+       묶는다. 종전에는 부분 실패까지 즉시 발송해 한 번의 분석에서 알림이
+       7~8건 쏟아졌고, 정작 카드가 안 보였다(실측 2026-08-27).
+    """
+    if stage.severity != "실패":
         return False
-    lines = [f"{stage.icon} 단계 실패 — {stage.name}",
-             f"진행 {stage.ok}/{stage.total}" if stage.total else "진행 불가",
-             f"원인 {CAUSE_LABELS.get(stage.cause or 'exception', stage.cause)}"]
+    lines = [f"🔴 전면 중단 — {stage.name}",
+             f"진행 {stage.ok}/{stage.total}{stage.unit}" if stage.total else "진행 불가"]
+    # ⚠️ 원인이 없으면 "예외"라고 쓰지 마라 — 종전에는 cause=None이 'exception'으로
+    #    폴백해, 예외가 없었는데도 "원인 예외"로 나갔다(실측 2026-08-27).
+    if stage.cause:
+        lines.append(f"원인 {CAUSE_LABELS.get(stage.cause, stage.cause)}")
     if stage.detail:
         lines.append(f"내용 {stage.detail[:200]}")
     if stage.frames:
@@ -239,6 +275,33 @@ async def stage_failed(stage: StageResult) -> bool:
     if stage.impact:
         lines.append(f"→ 영향: {stage.impact}")
     return await _send(f"stage:{stage.name}:{stage.cause}", "\n".join(lines))
+
+
+async def stages_summary(stages: list[StageResult], *, where: str = "분석") -> bool:
+    """[7-2] 한 번의 분석이 끝날 때 **실패 요약 1건**.
+
+    🔴 종전에는 단계마다 즉시 발송했다. 한 번의 분석에서 알림이 7~8건 쏟아져
+       **정작 카드가 안 보였다**(실측 2026-08-27). 즉시 발송은 크래시와 전면
+       중단(`crashed`)만 한다 — 나머지는 여기서 한 건으로 묶는다.
+
+    정상·부분만 있으면 발송하지 않는다. 부분 수집은 알릴 일이 아니다.
+    """
+    bad = [s for s in stages if s.failed]
+    if not bad:
+        return False
+    soft = [s for s in stages if s.partial]
+    lines = [f"🔴 {where} 단계 실패 {len(bad)}건"]
+    lines += [f"  {s.line()}" for s in bad[:8]]
+    if len(bad) > 8:
+        lines.append(f"  … 외 {len(bad) - 8}건")
+    impacts = [s.impact for s in bad if s.impact]
+    if impacts:
+        lines.append("→ 영향: " + " · ".join(dict.fromkeys(impacts))[:300])
+    if soft:
+        lines.append("(부분 수집 — 실패 아님: "
+                     + ", ".join(f"{s.name} {s.ok}/{s.total}{s.unit}" for s in soft[:5]) + ")")
+    key = "stages:" + ",".join(sorted(s.name for s in bad))
+    return await _send(key, "\n".join(lines))
 
 
 # ---------------------------------------------------------------- [7-3] 크래시

@@ -1,0 +1,164 @@
+"""[알림 정리] 화면이 못 쓰게 되는 네 가지를 고정한다.
+
+전부 2026-08-27에 실제로 사용자 화면에서 관측된 증상이다.
+  ① 단계 실패가 매번 발송돼 카드가 안 보였다
+  ② Odds 크레딧 알림이 11:05·11:15·11:26 세 번 왔다 (30분 억제 미작동)
+  ③ "기사 발췌 3/5"가 '실패 · 원인 예외'로 분류됐다 (부분 수집은 정상)
+  ④ 5경기 슬레이트에 "출처 대조 438경기"가 나갔다 (단위 오류)
+"""
+import ast
+import asyncio
+import pathlib
+
+import pytest
+
+import app.notify as notify_mod
+from app.alerts import StageResult, stage_failed, stages_summary
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture
+def shared(monkeypatch):
+    """모든 발송이 공유하는 Redis — **프로세스 경계를 넘는 억제**를 재현한다.
+    이것이 없으면 이 파일의 억제 테스트는 실사고를 재현하지 못한다."""
+    import app.alerts as alerts_mod
+    from tests.test_alerts import FakeRedis
+
+    r = FakeRedis()
+
+    async def fake_redis():
+        return r
+
+    monkeypatch.setattr(alerts_mod, "_redis", fake_redis)
+    return r
+
+
+@pytest.fixture
+def sent(monkeypatch, shared):
+    box: list[str] = []
+
+    async def fake_send(text: str) -> bool:
+        box.append(text)
+        return True
+
+    monkeypatch.setattr(notify_mod, "send_telegram", fake_send)
+    return box
+
+
+# ---------------------------------------------------- ③ 실패 / 부분 / 정상
+
+def test_partial_collection_is_not_a_failure():
+    """🔴 5경기 중 3경기에만 기사가 있는 것은 정상이다."""
+    st = StageResult(name="기사 발췌", ok=3, total=5, unit="경기", expect_full=False)
+    assert st.severity == "정상"
+    assert not st.failed and not st.partial
+    assert st.icon == "✅"
+
+
+def test_partial_where_full_is_expected_is_partial_not_failure():
+    st = StageResult(name="판정", ok=3, total=5)
+    assert st.severity == "부분" and st.partial and not st.failed
+    assert st.icon == "🟡"
+
+
+def test_zero_is_always_a_failure():
+    """0건은 부분 수집이 정상인 단계에서도 실패다 — 아무것도 못 모았다."""
+    st = StageResult(name="기사 발췌", ok=0, total=5, expect_full=False)
+    assert st.severity == "실패" and st.icon == "🔴"
+
+
+def test_no_cause_is_never_reported_as_exception(sent):
+    """🔴 원인이 없는데 '원인 예외'로 나갔다 — cause=None의 폴백 라벨이 문제였다."""
+    asyncio.run(stage_failed(StageResult(name="기사 발췌", ok=0, total=5)))
+    assert sent, "전면 중단은 발송돼야 한다"
+    assert "원인" not in sent[0], f"없는 원인을 지어냈다: {sent[0]}"
+
+
+# ---------------------------------------------------- ① 도배 금지
+
+def test_one_analysis_sends_one_summary(sent):
+    stages = [StageResult(name=f"단계{i}", ok=0, total=3, cause="missing")
+              for i in range(6)]
+    asyncio.run(stages_summary(stages, where="kbo 분석"))
+    assert len(sent) == 1, f"요약 1건이어야 한다 — {len(sent)}건 발송됨"
+    assert "단계 실패 6건" in sent[0]
+
+
+def test_summary_is_silent_when_only_partial(sent):
+    """부분 수집만 있으면 알리지 않는다 — 알릴 일이 아니다."""
+    asyncio.run(stages_summary([
+        StageResult(name="기사 발췌", ok=3, total=5, expect_full=False),
+        StageResult(name="라인업", ok=2, total=5, expect_full=False)]))
+    assert sent == []
+
+
+def test_pipeline_does_not_send_per_stage():
+    """🔴 record()가 단계마다 발송하면 도배가 재발한다 — 소스로 고정."""
+    src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
+    body = src[src.index("async def record("):src.index("await progress(1, 4")]
+    assert "stage_failed" not in body, "record()가 다시 즉시 발송한다"
+    assert "stages_summary" in src, "분석 끝 요약 발송이 없다"
+
+
+# ---------------------------------------------------- ② 30분 억제
+
+def test_quota_alert_is_suppressed_across_processes(sent):
+    """🔴 프로세스 내 집합으로 막으면 봇·스케줄러가 각각 보낸다 (실측 3회)."""
+    assert asyncio.run(notify_mod.notify_quota("odds", "OUT_OF_USAGE_CREDITS"))
+    assert not asyncio.run(notify_mod.notify_quota("odds", "OUT_OF_USAGE_CREDITS"))
+    assert not asyncio.run(notify_mod.notify_quota("odds", "또 왔다"))
+    assert len(sent) == 1, f"같은 크레딧 알림이 {len(sent)}번 나갔다"
+
+
+def test_suppression_is_per_service(sent):
+    asyncio.run(notify_mod.notify_quota("odds", "x"))
+    asyncio.run(notify_mod.notify_quota("anthropic", "y"))
+    assert len(sent) == 2, "서비스가 다르면 각각 알려야 한다"
+
+
+def test_notify_does_not_bind_send_telegram_locally():
+    """🔴 발송 지점이 둘로 갈라지면 한쪽만 막았을 때 조용히 새어 나간다."""
+    import app.alerts as alerts_mod
+
+    assert not hasattr(alerts_mod, "send_telegram")
+
+
+# ---------------------------------------------------- ④ 단위
+
+def test_every_pipeline_stage_declares_its_unit():
+    """🔴 단위를 안 붙이면 팀 수·값 개수가 '경기'로 둔갑한다."""
+    src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
+    missing = []
+    for node in ast.walk(ast.parse(src)):
+        if (isinstance(node, ast.Call)
+                and getattr(node.func, "id", None) == "record"
+                and node.args and isinstance(node.args[0], ast.Constant)):
+            if "unit" not in {k.arg for k in node.keywords}:
+                missing.append((node.args[0].value, node.lineno))
+    assert not missing, f"단위 미선언 계측: {missing}"
+
+
+def test_stage_line_uses_its_own_unit():
+    assert "10/10팀" in StageResult(name="1군 등록", ok=10, total=10, unit="팀").line()
+    assert "20/438값" in StageResult(name="출처 대조", ok=20, total=438,
+                                     unit="값", expect_full=False).line()
+
+
+def test_limitation_line_never_calls_values_games():
+    """🔴 5경기 슬레이트에 '출처 대조 438경기'가 나갔다."""
+    from app.pipeline import data_limitation_line
+
+    line = data_limitation_line({"stages": [
+        {"name": "출처 대조", "ok": 20, "total": 438, "cause": None,
+         "unit": "값", "severity": "부분"}]})
+    assert line and "418값" in line and "경기" not in line
+
+
+def test_limitation_line_drops_normal_partials():
+    """부분 수집이 정상인 단계는 '한계'에 싣지 않는다."""
+    from app.pipeline import data_limitation_line
+
+    assert data_limitation_line({"stages": [
+        {"name": "기사 발췌", "ok": 3, "total": 5, "cause": None,
+         "unit": "경기", "severity": "정상"}]}) is None
