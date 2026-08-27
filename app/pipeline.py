@@ -35,6 +35,12 @@ logger = logging.getLogger(__name__)
 KST = ZoneInfo("Asia/Seoul")
 
 
+# 계측 분모로 쓰는 실제 대상 수 — **추측하지 말고 소스에서 확인한 값만 쓴다.**
+MLB_PARKS = 30      # 실측 2026-08-27: app.collectors.park.load()가 30팀 반환
+KBO_TEAMS = 10
+KBO_PARKS = 9
+
+
 def today_kst() -> str:
     return datetime.now(KST).strftime("%Y-%m-%d")
 
@@ -655,9 +661,12 @@ async def build_analysis(
                           sequential=sequential_research, force=force_research),
     )
 
-    await record("경기 적재", len(games), len(games) or 1,
+    # 🔴 종전 분모가 `len(games) or 1` — 분자와 같아 **절대 실패할 수 없었다.**
+    #   일정에 몇 경기가 있어야 하는지는 미리 알 수 없다. 그러면 분모를 지어내지
+    #   말고 **이분법(있었나/없었나)**으로 재는 것이 정직하다. 개수는 detail에.
+    await record("경기 적재", 1 if games else 0, 1, unit="건",
+                 detail=f"{len(games)}경기 적재",
                  cause=None if games else "missing",
-                 unit="경기",
                  impact="분석할 경기가 없습니다")
     # [§8-10] 배당 수집 — 종전 미계측. 0건이면 전 마켓이 ⚪(배당 미수집)로 나가는데
     #         그 사실이 어디에도 기록되지 않았다.
@@ -835,8 +844,10 @@ async def build_analysis(
                              cause=None if absences else "missing",
                              unit="경기", expect_full=False,
                              impact="결장 선수가 승률 조정에 반영되지 않습니다")
-                await record("구장", len(statcast_data["parks"]),
-                             max(1, len(statcast_data["parks"]) or 1),
+                # 🔴 분모가 **자기 자신**이었다 — ok == total이라 이 계측은 절대
+                #   실패할 수 없었다. 계측이 아니라 장식이다.
+                #   MLB는 30구장이다(실측 2026-08-27: park.load()가 30팀 반환).
+                await record("구장", len(statcast_data["parks"]), MLB_PARKS,
                              cause=None if statcast_data["parks"] else "missing",
                              unit="구장",
                              impact="파크팩터 없이 리그 평균으로 λ를 냅니다")
@@ -947,7 +958,7 @@ async def build_analysis(
                              detail=f"{len(naver)}경기 · 선발·폼·순위 (LLM 0회)",
                              unit="경기",
                              impact="선발·최근폼을 딥서치에만 의존하게 됩니다")
-                await record("투수 소모", len(usage), 10,
+                await record("투수 소모", len(usage), KBO_TEAMS,
                              cause=None if usage else "missing",
                              detail=f"{len(usage)}팀 · 최근 3경기 등판 (LLM 0회)",
                              unit="팀",
@@ -957,17 +968,17 @@ async def build_analysis(
                              detail=f"{len(news_quotes)}경기 인용 (원문 그대로·LLM 0회)",
                              unit="경기", expect_full=False,
                              impact="감독 발언·로테이션 계획이 빠집니다")
-                await record("1군 등록", len(roster), 10,
+                await record("1군 등록", len(roster), KBO_TEAMS,
                              cause=None if roster else "missing",
                              detail=f"{len(roster)}팀 명단 (LLM 0회)",
                              unit="팀",
                              impact="결장 판정이 딥서치 산문에만 의존합니다")
-                await record("파크팩터", len(parks), 9,
+                await record("파크팩터", len(parks), KBO_PARKS,
                              cause=None if parks else "missing",
                              detail=f"구장 {len(parks)}/9 실측",
                              unit="구장",
                              impact="구장 효과 없이 λ를 냅니다 (잠실 0.89 · 사직 1.21)")
-                await record("KBO 지표", len(kteams), 10,
+                await record("KBO 지표", len(kteams), KBO_TEAMS,
                              cause=None if kteams else "missing",
                              detail=f"팀 {len(kteams)}/10 · 투수 {len(kpitchers)}명",
                              unit="팀",

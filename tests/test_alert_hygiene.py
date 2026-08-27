@@ -162,3 +162,75 @@ def test_limitation_line_drops_normal_partials():
     assert data_limitation_line({"stages": [
         {"name": "기사 발췌", "ok": 3, "total": 5, "cause": None,
          "unit": "경기", "severity": "정상"}]}) is None
+
+
+# ---------------------------------------------------- ④ 분모가 대상 수와 맞는가
+
+def _record_calls():
+    """(이름, 분자AST, 분모AST, 단위, 줄번호)"""
+    src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
+    for node in ast.walk(ast.parse(src)):
+        if (isinstance(node, ast.Call) and getattr(node.func, "id", None) == "record"
+                and node.args and isinstance(node.args[0], ast.Constant)):
+            kw = {k.arg: k.value for k in node.keywords}
+            yield (node.args[0].value,
+                   node.args[1] if len(node.args) > 1 else None,
+                   node.args[2] if len(node.args) > 2 else None,
+                   getattr(kw.get("unit"), "value", None), node.lineno)
+
+
+# 단위별로 분모가 세어야 하는 것. 실측 2026-08-27 KBO 슬레이트로 확인했다:
+#   전체 5경기 · 예정 5경기 · KBO 10팀 · 구장 9 → 불일치 0건
+# 팀·구장 분모는 **이름 붙은 실측 상수**여야 한다. 리터럴을 흩뿌리면
+# 리그가 늘 때 한 곳만 고치고 나머지를 놓친다.
+_COUNT_NAMES = {"팀": {"KBO_TEAMS", "NPB_TEAMS"},
+                "구장": {"KBO_PARKS", "MLB_PARKS"}}
+
+
+def test_fixed_denominators_use_named_measured_constants():
+    """🔴 분모가 실제 대상 수가 아니면 '10팀 중 9팀 실패' 같은 거짓말이 나온다."""
+    for name, _num, total, unit, line in _record_calls():
+        if unit not in _COUNT_NAMES or total is None:
+            continue
+        expr = ast.unparse(total)
+        assert expr in _COUNT_NAMES[unit], \
+            f"{name}(L{line}): {unit} 분모가 {expr} — 실측 상수를 쓰라"
+
+
+def _core(node) -> str:
+    """`max(1, X or 1)` 같은 방어 껍데기를 벗긴 알맹이."""
+    expr = ast.unparse(node)
+    for a, b in (("max(1, ", ""), (" or 1", ""), (" or len(games)", "")):
+        expr = expr.replace(a, b)
+    return expr.strip().rstrip(")")
+
+
+def test_a_denominator_is_never_its_own_numerator():
+    """🔴 분모가 분자와 같으면 ok==total이라 **절대 실패할 수 없다.**
+
+    실측 2026-08-27: 구장 계측이 `len(parks) / max(1, len(parks) or 1)`이었다.
+    계측이 아니라 장식이었고, MLB 30구장 중 0개가 와도 '정상'으로 나갔다.
+    같은 결함이 '경기 적재'에도 있었다.
+    """
+    bad = [(n, l) for n, num, tot, _u, l in _record_calls()
+           if num is not None and tot is not None and _core(num) == _core(tot)
+           and "len(" in _core(num)]
+    assert not bad, f"분모가 분자와 같은 계측(절대 실패 불가): {bad}"
+
+
+def test_game_denominators_are_derived_from_the_game_list():
+    """단위가 '경기'면 분모는 경기 수에서 나와야 한다 — 리터럴 상수면 어긋난다."""
+    for name, _num, total, unit, line in _record_calls():
+        if unit != "경기" or total is None:
+            continue
+        assert not isinstance(total, ast.Constant), \
+            f"{name}(L{line}): 경기 분모가 상수 {ast.unparse(total)}다"
+        assert "len(" in ast.unparse(total) or ast.unparse(total).startswith("_"), \
+            f"{name}(L{line}): 경기 분모가 경기 수에서 나오지 않는다 — {ast.unparse(total)}"
+
+
+def test_no_stage_declares_an_unknown_unit():
+    """오탈자 단위는 표시 계층에서 조용히 이상한 말을 만든다."""
+    allowed = {"경기", "팀", "구장", "값", "행", "건"}
+    for name, _num, _total, unit, line in _record_calls():
+        assert unit in allowed, f"{name}(L{line}): 모르는 단위 {unit!r}"
