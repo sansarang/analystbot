@@ -455,7 +455,26 @@ def build_scheduler() -> AsyncIOScheduler:
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    from app.version import boot_line
+
+    logger.info(boot_line("scheduler"))
     get_settings().log_mock_status()
+    # [§8-39] **기동 시 스키마를 적용한다.**
+    #   실사고(2026-08-27): `apply_schema`는 있었지만 수동(`python -m app.db init`)
+    #   전용이라 아무도 부르지 않았다. 그 결과 로컬에만 컬럼이 생기고 서버에는
+    #   없어서, 새 코드를 배포하면 `lam_total` INSERT가 곧바로 터지는 상태였다.
+    #   schema.sql은 전부 IF NOT EXISTS·DROP NOT NULL이라 **멱등**이다
+    #   (2회 연속 적용 실증). 스케줄러는 단일 인스턴스라 여기가 적용 지점이다.
+    #   ⚠️ 실패해도 기동은 계속한다 — 마이그레이션 실패로 봇 전체가 죽으면
+    #      더 나쁘다. 대신 크게 로그를 남긴다.
+    try:
+        from app.db import apply_schema, get_pool
+
+        await apply_schema(await get_pool())
+        logger.info("[scheduler] 스키마 적용 완료")
+    except Exception as exc:
+        logger.error("[scheduler] 🔴 스키마 적용 실패 — 새 컬럼이 없으면 "
+                     "예측 기록이 터진다: %s", exc)
     scheduler = build_scheduler()
     scheduler.start()
     logger.info("scheduler started: %s", [j.id for j in scheduler.get_jobs()])
