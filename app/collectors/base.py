@@ -66,6 +66,14 @@ class ApiRateLimitError(ApiServiceError):
     """레이트리밋(429) 재시도 소진 — 내부 재시도·큐잉 대상. 사용자 알림 금지."""
 
 
+class ProviderDisabledError(ApiServiceError):
+    """의도적 미사용 — HTTP 금지, 알림 금지. mock(키 없음)도 오류도 아니다."""
+
+
+class ProviderBlockedError(ApiServiceError):
+    """크레딧 소진 회로 차단 — 키 변경 또는 수동 해제 전 HTTP 금지. 알림 금지."""
+
+
 def classify_api_error(status: int, body: str) -> str:
     """HTTP 실패를 'credit' | 'auth' | 'rate_limit' | 'server' | 'other'로 분류.
 
@@ -184,6 +192,9 @@ class BaseAPIClient:
         rl_schedule = self.rate_limit_backoff or tuple(
             self.backoff_base * (2**i) for i in range(self.max_retries - 1)
         )
+        from app.api_guard import raise_if_unusable, trip_credit
+
+        await raise_if_unusable(self.name)
         last_exc: Exception | None = None
         attempt = 0      # 5xx·전송 오류 재시도 횟수
         rl_hits = 0      # 429 재시도 횟수
@@ -197,6 +208,7 @@ class BaseAPIClient:
                 code, body = exc.response.status_code, exc.response.text
                 kind = classify_api_error(code, body)
                 if kind == "credit":
+                    await trip_credit(self.name, body[:300])
                     raise ApiQuotaError(self.name, body[:300]) from exc
                 if kind == "auth":
                     raise ApiAuthError(self.name, body[:300]) from exc

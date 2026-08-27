@@ -490,6 +490,9 @@ async def fill_gaps(game: dict, sport: str, research: dict,
     labels = [GAP_LABEL[g] for g in gaps if g in GAP_LABEL]
     if not labels:
         return {"asked": [], "filled": []}
+    from app.config import get_settings as _gs
+    if _gs().is_disabled("perplexity"):
+        return {"asked": labels, "filled": []}
     client = client or PerplexityClient()
     if client.mock:
         return {"asked": labels, "filled": []}
@@ -581,6 +584,10 @@ async def get_game_research(
             return None, "invalid"  # 계측은 최초 조사 시점에 이미 반영됐다
     if quota_out:
         return cached_data, "quota" if cached_data else "missing"
+
+    from app.config import get_settings as _gs
+    if _gs().is_disabled("perplexity"):
+        return cached_data, "off"
 
     try:
         client = PerplexityClient()

@@ -318,3 +318,4 @@ PYTHONPATH=. nohup uv run python -m app.scheduler > logs/scheduler.log 2>&1 &
 | 2026-08-25 | `ensemble_w_*` | 0.45/0.30/0.25 → 0.50/**0.00**/0.50 | **사용자 지시** — 시장 배제 | 판정 철학 교체 |
 | 2026-08-25 | `min_win_prob`/`min_odds` | (신규) 0.58 / 1.60 | **사용자 지시** — EV 기준 폐기 | ⚠️ EV −7.2% 조합 허용 |
 | 2026-08-25 | `adj_*` (11종) | (신규) | **사용자 지시** — 경기력 조정 계수 | 결장·불펜이 확률에 반영됨 |
+| 2026-08-28 | `disabled_providers` | (없음) → `grok,perplexity` | **사용자 지시** — AI API는 Anthropic만 충전. Grok·Perplexity는 의도적 미사용 | 호출 0 · 알림 0 |

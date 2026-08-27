@@ -13,7 +13,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from app.collectors.base import ApiAuthError, ApiQuotaError, ApiRateLimitError
+from app.collectors.base import (
+    ApiAuthError, ApiQuotaError, ApiRateLimitError,
+    ProviderBlockedError, ProviderDisabledError,
+)
 from app.collectors.odds import snapshot_odds
 from app.config import get_settings
 from app.db import get_pool
@@ -324,7 +327,13 @@ async def odds_snapshot_job() -> None:
     """
     import redis.asyncio as aioredis
 
+    from app.api_guard import is_blocked, is_disabled
     from app.leagues import LEAGUES
+
+    if is_disabled("odds") or await is_blocked("odds"):
+        logger.info("[scheduler] odds snapshot skipped — %s",
+                    "disabled" if is_disabled("odds") else "차단 중 (호출 없음)")
+        return
 
     pool = await get_pool()
     redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
@@ -355,6 +364,8 @@ async def odds_snapshot_job() -> None:
                 await redis.set(f"oddsnap:{key}", str(now.timestamp()), ex=86400)
         logger.info("[scheduler] odds snapshot: %d rows (keys=%s)",
                     total, {s: sorted(set(k)) for s, k in due.items() if k})
+    except (ProviderDisabledError, ProviderBlockedError):
+        logger.info("[scheduler] odds snapshot skipped — disabled/blocked")
     except (ApiQuotaError, ApiAuthError) as exc:
         logger.error("[scheduler] odds snapshot halted (%s): %s", type(exc).__name__, exc)
         await notify_api_error(exc)

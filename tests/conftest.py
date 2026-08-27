@@ -4,6 +4,8 @@ import os
 
 # 테스트는 외부 API를 절대 치지 않는다 — config를 읽기 전에 강제 목 모드 고정.
 os.environ.setdefault("FORCE_MOCK", "true")
+# 운영 기본값은 grok,perplexity disabled. 테스트는 기존 경로(목 리서치)를 유지한다.
+os.environ.setdefault("DISABLED_PROVIDERS", "")
 
 import asyncpg
 import pytest
@@ -137,3 +139,17 @@ def _no_outbound_collectors(monkeypatch):
 
     monkeypatch.setattr(weather_mod, "fetch_for_games", _empty)
     monkeypatch.setattr(absences_mod, "fetch_for_games", _empty)
+
+
+@pytest.fixture(autouse=True)
+def _api_guard_isolated():
+    """회로 차단 상태를 테스트끼리 섞지 않고, 운영 Redis에도 쓰지 않는다."""
+    from app import api_guard
+
+    api_guard.reset()
+    api_guard.set_network_redis(False)
+    api_guard.set_redis(None)
+    yield
+    api_guard.reset()
+    api_guard.set_redis(None)
+    api_guard.set_network_redis(False)

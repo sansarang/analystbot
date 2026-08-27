@@ -16,7 +16,10 @@ import anthropic
 import asyncpg
 import redis.asyncio as aioredis
 
-from app.collectors.base import ApiAuthError, ApiQuotaError, ApiRateLimitError
+from app.collectors.base import (
+    ApiAuthError, ApiQuotaError, ApiRateLimitError,
+    ProviderBlockedError, ProviderDisabledError,
+)
 from app.collectors.football import APIFootballClient
 from app.collectors.football import upsert_games as upsert_soccer_games
 from app.collectors.mlb import MLBClient, upsert_games
@@ -177,16 +180,22 @@ async def _collect_research(
     #   `coverage.UNCOLLECTED`에 '미수집'으로 선언돼 있으므로 함께 끈다 —
     #   카드가 "미수집"이라고 말하면서 뒤에서 호출하면 표기가 거짓이 된다.
     _use_deep = get_settings().deepsearch_enabled(sport)
+    if get_settings().is_disabled("perplexity"):
+        _use_deep = False
 
     async def _empty() -> str:
         return ""
 
     if _use_deep:
-        _grok = GrokClient()
-        news_task = _grok.live_briefing(games, date, league=league)
-        # [§8-21] X·커뮤니티 여론 — **별도 호출**이다. 속보 프롬프트에 얹으면
-        #   요구가 쌓여 모델이 검색을 포기한다(실사고: 채움률 6/10 → 0/10).
-        sentiment_task = _grok.sentiment(games, date, league=league)
+        if get_settings().is_disabled("grok"):
+            logger.info("[pipeline] grok disabled — 속보·여론 호출 생략")
+            news_task, sentiment_task = _empty(), _empty()
+        else:
+            _grok = GrokClient()
+            news_task = _grok.live_briefing(games, date, league=league)
+            # [§8-21] X·커뮤니티 여론 — **별도 호출**이다. 속보 프롬프트에 얹으면
+            #   요구가 쌓여 모델이 검색을 포기한다(실사고: 채움률 6/10 → 0/10).
+            sentiment_task = _grok.sentiment(games, date, league=league)
     else:
         logger.info("[pipeline] %s — 딥서치·여론 비활성(크롤링 전용)", sport)
         news_task, sentiment_task = _empty(), _empty()
@@ -648,6 +657,9 @@ async def build_analysis(
         try:
             return await snapshot_odds(pool, sport, client=OddsClient(),
                                        only_keys=active_keys)
+        except (ProviderDisabledError, ProviderBlockedError):
+            logger.info("[pipeline] 배당 스냅샷 생략 — odds disabled/blocked")
+            return []
         except (ApiQuotaError, ApiAuthError) as exc:
             logger.warning("[pipeline] 배당 스냅샷 생략(%s) — 전 마켓 ⚪로 나간다",
                            type(exc).__name__)
@@ -689,7 +701,8 @@ async def build_analysis(
     _OK_STATES = ("refreshed", "cached", "off")
     _ok_research = sum(1 for gid, st in research_statuses.items()
                        if gid in _sched_ids and st in _OK_STATES)
-    _deep_off = not get_settings().deepsearch_enabled(sport)
+    _deep_off = (not get_settings().deepsearch_enabled(sport)
+                 or get_settings().is_disabled("perplexity"))
     if not _deep_off:
         await record("여론 수집", 1 if sentiment.strip() else 0, 1,
                      cause=None if sentiment.strip() else "missing",
@@ -1815,6 +1828,8 @@ async def _second_opinion(
     """논쟁 경기 한정 Grok 반대 근거 1콜 → 실체적이면 judge 재산출 (Grok은 판정 안 함)."""
     from app.research.grok import GrokClient
 
+    if get_settings().is_disabled("grok"):
+        return verdict
     disputed = _disputed_games(judge_games)
     if not disputed:
         return verdict
@@ -3744,7 +3759,7 @@ async def _freshness_gate(
 
     settings = get_settings()
     fresh_key = f"freshcheck:{sport}:{date}"
-    if settings.mock_grok or await redis.get(fresh_key):
+    if settings.is_disabled("grok") or settings.mock_grok or await redis.get(fresh_key):
         return cached_card
     raw = await redis.get(f"analysis:{sport}:{date}")
     if not raw:

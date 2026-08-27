@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     # ⚠️ 이 값을 비우면 전 종목에서 딥서치가 꺼진다 — 의도한 경우에만 그렇게 하라.
     deepsearch_sports: str = "mlb,soccer"
 
+    # ── 프로바이더 의도적 미사용 ────────────────────────────────────────
+    # mock(키 없음)도 오류도 아니다. 여기 있는 이름은 HTTP를 나가지 않고
+    # 알림도 내지 않는다. 콤마 구분.
+    # 2026-08-28 사용자 지시: AI API는 Anthropic만 충전. Grok·Perplexity 충전 안 함.
+    disabled_providers: str = "grok,perplexity"
+
     # ── [§9 카드 ④칸] 순위 경쟁권 판정 ────────────────────────────────────
     # 두 팀이 **모두** 경쟁권 밖이면 순위 차이가 동기 차이를 뜻하지 않는다.
     #   실사고 예방(2026-08-27): 한화 7위(선두와 16.5G) vs SSG 9위(20G).
@@ -350,6 +356,14 @@ class Settings(BaseSettings):
         allow = {x.strip().lower() for x in (self.deepsearch_sports or "").split(",")}
         return bool(sport) and sport.lower() in allow
 
+    def disabled_set(self) -> set[str]:
+        return {x.strip().lower()
+                for x in (self.disabled_providers or "").split(",") if x.strip()}
+
+    def is_disabled(self, name: str) -> bool:
+        """의도적 미사용인가. mock·키오류와 섞지 않는다."""
+        return bool(name) and name.lower() in self.disabled_set()
+
     @property
     def mock_grok(self) -> bool:
         return self.force_mock or not self.xai_api_key
@@ -360,7 +374,10 @@ class Settings(BaseSettings):
 
     def log_mock_status(self) -> None:
         for name in ("mlb", "odds", "football", "perplexity", "grok", "judge"):
-            mode = "MOCK" if getattr(self, f"mock_{name}") else "LIVE"
+            if self.is_disabled(name):
+                mode = "DISABLED"
+            else:
+                mode = "MOCK" if getattr(self, f"mock_{name}") else "LIVE"
             logger.info("module %-10s -> %s", name, mode)
 
 

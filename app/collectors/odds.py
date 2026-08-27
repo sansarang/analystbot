@@ -131,6 +131,12 @@ async def snapshot_odds(
 
     only_keys: 크레딧 절약용 — 경기가 있는 리그 키만 조회.
     """
+    from app.api_guard import is_blocked, is_disabled
+
+    if is_disabled("odds") or await is_blocked("odds"):
+        logger.info("[odds] snapshot skipped — %s",
+                    "disabled" if is_disabled("odds") else "차단 중")
+        return 0
     client = client or OddsClient()
     keys = only_keys if only_keys is not None else SPORT_KEYS[sport]
     if client.mock:

@@ -102,7 +102,12 @@ async def notify_api_error(exc: Exception) -> bool:
     - ApiRateLimitError(429)     → **알림 없음** (내부 재시도·큐 재처리 대상)
     """
     from app.collectors.base import ApiAuthError, ApiQuotaError, ApiRateLimitError
+    from app.collectors.base import ProviderBlockedError, ProviderDisabledError
 
+    if isinstance(exc, (ProviderDisabledError, ProviderBlockedError)):
+        logger.info("[notify] %s %s — 알림 생략 (%s)",
+                    exc.service, type(exc).__name__, exc.detail[:80])
+        return False
     if isinstance(exc, ApiRateLimitError):
         logger.warning("[notify] %s 레이트리밋 — 사용자 알림 생략, 재시도로 처리: %s",
                        exc.service, exc.detail[:120])

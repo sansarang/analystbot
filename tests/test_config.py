@@ -7,6 +7,7 @@ from app.config import Settings
 KEY_ENVS = [
     "TELEGRAM_BOT_TOKEN", "ANTHROPIC_API_KEY", "PPLX_API_KEY",
     "XAI_API_KEY", "ODDS_API_KEY", "APIFOOTBALL_KEY", "FORCE_MOCK",
+    "DISABLED_PROVIDERS",
 ]
 
 
@@ -42,6 +43,20 @@ def test_mlb_needs_no_key():
 def test_force_mock_overrides_keys():
     s = make(force_mock=True, odds_api_key="k", anthropic_api_key="k")
     assert s.mock_mlb and s.mock_odds and s.mock_judge
+
+
+def test_grok_and_perplexity_are_disabled_by_default():
+    """의도적 미사용. 키 유무와 무관하다 — 키가 있어도 부르지 않는다."""
+    s = make(xai_api_key="k", pplx_api_key="k")
+    assert s.is_disabled("grok") and s.is_disabled("perplexity")
+    assert not s.is_disabled("odds")
+    assert not s.mock_grok and not s.mock_perplexity
+    assert s.disabled_providers == "grok,perplexity"
+
+
+def test_disabled_can_be_cleared():
+    s = make(disabled_providers="")
+    assert not s.is_disabled("grok") and not s.is_disabled("perplexity")
 
 
 def test_ensemble_weights_exclude_market():
