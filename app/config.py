@@ -78,6 +78,10 @@ class Settings(BaseSettings):
     #      쌓이면 몇 명이 적당한지 재서 교체한다.
     key_reliever_top: int = 4
 
+    # [비상 스위치] 라인업 의도 회로 전체를 끈다. false면 기존 5칸 판정만 나간다.
+    #   ⚠️ 새 회로가 오늘 밤 사고를 내면 **이것 하나로 되돌린다.**
+    lineup_intent_enabled: bool = True
+
     lineup_lead_mlb: float = 3.0       # MLB 통상 2~4시간 전 발표 → 3시간
     lineup_lead_kbo: float = 1.0       # KBO 경기 약 1시간 전 공시
     lineup_lead_npb: float = 1.0       # NPB 동일

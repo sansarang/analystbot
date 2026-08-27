@@ -294,3 +294,45 @@ def test_source_note_distinguishes_the_two_kinds():
     mixed = source_note({"boxscore": 7, "crawler": 3})
     assert "실제 출전 기록 7경기" in mixed and "발표 라인업 3경기" in mixed
     assert source_note({}) == ""
+
+
+# ------------------------------------------------- 🔴 D-3 이름 표기 흔들림
+
+def test_name_spelling_drift_is_not_a_false_absence():
+    """🔴 **매칭 실패가 곧 거짓 결장 신호가 된다** — 가장 위험한 오류다.
+
+    실측 2026-08-27: 이름 뒤에 점 하나만 달라도 주전 5명이 결장으로 잡혔다.
+    """
+    u = usual_from(_hist(8))
+    drifted = parse_order([x.replace("김도영", "김도영.")
+                           .replace("박찬호", "박 찬호")
+                           .replace("최형우", "최형우·") for x in USUAL_ORDER])
+    changes = diff_lineup(drifted, u)
+    ro = [c for c in changes if c["type"] == "regular_out"]
+    assert not ro, f"표기 차이가 거짓 결장이 됐다: {[c['who'] for c in ro]}"
+    assert not changes, f"표기 차이만으로 변경이 잡혔다: {changes}"
+
+
+def test_canon_name_strips_only_noise():
+    from app.engine.lineup_diff import canon_name
+
+    assert canon_name("김도영.") == canon_name("김도영") == "김도영"
+    assert canon_name("박 찬호") == "박찬호"
+    assert canon_name("최형우·") == "최형우"
+    assert canon_name("카스트로") != canon_name("카스트"), "다른 이름은 달라야 한다"
+
+
+def test_display_keeps_the_original_spelling():
+    """정규화한 이름을 사용자에게 보여주면 실제 표기와 달라 혼란을 준다."""
+    u = usual_from(_hist(8))
+    today = parse_order([x for x in USUAL_ORDER if not x.startswith("나성범")]
+                        + ["신입(우익수)"])
+    out = diff_lineup(today, u)
+    who = [c["who"] for c in out if c["type"] == "regular_out"]
+    assert "나성범" in who
+
+
+def test_bullpen_matching_also_absorbs_spelling():
+    from app.engine.lineup_diff import bullpen_absences
+
+    assert bullpen_absences(["정해영.", "김범수"], ["정해영", "김범수"]) == []

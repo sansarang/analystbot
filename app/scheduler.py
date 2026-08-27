@@ -259,6 +259,61 @@ async def lineup_poll_job() -> None:
     confirmed = sum(1 for _g, r in updated if r["status"] == STATUS_CONFIRMED)
     if confirmed:
         logger.info("[scheduler] 라인업 확정 %d경기 — 최종 픽으로 갱신", confirmed)
+    # 🔴 이 잡은 `sport='mlb'` 전용이었다 — KBO·NPB 라인업이 떠도 아무 일도
+    #    일어나지 않았다. 두 종목은 statsapi가 아니라 **크롤러**가 소스다.
+    await crawler_lineup_poll()
+
+
+async def crawler_lineup_poll() -> None:
+    """[배선] KBO·NPB 라인업을 크롤러 스냅샷에서 확인하고, 새로 뜨면 재판정한다.
+
+    ⚠️ MLB 경로(`refresh_mlb_lineup`)는 statsapi 전용이라 이 두 종목에 쓸 수 없다.
+       크롤러가 이미 라인업을 모으고 있으므로 그것을 읽는다.
+    ⚠️ 한 경기 실패가 나머지를 막지 않는다.
+    """
+    import redis.asyncio as aioredis
+
+    from app.collectors import crawler_feed
+    from app.pipeline import is_final_window, rejudge_after_lineup, today_kst
+
+    s = get_settings()
+    pool = await get_pool()
+    redis = aioredis.from_url(s.redis_url, decode_responses=True)
+    try:
+        for sport in ("kbo", "npb"):
+            snap = await crawler_feed.load_snapshot(redis, sport, today_kst())
+            if not snap:
+                continue
+            rows = await pool.fetch(
+                """SELECT id, ext_id, sport, home, away, starts_at, lineup_status
+                   FROM games WHERE sport = $1 AND status = 'scheduled'
+                     AND starts_at BETWEEN now() - interval '30 minutes'
+                                       AND now() + interval '4 hours'""", sport)
+            for r in rows:
+                key = f"{r['away']}@{r['home']}"
+                game = snap.get(key) or {}
+                have = any((game.get(f"lineup_{sd}") or "").strip()
+                           for sd in ("home", "away"))
+                if not have:
+                    continue
+                final = is_final_window(r["starts_at"])
+                status = "confirmed" if final else "predicted"
+                if r["lineup_status"] == status:
+                    continue          # 이미 그 상태다 — 중복 재판정하지 않는다
+                await pool.execute(
+                    "UPDATE games SET lineup_status = $2, updated_at = now() "
+                    "WHERE id = $1", r["id"], status)
+                try:
+                    await rejudge_after_lineup(
+                        dict(r), {"status": status, "notes": [],
+                                  "starters": {}, "injuries": {}})
+                    logger.info("[scheduler] %s 라인업 %s — 재판정 game=%s",
+                                sport, status, r["id"])
+                except Exception as exc:
+                    logger.warning("[scheduler] %s 재판정 실패 game=%s: %s",
+                                   sport, r["id"], exc)
+    finally:
+        await redis.aclose()
 
 
 async def odds_snapshot_job() -> None:

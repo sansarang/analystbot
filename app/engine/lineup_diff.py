@@ -41,6 +41,19 @@ TYPE_TO_CELL = {
 }
 
 _POS = re.compile(r"^(.*?)\s*\((.*?)\)\s*$")
+# 이름 표기 흔들림 — 소스마다 점·중점·공백이 붙는다.
+#   🔴 실측 2026-08-27: 이름 뒤에 점 하나만 달라도 **주전 5명이 거짓 결장**으로
+#      잡혔다. 매칭 실패가 곧 거짓 결장 신호가 된다 — 가장 위험한 오류다.
+_NAME_NOISE = re.compile(r"[\s.·・,'\"`~\-–—]+")
+
+
+def canon_name(name: str) -> str:
+    """이름 표기를 하나로 맞춘다. 비교는 **항상 이것으로** 한다.
+
+    ⚠️ 표시는 원문을 쓰고 비교만 정규화한다 — 정규화한 이름을 사용자에게
+       보여주면 실제 표기와 달라 혼란을 준다.
+    """
+    return _NAME_NOISE.sub("", (name or "")).strip()
 _DH_WORDS = ("지명타자", "지명", "DH")
 
 
@@ -78,12 +91,15 @@ def usual_from(history: list[list[tuple[str, str]]]) -> dict:
     slots: dict[str, list[int]] = {}
     pos: dict[str, list[str]] = {}
     appear: dict[str, int] = {}
+    display: dict[str, str] = {}
     for order in rows[:USUAL_WINDOW]:
         for i, (name, p) in enumerate(order, 1):
-            slots.setdefault(name, []).append(i)
-            appear[name] = appear.get(name, 0) + 1
+            key = canon_name(name)      # 🔴 표기 흔들림을 흡수한 키로 집계한다
+            display.setdefault(key, name)
+            slots.setdefault(key, []).append(i)
+            appear[key] = appear.get(key, 0) + 1
             if p:
-                pos.setdefault(name, []).append(p)
+                pos.setdefault(key, []).append(p)
     n = min(len(rows), USUAL_WINDOW)
 
     def _mode(vals):
@@ -94,6 +110,7 @@ def usual_from(history: list[list[tuple[str, str]]]) -> dict:
         # 절반 이상 나온 선수를 주전으로 본다 — 대타 1회 출전과 구분해야 한다.
         "regulars": {k for k, c in appear.items() if c * 2 >= n},
         "positions": {k: _mode(v) for k, v in pos.items()},
+        "display": display,          # 정규화 키 → 원문 표기(표시용)
         "games": n,
     }
 
@@ -111,17 +128,22 @@ def diff_lineup(today: list[tuple[str, str]], usual: dict) -> list[dict]:
     if not today or not usual or not usual.get("slots"):
         return []
     out = []
-    today_slot = {name: i for i, (name, _) in enumerate(today, 1)}
-    today_pos = {name: p for name, p in today}
+    # 🔴 비교는 **정규화 이름**으로 한다. 표기 차이가 곧 거짓 결장이 된다.
+    today_slot = {canon_name(name): i for i, (name, _) in enumerate(today, 1)}
+    today_pos = {canon_name(name): p for name, p in today}
+    show = dict(usual.get("display") or {})
+    show.update({canon_name(n): n for n, _ in today})
 
     # ① 평소 주전이 오늘 없다
-    for name in sorted(usual["regulars"] - set(today_slot)):
+    for key in sorted(usual["regulars"] - set(today_slot)):
+        name = show.get(key, key)
         out.append({"type": "regular_out", "who": name,
-                    "detail": f"평소 {usual['slots'].get(name, '?')}번 {name}이(가) "
+                    "detail": f"평소 {usual['slots'].get(key, '?')}번 {name}이(가) "
                               f"선발 라인업에서 빠짐"})
     # ② 타순 이동
-    for name, slot in today_slot.items():
-        was = usual["slots"].get(name)
+    for key, slot in today_slot.items():
+        name = show.get(key, key)
+        was = usual["slots"].get(key)
         if was is None:
             continue
         if was <= TOP_ORDER < slot:
@@ -131,14 +153,16 @@ def diff_lineup(today: list[tuple[str, str]], usual: dict) -> list[dict]:
             out.append({"type": "order_promote", "who": name,
                         "detail": f"{name} {was}번 → {slot}번 (하위타순에서 상위로)"})
     # ③ 신규 투입 — 평소 명단에 아예 없던 선수
-    for name, slot in sorted(today_slot.items(), key=lambda kv: kv[1]):
-        if name not in usual["slots"]:
+    for key, slot in sorted(today_slot.items(), key=lambda kv: kv[1]):
+        name = show.get(key, key)
+        if key not in usual["slots"]:
             out.append({"type": "new_starter", "who": name,
                         "detail": f"{name} {slot}번 — 최근 {usual['games']}경기 "
                                   f"선발 라인업에 없던 선수"})
     # ④ 포지션 변경 / 지명타자 배치
-    for name, p in today_pos.items():
-        was = (usual.get("positions") or {}).get(name)
+    for key, p in today_pos.items():
+        name = show.get(key, key)
+        was = (usual.get("positions") or {}).get(key)
         if not p or not was or p == was:
             continue
         if _is_dh(p) and not _is_dh(was):
@@ -164,10 +188,10 @@ def bullpen_absences(today_roster: list[str] | None,
     """
     if not today_roster or not key_relievers:
         return []
-    have = set(today_roster)
+    have = {canon_name(x) for x in today_roster}     # 표기 차이 흡수
     return [{"type": "bullpen_out", "who": n, "cell": "bullpen",
              "detail": f"핵심 불펜 {n}이(가) 1군 엔트리에 없음"}
-            for n in key_relievers if n not in have]
+            for n in key_relievers if canon_name(n) not in have]
 
 
 def summarize(changes: list[dict], usual: dict | None) -> dict:
