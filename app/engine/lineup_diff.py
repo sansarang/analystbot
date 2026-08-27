@@ -153,22 +153,21 @@ def diff_lineup(today: list[tuple[str, str]], usual: dict) -> list[dict]:
 
 
 def bullpen_absences(today_roster: list[str] | None,
-                     usual_roster: list[str] | None,
-                     key_relievers: list[str] | None = None) -> list[dict]:
-    """불펜 엔트리에서 빠진 핵심 투수. 1군 등록 명단 대조로 낸다.
+                     key_relievers: list[str] | None) -> list[dict]:
+    """오늘 1군 엔트리에 없는 **핵심 불펜**.
 
-    ⚠️ 누가 '핵심'인지 정하는 것은 이 층의 일이 아니다 — 호출부가 넘긴다.
-       모르면 빈 목록이지, 아무나 핵심으로 만들지 않는다.
+    ⚠️ 누가 '핵심'인지는 이 층이 정하지 않는다 — 호출부가 등판 기록에서 산출해
+       넘긴다(`kbo_usage.key_relievers`). 역할(마무리·셋업)은 추정이지만
+       등판 횟수는 관측이다. 관측만으로 정의한다.
+    ⚠️ 엔트리를 못 받았으면 **판단하지 않는다.** 빈 명단을 "전원 말소"로 읽으면
+       매일 거짓 신호가 난다(`kbo_roster`에서 이미 겪은 유형이다).
     """
-    if not usual_roster or today_roster is None:
+    if not today_roster or not key_relievers:
         return []
-    gone = set(usual_roster) - set(today_roster)
-    keys = set(key_relievers or [])
-    out = []
-    for name in sorted(gone & keys) if keys else []:
-        out.append({"type": "bullpen_out", "who": name, "cell": "bullpen",
-                    "detail": f"{name}이(가) 1군 엔트리에서 빠짐"})
-    return out
+    have = set(today_roster)
+    return [{"type": "bullpen_out", "who": n, "cell": "bullpen",
+             "detail": f"핵심 불펜 {n}이(가) 1군 엔트리에 없음"}
+            for n in key_relievers if n not in have]
 
 
 def summarize(changes: list[dict], usual: dict | None) -> dict:
@@ -182,13 +181,15 @@ def summarize(changes: list[dict], usual: dict | None) -> dict:
         return {"by_cell": {}, "types": [],
                 "headline": f"평소 라인업 비교 불가 (이력 {(usual or {}).get('games', 0)}경기 "
                             f"· 최소 {MIN_HISTORY}경기 필요)"}
+    src = f" · {usual['source_note']}" if usual.get("source_note") else ""
     if not changes:
         return {"by_cell": {}, "types": [],
-                "headline": f"평소 라인업 그대로 (최근 {usual['games']}경기 대비 변경 없음)"}
+                "headline": f"평소 라인업 그대로 "
+                            f"(최근 {usual['games']}경기 대비 변경 없음{src})"}
     by_cell: dict[str, list[str]] = {}
     for c in changes:
         by_cell.setdefault(c["cell"], []).append(c["detail"])
     kinds = sorted({c["type"] for c in changes})
     return {"by_cell": by_cell, "types": kinds,
             "headline": f"평소 대비 변경 {len(changes)}건 "
-                        f"(최근 {usual['games']}경기 기준)"}
+                        f"(최근 {usual['games']}경기 기준{src})"}

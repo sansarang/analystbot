@@ -1,0 +1,214 @@
+"""[§9-라인업 의도] KBO 공식 박스스코어에서 **과거 라인업을 백필**한다.
+
+왜 필요한가 (2026-08-27):
+  평소 라인업 비교에 최소 5경기 이력이 필요한데 `lineup_events`가 0행이었다.
+  네이버 preview는 **과거 라인업을 보관하지 않는다**(실조회: 어제 경기 fullLineUp
+  0명). KBO 공식 박스스코어에는 타순·포지션·이름이 전부 남아 있다.
+
+⚠️ **이것은 "실제 출전 기록"이지 "발표 라인업"이 아니다.**
+   경기 중 교체가 같은 타순에 여러 행으로 쌓인다. 같은 타순의 **첫 행**이 선발이다.
+   그래도 발표 라인업과 완전히 같지는 않다(발표 후 경기 전 교체는 알 수 없다).
+   → `source='boxscore'`로 구분해 저장하고, 평소 기준을 낼 때 어느 쪽을 썼는지
+     반드시 표시한다. 두 소스를 섞어놓고 같은 것처럼 쓰면 안 된다.
+
+⚠️ G_ID는 **일정 응답에서 그대로 읽는다.** 팀 코드를 추측해 조립하지 않는다
+   (실측: HH·HT·KT·LG·LT·NC·OB·SK·SS·WO).
+"""
+from __future__ import annotations
+
+import json
+import logging
+import re
+
+import httpx
+
+from app.collectors.kbo import BASE, KBO_TEAMS
+
+logger = logging.getLogger(__name__)
+
+BOX_PATH = "/ws/Schedule.asmx/GetBoxScoreScroll"
+SCHED_PATH = "/ws/Schedule.asmx/GetScheduleList"
+_HEADERS = {"User-Agent": "Mozilla/5.0",
+            "Referer": f"{BASE}/Schedule/Schedule.aspx",
+            "X-Requested-With": "XMLHttpRequest"}
+_GID = re.compile(r"(\d{8}[A-Z]{4}\d)")
+
+# 박스스코어 포지션 약어 → 정식 명칭. 크롤러(네이버)는 정식 명칭을 주므로
+# 두 소스를 비교하려면 한쪽으로 맞춰야 한다.
+POSITION_FULL = {
+    "중": "중견수", "좌": "좌익수", "우": "우익수", "지": "지명타자",
+    "포": "포수", "유": "유격수", "一": "1루수", "二": "2루수", "三": "3루수",
+    "투": "투수",
+}
+# 교체 표기 — 대타(타)·대주자(주)가 앞에 붙는다. 선발이 아니다.
+_SUB_PREFIX = ("타", "주")
+
+
+def normalize_position(raw: str) -> str:
+    """약어·정식 명칭을 하나로 맞춘다. 모르면 원문 그대로(버리지 않는다).
+
+    ⚠️ 두 글자 이상은 **경기 중 수비 이동**이다("우중" = 우익수→중견수,
+       "유二" = 유격수→2루수). 우리가 알고 싶은 것은 **선발 위치**이므로
+       첫 글자를 쓴다. 실측 2026-08-26 박스스코어에 실제로 있었다.
+    """
+    p = (raw or "").strip()
+    if not p:
+        return ""
+    if p in POSITION_FULL:
+        return POSITION_FULL[p]
+    if len(p) > 1 and p[0] in POSITION_FULL:
+        return POSITION_FULL[p[0]]
+    return p
+
+
+def is_substitute(raw: str) -> bool:
+    """대타·대주자로 들어온 행인가. 두 글자 이상이고 앞이 타/주면 교체다."""
+    p = (raw or "").strip()
+    return len(p) >= 2 and p[0] in _SUB_PREFIX
+
+
+def parse_starting_order(table_json: str | dict) -> list[str]:
+    """박스스코어 타자표 → `["이름(포지션)", ...]` 9명(선발만).
+
+    같은 타순의 **첫 행**이 선발이다. 교체 표기(대타·대주자)는 건너뛴다.
+    ⚠️ 9명이 안 되면 **빈 목록**을 돌려준다 — 불완전한 라인업으로 '평소'를
+       만들면 그 결손이 매번 '변경'으로 잡힌다.
+    """
+    t = json.loads(table_json) if isinstance(table_json, str) else (table_json or {})
+    best: dict[int, str] = {}
+    for row in t.get("rows") or []:
+        cells = [(c or {}).get("Text", "").strip() for c in (row.get("row") or [])]
+        if len(cells) < 3 or not cells[0].isdigit():
+            continue
+        slot = int(cells[0])
+        if slot in best or is_substitute(cells[1]):
+            continue
+        pos = normalize_position(cells[1])
+        best[slot] = f"{cells[2]}({pos})" if pos else cells[2]
+    if len(best) < 9:
+        return []
+    return [best[i] for i in sorted(best)][:9]
+
+
+async def fetch_game_ids(season: int, month: int) -> list[dict]:
+    """그 달의 경기 목록 — G_ID·날짜·양 팀(공식 표기).
+
+    ⚠️ **팀은 같은 행의 매치업 문구에서 읽는다.** G_ID의 팀 코드를 추측해
+       해석하지 않는다 — 코드표를 지어내면 한 팀만 틀려도 남의 라인업이
+       그 팀의 '평소'가 된다.
+    """
+    from app.collectors.kbo import parse_matchup
+
+    async with httpx.AsyncClient(timeout=25, follow_redirects=True) as c:
+        await c.get(f"{BASE}/Schedule/Schedule.aspx", headers=_HEADERS)
+        r = await c.post(BASE + SCHED_PATH,
+                         data={"leId": "1", "srIdList": "0,9,6",
+                               "seasonId": str(season),
+                               "gameMonth": f"{month:02d}", "teamId": ""},
+                         headers=_HEADERS)
+    r.raise_for_status()
+    out, seen = [], set()
+    cur_date = None
+    for row in r.json().get("rows") or []:
+        cells = [(c or {}).get("Text", "") for c in (row.get("row") or [])]
+        plain = [re.sub(r"<[^>]+>", "", x).strip() for x in cells]
+        # 날짜는 그 날 첫 행에만 있다 — 이어지는 행은 앞 날짜를 물려받는다.
+        m = re.match(r"^(\d{2})\.(\d{2})", plain[0] if plain else "")
+        if m:
+            cur_date = f"{season}-{m.group(1)}-{m.group(2)}"
+        gids = _GID.findall("".join(cells))
+        if not gids or cur_date is None:
+            continue
+        gid = gids[0]
+        if gid in seen:
+            continue
+        mu = next((parse_matchup(x) for x in plain if parse_matchup(x)), None)
+        if not mu:
+            continue
+        seen.add(gid)
+        out.append({"game_id": gid, "date": cur_date,
+                    "away": KBO_TEAMS.get(mu["away"], mu["away"]),
+                    "home": KBO_TEAMS.get(mu["home"], mu["home"])})
+    return out
+
+
+async def fetch_lineups(game_id: str, date: str) -> dict:
+    """한 경기의 선발 라인업. 반환 {"away": [...], "home": [...], "teams": (a,h)}.
+
+    ⚠️ arrHitter[0]이 원정, [1]이 홈이다 — 야구 기록의 통상 순서(원정 선공)다.
+       G_ID도 `날짜+원정+홈+0` 순서라 서로 교차검증된다.
+    """
+    async with httpx.AsyncClient(timeout=25, follow_redirects=True) as c:
+        await c.get(f"{BASE}/Schedule/Schedule.aspx", headers=_HEADERS)
+        r = await c.post(BASE + BOX_PATH,
+                         data={"leId": "1", "srId": "0",
+                               "seasonId": game_id[:4],
+                               "gameDate": game_id[:8], "gameId": game_id},
+                         headers=_HEADERS)
+    r.raise_for_status()
+    j = r.json()
+    blocks = j.get("arrHitter") or []
+    if len(blocks) < 2:
+        return {}
+    return {"away": parse_starting_order((blocks[0] or {}).get("table1")),
+            "home": parse_starting_order((blocks[1] or {}).get("table1")),
+            "date": date, "game_id": game_id}
+
+
+async def backfill(pool, season: int, months: tuple[int, ...],
+                   limit_per_team: int = 10) -> dict:
+    """최근 경기 라인업을 `lineup_events`에 적재한다. 반환 계측 dict.
+
+    ⚠️ `source='boxscore'`로 남긴다 — 발표 라인업(`crawler`)과 구분해야 한다.
+    ⚠️ 경기 매칭은 **날짜 + 양 팀**으로 한다. 날짜만으로 고르면 같은 날 5경기 중
+       아무거나 잡혀 남의 라인업이 그 팀 '평소'가 된다.
+    """
+    from datetime import UTC, datetime
+    from zoneinfo import ZoneInfo
+
+    from app.collectors.game_match import _FIND
+    from app.collectors.lineup_history import record
+
+    stats = {"games": 0, "rows": 0, "skipped": 0, "no_game": 0, "teams": 0}
+    per_team: dict[str, int] = {}
+    games: list[dict] = []
+    for mo in months:
+        games.extend(await fetch_game_ids(season, mo))
+    games.sort(key=lambda g: g["date"], reverse=True)      # 최신부터
+
+    for g in games:
+        if per_team and min(per_team.values()) >= limit_per_team \
+                and len(per_team) >= len(KBO_TEAMS):
+            break
+        if (per_team.get(g["home"], 0) >= limit_per_team
+                and per_team.get(g["away"], 0) >= limit_per_team):
+            continue
+        starts = datetime.fromisoformat(f"{g['date']}T18:30:00").replace(
+            tzinfo=ZoneInfo("Asia/Seoul")).astimezone(UTC)
+        gid_db = await pool.fetchval(_FIND, "kbo", g["home"], g["away"],
+                                     starts, 20) if pool else None
+        if gid_db is None:
+            stats["no_game"] += 1
+            continue
+        try:
+            lu = await fetch_lineups(g["game_id"], g["date"])
+        except Exception as exc:
+            logger.debug("[백필] %s 조회 실패: %s", g["game_id"], exc)
+            stats["skipped"] += 1
+            continue
+        if not lu or not (lu.get("home") and lu.get("away")):
+            stats["skipped"] += 1
+            continue
+        stats["games"] += 1
+        for side in ("home", "away"):
+            team = g[side]
+            if per_team.get(team, 0) >= limit_per_team:
+                continue
+            if await record(pool, gid_db, side, team, lu[side], source="boxscore"):
+                stats["rows"] += 1
+                per_team[team] = per_team.get(team, 0) + 1
+    stats["teams"] = len(per_team)
+    logger.info("[백필] 경기 %d · 적재 %d행 · %d팀 (건너뜀 %d · 경기없음 %d)",
+                stats["games"], stats["rows"], stats["teams"],
+                stats["skipped"], stats["no_game"])
+    return stats

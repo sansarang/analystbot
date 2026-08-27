@@ -73,6 +73,11 @@ class Settings(BaseSettings):
     #   ⚠️ 관행이지 실측이 아니다 — `lineup_lead_observed`가 쌓이면 재검토한다.
     lineup_final_minutes: int = 30
 
+    # [핵심 불펜] 관측 창에서 구원 등판이 잦은 상위 몇 명을 '핵심'으로 볼 것인가.
+    #   ⚠️ 운용값이지 실측이 아니다 — `lineup_type_ledger`에 bullpen_out 적중률이
+    #      쌓이면 몇 명이 적당한지 재서 교체한다.
+    key_reliever_top: int = 4
+
     lineup_lead_mlb: float = 3.0       # MLB 통상 2~4시간 전 발표 → 3시간
     lineup_lead_kbo: float = 1.0       # KBO 경기 약 1시간 전 공시
     lineup_lead_npb: float = 1.0       # NPB 동일

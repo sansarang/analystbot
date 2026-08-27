@@ -72,7 +72,7 @@ async def history(pool, sport: str, team: str, before, limit: int = USUAL_WINDOW
     if not pool or not team or before is None:
         return []
     rows = await pool.fetch(
-        """SELECT e.batting_order FROM lineup_events e
+        """SELECT e.batting_order, e.source FROM lineup_events e
            JOIN games g ON g.id = e.game_id
            WHERE g.sport = $1 AND e.team = $2 AND g.starts_at < $3
            ORDER BY g.starts_at DESC, e.observed_at DESC
@@ -84,9 +84,47 @@ async def history(pool, sport: str, team: str, before, limit: int = USUAL_WINDOW
     return out
 
 
+# 출처별 사람이 읽을 이름 — **두 소스는 같은 것이 아니다.**
+SOURCE_KR = {"boxscore": "실제 출전 기록", "crawler": "발표 라인업",
+             "statsapi": "발표 라인업"}
+
+
+async def sources(pool, sport: str, team: str, before,
+                  limit: int = USUAL_WINDOW) -> dict[str, int]:
+    """평소 기준이 **어느 출처로 만들어졌는지**. 섞였으면 둘 다 센다."""
+    if not pool or not team:
+        return {}
+    before = _as_dt(before)
+    if before is None:
+        return {}
+    rows = await pool.fetch(
+        """SELECT e.source, count(*) AS n FROM lineup_events e
+           JOIN games g ON g.id = e.game_id
+           WHERE g.sport = $1 AND e.team = $2 AND g.starts_at < $3
+           GROUP BY e.source""", sport, team, before)
+    return {r["source"]: r["n"] for r in rows}
+
+
+def source_note(counts: dict[str, int]) -> str:
+    """"실제 출전 기록 10경기" 같은 한 줄.
+
+    ⚠️ 박스스코어는 **실제 출전 기록**이지 발표 라인업이 아니다. 경기 중 교체가
+       섞일 수 있고, 발표 후 경기 전 교체는 아예 알 수 없다. 같은 것처럼
+       쓰면 안 되므로 기준을 낼 때마다 어느 쪽인지 밝힌다.
+    """
+    if not counts:
+        return ""
+    bits = [f"{SOURCE_KR.get(k, k)} {v}경기" for k, v in sorted(counts.items())]
+    return " + ".join(bits)
+
+
 async def usual(pool, sport: str, team: str, before) -> dict:
-    """그 팀의 평소 라인업. 표본 미달이면 빈 dict."""
-    return usual_from(await history(pool, sport, team, before))
+    """그 팀의 평소 라인업. 표본 미달이면 빈 dict. 출처를 함께 담는다."""
+    u = usual_from(await history(pool, sport, team, before))
+    if u:
+        u["sources"] = await sources(pool, sport, team, before)
+        u["source_note"] = source_note(u["sources"])
+    return u
 
 
 async def changes_since(pool, game_id, side: str) -> list[dict]:

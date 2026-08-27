@@ -101,12 +101,41 @@ def test_every_change_type_maps_to_an_existing_cell():
 
 
 def test_bullpen_entry_removal_needs_a_key_list():
-    """누가 '핵심'인지 정하는 것은 이 층의 일이 아니다."""
+    """누가 '핵심'인지 정하는 것은 이 층의 일이 아니다 — 호출부가 산출해 넘긴다."""
     from app.engine.lineup_diff import bullpen_absences
 
-    assert bullpen_absences(["A"], ["A", "B"], None) == []
-    got = bullpen_absences(["A"], ["A", "B"], ["B"])
-    assert got and got[0]["cell"] == "bullpen"
+    assert bullpen_absences(["A", "C"], None) == []
+    got = bullpen_absences(["A", "C"], ["A", "B"])
+    assert len(got) == 1 and got[0]["who"] == "B" and got[0]["cell"] == "bullpen"
+
+
+def test_missing_roster_is_not_read_as_everyone_out():
+    """🔴 빈 명단을 '전원 말소'로 읽으면 매일 거짓 신호가 난다."""
+    from app.engine.lineup_diff import bullpen_absences
+
+    assert bullpen_absences(None, ["A", "B"]) == []
+    assert bullpen_absences([], ["A", "B"]) == []
+
+
+def test_key_relievers_come_from_observed_appearances():
+    """🔴 누가 마무리인지 **지어내지 않는다** — 등판 횟수는 관측이다."""
+    from app.collectors.kbo_usage import summarize
+
+    def _game(i):
+        pen = [{"name": f"불펜{j}", "is_starter": False, "innings": 1.0,
+                "batters": 4, "pitches": 15}
+               for j in range(1, 3 + (i % 2))]
+        return {"date": f"2026-08-2{i}", "score": None,
+                "pitchers": [{"name": "선발", "is_starter": True, "innings": 5.0,
+                              "batters": 20, "pitches": 80}] + pen}
+
+    games = [_game(i) for i in range(1, 6)]
+    out = summarize(games)
+    assert out["key_relievers"], "핵심 불펜이 비었다"
+    # 자주 나온 순이어야 한다
+    counts = out["relief_appearances"]
+    assert list(counts.values()) == sorted(counts.values(), reverse=True)
+    assert out["key_relievers"][0] == max(counts, key=lambda k: counts[k])
 
 
 # ------------------------------------------------------------ 득점 방향 [7]
@@ -214,3 +243,54 @@ def test_market_delta_names_what_changed():
                          "언더오버": "언더 쪽"})
     assert "승패" in out and "득점" in out and "언더오버" in out
     assert "핸디" not in out, "안 바뀐 마켓을 쓰면 안 된다"
+
+
+# ------------------------------------------------- 백필 (실제 출전 기록)
+
+def test_boxscore_takes_the_first_row_per_slot():
+    """같은 타순의 **첫 행이 선발**이고 뒤는 교체다."""
+    import json
+
+    from app.collectors.kbo_boxscore import parse_starting_order
+
+    rows = []
+    for slot, pos, name in [("1", "중", "황성빈"), ("1", "타우", "윤동희"),
+                            ("2", "지", "나승엽"), ("3", "좌", "레이예스"),
+                            ("4", "三", "한동희"), ("5", "一", "고승민"),
+                            ("6", "二", "한태양"), ("7", "유", "전민재"),
+                            ("8", "포", "손성빈"), ("9", "우중", "장두성")]:
+        rows.append({"row": [{"Text": slot}, {"Text": pos}, {"Text": name}]})
+    got = parse_starting_order(json.dumps({"rows": rows}))
+    assert got[0] == "황성빈(중견수)", got[0]
+    assert "윤동희" not in " ".join(got), "교체 선수가 선발로 들어갔다"
+    assert got[-1] == "장두성(우익수)", "수비 이동 표기의 첫 글자를 써야 한다"
+
+
+def test_incomplete_boxscore_is_discarded():
+    """🔴 9명이 안 되는 라인업으로 '평소'를 만들면 그 결손이 매번 '변경'으로 잡힌다."""
+    import json
+
+    from app.collectors.kbo_boxscore import parse_starting_order
+
+    rows = [{"row": [{"Text": str(i)}, {"Text": "중"}, {"Text": f"선수{i}"}]}
+            for i in range(1, 8)]
+    assert parse_starting_order(json.dumps({"rows": rows})) == []
+
+
+def test_substitute_markers_are_recognised():
+    from app.collectors.kbo_boxscore import is_substitute, normalize_position
+
+    assert is_substitute("타우") and is_substitute("주유")
+    assert not is_substitute("중") and not is_substitute("지")
+    assert normalize_position("유二") == "유격수", "수비 이동은 첫 위치를 쓴다"
+    assert normalize_position("포수") == "포수", "정식 명칭도 그대로 통과"
+
+
+def test_source_note_distinguishes_the_two_kinds():
+    """🔴 실제 출전 기록과 발표 라인업은 **같은 것이 아니다.**"""
+    from app.collectors.lineup_history import source_note
+
+    assert source_note({"boxscore": 10}) == "실제 출전 기록 10경기"
+    mixed = source_note({"boxscore": 7, "crawler": 3})
+    assert "실제 출전 기록 7경기" in mixed and "발표 라인업 3경기" in mixed
+    assert source_note({}) == ""

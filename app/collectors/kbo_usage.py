@@ -28,6 +28,13 @@ from app.collectors.naver_kbo import HEADERS, SCHEDULE, TEAM_TO_ODDS, NaverKBOCl
 logger = logging.getLogger(__name__)
 
 CACHE_TTL = 20 * 3600      # 하루 1회 갱신 — 종료 경기 기록은 바뀌지 않는다
+def _key_top() -> int:
+    """핵심 불펜 상한 — config에서. 지어낸 값이 아니라 설정값이다."""
+    from app.config import get_settings
+
+    return int(get_settings().key_reliever_top)
+
+
 RECENT_GAMES = 3           # 카드 ①칸이 보는 창 (설계: 최근 3경기)
 LOOKBACK_DAYS = 10         # 3경기를 찾기 위해 되짚는 최대 일수 (월요일 휴식일 대비)
 
@@ -207,6 +214,17 @@ def summarize(games: list[dict]) -> dict:
                 relief_batters += p["batters"]
         per_game_names.append(names)
 
+    # [핵심 불펜 자체 산출] 관측 창 전체에서 **구원 등판이 잦은 순**.
+    #   ⚠️ 누가 마무리·셋업인지 **지어내지 않는다.** 등판 횟수는 관측이고,
+    #      역할은 추정이다. 관측만으로 정의한다 — "많이 나온 구원투수".
+    #   ⚠️ 상한(config `key_reliever_top`)은 운용값이지 실측이 아니다.
+    #      채점(lineup_type_ledger)이 쌓이면 몇 명이 적당한지 재서 교체한다.
+    relief_counts: dict[str, int] = {}
+    for g in games:                      # 최근 3경기가 아니라 **관측 창 전체**
+        for p in g["pitchers"]:
+            if not p["is_starter"]:
+                relief_counts[p["name"]] = relief_counts.get(p["name"], 0) + 1
+
     # 연투 = 최근 두 경기에 **모두** 등판. 역할 추정 없이 관측만으로 나온다.
     b2b = sorted(per_game_names[0] & per_game_names[1]) if len(per_game_names) >= 2 else []
     last = recent[0]
@@ -239,6 +257,12 @@ def summarize(games: list[dict]) -> dict:
         "starter_ip_l3": round(starter_ip, 2),
         "relief_ip_l3": round(relief_ip, 2),
         "relief_batters_l3": relief_batters,
+        # [핵심 불펜 자체 산출] 등판 횟수 상위 — 이름과 횟수를 함께 남긴다.
+        #   횟수를 버리면 "왜 이 사람이 핵심인가"를 되짚을 수 없다.
+        "key_relievers": [n for n, _ in sorted(
+            relief_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:_key_top()]],
+        "relief_appearances": dict(sorted(relief_counts.items(),
+                                          key=lambda kv: (-kv[1], kv[0]))),
         "back_to_back": b2b,
         "back_to_back_count": len(b2b),
     }

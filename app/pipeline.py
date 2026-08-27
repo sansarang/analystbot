@@ -3889,7 +3889,8 @@ async def _attach_lineup_intent(pool, judge_games: list[dict], sport: str,
     from app.collectors import lineup_history as LH
     from app.engine.interpreter import interpret_lineup_intent
     from app.engine import lineup_intent as LI
-    from app.engine.lineup_diff import diff_lineup, parse_order, summarize
+    from app.engine.lineup_diff import (bullpen_absences, diff_lineup,
+                                        parse_order, summarize)
 
     live = [jg for jg in judge_games if jg.get("status") == "scheduled"]
     if not live:
@@ -3912,6 +3913,10 @@ async def _attach_lineup_intent(pool, judge_games: list[dict], sport: str,
             usual = await LH.usual(pool, sport, team, jg.get("starts_at")) if pool else {}
             today = parse_order(order)
             changes = diff_lineup(today, usual) if (today and usual) else []
+            # [핵심 불펜] 엔트리에서 빠진 필승조 — 등판 기록으로 자체 산출한 목록
+            roster = (res.get(f"{side}_roster") or {}).get("registered")
+            keys = (res.get(f"{side}_usage") or {}).get("key_relievers")
+            changes = changes + bullpen_absences(roster, keys)
             summary = summarize(changes, usual)
             if usual:
                 compared_sides += 1

@@ -128,6 +128,10 @@ def render(jg: dict) -> list[str]:
                           if it["scoring_dir"] in ("다득점", "저득점") else ""))
     if not out:
         return []
+    # [4] **판정 근거의 두께를 밝힌다.** 감독 발언이 없는 경기는 발언 없이
+    #   판정하는 것이 맞지만, 그 사실을 숨기면 근거가 두꺼워 보인다.
+    if not (jg.get("research") or {}).get("news_quotes"):
+        out.append("  (감독 발언 미수집 — 변경점만으로 판정)")
     sc = intent.get("scoring") or {}
     if sc.get("dir") in ("다득점", "저득점", "중립"):
         out.append(f"  → 라인업발 득점 방향: {sc['dir']} ({sc.get('detail', '')[:60]})")
