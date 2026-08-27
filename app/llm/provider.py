@@ -665,6 +665,8 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
                                         _outage_kind(exc), str(exc))
     if starved:
         await _notify_budget(role, budget, max_tokens, last)
+    # [#73] 체인 전부 실패 = 전멸. 하루 누적을 세어 provider 추가 필요를 알린다.
+    await _ledger.record_blackout(redis, role)
     raise LLMError(f"역할 {role}: 체인 전부 실패 ({'→'.join(tried)})") from last
 
 
@@ -684,7 +686,15 @@ def _outage_kind(exc: Exception) -> str:
 
 
 async def _ledger_redis():
-    """기록용 redis. 없으면 None — 계측이 없다고 판정이 멈추면 안 된다."""
+    """기록용 redis. 없으면 None — 계측이 없다고 판정이 멈추면 안 된다.
+
+    🔴 **강제 목 모드에서는 기록하지 않는다.** 테스트가 실 Redis에 써서 운영
+       `/health`에 `fine`·`boom`·`starved` 같은 **테스트 더미 provider가 섞였다**
+       (실측 2026-08-27). 계측이 오염되면 그 숫자를 근거로 한 판단이 전부 틀어진다
+       — 테스트가 외부 API를 치는 것과 같은 종류의 누출이다.
+    """
+    if getattr(_S(), "force_mock", False):
+        return None
     try:
         import redis.asyncio as aioredis
 

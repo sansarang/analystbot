@@ -955,3 +955,41 @@ Gemini로 넘어가 404가 난다. 폴백 체인의 두 번째 provider도 마�
 - **KBO 관측 창이 시즌 누적이다(§8-6과 다름).** 경기별 로그 공개 경로가 없어
   창을 자를 수 없다. research에 `window="season"`으로 표기된다.
 - **KBO 주심은 사전 공지되지 않는다.** 구조적으로 채울 수 없는 필드다.
+
+### §8-41 자체 호스팅(Ollama) 연결 준비 — 실측 확인 2026-08-27
+
+**결론: 코드 수정 없이 `.env`만으로 전환 가능한 상태다.** 확인한 것:
+
+```
+_DEFAULT_BASE["ollama"]           = http://localhost:11434/v1
+_PROVIDER_DEFAULT_MODEL["ollama"] = llama3.1
+Settings.ollama_base_url          존재
+provider_chain("interpreter", INTERPRETER_PROVIDER=ollama)
+  → OpenAICompatProvider(name=ollama, model=llama3.1, base=http://localhost:11434/v1)
+```
+
+전환에 필요한 `.env`:
+
+| 변수 | 값 |
+|---|---|
+| `INTERPRETER_PROVIDER` | `ollama` |
+| `INTERPRETER_MODEL` | 실제로 `ollama pull` 한 모델명 (기본 `llama3.1`) |
+| `OLLAMA_BASE_URL` | 기본 `http://localhost:11434/v1` — Railway에서는 사설망 주소 |
+| `INTERPRETER_FALLBACK` | `groq,gemini` 등 — 자체 호스팅이 죽어도 넘어갈 곳 |
+
+API 키는 필요 없다(`build_provider`가 `ollama → None`으로 매핑해 Authorization
+헤더를 붙이지 않는다).
+
+⚠️ **아직 확인하지 못한 것 — 실제 호출로 검증해야 한다.**
+- **구조화 출력(tool calling).** `OpenAICompatProvider`는 `tools` +
+  `tool_choice`로 스키마를 강제한다. Ollama의 OpenAI 호환 엔드포인트는 모델마다
+  함수 호출 지원이 갈린다. **지원하지 않는 모델을 쓰면 2단이 통째로 실패한다** —
+  파싱 폴백이 있지만 그 경로의 정확도는 측정한 적이 없다.
+- **Railway에서의 접근성.** localhost는 같은 컨테이너뿐이다. 자체 호스팅을 쓰려면
+  Ollama를 별도 서비스로 띄우고 사설망 주소를 넣어야 한다.
+- **응답 지연.** CPU 인스턴스에서 70B급은 요청당 수십 초가 걸린다. 대화형 요청에는
+  `retry_wait_cap`(호출 타임아웃)과 같은 이유로 부적합할 수 있다.
+
+→ 다음에 할 일: Ollama를 로컬에 띄우고 `tools/check_llm.py`를 돌려
+  **구조화 호출 스모크가 통과하는지**부터 본다. 통과 전에는 "연결 가능"이라고만
+  말하고 "쓸 수 있다"고 말하지 않는다.

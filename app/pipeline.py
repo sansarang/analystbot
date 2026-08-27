@@ -541,34 +541,27 @@ async def build_analysis(
         stats_coro = _collect_mlb_stats(mlb, schedule)
         league = "MLB"
     elif sport in ("kbo", "npb"):
-        # [§8-14] KBO·NPB — statsapi가 껍데기라 Odds API `/scores`가 일정·점수의
-        #   유일한 소스다. 같은 호출이 **채점 경로**도 겸한다(픽보다 채점이 먼저라는 규율).
+        # [Odds 이관 2026-08-27] KBO·NPB 일정은 **공식 소스**에서 온다.
+        #   KBO = koreabaseball.com · NPB = Yahoo!スポーツ.
+        #   🔴 종전에는 Odds API `/scores`가 유일한 소스였고, 크레딧이 마르면
+        #     응답 전체가 "크레딧 소진" 한 줄로 대체됐다. 이 두 종목은 배당을
+        #     판정에 쓰지 않으므로(#38·#39) 배당 때문에 죽을 이유가 없다.
         #   ⚠️ Statcast에 해당하는 타구 데이터가 없다 → λ를 산출할 수 없다.
         #      p_model은 무효가 되고 확률은 **판정(p_claude) 단독**으로 간다.
         #      그래서 2-소스 룰의 '모델' 축이 서지 않으며, 추천 자격은 대부분
         #      통과하지 못한다 — 이는 버그가 아니라 **의도된 보수성**이다.
-        from app.collectors.odds import upsert_games_from_scores
-
-        # 🔴 **배당 크레딧이 말라도 KBO 분석은 나가야 한다.**
-        #   KBO는 배당을 판정에 쓰지 않는다(#38·#39, 돈·시장 제거). 그런데 일정
-        #   소스가 아직 Odds `/scores`라, 크레딧이 소진되면 예외가 그대로 올라가
-        #   **응답 전체가 "크레딧 소진" 한 줄로 대체됐다**(실측 2026-08-27).
-        #   이미 DB에 적재된 일정으로 계속 간다 — 없는 것을 만들지는 않는다.
-        counts = {"scheduled": 0, "final": 0}
+        counts = {"scheduled": 0, "final": 0, "total": 0}
         try:
-            counts = await upsert_games_from_scores(pool, sport, date=date,
-                                                    client=OddsClient())
-        except (ApiQuotaError, ApiAuthError) as exc:
-            # ⚠️ 지역 import 금지 — 함수 안에서 import하면 그 이름이 **함수 전체의
-            #   지역변수**가 되어, 앞쪽 다른 경로의 `except`가 UnboundLocalError로
-            #   죽는다(실측 2026-08-27: judge 폴백 경로가 통째로 깨졌다).
+            if sport == "kbo":
+                from app.collectors.kbo import upsert_schedule as _upsert_sched
+            else:
+                from app.collectors.yahoo_npb import upsert_schedule as _upsert_sched
+            counts = await _upsert_sched(pool, date)
+        except Exception as exc:
+            # 공식 소스가 죽어도 DB의 기존 일정으로 간다 — 없는 것을 만들지는 않는다.
             logger.warning("[pipeline] %s 일정 갱신 실패(%s) — DB의 기존 일정으로 진행",
                            sport, type(exc).__name__)
             schedule_stale = True
-            try:
-                await notify_api_error(exc)
-            except Exception:
-                pass
         rows = await pool.fetch(
             "SELECT ext_id FROM games WHERE sport = $1 AND status = 'scheduled'"
             "  AND starts_at >= now() - interval '12 hours'", sport)
@@ -577,7 +570,7 @@ async def build_analysis(
         league = LEAGUE_LABEL_BY_SPORT.get(sport, sport.upper())
         logger.info("[pipeline] %s 일정 %d건 (예정 %d / 종료 %d)%s",
                     league, len(ext_ids), counts["scheduled"], counts["final"],
-                    " ⚠️ 배당 크레딧 소진 — 기존 일정" if schedule_stale else "")
+                    " ⚠️ 공식 소스 실패 — 기존 일정" if schedule_stale else "")
     else:
         fb = APIFootballClient()
         fixtures = await fb.fetch_fixtures(date)
@@ -628,9 +621,10 @@ async def build_analysis(
     if sport == "mlb":
         active_keys = ["baseball_mlb"]
     elif sport in ("kbo", "npb"):
-        from app.collectors.odds import SPORT_KEYS
-
-        active_keys = SPORT_KEYS[sport]
+        # 🔴 **호출조차 하지 않는다.** 이 두 종목은 배당을 판정에도 표시에도
+        #   쓰지 않는다(#38·#39). 크레딧을 태울 이유도, 크레딧 때문에 죽을
+        #   이유도 없다. 빈 목록이면 `_odds_or_none`이 조회를 건너뛴다.
+        active_keys = []
     else:
         from app.leagues import LEAGUES as _L
 
@@ -643,6 +637,8 @@ async def build_analysis(
     # 2) 스탯 ∥ 배당 ∥ 딥서치 병렬 수집 (딥서치도 요청 범위의 경기로만 한정)
     async def _odds_or_none():
         """배당 실패가 분석을 죽이지 않는다 — 배당은 표시용이고 판정에 안 쓴다."""
+        if not active_keys:
+            return []          # 조회할 리그가 없다 — API를 부르지 않는다
         try:
             return await snapshot_odds(pool, sport, client=OddsClient(),
                                        only_keys=active_keys)
@@ -666,11 +662,15 @@ async def build_analysis(
     # [§8-10] 배당 수집 — 종전 미계측. 0건이면 전 마켓이 ⚪(배당 미수집)로 나가는데
     #         그 사실이 어디에도 기록되지 않았다.
     _sched_now = [g for g in games if g.get("status") == "scheduled"]
-    await record("배당 수집", int(_odds_rows or 0), max(1, len(_sched_now)),
-                 cause=None if _odds_rows else "missing",
-                 detail=f"스냅샷 {_odds_rows or 0}행 / 예정 {len(_sched_now)}경기",
-                 unit="경기", expect_full=False,
-                 impact="배당 없이는 추천 자격(배당 하한)을 판정할 수 없습니다")
+    # [Odds 이관] KBO·NPB는 배당을 **쓰지 않는다**. 안 쓰는 것을 "수집 실패"로
+    #   계측하면 매 리포트에 없는 한계가 실린다 — 실제로 "배당 수집(데이터 없음)"이
+    #   KBO 카드 상단에 계속 나갔다(실측 2026-08-27).
+    if active_keys:
+        await record("배당 수집", int(_odds_rows or 0), max(1, len(_sched_now)),
+                     cause=None if _odds_rows else "missing",
+                     detail=f"스냅샷 {_odds_rows or 0}행 / 예정 {len(_sched_now)}경기",
+                     unit="경기", expect_full=False,
+                     impact="배당 없이는 추천 자격(배당 하한)을 판정할 수 없습니다")
     # 분모는 **예정 경기**다. 리서치는 scheduled 경기만 조사하므로 전체 경기를
     # 분모로 쓰면 저녁 시간대(진행 중 경기 다수)에 "5/15 실패"처럼 잘못 경보한다.
     # (실측 2026-08-26 10:00: 15경기 중 6경기만 예정이었는데 5/15로 표시됐다)
@@ -3043,7 +3043,9 @@ def _render_card(analysis: dict) -> str:
         lines.append("⚠️ 일부 경기 새벽 데이터 기준 (최신 재조사 실패·미완)")
     if meta.get("quota"):
         lines.append("⚠️ 금일 리서치 쿼터 소진 — 이후 분석은 캐시 기준")
-    if analysis.get("quota_warning"):
+    # 배당을 쓰지 않는 종목에는 배당 경고를 띄우지 않는다 — 사용자가 고칠 수도
+    # 없고 이 리포트와 무관한 경고다.
+    if analysis.get("quota_warning") and analysis.get("sport") not in ("kbo", "npb"):
         lines.append("⚠️ 배당 데이터 잔여 쿼터 부족 — 배당 갱신이 지연될 수 있습니다")
     scored = [g for g in scheduled if g.get("p_market") is not None and g.get("p_claude") is not None]
     if scored:

@@ -28,6 +28,16 @@ class _FakeRedis:
     async def expire(self, key, ttl):
         return True
 
+    async def hset(self, key, field, val):
+        self.h.setdefault(key, {})[field] = val
+
+    async def incr(self, key):
+        self.h.setdefault("_n", {})[key] = self.h.setdefault("_n", {}).get(key, 0) + 1
+        return self.h["_n"][key]
+
+    async def get(self, key):
+        return self.h.get("_n", {}).get(key)
+
 
 def test_retry_cap_is_the_call_timeout_not_an_invented_number():
     """🔴 상한은 임의값이 아니라 **한 번의 호출 타임아웃**이다.
@@ -76,3 +86,51 @@ def test_health_never_guesses_remaining_credit():
     out = "\n".join(L.format_summary(asyncio.run(L.summary(r, days=1))))
     for word in ("잔여", "남은 크레딧", "remaining"):
         assert word not in out
+
+
+def test_last_success_marks_alive_and_dead():
+    """🟢/🔴는 **관측**이다 — 최근 성공이 있으면 살아 있다고 본다."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.llm.ledger import _alive
+
+    now = datetime.now(UTC)
+    assert _alive((now - timedelta(hours=1)).isoformat(), now)
+    assert not _alive((now - timedelta(hours=9)).isoformat(), now)
+    assert not _alive(None, now), "기록이 없으면 살아 있다고 말할 수 없다"
+    assert not _alive("깨진 값", now)
+
+
+def test_unknown_provider_is_not_shown_as_dead():
+    """🔴 부르지 않은 provider를 '죽음'으로 표시하면 멀쩡한 것을 의심하게 된다."""
+    r = _FakeRedis()
+    asyncio.run(L.record_call(r, "groq", "interpreter", True))
+    out = "\n".join(L.format_summary(asyncio.run(L.summary(r, days=1))))
+    assert "groq" in out and "gemini" not in out and "ollama" not in out
+
+
+def test_blackout_counts_and_warns():
+    r = _FakeRedis()
+    for _ in range(L.BLACKOUT_WARN):
+        n = asyncio.run(L.record_blackout(r, "interpreter"))
+    assert n == L.BLACKOUT_WARN
+    out = "\n".join(L.format_summary(asyncio.run(L.summary(r, days=1))))
+    assert f"전멸 {L.BLACKOUT_WARN}회" in out and "provider 추가가 필요" in out
+
+
+def test_one_blackout_warns_softly():
+    r = _FakeRedis()
+    asyncio.run(L.record_blackout(r, "interpreter"))
+    out = "\n".join(L.format_summary(asyncio.run(L.summary(r, days=1))))
+    assert "전멸 1회" in out and "provider 추가가 필요" not in out
+
+
+def test_tests_never_write_to_the_production_ledger():
+    """🔴 테스트 더미 provider가 운영 /health에 섞였다 (fine·boom·starved·mock).
+
+    계측이 오염되면 그 숫자를 근거로 한 판단이 전부 틀어진다.
+    """
+    from app.llm.provider import _ledger_redis
+
+    assert asyncio.run(_ledger_redis()) is None, \
+        "강제 목 모드인데 실 Redis 핸들이 나왔다 — 테스트가 운영 계측을 오염시킨다"

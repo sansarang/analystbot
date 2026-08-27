@@ -27,6 +27,14 @@ def _today() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d")
 
 
+LAST_OK_KEY = "llm_last_ok"      # provider → 마지막 성공 ISO 시각
+BLACKOUT_KEY = "llm_blackout:{}"  # 그날 전 provider 전멸 횟수
+# 하루에 이만큼 전멸하면 provider를 늘려야 한다는 신호다.
+#  ⚠️ 실측으로 정한 값이 아니라 **운영 판단선**이다. 2주 치 장애 이력이 쌓이면
+#     실제 전멸 빈도를 보고 교체한다.
+BLACKOUT_WARN = 3
+
+
 async def record_call(redis, provider: str, role: str, ok: bool) -> None:
     """호출 1건. redis가 없으면 조용히 넘어간다(키 없이도 동작해야 한다)."""
     if redis is None:
@@ -35,8 +43,27 @@ async def record_call(redis, provider: str, role: str, ok: bool) -> None:
         key = f"llm_calls:{_today()}"
         await redis.hincrby(key, f"{provider}:{'ok' if ok else 'fail'}", 1)
         await redis.expire(key, TTL)
+        if ok:
+            # 마지막 성공 시각 — "지금 이 provider가 살아 있나"의 유일한 증거다.
+            await redis.hset(LAST_OK_KEY, provider,
+                             datetime.now(UTC).isoformat(timespec="seconds"))
     except Exception as exc:                 # 계측이 본체를 죽이지 않는다
         logger.debug("[llm] 사용량 기록 실패: %s", exc)
+
+
+async def record_blackout(redis, role: str) -> int:
+    """전 provider 전멸 1건. 반환: 그날 누적 횟수(모르면 0)."""
+    if redis is None:
+        return 0
+    try:
+        key = BLACKOUT_KEY.format(_today())
+        n = await redis.incr(key)
+        await redis.expire(key, TTL)
+        if n == BLACKOUT_WARN:
+            logger.error("[llm] 🔴 오늘 전 provider 전멸 %d회 — provider 추가가 필요하다", n)
+        return int(n)
+    except Exception:
+        return 0
 
 
 async def record_outage(redis, provider: str, role: str, kind: str,
@@ -77,7 +104,29 @@ async def summary(redis, days: int = 3) -> dict:
         except Exception as exc:
             logger.debug("[llm] 집계 실패 %s: %s", day, exc)
     outages.sort(key=lambda o: o.get("at", ""), reverse=True)
-    return {"calls": calls, "outages": outages}
+    last_ok, blackouts = {}, 0
+    try:
+        last_ok = await redis.hgetall(LAST_OK_KEY) or {}
+        blackouts = int(await redis.get(BLACKOUT_KEY.format(_today())) or 0)
+    except Exception as exc:
+        logger.debug("[llm] 최근 성공/전멸 조회 실패: %s", exc)
+    return {"calls": calls, "outages": outages,
+            "last_ok": last_ok, "blackouts": blackouts}
+
+
+def _alive(iso: str | None, now: datetime, hours: int = 6) -> bool:
+    """최근 성공이 이 안에 있으면 '가용'으로 본다.
+
+    ⚠️ 이것은 **관측**이지 헬스체크가 아니다. 부르지 않은 provider는 성공 기록도
+       없으므로 '미확인'이지 '죽음'이 아니다 — 둘을 뭉치면 멀쩡한 provider를
+       죽었다고 표시한다.
+    """
+    if not iso:
+        return False
+    try:
+        return (now - datetime.fromisoformat(iso)).total_seconds() < hours * 3600
+    except ValueError:
+        return False
 
 
 _KIND_KR = {"quota": "크레딧 소진", "rate_limit": "레이트리밋", "auth": "키 오류",
@@ -88,9 +137,24 @@ def format_summary(data: dict, show_outages: int = 3) -> list[str]:
     """/health 줄. **잔여 크레딧은 쓰지 않는다** — 벤더가 알려주지 않는 값을
     추정해서 보여주면 그 추정이 근거로 쓰인다. 아는 것만 쓴다."""
     calls, outages = data.get("calls") or {}, data.get("outages") or []
-    if not calls and not outages:
+    if not calls and not outages and not data.get("last_ok") \
+            and not data.get("blackouts"):
         return ["🤖 LLM: 기록 없음"]
     lines = []
+    last_ok = data.get("last_ok") or {}
+    blackouts = int(data.get("blackouts") or 0)
+    if last_ok:
+        now = datetime.now(UTC)
+        parts = []
+        for prov, iso in sorted(last_ok.items()):
+            mark = "🟢" if _alive(iso, now) else "🔴"
+            parts.append(f"{mark}{prov} {(iso or '')[11:16]}")
+        lines.append("🤖 provider 마지막 성공: " + " · ".join(parts)
+                     + "  (6시간 내 성공이면 🟢 · 부르지 않은 provider는 표시되지 않음)")
+    if blackouts:
+        icon = "🔴" if blackouts >= BLACKOUT_WARN else "⚠️"
+        lines.append(f"{icon} 오늘 전 provider 전멸 {blackouts}회"
+                     + (" — provider 추가가 필요하다" if blackouts >= BLACKOUT_WARN else ""))
     if calls:
         parts = []
         for prov, c in sorted(calls.items()):

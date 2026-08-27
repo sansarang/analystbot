@@ -250,3 +250,28 @@ async def upsert_final_scores(pool, date: str, days: int = 7,
     finals = await fetch_finals(days=days, end=end, client=client)
     await upsert_games(pool, finals)
     return len(finals)
+
+
+async def upsert_schedule(pool, date: str, client: KBOClient | None = None) -> dict:
+    """[Odds 이관] 그날 KBO 일정을 **공식 사이트에서** games에 적재한다.
+
+    🔴 종전에는 Odds API `/scores`가 KBO 일정의 유일한 소스였다. KBO는 배당을
+       판정에 쓰지 않는데(#38·#39) 크레딧이 마르면 **응답 전체가 죽었다**
+       (실측 2026-08-27: "크레딧 소진" 한 줄만 나갔다).
+       일정·점수는 공식 소스에 다 있고 파서도 이미 있었다 — 배선만 없었다.
+
+    반환: {"scheduled": n, "final": n, "total": n} — Odds 경로와 같은 계약.
+    """
+    d = _date.fromisoformat(date)
+    games = [g for g in await fetch_month(d.year, d.month, client)
+             if g.get("date") == date]
+    await upsert_games(pool, games)
+    counts = {"scheduled": 0, "final": 0, "total": len(games)}
+    for g in games:
+        if g["status"] == "final":
+            counts["final"] += 1
+        elif g["status"] == "scheduled":
+            counts["scheduled"] += 1
+    logger.info("[kbo] %s 일정 %d경기 적재 (예정 %d / 종료 %d) — 공식 소스",
+                date, counts["total"], counts["scheduled"], counts["final"])
+    return counts

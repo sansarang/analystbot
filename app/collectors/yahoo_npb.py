@@ -380,3 +380,39 @@ async def load(redis, date: str) -> dict:
 
     raw = await redis.get(_key(date))
     return json.loads(raw) if raw else {}
+
+
+async def upsert_schedule(pool, date: str,
+                          client: YahooNPBClient | None = None) -> dict:
+    """[Odds 이관] 그날 NPB 일정을 **Yahoo!スポーツ에서** games에 적재한다.
+
+    KBO와 같은 이유다 — 배당을 판정에 쓰지 않는데 일정 소스가 Odds라
+    크레딧이 마르면 응답 전체가 죽었다. 반환 계약은 Odds 경로와 같다.
+
+    ⚠️ 시각: 일정 페이지가 경기 시각을 안정적으로 주지 않아 18:00 JST를 쓴다.
+       `apply_result`가 ±20시간 창으로 경기를 찾으므로 매칭에는 지장이 없지만,
+       **표시 시각은 부정확하다.** 시각 파싱은 별도 과제다.
+    """
+    from datetime import UTC, datetime
+    from zoneinfo import ZoneInfo
+
+    from app.collectors.game_match import apply_result
+
+    client = client or YahooNPBClient()
+    jst = ZoneInfo("Asia/Tokyo")
+    html = await client.schedule(date)
+    games = parse_schedule(html)
+    finals = {g["game_id"] for g in parse_finals(html)}
+    counts = {"scheduled": 0, "final": 0, "total": len(games)}
+    for g in games:
+        done = g["game_id"] in finals
+        starts = datetime.fromisoformat(f"{date}T18:00:00").replace(tzinfo=jst)
+        await apply_result(
+            pool, sport="npb", league="NPB", ext_id=f"yahoo:{g['game_id']}",
+            starts_at=starts.astimezone(UTC), home=g["home"], away=g["away"],
+            status="final" if done else "scheduled",
+            home_score=None, away_score=None)
+        counts["final" if done else "scheduled"] += 1
+    logger.info("[yahoo_npb] %s 일정 %d경기 적재 (예정 %d / 종료 %d) — Yahoo 소스",
+                date, counts["total"], counts["scheduled"], counts["final"])
+    return counts
