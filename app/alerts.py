@@ -218,14 +218,20 @@ class StageResult:
     impact: str = ""               # 이것이 최종 결과에 주는 영향 한 줄
     unit: str = "경기"             # ok/total이 무엇을 세는가 (경기·팀·구장·값·건)
     expect_full: bool = True       # 전량 수집이 정상인가 (False면 부분도 정상)
+    zero_ok: bool = False          # **지금 시점에** 0건이 정상인가 (예: 라인업 발표 전)
 
     @property
     def severity(self) -> str:
-        """정상 · 부분 · 실패. **이 셋을 뭉뚱그리면 화면이 못 쓰게 된다.**"""
+        """정상 · 부분 · 실패. **이 셋을 뭉뚱그리면 화면이 못 쓰게 된다.**
+
+        ⚠️ `zero_ok`는 "0이어도 된다"가 아니라 **"지금은 0인 것이 맞다"**이다.
+           호출부가 시각 같은 근거로 판단해서 넘겨야 하고, 상시로 켜두면
+           수집기가 죽어도 조용해진다.
+        """
         if self.cause is not None:
             return "실패"
         if self.total > 0 and self.ok == 0:
-            return "실패"
+            return "정상" if self.zero_ok else "실패"
         if self.total > 0 and self.ok < self.total:
             return "부분" if self.expect_full else "정상"
         return "정상"

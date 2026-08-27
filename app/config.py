@@ -64,6 +64,16 @@ class Settings(BaseSettings):
     #   한화에 ▲를 주면 없는 동기 차이를 만들어내는 것이다.
     # ⚠️ 이 값들은 **아직 실측되지 않았다.** 채점 데이터가 쌓이면
     #   "경쟁권 밖 팀이 실제로 더 졌는가"를 재서 교체한다(#77과 같은 원칙).
+    # [라인업 발표 시각] 종목별 **관행**. 킥오프 이만큼 전부터 라인업이 있어야
+    #   한다고 본다. 그 전에 0건인 것은 정상이고, 그 후에도 0건이면 수집 실패다.
+    #   ⚠️ **관행이지 실측이 아니다.** `lineup_lead_observed`가 경기별 실제
+    #      (첫 수집 시각 ↔ 킥오프) 차이를 쌓고 있다 — 2주 뒤 그 분포로 교체한다.
+    #      그 전까지 이 숫자로 "수집이 늦다"고 결론짓지 마라.
+    lineup_lead_mlb: float = 3.0       # MLB 통상 2~4시간 전 발표 → 3시간
+    lineup_lead_kbo: float = 1.0       # KBO 경기 약 1시간 전 공시
+    lineup_lead_npb: float = 1.0       # NPB 동일
+    lineup_lead_soccer: float = 1.0    # 축구 통상 킥오프 1시간 전 공식 발표
+
     contention_gb: float = 10.0        # 선두·컷과 이만큼 벌어지면 경쟁권 밖
     contention_cut_rank: int = 5       # 가을야구 진출선 (KBO 5위)
 

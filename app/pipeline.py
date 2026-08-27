@@ -509,7 +509,7 @@ async def build_analysis(
     stages: list = stages_out if stages_out is not None else []
 
     async def record(name, ok, total, *, cause=None, detail="", impact="",
-                     exc=None, unit="경기", expect_full=True):
+                     exc=None, unit="경기", expect_full=True, zero_ok=False):
         """단계 결과를 기록한다. **여기서 발송하지 않는다.**
 
         🔴 종전에는 단계마다 즉시 발송해 한 번의 분석에서 알림이 7~8건 쏟아졌고,
@@ -526,7 +526,7 @@ async def build_analysis(
             cause=cause or (classify_exception(exc) if exc is not None else None),
             detail=detail or (f"{type(exc).__name__}: {exc}" if exc is not None else ""),
             frames=our_frames(exc) if exc is not None else [],
-            impact=impact, unit=unit, expect_full=expect_full,
+            impact=impact, unit=unit, expect_full=expect_full, zero_ok=zero_ok,
         )
         stages.append(st)
         if st.severity != "정상":
@@ -1213,12 +1213,24 @@ async def build_analysis(
         #         계측을 끄면 "라인업을 못 받고 있다"는 사실 자체가 안 보인다.
         _lineup_ok = sum(1 for g in _scheduled
                          if (g.get("lineup_status") or "none") != "none")
+        # [라인업 발표 시각] 0건은 **아직 발표 전**일 수도, 수집 실패일 수도 있다.
+        #   시각으로만 구분된다 — 종전에는 킥오프 6시간 전 0건도 실패로 분류돼
+        #   매일 거짓 실패 알림이 나갔다.
+        from app.engine.lineup_timing import classify as _lineup_classify, observe
+
+        _ln_ok, _ln_why = _lineup_classify(_scheduled, _lineup_ok, sport)
+        _ln_detail = ", ".join(f"{k}:{v}" for k, v in sorted(_count_by(
+            (g.get("lineup_status") or "none") for g in _scheduled).items()))
         await record("라인업", _lineup_ok, len(_scheduled),
-                     cause=None if _lineup_ok else "missing",
-                     detail=", ".join(f"{k}:{v}" for k, v in sorted(_count_by(
-                         (g.get("lineup_status") or "none") for g in _scheduled).items())),
-                     unit="경기", expect_full=False,
+                     cause=None if (_lineup_ok or _ln_ok) else "missing",
+                     detail=f"{_ln_detail}{' · ' + _ln_why if _ln_why else ''}",
+                     unit="경기", expect_full=False, zero_ok=_ln_ok,
                      impact="전 경기가 '잠정'으로 표기되어 최종 픽 자격을 얻지 못합니다")
+        # 관행값을 실측으로 바꿀 재료 — 경기별 **첫** 수집 시각과 킥오프의 차이
+        if redis is not None:
+            for _g in _scheduled:
+                if (_g.get("lineup_status") or "none") != "none":
+                    await observe(redis, sport, _g.get("game_id"), _g.get("starts_at"))
         # [§8-10] 픽 선정 — 0건이 '오늘은 관망'인지 '파이프라인이 깨졌는지' 구분되지
         #         않았다. 실사고(2026-08-26): 추천 6건이 렌더에서 통째로 사라졌는데
         #         카드는 "기준 넘는 픽 없음"이라고만 했다(§8-9).

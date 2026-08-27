@@ -231,6 +231,19 @@ async def build_health(pool, redis) -> str:
     except Exception as exc:
         L.append(f"⚪ LLM 상태 확인 실패: {str(exc)[:60]}")
 
+    # ---- 라인업 리드타임 관측 [관행값 → 실측 교체용] --------------------
+    #  ⚠️ 지금 쓰는 기준(KBO 1시간·MLB 3시간)은 **관행**이다. 여기 쌓이는
+    #     분포가 실측이고, 20건이 넘으면 config 교체를 검토한다.
+    try:
+        from app.engine.lineup_timing import observed, summarize
+
+        for _sp in ("kbo", "mlb"):
+            _leads = await observed(redis, _sp)
+            if _leads:
+                L.append(f"📋 {_sp.upper()} {summarize(_leads, _sp)}")
+    except Exception as exc:
+        L.append(f"⚪ 라인업 관측 확인 실패: {str(exc)[:60]}")
+
     return "\n".join(L)
 
 
