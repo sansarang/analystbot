@@ -1125,6 +1125,8 @@ async def build_analysis(
     #   ⚠️ 여기가 프리페치·요청 양쪽의 유일한 진입점이다 — `build_analysis`를
     #     거치지 않는 경로는 없다. 이 호출이 빠지면 5칸 ▲▼는 어디에도 나오지
     #     않는다(실사고 2026-08-27: 2단이 구현만 되고 호출처가 0이었다).
+    # [§9-라인업 의도] **카드 조립 전**에 변경점을 사실로 얹는다.
+    await _attach_lineup_intent(pool, judge_games, sport, record)
     await _attach_cell_verdicts(pool, judge_games, sport, record, redis)
     # [§9-3단] **대조봇.** 2단 바로 뒤에서, 카드 두 장만 보고 우세를 고른다.
     #   ⚠️ 진입점은 여기 하나다 — 2단과 같은 이유로, 배선이 빠지면 어디에도
@@ -2945,6 +2947,10 @@ def render_game_section(jg: dict, news: str = "") -> str:
     if _sc.get("level"):
         lines.append(f"💥 득점 환경: {_sc['level']} — {_sc.get('reason', '')}")
     lines.extend(render_market_calls(jg))
+    # [§9-라인업 의도] 평소 대비 무엇이 달라졌고 그것이 무슨 뜻인지
+    from app.engine.lineup_intent import render as render_lineup_intent
+
+    lines.extend(render_lineup_intent(jg))
     hr, ar = research.get("home_recent_form") or {}, research.get("away_recent_form") or {}
     if hr.get("form") or ar.get("form"):
         lines.append(f"최근 폼: {home_kr} {hr.get('form') or '?'} · {away_kr} {ar.get('form') or '?'}")
@@ -3640,6 +3646,14 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             logger.warning("[pipeline] 라인업 재판정 실패: %s", exc)
             await notify_api_error(exc)
 
+        # [8] **세 마켓을 모두 갱신한다.** 승패만 다시 계산하면 라인업 변경이
+        #   총득점·점수차에 준 영향이 반영되지 않는다.
+        card_note = ""
+        try:
+            card_note = await rejudge_card_stack(pool, jg, sport, redis)
+        except Exception as exc:
+            logger.warning("[pipeline] 카드 재판정 실패: %s", exc)
+
         _enforce_data_rules(analysis["games"])
         picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport,
                                             news=analysis.get("news") or "",
@@ -3658,6 +3672,9 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             note += f" — 픽 변경: {before or '없음'} → {after or '없음'}"
         jg["breaking_changes"] = (jg.get("breaking_changes") or []) + [note]
         analysis.setdefault("lineup_notes", []).append(note)
+        if card_note:
+            jg["breaking_changes"].append(card_note)
+            analysis["lineup_notes"].append(card_note)
 
         card = await generate_card(analysis)
         await _save_caches(redis, analysis, card)
@@ -3857,3 +3874,161 @@ async def _cli() -> None:
 
 if __name__ == "__main__":
     asyncio.run(_cli())
+
+
+# ─────────────────────────────────── [§9-라인업 의도] 평소 대비 변경점 회로
+
+async def _attach_lineup_intent(pool, judge_games: list[dict], sport: str,
+                                record=None, final: bool = False) -> None:
+    """관측 적재 → 평소 대조 → 변경점 사실화 → 2단 해석 → 채점 적재.
+
+    ⚠️ **research에 사실을 넣은 뒤 카드를 만들어야** 변경점이 칸에 실린다.
+       이 함수는 `_attach_cell_verdicts` **앞**에서 호출된다.
+    ⚠️ 이력이 부족하면 비교하지 않는다 — 첫 관측을 '변경 없음'으로 적으면 거짓이다.
+    """
+    from app.collectors import lineup_history as LH
+    from app.engine.interpreter import interpret_lineup_intent
+    from app.engine import lineup_intent as LI
+    from app.engine.lineup_diff import diff_lineup, parse_order, summarize
+
+    live = [jg for jg in judge_games if jg.get("status") == "scheduled"]
+    if not live:
+        return
+    changed_games, compared_sides, compared = 0, 0, 0
+    for jg in live:
+        _before = compared_sides
+        res = jg.get("research") or {}
+        intent = {"headline": {}, "items": {}, "changes": {}}
+        per_side_changes = {}
+        for side in ("home", "away"):
+            order = ((res.get(f"{side}_lineup") or {}).get("order") or "").strip()
+            team = jg.get(side)
+            if order and pool:
+                # 관측 적재 — 새 라인업이면 True(= 이 경기에서 변경이 있었다)
+                if await LH.record(pool, jg.get("game_id"), side, team, order,
+                                   starter=(res.get(f"{side}_pitcher") or {}).get("name"),
+                                   is_final=final):
+                    changed_games += 1
+            usual = await LH.usual(pool, sport, team, jg.get("starts_at")) if pool else {}
+            today = parse_order(order)
+            changes = diff_lineup(today, usual) if (today and usual) else []
+            summary = summarize(changes, usual)
+            if usual:
+                compared_sides += 1
+            per_side_changes[side] = changes
+            intent["headline"][side] = summary["headline"]
+            intent["changes"][side] = changes
+            LI.merge_changes_into_research(res, side, changes, summary["headline"])
+        # 해석은 변경이 있을 때만 — 없는 것을 해석하지 않는다
+        for side in ("home", "away"):
+            items = []
+            if per_side_changes[side]:
+                quotes = [q for q in (res.get("news_quotes") or [])
+                          if isinstance(q, str)]
+                try:
+                    items = await interpret_lineup_intent(
+                        per_side_changes[side],
+                        jg.get(f"{side}_kr") or jg.get(side), quotes)
+                except Exception as exc:
+                    logger.warning("[2단-라인업] %s 해석 실패: %s", jg.get(side), exc)
+            intent["items"][side] = items
+            if pool and items:
+                await LI.record_verdicts(pool, jg.get("game_id"), side,
+                                         jg.get(f"{side}_kr") or jg.get(side), items)
+        intent["scoring"] = LI.scoring_direction(intent["items"].get("home"),
+                                                 intent["items"].get("away"))
+        intent["handicap"] = LI.handicap_note(per_side_changes["home"],
+                                              per_side_changes["away"])
+        jg["lineup_intent"] = intent
+        jg["research"] = res
+        # 분모는 **경기**다 — 양쪽 다 비교됐을 때만 그 경기를 비교했다고 센다.
+        if compared_sides - _before == 2:
+            compared += 1
+    if record is not None:
+        await record("라인업 의도", compared, len(live),
+                     cause=None if compared else "missing",
+                     detail=(f"평소 대조 {compared_sides}팀 · "
+                             f"새 라인업 관측 {changed_games}건"),
+                     unit="경기", expect_full=False, zero_ok=not compared,
+                     impact="평소 대비 변경점을 읽지 못해 감독 의도가 빠집니다")
+
+
+def is_final_window(starts_at, now=None, settings=None) -> bool:
+    """[2] 지금이 '최종 라인업' 구간인가 — 경기 N분 전 이내."""
+    from app.engine.lineup_timing import _parse
+
+    s = settings or get_settings()
+    d = _parse(starts_at)
+    if d is None:
+        return False
+    now = now or datetime.now(UTC)
+    left = (d - now).total_seconds() / 60
+    return 0 <= left <= s.lineup_final_minutes
+
+
+def _market_snapshot(jg: dict) -> dict:
+    """[8] 세 마켓의 현재 판정 — 재판정 전후 비교용."""
+    from app.engine.card_markets import market_calls
+
+    cmp_ = jg.get("compare") or {}
+    calls = {c["market"]: c["desc"] for c in market_calls(jg)}
+    return {"승패": (f"{cmp_.get('favored')}/{cmp_.get('confidence')}"
+                    if cmp_.get("favored") else None),
+            "득점": (jg.get("scoring") or {}).get("level"),
+            "핸디": calls.get("handicap"), "언더오버": calls.get("totals")}
+
+
+def _market_delta(before: dict, after: dict) -> str:
+    """무엇이 바뀌어 어느 마켓 판정이 어떻게 달라졌는지 한 줄."""
+    bits = [f"{k} {before.get(k) or '없음'} → {after.get(k) or '없음'}"
+            for k in ("승패", "득점", "핸디", "언더오버")
+            if before.get(k) != after.get(k)]
+    return " · ".join(bits)
+
+
+async def rejudge_card_stack(pool, jg: dict, sport: str, redis=None) -> str:
+    """[2][8] 최종 라인업으로 **카드 전체를 다시 돌린다.**
+
+    승패만 다시 계산하지 않는다 — 득점 환경 칸과 언더오버·핸디캡 판정까지
+    함께 갱신한다. 라인업 변경은 승패보다 총득점에 더 크게 영향을 준다.
+
+    반환: 사람이 읽을 변경 요약(없으면 빈 문자열).
+    """
+    from app.engine.card import build_card
+    from app.engine.card_markets import league_total_baseline
+    from app.engine.comparator import compare_game
+    from app.engine.interpreter import (interpret_scoring, interpret_side,
+                                        scoring_baselines)
+
+    before = _market_snapshot(jg)
+    await _attach_lineup_intent(pool, [jg], sport, None, final=True)
+    res = jg.get("research") or {}
+    jg["card"] = build_card(jg, res)
+    jg["cells"] = {"home": {}, "away": {}}
+    for side in ("home", "away"):
+        try:
+            jg["cells"][side] = await interpret_side(
+                jg["card"][side], jg.get(f"{side}_kr") or jg.get(side))
+        except Exception as exc:
+            logger.warning("[재판정] 2단 %s 실패: %s", jg.get(side), exc)
+    jg["cells_status"] = ("판정" if any(jg["cells"].values()) else "판정 미수행")
+    try:
+        jg["scoring"] = await interpret_scoring(
+            jg["card"].get("scoring") or {},
+            baselines=scoring_baselines([jg["card"].get("scoring") or {}]))
+    except Exception as exc:
+        logger.warning("[재판정] 득점 환경 실패: %s", exc)
+    try:
+        jg["total_baseline"] = await league_total_baseline(pool, sport)
+    except Exception:
+        pass
+    try:
+        jg["compare"] = await compare_game(jg)
+    except Exception as exc:
+        logger.warning("[재판정] 3단 실패: %s", exc)
+    delta = _market_delta(before, _market_snapshot(jg))
+    if not delta:
+        return ""
+    head = (jg.get("lineup_intent") or {}).get("headline") or {}
+    what = " / ".join(v for v in head.values() if v and "변경 없음" not in v)
+    return f"🔄 최종 라인업 반영: {what or '라인업 확정'} — {delta}"

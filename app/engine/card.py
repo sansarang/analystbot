@@ -322,6 +322,12 @@ def _scoring_facts(r: dict, home_kr: str = "홈", away_kr: str = "원정") -> tu
     if r.get("weather"):
         out.append(f"날씨 {r['weather']}")
         srcs.append("Open-Meteo")
+    # [7] 라인업 변경은 승패보다 총득점에 더 크게 영향을 준다 — 득점 칸에도 싣는다.
+    for side, name in (("away", away_kr), ("home", home_kr)):
+        for cell_facts in (r.get(f"{side}_lineup_changes") or {}).values():
+            for d in cell_facts:
+                out.append(f"[{name} 라인업 변경] {d}")
+                srcs.append("라인업 대조")
     return out, " · ".join(dict.fromkeys(srcs))
 
 
@@ -338,12 +344,23 @@ _BUILDERS = {
 
 
 def build_side(research: dict, side: str) -> dict[str, Cell]:
-    """한 팀의 다섯 칸(사실 층만)."""
+    """한 팀의 다섯 칸(사실 층만).
+
+    [§9-라인업 의도] 평소 대비 변경점은 **새 칸을 만들지 않고** 유형에 맞는
+    칸의 사실로 덧붙인다(타순·결장 → 타선 / 불펜 엔트리 → 불펜 / 주전 휴식 → 무게).
+    ⚠️ 이것은 코드가 만든 사실이다 — LLM은 여기에 쓰기 접근이 없다.
+    """
+    r = research or {}
+    changes = r.get(f"{side}_lineup_changes") or {}
     out: dict[str, Cell] = {}
     for key, label in CELLS:
-        facts, source = _BUILDERS[key](research or {}, side)
+        facts, source = _BUILDERS[key](r, side)
+        extra = list(changes.get(key) or [])
+        if extra:
+            facts = list(facts) + [f"[라인업 변경] {d}" for d in extra]
+            source = " · ".join(x for x in (source, "라인업 대조(LLM 0회)") if x)
         out[key] = Cell(key=key, label=label, facts=facts, source=source,
-                        metrics=cell_metrics(research or {}, side, key))
+                        metrics=cell_metrics(r, side, key))
     return out
 
 

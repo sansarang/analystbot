@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     #   ⚠️ **관행이지 실측이 아니다.** `lineup_lead_observed`가 경기별 실제
     #      (첫 수집 시각 ↔ 킥오프) 차이를 쌓고 있다 — 2주 뒤 그 분포로 교체한다.
     #      그 전까지 이 숫자로 "수집이 늦다"고 결론짓지 마라.
+    # 경기 이 분 전의 라인업을 "최종"으로 확정한다. 이후 변경은 별도 알림.
+    #   ⚠️ 관행이지 실측이 아니다 — `lineup_lead_observed`가 쌓이면 재검토한다.
+    lineup_final_minutes: int = 30
+
     lineup_lead_mlb: float = 3.0       # MLB 통상 2~4시간 전 발표 → 3시간
     lineup_lead_kbo: float = 1.0       # KBO 경기 약 1시간 전 공시
     lineup_lead_npb: float = 1.0       # NPB 동일

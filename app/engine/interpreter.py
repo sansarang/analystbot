@@ -415,3 +415,111 @@ async def interpret_scoring(scoring_cell: dict, settings=None,
                        level, wrong, why[:70])
         return {}
     return {"level": level, "reason": why, "provider": res.label}
+
+
+# ────────────────────────────────────────── [§9-라인업 의도] 변경점 해석
+
+INTENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "change_type": {"type": "string",
+                                    "description": "주어진 변경점의 type 값 그대로"},
+                    "symbol": {"type": "string", "enum": ["▲", "▼", "=", "보류"],
+                               "description": "그 팀에 유리 ▲ / 불리 ▼ / 중립 = / "
+                                              "근거가 한쪽을 안 가리키면 보류"},
+                    "scoring_dir": {"type": "string",
+                                    "enum": ["다득점", "저득점", "중립", "보류"],
+                                    "description": "총득점에 주는 방향"},
+                    "reason": {"type": "string",
+                               "description": "한 줄. **변경점 문구를 반드시 인용**한다"},
+                },
+                "required": ["change_type", "symbol", "scoring_dir", "reason"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["items"],
+    "additionalProperties": False,
+}
+
+INTENT_SYSTEM = """너는 야구 분석가다. **라인업이 평소와 달라진 이유**를 읽는다.
+
+[네가 보는 것]
+- 평소 대비 변경점(무엇이 바뀌었는가) — 이미 확인된 사실이다.
+- 있으면 감독·구단 발언 원문.
+
+[네가 모르는 것]
+- 상대 팀·승률·배당·경기 결과. 그런 것을 만들어내지 마라.
+
+[네가 하는 일]
+변경점마다 두 가지를 판단한다.
+1. `symbol` — 그 팀에 유리(▲)한가 불리(▼)한가 중립(=)인가.
+2. `scoring_dir` — 이 경기 **총득점**을 늘리는가(다득점) 줄이는가(저득점) 중립인가.
+
+⚠️⚠️ **한 변경은 여러 뜻을 가진다.** 이것이 이 작업에서 가장 중요한 규율이다.
+   - "5선발을 당겨썼다" → 로테이션 붕괴(▼)일 수도, 이 경기를 잡겠다는 승부수(▲)일 수도 있다.
+   - "주전이 지명타자로 나왔다" → 부상 관리(▼)일 수도, 타격에 집중시키려는 것(=)일 수도 있다.
+   - "4번이 하위타순으로" → 부진 강등(▼)일 수도, 상대 좌완 대비 배치(=)일 수도 있다.
+   **근거가 한쪽을 가리키지 않으면 `보류`를 써라.** 억지로 부호를 매기는 것이
+   가장 나쁘다 — 틀린 부호는 없는 것보다 해롭다.
+   감독 발언이 있으면 그것이 방향을 확정한다. 없으면 대개 `보류`나 `=`가 맞다.
+
+[득점 방향의 기준]
+- 주전 타자 다수 결장·휴식 → 그 팀 득점 기대 하향 → **저득점**
+- 마무리·셋업이 엔트리에서 빠짐 → 후반 실점 기대 상향 → **다득점**
+- 대타·백업 대거 선발 → **저득점** (단 상대가 방심할 가능성은 근거가 없으면 보지 마라)
+- 주전을 지명타자로 배치(수비 면제) → 득점에는 **중립**, 체력 신호로만
+- 좌완 선발 상대로 우타 라인업 강화 → **다득점**
+
+[반드시 지킬 것]
+1. **사유에 변경점 문구를 인용하라.** 인용이 없으면 그 판정은 버려진다.
+2. 주어진 변경점에 없는 사실을 만들어내지 마라.
+3. 주어진 change_type을 그대로 돌려줘라. 새로 만들지 마라.
+4. 한국어로, 한 줄로 쓴다."""
+
+
+async def interpret_lineup_intent(changes: list[dict], team_kr: str,
+                                  quotes: list[str] | None = None,
+                                  settings=None) -> list[dict]:
+    """변경점 → [{change_type, symbol, scoring_dir, reason, cell}].
+
+    ⚠️ 재료가 없으면 부르지 않는다. '보류'는 그대로 살려서 돌려준다 —
+       보류를 '='로 바꾸면 "판단했는데 중립"과 "판단 못 함"이 섞인다.
+    """
+    s = settings or get_settings()
+    if not changes:
+        return []
+    if not role_enabled(ROLE, s):
+        logger.info("[2단-라인업] 해석봇 비활성 — 변경점만 사실로 나간다")
+        return []
+    payload = {"team": team_kr,
+               "changes": [{"type": c["type"], "detail": c["detail"]}
+                           for c in changes],
+               "quotes": list(quotes or [])[:5]}
+    res = await complete(
+        ROLE, [{"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
+        system=INTENT_SYSTEM, schema=INTENT_SCHEMA, max_tokens=1200, settings=s)
+    by_type = {c["type"]: c for c in changes}
+    out, dropped = [], []
+    for row in (res.data or {}).get("items") or []:
+        t = row.get("change_type")
+        src = by_type.get(t)
+        if src is None:
+            dropped.append(f"모르는 유형 {t!r}")
+            continue
+        why = (row.get("reason") or "").strip()
+        if not cites_facts(why, [src["detail"]]):
+            dropped.append(f"{t}(인용 없음)")
+            continue
+        out.append({"change_type": t, "cell": src["cell"],
+                    "symbol": row.get("symbol") or "보류",
+                    "scoring_dir": row.get("scoring_dir") or "보류",
+                    "reason": why, "provider": res.label})
+    if dropped:
+        logger.info("[2단-라인업] %s 폐기: %s", team_kr, ", ".join(dropped))
+    return out

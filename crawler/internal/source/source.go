@@ -104,10 +104,18 @@ func lineupText(rows []struct {
 	PlayerName string `json:"playerName"`
 	Position   string `json:"positionName"`
 }) string {
+	// 포지션을 함께 싣는다 — "이름(포지션)".
+	//   ⚠️ 종전에는 positionName을 **버렸다.** 그러면 지명타자 활용(주전이 수비
+	//      없이 타석만 서는 체력 관리 신호)과 포지션 변경을 영영 감지할 수 없다.
+	//      수집돼 있는 것을 버리는 것이 가장 아까운 손실이다.
 	var names []string
 	for _, r := range rows {
 		if r.Position != "선발투수" && r.PlayerName != "" {
-			names = append(names, r.PlayerName)
+			if r.Position != "" {
+				names = append(names, r.PlayerName+"("+r.Position+")")
+			} else {
+				names = append(names, r.PlayerName)
+			}
 		}
 	}
 	return strings.Join(names, "-")

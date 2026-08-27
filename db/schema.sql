@@ -266,3 +266,104 @@ SELECT sport, level,
        END                                                  AS hit_rate
 FROM graded
 GROUP BY sport, level;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- [§9-라인업 의도] 라인업 **변경 이력** — 언제 무엇이 바뀌었는가.
+--
+--   `lineups`는 (game_id, side, source, status) 유일 제약이라 **최종 상태 1행**만
+--   남는다. "18:05에 4번 타자가 빠졌다"는 그 자체로 신호인데, 덮어쓰면 사라진다.
+--   → 관측할 때마다 append 한다. 같은 내용이 반복되면 넣지 않는다(폴링 잡음 제거).
+CREATE TABLE IF NOT EXISTS lineup_events (
+    id           BIGSERIAL PRIMARY KEY,
+    game_id      BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+    side         TEXT        NOT NULL,          -- 'home' | 'away'
+    team         TEXT,                          -- 표시용
+    batting_order JSONB      NOT NULL,          -- ["이름(포지션)", ...]
+    starter      TEXT,
+    source       TEXT        NOT NULL DEFAULT 'crawler',
+    is_final     BOOLEAN     NOT NULL DEFAULT false,  -- 경기 30분 전 확정본인가
+    observed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (game_id, side, batting_order)       -- 같은 라인업을 두 번 적지 않는다
+);
+
+CREATE INDEX IF NOT EXISTS idx_lineup_events_game ON lineup_events (game_id, side);
+CREATE INDEX IF NOT EXISTS idx_lineup_events_team ON lineup_events (team, observed_at DESC);
+
+-- [§9-라인업 의도] 변경 유형별 채점.
+--   ⚠️ **유형별로 나눠 센다.** "라인업 변경"을 한 덩어리로 세면 주전 결장과
+--      타순 강등이 섞여, 무엇이 실제로 승패를 설명하는지 영영 알 수 없다.
+CREATE TABLE IF NOT EXISTS lineup_verdicts (
+    id          BIGSERIAL PRIMARY KEY,
+    game_id     BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+    side        TEXT        NOT NULL,
+    team        TEXT,
+    change_type TEXT        NOT NULL,   -- regular_out | order_demote | bullpen_out | new_starter | dh_rest | position_change
+    cell        TEXT        NOT NULL,   -- 어느 칸에 반영됐나
+    symbol      TEXT        NOT NULL,   -- ▲ | ▼ | =
+    scoring_dir TEXT,                   -- 다득점 | 저득점 | 중립 (득점 환경 방향)
+    detail      TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (game_id, side, change_type)
+);
+
+-- 유형별 승패 적중률 — ▼로 읽은 팀이 실제로 졌는가.
+CREATE OR REPLACE VIEW lineup_type_ledger AS
+WITH graded AS (
+    SELECT v.change_type, v.cell, v.symbol, g.sport,
+           CASE WHEN g.home_score = g.away_score THEN 'push'
+                WHEN (v.side = 'home') = (g.home_score > g.away_score)
+                     THEN CASE v.symbol WHEN '▲' THEN 'hit' WHEN '▼' THEN 'miss' END
+                ELSE      CASE v.symbol WHEN '▲' THEN 'miss' WHEN '▼' THEN 'hit' END
+           END AS outcome
+    FROM lineup_verdicts v
+    JOIN games g ON g.id = v.game_id
+    WHERE g.status = 'final'
+      AND g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+)
+SELECT sport, change_type, cell,
+       count(*) FILTER (WHERE outcome IN ('hit', 'miss')) AS decided,
+       count(*) FILTER (WHERE outcome = 'hit')            AS hits,
+       count(*) FILTER (WHERE outcome = 'push')           AS pushes,
+       CASE WHEN count(*) FILTER (WHERE outcome IN ('hit', 'miss')) > 0
+            THEN round(count(*) FILTER (WHERE outcome = 'hit')::numeric
+                 / count(*) FILTER (WHERE outcome IN ('hit', 'miss')), 4)
+       END                                                AS hit_rate
+FROM graded
+GROUP BY sport, change_type, cell;
+
+-- [9] 득점 방향 적중률 — 저득점 신호로 읽었을 때 실제로 언더였는가.
+--   ⚠️ 승패 채점과 **완전히 분리**한다. 라인업 의도가 승패보다 총득점을 더 잘
+--      설명한다면 그것이 이 시스템에서 가장 값진 발견이므로, 섞어서 흐리면 안 된다.
+CREATE OR REPLACE VIEW lineup_scoring_ledger AS
+WITH graded AS (
+    SELECT v.change_type, v.scoring_dir, g.sport,
+           s.ref_total,
+           CASE
+             WHEN s.ref_total IS NULL THEN NULL
+             WHEN (g.home_score + g.away_score) = s.ref_total THEN 'push'
+             WHEN v.scoring_dir = '다득점'
+                  THEN CASE WHEN (g.home_score + g.away_score) > s.ref_total
+                            THEN 'hit' ELSE 'miss' END
+             WHEN v.scoring_dir = '저득점'
+                  THEN CASE WHEN (g.home_score + g.away_score) < s.ref_total
+                            THEN 'hit' ELSE 'miss' END
+           END AS outcome
+    FROM lineup_verdicts v
+    JOIN games g ON g.id = v.game_id
+    LEFT JOIN cell_verdicts s
+           ON s.game_id = v.game_id AND s.cell = 'scoring'
+    WHERE v.scoring_dir IN ('다득점', '저득점')
+      AND g.status = 'final'
+      AND g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+)
+SELECT sport, change_type, scoring_dir,
+       count(*) FILTER (WHERE outcome IN ('hit', 'miss')) AS decided,
+       count(*) FILTER (WHERE outcome = 'hit')            AS hits,
+       count(*) FILTER (WHERE outcome = 'push')           AS pushes,
+       count(*) FILTER (WHERE ref_total IS NULL)          AS ungradable,
+       CASE WHEN count(*) FILTER (WHERE outcome IN ('hit', 'miss')) > 0
+            THEN round(count(*) FILTER (WHERE outcome = 'hit')::numeric
+                 / count(*) FILTER (WHERE outcome IN ('hit', 'miss')), 4)
+       END                                                AS hit_rate
+FROM graded
+GROUP BY sport, change_type, scoring_dir;
