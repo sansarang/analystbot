@@ -1,0 +1,38 @@
+{
+  "home_team": "SSG 랜더스",
+  "away_team": "한화 이글스",
+  "cards": {
+    "home": [
+      {
+        "cell": "bullpen",
+        "label": "불펜 가용",
+        "symbol": "▼",
+        "reason": "직전 경기 투수 5명 투입"
+      },
+      {
+        "cell": "starter",
+        "label": "선발 상태",
+        "symbol": "▲",
+        "reason": "시즌 ERA 3.2·평균 6.1이닝"
+      }
+    ],
+    "away": [
+      {
+        "cell": "bullpen",
+        "label": "불펜 가용",
+        "symbol": "▲",
+        "reason": "연투 투수 없음"
+      },
+      {
+        "cell": "recent3",
+        "label": "최근 3경기",
+        "symbol": "▼",
+        "reason": "최근 3경기 4득점 18실점"
+      }
+    ]
+  },
+  "uncollected": [
+    "타선",
+    "무게"
+  ]
+}

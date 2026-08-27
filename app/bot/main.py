@@ -440,7 +440,13 @@ def _format_team_reply(game: dict, news: str, sport: str) -> str:
     })
     if urls:
         detail += "\n📎 출처\n" + "\n".join(f"  {u}" for u in urls)
-    easy += f"\n\n전체 슬레이트는 /{'mlb' if sport == 'mlb' else 'soccer'}"
+    # 🔴 KBO·NPB 질문에 "/soccer"를 안내하고 있었다 — 종목이 셋 이상인데
+    #   이분법으로 나눠서다. 없는 명령을 안내하느니 종목별로 정확히 쓴다.
+    _SLATE_CMD = {"mlb": "/mlb", "soccer": "/soccer",
+                  "kbo": "KBO", "npb": "NPB"}
+    _cmd = _SLATE_CMD.get(sport, "/soccer")
+    easy += (f"\n\n전체 슬레이트는 {_cmd}"
+             if _cmd.startswith("/") else f"\n\n전체 슬레이트는 '{_cmd}'라고 물어보세요")
     return easy + DETAIL_SEP + detail
 
 

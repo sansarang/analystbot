@@ -1126,6 +1126,10 @@ async def build_analysis(
     #     거치지 않는 경로는 없다. 이 호출이 빠지면 5칸 ▲▼는 어디에도 나오지
     #     않는다(실사고 2026-08-27: 2단이 구현만 되고 호출처가 0이었다).
     await _attach_cell_verdicts(pool, judge_games, sport, record, redis)
+    # [§9-3단] **대조봇.** 2단 바로 뒤에서, 카드 두 장만 보고 우세를 고른다.
+    #   ⚠️ 진입점은 여기 하나다 — 2단과 같은 이유로, 배선이 빠지면 어디에도
+    #     나오지 않는다.
+    await _attach_card_compare(judge_games, sport, record)
 
     await progress(3, 4, "Claude 판정")
     # 4) Claude 판정 — JUDGE_MODEL 고정. Grok은 정보 수집 전용(판정 금지).
@@ -1475,6 +1479,37 @@ def _enforce_data_rules(judge_games: list[dict]) -> None:
 
 
 ODDS_STALE_HOURS = 3   # 이보다 오래된 스냅샷은 '개장 배당'으로 표기
+
+
+async def _attach_card_compare(judge_games: list[dict], sport: str,
+                               record=None) -> None:
+    """[§9-3단] 카드 두 장 → `jg["compare"]`. 실패해도 카드는 그대로 나간다.
+
+    ⚠️ **여기서 확률을 만들지 않는다.** 3단은 우세한 쪽·확신도·근거 칸만 준다.
+       숫자가 필요하면 그것은 다른 단계의 일이다(그리고 지금은 없다).
+    """
+    from app.engine.comparator import compare_game
+
+    live = [jg for jg in judge_games if jg.get("status") == "scheduled"]
+    if not live:
+        return
+    ok = 0
+    for jg in live:
+        jg["compare"] = {}
+        try:
+            v = await compare_game(jg)
+        except Exception as exc:      # 한 경기가 죽어도 슬레이트는 계속 간다
+            logger.warning("[3단] %s 대조 실패: %s", jg.get("game_id"), exc)
+            continue
+        if v:
+            jg["compare"] = v
+            ok += 1
+    if record is not None:
+        await record("3단 대조", ok, len(live),
+                     cause=None if ok else "missing",
+                     detail="카드만 보고 우세 판정 (원본 사실 차단)",
+                     unit="경기", expect_full=True,
+                     impact="카드는 나가지만 어느 쪽이 유리한지는 표시되지 않습니다")
 
 
 async def _attach_cell_verdicts(pool, judge_games: list[dict], sport: str,
@@ -2759,12 +2794,16 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
     #   ⚠️ 상한을 10으로 올리면 카드가 없는 경기까지 서술 한 줄이 더 새어 나간다
     #     (실측: 카드 없는 MLB 경기가 9줄 → 10줄이 됐다). 예산은 그대로 두고
     #     카드 줄만 추가한다 — 새 기능이 기존 출력을 바꾸면 안 된다.
-    from app.engine.card import card_summary_line
+    from app.engine.card import card_summary_line, compare_line
 
     visible = lines[:9]
     _card_line = card_summary_line(jg)
     if _card_line:
-        visible.insert(2, _card_line)      # 신호등 바로 아래
+        visible.insert(2, _card_line)
+    # [§9-3단] 대조 결론은 카드 요약 **바로 위**다 — 결론이 먼저, 근거가 뒤.
+    _cmp_line = compare_line(jg)
+    if _cmp_line:
+        visible.insert(2, _cmp_line)      # 신호등 바로 아래
     return _guard_basic("\n".join(visible) + DETAIL_SEP + detail, "game_easy")
 
 
@@ -2833,8 +2872,17 @@ def render_game_section(jg: dict, news: str = "") -> str:
     lines = [header]
     # [§9-2단] **상태 카드가 먼저다.** 5칸 ▲▼가 이 봇의 결론 근거이고,
     #   서술은 그 뒤를 설명할 뿐이다. 판정이 없으면 사실만 나가되 그 사실을 밝힌다.
-    from app.engine.card import render_state_card
+    from app.engine.card import compare_line, render_state_card
 
+    _cmp = compare_line(jg)
+    if _cmp:
+        lines.append(_cmp)
+        _basis = (jg.get("compare") or {}).get("basis_cells") or []
+        if _basis:
+            from app.engine.card import CELLS as _CELLS
+
+            _labels = dict(_CELLS)
+            lines.append("  근거 칸: " + ", ".join(_labels.get(k, k) for k in _basis))
     lines.extend(render_state_card(jg))
     hr, ar = research.get("home_recent_form") or {}, research.get("away_recent_form") or {}
     if hr.get("form") or ar.get("form"):
@@ -3095,7 +3143,7 @@ def _render_card(analysis: dict) -> str:
         #   종전에는 여기서 그냥 끝나 5칸 카드가 통째로 사라졌다 — 크롤링으로
         #   모은 사실이 다 있는데 화면에는 "판정 실패" 두 줄뿐이었다.
         #   판정 여부를 위장하지 않으면서 사실은 보여주는 것이 옳다.
-        from app.engine.card import card_summary_line, render_state_card
+        from app.engine.card import card_summary_line, compare_line, render_state_card
 
         _shown = 0
         for g in scheduled:
@@ -3103,7 +3151,9 @@ def _render_card(analysis: dict) -> str:
             if not summary:
                 continue
             _shown += 1
-            lines.append(f"{_kr(g['away'])} @ {_kr(g['home'])} {summary}")
+            # 3단 결론이 있으면 그것을 쓴다 — 카드 요약보다 결론이 앞선다.
+            lines.append(f"{_kr(g['away'])} @ {_kr(g['home'])} "
+                         f"{compare_line(g) or summary}")
             detail.extend(render_state_card(g))
         if _shown:
             lines.insert(len(lines) - _shown,

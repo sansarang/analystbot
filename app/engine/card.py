@@ -334,6 +334,24 @@ def render_state_card(jg: dict) -> list[str]:
     return lines
 
 
+def compare_line(jg: dict) -> str | None:
+    """[§9-3단] 대조 결론 한 줄. 판정이 없으면 None(빈말을 만들지 않는다).
+
+    ⚠️ **확률을 쓰지 않는다.** 3단은 우세한 쪽과 확신도만 준다 — 여기서
+       "63%" 같은 숫자를 붙이면 3단이 말하지 않은 것을 말한 것이 된다.
+    """
+    v = jg.get("compare") or {}
+    fav, why = v.get("favored"), (v.get("reason") or "").strip()
+    if not fav:
+        return None
+    conf = v.get("confidence") or "보통"
+    if fav == "none":
+        return f"⚖️ 카드로는 우열을 가리기 어렵다 (확신 {conf})" + (f" — {why}" if why else "")
+    name = jg.get(f"{fav}_kr") or jg.get(fav) or fav
+    icon = {"높음": "🟢", "보통": "🟡", "낮음": "⚪"}.get(conf, "🟡")
+    return f"{icon} 카드 우세: {name} (확신 {conf})" + (f" — {why}" if why else "")
+
+
 def card_summary_line(jg: dict) -> str | None:
     """기본층 한 줄 요약 — 어느 팀이 몇 칸에서 앞서는지.
 
