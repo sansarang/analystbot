@@ -860,6 +860,69 @@ KBO 조사 목표를 962 → 1442자로 늘리고 "한 소스에 없으면 다�
 
 ---
 
+## 8-40. provider별 토큰 예산 — 사고가 출력을 잠식한다 (2026-08-27)
+
+**사고형 모델에서는 `max_tokens`가 답의 길이가 아니다.** 사고 토큰이 같은
+예산에서 먼저 빠져나가고, 남은 만큼만 답이 나온다. 예산이 모자라면 **200 OK인데
+본문이 비어서** 온다 — 실패처럼 보이지 않아서 더 위험하다.
+
+### 같은 계열의 사고 2건
+
+| 시점 | 무슨 일 | 결과 |
+|---|---|---|
+| 2026-08-26 | Anthropic `max_tokens` 16000 → 32000 임의 상향 | SDK 비스트리밍 거부 → judge **전 배치 실패**, 전 슬레이트 "판정 실패" |
+| 2026-08-27 | `gemini-3.6-flash`에 300토큰 예산으로 호출 | **사고가 285토큰 소모**, 본문 0자 · `finishReason=MAX_TOKENS` |
+
+두 번째 실측 응답:
+
+```json
+{"candidates":[{"content":{}, "finishReason":"MAX_TOKENS"}],
+ "usageMetadata":{"promptTokenCount":25,"thoughtsTokenCount":285,"totalTokenCount":310}}
+```
+
+`content`가 **빈 객체**다. 조용히 넘기면 목(mock) 출력과 구분되지 않아
+"판정 0건"의 원인을 영영 못 찾는다.
+
+### 규칙 — 사고 예산과 출력 예산을 분리한다
+
+역할별로 config에 둔다(`{ROLE}_THINKING`). provider가 자기 방식으로 매핑한다:
+
+| provider | 매핑 | 비고 |
+|---|---|---|
+| Gemini | `generationConfig.thinkingConfig.thinkingBudget` | `-1`=자율 · `0`=끔 · 양수=허용치 |
+| Anthropic | `thinking.budget_tokens` | ⚠️ **강제 `tool_choice`와 병행 불가** — 구조화 출력이 필요하면 사고를 끈다 |
+| OpenAI 호환 | 없음 | 무시한다 |
+
+| 역할 | 기본 예산 | 근거 |
+|---|---|---|
+| `interpreter` (2단) | **0** | 칸 하나를 사실만 보고 ▲▼로 옮긴다. 깊은 추론이 필요 없다 |
+| `narrator` | **0** | 이미 정해진 결론을 문장으로 옮길 뿐 |
+| `intent` | **0** | 분류 작업 |
+| `judge_a`·`judge_b` (3단) | **4000** | 두 팀 카드를 대조해 결론을 낸다 — **여기만 켠다** |
+
+### 예산 부족은 명시 분류한다
+
+`LLMBudgetError`를 따로 둔다. 파싱 실패(`LLMParseError`)와 다르다 —
+**재요청해도 같은 결과**이므로 재시도하지 않고, 운영 알림까지 올린다
+(`{ROLE}_THINKING`을 낮추거나 `max_tokens`를 올리라는 안내와 함께).
+
+⚠️ 판정 기준: `finishReason == "MAX_TOKENS"` **또는 본문이 비었을 때**.
+   후자를 빠뜨리면 사고만 하고 끝난 응답이 "빈 답"으로 조용히 흘러간다.
+
+### 모델명을 추측하지 마라
+
+`gemini-2.5-flash`는 신규 사용자에게 제공되지 않는다(실측 404:
+`"no longer available to new users. Please update to models/gemini-3.6-flash"`).
+`tools/check_llm.py`가 실제 사용 가능 모델을 조회하고 역할별 스모크 테스트를 한다.
+**바꾸기 전에 반드시 돌려라.**
+
+⚠️ provider 기본 모델은 **역할 폴백보다 우선**한다. 안 그러면
+`INTERPRETER_PROVIDER=gemini`만 바꿨을 때 `judge_model`(Claude 이름)이
+Gemini로 넘어가 404가 난다. 폴백 체인의 두 번째 provider도 마찬가지로
+**자기 벤더의 기본 모델**을 쓴다.
+
+---
+
 ## 9. 미완 / 알려진 한계
 
 - **§6 계수 학습이 미완이다.** 현재 조정 계수(결장 −2% 등)는 임의값이며 데이터로

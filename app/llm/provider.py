@@ -18,6 +18,7 @@
    비용만 태운다.
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -30,7 +31,7 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 # 역할 — 호출부는 이것만 안다.
-ROLES = ("interpreter", "judge_a", "judge_b", "narrator")
+ROLES = ("interpreter", "judge_a", "judge_b", "narrator", "intent")
 
 
 class LLMError(RuntimeError):
@@ -39,6 +40,15 @@ class LLMError(RuntimeError):
 
 class LLMParseError(LLMError):
     """응답은 왔으나 구조화 결과를 꺼낼 수 없다."""
+
+
+class LLMBudgetError(LLMError):
+    """[§9] **예산 부족** — 사고 토큰이 출력 예산을 잠식해 답이 오지 않았다.
+
+    ⚠️ 이것을 조용한 빈 응답으로 넘기면 **목 출력과 구분되지 않는다.**
+       "판정 0건"의 원인을 영영 못 찾는다. 별도 예외로 올려 알림까지 간다.
+       재시도해도 같은 결과다 — 예산을 올리거나 사고를 줄여야 한다.
+    """
 
 
 @dataclass(frozen=True)
@@ -107,12 +117,17 @@ class Provider(ABC):
 
     @abstractmethod
     async def _call(self, system: str, messages: list[dict], schema: dict | None,
-                    max_tokens: int, temperature: float) -> tuple[str, dict | None]:
-        """(본문 텍스트, 구조화 결과 or None)."""
+                    max_tokens: int, temperature: float,
+                    thinking: int = 0) -> tuple[str, dict | None]:
+        """(본문 텍스트, 구조화 결과 or None).
+
+        `thinking`: 사고 토큰 예산. -1=모델 자율 · 0=끔 · 양수=그만큼.
+        provider가 자기 방식으로 매핑하고, 해당 개념이 없으면 무시한다.
+        """
 
     async def complete(self, messages: list[dict], *, system: str = "",
                        schema: dict | None = None, max_tokens: int = 4096,
-                       temperature: float = 0.0) -> LLMResult:
+                       temperature: float = 0.0, thinking: int = 0) -> LLMResult:
         """구조화 응답. schema를 주면 `data`가 채워진다.
 
         네이티브 미지원 provider는 프롬프트로 JSON을 요구하고 파싱한다.
@@ -125,7 +140,8 @@ class Provider(ABC):
         last: Exception | None = None
         for attempt in (1, 2):
             try:
-                text, data = await self._call(sys, msgs, schema, max_tokens, temperature)
+                text, data = await self._call(sys, msgs, schema, max_tokens,
+                                              temperature, thinking)
                 if schema and data is None:
                     data = extract_json(text)
                 return LLMResult(text=text, data=data, provider=self.name,
@@ -148,7 +164,7 @@ class MockProvider(Provider):
     name = "mock"
     supports_native_schema = True
 
-    async def _call(self, system, messages, schema, max_tokens, temperature):
+    async def _call(self, system, messages, schema, max_tokens, temperature, thinking=0):
         if schema:
             return "", stub_from_schema(schema)
         return "(mock 응답)", None
@@ -158,7 +174,7 @@ class AnthropicProvider(Provider):
     name = "anthropic"
     supports_native_schema = True
 
-    async def _call(self, system, messages, schema, max_tokens, temperature):
+    async def _call(self, system, messages, schema, max_tokens, temperature, thinking=0):
         import anthropic
 
         from app.collectors.base import ApiQuotaError
@@ -171,6 +187,11 @@ class AnthropicProvider(Provider):
         }
         if system:
             kwargs["system"] = system
+        if thinking > 0:
+            # ⚠️ 강제 tool_choice와 extended thinking은 함께 쓸 수 없다.
+            #   구조화 출력이 필요하면 사고를 끈다 — 도구 호출이 우선이다.
+            if not schema:
+                kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking}
         if schema:
             kwargs["tools"] = [{"name": "result", "description": "구조화 결과 제출",
                                 "input_schema": schema}]
@@ -196,7 +217,7 @@ class GeminiProvider(Provider):
     supports_native_schema = True
     DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
-    async def _call(self, system, messages, schema, max_tokens, temperature):
+    async def _call(self, system, messages, schema, max_tokens, temperature, thinking=0):
         import httpx
 
         from app.collectors.base import ApiQuotaError
@@ -204,27 +225,66 @@ class GeminiProvider(Provider):
         base = self.base_url or self.DEFAULT_BASE
         contents = [{"role": "model" if m["role"] == "assistant" else "user",
                      "parts": [{"text": m["content"]}]} for m in messages]
-        body: dict[str, Any] = {
-            "contents": contents,
-            "generationConfig": {"maxOutputTokens": max_tokens,
-                                 "temperature": temperature},
-        }
+        gen: dict[str, Any] = {"maxOutputTokens": max_tokens,
+                               "temperature": temperature}
+        # ⚠️ **사고 예산을 제어하지 않으면 답이 안 온다.** Gemini 3.x는 사고형이라
+        #    사고가 max_tokens를 다 먹고 `finishReason=MAX_TOKENS` + 빈 content로
+        #    끝난다(실측 2026-08-27: 300 중 285를 사고가 소모).
+        #    이 프로젝트가 Anthropic에서 겪은 max_tokens 사고와 **같은 유형**이다.
+        if thinking >= 0:
+            gen["thinkingConfig"] = {"thinkingBudget": thinking}
+        body: dict[str, Any] = {"contents": contents, "generationConfig": gen}
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}
         if schema:
-            body["generationConfig"]["responseMimeType"] = "application/json"
-            body["generationConfig"]["responseSchema"] = gemini_schema(schema)
+            gen["responseMimeType"] = "application/json"
+            gen["responseSchema"] = gemini_schema(schema)
+        url = f"{base}/models/{self.model}:generateContent"
+        # 5xx(과부하)는 재시도한다 — Gemini는 503 UNAVAILABLE을 흔하게 낸다.
+        # ⚠️ 4xx는 재시도하지 않는다. 모델명 오타·키 오류를 반복 호출해도
+        #    같은 답이 오고 쿼터만 태운다.
+        last = None
         async with httpx.AsyncClient(timeout=self.timeout) as c:
-            r = await c.post(f"{base}/models/{self.model}:generateContent",
-                             params={"key": self.api_key}, json=body)
+            for delay in (0, 2, 6):
+                if delay:
+                    await asyncio.sleep(delay)
+                r = await c.post(url, params={"key": self.api_key}, json=body)
+                last = r
+                if r.status_code < 500:
+                    break
+                logger.warning("[gemini] HTTP %d — %ds 후 재시도", r.status_code, delay or 2)
+        r = last
         if r.status_code in (429, 402) or "quota" in r.text.lower():
             raise ApiQuotaError("gemini", r.text[:300])
+        if r.status_code == 404:
+            raise LLMError(f"gemini: 모델 '{self.model}'을 찾을 수 없다. "
+                           f"`tools/check_llm.py`로 사용 가능한 모델을 확인하라")
         if r.status_code >= 400:
             raise LLMError(f"gemini HTTP {r.status_code}: {r.text[:300]}")
-        cands = (r.json().get("candidates") or [])
+
+        data = r.json()
+        # 안전 필터에 걸리면 candidates가 **비어서** 온다. 200 OK인데 내용이 없다 —
+        # 조용히 빈 결과로 넘기면 "판정 0건"의 원인을 영영 못 찾는다.
+        block = ((data.get("promptFeedback") or {}).get("blockReason"))
+        if block:
+            raise LLMError(f"gemini: 프롬프트가 안전 필터에 차단됨 ({block})")
+        cands = data.get("candidates") or []
+        if not cands:
+            raise LLMError(f"gemini: 후보 응답 없음 — {str(data)[:200]}")
+        cand = cands[0]
         text = "".join(p.get("text", "")
-                       for cand in cands[:1]
                        for p in ((cand.get("content") or {}).get("parts") or []))
+        finish = cand.get("finishReason")
+        thoughts = (data.get("usageMetadata") or {}).get("thoughtsTokenCount") or 0
+        if finish == "MAX_TOKENS" or not text.strip():
+            # 재요청해도 같은 결과다 — 예산을 올리거나 사고를 줄여야 한다.
+            raise LLMBudgetError(
+                f"gemini/{self.model}: 예산 부족 — 출력 {max_tokens}토큰 중 "
+                f"사고가 {thoughts}토큰 소모, 본문 {len(text)}자 "
+                f"(finish={finish}). 사고 예산({thinking})을 줄이거나 "
+                f"max_tokens를 올려라")
+        if finish and finish not in ("STOP", "MAX_TOKENS"):
+            raise LLMError(f"gemini: 비정상 종료 ({finish})")
         return text, (extract_json(text) if schema else None)
 
 
@@ -237,7 +297,7 @@ class OpenAICompatProvider(Provider):
     name = "openai_compat"
     supports_native_schema = True
 
-    async def _call(self, system, messages, schema, max_tokens, temperature):
+    async def _call(self, system, messages, schema, max_tokens, temperature, thinking=0):
         import httpx
 
         from app.collectors.base import ApiQuotaError
@@ -362,7 +422,25 @@ def build_provider(kind: str, model: str, settings=None) -> Provider:
 # 역할별 모델 기본값 — `*_MODEL`이 비어 있을 때 쓸 기존 설정.
 # 새 설정을 안 넣어도 **종전 동작이 그대로 유지**되게 한다.
 _ROLE_MODEL_FALLBACK = {"judge_a": "judge_model", "judge_b": "judge_model",
-                        "narrator": "report_model", "interpreter": "judge_model"}
+                        "narrator": "report_model", "interpreter": "judge_model",
+                        "intent": "intent_model"}
+
+# provider별 기본 모델.
+# ⚠️ **역할 폴백보다 우선한다.** 역할 폴백은 Claude 모델명(judge_model)을 주는데,
+#    `INTERPRETER_PROVIDER=gemini`만 바꾸고 모델을 안 넣으면 **Gemini에 Claude
+#    이름이 가서 404가 난다**(실측 2026-08-27: 'claude-opus-4-6'이 그대로 넘어갔다).
+#    provider를 바꾸는 것만으로 동작해야 한다는 것이 이 계층의 존재 이유다.
+_PROVIDER_DEFAULT_MODEL = {
+    # ⚠️ 모델명을 **추측하지 마라.** `gemini-2.5-flash`는 신규 사용자에게
+    #    제공되지 않는다(실측 2026-08-27: 404 "no longer available to new users").
+    #    API가 직접 권한 모델을 쓴다. 바꾸기 전 `tools/check_llm.py`로 확인하라.
+    "gemini": "gemini-3.6-flash",
+    "groq": "llama-3.3-70b-versatile",
+    "deepseek": "deepseek-chat",
+    "ollama": "llama3.1",
+    "xai": "grok-4.3-latest",
+    "mock": "none",
+}
 
 
 def role_enabled(role: str, settings=None) -> bool:
@@ -374,10 +452,19 @@ def role_enabled(role: str, settings=None) -> bool:
     return bool((getattr(settings or get_settings(), f"{role}_provider", "") or "").strip())
 
 
-def resolve_model(role: str, settings=None) -> str:
+def resolve_model(role: str, settings=None, kind: str = "") -> str:
+    """역할의 모델명. 명시값 → provider 기본값 → 역할 폴백 순.
+
+    ⚠️ provider 기본값이 역할 폴백보다 **먼저**다. 안 그러면 provider만 바꿨을 때
+       다른 벤더의 모델명이 넘어간다.
+    """
     s = settings or get_settings()
-    return ((getattr(s, f"{role}_model", "") or "").strip()
-            or getattr(s, _ROLE_MODEL_FALLBACK.get(role, ""), "") or "")
+    explicit = (getattr(s, f"{role}_model", "") or "").strip()
+    if explicit:
+        return explicit
+    if kind and kind in _PROVIDER_DEFAULT_MODEL:
+        return _PROVIDER_DEFAULT_MODEL[kind]
+    return getattr(s, _ROLE_MODEL_FALLBACK.get(role, ""), "") or ""
 
 
 def provider_chain(role: str, settings=None) -> list[Provider]:
@@ -391,38 +478,79 @@ def provider_chain(role: str, settings=None) -> list[Provider]:
     kind = (getattr(s, f"{role}_provider", "") or "").strip()
     if not kind:
         raise LLMError(f"역할 {role}이(가) 비활성이다 — {role.upper()}_PROVIDER 미설정")
-    model = resolve_model(role, s)
-    chain = [build_provider(kind, model, s)]
+    chain = [build_provider(kind, resolve_model(role, s, kind), s)]
     raw = getattr(s, f"{role}_fallback", "") or ""
     for spec in [x.strip() for x in raw.split(",") if x.strip()]:
         k, _, m = spec.partition(":")
-        chain.append(build_provider(k, m or model, s))
+        # 🔴 폴백 provider는 **자기 벤더의 기본 모델**을 쓴다.
+        #   역할에 명시된 모델(`JUDGE_A_MODEL=claude-x`)은 **1순위 provider의 것**이다.
+        #   그것을 폴백에 물려주면 벤더가 달라지는 순간 404가 나고, 그 404가
+        #   "체인 전부 실패"로 보여 원인을 엉뚱한 데서 찾게 된다.
+        chain.append(build_provider(
+            k, m or _PROVIDER_DEFAULT_MODEL.get(k) or resolve_model(role, s, k), s))
     return chain
+
+
+def thinking_budget(role: str, settings=None) -> int:
+    """역할의 사고 예산. 없으면 0(끔).
+
+    ⚠️ 2단 해석봇처럼 짧은 판정은 **꺼야 한다.** 사고가 출력 예산을 잠식해
+       답이 아예 안 온다(실측 2026-08-27: 300 중 285를 사고가 소모).
+    """
+    return int(getattr(settings or get_settings(), f"{role}_thinking", 0) or 0)
 
 
 async def complete(role: str, messages: list[dict], *, system: str = "",
                    schema: dict | None = None, max_tokens: int = 4096,
-                   temperature: float = 0.0, settings=None) -> LLMResult:
+                   temperature: float = 0.0, thinking: int | None = None,
+                   settings=None) -> LLMResult:
     """역할로 호출한다. 실패하면 폴백 체인을 따라가고 **누가 답했는지 기록한다.**
 
     ⚠️ 조용한 폴백 금지. 판정 품질이 provider마다 다를 수 있으므로
        "어느 모델이 이 판정을 했는가"가 리포트·DB까지 따라가야 한다.
     """
     chain = provider_chain(role, settings)
+    budget = thinking_budget(role, settings) if thinking is None else thinking
     tried: list[str] = []
     last: Exception | None = None
+    starved = False        # 예산 부족이 한 번이라도 있었나 — 알림 대상이다
     for p in chain:
         try:
             res = await p.complete(messages, system=system, schema=schema,
-                                   max_tokens=max_tokens, temperature=temperature)
+                                   max_tokens=max_tokens, temperature=temperature,
+                                   thinking=budget)
             if tried:
                 logger.warning("[llm:%s] 폴백 — %s 실패 후 %s 응답",
                                role, "→".join(tried), p.name)
                 return LLMResult(res.text, res.data, res.provider, res.model,
                                  res.attempts, tuple(tried))
             return res
+        except LLMBudgetError as exc:
+            # 🔴 **조용히 넘기지 않는다.** 빈 응답으로 넘어가면 목 출력과
+            #    구분되지 않아 "판정 0건"의 원인을 영영 못 찾는다.
+            logger.error("[llm:%s] 🔴 예산 부족 — %s", role, exc)
+            starved = True
+            tried.append(f"{p.name}(예산부족)")
+            last = exc
         except Exception as exc:       # 다음 provider로 넘어간다
             logger.warning("[llm:%s] %s/%s 실패: %s", role, p.name, p.model, exc)
             tried.append(p.name)
             last = exc
+    if starved:
+        await _notify_budget(role, budget, max_tokens, last)
     raise LLMError(f"역할 {role}: 체인 전부 실패 ({'→'.join(tried)})") from last
+
+
+async def _notify_budget(role: str, budget: int, max_tokens: int,
+                         exc: Exception | None) -> None:
+    """예산 부족을 운영 알림으로 올린다 — 설정으로만 고칠 수 있는 문제다."""
+    try:
+        from app.notify import send_telegram
+
+        await send_telegram(
+            f"🔴 LLM 예산 부족 — 역할 {role}\n"
+            f"사고 예산 {budget} · 출력 {max_tokens}\n"
+            f"{str(exc)[:300]}\n"
+            f"→ {role.upper()}_THINKING 을 낮추거나 max_tokens를 올려라")
+    except Exception as notify_exc:      # 알림 실패가 본체를 죽이지 않는다
+        logger.warning("[llm] 예산 알림 실패: %s", notify_exc)

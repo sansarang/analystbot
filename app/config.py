@@ -75,19 +75,44 @@ class Settings(BaseSettings):
     #   *_fallback: "gemini,groq:llama-3.3-70b" 처럼 콤마 구분. `종류:모델` 형식도 가능.
     # ⚠️ 폴백이 일어나면 **어느 provider가 답했는지 리포트·DB에 남는다.**
     #    조용히 다른 모델이 판정하면 품질 변화를 아무도 알 수 없다.
-    interpreter_provider: str = "mock"      # 2단 해석봇 — 칸 단위 판정
+    # ⚠️ 모델을 비우면 **provider의 기본 모델**이 쓰인다(벤더마다 다르다).
+    #   역할 폴백(judge_model 등)은 그다음이다 — 안 그러면 provider만 바꿨을 때
+    #   Claude 모델명이 Gemini로 가서 404가 난다(실측 2026-08-27).
+    interpreter_provider: str = "gemini"    # 2단 해석봇 — 칸 단위 판정
     interpreter_model: str = ""
     interpreter_fallback: str = ""
     judge_a_provider: str = "anthropic"     # 3단 대조봇 A
     judge_a_model: str = ""                 # 비우면 judge_model을 쓴다
-    judge_a_fallback: str = ""
+    judge_a_fallback: str = "gemini"        # 안트로픽 크레딧이 없어도 판정은 나온다
     judge_b_provider: str = ""              # 3단 대조봇 B (병렬 비교군) — 기본 꺼짐
     judge_b_model: str = ""
     judge_b_fallback: str = ""
-    narrator_provider: str = "anthropic"    # 서술
-    narrator_model: str = ""                # 비우면 report_model을 쓴다
+    narrator_provider: str = "gemini"       # 서술
+    narrator_model: str = ""
     narrator_fallback: str = ""
+    intent_provider: str = "gemini"         # 자유 질문 의도 파싱
+    intent_model: str = ""
+    intent_fallback: str = ""
     # 자체호스팅·프록시 주소 (Ollama·사내 게이트웨이 등)
+    # ── 사고 예산 (역할별) ────────────────────────────────────────────────
+    # ⚠️ **사고 토큰은 출력 예산(max_tokens)을 잠식한다.** 사고형 모델에서
+    #   사고가 예산을 다 먹으면 `finishReason=MAX_TOKENS`에 content가 비어서 온다.
+    #   실사고 2건 — 같은 계열이다:
+    #     · Anthropic max_tokens 16000→32000 임의 상향 → SDK 비스트리밍 거부,
+    #       judge 전 배치 실패 (2026-08-26)
+    #     · gemini-3.6-flash: 300 예산 중 **285를 사고가 소모**, 답 0토큰 (2026-08-27)
+    #   → 사고 예산과 출력 예산을 **분리해서** 잡는다.
+    #     -1 = 모델이 알아서 · 0 = 끔 · 양수 = 그만큼 허용
+    # provider가 자기 방식으로 매핑한다:
+    #     Gemini    generationConfig.thinkingConfig.thinkingBudget
+    #     Anthropic thinking.budget_tokens (0이면 thinking 자체를 안 붙인다)
+    #     OpenAI호환 무시 (해당 개념이 없다)
+    interpreter_thinking: int = 0    # 2단 — 칸 하나 판정. 깊은 추론이 필요 없다
+    narrator_thinking: int = 0       # 서술 — 주어진 결론을 문장으로 옮길 뿐
+    intent_thinking: int = 0         # 의도 파싱 — 분류 작업
+    judge_a_thinking: int = 4000     # 3단 대조 — **여기만 켠다**
+    judge_b_thinking: int = 4000     # 3단 대조군
+
     gemini_base_url: str | None = None
     groq_base_url: str | None = None
     deepseek_base_url: str | None = None

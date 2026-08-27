@@ -80,7 +80,10 @@ def test_fallback_chain_is_parsed_from_env():
     chain = P.provider_chain("judge_a", s)
     assert [p.name for p in chain] == ["anthropic", "gemini", "groq"]
     assert chain[2].model == "llama-3.3-70b", "체인에서 모델까지 지정할 수 있어야 한다"
-    assert chain[1].model == "claude-x", "모델 미지정이면 역할 기본 모델을 쓴다"
+    # 🔴 폴백에 모델을 안 적으면 **그 벤더의 기본 모델**을 쓴다.
+    #   역할 모델(claude-x)은 1순위 provider의 것이라 물려주면 404가 난다.
+    assert chain[1].model.startswith("gemini-"), \
+        f"폴백에 다른 벤더 모델명이 갔다: {chain[1].model}"
 
 
 # ---------------------------------------------------------------- B-1 Mock
@@ -125,7 +128,8 @@ class _Recorder(P.Provider):
         super().__init__("m")
         self.replies, self.seen = list(replies), []
 
-    async def _call(self, system, messages, schema, max_tokens, temperature):
+    async def _call(self, system, messages, schema, max_tokens, temperature,
+                    thinking=0):
         self.seen.append(system)
         return self.replies.pop(0), None
 
@@ -180,7 +184,8 @@ class _Fine(P.Provider):
     name = "fine"
     supports_native_schema = True
 
-    async def _call(self, system, messages, schema, max_tokens, temperature):
+    async def _call(self, system, messages, schema, max_tokens, temperature,
+                    thinking=0):
         return "ok", {"p": 0.7, "why": "z", "ok": True, "tags": []}
 
 
@@ -208,3 +213,80 @@ async def test_whole_chain_failing_raises_with_trail(monkeypatch):
                         lambda role, settings=None: [_Boom("a"), _Boom("b")])
     with pytest.raises(P.LLMError, match="체인 전부 실패"):
         await P.complete("judge_a", [{"role": "user", "content": "q"}])
+
+
+# ---------------------------------------------------------------- Gemini 실측 반영
+
+def test_provider_default_model_beats_role_fallback():
+    """🔴 provider만 바꿨을 때 **다른 벤더의 모델명이 가면 404**다.
+
+    실측(2026-08-27): INTERPRETER_PROVIDER=gemini 로만 바꿨더니
+    'claude-opus-4-6'이 Gemini로 넘어갔다.
+    """
+    s = _settings(interpreter_provider="gemini", interpreter_model="",
+                  judge_model="claude-opus-4-6", gemini_api_key="g")
+    assert P.resolve_model("interpreter", s, "gemini").startswith("gemini-")
+    chain = P.provider_chain("interpreter", s)
+    assert chain[0].model.startswith("gemini-")
+
+
+def test_fallback_provider_uses_its_own_vendor_model():
+    """폴백이 앞 provider의 모델명을 물려받으면 벤더가 바뀌는 순간 404다."""
+    s = _settings(judge_a_provider="anthropic", judge_a_model="claude-x",
+                  judge_a_fallback="gemini", gemini_api_key="g")
+    chain = P.provider_chain("judge_a", s)
+    assert chain[0].model == "claude-x"
+    assert chain[1].model.startswith("gemini-"), \
+        f"폴백에 Claude 모델명이 갔다: {chain[1].model}"
+
+
+def test_gemini_default_model_is_not_a_retired_one():
+    """🔴 모델명을 추측하지 마라.
+
+    `gemini-2.5-flash`는 신규 사용자에게 제공되지 않는다
+    (실측: 404 "no longer available to new users. Please update to gemini-3.6-flash").
+    """
+    assert P._PROVIDER_DEFAULT_MODEL["gemini"] != "gemini-2.5-flash"
+    assert P._PROVIDER_DEFAULT_MODEL["gemini"].startswith("gemini-3")
+
+
+def test_thinking_budget_is_per_role():
+    """🔴 사고 예산을 제어하지 않으면 **답이 아예 안 온다.**
+
+    실측: 300토큰 예산 중 285를 사고가 먹고 content가 비어서 왔다
+    (finishReason=MAX_TOKENS). Anthropic max_tokens 32000 사고와 같은 계열.
+
+    짧은 판정(2단·서술·의도)은 끄고, 추론이 필요한 3단만 켠다.
+    """
+    s = _settings()
+    assert P.thinking_budget("interpreter", s) == 0, "2단은 사고를 꺼야 한다"
+    assert P.thinking_budget("narrator", s) == 0
+    assert P.thinking_budget("intent", s) == 0
+    assert P.thinking_budget("judge_a", s) > 0, "3단은 사고가 필요하다"
+    assert P.thinking_budget("judge_b", s) > 0
+
+
+@pytest.mark.asyncio
+async def test_budget_starvation_is_classified_not_silent(monkeypatch):
+    """🔴 조용한 빈 응답은 **목 출력과 구분되지 않는다.**
+
+    "판정 0건"의 원인을 영영 못 찾는다 → 전용 예외 + 알림.
+    """
+    class _Starved(P.Provider):
+        name = "starved"
+        supports_native_schema = True
+
+        async def _call(self, *a, **kw):
+            raise P.LLMBudgetError("사고가 285토큰 소모, 본문 0자")
+
+    sent = []
+    monkeypatch.setattr(P, "provider_chain", lambda role, settings=None: [_Starved("m")])
+    monkeypatch.setattr(P, "_notify_budget",
+                        lambda *a, **k: sent.append(a) or _noop())
+    with pytest.raises(P.LLMError, match="체인 전부 실패"):
+        await P.complete("judge_a", [{"role": "user", "content": "q"}])
+    assert sent, "예산 부족인데 알림이 안 갔다"
+
+
+async def _noop():
+    return None
