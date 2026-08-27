@@ -78,21 +78,28 @@ class Settings(BaseSettings):
     # ⚠️ 모델을 비우면 **provider의 기본 모델**이 쓰인다(벤더마다 다르다).
     #   역할 폴백(judge_model 등)은 그다음이다 — 안 그러면 provider만 바꿨을 때
     #   Claude 모델명이 Gemini로 가서 404가 난다(실측 2026-08-27).
-    interpreter_provider: str = "gemini"    # 2단 해석봇 — 칸 단위 판정
+    # ⚠️ **3중 폴백이 기본이다.** 하나가 막혀도 봇이 멈추지 않아야 한다.
+    #   Gemini(무료·분당제한) → Groq(무료·빠름) → Anthropic(유료·품질)
+    #   어느 provider가 답했는지는 `LLMResult.label`로 리포트까지 따라간다.
+    # ⚠️ 순서는 **측정으로 정했다**(2026-08-27):
+    #   Gemini 무료 티어는 분당 제한이 빡빡해 4~5콜이면 429가 난다. 2단은
+    #   경기당 2콜(팀별) × 슬레이트라 호출량이 가장 많다 → **Groq가 1순위**다.
+    #   Gemini는 폴백으로 두고, 품질이 필요한 3단만 Anthropic을 앞에 둔다.
+    interpreter_provider: str = "groq"      # 2단 해석봇 — 칸 단위 판정 (호출량 최다)
     interpreter_model: str = ""
-    interpreter_fallback: str = ""
-    judge_a_provider: str = "anthropic"     # 3단 대조봇 A
+    interpreter_fallback: str = "gemini,anthropic"
+    judge_a_provider: str = "anthropic"     # 3단 대조봇 A — 품질 우선
     judge_a_model: str = ""                 # 비우면 judge_model을 쓴다
-    judge_a_fallback: str = "gemini"        # 안트로픽 크레딧이 없어도 판정은 나온다
+    judge_a_fallback: str = "gemini,groq"
     judge_b_provider: str = ""              # 3단 대조봇 B (병렬 비교군) — 기본 꺼짐
     judge_b_model: str = ""
     judge_b_fallback: str = ""
     narrator_provider: str = "gemini"       # 서술
     narrator_model: str = ""
-    narrator_fallback: str = ""
-    intent_provider: str = "gemini"         # 자유 질문 의도 파싱
+    narrator_fallback: str = "groq,anthropic"   # 서술은 슬레이트당 1~3콜이라 Gemini로 충분
+    intent_provider: str = "groq"           # 의도 파싱 — 질문마다 1콜이라 빠른 쪽
     intent_model: str = ""
-    intent_fallback: str = ""
+    intent_fallback: str = "gemini"
     # 자체호스팅·프록시 주소 (Ollama·사내 게이트웨이 등)
     # ── 사고 예산 (역할별) ────────────────────────────────────────────────
     # ⚠️ **사고 토큰은 출력 예산(max_tokens)을 잠식한다.** 사고형 모델에서
@@ -113,6 +120,15 @@ class Settings(BaseSettings):
     judge_a_thinking: int = 4000     # 3단 대조 — **여기만 켠다**
     judge_b_thinking: int = 4000     # 3단 대조군
 
+    # ⚠️ **일부 Gemini 모델은 사고를 끌 수 없다.** `thinkingBudget: 0`을 보내면
+    #   400 INVALID_ARGUMENT가 난다(실측 2026-08-27, gemini-3.6-flash).
+    #   그렇다고 thinkingConfig를 빼면 모델이 예산을 알아서 쓰다가 출력이
+    #   잘린다(40토큰 중 35를 사고가 소모 → MAX_TOKENS).
+    #   → 역할 예산이 0이면 **이 최소값**을 보낸다. "사고를 최소로"의 실제 구현이다.
+    gemini_min_thinking: int = 128
+    # Gemini 무료 티어는 **분당** 제한이다(실측: 몇 분 뒤 풀렸다 — 소진 아님).
+    # Perplexity와 같은 방식으로 호출 간격을 둔다.
+    gemini_min_interval: float = 4.0
     gemini_base_url: str | None = None
     groq_base_url: str | None = None
     deepseek_base_url: str | None = None

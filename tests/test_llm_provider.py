@@ -75,11 +75,11 @@ def test_unknown_provider_and_role_fail_loudly():
 
 
 def test_fallback_chain_is_parsed_from_env():
-    s = _settings(judge_a_fallback="gemini,groq:llama-3.3-70b",
+    s = _settings(judge_a_fallback="gemini,groq:custom-model",
                   gemini_api_key="g", groq_api_key="q")
     chain = P.provider_chain("judge_a", s)
     assert [p.name for p in chain] == ["anthropic", "gemini", "groq"]
-    assert chain[2].model == "llama-3.3-70b", "체인에서 모델까지 지정할 수 있어야 한다"
+    assert chain[2].model == "custom-model", "체인에서 모델까지 지정할 수 있어야 한다"
     # 🔴 폴백에 모델을 안 적으면 **그 벤더의 기본 모델**을 쓴다.
     #   역할 모델(claude-x)은 1순위 provider의 것이라 물려주면 404가 난다.
     assert chain[1].model.startswith("gemini-"), \

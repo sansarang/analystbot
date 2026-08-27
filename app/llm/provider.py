@@ -177,13 +177,19 @@ class AnthropicProvider(Provider):
     async def _call(self, system, messages, schema, max_tokens, temperature, thinking=0):
         import anthropic
 
-        from app.collectors.base import ApiQuotaError
-        from app.research.perplexity import is_quota_error
+        # ⚠️ `is_quota_error`는 `collectors.base`에 있다. perplexity에서
+        #   import하면 ImportError가 나고, 그것이 "anthropic 실패"로 뭉뚱그려져
+        #   **크레딧 문제로 오진**된다(실측 2026-08-27: 체크 도구가 잡았다).
+        from app.collectors.base import ApiQuotaError, is_quota_error
 
         client = anthropic.AsyncAnthropic(api_key=self.api_key)
+        # ⚠️ **anthropic SDK 1.0.0은 `temperature`를 제거했다.**
+        #   넘기면 TypeError가 나고, 그것이 "체인 전부 실패"로 뭉뚱그려져
+        #   크레딧 문제로 오진된다(실측 2026-08-27: 체크 도구가 잡았다).
+        #   결정성이 필요하면 `output_config`를 쓴다 — 지금은 기본값에 맡긴다.
+        #   `temperature` 인자는 인터페이스 통일을 위해 받되 여기서 버린다.
         kwargs: dict[str, Any] = {
-            "model": self.model, "max_tokens": max_tokens,
-            "temperature": temperature, "messages": messages,
+            "model": self.model, "max_tokens": max_tokens, "messages": messages,
         }
         if system:
             kwargs["system"] = system
@@ -210,12 +216,36 @@ class AnthropicProvider(Provider):
         return text, data
 
 
+def _S():
+    return get_settings()
+
+
 class GeminiProvider(Provider):
-    """Google Gemini — REST. SDK 없이 httpx로 호출한다(의존성 추가 없음)."""
+    """Google Gemini — REST. SDK 없이 httpx로 호출한다(의존성 추가 없음).
+
+    ⚠️ 무료 티어는 **분당 제한**이다(실측 2026-08-27: 4콜 만에 429가 났다가
+       몇 분 뒤 풀렸다 — 소진이 아니었다). Perplexity와 같은 방식으로
+       호출 간격을 둔다. 간격이 없으면 배칭한 5칸 호출이 연달아 나가며
+       바로 429를 맞는다.
+    """
 
     name = "gemini"
     supports_native_schema = True
     DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta"
+    _last_call: float = 0.0
+    _gate = asyncio.Lock()
+
+    async def _throttle(self) -> None:
+        interval = _S().gemini_min_interval
+        if interval <= 0:
+            return
+        async with GeminiProvider._gate:
+            import time
+
+            wait = interval - (time.monotonic() - GeminiProvider._last_call)
+            if wait > 0:
+                await asyncio.sleep(wait)
+            GeminiProvider._last_call = time.monotonic()
 
     async def _call(self, system, messages, schema, max_tokens, temperature, thinking=0):
         import httpx
@@ -231,14 +261,18 @@ class GeminiProvider(Provider):
         #    사고가 max_tokens를 다 먹고 `finishReason=MAX_TOKENS` + 빈 content로
         #    끝난다(실측 2026-08-27: 300 중 285를 사고가 소모).
         #    이 프로젝트가 Anthropic에서 겪은 max_tokens 사고와 **같은 유형**이다.
+        # ⚠️ 0은 그대로 보내면 안 된다 — gemini-3.6-flash는 400으로 거부한다.
+        #   "사고를 최소로"는 **최소 양수**를 보내는 것으로 구현한다.
         if thinking >= 0:
-            gen["thinkingConfig"] = {"thinkingBudget": thinking}
+            budget = thinking if thinking > 0 else _S().gemini_min_thinking
+            gen["thinkingConfig"] = {"thinkingBudget": budget}
         body: dict[str, Any] = {"contents": contents, "generationConfig": gen}
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}
         if schema:
             gen["responseMimeType"] = "application/json"
             gen["responseSchema"] = gemini_schema(schema)
+        await self._throttle()
         url = f"{base}/models/{self.model}:generateContent"
         # 5xx(과부하)는 재시도한다 — Gemini는 503 UNAVAILABLE을 흔하게 낸다.
         # ⚠️ 4xx는 재시도하지 않는다. 모델명 오타·키 오류를 반복 호출해도
@@ -435,7 +469,9 @@ _PROVIDER_DEFAULT_MODEL = {
     #    제공되지 않는다(실측 2026-08-27: 404 "no longer available to new users").
     #    API가 직접 권한 모델을 쓴다. 바꾸기 전 `tools/check_llm.py`로 확인하라.
     "gemini": "gemini-3.6-flash",
-    "groq": "llama-3.3-70b-versatile",
+    # ⚠️ 모델명을 추측하지 마라. `llama-3.3-70b-versatile`은 이 계정에
+    #    존재하지 않았다(404, 실측 2026-08-27). `tools/check_llm.py`가 잡았다.
+    "groq": "openai/gpt-oss-120b",
     "deepseek": "deepseek-chat",
     "ollama": "llama3.1",
     "xai": "grok-4.3-latest",
