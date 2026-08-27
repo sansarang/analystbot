@@ -186,8 +186,22 @@ def extract_quotes(html: str, names: set[str], title: str = "") -> list[str]:
             continue                       # 인용은 있는데 발화 동사가 없다 → 제목·광고
         if not any(n and n in s for n in names):
             continue                       # 게이트 ② — 이 경기와 무관
-        out.append(re.sub(r"\s+", " ", s).strip())
+        out.append(clean_sentence(s))
     return out
+
+
+# 본문에 박히는 광고·기자 표식. 문장 안에 남으면 인용문이 지저분해지고,
+# 그 문장을 2단이 인용할 때 그대로 딸려간다.
+_NOISE = re.compile(
+    r"(Advertisement|adsbygoogle|googletag|\(function\([^)]*\)|^\d+/\s*)", re.M)
+
+
+def clean_sentence(s: str) -> str:
+    """발췌 문장에서 **광고 잡음만** 뺀다. 말의 내용은 건드리지 않는다.
+
+    ⚠️ 요약·다듬기가 아니다. 원문 보존이 원칙이므로 제거 대상을 좁게 잡는다.
+    """
+    return re.sub(r"\s+", " ", _NOISE.sub(" ", s)).strip()
 
 
 def quote_key(sentence: str) -> str:
