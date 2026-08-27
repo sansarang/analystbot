@@ -283,3 +283,86 @@ def build_card(jg: dict, research: dict) -> dict:
         "reason": "" if judgeable else
                   f"모름 {len(unknown)}칸 (허용 {MAX_UNKNOWN}) — 판정하지 않는다",
     }
+
+
+# ─────────────────────────────────────────────────────────── 카드 출력 (2단 결과)
+
+def render_state_card(jg: dict) -> list[str]:
+    """5칸 카드를 텔레그램 줄로 만든다. **사실 층은 항상, 부호는 있으면.**
+
+    ⚠️ LLM이 전부 죽었을 때 부호 자리를 '='로 채우면 안 된다 — 판정한 것처럼
+       보인다. 그럴 땐 부호를 '·'로 두고 "판정 미수행"을 머리에 명시한다
+       (실사고 2026-08-27: 3중 폴백 전멸로 한화 사이드 5칸이 판정 불가였다).
+
+    ⚠️ HTML parse_mode로 나가므로 꺾쇠(`<`, `>`)를 쓰지 않는다.
+    """
+    card = jg.get("card") or {}
+    if not card.get("home") or not card.get("away"):
+        return []
+    cells = jg.get("cells") or {}
+    home_kr = jg.get("home_kr") or jg.get("home") or "홈"
+    away_kr = jg.get("away_kr") or jg.get("away") or "원정"
+    status = jg.get("cells_status") or "판정 미수행"
+
+    head = f"🃏 상태 카드 — {away_kr} vs {home_kr}"
+    if status != "판정":
+        head += "  ⚠️ 해석 판정 미수행 (사실만 표시)"
+    lines = [head]
+
+    for key, label in CELLS:
+        marks = []
+        for side, name in (("away", away_kr), ("home", home_kr)):
+            cell = (card.get(side) or {}).get(key) or {}
+            if not cell.get("facts"):
+                marks.append("미수집")
+                continue
+            sym = ((cells.get(side) or {}).get(key) or {}).get("symbol")
+            marks.append(sym or "·")
+        lines.append(f"{label}: {away_kr} {marks[0]} | {home_kr} {marks[1]}")
+
+    # 사유는 **판정이 있는 칸만** 한 줄씩. 인용을 통과한 문장이므로 그대로 쓴다.
+    for side, name in (("away", away_kr), ("home", home_kr)):
+        for key, label in CELLS:
+            v = (cells.get(side) or {}).get(key) or {}
+            why = (v.get("reason") or "").strip()
+            if not why:
+                continue
+            lines.append(f"· {name} {label} {v.get('symbol')} — {why}")
+
+    if card.get("unknown_labels"):
+        lines.append("(미수집) " + ", ".join(card["unknown_labels"]))
+    return lines
+
+
+def card_summary_line(jg: dict) -> str | None:
+    """기본층 한 줄 요약 — 어느 팀이 몇 칸에서 앞서는지.
+
+    ⚠️ 이것은 **결론이 아니라 카드의 요약**이다. 어느 쪽이 이길지는 3단 대조봇의
+       몫이고, 여기서는 판정된 칸을 세기만 한다. 세는 것과 결론짓는 것은 다르다.
+    """
+    cells = jg.get("cells") or {}
+    if not (cells.get("home") or cells.get("away")):
+        card = jg.get("card") or {}
+        return ("🃏 상태 카드 — 해석 판정 미수행 (사실만 수집됨)"
+                if card.get("home") else None)
+    labels = dict(CELLS)
+    home_kr = jg.get("home_kr") or jg.get("home") or "홈"
+    away_kr = jg.get("away_kr") or jg.get("away") or "원정"
+    up = {"home": [], "away": []}
+    even = 0
+    for key, _ in CELLS:
+        h = ((cells.get("home") or {}).get(key) or {}).get("symbol")
+        a = ((cells.get("away") or {}).get(key) or {}).get("symbol")
+        if h == "▲" and a != "▲":
+            up["home"].append(labels[key])
+        elif a == "▲" and h != "▲":
+            up["away"].append(labels[key])
+        elif h and a:
+            even += 1
+    parts = []
+    for side, name in (("away", away_kr), ("home", home_kr)):
+        if up[side]:
+            parts.append(f"{name} 우세 {len(up[side])}칸({'·'.join(up[side])})")
+    if even:
+        parts.append(f"대등 {even}칸")
+    return "🃏 " + " · ".join(parts) if parts else "🃏 상태 카드 — 우세 칸 없음"

@@ -220,6 +220,17 @@ async def build_health(pool, redis) -> str:
     except Exception as exc:      # 관측 장치가 본체를 죽이면 안 된다
         L.append(f"⚪ 크롤러 상태 확인 실패: {str(exc)[:60]}")
 
+    # ---- LLM provider 사용량·장애 [#73] --------------------------------
+    #  ⚠️ **잔여 크레딧은 쓰지 않는다.** 벤더가 알려주지 않는 값을 추정해 보여주면
+    #     그 추정이 근거로 쓰인다. 아는 것(호출 수·장애 시각)만 쓴다.
+    try:
+        from app.llm.ledger import format_summary, summary
+
+        L.append("")
+        L.extend(format_summary(await summary(redis)))
+    except Exception as exc:
+        L.append(f"⚪ LLM 상태 확인 실패: {str(exc)[:60]}")
+
     return "\n".join(L)
 
 

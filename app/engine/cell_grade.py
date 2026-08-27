@@ -91,3 +91,47 @@ def format_ledger(rows: list[dict]) -> str:
             lines.append(f"{r['sport']}/{r['cell']}: {r['hits']}/{r['decided']} "
                          f"= {float(r['hit_rate']) * 100:.1f}%")
     return " · ".join(lines)
+
+
+# ───────────────────────────────────────────── 재시도 큐 (전 provider 실패 대응)
+
+RETRY_QUEUE_KEY = "cell_retry_queue"     # 2단이 전멸한 경기 — 다음 사이클 재처리
+
+
+async def queue_retry(redis, sport: str, date: str, game_id) -> None:
+    """전 provider가 죽어 판정 0건인 경기를 적어둔다.
+
+    ⚠️ **재시도 큐는 실패를 감추는 장치가 아니다.** 이번 응답은 "판정 미수행"으로
+       정직하게 나가고, 큐는 다음 사이클에 조용히 메우는 용도다. 큐에 넣었다고
+       사용자에게 판정된 것처럼 보이면 안 된다.
+    """
+    if redis is None or not game_id:
+        return
+    import json
+
+    try:
+        await redis.sadd(RETRY_QUEUE_KEY, json.dumps(
+            {"sport": sport, "date": date, "game_id": game_id}, ensure_ascii=False))
+        await redis.expire(RETRY_QUEUE_KEY, 2 * 24 * 3600)
+    except Exception as exc:
+        logger.debug("[2단] 재시도 큐 적재 실패: %s", exc)
+
+
+async def drain_retry_queue(redis, limit: int = 20) -> list[dict]:
+    """큐를 비우고 재처리 대상을 돌려준다. 꺼낸 것은 큐에서 뺀다 —
+    실패하면 호출자가 다시 넣는다(무한 적체를 만들지 않는다)."""
+    if redis is None:
+        return []
+    import json
+
+    out = []
+    try:
+        for raw in list(await redis.srandmember(RETRY_QUEUE_KEY, limit) or []):
+            await redis.srem(RETRY_QUEUE_KEY, raw)
+            try:
+                out.append(json.loads(raw))
+            except Exception:
+                continue
+    except Exception as exc:
+        logger.debug("[2단] 재시도 큐 조회 실패: %s", exc)
+    return out

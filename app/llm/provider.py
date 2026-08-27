@@ -30,6 +30,8 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+from app.llm import ledger as _ledger      # noqa: E402  (순환 import 회피)
+
 # 역할 — 호출부는 이것만 안다.
 ROLES = ("interpreter", "judge_a", "judge_b", "narrator", "intent")
 
@@ -246,6 +248,20 @@ class _Throttle:
 _THROTTLE = _Throttle()
 
 
+def retry_wait_cap(timeout: float) -> float:
+    """이 요청에서 429를 **기다려도 되는 최대 시간**.
+
+    근거는 임의값이 아니라 **한 번의 호출 타임아웃**이다. 한 번 부르는 것보다
+    오래 기다려야 한다면 그 provider는 이 요청에 대해 사용 불가이고, 기다리는
+    것보다 **다음 provider로 넘어가는 것이 항상 빠르다.**
+
+    ⚠️ 실사고 2026-08-27: Groq가 `Retry-After: 1182`(20분)를 돌려줬고 코드가
+       그대로 잤다. 사용자 요청 하나가 20분을 잡았다. Retry-After를 무조건
+       따르는 것은 배치 작업의 예의이지 대화형 요청의 규율이 아니다.
+    """
+    return float(timeout)
+
+
 def _retry_after(headers) -> float | None:
     """429 응답의 Retry-After(초). 없으면 None."""
     v = (headers or {}).get("retry-after") or (headers or {}).get("Retry-After")
@@ -311,8 +327,13 @@ class GeminiProvider(Provider):
                 # 429는 **분당 제한**일 수 있다(실측: 몇 분 뒤 풀렸다).
                 # Retry-After가 오면 그것을 따르고, 없으면 짧게 기다린다.
                 if r.status_code == 429 and rate_left > 0:
-                    rate_left -= 1
                     wait = _retry_after(r.headers) or 20.0
+                    cap = retry_wait_cap(self.timeout)
+                    if wait > cap:
+                        logger.warning("[gemini] 429 — %.0fs 대기 요구(상한 %.0fs) "
+                                       "→ 기다리지 않고 폴백", wait, cap)
+                        break
+                    rate_left -= 1
                     logger.warning("[gemini] 429 — %.0fs 후 재시도 (남은 %d회)",
                                    wait, rate_left)
                     await asyncio.sleep(wait)
@@ -388,8 +409,15 @@ class OpenAICompatProvider(Provider):
                 # ⚠️ 429를 크레딧 소진으로 오분류하면 **잔액이 있는데 폴백**한다.
                 #    이 프로젝트가 Perplexity에서 이미 겪은 사고다.
                 if r.status_code == 429 and rate_left > 0:
-                    rate_left -= 1
                     wait = _retry_after(r.headers) or 5.0
+                    cap = retry_wait_cap(self.timeout)
+                    if wait > cap:
+                        # 🔴 20분을 자느니 다음 provider가 항상 빠르다
+                        #   (실측 2026-08-27: Groq가 Retry-After 1182를 줬다).
+                        logger.warning("[%s] 429 — %.0fs 대기 요구(상한 %.0fs) "
+                                       "→ 기다리지 않고 폴백", self.name, wait, cap)
+                        break
+                    rate_left -= 1
                     logger.warning("[%s] 429 — %.0fs 후 재시도 (남은 %d회)",
                                    self.name, wait, rate_left)
                     await asyncio.sleep(wait)
@@ -562,6 +590,13 @@ def provider_chain(role: str, settings=None) -> list[Provider]:
     kind = (getattr(s, f"{role}_provider", "") or "").strip()
     if not kind:
         raise LLMError(f"역할 {role}이(가) 비활성이다 — {role.upper()}_PROVIDER 미설정")
+    # 🔴 **강제 목 모드는 이 계층에서도 지켜져야 한다.**
+    #   `force_mock`은 config에서 anthropic·pplx·xai만 막고 있었고,
+    #   gemini·groq를 추가할 때 여기에 게이트를 두지 않았다. 그 결과 테스트가
+    #   실제로 Groq를 쳐서 429 재시도(20초×n)로 스위트가 멈춰 섰다
+    #   (실측 2026-08-27). 절대 규칙 3은 provider를 늘릴 때마다 다시 지켜야 한다.
+    if getattr(s, "force_mock", False):
+        return [build_provider("mock", "none", s)]
     chain = [build_provider(kind, resolve_model(role, s, kind), s)]
     raw = getattr(s, f"{role}_fallback", "") or ""
     for spec in [x.strip() for x in raw.split(",") if x.strip()]:
@@ -598,11 +633,14 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
     tried: list[str] = []
     last: Exception | None = None
     starved = False        # 예산 부족이 한 번이라도 있었나 — 알림 대상이다
+    # [#73] 어느 provider가 언제 죽었는지 남긴다. 폴백 순서를 바꾸기 전에 볼 표다.
+    redis = await _ledger_redis()
     for p in chain:
         try:
             res = await p.complete(messages, system=system, schema=schema,
                                    max_tokens=max_tokens, temperature=temperature,
                                    thinking=budget)
+            await _ledger.record_call(redis, p.name, role, True)
             if tried:
                 logger.warning("[llm:%s] 폴백 — %s 실패 후 %s 응답",
                                role, "→".join(tried), p.name)
@@ -616,13 +654,43 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
             starved = True
             tried.append(f"{p.name}(예산부족)")
             last = exc
+            await _ledger.record_call(redis, p.name, role, False)
+            await _ledger.record_outage(redis, p.name, role, "budget", str(exc))
         except Exception as exc:       # 다음 provider로 넘어간다
             logger.warning("[llm:%s] %s/%s 실패: %s", role, p.name, p.model, exc)
             tried.append(p.name)
             last = exc
+            await _ledger.record_call(redis, p.name, role, False)
+            await _ledger.record_outage(redis, p.name, role,
+                                        _outage_kind(exc), str(exc))
     if starved:
         await _notify_budget(role, budget, max_tokens, last)
     raise LLMError(f"역할 {role}: 체인 전부 실패 ({'→'.join(tried)})") from last
+
+
+def _outage_kind(exc: Exception) -> str:
+    """예외 → 장애 종류. **429를 크레딧 소진으로 세지 않는다** — 이 프로젝트가
+    Perplexity에서 이미 겪은 오분류다(잔액이 있는데 충전 알림을 보냈다)."""
+    from app.collectors.base import ApiAuthError, ApiQuotaError, ApiRateLimitError
+
+    if isinstance(exc, ApiRateLimitError):
+        return "rate_limit"
+    if isinstance(exc, ApiAuthError):
+        return "auth"
+    if isinstance(exc, ApiQuotaError):
+        txt = str(exc).lower()
+        return "rate_limit" if "레이트리밋" in str(exc) or "rate limit" in txt else "quota"
+    return "other"
+
+
+async def _ledger_redis():
+    """기록용 redis. 없으면 None — 계측이 없다고 판정이 멈추면 안 된다."""
+    try:
+        import redis.asyncio as aioredis
+
+        return aioredis.from_url(_S().redis_url, decode_responses=True)
+    except Exception:
+        return None
 
 
 async def _notify_budget(role: str, budget: int, max_tokens: int,

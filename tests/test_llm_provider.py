@@ -13,7 +13,12 @@ from app.llm import provider as P
 
 
 def _settings(**over):
-    base = dict(interpreter_provider="mock", judge_a_provider="anthropic",
+    # ⚠️ `force_mock=False`를 **명시**한다. conftest가 FORCE_MOCK=true를 걸어두는데,
+    #    이 파일의 테스트들은 네트워크를 치지 않고 **라우팅만** 본다(build_provider는
+    #    인스턴스를 만들 뿐 호출하지 않는다). 목 게이트가 켜져 있으면 라우팅이
+    #    전부 MockProvider로 접혀 "env만 바꿔서 벤더 전환" 자체를 검증할 수 없다.
+    base = dict(force_mock=False,
+                interpreter_provider="mock", judge_a_provider="anthropic",
                 judge_a_model="claude-x", judge_b_provider="",
                 narrator_provider="anthropic", anthropic_api_key="k")
     base.update(over)
@@ -290,3 +295,35 @@ async def test_budget_starvation_is_classified_not_silent(monkeypatch):
 
 async def _noop():
     return None
+
+
+def test_force_mock_blocks_every_provider():
+    """🔴 절대 규칙 3 — 강제 목 모드에서는 **어떤 벤더도** 실제로 호출되지 않는다.
+
+    실사고 2026-08-27: gemini·groq를 추가하면서 이 게이트를 빠뜨렸다.
+    config의 mock_* 프로퍼티는 anthropic·pplx·xai만 막고 있었고,
+    provider_chain은 force_mock을 아예 보지 않았다 — 테스트가 실제로 Groq를
+    쳐서 429 재시도로 스위트가 멈춰 섰다.
+    provider를 새로 추가할 때 이 테스트가 먼저 깨져야 한다.
+    """
+    from app.config import Settings
+    from app.llm.provider import MockProvider, provider_chain
+
+    s = Settings(force_mock=True, interpreter_provider="groq",
+                 interpreter_fallback="gemini,anthropic",
+                 groq_api_key="x", gemini_api_key="y", anthropic_api_key="z")
+    chain = provider_chain("interpreter", s)
+    assert all(isinstance(p, MockProvider) for p in chain), \
+        f"실 provider가 새어 나갔다: {[type(p).__name__ for p in chain]}"
+
+
+def test_force_mock_still_respects_disabled_role():
+    """목 모드라고 꺼진 역할을 켜주지는 않는다 — 목 판정을 실판정으로 오인하면 안 된다."""
+    import pytest
+
+    from app.config import Settings
+    from app.llm.provider import LLMError, provider_chain
+
+    s = Settings(force_mock=True, judge_b_provider="")
+    with pytest.raises(LLMError):
+        provider_chain("judge_b", s)

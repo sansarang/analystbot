@@ -524,6 +524,7 @@ async def build_analysis(
     await progress(1, 4, "일정·스탯 수집")
 
     # 1) 일정 fetch + upsert (이후 단계가 games 행에 의존)
+    schedule_stale = False      # 일정 갱신에 실패해 DB 기존 일정으로 갔는가
     if sport == "mlb":
         mlb = MLBClient()
         schedule = await mlb.fetch_schedule(date)
@@ -542,16 +543,35 @@ async def build_analysis(
         #      통과하지 못한다 — 이는 버그가 아니라 **의도된 보수성**이다.
         from app.collectors.odds import upsert_games_from_scores
 
-        counts = await upsert_games_from_scores(pool, sport, date=date,
-                                                client=OddsClient())
+        # 🔴 **배당 크레딧이 말라도 KBO 분석은 나가야 한다.**
+        #   KBO는 배당을 판정에 쓰지 않는다(#38·#39, 돈·시장 제거). 그런데 일정
+        #   소스가 아직 Odds `/scores`라, 크레딧이 소진되면 예외가 그대로 올라가
+        #   **응답 전체가 "크레딧 소진" 한 줄로 대체됐다**(실측 2026-08-27).
+        #   이미 DB에 적재된 일정으로 계속 간다 — 없는 것을 만들지는 않는다.
+        counts = {"scheduled": 0, "final": 0}
+        try:
+            counts = await upsert_games_from_scores(pool, sport, date=date,
+                                                    client=OddsClient())
+        except (ApiQuotaError, ApiAuthError) as exc:
+            # ⚠️ 지역 import 금지 — 함수 안에서 import하면 그 이름이 **함수 전체의
+            #   지역변수**가 되어, 앞쪽 다른 경로의 `except`가 UnboundLocalError로
+            #   죽는다(실측 2026-08-27: judge 폴백 경로가 통째로 깨졌다).
+            logger.warning("[pipeline] %s 일정 갱신 실패(%s) — DB의 기존 일정으로 진행",
+                           sport, type(exc).__name__)
+            schedule_stale = True
+            try:
+                await notify_api_error(exc)
+            except Exception:
+                pass
         rows = await pool.fetch(
             "SELECT ext_id FROM games WHERE sport = $1 AND status = 'scheduled'"
             "  AND starts_at >= now() - interval '12 hours'", sport)
         ext_ids = [r["ext_id"] for r in rows]
         stats_coro = _empty_stats()
         league = LEAGUE_LABEL_BY_SPORT.get(sport, sport.upper())
-        logger.info("[pipeline] %s 일정 %d건 (예정 %d / 종료 %d)",
-                    league, len(ext_ids), counts["scheduled"], counts["final"])
+        logger.info("[pipeline] %s 일정 %d건 (예정 %d / 종료 %d)%s",
+                    league, len(ext_ids), counts["scheduled"], counts["final"],
+                    " ⚠️ 배당 크레딧 소진 — 기존 일정" if schedule_stale else "")
     else:
         fb = APIFootballClient()
         fixtures = await fb.fetch_fixtures(date)
@@ -615,10 +635,20 @@ async def build_analysis(
     if stats_coro is None:
         stats_coro = _collect_soccer_stats({g["league"] for g in games})
     # 2) 스탯 ∥ 배당 ∥ 딥서치 병렬 수집 (딥서치도 요청 범위의 경기로만 한정)
+    async def _odds_or_none():
+        """배당 실패가 분석을 죽이지 않는다 — 배당은 표시용이고 판정에 안 쓴다."""
+        try:
+            return await snapshot_odds(pool, sport, client=OddsClient(),
+                                       only_keys=active_keys)
+        except (ApiQuotaError, ApiAuthError) as exc:
+            logger.warning("[pipeline] 배당 스냅샷 생략(%s) — 전 마켓 ⚪로 나간다",
+                           type(exc).__name__)
+            return []
+
     stats, _odds_rows, (news, news_urls, research_map, research_statuses,
                         sentiment) = await asyncio.gather(
         stats_coro,
-        snapshot_odds(pool, sport, client=OddsClient(), only_keys=active_keys),
+        _odds_or_none(),
         _collect_research(pool, games, date, league, sport=sport, redis=redis,
                           sequential=sequential_research, force=force_research),
     )
@@ -1057,6 +1087,12 @@ async def build_analysis(
         if _gap_ok:
             logger.info("[pipeline] 빈칸 보충 %d경기", _gap_ok)
 
+    # [§9-2단] **해석봇 배선.** 사실 칸이 다 찬 뒤, 판정 **전에** 돌린다.
+    #   ⚠️ 여기가 프리페치·요청 양쪽의 유일한 진입점이다 — `build_analysis`를
+    #     거치지 않는 경로는 없다. 이 호출이 빠지면 5칸 ▲▼는 어디에도 나오지
+    #     않는다(실사고 2026-08-27: 2단이 구현만 되고 호출처가 0이었다).
+    await _attach_cell_verdicts(pool, judge_games, sport, record, redis)
+
     await progress(3, 4, "Claude 판정")
     # 4) Claude 판정 — JUDGE_MODEL 고정. Grok은 정보 수집 전용(판정 금지).
     #    시작 전 경기만. 크레딧 소진 시 알림 후 목 판정 폴백 (크래시 금지)
@@ -1369,6 +1405,64 @@ def _enforce_data_rules(judge_games: list[dict]) -> None:
 
 
 ODDS_STALE_HOURS = 3   # 이보다 오래된 스냅샷은 '개장 배당'으로 표기
+
+
+async def _attach_cell_verdicts(pool, judge_games: list[dict], sport: str,
+                                record=None, redis=None) -> None:
+    """[§9-2단] 5칸 카드 + 해석봇 ▲▼를 각 경기에 붙인다.
+
+    붙이는 것: `jg["card"]`(사실 층) · `jg["cells"]`(부호·사유) ·
+               `jg["cells_status"]`("판정" | "판정 미수행").
+
+    ⚠️ **LLM이 전부 죽어도 사실은 나간다.** 그때 부호를 비우고 상태를
+       "판정 미수행"으로 명시한다 — 빈칸을 '='로 채우면 판정한 것처럼 보인다
+       (실사고 2026-08-27: 3중 폴백 전멸로 한화 사이드 5칸이 판정 불가였다).
+    """
+    from app.engine.card import build_card
+    from app.engine.interpreter import interpret_slate
+
+    live = [jg for jg in judge_games if jg.get("status") == "scheduled"]
+    if not live:
+        return
+    pairs = [(jg, jg.get("research") or {}) for jg in live]
+    for jg, res in pairs:
+        jg["card"] = build_card(jg, res)
+        jg["home_kr"], jg["away_kr"] = _kr(jg.get("home")), _kr(jg.get("away"))
+        jg["cells"] = {"home": {}, "away": {}}
+        jg["cells_status"] = "판정 미수행"
+    try:
+        out = await interpret_slate(pairs, pool=pool)
+    except Exception as exc:
+        logger.warning("[pipeline] 2단 해석 실패 — 사실만 내보낸다: %s", exc)
+        out = {}
+    judged = 0
+    stranded = []
+    for jg in live:
+        v = out.get(jg.get("game_id")) or {}
+        n = len(v.get("home") or {}) + len(v.get("away") or {})
+        if n:
+            jg["cells"] = v
+            jg["cells_status"] = "판정"
+            judged += n
+        else:
+            # [#73] 전 provider 전멸 — 이번 응답은 "판정 미수행"으로 정직하게
+            #   나가고, 다음 사이클에 자동 재처리하도록 큐에 넣는다.
+            stranded.append(jg)
+    if stranded and redis is not None:
+        from app.engine.cell_grade import queue_retry
+
+        for jg in stranded:
+            await queue_retry(redis, sport, str(jg.get("starts_at_kst") or "")[:10]
+                              or "", jg.get("game_id"))
+        logger.warning("[2단] %d경기 판정 0건 — 재시도 큐 적재", len(stranded))
+    offered = sum(1 for jg in live for side in ("home", "away")
+                  for c in jg["card"][side].values() if c.get("facts"))
+    if record is not None:
+        await record("2단 해석", judged, max(1, offered),
+                     cause=None if judged else "missing",
+                     detail=f"제시 {offered}칸 → 판정 {judged}칸 "
+                            f"(인용 없음·방향 오독은 폐기)",
+                     impact="판정이 0이면 카드에 ▲▼가 없고 사실만 나갑니다")
 
 
 async def _attach_alt_markets(pool: asyncpg.Pool, judge_games: list[dict]) -> None:
@@ -2585,7 +2679,17 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
         lines.append(f"({missing})")
 
     detail = render_game_section(jg, news)
-    return _guard_basic("\n".join(lines[:9]) + DETAIL_SEP + detail, "game_easy")
+    # [§9-2단] 5칸 카드 요약은 **서술 예산(9줄) 위에 얹는다.**
+    #   ⚠️ 상한을 10으로 올리면 카드가 없는 경기까지 서술 한 줄이 더 새어 나간다
+    #     (실측: 카드 없는 MLB 경기가 9줄 → 10줄이 됐다). 예산은 그대로 두고
+    #     카드 줄만 추가한다 — 새 기능이 기존 출력을 바꾸면 안 된다.
+    from app.engine.card import card_summary_line
+
+    visible = lines[:9]
+    _card_line = card_summary_line(jg)
+    if _card_line:
+        visible.insert(2, _card_line)      # 신호등 바로 아래
+    return _guard_basic("\n".join(visible) + DETAIL_SEP + detail, "game_easy")
 
 
 def render_games_easy(games: list[dict], news: str = "") -> list[str]:
@@ -2651,6 +2755,11 @@ def render_game_section(jg: dict, news: str = "") -> str:
         return "\n".join([header, f"⚠️ 리서치 실패{why}", NO_MATERIAL_MSG])
 
     lines = [header]
+    # [§9-2단] **상태 카드가 먼저다.** 5칸 ▲▼가 이 봇의 결론 근거이고,
+    #   서술은 그 뒤를 설명할 뿐이다. 판정이 없으면 사실만 나가되 그 사실을 밝힌다.
+    from app.engine.card import render_state_card
+
+    lines.extend(render_state_card(jg))
     hr, ar = research.get("home_recent_form") or {}, research.get("away_recent_form") or {}
     if hr.get("form") or ar.get("form"):
         lines.append(f"최근 폼: {home_kr} {hr.get('form') or '?'} · {away_kr} {ar.get('form') or '?'}")

@@ -196,7 +196,8 @@ async def soccer_stats_refresh_job() -> None:
 
 
 async def research_retry_job() -> None:
-    """[6] 레이트리밋으로 밀린 리서치를 다음 사이클에 순차 재시도."""
+    """[6] 레이트리밋으로 밀린 리서치·2단 판정을 다음 사이클에 순차 재시도."""
+    from app.engine.cell_grade import drain_retry_queue as drain_cells
     from app.research.deep import drain_retry_queue
 
     redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
@@ -204,6 +205,19 @@ async def research_retry_job() -> None:
         recovered = await drain_retry_queue(redis)
         if recovered:
             logger.info("[scheduler] research retry: %d경기 복구", recovered)
+        # [#73] 전 provider 전멸로 판정 0건이던 경기 — 캐시를 무효화해
+        #   다음 요청이 2단을 다시 태우게 한다. **여기서 직접 LLM을 부르지
+        #   않는다** — 요청 경로와 프리페치 경로가 이미 2단을 돌린다. 같은 일을
+        #   세 곳에서 하면 어느 것이 쓰였는지 알 수 없게 된다.
+        pending = await drain_cells(redis)
+        if pending:
+            for item in pending:
+                key = f"analysis:{item.get('sport')}:{item.get('date')}"
+                try:
+                    await redis.delete(key, key.replace("analysis:", "card:"))
+                except Exception:
+                    pass
+            logger.info("[scheduler] 2단 재시도: %d경기 캐시 무효화", len(pending))
     finally:
         await redis.aclose()
 
