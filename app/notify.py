@@ -51,8 +51,8 @@ def recharge_url(service: str) -> str | None:
     return None
 
 
-async def _suppressed_send(key: str, text: str) -> bool:
-    """30분 억제를 **프로세스 경계를 넘어** 적용해 발송한다.
+async def _suppressed_send(key: str, text: str, *, window_sec: int | None = None) -> bool:
+    """억제를 **프로세스 경계를 넘어** 적용해 발송한다.
 
     🔴 종전에는 프로세스 내 집합(`_notified`)으로만 막았다. 봇·스케줄러·수동
        실행이 각자 자기 집합을 갖고, 재기동하면 집합이 비므로 **같은 알림이
@@ -60,27 +60,43 @@ async def _suppressed_send(key: str, text: str) -> bool:
        억제는 Redis에 있어야 한다 — `alerts._send`가 이미 그 장치다.
 
     Redis가 없으면 `alerts._claim`이 프로세스 내 시간 기반 폴백으로 내려간다.
-    그때도 최소한 **같은 프로세스에서 30분에 1회**는 지켜진다.
+    인증 오류는 30분에 1회, 크레딧 소진은 KST 하루 1회.
     """
     from app.alerts import _send
 
-    return await _send(key, text)
+    return await _send(key, text, window_sec=window_sec)
 
 
-async def notify_quota(service: str, detail: str) -> bool:
-    """크레딧/쿼터 소진 알림 — 충전 페이지까지 안내. 같은 서비스는 30분에 1회.
+async def notify_quota(service: str, detail: str, *,
+                       allow_when_blocked: bool = False) -> bool:
+    """크레딧/쿼터 소진 알림 — 충전 페이지까지 안내. 프로바이더당 KST 하루 1회.
+
+    이미 회로가 열린 프로바이더는 보내지 않는다. 첫 알림은 `trip_credit`이
+    `allow_when_blocked=True`로 이 함수를 부른다 — `_request`가 차단을 먼저
+    기록한 뒤 예외를 올려도 첫 건이 사라지지 않게.
 
     주의: 레이트리밋(429)은 잔액 문제가 아니므로 이 알림 대상이 아니다.
     분류는 collectors.base.classify_api_error가 담당한다.
     """
+    from app.alerts import quota_window_sec
+    from app.api_guard import canonical_provider, is_blocked, is_disabled
+
+    name = canonical_provider(service)
+    if is_disabled(name):
+        logger.info("[notify] %s 미사용 — 크레딧 알림 생략", name)
+        return False
+    if not allow_when_blocked and await is_blocked(name):
+        logger.info("[notify] %s 이미 차단 — 크레딧 알림 생략", name)
+        return False
     url = recharge_url(service)
     charge_line = f"💳 여기서 충전하세요: {url}\n" if url else "💳 해당 서비스 콘솔에서 크레딧을 충전하세요.\n"
     return await _suppressed_send(
-        f"quota:{service}",
+        f"quota:{name}",
         f"⚠️ [AnalystBot] {service} API 크레딧/쿼터 소진 — 충전이 필요합니다\n"
         f"{detail[:300]}\n"
         f"{charge_line}"
-        f"충전/키 교체 전까지 해당 모듈은 목/축소 모드로 동작합니다."
+        f"충전/키 교체 전까지 해당 모듈은 목/축소 모드로 동작합니다.",
+        window_sec=quota_window_sec(),
     )
 
 

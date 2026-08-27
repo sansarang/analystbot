@@ -101,14 +101,43 @@ def test_pipeline_does_not_send_per_stage():
     assert "stages_summary" in src, "분석 끝 요약 발송이 없다"
 
 
-# ---------------------------------------------------- ② 30분 억제
+# ---------------------------------------------------- ② 하루 1회 억제 (크레딧)
 
 def test_quota_alert_is_suppressed_across_processes(sent):
-    """🔴 프로세스 내 집합으로 막으면 봇·스케줄러가 각각 보낸다 (실측 3회)."""
+    """🔴 프로세스 내 집합으로 막으면 봇·스케줄러가 각각 보낸다 (실측 3회).
+    크레딧은 이제 KST 하루 1회 — 같은 날 두 번째부터는 막힌다."""
     assert asyncio.run(notify_mod.notify_quota("odds", "OUT_OF_USAGE_CREDITS"))
     assert not asyncio.run(notify_mod.notify_quota("odds", "OUT_OF_USAGE_CREDITS"))
     assert not asyncio.run(notify_mod.notify_quota("odds", "또 왔다"))
     assert len(sent) == 1, f"같은 크레딧 알림이 {len(sent)}번 나갔다"
+
+
+def test_already_blocked_sends_zero_even_if_window_reset(sent, shared):
+    """이미 차단된 곳은 억제 키를 지워도(창이 다시 열려도) 알림 0건."""
+    from app.api_guard import clear_block, trip_credit
+
+    assert asyncio.run(trip_credit("odds", "OUT_OF_USAGE_CREDITS"))
+    assert len(sent) == 1
+    shared.store.clear()
+    assert not asyncio.run(notify_mod.notify_quota("odds", "다시"))
+    assert len(sent) == 1
+    asyncio.run(clear_block("odds"))
+
+
+def test_quota_window_is_until_kst_midnight():
+    from datetime import datetime, timedelta
+
+    from app.alerts import KST, quota_window_sec
+
+    now = datetime.now(KST)
+    nxt = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    assert quota_window_sec() == max(60, int((nxt - now).total_seconds()))
+
+
+def test_quota_notify_uses_daily_window_not_thirty_min():
+    src = (ROOT / "app/notify.py").read_text(encoding="utf-8")
+    assert "quota_window_sec" in src
+    assert "allow_when_blocked" in src
 
 
 def test_suppression_is_per_service(sent):

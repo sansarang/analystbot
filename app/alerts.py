@@ -14,7 +14,7 @@ import logging
 import time
 import traceback
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from app import notify as _notify_mod
@@ -141,22 +141,22 @@ async def _over_budget(r) -> int | None:
         return None
 
 
-async def _claim(r, key: str) -> tuple[bool, int]:
+async def _claim(r, key: str, window_sec: int = SUPPRESS_WINDOW_SEC) -> tuple[bool, int]:
     """이 키로 지금 보내도 되는가. (보내도 됨, 그동안 억제된 건수)."""
     if r is None:      # Redis 없음 — 프로세스 내 폴백 (억제가 약해진다)
         now = time.monotonic()
         last = _last_sent.get(key)
-        if last is not None and now - last < SUPPRESS_WINDOW_SEC:
+        if last is not None and now - last < window_sec:
             _suppressed[key] = _suppressed.get(key, 0) + 1
             return False, 0
         _last_sent[key] = now
         return True, _suppressed.pop(key, 0)
     try:
         # SET NX EX — 창이 비어 있을 때만 선점한다 (프로세스가 달라도 공유된다)
-        got = await r.set(SUP_KEY.format(key), "1", nx=True, ex=SUPPRESS_WINDOW_SEC)
+        got = await r.set(SUP_KEY.format(key), "1", nx=True, ex=window_sec)
         if not got:
             await r.incr(HELD_KEY.format(key))
-            await r.expire(HELD_KEY.format(key), SUPPRESS_WINDOW_SEC * 2)
+            await r.expire(HELD_KEY.format(key), window_sec * 2)
             return False, 0
         held = await r.get(HELD_KEY.format(key))
         await r.delete(HELD_KEY.format(key))
@@ -166,8 +166,20 @@ async def _claim(r, key: str) -> tuple[bool, int]:
         return True, 0
 
 
-async def _send(key: str, text: str, *, bypass_suppression: bool = False) -> bool:
-    """억제 규칙을 적용해 발송. key가 같으면 30분에 1회 — **프로세스 경계를 넘어서**."""
+def quota_window_sec() -> int:
+    """크레딧 소진 알림 창 — KST 다음 자정까지. 최소 60초."""
+    now = datetime.now(KST)
+    nxt = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return max(60, int((nxt - now).total_seconds()))
+
+
+async def _send(key: str, text: str, *, bypass_suppression: bool = False,
+                window_sec: int | None = None) -> bool:
+    """억제 규칙을 적용해 발송. 기본은 30분에 1회 — **프로세스 경계를 넘어서**.
+
+    크레딧 소진(`quota:*`)은 `window_sec=quota_window_sec()`로 하루 1회.
+    """
+    window = SUPPRESS_WINDOW_SEC if window_sec is None else window_sec
     r = await _redis()
     try:
         over = await _over_budget(r)
@@ -176,12 +188,13 @@ async def _send(key: str, text: str, *, bypass_suppression: bool = False) -> boo
                            GLOBAL_WINDOW_SEC // 60, GLOBAL_BUDGET, key)
             return False
         if not bypass_suppression:
-            ok, held = await _claim(r, key)
+            ok, held = await _claim(r, key, window)
             if not ok:
                 logger.info("[alerts] 억제(%s)", key)
                 return False
             if held:
-                text += f"\n\n(같은 오류 {held}건은 30분 억제 후 합산 표기)"
+                span = "오늘" if window >= 12 * 3600 else "30분"
+                text += f"\n\n(같은 오류 {held}건은 {span} 억제 후 합산 표기)"
         # ⚠️ **모듈 속성으로 부른다.** `from app.notify import send_telegram`으로
         #   묶으면 발송 지점이 둘로 갈라져, 한쪽만 막으면 다른 쪽으로 새어 나간다.
         #   실제 발송을 막는 자리는 하나여야 한다.
@@ -341,7 +354,17 @@ async def prefetch_report(
     body = "\n".join(s.line() for s in stages)
     tail = f"→ 결과: {verdict_line}"
     foot = f"코드 {boot_info().short}"
-    return await _send("prefetch:report", f"{head}\n{body}\n{tail}\n{foot}",
+    extra = ""
+    try:
+        from app.api_guard import prefetch_status_lines
+
+        lines = await prefetch_status_lines()
+        if lines:
+            extra = "\n" + "\n".join(lines)
+    except Exception as exc:
+        logger.debug("[alerts] 미사용/차단 줄 생략: %s", exc)
+    return await _send("prefetch:report",
+                       f"{head}\n{body}{extra}\n{tail}\n{foot}",
                        bypass_suppression=True)
 
 

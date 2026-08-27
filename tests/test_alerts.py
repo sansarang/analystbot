@@ -235,6 +235,22 @@ async def test_prefetch_report_shows_each_stage(sent):
     assert "12/15" in body and "0/15" in body
 
 
+@pytest.mark.asyncio
+async def test_prefetch_report_footer_unused_and_blocked(sent, monkeypatch):
+    """미사용·차단은 단계 실패(🔴)가 아니라 하단 한 줄이다."""
+    from app.api_guard import trip_credit
+    from app.config import Settings
+
+    s = Settings(_env_file=None, disabled_providers="grok,perplexity", odds_api_key="k")
+    monkeypatch.setattr("app.api_guard.get_settings", lambda: s)
+    await trip_credit("odds", "OUT_OF_USAGE_CREDITS")
+    await prefetch_report([StageResult("경기 적재", 15, 15)], 10.0, "정상")
+    body = sent[-1]
+    assert "미사용: grok, perplexity" in body
+    assert "차단 중: odds(크레딧 소진," in body
+    assert "✅ 경기 적재" in body
+
+
 # ---------------------------------------------------------------- 종합 결론
 
 def test_verdict_calls_out_missing_judgment():

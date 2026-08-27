@@ -178,3 +178,43 @@ async def test_collect_research_does_not_build_grok_when_disabled():
     assert 'is_disabled("perplexity")' in block
     assert 'is_disabled("grok")' in block
     assert block.index('is_disabled("grok")') < block.index("GrokClient()")
+
+
+async def test_already_blocked_does_not_alert_again(monkeypatch, live_odds):
+    """회로가 열린 뒤에는 억제 창이 남아 있어도 크레딧 알림을 보내지 않는다."""
+    from app.notify import notify_quota
+
+    sent: list[str] = []
+
+    async def fake(text: str) -> bool:
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr("app.notify.send_telegram", fake)
+    assert await trip_credit("odds", "OUT_OF_USAGE_CREDITS") is True
+    assert len(sent) == 1
+    assert await trip_credit("odds", "또") is False
+    assert await notify_quota("odds", "호출부 재알림") is False
+    assert len(sent) == 1
+
+
+async def test_prefetch_status_lines_unused_and_blocked(monkeypatch):
+    from app.api_guard import prefetch_status_lines
+
+    s = _settings(disabled_providers="grok,perplexity", odds_api_key="k")
+    monkeypatch.setattr("app.api_guard.get_settings", lambda: s)
+    await trip_credit("odds", "OUT_OF_USAGE_CREDITS")
+    lines = await prefetch_status_lines()
+    unused = next(x for x in lines if x.startswith("미사용:"))
+    assert "grok" in unused and "perplexity" in unused
+    blocked = next(x for x in lines if x.startswith("차단 중:"))
+    assert blocked.startswith("차단 중: odds(크레딧 소진, ")
+    assert "grok" not in blocked
+
+
+async def test_canonical_provider_collapses_judge_label():
+    from app.api_guard import canonical_provider
+
+    assert canonical_provider("anthropic(judge)") == "anthropic"
+    assert canonical_provider("football_data") == "football_data"
+    assert canonical_provider("football") == "football"

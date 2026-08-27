@@ -15,9 +15,12 @@ import hashlib
 import json
 import logging
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 from app.collectors.base import ProviderBlockedError, ProviderDisabledError
 from app.config import get_settings
+
+KST = ZoneInfo("Asia/Seoul")
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +59,20 @@ def set_redis(client) -> None:
 
 
 def is_disabled(name: str) -> bool:
-    return get_settings().is_disabled(name)
+    return get_settings().is_disabled(canonical_provider(name))
+
+
+def canonical_provider(service: str) -> str:
+    """알림·차단 키를 프로바이더 단위로 맞춘다. `anthropic(judge)` → `anthropic`."""
+    lowered = (service or "").strip().lower()
+    if not lowered:
+        return "unknown"
+    if lowered in _KEY_ATTR:
+        return lowered
+    for name in sorted(_KEY_ATTR, key=len, reverse=True):
+        if name in lowered:
+            return name
+    return lowered
 
 
 def key_fp(name: str) -> str:
@@ -137,6 +153,7 @@ async def _delete(key: str) -> None:
 
 
 async def block_info(name: str) -> dict | None:
+    name = canonical_provider(name)
     data = _parse(await _get(BLOCK_KEY.format(name)))
     if not data:
         return None
@@ -151,8 +168,17 @@ async def is_blocked(name: str) -> bool:
     return await block_info(name) is not None
 
 
-async def trip_credit(name: str, detail: str) -> None:
-    """크레딧 소진으로 회로를 연다. 429는 호출하지 마라."""
+async def trip_credit(name: str, detail: str) -> bool:
+    """크레딧 소진으로 회로를 연다. 429는 호출하지 마라.
+
+    새로 열렸을 때만 True. 그때 하루 1회 크레딧 알림을 보낸다.
+    이미 열려 있으면 False — 알림도 없다 (호출부가 notify_quota를 또 불러도 막힌다).
+    """
+    name = canonical_provider(name)
+    if is_disabled(name):
+        return False
+    if await is_blocked(name):
+        return False
     payload = json.dumps({
         "reason": "credit",
         "at": datetime.now(UTC).isoformat(),
@@ -162,19 +188,59 @@ async def trip_credit(name: str, detail: str) -> None:
     await _set(BLOCK_KEY.format(name), payload)
     logger.warning("[api_guard] %s 차단 (크레딧 소진) — 키 변경 또는 수동 해제 전 호출 없음",
                    name)
+    try:
+        from app.notify import notify_quota
+
+        await notify_quota(name, detail, allow_when_blocked=True)
+    except Exception as exc:
+        logger.warning("[api_guard] %s 차단 알림 실패: %s", name, exc)
+    return True
 
 
 async def clear_block(name: str) -> None:
     """사람이 명시적으로 재시도할 때. 시간 경과로는 부르지 않는다."""
+    name = canonical_provider(name)
     await _delete(BLOCK_KEY.format(name))
     logger.info("[api_guard] %s 차단 해제 (수동)", name)
 
 
 async def raise_if_unusable(name: str) -> None:
     """HTTP 나가기 전. disabled → 알림 없음. blocked → 알림 없음(이미 소진 알림을 냈다)."""
+    name = canonical_provider(name)
     if is_disabled(name):
         raise ProviderDisabledError(name, "disabled")
     info = await block_info(name)
     if info is not None:
         raise ProviderBlockedError(
             name, info.get("detail") or "credit exhausted")
+
+
+def _kst_short(iso: str | None) -> str:
+    if not iso:
+        return "?"
+    try:
+        dt = datetime.fromisoformat(iso)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(KST).strftime("%m-%d %H:%M")
+    except (TypeError, ValueError):
+        return "?"
+
+
+async def prefetch_status_lines() -> list[str]:
+    """프리페치 리포트 하단 — 실패 단계가 아니라 상태 한 줄. 🔴로 세지 않는다."""
+    unused = sorted(get_settings().disabled_set())
+    out: list[str] = []
+    if unused:
+        out.append("미사용: " + ", ".join(unused))
+    bits: list[str] = []
+    for name in _KEY_ATTR:
+        if name in unused:
+            continue
+        info = await block_info(name)
+        if not info:
+            continue
+        bits.append(f"{name}(크레딧 소진, {_kst_short(info.get('at'))})")
+    if bits:
+        out.append("차단 중: " + ", ".join(bits))
+    return out
