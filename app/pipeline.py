@@ -1458,8 +1458,13 @@ async def _attach_cell_verdicts(pool, judge_games: list[dict], sport: str,
     offered = sum(1 for jg in live for side in ("home", "away")
                   for c in jg["card"][side].values() if c.get("facts"))
     if record is not None:
-        await record("2단 해석", judged, max(1, offered),
-                     cause=None if judged else "missing",
+        # ⚠️ 단위는 **경기**로 센다. 공용 한계 문구가 "N경기"를 붙이므로
+        #   칸 수를 넣으면 "2단 해석 45경기"처럼 없는 경기가 표시된다
+        #   (실측 2026-08-27: 5경기 슬레이트에 45경기로 나갔다).
+        #   칸 수는 detail에 적는다.
+        games_judged = sum(1 for jg in live if jg.get("cells_status") == "판정")
+        await record("2단 해석", games_judged, len(live),
+                     cause=None if games_judged else "missing",
                      detail=f"제시 {offered}칸 → 판정 {judged}칸 "
                             f"(인용 없음·방향 오독은 폐기)",
                      impact="판정이 0이면 카드에 ▲▼가 없고 사실만 나갑니다")
@@ -3000,7 +3005,24 @@ def _render_card(analysis: dict) -> str:
         lines.append("⚠️ 판정 실패 — 오늘 경기 판정을 받지 못해 분석을 완료하지 못했습니다.")
         lines.append("추천·조합을 낼 수 없습니다. (관망 권장이 아니라 '분석 미완'입니다)")
         detail.append(f"판정 부착 0건 / 분석 대상 {len(scheduled)}경기 — judge 응답 확인 필요")
-        return _guard_basic("\n".join(lines[:20])[:3500] + DETAIL_SEP + "\n".join(detail[:20]), "card")
+        # [§9-2단] **판정이 실패해도 수집한 사실은 내보낸다.**
+        #   종전에는 여기서 그냥 끝나 5칸 카드가 통째로 사라졌다 — 크롤링으로
+        #   모은 사실이 다 있는데 화면에는 "판정 실패" 두 줄뿐이었다.
+        #   판정 여부를 위장하지 않으면서 사실은 보여주는 것이 옳다.
+        from app.engine.card import card_summary_line, render_state_card
+
+        _shown = 0
+        for g in scheduled:
+            summary = card_summary_line(g)
+            if not summary:
+                continue
+            _shown += 1
+            lines.append(f"{_kr(g['away'])} @ {_kr(g['home'])} {summary}")
+            detail.extend(render_state_card(g))
+        if _shown:
+            lines.insert(len(lines) - _shown,
+                         "🃏 수집한 사실은 아래에 그대로 있습니다 (판정만 미수행)")
+        return _guard_basic("\n".join(lines[:20])[:3500] + DETAIL_SEP + "\n".join(detail[:60]), "card")
 
     # [§8-13] **봇이 고르지 않는다.** 전 경기·전 마켓을 별점 순으로 나열하고
     #   판단은 사용자가 한다. 근거 수치는 심층(<<DETAIL>>)에 마켓 행마다 1:1로 붙는다.

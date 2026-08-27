@@ -115,3 +115,22 @@ def test_stage2_never_hits_network_under_force_mock():
     s = Settings(force_mock=True, interpreter_provider="groq", groq_api_key="x")
     card = _jg()["card"]["home"]
     asyncio.run(interpret_side(card, "KIA", settings=s, baselines={}))
+
+
+def test_facts_survive_a_total_judge_failure():
+    """🔴 판정이 실패해도 수집한 사실은 나가야 한다.
+
+    실측 2026-08-27: LLM 4개 벤더가 전부 소진된 날, 크롤링으로 모은 사실이
+    전부 있는데 화면에는 "판정 실패" 두 줄만 나갔다. 카드가 통째로 사라졌다.
+    """
+    from app.pipeline import DETAIL_SEP, _render_card
+
+    g = _jg(status="판정 미수행")
+    g.update({"status": "scheduled", "p_claude": None, "starts_at_kst": "18:30",
+              "league": "KBO", "market_board": [], "research": {}})
+    out = _render_card({"date": "2026-08-27", "sport": "kbo", "games": [g],
+                        "picks": [], "recommended": []})
+    easy, detail = out.split(DETAIL_SEP, 1)
+    assert "판정 실패" in easy, "실패 사실을 위장하면 안 된다"
+    assert "🃏" in easy, "수집한 사실이 사라졌다"
+    assert "불펜 가용:" in detail, "5칸 카드가 상세에 없다"
