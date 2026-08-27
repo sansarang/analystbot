@@ -21,7 +21,7 @@ import logging
 import re
 
 from app.config import get_settings
-from app.engine.card import CELLS
+from app.engine.card import CELLS, SCORING_LEVELS, SCORING_METRICS, _quantile
 from app.llm import complete, role_enabled
 
 logger = logging.getLogger(__name__)
@@ -298,3 +298,120 @@ def apply_weight_rule(home: dict, away: dict, research: dict, settings=None) -> 
     for side in (home, away):
         side["weight"] = {"symbol": "=", "reason": note, "rule": "양쪽 무의미"}
     return note
+
+
+# ──────────────────────────────────────────── [§9-6번째 칸] 득점 환경 해석
+
+SCORING_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "level": {"type": "string", "enum": list(SCORING_LEVELS),
+                  "description": "이 경기의 총득점 성격"},
+        "reason": {"type": "string",
+                   "description": "한 줄. **주어진 사실의 숫자를 반드시 인용**한다"},
+    },
+    "required": ["level", "reason"],
+    "additionalProperties": False,
+}
+
+SCORING_SYSTEM = """너는 야구 분석가다. **이 경기의 총득점 성격만** 판단한다.
+
+[네가 모르는 것]
+- 승패가 어떻게 될지 모른다. 어느 팀이 이기는지 판단하지 마라.
+- 배당·토탈 라인·시장 확률을 모른다. 그런 숫자를 만들어내지 마라.
+
+[네가 하는 일]
+주어진 사실만 보고 이 경기가 평소보다 점수가 많이 날 경기인지 판단한다.
+- 다득점 예상 · 보통 · 저득점 예상 셋 중 하나.
+- 근거가 약하면 주저 없이 "보통"을 쓴다.
+
+[방향 — 이 지표가 커지면 어느 쪽인가]
+- **양 팀 최근 회당 득점이 많을수록 다득점**
+- **선발 ERA·WHIP가 높을수록 다득점** (막지 못하니 점수가 난다)
+- **선발 평균 이닝이 짧을수록 다득점** — 불펜이 일찍 나오면 실점이 는다
+- **불펜이 최근 많이 던졌을수록 다득점** — 소모된 뒷문은 뚫린다
+- **파크팩터가 1보다 클수록 다득점**, 1보다 작으면 저득점
+- 기온이 높고 바람이 밖으로 불수록 타구가 멀리 간다
+
+⚠️ 방향을 반대로 읽는 것이 가장 흔한 실수다. "파크팩터 0.90"은
+   **투수친화 = 저득점**이지 다득점이 아니다.
+
+[반드시 지킬 것]
+1. **사유에 주어진 사실의 숫자를 인용하라.** 인용이 없으면 폐기된다.
+2. 주어진 사실에 없는 수치를 만들어내지 마라.
+3. 한국어로, 한 줄로 쓴다."""
+
+
+def scoring_direction_check(metrics: dict, baselines: dict, level: str) -> str | None:
+    """[§9-6번째 칸] 수치가 가리키는 방향과 판정이 **반대인가**.
+
+    다섯 칸의 `direction_check`와 같은 장치이되, 축이 유리/불리가 아니라
+    **다득점/저득점**이다. 사분위 밖일 때만 표를 던지는 규칙은 같다.
+    """
+    if level not in ("다득점 예상", "저득점 예상"):
+        return None
+    votes, detail = [], []
+    for name, more_scoring in SCORING_METRICS:
+        val, band = metrics.get(name), baselines.get(name)
+        if val is None or not isinstance(band, dict):
+            continue
+        q1, q3 = band.get("q1"), band.get("q3")
+        if q1 is None or q3 is None or q1 <= val <= q3:
+            continue
+        high = val > q3
+        votes.append(high == more_scoring)      # True면 '다득점' 쪽
+        detail.append(f"{name} {val:g}({'상위' if high else '하위'} "
+                      f"사분위 {q1:g}~{q3:g})")
+    if not votes:
+        return None
+    if all(votes) and level == "저득점 예상":
+        return f"수치는 다득점을 가리킨다 — {' · '.join(detail)}"
+    if not any(votes) and level == "다득점 예상":
+        return f"수치는 저득점을 가리킨다 — {' · '.join(detail)}"
+    return None
+
+
+def scoring_baselines(scoring_cells: list[dict]) -> dict[str, dict[str, float]]:
+    """슬레이트 전 경기의 득점 환경 지표에서 사분위. 다섯 칸과 같은 방식이다."""
+    pool: dict[str, list[float]] = {}
+    for cell in scoring_cells:
+        for name, val in (cell.get("metrics") or {}).items():
+            pool.setdefault(name, []).append(val)
+    return {name: {"q1": _quantile(v, 0.25), "median": _quantile(v, 0.5),
+                   "q3": _quantile(v, 0.75)}
+            for name, v in pool.items() if len(v) >= 4}
+
+
+async def interpret_scoring(scoring_cell: dict, settings=None,
+                            baselines: dict | None = None) -> dict:
+    """득점 환경 칸 → {"level", "reason", "provider"}. 재료 없으면 빈 dict.
+
+    ⚠️ **승패 카드와 같은 규율.** 인용 없으면 폐기, 방향 오독이면 폐기,
+       재료 없으면 아예 부르지 않는다.
+    """
+    s = settings or get_settings()
+    facts = list(scoring_cell.get("facts") or [])
+    if not facts:
+        return {}
+    if not role_enabled(ROLE, s):
+        logger.info("[2단-득점] 해석봇 비활성 — 사실만 나간다")
+        return {}
+    payload = {"cells": [{"key": "scoring", "label": "득점 환경", "facts": facts}]}
+    res = await complete(
+        ROLE, [{"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
+        system=SCORING_SYSTEM, schema=SCORING_SCHEMA, max_tokens=800, settings=s)
+    data = res.data or {}
+    level, why = data.get("level"), (data.get("reason") or "").strip()
+    if level not in SCORING_LEVELS:
+        logger.warning("[2단-득점] 알 수 없는 판정 %r — 폐기", level)
+        return {}
+    if not cites_facts(why, facts):
+        logger.warning("[2단-득점] 인용 없음 — 폐기: %s", why[:70])
+        return {}
+    wrong = scoring_direction_check(scoring_cell.get("metrics") or {},
+                                    baselines or {}, level)
+    if wrong:
+        logger.warning("[2단-득점] 방향 오독 — 판정 %s · %s | 사유: %s",
+                       level, wrong, why[:70])
+        return {}
+    return {"level": level, "reason": why, "provider": res.label}

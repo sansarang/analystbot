@@ -134,3 +134,64 @@ def test_tests_never_write_to_the_production_ledger():
 
     assert asyncio.run(_ledger_redis()) is None, \
         "강제 목 모드인데 실 Redis 핸들이 나왔다 — 테스트가 운영 계측을 오염시킨다"
+
+
+# ---------------------------------------------- 소진 provider 건너뛰기
+
+def test_daily_exhaustion_is_told_apart_from_a_minute_limit():
+    """🔴 분당 제한을 소진으로 오분류하면 멀쩡한 provider를 통째로 버린다."""
+    from app.collectors.base import ApiQuotaError
+    from app.llm.provider import _looks_daily
+
+    daily = ApiQuotaError("groq", "Rate limit reached ... on tokens per day (TPD): "
+                                  "Limit 200000, Used 198794")
+    minute = ApiQuotaError("groq", "Rate limit reached ... on requests per minute")
+    assert _looks_daily(daily)
+    assert not _looks_daily(minute)
+    assert _looks_daily(ApiQuotaError("anthropic", "Your credit balance is too low"))
+
+
+def test_exhausted_provider_is_skipped_not_retried():
+    """🔴 하루치가 끝난 키를 매 호출마다 다시 두드리면 재시도 대기만 쌓인다.
+
+    실사고 2026-08-27: Groq TPD 소진 뒤에도 호출마다 gemini 429 재시도(20초×2)를
+    물어 호출 하나에 40초 이상이 순수 대기였다.
+    """
+    from app.llm.provider import (_is_exhausted, _mark_exhausted,
+                                  reset_exhausted)
+
+    reset_exhausted()
+    assert _is_exhausted("groq") is None
+    _mark_exhausted("groq", "tokens per day")
+    assert _is_exhausted("groq")
+    reset_exhausted()
+    assert _is_exhausted("groq") is None
+
+
+def test_skip_is_recorded_in_the_attempt_trail():
+    """건너뛴 사실이 기록에 남아야 한다 — 조용히 빠지면 원인을 못 찾는다."""
+    import pathlib
+
+    src = (pathlib.Path(__file__).resolve().parents[1]
+           / "app/llm/provider.py").read_text(encoding="utf-8")
+    assert '소진·생략' in src
+
+
+def test_real_vendor_wordings_are_matched_not_guessed():
+    """🔴 "quota exceeded"로 적었더니 Gemini의 "You exceeded your current quota"가
+    안 걸렸다 — 어순이 다르다. **실제 응답 본문**으로 맞춰야 한다."""
+    from app.collectors.base import ApiQuotaError
+    from app.llm.provider import _looks_daily
+
+    REAL = [
+        # Gemini 429 (실측 2026-08-27)
+        "You exceeded your current quota, please check your plan and billing details.",
+        # Groq 429 (실측 2026-08-27)
+        "Rate limit reached for model `openai/gpt-oss-120b` ... on tokens per day (TPD)",
+        # Anthropic 400 (실측 2026-08-27)
+        "Your credit balance is too low to access the Anthropic API.",
+        # xAI 403 (실측 2026-08-27)
+        "Your team has either used all available credits or reached its monthly spending limit.",
+    ]
+    for body in REAL:
+        assert _looks_daily(ApiQuotaError("x", body)), body[:50]

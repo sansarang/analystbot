@@ -1535,6 +1535,45 @@ async def _attach_cell_verdicts(pool, judge_games: list[dict], sport: str,
         jg["home_kr"], jg["away_kr"] = _kr(jg.get("home")), _kr(jg.get("away"))
         jg["cells"] = {"home": {}, "away": {}}
         jg["cells_status"] = "판정 미수행"
+    # [§9-6번째 칸] 득점 환경 — 승패 칸과 **별도로** 판정한다.
+    #   기준선도 별도다(지표가 다르므로 다섯 칸 기준선을 쓰면 안 된다).
+    from app.engine.card_markets import league_total_baseline
+    from app.engine.interpreter import interpret_scoring, scoring_baselines
+
+    _sc_base = scoring_baselines([jg["card"].get("scoring") or {} for jg in live])
+    # 라인 비교 기준 — **실측 리그 중앙값**. 3경기 표본은 잡음이 커서 못 쓴다.
+    try:
+        _tot_base = await league_total_baseline(pool, sport)
+    except Exception as exc:
+        logger.warning("[2단-득점] 리그 총득점 기준 조회 실패: %s", exc)
+        _tot_base = {"median": None, "n": 0}
+    if _tot_base.get("median") is None:
+        logger.info("[2단-득점] 리그 총득점 표본 %d — 언더오버 판정 보류",
+                    _tot_base.get("n", 0))
+    for jg in live:
+        jg["total_baseline"] = _tot_base
+    for jg in live:
+        jg["scoring"] = {}
+        try:
+            jg["scoring"] = await interpret_scoring(
+                jg["card"].get("scoring") or {}, baselines=_sc_base)
+        except Exception as exc:
+            logger.warning("[2단-득점] %s 실패: %s", jg.get("game_id"), exc)
+        # 채점 적재 — 기준 총득점을 함께 남긴다. 없으면 채점할 수 없다.
+        if pool and (jg.get("scoring") or {}).get("level"):
+            from app.engine.cell_grade import record_scoring
+
+            _cell = jg["card"].get("scoring") or {}
+            try:
+                # ⚠️ 채점 기준은 **라인 비교에 쓴 것과 같아야 한다.** 다른 기준으로
+                #   채점하면 "그 판정이 맞았나"가 아니라 다른 질문에 답하게 된다.
+                await record_scoring(
+                    pool, jg.get("game_id"), jg["scoring"]["level"],
+                    jg["scoring"].get("reason") or "",
+                    _tot_base.get("median"),
+                    _cell.get("facts"), jg["scoring"].get("provider"))
+            except Exception as exc:
+                logger.warning("[2단-득점] 기록 실패 %s: %s", jg.get("game_id"), exc)
     try:
         out = await interpret_slate(pairs, pool=pool)
     except Exception as exc:
@@ -1563,6 +1602,12 @@ async def _attach_cell_verdicts(pool, judge_games: list[dict], sport: str,
     offered = sum(1 for jg in live for side in ("home", "away")
                   for c in jg["card"][side].values() if c.get("facts"))
     if record is not None:
+        _sc_ok = sum(1 for jg in live if (jg.get("scoring") or {}).get("level"))
+        await record("득점 환경", _sc_ok, len(live),
+                     cause=None if _sc_ok else "missing",
+                     detail="다득점/보통/저득점 3단 · 언더오버 판정의 근거",
+                     unit="경기", expect_full=True,
+                     impact="언더오버 판정이 생성되지 않습니다")
         # ⚠️ 단위는 **경기**로 센다. 공용 한계 문구가 "N경기"를 붙이므로
         #   칸 수를 넣으면 "2단 해석 45경기"처럼 없는 경기가 표시된다
         #   (실측 2026-08-27: 5경기 슬레이트에 45경기로 나갔다).
@@ -2803,7 +2848,14 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
     # [§9-3단] **결론이 맨 위다.** 3줄(우세·유리 칸·반대 칸)로 고정하고
     #   긴 서술은 접힌 상세로 내린다 — 문단 안에 결론이 파묻히면 안 보인다.
     for _i, _ln in enumerate(compare_lines(jg)):
-        visible.insert(_i, _ln)      # 신호등 바로 아래
+        visible.insert(_i, _ln)
+    # 카드 기반 마켓(언더오버·핸디캡)은 결론 바로 아래 한 줄로 모은다
+    from app.engine.card_markets import market_calls
+
+    _mk = market_calls(jg)
+    if _mk:
+        visible.insert(len(compare_lines(jg)),
+                       "🎯 " + " · ".join(c["desc"] for c in _mk))      # 신호등 바로 아래
     return _guard_basic("\n".join(visible) + DETAIL_SEP + detail, "game_easy")
 
 
@@ -2886,6 +2938,13 @@ def render_game_section(jg: dict, news: str = "") -> str:
         if _v.get("reason"):
             lines.append(f"  판정 근거: {_v['reason']}")
     lines.extend(render_state_card(jg))
+    # [§9-6번째 칸] 득점 환경 + 카드 기반 마켓 — 근거 칸을 함께 쓴다
+    from app.engine.card_markets import render_market_calls
+
+    _sc = jg.get("scoring") or {}
+    if _sc.get("level"):
+        lines.append(f"💥 득점 환경: {_sc['level']} — {_sc.get('reason', '')}")
+    lines.extend(render_market_calls(jg))
     hr, ar = research.get("home_recent_form") or {}, research.get("away_recent_form") or {}
     if hr.get("form") or ar.get("form"):
         lines.append(f"최근 폼: {home_kr} {hr.get('form') or '?'} · {away_kr} {ar.get('form') or '?'}")

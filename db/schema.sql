@@ -223,3 +223,46 @@ SELECT cell, sport,
        END                                                          AS hit_rate
 FROM graded
 GROUP BY cell, sport;
+
+-- [§9-6번째 칸] 득점 환경 채점 — **승패 칸과 분리해서 센다.**
+--   "다득점 예상"이 실제로 오버였는지는 "▲를 준 팀이 이겼는지"와 다른 질문이고,
+--   같은 표에 섞으면 어느 쪽이 맞았는지 알 수 없다.
+--
+--   ⚠️ 기준선은 **그 경기의 카드 기준 총득점**(expected_total)이다. 시장 라인이
+--      아니다 — KBO·NPB는 배당을 수집하지 않으므로 시장 라인이 없다.
+--      비교 대상이 없으면 채점하지 않는다(ref_total IS NULL).
+ALTER TABLE cell_verdicts ADD COLUMN IF NOT EXISTS ref_total NUMERIC;
+
+CREATE OR REPLACE VIEW scoring_ledger AS
+WITH graded AS (
+    SELECT v.symbol AS level, g.sport, v.ref_total,
+           (g.home_score + g.away_score)::numeric AS actual,
+           CASE
+             WHEN v.ref_total IS NULL THEN NULL
+             WHEN (g.home_score + g.away_score) = v.ref_total THEN 'push'
+             WHEN v.symbol = '다득점 예상'
+                  THEN CASE WHEN (g.home_score + g.away_score) > v.ref_total
+                            THEN 'hit' ELSE 'miss' END
+             WHEN v.symbol = '저득점 예상'
+                  THEN CASE WHEN (g.home_score + g.away_score) < v.ref_total
+                            THEN 'hit' ELSE 'miss' END
+           END AS outcome
+    FROM cell_verdicts v
+    JOIN games g ON g.id = v.game_id
+    WHERE v.cell = 'scoring'
+      AND g.status = 'final'
+      AND g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+)
+SELECT sport, level,
+       count(*) FILTER (WHERE outcome IN ('hit', 'miss'))  AS decided,
+       count(*) FILTER (WHERE outcome = 'hit')             AS hits,
+       count(*) FILTER (WHERE outcome = 'push')            AS pushes,
+       count(*) FILTER (WHERE ref_total IS NULL)           AS ungradable,
+       round(avg(actual), 2)                               AS avg_actual,
+       round(avg(ref_total), 2)                            AS avg_ref,
+       CASE WHEN count(*) FILTER (WHERE outcome IN ('hit', 'miss')) > 0
+            THEN round(count(*) FILTER (WHERE outcome = 'hit')::numeric
+                 / count(*) FILTER (WHERE outcome IN ('hit', 'miss')), 4)
+       END                                                  AS hit_rate
+FROM graded
+GROUP BY sport, level;

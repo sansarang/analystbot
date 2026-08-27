@@ -28,6 +28,14 @@ CELLS: tuple[tuple[str, str], ...] = (
 )
 CELL_KEYS = tuple(k for k, _ in CELLS)
 
+# [§9-6번째 칸] **득점 환경** — 승패가 아니라 경기 전체의 성격을 답한다.
+#   앞의 다섯 칸은 "누가 이기나"만 답하고 총득점·점수차를 다루지 않는다.
+#   ⚠️ 팀 대조가 아니므로 **한 칸만** 있다. home/away로 나누지 않는다.
+#   ⚠️ 부호도 ▲▼가 아니다 — 다득점/보통/저득점 3단이다. 득점이 많은 것은
+#      어느 팀에게도 '유리'가 아니다.
+SCORING_CELL = ("scoring", "득점 환경")
+SCORING_LEVELS = ("다득점 예상", "보통", "저득점 예상")
+
 # 모름이 이만큼이면 판정하지 않는다. 재료 없이 결론을 내는 것보다 침묵이 낫다.
 MAX_UNKNOWN = 2
 
@@ -45,6 +53,45 @@ CELL_METRICS: dict[str, tuple[tuple[str, bool], ...]] = {
     "recent3": (("run_diff_l3", True), ("runs_per_game_l3", True)),
     "weight":  (("games_behind_cut", False),),     # 컷과 가까울수록 경쟁 중 = 유리
 }
+
+
+# [득점 환경] 지표와 방향 — (지표명, 클수록 득점이 많아지는가)
+#   ⚠️ 여기서 True/False는 "유리한가"가 아니라 **"득점이 늘어나는가"**다.
+#      다섯 칸의 CELL_METRICS와 의미가 다르므로 섞어 쓰면 안 된다.
+SCORING_METRICS: tuple[tuple[str, bool], ...] = (
+    ("runs_per_game_both", True),      # 양 팀 최근 회당 득점 합
+    ("starter_era_avg", True),         # 선발이 나쁠수록 점수가 난다
+    ("starter_ip_avg", False),         # 선발이 짧을수록 불펜 노출이 커진다
+    ("relief_batters_avg", True),      # 불펜이 소모됐을수록 뒤가 열린다
+    ("park_factor", True),             # 타자친화 구장일수록 총득점이 는다
+)
+
+
+def scoring_metrics(research: dict) -> dict[str, float]:
+    """득점 환경 칸의 수치 지표. **양 팀 값을 합치거나 평균 낸다.**
+
+    ⚠️ 한쪽만 있으면 넣지 않는다 — 한 팀 값으로 경기 전체를 말할 수 없다.
+    """
+    r = research or {}
+    out: dict[str, float] = {}
+
+    def _pair(section: str, field: str):
+        vals = [(r.get(f"{sd}_{section}") or {}).get(field) for sd in ("home", "away")]
+        vals = [v for v in vals if isinstance(v, int | float)]
+        return vals if len(vals) == 2 else []
+
+    if (v := _pair("usage", "runs_per_game_l3")):
+        out["runs_per_game_both"] = round(sum(v), 2)
+    if (v := _pair("pitcher", "era_season")):
+        out["starter_era_avg"] = round(sum(v) / 2, 2)
+    if (v := _pair("pitcher", "ip_avg_recent")):
+        out["starter_ip_avg"] = round(sum(v) / 2, 2)
+    if (v := _pair("usage", "relief_batters_l3")):
+        out["relief_batters_avg"] = round(sum(v) / 2, 1)
+    pf = r.get("park_factor")
+    if isinstance(pf, int | float):
+        out["park_factor"] = float(pf)
+    return out
 
 
 def cell_metrics(research: dict, side: str, key: str) -> dict[str, float]:
@@ -241,6 +288,43 @@ def _weight_facts(r: dict, side: str) -> tuple[list[str], str]:
     return [" · ".join(bits)], "네이버 순위(LLM 0회)"
 
 
+def _scoring_facts(r: dict, home_kr: str = "홈", away_kr: str = "원정") -> tuple[list[str], str]:
+    """[득점 환경] 경기 전체의 사실. **팀별이 아니라 경기 단위다.**
+
+    ⚠️ 여기서도 해석하지 않는다. "회당 10.33득점"까지가 이 층의 일이고,
+       "다득점 예상"은 2단의 일이다.
+    """
+    out, srcs = [], []
+    for side, name in (("away", away_kr), ("home", home_kr)):
+        u = r.get(f"{side}_usage") or {}
+        if u.get("score_games"):
+            out.append(f"{name} 최근 {u['score_games']}경기 회당 "
+                       f"{_f(u.get('runs_per_game_l3'))}득점 · "
+                       f"{u.get('runs_allowed_l3', 0)}실점(누적)")
+            srcs.append("네이버 기록")
+    for side, name in (("away", away_kr), ("home", home_kr)):
+        p = r.get(f"{side}_pitcher") or {}
+        if p.get("era_season") is not None:
+            bits = [f"{name} 선발 {p.get('name') or '?'} ERA {_f(p['era_season'])}"]
+            if p.get("whip") is not None:
+                bits.append(f"WHIP {_f(p['whip'])}")
+            if p.get("ip_avg_recent") is not None:
+                bits.append(f"평균 {_f(p['ip_avg_recent'])}이닝")
+            out.append(" · ".join(bits))
+            srcs.append("KBO 기록실")
+    for side, name in (("away", away_kr), ("home", home_kr)):
+        u = r.get(f"{side}_usage") or {}
+        if u.get("relief_batters_l3") is not None:
+            out.append(f"{name} 불펜 최근 3경기 구원 {u['relief_batters_l3']}타자 상대")
+    if r.get("park"):
+        out.append(str(r["park"]))
+        srcs.append("자체 산출 파크팩터")
+    if r.get("weather"):
+        out.append(f"날씨 {r['weather']}")
+        srcs.append("Open-Meteo")
+    return out, " · ".join(dict.fromkeys(srcs))
+
+
 _BUILDERS = {
     "bullpen": _bullpen_facts,
     "starter": _starter_facts,
@@ -273,11 +357,19 @@ def build_card(jg: dict, research: dict) -> dict:
     away = build_side(research, "away")
     unknown = [k for k in CELL_KEYS if not (home[k].known and away[k].known)]
     judgeable = len(unknown) <= MAX_UNKNOWN
+    # [§9-6번째 칸] 득점 환경 — 경기 단위라 home/away 밖에 따로 둔다.
+    _sc_facts, _sc_src = _scoring_facts(
+        research or {}, jg.get("home_kr") or jg.get("home") or "홈",
+        jg.get("away_kr") or jg.get("away") or "원정")
+    scoring = Cell(key=SCORING_CELL[0], label=SCORING_CELL[1],
+                   facts=_sc_facts, source=_sc_src,
+                   metrics=scoring_metrics(research or {}))
     return {
         "game_id": jg.get("game_id"),
         "home_team": jg.get("home"), "away_team": jg.get("away"),
         "home": {k: c.as_dict() for k, c in home.items()},
         "away": {k: c.as_dict() for k, c in away.items()},
+        "scoring": scoring.as_dict(),
         "unknown": unknown,
         "unknown_labels": [dict(CELLS)[k] for k in unknown],
         "judgeable": judgeable,

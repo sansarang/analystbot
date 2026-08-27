@@ -636,6 +636,10 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
     # [#73] 어느 provider가 언제 죽었는지 남긴다. 폴백 순서를 바꾸기 전에 볼 표다.
     redis = await _ledger_redis()
     for p in chain:
+        if (why := _is_exhausted(p.name)):
+            tried.append(f"{p.name}(소진·생략)")
+            last = last or LLMError(f"{p.name}: {why}")
+            continue
         try:
             res = await p.complete(messages, system=system, schema=schema,
                                    max_tokens=max_tokens, temperature=temperature,
@@ -663,11 +667,54 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
             await _ledger.record_call(redis, p.name, role, False)
             await _ledger.record_outage(redis, p.name, role,
                                         _outage_kind(exc), str(exc))
+            if _looks_daily(exc):
+                _mark_exhausted(p.name, str(exc))
     if starved:
         await _notify_budget(role, budget, max_tokens, last)
     # [#73] 체인 전부 실패 = 전멸. 하루 누적을 세어 provider 추가 필요를 알린다.
     await _ledger.record_blackout(redis, role)
     raise LLMError(f"역할 {role}: 체인 전부 실패 ({'→'.join(tried)})") from last
+
+
+# [소진 차단] 오늘 쿼터가 끝난 provider는 **이 프로세스에서 다시 부르지 않는다.**
+#   🔴 실사고 2026-08-27: Groq TPD가 소진된 뒤에도 호출마다 groq→gemini를 다시
+#      두드렸고, gemini 429 재시도(20초×2)를 매번 물었다. 호출 하나당 40초 이상이
+#      순수 대기였고 5경기 분석이 20분을 넘겼다.
+#      "재시도"는 일시적 장애를 위한 것이지 **하루치가 끝난 키**를 위한 것이 아니다.
+#   ⚠️ 프로세스 수명 동안만 기억한다. 키를 충전하고 재시작하면 다시 시도한다.
+_EXHAUSTED: dict[str, str] = {}
+
+
+def _mark_exhausted(name: str, why: str) -> None:
+    if name not in _EXHAUSTED:
+        logger.warning("[llm] %s 오늘 소진 — 이 프로세스에서는 건너뛴다 (%s)",
+                       name, why[:80])
+    _EXHAUSTED[name] = why
+
+
+def _is_exhausted(name: str) -> str | None:
+    return _EXHAUSTED.get(name)
+
+
+def reset_exhausted() -> None:
+    """테스트·재기동용."""
+    _EXHAUSTED.clear()
+
+
+# 하루치 소진을 뜻하는 문구 — 분당 제한(잠시 뒤 풀림)과 **구분해야 한다.**
+#   분당 제한을 소진으로 오분류하면 멀쩡한 provider를 통째로 버린다.
+#   ⚠️ **실제 응답 문구로 맞춘다.** "quota exceeded"로 적었더니 Gemini의
+#      "You exceeded your current quota"가 안 걸렸다(어순이 다르다) — 추측한
+#      문구는 안 맞는다. 새 provider를 붙이면 실제 429 본문을 보고 추가하라.
+_DAILY_MARKERS = ("per day", "tpd", "daily", "quota exceeded",
+                  "exceeded your current quota", "resource_exhausted",
+                  "credit balance", "used all available credits",
+                  "monthly spending limit")
+
+
+def _looks_daily(exc: Exception) -> bool:
+    txt = str(exc).lower()
+    return any(m in txt for m in _DAILY_MARKERS)
 
 
 def _outage_kind(exc: Exception) -> str:

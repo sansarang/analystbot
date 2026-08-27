@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import logging
 
+from app.engine.card import SCORING_LEVELS
+
 logger = logging.getLogger(__name__)
 
 # 칸별로 이만큼 채점되기 전에는 우열을 말하지 않는다.
@@ -26,13 +28,17 @@ MIN_SAMPLE = 30
 
 _UPSERT = """
     INSERT INTO cell_verdicts (game_id, side, team, cell, symbol, reason,
-                               fact_count, model, created_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+                               fact_count, model, ref_total, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
     ON CONFLICT (game_id, side, cell) DO UPDATE
        SET symbol = EXCLUDED.symbol, reason = EXCLUDED.reason,
            team = EXCLUDED.team, fact_count = EXCLUDED.fact_count,
-           model = EXCLUDED.model, created_at = now()
+           model = EXCLUDED.model, ref_total = EXCLUDED.ref_total,
+           created_at = now()
 """
+
+# 득점 환경은 경기 단위라 side를 쓰지 않는다 — 고정값으로 유일 제약을 만족시킨다.
+SCORING_SIDE = "game"
 
 
 async def record_verdicts(pool, game_id: int, side: str, team: str | None,
@@ -52,7 +58,7 @@ async def record_verdicts(pool, game_id: int, side: str, team: str | None,
         facts = ((card_side or {}).get(cell) or {}).get("facts") or []
         rows.append((int(game_id), side, team, cell, sym,
                      (v.get("reason") or "")[:1000], len(facts),
-                     v.get("provider")))
+                     v.get("provider"), None))
     if not rows:
         return 0
     async with pool.acquire() as con:
@@ -135,3 +141,56 @@ async def drain_retry_queue(redis, limit: int = 20) -> list[dict]:
     except Exception as exc:
         logger.debug("[2단] 재시도 큐 조회 실패: %s", exc)
     return out
+
+
+async def record_scoring(pool, game_id, level: str, reason: str,
+                        ref_total: float | None, facts: list | None = None,
+                        provider: str | None = None) -> bool:
+    """[§9-6번째 칸] 득점 환경 판정을 적재한다.
+
+    ⚠️ **기준 총득점(ref_total)을 함께 적는다.** 없으면 "다득점 예상이 맞았나"를
+       판정할 수 없다 — 무엇보다 많았어야 하는지가 정의되지 않는다.
+       기준이 없으면 기록은 하되 채점 대상에서 빠진다(뷰가 NULL을 거른다).
+    """
+    if not pool or not game_id or level not in SCORING_LEVELS:
+        return False
+    async with pool.acquire() as con:
+        await con.execute(_UPSERT, int(game_id), SCORING_SIDE, None, "scoring",
+                          level, (reason or "")[:1000], len(facts or []),
+                          provider, ref_total)
+    return True
+
+
+async def scoring_ledger(pool) -> list[dict]:
+    """득점 환경 적중률. 승패 칸과 **따로** 센다 — 다른 질문이기 때문이다."""
+    if not pool:
+        return []
+    rows = await pool.fetch("""
+        SELECT sport, level, decided, hits, pushes, ungradable,
+               avg_actual, avg_ref, hit_rate
+        FROM scoring_ledger ORDER BY sport, decided DESC
+    """)
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["verdict"] = "표본 부족" if (d["decided"] or 0) < MIN_SAMPLE else "판단 가능"
+        out.append(d)
+    return out
+
+
+def format_scoring_ledger(rows: list[dict]) -> str:
+    """표본 부족이면 적중률 숫자를 쓰지 않는다 — 얇은 표본은 근거가 못 된다."""
+    if not rows:
+        return "득점 환경 채점 기록 없음"
+    parts = []
+    for r in rows:
+        head = f"{r['sport']}/{r['level']}"
+        if r["verdict"] == "표본 부족":
+            parts.append(f"{head}: {r['decided']}건 — 표본 부족(최소 {MIN_SAMPLE})")
+        else:
+            parts.append(f"{head}: {r['hits']}/{r['decided']} "
+                         f"= {float(r['hit_rate']) * 100:.1f}% "
+                         f"(실제 평균 {r['avg_actual']} vs 기준 {r['avg_ref']})")
+        if r.get("ungradable"):
+            parts[-1] += f" · 기준 없어 미채점 {r['ungradable']}건"
+    return " · ".join(parts)
