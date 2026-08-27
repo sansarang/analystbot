@@ -129,6 +129,10 @@ class Settings(BaseSettings):
     # Gemini 무료 티어는 **분당** 제한이다(실측: 몇 분 뒤 풀렸다 — 소진 아님).
     # Perplexity와 같은 방식으로 호출 간격을 둔다.
     gemini_min_interval: float = 4.0
+    # Groq 무료 티어도 분당 제한이 있다. 2단은 경기당 2콜이라 연속으로 나간다.
+    openai_compat_min_interval: float = 1.0
+    # 429를 만나면 이만큼 재시도한다(Retry-After가 오면 그것을 우선).
+    llm_rate_retries: int = 2
     gemini_base_url: str | None = None
     groq_base_url: str | None = None
     deepseek_base_url: str | None = None

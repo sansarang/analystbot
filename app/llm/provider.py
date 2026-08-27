@@ -220,6 +220,41 @@ def _S():
     return get_settings()
 
 
+class _Throttle:
+    """provider별 호출 간격. **무료 티어는 대부분 분당 제한이다.**
+
+    2단 해석봇은 경기당 2콜(팀별)이라 슬레이트를 돌리면 연속으로 나간다.
+    간격이 없으면 곧바로 429를 맞고, 폴백이 연쇄로 소모된다.
+    """
+
+    def __init__(self):
+        self._last: dict[str, float] = {}
+        self._gate = asyncio.Lock()
+
+    async def wait(self, key: str, interval: float) -> None:
+        if interval <= 0:
+            return
+        import time
+
+        async with self._gate:
+            gap = interval - (time.monotonic() - self._last.get(key, 0.0))
+            if gap > 0:
+                await asyncio.sleep(gap)
+            self._last[key] = time.monotonic()
+
+
+_THROTTLE = _Throttle()
+
+
+def _retry_after(headers) -> float | None:
+    """429 응답의 Retry-After(초). 없으면 None."""
+    v = (headers or {}).get("retry-after") or (headers or {}).get("Retry-After")
+    try:
+        return float(v) if v else None
+    except (TypeError, ValueError):
+        return None
+
+
 class GeminiProvider(Provider):
     """Google Gemini — REST. SDK 없이 httpx로 호출한다(의존성 추가 없음).
 
@@ -232,20 +267,8 @@ class GeminiProvider(Provider):
     name = "gemini"
     supports_native_schema = True
     DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta"
-    _last_call: float = 0.0
-    _gate = asyncio.Lock()
-
     async def _throttle(self) -> None:
-        interval = _S().gemini_min_interval
-        if interval <= 0:
-            return
-        async with GeminiProvider._gate:
-            import time
-
-            wait = interval - (time.monotonic() - GeminiProvider._last_call)
-            if wait > 0:
-                await asyncio.sleep(wait)
-            GeminiProvider._last_call = time.monotonic()
+        await _THROTTLE.wait("gemini", _S().gemini_min_interval)
 
     async def _call(self, system, messages, schema, max_tokens, temperature, thinking=0):
         import httpx
@@ -279,11 +302,21 @@ class GeminiProvider(Provider):
         #    같은 답이 오고 쿼터만 태운다.
         last = None
         async with httpx.AsyncClient(timeout=self.timeout) as c:
+            rate_left = _S().llm_rate_retries
             for delay in (0, 2, 6):
                 if delay:
                     await asyncio.sleep(delay)
                 r = await c.post(url, params={"key": self.api_key}, json=body)
                 last = r
+                # 429는 **분당 제한**일 수 있다(실측: 몇 분 뒤 풀렸다).
+                # Retry-After가 오면 그것을 따르고, 없으면 짧게 기다린다.
+                if r.status_code == 429 and rate_left > 0:
+                    rate_left -= 1
+                    wait = _retry_after(r.headers) or 20.0
+                    logger.warning("[gemini] 429 — %.0fs 후 재시도 (남은 %d회)",
+                                   wait, rate_left)
+                    await asyncio.sleep(wait)
+                    continue
                 if r.status_code < 500:
                     break
                 logger.warning("[gemini] HTTP %d — %ds 후 재시도", r.status_code, delay or 2)
@@ -346,11 +379,26 @@ class OpenAICompatProvider(Provider):
                                            "parameters": schema}}]
             body["tool_choice"] = {"type": "function", "function": {"name": "result"}}
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        await _THROTTLE.wait(self.name, _S().openai_compat_min_interval)
+        url = f"{self.base_url.rstrip('/')}/chat/completions"
+        rate_left = _S().llm_rate_retries
         async with httpx.AsyncClient(timeout=self.timeout) as c:
-            r = await c.post(f"{self.base_url.rstrip('/')}/chat/completions",
-                             headers=headers, json=body)
-        if r.status_code in (402, 429) or "credit" in r.text.lower():
+            while True:
+                r = await c.post(url, headers=headers, json=body)
+                # ⚠️ 429를 크레딧 소진으로 오분류하면 **잔액이 있는데 폴백**한다.
+                #    이 프로젝트가 Perplexity에서 이미 겪은 사고다.
+                if r.status_code == 429 and rate_left > 0:
+                    rate_left -= 1
+                    wait = _retry_after(r.headers) or 5.0
+                    logger.warning("[%s] 429 — %.0fs 후 재시도 (남은 %d회)",
+                                   self.name, wait, rate_left)
+                    await asyncio.sleep(wait)
+                    continue
+                break
+        if r.status_code == 402 or "credit" in r.text.lower():
             raise ApiQuotaError(self.name, r.text[:300])
+        if r.status_code == 429:
+            raise ApiQuotaError(self.name, f"레이트리밋 재시도 소진: {r.text[:250]}")
         if r.status_code >= 400:
             raise LLMError(f"{self.name} HTTP {r.status_code}: {r.text[:300]}")
         choice = ((r.json().get("choices") or [{}])[0].get("message") or {})
