@@ -3,6 +3,7 @@
 0단계 실측(2026-08-28): 타석 단위는 없고 등판 단위(IP/TBF/ER)만 있다.
 λ 계수는 만들지 않는다.
 """
+import json
 from datetime import UTC, datetime, timedelta
 
 from app.collectors.kbo_boxscore import parse_official_ip, parse_official_pitchers
@@ -69,6 +70,36 @@ def test_official_pitchers_use_game_line_not_season_era():
     assert "era" not in got[0] and "era_season" not in got[0]
     assert got[1]["is_starter"] is False
     assert got[1]["innings"] == 1.333
+
+
+def test_official_pitchers_read_headers_not_first_data_row():
+    """실측 2026-08-28: 헤더는 headers, rows[0]은 선수(토다). table 키."""
+    from app.collectors.kbo_boxscore import parse_box
+
+    header = ["선수명", "등판", "결과", "승", "패", "세", "이닝", "타자",
+              "투구수", "타수", "피안타", "홈런", "4사구", "삼진", "실점",
+              "자책", "평균자책점"]
+    data = ["토다", "선발", "승", "7", "8", "0", "6", "26",
+            "108", "25", "8", "0", "1", "3", "3", "3", "5.04"]
+    blob = {
+        "headers": [{"row": [{"Text": c} for c in header]}],
+        "rows": [{"row": [{"Text": c} for c in data]}],
+    }
+    got = parse_official_pitchers(blob)
+    assert len(got) == 1
+    assert got[0]["name"] == "토다" and got[0]["is_starter"] is True
+    assert got[0]["innings"] == 6.0 and got[0]["er"] == 3 and got[0]["batters"] == 26
+    assert "era" not in got[0]
+
+    nine = [{"row": [{"Text": str(i)}, {"Text": "중"}, {"Text": f"타자{i}"}]}
+            for i in range(1, 10)]
+    hitter = json.dumps({"rows": nine})
+    box = parse_box({
+        "arrHitter": [{"table1": hitter}, {"table1": hitter}],
+        "arrPitcher": [{"table": blob}, {"table": blob}],
+    }, "2026-08-27", "x")
+    assert len(box["away_pitchers"]) == 1 and box["away_pitchers"][0]["name"] == "토다"
+    assert len(box["home"]) == 9
 
 
 def test_npb_ip_is_outs_not_decimal():

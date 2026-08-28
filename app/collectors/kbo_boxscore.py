@@ -135,18 +135,28 @@ def _opt_int(v):
 
 
 def parse_official_pitchers(table_json: str | dict) -> list[dict]:
-    """arrPitcher table1 → 등판 순서 목록. 시즌 ERA(마지막 열)는 버린다."""
+    """arrPitcher → 등판 순서. 시즌 ERA(마지막 열)는 버린다.
+
+    실측 2026-08-28: 헤더는 `headers[0]`이고 `rows`는 선수부터다.
+    타자표(`table1`)처럼 첫 행을 헤더로 보면 선수명이 헤더가 되어 0건이 된다.
+    """
     t = json.loads(table_json) if isinstance(table_json, str) else (table_json or {})
     rows_raw = t.get("rows") or []
-    if len(rows_raw) < 2:
-        return []
-    head = [_pitcher_cell(c) for c in (rows_raw[0].get("row") or [])]
+    header_rows = t.get("headers") or []
+    if header_rows:
+        head = [_pitcher_cell(c) for c in (header_rows[0].get("row") or [])]
+        data = rows_raw
+    else:
+        if len(rows_raw) < 2:
+            return []
+        head = [_pitcher_cell(c) for c in (rows_raw[0].get("row") or [])]
+        data = rows_raw[1:]
     idx = {name: i for i, name in enumerate(head)}
     if "선수명" not in idx or "이닝" not in idx:
         logger.warning("[백필] arrPitcher 헤더 불일치: %s", head)
         return []
     out = []
-    for row in rows_raw[1:]:
+    for row in data:
         cells = [_pitcher_cell(c) for c in (row.get("row") or [])]
         if not cells:
             continue
@@ -155,9 +165,9 @@ def parse_official_pitchers(table_json: str | dict) -> list[dict]:
             continue
         entry = cells[idx["등판"]] if "등판" in idx and idx["등판"] < len(cells) else ""
         ip = parse_official_ip(cells[idx["이닝"]] if idx["이닝"] < len(cells) else "")
-        def col(key):
-            i = idx.get(key)
-            return cells[i] if i is not None and i < len(cells) else ""
+        def col(key, _cells=cells, _idx=idx):
+            i = _idx.get(key)
+            return _cells[i] if i is not None and i < len(_cells) else ""
         out.append({
             "name": name,
             "is_starter": entry == "선발",
@@ -188,6 +198,12 @@ async def fetch_box(game_id: str) -> dict:
     return r.json()
 
 
+def _pitcher_table(block: dict) -> str | dict | None:
+    """투수표 키. 실측 2026-08-28: arrPitcher는 `table`, arrHitter는 `table1`."""
+    b = block or {}
+    return b.get("table") or b.get("table1")
+
+
 def parse_box(j: dict, date: str, game_id: str) -> dict:
     hitters = j.get("arrHitter") or []
     pitchers = j.get("arrPitcher") or []
@@ -196,9 +212,9 @@ def parse_box(j: dict, date: str, game_id: str) -> dict:
     out = {
         "away": parse_starting_order((hitters[0] or {}).get("table1")),
         "home": parse_starting_order((hitters[1] or {}).get("table1")),
-        "away_pitchers": parse_official_pitchers((pitchers[0] or {}).get("table1"))
+        "away_pitchers": parse_official_pitchers(_pitcher_table(pitchers[0]))
         if len(pitchers) >= 1 else [],
-        "home_pitchers": parse_official_pitchers((pitchers[1] or {}).get("table1"))
+        "home_pitchers": parse_official_pitchers(_pitcher_table(pitchers[1]))
         if len(pitchers) >= 2 else [],
         "date": date, "game_id": game_id,
     }
