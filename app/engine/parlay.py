@@ -14,7 +14,7 @@ def _combo(legs: list[dict]) -> dict | None:
     """합산 배당·확률. 배당이 없는 레그(KBO·NPB)는 조합을 만들지 않는다.
 
     실측 2026-08-28: `prod([None])` 이 `1 * None`으로 터져, 판정·서술까지 끝난
-    분석이 캐시에 안 남고 17:45가 '분석 캐시가 없어'를 보냈다.
+    분석이 캐시에 안 남고 발송이 '분석 캐시가 없어'를 보냈다.
     """
     odds_vals, p_vals = [], []
     for leg in legs:

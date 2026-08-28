@@ -1,7 +1,7 @@
 // Package pace — 종목·경기 시작 시각으로 크롤 간격을 정한다.
 //
 // 고정 시계(15:30~19:30)는 KBO 18:30과 NPB 18:00을 한 덩어리로 본다.
-// 실제 시작 시각은 경기마다 다르고, NPB 가속은 발송(17:45) 뒤까지 유지한다.
+// 실제 시작 시각은 경기마다 다르고, NPB 가속은 시작 15분 전(17:45)에 끝낸다.
 package pace
 
 import "time"
@@ -11,10 +11,10 @@ const (
 	// 직전 교체 실측은 시작 19분 전이라, 가속은 **시작 직전까지** 유지한다.
 	KBOLead = 4*time.Hour + 30*time.Minute
 
-	// NPB 타순은 시작 약 1시간 전부터 뜬다. 17:45 공통 발송보다 먼저 끊으면
-	// Yahoo가 늦게 올린 타순이 스냅샷에 없다 (20분이면 18:00 경기 17:40 종료).
+	// NPB 타순은 시작 약 1시간 전부터 뜬다. 크롤·분석은 시작 15분 전
+	// (18:00 → 17:45)에 끝낸다. 그 뒤에 가속하면 17:45 종료선을 넘긴다.
 	NPBLead       = 1 * time.Hour
-	NPBStopBefore = 10 * time.Minute
+	NPBStopBefore = 15 * time.Minute
 )
 
 func kboFast(now, start time.Time) bool {

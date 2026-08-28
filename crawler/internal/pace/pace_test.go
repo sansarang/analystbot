@@ -34,7 +34,7 @@ func TestKBOUsesThatGamesStartNotASharedClock(t *testing.T) {
 	}
 }
 
-func TestNPBStopsTenMinutesBeforeStart(t *testing.T) {
+func TestNPBStopsFifteenMinutesBeforeStart(t *testing.T) {
 	start := at("18:00")
 	if !Fast("npb", at("17:00"), []time.Time{start}) {
 		t.Fatal("시작 1시간 전은 가속")
@@ -42,11 +42,14 @@ func TestNPBStopsTenMinutesBeforeStart(t *testing.T) {
 	if Fast("npb", at("16:59"), []time.Time{start}) {
 		t.Fatal("1시간보다 이르면 평시")
 	}
-	if !Fast("npb", at("17:45"), []time.Time{start}) {
-		t.Fatal("17:45 발송 시각은 아직 가속이어야 한다")
+	if !Fast("npb", at("17:44"), []time.Time{start}) {
+		t.Fatal("17:44는 아직 가속(17:45에 끝낸다)")
+	}
+	if Fast("npb", at("17:45"), []time.Time{start}) {
+		t.Fatal("17:45부터는 가속하지 않는다 — 크롤·분석 종료선")
 	}
 	if Fast("npb", at("17:50"), []time.Time{start}) {
-		t.Fatal("시작 10분 전(17:50)부터는 가속하지 않는다")
+		t.Fatal("17:45 이후는 가속하지 않는다")
 	}
 	if Fast("npb", at("18:00"), []time.Time{start}) {
 		t.Fatal("시작 시각은 가속하지 않는다")
@@ -54,7 +57,7 @@ func TestNPBStopsTenMinutesBeforeStart(t *testing.T) {
 }
 
 func TestNPBEighteenThirtyIsNotEighteenHundred(t *testing.T) {
-	// 18:30 시작이면 창은 17:30~18:20. 18:00 경기 창(17:00~17:50)과 다르다.
+	// 18:30 시작이면 창은 17:30~18:15. 18:00 경기 창(17:00~17:45)과 다르다.
 	start := at("18:30")
 	if Fast("npb", at("17:00"), []time.Time{start}) {
 		t.Fatal("18:30 경기를 18:00 시계로 가속하면 안 된다")
@@ -62,8 +65,11 @@ func TestNPBEighteenThirtyIsNotEighteenHundred(t *testing.T) {
 	if !Fast("npb", at("17:30"), []time.Time{start}) {
 		t.Fatal("18:30 경기 17:30은 가속")
 	}
+	if Fast("npb", at("18:15"), []time.Time{start}) {
+		t.Fatal("18:30 경기 시작 15분 전 이후는 가속하지 않는다")
+	}
 	if Fast("npb", at("18:20"), []time.Time{start}) {
-		t.Fatal("18:30 경기 시작 10분 전 이후는 가속하지 않는다")
+		t.Fatal("18:30 경기 18:20은 가속하면 안 된다")
 	}
 }
 

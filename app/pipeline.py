@@ -618,7 +618,7 @@ def analysis_cache_ready(raw: str | None, date: str) -> bool:
     """당일 예정 경기에 Claude 판정(`p_claude`)이 붙어 있는가.
 
     키만 있으면 준비됨으로 치면 안 된다. 실측 2026-08-28: 캐시는 있는데
-    `p_claude`가 전원 null이라 17:45가 승률 없는 카드를 보낼 뻔했다.
+    `p_claude`가 전원 null이라 승률 없는 카드를 보낼 뻔했다.
     다음날 경기가 같은 키에 섞여 있어도 **요청 날짜**만 본다.
     """
     if not raw:
@@ -766,7 +766,7 @@ async def build_analysis(
         day = date_cls.fromisoformat(date)
         # asyncpg Date 코덱은 str에 toordinal이 없어 터진다.
         # 실측 2026-08-28 17:25: `$2::date` + '2026-08-28' → 파이프라인 실패,
-        # 시그만 남아 17:45 재시도가 스킵됐다.
+        # 시그만 남아 다음 폴링이 재시도를 스킵했다.
         if include_final:
             rows = await pool.fetch(
                 """

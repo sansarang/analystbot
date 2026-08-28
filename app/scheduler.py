@@ -6,7 +6,7 @@
 import asyncio
 import logging
 from dataclasses import replace
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import redis.asyncio as aioredis
@@ -258,9 +258,7 @@ async def lineup_poll_job() -> None:
         """
     )
     if not rows:
-        now = datetime.now(KST)
-        if not (now.hour == 17 and now.minute >= 40):
-            await crawler_lineup_poll()
+        await crawler_lineup_poll()
         return
     client = MLBLineupClient()
     updated = []
@@ -277,57 +275,36 @@ async def lineup_poll_job() -> None:
     confirmed = sum(1 for _g, r in updated if r["status"] == STATUS_CONFIRMED)
     if confirmed:
         logger.info("[scheduler] 라인업 확정 %d경기 — 최종 픽으로 갱신", confirmed)
-    # 17:40 이후는 pregame_push_1745가 KBO·NPB를 맡는다. 여기서 또 돌리면
-    # 파이프라인이 겹친다.
-    now = datetime.now(KST)
-    if now.hour == 17 and now.minute >= 40:
-        return
     await crawler_lineup_poll()
-
-
-async def pregame_push_job() -> dict:
-    """KBO·NPB 당일 예측 — 매일 17:45 KST 한꺼번에 발송.
-
-    사용자 지시(2026-08-28): 라인업은 KBO 1시간 전·NPB 30분 전(17:30)에 뜨고,
-    카드는 공통 17:45에 보낸다. MLB·축구는 보내지 않는다. 베팅 집행 없음.
-    """
-    from app.engine.pregame_push import run_pregame_push
-
-    try:
-        await crawler_lineup_poll()
-    except Exception as exc:
-        logger.warning("[scheduler] pregame 직전 라인업 폴링 실패: %s", exc)
-    pool = await get_pool()
-    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
-    try:
-        result = await run_pregame_push(pool, redis)
-        if result["due"]:
-            logger.info("[scheduler] pregame push %s", result)
-        return result
-    finally:
-        await redis.aclose()
 
 
 async def crawler_lineup_poll() -> None:
     """[배선] KBO·NPB 라인업을 크롤러 스냅샷에서 확인하고, 새로 뜨면 재판정한다.
 
+    NPB는 시작 15분 전(18:00 → 17:45)까지 크롤·분석을 끝낸다. 그 시각 이후
+    재판정하지 않는다. 타순이 바뀐 경기는 종목 안에서 병렬로 돌리고, 끝나는
+    즉시 보낸다. 슬레이트 파이프라인(`ensure_analysis_cache`)은 저녁에 돌리지 않는다.
     ⚠️ MLB 경로(`refresh_mlb_lineup`)는 statsapi 전용이라 이 두 종목에 쓸 수 없다.
-       크롤러가 이미 라인업을 모으고 있으므로 그것을 읽는다.
     ⚠️ 한 경기 실패가 나머지를 막지 않는다.
     """
     import redis.asyncio as aioredis
 
     from app.collectors import crawler_feed
+    from app.engine.pregame_push import (
+        analysis_open, roster_signature, send_game_prediction, still_upcoming,
+    )
     from app.pipeline import (
-        analysis_cache_ready, ensure_analysis_cache, is_final_window,
+        analysis_cache_ready, is_final_window,
         rejudge_after_lineup, today_kst,
     )
 
     s = get_settings()
     pool = await get_pool()
     redis = aioredis.from_url(s.redis_url, decode_responses=True)
+    now = datetime.now(UTC)
     try:
-        for sport in ("kbo", "npb"):
+        # NPB를 먼저 — 17:45 종료선을 KBO 슬레이트에 밀리지 않게.
+        for sport in ("npb", "kbo"):
             date = today_kst()
             snap = await crawler_feed.load_snapshot(redis, sport, date)
             if not snap:
@@ -341,8 +318,8 @@ async def crawler_lineup_poll() -> None:
             cancelled = await crawler_feed.mark_cancelled_games(pool, rows, snap)
             if cancelled:
                 rows = [r for r in rows if r["id"] not in set(cancelled)]
-            ensured = False
-            just_built = False
+            jobs: list[tuple] = []
+            catchup: list = []
             for r in rows:
                 key = f"{r['away']}@{r['home']}"
                 game = snap.get(key) or {}
@@ -350,25 +327,13 @@ async def crawler_lineup_poll() -> None:
                            for sd in ("home", "away"))
                 if not have:
                     continue
-                final = is_final_window(r["starts_at"], sport=sport)
+                final = is_final_window(r["starts_at"], now, sport=sport)
                 status = "confirmed" if final else "predicted"
-                sig = "|".join([
-                    status,
-                    (game.get("home_pitcher") or "").strip(),
-                    (game.get("away_pitcher") or "").strip(),
-                    (game.get("lineup_home") or "").strip(),
-                    (game.get("lineup_away") or "").strip(),
-                ])
+                roster = roster_signature(
+                    game.get("home_pitcher"), game.get("away_pitcher"),
+                    game.get("lineup_home"), game.get("lineup_away"))
                 sig_key = f"lineup_sig:{r['id']}"
-                if await redis.get(sig_key) == sig:
-                    continue
-                if not ensured:
-                    raw = await redis.get(f"analysis:{sport}:{date}")
-                    was_ready = analysis_cache_ready(raw, date)
-                    ready = await ensure_analysis_cache(pool, redis, sport, date)
-                    # 파이프라인이 실패했는데 시그만 남기면 다음 폴링이 재시도를 안 한다.
-                    just_built = (not was_ready) and ready
-                    ensured = True
+                roster_changed = await redis.get(sig_key) != roster
                 notes = []
                 if (r["home_pitcher"] and game.get("home_pitcher")
                         and r["home_pitcher"] != game["home_pitcher"]):
@@ -378,33 +343,65 @@ async def crawler_lineup_poll() -> None:
                         and r["away_pitcher"] != game["away_pitcher"]):
                     notes.append(
                         f"원정 선발 변경: {r['away_pitcher']} → {game['away_pitcher']}")
-                await pool.execute(
-                    "UPDATE games SET lineup_status = $2, "
-                    "home_pitcher = COALESCE($3, home_pitcher), "
-                    "away_pitcher = COALESCE($4, away_pitcher), "
-                    "updated_at = now() WHERE id = $1",
-                    r["id"], status,
-                    game.get("home_pitcher") or None,
-                    game.get("away_pitcher") or None)
-                if just_built:
-                    # 방금 파이프라인이 현재 스냅샷(타순 포함)을 보고 판정했다.
-                    await redis.set(sig_key, sig, ex=86400)
-                    logger.info("[scheduler] %s 라인업 %s — 파이프라인 직후 재판정 생략 game=%s",
-                                sport, status, r["id"])
-                    continue
+                if roster_changed:
+                    await pool.execute(
+                        "UPDATE games SET lineup_status = $2, "
+                        "home_pitcher = COALESCE($3, home_pitcher), "
+                        "away_pitcher = COALESCE($4, away_pitcher), "
+                        "updated_at = now() WHERE id = $1",
+                        r["id"], status,
+                        game.get("home_pitcher") or None,
+                        game.get("away_pitcher") or None)
+                if roster_changed and analysis_open(sport, r["starts_at"], now):
+                    jobs.append((dict(r), status, notes, roster, sig_key, game))
+                else:
+                    if roster_changed:
+                        await redis.set(sig_key, roster, ex=86400)
+                        if sport == "npb" and still_upcoming(r["starts_at"], now):
+                            logger.warning(
+                                "[scheduler] NPB T-15 이후 라인업 변동 — 재판정 안 함 game=%s",
+                                r["id"])
+                    catchup.append(dict(r))
+
+            async def _rejudge_and_send(item, *, _sport=sport, _date=date):
+                row, status, notes, roster, sig_key, game = item
+                raw = await redis.get(f"analysis:{_sport}:{_date}")
+                if not analysis_cache_ready(raw, _date):
+                    logger.warning(
+                        "[scheduler] %s 캐시 없음 — 슬레이트 파이프라인 생략 game=%s",
+                        _sport, row["id"])
+                    return
                 try:
                     ok = await rejudge_after_lineup(
-                        dict(r), {"status": status, "notes": notes,
-                                  "starters": {"home": game.get("home_pitcher") or None,
-                                               "away": game.get("away_pitcher") or None},
-                                  "injuries": {}})
+                        row, {"status": status, "notes": notes,
+                              "starters": {"home": game.get("home_pitcher") or None,
+                                           "away": game.get("away_pitcher") or None},
+                              "injuries": {}})
                     if ok:
-                        await redis.set(sig_key, sig, ex=86400)
+                        await redis.set(sig_key, roster, ex=86400)
+                        sent = await send_game_prediction(redis, row, _date, now=now)
+                        if sent in ("sent", "revised"):
+                            logger.info("[scheduler] %s 예측 카드 %s game=%s",
+                                        _sport, sent, row["id"])
                     logger.info("[scheduler] %s 라인업 %s — 재판정 game=%s ok=%s",
-                                sport, status, r["id"], ok)
+                                _sport, status, row["id"], ok)
                 except Exception as exc:
                     logger.warning("[scheduler] %s 재판정 실패 game=%s: %s",
-                                   sport, r["id"], exc)
+                                   _sport, row["id"], exc)
+
+            if jobs:
+                await asyncio.gather(
+                    *[_rejudge_and_send(item) for item in jobs],
+                    return_exceptions=True)
+            for row in catchup:
+                try:
+                    sent = await send_game_prediction(redis, row, date, now=now)
+                    if sent in ("sent", "revised"):
+                        logger.info("[scheduler] %s 예측 카드 %s game=%s",
+                                    sport, sent, row["id"])
+                except Exception as exc:
+                    logger.warning("[scheduler] %s 발송 실패 game=%s: %s",
+                                   sport, row["id"], exc)
     finally:
         await redis.aclose()
 
@@ -665,10 +662,10 @@ def _job_specs() -> list[tuple]:
         ("grade_yesterday", grading_job, CronTrigger(hour=13, minute=0, timezone=KST)),
         ("research_retry_45m", research_retry_job, IntervalTrigger(minutes=45)),
         ("lineup_poll_30m", lineup_poll_job, IntervalTrigger(minutes=30)),
-        # 17:30 타순을 17:45까지 기다리면 NPB 18:00과 겹친다. 17:00~17:40 5분마다
-        # 스냅샷만 읽고, 타순이 있으면 그때 파이프라인을 돌린다. 17:45는 발송 잡.
-        ("asia_lineup_1700", crawler_lineup_poll,
-         CronTrigger(hour=17, minute="0,5,10,15,20,25,30,35,40", timezone=KST)),
+        # NPB 18:00 → 17:45까지 크롤·분석 종료. KBO는 시작 직전까지 5분마다.
+        ("asia_pregame_5m", crawler_lineup_poll,
+         CronTrigger(hour="17,18", minute="0,5,10,15,20,25,30,35,40,45,50,55",
+                     timezone=KST)),
         ("statcast_daily", statcast_refresh_job,
          CronTrigger(hour=3, minute=30, timezone=KST)),
         # 파크팩터는 시즌 누적이라 천천히 변한다 — 주 1회면 충분하고 statsapi 1콜이다
@@ -685,9 +682,6 @@ def _job_specs() -> list[tuple]:
         # NPB는 Yahoo `/top` 종료 경기 打順. 오전엔 오늘 타순이 없다(시작 ~30분 전).
         ("npb_lineup_history", npb_lineup_history_job,
          CronTrigger(hour=5, minute=25, timezone=KST)),
-        # KBO·NPB 당일 전 경기. 라인업 공시(17:30) 뒤 공통 17:45.
-        ("pregame_push_1745", pregame_push_job,
-         CronTrigger(hour=17, minute=45, timezone=KST)),
     ]
 
 
@@ -695,10 +689,7 @@ def build_scheduler() -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone=KST)
     for job_id, fn, trigger in _job_specs():
         _JOB_TRIGGERS[job_id] = trigger
-        # 17:45 발송은 6시간 유예하면 경기가 끝난 뒤에 나간다.
-        if job_id == "pregame_push_1745":
-            grace = 10 * 60
-        elif job_id == "asia_lineup_1700":
+        if job_id == "asia_pregame_5m":
             grace = 4 * 60
         else:
             grace = MISFIRE_GRACE_SEC

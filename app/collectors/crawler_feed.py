@@ -121,7 +121,7 @@ _STARTER_FIELDS = ("home_pitcher", "away_pitcher")
 
 # 크롤러 status 필드. 빈 값은 정상(미시작). 값이 있는데 취소 표시면 DB를 맞춘다.
 # 실측 2026-08-28: 네이버 `경기취소`가 Redis에만 있고 games.status는 scheduled
-# 로 남아 17:45가 취소 경기를 카드로 보낼 뻔했다.
+# 로 남아 발송이 취소 경기를 카드로 보낼 뻔했다.
 _CANCEL_MARKERS = ("취소", "中止", "キャンセル", "cancelled", "canceled", "연기")
 
 

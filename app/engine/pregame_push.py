@@ -1,9 +1,12 @@
-"""KBO·NPB 당일 예측 카드 — 매일 17:45 KST에 한꺼번에 발송.
+"""KBO·NPB 당일 예측 카드 — 경기마다 1차 발송, 라인업 변동 시 재발송.
 
 사용자 지시(2026-08-28):
-  · 라인업 공시: KBO 경기 1시간 전, NPB 30분 전 (둘 다 17:30).
-  · 그 다음 공통 발송: 17:45. 경기마다 15분 전이 아니다.
-  · MLB·축구는 요청할 때만. 베팅 집행 없음.
+  · NPB 크롤·분석은 시작 15분 전(18:00 → **17:45**)에 끝낸다. 그 시각 이후
+    NPB 재판정은 하지 않는다. 이미 판정된 카드 발송은 시작 전까지.
+  · 타순이 뜨면 그 경기만 바로 판정하고, 끝나는 대로 보낸다. 슬레이트를 기다리지 않는다.
+  · 선발·타순이 바뀌면 다시 보낸다. predicted/confirmed 시계만 지난 것은 재판정 사유가 아니다.
+  · 캐시·판정이 없으면 빈 카드를 보내지 않는다. MLB·축구는 요청할 때만.
+  · 이 모듈은 Judge·파이프라인을 호출하지 않는다. 이미 판정된 캐시만 보낸다.
 """
 
 from __future__ import annotations
@@ -16,7 +19,6 @@ from app import notify as _notify_mod
 from app.engine.lineup_timing import _parse
 from app.pipeline import (
     DETAIL_SEP,
-    ensure_analysis_cache,
     render_game_easy,
     today_kst,
 )
@@ -25,15 +27,19 @@ from app.collectors.crawler_feed import load_snapshot, mark_cancelled_games
 logger = logging.getLogger(__name__)
 
 SPORTS = ("kbo", "npb")
-PUSH_HOUR = 17
-PUSH_MINUTE = 45
+STAGE1_DEADLINE_MIN = 30
+# NPB 18:00 → 17:45. 경기 시각이 다르면 그 경기의 시작 15분 전.
+NPB_FINISH_MIN = 15
+HARD_TARGET_MIN = NPB_FINISH_MIN
+# 17:20부터 보내기 시작 (KBO 18:30=T-70, NPB 18:00=T-40). 14:00 카드는 막는다.
+SEND_OPEN_MIN = {"kbo": 70, "npb": 40}
 SENT_TTL_SEC = 12 * 3600
 SPORT_LABEL = {"kbo": "KBO", "npb": "NPB"}
 TELEGRAM_LIMIT = 4096
 
 
-def sent_key(game_id: int) -> str:
-    return f"pregame_push:{game_id}"
+def card_sig_key(game_id: int) -> str:
+    return f"pregame_card_sig:{game_id}"
 
 
 def still_upcoming(starts_at, now=None) -> bool:
@@ -47,29 +53,95 @@ def still_upcoming(starts_at, now=None) -> bool:
     return (d - now).total_seconds() > 0
 
 
-def header_line(sport: str) -> str:
+def minutes_until_start(starts_at, now=None) -> float | None:
+    d = _parse(starts_at)
+    if d is None:
+        return None
+    now = now or datetime.now(UTC)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
+    return (d - now).total_seconds() / 60.0
+
+
+def in_send_window(sport: str, starts_at, now=None, settings=None) -> bool:
+    """17:20 전후부터 시작 전까지. settings는 호출부 호환용."""
+    del settings
+    left = minutes_until_start(starts_at, now)
+    if left is None or left <= 0:
+        return False
+    open_m = SEND_OPEN_MIN.get(sport)
+    return open_m is not None and left <= open_m
+
+
+def analysis_open(sport: str, starts_at, now=None) -> bool:
+    """NPB는 T-15 이후 재판정하지 않는다. KBO는 시작 전까지."""
+    if not still_upcoming(starts_at, now):
+        return False
+    if sport != "npb":
+        return True
+    left = minutes_until_start(starts_at, now)
+    return left is not None and left > NPB_FINISH_MIN
+
+
+def roster_signature(home_pitcher, away_pitcher, lineup_home, lineup_away) -> str:
+    """선발·타순만. 잠정/확정 시계는 재판정 사유가 아니다."""
+    return "|".join([
+        (home_pitcher or "").strip(),
+        (away_pitcher or "").strip(),
+        (lineup_home or "").strip(),
+        (lineup_away or "").strip(),
+    ])
+
+
+def header_line(sport: str, *, revision: bool = False) -> str:
     label = SPORT_LABEL.get(sport, sport.upper())
-    return f"⏰ {label} · {PUSH_HOUR:02d}:{PUSH_MINUTE:02d} 예측"
+    tag = "변동" if revision else "1차"
+    return f"⏰ {label} · {tag}"
 
 
-def compose_card(jg: dict, news: str, sport: str) -> str:
-    return f"{header_line(sport)}\n{render_game_easy(jg, news)}"
+def compose_card(jg: dict, news: str, sport: str, *, revision: bool = False) -> str:
+    return f"{header_line(sport, revision=revision)}\n{render_game_easy(jg, news)}"
 
 
-def missing_cache_text(sport: str, home: str, away: str) -> str:
-    return (
-        f"{header_line(sport)}\n"
-        f"{away} @ {home}\n"
-        "오늘 분석 캐시가 없어 예측을 만들지 못했습니다."
-    )
+def _nine_sig(jg: dict, side: str) -> str:
+    block = (jg.get("today_nine") or {}).get(side) or {}
+    rows = block.get("order") or []
+    if not rows:
+        r = jg.get("research") or {}
+        lu = r.get(f"{side}_lineup") or {}
+        order = lu.get("order") if isinstance(lu, dict) else lu
+        return str(order or "").strip()
+    return ",".join(
+        f"{row.get('slot', '')}:{row.get('name') or ''}" for row in rows)
 
 
-def missing_game_text(sport: str, home: str, away: str) -> str:
-    return (
-        f"{header_line(sport)}\n"
-        f"{away} @ {home}\n"
-        "오늘 슬레이트 분석에 이 경기가 없습니다."
-    )
+def _pitcher_name(jg: dict, side: str) -> str:
+    r = jg.get("research") or {}
+    p = r.get(f"{side}_pitcher") or {}
+    if isinstance(p, dict):
+        return (p.get("name") or "").strip()
+    return str(p or "").strip()
+
+
+def card_signature(jg: dict) -> str:
+    """같은 카드면 재발송하지 않고, 선발·타순·판정이 바뀌면 다시 보낸다."""
+    cmp_ = jg.get("compare") or {}
+    p = jg.get("p_claude")
+    p_s = f"{float(p):.4f}" if isinstance(p, (int, float)) else ""
+    return "|".join([
+        _pitcher_name(jg, "home"),
+        _pitcher_name(jg, "away"),
+        _nine_sig(jg, "home"),
+        _nine_sig(jg, "away"),
+        p_s,
+        str(cmp_.get("favored") or ""),
+        str((jg.get("scoring") or {}).get("level") or ""),
+        str((jg.get("pick_summary") or {}).get("desc") or ""),
+    ])
+
+
+def _judged(jg: dict) -> bool:
+    return isinstance(jg.get("p_claude"), (int, float))
 
 
 async def _send_card(text: str) -> bool:
@@ -87,20 +159,61 @@ async def _send_card(text: str) -> bool:
     return await _notify_mod.send_telegram(plain, disable_web_page_preview=True)
 
 
-async def _claim(redis, game_id: int) -> bool:
-    got = await redis.set(sent_key(game_id), "1", nx=True, ex=SENT_TTL_SEC)
-    return bool(got)
+def _log_deadline(sport: str, gid: int, starts_at, now, reason: str) -> None:
+    left = minutes_until_start(starts_at, now)
+    if left is None or left >= STAGE1_DEADLINE_MIN:
+        return
+    tag = "NPB 17:45 종료선" if sport == "npb" and left <= NPB_FINISH_MIN \
+        else ("T-15" if left < HARD_TARGET_MIN else "1차 마감(T-30)")
+    logger.warning("[pregame] %s game=%s %s 지났는데 %s left=%.0f분",
+                   sport, gid, tag, reason, left)
 
 
-async def _release(redis, game_id: int) -> None:
+async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
+    """한 경기 카드. 'sent' | 'revised' | 'skipped' | 'failed'.
+
+    Judge·ensure_analysis_cache를 호출하지 않는다. 판정된 캐시가 없으면 건너뛴다.
+    """
+    now = now or datetime.now(UTC)
+    sport = row["sport"]
+    gid = row["id"]
+    starts_at = row["starts_at"]
+    if sport not in SPORTS:
+        return "skipped"
+    if not still_upcoming(starts_at, now):
+        return "skipped"
+    if not in_send_window(sport, starts_at, now):
+        return "skipped"
+    raw = await redis.get(f"analysis:{sport}:{date_s}")
+    if not raw:
+        _log_deadline(sport, gid, starts_at, now, "캐시 없음 — 빈 카드 안 보냄")
+        return "skipped"
     try:
-        await redis.delete(sent_key(game_id))
-    except Exception:
-        pass
+        analysis = json.loads(raw)
+    except (TypeError, ValueError):
+        return "skipped"
+    jg = next((g for g in analysis.get("games") or []
+               if g.get("game_id") == gid), None)
+    if jg is None or not _judged(jg):
+        _log_deadline(sport, gid, starts_at, now, "미판정 — 빈 카드 안 보냄")
+        return "skipped"
+    sig = card_signature(jg)
+    prev = await redis.get(card_sig_key(gid))
+    if prev == sig:
+        return "skipped"
+    revision = prev is not None
+    text = compose_card(jg, analysis.get("news") or "", sport, revision=revision)
+    if await _send_card(text):
+        await redis.set(card_sig_key(gid), sig, ex=SENT_TTL_SEC)
+        logger.info("[pregame] %s game=%s %s", sport, gid,
+                    "revised" if revision else "sent")
+        return "revised" if revision else "sent"
+    logger.warning("[pregame] %s game=%s 발송 실패", sport, gid)
+    return "failed"
 
 
 async def run_pregame_push(pool, redis, now=None) -> dict:
-    """오늘 아직 안 시작한 KBO·NPB 전 경기의 예측 카드. 경기당 1회."""
+    """오늘 창 안의 KBO·NPB를 경기마다 발송. 파이프라인은 돌리지 않는다."""
     now = now or datetime.now(UTC)
     date_s = today_kst()
     rows = await pool.fetch(
@@ -116,50 +229,26 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
         list(SPORTS),
         date.fromisoformat(date_s),
     )
-    sent = skipped = failed = 0
-    ensured: dict[str, bool] = {}
+    sent = skipped = failed = revised = 0
     cancelled_ids: set[int] = set()
     for sport in SPORTS:
         snap = await load_snapshot(redis, sport, date_s)
         sport_rows = [r for r in rows if r["sport"] == sport]
         cancelled_ids.update(await mark_cancelled_games(pool, sport_rows, snap))
     for r in rows:
-        sport = r["sport"]
         gid = r["id"]
         if gid in cancelled_ids:
             skipped += 1
-            logger.info("[pregame] %s game=%s 취소 — 발송 생략", sport, gid)
+            logger.info("[pregame] %s game=%s 취소 — 발송 생략", r["sport"], gid)
             continue
-        if sport not in SPORTS or not still_upcoming(r["starts_at"], now):
-            skipped += 1
-            continue
-        if not await _claim(redis, gid):
-            skipped += 1
-            continue
-        try:
-            if sport not in ensured:
-                ensured[sport] = await ensure_analysis_cache(pool, redis, sport, date_s)
-            ok = ensured[sport]
-            raw = await redis.get(f"analysis:{sport}:{date_s}") if ok else None
-            if not raw:
-                text = missing_cache_text(sport, r["home"], r["away"])
-            else:
-                analysis = json.loads(raw)
-                jg = next((g for g in analysis.get("games") or []
-                           if g.get("game_id") == gid), None)
-                if jg is None:
-                    text = missing_game_text(sport, r["home"], r["away"])
-                else:
-                    text = compose_card(
-                        jg, analysis.get("news") or "", sport)
-            if await _send_card(text):
-                sent += 1
-                logger.info("[pregame] %s game=%s sent", sport, gid)
-            else:
-                await _release(redis, gid)
-                failed += 1
-        except Exception as exc:
-            logger.warning("[pregame] %s game=%s 실패: %s", sport, gid, exc)
-            await _release(redis, gid)
+        result = await send_game_prediction(redis, r, date_s, now=now)
+        if result == "sent":
+            sent += 1
+        elif result == "revised":
+            revised += 1
+        elif result == "failed":
             failed += 1
-    return {"due": len(rows), "sent": sent, "skipped": skipped, "failed": failed}
+        else:
+            skipped += 1
+    return {"due": len(rows), "sent": sent, "revised": revised,
+            "skipped": skipped, "failed": failed}
