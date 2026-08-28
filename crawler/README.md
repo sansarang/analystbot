@@ -33,7 +33,7 @@ Postgres에 직접 쓰지 않는다 — 스키마 결합을 피하고, 파이썬
 
 ```bash
 go run ./cmd/crawler -sport kbo -date 2026-08-26        # 1회
-go run ./cmd/crawler -sport kbo -interval 10m           # 주기 실행
+go run ./cmd/crawler -interval 60m                      # 주기 실행 (타순 창은 종목별 2분)
 ```
 
 Railway에서는 `-interval`로 상주시킨다.

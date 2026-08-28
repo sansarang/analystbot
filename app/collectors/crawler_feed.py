@@ -9,7 +9,8 @@
    값만 파이썬이 DB에 반영한다. 크롤러가 DB를 쓰면 미검증 값이 λ로 흘러간다.
 
 ⚠️ **크롤러가 없어도 파이프라인은 돈다.** 파이썬 쪽 naver_kbo·yahoo_npb가 같은
-   소스를 직접 긁는다 — 크롤러는 그것을 **더 자주**(10분) 돌려 변화를 잡는 역할이다.
+   소스를 직접 긁는다 — 크롤러는 그것을 **더 자주**(평시 60분, 타순 창 2분)
+   돌려 변화를 잡는 역할이다.
 """
 
 import json
@@ -19,7 +20,7 @@ from datetime import UTC, datetime
 logger = logging.getLogger(__name__)
 
 HEARTBEAT_KEY = "crawl:heartbeat"
-STALE_MINUTES = 40      # 10분 주기 × 4회 — 이보다 오래되면 죽은 것으로 본다
+STALE_MINUTES = 180     # 평시 60분 × 3 — 이보다 오래되면 죽은 것으로 본다
 
 
 def _key(sport: str, date: str, suffix: str) -> str:

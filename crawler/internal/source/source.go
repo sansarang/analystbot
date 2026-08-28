@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -122,23 +123,29 @@ func lineupText(rows []struct {
 }
 
 // FetchKBO 은 네이버 스포츠에서 그 날짜 KBO 경기의 선발·라인업을 모은다.
-func FetchKBO(ctx context.Context, date string) (diff.Snapshot, error) {
+// 두 번째 반환은 **아직 시작하지 않은** 경기 시각 — 가속 창 계산용.
+func FetchKBO(ctx context.Context, date string) (diff.Snapshot, []time.Time, error) {
 	url := "https://api-gw.sports.naver.com/schedule/games?fields=basic,superCategoryId,category" +
 		"&upperCategoryId=kbaseball&fromDate=" + date + "&toDate=" + date + "&size=30"
 	body, err := get(ctx, url, "https://m.sports.naver.com/")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var sched naverGames
 	if err := json.Unmarshal(body, &sched); err != nil {
-		return nil, fmt.Errorf("일정 파싱: %w", err)
+		return nil, nil, fmt.Errorf("일정 파싱: %w", err)
 	}
+	kst := time.FixedZone("KST", 9*3600)
 	out := diff.Snapshot{}
+	var starts []time.Time
 	for _, g := range sched.Result.Games {
 		home, okH := kboTeams[g.HomeTeamName]
 		away, okA := kboTeams[g.AwayTeamName]
 		if !okH || !okA || g.GameID == "" {
 			continue // 시범·올스타 등 매핑 밖 경기
+		}
+		if t, ok := parseNaverStart(g.GameDateTime, kst); ok && kboUpcoming(g.StatusInfo) {
+			starts = append(starts, t)
 		}
 		pv, err := get(ctx, "https://api-gw.sports.naver.com/schedule/games/"+g.GameID+"/preview",
 			"https://m.sports.naver.com/game/"+g.GameID)
@@ -151,11 +158,6 @@ func FetchKBO(ctx context.Context, date string) (diff.Snapshot, error) {
 		}
 		d := p.Result.PreviewData
 		// ⚠️ 라인업은 **홈·원정을 분리해서** 넣는다.
-		//   종전에는 `"lineup": home + " | " + away` 한 덩어리였다. 키는
-		//   `원정@홈` 순인데 값은 홈이 먼저라 **하류에서 어느 쪽이 어느 팀인지
-		//   알 수 없었고**, 실제로 이 값을 읽는 코드가 파이썬 전체에 하나도
-		//   없었다(수집만 하고 버려졌다). 게이트 ②의 "9명·중복 없음" 검사도
-		//   양쪽이 갈라져 있어야 걸 수 있다.
 		out[away+"@"+home] = map[string]string{
 			"home_pitcher": d.HomeStarter.PlayerInfo.Name,
 			"away_pitcher": d.AwayStarter.PlayerInfo.Name,
@@ -165,7 +167,7 @@ func FetchKBO(ctx context.Context, date string) (diff.Snapshot, error) {
 			"status":       g.StatusInfo,
 		}
 	}
-	return out, nil
+	return out, starts, nil
 }
 
 // ---------------------------------------------------------------- NPB (Yahoo)
@@ -192,27 +194,29 @@ var (
 	npbTableRe = regexp.MustCompile(`(?s)<table[^>]*>(.*?)</table>`)
 	npbTrRe    = regexp.MustCompile(`(?s)<tr[^>]*>(.*?)</tr>`)
 	npbCellRe  = regexp.MustCompile(`(?s)<t[dh][^>]*>(.*?)</t[dh]>`)
+	npbClockRe = regexp.MustCompile(`(\d{1,2}):(\d{2})`)
 )
 
 // Yahoo /top 打順 약어. 한글 "3루수"는 숫자라 게이트가 이름을 버린다.
 const npbPosJP = "遊三左一右捕二投中指"
 
 // FetchNPB 은 Yahoo!スポーツ에서 그 날짜 NPB 경기의 선발을 모은다.
-func FetchNPB(ctx context.Context, date string) (diff.Snapshot, error) {
+func FetchNPB(ctx context.Context, date string) (diff.Snapshot, []time.Time, error) {
 	body, err := get(ctx, "https://baseball.yahoo.co.jp/npb/schedule/?date="+date, "")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	html := scoreCardHTML(string(body))
 	out := diff.Snapshot{}
 	seen := map[string]bool{}
+	kst := time.FixedZone("KST", 9*3600) // JST와 같다
+	var starts []time.Time
 	for _, m := range npbLinkRe.FindAllStringSubmatch(html, -1) {
 		gid, inner := m[1], text(m[2])
 		if seen[gid] {
 			continue
 		}
 		seen[gid] = true
-		// 등장 순서대로 팀을 찾는다 — 홈이 먼저다(실측 확인)
 		var found []string
 		for jp := range npbTeams {
 			if idx := strings.Index(inner, jp); idx >= 0 {
@@ -226,16 +230,17 @@ func FetchNPB(ctx context.Context, date string) (diff.Snapshot, error) {
 			found[0], found[1] = found[1], found[0]
 		}
 		home, away := npbTeams[found[0]], npbTeams[found[1]]
+		if t, ok := parseYahooClock(inner, date, kst); ok && npbUpcoming(inner) {
+			starts = append(starts, t)
+		}
 		page, err := get(ctx, "https://baseball.yahoo.co.jp/npb/game/"+gid+"/top", "")
 		if err != nil {
 			continue
 		}
 		hp, ap := parseNPBStarters(string(page))
 		if hp == "" || ap == "" {
-			hp, ap = parseNPBFinal(string(page)) // 확정 경기 구조로 재시도
+			hp, ap = parseNPBFinal(string(page))
 		}
-		// (先) = 확정 발표 / (予) = 예상. 섞으면 최종 픽 자격이 잘못 부여된다.
-		// ⚠️ 둘 다 없으면 "미상"이다 — 없는 것을 '확정'으로 올리면 안 된다.
 		status := "미상"
 		switch {
 		case strings.Contains(inner, "(先)"):
@@ -243,10 +248,6 @@ func FetchNPB(ctx context.Context, date string) (diff.Snapshot, error) {
 		case strings.Contains(inner, "(予)"):
 			status = "예상"
 		}
-		// 타순은 양 팀 9명이 있을 때만 넣는다. 오전·킥오프 30분 전 빈 값은
-		// 정상이다(スポナビ: 스타멘은 시작 약 30분 전). 8명은 넣지 않는다.
-		// 종전에는 이 상태값을 `"lineup"` 필드에 넣어 파이썬이 "확정"을
-		// 타순으로 착각했다. 발표 상태는 starter_status, 타순은 lineup_*다.
 		fields := map[string]string{
 			"home_pitcher": hp, "away_pitcher": ap, "starter_status": status,
 		}
@@ -255,7 +256,7 @@ func FetchNPB(ctx context.Context, date string) (diff.Snapshot, error) {
 		}
 		out[away+"@"+home] = fields
 	}
-	return out, nil
+	return out, starts, nil
 }
 
 func parseNPBStarters(html string) (home, away string) {
@@ -385,4 +386,52 @@ func parseNPBLineups(html string) (home, away string) {
 		return "", ""
 	}
 	return found[0], found[1]
+}
+
+func kboUpcoming(status string) bool {
+	if strings.Contains(status, "종료") || strings.Contains(status, "취소") {
+		return false
+	}
+	return !strings.Contains(status, "경기중")
+}
+
+func npbUpcoming(inner string) bool {
+	return !strings.Contains(inner, "試合終了") && !strings.Contains(inner, "試合中")
+}
+
+func parseNaverStart(s string, loc *time.Location) (time.Time, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, false
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t.In(loc), true
+	}
+	for _, layout := range []string{
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05.000",
+	} {
+		if t, err := time.ParseInLocation(layout, s, loc); err == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
+}
+
+func parseYahooClock(inner, date string, loc *time.Location) (time.Time, bool) {
+	m := npbClockRe.FindStringSubmatch(inner)
+	if m == nil {
+		return time.Time{}, false
+	}
+	h, err1 := strconv.Atoi(m[1])
+	min, err2 := strconv.Atoi(m[2])
+	if err1 != nil || err2 != nil || h < 0 || h > 23 || min < 0 || min > 59 {
+		return time.Time{}, false
+	}
+	day, err := time.ParseInLocation("2006-01-02", date, loc)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return time.Date(day.Year(), day.Month(), day.Day(), h, min, 0, 0, loc), true
 }

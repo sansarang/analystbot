@@ -3,7 +3,7 @@
 // 실행:
 //
 //	crawler -sport kbo -date 2026-08-26     # 1회
-//	crawler -interval 10m                   # 전 종목 주기 실행 (Railway)
+//	crawler -interval 60m                   # 평시 주기. 타순 창은 종목·경기 시각으로 2분
 package main
 
 import (
@@ -12,17 +12,16 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"analystbot/crawler/internal/diff"
 	"analystbot/crawler/internal/gate"
+	"analystbot/crawler/internal/pace"
 	"analystbot/crawler/internal/source"
 	"analystbot/crawler/internal/store"
 )
 
-type fetcher func(context.Context, string) (diff.Snapshot, error)
+type fetcher func(context.Context, string) (diff.Snapshot, []time.Time, error)
 
 var fetchers = map[string]fetcher{
 	"kbo": source.FetchKBO,
@@ -32,13 +31,9 @@ var fetchers = map[string]fetcher{
 func main() {
 	sport := flag.String("sport", "", "kbo | npb (비우면 전부)")
 	date := flag.String("date", "", "YYYY-MM-DD (비우면 KST 오늘)")
-	interval := flag.Duration("interval", 0, "주기 실행 간격 (0이면 1회)")
-	// [§9-10] **경기 임박에 가속한다.** 감독 발언·선발 교체·라인업 확정은
-	//   경기 직전에 나온다 — 실측(2026-08-26): 롯데 감독의 마무리 교체 발언이
-	//   경기 **19분 전**(18:11)에 나왔다. 10분 주기로는 놓치거나 늦는다.
-	//   기본 구간은 KBO 18:30 · NPB 18:00 시작 기준으로 잡았다.
-	fastFrom := flag.String("fast-from", "15:30", "가속 시작 (KST HH:MM)")
-	fastUntil := flag.String("fast-until", "19:30", "가속 종료 (KST HH:MM)")
+	interval := flag.Duration("interval", 0, "평시 주기 (0이면 1회)")
+	// 가속 간격. 창 자체는 종목·경기 starts_at으로 정한다 — KBO 18:30과
+	// NPB 18:00을 한 시계로 묶지 않는다. NPB는 시작 20분 전까지만.
 	fastInterval := flag.Duration("fast-interval", 2*time.Minute, "가속 구간 간격")
 	flag.Parse()
 
@@ -52,82 +47,76 @@ func main() {
 	}
 	defer st.Close()
 
-	run := func() {
+	starts := map[string][]time.Time{}
+	last := map[string]time.Time{}
+
+	runSport := func(name string, fn fetcher) {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		defer cancel()
+		got, err := once(ctx, st, name, fn, *date)
+		last[name] = time.Now()
+		if err != nil {
+			log.Printf("[%s] 실패: %v", name, err)
+			return
+		}
+		starts[name] = got
+	}
+
+	for name, fn := range fetchers {
+		if *sport != "" && *sport != name {
+			continue
+		}
+		runSport(name, fn)
+	}
+	if *interval <= 0 {
+		return
+	}
+	idle := *interval
+	fast := *fastInterval
+	// 종목마다 간격이 다르다. 한 종목이 가속 중이면 그 종목만 2분이고,
+	// 다른 종목은 평시를 유지한다.
+	for {
+		now := time.Now()
+		sleep := idle
 		for name, fn := range fetchers {
 			if *sport != "" && *sport != name {
 				continue
 			}
-			if err := once(ctx, st, name, fn, *date); err != nil {
-				// 한 종목 실패가 다른 종목을 막지 않는다
-				log.Printf("[%s] 실패: %v", name, err)
+			wait := pace.Wait(name, now, starts[name], idle, fast)
+			due := last[name].IsZero() || now.Sub(last[name]) >= wait
+			if due {
+				runSport(name, fn)
+				now = time.Now()
+				wait = pace.Wait(name, now, starts[name], idle, fast)
+			}
+			if wait < sleep {
+				sleep = wait
+			}
+			if remain := wait - now.Sub(last[name]); remain > 0 && remain < sleep {
+				sleep = remain
 			}
 		}
-	}
-
-	run()
-	if *interval <= 0 {
-		return
-	}
-	// ⚠️ 고정 Ticker를 쓰지 않는다 — 구간마다 간격이 달라야 하기 때문이다.
-	//    타이머를 매번 다시 잡아 "지금이 가속 구간인가"를 그때그때 판단한다.
-	for {
-		d := *interval
-		if inFastWindow(time.Now(), *fastFrom, *fastUntil) {
-			d = *fastInterval
+		if sleep < time.Second {
+			sleep = time.Second
 		}
-		time.Sleep(d)
-		run()
+		time.Sleep(sleep)
 	}
 }
 
-// inFastWindow 는 지금이 경기 임박 가속 구간인지 본다 (KST 기준).
-//
-// 파싱에 실패하면 **가속하지 않는다** — 잘못된 설정으로 소스를 과하게
-// 두드리는 것보다 평시 주기로 도는 편이 안전하다.
-func inFastWindow(now time.Time, from, until string) bool {
-	kst := time.FixedZone("KST", 9*3600)
-	cur := now.In(kst)
-	f, okF := parseHHMM(from)
-	u, okU := parseHHMM(until)
-	if !okF || !okU {
-		return false
-	}
-	m := cur.Hour()*60 + cur.Minute()
-	if f <= u {
-		return m >= f && m < u
-	}
-	return m >= f || m < u // 자정을 넘는 구간
-}
-
-func parseHHMM(v string) (int, bool) {
-	parts := strings.SplitN(strings.TrimSpace(v), ":", 2)
-	if len(parts) != 2 {
-		return 0, false
-	}
-	h, err1 := strconv.Atoi(parts[0])
-	m, err2 := strconv.Atoi(parts[1])
-	if err1 != nil || err2 != nil || h < 0 || h > 23 || m < 0 || m > 59 {
-		return 0, false
-	}
-	return h*60 + m, true
-}
-
-func once(ctx context.Context, st *store.Store, sport string, fn fetcher, date string) error {
+func once(ctx context.Context, st *store.Store, sport string, fn fetcher, date string) ([]time.Time, error) {
 	kst := time.FixedZone("KST", 9*3600)
 	now := time.Now().In(kst)
 	if date == "" {
 		date = now.Format("2006-01-02")
 	}
-	raw, err := fn(ctx, date)
+	raw, starts, err := fn(ctx, date)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(raw) == 0 {
 		// ⚠️ 조용한 0건이 가장 위험하다 — 구조가 바뀌어도 아무도 모른다.
 		log.Printf("[%s] %s 경기 0건 — 소스 구조 변경 가능성", sport, date)
-		return nil
+		return starts, nil
 	}
 	// 게이트 ①② — **Redis에 넣기 전에** 거른다. 날것을 넣고 파이썬이
 	// 뒷수습하면 쓰레기가 이미 카드·λ까지 흘러간 뒤에야 걸린다.
@@ -137,25 +126,24 @@ func once(ctx context.Context, st *store.Store, sport string, fn fetcher, date s
 		log.Printf("[%s] 🚫 %s", sport, d)
 	}
 	if n := countFields(raw); n > 0 && len(drops)*2 > n {
-		// 반대 방향 위험: 게이트가 정상 데이터를 대량으로 버리고 있을 수 있다.
-		// 소스 구조가 바뀌었을 때 이 경보가 먼저 울린다.
+		// 반대 방향 위험: 게이트가 정상 데이터를 버리고 있을 수 있다.
 		log.Printf("[%s] ⚠️ 수집값 %d개 중 %d개 폐기 — 게이트 과잉이거나 소스 구조 변경",
 			sport, n, len(drops))
 	}
 	prev, err := st.Latest(ctx, sport, date)
 	if err != nil {
-		return err
+		return starts, err
 	}
 	changes := diff.Compare(prev, snap)
 	if err := st.Save(ctx, sport, date, snap, changes, now); err != nil {
-		return err
+		return starts, err
 	}
-	log.Printf("[%s] %s — %d경기 수집, 값 %d개(폐기 %d), 변화 %d건",
-		sport, date, len(snap), countFields(snap), len(drops), len(changes))
+	log.Printf("[%s] %s — %d경기 수집, 값 %d개(폐기 %d), 변화 %d건, 예정 %d",
+		sport, date, len(snap), countFields(snap), len(drops), len(changes), len(starts))
 	for _, c := range diff.Notable(changes) {
 		fmt.Printf("  ⚠️ %s\n", c)
 	}
-	return nil
+	return starts, nil
 }
 
 // countFields 는 스냅샷의 값 개수다. 폐기율 계산에 쓴다 —

@@ -16,5 +16,5 @@ FROM alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata
 COPY --from=build /out/crawler /usr/local/bin/crawler
 ENV TZ=Asia/Seoul
-# 10분 주기 — 경기 직전 선발 교체를 잡으려면 이보다 길면 놓친다
-CMD ["crawler", "-interval", "10m"]
+# 평시 60분 — 타순 창에 들어선 종목만 2분. 창은 경기 starts_at으로 계산한다.
+CMD ["crawler", "-interval", "60m"]
