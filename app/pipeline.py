@@ -663,7 +663,12 @@ async def ensure_analysis_cache(pool, redis, sport: str, date: str) -> bool:
         logger.warning("[pipeline] analysis 캐시 생성 실패 %s %s: %s",
                        sport, date, exc)
         return False
-    return bool(await redis.get(f"analysis:{sport}:{date}"))
+    raw = await redis.get(f"analysis:{sport}:{date}")
+    ready = analysis_cache_ready(raw, date)
+    if not ready:
+        logger.warning("[pipeline] analysis 캐시 재생성 후에도 당일 판정 없음 — %s %s",
+                       sport, date)
+    return ready
 
 
 def starter_change_notes(research: dict, before: dict) -> list[str]:

@@ -186,6 +186,7 @@ async def test_ensure_analysis_cache_rebuilds_when_judge_missing(monkeypatch):
 @pytest.mark.asyncio
 async def test_ensure_analysis_cache_builds_when_missing(monkeypatch):
     from app import pipeline as P
+    import json
 
     class R:
         def __init__(self):
@@ -199,11 +200,35 @@ async def test_ensure_analysis_cache_builds_when_missing(monkeypatch):
 
     async def fake_run(*_a, **k):
         calls.append(k)
-        r.store["analysis:kbo:2026-08-28"] = "{}"
+        r.store["analysis:kbo:2026-08-28"] = json.dumps({"games": [{
+            "game_id": 1, "status": "scheduled", "starts_at_kst": "08/28 18:30",
+            "p_claude": 0.60,
+        }]})
 
     monkeypatch.setattr(P, "run_pipeline", fake_run)
     assert await P.ensure_analysis_cache(None, r, "kbo", "2026-08-28") is True
     assert calls[0]["sport"] == "kbo" and calls[0]["force_refresh"] is True
+
+
+@pytest.mark.asyncio
+async def test_ensure_analysis_cache_false_if_rebuild_still_unjudged(monkeypatch):
+    """파이프라인이 돌아도 p_claude가 없으면 발송 준비됨이 아니다."""
+    from app import pipeline as P
+
+    class R:
+        def __init__(self):
+            self.store = {}
+
+        async def get(self, k):
+            return self.store.get(k)
+
+    r = R()
+
+    async def fake_run(*_a, **k):
+        r.store["analysis:kbo:2026-08-28"] = "{}"
+
+    monkeypatch.setattr(P, "run_pipeline", fake_run)
+    assert await P.ensure_analysis_cache(None, r, "kbo", "2026-08-28") is False
 
 
 def test_asia_prefetch_covers_kbo_and_npb():

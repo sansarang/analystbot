@@ -117,7 +117,7 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
         date,
     )
     sent = skipped = failed = 0
-    ensured: set[str] = set()
+    ensured: dict[str, bool] = {}
     cancelled_ids: set[int] = set()
     for sport in SPORTS:
         snap = await load_snapshot(redis, sport, date)
@@ -138,10 +138,8 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
             continue
         try:
             if sport not in ensured:
-                ok = await ensure_analysis_cache(pool, redis, sport, date)
-                ensured.add(sport)
-            else:
-                ok = True
+                ensured[sport] = await ensure_analysis_cache(pool, redis, sport, date)
+            ok = ensured[sport]
             raw = await redis.get(f"analysis:{sport}:{date}") if ok else None
             if not raw:
                 text = missing_cache_text(sport, r["home"], r["away"])

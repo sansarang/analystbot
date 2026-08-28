@@ -33,7 +33,7 @@ func main() {
 	date := flag.String("date", "", "YYYY-MM-DD (비우면 KST 오늘)")
 	interval := flag.Duration("interval", 0, "평시 주기 (0이면 1회)")
 	// 가속 간격. 창 자체는 종목·경기 starts_at으로 정한다 — KBO 18:30과
-	// NPB 18:00을 한 시계로 묶지 않는다. NPB는 시작 20분 전까지만.
+	// NPB 18:00을 한 시계로 묶지 않는다. NPB는 시작 10분 전까지만.
 	fastInterval := flag.Duration("fast-interval", 2*time.Minute, "가속 구간 간격")
 	flag.Parse()
 

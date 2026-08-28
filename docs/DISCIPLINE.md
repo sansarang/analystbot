@@ -325,6 +325,6 @@ PYTHONPATH=. nohup uv run python -m app.scheduler > logs/scheduler.log 2>&1 &
 | 2026-08-28 | 크레딧 알림 창 (`quota:*`) | 30분 → **KST 자정까지(하루 1회)** | **사용자 지시** — 30분 창이 배당 스냅샷 주기와 같아 밤새 반복 발송. 인증 알림은 30분 유지 | 이미 차단된 곳은 0건 |
 | 2026-08-28 | `lineup_lead_npb` | 1.0시간 → **0.5시간** | **사용자 지시** — NPB 라인업은 경기 30분 전 (KBO는 1시간 전 유지) | |
 | 2026-08-28 | `lineup_final_minutes_kbo/npb` | (없음, 공통 30분) → **60 / 30** | **사용자 지시** — 최종 라인업 창을 공시 시각에 맞춤 | |
-| 2026-08-28 | KBO·NPB 예측 푸시 | (없음) → `pregame_push_1745` 17:45 KST | **사용자 지시** — 라인업 17:30 이후 공통 발송. MLB·축구는 자동 발송하지 않음 | |
+| 2026-08-28 | `NPBStopBefore` | 20분 → **10분** | **사용자 지시** — 17:45 발송보다 먼저 끊으면 Yahoo 타순이 스냅샷에 없음 | |
 | 2026-08-28 | `disabled_providers` | `grok,perplexity` → `grok,perplexity,groq,gemini` | **사용자 지시** — 오늘 Groq·Gemini 건너뛰고 Claude만 | 해석·서술·의도가 Anthropic으로 직행 |
 | 2026-08-28 | `intent_fallback` | `gemini` → `gemini,anthropic` | **사용자 지시** 부수 — groq·gemini 미사용 시 의도 파싱 체인이 비지 않게 | |

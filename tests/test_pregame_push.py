@@ -200,6 +200,45 @@ async def test_missing_cache_sends_honest_once(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_unjudged_cache_does_not_send_empty_cards_for_later_games(monkeypatch):
+    """ensure가 False면 같은 종목 다음 경기도 빈 승률 카드를 쓰지 않는다."""
+    now, row1 = _row(11)
+    _, row2 = _row(12)
+    row2["home"] = "Doosan Bears"
+    row2["away"] = "Kia Tigers"
+    rds = _Redis({
+        "analysis:kbo:2026-08-28": json.dumps({
+            "games": [
+                {"game_id": 11, "home": "LG Twins", "away": "NC Dinos",
+                 "starts_at_kst": "08/28 18:30", "status": "scheduled"},
+                {"game_id": 12, "home": "Doosan Bears", "away": "Kia Tigers",
+                 "starts_at_kst": "08/28 18:30", "status": "scheduled"},
+            ],
+        }),
+    })
+    sent = []
+    calls = []
+
+    async def fake_send(text, **_k):
+        sent.append(text)
+        return True
+
+    async def fake_ensure(*_a, **_k):
+        calls.append(1)
+        return False
+
+    monkeypatch.setattr("app.engine.pregame_push.ensure_analysis_cache", fake_ensure)
+    monkeypatch.setattr("app.engine.pregame_push.today_kst", lambda: "2026-08-28")
+    monkeypatch.setattr("app.notify.send_telegram", fake_send)
+
+    out = await run_pregame_push(_Pool([row1, row2]), rds, now)
+    assert out["sent"] == 2
+    assert len(calls) == 1
+    assert all("분석 캐시가 없어" in t for t in sent)
+    assert all("승률" not in t for t in sent)
+
+
+@pytest.mark.asyncio
 async def test_cancelled_crawler_game_is_not_sent(monkeypatch):
     """네이버 취소가 Redis에만 있어도 카드는 나가지 않고 DB를 cancelled로 맞춘다."""
     now = datetime(2026, 8, 28, 8, 45, tzinfo=UTC)

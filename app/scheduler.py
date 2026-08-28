@@ -258,6 +258,9 @@ async def lineup_poll_job() -> None:
         """
     )
     if not rows:
+        now = datetime.now(KST)
+        if not (now.hour == 17 and now.minute >= 40):
+            await crawler_lineup_poll()
         return
     client = MLBLineupClient()
     updated = []
@@ -274,8 +277,11 @@ async def lineup_poll_job() -> None:
     confirmed = sum(1 for _g, r in updated if r["status"] == STATUS_CONFIRMED)
     if confirmed:
         logger.info("[scheduler] 라인업 확정 %d경기 — 최종 픽으로 갱신", confirmed)
-    # 🔴 이 잡은 `sport='mlb'` 전용이었다 — KBO·NPB 라인업이 떠도 아무 일도
-    #    일어나지 않았다. 두 종목은 statsapi가 아니라 **크롤러**가 소스다.
+    # 17:40 이후는 pregame_push_1745가 KBO·NPB를 맡는다. 여기서 또 돌리면
+    # 파이프라인이 겹친다.
+    now = datetime.now(KST)
+    if now.hour == 17 and now.minute >= 40:
+        return
     await crawler_lineup_poll()
 
 
@@ -313,7 +319,8 @@ async def crawler_lineup_poll() -> None:
 
     from app.collectors import crawler_feed
     from app.pipeline import (
-        ensure_analysis_cache, is_final_window, rejudge_after_lineup, today_kst,
+        analysis_cache_ready, ensure_analysis_cache, is_final_window,
+        rejudge_after_lineup, today_kst,
     )
 
     s = get_settings()
@@ -335,6 +342,7 @@ async def crawler_lineup_poll() -> None:
             if cancelled:
                 rows = [r for r in rows if r["id"] not in set(cancelled)]
             ensured = False
+            just_built = False
             for r in rows:
                 key = f"{r['away']}@{r['home']}"
                 game = snap.get(key) or {}
@@ -355,7 +363,10 @@ async def crawler_lineup_poll() -> None:
                 if await redis.get(sig_key) == sig:
                     continue
                 if not ensured:
+                    raw = await redis.get(f"analysis:{sport}:{date}")
+                    was_ready = analysis_cache_ready(raw, date)
                     await ensure_analysis_cache(pool, redis, sport, date)
+                    just_built = not was_ready
                     ensured = True
                 notes = []
                 if (r["home_pitcher"] and game.get("home_pitcher")
@@ -374,6 +385,12 @@ async def crawler_lineup_poll() -> None:
                     r["id"], status,
                     game.get("home_pitcher") or None,
                     game.get("away_pitcher") or None)
+                if just_built:
+                    # 방금 파이프라인이 현재 스냅샷(타순 포함)을 보고 판정했다.
+                    await redis.set(sig_key, sig, ex=86400)
+                    logger.info("[scheduler] %s 라인업 %s — 파이프라인 직후 재판정 생략 game=%s",
+                                sport, status, r["id"])
+                    continue
                 try:
                     ok = await rejudge_after_lineup(
                         dict(r), {"status": status, "notes": notes,
@@ -647,6 +664,10 @@ def _job_specs() -> list[tuple]:
         ("grade_yesterday", grading_job, CronTrigger(hour=13, minute=0, timezone=KST)),
         ("research_retry_45m", research_retry_job, IntervalTrigger(minutes=45)),
         ("lineup_poll_30m", lineup_poll_job, IntervalTrigger(minutes=30)),
+        # 17:30 타순을 17:45까지 기다리면 NPB 18:00과 겹친다. 17:00~17:40 5분마다
+        # 스냅샷만 읽고, 타순이 있으면 그때 파이프라인을 돌린다. 17:45는 발송 잡.
+        ("asia_lineup_1700", crawler_lineup_poll,
+         CronTrigger(hour=17, minute="0,5,10,15,20,25,30,35,40", timezone=KST)),
         ("statcast_daily", statcast_refresh_job,
          CronTrigger(hour=3, minute=30, timezone=KST)),
         # 파크팩터는 시즌 누적이라 천천히 변한다 — 주 1회면 충분하고 statsapi 1콜이다
@@ -674,7 +695,12 @@ def build_scheduler() -> AsyncIOScheduler:
     for job_id, fn, trigger in _job_specs():
         _JOB_TRIGGERS[job_id] = trigger
         # 17:45 발송은 6시간 유예하면 경기가 끝난 뒤에 나간다.
-        grace = 10 * 60 if job_id == "pregame_push_1745" else MISFIRE_GRACE_SEC
+        if job_id == "pregame_push_1745":
+            grace = 10 * 60
+        elif job_id == "asia_lineup_1700":
+            grace = 4 * 60
+        else:
+            grace = MISFIRE_GRACE_SEC
         scheduler.add_job(_instrument(job_id, fn), trigger, id=job_id,
                           misfire_grace_time=grace, coalesce=True,
                           max_instances=1)
