@@ -12,16 +12,25 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-async def send_telegram(text: str) -> bool:
+async def send_telegram(text: str, *, parse_mode: str | None = None,
+                        disable_web_page_preview: bool = False) -> bool:
     settings = get_settings()
     if not (settings.telegram_bot_token and settings.telegram_admin_chat_id):
         logger.warning("[notify] telegram 미설정 — 알림을 로그로 대체:\n%s", text)
         return False
+    payload: dict = {
+        "chat_id": settings.telegram_admin_chat_id,
+        "text": text,
+    }
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    if disable_web_page_preview:
+        payload["disable_web_page_preview"] = True
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
                 f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage",
-                json={"chat_id": settings.telegram_admin_chat_id, "text": text},
+                json=payload,
             )
         if resp.status_code != 200:
             logger.error("[notify] telegram 발송 실패 %s: %s", resp.status_code, resp.text[:200])

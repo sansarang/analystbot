@@ -24,7 +24,7 @@ def _g(hours_ahead: float, gid: int = 1, status: str = "none") -> dict:
 
 def test_lead_hours_per_league():
     assert LT.lead_hours("kbo") == 1.0
-    assert LT.lead_hours("npb") == 1.0
+    assert LT.lead_hours("npb") == 0.5
     assert LT.lead_hours("mlb") == 3.0
     assert LT.lead_hours("soccer") == 1.0
     assert LT.lead_hours("모르는종목") == 1.0, "모르는 종목은 가장 짧은 기준으로"
@@ -41,6 +41,16 @@ def test_kbo_zero_before_one_hour_is_normal():
 def test_kbo_zero_after_one_hour_is_a_failure():
     """공시 시각이 지났는데 0건이면 수집 실패다 — 이건 알려야 한다."""
     ok, why = LT.classify([_g(0.5), _g(0.4)], 0, "kbo", now=NOW)
+    assert not ok and "수집 실패" in why
+
+
+def test_npb_zero_before_30_min_is_normal():
+    ok, why = LT.classify([_g(0.6)], 0, "npb", now=NOW)
+    assert ok and "아직 발표 전" in why
+
+
+def test_npb_zero_after_30_min_is_a_failure():
+    ok, why = LT.classify([_g(0.4)], 0, "npb", now=NOW)
     assert not ok and "수집 실패" in why
 
 

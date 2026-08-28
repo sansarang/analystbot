@@ -233,6 +233,21 @@ def test_final_window_is_the_last_30_minutes():
     assert not is_final_window(None, now)
 
 
+def test_final_window_kbo_60_npb_30():
+    """사용자 지시: KBO 1시간 전, NPB 30분 전을 최종 라인업으로 본다."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.pipeline import is_final_window
+
+    now = datetime(2026, 8, 28, 8, 45, tzinfo=UTC)  # KST 17:45
+    kbo = now + timedelta(minutes=45)               # 18:30
+    npb = now + timedelta(minutes=15)               # 18:00
+    assert is_final_window(kbo, now, sport="kbo")
+    assert not is_final_window(kbo, now, sport="npb")
+    assert is_final_window(npb, now, sport="npb")
+    assert not is_final_window(now + timedelta(minutes=61), now, sport="kbo")
+
+
 def test_market_delta_names_what_changed():
     """[8] 무엇이 바뀌어 어느 마켓 판정이 어떻게 달라졌는지."""
     from app.pipeline import _market_delta

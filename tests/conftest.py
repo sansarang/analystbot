@@ -63,7 +63,7 @@ def _no_outbound_telegram(monkeypatch, request):
     """
     blocked: list[str] = []
 
-    async def _blocked(text: str) -> bool:
+    async def _blocked(text: str, **_kwargs) -> bool:
         blocked.append(text)
         return False
 

@@ -279,6 +279,29 @@ async def lineup_poll_job() -> None:
     await crawler_lineup_poll()
 
 
+async def pregame_push_job() -> dict:
+    """KBO·NPB 당일 예측 — 매일 17:45 KST 한꺼번에 발송.
+
+    사용자 지시(2026-08-28): 라인업은 KBO 1시간 전·NPB 30분 전(17:30)에 뜨고,
+    카드는 공통 17:45에 보낸다. MLB·축구는 보내지 않는다. 베팅 집행 없음.
+    """
+    from app.engine.pregame_push import run_pregame_push
+
+    try:
+        await crawler_lineup_poll()
+    except Exception as exc:
+        logger.warning("[scheduler] pregame 직전 라인업 폴링 실패: %s", exc)
+    pool = await get_pool()
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        result = await run_pregame_push(pool, redis)
+        if result["due"]:
+            logger.info("[scheduler] pregame push %s", result)
+        return result
+    finally:
+        await redis.aclose()
+
+
 async def crawler_lineup_poll() -> None:
     """[배선] KBO·NPB 라인업을 크롤러 스냅샷에서 확인하고, 새로 뜨면 재판정한다.
 
@@ -316,7 +339,7 @@ async def crawler_lineup_poll() -> None:
                            for sd in ("home", "away"))
                 if not have:
                     continue
-                final = is_final_window(r["starts_at"])
+                final = is_final_window(r["starts_at"], sport=sport)
                 status = "confirmed" if final else "predicted"
                 sig = "|".join([
                     status,
@@ -637,6 +660,9 @@ def _job_specs() -> list[tuple]:
         # NPB는 Yahoo `/top` 종료 경기 打順. 오전엔 오늘 타순이 없다(시작 ~30분 전).
         ("npb_lineup_history", npb_lineup_history_job,
          CronTrigger(hour=5, minute=25, timezone=KST)),
+        # KBO·NPB 당일 전 경기. 라인업 공시(17:30) 뒤 공통 17:45.
+        ("pregame_push_1745", pregame_push_job,
+         CronTrigger(hour=17, minute=45, timezone=KST)),
     ]
 
 
@@ -644,8 +670,10 @@ def build_scheduler() -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone=KST)
     for job_id, fn, trigger in _job_specs():
         _JOB_TRIGGERS[job_id] = trigger
+        # 17:45 발송은 6시간 유예하면 경기가 끝난 뒤에 나간다.
+        grace = 10 * 60 if job_id == "pregame_push_1745" else MISFIRE_GRACE_SEC
         scheduler.add_job(_instrument(job_id, fn), trigger, id=job_id,
-                          misfire_grace_time=MISFIRE_GRACE_SEC, coalesce=True,
+                          misfire_grace_time=grace, coalesce=True,
                           max_instances=1)
     # [7-5] 하트비트 — 이게 살아 있어야 /health가 "스케줄러 실행 중"이라고 말한다
     scheduler.add_job(heartbeat_job, IntervalTrigger(minutes=2), id="heartbeat_2m",

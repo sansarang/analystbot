@@ -4275,17 +4275,26 @@ async def _attach_lineup_intent(pool, judge_games: list[dict], sport: str,
                      impact="평소 대비 변경점을 읽지 못해 감독 의도가 빠집니다")
 
 
-def is_final_window(starts_at, now=None, settings=None) -> bool:
+def _final_minutes(sport: str | None, settings=None) -> int:
+    """종목별 최종 라인업 창(분). KBO 60 · NPB 30 · 그 외 lineup_final_minutes."""
+    s = settings or get_settings()
+    if sport == "kbo":
+        return s.lineup_final_minutes_kbo
+    if sport == "npb":
+        return s.lineup_final_minutes_npb
+    return s.lineup_final_minutes
+
+
+def is_final_window(starts_at, now=None, settings=None, sport: str | None = None) -> bool:
     """[2] 지금이 '최종 라인업' 구간인가 — 경기 N분 전 이내."""
     from app.engine.lineup_timing import _parse
 
-    s = settings or get_settings()
     d = _parse(starts_at)
     if d is None:
         return False
     now = now or datetime.now(UTC)
     left = (d - now).total_seconds() / 60
-    return 0 <= left <= s.lineup_final_minutes
+    return 0 <= left <= _final_minutes(sport, settings)
 
 
 def _market_snapshot(jg: dict) -> dict:
@@ -4323,9 +4332,9 @@ async def rejudge_card_stack(pool, jg: dict, sport: str, redis=None) -> str:
                                         scoring_baselines)
 
     before = _market_snapshot(jg)
-    # [2] 최종 확정 구간(경기 30분 전)에 들어왔을 때만 '최종'으로 표시한다.
+    # [2] 최종 확정 구간(KBO 60분·NPB 30분·그 외 30분)에 들어왔을 때만 '최종'.
     #   무조건 final=True로 적으면 3시간 전 라인업도 최종이 된다.
-    final = is_final_window(jg.get("starts_at"))
+    final = is_final_window(jg.get("starts_at"), sport=sport)
     await _attach_lineup_intent(pool, [jg], sport, None, final=final)
     res = jg.get("research") or {}
     jg["card"] = build_card(jg, res)
