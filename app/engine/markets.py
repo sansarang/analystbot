@@ -59,8 +59,55 @@ def _form_score(season: dict | None) -> float | None:
     return fp + ppg * 2 + pos_bonus
 
 
+def _standing_win_pct(row: dict | None) -> float | None:
+    """순위표 승률 = 승/(승+패). 무승부는 분모에서 뺀다 (KBO 공식과 같음)."""
+    if not row:
+        return None
+    w, l = row.get("w"), row.get("l")
+    if w is None or l is None:
+        return None
+    den = w + l
+    if den <= 0:
+        return None
+    return w / den
+
+
+def _research_pitcher_era(research: dict, side: str) -> float | None:
+    blk = (research or {}).get(f"{side}_pitcher") or {}
+    era = blk.get("era_season")
+    if era is None:
+        era = blk.get("era_recent")
+    try:
+        return float(era) if era is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _research_form_season(research: dict, side: str) -> dict | None:
+    """크롤링 순위·최근 폼을 축구 순위표 폼 점수와 같은 모양으로 맞춘다."""
+    st = (research or {}).get(f"{side}_standing") or {}
+    form = ((research or {}).get(f"{side}_recent_form") or {}).get("form")
+    played = st.get("played")
+    if played is None and st.get("w") is not None and st.get("l") is not None:
+        played = st["w"] + st["l"] + (st.get("d") or 0)
+    row = {
+        "form": form or "",
+        "position": st.get("rank") or ((research or {}).get(f"{side}_recent_form") or {}).get("rank"),
+        "played": played or 0,
+        "points": None,
+    }
+    if not row["form"] and not row["played"] and not row["position"]:
+        return None
+    return row
+
+
 def _season_edge(jg: dict) -> float | None:
-    """올 시즌 실데이터 기준 홈팀 우위 점수 (>0 홈 우세). 데이터 없으면 None."""
+    """올 시즌 실데이터 기준 홈팀 우위 점수 (>0 홈 우세). 데이터 없으면 None.
+
+    MLB는 stats.win_pct, 축구는 stats 순위표, KBO·NPB는 research의 크롤링
+    순위표(승패)·선발 ERA. λ 입력(OBP·분포)은 쓰지 않는다 — 같은 숫자로
+    모델 축과 실데이터 축을 만들면 2-소스 룰이 붕괴한다.
+    """
     st = jg.get("stats") or {}
     hw, aw = st.get("home_win_pct"), st.get("away_win_pct")
     if hw is not None and aw is not None:  # MLB: 팀 승률 + 선발 ERA
@@ -72,24 +119,70 @@ def _season_edge(jg: dict) -> float | None:
     hs, as_ = _form_score(st.get("home_season")), _form_score(st.get("away_season"))
     if hs is not None and as_ is not None:
         return hs - as_
+    rs = jg.get("research") or {}
+    hw = _standing_win_pct(rs.get("home_standing"))
+    aw = _standing_win_pct(rs.get("away_standing"))
+    if hw is not None and aw is not None:
+        edge = (hw - aw) * 10
+        he = _research_pitcher_era(rs, "home")
+        ae = _research_pitcher_era(rs, "away")
+        if he is not None and ae is not None:
+            edge += (ae - he)
+        return edge
+    sport = (jg.get("sport") or "").lower()
+    if sport in ("kbo", "npb"):
+        hs = _form_score(_research_form_season(rs, "home"))
+        as_ = _form_score(_research_form_season(rs, "away"))
+        if hs is not None and as_ is not None:
+            return hs - as_
     return None
+
+
+def _research_has_team_numbers(jg: dict) -> bool:
+    """순위 우위를 못 내도, 타선·선발 숫자가 양쪽에 있으면 '실데이터 0건'이 아니다."""
+    rs = jg.get("research") or {}
+
+    def offense(side: str) -> bool:
+        blk = rs.get(f"{side}_offense") or {}
+        return any(blk.get(k) is not None for k in ("obp_30d", "obp", "avg", "ops"))
+
+    def pitcher(side: str) -> bool:
+        return _research_pitcher_era(rs, side) is not None
+
+    return (offense("home") and offense("away")) or (pitcher("home") and pitcher("away"))
 
 
 def has_season_data(jg: dict) -> bool:
     """판정 입력에 올 시즌 실데이터가 1건이라도 있는가 ([4d] 데이터 제로 강등 기준)."""
-    return _season_edge(jg) is not None
+    return _season_edge(jg) is not None or _research_has_team_numbers(jg)
 
 
 def _expected_total(jg: dict) -> float | None:
-    """양 팀 순위표 득실로 예상 총득점 추정 (축구 토탈 실데이터 축)."""
+    """양 팀 순위표 득실로 예상 총득점 추정 (축구 토탈 실데이터 축).
+
+    야구는 시즌 경기당 득점(크롤링) 합. λ 분포의 기대득점과는 다른 숫자다.
+    """
     st = jg.get("stats") or {}
     vals = []
     for key in ("home_season", "away_season"):
         s = st.get(key)
         if not s or not s.get("played"):
-            return None
+            break
         vals.append((s.get("gf", 0) + s.get("ga", 0)) / s["played"])
-    return sum(vals) / 2
+    else:
+        if len(vals) == 2:
+            return sum(vals) / 2
+    rs = jg.get("research") or {}
+    rpg = []
+    for side in ("home", "away"):
+        v = (rs.get(f"{side}_offense") or {}).get("runs_per_game")
+        if v is None:
+            return None
+        try:
+            rpg.append(float(v))
+        except (TypeError, ValueError):
+            return None
+    return sum(rpg)
 
 
 def _axis_data(jg: dict, market: str, side: str, line: float | None) -> bool:
@@ -378,12 +471,14 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
         #   아니다. 종전에는 `if not odds: return`이라 Odds API가 죽으면 마켓 보드가
         #   통째로 비었다 — 우리가 확률을 낼 수 있는데도 아무것도 못 보여줬다.
         #   배당은 "라인이 어디 그어졌나"를 알려줄 뿐이며, 없으면 λ 기본 라인을 쓴다.
-        # [6] 분포가 있으면 그 확률을 쓴다 — 마켓별로 근거를 따로 만들지 않는다
+        # [6] 토탈·핸디는 분포가 단일 소스. 승패(h2h)는 이미 p_final =
+        #     0.5*분포 + 0.5*판정 으로 들어온다. 여기서 분포로 덮으면
+        #     Claude가 승률에 안 섞인다 (KBO는 배당이 없어 이 경로가 전부다).
         if dist is not None:
             from app.engine.scoring import market_probability
 
             p_dist = market_probability(dist, market, side, line, jg)
-            if p_dist is not None:
+            if p_dist is not None and (p is None or market != "h2h"):
                 p, basis = p_dist, "기대득점 분포"
         if stale and odds:
             desc = f"{desc} (개장 배당)"
@@ -562,7 +657,7 @@ def build_board(jg: dict, sport: str, p_final: dict[str, float]) -> list[dict]:
 
 def _approve(jg: dict, c: dict, sport: str) -> None:
     """후보 1건의 승인/제외 판정 — 사유를 한국어로 남긴다."""
-    if c.get("ev") is None or c.get("p") is None:
+    if c.get("p") is None:
         c["approved"] = False
         c.setdefault("reject_reason", "근거 부족 — 확률 추정 불가")
         c["flags"] = []
@@ -580,9 +675,10 @@ def _approve(jg: dict, c: dict, sport: str) -> None:
     #     괴리 검사는 **승패(h2h)에만** 적용한다. 핸디캡·토탈은 모델과 시장이 다른 것이
     #     정상이며(모델을 갖는 이유가 그것이다), 여기서 걸면 정상 픽을 지운다.
     flags = []
-    implied = 1 / c["odds"]
-    if c["market"] in ("h2h", "dc") and abs(c["p"] - implied) > 0.30:
-        flags.append(f"승률 {c['p']:.0%} vs 배당 환산 {implied:.0%} 괴리 >30%p (배당 데이터 확인 필요)")
+    if c.get("odds"):
+        implied = 1 / c["odds"]
+        if c["market"] in ("h2h", "dc") and abs(c["p"] - implied) > 0.30:
+            flags.append(f"승률 {c['p']:.0%} vs 배당 환산 {implied:.0%} 괴리 >30%p (배당 데이터 확인 필요)")
     c["flags"] = flags
 
     def reject(reason):

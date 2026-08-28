@@ -413,6 +413,17 @@ def merge_source_data(research: dict, jg: dict, sport: str,
     done: list[str] = []
     gkey = f"{jg.get('away')}@{jg.get('home')}"
 
+    # 크롤러는 **이름·타순**을 가장 빨리 안다. 공식 ERA는 그 이름 뒤에 채운다.
+    # 마지막에 두면 이름이 바뀌며 직전에 채운 ERA가 지워진다(라인업 폴링 경로).
+    # ⚠️ 크롤러도 네이버·Yahoo를 긁는다 — 같은 출처다. 수집기가 다르다고
+    #    다른 소스로 세면 가짜 교차검증이 된다.
+    if statcast_data.get("crawler"):
+        from app.collectors.crawler_feed import merge_into_research as _mc
+
+        _absorb(research, _mc(research, jg, statcast_data["crawler"],
+                            statcast_data.get("crawler_changes") or []), SRC_PORTAL)
+        done.append("crawler")
+
     if sport == "kbo":
         from app.collectors.kbo_park import merge_into_research as _mp
         from app.collectors.kbo_stats import merge_into_research as _mk
@@ -487,16 +498,73 @@ def merge_source_data(research: dict, jg: dict, sport: str,
         if research.get("weather"):
             _absorb(research, ["weather"], SRC_WEATHER)
         done.append("weather")
-    if statcast_data.get("crawler"):
-        from app.collectors.crawler_feed import merge_into_research as _mc
-
-        # [§8-35] 변화 이력을 함께 넘긴다 — **언제 바뀌었는지가 정보다.**
-        # ⚠️ 크롤러도 **네이버·Yahoo를 긁는다** — 같은 출처다. 수집기가 다르다고
-        #    다른 소스로 세면 가짜 교차검증이 된다(같은 원본이 스스로를 확증한다).
-        _absorb(research, _mc(research, jg, statcast_data["crawler"],
-                            statcast_data.get("crawler_changes") or []), SRC_PORTAL)
-        done.append("crawler")
     return done
+
+
+async def load_source_bundle(redis, sport: str, date: str) -> dict:
+    """Redis 캐시에서만 읽는다. HTTP 재수집은 하지 않는다.
+
+    라인업 폴링이 30분마다 공식 기록실을 치면 안 된다. 숫자가 없으면 그 칸은
+    비운 채로 병합한다 — 없는 값을 만들어 넣지 않는다.
+    """
+    from app.collectors.crawler_feed import load_changes, load_snapshot
+
+    bundle: dict = {
+        "crawler": await load_snapshot(redis, sport, date),
+        "crawler_changes": await load_changes(redis, sport, date),
+    }
+    if sport == "kbo":
+        from app.collectors.kbo_park import load as load_park
+        from app.collectors.kbo_roster import load as load_roster
+        from app.collectors.kbo_stats import load as load_kbo_stats
+        from app.collectors.kbo_usage import load as load_usage
+        from app.collectors.naver_kbo import load as load_naver
+
+        kteams, kpitchers = await load_kbo_stats(redis, date)
+        bundle.update({
+            "kbo_teams": kteams or {},
+            "kbo_pitchers": kpitchers or {},
+            "parks": await load_park(redis) or {},
+            "naver": await load_naver(redis, date) or {},
+            "kbo_usage": await load_usage(redis, date) or {},
+            "kbo_roster": await load_roster(redis, date) or {},
+        })
+    elif sport == "npb":
+        from app.collectors.yahoo_npb import load as load_yahoo
+
+        bundle["yahoo"] = await load_yahoo(redis, date) or {}
+    return bundle
+
+
+async def ensure_analysis_cache(pool, redis, sport: str, date: str) -> bool:
+    """라인업 재판정 전에 `analysis:{sport}:{date}` 가 있게 한다.
+
+    키가 있으면 그대로 둔다. 없으면 파이프라인을 1회 돌린다.
+    프리페치가 KBO·NPB를 안 돌던 구멍: 그날 사용자가 안 물어보면
+    폴링이 타순을 잡아도 `rejudge_after_lineup`이 즉시 False를 반환했다.
+    """
+    if await redis.get(f"analysis:{sport}:{date}"):
+        return True
+    logger.info("[pipeline] analysis 캐시 없음 — %s %s 파이프라인 1회", sport, date)
+    try:
+        await run_pipeline(pool, redis, sport=sport, date=date,
+                           force_refresh=True, sequential_research=True)
+    except Exception as exc:
+        logger.warning("[pipeline] analysis 캐시 생성 실패 %s %s: %s",
+                       sport, date, exc)
+        return False
+    return bool(await redis.get(f"analysis:{sport}:{date}"))
+
+
+def starter_change_notes(research: dict, before: dict) -> list[str]:
+    """병합 전후 선발 이름이 달라진 줄. 없으면 빈 목록."""
+    notes = []
+    for side, label in (("home", "홈"), ("away", "원정")):
+        old = (before.get(side) or "").strip()
+        new = (((research.get(f"{side}_pitcher") or {}).get("name")) or "").strip()
+        if old and new and old != new:
+            notes.append(f"{label} 선발 변경: {old} → {new}")
+    return notes
 
 
 async def build_analysis(
@@ -1725,14 +1793,27 @@ def _learned_probs(jg: dict, research: dict, sport: str, settings) -> dict | Non
 
 
 def qualifies(pick: dict, settings=None) -> bool:
-    """[3-1][4] 추천 자격 = 승률 하한 AND 배당 하한. 원정 픽은 임계가 5%p 높다."""
+    """[3-1][4] 추천 자격 = 승률 하한 AND (야구는) 라인업 확정.
+
+    잠정 픽은 보드·근사 탈락에 남기고 추천 목록에서는 뺀다.
+    축구는 킥오프 직전 라인업이라 이 게이트를 쓰지 않는다.
+    """
     from app.config import get_settings
+    from app.engine.scoring import BASEBALL_SPORTS
 
     s = settings or get_settings()
     p, odds = pick.get("p"), pick.get("odds")
     need = pick.get("required_prob") or s.min_win_prob
     if pick.get("two_source") is False:      # [6] 2-소스 룰은 추천 자격에만 적용
         return False
+    if pick.get("sport") in BASEBALL_SPORTS:
+        from app.collectors.lineups import pick_state as _ps
+
+        state = pick.get("pick_state")
+        if state is None:
+            state = _ps(pick.get("lineup_status"))[0]
+        if state != "final":
+            return False
     # [§8-18] 배당 하한·시장 괴리 조건 제거 — 시장 기준으로 우리 판단을 재단하지 않는다
     return p is not None and p >= need
 
@@ -1749,6 +1830,13 @@ def near_miss_picks(picks: list[dict], settings=None, n: int = 3) -> list[dict]:
         reasons = []
         if p["p"] < s.min_win_prob:
             reasons.append(f"승률 {p['p']:.0%} < {s.min_win_prob:.0%}")
+        from app.engine.scoring import BASEBALL_SPORTS
+        from app.collectors.lineups import pick_state as _ps
+
+        if p.get("sport") in BASEBALL_SPORTS:
+            st = p.get("pick_state") or _ps(p.get("lineup_status"))[0]
+            if st != "final":
+                reasons.append("라인업 확정 전 (잠정)")
 
         out.append({**p, "miss_reason": " · ".join(reasons) or "미승인"})
     return out
@@ -1761,7 +1849,10 @@ def approved_market_legs(games: list[dict]) -> list[dict]:
         if jg.get("status") != "scheduled":
             continue
         for c in jg.get("market_board") or []:
-            if c.get("approved") and qualifies(c):
+            wrapped = {**c, "sport": jg.get("sport"),
+                       "lineup_status": jg.get("lineup_status") or "none",
+                       "pick_state": _pick_state(jg)[0]}
+            if c.get("approved") and qualifies(wrapped):
                 legs.append({
                     "game_id": jg["game_id"], "desc": c["desc"], "market": c["market"],
                     "odds": c["odds"], "p": c["p"],
@@ -1794,13 +1885,18 @@ def qualified_singles(games: list[dict], settings=None,
         if jg.get("status") != "scheduled":
             continue
         for c in jg.get("market_board") or []:
-            if not (c.get("approved") and qualifies(c, settings)):
+            wrapped = {**c, "sport": jg.get("sport"),
+                       "lineup_status": jg.get("lineup_status") or "none",
+                       "pick_state": _pick_state(jg)[0]}
+            if not (c.get("approved") and qualifies(wrapped, settings)):
                 continue
             # 다운스트림(DB 적재·속보 비교·렌더)이 쓰는 필드를 전부 채운다.
             # 대표 픽 엔트리와 같은 계약이어야 한다 — 빠지면 KeyError로 죽는다.
             rep = next((x for x in (jg.get("pick_summary"),) if x), {}) or {}
             entry = {
                 "game_id": jg["game_id"], "home": jg["home"], "away": jg["away"],
+                "sport": jg.get("sport"),
+                "pick_state": wrapped["pick_state"],
                 "pick": f"{c['market']}:{c.get('side')}",
                 "desc": c["desc"], "market": c["market"], "side": c.get("side"),
                 "line": c.get("line"), "odds": c["odds"], "p": c["p"],
@@ -1949,15 +2045,14 @@ def _compute_picks(
                            "보드만 구성 (추천 제외)", jg["game_id"],
                            len(jg.get("best_odds") or {}), len(jg.get("alt_markets") or []))
         # [A-2] h2h 배당이 없다고 경기 전체를 죽이지 않는다 — 없는 마켓만 빠진다.
+        #        배당은 행의 가격이다. 앙상블·경기력 조정의 전제가 아니다
+        #        (KBO·NPB는 Odds를 호출하지 않는다).
         market = jg.get("market_probs") or {}
-        h2h_priced = bool(market) and jg["home"] in market and jg["away"] in market
 
         # 사이드별 확률: 축구는 무승부 질량 때문에 1-p_home ≠ p_away — 시장 3-way 기준
         p_draw_m = market.get("Draw", 0.0)
         p_final: dict[str, float] = {}
         p_ens: dict[str, float] = {}
-        if jg["judge_missing"]:
-            h2h_priced = False        # 앙상블 확률을 만들 수 없다 → h2h는 '근거 부족' 행
         p_claude_home = jg.get("p_claude") or 0.5
         p_claude_away = max(0.0, min(1.0, 1.0 - p_claude_home - p_draw_m))
         # [§6-4] jg["p_claude"]는 **홈 기준 스칼라**다. 병렬 채점이 원정 픽에
@@ -1967,12 +2062,12 @@ def _compute_picks(
                                jg["away"]: round(p_claude_away, 4)}
         p3 = jg.get("p_model3")
         league_lam = "MLB" if sport == "mlb" else jg.get("league")
-        sides = (
+        sides = () if jg["judge_missing"] else (
             (jg["home"], (p3[0] if p3 else (jg["p_model"] if jg.get("model_valid") else None)),
              market.get(jg["home"], 0.5), p_claude_home),
             (jg["away"], (p3[2] if p3 else ((1 - jg["p_model"]) if jg.get("model_valid") and sport == "mlb" else None)),
              market.get(jg["away"], 0.5), p_claude_away),
-        ) if h2h_priced else ()
+        )
         # [2][3] 기대득점(λ) 분포 — 학술 방법론(포아송/스켈람)이 1순위 확률 소스다.
         #        분포가 서면 전 마켓 확률이 같은 분포에서 나오고, 경기력 조정(%p 가산)은
         #        중복 계산이 되므로 쓰지 않는다. 핵심 지표가 없을 때만 조정 방식으로 폴백.
@@ -2117,8 +2212,6 @@ def _compute_picks(
         p_legacy: dict[str, float] = {}
         home_adj = None
         for side, p_model_s, p_market_s, p_claude_s in sides:
-            if not (jg.get("best_odds") or {}).get(side):
-                continue
             if dist is not None:
                 # 모델 확률 = 기대득점 분포. Claude 판정과 반반으로 결합한다.
                 p_model_s = (dist["probs"]["h2h"]["home"] if side == jg["home"]
@@ -2170,6 +2263,7 @@ def _compute_picks(
 
         entry = {
             "game_id": jg["game_id"], "home": jg["home"], "away": jg["away"],
+            "sport": sport,
             "league": jg.get("league") or ("MLB" if sport == "mlb" else "?"),
             "starts_at_kst": jg["starts_at_kst"], "pick": pick,
             "market": rep["market"], "side": rep["side"], "line": rep.get("line"),
@@ -3635,13 +3729,15 @@ async def _refresh_stale_research(
 
 
 async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
-    """[2-3] 확정 라인업 수신 → 그 경기만 재판정. 승률·신호등·추천·조합을 갱신한다.
+    """[2-3] 라인업 수신 → 그 경기만 재판정. 승률·신호등·추천·조합을 갱신한다.
 
-    확정 선발이 예고와 다르면 그 선발의 최근 성적을 다시 조회해야 하므로
-    리서치를 강제 갱신한 뒤 판정을 다시 받는다.
+    KBO·NPB는 최신 크롤을 research에 병합한 뒤 λ·결장·Claude 순으로 다시 돌린다.
+    딥서치 force는 쓰지 않는다 — 폴링 30분마다 크레딧을 쓰면 안 된다.
+    MLB는 선발 변경·불일치일 때만 리서치를 강제 갱신한다.
     """
     from app.collectors.lineups import pick_state
     from app.db import get_pool
+    from app.engine.parlay import build_tiered_parlays
     from app.research.deep import get_game_research
 
     settings = get_settings()
@@ -3659,8 +3755,13 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             return False
 
         before = (jg.get("pick_summary") or {}).get("desc")
+        before_names = {
+            "home": ((jg.get("research") or {}).get("home_pitcher") or {}).get("name") or "",
+            "away": ((jg.get("research") or {}).get("away_pitcher") or {}).get("name") or "",
+        }
         jg["lineup_status"] = lineup["status"]
-        jg["lineup_notes"] = lineup.get("notes") or []
+        notes = list(lineup.get("notes") or [])
+        jg["lineup_notes"] = notes
         # statsapi 부상자 명단을 리서치 결장자에 병합 — 승률 조정이 읽는 경로다.
         # (리서치가 결장자를 놓쳐도 1차 소스로 메운다)
         il = [s for side in ("home", "away") for s in (lineup.get("injuries") or {}).get(side, [])]
@@ -3672,14 +3773,27 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             jg["il_source"] = "statsapi"
         state, label = pick_state(lineup["status"])
         jg["pick_state"], jg["pick_state_label"] = state, label
-        # 확정 선발이 바뀌었으면 그 선발의 최근 성적을 다시 조회한다
-        if any("선발 변경" in n or "불일치" in n for n in jg["lineup_notes"]):
+        if sport in ("kbo", "npb"):
+            try:
+                bundle = await load_source_bundle(redis, sport, date)
+                merge_source_data(jg.setdefault("research", {}), jg, sport, bundle)
+                notes += starter_change_notes(jg["research"], before_names)
+                jg["lineup_notes"] = notes
+            except Exception as exc:
+                logger.warning("[pipeline] 라인업 소스 병합 실패: %s", exc)
+        elif any("선발 변경" in n or "불일치" in n for n in notes):
             for side, key in (("home", "home_pitcher"), ("away", "away_pitcher")):
-                if lineup["starters"].get(side):
+                if (lineup.get("starters") or {}).get(side):
                     jg.setdefault("stats", {})[key] = lineup["starters"][side]
             data, _status = await get_game_research(redis, jg, sport, force=True)
             if data:
                 jg["research"] = data
+        # λ가 읽는 absences·타순을 Judge보다 먼저 채운다
+        if settings.lineup_intent_enabled:
+            try:
+                await _lineup_intent_one(pool, jg, sport, final=(state == "final"))
+            except Exception as exc:
+                logger.warning("[pipeline] 라인업 의도 산출 실패: %s", exc)
 
         payload = {
             "date": date, "sport": sport, "games": [jg],
@@ -3933,6 +4047,7 @@ async def _lineup_intent_one(pool, jg: dict, sport: str, final: bool = False) ->
     from app.engine import lineup_intent as LI
     from app.engine.interpreter import interpret_lineup_intent
     from app.engine.lineup_diff import (bullpen_absences, diff_lineup,
+                                        merge_absences_from_diff,
                                         parse_order, summarize)
 
     res = jg.get("research") or {}
@@ -3953,6 +4068,7 @@ async def _lineup_intent_one(pool, jg: dict, sport: str, final: bool = False) ->
         roster = (res.get(f"{side}_roster") or {}).get("registered")
         keys = (res.get(f"{side}_usage") or {}).get("key_relievers")
         changes = changes + bullpen_absences(roster, keys)
+        merge_absences_from_diff(res, team, changes, usual)
         summary = summarize(changes, usual)
         if usual:
             intent["_sides"] += 1

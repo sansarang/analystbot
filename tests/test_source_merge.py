@@ -216,3 +216,24 @@ def test_notable_rows_empty_is_empty():
     from app.collectors.crawler_feed import notable_rows
 
     assert notable_rows([]) == [] and notable_rows(None) == []
+
+
+def test_crawler_name_then_official_era_fills():
+    """크롤러가 선발 이름을 바꾼 뒤 공식 ERA가 그 투수 것으로 채워져야 한다.
+
+    예전에는 크롤러가 마지막이라 직전에 채운 ERA가 지워진 채 남았다.
+    """
+    research = {"home_pitcher": {"name": "옛투수", "era_season": 2.00}}
+    snap = {KBO_KEY: {"home_pitcher": "양현종", "away_pitcher": "",
+                      "lineup_home": "김도영(3루수)-최형우(지명타자)",
+                      "lineup_away": ""}}
+    done = merge_source_data(research, KBO_JG, "kbo", {
+        "crawler": snap,
+        "kbo_teams": {},
+        "kbo_pitchers": {"양현종": {"era_season": 3.50, "whip": 1.20}},
+        "parks": {},
+    })
+    assert "crawler" in done and "kbo_stats" in done
+    assert research["home_pitcher"]["name"] == "양현종"
+    assert research["home_pitcher"]["era_season"] == 3.50
+    assert "김도영" in research["home_lineup"]["order"]

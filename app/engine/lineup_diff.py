@@ -194,6 +194,48 @@ def bullpen_absences(today_roster: list[str] | None,
             for n in key_relievers if canon_name(n) not in have]
 
 
+def merge_absences_from_diff(research: dict, team: str, changes: list[dict],
+                             usual: dict | None = None) -> list[str]:
+    """평소 대비 빠진 주전·핵심 불펜을 λ가 읽는 `absences` 문장으로 옮긴다.
+
+    새 계수를 만들지 않는다. scoring._absence_factors가 이미 읽는 표지
+    (`중심 타선` → absence_top_hitter, 그 외 주전 → absence_hitter,
+     `핵심 불펜` → absence_reliever)만 쓴다.
+
+    ⚠️ 말소 목록에 이미 있으면 넣지 않는다 — 같은 선수를 두 번 깎으면 안 된다.
+    ⚠️ 평소 타순이 없으면 중심/주전을 구분하지 못하고 주전 결장으로 둔다.
+    """
+    slots = (usual or {}).get("slots") or {}
+    lines = list(research.get("absences") or [])
+    known = " ".join(canon_name(str(x)) for x in lines)
+    added: list[str] = []
+    for c in changes or []:
+        who = (c.get("who") or "").strip()
+        if not who:
+            continue
+        key = canon_name(who)
+        if key and key in known:
+            continue
+        typ = c.get("type")
+        if typ == "regular_out":
+            slot = slots.get(key)
+            if slot is not None and slot <= TOP_ORDER:
+                line = (f"{team}의 {who} 중심 타선 결장 — "
+                        f"평소 {slot}번, 오늘 라인업에서 빠짐")
+            else:
+                line = f"{team}의 {who} 주전 결장 — 오늘 라인업에서 빠짐"
+        elif typ == "bullpen_out":
+            line = f"{team}의 {who} 핵심 불펜 결장 — 1군 엔트리에 없음"
+        else:
+            continue
+        lines.append(line)
+        added.append(line)
+        known += " " + key
+    if added:
+        research["absences"] = lines
+    return added
+
+
 def summarize(changes: list[dict], usual: dict | None) -> dict:
     """변경점 → 칸별 사실 목록 + 요약 문구.
 

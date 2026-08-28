@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 KST = ZoneInfo("Asia/Seoul")
 
+_SPORT_KR = {"mlb": "MLB", "soccer": "축구", "kbo": "KBO", "npb": "NPB"}
+
 
 def _pct(v: float | None) -> str:
     return "—" if v is None else f"{v:.0%}"
@@ -38,8 +40,8 @@ def yesterday_kst() -> str:
     return (datetime.now(KST) - timedelta(days=1)).strftime("%Y-%m-%d")
 
 
-async def prefetch_job() -> None:
-    """[1] 새벽 프리페치 = 심층 리서치 파이프라인.
+async def prefetch_job(sports: tuple[str, ...] = ("mlb", "soccer")) -> None:
+    """[1] 프리페치 = 심층 리서치 파이프라인.
 
     전 경기 심층 리서치(경기당 Perplexity 1콜) + 2단 판정(잠정 결론 → 반박 검증)까지
     실행해 캐시. 실패 경기는 '리서치 미완' 마킹 — 첫 요청 시 신선도 게이트가 온디맨드 보완.
@@ -47,6 +49,8 @@ async def prefetch_job() -> None:
     레이트리밋 방어(실사고: MLB 10경기 + 축구 17경기 동시 리서치 → 429 폭주):
     종목(리그) 단위로 순차 실행하고, 종목 안에서도 경기 단위 순차 처리한다.
     마지막에 429로 실패해 큐에 쌓인 경기를 한 번 더 순차 재시도한다.
+
+    sports: 기본 MLB·축구(21:00·04:30). KBO·NPB는 `prefetch_asia_job`(14:00).
     """
     import time
 
@@ -72,8 +76,8 @@ async def prefetch_job() -> None:
     t0 = time.monotonic()
     all_stages: list[StageResult] = []
     try:
-        for sport in ("mlb", "soccer"):   # 종목 단위 순차 (동시 실행 금지)
-            sport_kr = "MLB" if sport == "mlb" else "축구"
+        for sport in sports:
+            sport_kr = _SPORT_KR.get(sport, sport)
             stages: list[StageResult] = []
             try:
                 report = await run_pipeline(
@@ -146,6 +150,15 @@ async def prefetch_job() -> None:
         except Exception as exc:
             logger.warning("[scheduler] 프리페치 리포트 발송 실패: %s", exc)
         await redis.aclose()
+
+
+async def prefetch_asia_job() -> None:
+    """KBO·NPB 당일 슬레이트 — 18:30 킥오프의 3~7시간 전(14:00 KST).
+
+    라인업 폴링의 재판정은 `analysis:{sport}:{date}` 가 없으면 바로 끝난다.
+    기존 21:00 프리페치 시점에는 아시아 경기가 이미 종료라 이 캐시가 안 생긴다.
+    """
+    await prefetch_job(sports=("kbo", "npb"))
 
 
 async def park_refresh_job() -> None:
@@ -276,21 +289,26 @@ async def crawler_lineup_poll() -> None:
     import redis.asyncio as aioredis
 
     from app.collectors import crawler_feed
-    from app.pipeline import is_final_window, rejudge_after_lineup, today_kst
+    from app.pipeline import (
+        ensure_analysis_cache, is_final_window, rejudge_after_lineup, today_kst,
+    )
 
     s = get_settings()
     pool = await get_pool()
     redis = aioredis.from_url(s.redis_url, decode_responses=True)
     try:
         for sport in ("kbo", "npb"):
-            snap = await crawler_feed.load_snapshot(redis, sport, today_kst())
+            date = today_kst()
+            snap = await crawler_feed.load_snapshot(redis, sport, date)
             if not snap:
                 continue
             rows = await pool.fetch(
-                """SELECT id, ext_id, sport, home, away, starts_at, lineup_status
+                """SELECT id, ext_id, sport, home, away, starts_at, lineup_status,
+                          home_pitcher, away_pitcher
                    FROM games WHERE sport = $1 AND status = 'scheduled'
                      AND starts_at BETWEEN now() - interval '30 minutes'
                                        AND now() + interval '4 hours'""", sport)
+            ensured = False
             for r in rows:
                 key = f"{r['away']}@{r['home']}"
                 game = snap.get(key) or {}
@@ -300,22 +318,85 @@ async def crawler_lineup_poll() -> None:
                     continue
                 final = is_final_window(r["starts_at"])
                 status = "confirmed" if final else "predicted"
-                if r["lineup_status"] == status:
-                    continue          # 이미 그 상태다 — 중복 재판정하지 않는다
+                sig = "|".join([
+                    status,
+                    (game.get("home_pitcher") or "").strip(),
+                    (game.get("away_pitcher") or "").strip(),
+                    (game.get("lineup_home") or "").strip(),
+                    (game.get("lineup_away") or "").strip(),
+                ])
+                sig_key = f"lineup_sig:{r['id']}"
+                if await redis.get(sig_key) == sig:
+                    continue
+                if not ensured:
+                    await ensure_analysis_cache(pool, redis, sport, date)
+                    ensured = True
+                notes = []
+                if (r["home_pitcher"] and game.get("home_pitcher")
+                        and r["home_pitcher"] != game["home_pitcher"]):
+                    notes.append(
+                        f"홈 선발 변경: {r['home_pitcher']} → {game['home_pitcher']}")
+                if (r["away_pitcher"] and game.get("away_pitcher")
+                        and r["away_pitcher"] != game["away_pitcher"]):
+                    notes.append(
+                        f"원정 선발 변경: {r['away_pitcher']} → {game['away_pitcher']}")
                 await pool.execute(
-                    "UPDATE games SET lineup_status = $2, updated_at = now() "
-                    "WHERE id = $1", r["id"], status)
+                    "UPDATE games SET lineup_status = $2, "
+                    "home_pitcher = COALESCE($3, home_pitcher), "
+                    "away_pitcher = COALESCE($4, away_pitcher), "
+                    "updated_at = now() WHERE id = $1",
+                    r["id"], status,
+                    game.get("home_pitcher") or None,
+                    game.get("away_pitcher") or None)
                 try:
-                    await rejudge_after_lineup(
-                        dict(r), {"status": status, "notes": [],
-                                  "starters": {}, "injuries": {}})
-                    logger.info("[scheduler] %s 라인업 %s — 재판정 game=%s",
-                                sport, status, r["id"])
+                    ok = await rejudge_after_lineup(
+                        dict(r), {"status": status, "notes": notes,
+                                  "starters": {"home": game.get("home_pitcher") or None,
+                                               "away": game.get("away_pitcher") or None},
+                                  "injuries": {}})
+                    if ok:
+                        await redis.set(sig_key, sig, ex=86400)
+                    logger.info("[scheduler] %s 라인업 %s — 재판정 game=%s ok=%s",
+                                sport, status, r["id"], ok)
                 except Exception as exc:
                     logger.warning("[scheduler] %s 재판정 실패 game=%s: %s",
                                    sport, r["id"], exc)
     finally:
         await redis.aclose()
+
+
+async def kbo_lineup_history_job() -> None:
+    """KBO 평소 라인업 이력 — 공식 박스스코어 선발 9명을 lineup_events에 적재.
+
+    평소 비교에 최소 5경기가 필요하다. 네이버 preview는 과거 타순을 보관하지
+    않는다. `source='boxscore'`로 남겨 발표 라인업(crawler)과 구분한다.
+    """
+    from app.collectors.kbo import fetch_month, upsert_games
+    from app.collectors.kbo_boxscore import backfill
+
+    now = datetime.now(KST)
+    months = [now.month]
+    if now.month > 1:
+        months.insert(0, now.month - 1)
+    pool = await get_pool()
+    games: list[dict] = []
+    for mo in months:
+        try:
+            games.extend(await fetch_month(now.year, mo))
+        except Exception as exc:
+            logger.warning("[scheduler] KBO 일정 %d-%02d 조회 실패: %s",
+                           now.year, mo, exc)
+    try:
+        n = await upsert_games(pool, games) if games else 0
+    except Exception as exc:
+        logger.warning("[scheduler] KBO 일정 적재 실패: %s", exc)
+        n = 0
+    try:
+        stats = await backfill(pool, now.year, tuple(months), limit_per_team=10)
+    except Exception as exc:
+        logger.warning("[scheduler] KBO 라인업 백필 실패: %s", exc)
+        stats = {}
+    logger.info("[scheduler] KBO 라인업 이력 upsert %d · 백필 %s", n, stats)
 
 
 async def odds_snapshot_job() -> None:
@@ -503,6 +584,10 @@ def _job_specs() -> list[tuple]:
          CronTrigger(hour=21, minute=0, timezone=KST)),   # 유럽 축구 (20~04시 킥오프)
         ("prefetch_dawn", prefetch_job,
          CronTrigger(hour=4, minute=30, timezone=KST)),   # MLB (05~10시 킥오프)
+        # 아시아 야구 18:30 — 라인업 폴링이 쓰는 analysis 캐시를 여기서 만든다.
+        # 21:00 슬롯에 넣으면 당일 경기는 이미 끝나 있다.
+        ("prefetch_asia", prefetch_asia_job,
+         CronTrigger(hour=14, minute=0, timezone=KST)),
         ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
         ("grade_yesterday", grading_job, CronTrigger(hour=13, minute=0, timezone=KST)),
         ("research_retry_45m", research_retry_job, IntervalTrigger(minutes=45)),
@@ -516,6 +601,10 @@ def _job_specs() -> list[tuple]:
          CronTrigger(hour=3, minute=40, timezone=KST)),
         ("elo_refresh_weekly", elo_refresh_job,
          CronTrigger(day_of_week="mon", hour=5, minute=0, timezone=KST)),
+        # 평소 라인업 비교에 최소 5경기가 필요한데, 네이버는 과거 타순을 안 남긴다.
+        # 박스스코어 선발 9명을 하루 1회 적재한다 (30분 폴링에 넣으면 HTTP가 폭주한다).
+        ("kbo_lineup_history", kbo_lineup_history_job,
+         CronTrigger(hour=5, minute=20, timezone=KST)),
     ]
 
 

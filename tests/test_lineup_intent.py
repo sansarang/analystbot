@@ -336,3 +336,71 @@ def test_bullpen_matching_also_absorbs_spelling():
     from app.engine.lineup_diff import bullpen_absences
 
     assert bullpen_absences(["정해영.", "김범수"], ["정해영", "김범수"]) == []
+
+
+def test_regular_out_becomes_absence_with_existing_markers():
+    """빠진 주전이 λ 결장 계수로 들어간다. 새 adj_* 를 만들지 않는다."""
+    from app.config import Settings
+    from app.engine.lineup_diff import merge_absences_from_diff
+    from app.engine.scoring import _absence_factors
+
+    u = usual_from(_hist(8))
+    today = parse_order([x for x in USUAL_ORDER if not x.startswith("나성범")]
+                        + ["백업(우익수)"])
+    changes = diff_lineup(today, u)
+    research: dict = {}
+    added = merge_absences_from_diff(research, "Kia Tigers", changes, u)
+    assert any("나성범" in x and "중심 타선" in x for x in added)
+    s = Settings(_env_file=None)
+    bat, _pen, _notes = _absence_factors(research["absences"], s, "Kia Tigers")
+    assert s.absence_top_hitter == 0.04
+    assert bat == pytest.approx(1 - s.absence_top_hitter)
+
+
+def test_lower_order_regular_out_uses_hitter_coefficient():
+    from app.config import Settings
+    from app.engine.lineup_diff import merge_absences_from_diff
+    from app.engine.scoring import _absence_factors
+
+    u = usual_from(_hist(8))
+    today = parse_order([x for x in USUAL_ORDER if not x.startswith("한준수")]
+                        + ["백업포수(포수)"])
+    changes = diff_lineup(today, u)
+    research: dict = {}
+    added = merge_absences_from_diff(research, "Kia Tigers", changes, u)
+    assert any("한준수" in x and "주전 결장" in x for x in added)
+    assert all("선발" not in x for x in added), "문장에 '선발'이 있으면 투수 이탈로 건너뛴다"
+    assert all("중심 타선" not in x for x in added if "한준수" in x)
+    s = Settings(_env_file=None)
+    bat, _pen, _notes = _absence_factors(research["absences"], s, "Kia Tigers")
+    assert s.absence_hitter == 0.02
+    assert bat == pytest.approx(1 - s.absence_hitter)
+
+
+def test_bullpen_out_uses_reliever_marker():
+    from app.config import Settings
+    from app.engine.lineup_diff import merge_absences_from_diff
+    from app.engine.scoring import _absence_factors
+
+    research: dict = {}
+    merge_absences_from_diff(
+        research, "LG Twins",
+        [{"type": "bullpen_out", "who": "고우석", "detail": "x", "cell": "bullpen"}],
+        {})
+    s = Settings(_env_file=None)
+    _bat, pen, _notes = _absence_factors(research["absences"], s, "LG Twins")
+    assert s.absence_reliever == 0.02
+    assert pen == pytest.approx(1 + s.absence_reliever)
+
+
+def test_already_listed_absence_is_not_doubled():
+    from app.engine.lineup_diff import merge_absences_from_diff
+
+    u = usual_from(_hist(8))
+    today = parse_order([x for x in USUAL_ORDER if not x.startswith("나성범")]
+                        + ["백업(우익수)"])
+    changes = diff_lineup(today, u)
+    research = {"absences": ["Kia Tigers의 나성범 1군 말소 — 출전 불가"]}
+    added = merge_absences_from_diff(research, "Kia Tigers", changes, u)
+    assert not any("나성범" in x for x in added)
+    assert sum("나성범" in x for x in research["absences"]) == 1

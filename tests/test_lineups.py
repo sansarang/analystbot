@@ -254,3 +254,35 @@ def test_lineup_stage_measured_for_all_sports():
     i = src.index('await record("라인업"')
     guard = src[max(0, i - 700):i]
     assert 'sport in ("mlb", "soccer")' not in guard, "라인업 계측이 종목으로 막혀 있다"
+
+
+def test_qualifies_blocks_baseball_until_lineup_confirmed():
+    """잠정 픽은 보드에 남기고 추천에서 뺀다. MIN_WIN_PROB는 그대로다."""
+    from app.config import Settings
+    from app.pipeline import qualifies
+
+    s = Settings(_env_file=None)
+    assert s.min_win_prob == 0.58
+    pick = {"p": 0.62, "odds": 1.70, "two_source": True, "sport": "kbo",
+            "lineup_status": "predicted"}
+    assert not qualifies(pick, s)
+    pick["lineup_status"] = "confirmed"
+    pick["pick_state"] = "final"
+    assert qualifies(pick, s)
+
+
+def test_qualifies_soccer_does_not_require_lineup():
+    from app.config import Settings
+    from app.pipeline import qualifies
+
+    pick = {"p": 0.62, "odds": 1.70, "two_source": True, "sport": "soccer"}
+    assert qualifies(pick, Settings(_env_file=None))
+
+
+def test_starter_change_notes_from_merged_names():
+    from app.pipeline import starter_change_notes
+
+    notes = starter_change_notes(
+        {"home_pitcher": {"name": "양현종"}, "away_pitcher": {"name": "박세웅"}},
+        {"home": "황동하", "away": "박세웅"})
+    assert notes == ["홈 선발 변경: 황동하 → 양현종"]
