@@ -1622,7 +1622,12 @@ async def build_analysis(
     from app.engine.parlay import build_tiered_parlays
 
     _legs = approved_market_legs(judge_games)
-    combos = build_tiered_parlays(_legs, stake_krw, sport)
+    try:
+        combos = build_tiered_parlays(_legs, stake_krw, sport)
+    except Exception as exc:
+        logger.warning("[pipeline] 조합 구성 실패 — 단식 분석은 유지: %s", exc)
+        combos = {"combos": [], "reason": "조합 계산 실패", "all_fail_prob": None}
+        _legs = []
     # [§8-10] 조합 구성 — 종전 미계측. 레그 풀이 비면 조합이 조용히 0건이 되는데
     #         단식과 **같은 풀**을 쓴다는 계약이 깨졌는지 여기서 드러난다(§8-9 사고).
     # [§8-15] 승인 레그가 0이면 조합 0이 **정상 결과**다(자격 미달). 실패로 알리지 않는다.
@@ -2179,7 +2184,8 @@ def _compute_picks(
         """[1-1] 경기력 앙상블 — **시장 확률은 쓰지 않는다**.
 
         p_final = 0.5*p_model + 0.5*p_claude. 배당은 "이기면 얼마 받는가"에만 쓴다.
-        모델이 무효면 Claude 단독. (p_market_s는 병렬 채점·표시용으로만 받는다)
+        모델이 무효거나 야구 승패 λ가 동전 던지기면 Claude 단독.
+        토탈은 이 함수를 거치지 않는다. (p_market_s는 병렬 채점·표시용으로만 받는다)
         """
         if p_model_s is None:
             return p_claude_s
@@ -2234,7 +2240,9 @@ def _compute_picks(
         #        분포가 서면 전 마켓 확률이 같은 분포에서 나오고, 경기력 조정(%p 가산)은
         #        중복 계산이 되므로 쓰지 않는다. 핵심 지표가 없을 때만 조정 방식으로 폴백.
         from app.engine.performance import WinProbAdjuster
-        from app.engine.scoring import game_distribution
+        from app.engine.scoring import (
+            BASEBALL_SPORTS, game_distribution, h2h_lambda_has_signal,
+        )
         from app.research.validate import sanitize_research
 
         research_clean, _ = sanitize_research(jg.get("research") or {}, sport)
@@ -2376,11 +2384,17 @@ def _compute_picks(
         adjuster = WinProbAdjuster(settings)
         p_legacy: dict[str, float] = {}
         home_adj = None
+        # 야구 승패: λ가 동전 던지기면 결합하지 않는다. 축구·토탈은 기존.
+        h2h_use_lam = True
+        if dist is not None and sport in BASEBALL_SPORTS:
+            h2h_use_lam = h2h_lambda_has_signal(dist["probs"]["h2h"]["home"], settings)
+            jg["h2h_lambda_unused"] = not h2h_use_lam
         for side, p_model_s, p_market_s, p_claude_s in sides:
             if dist is not None:
-                # 모델 확률 = 기대득점 분포. Claude 판정과 반반으로 결합한다.
-                p_model_s = (dist["probs"]["h2h"]["home"] if side == jg["home"]
-                             else dist["probs"]["h2h"]["away"])
+                # 모델 확률 = 기대득점 분포. 변별이 있을 때만 Claude와 반반.
+                p_lam = (dist["probs"]["h2h"]["home"] if side == jg["home"]
+                         else dist["probs"]["h2h"]["away"])
+                p_model_s = p_lam if h2h_use_lam else None
             pe = blend(p_model_s, p_market_s, p_claude_s)
             p_ens[side] = round(pe, 4)
             p_legacy[side] = round(blend_legacy(p_model_s, p_market_s, p_claude_s), 4)
@@ -4163,12 +4177,16 @@ async def run_pipeline(
     remaining = await redis.get("odds_quota_remaining")
     if remaining is not None and int(remaining) < 100:
         analysis["quota_warning"] = True
-    card = await generate_card(analysis)
-    if settings.report_banner:
-        card = f"{settings.report_banner}\n\n{card}"
-    if include_final:
-        card = f"{card}\n\n{sim_scoreboard(analysis.get('games') or [])}"
-    else:
+    try:
+        card = await generate_card(analysis)
+        if settings.report_banner:
+            card = f"{settings.report_banner}\n\n{card}"
+        if include_final:
+            card = f"{card}\n\n{sim_scoreboard(analysis.get('games') or [])}"
+    except Exception as exc:
+        logger.warning("[pipeline] 결론 카드 렌더 실패 — 분석 캐시는 남긴다: %s", exc)
+        card = "결론 카드를 만들지 못했습니다."
+    if not include_final:
         await _save_caches(redis, analysis, card)
     return card
 

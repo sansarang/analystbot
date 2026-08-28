@@ -29,6 +29,7 @@
 
 ### 1-6. 승률 판정은 경기력만으로 ✅ `app/engine/performance.py` (2026-08-25 도입)
 `p_final = 0.50*p_model + 0.50*p_claude`. **시장 가중치 0.**
+야구 승패에서 λ가 `|p−0.5| < 0.05`면 섞지 않고 판정 단독. 언더오버는 분포 단독.
 배당은 "이기면 얼마 받는가" 계산·표시에만 쓰고 승률 추정에 넣지 않는다.
 judge 프롬프트에도 "배당·시장 확률은 판정 근거로 삼지 마라"를 명시한다.
 
@@ -328,3 +329,4 @@ PYTHONPATH=. nohup uv run python -m app.scheduler > logs/scheduler.log 2>&1 &
 | 2026-08-28 | `NPBStopBefore` | 20분 → **10분** | **사용자 지시** — 17:45 발송보다 먼저 끊으면 Yahoo 타순이 스냅샷에 없음 | |
 | 2026-08-28 | `disabled_providers` | `grok,perplexity` → `grok,perplexity,groq,gemini` | **사용자 지시** — 오늘 Groq·Gemini 건너뛰고 Claude만 | 해석·서술·의도가 Anthropic으로 직행 |
 | 2026-08-28 | `intent_fallback` | `gemini` → `gemini,anthropic` | **사용자 지시** 부수 — groq·gemini 미사용 시 의도 파싱 체인이 비지 않게 | |
+| 2026-08-28 | `lambda_h2h_min_edge` | (없음) → **0.05** | **사용자 지시** — 승패 λ가 동전 던지기면 Claude를 깎지 말 것. 언더오버 불변. `min_win_prob` 0.58 유지 | |

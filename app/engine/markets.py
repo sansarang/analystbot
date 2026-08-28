@@ -517,7 +517,9 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
     for side in h2h_sides:
         desc = "무승부" if side == "Draw" else f"{kr_team(side)} 승"
         # [§8-27] 배당이 없어도 확률은 낼 수 있다 — 행을 만든다
-        add("h2h", side, None, desc, best_odds.get(side), p_final.get(side), "앙상블")
+        # λ 변별이 없어 승패를 판정 단독으로 쓴 경기는 근거 라벨을 숨기지 않는다.
+        h2h_basis = "판정" if jg.get("h2h_lambda_unused") else "앙상블"
+        add("h2h", side, None, desc, best_odds.get(side), p_final.get(side), h2h_basis)
 
     # 2) 더블찬스 3종 (축구, 3-way 배당에서 합성) — 1X · X2 · 12
     if sport == "soccer" and best_odds.get("Draw"):

@@ -656,6 +656,18 @@ def dispersion_for(sport: str, settings=None) -> float | None:
     return s.score_dispersion_soccer
 
 
+def h2h_lambda_has_signal(p_home: float | None, settings=None) -> bool:
+    """승패 λ가 동전 던지기보다 변별이 있는가.
+
+    없으면 승패 `p_final` 결합에서 λ를 빼 Claude 단독이 된다.
+    토탈·런라인은 이 함수를 쓰지 않는다 — 그 마켓은 분포가 단일 소스다.
+    """
+    if p_home is None:
+        return False
+    s = settings or get_settings()
+    return abs(float(p_home) - 0.5) + 1e-12 >= s.lambda_h2h_min_edge
+
+
 def game_distribution(jg: dict, research: dict, sport: str, settings=None) -> dict | None:
     """경기 1건의 λ와 전 마켓 확률. 핵심 지표가 없으면 None(=데이터 부족).
 

@@ -284,9 +284,10 @@ def test_recommendation_pool_includes_non_moneyline(db_pool=None):
     from app.pipeline import approved_market_legs
 
     jg = _rendered_jg()
+    jg["lineup_status"] = "confirmed"   # 야구는 확정 전 추천 제외
     jg["market_board"][0].update(approved=False, reject_reason="근거 부족")
     legs = approved_market_legs([jg])
-    # [3-5] 레그도 승률 58%↑·배당 1.60↑ 기준을 통과한 것만 (런라인 1.55는 배당 미달)
+    # [§8-18] 배당 하한은 제거됐다. 승률 58%↑·라인업 확정·승인만 본다.
     assert legs and all(l["market"] != "h2h" for l in legs)
     assert {l["desc"] for l in legs} == {"언더 8.5", "텍사스 레인저스 런라인 +1.5"}
 

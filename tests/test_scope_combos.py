@@ -74,6 +74,18 @@ def test_tiered_parlays_insufficient_legs():
     assert "전 마켓 검토" in result["reason"]        # 어떤 마켓까지 봤는지 명시
 
 
+def test_tiered_parlays_none_odds_does_not_crash():
+    """KBO·NPB는 Odds API를 안 쓴다. 배당 None 레그가 조합에서 파이프라인을 죽이면 안 된다."""
+    legs = [
+        _leg(1, "A 승", None, 0.62),
+        _leg(2, "B 승", None, 0.61),
+        _leg(3, "C 승", 1.70, 0.60),
+    ]
+    result = build_tiered_parlays(legs, None, sport="npb")
+    assert result["combos"] == []
+    assert "성립 불가" in result["reason"]
+
+
 def test_tiered_parlays_blocks_correlated_same_game_legs():
     """[9] 같은 경기 상관 마켓 2개(홈승+홈-1.5)는 한 조합에 못 들어간다."""
     legs = [

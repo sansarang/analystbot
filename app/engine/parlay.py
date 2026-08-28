@@ -6,11 +6,27 @@ from math import prod
 CONF_RANK = {"high": 2, "medium": 1, "low": 0}
 
 
-def _combo(legs: list[dict]) -> dict:
+def _numeric(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _combo(legs: list[dict]) -> dict | None:
+    """합산 배당·확률. 배당이 없는 레그(KBO·NPB)는 조합을 만들지 않는다.
+
+    실측 2026-08-28: `prod([None])` 이 `1 * None`으로 터져, 판정·서술까지 끝난
+    분석이 캐시에 안 남고 17:45가 '분석 캐시가 없어'를 보냈다.
+    """
+    odds_vals, p_vals = [], []
+    for leg in legs:
+        o, p = leg.get("odds"), leg.get("p")
+        if not _numeric(o) or not _numeric(p):
+            return None
+        odds_vals.append(o)
+        p_vals.append(p)
     return {
         "legs": legs,
-        "odds": round(prod(leg["odds"] for leg in legs), 2),
-        "p": round(prod(leg["p"] for leg in legs), 4),
+        "odds": round(prod(odds_vals), 2),
+        "p": round(prod(p_vals), 4),
     }
 
 
@@ -29,6 +45,8 @@ def _pick_combo(cands: list[dict], sizes: tuple[int, ...],
             if len({leg["game_id"] for leg in combo_legs}) < n:
                 continue  # 동일 경기 중복 금지
             c = _combo(list(combo_legs))
+            if c is None:
+                continue
             if lo <= c["odds"] <= hi:
                 if best_in is None or c["p"] > best_in["p"]:
                     best_in = c
@@ -58,9 +76,10 @@ def build_tiered_parlays(
     from app.engine.markets import reviewed_markets_kr
 
     reviewed = f"{reviewed_markets_kr(sport)} 전 마켓 검토"  # [4] 종목별 용어
+    priced = [l for l in legs if _numeric(l.get("odds")) and _numeric(l.get("p"))]
     cands = sorted(
         [{**l, "key": f"{l['game_id']}:{l.get('desc') or l.get('side')}",
-          "desc": l.get("desc") or f"{l.get('side')} 승"} for l in legs],
+          "desc": l.get("desc") or f"{l.get('side')} 승"} for l in priced],
         key=lambda x: (CONF_RANK.get(x.get("confidence", "medium"), 1), x["p"]),
         reverse=True,
     )
@@ -114,7 +133,9 @@ def best_parlays(
 
     같은 경기 레그 2개가 들어간 조합은 제외. EV 내림차순 상위 top개 반환.
     """
-    candidates = [leg for leg in legs if leg["ev"] > 0]
+    candidates = [leg for leg in legs
+                  if _numeric(leg.get("ev")) and leg["ev"] > 0
+                  and _numeric(leg.get("odds")) and _numeric(leg.get("p"))]
     parlays = []
     for n in range(min_legs, min(max_legs, len(candidates)) + 1):
         for combo in combinations(candidates, n):

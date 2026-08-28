@@ -89,12 +89,13 @@ def test_kbo_data_axis_follows_standings_not_empty_stats():
 
 
 def test_kbo_h2h_blends_lambda_and_claude_without_odds():
-    """배당이 없어도 p_final = 0.5*λ + 0.5*Claude 가 보드에 찍힌다."""
+    """λ 승패에 변별이 있으면 p_final = 0.5*λ + 0.5*Claude. 배당 없어도 보드에 찍힌다."""
     jg = _kbo_jg()
     _compute_picks(Settings(_env_file=None), [jg], "kbo")
     home = next(c for c in jg["market_board"]
                 if c["market"] == "h2h" and c["side"] == "LG Twins")
     dist_p = jg["p_heuristic"]["LG Twins"]
+    assert abs(dist_p - 0.5) >= 0.05, "이 픽스처는 λ 변별이 있어야 한다"
     blended = 0.5 * dist_p + 0.5 * 0.62
     assert home["p"] is not None
     assert abs(home["p"] - blended) < 0.02, (
@@ -103,6 +104,7 @@ def test_kbo_h2h_blends_lambda_and_claude_without_odds():
     assert home["axes"]["data"] and home["axes"]["model"]
     assert home.get("two_source")
     assert not jg.get("data_zero")
+    assert not jg.get("h2h_lambda_unused")
 
 
 def test_kbo_unpriced_h2h_can_be_approved_on_probability():
@@ -128,6 +130,52 @@ def test_h2h_keeps_ensemble_when_distribution_present():
     assert abs(home["p"] - 0.60) < 1e-6
     under = next(c for c in board if c["market"] == "totals" and c["side"] == "Under")
     assert under["basis"] == "기대득점 분포"
+
+
+def test_h2h_coin_flip_lambda_uses_claude_only():
+    """실측 2026-08-28 NPB: λ≈50%가 Claude 65%를 56%로 깎으면 안 된다.
+
+    언더오버는 분포 단독으로 남는다.
+    """
+    jg = _kbo_jg(
+        p_claude=0.65,
+        research={
+            "home_standing": {"rank": 5, "w": 60, "l": 60, "d": 2, "played": 122},
+            "away_standing": {"rank": 6, "w": 60, "l": 60, "d": 2, "played": 122},
+            "home_offense": {"obp_30d": 0.340, "runs_per_game": 5.0},
+            "away_offense": {"obp_30d": 0.340, "runs_per_game": 5.0},
+            "home_pitcher": {"name": "A", "era_season": 4.00},
+            "away_pitcher": {"name": "B", "era_season": 4.00},
+            "league_baselines": {"obp": 0.3478, "ops": 0.7521, "slg": 0.4043},
+        },
+    )
+    _compute_picks(Settings(_env_file=None), [jg], "kbo")
+    dist_p = jg["p_heuristic"]["LG Twins"]
+    assert abs(dist_p - 0.5) < 0.05, f"동전 던지기 픽스처가 아님: λ={dist_p}"
+    home = next(c for c in jg["market_board"]
+                if c["market"] == "h2h" and c["side"] == "LG Twins")
+    away = next(c for c in jg["market_board"]
+                if c["market"] == "h2h" and c["side"] == "NC Dinos")
+    assert jg.get("h2h_lambda_unused") is True
+    assert home["basis"] == "판정" and away["basis"] == "판정"
+    assert abs(home["p"] - 0.65) < 0.02, f"승패가 Claude 단독이어야 하는데 {home['p']}"
+    under = next(c for c in jg["market_board"]
+                 if c["market"] == "totals" and c["side"] == "Under")
+    assert under["basis"] == "기대득점 분포"
+    assert under["p"] is not None
+    assert under["p"] != home["p"]
+
+
+def test_h2h_lambda_has_signal_threshold():
+    from app.config import Settings
+    from app.engine.scoring import h2h_lambda_has_signal
+
+    s = Settings(_env_file=None)
+    assert h2h_lambda_has_signal(0.50, s) is False
+    assert h2h_lambda_has_signal(0.5248, s) is False   # 오늘 NPB 오릭스 λ
+    assert h2h_lambda_has_signal(0.55, s) is True
+    assert h2h_lambda_has_signal(0.45, s) is True
+    assert h2h_lambda_has_signal(None, s) is False
 
 
 @pytest.mark.asyncio

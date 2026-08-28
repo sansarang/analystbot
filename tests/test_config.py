@@ -87,3 +87,5 @@ def test_recommendation_thresholds_are_config_driven():
     assert s.prob_cap_alert_n == 3            # 하루 3건 초과 시 모델 점검 경고
     # [4] 원정 비대칭 — 분데스리가 연구: 원정 베팅 ROI -17%
     assert s.away_prob_penalty == 0.05
+    assert s.min_win_prob == 0.58
+    assert s.lambda_h2h_min_edge == 0.05
