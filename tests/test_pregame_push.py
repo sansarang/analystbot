@@ -117,6 +117,9 @@ class _Redis:
     async def delete(self, key):
         self.store.pop(key, None)
 
+    async def hgetall(self, key):
+        return {}
+
 
 class _Pool:
     def __init__(self, rows):
@@ -339,3 +342,27 @@ def test_card_signature_moves_when_nine_changes():
     b = _game(nine="오스틴")
     assert card_signature(a) != card_signature(b)
     assert card_signature(a) == card_signature(_game(nine="김현수"))
+
+
+def test_checklist_contract_states_1745_and_not_1730_guarantee():
+    from app.engine.pregame_checklist import contract_lines
+
+    text = "\n".join(contract_lines())
+    assert "17:45" in text
+    assert "빈 카드" in text
+    assert "강제 종료선이 아님" in text
+
+
+@pytest.mark.asyncio
+async def test_checklist_reports_npb_window_by_clock():
+    from app.engine.pregame_checklist import build_pregame_checklist
+
+    rds = _Redis()
+    open_at = datetime(2026, 8, 29, 8, 30, tzinfo=UTC)   # KST 17:30
+    text_open = await build_pregame_checklist(None, rds, now=open_at)
+    assert "NPB 분석창" in text_open and "열림" in text_open
+    assert "docs/PREGAME_CHECKLIST.md" in text_open
+
+    closed_at = datetime(2026, 8, 29, 8, 45, tzinfo=UTC)  # KST 17:45
+    text_closed = await build_pregame_checklist(None, rds, now=closed_at)
+    assert "NPB 분석창" in text_closed and "닫힘" in text_closed

@@ -749,6 +749,24 @@ def build_dispatcher():
         for chunk in split_message(text):
             await message.answer(chunk)
 
+    @router.message(Command("checklist"))
+    async def on_checklist(message: Message) -> None:
+        """KBO·NPB 저녁 발송 계약 + 지금 측정. 조회만 한다."""
+        from app.engine.pregame_checklist import build_pregame_checklist
+
+        poll_tick()
+        redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+        try:
+            pool = await get_pool()
+            text = await build_pregame_checklist(pool, redis)
+        except Exception as exc:
+            logger.exception("[bot] /checklist 실패: %s", exc)
+            text = f"📋 저녁 점검 실패\n{type(exc).__name__}: {str(exc)[:200]}"
+        finally:
+            await redis.aclose()
+        for chunk in split_message(text):
+            await message.answer(chunk)
+
     @router.message(Command("today"))
     async def on_today(message: Message) -> None:
         await _card_flow(message, "mlb", None)

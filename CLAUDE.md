@@ -34,6 +34,7 @@ NPB 30분 전. MLB·축구는 사용자가 요청할 때만 응답한다.
 | **[docs/DISCIPLINE.md](docs/DISCIPLINE.md)** | 픽 선정·데이터 신뢰·자금·평가·개발 규율 **(최우선)** |
 | **[docs/MODEL.md](docs/MODEL.md)** | λ 산출 공식, 계수 근거, **물리적 한계값(임의 완화 금지)** |
 | [docs/RESEARCH_VALIDATION.md](docs/RESEARCH_VALIDATION.md) | 리서치 응답 검증 체계와 튜닝 기준 |
+| [docs/PREGAME_CHECKLIST.md](docs/PREGAME_CHECKLIST.md) | KBO·NPB 저녁 발송 점검 (`/checklist`) |
 | CLAUDE.md | 이 문서 — 구조·명령어·규약 |
 
 ### 절대 완화하면 안 되는 한계값 ([MODEL.md](docs/MODEL.md) §1)
