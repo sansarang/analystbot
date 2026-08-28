@@ -422,3 +422,104 @@ def test_already_listed_absence_is_not_doubled():
     added = merge_absences_from_diff(research, "Kia Tigers", changes, u)
     assert not any("나성범" in x for x in added)
     assert sum("나성범" in x for x in research["absences"]) == 1
+
+
+# ------------------------------------------------------------ 오늘 9명 (판정 입력)
+
+def test_today_nine_marks_new_and_usual():
+    """빠진 사람 수가 아니라 오늘 선 9명의 칸이 판정 단위다."""
+    from app.engine.lineup_diff import today_nine
+
+    u = usual_from(_hist(8))
+    today = parse_order([x for x in USUAL_ORDER if not x.startswith("나성범")]
+                        + ["백업(우익수)"])
+    changes = diff_lineup(today, u)
+    nine = today_nine(today, compared=True, changes=changes)
+    assert nine["n"] == 9
+    backup = next(r for r in nine["order"] if r["name"] == "백업")
+    assert backup["status"] == "new" and nine["new_n"] == 1
+    assert next(r for r in nine["order"] if r["name"] == "김도영")["status"] == "usual"
+
+
+def test_today_nine_unknown_without_usual():
+    from app.engine.lineup_diff import today_nine
+
+    nine = today_nine(parse_order(USUAL_ORDER), compared=False)
+    assert nine["n"] == 9
+    assert nine["unknown_n"] == 9
+    assert nine["note"] == "평소 비교 불가"
+    assert all(r["status"] == "unknown" for r in nine["order"])
+
+
+def test_today_nine_empty_order_is_honest():
+    from app.engine.lineup_diff import today_nine
+
+    nine = today_nine([], compared=True)
+    assert nine["n"] == 0 and "미수집" in nine["note"]
+
+
+def test_attach_lineup_view_puts_nine_and_absence_coeff():
+    from app.config import Settings
+    from app.engine.lineup_diff import attach_lineup_view
+    from app.engine.performance import absence_coeff_for_judge
+
+    home_order = ("カナリオ(右)-小島 大河(指)-長谷川 信哉(中)-ネビン(一)-"
+                  "林 安可(左)-柘植 世那(捕)-渡部 聖弥(三)-源田 壮亮(遊)-仲田 慶介(二)")
+    jg = {
+        "sport": "npb",
+        "home": "Saitama Seibu Lions",
+        "away": "Tohoku Rakuten Golden Eagles",
+        "research": {
+            "home_lineup": {"order": home_order},
+            "away_lineup": {"order": "中島 大輔(左)-辰己 涼介(中)"},
+            "absences": [
+                "Saitama Seibu Lions의 山村 崇嘉 주전 결장 — 오늘 라인업에서 빠짐",
+                "Saitama Seibu Lions의 岸 潤一郎 주전 결장 — 오늘 라인업에서 빠짐",
+                "Saitama Seibu Lions의 平沢 大河 중심 타선 결장 — 평소 5번, 오늘 라인업에서 빠짐",
+                "Saitama Seibu Lions의 西川 愛也 중심 타선 결장 — 평소 1번, 오늘 라인업에서 빠짐",
+            ],
+        },
+        "lineup_intent": {
+            "headline": {"home": "평소 대비 변경 6건", "away": "비교 불가"},
+            "changes": {
+                "home": [{"type": "new_starter", "who": "長谷川 信哉",
+                          "detail": "x", "cell": "batting"}],
+                "away": [],
+            },
+        },
+    }
+    attach_lineup_view(jg, "npb")
+    home = jg["today_nine"]["home"]
+    assert home["n"] == 9
+    assert home["order"][2]["name"] == "長谷川 信哉"
+    assert home["order"][2]["status"] == "new"
+    assert home["order"][4]["name"] == "林 安可"
+    assert home["order"][4]["status"] == "usual"
+    assert jg["today_nine"]["away"]["order"][0]["status"] == "unknown"
+    s = Settings(_env_file=None)
+    coeff = absence_coeff_for_judge(jg, jg["research"], s)
+    assert coeff["do_not_stack"] is True
+    assert coeff["per_regular_pp"] == pytest.approx(-s.adj_key_batter_out * 100)
+    assert coeff["home_pp"] == pytest.approx(-s.adj_absence_cap * 100)
+    assert jg["absence_coeff"]["lambda_already_applies_absences"] is True
+    for row in home["order"]:
+        assert set(row) == {"slot", "name", "pos", "status"}
+
+
+def test_soccer_gets_absence_coeff_not_today_nine():
+    from app.engine.lineup_diff import attach_lineup_view
+
+    jg = {"sport": "soccer", "home": "A", "away": "B", "research": {}}
+    attach_lineup_view(jg, "soccer")
+    assert "today_nine" not in jg
+    assert jg["absence_coeff"]["do_not_stack"] is True
+
+
+def test_prepare_games_for_judge_wired_before_every_judge_call():
+    """판정 호출마다 오늘 9명이 붙어야 한다. 배선만 있고 호출이 없으면 세이부 사고가 반복된다."""
+    from pathlib import Path
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    n_judge = src.count("Judge().judge(")
+    n_prep = src.count("_prepare_games_for_judge(") - 1  # 정의 1회
+    assert n_judge >= 1 and n_prep == n_judge

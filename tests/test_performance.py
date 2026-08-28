@@ -238,6 +238,8 @@ def test_new_context_fields_marked_unapplied():
         assert key in UNMAPPED_FIELDS, f"{key}가 미반영 목록에 없다"
         assert key not in FIELD_TO_COEFFICIENT, (
             f"{key}에 측정되지 않은 계수가 붙었다 — DISCIPLINE 5-1 위반")
+    assert "today_nine" in UNMAPPED_FIELDS
+    assert "today_nine" not in FIELD_TO_COEFFICIENT
 
     out = adj().adjust(0.5, _jg(), {
         "motivation": "홈은 와일드카드 경쟁 중", "schedule_load": "원정 3연전 마지막",

@@ -12,3 +12,6 @@ def test_live_judge_system_forbids_recalling_results():
     assert "lineup_record" in SYSTEM
     assert "pitcher_matchup" in SYSTEM
     assert "시즌 상대팀" in SYSTEM
+    assert "today_nine" in SYSTEM
+    assert "결장 건수" in SYSTEM
+    assert "do_not_stack" in SYSTEM

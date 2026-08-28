@@ -262,3 +262,62 @@ def summarize(changes: list[dict], usual: dict | None) -> dict:
     return {"by_cell": by_cell, "types": kinds,
             "headline": f"평소 대비 변경 {len(changes)}건 "
                         f"(최근 {usual['games']}경기 기준{src})"}
+
+
+def _side_compared(intent: dict, side: str) -> bool:
+    """평소 타순과 대조했는지. 헤드라인에 '비교 불가'면 아직 기준이 없다."""
+    h = ((intent or {}).get("headline") or {}).get(side) or ""
+    return bool(h) and "비교 불가" not in h
+
+
+def today_nine(today: list[tuple[str, str]], *, compared: bool,
+               changes: list[dict] | None = None) -> dict:
+    """오늘 선발 타순 9명. 평소 여부만 붙인다. 개인 타율·홈런은 만들지 않는다.
+
+    status: usual(평소에도 선발) / new(최근 평소 타순에 없음) / unknown(평소 비교 불가).
+    빈 타순은 n=0. 9명이 아니면 있는 만큼만 — 채우지 않는다.
+    """
+    if not today:
+        return {"order": [], "n": 0, "new_n": 0, "usual_n": 0, "unknown_n": 0,
+                "note": "타순 미수집"}
+    new_keys = {canon_name(c.get("who") or "")
+                for c in (changes or []) if c.get("type") == "new_starter"}
+    new_keys.discard("")
+    rows = []
+    new_n = usual_n = unknown_n = 0
+    for i, (name, pos) in enumerate(today, 1):
+        if not compared:
+            status = "unknown"
+            unknown_n += 1
+        elif canon_name(name) in new_keys:
+            status = "new"
+            new_n += 1
+        else:
+            status = "usual"
+            usual_n += 1
+        rows.append({"slot": i, "name": name, "pos": pos or "", "status": status})
+    note = "평소 비교 불가" if not compared else ""
+    return {"order": rows, "n": len(rows), "new_n": new_n, "usual_n": usual_n,
+            "unknown_n": unknown_n, "note": note}
+
+
+def attach_lineup_view(jg: dict, sport: str | None = None) -> None:
+    """판정 입력에 오늘 9명·결장 계수 크기를 얹는다. 원본 research를 고친다.
+
+    야구만 today_nine. 축구는 타순 9명이 없으므로 결장 계수만.
+    """
+    from app.engine.performance import absence_coeff_for_judge
+
+    sport = (sport or jg.get("sport") or "").lower()
+    res = jg.setdefault("research", {})
+    if sport in ("mlb", "kbo", "npb"):
+        intent = jg.get("lineup_intent") or {}
+        view = {}
+        for side in ("home", "away"):
+            order = parse_order((res.get(f"{side}_lineup") or {}).get("order"))
+            changes = ((intent.get("changes") or {}).get(side)) or []
+            view[side] = today_nine(order, compared=_side_compared(intent, side),
+                                    changes=changes)
+        jg["today_nine"] = view
+        res["today_nine"] = view
+    jg["absence_coeff"] = absence_coeff_for_judge(jg, res)

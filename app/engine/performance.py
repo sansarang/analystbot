@@ -211,6 +211,31 @@ class WinProbAdjuster:
         }
 
 
+def absence_coeff_for_judge(jg: dict, research: dict | None = None,
+                            settings=None) -> dict:
+    """폴백 승률 조정의 결장 크기. 판정이 같은 결장으로 더 크게 깎지 않게 보여 준다.
+
+    λ 경로도 결장 항이 있다(scoring._absence_factors). 여기 숫자는 adj_* %p다.
+    새 계수를 만들지 않는다.
+    """
+    s = settings or get_settings()
+    adj = WinProbAdjuster(s)
+    research = research if research is not None else (jg.get("research") or {})
+    home_out, away_out = _split_absences(research.get("absences") or [], jg)
+    h_delta, h_notes = adj.absences(home_out, jg.get("home", ""))
+    a_delta, a_notes = adj.absences(away_out, jg.get("away", ""))
+    return {
+        "home_pp": round(h_delta * 100, 1),
+        "away_pp": round(a_delta * 100, 1),
+        "home_notes": h_notes,
+        "away_notes": a_notes,
+        "per_regular_pp": round(-s.adj_key_batter_out * 100, 1),
+        "cap_pp": round(-s.adj_absence_cap * 100, 1),
+        "lambda_already_applies_absences": True,
+        "do_not_stack": True,
+    }
+
+
 # ---------------------------------------------------------------- 헬퍼
 
 def _name_of(text: str, team: str = "") -> str:
@@ -329,6 +354,8 @@ UNMAPPED_FIELDS = {
     "lineup_record": "확정 타순 유사 전적",
     "lineup_matchup": "확정 타순 대결",
     "pitcher_matchup": "투수 최근 등판 vs 상대 타선",
+    # 오늘 9명 — 판정(p_claude)이 읽고 λ 계수는 없다. 개인 성적을 만들지 않는다.
+    "today_nine": "오늘 선발 타순 9명",
 }
 
 

@@ -1397,6 +1397,7 @@ async def build_analysis(
         from app.engine.lineup_record import strip_outcome_for_judge
 
         upcoming = [strip_outcome_for_judge(g) for g in upcoming]
+    _prepare_games_for_judge(upcoming, sport)
     # [§8-21] 여론을 판정에 넘긴다. **확률 계수로 만들지 않는다** — 동조 신호인지
     #   역행 신호(팬심 편향)인지 측정된 적이 없다. 판정이 읽고 스스로 판단한다.
     judge_payload = {"date": date, "sport": sport, "games": upcoming,
@@ -1720,6 +1721,18 @@ async def _renarrate(games: list[dict], sport: str) -> None:
         await attach_narratives(games, sport)
     except Exception as exc:
         logger.warning("[pipeline] 재서술 실패, 기존 서술 유지: %s", exc)
+
+
+def _prepare_games_for_judge(games: list[dict], sport: str) -> None:
+    """판정 직전에 오늘 9명·결장 계수 크기를 얹는다. 실패해도 그 경기만 건너뛴다."""
+    from app.engine.lineup_diff import attach_lineup_view
+
+    for jg in games or []:
+        try:
+            attach_lineup_view(jg, sport or jg.get("sport"))
+        except Exception as exc:
+            logger.warning("[pipeline] 오늘9명 부착 실패 game=%s: %s",
+                           jg.get("game_id"), exc)
 
 
 def _attach_verdicts(judge_games: list[dict], verdict: dict) -> None:
@@ -2142,6 +2155,7 @@ async def _second_opinion(
     if not counter.strip() or "반대 근거 없음" == counter.strip():
         return verdict
     logger.info("[pipeline] second opinion for %d disputed games", len(disputed))
+    _prepare_games_for_judge(disputed, sport)
     payload = {
         "date": date, "sport": sport, "games": disputed, "breaking_news": news,
         "counter_evidence": counter,
@@ -3789,6 +3803,7 @@ async def _rejudge_after_breaking(analysis: dict, changes: list[dict]) -> dict:
     if not affected:
         return analysis
 
+    _prepare_games_for_judge(affected, analysis.get("sport") or "")
     payload = {
         "date": analysis["date"], "sport": analysis["sport"], "games": affected,
         "breaking_news": analysis["news"],
@@ -3880,6 +3895,7 @@ async def _refresh_stale_research(
         return 0
 
     # 재조사 경기만 재판정 → 픽·조합 재계산
+    _prepare_games_for_judge(refreshed, sport)
     payload = {
         "date": analysis["date"], "sport": sport, "games": refreshed,
         "breaking_news": analysis.get("news", ""),
@@ -3975,12 +3991,14 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             except Exception as exc:
                 logger.warning("[pipeline] 라인업 의도 산출 실패: %s", exc)
 
+        _prepare_games_for_judge([jg], sport)
         payload = {
             "date": date, "sport": sport, "games": [jg],
             "breaking_news": analysis.get("news", ""),
             "instruction": ("확정 라인업이 수신됐다. 확정 선발·타순·결장과 "
-                            "lineup_matchup·lineup_record·pitcher_matchup를 반영해 "
+                            "today_nine·lineup_matchup·lineup_record·pitcher_matchup를 반영해 "
                             "경기력 기준으로 승률을 재산출하라. 배당은 보지 마라. "
+                            "승부는 오늘 9명이다. 결장 건수로 사이드를 뒤집지 마라. "
                             "유사 타순 전적·맞대결 ERA는 표본 3 미만이면 승률 근거로 쓰지 마라. "
                             "era_vs_opponent는 시즌 상대팀이지 오늘 9명이 아니다."),
         }
@@ -4050,6 +4068,7 @@ async def ensure_game_fresh(sport: str, date: str, game_id: int) -> tuple[dict |
             return analysis, False
         jg["research"] = data
         settings = get_settings()
+        _prepare_games_for_judge([jg], sport)
         payload = {
             "date": date, "sport": sport, "games": [jg],
             "breaking_news": analysis.get("news", ""),

@@ -47,8 +47,9 @@
 
 허용:
 
-- 페이로드의 λ, 결장, `lineup_matchup`, `lineup_record`(표본 3 미만이면 승률 미사용)
+- 페이로드의 λ, `today_nine`, `absence_coeff`, `lineup_matchup`, `lineup_record`(표본 3 미만이면 승률 미사용)
 - “이 경기는 아직 시작하지 않았다”는 전제 위의 추정
+- 결장 문장은 오늘 9명의 구성 설명. 결장 건수로 사이드를 뒤집지 않음 (`do_not_stack`)
 
 ---
 
