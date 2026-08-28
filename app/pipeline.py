@@ -761,10 +761,13 @@ async def build_analysis(
             logger.warning("[pipeline] %s 일정 갱신 실패(%s) — DB의 기존 일정으로 진행",
                            sport, type(exc).__name__)
             schedule_stale = True
-        if include_final:
-            from datetime import date as date_cls
+        from datetime import date as date_cls
 
-            day = date_cls.fromisoformat(date)
+        day = date_cls.fromisoformat(date)
+        # asyncpg Date 코덱은 str에 toordinal이 없어 터진다.
+        # 실측 2026-08-28 17:25: `$2::date` + '2026-08-28' → 파이프라인 실패,
+        # 시그만 남아 17:45 재시도가 스킵됐다.
+        if include_final:
             rows = await pool.fetch(
                 """
                 SELECT ext_id FROM games
@@ -778,9 +781,9 @@ async def build_analysis(
             # 다음날·모레 scheduled까지 한 캐시에 섞여 15경기가 됐다.
             rows = await pool.fetch(
                 """SELECT ext_id FROM games WHERE sport = $1 AND status = 'scheduled'
-                     AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $2::date
+                     AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $2
                      AND starts_at >= now() - interval '12 hours'""",
-                sport, date)
+                sport, day)
         ext_ids = [r["ext_id"] for r in rows]
         stats_coro = _empty_stats()
         league = LEAGUE_LABEL_BY_SPORT.get(sport, sport.upper())

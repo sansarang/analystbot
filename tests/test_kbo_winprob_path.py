@@ -264,6 +264,7 @@ def test_pipeline_scheduled_query_is_date_scoped():
     from app import pipeline as P
 
     src = inspect.getsource(P.build_analysis)
-    assert "Asia/Seoul')::date = $2::date" in src
+    assert "date_cls.fromisoformat(date)" in src
     assert "starts_at >= now() - interval '12 hours'" in src
+    assert "::date = $2::date" not in src
 

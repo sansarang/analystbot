@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from app import notify as _notify_mod
 from app.engine.lineup_timing import _parse
@@ -102,7 +102,7 @@ async def _release(redis, game_id: int) -> None:
 async def run_pregame_push(pool, redis, now=None) -> dict:
     """오늘 아직 안 시작한 KBO·NPB 전 경기의 예측 카드. 경기당 1회."""
     now = now or datetime.now(UTC)
-    date = today_kst()
+    date_s = today_kst()
     rows = await pool.fetch(
         """
         SELECT id, sport, home, away, starts_at, league
@@ -110,17 +110,17 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
         WHERE sport = ANY($1::text[])
           AND status = 'scheduled'
           AND starts_at > now()
-          AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $2::date
+          AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $2
         ORDER BY starts_at, id
         """,
         list(SPORTS),
-        date,
+        date.fromisoformat(date_s),
     )
     sent = skipped = failed = 0
     ensured: dict[str, bool] = {}
     cancelled_ids: set[int] = set()
     for sport in SPORTS:
-        snap = await load_snapshot(redis, sport, date)
+        snap = await load_snapshot(redis, sport, date_s)
         sport_rows = [r for r in rows if r["sport"] == sport]
         cancelled_ids.update(await mark_cancelled_games(pool, sport_rows, snap))
     for r in rows:
@@ -138,9 +138,9 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
             continue
         try:
             if sport not in ensured:
-                ensured[sport] = await ensure_analysis_cache(pool, redis, sport, date)
+                ensured[sport] = await ensure_analysis_cache(pool, redis, sport, date_s)
             ok = ensured[sport]
-            raw = await redis.get(f"analysis:{sport}:{date}") if ok else None
+            raw = await redis.get(f"analysis:{sport}:{date_s}") if ok else None
             if not raw:
                 text = missing_cache_text(sport, r["home"], r["away"])
             else:

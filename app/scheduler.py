@@ -365,8 +365,9 @@ async def crawler_lineup_poll() -> None:
                 if not ensured:
                     raw = await redis.get(f"analysis:{sport}:{date}")
                     was_ready = analysis_cache_ready(raw, date)
-                    await ensure_analysis_cache(pool, redis, sport, date)
-                    just_built = not was_ready
+                    ready = await ensure_analysis_cache(pool, redis, sport, date)
+                    # 파이프라인이 실패했는데 시그만 남기면 다음 폴링이 재시도를 안 한다.
+                    just_built = (not was_ready) and ready
                     ensured = True
                 notes = []
                 if (r["home_pitcher"] and game.get("home_pitcher")
