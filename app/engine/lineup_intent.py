@@ -138,4 +138,17 @@ def render(jg: dict) -> list[str]:
     hc = intent.get("handicap") or {}
     if hc.get("detail"):
         out.append(f"  → 핸디캡: {hc['detail']}")
+    rec = (jg.get("research") or {}).get("lineup_record") or {}
+    if rec:
+        from app.engine.lineup_record import format_record
+        for side in ("away", "home"):
+            name = jg.get(f"{side}_kr") or jg.get(side)
+            line = format_record(rec.get(side) or {})
+            if line:
+                out.append(f"  {name} 타순 전적: {line}")
+    mu = jg.get("lineup_matchup") or (jg.get("research") or {}).get("lineup_matchup") or {}
+    if mu.get("comparable"):
+        out.append(f"  → 타순 대결: {mu.get('gap')}")
+    elif mu.get("detail"):
+        out.append(f"  → 타순 대결: {mu['detail']}")
     return ["📋 라인업 의도 (평소 대비)"] + out

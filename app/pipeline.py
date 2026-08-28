@@ -3798,8 +3798,10 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
         payload = {
             "date": date, "sport": sport, "games": [jg],
             "breaking_news": analysis.get("news", ""),
-            "instruction": ("확정 라인업이 수신됐다. 확정 선발·타순·결장을 반영해 "
-                            "경기력 기준으로 승률을 재산출하라. 배당은 보지 마라."),
+            "instruction": ("확정 라인업이 수신됐다. 확정 선발·타순·결장과 "
+                            "lineup_matchup·lineup_record를 반영해 "
+                            "경기력 기준으로 승률을 재산출하라. 배당은 보지 마라. "
+                            "유사 타순 전적은 표본 3경기 미만이면 승률 근거로 쓰지 마라."),
         }
         try:
             verdict = await Judge().judge(payload)
@@ -4096,6 +4098,12 @@ async def _lineup_intent_one(pool, jg: dict, sport: str, final: bool = False) ->
     intent["handicap"] = LI.handicap_note(per_side["home"], per_side["away"])
     jg["lineup_intent"] = intent
     jg["research"] = res
+    # 확정 9명의 유사 전적 + 양 팀 맞대기. 계수는 만들지 않는다.
+    try:
+        from app.engine.lineup_record import attach as attach_lineup_record
+        await attach_lineup_record(pool, jg, sport)
+    except Exception as exc:
+        logger.warning("[라인업전적] 부착 실패 game=%s: %s", jg.get("game_id"), exc)
 
 
 async def _attach_lineup_intent(pool, judge_games: list[dict], sport: str,
