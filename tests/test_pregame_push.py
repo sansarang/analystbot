@@ -345,12 +345,20 @@ def test_card_signature_moves_when_nine_changes():
 
 
 def test_checklist_contract_states_1745_and_not_1730_guarantee():
-    from app.engine.pregame_checklist import contract_lines
+    from app.engine.pregame_checklist import contract_lines, incident_lines
 
-    text = "\n".join(contract_lines())
+    text = "\n".join(contract_lines() + incident_lines())
     assert "17:45" in text
     assert "빈 카드" in text
-    assert "강제 종료선이 아님" in text
+    assert "강제 아님" in text
+    assert "창 놓침" in text
+    assert "KBO 전경기 취소" in text
+    assert "parlay" in text or "odds=None" in text
+    assert "세이부" in text
+    assert "직렬 Judge" in text
+    assert "ensure_analysis_cache" in text
+    assert "today_nine" in text
+    assert "prefetch_daily" in text
 
 
 @pytest.mark.asyncio

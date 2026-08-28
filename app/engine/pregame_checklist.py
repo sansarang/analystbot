@@ -25,11 +25,40 @@ KST = ZoneInfo("Asia/Seoul")
 
 def contract_lines() -> list[str]:
     return [
-        "계약 (코드에 고정)",
-        "· 일괄 17:45 덤프 없음. 경기마다 1차/변동",
-        "· 빈 카드 없음. 14:00은 텔레그램 없음. MLB·축구 자동 없음",
-        "· NPB 크롤·분석은 T-15(18:00→17:45)에 끝. 이후 재판정 없음",
-        "· 17:30 1차 완료는 목표가 아니라 강제 종료선이 아님",
+        "계약",
+        "· 일괄 17:45 덤프 없음. 경기마다 1차/변동. 빈 카드 없음",
+        "· NPB 크롤·분석 T-15(18:00→17:45) 끝. 이후 재판정 없음",
+        "· 17:30 1차 완료는 강제 아님",
+    ]
+
+
+def incident_lines() -> list[str]:
+    """8/28 실측과 미실측을 숨기지 않는다. 상세는 docs/PREGAME_CHECKLIST.md."""
+    return [
+        "8/28 안 됨",
+        "❌ 빈 카드(캐시 없어) — parlay odds=None → math.prod. 저녁 캐시 유실. 실카드 0",
+        "❌ 17:45 일괄 덤프 + NX 키 — 변동 재발송 불가",
+        "❌ 발송창 T-30에야 열림 — 1차를 T-30까지 못 끝냄",
+        "❌ 6경기 직렬 Judge ~12분 (17:45→17:57)",
+        "❌ 저녁 ensure_analysis_cache가 슬레이트 파이프라인 재실행",
+        "❌ predicted→confirmed만으로 같은 타순 재판정",
+        "❌ 세이부(gid523) 결장 건수로 라쿠텐 56% — 실경기는 세이부. 승패 미추천, Over 4.5",
+        "❌ 배포 20:18 — asia_pregame 오늘 17·18시 창 놓침",
+        "❌ /health prefetch_daily는 잡 이름 불일치(항상 기록 없음처럼 보임)",
+        "❌ 의도 파싱 400 (빈 모델명). Groq/Gemini disabled. 리서치 0/15",
+        "8/28 됨",
+        "✅ KBO 전경기 취소 — 카드 안 냄",
+        "✅ 14:00 prefetch_asia 텔레그램 없음",
+        "✅ /health 커밋=배포 해시. 스케줄러·크롤러 기동. MLB 판정은 됨(자동발송 아님)",
+        "코드 고침 · 저녁 창은 8/29 첫 실측",
+        "🧪 parlay None은 조합만 포기 · p_claude 없는 캐시 미발송 · 취소 DB 반영",
+        "🧪 경기 단위 1차/변동 · 카드시그 · 선발+타순만 시그 · NPB 먼저 병렬",
+        "🧪 저녁 슬레이트 파이프라인 제거 · today_nine · NPBStopBefore=15 · 발송창 T-40",
+        "보장 안 함",
+        "⚠️ 17:30 1차 완료는 강제 아님. 강제선은 NPB 17:45",
+        "⚠️ 17:45 이후 NPB 타순 변경은 버림. 14:00 캐시 없으면 저녁 분석 안 함",
+        "⚠️ 타순이 17:43에 뜨면 Judge가 17:45를 넘길 수 있음",
+        "⚠️ KBO 19시 이후는 5분 잡 밖(30분 폴링). pytest 2건 HEAD부터 실패(발송 무관)",
         "상세: docs/PREGAME_CHECKLIST.md",
     ]
 
@@ -64,6 +93,8 @@ async def build_pregame_checklist(pool, redis, now=None) -> str:
         f"📋 저녁 점검 {local:%Y-%m-%d %H:%M} KST",
         "",
         *contract_lines(),
+        "",
+        *incident_lines(),
         "",
         "지금 측정",
         f"{_mark(True)} 코드 {info.short} — {info.subject[:48]}",

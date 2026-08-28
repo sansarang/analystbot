@@ -296,7 +296,7 @@ PYTHONPATH=. nohup uv run python -m app.scheduler > logs/scheduler.log 2>&1 &
 - API 잔여 쿼터, 마지막 프리페치 결과, 오늘 λ 가동률·판정 성공률
 
 **"고쳤다"고 보고하기 전에 `/health`에서 내 커밋이 도는지 확인하라.**
-KBO·NPB 저녁 발송은 `/checklist`와 [docs/PREGAME_CHECKLIST.md](PREGAME_CHECKLIST.md)로 시계를 대조한다.
+KBO·NPB 저녁 발송은 `/checklist`와 [docs/PREGAME_CHECKLIST.md](PREGAME_CHECKLIST.md)로 시계·사고(작동/미작동)를 대조한다.
 
 ### 6-3. 조용한 실패 금지
 
