@@ -267,6 +267,69 @@ def _clean_form_block(block, dropped: list[str], prefix: str) -> dict:
     return out
 
 
+_PM_APP_KEYS = ("game_id", "opponent", "is_starter", "innings", "batters",
+                "hits", "hr", "k", "bb", "r", "er", "n_shared", "starts_at")
+_PM_MIN_RATE = 3   # pitcher_matchup.MIN_RATE_APPS와 같음. 순환 import 방지.
+
+
+def _clean_pitcher_matchup(blob) -> dict | None:
+    """구조화 필드. 창을 단언하는 비율이 표본 미달이면 그 비율만 버린다.
+
+    `era_vs_opponent`를 last-5로 바꿔 넣는 오염도 여기서 막는다 —
+    season_vs_team 라벨을 강제로 되돌린다.
+    """
+    if not isinstance(blob, dict):
+        return None
+    out: dict = {}
+    for side in ("home", "away"):
+        src = blob.get(side)
+        if not isinstance(src, dict):
+            continue
+        pitchers = []
+        for p in src.get("pitchers") or []:
+            if not isinstance(p, dict) or not str(p.get("name") or "").strip():
+                continue
+            n = int(p.get("n") or 0)
+            n_sim = int(p.get("n_similar") or 0)
+            item: dict = {"name": str(p["name"]).strip(),
+                          "role": str(p.get("role") or "unknown"),
+                          "n": n, "n_similar": n_sim}
+            if n >= _PM_MIN_RATE and p.get("era_window") is not None:
+                era = clean_number(p.get("era_window"))
+                if era is not None:
+                    item["era_window"] = era
+            if n_sim >= _PM_MIN_RATE and p.get("era_vs_similar_nine") is not None:
+                era = clean_number(p.get("era_vs_similar_nine"))
+                if era is not None:
+                    item["era_vs_similar_nine"] = era
+            apps = []
+            for a in (p.get("appearances") or [])[:5]:
+                if not isinstance(a, dict):
+                    continue
+                apps.append({k: a[k] for k in _PM_APP_KEYS if k in a})
+            item["appearances"] = apps
+            if p.get("window_label"):
+                item["window_label"] = str(p["window_label"])[:80]
+            if p.get("note"):
+                item["note"] = str(p["note"])[:240]
+            pitchers.append(item)
+        side_out: dict = {"pitchers": pitchers}
+        svt = src.get("season_vs_team")
+        if isinstance(svt, dict) and svt.get("era") is not None:
+            era = clean_number(svt.get("era"))
+            if era is not None:
+                side_out["season_vs_team"] = {
+                    "era": era,
+                    "label": "시즌 상대팀 방어율",
+                    "scope": "season_vs_team",
+                }
+                line = src.get("season_vs_team_line")
+                if line:
+                    side_out["season_vs_team_line"] = str(line)[:120]
+        out[side] = side_out
+    return out or None
+
+
 def sanitize_research(data: dict | None, sport: str = "mlb") -> tuple[dict, list[str]]:
     """리서치 페이로드에서 무효 값을 제거. 반환 (정제본, 제거된 필드 경로들).
 
@@ -349,13 +412,15 @@ def sanitize_research(data: dict | None, sport: str = "mlb") -> tuple[dict, list
     for side in ("home_pitcher", "away_pitcher"):
         src, dst = data.get(side), out.get(side)
         if isinstance(src, dict) and isinstance(dst, dict):
-            for key in ("ip_avg_recent", "siera", "xfip", "fip"):
+            for key in ("ip_avg_recent", "siera", "xfip", "fip", "era_vs_opponent"):
                 val = clean_number(src.get(key))
                 if val is not None:
                     dst[key] = val
             hand = str(src.get("throws") or "").strip().upper()[:1]
             if hand in ("L", "R"):
                 dst["throws"] = hand
+            if str(src.get("era_vs_opponent_scope") or "") == "season_vs_team":
+                dst["era_vs_opponent_scope"] = "season_vs_team"
 
     for side in ("home_offense", "away_offense"):
         block = data.get(side)
@@ -383,6 +448,19 @@ def sanitize_research(data: dict | None, sport: str = "mlb") -> tuple[dict, list
             kept["closer_available"] = block["closer_available"]
         if kept:
             out[side] = kept
+
+    for side in ("home", "away"):
+        staff = data.get(f"{side}_bullpen_staff")
+        if isinstance(staff, list):
+            names = [str(n).strip() for n in staff if str(n).strip()]
+            if names:
+                out[f"{side}_bullpen_staff"] = names[:15]
+
+    pm = _clean_pitcher_matchup(data.get("pitcher_matchup"))
+    if pm:
+        out["pitcher_matchup"] = pm
+    elif data.get("pitcher_matchup"):
+        dropped.append("pitcher_matchup")
 
     for key in ("park_factor",):     # park_hr은 소비처가 0곳이라 폐기했다
         val = clean_number(data.get(key))

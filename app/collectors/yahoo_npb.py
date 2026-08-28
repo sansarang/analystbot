@@ -97,6 +97,10 @@ class YahooNPBClient:
     async def game(self, game_id: str) -> str:
         return await self._get(f"/npb/game/{game_id}/top")
 
+    async def stats(self, game_id: str) -> str:
+        """종료 경기 투수 등판. `/top` 打順과 표 순서가 반대다(실측 2026-08-28)."""
+        return await self._get(f"/npb/game/{game_id}/stats")
+
 
 def parse_schedule(html: str) -> list[dict]:
     """일정 HTML → [{game_id, home, away, starters_confirmed}].
@@ -227,6 +231,79 @@ def parse_batting_orders(html: str) -> dict[str, list[str]]:
     if len(found) < 2:
         return {"home": [], "away": []}
     return {"home": found[0], "away": found[1]}
+
+
+def parse_npb_ip(v) -> float | None:
+    """Yahoo `/stats` 投球回. `6.2` = 6⅔ (실측). 소수 이닝이 아니다."""
+    s = str(v or "").strip()
+    if not s or s in (".", "-"):
+        return None
+    m = re.match(r"^(\d+)(?:\.([0-2]))?$", s)
+    if not m:
+        return None
+    total = float(m.group(1))
+    frac = m.group(2)
+    if frac == "1":
+        total += 1 / 3
+    elif frac == "2":
+        total += 2 / 3
+    return round(total, 3)
+
+
+def _opt_int_cell(v):
+    s = str(v or "").strip().replace(",", "")
+    if not s or s in (".", "-"):
+        return None
+    try:
+        return int(float(s))
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_pitching_stats(html: str) -> dict[str, list[dict]]:
+    """Yahoo `/stats` 투수표 → {away, home}. 첫 표가 원정(실측 2026-08-28).
+
+    헤더: 選手名 防御率 投球回 投球数 打者 被安打 被本塁打 奪三振 与四球 与死球 ボーク 失点 自責点
+    `防御率`는 **시즌값**(0.1이닝 → 162.00). 경기 ERA로 쓰지 않는다.
+    `/top` 打順은 홈 먼저 — 이 표와 반대. 섞지 않는다.
+    """
+    found: list[list[dict]] = []
+    for tb in re.findall(r"<table[^>]*>(.*?)</table>", html, re.S):
+        rows = [r for r in (_cells(tr) for tr in
+                            re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S)) if r]
+        if not rows:
+            continue
+        head = rows[0]
+        if "投球回" not in head or "自責点" not in head or "選手名" not in head:
+            continue
+        idx = {name: i for i, name in enumerate(head)}
+
+        def col(r, key):
+            i = idx.get(key)
+            return r[i] if i is not None and i < len(r) else ""
+
+        pitchers = []
+        for i, r in enumerate(rows[1:]):
+            name = col(r, "選手名").strip()
+            if not name:
+                continue
+            pitchers.append({
+                "name": name,
+                "is_starter": i == 0,
+                "innings": parse_npb_ip(col(r, "投球回")),
+                "batters": _opt_int_cell(col(r, "打者")),
+                "hits": _opt_int_cell(col(r, "被安打")),
+                "hr": _opt_int_cell(col(r, "被本塁打")),
+                "k": _opt_int_cell(col(r, "奪三振")),
+                "bb": _opt_int_cell(col(r, "与四球")),
+                "r": _opt_int_cell(col(r, "失点")),
+                "er": _opt_int_cell(col(r, "自責点")),
+            })
+        if pitchers:
+            found.append(pitchers)
+    if len(found) < 2:
+        return {"away": [], "home": []}
+    return {"away": found[0], "home": found[1]}
 
 
 # 종료 경기 표기: "神宮 ヤクルト 巨人 6 - 8 試合終了 …"  (홈 원정 홈점수 - 원정점수)
@@ -379,11 +456,14 @@ def merge_into_research(research: dict, jg: dict, data: dict) -> list[str]:
         p = data.get(f"{side}_pitcher")
         if p:
             blk = research.setdefault(f"{side}_pitcher", {})
-            for k in ("name", "throws", "era_season"):
+            for k in ("name", "throws", "era_season", "era_vs_opponent"):
                 v = p.get(k)
                 if v is not None and blk.get(k) != v:
                     blk[k] = v
                     filled.append(f"{side}_pitcher.{k}")
+            if p.get("era_vs_opponent") is not None:
+                # 시즌 상대팀. last-5 vs 오늘 9명이 아니다.
+                blk["era_vs_opponent_scope"] = "season_vs_team"
             if p.get("condition"):
                 blk["condition"] = p["condition"]      # 판정용 — λ 계수 아님
         pen = data.get(f"{side}_bullpen_list")
@@ -393,6 +473,9 @@ def merge_into_research(research: dict, jg: dict, data: dict) -> list[str]:
             if era is not None and blk.get("era") != era:
                 blk["era"] = era
                 filled.append(f"{side}_bullpen.era")
+            names = [x["name"] for x in pen if x.get("name")]
+            if names:
+                research[f"{side}_bullpen_staff"] = names
             blk["roster"] = ", ".join(
                 f"{x['name']}({x['era']:.2f}"
                 + (f"·{x['condition']}" if x.get("condition") else "") + ")"

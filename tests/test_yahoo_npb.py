@@ -133,6 +133,8 @@ def test_crawl_overrides_deep_search():
     filled = merge_into_research(research, {}, parse_game(_PREGAME))
     assert research["home_pitcher"]["era_season"] == 2.15
     assert research["home_pitcher"]["name"] == "山野 太一"
+    assert research["home_pitcher"]["era_vs_opponent"] == 1.69
+    assert research["home_pitcher"]["era_vs_opponent_scope"] == "season_vs_team"
     assert any("era_season" in f for f in filled)
 
 
@@ -142,6 +144,7 @@ def test_bullpen_roster_becomes_research_material():
     merge_into_research(research, {}, parse_game(_FINISHED))
     assert research["home_bullpen"]["era"] == pytest.approx(2.405, abs=0.01)
     assert "清水 昇" in research["home_bullpen"]["roster"]
+    assert "清水 昇" in research["home_bullpen_staff"]
 
 
 def test_merge_is_safe_on_empty():

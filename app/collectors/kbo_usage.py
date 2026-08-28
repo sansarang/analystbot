@@ -63,6 +63,15 @@ def parse_innings(v) -> float | None:
     return round(total, 3)
 
 
+def _opt_int(v):
+    if v is None or v == "":
+        return None
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
 class _RecordMixin:
     """NaverKBOClient에 record 엔드포인트를 더한다."""
 
@@ -94,6 +103,12 @@ def parse_pitchers(record: dict, side: str) -> list[dict]:
             "innings": ip,
             "batters": int(p.get("pa") or 0),   # 경기값 (bf는 시즌값이다)
             "is_starter": i == 0,
+            "hits": _opt_int(p.get("hit")),
+            "hr": _opt_int(p.get("hr")),
+            "bb": _opt_int(p.get("bb")),
+            "k": _opt_int(p.get("kk")),
+            "r": _opt_int(p.get("r")),
+            "er": _opt_int(p.get("er")),
         })
     return out
 

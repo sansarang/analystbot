@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import html as htmlmod
 import json
 import logging
 import re
@@ -90,6 +91,120 @@ def parse_starting_order(table_json: str | dict) -> list[str]:
     return [best[i] for i in sorted(best)][:9]
 
 
+# 실측 2026-08-28 GetBoxScoreScroll arrPitcher 헤더 17열:
+#   선수명, 등판, 결과, 승, 패, 세, 이닝, 타자, 투구수, 타수,
+#   피안타, 홈런, 4사구, 삼진, 실점, 자책, 평균자책점
+# 등판="선발" 또는 투입 이닝("7.9" = 7회 2사 투입. **이닝이 아니다**).
+# 평균자책점은 시즌값 — 이 표의 경기 ERA로 쓰지 않는다.
+_FRAC_IP = {"1/3": 1 / 3, "2/3": 2 / 3}
+
+
+def _pitcher_cell(c) -> str:
+    raw = (c or {}).get("Text", "") if isinstance(c, dict) else str(c or "")
+    raw = re.sub(r"<[^>]+>", "", raw)
+    return htmlmod.unescape(raw).replace("\xa0", " ").strip()
+
+
+def parse_official_ip(v) -> float | None:
+    """공식 박스 '이닝' 열. '1 2/3' · '6'. '7.9'(등판 시각)는 거부."""
+    s = str(v or "").strip()
+    if not s or s in (".", "-", "—"):
+        return None
+    if s in _FRAC_IP:
+        return round(_FRAC_IP[s], 3)
+    m = re.match(r"^(\d+)(?:\s+(\d/\d))?$", s)
+    if not m:
+        return None
+    total = float(m.group(1))
+    frac = m.group(2)
+    if frac:
+        if frac not in _FRAC_IP:
+            return None
+        total += _FRAC_IP[frac]
+    return round(total, 3)
+
+
+def _opt_int(v):
+    s = str(v or "").strip().replace(",", "")
+    if not s or s in (".", "-", "—"):
+        return None
+    try:
+        return int(float(s))
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_official_pitchers(table_json: str | dict) -> list[dict]:
+    """arrPitcher table1 → 등판 순서 목록. 시즌 ERA(마지막 열)는 버린다."""
+    t = json.loads(table_json) if isinstance(table_json, str) else (table_json or {})
+    rows_raw = t.get("rows") or []
+    if len(rows_raw) < 2:
+        return []
+    head = [_pitcher_cell(c) for c in (rows_raw[0].get("row") or [])]
+    idx = {name: i for i, name in enumerate(head)}
+    if "선수명" not in idx or "이닝" not in idx:
+        logger.warning("[백필] arrPitcher 헤더 불일치: %s", head)
+        return []
+    out = []
+    for row in rows_raw[1:]:
+        cells = [_pitcher_cell(c) for c in (row.get("row") or [])]
+        if not cells:
+            continue
+        name = cells[idx["선수명"]] if idx["선수명"] < len(cells) else ""
+        if not name:
+            continue
+        entry = cells[idx["등판"]] if "등판" in idx and idx["등판"] < len(cells) else ""
+        ip = parse_official_ip(cells[idx["이닝"]] if idx["이닝"] < len(cells) else "")
+        def col(key):
+            i = idx.get(key)
+            return cells[i] if i is not None and i < len(cells) else ""
+        out.append({
+            "name": name,
+            "is_starter": entry == "선발",
+            "innings": ip,
+            "batters": _opt_int(col("타자")),
+            "hits": _opt_int(col("피안타")),
+            "hr": _opt_int(col("홈런")),
+            "bb": _opt_int(col("4사구")),
+            "k": _opt_int(col("삼진")),
+            "r": _opt_int(col("실점")),
+            "er": _opt_int(col("자책")),
+        })
+    if out and not any(p["is_starter"] for p in out):
+        out[0]["is_starter"] = True
+    return out
+
+
+async def fetch_box(game_id: str) -> dict:
+    """GetBoxScoreScroll JSON 1회. 라인업·투수 등판이 같은 응답에 있다."""
+    async with httpx.AsyncClient(timeout=25, follow_redirects=True) as c:
+        await c.get(f"{BASE}/Schedule/Schedule.aspx", headers=_HEADERS)
+        r = await c.post(BASE + BOX_PATH,
+                         data={"leId": "1", "srId": "0",
+                               "seasonId": game_id[:4],
+                               "gameDate": game_id[:8], "gameId": game_id},
+                         headers=_HEADERS)
+    r.raise_for_status()
+    return r.json()
+
+
+def parse_box(j: dict, date: str, game_id: str) -> dict:
+    hitters = j.get("arrHitter") or []
+    pitchers = j.get("arrPitcher") or []
+    if len(hitters) < 2:
+        return {}
+    out = {
+        "away": parse_starting_order((hitters[0] or {}).get("table1")),
+        "home": parse_starting_order((hitters[1] or {}).get("table1")),
+        "away_pitchers": parse_official_pitchers((pitchers[0] or {}).get("table1"))
+        if len(pitchers) >= 1 else [],
+        "home_pitchers": parse_official_pitchers((pitchers[1] or {}).get("table1"))
+        if len(pitchers) >= 2 else [],
+        "date": date, "game_id": game_id,
+    }
+    return out
+
+
 async def fetch_game_ids(season: int, month: int) -> list[dict]:
     """그 달의 경기 목록 — G_ID·날짜·양 팀(공식 표기).
 
@@ -138,21 +253,7 @@ async def fetch_lineups(game_id: str, date: str) -> dict:
     ⚠️ arrHitter[0]이 원정, [1]이 홈이다 — 야구 기록의 통상 순서(원정 선공)다.
        G_ID도 `날짜+원정+홈+0` 순서라 서로 교차검증된다.
     """
-    async with httpx.AsyncClient(timeout=25, follow_redirects=True) as c:
-        await c.get(f"{BASE}/Schedule/Schedule.aspx", headers=_HEADERS)
-        r = await c.post(BASE + BOX_PATH,
-                         data={"leId": "1", "srId": "0",
-                               "seasonId": game_id[:4],
-                               "gameDate": game_id[:8], "gameId": game_id},
-                         headers=_HEADERS)
-    r.raise_for_status()
-    j = r.json()
-    blocks = j.get("arrHitter") or []
-    if len(blocks) < 2:
-        return {}
-    return {"away": parse_starting_order((blocks[0] or {}).get("table1")),
-            "home": parse_starting_order((blocks[1] or {}).get("table1")),
-            "date": date, "game_id": game_id}
+    return parse_box(await fetch_box(game_id), date, game_id)
 
 
 async def backfill(pool, season: int, months: tuple[int, ...],
@@ -168,8 +269,10 @@ async def backfill(pool, season: int, months: tuple[int, ...],
 
     from app.collectors.game_match import _FIND
     from app.collectors.lineup_history import record
+    from app.collectors.pitcher_log import record_appearances
 
-    stats = {"games": 0, "rows": 0, "skipped": 0, "no_game": 0, "teams": 0}
+    stats = {"games": 0, "rows": 0, "appearances": 0,
+             "skipped": 0, "no_game": 0, "teams": 0}
     per_team: dict[str, int] = {}
     games: list[dict] = []
     for mo in months:
@@ -204,11 +307,20 @@ async def backfill(pool, season: int, months: tuple[int, ...],
             team = g[side]
             if per_team.get(team, 0) >= limit_per_team:
                 continue
-            if await record(pool, gid_db, side, team, lu[side], source="boxscore"):
+            starter = next((p["name"] for p in (lu.get(f"{side}_pitchers") or [])
+                            if p.get("is_starter") and p.get("name")), None)
+            if await record(pool, gid_db, side, team, lu[side],
+                            starter=starter, source="boxscore"):
                 stats["rows"] += 1
                 per_team[team] = per_team.get(team, 0) + 1
+        n_app = await record_appearances(
+            pool, gid_db, "kbo", g["home"], g["away"],
+            {"home": lu.get("home_pitchers") or [],
+             "away": lu.get("away_pitchers") or []},
+            source="boxscore")
+        stats["appearances"] += n_app
     stats["teams"] = len(per_team)
-    logger.info("[백필] 경기 %d · 적재 %d행 · %d팀 (건너뜀 %d · 경기없음 %d)",
-                stats["games"], stats["rows"], stats["teams"],
+    logger.info("[백필] 경기 %d · 적재 %d행 · 등판 %d · %d팀 (건너뜀 %d · 경기없음 %d)",
+                stats["games"], stats["rows"], stats["appearances"], stats["teams"],
                 stats["skipped"], stats["no_game"])
     return stats

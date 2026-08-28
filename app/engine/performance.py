@@ -328,6 +328,7 @@ UNMAPPED_FIELDS = {
     # 확정 타순 전적·대결 — 측정된 adj_*가 없다. 판정(p_claude)이 읽고 λ는 안 건드린다.
     "lineup_record": "확정 타순 유사 전적",
     "lineup_matchup": "확정 타순 대결",
+    "pitcher_matchup": "투수 최근 등판 vs 상대 타선",
 }
 
 

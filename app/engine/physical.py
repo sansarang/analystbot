@@ -25,6 +25,7 @@ LIMITS: dict[str, tuple[float, float]] = {
     # 투수
     "era_season": (0.0, 15.0),      # 실사고: Yahoo 齋藤 響介 189.00
     "era_recent": (0.0, 15.0),
+    "era_vs_opponent": (0.0, 15.0), # 시즌 상대팀 ERA. last-5가 아님.
     "whip": (0.0, 4.0),
     "ip_avg_recent": (0.0, 15.0),
     "team_era": (0.0, 15.0),

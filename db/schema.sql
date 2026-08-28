@@ -367,3 +367,30 @@ SELECT sport, change_type, scoring_dir,
        END                                                AS hit_rate
 FROM graded
 GROUP BY sport, change_type, scoring_dir;
+
+-- [§9-투수 맞대결] 등판 단위 로그. 타석 단위(누가 누구에게)는 소스에 없다.
+--   실측 2026-08-28: KBO 공식 arrPitcher · 네이버 pitchersBoxscore 경기값
+--   (inn/pa/hit/er/r) · NPB Yahoo /stats (投球回/打者/自責点).
+--   시즌 ERA(평균자책점·防御率)는 이 표에 넣지 않는다 — last5 오표기 사고와 같다.
+CREATE TABLE IF NOT EXISTS pitcher_appearances (
+    id          BIGSERIAL PRIMARY KEY,
+    game_id     BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+    sport       TEXT        NOT NULL,
+    team        TEXT        NOT NULL,
+    opponent    TEXT        NOT NULL,
+    pitcher     TEXT        NOT NULL,
+    is_starter  BOOLEAN     NOT NULL,
+    innings     DOUBLE PRECISION,
+    batters     INT,          -- 그 경기 상대 타자 수 (TBF)
+    hits        INT,
+    hr          INT,
+    k           INT,
+    bb          INT,
+    r           INT,
+    er          INT,
+    source      TEXT        NOT NULL,
+    UNIQUE (game_id, team, pitcher)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pitcher_appearances_lookup
+    ON pitcher_appearances (sport, pitcher);

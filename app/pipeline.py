@@ -56,6 +56,76 @@ def kst_hhmm(dt: datetime) -> str:
 # 시작 전(scheduled) 경기만 분석 대상. 나머지는 목록에 라벨만 붙인다.
 STATUS_LABELS = {"live": "진행 중", "final": "종료"}
 
+
+def mark_finals_as_sim(games: list[dict]) -> list[dict]:
+    """종료·진행 중 경기를 분석 회로에 태우기 위해 예정으로 바꾼다.
+
+    점수는 `_sim_actual`에만 남긴다. 판정 입력·λ에 실제 결과가 들어가면
+    시뮬레이션이 아니라 결과 누수다. DB 행은 건드리지 않는다.
+    """
+    out = []
+    for raw in games:
+        g = dict(raw)
+        if g.get("status") in ("final", "live"):
+            g["_sim_actual"] = {
+                "status": g["status"],
+                "home_score": g.get("home_score"),
+                "away_score": g.get("away_score"),
+            }
+            g["status"] = "scheduled"
+            g["home_score"] = None
+            g["away_score"] = None
+        out.append(g)
+    return out
+
+
+def sim_scoreboard(games: list[dict]) -> str:
+    """시뮬레이션 채점. `_sim_actual`이 있는 경기만."""
+    def hit(pred_home, hs, aws):
+        if hs is None or aws is None or hs == aws or pred_home is None:
+            return None
+        if float(pred_home) == 0.5:
+            return "push"
+        return "hit" if (float(pred_home) > 0.5) == (hs > aws) else "miss"
+
+    def rate(marks):
+        rows = [x for x in marks if x and x != "push"]
+        h, m = rows.count("hit"), rows.count("miss")
+        n = h + m
+        return "n=0" if not n else f"{h}/{n} = {h / n:.1%}"
+
+    lines = ["--- 시뮬레이션 채점 (종료 점수 vs 파이프라인 승률) ---"]
+    lam_m, cl_m, fn_m = [], [], []
+    for jg in games:
+        act = jg.get("_sim_actual") or {}
+        hs, aws = act.get("home_score"), act.get("away_score")
+        if hs is None or aws is None:
+            continue
+        pm, pc = jg.get("p_model"), jg.get("p_claude")
+        ph = jg.get("p_heuristic")
+        if isinstance(ph, dict) and jg.get("home") in ph:
+            pm = ph[jg["home"]]
+        pf = jg.get("p_final")
+        if isinstance(pf, dict):
+            pf = pf.get(jg.get("home"))
+        if pf is None and pm is not None and pc is not None:
+            pf = 0.5 * float(pm) + 0.5 * float(pc)
+        actual = "홈승" if hs > aws else "원정승" if aws > hs else "무"
+
+        def pct(x):
+            return "—" if x is None else f"{float(x):.1%}"
+
+        lines.append(
+            f"{jg.get('away')} @ {jg.get('home')}  실제 {aws}-{hs} {actual}  "
+            f"λ={pct(pm)} claude={pct(pc)} final={pct(pf)}")
+        lam_m.append(hit(pm, hs, aws))
+        cl_m.append(hit(pc, hs, aws))
+        fn_m.append(hit(pf, hs, aws))
+    lines.append(f"λ p_model: {rate(lam_m)}")
+    lines.append(f"p_claude: {rate(cl_m)}")
+    lines.append(f"p_final: {rate(fn_m)}")
+    return "\n".join(lines)
+
 # 리포트 3분할 구분자: ①일정+픽 ②경기별 심층 ③속보+출처
 SECTION_SEP = "\n<<<PART>>>\n"
 
@@ -580,6 +650,7 @@ async def build_analysis(
     team: str | None = None, league_key: str | None = None, progress=None,
     redis=None, sequential_research: bool = False,
     stages_out: list | None = None, force_research: bool = False,
+    include_final: bool = False,
 ) -> dict:
     """league_key 지정 시 그 리그만 수집·판정 (요청 범위 밖 API 호출 금지).
 
@@ -653,9 +724,22 @@ async def build_analysis(
             logger.warning("[pipeline] %s 일정 갱신 실패(%s) — DB의 기존 일정으로 진행",
                            sport, type(exc).__name__)
             schedule_stale = True
-        rows = await pool.fetch(
-            "SELECT ext_id FROM games WHERE sport = $1 AND status = 'scheduled'"
-            "  AND starts_at >= now() - interval '12 hours'", sport)
+        if include_final:
+            from datetime import date as date_cls
+
+            day = date_cls.fromisoformat(date)
+            rows = await pool.fetch(
+                """
+                SELECT ext_id FROM games
+                 WHERE sport = $1
+                   AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $2
+                   AND status = ANY($3::text[])
+                """,
+                sport, day, ["scheduled", "final", "live"])
+        else:
+            rows = await pool.fetch(
+                "SELECT ext_id FROM games WHERE sport = $1 AND status = 'scheduled'"
+                "  AND starts_at >= now() - interval '12 hours'", sport)
         ext_ids = [r["ext_id"] for r in rows]
         stats_coro = _empty_stats()
         league = LEAGUE_LABEL_BY_SPORT.get(sport, sport.upper())
@@ -692,6 +776,8 @@ async def build_analysis(
         sport, ext_ids,
     )
     games = [dict(r) for r in game_rows]
+    if include_final:
+        games = mark_finals_as_sim(games)
     if league_key:  # 리그 지정 요청 — 그 리그 경기만 (다른 리그 언급 금지)
         from app.leagues import LEAGUES
 
@@ -878,6 +964,7 @@ async def build_analysis(
             "starts_at": g["starts_at"].isoformat(),
             "starts_at_kst": kst_hhmm(g["starts_at"]),
             "status": g["status"],
+            "_sim_actual": g.get("_sim_actual"),
             # [3] 강제 재조사 트리거 — 라인업이 방금 확정됐거나 선발이 바뀌면
             #     6시간 캐시라도 내용이 실제로 달라진다 (deep.needs_refresh)
             "lineup_just_confirmed": bool(
@@ -1262,6 +1349,10 @@ async def build_analysis(
     # 4) Claude 판정 — JUDGE_MODEL 고정. Grok은 정보 수집 전용(판정 금지).
     #    시작 전 경기만. 크레딧 소진 시 알림 후 목 판정 폴백 (크래시 금지)
     upcoming = [g for g in judge_games if g["status"] == "scheduled"]
+    if include_final:
+        from app.engine.lineup_record import strip_outcome_for_judge
+
+        upcoming = [strip_outcome_for_judge(g) for g in upcoming]
     # [§8-21] 여론을 판정에 넘긴다. **확률 계수로 만들지 않는다** — 동조 신호인지
     #   역행 신호(팬심 편향)인지 측정된 적이 없다. 판정이 읽고 스스로 판단한다.
     judge_payload = {"date": date, "sport": sport, "games": upcoming,
@@ -1394,77 +1485,80 @@ async def build_analysis(
 
     # [6] 병렬 채점 — 경기력 기반 픽과 시장 반영 픽을 **둘 다** 기록해
     #     2~3주 뒤 어느 방식이 실제로 맞히는지 비교한다.
-    for p in recommended:
-        await pool.execute(
-            """
-            INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
-                                     p_market, p_ensemble, lineup_status, p_legacy, method,
-                                     p_heuristic, p_learned, p_claude, lam_total)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'performance',
-                    $11, $12, $13, $14)
-            """,
-            p["game_id"], p["pick"], p["p"], p["odds"], p["ev"], p["kelly"],
-            p.get("p_market_side"), p.get("p_ensemble_side"),
-            p.get("lineup_status") or "none", p.get("p_legacy"),
-            p.get("p_heuristic"), p.get("p_learned"), p.get("p_claude"),
-            p.get("lam_total"),          # [§8-18] 점수 MAE의 근거
-        )
-    # [§8-38] **전 경기·전 마켓을 기록한다** (method='shadow').
-    #   실사고(2026-08-27): `for p in recommended`만 저장해서, 추천이 0건이면
-    #   저장도 0건 → 채점 대상 0건 → **판정 성능을 영원히 측정할 수 없었다.**
-    #   실제로 predictions 20행 전부 p_claude가 NULL이었고, 그 때문에
-    #   "불펜 과소모 문턱을 얼마로 할까" 같은 질문에 답할 방법이 없었다.
-    #   → 추천 여부와 무관하게 전부 남긴다. 임계값은 이 기록 위에서 실측으로 정한다.
-    #   ⚠️ 같은 슬레이트를 여러 번 돌리면 중복되므로 **먼저 지우고 넣는다.**
-    _shadow_gids = [g["game_id"] for g in judge_games
-                    if g.get("status") == "scheduled" and g.get("market_board")]
-    if _shadow_gids:
-        await pool.execute(
-            "DELETE FROM predictions WHERE method = 'shadow' AND game_id = ANY($1::int[])",
-            _shadow_gids)
-        _n_shadow = 0
-        for jg in judge_games:
-            if jg.get("status") != "scheduled":
-                continue
-            for c in jg.get("market_board") or []:
-                if c.get("p") is None:
-                    continue          # 확률을 못 낸 행은 채점 대상이 아니다
-                await pool.execute(
-                    """
-                    INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
-                                             p_market, p_ensemble, lineup_status,
-                                             p_legacy, method, p_heuristic, p_learned,
-                                             p_claude, lam_total)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'shadow',
-                            $11, $12, $13, $14)
-                    """,
-                    # odds/ev/kelly는 없을 수 있다(배당 미수집 마켓). 스테이킹은
-                    # §8-18에서 제거됐고 배당 의존도 없앴으므로 **NULL 그대로 둔다** —
-                    # 0으로 채우면 "배당 1.00"·"EV 0"으로 오독된다.
-                    jg["game_id"], c.get("pick") or c.get("desc"), c["p"],
-                    c.get("odds"), c.get("ev"), c.get("kelly"),
-                    c.get("p_market_side"), c.get("p_ensemble_side"),
-                    jg.get("lineup_status") or "none", c.get("p_legacy"),
-                    c.get("p_heuristic"), c.get("p_learned"),
-                    jg.get("p_claude"), jg.get("lam_total"))
-                _n_shadow += 1
-        await record("예측 기록", _n_shadow, max(1, _n_shadow),
-                     cause=None if _n_shadow else "missing",
-                     detail=f"전 마켓 {_n_shadow}행 ({len(_shadow_gids)}경기)",
-                     unit="건",
-                     impact="기록이 없으면 임계값을 실측으로 정할 수 없습니다")
+    # 시뮬레이션(종료 경기를 예정으로 돌린 경우)은 사후 예측을 채점 테이블에
+    # 넣지 않는다 — 끝난 경기의 픽이 실채점을 오염시킨다.
+    if not include_final:
+        for p in recommended:
+            await pool.execute(
+                """
+                INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
+                                         p_market, p_ensemble, lineup_status, p_legacy, method,
+                                         p_heuristic, p_learned, p_claude, lam_total)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'performance',
+                        $11, $12, $13, $14)
+                """,
+                p["game_id"], p["pick"], p["p"], p["odds"], p["ev"], p["kelly"],
+                p.get("p_market_side"), p.get("p_ensemble_side"),
+                p.get("lineup_status") or "none", p.get("p_legacy"),
+                p.get("p_heuristic"), p.get("p_learned"), p.get("p_claude"),
+                p.get("lam_total"),          # [§8-18] 점수 MAE의 근거
+            )
+        # [§8-38] **전 경기·전 마켓을 기록한다** (method='shadow').
+        #   실사고(2026-08-27): `for p in recommended`만 저장해서, 추천이 0건이면
+        #   저장도 0건 → 채점 대상 0건 → **판정 성능을 영원히 측정할 수 없었다.**
+        #   실제로 predictions 20행 전부 p_claude가 NULL이었고, 그 때문에
+        #   "불펜 과소모 문턱을 얼마로 할까" 같은 질문에 답할 방법이 없었다.
+        #   → 추천 여부와 무관하게 전부 남긴다. 임계값은 이 기록 위에서 실측으로 정한다.
+        #   ⚠️ 같은 슬레이트를 여러 번 돌리면 중복되므로 **먼저 지우고 넣는다.**
+        _shadow_gids = [g["game_id"] for g in judge_games
+                        if g.get("status") == "scheduled" and g.get("market_board")]
+        if _shadow_gids:
+            await pool.execute(
+                "DELETE FROM predictions WHERE method = 'shadow' AND game_id = ANY($1::int[])",
+                _shadow_gids)
+            _n_shadow = 0
+            for jg in judge_games:
+                if jg.get("status") != "scheduled":
+                    continue
+                for c in jg.get("market_board") or []:
+                    if c.get("p") is None:
+                        continue          # 확률을 못 낸 행은 채점 대상이 아니다
+                    await pool.execute(
+                        """
+                        INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
+                                                 p_market, p_ensemble, lineup_status,
+                                                 p_legacy, method, p_heuristic, p_learned,
+                                                 p_claude, lam_total)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'shadow',
+                                $11, $12, $13, $14)
+                        """,
+                        # odds/ev/kelly는 없을 수 있다(배당 미수집 마켓). 스테이킹은
+                        # §8-18에서 제거됐고 배당 의존도 없앴으므로 **NULL 그대로 둔다** —
+                        # 0으로 채우면 "배당 1.00"·"EV 0"으로 오독된다.
+                        jg["game_id"], c.get("pick") or c.get("desc"), c["p"],
+                        c.get("odds"), c.get("ev"), c.get("kelly"),
+                        c.get("p_market_side"), c.get("p_ensemble_side"),
+                        jg.get("lineup_status") or "none", c.get("p_legacy"),
+                        c.get("p_heuristic"), c.get("p_learned"),
+                        jg.get("p_claude"), jg.get("lam_total"))
+                    _n_shadow += 1
+            await record("예측 기록", _n_shadow, max(1, _n_shadow),
+                         cause=None if _n_shadow else "missing",
+                         detail=f"전 마켓 {_n_shadow}행 ({len(_shadow_gids)}경기)",
+                         unit="건",
+                         impact="기록이 없으면 임계값을 실측으로 정할 수 없습니다")
 
-    for p in _legacy_recommended(settings, picks_out):
-        await pool.execute(
-            """
-            INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
-                                     p_market, p_ensemble, lineup_status, p_legacy, method)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'legacy')
-            """,
-            p["game_id"], p["pick"], p.get("p_legacy") or p["p"], p["odds"], p["ev"],
-            p["kelly"], p.get("p_market_side"), p.get("p_ensemble_side"),
-            p.get("lineup_status") or "none", p.get("p_legacy"),
-        )
+        for p in _legacy_recommended(settings, picks_out):
+            await pool.execute(
+                """
+                INSERT INTO predictions (game_id, pick, model_p, odds, ev, kelly,
+                                         p_market, p_ensemble, lineup_status, p_legacy, method)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'legacy')
+                """,
+                p["game_id"], p["pick"], p.get("p_legacy") or p["p"], p["odds"], p["ev"],
+                p["kelly"], p.get("p_market_side"), p.get("p_ensemble_side"),
+                p.get("lineup_status") or "none", p.get("p_legacy"),
+            )
 
     sources, seen_urls = [], set()
     for jg in judge_games:
@@ -1545,6 +1639,7 @@ async def build_analysis(
         "parlays": parlays, "combos": combos,
         "news": news, "sentiment": sentiment,
         "sources": sources, "verdict": verdict,
+        "include_final": include_final,
     }
 
 
@@ -2263,6 +2358,7 @@ def _compute_picks(
             p_final[jg["away"]] = round(max(0.02, min(0.96, p_final[jg["away"]] - shift)), 4)
         jg["prob_adjust"] = home_adj          # 조정 과정 trace (상세 데이터 표시용)
         jg["p_legacy"] = p_legacy             # [6] 병렬 채점용 시장 반영 확률
+        jg["p_final"] = p_final               # 홈/원정 키. 시뮬레이션 채점이 쓴다
 
         # [7][8] 전 마켓 후보 생성·승인 → 마켓 보드
         # [2] 전 마켓 보드 — 판정 유무·배당 유무와 무관하게 항상 전 행을 만든다
@@ -3825,9 +3921,10 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             "date": date, "sport": sport, "games": [jg],
             "breaking_news": analysis.get("news", ""),
             "instruction": ("확정 라인업이 수신됐다. 확정 선발·타순·결장과 "
-                            "lineup_matchup·lineup_record를 반영해 "
+                            "lineup_matchup·lineup_record·pitcher_matchup를 반영해 "
                             "경기력 기준으로 승률을 재산출하라. 배당은 보지 마라. "
-                            "유사 타순 전적은 표본 3경기 미만이면 승률 근거로 쓰지 마라."),
+                            "유사 타순 전적·맞대결 ERA는 표본 3 미만이면 승률 근거로 쓰지 마라. "
+                            "era_vs_opponent는 시즌 상대팀이지 오늘 9명이 아니다."),
         }
         try:
             verdict = await Judge().judge(payload)
@@ -3998,6 +4095,7 @@ async def run_pipeline(
     sequential_research: bool = False,
     stages_out: list | None = None,
     force_research: bool = False,
+    include_final: bool = False,
 ) -> str:
     """결론 카드(단일 메시지)를 반환. 심층·속보·출처는 분석 캐시에서 버튼으로 제공.
 
@@ -4006,7 +4104,7 @@ async def run_pipeline(
     settings = get_settings()
     # 날짜 기준: MLB=미국 동부 오늘(슬레이트 날짜), 축구=KST 오늘. 표기는 항상 KST.
     date = date or default_date(sport)
-    if not force_refresh:
+    if not force_refresh and not include_final:
         cached = await redis.get(f"card:{sport}:{date}")
         if cached:
             logger.info("[pipeline] cache hit: card:%s:%s", sport, date)
@@ -4015,7 +4113,8 @@ async def run_pipeline(
     analysis = await build_analysis(pool, sport, date, progress=progress, redis=redis,
                                     sequential_research=sequential_research,
                                     stages_out=stages_out,
-                                    force_research=force_research)
+                                    force_research=force_research,
+                                    include_final=include_final)
     await (progress or _noop_progress)(4, 4, "결론 카드 작성")
     remaining = await redis.get("odds_quota_remaining")
     if remaining is not None and int(remaining) < 100:
@@ -4023,7 +4122,10 @@ async def run_pipeline(
     card = await generate_card(analysis)
     if settings.report_banner:
         card = f"{settings.report_banner}\n\n{card}"
-    await _save_caches(redis, analysis, card)
+    if include_final:
+        card = f"{card}\n\n{sim_scoreboard(analysis.get('games') or [])}"
+    else:
+        await _save_caches(redis, analysis, card)
     return card
 
 
@@ -4044,6 +4146,9 @@ async def _cli() -> None:
                         help="카드 캐시를 건너뛰고 다시 렌더 (리서치는 신선도 게이트 유지)")
     parser.add_argument("--force", action="store_true",
                         help="전 경기 리서치를 강제 재조사 (콜 비용 발생 — 수동 실행 전용)")
+    parser.add_argument("--include-final", action="store_true",
+                        help="종료 경기도 분석 회로에 태운다(시뮬레이션). "
+                             "오늘 운영 기본은 제외. 예측 테이블에는 쓰지 않는다.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
 
@@ -4054,17 +4159,14 @@ async def _cli() -> None:
         t0 = time.monotonic()
         report = await run_pipeline(pool, redis, args.sport, date,
                                     args.force_refresh or args.force,
-                                    force_research=args.force)
+                                    force_research=args.force,
+                                    include_final=args.include_final)
         elapsed = time.monotonic() - t0
         print(report)
         print(f"\n[elapsed {elapsed:.2f}s]")
     finally:
         await redis.aclose()
         await close_pool()
-
-
-if __name__ == "__main__":
-    asyncio.run(_cli())
 
 
 # ─────────────────────────────────── [§9-라인업 의도] 평소 대비 변경점 회로
@@ -4131,6 +4233,11 @@ async def _lineup_intent_one(pool, jg: dict, sport: str, final: bool = False) ->
         await attach_lineup_record(pool, jg, sport)
     except Exception as exc:
         logger.warning("[라인업전적] 부착 실패 game=%s: %s", jg.get("game_id"), exc)
+    try:
+        from app.engine.pitcher_matchup import attach as attach_pitcher_matchup
+        await attach_pitcher_matchup(pool, jg, sport)
+    except Exception as exc:
+        logger.warning("[투수맞대결] 부착 실패 game=%s: %s", jg.get("game_id"), exc)
 
 
 async def _attach_lineup_intent(pool, judge_games: list[dict], sport: str,
@@ -4250,3 +4357,7 @@ async def rejudge_card_stack(pool, jg: dict, sport: str, redis=None) -> str:
     head = (jg.get("lineup_intent") or {}).get("headline") or {}
     what = " / ".join(v for v in head.values() if v and "변경 없음" not in v)
     return f"🔄 최종 라인업 반영: {what or '라인업 확정'} — {delta}"
+
+
+if __name__ == "__main__":
+    asyncio.run(_cli())

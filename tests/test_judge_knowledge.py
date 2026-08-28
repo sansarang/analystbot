@@ -10,3 +10,5 @@ def test_live_judge_system_forbids_recalling_results():
     assert "최종 점수" in SYSTEM
     assert "기억을 여는 열쇠" in SYSTEM
     assert "lineup_record" in SYSTEM
+    assert "pitcher_matchup" in SYSTEM
+    assert "시즌 상대팀" in SYSTEM

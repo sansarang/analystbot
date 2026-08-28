@@ -21,6 +21,7 @@ from app.collectors.yahoo_npb import (
     YahooNPBClient,
     parse_batting_orders,
     parse_finals,
+    parse_pitching_stats,
     score_card_html,
 )
 
@@ -45,10 +46,12 @@ async def backfill(pool, as_of: date | None = None, days: int = 14,
     """최근 종료 경기 선발 9명을 `source='boxscore'`로 적재한다."""
     from app.collectors.game_match import _FIND
     from app.collectors.lineup_history import record
+    from app.collectors.pitcher_log import record_appearances
 
     client = client or YahooNPBClient()
     as_of = as_of or datetime.now(JST).date()
-    stats = {"games": 0, "rows": 0, "skipped": 0, "no_game": 0, "teams": 0}
+    stats = {"games": 0, "rows": 0, "appearances": 0,
+             "skipped": 0, "no_game": 0, "teams": 0}
     per_team: dict[str, int] = {}
     seen: set[str] = set()
 
@@ -91,17 +94,28 @@ async def backfill(pool, as_of: date | None = None, days: int = 14,
             if not lu:
                 stats["skipped"] += 1
                 continue
+            pits = {"home": [], "away": []}
+            try:
+                pits = parse_pitching_stats(await client.stats(gid))
+            except Exception as exc:
+                logger.debug("[NPB백필] %s /stats 실패: %s", gid, exc)
             stats["games"] += 1
             for side in ("home", "away"):
                 team = g[side]
                 if per_team.get(team, 0) >= limit_per_team:
                     continue
+                starter = next((p["name"] for p in (pits.get(side) or [])
+                                if p.get("is_starter") and p.get("name")), None)
                 if await record(pool, gid_db, side, team, lu[side],
-                                source="boxscore"):
+                                starter=starter, source="boxscore"):
                     stats["rows"] += 1
                     per_team[team] = per_team.get(team, 0) + 1
+            stats["appearances"] += await record_appearances(
+                pool, gid_db, "npb", g["home"], g["away"], pits,
+                source="boxscore")
     stats["teams"] = len(per_team)
-    logger.info("[NPB백필] 경기 %d · 적재 %d행 · %d팀 (건너뜀 %d · 경기없음 %d)",
-                stats["games"], stats["rows"], stats["teams"],
+    logger.info("[NPB백필] 경기 %d · 적재 %d행 · 등판 %d · %d팀 (건너뜀 %d · 경기없음 %d)",
+                stats["games"], stats["rows"], stats.get("appearances", 0),
+                stats["teams"],
                 stats["skipped"], stats["no_game"])
     return stats

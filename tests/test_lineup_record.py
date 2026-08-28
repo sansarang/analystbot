@@ -135,6 +135,8 @@ def test_strip_outcome_drops_scores():
     assert out["status"] == "scheduled"
     assert "home_score" not in out and "away_score" not in out
     assert "verdict" not in out
+    assert "_sim_actual" not in strip_outcome_for_judge(
+        {**jg, "_sim_actual": {"home_score": 8, "away_score": 1}})
     assert jg["home_score"] == 8  # 원본 보존
 
 

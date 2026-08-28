@@ -2,11 +2,23 @@
 
 import re
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import app.bot.main as botmod
 import app.pipeline as pipemod
 from app.bot.main import parse_intent_mock, resolve_date_arg, split_message
 from app.pipeline import mlb_slate_date, run_pipeline, today_kst
+
+
+def test_pipeline_cli_main_guard_is_after_lineup_intent():
+    """`python -m app.pipeline`은 가드에서 _cli를 바로 돈다.
+
+    `_attach_lineup_intent`가 가드 뒤에 있으면 CLI만 NameError로 죽는다.
+    봇은 import가 파일 끝까지 가서 이 결함을 못 잡는다.
+    """
+    src = Path(pipemod.__file__).read_text()
+    assert src.rindex("async def _attach_lineup_intent") < src.rindex(
+        'if __name__ == "__main__"')
 
 
 def test_mlb_slate_date_format():
@@ -70,6 +82,61 @@ async def test_started_games_labeled_and_excluded(db_pool, redis_client, monkeyp
     assert "[종료]" in render_game_section(g)
 
 DATE = "2026-08-22"
+
+
+def test_mark_finals_as_sim_stashes_scores_without_mutating_source():
+    """종료 점수는 메모리에만 남긴다. DB 행·원본 dict는 건드리지 않는다."""
+    from app.pipeline import mark_finals_as_sim
+
+    raw = {"status": "final", "home_score": 5, "away_score": 3,
+           "home": "H", "away": "A"}
+    out = mark_finals_as_sim([raw])
+    assert raw["status"] == "final" and raw["home_score"] == 5
+    assert out[0]["status"] == "scheduled"
+    assert out[0]["home_score"] is None and out[0]["away_score"] is None
+    assert out[0]["_sim_actual"] == {
+        "status": "final", "home_score": 5, "away_score": 3}
+
+
+def test_sim_scoreboard_reads_home_side_of_p_final_dict():
+    from app.pipeline import sim_scoreboard
+
+    text = sim_scoreboard([{
+        "home": "H", "away": "A",
+        "p_model": 0.40,
+        "p_heuristic": {"H": 0.62, "A": 0.38},
+        "p_claude": 0.55,
+        "p_final": {"H": 0.58, "A": 0.42},
+        "_sim_actual": {"home_score": 6, "away_score": 2},
+    }])
+    assert "실제 2-6 홈승" in text
+    assert "λ p_model: 1/1 = 100.0%" in text
+    assert "p_claude: 1/1 = 100.0%" in text
+    assert "p_final: 1/1 = 100.0%" in text
+
+
+async def test_include_final_does_not_write_predictions(
+        db_pool, redis_client, monkeypatch):
+    """시뮬레이션은 종료 경기를 회로에 태우되 predictions에는 쓰지 않는다."""
+    from app.collectors.mlb import MLBClient, upsert_games
+
+    await upsert_games(db_pool, DATE, client=MLBClient(mock=True))
+    await db_pool.execute(
+        "UPDATE games SET status='final', home_score=5, away_score=3 "
+        "WHERE ext_id='750000'")
+
+    async def noop_upsert(pool, date, client=None, schedule=None):
+        return 0
+
+    monkeypatch.setattr(pipemod, "upsert_games", noop_upsert)
+    before = await db_pool.fetchval("SELECT count(*) FROM predictions")
+    card = await run_pipeline(
+        db_pool, redis_client, "mlb", DATE,
+        force_refresh=True, include_final=True)
+    after = await db_pool.fetchval("SELECT count(*) FROM predictions")
+    assert after == before == 0
+    assert "시뮬레이션 채점" in card
+    assert await redis_client.get(f"card:mlb:{DATE}") is None
 
 
 async def test_pipeline_end_to_end_card(db_pool, redis_client):

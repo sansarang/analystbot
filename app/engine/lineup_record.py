@@ -263,7 +263,7 @@ async def attach(pool, jg: dict, sport: str) -> None:
 _LEAK_KEYS = (
     "home_score", "away_score", "status_label", "picks", "market_board",
     "pick_summary", "breaking_changes", "p_final", "p_legacy", "verdict",
-    "combos", "parlays",
+    "combos", "parlays", "_sim_actual",
 )
 
 
