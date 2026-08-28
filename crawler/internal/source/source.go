@@ -189,7 +189,13 @@ var (
 	// ⚠️ Yahoo는 경기 전(予告先発)과 확정 후의 구조가 **다르다.**
 	//    한쪽만 보면 절반이 조용히 빈다 — 파이썬 쪽에서 이미 겪은 사고다.
 	npbFinalRe = regexp.MustCompile(`(?s)<td[^>]*>\s*先発\s*</td>\s*<td[^>]*>[^<]*</td>\s*<td[^>]*>((?s).*?)</td>`)
+	npbTableRe = regexp.MustCompile(`(?s)<table[^>]*>(.*?)</table>`)
+	npbTrRe    = regexp.MustCompile(`(?s)<tr[^>]*>(.*?)</tr>`)
+	npbCellRe  = regexp.MustCompile(`(?s)<t[dh][^>]*>(.*?)</t[dh]>`)
 )
+
+// Yahoo /top 打順 약어. 한글 "3루수"는 숫자라 게이트가 이름을 버린다.
+const npbPosJP = "遊三左一右捕二投中指"
 
 // FetchNPB 은 Yahoo!スポーツ에서 그 날짜 NPB 경기의 선발을 모은다.
 func FetchNPB(ctx context.Context, date string) (diff.Snapshot, error) {
@@ -197,7 +203,7 @@ func FetchNPB(ctx context.Context, date string) (diff.Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	html := string(body)
+	html := scoreCardHTML(string(body))
 	out := diff.Snapshot{}
 	seen := map[string]bool{}
 	for _, m := range npbLinkRe.FindAllStringSubmatch(html, -1) {
@@ -237,12 +243,17 @@ func FetchNPB(ctx context.Context, date string) (diff.Snapshot, error) {
 		case strings.Contains(inner, "(予)"):
 			status = "예상"
 		}
-		// ⚠️ 종전에는 이 상태값을 `"lineup"` 필드에 넣었다. NPB에는 타순
-		//   데이터가 없는데 필드명이 라인업이라, 파이썬이 "확정"이라는 문자열을
-		//   **라인업으로 착각해** 저장하고 있었다. 이름과 내용을 일치시킨다.
-		out[away+"@"+home] = map[string]string{
+		// 타순은 양 팀 9명이 있을 때만 넣는다. 오전·킥오프 30분 전 빈 값은
+		// 정상이다(スポナビ: 스타멘은 시작 약 30분 전). 8명은 넣지 않는다.
+		// 종전에는 이 상태값을 `"lineup"` 필드에 넣어 파이썬이 "확정"을
+		// 타순으로 착각했다. 발표 상태는 starter_status, 타순은 lineup_*다.
+		fields := map[string]string{
 			"home_pitcher": hp, "away_pitcher": ap, "starter_status": status,
 		}
+		if lh, la := parseNPBLineups(string(page)); lh != "" && la != "" {
+			fields["lineup_home"], fields["lineup_away"] = lh, la
+		}
+		out[away+"@"+home] = fields
 	}
 	return out, nil
 }
@@ -279,4 +290,99 @@ func parseNPBFinal(html string) (home, away string) {
 		away = text(m[1][1])
 	}
 	return home, away
+}
+
+// scoreCardHTML 은 일정 페이지의 **그날 카드**만 남긴다.
+//
+// 실측 2026-08-28: `id="gm_card"`가 요청 날짜 경기이고, 그 아래 주간 표에
+// 어제·내일이 섞인다. 날짜를 요청 파라미터로 덮어씌우면 남의 경기가 오늘이 된다.
+func scoreCardHTML(html string) string {
+	const mark = `id="gm_card"`
+	i := strings.Index(html, mark)
+	if i < 0 {
+		return html
+	}
+	rest := html[i+len(mark):]
+	j := strings.Index(rest, `id="`)
+	if j < 0 {
+		return html[i:]
+	}
+	return html[i : i+len(mark)+j]
+}
+
+func npbCells(row string) []string {
+	raw := npbCellRe.FindAllStringSubmatch(row, -1)
+	out := make([]string, 0, len(raw))
+	for _, m := range raw {
+		out = append(out, text(m[1]))
+	}
+	return out
+}
+
+func indexOf(ss []string, want string) int {
+	for i, s := range ss {
+		if s == want {
+			return i
+		}
+	}
+	return -1
+}
+
+// parseNPBLineups 는 Yahoo `/top`의 `打順` 표에서 선발 9명을 뽑는다.
+//
+// 실측 2026-08-28: 종료 후 팀당 1~9번 9행(대타 없음). 첫 표가 홈.
+// 경기 전(시작 수 시간 전)에는 표가 없다. 9명이 아니면 버린다.
+func parseNPBLineups(html string) (home, away string) {
+	var found []string
+	for _, tb := range npbTableRe.FindAllStringSubmatch(html, -1) {
+		rows := npbTrRe.FindAllStringSubmatch(tb[1], -1)
+		var cells [][]string
+		for _, r := range rows {
+			c := npbCells(r[1])
+			if len(c) > 0 {
+				cells = append(cells, c)
+			}
+		}
+		if len(cells) == 0 || cells[0][0] != "打順" || indexOf(cells[0], "選手名") < 0 {
+			continue
+		}
+		head := cells[0]
+		nameI, posI := indexOf(head, "選手名"), indexOf(head, "位置")
+		if posI < 0 {
+			posI = 1
+		}
+		maxI := nameI
+		if posI > maxI {
+			maxI = posI
+		}
+		var order []string
+		for _, r := range cells[1:] {
+			if len(r) <= maxI {
+				break
+			}
+			n := len(order) + 1
+			if r[0] != fmt.Sprintf("%d", n) {
+				break
+			}
+			name := strings.TrimSpace(r[nameI])
+			if name == "" {
+				break
+			}
+			pos := strings.TrimSpace(r[posI])
+			if pos != "" {
+				rs := []rune(pos)
+				if strings.ContainsRune(npbPosJP, rs[0]) {
+					name = name + "(" + string(rs[0]) + ")"
+				}
+			}
+			order = append(order, name)
+		}
+		if len(order) == 9 {
+			found = append(found, strings.Join(order, "-"))
+		}
+	}
+	if len(found) < 2 {
+		return "", ""
+	}
+	return found[0], found[1]
 }

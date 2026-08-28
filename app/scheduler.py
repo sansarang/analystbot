@@ -399,6 +399,33 @@ async def kbo_lineup_history_job() -> None:
     logger.info("[scheduler] KBO 라인업 이력 upsert %d · 백필 %s", n, stats)
 
 
+async def npb_lineup_history_job() -> None:
+    """NPB 평소 라인업 이력 — Yahoo 종료 경기 打順 9명을 lineup_events에 적재.
+
+    타순은 경기 시작 약 30분 전에야 뜨므로(スポナビ 도움말) 당일 오전 백필은
+    어제 이전 종료 분만 쌓인다. `source='boxscore'`로 발표 라인업과 구분한다.
+    """
+    from app.collectors.npb_boxscore import backfill
+    from app.collectors.yahoo_npb import upsert_schedule
+
+    now = datetime.now(KST)
+    pool = await get_pool()
+    n = 0
+    for back in range(3):
+        day = (now.date() - timedelta(days=back)).isoformat()
+        try:
+            counts = await upsert_schedule(pool, day)
+            n += counts.get("total") or 0
+        except Exception as exc:
+            logger.warning("[scheduler] NPB 일정 %s 적재 실패: %s", day, exc)
+    try:
+        stats = await backfill(pool, as_of=now.date(), days=14, limit_per_team=10)
+    except Exception as exc:
+        logger.warning("[scheduler] NPB 라인업 백필 실패: %s", exc)
+        stats = {}
+    logger.info("[scheduler] NPB 라인업 이력 upsert %d · 백필 %s", n, stats)
+
+
 async def odds_snapshot_job() -> None:
     """배당 스냅샷 — 크레딧 예산 관리:
 
@@ -605,6 +632,9 @@ def _job_specs() -> list[tuple]:
         # 박스스코어 선발 9명을 하루 1회 적재한다 (30분 폴링에 넣으면 HTTP가 폭주한다).
         ("kbo_lineup_history", kbo_lineup_history_job,
          CronTrigger(hour=5, minute=20, timezone=KST)),
+        # NPB는 Yahoo `/top` 종료 경기 打順. 오전엔 오늘 타순이 없다(시작 ~30분 전).
+        ("npb_lineup_history", npb_lineup_history_job,
+         CronTrigger(hour=5, minute=25, timezone=KST)),
     ]
 
 

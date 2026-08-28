@@ -45,6 +45,9 @@ _POS = re.compile(r"^(.*?)\s*\((.*?)\)\s*$")
 #   🔴 실측 2026-08-27: 이름 뒤에 점 하나만 달라도 **주전 5명이 거짓 결장**으로
 #      잡혔다. 매칭 실패가 곧 거짓 결장 신호가 된다 — 가장 위험한 오류다.
 _NAME_NOISE = re.compile(r"[\s.·・,'\"`~\-–—]+")
+# 실측 2026-08-28 Yahoo NPB: 髙(U+9AD9)≠高(U+9AD8), 﨑(U+FA11)≠崎(U+5D0E).
+#   NFKC로도 안 합쳐진다. 비교 키만 접는다 — 표시는 원문.
+_CJK_FOLD = str.maketrans({"髙": "高", "﨑": "崎"})
 
 
 def canon_name(name: str) -> str:
@@ -53,7 +56,7 @@ def canon_name(name: str) -> str:
     ⚠️ 표시는 원문을 쓰고 비교만 정규화한다 — 정규화한 이름을 사용자에게
        보여주면 실제 표기와 달라 혼란을 준다.
     """
-    return _NAME_NOISE.sub("", (name or "")).strip()
+    return _NAME_NOISE.sub("", (name or "")).strip().translate(_CJK_FOLD)
 _DH_WORDS = ("지명타자", "지명", "DH")
 
 

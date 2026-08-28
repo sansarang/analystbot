@@ -86,6 +86,11 @@ func TestLineupMustBeNine(t *testing.T) {
 	if msg := checkPhysical("lineup_home", realKBO["lineup_home"]); msg != "" {
 		t.Errorf("정상 9명을 버렸다: %s", msg)
 	}
+	// NPB는 한 글자 포지션(投·指·遊). 한글 "3루수"는 숫자라 이름이 폐기된다.
+	npb := "山田 哲人(捕)-塩見 泰隆(中)-村上 宗隆(三)-サンタナ(右)-オスナ(一)-西川 輝矢(左)-長岡 秀樹(遊)-山野 太一(投)-山崎 晃大朗(二)"
+	if msg := checkPhysical("lineup_home", npb); msg != "" {
+		t.Errorf("NPB 9명을 버렸다: %s", msg)
+	}
 }
 
 // ---------------------------------------------------------------- 게이트 ② 일관성

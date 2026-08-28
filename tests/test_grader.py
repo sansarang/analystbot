@@ -89,7 +89,7 @@ def test_scheduler_jobs_registered():
                          "odds_snapshot_30m", "grade_yesterday",
                          "elo_refresh_weekly", "research_retry_45m", "lineup_poll_30m",
                          "statcast_daily", "soccerdata_daily", "park_weekly",
-                         "kbo_lineup_history",
+                         "kbo_lineup_history", "npb_lineup_history",
                          # [7-5] 하트비트가 있어야 /health가 스케줄러 생존을 안다
                          "heartbeat_2m"}
     assert "0:02:00" in str(jobs["heartbeat_2m"].trigger)

@@ -320,6 +320,9 @@ def test_canon_name_strips_only_noise():
     assert canon_name("박 찬호") == "박찬호"
     assert canon_name("최형우·") == "최형우"
     assert canon_name("카스트로") != canon_name("카스트"), "다른 이름은 달라야 한다"
+    # 실측 2026-08-28 Yahoo NPB: 髙(U+9AD9)≠高, 﨑(U+FA11)≠崎. NFKC로도 안 합쳐진다.
+    assert canon_name("髙橋 宏斗") == canon_name("高橋 宏斗") == "高橋宏斗"
+    assert canon_name("山﨑 剛") == canon_name("山崎 剛") == "山崎剛"
 
 
 def test_display_keeps_the_original_spelling():

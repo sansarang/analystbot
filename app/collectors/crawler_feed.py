@@ -187,8 +187,10 @@ def merge_into_research(research: dict, jg: dict, snap: dict,
     #   실사고(2026-08-27): 크롤러가 `"lineup": 홈 | 원정` 합본을 보냈고 키는
     #   `원정@홈` 순이라 **어느 쪽이 어느 팀인지 알 수 없었다.** 게다가 이 값을
     #   읽는 코드가 앱 전체에 하나도 없어 타순 정보가 통째로 버려지고 있었다.
-    #   NPB는 타순이 없는데도 같은 `lineup` 키에 "확정"/"예상"이라는 **상태값**을
-    #   넣고 있어, 파이썬이 그것을 라인업으로 착각해 저장했다.
+    #   NPB는 예전엔 타순이 없는데도 같은 `lineup` 키에 "확정"/"예상"이라는
+    #   **상태값**을 넣고 있어, 파이썬이 그것을 라인업으로 착각해 저장했다.
+    #   지금은 타순이 `lineup_home`/`lineup_away`로, 발표 상태는 `starter_status`로
+    #   갈라져 있다. 빈 타순은 정상(시작 ~30분 전 발표)이다.
     for side in ("home", "away"):
         order = (game.get(f"lineup_{side}") or "").strip(" -")
         if not order:

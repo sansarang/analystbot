@@ -173,6 +173,62 @@ def _parse_pregame(html: str) -> list[dict]:
     return out
 
 
+# Yahoo /top 打順 약어. 한글 1루수·3루수는 숫자라 크롤러 게이트가 이름을 버린다.
+# 실측 2026-08-28: 종료 경기 선발 표는 한 글자(遊·指·投). 교체 행은 이 표에 없다.
+_POS_JP = ("遊", "三", "左", "一", "右", "捕", "二", "投", "中", "指")
+
+
+def score_card_html(html: str) -> str:
+    """일정 페이지의 **그날 카드**만. 주간 표에 어제·내일이 섞인다.
+
+    실측 2026-08-28: `id="gm_card"`가 요청 날짜 6경기이고, 그 아래 month 표에
+    다른 날 링크가 수십 개다. 날짜를 요청 파라미터로 덮어씌우면 8/26 경기가
+    8/28로 적재된다.
+    """
+    i = html.find('id="gm_card"')
+    if i < 0:
+        return html
+    j = html.find('id="', i + 12)
+    return html[i:j] if j > 0 else html[i:]
+
+
+def parse_batting_orders(html: str) -> dict[str, list[str]]:
+    """Yahoo `/top`의 `打順` 표 → 선발 9명. 없으면 빈 목록.
+
+    실측 2026-08-28:
+      - 경기 **전**(시작 7시간 전): 표 없음. 予告先発(투수)만.
+      - 종료 후: 팀당 1~9번 9행. 대타 없음.
+      - 첫 표가 홈(神宮 ヤクルト). 두 번째가 원정.
+      - `/stats`·npb.jp 「最新のオーダー」는 교체·막판 타순이라 쓰지 않는다.
+    9명이 아니면 그 쪽을 버린다 — 불완전 타순으로 평소를 만들지 않는다.
+    """
+    found: list[list[str]] = []
+    for tb in re.findall(r"<table[^>]*>(.*?)</table>", html, re.S):
+        rows = [r for r in (_cells(tr) for tr in
+                            re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S)) if r]
+        if not rows or rows[0][:1] != ["打順"] or "選手名" not in rows[0]:
+            continue
+        head = rows[0]
+        name_i, pos_i = head.index("選手名"), head.index("位置") if "位置" in head else 1
+        order: list[str] = []
+        for r in rows[1:]:
+            if len(r) <= max(name_i, pos_i) or not r[0].isdigit():
+                break
+            if int(r[0]) != len(order) + 1:
+                break
+            name = r[name_i].strip()
+            pos = (r[pos_i] or "").strip()
+            if not name:
+                break
+            pos = pos[0] if pos and pos[0] in _POS_JP else ""
+            order.append(f"{name}({pos})" if pos else name)
+        if len(order) == 9:
+            found.append(order)
+    if len(found) < 2:
+        return {"home": [], "away": []}
+    return {"home": found[0], "away": found[1]}
+
+
 # 종료 경기 표기: "神宮 ヤクルト 巨人 6 - 8 試合終了 …"  (홈 원정 홈점수 - 원정점수)
 _SCORE_RE = re.compile(r"(\d+)\s*-\s*(\d+)")
 
@@ -229,7 +285,7 @@ async def upsert_final_scores(pool, date: str, days: int = 3,
     for back in range(days + 1):
         day = (end - timedelta(days=back)).strftime("%Y-%m-%d")
         try:
-            finals = parse_finals(await client.schedule(day))
+            finals = parse_finals(score_card_html(await client.schedule(day)))
         except Exception as exc:          # 하루 실패가 채점 전체를 막지 않는다
             logger.warning("[yahoo_npb] %s 종료 경기 조회 실패: %s", day, exc)
             continue
@@ -298,6 +354,10 @@ def parse_game(html: str) -> dict | None:
     if len(bullpens) >= 2:
         out["home_bullpen_list"] = bullpens[0]
         out["away_bullpen_list"] = bullpens[1]
+    lu = parse_batting_orders(html)
+    if lu["home"] and lu["away"]:
+        out["lineup_home"] = "-".join(lu["home"])
+        out["lineup_away"] = "-".join(lu["away"])
     return out
 
 
@@ -337,6 +397,18 @@ def merge_into_research(research: dict, jg: dict, data: dict) -> list[str]:
                 f"{x['name']}({x['era']:.2f}"
                 + (f"·{x['condition']}" if x.get("condition") else "") + ")"
                 for x in pen if x.get("era") is not None)[:400]
+    for side in ("home", "away"):
+        order = (data.get(f"lineup_{side}") or "").strip(" -")
+        if not order:
+            continue
+        n = len([x for x in order.split("-") if x.strip()])
+        if n != 9:
+            continue
+        blk = research.setdefault(f"{side}_lineup", {})
+        if blk.get("order") != order:
+            blk["order"] = order
+            blk["source"] = "Yahoo"
+            filled.append(f"{side}_lineup.order")
     return filled
 
 
@@ -349,7 +421,7 @@ async def refresh(redis, date: str, client: YahooNPBClient | None = None) -> dic
     import json
 
     client = client or YahooNPBClient()
-    games = parse_schedule(await client.schedule(date))
+    games = parse_schedule(score_card_html(await client.schedule(date)))
     out: dict[str, dict] = {}
     failed = 0
     for g in games:
@@ -400,7 +472,7 @@ async def upsert_schedule(pool, date: str,
 
     client = client or YahooNPBClient()
     jst = ZoneInfo("Asia/Tokyo")
-    html = await client.schedule(date)
+    html = score_card_html(await client.schedule(date))
     games = parse_schedule(html)
     finals = {g["game_id"] for g in parse_finals(html)}
     counts = {"scheduled": 0, "final": 0, "total": len(games)}

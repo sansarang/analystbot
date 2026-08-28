@@ -80,6 +80,8 @@ def test_parses_pregame_structure():
     # 상대전적 ERA — 딥서치가 절대 못 주는 재료
     assert d["home_pitcher"]["era_vs_opponent"] == 1.69
     assert d["away_pitcher"]["era_season"] == 3.38
+    # 실측 2026-08-28: 시작 수 시간 전에는 打順 표가 없다. 빈 타순은 정상.
+    assert "lineup_home" not in d and "lineup_away" not in d
 
 
 def test_parses_finished_structure():
@@ -210,3 +212,96 @@ def test_grader_prefers_yahoo_for_npb():
     assert "ingest_finals" in rec, "reconcile이 종목 분기를 다시 갖게 됐다"
     assert "football" not in rec.split("async def ", 2)[0], \
         "reconcile에 축구 전용 경로가 다시 생겼다"
+
+
+# ---------------------------------------------------------------- [§8-28] 打順 9명 (Yahoo /top)
+
+def _dasen(rows):
+    """打順 | 位置 | 選手名 표. rows = [(이름, 포지션), ...]"""
+    body = [["打順", "位置", "選手名"]]
+    body += [[str(i), p, n] for i, (n, p) in enumerate(rows, 1)]
+    return _tbl(body)
+
+
+_CL9 = [
+    ("山田 哲人", "捕"), ("塩見 泰隆", "中"), ("村上 宗隆", "三"),
+    ("サンタナ", "右"), ("オスナ", "一"), ("西川 輝矢", "左"),
+    ("長岡 秀樹", "遊"), ("山野 太一", "投"), ("山崎 晃大朗", "二"),
+]
+_PL9 = [
+    ("藤原 恭大", "中"), ("藤岡 裕大", "遊"), ("ソト", "一"),
+    ("山口 航輝", "左"), ("ポランコ", "右"), ("安田 尚憲", "三"),
+    ("佐藤 都志也", "捕"), ("茶谷 健太", "二"), ("石川 慎吾", "指"),
+]
+# 8명은 불완전 — 평소 기준으로 쓰면 안 된다
+_EIGHT = _CL9[:8]
+
+
+def test_batting_order_nine_each_side():
+    """종료 경기 /top 打順은 팀당 선발 9명. 첫 표가 홈(실측 神宮 ヤクルト)."""
+    from app.collectors.yahoo_npb import parse_batting_orders
+
+    lu = parse_batting_orders(_dasen(_CL9) + _dasen(_PL9))
+    assert [x.split("(")[0] for x in lu["home"]] == [n for n, _ in _CL9]
+    assert [x.split("(")[0] for x in lu["away"]] == [n for n, _ in _PL9]
+    assert all(x.endswith(")") for x in lu["home"] + lu["away"])
+
+
+def test_central_keeps_pitcher_pacific_keeps_dh():
+    """CL은 투수가 타순에 있고(投), PL은 지명타자(指). 한글 1루수로 바꾸면
+    크롤러 게이트가 숫자를 보고 이름을 버린다."""
+    from app.collectors.yahoo_npb import parse_batting_orders
+
+    lu = parse_batting_orders(_dasen(_CL9) + _dasen(_PL9))
+    assert any(x.endswith("(投)") for x in lu["home"])
+    assert any(x.endswith("(指)") for x in lu["away"])
+    joined = "-".join(lu["home"] + lu["away"])
+    assert "1루수" not in joined and "3루수" not in joined
+
+
+def test_pregame_has_no_batting_order():
+    from app.collectors.yahoo_npb import parse_batting_orders
+
+    assert parse_batting_orders(_PREGAME) == {"home": [], "away": []}
+
+
+def test_eight_names_are_rejected():
+    """9명이 아니면 그 쪽을 버린다. 한쪽만 9명이어도 둘 다 빈다."""
+    from app.collectors.yahoo_npb import parse_batting_orders
+
+    lu = parse_batting_orders(_dasen(_EIGHT) + _dasen(_PL9))
+    assert lu == {"home": [], "away": []}
+
+
+def test_parse_game_attaches_lineups_when_both_nines():
+    html = _FINISHED + _dasen(_CL9) + _dasen(_PL9)
+    d = parse_game(html)
+    assert d["lineup_home"].count("-") == 8
+    assert d["lineup_away"].count("-") == 8
+    assert "山野 太一(投)" in d["lineup_home"]
+
+
+def test_merge_writes_yahoo_lineup_source():
+    research = {}
+    merge_into_research(research, {}, parse_game(_FINISHED + _dasen(_CL9) + _dasen(_PL9)))
+    assert research["home_lineup"]["source"] == "Yahoo"
+    assert len(research["home_lineup"]["order"].split("-")) == 9
+
+
+def test_score_card_drops_other_days():
+    """주간 표의 어제 경기를 오늘 날짜로 적재하면 안 된다."""
+    from app.collectors.yahoo_npb import parse_finals, score_card_html
+
+    html = '''
+    <div id="gm_card">
+      <a href="/npb/game/2021039331/index">神宮 ヤクルト 巨人 6 - 8 試合終了</a>
+    </div>
+    <div id="week_table">
+      <a href="/npb/game/2021039200/index">ZOZOマリン ロッテ ソフトバンク 3 - 1 試合終了</a>
+    </div>
+    '''
+    today = parse_finals(score_card_html(html))
+    mixed = parse_finals(html)
+    assert [g["game_id"] for g in today] == ["2021039331"]
+    assert {g["game_id"] for g in mixed} == {"2021039331", "2021039200"}
+
