@@ -1,5 +1,6 @@
 """KBO·NPB 17:45 공통 발송 — 라인업 공시 이후 한꺼번에."""
 
+import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -73,9 +74,14 @@ class _Redis:
 class _Pool:
     def __init__(self, rows):
         self.rows = rows
+        self.executed = []
 
     async def fetch(self, *_a, **_k):
         return self.rows
+
+    async def execute(self, sql, *args):
+        self.executed.append((sql, args))
+
 
 
 def _row(gid=11, sport="kbo", minutes=45):
@@ -191,3 +197,39 @@ async def test_missing_cache_sends_honest_once(monkeypatch):
     assert out["sent"] == 1
     assert "분석 캐시가 없어" in sent[0]
     assert sent_key(11) in rds.store
+
+
+@pytest.mark.asyncio
+async def test_cancelled_crawler_game_is_not_sent(monkeypatch):
+    """네이버 취소가 Redis에만 있어도 카드는 나가지 않고 DB를 cancelled로 맞춘다."""
+    now = datetime(2026, 8, 28, 8, 45, tzinfo=UTC)
+    row = {
+        "id": 506, "sport": "kbo", "home": "Lotte Giants", "away": "LG Twins",
+        "starts_at": now + timedelta(minutes=45), "league": "KBO",
+    }
+    rds = _Redis({
+        "crawl:kbo:2026-08-28:latest": json.dumps({
+            "LG Twins@Lotte Giants": {
+                "status": "경기취소", "home_pitcher": "나균안",
+            },
+        }),
+    })
+    sent = []
+
+    async def fake_send(text, **_k):
+        sent.append(text)
+        return True
+
+    async def fake_ensure(*_a, **_k):
+        return True
+
+    monkeypatch.setattr("app.engine.pregame_push.ensure_analysis_cache", fake_ensure)
+    monkeypatch.setattr("app.engine.pregame_push.today_kst", lambda: "2026-08-28")
+    monkeypatch.setattr("app.notify.send_telegram", fake_send)
+
+    pool = _Pool([row])
+    out = await run_pregame_push(pool, rds, now)
+    assert out["sent"] == 0 and out["skipped"] == 1
+    assert sent == []
+    assert pool.executed
+    assert sent_key(506) not in rds.store

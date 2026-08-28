@@ -61,7 +61,8 @@ class Settings(BaseSettings):
     # mock(키 없음)도 오류도 아니다. 여기 있는 이름은 HTTP를 나가지 않고
     # 알림도 내지 않는다. 콤마 구분.
     # 2026-08-28 사용자 지시: AI API는 Anthropic만 충전. Grok·Perplexity 충전 안 함.
-    disabled_providers: str = "grok,perplexity"
+    # 2026-08-28 저녁: Groq·Gemini 키 불량 → 오늘 건너뛰고 Claude만.
+    disabled_providers: str = "grok,perplexity,groq,gemini"
 
     # ── [§9 카드 ④칸] 순위 경쟁권 판정 ────────────────────────────────────
     # 두 팀이 **모두** 경쟁권 밖이면 순위 차이가 동기 차이를 뜻하지 않는다.
@@ -131,7 +132,7 @@ class Settings(BaseSettings):
     narrator_fallback: str = "groq,anthropic"   # 서술은 슬레이트당 1~3콜이라 Gemini로 충분
     intent_provider: str = "groq"           # 의도 파싱 — 질문마다 1콜이라 빠른 쪽
     intent_model: str = ""
-    intent_fallback: str = "gemini"
+    intent_fallback: str = "gemini,anthropic"  # groq·gemini 미사용 시 Claude
     # 자체호스팅·프록시 주소 (Ollama·사내 게이트웨이 등)
     # ── 사고 예산 (역할별) ────────────────────────────────────────────────
     # ⚠️ **사고 토큰은 출력 예산(max_tokens)을 잠식한다.** 사고형 모델에서

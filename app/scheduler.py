@@ -331,6 +331,9 @@ async def crawler_lineup_poll() -> None:
                    FROM games WHERE sport = $1 AND status = 'scheduled'
                      AND starts_at BETWEEN now() - interval '30 minutes'
                                        AND now() + interval '4 hours'""", sport)
+            cancelled = await crawler_feed.mark_cancelled_games(pool, rows, snap)
+            if cancelled:
+                rows = [r for r in rows if r["id"] not in set(cancelled)]
             ensured = False
             for r in rows:
                 key = f"{r['away']}@{r['home']}"

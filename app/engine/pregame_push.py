@@ -20,6 +20,7 @@ from app.pipeline import (
     render_game_easy,
     today_kst,
 )
+from app.collectors.crawler_feed import load_snapshot, mark_cancelled_games
 
 logger = logging.getLogger(__name__)
 
@@ -117,9 +118,18 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
     )
     sent = skipped = failed = 0
     ensured: set[str] = set()
+    cancelled_ids: set[int] = set()
+    for sport in SPORTS:
+        snap = await load_snapshot(redis, sport, date)
+        sport_rows = [r for r in rows if r["sport"] == sport]
+        cancelled_ids.update(await mark_cancelled_games(pool, sport_rows, snap))
     for r in rows:
         sport = r["sport"]
         gid = r["id"]
+        if gid in cancelled_ids:
+            skipped += 1
+            logger.info("[pregame] %s game=%s 취소 — 발송 생략", sport, gid)
+            continue
         if sport not in SPORTS or not still_upcoming(r["starts_at"], now):
             skipped += 1
             continue

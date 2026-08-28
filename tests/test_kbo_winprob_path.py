@@ -131,17 +131,56 @@ def test_h2h_keeps_ensemble_when_distribution_present():
 
 
 @pytest.mark.asyncio
-async def test_ensure_analysis_cache_skips_when_present():
+async def test_ensure_analysis_cache_skips_when_judged():
     from app.pipeline import ensure_analysis_cache
+    import json
+
+    body = json.dumps({"games": [{
+        "game_id": 1, "status": "scheduled", "starts_at_kst": "08/28 18:30",
+        "p_claude": 0.61,
+    }]})
 
     class R:
         def __init__(self):
-            self.store = {"analysis:kbo:2026-08-28": "{}"}
+            self.store = {"analysis:kbo:2026-08-28": body}
 
         async def get(self, k):
             return self.store.get(k)
 
     assert await ensure_analysis_cache(None, R(), "kbo", "2026-08-28") is True
+
+
+@pytest.mark.asyncio
+async def test_ensure_analysis_cache_rebuilds_when_judge_missing(monkeypatch):
+    """키만 있고 p_claude가 없으면 파이프라인을 다시 돈다."""
+    from app import pipeline as P
+    import json
+
+    hollow = json.dumps({"games": [{
+        "game_id": 1, "status": "scheduled", "starts_at_kst": "08/28 18:30",
+        "p_claude": None, "judge_missing": True,
+    }]})
+
+    class R:
+        def __init__(self):
+            self.store = {"analysis:kbo:2026-08-28": hollow}
+
+        async def get(self, k):
+            return self.store.get(k)
+
+    r = R()
+    calls = []
+
+    async def fake_run(*_a, **k):
+        calls.append(k)
+        r.store["analysis:kbo:2026-08-28"] = json.dumps({"games": [{
+            "game_id": 1, "status": "scheduled", "starts_at_kst": "08/28 18:30",
+            "p_claude": 0.60,
+        }]})
+
+    monkeypatch.setattr(P, "run_pipeline", fake_run)
+    assert await P.ensure_analysis_cache(None, r, "kbo", "2026-08-28") is True
+    assert calls and calls[0]["force_refresh"] is True
 
 
 @pytest.mark.asyncio
@@ -174,4 +213,32 @@ def test_asia_prefetch_covers_kbo_and_npb():
 
     src = inspect.getsource(prefetch_asia_job)
     assert "kbo" in src and "npb" in src
+
+
+def test_analysis_cache_ready_ignores_other_days():
+    import json
+
+    from app.pipeline import analysis_cache_ready
+
+    raw = json.dumps({"games": [
+        {"status": "scheduled", "starts_at_kst": "08/28 18:30", "p_claude": 0.61},
+        {"status": "scheduled", "starts_at_kst": "08/29 18:00", "p_claude": None},
+    ]})
+    assert analysis_cache_ready(raw, "2026-08-28") is True
+    hollow = json.dumps({"games": [
+        {"status": "scheduled", "starts_at_kst": "08/28 18:30", "p_claude": None},
+        {"status": "scheduled", "starts_at_kst": "08/29 18:00", "p_claude": 0.70},
+    ]})
+    assert analysis_cache_ready(hollow, "2026-08-28") is False
+    assert analysis_cache_ready("{}", "2026-08-28") is False
+
+
+def test_pipeline_scheduled_query_is_date_scoped():
+    import inspect
+
+    from app import pipeline as P
+
+    src = inspect.getsource(P.build_analysis)
+    assert "Asia/Seoul')::date = $2::date" in src
+    assert "starts_at >= now() - interval '12 hours'" in src
 

@@ -119,3 +119,37 @@ def test_merge_keeps_stats_when_name_unchanged():
     snap = {"NC Dinos@LG Twins": {"home_pitcher": "임찬규"}}
     assert merge_into_research(research, jg, snap) == []
     assert research["home_pitcher"]["era_season"] == 4.14
+
+
+def test_is_cancelled_game_reads_naver_status():
+    from app.collectors.crawler_feed import is_cancelled_game
+
+    assert is_cancelled_game({"status": "경기취소"}) is True
+    assert is_cancelled_game({"status": "경기전"}) is False
+    assert is_cancelled_game({"status": ""}) is False
+    assert is_cancelled_game(None) is False
+
+
+@pytest.mark.asyncio
+async def test_mark_cancelled_games_updates_scheduled_only():
+    from app.collectors.crawler_feed import mark_cancelled_games
+
+    class Pool:
+        def __init__(self):
+            self.executed = []
+
+        async def execute(self, sql, *args):
+            self.executed.append((sql, args))
+
+    rows = [
+        {"id": 506, "home": "Lotte Giants", "away": "LG Twins"},
+        {"id": 504, "home": "Doosan Bears", "away": "Kiwoom Heroes"},
+    ]
+    snap = {
+        "LG Twins@Lotte Giants": {"status": "경기취소"},
+        "Kiwoom Heroes@Doosan Bears": {"status": "경기전"},
+    }
+    pool = Pool()
+    ids = await mark_cancelled_games(pool, rows, snap)
+    assert ids == [506]
+    assert pool.executed[0][1] == (506,)

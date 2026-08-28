@@ -614,16 +614,48 @@ async def load_source_bundle(redis, sport: str, date: str) -> dict:
     return bundle
 
 
+def analysis_cache_ready(raw: str | None, date: str) -> bool:
+    """당일 예정 경기에 Claude 판정(`p_claude`)이 붙어 있는가.
+
+    키만 있으면 준비됨으로 치면 안 된다. 실측 2026-08-28: 캐시는 있는데
+    `p_claude`가 전원 null이라 17:45가 승률 없는 카드를 보낼 뻔했다.
+    다음날 경기가 같은 키에 섞여 있어도 **요청 날짜**만 본다.
+    """
+    if not raw:
+        return False
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        return False
+    try:
+        _y, m, d = date.split("-")
+        mmdd = f"{int(m):02d}/{int(d):02d}"
+    except (ValueError, AttributeError):
+        return False
+    games = []
+    for g in data.get("games") or []:
+        if g.get("status") not in (None, "scheduled"):
+            continue
+        stamp = str(g.get("starts_at_kst") or g.get("starts_at") or "")
+        if stamp.startswith(mmdd) or date in stamp:
+            games.append(g)
+    if not games:
+        return False
+    return all(isinstance(g.get("p_claude"), (int, float)) for g in games)
+
+
 async def ensure_analysis_cache(pool, redis, sport: str, date: str) -> bool:
     """라인업 재판정 전에 `analysis:{sport}:{date}` 가 있게 한다.
 
-    키가 있으면 그대로 둔다. 없으면 파이프라인을 1회 돌린다.
+    키가 있어도 당일 판정이 없으면 파이프라인을 1회 돌린다.
     프리페치가 KBO·NPB를 안 돌던 구멍: 그날 사용자가 안 물어보면
     폴링이 타순을 잡아도 `rejudge_after_lineup`이 즉시 False를 반환했다.
     """
-    if await redis.get(f"analysis:{sport}:{date}"):
+    raw = await redis.get(f"analysis:{sport}:{date}")
+    if analysis_cache_ready(raw, date):
         return True
-    logger.info("[pipeline] analysis 캐시 없음 — %s %s 파이프라인 1회", sport, date)
+    logger.info("[pipeline] analysis 캐시 없음·무판정 — %s %s 파이프라인 1회",
+                sport, date)
     try:
         await run_pipeline(pool, redis, sport=sport, date=date,
                            force_refresh=True, sequential_research=True)
@@ -737,9 +769,13 @@ async def build_analysis(
                 """,
                 sport, day, ["scheduled", "final", "live"])
         else:
+            # 요청 날짜만. 실측 2026-08-28: `starts_at >= now()-12h`만 있으면
+            # 다음날·모레 scheduled까지 한 캐시에 섞여 15경기가 됐다.
             rows = await pool.fetch(
-                "SELECT ext_id FROM games WHERE sport = $1 AND status = 'scheduled'"
-                "  AND starts_at >= now() - interval '12 hours'", sport)
+                """SELECT ext_id FROM games WHERE sport = $1 AND status = 'scheduled'
+                     AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $2::date
+                     AND starts_at >= now() - interval '12 hours'""",
+                sport, date)
         ext_ids = [r["ext_id"] for r in rows]
         stats_coro = _empty_stats()
         league = LEAGUE_LABEL_BY_SPORT.get(sport, sport.upper())

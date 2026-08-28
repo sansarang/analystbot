@@ -49,9 +49,10 @@ def test_grok_and_perplexity_are_disabled_by_default():
     """의도적 미사용. 키 유무와 무관하다 — 키가 있어도 부르지 않는다."""
     s = make(xai_api_key="k", pplx_api_key="k")
     assert s.is_disabled("grok") and s.is_disabled("perplexity")
+    assert s.is_disabled("groq") and s.is_disabled("gemini")
     assert not s.is_disabled("odds")
     assert not s.mock_grok and not s.mock_perplexity
-    assert s.disabled_providers == "grok,perplexity"
+    assert s.disabled_providers == "grok,perplexity,groq,gemini"
 
 
 def test_disabled_can_be_cleared():

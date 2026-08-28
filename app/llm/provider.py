@@ -635,7 +635,11 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
     starved = False        # 예산 부족이 한 번이라도 있었나 — 알림 대상이다
     # [#73] 어느 provider가 언제 죽었는지 남긴다. 폴백 순서를 바꾸기 전에 볼 표다.
     redis = await _ledger_redis()
+    s = settings or get_settings()
     for p in chain:
+        if s.is_disabled(p.name):
+            tried.append(f"{p.name}(disabled)")
+            continue
         if (why := _is_exhausted(p.name)):
             tried.append(f"{p.name}(소진·생략)")
             last = last or LLMError(f"{p.name}: {why}")

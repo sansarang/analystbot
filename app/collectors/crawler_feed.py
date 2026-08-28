@@ -119,6 +119,39 @@ def notable_changes(changes: list[dict]) -> list[str]:
 _LINEUP_FIELDS = ("lineup_home", "lineup_away")
 _STARTER_FIELDS = ("home_pitcher", "away_pitcher")
 
+# 크롤러 status 필드. 빈 값은 정상(미시작). 값이 있는데 취소 표시면 DB를 맞춘다.
+# 실측 2026-08-28: 네이버 `경기취소`가 Redis에만 있고 games.status는 scheduled
+# 로 남아 17:45가 취소 경기를 카드로 보낼 뻔했다.
+_CANCEL_MARKERS = ("취소", "中止", "キャンセル", "cancelled", "canceled", "연기")
+
+
+def is_cancelled_game(game: dict | None) -> bool:
+    """크롤러 스냅샷 한 경기가 취소·연기인가."""
+    if not game:
+        return False
+    status = str(game.get("status") or "")
+    return any(m in status for m in _CANCEL_MARKERS)
+
+
+async def mark_cancelled_games(pool, rows, snap: dict) -> list[int]:
+    """크롤러가 취소로 표시한 경기를 DB `cancelled`로 맞춘다.
+
+    크롤러는 Postgres를 안 건드린다. 파이썬이 반영하지 않으면 발송·채점이
+    예정 경기를 계속 본다. 반환: 갱신한 game id.
+    """
+    ids: list[int] = []
+    for r in rows or []:
+        key = f"{r['away']}@{r['home']}"
+        if not is_cancelled_game((snap or {}).get(key)):
+            continue
+        await pool.execute(
+            "UPDATE games SET status = 'cancelled', updated_at = now() "
+            "WHERE id = $1 AND status = 'scheduled'",
+            r["id"])
+        ids.append(int(r["id"]))
+        logger.info("[crawler_feed] 취소 반영 game=%s %s", r["id"], key)
+    return ids
+
 
 def _hhmm(at: str) -> str:
     """RFC3339 → "HH:MM" (KST). 크롤러가 KST로 찍으므로 변환하지 않는다."""

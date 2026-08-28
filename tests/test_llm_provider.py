@@ -297,6 +297,38 @@ async def _noop():
     return None
 
 
+@pytest.mark.asyncio
+async def test_disabled_provider_is_skipped_without_http(monkeypatch):
+    """disabled_providers에 있는 벤더는 HTTP를 나가지 않고 다음으로 간다."""
+    hit = []
+
+    class Boom(P.Provider):
+        name = "groq"
+        supports_native_schema = True
+
+        async def _call(self, *a, **kw):
+            hit.append("groq")
+            raise RuntimeError("disabled provider must not be called")
+
+    class Ok(P.Provider):
+        name = "anthropic"
+        supports_native_schema = True
+
+        async def _call(self, *a, **kw):
+            hit.append("anthropic")
+            return '{"p": 0.6, "why": "x", "ok": true, "tags": []}', {
+                "p": 0.6, "why": "x", "ok": True, "tags": []}
+
+    s = _settings(disabled_providers="groq,gemini")
+    monkeypatch.setattr(P, "provider_chain", lambda *a, **k: [Boom("m"), Ok("m")])
+    monkeypatch.setattr(P, "_ledger_redis", _noop)
+    res = await P.complete("interpreter", [{"role": "user", "content": "q"}],
+                           settings=s)
+    assert hit == ["anthropic"]
+    assert res.provider == "anthropic"
+    assert "groq(disabled)" in res.fell_back_from
+
+
 def test_force_mock_blocks_every_provider():
     """🔴 절대 규칙 3 — 강제 목 모드에서는 **어떤 벤더도** 실제로 호출되지 않는다.
 
