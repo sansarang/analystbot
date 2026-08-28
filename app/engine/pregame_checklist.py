@@ -56,10 +56,22 @@ def incident_lines() -> list[str]:
         "🧪 저녁 슬레이트 파이프라인 제거 · today_nine · NPBStopBefore=15 · 발송창 T-40",
         "보장 안 함",
         "⚠️ 17:30 1차 완료는 강제 아님. 강제선은 NPB 17:45",
-        "⚠️ 17:45 이후 NPB 타순 변경은 버림. 14:00 캐시 없으면 저녁 분석 안 함",
+        "⚠️ 17:45 이후 NPB 타순 변경은 버림. 캐시는 사용자 담당(저녁에 안 메움)",
         "⚠️ 타순이 17:43에 뜨면 Judge가 17:45를 넘길 수 있음",
         "⚠️ KBO 19시 이후는 5분 잡 밖(30분 폴링). pytest 2건 HEAD부터 실패(발송 무관)",
         "상세: docs/PREGAME_CHECKLIST.md",
+    ]
+
+
+def research_lines() -> list[str]:
+    """돈·관중·승패 관련. 연구만. 코드 없음."""
+    return [
+        "연구 (미구현 · 딥서치 전제)",
+        "📚 동기는 게임차가 아님. 상품은 관중(입장). 승패는 그 돈을 열거나 닫음",
+        "📚 세 겹 섞지 말 것: 구단 장부 / 가을 흥행(KBO 5위 PS, NPB CS 홈) / 선수 자산",
+        "📚 게이트: 매진팀(한화)은 오늘 패가 이번 주 표를 안 바꿈. 져도 차는 팀(롯데). 5위=추가 홈",
+        "📚 관련 유무는 채점 원장만. λ·연봉 API 금지. 200~300픽 전 결론 금지",
+        "⚠️ PPLX·Grok 꺼짐. KBO·NPB 딥서치 꺼짐. 켜진 뒤에만 코딩",
     ]
 
 
@@ -95,6 +107,8 @@ async def build_pregame_checklist(pool, redis, now=None) -> str:
         *contract_lines(),
         "",
         *incident_lines(),
+        "",
+        *research_lines(),
         "",
         "지금 측정",
         f"{_mark(True)} 코드 {info.short} — {info.subject[:48]}",
