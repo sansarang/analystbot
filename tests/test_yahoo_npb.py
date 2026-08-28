@@ -195,6 +195,31 @@ def test_finals_home_team_comes_first():
     assert g["home_score"] == 4 and g["away_score"] == 2
 
 
+async def test_upsert_schedule_writes_final_scores(monkeypatch):
+    """유사 타순 전적 lookup은 점수가 있어야 한다. 일정 upsert가 None을 넣으면
+    백필해도 attach()가 이력을 못 붙인다.
+    """
+    from app.collectors.yahoo_npb import upsert_schedule
+
+    captured = []
+
+    async def fake_apply(pool, **kw):
+        captured.append(kw)
+
+    class _C:
+        async def schedule(self, date):
+            return '<div id="gm_card">' + _FINALS + "</div>"
+
+    monkeypatch.setattr("app.collectors.game_match.apply_result", fake_apply)
+    await upsert_schedule(None, "2026-08-26", client=_C())
+    finals = [c for c in captured if c["status"] == "final"]
+    assert len(finals) == 2
+    yak = next(c for c in finals if c["home"] == "Tokyo Yakult Swallows")
+    assert yak["home_score"] == 6 and yak["away_score"] == 8
+    live = next(c for c in captured if c["ext_id"].endswith("2021039340"))
+    assert live["status"] == "scheduled" and live["home_score"] is None
+
+
 def test_grader_prefers_yahoo_for_npb():
     """[§8-28] 채점기가 Yahoo를 1순위로 부르는지 — 배선이 빠지면 조용히 Odds로 간다."""
     from pathlib import Path

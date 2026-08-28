@@ -40,7 +40,23 @@ def test_npb_yahoo_merges_even_when_weather_present():
     done = merge_source_data(research, NPB_JG, "npb",
                              {"yahoo": YAHOO, "weather": DOME_WEATHER})
     assert "yahoo" in done, "돔경기(날씨 있음)에서 Yahoo 병합이 건너뛰어졌다"
+    assert "npb_stats" in done
     assert research["home_pitcher"]["era_season"] == 2.80
+
+
+def test_npb_official_obp_merges_independent_of_weather():
+    """팀 OBP는 날씨·Yahoo와 독립이다 — 돔이라고 타선 숫자가 빠지면 안 된다."""
+    teams = {"Yomiuri Giants": {"obp": 0.297, "ops": 0.651, "slg": 0.354},
+             "Hanshin Tigers": {"obp": 0.317, "ops": 0.688, "slg": 0.371}}
+    for weather in ({}, DOME_WEATHER):
+        research: dict = {}
+        done = merge_source_data(research, NPB_JG, "npb",
+                                 {"yahoo": YAHOO, "npb_teams": teams,
+                                  "weather": weather})
+        assert "npb_stats" in done and "yahoo" in done
+        assert research["home_offense"]["obp_30d"] == 0.297
+        assert research["away_offense"]["obp_30d"] == 0.317
+        assert research["home_pitcher"]["era_season"] == 2.80
 
 
 def test_npb_yahoo_merges_when_weather_absent():
@@ -139,8 +155,7 @@ def test_no_statcast_data_is_safe():
     research: dict = {}
     assert merge_source_data(research, KBO_JG, "kbo", {}) == ["kbo_stats", "kbo_park"]
     assert research == {}, "빈 입력인데 값이 생겼다"
-    # 소스가 없는 종목은 아무 병합도 도달하지 않는다
-    assert merge_source_data({}, NPB_JG, "npb", {}) == []
+    assert merge_source_data({}, NPB_JG, "npb", {}) == ["npb_stats"]
     assert merge_source_data({}, {"home": "A", "away": "B"}, "mlb", {}) == []
 
 

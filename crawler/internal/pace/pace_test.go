@@ -82,3 +82,28 @@ func TestUnknownStartDoesNotAccelerate(t *testing.T) {
 		t.Fatal("시각 없으면 평시 간격")
 	}
 }
+
+func TestWaitWakesAtWindowOpenNotFullIdle(t *testing.T) {
+	// 평시 60분만 자면 창 시작을 지나친다. 창이 idle보다 가까우면 그때 깬다.
+	idle, fast := time.Hour, 2*time.Minute
+	// KBO 18:30 → 14:00 창. 13:32면 28분 뒤.
+	got := Wait("kbo", at("13:32"), []time.Time{at("18:30")}, idle, fast)
+	if got != 28*time.Minute {
+		t.Fatalf("KBO 창 직전 Wait=%v want 28m", got)
+	}
+	// 창이 2시간 이상 남으면 평시 유지
+	got = Wait("kbo", at("11:32"), []time.Time{at("18:30")}, idle, fast)
+	if got != idle {
+		t.Fatalf("창이 멀 때 Wait=%v want idle", got)
+	}
+	// NPB 18:00 → 17:00 창. 16:32면 28분 뒤.
+	got = Wait("npb", at("16:32"), []time.Time{at("18:00")}, idle, fast)
+	if got != 28*time.Minute {
+		t.Fatalf("NPB 창 직전 Wait=%v want 28m", got)
+	}
+	// 이미 가속 중이면 2분
+	got = Wait("npb", at("17:10"), []time.Time{at("18:00")}, idle, fast)
+	if got != fast {
+		t.Fatalf("가속 중 Wait=%v want fast", got)
+	}
+}

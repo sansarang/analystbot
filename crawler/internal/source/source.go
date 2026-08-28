@@ -65,6 +65,7 @@ type naverGames struct {
 			AwayTeamName string `json:"awayTeamName"`
 			StatusInfo   string `json:"statusInfo"`
 			GameDateTime string `json:"gameDateTime"`
+			CategoryID   string `json:"categoryId"`
 		} `json:"games"`
 	} `json:"result"`
 }
@@ -139,11 +140,11 @@ func FetchKBO(ctx context.Context, date string) (diff.Snapshot, []time.Time, err
 	out := diff.Snapshot{}
 	var starts []time.Time
 	for _, g := range sched.Result.Games {
-		home, okH := kboTeams[g.HomeTeamName]
-		away, okA := kboTeams[g.AwayTeamName]
-		if !okH || !okA || g.GameID == "" {
-			continue // 시범·올스타 등 매핑 밖 경기
+		if !keepKBOGame(g.CategoryID, g.HomeTeamName, g.AwayTeamName, g.GameID) {
+			continue // 시범·올스타·중계 껍데기(kbaseballetc) 등 매핑 밖
 		}
+		home := kboTeams[g.HomeTeamName]
+		away := kboTeams[g.AwayTeamName]
 		if t, ok := parseNaverStart(g.GameDateTime, kst); ok && kboUpcoming(g.StatusInfo) {
 			starts = append(starts, t)
 		}
@@ -393,6 +394,19 @@ func kboUpcoming(status string) bool {
 		return false
 	}
 	return !strings.Contains(status, "경기중")
+}
+
+// keepKBOGame — 1군 정규시즌만. 실측 2026-08-28 네이버 일정에
+// categoryId=kbaseballetc (VR·중계 껍데기 등) 가 팀명 없이 13:00/17:00으로
+// 섞여 있다. 팀 매핑만 보면 지금은 건너뛰지만, 이름이 채워지면 가속 창이
+// 낮 경기로 당겨진다.
+func keepKBOGame(categoryID, home, away, gameID string) bool {
+	if categoryID != "" && categoryID != "kbo" {
+		return false
+	}
+	_, okH := kboTeams[home]
+	_, okA := kboTeams[away]
+	return okH && okA && gameID != ""
 }
 
 func npbUpcoming(inner string) bool {

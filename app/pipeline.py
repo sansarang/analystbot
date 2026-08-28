@@ -41,6 +41,7 @@ KST = ZoneInfo("Asia/Seoul")
 # 계측 분모로 쓰는 실제 대상 수 — **추측하지 말고 소스에서 확인한 값만 쓴다.**
 MLB_PARKS = 30      # 실측 2026-08-27: app.collectors.park.load()가 30팀 반환
 KBO_TEAMS = 10
+NPB_TEAMS = 12          # yahoo_npb.TEAM_TO_ODDS 12구단 (실측)
 KBO_PARKS = 9
 
 
@@ -400,7 +401,7 @@ def merge_source_data(research: dict, jg: dict, sport: str,
 
       · **NPB** — 돔경기가 하나라도 있으면 `weather`가 truthy가 돼
         **Yahoo 병합이 아예 실행되지 않았다.** NPB 12팀 중 5팀이 돔이라
-        사실상 상시 발생했고, Yahoo는 NPB의 **유일한** 숫자 소스다
+        사실상 상시 발생했고, Yahoo는 선발 ERA의 숫자 소스다
         (선발 ERA·타선·최근폼이 통째로 사라진다).
       · **KBO** — 날씨 조회가 실패하면 네이버 병합이 함께 날아갔다
         (선발 ERA·WHIP·평균이닝·손잡이·구종·최근폼·순위).
@@ -472,12 +473,17 @@ def merge_source_data(research: dict, jg: dict, sport: str,
                   SRC_PORTAL)
             done.append("standings")
     elif sport == "npb":
+        from app.collectors.npb_stats import merge_into_research as _ms
         from app.collectors.yahoo_npb import merge_into_research as _my
 
         yv = (statcast_data.get("yahoo") or {}).get(gkey)
         if yv:
             _absorb(research, _my(research, jg, yv), SRC_PORTAL)
             done.append("yahoo")
+        # 공식 팀 OBP는 Yahoo 선발 뒤에 얹는다 — 타선 숫자를 덮고 ERA는 안 건드린다.
+        _absorb(research, _ms(research, jg, statcast_data.get("npb_teams") or {}),
+                SRC_KBO_OFFICIAL)
+        done.append("npb_stats")
 
     # [A-1단계] 딥서치가 주던 필드를 **이미 수집한 값으로 직접 산출**한다.
     #   빈칸만 채운다 — MLB·유럽은 아직 딥서치가 채우므로 덮으면 안 된다.
@@ -530,9 +536,11 @@ async def load_source_bundle(redis, sport: str, date: str) -> dict:
             "kbo_roster": await load_roster(redis, date) or {},
         })
     elif sport == "npb":
+        from app.collectors.npb_stats import load as load_npb_stats
         from app.collectors.yahoo_npb import load as load_yahoo
 
         bundle["yahoo"] = await load_yahoo(redis, date) or {}
+        bundle["npb_teams"] = await load_npb_stats(redis, date) or {}
     return bundle
 
 
@@ -1086,8 +1094,9 @@ async def build_analysis(
                              unit="팀",
                              impact="숫자 지표 없이 서술만으로 판정하게 됩니다")
             elif sport == "npb":
-                # [§8-20] Yahoo!スポーツ 크롤링 — LLM 0회. 선발·상대전적ERA·불펜 명단.
-                #   NPB는 이것이 **유일한 지표 소스**다(공식 기록 API가 없다).
+                # [§8-20] Yahoo 선발·불펜 + npb.jp 팀 타격(OBP). 둘 다 LLM 0회.
+                from app.collectors.npb_stats import load as load_npb_stats
+                from app.collectors.npb_stats import refresh as refresh_npb_stats
                 from app.collectors.yahoo_npb import load as load_yahoo
                 from app.collectors.yahoo_npb import refresh as refresh_yahoo
 
@@ -1099,6 +1108,14 @@ async def build_analysis(
                     except Exception as exc:
                         logger.warning("[pipeline] Yahoo NPB 수집 실패: %s", exc)
                         yh = {}
+                nteams = await load_npb_stats(redis, date)
+                if not nteams:
+                    try:
+                        await refresh_npb_stats(redis, date)
+                        nteams = await load_npb_stats(redis, date)
+                    except Exception as exc:
+                        logger.warning("[pipeline] NPB 지표 수집 실패: %s", exc)
+                        nteams = {}
                 from app.collectors.crawler_feed import load_changes, load_snapshot
 
                 from app.collectors.weather import fetch_for_games as fetch_weather
@@ -1109,7 +1126,8 @@ async def build_analysis(
                 except Exception as exc:
                     logger.warning("[pipeline] NPB 날씨 수집 실패: %s", exc)
                     nweather = {}
-                statcast_data = {"yahoo": yh, "weather": nweather,
+                statcast_data = {"yahoo": yh, "npb_teams": nteams,
+                                 "weather": nweather,
                                  "crawler": await load_snapshot(redis, "npb", date),
                                  "crawler_changes": await load_changes(redis, "npb", date)}
                 await record("날씨", len(nweather), max(1, len(_up)),
@@ -1121,6 +1139,11 @@ async def build_analysis(
                              detail=f"{len(yh)}경기 · 선발·불펜 (LLM 0회)",
                              unit="경기",
                              impact="NPB는 선발 지표 없이 판정 단독으로 갑니다")
+                await record("NPB 지표", len(nteams), NPB_TEAMS,
+                             cause=None if nteams else "missing",
+                             detail=f"팀 {len(nteams)}/12 · 시즌 OBP",
+                             unit="팀",
+                             impact="팀 타선 없이 선발 ERA만으로 λ를 냅니다")
             else:
                 from app.collectors.soccer_stats import load_xg, supported
 
@@ -2106,10 +2129,13 @@ def _compute_picks(
             if filled:
                 jg["kbo_filled"] = filled
         elif sport == "npb" and statcast_data:
+            from app.collectors.npb_stats import merge_into_research as merge_npb
             from app.collectors.yahoo_npb import merge_into_research as merge_yahoo
 
             yv = (statcast_data.get("yahoo") or {}).get(f"{jg['away']}@{jg['home']}")
             f2 = merge_yahoo(research_clean, jg, yv) if yv else []
+            f2 = list(f2) + merge_npb(research_clean, jg,
+                                      statcast_data.get("npb_teams") or {})
             from app.collectors.weather import merge_into_research as merge_wx
 
             if merge_wx(research_clean, jg, statcast_data.get("weather") or {}):
@@ -4011,7 +4037,8 @@ async def _cli() -> None:
     from app.db import close_pool, get_pool
 
     parser = argparse.ArgumentParser(description="AnalystBot pipeline CLI")
-    parser.add_argument("--sport", default="mlb", choices=["mlb", "soccer"])
+    parser.add_argument("--sport", default="mlb",
+                        choices=["mlb", "soccer", "kbo", "npb"])
     parser.add_argument("--date", default=None, help="YYYY-MM-DD (기본: MLB는 미국 동부 오늘)")
     parser.add_argument("--force-refresh", action="store_true",
                         help="카드 캐시를 건너뛰고 다시 렌더 (리서치는 신선도 게이트 유지)")

@@ -474,16 +474,18 @@ async def upsert_schedule(pool, date: str,
     jst = ZoneInfo("Asia/Tokyo")
     html = score_card_html(await client.schedule(date))
     games = parse_schedule(html)
-    finals = {g["game_id"] for g in parse_finals(html)}
+    by_final = {g["game_id"]: g for g in parse_finals(html)}
     counts = {"scheduled": 0, "final": 0, "total": len(games)}
     for g in games:
-        done = g["game_id"] in finals
+        fin = by_final.get(g["game_id"])
+        done = fin is not None
         starts = datetime.fromisoformat(f"{date}T18:00:00").replace(tzinfo=jst)
         await apply_result(
             pool, sport="npb", league="NPB", ext_id=f"yahoo:{g['game_id']}",
             starts_at=starts.astimezone(UTC), home=g["home"], away=g["away"],
             status="final" if done else "scheduled",
-            home_score=None, away_score=None)
+            home_score=fin["home_score"] if fin else None,
+            away_score=fin["away_score"] if fin else None)
         counts["final" if done else "scheduled"] += 1
     logger.info("[yahoo_npb] %s 일정 %d경기 적재 (예정 %d / 종료 %d) — Yahoo 소스",
                 date, counts["total"], counts["scheduled"], counts["final"])

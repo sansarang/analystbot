@@ -51,11 +51,63 @@ func Fast(sport string, now time.Time, starts []time.Time) bool {
 	return false
 }
 
+func windowBegin(sport string, start time.Time) time.Time {
+	switch sport {
+	case "kbo":
+		return start.Add(-KBOLead)
+	case "npb":
+		return start.Add(-NPBLead)
+	}
+	return time.Time{}
+}
+
+func windowEnd(sport string, start time.Time) time.Time {
+	switch sport {
+	case "kbo":
+		return start
+	case "npb":
+		return start.Add(-NPBStopBefore)
+	}
+	return time.Time{}
+}
+
+// UntilWindow 는 아직 열리지 않은 가속 창까지 남은 시간. 이미 가속 중이거나
+// 오늘 창이 없으면 0. 평시 주기(60분)만 자면 창 시작을 지나쳐 늦게 들어간다
+// (실측 2026-08-28: 11:32 수집 → 60분 주기면 NPB 17:00 창을 17:32에야 만난다).
+func UntilWindow(sport string, now time.Time, starts []time.Time) time.Duration {
+	var best time.Duration
+	found := false
+	for _, start := range starts {
+		if start.IsZero() {
+			continue
+		}
+		begin := windowBegin(sport, start)
+		end := windowEnd(sport, start)
+		if begin.IsZero() || !now.Before(end) {
+			continue
+		}
+		if now.Before(begin) {
+			d := begin.Sub(now)
+			if !found || d < best {
+				best, found = d, true
+			}
+		}
+	}
+	if !found {
+		return 0
+	}
+	return best
+}
+
 // Wait 는 다음 수집까지 기다릴 시간. 시각을 모르면 평시(idle)다 — 모르는 것을
 // 가속의 근거로 쓰면 소스를 과하게 두드린다.
+// 가속 전이면 min(평시, 창 시작까지) — 창이 열릴 때 맞춰 깨운다.
 func Wait(sport string, now time.Time, starts []time.Time, idle, fast time.Duration) time.Duration {
 	if Fast(sport, now, starts) {
 		return fast
+	}
+	if u := UntilWindow(sport, now, starts); u > 0 && u < idle {
+		return u
 	}
 	return idle
 }

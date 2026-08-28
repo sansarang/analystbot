@@ -404,6 +404,7 @@ async def npb_lineup_history_job() -> None:
 
     타순은 경기 시작 약 30분 전에야 뜨므로(スポナビ 도움말) 당일 오전 백필은
     어제 이전 종료 분만 쌓인다. `source='boxscore'`로 발표 라인업과 구분한다.
+    일정 upsert 창은 백필과 같은 14일 — 3일만 넣으면 나머지 경기는 no_game.
     """
     from app.collectors.npb_boxscore import backfill
     from app.collectors.yahoo_npb import upsert_schedule
@@ -411,7 +412,8 @@ async def npb_lineup_history_job() -> None:
     now = datetime.now(KST)
     pool = await get_pool()
     n = 0
-    for back in range(3):
+    days = 14
+    for back in range(days):
         day = (now.date() - timedelta(days=back)).isoformat()
         try:
             counts = await upsert_schedule(pool, day)
@@ -419,7 +421,7 @@ async def npb_lineup_history_job() -> None:
         except Exception as exc:
             logger.warning("[scheduler] NPB 일정 %s 적재 실패: %s", day, exc)
     try:
-        stats = await backfill(pool, as_of=now.date(), days=14, limit_per_team=10)
+        stats = await backfill(pool, as_of=now.date(), days=days, limit_per_team=10)
     except Exception as exc:
         logger.warning("[scheduler] NPB 라인업 백필 실패: %s", exc)
         stats = {}
