@@ -328,6 +328,7 @@ async def crawler_lineup_poll() -> None:
     from app.collectors import crawler_feed
     from app.engine.pregame_push import (
         analysis_open, roster_signature, send_game_prediction, still_upcoming,
+        void_analysis_games,
     )
     from app.pipeline import (
         analysis_cache_ready, is_final_window,
@@ -353,12 +354,12 @@ async def crawler_lineup_poll() -> None:
                                        AND now() + interval '4 hours'""", sport)
             cancelled = await crawler_feed.mark_cancelled_games(pool, rows, snap)
             if cancelled:
+                await void_analysis_games(redis, sport, date, cancelled)
                 rows = [r for r in rows if r["id"] not in set(cancelled)]
             jobs: list[tuple] = []
             catchup: list = []
             for r in rows:
-                key = f"{r['away']}@{r['home']}"
-                game = snap.get(key) or {}
+                game = crawler_feed.snapshot_for_game(snap, dict(r))
                 have = any((game.get(f"lineup_{sd}") or "").strip()
                            for sd in ("home", "away"))
                 if not have:

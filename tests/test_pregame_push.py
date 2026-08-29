@@ -38,7 +38,7 @@ def test_deadlines_are_30_and_15():
 
 def test_header_is_stage_not_clock():
     assert header_line("kbo") == "⏰ KBO · 1차"
-    assert header_line("npb", revision=True) == "⏰ NPB · 변동"
+    assert header_line("npb", revision=True) == "⏰ NPB · 라인업 변경 재판정"
 
 
 def test_still_upcoming_skips_started():
@@ -107,7 +107,7 @@ def test_compose_card_is_game_prediction():
     assert "1차" in text
     assert "17:45" not in text
     assert "LG" in text or "트윈스" in text or "NC" in text
-    assert "변동" in compose_card(jg, "", "kbo", revision=True)
+    assert "라인업 변경 재판정" in compose_card(jg, "", "kbo", revision=True)
 
 
 class _Redis:
@@ -126,8 +126,9 @@ class _Redis:
     async def delete(self, key):
         self.store.pop(key, None)
 
-    async def hgetall(self, key):
-        return {}
+    async def ttl(self, key):
+        return -1
+
 
 
 class _Pool:
@@ -244,11 +245,50 @@ async def test_lineup_change_resends_as_revision(monkeypatch):
     monkeypatch.setattr("app.notify.send_telegram", fake_send)
 
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "sent"
-    rds.store["analysis:kbo:2026-08-28"] = _analysis(pitcher="켈리", nine="오스틴")
+    rds.store["analysis:kbo:2026-08-28"] = _analysis(
+        pitcher="켈리", nine="오스틴", p=0.64)
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "revised"
-    assert "변동" in sent[1]
+    assert "라인업 변경 재판정" in sent[1]
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "skipped"
     assert len(sent) == 2
+
+
+@pytest.mark.asyncio
+async def test_same_lineup_does_not_resend_even_if_p_moves(monkeypatch):
+    now, row = _row()
+    rds = _Redis()
+    rds.store["analysis:kbo:2026-08-28"] = _analysis(p=0.61)
+    sent = []
+
+    async def fake_send(text, **_k):
+        sent.append(text)
+        return True
+
+    _block_claude(monkeypatch)
+    monkeypatch.setattr("app.notify.send_telegram", fake_send)
+    assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "sent"
+    rds.store["analysis:kbo:2026-08-28"] = _analysis(p=0.66)
+    assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "skipped"
+    assert len(sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_lineup_change_same_verdict_does_not_resend(monkeypatch):
+    now, row = _row()
+    rds = _Redis()
+    rds.store["analysis:kbo:2026-08-28"] = _analysis(pitcher="임찬규", p=0.61)
+    sent = []
+
+    async def fake_send(text, **_k):
+        sent.append(text)
+        return True
+
+    _block_claude(monkeypatch)
+    monkeypatch.setattr("app.notify.send_telegram", fake_send)
+    assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "sent"
+    rds.store["analysis:kbo:2026-08-28"] = _analysis(pitcher="켈리", p=0.61)
+    assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "skipped"
+    assert len(sent) == 1
 
 
 @pytest.mark.asyncio
@@ -346,7 +386,25 @@ async def test_cancelled_crawler_game_is_not_sent(monkeypatch):
     assert card_sig_key(506) not in rds.store
 
 
-def test_card_signature_moves_when_nine_changes():
+@pytest.mark.asyncio
+async def test_voided_judgement_is_not_sent(monkeypatch):
+    now, row = _row()
+    rds = _Redis({
+        "analysis:kbo:2026-08-28": json.dumps({
+            "games": [{**_game(), "judgement_void": True}],
+            "news": "",
+        }),
+    })
+    sent = []
+
+    async def fake_send(text, **_k):
+        sent.append(text)
+        return True
+
+    _block_claude(monkeypatch)
+    monkeypatch.setattr("app.notify.send_telegram", fake_send)
+    assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "skipped"
+    assert sent == []
     a = _game(nine="김현수")
     b = _game(nine="오스틴")
     assert card_signature(a) != card_signature(b)

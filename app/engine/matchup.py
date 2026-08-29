@@ -1,4 +1,4 @@
-"""매치업 판정 — 라인업 확정 시 경기당 1회. 팀 폼 캐시는 재호출하지 않는다."""
+"""매치업 판정 — 라인업 확정 시 경기당 1회. 팀 폼 캐시 히트면 재호출하지 않는다."""
 from __future__ import annotations
 
 import json
@@ -6,7 +6,7 @@ import logging
 
 from app.config import get_settings
 from app.engine.prompts import MATCHUP, fill
-from app.engine.team_form import complete_json, load_form, parse_json_object
+from app.engine.team_form import complete_json, parse_json_object
 
 logger = logging.getLogger(__name__)
 
@@ -76,19 +76,41 @@ def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
     jg["form_unavailable"] = False
 
 
+async def _form_or_analyze(jg: dict, redis, date: str, side: str, mock: bool | None):
+    """캐시 히트면 그대로. 미스면 그 자리에서 팀 분석 후 저장."""
+    from app.engine.team_form import analyze_team, load_form, packet_from_usage
+
+    sport = jg.get("sport") or ""
+    team = jg.get(side) or ""
+    cached = await load_form(redis, sport, team, date)
+    if cached is not None:
+        return cached
+    research = jg.get("research") or {}
+    usage = research.get(f"{side}_usage") or {}
+    news = research.get(f"{side}_news") or research.get("news") or []
+    if isinstance(news, dict):
+        news = news.get("headlines") or []
+    pkt = packet_from_usage(team, sport, date, usage)
+    logger.info("[matchup] %s %s 폼 캐시 미스 — 현장 분석", sport, team)
+    return await analyze_team(redis, sport, team, date, pkt, news, mock=mock)
+
+
 async def judge_matchup(jg: dict, redis, date: str, *,
                         mock: bool | None = None) -> dict | None:
-    """form: 캐시만 읽는다. 저녁 재판정에서 팀 폼을 다시 돌리지 않는다."""
+    """form: 히트면 재분석하지 않는다. 미스면 팀 분석을 한 뒤 매치업을 돌린다."""
     from app.engine.scoring import BASEBALL_SPORTS
 
     sport = jg.get("sport") or ""
     if sport not in BASEBALL_SPORTS:
         return None
+    if jg.get("judgement_void") or jg.get("status") in ("cancelled", "suspended"):
+        jg["judgement_void"] = True
+        return None
     settings = get_settings()
     is_mock = settings.mock_judge if mock is None else mock
     home, away = jg.get("home") or "", jg.get("away") or ""
-    home_form = await load_form(redis, sport, home, date)
-    away_form = await load_form(redis, sport, away, date)
+    home_form = await _form_or_analyze(jg, redis, date, "home", mock)
+    away_form = await _form_or_analyze(jg, redis, date, "away", mock)
     if not home_form or home_form.get("unavailable") or not away_form \
             or away_form.get("unavailable"):
         jg["form_unavailable"] = True

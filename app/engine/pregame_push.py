@@ -105,12 +105,15 @@ def roster_signature(home_pitcher, away_pitcher, lineup_home, lineup_away) -> st
 
 def header_line(sport: str, *, revision: bool = False) -> str:
     label = SPORT_LABEL.get(sport, sport.upper())
-    tag = "변동" if revision else "1차"
+    tag = "라인업 변경 재판정" if revision else "1차"
     return f"⏰ {label} · {tag}"
 
 
 def compose_card(jg: dict, news: str, sport: str, *, revision: bool = False) -> str:
-    return f"{header_line(sport, revision=revision)}\n{render_game_easy(jg, news)}"
+    body = render_game_easy(jg, news)
+    if revision:
+        return f"{header_line(sport, revision=True)}\n라인업 변경 재판정\n{body}"
+    return f"{header_line(sport, revision=False)}\n{body}"
 
 
 def _nine_sig(jg: dict, side: str) -> str:
@@ -133,21 +136,47 @@ def _pitcher_name(jg: dict, side: str) -> str:
     return str(p or "").strip()
 
 
-def card_signature(jg: dict) -> str:
-    """같은 카드면 재발송하지 않고, 선발·타순·판정이 바뀌면 다시 보낸다."""
-    cmp_ = jg.get("compare") or {}
-    p = jg.get("p_claude")
-    p_s = f"{float(p):.4f}" if isinstance(p, (int, float)) else ""
-    return "|".join([
+def lineup_hash(jg: dict) -> str:
+    """발송 1차 키. 라인업이 같으면 재발송하지 않는다."""
+    return roster_signature(
         _pitcher_name(jg, "home"),
         _pitcher_name(jg, "away"),
         _nine_sig(jg, "home"),
         _nine_sig(jg, "away"),
+    )
+
+
+def verdict_hash(jg: dict) -> str:
+    """temperature 0 전제. 판정이 같으면 라인업이 바뀌어도 재발송하지 않는다."""
+    m = jg.get("matchup") or {}
+    p = jg.get("p_claude")
+    p_s = f"{float(p):.4f}" if isinstance(p, (int, float)) else ""
+    return "|".join([
         p_s,
-        str(cmp_.get("favored") or ""),
-        str((jg.get("scoring") or {}).get("level") or ""),
-        str((jg.get("pick_summary") or {}).get("desc") or ""),
+        str(m.get("우세") or (jg.get("compare") or {}).get("favored") or ""),
+        str(m.get("확신도") or jg.get("judge_confidence") or ""),
     ])
+
+
+def card_signature(jg: dict) -> str:
+    """테스트·구키 호환. 발송 판단은 lineup_hash + verdict_hash."""
+    return f"{lineup_hash(jg)}|{verdict_hash(jg)}"
+
+
+def _sent_payload(jg: dict) -> str:
+    return json.dumps({"lineup": lineup_hash(jg), "verdict": verdict_hash(jg)})
+
+
+def _parse_sent(raw) -> dict:
+    if not raw:
+        return {}
+    try:
+        obj = json.loads(raw)
+        if isinstance(obj, dict):
+            return obj
+    except (TypeError, ValueError):
+        pass
+    return {"legacy": str(raw)}
 
 
 def _judged(jg: dict) -> bool:
@@ -167,6 +196,43 @@ async def _send_card(text: str) -> bool:
             return True
     plain = text.replace(DETAIL_SEP, "\n\n— 상세 데이터 —\n")[:TELEGRAM_LIMIT]
     return await _notify_mod.send_telegram(plain, disable_web_page_preview=True)
+
+
+async def void_analysis_games(redis, sport: str, date_s: str, ids) -> None:
+    """우천취소·서스펜디드 판정을 무효로 표시한다. 이미 보낸 카드는 취소 안내하지 않는다."""
+    ids = [int(i) for i in (ids or [])]
+    if not ids:
+        return
+    key = f"analysis:{sport}:{date_s}"
+    raw = await redis.get(key)
+    if not raw:
+        return
+    try:
+        analysis = json.loads(raw)
+    except (TypeError, ValueError):
+        return
+    want = set(ids)
+    changed = False
+    for g in analysis.get("games") or []:
+        try:
+            gid = int(g.get("game_id"))
+        except (TypeError, ValueError):
+            continue
+        if gid in want:
+            g["judgement_void"] = True
+            changed = True
+    if not changed:
+        return
+    from app.config import get_settings
+
+    ex = get_settings().report_cache_ttl
+    try:
+        ttl = await redis.ttl(key)
+        if isinstance(ttl, int) and ttl > 0:
+            ex = ttl
+    except Exception:
+        pass
+    await redis.set(key, json.dumps(analysis, ensure_ascii=False, default=str), ex=ex)
 
 
 def _log_deadline(sport: str, gid: int, starts_at, now, reason: str) -> None:
@@ -207,14 +273,20 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
     if jg is None or not _judged(jg):
         _log_deadline(sport, gid, starts_at, now, "미판정 — 빈 카드 안 보냄")
         return "skipped"
-    sig = card_signature(jg)
-    prev = await redis.get(card_sig_key(gid))
-    if prev == sig:
+    if jg.get("judgement_void") or jg.get("status") in ("cancelled", "suspended"):
         return "skipped"
-    revision = prev is not None
+    lu, vd = lineup_hash(jg), verdict_hash(jg)
+    prev = _parse_sent(await redis.get(card_sig_key(gid)))
+    if prev.get("lineup") == lu:
+        return "skipped"
+    if prev.get("verdict") == vd:
+        return "skipped"
+    revision = bool(prev) and "legacy" not in prev
+    if prev.get("legacy"):
+        revision = True
     text = compose_card(jg, analysis.get("news") or "", sport, revision=revision)
     if await _send_card(text):
-        await redis.set(card_sig_key(gid), sig, ex=SENT_TTL_SEC)
+        await redis.set(card_sig_key(gid), _sent_payload(jg), ex=SENT_TTL_SEC)
         logger.info("[pregame] %s game=%s %s", sport, gid,
                     "revised" if revision else "sent")
         return "revised" if revision else "sent"
@@ -249,7 +321,10 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
     for sport in SPORTS:
         snap = await load_snapshot(redis, sport, cache_date(sport))
         sport_rows = [r for r in rows if r["sport"] == sport]
-        cancelled_ids.update(await mark_cancelled_games(pool, sport_rows, snap))
+        newly = await mark_cancelled_games(pool, sport_rows, snap)
+        cancelled_ids.update(newly)
+        if newly:
+            await void_analysis_games(redis, sport, cache_date(sport), newly)
     for r in rows:
         gid = r["id"]
         if gid in cancelled_ids:

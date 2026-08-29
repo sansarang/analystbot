@@ -24,6 +24,81 @@ STALE_MINUTES = 180     # 평시 60분 × 3 — 이보다 오래되면 죽은 �
 SNAPSHOT_TTL_SEC = 6 * 3600
 
 
+def snapshot_key(away: str, home: str, game_id=None) -> str:
+    """더블헤더는 away@home#id. id 없으면 옛 키."""
+    if game_id:
+        return f"{away}@{home}#{game_id}"
+    return f"{away}@{home}"
+
+
+def _hhmm_of(starts_at) -> str:
+    if starts_at is None:
+        return ""
+    if hasattr(starts_at, "strftime"):
+        try:
+            from zoneinfo import ZoneInfo
+
+            dt = starts_at
+            if getattr(dt, "tzinfo", None) is None:
+                return dt.strftime("%H:%M")
+            return dt.astimezone(ZoneInfo("Asia/Seoul")).strftime("%H:%M")
+        except Exception:
+            return ""
+    s = str(starts_at)
+    if "T" in s and len(s) >= 16:
+        return s[11:16]
+    if len(s) >= 5 and s[2] == ":":
+        return s[:5]
+    return ""
+
+
+def snapshot_keys_for(row: dict) -> list[str]:
+    away, home = row.get("away"), row.get("home")
+    if not away or not home:
+        return []
+    keys: list[str] = []
+    ext = row.get("ext_id")
+    if ext:
+        keys.append(snapshot_key(away, home, ext))
+        s = str(ext)
+        if ":" in s:
+            keys.append(snapshot_key(away, home, s.rsplit(":", 1)[-1]))
+    gid = row.get("game_id")
+    if gid and str(gid) != str(ext or ""):
+        keys.append(snapshot_key(away, home, gid))
+    keys.append(snapshot_key(away, home))
+    # 순서 유지한 채 중복 제거
+    seen: set[str] = set()
+    out = []
+    for k in keys:
+        if k not in seen:
+            seen.add(k)
+            out.append(k)
+    return out
+
+
+def snapshot_for_game(snap: dict | None, row: dict) -> dict:
+    """스냅샷에서 그 경기만. 더블헤더는 game_id·시각으로 고른다."""
+    snap = snap or {}
+    for k in snapshot_keys_for(row):
+        hit = snap.get(k)
+        if hit:
+            return hit
+    away, home = row.get("away"), row.get("home")
+    if not away or not home:
+        return {}
+    prefix = f"{away}@{home}"
+    hits = [v for k, v in snap.items() if k == prefix or k.startswith(prefix + "#")]
+    if len(hits) == 1:
+        return hits[0]
+    want = _hhmm_of(row.get("starts_at"))
+    if want and len(hits) > 1:
+        matched = [v for v in hits if _hhmm_of(v.get("starts_at")) == want]
+        if len(matched) == 1:
+            return matched[0]
+    return {}
+
+
 def _key(sport: str, date: str, suffix: str) -> str:
     return f"crawl:{sport}:{date}:{suffix}"
 
@@ -58,7 +133,7 @@ async def upsert_snapshot_game(redis, sport: str, date: str, jg: dict) -> None:
     away, home = jg.get("away"), jg.get("home")
     if not away or not home:
         return
-    key = f"{away}@{home}"
+    key = snapshot_key(away, home, jg.get("ext_id") or jg.get("game_id"))
     res = jg.get("research") or {}
     lu_h = ((res.get("home_lineup") or {}).get("order") or "").strip(" -")
     lu_a = ((res.get("away_lineup") or {}).get("order") or "").strip(" -")
@@ -77,6 +152,8 @@ async def upsert_snapshot_game(redis, sport: str, date: str, jg: dict) -> None:
         "starter_status": starter_status,
         "status": jg.get("status") or "scheduled",
     }
+    if jg.get("ext_id"):
+        fields["game_id"] = str(jg["ext_id"])
     snap = await load_snapshot(redis, sport, date)
     prev = snap.get(key) or {}
     merged = dict(prev)
@@ -170,7 +247,10 @@ _STARTER_FIELDS = ("home_pitcher", "away_pitcher")
 # 크롤러 status 필드. 빈 값은 정상(미시작). 값이 있는데 취소 표시면 DB를 맞춘다.
 # 실측 2026-08-28: 네이버 `경기취소`가 Redis에만 있고 games.status는 scheduled
 # 로 남아 발송이 취소 경기를 카드로 보낼 뻔했다.
-_CANCEL_MARKERS = ("취소", "中止", "キャンセル", "cancelled", "canceled", "연기")
+_CANCEL_MARKERS = (
+    "취소", "中止", "キャンセル", "cancelled", "canceled", "연기",
+    "서스펜디드", "중단", "suspended", "postponed", "サスペンデッド",
+)
 
 
 def is_cancelled_game(game: dict | None) -> bool:
@@ -189,15 +269,16 @@ async def mark_cancelled_games(pool, rows, snap: dict) -> list[int]:
     """
     ids: list[int] = []
     for r in rows or []:
-        key = f"{r['away']}@{r['home']}"
-        if not is_cancelled_game((snap or {}).get(key)):
+        game = snapshot_for_game(snap, r if isinstance(r, dict) else dict(r))
+        if not is_cancelled_game(game):
             continue
         await pool.execute(
             "UPDATE games SET status = 'cancelled', updated_at = now() "
             "WHERE id = $1 AND status = 'scheduled'",
             r["id"])
         ids.append(int(r["id"]))
-        logger.info("[crawler_feed] 취소 반영 game=%s %s", r["id"], key)
+        logger.info("[crawler_feed] 취소 반영 game=%s %s", r["id"],
+                    snapshot_key(r["away"], r["home"], r.get("ext_id")))
     return ids
 
 
@@ -216,11 +297,13 @@ def lineup_timeline(changes: list[dict], jg: dict) -> dict:
     ⚠️ 중요도를 매기지 않는다 — "무엇이 언제 바뀌었다"만 사실로 낸다.
        그것이 경기에 어떤 영향인지는 해석 단계가 정한다.
     """
-    key = f"{jg.get('away')}@{jg.get('home')}"
+    keys = set(snapshot_keys_for(jg))
+    pair = f"{jg.get('away')}@{jg.get('home')}"
     out: dict = {}
     lineup_changes, starter_changes = [], []
     for c in changes or []:
-        if c.get("game") != key:
+        gkey = c.get("game") or ""
+        if gkey not in keys and not gkey.startswith(pair + "#"):
             continue
         f, kind, at = c.get("field"), c.get("kind"), _hhmm(c.get("at"))
         if f in _LINEUP_FIELDS:
@@ -250,7 +333,7 @@ def merge_into_research(research: dict, jg: dict, snap: dict,
     ⚠️ 선발 **이름만** 넘긴다. 성적(ERA·WHIP)은 파이썬 수집기가 공식 소스에서
        받은 것을 쓴다 — 크롤러는 '누가 나오나'를 가장 빨리 아는 역할이다.
     """
-    game = snap.get(f"{jg.get('away')}@{jg.get('home')}")
+    game = snapshot_for_game(snap, jg)
     if not game:
         return []
     filled = []

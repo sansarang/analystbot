@@ -1,7 +1,6 @@
-"""[KBO 1단계] 공식 기록실 파싱 — 채점 경로의 정확성.
+"""[KBO 1단계] 공식 기록실 파싱 — 종료 점수 적재의 정확성.
 
-채점이 틀리면 픽 성적 전체가 오염된다. 특히 **진행 중 경기를 종료로 오판**하면
-0-0으로 채점돼 조용히 잘못된 성적표가 쌓인다.
+진행 중 경기를 종료로 오판하면 점수가 틀린 채로 games에 굳는다.
 """
 
 import pytest
@@ -113,7 +112,16 @@ def test_ext_id_is_stable_and_unique():
     games, _ = parse_rows([DONE, PREVIEW], 2026)
     ids = [g["ext_id"] for g in games]
     assert len(set(ids)) == 2
-    assert ids[0] == "kbo:2026-08-24:LG:두산"
+    assert ids[0] == "kbo:2026-08-24:18:30:LG:두산"
+
+
+def test_doubleheader_ext_ids_differ_by_time():
+    """같은 카드 더블헤더는 시각으로 구분한다. game_id(ext_id)가 같으면 한 행으로 뭉개진다."""
+    first = ["08.24(월)", "14:00", "LGvs두산", "프리뷰", "", "TV", "", "잠실", "-"]
+    second = ["18:30", "LGvs두산", "프리뷰", "", "TV", "", "잠실", "-"]
+    games, _ = parse_rows([first, second], 2026)
+    assert games[0]["ext_id"] != games[1]["ext_id"]
+    assert "14:00" in games[0]["ext_id"] and "18:30" in games[1]["ext_id"]
 
 
 # ---------------------------------------------------------------- 구조 변경 감지

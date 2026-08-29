@@ -2052,11 +2052,24 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
 
 
 async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
-    """라인업 확정·변경 시 경기당 매치업. form: 캐시만 읽는다."""
+    """라인업 확정·변경 시 경기당 매치업. 폼 캐시 히트면 재분석하지 않는다."""
     from app.engine.matchup import judge_matchup
+    from app.engine.starter_recent import attach_starter_recent
 
+    pool = None
+    try:
+        from app.db import get_pool
+
+        pool = await get_pool()
+    except Exception as exc:
+        logger.debug("[pipeline] 선발 등판 조회 생략: %s", exc)
     n = 0
     for jg in games:
+        try:
+            await attach_starter_recent(jg, pool)
+        except Exception as exc:
+            logger.warning("[pipeline] 선발 최근 등판 실패 game=%s: %s",
+                           jg.get("game_id"), exc)
         if await judge_matchup(jg, redis, date):
             n += 1
     return n
@@ -4389,7 +4402,9 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             return False
         analysis = json.loads(raw)
         jg = next((g for g in analysis["games"] if g["game_id"] == game["id"]), None)
-        if jg is None or jg.get("status") != "scheduled":
+        if jg is None or jg.get("status") not in ("scheduled",):
+            return False
+        if jg.get("judgement_void"):
             return False
 
         before = (jg.get("pick_summary") or {}).get("desc")

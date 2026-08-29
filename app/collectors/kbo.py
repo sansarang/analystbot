@@ -162,7 +162,7 @@ def parse_rows(rows: list[list[str]], season: int) -> tuple[list[dict], int]:
                        else "final" if (done and parsed["home_score"] is not None)
                        else "live" if parsed["home_score"] is not None
                        else "scheduled"),
-            "ext_id": f"kbo:{cur_date}:{parsed['away']}:{parsed['home']}",
+            "ext_id": f"kbo:{cur_date}:{time_s}:{parsed['away']}:{parsed['home']}",
         })
     return games, failed
 
@@ -242,9 +242,9 @@ async def upsert_games(pool, games: list[dict]) -> int:
 
 async def upsert_final_scores(pool, date: str, days: int = 7,
                               client: KBOClient | None = None) -> int:
-    """채점기 진입점 — 최근 종료 경기의 점수를 games에 반영. 반환: final 건수.
+    """종료 점수 적재 — 최근 종료 경기의 점수를 games에 반영. 반환: final 건수.
 
-    MLB의 `mlb.upsert_final_scores`와 같은 계약이라 grader가 동일하게 부를 수 있다.
+    MLB의 `mlb.upsert_final_scores`와 같은 계약이라 ingest_finals가 동일하게 부른다.
     """
     end = _date.fromisoformat(date)
     finals = await fetch_finals(days=days, end=end, client=client)

@@ -41,12 +41,24 @@ def test_apply_matchup_maps_confidence_low_as_veto():
 
 
 @pytest.mark.asyncio
-async def test_matchup_fails_closed_without_form_cache():
-    jg = {"sport": "kbo", "home": "한화", "away": "KIA"}
-    out = await judge_matchup(jg, _MemRedis(), "2026-08-29", mock=True)
-    assert out is None
-    assert jg["form_unavailable"] is True
-    assert "p_claude" not in jg
+async def test_matchup_analyzes_on_cache_miss(monkeypatch):
+    r = _MemRedis()
+    calls = {"n": 0}
+    orig = None
+    from app.engine import team_form as tf
+
+    orig = tf.analyze_team
+
+    async def counted(*a, **kw):
+        calls["n"] += 1
+        return await orig(*a, **kw)
+
+    monkeypatch.setattr("app.engine.team_form.analyze_team", counted)
+    jg = {"sport": "kbo", "home": "한화", "away": "KIA", "research": {}}
+    verdict = await judge_matchup(jg, r, "2026-08-29", mock=True)
+    assert verdict["p_home"] == 0.55
+    assert calls["n"] == 2
+    assert jg["form_unavailable"] is False
 
 
 @pytest.mark.asyncio

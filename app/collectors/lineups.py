@@ -272,6 +272,7 @@ async def refresh_mlb_lineup(pool: asyncpg.Pool, game: dict,
         try:
             await upsert_snapshot_game(redis, "mlb", date, {
                 "away": game.get("away"), "home": game.get("home"),
+                "ext_id": game.get("ext_id"),
                 "home_pitcher": starters.get("home") or game.get("home_pitcher"),
                 "away_pitcher": starters.get("away") or game.get("away_pitcher"),
                 "lineup_status": status,

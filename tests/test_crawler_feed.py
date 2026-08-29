@@ -125,9 +125,34 @@ def test_is_cancelled_game_reads_naver_status():
     from app.collectors.crawler_feed import is_cancelled_game
 
     assert is_cancelled_game({"status": "경기취소"}) is True
+    assert is_cancelled_game({"status": "서스펜디드"}) is True
+    assert is_cancelled_game({"status": "suspended"}) is True
     assert is_cancelled_game({"status": "경기전"}) is False
     assert is_cancelled_game({"status": ""}) is False
     assert is_cancelled_game(None) is False
+
+
+def test_snapshot_for_game_splits_doubleheader():
+    from datetime import UTC, datetime
+
+    from app.collectors.crawler_feed import snapshot_for_game, snapshot_key
+
+    away, home = "LG Twins", "Doosan Bears"
+    snap = {
+        snapshot_key(away, home, "G1"): {
+            "home_pitcher": "A", "starts_at": "2026-08-24T14:00:00+09:00"},
+        snapshot_key(away, home, "G2"): {
+            "home_pitcher": "B", "starts_at": "2026-08-24T18:30:00+09:00"},
+    }
+    first = {"away": away, "home": home, "ext_id": "G1",
+             "starts_at": datetime(2026, 8, 24, 5, 0, tzinfo=UTC)}  # 14:00 KST
+    second = {"away": away, "home": home, "ext_id": "G2",
+              "starts_at": datetime(2026, 8, 24, 9, 30, tzinfo=UTC)}  # 18:30 KST
+    assert snapshot_for_game(snap, first)["home_pitcher"] == "A"
+    assert snapshot_for_game(snap, second)["home_pitcher"] == "B"
+    # 옛 키도 읽는다
+    legacy = {f"{away}@{home}": {"home_pitcher": "C"}}
+    assert snapshot_for_game(legacy, {"away": away, "home": home})["home_pitcher"] == "C"
 
 
 @pytest.mark.asyncio
