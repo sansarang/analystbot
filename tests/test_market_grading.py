@@ -124,8 +124,11 @@ def test_board_works_without_any_odds():
         "mlb", get_settings())
     board = build_board(jg, "mlb", {})
     kinds = {c["market"] for c in board if c.get("p") is not None}
-    assert {"totals", "spreads"} <= kinds, f"배당 없이 산출된 마켓: {kinds}"
+    assert {"totals", "spreads", "f5"} <= kinds, f"배당 없이 산출된 마켓: {kinds}"
     assert all(c.get("odds") is None for c in board if c.get("p") is not None)
+    assert not any(c.get("placeholder") for c in board if c["market"] in ("totals", "spreads", "f5"))
+    assert all("배당 미수집" not in (c.get("reject_reason") or "")
+               for c in board if c["market"] in ("totals", "spreads", "f5"))
 
 
 def test_generated_total_lines_are_half_points_only():
@@ -151,6 +154,9 @@ def test_board_always_contains_every_required_market():
     assert kinds == {"h2h", "spreads", "totals", "f5"}
     assert all(c["grade"] == GRADE_BLANK for c in board)
     assert len(board) == 7          # 승패2 + 런라인2 + 언더오버1 + F5 2
+    f5 = [c for c in board if c["market"] == "f5"]
+    assert all(c.get("reject_reason") == "확률 미산출" for c in f5)
+    assert all("배당 미수집" not in (c.get("grade_note") or "") for c in board if c.get("placeholder"))
 
 
 def test_soccer_board_covers_dc_and_btts():

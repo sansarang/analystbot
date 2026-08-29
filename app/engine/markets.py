@@ -443,7 +443,8 @@ def rejection_summary(board: list[dict], unpriced: list[str] | None = None) -> s
     """
     parts = []
     for c in board[:6]:
-        note = "배당 미수집" if c.get("placeholder") else (c.get("grade_note") or "제외")
+        note = c.get("grade_note") or c.get("reject_reason") or (
+            "배당 미수집" if c.get("placeholder") else "제외")
         parts.append(f"{c['desc']} {note}")
     seen = {c["desc"] for c in board}
     parts += [f"{m} 배당 미수집" for m in (unpriced or []) if m not in seen]
@@ -575,6 +576,13 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
                     continue
                 add("spreads", side, signed,
                     spread_desc(sport, kr_team(side), signed), None, None, "기대득점 분포")
+        f5 = probs.get("f5") or {}
+        if f5.get("home") is not None or f5.get("away") is not None:
+            for side, key in ((jg["home"], "home"), (jg["away"], "away")):
+                if any(c["market"] == "f5" and c["side"] == side for c in out):
+                    continue
+                add("f5", side, None, f"{kr_team(side)} F5(5이닝) 승",
+                    None, None, "기대득점 분포")
 
     # 승인/제외 판정 + 등급 (마켓 단위)
     from app.engine.scoring import is_away_underdog, required_prob
@@ -628,14 +636,19 @@ def _required_specs(jg: dict, sport: str) -> list[tuple]:
     ]
 
 
-def _placeholder(market, side, line, desc) -> dict:
-    """[2] 배당 미수집 마켓 행 — 지우지 않고 남겨 '무엇을 못 봤는지'를 드러낸다."""
+def _placeholder(market, side, line, desc, *, reason: str = "배당 미수집",
+                 note: str = "배당 확보 시 재평가") -> dict:
+    """없는 마켓 행 — 지우지 않고 남겨 '무엇을 못 봤는지'를 드러낸다.
+
+    야구 승부·런라인·토탈·F5는 배당이 전제가 아니다. λ가 없으면
+    '배당 미수집'이 아니라 '확률 미산출'이다.
+    """
     return {
         "market": market, "side": side, "line": line, "desc": desc,
-        "odds": None, "p": None, "ev": None, "basis": "배당 미수집",
+        "odds": None, "p": None, "ev": None, "basis": reason,
         "axes": {}, "axes_n": 0, "axes_kr": "없음",
-        "approved": False, "reject_reason": "배당 미수집",
-        "grade": GRADE_BLANK, "grade_note": "배당 확보 시 재평가", "placeholder": True,
+        "approved": False, "reject_reason": reason,
+        "grade": GRADE_BLANK, "grade_note": note, "placeholder": True,
     }
 
 
@@ -649,14 +662,23 @@ def build_board(jg: dict, sport: str, p_final: dict[str, float]) -> list[dict]:
     have = {(c["market"], c["side"]) for c in priced}
     have_market = {c["market"] for c in priced}
 
+    from app.engine.scoring import BASEBALL_SPORTS
+
+    if sport in BASEBALL_SPORTS:
+        miss_reason, miss_note = "확률 미산출", "λ 확보 시 재평가"
+    else:
+        miss_reason, miss_note = "배당 미수집", "배당 확보 시 재평가"
+
     rows = list(priced)
     for market, side, line, desc in _required_specs(jg, sport):
         if market == "totals":
-            if "totals" not in have_market:      # 라인은 수집분으로 채워지므로 마켓 단위로 판단
-                rows.append(_placeholder(market, side, line, desc))
+            if "totals" not in have_market:
+                rows.append(_placeholder(market, side, line, desc,
+                                         reason=miss_reason, note=miss_note))
             continue
         if (market, side) not in have:
-            rows.append(_placeholder(market, side, line, desc))
+            rows.append(_placeholder(market, side, line, desc,
+                                     reason=miss_reason, note=miss_note))
 
     jg["markets_unpriced"] = [r["desc"] for r in rows if r.get("placeholder")]
     return rows

@@ -186,7 +186,7 @@ async def test_health_shows_lambda_and_judge_rates():
     from app.pipeline import mlb_slate_date
 
     games = [
-        {"status": "scheduled", "distribution": {"x": 1}, "p_claude": 0.6,
+        {"status": "scheduled", "lam": {"home": 4.5, "away": 4.1}, "p_claude": 0.6,
          "research_status": "refreshed"},
         {"status": "scheduled", "distribution": None, "p_claude": None,
          "research_status": "missing"},
@@ -195,6 +195,24 @@ async def test_health_shows_lambda_and_judge_rates():
                    json.dumps({"games": games})})
     text = await build_health(None, r)
     assert "λ 1/2" in text and "판정 1/2" in text
+
+
+@pytest.mark.asyncio
+async def test_health_lambda_ignores_stringified_distribution():
+    """캐시에 남은 distribution 문자열은 λ 성공이 아니다 (실측 2026-08-29 0/14)."""
+    from app.health import build_health
+    from app.pipeline import mlb_slate_date
+
+    games = [
+        {"status": "scheduled", "distribution": "<LambdaResult home=4.5>",
+         "p_claude": 0.6, "research_status": "refreshed"},
+        {"status": "scheduled", "lam": {"home": 4.2, "away": 4.0},
+         "p_claude": 0.55, "research_status": "cached"},
+    ]
+    r = FakeRedis({f"analysis:mlb:{mlb_slate_date()}":
+                   json.dumps({"games": games})})
+    text = await build_health(None, r)
+    assert "λ 1/2" in text
 
 
 @pytest.mark.asyncio

@@ -493,11 +493,15 @@ def _merge_mlb(research: dict, jg: dict, ctx: dict) -> list[str]:
     official: list[str] = []
     for side in ("home", "away"):
         name = (jg.get(f"{side}_pitcher") or "").strip()
+        if not name:
+            name = str((jg.get("stats") or {}).get(f"{side}_pitcher") or "").strip()
         if name:
             blk = research.setdefault(f"{side}_pitcher", {})
             if not blk.get("name"):
                 blk["name"] = name
                 official.append(f"{side}_pitcher.name")
+            if not jg.get(f"{side}_pitcher"):
+                jg[f"{side}_pitcher"] = name
         era = (jg.get("stats") or {}).get(f"{side}_pitcher_era")
         if era is None and name:
             era = (ctx.get("era") or {}).get(name)
@@ -759,14 +763,21 @@ async def load_source_bundle(redis, sport: str, date: str) -> dict:
         bundle["yahoo"] = await load_yahoo(redis, date) or {}
         bundle["npb_teams"] = await load_npb_stats(redis, date) or {}
     elif sport == "mlb":
+        from app.collectors.mlb import load_ctx as load_mlb_ctx
         from app.collectors.park import load as load_parks
         from app.collectors.statcast import load as load_statcast
 
         off, pit, bp, bat, league = await load_statcast(redis, date)
+        ctx = await load_mlb_ctx(redis, date)
         bundle.update({
             "offense": off or {}, "pitchers": pit or {}, "bullpen": bp or {},
             "batters": bat or {}, "league": league or {},
             "parks": await load_parks(redis) or {},
+            "standings": ctx.get("standings") or {},
+            "form": ctx.get("form") or {},
+            "era": ctx.get("era") or {},
+            "weather": ctx.get("weather") or {},
+            "absences": ctx.get("absences") or {},
         })
     return bundle
 
@@ -1239,6 +1250,12 @@ async def build_analysis(
                     "era": (stats or {}).get("era") or {},
                     "form": (stats or {}).get("form") or {},
                 }
+                try:
+                    from app.collectors.mlb import save_ctx as save_mlb_ctx
+
+                    await save_mlb_ctx(redis, date, statcast_data)
+                except Exception as exc:
+                    logger.warning("[pipeline] MLB ctx 캐시 저장 실패: %s", exc)
                 logger.info("[pipeline] 정식 API 입력 — 타선 %d팀 / 투수 %d명 / 불펜 %d팀 / "
                             "타자랭킹 %d팀 / 구장 %d개 / 날씨 %d경기 / 결장 %d경기 / "
                             "리그평균 %s",
@@ -1517,12 +1534,15 @@ async def build_analysis(
         _n = sum(_prov_dist.values())
         if _n:
             _cross = _crosschecked
+            # MLB·KBO·NPB는 공식 1소스다. 대조됨=0은 교차검증 실패가 아니라 구조다
+            # (실측 2026-08-29 MLB 아침 알림: 출처 대조 0/N 🔴).
+            _one_axis = sport in ("mlb", "kbo", "npb")
             await record("출처 대조", _cross, _n,
-                         cause=None if _cross else "missing",
+                         cause=None if (_cross or _one_axis) else "missing",
                          detail=(f"2소스 대조 {_crosschecked} · " + " · ".join(
                              f"{k} {_prov_dist.get(k, 0)}"
                              for k in ("확정", "교차", "단일", "미확인", "모순"))),
-                         unit="값", expect_full=False,
+                         unit="값", expect_full=False, zero_ok=_one_axis,
                          impact="단일 소스 비중이 높으면 그 소스가 틀려도 걸러낼 수 없습니다")
 
     # [§8-22] 빈칸 보충 — 크롤링·정식기록이 못 채운 것만 **짧게** 다시 묻는다.
@@ -1648,9 +1668,11 @@ async def build_analysis(
     #       마켓 보드가 만들어진 뒤에 실행해야 서술이 '어느 마켓이 살았는지'를 안다.
     from app.engine.narrator import attach_narratives
 
+    from app.engine.scoring import lambda_persisted
+
     # [7-2] λ 가동률 — 분포가 선 경기 수. 폴백 경로로 떨어졌는지 여기서 드러난다.
     _scheduled = [g for g in judge_games if g.get("status") == "scheduled"]
-    _lam_ok = sum(1 for g in _scheduled if g.get("distribution"))
+    _lam_ok = sum(1 for g in _scheduled if lambda_persisted(g))
     if _scheduled:
         await record("λ 산출", _lam_ok, len(_scheduled),
                      cause=None if _lam_ok == len(_scheduled) else "missing",
@@ -1803,7 +1825,7 @@ async def build_analysis(
     stake_krw = None    # [§8-18] 스테이킹 제거
 
     # [9] 등급제 조합 — 전 마켓 승인 레그 풀에서 구성 (승무패 전용 구조 폐지)
-    from app.engine.parlay import build_tiered_parlays
+    from app.engine.parlay import _numeric as _odds_num, build_tiered_parlays
 
     _legs = approved_market_legs(judge_games)
     try:
@@ -1817,12 +1839,22 @@ async def build_analysis(
     # [§8-15] 승인 레그가 0이면 조합 0이 **정상 결과**다(자격 미달). 실패로 알리지 않는다.
     #   레그가 있는데 조합이 0일 때만 구성 로직 실패다.
     _combo_n = len((combos or {}).get("combos") or [])
-    if _legs:
+    _priced_legs = [l for l in _legs if _odds_num(l.get("odds"))]
+    # 배당이 있는 레그가 있는데 조합이 0일 때만 구성 실패다.
+    # 야구는 승부 배당을 조회하지 않으므로 승인 레그가 있어도 조합 0이 정상
+    # (실측 2026-08-29 MLB: 조합 0건 / 승인 레그 8개 🔴).
+    if _priced_legs:
         await record("조합 구성", _combo_n, max(1, _combo_n),
                      cause=None if _combo_n else "missing",
-                     detail=f"조합 {_combo_n}건 / 승인 레그 {len(_legs)}개",
+                     detail=f"조합 {_combo_n}건 / 승인 레그 {len(_legs)}개"
+                            f" (배당 있는 레그 {len(_priced_legs)}개)",
                      unit="건",
                      impact="승인 레그가 있는데 조합을 만들지 못했습니다")
+    else:
+        await record("조합 구성", 0, 0, cause=None, zero_ok=True,
+                     detail=f"배당 있는 레그 0개 / 승인 레그 {len(_legs)}개",
+                     unit="건", expect_full=False,
+                     impact="야구는 배당이 없어 조합을 만들지 않습니다")
 
     from app.research.deep import DAILY_RESEARCH_CAP, research_calls_today
     if redis is not None:
@@ -2475,6 +2507,9 @@ def _compute_picks(
             from app.collectors.statcast import enrich_mlb_research
 
             filled = enrich_mlb_research(research_clean, jg, statcast_data)
+            # 카드·today_nine은 jg["research"]를 읽는다. sanitize 복사본만
+            # 채우면 λ는 살아도 칸은 비었다 (실측 2026-08-29 아침 카드).
+            enrich_mlb_research(jg.setdefault("research", {}), jg, statcast_data)
             if filled:
                 jg["statcast_filled"] = filled
         # [§8-14] KBO 공식 기록 — 딥서치 산문보다 정식 기록이 우선이다
@@ -2605,7 +2640,14 @@ def _compute_picks(
             jg["prob_cap_note"] = dist["capped"]
             jg["prob_raw_home"] = dist["raw_home"]
         else:
-            jg["lambda_missing"] = (jg.get("lambda_missing") or []) + ["핵심 지표(타선·선발) 전무"]
+            # 이전 계산의 trace를 남기고 missing만 붙이면 카드가 모순된다
+            # (실측 2026-08-29: xwOBA 트레이스 + '핵심 지표 전무').
+            jg["model_valid"] = False
+            jg["lam"] = None
+            jg["lambda_trace"] = []
+            jg["lambda_missing"] = ["핵심 지표(타선·선발) 전무"]
+            jg["prob_cap_note"] = None
+            jg["prob_raw_home"] = None
         adjuster = WinProbAdjuster(settings)
         p_legacy: dict[str, float] = {}
         home_adj = None
@@ -3011,7 +3053,7 @@ def _classify_base(jg: dict) -> tuple[str, str, int]:
         return "🔴", "패스 — 마켓 보드를 만들지 못했습니다 (파이프라인 오류)", 1
 
     if all(c.get("grade") == GRADE_BLANK for c in board):
-        return "🔴", "패스 — 전 마켓 배당을 한 건도 수집하지 못했습니다", 1
+        return "🔴", "패스 — 전 마켓 확률을 산출하지 못했습니다", 1
     if jg.get("judge_missing"):
         return ("🔴", "패스 — 판정 미수신으로 전 마켓 추천 불가 (배당은 아래 보드에 표시)", 1)
 
@@ -3613,7 +3655,8 @@ def render_game_section(jg: dict, news: str = "") -> str:
     hit = clip_sentences(news_hits[0], 200) if news_hits else ""
     lines.append(f"속보: {hit or '특이사항 없음'}")
     for note in jg.get("breaking_changes", []) or []:
-        lines.append(f"🔄 {note[:150]}")
+        text = (note or "")[:150]
+        lines.append(text if text.startswith("🔄") else f"🔄 {text}")
     if jg.get("verdict"):
         # [2] 판정문이 자기 확률을 다시 쓰면 보드와 충돌한다 — p_final 계열만 남긴다
         v = scrub_conflicting_probs(jg["verdict"], allowed_prob_pcts(jg))
@@ -4207,10 +4250,18 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             jg["il_source"] = "statsapi"
         state, label = pick_state(lineup["status"])
         jg["pick_state"], jg["pick_state_label"] = state, label
+        bundle = None
         if sport in ("kbo", "npb", "mlb"):
             try:
                 bundle = await load_source_bundle(redis, sport, date)
-                merge_source_data(jg.setdefault("research", {}), jg, sport, bundle)
+                research = jg.setdefault("research", {})
+                if sport == "mlb":
+                    from app.collectors.lineups import apply_lineup_poll_to_research
+
+                    apply_lineup_poll_to_research(research, jg, lineup)
+                merge_source_data(research, jg, sport, bundle)
+                if sport == "mlb":
+                    apply_lineup_poll_to_research(research, jg, lineup)
                 notes += starter_change_notes(jg["research"], before_names)
                 jg["lineup_notes"] = notes
             except Exception as exc:
@@ -4256,9 +4307,10 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             logger.warning("[pipeline] 카드 재판정 실패: %s", exc)
 
         _enforce_data_rules(analysis["games"])
-        picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport,
-                                            news=analysis.get("news") or "",
-                                            sentiment=analysis.get("sentiment") or "")
+        picks_out, parlays, _reco = _compute_picks(
+            settings, analysis["games"], sport, bundle,
+            news=analysis.get("news") or "",
+            sentiment=analysis.get("sentiment") or "")
         analysis["picks"], analysis["parlays"] = picks_out, parlays
         analysis["combos"] = build_tiered_parlays(
             approved_market_legs(analysis["games"]),

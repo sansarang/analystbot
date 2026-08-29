@@ -5,6 +5,7 @@ CLI: python -m app.collectors.mlb --date 2026-08-22
 
 import argparse
 import asyncio
+import json
 import logging
 from datetime import datetime
 from typing import Any
@@ -18,6 +19,61 @@ from app.db import close_pool, get_pool
 logger = logging.getLogger(__name__)
 
 PITCHER_CHUNK = 10
+
+# 슬레이트 파이프라인이 모은 순위·폼·ERA·날씨·결장.
+# 라인업 폴링은 HTTP를 다시 치지 않고 이 캐시만 읽는다 (KBO kbo_stats와 같음).
+CTX_TTL = 26 * 3600
+
+
+def _ctx_key(date: str) -> str:
+    return f"mlb:ctx:{date}"
+
+
+def _gid_keys(raw: dict | None) -> dict[int, dict]:
+    """JSON 왕복으로 문자열이 된 game_id를 int로 되돌린다."""
+    out: dict[int, dict] = {}
+    for k, v in (raw or {}).items():
+        try:
+            out[int(k)] = v
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+async def save_ctx(redis, date: str, ctx: dict) -> None:
+    """build_analysis가 모은 재료를 재판정이 읽도록 남긴다."""
+    if redis is None or not date:
+        return
+    payload = {
+        "standings": ctx.get("standings") or {},
+        "form": ctx.get("form") or {},
+        "era": ctx.get("era") or {},
+        "weather": {str(k): v for k, v in (ctx.get("weather") or {}).items()},
+        "absences": {str(k): v for k, v in (ctx.get("absences") or {}).items()},
+    }
+    await redis.set(_ctx_key(date), json.dumps(payload, ensure_ascii=False, default=str),
+                    ex=CTX_TTL)
+
+
+async def load_ctx(redis, date: str) -> dict:
+    """없으면 빈 dict — 없는 칸은 비운 채로 병합한다."""
+    if redis is None or not date:
+        return {}
+    raw = await redis.get(_ctx_key(date))
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        logger.warning("[mlb] 손상된 ctx 캐시 %s", date)
+        return {}
+    return {
+        "standings": data.get("standings") or {},
+        "form": data.get("form") or {},
+        "era": data.get("era") or {},
+        "weather": _gid_keys(data.get("weather") or {}),
+        "absences": _gid_keys(data.get("absences") or {}),
+    }
 
 
 def chunked(seq: list, size: int) -> list[list]:

@@ -130,6 +130,7 @@ async def test_refresh_marks_confirmed_and_persists(db_pool):
     g = await _game(db_pool, ext_id="test-lineup-confirm")
     res = await refresh_mlb_lineup(db_pool, g, _FakeClient(_boxscore(9)))
     assert res["status"] == STATUS_CONFIRMED and res["changed"]
+    assert len(res["orders"]["home"]) == 9 and len(res["orders"]["away"]) == 9
 
     status = await db_pool.fetchval("SELECT lineup_status FROM games WHERE id = $1", g["id"])
     assert status == STATUS_CONFIRMED

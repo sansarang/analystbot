@@ -316,7 +316,7 @@ async def test_stage_records_appear_in_analysis(db_pool, redis_client):
     await run_pipeline(db_pool, redis_client, "mlb", "2026-08-22", force_refresh=True)
     a = json.loads(await redis_client.get("analysis:mlb:2026-08-22"))
     names = {st["name"] for st in a.get("stages") or []}
-    for key in ("경기 적재", "배당 수집", "리서치", "λ 산출", "픽 선정", "조합 구성"):
+    for key in ("경기 적재", "토탈 라인", "리서치", "λ 산출", "픽 선정", "조합 구성"):
         assert key in names, f"'{key}' 계측이 실행 결과에 없다 (수집된: {sorted(names)})"
 
 
@@ -358,10 +358,30 @@ def test_lineup_stage_is_not_disabled_by_sport():
 
 
 def test_combo_stage_only_fails_with_legs():
-    """승인 레그가 0이면 조합 0이 정상이다 — 그때는 알리지 않는다."""
-    import re
+    """배당이 있는 승인 레그가 0이면 조합 0이 정상이다 — 그때는 알리지 않는다.
+
+    야구는 배당을 조회하지 않으므로 레그 p만 있고 odds=None인 채로 승인된다.
+    그 레그로 조합을 못 만드는 것은 실패가 아니다.
+    """
     from pathlib import Path
 
     src = Path("app/pipeline.py").read_text(encoding="utf-8")
     i = src.index('await record("조합 구성"')
-    assert "if _legs:" in src[max(0, i - 400):i], "레그 유무 가드가 없다"
+    guard = src[max(0, i - 500):i]
+    assert "if _priced_legs:" in guard, "배당 있는 레그 가드가 없다"
+
+
+def test_baseball_crosscheck_zero_is_not_failure():
+    """공식 1소스 리그는 대조됨=0이 구조다. cause=missing이면 zero_ok가 죽은 코드다."""
+    from pathlib import Path
+
+    from app.alerts import StageResult
+
+    st = StageResult(name="출처 대조", ok=0, total=80, unit="값",
+                     cause=None, expect_full=False, zero_ok=True)
+    assert not st.failed and st.icon == "✅"
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    i = src.index('await record("출처 대조"')
+    block = src[i:i + 500]
+    assert "zero_ok=_one_axis" in block
+    assert '_one_axis = sport in ("mlb", "kbo", "npb")' in src

@@ -234,6 +234,15 @@ def test_no_material_blocks_deep_analysis():
     assert len(out.splitlines()) <= 3
 
 
+def test_breaking_change_refresh_emoji_is_not_doubled():
+    """rejudge note는 이미 '🔄 라인업 반영:'으로 시작한다. 렌더가 한 번 더 붙이면 🔄 🔄."""
+    jg = _mlb_jg(breaking_changes=["🔄 라인업 확정 반영", "선발 변경: A → B"])
+    out = render_game_section(jg)
+    assert "🔄 🔄" not in out
+    assert "🔄 라인업 확정 반영" in out
+    assert "🔄 선발 변경: A → B" in out
+
+
 def test_two_games_do_not_share_sentences():
     """[3] 서로 다른 경기의 '조심할 점'·'걸 만한가'가 동일하면 안 된다."""
     easy_a, easy_b = (x.split(DETAIL_SEP)[0]

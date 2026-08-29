@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from app.config import get_settings
+from app.engine.scoring import lambda_persisted
 from app.version import boot_info, commits_behind, uptime_text
 
 logger = logging.getLogger(__name__)
@@ -180,7 +181,7 @@ async def build_health(pool, redis) -> str:
                 continue
             data = json.loads(raw)
             games = [g for g in data.get("games", []) if g.get("status") == "scheduled"]
-            lam = sum(1 for g in games if g.get("distribution"))
+            lam = sum(1 for g in games if lambda_persisted(g))
             judged = sum(1 for g in games if g.get("p_claude") is not None)
             res_ok = sum(1 for g in games
                          if (g.get("research_status") in ("refreshed", "cached")))

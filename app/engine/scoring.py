@@ -77,6 +77,22 @@ class LambdaResult:
     usable: bool = True                                # 핵심 지표가 전무하면 False
 
 
+def lambda_persisted(g: dict | None) -> bool:
+    """JSON 캐시에 남는 λ 유무. `distribution` 객체는 default=str 로 뭉개진다.
+
+    /health가 `g.get("distribution")`을 세면 캐시 기준으로 항상 0이 된다
+    (실측 2026-08-29 MLB λ 0/14 · 판정은 3/14).
+    """
+    if not g:
+        return False
+    lam = g.get("lam")
+    if isinstance(lam, dict) and (
+            isinstance(lam.get("home"), (int, float))
+            or isinstance(lam.get("away"), (int, float))):
+        return True
+    return bool(g.get("lambda_trace"))
+
+
 def _ratio(value: float | None, league: float, exponent: float,
            lo: float = 0.75, hi: float = 1.35) -> float | None:
     """지표를 리그 평균 대비 계수로. 없으면 None(보정 건너뜀)."""

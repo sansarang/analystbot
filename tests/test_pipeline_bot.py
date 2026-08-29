@@ -483,7 +483,7 @@ def test_classify_signal_mapping():
         c.update(odds=None, p=None, ev=None, placeholder=True)
     _grade_board(blank)
     sig, reason, _ = classify_signal(blank)
-    assert sig == "🔴" and "배당" in reason
+    assert sig == "🔴" and "확률" in reason
 
     # [1] 판정 미수신은 배당 유무와 무관하게 별도 사유로 밝힌다
     nojudge = _easy_game(judge_missing=True)
@@ -519,7 +519,7 @@ def test_all_markets_rejected_lists_each_reason():
     assert sig == "🔴"
     assert "전 마켓 검토 결과 기준 미달" in reason
     assert "LA 다저스 승" in reason and "언더 8.5" in reason
-    assert "런라인 -1.5 배당 미수집" in reason
+    assert "런라인 -1.5" in reason and "확률 미산출" in reason
 
 
 def test_render_game_easy_two_layers():
@@ -919,8 +919,15 @@ async def test_board_lists_every_game_and_market(db_pool, redis_client):
     assert len(scheduled) >= 10
     for i, _g in enumerate(scheduled, 1):
         assert f"\n{i}. " in easy, f"{i}번 경기가 보드에 없다"
-    # 배당 미수집 행도 지우지 않는다 (마켓 보드 규율)
-    assert "⚪ 확률 미산출" in easy
+    # 야구는 배당이 없어도 행을 남긴다. λ가 서면 확률, 없으면 ⚪.
+    # 목 리서치에 wOBA·ERA가 있어 이 슬레이트는 λ가 산다 — '배당 미수집'이 아니다.
+    from app.engine.scoring import lambda_persisted
+
+    assert "배당 미수집" not in easy
+    if any(not lambda_persisted(g) for g in scheduled):
+        assert "⚪ 확률 미산출" in easy
+    else:
+        assert any(r.get("p") is not None for g in scheduled for r in star_rows(g))
     # 경기마다 전 마켓이 행으로 존재
     for g in scheduled[:3]:
         assert len(star_rows(g)) >= 6

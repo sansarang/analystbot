@@ -412,7 +412,8 @@ def sanitize_research(data: dict | None, sport: str = "mlb") -> tuple[dict, list
     for side in ("home_pitcher", "away_pitcher"):
         src, dst = data.get(side), out.get(side)
         if isinstance(src, dict) and isinstance(dst, dict):
-            for key in ("ip_avg_recent", "siera", "xfip", "fip", "era_vs_opponent"):
+            for key in ("ip_avg_recent", "siera", "xfip", "fip", "era_vs_opponent",
+                        "xwoba_allowed"):
                 val = clean_number(src.get(key))
                 if val is not None:
                     dst[key] = val
@@ -427,13 +428,24 @@ def sanitize_research(data: dict | None, sport: str = "mlb") -> tuple[dict, list
         if not isinstance(block, dict):
             continue
         kept = {}
-        for key in ("woba_30d", "obp_30d", "iso_30d", "k_pct", "bb_pct",
-                    "vs_lhp_woba", "vs_rhp_woba", "woba", "obp"):
+        for key in ("xwoba_30d", "xwoba", "woba_30d", "obp_30d", "iso_30d",
+                    "k_pct", "bb_pct", "vs_lhp_woba", "vs_rhp_woba", "woba", "obp",
+                    "ops"):
             val = clean_number(block.get(key))
             if val is not None:
                 kept[key] = val
         if kept:
             out[side] = kept
+
+    baselines = data.get("league_baselines")
+    if isinstance(baselines, dict):
+        kept_b = {}
+        for key, val in baselines.items():
+            num = clean_number(val)
+            if num is not None:
+                kept_b[key] = num
+        if kept_b:
+            out["league_baselines"] = kept_b
 
     for side in ("home_bullpen", "away_bullpen"):
         block = data.get(side)

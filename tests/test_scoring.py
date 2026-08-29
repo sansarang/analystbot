@@ -13,6 +13,7 @@ from app.engine.scoring import (
     cap_probability,
     game_distribution,
     is_away_underdog,
+    lambda_persisted,
     market_probability,
     mlb_lambdas,
     mlb_market_probs,
@@ -112,6 +113,29 @@ def test_missing_optional_metrics_are_reported_not_fatal():
     r = mlb_lambdas(_jg(), _res(), S)
     assert r.usable
     assert "파크팩터" in r.missing and "날씨" in r.missing
+
+
+def test_lambda_persisted_reads_lam_not_stringified_distribution():
+    """JSON 캐시에서 distribution 객체는 default=str로 문자열이 된다.
+
+    /health가 그 문자열을 세면 가동률이 항상 0이거나, 반대로 쓰레기 문자열을
+    성공으로 친다. lam·lambda_trace만 본다.
+    """
+    import json
+
+    class _Dist:
+        pass
+
+    live = {"lam": {"home": 4.51, "away": 4.12}, "distribution": _Dist(),
+            "lambda_trace": ["기본 λ 4.40"]}
+    assert lambda_persisted(live)
+    cached = json.loads(json.dumps(live, default=str))
+    assert isinstance(cached["distribution"], str)
+    assert lambda_persisted(cached)
+    assert not lambda_persisted({"distribution": str(_Dist())})
+    assert not lambda_persisted({"lam": None, "lambda_trace": []})
+    assert not lambda_persisted({"lam": {}})
+    assert lambda_persisted({"lambda_trace": ["기본 λ 4.40"]})
 
 
 # ---------------------------------------------------------------- 마켓 확률

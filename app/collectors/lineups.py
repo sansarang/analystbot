@@ -288,7 +288,50 @@ async def refresh_mlb_lineup(pool: asyncpg.Pool, game: dict,
         except Exception as exc:
             logger.warning("[lineup] 스냅샷 기록 실패 game=%s: %s", game.get("id"), exc)
     return {"status": status, "changed": changed, "notes": notes,
-            "starters": starters, "injuries": injuries}
+            "starters": starters, "injuries": injuries,
+            "orders": {
+                "home": list((parsed.get("home") or {}).get("batting_order") or []),
+                "away": list((parsed.get("away") or {}).get("batting_order") or []),
+            }}
+
+
+def apply_lineup_poll_to_research(research: dict, jg: dict, lineup: dict) -> list[str]:
+    """폴링이 가져온 타순·선발을 research에 직접 넣는다.
+
+    KBO는 크롤러 스냅샷의 `lineup_home`이 같은 일을 한다. MLB 폴링 반환에는
+    타순이 빠져 `confirmed`만 찍히고 `today_nine`은 비었다
+    (실측 2026-08-29 아침 카드: ✅ 최종인데 확정 9명 없음).
+    9명이 아니면 타순을 쓰지 않는다 — 부분 명단을 확정처럼 남기지 않는다.
+    """
+    filled: list[str] = []
+    starters = lineup.get("starters") or {}
+    orders = lineup.get("orders") or {}
+    for side in ("home", "away"):
+        name = (starters.get(side) or "").strip()
+        if name:
+            blk = research.setdefault(f"{side}_pitcher", {})
+            prev = (blk.get("name") or "").strip()
+            if prev != name:
+                if prev:
+                    for k in ("era_season", "whip", "ip_avg_recent", "era_vs_opponent"):
+                        blk.pop(k, None)
+                blk["name"] = name
+                filled.append(f"{side}_pitcher.name")
+            jg[f"{side}_pitcher"] = name
+        names = orders.get(side) or []
+        if isinstance(names, str):
+            parts = [p for p in names.replace("|", "-").split("-") if p.strip()]
+        else:
+            parts = [str(n).strip() for n in names if str(n).strip()]
+        if len(parts) < 9:
+            continue
+        order_s = "-".join(parts)
+        blk = research.setdefault(f"{side}_lineup", {})
+        if blk.get("order") != order_s:
+            blk["order"] = order_s
+            blk["source"] = "statsapi"
+            filled.append(f"{side}_lineup.order")
+    return filled
 
 
 def pick_state(lineup_status: str | None) -> tuple[str, str]:
