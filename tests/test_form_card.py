@@ -46,12 +46,14 @@ def test_board_only_still_has_reasons():
     assert "보드만" in text
 
 
-def test_npb_unverified_is_reference_only():
+def test_npb_verified_uses_same_rec_gate():
     s = Settings(_env_file=None)
-    assert s.npb_last3_verified is False
+    assert s.npb_last3_verified is True
     jg = _jg(sport="npb", league="NPB")
+    assert rec_label(jg, s) == "추천"
+    assert "추천" in render_form_card(jg)
+    s.npb_last3_verified = False
     assert rec_label(jg, s) == "NPB: 참고용"
-    assert "NPB: 참고용" in render_form_card(jg)
 
 
 def test_news_line_only_when_applied():

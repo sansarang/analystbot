@@ -36,7 +36,7 @@
 | `min_win_prob` (추천 게이트) | 0.58 | 공통 | 목표 정확도 하단. 임의 하향 금지 |
 | `away_prob_penalty` | 0.05 | 공통 | 원정 추천 임계 63%. 야구는 3경기에서 홈 이점을 못 볼 수 있어 유지 |
 | `signal_green_prob` | 0.62 | 공통 **표시 전용** | 🟢. 추천 게이트가 아님 |
-| `npb_last3_verified` | **False** | NPB | 3경기 수집 라이브 검증 전. True 전까지 NPB 추천 자동 탈락 |
+| `npb_last3_verified` | **True** | NPB | 2026-08-29 라이브 36/36 검증 후. False면 NPB 추천 자동 탈락 |
 | `prob_cap_alert_n` | 3 | 공통 | 하루 3건 초과 시 "모델 점검 필요" |
 | `min_odds` | (폐기) | — | 시장 기준 |
 | `max_edge_vs_market` | 야구 **미적용** / 축구 배당 이상치만 | 축구 | Starlizard 1~2%. 야구는 배당을 안 봄 |
@@ -70,7 +70,7 @@
 ### 추천
 
 `p ≥ 0.58` (원정 0.63) **그리고** 라인업 확정. 확신도 '하' 또는 패스 권장은 **거부권**.
-NPB는 `npb_last3_verified`가 True가 되기 전 추천 0건(보드는 발송).
+NPB는 `npb_last3_verified=True` (2026-08-29 라이브 검증). False로 되돌리면 추천 0건(보드는 발송).
 
 학습 λ (`data/lambda_poisson.json`)는 아카이브 기록과 같다. **추천에 쓰지 마라.**
 

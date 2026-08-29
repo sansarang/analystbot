@@ -5,12 +5,12 @@ from app.pipeline import qualifies
 
 def test_npb_rec_fails_until_last3_verified():
     s = Settings(_env_file=None)
-    assert s.npb_last3_verified is False
+    assert s.npb_last3_verified is True
     pick = {"p": 0.64, "sport": "npb", "pick_state": "final",
             "lineup_status": "confirmed", "two_source": True}
-    assert not qualifies(pick, s)
-    s.npb_last3_verified = True
     assert qualifies(pick, s)
+    s.npb_last3_verified = False
+    assert not qualifies(pick, s)
 
 
 def test_kbo_qualifies_without_two_source():

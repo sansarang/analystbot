@@ -28,11 +28,14 @@ def test_away_pick_needs_plus_five():
     assert qualifies(away, s)
 
 
-def test_npb_rec_label_stays_reference_while_unverified():
+def test_npb_rec_label_follows_gate_when_verified():
     s = Settings(_env_file=None)
-    assert s.npb_last3_verified is False
+    assert s.npb_last3_verified is True
     jg = {"sport": "npb", "p_claude": 0.64, "pick_state": "final",
           "matchup": {"p_home": 0.64, "우세": "home"}}
+    assert rec_label(jg, s) == "추천"
+    assert qualifies({"p": 0.64, "sport": "npb", "pick_state": "final"}, s)
+    s.npb_last3_verified = False
     assert rec_label(jg, s) == "NPB: 참고용"
     assert not qualifies({"p": 0.64, "sport": "npb", "pick_state": "final"}, s)
 

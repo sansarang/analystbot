@@ -54,7 +54,7 @@ NPB 30분 전·MLB 3시간 전. MLB 숫자는 statsapi·Statcast (Go HTML 크롤
 
 - **야구**: 지난 3경기 폼 + 확정 라인업 + 매치업 Claude. λ 없음. 2-소스 없음.
   시즌 ERA/xwOBA 금지. 상대 순위·승률 1줄만 허용. 마켓은 승패만.
-  NPB last-3 검증 전(`npb_last3_verified=False`) 추천 자동 탈락·보드만.
+  NPB last-3 검증 후(`npb_last3_verified=True`, 2026-08-29). False면 추천 자동 탈락·보드만.
 - **축구**: 스켈람 · Odds · 더블찬스·핸디·언오버 · 2-소스 **현행 유지**. 이번 개편에서 손대지 않는다.
 - 구 λ 기록은 [MODEL.md](docs/MODEL.md) 아카이브(옛 §2~§8). 운영 효력 없음.
 

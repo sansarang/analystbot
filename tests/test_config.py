@@ -88,7 +88,7 @@ def test_recommendation_thresholds_are_config_driven():
     # [4] 원정 비대칭 — 분데스리가 연구: 원정 베팅 ROI -17%
     assert s.away_prob_penalty == 0.05
     assert s.min_win_prob == 0.58
-    assert s.npb_last3_verified is False
+    assert s.npb_last3_verified is True
     assert s.lambda_h2h_min_edge == 0.05
     assert s.team_form_model == "claude-haiku-4-5-20251001"
     assert s.matchup_model == "claude-sonnet-5"
