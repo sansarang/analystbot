@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 
+from app.collectors.base import ApiQuotaError
 from app.config import get_settings
 from app.engine.prompts import MATCHUP, fill
 from app.engine.team_form import (
@@ -137,6 +138,9 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     if jg.get("judgement_void") or jg.get("status") in ("cancelled", "suspended"):
         jg["judgement_void"] = True
         return None
+    from app.engine.credit_guard import abort_if_credit_gone, trip_credit
+
+    abort_if_credit_gone(f"matchup:{jg.get('away')}@{jg.get('home')}")
     settings = get_settings()
     is_mock = settings.mock_judge if mock is None else mock
     home, away = jg.get("home") or "", jg.get("away") or ""
@@ -168,6 +172,12 @@ async def judge_matchup(jg: dict, redis, date: str, *,
             text = await complete_json(
                 prompt, model=model, max_tokens=settings.matchup_max_tokens,
                 role="matchup", mock=False)
+        except ApiQuotaError as exc:
+            trip_credit(f"matchup:{away}@{home}", exc)
+            jg["form_unavailable"] = True
+            logger.warning("[matchup] 크레딧 소진 model=%s prompt_chars=%d: %s",
+                           model, len(prompt), exc)
+            raise
         except Exception as exc:
             logger.warning("[matchup] 호출 실패 %d회 model=%s prompt_chars=%d: %s",
                            attempt, model, len(prompt), exc)

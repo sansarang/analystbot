@@ -208,7 +208,11 @@ class AnthropicProvider(Provider):
             resp = await client.messages.create(**kwargs)
         except anthropic.APIStatusError as exc:
             if is_quota_error(exc.status_code, str(exc)):
-                raise ApiQuotaError("anthropic", str(exc)) from exc
+                from app.engine.credit_guard import trip_credit
+
+                err = ApiQuotaError("anthropic", str(exc))
+                trip_credit(f"anthropic/{self.model}", err)
+                raise err from exc
             raise LLMError(f"anthropic: {exc}") from exc
         text = "".join(b.text for b in resp.content if b.type == "text")
         data = next((b.input for b in resp.content
@@ -636,6 +640,10 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
     # [#73] 어느 provider가 언제 죽었는지 남긴다. 폴백 순서를 바꾸기 전에 볼 표다.
     redis = await _ledger_redis()
     s = settings or get_settings()
+    from app.collectors.base import ApiQuotaError
+    from app.engine.credit_guard import abort_if_credit_gone
+
+    abort_if_credit_gone(role)
     for p in chain:
         if s.is_disabled(p.name):
             tried.append(f"{p.name}(disabled)")
@@ -655,6 +663,15 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
                 return LLMResult(res.text, res.data, res.provider, res.model,
                                  res.attempts, tuple(tried))
             return res
+        except ApiQuotaError as exc:
+            logger.error("[llm:%s] 크레딧 소진 — 체인 폴백 없이 즉시 중단: %s",
+                         role, exc)
+            tried.append(f"{p.name}(credit)")
+            last = exc
+            await _ledger.record_call(redis, p.name, role, False)
+            await _ledger.record_outage(redis, p.name, role,
+                                        _outage_kind(exc), str(exc))
+            raise
         except LLMBudgetError as exc:
             # 🔴 **조용히 넘기지 않는다.** 빈 응답으로 넘어가면 목 출력과
             #    구분되지 않아 "판정 0건"의 원인을 영영 못 찾는다.

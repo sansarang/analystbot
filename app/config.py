@@ -60,7 +60,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("MODEL_MATCHUP", "matchup_model"),
     )
     team_form_max_tokens: int = 1500
-    matchup_max_tokens: int = 1000
+    # 실측 2026-08-29: claude-sonnet-5 adaptive thinking 기본.
+    # matchup_max_tokens=1000 이면 사고에 토큰을 다 쓰고 본문 JSON이 잘린다
+    # (NPB 4 + MLB 9, parse_fail). 4000은 사고+JSON을 한 응답에 담기 위한 값.
+    # 팀 폼(Haiku) 1500은 실패 0이라 유지. 프롬프트·클리핑·게이트는 바꾸지 않는다.
+    matchup_max_tokens: int = 4000
 
     # ── [A-5단계] 리그별 딥서치 스위치 ─────────────────────────────────────
     # 콤마 구분 종목 목록. 여기 없는 종목은 **딥서치를 부르지 않는다.**

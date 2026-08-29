@@ -64,8 +64,13 @@
 
 ### 두 번의 Claude
 
-1. **팀 폼** — 주간 프리페치 1회. Redis `form:{league}:{team}:{date}` TTL 48h
-2. **매치업** — 라인업 확정·변경 시 경기당 1회
+1. **팀 폼** — Haiku. `team_form_max_tokens=1500`. Redis `form:{league}:{team}:{date}` TTL 48h. 실측 실패 0(2026-08-29)이라 1500 유지.
+2. **매치업** — Sonnet 5. `matchup_max_tokens=4000`. 라인업 확정·변경 시 경기당 1회.
+
+> **왜 4000인가.** Claude Sonnet 5는 adaptive thinking이 기본이다. 1000이면
+> 사고 토큰이 본문 JSON을 잘라 파싱이 실패한다(실측 2026-08-29: NPB 4 + MLB 9).
+> 프롬프트·클리핑·게이트는 그대로다. `claude-sonnet-5`에 temperature를 넣지 마라
+> (실측 400).
 
 ### 추천
 

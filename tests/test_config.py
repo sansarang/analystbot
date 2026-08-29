@@ -93,7 +93,7 @@ def test_recommendation_thresholds_are_config_driven():
     assert s.team_form_model == "claude-haiku-4-5-20251001"
     assert s.matchup_model == "claude-sonnet-5"
     assert s.team_form_max_tokens == 1500
-    assert s.matchup_max_tokens == 1000
+    assert s.matchup_max_tokens == 4000
     assert s.judge_model == "claude-opus-4-6"
 
 

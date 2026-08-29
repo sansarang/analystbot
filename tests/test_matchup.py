@@ -103,6 +103,59 @@ async def test_matchup_records_analysis_game_key():
     assert rec["p_home"] == 0.55
 
 
+@pytest.mark.asyncio
+async def test_matchup_retries_when_form_cache_unavailable(monkeypatch):
+    date = "2026-08-29"
+    home, away = "한화", "KIA"
+    r = _MemRedis({
+        form_key("kbo", home, date): json.dumps(
+            {"team": home, "unavailable": True, "cause": "credit_400"}),
+        form_key("kbo", away, date): json.dumps(
+            {"team": away, "unavailable": False, "흐름": "유지"}),
+    })
+    calls = {"n": 0}
+    from app.engine import team_form as tf
+
+    orig = tf.analyze_team
+
+    async def counted(*a, **kw):
+        calls["n"] += 1
+        return await orig(*a, **kw)
+
+    monkeypatch.setattr("app.engine.team_form.analyze_team", counted)
+    jg = {"sport": "kbo", "home": home, "away": away, "research": {}}
+    await judge_matchup(jg, r, date, mock=True)
+    assert calls["n"] == 1
+
+
+@pytest.mark.asyncio
+async def test_matchup_quota_does_not_retry(monkeypatch):
+    from app.collectors.base import ApiQuotaError
+    from app.engine.credit_guard import reset
+
+    reset()
+    date = "2026-08-29"
+    home, away = "한화", "KIA"
+    r = _MemRedis({
+        form_key("kbo", home, date): json.dumps(
+            {"team": home, "unavailable": False, "흐름": "상승"}),
+        form_key("kbo", away, date): json.dumps(
+            {"team": away, "unavailable": False, "흐름": "유지"}),
+    })
+    n = {"n": 0}
+
+    async def quota(*a, **kw):
+        n["n"] += 1
+        raise ApiQuotaError("anthropic", "credit balance too low")
+
+    monkeypatch.setattr("app.engine.matchup.complete_json", quota)
+    jg = {"sport": "kbo", "home": home, "away": away, "research": {}}
+    with pytest.raises(ApiQuotaError):
+        await judge_matchup(jg, r, date, mock=False)
+    assert n["n"] == 1
+    reset()
+
+
 def test_old_judge_still_uses_judge_model_not_matchup_model():
     from pathlib import Path
 

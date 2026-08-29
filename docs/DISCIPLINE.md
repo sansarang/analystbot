@@ -398,4 +398,7 @@ KBO·NPB 저녁 발송은 `/checklist`와 [docs/PREGAME_CHECKLIST.md](PREGAME_CH
 | 2026-08-29 | `npb_last3_verified` | False → **True** | **사용자 승인** — standings 배선 후 라이브 36/36 부착, 타격표 대조 일치, 전 필드 누락 0 | NPB도 58%+라인업이면 추천 가능 |
 | 2026-08-29 | `MODEL_TEAM_FORM` / `team_form_max_tokens` | (Judge `claude-opus-4-6` · `JUDGE_MAX_TOKENS` 16000) → **`claude-haiku-4-5-20251001` / 1500** | **사용자 지시** — 팀 분석은 요약·태그 분류. 코드에 모델 ID 하드코딩 금지 | 폼 경로만. Judge(--old) 불변. temperature 0 (extra_body) |
 | 2026-08-29 | `MODEL_MATCHUP` / `matchup_max_tokens` | (동일 Judge 경로) → **`claude-sonnet-5` / 1000** | **사용자 지시** — 매치업은 4자료 교차·규칙 준수. 폼과 모델 분리 | 매치업 경로만. Judge(--old) 불변. temperature 0 |
+| 2026-08-29 | `matchup_max_tokens` | 1000 → **4000** | **사용자 지시·실측** — Sonnet 5 adaptive thinking이 1000을 먹어 JSON 절단 (NPB 4+MLB 9). 폼 1500·프롬프트·게이트 불변 | 매치업 경로만 |
 | 2026-08-29 | NPB/MLB 등판 백필 창 | 14일 → **21일** (`APPEARANCE_DAYS`) | **사용자 지시** — 오늘 선발 최근 2~3등판. 14일×로테이션이면 n=1로 끊김 | 타순 이력 상한(10경기)과 분리. 폼·매치업 모델 불변 |
+| 2026-08-29 | `FORM_UNAVAILABLE_TTL` | (성공과 동일 48h) → **30분** | **사용자 지시** — 일시 장애가 48시간 추천 탈락으로 번지지 않게. `cause` 구분(credit_400/timeout/parse_fail). 성공 캐시 48h 유지 | 폼 Redis unavailable 키만. 매치업 성공 키 불변 |
+| 2026-08-29 | 매치업 `extra_body.temperature` | 0 → **생략** (`claude-sonnet-5`) | **필수 버그수정** — 실측 400 "`temperature` is deprecated for this model." 문서: non-default sampling 거부. Haiku 폼 경로는 extra_body 0 유지 | 매치업 HTTP만. 온도를 올린 것이 아님 |
