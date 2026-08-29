@@ -66,6 +66,15 @@ def test_npb_yahoo_merges_when_weather_absent():
     assert research["away_pitcher"]["era_season"] == 3.10
 
 
+def test_npb_form_merges_independent_of_weather():
+    form = {"Yomiuri Giants": {"results_l3": "WLW", "score_games": 3}}
+    research: dict = {}
+    done = merge_source_data(research, NPB_JG, "npb",
+                             {"yahoo": YAHOO, "npb_form": form, "weather": DOME_WEATHER})
+    assert "npb_form" in done
+    assert research["home_usage"]["results_l3"] == "WLW"
+
+
 def test_kbo_naver_merges_when_weather_fails():
     """🔴 회귀 핵심 — 날씨 조회가 실패해도 네이버 선발 지표는 살아야 한다.
 

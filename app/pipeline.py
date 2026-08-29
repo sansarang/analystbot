@@ -703,6 +703,11 @@ def merge_source_data(research: dict, jg: dict, sport: str,
         _absorb(research, _ms(research, jg, statcast_data.get("npb_teams") or {}),
                 SRC_KBO_OFFICIAL)
         done.append("npb_stats")
+        if statcast_data.get("npb_form"):
+            from app.collectors.npb_form import merge_into_research as _mf
+
+            _absorb(research, _mf(research, jg, statcast_data["npb_form"]), SRC_PORTAL)
+            done.append("npb_form")
     elif sport == "mlb":
         done.extend(_merge_mlb(research, jg, statcast_data))
 
@@ -759,9 +764,11 @@ async def load_source_bundle(redis, sport: str, date: str) -> dict:
     elif sport == "npb":
         from app.collectors.npb_stats import load as load_npb_stats
         from app.collectors.yahoo_npb import load as load_yahoo
+        from app.collectors.npb_form import load as load_npb_form
 
         bundle["yahoo"] = await load_yahoo(redis, date) or {}
         bundle["npb_teams"] = await load_npb_stats(redis, date) or {}
+        bundle["npb_form"] = await load_npb_form(redis, date) or {}
     elif sport == "mlb":
         from app.collectors.mlb import load_ctx as load_mlb_ctx
         from app.collectors.park import load as load_parks
@@ -1435,6 +1442,17 @@ async def build_analysis(
                     except Exception as exc:
                         logger.warning("[pipeline] NPB 지표 수집 실패: %s", exc)
                         nteams = {}
+                from app.collectors.npb_form import load as load_npb_form
+                from app.collectors.npb_form import refresh as refresh_npb_form
+
+                nform = await load_npb_form(redis, date)
+                if not nform:
+                    try:
+                        await refresh_npb_form(redis, date)
+                        nform = await load_npb_form(redis, date)
+                    except Exception as exc:
+                        logger.warning("[pipeline] NPB 최근 3경기 수집 실패: %s", exc)
+                        nform = {}
                 from app.collectors.crawler_feed import load_changes, load_snapshot
 
                 from app.collectors.weather import fetch_for_games as fetch_weather
@@ -1446,6 +1464,7 @@ async def build_analysis(
                     logger.warning("[pipeline] NPB 날씨 수집 실패: %s", exc)
                     nweather = {}
                 statcast_data = {"yahoo": yh, "npb_teams": nteams,
+                                 "npb_form": nform,
                                  "weather": nweather,
                                  "crawler": await load_snapshot(redis, "npb", date),
                                  "crawler_changes": await load_changes(redis, "npb", date)}
@@ -1463,6 +1482,11 @@ async def build_analysis(
                              detail=f"팀 {len(nteams)}/12 · 시즌 OBP",
                              unit="팀",
                              impact="팀 타선 없이 선발 ERA만으로 λ를 냅니다")
+                await record("NPB 최근 3경기", len(nform), NPB_TEAMS,
+                             cause=None if nform else "missing",
+                             detail=f"{len(nform)}팀 · Yahoo 박스스코어",
+                             unit="팀", expect_full=False,
+                             impact="검증 전 NPB 추천은 게이트에서 탈락합니다")
             else:
                 from app.collectors.soccer_stats import load_xg, supported
 
