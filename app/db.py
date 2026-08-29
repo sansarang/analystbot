@@ -1,6 +1,7 @@
 """asyncpg 풀 + 스키마 적용. `python -m app.db init` 으로 스키마 적용."""
 
 import asyncio
+import logging
 import pathlib
 import sys
 
@@ -8,23 +9,37 @@ import asyncpg
 
 from app.config import get_settings
 
+logger = logging.getLogger(__name__)
+
 SCHEMA_PATH = pathlib.Path(__file__).resolve().parent.parent / "db" / "schema.sql"
 
 _pool: asyncpg.Pool | None = None
+_schema_applied = False
 
 
 async def get_pool(dsn: str | None = None) -> asyncpg.Pool:
-    global _pool
+    global _pool, _schema_applied
     if _pool is None:
         _pool = await asyncpg.create_pool(dsn or get_settings().database_url)
+    if not _schema_applied:
+        # 봇·파이프라인·비교 스크립트도 스케줄러와 같이 스키마를 맞춘다.
+        # 로컬에서 스케줄러가 안 떠 있으면 pitcher_appearances가 없어
+        # 선발 최근 등판이 전부 빈다 (실측 2026-08-29).
+        try:
+            await apply_schema(_pool)
+            _schema_applied = True
+        except Exception as exc:
+            logger.error("[db] 스키마 적용 실패 — pitcher_appearances 등이 없을 수 있다: %s",
+                         exc)
     return _pool
 
 
 async def close_pool() -> None:
-    global _pool
+    global _pool, _schema_applied
     if _pool is not None:
         await _pool.close()
         _pool = None
+        _schema_applied = False
 
 
 async def apply_schema(conn: asyncpg.Connection | asyncpg.Pool) -> None:

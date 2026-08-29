@@ -2,7 +2,16 @@
 
 from datetime import UTC, datetime
 
-EXPECTED_TABLES = {"games", "odds_snapshots", "expert_picks", "predictions"}
+EXPECTED_TABLES = {"games", "odds_snapshots", "expert_picks", "predictions",
+                   "pitcher_appearances"}
+
+
+def test_get_pool_applies_schema_so_appearances_exist_without_scheduler():
+    from pathlib import Path
+
+    src = Path("app/db.py").read_text(encoding="utf-8")
+    assert "await apply_schema(_pool)" in src
+    assert "pitcher_appearances" in Path("db/schema.sql").read_text(encoding="utf-8")
 
 
 async def test_tables_and_view_exist(db_pool):
