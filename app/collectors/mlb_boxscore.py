@@ -149,7 +149,11 @@ def order_text(parsed_side: dict) -> str:
     return "-".join(n for n in names if n)
 
 
-async def backfill(pool, as_of: date | None = None, days: int = 14,
+# 선발 로테이션 × 최근 2~3등판. NPB APPEARANCE_DAYS와 같다.
+APPEARANCE_DAYS = 21
+
+
+async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
                    limit_per_team: int = 10,
                    schedule_client: MLBClient | None = None,
                    lineup_client: MLBLineupClient | None = None) -> dict:

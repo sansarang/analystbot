@@ -100,6 +100,49 @@ async def test_backfill_matches_by_teams_not_date_only(monkeypatch):
     assert away == "Yomiuri Giants"
 
 
+async def test_appearances_continue_after_lineup_cap(monkeypatch):
+    """타순 상한에 걸려도 등판 로그는 창 안의 종료 경기를 건너뛰지 않는다."""
+    lineup_gids = []
+    appearance_gids = []
+
+    async def fake_record(pool, gid, side, team, order, source="crawler", **_):
+        lineup_gids.append(gid)
+        return True
+
+    async def fake_appearances(pool, game_id, sport, home, away, by_side, source):
+        appearance_gids.append(game_id)
+        return 2
+
+    monkeypatch.setattr("app.collectors.lineup_history.record", fake_record)
+    monkeypatch.setattr("app.collectors.pitcher_log.record_appearances",
+                        fake_appearances)
+
+    class TwoDay:
+        async def schedule(self, day):
+            if day == "2026-08-26":
+                return '''<div id="gm_card">
+                  <a href="/npb/game/111/index">神宮 ヤクルト 巨人 6 - 8 試合終了</a>
+                </div>'''
+            if day == "2026-08-25":
+                return '''<div id="gm_card">
+                  <a href="/npb/game/222/index">東京ドーム 巨人 ヤクルト 3 - 1 試合終了</a>
+                </div>'''
+            return '<div id="gm_card"></div>'
+
+        async def game(self, gid):
+            return _GAME
+
+        async def stats(self, gid):
+            return ""
+
+    stats = await backfill(_Pool(), as_of=date(2026, 8, 26), days=2,
+                           limit_per_team=1, client=TwoDay())
+    assert stats["games"] == 2
+    assert stats["rows"] == 2, "타순은 팀당 1경기에서 멈춰야 한다"
+    assert appearance_gids == [42, 42]
+    assert stats["appearances"] == 4
+
+
 async def test_in_progress_is_not_backfilled():
     class Live:
         async def schedule(self, day):

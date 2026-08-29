@@ -40,10 +40,19 @@ async def fetch_final_lineups(game_id: str, client: YahooNPBClient) -> dict:
     return lu
 
 
-async def backfill(pool, as_of: date | None = None, days: int = 14,
+# 선발 로테이션 5~6일 × 최근 2~3등판. 타순 이력 상한(팀당 10경기)과 창을 나눈다.
+# 14일로 자르면 오늘 선발이 등판 1회만 남는다 (실측 2026-08-29, 12명 중 10명 n=1).
+APPEARANCE_DAYS = 21
+
+
+async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
                    limit_per_team: int = 10,
                    client: YahooNPBClient | None = None) -> dict:
-    """최근 종료 경기 선발 9명을 `source='boxscore'`로 적재한다."""
+    """최근 종료 경기 선발 9명·등판을 `source='boxscore'`로 적재한다.
+
+    타순 이력은 팀당 `limit_per_team`에서 멈춘다. 등판 로그는 창 안의
+    종료 경기를 건너뛰지 않는다 — 건너뛰면 오늘 선발의 2~3등판이 빈다.
+    """
     from app.collectors.game_match import _FIND
     from app.collectors.lineup_history import record
     from app.collectors.pitcher_log import record_appearances
@@ -56,9 +65,6 @@ async def backfill(pool, as_of: date | None = None, days: int = 14,
     seen: set[str] = set()
 
     for back in range(days):
-        if per_team and min(per_team.values()) >= limit_per_team \
-                and len(per_team) >= len(NPB_TEAMS):
-            break
         day = (as_of - timedelta(days=back)).isoformat()
         try:
             html = score_card_html(await client.schedule(day))
@@ -73,9 +79,6 @@ async def backfill(pool, as_of: date | None = None, days: int = 14,
             if gid in seen:
                 continue
             seen.add(gid)
-            if (per_team.get(g["home"], 0) >= limit_per_team
-                    and per_team.get(g["away"], 0) >= limit_per_team):
-                continue
             gid_db = await pool.fetchval(
                 "SELECT id FROM games WHERE sport = $1 AND ext_id = $2",
                 "npb", f"yahoo:{gid}") if pool else None

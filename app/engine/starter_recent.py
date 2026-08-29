@@ -55,13 +55,19 @@ def slim_start(row) -> dict:
 
 
 def pitcher_name(jg: dict, side: str) -> str:
+    """research.{side}_pitcher.name 우선. 없으면 games.{side}_pitcher.
+
+    research 키가 없는 경기를 `or {}`로 받으면 빈 dict가 이름이 있는 것처럼
+    처리되어 MLB 예고 선발(games 컬럼)이 전부 빈다 (실측 2026-08-29).
+    """
     r = jg.get("research") or {}
-    p = r.get(f"{side}_pitcher") or {}
+    p = r.get(f"{side}_pitcher")
     if isinstance(p, dict):
-        return (p.get("name") or "").strip()
-    name = str(p or "").strip()
-    if name:
-        return name
+        name = (p.get("name") or "").strip()
+        if name:
+            return name
+    elif p:
+        return str(p).strip()
     return str(jg.get(f"{side}_pitcher") or "").strip()
 
 
