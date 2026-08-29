@@ -3490,6 +3490,11 @@ def render_game_easy(jg: dict, news: str = "", used: set[str] | None = None) -> 
     데이터를 줄이지 않는다 — 표현만 바꾼다. 전문 수치는 전부 상세에 보존.
     used: 여러 경기를 함께 낼 때 문장 중복을 막는 공유 집합 ([3]).
     """
+    sport = jg.get("sport") or _sport_of(jg)
+    if sport in ("mlb", "kbo", "npb") and jg.get("matchup"):
+        from app.engine.form_card import render_form_card
+
+        return render_form_card(jg, sport)
     from app.research.validate import research_materials, sanitize_research
 
     home_kr, away_kr = _kr(jg["home"]), _kr(jg["away"])

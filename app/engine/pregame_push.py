@@ -24,7 +24,6 @@ from app.engine.lineup_timing import _parse
 from app.pipeline import (
     DETAIL_SEP,
     mlb_slate_date,
-    render_game_easy,
     today_kst,
 )
 from app.collectors.crawler_feed import load_snapshot, mark_cancelled_games
@@ -110,10 +109,11 @@ def header_line(sport: str, *, revision: bool = False) -> str:
 
 
 def compose_card(jg: dict, news: str, sport: str, *, revision: bool = False) -> str:
-    body = render_game_easy(jg, news)
-    if revision:
-        return f"{header_line(sport, revision=True)}\n라인업 변경 재판정\n{body}"
-    return f"{header_line(sport, revision=False)}\n{body}"
+    from app.engine.form_card import render_form_card
+
+    del news  # 뉴스 반영은 매치업 JSON의 뉴스반영 칸만 쓴다
+    body = render_form_card(jg, sport, revision=revision)
+    return f"{header_line(sport, revision=revision)}\n{body}"
 
 
 def _nine_sig(jg: dict, side: str) -> str:
