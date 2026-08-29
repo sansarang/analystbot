@@ -62,6 +62,9 @@ def test_summarize_pitching_drops_season_era():
     assert got["starter_r"] == 2
     assert got["bullpen_count"] == 1
     assert "era" not in got
+    with_pitches = summarize_pitching(
+        [{**pitchers[0], "pitches": 97}, pitchers[1]])
+    assert with_pitches["starter_pitches"] == 97
 
 
 def test_apply_boxscores_home_away_sides():

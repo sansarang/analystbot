@@ -217,9 +217,24 @@ async def _collect_mlb_stats(client: MLBClient, schedule: dict) -> dict:
         try:
             start = (date_cls.fromisoformat(slate) - timedelta(days=14)).isoformat()
             form = parse_recent_form(
-                await client.fetch_schedule_range(start, slate), before=slate)
-        except Exception as exc:
-            logger.warning("[pipeline] MLB 최근 3경기 조회 실패: %s", exc)
+                await client.fetch_schedule_range(start, slate),
+                before=slate, standings=table)
+            if form and not client.mock:
+                from app.collectors.lineups import MLBLineupClient
+                from app.collectors.mlb_boxscore import apply_boxscores
+
+                boxes: dict = {}
+                pks = {str(r.get("game_id")) for pkt in form.values()
+                       for r in (pkt.get("games") or []) if r.get("game_id")}
+                lu = MLBLineupClient()
+                for pk in pks:
+                    try:
+                        boxes[pk] = await lu.fetch_boxscore(pk)
+                    except Exception as exc:
+                        logger.debug("[pipeline] MLB box %s 생략: %s", pk, exc)
+                apply_boxscores(form, boxes)
+        except Exception as extra:
+            logger.warning("[pipeline] MLB 최근 3경기 조회 실패: %s", extra)
     return {"elo": None, "win_pct": win_pct, "era": era,
             "standings": table, "form": form}
 

@@ -139,13 +139,17 @@ def parse_standings(payload: dict,
     return out
 
 
-def parse_recent_form(schedule: dict, before: str | None = None) -> dict[str, dict]:
+def parse_recent_form(schedule: dict, before: str | None = None,
+                      standings: dict | None = None) -> dict[str, dict]:
     """종료 경기 스코어 → KBO usage와 같은 `results_l3`·`score_games` 키.
 
     최근 **3경기**(날짜가 아니라 경기 수). `before`(YYYY-MM-DD, 슬레이트)는
     그 날 경기를 창에서 빼 오늘 경기를 최근 3에 넣지 않는다.
     이닝별 역전은 일정 API에 없어 역전승·역전패는 비운다 — 없는 것을 만들지 않는다.
+    상대 순위·승률은 `standings`가 있을 때만 붙인다.
     """
+    from app.collectors.last3 import attach_opponent_context, strip_banned
+
     games = _parse_games(schedule)
     finals = [
         g for g in games
@@ -177,15 +181,21 @@ def parse_recent_form(schedule: dict, before: str | None = None) -> dict[str, di
                 result = "L"
             else:
                 result = "D"
-            scores.append({
+            row = {
+                "date": g.get("official_date"),
+                "game_id": g.get("ext_id"),
+                "opponent": g["away"] if is_home else g["home"],
+                "home": is_home,
                 "runs": runs_i, "opp_runs": opp_i, "result": result,
                 "one_run": abs(runs_i - opp_i) == 1,
                 "shutout_loss": runs_i == 0 and opp_i > 0,
-            })
+            }
+            attach_opponent_context(row, standings)
+            scores.append(strip_banned(row))
         if not scores:
             continue
         n = len(scores)
-        out[team] = {
+        out[team] = strip_banned({
             "runs_l3": sum(s["runs"] for s in scores),
             "runs_allowed_l3": sum(s["opp_runs"] for s in scores),
             "runs_per_game_l3": round(sum(s["runs"] for s in scores) / n, 2),
@@ -193,7 +203,8 @@ def parse_recent_form(schedule: dict, before: str | None = None) -> dict[str, di
             "shutout_losses_l3": sum(1 for s in scores if s["shutout_loss"]),
             "one_run_games_l3": sum(1 for s in scores if s["one_run"]),
             "score_games": n,
-        }
+            "games": scores,
+        })
     return out
 
 

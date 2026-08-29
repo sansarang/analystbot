@@ -299,6 +299,9 @@ def parse_pitching_stats(html: str) -> dict[str, list[dict]]:
                 "r": _opt_int_cell(col(r, "失点")),
                 "er": _opt_int_cell(col(r, "自責点")),
             })
+            pit = _opt_int_cell(col(r, "投球数"))
+            if pit is not None:
+                pitchers[-1]["pitches"] = pit
         if pitchers:
             found.append(pitchers)
     if len(found) < 2:
@@ -348,9 +351,9 @@ def parse_finals(html: str) -> list[dict]:
 
 async def upsert_final_scores(pool, date: str, days: int = 3,
                               client: YahooNPBClient | None = None) -> int:
-    """[§8-28] 채점기 진입점 — 최근 며칠의 NPB 종료 경기 점수를 games에 반영.
+    """[§8-28] 종료 점수 적재 — 최근 며칠의 NPB 종료 경기 점수를 games에 반영.
 
-    `grader.grade_date`가 MLB·KBO와 같은 계약으로 부른다.
+    `ingest_finals`가 MLB·KBO와 같은 계약으로 부른다.
     """
     from datetime import UTC, date as _date, datetime, timedelta
     from zoneinfo import ZoneInfo

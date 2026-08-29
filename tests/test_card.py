@@ -189,3 +189,24 @@ def test_parse_recent_form_last_three_completed():
     assert cle["one_run_games_l3"] == 0
     kc = form["Kansas City Royals"]
     assert kc["results_l3"] == "DWL"
+    assert cle["games"][0]["opponent"] == "Kansas City Royals"
+    assert "era" not in str(form).lower()
+
+
+def test_parse_recent_form_attaches_opponent_standings():
+    from app.collectors.mlb import parse_recent_form
+
+    raw = {"dates": [{"date": "2026-08-27", "games": [{
+        "gamePk": 9, "gameDate": "2026-08-27T17:10:00Z",
+        "officialDate": "2026-08-27",
+        "status": {"abstractGameState": "Final"},
+        "teams": {
+            "home": {"team": {"name": "Cleveland Guardians"}, "score": 5},
+            "away": {"team": {"name": "Kansas City Royals"}, "score": 2},
+        },
+    }]}]}
+    standings = {"Kansas City Royals": {"rank": 3, "win_pct": 0.512}}
+    form = parse_recent_form(raw, before="2026-08-28", standings=standings)
+    row = form["Cleveland Guardians"]["games"][0]
+    assert row["opponent_rank"] == 3
+    assert row["opponent_win_pct"] == 0.512

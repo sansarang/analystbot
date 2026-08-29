@@ -10,6 +10,7 @@ import logging
 from datetime import date as date_cls
 from datetime import timedelta
 
+from app.collectors.last3 import attach_opponent_context
 from app.collectors.yahoo_npb import (
     YahooNPBClient,
     parse_finals,
@@ -39,20 +40,10 @@ def summarize_pitching(pitchers: list[dict]) -> dict:
         "starter_name": (starter or {}).get("name"),
         "starter_ip": (starter or {}).get("innings"),
         "starter_r": (starter or {}).get("r"),
+        "starter_pitches": (starter or {}).get("pitches"),
         "bullpen_count": len(relievers),
     }
     return {k: v for k, v in out.items() if v is not None or k == "bullpen_count"}
-
-
-def attach_opponent_context(row: dict, standings: dict | None) -> dict:
-    """상대 수준 맥락 1줄. 시즌 ERA가 아니다."""
-    opp = row.get("opponent")
-    st = (standings or {}).get(opp) or {}
-    if st.get("rank") is not None:
-        row["opponent_rank"] = st["rank"]
-    if st.get("win_pct") is not None:
-        row["opponent_win_pct"] = st["win_pct"]
-    return row
 
 
 def parse_recent_form(finals: list[dict], *, before: str | None = None,

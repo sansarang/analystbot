@@ -98,7 +98,7 @@ def parse_pitchers(record: dict, side: str) -> list[dict]:
         ip = parse_innings(p.get("inn"))
         if not name or ip is None:
             continue
-        out.append({
+        row = {
             "name": name,
             "innings": ip,
             "batters": int(p.get("pa") or 0),   # 경기값 (bf는 시즌값이다)
@@ -109,7 +109,12 @@ def parse_pitchers(record: dict, side: str) -> list[dict]:
             "k": _opt_int(p.get("kk")),
             "r": _opt_int(p.get("r")),
             "er": _opt_int(p.get("er")),
-        })
+        }
+        # 투구수는 응답에 있을 때만. 없으면 만들지 않는다 (시즌값 bf와 혼동 금지).
+        pit = _opt_int(p.get("np") if p.get("np") not in (None, "") else p.get("pit"))
+        if pit is not None:
+            row["pitches"] = pit
+        out.append(row)
     return out
 
 
@@ -137,6 +142,11 @@ def parse_scoreboard(record: dict, side: str) -> dict | None:
         "hits": int(box.get("h") or 0),
         "opp_runs": int(obox.get("r") or sum(int(x or 0) for x in theirs)),
     }
+    if "e" in box:
+        try:
+            out["errors"] = int(box.get("e") or 0)
+        except (TypeError, ValueError):
+            pass
     out.update(classify_game([int(x or 0) for x in mine],
                              [int(x or 0) for x in theirs]))
     return out
@@ -187,7 +197,12 @@ def parse_batters(record: dict, side: str) -> list[dict]:
         if not name:
             continue
         pa = int(b.get("ab") or 0) + int(b.get("bb") or 0)
-        out.append({"name": name, "pa": pa})
+        row = {"name": name, "pa": pa}
+        for src, dst in (("hit", "hits"), ("hr", "hr"), ("bb", "bb"), ("kk", "k")):
+            v = _opt_int(b.get(src))
+            if v is not None:
+                row[dst] = v
+        out.append(row)
     return out
 
 
@@ -207,7 +222,38 @@ def regulars_from(games: list[dict], top: int = 9) -> list[dict]:
             for i, (n, pa) in enumerate(ranked) if pa > 0]
 
 
-def summarize(games: list[dict]) -> dict:
+def _game_row(g: dict) -> dict:
+    """폼 프롬프트용 한 경기. 시즌 ERA는 넣지 않는다. 없는 칸은 생략."""
+    score = g.get("score") or {}
+    pits = g.get("pitchers") or []
+    starter = next((p for p in pits if p.get("is_starter")), None)
+    rel = [p for p in pits if not p.get("is_starter")]
+    row: dict = {}
+    for k in ("date", "game_id", "opponent", "home"):
+        if g.get(k) is not None:
+            row[k] = g[k]
+    for k in ("runs", "opp_runs", "hits", "errors", "result"):
+        if score.get(k) is not None:
+            row[k] = score[k]
+    if starter:
+        row["starter_name"] = starter.get("name")
+        row["starter_ip"] = starter.get("innings")
+        if starter.get("r") is not None:
+            row["starter_r"] = starter["r"]
+        if starter.get("pitches") is not None:
+            row["starter_pitches"] = starter["pitches"]
+    row["bullpen_count"] = len(rel)
+    if rel:
+        row["bullpen_ip"] = round(sum(p["innings"] for p in rel), 3)
+    bats = g.get("batters") or []
+    for key in ("hr", "bb", "k"):
+        vals = [b[key] for b in bats if b.get(key) is not None]
+        if vals:
+            row[key] = sum(vals)
+    return row
+
+
+def summarize(games: list[dict], standings: dict | None = None) -> dict:
     """경기별 등판 기록(최신순) → 카드 ①칸의 **사실** 층.
 
     games 원소: {"date": "YYYY-MM-DD", "pitchers": [parse_pitchers 결과]}
@@ -258,7 +304,7 @@ def summarize(games: list[dict]) -> dict:
             "one_run_games_l3": sum(1 for s in scores if s["one_run"]),
             "score_games": len(scores),
         }
-    return {
+    out = {
         **card3,
         "regulars": regulars_from(recent),
         "window_games": len(recent),
@@ -280,11 +326,22 @@ def summarize(games: list[dict]) -> dict:
                                           key=lambda kv: (-kv[1], kv[0]))),
         "back_to_back": b2b,
         "back_to_back_count": len(b2b),
+        "games": [_game_row(g) for g in recent],
     }
+    from app.collectors.last3 import attach_opponent_context, strip_banned
+
+    out = strip_banned(out)
+    games_out = []
+    for row in out["games"]:
+        attach_opponent_context(row, standings)
+        games_out.append(strip_banned(row))
+    out["games"] = games_out
+    return out
 
 
 async def fetch_recent_usage(date: str, client: NaverRecordClient | None = None,
-                             teams: set[str] | None = None) -> dict[str, dict]:
+                             teams: set[str] | None = None,
+                             standings: dict | None = None) -> dict[str, dict]:
     """`date` **이전** 종료 경기들에서 팀별 투수 소모를 모은다.
 
     ⚠️ `date` 당일 경기는 **넣지 않는다.** 당일 결과는 예측 시점에 알 수 없다 —
@@ -327,11 +384,16 @@ async def fetch_recent_usage(date: str, client: NaverRecordClient | None = None,
                     continue
                 if len(by_team.setdefault(team, [])) < RECENT_GAMES:
                     # 스코어보드는 **같은 응답**에서 뽑는다 — 추가 HTTP가 없다.
-                    by_team[team].append({"date": d, "pitchers": rows,
-                                          "batters": parse_batters(rec, side),
-                                          "score": parse_scoreboard(rec, side)})
+                    opp = away if side == "home" else home
+                    by_team[team].append({
+                        "date": d, "game_id": gid,
+                        "opponent": opp, "home": side == "home",
+                        "pitchers": rows,
+                        "batters": parse_batters(rec, side),
+                        "score": parse_scoreboard(rec, side),
+                    })
 
-    out = {t: summarize(v) for t, v in by_team.items() if v}
+    out = {t: summarize(v, standings) for t, v in by_team.items() if v}
     logger.info("[kbo_usage] %s 기준 %d팀 소모 산출", date, len(out))
     return out
 
@@ -343,7 +405,14 @@ def _key(date: str) -> str:
 async def refresh(redis, date: str, client: NaverRecordClient | None = None) -> dict:
     import json
 
-    data = await fetch_recent_usage(date, client)
+    standings = None
+    try:
+        from app.collectors.naver_kbo import build_standings, load as load_naver
+
+        standings = build_standings(await load_naver(redis, date) or {})
+    except Exception as exc:
+        logger.warning("[kbo_usage] 순위표 부착 생략: %s", exc)
+    data = await fetch_recent_usage(date, client, standings=standings)
     if not data:
         from app.alerts import StageResult, stage_failed
 

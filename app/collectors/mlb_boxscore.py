@@ -49,7 +49,10 @@ def parse_pitching(box: dict) -> dict[str, list[dict]]:
             if not name:
                 continue
             st = ((pdata.get("stats") or {}).get("pitching") or {})
-            out[side].append({
+            pit = st.get("numberOfPitches")
+            if pit is None:
+                pit = st.get("pitchesThrown")
+            row = {
                 "name": name,
                 "is_starter": i == 0,
                 "innings": parse_mlb_ip(st.get("inningsPitched")),
@@ -60,8 +63,85 @@ def parse_pitching(box: dict) -> dict[str, list[dict]]:
                 "bb": st.get("baseOnBalls"),
                 "r": st.get("runs"),
                 "er": st.get("earnedRuns"),
-            })
+            }
+            if pit is not None:
+                row["pitches"] = pit
+            out[side].append(row)
     return out
+
+
+def _opt_stat(d: dict, *keys):
+    for k in keys:
+        v = d.get(k)
+        if v is None or v == "":
+            continue
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                continue
+    return None
+
+
+def side_form_facts(box: dict, side: str) -> dict:
+    """last-3 한 경기. 시즌 ERA는 넣지 않는다. 없는 칸은 생략."""
+    from app.collectors.last3 import strip_banned
+
+    pits = parse_pitching(box).get(side) or []
+    starter = next((p for p in pits if p.get("is_starter")), None)
+    rel = [p for p in pits if not p.get("is_starter")]
+    team = ((box or {}).get("teams") or {}).get(side) or {}
+    batting = ((team.get("teamStats") or {}).get("batting") or {})
+    fielding = ((team.get("teamStats") or {}).get("fielding") or {})
+    out: dict = {"bullpen_count": len(rel)}
+    if starter:
+        if starter.get("name"):
+            out["starter_name"] = starter["name"]
+        if starter.get("innings") is not None:
+            out["starter_ip"] = starter["innings"]
+        if starter.get("r") is not None:
+            out["starter_r"] = starter["r"]
+        if starter.get("pitches") is not None:
+            out["starter_pitches"] = starter["pitches"]
+    if rel:
+        ip = [p["innings"] for p in rel if p.get("innings") is not None]
+        if ip:
+            out["bullpen_ip"] = round(sum(ip), 3)
+    hits = _opt_stat(batting, "hits")
+    if hits is not None:
+        out["hits"] = hits
+    hr = _opt_stat(batting, "homeRuns")
+    if hr is not None:
+        out["hr"] = hr
+    bb = _opt_stat(batting, "baseOnBalls")
+    if bb is not None:
+        out["bb"] = bb
+    k = _opt_stat(batting, "strikeOuts")
+    if k is not None:
+        out["k"] = k
+    err = _opt_stat(fielding, "errors")
+    if err is not None:
+        out["errors"] = err
+    return strip_banned(out)
+
+
+def apply_boxscores(form: dict[str, dict], boxes_by_pk: dict) -> None:
+    """schedule last-3에 boxscore 이닝·실점·타격 칸을 얹는다."""
+    from app.collectors.last3 import strip_banned
+
+    for pkt in (form or {}).values():
+        for row in pkt.get("games") or []:
+            pk = str(row.get("game_id") or "")
+            box = (boxes_by_pk or {}).get(pk)
+            if not box:
+                continue
+            side = "home" if row.get("home") else "away"
+            row.update(side_form_facts(box, side))
+            cleaned = strip_banned(dict(row))
+            row.clear()
+            row.update(cleaned)
 
 
 def order_text(parsed_side: dict) -> str:

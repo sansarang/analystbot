@@ -177,13 +177,33 @@ def test_scoreboard_missing_returns_none_not_zeros():
     assert parse_scoreboard({"scoreBoard": {"inn": {}}}, "home") is None
 
 
-def test_summarize_includes_card3_facts():
-    games = [{"date": "2026-08-26", "pitchers": parse_pitchers(REAL_RECORD, "away"),
-              "score": parse_scoreboard(REAL_SB, "away")}]
-    s = summarize(games)
-    assert s["results_l3"] == "L"
-    assert s["runs_l3"] == 11 and s["runs_allowed_l3"] == 16
-    assert s["score_games"] == 1
+def test_summarize_form_games_have_opponent_context_not_era():
+    """재설계 2-1: games[] + 상대 순위·승률. 시즌 ERA는 패킷에 없다."""
+    games = [{
+        "date": "2026-08-26", "game_id": "G1",
+        "opponent": "Kia Tigers", "home": False,
+        "pitchers": parse_pitchers(REAL_RECORD, "away"),
+        "batters": parse_batters(REAL_SB, "away") if False else [
+            {"name": "A", "pa": 5, "hr": 1, "bb": 2, "k": 1},
+            {"name": "B", "pa": 4, "hr": 0, "bb": 0, "k": 2},
+        ],
+        "score": parse_scoreboard(REAL_SB, "away"),
+    }]
+    standings = {"Kia Tigers": {"rank": 4, "w": 62, "l": 50}}
+    s = summarize(games, standings)
+    assert s["games"]
+    row = s["games"][0]
+    assert row["opponent"] == "Kia Tigers"
+    assert row["opponent_rank"] == 4
+    assert row["opponent_win_pct"] == round(62 / 112, 3)
+    assert row["starter_ip"] == 3.667
+    assert row["bullpen_count"] == 5
+    assert row["hits"] == 20
+    assert row["errors"] == 0
+    assert row["hr"] == 1 and row["bb"] == 2 and row["k"] == 3
+    blob = str(s)
+    assert "era" not in blob.lower()
+    assert "xwoba" not in blob.lower()
 
 
 # ---------------------------------------------------------------- 카드 ④ 순위표
