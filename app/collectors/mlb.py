@@ -24,6 +24,123 @@ def chunked(seq: list, size: int) -> list[list]:
     return [seq[i : i + size] for i in range(0, len(seq), size)]
 
 
+def _gb(v):
+    """gamesBack: 선두는 '-' 또는 0. 없으면 None."""
+    if v in (None, "", "-"):
+        return 0.0 if v == "-" else None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_standings(payload: dict,
+                    id_to_name: dict[int, str] | None = None) -> dict[str, dict]:
+    """statsapi `/standings` → {팀 정식명: rank·w·l·win_pct·games_behind}.
+
+    `/standings`의 `team.name`은 짧은 별칭(Guardians)인 경우가 있고,
+    일정·분석 카드는 정식명(Cleveland Guardians)을 쓴다. `id_to_name`은
+    `/teams?sportId=1`의 id→name. 둘 다 키로 넣어 어느 쪽으로 찾아도 맞는다.
+    divisionRank가 없으면 그 그룹 나열 순서를 쓴다 (API가 순위대로 준다).
+    """
+    id_to_name = id_to_name or {}
+    out: dict[str, dict] = {}
+    for rec in (payload or {}).get("records") or []:
+        rows = rec.get("teamRecords") or []
+        for i, tr in enumerate(rows):
+            team = tr.get("team") or {}
+            short = (team.get("name") or "").strip()
+            tid = team.get("id")
+            official = ""
+            if tid is not None:
+                try:
+                    official = (id_to_name.get(int(tid)) or "").strip()
+                except (TypeError, ValueError):
+                    official = ""
+            name = official or short
+            if not name:
+                continue
+            raw_rank = tr.get("divisionRank") or tr.get("leagueRank")
+            try:
+                rank = int(raw_rank) if raw_rank not in (None, "") else i + 1
+            except (TypeError, ValueError):
+                rank = i + 1
+            pct = tr.get("winningPercentage")
+            try:
+                win_pct = float(pct) if pct is not None else None
+            except (TypeError, ValueError):
+                win_pct = None
+            row = {"rank": rank, "w": tr.get("wins"), "l": tr.get("losses"),
+                   "d": 0}
+            gb = _gb(tr.get("gamesBack"))
+            if gb is not None:
+                row["games_behind"] = gb
+            if win_pct is not None:
+                row["win_pct"] = win_pct
+            out[name] = row
+            if short and short != name:
+                out[short] = row
+    return out
+
+
+def parse_recent_form(schedule: dict, before: str | None = None) -> dict[str, dict]:
+    """종료 경기 스코어 → KBO usage와 같은 `results_l3`·`score_games` 키.
+
+    최근 **3경기**(날짜가 아니라 경기 수). `before`(YYYY-MM-DD, 슬레이트)는
+    그 날 경기를 창에서 빼 오늘 경기를 최근 3에 넣지 않는다.
+    이닝별 역전은 일정 API에 없어 역전승·역전패는 비운다 — 없는 것을 만들지 않는다.
+    """
+    games = _parse_games(schedule)
+    finals = [
+        g for g in games
+        if g.get("status") == "final"
+        and g.get("home_score") is not None
+        and g.get("away_score") is not None
+        and (not before or (g.get("official_date") or "") < before)
+    ]
+    teams: set[str] = set()
+    for g in finals:
+        teams.add(g["home"])
+        teams.add(g["away"])
+    out: dict[str, dict] = {}
+    for team in teams:
+        mine = [g for g in finals if g["home"] == team or g["away"] == team]
+        mine.sort(key=lambda g: g["starts_at"], reverse=True)
+        scores = []
+        for g in mine[:3]:
+            is_home = g["home"] == team
+            runs = g["home_score"] if is_home else g["away_score"]
+            opp = g["away_score"] if is_home else g["home_score"]
+            try:
+                runs_i, opp_i = int(runs), int(opp)
+            except (TypeError, ValueError):
+                continue
+            if runs_i > opp_i:
+                result = "W"
+            elif runs_i < opp_i:
+                result = "L"
+            else:
+                result = "D"
+            scores.append({
+                "runs": runs_i, "opp_runs": opp_i, "result": result,
+                "one_run": abs(runs_i - opp_i) == 1,
+                "shutout_loss": runs_i == 0 and opp_i > 0,
+            })
+        if not scores:
+            continue
+        n = len(scores)
+        out[team] = {
+            "runs_l3": sum(s["runs"] for s in scores),
+            "runs_allowed_l3": sum(s["opp_runs"] for s in scores),
+            "runs_per_game_l3": round(sum(s["runs"] for s in scores) / n, 2),
+            "results_l3": "".join(s["result"] for s in scores),
+            "shutout_losses_l3": sum(1 for s in scores if s["shutout_loss"]),
+            "one_run_games_l3": sum(1 for s in scores if s["one_run"]),
+            "score_games": n,
+        }
+    return out
+
+
 class MLBClient(BaseAPIClient):
     name = "mlb"
     base_url = "https://statsapi.mlb.com/api/v1"
@@ -66,6 +183,21 @@ class MLBClient(BaseAPIClient):
             params["season"] = season
         return await self._get("/standings", params=params)
 
+    async def fetch_teams(self) -> dict:
+        """id → 정식명. 순위표 짧은 이름과 일정 정식명을 잇는다."""
+        if self.mock:
+            return {"teams": []}
+        return await self._get("/teams", params={"sportId": 1})
+
+    async def fetch_schedule_range(self, start: str, end: str) -> dict:
+        """startDate~endDate 한 번에. 팀별 최근 3경기 폼용."""
+        if self.mock:
+            return self.load_mock("mlb_schedule.json")
+        return await self._get(
+            "/schedule",
+            params={"sportId": 1, "startDate": start, "endDate": end},
+        )
+
     async def fetch_final_scores(self, date: str) -> dict:
         """최종 스코어 포함 일정 (schedule 응답에 teams.*.score 포함)."""
         if self.mock:
@@ -89,6 +221,7 @@ def _parse_games(schedule: dict) -> list[dict]:
                 "status": {"Preview": "scheduled", "Live": "live", "Final": "final"}.get(state, "scheduled"),
                 "home_score": home.get("score"),
                 "away_score": away.get("score"),
+                "official_date": g.get("officialDate") or day.get("date") or "",
             })
     return out
 

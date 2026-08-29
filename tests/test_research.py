@@ -69,9 +69,9 @@ async def test_save_expert_picks_normalized_with_odds(db_pool):
     assert saved == 6
     rows = await db_pool.fetch("SELECT * FROM expert_picks")
     assert all(r["pick"].split(":")[0] in ("h2h", "spreads", "totals") for r in rows)
-    # h2h 픽은 API 배당이 붙어야 한다 (LLM 수치가 아니라 odds_snapshots에서)
+    # 야구는 승부 배당을 적재하지 않는다. h2h 전문가 픽에 가격을 붙이지 않는 것이 맞다.
     h2h = [r for r in rows if r["pick"].startswith("h2h:")]
-    assert h2h and all(r["odds"] is not None for r in h2h)
+    assert h2h and all(r["odds"] is None for r in h2h)
 
 
 async def test_grok_mock_briefing():

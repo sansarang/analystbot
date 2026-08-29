@@ -103,11 +103,12 @@ def cell_metrics(research: dict, side: str, key: str) -> dict[str, float]:
     src: dict[str, object] = {}
     if key == "bullpen":
         src = {k: u.get(k) for k in ("relief_batters_l3", "back_to_back_count",
-                                     "pitchers_used_last")}
+                                     "pitchers_used_last", "bp_pitches_3d")}
     elif key == "starter":
-        src = {k: p.get(k) for k in ("era_season", "whip", "ip_avg_recent")}
+        src = {k: p.get(k) for k in ("era_season", "whip", "ip_avg_recent",
+                                     "xwoba_allowed")}
     elif key == "batting":
-        src = {"ops": o.get("ops")}
+        src = {"ops": o.get("ops"), "xwoba_30d": o.get("xwoba_30d")}
     elif key == "recent3":
         r, ra = u.get("runs_l3"), u.get("runs_allowed_l3")
         src = {"runs_per_game_l3": u.get("runs_per_game_l3"),
@@ -201,12 +202,19 @@ def _bullpen_facts(r: dict, side: str) -> tuple[list[str], str]:
         out.append(f"최근 {u.get('window_games', 3)}경기 구원 "
                    f"{_f(u['relief_ip_l3'])}이닝 "
                    f"{u.get('relief_batters_l3', 0)}타자")
+    if u.get("bp_pitches_3d") is not None and u.get("pitchers_used_last") is None:
+        out.append(f"최근 3경기 구원 {u['bp_pitches_3d']}구")
     b2b = u.get("back_to_back") or []
     if b2b:
         out.append(f"2경기 연속 등판 {len(b2b)}명: {', '.join(b2b)}")
     elif u.get("back_to_back_count") == 0:
         out.append("2경기 연속 등판 없음")
-    return out, "네이버 기록(LLM 0회)"
+    if not out:
+        return [], ""
+    src = ("Statcast(LLM 0회)" if u.get("bp_pitches_3d") is not None
+           and u.get("pitchers_used_last") is None
+           else "네이버 기록(LLM 0회)")
+    return out, src
 
 
 def _starter_facts(r: dict, side: str) -> tuple[list[str], str]:
@@ -224,13 +232,18 @@ def _starter_facts(r: dict, side: str) -> tuple[list[str], str]:
         bits.append(f"WHIP {_f(p['whip'])}")
     if p.get("ip_avg_recent") is not None:
         bits.append(f"평균 {_f(p['ip_avg_recent'])}이닝")
+    if p.get("xwoba_allowed") is not None:
+        bits.append(f"허용 xwOBA {_f(p['xwoba_allowed'], 3)}")
     out = [" · ".join(bits)]
     if p.get("pitch_mix"):
         out.append(f"구종 {p['pitch_mix']}")
     # 예고인지 확정인지는 **섞으면 안 된다** — 예상을 확정으로 취급하면 안 된다
     if r.get("starter_status"):
         out.append(f"선발 발표: {r['starter_status']}")
-    return out, "네이버·크롤러(LLM 0회)"
+    src = ("statsapi·Statcast(LLM 0회)" if p.get("xwoba_allowed") is not None
+           or (p.get("era_season") is not None and not p.get("pitch_mix"))
+           else "네이버·크롤러(LLM 0회)")
+    return out, src
 
 
 def _batting_facts(r: dict, side: str) -> tuple[list[str], str]:
@@ -251,7 +264,13 @@ def _batting_facts(r: dict, side: str) -> tuple[list[str], str]:
     t = r.get(f"{side}_offense") or {}
     if t.get("ops") is not None:
         out.append(f"팀 OPS {_f(t['ops'], 3)}")
-    return out, "크롤러·공식기록(LLM 0회)"
+    elif t.get("xwoba_30d") is not None:
+        out.append(f"팀 xwOBA {_f(t['xwoba_30d'], 3)}")
+    if not out:
+        return [], ""
+    src = ("Statcast(LLM 0회)" if t.get("xwoba_30d") is not None and t.get("ops") is None
+           else "크롤러·공식기록(LLM 0회)")
+    return out, src
 
 
 def _recent3_facts(r: dict, side: str) -> tuple[list[str], str]:
@@ -271,7 +290,8 @@ def _recent3_facts(r: dict, side: str) -> tuple[list[str], str]:
             detail.append(f"{word} {n}회")
     if detail:
         out.append(" · ".join(detail))
-    return out, "네이버 기록(LLM 0회)"
+    return out, "statsapi(LLM 0회)" if u.get("score_games") and u.get("pitchers_used_last") is None \
+        else "네이버 기록(LLM 0회)"
 
 
 def _weight_facts(r: dict, side: str) -> tuple[list[str], str]:
@@ -285,7 +305,9 @@ def _weight_facts(r: dict, side: str) -> tuple[list[str], str]:
         bits.append(f"선두와 {_f(s['games_behind'], 1)}게임차")
     if s.get("remaining") is not None:
         bits.append(f"잔여 {s['remaining']}경기")
-    return [" · ".join(bits)], "네이버 순위(LLM 0회)"
+    return [" · ".join(bits)], (
+        "statsapi(LLM 0회)" if s.get("win_pct") is not None
+        else "네이버 순위(LLM 0회)")
 
 
 def _scoring_facts(r: dict, home_kr: str = "홈", away_kr: str = "원정") -> tuple[list[str], str]:

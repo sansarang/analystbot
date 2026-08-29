@@ -306,6 +306,25 @@ def test_bullpen_overuse_from_statcast():
     assert out["Cincinnati Reds"]["bp_pitches_3d"] > out["San Francisco Giants"]["bp_pitches_3d"]
 
 
+def test_bullpen_counts_last_three_games_not_older():
+    """4번째 오래된 경기의 구원 투구는 창에 안 넣는다."""
+    from app.collectors.statcast import aggregate_bullpen
+
+    rows = []
+    for gp, day in ((1, "2026-08-25"), (2, "2026-08-26"), (3, "2026-08-27")):
+        rows.append(_pitch(1, "Starter, Cin", gp, 1, game_date=day))
+        rows += [_pitch(9, "Relief, Cin", gp, i, game_date=day) for i in range(2, 4)]
+        rows.append(_pitch(2, "Starter, Sf", gp, 1, top="Bot", game_date=day))
+        rows.append(_pitch(8, "Relief, Sf", gp, 8, top="Bot", game_date=day))
+    # 8/20 경기에 CIN 구원을 잔뜩 — 최근 3경기에 들어가면 안 된다
+    rows.append(_pitch(1, "Starter, Cin", 4, 1, game_date="2026-08-20"))
+    rows += [_pitch(9, "Relief, Cin", 4, i, game_date="2026-08-20")
+             for i in range(2, 10)] * 8
+    out = aggregate_bullpen(_pitches(rows))
+    # 최근 3경기: gp 1·2·3 각 구원 이닝 2,3 = 2구 × 3경기 = 6 (range 2,4 → 2 pitches)
+    assert out["Cincinnati Reds"]["bp_pitches_3d"] == 6
+
+
 def test_starter_innings_average():
     """등판당 서로 다른 이닝 수의 평균 = 평균 이닝 근사."""
     from app.collectors.statcast import starter_innings

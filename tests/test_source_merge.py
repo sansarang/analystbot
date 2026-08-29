@@ -252,3 +252,59 @@ def test_crawler_name_then_official_era_fills():
     assert research["home_pitcher"]["name"] == "양현종"
     assert research["home_pitcher"]["era_season"] == 3.50
     assert "김도영" in research["home_lineup"]["order"]
+
+
+MLB_JG = {"home": "Los Angeles Dodgers", "away": "San Diego Padres",
+          "home_pitcher": "Yoshinobu Yamamoto", "away_pitcher": "Dylan Cease",
+          "game_id": 1,
+          "stats": {"home_pitcher_era": 2.50, "away_pitcher_era": 3.80}}
+
+
+def test_mlb_statsapi_merges_independent_of_weather():
+    """KBO 네이버와 같다 — 날씨가 없어도 선발 이름·ERA가 카드에 올라야 한다."""
+    for weather in ({}, DOME_WEATHER, REAL_WEATHER):
+        research: dict = {}
+        done = merge_source_data(research, MLB_JG, "mlb", {
+            "offense": {"Los Angeles Dodgers": {"xwoba_30d": 0.340}},
+            "pitchers": {"Yoshinobu Yamamoto": {"xwoba_allowed": 0.280, "throws": "R"}},
+            "bullpen": {"Los Angeles Dodgers": {"bp_pitches_3d": 210}},
+            "standings": {"Los Angeles Dodgers": {"rank": 1, "w": 80, "l": 50, "d": 0,
+                                                  "win_pct": 0.615}},
+            "weather": weather,
+        })
+        assert "mlb_statsapi" in done
+        assert research["home_pitcher"]["name"] == "Yoshinobu Yamamoto"
+        assert research["home_pitcher"]["era_season"] == 2.50
+        assert research["home_offense"]["xwoba_30d"] == 0.340
+        assert research["home_usage"]["bp_pitches_3d"] == 210
+        assert research["home_standing"]["rank"] == 1
+
+
+def test_mlb_form_and_confirmed_lineup_merge():
+    research: dict = {}
+    jg = {**MLB_JG, "lineup_status": "none"}
+    done = merge_source_data(research, jg, "mlb", {
+        "form": {"Los Angeles Dodgers": {
+            "score_games": 3, "results_l3": "WWL", "runs_l3": 15,
+            "runs_allowed_l3": 9, "runs_per_game_l3": 5.0,
+        }},
+        "absences": {1: {"lineup": {
+            "confirmed": True,
+            "home": {"batting_order": [f"H{i}" for i in range(9)]},
+            "away": {"batting_order": [f"A{i}" for i in range(9)]},
+        }, "injured": {}}},
+        "weather": {},
+    })
+    assert "mlb_usage" in done
+    assert research["home_usage"]["results_l3"] == "WWL"
+    assert research["home_lineup"]["order"].startswith("H0-")
+    assert jg["lineup_status"] == "confirmed"
+
+
+def test_mlb_pipeline_has_no_heuristic_and_no_odds_key():
+    from pathlib import Path
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    assert "heuristic_model_prob" not in src
+    assert 'active_keys = ["baseball_mlb"]' not in src
+    assert "elif sport == \"mlb\"" in src  # merge_source_data 분기

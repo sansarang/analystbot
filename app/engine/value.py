@@ -1,4 +1,4 @@
-"""가치 계산: implied prob, EV, 하프 켈리(5% 상한), 앙상블, 휴리스틱 모델 확률."""
+"""가치 계산: implied prob, EV, 하프 켈리(5% 상한), 앙상블."""
 
 
 def implied_prob(odds: float) -> float:
@@ -31,17 +31,3 @@ def ensemble(
 ) -> float:
     """p_final = 0.45*p_model + 0.30*p_market + 0.25*p_claude (가중치는 config)."""
     return w_model * p_model + w_market * p_market + w_claude * p_claude
-
-
-def heuristic_model_prob(
-    home_wp: float, away_wp: float,
-    home_era: float | None = None, away_era: float | None = None,
-) -> float:
-    """홈팀 승리 확률 휴리스틱 (플레이스홀더 모델).
-
-    승률 차 + 홈 어드밴티지(+0.04) + 선발 ERA 차 보정. [0.05, 0.95]로 클램프.
-    """
-    p = 0.54 + 0.5 * (home_wp - away_wp)
-    if home_era is not None and away_era is not None:
-        p += 0.03 * (away_era - home_era)
-    return max(0.05, min(0.95, p))

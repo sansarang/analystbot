@@ -5,7 +5,7 @@ import pytest
 from app.engine.consensus import consensus_scores, expert_weight
 from app.engine.judge import Judge
 from app.engine.parlay import best_parlays
-from app.engine.value import devig, ensemble, ev, heuristic_model_prob, implied_prob, kelly
+from app.engine.value import devig, ensemble, ev, implied_prob, kelly
 
 
 def test_ev_known_value():
@@ -36,13 +36,6 @@ def test_ensemble_weights():
     assert ensemble(0.0, 1.0, 0.0) == 0.30
     assert ensemble(0.0, 0.0, 1.0) == 0.25
     assert ensemble(0.6, 0.5, 0.55) == pytest.approx(0.45 * 0.6 + 0.30 * 0.5 + 0.25 * 0.55)
-
-
-def test_heuristic_model_prob_bounds():
-    assert 0.05 <= heuristic_model_prob(0.3, 0.7, 6.0, 2.0) <= 0.95
-    strong_home = heuristic_model_prob(0.65, 0.45, 2.8, 4.5)
-    weak_home = heuristic_model_prob(0.45, 0.65, 4.5, 2.8)
-    assert strong_home > 0.5 > weak_home
 
 
 def test_expert_weight_clamp():

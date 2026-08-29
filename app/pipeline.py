@@ -22,13 +22,17 @@ from app.collectors.base import (
 )
 from app.collectors.football import APIFootballClient
 from app.collectors.football import upsert_games as upsert_soccer_games
-from app.collectors.mlb import MLBClient, upsert_games
-from app.collectors.odds import LEAGUE_LABEL_BY_SPORT, OddsClient, snapshot_odds
+from app.collectors.mlb import (
+    MLBClient, parse_recent_form, parse_standings, upsert_games, _parse_games,
+)
+from app.collectors.odds import (
+    LEAGUE_LABEL_BY_SPORT, OddsClient, SPORT_KEYS, snapshot_odds,
+)
 from app.config import get_settings
 from app.engine.consensus import consensus_scores, load_expert_weights
 from app.engine.judge import Judge
 from app.engine.parlay import best_parlays
-from app.engine.value import devig, ensemble, ev, heuristic_model_prob, implied_prob
+from app.engine.value import devig, ensemble, ev, implied_prob
 from app.notify import notify_api_error
 from app.research.grok import GrokClient
 from app.research.perplexity import PerplexityClient, save_expert_picks
@@ -174,12 +178,22 @@ def _wp(win_pct: dict[str, float], team: str) -> float | None:
 
 
 async def _collect_mlb_stats(client: MLBClient, schedule: dict) -> dict:
-    """팀 승률 + 선발투수 ERA 매핑."""
+    """팀 승률 + 선발투수 ERA + 순위표 + 최근 3경기 폼. 휴리스틱 승률 모델에는 쓰지 않는다."""
+    from datetime import date as date_cls, timedelta
+
     standings = await client.fetch_standings()
-    win_pct: dict[str, float] = {}
-    for record in standings.get("records", []):
-        for tr in record.get("teamRecords", []):
-            win_pct[tr["team"]["name"]] = float(tr["winningPercentage"])
+    id_to_name: dict[int, str] = {}
+    try:
+        teams = await client.fetch_teams()
+        for t in (teams or {}).get("teams") or []:
+            if t.get("id") and t.get("name"):
+                id_to_name[int(t["id"])] = t["name"]
+    except Exception as exc:
+        logger.warning("[pipeline] MLB 팀 명단 조회 실패 — 순위표 짧은 이름 그대로: %s",
+                       exc)
+    table = parse_standings(standings, id_to_name)
+    win_pct = {k: v["win_pct"] for k, v in table.items()
+               if v.get("win_pct") is not None}
 
     pitcher_ids: dict[str, int] = {}
     for day in schedule.get("dates", []):
@@ -196,7 +210,18 @@ async def _collect_mlb_stats(client: MLBClient, schedule: dict) -> dict:
             era[person["fullName"]] = float(stat["era"])
         except (KeyError, IndexError, ValueError):
             continue
-    return {"win_pct": win_pct, "era": era}
+    form: dict[str, dict] = {}
+    days = schedule.get("dates") or []
+    slate = days[0].get("date") if days else None
+    if slate:
+        try:
+            start = (date_cls.fromisoformat(slate) - timedelta(days=14)).isoformat()
+            form = parse_recent_form(
+                await client.fetch_schedule_range(start, slate), before=slate)
+        except Exception as exc:
+            logger.warning("[pipeline] MLB 최근 3경기 조회 실패: %s", exc)
+    return {"elo": None, "win_pct": win_pct, "era": era,
+            "standings": table, "form": form}
 
 
 async def _empty_stats() -> dict:
@@ -435,10 +460,11 @@ def _count_by(values) -> dict:
 # [§9 게이트 ③] 출처는 **수집기가 아니라 원본(origin)** 기준이다.
 #   네이버를 파이썬 수집기와 Go 크롤러가 각각 긁었다고 "2개 소스 일치(교차)"로
 #   세면 **같은 원본이 스스로를 확증**하는 가짜 교차검증이 된다.
-SRC_KBO_OFFICIAL = "official_record"   # koreabaseball.com 기록실·일정
+SRC_KBO_OFFICIAL = "official_record"   # koreabaseball.com 기록실·일정 · statsapi
 SRC_PORTAL = "portal"                  # 네이버 스포츠 · Yahoo!スポーツ
 SRC_WEATHER = "weather_api"            # Open-Meteo (다투는 값이 아니다)
 SRC_NEWS = "news"                      # 스포츠조선 등 기사 — 원문 인용 발췌
+SRC_STATCAST = "statcast"              # Baseball Savant (statsapi와 다른 원본)
 
 
 def _absorb(research: dict, filled: list[str], source: str) -> list[tuple]:
@@ -454,6 +480,125 @@ def _absorb(research: dict, filled: list[str], source: str) -> list[tuple]:
     bad = {d[0] for d in dropped}
     stamp(research, [f for f in (filled or []) if f not in bad], source)
     return dropped
+
+
+def _merge_mlb(research: dict, jg: dict, ctx: dict) -> list[str]:
+    """KBO `elif sport == "kbo"`와 대칭. statsapi 이름·ERA·순위 → Statcast.
+
+    반환: 실행된 병합 이름. 필드 각인은 `_absorb`가 한다.
+    """
+    from app.collectors.statcast import enrich_mlb_research
+
+    done: list[str] = []
+    official: list[str] = []
+    for side in ("home", "away"):
+        name = (jg.get(f"{side}_pitcher") or "").strip()
+        if name:
+            blk = research.setdefault(f"{side}_pitcher", {})
+            if not blk.get("name"):
+                blk["name"] = name
+                official.append(f"{side}_pitcher.name")
+        era = (jg.get("stats") or {}).get(f"{side}_pitcher_era")
+        if era is None and name:
+            era = (ctx.get("era") or {}).get(name)
+        if era is not None:
+            blk = research.setdefault(f"{side}_pitcher", {})
+            if blk.get("era_season") is None:
+                blk["era_season"] = era
+                official.append(f"{side}_pitcher.era_season")
+    if official:
+        _absorb(research, official, SRC_KBO_OFFICIAL)
+        done.append("mlb_statsapi")
+
+    table = ctx.get("standings") or {}
+    st_filled: list[str] = []
+    for side in ("home", "away"):
+        row = table.get(jg.get(side) or "")
+        if not row:
+            continue
+        blk = research.setdefault(f"{side}_standing", {})
+        for k, v in row.items():
+            if v is not None and blk.get(k) is None:
+                blk[k] = v
+                st_filled.append(f"{side}_standing.{k}")
+    if st_filled:
+        _absorb(research, st_filled, SRC_KBO_OFFICIAL)
+        done.append("mlb_standings")
+
+    notes = enrich_mlb_research(research, jg, ctx)
+    savant: list[str] = []
+    for side in ("home", "away"):
+        off = research.get(f"{side}_offense") or {}
+        for k in ("xwoba_30d", "ops", "obp_30d"):
+            if off.get(k) is not None:
+                savant.append(f"{side}_offense.{k}")
+        p = research.get(f"{side}_pitcher") or {}
+        for k in ("xwoba_allowed", "throws", "ip_avg_recent"):
+            if p.get(k) is not None:
+                savant.append(f"{side}_pitcher.{k}")
+    if research.get("park") or research.get("park_factor") is not None:
+        if research.get("park"):
+            savant.append("park")
+        if research.get("park_factor") is not None:
+            savant.append("park_factor")
+    if savant:
+        _absorb(research, savant, SRC_STATCAST)
+        done.append("statcast")
+    if notes:
+        done.append("mlb_enrich")
+
+    usage_f: list[str] = []
+    bullpen = ctx.get("bullpen") or {}
+    for side, key in (("home", "home"), ("away", "away")):
+        b = bullpen.get(jg.get(key)) or {}
+        pitches = b.get("bp_pitches_3d")
+        if pitches is None:
+            continue
+        u = research.setdefault(f"{side}_usage", {})
+        if u.get("bp_pitches_3d") is None:
+            u["bp_pitches_3d"] = pitches
+            usage_f.append(f"{side}_usage.bp_pitches_3d")
+    form = ctx.get("form") or {}
+    for side in ("home", "away"):
+        row = form.get(jg.get(side) or "")
+        if not row:
+            continue
+        u = research.setdefault(f"{side}_usage", {})
+        for k, v in row.items():
+            if v is not None and u.get(k) is None:
+                u[k] = v
+                usage_f.append(f"{side}_usage.{k}")
+    if usage_f:
+        bp_f = [f for f in usage_f if "bp_pitches" in f]
+        form_f = [f for f in usage_f if f not in bp_f]
+        if bp_f:
+            _absorb(research, bp_f, SRC_STATCAST)
+        if form_f:
+            _absorb(research, form_f, SRC_KBO_OFFICIAL)
+        done.append("mlb_usage")
+
+    info = (ctx.get("absences") or {}).get(jg.get("game_id")) or {}
+    lu = info.get("lineup") or {}
+    lu_f: list[str] = []
+    prev_status = jg.get("lineup_status") or "none"
+    if lu.get("confirmed") and prev_status != "conflict":
+        jg["lineup_status"] = "confirmed"
+    elif prev_status == "none" and any(
+            len((lu.get(s) or {}).get("batting_order") or []) for s in ("home", "away")):
+        jg["lineup_status"] = "predicted"
+    for side in ("home", "away"):
+        order = (lu.get(side) or {}).get("batting_order") or []
+        if len(order) < 9:
+            continue
+        blk = research.setdefault(f"{side}_lineup", {})
+        if not blk.get("order"):
+            blk["order"] = "-".join(order)
+            blk.setdefault("source", "statsapi")
+            lu_f.append(f"{side}_lineup.order")
+    if lu_f:
+        _absorb(research, lu_f, SRC_KBO_OFFICIAL)
+        done.append("mlb_lineup")
+    return done
 
 
 def merge_source_data(research: dict, jg: dict, sport: str,
@@ -554,11 +699,13 @@ def merge_source_data(research: dict, jg: dict, sport: str,
         _absorb(research, _ms(research, jg, statcast_data.get("npb_teams") or {}),
                 SRC_KBO_OFFICIAL)
         done.append("npb_stats")
+    elif sport == "mlb":
+        done.extend(_merge_mlb(research, jg, statcast_data))
 
     # [A-1단계] 딥서치가 주던 필드를 **이미 수집한 값으로 직접 산출**한다.
-    #   빈칸만 채운다 — MLB·유럽은 아직 딥서치가 채우므로 덮으면 안 된다.
+    #   빈칸만 채운다 — 축구는 아직 딥서치가 채우므로 덮으면 안 된다.
     #   ⚠️ 소스는 파생이므로 원본 소스를 그대로 각인한다(새 출처가 아니다).
-    if sport in ("kbo", "npb"):
+    if sport in ("kbo", "npb", "mlb"):
         from app.engine.derive import apply as _derive
 
         _absorb(research, _derive(research, jg, statcast_data.get("kbo_usage")),
@@ -611,6 +758,16 @@ async def load_source_bundle(redis, sport: str, date: str) -> dict:
 
         bundle["yahoo"] = await load_yahoo(redis, date) or {}
         bundle["npb_teams"] = await load_npb_stats(redis, date) or {}
+    elif sport == "mlb":
+        from app.collectors.park import load as load_parks
+        from app.collectors.statcast import load as load_statcast
+
+        off, pit, bp, bat, league = await load_statcast(redis, date)
+        bundle.update({
+            "offense": off or {}, "pitchers": pit or {}, "bullpen": bp or {},
+            "batters": bat or {}, "league": league or {},
+            "parks": await load_parks(redis) or {},
+        })
     return bundle
 
 
@@ -734,9 +891,11 @@ async def build_analysis(
         mlb = MLBClient()
         schedule = await mlb.fetch_schedule(date)
         await upsert_games(pool, date, client=mlb, schedule=schedule)
-        ext_ids = [
-            str(g["gamePk"]) for day in schedule.get("dates", []) for g in day.get("games", [])
-        ]
+        parsed = _parse_games(schedule)
+        if include_final:
+            ext_ids = [g["ext_id"] for g in parsed]
+        else:
+            ext_ids = [g["ext_id"] for g in parsed if g["status"] == "scheduled"]
         stats_coro = _collect_mlb_stats(mlb, schedule)
         league = "MLB"
     elif sport in ("kbo", "npb"):
@@ -839,13 +998,10 @@ async def build_analysis(
                 "verdict": {"games": []}, "mode": {"name": settings.report_mode}}
 
     # 배당 조회는 경기가 있는 리그 키만 (크레딧 절약)
-    if sport == "mlb":
-        active_keys = ["baseball_mlb"]
-    elif sport in ("kbo", "npb"):
-        # 🔴 **호출조차 하지 않는다.** 이 두 종목은 배당을 판정에도 표시에도
-        #   쓰지 않는다(#38·#39). 크레딧을 태울 이유도, 크레딧 때문에 죽을
-        #   이유도 없다. 빈 목록이면 `_odds_or_none`이 조회를 건너뛴다.
-        active_keys = []
+    if sport in ("mlb", "kbo", "npb"):
+        # 야구 승부는 배당을 보지 않는다. 언더오버 **라인 숫자만** 가져온다
+        # (`snapshot_odds`가 markets=totals만 요청·적재). 실패해도 λ 기본 라인.
+        active_keys = list(SPORT_KEYS.get(sport) or [])
     else:
         from app.leagues import LEAGUES as _L
 
@@ -889,10 +1045,15 @@ async def build_analysis(
     # [§8-10] 배당 수집 — 종전 미계측. 0건이면 전 마켓이 ⚪(배당 미수집)로 나가는데
     #         그 사실이 어디에도 기록되지 않았다.
     _sched_now = [g for g in games if g.get("status") == "scheduled"]
-    # [Odds 이관] KBO·NPB는 배당을 **쓰지 않는다**. 안 쓰는 것을 "수집 실패"로
-    #   계측하면 매 리포트에 없는 한계가 실린다 — 실제로 "배당 수집(데이터 없음)"이
-    #   KBO 카드 상단에 계속 나갔다(실측 2026-08-27).
-    if active_keys:
+    # 야구는 승부 배당을 쓰지 않는다. 토탈 **라인 숫자**만 가져오므로 0행이어도
+    # λ 기본 라인으로 언더오버를 평가한다 — "배당 수집 실패"로 올리지 않는다.
+    if sport in ("mlb", "kbo", "npb"):
+        await record("토탈 라인", int(_odds_rows or 0), max(1, len(_sched_now)),
+                     cause=None,
+                     detail=f"라인 스냅샷 {_odds_rows or 0}행 / 예정 {len(_sched_now)}경기",
+                     unit="경기", expect_full=False, zero_ok=True,
+                     impact="라인 없으면 λ 기본 라인으로 언더오버를 평가한다")
+    elif active_keys:
         from app.api_guard import is_blocked, is_disabled
 
         _odds_unusable = is_disabled("odds") or await is_blocked("odds")
@@ -901,13 +1062,13 @@ async def build_analysis(
                          cause=None,
                          detail="odds 미사용 또는 크레딧 차단",
                          unit="경기", expect_full=False, zero_ok=True,
-                         impact="배당 없이는 추천 자격(배당 하한)을 판정할 수 없습니다")
+                         impact="배당 표시가 비고 축구 마켓 가격이 빠집니다")
         else:
             await record("배당 수집", int(_odds_rows or 0), max(1, len(_sched_now)),
                          cause=None if _odds_rows else "missing",
                          detail=f"스냅샷 {_odds_rows or 0}행 / 예정 {len(_sched_now)}경기",
                          unit="경기", expect_full=False,
-                         impact="배당 없이는 추천 자격(배당 하한)을 판정할 수 없습니다")
+                         impact="배당 표시가 비고 축구 마켓 가격이 빠집니다")
     # 분모는 **예정 경기**다. 리서치는 scheduled 경기만 조사하므로 전체 경기를
     # 분모로 쓰면 저녁 시간대(진행 중 경기 다수)에 "5/15 실패"처럼 잘못 경보한다.
     # (실측 2026-08-26 10:00: 15경기 중 6경기만 예정이었는데 5/15로 표시됐다)
@@ -964,22 +1125,22 @@ async def build_analysis(
     judge_games = []
     for g in games:
         p_model3 = None
-        if sport == "mlb":
-            p_model = heuristic_model_prob(
-                _wp(stats["win_pct"], g["home"]) or 0.5,
-                _wp(stats["win_pct"], g["away"]) or 0.5,
-                stats["era"].get(g["home_pitcher"]),
-                stats["era"].get(g["away_pitcher"]),
-            )
-            model_valid = True
-        else:
+        if sport == "soccer":
             elo = stats.get("elo")
             p_model3 = elo.probs(g["home"], g["away"], g["league"]) if elo else None
             if p_model3:
                 p_model, model_valid = p_model3[0], True
             else:
                 p_model, model_valid = 0.5, False  # 모델 무효 — 앙상블에서 제외
-        market_probs, best_odds = await _market_probs(pool, g["id"], g["home"], g["away"])
+        else:
+            # 야구(MLB·KBO·NPB) — 모델은 λ 분포. 승률+ERA 휴리스틱 없음.
+            p_model, model_valid = 0.5, False
+        if sport in ("mlb", "kbo", "npb"):
+            # 승부 배당·암시확률은 야구 판정에 넣지 않는다. 잔여 h2h 스냅샷도 무시.
+            market_probs, best_odds = None, {}
+        else:
+            market_probs, best_odds = await _market_probs(
+                pool, g["id"], g["home"], g["away"])
         p_market = round(market_probs[g["home"]], 4) if market_probs and g["home"] in market_probs else None
         pick_rows = await pool.fetch(
             "SELECT expert, site, source_url, pick, reasoning, record "
@@ -1047,9 +1208,16 @@ async def build_analysis(
                 from app.collectors.absences import fetch_for_games as fetch_absences
                 from app.collectors.park import load as load_parks
                 from app.collectors.statcast import load as load_statcast
+                from app.collectors.statcast import refresh as refresh_statcast
                 from app.collectors.weather import fetch_for_games as fetch_weather
 
                 off, pit, bp, bat, league = await load_statcast(redis, date)
+                if not off:
+                    try:
+                        await refresh_statcast(redis, date)
+                        off, pit, bp, bat, league = await load_statcast(redis, date)
+                    except Exception as exc:
+                        logger.warning("[pipeline] Statcast 재수집 실패: %s", exc)
                 # [§2] 수치는 전부 정식 API로 — Perplexity 쿼터와 무관하다.
                 #      실패해도 해당 항목만 비고 파이프라인은 계속 간다.
                 upcoming_rows = [g for g in judge_games if g.get("status") == "scheduled"]
@@ -1067,6 +1235,9 @@ async def build_analysis(
                     "offense": off, "pitchers": pit, "bullpen": bp, "batters": bat,
                     "league": league, "parks": await load_parks(redis),
                     "weather": weather, "absences": absences,
+                    "standings": (stats or {}).get("standings") or {},
+                    "era": (stats or {}).get("era") or {},
+                    "form": (stats or {}).get("form") or {},
                 }
                 logger.info("[pipeline] 정식 API 입력 — 타선 %d팀 / 투수 %d명 / 불펜 %d팀 / "
                             "타자랭킹 %d팀 / 구장 %d개 / 날씨 %d경기 / 결장 %d경기 / "
@@ -1326,6 +1497,18 @@ async def build_analysis(
             _prov_dist.update(_d)
             _jg["research"] = _r
 
+        if sport == "mlb" and redis is not None:
+            from app.collectors.crawler_feed import upsert_snapshot_game
+
+            for _jg in judge_games:
+                if _jg.get("status") != "scheduled":
+                    continue
+                try:
+                    await upsert_snapshot_game(redis, "mlb", date, _jg)
+                except Exception as exc:
+                    logger.warning("[pipeline] MLB 스냅샷 기록 실패 game=%s: %s",
+                                   _jg.get("game_id"), exc)
+
         # [§9 게이트 ③] 라벨 분포를 남긴다.
         #   ⚠️ **단일이 압도적이면 교차검증이 실질적으로 작동하지 않는다는 신호다** —
         #     소스가 사실상 하나뿐이라는 뜻이고, 그 소스가 틀리면 걸러낼 방법이 없다.
@@ -1345,8 +1528,8 @@ async def build_analysis(
     # [§8-22] 빈칸 보충 — 크롤링·정식기록이 못 채운 것만 **짧게** 다시 묻는다.
     #   전체 스키마를 재조회하지 않으므로 쿼터가 남고 채움률도 높다
     #   (실측: 프롬프트가 길수록 모델이 검색을 포기한다 — 6/10 → 0/10).
-    # [A-5단계] **리그별 스위치.** KBO·NPB는 크롤링으로 완전 대체돼 기본 off다
-    #   (딥서치 콜 5 → 0, 2026-08-27 실측). MLB·유럽은 전문가 픽 때문에 on.
+    # [A-5단계] **리그별 스위치.** 야구 3리그는 크롤링·공식 API로 완전 대체돼
+    #   기본 off다. 축구만 전문가 픽 때문에 on.
     if (sport in ("kbo", "npb") and redis is not None
             and settings.deepsearch_enabled(sport)):
         from app.research.crosscheck_sources import missing_fields
@@ -1917,15 +2100,42 @@ async def _attach_cell_verdicts(pool, judge_games: list[dict], sport: str,
                      impact="판정이 0이면 카드에 ▲▼가 없고 사실만 나갑니다")
 
 
+async def _totals_line_numbers(pool: asyncpg.Pool, game_id: int) -> list[float]:
+    """야구 언더오버용 — 스냅샷에서 **라인 숫자만**. 가격·암시확률은 버린다.
+
+    정수 라인은 푸시 문제가 있어 반 점(x.5)만 남긴다 (`_default_total_lines`와 같음).
+    """
+    rows = await pool.fetch(
+        """
+        SELECT DISTINCT line FROM odds_snapshots
+         WHERE game_id = $1 AND market = 'totals' AND line IS NOT NULL
+        """,
+        game_id,
+    )
+    lines = {float(r["line"]) for r in rows
+             if r["line"] is not None and abs(float(r["line"]) % 1 - 0.5) < 1e-9}
+    return sorted(lines)
+
+
 async def _attach_alt_markets(pool: asyncpg.Pool, judge_games: list[dict]) -> None:
     """[7] 핸디캡·토탈 수집 배당 부착 + [A-3] 스냅샷 신선도 라벨.
 
-    배당 조회는 북별 최신 스냅샷을 모으므로 (a)다른 북메이커 (b)마지막 프리게임
+    야구는 토탈 **라인 숫자만** 붙인다. 가격이 없으므로 개장배당 라벨도 없다.
+    축구는 북별 최신 스냅샷을 모으므로 (a)다른 북메이커 (b)마지막 프리게임
     스냅샷 폴백이 이미 내장돼 있다. 다만 그 스냅샷이 오래됐으면 현재가가 아니므로
     '(개장 배당)'으로 표기해 사용자가 구분할 수 있게 한다.
     """
     for jg in judge_games:
         if jg.get("status") != "scheduled":
+            continue
+        sport = jg.get("sport") or ""
+        if sport in ("mlb", "kbo", "npb"):
+            lines = await _totals_line_numbers(pool, jg["game_id"])
+            jg["alt_markets"] = [
+                {"market": "totals", "side": side, "line": line, "odds": None, "p": None}
+                for line in lines for side in ("Over", "Under")
+            ]
+            jg["odds_stale"] = False
             continue
         jg["alt_markets"] = await _alt_market_rows(pool, jg["game_id"], jg["home"], jg["away"])
         newest = await pool.fetchval(
@@ -1982,7 +2192,7 @@ def qualifies(pick: dict, settings=None) -> bool:
     from app.engine.scoring import BASEBALL_SPORTS
 
     s = settings or get_settings()
-    p, odds = pick.get("p"), pick.get("odds")
+    p = pick.get("p")
     need = pick.get("required_prob") or s.min_win_prob
     if pick.get("two_source") is False:      # [6] 2-소스 룰은 추천 자격에만 적용
         return False
@@ -2186,8 +2396,8 @@ def _compute_picks(
 
     [7] 경기별 전 마켓 후보 평가 → jg["market_board"].
     [1][2][3] 승인 규칙(2-소스·괴리 검증·저분산 우선)은 engine.markets._approve.
-    [5] p_final = λ*p_market + (1-λ)*p_ensemble (리그 성숙도 연동 수축).
-    경기 대표 픽 = 승인 후보 중 EV 최대 (없으면 진단용 최고 EV 후보, 미승인 표기).
+    [5] p_final = 0.5*p_model + 0.5*p_claude (시장 가중치 0).
+    경기 대표 픽 = 승인 후보 중 승률 최대 (없으면 h2h, 없으면 보드 최고 승률).
     """
     from app.engine.markets import build_board
 
@@ -2227,8 +2437,8 @@ def _compute_picks(
                            "보드만 구성 (추천 제외)", jg["game_id"],
                            len(jg.get("best_odds") or {}), len(jg.get("alt_markets") or []))
         # [A-2] h2h 배당이 없다고 경기 전체를 죽이지 않는다 — 없는 마켓만 빠진다.
-        #        배당은 행의 가격이다. 앙상블·경기력 조정의 전제가 아니다
-        #        (KBO·NPB는 Odds를 호출하지 않는다).
+        #        배당은 행의 가격이다. 앙상블·경기력 조정의 전제가 아니다.
+        #        야구 승부는 배당을 보지 않는다. 언더오버는 라인 숫자만.
         market = jg.get("market_probs") or {}
 
         # 사이드별 확률: 축구는 무승부 질량 때문에 1-p_home ≠ p_away — 시장 3-way 기준
@@ -2386,6 +2596,7 @@ def _compute_picks(
         if learned:
             jg["p_learned"] = learned
         if dist is not None:
+            jg["model_valid"] = True
             # [§9] λ 값 자체를 스칼라로 남긴다 — LambdaResult는 JSON 캐시에서
             #      default=str로 뭉개져 검증 때 읽을 수 없다.
             jg["lam"] = {"home": dist["lam"].home, "away": dist["lam"].away}
@@ -2436,14 +2647,15 @@ def _compute_picks(
         # [2] 전 마켓 보드 — 판정 유무·배당 유무와 무관하게 항상 전 행을 만든다
         cands = build_board(jg, sport, p_final)
         jg["market_board"] = cands
-        priced = [c for c in cands if c.get("ev") is not None]
-        if not priced:
+        # 대표 픽은 승률로 고른다. EV는 배당이 있어야 나와서, 야구 승부를
+        # "배당 없음 → 픽 없음"으로 죽였다.
+        scored = [c for c in cands if c.get("p") is not None]
+        if not scored:
             continue                       # 대표 픽은 못 뽑지만 보드는 이미 채워졌다
-        approved = [c for c in priced if c.get("approved")]
-        rep = (max(approved, key=lambda c: c["ev"]) if approved
-               else max((c for c in priced if c["market"] == "h2h"),
-                        key=lambda c: c["ev"],
-                        default=max(priced, key=lambda c: c["ev"])))
+        approved = [c for c in scored if c.get("approved")]
+        h2h = [c for c in scored if c["market"] == "h2h"]
+        pool_rep = approved or h2h or scored
+        rep = max(pool_rep, key=lambda c: c["p"])
 
         pick = f"{rep['market']}:{rep['side']}" + (
             f":{rep['line']:g}" if rep.get("line") is not None else "")
@@ -2504,11 +2716,12 @@ def _compute_picks(
         for c in cands:
             if c.get("flags"):
                 logger.warning(
-                    "[pipeline] suspicious pick flagged — %s @ %s | %s odds=%.2f: %s",
-                    jg["away"], jg["home"], c["desc"], c["odds"], "; ".join(c["flags"]),
+                    "[pipeline] suspicious pick flagged — %s @ %s | %s odds=%s: %s",
+                    jg["away"], jg["home"], c["desc"], c.get("odds"),
+                    "; ".join(c["flags"]),
                 )
 
-    picks_out.sort(key=lambda x: x["ev"], reverse=True)
+    picks_out.sort(key=lambda x: x.get("p") or 0, reverse=True)
     # 단식 추천 = **마켓 보드 전체**에서 자격 통과 (조합과 같은 풀).
     # 경기당 대표 픽 1건에서만 뽑으면 자격 있는 다른 마켓이 심사에서 빠진다.
     board = qualified_singles(judge_games, settings)
@@ -2960,7 +3173,12 @@ def _guard_basic(text: str, where: str) -> str:
 NO_MATERIAL_MSG = "최신 데이터 수집에 실패해 분석할 수 없습니다."
 
 # [4] 종목별 용어 — 야구는 라인업 발표, 축구는 킥오프
-LINEUP_MOMENT = {"mlb": "경기 시작 전 라인업 발표", "soccer": "킥오프 직전"}
+LINEUP_MOMENT = {
+    "mlb": "경기 시작 전 라인업 발표",
+    "kbo": "경기 시작 전 라인업 발표",
+    "npb": "경기 시작 전 라인업 발표",
+    "soccer": "킥오프 직전",
+}
 
 _DIGIT_RE = re.compile(r"\d")
 
@@ -3038,13 +3256,14 @@ def _value_candidates(jg: dict, home_kr: str, away_kr: str) -> list[str]:
     h2h = next((c for c in board if c["market"] == "h2h"), None)
     h2h_dead = h2h is not None and h2h.get("grade") == "🔴"
 
-    if grade in ("🟢", "🟡") and odds and prob is not None:
+    if grade in ("🟢", "🟡") and prob is not None:
         lead = "승패는 볼 게 없지만 " if h2h_dead and top["market"] != "h2h" else ""
         tail = "걸 만합니다" if grade == "🟢" else "소액이면 볼 만합니다"
-        out.append(f"걸 만한가? {lead}{desc} @{odds:.2f} — {_times_out_of_ten(prob)} "
+        price = _odds_tag(odds)
+        out.append(f"걸 만한가? {lead}{desc}{price} — {_times_out_of_ten(prob)} "
                    f"이기는 계산. {tail}.")
         if top["market"] != "h2h":
-            out.append(f"걸 만한가? 승패 대신 {desc} @{odds:.2f}가 이 경기 최선입니다 — "
+            out.append(f"걸 만한가? 승패 대신 {desc}{price}가 이 경기 최선입니다 — "
                        f"{_times_out_of_ten(prob)} 적중.")
         return out
 
@@ -3069,13 +3288,13 @@ def _caution_candidates(jg: dict, research: dict, sport: str) -> list[str]:
     if not jg.get("model_valid") and jg.get("p_market") is not None:
         out.append(f"이 리그는 통계 표본이 부족해 시장 확률({jg['p_market']:.0%}) 외에 "
                    f"기댈 숫자가 거의 없습니다.")
-    if sport == "mlb":
+    if sport in ("mlb", "kbo", "npb"):
         st = jg.get("stats") or {}
         hp = st.get("home_pitcher") or (research.get("home_pitcher") or {}).get("name")
         ap = st.get("away_pitcher") or (research.get("away_pitcher") or {}).get("name")
         if hp or ap:
             out.append(f"선발 예고({hp or '?'} vs {ap or '?'})는 "
-                       f"{LINEUP_MOMENT['mlb']}에서 바뀔 수 있습니다.")
+                       f"{LINEUP_MOMENT.get(sport, LINEUP_MOMENT['mlb'])}에서 바뀔 수 있습니다.")
     elif jg.get("starts_at_kst"):
         out.append(f"부상·라인업 변수는 {LINEUP_MOMENT['soccer']}({jg['starts_at_kst']})에 "
                    f"바뀔 수 있습니다.")
@@ -3211,6 +3430,21 @@ def sorted_board(jg: dict) -> list[dict]:
         jg.get("market_board") or [],
         key=lambda c: (-GRADE_RANK.get(c.get("grade"), 0), -(c.get("ev") if c.get("ev") is not None else -9)),
     )
+
+
+def _odds_tag(odds) -> str:
+    """가격이 있으면 ' @1.62'. 야구 승부는 배당을 조회하지 않아 빈 문자열."""
+    try:
+        return f" @{float(odds):.2f}"
+    except (TypeError, ValueError):
+        return ""
+
+
+def _odds_slash(odds) -> str:
+    try:
+        return f" / 배당 {float(odds):.2f}"
+    except (TypeError, ValueError):
+        return ""
 
 
 def board_row(c: dict, confidence: str | None = None) -> str:
@@ -3350,7 +3584,7 @@ def render_game_section(jg: dict, news: str = "") -> str:
         flag_txt = f" ⚠️{ps['flags'][0]}" if ps.get("flags") else ""
         ok_txt = "" if ps.get("approved") else f" [제외: {ps.get('reject_reason')}]"
         lines.append(
-            f"대표 마켓: {ps.get('desc') or _kr(ps['side'])} @{ps['odds']:.2f} — "
+            f"대표 마켓: {ps.get('desc') or _kr(ps['side'])}{_odds_tag(ps.get('odds'))} — "
             f"승률 {ps['p_final']:.0%} (근거: {ps.get('axes') or '?'}){ok_txt}{flag_txt}")
 
     # [2] ⑧ 마켓 보드 — 전 마켓을 **항상** 행으로. 배당이 없어도 행을 지우지 않는다.
@@ -3519,7 +3753,7 @@ def _render_card(analysis: dict) -> str:
         lines.append("⚠️ 금일 리서치 쿼터 소진 — 이후 분석은 캐시 기준")
     # 배당을 쓰지 않는 종목에는 배당 경고를 띄우지 않는다 — 사용자가 고칠 수도
     # 없고 이 리포트와 무관한 경고다.
-    if analysis.get("quota_warning") and analysis.get("sport") not in ("kbo", "npb"):
+    if analysis.get("quota_warning") and analysis.get("sport") not in ("kbo", "npb", "mlb"):
         lines.append("⚠️ 배당 데이터 잔여 쿼터 부족 — 배당 갱신이 지연될 수 있습니다")
     scored = [g for g in scheduled if g.get("p_market") is not None and g.get("p_claude") is not None]
     if scored:
@@ -3597,7 +3831,7 @@ def _render_card(analysis: dict) -> str:
                                  for r in recommended)
                      + (f" — 건당 플랫 {_stake:,}원" if _stake else ""))
         detail.extend(
-            f"{r['desc']}: 승률 {r['p']:.1%} / 배당 {r['odds']:.2f} / "
+            f"{r['desc']}: 승률 {r['p']:.1%}{_odds_slash(r.get('odds'))} / "
             f"근거 {r.get('axes') or '?'} / 판정 신뢰도 {r.get('confidence')}"
             for r in recommended)
     else:
@@ -3724,12 +3958,16 @@ def render_full_reco(analyses: list[dict]) -> str:
     if singles:
         for p in singles:
             stake = f" (권장 {p['stake_krw']:,}원)" if p.get("stake_krw") else ""
-            lines.append(f"· {p.get('desc') or _kr(p['side'])} @{p['odds']:.2f} — "
+            lines.append(f"· {p.get('desc') or _kr(p['side'])}{_odds_tag(p.get('odds'))} — "
                          f"{matchup(p)}, "
-                         f"{_times_out_of_ten(p['p'])} 적중하는 계산이고 배당이 후한 편입니다"
+                         f"{_times_out_of_ten(p['p'])} 적중하는 계산"
+                         f"{'이고 배당이 후한 편입니다' if p.get('odds') else '입니다'}"
                          f" [{p.get('league', '?')} {p['starts_at_kst'][-5:]}]{stake}")
-            detail.append(f"{p.get('desc')}: p_final {p['p']:.1%} / EV {p['ev']:+.1%} / "
-                          f"배당에 깔린 확률 {1 / p['odds']:.1%} / 근거 {p.get('axes') or '?'}")
+            ev_txt = f" / EV {p['ev']:+.1%}" if p.get("ev") is not None else ""
+            implied = (f" / 배당에 깔린 확률 {1 / p['odds']:.1%}"
+                       if p.get("odds") else "")
+            detail.append(f"{p.get('desc')}: p_final {p['p']:.1%}{ev_txt}"
+                          f"{implied} / 근거 {p.get('axes') or '?'}")
     else:
         lines.append("오늘은 배당 대비 이득 기준을 넘는 단식 픽이 없습니다 — 관망 권장")
         # 단식이 없을 때야말로 "왜 없는지"가 상세의 핵심이다.
@@ -3969,7 +4207,7 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             jg["il_source"] = "statsapi"
         state, label = pick_state(lineup["status"])
         jg["pick_state"], jg["pick_state_label"] = state, label
-        if sport in ("kbo", "npb"):
+        if sport in ("kbo", "npb", "mlb"):
             try:
                 bundle = await load_source_bundle(redis, sport, date)
                 merge_source_data(jg.setdefault("research", {}), jg, sport, bundle)
@@ -4137,9 +4375,9 @@ async def _freshness_gate(
     #   크롤러가 이미 10분마다 스냅샷을 비교해 선발 교체·라인업 변경·경기 상태를
     #   **필드 단위로 정확히** 잡고 있다. LLM에게 산문을 비교시키는 것보다
     #   정확하고, 비용이 0이며, 크레딧이 끊겨도 동작한다.
-    #   ⚠️ KBO·NPB만 대체한다 — MLB·유럽은 크롤러 소스가 없어 Grok을 유지한다.
+    #   ⚠️ 야구 3리그는 크롤러·statsapi diff. 축구만 Grok을 유지한다.
     try:
-        if sport in ("kbo", "npb"):
+        if sport in ("kbo", "npb", "mlb"):
             from app.collectors.crawler_feed import load_changes, notable_rows
 
             changes = notable_rows(await load_changes(redis, sport, date))

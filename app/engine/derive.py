@@ -124,9 +124,8 @@ def form_reversal(research: dict, jg: dict) -> list[str]:
 def apply(research: dict, jg: dict, usage_table: dict | None = None) -> list[str]:
     """자체 산출값을 research에 얹는다. 반환: 채운 필드 목록.
 
-    ⚠️ **이미 값이 있으면 덮지 않는다.** MLB·유럽은 아직 딥서치가 이 필드들을
-       채우며(실측: MLB expert_picks 10/15·form_reversal 8/15), 그쪽을 지우면
-       안 된다. 이 함수는 **빈칸만** 채운다.
+    ⚠️ **이미 값이 있으면 덮지 않는다.** 축구는 딥서치가 이 필드를 채울 수 있다.
+       MLB는 statsapi·Statcast가 채운다. 빈칸만 채운다.
     """
     filled = []
     # ⚠️ `bullpen_overused`는 **일부러 채우지 않는다.** (2026-08-27 측정)

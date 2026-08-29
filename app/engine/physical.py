@@ -39,13 +39,13 @@ LIMITS: dict[str, tuple[float, float]] = {
     "woba": (0.0, 0.600),
     "runs_per_game": (0.0, 15.0),
     "runs_allowed_per_game": (0.0, 15.0),
-    # 소모·순위
+    # 소모·순위 — MLB 리그 순위는 1~15, KBO/NPB 1~12. 15를 버리면 중하위 팀이 빈칸.
     "relief_ip_l3": (0.0, 30.0),
     "relief_ip_last": (0.0, 12.0),
     "starter_ip_l3": (0.0, 30.0),
     "relief_batters_l3": (0, 120),
     "pitchers_used_last": (0, 15),
-    "rank": (1, 12),
+    "rank": (1, 15),
     "games_behind": (0.0, 60.0),
     "remaining": (0, 200),
     "park_factor": (0.85, 1.20),

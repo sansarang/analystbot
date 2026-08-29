@@ -19,6 +19,8 @@ def test_plausible_but_high_values_pass():
     assert check("away_pitcher.era_season", 13.5) is None
     assert check("home_offense.ops", 0.788) is None
     assert check("home_standing.rank", 10) is None
+    assert check("home_standing.rank", 15) is None
+    assert check("home_standing.rank", 16) is not None
 
 
 def test_empty_and_unknown_fields_pass():

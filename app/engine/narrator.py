@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 
 NARRATE_BATCH = 5          # 한 호출당 경기 수 (판정과 같은 이유 — 토큰 여유 확보)
 MAX_TOKENS = 8000
+_SPORT_NARRATE = {
+    "mlb": "MLB 야구", "kbo": "KBO 야구", "npb": "NPB 야구",
+}
 
 NARRATIVE_TOOL = {
     "name": "narrative",
@@ -232,7 +235,7 @@ class Narrator:
         for i in range(0, len(targets), NARRATE_BATCH):
             batch = targets[i:i + NARRATE_BATCH]
             payload = {
-                "sport": "MLB 야구" if sport == "mlb" else "축구",
+                "sport": _SPORT_NARRATE.get(sport, "축구"),
                 "games": [
                     _payload_game(g, sanitize_research(g.get("research") or {}, sport)[0])
                     for g in batch

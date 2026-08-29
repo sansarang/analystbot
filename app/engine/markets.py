@@ -144,7 +144,8 @@ def _research_has_team_numbers(jg: dict) -> bool:
 
     def offense(side: str) -> bool:
         blk = rs.get(f"{side}_offense") or {}
-        return any(blk.get(k) is not None for k in ("obp_30d", "obp", "avg", "ops"))
+        return any(blk.get(k) is not None for k in
+                   ("obp_30d", "obp", "avg", "ops", "xwoba_30d"))
 
     def pitcher(side: str) -> bool:
         return _research_pitcher_era(rs, side) is not None
@@ -549,10 +550,14 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
             desc = spread_desc(sport, kr_team(side), line)
         else:
             desc = f"{'오버' if side == 'Over' else '언더'} {line:g}"
-        basis = "시장 기준"
-        if _axis_expert(jg, m, side, line):
-            basis = "시장+전문가"
-        add(m, side, line, desc, alt["odds"], alt["p"], basis)
+        # 야구 토탈은 라인 숫자만 온다(가격 없음). 확률은 λ 분포가 채운다.
+        if alt.get("odds") is None and alt.get("p") is None:
+            basis = "기대득점 분포"
+        else:
+            basis = "시장 기준"
+            if _axis_expert(jg, m, side, line):
+                basis = "시장+전문가"
+        add(m, side, line, desc, alt.get("odds"), alt.get("p"), basis)
 
     if dist is not None:
         probs = dist.get("probs") or {}

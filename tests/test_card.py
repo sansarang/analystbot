@@ -106,3 +106,86 @@ def test_recent3_falls_back_to_form_string_only():
     r = {"home_recent_form": {"form": "WLLWW"}}
     facts = build_side(r, "home")["recent3"].facts
     assert facts == ["최근 폼 WLLWW"]
+
+
+def test_mlb_shaped_research_fills_starter_batting_bullpen_weight():
+    """Statcast·statsapi 키로 5칸 중 4칸이 찬다. 타순 없는 것은 정상."""
+    r = {
+        "home_pitcher": {"name": "Yamamoto", "throws": "R", "era_season": 2.50,
+                         "xwoba_allowed": 0.280},
+        "home_offense": {"xwoba_30d": 0.340},
+        "home_usage": {"bp_pitches_3d": 210},
+        "home_standing": {"rank": 1, "w": 80, "l": 50, "d": 0, "win_pct": 0.615},
+        "away_pitcher": {"name": "Cease", "era_season": 3.80},
+        "away_offense": {"xwoba_30d": 0.310},
+        "away_usage": {"bp_pitches_3d": 180},
+        "away_standing": {"rank": 2, "w": 75, "l": 55, "d": 0, "win_pct": 0.577},
+    }
+    home = build_side(r, "home")
+    assert "Yamamoto" in home["starter"].facts[0]
+    assert "xwOBA" in " ".join(home["batting"].facts)
+    assert "210구" in " ".join(home["bullpen"].facts)
+    assert "3경기" in " ".join(home["bullpen"].facts)
+    assert "3일" not in " ".join(home["bullpen"].facts)
+    assert "1위" in home["weight"].facts[0]
+    card = build_card({"home": "Dodgers", "away": "Padres"}, r)
+    offered = sum(1 for side in ("home", "away")
+                  for c in card[side].values() if c.get("facts"))
+    assert offered >= 8
+
+
+def test_parse_standings_from_mock_payload():
+    import json
+    from pathlib import Path
+
+    from app.collectors.mlb import parse_standings
+
+    raw = json.loads((Path("mock_data/mlb_standings.json")).read_text())
+    table = parse_standings(raw)
+    assert table["Arizona Diamondbacks"]["rank"] == 1
+    assert table["Arizona Diamondbacks"]["w"] == 84
+    assert table["Atlanta Braves"]["rank"] == 2
+
+
+def test_parse_standings_maps_short_name_via_team_id():
+    from app.collectors.mlb import parse_standings
+
+    payload = {"records": [{"teamRecords": [
+        {"team": {"id": 114, "name": "Guardians"},
+         "divisionRank": "1", "wins": 80, "losses": 50,
+         "winningPercentage": "0.615", "gamesBack": "-"},
+    ]}]}
+    table = parse_standings(payload, {114: "Cleveland Guardians"})
+    assert table["Cleveland Guardians"]["rank"] == 1
+    assert table["Guardians"]["w"] == 80
+
+
+def test_parse_recent_form_last_three_completed():
+    from app.collectors.mlb import parse_recent_form
+
+    def game(pk, official, home, away, hs, as_, status="Final"):
+        return {
+            "gamePk": pk, "gameDate": f"{official}T17:10:00Z",
+            "officialDate": official,
+            "status": {"abstractGameState": status},
+            "teams": {
+                "home": {"team": {"name": home}, "score": hs},
+                "away": {"team": {"name": away}, "score": as_},
+            },
+        }
+
+    raw = {"dates": [{"date": "2026-08-28", "games": [
+        game(1, "2026-08-25", "Cleveland Guardians", "Kansas City Royals", 5, 2),
+        game(2, "2026-08-26", "Cleveland Guardians", "Kansas City Royals", 1, 4),
+        game(3, "2026-08-27", "Cleveland Guardians", "Kansas City Royals", 3, 3),
+        game(4, "2026-08-24", "Cleveland Guardians", "Kansas City Royals", 10, 0),
+        game(5, "2026-08-28", "Cleveland Guardians", "Kansas City Royals", 2, 1, "Preview"),
+    ]}]}
+    form = parse_recent_form(raw, before="2026-08-28")
+    cle = form["Cleveland Guardians"]
+    assert cle["score_games"] == 3
+    # 최신순: 27 D, 26 L, 25 W. 24일은 창 밖.
+    assert cle["results_l3"] == "DLW"
+    assert cle["one_run_games_l3"] == 0
+    kc = form["Kansas City Royals"]
+    assert kc["results_l3"] == "DWL"

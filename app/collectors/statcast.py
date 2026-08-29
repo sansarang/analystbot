@@ -140,10 +140,9 @@ def aggregate_team_offense(df, window_games: int = 0) -> dict[str, dict]:
     return out
 
 
-# [§2] 불펜 소모 — 최근 3일 구원 투구 수. 리그 중앙값 대비 이 배수를 넘으면 '과소모'.
-#      그동안 이 신호는 Perplexity 산문에서만 왔다(리서치 없으면 통째로 누락).
-#      Statcast 원본에 이미 있는 값이라 리서치 콜을 쓸 이유가 없다.
-BULLPEN_RECENT_DAYS = 3
+# [§2] 불펜 소모 — 최근 3경기 구원 투구 수. 리그 중앙값 대비 이 배수를 넘으면 '과소모'.
+#      KBO usage는 최근 3경기. 달력 3일은 더블헤더·휴식일에 창이 어긋난다.
+BULLPEN_RECENT_GAMES = 3
 BULLPEN_OVERUSE_RATIO = 1.30
 
 
@@ -215,10 +214,11 @@ def aggregate_batters(df) -> dict[str, list[dict]]:
 
 
 def aggregate_bullpen(df) -> dict[str, dict]:
-    """팀별 불펜 최근 소모 — 3일 투구 수와 과소모 여부.
+    """팀별 불펜 최근 소모 — 최근 3경기 구원 투구 수와 과소모 여부.
 
     선발/구원 구분: 경기별로 그 팀의 **첫 투수**를 선발로 보고 나머지를 불펜으로 센다
-    (Statcast에 선발 플래그가 없다).
+    (Statcast에 선발 플래그가 없다). 키 `bp_pitches_3d`는 KBO 카드와 같은 자리.
+    창은 달력 3일이 아니라 **최근 3경기**다.
     """
     import pandas as pd
 
@@ -236,9 +236,13 @@ def aggregate_bullpen(df) -> dict[str, dict]:
     relief = j[j["pitcher"] != j["starter"]]
     if relief.empty:
         return {}
-    cutoff = d["game_date"].max() - pd.Timedelta(days=BULLPEN_RECENT_DAYS)
-    recent = relief[relief["game_date"] > cutoff]
-    counts = recent.groupby("fld_team").size()
+    per_game = (relief.groupby(["fld_team", "game_pk"])
+                .agg(n=("pitcher", "size"), game_date=("game_date", "max"))
+                .reset_index())
+    per_game = per_game.sort_values(["fld_team", "game_date"],
+                                    ascending=[True, False])
+    last = per_game.groupby("fld_team").head(BULLPEN_RECENT_GAMES)
+    counts = last.groupby("fld_team")["n"].sum()
     if counts.empty:
         return {}
     median = float(counts.median())
@@ -470,7 +474,7 @@ def merge_into_research(research: dict, jg: dict, offense: dict, pitchers: dict,
         over = [(label, b) for label, b in pair if b.get("bp_overused")]
         if len(over) == 1:   # 양쪽 다 과소모면 상대적 이점이 없다 → 표기하지 않는다
             research["bullpen_overused"] = over[0][0]
-            filled.append(f"불펜 과소모 {over[0][0]} ({over[0][1]['bp_pitches_3d']}구/3일)")
+            filled.append(f"불펜 과소모 {over[0][0]} ({over[0][1]['bp_pitches_3d']}구/3경기)")
     # [§2] 파크팩터 — statsapi 기반 자체 산출값
     if parks:
         from app.collectors.park import merge_into_research as merge_park

@@ -14,13 +14,12 @@ from app.engine.coverage import (
 
 
 def test_kbo_npb_have_no_expert_axis():
-    """실측(2026-08-27): KBO expert_picks 0/5 · NPB 1/6 vs MLB 10/15 · 축구 3/3."""
-    for sport in ("kbo", "npb"):
+    """실측(2026-08-27): KBO expert_picks 0/5 · NPB 1/6. MLB는 2026-08-28 동일 선언."""
+    for sport in ("kbo", "npb", "mlb"):
         assert "expert_picks" in uncollected(sport)
         assert available_axes(sport) == ("data", "model")
-    for sport in ("mlb", "soccer"):
-        assert uncollected(sport) == ()
-        assert available_axes(sport) == ALL_AXES
+    assert uncollected("soccer") == ()
+    assert available_axes("soccer") == ALL_AXES
 
 
 def test_reduced_axes_raise_the_bar_explicitly():
@@ -36,18 +35,22 @@ def test_reduced_axes_raise_the_bar_explicitly():
 
 
 def test_full_axis_sports_keep_the_two_of_three_rule():
-    assert qualifies_axes("mlb", {"expert": True, "model": True}) is True
+    assert qualifies_axes("soccer", {"expert": True, "model": True}) is True
+    assert qualifies_axes("soccer", {"data": True, "model": True}) is True
+    assert qualifies_axes("soccer", {"model": True}) is False
+    assert qualifies_axes("soccer", {"expert": True, "expert_strong": True}) is True
+    # MLB는 KBO와 같이 살아 있는 축(data+model)이 전부 같아야 한다
     assert qualifies_axes("mlb", {"data": True, "model": True}) is True
-    assert qualifies_axes("mlb", {"model": True}) is False
-    # 전문가 다수 지지는 2축으로 센다 (종전 규율 유지)
-    assert qualifies_axes("mlb", {"expert": True, "expert_strong": True}) is True
+    assert qualifies_axes("mlb", {"data": True, "model": False}) is False
+    assert qualifies_axes("mlb", {"expert": True, "model": True}) is False
 
 
 def test_note_tells_the_user_what_the_pick_rests_on():
     """사용자가 이 픽이 어떤 근거 위에 있는지 알아야 한다."""
     note = coverage_note("kbo")
     assert "전문가 픽" in note and "미수집" in note and "2축" in note
-    assert coverage_note("mlb") == ""
+    assert coverage_note("mlb") == coverage_note("kbo")
+    assert coverage_note("soccer") == ""
 
 
 # ---------------------------------------------------------------- [A-5] 스위치
@@ -58,7 +61,7 @@ def _st(**kw):
 
 def test_deepsearch_switch_defaults_to_crawl_only_for_kbo_npb():
     s = _st()
-    assert s.deepsearch_enabled("mlb") is True
+    assert s.deepsearch_enabled("mlb") is False, "MLB는 statsapi·Statcast 완결"
     assert s.deepsearch_enabled("soccer") is True
     assert s.deepsearch_enabled("kbo") is False, "KBO는 크롤링으로 완전 대체됐다"
     assert s.deepsearch_enabled("npb") is False

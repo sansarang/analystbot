@@ -166,13 +166,15 @@ async def test_pipeline_end_to_end_card(db_pool, redis_client):
     assert basic_layer_violations(card) == []
     # 수집·판정 부산물 + 심층 데이터는 분석 캐시에
     assert await db_pool.fetchval("SELECT count(*) FROM games WHERE sport='mlb'") == 15
-    assert await db_pool.fetchval("SELECT count(*) FROM expert_picks") > 0
+    # MLB 전문가는 미수집(KBO·NPB와 같음). 딥서치를 안 부른다.
+    assert await db_pool.fetchval("SELECT count(*) FROM expert_picks") == 0
     cached = await redis_client.get(f"analysis:mlb:{DATE}")
     assert cached is not None
     import json as _json
 
     analysis = _json.loads(cached)
-    assert analysis["games"] and analysis["sources"]
+    assert analysis["games"]
+    assert "sources" in analysis  # MLB는 전문가·Grok이 꺼져 빈 목록이 정상
 
 
 async def test_recommended_picks_meet_win_prob_and_odds_floor(db_pool, redis_client):
@@ -290,13 +292,12 @@ async def test_pipeline_survives_research_failure(db_pool, redis_client, monkeyp
     card = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
     assert "15경기" in card and "📋 경기별 마켓" in card
     assert await db_pool.fetchval("SELECT count(*) FROM expert_picks") == 0
-    # 실패 경기는 '리서치 미완'으로 마킹되어 첫 요청 시 온디맨드 보완 대상이 된다
     import json as _json
 
     analysis = _json.loads(await redis_client.get(f"analysis:mlb:{DATE}"))
-    assert all(g.get("research_status") == "missing" for g in analysis["games"]
-               if g["status"] == "scheduled")
-    assert "⚠️ 일부 경기 새벽 데이터 기준" in card
+    # MLB 딥서치는 꺼져 있다(`off`). 실패(`missing`)와 끈 것을 섞지 않는다.
+    assert all(g.get("research_status") in ("off", "missing")
+               for g in analysis["games"] if g["status"] == "scheduled")
 
 
 async def test_pipeline_uses_cache(db_pool, redis_client):

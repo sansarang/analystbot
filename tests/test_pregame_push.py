@@ -24,16 +24,16 @@ from app.engine.pregame_push import (
 )
 
 
-def test_only_kbo_npb():
-    assert SPORTS == ("kbo", "npb")
-    assert "mlb" not in SPORTS and "soccer" not in SPORTS
+def test_only_kbo_npb_mlb():
+    assert SPORTS == ("kbo", "npb", "mlb")
+    assert "soccer" not in SPORTS
 
 
 def test_deadlines_are_30_and_15():
     assert STAGE1_DEADLINE_MIN == 30
     assert HARD_TARGET_MIN == 15
     assert NPB_FINISH_MIN == 15
-    assert SEND_OPEN_MIN == {"kbo": 70, "npb": 40}
+    assert SEND_OPEN_MIN == {"kbo": 70, "npb": 40, "mlb": 180}
 
 
 def test_header_is_stage_not_clock():
@@ -58,6 +58,15 @@ def test_send_window_opens_at_1720():
     assert in_send_window("kbo", kbo, now - timedelta(minutes=1)) is False  # T-71
     assert in_send_window("npb", npb, now - timedelta(minutes=1)) is False  # T-41
     assert in_send_window("kbo", now - timedelta(minutes=1), now) is False
+
+
+def test_mlb_send_window_is_180():
+    now = datetime(2026, 8, 29, 0, 10, tzinfo=UTC)  # KST 09:10
+    start = now + timedelta(minutes=180)
+    assert in_send_window("mlb", start, now) is True
+    assert in_send_window("mlb", start, now - timedelta(minutes=1)) is False
+    assert in_send_window("mlb", now - timedelta(minutes=1), now) is False
+    assert analysis_open("mlb", start, now) is True
 
 
 def test_npb_analysis_closes_at_1745_send_does_not():

@@ -30,7 +30,7 @@
 | `max_win_prob_soccer` / `min_win_prob_soccer` | **0.72 / 0.10** | 3-way라 하한 비대칭(원정 승은 낮게 나올 수 있다) |
 | `max_edge_vs_market` | **0.05** | Starlizard도 1~2%. 5% 초과 = 데이터 오류 |
 | `min_win_prob` (추천 자격) | 0.58 | 목표 정확도 하단 |
-| `min_odds` (추천 자격) | 1.55 | — |
+| `min_odds` | (폐기) | 시장 기준. 야구 승부는 배당을 조회하지 않음 |
 | `signal_green_prob` | 0.62 | 🟢 기준 |
 | `away_prob_penalty` | 0.05 | 분데스리가 연구: 원정 ROI −17% |
 | `prob_cap_alert_n` | 3 | 하루 3건 초과 시 "모델 점검 필요" |

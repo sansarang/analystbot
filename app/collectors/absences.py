@@ -131,10 +131,12 @@ async def fetch_for_games(games: list[dict], client=None) -> dict[int, dict]:
     로스터는 **팀 단위로 캐시**한다 — 15경기면 boxscore 15콜 + 로스터 최대 30콜.
     statsapi는 무료·무인증이라 Perplexity 쿼터와 무관하다.
     """
-    from app.collectors.lineups import MLBLineupClient, parse_boxscore, parse_injured
+    from app.collectors.lineups import (
+        MLBLineupClient, parse_boxscore, parse_injured, parse_roster_names,
+    )
 
     client = client or MLBLineupClient()
-    roster_cache: dict[int, list[dict]] = {}
+    roster_cache: dict[int, dict] = {}
     out: dict[int, dict] = {}
     for g in games:
         gid, ext = g.get("game_id") or g.get("id"), g.get("ext_id")
@@ -152,11 +154,18 @@ async def fetch_for_games(games: list[dict], client=None) -> dict[int, dict]:
                 continue
             if team_id not in roster_cache:
                 try:
-                    roster_cache[team_id] = parse_injured(await client.fetch_roster(team_id))
+                    raw = await client.fetch_roster(team_id)
+                    roster_cache[team_id] = {
+                        "injured": parse_injured(raw),
+                        "names": parse_roster_names(raw),
+                    }
                 except Exception as exc:
                     logger.warning("[absences] roster 실패 team=%s: %s", team_id, exc)
-                    roster_cache[team_id] = []
-            if roster_cache[team_id]:
-                injured[side] = roster_cache[team_id]
+                    roster_cache[team_id] = {"injured": [], "names": {}}
+            if roster_cache[team_id]["injured"]:
+                injured[side] = roster_cache[team_id]["injured"]
+            blk = parsed.setdefault(side, {})
+            blk["names"] = {**roster_cache[team_id]["names"],
+                            **(blk.get("names") or {})}
         out[gid] = {"lineup": parsed, "injured": injured}
     return out

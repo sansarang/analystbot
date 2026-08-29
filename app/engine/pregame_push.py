@@ -1,12 +1,16 @@
-"""KBO·NPB 당일 예측 카드 — 경기마다 1차 발송, 라인업 변동 시 재발송.
+"""KBO·NPB·MLB 당일 예측 카드 — 경기마다 1차 발송, 라인업 변동 시 재발송.
 
 사용자 지시(2026-08-28):
   · NPB 크롤·분석은 시작 15분 전(18:00 → **17:45**)에 끝낸다. 그 시각 이후
     NPB 재판정은 하지 않는다. 이미 판정된 카드 발송은 시작 전까지.
   · 타순이 뜨면 그 경기만 바로 판정하고, 끝나는 대로 보낸다. 슬레이트를 기다리지 않는다.
   · 선발·타순이 바뀌면 다시 보낸다. predicted/confirmed 시계만 지난 것은 재판정 사유가 아니다.
-  · 캐시·판정이 없으면 빈 카드를 보내지 않는다. MLB·축구는 요청할 때만.
+  · 캐시·판정이 없으면 빈 카드를 보내지 않는다. 축구는 요청할 때만.
   · 이 모듈은 Judge·파이프라인을 호출하지 않는다. 이미 판정된 캐시만 보낸다.
+
+사용자 지시(2026-08-29): MLB도 KBO·NPB와 같은 자동 발송. 사이트만 statsapi.
+  캐시 키 날짜는 미국 동부 슬레이트(`mlb_slate_date`). 발송 창은 라인업 공시
+  3시간 전(`lineup_lead_mlb` = 180분).
 """
 
 from __future__ import annotations
@@ -19,6 +23,7 @@ from app import notify as _notify_mod
 from app.engine.lineup_timing import _parse
 from app.pipeline import (
     DETAIL_SEP,
+    mlb_slate_date,
     render_game_easy,
     today_kst,
 )
@@ -26,16 +31,21 @@ from app.collectors.crawler_feed import load_snapshot, mark_cancelled_games
 
 logger = logging.getLogger(__name__)
 
-SPORTS = ("kbo", "npb")
+SPORTS = ("kbo", "npb", "mlb")
 STAGE1_DEADLINE_MIN = 30
 # NPB 18:00 → 17:45. 경기 시각이 다르면 그 경기의 시작 15분 전.
 NPB_FINISH_MIN = 15
 HARD_TARGET_MIN = NPB_FINISH_MIN
-# 17:20부터 보내기 시작 (KBO 18:30=T-70, NPB 18:00=T-40). 14:00 카드는 막는다.
-SEND_OPEN_MIN = {"kbo": 70, "npb": 40}
+# KBO 18:30=T-70, NPB 18:00=T-40, MLB 라인업 공시 3시간 전=T-180.
+SEND_OPEN_MIN = {"kbo": 70, "npb": 40, "mlb": 180}
 SENT_TTL_SEC = 12 * 3600
-SPORT_LABEL = {"kbo": "KBO", "npb": "NPB"}
+SPORT_LABEL = {"kbo": "KBO", "npb": "NPB", "mlb": "MLB"}
 TELEGRAM_LIMIT = 4096
+
+
+def cache_date(sport: str) -> str:
+    """분석 캐시 키의 날짜. MLB는 미국 동부 슬레이트, 나머지는 KST 오늘."""
+    return mlb_slate_date() if sport == "mlb" else today_kst()
 
 
 def card_sig_key(game_id: int) -> str:
@@ -213,9 +223,10 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
 
 
 async def run_pregame_push(pool, redis, now=None) -> dict:
-    """오늘 창 안의 KBO·NPB를 경기마다 발송. 파이프라인은 돌리지 않는다."""
+    """오늘 창 안의 KBO·NPB·MLB를 경기마다 발송. 파이프라인은 돌리지 않는다."""
     now = now or datetime.now(UTC)
-    date_s = today_kst()
+    kst_date = today_kst()
+    mlb_date = mlb_slate_date()
     rows = await pool.fetch(
         """
         SELECT id, sport, home, away, starts_at, league
@@ -223,16 +234,20 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
         WHERE sport = ANY($1::text[])
           AND status = 'scheduled'
           AND starts_at > now()
-          AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $2
+          AND (
+            (sport <> 'mlb' AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $2)
+            OR (sport = 'mlb' AND (starts_at AT TIME ZONE 'America/New_York')::date = $3)
+          )
         ORDER BY starts_at, id
         """,
         list(SPORTS),
-        date.fromisoformat(date_s),
+        date.fromisoformat(kst_date),
+        date.fromisoformat(mlb_date),
     )
     sent = skipped = failed = revised = 0
     cancelled_ids: set[int] = set()
     for sport in SPORTS:
-        snap = await load_snapshot(redis, sport, date_s)
+        snap = await load_snapshot(redis, sport, cache_date(sport))
         sport_rows = [r for r in rows if r["sport"] == sport]
         cancelled_ids.update(await mark_cancelled_games(pool, sport_rows, snap))
     for r in rows:
@@ -241,7 +256,7 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
             skipped += 1
             logger.info("[pregame] %s game=%s 취소 — 발송 생략", r["sport"], gid)
             continue
-        result = await send_game_prediction(redis, r, date_s, now=now)
+        result = await send_game_prediction(redis, r, cache_date(r["sport"]), now=now)
         if result == "sent":
             sent += 1
         elif result == "revised":

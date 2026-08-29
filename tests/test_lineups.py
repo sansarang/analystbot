@@ -22,8 +22,11 @@ from app.collectors.lineups import (
 
 def _boxscore(order_n: int = 9, home_starter="Jose Ureña", away_starter="Gavin Williams"):
     def team(starter, n):
-        players = {f"ID{i}": {"person": {"fullName": f"Batter {i}"}} for i in range(1, n + 1)}
-        players["ID900"] = {"person": {"fullName": starter}}
+        players = {
+            f"ID{i}": {"person": {"id": i, "fullName": f"Batter {i}"}}
+            for i in range(1, n + 1)
+        }
+        players["ID900"] = {"person": {"id": 900, "fullName": starter}}
         return {"players": players,
                 "battingOrder": [str(i) for i in range(1, n + 1)],
                 "pitchers": ["900"],
@@ -45,6 +48,26 @@ def test_parse_extracts_starter_order_and_scratches():
     assert p["home"]["starter"] == "Jose Ureña"
     assert len(p["home"]["batting_order"]) == 9
     assert "Mike Trout" in p["home"]["scratches"]
+
+
+def test_parse_boxscore_names_dict_maps_id_to_fullname():
+    p = parse_boxscore(_boxscore(9))
+    assert p["home"]["names"][1] == "Batter 1"
+    assert p["home"]["names"][900] == "Jose Ureña"
+
+
+def test_absence_uses_names_dict_not_hash_id():
+    from app.collectors.absences import from_lineup
+
+    sentences = from_lineup(
+        "Cleveland Guardians",
+        [{"id": 99, "pa": 40}, {"id": 1, "pa": 30}],
+        [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        {99: "José Ramírez", 1: "Batter 1"},
+    )
+    assert len(sentences) == 1
+    assert "José Ramírez" in sentences[0]
+    assert "선수 #" not in sentences[0]
 
 
 # ---------------------------------------------------------------- 소스 불일치

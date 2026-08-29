@@ -1,9 +1,10 @@
-"""[Odds 이관] KBO·NPB는 배당 API 없이 완주해야 한다.
+"""[Odds] 야구 일정은 Odds API 없이, 언더오버는 토탈 라인만.
 
 🔴 실사고 2026-08-27: Odds 크레딧이 마르자 KBO 응답 전체가
    "⚠️ odds API 사용량/크레딧이 소진되어 분석을 완료하지 못했습니다" 한 줄로
-   대체됐다. KBO는 배당을 판정에도 표시에도 쓰지 않는데(#38·#39) 일정 소스만
-   Odds였기 때문이다. 이 파일은 그 의존이 되살아나지 않게 고정한다.
+   대체됐다. 일정 소스만 Odds였기 때문이다. 일정 분기는 그대로 Odds를 부르지 않는다.
+
+승부는 배당을 쓰지 않는다. 언더오버만 라인 숫자(8.5 등)를 가져온다.
 """
 import ast
 import pathlib
@@ -27,13 +28,22 @@ def test_kbo_npb_branch_does_not_call_the_odds_api():
     assert "upsert_schedule" in branch, "공식 일정 소스가 배선되지 않았다"
 
 
-def test_kbo_npb_request_no_odds_keys():
-    """배당 조회 대상 리그가 비어 있어야 API 호출 자체가 없다."""
-    src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
-    i = src.index('    elif sport in ("kbo", "npb"):\n        # 🔴 **호출조차')
-    block = src[i:src.index("    else:", i)]
-    assert "active_keys = []" in block
+def test_baseball_odds_keys_are_totals_lines_only():
+    """야구는 Odds를 호출하되 승부 배당이 아니라 토탈 라인만."""
+    from app.collectors.odds import odds_markets_for
 
+    src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
+    i = src.index('    if sport in ("mlb", "kbo", "npb"):')
+    block = src[i:src.index("    else:", i)]
+    assert "SPORT_KEYS" in block
+    assert "active_keys = []" not in block
+    assert 'active_keys = ["baseball_mlb"]' not in src
+    for sport in ("mlb", "kbo", "npb"):
+        assert odds_markets_for(sport) == "totals"
+    assert odds_markets_for("soccer") == "h2h,spreads,totals"
+
+    snap = (ROOT / "app/collectors/odds.py").read_text(encoding="utf-8")
+    assert 'market.get("key") != "totals"' in snap
 
 def test_odds_snapshot_is_skipped_when_no_keys():
     src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
@@ -87,13 +97,13 @@ def test_kbo_card_shows_no_odds_warnings():
     """🔴 안 쓰는 배당의 경고를 띄우면 사용자가 고칠 수 없는 잡음이 된다."""
     from app.pipeline import _render_card, data_limitation_line
 
-    out = _render_card({"date": "2026-08-27", "sport": "kbo", "games": [],
-                        "picks": [], "recommended": [], "quota_warning": True})
-    assert "배당 데이터 잔여 쿼터" not in out
-    # MLB에서는 여전히 띄운다 — 거기서는 실제로 배당을 쓴다
-    mlb = _render_card({"date": "2026-08-27", "sport": "mlb", "games": [],
-                        "picks": [], "recommended": [], "quota_warning": True})
-    assert "배당 데이터 잔여 쿼터" in mlb
+    for sport in ("kbo", "npb", "mlb"):
+        out = _render_card({"date": "2026-08-27", "sport": sport, "games": [],
+                            "picks": [], "recommended": [], "quota_warning": True})
+        assert "배당 데이터 잔여 쿼터" not in out
+    soccer = _render_card({"date": "2026-08-27", "sport": "soccer", "games": [],
+                           "picks": [], "recommended": [], "quota_warning": True})
+    assert "배당 데이터 잔여 쿼터" in soccer
 
 
 def test_odds_stage_is_not_recorded_without_odds_leagues():
@@ -104,3 +114,113 @@ def test_odds_stage_is_not_recorded_without_odds_leagues():
            / "app/pipeline.py").read_text(encoding="utf-8")
     i = src.index('await record("배당 수집"')
     assert "if active_keys:" in src[i - 400:i], "배당 계측이 무조건 실행된다"
+
+
+def test_baseball_never_loads_h2h_market_probs():
+    src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
+    assert "market_probs, best_odds = None, {}" in src
+    fn = src[src.index("def _compute_picks"):src.index("picks_out.sort")]
+    assert 'c.get("ev") is not None' not in fn
+    assert 'c.get("p") is not None' in fn
+
+
+@pytest.mark.asyncio
+async def test_mlb_snapshot_drops_h2h_even_if_api_returns_it(db_pool):
+    """요청 필터가 깨져도 적재 단계에서 h2h를 버린다."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.collectors.odds import snapshot_odds
+
+    now = datetime.now(UTC) + timedelta(days=1)
+    gid = await db_pool.fetchval(
+        "INSERT INTO games (sport, league, ext_id, starts_at, home, away) "
+        "VALUES ('mlb', 'MLB', 'drop-h2h', $1, 'Home Nine', 'Away Nine') RETURNING id",
+        now,
+    )
+
+    class Fake:
+        mock = False
+        last_headers: dict = {}
+
+        async def fetch_odds(self, sport_key, markets=None):
+            return [{
+                "home_team": "Home Nine", "away_team": "Away Nine",
+                "commence_time": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "bookmakers": [{"key": "dk", "markets": [
+                    {"key": "h2h", "outcomes": [
+                        {"name": "Home Nine", "price": 1.5},
+                        {"name": "Away Nine", "price": 2.6}]},
+                    {"key": "totals", "outcomes": [
+                        {"name": "Over", "price": 1.91, "point": 8.5},
+                        {"name": "Under", "price": 1.91, "point": 8.5},
+                    ]},
+                ]}],
+            }]
+
+    n = await snapshot_odds(db_pool, "mlb", client=Fake(), only_keys=["baseball_mlb"])
+    assert n == 2  # 8.5 Over/Under. h2h 2행은 버린다.
+    markets = await db_pool.fetch(
+        "SELECT market, line FROM odds_snapshots WHERE game_id = $1", gid)
+    assert {r["market"] for r in markets} == {"totals"}
+    assert "h2h" not in {r["market"] for r in markets}
+
+
+@pytest.mark.asyncio
+async def test_totals_line_numbers_ignore_price_and_integer_lines(db_pool):
+    from datetime import UTC, datetime, timedelta
+
+    from app.pipeline import _attach_alt_markets, _totals_line_numbers
+
+    now = datetime.now(UTC) + timedelta(days=1)
+    gid = await db_pool.fetchval(
+        "INSERT INTO games (sport, league, ext_id, starts_at, home, away, status) "
+        "VALUES ('mlb', 'MLB', 'lines-only', $1, 'H', 'A', 'scheduled') RETURNING id",
+        now,
+    )
+    await db_pool.execute(
+        "INSERT INTO odds_snapshots (game_id, book, market, side, line, odds) VALUES "
+        "($1, 'dk', 'totals', 'Over', 8.5, 1.91),"
+        "($1, 'dk', 'totals', 'Under', 8.5, 1.91),"
+        "($1, 'dk', 'totals', 'Over', 9.0, 1.80),"
+        "($1, 'dk', 'h2h', 'H', NULL, 1.70)",
+        gid,
+    )
+    assert await _totals_line_numbers(db_pool, gid) == [8.5]
+    jg = {"game_id": gid, "sport": "mlb", "status": "scheduled",
+          "home": "H", "away": "A"}
+    await _attach_alt_markets(db_pool, [jg])
+    assert {(m["side"], m["line"], m["odds"], m["p"]) for m in jg["alt_markets"]} == {
+        ("Over", 8.5, None, None), ("Under", 8.5, None, None),
+    }
+
+
+def test_odds_formatters_and_value_line_tolerate_missing_price():
+    """야구 승부는 배당이 없다. 렌더가 @None 으로 죽으면 안 된다."""
+    from app.pipeline import _odds_slash, _odds_tag, _value_candidates, render_game_section
+
+    assert _odds_tag(None) == ""
+    assert _odds_tag(1.62) == " @1.62"
+    assert _odds_slash(None) == ""
+    lines = _value_candidates(
+        {"market_board": [
+            {"market": "h2h", "side": "H", "desc": "홈 승", "odds": None,
+             "p": 0.64, "grade": "🟢", "approved": True},
+        ], "home": "H", "away": "A"},
+        "홈", "원정",
+    )
+    assert any("걸 만합니다" in x for x in lines)
+    assert all("@None" not in x for x in lines)
+
+    out = render_game_section({
+        "game_id": 1, "sport": "mlb", "home": "H", "away": "A",
+        "league": "MLB", "status": "scheduled", "starts_at_kst": "08/29 08:00",
+        "best_odds": {},
+        "research": {"home_recent_form": {"form": "WWL"},
+                     "away_recent_form": {"form": "LWW"}},
+        "pick_summary": {"side": "H", "desc": "홈 승", "odds": None,
+                         "p_final": 0.60, "ev": None, "approved": True,
+                         "axes": "실데이터+모델"},
+        "market_board": [],
+    })
+    assert "대표 마켓: 홈 승" in out
+    assert "@None" not in out

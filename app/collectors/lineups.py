@@ -52,6 +52,21 @@ class MLBLineupClient(BaseAPIClient):
 IL_CODES = ("D7", "D10", "D15", "D60", "DL")   # statsapi 부상자 리스트 코드
 
 
+def parse_roster_names(roster: dict) -> dict[int, str]:
+    """로스터 전원 id→이름. 결장 대조가 Statcast 타석 id를 이름으로 바꿀 때 쓴다."""
+    out: dict[int, str] = {}
+    for entry in (roster or {}).get("roster") or []:
+        person = entry.get("person") or {}
+        pid, name = person.get("id"), (person.get("fullName") or "").strip()
+        if pid is None or not name:
+            continue
+        try:
+            out[int(pid)] = name
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
 def parse_injured(roster: dict) -> list[dict]:
     """로스터에서 부상자만 추출 → [{name, position, status}]."""
     out = []
@@ -98,12 +113,25 @@ def parse_boxscore(data: dict) -> dict:
         team = teams.get(side) or {}
         players = team.get("players") or {}
         order_ids = team.get("battingOrder") or []
-        names, starter = [], None
+        order_names, starter = [], None
+        id_names: dict[int, str] = {}
+        for key, pdata in players.items():
+            person = (pdata or {}).get("person") or {}
+            nm = (person.get("fullName") or "").strip()
+            pid = person.get("id")
+            if pid is None:
+                raw = str(key).replace("ID", "")
+                pid = int(raw) if raw.isdigit() else None
+            if pid is not None and nm:
+                try:
+                    id_names[int(pid)] = nm
+                except (TypeError, ValueError):
+                    pass
         for pid in order_ids:
             key = pid if str(pid).startswith("ID") else f"ID{pid}"
             person = (players.get(key) or {}).get("person") or {}
             if person.get("fullName"):
-                names.append(person["fullName"])
+                order_names.append(person["fullName"])
         for pid in team.get("pitchers") or []:
             key = pid if str(pid).startswith("ID") else f"ID{pid}"
             person = (players.get(key) or {}).get("person") or {}
@@ -115,10 +143,11 @@ def parse_boxscore(data: dict) -> dict:
         for note in team.get("info") or []:
             if str(note.get("label", note.get("title", ""))).upper().startswith("NOT"):
                 scratches += [f.get("value", "") for f in note.get("fieldList") or []]
-        out[side] = {"starter": starter, "batting_order": names,
+        out[side] = {"starter": starter, "batting_order": order_names,
                      # id로도 남긴다 — 결장 판정은 이름이 아니라 id로 대조한다
                      "batting_order_ids": [int(str(p).replace("ID", "")) for p in order_ids
                                            if str(p).replace("ID", "").isdigit()],
+                     "names": id_names,
                      "scratches": scratches,
                      "team_id": ((team.get("team") or {}).get("id"))}
     out["confirmed"] = all(len(out[s]["batting_order"]) >= 9 for s in ("home", "away"))
@@ -156,10 +185,12 @@ async def save_lineup(pool: asyncpg.Pool, game_id: int, side: str, status: str,
 
 
 async def refresh_mlb_lineup(pool: asyncpg.Pool, game: dict,
-                             client: MLBLineupClient | None = None) -> dict:
+                             client: MLBLineupClient | None = None,
+                             redis=None, date: str | None = None) -> dict:
     """경기 1건의 라인업을 갱신하고 상태를 반환.
 
     반환: {status, changed: bool, notes: [str], starters: {home, away}}
+    redis·date가 있으면 KBO 크롤러와 같은 `crawl:mlb:{date}:latest`에 쓴다.
     """
     client = client or MLBLineupClient()
     try:
@@ -217,6 +248,45 @@ async def refresh_mlb_lineup(pool: asyncpg.Pool, game: dict,
     )
     if changed:
         logger.info("[lineup] game=%s %s → %s %s", game["id"], prev, status, notes or "")
+    if pool:
+        from app.collectors.lineup_history import record as record_hist
+
+        for side, team_key in (("home", "home"), ("away", "away")):
+            block = parsed.get(side) or {}
+            order = "-".join(block.get("batting_order") or [])
+            if not order:
+                continue
+            try:
+                await record_hist(
+                    pool, game["id"], side, game.get(team_key), order,
+                    starter=starters.get(side) or block.get("starter"),
+                    source="crawler",
+                    is_final=(status == STATUS_CONFIRMED),
+                )
+            except Exception as exc:
+                logger.warning("[lineup] 이력 기록 실패 game=%s %s: %s",
+                               game.get("id"), side, exc)
+    if redis is not None and date:
+        from app.collectors.crawler_feed import upsert_snapshot_game
+
+        try:
+            await upsert_snapshot_game(redis, "mlb", date, {
+                "away": game.get("away"), "home": game.get("home"),
+                "home_pitcher": starters.get("home") or game.get("home_pitcher"),
+                "away_pitcher": starters.get("away") or game.get("away_pitcher"),
+                "lineup_status": status,
+                "status": game.get("status") or "scheduled",
+                "research": {
+                    "home_lineup": {"order": "-".join(
+                        (parsed.get("home") or {}).get("batting_order") or [])},
+                    "away_lineup": {"order": "-".join(
+                        (parsed.get("away") or {}).get("batting_order") or [])},
+                    "home_pitcher": {"name": starters.get("home")},
+                    "away_pitcher": {"name": starters.get("away")},
+                },
+            })
+        except Exception as exc:
+            logger.warning("[lineup] 스냅샷 기록 실패 game=%s: %s", game.get("id"), exc)
     return {"status": status, "changed": changed, "notes": notes,
             "starters": starters, "injuries": injuries}
 

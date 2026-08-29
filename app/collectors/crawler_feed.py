@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 HEARTBEAT_KEY = "crawl:heartbeat"
 STALE_MINUTES = 180     # 평시 60분 × 3 — 이보다 오래되면 죽은 것으로 본다
+SNAPSHOT_TTL_SEC = 6 * 3600
 
 
 def _key(sport: str, date: str, suffix: str) -> str:
@@ -37,6 +38,53 @@ async def load_snapshot(redis, sport: str, date: str) -> dict:
     except (TypeError, ValueError):
         logger.warning("[crawler_feed] 손상된 스냅샷 %s %s", sport, date)
         return {}
+
+
+async def write_snapshot(redis, sport: str, date: str, games: dict) -> None:
+    """스냅샷 전체 저장. Go 크롤러와 같은 키."""
+    if redis is None or not date:
+        return
+    await redis.set(
+        _key(sport, date, "latest"),
+        json.dumps(games or {}, ensure_ascii=False),
+        ex=SNAPSHOT_TTL_SEC,
+    )
+
+
+async def upsert_snapshot_game(redis, sport: str, date: str, jg: dict) -> None:
+    """한 경기를 스냅샷에 얹는다. 빈 값으로 있는 타순을 지우지 않는다."""
+    if redis is None or not date:
+        return
+    away, home = jg.get("away"), jg.get("home")
+    if not away or not home:
+        return
+    key = f"{away}@{home}"
+    res = jg.get("research") or {}
+    lu_h = ((res.get("home_lineup") or {}).get("order") or "").strip(" -")
+    lu_a = ((res.get("away_lineup") or {}).get("order") or "").strip(" -")
+    hp = ((res.get("home_pitcher") or {}).get("name")
+          or jg.get("home_pitcher") or "")
+    ap = ((res.get("away_pitcher") or {}).get("name")
+          or jg.get("away_pitcher") or "")
+    status = jg.get("lineup_status") or ""
+    starter_status = "확정" if status == "confirmed" else (
+        (res.get("starter_status") or "").strip())
+    fields = {
+        "home_pitcher": (hp or "").strip(),
+        "away_pitcher": (ap or "").strip(),
+        "lineup_home": lu_h,
+        "lineup_away": lu_a,
+        "starter_status": starter_status,
+        "status": jg.get("status") or "scheduled",
+    }
+    snap = await load_snapshot(redis, sport, date)
+    prev = snap.get(key) or {}
+    merged = dict(prev)
+    for k, v in fields.items():
+        if v:
+            merged[k] = v
+    snap[key] = merged
+    await write_snapshot(redis, sport, date, snap)
 
 
 async def load_changes(redis, sport: str, date: str, limit: int = 50) -> list[dict]:

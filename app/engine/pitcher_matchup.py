@@ -277,7 +277,7 @@ async def _lineups_for(pool, game_ids: list[int]) -> dict[int, dict[str, object]
 
 async def attach(pool, jg: dict, sport: str) -> None:
     """research.pitcher_matchup. 실패해도 분석은 산다. λ는 건드리지 않는다."""
-    if sport not in ("kbo", "npb"):
+    if sport not in ("kbo", "npb", "mlb"):
         return
     res = jg.setdefault("research", {})
     before = jg.get("starts_at")

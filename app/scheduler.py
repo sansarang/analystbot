@@ -23,7 +23,7 @@ from app.config import get_settings
 from app.db import get_pool
 from app.grader import grade_date
 from app.notify import notify_api_error
-from app.pipeline import run_pipeline, today_kst
+from app.pipeline import mlb_slate_date, run_pipeline, today_kst
 
 logger = logging.getLogger(__name__)
 
@@ -238,44 +238,80 @@ async def research_retry_job() -> None:
 
 
 async def lineup_poll_job() -> None:
-    """[2-2] 확정 라인업 폴링 — 경기 4시간 전부터 30분 간격, 확정되면 중단.
+    """[2-2] 확정 라인업 폴링 — MLB statsapi + KBO·NPB 크롤러.
 
     확정을 수신하면 그 경기만 재판정해 예비 픽을 최종 픽으로 갱신한다.
     """
+    await mlb_pregame_poll()
+    await crawler_lineup_poll()
+
+
+async def mlb_pregame_poll() -> None:
+    """MLB 아침 창 — statsapi 라인업 + 캐시 발송. Go 크롤러 없음.
+
+    KBO `crawler_lineup_poll`과 대칭. 사이트만 statsapi.mlb.com.
+    """
     from app.collectors.lineups import STATUS_CONFIRMED, MLBLineupClient, refresh_mlb_lineup
+    from app.engine.pregame_push import send_game_prediction, still_upcoming
     from app.pipeline import rejudge_after_lineup
 
+    s = get_settings()
     pool = await get_pool()
-    rows = await pool.fetch(
-        """
-        SELECT id, ext_id, sport, home, away, home_pitcher, away_pitcher,
-               lineup_status, starts_at
-        FROM games
-        WHERE sport = 'mlb' AND status = 'scheduled'
-          AND starts_at BETWEEN now() AND now() + interval '4 hours'
-          AND lineup_status IS DISTINCT FROM 'confirmed'
-        ORDER BY starts_at
-        """
-    )
-    if not rows:
-        await crawler_lineup_poll()
-        return
-    client = MLBLineupClient()
-    updated = []
-    for r in rows:
-        res = await refresh_mlb_lineup(pool, dict(r), client)
-        if res["changed"]:
-            updated.append((dict(r), res))
-    logger.info("[scheduler] 라인업 폴링 %d경기 확인 · 변경 %d건", len(rows), len(updated))
-    for game, res in updated:
-        try:
-            await rejudge_after_lineup(game, res)
-        except Exception as exc:
-            logger.warning("[scheduler] 라인업 재판정 실패 game=%s: %s", game["id"], exc)
-    confirmed = sum(1 for _g, r in updated if r["status"] == STATUS_CONFIRMED)
-    if confirmed:
-        logger.info("[scheduler] 라인업 확정 %d경기 — 최종 픽으로 갱신", confirmed)
-    await crawler_lineup_poll()
+    redis = aioredis.from_url(s.redis_url, decode_responses=True)
+    date = mlb_slate_date()
+    now = datetime.now(UTC)
+    try:
+        rows = await pool.fetch(
+            """
+            SELECT id, ext_id, sport, home, away, home_pitcher, away_pitcher,
+                   lineup_status, starts_at, league
+            FROM games
+            WHERE sport = 'mlb' AND status = 'scheduled'
+              AND starts_at > now()
+              AND starts_at < now() + interval '4 hours'
+            ORDER BY starts_at
+            """
+        )
+        pending = [r for r in rows
+                   if (r["lineup_status"] or "") != "confirmed"]
+        client = MLBLineupClient()
+        updated = []
+        for r in pending:
+            res = await refresh_mlb_lineup(
+                pool, dict(r), client, redis=redis, date=date)
+            if res["changed"]:
+                updated.append((dict(r), res))
+        if pending:
+            logger.info("[scheduler] MLB 라인업 폴링 %d경기 확인 · 변경 %d건",
+                        len(pending), len(updated))
+        rejudged = {g["id"] for g, _ in updated}
+        for game, res in updated:
+            try:
+                ok = await rejudge_after_lineup(game, res)
+                if ok:
+                    sent = await send_game_prediction(redis, game, date, now=now)
+                    if sent in ("sent", "revised"):
+                        logger.info("[scheduler] mlb 예측 카드 %s game=%s",
+                                    sent, game["id"])
+                if res["status"] == STATUS_CONFIRMED:
+                    logger.info("[scheduler] MLB 라인업 확정 — 최종 픽 game=%s ok=%s",
+                                game["id"], ok)
+            except Exception as exc:
+                logger.warning("[scheduler] MLB 라인업 재판정 실패 game=%s: %s",
+                               game["id"], exc)
+        for r in rows:
+            if r["id"] in rejudged or not still_upcoming(r["starts_at"], now):
+                continue
+            try:
+                sent = await send_game_prediction(redis, dict(r), date, now=now)
+                if sent in ("sent", "revised"):
+                    logger.info("[scheduler] mlb 예측 카드 %s game=%s",
+                                sent, r["id"])
+            except Exception as exc:
+                logger.warning("[scheduler] mlb 발송 실패 game=%s: %s",
+                               r["id"], exc)
+    finally:
+        await redis.aclose()
 
 
 async def crawler_lineup_poll() -> None:
@@ -469,6 +505,23 @@ async def npb_lineup_history_job() -> None:
     logger.info("[scheduler] NPB 라인업 이력 upsert %d · 백필 %s", n, stats)
 
 
+async def mlb_lineup_history_job() -> None:
+    """MLB 평소 라인업 이력 — statsapi 종료 경기 타순 9명을 lineup_events에 적재.
+
+    KBO·NPB 백필과 같다. 사이트만 statsapi. `source='boxscore'`.
+    """
+    from app.collectors.mlb_boxscore import ET, backfill
+
+    now = datetime.now(ET)
+    pool = await get_pool()
+    try:
+        stats = await backfill(pool, as_of=now.date(), days=14, limit_per_team=10)
+    except Exception as exc:
+        logger.warning("[scheduler] MLB 라인업 백필 실패: %s", exc)
+        stats = {}
+    logger.info("[scheduler] MLB 라인업 이력 백필 %s", stats)
+
+
 async def odds_snapshot_job() -> None:
     """배당 스냅샷 — 크레딧 예산 관리:
 
@@ -478,6 +531,7 @@ async def odds_snapshot_job() -> None:
     import redis.asyncio as aioredis
 
     from app.api_guard import is_blocked, is_disabled
+    from app.collectors.odds import SPORT_KEYS
     from app.leagues import LEAGUES
 
     if is_disabled("odds") or await is_blocked("odds"):
@@ -494,17 +548,22 @@ async def odds_snapshot_job() -> None:
             "GROUP BY sport, league"
         )
         label_to_key = {c["label"]: c["odds_key"] for c in LEAGUES.values()}
-        due: dict[str, list[str]] = {"mlb": [], "soccer": []}
+        due: dict[str, list[str]] = {}
         now = datetime.now(KST)
         for r in rows:
-            key = "baseball_mlb" if r["sport"] == "mlb" else label_to_key.get(r["league"])
+            if r["sport"] in ("mlb", "kbo", "npb"):
+                # 야구는 totals 라인만. 승부 배당 키는 넣지 않는다.
+                keys_for = SPORT_KEYS.get(r["sport"]) or []
+                key = keys_for[0] if keys_for else None
+            else:
+                key = label_to_key.get(r["league"])
             if key is None:
                 continue
             within_3h = (r["next_kick"].astimezone(KST) - now) <= timedelta(hours=3)
             last = await redis.get(f"oddsnap:{key}")
             stale = last is None or (now.timestamp() - float(last)) >= 3 * 3600
             if within_3h or stale:
-                due[r["sport"]].append(key)
+                due.setdefault(r["sport"], []).append(key)
         total = 0
         for sport, keys in due.items():
             if not keys:
@@ -666,6 +725,10 @@ def _job_specs() -> list[tuple]:
         ("asia_pregame_5m", crawler_lineup_poll,
          CronTrigger(hour="17,18", minute="0,5,10,15,20,25,30,35,40,45,50,55",
                      timezone=KST)),
+        # MLB 아침 슬레이트 (05~11 KST). 사이트는 statsapi. 캐시만 보낸다.
+        ("mlb_pregame_5m", mlb_pregame_poll,
+         CronTrigger(hour="5-11", minute="0,5,10,15,20,25,30,35,40,45,50,55",
+                     timezone=KST)),
         ("statcast_daily", statcast_refresh_job,
          CronTrigger(hour=3, minute=30, timezone=KST)),
         # 파크팩터는 시즌 누적이라 천천히 변한다 — 주 1회면 충분하고 statsapi 1콜이다
@@ -682,6 +745,8 @@ def _job_specs() -> list[tuple]:
         # NPB는 Yahoo `/top` 종료 경기 打順. 오전엔 오늘 타순이 없다(시작 ~30분 전).
         ("npb_lineup_history", npb_lineup_history_job,
          CronTrigger(hour=5, minute=25, timezone=KST)),
+        ("mlb_lineup_history", mlb_lineup_history_job,
+         CronTrigger(hour=5, minute=15, timezone=KST)),
     ]
 
 
@@ -689,7 +754,7 @@ def build_scheduler() -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone=KST)
     for job_id, fn, trigger in _job_specs():
         _JOB_TRIGGERS[job_id] = trigger
-        if job_id == "asia_pregame_5m":
+        if job_id in ("asia_pregame_5m", "mlb_pregame_5m"):
             grace = 4 * 60
         else:
             grace = MISFIRE_GRACE_SEC

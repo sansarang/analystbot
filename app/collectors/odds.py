@@ -28,6 +28,18 @@ SPORT_KEYS: dict[str, list[str]] = {
     "kbo": ["baseball_kbo"],
     "npb": ["baseball_npb"],
 }
+
+# 야구 승부는 배당을 보지 않는다. 언더오버만 시장 라인 숫자(8.5 등)를 가져온다.
+BASEBALL_ODDS_SPORTS = ("mlb", "kbo", "npb")
+
+
+def odds_markets_for(sport: str) -> str:
+    """Odds API `markets` 파라미터. 야구는 totals만 — h2h·스프레드는 요청하지 않는다."""
+    if sport in BASEBALL_ODDS_SPORTS:
+        return "totals"
+    return "h2h,spreads,totals"
+
+
 LEAGUE_LABEL_BY_SPORT = {"kbo": "KBO", "npb": "NPB", "mlb": "MLB"}
 SOCCER_LEAGUE_LABELS = {cfg["odds_key"]: cfg["label"] for cfg in LEAGUES.values()}
 
@@ -62,7 +74,11 @@ class OddsClient(BaseAPIClient):
         super().__init__(settings.mock_odds if mock is None else mock)
         self.api_key = settings.odds_api_key
 
-    async def fetch_odds(self, sport_key: str = "baseball_mlb") -> list[dict]:
+    async def fetch_odds(self, sport_key: str = "baseball_mlb",
+                        markets: str | None = None) -> list[dict]:
+        if markets is None:
+            markets = ("totals" if "baseball" in sport_key
+                       else "h2h,spreads,totals")
         if self.mock:
             return self.load_mock(f"odds_{'mlb' if 'baseball' in sport_key else 'soccer'}.json")
         return await self._get(
@@ -70,7 +86,7 @@ class OddsClient(BaseAPIClient):
             params={
                 "apiKey": self.api_key,
                 "regions": "us",
-                "markets": "h2h,spreads,totals",
+                "markets": markets,
                 "oddsFormat": "decimal",
             },
         )
@@ -141,9 +157,10 @@ async def snapshot_odds(
     keys = only_keys if only_keys is not None else SPORT_KEYS[sport]
     if client.mock:
         keys = SPORT_KEYS[sport][:1]  # 목 파일은 리그 구분 없이 하나 — 중복 적재 방지
+    markets = odds_markets_for(sport)
     events: list[dict] = []
     for sport_key in keys:
-        events.extend(await client.fetch_odds(sport_key))
+        events.extend(await client.fetch_odds(sport_key, markets=markets))
     if not client.mock:
         await record_odds_quota(client)
 
@@ -169,6 +186,9 @@ async def snapshot_odds(
             continue
         for bm in ev.get("bookmakers", []):
             for market in bm.get("markets", []):
+                # 야구는 토탈 라인만 적재한다. 목 파일이 h2h를 줘도 승부 배당은 안 넣는다.
+                if sport in BASEBALL_ODDS_SPORTS and market.get("key") != "totals":
+                    continue
                 for outcome in market.get("outcomes", []):
                     await pool.execute(
                         """

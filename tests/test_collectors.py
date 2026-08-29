@@ -48,14 +48,14 @@ async def test_pitcher_stats_chunking_and_fetch():
 async def test_odds_snapshot(db_pool):
     await upsert_games(db_pool, DATE, client=MLBClient(mock=True))
     n = await snapshot_odds(db_pool, "mlb", client=OddsClient(mock=True))
-    # 15경기 × 3북 × (h2h 2 + spreads 2 + totals 2) = 270행
-    assert n == 270
+    # 야구는 totals만: 15경기 × 3북 × 2아웃컴 = 90행. h2h·spreads는 안 넣는다.
+    assert n == 90
     rows = await db_pool.fetch(
         """
         SELECT market, count(*) AS c FROM odds_snapshots GROUP BY market
         """
     )
-    assert {r["market"]: r["c"] for r in rows} == {"h2h": 90, "spreads": 90, "totals": 90}
+    assert {r["market"]: r["c"] for r in rows} == {"totals": 90}
     orphan = await db_pool.fetchval(
         "SELECT count(*) FROM odds_snapshots o LEFT JOIN games g ON g.id = o.game_id WHERE g.id IS NULL"
     )
@@ -80,15 +80,16 @@ async def test_odds_skips_inplay_and_matches_by_start_time(db_pool):
         return {
             "home_team": "Home Nine", "away_team": "Away Nine",
             "commence_time": commence.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "bookmakers": [{"key": "dk", "markets": [{"key": "h2h", "outcomes": [
-                {"name": "Home Nine", "price": 1.5}, {"name": "Away Nine", "price": 2.6}]}]}],
+            "bookmakers": [{"key": "dk", "markets": [{"key": "totals", "outcomes": [
+                {"name": "Over", "price": 1.9, "point": 8.5},
+                {"name": "Under", "price": 1.9, "point": 8.5}]}]}],
         }
 
     class FakeClient:
         mock = False  # 인플레이 필터 활성화 경로
         last_headers: dict = {}
 
-        async def fetch_odds(self, sport_key):
+        async def fetch_odds(self, sport_key, markets=None):
             return [
                 make_event(now - timedelta(hours=3)),   # 인플레이 → 스킵
                 make_event(now + timedelta(days=1)),    # 내일 경기 → g_tomorrow에 매칭
@@ -96,7 +97,7 @@ async def test_odds_skips_inplay_and_matches_by_start_time(db_pool):
 
     inserted = await snapshot_odds(db_pool, "mlb", client=FakeClient(),
                                    only_keys=["baseball_mlb"])
-    assert inserted == 2  # 이벤트 1건 × h2h 2아웃컴
+    assert inserted == 2  # 이벤트 1건 × totals Over/Under
     rows = await db_pool.fetch(
         "SELECT game_id, count(*) c FROM odds_snapshots "
         "WHERE game_id = ANY($1::bigint[]) GROUP BY game_id",

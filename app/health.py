@@ -24,6 +24,7 @@ JOB_PERIODS = {
     "research_retry_45m": timedelta(minutes=45),
     "lineup_poll_30m": timedelta(minutes=30),
     "asia_pregame_5m": timedelta(minutes=5),
+    "mlb_pregame_5m": timedelta(minutes=5),
     "statcast_daily": timedelta(days=1),
     "soccerdata_daily": timedelta(days=1),
     "elo_refresh_weekly": timedelta(days=7),

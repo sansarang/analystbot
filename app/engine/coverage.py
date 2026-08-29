@@ -2,9 +2,10 @@
 
 없는 것을 억지로 만드는 것보다 없다고 말하는 것이 낫다 — 이 프로젝트의 기본 규율.
 
-KBO·NPB에서 전문가 픽은 **수집하지 않는다.** 실측(2026-08-27, 캐시된 research):
+KBO·NPB·MLB에서 전문가 픽은 **수집하지 않는다.** 실측(2026-08-27, 캐시된 research):
   KBO expert_picks 0/5 · NPB 1/6 (그마저 "NPBアナリスト A" 같은 익명)
-  MLB 10/15 · 축구 3/3  ← 영어권에는 실제로 존재한다
+  축구 3/3  ← 영어권 축구에만 정형화된 픽이 있다
+MLB는 statsapi·Statcast로 KBO와 같은 크롤링 완결 경로다. 딥서치 전문가 축은 쓰지 않는다.
 한국어 매체에 KBO 전문가 픽이 **정형화된 형태로 존재하지 않는다.** 그동안
 수집된 것도 대부분 "전적 미상 — 0.5표"였고, 검증되지 않은 픽은 축으로서
 가치가 낮았다.
@@ -19,7 +20,7 @@ KBO·NPB에서 전문가 픽은 **수집하지 않는다.** 실측(2026-08-27, �
 UNCOLLECTED: dict[str, tuple[str, ...]] = {
     "kbo": ("expert_picks", "umpire", "fan_sentiment", "counter_evidence"),
     "npb": ("expert_picks", "umpire", "fan_sentiment", "counter_evidence"),
-    "mlb": (),
+    "mlb": ("expert_picks", "umpire", "fan_sentiment", "counter_evidence"),
     "soccer": (),
 }
 
@@ -49,8 +50,8 @@ def available_axes(sport: str) -> tuple[str, ...]:
 def qualifies_axes(sport: str, axes: dict) -> bool:
     """추천 자격의 축 조건.
 
-    · 축이 온전한 종목(MLB·축구) — 종전대로 **2축 이상**
-    · 축이 줄어든 종목(KBO·NPB) — **살아 있는 축이 전부** 같은 방향
+    · 축이 온전한 종목(축구) — 종전대로 **2축 이상**
+    · 축이 줄어든 종목(KBO·NPB·MLB) — **살아 있는 축이 전부** 같은 방향
       (한 축이라도 비면 추천하지 않고 마켓 보드만 보여준다)
     """
     avail = available_axes(sport)

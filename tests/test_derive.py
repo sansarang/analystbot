@@ -97,10 +97,7 @@ def test_bullpen_overused_is_not_applied_to_research():
 # ---------------------------------------------------------------- apply
 
 def test_apply_never_overwrites_existing_values():
-    """🔴 MLB·유럽은 아직 딥서치가 이 필드들을 채운다 — 덮으면 안 된다.
-
-    실측: MLB expert_picks 10/15 · form_reversal 8/15.
-    """
+    """이미 있는 값은 덮지 않는다 — 출처가 딥서치든 공식 API든 같다."""
     r = {"motivation": "딥서치가 준 값", "splits": "딥서치 splits",
          "home_standing": {"rank": 1, "w": 65, "l": 42, "d": 3},
          "away_standing": {"rank": 2, "w": 66, "l": 44, "d": 3}}
