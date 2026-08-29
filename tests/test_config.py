@@ -7,7 +7,7 @@ from app.config import Settings
 KEY_ENVS = [
     "TELEGRAM_BOT_TOKEN", "ANTHROPIC_API_KEY", "PPLX_API_KEY",
     "XAI_API_KEY", "ODDS_API_KEY", "APIFOOTBALL_KEY", "FORCE_MOCK",
-    "DISABLED_PROVIDERS",
+    "DISABLED_PROVIDERS", "MODEL_TEAM_FORM", "MODEL_MATCHUP",
 ]
 
 
@@ -90,3 +90,16 @@ def test_recommendation_thresholds_are_config_driven():
     assert s.min_win_prob == 0.58
     assert s.npb_last3_verified is False
     assert s.lambda_h2h_min_edge == 0.05
+    assert s.team_form_model == "claude-haiku-4-5-20251001"
+    assert s.matchup_model == "claude-sonnet-5"
+    assert s.team_form_max_tokens == 1500
+    assert s.matchup_max_tokens == 1000
+    assert s.judge_model == "claude-opus-4-6"
+
+
+def test_form_matchup_models_from_env(monkeypatch):
+    monkeypatch.setenv("MODEL_TEAM_FORM", "haiku-from-env")
+    monkeypatch.setenv("MODEL_MATCHUP", "sonnet-from-env")
+    s = Settings(_env_file=None)
+    assert s.team_form_model == "haiku-from-env"
+    assert s.matchup_model == "sonnet-from-env"

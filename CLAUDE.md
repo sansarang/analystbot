@@ -299,7 +299,9 @@ python -c "import asyncio; from app.scheduler import prefetch_job; asyncio.run(p
 | `TELEGRAM_BOT_TOKEN` | 텔레그램 봇 토큰 |
 | `TELEGRAM_ADMIN_CHAT_ID` | 크레딧·키 오류 등 운영 알림 수신 채팅 |
 | `ANTHROPIC_API_KEY` | Claude 판정(judge) 호출 |
-| `JUDGE_MODEL` | 판정에 쓸 Claude 모델 ID |
+| `JUDGE_MODEL` | 구 Judge(축구·`--old`) Claude 모델 ID |
+| `MODEL_TEAM_FORM` | 야구 팀 경기력 분석 (기본 `claude-haiku-4-5-20251001`) |
+| `MODEL_MATCHUP` | 야구 매치업 판정 (기본 `claude-sonnet-5`) |
 | `PPLX_API_KEY` | Perplexity 딥서치 |
 | `PPLX_API_MODE` | `chat`(현행 Sonar) \| `agent`(2026-09-27 이후 필수) |
 | `PPLX_BASE_URL` / `PPLX_CHAT_PATH` / `PPLX_AGENT_PATH` | 엔드포인트 (마이그레이션용) |

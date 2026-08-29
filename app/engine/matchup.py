@@ -6,7 +6,12 @@ import logging
 
 from app.config import get_settings
 from app.engine.prompts import MATCHUP, fill
-from app.engine.team_form import complete_json, parse_json_object
+from app.engine.team_form import (
+    FORM_TTL,
+    analysis_game_key,
+    complete_json,
+    parse_json_object,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +41,7 @@ def _mock_matchup(home: str, away: str) -> dict:
         "변수": ["목 모드"],
         "뉴스반영": {"적용": False, "조정폭": "0", "사유": "목 모드"},
         "확신도": "중",
+        "model": "mock",
     }
 
 
@@ -67,13 +73,38 @@ def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
     s = settings or get_settings()
     p = clip_p_home(verdict.get("p_home"), s)
     conf_kr = verdict.get("확신도") or "중"
+    model = verdict.get("model") or s.matchup_model
     jg["p_claude"] = p
-    jg["matchup"] = {**verdict, "p_home": p}
+    jg["matchup"] = {**verdict, "p_home": p, "model": model}
+    jg["model"] = model
     jg["judge_confidence"] = CONF_MAP.get(conf_kr, "medium")
     jg["judge_pass"] = conf_kr == "하"
     reasons = verdict.get("근거") or []
     jg["verdict"] = " ".join(str(x) for x in reasons) or "매치업 판정"
     jg["form_unavailable"] = False
+
+
+async def persist_matchup_record(redis, jg: dict, date: str) -> None:
+    """analysis:{league}:{game_id}:{date} 에 사용 모델 ID를 남긴다."""
+    if redis is None:
+        return
+    sport = jg.get("sport") or ""
+    gid = jg.get("game_id")
+    if not sport or gid is None:
+        return
+    m = jg.get("matchup") or {}
+    blob = {
+        "model": jg.get("model") or m.get("model"),
+        "p_home": jg.get("p_claude"),
+        "우세": m.get("우세"),
+    }
+    try:
+        await redis.set(
+            analysis_game_key(sport, gid, date),
+            json.dumps(blob, ensure_ascii=False, default=str),
+            ex=FORM_TTL)
+    except Exception as exc:
+        logger.warning("[matchup] analysis 키 기록 실패 game=%s: %s", gid, exc)
 
 
 async def _form_or_analyze(jg: dict, redis, date: str, side: str, mock: bool | None):
@@ -119,8 +150,10 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     if is_mock:
         verdict = _mock_matchup(home, away)
         apply_matchup(jg, verdict, settings)
+        await persist_matchup_record(redis, jg, date)
         return verdict
 
+    model = settings.matchup_model
     prompt = fill(
         MATCHUP,
         HOME_FORM_JSON=json.dumps(home_form, ensure_ascii=False, default=str),
@@ -132,17 +165,25 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     parsed = None
     for attempt in (1, 2):
         try:
-            text = await complete_json(prompt, mock=False)
+            text = await complete_json(
+                prompt, model=model, max_tokens=settings.matchup_max_tokens,
+                role="matchup", mock=False)
         except Exception as exc:
-            logger.warning("[matchup] 호출 실패 %d회: %s", attempt, exc)
+            logger.warning("[matchup] 호출 실패 %d회 model=%s prompt_chars=%d: %s",
+                           attempt, model, len(prompt), exc)
             text = ""
         parsed = parse_json_object(text)
         if parsed and "p_home" in parsed:
+            parsed["model"] = model
             break
         parsed = None
-        logger.warning("[matchup] JSON 파싱 실패 %d회", attempt)
+        logger.warning("[matchup] JSON 파싱 실패 %d회 model=%s prompt_chars=%d",
+                       attempt, model, len(prompt))
     if parsed is None:
         jg["form_unavailable"] = True
+        logger.warning("[matchup] %s vs %s 분석 불가 model=%s — 추천 탈락",
+                       home, away, model)
         return None
     apply_matchup(jg, parsed, settings)
+    await persist_matchup_record(redis, jg, date)
     return parsed

@@ -3,6 +3,7 @@
 import logging
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -10,7 +11,8 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", extra="ignore",
+        populate_by_name=True,
     )
 
     # API 키 — 없으면 해당 모듈은 mock_data/ 목 모드로 동작한다.
@@ -47,6 +49,18 @@ class Settings(BaseSettings):
     report_model: str = "claude-sonnet-5"
     intent_model: str = "claude-haiku-4-5"
     grok_model: str = "grok-4.3-latest"
+    # 야구 폼·매치업. Judge(--old)는 judge_model을 그대로 쓴다.
+    # 팀 분석 = 요약·태그 분류 → Haiku. 매치업 = 4자료 교차·규칙 준수 → Sonnet.
+    team_form_model: str = Field(
+        default="claude-haiku-4-5-20251001",
+        validation_alias=AliasChoices("MODEL_TEAM_FORM", "team_form_model"),
+    )
+    matchup_model: str = Field(
+        default="claude-sonnet-5",
+        validation_alias=AliasChoices("MODEL_MATCHUP", "matchup_model"),
+    )
+    team_form_max_tokens: int = 1500
+    matchup_max_tokens: int = 1000
 
     # ── [A-5단계] 리그별 딥서치 스위치 ─────────────────────────────────────
     # 콤마 구분 종목 목록. 여기 없는 종목은 **딥서치를 부르지 않는다.**

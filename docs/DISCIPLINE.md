@@ -395,3 +395,5 @@ KBO·NPB 저녁 발송은 `/checklist`와 [docs/PREGAME_CHECKLIST.md](PREGAME_CH
 | 2026-08-29 | 야구 2-소스 | data+model 필수 → **폐기** | **사용자 지시** — 폼·라인업 판정. 축구 2-소스는 유지 | 야구 추천 = 58%(원정 63%)+라인업. 확신도 하/패스는 거부권 |
 | 2026-08-29 | 야구 +20%/25%p 플래그 | 이상치 탐지 → **야구 삭제** | **사용자 지시** — 배당을 안 봄. 축구는 유지 | |
 | 2026-08-29 | `npb_last3_verified` | (없음) → **False** | **사용자 지시** — NPB 3경기 수집 검증 전 추천 자동 탈락 | 보드만 발송. MLB·KBO 먼저. True는 라이브 측정 후 |
+| 2026-08-29 | `MODEL_TEAM_FORM` / `team_form_max_tokens` | (Judge `claude-opus-4-6` · `JUDGE_MAX_TOKENS` 16000) → **`claude-haiku-4-5-20251001` / 1500** | **사용자 지시** — 팀 분석은 요약·태그 분류. 코드에 모델 ID 하드코딩 금지 | 폼 경로만. Judge(--old) 불변. temperature 0 (extra_body) |
+| 2026-08-29 | `MODEL_MATCHUP` / `matchup_max_tokens` | (동일 Judge 경로) → **`claude-sonnet-5` / 1000** | **사용자 지시** — 매치업은 4자료 교차·규칙 준수. 폼과 모델 분리 | 매치업 경로만. Judge(--old) 불변. temperature 0 |

@@ -38,6 +38,8 @@ def test_apply_matchup_maps_confidence_low_as_veto():
     assert jg["judge_confidence"] == "low"
     assert jg["judge_pass"] is True
     assert jg["form_unavailable"] is False
+    assert jg["model"] == Settings(_env_file=None).matchup_model
+    assert jg["matchup"]["model"] == jg["model"]
 
 
 @pytest.mark.asyncio
@@ -84,6 +86,31 @@ async def test_matchup_reads_form_cache_and_does_not_reanalyze(monkeypatch):
     assert jg["p_claude"] == 0.55
     assert jg["judge_confidence"] == "medium"
     assert calls["n"] == 0
+
+
+@pytest.mark.asyncio
+async def test_matchup_records_analysis_game_key():
+    r = _MemRedis()
+    jg = {"sport": "kbo", "game_id": 99, "home": "한화", "away": "KIA",
+          "research": {}}
+    await judge_matchup(jg, r, "2026-08-29", mock=True)
+    raw = r.store[form_key("kbo", "한화", "2026-08-29")]  # form also written
+    assert json.loads(raw)["model"] == "mock"
+    from app.engine.team_form import analysis_game_key
+
+    rec = json.loads(r.store[analysis_game_key("kbo", 99, "2026-08-29")])
+    assert rec["model"] == "mock"
+    assert rec["p_home"] == 0.55
+
+
+def test_old_judge_still_uses_judge_model_not_matchup_model():
+    from pathlib import Path
+
+    src = Path("app/engine/judge.py").read_text(encoding="utf-8")
+    assert "JUDGE_MAX_TOKENS = 16000" in src
+    assert "self.settings.judge_model" in src
+    assert "team_form_model" not in src
+    assert "matchup_model" not in src
 
 
 def test_pipeline_runs_form_before_matchup_and_skips_form_on_rejudge():
