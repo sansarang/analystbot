@@ -132,6 +132,57 @@ def test_merge_is_safe_on_empty():
     assert research == {}
 
 
+def test_parse_preview_extracts_nine_man_lineup():
+    """실측 2026-08-29: fullLineUp 을 안 읽어 타순 수집 0. JSON API는 살아 있었다."""
+    nine_h = [
+        {"playerName": "페덱", "positionName": "선발투수"},
+        {"playerName": "김지찬", "positionName": "중견수"},
+        {"playerName": "김성윤", "positionName": "우익수"},
+        {"playerName": "구자욱", "positionName": "좌익수"},
+        {"playerName": "최형우", "positionName": "지명타자"},
+        {"playerName": "디아즈", "positionName": "1루수"},
+        {"playerName": "류지혁", "positionName": "2루수"},
+        {"playerName": "김영웅", "positionName": "3루수"},
+        {"playerName": "강민호", "positionName": "포수"},
+        {"playerName": "박계범", "positionName": "유격수"},
+    ]
+    nine_a = [
+        {"playerName": "로건", "positionName": "선발투수"},
+        {"playerName": "최원준", "positionName": "중견수"},
+        {"playerName": "김상수", "positionName": "2루수"},
+        {"playerName": "안현민", "positionName": "우익수"},
+        {"playerName": "김현수", "positionName": "1루수"},
+        {"playerName": "김민혁", "positionName": "지명타자"},
+        {"playerName": "허경민", "positionName": "3루수"},
+        {"playerName": "유준규", "positionName": "좌익수"},
+        {"playerName": "한승택", "positionName": "포수"},
+        {"playerName": "권동진", "positionName": "유격수"},
+    ]
+    d = parse_preview(_pv(
+        homeTeamLineUp={"fullLineUp": nine_h},
+        awayTeamLineUp={"fullLineUp": nine_a},
+    ))
+    assert d["lineup_home"].startswith("김지찬(중견수)")
+    assert "페덱" not in d["lineup_home"]
+    assert d["lineup_home"].count("-") == 8
+    assert d["lineup_away"].count("-") == 8
+    research = {}
+    merge_into_research(research, {"home": "Samsung Lions", "away": "KT Wiz"}, d)
+    assert research["home_lineup"]["source"] == "네이버"
+    assert len(research["away_lineup"]["order"].split("-")) == 9
+
+
+def test_status_from_naver_maps_pregame_live_final():
+    from app.collectors.naver_kbo import status_from_naver
+
+    assert status_from_naver("경기전") == "scheduled"
+    assert status_from_naver("경기중") == "live"
+    assert status_from_naver("1회초") == "live"
+    assert status_from_naver("9회말") == "live"
+    assert status_from_naver("경기종료") == "final"
+    assert status_from_naver("우천취소") == "cancelled"
+
+
 def test_team_mapping_covers_all_ten():
     """축약 표기 → Odds 팀명. 하나라도 빠지면 그 경기가 통째로 매칭되지 않는다."""
     assert len(TEAM_TO_ODDS) == 10

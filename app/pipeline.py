@@ -677,6 +677,31 @@ def merge_source_data(research: dict, jg: dict, sport: str,
         if nv:
             _absorb(research, _mn(research, jg, nv), SRC_PORTAL)
             done.append("naver")
+            mapped = nv.get("naver_status_mapped")
+            if not mapped:
+                from app.collectors.naver_kbo import status_from_naver as _ns
+                mapped = _ns(nv.get("naver_status"))
+            # 기록실 0-0 을 live 로 굳히면 예정 경기가 분석에서 빠진다
+            # (실측 2026-08-29 game 1447 LG@롯데, 네이버는 경기전).
+            if mapped == "scheduled" and jg.get("status") == "live":
+                hs, aws = jg.get("home_score"), jg.get("away_score")
+                if (hs or 0) == 0 and (aws or 0) == 0:
+                    jg["status"] = "scheduled"
+                    jg["status_label"] = ""
+                    logger.info("[pipeline] 네이버 경기전 — live 0-0 철회 game=%s",
+                                jg.get("game_id"))
+            elif mapped in ("live", "final", "cancelled") and jg.get("status") == "scheduled":
+                jg["status"] = mapped
+                jg["status_label"] = STATUS_LABELS.get(mapped, "")
+            ho = [p for p in ((research.get("home_lineup") or {}).get("order") or "").split("-") if p.strip()]
+            ao = [p for p in ((research.get("away_lineup") or {}).get("order") or "").split("-") if p.strip()]
+            if len(ho) >= 9 and len(ao) >= 9:
+                prev = jg.get("lineup_status") or "none"
+                if prev in ("none", "predicted"):
+                    jg["lineup_status"] = "confirmed"
+                    jg["lineup_source"] = "네이버"
+                    logger.info("[pipeline] KBO 타순 확정 game=%s n=%d/%d",
+                                jg.get("game_id"), len(ho), len(ao))
         if statcast_data.get("kbo_usage"):
             from app.collectors.kbo_usage import merge_into_research as _mu
 

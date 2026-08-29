@@ -103,6 +103,38 @@ def form_from_previous(games: list[dict], team_code: str) -> str | None:
     return "".join(out[:10]) or None
 
 
+def lineup_text(rows) -> str:
+    """Go crawler `lineupText` 와 같은 계약. 선발투수는 타순이 아니다."""
+    names = []
+    for r in rows or []:
+        if not isinstance(r, dict):
+            continue
+        if r.get("positionName") == "선발투수":
+            continue
+        name = (r.get("playerName") or "").strip()
+        if not name:
+            continue
+        pos = (r.get("positionName") or "").strip()
+        names.append(f"{name}({pos})" if pos else name)
+    return "-".join(names)
+
+
+def status_from_naver(info: str | None) -> str:
+    """네이버 statusInfo → games.status.
+
+    실측 2026-08-29: 시작 후면 '경기중'이 아니라 '1회초'처럼 이닝 표기다.
+    기록실 0-0 만으로 live 를 주면 시작 전 경기가 분석에서 빠진다(1447).
+    """
+    s = info or ""
+    if "취소" in s:
+        return "cancelled"
+    if "종료" in s:
+        return "final"
+    if "경기중" in s or "회초" in s or "회말" in s:
+        return "live"
+    return "scheduled"
+
+
 def parse_preview(pv: dict) -> dict | None:
     """previewData → 우리 계약의 research 조각. 구조가 어긋나면 None."""
     if not pv or any(k not in pv for k in REQUIRED_PREVIEW):
@@ -163,6 +195,13 @@ def parse_preview(pv: dict) -> dict | None:
     if vs:
         out["h2h"] = {"home_w": vs.get("hw"), "home_l": vs.get("hl"),
                       "draw": vs.get("hd")}
+    # 타순 — 실측 2026-08-29: preview JSON에 homeTeamLineUp.fullLineUp 이 있는데
+    #   파이썬 파서가 선발·순위만 읽고 타순을 버려 저녁까지 수집 0이었다.
+    #   HTML이 아니라 같은 JSON API. Go 크롤러와 필드를 맞춘다.
+    for side, key in (("home", "homeTeamLineUp"), ("away", "awayTeamLineUp")):
+        order = lineup_text((pv.get(key) or {}).get("fullLineUp"))
+        if order:
+            out[f"lineup_{side}"] = order
     return out
 
 
@@ -282,6 +321,18 @@ def merge_into_research(research: dict, jg: dict, data: dict) -> list[str]:
                 filled.append(f"{side}_offense.avg")
     if data.get("stadium"):
         research.setdefault("park", f"{data['stadium']} 구장")
+    for side in ("home", "away"):
+        order = (data.get(f"lineup_{side}") or "").strip(" -")
+        if not order:
+            continue
+        parts = [p for p in order.split("-") if p.strip()]
+        if len(parts) < 9:
+            continue
+        blk = research.setdefault(f"{side}_lineup", {})
+        if blk.get("order") != order:
+            blk["order"] = order
+            blk["source"] = "네이버"
+            filled.append(f"{side}_lineup.order")
     return filled
 
 
@@ -320,6 +371,15 @@ async def refresh(redis, date: str, client: NaverKBOClient | None = None) -> dic
                            g.get("awayTeamName"), g.get("homeTeamName"))
             continue
         out[f"{away}@{home}"] = parsed
+        st = status_from_naver(g.get("statusInfo"))
+        parsed["naver_status"] = g.get("statusInfo") or ""
+        parsed["naver_status_mapped"] = st
+        n_lu = sum(1 for s in ("home", "away") if parsed.get(f"lineup_{s}"))
+        logger.info("[naver_kbo] %s %s@%s status=%s starters=%s/%s lineup_sides=%d",
+                    date, away, home, parsed["naver_status"] or "-",
+                    (parsed.get("away_pitcher") or {}).get("name") or "-",
+                    (parsed.get("home_pitcher") or {}).get("name") or "-",
+                    n_lu)
     if playable and not out:
         from app.alerts import StageResult, stage_failed
 

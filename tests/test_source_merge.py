@@ -317,3 +317,23 @@ def test_mlb_pipeline_has_no_heuristic_and_no_odds_key():
     assert "heuristic_model_prob" not in src
     assert 'active_keys = ["baseball_mlb"]' not in src
     assert "elif sport == \"mlb\"" in src  # merge_source_data 분기
+
+
+def test_kbo_naver_lineup_confirms_and_retracts_false_live():
+    """네이버 타순 9+9 → confirmed. 경기전+0-0 live 는 예정으로 되돌린다."""
+    nine = "-".join(f"H{i}(중견수)" for i in range(9))
+    nine_a = "-".join(f"A{i}(유격수)" for i in range(9))
+    naver = {KBO_KEY: {
+        **NAVER[KBO_KEY],
+        "lineup_home": nine, "lineup_away": nine_a,
+        "naver_status": "경기전", "naver_status_mapped": "scheduled",
+    }}
+    jg = {**KBO_JG, "status": "live", "home_score": 0, "away_score": 0,
+          "lineup_status": "none", "game_id": 1447}
+    research: dict = {}
+    merge_source_data(research, jg, "kbo", {
+        "naver": naver, "kbo_teams": {}, "kbo_pitchers": {}, "parks": {},
+    })
+    assert jg["status"] == "scheduled"
+    assert jg["lineup_status"] == "confirmed"
+    assert research["home_lineup"]["order"].count("-") == 8
