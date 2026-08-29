@@ -704,7 +704,10 @@ def _approve(jg: dict, c: dict, sport: str) -> None:
     #     괴리 검사는 **승패(h2h)에만** 적용한다. 핸디캡·토탈은 모델과 시장이 다른 것이
     #     정상이며(모델을 갖는 이유가 그것이다), 여기서 걸면 정상 픽을 지운다.
     flags = []
-    if c.get("odds"):
+    # 야구는 배당을 보지 않는다 — 승률–배당환산 플래그 성립 불가 (DISCIPLINE 1-A-2).
+    from app.engine.scoring import BASEBALL_SPORTS
+
+    if sport not in BASEBALL_SPORTS and c.get("odds"):
         implied = 1 / c["odds"]
         if c["market"] in ("h2h", "dc") and abs(c["p"] - implied) > 0.30:
             flags.append(f"승률 {c['p']:.0%} vs 배당 환산 {implied:.0%} 괴리 >30%p (배당 데이터 확인 필요)")
@@ -734,12 +737,14 @@ def _approve(jg: dict, c: dict, sport: str) -> None:
     #     우연에 기대면 나중에 전문가 축이 살아났을 때 조용히 느슨해진다.
     from app.engine.coverage import qualifies_axes
 
-    c["two_source"] = qualifies_axes(sport, c["axes"])
-    if not c["two_source"] and jg.get("distribution") is None:
-        # 분포조차 없으면 확률 근거 자체가 없다 — 이때만 보드에서도 제외
-        only = axes_label(c["axes"])
-        return reject(f"근거 부족 — 2-소스 미달 ({only} 단독)" if c["axes_n"] == 1
-                      else "근거 부족 — 지지 축 없음")
+    if sport in BASEBALL_SPORTS:
+        c["two_source"] = True          # 야구 2-소스 폐기 — 추천 조건이 아님
+    else:
+        c["two_source"] = qualifies_axes(sport, c["axes"])
+        if not c["two_source"] and jg.get("distribution") is None:
+            only = axes_label(c["axes"])
+            return reject(f"근거 부족 — 2-소스 미달 ({only} 단독)" if c["axes_n"] == 1
+                          else "근거 부족 — 지지 축 없음")
     # [3] 축구 승패 단식은 저분산 우선 원칙 — 신뢰도 high에서만
     if sport == "soccer" and c["market"] == "h2h" and jg.get("judge_confidence") != "high":
         return reject("저분산 우선 — 승패 단식은 판정 신뢰도 '상'에서만 허용")

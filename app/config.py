@@ -225,6 +225,9 @@ class Settings(BaseSettings):
 
     # 원정 비대칭 ([4]) — 분데스리가 연구: 홈 승 ROI +10~15%, 원정 -17%
     away_prob_penalty: float = 0.05   # 원정 픽은 승률 임계를 이만큼 높게 적용
+    # NPB 최근 3경기 수집이 라이브 Yahoo HTML로 검증되기 전. False면 추천 자동 탈락
+    # (보드는 발송). True는 측정 후 사용자 지시로만 켠다 — DISCIPLINE 1-A-2.
+    npb_last3_verified: bool = False
 
     # 승패 λ 변별 하한. |p_λ − 0.5| 미만이면 승패 결합에서 λ를 뺀다 (Claude 단독).
     # 실측 2026-08-28 NPB: λ 47~50%가 Claude 65%를 56%로 깎아 승패 추천 0건.

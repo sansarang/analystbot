@@ -2239,10 +2239,12 @@ def _learned_probs(jg: dict, research: dict, sport: str, settings) -> dict | Non
 
 
 def qualifies(pick: dict, settings=None) -> bool:
-    """[3-1][4] 추천 자격 = 승률 하한 AND (야구는) 라인업 확정.
+    """추천 게이트.
 
-    잠정 픽은 보드·근사 탈락에 남기고 추천 목록에서는 뺀다.
-    축구는 킥오프 직전 라인업이라 이 게이트를 쓰지 않는다.
+    야구: 승률 하한(원정 +5%p) + 라인업 확정. 2-소스 없음.
+      NPB는 `npb_last3_verified` 전까지 자동 탈락 (보드만).
+    축구: 승률 하한 + 2-소스. 라인업 게이트 없음.
+    확신도 '하'/패스 권장은 `_approve` 거부권 — 여기 조건이 아니다.
     """
     from app.config import get_settings
     from app.engine.scoring import BASEBALL_SPORTS
@@ -2250,9 +2252,10 @@ def qualifies(pick: dict, settings=None) -> bool:
     s = settings or get_settings()
     p = pick.get("p")
     need = pick.get("required_prob") or s.min_win_prob
-    if pick.get("two_source") is False:      # [6] 2-소스 룰은 추천 자격에만 적용
-        return False
-    if pick.get("sport") in BASEBALL_SPORTS:
+    sport = pick.get("sport")
+    if sport in BASEBALL_SPORTS:
+        if sport == "npb" and not s.npb_last3_verified:
+            return False
         from app.collectors.lineups import pick_state as _ps
 
         state = pick.get("pick_state")
@@ -2260,7 +2263,8 @@ def qualifies(pick: dict, settings=None) -> bool:
             state = _ps(pick.get("lineup_status"))[0]
         if state != "final":
             return False
-    # [§8-18] 배당 하한·시장 괴리 조건 제거 — 시장 기준으로 우리 판단을 재단하지 않는다
+    elif pick.get("two_source") is False:
+        return False
     return p is not None and p >= need
 
 
@@ -2280,9 +2284,13 @@ def near_miss_picks(picks: list[dict], settings=None, n: int = 3) -> list[dict]:
         from app.collectors.lineups import pick_state as _ps
 
         if p.get("sport") in BASEBALL_SPORTS:
+            if p.get("sport") == "npb" and not s.npb_last3_verified:
+                reasons.append("NPB 최근 3경기 미검증")
             st = p.get("pick_state") or _ps(p.get("lineup_status"))[0]
             if st != "final":
                 reasons.append("라인업 확정 전 (잠정)")
+        elif p.get("two_source") is False:
+            reasons.append("2-소스 미달")
 
         out.append({**p, "miss_reason": " · ".join(reasons) or "미승인"})
     return out
