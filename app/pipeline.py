@@ -1627,10 +1627,47 @@ async def build_analysis(
     _prepare_games_for_judge(upcoming, sport)
     # [§8-21] 여론을 판정에 넘긴다. **확률 계수로 만들지 않는다** — 동조 신호인지
     #   역행 신호(팬심 편향)인지 측정된 적이 없다. 판정이 읽고 스스로 판단한다.
+    from app.engine.scoring import BASEBALL_SPORTS as _BB
     judge_payload = {"date": date, "sport": sport, "games": upcoming,
                      "breaking_news": news, "fan_sentiment": sentiment}
-    if not upcoming:
-        verdict: dict = {"games": []}
+    verdict: dict = {"games": []}
+    if sport in _BB:
+        # 야구: 팀 폼(캐시) + 매치업. 구 Judge는 축구·병행 검증용으로 남긴다.
+        bb_redis, bb_close = redis, False
+        if bb_redis is None:
+            bb_redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+            bb_close = True
+        try:
+            await _run_baseball_forms(bb_redis, sport, date, upcoming, record)
+            if upcoming:
+                try:
+                    _judged = await _run_baseball_matchups(bb_redis, date, upcoming)
+                except (ApiQuotaError, ApiAuthError, ApiRateLimitError) as exc:
+                    logger.error("[pipeline] matchup 실패(%s): %s",
+                                 type(exc).__name__, exc)
+                    await notify_api_error(exc)
+                    _judged = 0
+                    await record("판정", 0, len(upcoming), exc=exc,
+                                 unit="경기",
+                                 impact="추천·조합이 생성되지 않습니다 (마켓 보드만 표시)")
+                except Exception as exc:
+                    logger.exception("[pipeline] matchup 예기치 못한 실패: %s", exc)
+                    _judged = 0
+                    await record("판정", 0, len(upcoming), exc=exc,
+                                 unit="경기",
+                                 impact="추천·조합이 생성되지 않습니다 (마켓 보드만 표시)")
+                if upcoming and not any(st.name == "판정" for st in stages):
+                    _j_cause = None if _judged == len(upcoming) else (
+                        "missing" if _judged == 0 else None)
+                    await record("판정", _judged, len(upcoming),
+                                 cause=_j_cause,
+                                 unit="경기",
+                                 impact="판정 못 받은 경기는 추천에서 제외됩니다")
+        finally:
+            if bb_close:
+                await bb_redis.aclose()
+    elif not upcoming:
+        verdict = {"games": []}
     else:
         try:
             verdict = await Judge().judge(judge_payload)
@@ -1648,20 +1685,19 @@ async def build_analysis(
             await record("판정", 0, len(upcoming), exc=exc,
                          unit="경기",
                          impact="추천·조합이 생성되지 않습니다 (마켓 보드만 표시)")
-    if upcoming and not any(st.name == "판정" for st in stages):
-        _judged = _verdict_hits(verdict, upcoming)
-        _j_cause = None if _judged == len(upcoming) else (
-            "missing" if _judged == 0 else None)
-        await record("판정", _judged, len(upcoming),
-                     cause=_j_cause,
-                     unit="경기",
-                     impact="판정 못 받은 경기는 추천에서 제외됩니다")
-    _attach_verdicts(judge_games, verdict)
+        if upcoming and not any(st.name == "판정" for st in stages):
+            _judged = _verdict_hits(verdict, upcoming)
+            _j_cause = None if _judged == len(upcoming) else (
+                "missing" if _judged == 0 else None)
+            await record("판정", _judged, len(upcoming),
+                         cause=_j_cause,
+                         unit="경기",
+                         impact="판정 못 받은 경기는 추천에서 제외됩니다")
+        _attach_verdicts(judge_games, verdict)
 
-    # 4b) 2차 검증 — 논쟁 경기(저신뢰 또는 |모델-시장|≥10%p)만 Grok에 반대 근거 1콜.
-    #     전 경기 적용 금지(비용). 반대 근거가 실체적일 때만 judge 재산출.
-    verdict = await _second_opinion(judge_games, verdict, date, sport, news)
-    _attach_verdicts(judge_games, verdict)
+        # 4b) 2차 검증 — 논쟁 경기만 Grok 반대 근거. 야구 매치업은 덮지 않는다.
+        verdict = await _second_opinion(judge_games, verdict, date, sport, news)
+        _attach_verdicts(judge_games, verdict)
 
     # 4c) [7] 전 마켓 배당 부착 + [4d] 데이터 제로 강등 → 5) 마켓 풀 픽 계산
     await _attach_alt_markets(pool, judge_games)
@@ -1974,6 +2010,43 @@ def _prepare_games_for_judge(games: list[dict], sport: str) -> None:
                            jg.get("game_id"), exc)
 
 
+async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
+                              record=None) -> None:
+    """낮 프리페치: 팀당 폼 1회. 저녁 재판정은 이 함수를 부르지 않는다."""
+    from app.engine.scoring import BASEBALL_SPORTS
+    from app.engine.team_form import analyze_games
+
+    if sport not in BASEBALL_SPORTS or not games:
+        return
+    r, close = redis, False
+    if r is None:
+        r = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+        close = True
+    try:
+        forms = await analyze_games(r, sport, date, games)
+    finally:
+        if close:
+            await r.aclose()
+    if record is not None:
+        n_ok = sum(1 for f in forms.values() if not f.get("unavailable"))
+        await record(
+            "팀 경기력", n_ok, len(forms),
+            cause=None if not forms or n_ok == len(forms) else "missing",
+            unit="팀",
+            impact="평가 불가 팀은 추천에서 제외됩니다")
+
+
+async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
+    """라인업 확정·변경 시 경기당 매치업. form: 캐시만 읽는다."""
+    from app.engine.matchup import judge_matchup
+
+    n = 0
+    for jg in games:
+        if await judge_matchup(jg, redis, date):
+            n += 1
+    return n
+
+
 def _attach_verdicts(judge_games: list[dict], verdict: dict) -> None:
     by_id = {_to_gid(g.get("game_id")): g for g in verdict.get("games", [])}
     matched = 0
@@ -2243,6 +2316,7 @@ def qualifies(pick: dict, settings=None) -> bool:
 
     야구: 승률 하한(원정 +5%p) + 라인업 확정. 2-소스 없음.
       NPB는 `npb_last3_verified` 전까지 자동 탈락 (보드만).
+      폼·매치업 불가(`form_unavailable`)도 탈락.
     축구: 승률 하한 + 2-소스. 라인업 게이트 없음.
     확신도 '하'/패스 권장은 `_approve` 거부권 — 여기 조건이 아니다.
     """
@@ -2255,6 +2329,8 @@ def qualifies(pick: dict, settings=None) -> bool:
     sport = pick.get("sport")
     if sport in BASEBALL_SPORTS:
         if sport == "npb" and not s.npb_last3_verified:
+            return False
+        if pick.get("form_unavailable"):
             return False
         from app.collectors.lineups import pick_state as _ps
 
@@ -2286,6 +2362,8 @@ def near_miss_picks(picks: list[dict], settings=None, n: int = 3) -> list[dict]:
         if p.get("sport") in BASEBALL_SPORTS:
             if p.get("sport") == "npb" and not s.npb_last3_verified:
                 reasons.append("NPB 최근 3경기 미검증")
+            if p.get("form_unavailable"):
+                reasons.append("팀 경기력 평가 불가")
             st = p.get("pick_state") or _ps(p.get("lineup_status"))[0]
             if st != "final":
                 reasons.append("라인업 확정 전 (잠정)")
@@ -2305,7 +2383,8 @@ def approved_market_legs(games: list[dict]) -> list[dict]:
         for c in jg.get("market_board") or []:
             wrapped = {**c, "sport": jg.get("sport"),
                        "lineup_status": jg.get("lineup_status") or "none",
-                       "pick_state": _pick_state(jg)[0]}
+                       "pick_state": _pick_state(jg)[0],
+                       "form_unavailable": bool(jg.get("form_unavailable"))}
             if c.get("approved") and qualifies(wrapped):
                 legs.append({
                     "game_id": jg["game_id"], "desc": c["desc"], "market": c["market"],
@@ -2341,7 +2420,8 @@ def qualified_singles(games: list[dict], settings=None,
         for c in jg.get("market_board") or []:
             wrapped = {**c, "sport": jg.get("sport"),
                        "lineup_status": jg.get("lineup_status") or "none",
-                       "pick_state": _pick_state(jg)[0]}
+                       "pick_state": _pick_state(jg)[0],
+                       "form_unavailable": bool(jg.get("form_unavailable"))}
             if not (c.get("approved") and qualifies(wrapped, settings)):
                 continue
             # 다운스트림(DB 적재·속보 비교·렌더)이 쓰는 필드를 전부 채운다.
@@ -2775,6 +2855,7 @@ def _compute_picks(
             "edge": rep.get("edge"),
             "lineup_status": jg.get("lineup_status") or "none",
             "pick_state": _pick_state(jg)[0], "pick_state_label": _pick_state(jg)[1],
+            "form_unavailable": bool(jg.get("form_unavailable")),
             "p_legacy": (jg.get("p_legacy") or {}).get(rep["side"]),
             "p_market_side": market.get(rep["side"]) if rep["market"] == "h2h" else None,
             "p_ensemble_side": p_ens.get(rep["side"]),
@@ -4117,44 +4198,67 @@ async def _rejudge_after_breaking(analysis: dict, changes: list[dict]) -> dict:
         return analysis
 
     _prepare_games_for_judge(affected, analysis.get("sport") or "")
-    payload = {
-        "date": analysis["date"], "sport": analysis["sport"], "games": affected,
-        "breaking_news": analysis["news"],
-        "instruction": (
-            "각 경기의 breaking_changes에 판정 이후 발생한 중대 속보가 있다. "
-            "기존 판정(verdict·p_claude)을 재검토해 재산출하라."
-        ),
-    }
-    try:
-        verdict2 = await Judge().judge(payload)
-    except (ApiQuotaError, Exception) as exc:
-        logger.warning("[pipeline] breaking re-judge failed, keeping cached verdicts: %s", exc)
-        return analysis
+    sport = analysis.get("sport") or ""
+    from app.engine.scoring import BASEBALL_SPORTS
+
+    old_ps = {jg["game_id"]: jg.get("p_claude") for jg in affected}
+    if sport in BASEBALL_SPORTS:
+        r = aioredis.from_url(settings.redis_url, decode_responses=True)
+        try:
+            await _run_baseball_matchups(r, analysis["date"], affected)
+        except (ApiQuotaError, Exception) as exc:
+            logger.warning("[pipeline] breaking matchup failed, keeping cached verdicts: %s", exc)
+            return analysis
+        finally:
+            await r.aclose()
+        for jg in affected:
+            old_p = old_ps.get(jg["game_id"])
+            p = jg.get("p_claude")
+            change_txt = "; ".join(jg.get("breaking_changes", []))[:120]
+            old_txt = f"{old_p:.0%}" if old_p is not None else "?"
+            new_txt = f"{p:.0%}" if p is not None else "?"
+            jg["breaking_note"] = (
+                f"🔄 속보 반영: {change_txt} → 승률 계산 {old_txt}→{new_txt}"
+                + (", 패스로 전환" if jg.get("judge_pass") else "")
+            )
+    else:
+        payload = {
+            "date": analysis["date"], "sport": sport, "games": affected,
+            "breaking_news": analysis["news"],
+            "instruction": (
+                "각 경기의 breaking_changes에 판정 이후 발생한 중대 속보가 있다. "
+                "기존 판정(verdict·p_claude)을 재검토해 재산출하라."
+            ),
+        }
+        try:
+            verdict2 = await Judge().judge(payload)
+        except (ApiQuotaError, Exception) as exc:
+            logger.warning("[pipeline] breaking re-judge failed, keeping cached verdicts: %s", exc)
+            return analysis
+        by_id = {g["game_id"]: g for g in verdict2.get("games", [])}
+        for jg in affected:
+            v = by_id.get(jg["game_id"])
+            if not v:
+                continue
+            old_p = old_ps.get(jg["game_id"])
+            jg["p_claude"] = v["p_claude"]
+            jg["verdict"] = v["verdict"]
+            jg["judge_pass"] = bool(v.get("pass_recommended"))
+            jg["judge_confidence"] = v.get("confidence", "medium")
+            jg["reversal_factor"] = v.get("reversal_factor") or ""
+            jg["conclusion_revised"] = bool(v.get("conclusion_revised"))
+            jg["excluded_picks"] = v.get("excluded_picks", [])
+            change_txt = "; ".join(jg.get("breaking_changes", []))[:120]
+            old_txt = f"{old_p:.0%}" if old_p is not None else "?"
+            jg["breaking_note"] = (
+                f"🔄 속보 반영: {change_txt} → 승률 계산 {old_txt}→{v['p_claude']:.0%}"
+                + (", 패스로 전환" if jg["judge_pass"] else "")
+            )
 
     old_reco = {p["pick"] for p in analysis["picks"] if p.get("recommended")}
     old_parlay_legs = {
         leg["pick"] for pl in analysis.get("parlays", []) for leg in pl["legs"]
     }
-    by_id = {g["game_id"]: g for g in verdict2.get("games", [])}
-    for jg in affected:
-        v = by_id.get(jg["game_id"])
-        if not v:
-            continue
-        old_p = jg.get("p_claude")
-        jg["p_claude"] = v["p_claude"]
-        jg["verdict"] = v["verdict"]
-        jg["judge_pass"] = bool(v.get("pass_recommended"))
-        jg["judge_confidence"] = v.get("confidence", "medium")
-        jg["reversal_factor"] = v.get("reversal_factor") or ""
-        jg["conclusion_revised"] = bool(v.get("conclusion_revised"))
-        jg["excluded_picks"] = v.get("excluded_picks", [])
-        change_txt = "; ".join(jg.get("breaking_changes", []))[:120]
-        old_txt = f"{old_p:.0%}" if old_p is not None else "?"
-        jg["breaking_note"] = (
-            f"🔄 속보 반영: {change_txt} → 승률 계산 {old_txt}→{v['p_claude']:.0%}"
-            + (", 패스로 전환" if jg["judge_pass"] else "")
-        )
-
     picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], analysis["sport"],
                                             news=analysis.get("news") or "",
                                             sentiment=analysis.get("sentiment") or "")
@@ -4209,17 +4313,25 @@ async def _refresh_stale_research(
 
     # 재조사 경기만 재판정 → 픽·조합 재계산
     _prepare_games_for_judge(refreshed, sport)
-    payload = {
-        "date": analysis["date"], "sport": sport, "games": refreshed,
-        "breaking_news": analysis.get("news", ""),
-        "instruction": "각 경기의 research가 방금 최신으로 갱신되었다. 최신 데이터 기준으로 판정을 재산출하라.",
-    }
-    try:
-        verdict = await Judge().judge(payload)
-        _attach_verdicts(refreshed, verdict)
-    except Exception as exc:
-        logger.warning("[pipeline] refresh re-judge failed, keeping verdicts: %s", exc)
-        await notify_api_error(exc)
+    from app.engine.scoring import BASEBALL_SPORTS
+    if sport in BASEBALL_SPORTS:
+        try:
+            await _run_baseball_matchups(redis, analysis["date"], refreshed)
+        except Exception as exc:
+            logger.warning("[pipeline] refresh matchup failed, keeping verdicts: %s", exc)
+            await notify_api_error(exc)
+    else:
+        payload = {
+            "date": analysis["date"], "sport": sport, "games": refreshed,
+            "breaking_news": analysis.get("news", ""),
+            "instruction": "각 경기의 research가 방금 최신으로 갱신되었다. 최신 데이터 기준으로 판정을 재산출하라.",
+        }
+        try:
+            verdict = await Judge().judge(payload)
+            _attach_verdicts(refreshed, verdict)
+        except Exception as exc:
+            logger.warning("[pipeline] refresh re-judge failed, keeping verdicts: %s", exc)
+            await notify_api_error(exc)
     _enforce_data_rules(analysis["games"])
     picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport,
                                             news=analysis.get("news") or "",
@@ -4240,9 +4352,11 @@ async def _refresh_stale_research(
 async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
     """[2-3] 라인업 수신 → 그 경기만 재판정. 승률·신호등·추천·조합을 갱신한다.
 
-    KBO·NPB는 최신 크롤을 research에 병합한 뒤 λ·결장·Claude 순으로 다시 돌린다.
+    야구는 낮에 캐시한 팀 폼을 재호출하지 않고 매치업만 돌린다.
+    KBO·NPB는 최신 크롤을 research에 병합한 뒤 결장·매치업 순으로 다시 돌린다.
     딥서치 force는 쓰지 않는다 — 폴링 30분마다 크레딧을 쓰면 안 된다.
     MLB는 선발 변경·불일치일 때만 리서치를 강제 갱신한다.
+    축구는 구 Judge 경로를 유지한다.
     """
     from app.collectors.lineups import pick_state
     from app.db import get_pool
@@ -4313,22 +4427,30 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
                 logger.warning("[pipeline] 라인업 의도 산출 실패: %s", exc)
 
         _prepare_games_for_judge([jg], sport)
-        payload = {
-            "date": date, "sport": sport, "games": [jg],
-            "breaking_news": analysis.get("news", ""),
-            "instruction": ("확정 라인업이 수신됐다. 확정 선발·타순·결장과 "
-                            "today_nine·lineup_matchup·lineup_record·pitcher_matchup를 반영해 "
-                            "경기력 기준으로 승률을 재산출하라. 배당은 보지 마라. "
-                            "승부는 오늘 9명이다. 결장 건수로 사이드를 뒤집지 마라. "
-                            "유사 타순 전적·맞대결 ERA는 표본 3 미만이면 승률 근거로 쓰지 마라. "
-                            "era_vs_opponent는 시즌 상대팀이지 오늘 9명이 아니다."),
-        }
-        try:
-            verdict = await Judge().judge(payload)
-            _attach_verdicts([jg], verdict)
-        except Exception as exc:
-            logger.warning("[pipeline] 라인업 재판정 실패: %s", exc)
-            await notify_api_error(exc)
+        from app.engine.scoring import BASEBALL_SPORTS
+        if sport in BASEBALL_SPORTS:
+            try:
+                await _run_baseball_matchups(redis, date, [jg])
+            except Exception as exc:
+                logger.warning("[pipeline] 라인업 매치업 실패: %s", exc)
+                await notify_api_error(exc)
+        else:
+            payload = {
+                "date": date, "sport": sport, "games": [jg],
+                "breaking_news": analysis.get("news", ""),
+                "instruction": ("확정 라인업이 수신됐다. 확정 선발·타순·결장과 "
+                                "today_nine·lineup_matchup·lineup_record·pitcher_matchup를 반영해 "
+                                "경기력 기준으로 승률을 재산출하라. 배당은 보지 마라. "
+                                "승부는 오늘 9명이다. 결장 건수로 사이드를 뒤집지 마라. "
+                                "유사 타순 전적·맞대결 ERA는 표본 3 미만이면 승률 근거로 쓰지 마라. "
+                                "era_vs_opponent는 시즌 상대팀이지 오늘 9명이 아니다."),
+            }
+            try:
+                verdict = await Judge().judge(payload)
+                _attach_verdicts([jg], verdict)
+            except Exception as exc:
+                logger.warning("[pipeline] 라인업 재판정 실패: %s", exc)
+                await notify_api_error(exc)
 
         # [8] **세 마켓을 모두 갱신한다.** 승패만 다시 계산하면 라인업 변경이
         #   총득점·점수차에 준 영향이 반영되지 않는다.
@@ -4391,17 +4513,25 @@ async def ensure_game_fresh(sport: str, date: str, game_id: int) -> tuple[dict |
         jg["research"] = data
         settings = get_settings()
         _prepare_games_for_judge([jg], sport)
-        payload = {
-            "date": date, "sport": sport, "games": [jg],
-            "breaking_news": analysis.get("news", ""),
-            "instruction": "이 경기의 research가 방금 최신으로 갱신되었다. 최신 데이터 기준으로 판정을 재산출하라.",
-        }
-        try:
-            verdict = await Judge().judge(payload)
-            _attach_verdicts([jg], verdict)
-        except Exception as exc:
-            logger.warning("[pipeline] single-game re-judge failed: %s", exc)
-            await notify_api_error(exc)
+        from app.engine.scoring import BASEBALL_SPORTS
+        if sport in BASEBALL_SPORTS:
+            try:
+                await _run_baseball_matchups(redis, date, [jg])
+            except Exception as exc:
+                logger.warning("[pipeline] single-game matchup failed: %s", exc)
+                await notify_api_error(exc)
+        else:
+            payload = {
+                "date": date, "sport": sport, "games": [jg],
+                "breaking_news": analysis.get("news", ""),
+                "instruction": "이 경기의 research가 방금 최신으로 갱신되었다. 최신 데이터 기준으로 판정을 재산출하라.",
+            }
+            try:
+                verdict = await Judge().judge(payload)
+                _attach_verdicts([jg], verdict)
+            except Exception as exc:
+                logger.warning("[pipeline] single-game re-judge failed: %s", exc)
+                await notify_api_error(exc)
         _enforce_data_rules(analysis["games"])
         picks_out, parlays, _reco = _compute_picks(settings, analysis["games"], sport,
                                             news=analysis.get("news") or "",

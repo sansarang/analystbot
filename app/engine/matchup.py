@@ -1,0 +1,126 @@
+"""매치업 판정 — 라인업 확정 시 경기당 1회. 팀 폼 캐시는 재호출하지 않는다."""
+from __future__ import annotations
+
+import json
+import logging
+
+from app.config import get_settings
+from app.engine.prompts import MATCHUP, fill
+from app.engine.team_form import complete_json, load_form, parse_json_object
+
+logger = logging.getLogger(__name__)
+
+CONF_MAP = {"상": "high", "중": "medium", "하": "low"}
+
+
+def clip_p_home(p, settings=None) -> float:
+    """프롬프트가 벗어나도 코드에서 0.32–0.68로 자른다."""
+    s = settings or get_settings()
+    try:
+        val = float(p)
+    except (TypeError, ValueError):
+        val = 0.5
+    lo, hi = s.min_win_prob_mlb, s.max_win_prob_mlb
+    return max(lo, min(hi, val))
+
+
+def _mock_matchup(home: str, away: str) -> dict:
+    return {
+        "p_home": 0.55,
+        "우세": "home",
+        "근거": [
+            f"홈 평가서 {home} 흐름 유지",
+            f"원정 평가서 {away} 표본 3경기",
+            "오늘 선발 최근 등판 목 모드",
+        ],
+        "변수": ["목 모드"],
+        "뉴스반영": {"적용": False, "조정폭": "0", "사유": "목 모드"},
+        "확신도": "중",
+    }
+
+
+def lineups_payload(jg: dict) -> dict:
+    r = jg.get("research") or {}
+    return {
+        "home": {
+            "pitcher": ((r.get("home_pitcher") or {}).get("name")
+                        or jg.get("home_pitcher")),
+            "order": (r.get("home_lineup") or {}).get("order") or jg.get("lineup_home"),
+        },
+        "away": {
+            "pitcher": ((r.get("away_pitcher") or {}).get("name")
+                        or jg.get("away_pitcher")),
+            "order": (r.get("away_lineup") or {}).get("order") or jg.get("lineup_away"),
+        },
+    }
+
+
+def starters_recent_payload(jg: dict) -> dict:
+    r = jg.get("research") or {}
+    return {
+        "home": r.get("home_starter_recent") or [],
+        "away": r.get("away_starter_recent") or [],
+    }
+
+
+def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
+    s = settings or get_settings()
+    p = clip_p_home(verdict.get("p_home"), s)
+    conf_kr = verdict.get("확신도") or "중"
+    jg["p_claude"] = p
+    jg["matchup"] = {**verdict, "p_home": p}
+    jg["judge_confidence"] = CONF_MAP.get(conf_kr, "medium")
+    jg["judge_pass"] = conf_kr == "하"
+    reasons = verdict.get("근거") or []
+    jg["verdict"] = " ".join(str(x) for x in reasons) or "매치업 판정"
+    jg["form_unavailable"] = False
+
+
+async def judge_matchup(jg: dict, redis, date: str, *,
+                        mock: bool | None = None) -> dict | None:
+    """form: 캐시만 읽는다. 저녁 재판정에서 팀 폼을 다시 돌리지 않는다."""
+    from app.engine.scoring import BASEBALL_SPORTS
+
+    sport = jg.get("sport") or ""
+    if sport not in BASEBALL_SPORTS:
+        return None
+    settings = get_settings()
+    is_mock = settings.mock_judge if mock is None else mock
+    home, away = jg.get("home") or "", jg.get("away") or ""
+    home_form = await load_form(redis, sport, home, date)
+    away_form = await load_form(redis, sport, away, date)
+    if not home_form or home_form.get("unavailable") or not away_form \
+            or away_form.get("unavailable"):
+        jg["form_unavailable"] = True
+        logger.info("[matchup] %s vs %s 폼 없음·불가 — 추천 탈락", home, away)
+        return None
+    if is_mock:
+        verdict = _mock_matchup(home, away)
+        apply_matchup(jg, verdict, settings)
+        return verdict
+
+    prompt = fill(
+        MATCHUP,
+        HOME_FORM_JSON=json.dumps(home_form, ensure_ascii=False, default=str),
+        AWAY_FORM_JSON=json.dumps(away_form, ensure_ascii=False, default=str),
+        LINEUPS_JSON=json.dumps(lineups_payload(jg), ensure_ascii=False, default=str),
+        STARTERS_RECENT_JSON=json.dumps(
+            starters_recent_payload(jg), ensure_ascii=False, default=str),
+    )
+    parsed = None
+    for attempt in (1, 2):
+        try:
+            text = await complete_json(prompt, mock=False)
+        except Exception as exc:
+            logger.warning("[matchup] 호출 실패 %d회: %s", attempt, exc)
+            text = ""
+        parsed = parse_json_object(text)
+        if parsed and "p_home" in parsed:
+            break
+        parsed = None
+        logger.warning("[matchup] JSON 파싱 실패 %d회", attempt)
+    if parsed is None:
+        jg["form_unavailable"] = True
+        return None
+    apply_matchup(jg, parsed, settings)
+    return parsed

@@ -27,3 +27,12 @@ def test_soccer_still_requires_two_source():
     assert not qualifies(pick, s)
     pick["two_source"] = True
     assert qualifies(pick, s)
+
+
+def test_form_unavailable_fails_baseball_rec():
+    s = Settings(_env_file=None)
+    pick = {"p": 0.64, "sport": "kbo", "pick_state": "final",
+            "lineup_status": "confirmed", "form_unavailable": True}
+    assert not qualifies(pick, s)
+    pick["form_unavailable"] = False
+    assert qualifies(pick, s)
