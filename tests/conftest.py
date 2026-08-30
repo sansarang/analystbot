@@ -13,6 +13,115 @@ import redis.asyncio as aioredis
 
 from app.db import apply_schema
 
+# ------------------------------------------------- 외부 HTTP 전면 차단 (P5-2)
+#
+# 위 `FORCE_MOCK=true` 는 **API 키가 있는 소스만** 목으로 돌린다.
+# `config.py` 의 목 판정이 전부 `force_mock or not <API키>` 형태이기 때문이다.
+# 무인증 소스(Statcast·네이버·Yahoo재팬·KBO 기록실·open-meteo·statsapi)는
+# 걸 고리가 없어 **테스트에서 실제 트래픽이 나갔다.**
+#
+#   실측 2026-08-30: test_quota / test_pipeline_bot / test_data_provenance 가
+#   run_pipeline(sport="mlb") 에서 baseballsavant.mlb.com 으로 30일치 투구
+#   원본을 받느라 2분 넘게 멈춰 있었다. 세 파일은 사실상 실행 불가였고,
+#   그 안의 회귀 방어는 한 번도 돌지 않았다.
+#
+# ⚠️ 이 파일 위쪽 `_no_outbound_telegram` 독스트링은 "httpx 전역 교체는 쓰지
+#    않는다"고 적어 두었다. **그 결정을 여기서 뒤집는다.** 이유가 다르다 —
+#    그때는 클라이언트를 통째로 가짜로 갈아끼워 스로틀·재시도 로직 테스트까지
+#    깨졌다. 여기서는 `send` 만 가로채고 **localhost 는 통과**시키므로 로컬
+#    Redis·Postgres 와 HTTP 동작 자체를 검사하는 테스트는 영향이 없다.
+#    그리고 밖으로 나가는 호출은 **깨져야 한다** — 그게 목이 필요한 지점의
+#    지도를 그리는 유일한 방법이다.
+#
+# 실운영 영향 없음: conftest.py 는 pytest 가 수집할 때만 로드된다.
+# `app/` 어디에서도 import 하지 않는다(`grep -rn "conftest" app/` → 0건).
+
+_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "::1", "[::1]", "0.0.0.0"}
+_CURRENT_TEST = {"id": "<수집 단계>"}
+BLOCKED_CALLS: list[tuple[str, str]] = []
+
+
+class OutboundHTTPBlocked(RuntimeError):
+    """테스트가 외부로 HTTP를 냈다 — 목이 필요한 지점이다."""
+
+
+def _guard(kind: str, url: str) -> None:
+    from urllib.parse import urlsplit
+
+    host = (urlsplit(url).hostname or "").lower()
+    if host in _ALLOWED_HOSTS:
+        return
+    BLOCKED_CALLS.append((_CURRENT_TEST["id"], url))
+    raise OutboundHTTPBlocked(
+        f"\n  테스트가 외부 HTTP를 냈다 — 목으로 대체해야 한다."
+        f"\n    테스트: {_CURRENT_TEST['id']}"
+        f"\n    경로  : {kind}"
+        f"\n    URL   : {url[:200]}"
+        f"\n  (허용: {sorted(_ALLOWED_HOSTS)} — 로컬 Redis·Postgres용)"
+    )
+
+
+def _install_http_block() -> None:
+    for mod_name in ("httpx", "httpx2"):
+        try:
+            hx = __import__(mod_name)
+        except ImportError:
+            continue
+        _a, _s = hx.AsyncClient.send, hx.Client.send
+
+        async def a_send(self, request, *a, __o=_a, **kw):
+            _guard("httpx-async", str(request.url))
+            return await __o(self, request, *a, **kw)
+
+        def s_send(self, request, *a, __o=_s, **kw):
+            _guard("httpx-sync", str(request.url))
+            return __o(self, request, *a, **kw)
+
+        hx.AsyncClient.send, hx.Client.send = a_send, s_send
+
+    try:
+        import requests.adapters as ra
+    except ImportError:
+        pass
+    else:
+        _r = ra.HTTPAdapter.send
+
+        def r_send(self, request, *a, **kw):
+            _guard("requests", str(request.url))
+            return _r(self, request, *a, **kw)
+
+        ra.HTTPAdapter.send = r_send
+
+    import urllib.request as ur
+
+    _u = ur.urlopen
+
+    def u_open(url, *a, **kw):
+        _guard("urllib", str(getattr(url, "full_url", url)))
+        return _u(url, *a, **kw)
+
+    ur.urlopen = u_open
+
+
+_install_http_block()
+
+
+def pytest_runtest_setup(item):
+    _CURRENT_TEST["id"] = item.nodeid
+
+
+def pytest_terminal_summary(terminalreporter, *_a, **_kw):
+    if not BLOCKED_CALLS:
+        return
+    tr = terminalreporter
+    tr.write_sep("=", "외부 HTTP 차단 — 목이 필요한 지점", red=True)
+    seen: dict[str, set] = {}
+    for nodeid, url in BLOCKED_CALLS:
+        from urllib.parse import urlsplit
+        seen.setdefault(nodeid, set()).add(urlsplit(url).netloc)
+    for nodeid, hosts in sorted(seen.items()):
+        tr.write_line(f"  {nodeid}\n      → {', '.join(sorted(hosts))}")
+
 ADMIN_DSN = "postgresql://analyst:analyst@localhost:5432/postgres"
 TEST_DB = "analystbot_test"
 TEST_DSN = f"postgresql://analyst:analyst@localhost:5432/{TEST_DB}"
