@@ -119,3 +119,56 @@ def test_pipeline_npb_refresh_passes_standings():
     assert "standings=npb_standings" in block
     assert "lacks_opponent_context" in src
     assert "_parse_npb_standings" in src
+
+
+def test_slate_teams_counts_teams_not_games():
+    """분모 규칙: 폼 대상은 경기 수가 아니라 **팀 수**다."""
+    from app.pipeline import _slate_teams
+
+    games = [{"home": "A", "away": "B"}, {"home": "C", "away": "D"},
+             {"home": "E", "away": "F"}]
+    assert _slate_teams(games) == 6          # 경기 3 → 팀 6
+    # 더블헤더: 같은 팀이 두 경기에 나와도 폼은 한 번만 받는다
+    assert _slate_teams(games + [{"home": "A", "away": "B"}]) == 6
+    assert _slate_teams([]) == 0
+    assert _slate_teams([{"home": "A", "away": None}]) == 1
+
+
+async def test_form_quota_path_reports_team_denominator(monkeypatch):
+    """🔴 크레딧 소진 알림의 분모가 경기 수면 실패 규모가 절반으로 보인다.
+
+    실측 2026-08-29 14:16 KST에 실제로 이 경로가 탔다. 그때 "5팀 중 0팀"으로
+    나갔지만 대상은 10팀이었다. 재발을 막는다.
+    """
+    from app.collectors.base import ApiQuotaError
+    from app.engine import team_form
+    from app.pipeline import _run_baseball_forms
+
+    async def boom(*a, **kw):
+        raise ApiQuotaError("anthropic(form)", "credit balance is too low")
+
+    monkeypatch.setattr(team_form, "analyze_games", boom)
+
+    calls = []
+
+    async def record(name, ok, total, **kw):
+        calls.append({"name": name, "ok": ok, "total": total, **kw})
+
+    games = [{"home": f"H{i}", "away": f"A{i}"} for i in range(5)]   # 5경기 = 10팀
+    try:
+        await _run_baseball_forms(None, "kbo", "2026-08-30", games, record)
+    except ApiQuotaError:
+        pass
+    else:
+        raise AssertionError("크레딧 소진이 삼켜졌다 — 슬레이트가 계속 돈다")
+
+    # _run_baseball_forms 는 기록하지 않고 그대로 올린다. 기록은 호출부의 몫이다.
+    assert calls == [], f"예외 경로에서 이중 기록: {calls}"
+
+    # 호출부(build_analysis)의 분모가 팀 수인지 — 경기 수(len(upcoming))면 절반이다.
+    from pathlib import Path
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    i = src.index('await record("팀 폼", 0,')
+    assert "_slate_teams(upcoming)" in src[i:i + 120], \
+        "크레딧 소진 경로의 팀 폼 분모가 팀 수가 아니다"

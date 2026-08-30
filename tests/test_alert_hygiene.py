@@ -215,15 +215,32 @@ def _record_calls():
 _COUNT_NAMES = {"팀": {"KBO_TEAMS", "NPB_TEAMS"},
                 "구장": {"KBO_PARKS", "MLB_PARKS"}}
 
+# [2026-08-30] 규칙을 **정확화**한다 — 넓히는 게 아니라 조건을 나눈다.
+#   리그 상수는 **리그 전체를 수집할 때만** 정직한 분모다
+#   (KBO 지표·1군 등록·투수 소모는 10팀 전부가 대상이다).
+#   폼은 **그날 경기하는 팀만** 대상이라 부분 슬레이트가 정상이다.
+#   3경기 슬레이트에 KBO_TEAMS(10)를 쓰면 "6/10"이라는 반대 방향의 거짓말이
+#   된다. 그래서 슬레이트 대상에는 `_slate_teams(...)`를 정직한 분모로 인정한다.
+#   ⚠️ 경기 수(len(games))는 여전히 금지다 — 팀 수의 절반이라 과소 표기다.
+_SLATE_COUNTERS = {"_slate_teams"}
+
+
+def _slate_counter_call(node) -> bool:
+    return (isinstance(node, ast.Call)
+            and getattr(node.func, "id", None) in _SLATE_COUNTERS)
+
 
 def test_fixed_denominators_use_named_measured_constants():
     """🔴 분모가 실제 대상 수가 아니면 '10팀 중 9팀 실패' 같은 거짓말이 나온다."""
     for name, _num, total, unit, line in _record_calls():
         if unit not in _COUNT_NAMES or total is None:
             continue
+        if _slate_counter_call(total):
+            continue
         expr = ast.unparse(total)
         assert expr in _COUNT_NAMES[unit], \
-            f"{name}(L{line}): {unit} 분모가 {expr} — 실측 상수를 쓰라"
+            (f"{name}(L{line}): {unit} 분모가 {expr} — 리그 전체 대상이면 실측 상수를, "
+             f"슬레이트 대상이면 {'/'.join(sorted(_SLATE_COUNTERS))} 를 쓰라")
 
 
 def _core(node) -> str:

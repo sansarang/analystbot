@@ -49,6 +49,18 @@ NPB_TEAMS = 12          # yahoo_npb.TEAM_TO_ODDS 12구단 (실측)
 KBO_PARKS = 9
 
 
+def _slate_teams(games: list[dict]) -> int:
+    """그 슬레이트에서 폼을 받아야 할 **팀 수** (중복 제거).
+
+    리그 상수(KBO_TEAMS 등)는 리그 전체를 수집할 때만 정직한 분모다.
+    폼은 **그날 경기하는 팀만** 대상이므로, 3경기 슬레이트에서 KBO_TEAMS(10)를
+    쓰면 "6/10"이라는 반대 방향의 거짓말이 된다. 경기 수(len(games))를 쓰면
+    팀 수의 절반이라 이번엔 과소 표기다 — 둘 다 아니고 실제 팀 수를 센다.
+    (더블헤더는 같은 팀이 두 경기에 나오므로 set으로 중복을 지운다.)
+    """
+    return len({t for g in games for t in (g.get("home"), g.get("away")) if t})
+
+
 def today_kst() -> str:
     return datetime.now(KST).strftime("%Y-%m-%d")
 
@@ -1647,7 +1659,9 @@ async def build_analysis(
                 logger.error("[pipeline] 팀 경기력 크레딧 소진(%s) — 슬레이트 중단: %s",
                              sport, exc)
                 await notify_api_error(exc)
-                await record("팀 폼", 0, len(upcoming), exc=exc,
+                # 분모는 **팀 수**다. len(upcoming)은 경기 수라 절반으로
+                # 과소 표기됐다 — "5팀 중 0팀 실패"처럼 보였다(실제 10팀).
+                await record("팀 폼", 0, _slate_teams(upcoming), exc=exc,
                              unit="팀",
                              impact="잔액 소진. 이후 폼·매치업 호출을 멈춥니다")
                 raise
@@ -2088,7 +2102,7 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
         if forms and n_ok < len(forms):
             cause = causes.most_common(1)[0][0] if causes else "missing"
         await record(
-            "팀 폼", n_ok, len(forms),
+            "팀 폼", n_ok, _slate_teams(games),
             cause=cause,
             detail=detail,
             unit="팀",
