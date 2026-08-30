@@ -1,0 +1,37 @@
+{
+  "source": "compare_form_slate.py --old 2026-08-29 KBO 5경기. 구 Judge를 다시 돌리지 않는다.",
+  "date": "2026-08-29",
+  "sport": "kbo",
+  "games": [
+    {
+      "game_id": 1445,
+      "matchup": "Kiwoom Heroes @ Doosan Bears",
+      "old_p_home": 0.6,
+      "old_favored": "home"
+    },
+    {
+      "game_id": 1446,
+      "matchup": "KT Wiz @ Samsung Lions",
+      "old_p_home": 0.56,
+      "old_favored": "home"
+    },
+    {
+      "game_id": 1447,
+      "matchup": "LG Twins @ Lotte Giants",
+      "old_p_home": 0.46,
+      "old_favored": "away"
+    },
+    {
+      "game_id": 1448,
+      "matchup": "SSG Landers @ Kia Tigers",
+      "old_p_home": 0.52,
+      "old_favored": "home"
+    },
+    {
+      "game_id": 1449,
+      "matchup": "NC Dinos @ Hanwha Eagles",
+      "old_p_home": 0.35,
+      "old_favored": "away"
+    }
+  ]
+}

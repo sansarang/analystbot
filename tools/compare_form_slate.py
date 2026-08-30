@@ -1,29 +1,38 @@
-"""신·구 야구 파이프라인 병행 비교. 발송은 하지 않는다 (구버전 dry-run).
+"""신 야구 파이프라인 슬레이트 비교. 발송은 하지 않는다.
 
 실행:
-  PYTHONPATH=. uv run python tools/compare_form_slate.py --old
-  PYTHONPATH=. uv run python tools/compare_form_slate.py --sport kbo --old
+  PYTHONPATH=. uv run python tools/compare_form_slate.py
+  PYTHONPATH=. uv run python tools/compare_form_slate.py --sport kbo
 
-기본 종목은 오늘 슬레이트 KBO+MLB. 구 Judge는 --old 일 때만 호출한다.
-신 판정(matchup)만 analysis 캐시에 남긴다 — 구 Judge 결과를 캐시에 쓰지 않는다.
+구 Judge(--old)는 다시 돌리지 않는다. KBO 대조는
+tools/baselines/form_compare_old_kbo_2026-08-29.json 고정값.
+400이 나면 남은 리그를 돌리지 않고 진행 지점을 보고한다.
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
-import copy
 import json
+from collections import Counter
+from pathlib import Path
 
+from app.collectors.base import ApiQuotaError
 from app.config import get_settings
 from app.engine.form_card import rec_label
 from app.engine.matchup import clip_p_home
 from app.pipeline import default_date, qualifies
 
-
-STRIP_FOR_OLD = (
-    "p_claude", "matchup", "verdict", "judge_pass", "judge_confidence",
-    "excluded_picks", "form_unavailable",
+BASELINE_PATH = (
+    Path(__file__).resolve().parent / "baselines"
+    / "form_compare_old_kbo_2026-08-29.json"
 )
+
+
+def _gid(x):
+    try:
+        return int(x)
+    except (TypeError, ValueError):
+        return x
 
 
 def _favored(side, p) -> str | None:
@@ -71,6 +80,7 @@ def _row(jg: dict, *, prefix: str = "") -> dict:
         key("근거"): list(m.get("근거") or []) or None,
         key("verdict"): (jg.get("verdict") or "")[:400] or None,
         key("model"): m.get("model") or jg.get("model"),
+        key("확신도"): m.get("확신도") or jg.get("judge_confidence"),
         "form_unavailable": bool(jg.get("form_unavailable")),
         "judgement_void": bool(jg.get("judgement_void")),
         "npb_last3_verified": s.npb_last3_verified,
@@ -82,36 +92,24 @@ def _row(jg: dict, *, prefix: str = "") -> dict:
     }
 
 
-def _games_for_old_judge(games: list[dict]) -> list[dict]:
+def load_frozen_old_kbo(date: str) -> list[dict]:
+    """구 Judge를 다시 부르지 않는다. 2026-08-29 KBO 5경기 고정값."""
+    blob = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
+    if blob.get("date") != date:
+        return []
     out = []
-    for g in games:
-        c = copy.deepcopy(g)
-        for k in STRIP_FOR_OLD:
-            c.pop(k, None)
-        out.append(c)
+    for g in blob.get("games") or []:
+        out.append({
+            "game_id": g["game_id"],
+            "old_p_home": g.get("old_p_home"),
+            "old_favored": g.get("old_favored"),
+            "old_rec_label": None,
+            "old_qualifies": None,
+            "old_verdict": None,
+            "old_근거": None,
+            "old_source": "frozen",
+        })
     return out
-
-
-def _old_as_jg(base: dict, verdict: dict) -> dict:
-    p = verdict.get("p_claude")
-    try:
-        p = float(p) if p is not None else None
-    except (TypeError, ValueError):
-        p = None
-    conf = verdict.get("confidence") or "medium"
-    return {
-        **base,
-        "p_claude": p,
-        "matchup": {
-            "p_home": p,
-            "우세": _favored(None, p),
-            "근거": [verdict.get("verdict")] if verdict.get("verdict") else [],
-        },
-        "verdict": verdict.get("verdict") or "",
-        "judge_confidence": conf,
-        "judge_pass": bool(verdict.get("pass_recommended")),
-        "form_unavailable": False,
-    }
 
 
 async def build_new_analysis(sport: str, date: str) -> dict:
@@ -133,7 +131,6 @@ async def build_new_analysis(sport: str, date: str) -> dict:
                 return analysis
         analysis = await build_analysis(
             pool, sport, date, redis=r, sequential_research=True)
-        # 신 판정만 analysis 캐시에 남긴다. card 키는 덮지 않는다(발송 문구 오염 금지).
         await r.set(
             f"analysis:{sport}:{date}",
             json.dumps(analysis, ensure_ascii=False, default=str),
@@ -144,47 +141,14 @@ async def build_new_analysis(sport: str, date: str) -> dict:
         await r.aclose()
 
 
-async def run_old_judge(sport: str, date: str, analysis: dict) -> list[dict]:
-    """구 Judge dry-run. 텔레그램·캐시 쓰기는 하지 않는다."""
-    from app.engine.judge import Judge
-    from app.pipeline import _prepare_games_for_judge
-
-    games = [g for g in (analysis.get("games") or [])
-             if g.get("status") == "scheduled"]
-    payload_games = _games_for_old_judge(games)
-    _prepare_games_for_judge(payload_games, sport)
-    payload = {
-        "date": date, "sport": sport, "games": payload_games,
-        "breaking_news": analysis.get("news") or "",
-        "instruction": "dry-run 구버전 비교. 발송하지 마라.",
-    }
-    verdict = await Judge().judge(payload)
-    by_id = {g.get("game_id"): g for g in verdict.get("games") or []}
-    out = []
-    for jg in games:
-        v = by_id.get(jg.get("game_id")) or {}
-        old_jg = _old_as_jg(jg, v)
-        row = _row(old_jg)
-        out.append({
-            "game_id": jg.get("game_id"),
-            "old_p_home": row["p_home"],
-            "old_favored": row["favored"],
-            "old_rec_label": row["rec_label"],
-            "old_qualifies": row["qualifies"],
-            "old_verdict": row["verdict"],
-            "old_근거": row["근거"],
-        })
-    return out
-
-
 def merge_rows(new_games: list[dict], old_rows: list[dict]) -> list[dict]:
-    old_by = {r["game_id"]: r for r in old_rows}
+    old_by = {_gid(r["game_id"]): r for r in old_rows}
     merged = []
     for jg in new_games:
         if jg.get("status") not in (None, "scheduled"):
             continue
         n = _row(jg)
-        o = old_by.get(jg.get("game_id")) or {}
+        o = old_by.get(_gid(jg.get("game_id"))) or {}
         new_f, old_f = n.get("favored"), o.get("old_favored")
         flip = bool(new_f and old_f and new_f != old_f)
         item = {
@@ -198,6 +162,8 @@ def merge_rows(new_games: list[dict], old_rows: list[dict]) -> list[dict]:
             "new_rec": n["rec_label"],
             "old_rec": o.get("old_rec_label"),
             "new_model": n.get("model"),
+            "new_확신도": n.get("확신도"),
+            "form_unavailable": n.get("form_unavailable"),
             "favored_flip": flip,
             "pick_state": n.get("pick_state"),
             "lineup_status": n.get("lineup_status"),
@@ -207,6 +173,86 @@ def merge_rows(new_games: list[dict], old_rows: list[dict]) -> list[dict]:
             item["old_근거"] = o.get("old_근거") or o.get("old_verdict")
         merged.append(item)
     return merged
+
+
+def clip_confidence_dist(rows: list[dict], live: list[dict]) -> dict:
+    clips = Counter()
+    conf = Counter()
+    for r in rows:
+        p = r.get("new_p_home")
+        if p is None:
+            clips["null"] += 1
+        else:
+            val = float(p)
+            if val <= 0.3200001:
+                clips["at_floor_0.32"] += 1
+            elif val >= 0.6799999:
+                clips["at_ceil_0.68"] += 1
+            else:
+                clips["interior"] += 1
+    for jg in live:
+        m = jg.get("matchup") or {}
+        c = m.get("확신도") or jg.get("judge_confidence") or "none"
+        conf[str(c)] += 1
+    return {"clip": dict(clips), "confidence": dict(conf)}
+
+
+async def inspect_redis(date: str) -> dict:
+    import redis.asyncio as aioredis
+
+    r = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    form_ok, form_fail, analysis = [], [], []
+    try:
+        async for key in r.scan_iter(match=f"form:*:{date}"):
+            raw = await r.get(key)
+            try:
+                obj = json.loads(raw) if raw else {}
+            except json.JSONDecodeError:
+                obj = {}
+            parts = key.split(":")
+            league = parts[1] if len(parts) > 1 else "?"
+            team = ":".join(parts[2:-1]) if len(parts) > 3 else "?"
+            row = {
+                "key": key, "league": league, "team": team,
+                "model": obj.get("model"),
+                "unavailable": bool(obj.get("unavailable")),
+                "cause": obj.get("cause"),
+            }
+            if obj.get("unavailable"):
+                form_fail.append(row)
+            else:
+                form_ok.append(row)
+        async for key in r.scan_iter(match=f"analysis:*:*:{date}"):
+            raw = await r.get(key)
+            try:
+                obj = json.loads(raw) if raw else {}
+            except json.JSONDecodeError:
+                obj = {}
+            analysis.append({
+                "key": key, "model": obj.get("model"),
+                "p_home": obj.get("p_home"),
+            })
+    finally:
+        await r.aclose()
+    fail_by = {}
+    for row in form_fail:
+        k = f"{row['league']}:{row.get('cause') or 'unknown'}"
+        fail_by[k] = fail_by.get(k, 0) + 1
+    form_models = sorted({x["model"] for x in form_ok if x.get("model")})
+    analysis_models = sorted({x["model"] for x in analysis if x.get("model")})
+    return {
+        "form_ok": len(form_ok),
+        "form_fail": len(form_fail),
+        "form_models": form_models,
+        "analysis_n": len(analysis),
+        "analysis_models": analysis_models,
+        "fail_by_league_cause": fail_by,
+        "form_fail_rows": form_fail,
+        "form_ok_sample": [
+            {"league": x["league"], "team": x["team"], "model": x["model"]}
+            for x in form_ok
+        ],
+    }
 
 
 def _print_table(rows: list[dict]) -> None:
@@ -225,20 +271,23 @@ def _print_table(rows: list[dict]) -> None:
               f"{'YES' if r.get('favored_flip') else ''}")
 
 
-async def run_sport(sport: str, date: str | None, old: bool) -> dict:
+async def run_sport(sport: str, date: str | None) -> dict:
     date = date or default_date(sport)
     analysis = await build_new_analysis(sport, date)
     live = [g for g in (analysis.get("games") or [])
             if g.get("status") == "scheduled"]
-    old_rows = await run_old_judge(sport, date, analysis) if old else []
+    old_rows = load_frozen_old_kbo(date) if sport == "kbo" else []
+    old_source = "frozen_kbo" if old_rows else "none"
     merged = merge_rows(live, old_rows)
     flips = [r for r in merged if r.get("favored_flip")]
     return {
         "sport": sport,
         "date": date,
         "n": len(merged),
-        "old_ran": bool(old),
+        "old_ran": False,
+        "old_source": old_source,
         "favored_flips": len(flips),
+        "dist": clip_confidence_dist(merged, live),
         "games": merged,
         "note": "발송은 이 스크립트가 하지 않는다. analysis 캐시는 신 판정만.",
     }
@@ -250,21 +299,54 @@ async def main() -> None:
                     choices=("kbo", "mlb", "npb", "all"),
                     help="all = 오늘 슬레이트 KBO+NPB+MLB")
     ap.add_argument("--date", default=None)
-    ap.add_argument("--old", action="store_true",
-                    help="구 Judge를 한 번 호출한다 (크레딧 사용, 발송 없음)")
     args = ap.parse_args()
+    from app.engine.credit_guard import reset, stopped_at
+
+    reset()
     sports = ("kbo", "npb", "mlb") if args.sport == "all" else (args.sport,)
     reports = []
+    aborted = None
+    date = args.date
     for sp in sports:
-        reports.append(await run_sport(sp, args.date, args.old))
-    out = {"sports": reports} if len(reports) > 1 else reports[0]
+        try:
+            reports.append(await run_sport(sp, args.date))
+            if reports[-1].get("date"):
+                date = reports[-1]["date"]
+        except ApiQuotaError as exc:
+            from app.engine.credit_guard import stopped_at as _at
+
+            aborted = {
+                "error": "ApiQuotaError",
+                "at": _at() or stopped_at(),
+                "sport": sp,
+                "done_sports": [r["sport"] for r in reports],
+                "detail": str(exc),
+            }
+            print(f"[credit] 즉시 중단 sport={sp} at={aborted['at']}: {exc}",
+                  flush=True)
+            break
+    date = date or default_date("kbo")
+    cache = await inspect_redis(date)
+    out = {
+        "sports": reports,
+        "aborted": aborted,
+        "redis": cache,
+        "note": "발송 없음. 구 Judge 재호출 없음.",
+    }
     print(json.dumps(out, ensure_ascii=False, indent=2, default=str))
     print()
     for rep in reports:
         print(f"=== {rep['sport']} {rep['date']} n={rep['n']} "
-              f"flips={rep['favored_flips']} old_ran={rep['old_ran']} ===")
+              f"flips={rep['favored_flips']} old={rep.get('old_source')} ===")
         _print_table(rep["games"])
+        print(f"clip/conf: {rep.get('dist')}")
         print()
+    if aborted:
+        print(f"=== ABORTED {aborted} ===")
+    print(f"=== redis form_ok={cache['form_ok']} form_fail={cache['form_fail']} "
+          f"form_models={cache['form_models']} "
+          f"analysis_models={cache['analysis_models']} ===")
+    print(f"fail_by: {cache['fail_by_league_cause']}")
 
 
 if __name__ == "__main__":
