@@ -20,8 +20,8 @@ from app.collectors.base import (
 )
 from app.collectors.odds import snapshot_odds
 from app.config import get_settings
+from app.collectors.finals import ingest_finals, reconcile_stale_games
 from app.db import get_pool
-from app.grader import grade_date
 from app.notify import notify_api_error
 from app.pipeline import mlb_slate_date, run_pipeline, today_kst
 
@@ -593,27 +593,26 @@ async def elo_refresh_job() -> None:
     logger.info("[scheduler] elo refreshed: %s", list(params))
 
 
-async def grading_job() -> None:
-    """전날 결과 채점 — expert_ledger는 뷰라 자동 갱신.
+async def finals_job() -> None:
+    """전날 종료 점수 적재. **픽 채점은 하지 않는다** (2026-08-29 사용자 지시).
 
-    **야구·축구 둘 다 채점한다.** 이전에는 "mlb" 고정이라 축구 픽이
-    영원히 미채점으로 남았다(2026-08-25 발견: 축구 픽 result 전부 NULL).
-    한 종목이 실패해도 다른 종목은 계속 채점한다.
+    목표는 이 경기 적중이다 (DISCIPLINE 4). 남는 일은 games에 결과를 채우는
+    것뿐이고, 그것은 다음 날 폼 패킷(지난 3경기)의 재료가 된다.
+
+    **야구·축구 넷 다 적재한다.** 한 종목이 실패해도 나머지는 계속한다.
     """
-    from app.grader import reconcile_stale_games
-
     pool = await get_pool()
-    # 상태가 밀린 경기를 먼저 정합한다 — 채점은 status='final'만 보기 때문에
-    # 이걸 건너뛰면 밀린 날짜의 픽이 영원히 미채점으로 남는다.
+    # 상태가 밀린 경기를 먼저 정합한다 — 적재는 그 날짜를 다시 받아오는 일이라
+    # 이걸 건너뛰면 밀린 날짜가 영원히 scheduled로 남는다.
     try:
         await reconcile_stale_games(pool)
     except Exception as exc:
-        logger.warning("[scheduler] stale 정합 실패 — 채점은 계속: %s", exc)
+        logger.warning("[scheduler] stale 정합 실패 — 적재는 계속: %s", exc)
     # [§8-37] 중복 경기 행 자가 복구. **한 번 고쳐두면 끝나는 문제가 아니다** —
     #   소스가 늘어날 때마다 같은 경기가 다른 ext_id로 다시 갈라질 수 있고,
-    #   그러면 예측이 붙은 행과 결과가 들어온 행이 또 남남이 돼 채점이 조용히
-    #   멈춘다(실측 2026-08-27: KBO 5 · MLB 10 · NPB 6 중복).
-    #   매일 채점 직전에 합쳐서 그 상태가 하루 이상 지속되지 않게 한다.
+    #   그러면 예측이 붙은 행과 점수가 들어온 행이 또 남남이 된다
+    #   (실측 2026-08-27: KBO 5 · MLB 10 · NPB 6 중복).
+    #   ⚠️ **반드시 적재보다 먼저** 합친다 — 뒤에 하면 그날도 중복 상태로 돈다.
     try:
         from app.collectors.game_match import merge_duplicate_games
 
@@ -622,19 +621,19 @@ async def grading_job() -> None:
             logger.warning("[scheduler] 중복 경기 %d행 재발 — 병합함 (예측 %d건 이관)",
                            merged["merged"], merged.get("moved_predictions", 0))
     except Exception as exc:
-        logger.warning("[scheduler] 중복 병합 실패 — 채점은 계속: %s", exc)
-    totals: dict[str, dict] = {}
+        logger.warning("[scheduler] 중복 병합 실패 — 적재는 계속: %s", exc)
+    done: dict[str, object] = {}
     for sport in ("mlb", "soccer", "kbo", "npb"):
         try:
-            totals[sport] = await grade_date(pool, yesterday_kst(), sport)
+            done[sport] = await ingest_finals(pool, yesterday_kst(), sport)
         except (ApiQuotaError, ApiAuthError) as exc:
-            logger.error("[scheduler] grading %s halted (%s): %s",
+            logger.error("[scheduler] finals %s halted (%s): %s",
                          sport, type(exc).__name__, exc)
             await notify_api_error(exc)
         except Exception as exc:
-            logger.exception("[scheduler] grading %s 실패 — 다음 종목 계속: %s", sport, exc)
-    logger.info("[scheduler] graded yesterday: %s", totals)
-    return totals
+            logger.exception("[scheduler] finals %s 실패 — 다음 종목 계속: %s", sport, exc)
+    logger.info("[scheduler] 종료 점수 적재: %s", sorted(done))
+    return done
 
 
 async def heartbeat_job() -> None:
@@ -721,7 +720,7 @@ def _job_specs() -> list[tuple]:
         ("prefetch_asia", prefetch_asia_job,
          CronTrigger(hour=14, minute=0, timezone=KST)),
         ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
-        ("grade_yesterday", grading_job, CronTrigger(hour=13, minute=0, timezone=KST)),
+        ("ingest_finals_13h", finals_job, CronTrigger(hour=13, minute=0, timezone=KST)),
         ("research_retry_45m", research_retry_job, IntervalTrigger(minutes=45)),
         ("lineup_poll_30m", lineup_poll_job, IntervalTrigger(minutes=30)),
         # NPB 18:00 → 17:45까지 크롤·분석 종료. KBO는 시작 직전까지 5분마다.
