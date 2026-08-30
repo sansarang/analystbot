@@ -20,6 +20,8 @@ schedule totalGames=0) 최종 점수를 받을 다른 경로가 없다. 채점�
 import logging
 import re
 from datetime import date as _date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from app.collectors.base import BaseAPIClient
 
@@ -189,8 +191,13 @@ async def fetch_month(season: int, month: int,
 
 async def fetch_finals(days: int = 7, end: _date | None = None,
                        client: KBOClient | None = None) -> list[dict]:
-    """최근 `days`일의 **종료 경기**. 채점기가 쓰는 진입점."""
-    end = end or _date.today()
+    """최근 `days`일의 **종료 경기**. 종료 점수 적재가 쓰는 진입점.
+
+    ⚠️ 기본 종료일은 **KST 오늘**이다. `date.today()`는 서버 로컬 날짜라
+       Railway(UTC)에서는 KST 09:00 이전에 하루 전 날짜가 나온다 — KBO는
+       한국 리그이므로 서버가 어디 있든 KST 날짜여야 한다.
+    """
+    end = end or datetime.now(ZoneInfo("Asia/Seoul")).date()
     start = _date.fromordinal(end.toordinal() - days)
     months = {(d.year, d.month) for d in (start, end)}
     out: list[dict] = []

@@ -48,7 +48,9 @@ def _season_code(season: str | None = None, back: int = 0) -> str:
 
     if season and not back:
         return season
-    today = dt.date.today()
+    # 서버 로컬 날짜(dt.date.today())는 서버 타임존에 따라 시즌 코드를 하루
+    # 어긋나게 만든다 — 7월 1일 전후 경계에서 시즌이 통째로 바뀐다.
+    today = dt.datetime.now(dt.timezone.utc).date()
     start = (today.year if today.month >= 7 else today.year - 1) - back
     return f"{start % 100:02d}{(start + 1) % 100:02d}"
 

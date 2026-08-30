@@ -106,13 +106,23 @@ class YahooNPBClient:
         return await self._get("/npb/standings/")
 
 
+_START_HHMM = re.compile(r"\b([01]?\d|2[0-3]):([0-5]\d)\b")
+
+
 def parse_schedule(html: str) -> list[dict]:
-    """일정 HTML → [{game_id, home, away, starters_confirmed}].
+    """일정 HTML → [{game_id, home, away, starters_confirmed, start_hhmm}].
 
     ⚠️ 일정 페이지에는 **어제·내일 경기도 섞여 있다.** 종료(試合終了)·미정(試合前)
        블록을 걸러내고, 팀명이 실제로 잡히는 행만 남긴다.
     ⚠️ `(予)`는 예상 선발, `(先)`는 확정이다 — 예상을 확정으로 취급하면
        '최종 픽' 자격이 잘못 부여된다(라인업 2단계 규율).
+
+    `start_hhmm`: 앵커 텍스트의 **JST 개시 시각**("18:00"). 없으면 None —
+    이미 시작한 경기는 시각 대신 이닝·스코어가 실린다(실조회 2026-08-30:
+    `'エスコンF ライブ配信中 日本ハム ロッテ 0 - 2 1回表'`).
+    ⚠️ 종전에는 이 값을 버리고 전 경기를 18:00 JST로 고정했다. 실조회
+    2026-08-30 6경기 중 14:00·17:00이 각각 1경기 — 최대 4시간 어긋났다.
+    경기 시작 상대(T-) 트리거는 이 값이 정확해야 성립한다.
     """
     out, seen = [], set()
     for href, gid, inner in re.findall(
@@ -126,12 +136,14 @@ def parse_schedule(html: str) -> list[dict]:
             continue                      # 종료·미정 블록 또는 다른 리그
         # 등장 순서: 홈이 먼저 (실조회: "神宮 ヤクルト 巨人 18:00")
         teams.sort(key=txt.index)
+        m = _START_HHMM.search(txt)
         out.append({
             "game_id": gid,
             "home": TEAM_TO_ODDS[teams[0]], "away": TEAM_TO_ODDS[teams[1]],
             "home_kr": teams[0], "away_kr": teams[1],
             # (先) = 확정 발표 / (予) = 예상
             "starters_confirmed": "(先)" in txt,
+            "start_hhmm": f"{int(m.group(1)):02d}:{m.group(2)}" if m else None,
         })
     return out
 
@@ -658,9 +670,11 @@ async def upsert_schedule(pool, date: str,
     KBO와 같은 이유다 — 배당을 판정에 쓰지 않는데 일정 소스가 Odds라
     크레딧이 마르면 응답 전체가 죽었다. 반환 계약은 Odds 경로와 같다.
 
-    ⚠️ 시각: 일정 페이지가 경기 시각을 안정적으로 주지 않아 18:00 JST를 쓴다.
-       `apply_result`가 ±20시간 창으로 경기를 찾으므로 매칭에는 지장이 없지만,
-       **표시 시각은 부정확하다.** 시각 파싱은 별도 과제다.
+    시각: 일정 페이지의 개시 시각(JST)을 그대로 쓴다. 소스가 안 주는 경기
+    (이미 시작해 이닝·스코어가 실린 경우)만 18:00 JST로 폴백하고 로그를 남긴다.
+    ⚠️ 종전에는 **전 경기를 18:00 JST로 고정**했다. 실조회 2026-08-30 6경기 중
+       14:00·17:00이 각각 1경기 — 최대 4시간 어긋났다. 경기 시작 상대(T-)
+       트리거는 이 값이 정확해야 성립한다.
     """
     from datetime import UTC, datetime
     from zoneinfo import ZoneInfo
@@ -672,11 +686,17 @@ async def upsert_schedule(pool, date: str,
     html = score_card_html(await client.schedule(date))
     games = parse_schedule(html)
     by_final = {g["game_id"]: g for g in parse_finals(html)}
-    counts = {"scheduled": 0, "final": 0, "total": len(games)}
+    counts = {"scheduled": 0, "final": 0, "total": len(games), "time_missing": 0}
     for g in games:
         fin = by_final.get(g["game_id"])
         done = fin is not None
-        starts = datetime.fromisoformat(f"{date}T18:00:00").replace(tzinfo=jst)
+        hhmm = g.get("start_hhmm")
+        if not hhmm:
+            counts["time_missing"] += 1
+            logger.info("[yahoo_npb] %s 개시 시각 없음 game=%s — 18:00 JST 폴백 "
+                        "(이미 시작한 경기일 수 있다)", date, g["game_id"])
+            hhmm = "18:00"
+        starts = datetime.fromisoformat(f"{date}T{hhmm}:00").replace(tzinfo=jst)
         await apply_result(
             pool, sport="npb", league="NPB", ext_id=f"yahoo:{g['game_id']}",
             starts_at=starts.astimezone(UTC), home=g["home"], away=g["away"],
@@ -684,6 +704,7 @@ async def upsert_schedule(pool, date: str,
             home_score=fin["home_score"] if fin else None,
             away_score=fin["away_score"] if fin else None)
         counts["final" if done else "scheduled"] += 1
-    logger.info("[yahoo_npb] %s 일정 %d경기 적재 (예정 %d / 종료 %d) — Yahoo 소스",
-                date, counts["total"], counts["scheduled"], counts["final"])
+    logger.info("[yahoo_npb] %s 일정 %d경기 적재 (예정 %d / 종료 %d · 시각 미상 %d) "
+                "— Yahoo 소스", date, counts["total"], counts["scheduled"],
+                counts["final"], counts["time_missing"])
     return counts
