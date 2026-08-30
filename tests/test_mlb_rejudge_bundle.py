@@ -137,20 +137,24 @@ def test_sanitize_keeps_statcast_lambda_fields():
     assert "home_offense.xwoba_30d" not in dropped
 
 
-def test_compute_picks_writes_statcast_onto_jg_research():
-    """enrich가 sanitize 복사본만 채우면 카드가 빈다 — jg.research에도 얹는다."""
-    from app.pipeline import _compute_picks
+def test_merge_source_data_puts_statcast_on_mlb_research():
+    """살아 있는 경로(merge_source_data → _merge_mlb → enrich_mlb_research)가
+    MLB research에 Statcast를 얹는지.
+
+    종전 테스트는 `_compute_picks` 안의 **두 번째·중복** enrich 호출을 검사했다.
+    야구가 λ를 버리면서 그 호출은 사라졌고(2026-08-30), 남은 유일한 소비처
+    `scoring.mlb_lambdas`도 야구에서 더는 돌지 않는다. 그래서 옛 경로가 아니라
+    **지금 카드·판정이 실제로 읽는 경로**를 지킨다.
+    """
+    from app.pipeline import merge_source_data
 
     jg = {
         "game_id": 1, "sport": "mlb", "status": "scheduled",
         "home": "Los Angeles Dodgers", "away": "San Diego Padres",
         "home_pitcher": "Yoshinobu Yamamoto", "away_pitcher": "Dylan Cease",
-        "starts_at_kst": "08/29 10:10", "league": "MLB",
-        "p_claude": 0.55, "judge_confidence": "medium",
-        "market_probs": {}, "best_odds": {}, "alt_markets": [],
-        "expert_picks": [], "stats": {}, "research": {},
+        "starts_at_kst": "08/29 10:10", "league": "MLB", "stats": {},
     }
-    bundle = {
+    ctx = {
         "offense": {
             "Los Angeles Dodgers": {"xwoba_30d": 0.340},
             "San Diego Padres": {"xwoba_30d": 0.310},
@@ -159,13 +163,17 @@ def test_compute_picks_writes_statcast_onto_jg_research():
             "Yoshinobu Yamamoto": {"xwoba_allowed": 0.280, "era_season": 2.50},
             "Dylan Cease": {"xwoba_allowed": 0.310, "era_season": 3.80},
         },
-        "bullpen": {}, "parks": {}, "league": {"xwoba": 0.320},
+        "bullpen": {}, "parks": {}, "batters": {}, "absences": {},
+        "weather": {}, "league": {"xwoba": 0.320},
     }
-    _compute_picks(Settings(_env_file=None), [jg], "mlb", bundle)
-    assert jg["research"]["home_offense"]["xwoba_30d"] == 0.340
-    assert jg["research"]["away_pitcher"]["xwoba_allowed"] == 0.310
-    assert jg.get("lam") and jg["lam"]["home"] > 0
-    assert "핵심 지표(타선·선발) 전무" not in (jg.get("lambda_missing") or [])
+    research: dict = {}
+    done = merge_source_data(research, jg, "mlb", ctx)
+
+    assert "mlb_statsapi" in done or "mlb_savant" in done, done
+    assert research["home_offense"]["xwoba_30d"] == 0.340
+    assert research["away_offense"]["xwoba_30d"] == 0.310
+    assert research["away_pitcher"]["xwoba_allowed"] == 0.310
+    assert research["home_pitcher"]["name"] == "Yoshinobu Yamamoto"
 
 
 def test_rejudge_merge_then_poll_fills_today_nine_and_standings():
@@ -277,25 +285,3 @@ def test_merge_mlb_starter_name_from_stats_when_jg_empty():
     assert home["starter"].known
     assert "Yamamoto" in home["starter"].facts[0]
     assert jg["home_pitcher"] == "Yoshinobu Yamamoto"
-
-
-def test_compute_picks_without_dist_does_not_keep_old_trace():
-    """이전 λ 트레이스를 남기고 '핵심 지표 전무'만 붙이면 카드가 모순된다."""
-    from app.pipeline import _compute_picks
-
-    jg = {
-        "game_id": 1, "sport": "mlb", "status": "scheduled",
-        "home": "Los Angeles Dodgers", "away": "San Diego Padres",
-        "starts_at_kst": "08/29 10:10", "league": "MLB",
-        "p_claude": 0.55, "judge_confidence": "medium",
-        "market_probs": {}, "best_odds": {}, "alt_markets": [],
-        "expert_picks": [], "stats": {}, "research": {},
-        "lambda_trace": ["홈 타선 xwOBA 0.340 → ×1.05"],
-        "lambda_missing": [],
-        "lam": {"home": 4.5, "away": 4.2},
-    }
-    _compute_picks(Settings(_env_file=None), [jg], "mlb", None)
-    assert jg.get("lambda_trace") == []
-    assert jg.get("lam") is None
-    assert jg.get("lambda_missing") == ["핵심 지표(타선·선발) 전무"]
-    assert not any(c["market"] == "totals" for c in (jg.get("market_board") or []))
