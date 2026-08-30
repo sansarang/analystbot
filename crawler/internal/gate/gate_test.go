@@ -147,3 +147,32 @@ func TestApplyDoesNotMutateInput(t *testing.T) {
 		t.Errorf("원본이 수정됐다 — 게이트가 정상 데이터를 버리는지 비교할 수 없게 된다")
 	}
 }
+
+// ---------------------------------------------------------------- 타순 포지션 표기
+//
+// 실사고 2026-08-30: KBO 타순이 물리 게이트에서 100% 폐기됐다.
+// 숫자는 선수 이름이 아니라 포지션(1루수·2루수·3루수)에 있었다.
+// 아래 두 테스트는 **양방향**이다 — 오탐을 막되 미탐을 만들지 않는다.
+
+func TestKBOLineupWithPositionsPasses(t *testing.T) {
+	lineup := "황성빈(중견수)-나승엽(1루수)-레이예스(좌익수)-한동희(지명타자)-" +
+		"고승민(2루수)-노진혁(3루수)-윤동희(우익수)-손성빈(포수)-전민재(유격수)"
+	if msg := checkPhysical("lineup_home", lineup); msg != "" {
+		t.Fatalf("정상 KBO 타순이 폐기됐다: %s", msg)
+	}
+}
+
+func TestColumnShiftIntoNameStillCaught(t *testing.T) {
+	// 이름 칸 자체에 숫자가 오면(= 진짜 컬럼 밀림) 여전히 잡아야 한다.
+	shifted := "황성빈(중견수)-3.45(1루수)-레이예스(좌익수)-한동희(지명타자)-" +
+		"고승민(2루수)-노진혁(3루수)-윤동희(우익수)-손성빈(포수)-전민재(유격수)"
+	if msg := checkPhysical("lineup_home", shifted); msg == "" {
+		t.Fatal("이름 칸에 숫자가 왔는데 통과했다 — 미탐")
+	}
+}
+
+func TestPitcherNameWithDigitStillCaught(t *testing.T) {
+	if msg := checkPhysical("home_pitcher", "189.00"); msg == "" {
+		t.Fatal("선발 이름 칸의 숫자를 놓쳤다 — 미탐")
+	}
+}
