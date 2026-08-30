@@ -14,6 +14,7 @@ pybaseball로 MLB 투구 단위 원본을 받아 팀·투수 단위로 집계한
 import asyncio
 import datetime as dt
 import logging
+import pathlib
 import warnings
 
 from app.config import get_settings
@@ -366,13 +367,52 @@ def _key(kind: str, date: str) -> str:
     return f"statcast:{kind}:{date}"
 
 
+MOCK_FIXTURE = pathlib.Path(__file__).resolve().parents[2] / "mock_data" / "statcast.json"
+
+
+async def _refresh_from_fixture(redis, date: str) -> dict:
+    """[P5-1] 무인증 목 모드 — baseballsavant 대신 픽스처를 캐시에 넣는다.
+
+    🔴 픽스처는 **원본 CSV가 아니라 집계 결과**다. 원본 30일치는 12만 행이라
+       저장소에 넣을 수 없고, 소비자(`load`·`merge_into_research`)가 읽는 것도
+       집계뿐이다. 2026-08-22 기준 1회 캡처(122,016행 → 팀 29·투수 556).
+
+    `refresh`와 **같은 키·같은 TTL**로 쓴다. 그래야 `load` 이후의 경로
+    (폴백·병합·λ 산출)가 실제와 같은 모양으로 돌아간다 — 여기서 모양이
+    갈라지면 목이 지켜주는 것이 없다.
+    """
+    import json
+
+    if not MOCK_FIXTURE.exists():
+        logger.warning("[statcast] 목 모드지만 픽스처가 없다 (%s) — 빈 결과",
+                       MOCK_FIXTURE)
+        return {"ok": False, "error": "fixture missing", "mock": True}
+    payloads = json.loads(MOCK_FIXTURE.read_text(encoding="utf-8"))
+    for kind in ("offense", "pitchers", "bullpen", "batters", "league"):
+        await redis.set(_key(kind, date),
+                        json.dumps(payloads.get(kind) or {}, ensure_ascii=False),
+                        ex=CACHE_TTL)
+    logger.info("[statcast] %s 목 픽스처 적재 — 팀 %d개, 투수 %d명",
+                date, len(payloads.get("offense") or {}),
+                len(payloads.get("pitchers") or {}))
+    return {"ok": True, "mock": True,
+            "teams": len(payloads.get("offense") or {}),
+            "pitchers": len(payloads.get("pitchers") or {}),
+            "bullpen": len(payloads.get("bullpen") or {}), "rows": 0}
+
+
 async def refresh(redis, date: str | None = None) -> dict:
     """일 1회 갱신 — 팀 타선·투수 지표를 계산해 Redis에 저장. 반환: 요약."""
     import json
 
+    from app.config import get_settings as _gs
     from app.pipeline import mlb_slate_date
 
     date = date or mlb_slate_date()
+    # [P5-1] baseballsavant는 무인증이라 FORCE_MOCK이 걸리지 않았고, 테스트가
+    #        30일치 원본을 실제로 받아 3파일이 사실상 실행 불가였다.
+    if _gs().mock_freesource:
+        return await _refresh_from_fixture(redis, date)
     end = dt.date.fromisoformat(date)
     start = end - dt.timedelta(days=WINDOW_DAYS)
     try:

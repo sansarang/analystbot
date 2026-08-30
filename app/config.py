@@ -370,6 +370,22 @@ class Settings(BaseSettings):
         return self.force_mock
 
     @property
+    def mock_freesource(self) -> bool:
+        """무인증 수집기(Statcast·네이버·Yahoo재팬·KBO 기록실·open-meteo 등)를
+        목으로 돌릴 것인가.
+
+        🔴 다른 `mock_*` 은 전부 `force_mock or not <API키>` 형태다. 무인증
+           소스는 걸 고리가 될 키가 없어서 **목 판정 자체가 없었고, 테스트에서
+           실트래픽이 나갔다.** 그래서 이 속성은 `force_mock` 하나만 본다.
+
+        ⚠️ 프로덕션에서 켜지지 않는다: `force_mock` 기본값은 False이고,
+           켜지는 경로는 `FORCE_MOCK=true` 뿐이다. 그 값을 세우는 곳은
+           `tests/conftest.py`(pytest 수집 시)와 개발자가 직접 지정하는
+           `.env` 뿐이며, `.env.example` 에도 운영값 False로 적혀 있다.
+        """
+        return self.force_mock
+
+    @property
     def mock_odds(self) -> bool:
         return self.force_mock or not self.odds_api_key
 
