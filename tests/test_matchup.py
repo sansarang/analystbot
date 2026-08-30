@@ -166,6 +166,46 @@ def test_old_judge_still_uses_judge_model_not_matchup_model():
     assert "matchup_model" not in src
 
 
+@pytest.mark.parametrize("sport", ["mlb", "kbo", "npb"])
+async def test_old_judge_refuses_baseball_payloads(sport, monkeypatch):
+    """야구는 구 Judge(Opus)를 타지 않는다 — 호출부가 아니라 Judge 안에서 막는다.
+
+    실측 2026-08-29: 개편이 미배포인 상태에서 KBO 5 + NPB 6경기가 구 Judge로
+    나가 크레딧이 소진됐다. 호출부 분기 6곳 중 하나만 빠져도 같은 일이 난다.
+    """
+    from app.engine.judge import Judge
+
+    called = []
+
+    async def boom(self, payload):
+        called.append(payload)
+        raise AssertionError("야구가 구 Judge HTTP 경로에 도달했다")
+
+    monkeypatch.setattr(Judge, "_judge_once", boom)
+    payload = {"date": "2026-08-30", "sport": sport,
+               "games": [{"game_id": i, "home": "A", "away": "B"} for i in range(6)]}
+    assert await Judge(mock=False).judge(payload) == {"games": []}
+    assert called == []
+
+
+async def test_old_judge_still_reaches_soccer(monkeypatch):
+    """가드가 과잉 적용되면 축구 판정이 통째로 사라진다 — 그 회귀를 막는다."""
+    from app.engine.judge import Judge
+
+    seen = []
+
+    async def ok(self, payload):
+        seen.append(payload["sport"])
+        return {"games": [{"game_id": 1, "p_claude": 0.6, "verdict": "v"}]}
+
+    monkeypatch.setattr(Judge, "_judge_once", ok)
+    out = await Judge(mock=False).judge(
+        {"date": "2026-08-30", "sport": "soccer",
+         "games": [{"game_id": 1, "home": "A", "away": "B"}]})
+    assert seen == ["soccer"]
+    assert out["games"][0]["p_claude"] == 0.6
+
+
 def test_pipeline_runs_form_before_matchup_and_skips_form_on_rejudge():
     """배선: 프리페치는 폼→매치업. 라인업 재판정은 매치업만 (폼 재호출 금지)."""
     from pathlib import Path

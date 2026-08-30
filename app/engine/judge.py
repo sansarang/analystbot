@@ -234,7 +234,20 @@ class Judge:
         경기가 많으면 JUDGE_BATCH 단위로 나눠 호출한다 — 한 호출의 페이로드가 클수록
         adaptive thinking이 토큰을 다 써 도구 호출을 못 내는 사고가 난다. 배치가 실패해도
         나머지 배치의 판정은 살린다(전부 아니면 전무 금지).
+
+        ⚠️ **야구는 이 경로로 오지 않는다.** 야구 판정은 팀 폼(Haiku) + 매치업(Sonnet)이며
+           구 Judge(Opus)를 쓰지 않는다(DISCIPLINE 1-A). 호출부마다 분기가 있지만,
+           분기가 하나라도 빠지면 야구 슬레이트가 통째로 Opus로 나간다 — 실측
+           2026-08-29: 미배포 상태에서 KBO 5 + NPB 6경기가 구 Judge로 나가 크레딧이
+           소진됐다. 그래서 **호출부가 아니라 여기 한 곳**에서 막는다.
         """
+        from app.engine.scoring import BASEBALL_SPORTS
+
+        sport = payload.get("sport") or ""
+        if sport in BASEBALL_SPORTS:
+            logger.warning("[judge] 야구(%s)는 구 Judge를 쓰지 않는다 — 판정 없이 반환 "
+                           "(폼·매치업 경로가 담당)", sport)
+            return {"games": []}
         games = payload.get("games") or []
         if not self.mock and len(games) > JUDGE_BATCH:
             merged: list[dict] = []
