@@ -11,3 +11,7 @@ data/
 # 실사고(2026-08-26): gitignore에 있어 Railway 업로드에서 빠져 빌드가 깨졌다.
 #   Build Failed: "/uv.lock": not found
 
+
+# 실행 로그는 저장소에 넣지 않는다 — 배포 업로드에도 불필요하고,
+# tools/deploy.sh 의 미커밋 차단에 매번 걸린다.
+logs/
