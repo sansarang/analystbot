@@ -1,8 +1,7 @@
 """[§8-37] 결과를 **예측이 붙은 경기 행**에 붙인다.
 
-채점이 통째로 막혀 있던 진짜 이유가 여기였다: 같은 경기가 소스마다 다른
-ext_id를 받아 두 행으로 갈라지고, 예측은 한쪽 행에·결과는 다른 행에 들어갔다.
-채점기는 final 행에서 픽을 찾으므로 예측이 붙은 행은 영원히 미채점이었다.
+같은 경기가 소스마다 다른 ext_id를 받아 두 행으로 갈라지면, 예측은 한쪽·점수는
+다른 쪽에 들어간다. 점수는 예측이 붙은 행에 옮겨야 한다.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -131,17 +130,13 @@ async def test_merge_is_idempotent(db_pool):
     assert first["merged"] >= 1 and second["merged"] == 0
 
 
-def test_grading_job_self_heals_duplicates():
-    """[§8-37] 중복은 한 번 고쳐두면 끝나는 문제가 아니다 — 매일 합쳐야 한다.
-
-    소스가 늘어날 때마다 같은 경기가 다른 ext_id로 다시 갈라질 수 있고,
-    그러면 채점이 **조용히** 멈춘다.
-    """
+def test_finals_job_self_heals_duplicates():
+    """중복 행은 점수 적재 전에 합친다 — 예측과 결과가 다른 행에 붙지 않게."""
     from pathlib import Path
 
     src = Path("app/scheduler.py").read_text(encoding="utf-8")
-    job = src[src.index("async def grading_job"):]
+    job = src[src.index("async def finals_job"):]
     job = job[:job.index("\nasync def ", 10)] if "\nasync def " in job[10:] else job
-    assert "merge_duplicate_games" in job, "채점 잡에 중복 자가 복구가 없다"
-    assert job.index("merge_duplicate_games") < job.index("grade_date"), \
-        "병합이 채점보다 뒤에 있으면 그날 채점은 여전히 중복 상태로 돈다"
+    assert "merge_duplicate_games" in job, "점수 적재 잡에 중복 자가 복구가 없다"
+    assert job.index("merge_duplicate_games") < job.index("ingest_finals"), \
+        "병합이 점수 적재보다 뒤에 있으면 그날도 중복 상태로 돈다"

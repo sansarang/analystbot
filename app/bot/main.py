@@ -131,95 +131,9 @@ async def load_analysis(sport: str, date: str) -> dict | None:
         await redis.aclose()
 
 
-async def _has_column(pool, table: str, col: str) -> bool:
-    """구버전 DB 호환 — 없는 컬럼을 조회해 성적표가 죽지 않게 한다."""
-    return bool(await pool.fetchval(
-        "SELECT 1 FROM information_schema.columns "
-        "WHERE table_name = $1 AND column_name = $2", table, col))
-
-
-# [§8-18] CLV 헬퍼 삭제 — 우리 가격을 시장 마감가와 비교하는 지표라 시장에 앵커링된다.
-#   "시장보다 좋은 가격을 잡았나"가 아니라 "우리가 맞혔나"가 유일한 질문이다.
-
-
 async def render_performance(pool) -> str:
-    """[§8-18] 📈 성적표 — **정확도와 점수 오차만.** 돈·시장 지표는 전부 뺐다.
-
-    제거: 실현 손익(원) · 유닛 · 주간 손절선 · CLV(마감가 대비)
-    이유: 봇은 얼마를 걸라고도, 얼마 벌었다고도 말하지 않는다. 그리고 CLV는
-      우리 가격을 시장 마감가와 비교하는 지표라 **시장에 앵커링**된다.
-    남는 질문은 하나다 — **우리가 리그 기준선보다 나은가.**
-    """
-    row = await pool.fetchrow(
-        """
-        SELECT count(*) FILTER (WHERE result IN ('win','loss','push')) AS graded,
-               count(*) FILTER (WHERE result = 'win')  AS wins,
-               count(*) FILTER (WHERE result = 'loss') AS losses
-        FROM predictions
-        """
-    )
-    # [§8-18] 점수 오차 — "몇 점이나 날까"를 우리가 얼마나 맞혔나.
-    #   승패 적중률만으로는 λ가 좋은지 알 수 없다. 총득점 MAE가 그 답이다.
-    score = await pool.fetchrow(
-        """
-        SELECT count(*) AS n,
-               avg(abs(p.lam_total - (g.home_score + g.away_score))) AS mae,
-               avg(g.home_score + g.away_score) AS actual_avg,
-               avg(p.lam_total) AS pred_avg
-        FROM (
-            SELECT DISTINCT ON (game_id) game_id,
-                   (model_p * 0 + lam_total) AS lam_total
-            FROM predictions WHERE lam_total IS NOT NULL
-        ) p JOIN games g ON g.id = p.game_id
-        WHERE g.status = 'final' AND g.home_score IS NOT NULL
-        """
-    ) if await _has_column(pool, "predictions", "lam_total") else None
-
-    from app.grader import method_ledger
-
-    ledger = await method_ledger(pool)
-    graded, wins, losses = row["graded"], row["wins"], row["losses"]
-    hit = f"{wins / (wins + losses):.1%}" if (wins + losses) else "표본 없음"
-    lines = [
-        "📈 성적표 — 정확도 기준",
-        f"- 채점 완료: {graded}건 ({wins}적중 {losses}빗나감 {graded - wins - losses}무효)",
-        f"- 방향 적중률: {hit}",
-    ]
-    if score and score["n"]:
-        lines.append(
-            f"- 점수 오차(MAE): {float(score['mae']):.2f}점 "
-            f"(예상 평균 {float(score['pred_avg']):.2f} / 실제 {float(score['actual_avg']):.2f}) "
-            f"· {score['n']}경기")
-    if ledger:
-        lines.append("")
-        lines.append("🔬 방식 비교 — 어느 쪽이 더 맞히나")
-        label = {"performance": "경기력 기반(현행)", "legacy": "참고 방식"}
-        for m in ledger:
-            hit_m = f"{m['hit_rate']:.1%}" if m["hit_rate"] is not None else "표본 없음"
-            brier = f" · Brier {m['brier']:.3f}" if m.get("brier") is not None else ""
-            lines.append(
-                f"- {label.get(m['method'], m['method'])}: {m['graded']}건 "
-                f"{m['wins']}적중 {m['losses']}빗나감 · 적중률 {hit_m}{brier}")
-            for band in m.get("calibration") or []:
-                lines.append(
-                    f"    {band['band']} 예측 {band['n']}건 → 실제 {band['actual']:.0%} "
-                    f"({band['gap']:+.0%})")
-        total_graded = sum(m["graded"] for m in ledger)
-        if total_graded < 200:
-            lines.append(f"  ⚠️ 누적 {total_graded}건 — 200~300건 전에는 우열을 판단하지 않습니다")
-        lines.append("  (Brier: 낮을수록 좋음. 항상 50%를 찍으면 0.250)")
-
-    # [§6-4] 같은 표본에서 세 방식이 같은 경기를 어떻게 봤는지 비교
-    from app.grader import three_way_ledger
-
-    three = [m for m in await three_way_ledger(pool) if m.get("n")]
-    if three:
-        lines.append("")
-        lines.append("🧪 확률 산출 방식 3종 비교 (동일 픽 기준)")
-        for m in three:
-            lines.append(f"- {m['label']}: {m['n']}픽 · 적중률 {m['accuracy']:.1%} "
-                         f"· Brier {m['brier']:.3f}")
-    return "\n".join(lines)
+    """픽 채점·성적표 집계는 하지 않는다. 목표는 이 경기 적중이다."""
+    return "목적은 이 경기 적중이다. 픽 채점·성적표는 두지 않는다."
 
 logger = logging.getLogger(__name__)
 
@@ -596,7 +510,7 @@ def card_keyboard(sport: str, date: str, league_key: str | None = None):
 
     return InlineKeyboardMarkup(inline_keyboard=[
         [btn("📊 경기별 심층", "deep"), btn("📰 부상·속보", "news")],
-        [btn("📎 출처", "src"), btn("📈 성적표", "perf")],
+        [btn("📎 출처", "src")],
         [InlineKeyboardButton(text="🎯 오늘 전체 추천픽",
                               callback_data=f"sec:{sport}:{date}:reco")],
     ])

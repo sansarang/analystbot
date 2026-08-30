@@ -136,7 +136,7 @@ def evaluate_totals(games: list[dict], lines=TOTAL_LINES) -> dict:
     """
     from app.config import get_settings
     from app.engine.scoring import mlb_market_probs
-    from app.grader import brier_score, calibration_bands
+    from app.engine.metrics import brier_score, calibration_bands
 
     s = get_settings()
     out: dict = {"lines": {}}
@@ -181,7 +181,7 @@ def evaluate_totals(games: list[dict], lines=TOTAL_LINES) -> dict:
 
 def evaluate_games(games: list[dict]) -> dict:
     """[§6-5] 승패 정확도·Brier·캘리브레이션·확률 분포."""
-    from app.grader import brier_score, calibration_bands
+    from app.engine.metrics import brier_score, calibration_bands
 
     rows = [{"model_p": g["p_home"], "result": "win" if g["home_win"] else "loss"}
             for g in games]

@@ -21,7 +21,7 @@ KST = ZoneInfo("Asia/Seoul")
 JOB_PERIODS = {
     "prefetch_daily": timedelta(days=1),
     "odds_snapshot_30m": timedelta(minutes=30),
-    "grade_yesterday": timedelta(days=1),
+    "ingest_finals_13h": timedelta(days=1),
     "research_retry_45m": timedelta(minutes=45),
     "lineup_poll_30m": timedelta(minutes=30),
     "asia_pregame_5m": timedelta(minutes=5),
@@ -129,7 +129,7 @@ async def build_health(pool, redis) -> str:
     L.append("")
     L.append(f"{'🟢' if alive else '🔴'} 스케줄러 "
              + (f"실행 중 (하트비트 {_dur(_ago(hb))})" if alive
-                else "**미실행** — 프리페치·채점·스냅샷이 전부 멈춰 있습니다"))
+                else "**미실행** — 프리페치·점수 적재·스냅샷이 전부 멈춰 있습니다"))
     runs = await _job_runs(redis) if redis else {}
     nxt = await _next_runs()
     for job_id, period in JOB_PERIODS.items():
@@ -203,12 +203,11 @@ async def build_health(pool, redis) -> str:
             row = await pool.fetchrow(
                 "SELECT (SELECT count(*) FROM games) g, "
                 "(SELECT count(*) FROM predictions) p, "
-                "(SELECT count(*) FROM predictions WHERE result IS NOT NULL) pg, "
                 "(SELECT count(*) FROM games WHERE status <> 'final' "
                 "  AND starts_at < now() - interval '6 hours') stale"
             )
             L.append("")
-            L.append(f"🗄 경기 {row['g']} · 픽 {row['p']}(채점 {row['pg']})"
+            L.append(f"🗄 경기 {row['g']} · 픽 기록 {row['p']}"
                      + (f" · ⚠️ 상태 밀림 {row['stale']}건" if row["stale"] else ""))
         except Exception as exc:
             L.append(f"\n🗄 DB 조회 실패: {exc}")

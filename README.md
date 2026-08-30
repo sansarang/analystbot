@@ -80,7 +80,6 @@ engine/      value(EV·하프켈리) · consensus(ROI 가중) · parlay · judge
 pipeline.py  (일정+스탯 ∥ 배당 ∥ 딥서치) → 앙상블 p_final = 0.45·p_model + 0.30·p_market + 0.25·p_claude
 bot/         aiogram 3.x (+ CLI 시뮬레이터)
 scheduler.py APScheduler (KST 크론)
-grader.py    ML/핸디캡/토탈 채점 (push 포함)
 ```
 
 원칙: LLM 출력의 수치는 API 숫자와 교차검증하며 충돌 시 API가 이긴다. DB는 UTC 저장, 표시만 KST.

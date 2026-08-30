@@ -174,7 +174,7 @@ def _clamp(v: float, lo: float, hi: float) -> float:
 
 def evaluate(records: list[dict], coef: Coefficients, s) -> dict:
     """Brier + 캘리브레이션 + 방향 적중률."""
-    from app.grader import brier_score, calibration_bands
+    from app.engine.metrics import brier_score, calibration_bands
 
     rows = [{"model_p": predict(r, coef, s),
              "result": "win" if r["home_win"] else "loss"} for r in records]
