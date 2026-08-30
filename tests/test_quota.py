@@ -3,10 +3,11 @@
 import pytest
 
 import app.bot.main as botmod
+import app.engine.credit_guard as credit_guard
+import app.engine.matchup as matchup_mod
 import app.pipeline as pipemod
 from app.collectors.base import ApiQuotaError, classify_api_error, is_quota_error
 from app.collectors.football import check_apifootball_quota
-from app.engine.judge import Judge
 from app.notify import notify_quota, reset_notified
 from app.pipeline import run_pipeline
 
@@ -70,22 +71,64 @@ async def test_bot_replies_friendly_message_on_quota(monkeypatch):
     assert sent == ["odds"]                              # 관리자 알림 발송
 
 
-async def test_pipeline_falls_back_to_mock_judge_on_quota(db_pool, redis_client, monkeypatch):
+async def test_matchup_quota_stops_analysis_instead_of_faking_a_card(
+        db_pool, redis_client, monkeypatch):
+    """야구는 쿼터가 소진되면 **분석을 만들지 않고 멈춘다.** 알림은 나간다.
+
+    🔴 2026-08-30 재작성. 종전 이름은 test_pipeline_falls_back_to_mock_judge_on_quota
+       였고 `Judge.judge`를 monkeypatch해 "목 판정 폴백으로 카드는 나온다"를
+       단언했다. 2026-08-29 종목 분리 이후 그 단언은 **발화하지 않는다** —
+       야구는 `pipeline.py`의 `_run_baseball_matchups` 분기로 가고,
+       `Judge().judge`는 비야구 `else` 분기에만 남았다. monkeypatch가
+       한 번도 걸리지 않으니 알림도 없어서 `sent == []` 로 깨졌다.
+       구 Judge 경로 단언을 지우고 현재 경로의 계약을 잠근다.
+
+    현재 계약 (실측 2026-08-30):
+      ① `notify_api_error`가 호출된다 — 관리자에게 충전 안내가 간다.
+      ② `ApiQuotaError`가 **전파된다.** 목 판정으로 카드를 지어내지 않는다.
+         CLAUDE.md "재료 없으면 분석 생성 금지"의 적용이다. 사용자에게 가는
+         안내 문구는 `answer_query`가 만든다 (위 test_bot_replies_... 가 담당).
+    """
     sent = []
 
-    async def broke_judge(self, payload):
-        raise ApiQuotaError("anthropic(judge)", "credit balance is too low")
+    async def broke_matchup(*a, **kw):
+        raise ApiQuotaError("anthropic(matchup)", "credit balance is too low")
 
     async def fake_notify(exc):
         sent.append(exc.service)
         return True
 
-    monkeypatch.setattr(Judge, "judge", broke_judge)
+    # `_run_baseball_matchups`가 함수 안에서 import 하므로 원본 모듈을 갈아끼운다
+    monkeypatch.setattr(matchup_mod, "judge_matchup", broke_matchup)
     monkeypatch.setattr(pipemod, "notify_api_error", fake_notify)
 
-    report = await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
-    assert "15경기" in report and "📋 경기별 마켓" in report  # 목 판정 폴백으로 카드는 나온다
-    assert "anthropic(judge)" in sent          # 알림은 발송됐다
+    with pytest.raises(ApiQuotaError):
+        await run_pipeline(db_pool, redis_client, sport="mlb", date=DATE)
+    assert sent == ["anthropic(matchup)"]
+
+
+async def test_credit_breaker_stops_further_matchup_calls(redis_client):
+    """첫 소진에서 차단기가 내려가면, 남은 경기는 호출 없이 즉시 중단된다.
+
+    재시도는 일시 장애용이지 잔액 0을 위한 것이 아니다 —
+    실측 2026-08-29에 구 2단 해석이 크레딧을 소진한 뒤 폼·매치업이 팀마다
+    400을 반복했다. 그 반복을 막는 것이 `credit_guard`다.
+
+    `abort_if_credit_gone`은 `judge_matchup` 진입부에 있어 **목 모드보다
+    먼저** 걸린다 — 그래서 이 테스트가 목 판정에 가려지지 않는다.
+    외부로 나가지 않는다는 것은 conftest의 HTTP 차단이 함께 보증한다.
+    """
+    jg = {"game_id": 1, "sport": "mlb", "status": "scheduled",
+          "home": "NYY", "away": "BOS"}
+    try:
+        credit_guard.trip_credit("matchup:BOS@NYY", RuntimeError("credit balance is too low"))
+        with pytest.raises(ApiQuotaError):
+            await matchup_mod.judge_matchup(jg, redis_client, DATE)
+    finally:
+        credit_guard.reset()   # 전역 차단기 — 반드시 되돌린다
+
+    # 되돌린 뒤에는 다시 통과해야 한다 (차단기가 영구 고장이 아님을 확인)
+    assert credit_guard.stopped_at() is None
 
 
 async def test_quota_notify_includes_recharge_guidance(monkeypatch):
