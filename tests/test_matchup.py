@@ -219,3 +219,53 @@ def test_pipeline_runs_form_before_matchup_and_skips_form_on_rejudge():
     body = src[start:end]
     assert "_run_baseball_forms" not in body
     assert "_run_baseball_matchups" in body
+
+
+@pytest.mark.parametrize("sport", ["mlb", "kbo", "npb"])
+async def test_rejudge_card_stack_skips_baseball(sport, monkeypatch):
+    """야구 재판정은 매치업 하나다 — 구 5칸·2단·3단 스택을 타지 않는다.
+
+    이 함수에는 종목 가드가 없어 5분 폴링마다 경기당 2단 5콜 + 3단 1콜이
+    나갔다(실측 2026-08-29 크레딧 소진의 한 축). 결과물은 발송 카드
+    (form_card.render_form_card)가 쓰지도 않는다.
+    """
+    import app.pipeline as P
+
+    touched = []
+
+    async def boom_intent(*a, **kw):
+        touched.append("lineup_intent")
+
+    def boom_card(*a, **kw):
+        touched.append("build_card")
+        return {}
+
+    monkeypatch.setattr(P, "_attach_lineup_intent", boom_intent)
+    monkeypatch.setattr("app.engine.card.build_card", boom_card)
+
+    jg = {"game_id": 1, "sport": sport, "home": "H", "away": "A",
+          "status": "scheduled", "starts_at": None, "research": {}}
+    assert await P.rejudge_card_stack(None, jg, sport, None) == ""
+    assert touched == [], f"야구가 구 스택을 탔다: {touched}"
+    # 구 스택 산출물이 jg에 얹히지도 않아야 한다
+    assert "card" not in jg and "cells" not in jg and "compare" not in jg
+
+
+async def test_rejudge_card_stack_still_runs_for_soccer(monkeypatch):
+    """가드가 과잉 적용되면 축구 재판정이 통째로 사라진다."""
+    import app.pipeline as P
+
+    seen = []
+
+    async def note_intent(pool, games, sport, rec, final=False):
+        seen.append(("lineup_intent", sport))
+
+    monkeypatch.setattr(P, "_attach_lineup_intent", note_intent)
+    monkeypatch.setattr("app.engine.card.build_card", lambda *a, **kw: {"home": {}, "away": {}})
+    monkeypatch.setattr("app.engine.interpreter.interpret_side",
+                        lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("stop")))
+
+    jg = {"game_id": 1, "sport": "soccer", "home": "H", "away": "A",
+          "status": "scheduled", "starts_at": None, "research": {}}
+    await P.rejudge_card_stack(None, jg, "soccer", None)
+    assert seen == [("lineup_intent", "soccer")], seen

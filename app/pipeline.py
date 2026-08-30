@@ -5063,8 +5063,22 @@ async def rejudge_card_stack(pool, jg: dict, sport: str, redis=None) -> str:
     승패만 다시 계산하지 않는다 — 득점 환경 칸과 언더오버·핸디캡 판정까지
     함께 갱신한다. 라인업 변경은 승패보다 총득점에 더 크게 영향을 준다.
 
+    ⚠️ **야구는 이 스택을 타지 않는다.** 야구 재판정은 매치업(Sonnet) 하나이고
+       (`rejudge_after_lineup` 의 `_run_baseball_matchups`), 카드는
+       `form_card.render_form_card` 가 매치업 JSON만 읽어 만든다. 5칸·언더오버·
+       핸디는 야구에 없는 마켓이다 (DISCIPLINE 1-A-1).
+
+       이 함수는 종목 가드가 **없어서** 이번 개편에서 통째로 누락됐다. 5분
+       폴링마다 야구 경기당 2단 해석 5콜 + 3단 대조 1콜이 나갔고, 그 결과물을
+       발송 카드는 쓰지도 않았다. 실측 2026-08-29 크레딧 소진의 한 축이다.
+
     반환: 사람이 읽을 변경 요약(없으면 빈 문자열).
     """
+    from app.engine.scoring import BASEBALL_SPORTS
+
+    if sport in BASEBALL_SPORTS:
+        return ""
+
     from app.engine.card import build_card
     from app.engine.card_markets import league_total_baseline
     from app.engine.comparator import compare_game
