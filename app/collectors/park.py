@@ -69,6 +69,11 @@ async def fetch_games(client: MLBClient, end: str, days: int = WINDOW_DAYS) -> l
 
 async def refresh(redis, end: str | None = None, client: MLBClient | None = None) -> dict:
     """파크팩터를 다시 계산해 캐시. 반환: 요약 dict."""
+
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(client):        # [P5-1] 무인증 소스 — 목 모드
+        return {"ok": False, "parks": 0, "games": 0, "mock": True}
     from app.pipeline import mlb_slate_date
 
     end = end or mlb_slate_date()

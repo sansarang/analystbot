@@ -131,6 +131,11 @@ async def fetch_for_games(games: list[dict], client=None) -> dict[int, dict]:
     로스터는 **팀 단위로 캐시**한다 — 15경기면 boxscore 15콜 + 로스터 최대 30콜.
     statsapi는 무료·무인증이라 Perplexity 쿼터와 무관하다.
     """
+
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(client):        # [P5-1] 무인증 소스 — 목 모드
+        return {}
     from app.collectors.lineups import (
         MLBLineupClient, parse_boxscore, parse_injured, parse_roster_names,
     )

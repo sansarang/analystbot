@@ -94,6 +94,11 @@ async def refresh(redis, season: int = 2026, months: tuple[int, ...] = (3, 4, 5,
     """공식 일정에서 시즌 전 경기를 받아 파크팩터를 산출·캐시."""
     import json
 
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(client):        # [P5-1] 무인증 소스 — 목 모드
+        return {"ok": False, "parks": 0, "games": 0, "mock": True}
+
     from app.collectors.kbo import KBOClient, fetch_month
 
     client = client or KBOClient()

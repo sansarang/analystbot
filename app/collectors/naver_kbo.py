@@ -352,6 +352,11 @@ async def refresh(redis, date: str, client: NaverKBOClient | None = None) -> dic
     """
     import json
 
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(client):        # [P5-1] 무인증 소스 — 목 모드
+        return {"ok": False, "games": 0, "mock": True}
+
     client = client or NaverKBOClient()
     games = await client.games(date)
     playable = [g for g in games if g.get("homeTeamName") and g.get("awayTeamName")]

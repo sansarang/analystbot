@@ -629,6 +629,11 @@ async def refresh(redis, date: str, client: YahooNPBClient | None = None) -> dic
     """그 날짜 전 경기를 수집해 캐시. 조용한 0건은 알린다."""
     import json
 
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(client):        # [P5-1] 무인증 소스 — 목 모드
+        return {"ok": False, "games": 0, "mock": True}
+
     client = client or YahooNPBClient()
     games = parse_schedule(score_card_html(await client.schedule(date)))
     out: dict[str, dict] = {}

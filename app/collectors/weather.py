@@ -166,6 +166,11 @@ async def fetch_for_games(games: list[dict], client: OpenMeteoClient | None = No
 
     돔구장은 조회하지 않고 dome=True만 남긴다.
     """
+
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(client):        # [P5-1] 무인증 소스 — 목 모드
+        return {}
     client = client or OpenMeteoClient()
     out: dict[int, dict] = {}
     for g in games:

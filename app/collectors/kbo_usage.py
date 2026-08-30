@@ -405,6 +405,11 @@ def _key(date: str) -> str:
 async def refresh(redis, date: str, client: NaverRecordClient | None = None) -> dict:
     import json
 
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(client):        # [P5-1] 무인증 소스 — 목 모드
+        return {"ok": False, "teams": 0, "mock": True}
+
     standings = None
     try:
         from app.collectors.naver_kbo import build_standings, load as load_naver

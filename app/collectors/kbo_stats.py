@@ -176,6 +176,11 @@ async def refresh(redis, date: str) -> dict:
     """하루 1회 갱신 → Redis 캐시. 반환 요약."""
     import json
 
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(None):        # [P5-1] 무인증 소스 — 목 모드
+        return {"ok": False, "teams": 0, "pitchers": 0, "mock": True}
+
     teams = await fetch_team_stats()
     pitchers = await fetch_pitcher_stats()
     if not teams:

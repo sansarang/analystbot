@@ -267,6 +267,11 @@ async def fetch_for_games(games: list[dict], date: str,
        경기 후 기사는 결과를 담고 있어 누출이다. 이 프로젝트에서 누출은
        한 번 새면 그 뒤 모든 측정을 못 믿게 만든다.
     """
+
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(client):        # [P5-1] 무인증 소스 — 목 모드
+        return {}
     client = client or ChosunClient()
     try:
         urls = await client.index(date)

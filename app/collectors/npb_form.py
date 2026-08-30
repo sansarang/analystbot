@@ -208,6 +208,11 @@ async def refresh(redis, date: str, client: YahooNPBClient | None = None,
                   standings: dict | None = None) -> dict:
     import json
 
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(client):        # [P5-1] 무인증 소스 — 목 모드
+        return {"ok": False, "teams": 0, "mock": True}
+
     data = await fetch_recent_form(date, client, standings=standings)
     if not data:
         from app.alerts import StageResult, stage_failed

@@ -172,6 +172,11 @@ def parse_rows(rows: list[list[str]], season: int) -> tuple[list[dict], int]:
 async def fetch_month(season: int, month: int,
                       client: KBOClient | None = None) -> list[dict]:
     """그 달 경기 목록. 구조가 바뀌어 조용히 비면 알림을 보낸다."""
+
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(client):        # [P5-1] 무인증 소스 — 목 모드
+        return []
     client = client or KBOClient()
     rows = await client.schedule_rows(season, month)
     games, failed = parse_rows(rows, season)

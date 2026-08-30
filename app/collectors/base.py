@@ -245,3 +245,23 @@ class BaseAPIClient:
 
     async def _post(self, path: str, **kwargs: Any) -> Any:
         return await self._request("POST", path, **kwargs)
+
+
+def freesource_mocked(client=None) -> bool:
+    """[P5-1] 무인증 수집기가 목으로 돌아야 하는가.
+
+    Statcast·네이버·Yahoo재팬·KBO 기록실·open-meteo·statsapi는 API 키가 없어
+    `force_mock or not <키>` 형태의 목 판정을 걸 고리가 없었다. 그래서
+    `FORCE_MOCK=true` 인 테스트에서도 실트래픽이 나갔다.
+
+    ⚠️ **주입된 client가 있으면 목으로 돌리지 않는다.** 호출자가 이미 경계를
+       통제하고 있다는 뜻이고(테스트 더블), 여기서 가로채면 파싱·TTL을 검사하는
+       테스트가 통째로 죽는다 — 실제로 `tests/test_naver_kbo.py` 가
+       `client=` 를 주입해 TTL 분기를 본다. 새 가드는 반대 위험(정상 경로 파괴)을
+       함께 막아야 한다.
+    """
+    if client is not None:
+        return False
+    from app.config import get_settings
+
+    return get_settings().mock_freesource

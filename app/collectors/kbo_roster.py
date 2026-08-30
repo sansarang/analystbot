@@ -117,6 +117,11 @@ def _key(date: str) -> str:
 async def refresh(redis, date: str, client: KBORosterClient | None = None) -> dict:
     import json
 
+    from app.collectors.base import freesource_mocked
+
+    if freesource_mocked(client):        # [P5-1] 무인증 소스 — 목 모드
+        return {"ok": False, "teams": 0, "mock": True}
+
     client = client or KBORosterClient()
     table = await client.fetch()
     if not table:
