@@ -141,6 +141,50 @@ async def db_pool():
     await pool.close()
 
 
+# ------------------------------------------------- 전역 풀이 테스트 경계를 넘지 않게
+
+@pytest.fixture(autouse=True)
+async def _reset_global_pool():
+    """`app.db._pool`(모듈 전역)을 테스트마다 폐기한다.
+
+    🔴 이게 없으면 **행(hang)이다. 실패가 아니라 영원히 안 끝난다.**
+       pytest-asyncio는 테스트마다 새 이벤트 루프를 만드는데, `get_pool()`이
+       만든 asyncpg 풀은 만들어진 루프에 묶인 채 전역에 남는다. 다음 테스트가
+       새 루프에서 그 풀을 다시 잡으면 await가 영원히 깨어나지 않는다.
+
+       절제 실험(2026-08-30):
+         test_pipeline_falls_back_to_mock_judge_on_quota 단독      → 2.22초 종료
+         test_bot_replies_friendly_message_on_quota 를 앞에 두면   → 행
+         같은 조합 + 전역 풀 폐기                                   → 2.59초 종료
+       앞 테스트가 `answer_query`→`get_pool()`로 풀을 만들고, 뒤 테스트가
+       `pipeline.py`·`collectors/mlb.py`의 `get_pool()` 경유로 그걸 다시 잡았다.
+       faulthandler 스택은 루프가 select()에 잠긴 모습, lsof는 외부 소켓 0개
+       (postgres만) — 네트워크 대기가 아니라 죽은 루프 대기였다.
+
+       이 행은 P5-2(외부 HTTP 차단)와 무관하다. HEAD의 conftest로 되돌려도
+       같은 조합이 그대로 행이었다.
+
+    teardown은 그 테스트의 루프 안에서 돌므로 여기서는 정상적으로 close 할 수
+    있다. close가 실패해도 참조만은 반드시 끊는다 — 끊지 않으면 다음 테스트가
+    같은 덫에 걸린다.
+
+    ⚠️ 조사 후보(지금 고치지 않는다): **실운영에서도 이벤트 루프가 재생성되는
+       경로가 있다면 같은 행이 가능하다.** 봇·스케줄러는 루프 하나로 도는 것을
+       전제하지만, 재시작·재연결 로직이 `asyncio.run()`을 두 번 부르는 곳이
+       있는지 확인되지 않았다. → docs/AUDIT_OPEN_ITEMS.md
+    """
+    yield
+    import app.db as db
+
+    if db._pool is None:
+        return
+    try:
+        await db.close_pool()
+    except Exception:
+        db._pool = None
+        db._schema_applied = False
+
+
 @pytest.fixture
 async def redis_client():
     r = aioredis.from_url("redis://localhost:6379/15", decode_responses=True)
