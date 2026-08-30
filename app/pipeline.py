@@ -2669,7 +2669,12 @@ def _compute_picks(
             jg["p_heuristic"] = None
             jg["p_learned"] = None
             jg["h2h_lambda_unused"] = True
-            jg["model_valid"] = bool(ph is not None and not jg.get("form_unavailable"))
+            # 야구에 **구 모델 축은 없다.** λ를 안 쓰므로 p_model·p_model3도 없고,
+            # model_valid는 "λ/Elo 모델이 이 경기를 평가했는가"를 뜻한다.
+            # True로 두면 markets._axis_model이 없는 jg["p_model"]을 인덱싱해
+            # KeyError로 야구 슬레이트가 통째로 죽는다 (실측 2026-08-30).
+            # 판정 유무는 judge_missing·form_unavailable이 이미 들고 있다.
+            jg["model_valid"] = False
             jg["prob_adjust"] = None
             p_final: dict[str, float] = {}
             p_ens: dict[str, float] = {}

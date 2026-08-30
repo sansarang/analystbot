@@ -303,7 +303,13 @@ def _axis_model(jg: dict, market: str, side: str) -> bool:
     if market == "h2h":
         if p3:
             return (p3[0] if is_home else p3[2]) > 0.5
-        return jg["p_model"] > 0.5 if is_home else jg["p_model"] < 0.5
+        # [안전망] model_valid가 True인데 p_model이 없는 조합이 가능하다 —
+        #   실측 2026-08-30: 야구 분기가 model_valid를 세우고 p_model은 안 만들어
+        #   KeyError로 슬레이트가 죽었다. 키가 없으면 "모델 축 없음"이 사실이다.
+        pm = jg.get("p_model")
+        if pm is None:
+            return False
+        return pm > 0.5 if is_home else pm < 0.5
     if market == "dc" and p3:
         return (p3[0] + p3[1] if is_home else p3[2] + p3[1]) >= 0.60
     return False  # 핸디캡·토탈은 모델(승무패 Elo/휴리스틱) 범위 밖
