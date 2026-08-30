@@ -220,6 +220,39 @@ async def test_whole_chain_failing_raises_with_trail(monkeypatch):
         await P.complete("judge_a", [{"role": "user", "content": "q"}])
 
 
+@pytest.mark.asyncio
+async def test_quota_error_stops_chain_without_fallback(monkeypatch):
+    from app.collectors.base import ApiQuotaError
+    from app.engine.credit_guard import reset
+
+    reset()
+    hit = []
+
+    class Quota(P.Provider):
+        name = "anthropic"
+        supports_native_schema = True
+
+        async def _call(self, *a, **kw):
+            hit.append("anthropic")
+            raise ApiQuotaError("anthropic", "credit balance too low")
+
+    class Fine(P.Provider):
+        name = "fine"
+        supports_native_schema = True
+
+        async def _call(self, *a, **kw):
+            hit.append("fine")
+            return "ok", {"p": 0.7, "why": "z", "ok": True, "tags": []}
+
+    monkeypatch.setattr(P, "provider_chain",
+                        lambda role, settings=None: [Quota("a"), Fine("b")])
+    monkeypatch.setattr(P, "_ledger_redis", _noop)
+    with pytest.raises(ApiQuotaError):
+        await P.complete("judge_a", [{"role": "user", "content": "q"}])
+    assert hit == ["anthropic"]
+    reset()
+
+
 # ---------------------------------------------------------------- Gemini 실측 반영
 
 def test_provider_default_model_beats_role_fallback():

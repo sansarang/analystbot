@@ -43,9 +43,11 @@ _suppressed: dict[str, int] = {}
 # 원인 분류 라벨 — 사용자가 "충전하면 되는지 기다리면 되는지"를 즉시 알 수 있게
 CAUSE_LABELS = {
     "credit": "크레딧 부족",
+    "credit_400": "크레딧 부족(credit_400)",
     "auth": "키 오류",
     "rate_limit": "레이트리밋",
     "parse": "파싱 실패",
+    "parse_fail": "파싱 실패(parse_fail)",
     "timeout": "타임아웃",
     "exception": "예외",
     "missing": "데이터 없음",
@@ -81,7 +83,7 @@ def classify_exception(exc: BaseException) -> str:
     )
 
     if isinstance(exc, ApiQuotaError):
-        return "credit"
+        return "credit_400"
     if isinstance(exc, ApiAuthError):
         return "auth"
     if isinstance(exc, ApiRateLimitError):
@@ -90,11 +92,13 @@ def classify_exception(exc: BaseException) -> str:
     if isinstance(exc, TimeoutError) or "timeout" in text.lower():
         return "timeout"
     if isinstance(exc, (ValueError, KeyError, TypeError)) and "json" in text.lower():
-        return "parse"
+        return "parse_fail"
     # SDK 예외처럼 status가 붙어 있으면 본문으로 분류 (Anthropic 크레딧은 400)
     status = getattr(exc, "status_code", None)
     if isinstance(status, int):
         kind = classify_api_error(status, text)
+        if kind == "credit":
+            return "credit_400"
         if kind in CAUSE_LABELS:
             return kind
     return "exception"
@@ -267,6 +271,8 @@ class StageResult:
         parts = [f"{self.icon} {self.name} {count}"]
         if self.cause:
             parts.append(f"— {CAUSE_LABELS.get(self.cause, self.cause)}")
+            if self.cause in ("credit_400", "parse_fail", "timeout"):
+                parts.append(f"[{self.cause}]")
         if self.detail:
             parts.append(f"({self.detail[:110]})")
         return " ".join(parts)

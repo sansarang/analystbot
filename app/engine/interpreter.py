@@ -20,6 +20,7 @@ import json
 import logging
 import re
 
+from app.collectors.base import ApiQuotaError
 from app.config import get_settings
 from app.engine.card import CELLS, SCORING_LEVELS, SCORING_METRICS, _quantile
 from app.llm import complete, role_enabled
@@ -243,6 +244,8 @@ async def interpret_slate(pairs: list, settings=None, pool=None) -> dict:
                 v = await interpret_side(card[side], jg.get(f"{side}_kr")
                                          or jg.get(side), settings=settings,
                                          baselines=baselines)
+            except ApiQuotaError:
+                raise
             except Exception as exc:      # 한 팀이 죽어도 슬레이트는 계속 간다
                 logger.warning("[2단] %s 판정 실패: %s", jg.get(side), exc)
                 v = {}

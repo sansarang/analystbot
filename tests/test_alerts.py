@@ -86,7 +86,7 @@ def sent(monkeypatch, shared):
 # ---------------------------------------------------------------- 원인 분류
 
 def test_classify_exception_maps_api_errors():
-    assert classify_exception(ApiQuotaError("anthropic", "잔액 부족")) == "credit"
+    assert classify_exception(ApiQuotaError("anthropic", "잔액 부족")) == "credit_400"
     assert classify_exception(ApiAuthError("pplx", "401")) == "auth"
     assert classify_exception(ApiRateLimitError("pplx", "429")) == "rate_limit"
 
@@ -98,7 +98,7 @@ def test_classify_exception_uses_status_code_for_sdk_errors():
         status_code = 400
 
     exc = FakeSDKError("Your credit balance is too low to access the Anthropic API")
-    assert classify_exception(exc) == "credit"
+    assert classify_exception(exc) == "credit_400"
 
 
 def test_classify_exception_ordinary_400_is_not_credit():
@@ -131,7 +131,10 @@ def test_stage_icons_distinguish_partial_and_total_failure():
     assert StageResult("판정", ok=0, total=15).icon == "🔴"
 
 
-def test_stage_line_includes_cause_and_counts():
+def test_stage_line_includes_form_causes():
+    st = StageResult("팀 폼", ok=0, total=10, cause="credit_400", detail="unavailable credit_400:10")
+    line = st.line()
+    assert "credit_400" in line and "크레딧 부족" in line
     st = StageResult("판정", ok=0, total=15, cause="credit", detail="400 invalid_request")
     line = st.line()
     assert "판정" in line and "0/15" in line and "크레딧 부족" in line
@@ -283,7 +286,8 @@ def test_all_pipeline_stages_are_instrumented():
     recorded = set(re.findall(r'await record\("([^"]+)"', src))
     required = {
         "경기 적재", "배당 수집", "리서치", "판정", "λ 산출",
-        "날씨", "결장", "구장", "라인업", "픽 선정", "조합 구성", "서술",
+        "날씨", "결장", "구장", "라인업", "라인업 수집", "픽 선정", "조합 구성", "서술",
+        "팀 폼", "매치업 판정", "게이트·발송",
     }
     missing = required - recorded
     assert not missing, f"계측이 빠진 단계: {sorted(missing)}"
@@ -301,7 +305,7 @@ def test_every_stage_declares_impact():
                         src, re.S)
     names = [n for n, _ in blocks]
     assert len(blocks) >= 12, f"record 블록을 {len(blocks)}개만 찾았다 — 정규식 점검 필요"
-    for key in ("결장", "날씨", "구장", "라인업", "픽 선정", "조합 구성"):
+    for key in ("결장", "날씨", "구장", "라인업 수집", "게이트·발송", "조합 구성"):
         assert key in names, f"'{key}' 블록이 검사 대상에서 빠졌다"
     for name, body in blocks:
         assert "impact=" in body, f"'{name}' 단계에 impact 설명이 없다"
@@ -316,7 +320,7 @@ async def test_stage_records_appear_in_analysis(db_pool, redis_client):
     await run_pipeline(db_pool, redis_client, "mlb", "2026-08-22", force_refresh=True)
     a = json.loads(await redis_client.get("analysis:mlb:2026-08-22"))
     names = {st["name"] for st in a.get("stages") or []}
-    for key in ("경기 적재", "토탈 라인", "리서치", "λ 산출", "픽 선정", "조합 구성"):
+    for key in ("경기 적재", "팀 폼", "매치업 판정", "라인업 수집", "게이트·발송"):
         assert key in names, f"'{key}' 계측이 실행 결과에 없다 (수집된: {sorted(names)})"
 
 
