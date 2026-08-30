@@ -6,7 +6,12 @@ from pathlib import Path
 
 import app.bot.main as botmod
 import app.pipeline as pipemod
-from app.bot.main import parse_intent_mock, resolve_date_arg, split_message
+from app.bot.main import (
+    INTENT_DATE_WINDOW_DAYS,
+    parse_intent_mock,
+    resolve_date_arg,
+    split_message,
+)
 from app.pipeline import mlb_slate_date, run_pipeline, today_kst
 
 
@@ -328,11 +333,35 @@ def test_split_message_respects_limit():
 
 
 def test_parse_intent_mock():
+    """규칙 기반 의도 파싱 — 종목·날짜·깊이.
+
+    🔴 날짜를 하드코딩하면 **그 날 근처에서만 통과한다.** 종전에는
+       "2026-08-22"가 박혀 있었고, `sanitize_intent_date`가 기준일 대비
+       ±`INTENT_DATE_WINDOW_DAYS`(7일)를 벗어난 날짜를 **정상적으로** 기각한다.
+       2026-08-30에 8일 차가 되면서 `intent["date"]`가 None으로 떨어져 깨졌다.
+       코드가 아니라 테스트가 낡은 것이다 — 기각 자체는 의도한 동작이다.
+       (2026-08-30 갱신: 기준일 대비 상대 날짜로 바꿔 날짜 의존을 없앤다.)
+
+    축구 기준일은 `today_kst()`다 — MLB(미 동부 슬레이트)와 다르므로
+    종목에 맞는 기준으로 만든다.
+    """
     assert parse_intent_mock("오늘 야구 픽 알려줘")["sport"] == "mlb"
-    intent = parse_intent_mock("EPL 축구 2026-08-22 간단 요약")
+    recent = (datetime.strptime(today_kst(), "%Y-%m-%d")
+              - timedelta(days=2)).strftime("%Y-%m-%d")
+    intent = parse_intent_mock(f"EPL 축구 {recent} 간단 요약")
     assert intent["sport"] == "soccer"
-    assert intent["date"] == "2026-08-22"
+    assert intent["date"] == recent
     assert intent["depth"] == "brief"
+
+
+def test_parse_intent_mock_rejects_date_outside_window():
+    """창 밖 날짜는 기각하고 기본 날짜로 돌린다 — 위 테스트의 반대 방향.
+
+    이게 없으면 상대 날짜로 바꾼 위 테스트가 "기각이 아예 사라져도" 통과한다.
+    """
+    far = (datetime.strptime(today_kst(), "%Y-%m-%d")
+           + timedelta(days=INTENT_DATE_WINDOW_DAYS + 1)).strftime("%Y-%m-%d")
+    assert parse_intent_mock(f"EPL 축구 {far} 간단 요약")["date"] is None
 
 
 async def test_simulator_routes(monkeypatch):
