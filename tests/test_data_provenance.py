@@ -24,15 +24,84 @@ PIPELINE = Path("app/pipeline.py").read_text(encoding="utf-8")
 
 # ---------------------------------------------------------------- ① λ 우선
 
-def test_distribution_overrides_season_heuristic():
-    """분포가 서면 시즌 승률·ERA 휴리스틱을 **덮어써야** 한다.
+def _soccer_jg(p_model: float) -> dict:
+    """분포 경로를 타는 최소 축구 경기. `p_model`만 바꿔가며 쓴다."""
+    return {
+        "game_id": 902, "sport": "soccer", "status": "scheduled",
+        "home": "Arsenal", "away": "Chelsea", "league": "EPL",
+        "starts_at_kst": "08/30 23:00",
+        "model_valid": True, "p_model": p_model,     # ← 시즌 누적 축
+        "p_claude": 0.55, "judge_confidence": "medium",
+        "market_probs": {}, "best_odds": {}, "alt_markets": [],
+        "expert_picks": [], "stats": {}, "research": {},
+    }
 
-    이게 깨지면 '최근 경기만 본다'는 계약이 조용히 무너진다 — 시즌 누적이
-    1순위 확률로 되돌아가는데 겉으로는 아무 차이가 안 보인다.
+
+def _home_h2h_p(jg: dict) -> float:
+    return next(c["p"] for c in jg["market_board"]
+                if c["market"] == "h2h" and c["side"] == jg["home"])
+
+
+def _run(settings, p_model: float) -> float:
+    from app.pipeline import _compute_picks
+
+    jg = _soccer_jg(p_model)
+    _compute_picks(settings, [jg], "soccer")
+    return _home_h2h_p(jg)
+
+
+def _fake_dist(settings):
+    """실제 스켈람 확률로 만든 분포. probs 구조를 손으로 흉내내지 않는다."""
+    from types import SimpleNamespace
+
+    from app.engine.scoring import dispersion_for, soccer_market_probs
+
+    probs = soccer_market_probs(1.62, 1.05, None, dispersion_for("soccer", settings))
+    return {
+        "lam": SimpleNamespace(home=1.62, away=1.05, trace=[], missing=[], usable=True),
+        "probs": probs, "capped": None, "raw_home": probs["h2h"]["home"],
+    }
+
+
+def test_season_heuristic_does_not_reach_prediction_when_distribution_exists(monkeypatch):
+    """분포가 서면 시즌 누적 축(`p_model`)은 **예측에 도달하지 않는다.**
+
+    🔴 2026-08-30 재작성. 종전에는 pipeline.py 소스에
+       `p_model_s = (dist["probs"]["h2h"]["home"]` 라는 문자열이 있는지
+       정규식으로 검사했다. 커밋 fb799b7(2026-08-28)이 그 줄을
+       `p_model_s = p_lam if h2h_use_lam else None` 로 바꾸면서 깨졌다 —
+       계약은 그대로인데 **표현만 바뀐 것을 계약 위반으로 읽은 것이다.**
+       소스 텍스트가 아니라 행동을 본다.
+
+    검사 방법: `p_model`을 0.10 ↔ 0.90 으로 극단까지 흔들어도 분포가 있으면
+    보드의 승패 확률이 **한 자리도 움직이지 않아야** 한다.
     """
-    assert re.search(
-        r'if dist is not None:.*?p_model_s = \(dist\["probs"\]\["h2h"\]\["home"\]',
-        PIPELINE, re.S), "분포가 있을 때 p_model을 분포로 교체하는 코드가 사라졌다"
+    settings = Settings(_env_file=None)
+    import app.engine.scoring as scoring
+
+    monkeypatch.setattr(scoring, "game_distribution",
+                        lambda *a, **k: _fake_dist(settings))
+    low, high = _run(settings, 0.10), _run(settings, 0.90)
+    assert low == high, (
+        f"시즌 누적이 예측을 움직였다 — p_model 0.10 → {low}, 0.90 → {high}. "
+        "분포가 설 때 시즌 축은 버려져야 한다.")
+
+
+def test_control_season_heuristic_does_move_prediction_without_distribution(monkeypatch):
+    """반대 방향 — 분포가 없으면 같은 흔들기가 **실제로** 확률을 바꾼다.
+
+    이 대조군이 없으면 위 테스트는 `_compute_picks`가 통째로 죽어
+    두 값이 우연히 같아져도 통과한다. 즉 위 테스트가 무언가를 실제로
+    측정하고 있다는 증거다.
+    """
+    settings = Settings(_env_file=None)
+    import app.engine.scoring as scoring
+
+    monkeypatch.setattr(scoring, "game_distribution", lambda *a, **k: None)
+    low, high = _run(settings, 0.10), _run(settings, 0.90)
+    assert low != high, (
+        "분포 없이도 p_model이 예측을 못 움직인다 — 위 테스트가 "
+        "아무것도 측정하지 못하고 있다는 뜻이다.")
 
 
 def test_recent_window_is_configured_not_hardcoded():
