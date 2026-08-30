@@ -802,14 +802,27 @@ async def load_source_bundle(redis, sport: str, date: str) -> dict:
         from app.collectors.kbo_roster import load as load_roster
         from app.collectors.kbo_stats import load as load_kbo_stats
         from app.collectors.kbo_usage import load as load_usage
+        from app.collectors.naver_kbo import lacks_lineups
         from app.collectors.naver_kbo import load as load_naver
+        from app.collectors.naver_kbo import refresh as refresh_naver
 
         kteams, kpitchers = await load_kbo_stats(redis, date)
+        # 저녁 재판정이 읽는 지점이다. 타순 미확정 캐시는 TTL이 10분이라
+        # 만료돼 있거나 비어 있다 — 여기서 한 번 더 받아야 공시 직후 타순이
+        # 그 즉시 들어온다. 타순이 실린 뒤에는 lacks_lineups가 False라 안 받는다.
+        naver = await load_naver(redis, date)
+        if not naver or lacks_lineups(naver):
+            try:
+                await refresh_naver(redis, date)
+                naver = await load_naver(redis, date)
+            except Exception as exc:
+                logger.warning("[pipeline] 번들 네이버 재수집 실패: %s", exc)
+                naver = naver or {}
         bundle.update({
             "kbo_teams": kteams or {},
             "kbo_pitchers": kpitchers or {},
             "parks": await load_park(redis) or {},
-            "naver": await load_naver(redis, date) or {},
+            "naver": naver,
             "kbo_usage": await load_usage(redis, date) or {},
             "kbo_roster": await load_roster(redis, date) or {},
         })
@@ -1340,17 +1353,21 @@ async def build_analysis(
 
                 # [§8-19] 네이버 크롤링 — **LLM 0회.** 선발·구종·폼·순위·상대전적.
                 #   딥서치보다 먼저 돌려 빈칸을 줄인다(딥서치는 남은 것만 조회).
+                from app.collectors.naver_kbo import lacks_lineups
                 from app.collectors.naver_kbo import load as load_naver
                 from app.collectors.naver_kbo import refresh as refresh_naver
 
                 naver = await load_naver(redis, date)
-                if not naver:
+                # 캐시가 있어도 **타순이 비어 있으면 다시 받는다.** `if not naver:`만
+                # 보면 낮에 채운 타순 없는 스냅샷을 저녁까지 그대로 읽는다
+                # (실측 2026-08-29 17:22: 라인업 0/4경기).
+                if not naver or lacks_lineups(naver):
                     try:
                         await refresh_naver(redis, date)
                         naver = await load_naver(redis, date)
                     except Exception as exc:
                         logger.warning("[pipeline] 네이버 KBO 수집 실패: %s", exc)
-                        naver = {}
+                        naver = naver or {}
                 kteams, kpitchers = await load_kbo_stats(redis, date)
                 if not kteams:
                     try:

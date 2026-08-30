@@ -21,7 +21,12 @@ logger = logging.getLogger(__name__)
 
 BASE = "https://api-gw.sports.naver.com"
 SCHEDULE = "/schedule/games"
-CACHE_TTL = 3 * 3600          # 라인업·선발은 경기 임박 시 바뀐다 — 짧게 잡는다
+CACHE_TTL = 3 * 3600          # 타순이 실린 스냅샷 — 확정 뒤에는 잘 안 바뀐다
+# 타순이 아직 없는 스냅샷은 **오래 들고 있으면 안 된다.** KBO 타순 공시는
+# 경기 1시간 전(18:30 → 17:30)인데, 낮 프리페치(14:00)가 채운 3시간 캐시를
+# 그대로 읽으면 17:00까지 "타순 없음"이 고정된다.
+# 실측 2026-08-29 17:22: `라인업 0/4경기 — 발표 시각이 지났는데 0건`.
+LINEUP_PENDING_TTL = 10 * 60
 
 HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://m.sports.naver.com/"}
 
@@ -387,9 +392,27 @@ async def refresh(redis, date: str, client: NaverKBOClient | None = None) -> dic
             name="네이버 KBO 수집", ok=0, total=len(playable), cause="parse",
             detail=f"{date} 경기 {len(playable)}건 중 파싱 실패 {failed}건",
             impact="선발·최근폼을 딥서치에만 의존하게 됩니다"))
-    await redis.set(_key(date), json.dumps(out, ensure_ascii=False), ex=CACHE_TTL)
-    logger.info("[naver_kbo] %s — %d경기 수집 (실패 %d)", date, len(out), failed)
+    ttl = CACHE_TTL if not lacks_lineups(out) else LINEUP_PENDING_TTL
+    await redis.set(_key(date), json.dumps(out, ensure_ascii=False), ex=ttl)
+    logger.info("[naver_kbo] %s — %d경기 수집 (실패 %d) · 타순 %s · TTL %d분",
+                date, len(out), failed,
+                "미확정" if lacks_lineups(out) else "확정", ttl // 60)
     return {"games": len(out), "failed": failed}
+
+
+def lacks_lineups(snap: dict) -> bool:
+    """이 스냅샷에 **양 팀 타순이 다 실린 경기가 하나도 없는가.**
+
+    하나라도 있으면 공시가 시작된 것이므로 확정 캐시로 본다. 한 경기만 늦게
+    올라오는 경우는 다음 폴링이 잡는다 — 여기서 전부를 요구하면 마지막
+    한 경기 때문에 이미 받은 타순까지 10분마다 다시 받는다.
+    """
+    if not snap:
+        return True
+    return not any(
+        (g.get("lineup_home") or "").strip() and (g.get("lineup_away") or "").strip()
+        for g in snap.values() if isinstance(g, dict)
+    )
 
 
 async def load(redis, date: str) -> dict:

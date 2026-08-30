@@ -187,3 +187,65 @@ def test_team_mapping_covers_all_ten():
     """축약 표기 → Odds 팀명. 하나라도 빠지면 그 경기가 통째로 매칭되지 않는다."""
     assert len(TEAM_TO_ODDS) == 10
     assert TEAM_TO_ODDS["키움"] == "Kiwoom Heroes"
+
+
+# ---------------------------------------------------- 타순 공시 감지 (2026-08-30)
+
+def test_lacks_lineups_detects_pending_and_announced():
+    """타순 미확정 스냅샷을 3시간 들고 있으면 공시를 그날 못 본다."""
+    from app.collectors.naver_kbo import lacks_lineups
+
+    assert lacks_lineups({}) is True
+    assert lacks_lineups({"NC@LG": {"home_pitcher": {"name": "임찬규"}}}) is True
+    # 한쪽만 올라온 상태도 아직 미확정이다
+    assert lacks_lineups({"NC@LG": {"lineup_home": "가(중견수)-나(우익수)"}}) is True
+    assert lacks_lineups({"NC@LG": {"lineup_home": "가", "lineup_away": "   "}}) is True
+    # 한 경기라도 양쪽이 차면 공시가 시작된 것 — 확정 캐시로 본다
+    assert lacks_lineups({"NC@LG": {"lineup_home": "가", "lineup_away": "A"},
+                          "KT@SSG": {}}) is False
+
+
+async def test_refresh_uses_short_ttl_while_lineups_pending(monkeypatch):
+    """미확정이면 10분, 확정이면 3시간. TTL을 실제 set 인자로 확인한다."""
+    from app.collectors import naver_kbo as N
+
+    sets: list[tuple] = []
+
+    class _R:
+        async def set(self, k, v, ex=None):
+            sets.append((k, ex))
+
+    class _C:
+        def __init__(self, lineup):
+            self.lineup = lineup
+
+        async def games(self, date):
+            return [{"gameId": "g1", "homeTeamName": "LG", "awayTeamName": "NC"}]
+
+        async def preview(self, gid):
+            return {}
+
+    def fake_parse(_pv, lineup):
+        out = {"home_pitcher": {"name": "임찬규"}, "away_pitcher": {"name": "하트"}}
+        if lineup:
+            out["lineup_home"] = "가(중견수)"
+            out["lineup_away"] = "A(중견수)"
+        return out
+
+    for lineup, want in ((False, N.LINEUP_PENDING_TTL), (True, N.CACHE_TTL)):
+        sets.clear()
+        monkeypatch.setattr(N, "parse_preview", lambda pv, _l=lineup: fake_parse(pv, _l))
+        await N.refresh(_R(), "2026-08-30", client=_C(lineup))
+        assert sets and sets[0][1] == want, (lineup, sets)
+
+
+def test_pipeline_refreshes_naver_when_lineups_missing():
+    """캐시가 있어도 타순이 비면 다시 받아야 한다 — 두 소비 지점 모두."""
+    from pathlib import Path
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    assert src.count("if not naver or lacks_lineups(naver):") == 2, \
+        "낮 프리페치와 저녁 재판정 번들 두 곳 모두에 재수집 조건이 있어야 한다"
+    i = src.index("async def load_source_bundle")
+    body = src[i:src.index("\nasync def ", i + 10)]
+    assert "refresh_naver" in body, "저녁 재판정 번들이 네이버를 다시 받지 않는다"
