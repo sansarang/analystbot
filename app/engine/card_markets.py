@@ -150,6 +150,8 @@ def market_calls(jg: dict) -> list[dict]:
         out.append({"market": "handicap", "desc": desc, "basis": hc["basis"],
                     "note": hc["note"]})
     sc = jg.get("scoring") or {}
+    if (jg.get("sport") or "").lower() in ("mlb", "kbo", "npb"):
+        return out
     # ⚠️ **시장 라인만 쓴다.** market_board의 라인은 λ가 만든 후보이지 시장이
     #   건 라인이 아니다. 우리 모델이 만든 라인에 우리 판정을 붙이는 것은
     #   비교가 아니라 자기확인이다.

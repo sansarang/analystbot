@@ -48,18 +48,9 @@ async def test_pitcher_stats_chunking_and_fetch():
 async def test_odds_snapshot(db_pool):
     await upsert_games(db_pool, DATE, client=MLBClient(mock=True))
     n = await snapshot_odds(db_pool, "mlb", client=OddsClient(mock=True))
-    # 야구는 totals만: 15경기 × 3북 × 2아웃컴 = 90행. h2h·spreads는 안 넣는다.
-    assert n == 90
-    rows = await db_pool.fetch(
-        """
-        SELECT market, count(*) AS c FROM odds_snapshots GROUP BY market
-        """
-    )
-    assert {r["market"]: r["c"] for r in rows} == {"totals": 90}
-    orphan = await db_pool.fetchval(
-        "SELECT count(*) FROM odds_snapshots o LEFT JOIN games g ON g.id = o.game_id WHERE g.id IS NULL"
-    )
-    assert orphan == 0
+    # 야구 Odds 스냅샷은 호출하지 않는다 (언더오버 삭제).
+    assert n == 0
+    assert await db_pool.fetchval("SELECT count(*) FROM odds_snapshots") == 0
 
 
 async def test_odds_skips_inplay_and_matches_by_start_time(db_pool):
@@ -72,7 +63,7 @@ async def test_odds_skips_inplay_and_matches_by_start_time(db_pool):
     for ext, delta in (("g_yesterday", timedelta(days=-1)), ("g_tomorrow", timedelta(days=1))):
         ids[ext] = await db_pool.fetchval(
             "INSERT INTO games (sport, league, ext_id, starts_at, home, away) "
-            "VALUES ('mlb', 'MLB', $1, $2, 'Home Nine', 'Away Nine') RETURNING id",
+            "VALUES ('soccer', 'EPL', $1, $2, 'Home Nine', 'Away Nine') RETURNING id",
             ext, now + delta,
         )
 
@@ -95,8 +86,8 @@ async def test_odds_skips_inplay_and_matches_by_start_time(db_pool):
                 make_event(now + timedelta(days=1)),    # 내일 경기 → g_tomorrow에 매칭
             ]
 
-    inserted = await snapshot_odds(db_pool, "mlb", client=FakeClient(),
-                                   only_keys=["baseball_mlb"])
+    inserted = await snapshot_odds(db_pool, "soccer", client=FakeClient(),
+                                   only_keys=["soccer_epl"])
     assert inserted == 2  # 이벤트 1건 × totals Over/Under
     rows = await db_pool.fetch(
         "SELECT game_id, count(*) c FROM odds_snapshots "

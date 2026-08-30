@@ -29,14 +29,14 @@ SPORT_KEYS: dict[str, list[str]] = {
     "npb": ["baseball_npb"],
 }
 
-# 야구 승부는 배당을 보지 않는다. 언더오버만 시장 라인 숫자(8.5 등)를 가져온다.
+# 야구는 Odds 배당·토탈 라인을 쓰지 않는다 (2026-08-29). /scores 일정·점수는 별도.
 BASEBALL_ODDS_SPORTS = ("mlb", "kbo", "npb")
 
 
 def odds_markets_for(sport: str) -> str:
-    """Odds API `markets` 파라미터. 야구는 totals만 — h2h·스프레드는 요청하지 않는다."""
+    """Odds API `markets` 파라미터. 야구 snapshot은 호출하지 않는다."""
     if sport in BASEBALL_ODDS_SPORTS:
-        return "totals"
+        return ""
     return "h2h,spreads,totals"
 
 
@@ -148,6 +148,10 @@ async def snapshot_odds(
     only_keys: 크레딧 절약용 — 경기가 있는 리그 키만 조회.
     """
     from app.api_guard import is_blocked, is_disabled
+
+    if sport in BASEBALL_ODDS_SPORTS:
+        logger.info("[odds] snapshot skipped — 야구 언더오버 미사용")
+        return 0
 
     if is_disabled("odds") or await is_blocked("odds"):
         logger.info("[odds] snapshot skipped — %s",
@@ -326,7 +330,7 @@ async def upsert_games_from_scores(
 
 async def upsert_final_scores(pool: asyncpg.Pool, date: str, days: int = 2,
                               sport: str = "kbo", client: OddsClient | None = None) -> int:
-    """채점기 진입점 — `grader.grade_date`가 MLB·KBO와 같은 계약으로 부른다."""
+    """종료 점수 적재 진입점 — `ingest_finals`가 MLB·KBO와 같은 계약으로 부른다."""
     counts = await upsert_games_from_scores(pool, sport, date=None,
                                             client=client, days_from=days)
     return counts["final"]

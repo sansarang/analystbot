@@ -439,7 +439,8 @@ def _game_with_board():
              "two_source": True, "axes_kr": "실데이터+전문가+모델"},
             # [§8-18] 시장 괴리 탈락은 사라졌다 — 살아있는 규율(2-소스)로 바꾼다.
             #   확률·EV는 높지만 근거가 1축뿐이라 추천 자격이 없다.
-            {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
+            {"market": "spreads", "side": "Colorado Rockies", "line": 1.5,
+             "desc": "콜로라도 로키스 런라인 +1.5",
              "p": 0.634, "odds": 1.95, "ev": 0.236, "approved": True,
              "two_source": False, "axes_kr": "모델"},
         ],

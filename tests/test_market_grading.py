@@ -93,42 +93,24 @@ def _jg(**over):
 
 
 def test_totals_survive_when_h2h_odds_missing():
-    """[§8-27] 배당이 없어도 **마켓 행과 확률이 나온다.**
-
-    종전에는 `if not odds: return`이라 Odds API가 죽으면 마켓 보드가 통째로 비었다 —
-    우리가 확률을 낼 수 있는데도 아무것도 못 보여줬다.
-    돈·시장을 판정에서 뺐으므로(§8-18) 배당은 더 이상 마켓 존재의 전제가 아니다.
-    """
+    """야구 보드는 승패만. 런라인 alt는 무시한다."""
     jg = _jg(market_probs=None, best_odds={},
-             alt_markets=[{"market": "totals", "side": "Under", "line": 7.5,
+             alt_markets=[{"market": "spreads", "side": "Away Nine", "line": 1.5,
                            "odds": 1.98, "p": 0.56}])
-    board = build_board(jg, "mlb", {})                # p_final 없음 = h2h 확률 없음
-    priced = [c for c in board if c.get("odds")]
-    assert [c["market"] for c in priced] == ["totals"]
-    # 배당 없는 h2h도 **행으로** 남는다 (placeholder가 아니라 실제 행)
-    h2h = [c for c in board if c["market"] == "h2h"]
-    assert len(h2h) == 2
-    assert all(c.get("odds") is None for c in h2h)
+    board = build_board(jg, "mlb", {})
+    assert {c["market"] for c in board} == {"h2h"}
+    assert not any(c["market"] == "spreads" for c in board)
+    assert not any(c["market"] == "totals" for c in board)
 
 
 def test_board_works_without_any_odds():
-    """[§8-27] Odds API가 죽어도 파이프라인이 돈다 — 분포에서 라인을 만든다."""
-    from app.config import get_settings
-    from app.engine.scoring import game_distribution
-
+    """야구는 배당·분포 없이 승패 두 행만 남긴다."""
     jg = _jg(market_probs=None, best_odds={}, alt_markets=[])
     jg["sport"] = "mlb"
-    jg["distribution"] = game_distribution(
-        jg, {"home_offense": {"woba_30d": 0.330}, "away_offense": {"woba_30d": 0.310},
-             "home_pitcher": {"era_season": 4.0}, "away_pitcher": {"era_season": 4.5}},
-        "mlb", get_settings())
-    board = build_board(jg, "mlb", {})
-    kinds = {c["market"] for c in board if c.get("p") is not None}
-    assert {"totals", "spreads", "f5"} <= kinds, f"배당 없이 산출된 마켓: {kinds}"
-    assert all(c.get("odds") is None for c in board if c.get("p") is not None)
-    assert not any(c.get("placeholder") for c in board if c["market"] in ("totals", "spreads", "f5"))
-    assert all("배당 미수집" not in (c.get("reject_reason") or "")
-               for c in board if c["market"] in ("totals", "spreads", "f5"))
+    board = build_board(jg, "mlb", {"Detroit Tigers": 0.55, "Tampa Bay Rays": 0.45})
+    kinds = {c["market"] for c in board}
+    assert kinds == {"h2h"}
+    assert not any(c["market"] in ("spreads", "f5", "totals") for c in board)
 
 
 def test_generated_total_lines_are_half_points_only():
@@ -151,12 +133,9 @@ def test_board_always_contains_every_required_market():
     jg = _jg(market_probs=None, best_odds={}, alt_markets=[])
     board = build_board(jg, "mlb", {})
     kinds = {c["market"] for c in board}
-    assert kinds == {"h2h", "spreads", "totals", "f5"}
+    assert kinds == {"h2h"}
+    assert len(board) == 2
     assert all(c["grade"] == GRADE_BLANK for c in board)
-    assert len(board) == 7          # 승패2 + 런라인2 + 언더오버1 + F5 2
-    f5 = [c for c in board if c["market"] == "f5"]
-    assert all(c.get("reject_reason") == "확률 미산출" for c in f5)
-    assert all("배당 미수집" not in (c.get("grade_note") or "") for c in board if c.get("placeholder"))
 
 
 def test_soccer_board_covers_dc_and_btts():
@@ -192,8 +171,8 @@ def test_stale_snapshot_is_labelled_opening_odds():
 
 def test_every_candidate_carries_a_grade():
     """[A-4] 마켓 보드는 전 후보에 등급과 사유를 갖는다 (표로 항상 출력하기 위함)."""
-    jg = _jg(alt_markets=[{"market": "totals", "side": "Under", "line": 7.5,
-                           "odds": 1.98, "p": 0.56}])
+    jg = _jg(alt_markets=[{"market": "spreads", "side": "Tampa Bay Rays",
+                           "line": 1.5, "odds": 1.98, "p": 0.56}])
     for c in build_candidates(jg, "mlb", {"Detroit Tigers": 0.46, "Tampa Bay Rays": 0.56}):
         assert c["grade"] in (GRADE_GREEN, GRADE_YELLOW, GRADE_RED)
         assert c["grade_note"]
@@ -219,12 +198,9 @@ def _rendered_jg(**over):
             {"market": "h2h", "side": "Chicago White Sox", "line": None, "desc": "승패 홈",
              "odds": 1.81, "p": 0.47, "ev": -0.15, "axes_kr": "모델",
              "approved": True, "reject_reason": None},          # 승률 미달 → 🔴
-            {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
-             "odds": 1.62, "p": 0.64, "ev": 0.037, "axes_kr": "전문가+실데이터",
-             "approved": True, "reject_reason": None},          # 62%↑·1.60↑ → 🟢
             {"market": "spreads", "side": "Texas Rangers", "line": 1.5,
              "desc": "텍사스 레인저스 런라인 +1.5", "odds": 1.55, "p": 0.66, "ev": 0.023,
-             "axes_kr": "실데이터", "approved": True, "reject_reason": None},  # 배당 미달 → 🔴
+             "axes_kr": "전문가+실데이터", "approved": True, "reject_reason": None},
         ],
         "markets_unpriced": [],
     }
@@ -241,7 +217,6 @@ def test_board_is_always_rendered_as_table():
     out = render_game_section(_rendered_jg())
     assert "⑧ 마켓 보드" in out
     assert "승패 홈 | 47% | 🔴" in out
-    assert "언더 8.5 | 64% | 🟢" in out
     assert "텍사스 레인저스 런라인 +1.5 | 66% | 🟢" in out
     for banned in ("| 1.81 |", "8,100원", "6,200원"):
         assert banned not in out, f"보드에 '{banned}'가 남아 있다"
@@ -259,12 +234,12 @@ def test_board_shows_unpriced_markets_as_rows():
 
 
 def test_easy_layer_points_to_best_market_when_moneyline_dead():
-    """[A-1] 승패가 🔴이면 기본층은 '승패는 볼 게 없지만 언더 8.5가 …'로 말한다."""
+    """[A-1] 승패가 🔴이면 기본층은 '승패는 볼 게 없지만 런라인이 …'로 말한다."""
     from app.pipeline import DETAIL_SEP, render_game_easy
 
     easy = render_game_easy(_rendered_jg()).split(DETAIL_SEP)[0]
     assert "🟢" in easy
-    assert "승패는 볼 게 없지만" in easy and "언더 8.5" in easy
+    assert "승패는 볼 게 없지만" in easy and "런라인 +1.5" in easy
     # [3-3] 돈으로 말한다
     assert "EV" not in easy and "기대값" not in easy
 
@@ -286,7 +261,7 @@ def test_easy_layer_lists_reasons_when_all_markets_dead():
 
 
 def test_recommendation_pool_includes_non_moneyline(db_pool=None):
-    """[A-5] 추천 후보 풀은 전 마켓 승인 픽 — 승패가 없어도 토탈로 성립한다."""
+    """[A-5] 추천 후보 풀은 전 마켓 승인 픽 — 승패가 없어도 런라인으로 성립한다."""
     from app.pipeline import approved_market_legs
 
     jg = _rendered_jg()
@@ -295,7 +270,7 @@ def test_recommendation_pool_includes_non_moneyline(db_pool=None):
     legs = approved_market_legs([jg])
     # [§8-18] 배당 하한은 제거됐다. 승률 58%↑·라인업 확정·승인만 본다.
     assert legs and all(l["market"] != "h2h" for l in legs)
-    assert {l["desc"] for l in legs} == {"언더 8.5", "텍사스 레인저스 런라인 +1.5"}
+    assert {l["desc"] for l in legs} == {"텍사스 레인저스 런라인 +1.5"}
 
 
 # ---------------------------------------------------------------- [1] 회귀: 배당↔보드 일관성
@@ -317,8 +292,8 @@ def test_header_odds_imply_non_empty_board():
         "p_market": 0.40,
         "market_probs": {"Los Angeles Angels": 0.40, "Cleveland Guardians": 0.60},
         "best_odds": {"Los Angeles Angels": 2.47, "Cleveland Guardians": 1.63},
-        "alt_markets": [{"market": "totals", "side": "Under", "line": 8.5,
-                         "odds": 1.87, "p": 0.55}],
+        "alt_markets": [{"market": "spreads", "side": "Cleveland Guardians",
+                         "line": 1.5, "odds": 1.87, "p": 0.55}],
         "expert_picks": [], "stats": {},
         # p_claude 없음 = 판정 미수신
     }
@@ -326,7 +301,7 @@ def test_header_odds_imply_non_empty_board():
     board = jg["market_board"]
     assert board, "헤더에 배당이 있는데 보드가 비면 안 된다"
     priced = [c for c in board if c.get("odds")]
-    assert {c["odds"] for c in priced} >= {2.47, 1.63, 1.87}   # 헤더와 같은 값이 보드에도
+    assert {c["odds"] for c in priced} >= {2.47, 1.63}   # 야구 승패 배당만 (알트 무시)
     assert all(not c.get("approved") for c in board)           # 판정 미수신 → 추천은 전부 제외
 
 
@@ -366,5 +341,4 @@ def test_board_never_says_no_markets():
     _compute_picks(Settings(_env_file=None), [jg], "mlb")
     out = render_game_section(jg)
     assert "평가 가능한 마켓 없음" not in out
-    assert out.count("확률 미산출") >= 5        # 전 마켓 행이 남아 있다
-    assert "F5(5이닝)" in out                    # 야구 필수 마켓까지 행으로
+    assert {c["market"] for c in jg["market_board"]} == {"h2h"}

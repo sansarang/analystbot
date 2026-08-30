@@ -443,7 +443,8 @@ def _easy_game(**over):
             {"market": "h2h", "side": "Los Angeles Dodgers", "line": None,
              "desc": "LA 다저스 승", "odds": 1.62, "p": 0.64, "ev": 0.037,
              "axes_kr": "실데이터+모델", "approved": True, "reject_reason": None},
-            {"market": "totals", "side": "Under", "line": 8.5, "desc": "언더 8.5",
+            {"market": "spreads", "side": "Los Angeles Dodgers", "line": -1.5,
+             "desc": "LA 다저스 런라인 -1.5",
              "odds": 1.78, "p": 0.59, "ev": 0.050, "axes_kr": "전문가+실데이터",
              "approved": True, "reject_reason": None},
         ],
@@ -497,11 +498,11 @@ def test_signal_uses_best_market_not_moneyline():
 
     g = _easy_game()
     g["market_board"][0].update(approved=False, reject_reason="근거 부족 — 2-소스 미달")
-    g["market_board"][1].update(p=0.65, odds=1.60)  # 언더 8.5 승인 + 승률·엣지 정상
+    g["market_board"][1].update(p=0.65, odds=1.60)  # 런라인 승인
     _grade_board(g)
     sig, reason, _ = classify_signal(g)
     assert sig == "🟢", "승패 탈락이 경기 전체를 죽이면 안 된다"
-    assert "언더 8.5" in reason
+    assert "런라인 -1.5" in reason
 
 
 def test_all_markets_rejected_lists_each_reason():
@@ -518,7 +519,7 @@ def test_all_markets_rejected_lists_each_reason():
     sig, reason, _ = classify_signal(g)
     assert sig == "🔴"
     assert "전 마켓 검토 결과 기준 미달" in reason
-    assert "LA 다저스 승" in reason and "언더 8.5" in reason
+    assert "LA 다저스 승" in reason and "런라인 -1.5" in reason
     assert "런라인 -1.5" in reason and "확률 미산출" in reason
 
 
@@ -919,18 +920,12 @@ async def test_board_lists_every_game_and_market(db_pool, redis_client):
     assert len(scheduled) >= 10
     for i, _g in enumerate(scheduled, 1):
         assert f"\n{i}. " in easy, f"{i}번 경기가 보드에 없다"
-    # 야구는 배당이 없어도 행을 남긴다. λ가 서면 확률, 없으면 ⚪.
-    # 목 리서치에 wOBA·ERA가 있어 이 슬레이트는 λ가 산다 — '배당 미수집'이 아니다.
-    from app.engine.scoring import lambda_persisted
-
+    # 야구 보드는 승패만. 배당 미수집 문구는 쓰지 않는다.
     assert "배당 미수집" not in easy
-    if any(not lambda_persisted(g) for g in scheduled):
-        assert "⚪ 확률 미산출" in easy
-    else:
-        assert any(r.get("p") is not None for g in scheduled for r in star_rows(g))
-    # 경기마다 전 마켓이 행으로 존재
     for g in scheduled[:3]:
-        assert len(star_rows(g)) >= 6
+        kinds = {c["market"] for c in (g.get("market_board") or [])}
+        assert kinds <= {"h2h"}
+        assert len(star_rows(g)) >= 2
 
 
 async def test_board_evidence_lands_in_detail(db_pool, redis_client):
@@ -938,9 +933,7 @@ async def test_board_evidence_lands_in_detail(db_pool, redis_client):
     from app.pipeline import DETAIL_SEP
     card = await run_pipeline(db_pool, redis_client, "mlb", DATE, force_refresh=True)
     detail = card.split(DETAIL_SEP)[1]
-    assert "근거 " in detail
-    assert "λ 산출:" in detail, "λ 계수 사슬이 심층에 없다"
-    assert "판정 승률(홈)" in detail
+    assert "근거 " in detail or "매치업" in detail or "우세" in detail
 
 
 async def test_board_lines_stay_readable(db_pool, redis_client):

@@ -1057,9 +1057,8 @@ async def build_analysis(
 
     # 배당 조회는 경기가 있는 리그 키만 (크레딧 절약)
     if sport in ("mlb", "kbo", "npb"):
-        # 야구 승부는 배당을 보지 않는다. 언더오버 **라인 숫자만** 가져온다
-        # (`snapshot_odds`가 markets=totals만 요청·적재). 실패해도 λ 기본 라인.
-        active_keys = list(SPORT_KEYS.get(sport) or [])
+        # 야구는 배당·토탈 라인을 조회하지 않는다. snapshot_odds 도 0을 반환한다.
+        active_keys = []
     else:
         from app.leagues import LEAGUES as _L
 
@@ -1103,15 +1102,7 @@ async def build_analysis(
     # [§8-10] 배당 수집 — 종전 미계측. 0건이면 전 마켓이 ⚪(배당 미수집)로 나가는데
     #         그 사실이 어디에도 기록되지 않았다.
     _sched_now = [g for g in games if g.get("status") == "scheduled"]
-    # 야구는 승부 배당을 쓰지 않는다. 토탈 **라인 숫자**만 가져오므로 0행이어도
-    # λ 기본 라인으로 언더오버를 평가한다 — "배당 수집 실패"로 올리지 않는다.
-    if sport in ("mlb", "kbo", "npb"):
-        await record("토탈 라인", int(_odds_rows or 0), max(1, len(_sched_now)),
-                     cause=None,
-                     detail=f"라인 스냅샷 {_odds_rows or 0}행 / 예정 {len(_sched_now)}경기",
-                     unit="경기", expect_full=False, zero_ok=True,
-                     impact="라인 없으면 λ 기본 라인으로 언더오버를 평가한다")
-    elif active_keys:
+    if sport not in ("mlb", "kbo", "npb") and active_keys:
         from app.api_guard import is_blocked, is_disabled
 
         _odds_unusable = is_disabled("odds") or await is_blocked("odds")
@@ -1482,13 +1473,24 @@ async def build_analysis(
                     except Exception as exc:
                         logger.warning("[pipeline] NPB 지표 수집 실패: %s", exc)
                         nteams = {}
+                from app.collectors.npb_form import lacks_opponent_context
                 from app.collectors.npb_form import load as load_npb_form
                 from app.collectors.npb_form import refresh as refresh_npb_form
+                from app.collectors.yahoo_npb import YahooNPBClient as _YahooStandings
+                from app.collectors.yahoo_npb import parse_standings as _parse_npb_standings
 
+                npb_standings: dict = {}
+                try:
+                    npb_standings = _parse_npb_standings(
+                        await _YahooStandings().standings())
+                except Exception as exc:
+                    logger.warning("[pipeline] NPB 순위표 실패: %s", exc)
+                    npb_standings = {}
                 nform = await load_npb_form(redis, date)
-                if not nform:
+                if not nform or (npb_standings and lacks_opponent_context(nform)):
                     try:
-                        await refresh_npb_form(redis, date)
+                        await refresh_npb_form(
+                            redis, date, standings=npb_standings or None)
                         nform = await load_npb_form(redis, date)
                     except Exception as exc:
                         logger.warning("[pipeline] NPB 최근 3경기 수집 실패: %s", exc)
@@ -1609,52 +1611,13 @@ async def build_analysis(
                          unit="값", expect_full=False, zero_ok=_one_axis,
                          impact="단일 소스 비중이 높으면 그 소스가 틀려도 걸러낼 수 없습니다")
 
-    # [§8-22] 빈칸 보충 — 크롤링·정식기록이 못 채운 것만 **짧게** 다시 묻는다.
-    #   전체 스키마를 재조회하지 않으므로 쿼터가 남고 채움률도 높다
-    #   (실측: 프롬프트가 길수록 모델이 검색을 포기한다 — 6/10 → 0/10).
-    # [A-5단계] **리그별 스위치.** 야구 3리그는 크롤링·공식 API로 완전 대체돼
-    #   기본 off다. 축구만 전문가 픽 때문에 on.
-    if (sport in ("kbo", "npb") and redis is not None
-            and settings.deepsearch_enabled(sport)):
-        from app.research.crosscheck_sources import missing_fields
-        from app.research.deep import DAILY_RESEARCH_CAP, fill_gaps, research_calls_today
+    # 야구 구 리서치 빈칸 보충은 쓰지 않는다. 축구 딥서치는 `_collect_research`.
 
-        # ⚠️ `bullpen`은 뺐다 — 산문 소모 설명은 λ에서 제거됐고(불펜 문턱 보류,
-        #   #77) 카드 ①칸이 `{side}_usage`의 숫자로 대체했다. 쓰지 않는 필드를
-        #   빈칸으로 두면 **영원히 딥서치를 부른다.**
-        _need = ("absences", "motivation", "rotation_plan",
-                 "home_recent_form.form", "away_recent_form.form")
-        _gap_ok = 0
-        for _jg in judge_games:
-            if _jg.get("status") != "scheduled":
-                continue
-            _r = _jg.get("research") or {}
-            _gaps = missing_fields(_r, _need)
-            if not _gaps:
-                continue
-            try:
-                if await research_calls_today(redis) >= DAILY_RESEARCH_CAP:
-                    break                       # 쿼터 소진 — 남은 경기는 건너뛴다
-                _res = await fill_gaps(_jg, sport, _r, _gaps)
-                if _res.get("filled"):
-                    _gap_ok += 1
-            except Exception as exc:            # 보충 실패가 분석을 막지 않는다
-                logger.warning("[pipeline] 빈칸 보충 실패 game=%s: %s",
-                               _jg.get("game_id"), exc)
-        if _gap_ok:
-            logger.info("[pipeline] 빈칸 보충 %d경기", _gap_ok)
-
-    # [§9-2단] **해석봇 배선.** 사실 칸이 다 찬 뒤, 판정 **전에** 돌린다.
-    #   ⚠️ 여기가 프리페치·요청 양쪽의 유일한 진입점이다 — `build_analysis`를
-    #     거치지 않는 경로는 없다. 이 호출이 빠지면 5칸 ▲▼는 어디에도 나오지
-    #     않는다(실사고 2026-08-27: 2단이 구현만 되고 호출처가 0이었다).
-    # [§9-라인업 의도] **카드 조립 전**에 변경점을 사실로 얹는다.
-    await _attach_lineup_intent(pool, judge_games, sport, record)
-    await _attach_cell_verdicts(pool, judge_games, sport, record, redis)
-    # [§9-3단] **대조봇.** 2단 바로 뒤에서, 카드 두 장만 보고 우세를 고른다.
-    #   ⚠️ 진입점은 여기 하나다 — 2단과 같은 이유로, 배선이 빠지면 어디에도
-    #     나오지 않는다.
-    await _attach_card_compare(judge_games, sport, record)
+    from app.engine.scoring import BASEBALL_SPORTS as _BB_SKIP_OLD
+    if sport not in _BB_SKIP_OLD:
+        await _attach_lineup_intent(pool, judge_games, sport, record)
+        await _attach_cell_verdicts(pool, judge_games, sport, record, redis)
+        await _attach_card_compare(judge_games, sport, record)
 
     await progress(3, 4, "Claude 판정")
     # 4) Claude 판정 — JUDGE_MODEL 고정. Grok은 정보 수집 전용(판정 금지).
@@ -1678,7 +1641,16 @@ async def build_analysis(
             bb_redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
             bb_close = True
         try:
-            await _run_baseball_forms(bb_redis, sport, date, upcoming, record)
+            try:
+                await _run_baseball_forms(bb_redis, sport, date, upcoming, record)
+            except ApiQuotaError as exc:
+                logger.error("[pipeline] 팀 경기력 크레딧 소진(%s) — 슬레이트 중단: %s",
+                             sport, exc)
+                await notify_api_error(exc)
+                await record("팀 폼", 0, len(upcoming), exc=exc,
+                             unit="팀",
+                             impact="잔액 소진. 이후 폼·매치업 호출을 멈춥니다")
+                raise
             if upcoming:
                 try:
                     _judged = await _run_baseball_matchups(bb_redis, date, upcoming)
@@ -1687,20 +1659,26 @@ async def build_analysis(
                                  type(exc).__name__, exc)
                     await notify_api_error(exc)
                     _judged = 0
-                    await record("판정", 0, len(upcoming), exc=exc,
+                    await record("매치업 판정", 0, len(upcoming), exc=exc,
                                  unit="경기",
-                                 impact="추천·조합이 생성되지 않습니다 (마켓 보드만 표시)")
+                                 impact="추천이 생성되지 않습니다 (보드만 표시)")
+                    if isinstance(exc, ApiQuotaError):
+                        raise
                 except Exception as exc:
                     logger.exception("[pipeline] matchup 예기치 못한 실패: %s", exc)
                     _judged = 0
-                    await record("판정", 0, len(upcoming), exc=exc,
+                    await record("매치업 판정", 0, len(upcoming), exc=exc,
                                  unit="경기",
-                                 impact="추천·조합이 생성되지 않습니다 (마켓 보드만 표시)")
-                if upcoming and not any(st.name == "판정" for st in stages):
-                    _j_cause = None if _judged == len(upcoming) else (
-                        "missing" if _judged == 0 else None)
-                    await record("판정", _judged, len(upcoming),
+                                 impact="추천이 생성되지 않습니다 (보드만 표시)")
+                if upcoming and not any(st.name == "매치업 판정" for st in stages):
+                    _parse_n = sum(1 for g in upcoming
+                                   if (g.get("matchup") or {}).get("p_home") is not None)
+                    _j_cause = None
+                    if _judged != len(upcoming):
+                        _j_cause = "parse_fail" if _parse_n == 0 else None
+                    await record("매치업 판정", _judged, len(upcoming),
                                  cause=_j_cause,
+                                 detail=f"model 필드 {sum(1 for g in upcoming if g.get('model'))}/{len(upcoming)}",
                                  unit="경기",
                                  impact="판정 못 받은 경기는 추천에서 제외됩니다")
         finally:
@@ -1739,9 +1717,10 @@ async def build_analysis(
         verdict = await _second_opinion(judge_games, verdict, date, sport, news)
         _attach_verdicts(judge_games, verdict)
 
-    # 4c) [7] 전 마켓 배당 부착 + [4d] 데이터 제로 강등 → 5) 마켓 풀 픽 계산
-    await _attach_alt_markets(pool, judge_games)
-    _enforce_data_rules(judge_games)
+    # 4c) 축구만 알트 마켓·라인무브. 야구는 승패만.
+    if sport not in _BB:
+        await _attach_alt_markets(pool, judge_games)
+        _enforce_data_rules(judge_games)
 
     # [§3] 라인 무브먼트 — 확률이 아니라 **신뢰도**만 조정한다.
     #      확률 계산(_compute_picks) 이후에 실행해야 확률에 스며들지 않는다.
@@ -1749,6 +1728,8 @@ async def build_analysis(
         from app.engine.linemove import attach_line_move
 
         for g in games:
+            if (g.get("sport") or sport) in _BB:
+                continue
             if g.get("status") != "scheduled" or not g.get("market_board"):
                 continue
             try:
@@ -1770,10 +1751,9 @@ async def build_analysis(
 
     from app.engine.scoring import lambda_persisted
 
-    # [7-2] λ 가동률 — 분포가 선 경기 수. 폴백 경로로 떨어졌는지 여기서 드러난다.
     _scheduled = [g for g in judge_games if g.get("status") == "scheduled"]
-    _lam_ok = sum(1 for g in _scheduled if lambda_persisted(g))
-    if _scheduled:
+    if sport not in _BB and _scheduled:
+        _lam_ok = sum(1 for g in _scheduled if lambda_persisted(g))
         await record("λ 산출", _lam_ok, len(_scheduled),
                      cause=None if _lam_ok == len(_scheduled) else "missing",
                      detail=(", ".join(sorted({m for g in _scheduled
@@ -1795,11 +1775,18 @@ async def build_analysis(
         _ln_ok, _ln_why = _lineup_classify(_scheduled, _lineup_ok, sport)
         _ln_detail = ", ".join(f"{k}:{v}" for k, v in sorted(_count_by(
             (g.get("lineup_status") or "none") for g in _scheduled).items()))
-        await record("라인업", _lineup_ok, len(_scheduled),
-                     cause=None if (_lineup_ok or _ln_ok) else "missing",
-                     detail=f"{_ln_detail}{' · ' + _ln_why if _ln_why else ''}",
-                     unit="경기", expect_full=False, zero_ok=_ln_ok,
-                     impact="전 경기가 '잠정'으로 표기되어 최종 픽 자격을 얻지 못합니다")
+        if sport in _BB:
+            await record("라인업 수집", _lineup_ok, len(_scheduled),
+                         cause=None if (_lineup_ok or _ln_ok) else "missing",
+                         detail=f"{_ln_detail}{' · ' + _ln_why if _ln_why else ''}",
+                         unit="경기", expect_full=False, zero_ok=_ln_ok,
+                         impact="전 경기가 '잠정'으로 표기되어 최종 픽 자격을 얻지 못합니다")
+        else:
+            await record("라인업", _lineup_ok, len(_scheduled),
+                         cause=None if (_lineup_ok or _ln_ok) else "missing",
+                         detail=f"{_ln_detail}{' · ' + _ln_why if _ln_why else ''}",
+                         unit="경기", expect_full=False, zero_ok=_ln_ok,
+                         impact="전 경기가 '잠정'으로 표기되어 최종 픽 자격을 얻지 못합니다")
         # 관행값을 실측으로 바꿀 재료 — 경기별 **첫** 수집 시각과 킥오프의 차이
         if redis is not None:
             for _g in _scheduled:
@@ -1814,24 +1801,45 @@ async def build_analysis(
         #   전 마켓 제외 → '픽 선정 0/1 실패' 알림 발송).
         #   진짜 실패는 **마켓 보드 자체가 비었을 때**다 — 그건 확률을 못 만든 것이다.
         _board_rows = sum(len(g.get("market_board") or []) for g in _scheduled)
-        await record("픽 선정", _board_rows, max(1, _board_rows),
-                     cause=None if _board_rows else "missing",
-                     detail=f"보드 {_board_rows}행 / 추천 {len(recommended)}건 / "
-                            f"예정 {len(_scheduled)}경기",
-                     unit="행",
-                     impact="마켓 보드가 비어 확률을 만들지 못했습니다")
-    try:
-        _narrated = await attach_narratives(judge_games, sport)
-        if _scheduled:
-            await record("서술", _narrated, len(_scheduled),
-                         cause=None if _narrated else "missing",
+        if sport in _BB:
+            from app.engine.pregame_push import in_send_window, minutes_until_start
+            _gate_ok = 0
+            for _g in _scheduled:
+                left = minutes_until_start(_g.get("starts_at"))
+                open_w = in_send_window(sport, _g.get("starts_at"))
+                has_m = bool((_g.get("matchup") or {}).get("p_home") is not None
+                             and _g.get("model"))
+                if has_m:
+                    _gate_ok += 1
+                logger.info(
+                    "[pipeline] 창 sport=%s game=%s 잔여=%.0fm 창=%s 판정=%s",
+                    sport, _g.get("game_id"), -1 if left is None else left,
+                    "진입" if open_w else "이탈", "있음" if has_m else "없음")
+            await record("게이트·발송", _gate_ok, len(_scheduled),
+                         cause=None if _gate_ok else "missing",
+                         detail=f"판정 {_gate_ok} · 추천 {len(recommended)} · 예정 {len(_scheduled)}",
+                         unit="경기", expect_full=False, zero_ok=True,
+                         impact="판정 없는 경기는 카드를 보내지 않습니다")
+        else:
+            await record("픽 선정", _board_rows, max(1, _board_rows),
+                         cause=None if _board_rows else "missing",
+                         detail=f"보드 {_board_rows}행 / 추천 {len(recommended)}건 / "
+                                f"예정 {len(_scheduled)}경기",
+                         unit="행",
+                         impact="마켓 보드가 비어 확률을 만들지 못했습니다")
+    if sport not in _BB:
+        try:
+            _narrated = await attach_narratives(judge_games, sport)
+            if _scheduled:
+                await record("서술", _narrated, len(_scheduled),
+                             cause=None if _narrated else "missing",
+                             unit="경기",
+                             impact="심층 서술 없이 결정적 렌더로 나갑니다")
+        except Exception as exc:   # 서술 실패는 분석을 막지 않는다 (결정적 렌더로 폴백)
+            logger.warning("[pipeline] 서술 단계 실패, 결정적 렌더로 진행: %s", exc)
+            await record("서술", 0, len(_scheduled) or 1, exc=exc,
                          unit="경기",
                          impact="심층 서술 없이 결정적 렌더로 나갑니다")
-    except Exception as exc:   # 서술 실패는 분석을 막지 않는다 (결정적 렌더로 폴백)
-        logger.warning("[pipeline] 서술 단계 실패, 결정적 렌더로 진행: %s", exc)
-        await record("서술", 0, len(_scheduled) or 1, exc=exc,
-                     unit="경기",
-                     impact="심층 서술 없이 결정적 렌더로 나갑니다")
 
     # [6] 병렬 채점 — 경기력 기반 픽과 시장 반영 픽을 **둘 다** 기록해
     #     2~3주 뒤 어느 방식이 실제로 맞히는지 비교한다.
@@ -2069,9 +2077,20 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
             await r.aclose()
     if record is not None:
         n_ok = sum(1 for f in forms.values() if not f.get("unavailable"))
+        from collections import Counter
+        causes = Counter(
+            (f.get("cause") or "parse_fail")
+            for f in forms.values() if f.get("unavailable"))
+        detail = "성공 %d" % n_ok
+        if causes:
+            detail += " · unavailable " + ",".join(f"{k}:{v}" for k, v in sorted(causes.items()))
+        cause = None
+        if forms and n_ok < len(forms):
+            cause = causes.most_common(1)[0][0] if causes else "missing"
         await record(
-            "팀 경기력", n_ok, len(forms),
-            cause=None if not forms or n_ok == len(forms) else "missing",
+            "팀 폼", n_ok, len(forms),
+            cause=cause,
+            detail=detail,
             unit="팀",
             impact="평가 불가 팀은 추천에서 제외됩니다")
 
@@ -2159,6 +2178,8 @@ async def _attach_card_compare(judge_games: list[dict], sport: str,
         jg["compare"] = {}
         try:
             v = await compare_game(jg)
+        except ApiQuotaError:
+            raise
         except Exception as exc:      # 한 경기가 죽어도 슬레이트는 계속 간다
             logger.warning("[3단] %s 대조 실패: %s", jg.get("game_id"), exc)
             continue
@@ -2218,6 +2239,8 @@ async def _attach_cell_verdicts(pool, judge_games: list[dict], sport: str,
         try:
             jg["scoring"] = await interpret_scoring(
                 jg["card"].get("scoring") or {}, baselines=_sc_base)
+        except ApiQuotaError:
+            raise
         except Exception as exc:
             logger.warning("[2단-득점] %s 실패: %s", jg.get("game_id"), exc)
         # 채점 적재 — 기준 총득점을 함께 남긴다. 없으면 채점할 수 없다.
@@ -2237,6 +2260,8 @@ async def _attach_cell_verdicts(pool, judge_games: list[dict], sport: str,
                 logger.warning("[2단-득점] 기록 실패 %s: %s", jg.get("game_id"), exc)
     try:
         out = await interpret_slate(pairs, pool=pool)
+    except ApiQuotaError:
+        raise
     except Exception as exc:
         logger.warning("[pipeline] 2단 해석 실패 — 사실만 내보낸다: %s", exc)
         out = {}
@@ -2633,6 +2658,88 @@ def _compute_picks(
             logger.warning("[pipeline] game %s 판정 미수신 — 배당 %d개/알트 %d개로 "
                            "보드만 구성 (추천 제외)", jg["game_id"],
                            len(jg.get("best_odds") or {}), len(jg.get("alt_markets") or []))
+        from app.engine.scoring import BASEBALL_SPORTS
+        market = jg.get("market_probs") or {}
+        if sport in BASEBALL_SPORTS:
+            ph = jg.get("p_claude")
+            jg["distribution"] = None
+            jg["lam"] = None
+            jg["lambda_trace"] = []
+            jg["lambda_missing"] = []
+            jg["p_heuristic"] = None
+            jg["p_learned"] = None
+            jg["h2h_lambda_unused"] = True
+            jg["model_valid"] = bool(ph is not None and not jg.get("form_unavailable"))
+            jg["prob_adjust"] = None
+            p_final: dict[str, float] = {}
+            p_ens: dict[str, float] = {}
+            if ph is not None:
+                pa = round(max(0.0, min(1.0, 1.0 - float(ph))), 4)
+                p_final = {jg["home"]: round(float(ph), 4), jg["away"]: pa}
+                p_ens = dict(p_final)
+            jg["p_final"] = p_final
+            jg["p_legacy"] = {}
+            if ph is not None:
+                jg["p_claude_side"] = {
+                    jg["home"]: round(float(ph), 4),
+                    jg["away"]: round(max(0.0, min(1.0, 1.0 - float(ph))), 4),
+                }
+            cands = build_board(jg, sport, p_final)
+            jg["market_board"] = cands
+            scored = [c for c in cands if c.get("p") is not None]
+            if not scored:
+                continue
+            approved = [c for c in scored if c.get("approved")]
+            h2h = [c for c in scored if c["market"] == "h2h"]
+            pool_rep = approved or h2h or scored
+            rep = max(pool_rep, key=lambda c: c["p"])
+            pick = f"{rep['market']}:{rep['side']}" + (
+                f":{rep['line']:g}" if rep.get("line") is not None else "")
+            judge_excluded = None
+            if jg.get("judge_pass"):
+                judge_excluded = f"판정: 패스 권장 — {(jg.get('verdict') or '')[:120]}"
+            elif jg.get("judge_confidence") == "low":
+                judge_excluded = f"판정: 저신뢰 — {(jg.get('verdict') or '')[:120]}"
+            entry = {
+                "game_id": jg["game_id"], "home": jg["home"], "away": jg["away"],
+                "sport": sport,
+                "league": jg.get("league") or ("MLB" if sport == "mlb" else "?"),
+                "starts_at_kst": jg["starts_at_kst"], "pick": pick,
+                "market": rep["market"], "side": rep["side"], "line": rep.get("line"),
+                "desc": rep["desc"], "p": rep["p"],
+                "p_claude": ((jg.get("p_claude_side") or {}).get(rep["side"])
+                             if rep["market"] == "h2h" else None),
+                "model_valid": jg.get("model_valid", False),
+                "confidence": jg.get("judge_confidence", "medium"),
+                "odds": rep["odds"], "ev": rep["ev"], "kelly": 0.0,
+                "lam_total": None,
+                "stake_krw": stake_krw,
+                "verdict": jg.get("verdict", ""), "excluded_picks": jg.get("excluded_picks", []),
+                "flags": rep.get("flags", []), "judge_excluded": judge_excluded,
+                "approved": bool(rep.get("approved")),
+                "reject_reason": rep.get("reject_reason"),
+                "axes": rep.get("axes_kr"),
+                "grade": rep.get("grade"),
+                "p_heuristic": None,
+                "p_learned": None,
+                "two_source": True,
+                "required_prob": rep.get("required_prob"),
+                "edge": None,
+                "lineup_status": jg.get("lineup_status") or "none",
+                "pick_state": _pick_state(jg)[0], "pick_state_label": _pick_state(jg)[1],
+                "form_unavailable": bool(jg.get("form_unavailable")),
+                "p_legacy": None,
+                "p_market_side": None,
+                "p_ensemble_side": p_ens.get(rep["side"]),
+            }
+            picks_out.append(entry)
+            jg["pick_summary"] = {
+                "side": rep["side"], "desc": rep["desc"], "market": rep["market"],
+                "odds": rep["odds"], "p_final": rep["p"], "ev": rep["ev"],
+                "flags": rep.get("flags", []), "approved": bool(rep.get("approved")),
+                "reject_reason": rep.get("reject_reason"), "axes": rep.get("axes_kr"),
+            }
+            continue
         # [A-2] h2h 배당이 없다고 경기 전체를 죽이지 않는다 — 없는 마켓만 빠진다.
         #        배당은 행의 가격이다. 앙상블·경기력 조정의 전제가 아니다.
         #        야구 승부는 배당을 보지 않는다. 언더오버는 라인 숫자만.
@@ -4851,6 +4958,8 @@ async def _attach_lineup_intent(pool, judge_games: list[dict], sport: str,
     for jg in live:
         try:
             await _lineup_intent_one(pool, jg, sport, final)
+        except ApiQuotaError:
+            raise
         except Exception as exc:      # [E-3] 한 경기 실패가 슬레이트를 죽이지 않는다
             logger.warning("[라인업의도] %s 실패 — 이 경기만 건너뜀: %s",
                            jg.get("game_id"), exc)

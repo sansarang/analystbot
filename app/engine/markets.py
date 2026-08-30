@@ -349,7 +349,9 @@ def axes_count(axes: dict) -> int:
 # [4] 종목별 마켓 용어 — 야구엔 더블찬스가 없고, 핸디캡은 '런라인'이라 부른다
 REVIEWED_MARKETS_KR = "승패·더블찬스·핸디캡·언더오버"
 REVIEWED_MARKETS_BY_SPORT = {
-    "mlb": "승패·런라인·언더오버",
+    "mlb": "승패",
+    "kbo": "승패",
+    "npb": "승패",
     "soccer": "승패·더블찬스·핸디캡·언더오버",
 }
 
@@ -464,8 +466,14 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
     p_draw_m = market_probs.get("Draw")
     out: list[dict] = []
 
+    from app.research.normalize import canonical_pick
+
     stale = bool(jg.get("odds_stale"))   # [A-3] 오래된 스냅샷 폴백은 라벨을 붙인다
     dist = jg.get("distribution")        # [6] 포아송/스켈람 분포 — 전 마켓 확률의 단일 소스
+    from app.engine.scoring import BASEBALL_SPORTS
+
+    drop_totals = sport in BASEBALL_SPORTS
+    baseball_h2h_only = drop_totals
 
     def add(market, side, line, desc, odds, p, basis):
         # [§8-27] **배당이 없어도 행을 만든다.**
@@ -476,6 +484,10 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
         # [6] 토탈·핸디는 분포가 단일 소스. 승패(h2h)는 이미 p_final =
         #     0.5*분포 + 0.5*판정 으로 들어온다. 여기서 분포로 덮으면
         #     Claude가 승률에 안 섞인다 (KBO는 배당이 없어 이 경로가 전부다).
+        # 야구 언더오버는 사용자 지시(2026-08-29)로 보드에서 뺀다.
+        if drop_totals and market == "totals":
+            return
+        pick = canonical_pick(market, side, line)
         if dist is not None:
             from app.engine.scoring import market_probability
 
@@ -488,6 +500,7 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
             # 확률 추정 근거가 없다 — 행은 남기고 '근거 부족'으로 표기
             out.append({
                 "market": market, "side": side, "line": line, "desc": desc,
+                "pick": pick,
                 "odds": round(float(odds), 2) if odds else None,
                 "p": None, "ev": None, "basis": basis,
                 "axes": {}, "axes_n": 0, "axes_kr": "없음",
@@ -505,6 +518,7 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
         axes = support_axes(jg, market, side, line, pm_side)
         out.append({
             "market": market, "side": side, "line": line, "desc": desc,
+            "pick": pick,
             "odds": round(float(odds), 2) if odds else None, "p": round(p, 4),
             # ev는 배당이 있어야 계산된다 — 판정에는 쓰지 않는 참고값이다(§8-18)
             "ev": round(p * float(odds) - 1, 4) if odds else None,
@@ -520,7 +534,8 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
         desc = "무승부" if side == "Draw" else f"{kr_team(side)} 승"
         # [§8-27] 배당이 없어도 확률은 낼 수 있다 — 행을 만든다
         # λ 변별이 없어 승패를 판정 단독으로 쓴 경기는 근거 라벨을 숨기지 않는다.
-        h2h_basis = "판정" if jg.get("h2h_lambda_unused") else "앙상블"
+        h2h_basis = "매치업" if baseball_h2h_only else (
+            "판정" if jg.get("h2h_lambda_unused") else "앙상블")
         add("h2h", side, None, desc, best_odds.get(side), p_final.get(side), h2h_basis)
 
     # 2) 더블찬스 3종 (축구, 3-way 배당에서 합성) — 1X · X2 · 12
@@ -540,49 +555,46 @@ def build_candidates(jg: dict, sport: str, p_final: dict[str, float]) -> list[di
                 synth_dc_odds(best_odds[jg["home"]], best_odds[jg["away"]]), p_12,
                 "앙상블+합성배당")
 
-    # 3) 핸디캡·토탈
-    #   [§8-27] 수집 라인이 있으면 **그 라인**을 쓴다(시장이 던진 질문이 더 정확하다).
-    #   없으면 **분포에서 라인을 만든다** — 배당이 없다고 마켓이 사라지면 안 된다.
-    seen_alt: set[tuple] = set()
-    for alt in jg.get("alt_markets", []):
-        m, side, line = alt["market"], alt["side"], alt["line"]
-        seen_alt.add((m, side, line))
-        if m == "spreads":
-            desc = spread_desc(sport, kr_team(side), line)
-        else:
-            desc = f"{'오버' if side == 'Over' else '언더'} {line:g}"
-        # 야구 토탈은 라인 숫자만 온다(가격 없음). 확률은 λ 분포가 채운다.
-        if alt.get("odds") is None and alt.get("p") is None:
-            basis = "기대득점 분포"
-        else:
-            basis = "시장 기준"
-            if _axis_expert(jg, m, side, line):
-                basis = "시장+전문가"
-        add(m, side, line, desc, alt.get("odds"), alt.get("p"), basis)
-
-    if dist is not None:
-        probs = dist.get("probs") or {}
-        for line in sorted((probs.get("totals") or {})):
-            for side in ("Over", "Under"):
-                if ("totals", side, line) in seen_alt:
-                    continue
+    if not baseball_h2h_only:
+        seen_alt: set[tuple] = set()
+        for alt in jg.get("alt_markets", []):
+            m, side, line = alt["market"], alt["side"], alt["line"]
+            seen_alt.add((m, side, line))
+            if m == "spreads":
+                desc = spread_desc(sport, kr_team(side), line)
+            else:
                 desc = f"{'오버' if side == 'Over' else '언더'} {line:g}"
-                add("totals", side, line, desc, None, None, "기대득점 분포")
-        for line in sorted((probs.get("spreads") or {})):
-            for side, key in ((jg["home"], "home_minus"), (jg["away"], "away_plus"),
-                              (jg["away"], "away_minus"), (jg["home"], "home_plus")):
-                signed = -abs(line) if key.endswith("minus") else abs(line)
-                if ("spreads", side, signed) in seen_alt:
-                    continue
-                add("spreads", side, signed,
-                    spread_desc(sport, kr_team(side), signed), None, None, "기대득점 분포")
-        f5 = probs.get("f5") or {}
-        if f5.get("home") is not None or f5.get("away") is not None:
-            for side, key in ((jg["home"], "home"), (jg["away"], "away")):
-                if any(c["market"] == "f5" and c["side"] == side for c in out):
-                    continue
-                add("f5", side, None, f"{kr_team(side)} F5(5이닝) 승",
-                    None, None, "기대득점 분포")
+            if alt.get("odds") is None and alt.get("p") is None:
+                basis = "기대득점 분포"
+            else:
+                basis = "시장 기준"
+                if _axis_expert(jg, m, side, line):
+                    basis = "시장+전문가"
+            add(m, side, line, desc, alt.get("odds"), alt.get("p"), basis)
+
+        if dist is not None:
+            probs = dist.get("probs") or {}
+            for line in sorted((probs.get("totals") or {})):
+                for side in ("Over", "Under"):
+                    if ("totals", side, line) in seen_alt:
+                        continue
+                    desc = f"{'오버' if side == 'Over' else '언더'} {line:g}"
+                    add("totals", side, line, desc, None, None, "기대득점 분포")
+            for line in sorted((probs.get("spreads") or {})):
+                for side, key in ((jg["home"], "home_minus"), (jg["away"], "away_plus"),
+                                  (jg["away"], "away_minus"), (jg["home"], "home_plus")):
+                    signed = -abs(line) if key.endswith("minus") else abs(line)
+                    if ("spreads", side, signed) in seen_alt:
+                        continue
+                    add("spreads", side, signed,
+                        spread_desc(sport, kr_team(side), signed), None, None, "기대득점 분포")
+            f5 = probs.get("f5") or {}
+            if f5.get("home") is not None or f5.get("away") is not None:
+                for side, key in ((jg["home"], "home"), (jg["away"], "away")):
+                    if any(c["market"] == "f5" and c["side"] == side for c in out):
+                        continue
+                    add("f5", side, None, f"{kr_team(side)} F5(5이닝) 승",
+                        None, None, "기대득점 분포")
 
     # 승인/제외 판정 + 등급 (마켓 단위)
     from app.engine.scoring import is_away_underdog, required_prob
@@ -614,11 +626,6 @@ def _required_specs(jg: dict, sport: str) -> list[tuple]:
         return [
             ("h2h", home, None, f"{kr_team(home)} 승"),
             ("h2h", away, None, f"{kr_team(away)} 승"),
-            ("spreads", home, -1.5, spread_desc("mlb", kr_team(home), -1.5)),
-            ("spreads", away, 1.5, spread_desc("mlb", kr_team(away), 1.5)),
-            ("totals", "Under", None, "언더오버"),
-            ("f5", home, None, f"{kr_team(home)} F5(5이닝) 승"),
-            ("f5", away, None, f"{kr_team(away)} F5(5이닝) 승"),
         ]
     return [
         ("h2h", home, None, f"{kr_team(home)} 승"),
@@ -640,7 +647,7 @@ def _placeholder(market, side, line, desc, *, reason: str = "배당 미수집",
                  note: str = "배당 확보 시 재평가") -> dict:
     """없는 마켓 행 — 지우지 않고 남겨 '무엇을 못 봤는지'를 드러낸다.
 
-    야구 승부·런라인·토탈·F5는 배당이 전제가 아니다. λ가 없으면
+    야구 승부·런라인·F5는 배당이 전제가 아니다. λ가 없으면
     '배당 미수집'이 아니라 '확률 미산출'이다.
     """
     return {

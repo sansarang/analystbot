@@ -1,10 +1,10 @@
-"""[Odds] 야구 일정은 Odds API 없이, 언더오버는 토탈 라인만.
+"""[Odds] 야구 일정은 Odds API 없이, 배당·언더오버 라인도 조회하지 않는다.
 
 🔴 실사고 2026-08-27: Odds 크레딧이 마르자 KBO 응답 전체가
    "⚠️ odds API 사용량/크레딧이 소진되어 분석을 완료하지 못했습니다" 한 줄로
    대체됐다. 일정 소스만 Odds였기 때문이다. 일정 분기는 그대로 Odds를 부르지 않는다.
 
-승부는 배당을 쓰지 않는다. 언더오버만 라인 숫자(8.5 등)를 가져온다.
+승부 배당·언더오버 라인 모두 쓰지 않는다 (2026-08-29).
 """
 import ast
 import pathlib
@@ -28,22 +28,16 @@ def test_kbo_npb_branch_does_not_call_the_odds_api():
     assert "upsert_schedule" in branch, "공식 일정 소스가 배선되지 않았다"
 
 
-def test_baseball_odds_keys_are_totals_lines_only():
-    """야구는 Odds를 호출하되 승부 배당이 아니라 토탈 라인만."""
+def test_baseball_does_not_fetch_odds():
+    """야구 언더오버 삭제 — Odds API를 호출하지 않는다."""
     from app.collectors.odds import odds_markets_for
 
     src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
     i = src.index('    if sport in ("mlb", "kbo", "npb"):')
     block = src[i:src.index("    else:", i)]
-    assert "SPORT_KEYS" in block
-    assert "active_keys = []" not in block
-    assert 'active_keys = ["baseball_mlb"]' not in src
-    for sport in ("mlb", "kbo", "npb"):
-        assert odds_markets_for(sport) == "totals"
+    assert "active_keys = []" in block
     assert odds_markets_for("soccer") == "h2h,spreads,totals"
-
-    snap = (ROOT / "app/collectors/odds.py").read_text(encoding="utf-8")
-    assert 'market.get("key") != "totals"' in snap
+    assert odds_markets_for("mlb") == ""
 
 def test_odds_snapshot_is_skipped_when_no_keys():
     src = (ROOT / "app/pipeline.py").read_text(encoding="utf-8")
@@ -158,11 +152,10 @@ async def test_mlb_snapshot_drops_h2h_even_if_api_returns_it(db_pool):
             }]
 
     n = await snapshot_odds(db_pool, "mlb", client=Fake(), only_keys=["baseball_mlb"])
-    assert n == 2  # 8.5 Over/Under. h2h 2행은 버린다.
+    assert n == 0
     markets = await db_pool.fetch(
         "SELECT market, line FROM odds_snapshots WHERE game_id = $1", gid)
-    assert {r["market"] for r in markets} == {"totals"}
-    assert "h2h" not in {r["market"] for r in markets}
+    assert markets == []
 
 
 @pytest.mark.asyncio
@@ -189,9 +182,7 @@ async def test_totals_line_numbers_ignore_price_and_integer_lines(db_pool):
     jg = {"game_id": gid, "sport": "mlb", "status": "scheduled",
           "home": "H", "away": "A"}
     await _attach_alt_markets(db_pool, [jg])
-    assert {(m["side"], m["line"], m["odds"], m["p"]) for m in jg["alt_markets"]} == {
-        ("Over", 8.5, None, None), ("Under", 8.5, None, None),
-    }
+    assert jg["alt_markets"] == []
 
 
 def test_odds_formatters_and_value_line_tolerate_missing_price():

@@ -28,6 +28,15 @@ def test_normalize_pick_formats():
     assert normalize_pick("Dodgers ML", HOME, AWAY) is None  # 경기 무관 팀
 
 
+def test_normalize_korean_board_desc():
+    home, away = "Doosan Bears", "Kiwoom Heroes"
+    assert normalize_pick("오버 10.5", home, away) == "totals:Over:10.5"
+    assert normalize_pick("언더 11.5", home, away) == "totals:Under:11.5"
+    assert normalize_pick("두산 베어스 승", home, away) == "h2h:Doosan Bears"
+    assert normalize_pick("키움 히어로즈 런라인 +1.5", home, away) == \
+        "spreads:Kiwoom Heroes:+1.5"
+
+
 def test_extract_json_array_variants():
     assert extract_json_array('```json\n[{"a": 1}]\n```') == [{"a": 1}]
     assert extract_json_array('picks: [{"a": 1}] done') == [{"a": 1}]

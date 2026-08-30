@@ -88,23 +88,16 @@ def test_kbo_data_axis_follows_standings_not_empty_stats():
     assert not _axis_data(jg, "h2h", "NC Dinos", None)
 
 
-def test_kbo_h2h_blends_lambda_and_claude_without_odds():
-    """λ 승패에 변별이 있으면 p_final = 0.5*λ + 0.5*Claude. 배당 없어도 보드에 찍힌다."""
+def test_kbo_h2h_is_matchup_only_without_odds():
+    """야구 승패는 매치업 p_home. λ 블렌딩·배당 없음."""
     jg = _kbo_jg()
     _compute_picks(Settings(_env_file=None), [jg], "kbo")
     home = next(c for c in jg["market_board"]
                 if c["market"] == "h2h" and c["side"] == "LG Twins")
-    dist_p = jg["p_heuristic"]["LG Twins"]
-    assert abs(dist_p - 0.5) >= 0.05, "이 픽스처는 λ 변별이 있어야 한다"
-    blended = 0.5 * dist_p + 0.5 * 0.62
-    assert home["p"] is not None
-    assert abs(home["p"] - blended) < 0.02, (
-        f"보드 승률 {home['p']} 이 앙상블 {blended:.4f}(λ {dist_p:.4f}+Claude 0.62)와 다름")
-    assert home["basis"] == "앙상블"
-    assert home["axes"]["data"] and home["axes"]["model"]
-    assert home.get("two_source")
-    assert not jg.get("data_zero")
-    assert not jg.get("h2h_lambda_unused")
+    assert jg.get("p_heuristic") is None
+    assert abs(home["p"] - 0.62) < 0.02
+    assert home["basis"] == "매치업"
+    assert {c["market"] for c in jg["market_board"]} == {"h2h"}
 
 
 def test_kbo_unpriced_h2h_can_be_approved_on_probability():
@@ -119,7 +112,7 @@ def test_kbo_unpriced_h2h_can_be_approved_on_probability():
 
 
 def test_h2h_keeps_ensemble_when_distribution_present():
-    """토탈은 분포, 승패는 앙상블 — 분포로 승패를 덮지 않는다."""
+    """승패는 앙상블 — 분포로 승패를 덮지 않는다. 야구 언더오버는 보드에 없다."""
     from app.engine.scoring import game_distribution
 
     jg = _kbo_jg()
@@ -128,15 +121,12 @@ def test_h2h_keeps_ensemble_when_distribution_present():
     board = build_candidates(jg, "kbo", {"LG Twins": 0.60, "NC Dinos": 0.40})
     home = next(c for c in board if c["market"] == "h2h" and c["side"] == "LG Twins")
     assert abs(home["p"] - 0.60) < 1e-6
-    under = next(c for c in board if c["market"] == "totals" and c["side"] == "Under")
-    assert under["basis"] == "기대득점 분포"
+    assert not any(c["market"] == "totals" for c in board)
+    assert not any(c["market"] in ("spreads", "f5") for c in board)
 
 
 def test_h2h_coin_flip_lambda_uses_claude_only():
-    """실측 2026-08-28 NPB: λ≈50%가 Claude 65%를 56%로 깎으면 안 된다.
-
-    언더오버는 분포 단독으로 남는다.
-    """
+    """야구 승패는 매치업 p_home만. λ·런라인은 보드에 없다."""
     jg = _kbo_jg(
         p_claude=0.65,
         research={
@@ -150,20 +140,15 @@ def test_h2h_coin_flip_lambda_uses_claude_only():
         },
     )
     _compute_picks(Settings(_env_file=None), [jg], "kbo")
-    dist_p = jg["p_heuristic"]["LG Twins"]
-    assert abs(dist_p - 0.5) < 0.05, f"동전 던지기 픽스처가 아님: λ={dist_p}"
+    assert jg.get("p_heuristic") is None
+    assert jg.get("distribution") is None
     home = next(c for c in jg["market_board"]
                 if c["market"] == "h2h" and c["side"] == "LG Twins")
     away = next(c for c in jg["market_board"]
                 if c["market"] == "h2h" and c["side"] == "NC Dinos")
-    assert jg.get("h2h_lambda_unused") is True
-    assert home["basis"] == "판정" and away["basis"] == "판정"
-    assert abs(home["p"] - 0.65) < 0.02, f"승패가 Claude 단독이어야 하는데 {home['p']}"
-    under = next(c for c in jg["market_board"]
-                 if c["market"] == "totals" and c["side"] == "Under")
-    assert under["basis"] == "기대득점 분포"
-    assert under["p"] is not None
-    assert under["p"] != home["p"]
+    assert home["basis"] == "매치업" and away["basis"] == "매치업"
+    assert abs(home["p"] - 0.65) < 0.02, f"승패가 매치업 단독이어야 하는데 {home['p']}"
+    assert {c["market"] for c in jg["market_board"]} == {"h2h"}
 
 
 def test_h2h_lambda_has_signal_threshold():

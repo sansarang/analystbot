@@ -298,6 +298,4 @@ def test_compute_picks_without_dist_does_not_keep_old_trace():
     assert jg.get("lambda_trace") == []
     assert jg.get("lam") is None
     assert jg.get("lambda_missing") == ["핵심 지표(타선·선발) 전무"]
-    totals = [c for c in (jg.get("market_board") or []) if c["market"] == "totals"]
-    assert totals
-    assert all(c.get("reject_reason") != "배당 미수집" for c in totals)
+    assert not any(c["market"] == "totals" for c in (jg.get("market_board") or []))
