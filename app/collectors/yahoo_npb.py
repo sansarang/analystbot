@@ -101,6 +101,10 @@ class YahooNPBClient:
         """종료 경기 투수 등판. `/top` 打順과 표 순서가 반대다(실측 2026-08-28)."""
         return await self._get(f"/npb/game/{game_id}/stats")
 
+    async def standings(self) -> str:
+        """시즌 순위표. CL·PL 각 6팀 (실측 2026-08-29 `/npb/standings/`)."""
+        return await self._get("/npb/standings/")
+
 
 def parse_schedule(html: str) -> list[dict]:
     """일정 HTML → [{game_id, home, away, starters_confirmed}].
@@ -307,6 +311,113 @@ def parse_pitching_stats(html: str) -> dict[str, list[dict]]:
     if len(found) < 2:
         return {"away": [], "home": []}
     return {"away": found[0], "home": found[1]}
+
+
+# 타격 合計 → last-3 패킷. 헤더에 없는 칸은 만들지 않는다.
+_BATTING_TOTAL = {
+    "安打": "hits",
+    "本塁打": "hr",
+    "四球": "bb",
+    "三振": "k",
+    "失策": "errors",
+}
+_INNING_COL = re.compile(r"^\d+回$")
+# 시즌 순위표. 교류전·클라이맥스 표에도 같은 헤더가 있어 앞 2개(CL·PL)만 쓴다.
+STANDINGS_NEED = ("順位", "チーム名", "勝率", "残試合")
+
+
+def _batting_header_keys(head: list[str]) -> list[str]:
+    """合計 행은 打率 칸이 없다 (실측 2026-08-29). 이닝 칸도 合計에 없다."""
+    out = []
+    for h in head:
+        if h == "打率" or _INNING_COL.match(h or "") or h in ("X",):
+            continue
+        out.append(h)
+    return out
+
+
+def parse_batting_stats(html: str) -> dict[str, dict]:
+    """Yahoo `/stats` 타격 合計 → {away, home}: hits/hr/bb/k/errors.
+
+    첫 타격표가 원정 (실측 2026-08-29 楽天@西武). 투수표와 같다.
+    `合計` 행이 없거나 헤더에 칸이 없으면 그 필드는 누락으로 남긴다 — 합산 추정 금지.
+    """
+    found: list[dict] = []
+    for tb in re.findall(r"<table[^>]*>(.*?)</table>", html, re.S):
+        rows = [r for r in (_cells(tr) for tr in
+                            re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S)) if r]
+        if not rows:
+            continue
+        head = rows[0]
+        if "安打" not in head or "選手名" not in head or "投球回" in head:
+            continue
+        total = next((r for r in rows[1:] if r and r[0] == "合計"), None)
+        if not total:
+            continue
+        keys = _batting_header_keys(head)
+        idx = {name: i for i, name in enumerate(keys)}
+        row: dict = {}
+        for jp, en in _BATTING_TOTAL.items():
+            i = idx.get(jp)
+            if i is None or i >= len(total):
+                continue
+            v = _opt_int_cell(total[i])
+            if v is not None:
+                row[en] = v
+        found.append(row)
+    if len(found) < 2:
+        return {"away": {}, "home": {}}
+    return {"away": found[0], "home": found[1]}
+
+
+def parse_standings(html: str) -> dict[str, dict]:
+    """Yahoo 시즌 순위표 → {Odds 팀명: {rank, w, l, d, win_pct}}.
+
+    실측 2026-08-29: 표0 센트럴 6팀, 표1 퍼시픽 6팀. 그 다음 표는 교류전 등이라
+    **앞 2개 리그 표만** 쓴다. 순위를 승률로 다시 매기지 않는다.
+    """
+    leagues: list[dict[str, dict]] = []
+    for tb in re.findall(r"<table[^>]*>(.*?)</table>", html, re.S):
+        if len(leagues) >= 2:
+            break
+        rows = [r for r in (_cells(tr) for tr in
+                            re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S)) if r]
+        if not rows:
+            continue
+        head = rows[0]
+        if any(k not in head for k in STANDINGS_NEED):
+            continue
+        idx = {name: i for i, name in enumerate(head)}
+
+        def col(r, key):
+            i = idx.get(key)
+            return r[i] if i is not None and i < len(r) else ""
+
+        parsed: dict[str, dict] = {}
+        for r in rows[1:]:
+            jp = col(r, "チーム名").strip()
+            name = TEAM_TO_ODDS.get(jp)
+            if not name:
+                continue
+            rank = _opt_int_cell(col(r, "順位"))
+            wp = _num(col(r, "勝率"))
+            if wp is not None:
+                wp = round(wp, 3)
+            st = {
+                "rank": rank,
+                "w": _opt_int_cell(col(r, "勝利")),
+                "l": _opt_int_cell(col(r, "敗戦")),
+                "d": _opt_int_cell(col(r, "引分")),
+                "win_pct": wp,
+            }
+            parsed[name] = {k: v for k, v in st.items() if v is not None}
+        if len(parsed) >= 6:
+            leagues.append(parsed)
+    out: dict[str, dict] = {}
+    for lg in leagues:
+        for name, st in lg.items():
+            out.setdefault(name, st)
+    return out
 
 
 # 종료 경기 표기: "神宮 ヤクルト 巨人 6 - 8 試合終了 …"  (홈 원정 홈점수 - 원정점수)

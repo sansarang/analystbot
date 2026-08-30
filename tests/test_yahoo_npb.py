@@ -223,19 +223,15 @@ async def test_upsert_schedule_writes_final_scores(monkeypatch):
     assert live["status"] == "scheduled" and live["home_score"] is None
 
 
-def test_grader_prefers_yahoo_for_npb():
-    """[§8-28] 채점기가 Yahoo를 1순위로 부르는지 — 배선이 빠지면 조용히 Odds로 간다."""
+def test_ingest_finals_prefers_yahoo_for_npb():
+    """[§8-36] 종목 분기는 `ingest_finals` 한 곳에만 있다."""
     from pathlib import Path
 
-    # [§8-36] 종목 분기는 `ingest_finals` **한 곳**에만 있다. 두 곳에 두었더니
-    #   한쪽(reconcile_stale_games)이 갱신되지 않아 KBO·NPB가 축구 수집기로
-    #   보내졌고, 8/26 경기가 'scheduled'로 굳어 영원히 미채점이 됐다.
-    src = Path("app/grader.py").read_text(encoding="utf-8")
+    src = Path("app/collectors/finals.py").read_text(encoding="utf-8")
     i = src.index("async def ingest_finals")
     block = src[i:i + 2200]
     assert "yahoo_npb import upsert_final_scores" in block
     assert block.index("yahoo_finals") < block.index('odds_finals(pool, date, days=2, sport="npb")')
-    # 분기가 다시 복제되지 않았는지 — reconcile은 ingest_finals를 불러야 한다
     rec = src[src.index("async def reconcile_stale_games"):]
     assert "ingest_finals" in rec, "reconcile이 종목 분기를 다시 갖게 됐다"
     assert "football" not in rec.split("async def ", 2)[0], \
@@ -332,4 +328,89 @@ def test_score_card_drops_other_days():
     mixed = parse_finals(html)
     assert [g["game_id"] for g in today] == ["2021039331"]
     assert {g["game_id"] for g in mixed} == {"2021039331", "2021039200"}
+
+
+# ---------------------------------------------------------------- /stats 타격 合計 · 순위표
+
+def _batting_tbl(total_cells):
+    """合計 행은 打率 칸이 비어 한 칸 짧다 (실측 2026-08-29)."""
+    head = ["位置", "選手名", "打率", "打数", "得点", "安打", "打点", "三振",
+            "四球", "死球", "犠打", "盗塁", "失策", "本塁打", "1回"]
+    player = ["(中)", "誰", ".250", "4", "1", "1", "0", "1", "0", "0", "0", "0",
+              "0", "0", ""]
+    total = ["合計", ""] + list(total_cells)
+    return _tbl([head, player, total])
+
+
+def test_parse_batting_stats_totals_away_then_home():
+    from app.collectors.yahoo_npb import parse_batting_stats
+
+    # 打数 得点 安打 打点 三振 四球 死球 犠打 盗塁 失策 本塁打
+    away = _batting_tbl(["31", "4", "5", "4", "11", "6", "0", "0", "1", "0", "1"])
+    home = _batting_tbl(["31", "8", "9", "8", "5", "7", "0", "1", "0", "0", "1"])
+    got = parse_batting_stats(away + home)
+    assert got["away"] == {"hits": 5, "hr": 1, "bb": 6, "k": 11, "errors": 0}
+    assert got["home"] == {"hits": 9, "hr": 1, "bb": 7, "k": 5, "errors": 0}
+
+
+def test_parse_batting_stats_missing_total_is_empty():
+    from app.collectors.yahoo_npb import parse_batting_stats
+
+    head = ["位置", "選手名", "打率", "打数", "安打", "三振", "四球", "失策", "本塁打"]
+    player = ["(中)", "誰", ".250", "4", "1", "1", "0", "0", "0"]
+    html = _tbl([head, player]) + _tbl([head, player])
+    assert parse_batting_stats(html) == {"away": {}, "home": {}}
+
+
+def test_parse_batting_stats_omits_absent_header():
+    from app.collectors.yahoo_npb import parse_batting_stats
+
+    head = ["位置", "選手名", "打率", "打数", "安打", "三振"]  # 四球·本塁打·失策 없음
+    total = ["合計", "", "31", "5", "11"]
+    tbl = _tbl([head, ["(中)", "誰", ".250", "4", "1", "1"], total])
+    got = parse_batting_stats(tbl + tbl)
+    assert got["away"] == {"hits": 5, "k": 11}
+    assert "hr" not in got["away"] and "bb" not in got["away"]
+
+
+def test_parse_standings_uses_official_rank_first_two_tables():
+    from app.collectors.yahoo_npb import parse_standings
+
+    def lg(rows):
+        head = ["順位", "チーム名", "試合", "勝利", "敗戦", "引分", "勝率",
+                "勝差", "残試合"]
+        return _tbl([head] + rows)
+
+    cl = lg([
+        ["1", "阪神", "115", "65", "49", "1", ".570", "-", "28"],
+        ["2", "巨人", "117", "63", "52", "2", ".548", "2.5", "26"],
+        ["3", "ヤクルト", "116", "60", "55", "1", ".522", "5.5", "27"],
+        ["4", "広島", "116", "55", "60", "1", ".478", "10.5", "27"],
+        ["5", "DeNA", "115", "52", "62", "1", ".456", "13", "28"],
+        ["6", "中日", "116", "48", "67", "1", ".417", "17.5", "27"],
+    ])
+    pl = lg([
+        ["1", "ソフトバンク", "116", "72", "42", "2", ".632", "M20", "27"],
+        ["2", "西武", "119", "67", "49", "3", ".578", "6", "24"],
+        ["3", "日本ハム", "117", "60", "55", "2", ".522", "12.5", "26"],
+        ["4", "ロッテ", "116", "54", "60", "2", ".474", "18", "27"],
+        ["5", "オリックス", "116", "50", "64", "2", ".439", "22", "27"],
+        ["6", "楽天", "116", "45", "69", "2", ".395", "27", "27"],
+    ])
+    # 교류전 — 같은 헤더지만 세 번째 표. 시즌 순위를 덮으면 안 된다.
+    il = lg([
+        ["1", "西武", "18", "14", "3", "1", ".824", "-", "0"],
+        ["2", "ソフトバンク", "18", "14", "4", "0", ".778", "0.5", "0"],
+        ["3", "日本ハム", "18", "10", "8", "0", ".556", "4.5", "0"],
+        ["4", "ロッテ", "18", "9", "9", "0", ".500", "5.5", "0"],
+        ["5", "オリックス", "18", "7", "11", "0", ".389", "7.5", "0"],
+        ["6", "楽天", "18", "5", "13", "0", ".278", "9.5", "0"],
+    ])
+    got = parse_standings(cl + pl + il)
+    assert len(got) == 12
+    assert got["Hanshin Tigers"]["rank"] == 1
+    assert got["Hanshin Tigers"]["win_pct"] == 0.570
+    assert got["Saitama Seibu Lions"]["rank"] == 2
+    assert got["Saitama Seibu Lions"]["win_pct"] == 0.578
+    assert got["Fukuoka SoftBank Hawks"]["rank"] == 1
 

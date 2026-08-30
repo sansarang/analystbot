@@ -86,6 +86,31 @@ def test_apply_boxscores_home_away_sides():
     assert yak["bullpen_count"] == 0
 
 
+def test_apply_boxscores_batting_totals_no_invent():
+    form = parse_recent_form(
+        [_g("2021039325", "2026-08-28", YAK, GIANTS, 6, 8)],
+        before="2026-08-29")
+    by_gid = {
+        "2021039325": {
+            "pitching": {
+                "home": [{"name": "山野", "is_starter": True, "innings": 6.0, "r": 8}],
+                "away": [{"name": "井上", "is_starter": True, "innings": 7.0, "r": 6}],
+            },
+            "batting": {
+                "home": {"hits": 9, "hr": 1, "bb": 3, "k": 8, "errors": 0},
+                "away": {"hits": 11, "hr": 2, "bb": 4, "k": 7},
+            },
+        }
+    }
+    apply_boxscores(form, by_gid)
+    yak = form[YAK]["games"][0]
+    giants = form[GIANTS]["games"][0]
+    assert yak["hits"] == 9 and yak["hr"] == 1 and yak["errors"] == 0
+    assert giants["hits"] == 11 and giants["hr"] == 2
+    assert "errors" not in giants  # 원정 合計에 失策 없으면 만들지 않는다
+    assert yak["starter_ip"] == 6.0
+
+
 def _stats_html():
     def tbl(rows):
         body = "".join("<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>"

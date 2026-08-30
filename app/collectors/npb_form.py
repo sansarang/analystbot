@@ -13,8 +13,10 @@ from datetime import timedelta
 from app.collectors.last3 import attach_opponent_context
 from app.collectors.yahoo_npb import (
     YahooNPBClient,
+    parse_batting_stats,
     parse_finals,
     parse_pitching_stats,
+    parse_standings,
     score_card_html,
 )
 
@@ -116,16 +118,39 @@ def parse_recent_form(finals: list[dict], *, before: str | None = None,
     return out
 
 
+def lacks_opponent_context(form: dict | None) -> bool:
+    """순위표를 안 넘긴 캐시. 재수집 대상."""
+    games = [r for p in (form or {}).values() for r in (p.get("games") or [])]
+    if not games:
+        return True
+    return any(g.get("opponent_rank") is None
+               and g.get("opponent_win_pct") is None for g in games)
+
+
+def _box_sides(data: dict) -> tuple[dict, dict]:
+    """신: {pitching, batting}. 구 테스트: {home, away} 투수 목록."""
+    if "pitching" in data or "batting" in data:
+        return data.get("pitching") or {}, data.get("batting") or {}
+    return data, {}
+
+
 def apply_boxscores(form: dict[str, dict], by_gid: dict[str, dict]) -> None:
-    """parse_pitching_stats 결과를 팀 패킷에 얹는다. 시즌 ERA 키는 버린다."""
+    """투수 등판 + 타격 合計. 시즌 ERA 키는 버린다. 없는 타격 칸은 만들지 않는다."""
     for team, pkt in form.items():
         for row in pkt.get("games") or []:
             gid = row.get("game_id")
-            pits = by_gid.get(gid) if gid else None
-            if not pits:
+            data = by_gid.get(gid) if gid else None
+            if not data:
                 continue
+            pits, bats = _box_sides(data)
             side = "home" if row.get("home") else "away"
             row.update(summarize_pitching(_pitch_for_side(pits, side)))
+            bat = bats.get(side) if isinstance(bats, dict) else None
+            if not isinstance(bat, dict):
+                continue
+            for k in ("hits", "hr", "bb", "k", "errors"):
+                if bat.get(k) is not None:
+                    row[k] = bat[k]
 
 
 async def fetch_recent_form(date: str, client: YahooNPBClient | None = None,
@@ -133,6 +158,12 @@ async def fetch_recent_form(date: str, client: YahooNPBClient | None = None,
                             standings: dict | None = None) -> dict[str, dict]:
     """`date` **이전** 종료 경기에서 팀별 최근 3경기를 모은다."""
     client = client or YahooNPBClient()
+    if standings is None and hasattr(client, "standings"):
+        try:
+            standings = parse_standings(await client.standings())
+        except Exception as exc:
+            logger.warning("[npb_form] 순위표 실패: %s", exc)
+            standings = None
     day = date_cls.fromisoformat(date)
     collected: list[dict] = []
     seen: set[str] = set()
@@ -159,12 +190,14 @@ async def fetch_recent_form(date: str, client: YahooNPBClient | None = None,
     by_gid: dict[str, dict] = {}
     for gid in need:
         try:
-            pits = parse_pitching_stats(await client.stats(gid))
+            html = await client.stats(gid)
         except Exception as exc:
             logger.debug("[npb_form] /stats %s 실패: %s", gid, exc)
             continue
-        if pits.get("home") or pits.get("away"):
-            by_gid[gid] = pits
+        pits = parse_pitching_stats(html)
+        bats = parse_batting_stats(html)
+        if pits.get("home") or pits.get("away") or bats.get("home") or bats.get("away"):
+            by_gid[gid] = {"pitching": pits, "batting": bats}
     apply_boxscores(form, by_gid)
     logger.info("[npb_form] %s 기준 %d팀 · 박스 %d경기",
                 date, len(form), len(by_gid))
