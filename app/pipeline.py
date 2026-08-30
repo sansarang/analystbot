@@ -2327,21 +2327,23 @@ async def _totals_line_numbers(pool: asyncpg.Pool, game_id: int) -> list[float]:
 async def _attach_alt_markets(pool: asyncpg.Pool, judge_games: list[dict]) -> None:
     """[7] 핸디캡·토탈 수집 배당 부착 + [A-3] 스냅샷 신선도 라벨.
 
-    야구는 토탈 **라인 숫자만** 붙인다. 가격이 없으므로 개장배당 라벨도 없다.
+    ⚠️ **야구는 알트 마켓이 없다** — 마켓은 승패만이다 (DISCIPLINE 1-A-1).
+       호출부(build_analysis)에도 `if sport not in _BB:` 가드가 있지만,
+       호출부 가드는 하나만 빠져도 뚫린다 — 실측 2026-08-29에 실제로 뚫렸다.
+       그래서 함수 진입부에서도 막는다. rejudge_card_stack과 같은 방식이다.
+
     축구는 북별 최신 스냅샷을 모으므로 (a)다른 북메이커 (b)마지막 프리게임
     스냅샷 폴백이 이미 내장돼 있다. 다만 그 스냅샷이 오래됐으면 현재가가 아니므로
     '(개장 배당)'으로 표기해 사용자가 구분할 수 있게 한다.
     """
+    from app.engine.scoring import BASEBALL_SPORTS
+
     for jg in judge_games:
         if jg.get("status") != "scheduled":
             continue
         sport = jg.get("sport") or ""
-        if sport in ("mlb", "kbo", "npb"):
-            lines = await _totals_line_numbers(pool, jg["game_id"])
-            jg["alt_markets"] = [
-                {"market": "totals", "side": side, "line": line, "odds": None, "p": None}
-                for line in lines for side in ("Over", "Under")
-            ]
+        if sport in BASEBALL_SPORTS:
+            jg["alt_markets"] = []
             jg["odds_stale"] = False
             continue
         jg["alt_markets"] = await _alt_market_rows(pool, jg["game_id"], jg["home"], jg["away"])
