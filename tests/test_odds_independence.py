@@ -107,7 +107,11 @@ def test_odds_stage_is_not_recorded_without_odds_leagues():
     src = (pathlib.Path(__file__).resolve().parents[1]
            / "app/pipeline.py").read_text(encoding="utf-8")
     i = src.index('await record("배당 수집"')
-    assert "if active_keys:" in src[i - 400:i], "배당 계측이 무조건 실행된다"
+    # ⚠️ 소스텍스트 검사다. 가드 문구가 바뀌면 동작이 멀쩡해도 깨진다.
+    #    2026-08-30: 야구 제외가 붙으면서 `if active_keys:` → 아래 형태가 됐다.
+    #    파트 E에서 행동 검증 테스트로 교체한다.
+    assert 'if sport not in ("mlb", "kbo", "npb") and active_keys:' in src[i - 400:i], \
+        "배당 계측이 무조건 실행된다"
 
 
 def test_baseball_never_loads_h2h_market_probs():
