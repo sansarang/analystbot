@@ -20,7 +20,23 @@ from app.collectors.base import ApiQuotaError
 from app.config import get_settings
 from app.engine.form_card import rec_label
 from app.engine.matchup import clip_p_home
+from app.engine.pregame_push import still_upcoming
 from app.pipeline import default_date, qualifies
+
+
+def live_games(analysis: dict) -> list[dict]:
+    """비교 대상 = 아직 **시작하지 않은** 예정 경기.
+
+    ⚠️ `status == "scheduled"` 만 보면 안 된다. 종료 점수 적재가 돌기 전까지
+       진행 중인 경기도 DB에 scheduled 로 남아 있다 — 실측 2026-08-30 NPB
+       드라이런에서 이미 1회초가 진행 중이던 니혼햄전이 '추천' 라벨을 받았다.
+       실운영 발송은 `still_upcoming` 으로 막는데(pregame_push:87, :259) 검증
+       도구만 안 막으면, 도구가 실운영과 다른 규칙으로 돌아 결과를 오염시킨다.
+    """
+    return [g for g in (analysis.get("games") or [])
+            if g.get("status") == "scheduled"
+            and still_upcoming(g.get("starts_at") or g.get("starts_at_kst"))]
+
 
 BASELINE_PATH = (
     Path(__file__).resolve().parent / "baselines"
@@ -125,8 +141,7 @@ async def build_new_analysis(sport: str, date: str) -> dict:
         raw = await r.get(f"analysis:{sport}:{date}")
         if analysis_cache_ready(raw, date):
             analysis = json.loads(raw)
-            live = [g for g in (analysis.get("games") or [])
-                    if g.get("status") == "scheduled"]
+            live = live_games(analysis)
             if live and all(g.get("matchup") for g in live):
                 return analysis
         analysis = await build_analysis(
@@ -147,6 +162,8 @@ def merge_rows(new_games: list[dict], old_rows: list[dict]) -> list[dict]:
     for jg in new_games:
         if jg.get("status") not in (None, "scheduled"):
             continue
+        if jg.get("starts_at") and not still_upcoming(jg["starts_at"]):
+            continue          # 이미 시작한 경기는 비교 대상이 아니다
         n = _row(jg)
         o = old_by.get(_gid(jg.get("game_id"))) or {}
         new_f, old_f = n.get("favored"), o.get("old_favored")
@@ -274,8 +291,7 @@ def _print_table(rows: list[dict]) -> None:
 async def run_sport(sport: str, date: str | None) -> dict:
     date = date or default_date(sport)
     analysis = await build_new_analysis(sport, date)
-    live = [g for g in (analysis.get("games") or [])
-            if g.get("status") == "scheduled"]
+    live = live_games(analysis)
     old_rows = load_frozen_old_kbo(date) if sport == "kbo" else []
     old_source = "frozen_kbo" if old_rows else "none"
     merged = merge_rows(live, old_rows)

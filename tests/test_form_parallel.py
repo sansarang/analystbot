@@ -172,3 +172,24 @@ async def test_form_quota_path_reports_team_denominator(monkeypatch):
     i = src.index('await record("팀 폼", 0,')
     assert "_slate_teams(upcoming)" in src[i:i + 120], \
         "크레딧 소진 경로의 팀 폼 분모가 팀 수가 아니다"
+
+
+def test_compare_tool_drops_started_games():
+    """검증 도구가 실운영과 다른 규칙으로 돌면 결과가 오염된다.
+
+    실측 2026-08-30: DB status 가 아직 'scheduled' 인 진행 중 경기(1회초)가
+    드라이런에서 '추천' 라벨을 받았다. 실운영 발송은 still_upcoming 으로
+    막는다(pregame_push:87, :259) — 도구도 같은 문을 통과해야 한다.
+    """
+    from tools.compare_form_slate import live_games, merge_rows
+
+    games = [
+        {"game_id": 1, "status": "scheduled", "home": "H", "away": "A",
+         "starts_at": "2099-01-01T00:00:00+00:00"},        # 예정
+        {"game_id": 2, "status": "scheduled", "home": "H", "away": "A",
+         "starts_at": "2020-01-01T00:00:00+00:00"},        # 진행 중 (status 미갱신)
+        {"game_id": 3, "status": "final", "home": "H", "away": "A",
+         "starts_at": "2099-01-01T00:00:00+00:00"},        # 종료
+    ]
+    assert [g["game_id"] for g in live_games({"games": games})] == [1]
+    assert [r["game_id"] for r in merge_rows(games, [])] == [1]
