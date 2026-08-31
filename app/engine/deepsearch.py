@@ -210,8 +210,16 @@ PROMPT = """당신은 스포츠 경기 조사원이다. 아래 판정이 확신�
 ① 결장자의 사유·복귀 시점 (부상 정도·로테이션·징계)
 ② 오늘 선발 자원의 컨디션 이상 (구속 저하·복귀전·등판 간격 / 부상 복귀·주중 경기 피로)
 ③ 팀 내부 이슈 (감독 발언·경질설, 라커룸, 연전·원정 이동 피로)
-④ 시장이 아는데 우리가 모르는 정보 (배당 급변·역방향 사유)
-⑤ 날씨·구장 특이사항 (우천 취소/지연 가능성 포함)
+④ 날씨·구장 특이사항 (우천 취소/지연 가능성 포함)
+
+🔴 **배당·머니라인·스포츠북·시장 내재확률을 조사하지 마라. 근거로도 쓰지 마라.**
+   검색 중에 눈에 들어와도 [발견]에 적지 않고 [조정]의 사유로 삼지 않는다.
+   실측 2026-09-01: 이 항목이 "시장이 아는 정보"를 묻고 있어, 조사가
+   스포츠북 머니라인 내재확률 51~53%를 근거로 p_home 을 0.59→0.56 으로
+   내렸다. 추천 1건이 그대로 보드만으로 떨어졌다 — **판정 숫자가 배당에
+   좌우된 것이고, 이 저장소가 금지선으로 둔 바로 그 일이다.**
+   시장과의 괴리는 판정이 **끝난 뒤** 4단계(market_edge)가 따로 잰다.
+   여기서 미리 베끼면 그 괴리 측정 자체가 무의미해진다.
 
 [소스 규칙]
 ① 조회 우선순위: 공식 소스(구단 공홈·리그 공시·경기 기록 페이지) → 기록·통계
@@ -324,6 +332,44 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
     return data, used
 
 
+#: 배당 오염 탐지어. 조사 결과에 이것이 섞이면 조정을 받지 않는다.
+#   🔴 프롬프트 금지만으로는 지켜졌는지 알 수 없다 — 소스 규칙 ②를 코드로
+#      집행하는 것과 같은 이유다. 실측 2026-09-01: 프롬프트가 배당을 물어봐
+#      조사가 머니라인 내재확률로 p_home 을 내렸고 추천 1건이 탈락했다.
+_ODDS_WORDS = ("배당", "머니라인", "스포츠북", "북메이커", "내재확률", "언더독",
+               "odds", "moneyline", "sportsbook", "implied", "favorite",
+               "-1.5", "+1.5")
+
+
+def _odds_tainted(text: str | None) -> bool:
+    """배당을 근거로 쓴 문장인가."""
+    low = (text or "").lower()
+    return any(w.lower() in low for w in _ODDS_WORDS)
+
+
+def strip_odds(data: dict) -> tuple[dict, list[str]]:
+    """배당 근거를 걷어낸다. 반환: (정화된 data, 제거 사유 목록).
+
+    🔴 **조정 사유가 배당이면 조정 자체를 받지 않는다.** 근거 문장만 지우고
+       숫자를 그대로 반영하면 배당이 p_home 을 움직인 사실은 남는다 —
+       증거만 지우고 오염은 남기는 꼴이다.
+    """
+    if not data:
+        return data, []
+    dropped = []
+    found = [f for f in (data.get("발견") or [])
+             if not _odds_tainted(f.get("사실"))]
+    if len(found) != len(data.get("발견") or []):
+        dropped.append("발견에서 배당 근거 제거")
+    out = {**data, "발견": found}
+    adj = dict(out.get("조정") or {})
+    if _odds_tainted(adj.get("사유")):
+        adj.pop("p_home", None)          # 조정 폐기 — 원판정 유지
+        dropped.append("조정 사유가 배당 — 조정 폐기")
+        out["조정"] = adj
+    return out, dropped
+
+
 def apply_findings(jg: dict, data: dict) -> dict:
     """조사 결과를 판정에 반영. 상한·방향은 코드가 강제한다.
 
@@ -332,6 +378,11 @@ def apply_findings(jg: dict, data: dict) -> dict:
     """
     m = jg.get("matchup") or {}
     p_before = jg.get("p_claude")
+    # 🔴 배당이 판정 숫자를 움직이지 않는다 — 조정을 반영하기 **전에** 거른다.
+    data, dropped = strip_odds(data)
+    if dropped:
+        logger.warning("[deepsearch] 배당 오염 차단 %s@%s: %s",
+                       jg.get("away"), jg.get("home"), " · ".join(dropped))
     adj = (data or {}).get("조정") or {}
     p_after = adj.get("p_home")
     if p_before is None or p_after is None:

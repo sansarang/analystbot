@@ -292,3 +292,52 @@ def test_prompt_pins_today_so_last_season_news_is_not_read_as_today():
     assert "연도" in PROMPT
     assert "기사 날짜를 확인한다" in PROMPT
     assert _today_kst() == datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
+
+
+def test_prompt_does_not_ask_about_odds():
+    """🔴 프롬프트 체크리스트 ④가 "시장이 아는데 우리가 모르는 정보
+    (배당 급변·역방향 사유)"를 물었다 — 배당을 보라고 코드가 시킨 것이다.
+    """
+    from app.engine.deepsearch import PROMPT
+
+    assert "배당 급변" not in PROMPT
+    assert "시장이 아는데" not in PROMPT
+    assert "배당·머니라인·스포츠북·시장 내재확률을 조사하지 마라" in PROMPT
+
+
+def test_odds_reason_voids_the_adjustment_not_just_the_sentence():
+    """🔴 실측 2026-09-01 (MIL@CHC): 조사가 스포츠북 머니라인 내재확률
+    51~53%를 근거로 p_home 을 0.59→0.56 으로 내렸고, **추천 1건이 그대로
+    보드만으로 떨어졌다.** 판정 숫자가 배당에 좌우된 것이다.
+
+    근거 문장만 지우고 숫자를 반영하면 증거만 지우고 오염은 남긴다 —
+    조정 자체를 폐기해야 한다.
+    """
+    from app.engine.deepsearch import apply_findings, strip_odds
+
+    data = {"발견": [{"사실": "Swanson 옆구리 부상으로 IL 등재"},
+                    {"사실": "복수 스포츠북 머니라인 Cubs -106, 내재확률 51~53%"}],
+            "조정": {"p_home": 0.56, "사유": "Swanson 결장과 시장 배당 접전으로 하향",
+                    "단일기사여부": False},
+            "요약": "x"}
+    clean, dropped = strip_odds(data)
+    assert len(clean["발견"]) == 1, "배당 근거가 발견에 남았다"
+    assert "p_home" not in clean["조정"], "배당이 사유인데 조정이 살아 있다"
+    assert len(dropped) == 2
+
+    jg = {"p_claude": 0.59, "matchup": {"우세": "home"}, "away": "MIL", "home": "CHC"}
+    assert apply_findings(jg, data)["moved"] == 0.0
+    assert jg["p_claude"] == 0.59, "배당이 p_home 을 움직였다 — 금지선"
+
+
+def test_non_odds_adjustment_still_applies():
+    """반대 위험도 잰다 — 가드가 정상 조사까지 죽이면 안 된다."""
+    from app.engine.deepsearch import apply_findings
+
+    data = {"발견": [{"사실": "주전 1루수 햄스트링 부상으로 오늘 결장 확정"}],
+            "조정": {"p_home": 0.60, "사유": "홈 주전 결장으로 하향",
+                    "단일기사여부": False},
+            "요약": "x"}
+    jg = {"p_claude": 0.63, "matchup": {"우세": "home"}, "away": "SEA", "home": "BOS"}
+    assert apply_findings(jg, data)["moved"] == -3.0
+    assert jg["p_claude"] == 0.60
