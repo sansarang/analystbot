@@ -472,3 +472,27 @@ async def test_merge_conflict_demotes_instead_of_deleting(db_pool):
     demoted = [r for r in rows if not r["is_final"]]
     assert demoted and demoted[0]["merged_from"] == dup, \
         "강등된 이력 행에 병합 출처가 없다 — 재판정과 구분되지 않는다"
+
+
+def test_every_pick_ledger_column_is_also_added_by_alter():
+    """🔴 이미 만들어진 표에는 CREATE TABLE 의 컬럼 추가가 반영되지 않는다.
+
+    실사고 2026-08-31: merged_from 을 CREATE TABLE 안에만 넣고 배포했더니
+    운영에서 `column "merged_from" does not exist` 가 났다. 스키마 적용은
+    "완료"라고 로그를 남기므로 **성공한 것처럼 보였다.**
+
+    이 저장소의 관례는 games·predictions 처럼 새 컬럼을 ALTER 로 따로 적는
+    것이다. 나중에 붙인 컬럼이 그 관례를 지켰는지 파일로 확인한다.
+    """
+    from pathlib import Path
+
+    sql = Path("db/schema.sql").read_text(encoding="utf-8")
+    body = sql[sql.index("CREATE TABLE IF NOT EXISTS pick_ledger"):]
+    body = body[:body.index(");")]
+    declared = {ln.strip().split()[0] for ln in body.splitlines()[1:]
+                if ln.strip() and not ln.strip().startswith("--")}
+    # 표 생성 이후에 붙은 컬럼(초기 스키마에 없던 것)은 ALTER 가 있어야 한다
+    for col in ("merged_from",):
+        assert col in declared, f"{col}이 CREATE TABLE 에 없다"
+        assert f"ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS {col}" in sql, \
+            f"{col}에 ALTER 가 없다 — 기존 운영 DB에는 생기지 않는다"

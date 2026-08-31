@@ -457,3 +457,10 @@ CREATE INDEX IF NOT EXISTS idx_pick_ledger_grade
 
 CREATE INDEX IF NOT EXISTS idx_pick_ledger_calib
     ON pick_ledger (sport, date);
+
+-- 🔴 **이미 만들어진 표에는 CREATE TABLE 의 컬럼 변경이 반영되지 않는다.**
+--    새 컬럼은 반드시 ALTER 로 따로 적는다 (이 파일의 games·predictions 관례).
+--    실사고 2026-08-31: merged_from 을 CREATE TABLE 안에만 넣고 배포했더니
+--    운영에서 "column merged_from does not exist" 가 났고, 그 컬럼을 쓰는
+--    중복 병합 이관이 조용히 죽을 뻔했다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS merged_from BIGINT;
