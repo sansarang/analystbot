@@ -233,6 +233,33 @@ def unavailable_form(team: str, model: str | None = None,
     return out
 
 
+#: 폼 프롬프트에 실을 원문 상한. 넘기면 프롬프트가 커져 max_tokens 여유를 먹는다.
+NEWS_BODY_MAX = 6           # 인용 개수
+NEWS_BODY_CHARS = 220       # 인용 1건 길이
+
+
+def with_news_bodies(headlines, research: dict):
+    """헤드라인 + 수집된 원문. 원문이 없으면 헤드라인 그대로 돌려준다.
+
+    ⚠️ **가공하지 않는다.** 문장·URL을 그대로 넘긴다 — 요약하면 판정이
+       우리의 요약을 사실로 읽는다(kbo_news.merge_into_research와 같은 태도).
+    ⚠️ 개수·길이를 자른다. 원문을 통째로 실으면 프롬프트가 부풀어 정작
+       박스스코어가 밀린다.
+    """
+    quotes = (research or {}).get("news_quotes") or []
+    bodies = []
+    for q in quotes[:NEWS_BODY_MAX]:
+        if not isinstance(q, dict):
+            continue
+        txt = str(q.get("text") or "").strip()
+        if not txt:
+            continue
+        bodies.append({"원문": txt[:NEWS_BODY_CHARS], "출처": q.get("url")})
+    if not bodies:
+        return headlines
+    return {"헤드라인": headlines, "원문": bodies}
+
+
 async def analyze_team(redis, league: str, team: str, date: str,
                        games_packet, news=None, *, force: bool = False,
                        mock: bool | None = None) -> dict:
@@ -348,6 +375,10 @@ async def analyze_games(redis, sport: str, date: str, games: list[dict],
                 news = research.get(f"{side}_news") or research.get("news") or []
                 if isinstance(news, dict):
                     news = news.get("headlines") or []
+                # [v1.1 3단계] 헤드라인만 넘기면 태그 압축 과정에서 "왜"가 죽는다.
+                #   수집된 원문(news_quotes)을 함께 넘겨 판정이 근거를 읽게 한다.
+                #   (실측 사례: "동료들이 바즈를 옹호" 같은 정성 정보가 판정을 갈랐다)
+                news = with_news_bodies(news, research)
                 pkt = packet_from_usage(team, sport, date, usage)
                 try:
                     form = await analyze_team(
