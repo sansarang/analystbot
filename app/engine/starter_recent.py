@@ -10,7 +10,12 @@ RECENT_STARTS = 3
 
 _FETCH = """
     SELECT a.opponent, a.innings, a.r, a.hits, a.k, a.bb,
-           g.starts_at
+           g.starts_at,
+           -- [v1.1 1단계] 그 등판에서 **팀이 낸 득점**. W-L 액면에 속지 않기 위한 값이다.
+           --   실측 사례: 바즈 4승14패 — 실질은 ERA 4.04에 타선 지원 부족.
+           --   신규 크롤 없음. team/home/away 일치율은 3종목 100% 실측(2026-08-31).
+           CASE WHEN a.team = g.home THEN g.home_score
+                WHEN a.team = g.away THEN g.away_score END AS run_support
       FROM pitcher_appearances a
       JOIN games g ON g.id = a.game_id
      WHERE g.sport = $1 AND a.pitcher = $2 AND a.is_starter
@@ -34,7 +39,11 @@ def _aware(v) -> datetime | None:
 
 
 def slim_start(row) -> dict:
-    """등판 한 줄. ERA 키는 만들지 않는다."""
+    """등판 한 줄. ERA 키는 만들지 않는다.
+
+    `run_support`(그 등판에서 팀이 낸 득점)를 함께 싣는다 — 승패는 타선 지원에
+    좌우되므로, 이 값이 없으면 판정이 W-L 액면에 속는다.
+    """
     def _get(k):
         if isinstance(row, dict):
             return row.get(k)
@@ -44,7 +53,7 @@ def slim_start(row) -> dict:
             return None
 
     out: dict = {}
-    for k in ("opponent", "innings", "r", "hits", "k", "bb"):
+    for k in ("opponent", "innings", "r", "hits", "k", "bb", "run_support"):
         v = _get(k)
         if v is not None:
             out[k] = v
