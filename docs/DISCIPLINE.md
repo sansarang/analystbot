@@ -410,3 +410,5 @@ KBO·NPB 저녁 발송은 `/checklist`와 [docs/PREGAME_CHECKLIST.md](PREGAME_CH
 | 2026-08-29 | NPB/MLB 등판 백필 창 | 14일 → **21일** (`APPEARANCE_DAYS`) | **사용자 지시** — 오늘 선발 최근 2~3등판. 14일×로테이션이면 n=1로 끊김 | 타순 이력 상한(10경기)과 분리. 폼·매치업 모델 불변 |
 | 2026-08-29 | `FORM_UNAVAILABLE_TTL` | (성공과 동일 48h) → **30분** | **사용자 지시** — 일시 장애가 48시간 추천 탈락으로 번지지 않게. `cause` 구분(credit_400/timeout/parse_fail). 성공 캐시 48h 유지 | 폼 Redis unavailable 키만. 매치업 성공 키 불변 |
 | 2026-08-29 | 매치업 `extra_body.temperature` | 0 → **생략** (`claude-sonnet-5`) | **필수 버그수정** — 실측 400 "`temperature` is deprecated for this model." 문서: non-default sampling 거부. Haiku 폼 경로는 extra_body 0 유지 | 매치업 HTTP만. 온도를 올린 것이 아님 |
+| 2026-09-01 | `DEEPSEARCH_ENABLED` (서버 env) | (미설정 → 기본 `false`) → **`true`** | **사용자 지시** — v1.1 6단계 조사 호출 활성. 스케줄러·봇 양쪽에 설정 | 트리거 판별·상한(슬레이트 30%)·타임아웃 120s·검색 5회는 불변. 조사 실패해도 판정·발송 안 막음 |
+| 2026-09-01 | 딥서치 `PROMPT` 검색 배분 | (체크리스트만) → **[검색 예산] 명시 + 추가확인 우선 + 강제 결론** | **필수 버그수정** — 실측 8/31: 5회 전량 소진 후 "검색 제한으로 확인 못함"으로 종료(deGrom). 같은 질문 단독은 2회에 해결 | 프롬프트만. `deepsearch_max_searches` 5 불변 |
