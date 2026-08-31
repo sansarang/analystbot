@@ -717,6 +717,12 @@ async def finals_job() -> None:
     for sport in ("mlb", "soccer", "kbo", "npb"):
         try:
             done[sport] = await ingest_finals(pool, yesterday_kst(), sport)
+            # 🔴 축구는 **오늘 KST 날짜도** 훑는다. 유럽 킥오프는 KST 새벽이라
+            #    오늘 01:30~05:00에 끝난 경기가 "어제"에 잡히지 않는다.
+            #    실측 2026-08-31: KST 09/01 새벽 7경기가 yesterday(8/31)
+            #    조회에서 통째로 빠졌다.
+            if sport == "soccer":
+                done["soccer_today"] = await ingest_finals(pool, today_kst(), sport)
         except (ApiQuotaError, ApiAuthError) as exc:
             logger.error("[scheduler] finals %s halted (%s): %s",
                          sport, type(exc).__name__, exc)

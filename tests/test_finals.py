@@ -52,17 +52,25 @@ async def _fake_pool():
 
 @pytest.mark.asyncio
 async def test_finals_job_covers_all_sports(monkeypatch):
-    seen: list[str] = []
+    """4종목 전부 적재하되, **축구는 어제·오늘 두 날짜를 훑는다.**
+
+    유럽 킥오프는 KST 새벽이라 오늘 01:30~05:00에 끝난 경기가 "어제"에
+    잡히지 않는다(실측 2026-08-31: KST 09/01 새벽 7경기가 통째로 빠졌다).
+    """
+    seen: list[tuple[str, str]] = []
 
     async def fake_ingest(pool, date, sport):
-        seen.append(sport)
+        seen.append((sport, date))
 
     import app.scheduler as sched
 
     monkeypatch.setattr(sched, "ingest_finals", fake_ingest)
     monkeypatch.setattr(sched, "get_pool", _fake_pool)
     await sched.finals_job()
-    assert seen == ["mlb", "soccer", "kbo", "npb"]
+    assert [s for s, _ in seen] == ["mlb", "soccer", "soccer", "kbo", "npb"]
+    soccer_dates = [d for s, d in seen if s == "soccer"]
+    assert len(set(soccer_dates)) == 2, \
+        f"축구가 같은 날짜를 두 번 훑었다: {soccer_dates}"
 
 
 @pytest.mark.asyncio
@@ -79,7 +87,7 @@ async def test_finals_job_continues_after_one_sport_fails(monkeypatch):
     monkeypatch.setattr(sched, "ingest_finals", fake_ingest)
     monkeypatch.setattr(sched, "get_pool", _fake_pool)
     out = await sched.finals_job()
-    assert seen == ["mlb", "soccer", "kbo", "npb"]
+    assert seen == ["mlb", "soccer", "soccer", "kbo", "npb"]
     assert "soccer" in out and "kbo" in out and "mlb" not in out
 
 

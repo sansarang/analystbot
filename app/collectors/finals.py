@@ -50,9 +50,19 @@ async def ingest_finals(pool: asyncpg.Pool, date: str, sport: str) -> None:
 
 async def reconcile_stale_games(pool: asyncpg.Pool) -> dict:
     """시작 후 STALE_AFTER_HOURS 지났는데 final이 아닌 경기를 다시 받는다."""
+    # 🔴 **종목마다 '그 날짜'의 뜻이 다르다.**
+    #    축구 수집기(upsert_games_from_football_data)는 **KST 날짜**로 거른다.
+    #    여기서 UTC 날짜를 넘기면 유럽 경기가 통째로 어긋난다 — 유럽 킥오프는
+    #    KST 새벽(= UTC 전날 저녁)이라 두 날짜가 항상 하루 다르기 때문이다.
+    #    실측 2026-08-31: KST 09/01 01:30 경기의 UTC 날짜는 08/31 →
+    #    KST 8/31 경기를 조회하게 되어 그 경기는 영원히 final이 되지 않는다.
+    #    MLB·KBO·NPB 수집기는 종전대로 UTC 날짜를 쓴다(그 계약이 그렇다).
     rows = await pool.fetch(
         """
-        SELECT DISTINCT sport, (starts_at AT TIME ZONE 'UTC')::date AS d
+        SELECT DISTINCT sport,
+               CASE WHEN sport = 'soccer'
+                    THEN (starts_at AT TIME ZONE 'Asia/Seoul')::date
+                    ELSE (starts_at AT TIME ZONE 'UTC')::date END AS d
         FROM games
         WHERE status <> 'final'
           AND starts_at < now() - make_interval(hours => $1)
@@ -63,8 +73,12 @@ async def reconcile_stale_games(pool: asyncpg.Pool) -> dict:
     fixed: dict[str, int] = {}
     for r in rows:
         sport, day = r["sport"], r["d"].strftime("%Y-%m-%d")
+        # 카운트도 위와 **같은 날짜 기준**이어야 한다 — 기준이 갈리면
+        # "고쳤다"는 숫자가 엉뚱한 집합을 센다.
+        _tz = "Asia/Seoul" if sport == "soccer" else "UTC"
         count_sql = ("SELECT count(*) FROM games WHERE sport=$1 "
-                     "AND (starts_at AT TIME ZONE 'UTC')::date = $2 AND status='final'")
+                     f"AND (starts_at AT TIME ZONE '{_tz}')::date = $2 "
+                     "AND status='final'")
         before = await pool.fetchval(count_sql, sport, r["d"])
         try:
             await ingest_finals(pool, day, sport)
