@@ -274,8 +274,12 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
         logger.warning("[deepsearch] 예기치 못한 실패 %s@%s: %s",
                        jg.get("away"), jg.get("home"), exc)
         return None, 0
-    used = sum(1 for b in resp.content
-               if getattr(b, "type", "") == "server_tool_use")
+    # 🔴 검색 횟수는 **usage 에서 읽는다.** server_tool_use 블록 수를 세면
+    #    틀린다 — 실측 2026-08-31: 블록 15개인데 실제 검색은 그보다 적었고,
+    #    그 오독으로 "max_uses 를 넘겼다"고 잘못 보고했다. API는 상한을
+    #    정확히 지키고 있었다 (max_uses=2 → web_search_requests=2 확인).
+    stu = getattr(resp.usage, "server_tool_use", None)
+    used = int(getattr(stu, "web_search_requests", 0) or 0)
     text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
     try:
         data = json.loads(text[text.index("{"):text.rindex("}") + 1])
@@ -351,6 +355,18 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
     # 발동 순서: 트리거가 많이 걸린 경기부터 — 가장 막힌 경기를 먼저 푼다.
     ranked = sorted(out["candidates"], key=lambda c: -len(c["triggers"]))
     by_id = {jg.get("game_id"): jg for jg in games}
+    if not getattr(s, "deepsearch_investigate", False):
+        # [A안 2026-08-31] 조사 호출은 꺼두고 **트리거 판별만** 실전에 태운다.
+        #   어떤 경기가 조사 대상이 되는지 먼저 관찰한다. 작동하지 않는 호출에
+        #   경기당 90초를 태우지 않는다(web_search 도구 미확인).
+        out["disabled"] = True
+        if out["candidates"]:
+            logger.info("[deepsearch] 조사 비활성(DEEPSEARCH_ENABLED=false) — "
+                        "트리거만 판별: 슬레이트 %d · 후보 %d · 상한 %d · %s",
+                        out["slate"], len(out["candidates"]), cap,
+                        "; ".join(f"{c['match']}({','.join(c['triggers'])})"
+                                  for c in out["candidates"]))
+        return out
     for c in ranked:
         if out["investigated"] >= cap:
             out["skipped"] += 1

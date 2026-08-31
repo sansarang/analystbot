@@ -80,7 +80,17 @@ class Settings(BaseSettings):
     #: 경기당 검색 횟수 상한. API의 max_uses 로도 강제한다.
     deepsearch_max_searches: int = 5
     #: 한 경기 조사에 허용하는 시간(초). 넘으면 폴백(조사 없이 원판정 유지).
-    deepsearch_timeout_sec: int = 90
+    #   ⚠️ 검색 결과가 입력에 얹혀 프롬프트가 커진다 — 실측 2026-08-31:
+    #      검색 2회에 입력 25,308토큰. 90초는 빠듯해 120초로 둔다.
+    deepsearch_timeout_sec: int = 120
+    #: [v1.1 6단계] **조사 호출** 켜기. 기본 꺼짐(False).
+    #   트리거 판별·상한·기록·폴백은 이 값과 무관하게 항상 돈다 —
+    #   실전에서 "어떤 경기가 조사 대상이 되는가"를 먼저 관찰하기 위해서다.
+    #   web_search 서버 도구가 이 API 키에서 확인되면 그때 켠다
+    #   (실측 2026-08-31: 모델이 "검색 도구 접근 불가"로 응답, 90초 타임아웃).
+    deepsearch_investigate: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("DEEPSEARCH_ENABLED", "deepsearch_investigate"))
 
     # ── 프로바이더 의도적 미사용 ────────────────────────────────────────
     # mock(키 없음)도 오류도 아니다. 여기 있는 이름은 HTTP를 나가지 않고

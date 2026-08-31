@@ -196,3 +196,37 @@ async def test_no_external_call_in_mock_mode():
     data, used = await investigate({"sport": "kbo", "home": "H", "away": "A",
                                     "matchup": {"p_home": 0.6}}, ["T1"])
     assert (data, used) == (None, 0)
+
+
+async def test_investigation_is_off_by_default_but_triggers_still_run():
+    """A안: 조사 호출은 꺼두고 트리거 판별만 실전에 태운다.
+
+    어떤 경기가 조사 대상이 되는지 먼저 관찰한다 — 작동하지 않는 호출에
+    경기당 90초를 태우지 않는다.
+    """
+    from app.engine.deepsearch import run_for_slate
+
+    assert Settings(_env_file=None).deepsearch_investigate is False
+    jg = _jg(p_claude=0.58)                      # T1 경계 경기
+    out = await run_for_slate([jg], None, "2026-09-01", settings=S)
+    assert out["disabled"] is True
+    assert len(out["candidates"]) == 1, "트리거 판별은 계속 돌아야 한다"
+    assert out["investigated"] == 0, "조사 호출이 나갔다"
+    assert "deepsearch" not in jg, "판정이 건드려졌다"
+
+
+def test_flag_reads_deepsearch_enabled_env():
+    assert Settings(_env_file=None,
+                    DEEPSEARCH_ENABLED=True).deepsearch_investigate is True
+
+
+def test_search_count_comes_from_usage_not_block_count():
+    """🔴 server_tool_use 블록 수를 세면 틀린다.
+
+    실측 2026-08-31: 블록 15개를 검색 15회로 읽고 "max_uses 초과"라고 잘못
+    보고했다. API는 상한을 정확히 지키고 있었다(max_uses=2 → 실제 2회).
+    정확한 값은 usage.server_tool_use.web_search_requests 다.
+    """
+    src = Path("app/engine/deepsearch.py").read_text(encoding="utf-8")
+    assert "web_search_requests" in src
+    assert 'getattr(b, "type", "") == "server_tool_use")' not in src
