@@ -95,6 +95,15 @@ def _lineup_state(j: dict) -> dict:
         out[f"{side}_formation"] = t.get("formation")
     out["has_starters"] = out["homeTeam_starters"] >= 11 and out["awayTeam_starters"] >= 11
     out["has_unavailable"] = (out["homeTeam_unavailable"] + out["awayTeam_unavailable"]) > 0
+    # 🔴 **예상 라인업과 확정 라인업을 가른다.**
+    #    실측 2026-08-31: 킥오프 10시간 전에 이미 starters=11 이 잡히는데
+    #    `lineupType`이 'predicted'다. 종료 경기는 'standard'였다.
+    #    이 구분 없이 starters>=11 만 보면 리드타임을 T-600으로 잘못 재고,
+    #    거기서 폴링을 멈춰 **진짜 확정 시점을 영영 못 본다.**
+    #    수동 프로토콜의 "예상 라인업은 참고만, 확정과 구분 표기"와 같은 규율이다.
+    out["has_confirmed"] = bool(
+        out["has_starters"] and out["lineup_type"]
+        and out["lineup_type"] != "predicted")
     return out
 
 
@@ -137,13 +146,15 @@ async def run(*, hours: int = 30, lead_start: int = 150, interval: int = 600,
                 if isinstance(j, dict):
                     rec.update(_lineup_state(j))
                 emit(rec)
-                flag = ("선발O" if rec.get("has_starters") else "선발-")
+                flag = f"[{rec.get('lineup_type')}]"
+                flag += (" 선발O" if rec.get("has_starters") else " 선발-")
                 flag += ("/결장O" if rec.get("has_unavailable") else "/결장-")
                 log(f"  T-{lead:6.1f}m {g['away']} @ {g['home']}: {st} {ms}ms {flag}")
-                if rec.get("has_starters"):
+                if rec.get("has_confirmed"):
                     done[g["match_id"]] = rec
                     pending.pop(g["match_id"], None)
-                    log(f"  라인업 관측 — 리드타임 T-{lead:.1f}분 ({g['away']} @ {g['home']})")
+                    log(f"  확정 라인업 관측 — 리드타임 T-{lead:.1f}분 "
+                        f"({g['away']} @ {g['home']}, type={rec.get('lineup_type')})")
                 await asyncio.sleep(3)
             if pending:
                 await asyncio.sleep(interval)

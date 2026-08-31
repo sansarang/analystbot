@@ -82,3 +82,39 @@ async def test_probe_run_handles_no_fixtures(monkeypatch):
     monkeypatch.setattr(probe, "upcoming", no_games)
     out = await probe.run(hours=1, log=lambda m: None)
     assert out == {"observed": [], "targets": 0}
+
+
+def test_probe_distinguishes_predicted_from_confirmed_lineups():
+    """🔴 예상 라인업을 확정으로 세면 리드타임 측정이 통째로 틀린다.
+
+    실측 2026-08-31: 킥오프 10시간 전 FotMob이 이미 starters=11을 주는데
+    lineupType이 'predicted'였다(종료 경기는 'standard'). 구분 없이 세면
+    T-600을 리드타임으로 기록하고 거기서 폴링을 멈춰, 진짜 확정 시점을
+    영영 관측하지 못한다.
+    """
+    import tools.probe_soccer_lineup as probe
+
+    def state(kind):
+        return probe._lineup_state({"content": {"lineup": {
+            "lineupType": kind, "source": "enetpulse",
+            "homeTeam": {"starters": [{}] * 11, "unavailable": []},
+            "awayTeam": {"starters": [{}] * 11, "unavailable": [{}, {}]}}}})
+
+    pred = state("predicted")
+    assert pred["has_starters"] is True
+    assert pred["has_confirmed"] is False, "예상 라인업을 확정으로 셌다"
+
+    conf = state("standard")
+    assert conf["has_confirmed"] is True
+
+    # 타입을 모르면 확정이라고 말하지 않는다
+    assert state(None)["has_confirmed"] is False
+
+
+def test_probe_stops_only_on_confirmed():
+    """폴링 중단 조건이 확정 라인업이어야 한다 (소스 검사)."""
+    from pathlib import Path
+
+    src = Path("tools/probe_soccer_lineup.py").read_text(encoding="utf-8")
+    assert 'if rec.get("has_confirmed"):' in src
+    assert 'if rec.get("has_starters"):' not in src
