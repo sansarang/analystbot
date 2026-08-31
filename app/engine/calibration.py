@@ -55,6 +55,32 @@ def _agg(rows) -> dict:
     }
 
 
+# 괴리 구간 — "우리가 시장을 이기는 영역"을 데이터로 특정하기 위한 축이다.
+# 이 시스템의 장기 수익 지도가 이 표다.
+EDGE_BUCKETS = ((8.0, 12.0, "+8~12%p"), (12.0, 16.0, "+12~16%p"),
+                (16.0, 999.0, "+16%p 이상"))
+
+
+def _edge_buckets(rows) -> list[dict]:
+    """괴리 구간별 실제 적중률 vs 우리 예측 vs 시장 암시.
+
+    ⚠️ 배당 미수집 구간이 대부분이면 전부 "표본 없음"으로 나온다 — 그것이
+       정직한 상태다. 배당이 없는데 괴리를 지어내지 않는다.
+    """
+    out = []
+    for lo, hi, label in EDGE_BUCKETS:
+        sel = [r for r in rows
+               if r["divergence_pp"] is not None
+               and lo <= float(r["divergence_pp"]) < hi]
+        agg = _agg(sel)
+        mkt = [float(r["market_prob"]) for r in sel
+               if r["market_prob"] is not None and r["hit"] is not None
+               and not r["void"]]
+        agg["market"] = (sum(mkt) / len(mkt)) if mkt else None
+        out.append({"label": label, **agg})
+    return out
+
+
 async def summarize(pool, days: int = 7, sport: str | None = None,
                     trial: bool | None = None) -> dict:
     """기간 내 채점 완료 픽을 다섯 축으로 집계한다.
@@ -73,7 +99,8 @@ async def summarize(pool, days: int = 7, sport: str | None = None,
         where.append(f"l.trial = ${len(args)}")
     rows = await pool.fetch(
         f"""SELECT l.p_home, l.favored, l.confidence, l.gate_result, l.sport,
-                   l.league, l.hit, l.void, l.lineup_status
+                   l.league, l.hit, l.void, l.lineup_status,
+                   l.market_prob, l.divergence_pp, l.edge_status
               FROM pick_ledger l
              WHERE {' AND '.join(where)} AND l.is_final""", *args)
     rows = list(rows)
@@ -103,6 +130,7 @@ async def summarize(pool, days: int = 7, sport: str | None = None,
         "gates": group(lambda r: r["gate_result"],
                        sorted({r["gate_result"] for r in rows if r["gate_result"]})),
         # 리그 축 — 야구/축구가 여기서 자연히 갈린다 (KBO·NPB·MLB·EPL·…)
+        "edges": _edge_buckets(rows),
         "leagues": group(lambda r: r["league"] or r["sport"],
                          sorted({(r["league"] or r["sport"]) for r in rows
                                  if (r["league"] or r["sport"])})),
@@ -137,6 +165,17 @@ def render_report(data: dict, days: int = 7) -> str:
     out.append("")
     out.append("■ 게이트 결과")
     out += [_line(x) for x in data["gates"]]
+    out.append("")
+    out.append("■ 시장 괴리 구간 (우리가 시장을 이기는 영역)")
+    for e in data.get("edges") or []:
+        if e["n"] == 0:
+            out.append(f"  {e['label']:<12} 표본 없음")
+        elif e["n"] < MIN_SAMPLE:
+            out.append(f"  {e['label']:<12} 표본 부족 ({e['n']}건)")
+        else:
+            mk = f" · 시장 {e['market']:.1%}" if e.get("market") else ""
+            out.append(f"  {e['label']:<12} n={e['n']:<4} "
+                       f"예측 {e['pred']:.1%} → 실제 {e['actual']:.1%}{mk}")
     out.append("")
     out.append("■ 리그")
     out += [_line(x) for x in data["leagues"]]
