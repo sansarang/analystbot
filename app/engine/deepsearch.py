@@ -292,7 +292,16 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
     try:
         data = json.loads(text[text.index("{"):text.rindex("}") + 1])
     except (ValueError, json.JSONDecodeError):
-        logger.warning("[deepsearch] JSON 파싱 실패 %s@%s", jg.get("away"), jg.get("home"))
+        # 🔴 **원문을 버리지 마라.** 실측 2026-09-01: 4/4 파싱 실패인데
+        #    로그가 "실패"만 남겨 원인을 특정할 수 없었고, 그 사이 잔액이
+        #    소진돼 재현조차 못 했다. 다음 실패는 스스로 진단돼야 한다.
+        #    stop_reason 이 "max_tokens" 면 절단, "end_turn" 이면 형식 이탈이다.
+        logger.warning(
+            "[deepsearch] JSON 파싱 실패 %s@%s · stop=%s · out=%s토큰 · "
+            "검색=%d · 본문%d자: %.400s",
+            jg.get("away"), jg.get("home"), getattr(resp, "stop_reason", None),
+            getattr(resp.usage, "output_tokens", None), used, len(text),
+            text.replace("\n", " ") or "(텍스트 블록 없음)")
         return None, used
     return data, used
 

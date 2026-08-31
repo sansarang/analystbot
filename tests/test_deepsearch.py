@@ -244,3 +244,18 @@ def test_prompt_states_search_budget_and_forces_conclusion():
     assert "최우선" in PROMPT
     assert "반드시 결론을 낸다" in PROMPT
     assert "예산을 다 쓰고 결론을 못 내면 실패" in PROMPT
+
+
+def test_parse_failure_logs_evidence_not_just_the_word_failure(caplog):
+    """🔴 실측 2026-09-01: 4/4 파싱 실패인데 로그가 "실패"만 남겼다.
+
+    원인을 특정할 수 없었고, 그 사이 Anthropic 잔액이 소진돼 재현 호출조차
+    못 했다. 실패 로그는 **다음 사람이 원인을 짚을 수 있어야** 한다 —
+    `stop_reason`("max_tokens"면 절단, "end_turn"이면 형식 이탈)·출력
+    토큰·본문 앞부분이 남아야 한다.
+    """
+    src = Path("app/engine/deepsearch.py").read_text(encoding="utf-8")
+    head = src[src.index("JSON 파싱 실패"):src.index("JSON 파싱 실패") + 600]
+    assert "stop_reason" in head, "절단인지 형식 이탈인지 구분할 수 없다"
+    assert "output_tokens" in head
+    assert "%.400s" in head, "본문을 남기지 않으면 형식 이탈을 못 본다"
