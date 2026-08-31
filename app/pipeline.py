@@ -4371,6 +4371,20 @@ def mlb_slate_date() -> str:
     return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
 
 
+async def _record_ledger(analysis: dict) -> None:
+    """[v1.1 0단계] 판정 전건을 pick_ledger에 남긴다 — 측정 전용, 판정 비개입.
+
+    ⚠️ 레저 실패가 분석·발송을 막지 않는다. 측정 장치가 본체를 죽이면 안 된다.
+    """
+    try:
+        from app.db import get_pool
+        from app.engine.pick_ledger import record_analysis
+
+        await record_analysis(await get_pool(), analysis)
+    except Exception as exc:
+        logger.warning("[pipeline] 픽 레저 기록 실패 — 분석은 계속: %s", exc)
+
+
 async def _save_caches(redis: aioredis.Redis, analysis: dict, card: str) -> None:
     settings = get_settings()
     sport, date = analysis["sport"], analysis["date"]
@@ -4378,6 +4392,7 @@ async def _save_caches(redis: aioredis.Redis, analysis: dict, card: str) -> None
                     json.dumps(analysis, ensure_ascii=False, default=str),
                     ex=settings.report_cache_ttl)
     await redis.set(f"card:{sport}:{date}", card, ex=settings.report_cache_ttl)
+    await _record_ledger(analysis)
 
 
 async def _rejudge_after_breaking(analysis: dict, changes: list[dict]) -> dict:
@@ -4747,6 +4762,7 @@ async def ensure_game_fresh(sport: str, date: str, game_id: int) -> tuple[dict |
         meta["refreshed"] = (meta.get("refreshed") or 0) + 1
         await redis.set(f"analysis:{sport}:{date}", json.dumps(analysis, ensure_ascii=False, default=str),
                         ex=settings.report_cache_ttl)
+        await _record_ledger(analysis)   # [0단계] 재판정도 전건 기록 (이력 보존)
         card = await generate_card(analysis)
         await redis.set(f"card:{sport}:{date}", card, ex=settings.report_cache_ttl)
         return analysis, True

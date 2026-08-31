@@ -632,8 +632,40 @@ async def finals_job() -> None:
             await notify_api_error(exc)
         except Exception as exc:
             logger.exception("[scheduler] finals %s 실패 — 다음 종목 계속: %s", sport, exc)
+    # [v1.1 0단계] 결과가 들어왔으니 미채점 픽을 채점한다.
+    #   ⚠️ 채점은 **측정 전용**이다 — 판정 경로는 이 표를 읽지 않는다.
+    #   적재 실패와 무관하게 돌린다: 어제 못 채점한 행이 남아 있을 수 있다.
+    try:
+        from app.engine.pick_ledger import grade_pending
+
+        graded = await grade_pending(pool)
+        logger.info("[scheduler] 픽 레저 채점 %d건 · void %d건",
+                    graded["graded"], graded["void"])
+    except Exception as exc:
+        logger.exception("[scheduler] 픽 레저 채점 실패 — 적재는 성공: %s", exc)
     logger.info("[scheduler] 종료 점수 적재: %s", sorted(done))
     return done
+
+
+async def calibration_report_job() -> None:
+    """[v1.1 0단계] 주간 캘리브레이션 요약을 관리자에게 보낸다.
+
+    일요일 밤(경기 종료 후). 표본이 얇으면 표본 부족이라고 말하고 끝낸다 —
+    얇은 표본으로 임계값을 흔드는 것이 이 프로젝트에서 가장 비싼 실수다.
+    """
+    from app.engine.calibration import summarize, render_report
+
+    pool = await get_pool()
+    try:
+        rows = await summarize(pool, days=7)
+        text = render_report(rows, days=7)
+    except Exception as exc:
+        logger.exception("[scheduler] 캘리브레이션 집계 실패: %s", exc)
+        return
+    from app.notify import send_telegram
+
+    await send_telegram(text)
+    logger.info("[scheduler] 주간 캘리브레이션 리포트 발송")
 
 
 async def heartbeat_job() -> None:
@@ -721,6 +753,10 @@ def _job_specs() -> list[tuple]:
          CronTrigger(hour=14, minute=0, timezone=KST)),
         ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
         ("ingest_finals_13h", finals_job, CronTrigger(hour=13, minute=0, timezone=KST)),
+        # [v1.1 0단계] 주간 캘리브레이션 — 일요일 밤, 그날 경기가 끝난 뒤.
+        #   측정 리포트일 뿐 판정에 개입하지 않는다.
+        ("calibration_weekly", calibration_report_job,
+         CronTrigger(day_of_week="sun", hour=23, minute=30, timezone=KST)),
         ("research_retry_45m", research_retry_job, IntervalTrigger(minutes=45)),
         ("lineup_poll_30m", lineup_poll_job, IntervalTrigger(minutes=30)),
         # NPB 18:00 → 17:45까지 크롤·분석 종료. KBO는 시작 직전까지 5분마다.

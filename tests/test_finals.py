@@ -1,4 +1,9 @@
-"""종료 점수 적재 잡 + 스케줄러 등록. 픽 채점기는 없다."""
+"""종료 점수 적재 잡 + 스케줄러 등록.
+
+픽 채점기(grade_yesterday)는 없다 — 성적표를 판정에 되먹이는 회로였고 삭제됐다.
+v1.1 0단계의 픽 레저·캘리브레이션은 그것과 다르다: 기록·집계만 하고 판정 경로가
+읽지 않는다. 그 비개입은 tests/test_pick_ledger.py가 코드로 잠근다.
+"""
 
 import pytest
 
@@ -15,8 +20,15 @@ def test_scheduler_jobs_registered():
                          "kbo_lineup_history", "npb_lineup_history",
                          "mlb_lineup_history",
                          "asia_pregame_5m", "mlb_pregame_5m",
-                         "heartbeat_2m"}
+                         "heartbeat_2m",
+                         # [v1.1 0단계] 주간 캘리브레이션 리포트. **측정 전용**이다 —
+                         #   삭제된 픽 채점기(grade_yesterday)의 부활이 아니다.
+                         #   그쪽은 성적표를 판정에 되먹였고, 이쪽은 판정 경로가
+                         #   읽지 않는다 (test_pick_ledger가 코드로 잠근다).
+                         "calibration_weekly"}
     assert "grade_yesterday" not in jobs
+    assert str(jobs["calibration_weekly"].trigger) == \
+        "cron[day_of_week='sun', hour='23', minute='30']"
     trig = str(jobs["asia_pregame_5m"].trigger)
     assert "17" in trig and "18" in trig
     assert "45" in trig

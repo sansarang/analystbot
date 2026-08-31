@@ -394,3 +394,62 @@ CREATE TABLE IF NOT EXISTS pitcher_appearances (
 
 CREATE INDEX IF NOT EXISTS idx_pitcher_appearances_lookup
     ON pitcher_appearances (sport, pitcher);
+
+
+-- ─────────────────────────────────────────────────────────── 픽 레저 (v1.1 0단계)
+--
+-- 판정 전건을 영구 보존한다. **TTL 없는 DB 테이블이어야 한다** — Redis 키로
+-- 만들면 캘리브레이션 표본이 조용히 증발한다.
+--
+-- ⚠️ 이 표는 **측정용이며 판정 입력이 아니다.** 어떤 판정 경로도 이 표를 읽지
+--    않는다. 임계값 재검토는 표본이 쌓인 뒤 사용자 지시로만 한다.
+--
+-- 발송 여부와 무관하게 기록한다 — 보드만·거부권 탈락 경기가 캘리브레이션
+-- 데이터의 절반이다. 그 경기들의 원판정이 맞았는지를 봐야 거부권이 옳은지 안다.
+--
+-- 컬럼명은 ASCII로 둔다(지시문의 `우세`→favored, `확신도`→confidence).
+-- 한글 식별자는 따옴표 없이는 못 쓰고 도구 호환도 나쁘다.
+CREATE TABLE IF NOT EXISTS pick_ledger (
+    id            BIGSERIAL PRIMARY KEY,
+    game_id       BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+    sport         TEXT        NOT NULL,
+    league        TEXT,
+    date          TEXT        NOT NULL,   -- 슬레이트 날짜 (표시 기준)
+    judged_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    -- 판정
+    p_home        DOUBLE PRECISION,       -- 홈 승률 (클립 후 최종값)
+    favored       TEXT,                   -- 우세: home | away | 박빙
+    confidence    TEXT,                   -- 확신도: 상 | 중 | 하
+    lineup_status TEXT,
+    gate_result   TEXT,                   -- 엣지/추천/가치주의/보드만/거부권탈락/가치탈락/재량
+    model         TEXT,
+
+    -- 시장 (4·5단계 전에는 전부 NULL — 0단계를 위해 배당 수집을 앞당기지 않는다)
+    odds          DOUBLE PRECISION,
+    market_prob   DOUBLE PRECISION,
+    divergence_pp DOUBLE PRECISION,
+    edge_status   TEXT,                   -- none | candidate | confirmed | rejected
+
+    -- 이력
+    rejudge_count INT         NOT NULL DEFAULT 0,
+    is_final      BOOLEAN     NOT NULL DEFAULT TRUE,
+
+    -- 채점 (finals 적재 잡이 채운다)
+    final_score   TEXT,
+    winner        TEXT,                   -- home | away | draw
+    hit           BOOLEAN,
+    void          BOOLEAN     NOT NULL DEFAULT FALSE,
+    graded_at     TIMESTAMPTZ
+);
+
+-- 경기·날짜당 최종 판정은 하나뿐이다. 재판정은 옛 행을 is_final=false로 내리고
+-- 새 행을 올린다 — 이 부분 유니크 인덱스가 그 규칙을 DB에서 강제한다.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
+    ON pick_ledger (game_id, date) WHERE is_final;
+
+CREATE INDEX IF NOT EXISTS idx_pick_ledger_grade
+    ON pick_ledger (graded_at) WHERE graded_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_pick_ledger_calib
+    ON pick_ledger (sport, date);
