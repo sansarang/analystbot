@@ -49,9 +49,20 @@ def gate_result_of(jg: dict, pick: dict | None) -> str:
     """
     if jg.get("judge_pass") or jg.get("judge_confidence") == "low":
         return GATE_VETOED
-    if pick and pick.get("recommended"):
-        return GATE_RECOMMENDED
-    return GATE_BOARD_ONLY
+    if not (pick and pick.get("recommended")):
+        return GATE_BOARD_ONLY
+    # [v1.1 5단계] 확률 통과 위에 가치·엣지를 얹는다. 배당이 없으면
+    #   passes_value 가 None 이라 추천 그대로다 — 수집 실패가 추천을 막지 않는다.
+    from app.engine.value_gate import CLS_EDGE, CLS_VALUE_WARN, classify
+
+    cls = classify(probability_ok=True, vetoed=False,
+                   p=pick.get("p"), odds=pick.get("odds"),
+                   edge_status=jg.get("edge_status"))
+    if cls == CLS_VALUE_WARN:
+        return GATE_VALUE_WARN
+    if cls == CLS_EDGE:
+        return GATE_EDGE
+    return GATE_RECOMMENDED
 
 
 def predicted_side(favored: str | None, p_home: float | None) -> str | None:

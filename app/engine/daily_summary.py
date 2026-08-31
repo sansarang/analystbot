@@ -16,8 +16,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-TICKET_RULE = ("🎫 티켓 규칙: 추천끼리만 묶을 것. 추천 1건 이하면 베팅 비권장. "
-               "보드만·무판정 경기를 다리로 쓰지 말 것.")
+TICKET_RULE = ("🎫 티켓 규칙: 엣지·추천끼리만 묶을 것. 다리 후보 1건 이하면 "
+               "베팅 비권장. 보드만·가치주의·무판정 경기를 다리로 쓰지 말 것.")
 
 _SPORT_KR = {"mlb": "MLB", "kbo": "KBO", "npb": "NPB", "soccer": "축구"}
 
@@ -54,20 +54,36 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str) -> str:
         return ""
     rows = await pool.fetch(
         """SELECT l.sport, l.league, l.p_home, l.favored, l.gate_result,
-                  l.lineup_status, l.trial, g.home, g.away, g.starts_at
+                  l.lineup_status, l.trial, l.market_prob, l.divergence_pp,
+                  l.edge_status, g.home, g.away, g.starts_at
              FROM pick_ledger l JOIN games g ON g.id = l.game_id
             WHERE l.is_final AND l.date = $1 AND l.sport = ANY($2::text[])
             ORDER BY g.starts_at""", date, list(sports))
-    from app.engine.pick_ledger import GATE_BOARD_ONLY, GATE_RECOMMENDED
+    from app.engine.pick_ledger import (
+        GATE_EDGE, GATE_RECOMMENDED, GATE_VALUE_WARN,
+    )
+    from app.engine.value_gate import required_odds
 
-    rec, board, prov = [], [], []
+    edge, rec, warn, board, prov = [], [], [], [], []
     for r in rows:
         p = _p_of(r)
         name = _side_label(r)
-        if r["gate_result"] == GATE_RECOMMENDED:
-            need = f" (필요배당 {1.05 / p:.2f})" if p else ""
-            rec.append(f"  · {name} {p:.0%} {stars(p)}{need}" if p
-                       else f"  · {name}{need}")
+        if r["gate_result"] in (GATE_EDGE, GATE_RECOMMENDED, GATE_VALUE_WARN):
+            mk = ""
+            if r["market_prob"] is not None:
+                mk = f" vs 시장 {float(r['market_prob']):.0%}"
+                if r["divergence_pp"] is not None:
+                    mk += f" ({float(r['divergence_pp']):+.1f}%p)"
+            need = ""
+            if p and r["market_prob"] is None:
+                need = f" (필요배당 {required_odds(p):.2f})"
+            row = f"  · {name} {p:.0%} {stars(p)}{mk}{need}" if p else f"  · {name}"
+            if r["gate_result"] == GATE_EDGE:
+                edge.append(row)
+            elif r["gate_result"] == GATE_VALUE_WARN:
+                warn.append(row)
+            else:
+                rec.append(row)
         elif (r["lineup_status"] or "") not in ("confirmed",):
             prov.append(name)
         else:
@@ -76,11 +92,18 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str) -> str:
         return (f"{title}\n\n오늘 픽 없음 — 판정된 경기가 없습니다.\n"
                 f"({'·'.join(_SPORT_KR.get(s, s) for s in sports)})")
     out = [title, ""]
+    if edge:
+        out.append(f"🎯 엣지 {len(edge)}건:")
+        out += edge
+        out.append("")
     if rec:
         out.append(f"✅ 추천 {len(rec)}건:")
         out += rec
-    else:
+    elif not edge:
         out.append("✅ 추천 0건 — 오늘 픽 없음")
+    if warn:
+        out += ["", f"⚠️ 가치주의 {len(warn)}건 (확률 통과·가치 미달, 추천 아님):"]
+        out += warn
     tail = []
     if board:
         tail.append(f"⬜ 보드만 {len(board)}건: {' · '.join(board)}")

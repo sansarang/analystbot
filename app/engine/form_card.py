@@ -96,8 +96,25 @@ def render_form_card(jg: dict, sport: str | None = None, *,
     if info:
         lines.append(info)
     if fav_name is not None and p is not None:
-        lines.append(f"우세 {fav_name} {p * 100:.1f}%")
+        # [v1.1 5단계] 별표는 우세팀 확률로. 라인업 미확정이면 "(잠정)" 병기.
+        from app.engine.value_gate import required_odds, stars
+
+        _prov = (jg.get("lineup_status") or "none") != "confirmed"
+        lines.append(f"우세 {fav_name} {p * 100:.1f}%  {stars(p, provisional=_prov)}")
         lines.append(f"신호등 {traffic_light(p)}")
+        # [4단계] 시장 괴리 표기 — 배당이 없으면 아무것도 붙지 않는다.
+        if jg.get("market_note"):
+            lines.append(str(jg["market_note"]))
+        # [5단계] 가치 — 배당이 있으면 p×배당, 없으면 필요배당만 알린다.
+        _odds = (jg.get("pick_summary") or {}).get("odds")
+        if _odds:
+            from app.engine.value_gate import value
+
+            lines.append(f"가치 {value(p, _odds):.2f} (배당 {_odds})")
+        else:
+            _req = required_odds(p)
+            if _req:
+                lines.append(f"가치 배당 미수집 — 필요배당 {_req:.2f}")
     reasons = [str(x).strip() for x in (m.get("근거") or []) if str(x).strip()]
     for i, r in enumerate(reasons[:3], 1):
         lines.append(f"근거{i} {r}")
