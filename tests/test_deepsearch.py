@@ -230,3 +230,17 @@ def test_search_count_comes_from_usage_not_block_count():
     src = Path("app/engine/deepsearch.py").read_text(encoding="utf-8")
     assert "web_search_requests" in src
     assert 'getattr(b, "type", "") == "server_tool_use")' not in src
+
+
+def test_prompt_states_search_budget_and_forces_conclusion():
+    """🔴 실측 2026-09-01: 모델이 검색 5회를 다 쓰고도 결론을 못 냈다.
+
+    예산을 알려주지 않으면 탐색에 다 쓴다. 단순 질문 1개는 2회로 끝났다 —
+    프롬프트가 예산에 비해 과했던 것이지 도구 문제가 아니었다.
+    """
+    from app.engine.deepsearch import PROMPT
+
+    assert "{budget}" in PROMPT
+    assert "최우선" in PROMPT
+    assert "반드시 결론을 낸다" in PROMPT
+    assert "예산을 다 쓰고 결론을 못 내면 실패" in PROMPT

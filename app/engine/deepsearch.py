@@ -191,7 +191,14 @@ PROMPT = """당신은 스포츠 경기 조사원이다. 아래 판정이 확신�
 [조사 언어] 검색어는 **{lang}**로 만든다. 원문 소스가 그 언어로 쓰여 있다 —
 영어로만 찾으면 구단 공지·현지 스포츠지가 통째로 빠진다.
 
-[승률 관련 확인 항목] 아래 중 **해당하는 것만** 조사한다. 전부 훑지 마라.
+[검색 예산] **총 {budget}회.** 이것은 하드 상한이며 초과하면 조사가 통째로
+무효가 된다. 배분:
+- 1~2회: 위 [판정이 요청한 추가확인]에 답한다. **이것이 최우선이다.**
+- 3회째부터: 남은 예산으로 아래 체크리스트 중 **가장 승률에 영향이 큰 1~2개만**.
+- **마지막 1회를 남기기 전에 반드시 결론을 낸다.** 다 못 찾았으면 찾은 것까지로
+  답하고 나머지는 "미확인"으로 적는다. 예산을 다 쓰고 결론을 못 내면 실패다.
+
+[승률 관련 확인 항목] 위 예산 안에서 **해당하는 것만** 조사한다. 전부 훑지 마라.
 ① 결장자의 사유·복귀 시점 (부상 정도·로테이션·징계)
 ② 오늘 선발 자원의 컨디션 이상 (구속 저하·복귀전·등판 간격 / 부상 복귀·주중 경기 피로)
 ③ 팀 내부 이슈 (감독 발언·경질설, 라커룸, 연전·원정 이동 피로)
@@ -250,7 +257,8 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
                            ensure_ascii=False, default=str),
         triggers=", ".join(trig),
         asked=json.dumps(m.get("추가확인") or [], ensure_ascii=False),
-        lang=SEARCH_LANG.get(sport, "영어"))
+        lang=SEARCH_LANG.get(sport, "영어"),
+        budget=int(s.deepsearch_max_searches))
     tool = {"type": "web_search_20260318", "name": "web_search",
             "max_uses": int(s.deepsearch_max_searches)}   # API가 검색 수를 강제
     cli = anthropic.AsyncAnthropic(api_key=s.anthropic_api_key)
