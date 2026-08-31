@@ -118,6 +118,18 @@ def render_card(g: dict) -> str:
         out.append(f"  근거{i}. {r}")
     for i, r in enumerate(v.get("변수") or [], 1):
         out.append(f"  변수{i}. {r}")
+    # [v1.1 2단계] 확정판(재판정)이면 무엇이 바뀌어 어디로 움직였는지 싣는다.
+    d = v.get("직전대비") or {}
+    if isinstance(d, dict):
+        chg = [str(x) for x in (d.get("변경입력") or [])][:2]
+        mv = str(d.get("이동") or "").strip()
+        if chg or (mv and mv != "0"):
+            bits = []
+            if chg:
+                bits.append("변경 " + ", ".join(chg))
+            if mv and mv != "0":
+                bits.append(f"이동 {mv}")
+            out.append("직전대비: " + " · ".join(bits))
     lines, passed = gate(ph, pd, pa)
     out.append("게이트: " + " · ".join(lines))
     if passed:
@@ -277,6 +289,7 @@ PROMPT = """당신은 축구 경기 분석가다. 아래 자료만 근거로 이
 [홈 결장] {home_out}
 [원정 결장] {away_out}
 [포메이션] 홈 {home_form} / 원정 {away_form}
+[직전 판정] (재판정일 때만. 최초 판정이면 null): {prev}
 
 [미확보 — 판정에 반영하지 마라]
 - 컵·유럽대항전 경기 기록 (이 자료는 리그 경기만 담고 있다)
@@ -292,6 +305,9 @@ PROMPT = """당신은 축구 경기 분석가다. 아래 자료만 근거로 이
 - 라인업이 'predicted'면 결장은 확정이 아니다. 결장만으로 우세를 뒤집지 마라.
 - 확률 범위: 승/패 각각 0.20~0.65, 무승부 0.18~0.33. 세 확률의 합은 1.0.
 - 근거는 인과 사슬로 쓴다 (무엇이 → 무엇을 → 그래서 확률에 어떻게).
+- 직전 판정이 있으면: 달라진 입력(라인업 확정, 결장 확정, 새 경기 결과)을
+  먼저 식별하고, 그것이 직전 근거 중 무엇을 무효화하는지 판정한 뒤 확률을
+  조정한다. 바뀐 입력이 없으면 직전 판정을 유지한다.
 
 [출력] 아래 JSON만 출력한다. 다른 텍스트, 마크다운 백틱 금지.
 {{
@@ -300,7 +316,10 @@ PROMPT = """당신은 축구 경기 분석가다. 아래 자료만 근거로 이
   "우세": "home|away|박빙",
   "근거": ["인과 사슬 3개"],
   "변수": ["판정을 흔들 요인 1~2개"],
-  "확신도": "상|중|하"
+  "확신도": "상|중|하",
+  "직전대비": {{"변경입력": ["달라진 입력. 최초 판정이면 빈 배열"],
+             "무효화된근거": ["직전 근거 중 더 이상 성립하지 않는 것"],
+             "이동": "+N.N%p|-N.N%p|0"}}
 }}"""
 
 
@@ -327,7 +346,8 @@ async def judge(g: dict) -> dict | None:
         away_rank=json.dumps(g["away_rank"], ensure_ascii=False),
         home_out=", ".join(g["home_lineup"]["결장"]) or "없음",
         away_out=", ".join(g["away_lineup"]["결장"]) or "없음",
-        home_form=g["home_lineup"]["formation"], away_form=g["away_lineup"]["formation"])
+        home_form=g["home_lineup"]["formation"], away_form=g["away_lineup"]["formation"],
+        prev=json.dumps(g.get("prev_verdict"), ensure_ascii=False, default=str))
     try:
         r = await cli.messages.create(model=s.matchup_model, max_tokens=1500,
                                       messages=[{"role": "user", "content": p}])
@@ -393,6 +413,7 @@ async def _model_name() -> str:
 
 STATE_KEY = "soccer_trial:{date}:{mid}"     # 값: "provisional" | "confirmed"
 COUNT_KEY = "soccer_trial_count:{date}"
+PREV_KEY = "soccer_prev_verdict:{date}:{mid}"   # [2단계] 재판정 델타 입력
 
 
 async def run_once(pool, redis, *, send, now=None) -> dict:
@@ -418,6 +439,14 @@ async def run_once(pool, redis, *, send, now=None) -> dict:
             continue                       # 재판정 컷 — 더 건드리지 않는다
         key = STATE_KEY.format(date=date, mid=g["match_id"])
         state = await redis.get(key) if redis else None
+        # [v1.1 2단계] 직전 판정을 재판정 입력으로 넘긴다. 최초면 None.
+        if redis is not None:
+            raw = await redis.get(PREV_KEY.format(date=date, mid=g["match_id"]))
+            if raw:
+                try:
+                    g["prev_verdict"] = json.loads(raw)
+                except json.JSONDecodeError:
+                    g["prev_verdict"] = None
         if state == "confirmed":
             out["skipped"] += 1
             continue
@@ -447,6 +476,12 @@ async def run_once(pool, redis, *, send, now=None) -> dict:
         if redis is not None:
             await redis.set(key, "confirmed" if g["confirmed"] else "provisional",
                             ex=86400)
+            # 다음 회차가 "무엇이 바뀌었나"를 판정할 수 있게 뼈대만 남긴다
+            await redis.set(
+                PREV_KEY.format(date=date, mid=g["match_id"]),
+                json.dumps({k: v.get(k) for k in
+                            ("p_home", "p_draw", "p_away", "우세", "근거", "확신도")},
+                           ensure_ascii=False, default=str), ex=86400)
             await redis.incr(COUNT_KEY.format(date=date))
             await redis.expire(COUNT_KEY.format(date=date), 86400)
         out["resent" if state == "provisional" else "judged"] += 1

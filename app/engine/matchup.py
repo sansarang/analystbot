@@ -127,6 +127,23 @@ async def _form_or_analyze(jg: dict, redis, date: str, side: str, mock: bool | N
     return await analyze_team(redis, sport, team, date, pkt, news, mock=mock)
 
 
+#: 직전 판정에서 넘길 필드. 전체를 넘기면 프롬프트가 불필요하게 커지고,
+#: 모델이 옛 서술을 그대로 베낄 유인이 생긴다 — **판정의 뼈대만** 넘긴다.
+PREV_FIELDS = ("p_home", "우세", "근거", "변수", "확신도")
+
+
+def prev_verdict(jg: dict) -> dict | None:
+    """이 경기의 직전 판정. 최초 판정이면 None.
+
+    ⚠️ 재판정에서만 값이 있다. jg["matchup"]은 직전 회차가 남긴 것이고,
+       이번 회차 결과는 apply_matchup이 나중에 덮어쓴다.
+    """
+    m = jg.get("matchup") or {}
+    if m.get("p_home") is None:
+        return None
+    return {k: m[k] for k in PREV_FIELDS if k in m}
+
+
 async def judge_matchup(jg: dict, redis, date: str, *,
                         mock: bool | None = None) -> dict | None:
     """form: 히트면 재분석하지 않는다. 미스면 팀 분석을 한 뒤 매치업을 돌린다."""
@@ -158,6 +175,10 @@ async def judge_matchup(jg: dict, redis, date: str, *,
         return verdict
 
     model = settings.matchup_model
+    # [v1.1 2단계] 직전 판정을 입력 6번으로 넘긴다 — 재판정이 "처음부터 다시"가
+    #   아니라 "무엇이 바뀌어 어디로 움직였나"가 되게 한다.
+    #   (실측 사례: 안우진 등판 확인 → 두산 0.62→0.59 철회)
+    prev = prev_verdict(jg)
     prompt = fill(
         MATCHUP,
         HOME_FORM_JSON=json.dumps(home_form, ensure_ascii=False, default=str),
@@ -165,6 +186,7 @@ async def judge_matchup(jg: dict, redis, date: str, *,
         LINEUPS_JSON=json.dumps(lineups_payload(jg), ensure_ascii=False, default=str),
         STARTERS_RECENT_JSON=json.dumps(
             starters_recent_payload(jg), ensure_ascii=False, default=str),
+        PREV_VERDICT_JSON=json.dumps(prev, ensure_ascii=False, default=str),
     )
     parsed = None
     for attempt in (1, 2):

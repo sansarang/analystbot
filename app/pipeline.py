@@ -4676,6 +4676,30 @@ async def _refresh_stale_research(
     return len(refreshed)
 
 
+def delta_note(jg: dict) -> str:
+    """[v1.1 2단계] 판정의 `직전대비`를 카드 한 줄로. 없으면 빈 문자열.
+
+    ⚠️ 모델이 낸 값을 그대로 쓰되 **길이를 자른다** — 카드가 길어지면
+       정작 확률·근거가 안 보인다. 변경입력 2개·무효화 1개까지만 싣는다.
+    """
+    d = ((jg.get("matchup") or {}).get("직전대비") or {})
+    if not isinstance(d, dict):
+        return ""
+    changed = [str(x) for x in (d.get("변경입력") or [])][:2]
+    voided = [str(x) for x in (d.get("무효화된근거") or [])][:1]
+    move = str(d.get("이동") or "").strip()
+    if not changed and not voided and move in ("", "0"):
+        return ""
+    parts = []
+    if changed:
+        parts.append("변경 " + ", ".join(changed))
+    if voided:
+        parts.append("무효 " + voided[0])
+    if move and move != "0":
+        parts.append(f"이동 {move}")
+    return " — " + " · ".join(parts) if parts else ""
+
+
 async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
     """[2-3] 라인업 수신 → 그 경기만 재판정. 승률·신호등·추천·조합을 갱신한다.
 
@@ -4804,6 +4828,9 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
         after = (jg.get("pick_summary") or {}).get("desc")
         note = "🔄 라인업 반영: " + "; ".join(jg["lineup_notes"][:2]) if jg["lineup_notes"] else \
                "🔄 라인업 확정 반영"
+        # [v1.1 2단계] 판정이 스스로 말한 델타를 카드에 싣는다 — "무엇이 바뀌어
+        #   어디로 움직였나". 없으면 종전 문구 그대로다(최초 판정·구 경로).
+        note += delta_note(jg)
         if before != after:
             note += f" — 픽 변경: {before or '없음'} → {after or '없음'}"
         jg["breaking_changes"] = (jg.get("breaking_changes") or []) + [note]
