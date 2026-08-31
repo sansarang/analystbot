@@ -668,6 +668,43 @@ async def calibration_report_job() -> None:
     logger.info("[scheduler] 주간 캘리브레이션 리포트 발송")
 
 
+# ⚠️ 아래는 **1회성 코드다.** Redis에 남아 있던 판정을 레저로 옮겨 담기 위한
+#    것이고, 백필 완료를 로그로 확인한 뒤에는 다음 배포에서 이 함수와
+#    main()의 create_task 호출을 통째로 지워도 된다.
+#    남겨 두어도 해롭지 않다 — 처리한 키는 건너뛰고, 건너뛰지 못해도
+#    record_analysis가 같은 판정에 이력 행을 만들지 않는다.
+BACKFILL_SINCE = "2026-08-29"
+
+
+async def startup_backfill_job() -> None:
+    """기동 직후 1회, 백그라운드로 레저 소급 백필 + 즉시 채점.
+
+    레저가 0건으로 시작하면 캘리브레이션이 한 주를 통째로 기다린다.
+    Redis에 남아 있는 판정은 이미 사실이므로 옮겨 담는다.
+
+    ⚠️ 실패해도 스케줄러는 계속 돈다 — 백필은 편의지 운영 요건이 아니다.
+    """
+    import redis.asyncio as aioredis
+
+    from app.engine.pick_ledger import backfill_from_redis, grade_pending
+
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        pool = await get_pool()
+        stats = await backfill_from_redis(pool, redis, BACKFILL_SINCE)
+        graded = await grade_pending(pool)
+        logger.info(
+            "[scheduler] 레저 백필(%s 이후) — 슬레이트 %d · 신규 %d · 재판정 %d "
+            "· 변화없음 %d · 기처리 %d · 건너뜀 %d / 즉시 채점 %d · void %d",
+            BACKFILL_SINCE, stats["slates"], stats["inserted"], stats["rejudged"],
+            stats["unchanged"], stats["seen"], stats["skipped"],
+            graded["graded"], graded["void"])
+    except Exception as exc:
+        logger.exception("[scheduler] 레저 백필 실패 — 운영은 계속: %s", exc)
+    finally:
+        await redis.aclose()
+
+
 async def heartbeat_job() -> None:
     """[7-5] 스케줄러가 살아있음을 Redis에 남긴다 — /health가 이걸 본다.
 
@@ -830,6 +867,10 @@ async def main() -> None:
     scheduler = build_scheduler()
     scheduler.start()
     logger.info("scheduler started: %s", [j.id for j in scheduler.get_jobs()])
+    # [v1.1 0단계 · 1회성] 레저 소급 백필을 **기동 뒤 백그라운드로** 돌린다.
+    #   기동 경로에서 await 하면 Redis 스캔이 스케줄러 시작을 지연시킨다 —
+    #   17시대 라인업 폴을 놓치면 그날 발송이 통째로 밀린다.
+    asyncio.create_task(startup_backfill_job())
     await asyncio.Event().wait()  # 종료 시그널까지 대기
 
 

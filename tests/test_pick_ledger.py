@@ -226,3 +226,106 @@ def test_judgement_paths_do_not_read_the_ledger():
         src = Path(mod).read_text(encoding="utf-8")
         assert "pick_ledger" not in src, f"{mod}가 픽 레저를 읽는다 — 판정 비개입 위반"
         assert "calibration" not in src, f"{mod}가 캘리브레이션을 읽는다 — 판정 비개입 위반"
+
+
+# ---------------------------------------------------------------- 소급 백필 (1회성)
+
+class _FakeRedis:
+    """스캔·get·SET 표식만 흉내낸다. 실제 Redis 없이 백필 경로를 검사한다."""
+
+    def __init__(self, data: dict):
+        self.data = dict(data)
+        self.sets: dict[str, set] = {}
+
+    async def scan_iter(self, match=None, count=None):
+        for k in list(self.data):
+            yield k
+
+    async def get(self, k):
+        return self.data.get(k)
+
+    async def sismember(self, key, member):
+        return member in self.sets.get(key, set())
+
+    async def sadd(self, key, member):
+        self.sets.setdefault(key, set()).add(member)
+
+    async def aclose(self):
+        pass
+
+
+async def test_backfill_records_slates_and_skips_per_game_keys(db_pool):
+    """슬레이트 키만 쓴다 — 경기별 키에는 게이트·라인업이 없어 반쪽이다."""
+    import json
+
+    from app.engine.pick_ledger import backfill_from_redis
+
+    gid = await _game(db_pool, 20)
+    r = _FakeRedis({
+        f"analysis:kbo:{DATE}": json.dumps(_analysis(gid), ensure_ascii=False),
+        # 경기별 키 — 무시돼야 한다
+        f"analysis:kbo:{gid}:{DATE}": json.dumps({"p_home": 0.66, "우세": "home"}),
+        # since 이전 — 무시돼야 한다
+        "analysis:kbo:2026-08-01": json.dumps(_analysis(gid), ensure_ascii=False),
+    })
+    st = await backfill_from_redis(db_pool, r, "2026-08-29")
+    assert st["slates"] == 1 and st["inserted"] == 1
+    assert await db_pool.fetchval("SELECT count(*) FROM pick_ledger") == 1
+
+
+async def test_backfill_skips_already_seen_keys(db_pool):
+    """이미 백필한 키는 건너뛴다 (기동마다 다시 훑지 않는다)."""
+    import json
+
+    from app.engine.pick_ledger import backfill_from_redis
+
+    gid = await _game(db_pool, 21)
+    r = _FakeRedis({f"analysis:kbo:{DATE}": json.dumps(_analysis(gid),
+                                                       ensure_ascii=False)})
+    await backfill_from_redis(db_pool, r, "2026-08-29")
+    st = await backfill_from_redis(db_pool, r, "2026-08-29")
+    assert st["seen"] == 1 and st["slates"] == 0 and st["inserted"] == 0
+
+
+async def test_backfill_is_idempotent_even_without_the_marker(db_pool):
+    """표식을 잃어도 이력 행이 늘지 않는다 — 멱등의 두 번째 겹."""
+    import json
+
+    from app.engine.pick_ledger import backfill_from_redis
+
+    gid = await _game(db_pool, 22)
+    r = _FakeRedis({f"analysis:kbo:{DATE}": json.dumps(_analysis(gid),
+                                                       ensure_ascii=False)})
+    await backfill_from_redis(db_pool, r, "2026-08-29")
+    st = await backfill_from_redis(db_pool, r, "2026-08-29", skip_seen=False)
+    assert st["unchanged"] == 1 and st["inserted"] == 0
+    assert await db_pool.fetchval("SELECT count(*) FROM pick_ledger") == 1
+
+
+async def test_backfill_dry_run_writes_nothing(db_pool):
+    import json
+
+    from app.engine.pick_ledger import backfill_from_redis
+
+    gid = await _game(db_pool, 23)
+    r = _FakeRedis({f"analysis:kbo:{DATE}": json.dumps(_analysis(gid),
+                                                       ensure_ascii=False)})
+    st = await backfill_from_redis(db_pool, r, "2026-08-29", dry_run=True)
+    assert st["slates"] == 1 and st["inserted"] == 0
+    assert await db_pool.fetchval("SELECT count(*) FROM pick_ledger") == 0
+
+
+def test_startup_backfill_does_not_block_scheduler_start():
+    """백필은 기동 경로에서 await 되지 않는다.
+
+    await 하면 Redis 스캔이 스케줄러 시작을 지연시키고, 17시대 라인업 폴을
+    놓치면 그날 발송이 통째로 밀린다. create_task로 떼어 놓았는지 소스로 잠근다.
+    """
+    from pathlib import Path
+
+    src = Path("app/scheduler.py").read_text(encoding="utf-8")
+    assert "asyncio.create_task(startup_backfill_job())" in src
+    assert "await startup_backfill_job()" not in src
+    start = src.index("scheduler.start()")
+    assert src.index("asyncio.create_task(startup_backfill_job())") > start, \
+        "백필 태스크가 scheduler.start() 앞에 있다 — 기동이 밀린다"

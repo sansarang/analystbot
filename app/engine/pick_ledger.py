@@ -14,7 +14,9 @@
 """
 from __future__ import annotations
 
+import json
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -201,3 +203,68 @@ async def grade_pending(pool, sport: str | None = None) -> dict:
     if out["graded"] or out["void"]:
         logger.info("[ledger] 채점 %d건 · void %d건", out["graded"], out["void"])
     return out
+
+
+# ---------------------------------------------------------------- 소급 백필 (1회성)
+#
+# ⚠️ **이 절은 1회성이다.** Redis에 남아 있던 판정을 레저로 옮겨 담기 위한 것이고,
+#    백필이 끝났음을 확인한 뒤에는 다음 배포에서 통째로 지워도 된다
+#    (호출부: scheduler.startup_backfill_job).
+#    남겨 두어도 해롭지는 않다 — 멱등이고, 처리한 키는 건너뛴다.
+
+SLATE_KEY_RE = re.compile(r"^analysis:(?P<sport>[a-z]+):(?P<date>\d{4}-\d{2}-\d{2})$")
+BACKFILL_SEEN = "ledger_backfill_seen"      # 처리한 슬레이트 키 집합 (Redis SET)
+
+
+async def backfill_from_redis(pool, redis, since: str, *, dry_run: bool = False,
+                              skip_seen: bool = True) -> dict:
+    """Redis 슬레이트 분석(`analysis:{sport}:{date}`)을 레저로 옮긴다.
+
+    ⚠️ 읽기만 한다 — Redis 키를 지우거나 고치지 않는다.
+    ⚠️ 슬레이트 키만 쓴다. 경기별 키(`analysis:{sport}:{game_id}:{date}`)에는
+       게이트 결과·라인업 상태가 없어 레저의 절반이 빈다 — 반쪽 데이터로
+       캘리브레이션을 오염시키지 않는다.
+
+    멱등성은 두 겹이다: ① 처리한 키를 `ledger_backfill_seen`에 남겨 건너뛰고
+    ② 건너뛰지 못해도 `record_analysis`가 같은 판정에 이력 행을 만들지 않는다.
+    ①만으로는 부족하다 — Redis가 비워지면 ②가 받아낸다.
+    """
+    stats = {"slates": 0, "seen": 0, "inserted": 0, "rejudged": 0,
+             "unchanged": 0, "skipped": 0}
+    if pool is None or redis is None:
+        return stats
+    keys = [k async for k in redis.scan_iter(match="analysis:*", count=500)]
+    for key in sorted(keys):
+        m = SLATE_KEY_RE.match(key)
+        if not m or m.group("date") < since:
+            continue
+        if skip_seen and not dry_run:
+            try:
+                if await redis.sismember(BACKFILL_SEEN, key):
+                    stats["seen"] += 1
+                    continue
+            except Exception:
+                pass                     # 표식 조회 실패는 백필을 막지 않는다
+        raw = await redis.get(key)
+        if not raw:
+            stats["skipped"] += 1
+            continue
+        try:
+            analysis = json.loads(raw)
+        except json.JSONDecodeError:
+            logger.warning("[ledger] 백필 건너뜀 — JSON 파싱 실패: %s", key)
+            stats["skipped"] += 1
+            continue
+        analysis.setdefault("sport", m.group("sport"))
+        analysis.setdefault("date", m.group("date"))
+        stats["slates"] += 1
+        if dry_run:
+            continue
+        st = await record_analysis(pool, analysis)
+        for k2 in ("inserted", "rejudged", "unchanged"):
+            stats[k2] += st[k2]
+        try:
+            await redis.sadd(BACKFILL_SEEN, key)
+        except Exception:
+            pass
+    return stats
