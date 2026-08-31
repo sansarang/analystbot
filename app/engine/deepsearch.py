@@ -188,6 +188,14 @@ PROMPT = """당신은 스포츠 경기 조사원이다. 아래 판정이 확신�
 [발동 트리거] {triggers}
 [판정이 요청한 추가확인] {asked}
 
+[오늘] {today} (KST). 이 경기는 **오늘 또는 내일** 열린다.
+🔴 검색은 지난 시즌 기사를 먼저 물어온다. 연도를 확인하지 않으면 **1년 전
+부상·복귀 소식을 오늘 일로 착각한다.** 실측 2026-09-01: 조사가 2025년 8월
+부상자명단 등재와 2025년 9월 복귀를 오늘의 컨디션 근거로 올렸다.
+- 검색어에 **연도를 넣는다** (예: "{today} 선발").
+- 근거로 쓰기 전에 **기사 날짜를 확인한다.** 최근 30일 밖이면 쓰지 않는다.
+- 날짜를 확인할 수 없는 내용은 "미확인"으로 적고 근거에서 뺀다.
+
 [조사 언어] 검색어는 **{lang}**로 만든다. 원문 소스가 그 언어로 쓰여 있다 —
 영어로만 찾으면 구단 공지·현지 스포츠지가 통째로 빠진다.
 
@@ -226,6 +234,14 @@ PROMPT = """당신은 스포츠 경기 조사원이다. 아래 판정이 확신�
 }}"""
 
 
+def _today_kst() -> str:
+    """오늘(KST). 프롬프트가 연도를 모르면 작년 기사를 오늘 일로 읽는다."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    return datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
+
+
 async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None):
     """경기 1건 조사. 반환: (결과 dict | None, 검색 사용 수).
 
@@ -258,13 +274,15 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
         triggers=", ".join(trig),
         asked=json.dumps(m.get("추가확인") or [], ensure_ascii=False),
         lang=SEARCH_LANG.get(sport, "영어"),
-        budget=int(s.deepsearch_max_searches))
+        budget=int(s.deepsearch_max_searches),
+        today=_today_kst())
     tool = {"type": "web_search_20260318", "name": "web_search",
             "max_uses": int(s.deepsearch_max_searches)}   # API가 검색 수를 강제
     cli = anthropic.AsyncAnthropic(api_key=s.anthropic_api_key)
     try:
         resp = await asyncio.wait_for(
-            cli.messages.create(model=s.matchup_model, max_tokens=2000,
+            cli.messages.create(model=s.matchup_model,
+                                max_tokens=int(s.deepsearch_max_tokens),
                                 tools=[tool],
                                 messages=[{"role": "user", "content": prompt}]),
             timeout=timeout if timeout is not None else float(s.deepsearch_timeout_sec))

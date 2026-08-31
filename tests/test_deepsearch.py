@@ -5,7 +5,9 @@
 나가지 않아야 한다.
 """
 
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -259,3 +261,34 @@ def test_parse_failure_logs_evidence_not_just_the_word_failure(caplog):
     assert "stop_reason" in head, "절단인지 형식 이탈인지 구분할 수 없다"
     assert "output_tokens" in head
     assert "%.400s" in head, "본문을 남기지 않으면 형식 이탈을 못 본다"
+
+
+def test_output_budget_is_configurable_and_larger_than_matchup():
+    """🔴 실측 2026-09-01: max_tokens=2000 → stop="max_tokens", 출력 5804토큰,
+    JSON이 743자에서 절단. 조사 4/4가 이것 때문에 실패했다.
+
+    web_search 는 한 번의 호출 안에서 검색-읽기를 여러 턴 돌고 그 중간 서술이
+    전부 출력 예산을 먹는다. **판정(4000)보다 커야 한다** — 조사가 더 많이
+    쓰는데 절반만 준 것이 결함이었다. 하드코딩도 함께 걷어낸다.
+    """
+    s = Settings(_env_file=None)
+    assert s.deepsearch_max_tokens > s.matchup_max_tokens
+    assert s.deepsearch_max_tokens >= 5804, "실측 소진량보다 작으면 또 잘린다"
+    src = Path("app/engine/deepsearch.py").read_text(encoding="utf-8")
+    assert "max_tokens=2000" not in src, "출력 예산이 하드코딩으로 남아 있다"
+    assert "s.deepsearch_max_tokens" in src
+
+
+def test_prompt_pins_today_so_last_season_news_is_not_read_as_today():
+    """🔴 절단보다 나쁜 결함: 조사가 **작년 기사**를 오늘 일로 올렸다.
+
+    실측 2026-09-01: Michael King의 2025-08-14 부상자명단 등재와 2025-09-09
+    복귀를 오늘의 컨디션 근거로 반환했다. 프롬프트에 오늘 날짜가 없었다.
+    이런 근거가 통과하면 p_home 이 1년 전 사실로 움직인다.
+    """
+    from app.engine.deepsearch import PROMPT, _today_kst
+
+    assert "{today}" in PROMPT
+    assert "연도" in PROMPT
+    assert "기사 날짜를 확인한다" in PROMPT
+    assert _today_kst() == datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
