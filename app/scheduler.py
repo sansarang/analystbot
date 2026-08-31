@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import json
 import logging
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -705,6 +706,55 @@ async def startup_backfill_job() -> None:
         await redis.aclose()
 
 
+# ⚠️ 아래도 **1회성 코드다.** 축구 라인업 리드타임·레이트리밋을 하룻밤 재기 위한
+#    프로브이고, 관측이 끝나 로그를 회수한 뒤에는 다음 배포에서 이 함수와
+#    main()의 create_task 호출을 통째로 지운다.
+#    (docs/SOCCER_FORM.md 부록 B 승인 조건 2·3의 측정 도구)
+#
+# 원칙: **"내 컴퓨터가 켜져 있어야 도는 것"은 이 시스템에 하나도 없어야 한다.**
+#   로컬 nohup으로 띄우면 맥이 잠들 때 조용히 죽고, 죽었다는 사실조차
+#   서버 로그에 남지 않아 "데이터 없음"과 "수집 실패"를 구분할 수 없다.
+SOCCER_PROBE_ENABLED = True
+
+
+async def soccer_lineup_probe_job() -> None:
+    """축구 라인업 리드타임 프로브 — 읽기 전용, 결과는 **구조화 로그**로.
+
+    ⚠️ 프로덕션 Redis/DB를 건드리지 않는다. 프로브 모듈은 httpx와 표준
+       라이브러리만 import 한다(계약 테스트로 잠금).
+    ⚠️ 결과를 파일이 아니라 로그로 남긴다 — 컨테이너 파일시스템은 재배포에
+       사라지고, railway 로그는 남아 회수·재조립할 수 있다.
+    ⚠️ 프로브 실패가 스케줄러 본연의 잡을 죽이면 안 된다 — 전 구간 예외 격리.
+    """
+    if not SOCCER_PROBE_ENABLED:
+        return
+    try:
+        from tools.probe_soccer_lineup import run as probe_run
+    except Exception as exc:
+        logger.warning("[soccer-probe] 로드 실패 — 건너뜀: %s", exc)
+        return
+
+    def emit(rec: dict) -> None:
+        # 한 줄 = JSON 1건. 내일 아침 `grep '\[soccer-probe\] {'` 로 jsonl 재조립.
+        try:
+            logger.info("[soccer-probe] %s", json.dumps(rec, ensure_ascii=False))
+        except Exception:
+            pass
+
+    def plog(msg: str) -> None:
+        logger.info("[soccer-probe] %s", msg)
+
+    try:
+        out = await probe_run(hours=30, lead_start=150, interval=600,
+                              emit=emit, log=plog)
+        logger.info("[soccer-probe] 종료 — 관측 %d건 / 대상 %d건",
+                    len(out.get("observed") or []), out.get("targets", 0))
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        logger.exception("[soccer-probe] 실패 — 스케줄러는 계속: %s", exc)
+
+
 async def heartbeat_job() -> None:
     """[7-5] 스케줄러가 살아있음을 Redis에 남긴다 — /health가 이걸 본다.
 
@@ -871,6 +921,8 @@ async def main() -> None:
     #   기동 경로에서 await 하면 Redis 스캔이 스케줄러 시작을 지연시킨다 —
     #   17시대 라인업 폴을 놓치면 그날 발송이 통째로 밀린다.
     asyncio.create_task(startup_backfill_job())
+    # [1회성] 축구 라인업 프로브 — 서버가 주체다. 로컬 맥에 의존하지 않는다.
+    asyncio.create_task(soccer_lineup_probe_job())
     await asyncio.Event().wait()  # 종료 시그널까지 대기
 
 
