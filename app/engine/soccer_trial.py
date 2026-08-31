@@ -1,8 +1,14 @@
-"""[축구 시범 운영] FotMob 수집 → Sonnet 판정 → 카드. **시범 등급이다.**
+"""[축구] FotMob 수집 → Sonnet 판정 → 카드. **야구와 동격의 실전 경로다.**
 
-⚠️ 이것은 정식 축구 파이프라인이 아니다. 2026-08-31 시범 분석(7경기)에서
-   검증된 경로를 그대로 스케줄에 태운 것이고, 카드에 "시범 운영" 라벨이
-   붙는다. 정식 파이프라인은 docs/SOCCER_FORM.md — 야구 v1.1 완료 후 착수.
+2026-08-31 시범 분석(7경기)으로 검증한 뒤 같은 날 실전 전환했다(사용자 결정).
+발송·재판정·T-20 컷·기록·채점 전부 야구와 같은 등급으로 운영한다.
+
+⚠️ 등급 표시를 따로 두지 않는다. 표본이 얇으면 판정이 스스로 확신도 '하'를
+   내고 보드만이 된다 — 그것이 등급 표시를 대체한다. 라벨로 신뢰도를 말하는
+   대신 판정이 말하게 한다.
+
+정식 크롤러 기반 파이프라인(리그-어댑터·스켈람 전 마켓)은 docs/SOCCER_FORM.md —
+야구 v1.1 완료 후 착수하며, 이 모듈은 그때까지의 실전 경로다.
 
 ⚠️ **야구 경로를 공유하지 않는다.** 판정·발송·크레딧 가드 어느 것도
    야구 코드를 수정하지 않으며, 축구 판정이 실패해도 야구에 영향이 없다
@@ -103,7 +109,7 @@ def render_card(g: dict) -> str:
     confirmed = g.get("lineup_type") not in (None, "predicted")
     top = max(ph, pa)
     head = "✅ 확정판" if confirmed else "🕐 잠정"
-    out = ["⚽️ 축구 · 시범 운영",
+    out = ["⚽️ 축구",
            f"[{g['league']}] {g['home']} vs {g['away']}  ({g['kickoff_kst']} KST)",
            f"판정: 홈 {ph:.0%} / 무 {pd:.0%} / 원정 {pa:.0%}"
            f"  (λ {v.get('lambda_home')}-{v.get('lambda_away')})"
@@ -117,7 +123,7 @@ def render_card(g: dict) -> str:
     if passed:
         need = " · ".join(f"{n} 필요배당 {1.05 / p:.2f}" for n, p in passed)
         out.append(f"가치:   배당 미수집 — {need}")
-        out.append("결론:   " + ("✅ 추천(시범) — " if confirmed else "🕐 잠정 — ")
+        out.append("결론:   " + ("✅ 추천 — " if confirmed else "🕐 잠정 — ")
                    + f"확률 통과({', '.join(n for n, _ in passed)})"
                    + ("" if confirmed else "이나 라인업 미확정으로 확정 픽 아님"))
     else:
@@ -371,8 +377,10 @@ async def record_trial(pool, g: dict, passed) -> None:
               "recommended": bool(passed and g.get("confirmed"))}]
     from app.pipeline import today_kst
 
+    # 축구도 정식 기록이다(2026-08-31 실전 전환). trial 컬럼은 이미 기록된
+    # 행 보존용으로 남기고 신규는 false — 리그별 집계로 충분하다.
     await record_analysis(pool, {"sport": "soccer", "date": today_kst(),
-                                 "games": [jg], "picks": picks}, trial=True)
+                                 "games": [jg], "picks": picks})
 
 
 async def _model_name() -> str:

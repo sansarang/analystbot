@@ -56,7 +56,7 @@ def _agg(rows) -> dict:
 
 
 async def summarize(pool, days: int = 7, sport: str | None = None,
-                    trial: bool | None = False) -> dict:
+                    trial: bool | None = None) -> dict:
     """기간 내 채점 완료 픽을 다섯 축으로 집계한다.
 
     반환 구조는 render_report가 그대로 읽는다. 표본이 없으면 빈 표를 낸다 —
@@ -73,7 +73,7 @@ async def summarize(pool, days: int = 7, sport: str | None = None,
         where.append(f"l.trial = ${len(args)}")
     rows = await pool.fetch(
         f"""SELECT l.p_home, l.favored, l.confidence, l.gate_result, l.sport,
-                   l.hit, l.void, l.lineup_status
+                   l.league, l.hit, l.void, l.lineup_status
               FROM pick_ledger l
              WHERE {' AND '.join(where)} AND l.is_final""", *args)
     rows = list(rows)
@@ -102,8 +102,10 @@ async def summarize(pool, days: int = 7, sport: str | None = None,
         "confidence": group(lambda r: r["confidence"], ["상", "중", "하"]),
         "gates": group(lambda r: r["gate_result"],
                        sorted({r["gate_result"] for r in rows if r["gate_result"]})),
-        "leagues": group(lambda r: r["sport"],
-                         sorted({r["sport"] for r in rows if r["sport"]})),
+        # 리그 축 — 야구/축구가 여기서 자연히 갈린다 (KBO·NPB·MLB·EPL·…)
+        "leagues": group(lambda r: r["league"] or r["sport"],
+                         sorted({(r["league"] or r["sport"]) for r in rows
+                                 if (r["league"] or r["sport"])})),
     }
 
 

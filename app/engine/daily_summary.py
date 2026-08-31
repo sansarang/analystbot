@@ -63,8 +63,7 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str) -> str:
     rec, board, prov = [], [], []
     for r in rows:
         p = _p_of(r)
-        tag = " [시범]" if r["trial"] else ""
-        name = f"{_side_label(r)}{tag}"
+        name = _side_label(r)
         if r["gate_result"] == GATE_RECOMMENDED:
             need = f" (필요배당 {1.05 / p:.2f})" if p else ""
             rec.append(f"  · {name} {p:.0%} {stars(p)}{need}" if p
@@ -90,6 +89,4 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str) -> str:
     if tail:
         out += [""] + tail
     out += ["", TICKET_RULE]
-    if any(r["trial"] for r in rows):
-        out.append("※ [시범] 표기는 축구 시범 운영 등급입니다 — 야구와 신뢰 등급이 다릅니다.")
     return "\n".join(out)

@@ -496,3 +496,29 @@ def test_every_pick_ledger_column_is_also_added_by_alter():
         assert col in declared, f"{col}이 CREATE TABLE 에 없다"
         assert f"ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS {col}" in sql, \
             f"{col}에 ALTER 가 없다 — 기존 운영 DB에는 생기지 않는다"
+
+
+async def test_calibration_splits_by_league_not_by_trial(db_pool):
+    """리그 축이 야구/축구를 가른다 — 시범 플래그가 하던 역할을 대신한다.
+
+    2026-08-31 축구 실전 전환: trial 구분을 쓰지 않고 league 로 집계한다.
+    """
+    kbo = await _game(db_pool, 40, status="final", hs=6, aws=1)
+    await record_analysis(db_pool, _analysis(kbo))
+    epl = await db_pool.fetchval(
+        "INSERT INTO games (sport,league,ext_id,starts_at,home,away,status,"
+        " home_score,away_score) VALUES ('soccer','EPL','e1',"
+        " now() - interval '3 hours','Arsenal','Chelsea','final',2,1)"
+        " RETURNING id")
+    a = _analysis(epl)
+    a["sport"] = "soccer"
+    a["games"][0].update({"sport": "soccer", "league": "EPL",
+                          "home": "Arsenal", "away": "Chelsea"})
+    await record_analysis(db_pool, a)
+    await grade_pending(db_pool)
+    data = await summarize(db_pool, days=7)
+    labels = {g["label"] for g in data["leagues"]}
+    assert {"KBO", "EPL"} <= labels, f"리그별로 갈리지 않았다: {labels}"
+    assert await db_pool.fetchval(
+        "SELECT count(*) FROM pick_ledger WHERE trial") == 0, \
+        "신규 기록에 trial 이 세워졌다"

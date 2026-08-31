@@ -123,23 +123,28 @@ def _game(lineup_type="predicted", ph=0.55, pd=0.25, pa=0.20):
                         "근거": ["근거1", "근거2", "근거3"], "변수": ["변수1"]}}
 
 
-def test_card_marks_trial_grade():
-    """카드에 시범 운영 라벨이 반드시 붙는다 — 신뢰 등급이 야구와 다르다."""
+def test_card_has_no_trial_label():
+    """🔴 축구는 야구와 동격의 실전이다 (2026-08-31 전환).
+
+    등급 라벨을 두지 않는다 — 표본이 얇으면 판정이 스스로 확신도 '하'를 내고
+    보드만이 되며, 그것이 등급 표시를 대체한다.
+    """
     card = render_card(_game())
-    assert card.startswith("⚽️ 축구 · 시범 운영")
+    assert card.startswith("⚽️ 축구")
+    assert "시범" not in card
 
 
 def test_provisional_card_is_not_a_recommendation():
     card = render_card(_game("predicted"))
     assert "🕐 잠정" in card
     assert "확정 픽 아님" in card
-    assert "✅ 추천(시범)" not in card
+    assert "✅ 추천" not in card
 
 
 def test_confirmed_card_can_recommend():
     card = render_card(_game("standard"))
     assert "✅ 확정판" in card
-    assert "✅ 추천(시범)" in card
+    assert "✅ 추천" in card
 
 
 def test_card_shows_required_odds_not_value_verdict():
@@ -147,3 +152,9 @@ def test_card_shows_required_odds_not_value_verdict():
     card = render_card(_game("standard"))
     assert "필요배당" in card
     assert "배당 미수집" in card
+
+
+def test_soccer_is_recorded_as_regular_not_trial():
+    """축구 판정도 정식 기록이다 — trial 플래그를 세우지 않는다."""
+    src = Path("app/engine/soccer_trial.py").read_text(encoding="utf-8")
+    assert "trial=True" not in src, "축구가 아직 시범으로 기록된다"
