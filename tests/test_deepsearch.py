@@ -182,3 +182,17 @@ def test_prompt_output_asks_for_additional_checks():
 
     assert '"추가확인"' in MATCHUP
     assert "외부에서 확인 가능한 정보라면" in MATCHUP
+
+
+async def test_no_external_call_in_mock_mode():
+    """🔴 목 모드에서는 외부를 때리지 않는다.
+
+    실측 2026-08-31: 배선 직후 테스트 스위트가 api.anthropic.com 을 호출해
+    35초 → 419초가 됐다. 판정 경로에 새 외부 호출을 붙일 때는 목 분기를
+    **같은 커밋에서** 넣어야 한다 (P5-2 차단이 잡아줬지만 그 전에 넣었어야 한다).
+    """
+    from app.engine.deepsearch import investigate
+
+    data, used = await investigate({"sport": "kbo", "home": "H", "away": "A",
+                                    "matchup": {"p_home": 0.6}}, ["T1"])
+    assert (data, used) == (None, 0)

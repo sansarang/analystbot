@@ -234,6 +234,12 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
 
     s = get_settings()
     sport = jg.get("sport") or ""
+    # 🔴 목 모드(FORCE_MOCK·키 없음)에서는 **호출하지 않는다.**
+    #    실측 2026-08-31: 배선 직후 테스트 스위트가 api.anthropic.com 을 때려
+    #    35초 → 419초가 됐다(P5-2 외부 차단이 잡았다). 판정 경로에 새 외부
+    #    호출을 붙일 때는 목 분기를 **같은 커밋에서** 넣어야 한다.
+    if s.mock_judge:
+        return None, 0
     abort_if_credit_gone(f"deepsearch:{jg.get('away')}@{jg.get('home')}")
     m = jg.get("matchup") or {}
     prompt = PROMPT.format(
@@ -309,3 +315,74 @@ def apply_findings(jg: dict, data: dict) -> dict:
         jg.setdefault("breaking_changes", []).append(
             "🔍 추가 조사 반영: " + str((data or {}).get("요약") or "새 사실 없음"))
     return {"moved": round((p - p_before) * 100, 1), "note": note}
+
+
+# ---------------------------------------------------------------- 슬레이트 실행
+
+async def run_for_slate(games: list[dict], redis, date: str, *,
+                        settings=None, max_investigations: int | None = None,
+                        prev_lineups: dict | None = None) -> dict:
+    """슬레이트 전체에 대해 트리거 판별 → 상한 안에서 조사 → 반영.
+
+    상한이 **슬레이트 단위**라 경기별로 호출하면 강제할 수 없다.
+
+    ⚠️ 조사는 경기당 1회다. 여러 트리거가 걸려도 한 번만 부른다.
+    ⚠️ 한 경기 실패가 나머지를 막지 않는다.
+    ⚠️ `max_investigations`는 드라이런에서 실검색을 더 조이기 위한 것이다
+       (예: 2건). 운영에서는 None으로 두고 daily_cap 만 쓴다.
+
+    반환: {"candidates": [...], "investigated": n, "searches": n, "skipped": n}
+    """
+    from app.config import get_settings
+
+    s = settings or get_settings()
+    cap = daily_cap(len(games), s)
+    if max_investigations is not None:
+        cap = min(cap, max_investigations)
+    out = {"candidates": [], "investigated": 0, "searches": 0, "skipped": 0,
+           "cap": cap, "slate": len(games)}
+    for jg in games:
+        trig = triggers(jg, s, prev_lineup=(prev_lineups or {}).get(jg.get("game_id")))
+        if not trig:
+            continue
+        out["candidates"].append({"game_id": jg.get("game_id"),
+                                  "match": f"{jg.get('away')}@{jg.get('home')}",
+                                  "triggers": trig})
+    # 발동 순서: 트리거가 많이 걸린 경기부터 — 가장 막힌 경기를 먼저 푼다.
+    ranked = sorted(out["candidates"], key=lambda c: -len(c["triggers"]))
+    by_id = {jg.get("game_id"): jg for jg in games}
+    for c in ranked:
+        if out["investigated"] >= cap:
+            out["skipped"] += 1
+            continue
+        jg = by_id.get(c["game_id"])
+        if jg is None:
+            continue
+        try:
+            data, used = await investigate(jg, c["triggers"])
+        except Exception as exc:              # 한 경기 실패가 나머지를 막지 않는다
+            logger.warning("[deepsearch] 조사 실패 %s: %s", c["match"], exc)
+            continue
+        out["searches"] += used
+        if data is None:
+            continue
+        res = apply_findings(jg, data)
+        out["investigated"] += 1
+        c["moved_pp"] = res["moved"]
+        if redis is not None:
+            try:
+                await redis.set(
+                    CACHE_KEY.format(league=jg.get("league") or jg.get("sport"),
+                                     game_id=jg.get("game_id"), date=date),
+                    json.dumps({"triggers": c["triggers"], **(jg.get("deepsearch") or {})},
+                               ensure_ascii=False, default=str), ex=CACHE_TTL)
+            except Exception as exc:
+                logger.warning("[deepsearch] 기록 실패 %s: %s", c["match"], exc)
+        logger.info("[deepsearch] %s 트리거=%s 검색=%d 이동=%+.1f%%p",
+                    c["match"], ",".join(c["triggers"]), used, res["moved"])
+    if out["candidates"]:
+        logger.info("[deepsearch] 슬레이트 %d경기 · 후보 %d · 조사 %d(상한 %d) "
+                    "· 검색 %d · 상한초과 생략 %d",
+                    out["slate"], len(out["candidates"]), out["investigated"],
+                    cap, out["searches"], out["skipped"])
+    return out

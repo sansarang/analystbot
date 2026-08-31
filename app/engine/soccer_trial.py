@@ -130,6 +130,10 @@ def render_card(g: dict) -> str:
             if mv and mv != "0":
                 bits.append(f"이동 {mv}")
             out.append("직전대비: " + " · ".join(bits))
+    ds = g.get("deepsearch") or {}
+    if ds.get("요약"):
+        out.append(f"🔍 추가 조사 반영: {ds['요약']}"
+                   + (f" (이동 {ds.get('이동_pp'):+.1f}%p)" if ds.get("이동_pp") else ""))
     lines, passed = gate(ph, pd, pa)
     out.append("게이트: " + " · ".join(lines))
     if passed:
@@ -502,6 +506,29 @@ async def run_once(pool, redis, *, send, now=None) -> dict:
             continue
         ph, pd, pa = normalize(v)
         g.update({"verdict": v, "p_home": ph, "p_draw": pd, "p_away": pa})
+        # [v1.1 6단계] 딥서치는 판정 뒤에 붙는다. 축구도 같은 모듈이다.
+        #   확률이 조정되면 게이트를 **조정 후 값으로** 다시 계산해야 하므로
+        #   gate() 호출보다 먼저 돌린다.
+        try:
+            from app.engine.deepsearch import run_for_slate
+
+            _jg = {"game_id": g["match_id"], "sport": "soccer",
+                   "league": g["league"], "home": g["home"], "away": g["away"],
+                   "starts_at_kst": g["kickoff_kst"], "p_claude": ph,
+                   "p_away": pa, "p_draw": pd,
+                   "matchup": v, "home_lineup": g.get("home_lineup"),
+                   "away_lineup": g.get("away_lineup")}
+            await run_for_slate([_jg], redis, date)
+            if _jg["p_claude"] != ph:        # 조사가 확률을 움직였다
+                ph = _jg["p_claude"]
+                rest = 1.0 - ph
+                pd, pa = round(pd / (pd + pa) * rest, 4), round(pa / (pd + pa) * rest, 4)
+                pd = round(1.0 - ph - pa, 4)
+                g.update({"p_home": ph, "p_draw": pd, "p_away": pa})
+            if _jg.get("deepsearch"):
+                g["deepsearch"] = _jg["deepsearch"]
+        except Exception as exc:
+            logger.warning("[soccer-trial] 딥서치 생략 — 판정은 계속: %s", exc)
         _, passed = gate(ph, pd, pa)
         await send(render_card(g))
         try:

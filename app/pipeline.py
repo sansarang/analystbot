@@ -1777,6 +1777,14 @@ async def build_analysis(
                     await record("매치업 판정", 0, len(upcoming), exc=exc,
                                  unit="경기",
                                  impact="추천이 생성되지 않습니다 (보드만 표시)")
+                # [v1.1 6단계] 판정이 막힌 경기만 조사한다. 상한은 슬레이트 단위다.
+                #   ⚠️ 실패해도 판정·발송을 막지 않는다 — 조사는 보강이지 요건이 아니다.
+                try:
+                    from app.engine.deepsearch import run_for_slate
+
+                    await run_for_slate(upcoming, bb_redis, date)
+                except Exception as exc:
+                    logger.warning("[pipeline] 딥서치 생략 — 판정은 계속: %s", exc)
                 if upcoming and not any(st.name == "매치업 판정" for st in stages):
                     _parse_n = sum(1 for g in upcoming
                                    if (g.get("matchup") or {}).get("p_home") is not None)

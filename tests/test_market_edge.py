@@ -108,7 +108,7 @@ def test_sf_type_flags_market_ahead():
     """SF형: 우리 55%인데 시장은 반대 방향 → 시장이 옳았다, 패스가 정답."""
     r = classify(0.55, "home", {"home": 3.20, "away": 1.35})
     assert r["classification"] == CLS_MARKET_AHEAD
-    assert "시장이 더 확신" in r["note"] and "방향 반대" in r["note"]
+    assert "시장이 더 확신" in r["note"] and "시장은 away 선호" in r["note"]
 
 
 def test_market_ahead_by_margin_without_direction_flip():
@@ -151,3 +151,46 @@ def test_demote_stops_at_low():
     assert demote_confidence("high") == "medium"
     assert demote_confidence("medium") == "low"
     assert demote_confidence("low") == "low"
+
+
+def test_three_way_away_probability_is_not_one_minus_home():
+    """🔴 축구는 무승부가 있어 1-p_home 이 원정 확률이 아니다.
+
+    실측 2026-08-31 통합 드라이런: Lecce vs Roma 원정 40%를 68%로 읽어
+    괴리가 +3.4%p 대신 +31.4%p로 부풀었다. 그대로면 "다 아는 픽"이
+    최상급 엣지 후보로 올라갔을 것이다.
+    """
+    from app.engine.market_edge import our_side_prob
+
+    soccer = {"p_claude": 0.32, "p_away": 0.40, "p_draw": 0.28,
+              "matchup": {"우세": "away"}}
+    assert our_side_prob(soccer) == pytest.approx(0.40)
+
+    baseball = {"p_claude": 0.32, "matchup": {"우세": "away"}}
+    assert our_side_prob(baseball) == pytest.approx(0.68), "야구는 2분이라 1-p_home"
+
+
+def test_three_way_divergence_is_not_inflated():
+    jg = {"p_claude": 0.32, "p_away": 0.40, "p_draw": 0.28,
+          "judge_confidence": "medium", "matchup": {"우세": "away"}}
+    apply(jg, {"home": 1.50, "away": 2.60})     # 시장 원정 ≈ 37%
+    assert abs(jg["divergence_pp"]) < 8.0, \
+        f"괴리가 부풀었다: {jg['divergence_pp']}"
+    assert jg["edge_status"] == EDGE_NONE
+
+
+def test_direction_mismatch_needs_meaningful_lead():
+    """🔴 argmax만 갈렸다고 "시장이 더 확신"은 아니다.
+
+    실측 2026-08-31 드라이런: 우리 원정 47% vs 시장 원정 46.9% — 확률은
+    사실상 같은데 방향만 갈려 확신도가 강등됐다. 시장이 의미 있는 폭으로
+    다른 쪽을 선호할 때만 센다.
+    """
+    r = classify(0.47, "away", {"home": 1.81, "away": 2.05})   # 시장 원정 46.9%
+    assert r["classification"] == CLS_NEUTRAL, \
+        f"미미한 방향 차이로 시장 우위 판정: {r}"
+
+    # 시장이 확실히 반대쪽이면 여전히 잡는다 (SF형)
+    r2 = classify(0.55, "home", {"home": 3.20, "away": 1.35})
+    assert r2["classification"] == CLS_MARKET_AHEAD
+    assert "시장은 away 선호" in r2["note"]

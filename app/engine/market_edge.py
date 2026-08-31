@@ -91,15 +91,21 @@ def classify(p_ours: float | None, favored: str | None,
     diff = round((p_ours - market_p) * 100, 1)
     out["divergence_pp"] = diff
 
-    # 시장이 다른 쪽을 우세로 보는가 — 방향 불일치는 값 차이보다 강한 신호다
+    # 시장이 다른 쪽을 우세로 보는가.
+    # 🔴 방향만 보면 과하게 걸린다. 실측 2026-08-31 드라이런:
+    #    Arsenal 우리 원정 47% vs 시장 원정 46.9% — 확률은 사실상 같은데
+    #    argmax만 갈려 "시장이 더 확신"으로 분류되고 확신도가 강등됐다.
+    #    시장이 **의미 있는 폭으로** 다른 쪽을 선호할 때만 센다.
     market_side = max(("home", "away"), key=lambda s: imp.get(s, 0.0))
-    opposite = market_side != favored
+    lead = imp.get(market_side, 0.0) - market_p
+    opposite = market_side != favored and lead * 100 >= DIVERGENCE_PP
 
     if opposite or diff <= -DIVERGENCE_PP:
         out["classification"] = CLS_MARKET_AHEAD
         out["note"] = ("⚠️ 시장이 더 확신 — 검토 필요 "
                        f"(우리 {p_ours:.0%} vs 시장 {market_p:.0%}"
-                       + (", 방향 반대" if opposite else "") + ")")
+                       + (f", 시장은 {market_side} 선호 +{lead * 100:.1f}%p"
+                          if opposite else "") + ")")
     elif diff >= DIVERGENCE_PP:
         out["classification"] = CLS_EDGE
         out["edge_status"] = EDGE_CANDIDATE
@@ -117,6 +123,34 @@ def demote_confidence(conf: str | None) -> str | None:
     return {"high": "medium", "medium": "low"}.get(conf, conf)
 
 
+def our_side_prob(jg: dict) -> float | None:
+    """우세 쪽에 대한 **우리** 확률.
+
+    🔴 **`1 - p_home`은 축구에서 원정 확률이 아니다.** 무승부가 있어 셋으로
+       갈리기 때문이다. 실측 2026-08-31 드라이런: Lecce vs Roma 원정 40%를
+       68%(=1-0.32)로 읽어 괴리가 +3.4%p 대신 +31.4%p로 부풀었고, 그대로면
+       "다 아는 픽"이 최상급 엣지 후보로 올라갔을 것이다.
+
+       축구는 `p_away`를 그대로 쓴다. 야구는 무승부가 없어 2분이므로
+       `1 - p_home`이 맞다.
+    """
+    m = jg.get("matchup") or {}
+    favored = m.get("우세")
+    if favored not in ("home", "away"):
+        return None
+    p_home = jg.get("p_claude")
+    if p_home is None:
+        return None
+    if favored == "home":
+        return float(p_home)
+    # 3분(축구)이면 원정 확률이 따로 있다 — 있으면 그것이 답이다.
+    for src in (jg, m):
+        pa = (src or {}).get("p_away")
+        if pa is not None:
+            return float(pa)
+    return 1.0 - float(p_home)          # 2분(야구)
+
+
 def apply(jg: dict, odds: dict | None = None) -> dict:
     """판정 확정 후 호출. jg에 분류 결과를 얹고 요약을 돌려준다.
 
@@ -124,11 +158,8 @@ def apply(jg: dict, odds: dict | None = None) -> dict:
        확률에 손대지 않는다. 확신도만 (a)에서 1단계 강등한다 — 그것이
        거부권 경로로 이어져 추천 자격을 잃게 하는 설계다.
     """
-    p_home = jg.get("p_claude")
+    p_ours = our_side_prob(jg)
     favored = (jg.get("matchup") or {}).get("우세")
-    p_ours = None
-    if p_home is not None and favored in ("home", "away"):
-        p_ours = float(p_home) if favored == "home" else 1.0 - float(p_home)
     res = classify(p_ours, favored, odds)
     jg["market_prob"] = res["market_prob"]
     jg["divergence_pp"] = res["divergence_pp"]
