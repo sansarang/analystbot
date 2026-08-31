@@ -55,7 +55,8 @@ def _agg(rows) -> dict:
     }
 
 
-async def summarize(pool, days: int = 7, sport: str | None = None) -> dict:
+async def summarize(pool, days: int = 7, sport: str | None = None,
+                    trial: bool | None = False) -> dict:
     """기간 내 채점 완료 픽을 다섯 축으로 집계한다.
 
     반환 구조는 render_report가 그대로 읽는다. 표본이 없으면 빈 표를 낸다 —
@@ -67,6 +68,9 @@ async def summarize(pool, days: int = 7, sport: str | None = None) -> dict:
     if sport:
         args.append(sport)
         where.append(f"l.sport = ${len(args)}")
+    if trial is not None:
+        args.append(trial)
+        where.append(f"l.trial = ${len(args)}")
     rows = await pool.fetch(
         f"""SELECT l.p_home, l.favored, l.confidence, l.gate_result, l.sport,
                    l.hit, l.void, l.lineup_status

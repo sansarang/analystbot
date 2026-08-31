@@ -103,11 +103,15 @@ def _same_judgement(row: dict, existing) -> bool:
     return True
 
 
-async def record_analysis(pool, analysis: dict) -> dict:
+async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
     """분석 1슬레이트의 판정 전건을 레저에 반영. 반환: {inserted, rejudged, unchanged}.
 
     멱등이다 — 같은 분석을 여러 번 저장해도(캐시 재저장 등) 이력 행이 늘지 않는다.
     판정 내용이 실제로 달라졌을 때만 옛 행을 is_final=false로 내리고 새 행을 넣는다.
+
+    `trial=True`는 시범 운영 등급(축구)이다 — 캘리브레이션에서 야구와 **분리
+    집계**한다. 검증된 파이프라인과 시범 경로의 성적을 한 표에 섞으면 둘 다
+    못 믿게 된다.
 
     ⚠️ 레저 실패가 발송을 막지 않는다. 측정 장치가 본체를 죽이면 안 된다.
     """
@@ -148,11 +152,12 @@ async def record_analysis(pool, analysis: dict) -> dict:
                         """INSERT INTO pick_ledger
                              (game_id, sport, league, date, p_home, favored,
                               confidence, lineup_status, gate_result, model,
-                              rejudge_count, is_final)
-                           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE)""",
+                              rejudge_count, is_final, trial)
+                           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12)""",
                         row["game_id"], row["sport"], row["league"], row["date"],
                         row["p_home"], row["favored"], row["confidence"],
-                        row["lineup_status"], row["gate_result"], row["model"], n)
+                        row["lineup_status"], row["gate_result"], row["model"], n,
+                        trial)
                     stats["rejudged" if existing is not None else "inserted"] += 1
         except Exception as exc:
             # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —

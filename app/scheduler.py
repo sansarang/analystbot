@@ -184,6 +184,65 @@ async def _notify_rest_day(all_stages, sports) -> bool:
     return await send_telegram(text)
 
 
+async def soccer_trial_job() -> None:
+    """[축구 시범 운영] T-3h 판정 · confirmed 재판정 → 카드 발송.
+
+    ⚠️ **야구 경로와 완전히 분리돼 있다.** 이 잡이 실패해도 야구 발송·판정에
+       영향이 없다 — 전 구간 예외 격리이며, soccer_trial 모듈은 야구 코드를
+       수정하지 않는다(import 경계 테스트로 잠금).
+    ⚠️ 시범 운영 등급이다. 카드에 "⚽️ 축구 · 시범 운영" 라벨이 붙고,
+       레저에는 trial=true 로 기록돼 캘리브레이션에서 분리 집계된다.
+    """
+    import redis.asyncio as aioredis
+
+    from app.engine.soccer_trial import run_once
+    from app.notify import send_telegram
+
+    s = get_settings()
+    redis = aioredis.from_url(s.redis_url, decode_responses=True)
+    try:
+        pool = await get_pool()
+        out = await run_once(pool, redis, send=send_telegram)
+        if out["judged"] or out["resent"]:
+            logger.info("[soccer-trial] 판정 %d · 재판정 %d · 생략 %d · 상한 %d",
+                        out["judged"], out["resent"], out["skipped"], out["capped"])
+    except Exception as exc:
+        logger.exception("[soccer-trial] 실패 — 야구 경로에는 영향 없음: %s", exc)
+    finally:
+        await redis.aclose()
+
+
+async def daily_summary_asia_job() -> None:
+    """[일일 요약] 17:35 KST — 당일 KBO·NPB 판정 요약 1장."""
+    await _send_daily_summary(("kbo", "npb"), "🇰🇷🇯🇵 오늘 아시아 픽 요약")
+
+
+async def daily_summary_overseas_job() -> None:
+    """[일일 요약] 21:00 KST — 그날 밤~익일 아침 MLB·축구 판정 요약 1장."""
+    await _send_daily_summary(("mlb", "soccer"), "🌏 오늘 밤 해외 픽 요약")
+
+
+async def _send_daily_summary(sports, title: str) -> None:
+    """요약 카드 발송. 추천 0건인 날도 보낸다 — "픽 없음"도 정보다.
+
+    ⚠️ 요약 실패가 경기별 카드 발송을 막지 않는다 (별개 잡).
+    """
+    from app.engine.daily_summary import build
+    from app.notify import send_telegram
+    from app.pipeline import today_kst
+
+    try:
+        text = await build(await get_pool(), tuple(sports), title, today_kst())
+    except Exception as exc:
+        logger.exception("[daily-summary] 집계 실패: %s", exc)
+        return
+    if not text:
+        logger.warning("[daily-summary] 빈 카드 — 발송 생략")
+        return
+    await send_telegram(text)
+    logger.info("[daily-summary] 발송 — %s", title)
+
+
 async def prefetch_asia_job() -> None:
     """KBO·NPB 당일 슬레이트 — 18:30 킥오프의 3~7시간 전(14:00 KST).
 
@@ -905,6 +964,15 @@ def _job_specs() -> list[tuple]:
          CronTrigger(hour=14, minute=0, timezone=KST)),
         ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
         ("ingest_finals_13h", finals_job, CronTrigger(hour=13, minute=0, timezone=KST)),
+        # [축구 시범 운영] 10분마다 — T-3h 판정 · confirmed 재판정.
+        #   유럽 경기는 KST 심야~새벽이라 창을 넓게 둔다.
+        ("soccer_trial_10m", soccer_trial_job,
+         CronTrigger(hour="0-6,18-23", minute="*/10", timezone=KST)),
+        # [일일 요약] 아시아판 17:35 (T-30 잠정 강제 직후) · 해외판 21:00
+        ("daily_summary_asia", daily_summary_asia_job,
+         CronTrigger(hour=17, minute=35, timezone=KST)),
+        ("daily_summary_overseas", daily_summary_overseas_job,
+         CronTrigger(hour=21, minute=0, timezone=KST)),
         # [v1.1 0단계] 주간 캘리브레이션 — 일요일 밤, 그날 경기가 끝난 뒤.
         #   측정 리포트일 뿐 판정에 개입하지 않는다.
         ("calibration_weekly", calibration_report_job,

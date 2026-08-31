@@ -434,6 +434,7 @@ CREATE TABLE IF NOT EXISTS pick_ledger (
     -- 이력
     rejudge_count INT         NOT NULL DEFAULT 0,
     is_final      BOOLEAN     NOT NULL DEFAULT TRUE,
+    trial         BOOLEAN     NOT NULL DEFAULT FALSE,  -- 시범 운영 등급(축구)
     -- 중복 경기 병합으로 옮겨온 행이면 원래 game_id. 캘리브레이션이 이력 행을
     -- 어떻게 다룰지 판단하는 근거다 — "왜 is_final=false인가"가 재판정 때문인지
     -- 병합 때문인지 구분되지 않으면 표본을 어떻게 셀지 정할 수 없다.
@@ -464,3 +465,7 @@ CREATE INDEX IF NOT EXISTS idx_pick_ledger_calib
 --    운영에서 "column merged_from does not exist" 가 났고, 그 컬럼을 쓰는
 --    중복 병합 이관이 조용히 죽을 뻔했다.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS merged_from BIGINT;
+
+-- 시범 운영 등급 판정(축구 trial mode). 캘리브레이션에서 야구와 **분리 집계**한다 —
+-- 검증된 파이프라인과 시범 경로의 성적을 한 표에 섞으면 둘 다 못 믿게 된다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS trial BOOLEAN NOT NULL DEFAULT FALSE;

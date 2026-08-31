@@ -25,7 +25,10 @@ def test_scheduler_jobs_registered():
                          #   삭제된 픽 채점기(grade_yesterday)의 부활이 아니다.
                          #   그쪽은 성적표를 판정에 되먹였고, 이쪽은 판정 경로가
                          #   읽지 않는다 (test_pick_ledger가 코드로 잠근다).
-                         "calibration_weekly"}
+                         "calibration_weekly",
+                         # [축구 시범 운영 + 일일 요약] 2026-08-31 조기 도입
+                         "soccer_trial_10m", "daily_summary_asia",
+                         "daily_summary_overseas"}
     assert "grade_yesterday" not in jobs
     assert str(jobs["calibration_weekly"].trigger) == \
         "cron[day_of_week='sun', hour='23', minute='30']"

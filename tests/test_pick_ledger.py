@@ -492,7 +492,7 @@ def test_every_pick_ledger_column_is_also_added_by_alter():
     declared = {ln.strip().split()[0] for ln in body.splitlines()[1:]
                 if ln.strip() and not ln.strip().startswith("--")}
     # 표 생성 이후에 붙은 컬럼(초기 스키마에 없던 것)은 ALTER 가 있어야 한다
-    for col in ("merged_from",):
+    for col in ("merged_from", "trial"):
         assert col in declared, f"{col}이 CREATE TABLE 에 없다"
         assert f"ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS {col}" in sql, \
             f"{col}에 ALTER 가 없다 — 기존 운영 DB에는 생기지 않는다"
