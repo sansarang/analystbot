@@ -28,7 +28,7 @@ def test_scheduler_jobs_registered():
                          "calibration_weekly",
                          # [축구 시범 운영 + 일일 요약] 2026-08-31 조기 도입
                          "soccer_trial_10m", "daily_summary_asia",
-                         "daily_summary_overseas"}
+                         "daily_summary_overseas", "daily_summary_soccer"}
     assert "grade_yesterday" not in jobs
     assert str(jobs["calibration_weekly"].trigger) == \
         "cron[day_of_week='sun', hour='23', minute='30']"

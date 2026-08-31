@@ -48,8 +48,21 @@ def _p_of(row) -> float | None:
     return float(p) if predicted_side(row["favored"], p) == "home" else 1.0 - float(p)
 
 
-async def build(pool, sports: tuple[str, ...], title: str, date: str) -> str:
-    """요약 카드 1장. 판정이 없으면 그 사실을 말한다 — 빈 카드를 보내지 않는다."""
+async def build(pool, sports: tuple[str, ...], title: str, date: str,
+                *, window_hours: int = 18) -> str:
+    """요약 카드 1장. 판정이 없으면 그 사실을 말한다 — 빈 카드를 보내지 않는다.
+
+    🔴 **날짜가 아니라 킥오프로 고른다.** 종전에는 `l.date = today_kst()`로
+       조회했는데, 레저의 date는 **종목별 슬레이트 날짜**다. MLB는 미 동부
+       날짜라 KST 날짜와 어긋나고(실측 2026-08-31: 09/01 04:30에 생성된
+       판정의 date가 2026-08-31), 그 결과 **MLB 판정이 해외판 요약에
+       영원히 나타나지 않았다.**
+
+       앞으로 `window_hours` 안에 시작하는 경기를 고른다 — "오늘 밤 걸 수
+       있는 것"이 이 카드의 질문이므로, 날짜보다 킥오프가 맞는 기준이다.
+
+    ⚠️ 이미 시작한 경기는 뺀다. 걸 수 없는 것을 목록에 올리지 않는다.
+    """
     if pool is None:
         return ""
     rows = await pool.fetch(
@@ -57,8 +70,10 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str) -> str:
                   l.lineup_status, l.trial, l.market_prob, l.divergence_pp,
                   l.edge_status, g.home, g.away, g.starts_at
              FROM pick_ledger l JOIN games g ON g.id = l.game_id
-            WHERE l.is_final AND l.date = $1 AND l.sport = ANY($2::text[])
-            ORDER BY g.starts_at""", date, list(sports))
+            WHERE l.is_final AND l.sport = ANY($1::text[])
+              AND g.starts_at > now()
+              AND g.starts_at <= now() + make_interval(hours => $2)
+            ORDER BY g.starts_at""", list(sports), window_hours)
     from app.engine.pick_ledger import (
         GATE_EDGE, GATE_RECOMMENDED, GATE_VALUE_WARN,
     )

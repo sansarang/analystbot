@@ -218,8 +218,22 @@ async def daily_summary_asia_job() -> None:
 
 
 async def daily_summary_overseas_job() -> None:
-    """[일일 요약] 21:00 KST — 그날 밤~익일 아침 MLB·축구 판정 요약 1장."""
-    await _send_daily_summary(("mlb", "soccer"), "🌏 오늘 밤 해외 픽 요약")
+    """[일일 요약] 05:30 KST — MLB 아침 슬레이트 요약 1장.
+
+    04:30 prefetch_dawn 이 판정을 만든 **뒤**여야 한다 — 종전 21:00은
+    판정보다 앞서서 매일 "픽 없음"만 나갔다(실측 2026-08-31).
+    """
+    await _send_daily_summary(("mlb",), "🌏 오늘 MLB 픽 요약")
+
+
+async def daily_summary_soccer_job() -> None:
+    """[일일 요약] 01:45 KST — 그날 밤 유럽 축구 요약 1장.
+
+    T-3h 판정이 22:30부터 돌아 01:30이면 대부분 끝나 있다. 가장 이른
+    킥오프(01:30)를 이미 지난 경기는 조회에서 빠진다 — 걸 수 없는 것을
+    목록에 올리지 않는다.
+    """
+    await _send_daily_summary(("soccer",), "⚽️ 오늘 밤 유럽 픽 요약")
 
 
 async def _send_daily_summary(sports, title: str) -> None:
@@ -977,8 +991,14 @@ def _job_specs() -> list[tuple]:
         # [일일 요약] 아시아판 17:35 (T-30 잠정 강제 직후) · 해외판 21:00
         ("daily_summary_asia", daily_summary_asia_job,
          CronTrigger(hour=17, minute=35, timezone=KST)),
+        # 🔴 해외판은 **판정 이후**여야 한다. 21:00은 MLB 프리페치(04:30)와
+        #   축구 T-3h 판정(22:30~)보다 앞서서, 매일 "픽 없음"만 나갔다
+        #   (실측 2026-08-31 21:00). MLB 판정이 끝나는 05:30으로 옮긴다.
         ("daily_summary_overseas", daily_summary_overseas_job,
-         CronTrigger(hour=21, minute=0, timezone=KST)),
+         CronTrigger(hour=5, minute=30, timezone=KST)),
+        # 축구는 KST 심야에 판정되므로 그 뒤에 한 장 더 — 밤 픽을 걸 시각에 맞춘다.
+        ("daily_summary_soccer", daily_summary_soccer_job,
+         CronTrigger(hour=1, minute=45, timezone=KST)),
         # [v1.1 0단계] 주간 캘리브레이션 — 일요일 밤, 그날 경기가 끝난 뒤.
         #   측정 리포트일 뿐 판정에 개입하지 않는다.
         ("calibration_weekly", calibration_report_job,
