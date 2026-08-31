@@ -110,7 +110,7 @@ async def test_resaving_same_judgement_adds_no_history(db_pool):
     a = _analysis(gid)
     await record_analysis(db_pool, a)
     st = await record_analysis(db_pool, a)
-    assert st == {"inserted": 0, "rejudged": 0, "unchanged": 1}
+    assert st == {"inserted": 0, "rejudged": 0, "unchanged": 1, "failed": 0}
     assert await db_pool.fetchval("SELECT count(*) FROM pick_ledger") == 1
 
 
@@ -329,3 +329,73 @@ def test_startup_backfill_does_not_block_scheduler_start():
     start = src.index("scheduler.start()")
     assert src.index("asyncio.create_task(startup_backfill_job())") > start, \
         "백필 태스크가 scheduler.start() 앞에 있다 — 기동이 밀린다"
+
+
+# ---------------------------------------------------------------- 조용한 실패 방지
+#
+# 레저는 판정의 **유일한 영구 기록**이다 (analysis: 키는 12시간 TTL).
+# 기록이 조용히 실패하면 캘리브레이션 표본에 소리 없이 구멍이 나고,
+# 표본이 얇은 것인지 데이터가 샌 것인지 구분할 수 없게 된다.
+
+async def test_partial_failure_is_counted_not_swallowed(db_pool):
+    """한 경기 기록이 실패하면 나머지는 계속하되 **건수를 보고**한다."""
+    gid = await _game(db_pool, 30)
+    a = _analysis(gid)
+    # game_id가 games에 없으면 FK 위반 → 그 행만 실패한다
+    a["games"].append(_analysis(999_999_999)["games"][0])
+    a["picks"].append({"game_id": 999_999_999, "market": "h2h", "recommended": False})
+    st = await record_analysis(db_pool, a)
+    assert st["inserted"] == 1
+    assert st["failed"] == 1, "실패를 세지 않으면 호출자가 CRITICAL을 올릴 수 없다"
+
+
+async def test_record_ledger_retries_once_then_logs_critical(monkeypatch, caplog):
+    """전체 실패 시 1회 재시도하고, 그래도 실패하면 CRITICAL을 남긴다."""
+    import logging
+
+    import app.pipeline as pipemod
+
+    calls = []
+
+    async def broken(*a, **kw):
+        calls.append(1)
+        raise RuntimeError("pool down")
+
+    monkeypatch.setattr("app.engine.pick_ledger.record_analysis", broken)
+    monkeypatch.setattr("app.db.get_pool", broken)
+    with caplog.at_level(logging.CRITICAL):
+        await pipemod._record_ledger({"sport": "kbo", "date": DATE, "games": []})
+    assert len(calls) == 2, "재시도가 1회여야 한다 (총 2회 시도)"
+    assert any(r.levelno == logging.CRITICAL for r in caplog.records)
+    assert "영구 기록" in caplog.text
+
+
+async def test_record_ledger_logs_critical_on_partial_failure(monkeypatch, caplog):
+    """예외가 없어도 일부 경기가 누락되면 CRITICAL이다 — 같은 종류의 손실이다."""
+    import logging
+
+    import app.pipeline as pipemod
+
+    async def partial(pool, analysis):
+        return {"inserted": 1, "rejudged": 0, "unchanged": 0, "failed": 2}
+
+    async def fake_pool():
+        return object()
+
+    monkeypatch.setattr("app.engine.pick_ledger.record_analysis", partial)
+    monkeypatch.setattr("app.db.get_pool", fake_pool)
+    with caplog.at_level(logging.CRITICAL):
+        await pipemod._record_ledger({"sport": "kbo", "date": DATE, "games": []})
+    assert any(r.levelno == logging.CRITICAL for r in caplog.records)
+    assert "2건" in caplog.text
+
+
+async def test_record_ledger_never_raises_into_the_send_path(monkeypatch):
+    """레저가 어떻게 실패하든 발송 경로로 예외가 나가지 않는다."""
+    import app.pipeline as pipemod
+
+    async def broken(*a, **kw):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("app.db.get_pool", broken)
+    await pipemod._record_ledger({"sport": "kbo", "date": DATE, "games": []})

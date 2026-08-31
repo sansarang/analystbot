@@ -111,7 +111,7 @@ async def record_analysis(pool, analysis: dict) -> dict:
 
     ⚠️ 레저 실패가 발송을 막지 않는다. 측정 장치가 본체를 죽이면 안 된다.
     """
-    stats = {"inserted": 0, "rejudged": 0, "unchanged": 0}
+    stats = {"inserted": 0, "rejudged": 0, "unchanged": 0, "failed": 0}
     if pool is None or not analysis:
         return stats
     picks_by_game: dict = {}
@@ -155,7 +155,10 @@ async def record_analysis(pool, analysis: dict) -> dict:
                         row["lineup_status"], row["gate_result"], row["model"], n)
                     stats["rejudged" if existing is not None else "inserted"] += 1
         except Exception as exc:
-            # 한 경기 실패가 나머지를 막지 않는다
+            # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —
+            # 레저가 판정의 유일한 영구 기록이 된 이상, 기록 실패는 그 판정이
+            # 영원히 사라진다는 뜻이다. 호출자가 CRITICAL로 올릴 수 있게 센다.
+            stats["failed"] += 1
             logger.warning("[ledger] 기록 실패 game=%s: %s", row.get("game_id"), exc)
     if stats["inserted"] or stats["rejudged"]:
         logger.info("[ledger] %s %s — 신규 %d · 재판정 %d · 변화없음 %d",
@@ -230,7 +233,7 @@ async def backfill_from_redis(pool, redis, since: str, *, dry_run: bool = False,
     ①만으로는 부족하다 — Redis가 비워지면 ②가 받아낸다.
     """
     stats = {"slates": 0, "seen": 0, "inserted": 0, "rejudged": 0,
-             "unchanged": 0, "skipped": 0}
+             "unchanged": 0, "failed": 0, "skipped": 0}
     if pool is None or redis is None:
         return stats
     keys = [k async for k in redis.scan_iter(match="analysis:*", count=500)]
@@ -261,7 +264,7 @@ async def backfill_from_redis(pool, redis, since: str, *, dry_run: bool = False,
         if dry_run:
             continue
         st = await record_analysis(pool, analysis)
-        for k2 in ("inserted", "rejudged", "unchanged"):
+        for k2 in ("inserted", "rejudged", "unchanged", "failed"):
             stats[k2] += st[k2]
         try:
             await redis.sadd(BACKFILL_SEEN, key)

@@ -4375,14 +4375,41 @@ async def _record_ledger(analysis: dict) -> None:
     """[v1.1 0단계] 판정 전건을 pick_ledger에 남긴다 — 측정 전용, 판정 비개입.
 
     ⚠️ 레저 실패가 분석·발송을 막지 않는다. 측정 장치가 본체를 죽이면 안 된다.
-    """
-    try:
-        from app.db import get_pool
-        from app.engine.pick_ledger import record_analysis
 
-        await record_analysis(await get_pool(), analysis)
-    except Exception as exc:
-        logger.warning("[pipeline] 픽 레저 기록 실패 — 분석은 계속: %s", exc)
+    🔴 그러나 **조용히 실패해서도 안 된다.** Redis `analysis:` 키는 12시간 뒤
+       사라지므로(`report_cache_ttl`) 레저가 판정의 **유일한 영구 기록**이다.
+       기록에 실패하면 그 판정은 영원히 사라지고, 캘리브레이션 표본에 소리 없이
+       구멍이 난다 — 표본이 얇은지 데이터가 샜는지 구분할 수 없게 된다.
+       실측 2026-08-31: TTL 만료로 8/30 KBO 판정 3건이 백필 대상에서 빠졌고
+       복구 불가였다. 같은 종류의 손실을 다시 만들지 않는다.
+
+       → 1회 재시도하고, 그래도 실패하면 **CRITICAL**로 남긴다.
+       재시도 대기는 짧게 둔다 — 발송 경로를 붙잡으면 카드가 늦는다.
+    """
+    from app.db import get_pool
+    from app.engine.pick_ledger import record_analysis
+
+    sport, date = analysis.get("sport"), analysis.get("date")
+    last_exc: Exception | None = None
+    for attempt in (1, 2):
+        try:
+            stats = await record_analysis(await get_pool(), analysis)
+            if stats.get("failed"):
+                # 전체 예외는 아니지만 일부 경기가 기록되지 않았다 — 같은 손실이다
+                logger.critical(
+                    "[pipeline] 🔴 픽 레저 부분 기록 실패 %s %s — 경기 %d건이 "
+                    "영구 기록에서 누락됐다 (캘리브레이션 표본에 구멍)",
+                    sport, date, stats["failed"])
+            return
+        except Exception as exc:
+            last_exc = exc
+            if attempt == 1:
+                logger.warning("[pipeline] 픽 레저 기록 실패 — 1회 재시도: %s", exc)
+                await asyncio.sleep(0.5)
+    logger.critical(
+        "[pipeline] 🔴 픽 레저 기록 최종 실패 %s %s — 이 슬레이트 판정은 "
+        "영구 기록에 남지 않는다 (analysis 캐시는 12시간 뒤 사라진다): %s",
+        sport, date, last_exc)
 
 
 async def _save_caches(redis: aioredis.Redis, analysis: dict, card: str) -> None:
