@@ -365,6 +365,43 @@ async def judge(g: dict) -> dict | None:
         return None
 
 
+async def _find_game_id(pool, g: dict) -> int | None:
+    """FotMob 팀명으로 games 행을 찾는다.
+
+    🔴 **완전 일치로는 못 찾는다.** 일정은 football-data가 적재하는데 표기가
+       다르다 — 실측 2026-08-31: FotMob 'Lecce'/'Roma' vs football-data
+       'US Lecce'/'AS Roma'. 그 결과 오늘 밤 축구 판정이 레저에 한 건도
+       기록되지 않았고, 기록이 없으니 채점도 캘리브레이션도 불가능했다.
+
+    킥오프 ±6시간 창의 축구 경기를 후보로 모아 `match_team_name`으로 맞춘다.
+    이 저장소에 이미 있는 매처이며(football.py), **동점이면 None**을 돌려
+    모호한 매칭을 거부한다 — 잘못 붙이면 남의 경기 결과로 채점된다.
+    """
+    from app.collectors.football import match_team_name
+
+    rows = await pool.fetch(
+        "SELECT id, home, away FROM games WHERE sport='soccer'"
+        "   AND starts_at BETWEEN $1::timestamptz - interval '6 hours'"
+        "                     AND $1::timestamptz + interval '6 hours'",
+        g["kickoff"])
+    if not rows:
+        return None
+    # 완전 일치가 있으면 그것이 답이다 — 매처를 거칠 이유가 없다.
+    for r in rows:
+        if r["home"] == g["home"] and r["away"] == g["away"]:
+            return r["id"]
+    home = match_team_name(g["home"], [r["home"] for r in rows])
+    away = match_team_name(g["away"], [r["away"] for r in rows])
+    if home is None or away is None:
+        return None
+    for r in rows:
+        if r["home"] == home and r["away"] == away:
+            logger.info("[soccer-trial] 팀명 매칭 %s@%s → %s@%s",
+                        g["away"], g["home"], away, home)
+            return r["id"]
+    return None
+
+
 async def record_trial(pool, g: dict, passed) -> None:
     """레저에 시범 등급으로 기록. **trial=true 로 야구와 분리 집계된다.**
 
@@ -373,14 +410,10 @@ async def record_trial(pool, g: dict, passed) -> None:
     """
     if pool is None:
         return
-    gid = await pool.fetchval(
-        "SELECT id FROM games WHERE sport='soccer' AND home=$1 AND away=$2"
-        "   AND starts_at BETWEEN $3::timestamptz - interval '6 hours'"
-        "                     AND $3::timestamptz + interval '6 hours' LIMIT 1",
-        g["home"], g["away"], g["kickoff"])
+    gid = await _find_game_id(pool, g)
     if gid is None:
-        logger.info("[soccer-trial] games 행 없음 — 레저 기록 생략 %s@%s",
-                    g["away"], g["home"])
+        logger.warning("[soccer-trial] games 행 없음 — 레저 기록 생략 %s@%s "
+                       "(킥오프 %s)", g["away"], g["home"], g["kickoff"])
         return
     from app.engine.pick_ledger import record_analysis
 
