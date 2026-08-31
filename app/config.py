@@ -74,6 +74,13 @@ class Settings(BaseSettings):
     #   유럽축구는 전문가 픽이 웹에 흩어져 있어 검색이 필요하다.
     # ⚠️ 이 값을 비우면 전 종목에서 딥서치가 꺼진다 — 의도한 경우에만 그렇게 하라.
     deepsearch_sports: str = "soccer"
+    #: [v1.1 6단계] 하루 딥서치 발동 상한 = 슬레이트의 이 비율.
+    #   비용·외부 의존이 걸린 단계라 상한을 코드가 아니라 설정으로 둔다.
+    deepsearch_daily_cap: float = 0.30
+    #: 경기당 검색 횟수 상한. API의 max_uses 로도 강제한다.
+    deepsearch_max_searches: int = 5
+    #: 한 경기 조사에 허용하는 시간(초). 넘으면 폴백(조사 없이 원판정 유지).
+    deepsearch_timeout_sec: int = 90
 
     # ── 프로바이더 의도적 미사용 ────────────────────────────────────────
     # mock(키 없음)도 오류도 아니다. 여기 있는 이름은 HTTP를 나가지 않고
