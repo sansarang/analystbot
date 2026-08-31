@@ -700,6 +700,22 @@ async def startup_backfill_job() -> None:
             BACKFILL_SINCE, stats["slates"], stats["inserted"], stats["rejudged"],
             stats["unchanged"], stats["seen"], stats["skipped"],
             graded["graded"], graded["void"])
+        # [1회성 관측] 운영 DB를 직접 조회할 수 없어, 현재 레저 내용을 로그로
+        #   한 번 드러낸다. 오늘 채점된 행이 무엇인지 눈으로 확인하기 위한 것이고,
+        #   확인이 끝나면 다음 배포에서 이 블록을 지운다.
+        try:
+            rows = await pool.fetch(
+                "SELECT game_id, sport, date, p_home, favored, confidence,"
+                "       gate_result, is_final, merged_from, winner, final_score,"
+                "       hit, void, graded_at"
+                "  FROM pick_ledger ORDER BY id DESC LIMIT 20")
+            logger.info("[ledger-snapshot] 총 %d행(최근 20)", len(rows))
+            for r in rows:
+                logger.info("[ledger-snapshot] %s", json.dumps(
+                    {k: (v.isoformat() if hasattr(v, "isoformat") else v)
+                     for k, v in dict(r).items()}, ensure_ascii=False))
+        except Exception as exc:
+            logger.warning("[ledger-snapshot] 조회 실패: %s", exc)
     except Exception as exc:
         logger.exception("[scheduler] 레저 백필 실패 — 운영은 계속: %s", exc)
     finally:

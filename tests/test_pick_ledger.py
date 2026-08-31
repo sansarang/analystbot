@@ -399,3 +399,76 @@ async def test_record_ledger_never_raises_into_the_send_path(monkeypatch):
 
     monkeypatch.setattr("app.db.get_pool", broken)
     await pipemod._record_ledger({"sport": "kbo", "date": DATE, "games": []})
+
+
+# ---------------------------------------------------------------- 중복 병합 방어
+#
+# 🔴 실사고 2026-08-31: 중복 경기 병합이 pick_ledger를 이관하지 않아
+#    DELETE FROM games 의 ON DELETE CASCADE가 판정 기록을 조용히 지웠다.
+#    로컬 재현으로 확정했다(병합 1건 → 레저 1행 소멸).
+#    CASCADE 자체는 옳다 — 진짜 경기가 지워지면 그 판정도 무의미하다.
+#    잘못은 병합이 이관 목록에서 레저를 빠뜨린 것이다.
+
+async def _dup_pair(pool) -> tuple[int, int]:
+    """같은 경기가 두 ext_id로 갈라진 상황."""
+    ids = []
+    for ext in ("dupA", "dupB"):
+        ids.append(await pool.fetchval(
+            "INSERT INTO games (sport,league,ext_id,starts_at,home,away,status,"
+            " home_score,away_score) VALUES ('kbo','KBO',$1,"
+            " now() - interval '3 hours','Doosan Bears','Kiwoom Heroes','final',5,2)"
+            " RETURNING id", ext))
+    return ids[0], ids[1]
+
+
+async def test_merge_never_shrinks_the_ledger(db_pool):
+    """🔴 이번 결함의 재발 방어선 — 병합 후 레저 행 수가 줄지 않는다."""
+    from app.collectors.game_match import merge_duplicate_games
+
+    keep, dup = await _dup_pair(db_pool)
+    await record_analysis(db_pool, {**_analysis(dup), "date": DATE})
+    before = await db_pool.fetchval("SELECT count(*) FROM pick_ledger")
+    assert before == 1
+    await merge_duplicate_games(db_pool)
+    after = await db_pool.fetchval("SELECT count(*) FROM pick_ledger")
+    assert after >= before, "병합이 판정 기록을 지웠다 — CASCADE 누락 재발"
+
+
+async def test_merge_moves_ledger_to_the_kept_game(db_pool):
+    """이관된 행은 살아남은 경기를 가리키고, 출처가 남는다."""
+    from app.collectors.game_match import merge_duplicate_games
+
+    keep, dup = await _dup_pair(db_pool)
+    await record_analysis(db_pool, _analysis(dup))
+    res = await merge_duplicate_games(db_pool)
+    assert res["moved_ledger"] == 1
+    row = await db_pool.fetchrow(
+        "SELECT game_id, merged_from, is_final FROM pick_ledger")
+    survivors = {keep, dup} - {row["game_id"]}
+    assert row["game_id"] in (keep, dup) and survivors, "이관 대상이 모호하다"
+    assert row["merged_from"] == dup, "병합 출처가 남지 않았다"
+    assert row["is_final"] is True
+
+
+async def test_merge_conflict_demotes_instead_of_deleting(db_pool):
+    """양쪽에 같은 날짜 최종 행이 있으면 dup 쪽을 이력으로 낮춰 **보존**한다.
+
+    판정 기록을 지우지 않는 것이 이 표의 존재 이유다. 그리고 그 이력 행이
+    재판정 때문인지 병합 때문인지 구분되게 merged_from을 남긴다 —
+    구분되지 않으면 캘리브레이션이 표본을 어떻게 셀지 정할 수 없다.
+    """
+    from app.collectors.game_match import merge_duplicate_games
+
+    keep, dup = await _dup_pair(db_pool)
+    await record_analysis(db_pool, _analysis(keep, p_home=0.61))
+    await record_analysis(db_pool, _analysis(dup, p_home=0.66))
+    assert await db_pool.fetchval("SELECT count(*) FROM pick_ledger") == 2
+    await merge_duplicate_games(db_pool)
+    rows = await db_pool.fetch(
+        "SELECT p_home, is_final, merged_from FROM pick_ledger ORDER BY p_home")
+    assert len(rows) == 2, "충돌 시 한쪽을 지웠다 — 보존해야 한다"
+    finals = [r for r in rows if r["is_final"]]
+    assert len(finals) == 1, "최종 행은 하나여야 한다"
+    demoted = [r for r in rows if not r["is_final"]]
+    assert demoted and demoted[0]["merged_from"] == dup, \
+        "강등된 이력 행에 병합 출처가 없다 — 재판정과 구분되지 않는다"

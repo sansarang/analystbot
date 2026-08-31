@@ -434,6 +434,10 @@ CREATE TABLE IF NOT EXISTS pick_ledger (
     -- 이력
     rejudge_count INT         NOT NULL DEFAULT 0,
     is_final      BOOLEAN     NOT NULL DEFAULT TRUE,
+    -- 중복 경기 병합으로 옮겨온 행이면 원래 game_id. 캘리브레이션이 이력 행을
+    -- 어떻게 다룰지 판단하는 근거다 — "왜 is_final=false인가"가 재판정 때문인지
+    -- 병합 때문인지 구분되지 않으면 표본을 어떻게 셀지 정할 수 없다.
+    merged_from   BIGINT,
 
     -- 채점 (finals 적재 잡이 채운다)
     final_score   TEXT,

@@ -181,7 +181,7 @@ async def grade_pending(pool, sport: str | None = None) -> dict:
     where_sport = " AND l.sport = $1" if sport else ""
     args = [sport] if sport else []
     rows = await pool.fetch(
-        f"""SELECT l.id, l.favored, l.p_home, g.status, g.home_score, g.away_score
+        f"""SELECT l.id, l.sport, l.favored, l.p_home, g.status, g.home_score, g.away_score
               FROM pick_ledger l JOIN games g ON g.id = l.game_id
              WHERE l.graded_at IS NULL
                AND g.status IN ('final', 'cancelled', 'suspended', 'postponed')
@@ -203,6 +203,11 @@ async def grade_pending(pool, sport: str | None = None) -> dict:
                 WHERE id = $1""",
             r["id"], f"{a}-{h}", winner, hit)
         out["graded"] += 1
+        # 건별로 남긴다 — "채점 N건"만으로는 무엇이 맞고 틀렸는지 볼 수 없고,
+        # 운영 DB를 직접 조회할 수 없을 때 이 로그가 유일한 확인 경로다.
+        logger.info("[ledger] 채점 game=%s %s 예측=%s(p_home=%s) 결과=%s(%s) → %s",
+                    r["id"], r.get("sport") or "", side, r["p_home"], winner,
+                    f"{a}-{h}", "적중" if hit else ("무승부" if hit is None else "빗나감"))
     if out["graded"] or out["void"]:
         logger.info("[ledger] 채점 %d건 · void %d건", out["graded"], out["void"])
     return out

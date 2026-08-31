@@ -95,7 +95,7 @@ async def merge_duplicate_games(pool, sport: str | None = None) -> dict:
         HAVING count(*) > 1
         """, *args)
     out = {"groups": len(groups), "merged": 0, "moved_predictions": 0,
-           "moved_expert_picks": 0}
+           "moved_expert_picks": 0, "moved_ledger": 0}
     for g in groups:
         ids = list(g["ids"])
         # 예측이 붙은 행을 남긴다 — 그것이 우리가 판정한 경기다
@@ -134,9 +134,33 @@ async def merge_duplicate_games(pool, sport: str | None = None) -> dict:
             "WITH m AS (UPDATE expert_picks SET game_id = $1 "
             "WHERE game_id = ANY($2::int[]) RETURNING 1) SELECT count(*) FROM m",
             keep, dups) or 0)
+        # 🔴 pick_ledger도 옮긴다. 빠뜨리면 DELETE FROM games 의 ON DELETE CASCADE가
+        #    판정 기록을 **조용히 지운다** (실측 재현 2026-08-31: 병합 1건에
+        #    레저 1행 소멸). 0단계 완료 조건이 "기록·채점 무결손"이므로
+        #    이 누락은 조건을 구조적으로 깨뜨린다.
+        #    2026-08-27에 predictions를 이관 대상에 넣었을 때 같은 이유였다 —
+        #    새 표를 만들면 **이 목록에 반드시 추가한다.**
+        #
+        # ⚠️ 유니크 인덱스 `idx_pick_ledger_final(game_id, date) WHERE is_final`
+        #    때문에 keep 쪽에 같은 날짜의 최종 행이 있으면 이관이 충돌한다.
+        #    그때는 **지우지 않고** dup 쪽을 이력(is_final=false)으로 낮춰 보존한다 —
+        #    판정 기록을 지우지 않는 것이 이 표의 존재 이유다.
+        #    병합 출처는 merged_from에 남겨, 나중에 "이 이력 행이 재판정인지
+        #    병합인지"를 되물을 수 있게 한다.
+        await pool.execute(
+            """UPDATE pick_ledger SET is_final = FALSE, merged_from = game_id
+                WHERE game_id = ANY($2::int[]) AND is_final
+                  AND EXISTS (SELECT 1 FROM pick_ledger k
+                               WHERE k.game_id = $1 AND k.date = pick_ledger.date
+                                 AND k.is_final)""", keep, dups)
+        out["moved_ledger"] = out.get("moved_ledger", 0) + int(await pool.fetchval(
+            "WITH m AS (UPDATE pick_ledger SET game_id = $1, "
+            "  merged_from = COALESCE(merged_from, game_id) "
+            "WHERE game_id = ANY($2::int[]) RETURNING 1) SELECT count(*) FROM m",
+            keep, dups) or 0)
         await pool.execute("DELETE FROM games WHERE id = ANY($1::int[])", dups)
         out["merged"] += len(dups)
     if out["merged"]:
-        logger.info("[game_match] 중복 경기 %d행 병합 — 예측 %d건 이관",
-                    out["merged"], out["moved_predictions"])
+        logger.info("[game_match] 중복 경기 %d행 병합 — 예측 %d건 · 레저 %d건 이관",
+                    out["merged"], out["moved_predictions"], out["moved_ledger"])
     return out
