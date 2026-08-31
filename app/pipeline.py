@@ -2988,7 +2988,13 @@ def _compute_picks(
             if _x.get("any"):
                 jg["x_starter_mention"] = _x["any"]
             if len(_srcs) >= 2:
-                jg["crosscheck"] = crosscheck_apply(research_clean, jg, _srcs)
+                # 공식 기록실 투수맵을 함께 넘긴다 — 교차검증으로 선발이 바뀌면
+                # 성적을 새 투수 것으로 다시 채우기 위해서다.
+                # NPB는 투수맵이 없다(선발 ERA를 Yahoo가 채운다) → 빈 dict가
+                # 넘어가고 "미확보"로 기록된다. 조용히 비는 것보다 낫다.
+                jg["crosscheck"] = crosscheck_apply(
+                    research_clean, jg, _srcs,
+                    pitcher_stats=(statcast_data or {}).get("kbo_pitchers") or {})
 
         # [§8-16] 라인업 — 네이티브 API(statsapi)는 MLB 전용이다. KBO·NPB는
         #   **딥서치가 소스다**(Perplexity 스키마 lineup + Grok 속보 브리핑).

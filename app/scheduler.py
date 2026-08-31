@@ -747,6 +747,24 @@ async def startup_backfill_job() -> None:
                      for k, v in dict(r).items()}, ensure_ascii=False))
         except Exception as exc:
             logger.warning("[ledger-snapshot] 조회 실패: %s", exc)
+        # [1회성 관측] v1.1 1단계 묶음 — NPB pitcher_appearances 운영 실적 확인.
+        #   로컬에는 801행(선발 192)이 있으나 운영은 조회 경로가 없어 미확인이었다.
+        #   05:25 npb_lineup_history 잡 로그로도 확인되지만, 그 잡이 도는 것을
+        #   기다리지 않고 지금 사실을 드러낸다. 확인 후 이 블록도 함께 지운다.
+        try:
+            rows = await pool.fetch(
+                "SELECT sport, count(*) AS rows,"
+                "       count(*) FILTER (WHERE is_starter) AS starters,"
+                "       max((SELECT max(g.starts_at) FROM games g"
+                "            WHERE g.id = a.game_id)) AS latest"
+                "  FROM pitcher_appearances a GROUP BY sport ORDER BY sport")
+            for r in rows:
+                logger.info("[appearances] %s 총 %s행 · 선발 %s · 최신 %s",
+                            r["sport"], r["rows"], r["starters"], r["latest"])
+            if not rows:
+                logger.warning("[appearances] 🔴 pitcher_appearances 가 비어 있다")
+        except Exception as exc:
+            logger.warning("[appearances] 조회 실패: %s", exc)
     except Exception as exc:
         logger.exception("[scheduler] 레저 백필 실패 — 운영은 계속: %s", exc)
     finally:

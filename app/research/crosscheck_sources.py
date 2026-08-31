@@ -109,7 +109,38 @@ def crosscheck_starters(sources: dict[str, dict]) -> dict:
     return out
 
 
-def apply(research: dict, jg: dict, sources: dict[str, dict]) -> dict:
+#: 선발 이름이 바뀌면 그 투수 것이 아니게 되는 성적 필드.
+STARTER_STAT_FIELDS = ("era_season", "whip", "ip_avg_recent", "era_vs_opponent")
+
+
+def _refill_starter_stats(blk: dict, name: str, pitcher_stats: dict | None) -> str:
+    """교차검증으로 채택된 투수의 성적을 다시 채운다. 반환: 사람이 읽는 상태.
+
+    🔴 종전에는 이름이 바뀌면 성적 4종을 **비우기만 하고 끝냈다.**
+       비우는 것 자체는 옳다 — 이전 소스의 성적은 그 투수 것이 아니다.
+       그러나 새 투수 것으로 다시 채우지 않아, 소스가 갈린 경기는 판정이
+       선발 WHIP·ERA를 통째로 잃었다(게이트③ 차단 사례).
+       공식 기록실 맵이 이름으로 조회 가능하므로 다시 채운다.
+
+    ⚠️ 채울 수 없으면 **조용히 비워두지 않는다.** 어느 소스를 택했고 왜
+       성적이 없는지 기록을 남긴다 — 나중에 "왜 이 경기만 WHIP이 없나"를
+       되물을 수 있어야 한다.
+    """
+    p = (pitcher_stats or {}).get(name)
+    if not p:
+        blk["stats_status"] = "미확보 — 교차검증으로 선발이 바뀌었으나 공식 기록 없음"
+        return "미확보"
+    filled = []
+    for k in STARTER_STAT_FIELDS:
+        if p.get(k) is not None:
+            blk[k] = p[k]
+            filled.append(k)
+    blk["stats_status"] = ("재확보 — " + ",".join(filled)) if filled else "미확보"
+    return blk["stats_status"]
+
+
+def apply(research: dict, jg: dict, sources: dict[str, dict],
+          pitcher_stats: dict | None = None) -> dict:
     """교차검증 결과를 research·jg에 반영. 반환: 요약(판정·카드 표시용).
 
     ⚠️ **불일치를 조용히 해결하지 않는다.** 값은 최신 소스로 채우되,
@@ -125,15 +156,20 @@ def apply(research: dict, jg: dict, sources: dict[str, dict]) -> dict:
         if not res.get("value"):
             continue
         blk = research.setdefault(f"{side}_pitcher", {})
+        stats_state = None
         if norm_name(blk.get("name")) != norm_name(res["value"]):
             blk["name"] = res["value"]
             # 이름이 바뀌면 이전 소스의 성적은 그 투수 것이 아니다 — 함께 비운다
-            for k in ("era_season", "whip", "ip_avg_recent", "era_vs_opponent"):
+            for k in STARTER_STAT_FIELDS:
                 blk.pop(k, None)
+            # …그리고 **새 투수 것으로 다시 채운다.** 비우기만 하면 소스가
+            #   갈린 경기는 판정이 선발 성적을 통째로 잃는다.
+            stats_state = _refill_starter_stats(blk, res["value"], pitcher_stats)
         summary["starters"][side] = {
             "name": res["value"], "source": res["source"],
             "agree": res["agree"],
             "conflict": [f"{c['value']}({c['source']})" for c in res["conflict"]],
+            **({"stats": stats_state} if stats_state else {}),
         }
     if starters["conflict"]:
         jg["lineup_status"] = STATUS_CONFLICT      # 최종 픽 자격 박탈
