@@ -118,6 +118,13 @@ async def prefetch_job(sports: tuple[str, ...] = ("mlb", "soccer")) -> None:
                     impact=f"오늘 {sport_kr} 리포트가 없습니다"))
             all_stages += [replace(st, name=f"[{sport_kr}] {st.name}")
                            for st in stages]
+        # [휴식일] 대상 리그가 **전부** 경기 없음이면 한 장으로 알린다.
+        #   종전에는 이 날 7건이 🔴로 나가고 "전량 실패 — 신뢰도 낮음"으로 끝나서,
+        #   사용자가 장애인지 휴식일인지 알 수 없었다(실측 2026-08-31 14:01).
+        try:
+            await _notify_rest_day(all_stages, sports)
+        except Exception as exc:
+            logger.warning("[scheduler] 휴식일 안내 실패 — 프리페치는 계속: %s", exc)
         recovered = await drain_retry_queue(redis)
         calls = await research_calls_today(redis)
         fails = await research_failure_report(redis, today_kst())
@@ -151,6 +158,30 @@ async def prefetch_job(sports: tuple[str, ...] = ("mlb", "soccer")) -> None:
         except Exception as exc:
             logger.warning("[scheduler] 프리페치 리포트 발송 실패: %s", exc)
         await redis.aclose()
+
+
+async def _notify_rest_day(all_stages, sports) -> bool:
+    """대상 리그가 전부 휴식일이면 텔레그램 1장. 아니면 아무것도 하지 않는다.
+
+    ⚠️ **일부만 휴식일이면 보내지 않는다.** 경기가 있는 리그의 리포트가 따로
+       나가는데 "경기 없습니다"를 같이 보내면 서로 모순으로 읽힌다.
+    ⚠️ 실패가 하나라도 섞였으면 보내지 않는다 — 휴식일이라고 단정할 근거가 없다.
+    """
+    from app.alerts import _no_game_leagues
+    from app.notify import send_telegram
+    from app.pipeline import next_slate_hint
+
+    rest = _no_game_leagues(all_stages)
+    want = [_SPORT_KR.get(s, s) for s in sports]
+    if not rest or set(rest) != set(want):
+        return False
+    if any(st.failed for st in all_stages):
+        return False
+    nxt = await next_slate_hint(await get_pool(), sports)
+    text = (f"\U0001f5d3\ufe0f 오늘은 {'·'.join(want)} 경기가 없습니다.\n"
+            f"다음 슬레이트: {nxt}")
+    logger.info("[scheduler] 휴식일 안내 발송 — %s", ", ".join(want))
+    return await send_telegram(text)
 
 
 async def prefetch_asia_job() -> None:

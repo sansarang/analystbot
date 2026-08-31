@@ -922,6 +922,69 @@ def starter_change_notes(research: dict, before: dict) -> list[str]:
     return notes
 
 
+async def next_slate_hint(pool, sports) -> str:
+    """다음 경기일 안내 문구. 모르면 "미정"이라고 쓴다 — 지어내지 않는다."""
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _Z
+
+    if pool is None:
+        return "미정"
+    try:
+        row = await pool.fetchrow(
+            """SELECT min((starts_at AT TIME ZONE 'Asia/Seoul')::date) AS d
+                 FROM games
+                WHERE sport = ANY($1::text[]) AND status = 'scheduled'
+                  AND starts_at > now()""", list(sports))
+    except Exception:
+        return "미정"
+    if not row or not row["d"]:
+        return "미정"
+    dd = row["d"]
+    wd = "월화수목금토일"[dd.weekday()]
+    today = _dt.now(_Z("Asia/Seoul")).date()
+    when = "오늘" if dd == today else ("내일" if (dd - today).days == 1
+                                       else f"{dd.month}/{dd.day}")
+    return f"{when}({wd}) 저녁"
+
+
+async def is_rest_day(pool, sport: str, day: str) -> bool:
+    """오늘 그 리그에 **경기 자체가 없는 날**인가 (수집 실패와 구분).
+
+    🔴 이 구분이 전부다. 뭉뚱그리면 휴식일마다 "전량 실패 — 신뢰도 낮음"이
+       나가고(실측 2026-08-31 14:01, KBO·NPB 7건 오경보), 그 소음에 진짜
+       수집 실패가 묻힌다.
+
+    판별: 오늘 0경기인데 **±7일 창에는 경기가 있으면** 일정은 정상으로 실려
+    있는 것이므로 휴식일이다. 창 전체가 0이면 일정 자체가 안 들어온 것이라
+    휴식일이라고 말하지 않는다 — 모르는 것을 정상의 근거로 쓰지 않는다
+    (lineup_timing.before_announcement과 같은 태도).
+    """
+    if pool is None:
+        return False
+    from datetime import date as _date
+
+    try:
+        # ⚠️ asyncpg는 `$2::date` 파라미터에 str을 받지 않는다. 문자열을 그대로
+        #    넘기면 예외가 나고, 아래 except가 그것을 삼켜 **기능이 조용히 꺼진다**
+        #    (테스트가 잡았다 — 운영이었다면 휴식일 판별이 영원히 False였다).
+        day_d = _date.fromisoformat(str(day))
+    except ValueError:
+        return False
+    try:
+        today, around = await pool.fetchrow(
+            """SELECT
+                 count(*) FILTER (
+                   WHERE (starts_at AT TIME ZONE 'Asia/Seoul')::date = $2::date) AS today,
+                 count(*) FILTER (
+                   WHERE (starts_at AT TIME ZONE 'Asia/Seoul')::date
+                         BETWEEN $2::date - 7 AND $2::date + 7) AS around
+               FROM games WHERE sport = $1""", sport, day_d)
+    except Exception as exc:
+        logger.warning("[pipeline] 휴식일 판별 실패 — 실패로 취급: %s", exc)
+        return False
+    return int(today) == 0 and int(around) > 0
+
+
 async def build_analysis(
     pool: asyncpg.Pool, sport: str, date: str,
     team: str | None = None, league_key: str | None = None, progress=None,
@@ -942,7 +1005,8 @@ async def build_analysis(
     stages: list = stages_out if stages_out is not None else []
 
     async def record(name, ok, total, *, cause=None, detail="", impact="",
-                     exc=None, unit="경기", expect_full=True, zero_ok=False):
+                     exc=None, unit="경기", expect_full=True, zero_ok=False,
+                     no_games=False):
         """단계 결과를 기록한다. **여기서 발송하지 않는다.**
 
         🔴 종전에는 단계마다 즉시 발송해 한 번의 분석에서 알림이 7~8건 쏟아졌고,
@@ -960,6 +1024,7 @@ async def build_analysis(
             detail=detail or (f"{type(exc).__name__}: {exc}" if exc is not None else ""),
             frames=our_frames(exc) if exc is not None else [],
             impact=impact, unit=unit, expect_full=expect_full, zero_ok=zero_ok,
+            no_games=no_games,
         )
         stages.append(st)
         if st.severity != "정상":
@@ -1120,10 +1185,15 @@ async def build_analysis(
     # 🔴 종전 분모가 `len(games) or 1` — 분자와 같아 **절대 실패할 수 없었다.**
     #   일정에 몇 경기가 있어야 하는지는 미리 알 수 없다. 그러면 분모를 지어내지
     #   말고 **이분법(있었나/없었나)**으로 재는 것이 정직하다. 개수는 detail에.
+    # [휴식일] 경기가 없는 날은 실패가 아니다 — 확인된 사실이다.
+    rest_day = (not games) and await is_rest_day(pool, sport, date)
+    if rest_day:
+        logger.info("[pipeline] %s %s — 경기 없음(휴식일) 확인", sport, date)
     await record("경기 적재", 1 if games else 0, 1, unit="건",
                  detail=f"{len(games)}경기 적재",
-                 cause=None if games else "missing",
-                 impact="분석할 경기가 없습니다")
+                 cause=None if (games or rest_day) else "missing",
+                 impact="" if rest_day else "분석할 경기가 없습니다",
+                 no_games=rest_day)
     # [§8-10] 배당 수집 — 종전 미계측. 0건이면 전 마켓이 ⚪(배당 미수집)로 나가는데
     #         그 사실이 어디에도 기록되지 않았다.
     _sched_now = [g for g in games if g.get("status") == "scheduled"]
@@ -1331,7 +1401,8 @@ async def build_analysis(
                 await record("날씨", len(weather), _n,
                              cause=None if weather else "missing",
                              unit="경기", expect_full=False,
-                             impact="구장 날씨가 토탈 λ에 반영되지 않습니다")
+                             impact="구장 날씨가 토탈 λ에 반영되지 않습니다",
+                             no_games=rest_day)
                 await record("결장", len(absences), _n,
                              cause=None if absences else "missing",
                              unit="경기", expect_full=False,
@@ -1446,14 +1517,16 @@ async def build_analysis(
                 await record("날씨", len(kweather), max(1, len(_up)),
                              cause=None if kweather else "missing",
                              unit="경기", expect_full=False,
-                             impact="기온·바람이 토탈 λ에 반영되지 않습니다")
+                             impact="기온·바람이 토탈 λ에 반영되지 않습니다",
+                             no_games=rest_day)
                 logger.info("[pipeline] KBO 지표 — 팀 %d / 투수 %d",
                             len(kteams), len(kpitchers))
                 await record("네이버 수집", len(naver), max(1, len(games)),
                              cause=None if naver else "missing",
                              detail=f"{len(naver)}경기 · 선발·폼·순위 (LLM 0회)",
                              unit="경기",
-                             impact="선발·최근폼을 딥서치에만 의존하게 됩니다")
+                             impact="선발·최근폼을 딥서치에만 의존하게 됩니다",
+                             no_games=rest_day)
                 await record("투수 소모", len(usage), KBO_TEAMS,
                              cause=None if usage else "missing",
                              detail=f"{len(usage)}팀 · 최근 3경기 등판 (LLM 0회)",
@@ -1463,7 +1536,8 @@ async def build_analysis(
                              cause=None if news_quotes else "missing",
                              detail=f"{len(news_quotes)}경기 인용 (원문 그대로·LLM 0회)",
                              unit="경기", expect_full=False,
-                             impact="감독 발언·로테이션 계획이 빠집니다")
+                             impact="감독 발언·로테이션 계획이 빠집니다",
+                             no_games=rest_day)
                 await record("1군 등록", len(roster), KBO_TEAMS,
                              cause=None if roster else "missing",
                              detail=f"{len(roster)}팀 명단 (LLM 0회)",
@@ -1542,12 +1616,14 @@ async def build_analysis(
                 await record("날씨", len(nweather), max(1, len(_up)),
                              cause=None if nweather else "missing",
                              unit="경기", expect_full=False,
-                             impact="기온·바람이 토탈 λ에 반영되지 않습니다")
+                             impact="기온·바람이 토탈 λ에 반영되지 않습니다",
+                             no_games=rest_day)
                 await record("Yahoo 수집", len(yh), max(1, len(games)),
                              cause=None if yh else "missing",
                              detail=f"{len(yh)}경기 · 선발·불펜 (LLM 0회)",
                              unit="경기",
-                             impact="NPB는 선발 지표 없이 판정 단독으로 갑니다")
+                             impact="NPB는 선발 지표 없이 판정 단독으로 갑니다",
+                             no_games=rest_day)
                 await record("NPB 지표", len(nteams), NPB_TEAMS,
                              cause=None if nteams else "missing",
                              detail=f"팀 {len(nteams)}/12 · 시즌 OBP",

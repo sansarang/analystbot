@@ -236,6 +236,7 @@ class StageResult:
     unit: str = "경기"             # ok/total이 무엇을 세는가 (경기·팀·구장·값·건)
     expect_full: bool = True       # 전량 수집이 정상인가 (False면 부분도 정상)
     zero_ok: bool = False          # **지금 시점에** 0건이 정상인가 (예: 라인업 발표 전)
+    no_games: bool = False         # 오늘 그 리그에 **경기 자체가 없다**(휴식일)
 
     @property
     def severity(self) -> str:
@@ -245,6 +246,12 @@ class StageResult:
            호출부가 시각 같은 근거로 판단해서 넘겨야 하고, 상시로 켜두면
            수집기가 죽어도 조용해진다.
         """
+        # 🔴 "경기가 없는 날"과 "경기가 있는데 못 모은 날"은 다른 사건이다.
+        #    뭉뚱그리면 휴식일마다 전량 실패 알림이 나가고(실측 2026-08-31 14:01
+        #    KBO·NPB 7건 오경보), 그 소음에 진짜 실패가 묻힌다.
+        #    이 구분이 no_games의 전부다 — cause보다 **먼저** 본다.
+        if self.no_games:
+            return "경기없음"
         if self.cause is not None:
             return "실패"
         if self.total > 0 and self.ok == 0:
@@ -263,9 +270,13 @@ class StageResult:
 
     @property
     def icon(self) -> str:
-        return {"정상": "✅", "부분": "🟡", "실패": "🔴"}[self.severity]
+        # ⚪ 는 성공도 실패도 아닌 제3의 상태다 — ✅로 쓰면 "수집했다"로 읽힌다.
+        return {"정상": "✅", "부분": "🟡", "실패": "🔴",
+                "경기없음": "⚪"}[self.severity]
 
     def line(self) -> str:
+        if self.no_games:
+            return f"{self.icon} {self.name} — 경기 없음(휴식일)"
         count = (f"{self.ok}/{self.total}{self.unit}" if self.total
                  else ("실패" if self.failed else "완료"))
         parts = [f"{self.icon} {self.name} {count}"]
@@ -374,8 +385,27 @@ async def prefetch_report(
                        bypass_suppression=True)
 
 
+def _no_game_leagues(stages: list[StageResult]) -> list[str]:
+    """`[KBO] 경기 적재` 같은 이름에서 휴식일 리그를 뽑는다."""
+    import re
+
+    out: list[str] = []
+    for st in stages:
+        if not st.no_games:
+            continue
+        m = re.match(r"\[([^\]]+)\]", st.name)
+        lg = m.group(1) if m else None
+        if lg and lg not in out:
+            out.append(lg)
+    return out
+
+
 def overall_verdict(stages: list[StageResult]) -> str:
     """단계 결과를 한 줄 결론으로. 사용자가 오늘 리포트를 믿어도 되는지 판단하게."""
+    # 휴식일은 "신뢰도가 낮다"가 아니라 **확인된 사실**이다. 먼저 답한다.
+    rest = _no_game_leagues(stages)
+    if rest and not [s for s in stages if s.failed]:
+        return f"오늘 {'·'.join(rest)} 경기 없음 확인 — 수집 실패가 아닙니다"
     hard = [s for s in stages if s.failed and s.ok == 0]
     soft = [s for s in stages if s.failed and s.ok > 0]
     if not hard and not soft:
