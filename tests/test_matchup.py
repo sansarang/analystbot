@@ -1,5 +1,6 @@
 """4단계 — 매치업. p_home은 코드에서 0.32–0.68 절사. 폼은 재호출하지 않는다."""
 import json
+from pathlib import Path
 
 import pytest
 
@@ -354,3 +355,50 @@ def test_season_collector_does_not_call_out_in_mock_mode():
         if False else asyncio.run(attach(jg))
     assert jg["research"]["home_starter_season"] == {}
     assert jg["research"]["away_starter_season"] == {}
+
+
+def test_season_collector_retries_like_every_other_http_call():
+    """🔴 CLAUDE.md: "모든 외부 HTTP 호출은 지수 백오프 3회 재시도 + 타임아웃 필수".
+
+    종전에는 raw httpx 한 방이었다 — 일시적 5xx 하나에 표본 보정이 통째로 빠진다.
+    """
+    from app.collectors.base import BaseAPIClient
+    from app.collectors.starter_season import StatsAPIClient
+
+    assert issubclass(StatsAPIClient, BaseAPIClient)
+    assert StatsAPIClient.max_retries == 3
+    assert StatsAPIClient.timeout > 0
+    src = Path("app/collectors/starter_season.py").read_text(encoding="utf-8")
+    assert "httpx.AsyncClient" not in src, "재시도 없는 raw httpx 가 남아 있다"
+
+
+def test_roster_is_fetched_once_per_slate_not_per_game():
+    """🔴 실측 2026-09-01: 경기마다 전체 명단(1,421명·1.4MB·1.1초)을 다시 받았다.
+    11경기면 15.3MB·약 12초를 그냥 태운다 — 저녁 아시아 창에서 그대로 손해다."""
+    from app.collectors import starter_season as ss
+
+    src = Path("app/collectors/starter_season.py").read_text(encoding="utf-8")
+    assert "_ROSTER_KEY" in src and "_roster_mem" in src
+    assert ss._ROSTER_TTL >= 3600
+    # attach 가 redis 를 받아 캐시를 공유한다
+    import inspect
+    assert "redis" in inspect.signature(ss.attach).parameters
+    assert "redis" in inspect.signature(ss.fetch_mlb).parameters
+
+
+def test_replay_mode_suppresses_season_line():
+    """🔴 statsapi 시즌 스탯은 언제나 "지금" 값이다. 끝난 경기를 재현하면
+    그 경기 자체가 시즌 라인에 들어간다.
+
+    실측: Will Dion 시즌 `선발 1`의 그 1경기가 재현 대상 경기였다
+    (경기 전 선발 등판은 0회).
+    """
+    import asyncio
+
+    from app.collectors.starter_season import attach
+
+    jg = {"sport": "mlb", "research": {"home_pitcher": {"name": "Will Dion"},
+                                       "away_pitcher": {"name": "Ryan Gusto"}}}
+    asyncio.run(attach(jg, replay=True))
+    assert jg["research"]["home_starter_season"] == {}
+    assert jg["season_line_suppressed"] is True

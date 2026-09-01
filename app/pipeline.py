@@ -2234,7 +2234,7 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
         try:
             from app.collectors.starter_season import attach as _season
 
-            await _season(jg)
+            await _season(jg, redis=redis)
         except Exception as exc:
             logger.warning("[pipeline] 선발 시즌 라인 실패 game=%s: %s",
                            jg.get("game_id"), exc)
