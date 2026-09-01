@@ -532,3 +532,52 @@ def test_lineup_diff_reads_the_signature_itself():
     # 이전 서명이 없거나 형식이 다르면 **지어내지 않는다**
     assert lineup_diff(None, "A|B|C|D") == []
     assert lineup_diff("legacy-string", "A|B|C|D") == []
+
+
+# ---------------------------------------------------------------- NPB 창 이원화
+
+def test_rejudge_window_is_wider_than_full_analysis_for_npb():
+    """🔴 NPB 공시는 T-30이다. 풀 분석과 경량 재판정을 같이 T-15에 닫으면
+    창이 15분뿐이고, 놓친 경기는 잠정으로 남아 추천 게이트에서 탈락한다.
+
+    풀 분석(analysis_open)은 T-15 그대로, 경량 재판정(rejudge_open)만 T-10.
+    """
+    from app.engine.pregame_push import NPB_REJUDGE_FINISH_MIN, rejudge_open
+
+    assert NPB_REJUDGE_FINISH_MIN == 10
+    now = datetime(2026, 8, 28, 8, 45, tzinfo=UTC)          # KST 17:45
+    npb_1800 = datetime(2026, 8, 28, 9, 0, tzinfo=UTC)      # T-15
+    # T-15: 풀 분석은 닫히고 경량 재판정은 열려 있다 — 이것이 이원화의 핵심
+    assert analysis_open("npb", npb_1800, now) is False
+    assert rejudge_open("npb", npb_1800, now) is True
+    # T-11 열림 / T-10 닫힘 (기존 NPB_FINISH_MIN 과 같은 `>` 경계 관례)
+    assert rejudge_open("npb", now + timedelta(minutes=11), now) is True
+    assert rejudge_open("npb", now + timedelta(minutes=10), now) is False
+    # KBO·MLB 는 시작 전까지 그대로
+    assert rejudge_open("kbo", now + timedelta(minutes=1), now) is True
+    assert rejudge_open("mlb", now + timedelta(minutes=1), now) is True
+    # 이미 시작한 경기는 어느 창도 열지 않는다
+    assert rejudge_open("npb", now - timedelta(minutes=1), now) is False
+
+
+def test_full_analysis_window_unchanged():
+    """이원화가 풀 분석 창을 건드리지 않았다는 회귀 확인."""
+    from app.engine.pregame_push import NPB_FINISH_MIN
+
+    assert NPB_FINISH_MIN == 15 and HARD_TARGET_MIN == 15
+    now = datetime(2026, 8, 28, 8, 45, tzinfo=UTC)
+    npb = datetime(2026, 8, 28, 9, 0, tzinfo=UTC)
+    assert analysis_open("npb", npb, now) is False
+    assert analysis_open("npb", npb, now - timedelta(minutes=1)) is True
+
+
+def test_pending_card_says_what_is_missing():
+    """T-10에도 미확정이면 침묵하지 않는다 — "카드가 안 온 것"과
+    "라인업이 안 나온 것"은 사용자에게 다른 일이다."""
+    from app.engine.pregame_push import lineup_pending_card
+
+    card = lineup_pending_card("npb", "Hanshin Tigers", "Yomiuri Giants", 10)
+    assert "라인업 미확정 — 관망" in card
+    assert "10분 전" in card
+    assert "추천하지 않습니다" in card
+    assert "공시되면 즉시 재판정" in card

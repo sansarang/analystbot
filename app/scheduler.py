@@ -419,11 +419,13 @@ async def mlb_pregame_poll() -> None:
         await redis.aclose()
 
 
-async def crawler_lineup_poll() -> None:
+async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
     """[배선] KBO·NPB 라인업을 크롤러 스냅샷에서 확인하고, 새로 뜨면 재판정한다.
 
-    NPB는 시작 15분 전(18:00 → 17:45)까지 크롤·분석을 끝낸다. 그 시각 이후
-    재판정하지 않는다. 타순이 바뀐 경기는 종목 안에서 병렬로 돌리고, 끝나는
+    NPB는 **창이 둘로 갈린다**: 풀 분석(크롤·리서치)은 T-15에 닫고, 캐시 폼 +
+    매치업만 다시 도는 **경량 재판정은 T-10까지** 연다. 공시가 T-30이라
+    T-15로 함께 닫으면 창이 15분뿐이고, 놓친 경기는 잠정으로 남아 추천
+    게이트에서 통째로 탈락한다. 타순이 바뀐 경기는 종목 안에서 병렬로 돌리고, 끝나는
     즉시 보낸다. 슬레이트 파이프라인(`ensure_analysis_cache`)은 저녁에 돌리지 않는다.
     ⚠️ MLB 경로(`refresh_mlb_lineup`)는 statsapi 전용이라 이 두 종목에 쓸 수 없다.
     ⚠️ 한 경기 실패가 나머지를 막지 않는다.
@@ -432,7 +434,8 @@ async def crawler_lineup_poll() -> None:
 
     from app.collectors import crawler_feed
     from app.engine.pregame_push import (
-        analysis_open, roster_signature, send_game_prediction, still_upcoming,
+        NPB_REJUDGE_FINISH_MIN, lineup_pending_card, minutes_until_start,
+        rejudge_open, roster_signature, send_game_prediction, still_upcoming,
         void_analysis_games,
     )
     from app.pipeline import (
@@ -445,8 +448,8 @@ async def crawler_lineup_poll() -> None:
     redis = aioredis.from_url(s.redis_url, decode_responses=True)
     now = datetime.now(UTC)
     try:
-        # NPB를 먼저 — 17:45 종료선을 KBO 슬레이트에 밀리지 않게.
-        for sport in ("npb", "kbo"):
+        # NPB를 먼저 — 종료선을 KBO 슬레이트에 밀리지 않게.
+        for sport in sports:
             date = today_kst()
             snap = await crawler_feed.load_snapshot(redis, sport, date)
             if not snap:
@@ -494,15 +497,15 @@ async def crawler_lineup_poll() -> None:
                         r["id"], status,
                         game.get("home_pitcher") or None,
                         game.get("away_pitcher") or None)
-                if roster_changed and analysis_open(sport, r["starts_at"], now):
+                if roster_changed and rejudge_open(sport, r["starts_at"], now):
                     jobs.append((dict(r), status, notes, roster, sig_key, game))
                 else:
                     if roster_changed:
                         await redis.set(sig_key, roster, ex=86400)
                         if sport == "npb" and still_upcoming(r["starts_at"], now):
                             logger.warning(
-                                "[scheduler] NPB T-15 이후 라인업 변동 — 재판정 안 함 game=%s",
-                                r["id"])
+                                "[scheduler] NPB T-%d 이후 라인업 변동 — 재판정 안 함 "
+                                "game=%s", NPB_REJUDGE_FINISH_MIN, r["id"])
                     catchup.append(dict(r))
 
             async def _rejudge_and_send(item, *, _sport=sport, _date=date):
@@ -544,8 +547,62 @@ async def crawler_lineup_poll() -> None:
                 except Exception as exc:
                     logger.warning("[scheduler] %s 발송 실패 game=%s: %s",
                                    sport, row["id"], exc)
+            if sport == "npb":
+                await _npb_pending_notice(redis, rows, now)
     finally:
         await redis.aclose()
+
+
+async def _npb_pending_notice(redis, rows, now) -> None:
+    """T-10에도 확정이 안 온 NPB 경기 — **조용히 잠정으로 두지 않는다.**
+
+    사용자 입장에서 "카드가 안 온 것"과 "라인업이 안 나온 것"은 다르다.
+    말하지 않으면 봇이 죽은 줄 안다. 경기당 1회만 보낸다.
+    """
+    from app.engine.pregame_push import (
+        NPB_REJUDGE_FINISH_MIN, lineup_pending_card, minutes_until_start,
+        still_upcoming,
+    )
+    from app.notify import send_telegram
+
+    for r in rows:
+        if (r["lineup_status"] or "") == "confirmed":
+            continue
+        if not still_upcoming(r["starts_at"], now):
+            continue
+        left = minutes_until_start(r["starts_at"], now)
+        if left is None or left > NPB_REJUDGE_FINISH_MIN:
+            continue
+        key = f"npb_pending_notice:{r['id']}"
+        try:
+            if await redis.get(key):
+                continue
+            await redis.set(key, "1", ex=6 * 3600)
+        except Exception as exc:
+            logger.warning("[scheduler] 관망 알림 중복키 실패 game=%s: %s",
+                           r["id"], exc)
+        try:
+            await send_telegram(
+                lineup_pending_card("npb", r["home"], r["away"], left))
+            logger.info("[scheduler] NPB 라인업 미확정 관망 카드 game=%s left=%.0f분",
+                        r["id"], left)
+        except Exception as exc:
+            logger.warning("[scheduler] 관망 카드 발송 실패 game=%s: %s",
+                           r["id"], exc)
+
+
+async def asia_pregame_kbo() -> None:
+    """KBO 전용 5분 폴링."""
+    await crawler_lineup_poll(("kbo",))
+
+
+async def npb_pregame_2m() -> None:
+    """NPB 전용 2분 폴링 — 공시(T-30)와 종료선(T-10) 사이가 좁다.
+
+    5분 간격이면 T-30~T-10 20분 창에 최대 4회뿐이고, 공시 직후 한 틱을
+    놓치면 그 경기는 잠정으로 끝난다.
+    """
+    await crawler_lineup_poll(("npb",))
 
 
 async def kbo_lineup_history_job() -> None:
@@ -1006,9 +1063,13 @@ def _job_specs() -> list[tuple]:
         ("research_retry_45m", research_retry_job, IntervalTrigger(minutes=45)),
         ("lineup_poll_30m", lineup_poll_job, IntervalTrigger(minutes=30)),
         # NPB 18:00 → 17:45까지 크롤·분석 종료. KBO는 시작 직전까지 5분마다.
-        ("asia_pregame_5m", crawler_lineup_poll,
+        ("asia_pregame_5m", asia_pregame_kbo,
          CronTrigger(hour="17,18", minute="0,5,10,15,20,25,30,35,40,45,50,55",
                      timezone=KST)),
+        # NPB는 공시(T-30)와 경량 재판정 종료선(T-10) 사이가 20분뿐이다.
+        # 5분 간격이면 4틱, 한 번 놓치면 잠정으로 끝난다.
+        ("npb_pregame_2m", npb_pregame_2m,
+         CronTrigger(hour="17,18", minute="*/2", timezone=KST)),
         # MLB 아침 슬레이트 (05~11 KST). 사이트는 statsapi. 캐시만 보낸다.
         ("mlb_pregame_5m", mlb_pregame_poll,
          CronTrigger(hour="5-11", minute="0,5,10,15,20,25,30,35,40,45,50,55",
