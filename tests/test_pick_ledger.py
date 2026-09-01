@@ -158,8 +158,11 @@ async def test_grades_hit_and_miss(db_pool):
     got = {r["game_id"]: (r["hit"], r["winner"], r["final_score"])
            for r in await db_pool.fetch(
                "SELECT game_id, hit, winner, final_score FROM pick_ledger")}
-    assert got[won] == (True, "home", "2-7")
-    assert got[lost] == (False, "away", "5-1")
+    # [계약 갱신 2026-09-01] final_score 는 **"홈-원정"** 순이다.
+    #   종전 f"{a}-{h}" 는 원정-홈이라 카드·중계 표기와 순서가 뒤집혀 있었다.
+    #   기존 행은 소급 수정하지 않는다(어느 순서로 적힌 행인지 구분 불가해진다).
+    assert got[won] == (True, "home", "7-2")
+    assert got[lost] == (False, "away", "1-5")
 
 
 async def test_cancelled_game_is_voided_not_left_pending(db_pool):

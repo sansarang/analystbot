@@ -584,8 +584,10 @@ def build_dispatcher():
             if state["msg"] is not None:
                 try:
                     await state["msg"].delete()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    # 진행 메시지 삭제 실패는 응답을 막지 않는다. 다만
+                    # 조용히 삼키면 "메시지가 왜 안 지워지나"를 못 쫓는다.
+                    logger.debug("[bot] 진행 메시지 삭제 실패: %s", exc)
         await _reply(message, reply)
 
     @router.message(CommandStart())
@@ -607,8 +609,10 @@ def build_dispatcher():
             if state["msg"] is not None:
                 try:
                     await state["msg"].delete()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    # 진행 메시지 삭제 실패는 응답을 막지 않는다. 다만
+                    # 조용히 삼키면 "메시지가 왜 안 지워지나"를 못 쫓는다.
+                    logger.debug("[bot] 진행 메시지 삭제 실패: %s", exc)
         await _send_card(message, card, sport, date)
 
     @router.message(Command("mlb"))
@@ -624,8 +628,10 @@ def build_dispatcher():
             if state["msg"] is not None:
                 try:
                     await state["msg"].delete()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    # 진행 메시지 삭제 실패는 응답을 막지 않는다. 다만
+                    # 조용히 삼키면 "메시지가 왜 안 지워지나"를 못 쫓는다.
+                    logger.debug("[bot] 진행 메시지 삭제 실패: %s", exc)
         await send_two_layer(
             message, card,
             reply_markup=card_keyboard("soccer", today_kst(), league_key=league_key))
@@ -761,8 +767,8 @@ def build_dispatcher():
             fresh, refreshed = await ensure_game_fresh(sport2, analysis.get("date", default_date(sport2)), g["game_id"])
             try:
                 await status_msg.delete()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("[bot] 조사중 메시지 삭제 실패: %s", exc)
             if fresh is not None:
                 analysis = fresh
                 g = next((x for x in analysis["games"] if x["game_id"] == g["game_id"]), g)

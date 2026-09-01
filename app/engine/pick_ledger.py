@@ -197,7 +197,8 @@ async def grade_pending(pool, sport: str | None = None) -> dict:
     where_sport = " AND l.sport = $1" if sport else ""
     args = [sport] if sport else []
     rows = await pool.fetch(
-        f"""SELECT l.id, l.sport, l.favored, l.p_home, g.status, g.home_score, g.away_score
+        f"""SELECT l.id, l.game_id, l.sport, l.favored, l.p_home,
+                  g.status, g.home_score, g.away_score
               FROM pick_ledger l JOIN games g ON g.id = l.game_id
              WHERE l.graded_at IS NULL
                AND g.status IN ('final', 'cancelled', 'suspended', 'postponed')
@@ -212,18 +213,29 @@ async def grade_pending(pool, sport: str | None = None) -> dict:
         h, a = int(r["home_score"]), int(r["away_score"])
         winner = "home" if h > a else "away" if a > h else "draw"
         side = predicted_side(r["favored"], r["p_home"])
+        # ⚠️ **무승부는 채점 분모에서 제외한다(void 아님).** hit=None 으로 두어
+        #    캘리브레이션 집계가 건너뛰게 한다. 경기는 정상 성립했으므로
+        #    void(우천취소·서스펜디드)와 구분해야 한다. KBO 는 연장 12회에도
+        #    동점이면 무승부다. → docs/MODEL.md
         hit = None if (side is None or winner == "draw") else (side == winner)
         await pool.execute(
             """UPDATE pick_ledger
                   SET final_score = $2, winner = $3, hit = $4, graded_at = now()
                 WHERE id = $1""",
-            r["id"], f"{a}-{h}", winner, hit)
+            # 🔴 **"홈-원정" 순.** 종전 f"{a}-{h}" 는 원정-홈이라 카드·중계
+            #    표기와 순서가 뒤집혀 있었다. 기존 행은 건드리지 않는다 —
+            #    소급 수정하면 어느 순서로 적힌 행인지 구분할 수 없게 된다.
+            r["id"], f"{h}-{a}", winner, hit)
         out["graded"] += 1
         # 건별로 남긴다 — "채점 N건"만으로는 무엇이 맞고 틀렸는지 볼 수 없고,
         # 운영 DB를 직접 조회할 수 없을 때 이 로그가 유일한 확인 경로다.
-        logger.info("[ledger] 채점 game=%s %s 예측=%s(p_home=%s) 결과=%s(%s) → %s",
-                    r["id"], r.get("sport") or "", side, r["p_home"], winner,
-                    f"{a}-{h}", "적중" if hit else ("무승부" if hit is None else "빗나감"))
+        # 🔴 `game=` 이었지만 실제 값은 `pick_ledger.id` 다 — 로그를 보고
+        #    games.id 로 찾으면 엉뚱한 경기가 나온다. 둘 다 적는다.
+        logger.info("[ledger] 채점 ledger_id=%s game_id=%s %s 예측=%s(p_home=%s) "
+                    "결과=%s(%s 홈-원정) → %s",
+                    r["id"], r.get("game_id"), r.get("sport") or "", side,
+                    r["p_home"], winner, f"{h}-{a}",
+                    "적중" if hit else ("무승부(분모 제외)" if hit is None else "빗나감"))
     if out["graded"] or out["void"]:
         logger.info("[ledger] 채점 %d건 · void %d건", out["graded"], out["void"])
     return out
