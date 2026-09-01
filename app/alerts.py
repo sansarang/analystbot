@@ -417,3 +417,78 @@ def overall_verdict(stages: list[StageResult]) -> str:
     if hard:
         return f"{', '.join(s.name for s in hard)} 전량 실패 — 리포트 신뢰도가 낮습니다"
     return f"{', '.join(s.name for s in soft)} 일부 실패 — 해당 경기만 데이터가 얕습니다"
+
+
+# ─────────────────────────────────────────── 사이클 리포트 (2026-09-01)
+#
+# 🔴 종전에는 저녁 판정 사이클에 **리포트 발송이 아예 없었다.** `prefetch_report`
+#    는 프리페치 잡(04:00·14:00·21:00)에서만 불린다. 그래서 KBO·NPB 저녁
+#    슬레이트가 어떻게 됐는지 알려면 Railway 로그를 직접 열어야 했다
+#    (실측 2026-09-01: 하루 종일 그렇게 했다).
+#
+# ⚠️ 그렇다고 폴링 틱마다 보내면 안 된다 — 5분 간격이라 하루 100건이 넘고,
+#    2026-08-27 의 "알림 7~8건 폭주로 정작 카드가 안 보인" 사고가 재발한다.
+#    **한 사이클에 1건**, 그리고 **일이 있었을 때만** 보낸다.
+
+
+async def cycle_report(where: str, lines: list[str], verdict: str, *,
+                       elapsed_sec: float | None = None) -> bool:
+    """[1단계] 한 판정 사이클의 결과 1건. 성공·실패 무관하게 **항상** 보낸다.
+
+    호출부가 "보낼 만한 일이 있었는가"를 판단한다 — 빈 폴링 틱에서는 부르지
+    않는다. 여기서 억제하지 않는 이유는, 억제하면 30분에 1건이 되어 5분
+    간격 사이클에서 6번 중 1번만 도착하기 때문이다.
+    """
+    from app.version import boot_info
+
+    now = datetime.now(KST)
+    head = f"📋 {where} {now:%H:%M}"
+    if elapsed_sec is not None:
+        mins, secs = divmod(int(elapsed_sec), 60)
+        head += f" (소요 {mins}분 {secs}초)"
+    body = "\n".join(lines) if lines else "  (기록할 단계 없음)"
+    return await _send(f"cycle:{where}:{now:%Y%m%d%H%M}",
+                       f"{head}\n{body}\n→ 결과: {verdict}\n"
+                       f"코드 {boot_info().short}",
+                       bypass_suppression=True)
+
+
+async def cycle_errors(where: str, errors: list[dict], *,
+                       next_run: str = "") -> bool:
+    """[2단계] 한 사이클의 이상을 **한 건으로 묶어** 보낸다.
+
+    🔴 부분 실패를 개별 발송하면 다시 폭주한다. 반대로 지금처럼 전면 중단만
+       보내면 "12경기 중 3경기 판정 실패"가 통째로 침묵한다. 묶어서 1건이 답이다.
+
+    ⚠️ **파일:라인을 싣는다.** 사용자가 이 메시지를 그대로 전달하면 바로
+       어디를 볼지 정해진다 — 로그를 열지 않아도 된다.
+
+    errors: [{"what": str, "cause": str|None, "detail": str, "exc": Exception|None}]
+    """
+    from app.version import boot_info
+
+    if not errors:
+        return False
+    now = datetime.now(KST)
+    lines = [f"⚠️ {where} 이상 {len(errors)}건 ({now:%H:%M})"]
+    for e in errors[:8]:
+        row = f"  · {e.get('what')}"
+        cause = e.get("cause")
+        if cause:
+            row += f" — {CAUSE_LABELS.get(cause, cause)}"
+        detail = (e.get("detail") or "").strip()
+        if detail:
+            row += f" ({detail[:120]})"
+        lines.append(row)
+        exc = e.get("exc")
+        if exc is not None:
+            lines += our_frames(exc, limit=2)
+    if len(errors) > 8:
+        lines.append(f"  · 외 {len(errors) - 8}건")
+    tail = f"코드 {boot_info().short}"
+    if next_run:
+        tail += f" · 다음 {next_run}"
+    lines.append(tail)
+    # 사이클마다 1건 — 30분 억제 창에 걸리면 5분 폴링에서 6번 중 1번만 온다.
+    return await _send(f"cycle-err:{where}:{now:%Y%m%d%H%M}", "\n".join(lines),
+                       bypass_suppression=True)

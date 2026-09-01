@@ -356,6 +356,9 @@ async def mlb_pregame_poll() -> None:
 
     KBO `crawler_lineup_poll`과 대칭. 사이트만 statsapi.mlb.com.
     """
+    import time as _time
+
+    from app.alerts import cycle_errors, cycle_report
     from app.collectors.lineups import STATUS_CONFIRMED, MLBLineupClient, refresh_mlb_lineup
     from app.engine.pregame_push import send_game_prediction, still_upcoming
     from app.pipeline import rejudge_after_lineup
@@ -365,6 +368,10 @@ async def mlb_pregame_poll() -> None:
     redis = aioredis.from_url(s.redis_url, decode_responses=True)
     date = mlb_slate_date()
     now = datetime.now(UTC)
+    t0 = _time.monotonic()
+    rep: list[str] = []
+    errs: list[dict] = []
+    tally = {"rejudged": 0, "sent": 0, "revised": 0, "failed": 0}
     try:
         rows = await pool.fetch(
             """
@@ -394,14 +401,23 @@ async def mlb_pregame_poll() -> None:
             try:
                 ok = await rejudge_after_lineup(game, res)
                 if ok:
+                    tally["rejudged"] += 1
                     sent = await send_game_prediction(redis, game, date, now=now)
                     if sent in ("sent", "revised"):
+                        tally[sent] += 1
                         logger.info("[scheduler] mlb 예측 카드 %s game=%s",
                                     sent, game["id"])
+                else:
+                    tally["failed"] += 1
+                    errs.append({"what": f"mlb 재판정 무효 game={game['id']}",
+                                 "detail": f"{game['away']}@{game['home']}"})
                 if res["status"] == STATUS_CONFIRMED:
                     logger.info("[scheduler] MLB 라인업 확정 — 최종 픽 game=%s ok=%s",
                                 game["id"], ok)
             except Exception as exc:
+                tally["failed"] += 1
+                errs.append({"what": f"mlb 재판정 실패 game={game['id']}",
+                             "detail": str(exc)[:150], "exc": exc})
                 logger.warning("[scheduler] MLB 라인업 재판정 실패 game=%s: %s",
                                game["id"], exc)
         for r in rows:
@@ -413,10 +429,91 @@ async def mlb_pregame_poll() -> None:
                     logger.info("[scheduler] mlb 예측 카드 %s game=%s",
                                 sent, r["id"])
             except Exception as exc:
+                errs.append({"what": f"mlb 발송 실패 game={r['id']}",
+                             "detail": str(exc)[:150], "exc": exc})
                 logger.warning("[scheduler] mlb 발송 실패 game=%s: %s",
                                r["id"], exc)
+        if updated:
+            rep.append(f"  MLB 대상 {len(rows)}경기 · 라인업 변동 {len(updated)}")
+        await report_cycle(redis, "MLB 판정", rep, errs, tally,
+                           _time.monotonic() - t0,
+                           cycle_report, cycle_errors, next_run="5분 뒤")
     finally:
         await redis.aclose()
+
+
+async def report_cycle(redis, where: str, rep: list[str], errs: list[dict],
+                       tally: dict, elapsed: float, cycle_report, cycle_errors,
+                       *, next_run: str = "") -> None:
+    """[1·2단계 2026-09-01] 한 사이클의 결과 리포트 + 이상 묶음.
+
+    🔴 **일이 있었을 때만 보낸다.** 5분 폴링에 매번 보내면 하루 100건이 넘고,
+       2026-08-27 의 "알림 7~8건 폭주로 정작 카드가 안 보인" 사고가 재발한다.
+       판정·발송·오류가 하나도 없는 틱은 조용히 지나간다.
+
+    ⚠️ 리포트 실패가 폴링을 죽이지 않는다 — 알림은 보조다.
+    """
+    moved = tally["rejudged"] + tally["sent"] + tally["revised"]
+    if not moved and not errs:
+        return
+    lines = list(rep)
+    lines.append(f"  ✅ 재판정 {tally['rejudged']}경기 · 발송 {tally['sent']} · "
+                 f"수정 {tally['revised']}")
+    if tally["failed"]:
+        lines.append(f"  ⚠️ 실패 {tally['failed']}경기")
+    try:
+        lines += await _slate_extra_lines(redis)
+    except Exception as exc:
+        logger.debug("[scheduler] 리포트 부가 줄 실패: %s", exc)
+    verdict = (f"발송 {tally['sent'] + tally['revised']}건"
+               + (f" · 이상 {len(errs)}건" if errs else " · 이상 없음"))
+    try:
+        await cycle_report(where, lines, verdict, elapsed_sec=elapsed)
+    except Exception as exc:
+        logger.warning("[scheduler] 사이클 리포트 실패: %s", exc)
+    if errs:
+        try:
+            await cycle_errors(where, errs, next_run=next_run)
+        except Exception as exc:
+            logger.warning("[scheduler] 이상 묶음 실패: %s", exc)
+
+
+async def _slate_extra_lines(redis) -> list[str]:
+    """오늘 판정 캐시에서 딥서치·표본부족 줄을 읽는다.
+
+    새 기능들이 로그에만 남고 알림에는 한 줄도 없었다 (2026-09-01):
+    딥서치 발동·표본 부족·배당 오염 차단·라인업 의도. 사용자가 코드를 열지
+    않고도 무슨 일이 있었는지 알 수 있어야 한다.
+    """
+    import json as _json
+
+    from app.pipeline import today_kst
+
+    out: list[str] = []
+    date = today_kst()
+    for sport in ("kbo", "npb", "mlb"):
+        key_date = mlb_slate_date() if sport == "mlb" else date
+        raw = await redis.get(f"analysis:{sport}:{key_date}")
+        if not raw:
+            continue
+        try:
+            games = (_json.loads(raw) or {}).get("games") or []
+        except (TypeError, ValueError):
+            continue
+        low = [g for g in games if g.get("starter_low_sample")]
+        deep = [g for g in games if g.get("deepsearch_trigger")]
+        done = [g for g in deep
+                if (g.get("deepsearch_trigger") or {}).get("deepsearch")
+                == "investigated"]
+        if low:
+            out.append(f"  ⚠️ {sport.upper()} 선발 표본 부족 {len(low)}경기 "
+                       f"— 추천 자격 없음")
+        if deep:
+            searched = sum(int((g.get("deepsearch_trigger") or {}).get("searches") or 0)
+                           for g in deep)
+            out.append(f"  🔍 {sport.upper()} 딥서치 트리거 {len(deep)} · "
+                       f"조사 {len(done)} · 검색 {searched}회")
+    return out
 
 
 async def crawler_lineup_poll() -> None:
@@ -428,8 +525,11 @@ async def crawler_lineup_poll() -> None:
     ⚠️ MLB 경로(`refresh_mlb_lineup`)는 statsapi 전용이라 이 두 종목에 쓸 수 없다.
     ⚠️ 한 경기 실패가 나머지를 막지 않는다.
     """
+    import time as _time
+
     import redis.asyncio as aioredis
 
+    from app.alerts import cycle_errors, cycle_report
     from app.collectors import crawler_feed
     from app.engine.pregame_push import (
         analysis_open, roster_signature, send_game_prediction, still_upcoming,
@@ -444,6 +544,16 @@ async def crawler_lineup_poll() -> None:
     pool = await get_pool()
     redis = aioredis.from_url(s.redis_url, decode_responses=True)
     now = datetime.now(UTC)
+    t0 = _time.monotonic()
+    # [1·2단계 2026-09-01] 사이클 리포트 재료.
+    #   🔴 저녁 판정 사이클에는 리포트가 아예 없었다 — `prefetch_report` 는
+    #      프리페치 잡에서만 불린다. 그래서 KBO·NPB 저녁 슬레이트가 어떻게
+    #      됐는지 알려면 Railway 로그를 직접 열어야 했다.
+    #   ⚠️ **빈 틱에서는 보내지 않는다.** 5분 폴링에 매번 보내면 하루 100건이
+    #      넘고, 2026-08-27 의 알림 폭주가 재발한다.
+    rep: list[str] = []
+    errs: list[dict] = []
+    tally = {"rejudged": 0, "sent": 0, "revised": 0, "failed": 0}
     try:
         # NPB를 먼저 — 17:45 종료선을 KBO 슬레이트에 밀리지 않게.
         for sport in ("npb", "kbo"):
@@ -520,14 +630,24 @@ async def crawler_lineup_poll() -> None:
                                            "away": game.get("away_pitcher") or None},
                               "injuries": {}})
                     if ok:
+                        tally["rejudged"] += 1
                         await redis.set(sig_key, roster, ex=86400)
                         sent = await send_game_prediction(redis, row, _date, now=now)
                         if sent in ("sent", "revised"):
+                            tally[sent] += 1
                             logger.info("[scheduler] %s 예측 카드 %s game=%s",
                                         _sport, sent, row["id"])
+                    else:
+                        tally["failed"] += 1
+                        errs.append({
+                            "what": f"{_sport} 재판정 무효 game={row['id']}",
+                            "detail": f"{row['away']}@{row['home']} — 캐시 미판정/무효"})
                     logger.info("[scheduler] %s 라인업 %s — 재판정 game=%s ok=%s",
                                 _sport, status, row["id"], ok)
                 except Exception as exc:
+                    tally["failed"] += 1
+                    errs.append({"what": f"{_sport} 재판정 실패 game={row['id']}",
+                                 "detail": str(exc)[:150], "exc": exc})
                     logger.warning("[scheduler] %s 재판정 실패 game=%s: %s",
                                    _sport, row["id"], exc)
 
@@ -539,11 +659,20 @@ async def crawler_lineup_poll() -> None:
                 try:
                     sent = await send_game_prediction(redis, row, date, now=now)
                     if sent in ("sent", "revised"):
+                        tally[sent] += 1
                         logger.info("[scheduler] %s 예측 카드 %s game=%s",
                                     sport, sent, row["id"])
                 except Exception as exc:
+                    errs.append({"what": f"{sport} 발송 실패 game={row['id']}",
+                                 "detail": str(exc)[:150], "exc": exc})
                     logger.warning("[scheduler] %s 발송 실패 game=%s: %s",
                                    sport, row["id"], exc)
+            if jobs:
+                rep.append(f"  {sport.upper()} 대상 {len(rows)}경기 · "
+                           f"타순변동 {len(jobs)} · 미변동 {len(catchup)}")
+        await report_cycle(redis, "아시아 판정", rep, errs, tally,
+                           _time.monotonic() - t0,
+                           cycle_report, cycle_errors, next_run="5분 뒤")
     finally:
         await redis.aclose()
 

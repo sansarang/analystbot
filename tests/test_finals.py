@@ -131,3 +131,39 @@ def test_npb_backfill_does_not_lose_appearances_when_lineup_fails():
     i_guard = body.index("if not lu:")
     assert i_app < i_guard, "타순 실패 가드보다 등판 적재가 뒤에 있다 — 또 버린다"
     assert "rescued_app" in body, "회수 건수를 세지 않으면 효과를 알 수 없다"
+
+
+def test_cycle_report_only_fires_when_something_happened():
+    """🔴 5분 폴링에 매번 보내면 하루 100건이 넘는다 — 2026-08-27 폭주 재발.
+    판정·발송·오류가 없는 빈 틱은 조용히 지나가야 한다."""
+    import asyncio
+    from pathlib import Path
+
+    from app.scheduler import report_cycle
+
+    calls = []
+
+    async def rep(*a, **k):
+        calls.append(("report", a))
+        return True
+
+    async def errs(*a, **k):
+        calls.append(("errors", a))
+        return True
+
+    empty = {"rejudged": 0, "sent": 0, "revised": 0, "failed": 0}
+    asyncio.run(report_cycle(None, "테스트", [], [], empty, 1.0, rep, errs))
+    assert calls == [], "빈 틱에서 알림이 나갔다"
+
+    moved = {"rejudged": 2, "sent": 2, "revised": 0, "failed": 0}
+    asyncio.run(report_cycle(None, "테스트", [], [], moved, 1.0, rep, errs))
+    assert [c[0] for c in calls] == ["report"], "판정이 있었는데 리포트가 없다"
+
+    calls.clear()
+    asyncio.run(report_cycle(None, "테스트", [], [{"what": "x"}], empty, 1.0,
+                             rep, errs))
+    assert [c[0] for c in calls] == ["report", "errors"], "오류만 있을 때도 알려야 한다"
+
+    src = Path("app/alerts.py").read_text(encoding="utf-8")
+    assert "async def cycle_errors" in src
+    assert "our_frames(exc, limit=2)" in src, "파일:라인이 없으면 전달해도 못 찾는다"

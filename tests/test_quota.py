@@ -525,3 +525,79 @@ def test_400_ordinary_bad_request_is_not_credit():
     ):
         assert classify_api_error(400, body) == "other", body
         assert is_quota_error(400, body) is False, body
+
+
+@pytest.mark.asyncio
+async def test_credit_trip_notifies_even_when_caller_swallows(monkeypatch):
+    """🔴 실측 2026-09-01: Anthropic 400 을 감지하는 5곳 중 **notify 를 부르는
+    곳이 0곳**이었다. `credit_guard.trip_credit` 은 로그만 남겼고, 알림은
+    pipeline 의 몇몇 호출부에만 붙어 있었다. 그것도 예외가 거기까지 올라가야
+    하는데 matchup·deepsearch·soccer_trial 은 잡아서 삼킨다 — 그 경로로
+    소진되면 사용자는 영원히 모른다.
+    """
+    import asyncio
+
+    import app.alerts as alerts
+    import app.notify as notify
+
+    sent = []
+
+    async def cap(text, **_k):
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr(notify, "send_telegram", cap)
+    monkeypatch.setattr(alerts, "_notify_mod", notify)
+    await alerts.reset_shared()
+
+    from app.api_guard import clear_block
+    from app.engine.credit_guard import reset, trip_credit
+
+    await clear_block("anthropic")
+    reset()
+    trip_credit("matchup:NC@LG", Exception("400 credit balance too low"))
+    await asyncio.sleep(0.3)          # 알림 태스크 완료 대기
+
+    try:
+        assert len(sent) == 1, "크레딧 소진인데 알림이 없다"
+        assert "크레딧/쿼터 소진" in sent[0]
+        assert "console.anthropic.com" in sent[0], "충전 링크가 없다"
+    finally:
+        # ⚠️ `_mark_exhausted` 는 **프로세스 전역**이다. 되돌리지 않으면
+        #    이후 테스트의 abort_if_credit_gone 이 전부 터진다.
+        reset()
+
+
+@pytest.mark.asyncio
+async def test_credit_alert_is_once_per_day(monkeypatch):
+    """두 번째 소진은 조용하다 — 5분 폴링에서 알림이 쏟아지면 안 된다."""
+    import asyncio
+
+    import app.alerts as alerts
+    import app.notify as notify
+
+    sent = []
+
+    async def cap(text, **_k):
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr(notify, "send_telegram", cap)
+    monkeypatch.setattr(alerts, "_notify_mod", notify)
+    await alerts.reset_shared()
+
+    from app.api_guard import clear_block
+    from app.engine.credit_guard import reset, trip_credit
+
+    await clear_block("anthropic")
+    reset()
+    trip_credit("form:kbo:LG", Exception("400 credit"))
+    await asyncio.sleep(0.3)
+    n = len(sent)
+    reset()
+    trip_credit("deepsearch:A@B", Exception("400 credit"))
+    await asyncio.sleep(0.3)
+    try:
+        assert len(sent) == n, "같은 날 두 번째 소진에도 알림이 갔다"
+    finally:
+        reset()
