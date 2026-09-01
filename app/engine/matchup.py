@@ -105,6 +105,18 @@ def starters_recent_payload(jg: dict) -> dict:
     }
 
 
+def starters_season_payload(jg: dict) -> dict:
+    """[C] 선발 시즌 라인 — **표본 보정 전용.** 타선 시즌 지표는 넣지 않는다."""
+    r = jg.get("research") or {}
+    out = {}
+    for side in ("home", "away"):
+        line = r.get(f"{side}_starter_season") or {}
+        n = len(r.get(f"{side}_starter_recent") or [])
+        if line or n:
+            out[side] = {"시즌": line, "최근등판수": n}
+    return out
+
+
 def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
     s = settings or get_settings()
     p = clip_p_home(verdict.get("p_home"), s)
@@ -224,6 +236,8 @@ async def judge_matchup(jg: dict, redis, date: str, *,
         PREV_VERDICT_JSON=json.dumps(prev, ensure_ascii=False, default=str),
         LINEUP_INTENT_JSON=json.dumps(intent_payload(jg), ensure_ascii=False,
                                       default=str),
+        STARTER_SEASON_JSON=json.dumps(starters_season_payload(jg),
+                                       ensure_ascii=False, default=str),
     )
     parsed = None
     for attempt in (1, 2):

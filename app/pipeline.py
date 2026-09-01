@@ -2229,6 +2229,15 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
         except Exception as exc:
             logger.warning("[pipeline] 선발 최근 등판 실패 game=%s: %s",
                            jg.get("game_id"), exc)
+        # [C 2026-09-01] 표본 보정용 시즌 라인. **실패해도 판정을 막지 않는다** —
+        #   못 받으면 빈 dict 이고 그러면 종전과 같은 판정이 된다.
+        try:
+            from app.collectors.starter_season import attach as _season
+
+            await _season(jg)
+        except Exception as exc:
+            logger.warning("[pipeline] 선발 시즌 라인 실패 game=%s: %s",
+                           jg.get("game_id"), exc)
         if await judge_matchup(jg, redis, date):
             n += 1
     return n
@@ -2527,6 +2536,13 @@ def qualifies(pick: dict, settings=None) -> bool:
             return False
         if pick.get("form_unavailable"):
             return False
+        # [A 2026-09-01] 오늘 선발의 최근 등판 표본이 1경기 이하면 추천하지 않는다.
+        #   🔴 실사고: 판정이 "표본 1경기뿐"이라고 변수·추가확인에 **두 번**
+        #      써놓고 확률은 66%(신호등 🟢)로 냈다. 위험을 말하는 것과 가격에
+        #      반영하는 것은 다르다. 그 선발(ERA 5.40·BB/9 5.4 신인)은 오늘
+        #      3.2이닝 3볼넷 4실점으로 무너졌고 1:7로 졌다.
+        if pick.get("starter_low_sample"):
+            return False
         from app.collectors.lineups import pick_state as _ps
 
         state = pick.get("pick_state")
@@ -2559,6 +2575,9 @@ def near_miss_picks(picks: list[dict], settings=None, n: int = 3) -> list[dict]:
                 reasons.append("NPB 최근 3경기 미검증")
             if p.get("form_unavailable"):
                 reasons.append("팀 경기력 평가 불가")
+            if p.get("starter_low_sample"):
+                _n = len(p["starter_low_sample"])
+                reasons.append(f"선발 최근 등판 표본 부족({_n}팀)")
             st = p.get("pick_state") or _ps(p.get("lineup_status"))[0]
             if st != "final":
                 reasons.append("라인업 확정 전 (잠정)")
@@ -2579,7 +2598,8 @@ def approved_market_legs(games: list[dict]) -> list[dict]:
             wrapped = {**c, "sport": jg.get("sport"),
                        "lineup_status": jg.get("lineup_status") or "none",
                        "pick_state": _pick_state(jg)[0],
-                       "form_unavailable": bool(jg.get("form_unavailable"))}
+                       "form_unavailable": bool(jg.get("form_unavailable")),
+                       "starter_low_sample": list(jg.get("starter_low_sample") or [])}
             if c.get("approved") and qualifies(wrapped):
                 legs.append({
                     "game_id": jg["game_id"], "desc": c["desc"], "market": c["market"],
@@ -2616,7 +2636,8 @@ def qualified_singles(games: list[dict], settings=None,
             wrapped = {**c, "sport": jg.get("sport"),
                        "lineup_status": jg.get("lineup_status") or "none",
                        "pick_state": _pick_state(jg)[0],
-                       "form_unavailable": bool(jg.get("form_unavailable"))}
+                       "form_unavailable": bool(jg.get("form_unavailable")),
+                       "starter_low_sample": list(jg.get("starter_low_sample") or [])}
             if not (c.get("approved") and qualifies(wrapped, settings)):
                 continue
             # 다운스트림(DB 적재·속보 비교·렌더)이 쓰는 필드를 전부 채운다.
@@ -2850,6 +2871,7 @@ def _compute_picks(
                 "lineup_status": jg.get("lineup_status") or "none",
                 "pick_state": _pick_state(jg)[0], "pick_state_label": _pick_state(jg)[1],
                 "form_unavailable": bool(jg.get("form_unavailable")),
+                "starter_low_sample": list(jg.get("starter_low_sample") or []),
                 "p_legacy": None,
                 "p_market_side": None,
                 "p_ensemble_side": p_ens.get(rep["side"]),
@@ -3144,6 +3166,7 @@ def _compute_picks(
             "lineup_status": jg.get("lineup_status") or "none",
             "pick_state": _pick_state(jg)[0], "pick_state_label": _pick_state(jg)[1],
             "form_unavailable": bool(jg.get("form_unavailable")),
+            "starter_low_sample": list(jg.get("starter_low_sample") or []),
             "p_legacy": (jg.get("p_legacy") or {}).get(rep["side"]),
             "p_market_side": market.get(rep["side"]) if rep["market"] == "h2h" else None,
             "p_ensemble_side": p_ens.get(rep["side"]),

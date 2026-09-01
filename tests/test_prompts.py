@@ -102,3 +102,25 @@ def test_interpreter_model_is_pinned_not_opus_fallback():
     assert s.interpreter_model, "비어 있으면 Opus 폴백이다"
     assert resolve_model("interpreter", s) == s.interpreter_model
     assert resolve_model("interpreter", s) != s.judge_model
+
+
+def test_season_line_is_sample_correction_only():
+    """🔴 규율 개정 2026-09-01 — "시즌 ERA 금지"를 **선발투수 한 칸만** 푼다.
+
+    실사고(NYY@LAA 1:7): 최근 등판 1경기(6이닝 3실점)를 "안정적"으로 읽고
+    NYY 66% 추천. 그 투수의 시즌은 ERA 5.40·BB/9 5.4 였고 오늘 3.2이닝
+    3볼넷 4실점으로 무너졌다. 시즌 데이터가 결과를 예측하고 있었는데
+    판정이 볼 수 없게 되어 있었다.
+    """
+    assert "{{STARTER_SEASON_JSON}}" in MATCHUP
+    assert "표본 보정 전용" in MATCHUP
+    assert "이것으로\n  우세를 정하지 마라" in MATCHUP
+    assert '"표본 보정:"으로 시작하라' in MATCHUP
+    # 타선 시즌 지표 금지는 그대로다 — 개정 범위를 넘지 않았다
+    assert "**타선·팀 지표의 시즌 값은 여전히 쓰지 않는다.**" in MATCHUP
+
+
+def test_low_recent_sample_pulls_toward_half():
+    """표본이 적으면 0.50 쪽으로 당긴다 — 적은 표본에 확신을 싣지 않는다."""
+    assert "**2경기 이하**면 그 표본은 그 투수를 대표하지 않는다" in MATCHUP
+    assert "표본이 적을수록 0.50 쪽으로 당긴다" in MATCHUP

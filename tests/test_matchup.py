@@ -269,3 +269,88 @@ async def test_rejudge_card_stack_still_runs_for_soccer(monkeypatch):
           "status": "scheduled", "starts_at": None, "research": {}}
     await P.rejudge_card_stack(None, jg, "soccer", None)
     assert seen == [("lineup_intent", "soccer")], seen
+
+
+def test_recent_starts_window_widened_to_five():
+    """🔴 3등판이면 로테이션상 15~21일이라 한 번의 호투가 시즌 성향을 가린다.
+
+    실사고 2026-09-01: Ureña 의 3경기 표본이 그의 부진 구간이었다
+    (시즌 ERA 2.85인데 "이닝 소화력 불안"으로 읽힘). 오늘 7이닝 1실점.
+    """
+    from app.engine.starter_recent import MIN_STARTS, RECENT_STARTS
+
+    assert RECENT_STARTS == 5
+    assert MIN_STARTS == 1
+
+
+def test_low_sample_marks_the_game_and_blocks_recommendation():
+    """🔴 판정이 "표본 1경기뿐"이라고 변수·추가확인에 두 번 써놓고 확률은
+    66%(신호등 🟢)로 냈다. 위험을 말하는 것과 가격에 반영하는 것은 다르다."""
+    from app.engine.starter_recent import low_sample_sides, mark_low_sample
+    from app.pipeline import qualifies
+
+    jg = {"sport": "mlb",
+          "research": {"home_pitcher": {"name": "A"}, "away_pitcher": {"name": "B"},
+                       "home_starter_recent": [{}, {}, {}],
+                       "away_starter_recent": [{}]}}          # 원정만 1경기
+    assert low_sample_sides(jg) == ["away"]
+    assert mark_low_sample(jg) == ["away"]
+    assert jg["starter_low_sample"] == ["away"]
+
+    pick = {"sport": "mlb", "p": 0.66, "pick_state": "final",
+            "starter_low_sample": ["away"]}
+    assert qualifies(pick) is False, "표본 1경기인데 추천으로 나갔다"
+    # 반대 위험 — 표본이 충분하면 그대로 통과한다
+    assert qualifies({**pick, "starter_low_sample": []}) is True
+
+
+def test_low_sample_needs_a_pitcher_name():
+    """선발이 미정인 경기를 표본 부족으로 오분류하지 않는다."""
+    from app.engine.starter_recent import low_sample_sides
+
+    jg = {"sport": "mlb", "research": {"home_starter_recent": [],
+                                       "away_starter_recent": []}}
+    assert low_sample_sides(jg) == []
+
+
+def test_season_payload_carries_recent_count():
+    """판정이 "이 시즌 라인을 얼마나 쓸지"를 정하려면 최근 등판 수가 필요하다."""
+    from app.engine.matchup import starters_season_payload
+
+    jg = {"research": {"home_starter_season": {"ERA": "2.85", "BB9": 4.68},
+                       "home_starter_recent": [{}, {}, {}],
+                       "away_starter_season": {"ERA": "5.40", "BB9": 5.5},
+                       "away_starter_recent": [{}]}}
+    out = starters_season_payload(jg)
+    assert out["home"]["최근등판수"] == 3 and out["away"]["최근등판수"] == 1
+    assert out["away"]["시즌"]["BB9"] == 5.5
+
+
+def test_season_line_has_no_win_loss():
+    """승패(W-L)는 담지 않는다 — 기존 규율 그대로."""
+    from app.collectors.starter_season import slim_season
+
+    out = slim_season({"gamesStarted": 6, "inningsPitched": "26.2", "era": "5.40",
+                       "whip": "1.58", "strikeOuts": 21, "baseOnBalls": 16,
+                       "wins": 1, "losses": 4})
+    assert "wins" not in out and "losses" not in out and "승" not in out
+    assert out["BB9"] == 5.5 and out["선발"] == 6
+
+
+def test_season_collector_does_not_call_out_in_mock_mode():
+    """🔴 판정 경로에 새 외부 호출을 붙일 때는 목 분기를 **같은 커밋에** 넣는다.
+
+    딥서치 배선에서 이미 겪었다(스위트 35초 → 419초). 실측 2026-09-01:
+    이 가드 없이 커밋했더니 P5-2 외부 차단이 테스트 4건에서
+    statsapi.mlb.com 접근을 잡아냈다.
+    """
+    import asyncio
+
+    from app.collectors.starter_season import attach
+
+    jg = {"sport": "mlb", "research": {"home_pitcher": {"name": "A"},
+                                       "away_pitcher": {"name": "B"}}}
+    asyncio.get_event_loop().run_until_complete(attach(jg)) \
+        if False else asyncio.run(attach(jg))
+    assert jg["research"]["home_starter_season"] == {}
+    assert jg["research"]["away_starter_season"] == {}

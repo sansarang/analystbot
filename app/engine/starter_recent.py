@@ -1,4 +1,16 @@
-"""오늘 선발의 최근 2~3등판. 시즌 ERA는 넣지 않는다."""
+"""오늘 선발의 최근 등판 + **표본 보정용 시즌 라인**.
+
+🔴 실사고 2026-09-01 (NYY @ LAA, 1:7 패):
+     Rodríguez 표본 1경기(6이닝 3실점) → 판정 "안정적" → NYY 66% 추천
+     실제 시즌: 6선발 26.2이닝 ERA 5.40 **BB 16개(BB/9 5.4)** — 제구 붕괴 신인
+     오늘: 3.2이닝 3볼넷 4실점 (시즌 평균 그대로)
+     Ureña  표본 3경기가 그의 부진 구간 → 판정 "이닝 소화력 불안"
+     실제 시즌: 23선발 123.1이닝 ERA 2.85 — 정상급
+     오늘: 7이닝 1실점 0볼넷 8K
+   3경기 창은 **선발에게 너무 좁다.** 로테이션상 15~21일이라 한 번의 호투가
+   시즌 성향을 통째로 가린다. 타선은 매일 뛰니 3경기가 의미 있지만 선발은 다르다.
+   그리고 표본이 1경기여도 3경기와 동등하게 취급됐다 — 하한이 없었다.
+"""
 from __future__ import annotations
 
 import logging
@@ -6,7 +18,14 @@ from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
-RECENT_STARTS = 3
+#: [B] 선발 최근 등판 창. 3 → 5 (2026-09-01 사용자 지시).
+#   3등판이면 15~21일이라 한 번의 호투가 시즌 성향을 가린다.
+RECENT_STARTS = 5
+
+#: [A] 이 수 이하면 "표본 부족" — 확신도 강등 + 추천 자동 탈락.
+#   판정이 "표본 1경기뿐"이라고 두 번 말해놓고 확률은 66%로 냈다(실사고).
+#   위험을 말하는 것과 가격에 반영하는 것은 다르다.
+MIN_STARTS = 1
 
 _FETCH = """
     SELECT a.opponent, a.innings, a.r, a.hits, a.k, a.bb,
@@ -98,3 +117,26 @@ async def attach_starter_recent(jg: dict, pool) -> None:
             research.setdefault(key, [])
             continue
         research[key] = [slim_start(r) for r in rows]
+    mark_low_sample(jg)
+
+
+def low_sample_sides(jg: dict) -> list[str]:
+    """[A] 최근 등판 표본이 하한 이하인 쪽. 빈 목록이면 정상."""
+    r = jg.get("research") or {}
+    out = []
+    for side in ("home", "away"):
+        if not pitcher_name(jg, side):
+            continue
+        if len(r.get(f"{side}_starter_recent") or []) <= MIN_STARTS:
+            out.append(side)
+    return out
+
+
+def mark_low_sample(jg: dict) -> list[str]:
+    """표본 부족을 경기에 새긴다. 게이트와 확신도가 이 값을 읽는다."""
+    sides = low_sample_sides(jg)
+    jg["starter_low_sample"] = sides
+    if sides:
+        logger.info("[starter_recent] 표본 부족 game=%s sides=%s — 추천 자격 없음",
+                    jg.get("game_id"), ",".join(sides))
+    return sides
