@@ -512,6 +512,47 @@ def apply_findings(jg: dict, data: dict) -> dict:
 
 # ---------------------------------------------------------------- 슬레이트 실행
 
+def blind_starters(jg: dict) -> dict:
+    """오늘 선발 중 **자료가 없는 쪽**을 센다. 딥서치 우선순위에 쓴다.
+
+    🔴 종전 순서는 트리거 개수뿐이었다. 그래서 **조사가 가장 필요한 경기가
+       상한에 밀렸다.** 실측 2026-09-01 NPB: 6경기 전부 후보인데 상한은 1건
+       (슬레이트 6 × 30%)이었고, 순서가 트리거 수로 정해져 자료가 통째로
+       없는 요미우리전이 뒤로 갔다.
+         戸郷 翔征  1군 등판 0 — 7/7 햄스트링 이탈, 8/26 2군 복귀전이 전부
+         高野 脩汰  선발 0 (올해 26경기 전부 중계, 오늘이 시즌 첫 선발)
+       이런 경기는 크롤 데이터로 답이 안 나온다. 웹 검색이 유일한 수단이다.
+
+    ⚠️ 새 임계값을 만들지 않는다 — `MIN_STARTS`(표본 하한)를 그대로 쓴다.
+    반환: {"score": int, "zero": [side], "low": [side]}
+      score 3 = 선발·구원 둘 다 0 (완전 무자료)
+      score 2 = 선발 0 · 구원 있음
+      score 1 = 선발 <= MIN_STARTS
+    """
+    r = jg.get("research") or {}
+    zero, low, score = [], [], 0
+    for side in ("home", "away"):
+        n_start = len(r.get(f"{side}_starter_recent") or [])
+        n_relief = len(r.get(f"{side}_starter_relief") or [])
+        if n_start == 0 and n_relief == 0:
+            zero.append(side)
+            score += 3
+        elif n_start == 0:
+            zero.append(side)
+            score += 2
+        elif n_start <= _min_starts():
+            low.append(side)
+            score += 1
+    return {"score": score, "zero": zero, "low": low}
+
+
+def _min_starts() -> int:
+    """표본 하한. 순환 import 를 피해 지연 조회한다."""
+    from app.engine.starter_recent import MIN_STARTS
+
+    return MIN_STARTS
+
+
 async def run_for_slate(games: list[dict], redis, date: str, *,
                         settings=None, max_investigations: int | None = None,
                         prev_lineups: dict | None = None) -> dict:
@@ -540,9 +581,12 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
             continue
         out["candidates"].append({"game_id": jg.get("game_id"),
                                   "match": f"{jg.get('away')}@{jg.get('home')}",
-                                  "triggers": trig})
-    # 발동 순서: 트리거가 많이 걸린 경기부터 — 가장 막힌 경기를 먼저 푼다.
-    ranked = sorted(out["candidates"], key=lambda c: -len(c["triggers"]))
+                                  "triggers": trig,
+                                  "blind": blind_starters(jg)})
+    # 발동 순서: **자료가 가장 없는 경기부터.** 상한은 그대로다 — 순서만 바꾼다.
+    #   트리거 수만으로 줄을 세우면, 조사가 가장 필요한 경기가 상한에 밀린다.
+    ranked = sorted(out["candidates"],
+                    key=lambda c: (-c["blind"]["score"], -len(c["triggers"])))
     by_id = {jg.get("game_id"): jg for jg in games}
     if not getattr(s, "deepsearch_investigate", False):
         # [A안 2026-08-31] 조사 호출은 꺼두고 **트리거 판별만** 실전에 태운다.
@@ -553,8 +597,11 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
             logger.info("[deepsearch] 조사 비활성(DEEPSEARCH_ENABLED=false) — "
                         "트리거만 판별: 슬레이트 %d · 후보 %d · 상한 %d · %s",
                         out["slate"], len(out["candidates"]), cap,
-                        "; ".join(f"{c['match']}({','.join(c['triggers'])})"
-                                  for c in out["candidates"]))
+                        "; ".join(
+                            f"{c['match']}({','.join(c['triggers'])}"
+                            + (f",무자료:{','.join(c['blind']['zero'])}"
+                               if c["blind"]["zero"] else "") + ")"
+                            for c in ranked))
         return out
     for c in ranked:
         if out["investigated"] >= cap:

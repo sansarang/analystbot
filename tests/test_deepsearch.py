@@ -587,3 +587,67 @@ async def test_source_is_recorded_on_the_game():
     assert jg["deepsearch_trigger"]["source"] == ds.SRC_FACT
     assert jg["deepsearch_trigger"]["triggers"] == [ds.T4_STARTER]
     assert jg["deepsearch_trigger"]["deepsearch"] == "disabled"
+
+
+# ------------------------------------------- 조사 우선순위 (C · 2026-09-01)
+
+def test_blind_starters_scores_no_data_highest():
+    """자료가 없는 쪽을 센다. **새 임계값을 만들지 않고** MIN_STARTS 를 쓴다."""
+    from app.engine.deepsearch import blind_starters
+
+    def jg(hs, hr, as_, ar):
+        return {"research": {"home_starter_recent": [{}] * hs,
+                             "home_starter_relief": [{}] * hr,
+                             "away_starter_recent": [{}] * as_,
+                             "away_starter_relief": [{}] * ar}}
+
+    assert blind_starters(jg(0, 0, 0, 0))["score"] == 6      # 양쪽 완전 무자료
+    assert blind_starters(jg(0, 0, 3, 0))["score"] == 3      # 한쪽 완전 무자료
+    assert blind_starters(jg(0, 3, 3, 0))["score"] == 2      # 선발0·구원있음
+    assert blind_starters(jg(1, 0, 3, 0))["score"] == 1      # 표본 하한
+    assert blind_starters(jg(3, 0, 4, 0))["score"] == 0      # 충분
+    assert blind_starters(jg(0, 3, 3, 0))["zero"] == ["home"]
+
+
+@pytest.mark.asyncio
+async def test_ranking_puts_blind_games_first_within_the_same_cap():
+    """🔴 실측 2026-09-01 NPB: 6경기 전부 후보인데 상한은 1건이었고, 순서가
+    트리거 수로만 정해져 **자료가 통째로 없는 경기가 상한에 밀렸다.**
+
+      戸郷 翔征  1군 등판 0 (7/7 햄스트링 이탈, 8/26 2군 복귀전이 전부)
+      高野 脩汰  선발 0 (올해 26경기 전부 중계, 그날이 시즌 첫 선발)
+
+    이런 경기는 크롤 데이터로 답이 안 나온다 — 조사가 가장 필요하다.
+    ⚠️ **상한은 그대로다.** 순서만 바꾼다.
+    """
+    from app.engine import deepsearch as ds
+
+    def game(gid, hs, asamples, asked):
+        return {"game_id": gid, "sport": "npb", "p_claude": 0.55,
+                "home": f"H{gid}", "away": f"A{gid}",
+                "research": {"home_starter_recent": [{}] * hs,
+                             "away_starter_recent": [{}] * asamples},
+                "matchup": {"p_home": 0.55, "우세": "home", "확신도": "중",
+                            "추가확인": asked}}
+
+    # 1: 트리거 2개인데 자료는 충분  2: 트리거 1개인데 홈 선발 자료 0
+    rich = game(1, 3, 3, ["x"])
+    blind = game(2, 0, 3, [])
+    out = await ds.run_for_slate([rich, blind], None, "2026-09-01", settings=S)
+    assert out["disabled"] is True          # 플래그 off — 판별만
+    assert len(out["candidates"]) == 2
+    # 상한은 슬레이트 2 × 30% → 최소 1건. 순서가 무자료 우선이어야 한다.
+    assert ds.daily_cap(2, S) == 1
+    order = sorted(out["candidates"],
+                   key=lambda c: (-c["blind"]["score"], -len(c["triggers"])))
+    assert order[0]["game_id"] == 2, "자료 없는 경기가 뒤로 밀렸다"
+    assert order[0]["blind"]["zero"] == ["home"]
+
+
+def test_priority_does_not_change_the_cap():
+    """우선순위는 순서만 바꾼다 — 상한(슬레이트 30%)은 그대로다."""
+    from app.engine.deepsearch import daily_cap
+
+    assert daily_cap(6, S) == 1
+    assert daily_cap(11, S) == 3
+    assert daily_cap(1, S) == 1          # 최소 1건 보장도 그대로
