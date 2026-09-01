@@ -160,8 +160,16 @@ class Settings(BaseSettings):
     #   Gemini 무료 티어는 분당 제한이 빡빡해 4~5콜이면 429가 난다. 2단은
     #   경기당 2콜(팀별) × 슬레이트라 호출량이 가장 많다 → **Groq가 1순위**다.
     #   Gemini는 폴백으로 두고, 품질이 필요한 3단만 Anthropic을 앞에 둔다.
-    interpreter_provider: str = "groq"      # 2단 해석봇 — 칸 단위 판정 (호출량 최다)
-    interpreter_model: str = ""
+    # 🔴 기본값이 서로 모순이었다: interpreter_provider="groq" 인데 groq 은
+    #    disabled_providers 기본값에 들어 있다. 그래서 라인업 의도 해석이
+    #    **한 번도 돌지 않았다** — 변경점(사실)만 카드에 실리고 "감독이 왜
+    #    그렇게 짰나"(해석)는 통째로 비어 있었다 (실측 2026-09-01).
+    interpreter_provider: str = "anthropic"  # 2단 해석봇 — 칸 단위 판정 (호출량 최다)
+    # ⚠️ **비워두지 마라.** 비면 역할 폴백이 judge_model(=Opus)을 넣는다.
+    #    해석봇은 경기×양팀으로 호출량이 가장 많은 역할이라 Opus 로 돌면
+    #    슬레이트당 20콜이 Opus 가 된다. 분류·요약 작업이므로 팀 폼과 같은
+    #    등급(Haiku)이 맞다.
+    interpreter_model: str = "claude-haiku-4-5-20251001"
     interpreter_fallback: str = "gemini,anthropic"
     judge_a_provider: str = "anthropic"     # 3단 대조봇 A — 품질 우선
     judge_a_model: str = ""                 # 비우면 judge_model을 쓴다

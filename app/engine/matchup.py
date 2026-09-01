@@ -62,6 +62,41 @@ def lineups_payload(jg: dict) -> dict:
     }
 
 
+def intent_payload(jg: dict) -> dict:
+    """[라인업 의도] 감독이 **왜** 그렇게 짰는가. 판정 입력 6번.
+
+    🔴 **사실이 아니라 해석이다.** `lineup_intent` 모듈의 규율("사실과 해석을
+       끝까지 분리한다 — 섞으면 3단이 추측을 사실로 읽는다")을 여기서도
+       지킨다. 프롬프트가 이 칸을 "해석"으로 명시해 받는다.
+
+    ⚠️ `보류`는 **버리지 않고 그대로 넘긴다.** '보류'를 '='로 바꾸면
+       "판단했는데 중립"과 "판단 못 함"이 섞인다(interpreter 의 같은 규율).
+       다만 판정 규칙이 보류를 근거로 쓰지 못하게 막는다.
+
+    실측 2026-09-01: 이 값이 카드에만 실리고 매치업 프롬프트에는 없었다.
+    수집한 정보가 확률을 움직이지 않는 상태였다 — 이 저장소가 파드리스전에서
+    이미 겪은 실패와 같은 모양이다.
+    """
+    it = jg.get("lineup_intent") or {}
+    if not it:
+        return {}
+    out = {}
+    for side in ("home", "away"):
+        items = [
+            {"변경": i.get("change_type"), "부호": i.get("symbol"),
+             "득점방향": i.get("scoring_dir"), "사유": i.get("reason")}
+            for i in (it.get("items") or {}).get(side) or []
+        ]
+        head = (it.get("headline") or {}).get(side)
+        if items or head:
+            out[side] = {"요약": head, "해석": items}
+    if it.get("scoring"):
+        out["총득점방향"] = it["scoring"]
+    if it.get("handicap"):
+        out["점수차메모"] = it["handicap"]
+    return out
+
+
 def starters_recent_payload(jg: dict) -> dict:
     r = jg.get("research") or {}
     return {
@@ -187,6 +222,8 @@ async def judge_matchup(jg: dict, redis, date: str, *,
         STARTERS_RECENT_JSON=json.dumps(
             starters_recent_payload(jg), ensure_ascii=False, default=str),
         PREV_VERDICT_JSON=json.dumps(prev, ensure_ascii=False, default=str),
+        LINEUP_INTENT_JSON=json.dumps(intent_payload(jg), ensure_ascii=False,
+                                      default=str),
     )
     parsed = None
     for attempt in (1, 2):
