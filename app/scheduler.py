@@ -361,7 +361,8 @@ async def mlb_pregame_poll() -> None:
     from app.alerts import cycle_errors, cycle_report
     from app.collectors.lineups import STATUS_CONFIRMED, MLBLineupClient, refresh_mlb_lineup
     from app.engine.pregame_push import send_game_prediction, still_upcoming
-    from app.pipeline import rejudge_after_lineup
+    from app.pipeline import (analysis_cache_ready, ensure_analysis_cache,
+                              rejudge_after_lineup)
 
     s = get_settings()
     pool = await get_pool()
@@ -397,6 +398,18 @@ async def mlb_pregame_poll() -> None:
             logger.info("[scheduler] MLB 라인업 폴링 %d경기 확인 · 변경 %d건",
                         len(pending), len(updated))
         rejudged = {g["id"] for g, _ in updated}
+        if updated:
+            # 🔴 MLB 도 같은 구멍이었다. `rejudge_after_lineup` 이 캐시가 없으면
+            #    `return False` 로 조용히 끝난다 — 04:30 프리페치가 한 번
+            #    실패하면 그날 MLB 카드가 0장이다. 오늘은 프리페치가 성공해
+            #    드러나지 않았을 뿐이다(실측 2026-09-01).
+            raw = await redis.get(f"analysis:mlb:{date}")
+            if not analysis_cache_ready(raw, date):
+                if await ensure_analysis_cache(pool, redis, "mlb", date):
+                    logger.info("[scheduler] mlb 캐시 구제 성공 — 재판정 계속")
+                else:
+                    errs.append({"what": "mlb 판정 캐시 없음",
+                                 "detail": "슬레이트 파이프라인 구제 실패/이미 시도"})
         for game, res in updated:
             try:
                 ok = await rejudge_after_lineup(game, res)
@@ -521,7 +534,9 @@ async def crawler_lineup_poll() -> None:
 
     NPB는 시작 15분 전(18:00 → 17:45)까지 크롤·분석을 끝낸다. 그 시각 이후
     재판정하지 않는다. 타순이 바뀐 경기는 종목 안에서 병렬로 돌리고, 끝나는
-    즉시 보낸다. 슬레이트 파이프라인(`ensure_analysis_cache`)은 저녁에 돌리지 않는다.
+    즉시 보낸다. 슬레이트 파이프라인은 평소 저녁에 돌리지 않지만, **판정 캐시가
+    아예 없으면 하루 1회 구제 실행**한다(2026-09-01 — 프리페치 실패가 그날 종목
+    전체의 침묵으로 이어지던 것을 막는다).
     ⚠️ MLB 경로(`refresh_mlb_lineup`)는 statsapi 전용이라 이 두 종목에 쓸 수 없다.
     ⚠️ 한 경기 실패가 나머지를 막지 않는다.
     """
@@ -536,7 +551,7 @@ async def crawler_lineup_poll() -> None:
         void_analysis_games,
     )
     from app.pipeline import (
-        analysis_cache_ready, is_final_window,
+        analysis_cache_ready, ensure_analysis_cache, is_final_window,
         rejudge_after_lineup, today_kst,
     )
 
@@ -635,10 +650,23 @@ async def crawler_lineup_poll() -> None:
                 row, status, notes, roster, sig_key, game = item
                 raw = await redis.get(f"analysis:{_sport}:{_date}")
                 if not analysis_cache_ready(raw, _date):
-                    logger.warning(
-                        "[scheduler] %s 캐시 없음 — 슬레이트 파이프라인 생략 game=%s",
-                        _sport, row["id"])
-                    return
+                    # 🔴 종전에는 여기서 그냥 `return` 이었다. 그래서 프리페치가
+                    #    한 번 실패하면 그날 그 종목은 통째로 침묵했다.
+                    #    실측 2026-09-01: "npb 캐시 없음 — 생략" × 6경기 → 카드 0장.
+                    #    판정은 만들 수 있는 상태였는데 아무도 만들지 않았다.
+                    #    ⚠️ 구제는 하루 1회다(ensure_analysis_cache 가 nx 가드).
+                    made = await ensure_analysis_cache(pool, redis, _sport, _date)
+                    if not made:
+                        errs.append({
+                            "what": f"{_sport} 판정 캐시 없음 game={row['id']}",
+                            "detail": f"{row['away']}@{row['home']} — "
+                                      f"슬레이트 파이프라인 구제 실패/이미 시도"})
+                        logger.warning(
+                            "[scheduler] %s 캐시 없음·구제 실패 — 생략 game=%s",
+                            _sport, row["id"])
+                        return
+                    logger.info("[scheduler] %s 캐시 구제 성공 — 재판정 계속 game=%s",
+                                _sport, row["id"])
                 try:
                     ok = await rejudge_after_lineup(
                         row, {"status": status, "notes": notes,
@@ -683,7 +711,10 @@ async def crawler_lineup_poll() -> None:
                                  "detail": str(exc)[:150], "exc": exc})
                     logger.warning("[scheduler] %s 발송 실패 game=%s: %s",
                                    sport, row["id"], exc)
-            if jobs:
+            if rows:
+                # 🔴 `if jobs:` 였다. 타순변동이 없으면 줄이 통째로 빠져,
+                #    17:35 리포트가 "NPB 대상 6경기"만 적고 발송 5건(KBO)을
+                #    그 아래 붙였다 — 종목이 뒤바뀌어 읽힌다(실측 2026-09-01).
                 rep.append(f"  {sport.upper()} 대상 {len(rows)}경기 · "
                            f"타순변동 {len(jobs)} · 미변동 {len(catchup)}")
         await report_cycle(redis, "아시아 판정", rep, errs, tally,

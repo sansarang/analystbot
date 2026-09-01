@@ -193,3 +193,44 @@ def test_asia_poll_sends_provisional_card_before_lineup():
 
     assert qualifies({"sport": "kbo", "p": 0.70, "pick_state": "preliminary"}) is False
     assert qualifies({"sport": "kbo", "p": 0.70, "pick_state": "final"}) is True
+
+
+def test_ensure_analysis_cache_is_actually_called():
+    """🔴 실측 2026-09-01: `ensure_analysis_cache` 는 만들어져 있었지만
+    **부르는 곳이 하나도 없었다**(호출처 3곳이 전부 주석·docstring).
+    그래서 그 함수의 docstring 이 예언한 그대로 NPB 6경기가 죽었다:
+      "npb 캐시 없음 — 슬레이트 파이프라인 생략" × 6 → 카드 0장
+    MLB 도 같은 구멍이었다(rejudge_after_lineup 이 캐시 없으면 return False).
+    """
+    from pathlib import Path
+
+    src = Path("app/scheduler.py").read_text(encoding="utf-8")
+    # 주석이 아닌 실제 호출이 KBO·NPB 경로와 MLB 경로 양쪽에 있어야 한다
+    calls = [ln for ln in src.splitlines()
+             if "await ensure_analysis_cache(" in ln and not ln.strip().startswith("#")]
+    assert len(calls) >= 2, f"실제 호출 {len(calls)}곳 — 두 폴링 경로 모두 필요"
+
+
+def test_rescue_runs_at_most_once_per_day():
+    """⚠️ 5분 폴링마다 슬레이트를 다시 돌면 Sonnet 6~15콜 × 하루 100틱이다."""
+    from pathlib import Path
+
+    from app.pipeline import _RESCUE_KEY, _RESCUE_TTL
+
+    assert "{sport}" in _RESCUE_KEY and "{date}" in _RESCUE_KEY
+    assert _RESCUE_TTL >= 12 * 3600
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    body = src[src.index("async def ensure_analysis_cache"):]
+    assert "nx=True" in body[:2000], "중복 구제를 막는 nx 가드가 없다"
+
+
+def test_cycle_report_lists_every_sport_it_polled():
+    """🔴 실측 2026-09-01 17:35 리포트: "NPB 대상 6경기"만 적고 발송 5건(KBO)을
+    그 아래 붙여, 종목이 뒤바뀌어 읽혔다. `if jobs:` 라 타순변동이 없는 종목은
+    줄이 통째로 빠졌다."""
+    from pathlib import Path
+
+    src = Path("app/scheduler.py").read_text(encoding="utf-8")
+    body = src[src.index("async def crawler_lineup_poll"):]
+    i = body.index('rep.append(f"  {sport.upper()} 대상')
+    assert "if rows:" in body[max(0, i - 400):i], "종목 줄이 여전히 jobs 조건에 묶여 있다"

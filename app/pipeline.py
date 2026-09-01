@@ -917,16 +917,40 @@ def analysis_cache_ready(raw: str | None, date: str) -> bool:
     return all(isinstance(g.get("p_claude"), (int, float)) for g in games)
 
 
+#: 저녁 폴링에서 슬레이트 파이프라인을 다시 도는 것은 **하루 1회**다.
+#   5분 폴링마다 돌면 Sonnet 6~15콜 × 하루 100틱이 된다.
+_RESCUE_KEY = "analysis:rescue:{sport}:{date}"
+_RESCUE_TTL = 20 * 3600
+
+
 async def ensure_analysis_cache(pool, redis, sport: str, date: str) -> bool:
     """라인업 재판정 전에 `analysis:{sport}:{date}` 가 있게 한다.
 
     키가 있어도 당일 판정이 없으면 파이프라인을 1회 돌린다.
     프리페치가 KBO·NPB를 안 돌던 구멍: 그날 사용자가 안 물어보면
     폴링이 타순을 잡아도 `rejudge_after_lineup`이 즉시 False를 반환했다.
+
+    🔴 이 함수는 만들어져 있었지만 **부르는 곳이 하나도 없었다**(실측
+       2026-09-01: 호출처 3곳이 전부 주석·docstring). 그래서 위 docstring 이
+       예언한 그대로 오늘 NPB 6경기가 죽었다:
+         "npb 캐시 없음 — 슬레이트 파이프라인 생략" × 6 → 카드 0장
+       프리페치가 한 번 실패하면 그날 그 종목은 통째로 침묵한다.
+
+    ⚠️ **하루 1회로 막는다.** 5분 폴링마다 슬레이트를 다시 도는 것은
+       Sonnet 6~15콜 × 100틱이다. 실패해도 재시도하지 않는다 — 같은 이유로
+       실패할 가능성이 크고, 크레딧만 태운다.
     """
     raw = await redis.get(f"analysis:{sport}:{date}")
     if analysis_cache_ready(raw, date):
         return True
+    key = _RESCUE_KEY.format(sport=sport, date=date)
+    try:
+        if not await redis.set(key, "1", ex=_RESCUE_TTL, nx=True):
+            logger.info("[pipeline] analysis 구제 이미 시도함 — %s %s 생략",
+                        sport, date)
+            return False
+    except Exception as exc:      # redis 실패가 구제를 막지 않는다
+        logger.warning("[pipeline] 구제 가드 실패(계속 진행) %s: %s", sport, exc)
     logger.info("[pipeline] analysis 캐시 없음·무판정 — %s %s 파이프라인 1회",
                 sport, date)
     try:
