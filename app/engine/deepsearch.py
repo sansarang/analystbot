@@ -35,7 +35,10 @@ T5_LINEUP = "T5_라인업이상"
 SEARCH_LANG = {"kbo": "한국어", "npb": "일본어", "mlb": "영어", "soccer": "영어"}
 
 CACHE_KEY = "deepsearch:{league}:{game_id}:{date}"
-CACHE_TTL = 6 * 3600
+# 🔴 6h 였다. 저녁 슬레이트가 6시간을 넘기면 같은 경기를 **하루에 두 번**
+#    조사한다(1차 판정 + 늦은 재판정). 날짜가 키에 있어 다음날과 충돌하지
+#    않으므로 24h 로 둔다 — 당일 재조사를 막는 것이 목적이다.
+CACHE_TTL = 24 * 3600
 
 
 # ---------------------------------------------------------------- 트리거
@@ -583,8 +586,16 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
     cap = daily_cap(len(games), s)
     if max_investigations is not None:
         cap = min(cap, max_investigations)
+    # 🔴 **예산은 하나다.** 종전에는 1차 판정(run_for_slate)이 로컬 카운터만
+    #    쓰고, 재판정(run_for_rejudge)은 Redis 카운터만 써서 **서로를 못 봤다.**
+    #    같은 슬레이트에서 1차 3건 + 재판정 3건 = 6건이 되어 상한 30%가
+    #    사실상 60%로 벌어진다. 둘 다 같은 Redis 키를 읽고 쓴다.
+    count_key = SLATE_COUNT_KEY.format(
+        sport=(games[0].get("sport") if games else "") or "", date=date)
+    used0 = int(await _get(redis, count_key) or 0)
+    remaining = max(0, cap - used0)
     out = {"candidates": [], "investigated": 0, "searches": 0, "skipped": 0,
-           "cap": cap, "slate": len(games)}
+           "cap": cap, "used_before": used0, "slate": len(games)}
     for jg in games:
         trig = triggers(jg, s, prev_lineup=(prev_lineups or {}).get(jg.get("game_id")))
         if not trig:
@@ -614,7 +625,7 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
                             for c in ranked))
         return out
     for c in ranked:
-        if out["investigated"] >= cap:
+        if out["investigated"] >= remaining:
             out["skipped"] += 1
             continue
         jg = by_id.get(c["game_id"])
@@ -631,6 +642,7 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
         res = apply_findings(jg, data)
         out["investigated"] += 1
         c["moved_pp"] = res["moved"]
+        await _incr(redis, count_key, CACHE_TTL)      # 재판정과 같은 예산
         if redis is not None:
             try:
                 await redis.set(
@@ -643,10 +655,11 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
         logger.info("[deepsearch] %s 트리거=%s 검색=%d 이동=%+.1f%%p",
                     c["match"], ",".join(c["triggers"]), used, res["moved"])
     if out["candidates"]:
-        logger.info("[deepsearch] 슬레이트 %d경기 · 후보 %d · 조사 %d(상한 %d) "
-                    "· 검색 %d · 상한초과 생략 %d",
+        logger.info("[deepsearch] 슬레이트 %d경기 · 후보 %d · 조사 %d "
+                    "· 예산 %d/%d(이전 %d) · 검색 %d · 상한초과 생략 %d",
                     out["slate"], len(out["candidates"]), out["investigated"],
-                    cap, out["searches"], out["skipped"])
+                    used0 + out["investigated"], cap, used0,
+                    out["searches"], out["skipped"])
     return out
 
 # ---------------------------------------------------------------- 재판정 경로

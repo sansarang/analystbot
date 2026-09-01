@@ -668,3 +668,83 @@ def test_checklist_covers_starters_with_no_record():
     assert "추천이 열리지는 않는다" in PROMPT
     # 지어내기 금지가 함께 있어야 한다
     assert '못 찾으면 "미확인"으로 적는다' in PROMPT
+
+
+# ------------------------------------------ 예산 단일화 (2026-09-01)
+
+def _slate_jg(gid, asked=("선발 컨디션",)):
+    return {"game_id": gid, "sport": "npb", "league": "NPB",
+            "home": f"H{gid}", "away": f"A{gid}", "p_claude": 0.55,
+            "research": {"home_starter_recent": [{}, {}, {}],
+                         "away_starter_recent": [{}, {}, {}]},
+            "matchup": {"p_home": 0.55, "우세": "home", "확신도": "중",
+                        "추가확인": list(asked)}}
+
+
+@pytest.mark.asyncio
+async def test_slate_and_rejudge_share_one_budget(monkeypatch):
+    """🔴 종전에는 1차 판정이 로컬 카운터만, 재판정이 Redis 카운터만 써서
+    **서로를 못 봤다.** 같은 슬레이트에서 1차 3건 + 재판정 3건 = 6건이 되어
+    상한 30% 가 사실상 60% 로 벌어진다. 둘 다 같은 Redis 키를 쓴다.
+    """
+    from app.engine import deepsearch as ds
+
+    calls = []
+
+    async def fake_investigate(jg, trig, **_kw):
+        calls.append(jg.get("game_id"))
+        return {"발견": [], "조정": {"p_home": 0.55, "사유": "변화 없음",
+                                  "단일기사여부": False}, "요약": "x"}, 2
+
+    monkeypatch.setattr(ds, "investigate", fake_investigate)
+    S_on = Settings(_env_file=None, DEEPSEARCH_ENABLED=True)
+    rds = _FakeRedis()
+    games = [_slate_jg(i) for i in range(10)]
+    assert ds.daily_cap(10, S_on) == 3
+
+    out = await ds.run_for_slate(games, rds, "2026-09-01", settings=S_on)
+    assert out["investigated"] == 3, "1차에서 상한만큼 써야 한다"
+    key = ds.SLATE_COUNT_KEY.format(sport="npb", date="2026-09-01")
+    assert int(rds.store[key]) == 3, "1차가 Redis 카운터를 올리지 않았다"
+
+    # 같은 날 재판정 — 예산이 이미 소진됐으므로 capped 여야 한다
+    jg = _slate_jg(99)
+    jg["lineup_notes"] = ["홈 선발 변경: A → B"]
+    r = await ds.run_for_rejudge(jg, rds, "2026-09-01", lineup_sig="x",
+                                 slate_size=10, settings=S_on)
+    assert r["status"] == "capped", "1차가 다 썼는데 재판정이 또 조사했다"
+    assert len(calls) == 3, f"총 조사 {len(calls)}건 — 상한 3을 넘었다"
+
+
+@pytest.mark.asyncio
+async def test_slate_uses_only_remaining_budget(monkeypatch):
+    """재판정이 먼저 쓴 만큼 1차의 몫이 줄어든다 — 순서와 무관하게 합이 상한이다."""
+    from app.engine import deepsearch as ds
+
+    calls = []
+
+    async def fake_investigate(jg, trig, **_kw):
+        calls.append(jg.get("game_id"))
+        return {"발견": [], "조정": {"p_home": 0.55, "사유": "x",
+                                  "단일기사여부": False}, "요약": "x"}, 1
+
+    monkeypatch.setattr(ds, "investigate", fake_investigate)
+    S_on = Settings(_env_file=None, DEEPSEARCH_ENABLED=True)
+    rds = _FakeRedis()
+    key = ds.SLATE_COUNT_KEY.format(sport="npb", date="2026-09-01")
+    rds.store[key] = "2"                       # 재판정이 이미 2건 씀
+
+    out = await ds.run_for_slate([_slate_jg(i) for i in range(10)], rds,
+                                 "2026-09-01", settings=S_on)
+    assert out["used_before"] == 2
+    assert out["investigated"] == 1, "잔여 1건만 써야 하는데 더 썼다"
+    assert int(rds.store[key]) == 3
+
+
+def test_game_cache_ttl_prevents_same_day_reinvestigation():
+    """게임별 캐시 6h → 24h. 저녁 슬레이트가 6시간을 넘기면 같은 경기를
+    하루에 두 번 조사한다. 날짜가 키에 있어 다음날과 충돌하지 않는다."""
+    from app.engine.deepsearch import CACHE_KEY, CACHE_TTL
+
+    assert CACHE_TTL == 24 * 3600
+    assert "{date}" in CACHE_KEY
