@@ -651,3 +651,20 @@ def test_priority_does_not_change_the_cap():
     assert daily_cap(6, S) == 1
     assert daily_cap(11, S) == 3
     assert daily_cap(1, S) == 1          # 최소 1건 보장도 그대로
+
+
+def test_checklist_covers_starters_with_no_record():
+    """🔴 실측 2026-09-01 (NPB 요미우리전): 戸郷 翔征은 1군 등판 0으로
+    판정이 "개인 폼 확인 불가"에서 멈췄다. 웹 검색 5분이면 7/7 햄스트링
+    이탈·8/26 2군 복귀전 4이닝 무실점·감독 코멘트까지 나온다.
+    조사가 못 찾은 게 아니라 **체크리스트에 항목이 없었다.**
+
+    ⚠️ 찾아와도 추천은 열리지 않는다 — 표본 하한은 코드가 따로 집행한다.
+    """
+    from app.engine.deepsearch import PROMPT
+
+    assert "선발 등판 기록이 없거나 1경기뿐인 투수" in PROMPT
+    assert "2군·마이너 포함" in PROMPT
+    assert "추천이 열리지는 않는다" in PROMPT
+    # 지어내기 금지가 함께 있어야 한다
+    assert '못 찾으면 "미확인"으로 적는다' in PROMPT
