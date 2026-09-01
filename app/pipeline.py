@@ -4739,6 +4739,11 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             return False
 
         before = (jg.get("pick_summary") or {}).get("desc")
+        # [v1.1 6단계] T5(라인업 이상)는 **직전 라인업과 비교**해야 판별된다.
+        #   jg 는 아래에서 제자리 갱신되므로 여기서 먼저 복사해 둔다.
+        prev_lineup_snapshot = {"research": {
+            side_key: dict((jg.get("research") or {}).get(side_key) or {})
+            for side_key in ("home_lineup", "away_lineup")}}
         before_names = {
             "home": ((jg.get("research") or {}).get("home_pitcher") or {}).get("name") or "",
             "away": ((jg.get("research") or {}).get("away_pitcher") or {}).get("name") or "",
@@ -4795,6 +4800,21 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             except Exception as exc:
                 logger.warning("[pipeline] 라인업 매치업 실패: %s", exc)
                 await notify_api_error(exc)
+            # [v1.1 6단계] T4·T5 발동 경로. 폴링마다 태우는 force 가 아니라
+            #   "선발이 바뀌었다/라인업이 이상하다"일 때만, 같은 라인업당
+            #   1회, 슬레이트 상한 안에서만 조사한다.
+            #   ⚠️ 실패해도 재판정·발송을 막지 않는다 — 조사는 보강이다.
+            try:
+                from app.engine.deepsearch import run_for_rejudge
+                from app.engine.pregame_push import lineup_hash
+
+                await run_for_rejudge(
+                    jg, redis, date,
+                    lineup_sig=lineup_hash(jg),
+                    slate_size=len(analysis.get("games") or []),
+                    prev_lineup=prev_lineup_snapshot)
+            except Exception as exc:
+                logger.warning("[pipeline] 재판정 딥서치 생략 — 판정은 계속: %s", exc)
         else:
             payload = {
                 "date": date, "sport": sport, "games": [jg],

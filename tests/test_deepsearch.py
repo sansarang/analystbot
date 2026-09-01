@@ -341,3 +341,164 @@ def test_non_odds_adjustment_still_applies():
     jg = {"p_claude": 0.63, "matchup": {"우세": "home"}, "away": "SEA", "home": "BOS"}
     assert apply_findings(jg, data)["moved"] == -3.0
     assert jg["p_claude"] == 0.60
+
+
+# ---------------------------------------------------------------- 재판정 경로
+
+class _FakeRedis:
+    def __init__(self):
+        self.store = {}
+
+    async def get(self, k):
+        return self.store.get(k)
+
+    async def set(self, k, v, ex=None):
+        self.store[k] = v
+
+    async def incr(self, k):
+        self.store[k] = str(int(self.store.get(k) or 0) + 1)
+        return int(self.store[k])
+
+    async def expire(self, k, ttl):
+        return True
+
+
+def _rejudge_jg(**kw):
+    """야구 analysis 캐시 형태. T5 는 research 아래 타순을 본다."""
+    g = {"game_id": 11, "sport": "kbo", "league": "KBO",
+         "home": "LG Twins", "away": "NC Dinos", "p_claude": 0.55,
+         "research": {"home_lineup": {"order": "김현수-오스틴-박해민"},
+                      "away_lineup": {"order": "손아섭-박민우-맷데이비슨"},
+                      "home_pitcher": {"name": "임찬규"}},
+         "matchup": {"p_home": 0.55, "우세": "home", "확신도": "중"}}
+    g.update(kw)
+    return g
+
+
+def _starter_changed_jg():
+    return _rejudge_jg(matchup={"p_home": 0.55, "우세": "home", "확신도": "중",
+                                "직전대비": {"변경입력": ["홈 선발 임찬규 → 켈리"]}})
+
+
+@pytest.mark.asyncio
+async def test_t4_t5_fire_on_baseball_jg_shape():
+    """🔴 실측 2026-09-01: T5 가 야구에서 **한 번도 발동하지 않았다.**
+
+    `lineup_anomaly` 가 jg["lineup_home"]·jg["home_lineup"] 만 보는데 야구
+    analysis 캐시는 jg["research"]["home_lineup"]["order"] 에 담는다.
+    키가 어긋나 주전 교체·핵심선수 결장 분기가 둘 다 죽어 있었다.
+    """
+    from app.engine.deepsearch import T4_STARTER, T5_LINEUP, triggers
+
+    assert T4_STARTER in triggers(_starter_changed_jg(), S)
+    prev = {"research": {"home_lineup": {"order": "A-B-C"},
+                         "away_lineup": {"order": "손아섭-박민우-맷데이비슨"}}}
+    assert T5_LINEUP in triggers(_rejudge_jg(), S, prev_lineup=prev)
+    # 평상시에는 오탐이 없어야 한다 (반대 위험)
+    assert T5_LINEUP not in triggers(_rejudge_jg(), S)
+
+
+@pytest.mark.asyncio
+async def test_rejudge_runs_once_then_dedupes_on_same_lineup(monkeypatch):
+    """트리거 발동 → 1회 실행. 같은 (경기, 라인업)이면 재발동해도 스킵."""
+    from app.engine import deepsearch as ds
+
+    calls = []
+
+    async def fake_investigate(jg, trig, **_kw):
+        calls.append(trig)
+        return {"발견": [], "조정": {"p_home": 0.55, "사유": "변화 없음",
+                                  "단일기사여부": False}, "요약": "x"}, 3
+
+    monkeypatch.setattr(ds, "investigate", fake_investigate)
+    S_on = Settings(_env_file=None, DEEPSEARCH_ENABLED=True)
+    rds = _FakeRedis()
+
+    r1 = await ds.run_for_rejudge(_starter_changed_jg(), rds, "2026-09-01",
+                                  lineup_sig="임찬규|켈리|1:김현수|1:손아섭",
+                                  slate_size=10, settings=S_on)
+    assert r1["triggered"] and r1["status"] == "investigated"
+    assert r1["searches"] == 3 and len(calls) == 1
+
+    r2 = await ds.run_for_rejudge(_starter_changed_jg(), rds, "2026-09-01",
+                                  lineup_sig="임찬규|켈리|1:김현수|1:손아섭",
+                                  slate_size=10, settings=S_on)
+    assert r2["status"] == "deduped", "같은 라인업인데 또 조사했다"
+    assert len(calls) == 1, "중복 조사가 나갔다 — 크레딧이 샌다"
+
+    # 라인업이 실제로 바뀌면 다시 조사한다
+    r3 = await ds.run_for_rejudge(_starter_changed_jg(), rds, "2026-09-01",
+                                  lineup_sig="켈리|켈리|1:오스틴|1:손아섭",
+                                  slate_size=10, settings=S_on)
+    assert r3["status"] == "investigated" and len(calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_rejudge_respects_slate_cap(monkeypatch):
+    """상한 도달 시 실행하지 않고 trigger_fired=True, deepsearch=capped 로 기록."""
+    from app.engine import deepsearch as ds
+
+    async def boom(*_a, **_k):
+        raise AssertionError("상한을 넘겨 조사가 나갔다")
+
+    monkeypatch.setattr(ds, "investigate", boom)
+    S_on = Settings(_env_file=None, DEEPSEARCH_ENABLED=True)
+    rds = _FakeRedis()
+    # 슬레이트 10경기 → 상한 3. 이미 3건 소진.
+    assert ds.daily_cap(10, S_on) == 3
+    rds.store[ds.SLATE_COUNT_KEY.format(sport="kbo", date="2026-09-01")] = "3"
+
+    jg = _starter_changed_jg()
+    out = await ds.run_for_rejudge(jg, rds, "2026-09-01", lineup_sig="x",
+                                   slate_size=10, settings=S_on)
+    assert out["status"] == "capped"
+    assert jg["deepsearch_trigger"] == {"trigger_fired": True,
+                                        "triggers": ["T4_선발변경"],
+                                        "deepsearch": "capped", "searches": 0}
+
+
+@pytest.mark.asyncio
+async def test_rejudge_records_trigger_when_flag_off(monkeypatch, caplog):
+    """🔴 플래그 off 여도 **판별·기록·would_have_searched 로그는 남긴다.**
+
+    관찰 데이터에 T4·T5 가 찍히는 것이 이 수정의 핵심 목적이다.
+    """
+    import logging
+
+    from app.engine import deepsearch as ds
+
+    async def boom(*_a, **_k):
+        raise AssertionError("플래그가 꺼졌는데 조사가 나갔다")
+
+    monkeypatch.setattr(ds, "investigate", boom)
+    assert Settings(_env_file=None).deepsearch_investigate is False
+    rds = _FakeRedis()
+    jg = _starter_changed_jg()
+    with caplog.at_level(logging.INFO, logger="app.engine.deepsearch"):
+        out = await ds.run_for_rejudge(jg, rds, "2026-09-01", lineup_sig="x",
+                                       slate_size=10, settings=S)
+    assert "would_have_searched=5" in caplog.text, "관찰 로그가 없다"
+    assert "T4_선발변경" in caplog.text
+    assert out["triggered"] is True and out["status"] == "disabled"
+    assert jg["deepsearch_trigger"]["trigger_fired"] is True
+    assert jg["deepsearch_trigger"]["triggers"] == ["T4_선발변경"]
+    assert jg["deepsearch_trigger"]["deepsearch"] == "disabled"
+    # 상한 카운터를 태우지 않았다 — 조사하지 않았으므로
+    assert rds.store.get(
+        ds.SLATE_COUNT_KEY.format(sport="kbo", date="2026-09-01")) is None
+
+
+@pytest.mark.asyncio
+async def test_rejudge_ignores_t1_t3_only():
+    """재판정 경로는 T4·T5 에만 반응한다 — T1·T3 는 1차 판정에서 이미 봤다."""
+    from app.engine import deepsearch as ds
+
+    jg = _rejudge_jg(p_claude=0.58,
+                     matchup={"p_home": 0.58, "우세": "home", "확신도": "중",
+                              "추가확인": ["선발 컨디션"]})
+    trig = ds.triggers(jg, S)
+    assert ds.T1_BOUNDARY in trig and ds.T3_ASKED in trig
+    out = await ds.run_for_rejudge(jg, _FakeRedis(), "2026-09-01",
+                                   lineup_sig="x", slate_size=10, settings=S)
+    assert out["triggered"] is False and out["status"] is None
+    assert "deepsearch_trigger" not in jg

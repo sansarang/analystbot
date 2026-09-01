@@ -94,8 +94,8 @@ def lineup_anomaly(jg: dict, prev_lineup: dict | None = None) -> bool:
        그 판정의 토대가 무너진 것이다.
     """
     for side in ("home", "away"):
-        cur = _names(jg.get(f"lineup_{side}"))
-        prev = _names((prev_lineup or {}).get(f"lineup_{side}"))
+        cur = _names(_lineup_of(jg, side))
+        prev = _names(_lineup_of(prev_lineup or {}, side))
         if cur and prev and len(prev - cur) >= 2:
             return True
     # 폼 평가서가 이름을 댄 선수가 오늘 결장 명단에 있는가
@@ -107,13 +107,37 @@ def lineup_anomaly(jg: dict, prev_lineup: dict | None = None) -> bool:
     return False
 
 
+def _lineup_of(jg: dict, side: str):
+    """그 팀의 타순/라인업. **종목마다 저장 위치가 다르다.**
+
+    🔴 실측 2026-09-01: T5 가 야구에서 한 번도 발동하지 않았다.
+       `jg["lineup_home"]`·`jg["home_lineup"]`만 보는데 야구 analysis 캐시는
+       `jg["research"]["home_lineup"]["order"]`에 담는다. 키가 어긋나
+       주전 교체 분기와 핵심선수 결장 분기가 **둘 다 죽어 있었다.**
+       축구(`home_lineup` dict)는 첫 두 경로에서 그대로 걸리므로 영향 없다.
+    """
+    for v in (jg.get(f"lineup_{side}"), jg.get(f"{side}_lineup")):
+        if v:
+            return v
+    order = ((jg.get("research") or {}).get(f"{side}_lineup") or {})
+    if isinstance(order, dict) and order.get("order"):
+        return order["order"]
+    nine = ((jg.get("today_nine") or {}).get(side) or {}).get("order")
+    return nine or None
+
+
 def _names(v) -> set[str]:
     if not v:
         return set()
+    if isinstance(v, dict):                  # 축구 라인업 블록
+        v = v.get("order") or v.get("선발") or ""
     if isinstance(v, str):
         parts = [p.split("(")[0].strip() for p in v.split("-")]
     elif isinstance(v, (list, tuple)):
-        parts = [str(p).split("(")[0].strip() for p in v]
+        # 확정 9명은 [{"slot":1,"name":"김현수"}, …] 형태다 — str() 하면
+        # dict 통째가 이름이 돼 비교가 전부 어긋난다.
+        parts = [str((p.get("name") if isinstance(p, dict) else p) or "")
+                 .split("(")[0].strip() for p in v]
     else:
         return set()
     return {p for p in parts if p}
@@ -125,7 +149,7 @@ def _form_key_players(jg: dict) -> set[str]:
     for side in ("home", "away"):
         form = (jg.get("research") or {}).get(f"{side}_form") or {}
         blob = json.dumps(form, ensure_ascii=False) if form else ""
-        for nm in _names(jg.get(f"lineup_{side}")):
+        for nm in _names(_lineup_of(jg, side)):
             if nm and nm in blob:
                 out.add(nm)
     return out
@@ -488,3 +512,140 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
                     out["slate"], len(out["candidates"]), out["investigated"],
                     cap, out["searches"], out["skipped"])
     return out
+
+# ---------------------------------------------------------------- 재판정 경로
+
+#: 재판정 딥서치 중복 방지 — 같은 (경기, 라인업)이면 다시 조사하지 않는다.
+REJUDGE_KEY = "deepsearch:rejudge:{game_id}:{sig}"
+#: 슬레이트 단위 발동 카운터. 재판정 경로도 **같은 상한을 쓴다.**
+SLATE_COUNT_KEY = "deepsearch:count:{sport}:{date}"
+
+
+async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
+                          slate_size: int, prev_lineup: dict | None = None,
+                          settings=None) -> dict:
+    """[v1.1 6단계] 라인업 재판정 경로의 딥서치. **T4·T5 에만 반응한다.**
+
+    🔴 실측 2026-09-01: `rejudge_after_lineup` 이 `run_for_slate` 를 부르지
+       않아 T4(선발 변경)·T5(라인업 이상)가 **실전에서 발동할 경로가 아예
+       없었다.** 라인업이 바뀌었을 때 조사하라고 만든 트리거인데 정작
+       라인업 재판정에 연결이 없었다.
+
+    ⚠️ 폴링 주기마다 태우는 force 방식은 쓰지 않는다 — 5분마다 크레딧을
+       태울 수는 없다. 그래서 세 겹으로 조인다:
+       ① T4·T5 가 걸린 경기만 (T1·T3 는 1차 판정에서 이미 봤다)
+       ② 같은 (game_id, 라인업 서명) 조합당 **1회**
+       ③ 슬레이트 상한(30%)을 재판정 경로에서도 **같이** 센다
+
+    ⚠️ `DEEPSEARCH_ENABLED=false` 면 조사하지 않되 **판별·기록·로그는 남긴다.**
+       어떤 경기가 T4·T5 로 걸리는지 관찰하는 것이 이 단계의 목적이다.
+
+    반환: {"triggered", "triggers", "status", "searches", "moved_pp"}
+      status: None(미발동) | "investigated" | "deduped" | "capped"
+              | "disabled" | "failed"
+    """
+    from app.config import get_settings
+
+    s = settings or get_settings()
+    out = {"triggered": False, "triggers": [], "status": None,
+           "searches": 0, "moved_pp": 0.0}
+    trig = [x for x in triggers(jg, s, prev_lineup=prev_lineup)
+            if x in (T4_STARTER, T5_LINEUP)]
+    if not trig:
+        return out
+    out["triggered"] = True
+    out["triggers"] = trig
+    gid = jg.get("game_id")
+    sport = jg.get("sport") or ""
+    dedupe_key = REJUDGE_KEY.format(game_id=gid, sig=_sig_hash(lineup_sig))
+    count_key = SLATE_COUNT_KEY.format(sport=sport, date=date)
+
+    if redis is not None and await _get(redis, dedupe_key):
+        out["status"] = "deduped"
+        logger.info("[deepsearch] 재판정 중복 생략 game=%s 트리거=%s", gid,
+                    ",".join(trig))
+        _record(jg, out)
+        return out
+
+    cap = daily_cap(slate_size, s)
+    used = int(await _get(redis, count_key) or 0)
+    if used >= cap:
+        out["status"] = "capped"
+        logger.info("[deepsearch] 재판정 상한 도달 game=%s 트리거=%s "
+                    "사용 %d/%d — 조사하지 않음", gid, ",".join(trig), used, cap)
+        _record(jg, out)
+        return out
+
+    if not getattr(s, "deepsearch_investigate", False):
+        out["status"] = "disabled"
+        # 🔴 **would_have_searched 를 남긴다.** 플래그가 꺼져 있어도 어떤
+        #    경기가 조사 대상이 되는지는 관찰 데이터로 쌓여야 한다.
+        logger.info("[deepsearch] 재판정 트리거 발동(조사 비활성) game=%s "
+                    "트리거=%s would_have_searched=%d 상한 %d/%d",
+                    gid, ",".join(trig), int(s.deepsearch_max_searches),
+                    used, cap)
+        _record(jg, out)
+        return out
+
+    try:
+        data, searched = await investigate(jg, trig)
+    except Exception as exc:                 # 조사 실패가 재판정을 막지 않는다
+        out["status"] = "failed"
+        logger.warning("[deepsearch] 재판정 조사 실패 game=%s: %s", gid, exc)
+        _record(jg, out)
+        return out
+    out["searches"] = searched               # usage.server_tool_use 기준(investigate)
+    if data is None:
+        out["status"] = "failed"
+        _record(jg, out)
+        return out
+    res = apply_findings(jg, data)
+    out["status"] = "investigated"
+    out["moved_pp"] = res["moved"]
+    if redis is not None:
+        await _setex(redis, dedupe_key, "1", CACHE_TTL)
+        await _incr(redis, count_key, CACHE_TTL)
+    logger.info("[deepsearch] 재판정 조사 game=%s 트리거=%s 검색=%d 이동=%+.1f%%p "
+                "상한 %d/%d", gid, ",".join(trig), searched, res["moved"],
+                used + 1, cap)
+    _record(jg, out)
+    return out
+
+
+def _record(jg: dict, out: dict) -> None:
+    """판별 결과를 경기에 남긴다 — 관찰 데이터는 로그만으로 부족하다."""
+    jg["deepsearch_trigger"] = {"trigger_fired": out["triggered"],
+                                "triggers": out["triggers"],
+                                "deepsearch": out["status"],
+                                "searches": out["searches"]}
+
+
+def _sig_hash(sig: str) -> str:
+    import hashlib
+
+    return hashlib.sha1((sig or "").encode("utf-8")).hexdigest()[:16]
+
+
+async def _get(redis, key):
+    if redis is None:
+        return None
+    try:
+        return await redis.get(key)
+    except Exception:
+        return None
+
+
+async def _setex(redis, key, val, ttl) -> None:
+    try:
+        await redis.set(key, val, ex=ttl)
+    except Exception as exc:
+        logger.warning("[deepsearch] 중복키 기록 실패 %s: %s", key, exc)
+
+
+async def _incr(redis, key, ttl) -> None:
+    try:
+        n = await redis.incr(key)
+        if n == 1:
+            await redis.expire(key, ttl)
+    except Exception as exc:
+        logger.warning("[deepsearch] 카운터 증가 실패 %s: %s", key, exc)
