@@ -951,8 +951,13 @@ async def ensure_analysis_cache(pool, redis, sport: str, date: str) -> bool:
             return False
     except Exception as exc:      # redis 실패가 구제를 막지 않는다
         logger.warning("[pipeline] 구제 가드 실패(계속 진행) %s: %s", sport, exc)
-    logger.info("[pipeline] analysis 캐시 없음·무판정 — %s %s 파이프라인 1회",
-                sport, date)
+    # 시각·사유를 남긴다 — 주말 낮경기를 구제가 받아내는지 로그로 확인해야 한다.
+    from zoneinfo import ZoneInfo as _Z
+
+    logger.info("[pipeline] analysis 캐시 없음·무판정 — %s %s 파이프라인 1회 "
+                "(구제 실행 %s KST · 사유=%s)", sport, date,
+                datetime.now(_Z("Asia/Seoul")).strftime("%H:%M"),
+                "캐시 키 없음" if not raw else "당일 p_claude 미충족")
     try:
         await run_pipeline(pool, redis, sport=sport, date=date,
                            force_refresh=True, sequential_research=True)

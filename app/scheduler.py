@@ -455,6 +455,42 @@ async def mlb_pregame_poll() -> None:
         await redis.aclose()
 
 
+async def asia_poll_window(pool, now) -> tuple[bool, str]:
+    """지금이 아시아 폴링 창인가. 반환 (열림, 사유).
+
+    창 = [가장 이른 경기 − (KBO 발송창 + 20분), 가장 늦은 경기 시작]
+
+    ⚠️ **새 상수를 만들지 않는다.** `SEND_OPEN_MIN["kbo"]`(70) + 20분 여유로
+       잡는다 — 발송 창이 열리기 전에 크롤이 먼저 돌아야 카드가 나간다.
+    ⚠️ 요일 분기를 넣지 않는다. 월요일(KBO 휴식일)이든 우천 순연이든
+       **오늘 예정 경기가 없으면** 창이 자연히 닫힌다.
+    ⚠️ 조회 실패도 닫힘이다 — 모르는 것을 폴링의 근거로 쓰지 않는다.
+    """
+    from app.engine.pregame_push import SEND_OPEN_MIN
+
+    if pool is None:
+        return False, "pool 없음"
+    try:
+        row = await pool.fetchrow(
+            """SELECT min(starts_at) AS lo, max(starts_at) AS hi
+                 FROM games
+                WHERE sport = ANY($1::text[]) AND status = 'scheduled'
+                  AND (starts_at AT TIME ZONE 'Asia/Seoul')::date
+                      = (now() AT TIME ZONE 'Asia/Seoul')::date""",
+            ["kbo", "npb"])
+    except Exception as exc:
+        logger.warning("[scheduler] 아시아 폴링 창 조회 실패 — 닫힘: %s", exc)
+        return False, "조회 실패"
+    if not row or row["lo"] is None:
+        return False, "오늘 예정 경기 없음"
+    lead = timedelta(minutes=SEND_OPEN_MIN["kbo"] + 20)
+    if now < row["lo"] - lead:
+        return False, f"창 이전 (첫 경기 {row['lo']:%H:%M}Z)"
+    if now > row["hi"]:
+        return False, f"창 이후 (막 경기 {row['hi']:%H:%M}Z)"
+    return True, ""
+
+
 async def report_cycle(redis, where: str, rep: list[str], errs: list[dict],
                        tally: dict, elapsed: float, cycle_report, cycle_errors,
                        *, next_run: str = "") -> None:
@@ -557,8 +593,14 @@ async def crawler_lineup_poll() -> None:
 
     s = get_settings()
     pool = await get_pool()
-    redis = aioredis.from_url(s.redis_url, decode_responses=True)
     now = datetime.now(UTC)
+    # 🔴 5분마다 돌되 경기 시각으로 창을 연다. 빈 틱은 **로그 없이** 끝난다 —
+    #    하루 288틱 중 대부분이 창 밖이라 로그를 남기면 그것이 소음이 된다.
+    open_, why = await asia_poll_window(pool, now)
+    if not open_:
+        logger.debug("[scheduler] 아시아 폴링 창 밖 — %s", why)
+        return
+    redis = aioredis.from_url(s.redis_url, decode_responses=True)
     t0 = _time.monotonic()
     # [1·2단계 2026-09-01] 사이클 리포트 재료.
     #   🔴 저녁 판정 사이클에는 리포트가 아예 없었다 — `prefetch_report` 는
@@ -1184,9 +1226,13 @@ def _job_specs() -> list[tuple]:
         ("research_retry_45m", research_retry_job, IntervalTrigger(minutes=45)),
         ("lineup_poll_30m", lineup_poll_job, IntervalTrigger(minutes=30)),
         # NPB 18:00 → 17:45까지 크롤·분석 종료. KBO는 시작 직전까지 5분마다.
-        ("asia_pregame_5m", crawler_lineup_poll,
-         CronTrigger(hour="17,18", minute="0,5,10,15,20,25,30,35,40,45,50,55",
-                     timezone=KST)),
+        # 🔴 종전에는 CronTrigger(hour="17,18") 였다 — **시각을 코드에 박아**
+        #    17~18시 슬레이트만 다뤘다. 주말 낮경기(14:00·17:00)·더블헤더·
+        #    우천 순연 편성은 폴링 자체가 돌지 않는다.
+        #    이제 5분마다 돌되 잡 서두에서 **오늘 실제 경기 시각**으로 창을
+        #    연다(asia_poll_window). 요일 분기는 넣지 않는다 — 경기가 없으면
+        #    게이트가 자연히 닫힌다.
+        ("asia_pregame_5m", crawler_lineup_poll, IntervalTrigger(minutes=5)),
         # MLB 아침 슬레이트 (05~11 KST). 사이트는 statsapi. 캐시만 보낸다.
         ("mlb_pregame_5m", mlb_pregame_poll,
          CronTrigger(hour="5-11", minute="0,5,10,15,20,25,30,35,40,45,50,55",

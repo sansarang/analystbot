@@ -32,9 +32,11 @@ def test_scheduler_jobs_registered():
     assert "grade_yesterday" not in jobs
     assert str(jobs["calibration_weekly"].trigger) == \
         "cron[day_of_week='sun', hour='23', minute='30']"
+    # [계약 갱신 2026-09-01] 시각 고정 Cron → 5분 Interval + 경기 시각 창 게이트.
+    #   종전 hour="17,18" 은 주말 낮경기(14:00·17:00)·더블헤더·우천 순연을
+    #   통째로 놓쳤다. 창은 이제 `asia_poll_window` 가 DB 경기 시각으로 연다.
     trig = str(jobs["asia_pregame_5m"].trigger)
-    assert "17" in trig and "18" in trig
-    assert "45" in trig
+    assert "interval" in trig and "0:05:00" in trig
     mlb_trig = str(jobs["mlb_pregame_5m"].trigger)
     assert "5" in mlb_trig and "11" in mlb_trig
     assert "0:02:00" in str(jobs["heartbeat_2m"].trigger)
@@ -234,3 +236,69 @@ def test_cycle_report_lists_every_sport_it_polled():
     body = src[src.index("async def crawler_lineup_poll"):]
     i = body.index('rep.append(f"  {sport.upper()} 대상')
     assert "if rows:" in body[max(0, i - 400):i], "종목 줄이 여전히 jobs 조건에 묶여 있다"
+
+
+def _asia_window(lo_h, hi_h, now_h, now_m=0):
+    """창 게이트 헬퍼 — KST 시각(시)로 lo/hi/now 를 만들어 판정."""
+    import asyncio
+    from datetime import UTC, datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    from app.scheduler import asia_poll_window
+
+    KST = ZoneInfo("Asia/Seoul")
+    day = datetime(2026, 9, 1, tzinfo=KST)
+
+    class _Pool:
+        async def fetchrow(self, *_a, **_k):
+            if lo_h is None:
+                return {"lo": None, "hi": None}
+            return {"lo": day.replace(hour=lo_h).astimezone(UTC),
+                    "hi": day.replace(hour=hi_h).astimezone(UTC)}
+
+    now = day.replace(hour=now_h, minute=now_m).astimezone(UTC)
+    return asyncio.run(asia_poll_window(_Pool(), now))
+
+
+def test_asia_window_opens_for_weekend_afternoon_games():
+    """🔴 종전 CronTrigger(hour="17,18") 는 시각을 코드에 박아 주말 낮경기
+    (14:00·17:00)·더블헤더·우천 순연을 통째로 놓쳤다. 이제 경기 시각으로 연다.
+
+    창 = [첫 경기 − (SEND_OPEN_MIN["kbo"]=70 + 20)분, 막 경기 시작]
+    14:00 첫 경기면 12:30 부터 열린다.
+    """
+    assert _asia_window(14, 17, 13)[0] is True, "주말 14:00 경기인데 13시가 닫혔다"
+    assert _asia_window(14, 17, 12, 40)[0] is True          # 12:40 = 창 안
+    assert _asia_window(14, 17, 12, 0)[0] is False          # 12:00 = T-120, 아직
+    assert _asia_window(14, 17, 18)[0] is False             # 막 경기 시작 뒤
+
+
+def test_asia_window_still_covers_weekday_evening():
+    """회귀 — 평일 KBO 18:30 · NPB 18:00 은 종전과 같이 열려 있어야 한다."""
+    assert _asia_window(18, 18, 17)[0] is True              # 17:00
+    assert _asia_window(18, 18, 18)[0] is True              # 18:00 (막 경기 시작)
+    assert _asia_window(18, 18, 16, 50)[0] is True          # 16:50 = 첫경기-70-20
+    assert _asia_window(18, 18, 16, 0)[0] is False          # 16:00 = 아직 이르다
+
+
+def test_asia_window_closes_on_no_games_without_weekday_branch():
+    """월요일(KBO 휴식일)·우천 전면 취소는 **요일 분기 없이** 닫힌다."""
+    open_, why = _asia_window(None, None, 17)
+    assert open_ is False and "경기 없음" in why
+    from pathlib import Path
+    src = Path("app/scheduler.py").read_text(encoding="utf-8")
+    body = src[src.index("async def asia_poll_window"):]
+    body = body[:body.index("async def report_cycle")]
+    # 요일로 분기하는 코드가 없어야 한다 (주석의 "요일 분기를 넣지 않는다"는 제외)
+    code = "\n".join(ln for ln in body.splitlines()
+                     if not ln.strip().startswith("#") and '"""' not in ln)
+    assert "weekday" not in code and "isoweekday" not in code
+
+
+def test_asia_job_is_interval_not_cron():
+    from apscheduler.triggers.interval import IntervalTrigger
+
+    from app.scheduler import _job_specs
+
+    trig = {j: tr for j, _f, tr in _job_specs()}["asia_pregame_5m"]
+    assert isinstance(trig, IntervalTrigger), "여전히 시각 고정 Cron 이다"
