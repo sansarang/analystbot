@@ -402,3 +402,35 @@ def test_replay_mode_suppresses_season_line():
     asyncio.run(attach(jg, replay=True))
     assert jg["research"]["home_starter_season"] == {}
     assert jg["season_line_suppressed"] is True
+
+
+def test_relief_is_a_separate_label_not_mixed_into_starts():
+    """🔴 1이닝 구원과 6이닝 선발은 다른 일이다. 한 배열에 섞으면 판정이
+    구원 기록을 이닝 소화력의 근거로 읽는다."""
+    from app.engine.matchup import starters_recent_payload
+
+    jg = {"research": {
+        "home_starter_recent": [{"innings": 6}],
+        "home_starter_relief": [{"innings": 1}, {"innings": 2}],
+        "away_starter_recent": [{"innings": 6}, {"innings": 5}, {"innings": 7}]}}
+    out = starters_recent_payload(jg)
+    assert out["home"]["선발등판"] == [{"innings": 6}]
+    assert out["home"]["구원등판"] == [{"innings": 1}, {"innings": 2}]
+    # 표본이 충분한 쪽에는 구원 칸을 만들지 않는다 — 없는 칸을 만들지 않는다
+    assert "구원등판" not in out["away"]
+
+
+def test_prompt_treats_relief_as_stuff_not_workload():
+    from app.engine.prompts import MATCHUP
+
+    assert "`구원등판`은 **구위·제구의 참고**이지 **이닝 소화력의 근거가 아니다.**" in MATCHUP
+    assert '"구원 기록:"으로 시작하라' in MATCHUP
+
+
+def test_relief_query_excludes_starts():
+    """구원 조회가 선발을 다시 세면 표본이 두 배로 부풀어 하한이 무의미해진다."""
+    from app.engine.starter_recent import _FETCH_RELIEF, RECENT_RELIEF
+
+    assert "NOT a.is_starter" in _FETCH_RELIEF
+    assert "status = 'final'" in _FETCH_RELIEF
+    assert RECENT_RELIEF <= 5

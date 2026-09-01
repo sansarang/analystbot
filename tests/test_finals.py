@@ -113,3 +113,21 @@ async def test_performance_button_does_not_grade():
     out = await render_performance(None)
     assert "적중" in out
     assert "채점" in out
+
+
+def test_npb_backfill_does_not_lose_appearances_when_lineup_fails():
+    """🔴 타순(`/top`)과 등판(`/stats`)은 서로 다른 페이지인데, 종전에는
+    타순 파싱이 실패하면 `continue` 로 빠져나가 **등판까지 함께 버렸다.**
+
+    실측 2026-09-01: NPB 등판 858행(선발 204)으로 KBO 1,860행(선발 371)의
+    절반. 최근 7일 선발의 32.6%가 "표본 ≤1"로 추천 자격을 잃었다
+    (KBO 0% · MLB 14.4%).
+    """
+    from pathlib import Path
+
+    src = Path("app/collectors/npb_boxscore.py").read_text(encoding="utf-8")
+    body = src[src.index("async def backfill"):]
+    i_app = body.index("record_appearances(")
+    i_guard = body.index("if not lu:")
+    assert i_app < i_guard, "타순 실패 가드보다 등판 적재가 뒤에 있다 — 또 버린다"
+    assert "rescued_app" in body, "회수 건수를 세지 않으면 효과를 알 수 없다"

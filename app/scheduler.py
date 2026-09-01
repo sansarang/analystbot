@@ -587,8 +587,10 @@ async def npb_lineup_history_job() -> None:
 
     타순은 경기 시작 약 30분 전에야 뜨므로(スポナビ 도움말) 당일 오전 백필은
     어제 이전 종료 분만 쌓인다. `source='boxscore'`로 발표 라인업과 구분한다.
-    일정 upsert 창은 백필과 같은 APPEARANCE_DAYS(21) — 3일만 넣으면 나머지
+    일정 upsert 창은 백필과 같은 APPEARANCE_DAYS — 3일만 넣으면 나머지
     경기는 no_game. 14일이면 오늘 선발 등판이 1회로 끊긴다.
+    ⚠️ NPB는 6인 로테이션이라 28일이다(2026-09-01). 일정 upsert 창이
+       백필 창보다 짧으면 그 앞 경기가 전부 no_game 이 된다 — 함께 늘어난다.
     """
     from app.collectors.npb_boxscore import APPEARANCE_DAYS, backfill
     from app.collectors.yahoo_npb import upsert_schedule

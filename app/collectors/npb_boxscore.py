@@ -40,9 +40,22 @@ async def fetch_final_lineups(game_id: str, client: YahooNPBClient) -> dict:
     return lu
 
 
-# 선발 로테이션 5~6일 × 최근 2~3등판. 타순 이력 상한(팀당 10경기)과 창을 나눈다.
+# 선발 로테이션 × 최근 등판. 타순 이력 상한(팀당 10경기)과 창을 나눈다.
 # 14일로 자르면 오늘 선발이 등판 1회만 남는다 (실측 2026-08-29, 12명 중 10명 n=1).
-APPEARANCE_DAYS = 21
+#
+# 🔴 **NPB는 6인 로테이션이라 KBO·MLB(5인)와 같은 창을 쓰면 안 된다.**
+#    실측 2026-09-01 — 최근 21일 창에서 오늘 선발 12명의 등판 수:
+#      3등판  大野 雄大 · モイネロ · 九里 亜蓮 · 平良 海馬
+#      2등판  吉村 · 髙橋 · 床田 · 山﨑
+#      1등판  石田 · 伊藤            ← 추천 게이트 탈락(MIN_STARTS)
+#      0등판  戸郷 · 高野
+#    상한이 정확히 3이다. 21 ÷ 6 = 3.5 이므로 구조적 한계다.
+#    같은 날 평균 표본: KBO 3.39 · MLB 2.25 · **NPB 1.57**.
+#    그 결과 최근 7일 NPB 선발의 **32.6%**가 "표본 ≤1"로 추천 자격을 잃었다
+#    (KBO 0% · MLB 14.4%). 수집 결함도 이름 불일치도 아니었다 —
+#    타순 파싱은 102/102 성공, 등판·타순 어긋난 경기 0건으로 확인했다.
+#    28일이면 6인 로테이션에서 4~5등판이 잡힌다.
+APPEARANCE_DAYS = 28
 
 
 async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
@@ -88,20 +101,37 @@ async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
             if gid_db is None:
                 stats["no_game"] += 1
                 continue
+            # 🔴 **타순과 등판을 한 관문에 묶지 않는다.**
+            #    종전에는 `/top` 打順 파싱이 실패하면 `continue` 로 빠져나가
+            #    **투수 등판까지 함께 버렸다.** 타순은 `/top`, 등판은 `/stats`
+            #    로 **서로 다른 페이지**인데, /stats 는 멀쩡히 응답했을 수도
+            #    있는 것을 시도조차 하지 않았다.
+            #    실측 2026-09-01: NPB 등판 858행(선발 204)으로 KBO 1,860행
+            #    (선발 371)의 절반이었고, 그 결과 최근 7일 선발의 32.6%가
+            #    "표본 ≤1"로 잡혀 추천 자격을 잃었다(KBO 0% · MLB 14.4%).
+            lu = {}
             try:
                 lu = await fetch_final_lineups(gid, client)
             except Exception as exc:
-                logger.debug("[NPB백필] %s 조회 실패: %s", gid, exc)
-                stats["skipped"] += 1
-                continue
-            if not lu:
-                stats["skipped"] += 1
-                continue
+                logger.debug("[NPB백필] %s 打順 조회 실패: %s", gid, exc)
             pits = {"home": [], "away": []}
             try:
                 pits = parse_pitching_stats(await client.stats(gid))
             except Exception as exc:
                 logger.debug("[NPB백필] %s /stats 실패: %s", gid, exc)
+
+            # 등판 기록 — 타순 성패와 무관하게 먼저 적재한다.
+            n_app = await record_appearances(
+                pool, gid_db, "npb", g["home"], g["away"], pits,
+                source="boxscore")
+            stats["appearances"] += n_app
+            if not lu:
+                # 타순만 실패. 등판은 건졌으므로 통계에 남긴다.
+                stats["lineup_only_skip"] = stats.get("lineup_only_skip", 0) + 1
+                stats["skipped"] += 1
+                if n_app:
+                    stats["rescued_app"] = stats.get("rescued_app", 0) + n_app
+                continue
             stats["games"] += 1
             for side in ("home", "away"):
                 team = g[side]
@@ -113,12 +143,10 @@ async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
                                 starter=starter, source="boxscore"):
                     stats["rows"] += 1
                     per_team[team] = per_team.get(team, 0) + 1
-            stats["appearances"] += await record_appearances(
-                pool, gid_db, "npb", g["home"], g["away"], pits,
-                source="boxscore")
     stats["teams"] = len(per_team)
-    logger.info("[NPB백필] 경기 %d · 적재 %d행 · 등판 %d · %d팀 (건너뜀 %d · 경기없음 %d)",
+    logger.info("[NPB백필] 경기 %d · 적재 %d행 · 등판 %d · %d팀 "
+                "(건너뜀 %d · 경기없음 %d · 타순만실패 %d → 등판 %d건 회수)",
                 stats["games"], stats["rows"], stats.get("appearances", 0),
-                stats["teams"],
-                stats["skipped"], stats["no_game"])
+                stats["teams"], stats["skipped"], stats["no_game"],
+                stats.get("lineup_only_skip", 0), stats.get("rescued_app", 0))
     return stats

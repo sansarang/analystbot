@@ -149,7 +149,9 @@ def order_text(parsed_side: dict) -> str:
     return "-".join(n for n in names if n)
 
 
-# 선발 로테이션 × 최근 2~3등판. NPB APPEARANCE_DAYS와 같다.
+# 선발 로테이션 5인 × 최근 2~3등판.
+# ⚠️ NPB(6인 로테이션)는 28일이다 — 종목마다 로테이션이 다르므로 상수를
+#    공유하지 않는다. 여기를 바꾸려면 MLB 실측 근거를 따로 대야 한다.
 APPEARANCE_DAYS = 21
 
 

@@ -98,11 +98,21 @@ def intent_payload(jg: dict) -> dict:
 
 
 def starters_recent_payload(jg: dict) -> dict:
+    """선발 등판. 표본이 얇으면 **구원 등판을 따로 붙인다.**
+
+    ⚠️ 한 배열에 섞지 않는다 — 1이닝 구원과 6이닝 선발은 다른 일이다.
+       프롬프트가 "구원은 구위·제구의 참고이지 이닝 소화력의 근거가 아니다"로
+       다루게 하려면 라벨이 분리돼 있어야 한다.
+    """
     r = jg.get("research") or {}
-    return {
-        "home": r.get("home_starter_recent") or [],
-        "away": r.get("away_starter_recent") or [],
-    }
+    out = {}
+    for side in ("home", "away"):
+        blk = {"선발등판": r.get(f"{side}_starter_recent") or []}
+        relief = r.get(f"{side}_starter_relief") or []
+        if relief:
+            blk["구원등판"] = relief
+        out[side] = blk
+    return out
 
 
 def starters_season_payload(jg: dict) -> dict:

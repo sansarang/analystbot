@@ -44,6 +44,25 @@ _FETCH = """
 """
 
 
+#: 구원 등판 조회. **선발과 섞지 않는다** — 1이닝 구원과 6이닝 선발은 다른 일이다.
+#   🔴 실측 2026-09-01: `_FETCH` 가 `AND a.is_starter` 로 걸러 구원 기록을
+#      하나도 보지 않았다. 저장은 되어 있다 — mlb 구원 1,730행 · npb 609 · kbo 839.
+#      실사고의 Will Dion 은 **총 등판 19회 중 선발 1회**였다. 우리는 n=0 으로
+#      읽었지만 18번의 구원 기록이 있었다.
+#      회수율 실측(최근 7일, 표본≤1 선발): MLB 15건 중 7건(46.7%)이 구원 2건 이상.
+_FETCH_RELIEF = """
+    SELECT a.opponent, a.innings, a.r, a.hits, a.k, a.bb, g.starts_at
+      FROM pitcher_appearances a
+      JOIN games g ON g.id = a.game_id
+     WHERE g.sport = $1 AND a.pitcher = $2 AND NOT a.is_starter
+       AND g.starts_at < $3 AND g.status = 'final'
+     ORDER BY g.starts_at DESC
+     LIMIT $4
+"""
+#: 구원 표본 상한. 선발 창(5)보다 짧게 둔다 — 참고 자료이지 주 근거가 아니다.
+RECENT_RELIEF = 4
+
+
 def _aware(v) -> datetime | None:
     if v is None:
         return None
@@ -117,6 +136,19 @@ async def attach_starter_recent(jg: dict, pool) -> None:
             research.setdefault(key, [])
             continue
         research[key] = [slim_start(r) for r in rows]
+        # 선발 표본이 얇을 때만 구원 기록을 붙인다 — 충분하면 잡음이다.
+        rkey = f"{side}_starter_relief"
+        research.setdefault(rkey, [])
+        if len(research[key]) <= MIN_STARTS:
+            try:
+                rrows = await pool.fetch(_FETCH_RELIEF, sport, name, before,
+                                         RECENT_RELIEF)
+                research[rkey] = [slim_start(r) for r in rrows]
+                if research[rkey]:
+                    logger.info("[starter_recent] %s 선발 %d건 → 구원 %d건 보강",
+                                name, len(research[key]), len(research[rkey]))
+            except Exception as exc:
+                logger.warning("[starter_recent] %s 구원 조회 실패: %s", name, exc)
     mark_low_sample(jg)
 
 
