@@ -77,13 +77,92 @@ def triggers(jg: dict, settings, *, prev_lineup: dict | None = None) -> list[str
         out.append(T3_ASKED)
 
     # T4 — 재판정에서 선발이 바뀌었다
-    if any("선발" in str(x) for x in ((m.get("직전대비") or {}).get("변경입력") or [])):
+    if t4_evidence(jg)[0]:
         out.append(T4_STARTER)
 
     # T5 — 라인업 이상 (2026-08-31 신설)
-    if lineup_anomaly(jg, prev_lineup):
+    if t5_evidence(jg, prev_lineup)[0]:
         out.append(T5_LINEUP)
     return out
+
+
+# ---------------------------------------------------------------- 근거 출처
+#: 발동 근거가 어디서 왔는가. 모델 자백만 믿지 않는다.
+SRC_MODEL = "model"
+SRC_FACT = "poller_fact"
+SRC_BOTH = "both"
+
+
+def _src(model_hit: bool, fact_hit: bool) -> str | None:
+    if model_hit and fact_hit:
+        return SRC_BOTH
+    if fact_hit:
+        return SRC_FACT
+    if model_hit:
+        return SRC_MODEL
+    return None
+
+
+def t4_evidence(jg: dict) -> tuple[bool, str | None]:
+    """선발이 바뀌었는가. **모델 자기 보고 OR 폴러의 사실.**
+
+    🔴 실측 2026-09-01 강제 검증: T4 가 재판정 경로에서 한 번도 걸리지
+       않았다. `_run_baseball_matchups` 가 jg["matchup"] 을 새 판정으로
+       통째로 덮어써, run_for_rejudge 는 주입된 직전대비가 아니라 **새
+       모델이 스스로 보고한 `변경입력: []`** 를 봤다.
+       그런데 선발이 바뀌었다는 **사실**은 폴러가 이미 갖고 있다 —
+       `lineup_notes` 의 "홈 선발 변경: 임찬규 → 켈리".
+       하드 증거가 있는데 모델 자백을 기다릴 이유가 없다.
+    """
+    m = jg.get("matchup") or {}
+    model_hit = any("선발" in str(x)
+                    for x in ((m.get("직전대비") or {}).get("변경입력") or []))
+    fact_hit = any("선발 변경" in str(x) for x in (jg.get("lineup_notes") or []))
+    return (model_hit or fact_hit), _src(model_hit, fact_hit)
+
+
+def t5_evidence(jg: dict, prev_lineup: dict | None = None) -> tuple[bool, str | None]:
+    """라인업 이상. **평가서 기반 판정 OR 직전 대비 타순 diff.**
+
+    ⚠️ 임계값은 기존 T5 정의 그대로 **주전 2명 이상**이다 — 새 기준을
+       만들지 않는다. diff 는 작업 1의 `lineup_diff` 를 그대로 쓰고,
+       선발 교체 줄은 뺀다(그건 T4 의 몫이다).
+    """
+    model_hit = lineup_anomaly(jg, prev_lineup)
+    fact_hit = False
+    if prev_lineup:
+        from app.engine.pregame_push import lineup_diff
+
+        changes = [c for c in lineup_diff(_roster_sig(prev_lineup), _roster_sig(jg))
+                   if "선발" not in c]
+        fact_hit = len(changes) >= 2
+    return (model_hit or fact_hit), _src(model_hit, fact_hit)
+
+
+def _roster_sig(jg: dict) -> str:
+    """`lineup_diff` 가 읽는 4칸 서명. 타순은 "1:이름,2:이름" 으로 만든다.
+
+    야구 타순은 "김현수-오스틴-…" 문자열이라 슬롯 번호가 없다 — 그대로
+    넘기면 `_order_map` 이 빈 dict 를 돌려주고 diff 가 통째로 죽는다.
+    """
+    def _pitcher(side: str) -> str:
+        pit = (jg.get("research") or {}).get(f"{side}_pitcher") or {}
+        if isinstance(pit, dict):
+            return (pit.get("name") or "").strip()
+        return str(pit or "").strip()
+
+    def _order(side: str) -> str:
+        names = []
+        raw = _lineup_of(jg, side)
+        if isinstance(raw, str):
+            names = [x.split("(")[0].strip() for x in raw.split("-")]
+        elif isinstance(raw, (list, tuple)):
+            names = [str((x.get("name") if isinstance(x, dict) else x) or "")
+                     .split("(")[0].strip() for x in raw]
+        return ",".join(f"{i + 1}:{n}" for i, n in enumerate(names) if n)
+
+    return "|".join([_pitcher("home"), _pitcher("away"),
+                     _order("home"), _order("away")])
 
 
 def lineup_anomaly(jg: dict, prev_lineup: dict | None = None) -> bool:
@@ -548,13 +627,23 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
 
     s = settings or get_settings()
     out = {"triggered": False, "triggers": [], "status": None,
-           "searches": 0, "moved_pp": 0.0}
-    trig = [x for x in triggers(jg, s, prev_lineup=prev_lineup)
-            if x in (T4_STARTER, T5_LINEUP)]
+           "searches": 0, "moved_pp": 0.0, "source": None}
+    t4_hit, t4_src = t4_evidence(jg)
+    t5_hit, t5_src = t5_evidence(jg, prev_lineup)
+    trig, srcs = [], []
+    if t4_hit:
+        trig.append(T4_STARTER)
+        srcs.append(t4_src)
+    if t5_hit:
+        trig.append(T5_LINEUP)
+        srcs.append(t5_src)
     if not trig:
         return out
     out["triggered"] = True
     out["triggers"] = trig
+    # 근거 출처를 남긴다 — 모델 자백으로 걸린 건과 사실로 걸린 건은
+    # 나중에 트리거를 손볼 때 완전히 다른 데이터다.
+    out["source"] = srcs[0] if len(set(srcs)) == 1 else SRC_BOTH
     gid = jg.get("game_id")
     sport = jg.get("sport") or ""
     dedupe_key = REJUDGE_KEY.format(game_id=gid, sig=_sig_hash(lineup_sig))
@@ -562,8 +651,8 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
 
     if redis is not None and await _get(redis, dedupe_key):
         out["status"] = "deduped"
-        logger.info("[deepsearch] 재판정 중복 생략 game=%s 트리거=%s", gid,
-                    ",".join(trig))
+        logger.info("[deepsearch] 재판정 중복 생략 game=%s 트리거=%s source=%s",
+                    gid, ",".join(trig), out["source"])
         _record(jg, out)
         return out
 
@@ -571,8 +660,9 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
     used = int(await _get(redis, count_key) or 0)
     if used >= cap:
         out["status"] = "capped"
-        logger.info("[deepsearch] 재판정 상한 도달 game=%s 트리거=%s "
-                    "사용 %d/%d — 조사하지 않음", gid, ",".join(trig), used, cap)
+        logger.info("[deepsearch] 재판정 상한 도달 game=%s 트리거=%s source=%s "
+                    "사용 %d/%d — 조사하지 않음", gid, ",".join(trig),
+                    out["source"], used, cap)
         _record(jg, out)
         return out
 
@@ -581,9 +671,9 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
         # 🔴 **would_have_searched 를 남긴다.** 플래그가 꺼져 있어도 어떤
         #    경기가 조사 대상이 되는지는 관찰 데이터로 쌓여야 한다.
         logger.info("[deepsearch] 재판정 트리거 발동(조사 비활성) game=%s "
-                    "트리거=%s would_have_searched=%d 상한 %d/%d",
-                    gid, ",".join(trig), int(s.deepsearch_max_searches),
-                    used, cap)
+                    "트리거=%s source=%s would_have_searched=%d 상한 %d/%d",
+                    gid, ",".join(trig), out["source"],
+                    int(s.deepsearch_max_searches), used, cap)
         _record(jg, out)
         return out
 
@@ -605,9 +695,9 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
     if redis is not None:
         await _setex(redis, dedupe_key, "1", CACHE_TTL)
         await _incr(redis, count_key, CACHE_TTL)
-    logger.info("[deepsearch] 재판정 조사 game=%s 트리거=%s 검색=%d 이동=%+.1f%%p "
-                "상한 %d/%d", gid, ",".join(trig), searched, res["moved"],
-                used + 1, cap)
+    logger.info("[deepsearch] 재판정 조사 game=%s 트리거=%s source=%s 검색=%d "
+                "이동=%+.1f%%p 상한 %d/%d", gid, ",".join(trig), out["source"],
+                searched, res["moved"], used + 1, cap)
     _record(jg, out)
     return out
 
@@ -616,6 +706,7 @@ def _record(jg: dict, out: dict) -> None:
     """판별 결과를 경기에 남긴다 — 관찰 데이터는 로그만으로 부족하다."""
     jg["deepsearch_trigger"] = {"trigger_fired": out["triggered"],
                                 "triggers": out["triggers"],
+                                "source": out.get("source"),
                                 "deepsearch": out["status"],
                                 "searches": out["searches"]}
 

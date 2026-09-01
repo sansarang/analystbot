@@ -454,6 +454,7 @@ async def test_rejudge_respects_slate_cap(monkeypatch):
     assert out["status"] == "capped"
     assert jg["deepsearch_trigger"] == {"trigger_fired": True,
                                         "triggers": ["T4_선발변경"],
+                                        "source": "model",
                                         "deepsearch": "capped", "searches": 0}
 
 
@@ -502,3 +503,87 @@ async def test_rejudge_ignores_t1_t3_only():
                                    lineup_sig="x", slate_size=10, settings=S)
     assert out["triggered"] is False and out["status"] is None
     assert "deepsearch_trigger" not in jg
+
+
+# ------------------------------------------------- T4·T5 하드 증거 (2026-09-01)
+
+def test_t4_fires_on_poller_fact_alone():
+    """🔴 실측 2026-09-01 강제 검증: T4 가 재판정에서 한 번도 걸리지 않았다.
+
+    `_run_baseball_matchups` 가 jg["matchup"] 을 새 판정으로 통째로 덮어써,
+    run_for_rejudge 는 주입한 직전대비가 아니라 **새 모델이 스스로 보고한
+    `변경입력: []`** 를 봤다. 그런데 선발이 바뀌었다는 사실은 폴러가 이미
+    갖고 있다 — lineup_notes 의 "홈 선발 변경: 임찬규 → 켈리".
+    """
+    from app.engine.deepsearch import SRC_FACT, T4_STARTER, t4_evidence, triggers
+
+    jg = {"lineup_notes": ["홈 선발 변경: 임찬규 → 켈리"],
+          "matchup": {"직전대비": {"변경입력": []}}}
+    assert t4_evidence(jg) == (True, SRC_FACT)
+    assert T4_STARTER in triggers(jg, S)
+
+
+def test_t4_still_fires_on_model_report_alone():
+    """회귀 — 폴러 노트가 없어도 모델 자기 보고로는 여전히 걸린다."""
+    from app.engine.deepsearch import SRC_MODEL, T4_STARTER, t4_evidence, triggers
+
+    jg = {"matchup": {"직전대비": {"변경입력": ["홈 선발 임찬규 → 켈리"]}}}
+    assert t4_evidence(jg) == (True, SRC_MODEL)
+    assert T4_STARTER in triggers(jg, S)
+
+
+def test_t4_silent_when_neither_source_says_so():
+    """반대 위험 — 근거가 없으면 걸리지 않는다."""
+    from app.engine.deepsearch import T4_STARTER, t4_evidence, triggers
+
+    jg = {"lineup_notes": ["우천 지연 안내"],
+          "matchup": {"직전대비": {"변경입력": ["타순 3번 교체"]}}}
+    assert t4_evidence(jg) == (False, None)
+    assert T4_STARTER not in triggers(jg, S)
+
+
+def test_t5_fires_on_lineup_diff_fact():
+    """T5 하드 증거 — 직전 대비 타순 diff. **임계값은 기존대로 주전 2명.**"""
+    from app.engine.deepsearch import T5_LINEUP, t5_evidence, triggers
+
+    cur = {"research": {"home_lineup": {"order": "김현수-오스틴-박해민"},
+                        "away_lineup": {"order": "손아섭-박민우-권희동"}}}
+    prev = {"research": {"home_lineup": {"order": "문보경-홍창기-박해민"},
+                         "away_lineup": {"order": "손아섭-박민우-권희동"}}}
+    fired, src = t5_evidence(cur, prev)
+    assert fired is True and src is not None
+    assert T5_LINEUP in triggers(cur, S, prev_lineup=prev)
+
+
+def test_t5_silent_when_lineup_unchanged():
+    """반대 위험 — diff 가 없으면 걸리지 않는다. 1명만 바뀌어도 안 된다."""
+    from app.engine.deepsearch import T5_LINEUP, t5_evidence, triggers
+
+    cur = {"research": {"home_lineup": {"order": "김현수-오스틴-박해민"},
+                        "away_lineup": {"order": "손아섭-박민우-권희동"}}}
+    assert t5_evidence(cur, cur) == (False, None)
+    assert T5_LINEUP not in triggers(cur, S, prev_lineup=cur)
+    one = {"research": {"home_lineup": {"order": "문보경-오스틴-박해민"},
+                        "away_lineup": {"order": "손아섭-박민우-권희동"}}}
+    assert t5_evidence(cur, one)[0] is False, "1명 교체로 걸리면 임계값이 바뀐 것"
+
+
+@pytest.mark.asyncio
+async def test_source_is_recorded_on_the_game():
+    """근거 출처가 기록에 남는다 — model / poller_fact / both.
+
+    모델 자백으로 걸린 건과 사실로 걸린 건은 트리거를 나중에 손볼 때
+    완전히 다른 데이터다. 섞어 놓으면 구분할 수 없다.
+    """
+    from app.engine import deepsearch as ds
+
+    jg = {"game_id": 7, "sport": "kbo", "p_claude": 0.55,
+          "lineup_notes": ["홈 선발 변경: 임찬규 → 켈리"],
+          "matchup": {"직전대비": {"변경입력": []}}}
+    out = await ds.run_for_rejudge(jg, _FakeRedis(), "2026-09-01",
+                                   lineup_sig="x", slate_size=10, settings=S)
+    assert out["triggered"] is True
+    assert out["source"] == ds.SRC_FACT
+    assert jg["deepsearch_trigger"]["source"] == ds.SRC_FACT
+    assert jg["deepsearch_trigger"]["triggers"] == [ds.T4_STARTER]
+    assert jg["deepsearch_trigger"]["deepsearch"] == "disabled"
