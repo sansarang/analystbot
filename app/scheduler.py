@@ -578,6 +578,22 @@ async def crawler_lineup_poll() -> None:
                 have = any((game.get(f"lineup_{sd}") or "").strip()
                            for sd in ("home", "away"))
                 if not have:
+                    # 🔴 **판정이 있으면 타순 전이라도 1차 카드를 보낸다.**
+                    #    종전에는 여기서 `continue` 라 재판정도 발송도 없었다.
+                    #    실측 2026-09-01 17:25: KBO 5경기 판정이 14:00 에 끝나
+                    #    레저에 있는데도 카드가 한 장도 안 나갔다. 사용자는
+                    #    "봇이 죽었나"와 "라인업이 안 떴다"를 구분할 수 없었다.
+                    #
+                    #    MLB 폴링(`mlb_pregame_poll`)은 이미 라인업과 무관하게
+                    #    전 경기 발송을 시도한다 — KBO·NPB 만 예외였다.
+                    #
+                    #    ⚠️ 추천으로 오해될 위험은 없다: `pick_state` 가
+                    #       "🕐 잠정 — 라인업 확정 전"으로 붙고, `qualifies()` 가
+                    #       확정 라인업을 하드 요건으로 요구해 보드만으로 나간다.
+                    #    ⚠️ 중복 발송도 없다: `send_game_prediction` 이 해시로
+                    #       거르고, 타순이 뜨면 lineup_hash 가 바뀌어 수정 카드가
+                    #       자동으로 나간다(2026-09-01 재발송 규칙).
+                    catchup.append(dict(r))
                     continue
                 final = is_final_window(r["starts_at"], now, sport=sport)
                 status = "confirmed" if final else "predicted"

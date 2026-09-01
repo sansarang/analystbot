@@ -167,3 +167,29 @@ def test_cycle_report_only_fires_when_something_happened():
     src = Path("app/alerts.py").read_text(encoding="utf-8")
     assert "async def cycle_errors" in src
     assert "our_frames(exc, limit=2)" in src, "파일:라인이 없으면 전달해도 못 찾는다"
+
+
+def test_asia_poll_sends_provisional_card_before_lineup():
+    """🔴 실측 2026-09-01 17:25: KBO 5경기 판정이 14:00에 끝나 레저에 있는데도
+    카드가 한 장도 안 나갔다. `crawler_lineup_poll` 이 타순 없는 경기를
+    `continue` 로 버려 재판정도 발송도 없었기 때문이다.
+
+    MLB 폴링은 이미 라인업과 무관하게 전 경기 발송을 시도한다 —
+    KBO·NPB 만 예외였다. 일치시킨다.
+
+    ⚠️ 추천으로 새지 않는다: qualifies() 가 확정 라인업을 하드 요건으로
+       요구하므로 잠정 카드는 보드만으로 나간다.
+    """
+    from pathlib import Path
+
+    src = Path("app/scheduler.py").read_text(encoding="utf-8")
+    body = src[src.index("async def crawler_lineup_poll"):]
+    guard = body.index("if not have:")
+    tail = body[guard:guard + 900]
+    assert "catchup.append(dict(r))" in tail, \
+        "타순 없는 경기가 여전히 발송 경로에서 빠진다"
+    # 확정 요건은 그대로여야 한다 — 잠정이 추천으로 새면 안 된다
+    from app.pipeline import qualifies
+
+    assert qualifies({"sport": "kbo", "p": 0.70, "pick_state": "preliminary"}) is False
+    assert qualifies({"sport": "kbo", "p": 0.70, "pick_state": "final"}) is True
