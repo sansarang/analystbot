@@ -532,3 +532,35 @@ def test_lineup_diff_reads_the_signature_itself():
     # 이전 서명이 없거나 형식이 다르면 **지어내지 않는다**
     assert lineup_diff(None, "A|B|C|D") == []
     assert lineup_diff("legacy-string", "A|B|C|D") == []
+
+
+def test_verdict_hash_ignores_sub_percent_jitter():
+    """🔴 실측 2026-09-01: 같은 입력으로 matchup 을 2회 연속 호출했더니
+    p_home 이 0.38 / 0.34 로 갈렸다(diff 0.0400, claude-sonnet-5, mock 아님).
+    "temperature 0 전제"는 사실이 아니었다 — 매치업 경로는 temperature 를
+    넘기지도 않는다(sonnet-5 가 400 으로 거부해 2026-08-29 에 뺐다).
+
+    4자리 해시면 0.5842 vs 0.5847 이 다른 해시가 되어, 입력이 그대로인데도
+    수정 카드가 나간다.
+    """
+    from app.engine.pregame_push import verdict_hash
+
+    base = {"matchup": {"우세": "home", "확신도": "중"}}
+    h1 = verdict_hash({**base, "p_claude": 0.5842})
+    h2 = verdict_hash({**base, "p_claude": 0.5847})
+    assert h1 == h2, "1%p 미만 흔들림이 재발송을 만든다"
+
+    h3 = verdict_hash({**base, "p_claude": 0.58})
+    h4 = verdict_hash({**base, "p_claude": 0.61})
+    assert h3 != h4, "3%p 차이는 재발송해야 한다"
+
+
+def test_verdict_hash_still_reacts_to_side_and_confidence():
+    """우세·확신도는 실측에서 흔들리지 않았다 — 바뀌면 반드시 알려야 한다."""
+    from app.engine.pregame_push import verdict_hash
+
+    a = {"p_claude": 0.60, "matchup": {"우세": "home", "확신도": "중"}}
+    assert verdict_hash(a) != verdict_hash(
+        {**a, "matchup": {"우세": "away", "확신도": "중"}})
+    assert verdict_hash(a) != verdict_hash(
+        {**a, "matchup": {"우세": "home", "확신도": "하"}})

@@ -147,10 +147,27 @@ def lineup_hash(jg: dict) -> str:
 
 
 def verdict_hash(jg: dict) -> str:
-    """temperature 0 전제. 판정이 같으면 라인업이 바뀌어도 재발송하지 않는다."""
+    """판정이 같으면 재발송하지 않는다.
+
+    🔴 **"temperature 0 이라 같은 입력이면 같은 출력"은 사실이 아니었다.**
+       실측 2026-09-01 (같은 입력으로 matchup 2회 연속 호출, claude-sonnet-5,
+       mock 아님):
+         1회차 p_home=0.38  우세=away  확신도=중
+         2회차 p_home=0.34  우세=away  확신도=중
+         diff  0.0400
+       우세·확신도는 같았고 확률만 흔들렸다. 매치업 경로는 temperature 를
+       아예 넘기지 않는다(2026-08-29: sonnet-5 가 non-default sampling 을
+       400 으로 거부해 extra_body 를 뺐다).
+
+    ⚠️ 소수 **2자리**로 자른다. 4자리면 0.5842 vs 0.5847 이 다른 해시가 되어
+       입력이 그대로인데도 수정 카드가 나간다. 2자리면 0.38 vs 0.34 처럼
+       사람이 볼 만한 차이만 재발송을 부른다.
+    ⚠️ 우세·확신도 칸은 그대로다 — 그 둘은 실측에서 흔들리지 않았고,
+       바뀌면 반드시 알려야 한다.
+    """
     m = jg.get("matchup") or {}
     p = jg.get("p_claude")
-    p_s = f"{float(p):.4f}" if isinstance(p, (int, float)) else ""
+    p_s = f"{float(p):.2f}" if isinstance(p, (int, float)) else ""
     return "|".join([
         p_s,
         str(m.get("우세") or (jg.get("compare") or {}).get("favored") or ""),
