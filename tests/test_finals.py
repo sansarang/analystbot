@@ -302,3 +302,57 @@ def test_asia_job_is_interval_not_cron():
 
     trig = {j: tr for j, _f, tr in _job_specs()}["asia_pregame_5m"]
     assert isinstance(trig, IntervalTrigger), "여전히 시각 고정 Cron 이다"
+
+
+def test_matchup_failure_reverts_lineup_for_retry():
+    """🔴 실사고 2026-09-02 06:40: Anthropic 잔액 소진으로 game 1855·1856·1857
+    의 매치업이 전부 실패했는데 `rejudge_after_lineup` 은 ok=True 를 돌려줬다.
+
+    `refresh_mlb_lineup` 이 판정 성패와 무관하게 games 를 먼저 confirmed 로
+    UPDATE 하고, 다음 폴링은 `lineup_status != "confirmed"` 로 거른다.
+    그래서 판정만 실패한 경기는 **다시는 조회되지 않는다** — 06:55 폴링이
+    "3경기 확인 · 변경 0건" 으로 지나갔고, 충전·재시작 뒤에도 스스로
+    돌아오지 못했다. 라인업은 반영됐는데 승률은 실패 직전 값으로 굳는다.
+    """
+    import asyncio
+    from pathlib import Path
+
+    from app.pipeline import _revert_lineup_for_retry
+
+    src = Path("app/pipeline.py").read_text(encoding="utf-8")
+    body = src[src.index("async def rejudge_after_lineup"):]
+    i_fail = body.index("라인업 매치업 실패")
+    assert "_revert_lineup_for_retry" in body[i_fail:i_fail + 1200], \
+        "매치업 실패 후 재시도 자격을 복원하지 않는다"
+
+    # 되돌리기가 실패해도 흐름을 막지 않는다
+    jg = {"game_id": None}
+    asyncio.run(_revert_lineup_for_retry(jg, Exception("x")))   # game_id 없음 → 조용히 종료
+
+    calls = []
+
+    class _Pool:
+        async def execute(self, sql, *a):
+            calls.append((sql, a))
+
+    async def _run():
+        import app.db as db
+        orig = db.get_pool
+
+        async def fake_pool():
+            return _Pool()
+
+        db.get_pool = fake_pool
+        try:
+            jg2 = {"game_id": 1855, "lineup_status": "confirmed"}
+            await _revert_lineup_for_retry(jg2, Exception("잔액 소진"))
+            return jg2
+        finally:
+            db.get_pool = orig
+
+    jg2 = asyncio.run(_run())
+    assert jg2["lineup_status"] == "predicted"
+    assert calls and "lineup_status = 'predicted'" in calls[0][0]
+    assert "lineup_status = 'confirmed'" in calls[0][0], \
+        "이미 confirmed 인 행만 되돌려야 한다"
+    assert calls[0][1] == (1855,)

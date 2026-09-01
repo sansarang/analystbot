@@ -4793,6 +4793,32 @@ def delta_note(jg: dict) -> str:
     return " — " + " · ".join(parts) if parts else ""
 
 
+async def _revert_lineup_for_retry(jg: dict, exc: BaseException) -> None:
+    """매치업이 실패한 경기의 `lineup_status` 를 되돌려 다음 폴링이 재시도하게 한다.
+
+    ⚠️ 되돌리는 것은 **재시도 자격**이지 판정이 아니다. 라인업 자료는 그대로
+       두고 상태값만 `predicted` 로 내린다 — 다음 폴링이 같은 라인업을 다시
+       확정으로 올리며 재판정한다.
+    ⚠️ 실패해도 재판정 흐름을 막지 않는다. 되돌리기가 안 되면 종전과 같아질 뿐이다.
+    """
+    gid = jg.get("game_id")
+    if gid is None:
+        return
+    try:
+        from app.db import get_pool
+
+        pool = await get_pool()
+        await pool.execute(
+            "UPDATE games SET lineup_status = 'predicted' "
+            " WHERE id = $1 AND lineup_status = 'confirmed'", int(gid))
+    except Exception as e:
+        logger.warning("[pipeline] 재시도 자격 복원 실패 game=%s: %s", gid, e)
+        return
+    jg["lineup_status"] = "predicted"
+    logger.warning("[pipeline] 판정 실패로 라인업 확정 되돌림 — 다음 폴링 재시도 "
+                   "game=%s 사유=%s", gid, str(exc)[:120])
+
+
 async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
     """[2-3] 라인업 수신 → 그 경기만 재판정. 승률·신호등·추천·조합을 갱신한다.
 
@@ -4885,6 +4911,21 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             except Exception as exc:
                 logger.warning("[pipeline] 라인업 매치업 실패: %s", exc)
                 await notify_api_error(exc)
+                # 🔴 **판정이 실패했으면 라인업 확정을 되돌린다.**
+                #    `refresh_mlb_lineup` 이 판정 성패와 무관하게 games 를 먼저
+                #    `confirmed` 로 UPDATE 하고, 다음 폴링은
+                #      pending = [r for r in rows if lineup_status != "confirmed"]
+                #    로 거른다. 그래서 판정만 실패하면 그 경기는 **다시는
+                #    조회되지 않는다** — 라인업은 반영됐는데 승률은 실패 직전
+                #    값으로 굳는다.
+                #    실사고 2026-09-02 06:40: Anthropic 잔액 소진으로 game
+                #    1855·1856·1857 의 매치업이 전부 실패했는데
+                #    `rejudge_after_lineup` 은 ok=True 를 돌려줬고, 06:55 폴링은
+                #    "3경기 확인 · 변경 0건" 으로 지나갔다. 충전·재시작 뒤에도
+                #    스스로 돌아오지 못했다.
+                #    ⚠️ 되돌리는 것은 **재시도 자격**이지 판정이 아니다.
+                #       다음 폴링이 같은 라인업을 다시 확정으로 올리며 재판정한다.
+                await _revert_lineup_for_retry(jg, exc)
             # [v1.1 6단계] T4·T5 발동 경로. 폴링마다 태우는 force 가 아니라
             #   "선발이 바뀌었다/라인업이 이상하다"일 때만, 같은 라인업당
             #   1회, 슬레이트 상한 안에서만 조사한다.
