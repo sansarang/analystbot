@@ -337,3 +337,57 @@ def test_kbo_naver_lineup_confirms_and_retracts_false_live():
     assert jg["status"] == "scheduled"
     assert jg["lineup_status"] == "confirmed"
     assert research["home_lineup"]["order"].count("-") == 8
+
+
+def test_lineup_promotion_is_sport_agnostic():
+    """🔴 실사고 2026-09-01 (NPB 6경기 카드 0장):
+
+    크롤러는 17:00~17:44 2분 간격으로 정상 폴링했고, 17:10~17:28 사이에
+    6경기 타순을 전부 저장했다(값 30→42개). 파이썬도 그것을
+    research["home_lineup"]["order"] 에 병합했다.
+    그런데 lineup_status 를 "confirmed" 로 올리는 코드가
+    `if sport == "kbo":` 블록 **안에만** 있어 NPB 는 "none" 에 머물렀다.
+      → "라인업 수집 0/6경기 — 발표 시각이 지났는데 0건 — 수집 실패"
+      → 전 경기 잠정 · 추천 0건 · 카드 0장
+    크롤도 파서도 Redis 키도 날짜도 전부 정상이었다. 승격 코드만 없었다.
+    """
+    from app.pipeline import promote_lineup_status
+
+    def order(prefix):
+        return "-".join(f"{prefix}{i}" for i in range(9))
+
+    for sport in ("kbo", "npb", "mlb"):
+        jg = {"sport": sport, "game_id": 1}
+        research = {"home_lineup": {"order": order("H")},
+                    "away_lineup": {"order": order("A")}}
+        assert promote_lineup_status(research, jg, "크롤러") is True, sport
+        assert jg["lineup_status"] == "confirmed", sport
+        assert jg["lineup_source"] == "크롤러"
+
+
+def test_lineup_promotion_needs_nine_on_both_sides():
+    """반대 위험 — 부분 타순을 확정으로 올리면 추천 게이트가 헐거워진다."""
+    from app.pipeline import promote_lineup_status
+
+    nine = "-".join(f"H{i}" for i in range(9))
+    jg = {"sport": "npb"}
+    assert promote_lineup_status(
+        {"home_lineup": {"order": nine}, "away_lineup": {"order": "A-B"}},
+        jg, "크롤러") is False
+    assert jg.get("lineup_status") is None
+
+
+def test_lineup_promotion_is_idempotent_and_keeps_conflict():
+    """이미 확정이면 다시 올리지 않고, `conflict` 는 건드리지 않는다 —
+    소스 불일치는 사람이 풀 문제다."""
+    from app.pipeline import promote_lineup_status
+
+    order = "-".join(f"X{i}" for i in range(9))
+    research = {"home_lineup": {"order": order}, "away_lineup": {"order": order}}
+
+    jg = {"sport": "kbo", "lineup_status": "confirmed"}
+    assert promote_lineup_status(research, jg, "네이버") is False
+
+    jg2 = {"sport": "kbo", "lineup_status": "conflict"}
+    assert promote_lineup_status(research, jg2, "네이버") is False
+    assert jg2["lineup_status"] == "conflict"

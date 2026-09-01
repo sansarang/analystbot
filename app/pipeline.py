@@ -632,6 +632,43 @@ def _merge_mlb(research: dict, jg: dict, ctx: dict) -> list[str]:
     return done
 
 
+def promote_lineup_status(research: dict, jg: dict, source: str) -> bool:
+    """타순 9명이 다 들어왔으면 `lineup_status`를 **확정**으로 올린다.
+
+    🔴 종전에는 이 로직이 `merge_source_data` 의 `if sport == "kbo":` 블록
+       **안에만** 있었다. NPB 는 크롤러가 같은 자리(`research[f"{side}_lineup"]
+       ["order"]`)에 타순을 넣는데도 승격되지 않아, 데이터가 있는 채로
+       `lineup_status="none"` 에 머물렀다.
+
+       실사고 2026-09-01 (NPB 6경기 카드 0장):
+         크롤러  17:00~17:44 2분 간격 정상 폴링 (pace 정상)
+         수집    17:10~17:28 6경기 타순 저장 (값 30 → 42개)
+         파이썬  research["home_lineup"]["order"] 에 병합됨
+         그런데  lineup_status 는 "none" 그대로
+         결과    "라인업 수집 0/6경기 — 발표 시각이 지났는데 0건 — 수집 실패"
+                 전 경기 잠정 → 추천 0건 → 카드 0장
+       크롤도 파서도 키도 날짜도 전부 정상이었다. **승격 코드만 없었다.**
+
+    ⚠️ 종목 공용이다. 한쪽에만 두면 같은 일이 반복된다.
+    ⚠️ `conflict`(소스 불일치)는 올리지 않는다 — 그건 사람이 풀 문제다.
+    """
+    names = {}
+    for side in ("home", "away"):
+        order = ((research.get(f"{side}_lineup") or {}).get("order") or "")
+        names[side] = [p for p in order.split("-") if p.strip()]
+    if len(names["home"]) < 9 or len(names["away"]) < 9:
+        return False
+    prev = jg.get("lineup_status") or "none"
+    if prev not in ("none", "predicted"):
+        return False
+    jg["lineup_status"] = "confirmed"
+    jg["lineup_source"] = source
+    logger.info("[pipeline] %s 타순 확정 game=%s n=%d/%d 출처=%s",
+                (jg.get("sport") or "?").upper(), jg.get("game_id"),
+                len(names["home"]), len(names["away"]), source)
+    return True
+
+
 def merge_source_data(research: dict, jg: dict, sport: str,
                       statcast_data: dict | None) -> list[str]:
     """[§8-30] 수집 소스를 research에 병합한다. 반환: 실행된 병합 이름들.
@@ -670,6 +707,10 @@ def merge_source_data(research: dict, jg: dict, sport: str,
         _absorb(research, _mc(research, jg, statcast_data["crawler"],
                             statcast_data.get("crawler_changes") or []), SRC_PORTAL)
         done.append("crawler")
+        # 🔴 크롤러가 타순을 넣었으면 **종목과 무관하게** 확정으로 올린다.
+        #    KBO 는 아래 네이버 분기에서 한 번 더 부르지만 멱등이다
+        #    (이미 confirmed 면 prev 검사에서 False 로 빠진다).
+        promote_lineup_status(research, jg, "크롤러")
 
     if sport == "kbo":
         from app.collectors.kbo_park import merge_into_research as _mp
@@ -705,15 +746,7 @@ def merge_source_data(research: dict, jg: dict, sport: str,
             elif mapped in ("live", "final", "cancelled") and jg.get("status") == "scheduled":
                 jg["status"] = mapped
                 jg["status_label"] = STATUS_LABELS.get(mapped, "")
-            ho = [p for p in ((research.get("home_lineup") or {}).get("order") or "").split("-") if p.strip()]
-            ao = [p for p in ((research.get("away_lineup") or {}).get("order") or "").split("-") if p.strip()]
-            if len(ho) >= 9 and len(ao) >= 9:
-                prev = jg.get("lineup_status") or "none"
-                if prev in ("none", "predicted"):
-                    jg["lineup_status"] = "confirmed"
-                    jg["lineup_source"] = "네이버"
-                    logger.info("[pipeline] KBO 타순 확정 game=%s n=%d/%d",
-                                jg.get("game_id"), len(ho), len(ao))
+            promote_lineup_status(research, jg, "네이버")
         if statcast_data.get("kbo_usage"):
             from app.collectors.kbo_usage import merge_into_research as _mu
 
