@@ -55,10 +55,10 @@ deploy_one() {
 case "$TARGET" in
   bot)       deploy_one analystbot-bot "python -m app.bot" ;;
   scheduler) deploy_one analystbot-scheduler "python -m app.scheduler" ;;
-  crawler)   deploy_one analystbot-crawler "crawler -interval 60m" crawler ;;
+  crawler)   deploy_one analystbot-crawler "crawler -interval 10m" crawler ;;
   all)       deploy_one analystbot-scheduler "python -m app.scheduler"
              deploy_one analystbot-bot "python -m app.bot"
-             deploy_one analystbot-crawler "crawler -interval 60m" crawler ;;
+             deploy_one analystbot-crawler "crawler -interval 10m" crawler ;;
   *) echo "사용: $0 [bot|scheduler|crawler|all]"; exit 1 ;;
 esac
 
