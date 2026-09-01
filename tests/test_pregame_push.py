@@ -254,7 +254,12 @@ async def test_lineup_change_resends_as_revision(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_same_lineup_does_not_resend_even_if_p_moves(monkeypatch):
+async def test_verdict_change_resends_even_if_lineup_same(monkeypatch):
+    """[계약 갱신] 종전에는 라인업이 같으면 판정이 움직여도 스킵했다.
+
+    재발송은 이제 (라인업 변경) OR (판정 변경)이다. 같은 라인업에서 승률이
+    0.61 → 0.66 으로 움직였으면 그것이 곧 새 정보다.
+    """
     now, row = _row()
     rds = _Redis()
     rds.store["analysis:kbo:2026-08-28"] = _analysis(p=0.61)
@@ -268,12 +273,20 @@ async def test_same_lineup_does_not_resend_even_if_p_moves(monkeypatch):
     monkeypatch.setattr("app.notify.send_telegram", fake_send)
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "sent"
     rds.store["analysis:kbo:2026-08-28"] = _analysis(p=0.66)
-    assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "skipped"
-    assert len(sent) == 1
+    assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "revised"
+    assert len(sent) == 2
+    assert "라인업 변경 재판정" in sent[1]
 
 
 @pytest.mark.asyncio
-async def test_lineup_change_same_verdict_does_not_resend(monkeypatch):
+async def test_lineup_change_same_verdict_sends_compact_card(monkeypatch):
+    """🔴 [계약 갱신] 종전에는 여기서 스킵했다 — 라인업이 실제로 바뀌었는데
+    확률·우세·확신도가 우연히 같으면 사용자는 **바뀐 라인업을 영영 못 봤다.**
+
+    야구 추천은 확정 라인업이 요건이므로 "무엇으로 확정됐나"를 못 보는 것은
+    그 자체로 결함이다. 이제 축약 카드로 보낸다 — 선수 diff 는 싣고,
+    확률은 "변동 없음"이라고 **명시**한다(침묵하면 판정도 바뀐 줄 안다).
+    """
     now, row = _row()
     rds = _Redis()
     rds.store["analysis:kbo:2026-08-28"] = _analysis(pitcher="임찬규", p=0.61)
@@ -287,8 +300,12 @@ async def test_lineup_change_same_verdict_does_not_resend(monkeypatch):
     monkeypatch.setattr("app.notify.send_telegram", fake_send)
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "sent"
     rds.store["analysis:kbo:2026-08-28"] = _analysis(pitcher="켈리", p=0.61)
-    assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "skipped"
-    assert len(sent) == 1
+    assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "revised"
+    assert len(sent) == 2
+    card = sent[1]
+    assert "라인업 변경 반영 — 판정 동일" in card
+    assert "임찬규 → 켈리" in card, "무엇이 바뀌었는지 카드에 없다"
+    assert "판정 변동 없음" in card
 
 
 @pytest.mark.asyncio
@@ -447,3 +464,71 @@ async def test_checklist_reports_npb_window_by_clock():
     closed_at = datetime(2026, 8, 29, 8, 45, tzinfo=UTC)  # KST 17:45
     text_closed = await build_pregame_checklist(None, rds, now=closed_at)
     assert "NPB 분석창" in text_closed and "닫힘" in text_closed
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "second,expect,why",
+    [
+        (dict(pitcher="임찬규", nine="김현수", p=0.61), "skipped", "둘 다 동일"),
+        (dict(pitcher="켈리", nine="김현수", p=0.61), "revised", "라인업만 변경"),
+        (dict(pitcher="임찬규", nine="김현수", p=0.66), "revised", "판정만 변경"),
+        (dict(pitcher="켈리", nine="오스틴", p=0.66), "revised", "둘 다 변경"),
+    ],
+)
+async def test_resend_matrix_is_lineup_or_verdict(monkeypatch, second, expect, why):
+    """재발송 = (라인업 변경) OR (판정 변경). 둘 다 같을 때만 스킵한다.
+
+    종전 규칙은 "둘 중 하나라도 같으면 스킵"이라 4케이스 중 2건이
+    잘못 눌렸다(라인업만 변경 · 판정만 변경).
+    """
+    now, row = _row()
+    rds = _Redis()
+    first = dict(pitcher="임찬규", nine="김현수", p=0.61)
+    rds.store["analysis:kbo:2026-08-28"] = _analysis(**first)
+    sent = []
+
+    async def fake_send(text, **_k):
+        sent.append(text)
+        return True
+
+    _block_claude(monkeypatch)
+    monkeypatch.setattr("app.notify.send_telegram", fake_send)
+    assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "sent"
+    rds.store["analysis:kbo:2026-08-28"] = _analysis(**second)
+    out = await send_game_prediction(rds, row, "2026-08-28", now=now)
+    assert out == expect, f"{why}: {out}"
+    assert len(sent) == (1 if expect == "skipped" else 2)
+
+
+@pytest.mark.asyncio
+async def test_both_hash_same_logs_skip_reason(monkeypatch, caplog):
+    """스킵은 조용히 사라지면 안 된다 — 사유가 로그에 남아야 원인을 짚는다."""
+    import logging
+
+    now, row = _row()
+    rds = _Redis()
+    rds.store["analysis:kbo:2026-08-28"] = _analysis(p=0.61)
+
+    async def fake_send(_text, **_k):
+        return True
+
+    _block_claude(monkeypatch)
+    monkeypatch.setattr("app.notify.send_telegram", fake_send)
+    assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "sent"
+    with caplog.at_level(logging.INFO, logger="app.engine.pregame_push"):
+        assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "skipped"
+    assert "skip_reason=both_hash_same" in caplog.text
+
+
+def test_lineup_diff_reads_the_signature_itself():
+    """서명이 곧 읽을 수 있는 형식이라 별도 저장 없이 diff 를 만든다."""
+    from app.engine.pregame_push import lineup_diff
+
+    assert lineup_diff("임찬규|켈리|1:김현수|1:손아섭",
+                       "최원태|켈리|1:김현수|1:손아섭") == ["홈 선발 임찬규 → 최원태"]
+    assert lineup_diff("A|B|1:가,2:나|1:다",
+                       "A|B|1:가,2:라|1:다") == ["홈 2번 나 → 라"]
+    # 이전 서명이 없거나 형식이 다르면 **지어내지 않는다**
+    assert lineup_diff(None, "A|B|C|D") == []
+    assert lineup_diff("legacy-string", "A|B|C|D") == []

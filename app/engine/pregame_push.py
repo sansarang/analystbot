@@ -245,6 +245,87 @@ def _log_deadline(sport: str, gid: int, starts_at, now, reason: str) -> None:
                    sport, gid, tag, reason, left)
 
 
+def lineup_diff(prev_sig: str | None, cur_sig: str | None) -> list[str]:
+    """직전 발송의 라인업 서명과 현재를 비교해 **바뀐 것만** 사람 말로 돌려준다.
+
+    `roster_signature`는 "홈선발|원정선발|홈타순|원정타순" 이고 타순은
+    `_nine_sig`가 만든 "1:이름,2:이름…" 이다. 서명 자체가 읽을 수 있는
+    형식이라 별도 저장 없이 diff 를 만들 수 있다.
+
+    ⚠️ 이전 서명이 없거나(최초 발송) 형식이 다르면 빈 목록이다 — 지어내지
+       않는다. 호출부는 빈 목록이면 "세부 변경 미상"으로 처리한다.
+    """
+    if not prev_sig or not cur_sig:
+        return []
+    a, b = str(prev_sig).split("|"), str(cur_sig).split("|")
+    if len(a) != 4 or len(b) != 4:
+        return []
+    out: list[str] = []
+    for idx, label in ((0, "홈 선발"), (1, "원정 선발")):
+        if a[idx] != b[idx]:
+            out.append(f"{label} {a[idx] or '미정'} → {b[idx] or '미정'}")
+    for idx, label in ((2, "홈"), (3, "원정")):
+        prev_order = _order_map(a[idx])
+        cur_order = _order_map(b[idx])
+        for slot in sorted(set(prev_order) | set(cur_order), key=_slot_key):
+            was, now_ = prev_order.get(slot), cur_order.get(slot)
+            if was != now_:
+                out.append(f"{label} {slot}번 {was or '없음'} → {now_ or '없음'}")
+    return out
+
+
+def _order_map(sig: str) -> dict:
+    """"1:이름,2:이름" → {"1": "이름"}. 옛 형식(그냥 문자열)이면 빈 dict."""
+    out: dict[str, str] = {}
+    for part in (sig or "").split(","):
+        if ":" not in part:
+            continue
+        slot, _, name = part.partition(":")
+        slot, name = slot.strip(), name.strip()
+        if slot:
+            out[slot] = name
+    return out
+
+
+def _slot_key(s: str):
+    try:
+        return (0, int(s))
+    except (TypeError, ValueError):
+        return (1, s)
+
+
+def compose_lineup_only_card(jg: dict, sport: str, changes: list[str]) -> str:
+    """라인업만 바뀌고 **판정은 그대로**일 때의 축약 카드.
+
+    🔴 전체 폼 카드를 다시 보내면 사용자는 무엇이 달라졌는지 못 찾는다.
+       바뀐 것(선수 diff)만 싣고, 확률·우세·확신도는 **"변동 없음"이라고
+       명시**한다 — 침묵하면 "판정도 바뀌었나" 하고 되묻게 된다.
+    """
+    from app.engine.form_card import _team, favored_side_and_p
+
+    home, away = _team(jg.get("home") or "?"), _team(jg.get("away") or "?")
+    side, p = favored_side_and_p(jg)
+    m = jg.get("matchup") or {}
+    lines = [f"⏰ {SPORT_LABEL.get(sport, sport.upper())} · 라인업 변경 반영 — 판정 동일",
+             f"{away} @ {home}", ""]
+    lines.append("🔄 라인업 변경")
+    if changes:
+        lines += [f"  · {c}" for c in changes[:8]]
+        if len(changes) > 8:
+            lines.append(f"  · 외 {len(changes) - 8}건")
+    else:
+        lines.append("  · 세부 변경 미상 (직전 서명 없음)")
+    lines += ["", "📊 판정 변동 없음"]
+    if p is not None:
+        who = home if side == "home" else away
+        lines.append(f"  승률 {who} {p:.0%} · 우세 {m.get('우세') or '-'}"
+                     f" · 확신도 {m.get('확신도') or '-'}")
+    state = jg.get("pick_state_label")
+    if state:
+        lines.append(f"  {state}")
+    return "\n".join(lines)
+
+
 async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
     """한 경기 카드. 'sent' | 'revised' | 'skipped' | 'failed'.
 
@@ -277,14 +358,28 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
         return "skipped"
     lu, vd = lineup_hash(jg), verdict_hash(jg)
     prev = _parse_sent(await redis.get(card_sig_key(gid)))
-    if prev.get("lineup") == lu:
-        return "skipped"
-    if prev.get("verdict") == vd:
+    # 🔴 재발송은 **(라인업 변경) OR (판정 변경)** 이다.
+    #    종전에는 둘 중 하나라도 같으면 스킵했다. 그래서 라인업이 실제로
+    #    바뀌었는데 확률·우세·확신도가 우연히 같으면 사용자는 **바뀐
+    #    라인업을 영영 못 봤다.** 야구 추천은 확정 라인업이 요건이므로
+    #    "무엇으로 확정됐나"를 못 보는 것은 그 자체로 결함이다.
+    lineup_changed = bool(prev) and prev.get("lineup") != lu
+    verdict_changed = bool(prev) and prev.get("verdict") != vd
+    if prev and not prev.get("legacy") and not lineup_changed and not verdict_changed:
+        logger.info("[pregame] %s game=%s skipped skip_reason=both_hash_same",
+                    sport, gid)
         return "skipped"
     revision = bool(prev) and "legacy" not in prev
     if prev.get("legacy"):
         revision = True
-    text = compose_card(jg, analysis.get("news") or "", sport, revision=revision)
+    if revision and lineup_changed and not verdict_changed:
+        # 라인업만 바뀌었다 — 전체 카드를 다시 보내면 무엇이 달라졌는지 묻힌다.
+        changes = lineup_diff(prev.get("lineup"), lu)
+        text = compose_lineup_only_card(jg, sport, changes)
+        logger.info("[pregame] %s game=%s 라인업만 변경 · diff %d건",
+                    sport, gid, len(changes))
+    else:
+        text = compose_card(jg, analysis.get("news") or "", sport, revision=revision)
     if await _send_card(text):
         await redis.set(card_sig_key(gid), _sent_payload(jg), ex=SENT_TTL_SEC)
         logger.info("[pregame] %s game=%s %s", sport, gid,
