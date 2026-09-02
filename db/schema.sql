@@ -478,3 +478,13 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS trial BOOLEAN NOT NULL DEFAULT 
 ALTER TABLE lineup_events ADD COLUMN IF NOT EXISTS contaminated BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE lineups       ADD COLUMN IF NOT EXISTS contaminated BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS idx_lineup_events_clean ON lineup_events (game_id, side) WHERE NOT contaminated;
+
+-- [무과금 전환 · 2026-09-02] 배당 소스 구분. The Odds API 폐기 후 무료 3원 체계:
+--   'espn'    ESPN Core API (MLB, 무인증·무제한)      1순위
+--   'sharp'   SharpAPI 무료 티어 (MLB 교차검증·폴백)   2순위
+--   'betman'  배트맨 프로토 (KBO·NPB·MLB, 국내 합법)   아시아
+--   'theodds' The Odds API (유료, 비활성 — 코드 보존)
+-- 가치 게이트는 소스를 구분하지 않는다. 같은 로직이다.
+ALTER TABLE odds_snapshots ADD COLUMN IF NOT EXISTS provider TEXT NOT NULL DEFAULT 'theodds';
+CREATE INDEX IF NOT EXISTS idx_odds_snapshots_provider
+    ON odds_snapshots (provider, captured_at DESC);

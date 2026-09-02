@@ -920,6 +920,52 @@ async def mlb_lineup_history_job() -> None:
     logger.info("[scheduler] MLB 라인업 이력 백필 %s", stats)
 
 
+async def _free_odds_snapshot() -> None:
+    """무료 3원 배당 수집. **유료 키를 한 번도 부르지 않는다.**
+
+    MLB  ESPN → (실패 시) SharpAPI
+    KBO·NPB  배트맨 스냅샷(Go 크롤러 적재)을 DB 로 옮긴다
+    ⚠️ 한 리그 실패가 나머지를 막지 않는다.
+    """
+    from app.collectors.odds_free import collect_asia, collect_mlb, coverage
+    from app.pipeline import mlb_slate_date, today_kst
+
+    pool = await get_pool()
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    summary = []
+    try:
+        try:
+            r = await collect_mlb(pool, mlb_slate_date())
+            summary.append(f"mlb={r['rows']}행/{r['matched']}경기"
+                           f"({r['provider'] or '실패'})")
+        except Exception as exc:
+            logger.warning("[odds] MLB 무료 수집 실패: %s", exc)
+            summary.append("mlb=실패")
+        for sport in ("kbo", "npb"):
+            try:
+                r = await collect_asia(pool, redis, sport, today_kst())
+                summary.append(f"{sport}={r['rows']}행/{r['matched']}경기")
+            except Exception as exc:
+                logger.warning("[odds] %s 배트맨 수집 실패: %s", sport, exc)
+                summary.append(f"{sport}=실패")
+        # [검증 3] 리그별 커버리지를 매 스냅샷마다 남긴다 — 3일 집계의 재료다.
+        for sport, d in (("mlb", mlb_slate_date()), ("kbo", today_kst()),
+                         ("npb", today_kst())):
+            try:
+                c = await coverage(pool, sport, d)
+                if c["total"]:
+                    logger.info("[odds-coverage] %s %s — 배당 확보 %d/%d (%.0f%%)",
+                                sport.upper(), d, c["with_odds"], c["total"],
+                                (c["rate"] or 0) * 100)
+                    await redis.set(f"odds_coverage:{sport}:{d}",
+                                    json.dumps(c), ex=48 * 3600)
+            except Exception as exc:
+                logger.debug("[odds-coverage] %s 실패: %s", sport, exc)
+        logger.info("[odds] 무료 수집 완료 — %s", " · ".join(summary))
+    finally:
+        await redis.aclose()
+
+
 async def odds_snapshot_job() -> None:
     """배당 스냅샷 — 크레딧 예산 관리:
 
@@ -932,6 +978,10 @@ async def odds_snapshot_job() -> None:
     from app.collectors.odds import SPORT_KEYS
     from app.leagues import LEAGUES
 
+    # [무과금 전환 2026-09-02] 기본은 무료 3원 체계다. The Odds API 경로는
+    #   **지우지 않았다** — `ODDS_PROVIDER=theodds` 로 되돌아간다.
+    if (get_settings().odds_provider or "free").lower() != "theodds":
+        return await _free_odds_snapshot()
     if is_disabled("odds") or await is_blocked("odds"):
         logger.info("[scheduler] odds snapshot skipped — %s",
                     "disabled" if is_disabled("odds") else "차단 중 (호출 없음)")

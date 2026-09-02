@@ -38,6 +38,11 @@ JOB_LATE_FACTOR = 2
 LLM_FAIL_KEY = "watchdog:llm_fail"
 ODDS_SNAP_KEY = "oddsnap:{}"
 
+#: 무료 전환 후 살아 있어야 하는 배당 소스.
+#  ⚠️ `sharp` 는 키가 없으면 비활성이라 여기 넣지 않는다 — 끈 것을 고장이라고
+#     울리는 것이 오탐의 가장 흔한 원인이다.
+ACTIVE_PROVIDERS = ("espn", "betman")
+
 #: 주기가 있는 잡만 본다 — 하루 1회 잡은 여기서 판단하지 않는다(오탐 원천).
 WATCHED_JOBS = {
     "heartbeat_2m": 2, "mlb_pregame_5m": 5, "asia_pregame_5m": 5,
@@ -72,39 +77,54 @@ async def clear_llm_failures(redis) -> None:
 
 # ─────────────────────────── 점검 ───────────────────────────
 
-async def check_odds(redis) -> list[tuple[str, str, str]]:
-    """(a) 배당 차단 · (b) 스냅샷 나이. 반환 [(코드, 대상, 상세)]."""
+async def check_odds(pool, redis) -> list[tuple[str, str, str]]:
+    """배당 차단 · **provider 별** 스냅샷 나이. 반환 [(코드, 대상, 상세)].
+
+    🔴 [무과금 전환 2026-09-02] 배당이 세 소스로 갈렸다. "배당이 낡았다"는
+       이제 소스마다 따로 판정해야 한다 — ESPN 이 죽어도 배트맨이 살아 있으면
+       KBO 는 멀쩡하고, 그 반대도 마찬가지다. 하나로 묶으면 어느 쪽이
+       죽었는지 경보를 보고도 모른다.
+    ⚠️ 유료 경로가 꺼져 있으면 `theodds` 차단은 경보하지 않는다 — 끈 것을
+       고장이라고 울리면 그게 오탐이다.
+    """
     out = []
-    try:
-        from app.api_guard import block_info
+    from app.config import get_settings
 
-        info = await block_info("odds")
-        if info:
-            at = str(info.get("at") or "?")[:19]
-            out.append(("W-ODDS-BLOCKED", "odds",
-                        f"{at} 부터 차단({info.get('reason')}) — TTL이 없어 "
-                        f"스스로 풀리지 않는다. 키 교체 또는 수동 해제 필요"))
-            return out          # 차단 중이면 stale 은 당연한 결과다. 중복 경보 금지.
-    except Exception as exc:
-        logger.debug("[watchdog] 배당 차단 조회 실패: %s", exc)
-    try:
-        from app.collectors.odds import SPORT_KEYS
+    paid = (get_settings().odds_provider or "free").lower() == "theodds"
+    if paid:
+        try:
+            from app.api_guard import block_info
 
-        keys = {k for v in SPORT_KEYS.values() for k in (v or [])}
-        now = datetime.now(UTC).timestamp()
-        oldest, oldest_key = None, None
-        for k in keys:
-            raw = await redis.get(ODDS_SNAP_KEY.format(k))
-            if raw is None:
-                continue
-            age = (now - float(raw)) / 60
-            if oldest is None or age > oldest:
-                oldest, oldest_key = age, k
-        if oldest is not None and oldest > ODDS_STALE_MIN:
-            out.append(("W-ODDS-STALE", oldest_key or "odds",
-                        f"마지막 스냅샷 {oldest:.0f}분 전 (상한 {ODDS_STALE_MIN}분)"))
+            info = await block_info("odds")
+            if info:
+                at = str(info.get("at") or "?")[:19]
+                out.append(("W-ODDS-BLOCKED", "theodds",
+                            f"{at} 부터 차단({info.get('reason')}) — TTL이 없어 "
+                            f"스스로 풀리지 않는다. tools/unblock 로 해제"))
+                return out      # 차단 중이면 stale 은 당연한 결과다. 중복 경보 금지.
+        except Exception as exc:
+            logger.debug("[watchdog] 배당 차단 조회 실패: %s", exc)
+    if pool is None:
+        return out
+    try:
+        rows = await pool.fetch(
+            """SELECT provider,
+                      EXTRACT(EPOCH FROM (now() - max(captured_at))) / 60 AS age
+                 FROM odds_snapshots
+                WHERE captured_at > now() - interval '7 days'
+                GROUP BY provider""")
     except Exception as exc:
-        logger.debug("[watchdog] 배당 나이 조회 실패: %s", exc)
+        logger.debug("[watchdog] provider 나이 조회 실패: %s", exc)
+        return out
+    seen = {r["provider"]: float(r["age"] or 0) for r in rows}
+    for provider in ACTIVE_PROVIDERS if not paid else ("theodds",):
+        age = seen.get(provider)
+        if age is None:
+            out.append(("W-ODDS-STALE", provider,
+                        "최근 7일간 이 소스로 적재된 배당이 하나도 없다"))
+        elif age > ODDS_STALE_MIN:
+            out.append(("W-ODDS-STALE", provider,
+                        f"마지막 적재 {age:.0f}분 전 (상한 {ODDS_STALE_MIN}분)"))
     return out
 
 
@@ -217,7 +237,7 @@ async def run_checks(pool, redis) -> list[tuple[str, str, str]]:
     found: list[tuple[str, str, str]] = []
     for name, coro in (
         ("store", check_store(pool, redis)),
-        ("odds", check_odds(redis)),
+        ("odds", check_odds(pool, redis)),
         ("llm", check_llm(redis)),
         ("jobs", check_jobs(redis)),
         ("sends", check_pending_sends(pool, redis)),

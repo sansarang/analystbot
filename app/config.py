@@ -55,6 +55,16 @@ class Settings(BaseSettings):
         default="claude-haiku-4-5-20251001",
         validation_alias=AliasChoices("MODEL_TEAM_FORM", "team_form_model"),
     )
+    #: [무과금 전환] SharpAPI 무료 티어 키. **비면 폴백이 조용히 꺼진다.**
+    #   계정 발급은 사람이 하는 일이라 코드가 만들 수 없다 — 키가 들어오면
+    #   ESPN 실패 시 자동으로 2순위가 붙는다.
+    sharpapi_key: str = Field(default="", validation_alias=AliasChoices(
+        "SHARPAPI_KEY", "sharpapi_key"))
+    #: 배당 소스. `free` = ESPN·SharpAPI·배트맨. `theodds` = 유료 복귀.
+    #   ⚠️ The Odds API 코드는 지우지 않았다 — 값만 바꾸면 되돌아간다.
+    odds_provider: str = Field(default="free", validation_alias=AliasChoices(
+        "ODDS_PROVIDER", "odds_provider"))
+
     matchup_model: str = Field(
         default="claude-sonnet-5",
         validation_alias=AliasChoices("MODEL_MATCHUP", "matchup_model"),

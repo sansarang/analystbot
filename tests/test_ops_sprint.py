@@ -170,11 +170,17 @@ def test_success_clears_the_streak():
     assert asyncio.run(go()) == []
 
 
-def test_blocked_odds_suppresses_the_stale_alert():
-    """차단 중이면 stale 은 당연한 결과다 — 같은 고장을 두 번 울리지 않는다."""
-    from app import watchdog as wd
+def test_blocked_odds_suppresses_the_stale_alert(monkeypatch):
+    """차단 중이면 stale 은 당연한 결과다 — 같은 고장을 두 번 울리지 않는다.
 
-    r = FakeRedis()
+    ⚠️ 유료 경로가 켜져 있을 때만 차단을 본다. 무과금 전환 후 기본값에서는
+       `theodds` 차단이 경보 대상이 아니다 — 끈 것을 고장이라 울리면 오탐이다.
+    """
+    from app import watchdog as wd
+    from app.config import Settings
+
+    monkeypatch.setattr("app.config.get_settings",
+                        lambda: Settings(_env_file=None, odds_provider="theodds"))
 
     async def fake_block(name):
         return {"at": "2026-08-30T01:00:00+00:00", "reason": "credit"}
@@ -185,7 +191,7 @@ def test_blocked_odds_suppresses_the_stale_alert():
         orig = ag.block_info
         ag.block_info = fake_block
         try:
-            return await wd.check_odds(r)
+            return await wd.check_odds(None, FakeRedis())
         finally:
             ag.block_info = orig
 
@@ -193,6 +199,38 @@ def test_blocked_odds_suppresses_the_stale_alert():
     codes = [c for c, _, _ in found]
     assert codes == ["W-ODDS-BLOCKED"], "stale 은 함께 울리지 않는다"
     assert "TTL이 없어" in found[0][2]
+
+
+def test_free_mode_does_not_alert_on_the_disabled_paid_key():
+    """끈 것을 고장이라고 울리는 것이 오탐의 가장 흔한 원인이다."""
+    from app import watchdog as wd
+
+    async def fake_block(name):
+        return {"at": "2026-08-27T22:46:28+00:00", "reason": "credit"}
+
+    async def go():
+        import app.api_guard as ag
+
+        orig = ag.block_info
+        ag.block_info = fake_block
+        try:
+            return await wd.check_odds(None, FakeRedis())   # 기본 = free
+        finally:
+            ag.block_info = orig
+
+    assert asyncio.run(go()) == []
+
+
+def test_stale_is_judged_per_provider():
+    """ESPN 이 죽어도 배트맨이 살아 있으면 KBO 는 멀쩡하다 — 소스마다 따로 본다."""
+    from app import watchdog as wd
+
+    class FakePool:
+        async def fetch(self, *a, **k):
+            return [{"provider": "espn", "age": 5.0}]      # 배트맨은 아예 없음
+
+    found = asyncio.run(wd.check_odds(FakePool(), FakeRedis()))
+    assert [(c, t) for c, t, _ in found] == [("W-ODDS-STALE", "betman")]
 
 
 def test_store_down_is_detected_by_a_real_roundtrip():
