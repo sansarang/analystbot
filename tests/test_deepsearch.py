@@ -752,3 +752,132 @@ def test_game_cache_ttl_prevents_same_day_reinvestigation():
 
     assert CACHE_TTL == 24 * 3600
     assert "{date}" in CACHE_KEY
+
+
+# ─────────────── T6: 라인업 최초 확정 (2026-09-02 사용자 지시) ───────────────
+
+def test_t6_fires_on_first_confirmation_not_on_change():
+    """🔴 "라인업이 발표되면 딥서치 바로 시작해야 한다 — 라인업 변동이 아니라."
+
+    종전 T4·T5 는 **직전 대비 차이**만 봤다. 최초 공시는 비교 대상이 없어
+    아무 트리거도 안 걸렸다 — 타순이 나온 그 순간이 가장 정보가 많은데
+    조사를 건너뛰고 있었다.
+    """
+    from app.engine.deepsearch import first_lineup_evidence
+
+    jg = {"lineup_status": "confirmed",
+          "research": {"home_lineup": {"order": "A-B"},
+                       "away_lineup": {"order": "C-D"}}}
+    # 🔴 `prev_lineup` 은 **껍데기가 항상 온다.** dict 가 truthy 라고
+    #    "직전이 있다"로 읽으면 T6 가 영원히 안 걸린다.
+    shell = {"research": {"home_lineup": {}, "away_lineup": {}}}
+    assert first_lineup_evidence(jg, shell) is True
+    assert first_lineup_evidence(jg, None) is True
+
+
+def test_t6_yields_to_t4_t5_once_a_lineup_exists():
+    """직전 타순이 있으면 그건 '변동'이라 T4·T5 소관이다."""
+    from app.engine.deepsearch import first_lineup_evidence
+
+    jg = {"lineup_status": "confirmed",
+          "research": {"home_lineup": {"order": "A-B"}, "away_lineup": {}}}
+    prev = {"research": {"home_lineup": {"order": "X-Y"}, "away_lineup": {}}}
+    assert first_lineup_evidence(jg, prev) is False
+
+
+def test_t6_never_fires_on_a_provisional_lineup():
+    """⚠️ 예상 타순으로 조사하면 그 조사가 예상에 매달린다."""
+    from app.engine.deepsearch import first_lineup_evidence
+
+    jg = {"lineup_status": "predicted",
+          "research": {"home_lineup": {"order": "A-B"}, "away_lineup": {}}}
+    assert first_lineup_evidence(jg, None) is False
+    # 타순 자체가 없으면 확정 상태여도 발동하지 않는다
+    assert first_lineup_evidence({"lineup_status": "confirmed",
+                                  "research": {}}, None) is False
+
+
+@pytest.mark.asyncio
+async def test_t6_is_recorded_as_a_fact_not_a_model_claim(monkeypatch):
+    """공시는 사실이다 — 모델 자백(SRC_MODEL)과 구분해 기록한다."""
+    from app.engine import deepsearch as ds
+
+    async def fake_investigate(jg, trig, **_kw):
+        return ({"발견": [], "조정": {"p_home": 0.55, "사유": "x",
+                                   "단일기사여부": False}, "요약": "x"}, 0, "rss")
+
+    monkeypatch.setattr(ds, "investigate", fake_investigate)
+    jg = {"game_id": 1, "sport": "kbo", "home": "H", "away": "A",
+          "lineup_status": "confirmed",
+          "matchup": {"p_home": 0.55, "우세": "home"},
+          "research": {"home_lineup": {"order": "A-B"},
+                       "away_lineup": {"order": "C-D"}}}
+    out = await ds.run_for_rejudge(
+        jg, _FakeRedis(), "2026-09-02", lineup_sig="sig-1", slate_size=5,
+        prev_lineup={"research": {"home_lineup": {}, "away_lineup": {}}},
+        settings=Settings(_env_file=None, DEEPSEARCH_ENABLED=True))
+    assert out["triggered"] and ds.T6_FIRST_LINEUP in out["triggers"]
+    assert out["source"] == ds.SRC_FACT
+
+
+@pytest.mark.asyncio
+async def test_t6_is_exempt_from_the_slate_cap(monkeypatch):
+    """🔴 [사용자 지시] "T6 무조건 걸리게 해라."
+
+    슬레이트 30% 상한은 `web_search` **검색 수수료** 때문에 걸었던 것이다.
+    무과금 전환으로 조사가 RSS(무료)로 도니 근거가 사라졌다. 5경기 슬레이트에서
+    상한 1이면 "라인업 발표되면 조사"가 리그당 1경기로 줄어 지시가 무력해진다.
+    """
+    from app.engine import deepsearch as ds
+
+    calls = []
+
+    async def fake_investigate(jg, trig, **_kw):
+        calls.append(trig)
+        return ({"발견": [], "조정": {"p_home": 0.55, "사유": "x",
+                                   "단일기사여부": False}, "요약": "x"}, 0, "rss")
+
+    monkeypatch.setattr(ds, "investigate", fake_investigate)
+    rds = _FakeRedis()
+    S = Settings(_env_file=None, DEEPSEARCH_ENABLED=True)
+    shell = {"research": {"home_lineup": {}, "away_lineup": {}}}
+
+    # 5경기 슬레이트 → 상한 1. 그래도 5경기 전부 조사돼야 한다.
+    for gid in range(1, 6):
+        jg = {"game_id": gid, "sport": "kbo", "home": f"H{gid}",
+              "away": f"A{gid}", "lineup_status": "confirmed",
+              "matchup": {"p_home": 0.55, "우세": "home"},
+              "research": {"home_lineup": {"order": "A-B"},
+                           "away_lineup": {"order": "C-D"}}}
+        out = await ds.run_for_rejudge(jg, rds, "2026-09-02",
+                                       lineup_sig=f"sig-{gid}", slate_size=5,
+                                       prev_lineup=shell, settings=S)
+        assert out["status"] == "investigated", f"game {gid}: {out['status']}"
+    assert len(calls) == 5, "상한 1에 막히면 안 된다"
+
+
+@pytest.mark.asyncio
+async def test_t6_still_dedupes_per_lineup(monkeypatch):
+    """⚠️ 상한은 풀어도 **중복은 막는다.** 안 그러면 5분 폴링마다 Sonnet 을 태운다."""
+    from app.engine import deepsearch as ds
+
+    calls = []
+
+    async def fake_investigate(jg, trig, **_kw):
+        calls.append(1)
+        return ({"발견": [], "조정": {"p_home": 0.55, "사유": "x",
+                                   "단일기사여부": False}, "요약": "x"}, 0, "rss")
+
+    monkeypatch.setattr(ds, "investigate", fake_investigate)
+    rds = _FakeRedis()
+    S = Settings(_env_file=None, DEEPSEARCH_ENABLED=True)
+    jg = {"game_id": 9, "sport": "kbo", "home": "H", "away": "A",
+          "lineup_status": "confirmed",
+          "matchup": {"p_home": 0.55, "우세": "home"},
+          "research": {"home_lineup": {"order": "A-B"},
+                       "away_lineup": {"order": "C-D"}}}
+    shell = {"research": {"home_lineup": {}, "away_lineup": {}}}
+    for _ in range(4):          # 폴링 4틱
+        await ds.run_for_rejudge(jg, rds, "2026-09-02", lineup_sig="same",
+                                 slate_size=5, prev_lineup=shell, settings=S)
+    assert len(calls) == 1, "같은 라인업으로 두 번 조사하면 안 된다"

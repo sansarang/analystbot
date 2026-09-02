@@ -29,6 +29,12 @@ T2_MARKET = "T2_시장괴리"
 T3_ASKED = "T3_추가확인"
 T4_STARTER = "T4_선발변경"
 T5_LINEUP = "T5_라인업이상"
+#: [2026-09-02 사용자 지시] **라인업이 처음 확정되는 순간** 조사한다.
+#   🔴 종전 T4·T5 는 "직전 대비 무엇이 달라졌나"만 봤다. 그래서 **최초 공시는
+#      비교 대상이 없어 아무 트리거도 안 걸렸다** — 라인업이 나온 그 순간이
+#      가장 정보가 많은 시점인데 조사를 안 하고 있었다.
+#      변동이 아니라 **발표**가 방아쇠다.
+T6_FIRST_LINEUP = "T6_라인업최초확정"
 
 #: 조사 언어 — 원문 소스가 그 언어로 쓰여 있다. 영어로만 찾으면
 #: KBO 구단 공지·NPB 스포츠지가 통째로 빠진다.
@@ -789,6 +795,36 @@ REJUDGE_KEY = "deepsearch:rejudge:{game_id}:{sig}"
 SLATE_COUNT_KEY = "deepsearch:count:{sport}:{date}"
 
 
+def first_lineup_evidence(jg: dict, prev_lineup: dict | None) -> bool:
+    """[T6] **라인업 최초 확정**인가. 변동이 아니라 발표가 방아쇠다.
+
+    🔴 사용자 지시 2026-09-02: "라인업이 발표되면 딥서치 바로 시작해야 한다 —
+       라인업 변동이 아니라." 종전 T4·T5 는 직전 대비 차이만 봤고, 최초 공시는
+       비교 대상이 없어 **아무것도 안 걸렸다.** 타순이 나온 그 순간이 가장
+       정보가 많은데 조사를 건너뛰고 있었다.
+
+    조건: 지금 타순이 **확정**이고, 직전에 본 타순이 없다.
+    ⚠️ 확정이 아니면(잠정·미공시) 발동하지 않는다 — 예상 타순으로 조사하면
+       그 조사가 예상에 매달린다.
+    ⚠️ 중복은 `(game_id, 라인업 서명)` 키가 막는다. 같은 타순으로 두 번
+       조사하지 않는다.
+    """
+    if (jg.get("lineup_status") or "") != "confirmed":
+        return False
+    r = jg.get("research") or {}
+    now_has = any((r.get(f"{side}_lineup") or {}).get("order")
+                  for side in ("home", "away"))
+    if not now_has:
+        return False
+    # ⚠️ `prev_lineup` 은 **껍데기가 항상 온다** — `{"research": {"home_lineup": {},
+    #    "away_lineup": {}}}`. dict 가 truthy 라고 "직전이 있다"로 읽으면
+    #    T6 가 영원히 안 걸린다. **안에 실제 타순이 있는지**를 봐야 한다.
+    pr = (prev_lineup or {}).get("research") or {}
+    prev_has = any((pr.get(f"{side}_lineup") or {}).get("order")
+                   for side in ("home", "away"))
+    return not prev_has              # 직전 타순이 있으면 '변동'이라 T4·T5 소관
+
+
 async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
                           slate_size: int, prev_lineup: dict | None = None,
                           settings=None) -> dict:
@@ -819,7 +855,11 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
            "searches": 0, "moved_pp": 0.0, "source": None}
     t4_hit, t4_src = t4_evidence(jg)
     t5_hit, t5_src = t5_evidence(jg, prev_lineup)
+    t6_hit = first_lineup_evidence(jg, prev_lineup)
     trig, srcs = [], []
+    if t6_hit:
+        trig.append(T6_FIRST_LINEUP)
+        srcs.append(SRC_FACT)        # 공시는 사실이다 — 모델 자백이 아니다
     if t4_hit:
         trig.append(T4_STARTER)
         srcs.append(t4_src)
@@ -847,7 +887,18 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
 
     cap = daily_cap(slate_size, s)
     used = int(await _get(redis, count_key) or 0)
-    if used >= cap:
+    # 🔴 [사용자 지시 2026-09-02] **T6 는 상한에 막지 않는다.**
+    #    슬레이트 30% 상한은 `web_search` **검색 수수료** 때문에 걸었던 것이다.
+    #    무과금 전환으로 조사가 RSS(무료)로 도니 그 근거가 사라졌다 —
+    #    남는 비용은 경기당 Sonnet 1콜뿐이다.
+    #    "라인업이 발표되면 딥서치 바로 시작해야 한다"는 지시는 전 경기를
+    #    뜻하고, 5경기 슬레이트에서 상한 1은 그 지시를 무력화한다.
+    #    ⚠️ 중복 방지는 그대로다 — `(game_id, 라인업 서명)` 당 1회.
+    #       이걸 풀면 5분 폴링마다 Sonnet 을 태운다.
+    if T6_FIRST_LINEUP in trig:
+        logger.info("[deepsearch] T6 최초확정 — 상한 면제 game=%s (사용 %d/%d)",
+                    gid, used, cap)
+    elif used >= cap:
         out["status"] = "capped"
         logger.info("[deepsearch] 재판정 상한 도달 game=%s 트리거=%s source=%s "
                     "사용 %d/%d — 조사하지 않음", gid, ",".join(trig),
