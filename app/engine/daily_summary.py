@@ -70,6 +70,39 @@ async def dispatch_lines(redis, sports: tuple[str, ...], date: str) -> list[str]
     return out
 
 
+#: 설계 동결 해제 조건 — 리그별 채점 완료 건수.
+FREEZE_TARGET = 50
+
+
+async def freeze_progress_lines(pool, sports: tuple[str, ...]) -> list[str]:
+    """[v1.3 D] `리그별 graded 누적 N/50` — 설계 동결 해제까지의 진행률.
+
+    🔴 표본이 없으면 무엇을 고쳐야 할지 알 수 없다. 고치면 그때까지 쌓은
+       표본이 통째로 무효가 된다 — 그래서 50건까지 손대지 않는다.
+    ⚠️ **2026-09-03 슬레이트부터 센다.** 그 전 기록은 판정 설계가 계속
+       바뀌던 구간이라 같은 시스템의 성적이 아니다.
+    """
+    if pool is None:
+        return []
+    try:
+        rows = await pool.fetch(
+            """SELECT sport, count(*) AS n FROM pick_ledger
+                WHERE is_final AND graded_at IS NOT NULL AND NOT void
+                  AND date >= '2026-09-03'
+                  AND sport = ANY($1::text[])
+                GROUP BY sport ORDER BY sport""", list(sports))
+    except Exception as exc:
+        logger.debug("[daily-summary] 동결 진행률 조회 실패: %s", exc)
+        return []
+    if not rows:
+        return []
+    bits = [f"{_SPORT_KR.get(r['sport'], r['sport'])} {r['n']}/{FREEZE_TARGET}"
+            for r in rows]
+    done = all(int(r["n"]) >= FREEZE_TARGET for r in rows)
+    tail = " — 해제 조건 충족" if done else ""
+    return [f"🔒 v1.3 동결 진행률: {' · '.join(bits)}{tail}"]
+
+
 async def cost_lines(redis, sports: tuple[str, ...], date: str) -> list[str]:
     """[무과금 전환 3] 비용 실측 — 유료 호출을 **숫자로** 낸다.
 
@@ -209,5 +242,8 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str,
     cl = await cost_lines(redis, sports, date)
     if cl:
         out += [""] + cl
+    fl = await freeze_progress_lines(pool, sports)
+    if fl:
+        out += fl
     out += ["", TICKET_RULE]
     return "\n".join(out)

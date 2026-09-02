@@ -23,6 +23,32 @@ from zoneinfo import ZoneInfo
 #: 표시는 언제나 KST. 저장·비교는 UTC (CLAUDE.md 절대규칙 4).
 KST = ZoneInfo("Asia/Seoul")
 
+#: 타순 확정으로 보는 최소 인원. 야구는 9명이다.
+LINEUP_FULL = 9
+
+
+def lineup_confirmed(home_order, away_order, known=None) -> bool:
+    """[v1.3 A-1] **확정의 정의는 하나다: 양 팀 타순 9명이 다 있는가.**
+
+    🔴 실사고 2026-09-02 (NPB 4경기): 종전에는 `is_final_window`(경기 N분
+       전인가)로 확정 여부를 정했다. NPB 창은 T-30인데 타순이 T-44에 도착해
+       `predicted` 로 기록됐고, 그 뒤로 라인업이 안 바뀌니 영영 확정으로
+       올라갈 경로가 없었다. **타순이 제때 온 것이 오히려 손해가 됐다.**
+       17:51(T-9)에 "라인업 미확정 — 관망" 카드 4장이 나갔고, 같은 경기가
+       17:35에는 T6(확정일 때만 걸림)를 통과한 상태였다.
+
+    ⚠️ **"언제 왔는가"는 확정 여부가 아니다.** 시각 규칙(`is_final_window`)은
+       확정 판정에서 폐기한다 — 발송 창·종료선 용도로만 남는다.
+    ⚠️ 하이픈 이름 때문에 9명이 10조각으로 갈리던 결함이 있었다.
+       `known`(명단 사전)이 있으면 재결합해서 센다.
+    """
+    from app.engine.lineup_diff import parse_order
+
+    for order in (home_order, away_order):
+        if len(parse_order(order, known)) < LINEUP_FULL:
+            return False
+    return True
+
 from app import notify as _notify_mod
 from app.engine.lineup_timing import _parse
 from app.pipeline import (

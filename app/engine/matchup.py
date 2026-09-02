@@ -19,6 +19,11 @@ logger = logging.getLogger(__name__)
 CONF_MAP = {"상": "high", "중": "medium", "하": "low"}
 
 
+#: 재시도 상향의 천장. 이 위로 올리면 SDK 가 비스트리밍 요청을 거부한다 —
+#  실사고 2026-08-2x: 16000→32000 임의 상향이 judge 전 배치를 실패시켰다.
+MAX_TOKENS_CEILING = 16000
+
+
 def clip_p_home(p, settings=None) -> float:
     """프롬프트가 벗어나도 코드에서 0.32–0.68로 자른다."""
     s = settings or get_settings()
@@ -355,10 +360,15 @@ async def judge_matchup(jg: dict, redis, date: str, *,
         BULLPEN_JSON=json.dumps(bullpen_payload(jg), ensure_ascii=False, default=str),
     )
     parsed = None
+    # 🔴 [v1.3 A-3] **절단은 한도를 올려 재시도한다.** "짧게 쓰라"고 지시하면
+    #    근거가 잘려 판정이 얇아진다 — 고칠 것은 출력이 아니라 그릇이다.
+    #    실측 2026-09-02: output=4000 stop=max_tokens 로 잘린 응답이 JSON
+    #    파싱에 2회 실패해 KIA@NC 판정이 통째로 탈락했다.
+    budget = int(settings.matchup_max_tokens)
     for attempt in (1, 2):
         try:
             text = await complete_json(
-                prompt, model=model, max_tokens=settings.matchup_max_tokens,
+                prompt, model=model, max_tokens=budget,
                 role="matchup", mock=False)
         except ApiQuotaError as exc:
             trip_credit(f"matchup:{away}@{home}", exc)
@@ -375,8 +385,15 @@ async def judge_matchup(jg: dict, redis, date: str, *,
             parsed["model"] = model
             break
         parsed = None
-        logger.warning("[matchup] JSON 파싱 실패 %d회 model=%s prompt_chars=%d",
-                       attempt, model, len(prompt))
+        truncated = bool(text) and not str(text).rstrip().endswith("}")
+        logger.warning("[matchup] JSON 파싱 실패 %d회 model=%s prompt_chars=%d "
+                       "max_tokens=%d 응답%d자 절단추정=%s",
+                       attempt, model, len(prompt), budget, len(text or ""),
+                       truncated)
+        if truncated and attempt == 1:
+            budget = min(budget * 2, MAX_TOKENS_CEILING)
+            logger.warning("[matchup] 절단으로 보인다 — 한도 %d 로 올려 재시도",
+                           budget)
     if parsed is None:
         jg["form_unavailable"] = True
         logger.warning("[matchup] %s vs %s 분석 불가 model=%s — 추천 탈락",

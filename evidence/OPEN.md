@@ -78,3 +78,24 @@ c) 이 코드가 **기존 경로(판정·발송)를 건드리는가**? (건드�
 | `W-JOB-LATE research_retry_45m` | 재기동 개념 누락 | `boot_info().started_at` |
 | `W-ODDS-STALE betman` | 미구현 소스를 `ACTIVE_PROVIDERS` 에 등재 | 실제 수집기 존재 여부 |
 | `W-ODDS-STALE espn` | `due` 를 **전 종목 합산**으로 셈 | provider별 담당 리그 |
+
+## v1.3 (2026-09-03) — 상태 결함 3건 + 재료 대칭화
+
+| # | 항목 | 처리 | 증거 |
+|---|---|---|---|
+| A-1 | 라인업 확정 이중 저장 | 확정 = **타순 9명 유무** 하나. `is_final_window` 시각 규칙은 확정 판정에서 폐기. DB 가 원본이고 `sync_lineup_status` 가 캐시 승격을 밀어 넣는다 | `test_reproduce_npb_regression_with_the_old_time_rule` 외 4건 |
+| A-2 | 배당 미부착 | 재판정 시 `refresh_odds_for_game` 로 최신 스냅샷 재조회. `_compute_picks` **앞** 순서 고정 | 순서 테스트 포함 3건 |
+| A-3 | max_tokens 절단 | 4000 → **6000**(실측 성공 최대 3789 · 58% 여유). 절단 감지 시 한도 2배로 1회 재시도, 천장 16000 | 2건 |
+| B-1 | MLB 자료9 없음 | `mlb_team_pitching` 신설 — statsapi 팀 투수 ERA. **KBO·NPB 와 같은 기준**(`team_era`) | 실측 CIN 4.64 / SD 3.94 |
+| B-2 | KBO 자료7 없음 | 기록실 `PitcherBasic` 팀 POST — **275명** | 최승용 ERA 5.74 |
+| B-3 | NPB 자료7 없음 | npb.jp `idp1_{팀}` — 타자표와 대칭 구조(24칸) · **370명** | 伊藤 将司 ERA 2.63 WHIP 1.17 |
+
+### 이번에 하지 않은 것 (범위 폭주 금지)
+KBO 전용 재료(`kbo_roster`·`kbo_news`·`standings`)의 NPB·MLB 확장. 기록만 남긴다.
+
+### 검증 중 잡힌 것
+- 새 KBO·NPB 수집기가 **재시도 없는 raw httpx** 였다 — 기존 계약 테스트가 잡았다.
+  세션 유지(`_session`) + 백오프 3회(`_try`)로 고쳤다. 세션이 없으면 ASP.NET
+  폼이 쿠키를 잃어 **0건**이 된다(실측).
+- 워치독 cron 테스트가 **실제 시각을 손으로 적어** 날이 바뀌자 깨졌다. 어제는
+  우연히 통과한 것 — 사본 금지와 같은 실수라 시각 무관으로 바꿨다.

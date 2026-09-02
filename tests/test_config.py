@@ -93,7 +93,11 @@ def test_recommendation_thresholds_are_config_driven():
     assert s.team_form_model == "claude-haiku-4-5-20251001"
     assert s.matchup_model == "claude-sonnet-5"
     assert s.team_form_max_tokens == 1500
-    assert s.matchup_max_tokens == 4000
+    # [v1.3 A-3] 4000 → 6000. 실측: 성공 output 3661~3789 인데 상한 4000이라
+    #   여유 200토큰뿐이었고, output=4000 stop=max_tokens 로 잘린 응답이
+    #   JSON 파싱 2회 실패 → KIA@NC 판정 탈락(2026-09-02).
+    #   딥서치(8000) > 매치업 불변식은 유지된다.
+    assert s.matchup_max_tokens == 6000
     assert s.judge_model == "claude-opus-4-6"
 
 

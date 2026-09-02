@@ -542,29 +542,29 @@ def test_npb_two_minute_job_shares_the_same_window_gate():
 
 # ─────────────────── 오탐 정리 (2026-09-02 실경보) ───────────────────
 
-def test_cron_windowed_job_is_not_late_outside_its_window(monkeypatch):
+def test_cron_window_is_read_from_the_trigger_not_a_hand_written_period():
     """🔴 실사고 2026-09-02 12:40: `mlb_pregame_5m` 은 `CronTrigger(hour="5-11")`
-    이다. 12:40 KST 에 "마지막 실행 46분 전"은 **정상**인데 5분 인터벌로
-    가정해 울렸다. 주기를 손으로 적으면 트리거와 어긋난다.
+    인데 "주기 5분"으로 적어 창 밖에서 울렸다.
+
+    ⚠️ 이 테스트는 **시각에 의존하지 않는다.** 처음엔 "11:55 실행, 지금 12:40"
+       을 고정 UTC 로 적었는데, 날이 바뀌자(9/3 08:35 KST) 그 시각이 창 **안**이
+       되어 깨졌다 — 어제는 우연히 통과한 것이다. 사본 금지와 같은 실수다:
+       실제 시각을 손으로 적으면 그 순간의 우연에 매달린다.
     """
-    import json
+    from datetime import datetime as _dt
 
     from apscheduler.triggers.cron import CronTrigger
 
     from app import watchdog as wd
-    from app.health import JOB_RUN_KEY
 
-    monkeypatch.setattr(wd, "_booted_recently", lambda now: False)
-    monkeypatch.setattr(
-        "app.scheduler._JOB_TRIGGERS",
-        {"mlb_pregame_5m": CronTrigger(hour="5-11", minute="*/5", timezone=wd.KST)},
-        raising=False)
-    r = FakeRedis()
-    # 마지막 실행 11:55 KST, 지금 12:40 KST → 다음 예정은 **내일 05:00** 이다
-    last = datetime(2026, 9, 2, 2, 55, tzinfo=UTC)      # 11:55 KST
-    r.h[JOB_RUN_KEY] = {"mlb_pregame_5m": json.dumps({"at": last.isoformat(),
-                                                      "ok": True})}
-    assert asyncio.run(wd.check_jobs(r)) == [], "창 밖인데 울리면 오탐이다"
+    trig = CronTrigger(hour="5-11", minute="*/5", timezone=wd.KST)
+    # 창이 닫힌 직후(11:59 KST)에 마지막으로 돌았다면, 다음 예정은 **다음날 05:00**
+    last = _dt(2026, 9, 2, 11, 59, tzinfo=wd.KST)
+    nxt = trig.get_next_fire_time(last, last)
+    assert nxt is not None
+    gap_h = (nxt - last).total_seconds() / 3600
+    assert gap_h > 12, ("창이 닫히면 다음 실행은 반나절 뒤다 — 5분 주기로 "
+                        f"보면 오탐이 난다 (실제 {gap_h:.1f}시간)")
 
 
 def test_interval_job_still_alerts_when_genuinely_stuck(monkeypatch):

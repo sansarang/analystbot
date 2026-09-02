@@ -176,7 +176,8 @@ async def attach(jg: dict, season: int | None = None, redis=None,
           3이닝 0실점)였다. 경기 전 그의 선발 등판은 0회다.
           "성능이 갑자기 좋아 보이면 먼저 누수를 의심하라" 는 그대로다.
     """
-    if (jg.get("sport") or "") != "mlb":
+    sport = (jg.get("sport") or "").lower()
+    if sport not in ("mlb", "kbo", "npb"):
         return
     from datetime import UTC, datetime
 
@@ -205,7 +206,242 @@ async def attach(jg: dict, season: int | None = None, redis=None,
 
     season = season or datetime.now(UTC).year
     names = {side: pitcher_name(jg, side) for side in ("home", "away")}
-    lines = await fetch_mlb([n for n in names.values() if n], season, redis)
+    want = [n for n in names.values() if n]
+    if sport == "mlb":
+        lines = await fetch_mlb(want, season, redis)
+    else:
+        # [v1.3 B-2·B-3] KBO·NPB 도 선발 시즌 라인을 받는다.
+        #   🔴 종전에는 MLB 만 받았다. 그래서 KBO·NPB 는 최근 등판 표본이
+        #      얇으면 그 투수가 어떤 투수인지 볼 방법 없이 0.50 으로 당겼다 —
+        #      실측 2026-09-02 LG@두산: "김윤식은 선발등판 0경기 → 대표성
+        #      없음" 으로 끝났다. 시즌 라인이 있었으면 판단할 수 있었다.
+        table = await fetch_asia(sport, season, redis)
+        lines = {}
+        for n in want:
+            hit = lookup_asia(table, sport, n)
+            if hit:
+                lines[n] = hit
     research = jg.setdefault("research", {})
     for side, name in names.items():
         research[f"{side}_starter_season"] = lines.get(name) or {}
+    got = sum(1 for v in research.values() if isinstance(v, dict) and v.get("ERA"))
+    logger.info("[starter_season] %s 선발 시즌 game=%s 확보 %d/2",
+                sport.upper(), jg.get("game_id"), min(got, 2))
+
+
+# ─────────────── [v1.3 B-2·B-3] KBO·NPB 선발 시즌 라인 ───────────────
+#
+# 🔴 MLB 만 받던 자료7 을 세 리그로 대칭화한다. 실측 2026-09-02 LG@두산에서
+#    "김윤식은 선발등판 0경기 → 대표성 없음" 으로 판정이 멈췄다 — 그 투수의
+#    시즌이 어떤지 볼 수 있었다면 표본 부족을 보정할 수 있었다.
+#
+# ⚠️ **용도는 MLB 와 같다: 표본 보정 전용.** 프롬프트가 "이것으로 우세를
+#    정하지 마라"로 막는 그 칸에 들어간다. 승패(W-L)는 담지 않는다.
+
+_ASIA_TTL = 26 * 3600
+_ASIA_KEY = "starter_season:{sport}:{season}"
+_asia_mem: dict[str, tuple[float, dict]] = {}
+
+#: NPB 팀별 개인 투수표. 타자표(`idb1_`)와 같은 구조다 — 실측 2026-09-03:
+#  24칸 헤더 `選手…防御率`, 팀당 전 투수.
+_NPB_PITCH_PATH = "/bis/{season}/stats/idp1_{code}.html"
+_NPB_COLS = 24
+#: 열 인덱스 (0-based). 헤더 실측으로 고정한다.
+_NPB_IDX = {"선발": None, "登板": 1, "이닝": 12, "안타": 13, "四球": 15,
+            "三振": 18, "자책": 22, "ERA": 23}
+
+#: KBO 기록실 투수 기본. `kbo_stats` 가 쓰는 그 페이지다.
+_KBO_PITCH = "/Record/Player/PitcherBasic/Basic1.aspx"
+_KBO_PITCH2 = "/Record/Player/PitcherBasic/Basic2.aspx"
+
+
+def slim_asia(*, era=None, ip=None, g=None, bb=None, so=None, whip=None,
+              starts=None) -> dict:
+    """아시아 리그 선발 라인. MLB `slim_season` 과 **같은 키**를 쓴다 —
+    프롬프트가 리그를 구분하지 않게 하려면 모양이 같아야 한다."""
+    from app.collectors.lineup_season import _f
+
+    out = {}
+    for key, val in (("선발", starts), ("등판", g), ("이닝", ip), ("ERA", era),
+                     ("WHIP", whip), ("BB", bb), ("K", so)):
+        v = _f(val)
+        if v is not None:
+            out[key] = v
+    return out
+
+
+def _ratio(a, b):
+    try:
+        fa, fb = float(a), float(b)
+        return round(fa / fb, 2) if fb > 0 else None
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+
+def _session():
+    """쿠키를 유지하는 클라이언트. ASP.NET 폼처럼 세션이 필요한 소스에 쓴다."""
+    import httpx
+
+    return httpx.AsyncClient(
+        timeout=30.0, follow_redirects=True,
+        headers={"User-Agent": _UA, "Accept-Language": "ko-KR,ko;q=0.9"})
+
+
+async def _try(fn, *a, **kw):
+    """지수 백오프 3회. 실패하면 None — 한 팀 실패가 나머지를 막지 않는다."""
+    import asyncio
+
+    last = None
+    for attempt in range(3):
+        try:
+            r = await fn(*a, **kw)
+            r.raise_for_status()
+            return r
+        except Exception as exc:
+            last = exc
+            if attempt < 2:
+                await asyncio.sleep(2 ** attempt)
+    logger.warning("[starter_season] 조회 실패: %s", last)
+    return None
+
+
+async def _get_html(url: str, *, data: dict | None = None,
+                    headers: dict | None = None) -> str | None:
+    """지수 백오프 3회 + 타임아웃. **raw httpx 를 그대로 쓰지 않는다** —
+    CLAUDE.md "모든 외부 HTTP 호출은 재시도 필수". 실패하면 None."""
+    import asyncio
+
+    import httpx
+
+    last = None
+    for attempt in range(3):
+        try:
+            async with httpx.AsyncClient(
+                    timeout=30.0, follow_redirects=True,
+                    headers={"User-Agent": _UA, **(headers or {})}) as c:
+                r = (await c.post(url, data=data) if data is not None
+                     else await c.get(url))
+                r.raise_for_status()
+                return r.text
+        except Exception as exc:
+            last = exc
+            if attempt < 2:
+                await asyncio.sleep(2 ** attempt)
+    logger.warning("[starter_season] 조회 실패 %s: %s", url[-40:], last)
+    return None
+
+
+async def _fetch_npb_pitchers(season: int) -> dict[str, dict]:
+    from app.collectors.lineup_season import NPB_TEAMS, _cells, norm_jp
+
+    out: dict[str, dict] = {}
+    if True:
+        for code in NPB_TEAMS:
+            html = await _get_html("https://npb.jp"
+                                   + _NPB_PITCH_PATH.format(season=season, code=code))
+            if html is None:
+                continue
+            import re as _re
+
+            for row in _re.findall(r"<tr[^>]*>(.*?)</tr>", html, _re.S):
+                cs = _cells(row)
+                if len(cs) != _NPB_COLS:
+                    continue
+                ip, h, bb = cs[12], cs[13], cs[15]
+                try:
+                    walks_hits = float(h) + float(bb)
+                except (TypeError, ValueError):
+                    walks_hits = None
+                out[norm_jp(cs[0])] = slim_asia(
+                    era=cs[23], ip=ip, g=cs[1], bb=bb, so=cs[18],
+                    whip=_ratio(walks_hits, ip))
+    logger.info("[starter_season] NPB 투수 %d명 적재 (season=%d)", len(out), season)
+    return out
+
+
+async def _fetch_kbo_pitchers(season: int) -> dict[str, dict]:
+    """KBO 기록실 투수 — 팀 드롭다운 POST. `lineup_season.fetch_kbo` 와 같은 방식."""
+    from app.collectors.lineup_season import (
+        KBO_BASE, KBO_TEAMS, _KBO_P, _cells, _form_fields,
+    )
+
+    out: dict[str, dict] = {}
+    # 🔴 **세션을 유지해야 한다.** ASP.NET 폼은 GET 이 준 `JSESSIONID` 쿠키와
+    #    `__VIEWSTATE` 를 함께 돌려줘야 표가 온다. 요청마다 새 클라이언트를
+    #    쓰면 쿠키가 끊겨 **0건**이 된다(실측 2026-09-03).
+    async with _session() as c:
+        url = KBO_BASE + _KBO_PITCH
+        base = await _try(c.get, url)
+        if base is None:
+            return {}
+        fields = _form_fields(base.text)
+        for code, team in KBO_TEAMS.items():
+            f = dict(fields)
+            f.update({"__EVENTTARGET": _KBO_P + "ddlTeam$ddlTeam",
+                      "__EVENTARGUMENT": "", "__LASTFOCUS": "",
+                      _KBO_P + "ddlTeam$ddlTeam": code})
+            r = await _try(c.post, url, data=f, headers={
+                "Referer": url,
+                "Content-Type": "application/x-www-form-urlencoded"})
+            if r is None:
+                continue
+            html = r.text
+            import re as _re
+
+            for row in _re.findall(r"<tr[^>]*>(.*?)</tr>", html, _re.S):
+                cs = _cells(row)
+                # 순위·선수명·팀명·ERA·G·W·L·SV·HLD·WPCT·IP …
+                if len(cs) < 11 or not cs[0].isdigit():
+                    continue
+                out[cs[1].strip()] = slim_asia(era=cs[3], g=cs[4], ip=cs[10])
+    logger.info("[starter_season] KBO 투수 %d명 적재 (season=%d)", len(out), season)
+    return out
+
+
+async def fetch_asia(sport: str, season: int, redis=None) -> dict[str, dict]:
+    """KBO·NPB 투수 시즌 라인. 26시간 캐시 (시즌 누적이라 하루 1회면 충분)."""
+    import json as _json
+    import time as _time
+
+    from app.config import get_settings
+
+    if get_settings().force_mock:
+        return {}
+    key = _ASIA_KEY.format(sport=sport, season=season)
+    hit = _asia_mem.get(key)
+    if hit and hit[0] > _time.time():
+        return hit[1]
+    if redis is not None:
+        try:
+            raw = await redis.get(key)
+            if raw:
+                val = _json.loads(raw)
+                _asia_mem[key] = (_time.time() + _ASIA_TTL, val)
+                return val
+        except Exception as exc:
+            logger.debug("[starter_season] 아시아 캐시 읽기 실패: %s", exc)
+    out = (await _fetch_npb_pitchers(season) if sport == "npb"
+           else await _fetch_kbo_pitchers(season))
+    if out:
+        _asia_mem[key] = (_time.time() + _ASIA_TTL, out)
+        if redis is not None:
+            try:
+                await redis.set(key, _json.dumps(out, ensure_ascii=False),
+                                ex=_ASIA_TTL)
+            except Exception as exc:
+                logger.debug("[starter_season] 아시아 캐시 기록 실패: %s", exc)
+    return out
+
+
+def lookup_asia(table: dict, sport: str, name: str) -> dict:
+    """이름 정규화 조회. NPB 는 전각 공백을 지운다(타선 시즌과 같은 규칙)."""
+    from app.collectors.lineup_season import norm_jp, strip_pos
+
+    if not name:
+        return {}
+    key = norm_jp(name) if sport == "npb" else strip_pos(name)
+    return table.get(key) or {}
+
+
+_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")

@@ -383,8 +383,19 @@ def test_season_collector_retries_like_every_other_http_call():
     assert issubclass(StatsAPIClient, BaseAPIClient)
     assert StatsAPIClient.max_retries == 3
     assert StatsAPIClient.timeout > 0
+    # [v1.3 B-2·B-3] KBO·NPB 수집이 붙으며 이 모듈도 직접 HTTP 를 쓴다.
+    #   문자열 부재가 아니라 **성질**을 검사한다: 모든 외부 호출이 재시도를 탄다.
     src = Path("app/collectors/starter_season.py").read_text(encoding="utf-8")
-    assert "httpx.AsyncClient" not in src, "재시도 없는 raw httpx 가 남아 있다"
+    import re as _re
+
+    for m in _re.finditer(r"httpx\.AsyncClient", src):
+        head = src.rfind("def ", 0, m.start())
+        fn = src[head:src.find("\n", head)]
+        assert any(k in fn for k in ("_session", "_get_html")), (
+            f"재시도 밖에서 raw httpx 를 쓴다: {fn}")
+    assert "_try" in src and "for attempt in range(3)" in src, "백오프 3회가 없다"
+    # 한 팀 실패가 나머지를 막지 않는다
+    assert "continue" in src
 
 
 def test_roster_is_fetched_once_per_slate_not_per_game():

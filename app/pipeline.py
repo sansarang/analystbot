@@ -652,21 +652,87 @@ def promote_lineup_status(research: dict, jg: dict, source: str) -> bool:
     ⚠️ 종목 공용이다. 한쪽에만 두면 같은 일이 반복된다.
     ⚠️ `conflict`(소스 불일치)는 올리지 않는다 — 그건 사람이 풀 문제다.
     """
-    names = {}
-    for side in ("home", "away"):
-        order = ((research.get(f"{side}_lineup") or {}).get("order") or "")
-        names[side] = [p for p in order.split("-") if p.strip()]
-    if len(names["home"]) < 9 or len(names["away"]) < 9:
+    # 🔴 [v1.3 A-1] 확정 규칙은 **한 곳**에만 있다 — `lineup_confirmed`.
+    #    종전에는 여기서 `order.split("-")` 로 직접 셌다. 그 사본이
+    #    하이픈 이름(`Pete Crow-Armstrong`)을 10명으로 세는 결함을 낳았고,
+    #    폴러는 또 다른 규칙(`is_final_window`)을 썼다. 같은 사실을 세 곳이
+    #    서로 다르게 판정하고 있었다.
+    from app.engine.lineup_diff import NAME_REGISTRY, parse_order
+    from app.engine.pregame_push import lineup_confirmed
+
+    orders = {side: ((research.get(f"{side}_lineup") or {}).get("order") or "")
+              for side in ("home", "away")}
+    if not lineup_confirmed(orders["home"], orders["away"], NAME_REGISTRY):
         return False
+    names = {k: [n for n, _ in parse_order(v, NAME_REGISTRY)]
+             for k, v in orders.items()}
     prev = jg.get("lineup_status") or "none"
     if prev not in ("none", "predicted"):
         return False
     jg["lineup_status"] = "confirmed"
     jg["lineup_source"] = source
+    # 🔴 [v1.3 A-1] **DB 가 원본이다.** 캐시만 올리면 두 저장소가 어긋난다 —
+    #    2026-09-02 NPB 4경기가 캐시는 확정(T6 통과)인데 DB는 predicted 라
+    #    "라인업 미확정 — 관망" 카드를 받았다. 승격을 표시해 두면
+    #    `sync_lineup_status` 가 같은 트랜잭션 밖에서 DB 로 밀어 넣는다.
+    jg["_lineup_promoted"] = True
     logger.info("[pipeline] %s 타순 확정 game=%s n=%d/%d 출처=%s",
                 (jg.get("sport") or "?").upper(), jg.get("game_id"),
                 len(names["home"]), len(names["away"]), source)
     return True
+
+
+async def refresh_odds_for_game(pool, jg: dict) -> bool:
+    """[v1.3 A-2] 재판정 시점에 **최신 배당을 다시 붙인다.**
+
+    🔴 실사고 2026-09-02: KBO 분석 캐시는 14:12 에 만들어졌고 배당은 17:01 에
+       적재됐다. 재판정(17:43)은 판정만 갱신하고 배당을 다시 조회하지 않아,
+       DB 에 배당이 있는데도 카드 5장 전부 "가치 배당 미수집" 으로 나갔다.
+       **순서 문제였다** — 배당이 판정보다 늦게 오면 영영 안 붙었다.
+
+    ⚠️ 판정을 바꾸지 않는다. `best_odds` 만 갱신한다 — 배당은 판정 입력에
+       흐르지 않는다는 금지선 그대로다. 쓰이는 곳은 가치 게이트·시장 괴리뿐이다.
+    ⚠️ 배당이 없으면 아무것도 하지 않는다. 없는 값을 만들지 않는다.
+    """
+    if pool is None or jg.get("game_id") is None:
+        return False
+    try:
+        _, best = await _market_probs(pool, int(jg["game_id"]),
+                                     jg.get("home") or "", jg.get("away") or "")
+    except Exception as exc:
+        logger.warning("[pipeline] 배당 재조회 실패 game=%s: %s",
+                       jg.get("game_id"), exc)
+        return False
+    if not best:
+        return False
+    before = len(jg.get("best_odds") or {})
+    jg["best_odds"] = best
+    logger.info("[pipeline] 배당 재부착 game=%s %d→%d개 %s",
+                jg.get("game_id"), before, len(best),
+                {k: v for k, v in list(best.items())[:3]})
+    return True
+
+
+async def sync_lineup_status(pool, jg: dict) -> bool:
+    """[v1.3 A-1] 캐시에서 올라간 확정을 **DB 원본에 반영**한다.
+
+    ⚠️ 되돌리지 않는다 — 확정에서 잠정으로 내리는 경로는 재시도 구제
+       (`_revert_lineup_for_retry`)뿐이고, 그건 판정 실패 때만이다.
+    ⚠️ DB 실패가 발송을 막지 않는다. 캐시는 이미 확정이라 카드는 나간다.
+    """
+    if pool is None or not jg.pop("_lineup_promoted", False):
+        return False
+    gid = jg.get("game_id")
+    if gid is None:
+        return False
+    try:
+        await pool.execute(
+            "UPDATE games SET lineup_status = 'confirmed', updated_at = now() "
+            " WHERE id = $1 AND lineup_status <> 'confirmed'", int(gid))
+        return True
+    except Exception as exc:
+        logger.warning("[pipeline] 라인업 확정 DB 반영 실패 game=%s: %s", gid, exc)
+        return False
 
 
 def merge_source_data(research: dict, jg: dict, sport: str,
@@ -1816,6 +1882,8 @@ async def build_analysis(
                 continue
             _r, _ = sanitize_research(_jg.get("research") or {}, sport)
             merge_source_data(_r, _jg, sport, statcast_data)
+            # [v1.3 A-1] 확정은 DB 가 원본이다 — 캐시만 올리면 어긋난다.
+            await sync_lineup_status(pool, _jg)
             # [§9 게이트 ③] 미확인·모순 값은 **판정 입력에서 실제로 뺀다.**
             #   표시만 하고 남겨두면 다음 단계가 그것을 사실로 읽는다.
             _blocked = strip_unusable(_r)
@@ -2397,6 +2465,14 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
             await _bats(jg, redis=redis)
         except Exception as exc:
             logger.warning("[pipeline] 타선 시즌 라인 실패 game=%s: %s",
+                           jg.get("game_id"), exc)
+        # [v1.3 B-1] MLB 자료9(불펜) — KBO·NPB 만 갖고 있던 칸을 대칭화한다.
+        try:
+            from app.collectors.mlb_team_pitching import attach as _pen
+
+            await _pen(jg, redis=redis)
+        except Exception as exc:
+            logger.warning("[pipeline] MLB 팀 투수 지표 실패 game=%s: %s",
                            jg.get("game_id"), exc)
         if await judge_matchup(jg, redis, date):
             n += 1
@@ -4983,6 +5059,20 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
                 merge_source_data(research, jg, sport, bundle)
                 if sport == "mlb":
                     apply_lineup_poll_to_research(research, jg, lineup)
+                # [v1.3 A-1] 캐시에서 올라간 확정을 DB 원본에 밀어 넣는다.
+                try:
+                    from app.db import get_pool as _gp
+
+                    _pool = await _gp()
+                    if await sync_lineup_status(_pool, jg):
+                        logger.info("[pipeline] 라인업 확정 DB 반영 game=%s",
+                                    jg.get("game_id"))
+                    # [v1.3 A-2] 배당이 판정보다 늦게 와도 카드에는 붙는다.
+                    #   반드시 `_compute_picks` **앞**이어야 한다 — 픽이
+                    #   `best_odds` 를 읽어 가치·EV 를 만든다.
+                    await refresh_odds_for_game(_pool, jg)
+                except Exception as exc:
+                    logger.warning("[pipeline] 확정·배당 갱신 생략: %s", exc)
                 notes += starter_change_notes(jg["research"], before_names)
                 jg["lineup_notes"] = notes
             except Exception as exc:

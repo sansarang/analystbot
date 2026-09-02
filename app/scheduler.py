@@ -597,9 +597,9 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
     from app.alerts import cycle_errors, cycle_report
     from app.collectors import crawler_feed
     from app.engine.pregame_push import (
-        NPB_REJUDGE_FINISH_MIN, lineup_pending_card, minutes_until_start,
-        rejudge_open, roster_signature, send_game_prediction, still_upcoming,
-        void_analysis_games,
+        NPB_REJUDGE_FINISH_MIN, lineup_confirmed, lineup_pending_card,
+        minutes_until_start, rejudge_open, roster_signature,
+        send_game_prediction, still_upcoming, void_analysis_games,
     )
     from app.pipeline import (
         analysis_cache_ready, ensure_analysis_cache, is_final_window,
@@ -667,8 +667,16 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
                     #       자동으로 나간다(2026-09-01 재발송 규칙).
                     catchup.append(dict(r))
                     continue
-                final = is_final_window(r["starts_at"], now, sport=sport)
-                status = "confirmed" if final else "predicted"
+                # 🔴 [v1.3 A-1] **확정은 타순 9명 유무로 정한다.**
+                #    종전 `is_final_window`(경기 N분 전인가)는 "언제 왔는가"를
+                #    확정 여부로 읽었다. NPB 창 T-30인데 타순이 T-44에 오면
+                #    `predicted` 로 굳고, 안 바뀌면 영영 확정이 못 된다 —
+                #    2026-09-02 NPB 4경기가 그렇게 "미확정" 카드를 받았다.
+                #    시각 규칙은 발송 창·종료선 용도로만 남는다.
+                status = ("confirmed"
+                          if lineup_confirmed(game.get("lineup_home"),
+                                              game.get("lineup_away"))
+                          else "predicted")
                 roster = roster_signature(
                     game.get("home_pitcher"), game.get("away_pitcher"),
                     game.get("lineup_home"), game.get("lineup_away"))
