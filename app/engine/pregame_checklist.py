@@ -165,7 +165,7 @@ async def build_pregame_checklist(pool, redis, now=None) -> str:
         judged = total = None
         if redis:
             raw = await redis.get(f"analysis:{sport}:{date_s}")
-            ready = analysis_cache_ready(raw, date_s)
+            ready = analysis_cache_ready(raw, date_s, sport)
             if raw:
                 try:
                     games = json.loads(raw).get("games") or []

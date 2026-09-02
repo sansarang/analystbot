@@ -411,7 +411,7 @@ async def mlb_pregame_poll() -> None:
             #    실패하면 그날 MLB 카드가 0장이다. 오늘은 프리페치가 성공해
             #    드러나지 않았을 뿐이다(실측 2026-09-01).
             raw = await redis.get(f"analysis:mlb:{date}")
-            if not analysis_cache_ready(raw, date):
+            if not analysis_cache_ready(raw, date, "mlb"):
                 if await ensure_analysis_cache(pool, redis, "mlb", date):
                     logger.info("[scheduler] mlb 캐시 구제 성공 — 재판정 계속")
                 else:
@@ -706,7 +706,7 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
             async def _rejudge_and_send(item, *, _sport=sport, _date=date):
                 row, status, notes, roster, sig_key, game = item
                 raw = await redis.get(f"analysis:{_sport}:{_date}")
-                if not analysis_cache_ready(raw, _date):
+                if not analysis_cache_ready(raw, _date, _sport):
                     # 🔴 종전에는 여기서 그냥 `return` 이었다. 그래서 프리페치가
                     #    한 번 실패하면 그날 그 종목은 통째로 침묵했다.
                     #    실측 2026-09-01: "npb 캐시 없음 — 생략" × 6경기 → 카드 0장.

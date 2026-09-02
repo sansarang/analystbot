@@ -469,3 +469,12 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS merged_from BIGINT;
 -- 시범 운영 등급 판정(축구 trial mode). 캘리브레이션에서 야구와 **분리 집계**한다 —
 -- 검증된 파이프라인과 시범 경로의 성적을 한 표에 섞으면 둘 다 못 믿게 된다.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS trial BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- [운영 안정화 0a · 2026-09-02] 하이픈 실명이 타순을 쪼갠 오염 행 표시.
+--   `Pete Crow-Armstrong` 같은 이름이 `order.split("-")` 에 두 조각으로 갈려
+--   저장된 배열이 10칸이 됐다. 슬롯이 통째로 밀려 라인업 의도·T5 가 없는
+--   '타순 이동'을 신호로 읽었다 (실측 2026-09-02: MLB 153건).
+--   재파싱으로 9명이 복원되면 고치고, 안 되면 여기에 표시해 **판정에서 뺀다.**
+ALTER TABLE lineup_events ADD COLUMN IF NOT EXISTS contaminated BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE lineups       ADD COLUMN IF NOT EXISTS contaminated BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS idx_lineup_events_clean ON lineup_events (game_id, side) WHERE NOT contaminated;

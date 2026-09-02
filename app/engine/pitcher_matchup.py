@@ -48,6 +48,7 @@ _FETCH_LINEUPS = """
       FROM lineup_events e
      WHERE e.game_id = ANY($1::bigint[])
        AND e.source = $2
+       AND NOT e.contaminated
 """
 
 

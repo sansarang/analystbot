@@ -37,6 +37,7 @@ _FETCH = """
        AND g.status = 'final'
        AND g.home_score IS NOT NULL AND g.away_score IS NOT NULL
        AND e.source = $4
+       AND NOT e.contaminated
      ORDER BY g.starts_at DESC
      LIMIT $5
 """

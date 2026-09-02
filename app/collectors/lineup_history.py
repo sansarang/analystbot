@@ -75,6 +75,7 @@ async def history(pool, sport: str, team: str, before, limit: int = USUAL_WINDOW
         """SELECT e.batting_order, e.source FROM lineup_events e
            JOIN games g ON g.id = e.game_id
            WHERE g.sport = $1 AND e.team = $2 AND g.starts_at < $3
+             AND NOT e.contaminated
            ORDER BY g.starts_at DESC, e.observed_at DESC
            LIMIT $4""", sport, team, before, int(limit))
     out = []
@@ -136,7 +137,8 @@ async def changes_since(pool, game_id, side: str) -> list[dict]:
         return []
     rows = await pool.fetch(
         """SELECT batting_order, observed_at, is_final FROM lineup_events
-           WHERE game_id = $1 AND side = $2 ORDER BY observed_at""",
+           WHERE game_id = $1 AND side = $2 AND NOT contaminated
+           ORDER BY observed_at""",
         int(game_id), side)
     out, prev = [], None
     for r in rows:

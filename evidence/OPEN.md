@@ -1,0 +1,34 @@
+# 미해결 항목 (OPEN)
+
+기준 2026-09-02. 닫을 때는 **증거**(로그 시각·파일 경로·측정값)를 함께 적는다.
+"보류"는 사유 없이 쓰지 않는다.
+
+| # | 항목 | 상태 | 증거 / 사유 |
+|---|---|---|---|
+| 1 | MLB `analysis_cache_ready` 날짜 버그 | ✅ 닫힘 | ET 슬레이트 날짜(`2026-09-01`)를 KST `starts_at_kst`(`09/02 07:40`)와 대조해 **MLB는 항상 False**. 실측: `(raw,"2026-09-01")=False` / `(raw,"2026-09-02")=True` (15/15 `p_claude` 존재). 매 폴링마다 헛구제·오탐 |
+| 2 | 오염 라인업 153건 | 🟡 도구 완성 | `lineup_events` MLB 69건(08-29~09-01) · `lineups` MLB 84건(08-26~09-01). 파서는 고쳤으나 **저장된 행은 그대로** |
+| 3 | 배당 6일 단절 | 🔴 OPEN | `odds` 차단 2026-08-27T22:46 부터 · 스냅샷 최신 08-27 00:46(146.8h 전). 가치 게이트 무력화 |
+| 4 | `npb-window`(bfaa767) 미병합 | ✅ 닫힘 | NPB 재판정 창 T-10 분리. 의도적 배포 제외 상태 유지 중 |
+| 5 | `_EXHAUSTED` 자동 해제 없음 | 🔴 OPEN | 충전해도 **프로세스 재시작 전까지** provider 복귀 없음. TTL 없음 |
+| 6 | `notify_quota` 하루 1회 억제 | 🟡 부분 | 재소진이 조용하다. W-LLM-FAIL(15분)이 일부 덮지만 quota 알림 자체는 여전히 일 1회 |
+| 7 | `starter_season._roster_mem` TTL 없음 | ✅ 닫힘 | `lineup_season._mem` 과 같은 부류. 장시간 프로세스에서 명단이 기동 시점으로 고정 |
+| 8 | 확정 → 잠정 역행 | 🟡 미확인 | 09-01 17:41~17:50 관측. 폴링 틱 중첩 의심, **미측정** |
+| 9 | 14:00 프리페치 NPB 실패 원인 | 🟡 미확인 | 해당 배포 로그 삭제됨. 다음 14:00 실관측 필요 |
+| 10 | `intent`/`form`/`narrator` 역할 모델 미설정 | 🟡 OPEN | `.env` 에 값 없음 — 기본 폴백으로 동작 중 |
+| 11 | Perplexity Agent API 마이그레이션 | 🟡 기한 | 2026-09-27 Sonar Chat 종료. `PPLX_API_MODE=agent` 전환 준비돼 있음 |
+| 12 | `features.py` `timezone_shift` | ⚪ 아카이브 | λ 모델 아카이브 소속. 운영 효력 없음 |
+| 13 | `pregame_checklist` "연구 미구현" | ⚪ 저순위 | 체크리스트 표시 문구 |
+
+## 닫힌 항목
+
+(비어 있음 — 닫을 때마다 증거와 함께 여기로 옮긴다)
+
+## 0단계 처리 (2026-09-02)
+
+| # | 처리 | 증거 |
+|---|---|---|
+| 1 | `analysis_cache_ready(raw, date, sport)` — MLB 는 `starts_at` 을 ET 로 되돌려 슬레이트를 고른다. 호출처 5곳에 종목 전달 | `test_mlb_cache_ready_uses_eastern_slate_date` · `test_mlb_late_night_game_belongs_to_previous_et_date` |
+| 2 | `tools/repair_lineups` — 재결합으로 9명이 되면 교정, 안 되면 `contaminated=true`. 판정 경로 4곳이 오염 행을 제외 | 로컬 dry-run: 교정 54 · 표시 4. 운영 실행은 배포 후 |
+| 4 | `npb-window` 병합. 충돌 3곳을 현재 코드 기준으로 해소. 병합이 만든 `NameError` 1건 발견·수정 | 커밋 `cdac2c5` · 잡 23개 |
+| 7 | `_roster_mem` 에 12시간 TTL | `test_roster_mem_expires` |
+| 8·9 | **코드로 닫을 수 없다.** 실관측이 필요하다 — 계측을 심어 다음 발생 시 원인이 로그에 남게 한다 | 워치독 `W-JOB-LATE`·사이클 리포트 |

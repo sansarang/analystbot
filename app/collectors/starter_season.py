@@ -31,7 +31,12 @@ logger = logging.getLogger(__name__)
 _ROSTER_TTL = 12 * 3600
 _ROSTER_KEY = "starter_season:roster:{season}"
 #: 프로세스 내 폴백 캐시 — redis 가 없을 때도 슬레이트 안에서는 1회로 줄인다.
-_roster_mem: dict[int, dict[str, int]] = {}
+#  🔴 **TTL 을 함께 들고 있어야 한다.** 스케줄러는 며칠씩 도는 프로세스라
+#     만료 없는 dict 에 넣으면 명단이 기동 시점으로 굳는다 — 콜업된 선수는
+#     영원히 "미확보"가 되고, 그 타자의 시즌 라인이 계속 빈다.
+#     redis 쪽은 12시간인데 메모리만 안 따라가던 결함이다
+#     (`lineup_season._mem` 에서 같은 것을 이미 잡았다).
+_roster_mem: dict[int, tuple[float, dict[str, int]]] = {}
 
 
 class StatsAPIClient(BaseAPIClient):
@@ -99,15 +104,21 @@ async def _roster(season: int, redis=None) -> dict[str, int]:
                 return _register(_json.loads(raw))
         except Exception as exc:
             logger.debug("[starter_season] 명단 캐시 읽기 실패: %s", exc)
-    if season in _roster_mem:
-        return _register(_roster_mem[season])
+    import time as _time
+
+    hit = _roster_mem.get(season)
+    if hit is not None:
+        exp, val = hit
+        if exp > _time.time():
+            return _register(val)
+        _roster_mem.pop(season, None)
     data = await StatsAPIClient(mock=False).get("/sports/1/players",
                                                 {"season": season})
     ids = {p["fullName"]: p["id"] for p in (data or {}).get("people", [])
            if p.get("fullName") and p.get("id")}
     if not ids:
         return {}
-    _roster_mem[season] = ids
+    _roster_mem[season] = (_time.time() + _ROSTER_TTL, ids)
     if redis is not None:
         try:
             await redis.set(_ROSTER_KEY.format(season=season),

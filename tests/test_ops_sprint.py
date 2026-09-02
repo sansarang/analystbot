@@ -383,3 +383,106 @@ def test_watchdog_only_reads_never_unblocks():
     src = Path("app/watchdog.py").read_text(encoding="utf-8")
     assert "clear_block" not in src, "워치독은 차단을 풀지 않는다"
     assert "trip_credit" not in src, "워치독은 차단을 걸지도 않는다"
+
+
+# ─────────────────── 0. 잔여 결함 ───────────────────
+
+def test_mlb_cache_ready_uses_eastern_slate_date():
+    """🔴 MLB 슬레이트 날짜는 미 동부 기준이다. KST 문자열과 대조하면 언제나 False.
+
+    실측 2026-09-02: 15경기 전부 `p_claude` 가 있는데
+      analysis_cache_ready(raw, "2026-09-01")        → False   ← ET 슬레이트
+      analysis_cache_ready(raw, "2026-09-02")        → True    ← KST 날짜
+    그래서 MLB 는 폴링마다 "캐시 없음"으로 읽혀 헛구제를 돌리고 하루치
+    구제 토큰을 태웠다.
+    """
+    import json
+
+    from app.pipeline import analysis_cache_ready
+
+    raw = json.dumps({"games": [
+        {"status": "scheduled", "starts_at": "2026-09-02T11:40:00+00:00",
+         "starts_at_kst": "09/02 20:40", "p_claude": 0.55}]})
+    # ET 로 2026-09-02 07:40 → 슬레이트 날짜는 09-02
+    assert analysis_cache_ready(raw, "2026-09-02", "mlb") is True
+    assert analysis_cache_ready(raw, "2026-09-01", "mlb") is False
+    # 종전 경로(종목 미지정)는 KST 문자열을 본다 — 아시아 종목은 그대로다
+    assert analysis_cache_ready(raw, "2026-09-02") is True
+
+
+def test_mlb_late_night_game_belongs_to_previous_et_date():
+    """KST 아침 경기는 **전날** ET 슬레이트다 — 이 구분이 버그의 핵심이었다."""
+    import json
+
+    from app.pipeline import analysis_cache_ready
+
+    # 2026-09-02 02:40Z = ET 2026-09-01 22:40 = KST 09/02 11:40
+    raw = json.dumps({"games": [
+        {"status": "scheduled", "starts_at": "2026-09-02T02:40:00+00:00",
+         "starts_at_kst": "09/02 11:40", "p_claude": 0.6}]})
+    assert analysis_cache_ready(raw, "2026-09-01", "mlb") is True
+    assert analysis_cache_ready(raw, "2026-09-02", "mlb") is False
+
+
+def test_et_date_never_invents_a_value():
+    """시각을 못 읽으면 빈 문자열 — 지어내지 않는다."""
+    from app.pipeline import _et_date_of
+
+    assert _et_date_of({}) == ""
+    assert _et_date_of({"starts_at": "쓰레기"}) == ""
+
+
+def test_lineup_repair_only_fixes_exact_nine():
+    """9명이 정확히 될 때만 교정한다. 억지로 만들지 않는다."""
+    from tools.repair_lineups import repair_order
+
+    known = {"Ha-Seong Kim", "Pete Crow-Armstrong"}
+    broken = ["Drake Baldwin", "Ozzie Albies", "Matt Olson", "Ronald Acuña Jr.",
+              "Michael Harris II", "Mauricio Dubón", "Mike Yastrzemski",
+              "Sean Murphy", "Ha", "Seong Kim"]
+    fixed = repair_order(broken, known)
+    assert fixed is not None and len(fixed) == 9 and fixed[-1] == "Ha-Seong Kim"
+    # 빈 배열·부분 라인업은 복원 불가 → None (호출부가 contaminated 로 표시한다)
+    assert repair_order([], known) is None
+    assert repair_order(["김도영(3루수)", "박찬호(유격수)"], known) is None
+    # 이미 9명이면 손대지 않는다
+    assert repair_order(["a"] * 9, known) is None
+
+
+def test_contaminated_rows_are_excluded_from_judgement_paths():
+    """오염 행이 라인업 의도·T5 로 흘러가면 안 된다 — 쿼리가 막는다."""
+    from pathlib import Path
+
+    for path in ("app/collectors/lineup_history.py", "app/engine/lineup_record.py",
+                 "app/engine/pitcher_matchup.py"):
+        src = Path(path).read_text(encoding="utf-8")
+        assert "contaminated" in src, f"{path} 가 오염 행을 거르지 않는다"
+
+
+def test_npb_rejudge_window_is_wider_than_full_analysis():
+    """[0c] npb-window 병합 확인 — 풀 분석 T-15, 경량 재판정 T-10."""
+    from app.engine.pregame_push import (
+        NPB_FINISH_MIN, NPB_REJUDGE_FINISH_MIN, analysis_open, rejudge_open,
+    )
+
+    assert NPB_REJUDGE_FINISH_MIN < NPB_FINISH_MIN
+    now = datetime.now(UTC)
+    at_t12 = now + timedelta(minutes=12)          # T-12: 풀 닫힘, 경량 열림
+    assert analysis_open("npb", at_t12, now) is False
+    assert rejudge_open("npb", at_t12, now) is True
+    at_t8 = now + timedelta(minutes=8)            # T-8: 둘 다 닫힘
+    assert rejudge_open("npb", at_t8, now) is False
+    # KBO 는 이원화 대상이 아니다
+    assert rejudge_open("kbo", at_t8, now) is True
+
+
+def test_npb_two_minute_job_shares_the_same_window_gate():
+    """[0c] NPB 2분 잡은 창 게이트를 공유한다 — 시각을 코드에 다시 박지 않는다."""
+    from apscheduler.triggers.interval import IntervalTrigger
+
+    import app.scheduler as sc
+
+    specs = {x[0]: x for x in sc._job_specs()}
+    assert "npb_pregame_2m" in specs and "asia_pregame_5m" in specs
+    assert isinstance(specs["npb_pregame_2m"][2], IntervalTrigger)
+    assert isinstance(specs["asia_pregame_5m"][2], IntervalTrigger)

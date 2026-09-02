@@ -87,10 +87,35 @@ def test_list_input_is_untouched():
 def test_roster_load_registers_names(monkeypatch):
     """명단을 받는 경로가 사전을 채운다 — 호출부가 따로 등록하지 않아도 된다."""
     import asyncio
+    import time
 
     from app.collectors import starter_season as ss
 
     monkeypatch.setitem(ss._roster_mem, 2026,
-                        {"Ha-Seong Kim": 1, "Aaron Judge": 2})
+                        (time.time() + 3600, {"Ha-Seong Kim": 1, "Aaron Judge": 2}))
     asyncio.run(ss._roster(2026, None))
     assert "Ha-Seong Kim" in NAME_REGISTRY
+
+
+def test_roster_mem_expires(monkeypatch):
+    """🔴 명단 캐시가 만료 없이 굳으면 콜업 선수가 영원히 '미확보'가 된다."""
+    import asyncio
+    import time
+
+    from app.collectors import starter_season as ss
+
+    calls = {"n": 0}
+
+    class FakeClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def get(self, *a, **k):
+            calls["n"] += 1
+            return {"people": [{"fullName": "New Guy", "id": 9}]}
+
+    monkeypatch.setattr(ss, "StatsAPIClient", FakeClient)
+    monkeypatch.setitem(ss._roster_mem, 2026, (time.time() - 1, {"Old": 1}))
+    got = asyncio.run(ss._roster(2026, None))
+    assert calls["n"] == 1, "만료됐으면 다시 받아야 한다"
+    assert got == {"New Guy": 9}

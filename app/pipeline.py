@@ -887,12 +887,21 @@ async def load_source_bundle(redis, sport: str, date: str) -> dict:
     return bundle
 
 
-def analysis_cache_ready(raw: str | None, date: str) -> bool:
+def analysis_cache_ready(raw: str | None, date: str, sport: str = "") -> bool:
     """당일 예정 경기에 Claude 판정(`p_claude`)이 붙어 있는가.
 
     키만 있으면 준비됨으로 치면 안 된다. 실측 2026-08-28: 캐시는 있는데
     `p_claude`가 전원 null이라 승률 없는 카드를 보낼 뻔했다.
     다음날 경기가 같은 키에 섞여 있어도 **요청 날짜**만 본다.
+
+    🔴 **MLB 는 슬레이트 날짜가 미 동부 기준이다.** `date` 는 `2026-09-01`
+       인데 그 경기들의 `starts_at_kst` 는 `09/02 07:40` 이라, KST 문자열을
+       ET 날짜와 대조하면 **한 경기도 안 걸려 언제나 False** 였다.
+       실측 2026-09-02: 15경기 전부 `p_claude` 가 있는데
+         `analysis_cache_ready(raw, "2026-09-01")` → False
+         `analysis_cache_ready(raw, "2026-09-02")` → True
+       그래서 MLB 는 폴링마다 "캐시 없음"으로 읽혀 헛구제를 돌리고 하루치
+       구제 토큰을 태웠다. MLB 는 `starts_at`(UTC) 를 **ET 로 되돌려** 본다.
     """
     if not raw:
         return False
@@ -909,12 +918,34 @@ def analysis_cache_ready(raw: str | None, date: str) -> bool:
     for g in data.get("games") or []:
         if g.get("status") not in (None, "scheduled"):
             continue
+        if sport == "mlb":
+            if _et_date_of(g) == date:
+                games.append(g)
+            continue
         stamp = str(g.get("starts_at_kst") or g.get("starts_at") or "")
         if stamp.startswith(mmdd) or date in stamp:
             games.append(g)
     if not games:
         return False
     return all(isinstance(g.get("p_claude"), (int, float)) for g in games)
+
+
+def _et_date_of(g: dict) -> str:
+    """경기의 **미 동부 슬레이트 날짜**. 못 구하면 빈 문자열 — 지어내지 않는다."""
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _Z
+
+    raw = g.get("starts_at")
+    if raw is None:
+        return ""
+    try:
+        if isinstance(raw, str):
+            raw = _dt.fromisoformat(raw.replace("Z", "+00:00"))
+        if raw.tzinfo is None:
+            raw = raw.replace(tzinfo=UTC)
+        return raw.astimezone(_Z("America/New_York")).date().isoformat()
+    except (ValueError, TypeError, AttributeError):
+        return ""
 
 
 #: 저녁 폴링에서 슬레이트 파이프라인을 다시 도는 것은 **하루 1회**다.
@@ -949,7 +980,7 @@ async def ensure_analysis_cache(pool, redis, sport: str, date: str) -> bool:
        실패할 가능성이 크고, 크레딧만 태운다.
     """
     raw = await redis.get(f"analysis:{sport}:{date}")
-    if analysis_cache_ready(raw, date):
+    if analysis_cache_ready(raw, date, sport):
         return True
     key = _RESCUE_KEY.format(sport=sport, date=date)
     fail_key = _RESCUE_FAIL_KEY.format(sport=sport, date=date)
@@ -989,7 +1020,7 @@ async def ensure_analysis_cache(pool, redis, sport: str, date: str) -> bool:
         await _mark_rescue_failed(redis, sport, date, tries + 1, repr(exc)[:200])
         return False
     raw = await redis.get(f"analysis:{sport}:{date}")
-    ready = analysis_cache_ready(raw, date)
+    ready = analysis_cache_ready(raw, date, sport)
     if not ready:
         logger.warning("[pipeline] analysis 캐시 재생성 후에도 당일 판정 없음 — "
                        "%s %s (시도 %d/%d)", sport, date, tries + 1,
