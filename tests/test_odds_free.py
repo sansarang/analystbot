@@ -151,3 +151,118 @@ def test_provider_column_separates_sources():
     assert "ADD COLUMN IF NOT EXISTS provider" in schema
     src = Path("app/collectors/odds_free.py").read_text(encoding="utf-8")
     assert "provider)" in src and "$7" in src
+
+
+# ─────────────────── [2] 딥서치 무과금 ───────────────────
+
+def test_rss_parses_and_drops_stale_articles():
+    """72시간이 넘은 기사는 버린다 — 딥서치는 '지금 무엇이 달라졌나'를 묻는다."""
+    from app.collectors.news_rss import parse_feed
+
+    xml = """<rss><channel>
+      <item><title>새 기사 - 매체A</title><link>http://a</link>
+        <pubDate>Wed, 02 Sep 2026 03:00:00 GMT</pubDate></item>
+      <item><title>옛 기사 - 매체B</title><link>http://b</link>
+        <pubDate>Fri, 21 Aug 2026 03:00:00 GMT</pubDate></item>
+    </channel></rss>"""
+    now = datetime(2026, 9, 2, 6, 0, tzinfo=UTC)
+    got = parse_feed(xml, now=now)
+    assert [g["title"] for g in got] == ["새 기사 - 매체A"]
+    assert got[0]["age_h"] == 3.0
+
+
+def test_rss_survives_cdata_and_entities():
+    from app.collectors.news_rss import parse_feed
+
+    xml = ("<rss><item><title><![CDATA[LG &amp; 두산 <b>맞대결</b>]]></title>"
+           "<link>http://x</link></item></rss>")
+    got = parse_feed(xml, now=datetime(2026, 9, 2, tzinfo=UTC))
+    assert got[0]["title"] == "LG & 두산 맞대결"
+
+
+def test_each_league_gets_its_own_locale():
+    """한국어 기사에 영어 쿼리를 던지면 0건이 된다."""
+    from app.collectors.news_rss import LOCALE
+
+    assert LOCALE["kbo"]["ceid"] == "KR:ko"
+    assert LOCALE["npb"]["ceid"] == "JP:ja"
+    assert LOCALE["mlb"]["ceid"] == "US:en"
+
+
+def test_articles_are_injected_without_touching_the_rules():
+    """🔴 프롬프트 **규칙**은 불변이다. 자료만 덧붙인다."""
+    from app.engine.deepsearch import PROMPT, _inject_articles
+
+    got = _inject_articles(PROMPT, [
+        {"team": "T", "title": "제목", "source": "매체", "age_h": 2.0,
+         "body": "본문 앞부분"}])
+    assert got.startswith(PROMPT), "기존 프롬프트를 그대로 두고 뒤에 붙인다"
+    assert "수집된 기사" in got and "본문 앞부분" in got
+    # 완화하면 안 되는 것들이 살아 있는가
+    assert "±4%p" in got and "우세 방향을" in got
+
+
+def test_paid_fallback_is_locked_by_a_daily_cap():
+    """[2c] RSS 가 0건일 때만, 그것도 하루 총량 안에서만 유료 검색."""
+    import asyncio
+
+    from app.engine.deepsearch import PAID_KEY, _paid_budget_left, _spend_paid
+
+    class R:
+        def __init__(self):
+            self.s = {}
+
+        async def get(self, k):
+            return self.s.get(k)
+
+        async def incr(self, k):
+            self.s[k] = str(int(self.s.get(k, 0)) + 1)
+            return int(self.s[k])
+
+        async def expire(self, *a):
+            return True
+
+    r = R()
+
+    async def go():
+        left = []
+        for _ in range(5):
+            left.append(await _paid_budget_left(r))
+            if left[-1]:
+                await _spend_paid(r)
+        return left
+
+    got = asyncio.run(go())
+    assert got == [True, True, True, False, False], "기본 상한 3회"
+
+
+def test_no_redis_means_no_paid_search():
+    """redis 가 없으면 총량을 셀 수 없다 — 그때는 **막는다**(안전측)."""
+    import asyncio
+
+    from app.engine.deepsearch import _paid_budget_left
+
+    assert asyncio.run(_paid_budget_left(None)) is False
+
+
+def test_free_path_needs_no_search_tool():
+    """RSS 가 있으면 `tools` 가 비어야 한다 — 도구를 넘기면 과금이 다시 붙는다."""
+    from pathlib import Path
+
+    src = Path("app/engine/deepsearch.py").read_text(encoding="utf-8")
+    assert "tools = []" in src
+    assert "if articles:" in src and "_inject_articles" in src
+
+
+def test_cost_lines_report_paid_calls_as_numbers():
+    """[3] "0원으로 바꿨다"는 주장이 아니라 관측이어야 한다."""
+    import asyncio
+
+    from app.engine.daily_summary import cost_lines
+
+    class R:
+        async def get(self, k):
+            return None
+
+    got = asyncio.run(cost_lines(R(), ("mlb",), "2026-09-02"))
+    assert got and "The Odds API 0콜" in got[0] and "web_search 0/3콜" in got[0]

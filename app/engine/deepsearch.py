@@ -366,7 +366,110 @@ def _today_kst() -> str:
     return datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
 
 
-async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None):
+#: 조사 재료 출처. 로그·결과에 그대로 실린다 — 무엇을 읽고 낸 판단인지 남긴다.
+SRC_RSS = "rss"          # 무료: Google News RSS + web_fetch
+SRC_PAID = "web_search"  # 유료 폴백: Anthropic 검색 도구
+
+PAID_KEY = "deepsearch:paid:{date}"
+#: 본문을 붙일 기사 수. 많이 넣으면 프롬프트만 부풀고 판단은 안 나아진다.
+FETCH_TOP_N = 4
+FETCH_CHARS = 1200
+
+
+async def _free_articles(jg: dict, redis) -> list[dict]:
+    """RSS 기사 + 상위 N건 본문. 실패하면 빈 목록(→ 유료 폴백 판단)."""
+    try:
+        from app.collectors.news_rss import for_game
+
+        items = await for_game(jg, redis)
+    except Exception as exc:
+        logger.warning("[deepsearch] RSS 수집 실패 — 유료 폴백 판단으로: %s", exc)
+        return []
+    if not items:
+        return []
+    for it in items[:FETCH_TOP_N]:
+        it["body"] = await _fetch_body(it.get("url"))
+    return items
+
+
+async def _fetch_body(url: str | None) -> str:
+    """기사 본문 앞부분. **무료 HTTP 다.** 실패하면 빈 문자열 — 제목만 쓴다."""
+    if not url:
+        return ""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True,
+                                     headers={"User-Agent": _UA}) as c:
+            r = await c.get(url)
+            r.raise_for_status()
+            html = r.text
+    except Exception as exc:
+        logger.debug("[deepsearch] 본문 수집 실패 %s: %s", str(url)[:60], exc)
+        return ""
+    import re as _re
+
+    html = _re.sub(r"<(script|style|nav|header|footer)[^>]*>.*?</\1>", " ",
+                   html, flags=_re.S | _re.I)
+    text = _re.sub(r"<[^>]+>", " ", html)
+    for a, b in (("&amp;", "&"), ("&nbsp;", " "), ("&quot;", '"'), ("&#39;", "'")):
+        text = text.replace(a, b)
+    return _re.sub(r"\s+", " ", text).strip()[:FETCH_CHARS]
+
+
+def _inject_articles(prompt: str, articles: list[dict]) -> str:
+    """프롬프트의 "검색 결과" 자리에 무료 수집분을 넣는다.
+
+    ⚠️ **프롬프트 규칙은 건드리지 않는다.** 자료를 덧붙일 뿐이다 — 조정 상한
+       ±4%p, 우세 뒤집기 금지, 신뢰 등급은 그대로다.
+    """
+    lines = ["", "[수집된 기사] — 아래가 검색 결과다. 추가 검색 도구는 없다.",
+             "각 항목: 제목 · 매체 · 몇 시간 전 · 본문 앞부분(있으면).",
+             "본문이 비어 있으면 제목만으로 단정하지 마라."]
+    for i, a in enumerate(articles, 1):
+        age = f"{a.get('age_h')}h 전" if a.get("age_h") is not None else "시각 미상"
+        lines.append(f"{i}. [{a.get('team', '')}] {a.get('title', '')} "
+                     f"({a.get('source', '')} · {age})")
+        body = (a.get("body") or "").strip()
+        if body:
+            lines.append(f"   본문: {body}")
+    return prompt + "\n".join(lines)
+
+
+async def _paid_budget_left(redis) -> bool:
+    """유료 검색 하루 총량이 남았는가. redis 가 없으면 **막는다** (안전측)."""
+    from app.config import get_settings
+
+    cap = int(getattr(get_settings(), "deepsearch_paid_cap", 0) or 0)
+    if cap <= 0:
+        return False
+    if redis is None:
+        return False
+    try:
+        used = int(await redis.get(PAID_KEY.format(date=_today_kst())) or 0)
+    except Exception:
+        return False
+    return used < cap
+
+
+async def _spend_paid(redis) -> None:
+    if redis is None:
+        return
+    try:
+        key = PAID_KEY.format(date=_today_kst())
+        n = await redis.incr(key)
+        await redis.expire(key, 30 * 3600)
+        logger.warning("[deepsearch] 유료 web_search 사용 %s회 (일일 상한 안)", n)
+    except Exception as exc:
+        logger.debug("[deepsearch] 유료 사용 기록 실패: %s", exc)
+
+
+_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+
+
+async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None,
+                      redis=None):
     """경기 1건 조사. 반환: (결과 dict | None, 검색 사용 수).
 
     ⚠️ 실패·타임아웃이면 (None, 0) — **원판정을 그대로 둔다.** 조사가 안 됐다고
@@ -386,7 +489,7 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
     #    35초 → 419초가 됐다(P5-2 외부 차단이 잡았다). 판정 경로에 새 외부
     #    호출을 붙일 때는 목 분기를 **같은 커밋에서** 넣어야 한다.
     if s.mock_judge:
-        return None, 0
+        return None, 0, SRC_RSS
     abort_if_credit_gone(f"deepsearch:{jg.get('away')}@{jg.get('home')}")
     m = jg.get("matchup") or {}
     prompt = PROMPT.format(
@@ -400,30 +503,46 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
         lang=SEARCH_LANG.get(sport, "영어"),
         budget=int(s.deepsearch_max_searches),
         today=_today_kst())
-    tool = {"type": "web_search_20260318", "name": "web_search",
-            "max_uses": int(s.deepsearch_max_searches)}   # API가 검색 수를 강제
+    # 🔴 [무과금 전환 2b] **검색을 우리가 대신한다.** Anthropic `web_search` 는
+    #    검색 1회당 과금이고 경기당 최대 5회다. RSS(무료)로 기사를 먼저 모아
+    #    본문까지 붙여 프롬프트의 "검색 결과" 자리에 주입하면, LLM 은 읽기만
+    #    하면 되고 수수료가 0원이 된다. 프롬프트 규칙·조정 상한(±4%p)은 불변이다.
+    articles = await _free_articles(jg, redis)
+    source = SRC_RSS if articles else SRC_PAID
+    tools = []
+    if articles:
+        prompt = _inject_articles(prompt, articles)
+    else:
+        # 폴백: RSS 가 0건이면 종전처럼 유료 검색 1회 — 단, **하루 총량** 안에서만.
+        if not await _paid_budget_left(redis):
+            logger.info("[deepsearch] RSS 0건 · 유료 검색 일일 상한 소진 — "
+                        "조사 생략 %s@%s", jg.get("away"), jg.get("home"))
+            return None, 0, SRC_PAID
+        tools = [{"type": "web_search_20260318", "name": "web_search",
+                  "max_uses": int(s.deepsearch_max_searches)}]
+        await _spend_paid(redis)
     cli = anthropic.AsyncAnthropic(api_key=s.anthropic_api_key)
     try:
         resp = await asyncio.wait_for(
             cli.messages.create(model=s.matchup_model,
                                 max_tokens=int(s.deepsearch_max_tokens),
-                                tools=[tool],
+                                tools=tools,
                                 messages=[{"role": "user", "content": prompt}]),
             timeout=timeout if timeout is not None else float(s.deepsearch_timeout_sec))
     except TimeoutError:
-        logger.warning("[deepsearch] 타임아웃 — 원판정 유지 %s@%s",
-                       jg.get("away"), jg.get("home"))
-        return None, 0
+        logger.warning("[deepsearch] 타임아웃(source=%s) — 원판정 유지 %s@%s",
+                       source, jg.get("away"), jg.get("home"))
+        return None, 0, source
     except anthropic.APIStatusError as exc:
         if exc.status_code == 400 and "credit" in str(exc).lower():
             trip_credit(f"deepsearch/{s.matchup_model}", exc)
-        logger.warning("[deepsearch] 호출 실패 %s@%s: %s",
-                       jg.get("away"), jg.get("home"), exc)
-        return None, 0
+        logger.warning("[deepsearch] 호출 실패(source=%s) %s@%s: %s",
+                       source, jg.get("away"), jg.get("home"), exc)
+        return None, 0, source
     except Exception as exc:
-        logger.warning("[deepsearch] 예기치 못한 실패 %s@%s: %s",
-                       jg.get("away"), jg.get("home"), exc)
-        return None, 0
+        logger.warning("[deepsearch] 예기치 못한 실패(source=%s) %s@%s: %s",
+                       source, jg.get("away"), jg.get("home"), exc)
+        return None, 0, source
     # 🔴 검색 횟수는 **usage 에서 읽는다.** server_tool_use 블록 수를 세면
     #    틀린다 — 실측 2026-08-31: 블록 15개인데 실제 검색은 그보다 적었고,
     #    그 오독으로 "max_uses 를 넘겼다"고 잘못 보고했다. API는 상한을
@@ -444,8 +563,8 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
             jg.get("away"), jg.get("home"), getattr(resp, "stop_reason", None),
             getattr(resp.usage, "output_tokens", None), used, len(text),
             text.replace("\n", " ") or "(텍스트 블록 없음)")
-        return None, used
-    return data, used
+        return None, used, source
+    return data, used, source
 
 
 #: 배당 오염 탐지어. 조사 결과에 이것이 섞이면 조정을 받지 않는다.
@@ -632,7 +751,7 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
         if jg is None:
             continue
         try:
-            data, used = await investigate(jg, c["triggers"])
+            data, used, src = await investigate(jg, c["triggers"], redis=redis)
         except Exception as exc:              # 한 경기 실패가 나머지를 막지 않는다
             logger.warning("[deepsearch] 조사 실패 %s: %s", c["match"], exc)
             continue
@@ -748,7 +867,7 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
         return out
 
     try:
-        data, searched = await investigate(jg, trig)
+        data, searched, src = await investigate(jg, trig, redis=redis)
     except Exception as exc:                 # 조사 실패가 재판정을 막지 않는다
         out["status"] = "failed"
         logger.warning("[deepsearch] 재판정 조사 실패 game=%s: %s", gid, exc)
@@ -765,9 +884,15 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
     if redis is not None:
         await _setex(redis, dedupe_key, "1", CACHE_TTL)
         await _incr(redis, count_key, CACHE_TTL)
-    logger.info("[deepsearch] 재판정 조사 game=%s 트리거=%s source=%s 검색=%d "
-                "이동=%+.1f%%p 상한 %d/%d", gid, ",".join(trig), out["source"],
-                searched, res["moved"], used + 1, cap)
+    # 🔴 `source` 는 **트리거 출처**(모델 자백 vs 폴러 사실)다. 검색 재료가
+    #    어디서 왔는지는 다른 축이라 칸을 따로 둔다 — 무과금 전환이 실제로
+    #    돌고 있는지 이 값으로만 확인된다.
+    out["search_source"] = src
+    out["paid_search"] = searched
+    logger.info("[deepsearch] 재판정 조사 game=%s 트리거=%s source=%s "
+                "search_source=%s 유료검색=%d 이동=%+.1f%%p 상한 %d/%d",
+                gid, ",".join(trig), out["source"], src, searched,
+                res["moved"], used + 1, cap)
     _record(jg, out)
     return out
 

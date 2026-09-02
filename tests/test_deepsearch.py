@@ -195,9 +195,10 @@ async def test_no_external_call_in_mock_mode():
     """
     from app.engine.deepsearch import investigate
 
-    data, used = await investigate({"sport": "kbo", "home": "H", "away": "A",
-                                    "matchup": {"p_home": 0.6}}, ["T1"])
+    data, used, src = await investigate({"sport": "kbo", "home": "H", "away": "A",
+                                         "matchup": {"p_home": 0.6}}, ["T1"])
     assert (data, used) == (None, 0)
+    assert src == "rss", "무과금 전환 후 기본 경로는 RSS 다"
 
 
 async def test_investigation_is_off_by_default_but_triggers_still_run():
@@ -407,8 +408,9 @@ async def test_rejudge_runs_once_then_dedupes_on_same_lineup(monkeypatch):
 
     async def fake_investigate(jg, trig, **_kw):
         calls.append(trig)
-        return {"발견": [], "조정": {"p_home": 0.55, "사유": "변화 없음",
-                                  "단일기사여부": False}, "요약": "x"}, 3
+        # [무과금 전환] 반환은 (데이터, 유료검색수, 검색출처) 3-튜플이다.
+        return ({"발견": [], "조정": {"p_home": 0.55, "사유": "변화 없음",
+                                   "단일기사여부": False}, "요약": "x"}, 0, "rss")
 
     monkeypatch.setattr(ds, "investigate", fake_investigate)
     S_on = Settings(_env_file=None, DEEPSEARCH_ENABLED=True)
@@ -418,7 +420,9 @@ async def test_rejudge_runs_once_then_dedupes_on_same_lineup(monkeypatch):
                                   lineup_sig="임찬규|켈리|1:김현수|1:손아섭",
                                   slate_size=10, settings=S_on)
     assert r1["triggered"] and r1["status"] == "investigated"
-    assert r1["searches"] == 3 and len(calls) == 1
+    # [무과금 전환] `searches` 는 이제 **유료** web_search 횟수다. RSS 경로면 0.
+    assert r1["searches"] == 0 and len(calls) == 1
+    assert r1["search_source"] == "rss", "무료 경로로 조사됐음이 결과에 남아야 한다"
 
     r2 = await ds.run_for_rejudge(_starter_changed_jg(), rds, "2026-09-01",
                                   lineup_sig="임찬규|켈리|1:김현수|1:손아섭",
@@ -693,8 +697,8 @@ async def test_slate_and_rejudge_share_one_budget(monkeypatch):
 
     async def fake_investigate(jg, trig, **_kw):
         calls.append(jg.get("game_id"))
-        return {"발견": [], "조정": {"p_home": 0.55, "사유": "변화 없음",
-                                  "단일기사여부": False}, "요약": "x"}, 2
+        return ({"발견": [], "조정": {"p_home": 0.55, "사유": "변화 없음",
+                                   "단일기사여부": False}, "요약": "x"}, 0, "rss")
 
     monkeypatch.setattr(ds, "investigate", fake_investigate)
     S_on = Settings(_env_file=None, DEEPSEARCH_ENABLED=True)
@@ -725,8 +729,8 @@ async def test_slate_uses_only_remaining_budget(monkeypatch):
 
     async def fake_investigate(jg, trig, **_kw):
         calls.append(jg.get("game_id"))
-        return {"발견": [], "조정": {"p_home": 0.55, "사유": "x",
-                                  "단일기사여부": False}, "요약": "x"}, 1
+        return ({"발견": [], "조정": {"p_home": 0.55, "사유": "x",
+                                   "단일기사여부": False}, "요약": "x"}, 0, "rss")
 
     monkeypatch.setattr(ds, "investigate", fake_investigate)
     S_on = Settings(_env_file=None, DEEPSEARCH_ENABLED=True)

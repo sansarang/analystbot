@@ -100,6 +100,12 @@ class Settings(BaseSettings):
     #   실측 2026-09-01: 2000 → stop_reason="max_tokens", output 5804토큰,
     #   JSON이 743자에서 절단. 4/4 파싱 실패의 원인이었다.
     deepsearch_max_tokens: int = 8000
+    #: [무과금 전환 2c] 유료 `web_search` 폴백의 **하루 총량**.
+    #   RSS 에 기사가 0건일 때만 쓴다. 0 이면 유료 검색을 아예 안 한다.
+    #   ⚠️ 경기당 상한(`deepsearch_max_searches`)과 다른 축이다 —
+    #      이건 하루 전체를 잠근다.
+    deepsearch_paid_cap: int = Field(default=3, validation_alias=AliasChoices(
+        "DEEPSEARCH_PAID_CAP", "deepsearch_paid_cap"))
     #: [v1.1 6단계] **조사 호출** 켜기. 기본 꺼짐(False).
     #   트리거 판별·상한·기록·폴백은 이 값과 무관하게 항상 돈다 —
     #   실전에서 "어떤 경기가 조사 대상이 되는가"를 먼저 관찰하기 위해서다.

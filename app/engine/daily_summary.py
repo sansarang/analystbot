@@ -70,6 +70,53 @@ async def dispatch_lines(redis, sports: tuple[str, ...], date: str) -> list[str]
     return out
 
 
+async def cost_lines(redis, sports: tuple[str, ...], date: str) -> list[str]:
+    """[무과금 전환 3] 비용 실측 — 유료 호출을 **숫자로** 낸다.
+
+    ⚠️ "0원으로 바꿨다"는 주장이 아니라 관측이어야 한다. 유료 경로를 실제로
+       안 탔는지는 카운터로만 확인된다.
+    """
+    if redis is None:
+        return []
+    out = []
+    try:
+        from app.config import get_settings
+        from app.engine.deepsearch import PAID_KEY
+
+        paid = int(await redis.get(PAID_KEY.format(date=date)) or 0)
+        cap = int(getattr(get_settings(), "deepsearch_paid_cap", 0) or 0)
+        provider = (get_settings().odds_provider or "free").lower()
+        theodds = 0 if provider != "theodds" else -1
+        out.append("💸 유료 호출: "
+                   + (f"The Odds API {theodds}콜" if theodds >= 0
+                      else "The Odds API 사용중(유료 모드)")
+                   + f" · web_search {paid}/{cap}콜")
+    except Exception as exc:
+        logger.debug("[daily-summary] 비용 집계 실패: %s", exc)
+    for sp in sports:
+        if sp not in ("mlb", "kbo", "npb"):
+            continue
+        d = date
+        if sp == "mlb":
+            from app.pipeline import mlb_slate_date
+
+            d = mlb_slate_date()
+        try:
+            import json as _json
+
+            raw = await redis.get(f"odds_coverage:{sp}:{d}")
+            if not raw:
+                continue
+            c = _json.loads(raw)
+            if c.get("total"):
+                out.append(f"   배당 커버리지 {_SPORT_KR.get(sp, sp)} "
+                           f"{c['with_odds']}/{c['total']} "
+                           f"({(c.get('rate') or 0):.0%})")
+        except Exception as exc:
+            logger.debug("[daily-summary] 커버리지 %s 실패: %s", sp, exc)
+    return out
+
+
 async def build(pool, sports: tuple[str, ...], title: str, date: str,
                 *, window_hours: int = 18, redis=None) -> str:
     """요약 카드 1장. 판정이 없으면 그 사실을 말한다 — 빈 카드를 보내지 않는다.
@@ -155,5 +202,8 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str,
     dl = await dispatch_lines(redis, sports, date)
     if dl:
         out += [""] + dl
+    cl = await cost_lines(redis, sports, date)
+    if cl:
+        out += [""] + cl
     out += ["", TICKET_RULE]
     return "\n".join(out)
