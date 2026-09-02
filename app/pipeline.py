@@ -2300,6 +2300,16 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
         except Exception as exc:
             logger.warning("[pipeline] 선발 시즌 라인 실패 game=%s: %s",
                            jg.get("game_id"), exc)
+        # [D 2026-09-02] 오늘 타순 9명의 시즌 타격 라인. 사용자 지시로
+        #   "타선·팀 시즌 지표 금지"를 해제하고 **정식 근거**로 넣는다.
+        #   선발 시즌 라인과 같은 계약: 실패해도 판정을 막지 않는다.
+        try:
+            from app.collectors.lineup_season import attach as _bats
+
+            await _bats(jg, redis=redis)
+        except Exception as exc:
+            logger.warning("[pipeline] 타선 시즌 라인 실패 game=%s: %s",
+                           jg.get("game_id"), exc)
         if await judge_matchup(jg, redis, date):
             n += 1
     return n

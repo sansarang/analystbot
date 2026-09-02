@@ -115,8 +115,25 @@ def starters_recent_payload(jg: dict) -> dict:
     return out
 
 
+def lineup_season_payload(jg: dict) -> dict:
+    """[D 2026-09-02] 오늘 타순 9명의 시즌 타격 라인 — **정식 근거.**
+
+    선발 시즌 라인(`starters_season_payload`)과 달리 표본 보정 전용이 아니다.
+    3경기 팀 총득점보다 표본이 크므로 프롬프트가 타선 평가의 주 근거로 쓴다.
+    ⚠️ 재료가 없으면 그 쪽을 **넣지 않는다** — 빈 칸을 만들면 판정이 "타선
+       자료 없음"과 "타선이 나쁨"을 구분하지 못한다.
+    """
+    r = jg.get("research") or {}
+    out = {}
+    for side in ("home", "away"):
+        blk = r.get(f"{side}_lineup_season") or {}
+        if blk.get("타자"):
+            out[side] = blk
+    return out
+
+
 def starters_season_payload(jg: dict) -> dict:
-    """[C] 선발 시즌 라인 — **표본 보정 전용.** 타선 시즌 지표는 넣지 않는다."""
+    """[C] 선발 시즌 라인 — **표본 보정 전용.** 타선은 8번 자료가 따로 있다."""
     r = jg.get("research") or {}
     out = {}
     for side in ("home", "away"):
@@ -248,6 +265,8 @@ async def judge_matchup(jg: dict, redis, date: str, *,
                                       default=str),
         STARTER_SEASON_JSON=json.dumps(starters_season_payload(jg),
                                        ensure_ascii=False, default=str),
+        LINEUP_SEASON_JSON=json.dumps(lineup_season_payload(jg),
+                                      ensure_ascii=False, default=str),
     )
     parsed = None
     for attempt in (1, 2):

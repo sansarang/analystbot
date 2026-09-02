@@ -116,8 +116,44 @@ def test_season_line_is_sample_correction_only():
     assert "표본 보정 전용" in MATCHUP
     assert "이것으로\n  우세를 정하지 마라" in MATCHUP
     assert '"표본 보정:"으로 시작하라' in MATCHUP
-    # 타선 시즌 지표 금지는 그대로다 — 개정 범위를 넘지 않았다
-    assert "**타선·팀 지표의 시즌 값은 여전히 쓰지 않는다.**" in MATCHUP
+    # 자료7은 여전히 **선발투수 전용** 이다 — 타선은 자료8로 분리돼 있다.
+    assert "이 칸은 선발투수다. 타선 시즌은 8번 자료를 쓴다." in MATCHUP
+
+
+def test_batting_season_is_first_class_evidence():
+    """🔴 규율 개정 2026-09-02 — "타선·팀 시즌 지표 금지"를 **해제**한다.
+
+    9/01 개정은 선발투수 한 칸만 풀고 타선은 닫아뒀다. 그런데 판정은 "오늘
+    나온 9명이 기준"이라고 말하면서 그 9명이 어떤 타자인지는 볼 수 없었다 —
+    타선 재료가 팀 3경기 총득점 하나뿐이었기 때문이다. 표본 3이고 상대
+    선발에 좌우된다. 선발에서 겪은 실수를 타선에서 반복할 구조였다.
+
+    선발과 달리 **표본 보정 전용이 아니라 정식 근거**다 (사용자 결정 2026-09-02).
+    """
+    assert "{{LINEUP_SEASON_JSON}}" in MATCHUP
+    assert "자료8(타선 시즌)은 **정식 근거다.**" in MATCHUP
+    assert "타선 평가의 주 근거로 쓴다" in MATCHUP
+    assert '"타선 시즌:"으로 시작하라' in MATCHUP
+    # 금지문이 실제로 사라졌는가
+    assert "타선·팀 지표의 시즌 값은 여전히 쓰지 않는다" not in MATCHUP
+
+
+def test_batting_season_does_not_override_the_starter():
+    """타선은 9명이 나눠 갖고 선발은 혼자 던진다 — 반대를 가리키면 선발이 무겁다."""
+    assert "선발 쪽을 무겁게 본다" in MATCHUP
+    assert "`PA`가 작은 타자" in MATCHUP
+
+
+def test_missing_batting_material_is_not_a_bad_lineup():
+    """수집 실패를 '타선이 약하다'로 읽으면 없는 근거로 판정이 기운다."""
+    assert "없는 쪽을 나쁘다고 보지 마라" in MATCHUP
+
+
+def test_hard_limits_survive_the_revision():
+    """개정이 완화하면 안 되는 것까지 건드리지 않았는가."""
+    assert "0.32~0.68" in MATCHUP
+    assert "±3%p" in MATCHUP
+    assert "배당, 팀 명성, 시즌 승률, 사전 지식은 쓰지 않는다" in MATCHUP
 
 
 def test_low_recent_sample_pulls_toward_half():
