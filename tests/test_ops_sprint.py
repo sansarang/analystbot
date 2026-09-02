@@ -226,6 +226,9 @@ def test_stale_is_judged_per_provider():
     from app import watchdog as wd
 
     class FakePool:
+        async def fetchval(self, *a, **k):
+            return 15                                     # 오늘 경기가 있다
+
         async def fetch(self, *a, **k):
             return [{"provider": "espn", "age": 999.0}]    # ESPN 이 낡았다
 

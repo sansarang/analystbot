@@ -128,6 +128,23 @@ async def check_odds(pool, redis) -> list[tuple[str, str, str]]:
             logger.debug("[watchdog] 배당 차단 조회 실패: %s", exc)
     if pool is None:
         return out
+    # 🔴 **붙일 경기가 없으면 배당이 없는 게 정상이다.**
+    #    실사고 2026-09-02 14:42~14:52: ESPN 은 14경기 배당을 정상으로 줬는데
+    #    그 슬레이트가 `games` 에 아직 없어 매칭이 0이었다. 워치독은 그걸
+    #    "소스가 죽었다"로 읽고 15분마다 울렸다 — 소스는 멀쩡했다.
+    #    수집 대상이 있을 때만 낡음을 따진다.
+    try:
+        due = await pool.fetchval(
+            """SELECT count(*) FROM games
+                WHERE sport IN ('mlb', 'kbo', 'npb') AND status = 'scheduled'
+                  AND starts_at > now()
+                  AND starts_at < now() + interval '36 hours'""")
+    except Exception as exc:
+        logger.debug("[watchdog] 대상 경기 조회 실패: %s", exc)
+        return out
+    if not due:
+        logger.debug("[watchdog] 36시간 내 예정 경기 0 — 배당 낡음 판정 생략")
+        return out
     try:
         rows = await pool.fetch(
             """SELECT provider,

@@ -266,3 +266,93 @@ def test_cost_lines_report_paid_calls_as_numbers():
 
     got = asyncio.run(cost_lines(R(), ("mlb",), "2026-09-02"))
     assert got and "The Odds API 0콜" in got[0] and "web_search 0/3콜" in got[0]
+
+
+# ─────────────────── 실사고 2026-09-02: 매칭 0 = 소스 고장 아님 ───────────────────
+
+def test_collect_skips_when_the_slate_is_not_loaded():
+    """🔴 실사고 14:42: ESPN 이 14경기 배당을 **정상으로** 줬는데 매칭 0 이었다.
+
+    그 슬레이트가 `games` 에 아직 없었기 때문이다 — MLB 스케줄은 새벽
+    프리페치가 넣는데 ET 자정이 지나면 `mlb_slate_date()` 는 이미 다음
+    슬레이트를 가리킨다. "배당을 못 붙였다"가 아니라 "붙일 경기가 없었다"다.
+    """
+    import asyncio
+
+    from app.collectors import odds_free as of
+
+    called = []
+
+    class Pool:
+        async def fetch(self, *a, **k):
+            return []
+
+    async def boom(*a, **k):
+        called.append(1)
+        raise AssertionError("대상이 없는데 소스를 때렸다")
+
+    orig = of.__dict__.get("_match_game_ids")
+    try:
+        import app.collectors.espn_odds as espn
+
+        espn_orig = espn.fetch_slate
+        espn.fetch_slate = boom
+        r = asyncio.run(of.collect_mlb(Pool(), "2026-09-02"))
+    finally:
+        espn.fetch_slate = espn_orig
+    assert r["no_games"] is True and called == []
+
+
+def test_dates_come_from_the_db_not_from_a_calculation():
+    """날짜를 계산하지 않는다 — DB에 있는 경기에서 역으로 읽는다."""
+    import asyncio
+    from datetime import date as _d
+
+    from app.collectors.odds_free import upcoming_mlb_dates
+
+    class Pool:
+        async def fetch(self, *a, **k):
+            return [{"d": _d(2026, 9, 2)}, {"d": _d(2026, 9, 3)}]
+
+    assert asyncio.run(upcoming_mlb_dates(Pool())) == ["2026-09-02", "2026-09-03"]
+
+
+def test_watchdog_stays_quiet_when_no_games_are_due():
+    """붙일 경기가 없으면 배당이 없는 게 정상이다 — 울리면 오탐이다."""
+    import asyncio
+
+    from app import watchdog as wd
+
+    class Pool:
+        async def fetchval(self, *a, **k):
+            return 0                     # 36시간 내 예정 경기 없음
+
+        async def fetch(self, *a, **k):
+            raise AssertionError("대상이 없는데 배당 나이를 쟀다")
+
+    class R:
+        async def get(self, k):
+            return None
+
+    assert asyncio.run(wd.check_odds(Pool(), R())) == []
+
+
+def test_watchdog_still_alerts_when_games_are_due_but_odds_are_missing():
+    """오탐을 없애느라 진짜 공백을 놓치면 안 된다."""
+    import asyncio
+
+    from app import watchdog as wd
+
+    class Pool:
+        async def fetchval(self, *a, **k):
+            return 15                    # 오늘 경기 15건
+
+        async def fetch(self, *a, **k):
+            return []                    # 그런데 배당이 한 행도 없다
+
+    class R:
+        async def get(self, k):
+            return None
+
+    found = asyncio.run(wd.check_odds(Pool(), R()))
+    assert [(c, t) for c, t, _ in found] == [("W-ODDS-STALE", "espn")]

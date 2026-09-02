@@ -233,9 +233,21 @@ async def prefetch_status_lines() -> list[str]:
     out: list[str] = []
     if unused:
         out.append("미사용: " + ", ".join(unused))
+    # 🔴 **쓰지 않는 키의 차단은 상태가 아니다.** 무과금 전환(2026-09-02) 후
+    #    `odds`(The Odds API)는 `ODDS_PROVIDER=free` 로 꺼져 있다. 그 차단을
+    #    리포트에 계속 적으면 사용자가 "배당이 고장났다"로 읽는다 — 실제로는
+    #    무료 소스로 바뀌었을 뿐이다.
+    off = set(unused)
+    try:
+        from app.config import get_settings as _gs
+
+        if (_gs().odds_provider or "free").lower() != "theodds":
+            off.add("odds")
+    except Exception:
+        pass
     bits: list[str] = []
     for name in _KEY_ATTR:
-        if name in unused:
+        if name in off:
             continue
         info = await block_info(name)
         if not info:

@@ -55,15 +55,47 @@ async def store_rows(pool, game_id: int, rows: list[dict], provider: str) -> int
     return n
 
 
+async def upcoming_mlb_dates(pool, hours: int = 36) -> list[str]:
+    """**DB에 실제로 있는** 다가올 MLB 경기의 ET 슬레이트 날짜들.
+
+    🔴 실사고 2026-09-02 14:42: `mlb_slate_date()` 로 날짜를 계산해 수집했더니
+       ESPN 은 14경기 배당을 정상으로 줬는데 **매칭 0** 이었다. 그 슬레이트가
+       `games` 에 아직 없었기 때문이다 — MLB 스케줄은 새벽 프리페치가 넣는데
+       ET 자정이 지나면 `mlb_slate_date()` 는 이미 다음 슬레이트를 가리킨다.
+       그 사이 몇 시간 동안 "배당을 못 붙였다"가 아니라 **"붙일 경기가
+       없었다"** 였고, 워치독은 그걸 소스 고장으로 읽었다.
+
+    날짜를 계산하지 않는다. **DB 에 있는 경기에서 역으로 읽는다.**
+    """
+    from datetime import timedelta
+
+    rows = await pool.fetch(
+        """SELECT DISTINCT (starts_at AT TIME ZONE 'America/New_York')::date AS d
+             FROM games
+            WHERE sport = 'mlb' AND status = 'scheduled'
+              AND starts_at > now() - interval '2 hours'
+              AND starts_at < now() + make_interval(hours => $1)
+            ORDER BY 1""", hours)
+    return [r["d"].isoformat() for r in rows]
+
+
 async def collect_mlb(pool, date: str) -> dict:
     """MLB 배당 수집 — ESPN 먼저, 실패·빈손이면 SharpAPI.
 
-    반환 {provider, games, rows, matched, unmatched[]}
+    반환 {provider, games, rows, matched, unmatched[], no_games}
+    ⚠️ `no_games=True` 는 **소스 실패가 아니다** — 붙일 경기가 DB에 없다는 뜻이다.
     """
     from app.collectors.espn_odds import fetch_slate
 
-    out = {"provider": None, "games": 0, "rows": 0, "matched": 0, "unmatched": []}
+    out = {"provider": None, "games": 0, "rows": 0, "matched": 0,
+           "unmatched": [], "no_games": False}
     index = await _match_game_ids(pool, "mlb", date)
+    if not index:
+        # 붙일 경기가 없다. 소스를 때릴 이유도 없다 — 헛호출을 아낀다.
+        out["no_games"] = True
+        logger.info("[odds_free] MLB %s — games 에 그 슬레이트가 없다 "
+                    "(아직 적재 전). 배당 수집 생략", date)
+        return out
     for provider in MLB_CHAIN:
         try:
             if provider == "espn":
@@ -93,7 +125,8 @@ async def collect_mlb(pool, date: str) -> dict:
                     f" · 미매칭 {len(out['unmatched'])}" if out["unmatched"] else "")
         if rows_n:
             return out
-    logger.warning("[odds_free] MLB %s — 무료 소스 전부 실패", date)
+    logger.warning("[odds_free] MLB %s — 무료 소스 전부 실패 "
+                   "(대상 경기 %d건은 DB에 있다)", date, len(index))
     return out
 
 

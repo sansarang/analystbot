@@ -933,11 +933,24 @@ async def _free_odds_snapshot() -> None:
     pool = await get_pool()
     redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
     summary = []
+    dates: list[str] = []
     try:
         try:
-            r = await collect_mlb(pool, mlb_slate_date())
-            summary.append(f"mlb={r['rows']}행/{r['matched']}경기"
-                           f"({r['provider'] or '실패'})")
+            # 🔴 날짜를 계산하지 않는다. **DB에 있는 다가올 경기**에서 읽는다 —
+            #    계산한 슬레이트가 아직 적재 전이면 매칭이 0이 되고, 그것이
+            #    소스 고장으로 오독된다 (실사고 2026-09-02 14:42).
+            from app.collectors.odds_free import upcoming_mlb_dates
+
+            dates = await upcoming_mlb_dates(pool)
+            if not dates:
+                summary.append("mlb=대상경기없음")
+                logger.info("[odds] MLB — 36시간 내 예정 경기가 DB에 없다")
+            for d in dates:
+                r = await collect_mlb(pool, d)
+                summary.append(
+                    f"mlb[{d}]=" + ("대상없음" if r.get("no_games")
+                                    else f"{r['rows']}행/{r['matched']}경기"
+                                         f"({r['provider'] or '실패'})"))
         except Exception as exc:
             logger.warning("[odds] MLB 무료 수집 실패: %s", exc)
             summary.append("mlb=실패")
@@ -949,8 +962,11 @@ async def _free_odds_snapshot() -> None:
                 logger.warning("[odds] %s 배트맨 수집 실패: %s", sport, exc)
                 summary.append(f"{sport}=실패")
         # [검증 3] 리그별 커버리지를 매 스냅샷마다 남긴다 — 3일 집계의 재료다.
-        for sport, d in (("mlb", mlb_slate_date()), ("kbo", today_kst()),
-                         ("npb", today_kst())):
+        # 커버리지도 **실제 대상 날짜**로 잰다. 대상이 없으면 재지 않는다 —
+        # 분모가 0인 비율을 만들면 그게 곧 오탐이다.
+        targets = [("mlb", d) for d in dates]
+        targets += [("kbo", today_kst()), ("npb", today_kst())]
+        for sport, d in targets:
             try:
                 c = await coverage(pool, sport, d)
                 if c["total"]:
