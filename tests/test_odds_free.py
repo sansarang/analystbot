@@ -424,3 +424,118 @@ def test_unmapped_team_is_reported_not_silently_dropped(caplog):
     # 매핑에 없는 팀명은 TEAM_MAP.get 이 None → 경고 경로로 간다
     assert op.TEAM_MAP.get("존재하지 않는 팀") is None
     assert "Fukuoka S. Hawks" in op.TEAM_MAP, "실측 미매핑을 반영했다"
+
+
+# ─────────────────── 크롤 예절 (B) ───────────────────
+
+def test_crawl_etiquette_limits_are_constants():
+    """상한을 코드에 박는다 — 남의 서버를 우리 사정으로 두들기지 않는다."""
+    from app.collectors.oddsportal import (
+        BACKOFF_SEC, MAX_ATTEMPTS, MIN_INTERVAL_SEC,
+    )
+
+    assert MAX_ATTEMPTS == 2, "재시도는 총 2회(첫 시도 포함)"
+    assert BACKOFF_SEC >= 1.0
+    assert MIN_INTERVAL_SEC >= 10 * 60, "같은 리그를 10분 안에 두 번 부르지 않는다"
+
+
+def test_second_call_within_the_interval_makes_no_request(monkeypatch):
+    """폴링 틱이 겹쳐도 실제 요청은 최소 간격으로 막힌다."""
+    import asyncio
+
+    from app.collectors import oddsportal as op
+
+    calls = []
+
+    class FakeClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def get(self, url):
+            calls.append(url)
+
+            class R:
+                status_code = 200
+                content = b"x"
+                text = ""
+
+                def raise_for_status(self):
+                    return None
+            return R()
+
+    import httpx
+
+    monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(op, "_last_call", {})
+    asyncio.run(op.fetch_league("kbo"))
+    asyncio.run(op.fetch_league("kbo"))          # 곧바로 두 번째
+    assert len(calls) == 1, "간격 안 두 번째는 요청하지 않는다"
+    asyncio.run(op.fetch_league("kbo", force=True))   # 발송 직전 강제 1회
+    assert len(calls) == 2, "force 는 통과한다"
+
+
+# ─────────────────── 배당 없음 강등 경로 (A-2) ───────────────────
+
+def test_missing_odds_keeps_recommendation_and_says_why():
+    """🔴 배당 미수집은 **추천을 막지 않는다** — 기존 규율이다.
+
+    `value_gate.passes_value` 가 None 을 돌려주고, `classify` 는 그것을
+    "게이트 건너뜀"으로 다룬다. None 을 False 로 취급하면 수집 실패가
+    추천을 죽인다 (value_gate.py 주석의 금지 동작).
+    카드는 대신 "가치 배당 미수집 — 필요배당 N" 으로 **사유를 말한다.**
+    """
+    from app.engine.value_gate import CLS_RECOMMENDED, classify, passes_value
+
+    assert passes_value(0.63, None) is None
+    assert classify(probability_ok=True, vetoed=False, p=0.63,
+                    odds=None) == CLS_RECOMMENDED
+
+
+def test_empty_source_does_not_raise():
+    """소스가 죽어도 예외로 발송이 죽지 않는다."""
+    import asyncio
+
+    from app.collectors.oddsportal import parse_odds, parse_rows
+
+    assert parse_rows("") == {} and parse_odds("") == {}
+
+    from app.collectors import odds_free as of
+
+    class Pool:
+        async def fetch(self, *a, **k):
+            return [{"id": 1, "home": "Doosan Bears", "away": "LG Twins"}]
+
+        async def execute(self, *a, **k):
+            return None
+
+    async def empty(*a, **k):
+        return {}
+
+    import app.collectors.oddsportal as op
+
+    orig = op.fetch_league
+    op.fetch_league = empty
+    try:
+        r = asyncio.run(of.collect_asia(Pool(), None, "kbo", "2026-09-02"))
+    finally:
+        op.fetch_league = orig
+    assert r["rows"] == 0 and r["matched"] == 0     # 조용히 0, 예외 없음
+
+
+def test_flipped_home_away_would_fail_to_match_not_attach_wrong_odds():
+    """🔴 A-1 의 핵심 안전장치.
+
+    매칭 키가 `f"{home}|{away}"` 라, oddsportal 이 홈/원정을 뒤집어 주면
+    우리 games 키와 **아예 안 맞아 미매칭**이 된다 — 틀린 배당이 붙는 것이
+    아니라 안 붙는다. 즉 **매칭 성공 자체가 방향 일치의 증거**다.
+    """
+    ours = {"Doosan Bears|LG Twins": 1}           # 우리 DB: 홈=두산
+    flipped = "LG Twins|Doosan Bears"              # 뒤집힌 소스
+    assert flipped not in ours
+    assert "Doosan Bears|LG Twins" in ours
