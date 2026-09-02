@@ -1188,10 +1188,65 @@ async def startup_backfill_job() -> None:
         #   못 읽는다. "며칠째 배당이 죽어 있었나", "타순이 몇 건 오염됐나"는
         #   서버가 스스로 말해야 한다.
         await _startup_forensics(pool, redis)
+        # [0a] 오염 타순 소급 교정. **서버가 한다** — 운영 DB 는 내부
+        #   호스트명이라 `railway run` 으로도 밖에서 못 닿는다.
+        #   멱등하다: 고쳐진 행은 길이 9가 되어 다음부터 선택되지 않는다.
+        await _repair_lineups_once(pool, redis)
     except Exception as exc:
         logger.exception("[scheduler] 레저 백필 실패 — 운영은 계속: %s", exc)
     finally:
         await redis.aclose()
+
+
+#: 오염 교정 1회 실행 표시. 배포마다 다시 돌 필요는 없다.
+_REPAIR_KEY = "lineups:repaired:v1"
+
+
+async def _repair_lineups_once(pool, redis) -> None:
+    """하이픈으로 갈린 타순을 재파싱해 교정하고, 안 되면 오염으로 표시한다.
+
+    ⚠️ **명단 사전이 비면 하지 않는다.** 사전 없이 재결합하면 추측이 된다.
+    ⚠️ 읽기 실패·조회 실패는 조용히 넘긴다 — 기동을 막지 않는다.
+    """
+    try:
+        if await redis.get(_REPAIR_KEY):
+            return
+    except Exception as exc:
+        logger.debug("[repair] 실행 표시 조회 실패(계속): %s", exc)
+    try:
+        from app.collectors.starter_season import _roster
+        from app.engine.lineup_diff import NAME_REGISTRY
+        from tools.repair_lineups import TABLES, _as_list, repair_order
+
+        await _roster(datetime.now(UTC).year, redis)
+        if not NAME_REGISTRY:
+            logger.warning("[repair] 실명 사전이 비었다 — 교정 보류(추측 금지)")
+            return
+        fixed = marked = 0
+        for table, _ts in TABLES:
+            rows = await pool.fetch(
+                f"""SELECT id, batting_order FROM {table}
+                     WHERE batting_order IS NOT NULL
+                       AND jsonb_typeof(batting_order) = 'array'
+                       AND jsonb_array_length(batting_order) <> 9""")
+            for r in rows:
+                new = repair_order(_as_list(r["batting_order"]), NAME_REGISTRY)
+                if new is not None:
+                    await pool.execute(
+                        f"UPDATE {table} SET batting_order = $1::jsonb,"
+                        f"       contaminated = FALSE WHERE id = $2",
+                        json.dumps(new, ensure_ascii=False), r["id"])
+                    fixed += 1
+                else:
+                    await pool.execute(
+                        f"UPDATE {table} SET contaminated = TRUE WHERE id = $1",
+                        r["id"])
+                    marked += 1
+        logger.error("[repair] 🔧 오염 타순 정리 — 교정 %d건 · 오염표시 %d건 "
+                     "(표시된 행은 라인업 의도·T5 에서 제외된다)", fixed, marked)
+        await redis.set(_REPAIR_KEY, f"{fixed}/{marked}", ex=90 * 86400)
+    except Exception as exc:
+        logger.warning("[repair] 오염 교정 실패 — 운영은 계속: %s", exc)
 
 
 async def _startup_forensics(pool, redis) -> None:
