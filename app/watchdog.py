@@ -41,33 +41,18 @@ JOB_LATE_FACTOR = 2
 LLM_FAIL_KEY = "watchdog:llm_fail"
 ODDS_SNAP_KEY = "oddsnap:{}"
 
-#: 무료 전환 후 **실제로 동작하는** 배당 소스만 감시한다.
-#  🔴 여기에 "아직 안 되는 것"을 넣으면 15분마다 영원히 울린다.
-#     실사고 2026-09-02 13:38: `betman` 을 넣었더니 첫 틱부터
-#     "최근 7일간 적재 0건"이 울렸다 — 사실이지만 **고장이 아니다.**
-#     배트맨은 엔드포인트가 막혀 수집기가 아직 붙지 않았다(evidence/OPEN.md).
-#     끄거나 미구현인 것을 고장이라고 울리는 것이 오탐의 가장 흔한 원인이다.
-#  ⚠️ `sharp` 도 키가 없으면 비활성이라 넣지 않는다.
-#  ⚠️ `oddsportal` 은 2026-09-02 16:30 실측으로 KBO 5 · NPB 5 전 경기 배당을
-#     확보해 감시 대상에 넣었다. 배트맨은 엔드포인트가 막혀 여전히 제외다.
-ACTIVE_PROVIDERS = ("espn", "oddsportal")
+#: 🔴 **사본을 두지 않는다.** 담당 리그·활성 여부는 `app.registry` 가 원본이다.
+#     오탐 ①(espn 이 KBO·NPB 경기 때문에 울림)이 이 분리로 사라진다.
 
-#: 자주 도는 잡만 본다 — 하루 1회 잡은 여기서 판단하지 않는다(오탐 원천).
-#  🔴 값은 **유예(분)** 이지 주기가 아니다. 다음 실행 시각은 **실제 트리거**에서
-#     계산한다 — 주기를 여기 손으로 적으면 트리거와 어긋나 오탐이 난다.
+#: 🔴 잡 유예도 `app.registry` 가 원본이다. **주기는 어디에도 적지 않는다** —
+#     다음 실행 시각은 `scheduler._JOB_TRIGGERS` 가 계산한다(cron 창이든 인터벌이든).
 #
-#  실사고 2026-09-02 (배포 당일 첫 경보 2건이 전부 오탐):
-#    · `mlb_pregame_5m` 은 `CronTrigger(hour="5-11")` 이다. 12:40 KST 에
-#      "마지막 실행 46분 전"은 **정상**이다 — 창이 11:59 에 닫혔다.
-#      그런데 5분 인터벌로 가정해 "주기 2배 초과"로 울렸다.
-#    · `research_retry_45m` 은 13:29·13:33 **재기동** 직후였다. APScheduler
-#      인메모리 잡스토어는 기동 시 초기화돼 첫 실행이 한 주기 뒤다.
-#      Redis 의 재기동 전 기록과 비교하면 언제나 "늦음"으로 보인다.
-WATCHED_JOBS = {
-    "heartbeat_2m": 4, "mlb_pregame_5m": 10, "asia_pregame_5m": 10,
-    "npb_pregame_2m": 6, "odds_snapshot_30m": 35, "lineup_poll_30m": 35,
-    "research_retry_45m": 50,
-}
+#  실사고 2026-09-02 (배포 당일 오탐 4건이 전부 "사본이 원본과 어긋남"):
+#    · `mlb_pregame_5m` 은 `CronTrigger(hour="5-11")` 인데 "주기 5분"으로 적어
+#      12:40(창 밖)에 울렸다.
+#    · 재기동 직후 인메모리 잡스토어가 초기화되는 것을 셈에 넣지 않았다.
+#    · 미구현 소스(betman)를 감시 목록에 적었다.
+#    · `due` 를 전 종목 합산으로 세어 MLB 전용 소스가 KBO 경기 때문에 울렸다.
 
 #: 재기동 직후 유예. 인메모리 잡스토어가 초기화돼 첫 실행이 한 주기 뒤다.
 BOOT_GRACE_MIN = 60
@@ -129,25 +114,26 @@ async def check_odds(pool, redis) -> list[tuple[str, str, str]]:
             logger.debug("[watchdog] 배당 차단 조회 실패: %s", exc)
     if pool is None:
         return out
-    # 🔴 **붙일 경기가 없으면 배당이 없는 게 정상이다.**
-    #    실사고 2026-09-02 14:42~14:52: ESPN 은 14경기 배당을 정상으로 줬는데
-    #    그 슬레이트가 `games` 에 아직 없어 매칭이 0이었다. 워치독은 그걸
-    #    "소스가 죽었다"로 읽고 15분마다 울렸다 — 소스는 멀쩡했다.
-    #    수집 대상이 있을 때만 낡음을 따진다.
+    # 🔴 **소스마다 담당 리그가 다르다.** 전 종목을 한 덩어리로 세면
+    #    MLB 전용 소스(ESPN)가 KBO·NPB 경기 때문에 울린다 —
+    #    실사고 2026-09-02 14:32~16:33, 베팅 시간대에 15분마다.
+    #    담당 리그는 `app.registry` 가 원본이고 여기서 사본을 만들지 않는다.
+    # 🔴 **붙일 경기가 없으면 배당이 없는 게 정상이다.** ESPN 은 14경기 배당을
+    #    정상으로 줬는데 그 슬레이트가 `games` 에 아직 없어 매칭이 0이었다.
+    from app.registry import active_providers
+
     try:
-        due = await pool.fetchval(
-            """SELECT count(*) FROM games
-                WHERE sport IN ('mlb', 'kbo', 'npb') AND status = 'scheduled'
-                  AND starts_at > now()
-                  AND starts_at < now() + interval '36 hours'""")
+        rows = await pool.fetch(
+            """SELECT sport, count(*) AS n FROM games
+                WHERE status = 'scheduled' AND starts_at > now()
+                  AND starts_at < now() + interval '36 hours'
+                GROUP BY sport""")
+        due_by_sport = {r["sport"]: int(r["n"]) for r in rows}
     except Exception as exc:
         logger.debug("[watchdog] 대상 경기 조회 실패: %s", exc)
         return out
-    if not due:
-        logger.debug("[watchdog] 36시간 내 예정 경기 0 — 배당 낡음 판정 생략")
-        return out
     try:
-        rows = await pool.fetch(
+        aged = await pool.fetch(
             """SELECT provider,
                       EXTRACT(EPOCH FROM (now() - max(captured_at))) / 60 AS age
                  FROM odds_snapshots
@@ -156,15 +142,22 @@ async def check_odds(pool, redis) -> list[tuple[str, str, str]]:
     except Exception as exc:
         logger.debug("[watchdog] provider 나이 조회 실패: %s", exc)
         return out
-    seen = {r["provider"]: float(r["age"] or 0) for r in rows}
-    for provider in ACTIVE_PROVIDERS if not paid else ("theodds",):
-        age = seen.get(provider)
+    seen = {r["provider"]: float(r["age"] or 0) for r in aged}
+    for prov in active_providers():
+        due = sum(due_by_sport.get(sp, 0) for sp in prov.sports)
+        if not due:
+            logger.debug("[watchdog] %s — 담당 종목(%s) 예정 경기 0. 판정 생략",
+                         prov.name, "·".join(prov.sports))
+            continue
+        age = seen.get(prov.name)
         if age is None:
-            out.append(("W-ODDS-STALE", provider,
-                        "최근 7일간 이 소스로 적재된 배당이 하나도 없다"))
+            out.append(("W-ODDS-STALE", prov.name,
+                        f"담당 {'·'.join(prov.sports).upper()} {due}경기가 "
+                        f"36시간 안에 있는데 이 소스로 적재된 배당이 없다"))
         elif age > ODDS_STALE_MIN:
-            out.append(("W-ODDS-STALE", provider,
-                        f"마지막 적재 {age:.0f}분 전 (상한 {ODDS_STALE_MIN}분)"))
+            out.append(("W-ODDS-STALE", prov.name,
+                        f"마지막 적재 {age:.0f}분 전 (상한 {ODDS_STALE_MIN}분) · "
+                        f"담당 {'·'.join(prov.sports).upper()} {due}경기 예정"))
     return out
 
 
@@ -247,7 +240,9 @@ async def check_jobs(redis) -> list[tuple[str, str, str]]:
         logger.debug("[watchdog] 잡 실행 조회 실패: %s", exc)
         return []
     out = []
-    for job_id, grace in WATCHED_JOBS.items():
+    from app.registry import JOB_GRACE
+
+    for job_id, grace in JOB_GRACE.items():
         row = runs.get(job_id)
         if not row:
             continue          # 한 번도 안 돈 잡은 판단하지 않는다 (기동 직후 오탐)

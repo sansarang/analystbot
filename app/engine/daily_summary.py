@@ -93,8 +93,12 @@ async def cost_lines(redis, sports: tuple[str, ...], date: str) -> list[str]:
                    + f" · web_search {paid}/{cap}콜")
     except Exception as exc:
         logger.debug("[daily-summary] 비용 집계 실패: %s", exc)
+    # 사본 금지 — 감시 종목은 레지스트리가 원본이다.
+    from app.registry import watched_sports
+
+    covered = watched_sports()
     for sp in sports:
-        if sp not in ("mlb", "kbo", "npb"):
+        if sp not in covered:
             continue
         d = date
         if sp == "mlb":

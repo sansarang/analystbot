@@ -226,14 +226,17 @@ def test_stale_is_judged_per_provider():
     from app import watchdog as wd
 
     class FakePool:
-        async def fetchval(self, *a, **k):
-            return 15                                     # 오늘 경기가 있다
+        def __init__(self):
+            self.n = 0
 
         async def fetch(self, *a, **k):
+            self.n += 1
+            if self.n == 1:                               # 종목별 예정 경기
+                return [{"sport": "mlb", "n": 15}, {"sport": "kbo", "n": 5}]
             return [{"provider": "espn", "age": 999.0}]    # ESPN 이 낡았다
 
     found = asyncio.run(wd.check_odds(FakePool(), FakeRedis()))
-    # ESPN 은 낡았고, oddsportal 은 아예 적재가 없다 — 소스마다 따로 잡힌다
+    # ESPN(MLB 담당)은 낡았고, oddsportal(KBO 담당)은 적재가 없다 — 따로 잡힌다
     assert [(c, t) for c, t, _ in found] == [("W-ODDS-STALE", "espn"),
                                              ("W-ODDS-STALE", "oddsportal")]
 
@@ -599,9 +602,14 @@ def test_restart_grace_suppresses_the_first_hour(monkeypatch):
 
 def test_unimplemented_source_is_not_watched():
     """🔴 실사고 2026-09-02 13:38: 배트맨은 수집기가 아직 없는데 감시 목록에
-    있어 15분마다 영원히 울렸다. 사실이지만 **고장이 아니다.**"""
-    from app.watchdog import ACTIVE_PROVIDERS
+    있어 15분마다 영원히 울렸다. 사실이지만 **고장이 아니다.**
 
-    assert "betman" not in ACTIVE_PROVIDERS
-    assert "sharp" not in ACTIVE_PROVIDERS, "키 없으면 비활성 — 감시 대상 아님"
-    assert "espn" in ACTIVE_PROVIDERS
+    이제 `wired=False` 한 곳으로 정해진다 — 감시 목록에 손으로 적지 않는다.
+    """
+    from app.registry import active_providers
+
+    names = {p.name for p in active_providers()}
+    assert "betman" not in names, "미배선 소스는 감시하지 않는다"
+    assert "sharp" not in names, "키 없으면 비활성 — 감시 대상 아님"
+    assert "theodds" not in names, "유료 경로는 꺼져 있다"
+    assert names == {"espn", "oddsportal"}

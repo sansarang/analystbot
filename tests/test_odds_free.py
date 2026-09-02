@@ -344,11 +344,14 @@ def test_watchdog_still_alerts_when_games_are_due_but_odds_are_missing():
     from app import watchdog as wd
 
     class Pool:
-        async def fetchval(self, *a, **k):
-            return 15                    # 오늘 경기 15건
+        def __init__(self):
+            self.n = 0
 
         async def fetch(self, *a, **k):
-            return []                    # 그런데 배당이 한 행도 없다
+            self.n += 1
+            if self.n == 1:
+                return [{"sport": "mlb", "n": 15}, {"sport": "npb", "n": 5}]
+            return []                    # 배당이 한 행도 없다
 
     class R:
         async def get(self, k):

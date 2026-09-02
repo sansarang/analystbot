@@ -19,9 +19,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-#: 무료 소스 우선순위. 앞에서 배당을 얻으면 뒤는 부르지 않는다(교차검증 제외).
-MLB_CHAIN = ("espn", "sharp")
-ASIA_PROVIDER = "oddsportal"
+# 🔴 **사본을 두지 않는다.** 어느 소스가 어느 리그를 맡는지는
+#    `app.registry` 가 원본이다. 여기서 다시 적으면 워치독과 어긋난다.
+
+
+def _chain(sport: str):
+    """그 종목을 담당하는 **활성** 소스들, 레지스트리 순서대로."""
+    from app.registry import active_providers
+
+    return [p.name for p in active_providers() if sport in p.sports]
 
 
 async def _match_game_ids(pool, sport: str, date: str) -> dict[str, int]:
@@ -96,7 +102,7 @@ async def collect_mlb(pool, date: str) -> dict:
         logger.info("[odds_free] MLB %s — games 에 그 슬레이트가 없다 "
                     "(아직 적재 전). 배당 수집 생략", date)
         return out
-    for provider in MLB_CHAIN:
+    for provider in _chain("mlb"):
         try:
             if provider == "espn":
                 slate = await fetch_slate(date, "mlb")
@@ -140,6 +146,11 @@ async def collect_asia(pool, redis, sport: str, date: str) -> dict:
     """
     from app.collectors.oddsportal import PROVIDER as OP, fetch_league
 
+    if OP not in _chain(sport):
+        logger.info("[odds_free] %s — %s 가 활성 소스가 아니다. 생략",
+                    sport.upper(), OP)
+        return {"provider": None, "games": 0, "rows": 0, "matched": 0,
+                "unmatched": [], "no_games": False}
     out = {"provider": OP, "games": 0, "rows": 0, "matched": 0, "unmatched": []}
     index = await _match_game_ids(pool, sport, date)
     if not index:
