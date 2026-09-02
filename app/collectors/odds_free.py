@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 #: 무료 소스 우선순위. 앞에서 배당을 얻으면 뒤는 부르지 않는다(교차검증 제외).
 MLB_CHAIN = ("espn", "sharp")
-ASIA_PROVIDER = "betman"
+ASIA_PROVIDER = "oddsportal"
 
 
 async def _match_game_ids(pool, sport: str, date: str) -> dict[str, int]:
@@ -131,26 +131,35 @@ async def collect_mlb(pool, date: str) -> dict:
 
 
 async def collect_asia(pool, redis, sport: str, date: str) -> dict:
-    """KBO·NPB 배당 — 배트맨 스냅샷(Go 크롤러 적재)을 읽어 DB로 옮긴다."""
-    from app.collectors.betman import load_snapshot, to_rows
+    """KBO·NPB 배당 — oddsportal 크롤(리그당 1요청).
 
-    out = {"provider": ASIA_PROVIDER, "games": 0, "rows": 0, "matched": 0,
-           "unmatched": []}
-    snap = await load_snapshot(redis, sport, date)
-    if not snap:
-        logger.info("[odds_free] %s %s — 배트맨 스냅샷 없음", sport.upper(), date)
-        return out
+    🔴 배트맨은 못 썼다. `requestClient.js` 가 광고하는 엔드포인트 10개가 전부
+       "페이지 오류 안내 — 삭제 또는 이름이 변경" 을 돌려준다(6회 시도 후 중단).
+       후보 5곳을 실측해 oddsportal 을 골랐다 — `oddsportal.py` 상단 표 참조.
+    ⚠️ 리그당 **1요청**이다. 상대 서버를 두들기지 않는다.
+    """
+    from app.collectors.oddsportal import PROVIDER as OP, fetch_league
+
+    out = {"provider": OP, "games": 0, "rows": 0, "matched": 0, "unmatched": []}
     index = await _match_game_ids(pool, sport, date)
-    for blk in snap.get("games") or []:
-        gid = index.get(f"{blk.get('home')}|{blk.get('away')}")
+    if not index:
+        out["no_games"] = True
+        logger.info("[odds_free] %s %s — games 에 그 슬레이트가 없다. 수집 생략",
+                    sport.upper(), date)
+        return out
+    slate = await fetch_league(sport)
+    out["games"] = len(slate)
+    for blk in slate.values():
+        gid = index.get(f"{blk['home']}|{blk['away']}")
         if gid is None:
-            out["unmatched"].append(f"{blk.get('away')}@{blk.get('home')}")
+            out["unmatched"].append(f"{blk['away']}@{blk['home']}")
             continue
         out["matched"] += 1
-        out["rows"] += await store_rows(pool, gid, to_rows(blk), ASIA_PROVIDER)
-    out["games"] = len(snap.get("games") or [])
-    logger.info("[odds_free] %s %s — provider=betman 경기 %d · 매칭 %d · 행 %d",
-                sport.upper(), date, out["games"], out["matched"], out["rows"])
+        out["rows"] += await store_rows(pool, gid, blk["rows"], OP)
+    logger.info("[odds_free] %s %s — provider=%s 경기 %d · 매칭 %d · 행 %d%s",
+                sport.upper(), date, OP, out["games"], out["matched"],
+                out["rows"],
+                f" · 미매칭 {out['unmatched']}" if out["unmatched"] else "")
     return out
 
 

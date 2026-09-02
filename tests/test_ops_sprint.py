@@ -233,7 +233,9 @@ def test_stale_is_judged_per_provider():
             return [{"provider": "espn", "age": 999.0}]    # ESPN 이 낡았다
 
     found = asyncio.run(wd.check_odds(FakePool(), FakeRedis()))
-    assert [(c, t) for c, t, _ in found] == [("W-ODDS-STALE", "espn")]
+    # ESPN 은 낡았고, oddsportal 은 아예 적재가 없다 — 소스마다 따로 잡힌다
+    assert [(c, t) for c, t, _ in found] == [("W-ODDS-STALE", "espn"),
+                                             ("W-ODDS-STALE", "oddsportal")]
 
 
 def test_store_down_is_detected_by_a_real_roundtrip():

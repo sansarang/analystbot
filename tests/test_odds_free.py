@@ -355,4 +355,72 @@ def test_watchdog_still_alerts_when_games_are_due_but_odds_are_missing():
             return None
 
     found = asyncio.run(wd.check_odds(Pool(), R()))
-    assert [(c, t) for c, t, _ in found] == [("W-ODDS-STALE", "espn")]
+    assert [(c, t) for c, t, _ in found] == [("W-ODDS-STALE", "espn"),
+                                             ("W-ODDS-STALE", "oddsportal")]
+
+
+# ─────────────────── oddsportal (KBO·NPB) ───────────────────
+
+#: 실측 응답 조각 (2026-09-02 16:20, KBO 두산-LG)
+OP_ROW = ('{"id":9812029,"is-double":false,"superTemplate":{"id":"","name":""},'
+          '"home":27002459,"away":27002461,"home-name":"Doosan Bears",'
+          '"away-name":"LG Twins","status-id":1}')
+OP_ODDS = ('"GreoG9C7":{"event":9812029,"odds":[{"active":true,"maxOdds":2.23,'
+           '"avgOdds":2.14,"bettingTypeId":3,"scopeId":1,"outcomeId":"x",'
+           '"resultId":0},{"active":true,"maxOdds":1.75,"avgOdds":1.70,'
+           '"bettingTypeId":3,"scopeId":1,"outcomeId":"y","resultId":0}],"cnt":17')
+
+
+def test_oddsportal_parses_row_across_nested_objects():
+    """🔴 `[^{}]` 로 범위를 막으면 `superTemplate":{...}` 를 못 넘어 0건이 된다."""
+    from app.collectors.oddsportal import parse_rows
+
+    got = parse_rows(OP_ROW)
+    assert got[9812029]["home"] == "Doosan Bears"
+    assert got[9812029]["away"] == "LG Twins"
+
+
+def test_oddsportal_order_is_home_then_away():
+    """🔴 `resultId` 로는 못 가른다 — 오늘 경기는 둘 다 `resultId:0` 이다.
+
+    순서가 홈|원정이라는 관례를 **ESPN 과 대조해 검증했다**: 같은 날 MLB
+    13경기 전부 첫 번째=홈이었고 값도 소수점 둘째 자리까지 일치했다.
+    """
+    from app.collectors.oddsportal import parse_odds
+
+    got = parse_odds(OP_ODDS)
+    assert got[9812029] == {"home": 2.14, "away": 1.7}
+
+
+def test_oddsportal_skips_non_two_way():
+    """2-way 가 아니면 손대지 않는다 — 야구는 무승부가 없다."""
+    from app.collectors.oddsportal import parse_odds
+
+    three = OP_ODDS.replace('"cnt":17',
+                            ',{"avgOdds":3.4,"bettingTypeId":3,"scopeId":1}],"cnt":17')
+    assert parse_odds(three) == {}
+
+
+def test_oddsportal_uses_average_not_best_price():
+    """`maxOdds` 는 여러 북 중 최고가라 실제 걸 수 있는 값보다 낙관적이다.
+
+    그걸 기준으로 가치 게이트를 태우면 통과가 헐거워진다.
+    """
+    from app.collectors.oddsportal import parse_odds
+
+    got = parse_odds(OP_ODDS)
+    assert 2.23 not in got[9812029].values(), "maxOdds 를 쓰면 안 된다"
+
+
+def test_unmapped_team_is_reported_not_silently_dropped(caplog):
+    """새 표기가 나오면 조용히 버리지 않고 드러난다."""
+    import asyncio
+
+    from app.collectors import oddsportal as op
+
+    async def fake(*a, **k):
+        raise RuntimeError("네트워크 금지")
+
+    # 매핑에 없는 팀명은 TEAM_MAP.get 이 None → 경고 경로로 간다
+    assert op.TEAM_MAP.get("존재하지 않는 팀") is None
+    assert "Fukuoka S. Hawks" in op.TEAM_MAP, "실측 미매핑을 반영했다"
