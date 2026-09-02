@@ -19,7 +19,11 @@ def test_scheduler_jobs_registered():
                          "statcast_daily", "soccerdata_daily", "park_weekly",
                          "kbo_lineup_history", "npb_lineup_history",
                          "mlb_lineup_history",
-                         "asia_pregame_5m", "mlb_pregame_5m",
+                         # [NPB 창 이원화] KBO 5분 · NPB 2분으로 갈랐다.
+                         #   NPB 공시(T-30)와 경량 재판정 종료선(T-10) 사이가
+                         #   20분뿐이라 5분 간격이면 4틱이고, 한 번 놓치면
+                         #   그 경기는 잠정으로 끝나 추천 게이트에서 탈락한다.
+                         "asia_pregame_5m", "npb_pregame_2m", "mlb_pregame_5m",
                          "heartbeat_2m",
                          # [운영 안정화 2] 워치독 — 고장을 시스템이 먼저 알린다.
                          #   사람이 먼저 발견하는 고장 0건이 목표다.

@@ -39,6 +39,11 @@ STAGE1_DEADLINE_MIN = 30
 # NPB 18:00 → 17:45. 경기 시각이 다르면 그 경기의 시작 15분 전.
 NPB_FINISH_MIN = 15
 HARD_TARGET_MIN = NPB_FINISH_MIN
+# [창 이원화] NPB 라인업 공시는 보통 T-30이다. 풀 분석을 T-15에 닫는 것은
+#   맞지만, **캐시 폼 + 매치업만 다시 도는 경량 재판정까지 같이 닫으면**
+#   T-30~T-15 사이 15분 안에 확정을 못 받은 경기는 영영 잠정으로 남아
+#   추천 자격을 못 얻는다. 경량 경로만 T-10까지 연다.
+NPB_REJUDGE_FINISH_MIN = 10
 # KBO 18:30=T-70, NPB 18:00=T-40, MLB 라인업 공시 3시간 전=T-180.
 SEND_OPEN_MIN = {"kbo": 70, "npb": 40, "mlb": 180}
 SENT_TTL_SEC = 12 * 3600
@@ -94,6 +99,40 @@ def analysis_open(sport: str, starts_at, now=None) -> bool:
         return True
     left = minutes_until_start(starts_at, now)
     return left is not None and left > NPB_FINISH_MIN
+
+
+def rejudge_open(sport: str, starts_at, now=None) -> bool:
+    """**경량 재판정**(캐시 폼 + 매치업 재실행) 창. 풀 분석보다 5분 더 연다.
+
+    🔴 `analysis_open`(풀 분석)과 분리한 이유: 리서치·크롤을 새로 도는 것과
+       이미 있는 재료로 매치업만 다시 부르는 것은 비용이 다르다. NPB 라인업
+       공시가 T-30이라 T-15로 함께 닫으면 창이 15분뿐이고, 놓친 경기는
+       잠정으로 남아 추천 게이트(`qualifies`)에서 통째로 탈락한다.
+    """
+    if not still_upcoming(starts_at, now):
+        return False
+    if sport != "npb":
+        return True
+    left = minutes_until_start(starts_at, now)
+    return left is not None and left > NPB_REJUDGE_FINISH_MIN
+
+
+def lineup_pending_card(sport: str, home: str, away: str, left_min: float) -> str:
+    """T-10에도 확정이 안 온 경기 — **조용히 잠정으로 두지 않는다.**
+
+    사용자 입장에서 "카드가 안 온 것"과 "라인업이 안 나온 것"은 다르다.
+    말하지 않으면 봇이 죽은 줄 안다.
+    """
+    from app.engine.form_card import _team
+
+    return "\n".join([
+        f"⏰ {SPORT_LABEL.get(sport, sport.upper())} · 라인업 미확정 — 관망",
+        f"{_team(away)} @ {_team(home)}",
+        "",
+        f"경기 시작 {left_min:.0f}분 전인데 확정 타순이 공시되지 않았습니다.",
+        "확정 라인업 없이는 추천하지 않습니다 (보드만).",
+        "공시되면 즉시 재판정해 다시 보냅니다.",
+    ])
 
 
 def roster_signature(home_pitcher, away_pitcher, lineup_home, lineup_away) -> str:
