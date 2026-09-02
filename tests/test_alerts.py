@@ -244,7 +244,9 @@ async def test_prefetch_report_footer_unused_and_blocked(sent, monkeypatch):
     from app.api_guard import trip_credit
     from app.config import Settings
 
-    s = Settings(_env_file=None, disabled_providers="grok,perplexity", odds_api_key="k")
+    # 유료 모드일 때만 odds 차단이 상태로 뜬다 (무과금 전환 2026-09-02).
+    s = Settings(_env_file=None, disabled_providers="grok,perplexity",
+                 odds_api_key="k", odds_provider="theodds")
     monkeypatch.setattr("app.api_guard.get_settings", lambda: s)
     await trip_credit("odds", "OUT_OF_USAGE_CREDITS")
     await prefetch_report([StageResult("경기 적재", 15, 15)], 10.0, "정상")
@@ -252,6 +254,24 @@ async def test_prefetch_report_footer_unused_and_blocked(sent, monkeypatch):
     assert "미사용: grok, perplexity" in body
     assert "차단 중: odds(크레딧 소진," in body
     assert "✅ 경기 적재" in body
+
+
+@pytest.mark.asyncio
+async def test_unused_key_block_is_not_reported_as_a_status(sent, monkeypatch):
+    """🔴 무과금 전환 후 `odds` 차단은 상태가 아니다.
+
+    실사고 2026-09-02 14:12: 프리페치 리포트가 `차단 중: odds(크레딧 소진)` 을
+    계속 적어, 무료 소스로 바꿨는데도 사용자가 "배당이 고장났다"로 읽었다.
+    쓰지 않는 키의 차단은 보고할 상태가 아니다.
+    """
+    from app.api_guard import trip_credit
+    from app.config import Settings
+
+    s = Settings(_env_file=None, odds_api_key="k")      # 기본 = free
+    monkeypatch.setattr("app.api_guard.get_settings", lambda: s)
+    await trip_credit("odds", "OUT_OF_USAGE_CREDITS")
+    await prefetch_report([StageResult("경기 적재", 15, 15)], 10.0, "정상")
+    assert "차단 중" not in sent[-1]
 
 
 # ---------------------------------------------------------------- 종합 결론

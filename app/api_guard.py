@@ -237,14 +237,12 @@ async def prefetch_status_lines() -> list[str]:
     #    `odds`(The Odds API)는 `ODDS_PROVIDER=free` 로 꺼져 있다. 그 차단을
     #    리포트에 계속 적으면 사용자가 "배당이 고장났다"로 읽는다 — 실제로는
     #    무료 소스로 바뀌었을 뿐이다.
+    #   ⚠️ 모듈의 `get_settings` 를 그대로 쓴다 — 함수 안에서 따로 import 하면
+    #      호출부·테스트의 패치가 안 먹어 조용히 다른 설정을 본다.
     off = set(unused)
-    try:
-        from app.config import get_settings as _gs
-
-        if (_gs().odds_provider or "free").lower() != "theodds":
-            off.add("odds")
-    except Exception:
-        pass
+    if (getattr(get_settings(), "odds_provider", "free") or "free").lower() \
+            != "theodds":
+        off.add("odds")
     bits: list[str] = []
     for name in _KEY_ATTR:
         if name in off:

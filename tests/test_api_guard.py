@@ -201,7 +201,8 @@ async def test_already_blocked_does_not_alert_again(monkeypatch, live_odds):
 async def test_prefetch_status_lines_unused_and_blocked(monkeypatch):
     from app.api_guard import prefetch_status_lines
 
-    s = _settings(disabled_providers="grok,perplexity", odds_api_key="k")
+    s = _settings(disabled_providers="grok,perplexity", odds_api_key="k",
+              odds_provider="theodds")   # 유료 모드일 때만 상태로 뜬다
     monkeypatch.setattr("app.api_guard.get_settings", lambda: s)
     await trip_credit("odds", "OUT_OF_USAGE_CREDITS")
     lines = await prefetch_status_lines()
