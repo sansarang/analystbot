@@ -56,13 +56,22 @@ def test_malformed_quotes_do_not_break_the_packet():
     assert [b["원문"] for b in out["원문"]] == ["정상"]
 
 
-def test_form_json_flows_whole_into_matchup():
-    """프롬프트 2는 폼 평가서를 통째로 받는다 — 태그의 원문도 함께 간다."""
-    from pathlib import Path
+def test_news_tags_flow_whole_into_matchup():
+    """뉴스 태그는 **원문 근거까지 통째로** 판정에 간다.
 
-    src = Path("app/engine/matchup.py").read_text(encoding="utf-8")
-    assert "HOME_FORM_JSON=json.dumps(home_form" in src
-    assert "AWAY_FORM_JSON=json.dumps(away_form" in src
+    [E 2026-09-02] 평가서 전체를 넘기던 것을 뉴스태그만 넘기도록 바꿨다 —
+    등급('상/중/하')은 다른 모델의 해석이라 판정 입력에서 뺐다. 그래도
+    뉴스는 3경기 숫자에 없는 새 정보이므로 **압축하지 않고** 넘겨야 한다.
+    """
+    from app.engine.matchup import news_payload
+
+    tag = {"tag": "주축부상", "dir": "▼",
+           "근거": "제목 + 리드 원문 두 문장이 그대로 들어 있다."}
+    out = news_payload({"뉴스태그": [tag], "타선": {"평가": "상"}, "흐름": "상승"},
+                       {"뉴스태그": []})
+    assert out == {"home": [tag]}, "태그는 원문째로, 없는 쪽은 넣지 않는다"
+    assert "평가" not in json.dumps(out, ensure_ascii=False)
+    assert "흐름" not in json.dumps(out, ensure_ascii=False)
 
 
 def test_prompt_size_increase_is_bounded():

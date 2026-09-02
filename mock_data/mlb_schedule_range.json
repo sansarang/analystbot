@@ -1,0 +1,1875 @@
+{
+ "copyright": "",
+ "totalGames": 60,
+ "dates": [
+  {
+   "date": "2026-08-22",
+   "totalGames": 15,
+   "games": [
+    {
+     "gamePk": 750000,
+     "gameDate": "2026-08-22T17:00:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 101,
+        "name": "Atlanta Braves"
+       },
+       "probablePitcher": {
+        "id": 600001,
+        "fullName": "Logan Maeda Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 100,
+        "name": "Arizona Diamondbacks"
+       },
+       "probablePitcher": {
+        "id": 600000,
+        "fullName": "Tyler Glasnow"
+       }
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     }
+    },
+    {
+     "gamePk": 750001,
+     "gameDate": "2026-08-22T18:07:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 103,
+        "name": "Boston Red Sox"
+       },
+       "probablePitcher": {
+        "id": 600003,
+        "fullName": "Hunter Darvish Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 102,
+        "name": "Baltimore Orioles"
+       },
+       "probablePitcher": {
+        "id": 600002,
+        "fullName": "Jacob deGrom"
+       }
+      }
+     },
+     "venue": {
+      "name": "Orioles Park"
+     }
+    },
+    {
+     "gamePk": 750002,
+     "gameDate": "2026-08-22T19:14:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 105,
+        "name": "Chicago White Sox"
+       },
+       "probablePitcher": {
+        "id": 600005,
+        "fullName": "Marcus Valdez Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 104,
+        "name": "Chicago Cubs"
+       },
+       "probablePitcher": {
+        "id": 600004,
+        "fullName": "Luis Castillo"
+       }
+      }
+     },
+     "venue": {
+      "name": "Cubs Park"
+     }
+    },
+    {
+     "gamePk": 750003,
+     "gameDate": "2026-08-22T20:21:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 107,
+        "name": "Cleveland Guardians"
+       },
+       "probablePitcher": {
+        "id": 600007,
+        "fullName": "Kenta Cease Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 106,
+        "name": "Cincinnati Reds"
+       },
+       "probablePitcher": {
+        "id": 600006,
+        "fullName": "Carlos Rodon"
+       }
+      }
+     },
+     "venue": {
+      "name": "Reds Park"
+     }
+    },
+    {
+     "gamePk": 750004,
+     "gameDate": "2026-08-22T21:28:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 109,
+        "name": "Detroit Tigers"
+       },
+       "probablePitcher": {
+        "id": 600009,
+        "fullName": "Yu Rodriguez Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 108,
+        "name": "Colorado Rockies"
+       },
+       "probablePitcher": {
+        "id": 600008,
+        "fullName": "Shane Bieber"
+       }
+      }
+     },
+     "venue": {
+      "name": "Rockies Park"
+     }
+    },
+    {
+     "gamePk": 750005,
+     "gameDate": "2026-08-22T22:35:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 111,
+        "name": "Kansas City Royals"
+       },
+       "probablePitcher": {
+        "id": 600011,
+        "fullName": "Framber Strider Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 110,
+        "name": "Houston Astros"
+       },
+       "probablePitcher": {
+        "id": 600010,
+        "fullName": "Logan Webb"
+       }
+      }
+     },
+     "venue": {
+      "name": "Astros Park"
+     }
+    },
+    {
+     "gamePk": 750006,
+     "gameDate": "2026-08-22T17:42:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 113,
+        "name": "Los Angeles Dodgers"
+       },
+       "probablePitcher": {
+        "id": 600013,
+        "fullName": "Dylan Gallen Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 112,
+        "name": "Los Angeles Angels"
+       },
+       "probablePitcher": {
+        "id": 600012,
+        "fullName": "Hunter Greene"
+       }
+      }
+     },
+     "venue": {
+      "name": "Angels Park"
+     }
+    },
+    {
+     "gamePk": 750007,
+     "gameDate": "2026-08-22T18:49:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 115,
+        "name": "Milwaukee Brewers"
+       },
+       "probablePitcher": {
+        "id": 600015,
+        "fullName": "Grayson Glasnow Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 114,
+        "name": "Miami Marlins"
+       },
+       "probablePitcher": {
+        "id": 600014,
+        "fullName": "Marcus Stroman"
+       }
+      }
+     },
+     "venue": {
+      "name": "Marlins Park"
+     }
+    },
+    {
+     "gamePk": 750008,
+     "gameDate": "2026-08-22T19:56:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 117,
+        "name": "New York Mets"
+       },
+       "probablePitcher": {
+        "id": 600017,
+        "fullName": "Spencer deGrom Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 116,
+        "name": "Minnesota Twins"
+       },
+       "probablePitcher": {
+        "id": 600016,
+        "fullName": "Kenta Maeda"
+       }
+      }
+     },
+     "venue": {
+      "name": "Twins Park"
+     }
+    },
+    {
+     "gamePk": 750009,
+     "gameDate": "2026-08-22T20:03:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 119,
+        "name": "Athletics"
+       },
+       "probablePitcher": {
+        "id": 600019,
+        "fullName": "Zac Castillo Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 118,
+        "name": "New York Yankees"
+       },
+       "probablePitcher": {
+        "id": 600018,
+        "fullName": "Yu Darvish"
+       }
+      }
+     },
+     "venue": {
+      "name": "Yankees Park"
+     }
+    },
+    {
+     "gamePk": 750010,
+     "gameDate": "2026-08-22T21:10:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 121,
+        "name": "Pittsburgh Pirates"
+       },
+       "probablePitcher": {
+        "id": 600021,
+        "fullName": "Tyler Rodon Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 120,
+        "name": "Philadelphia Phillies"
+       },
+       "probablePitcher": {
+        "id": 600020,
+        "fullName": "Framber Valdez"
+       }
+      }
+     },
+     "venue": {
+      "name": "Phillies Park"
+     }
+    },
+    {
+     "gamePk": 750011,
+     "gameDate": "2026-08-22T22:17:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 123,
+        "name": "San Francisco Giants"
+       },
+       "probablePitcher": {
+        "id": 600023,
+        "fullName": "Jacob Bieber Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 122,
+        "name": "San Diego Padres"
+       },
+       "probablePitcher": {
+        "id": 600022,
+        "fullName": "Dylan Cease"
+       }
+      }
+     },
+     "venue": {
+      "name": "Padres Park"
+     }
+    },
+    {
+     "gamePk": 750012,
+     "gameDate": "2026-08-22T17:24:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 125,
+        "name": "St. Louis Cardinals"
+       },
+       "probablePitcher": {
+        "id": 600025,
+        "fullName": "Luis Webb Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 124,
+        "name": "Seattle Mariners"
+       },
+       "probablePitcher": {
+        "id": 600024,
+        "fullName": "Grayson Rodriguez"
+       }
+      }
+     },
+     "venue": {
+      "name": "Mariners Park"
+     }
+    },
+    {
+     "gamePk": 750013,
+     "gameDate": "2026-08-22T18:31:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 127,
+        "name": "Texas Rangers"
+       },
+       "probablePitcher": {
+        "id": 600027,
+        "fullName": "Carlos Greene Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 126,
+        "name": "Tampa Bay Rays"
+       },
+       "probablePitcher": {
+        "id": 600026,
+        "fullName": "Spencer Strider"
+       }
+      }
+     },
+     "venue": {
+      "name": "Rays Park"
+     }
+    },
+    {
+     "gamePk": 750014,
+     "gameDate": "2026-08-22T19:38:00Z",
+     "status": {
+      "abstractGameState": "Preview",
+      "detailedState": "Scheduled"
+     },
+     "teams": {
+      "away": {
+       "team": {
+        "id": 129,
+        "name": "Washington Nationals"
+       },
+       "probablePitcher": {
+        "id": 600029,
+        "fullName": "Shane Stroman Jr."
+       }
+      },
+      "home": {
+       "team": {
+        "id": 128,
+        "name": "Toronto Blue Jays"
+       },
+       "probablePitcher": {
+        "id": 600028,
+        "fullName": "Zac Gallen"
+       }
+      }
+     },
+     "venue": {
+      "name": "Jays Park"
+     }
+    }
+   ]
+  },
+  {
+   "date": "2026-08-19",
+   "totalGames": 15,
+   "games": [
+    {
+     "gamePk": 900001,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 103,
+        "name": "Boston Red Sox"
+       },
+       "score": 7
+      },
+      "away": {
+       "team": {
+        "id": 104,
+        "name": "Chicago Cubs"
+       },
+       "score": 8
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900002,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 105,
+        "name": "Chicago White Sox"
+       },
+       "score": 5
+      },
+      "away": {
+       "team": {
+        "id": 106,
+        "name": "Cincinnati Reds"
+       },
+       "score": 4
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900003,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 107,
+        "name": "Cleveland Guardians"
+       },
+       "score": 3
+      },
+      "away": {
+       "team": {
+        "id": 108,
+        "name": "Colorado Rockies"
+       },
+       "score": 0
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900004,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 109,
+        "name": "Detroit Tigers"
+       },
+       "score": 1
+      },
+      "away": {
+       "team": {
+        "id": 110,
+        "name": "Houston Astros"
+       },
+       "score": 5
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900005,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 111,
+        "name": "Kansas City Royals"
+       },
+       "score": 8
+      },
+      "away": {
+       "team": {
+        "id": 112,
+        "name": "Los Angeles Angels"
+       },
+       "score": 1
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900006,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 113,
+        "name": "Los Angeles Dodgers"
+       },
+       "score": 6
+      },
+      "away": {
+       "team": {
+        "id": 114,
+        "name": "Miami Marlins"
+       },
+       "score": 7
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900007,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 115,
+        "name": "Milwaukee Brewers"
+       },
+       "score": 4
+      },
+      "away": {
+       "team": {
+        "id": 116,
+        "name": "Minnesota Twins"
+       },
+       "score": 2
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900008,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 117,
+        "name": "New York Mets"
+       },
+       "score": 2
+      },
+      "away": {
+       "team": {
+        "id": 118,
+        "name": "New York Yankees"
+       },
+       "score": 7
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900009,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 119,
+        "name": "Athletics"
+       },
+       "score": 0
+      },
+      "away": {
+       "team": {
+        "id": 120,
+        "name": "Philadelphia Phillies"
+       },
+       "score": 3
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900010,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 121,
+        "name": "Pittsburgh Pirates"
+       },
+       "score": 7
+      },
+      "away": {
+       "team": {
+        "id": 122,
+        "name": "San Diego Padres"
+       },
+       "score": 8
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900011,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 123,
+        "name": "San Francisco Giants"
+       },
+       "score": 5
+      },
+      "away": {
+       "team": {
+        "id": 124,
+        "name": "Seattle Mariners"
+       },
+       "score": 4
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900012,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 125,
+        "name": "St. Louis Cardinals"
+       },
+       "score": 3
+      },
+      "away": {
+       "team": {
+        "id": 126,
+        "name": "Tampa Bay Rays"
+       },
+       "score": 0
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900013,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 127,
+        "name": "Texas Rangers"
+       },
+       "score": 1
+      },
+      "away": {
+       "team": {
+        "id": 128,
+        "name": "Toronto Blue Jays"
+       },
+       "score": 5
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900014,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 129,
+        "name": "Washington Nationals"
+       },
+       "score": 8
+      },
+      "away": {
+       "team": {
+        "id": 100,
+        "name": "Arizona Diamondbacks"
+       },
+       "score": 1
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    },
+    {
+     "gamePk": 900015,
+     "gameDate": "2026-08-19T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 101,
+        "name": "Atlanta Braves"
+       },
+       "score": 6
+      },
+      "away": {
+       "team": {
+        "id": 102,
+        "name": "Baltimore Orioles"
+       },
+       "score": 7
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-19"
+    }
+   ]
+  },
+  {
+   "date": "2026-08-20",
+   "totalGames": 15,
+   "games": [
+    {
+     "gamePk": 900016,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 102,
+        "name": "Baltimore Orioles"
+       },
+       "score": 4
+      },
+      "away": {
+       "team": {
+        "id": 103,
+        "name": "Boston Red Sox"
+       },
+       "score": 2
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900017,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 104,
+        "name": "Chicago Cubs"
+       },
+       "score": 2
+      },
+      "away": {
+       "team": {
+        "id": 105,
+        "name": "Chicago White Sox"
+       },
+       "score": 7
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900018,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 106,
+        "name": "Cincinnati Reds"
+       },
+       "score": 0
+      },
+      "away": {
+       "team": {
+        "id": 107,
+        "name": "Cleveland Guardians"
+       },
+       "score": 3
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900019,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 108,
+        "name": "Colorado Rockies"
+       },
+       "score": 7
+      },
+      "away": {
+       "team": {
+        "id": 109,
+        "name": "Detroit Tigers"
+       },
+       "score": 8
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900020,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 110,
+        "name": "Houston Astros"
+       },
+       "score": 5
+      },
+      "away": {
+       "team": {
+        "id": 111,
+        "name": "Kansas City Royals"
+       },
+       "score": 4
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900021,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 112,
+        "name": "Los Angeles Angels"
+       },
+       "score": 3
+      },
+      "away": {
+       "team": {
+        "id": 113,
+        "name": "Los Angeles Dodgers"
+       },
+       "score": 0
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900022,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 114,
+        "name": "Miami Marlins"
+       },
+       "score": 1
+      },
+      "away": {
+       "team": {
+        "id": 115,
+        "name": "Milwaukee Brewers"
+       },
+       "score": 5
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900023,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 116,
+        "name": "Minnesota Twins"
+       },
+       "score": 8
+      },
+      "away": {
+       "team": {
+        "id": 117,
+        "name": "New York Mets"
+       },
+       "score": 1
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900024,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 118,
+        "name": "New York Yankees"
+       },
+       "score": 6
+      },
+      "away": {
+       "team": {
+        "id": 119,
+        "name": "Athletics"
+       },
+       "score": 7
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900025,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 120,
+        "name": "Philadelphia Phillies"
+       },
+       "score": 4
+      },
+      "away": {
+       "team": {
+        "id": 121,
+        "name": "Pittsburgh Pirates"
+       },
+       "score": 2
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900026,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 122,
+        "name": "San Diego Padres"
+       },
+       "score": 2
+      },
+      "away": {
+       "team": {
+        "id": 123,
+        "name": "San Francisco Giants"
+       },
+       "score": 7
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900027,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 124,
+        "name": "Seattle Mariners"
+       },
+       "score": 0
+      },
+      "away": {
+       "team": {
+        "id": 125,
+        "name": "St. Louis Cardinals"
+       },
+       "score": 3
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900028,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 126,
+        "name": "Tampa Bay Rays"
+       },
+       "score": 7
+      },
+      "away": {
+       "team": {
+        "id": 127,
+        "name": "Texas Rangers"
+       },
+       "score": 8
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900029,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 128,
+        "name": "Toronto Blue Jays"
+       },
+       "score": 5
+      },
+      "away": {
+       "team": {
+        "id": 129,
+        "name": "Washington Nationals"
+       },
+       "score": 4
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    },
+    {
+     "gamePk": 900030,
+     "gameDate": "2026-08-20T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 100,
+        "name": "Arizona Diamondbacks"
+       },
+       "score": 3
+      },
+      "away": {
+       "team": {
+        "id": 101,
+        "name": "Atlanta Braves"
+       },
+       "score": 0
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-20"
+    }
+   ]
+  },
+  {
+   "date": "2026-08-21",
+   "totalGames": 15,
+   "games": [
+    {
+     "gamePk": 900031,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 101,
+        "name": "Atlanta Braves"
+       },
+       "score": 1
+      },
+      "away": {
+       "team": {
+        "id": 102,
+        "name": "Baltimore Orioles"
+       },
+       "score": 5
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900032,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 103,
+        "name": "Boston Red Sox"
+       },
+       "score": 8
+      },
+      "away": {
+       "team": {
+        "id": 104,
+        "name": "Chicago Cubs"
+       },
+       "score": 1
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900033,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 105,
+        "name": "Chicago White Sox"
+       },
+       "score": 6
+      },
+      "away": {
+       "team": {
+        "id": 106,
+        "name": "Cincinnati Reds"
+       },
+       "score": 7
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900034,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 107,
+        "name": "Cleveland Guardians"
+       },
+       "score": 4
+      },
+      "away": {
+       "team": {
+        "id": 108,
+        "name": "Colorado Rockies"
+       },
+       "score": 2
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900035,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 109,
+        "name": "Detroit Tigers"
+       },
+       "score": 2
+      },
+      "away": {
+       "team": {
+        "id": 110,
+        "name": "Houston Astros"
+       },
+       "score": 7
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900036,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 111,
+        "name": "Kansas City Royals"
+       },
+       "score": 0
+      },
+      "away": {
+       "team": {
+        "id": 112,
+        "name": "Los Angeles Angels"
+       },
+       "score": 3
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900037,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 113,
+        "name": "Los Angeles Dodgers"
+       },
+       "score": 7
+      },
+      "away": {
+       "team": {
+        "id": 114,
+        "name": "Miami Marlins"
+       },
+       "score": 8
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900038,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 115,
+        "name": "Milwaukee Brewers"
+       },
+       "score": 5
+      },
+      "away": {
+       "team": {
+        "id": 116,
+        "name": "Minnesota Twins"
+       },
+       "score": 4
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900039,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 117,
+        "name": "New York Mets"
+       },
+       "score": 3
+      },
+      "away": {
+       "team": {
+        "id": 118,
+        "name": "New York Yankees"
+       },
+       "score": 0
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900040,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 119,
+        "name": "Athletics"
+       },
+       "score": 1
+      },
+      "away": {
+       "team": {
+        "id": 120,
+        "name": "Philadelphia Phillies"
+       },
+       "score": 5
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900041,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 121,
+        "name": "Pittsburgh Pirates"
+       },
+       "score": 8
+      },
+      "away": {
+       "team": {
+        "id": 122,
+        "name": "San Diego Padres"
+       },
+       "score": 1
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900042,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 123,
+        "name": "San Francisco Giants"
+       },
+       "score": 6
+      },
+      "away": {
+       "team": {
+        "id": 124,
+        "name": "Seattle Mariners"
+       },
+       "score": 7
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900043,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 125,
+        "name": "St. Louis Cardinals"
+       },
+       "score": 4
+      },
+      "away": {
+       "team": {
+        "id": 126,
+        "name": "Tampa Bay Rays"
+       },
+       "score": 2
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900044,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 127,
+        "name": "Texas Rangers"
+       },
+       "score": 2
+      },
+      "away": {
+       "team": {
+        "id": 128,
+        "name": "Toronto Blue Jays"
+       },
+       "score": 7
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    },
+    {
+     "gamePk": 900045,
+     "gameDate": "2026-08-21T23:05:00Z",
+     "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final",
+      "codedGameState": "F",
+      "statusCode": "F"
+     },
+     "teams": {
+      "home": {
+       "team": {
+        "id": 129,
+        "name": "Washington Nationals"
+       },
+       "score": 0
+      },
+      "away": {
+       "team": {
+        "id": 100,
+        "name": "Arizona Diamondbacks"
+       },
+       "score": 3
+      }
+     },
+     "venue": {
+      "name": "Diamondbacks Park"
+     },
+     "officialDate": "2026-08-21"
+    }
+   ]
+  }
+ ]
+}

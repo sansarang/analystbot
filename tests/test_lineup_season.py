@@ -167,27 +167,91 @@ def test_prompt_exposes_batting_season_and_drops_the_ban():
     assert "±3%p" in MATCHUP
 
 
-def test_matchup_renders_the_new_placeholder():
-    """치환되지 않은 `{{...}}` 가 프롬프트에 남으면 모델이 그걸 읽는다."""
-    import json
+def test_every_placeholder_is_supplied():
+    """🔴 치환되지 않은 `{{...}}` 가 남으면 모델이 그 자리표시자를 그대로 읽는다.
 
-    from app.engine.matchup import (
-        lineup_season_payload, lineups_payload, starters_season_payload,
-    )
+    프롬프트에서 자리표시자를 **직접 뽑아** 검사한다 — 목록을 손으로 적으면
+    자료를 새로 추가할 때 이 테스트가 조용히 뒤처진다.
+    """
+    import re
+    from pathlib import Path
+
+    from app.engine.prompts import MATCHUP
+
+    names = set(re.findall(r"\{\{(\w+)\}\}", MATCHUP))
+    assert names, "자리표시자를 하나도 못 찾았다 — 정규식이 깨졌다"
+    src = Path("app/engine/matchup.py").read_text(encoding="utf-8")
+    missing = [n for n in sorted(names) if f"{n}=" not in src]
+    assert not missing, f"판정이 채우지 않는 자리표시자: {missing}"
+
+
+def test_matchup_render_leaves_no_placeholder():
+    """실제 렌더 1회 — 빈 경기로도 `{{` 가 남지 않아야 한다."""
+    import json
+    import re
+    from pathlib import Path
+
+    from app.engine import matchup as M
     from app.engine.prompts import MATCHUP, fill
 
-    jg = {"research": {"home_lineup_season": {"타자": [{"이름": "A", "OPS": ".800"}],
-                                              "팀": {"가중OPS": 0.8}}}}
+    jg = {"research": {
+        "home_usage": {"games": [{"runs": 3, "opp_runs": 2}]},
+        "away_usage": {"games": [{"runs": 1, "opp_runs": 5}]},
+        "home_lineup_season": {"타자": [{"이름": "A", "OPS": ".800"}],
+                               "팀": {"가중OPS": 0.8}}}}
+    J = lambda x: json.dumps(x, ensure_ascii=False, default=str)   # noqa: E731
     out = fill(MATCHUP,
-               HOME_FORM_JSON="{}", AWAY_FORM_JSON="{}",
-               LINEUPS_JSON=json.dumps(lineups_payload(jg)),
-               STARTERS_RECENT_JSON="{}", PREV_VERDICT_JSON="null",
-               LINEUP_INTENT_JSON="{}",
-               STARTER_SEASON_JSON=json.dumps(starters_season_payload(jg)),
-               LINEUP_SEASON_JSON=json.dumps(lineup_season_payload(jg),
-                                             ensure_ascii=False))
+               BOXSCORE_JSON=J(M.boxscore_payload(jg)),
+               NEWS_JSON=J(M.news_payload({}, {})),
+               LINEUPS_JSON=J(M.lineups_payload(jg)),
+               STARTERS_RECENT_JSON=J(M.starters_recent_payload(jg)),
+               PREV_VERDICT_JSON="null",
+               LINEUP_INTENT_JSON=J(M.intent_payload(jg)),
+               STARTER_SEASON_JSON=J(M.starters_season_payload(jg)),
+               LINEUP_SEASON_JSON=J(M.lineup_season_payload(jg)),
+               BULLPEN_JSON=J(M.bullpen_payload(jg)))
     assert "{{" not in out
     assert "가중OPS" in out
+    assert '"runs": 3' in out, "원본 숫자가 그대로 실려야 한다"
+
+
+def test_boxscore_payload_passes_numbers_untouched():
+    """수집기가 준 숫자를 가공하지 않는다 — 있는 그대로 넘긴다."""
+    from app.engine.matchup import boxscore_payload
+
+    g = {"date": "2026-08-30", "runs": 1, "opp_runs": 5, "starter_ip": 3.0,
+         "starter_pitches": 73, "errors": 3, "opponent_rank": 5}
+    jg = {"research": {"home_usage": {"games": [g], "results_l3": "LWL"},
+                       "away_usage": {"games": [g]}}}
+    out = boxscore_payload(jg)
+    assert out["home"]["경기"][0] == g, "한 칸도 바꾸거나 빠뜨리지 않는다"
+    assert out["home"]["results_l3"] == "LWL"
+
+
+def test_boxscore_payload_omits_side_without_games():
+    """재료가 없으면 그 쪽을 만들지 않는다 — 판정 게이트가 이걸 보고 탈락시킨다."""
+    from app.engine.matchup import boxscore_payload
+
+    assert boxscore_payload({"research": {"home_usage": {"games": []}}}) == {}
+
+
+def test_lineup_payload_uses_slots_when_available():
+    """today_nine 이 있으면 타순 번호·포지션을 붙인다."""
+    from app.engine.matchup import lineups_payload
+
+    jg = {"research": {"today_nine": {"home": {"order": [
+        {"slot": 1, "name": "長岡 秀樹", "pos": "遊"},
+        {"slot": 2, "name": "赤羽 由紘", "pos": "三"}]}}}}
+    out = lineups_payload(jg)
+    assert out["home"]["타순"][0] == {"타순": 1, "이름": "長岡 秀樹", "포지션": "遊"}
+
+
+def test_lineup_payload_falls_back_to_order_string():
+    """today_nine 이 없으면 종전 문자열로 간다 — 없다고 빈 칸을 만들지 않는다."""
+    from app.engine.matchup import lineups_payload
+
+    jg = {"research": {"home_lineup": {"order": "A-B-C"}}}
+    assert lineups_payload(jg)["home"]["타순"] == "A-B-C"
 
 
 def test_no_odds_import_boundary():

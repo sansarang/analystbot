@@ -43,6 +43,21 @@ def test_apply_matchup_maps_confidence_low_as_veto():
     assert jg["matchup"]["model"] == jg["model"]
 
 
+def _usage(runs=4, allowed=3):
+    """[E 2026-09-02] 판정 게이트가 **숫자**에 걸린다 — 3경기 박스스코어가
+    없으면 탈락이다. 폼 캐시를 보는 테스트도 숫자는 갖고 있어야 한다."""
+    return {"games": [{"date": f"2026-08-2{i}", "opponent": "상대", "runs": runs,
+                       "opp_runs": allowed, "result": "W", "starter_ip": 6.0,
+                       "starter_r": 2, "starter_pitches": 95, "bullpen_count": 3,
+                       "hits": 8, "hr": 1, "bb": 2, "k": 7, "errors": 0}
+                      for i in (6, 7, 8)],
+            "results_l3": "WWW", "runs_l3": runs * 3, "runs_allowed_l3": allowed * 3}
+
+
+def _research(**extra):
+    return {"home_usage": _usage(), "away_usage": _usage(3, 4), **extra}
+
+
 @pytest.mark.asyncio
 async def test_matchup_analyzes_on_cache_miss(monkeypatch):
     r = _MemRedis()
@@ -57,7 +72,7 @@ async def test_matchup_analyzes_on_cache_miss(monkeypatch):
         return await orig(*a, **kw)
 
     monkeypatch.setattr("app.engine.team_form.analyze_team", counted)
-    jg = {"sport": "kbo", "home": "한화", "away": "KIA", "research": {}}
+    jg = {"sport": "kbo", "home": "한화", "away": "KIA", "research": _research()}
     verdict = await judge_matchup(jg, r, "2026-08-29", mock=True)
     assert verdict["p_home"] == 0.55
     assert calls["n"] == 2
@@ -81,7 +96,7 @@ async def test_matchup_reads_form_cache_and_does_not_reanalyze(monkeypatch):
         raise AssertionError("매치업이 팀 폼을 재호출했다")
 
     monkeypatch.setattr("app.engine.team_form.analyze_team", boom)
-    jg = {"sport": "kbo", "home": home, "away": away, "research": {}}
+    jg = {"sport": "kbo", "home": home, "away": away, "research": _research()}
     verdict = await judge_matchup(jg, r, date, mock=True)
     assert verdict["p_home"] == 0.55
     assert jg["p_claude"] == 0.55
@@ -93,7 +108,7 @@ async def test_matchup_reads_form_cache_and_does_not_reanalyze(monkeypatch):
 async def test_matchup_records_analysis_game_key():
     r = _MemRedis()
     jg = {"sport": "kbo", "game_id": 99, "home": "한화", "away": "KIA",
-          "research": {}}
+          "research": _research()}
     await judge_matchup(jg, r, "2026-08-29", mock=True)
     raw = r.store[form_key("kbo", "한화", "2026-08-29")]  # form also written
     assert json.loads(raw)["model"] == "mock"
@@ -124,7 +139,7 @@ async def test_matchup_retries_when_form_cache_unavailable(monkeypatch):
         return await orig(*a, **kw)
 
     monkeypatch.setattr("app.engine.team_form.analyze_team", counted)
-    jg = {"sport": "kbo", "home": home, "away": away, "research": {}}
+    jg = {"sport": "kbo", "home": home, "away": away, "research": _research()}
     await judge_matchup(jg, r, date, mock=True)
     assert calls["n"] == 1
 
@@ -150,7 +165,7 @@ async def test_matchup_quota_does_not_retry(monkeypatch):
         raise ApiQuotaError("anthropic", "credit balance too low")
 
     monkeypatch.setattr("app.engine.matchup.complete_json", quota)
-    jg = {"sport": "kbo", "home": home, "away": away, "research": {}}
+    jg = {"sport": "kbo", "home": home, "away": away, "research": _research()}
     with pytest.raises(ApiQuotaError):
         await judge_matchup(jg, r, date, mock=False)
     assert n["n"] == 1

@@ -16,7 +16,9 @@ def test_matchup_prompt_keeps_clip_and_news_cap():
     assert "확률을 최대 ±3%p까지만 조정" in MATCHUP
     assert "실적 데이터가 가리키는 우세 방향을 뉴스만으로 뒤집을 수 없다" in MATCHUP
     assert "오늘 나온 9명이 기준이다" in MATCHUP
-    assert "{{HOME_FORM_JSON}}" in MATCHUP
+    # [E 2026-09-02] 자료1·2가 헤이쿠 평가서 → 원본 박스스코어 + 뉴스태그로 교체됐다.
+    assert "{{BOXSCORE_JSON}}" in MATCHUP
+    assert "{{NEWS_JSON}}" in MATCHUP
     assert "{{STARTERS_RECENT_JSON}}" in MATCHUP
 
 
@@ -160,3 +162,43 @@ def test_low_recent_sample_pulls_toward_half():
     """표본이 적으면 0.50 쪽으로 당긴다 — 적은 표본에 확신을 싣지 않는다."""
     assert "**2경기 이하**면 그 표본은 그 투수를 대표하지 않는다" in MATCHUP
     assert "표본이 적을수록 0.50 쪽으로 당긴다" in MATCHUP
+
+
+def test_judge_reads_numbers_not_another_models_grades():
+    """🔴 [E 2026-09-02] 판정이 다른 모델의 등급을 근거로 인용하고 있었다.
+
+    실측 2026-09-02 (한신@야쿠르트 직전 판정 근거 3번):
+      "자료2 원정팀 종합: 선발진 평가 '상'과 '흐름 상승'이 자료1 홈팀
+       선발진 '중' 대비 우위를 뒷받침한다"
+    헤이쿠가 박스스코어를 읽고 매긴 등급을 소나가 근거로 베낀 것이다.
+    "수치는 있는 그대로 판단하게 하고 분석만 AI가 한다" (사용자 지시).
+    """
+    # 등급을 만드는 평가서 자체가 입력에서 사라졌는가
+    assert "{{HOME_FORM_JSON}}" not in MATCHUP
+    assert "{{AWAY_FORM_JSON}}" not in MATCHUP
+    assert "경기력 평가서" not in MATCHUP
+    # 원본 숫자가 그 자리에 들어왔는가
+    assert "원본 박스스코어" in MATCHUP
+    assert "starter_pitches" in MATCHUP and "bullpen_count" in MATCHUP
+    # 등급 인용 금지가 명시됐는가
+    assert "다른 모델이 매긴 등급" in MATCHUP
+    assert "어느 숫자에서 그 결론이 나왔는지를 적어라" in MATCHUP
+
+
+def test_batting_order_carries_slot_and_position():
+    """1번과 8번은 타석 수가 다르다 — 순서가 곧 정보다."""
+    assert "타순 번호·이름·포지션" in MATCHUP
+    assert "순서가 곧 정보다" in MATCHUP
+
+
+def test_bullpen_is_an_input():
+    """선발이 일찍 내려가면 불펜에서 갈린다."""
+    assert "{{BULLPEN_JSON}}" in MATCHUP
+    assert "ERA와 별개 항목" in MATCHUP, "컨디션을 ERA 등급으로 오독하면 안 된다"
+
+
+def test_three_game_sample_rules_survive():
+    """자료1이 원본으로 바뀌어도 표본 3의 한계는 그대로 경고해야 한다."""
+    assert "표본 3이다" in MATCHUP
+    assert "opponent_rank" in MATCHUP
+    assert "승패(W-L)는 쓰지 않는다" in MATCHUP

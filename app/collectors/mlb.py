@@ -257,9 +257,16 @@ class MLBClient(BaseAPIClient):
         return await self._get("/teams", params={"sportId": 1})
 
     async def fetch_schedule_range(self, start: str, end: str) -> dict:
-        """startDate~endDate 한 번에. 팀별 최근 3경기 폼용."""
+        """startDate~endDate 한 번에. 팀별 최근 3경기 폼용.
+
+        ⚠️ 목은 **전용 파일**을 쓴다. `mlb_schedule.json`(단일 날짜)을 그대로
+           돌려주면 종료 경기가 하나도 없어 최근 3경기가 만들어지지 않는다 —
+           그러면 목 실행이 판정 입력(원본 박스스코어)을 못 받는다.
+           ⚠️ 그 파일도 **슬레이트가 `dates[0]`** 이어야 한다. 파이프라인이
+              거기서 슬레이트 날짜를 읽어 `before` 로 쓴다.
+        """
         if self.mock:
-            return self.load_mock("mlb_schedule.json")
+            return self.load_mock("mlb_schedule_range.json")
         return await self._get(
             "/schedule",
             params={"sportId": 1, "startDate": start, "endDate": end},

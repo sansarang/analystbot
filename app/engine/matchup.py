@@ -47,19 +47,94 @@ def _mock_matchup(home: str, away: str) -> dict:
 
 
 def lineups_payload(jg: dict) -> dict:
+    """오늘 선발 + 타순 9명. **슬롯 번호와 포지션을 붙인다.**
+
+    🔴 종전에는 `"이름-이름-…"` 문자열 하나였다. 판정은 **누가 몇 번 타자인지
+       모른 채** 이름 나열만 받았다. 1번과 8번은 타석 수가 다르고, 3~5번은
+       득점권 상황이 다르다 — 순서가 곧 정보다.
+       `today_nine`(수집기가 이미 만들어 둔 슬롯·포지션)이 있으면 그것을 쓰고,
+       없으면 종전 문자열로 폴백한다.
+    """
     r = jg.get("research") or {}
-    return {
-        "home": {
-            "pitcher": ((r.get("home_pitcher") or {}).get("name")
-                        or jg.get("home_pitcher")),
-            "order": (r.get("home_lineup") or {}).get("order") or jg.get("lineup_home"),
-        },
-        "away": {
-            "pitcher": ((r.get("away_pitcher") or {}).get("name")
-                        or jg.get("away_pitcher")),
-            "order": (r.get("away_lineup") or {}).get("order") or jg.get("lineup_away"),
-        },
-    }
+    nine = r.get("today_nine") or {}
+    out = {}
+    for side in ("home", "away"):
+        blk = {"선발투수": ((r.get(f"{side}_pitcher") or {}).get("name")
+                            or jg.get(f"{side}_pitcher"))}
+        slots = ((nine.get(side) or {}).get("order")
+                 if isinstance(nine.get(side), dict) else None)
+        if slots:
+            blk["타순"] = [{"타순": x.get("slot"), "이름": x.get("name"),
+                            "포지션": x.get("pos")}
+                           for x in slots if isinstance(x, dict)]
+        else:
+            blk["타순"] = ((r.get(f"{side}_lineup") or {}).get("order")
+                           or jg.get(f"lineup_{side}"))
+        out[side] = blk
+    return out
+
+
+def boxscore_payload(jg: dict) -> dict:
+    """[E 2026-09-02] 최근 3경기 **원본 박스스코어**. 판정 입력 1번.
+
+    🔴 **다른 모델이 만든 등급을 판정에 넣지 않는다.**
+       종전 자료1·2는 헤이쿠가 이 박스스코어를 읽고 만든 `{"타선":{"평가":"중"}}`
+       같은 등급·산문이었다. 판정은 숫자를 못 보고 다섯 글자만 받았고, 실제로
+       근거에 **"자료2 원정팀 종합: 선발진 평가 '상'과 '흐름 상승'이 자료1 홈팀
+       '중' 대비 우위를 뒷받침한다"** 라고 적었다 — 다른 모델의 해석을 근거로
+       인용한 것이다 (실측 2026-09-02, 한신@야쿠르트 직전 판정).
+
+       "수치는 있는 그대로 판단하게 하고 분석만 AI가 한다" (사용자 지시
+       2026-09-02). 그래서 등급을 버리고 원본을 준다.
+
+    ⚠️ 없는 칸은 만들지 않는다. 수집기가 준 그대로 넘긴다.
+    """
+    r = jg.get("research") or {}
+    out = {}
+    for side in ("home", "away"):
+        u = r.get(f"{side}_usage") or {}
+        games = u.get("games")
+        if not isinstance(games, list) or not games:
+            continue
+        blk = {"경기": games}
+        for k in ("results_l3", "runs_l3", "runs_allowed_l3", "runs_per_game_l3"):
+            if u.get(k) is not None:
+                blk[k] = u[k]
+        out[side] = blk
+    return out
+
+
+def bullpen_payload(jg: dict) -> dict:
+    """양팀 불펜 — 팀 ERA + 등록 투수 개별. 경기 후반을 결정한다.
+
+    ⚠️ `roster` 의 괄호는 `ERA·컨디션` 이다. 컨디션은 야후의
+       `絶好調/好調/普通/不調/絶不調` 를 옮긴 것으로 **ERA 와 별개 항목**이다
+       (실측 2026-09-02: `清水 昇(2.16·매우 나쁨)` 은 라벨 반전이 아니라
+       "시즌 ERA 2.16, 현재 컨디션 나쁨"이다).
+    """
+    r = jg.get("research") or {}
+    out = {}
+    for side in ("home", "away"):
+        blk = r.get(f"{side}_bullpen") or {}
+        if blk:
+            out[side] = blk
+    return out
+
+
+def news_payload(home_form: dict, away_form: dict) -> dict:
+    """팀 평가서에서 **뉴스태그만** 꺼낸다.
+
+    🔴 등급(`타선`·`선발진`·`불펜`·`흐름`·`종합`)은 넘기지 않는다 — 그건 다른
+       모델이 숫자를 압축한 해석이고, 판정은 자료1에서 그 숫자를 직접 본다.
+       뉴스는 다르다. 3경기 박스스코어에 없는 **새 정보**(부상·트레이드·감독
+       교체)이고 태그 사전으로 이미 걸러져 있다.
+    """
+    out = {}
+    for side, form in (("home", home_form), ("away", away_form)):
+        tags = (form or {}).get("뉴스태그") or []
+        if tags:
+            out[side] = tags
+    return out
 
 
 def intent_payload(jg: dict) -> dict:
@@ -237,11 +312,21 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     home, away = jg.get("home") or "", jg.get("away") or ""
     home_form = await _form_or_analyze(jg, redis, date, "home", mock)
     away_form = await _form_or_analyze(jg, redis, date, "away", mock)
-    if not home_form or home_form.get("unavailable") or not away_form \
-            or away_form.get("unavailable"):
+    # 🔴 [E 2026-09-02] 게이트를 **폼이 아니라 숫자**에 건다.
+    #    판정 입력이 등급에서 원본 박스스코어로 바뀌었으므로, 없으면 못 하는 것은
+    #    "헤이쿠 평가서"가 아니라 "3경기 숫자"다. 뉴스(평가서)는 보조 신호라
+    #    빠져도 판정은 성립한다 — 없으면 뉴스 없이 간다.
+    #    ⚠️ 숫자가 없으면 종전과 똑같이 탈락이다. 재료 없이 분석을 만들지 않는다.
+    boxes = boxscore_payload(jg)
+    if not boxes.get("home") or not boxes.get("away"):
         jg["form_unavailable"] = True
-        logger.info("[matchup] %s vs %s 폼 없음·불가 — 추천 탈락", home, away)
+        logger.info("[matchup] %s vs %s 3경기 박스스코어 없음 — 추천 탈락 "
+                    "(home=%s away=%s)", home, away,
+                    bool(boxes.get("home")), bool(boxes.get("away")))
         return None
+    news = news_payload(home_form, away_form)
+    if not news:
+        logger.info("[matchup] %s vs %s 뉴스 없음 — 숫자만으로 판정한다", home, away)
     if is_mock:
         verdict = _mock_matchup(home, away)
         apply_matchup(jg, verdict, settings)
@@ -255,8 +340,8 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     prev = prev_verdict(jg)
     prompt = fill(
         MATCHUP,
-        HOME_FORM_JSON=json.dumps(home_form, ensure_ascii=False, default=str),
-        AWAY_FORM_JSON=json.dumps(away_form, ensure_ascii=False, default=str),
+        BOXSCORE_JSON=json.dumps(boxes, ensure_ascii=False, default=str),
+        NEWS_JSON=json.dumps(news, ensure_ascii=False, default=str),
         LINEUPS_JSON=json.dumps(lineups_payload(jg), ensure_ascii=False, default=str),
         STARTERS_RECENT_JSON=json.dumps(
             starters_recent_payload(jg), ensure_ascii=False, default=str),
@@ -267,6 +352,7 @@ async def judge_matchup(jg: dict, redis, date: str, *,
                                        ensure_ascii=False, default=str),
         LINEUP_SEASON_JSON=json.dumps(lineup_season_payload(jg),
                                       ensure_ascii=False, default=str),
+        BULLPEN_JSON=json.dumps(bullpen_payload(jg), ensure_ascii=False, default=str),
     )
     parsed = None
     for attempt in (1, 2):
