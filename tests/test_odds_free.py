@@ -539,3 +539,33 @@ def test_flipped_home_away_would_fail_to_match_not_attach_wrong_odds():
     flipped = "LG Twins|Doosan Bears"              # 뒤집힌 소스
     assert flipped not in ours
     assert "Doosan Bears|LG Twins" in ours
+
+
+def test_rss_query_uses_the_league_language():
+    """🔴 실측 2026-09-02 16:22: 영문명으로 던지면 기사는 오는데(49건)
+    **72시간 필터가 전부 걸러낸다** — 영문 기사는 오래된 것뿐이다.
+    모국어로 던지면 같은 팀이 100건, 그것도 최신이다.
+      Hanwha Eagles 0건 → 한화 이글스 100건
+      Lotte Giants  0건 → 롯데 자이언츠 102건
+    로케일만 맞추고 쿼리를 영문으로 둔 것이 구멍이었다.
+    """
+    from app.collectors.news_rss import QUERY_ALIAS
+
+    assert QUERY_ALIAS["Hanwha Eagles"] == "한화 이글스"
+    assert QUERY_ALIAS["Lotte Giants"] == "롯데 자이언츠"
+    assert QUERY_ALIAS["Hokkaido Nippon-Ham Fighters"] == "日本ハムファイターズ"
+    # 오늘 슬레이트 20팀이 전부 들어 있다 (실측 0건 팀 0/20)
+    for t in ("LG Twins", "Doosan Bears", "KT Wiz", "NC Dinos", "Kia Tigers",
+              "Kiwoom Heroes", "SSG Landers", "Samsung Lions",
+              "Yomiuri Giants", "Hanshin Tigers", "Chunichi Dragons",
+              "Tokyo Yakult Swallows", "Hiroshima Toyo Carp",
+              "Fukuoka SoftBank Hawks", "Orix Buffaloes",
+              "Tohoku Rakuten Golden Eagles", "Yokohama DeNA BayStars"):
+        assert t in QUERY_ALIAS, f"{t} 별칭 누락"
+
+
+def test_unknown_team_falls_back_to_its_own_name():
+    """별칭이 없다고 수집을 멈추지 않는다."""
+    from app.collectors.news_rss import QUERY_ALIAS
+
+    assert QUERY_ALIAS.get("듣보 팀", "듣보 팀") == "듣보 팀"

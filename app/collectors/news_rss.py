@@ -31,6 +31,35 @@ LOCALE = {
     "npb": {"hl": "ja", "gl": "JP", "ceid": "JP:ja"},
 }
 
+#: 검색 쿼리 별칭 — 우리 팀명(영문) → 그 리그 언어의 실제 표기.
+#  🔴 실측 2026-09-02 16:22: 영문명으로 던지면 기사는 오는데(49건) **72시간
+#     필터가 전부 걸러낸다** — 영문 기사는 오래된 것뿐이다. 모국어로 던지면
+#     같은 팀이 100건, 그것도 최신이다.
+#       Hanwha Eagles 0건 → 한화 이글스 100건
+#       Lotte Giants  0건 → 롯데 자이언츠 102건
+#     리그 로케일만 맞추고 쿼리는 영문으로 둔 것이 구멍이었다.
+#  ⚠️ 없는 팀은 팀명 그대로 던진다 — 별칭이 없다고 수집을 멈추지 않는다.
+QUERY_ALIAS = {
+    # KBO
+    "LG Twins": "LG 트윈스", "Doosan Bears": "두산 베어스",
+    "KT Wiz": "KT 위즈", "Hanwha Eagles": "한화 이글스",
+    "NC Dinos": "NC 다이노스", "Kia Tigers": "KIA 타이거즈",
+    "Kiwoom Heroes": "키움 히어로즈", "SSG Landers": "SSG 랜더스",
+    "Samsung Lions": "삼성 라이온즈", "Lotte Giants": "롯데 자이언츠",
+    # NPB
+    "Yomiuri Giants": "読売ジャイアンツ", "Hanshin Tigers": "阪神タイガース",
+    "Yokohama DeNA BayStars": "横浜DeNAベイスターズ",
+    "Hiroshima Toyo Carp": "広島東洋カープ",
+    "Tokyo Yakult Swallows": "東京ヤクルトスワローズ",
+    "Chunichi Dragons": "中日ドラゴンズ",
+    "Fukuoka SoftBank Hawks": "福岡ソフトバンクホークス",
+    "Hokkaido Nippon-Ham Fighters": "日本ハムファイターズ",
+    "Chiba Lotte Marines": "千葉ロッテマリーンズ",
+    "Tohoku Rakuten Golden Eagles": "東北楽天ゴールデンイーグルス",
+    "Saitama Seibu Lions": "埼玉西武ライオンズ",
+    "Orix Buffaloes": "オリックス・バファローズ",
+}
+
 KEY = "news_rss:{sport}:{team}"
 TTL = 3 * 3600            # 크롤러 평시 주기와 맞춘다
 #: 이보다 오래된 기사는 버린다. 딥서치는 "지금 무엇이 달라졌나"를 묻는다.
@@ -89,13 +118,14 @@ async def fetch_team(sport: str, team: str, *, limit: int = 20) -> list[dict]:
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True,
                                      headers={"User-Agent": UA}) as c:
-            r = await c.get(BASE, params={"q": team, **loc})
+            r = await c.get(BASE, params={"q": QUERY_ALIAS.get(team, team), **loc})
             r.raise_for_status()
             items = parse_feed(r.text)
     except Exception as exc:
         logger.warning("[news_rss] %s %s 조회 실패: %s", sport, team, exc)
         return []
-    logger.info("[news_rss] %s %s — 72시간 내 기사 %d건", sport, team, len(items))
+    logger.info("[news_rss] %s %s — 72시간 내 기사 %d건 (쿼리=%r)",
+                sport, team, len(items), QUERY_ALIAS.get(team, team))
     return items[:limit]
 
 
