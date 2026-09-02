@@ -72,6 +72,22 @@ def slim_season(stat: dict) -> dict:
     return {k2: v for k2, v in out.items() if v is not None}
 
 
+def _register(roster: dict[str, int]) -> dict[str, int]:
+    """명단을 실명 사전에 등록한다 — 타순 파서가 하이픈 이름을 복원할 수 있게.
+
+    🔴 `Ha-Seong Kim` 같은 실명이 `order.split("-")` 에 두 조각으로 잘려
+       타순 슬롯이 통째로 밀리던 결함(실측 2026-09-02, MLB 라인업 12%)의
+       수정이다. 명단을 받는 **모든 경로**가 여기를 지나므로 한 곳이면 된다.
+    """
+    try:
+        from app.engine.lineup_diff import register_names
+
+        register_names(roster)
+    except Exception as exc:        # 등록 실패가 시즌 라인을 막지 않는다
+        logger.debug("[starter_season] 실명 사전 등록 실패: %s", exc)
+    return roster
+
+
 async def _roster(season: int, redis=None) -> dict[str, int]:
     """이름 → 선수 id. **슬레이트당 1회.** 캐시 우선(redis → 프로세스 → 네트워크)."""
     import json as _json
@@ -80,11 +96,11 @@ async def _roster(season: int, redis=None) -> dict[str, int]:
         try:
             raw = await redis.get(_ROSTER_KEY.format(season=season))
             if raw:
-                return _json.loads(raw)
+                return _register(_json.loads(raw))
         except Exception as exc:
             logger.debug("[starter_season] 명단 캐시 읽기 실패: %s", exc)
     if season in _roster_mem:
-        return _roster_mem[season]
+        return _register(_roster_mem[season])
     data = await StatsAPIClient(mock=False).get("/sports/1/players",
                                                 {"season": season})
     ids = {p["fullName"]: p["id"] for p in (data or {}).get("people", [])
@@ -99,7 +115,7 @@ async def _roster(season: int, redis=None) -> dict[str, int]:
         except Exception as exc:
             logger.debug("[starter_season] 명단 캐시 기록 실패: %s", exc)
     logger.info("[starter_season] 명단 %d명 적재 (season=%d)", len(ids), season)
-    return ids
+    return _register(ids)
 
 
 async def fetch_mlb(names: list[str], season: int, redis=None) -> dict[str, dict]:

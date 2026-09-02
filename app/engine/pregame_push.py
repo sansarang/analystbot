@@ -18,6 +18,10 @@ from __future__ import annotations
 import json
 import logging
 from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
+
+#: 표시는 언제나 KST. 저장·비교는 UTC (CLAUDE.md 절대규칙 4).
+KST = ZoneInfo("Asia/Seoul")
 
 from app import notify as _notify_mod
 from app.engine.lineup_timing import _parse
@@ -311,6 +315,57 @@ def _slot_key(s: str):
         return (1, s)
 
 
+#: "판정 불가" 카드를 같은 경기에 다시 보내지 않게 하는 키.
+UNAVAILABLE_KEY = "pregame:unavailable:{}"
+UNAVAILABLE_TTL = 12 * 3600
+
+
+def compose_unavailable_card(row, sport: str, reason: str, kst: str) -> str:
+    """[운영 안정화 3a] 판정을 못 냈을 때 **침묵 대신** 보내는 카드.
+
+    🔴 실사고 2026-09-02: Anthropic 크레딧이 끊겨 판정이 0건이 됐는데 카드도
+       경보도 없었다. 사용자는 "봇이 죽었나"와 "오늘 픽이 없나"를 구분할 수
+       없었다. **침묵이 가장 나쁜 출력이다.**
+
+    ⚠️ 추천이 아니다. 확률·우세를 쓰지 않는다 — 재료가 없으니 판정도 없다.
+       "무엇이 없어서 못 냈는지"만 말한다.
+    """
+    away = row["away"] or "원정"
+    home = row["home"] or "홈"
+    return "\n".join([
+        f"⚠️ {sport.upper()} 판정 불가 — {away} @ {home}",
+        f"🕐 {kst}",
+        "",
+        f"사유: {reason}",
+        "오늘 이 경기는 추천을 내지 않습니다.",
+        "(관망 권장이 아니라 **분석 미완**입니다 — 복구되면 다시 보냅니다)",
+    ])
+
+
+async def send_unavailable(redis, row, sport: str, reason: str) -> bool:
+    """판정 불가 카드 1장. 같은 경기에 두 번 보내지 않는다."""
+    gid = row["id"]
+    key = UNAVAILABLE_KEY.format(gid)
+    try:
+        if not await redis.set(key, reason[:120], ex=UNAVAILABLE_TTL, nx=True):
+            return False
+    except Exception as exc:
+        logger.debug("[pregame] 판정불가 중복 가드 실패 game=%s: %s", gid, exc)
+    kst = _kst_label(row["starts_at"])
+    text = compose_unavailable_card(row, sport, reason, kst)
+    ok = await _send_card(text)
+    logger.warning("[pregame] %s game=%s 판정 불가 카드 %s — %s",
+                   sport, gid, "발송" if ok else "발송 실패", reason)
+    return ok
+
+
+def _kst_label(starts_at) -> str:
+    try:
+        return starts_at.astimezone(KST).strftime("%m/%d %H:%M")
+    except Exception:
+        return "시각 미상"
+
+
 def compose_lineup_only_card(jg: dict, sport: str, changes: list[str]) -> str:
     """라인업만 바뀌고 **판정은 그대로**일 때의 축약 카드.
 
@@ -347,32 +402,43 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
     """한 경기 카드. 'sent' | 'revised' | 'skipped' | 'failed'.
 
     Judge·ensure_analysis_cache를 호출하지 않는다. 판정된 캐시가 없으면 건너뛴다.
+
+    ⚠️ [운영 안정화 1] 모든 갈래가 **사유와 함께** 기록된다. 반환 계약은
+       종전 그대로이고, 사유는 `dispatch_stats` 에만 남는다 — 호출부를
+       바꾸지 않으면서 "조용한 0"을 없앤다.
     """
+    from app.engine import dispatch_stats as ds
+
     now = now or datetime.now(UTC)
     sport = row["sport"]
     gid = row["id"]
     starts_at = row["starts_at"]
+
+    async def _skip(reason: str) -> str:
+        await ds.record(redis, sport, date_s, reason)
+        return "skipped"
+
     if sport not in SPORTS:
-        return "skipped"
+        return await _skip("not_supported")
     if not still_upcoming(starts_at, now):
-        return "skipped"
+        return await _skip("already_started")
     if not in_send_window(sport, starts_at, now):
-        return "skipped"
+        return await _skip("window_not_open")
     raw = await redis.get(f"analysis:{sport}:{date_s}")
     if not raw:
         _log_deadline(sport, gid, starts_at, now, "캐시 없음 — 빈 카드 안 보냄")
-        return "skipped"
+        return await _skip("cache_missing")
     try:
         analysis = json.loads(raw)
     except (TypeError, ValueError):
-        return "skipped"
+        return await _skip("cache_missing")
     jg = next((g for g in analysis.get("games") or []
                if g.get("game_id") == gid), None)
     if jg is None or not _judged(jg):
         _log_deadline(sport, gid, starts_at, now, "미판정 — 빈 카드 안 보냄")
-        return "skipped"
+        return await _skip("unjudged")
     if jg.get("judgement_void") or jg.get("status") in ("cancelled", "suspended"):
-        return "skipped"
+        return await _skip("void")
     lu, vd = lineup_hash(jg), verdict_hash(jg)
     prev = _parse_sent(await redis.get(card_sig_key(gid)))
     # 🔴 재발송은 **(라인업 변경) OR (판정 변경)** 이다.
@@ -385,7 +451,8 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
     if prev and not prev.get("legacy") and not lineup_changed and not verdict_changed:
         logger.info("[pregame] %s game=%s skipped skip_reason=both_hash_same",
                     sport, gid)
-        return "skipped"
+        # 이미 도달한 카드다 — 미발송이 아니다. 분자에 넣는다.
+        return await _skip("unchanged")
     revision = bool(prev) and "legacy" not in prev
     if prev.get("legacy"):
         revision = True
@@ -399,10 +466,12 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
         text = compose_card(jg, analysis.get("news") or "", sport, revision=revision)
     if await _send_card(text):
         await redis.set(card_sig_key(gid), _sent_payload(jg), ex=SENT_TTL_SEC)
-        logger.info("[pregame] %s game=%s %s", sport, gid,
-                    "revised" if revision else "sent")
-        return "revised" if revision else "sent"
+        outcome = "revised" if revision else "sent"
+        logger.info("[pregame] %s game=%s %s", sport, gid, outcome)
+        await ds.record(redis, sport, date_s, outcome)
+        return outcome
     logger.warning("[pregame] %s game=%s 발송 실패", sport, gid)
+    await ds.record(redis, sport, date_s, "send_failed")
     return "failed"
 
 
@@ -428,7 +497,7 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
         date.fromisoformat(kst_date),
         date.fromisoformat(mlb_date),
     )
-    sent = skipped = failed = revised = 0
+    sent = skipped = failed = revised = unavailable = 0
     cancelled_ids: set[int] = set()
     for sport in SPORTS:
         snap = await load_snapshot(redis, sport, cache_date(sport))
@@ -452,5 +521,66 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
             failed += 1
         else:
             skipped += 1
+            # [운영 안정화 3a] **침묵 금지.** 판정이 없는 채로 발송 창을 지나면
+            #   사용자는 "봇이 죽었나"와 "오늘 픽이 없나"를 구분할 수 없다.
+            #   재료가 없어서 못 낸 것이면 그 사실이라도 보낸다.
+            if await _should_say_unavailable(redis, r, now):
+                if await send_unavailable(redis, r, r["sport"],
+                                          await _unavailable_reason(redis)):
+                    unavailable += 1
     return {"due": len(rows), "sent": sent, "revised": revised,
-            "skipped": skipped, "failed": failed}
+            "skipped": skipped, "failed": failed, "unavailable": unavailable}
+
+
+async def _should_say_unavailable(redis, row, now) -> bool:
+    """판정 불가 카드를 보낼 상황인가.
+
+    ⚠️ **발송 창 안이고, 판정 캐시가 없거나 미판정일 때만.** 창 전이거나
+       이미 시작한 경기, 혹은 판정이 멀쩡히 있는데 변경이 없어 건너뛴 것은
+       대상이 아니다 — 그건 정상 동작이지 고장이 아니다.
+    """
+    sport = row["sport"]
+    if sport not in SPORTS:
+        return False
+    if not still_upcoming(row["starts_at"], now) or \
+            not in_send_window(sport, row["starts_at"], now):
+        return False
+    try:
+        raw = await redis.get(f"analysis:{sport}:{cache_date(sport)}")
+    except Exception:
+        return False
+    if not raw:
+        return True
+    try:
+        analysis = json.loads(raw)
+    except (TypeError, ValueError):
+        return True
+    jg = next((g for g in analysis.get("games") or []
+               if g.get("game_id") == row["id"]), None)
+    if jg is None:
+        return True
+    if jg.get("judgement_void") or jg.get("status") in ("cancelled", "suspended"):
+        return False              # 취소는 고장이 아니다
+    return not _judged(jg)
+
+
+async def _unavailable_reason(redis) -> str:
+    """왜 판정이 없는지 — 아는 만큼만 쓴다. 모르면 모른다고 쓴다."""
+    try:
+        from app.watchdog import LLM_FAIL_KEY
+
+        n = int(await redis.get(LLM_FAIL_KEY) or 0)
+        if n:
+            last = await redis.get(f"{LLM_FAIL_KEY}:last") or ""
+            return (f"LLM 호출 연속 {n}회 실패"
+                    + (f" — {last[:120]}" if last else ""))
+    except Exception:
+        pass
+    try:
+        from app.engine.credit_guard import stopped_at
+
+        if stopped_at():
+            return f"크레딧 소진 (중단 지점 {stopped_at()})"
+    except Exception:
+        pass
+    return "판정 재료 미확보 (원인 조사 중)"

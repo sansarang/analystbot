@@ -173,7 +173,39 @@ PYTHONPATH=. nohup uv run python -m app.scheduler > logs/scheduler.log 2>&1 &
 
 **스케줄러 잡**: 프리페치 04:00 KST(종목·경기 단위 **순차**) · 배당 스냅샷 30분 ·
 리서치 재시도 큐 45분 · 종료 점수 적재 13:00 KST · Elo 갱신 주 1회(월 05:00) ·
-**KBO·NPB 경기마다 1차 발송 + 변동 재발송. NPB 크롤·분석은 T-15(17:45) 종료.**
+**워치독 5분** · **KBO·NPB 경기마다 1차 발송 + 변동 재발송. NPB 크롤·분석은
+T-15(17:45) 종료.**
+
+### 운영 안정화 (2026-09-02)
+
+**가동률은 재는 것이다.** 발송 결과가 종목·날짜별로 `dispatch:{sport}:{date}`
+해시에 사유와 함께 쌓이고, 일일 요약 카드가 `발송 N/M (X%)` + 미발송 사유를 낸다.
+**목표는 발송률 100%이고, 미발송은 전건에 사유가 붙어야 한다 — "조용한 0"은 결함이다.**
+
+**워치독**(`app/watchdog.py`, 5분)이 여섯 가지를 보고 코드가 붙은 경보를 보낸다:
+
+| 코드 | 무엇 |
+|---|---|
+| `W-SEND-PENDING` | 발송 창인데 판정이 있는데도 안 나간 경기 |
+| `W-ODDS-BLOCKED` | 배당 API 차단 상태 (**TTL 없음 — 스스로 안 풀린다**) |
+| `W-ODDS-STALE` | 배당 스냅샷 나이 > 60분 |
+| `W-LLM-FAIL` | LLM 호출 연속 3회 실패 |
+| `W-STORE-DOWN` | DB·Redis 실제 왕복 실패 |
+| `W-JOB-LATE` | 잡의 마지막 실행이 주기의 2배 초과 |
+| `W-RESCUE-DEAD` | 판정 캐시 구제 3회 실패 |
+
+⚠️ 워치독은 **읽기만 한다.** 차단을 자동으로 풀지 않는다 — 잔액 없는 키로
+계속 호출하면 요금만 태운다. 해제는 사람이 `tools/unblock` 으로 한다.
+
+```bash
+railway run python -m tools.unblock --list          # 무엇이 막혀 있나
+railway run python -m tools.unblock --provider odds # 해제 (충전 확인 후)
+railway run python -m tools.resend --sport mlb --dry-run   # 무엇이 나갈지
+railway run python -m tools.resend --sport mlb --rebuild   # 캐시부터 재생성
+```
+
+⚠️ **`tools/resend`·`tools/unblock` 은 서버에서 돌린다.** 로컬 Redis·DB 는 운영과
+다른 저장소라 로컬 실행은 서버 상태를 바꾸지 못한다 (실측 2026-09-01).
 
 **리서치 신선도 게이트**: 캐시 6시간 이내 & 킥오프 3시간 이상 → 캐시 즉답.
 캐시 6시간 초과 또는 킥오프 3시간 이내 → 재리서치 + 재판정. 실패 시 캐시 폴백.

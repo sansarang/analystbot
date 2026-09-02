@@ -492,3 +492,54 @@ async def cycle_errors(where: str, errors: list[dict], *,
     # 사이클마다 1건 — 30분 억제 창에 걸리면 5분 폴링에서 6번 중 1번만 온다.
     return await _send(f"cycle-err:{where}:{now:%Y%m%d%H%M}", "\n".join(lines),
                        bypass_suppression=True)
+
+
+#: 워치독 경보 억제 창 — 같은 코드+대상은 이 간격에 1회.
+#  🔴 30분(기본)이면 5분 잡에서 6틱 중 1번만 도착한다. 고장은 계속 나는데
+#     알림이 드문 것이 더 위험하므로 15분으로 좁힌다. 대신 **코드+대상**이
+#     키라서, 서로 다른 고장은 서로를 막지 않는다.
+WATCHDOG_WINDOW_SEC = 15 * 60
+
+#: 워치독 코드 → 사람이 읽는 한 줄. 코드는 로그·경보에 그대로 실린다.
+WATCHDOG_CODES = {
+    "W-SEND-PENDING": "발송 창인데 안 나간 경기",
+    "W-ODDS-STALE": "배당 스냅샷이 오래됨",
+    "W-ODDS-BLOCKED": "배당 API 차단 상태",
+    "W-LLM-FAIL": "LLM 호출 연속 실패",
+    "W-STORE-DOWN": "DB·Redis 오류",
+    "W-JOB-LATE": "스케줄러 잡이 주기를 넘김",
+    "W-RESCUE-DEAD": "판정 캐시 구제 실패",
+}
+
+
+async def watchdog(code: str, detail: str, *, target: str = "") -> bool:
+    """[2단계] 워치독 경보 1줄. **코드 + 대상**이 억제 키다.
+
+    ⚠️ 코드를 반드시 붙인다 — 사람이 로그를 grep 할 수 있어야 하고,
+       오탐을 코드 단위로 끌 수 있어야 한다.
+    ⚠️ 경보는 "무엇이 잘못됐나"만 말한다. 고치는 것은 사람 몫이다.
+    """
+    label = WATCHDOG_CODES.get(code, "점검 필요")
+    head = f"🚨 {code} · {label}"
+    body = detail if not target else f"{target} — {detail}"
+    return await _send(f"watchdog:{code}:{target}", f"{head}\n{body}",
+                       window_sec=WATCHDOG_WINDOW_SEC)
+
+
+async def dispatch_report(where: str, stats: dict) -> bool:
+    """[1단계] 가동률 1줄 — 대상 / 발송 / 사유별 미발송.
+
+    ⚠️ **"조용한 0"은 결함이다.** 미발송이 있으면 전건에 사유가 붙는다.
+    """
+    sent = stats.get("sent", 0) + stats.get("revised", 0) + stats.get("unchanged", 0)
+    target = stats.get("target", 0)
+    pct = f"{sent * 100 // target}%" if target else "—"
+    lines = [f"📮 {where} 발송률 {pct} ({sent}/{target})"]
+    misses = stats.get("misses") or {}
+    if misses:
+        lines.append("미발송:")
+        lines += [f"  · {reason} {n}건" for reason, n in sorted(misses.items())]
+    elif target:
+        lines.append("미발송 0건")
+    return await _send(f"dispatch:{where}", "\n".join(lines),
+                       bypass_suppression=True)

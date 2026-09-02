@@ -657,6 +657,8 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
                                    max_tokens=max_tokens, temperature=temperature,
                                    thinking=budget)
             await _ledger.record_call(redis, p.name, role, True)
+            # [운영 안정화 2] 성공하면 연속 실패를 끊는다 — 안 끊으면 경보가 남는다.
+            await _wd_ok(redis)
             if tried:
                 logger.warning("[llm:%s] 폴백 — %s 실패 후 %s 응답",
                                role, "→".join(tried), p.name)
@@ -671,6 +673,9 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
             await _ledger.record_call(redis, p.name, role, False)
             await _ledger.record_outage(redis, p.name, role,
                                         _outage_kind(exc), str(exc))
+            # 크레딧 소진은 체인 폴백 없이 즉시 중단이다 — 여기서 세지 않으면
+            # 아래 전멸 카운터에 닿지 못해 워치독이 못 본다.
+            await _wd_fail(redis, f"{role}: 크레딧 소진 {exc}")
             raise
         except LLMBudgetError as exc:
             # 🔴 **조용히 넘기지 않는다.** 빈 응답으로 넘어가면 목 출력과
@@ -694,7 +699,30 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
         await _notify_budget(role, budget, max_tokens, last)
     # [#73] 체인 전부 실패 = 전멸. 하루 누적을 세어 provider 추가 필요를 알린다.
     await _ledger.record_blackout(redis, role)
+    # [운영 안정화 2] 연속 실패를 워치독에 남긴다 — 3회면 경보가 나간다.
+    await _wd_fail(redis, f"{role}: 체인 전멸 ({'→'.join(tried)})")
     raise LLMError(f"역할 {role}: 체인 전부 실패 ({'→'.join(tried)})") from last
+
+
+async def _wd_fail(redis, detail: str) -> None:
+    """LLM 실패 1건을 워치독 카운터에 올린다. 실패해도 호출 흐름을 막지 않는다."""
+    try:
+        from app.watchdog import note_llm_failure
+
+        n = await note_llm_failure(redis, detail)
+        if n:
+            logger.warning("[llm] 연속 실패 %d회 — %s", n, detail[:120])
+    except Exception as exc:
+        logger.debug("[llm] 워치독 기록 실패: %s", exc)
+
+
+async def _wd_ok(redis) -> None:
+    try:
+        from app.watchdog import clear_llm_failures
+
+        await clear_llm_failures(redis)
+    except Exception as exc:
+        logger.debug("[llm] 워치독 초기화 실패: %s", exc)
 
 
 # [소진 차단] 오늘 쿼터가 끝난 provider는 **이 프로세스에서 다시 부르지 않는다.**

@@ -60,17 +60,72 @@ def canon_name(name: str) -> str:
 _DH_WORDS = ("지명타자", "지명", "DH")
 
 
-def parse_order(text: str | list | None) -> list[tuple[str, str]]:
+#: 하이픈 이름 재결합용 실명 사전. 수집기가 명단을 받을 때 채운다.
+#  ⚠️ 비어 있으면 재결합하지 않는다 — 사전 없이 추측해 이름을 만들지 않는다.
+NAME_REGISTRY: set[str] = set()
+
+
+def register_names(names) -> int:
+    """실명 사전에 등록. 반환은 등록 후 총 개수.
+
+    🔴 왜 필요한가 (실측 2026-09-02): 타순은 `"이름-이름-…"` 로 저장되는데
+       **하이픈이 들어간 실명이 있다.** `Ha-Seong Kim`·`Pete Crow-Armstrong`·
+       `Hao-Yu Lee`. 그냥 자르면 한 사람이 두 조각이 되고, 그 팀의 타순은
+       9명이 아니라 10명이 된다 — MLB 24개 라인업 중 **3개(12%)** 가 깨졌다.
+       컵스는 1번 타자가 쪼개져 **9개 슬롯이 전부 한 칸씩 밀렸다.**
+       그 어긋난 슬롯이 `usual_from`·`diff_lineup` 을 거쳐 **라인업 의도**와
+       **T5 트리거**로 흘러간다 — 없는 "타순 이동"이 신호가 된다.
+    """
+    NAME_REGISTRY.update(n for n in names if n and "-" in n)
+    return len(NAME_REGISTRY)
+
+
+def rejoin_hyphenated(raw: list[str], known=None) -> list[str]:
+    """사전에 없는 조각을 다음 조각과 붙여 실명을 복원한다.
+
+    사전이 비어 있으면 **손대지 않는다.** 추측으로 이름을 만들지 않는다.
+    """
+    names = NAME_REGISTRY if known is None else known
+    if not names:
+        return raw
+    out: list[str] = []
+    i = 0
+    while i < len(raw):
+        tok = raw[i]
+        if i + 1 >= len(raw):
+            out.append(tok)
+            break
+        merged = f"{tok}-{raw[i + 1]}"
+        if merged in names or _strip_pos(merged) in names:
+            out.append(merged)
+            i += 2
+        else:
+            out.append(tok)
+            i += 1
+    return out
+
+
+def _strip_pos(name: str) -> str:
+    return re.sub(r"\([^)]*\)\s*$", "", str(name or "")).strip()
+
+
+def parse_order(text: str | list | None, known=None) -> list[tuple[str, str]]:
     """`"이름(포지션)-이름(포지션)"` → [(이름, 포지션), ...].
 
     포지션이 없는 소스(구형 크롤러·MLB)도 받는다 — 그때는 포지션이 빈 문자열이다.
+    ⚠️ 문자열을 자를 때 **하이픈 이름을 다시 붙인다** (`rejoin_hyphenated`).
+       목록으로 들어오면 이미 갈라져 있지 않으므로 손대지 않는다.
     """
     if isinstance(text, str) and text.strip().startswith("["):
         try:
             text = json.loads(text)
         except ValueError:
             pass
-    items = text if isinstance(text, list) else (text or "").split("-")
+    if isinstance(text, list):
+        items = text
+    else:
+        items = rejoin_hyphenated(
+            [x for x in (text or "").split("-") if x.strip()], known)
     out = []
     for raw in items:
         s = str(raw).strip()

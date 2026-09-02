@@ -921,6 +921,14 @@ def analysis_cache_ready(raw: str | None, date: str) -> bool:
 #   5분 폴링마다 돌면 Sonnet 6~15콜 × 하루 100틱이 된다.
 _RESCUE_KEY = "analysis:rescue:{sport}:{date}"
 _RESCUE_TTL = 20 * 3600
+#: 구제 **실패** 재시도. 성공은 하루 1회지만 실패는 다시 시도해야 한다.
+#  🔴 실측 2026-09-02: `set(nx=True)` 를 **시도 전에** 걸어, 파이프라인이
+#     실패해도 토큰이 20시간 잠겼다. 그날 그 종목은 통째로 침묵한다 —
+#     이 함수가 막으려던 바로 그 사고를 이 가드가 다시 만들고 있었다.
+#     성공하면 하루 잠그고, 실패하면 5분 뒤 다시 — 최대 3회.
+_RESCUE_FAIL_KEY = "analysis:rescue:fail:{sport}:{date}"
+_RESCUE_RETRY_SEC = 5 * 60
+_RESCUE_MAX_TRIES = 3
 
 
 async def ensure_analysis_cache(pool, redis, sport: str, date: str) -> bool:
@@ -944,10 +952,24 @@ async def ensure_analysis_cache(pool, redis, sport: str, date: str) -> bool:
     if analysis_cache_ready(raw, date):
         return True
     key = _RESCUE_KEY.format(sport=sport, date=date)
+    fail_key = _RESCUE_FAIL_KEY.format(sport=sport, date=date)
+    tries = 0
     try:
-        if not await redis.set(key, "1", ex=_RESCUE_TTL, nx=True):
-            logger.info("[pipeline] analysis 구제 이미 시도함 — %s %s 생략",
-                        sport, date)
+        # 🔴 **성공 잠금**만 하루짜리다. 여기서 걸리면 이미 구제가 성공했다.
+        if await redis.get(key):
+            logger.info("[pipeline] analysis 구제 완료됨 — %s %s 생략", sport, date)
+            return False
+        # 실패 재시도는 5분 간격 · 최대 3회. 진행 중 중복 실행은 막는다.
+        tries = int(await redis.get(fail_key) or 0)
+        if tries >= _RESCUE_MAX_TRIES:
+            logger.warning("[pipeline] analysis 구제 %d회 실패 — %s %s 포기",
+                           tries, sport, date)
+            await _alert_rescue_dead(sport, date, tries)
+            return False
+        if not await redis.set(f"{fail_key}:lock", "1",
+                               ex=_RESCUE_RETRY_SEC, nx=True):
+            logger.info("[pipeline] analysis 구제 대기 중(5분 간격) — %s %s "
+                        "시도 %d/%d", sport, date, tries, _RESCUE_MAX_TRIES)
             return False
     except Exception as exc:      # redis 실패가 구제를 막지 않는다
         logger.warning("[pipeline] 구제 가드 실패(계속 진행) %s: %s", sport, exc)
@@ -962,15 +984,50 @@ async def ensure_analysis_cache(pool, redis, sport: str, date: str) -> bool:
         await run_pipeline(pool, redis, sport=sport, date=date,
                            force_refresh=True, sequential_research=True)
     except Exception as exc:
-        logger.warning("[pipeline] analysis 캐시 생성 실패 %s %s: %s",
-                       sport, date, exc)
+        logger.warning("[pipeline] analysis 캐시 생성 실패 %s %s (시도 %d/%d): %s",
+                       sport, date, tries + 1, _RESCUE_MAX_TRIES, exc)
+        await _mark_rescue_failed(redis, sport, date, tries + 1, repr(exc)[:200])
         return False
     raw = await redis.get(f"analysis:{sport}:{date}")
     ready = analysis_cache_ready(raw, date)
     if not ready:
-        logger.warning("[pipeline] analysis 캐시 재생성 후에도 당일 판정 없음 — %s %s",
-                       sport, date)
-    return ready
+        logger.warning("[pipeline] analysis 캐시 재생성 후에도 당일 판정 없음 — "
+                       "%s %s (시도 %d/%d)", sport, date, tries + 1,
+                       _RESCUE_MAX_TRIES)
+        await _mark_rescue_failed(redis, sport, date, tries + 1, "판정 0건")
+        return False
+    # 성공했을 때만 하루 잠근다.
+    try:
+        await redis.set(key, "1", ex=_RESCUE_TTL)
+        await redis.delete(fail_key)
+    except Exception as exc:
+        logger.debug("[pipeline] 구제 성공 표시 실패 %s: %s", sport, exc)
+    return True
+
+
+async def _mark_rescue_failed(redis, sport: str, date: str, tries: int,
+                              detail: str) -> None:
+    """실패 횟수를 올린다. 3회째면 경보 — 조용히 포기하지 않는다."""
+    try:
+        await redis.set(_RESCUE_FAIL_KEY.format(sport=sport, date=date),
+                        str(tries), ex=_RESCUE_TTL)
+    except Exception as exc:
+        logger.debug("[pipeline] 구제 실패 기록 실패 %s: %s", sport, exc)
+    if tries >= _RESCUE_MAX_TRIES:
+        await _alert_rescue_dead(sport, date, tries, detail)
+
+
+async def _alert_rescue_dead(sport: str, date: str, tries: int,
+                             detail: str = "") -> None:
+    try:
+        from app.alerts import watchdog
+
+        await watchdog("W-RESCUE-DEAD",
+                       f"{sport.upper()} {date} 판정 캐시 구제 {tries}회 실패 — "
+                       f"이 종목은 오늘 카드가 나가지 않는다"
+                       + (f" ({detail})" if detail else ""))
+    except Exception as exc:
+        logger.warning("[pipeline] 구제 경보 실패 %s: %s", sport, exc)
 
 
 def starter_change_notes(research: dict, before: dict) -> list[str]:

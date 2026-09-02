@@ -48,8 +48,30 @@ def _p_of(row) -> float | None:
     return float(p) if predicted_side(row["favored"], p) == "home" else 1.0 - float(p)
 
 
+async def dispatch_lines(redis, sports: tuple[str, ...], date: str) -> list[str]:
+    """[운영 안정화 1] 종목별 발송률 줄. 재료가 없으면 빈 목록.
+
+    ⚠️ **"조용한 0"은 결함이다.** 미발송이 있으면 전건에 사유가 붙는다.
+       MLB 는 슬레이트 날짜가 미 동부 기준이라 KST 날짜와 다르다 —
+       종목마다 제 날짜로 조회한다.
+    """
+    from app.engine.dispatch_stats import render, summary
+
+    out: list[str] = []
+    for sp in sports:
+        if sp not in ("mlb", "kbo", "npb"):
+            continue
+        d = date
+        if sp == "mlb":
+            from app.pipeline import mlb_slate_date
+
+            d = mlb_slate_date()
+        out += render(await summary(redis, sp, d), _SPORT_KR.get(sp, sp))
+    return out
+
+
 async def build(pool, sports: tuple[str, ...], title: str, date: str,
-                *, window_hours: int = 18) -> str:
+                *, window_hours: int = 18, redis=None) -> str:
     """요약 카드 1장. 판정이 없으면 그 사실을 말한다 — 빈 카드를 보내지 않는다.
 
     🔴 **날짜가 아니라 킥오프로 고른다.** 종전에는 `l.date = today_kst()`로
@@ -104,8 +126,12 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str,
         else:
             board.append(name)
     if not rows:
-        return (f"{title}\n\n오늘 픽 없음 — 판정된 경기가 없습니다.\n"
+        head = (f"{title}\n\n오늘 픽 없음 — 판정된 경기가 없습니다.\n"
                 f"({'·'.join(_SPORT_KR.get(s, s) for s in sports)})")
+        # 🔴 픽이 없는 날일수록 **왜 없는지**가 중요하다. 가동률을 함께 낸다 —
+        #    "판정된 경기가 없다"만 보내면 고장과 한산한 날을 구분할 수 없다.
+        dl = await dispatch_lines(redis, sports, date)
+        return head + ("\n\n" + "\n".join(dl) if dl else "")
     out = [title, ""]
     if edge:
         out.append(f"🎯 엣지 {len(edge)}건:")
@@ -126,5 +152,8 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str,
         tail.append(f"⏳ 잠정 {len(prov)}건: {' · '.join(prov)}")
     if tail:
         out += [""] + tail
+    dl = await dispatch_lines(redis, sports, date)
+    if dl:
+        out += [""] + dl
     out += ["", TICKET_RULE]
     return "\n".join(out)

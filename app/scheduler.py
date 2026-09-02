@@ -245,11 +245,18 @@ async def _send_daily_summary(sports, title: str) -> None:
     from app.notify import send_telegram
     from app.pipeline import today_kst
 
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
     try:
-        text = await build(await get_pool(), tuple(sports), title, today_kst())
+        text = await build(await get_pool(), tuple(sports), title, today_kst(),
+                           redis=redis)
     except Exception as exc:
         logger.exception("[daily-summary] 집계 실패: %s", exc)
         return
+    finally:
+        try:
+            await redis.aclose()
+        except Exception as exc:      # 닫기 실패가 요약을 막지 않는다
+            logger.debug("[daily-summary] redis 닫기 실패: %s", exc)
     if not text:
         logger.warning("[daily-summary] 빈 카드 — 발송 생략")
         return
@@ -1064,10 +1071,86 @@ async def startup_backfill_job() -> None:
                 logger.warning("[appearances] 🔴 pitcher_appearances 가 비어 있다")
         except Exception as exc:
             logger.warning("[appearances] 조회 실패: %s", exc)
+        # [운영 안정화 3c·4] 기동 시 1회 소급 진단 — 운영 Redis·DB 는 밖에서
+        #   못 읽는다. "며칠째 배당이 죽어 있었나", "타순이 몇 건 오염됐나"는
+        #   서버가 스스로 말해야 한다.
+        await _startup_forensics(pool, redis)
     except Exception as exc:
         logger.exception("[scheduler] 레저 백필 실패 — 운영은 계속: %s", exc)
     finally:
         await redis.aclose()
+
+
+async def _startup_forensics(pool, redis) -> None:
+    """기동 시 1회 소급 진단. **읽기만 한다** — 아무것도 고치지 않는다.
+
+    ① API 차단 상태와 그 시작 시각 (배당이 며칠째 멈춰 있었는가)
+    ② 배당 스냅샷 최신 시각 · 가치 게이트가 무력화된 기간
+    ③ 하이픈 이름으로 오염됐던 타순 이력 건수
+    """
+    from datetime import datetime as _dt
+
+    # ① 차단 상태
+    try:
+        from app.api_guard import block_info
+
+        for name in ("odds", "anthropic", "perplexity", "grok"):
+            info = await block_info(name)
+            if not info:
+                continue
+            at = info.get("at") or ""
+            days = ""
+            try:
+                days = f" · {(_dt.now(UTC) - _dt.fromisoformat(at)).days}일째"
+            except Exception:
+                days = ""
+            logger.error("[forensics] 🔴 %s 차단 중 — %s 부터%s (사유=%s) "
+                         "TTL 없음: 키 교체 또는 clear_block 전까지 안 풀린다",
+                         name, at[:19], days, info.get("reason"))
+    except Exception as exc:
+        logger.warning("[forensics] 차단 조회 실패: %s", exc)
+
+    # ② 배당 적재가 언제 멈췄나 — 가치 게이트 무력화 기간의 근거
+    try:
+        row = await pool.fetchrow(
+            "SELECT max(captured_at) AS last, count(*) AS n FROM odds_snapshots")
+        if row and row["last"]:
+            age = (_dt.now(UTC) - row["last"]).total_seconds() / 3600
+            level = logger.error if age > 6 else logger.info
+            level("[forensics] 배당 스냅샷 최신 %s (%.1f시간 전) · 총 %s행 — "
+                  "이 기간 가치 게이트는 배당 없이 확률만으로 동작했다",
+                  row["last"], age, row["n"])
+        else:
+            logger.error("[forensics] 🔴 odds_snapshots 가 비어 있다")
+    except Exception as exc:
+        logger.warning("[forensics] 배당 적재 조회 실패: %s", exc)
+
+    # ③ 하이픈 이름 오염 — 저장된 타순 배열이 9명이 아닌 행이 몇 건인가.
+    #    `Pete Crow-Armstrong` 이 두 조각으로 갈려 들어가면 길이가 10이 된다.
+    #    그 라인업은 슬롯이 통째로 밀려 가짜 '타순 이동'을 만들었다.
+    for table, ts in (("lineup_events", "observed_at"), ("lineups", "captured_at")):
+        try:
+            rows = await pool.fetch(
+                f"""SELECT g.sport,
+                           count(*) AS bad,
+                           min(l.{ts}) AS first_seen,
+                           max(l.{ts}) AS last_seen
+                      FROM {table} l JOIN games g ON g.id = l.game_id
+                     WHERE l.batting_order IS NOT NULL
+                       AND jsonb_typeof(l.batting_order) = 'array'
+                       AND jsonb_array_length(l.batting_order) <> 9
+                     GROUP BY g.sport ORDER BY g.sport""")
+            if rows:
+                for r in rows:
+                    logger.error("[forensics] 🔴 %s %s — 타순 길이 ≠ 9 인 행 %s건 "
+                                 "(%s ~ %s). 이 라인업은 슬롯이 밀려 가짜 "
+                                 "'타순 이동'이 라인업 의도·T5 로 흘렀다",
+                                 table, r["sport"], r["bad"],
+                                 str(r["first_seen"])[:16], str(r["last_seen"])[:16])
+            else:
+                logger.info("[forensics] %s 타순 길이 이상 0건", table)
+        except Exception as exc:
+            logger.warning("[forensics] %s 조회 실패: %s", table, exc)
 
 
 # ⚠️ 아래도 **1회성 코드다.** 축구 라인업 리드타임·레이트리밋을 하룻밤 재기 위한
@@ -1117,6 +1200,29 @@ async def soccer_lineup_probe_job() -> None:
         raise
     except Exception as exc:
         logger.exception("[soccer-probe] 실패 — 스케줄러는 계속: %s", exc)
+
+
+async def watchdog_job() -> None:
+    """[운영 안정화 2] 5분마다 고장 점검 — 사람이 먼저 발견하는 고장 0건이 목표.
+
+    ⚠️ 워치독 실패는 **경보를 못 보내게 만든다.** 예외를 밖으로 던지지 않고
+       로그만 남긴다 — 잡 실패 알림 회로 자체가 이 잡에 의존하지 않는다.
+    """
+    from app.watchdog import run
+
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        pool = None
+        try:
+            pool = await get_pool()
+        except Exception as exc:
+            logger.warning("[watchdog] DB 연결 실패(나머지 점검은 계속): %s", exc)
+        return await run(pool, redis)
+    except Exception as exc:
+        logger.exception("[watchdog] 점검 자체가 실패: %s", exc)
+        return None
+    finally:
+        await redis.aclose()
 
 
 async def heartbeat_job() -> None:
@@ -1202,6 +1308,7 @@ def _job_specs() -> list[tuple]:
         # 21:00 슬롯에 넣으면 당일 경기는 이미 끝나 있다.
         ("prefetch_asia", prefetch_asia_job,
          CronTrigger(hour=14, minute=0, timezone=KST)),
+        ("watchdog_5m", watchdog_job, IntervalTrigger(minutes=5)),
         ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
         ("ingest_finals_13h", finals_job, CronTrigger(hour=13, minute=0, timezone=KST)),
         # [축구 시범 운영] 10분마다 — T-3h 판정 · confirmed 재판정.
