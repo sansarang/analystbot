@@ -25,6 +25,9 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
+
+KST = ZoneInfo("Asia/Seoul")
 
 logger = logging.getLogger(__name__)
 
@@ -38,16 +41,35 @@ JOB_LATE_FACTOR = 2
 LLM_FAIL_KEY = "watchdog:llm_fail"
 ODDS_SNAP_KEY = "oddsnap:{}"
 
-#: 무료 전환 후 살아 있어야 하는 배당 소스.
-#  ⚠️ `sharp` 는 키가 없으면 비활성이라 여기 넣지 않는다 — 끈 것을 고장이라고
-#     울리는 것이 오탐의 가장 흔한 원인이다.
-ACTIVE_PROVIDERS = ("espn", "betman")
+#: 무료 전환 후 **실제로 동작하는** 배당 소스만 감시한다.
+#  🔴 여기에 "아직 안 되는 것"을 넣으면 15분마다 영원히 울린다.
+#     실사고 2026-09-02 13:38: `betman` 을 넣었더니 첫 틱부터
+#     "최근 7일간 적재 0건"이 울렸다 — 사실이지만 **고장이 아니다.**
+#     배트맨은 엔드포인트가 막혀 수집기가 아직 붙지 않았다(evidence/OPEN.md).
+#     끄거나 미구현인 것을 고장이라고 울리는 것이 오탐의 가장 흔한 원인이다.
+#  ⚠️ `sharp` 도 키가 없으면 비활성이라 넣지 않는다.
+#  ⚠️ 배트맨 수집기가 붙으면 여기에 `"betman"` 을 더한다 — 그때가 감시할 때다.
+ACTIVE_PROVIDERS = ("espn",)
 
-#: 주기가 있는 잡만 본다 — 하루 1회 잡은 여기서 판단하지 않는다(오탐 원천).
+#: 자주 도는 잡만 본다 — 하루 1회 잡은 여기서 판단하지 않는다(오탐 원천).
+#  🔴 값은 **유예(분)** 이지 주기가 아니다. 다음 실행 시각은 **실제 트리거**에서
+#     계산한다 — 주기를 여기 손으로 적으면 트리거와 어긋나 오탐이 난다.
+#
+#  실사고 2026-09-02 (배포 당일 첫 경보 2건이 전부 오탐):
+#    · `mlb_pregame_5m` 은 `CronTrigger(hour="5-11")` 이다. 12:40 KST 에
+#      "마지막 실행 46분 전"은 **정상**이다 — 창이 11:59 에 닫혔다.
+#      그런데 5분 인터벌로 가정해 "주기 2배 초과"로 울렸다.
+#    · `research_retry_45m` 은 13:29·13:33 **재기동** 직후였다. APScheduler
+#      인메모리 잡스토어는 기동 시 초기화돼 첫 실행이 한 주기 뒤다.
+#      Redis 의 재기동 전 기록과 비교하면 언제나 "늦음"으로 보인다.
 WATCHED_JOBS = {
-    "heartbeat_2m": 2, "mlb_pregame_5m": 5, "asia_pregame_5m": 5,
-    "odds_snapshot_30m": 30, "lineup_poll_30m": 30, "research_retry_45m": 45,
+    "heartbeat_2m": 4, "mlb_pregame_5m": 10, "asia_pregame_5m": 10,
+    "npb_pregame_2m": 6, "odds_snapshot_30m": 35, "lineup_poll_30m": 35,
+    "research_retry_45m": 50,
 }
+
+#: 재기동 직후 유예. 인메모리 잡스토어가 초기화돼 첫 실행이 한 주기 뒤다.
+BOOT_GRACE_MIN = 60
 
 
 async def note_llm_failure(redis, detail: str = "") -> int:
@@ -160,18 +182,54 @@ async def check_store(pool, redis) -> list[tuple[str, str, str]]:
     return out
 
 
+def _next_expected(job_id: str, after: datetime):
+    """마지막 실행 이후 **트리거가 말하는** 다음 실행 시각. 모르면 None.
+
+    🔴 주기를 손으로 적지 않는다. cron 창(예: `hour="5-11"`)이든 인터벌이든
+       트리거가 정답을 안다 — 이 함수가 오탐 방지의 핵심이다.
+    """
+    try:
+        from app.scheduler import _JOB_TRIGGERS
+
+        trig = _JOB_TRIGGERS.get(job_id)
+        if trig is None:
+            return None
+        return trig.get_next_fire_time(after, after)
+    except Exception as exc:
+        logger.debug("[watchdog] 트리거 조회 실패 %s: %s", job_id, exc)
+        return None
+
+
+def _booted_recently(now: datetime) -> bool:
+    """이 프로세스가 방금 떴는가. 재기동 직후 경보를 막는다."""
+    try:
+        from app.version import boot_info
+
+        started = boot_info().started_at
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=UTC)
+        return (now - started) < timedelta(minutes=BOOT_GRACE_MIN)
+    except Exception as exc:
+        logger.debug("[watchdog] 기동 시각 조회 실패: %s", exc)
+        return False
+
+
 async def check_jobs(redis) -> list[tuple[str, str, str]]:
-    """(e) 잡별 마지막 실행이 주기의 2배를 넘겼는가."""
+    """(e) 잡이 **트리거가 말하는 다음 실행**을 지나도 안 돌았는가."""
     from app.health import _job_runs
 
+    now = datetime.now(UTC)
+    if _booted_recently(now):
+        logger.debug("[watchdog] 기동 %d분 유예 — 잡 지연 판정 생략",
+                     BOOT_GRACE_MIN)
+        return []
     try:
         runs = await _job_runs(redis)
     except Exception as exc:
         logger.debug("[watchdog] 잡 실행 조회 실패: %s", exc)
         return []
-    now = datetime.now(UTC)
     out = []
-    for job_id, period in WATCHED_JOBS.items():
+    for job_id, grace in WATCHED_JOBS.items():
         row = runs.get(job_id)
         if not row:
             continue          # 한 번도 안 돈 잡은 판단하지 않는다 (기동 직후 오탐)
@@ -179,11 +237,18 @@ async def check_jobs(redis) -> list[tuple[str, str, str]]:
             at = datetime.fromisoformat(row["at"])
         except (KeyError, ValueError):
             continue
-        late = now - at
-        if late > timedelta(minutes=period * JOB_LATE_FACTOR):
+        if at.tzinfo is None:
+            at = at.replace(tzinfo=UTC)
+        expected = _next_expected(job_id, at)
+        if expected is None:
+            continue          # 트리거를 모르면 판단하지 않는다 — 추측 금지
+        if expected.tzinfo is None:
+            expected = expected.replace(tzinfo=UTC)
+        overdue = (now - expected).total_seconds() / 60
+        if overdue > grace:
             out.append(("W-JOB-LATE", job_id,
-                        f"마지막 실행 {late.total_seconds() / 60:.0f}분 전 "
-                        f"(주기 {period}분)"))
+                        f"예정 {expected.astimezone(KST):%H:%M} KST 를 "
+                        f"{overdue:.0f}분 지났다 (유예 {grace}분)"))
     return out
 
 

@@ -227,10 +227,10 @@ def test_stale_is_judged_per_provider():
 
     class FakePool:
         async def fetch(self, *a, **k):
-            return [{"provider": "espn", "age": 5.0}]      # 배트맨은 아예 없음
+            return [{"provider": "espn", "age": 999.0}]    # ESPN 이 낡았다
 
     found = asyncio.run(wd.check_odds(FakePool(), FakeRedis()))
-    assert [(c, t) for c, t, _ in found] == [("W-ODDS-STALE", "betman")]
+    assert [(c, t) for c, t, _ in found] == [("W-ODDS-STALE", "espn")]
 
 
 def test_store_down_is_detected_by_a_real_roundtrip():
@@ -243,23 +243,29 @@ def test_store_down_is_detected_by_a_real_roundtrip():
     assert found and found[0][0] == "W-STORE-DOWN" and found[0][1] == "redis"
 
 
-def test_job_late_uses_period_multiple():
-    """주기 2배를 넘겨야 늦은 것 — 조금 늦었다고 울리지 않는다."""
-    from app.health import JOB_RUN_KEY
-    from app.watchdog import check_jobs
+def test_job_late_uses_the_real_trigger(monkeypatch):
+    """유예 안이면 조용하고, 넘기면 울린다 — 판단 기준은 **실제 트리거**다."""
+    import json
 
+    from apscheduler.triggers.interval import IntervalTrigger
+
+    from app import watchdog as wd
+    from app.health import JOB_RUN_KEY
+
+    monkeypatch.setattr(wd, "_booted_recently", lambda now: False)
+    monkeypatch.setattr("app.scheduler._JOB_TRIGGERS",
+                        {"heartbeat_2m": IntervalTrigger(minutes=2)},
+                        raising=False)
     r = FakeRedis()
 
     async def go(minutes_ago):
-        import json
-
         at = (datetime.now(UTC) - timedelta(minutes=minutes_ago)).isoformat()
         r.h[JOB_RUN_KEY] = {"heartbeat_2m": json.dumps({"at": at, "ok": True})}
-        return await check_jobs(r)
+        return await wd.check_jobs(r)
 
-    assert asyncio.run(go(3)) == [], "주기 2분 × 2배 = 4분 이내면 정상"
-    found = asyncio.run(go(30))
-    assert found and found[0][0] == "W-JOB-LATE" and found[0][1] == "heartbeat_2m"
+    assert asyncio.run(go(3)) == [], "유예 4분 안이면 정상"
+    found = asyncio.run(go(60))
+    assert found and found[0][:2] == ("W-JOB-LATE", "heartbeat_2m")
 
 
 def test_never_run_job_is_not_late():
@@ -524,3 +530,73 @@ def test_npb_two_minute_job_shares_the_same_window_gate():
     assert "npb_pregame_2m" in specs and "asia_pregame_5m" in specs
     assert isinstance(specs["npb_pregame_2m"][2], IntervalTrigger)
     assert isinstance(specs["asia_pregame_5m"][2], IntervalTrigger)
+
+
+# ─────────────────── 오탐 정리 (2026-09-02 실경보) ───────────────────
+
+def test_cron_windowed_job_is_not_late_outside_its_window(monkeypatch):
+    """🔴 실사고 2026-09-02 12:40: `mlb_pregame_5m` 은 `CronTrigger(hour="5-11")`
+    이다. 12:40 KST 에 "마지막 실행 46분 전"은 **정상**인데 5분 인터벌로
+    가정해 울렸다. 주기를 손으로 적으면 트리거와 어긋난다.
+    """
+    import json
+
+    from apscheduler.triggers.cron import CronTrigger
+
+    from app import watchdog as wd
+    from app.health import JOB_RUN_KEY
+
+    monkeypatch.setattr(wd, "_booted_recently", lambda now: False)
+    monkeypatch.setattr(
+        "app.scheduler._JOB_TRIGGERS",
+        {"mlb_pregame_5m": CronTrigger(hour="5-11", minute="*/5", timezone=wd.KST)},
+        raising=False)
+    r = FakeRedis()
+    # 마지막 실행 11:55 KST, 지금 12:40 KST → 다음 예정은 **내일 05:00** 이다
+    last = datetime(2026, 9, 2, 2, 55, tzinfo=UTC)      # 11:55 KST
+    r.h[JOB_RUN_KEY] = {"mlb_pregame_5m": json.dumps({"at": last.isoformat(),
+                                                      "ok": True})}
+    assert asyncio.run(wd.check_jobs(r)) == [], "창 밖인데 울리면 오탐이다"
+
+
+def test_interval_job_still_alerts_when_genuinely_stuck(monkeypatch):
+    """오탐을 없애느라 진짜 고장을 놓치면 안 된다."""
+    import json
+
+    from apscheduler.triggers.interval import IntervalTrigger
+
+    from app import watchdog as wd
+    from app.health import JOB_RUN_KEY
+
+    monkeypatch.setattr(wd, "_booted_recently", lambda now: False)
+    monkeypatch.setattr("app.scheduler._JOB_TRIGGERS",
+                        {"heartbeat_2m": IntervalTrigger(minutes=2)},
+                        raising=False)
+    r = FakeRedis()
+    stale = datetime.now(UTC) - timedelta(hours=3)
+    r.h[JOB_RUN_KEY] = {"heartbeat_2m": json.dumps({"at": stale.isoformat(),
+                                                    "ok": True})}
+    found = asyncio.run(wd.check_jobs(r))
+    assert found and found[0][:2] == ("W-JOB-LATE", "heartbeat_2m")
+
+
+def test_restart_grace_suppresses_the_first_hour(monkeypatch):
+    """🔴 실사고 2026-09-02 13:05: 재기동 직후 `research_retry_45m` 이 울렸다.
+
+    APScheduler 인메모리 잡스토어는 기동 시 초기화돼 첫 실행이 한 주기 뒤다.
+    Redis 의 재기동 전 기록과 비교하면 언제나 "늦음"으로 보인다.
+    """
+    from app import watchdog as wd
+
+    monkeypatch.setattr(wd, "_booted_recently", lambda now: True)
+    assert asyncio.run(wd.check_jobs(FakeRedis())) == []
+
+
+def test_unimplemented_source_is_not_watched():
+    """🔴 실사고 2026-09-02 13:38: 배트맨은 수집기가 아직 없는데 감시 목록에
+    있어 15분마다 영원히 울렸다. 사실이지만 **고장이 아니다.**"""
+    from app.watchdog import ACTIVE_PROVIDERS
+
+    assert "betman" not in ACTIVE_PROVIDERS
+    assert "sharp" not in ACTIVE_PROVIDERS, "키 없으면 비활성 — 감시 대상 아님"
+    assert "espn" in ACTIVE_PROVIDERS
