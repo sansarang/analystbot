@@ -588,9 +588,9 @@ def test_rejudge_window_is_wider_than_full_analysis_for_npb():
     #    경량까지 하나로 둔다. NPB 의 이원화는 공시가 T-30 이라 15분 창이
     #    너무 좁다는 실측에서 나온 것이라 **NPB 에만** 남긴다.
     assert rejudge_open("kbo", now + timedelta(minutes=1), now) is False
-    assert rejudge_open("kbo", now + timedelta(minutes=16), now) is True
-    assert rejudge_open("kbo", now + timedelta(minutes=15), now) is False
-    assert analysis_open("kbo", now + timedelta(minutes=15), now) is False
+    assert rejudge_open("kbo", now + timedelta(minutes=21), now) is True
+    assert rejudge_open("kbo", now + timedelta(minutes=20), now) is False
+    assert analysis_open("kbo", now + timedelta(minutes=20), now) is False
     # MLB 는 마감선 없음 — 라인업 공시가 T-180 이라 사정이 다르다
     assert rejudge_open("mlb", now + timedelta(minutes=1), now) is True
     # 이미 시작한 경기는 어느 창도 열지 않는다

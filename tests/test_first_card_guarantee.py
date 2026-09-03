@@ -143,7 +143,7 @@ def test_rejudge_path_is_unchanged():
     assert rejudge_open("npb", _at(12), NOW) is True         # NPB 경량은 T-10
     # [2026-09-03] KBO 도 T-15 마감. 보장선(T-30)과는 별개다 —
     #   보장선은 **첫 카드**, 이건 **재판정**이다.
-    assert rejudge_open("kbo", _at(16), NOW) is True
+    assert rejudge_open("kbo", _at(21), NOW) is True
     assert rejudge_open("kbo", _at(5), NOW) is False
 
 
@@ -179,3 +179,30 @@ def test_watchdog_reads_the_line_from_source_not_a_copy():
                      if not l.lstrip().startswith(("#", '"""', "⚠️", "🔴")))
     assert "T-30" not in code and "30" not in code.replace("2026-09-03", ""), \
         "보장선 숫자를 코드에 박았다"
+
+
+def test_kbo_cutoff_is_derived_from_the_arrival_target():
+    """🔴 마감선은 **도착 목표에서 유도**된 값이다 — 마법 숫자가 아니다.
+
+    사용자 결정 2026-09-03(B안): 수정 카드가 **T-15 에 손에 있어야** 한다.
+    마감선은 "재판정을 시작할 수 있는 마지막 시점"이라 도착 시각이 아니다 —
+    카드 도착 = 폴링 틱 + 재판정 소요. 그래서 예산만큼 앞당긴다.
+    """
+    from app.engine.pregame_push import (
+        CARD_IN_HAND_MIN, KBO_FINISH_MIN, REJUDGE_BUDGET_MIN,
+        REJUDGE_FINISH_MIN,
+    )
+
+    assert CARD_IN_HAND_MIN == 15
+    assert KBO_FINISH_MIN == CARD_IN_HAND_MIN + REJUDGE_BUDGET_MIN == 20
+    assert REJUDGE_FINISH_MIN["kbo"] == KBO_FINISH_MIN
+    # NPB 는 요청 밖이다 — 종전 이원화를 유지한다
+    assert REJUDGE_FINISH_MIN["npb"] == 10
+
+
+def test_kbo_full_and_light_share_one_line():
+    """KBO 는 풀·경량이 **같은 선**이다 — 갈리면 도착 보장이 깨진다."""
+    from app.engine.pregame_push import ANALYSIS_FINISH_MIN, REJUDGE_FINISH_MIN
+
+    assert ANALYSIS_FINISH_MIN["kbo"] == REJUDGE_FINISH_MIN["kbo"]
+    assert ANALYSIS_FINISH_MIN["npb"] != REJUDGE_FINISH_MIN["npb"]   # NPB 는 갈린다
