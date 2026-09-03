@@ -377,8 +377,16 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #   주입률이 갈리던 것을 잡는다 — 2026-09-02 카드 2장이 "자료8 부재"라
     #   적었는데 로그는 매칭 18/18 이었다.
     _m8 = lineup_season_payload(jg)
-    logger.info("[materials] game=%s 자료8=%s slots=%d 자료9=%s",
-                jg.get("game_id"), "Y" if _m8 else "N", len(_m8),
+    # ⚠️ [2026-09-03] 자료3 은 **타순 9명이 있을 때만** Y 다.
+    #    `lineups_payload` 는 선발투수 키를 항상 넣어 dict 가 비지 않는다 —
+    #    비어있음으로 재면 타순이 없어도 Y 가 나온다(리허설에서 확인:
+    #    `자료8=N slots=0` 인데 자료3=Y). 로그·계측만 고친다. 조립은 불변.
+    _m3 = lineups_payload(jg)
+    _slots = min(len((( _m3.get(side) or {}).get("타순") or []))
+                 for side in ("home", "away")) if _m3 else 0
+    logger.info("[materials] game=%s 자료3=%s(타순 %d명) 자료8=%s slots=%d 자료9=%s",
+                jg.get("game_id"), "Y" if _slots >= 9 else "N", _slots,
+                "Y" if _m8 else "N", len(_m8),
                 "Y" if bullpen_payload(jg) else "N")
     # 같은 사실을 일일 요약이 읽을 수 있게 센다. 세기만 한다 — 이 결과는
     #   프롬프트에도 판정에도 되돌아가지 않는다.

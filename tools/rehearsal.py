@@ -123,8 +123,13 @@ OK_TO_BE_EMPTY = ("3타순", "8타선시즌")
 def material_flags(jg: dict) -> dict[str, bool]:
     from app.engine import matchup as M
 
+    # ⚠️ 자료3 은 **타순 9명** 기준이다. dict 가 비었는지로 재면 거짓 Y 가
+    #    나온다 — `lineups_payload` 가 선발투수 키를 항상 넣기 때문이다.
+    m3 = M.lineups_payload(jg)
+    slots = min(len(((m3.get(s_) or {}).get("타순") or []))
+                for s_ in ("home", "away")) if m3 else 0
     return {"1박스": bool(M.boxscore_payload(jg)),
-            "3타순": bool(M.lineups_payload(jg)),
+            "3타순": slots >= 9,
             "7선발시즌": bool(M.starters_season_payload(jg)),
             "8타선시즌": bool(M.lineup_season_payload(jg)),
             "9불펜": bool(M.bullpen_payload(jg))}
