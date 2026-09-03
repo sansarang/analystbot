@@ -73,24 +73,46 @@ async def dispatch_lines(redis, sports: tuple[str, ...], date: str) -> list[str]
 #: 설계 동결 해제 조건 — 리그별 채점 완료 건수.
 FREEZE_TARGET = 50
 
+#: 리그별 **집계 시작 슬레이트**. 판정 입력이 실질적으로 바뀐 날 이후만 센다 —
+#  재료가 다른 판정을 같은 표본에 섞으면 50건을 채워도 무엇의 성적인지 모른다.
+#
+#  기본 `2026-09-03` 은 v1.3 동결 시작일이다.
+#  ⚠️ **MLB 만 근거가 다르다.** 09-03 슬레이트부터인 것은 같지만 이유가
+#     "동결 시작"이 아니라 **자료9(불펜) 주입 개시**다. 자료9 수집기는
+#     `5cd2ba8`(2026-09-03 08:59 KST)에 태어났고, 그 시각 이전에 판정이 끝난
+#     MLB 슬레이트 `2026-09-02` 는 불펜 없이 판정됐다(카드가 "불펜 자료가
+#     없어…"라고 직접 적었다). 재료가 다르므로 같은 표본에 넣지 않는다.
+#  ⚠️ MLB 의 `date` 는 **미 동부 슬레이트 날짜**다(KST 날짜가 아니다).
+#     슬레이트 2026-09-03 의 판정은 전부 위 배포 이후에 일어난다.
+#  ⚠️ KBO·NPB 는 무관하다 — 두 리그는 이미 자료9 를 갖고 있었다.
+FREEZE_START = {"mlb": "2026-09-03"}
+FREEZE_START_DEFAULT = "2026-09-03"
+
+
+def freeze_start(sport: str) -> str:
+    """이 리그의 집계 시작 슬레이트 날짜."""
+    return FREEZE_START.get(sport, FREEZE_START_DEFAULT)
+
 
 async def freeze_progress_lines(pool, sports: tuple[str, ...]) -> list[str]:
     """[v1.3 D] `리그별 graded 누적 N/50` — 설계 동결 해제까지의 진행률.
 
     🔴 표본이 없으면 무엇을 고쳐야 할지 알 수 없다. 고치면 그때까지 쌓은
        표본이 통째로 무효가 된다 — 그래서 50건까지 손대지 않는다.
-    ⚠️ **2026-09-03 슬레이트부터 센다.** 그 전 기록은 판정 설계가 계속
-       바뀌던 구간이라 같은 시스템의 성적이 아니다.
+    ⚠️ **집계 시작일은 리그마다 다르다** — `FREEZE_START` 가 원본이다.
+       그 전 기록은 재료나 설계가 달라 같은 시스템의 성적이 아니다.
     """
     if pool is None:
         return []
     try:
         rows = await pool.fetch(
-            """SELECT sport, count(*) AS n FROM pick_ledger
-                WHERE is_final AND graded_at IS NOT NULL AND NOT void
-                  AND date >= '2026-09-03'
-                  AND sport = ANY($1::text[])
-                GROUP BY sport ORDER BY sport""", list(sports))
+            """SELECT l.sport, count(*) AS n FROM pick_ledger l
+                JOIN unnest($1::text[], $2::text[]) AS f(sport, since)
+                  ON f.sport = l.sport
+                WHERE l.is_final AND l.graded_at IS NOT NULL AND NOT l.void
+                  AND l.date >= f.since
+                GROUP BY l.sport ORDER BY l.sport""",
+            list(sports), [freeze_start(sp) for sp in sports])
     except Exception as exc:
         logger.debug("[daily-summary] 동결 진행률 조회 실패: %s", exc)
         return []

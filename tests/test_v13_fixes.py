@@ -243,11 +243,14 @@ async def test_freeze_counter_starts_from_todays_slate():
 
     class Pool:
         async def fetch(self, sql, *a):
-            seen["sql"] = sql
+            seen["sql"], seen["args"] = sql, a
             return [{"sport": "kbo", "n": 3}, {"sport": "npb", "n": 5}]
 
     lines = await freeze_progress_lines(Pool(), ("kbo", "npb"))
     assert FREEZE_TARGET == 50
-    assert "2026-09-03" in seen["sql"], "이전 표본이 섞이면 안 된다"
-    assert "graded_at IS NOT NULL" in seen["sql"] and "NOT void" in seen["sql"]
+    # ⚠️ 시작일은 **인자**로 간다(리그마다 다르다). SQL 문자열이 아니라
+    #    실제로 넘어간 값을 본다 — 리터럴을 찾으면 파라미터화에 깨진다.
+    assert seen["args"][1] == ["2026-09-03", "2026-09-03"], \
+        "이전 표본이 섞이면 안 된다"
+    assert "graded_at IS NOT NULL" in seen["sql"] and "NOT l.void" in seen["sql"]
     assert "KBO 3/50" in lines[0] and "NPB 5/50" in lines[0]
