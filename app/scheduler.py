@@ -456,6 +456,9 @@ async def mlb_pregame_poll() -> None:
                                r["id"], exc)
         if updated:
             rep.append(f"  MLB 대상 {len(rows)}경기 · 라인업 변동 {len(updated)}")
+        # [T-30 보장] 아시아와 **대칭**이다. 보장선은 종목을 가리지 않는다.
+        await guarantee_first_cards(pool, redis, "mlb", date, rows, now,
+                                    tally, errs)
         # [감시 L2·L3] 아시아 사이클과 **대칭**이다. 여기가 비어 있어 MLB 만
         #   그림자 패널을 못 받고 있었다 (실측 2026-09-03).
         await _run_shadow_panel(redis, ("mlb",), date)
@@ -792,6 +795,10 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
                                  "detail": str(exc)[:150], "exc": exc})
                     logger.warning("[scheduler] %s 발송 실패 game=%s: %s",
                                    sport, row["id"], exc)
+            # [T-30 보장] 창은 이미 열려 있다(KBO T-70 · NPB T-40). 그래도
+            #   판정이 없어 못 나간 경기가 남을 수 있다 — 보장선에서 강제한다.
+            await guarantee_first_cards(pool, redis, sport, date, rows, now,
+                                        tally, errs)
             # [npb-window] T-10에도 확정이 안 온 NPB 경기는 조용히 두지 않는다.
             if sport == "npb":
                 await _npb_pending_notice(redis, rows, now)
@@ -809,6 +816,80 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
                            cycle_report, cycle_errors, next_run="5분 뒤")
     finally:
         await redis.aclose()
+
+
+async def guarantee_first_cards(pool, redis, sport: str, date: str, rows,
+                               now, tally=None, errs=None) -> int:
+    """🔴 [2026-09-03] **T-30 첫 카드 보장.**
+
+    그 시점에 카드가 한 장도 안 나간 경기는, 라인업이 미공시여도 지금 있는
+    재료로 판정해 내보낸다. 사용자 결정: "라인업을 기다리다 카드가 아예
+    안 나가는" 것이 가장 나쁘다.
+
+    ⚠️ **이미 발송된 경기는 건드리지 않는다** — 발송 이력 키로 먼저 거른다.
+    ⚠️ 판정 설계·게이트·트리거를 바꾸지 않는다. 바뀌는 것은 **언제 보내는가**
+       뿐이다. 잠정 기반이면 카드가 종전 규칙대로 `(잠정)` 을 단다 —
+       새 표기를 발명하지 않는다.
+    ⚠️ 확정 공시가 오면 종전 재판정 경로가 수정 카드를 보낸다. 이 함수는
+       그 경로를 대체하지 않는다.
+    """
+    from app.engine.pregame_push import (
+        already_sent, guarantee_due, send_game_prediction, still_upcoming,
+    )
+    from app.pipeline import (analysis_cache_ready, ensure_analysis_cache,
+                              rejudge_after_lineup)
+
+    n = 0
+    for r in rows:
+        row = dict(r)
+        gid = row["id"]
+        if not still_upcoming(row["starts_at"], now):
+            continue
+        if not guarantee_due(row["starts_at"], now):
+            continue
+        if await already_sent(redis, gid):
+            continue
+        try:
+            sent = await send_game_prediction(redis, row, date, now=now)
+            if sent in ("sent", "revised"):
+                n += 1
+                if tally is not None:
+                    tally[sent] = tally.get(sent, 0) + 1
+                logger.info("[guarantee] %s T-30 첫 카드 %s game=%s (기존 판정)",
+                            sport, sent, gid)
+                continue
+            # 판정이 없어서 못 나간 경우에만 만들어 본다.
+            logger.info("[guarantee] %s T-30 미발송 game=%s — 판정 강제 시도",
+                        sport, gid)
+            raw = await redis.get(f"analysis:{sport}:{date}")
+            if not analysis_cache_ready(raw, date, sport):
+                await ensure_analysis_cache(pool, redis, sport, date)
+            await rejudge_after_lineup(
+                row, {"status": row.get("lineup_status") or "none", "notes": [],
+                      "starters": {"home": row.get("home_pitcher") or None,
+                                   "away": row.get("away_pitcher") or None},
+                      "injuries": {}})
+            sent = await send_game_prediction(redis, row, date, now=now)
+            if sent in ("sent", "revised"):
+                n += 1
+                if tally is not None:
+                    tally[sent] = tally.get(sent, 0) + 1
+                logger.info("[guarantee] %s T-30 첫 카드 %s game=%s (강제 판정)",
+                            sport, sent, gid)
+            else:
+                logger.warning("[guarantee] 🔴 %s T-30 보장 실패 game=%s 결과=%s",
+                               sport, gid, sent)
+                if errs is not None:
+                    errs.append({"what": f"{sport} T-30 첫 카드 보장 실패 game={gid}",
+                                 "detail": f"{row['away']}@{row['home']} — {sent}"})
+        except Exception as exc:
+            logger.warning("[guarantee] %s 보장 실패 game=%s: %s", sport, gid, exc)
+            if errs is not None:
+                errs.append({"what": f"{sport} T-30 보장 예외 game={gid}",
+                             "detail": str(exc)[:150], "exc": exc})
+    if n:
+        logger.info("[guarantee] %s T-30 보장 발송 %d건", sport, n)
+    return n
 
 
 async def _run_shadow_panel(redis, sports, date) -> None:

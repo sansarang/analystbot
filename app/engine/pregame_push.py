@@ -117,6 +117,32 @@ def in_send_window(sport: str, starts_at, now=None, settings=None) -> bool:
     return open_m is not None and left <= open_m
 
 
+#: 🔴 [2026-09-03 사용자 결정] **첫 카드 보장선 — 시작 T-30.**
+#   그 시점에 카드가 없으면 라인업이 미공시여도 지금 있는 재료로 판정해
+#   내보낸다. "라인업을 기다리다 카드가 아예 안 나가는" 것이 가장 나쁘다.
+#   ⚠️ 이건 **첫 카드 보장선**이지 마감이 아니다. 확정 공시가 오면
+#      재판정 수정 카드가 뒤따르고, 재판정 창은 종전 그대로다
+#      (KBO 시작 전 · NPB T-15, 경량 T-10).
+FIRST_CARD_GUARANTEE_MIN = 30
+
+
+def guarantee_due(starts_at, now=None) -> bool:
+    """지금이 그 경기의 보장선 안인가 (0 < 남은 시간 ≤ T-30)."""
+    left = minutes_until_start(starts_at, now)
+    return left is not None and 0 < left <= FIRST_CARD_GUARANTEE_MIN
+
+
+async def already_sent(redis, game_id) -> bool:
+    """카드가 한 번이라도 나갔는가. **나간 경기는 건드리지 않는다.**"""
+    if redis is None:
+        return False
+    try:
+        return bool(await redis.get(card_sig_key(game_id)))
+    except Exception as exc:
+        logger.debug("[pregame] 발송 이력 조회 실패 game=%s: %s", game_id, exc)
+        return False          # 모르면 보장 쪽으로 — 중복은 해시가 막는다
+
+
 def analysis_open(sport: str, starts_at, now=None) -> bool:
     """NPB는 T-15 이후 재판정하지 않는다. KBO는 시작 전까지."""
     if not still_upcoming(starts_at, now):

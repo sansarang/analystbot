@@ -9,6 +9,7 @@
   W-LLM-FAIL       LLM 호출 연속 실패
   W-STORE-DOWN     DB·Redis 오류
   W-JOB-LATE       잡의 마지막 실행이 주기의 2배를 넘김
+  W-CARD-LATE      첫 카드 보장선(T-30)을 넘겼는데 카드가 없다
 
 🔴 왜 필요한가 (이번 주 실사고):
    · 배당이 **차단 상태로 며칠간 조용히 멈춰 있었다** — 매 실행 로그는
@@ -341,6 +342,58 @@ async def check_pending_sends(pool, redis) -> list[tuple[str, str, str]]:
              + (" 외" if len(pending) > 5 else ""))]
 
 
+async def check_card_late(pool, redis) -> list[tuple[str, str, str]]:
+    """(g) 🔴 **첫 카드 보장선(T-30)을 넘겼는데 카드가 없다.**
+
+    `W-SEND-PENDING` 과 다르다: 그쪽은 "판정이 있는데 안 나갔다"만 센다.
+    보장선은 **판정 유무를 묻지 않는다** — 사용자 결정(2026-09-03)은
+    "그 시점엔 잠정이라도 나가야 한다"이므로, 판정이 없어서 못 나간 것도
+    보장선 위반이다. 사유를 함께 적어 어느 쪽인지 구분한다.
+
+    ⚠️ 보장선 값은 `pregame_push.FIRST_CARD_GUARANTEE_MIN` 이 원본이다 —
+       여기 숫자를 적지 않는다(사본 금지).
+    """
+    if pool is None:
+        return []
+    from app.engine.pregame_push import (
+        FIRST_CARD_GUARANTEE_MIN, SPORTS, card_sig_key, guarantee_due,
+        still_upcoming,
+    )
+    from app.pipeline import mlb_slate_date, today_kst
+
+    now = datetime.now(UTC)
+    try:
+        rows = await pool.fetch(
+            """SELECT id, sport, home, away, starts_at, lineup_status FROM games
+                WHERE sport = ANY($1::text[]) AND status = 'scheduled'
+                  AND starts_at > now()
+                ORDER BY starts_at""", list(SPORTS))
+    except Exception as exc:
+        logger.debug("[watchdog] 보장선 조회 실패: %s", exc)
+        return []
+    late = []
+    for r in rows:
+        if not still_upcoming(r["starts_at"], now):
+            continue
+        if not guarantee_due(r["starts_at"], now):
+            continue
+        try:
+            if await redis.get(card_sig_key(r["id"])):
+                continue                      # 첫 카드가 나갔다
+            date_s = mlb_slate_date() if r["sport"] == "mlb" else today_kst()
+            why = ("판정 캐시 없음"
+                   if not await redis.get(f"analysis:{r['sport']}:{date_s}")
+                   else "판정 있음·발송 안 됨")
+        except Exception:
+            continue
+        late.append(f"{r['away']}@{r['home']}({why})")
+    if not late:
+        return []
+    return [("W-CARD-LATE", f"{len(late)}경기",
+             f"T-{FIRST_CARD_GUARANTEE_MIN} 보장선을 넘겼는데 첫 카드가 없다: "
+             + ", ".join(late[:5]) + (" 외" if len(late) > 5 else ""))]
+
+
 async def run_checks(pool, redis) -> list[tuple[str, str, str]]:
     """전 점검. 하나가 죽어도 나머지는 돈다 — 워치독이 눈을 감으면 안 된다."""
     found: list[tuple[str, str, str]] = []
@@ -350,6 +403,7 @@ async def run_checks(pool, redis) -> list[tuple[str, str, str]]:
         ("llm", check_llm(redis)),
         ("jobs", check_jobs(redis)),
         ("sends", check_pending_sends(pool, redis)),
+        ("card_late", check_card_late(pool, redis)),
     ):
         try:
             found += await coro
