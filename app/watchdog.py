@@ -211,6 +211,18 @@ def _next_expected(job_id: str, after: datetime):
         return None
 
 
+def _boot_time() -> datetime | None:
+    """이 프로세스의 기동 시각. 모르면 None — 추측하지 않는다."""
+    try:
+        from app.version import boot_info
+
+        started = boot_info().started_at
+        return started.replace(tzinfo=UTC) if started.tzinfo is None else started
+    except Exception as exc:
+        logger.debug("[watchdog] 기동 시각 조회 실패: %s", exc)
+        return None
+
+
 def _booted_recently(now: datetime) -> bool:
     """이 프로세스가 방금 떴는가. 재기동 직후 경보를 막는다."""
     try:
@@ -230,10 +242,8 @@ async def check_jobs(redis) -> list[tuple[str, str, str]]:
     from app.health import _job_runs
 
     now = datetime.now(UTC)
-    if _booted_recently(now):
-        logger.debug("[watchdog] 기동 %d분 유예 — 잡 지연 판정 생략",
-                     BOOT_GRACE_MIN)
-        return []
+    fresh = _booted_recently(now)
+    booted = _boot_time()
     try:
         runs = await _job_runs(redis)
     except Exception as exc:
@@ -257,6 +267,27 @@ async def check_jobs(redis) -> list[tuple[str, str, str]]:
             continue          # 트리거를 모르면 판단하지 않는다 — 추측 금지
         if expected.tzinfo is None:
             expected = expected.replace(tzinfo=UTC)
+
+        # 🔴 [2026-09-03 신설] **배포 후 미실행** — 기동 유예를 뚫는 유일한 경우.
+        #    APScheduler 는 in-memory jobstore 라 **재기동마다 인터벌이 처음부터
+        #    다시 센다.** 배포를 주기보다 자주 하면 그 잡은 영원히 굶는다.
+        #    실사고 2026-09-03: 감시 3층·Gemini·프로브를 10·6·15분 간격으로
+        #    연달아 배포해 `odds_snapshot_30m` 이 88분간 한 번도 못 돌았다.
+        #    `W-ODDS-STALE`(증상)만 15분마다 울고, 원인을 아는
+        #    `W-JOB-LATE` 는 기동 유예에 막혀 침묵했다.
+        #    → 마지막 실행이 **주기의 2배**를 넘었고 그 뒤 재기동이 있었다면,
+        #      유예 중이라도 이름을 붙여 알린다.
+        stale_min = (now - at).total_seconds() / 60
+        period_min = max((expected - at).total_seconds() / 60, 1.0)
+        if (booted is not None and booted > at
+                and stale_min > period_min * 2):
+            out.append(("W-JOB-LATE", job_id,
+                        f"배포 후 미실행 — 마지막 실행 {stale_min:.0f}분 전"
+                        f"(주기 {period_min:.0f}분), 그 뒤 재기동. 재기동은 "
+                        f"인터벌을 초기화한다 — 주기보다 잦은 배포를 멈춰라"))
+            continue
+        if fresh:
+            continue          # 재기동 직후의 통상 지연은 경보하지 않는다
         overdue = (now - expected).total_seconds() / 60
         if overdue > grace:
             out.append(("W-JOB-LATE", job_id,

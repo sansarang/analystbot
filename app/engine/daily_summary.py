@@ -250,9 +250,16 @@ async def monitor_lines(pool, redis, sports: tuple[str, ...],
     if tot:
         met.append(f"자료8 주입 {with8 / tot:.0%}")
     try:
+        # 🔴 [2026-09-03 교정] **확정 상태만 센다.** `save_lineup` 은 라인업
+        #    공시 **전**(`predicted`)에도 저장하고, 그때 타순이 9명이 아닌 것은
+        #    정상이다 — 아직 발표가 안 됐을 뿐이다.
+        #    실측: 30시간 창에서 확정 이상 0건 / 잠정 이상 20건. 종전 집계는
+        #    저 20건을 매일 "이상"으로 찍었을 것이고, 정상을 결함으로 세는
+        #    지표는 **진짜 결함을 그 속에 묻는다.**
         an = await pool.fetchval(
             """SELECT count(*) FROM lineups
                 WHERE jsonb_array_length(batting_order) <> 9
+                  AND status = 'confirmed'
                   AND captured_at >= now() - interval '20 hours'""")
         if an:
             met.append(f"타순 길이 이상 {an}건")

@@ -1381,6 +1381,7 @@ async def _startup_forensics(pool, redis) -> None:
                      WHERE l.batting_order IS NOT NULL
                        AND jsonb_typeof(l.batting_order) = 'array'
                        AND jsonb_array_length(l.batting_order) <> 9
+                       AND l.status = 'confirmed'
                      GROUP BY g.sport ORDER BY g.sport""")
             if rows:
                 for r in rows:
@@ -1390,7 +1391,9 @@ async def _startup_forensics(pool, redis) -> None:
                                  table, r["sport"], r["bad"],
                                  str(r["first_seen"])[:16], str(r["last_seen"])[:16])
             else:
-                logger.info("[forensics] %s 타순 길이 이상 0건", table)
+                logger.info("[forensics] %s 확정 타순 길이 이상 0건 "
+                            "(잠정 상태의 부분 타순은 정상이라 세지 않는다)",
+                            table)
         except Exception as exc:
             logger.warning("[forensics] %s 조회 실패: %s", table, exc)
 

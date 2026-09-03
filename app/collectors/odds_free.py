@@ -131,8 +131,25 @@ async def collect_mlb(pool, date: str) -> dict:
                     f" · 미매칭 {len(out['unmatched'])}" if out["unmatched"] else "")
         if rows_n:
             return out
-    logger.warning("[odds_free] MLB %s — 무료 소스 전부 실패 "
-                   "(대상 경기 %d건은 DB에 있다)", date, len(index))
+    # ⚠️ [2026-09-03] **끝난 슬레이트는 실패가 아니다.** 경기가 시작되면
+    #    ESPN 은 그 경기를 배당 목록에서 내린다. 대상이 없어진 것을 "전부
+    #    실패"로 30분마다 WARNING 하면, 진짜 소스 고장이 그 속에 묻힌다.
+    upcoming = 0
+    try:
+        upcoming = await pool.fetchval(
+            """SELECT count(*) FROM games
+                WHERE id = ANY($1::bigint[]) AND starts_at > now()""",
+            list(index.values())) or 0
+    except Exception as exc:
+        logger.debug("[odds_free] 미시작 경기 조회 실패: %s", exc)
+        upcoming = -1                      # 모르면 종전대로 경고한다
+    if upcoming == 0:
+        logger.info("[odds_free] MLB %s — 슬레이트 %d경기가 전부 시작·종료됐다. "
+                    "배당 소스가 더는 싣지 않는다 (고장 아님)", date, len(index))
+    else:
+        logger.warning("[odds_free] MLB %s — 무료 소스 전부 실패 "
+                       "(대상 경기 %d건 중 미시작 %s건)", date, len(index),
+                       upcoming if upcoming >= 0 else "?")
     return out
 
 
