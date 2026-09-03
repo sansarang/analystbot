@@ -306,7 +306,15 @@ async def build_material10(pool, redis, jg: dict) -> dict:
 
     out: dict = {}
     sport = (jg.get("sport") or "").lower()
-    before = jg.get("starts_at") or datetime.now(UTC)
+    # 🔴 [2026-09-04] `starts_at` 은 분석 캐시(JSON)를 거치면 **문자열**이다.
+    #    날것으로 넘기면 asyncpg 가 timestamptz 파라미터로 거부하고, 그 예외가
+    #    `자료10=N` 으로 나타난다 — 실측: Jake Bennett·Kade Anderson·
+    #    Jack Perkins 3경기. **자료10 이 겨냥한 바로 그 투수들**(등판 기록이
+    #    얇은 신인)이 통째로 빠졌다.
+    #    `starter_recent._aware` 가 이미 같은 문제를 풀어 놨다 — 그걸 쓴다.
+    from app.engine.starter_recent import _aware
+
+    before = _aware(jg.get("starts_at")) or datetime.now(UTC)
     from app.engine.starter_recent import pitcher_name
 
     for side in ("home", "away"):

@@ -227,3 +227,43 @@ def test_l1_reads_regression_reference_numbers():
     prompt = insert_material10("1. 자료\n\n[판정 규칙]", m10)
     assert 5.4 in numbers_in_prompt(prompt, "ip")
     assert 3.1 in numbers_in_prompt(prompt, "r")
+
+
+# ═════════ starts_at 정규화 — 캐시를 거치면 문자열이다 ═════════
+
+@pytest.mark.asyncio
+async def test_starts_at_from_cache_is_normalised():
+    """🔴 실사고 2026-09-04: 자료10 이 겨냥한 **바로 그 투수들**이 빠졌다.
+
+    분석 캐시는 JSON 이라 `starts_at` 이 문자열로 돌아온다. 날것으로 넘기면
+    asyncpg 가 timestamptz 파라미터로 거부하고, 그 예외가 `자료10=N` 이 된다.
+    실측: Jake Bennett·Kade Anderson·Jack Perkins — 전부 등판 기록이 얇은
+    투수, 즉 자료10 이 존재하는 이유 그 자체다.
+    """
+    seen = {}
+
+    class P:
+        async def fetch(self, sql, *a):
+            seen["before"] = a[2]
+            return []
+
+        async def fetchrow(self, sql, *a):
+            return None
+
+    jg = {"sport": "mlb", "game_id": 1, "starts_at": "2026-09-04T23:05:00+00:00",
+          "research": {"home_starter_recent": [], "away_starter_recent": [],
+                       "home_pitcher": {"name": "Jake Bennett"},
+                       "away_pitcher": {"name": "X"}}}
+    await VR.build_material10(P(), None, jg)
+    assert isinstance(seen["before"], datetime), \
+        f"문자열을 그대로 넘겼다: {seen['before']!r}"
+    assert seen["before"].tzinfo is not None
+
+
+def test_uses_the_existing_normaliser_not_a_new_one():
+    """이미 푼 문제를 다시 풀지 않는다 — `starter_recent._aware` 를 쓴다."""
+    from pathlib import Path
+
+    src = Path("app/engine/variable_ref.py").read_text(encoding="utf-8")
+    assert "from app.engine.starter_recent import _aware" in src
+    assert "_aware(jg.get(\"starts_at\"))" in src
