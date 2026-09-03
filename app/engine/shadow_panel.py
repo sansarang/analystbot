@@ -58,6 +58,12 @@ INDEPENDENT_PROMPT = """당신은 야구 매치업 판정가다. 홈팀이 이�
 """
 
 
+def _cfg():
+    from app.config import get_settings
+
+    return get_settings()
+
+
 def build_reviewer_prompt(verdict: dict, materials: str) -> str:
     """L2 전용. 주심 판정을 **넣는다** — 검사 대상이기 때문이다."""
     return REVIEWER_PROMPT.format(
@@ -141,7 +147,8 @@ async def _review_one(pool, redis, jg: dict) -> int:
     mats = await _materials(redis, jg)
     if not mats:
         return 0
-    raw = await generate(build_reviewer_prompt(jg.get("matchup") or {}, mats))
+    raw = await generate(build_reviewer_prompt(jg.get("matchup") or {}, mats),
+                         max_tokens=_cfg().shadow_review_max_tokens)
     objections = parse_json_lenient(raw)
     if objections is None:
         logger.info("[shadow] game=%s L2 파싱 실패 — skip", jg.get("game_id"))
@@ -192,7 +199,8 @@ async def _shadow_one(pool, redis, jg: dict) -> int:
     mats = await _materials(redis, jg)
     if not mats:
         return 0
-    raw = await generate(build_independent_prompt(mats), max_tokens=512)
+    raw = await generate(build_independent_prompt(mats),
+                         max_tokens=_cfg().shadow_judge_max_tokens)
     data = parse_json_lenient(raw)
     if not isinstance(data, dict) or data.get("p_home") is None:
         logger.info("[shadow] game=%s L3 파싱 실패 — skip", jg.get("game_id"))

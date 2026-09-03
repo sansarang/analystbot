@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     xai_api_key: str | None = None
     odds_api_key: str | None = None
     # [B-2] 추가 LLM provider — 없으면 그 provider는 쓰지 않는다(크래시 금지).
-    gemini_api_key: str | None = None
+    #  ⚠️ `gemini_api_key` 는 아래 감시 절에 AliasChoices 와 함께 선언돼 있다.
+    #     여기에 또 적으면 **뒤가 이겨** 앞은 죽은 줄이 된다(실측). 적지 않는다.
     groq_api_key: str | None = None
     deepseek_api_key: str | None = None
     apifootball_key: str | None = None
@@ -71,11 +72,21 @@ class Settings(BaseSettings):
     #: Gemini — 키가 없으면 L2·L3 전체 휴면.
     gemini_api_key: str = Field(default="", validation_alias=AliasChoices(
         "GEMINI_API_KEY", "gemini_api_key"))
-    gemini_model: str = Field(default="gemini-2.5-flash",
+    #: 🔴 `gemini-2.5-flash` 는 **신규 키에 404** 다 (실측 2026-09-03:
+    #   "no longer available to new users"). 살아 있는 모델이어야 한다.
+    gemini_model: str = Field(default="gemini-3.7-flash",
                               validation_alias=AliasChoices("GEMINI_MODEL",
                                                             "gemini_model"))
     #: 무료 티어 분당 10요청 — 호출 간 최소 간격(초).
     gemini_min_interval_sec: float = 7.0
+    # ⚠️ **Gemini 는 사고 토큰이 `maxOutputTokens` 를 잠식한다.** 실측
+    #   2026-09-03, L2 검사역 프롬프트(2711자):
+    #     2048 → 사고 1964 + 출력 80 = 2044, finish=MAX_TOKENS, **JSON 아닌
+    #            잘린 산문**이 나왔다
+    #     8192 → 사고 985 + 출력 59, finish=STOP, 정상 JSON
+    #   L3(독립 판정)도 사고만 420~1327 이라 종전 512 로는 답이 안 나온다.
+    shadow_review_max_tokens: int = 8192
+    shadow_judge_max_tokens: int = 4096
     #: 판정 프롬프트 원문 보관 TTL(초). 사실 감시가 **판정 시점의** 원문을
     #  읽어야 한다 — 재렌더하면 그 사이 바뀐 재료를 보게 된다.
     prompt_keep_ttl_sec: int = 24 * 3600
