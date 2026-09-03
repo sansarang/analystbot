@@ -121,6 +121,29 @@ def parse_matchup(text: str) -> dict | None:
     return None
 
 
+def _has_started(date_s: str, time_s: str) -> bool:
+    """그 경기가 이미 시작했는가 (KST). 못 읽으면 **시작한 것으로 보지 않는다.**
+
+    ⚠️ 모를 때 `False` 를 주는 쪽이 안전하다. `True` 로 기울면 시작 전 경기가
+       `live` 로 굳어 판정 대상에서 빠진다 — 그게 오늘 카드를 0장으로 만든
+       고장이다. 반대로 기울면 이미 끝난 경기가 잠깐 `scheduled` 로 남을 뿐이고,
+       그건 `done` 마커가 곧 `final` 로 덮는다.
+    """
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _Z
+
+    if not date_s or not time_s:
+        return False
+    try:
+        kst = _Z("Asia/Seoul")
+        h, m = time_s.strip().split(":")
+        start = _dt.fromisoformat(date_s).replace(
+            hour=int(h), minute=int(m), tzinfo=kst)
+    except (ValueError, TypeError):
+        return False
+    return _dt.now(kst) >= start
+
+
 def parse_rows(rows: list[list[str]], season: int) -> tuple[list[dict], int]:
     """행 목록 → 경기 dict 목록. 반환: (경기들, 파싱 실패 수).
 
@@ -160,9 +183,18 @@ def parse_rows(rows: list[list[str]], season: int) -> tuple[list[dict], int]:
             "away_kr": parsed["away"], "home_kr": parsed["home"],
             "away_score": parsed["away_score"], "home_score": parsed["home_score"],
             # 점수가 있어도 '리뷰'가 없으면 진행 중이다 — 채점 대상이 아니다
+            # 🔴 [P0 2026-09-03] **시작 전에는 점수가 있어도 `live` 가 아니다.**
+            #    공식 페이지가 경기 전 경기에 `0-0` 플레이스홀더를 싣는다.
+            #    그걸 "점수가 있다"로 읽어 4경기가 통째로 `live` 가 됐고,
+            #    `upsert_schedule` 의 예정 카운트가 0 이 되어 파이프라인이
+            #    "경기 적재 0/1건"으로 죽었다 → **KBO 5경기 판정 0건, 카드 0장.**
+            #    실측 17:52 KST: LG@두산·롯데@삼성·한화@KT·SSG@키움 전부
+            #    `status=live score=0-0` (시작 18:30, 즉 38분 뒤).
+            #    시작 시각이 미래면 무조건 `scheduled` 다 — 점수가 뭐든.
             "status": ("cancelled" if cancelled
                        else "final" if (done and parsed["home_score"] is not None)
-                       else "live" if parsed["home_score"] is not None
+                       else "live" if (parsed["home_score"] is not None
+                                       and _has_started(cur_date, time_s))
                        else "scheduled"),
             "ext_id": f"kbo:{cur_date}:{time_s}:{parsed['away']}:{parsed['home']}",
         })
