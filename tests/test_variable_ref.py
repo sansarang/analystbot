@@ -189,3 +189,41 @@ def test_pipeline_attaches_before_the_judge_call():
     src = Path("app/pipeline.py").read_text(encoding="utf-8")
     seg = src[src.index("async def _run_baseball_matchups"):]
     assert seg.index("attach_material10") < seg.index("await judge_matchup")
+
+
+# ═════════ L1 이 자료10 수치를 대조 대상으로 잡는가 ═════════
+
+def test_l1_sees_material10_numbers():
+    """🔴 변수의 N·M **근거 수치도 환각 검증 대상**이다.
+
+    실측 2026-09-04: 고치기 전 `numbers_in_prompt(prompt, "ip")` 가 **0개**
+    였다. `"이닝": [1.0, 2.0]` 은 배열이라 키 정규식이 못 읽었고,
+    `"p50"`·`"최장"` 은 단위 키 목록에 없었다. 그래서 자료10 을 인용한
+    변수가 통째로 `not_found` 로 찍혔다 — 감시가 자기 재료를 몰랐다.
+    """
+    from app.engine.fact_audit import audit, numbers_in_prompt
+
+    m10 = {"away": {"이닝분포": {"n": 10, "이닝": [1.0, 2.0, 1.2, 3.0],
+                                "선발등판": 0, "최장": 3.0,
+                                "p25": 1.0, "p50": 1.2, "p75": 2.0}}}
+    prompt = insert_material10("1. 자료\n\n[판정 규칙]\n- 규칙", m10)
+    pool = numbers_in_prompt(prompt, "ip")
+    for want in (1.0, 1.2, 2.0, 3.0):
+        assert want in pool, f"{want} 를 못 읽었다: {sorted(pool)}"
+
+    v = {"변수": ["원정 선발 3이닝 미만 조기 강판 — 발생 시 홈 방향 약 8%p · "
+                  "현재 p에 3%p 기반영 · 근거 자료10 "
+                  "(최근 10등판 p50 1.2이닝, 최장 3.0이닝)"]}
+    res = audit(v, prompt)
+    assert res["not_found_n"] == 0, res
+    assert res["verified_n"] >= 3, res
+
+
+def test_l1_reads_regression_reference_numbers():
+    from app.engine.fact_audit import numbers_in_prompt
+
+    m10 = {"home": {"부진후회귀": {"표본": 41, "다음등판_평균이닝": 5.4,
+                                  "다음등판_평균실점": 3.1}}}
+    prompt = insert_material10("1. 자료\n\n[판정 규칙]", m10)
+    assert 5.4 in numbers_in_prompt(prompt, "ip")
+    assert 3.1 in numbers_in_prompt(prompt, "r")

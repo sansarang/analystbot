@@ -29,8 +29,14 @@ CLAIM_FIELDS = ("근거", "변수")
 #: 단위 사전 — `(정규식, 단위키, 원문에서 찾을 키들)`.
 #  🔴 여기 없는 패턴은 **추출하지 않는다.** 넓히면 오탐이 는다.
 UNIT_PATTERNS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
-    (r"(\d+(?:\.\d+)?)\s*이닝", "ip", ("innings", "starter_ip", "이닝")),
-    (r"(\d+(?:\.\d+)?)\s*실점", "r", ("r", "starter_r", "opp_runs", "runs_allowed_l3")),
+    # ⚠️ [자료10 2026-09-04] 분위수·최장·회귀 참조 키를 함께 본다. 이 값들이
+    #    빠지면 자료10 을 인용한 변수가 통째로 `not_found` 로 찍힌다 —
+    #    실측: `"p50": 1.2` 가 프롬프트에 있는데 L1 이 ip 값을 0개로 읽었다.
+    (r"(\d+(?:\.\d+)?)\s*이닝", "ip",
+     ("innings", "starter_ip", "이닝", "최장", "p25", "p50", "p75",
+      "다음등판_평균이닝")),
+    (r"(\d+(?:\.\d+)?)\s*실점", "r",
+     ("r", "starter_r", "opp_runs", "runs_allowed_l3", "다음등판_평균실점")),
     (r"(\d+(?:\.\d+)?)\s*자책", "er", ("er", "자책")),
     (r"ERA\s*(?:환산\s*)?(?:약\s*)?(\d+(?:\.\d+)?)", "era", ("ERA", "era")),
     (r"WHIP\s*(\d+(?:\.\d+)?)", "whip", ("WHIP", "whip")),
@@ -125,6 +131,13 @@ def numbers_in_prompt(prompt: str, unit: str) -> set[float]:
                 found.add(round(float(m.group(1)), 3))
             except ValueError:
                 continue
+        # ⚠️ 배열 값도 값이다 — `"이닝": [1.0, 2.0, 1.2]` (자료10 이닝 분포).
+        for m in re.finditer(rf'"{re.escape(key)}"\s*:\s*\[([^\]]*)\]', prompt):
+            for tok in re.finditer(r"-?\d+(?:\.\d+)?", m.group(1)):
+                try:
+                    found.add(round(float(tok.group(0)), 3))
+                except ValueError:
+                    continue
     for pat, u, _ in UNIT_PATTERNS:
         if u != unit:
             continue
@@ -150,6 +163,12 @@ def values_in(text: str, unit: str) -> list[float]:
                 found.append(round(float(m.group(1)), 3))
             except ValueError:
                 continue
+        for m in re.finditer(rf'"{re.escape(key)}"\s*:\s*\[([^\]]*)\]', text):
+            for tok in re.finditer(r"-?\d+(?:\.\d+)?", m.group(1)):
+                try:
+                    found.append(round(float(tok.group(0)), 3))
+                except ValueError:
+                    continue
     for pat, u, _ in UNIT_PATTERNS:
         if u != unit:
             continue
