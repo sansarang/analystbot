@@ -94,6 +94,79 @@ def watched_sports(settings=None) -> tuple[str, ...]:
     return tuple(out)
 
 
+# ══════════════════ 정찰(Scout) 종목 정의 — C0 2026-09-04 ══════════════════
+#
+# 🔴 **종목 이름을 코드에 다시 적지 않는다.** 정찰·카나리아·워치독이 전부
+#    이 표만 읽는다. 종목을 늘리려면 여기 한 줄을 더하면 되고, 코드는 손대지
+#    않는다 (테스트가 가짜 종목 주입으로 그걸 증명한다).
+#
+# ⚠️ 이 표는 "무엇을 정찰하는가"이지 "어떻게 판정하는가"가 아니다.
+#    판정 프롬프트·게이트·클립·트리거는 이 파일과 무관하다.
+
+
+@dataclass(frozen=True)
+class ScoutSport:
+    """한 종목의 정찰 정의.
+
+    `active=False` 면 정찰이 **기록만** 하고 카드·딥서치에 연결하지 않는다.
+    끄는 이유를 `reason` 에 남긴다 — 이유 없는 비활성은 다음 사람이 켜 본다.
+    """
+
+    sport: str
+    #: 뉴스 소스. `rss` 는 무료 상시, `xsearch` 는 조건부(캡 있음).
+    news_sources: tuple[str, ...] = ("rss",)
+    #: 라인업이 오는 경로. 종목마다 다르다 — 여기가 원본이다.
+    lineup_source: str = ""
+    #: 정찰을 시작하는 시각(시작 몇 시간 전) · 보고 카드 시각(분 전).
+    scout_open_h: float = 4.0
+    report_at_min: int = 120
+    #: 카드·딥서치에 연결하는가. False 면 기록만 한다.
+    active: bool = True
+    reason: str = ""
+
+
+#: 정찰 대상 전수. 배당 provider 는 `ODDS_PROVIDERS` 가 원본이라 **여기 적지
+#  않는다** — `odds_provider_for()` 로 조회한다(사본 금지).
+SCOUT_SPORTS: tuple[ScoutSport, ...] = (
+    ScoutSport("kbo", ("rss", "xsearch"), lineup_source="naver_kbo"),
+    ScoutSport("npb", ("rss", "xsearch"), lineup_source="yahoo_npb"),
+    ScoutSport("mlb", ("rss", "xsearch"), lineup_source="statsapi"),
+    # ⚠️ 축구는 **정찰 기록만** 한다. 카드·딥서치에 연결하지 않는다.
+    #    이유: `soccer_trial` 경로가 야구와 달리 실전 검증을 못 거쳤고,
+    #    라인업 공시 리드타임·소스 신뢰도 실측이 없다. 검증 없는 신호를
+    #    카드에 실으면 그 카드의 다른 숫자까지 못 믿게 된다.
+    #    → 켜기 전에 필요한 것: 라인업 소스 확정 + 리드타임 실측 표본.
+    ScoutSport("soccer", ("rss",), lineup_source="", active=False,
+               reason="파이프라인 미검증 — 라인업 소스·리드타임 실측 없음"),
+)
+
+_SCOUT_BY_SPORT = {x.sport: x for x in SCOUT_SPORTS}
+
+
+def scout_sport(sport: str) -> ScoutSport | None:
+    """그 종목의 정찰 정의. 없으면 None — 정찰 대상이 아니다."""
+    return _SCOUT_BY_SPORT.get((sport or "").lower())
+
+
+def scout_sports(*, active_only: bool = False) -> tuple[ScoutSport, ...]:
+    """정찰 대상 목록. `active_only` 면 카드·딥서치 연결분만."""
+    return tuple(x for x in SCOUT_SPORTS if x.active or not active_only)
+
+
+def odds_provider_for(sport: str, settings=None) -> str | None:
+    """그 종목 담당 **활성** 배당 소스. `ODDS_PROVIDERS` 가 원본이다."""
+    for p in active_providers(settings):
+        if sport in p.sports:
+            return p.name
+    return None
+
+
+def uses_source(sport: str, name: str) -> bool:
+    """그 종목이 이 뉴스 소스를 쓰는가. 문자열 비교를 호출부에 흩지 않는다."""
+    sc = scout_sport(sport)
+    return bool(sc and name in sc.news_sources)
+
+
 #: 워치독이 지연을 볼 잡과 **유예(분)**. 주기는 적지 않는다 —
 #  다음 실행 시각은 `scheduler._JOB_TRIGGERS` 에서 계산한다.
 @dataclass(frozen=True)
