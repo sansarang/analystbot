@@ -18,29 +18,37 @@ from app.collectors.kbo import _has_started, parse_rows
 KST = ZoneInfo("Asia/Seoul")
 
 
-def _rows(time_s: str, score: str, note: str = ""):
-    """공식 페이지 행 모양 — 날짜·시각·매치업·점수·구장·비고."""
-    return [["09.03(수)", time_s, f"LG{score}두산", "잠실", note]]
+def _rows(time_s: str, score: str, note: str = "", when=None):
+    """공식 페이지 행 모양 — 날짜·시각·매치업·점수·구장·비고.
+
+    ⚠️ **날짜를 인자로 받는다.** 종전에는 `09.03` 을 박아 두고 시각만
+       `now+3h` 로 만들었는데, 21:42 에 돌리면 그게 **같은 날 00:42** 가 돼
+       "미래"가 아니라 과거였다. 시간에 따라 결과가 바뀌는 테스트는
+       테스트가 아니다 (2026-09-03 실측 — 같은 실수를 두 번 했다).
+    """
+    d = when or datetime.now(KST)
+    return [[f"{d.month:02d}.{d.day:02d}(수)", time_s, f"LG{score}두산",
+             "잠실", note]]
 
 
 def test_future_game_with_placeholder_score_is_scheduled():
     """🔴 이 파일의 목적 — 시작 전 0-0 은 `scheduled` 다."""
-    later = (datetime.now(KST) + timedelta(hours=3)).strftime("%H:%M")
-    games, _ = parse_rows(_rows(later, "0vs0"), 2026)
+    fut = datetime.now(KST) + timedelta(days=1)      # 내일이면 시각과 무관하다
+    games, _ = parse_rows(_rows("18:30", "0vs0", when=fut), fut.year)
     assert games, "행이 파싱되지 않았다"
     assert games[0]["status"] == "scheduled", games[0]
 
 
 def test_started_game_with_score_is_still_live():
     """이미 시작했으면 종전대로 `live` — 완화가 아니라 시각 기준 추가다."""
-    past = (datetime.now(KST) - timedelta(hours=1)).strftime("%H:%M")
-    games, _ = parse_rows(_rows(past, "3vs2"), 2026)
+    past = datetime.now(KST) - timedelta(days=1)     # 어제면 시각과 무관하다
+    games, _ = parse_rows(_rows("18:30", "3vs2", when=past), past.year)
     assert games[0]["status"] == "live", games[0]
 
 
 def test_cancelled_still_wins():
-    later = (datetime.now(KST) + timedelta(hours=3)).strftime("%H:%M")
-    games, _ = parse_rows(_rows(later, "0vs0", "취소"), 2026)
+    fut = datetime.now(KST) + timedelta(days=1)
+    games, _ = parse_rows(_rows("18:30", "0vs0", "취소", when=fut), fut.year)
     assert games[0]["status"] == "cancelled"
 
 

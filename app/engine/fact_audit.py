@@ -62,11 +62,43 @@ SAMPLE_N_RE = re.compile(r"(\d+)\s*(?:경기|등판)")
 SUBJECT_WORDS = {"home": ("home", "홈", "홈팀"), "away": ("away", "원정", "원정팀")}
 
 
-def claim_subject(text: str) -> str | None:
-    """이 인용이 누구 것인가. **모르면 None** — 추측해서 재계산하지 않는다."""
-    hits = [side for side, words in SUBJECT_WORDS.items()
-            if any(w in text for w in words)]
-    return hits[0] if len(hits) == 1 else None
+def claim_subject(text: str, at: int | None = None,
+                  names: dict[str, str] | None = None) -> str | None:
+    """이 인용이 누구 것인가. **모르면 None** — 추측해서 재계산하지 않는다.
+
+    🔴 [2026-09-04] 종전에는 문장에 진영 단어가 **둘 다** 있으면 무조건 None
+       이었다. 그런데 근거는 거의 항상 비교문이다:
+         "홈 선발(원태인) 최근5경기 31.1이닝 … vs 원정 선발(비슬리) 29.2이닝"
+       그래서 주체가 영영 안 붙었고, 재계산을 건너뛰어 **derived 가 7경기 내내
+       0건**이었다(실측 2026-09-03). not_found 34% 의 실체가 이것이다.
+
+    이제 `at`(그 수치가 문장에서 나온 위치)이 오면 **가장 가까운 앞쪽 단서**로
+    가른다. 사람이 읽는 방식과 같다 — "홈 …31.1이닝"의 31.1 은 홈 것이다.
+    ⚠️ 단서가 앞에 하나도 없으면 여전히 None 이다. 뒤쪽 단서로 넘겨짚지 않는다.
+    """
+    cues: list[tuple[int, str]] = []
+    for side, words in SUBJECT_WORDS.items():
+        for w in words:
+            start = 0
+            while (i := text.find(w, start)) >= 0:
+                cues.append((i, side))
+                start = i + 1
+    for name, side in (names or {}).items():
+        if not name:
+            continue
+        start = 0
+        while (i := text.find(name, start)) >= 0:
+            cues.append((i, side))
+            start = i + 1
+    if not cues:
+        return None
+    if at is None:
+        sides = {sd for _, sd in cues}
+        return next(iter(sides)) if len(sides) == 1 else None
+    before = [(i, sd) for i, sd in cues if i <= at]
+    if not before:
+        return None
+    return max(before, key=lambda x: x[0])[1]
 
 
 def sample_n(text: str) -> int | None:
@@ -98,8 +130,12 @@ def _region(prompt: str, side: str) -> str:
     return "\n".join(out)
 
 
-def extract_claims(verdict: dict) -> list[dict]:
-    """판정 JSON → [{text, unit, value}]. 단위 없는 수치는 뽑지 않는다."""
+def extract_claims(verdict: dict, names: dict[str, str] | None = None) -> list[dict]:
+    """판정 JSON → [{text, unit, value, …}]. 단위 없는 수치는 뽑지 않는다.
+
+    `names`: 선수명 → 진영. 있으면 "곽빈 … 6.4이닝"처럼 **이름만 나오는**
+    문장도 주체를 붙일 수 있다.
+    """
     out: list[dict] = []
     for field in CLAIM_FIELDS:
         for line in verdict.get(field) or []:
@@ -112,7 +148,8 @@ def extract_claims(verdict: dict) -> list[dict]:
                         continue
                     out.append({"text": s[:200], "unit": unit, "value": val,
                                 "derived": any(k in s for k in DERIVED_MARKERS),
-                                "subject": claim_subject(s), "n": sample_n(s)})
+                                "subject": claim_subject(s, m.start(), names),
+                                "n": sample_n(s)})
     return out
 
 
@@ -258,14 +295,18 @@ def classify(claim: dict, prompt: str, tolerance: float) -> tuple[str, dict | No
                         "subject": side, "sample_n": claim.get("n")}
 
 
-def audit(verdict: dict, prompt: str, *, tolerance: float | None = None) -> dict:
-    """판정 1건 감사. 순수 함수 — I/O 없음."""
+def audit(verdict: dict, prompt: str, *, tolerance: float | None = None,
+          names: dict[str, str] | None = None) -> dict:
+    """판정 1건 감사. 순수 함수 — I/O 없음.
+
+    `names`: 선발 이름 → 진영. 넘기면 이름만 나오는 인용도 주체가 붙는다.
+    """
     from app.config import get_settings
 
     tol = tolerance if tolerance is not None else get_settings().fact_audit_tolerance
     out = {"verified_n": 0, "derived_n": 0, "not_found_n": 0,
            "mismatch_n": 0, "mismatch_detail": []}
-    for c in extract_claims(verdict):
+    for c in extract_claims(verdict, names):
         kind, detail = classify(c, prompt, tol)
         out[f"{kind}_n"] += 1
         if detail:
@@ -305,7 +346,19 @@ async def run(pool, redis, jg: dict) -> dict | None:
         if not prompt:
             logger.info("[fact-audit] game=%s 프롬프트 원문 없음 — skip", gid)
             return None
-        res = audit(verdict, prompt)
+        # 선발 이름 → 진영. "곽빈 … 6.4이닝" 처럼 **이름만 나오는** 인용도
+        #   주체가 붙어야 재계산할 수 있다.
+        names = {}
+        try:
+            from app.engine.starter_recent import pitcher_name
+
+            for side in ("home", "away"):
+                nm = pitcher_name(jg, side)
+                if nm:
+                    names[nm] = side
+        except Exception as exc:
+            logger.debug("[fact-audit] 선발 이름 수집 생략: %s", exc)
+        res = audit(verdict, prompt, names=names or None)
         res.update(game_id=gid, sport=jg.get("sport") or "")
         await _store(pool, res)
         logger.info("[fact-audit] game=%s v=%d d=%d nf=%d mismatch=%d",

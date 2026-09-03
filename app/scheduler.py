@@ -1337,6 +1337,7 @@ async def startup_backfill_job() -> None:
         #   못 읽는다. "며칠째 배당이 죽어 있었나", "타순이 몇 건 오염됐나"는
         #   서버가 스스로 말해야 한다.
         await _repair_impossible_live(pool)
+
         await _startup_forensics(pool, redis)
         # [리허설] `REHEARSAL=1` 일 때 기동 시 1회. 격리 키·발송 차단.
         if os.getenv("REHEARSAL") == "1":
@@ -1416,7 +1417,83 @@ async def _repair_lineups_once(pool, redis) -> None:
         logger.warning("[repair] 오염 교정 실패 — 운영은 계속: %s", exc)
 
 
-async def _repair_impossible_live(pool) -> None:
+async def _catchup_missed_crons(redis) -> list[str]:
+    """🔴 [2026-09-04] **재기동이 오늘치 cron 발화를 삼킨다.**
+
+    APScheduler 는 in-memory jobstore 라 재기동하면 잡을 새로 단다. cron 잡의
+    오늘 발화 시각이 이미 지났으면 **그 하루는 통째로 건너뛴다** — 다음 발화는
+    내일이다. `misfire_grace_time` 은 살아 있던 프로세스가 늦게 도는 것을
+    구제할 뿐, 죽어 있던 시간은 구제하지 못한다.
+
+      실사고 2026-09-03: 14:00 `prefetch_asia` 가 14:03 배포로 사라졌다.
+      그래서 KBO·NPB 분석 캐시가 없었고, 저녁에 구제 파이프라인이 대신
+      돌아야 했다(NPB 17:26, KBO 18:05). KBO 는 그 과정에서 카드가
+      T-30 을 넘겼다.
+
+    기동 시 **놓친 cron 을 한 번씩 따라잡는다.**
+    ⚠️ 창은 `MISFIRE_GRACE_SEC` 하나다 — "얼마나 늦어도 돌 가치가 있는가"를
+       이미 정해 둔 값이고, 여기 새 숫자를 적지 않는다(사본 금지).
+    ⚠️ 이미 오늘 돈 잡은 건너뛴다. 실행 기록이 원본이다.
+    """
+    from apscheduler.triggers.cron import CronTrigger
+
+    from app.health import _job_runs
+
+    now = datetime.now(KST)
+    try:
+        runs = await _job_runs(redis)
+    except Exception as exc:
+        logger.warning("[catchup] 실행 기록 조회 실패 — 따라잡기 생략: %s", exc)
+        return []
+    fns = {jid: fn for jid, fn, _ in _job_specs()}
+    fired: list[str] = []
+    for job_id, trig in _JOB_TRIGGERS.items():
+        if not isinstance(trig, CronTrigger) or job_id not in fns:
+            continue
+        prev = _last_fire_before(trig, now)
+        if prev is None:
+            continue
+        row = runs.get(job_id) or {}
+        last = None
+        try:
+            last = datetime.fromisoformat(row["at"]) if row.get("at") else None
+        except (KeyError, ValueError):
+            last = None
+        if last is not None:
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=UTC)
+            if last >= prev:
+                continue                      # 이미 돌았다
+        logger.error("[catchup] 🔴 %s 오늘 발화(%s KST)를 재기동이 삼켰다 — "
+                     "지금 한 번 따라잡는다", job_id, prev.astimezone(KST).strftime("%H:%M"))
+        try:
+            await fns[job_id]()
+            fired.append(job_id)
+        except Exception as exc:
+            logger.warning("[catchup] %s 따라잡기 실패: %s", job_id, exc)
+    if not fired:
+        logger.info("[catchup] 놓친 cron 잡 없음")
+    return fired
+
+
+def _last_fire_before(trig, now):
+    """그 트리거의 **직전 발화 시각**. 유예 창 밖이면 None.
+
+    ⚠️ APScheduler 는 "다음 발화"만 준다. 유예 창 시작점부터 앞으로 걸어
+       `now` 직전 것을 찾는다 — 발화 시각을 손으로 계산하지 않는다.
+    """
+    window = datetime.fromtimestamp(now.timestamp() - MISFIRE_GRACE_SEC,
+                                     tz=KST)
+    prev, cur = None, None
+    for _ in range(64):                        # 무한 루프 방지
+        cur = trig.get_next_fire_time(cur, window if cur is None else cur)
+        if cur is None or cur >= now:
+            break
+        prev = cur
+    return prev
+
+
+async def _repair_impossible_live(pool) -> list[dict]:
     """🔴 [P0 2026-09-03] **시작 전 경기는 `live` 일 수 없다.** 불변식 복구.
 
     실사고: KBO 공식 페이지의 경기 전 `0-0` 플레이스홀더를 파서가 점수로 읽어
@@ -1429,7 +1506,7 @@ async def _repair_impossible_live(pool) -> None:
        경기는 없다. 멱등하고, 고칠 게 없으면 아무 일도 하지 않는다.
     """
     if pool is None:
-        return
+        return []
     try:
         rows = await pool.fetch(
             """UPDATE games SET status = 'scheduled', updated_at = now()
@@ -1437,16 +1514,17 @@ async def _repair_impossible_live(pool) -> None:
              RETURNING id, sport, away, home, starts_at""")
     except Exception as exc:
         logger.warning("[repair] 불가능한 live 복구 실패: %s", exc)
-        return
+        return []
     if not rows:
         logger.info("[repair] 시작 전 live 경기 0건 — 정상")
-        return
+        return []
     for r in rows:
         logger.error("[repair] 🔴 시작 전인데 live 였다 → scheduled 복구 "
                      "game=%s %s %s@%s start=%s", r["id"], r["sport"],
                      r["away"], r["home"], r["starts_at"])
     logger.error("[repair] 🔴 %d경기 복구 — 이 행들은 폴링 조회에서 통째로 "
                  "빠져 있었다(카드·구제·경보 전부 침묵)", len(rows))
+    return [dict(r) for r in rows]
 
 
 async def _startup_forensics(pool, redis) -> None:
@@ -1801,6 +1879,20 @@ async def main() -> None:
     #   기동 경로에서 await 하면 Redis 스캔이 스케줄러 시작을 지연시킨다 —
     #   17시대 라인업 폴을 놓치면 그날 발송이 통째로 밀린다.
     asyncio.create_task(startup_backfill_job())
+    # [따라잡기] 재기동이 삼킨 오늘치 cron 을 한 번씩 돌린다.
+    #   ⚠️ 스케줄러가 **뜬 뒤**에 부른다 — `_JOB_TRIGGERS` 가 그때 채워진다.
+    #   ⚠️ 백그라운드로 띄운다. 프리페치는 몇 분 걸리는데, 기동 경로에서
+    #      await 하면 17시대 라인업 폴을 놓친다.
+    async def _catchup() -> None:
+        r = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+        try:
+            await _catchup_missed_crons(r)
+        except Exception as exc:
+            logger.warning("[catchup] 따라잡기 실패: %s", exc)
+        finally:
+            await r.aclose()
+
+    asyncio.create_task(_catchup())
     # [1회성] 축구 라인업 프로브 — 서버가 주체다. 로컬 맥에 의존하지 않는다.
     asyncio.create_task(soccer_lineup_probe_job())
     await asyncio.Event().wait()  # 종료 시그널까지 대기

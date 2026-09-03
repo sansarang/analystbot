@@ -120,3 +120,54 @@ def test_material3_is_measured_by_slots_not_emptiness():
     seg = src[max(0, i - 900):i + 400]
     assert "_slots >= 9" in seg, "자료3 이 여전히 dict 비어있음 기준이다"
     assert "자료3=%s" in seg
+
+
+# ═════════ 주체 귀속 — 비교 문장이 지배적이다 ═════════
+
+COMPARE = ('{"home": {"games": [{"innings": 6.0},{"innings": 7.0},{"innings": 7.0},'
+           '{"innings": 6.0},{"innings": 5.1}]},'
+           ' "away": {"games": [{"innings": 6.0},{"innings": 5.2},{"innings": 6.0},'
+           '{"innings": 6.0},{"innings": 6.0}]}}')
+
+
+def test_comparison_sentence_attributes_each_number_to_its_own_side():
+    """🔴 **derived 가 0건이던 진짜 이유.**
+
+    근거는 거의 항상 비교문이다: "홈 … vs 원정 …". 종전 규칙은 진영 단어가
+    둘 다 있으면 무조건 `subject=None` 이라 재계산을 통째로 건너뛰었다.
+    이제 **그 수치 앞의 가장 가까운 단서**로 가른다 — 사람이 읽는 방식이다.
+    """
+    from app.engine.fact_audit import extract_claims
+
+    text = ("자료4: 홈 선발(원태인) 최근5경기 31.1이닝 vs "
+            "원정 선발(비슬리) 최근5경기 29.2이닝")
+    got = {c["value"]: c["subject"] for c in extract_claims({"근거": [text]})}
+    assert got[31.1] == "home" and got[29.2] == "away", got
+
+
+def test_comparison_sums_become_derived_not_not_found():
+    res = audit({"근거": ["자료4: 홈 선발 최근5경기 31.1이닝 vs "
+                          "원정 선발 최근5경기 29.2이닝"]}, COMPARE)
+    assert res["derived_n"] == 2 and res["not_found_n"] == 0, res
+
+
+def test_pitcher_name_resolves_the_subject():
+    """이름만 나오는 문장 — `names` 를 주면 붙고, 없으면 붙지 않는다."""
+    v = {"근거": ["자료4: 곽빈 최근 5경기 선발 평균 약 6.22이닝"]}
+    assert audit(v, COMPARE)["not_found_n"] == 1
+    assert audit(v, COMPARE, names={"곽빈": "home"})["derived_n"] == 1
+
+
+def test_no_cue_before_the_number_stays_unattributed():
+    """단서가 **뒤에만** 있으면 넘겨짚지 않는다."""
+    from app.engine.fact_audit import claim_subject
+
+    assert claim_subject("6.4이닝을 던진 홈 선발", at=0) is None
+    assert claim_subject("홈 선발이 6.4이닝", at=8) == "home"
+
+
+def test_run_passes_pitcher_names():
+    from pathlib import Path
+
+    src = Path("app/engine/fact_audit.py").read_text(encoding="utf-8")
+    assert "audit(verdict, prompt, names=names or None)" in src

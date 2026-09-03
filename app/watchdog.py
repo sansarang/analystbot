@@ -10,6 +10,7 @@
   W-STORE-DOWN     DB·Redis 오류
   W-JOB-LATE       잡의 마지막 실행이 주기의 2배를 넘김
   W-CARD-LATE      첫 카드 보장선(T-30)을 넘겼는데 카드가 없다
+  W-GAME-INVISIBLE 경기가 폴링 조회에서 사라졌다 (상태 오적재)
 
 🔴 왜 필요한가 (이번 주 실사고):
    · 배당이 **차단 상태로 며칠간 조용히 멈춰 있었다** — 매 실행 로그는
@@ -394,6 +395,66 @@ async def check_card_late(pool, redis) -> list[tuple[str, str, str]]:
              + ", ".join(late[:5]) + (" 외" if len(late) > 5 else ""))]
 
 
+async def check_invisible_games(pool, redis) -> list[tuple[str, str, str]]:
+    """(h) 🔴 **폴링 조회에서 사라진 경기.** 오늘 고장의 부류를 잡는다.
+
+    실사고 2026-09-03: KBO 4경기가 `status='live'` 로 오적재돼 폴링 조회
+    (`WHERE status='scheduled'`)에서 통째로 빠졌다. 카드도, 구제도, 경보도
+    없이 `잡 executed successfully` + `워치독 이상 없음` 이 찍혔다.
+    **미발송으로도 안 잡혔다 — 대상 목록 자체가 비었기 때문이다.**
+
+    🔴 그래서 이 점검은 **폴링과 다른 눈으로 센다.** `status` 를 조건에 넣지
+       않고 "곧 시작하는 경기"를 전부 센 뒤, 그중 폴링이 볼 수 있는 것이
+       몇 개인지 비교한다. 같은 눈으로 감시하면 폴링이 못 보는 것을 감시도
+       못 본다.
+
+    ⚠️ 함께 **고친다.** 시작 전 `live` 는 불변식 위반이므로 워치독이 5분마다
+       복구한다 — 기동 시 1회로는 오늘처럼 낮에 생긴 오염을 저녁 내내 못 푼다.
+    """
+    if pool is None:
+        return []
+    from app.engine.pregame_push import SPORTS
+
+    out: list[tuple[str, str, str]] = []
+    # ① 불변식 복구 — 워치독은 읽기만 한다는 원칙의 **예외**다.
+    #    이건 "차단 해제"가 아니라 **불가능한 상태의 교정**이고, 사람이
+    #    개입할 판단 여지가 없다(시작 전 경기는 진행 중일 수 없다).
+    try:
+        from app.scheduler import _repair_impossible_live
+
+        fixed = await _repair_impossible_live(pool)
+    except Exception as exc:
+        logger.warning("[watchdog] 불변식 복구 실패: %s", exc)
+        fixed = []
+    if fixed:
+        names = ", ".join(f"{r['away']}@{r['home']}" for r in fixed[:5])
+        out.append(("W-GAME-INVISIBLE", f"{len(fixed)}경기",
+                    f"시작 전인데 live 여서 폴링에서 빠져 있었다 → 복구함: {names}"))
+    # ② 그래도 안 보이는 경기가 있는가 — status 를 조건에 넣지 않고 센다.
+    try:
+        rows = await pool.fetch(
+            """SELECT sport,
+                      count(*) AS total,
+                      count(*) FILTER (WHERE status = 'scheduled') AS visible,
+                      count(*) FILTER (
+                          WHERE status NOT IN ('scheduled', 'cancelled',
+                                               'postponed', 'suspended')) AS odd
+                 FROM games
+                WHERE sport = ANY($1::text[])
+                  AND starts_at > now() AND starts_at < now() + interval '6 hours'
+                GROUP BY sport""", list(SPORTS))
+    except Exception as exc:
+        logger.debug("[watchdog] 보이지 않는 경기 조회 실패: %s", exc)
+        return out
+    for r in rows:
+        if int(r["odd"]) and not int(r["visible"]):
+            out.append(("W-GAME-INVISIBLE", r["sport"].upper(),
+                        f"6시간 내 {r['total']}경기가 있는데 폴링이 볼 수 있는 것이 "
+                        f"0건이다 (비정상 상태 {r['odd']}건) — 카드가 통째로 "
+                        f"안 나갈 수 있다"))
+    return out
+
+
 async def run_checks(pool, redis) -> list[tuple[str, str, str]]:
     """전 점검. 하나가 죽어도 나머지는 돈다 — 워치독이 눈을 감으면 안 된다."""
     found: list[tuple[str, str, str]] = []
@@ -404,6 +465,7 @@ async def run_checks(pool, redis) -> list[tuple[str, str, str]]:
         ("jobs", check_jobs(redis)),
         ("sends", check_pending_sends(pool, redis)),
         ("card_late", check_card_late(pool, redis)),
+        ("invisible", check_invisible_games(pool, redis)),
     ):
         try:
             found += await coro

@@ -2103,6 +2103,24 @@ async def build_analysis(
                 logger.warning("[pipeline] 라인 이동 계산 실패 game=%s: %s", g.get("game_id"), exc)
 
 
+    # 🔴 [2026-09-04] **야구 첫 카드에 배당을 붙인다.**
+    #    `build_analysis` 는 야구에 대해 `best_odds={}` 로 둔다 — 배당이 판정에
+    #    스며들면 안 되기 때문이고, 그 격리는 옳다. 그런데 **판정이 끝난 뒤에도
+    #    다시 붙여주지 않아** 첫 카드가 늘 "가치 배당 미수집"으로 나갔다.
+    #    `refresh_odds_for_game`(v1.3 A-2)은 재판정 경로에만 배선돼 있었고,
+    #    그래서 재판정을 탄 경기만 가치가 찍혔다.
+    #      실측 2026-09-03: KBO 4경기 중 배당 재부착 **1건**(타순 변동으로
+    #      재판정한 game=1704). 나머지 3장은 배당이 DB 에 있는데도 값이 없었다.
+    #    ⚠️ **판정 호출은 이미 끝났다** — 여기서 붙는 값은 `p_home` 에 닿을 수
+    #       없다. 쓰이는 곳은 가치 게이트·시장 괴리뿐이다(금지선 그대로).
+    #    ⚠️ 반드시 `_compute_picks` **앞**이다. 픽이 `best_odds` 를 읽는다.
+    if sport in _BB:
+        for _g in judge_games:
+            try:
+                await refresh_odds_for_game(pool, _g)
+            except Exception as exc:
+                logger.warning("[pipeline] 배당 부착 실패 game=%s: %s",
+                               _g.get("game_id"), exc)
     picks_out, parlays, recommended = _compute_picks(
         settings, judge_games, sport, statcast_data, news=news, sentiment=sentiment)
     # 라인 이동으로 신뢰도가 바뀌면 등급·추천이 달라지므로 픽을 다시 계산한다
