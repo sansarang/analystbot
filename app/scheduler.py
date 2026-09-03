@@ -1253,6 +1253,15 @@ async def startup_backfill_job() -> None:
         #   못 읽는다. "며칠째 배당이 죽어 있었나", "타순이 몇 건 오염됐나"는
         #   서버가 스스로 말해야 한다.
         await _startup_forensics(pool, redis)
+        # [전 리그 프로브] `PROBE_LEAGUE=1` 일 때 기동 시 1회.
+        #   ⚠️ 읽기 전용이다 — 카드·판정·캐시·ledger 를 건드리지 않는다.
+        if os.getenv("PROBE_LEAGUE") == "1":
+            try:
+                from tools.probe_league import run as _probe_league
+
+                await _probe_league(redis)
+            except Exception as exc:
+                logger.error("[probe] 전 리그 프로브 실패: %r", exc)
         # [0a] 오염 타순 소급 교정. **서버가 한다** — 운영 DB 는 내부
         #   호스트명이라 `railway run` 으로도 밖에서 못 닿는다.
         #   멱등하다: 고쳐진 행은 길이 9가 되어 다음부터 선택되지 않는다.
