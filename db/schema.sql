@@ -556,3 +556,31 @@ CREATE INDEX IF NOT EXISTS idx_variable_ledger_game
     ON variable_ledger (game_id);
 CREATE INDEX IF NOT EXISTS idx_variable_ledger_pending
     ON variable_ledger (sport, graded_at) WHERE graded_at IS NULL;
+
+
+-- ── [시장 기준선 2026-09-04] 우리 판정 vs 시장. **사후 전용.** ──────────
+-- 🔴 배당은 판정 입력에 흐르지 않는다(CLAUDE.md 금지선). 이 표는 판정이
+--    확정된 **뒤에** 시장과 나란히 놓고 나중에 누가 맞았는지 세기 위한 것이다.
+-- ⚠️ 분모 정의: **발송된 경기만** 행이 생긴다. 취소·판정불가로 카드가 안 나간
+--    경기는 행이 없다 — 시장과 우리를 같은 경기 집합에서 비교하기 위해서다.
+CREATE TABLE IF NOT EXISTS market_baseline_ledger (
+    id              BIGSERIAL PRIMARY KEY,
+    game_id         BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+    sport           TEXT        NOT NULL,
+    slate_date      TEXT        NOT NULL,
+    provider        TEXT,
+    p_market_send   NUMERIC,        -- 발송 시점 시장 확률(홈)
+    p_market_close  NUMERIC,        -- 시작 직전 마지막 스냅샷 = 마감 근사
+    market_favored  TEXT,           -- 'home' | 'away' | 'even'
+    our_p           NUMERIC,        -- 그 시점 우리 p_home
+    our_favored     TEXT,
+    divergence      NUMERIC,        -- our_p - p_market_close
+    market_hit      BOOLEAN,        -- 시장 우세가 맞았는가 (even/무승부는 NULL)
+    our_hit         BOOLEAN,        -- pick_ledger 에서 **복사**한다 (재계산 금지)
+    void            BOOLEAN     NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    graded_at       TIMESTAMPTZ,
+    UNIQUE (game_id)
+);
+CREATE INDEX IF NOT EXISTS idx_market_baseline_pending
+    ON market_baseline_ledger (sport, graded_at) WHERE graded_at IS NULL;

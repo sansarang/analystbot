@@ -207,6 +207,17 @@ async def grade_pending(pool, sport: str | None = None) -> dict:
             logger.info("[ledger] 변수 채점 동반 실행 %s", v)
     except Exception as exc:
         logger.warning("[ledger] 변수 채점 생략: %s", exc)
+    # [시장 기준선] 같은 잡에서 채점한다 — **새 잡을 만들지 않는다**
+    #   (타이밍 결합 회피: 따로 돌면 한쪽만 밀린다).
+    #   ⚠️ 반환 계약 `{graded, void}` 는 건드리지 않는다.
+    try:
+        from app.engine.market_baseline import grade as _grade_market
+
+        mb = await _grade_market(pool, sport)
+        if mb.get("graded"):
+            logger.info("[ledger] 시장 기준선 채점 동반 실행 %s", mb)
+    except Exception as exc:
+        logger.warning("[ledger] 시장 기준선 채점 생략: %s", exc)
     where_sport = " AND l.sport = $1" if sport else ""
     args = [sport] if sport else []
     rows = await pool.fetch(

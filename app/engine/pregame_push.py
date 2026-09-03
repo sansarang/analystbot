@@ -592,6 +592,15 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
         outcome = "revised" if revision else "sent"
         logger.info("[pregame] %s game=%s %s", sport, gid, outcome)
         await ds.record(redis, sport, date_s, outcome)
+        # [시장 기준선] 발송된 경기만 원장에 남긴다 — 시장과 우리를 **같은
+        #   경기 집합**에서 비교하기 위해서다. 실패해도 발송에 영향 없다.
+        try:
+            from app.db import get_pool
+            from app.engine.market_baseline import record_send
+
+            await record_send(await get_pool(), jg, date_s)
+        except Exception as exc:
+            logger.debug("[pregame] 시장 원장 기록 생략 game=%s: %s", gid, exc)
         return outcome
     logger.warning("[pregame] %s game=%s 발송 실패", sport, gid)
     await ds.record(redis, sport, date_s, "send_failed")
