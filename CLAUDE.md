@@ -2,6 +2,10 @@
 
 ## ⚠️ 작업 시작 전 필수 확인
 
+**모든 코드 변경은 [docs/ENGINEERING.md](docs/ENGINEERING.md)의 절차를 따른다.**
+(착수 전 영향 지도 5문 → 5대 반복 결함 체크 → 계약 테스트 → 1변경 1배포 →
+첫 사이클 실측. 절차를 생략한 커밋은 반려 대상이다.)
+
 **작업 시작 전 [docs/DISCIPLINE.md](docs/DISCIPLINE.md)(운용 규율),
 [docs/MODEL.md](docs/MODEL.md)(확률 모델과 물리적 한계값),
 [docs/RESEARCH_VALIDATION.md](docs/RESEARCH_VALIDATION.md)(데이터 신뢰 규칙)를 반드시 확인하라.
@@ -57,6 +61,7 @@ NPB 30분 전·MLB 3시간 전. MLB 숫자는 statsapi·Statcast (Go HTML 크롤
 | **[docs/MODEL.md](docs/MODEL.md)** | 야구 폼 판정 · 축구 스켈람 · **한계값(임의 완화 금지)** · λ는 아카이브 |
 | [docs/RESEARCH_VALIDATION.md](docs/RESEARCH_VALIDATION.md) | 리서치 응답 검증 체계와 튜닝 기준 |
 | [docs/PREGAME_CHECKLIST.md](docs/PREGAME_CHECKLIST.md) | KBO·NPB 저녁 발송 점검 (`/checklist`) |
+| **[docs/ENGINEERING.md](docs/ENGINEERING.md)** | **코드 변경 절차 — 영향 지도·반복 결함·배포 리듬 (사고 이력 기반)** |
 | [docs/DATAFLOW.md](docs/DATAFLOW.md) | 수집→재료→판정→게이트→발송→**감시 3층** 흐름 지도 |
 | CLAUDE.md | 이 문서 — 구조·명령어·규약 |
 
@@ -455,6 +460,20 @@ python -c "import asyncio; from app.scheduler import prefetch_job; asyncio.run(p
 판정 설계에 `test_judgement_design_was_not_touched` 가 있듯, **새 모듈도
 자기 규율을 테스트로 잠그기 전에는 배포하지 않는다.** "나중에 테스트를
 붙이겠다"는 배포는 그 모듈이 틀렸을 때 알려줄 사람이 없다는 뜻이다.
+
+### 커밋 메시지 템플릿 — 영향 지도 5문
+
+`.gitmessage` 가 템플릿이다 (`git config commit.template .gitmessage` 로 붙인다).
+모든 커밋 메시지는 아래 5문에 답을 담는다 — 빈 칸으로 남기지 말고
+"해당 없음 + 이유"라도 쓴다. → [ENGINEERING.md §1](docs/ENGINEERING.md)
+
+```
+[영향] ① 읽는 곳: (grep 결과)
+       ② 바뀌는 상태: (DB·Redis·env·캐시 / 다른 갱신자 없음?)
+       ③ 리그 분기: (생기면 나머지 리그 제외 이유)
+       ④ 실패하면 시끄러운가: (조용한 0 경로 없음?)
+       ⑤ 사본: (원본이 있는 사실을 다시 적지 않았는가)
+```
 
 ### 배포 전 자기검증 3문 — 커밋 메시지에 답을 남긴다
 
