@@ -1336,6 +1336,7 @@ async def startup_backfill_job() -> None:
         # [운영 안정화 3c·4] 기동 시 1회 소급 진단 — 운영 Redis·DB 는 밖에서
         #   못 읽는다. "며칠째 배당이 죽어 있었나", "타순이 몇 건 오염됐나"는
         #   서버가 스스로 말해야 한다.
+        await _repair_impossible_live(pool)
         await _startup_forensics(pool, redis)
         # [리허설] `REHEARSAL=1` 일 때 기동 시 1회. 격리 키·발송 차단.
         if os.getenv("REHEARSAL") == "1":
@@ -1413,6 +1414,39 @@ async def _repair_lineups_once(pool, redis) -> None:
         await redis.set(_REPAIR_KEY, f"{fixed}/{marked}", ex=90 * 86400)
     except Exception as exc:
         logger.warning("[repair] 오염 교정 실패 — 운영은 계속: %s", exc)
+
+
+async def _repair_impossible_live(pool) -> None:
+    """🔴 [P0 2026-09-03] **시작 전 경기는 `live` 일 수 없다.** 불변식 복구.
+
+    실사고: KBO 공식 페이지의 경기 전 `0-0` 플레이스홀더를 파서가 점수로 읽어
+    4경기를 `live` 로 적재했다. 아시아 폴링은 `status='scheduled'` 만 조회하므로
+    **행이 0건이 되어 조용히 아무것도 하지 않았다** — 카드도, 구제도, 경보도
+    없었다. 파서를 고쳐도 이미 DB 에 들어간 행은 스스로 낫지 않는다.
+    그 행을 고칠 유일한 경로(`upsert_schedule`)가 그 행을 못 찾기 때문이다.
+
+    ⚠️ 이건 종목을 가리지 않는 **불변식**이다: 시작 시각이 미래인데 진행 중인
+       경기는 없다. 멱등하고, 고칠 게 없으면 아무 일도 하지 않는다.
+    """
+    if pool is None:
+        return
+    try:
+        rows = await pool.fetch(
+            """UPDATE games SET status = 'scheduled', updated_at = now()
+                WHERE status = 'live' AND starts_at > now()
+             RETURNING id, sport, away, home, starts_at""")
+    except Exception as exc:
+        logger.warning("[repair] 불가능한 live 복구 실패: %s", exc)
+        return
+    if not rows:
+        logger.info("[repair] 시작 전 live 경기 0건 — 정상")
+        return
+    for r in rows:
+        logger.error("[repair] 🔴 시작 전인데 live 였다 → scheduled 복구 "
+                     "game=%s %s %s@%s start=%s", r["id"], r["sport"],
+                     r["away"], r["home"], r["starts_at"])
+    logger.error("[repair] 🔴 %d경기 복구 — 이 행들은 폴링 조회에서 통째로 "
+                 "빠져 있었다(카드·구제·경보 전부 침묵)", len(rows))
 
 
 async def _startup_forensics(pool, redis) -> None:

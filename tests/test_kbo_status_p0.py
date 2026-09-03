@@ -57,3 +57,23 @@ def test_has_started_boundary():
                         (now - timedelta(minutes=1)).strftime("%H:%M")) is True
     assert _has_started(now.strftime("%Y-%m-%d"),
                         (now + timedelta(minutes=1)).strftime("%H:%M")) is False
+
+
+def test_boot_repairs_impossible_live_rows():
+    """🔴 파서를 고쳐도 **이미 들어간 행**은 스스로 낫지 않는다.
+
+    아시아 폴링은 `status='scheduled'` 만 조회한다. 오염된 행은 조회에서
+    빠지고, 그 행을 고칠 유일한 경로(`upsert_schedule`)도 그 행을 못 찾는다 —
+    교착이다. 기동 시 불변식으로 끊는다.
+    """
+    from pathlib import Path
+
+    src = Path("app/scheduler.py").read_text(encoding="utf-8")
+    assert "_repair_impossible_live" in src
+    i = src.index("async def _repair_impossible_live")
+    seg = src[i:src.index("\nasync def ", i + 10)]
+    assert "status = 'live' AND starts_at > now()" in seg
+    assert "SET status = 'scheduled'" in seg
+    # 기동 경로에서 **포렌식보다 먼저** 돈다 — 포렌식이 고쳐진 상태를 보게
+    assert src.index("await _repair_impossible_live(pool)") < \
+        src.index("await _startup_forensics(pool, redis)")
