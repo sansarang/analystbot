@@ -1370,7 +1370,12 @@ async def _startup_forensics(pool, redis) -> None:
     # ③ 하이픈 이름 오염 — 저장된 타순 배열이 9명이 아닌 행이 몇 건인가.
     #    `Pete Crow-Armstrong` 이 두 조각으로 갈려 들어가면 길이가 10이 된다.
     #    그 라인업은 슬롯이 통째로 밀려 가짜 '타순 이동'을 만들었다.
-    for table, ts in (("lineup_events", "observed_at"), ("lineups", "captured_at")):
+    #    ⚠️ **확정본만 센다** — 공시 전 부분 타순은 정상이다. 두 테이블이
+    #       "확정"을 다르게 적는다: `lineups.status='confirmed'` vs
+    #       `lineup_events.is_final`. 한쪽 이름을 양쪽에 쓰면 조회가 깨진다
+    #       (실사고 2026-09-03: `column l.status does not exist`).
+    for table, ts, final in (("lineup_events", "observed_at", "l.is_final"),
+                             ("lineups", "captured_at", "l.status = 'confirmed'")):
         try:
             rows = await pool.fetch(
                 f"""SELECT g.sport,
@@ -1381,7 +1386,7 @@ async def _startup_forensics(pool, redis) -> None:
                      WHERE l.batting_order IS NOT NULL
                        AND jsonb_typeof(l.batting_order) = 'array'
                        AND jsonb_array_length(l.batting_order) <> 9
-                       AND l.status = 'confirmed'
+                       AND {final}
                      GROUP BY g.sport ORDER BY g.sport""")
             if rows:
                 for r in rows:

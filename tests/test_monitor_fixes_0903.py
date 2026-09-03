@@ -33,12 +33,21 @@ async def test_m3_counts_only_confirmed_lineups():
 
 
 def test_forensics_counts_only_confirmed():
+    """🔴 두 테이블이 "확정"을 **다르게** 적는다.
+
+    `lineups.status='confirmed'` vs `lineup_events.is_final`.
+    한쪽 이름을 양쪽에 쓰면 조회가 통째로 깨진다 — 실사고 2026-09-03:
+    `column l.status does not exist` 로 lineup_events 감시가 죽었다.
+    """
     from pathlib import Path
 
     src = Path("app/scheduler.py").read_text(encoding="utf-8")
     i = src.index("타순 길이 ≠ 9 인 행")
-    seg = src[max(0, i - 1200):i]
-    assert "l.status = 'confirmed'" in seg, "기동 포렌식도 확정만 세야 한다"
+    seg = src[max(0, i - 1800):i]
+    assert "l.status = 'confirmed'" in seg, "lineups 확정 조건이 없다"
+    assert "l.is_final" in seg, "lineup_events 는 is_final 이다"
+    # 테이블마다 제 조건을 들고 다녀야 한다 — 하드코딩된 공통 WHERE 금지
+    assert "AND {final}" in seg, "확정 조건이 테이블별로 갈리지 않는다"
 
 
 # ═══════════════ ② W-JOB-LATE — 배포 후 미실행 ═══════════════
