@@ -43,7 +43,53 @@ UNIT_PATTERNS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
 )
 
 #: 계산값 표현 — 이 말이 붙으면 원본 배열에서 재계산해 본다.
-DERIVED_MARKERS = ("평균", "경기당", "/경기", "환산")
+#  🔴 [2026-09-03] **합계 표현이 빠져 있었다.** "최근 4경기 27이닝" 의 27 은
+#     합계인데, 마커가 없어 `derived=False` 로 분류돼 곧장 근사 비교를 탔고
+#     원문의 경기별 이닝(≈8)과 19이닝 차이로 **환각(mismatch)** 이 됐다.
+#     판정은 옳았고 감시가 틀렸다 (리허설 실측 2026-09-03, NPB 2건).
+DERIVED_MARKERS = ("평균", "경기당", "/경기", "환산", "합계", "총", "도합")
+
+#: "최근 4경기" · "3등판" — 표본 크기를 명시한 표현.
+SAMPLE_N_RE = re.compile(r"(\d+)\s*(?:경기|등판)")
+
+#: 주체 귀속 — 이 말이 있으면 그쪽 진영의 배열만 본다.
+SUBJECT_WORDS = {"home": ("home", "홈", "홈팀"), "away": ("away", "원정", "원정팀")}
+
+
+def claim_subject(text: str) -> str | None:
+    """이 인용이 누구 것인가. **모르면 None** — 추측해서 재계산하지 않는다."""
+    hits = [side for side, words in SUBJECT_WORDS.items()
+            if any(w in text for w in words)]
+    return hits[0] if len(hits) == 1 else None
+
+
+def sample_n(text: str) -> int | None:
+    """"최근 N경기" 의 N. 여러 개면 **가장 앞의 것** (그 문장의 주 표본)."""
+    m = SAMPLE_N_RE.search(text)
+    return int(m.group(1)) if m else None
+
+
+def _region(prompt: str, side: str) -> str:
+    """프롬프트에서 그 진영 블록들만 이어 붙인다. 중괄호 균형으로 자른다.
+
+    ⚠️ 원문은 JSON 이 섞인 텍스트다. `"home": {...}` 을 만나면 짝이 맞는
+       닫는 괄호까지가 그 진영의 몫이다. 못 자르면 **빈 문자열**을 준다 —
+       엉뚱한 범위로 재계산하느니 재계산을 포기한다.
+    """
+    out = []
+    for m in re.finditer(rf'"{side}"\s*:\s*(\{{|\[)', prompt):
+        i = m.end() - 1
+        depth, opens = 0, {"{": "}", "[": "]"}
+        close = opens[prompt[i]]
+        for j in range(i, min(len(prompt), i + 20000)):
+            if prompt[j] in "{[":
+                depth += 1
+            elif prompt[j] in "}]":
+                depth -= 1
+                if depth == 0:
+                    out.append(prompt[i:j + 1])
+                    break
+    return "\n".join(out)
 
 
 def extract_claims(verdict: dict) -> list[dict]:
@@ -59,7 +105,8 @@ def extract_claims(verdict: dict) -> list[dict]:
                     except (TypeError, ValueError):
                         continue
                     out.append({"text": s[:200], "unit": unit, "value": val,
-                                "derived": any(k in s for k in DERIVED_MARKERS)})
+                                "derived": any(k in s for k in DERIVED_MARKERS),
+                                "subject": claim_subject(s), "n": sample_n(s)})
     return out
 
 
@@ -89,29 +136,107 @@ def numbers_in_prompt(prompt: str, unit: str) -> set[float]:
     return found
 
 
+def values_in(text: str, unit: str) -> list[float]:
+    """그 단위의 값들을 **순서·중복 그대로** 모은다.
+
+    🔴 종전 `numbers_in_prompt` 는 `set` 이었다. 합계를 검증하려면 같은 값이
+       두 번 나온 것도 두 번 세야 한다 — 집합으로는 합을 복원할 수 없다.
+    """
+    keys = next((k for p, u, k in UNIT_PATTERNS if u == unit), ())
+    found: list[float] = []
+    for key in keys:
+        for m in re.finditer(rf'"{re.escape(key)}"\s*:\s*"?(-?\d+(?:\.\d+)?)', text):
+            try:
+                found.append(round(float(m.group(1)), 3))
+            except ValueError:
+                continue
+    for pat, u, _ in UNIT_PATTERNS:
+        if u != unit:
+            continue
+        for m in re.finditer(pat, text):
+            try:
+                found.append(round(float(m.group(1)), 3))
+            except ValueError:
+                continue
+    return found
+
+
+def _recompute_hits(val: float, vals: list[float], n: int | None,
+                    tolerance: float) -> bool:
+    """합·평균을 **명시된 표본 크기**로 맞춰 본다.
+
+    ⚠️ 순서를 모르므로 앞 N개와 뒤 N개 둘 다 본다. 그래도 안 맞으면
+       **포기한다** — 조합을 뒤지면 우연히 맞는 값이 나와 검증이 무의미해진다.
+    """
+    if not vals:
+        return False
+    cands = [vals]
+    if n and 0 < n <= len(vals):
+        cands += [vals[:n], vals[-n:]]
+    for c in cands:
+        if not c:
+            continue
+        if abs(val - sum(c)) <= tolerance * len(c):
+            return True
+        if abs(val - sum(c) / len(c)) <= tolerance:
+            return True
+    return False
+
+
 def classify(claim: dict, prompt: str, tolerance: float) -> tuple[str, dict | None]:
-    """한 인용의 판정. 반환 (verified|derived|not_found|mismatch, 상세|None)."""
-    pool = numbers_in_prompt(prompt, claim["unit"])
+    """한 인용의 판정. 반환 (verified|derived|not_found|mismatch, 상세|None).
+
+    🔴 **`mismatch` 의 정의를 좁게 박는다** (2026-09-03):
+       *동일 주체·동일 단위·동일 표본*의 값이 원문과 다를 때만 불일치다.
+       주체를 모르거나(어느 팀 얘기인지 불명) 재계산이 안 맞으면 **`not_found`**
+       다 — "틀렸다"가 아니라 "검증 못 했다"는 뜻이다.
+       리허설 실측: 이 구분이 없어 합계 인용 2건이 환각으로 찍혔다.
+
+    ⚠️ 그래서 `not_found` 는 **환각률이 아니라 검증 불가율**이다. 보고서에서
+       그렇게 읽어야 한다.
+    """
+    unit = claim["unit"]
     val = round(float(claim["value"]), 3)
+    pool = numbers_in_prompt(prompt, unit)
     if not pool:
         return "not_found", None
     if any(abs(val - x) <= 1e-6 for x in pool):
         return "verified", None
+
+    # 주체가 특정되면 **그 진영의 배열만** 본다.
+    # ⚠️ 모호함은 진영이 **둘 다 있을 때만** 생긴다. 원문에 진영 구조가 아예
+    #    없으면(단편 자료) 헷갈릴 대상이 없으므로 전체를 쓴다.
+    side = claim.get("subject")
+    homes, aways = _region(prompt, "home"), _region(prompt, "away")
+    structured = bool(homes or aways)
+    if side and structured:
+        vals = values_in(_region(prompt, side), unit)
+    elif not structured:
+        vals = values_in(prompt, unit)
+    else:
+        vals = []                          # 진영은 있는데 어느 쪽인지 모른다
+
     if claim.get("derived"):
-        # 평균·경기당 표현은 원본 값들의 산술평균과 맞는지 본다.
-        vals = sorted(pool)
-        if vals:
-            avg = sum(vals) / len(vals)
-            if abs(val - avg) <= tolerance:
-                return "derived", None
-        # 재계산이 안 맞아도 **불일치로 단정하지 않는다** — 어느 부분집합의
-        # 평균인지 알 수 없다. 이 층의 목적은 환각 탐지이지 산수 검사가 아니다.
+        if vals and _recompute_hits(val, vals, claim.get("n"), tolerance):
+            return "derived", None
+        # 주체 불명이거나 재계산 실패 → **추측하지 않는다.**
         return "not_found", None
-    near = min(pool, key=lambda x: abs(x - val))
+
+    if not vals:
+        # 재계산은 못 해도 **직접 인용**은 전체 풀로 대조할 수 있다.
+        # 값 하나를 그대로 적은 것이라 부분집합 모호성이 없다.
+        vals = values_in(prompt, unit)
+    if not vals:
+        return "not_found", None
+    near = min(vals, key=lambda x: abs(x - val))
     if abs(near - val) <= tolerance:
         return "verified", None
-    return "mismatch", {"claim": claim["text"], "unit": claim["unit"],
-                        "claimed": val, "nearest_in_source": near}
+    # 합계로 읽으면 맞는 경우가 있다 — 마커가 없어도 한 번 봐준다.
+    if _recompute_hits(val, vals, claim.get("n"), tolerance):
+        return "derived", None
+    return "mismatch", {"claim": claim["text"], "unit": unit,
+                        "claimed": val, "nearest_in_source": near,
+                        "subject": side, "sample_n": claim.get("n")}
 
 
 def audit(verdict: dict, prompt: str, *, tolerance: float | None = None) -> dict:
