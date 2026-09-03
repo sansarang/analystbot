@@ -55,6 +55,31 @@ class Settings(BaseSettings):
         default="claude-haiku-4-5-20251001",
         validation_alias=AliasChoices("MODEL_TEAM_FORM", "team_form_model"),
     )
+    # ─────────────── 감시 3층 (v1.3-monitor) ───────────────
+    #: 🔴 **감시는 판정을 건드리지 않는다.** 전부 판정 산출물이 저장된 뒤에
+    #   읽는 별도 경로다. 여기 상수는 감시층만 쓴다.
+    #: L1 사실 감시 활성. 끄면 훅이 즉시 반환한다(카드 바이트 불변).
+    fact_audit_enabled: bool = Field(default=True, validation_alias=AliasChoices(
+        "FACT_AUDIT_ENABLED", "fact_audit_enabled"))
+    #: 계산값(평균 등) 재계산 허용 오차. 이보다 크면 mismatch 후보.
+    fact_audit_tolerance: float = 0.05
+    #: L2·L3 그림자 패널 — 슬레이트당 대상 상한.
+    shadow_max_per_slate: int = Field(default=5, validation_alias=AliasChoices(
+        "SHADOW_MAX_PER_SLATE", "shadow_max_per_slate"))
+    #: 주심 대비 편차가 이 이상이면 W-PANEL-DIVERGE.
+    shadow_diverge_pp: float = 0.08
+    #: Gemini — 키가 없으면 L2·L3 전체 휴면.
+    gemini_api_key: str = Field(default="", validation_alias=AliasChoices(
+        "GEMINI_API_KEY", "gemini_api_key"))
+    gemini_model: str = Field(default="gemini-2.5-flash",
+                              validation_alias=AliasChoices("GEMINI_MODEL",
+                                                            "gemini_model"))
+    #: 무료 티어 분당 10요청 — 호출 간 최소 간격(초).
+    gemini_min_interval_sec: float = 7.0
+    #: 판정 프롬프트 원문 보관 TTL(초). 사실 감시가 **판정 시점의** 원문을
+    #  읽어야 한다 — 재렌더하면 그 사이 바뀐 재료를 보게 된다.
+    prompt_keep_ttl_sec: int = 24 * 3600
+
     #: [무과금 전환] SharpAPI 무료 티어 키. **비면 폴백이 조용히 꺼진다.**
     #   계정 발급은 사람이 하는 일이라 코드가 만들 수 없다 — 키가 들어오면
     #   ESPN 실패 시 자동으로 2순위가 붙는다.

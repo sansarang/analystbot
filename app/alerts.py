@@ -509,6 +509,10 @@ WATCHDOG_CODES = {
     "W-STORE-DOWN": "DB·Redis 오류",
     "W-JOB-LATE": "스케줄러 잡이 주기를 넘김",
     "W-RESCUE-DEAD": "판정 캐시 구제 실패",
+    # 감시 3층 (v1.3-monitor) — 전부 사후 관측이고 발송을 막지 않는다.
+    "W-FACT-MISMATCH": "판정이 인용한 수치가 원문과 다름",
+    "W-PANEL-DIVERGE": "독립 판정과 편차 큼",
+    "W-MONITOR-DOWN": "감시층 자체가 실패",
 }
 
 

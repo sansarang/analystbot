@@ -239,6 +239,20 @@ def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
     jg["form_unavailable"] = False
 
 
+async def _keep_prompt(redis, game_id, prompt: str) -> None:
+    """감시층이 읽을 프롬프트 원문 보관. 실패해도 판정을 막지 않는다."""
+    if redis is None or game_id is None:
+        return
+    try:
+        from app.config import get_settings
+        from app.engine.fact_audit import PROMPT_KEY
+
+        await redis.set(PROMPT_KEY.format(game_id=game_id), prompt,
+                        ex=int(get_settings().prompt_keep_ttl_sec))
+    except Exception as exc:
+        logger.debug("[matchup] 프롬프트 보관 실패 game=%s: %s", game_id, exc)
+
+
 async def persist_matchup_record(redis, jg: dict, date: str) -> None:
     """analysis:{league}:{game_id}:{date} 에 사용 모델 ID를 남긴다."""
     if redis is None:
@@ -359,6 +373,17 @@ async def judge_matchup(jg: dict, redis, date: str, *,
                                       ensure_ascii=False, default=str),
         BULLPEN_JSON=json.dumps(bullpen_payload(jg), ensure_ascii=False, default=str),
     )
+    # [M-2 계측] 자료8·9 가 **실제로 프롬프트에 실렸는가.** 수집률(100%)과
+    #   주입률이 갈리던 것을 잡는다 — 2026-09-02 카드 2장이 "자료8 부재"라
+    #   적었는데 로그는 매칭 18/18 이었다.
+    _m8 = lineup_season_payload(jg)
+    logger.info("[materials] game=%s 자료8=%s slots=%d 자료9=%s",
+                jg.get("game_id"), "Y" if _m8 else "N", len(_m8),
+                "Y" if bullpen_payload(jg) else "N")
+    # [감시 L1] 판정 **시점의** 프롬프트를 남긴다. 사실 감사가 재렌더하면
+    #   그 사이 바뀐 재료를 보게 되므로, 그때 그 원문이어야 한다.
+    #   ⚠️ 이것은 **기록이다.** 판정 입력·프롬프트·모델 호출을 바꾸지 않는다.
+    await _keep_prompt(redis, jg.get("game_id"), prompt)
     parsed = None
     # 🔴 [v1.3 A-3] **절단은 한도를 올려 재시도한다.** "짧게 쓰라"고 지시하면
     #    근거가 잘려 판정이 얇아진다 — 고칠 것은 출력이 아니라 그릇이다.

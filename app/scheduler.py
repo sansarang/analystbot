@@ -692,6 +692,11 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
                     notes.append(
                         f"원정 선발 변경: {r['away_pitcher']} → {game['away_pitcher']}")
                 if roster_changed:
+                    # [M-1 계측] 폴러의 전이. 카드가 (잠정)을 달면 이 로그와
+                    #   대조해 DB·캐시·카드 셋 중 어디가 어긋났는지 본다.
+                    logger.info("[lineup-status] game=%s %s→%s at=poller "
+                                "9명=%s", r["id"], r["lineup_status"], status,
+                                status == "confirmed")
                     await pool.execute(
                         "UPDATE games SET lineup_status = $2, "
                         "home_pitcher = COALESCE($3, home_pitcher), "

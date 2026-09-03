@@ -169,7 +169,20 @@ def _same_person(a: str, b: str) -> bool:
 
 
 async def save_lineup(pool: asyncpg.Pool, game_id: int, side: str, status: str,
-                      source: str, parsed: dict) -> None:
+                      source: str, parsed: dict, *, caller: str = "?") -> None:
+    """[M-3 계측] 타순 길이가 9가 아니면 **누가 넣었는지** 남긴다.
+
+    🔴 `lineups` 테이블의 길이 이상이 08-26 이후 계속 늘고 있다
+       (2026-09-02 84건 → 09-03 101건). `lineup_events` 는 0건이라 판정
+       경로는 깨끗하지만, 어느 호출자가 쌓는지 모른다.
+    ⚠️ 호출자는 **명시 인자**로 받는다 — `inspect` 로 스택을 뒤지면
+       느리고, 데코레이터·태스크 경계에서 엉뚱한 이름이 나온다.
+    """
+    order = parsed.get("batting_order") or []
+    if len(order) != 9:
+        logger.info("[lineups-anomaly] caller=%s game=%s side=%s len=%d "
+                    "status=%s source=%s", caller, game_id, side, len(order),
+                    status, source)
     await pool.execute(
         """
         INSERT INTO lineups (game_id, side, status, source, starter, batting_order, scratches)
@@ -224,7 +237,8 @@ async def refresh_mlb_lineup(pool: asyncpg.Pool, game: dict,
 
     for side, col in (("home", "home_pitcher"), ("away", "away_pitcher")):
         block = parsed.get(side) or {}
-        await save_lineup(pool, game["id"], side, status, "statsapi", block)
+        await save_lineup(pool, game["id"], side, status, "statsapi", block,
+                          caller="refresh_mlb_lineup")
         chosen, clash = resolve_starter(block.get("starter"), game.get(col))
         starters[side] = chosen
         if clash:

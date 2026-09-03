@@ -669,6 +669,10 @@ def promote_lineup_status(research: dict, jg: dict, source: str) -> bool:
     prev = jg.get("lineup_status") or "none"
     if prev not in ("none", "predicted"):
         return False
+    # [M-1 계측] 전이를 남긴다 — KBO 잠정 역행의 원인 라인을 특정하려면
+    #   "언제 어디서 무엇이 무엇으로" 바뀌었는지가 있어야 한다.
+    logger.info("[lineup-status] game=%s %s→confirmed at=promote src=%s",
+                jg.get("game_id"), prev, source)
     jg["lineup_status"] = "confirmed"
     jg["lineup_source"] = source
     # 🔴 [v1.3 A-1] **DB 가 원본이다.** 캐시만 올리면 두 저장소가 어긋난다 —
@@ -680,6 +684,33 @@ def promote_lineup_status(research: dict, jg: dict, source: str) -> bool:
                 (jg.get("sport") or "?").upper(), jg.get("game_id"),
                 len(names["home"]), len(names["away"]), source)
     return True
+
+
+def _spawn_fact_audit(jg: dict) -> None:
+    """[감시 L1] 사실 감사를 백그라운드로 띄운다.
+
+    🔴 **판정 경로에 아무 영향도 주지 않는다.** 예외는 전부 감사 안에서
+       삼켜지고(P4), 여기서는 태스크 생성 실패조차 로그로 끝난다.
+    """
+    import asyncio
+
+    async def _go():
+        import redis.asyncio as _ar
+
+        from app.config import get_settings as _gs
+        from app.db import get_pool as _gp
+        from app.engine.fact_audit import run as _audit
+
+        r = _ar.from_url(_gs().redis_url, decode_responses=True)
+        try:
+            await _audit(await _gp(), r, jg)
+        finally:
+            await r.aclose()
+
+    try:
+        asyncio.get_running_loop().create_task(_go())
+    except Exception as exc:
+        logger.debug("[fact-audit] 태스크 생성 생략: %s", exc)
 
 
 async def refresh_odds_for_game(pool, jg: dict) -> bool:
@@ -729,6 +760,7 @@ async def sync_lineup_status(pool, jg: dict) -> bool:
         await pool.execute(
             "UPDATE games SET lineup_status = 'confirmed', updated_at = now() "
             " WHERE id = $1 AND lineup_status <> 'confirmed'", int(gid))
+        logger.info("[lineup-status] game=%s →confirmed at=db_sync", gid)
         return True
     except Exception as exc:
         logger.warning("[pipeline] 라인업 확정 DB 반영 실패 game=%s: %s", gid, exc)
@@ -2456,6 +2488,9 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
         except Exception as exc:
             logger.warning("[pipeline] 선발 시즌 라인 실패 game=%s: %s",
                            jg.get("game_id"), exc)
+        # [M-2 계측] 자료8 이 실제로 판정에 주입되는지 — 수집 100% 인데
+        #   카드가 "자료8 부재" 라고 적은 경기가 있었다(2026-09-02 2장).
+        #   수집률과 주입률을 따로 센다.
         # [D 2026-09-02] 오늘 타순 9명의 시즌 타격 라인. 사용자 지시로
         #   "타선·팀 시즌 지표 금지"를 해제하고 **정식 근거**로 넣는다.
         #   선발 시즌 라인과 같은 계약: 실패해도 판정을 막지 않는다.
@@ -2476,6 +2511,7 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
                            jg.get("game_id"), exc)
         if await judge_matchup(jg, redis, date):
             n += 1
+            _spawn_fact_audit(jg)        # [감시 L1] 저장 후 사후 감사
     return n
 
 
@@ -5184,6 +5220,9 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
         card = await generate_card(analysis)
         await _save_caches(redis, analysis, card)
         logger.info("[pipeline] 라인업 재판정 완료 game=%s (%s)", game["id"], note[:80])
+        # [감시 L1] 판정 산출물이 저장된 **뒤에** 감사한다. 별도 태스크라
+        #   판정·발송을 한 밀리초도 지연시키지 않는다 (P1).
+        _spawn_fact_audit(jg)
         return True
     finally:
         await redis.aclose()

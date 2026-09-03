@@ -488,3 +488,43 @@ CREATE INDEX IF NOT EXISTS idx_lineup_events_clean ON lineup_events (game_id, si
 ALTER TABLE odds_snapshots ADD COLUMN IF NOT EXISTS provider TEXT NOT NULL DEFAULT 'theodds';
 CREATE INDEX IF NOT EXISTS idx_odds_snapshots_provider
     ON odds_snapshots (provider, captured_at DESC);
+
+-- [감시 3층 · 2026-09-03] 판정 산출물을 **사후에** 읽는 기록 테이블.
+--   🔴 판정 경로는 이 테이블을 읽지 않는다 — 감시가 판정에 되먹임되면
+--      그 순간 감시가 아니라 입력이 된다.
+CREATE TABLE IF NOT EXISTS judgement_audit (
+    id            BIGSERIAL PRIMARY KEY,
+    game_id       BIGINT      NOT NULL,
+    sport         TEXT        NOT NULL,
+    judged_at     TIMESTAMPTZ,
+    verified_n    INT         NOT NULL DEFAULT 0,
+    derived_n     INT         NOT NULL DEFAULT 0,
+    not_found_n   INT         NOT NULL DEFAULT 0,   -- 환각 후보 (확정 아님)
+    mismatch_n    INT         NOT NULL DEFAULT 0,   -- 같은 단위 값이 다름
+    mismatch_detail JSONB,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_judgement_audit_sport
+    ON judgement_audit (sport, judged_at DESC);
+
+CREATE TABLE IF NOT EXISTS judge_review (
+    id           BIGSERIAL PRIMARY KEY,
+    game_id      BIGINT      NOT NULL,
+    sport        TEXT        NOT NULL,
+    objections   JSONB,
+    objection_n  INT         NOT NULL DEFAULT 0,
+    valid_n      INT         NOT NULL DEFAULT 0,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_judge_review_sport ON judge_review (sport, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS shadow_panel (
+    id          BIGSERIAL PRIMARY KEY,
+    game_id     BIGINT      NOT NULL,
+    sport       TEXT        NOT NULL,
+    p_main      NUMERIC,
+    p_shadow    NUMERIC,
+    divergence  NUMERIC,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_shadow_panel_sport ON shadow_panel (sport, created_at DESC);
