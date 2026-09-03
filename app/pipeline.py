@@ -2501,6 +2501,19 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
         except Exception as exc:
             logger.warning("[pipeline] 타선 시즌 라인 실패 game=%s: %s",
                            jg.get("game_id"), exc)
+        # [자료10] 변수 정량화 참조 + 자료1 의 상대 선발 시즌 ERA.
+        #   ⚠️ **판정 호출 앞**에서 끝낸다 — 판정 경로는 읽기만 한다.
+        #   ⚠️ 실패해도 판정을 막지 않는다. 못 붙으면 종전과 같은 판정이다.
+        try:
+            from app.engine.variable_ref import (
+                attach_material10, attach_opp_starter_era,
+            )
+
+            await attach_opp_starter_era(pool, jg, redis=redis)
+            await attach_material10(pool, redis, jg)
+        except Exception as exc:
+            logger.warning("[pipeline] 자료10 조립 실패 game=%s: %s",
+                           jg.get("game_id"), exc)
         # [v1.3 B-1] MLB 자료9(불펜) — KBO·NPB 만 갖고 있던 칸을 대칭화한다.
         try:
             from app.collectors.mlb_team_pitching import attach as _pen

@@ -126,6 +126,44 @@ def bullpen_payload(jg: dict) -> dict:
     return out
 
 
+def material10_payload(jg: dict) -> dict:
+    """자료10(변수 참조). **읽기만 한다** — 조립·I/O 는 파이프라인이 끝냈다."""
+    return jg.get("material10") or {}
+
+
+#: 자료10 을 끼워 넣을 자리. 이 문구 **앞**에 붙는다.
+_RULES_MARK = "[판정 규칙]"
+
+_M10_BLOCK = """10. 변수 참조 — **변수의 크기를 여기서 가져온다** (해당 경기만):
+   {payload}
+   `이닝분포`: 그 투수 최근 등판의 실제 이닝 배열과 분위수(p25/p50/p75)·최장.
+     `선발등판`이 0~2면 "예측 불가"가 아니라 **이 분포가 답**이다.
+   `부진후회귀`: 같은 리그에서 직전 3등판이 부진했던 선발의 **다음 등판**
+     평균 이닝·실점과 표본 수. `주의`에 "참조 불충분"이 있으면 표본이 적다는
+     뜻이니 단정하지 마라.
+   ⚠️ 이 블록은 **해당 경기에만** 실린다. 없으면 그 경기는 대상이 아니다.
+
+"""
+
+
+def insert_material10(prompt: str, payload: dict) -> str:
+    """자료10 블록을 규칙 앞에 끼운다. 비면 **원문 그대로** 돌려준다.
+
+    🔴 빈 블록을 넣지 않는다 — 해당 없는 경기의 프롬프트는 종전과 바이트가
+       같아야 한다(계약 테스트가 잠근다).
+    """
+    if not payload:
+        return prompt
+    import json as _json
+
+    block = _M10_BLOCK.format(
+        payload=_json.dumps(payload, ensure_ascii=False, default=str))
+    i = prompt.find(_RULES_MARK)
+    if i < 0:
+        return prompt + "\n" + block
+    return prompt[:i] + block + prompt[i:]
+
+
 def news_payload(home_form: dict, away_form: dict) -> dict:
     """팀 평가서에서 **뉴스태그만** 꺼낸다.
 
@@ -373,6 +411,8 @@ async def judge_matchup(jg: dict, redis, date: str, *,
                                       ensure_ascii=False, default=str),
         BULLPEN_JSON=json.dumps(bullpen_payload(jg), ensure_ascii=False, default=str),
     )
+    # [자료10] 해당 경기에만 끼운다. 해당 없으면 프롬프트가 종전과 동일하다.
+    prompt = insert_material10(prompt, material10_payload(jg))
     # [M-2 계측] 자료8·9 가 **실제로 프롬프트에 실렸는가.** 수집률(100%)과
     #   주입률이 갈리던 것을 잡는다 — 2026-09-02 카드 2장이 "자료8 부재"라
     #   적었는데 로그는 매칭 18/18 이었다.
@@ -384,10 +424,12 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     _m3 = lineups_payload(jg)
     _slots = min(len((( _m3.get(side) or {}).get("타순") or []))
                  for side in ("home", "away")) if _m3 else 0
-    logger.info("[materials] game=%s 자료3=%s(타순 %d명) 자료8=%s slots=%d 자료9=%s",
+    logger.info("[materials] game=%s 자료3=%s(타순 %d명) 자료8=%s slots=%d "
+                "자료9=%s 자료10=%s",
                 jg.get("game_id"), "Y" if _slots >= 9 else "N", _slots,
                 "Y" if _m8 else "N", len(_m8),
-                "Y" if bullpen_payload(jg) else "N")
+                "Y" if bullpen_payload(jg) else "N",
+                jg.get("material10_status") or "해당없음")
     # 같은 사실을 일일 요약이 읽을 수 있게 센다. 세기만 한다 — 이 결과는
     #   프롬프트에도 판정에도 되돌아가지 않는다.
     from app.engine.monitor_metrics import note_materials

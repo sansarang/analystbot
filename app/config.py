@@ -87,6 +87,21 @@ class Settings(BaseSettings):
     #   L3(독립 판정)도 사고만 420~1327 이라 종전 512 로는 답이 안 나온다.
     shadow_review_max_tokens: int = 8192
     shadow_judge_max_tokens: int = 4096
+    # ── [자료10] 변수 정량화 참조 데이터 (2026-09-03) ──────────────
+    #: 1-a 이닝 분포를 볼 등판 수 (구원 포함). 있는 만큼 쓰고 n 을 명기한다.
+    var_ref_appearances: int = 10
+    #: 선발 등판이 이 수 **미만**이면 "표본 부재형" — 이닝 분포를 붙인다.
+    #  ⚠️ `starter_recent.MIN_STARTS`(추천 탈락선)와 **다른 값이다.** 저건
+    #     "믿을 수 있나", 이건 "무엇으로 대신 보여줄까"다. 섞지 않는다.
+    var_ref_low_start_max: int = 3
+    #: 1-b 발동 임계 — 최근 3경기 환산 실점률이 시즌 ERA 와 이만큼 벌어질 때만
+    #  계산한다. 전 투수 계산은 프롬프트만 비대하게 만든다.
+    var_ref_era_gap: float = 2.00
+    #: 1-b 최소 표본. 미만이면 "참조 불충분, n=X" 로 붙이고 **단정하지 않는다.**
+    var_ref_min_sample: int = 30
+    #: 1-b 리그별 캐시 수명(초). 하루 1회 계산이면 충분하다.
+    var_ref_cache_sec: int = 26 * 3600
+
     #: 판정 프롬프트 원문 보관 TTL(초). 사실 감시가 **판정 시점의** 원문을
     #  읽어야 한다 — 재렌더하면 그 사이 바뀐 재료를 보게 된다.
     prompt_keep_ttl_sec: int = 24 * 3600
