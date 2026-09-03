@@ -75,19 +75,24 @@ async def _cleanup(inner) -> int:
 
 async def stage1(pool, sport: str, date: str) -> list[dict]:
     L("[rehearsal] ── 1단계 %s 소스 신선도·라인업 상태 ──", sport.upper())
+    # ⚠️ `games` 에는 타순 컬럼이 **없다**(스키마 확인). 타순은 `lineup_events`
+    #    (크롤러)·`lineups`(MLB)·리서치 캐시에 산다. 추측하지 말고 조인한다.
     rows = await pool.fetch(
-        """SELECT id, home, away, starts_at, lineup_status, status,
-                  home_pitcher, away_pitcher,
-                  lineup_home IS NOT NULL AS has_lh,
-                  lineup_away IS NOT NULL AS has_la
-             FROM games WHERE sport=$1 AND starts_at > now()
-            ORDER BY starts_at""", sport)
+        """SELECT g.id, g.home, g.away, g.starts_at, g.lineup_status, g.status,
+                  g.home_pitcher, g.away_pitcher,
+                  (SELECT count(*) FROM lineup_events e
+                    WHERE e.game_id = g.id) AS ev_rows,
+                  (SELECT max(jsonb_array_length(e.batting_order))
+                     FROM lineup_events e WHERE e.game_id = g.id) AS ev_max
+             FROM games g WHERE g.sport=$1 AND g.starts_at > now()
+            ORDER BY g.starts_at""", sport)
     for r in rows:
         L("[rehearsal] game=%s %s @ %s start=%s lineup_status=%s "
-          "선발 %s/%s 타순보유 %s/%s", r["id"], r["away"], r["home"],
+          "선발 %s/%s · lineup_events %s행(최대 %s명)",
+          r["id"], r["away"], r["home"],
           f"{r['starts_at']:%H:%M}Z", r["lineup_status"],
           r["away_pitcher"] or "-", r["home_pitcher"] or "-",
-          r["has_la"], r["has_lh"])
+          r["ev_rows"], r["ev_max"])
     od = await pool.fetch(
         """SELECT provider, count(DISTINCT game_id) AS games,
                   round(extract(epoch FROM now() - max(captured_at))/60) AS age_min
@@ -268,15 +273,23 @@ async def stage6(rredis, jg: dict) -> dict:
     from app.engine.deepsearch import T6_FIRST_LINEUP, first_lineup_evidence
     from app.engine.pregame_push import lineup_confirmed
 
-    prev = {"order": {"home": list((jg.get("lineup_home") or {}).get("order") or []),
-                      "away": list((jg.get("lineup_away") or {}).get("order") or [])}}
+    # ⚠️ T6 가 보는 곳은 `jg["research"]["{side}_lineup"]["order"]` 다
+    #    (`first_lineup_evidence` 원문 확인). 껍데기 dict 가 아니라 **안에
+    #    실제 타순이 있는지**를 본다 — 그래서 직전도 같은 모양으로 만든다.
+    r0 = jg.get("research") or {}
+    prev = {"research": {f"{s_}_lineup": dict(r0.get(f"{s_}_lineup") or {})
+                         for s_ in ("home", "away")}}
+    have = {s_: len((prev["research"][f"{s_}_lineup"] or {}).get("order") or [])
+            for s_ in ("home", "away")}
     fake = [f"선수{i}(내야수)" for i in range(1, 10)]
     L("[rehearsal] 주입 전 lineup_status=%s · 직전 타순 home %d명 / away %d명",
-      jg.get("lineup_status"), len(prev["order"]["home"]), len(prev["order"]["away"]))
+      jg.get("lineup_status"), have["home"], have["away"])
 
     sim = dict(jg)
-    sim["lineup_home"] = {"order": list(fake)}
-    sim["lineup_away"] = {"order": list(fake)}
+    sim["lineup_status"] = "confirmed"
+    sim["research"] = dict(r0)
+    for s_ in ("home", "away"):
+        sim["research"][f"{s_}_lineup"] = {"order": list(fake)}
     conf = lineup_confirmed(fake, fake, None)
     L("[rehearsal] 9명 규칙 lineup_confirmed(9,9) = %s", conf)
 

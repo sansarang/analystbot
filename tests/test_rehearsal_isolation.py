@@ -105,3 +105,20 @@ def test_required_materials_are_named():
     assert "3타순" in OK_TO_BE_EMPTY
     for k in ("1박스", "7선발시즌", "8타선시즌", "9불펜"):
         assert k in REQUIRED_BEFORE_LINEUP
+
+
+def test_no_guessed_columns_on_games():
+    """🔴 `games` 에는 타순 컬럼이 없다 — 추측한 이름이 리허설을 통째로 죽였다.
+
+    실사고 2026-09-03 05:04 UTC: `column "lineup_home" does not exist`.
+    CLAUDE.md 규율("컬럼명은 절대 추측하지 않는다")을 어긴 대가였다.
+    """
+    for guessed in ("lineup_home IS NOT NULL", "g.lineup_home", "g.lineup_away"):
+        assert guessed not in SRC, f"{guessed} — games 에 없는 컬럼"
+    assert "lineup_events" in SRC, "타순은 lineup_events 에서 읽어야 한다"
+
+
+def test_t6_sim_uses_the_shape_t6_actually_reads():
+    """T6 는 `research.{side}_lineup.order` 를 본다 — 시뮬도 그 모양이어야 한다."""
+    assert '_lineup"] = {"order": list(fake)}' in SRC
+    assert 'sim["lineup_status"] = "confirmed"' in SRC
