@@ -102,8 +102,11 @@ def test_required_materials_are_named():
     """공시 전에도 차 있어야 하는 자료를 **명시**한다 — 판단을 미루지 않는다."""
     from tools.rehearsal import OK_TO_BE_EMPTY, REQUIRED_BEFORE_LINEUP
 
-    assert "3타순" in OK_TO_BE_EMPTY
-    for k in ("1박스", "7선발시즌", "8타선시즌", "9불펜"):
+    # 🔴 자료8 은 **타순 9명**의 시즌 타격이다 — 공시 전에는 비는 게 정상.
+    #    실측 `slots=0 자료8=N` 이 그걸 보여줬다.
+    assert "3타순" in OK_TO_BE_EMPTY and "8타선시즌" in OK_TO_BE_EMPTY
+    assert "8타선시즌" not in REQUIRED_BEFORE_LINEUP
+    for k in ("1박스", "7선발시즌", "9불펜"):
         assert k in REQUIRED_BEFORE_LINEUP
 
 

@@ -111,9 +111,13 @@ async def stage1(pool, sport: str, date: str) -> list[dict]:
 # ═════════════════ 2단계. 재료 조립 ═════════════════
 
 #: 라인업 공시 **전에도 차 있어야** 하는 자료. 비면 결함이다.
-REQUIRED_BEFORE_LINEUP = ("1박스", "7선발시즌", "8타선시즌", "9불펜")
-#: 공시 전에는 비는 게 정상인 자료.
-OK_TO_BE_EMPTY = ("3타순",)
+#  ⚠️ 2026-09-03 교정: 종전에 `8타선시즌` 을 여기 넣었던 것은 **내 오분류**였다.
+#     자료8 은 "오늘 **타순 9명**의 시즌 타격"이라 타순 의존이다
+#     (CLAUDE.md 판정 철학). 공시 전에는 비는 게 정상이고, 실측도 그랬다:
+#     `[materials] game=1704 자료8=N slots=0 자료9=Y` — slots=0 이면 만들 수 없다.
+REQUIRED_BEFORE_LINEUP = ("1박스", "7선발시즌", "9불펜")
+#: 공시 전에는 비는 게 정상인 자료. **타순에 매달리는 것들.**
+OK_TO_BE_EMPTY = ("3타순", "8타선시즌")
 
 
 def material_flags(jg: dict) -> dict[str, bool]:
