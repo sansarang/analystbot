@@ -724,10 +724,13 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
                 else:
                     if roster_changed:
                         await redis.set(sig_key, roster, ex=86400)
-                        if sport == "npb" and still_upcoming(r["starts_at"], now):
+                        from app.engine.pregame_push import REJUDGE_FINISH_MIN
+
+                        cut = REJUDGE_FINISH_MIN.get(sport)
+                        if cut is not None and still_upcoming(r["starts_at"], now):
                             logger.warning(
-                                "[scheduler] NPB T-%d 이후 라인업 변동 — 재판정 안 함 "
-                                "game=%s", NPB_REJUDGE_FINISH_MIN, r["id"])
+                                "[scheduler] %s T-%d 이후 라인업 변동 — 재판정 안 함 "
+                                "game=%s", sport.upper(), cut, r["id"])
                     catchup.append(dict(r))
 
             async def _rejudge_and_send(item, *, _sport=sport, _date=date):

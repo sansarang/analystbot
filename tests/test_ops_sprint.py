@@ -524,8 +524,11 @@ def test_npb_rejudge_window_is_wider_than_full_analysis():
     assert rejudge_open("npb", at_t12, now) is True
     at_t8 = now + timedelta(minutes=8)            # T-8: 둘 다 닫힘
     assert rejudge_open("npb", at_t8, now) is False
-    # KBO 는 이원화 대상이 아니다
-    assert rejudge_open("kbo", at_t8, now) is True
+    # 🔴 [2026-09-03 사용자 결정] KBO 도 **T-15 에 닫는다.**
+    #    종전에는 마감선이 없어 이론상 T-2 에 재판정이 돌 수 있었다 —
+    #    그 카드는 정확해도 걸 수가 없다. 이원화는 NPB 에만 남긴다.
+    assert rejudge_open("kbo", at_t8, now) is False
+    assert rejudge_open("kbo", now + timedelta(minutes=20), now) is True
 
 
 def test_npb_two_minute_job_shares_the_same_window_gate():

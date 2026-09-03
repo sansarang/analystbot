@@ -583,8 +583,15 @@ def test_rejudge_window_is_wider_than_full_analysis_for_npb():
     # T-11 열림 / T-10 닫힘 (기존 NPB_FINISH_MIN 과 같은 `>` 경계 관례)
     assert rejudge_open("npb", now + timedelta(minutes=11), now) is True
     assert rejudge_open("npb", now + timedelta(minutes=10), now) is False
-    # KBO·MLB 는 시작 전까지 그대로
-    assert rejudge_open("kbo", now + timedelta(minutes=1), now) is True
+    # 🔴 [2026-09-03 사용자 결정] KBO 도 **T-15 에 닫는다.**
+    #    NPB 처럼 15/10 으로 나누지 않았다 — 지시가 "시작 15분 전"이라
+    #    경량까지 하나로 둔다. NPB 의 이원화는 공시가 T-30 이라 15분 창이
+    #    너무 좁다는 실측에서 나온 것이라 **NPB 에만** 남긴다.
+    assert rejudge_open("kbo", now + timedelta(minutes=1), now) is False
+    assert rejudge_open("kbo", now + timedelta(minutes=16), now) is True
+    assert rejudge_open("kbo", now + timedelta(minutes=15), now) is False
+    assert analysis_open("kbo", now + timedelta(minutes=15), now) is False
+    # MLB 는 마감선 없음 — 라인업 공시가 T-180 이라 사정이 다르다
     assert rejudge_open("mlb", now + timedelta(minutes=1), now) is True
     # 이미 시작한 경기는 어느 창도 열지 않는다
     assert rejudge_open("npb", now - timedelta(minutes=1), now) is False

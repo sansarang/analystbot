@@ -70,6 +70,18 @@ HARD_TARGET_MIN = NPB_FINISH_MIN
 #   T-30~T-15 사이 15분 안에 확정을 못 받은 경기는 영영 잠정으로 남아
 #   추천 자격을 못 얻는다. 경량 경로만 T-10까지 연다.
 NPB_REJUDGE_FINISH_MIN = 10
+
+#: 🔴 [2026-09-03 사용자 결정] **KBO 재판정도 시작 15분 전에 끝낸다.**
+#   종전에는 KBO 에 마감선이 아예 없어 이론상 T-2 에 재판정이 돌 수 있었다 —
+#   그 카드는 정확해도 걸 수가 없다. 사용자 지적으로 선을 그었다.
+#   ⚠️ KBO 는 **풀·경량 모두 T-15** 다. NPB 의 15/10 이원화를 그대로 옮기면
+#      경량이 T-10 까지 열려 "15분 전"이 아니게 된다. 지시대로 하나로 둔다.
+#   ⚠️ **NPB 는 종전 그대로** (풀 T-15 · 경량 T-10). 그 이원화는 공시가
+#      T-30 으로 늦어 15분 창이 너무 좁다는 실측에서 나온 것이라 유지한다.
+#   여기 없는 종목(MLB)은 마감선 없음 — 시작 전까지.
+ANALYSIS_FINISH_MIN = {"npb": NPB_FINISH_MIN, "kbo": 15}
+REJUDGE_FINISH_MIN = {"npb": NPB_REJUDGE_FINISH_MIN, "kbo": 15}
+
 # KBO 18:30=T-70, NPB 18:00=T-40, MLB 라인업 공시 3시간 전=T-180.
 SEND_OPEN_MIN = {"kbo": 70, "npb": 40, "mlb": 180}
 SENT_TTL_SEC = 12 * 3600
@@ -144,13 +156,17 @@ async def already_sent(redis, game_id) -> bool:
 
 
 def analysis_open(sport: str, starts_at, now=None) -> bool:
-    """NPB는 T-15 이후 재판정하지 않는다. KBO는 시작 전까지."""
+    """풀 분석(크롤·리서치 재실행) 창. 마감선은 `ANALYSIS_FINISH_MIN` 이 원본.
+
+    NPB T-15 · KBO T-15 (2026-09-03 신설) · MLB 마감선 없음.
+    """
     if not still_upcoming(starts_at, now):
         return False
-    if sport != "npb":
+    finish = ANALYSIS_FINISH_MIN.get(sport)
+    if finish is None:
         return True
     left = minutes_until_start(starts_at, now)
-    return left is not None and left > NPB_FINISH_MIN
+    return left is not None and left > finish
 
 
 def rejudge_open(sport: str, starts_at, now=None) -> bool:
@@ -163,10 +179,11 @@ def rejudge_open(sport: str, starts_at, now=None) -> bool:
     """
     if not still_upcoming(starts_at, now):
         return False
-    if sport != "npb":
+    finish = REJUDGE_FINISH_MIN.get(sport)
+    if finish is None:
         return True
     left = minutes_until_start(starts_at, now)
-    return left is not None and left > NPB_REJUDGE_FINISH_MIN
+    return left is not None and left > finish
 
 
 def lineup_pending_card(sport: str, home: str, away: str, left_min: float) -> str:

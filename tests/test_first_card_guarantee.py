@@ -139,9 +139,12 @@ def test_rejudge_path_is_unchanged():
 
     assert NPB_FINISH_MIN == 15 and NPB_REJUDGE_FINISH_MIN == 10
     assert SEND_OPEN_MIN == {"kbo": 70, "npb": 40, "mlb": 180}
-    assert rejudge_open("kbo", _at(5), NOW) is True          # KBO 시작 전까지
     assert analysis_open("npb", _at(14), NOW) is False       # NPB T-15 종료
-    assert rejudge_open("npb", _at(12), NOW) is True         # 경량은 T-10
+    assert rejudge_open("npb", _at(12), NOW) is True         # NPB 경량은 T-10
+    # [2026-09-03] KBO 도 T-15 마감. 보장선(T-30)과는 별개다 —
+    #   보장선은 **첫 카드**, 이건 **재판정**이다.
+    assert rejudge_open("kbo", _at(16), NOW) is True
+    assert rejudge_open("kbo", _at(5), NOW) is False
 
 
 def test_guarantee_is_symmetric_across_leagues():
