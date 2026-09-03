@@ -512,6 +512,7 @@ WATCHDOG_CODES = {
     # 감시 3층 (v1.3-monitor) — 전부 사후 관측이고 발송을 막지 않는다.
     "W-FACT-MISMATCH": "판정이 인용한 수치가 원문과 다름",
     "W-PANEL-DIVERGE": "독립 판정과 편차 큼",
+    "W-JUDGE-OBJECTION": "검사역이 판정에 이의를 냈다",
     "W-MONITOR-DOWN": "감시층 자체가 실패",
 }
 

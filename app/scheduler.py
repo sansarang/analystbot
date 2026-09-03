@@ -790,11 +790,36 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
                 #    그 아래 붙였다 — 종목이 뒤바뀌어 읽힌다(실측 2026-09-01).
                 rep.append(f"  {sport.upper()} 대상 {len(rows)}경기 · "
                            f"타순변동 {len(jobs)} · 미변동 {len(catchup)}")
+        # [감시 L2·L3] **발송이 끝난 뒤** 그림자 패널을 돌린다.
+        #   T-차감 시간에 LLM 왕복을 넣지 않는다. 실패해도 이 사이클과 무관하다.
+        await _run_shadow_panel(redis, sports, date)
         await report_cycle(redis, "아시아 판정", rep, errs, tally,
                            _time.monotonic() - t0,
                            cycle_report, cycle_errors, next_run="5분 뒤")
     finally:
         await redis.aclose()
+
+
+async def _run_shadow_panel(redis, sports, date) -> None:
+    """[감시 L2·L3] 발송 후 그림자 패널. **예외를 밖으로 내보내지 않는다.**"""
+    try:
+        import json as _json
+
+        from app.engine.shadow_panel import run_panel
+
+        pool = await get_pool()
+        for sport in sports:
+            raw = await redis.get(f"analysis:{sport}:{date}")
+            if not raw:
+                continue
+            games = (_json.loads(raw) or {}).get("games") or []
+            res = await run_panel(pool, redis, games)
+            if res.get("targets"):
+                logger.info("[shadow] %s 대상 %d · 검사역 %d · 독립 %d · skip %d",
+                            sport.upper(), res["targets"], res["reviewed"],
+                            res["shadowed"], res["skipped"])
+    except Exception as exc:
+        logger.warning("[shadow] 패널 실행 생략 — 발송과 무관: %s", exc)
 
 
 async def _npb_pending_notice(redis, rows, now) -> None:
