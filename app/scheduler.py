@@ -1253,6 +1253,14 @@ async def startup_backfill_job() -> None:
         #   못 읽는다. "며칠째 배당이 죽어 있었나", "타순이 몇 건 오염됐나"는
         #   서버가 스스로 말해야 한다.
         await _startup_forensics(pool, redis)
+        # [리허설] `REHEARSAL=1` 일 때 기동 시 1회. 격리 키·발송 차단.
+        if os.getenv("REHEARSAL") == "1":
+            try:
+                from tools.rehearsal import run as _rehearse
+
+                await _rehearse(pool, redis)
+            except Exception as exc:
+                logger.error("[rehearsal] 실행 실패: %r", exc)
         # [전 리그 프로브] `PROBE_LEAGUE=1` 일 때 기동 시 1회.
         #   ⚠️ 읽기 전용이다 — 카드·판정·캐시·ledger 를 건드리지 않는다.
         if os.getenv("PROBE_LEAGUE") == "1":
