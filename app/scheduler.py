@@ -1637,6 +1637,16 @@ async def main() -> None:
     except Exception as exc:
         logger.error("[scheduler] 🔴 스키마 적용 실패 — 새 컬럼이 없으면 "
                      "예측 기록이 터진다: %s", exc)
+    # [감시 C2] L2·L3 의 가동 여부를 **기동 시점에** 말한다. 발송이 한 번
+    #   돌아야 알 수 있으면, 저녁 내내 휴면인 줄 모르고 지나간다.
+    try:
+        from app.llm.gemini import is_available as _gemini_ok
+
+        logger.info("[shadow] gemini %s — L2·L3 %s",
+                    "설정됨" if _gemini_ok() else "미설정",
+                    "가동" if _gemini_ok() else "휴면")
+    except Exception as exc:
+        logger.debug("[shadow] 가용성 확인 실패: %s", exc)
     scheduler = build_scheduler()
     scheduler.start()
     logger.info("scheduler started: %s", [j.id for j in scheduler.get_jobs()])
