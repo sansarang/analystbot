@@ -115,6 +115,19 @@ def render_form_card(jg: dict, sport: str | None = None, *,
             _req = required_odds(p)
             if _req:
                 lines.append(f"가치 배당 미수집 — 필요배당 {_req:.2f}")
+    # [시장 기준선] 우리 vs 시장. **정보 줄이지 게이트가 아니다.**
+    #   ⚠️ 값이 없으면 줄 자체를 안 낸다 — "미수집" 문구를 발명하지 않는다.
+    #      바로 위 가치 줄이 이미 그 역할을 한다.
+    #   ⚠️ 이견 **사유**는 만들지 않는다. 사유를 쓰려면 판정 프롬프트를
+    #      건드려야 하고 그건 동결 위반이다. 수치·방향·라벨까지만.
+    try:
+        from app.engine.market_baseline import market_line
+
+        _ml = market_line(jg.get("p_market_send"), p)
+        if _ml:
+            lines.append(_ml)
+    except Exception:
+        pass
     reasons = [str(x).strip() for x in (m.get("근거") or []) if str(x).strip()]
     for i, r in enumerate(reasons[:3], 1):
         lines.append(f"근거{i} {r}")

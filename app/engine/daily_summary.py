@@ -293,6 +293,25 @@ async def variable_lines(pool, sports: tuple[str, ...]) -> list[str]:
             f"현실화 {row['realized']} · 검증불가 {row['unver']}"]
 
 
+async def market_lines(pool, sports: tuple[str, ...]) -> list[str]:
+    """[시장 기준선] `🎯 시장 N승M패 · 우리 N승M패 · 이견 k건 중 j적중`.
+
+    🔴 **벤치마크지 게이트가 아니다.** 이 숫자가 추천을 바꾸지 않는다.
+       50건 리포트 1번 항목이 여기서 나온다 — "시장을 이기고 있는가".
+    ⚠️ 확정분만(`graded_at` 있음 · `void` 아님). 재료 없으면 줄도 없다.
+    ⚠️ 이견 기준은 **close 값** 기준 `divergence` 다 — 발송 시점이 아니라
+       마감 대비여야 "시장이 최종적으로 어떻게 봤는가"와 비교가 된다.
+    """
+    from app.engine.market_baseline import summary as _msum
+
+    row = await _msum(pool, sports)
+    if not row:
+        return []
+    return [f"🎯 시장 {row['m_w']}승{row['m_l']}패 · "
+            f"우리 {row['o_w']}승{row['o_l']}패 · "
+            f"이견 {row['diverged']}건 중 {row['diverged_hit']}적중"]
+
+
 async def build(pool, sports: tuple[str, ...], title: str, date: str,
                 *, window_hours: int = 18, redis=None) -> str:
     """요약 카드 1장. 판정이 없으면 그 사실을 말한다 — 빈 카드를 보내지 않는다.
@@ -381,6 +400,9 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str,
     cl = await cost_lines(redis, sports, date)
     if cl:
         out += [""] + cl
+    kl = await market_lines(pool, sports)
+    if kl:
+        out += kl
     vl = await variable_lines(pool, sports)
     if vl:
         out += vl

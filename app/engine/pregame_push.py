@@ -562,6 +562,19 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
         return await _skip("unjudged")
     if jg.get("judgement_void") or jg.get("status") in ("cancelled", "suspended"):
         return await _skip("void")
+    # [시장 기준선] 카드 표기용 값만 얹는다. **표기 전용이다.**
+    #   🔴 `verdict_hash` 는 이 값을 보지 않는다(p_claude·우세·확신도만) —
+    #      배당이 흔들렸다고 수정 카드가 나가면 안 된다. 테스트로 잠금.
+    try:
+        from app.db import get_pool as _gp
+        from app.engine.market_baseline import SEND, p_market
+
+        _snap = await p_market(await _gp(), {**jg, "id": gid,
+                                             "starts_at": starts_at},
+                               purpose=SEND)
+        jg["p_market_send"] = _snap.get("p")
+    except Exception as exc:
+        logger.debug("[pregame] 시장 확률 생략 game=%s: %s", gid, exc)
     lu, vd = lineup_hash(jg), verdict_hash(jg)
     prev = _parse_sent(await redis.get(card_sig_key(gid)))
     # 🔴 재발송은 **(라인업 변경) OR (판정 변경)** 이다.
