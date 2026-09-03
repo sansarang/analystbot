@@ -51,7 +51,17 @@ async def _run(pool, redis) -> None:
     if not rows:
         L("[probe] 🔴 MLB 경기가 하나도 없다 — 중단")
         return
+    import os as _os
+
+    want = (_os.getenv("PROBE_GAME_ID") or "").strip()
     g = rows[0]
+    if want:
+        for r in rows:
+            if str(r["id"]) == want:
+                g = r
+                break
+        else:
+            L("[probe] ⚠️ 지정 game=%s 가 후보에 없다 — 첫 경기로 간다", want)
     gid = int(g["id"])
     L("[probe] ▶ 대상 확정: game=%s %s @ %s", gid, g["away"], g["home"])
 
@@ -127,9 +137,11 @@ async def _run(pool, redis) -> None:
     from app.llm.gemini import is_available, model_name
 
     L("[probe] ⑤ gemini available=%s model=%s", is_available(), model_name())
-    if not prompt:
-        L("[probe] ⑤ L2·L3 🔴 자료 원문이 없어 부를 수 없다(미완) — "
-          "감시 배포 이후 판정부터 가능하다")
+    if not prompt and is_available():
+        L("[probe] ⑤ 🔴 판정 시점 원문이 없다. L1 은 **불가**(대조 대상이 "
+          "없으므로 건너뛴다). L2·L3 는 캐시 재료로 **재구성**해 배관만 "
+          "확인한다 — 이 편차·이의는 정식 감시 결과가 아니다.")
+        await _plumbing_only(pool, redis, jg, gid)
     elif is_available():
         L("[probe] ⑤ [test] 대상 선정 예외 1건 — 게이트=%s 이지만 붙인다",
           jg.get("gate_result"))
@@ -155,10 +167,66 @@ async def _run(pool, redis) -> None:
     # ── ⑥ 비용 ────────────────────────────────────────────────
     from app.config import get_settings
     from app.engine.deepsearch import PAID_KEY
-    from app.utils.timez import today_kst
+    from app.pipeline import today_kst
 
     paid = await redis.get(PAID_KEY.format(date=today_kst()))
     L("[probe] ⑥ 유료 web_search %s콜 (cap=%s) · The Odds API 미사용(provider=%s)",
       paid or 0, get_settings().deepsearch_paid_cap,
       get_settings().odds_provider)
     L("[probe] ═══ 검증 종료 ═══")
+
+
+async def _plumbing_only(pool, redis, jg: dict, gid: int) -> None:
+    """원문이 없을 때 **배관만** 확인한다.
+
+    🔴 여기서 나오는 이의·편차는 **정식 감시 결과가 아니다.** 판정이 실제로
+       본 자료가 아니라 지금 캐시에서 다시 만든 자료를 보기 때문이다.
+       기록 테이블에 쓰지 않는다 — 섞이면 나중에 구분할 수 없다.
+    """
+    import json as _json
+
+    from app.engine.matchup import (
+        boxscore_payload, bullpen_payload, lineup_season_payload,
+        lineups_payload, starters_season_payload,
+    )
+    from app.engine.shadow_panel import (
+        _is_valid, build_independent_prompt, build_reviewer_prompt,
+    )
+    from app.llm.gemini import generate, parse_json_lenient
+    from app.config import get_settings
+
+    mats = _json.dumps({
+        "자료1_박스스코어": boxscore_payload(jg),
+        "자료3_타순": lineups_payload(jg),
+        "자료7_선발시즌": starters_season_payload(jg),
+        "자료8_타선시즌": lineup_season_payload(jg),
+        "자료9_불펜": bullpen_payload(jg),
+    }, ensure_ascii=False, default=str)
+    m = jg.get("matchup") or {}
+    L("[probe] ⑤ [재구성] 자료 %d자 · 자료8=%s 자료9=%s", len(mats),
+      "Y" if lineup_season_payload(jg) else "N",
+      "Y" if bullpen_payload(jg) else "N")
+
+    s = get_settings()
+    raw = await generate(build_reviewer_prompt(m, mats),
+                         max_tokens=s.shadow_review_max_tokens)
+    objs = parse_json_lenient(raw) or []
+    L("[probe] ⑤ [재구성] L2 이의 %d건", len(objs) if isinstance(objs, list) else -1)
+    for o in (objs if isinstance(objs, list) else [])[:5]:
+        L("[probe] ⑤ [재구성] L2 → %s | valid=%s",
+          _json.dumps(o, ensure_ascii=False), _is_valid(o, mats))
+
+    raw = await generate(build_independent_prompt(mats),
+                         max_tokens=s.shadow_judge_max_tokens)
+    d = parse_json_lenient(raw)
+    if isinstance(d, dict) and d.get("p_home") is not None:
+        from app.engine.matchup import clip_p_home
+
+        ps = clip_p_home(float(d["p_home"]))
+        pm = float(m.get("p_home") or 0)
+        L("[probe] ⑤ [재구성] L3 주심=%.2f 독립=%.2f 편차=%.3f (임계 %.2f) %s",
+          pm, ps, abs(pm - ps), s.shadow_diverge_pp,
+          "초과" if abs(pm - ps) >= s.shadow_diverge_pp else "이내")
+        L("[probe] ⑤ [재구성] L3 한줄근거: %s", d.get("한줄근거"))
+    else:
+        L("[probe] ⑤ [재구성] L3 응답 계약 위반 — raw=%r", (raw or "")[:200])
