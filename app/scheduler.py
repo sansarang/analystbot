@@ -456,6 +456,9 @@ async def mlb_pregame_poll() -> None:
                                r["id"], exc)
         if updated:
             rep.append(f"  MLB 대상 {len(rows)}경기 · 라인업 변동 {len(updated)}")
+        # [감시 L2·L3] 아시아 사이클과 **대칭**이다. 여기가 비어 있어 MLB 만
+        #   그림자 패널을 못 받고 있었다 (실측 2026-09-03).
+        await _run_shadow_panel(redis, ("mlb",), date)
         await report_cycle(redis, "MLB 판정", rep, errs, tally,
                            _time.monotonic() - t0,
                            cycle_report, cycle_errors, next_run="5분 뒤")
@@ -1250,12 +1253,6 @@ async def startup_backfill_job() -> None:
         #   못 읽는다. "며칠째 배당이 죽어 있었나", "타순이 몇 건 오염됐나"는
         #   서버가 스스로 말해야 한다.
         await _startup_forensics(pool, redis)
-        # [1회성 검증] MLB 감시 3층 실전 확인. `PROBE_MLB_SHADOW=1` 일 때만.
-        #   ⚠️ 읽기·감시 전용이다 — 판정·카드·게이트를 건드리지 않는다.
-        if os.getenv("PROBE_MLB_SHADOW") == "1":
-            from tools.probe_mlb_shadow import run as _probe
-
-            await _probe(pool, redis)
         # [0a] 오염 타순 소급 교정. **서버가 한다** — 운영 DB 는 내부
         #   호스트명이라 `railway run` 으로도 밖에서 못 닿는다.
         #   멱등하다: 고쳐진 행은 길이 9가 되어 다음부터 선택되지 않는다.

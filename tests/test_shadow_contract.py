@@ -98,3 +98,18 @@ def test_monitor_alerts_are_registered():
 
     for code in ("W-FACT-MISMATCH", "W-PANEL-DIVERGE", "W-MONITOR-DOWN"):
         assert code in WATCHDOG_CODES
+
+
+def test_shadow_panel_covers_all_three_leagues():
+    """🔴 감시가 리그마다 달라지면 안 된다.
+
+    실측 2026-09-03: `_run_shadow_panel` 호출부가 **아시아 사이클에만**
+    있었다. MLB 판정은 발송까지 정상이었는데 L2·L3 를 한 번도 받지 못했다
+    — "어느 것은 되고 어느 것은 안 되는" 상태였고, 로그만 봐서는 그냥
+    조용했다. 대칭을 테스트로 잠근다.
+    """
+    src = Path("app/scheduler.py").read_text(encoding="utf-8")
+    calls = src.count("await _run_shadow_panel(")
+    assert calls >= 2, f"그림자 패널 호출부가 {calls}곳뿐 — MLB 누락 의심"
+    assert 'await _run_shadow_panel(redis, ("mlb",), date)' in src, \
+        "MLB 폴러에 그림자 패널이 없다"
