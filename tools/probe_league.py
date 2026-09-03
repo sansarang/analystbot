@@ -200,10 +200,16 @@ async def check_materials(redis=None) -> Row:
                           ("8타선시즌", M.lineup_season_payload),
                           ("9불펜", M.bullpen_payload)):
             (got if fn(jg) else miss).append(label)
-        note = f"채움 [{'·'.join(got) or '없음'}]"
-        if miss:
-            note += f" / 빈칸 [{'·'.join(miss)}]"
-        r.set(sp, OK if not miss else UNK, note)
+        # 🔴 **이 프로브는 A 를 판정할 수 없다.** 자료1·7·8 은 리서치 병합
+        #    (`pipeline` 의 `_usage` 조립 등)을 거쳐야 채워지는데, 그걸
+        #    재생하면 읽기 전용이 아니게 된다. 여기서 "빈칸"은 **재료가
+        #    없다는 뜻이 아니라 프로브가 안 채웠다는 뜻**이다.
+        #    권위 있는 증거는 슬레이트의 `[materials] 자료8=Y slots=n 자료9=Y`
+        #    로그다 — M-2 계측이 바로 이걸 위해 있다.
+        r.set(sp, UNK,
+              f"프로브 조립분 [{'·'.join(got) or '없음'}] — 자료1·7·8 은 "
+              f"리서치 병합을 거쳐야 채워진다. 판정 근거는 슬레이트 "
+              f"[materials] 로그 (오늘 저녁 KBO·NPB / 내일 아침 MLB)")
     return r
 
 
@@ -253,11 +259,18 @@ async def check_lineups() -> Row:
             from app.db import get_pool
 
             pool = await get_pool()
+            # 🔴 길이 이상을 **상태별로 가른다.** `save_lineup` 은 라인업이
+            #    공시되기 전(`predicted`)에도 무조건 저장한다 — 그때 타순이
+            #    9명이 아닌 것은 **정상**이다. 둘을 합쳐 세면 매일 "이상 N건"이
+            #    울리고, 그 속에 진짜 이상이 묻힌다.
             row = await pool.fetchrow(
-                """SELECT max(l.captured_at) AS last,
+                """SELECT max(l.captured_at) AS last, count(*) AS n,
                           count(*) FILTER (
-                              WHERE jsonb_array_length(l.batting_order) <> 9) AS bad,
-                          count(*) AS n
+                              WHERE jsonb_array_length(l.batting_order) <> 9
+                                AND l.status = 'confirmed') AS bad_conf,
+                          count(*) FILTER (
+                              WHERE jsonb_array_length(l.batting_order) <> 9
+                                AND l.status <> 'confirmed') AS bad_pred
                      FROM lineups l JOIN games g ON g.id = l.game_id
                     WHERE g.sport = $1
                       AND l.captured_at > now() - interval '30 hours'""", sp)
@@ -269,12 +282,24 @@ async def check_lineups() -> Row:
             r.set(sp, UNK, f"DB 밖 — 슬레이트에서 실증 ({type(exc).__name__})")
             continue
         if not row or not row["n"]:
-            r.set(sp, UNK, "30시간 내 수신 0건 — 창 전이면 정상, 슬레이트에서 실증")
+            # 🔴 `lineups` 테이블 저장 호출자는 `refresh_mlb_lineup` **하나뿐**이다.
+            #    KBO·NPB 는 크롤러 스냅샷 → `games.lineup_*` 경로를 쓴다.
+            #    "수신 0건"은 고장이 아니라 **다른 저장 경로**라는 뜻이다.
+            lu = _src("app/collectors/lineups.py")
+            callers = len(re.findall(r"await save_lineup\(", lu))
+            r.set(sp, UNK,
+                  f"lineups 테이블 30h 0건 — 이 테이블은 MLB 전용이다"
+                  f"(save_lineup 호출자 {callers}개, 전부 refresh_mlb_lineup). "
+                  f"이 리그 타순은 games.lineup_* 경로 — 슬레이트에서 실증")
             continue
         note = (f"30h 수신 {row['n']}건 · 최근 {row['last']:%m-%d %H:%M}Z · "
-                f"확정 {conf}경기 · 길이이상 {row['bad']}건 · "
+                f"확정 {conf}경기 · 길이이상 확정 {row['bad_conf']} / "
+                f"잠정 {row['bad_pred']}(정상) · "
                 f"역행감시 {'있음' if regress_watch else '없음'}")
-        r.set(sp, BAD if not regress_watch else OK, note)
+        if not regress_watch or row["bad_conf"]:
+            r.set(sp, BAD, note)
+        else:
+            r.set(sp, OK, note)
     return r
 
 
