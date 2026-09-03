@@ -109,6 +109,15 @@ class Settings(BaseSettings):
     #: 시장 동의/이견 라벨 임계(%p). |우리 − 시장| 이 이 값 미만이면 "동의".
     market_divergence_pp: float = 4.0
 
+    # ── [크롤 위생] 공통 클라이언트 (2026-09-04) ─────────────────────
+    #: 요청 타임아웃(초)·재시도 횟수·백오프 기준(초).
+    crawl_timeout_sec: float = 20.0
+    crawl_retries: int = 3
+    crawl_backoff_sec: float = 1.5
+    #: 조건부 요청 캐시(ETag/Last-Modified) 수명. 소스가 안 바뀌면 304 를
+    #  받고 본문을 안 받는다 — 우리도 가볍고 상대 서버도 가볍다.
+    crawl_cond_cache_sec: int = 6 * 3600
+
     #: 판정 프롬프트 원문 보관 TTL(초). 사실 감시가 **판정 시점의** 원문을
     #  읽어야 한다 — 재렌더하면 그 사이 바뀐 재료를 보게 된다.
     prompt_keep_ttl_sec: int = 24 * 3600
