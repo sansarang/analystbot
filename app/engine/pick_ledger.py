@@ -194,6 +194,19 @@ async def grade_pending(pool, sport: str | None = None) -> dict:
     out = {"graded": 0, "void": 0}
     if pool is None:
         return out
+    # [C3] 변수 원장도 같은 잡에서 채점한다 — 따로 돌면 한쪽만 밀린다.
+    #   ⚠️ 실패해도 픽 채점을 막지 않는다.
+    #   ⚠️ **반환 dict 에 넣지 않는다.** `{graded, void}` 는 호출부·테스트가
+    #      정확히 비교하는 계약이다. 결과는 로그와 `variable_ledger` 에 남고
+    #      일일 요약은 원장을 직접 읽는다.
+    try:
+        from app.engine.variable_ledger import grade as _grade_vars
+
+        v = await _grade_vars(pool, sport)
+        if v.get("graded"):
+            logger.info("[ledger] 변수 채점 동반 실행 %s", v)
+    except Exception as exc:
+        logger.warning("[ledger] 변수 채점 생략: %s", exc)
     where_sport = " AND l.sport = $1" if sport else ""
     args = [sport] if sport else []
     rows = await pool.fetch(

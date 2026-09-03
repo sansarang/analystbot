@@ -2525,6 +2525,14 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
         if await judge_matchup(jg, redis, date):
             n += 1
             _spawn_fact_audit(jg)        # [감시 L1] 저장 후 사후 감사
+            # [C3] 변수 원장 적재. 판정 **뒤**이고, 실패해도 판정을 막지 않는다.
+            try:
+                from app.engine.variable_ledger import record as _rec_vars
+
+                await _rec_vars(pool, jg)
+            except Exception as exc:
+                logger.warning("[pipeline] 변수 원장 적재 생략 game=%s: %s",
+                               jg.get("game_id"), exc)
     return n
 
 

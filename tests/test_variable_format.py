@@ -96,3 +96,31 @@ def test_card_emits_the_variable_verbatim():
 
     src = Path("app/engine/form_card.py").read_text(encoding="utf-8")
     assert 'lines.append(f"변수 {v}")' in src
+
+
+# ═════════ §5 표본 재시작 ═════════
+
+def test_sample_restarts_for_all_three_leagues():
+    """자료10·변수 명세는 **판정 입력 변경**이다 — 표본을 섞지 않는다."""
+    from app.engine.daily_summary import (
+        FREEZE_RESTART_IS_FINAL, FREEZE_RESTART_REASON, freeze_start,
+    )
+
+    assert freeze_start("kbo") == freeze_start("npb") == freeze_start("mlb")
+    assert freeze_start("kbo") == "2026-09-04"
+    assert "변수 정량화" in FREEZE_RESTART_REASON
+    # 🔴 이 재시작이 마지막이다 — 재료를 바꿀 때마다 버리면 50건에 영영 못 간다
+    assert FREEZE_RESTART_IS_FINAL is True
+
+
+@pytest.mark.asyncio
+async def test_summary_states_the_restart_reason():
+    """숫자가 왜 0 부터인지 **묻기 전에** 답한다."""
+    from app.engine.daily_summary import freeze_progress_lines
+
+    class Pool:
+        async def fetch(self, sql, *a):
+            return [{"sport": "kbo", "n": 2}]
+
+    lines = await freeze_progress_lines(Pool(), ("kbo",))
+    assert any("표본 재시작" in x and "변수 정량화" in x for x in lines), lines

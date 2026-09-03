@@ -85,8 +85,16 @@ FREEZE_TARGET = 50
 #  ⚠️ MLB 의 `date` 는 **미 동부 슬레이트 날짜**다(KST 날짜가 아니다).
 #     슬레이트 2026-09-03 의 판정은 전부 위 배포 이후에 일어난다.
 #  ⚠️ KBO·NPB 는 무관하다 — 두 리그는 이미 자료9 를 갖고 있었다.
-FREEZE_START = {"mlb": "2026-09-03"}
-FREEZE_START_DEFAULT = "2026-09-03"
+FREEZE_START = {}
+FREEZE_START_DEFAULT = "2026-09-04"
+
+#: 표본을 다시 세는 사유. 요약 카드가 이 문장을 그대로 낸다 — 숫자가 왜
+#  0 부터 시작하는지 사람이 물어보기 전에 답해야 한다.
+FREEZE_RESTART_REASON = "변수 정량화 반영 (자료10 신설 · 변수 출력 명세 개정)"
+
+#: 🔴 **이 재시작이 마지막이다.** 다음 재시작은 50건 리포트 이후에만 가능하다.
+#   재료를 바꿀 때마다 표본을 버리면 영원히 50건에 도달하지 못한다.
+FREEZE_RESTART_IS_FINAL = True
 
 
 def freeze_start(sport: str) -> str:
@@ -122,7 +130,8 @@ async def freeze_progress_lines(pool, sports: tuple[str, ...]) -> list[str]:
             for r in rows]
     done = all(int(r["n"]) >= FREEZE_TARGET for r in rows)
     tail = " — 해제 조건 충족" if done else ""
-    return [f"🔒 v1.3 동결 진행률: {' · '.join(bits)}{tail}"]
+    return [f"🔒 v1.3 동결 진행률: {' · '.join(bits)}{tail}",
+            f"   표본 재시작 {FREEZE_START_DEFAULT}: {FREEZE_RESTART_REASON}"]
 
 
 async def cost_lines(redis, sports: tuple[str, ...], date: str) -> list[str]:
@@ -270,6 +279,20 @@ async def monitor_lines(pool, redis, sports: tuple[str, ...],
     return [f"🔍 감시: {' · '.join(parts)}"] if parts else []
 
 
+async def variable_lines(pool, sports: tuple[str, ...]) -> list[str]:
+    """[C3] `📐 변수: 정량 k/전체 n · 현실화 r · 검증불가 u`.
+
+    ⚠️ 재료가 없으면 줄이 없다 — 매일 0 을 보내면 휴면과 정상을 구분 못 한다.
+    """
+    from app.engine.variable_ledger import summary as _vsum
+
+    row = await _vsum(pool, sports)
+    if not row:
+        return []
+    return [f"📐 변수: 정량 {row['quant']}/{row['n']} · "
+            f"현실화 {row['realized']} · 검증불가 {row['unver']}"]
+
+
 async def build(pool, sports: tuple[str, ...], title: str, date: str,
                 *, window_hours: int = 18, redis=None) -> str:
     """요약 카드 1장. 판정이 없으면 그 사실을 말한다 — 빈 카드를 보내지 않는다.
@@ -358,6 +381,9 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str,
     cl = await cost_lines(redis, sports, date)
     if cl:
         out += [""] + cl
+    vl = await variable_lines(pool, sports)
+    if vl:
+        out += vl
     ml = await monitor_lines(pool, redis, sports, date)
     if ml:
         out += ml

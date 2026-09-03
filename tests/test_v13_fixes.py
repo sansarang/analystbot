@@ -250,7 +250,8 @@ async def test_freeze_counter_starts_from_todays_slate():
     assert FREEZE_TARGET == 50
     # ⚠️ 시작일은 **인자**로 간다(리그마다 다르다). SQL 문자열이 아니라
     #    실제로 넘어간 값을 본다 — 리터럴을 찾으면 파라미터화에 깨진다.
-    assert seen["args"][1] == ["2026-09-03", "2026-09-03"], \
+    # ⚠️ [C3 2026-09-04] 자료10·변수 명세 개정으로 3리그 모두 재시작(§5).
+    assert seen["args"][1] == ["2026-09-04", "2026-09-04"], \
         "이전 표본이 섞이면 안 된다"
     assert "graded_at IS NOT NULL" in seen["sql"] and "NOT l.void" in seen["sql"]
     assert "KBO 3/50" in lines[0] and "NPB 5/50" in lines[0]

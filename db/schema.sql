@@ -528,3 +528,31 @@ CREATE TABLE IF NOT EXISTS shadow_panel (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_shadow_panel_sport ON shadow_panel (sport, created_at DESC);
+
+
+-- ── [C3 2026-09-03] 변수 정량화 원장 ─────────────────────────────
+-- 🔴 변수가 "서술"이던 동안에는 맞았는지 틀렸는지 **셀 수 없었다.**
+--    정량 형식(§변수 형식)으로 바뀐 뒤부터 주장(N·M)과 실측을 대조한다.
+-- ⚠️ 파싱 실패도 행으로 남긴다 — `현실화='unverifiable'` + 원문 보존.
+--    버리면 형식 위반이 얼마나 되는지 영영 모른다.
+CREATE TABLE IF NOT EXISTS variable_ledger (
+    id            BIGSERIAL PRIMARY KEY,
+    game_id       BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+    sport         TEXT        NOT NULL,
+    ledger_id     BIGINT      REFERENCES pick_ledger (id) ON DELETE SET NULL,
+    raw           TEXT        NOT NULL,          -- 변수 원문 (형식 위반도 그대로)
+    subject       TEXT,                          -- 주체: 선수명 | 팀명 | NULL
+    subject_kind  TEXT,                          -- 'pitcher' | 'team' | NULL
+    direction     TEXT,                          -- 'home' | 'away'
+    claimed_n     NUMERIC,                       -- 발생 시 이동 %p
+    claimed_m     NUMERIC,                       -- 현재 p 에 기반영 %p
+    source_ref    TEXT,                          -- 근거 자료 번호
+    realized      TEXT,                          -- NULL | 'true' | 'false' | 'unverifiable'
+    actual        JSONB,                         -- 실측치
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    graded_at     TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_variable_ledger_game
+    ON variable_ledger (game_id);
+CREATE INDEX IF NOT EXISTS idx_variable_ledger_pending
+    ON variable_ledger (sport, graded_at) WHERE graded_at IS NULL;

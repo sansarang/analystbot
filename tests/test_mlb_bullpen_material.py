@@ -163,8 +163,10 @@ def test_mlb_freeze_counter_starts_after_the_bullpen_deploy():
     넣으면 50건을 채워도 무엇의 성적인지 알 수 없다.
     KBO·NPB 는 영향이 없다 — 두 리그는 이미 자료9 를 갖고 있었다.
     """
-    from app.engine.daily_summary import FREEZE_START, freeze_start
+    from app.engine.daily_summary import freeze_start
 
-    assert freeze_start("mlb") == "2026-09-03"
-    assert "mlb" in FREEZE_START, "MLB 기준이 기본값에 묻히면 이유가 사라진다"
-    assert freeze_start("kbo") == freeze_start("npb") == "2026-09-03"
+    # ⚠️ [C3 2026-09-04] 자료10·변수 명세 개정으로 **3리그 모두** 표본을 다시
+    #    센다(§5). MLB 만 따로 두던 기준은 그 안에 흡수됐다 — 09-03 기준이
+    #    남아 있으면 자료10 없이 내린 판정이 같은 표본에 섞인다.
+    assert freeze_start("mlb") == freeze_start("kbo") == freeze_start("npb")
+    assert freeze_start("mlb") == "2026-09-04"
