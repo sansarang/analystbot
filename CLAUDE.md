@@ -44,6 +44,7 @@ NPB 30분 전·MLB 3시간 전. MLB 숫자는 statsapi·Statcast (Go HTML 크롤
 | **[docs/MODEL.md](docs/MODEL.md)** | 야구 폼 판정 · 축구 스켈람 · **한계값(임의 완화 금지)** · λ는 아카이브 |
 | [docs/RESEARCH_VALIDATION.md](docs/RESEARCH_VALIDATION.md) | 리서치 응답 검증 체계와 튜닝 기준 |
 | [docs/PREGAME_CHECKLIST.md](docs/PREGAME_CHECKLIST.md) | KBO·NPB 저녁 발송 점검 (`/checklist`) |
+| [docs/DATAFLOW.md](docs/DATAFLOW.md) | 수집→재료→판정→게이트→발송→**감시 3층** 흐름 지도 |
 | CLAUDE.md | 이 문서 — 구조·명령어·규약 |
 
 ### 절대 완화하면 안 되는 한계값 ([MODEL.md](docs/MODEL.md) §1)
@@ -378,6 +379,26 @@ python -c "import asyncio; from app.scheduler import prefetch_job; asyncio.run(p
 
 **예외는 발송 중단급 P0 뿐이다.** 카드가 안 나가거나 틀린 값이 나가는 결함.
 "더 좋아질 것 같다"는 예외가 아니다.
+
+### 동결 중에 무엇을 하는가 — 감시 3층 (2026-09-03)
+
+동결은 "손대지 않는다"이지 "보지 않는다"가 아니다. 표본 50건을 기다리는
+동안 **판정이 무엇을 근거로 삼았는지 기록**해 둔다. 그래야 해제 시점에
+고칠 곳을 데이터로 고를 수 있다. → [DATAFLOW.md](docs/DATAFLOW.md) ⑥
+
+| 층 | 무엇 | 상태 |
+|---|---|---|
+| L1 사실 감시 | 근거의 숫자가 프롬프트 원문에 실제로 있는가 | 상시 |
+| L2 검사역 | 판정의 결함을 찾는다(동의하지 않는다) | `GEMINI_API_KEY` 있을 때 |
+| L3 독립 판정 | 같은 자료로 혼자 판정해 편차를 잰다 | `GEMINI_API_KEY` 있을 때 |
+
+🔴 **전부 섀도다.** 발송 뒤에 돌고, 카드 텍스트를 바꾸지 않으며, 결과가
+   판정·게이트로 되돌아가지 않는다. 감시 결과를 카드에 표기하는 것은
+   v1.4 승격 때다. 감시 실패는 발송을 막지 않고 `W-MONITOR-DOWN` 한 줄을
+   남긴다 — 조용히 삼키지도 않는다.
+
+⚠️ **감시 코드에 숫자를 손으로 적지 않는다.** 상한·주기·모델명·임계는
+   `registry.py`·`config`가 원본이다 (아래 §사본 금지).
 
 ---
 

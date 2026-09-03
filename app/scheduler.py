@@ -697,6 +697,13 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
                     logger.info("[lineup-status] game=%s %s→%s at=poller "
                                 "9명=%s", r["id"], r["lineup_status"], status,
                                 status == "confirmed")
+                    if r["lineup_status"] == "confirmed" and status != "confirmed":
+                        # 🔴 **역행**이다 — 확정이라고 해놓고 되돌아갔다.
+                        from app.engine.monitor_metrics import (
+                            note_lineup_regress,
+                        )
+
+                        await note_lineup_regress(redis, sport, date)
                     await pool.execute(
                         "UPDATE games SET lineup_status = $2, "
                         "home_pitcher = COALESCE($3, home_pitcher), "

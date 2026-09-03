@@ -380,6 +380,11 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     logger.info("[materials] game=%s 자료8=%s slots=%d 자료9=%s",
                 jg.get("game_id"), "Y" if _m8 else "N", len(_m8),
                 "Y" if bullpen_payload(jg) else "N")
+    # 같은 사실을 일일 요약이 읽을 수 있게 센다. 세기만 한다 — 이 결과는
+    #   프롬프트에도 판정에도 되돌아가지 않는다.
+    from app.engine.monitor_metrics import note_materials
+
+    await note_materials(redis, sport, date, bool(_m8))
     # [감시 L1] 판정 **시점의** 프롬프트를 남긴다. 사실 감사가 재렌더하면
     #   그 사이 바뀐 재료를 보게 되므로, 그때 그 원문이어야 한다.
     #   ⚠️ 이것은 **기록이다.** 판정 입력·프롬프트·모델 호출을 바꾸지 않는다.

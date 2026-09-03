@@ -154,6 +154,93 @@ async def cost_lines(redis, sports: tuple[str, ...], date: str) -> list[str]:
     return out
 
 
+async def monitor_lines(pool, redis, sports: tuple[str, ...],
+                        date: str) -> list[str]:
+    """[감시 C3] 감시 3층 + 계측을 한 줄로.
+
+        🔍 감시: 사실 v/d/nf/m · 검사역 이의 k(유효 j) · 패널 편차>8%p m건
+           · 계측: 역행 r건, 자료8 주입 p%
+
+    ⚠️ 이 줄은 **운영 요약**에만 붙는다. 분석 카드 텍스트는 건드리지 않는다 —
+       감시 결과를 카드에 표기하는 것은 v1.4 승격 때다.
+    🔴 재료가 하나도 없으면 **빈 목록**이다. "감시: 0/0/0/0"을 매일 보내면
+       휴면과 정상을 구분할 수 없게 된다.
+    ⚠️ 편차 임계는 config 를 읽는다 — 이 줄에 8을 손으로 적지 않는다(사본 금지).
+    """
+    if pool is None:
+        return []
+    sl = list(sports)
+    parts: list[str] = []
+    try:
+        a = await pool.fetchrow(
+            """SELECT coalesce(sum(verified_n), 0) v, coalesce(sum(derived_n), 0) d,
+                      coalesce(sum(not_found_n), 0) nf, coalesce(sum(mismatch_n), 0) m,
+                      count(*) n
+                 FROM judgement_audit
+                WHERE sport = ANY($1::text[]) AND created_at >= now() - interval '20 hours'""",
+            sl)
+        if a and int(a["n"]):
+            parts.append(f"사실 {a['v']}/{a['d']}/{a['nf']}/{a['m']}")
+    except Exception as exc:
+        logger.debug("[daily-summary] L1 집계 실패: %s", exc)
+    try:
+        r = await pool.fetchrow(
+            """SELECT coalesce(sum(objection_n), 0) k, coalesce(sum(valid_n), 0) j,
+                      count(*) n
+                 FROM judge_review
+                WHERE sport = ANY($1::text[]) AND created_at >= now() - interval '20 hours'""",
+            sl)
+        if r and int(r["n"]):
+            parts.append(f"검사역 이의 {r['k']}(유효 {r['j']})")
+    except Exception as exc:
+        logger.debug("[daily-summary] L2 집계 실패: %s", exc)
+    try:
+        from app.config import get_settings
+
+        thr = float(get_settings().shadow_diverge_pp)
+        sp = await pool.fetchrow(
+            """SELECT count(*) FILTER (WHERE abs(divergence) >= $2) m, count(*) n
+                 FROM shadow_panel
+                WHERE sport = ANY($1::text[]) AND created_at >= now() - interval '20 hours'""",
+            sl, thr)
+        if sp and int(sp["n"]):
+            parts.append(f"패널 편차>{thr * 100:.0f}%p {sp['m']}건")
+    except Exception as exc:
+        logger.debug("[daily-summary] L3 집계 실패: %s", exc)
+
+    # 계측 — M-1·M-2 는 Redis 카운터, M-3 는 lineups 테이블이 원본이다.
+    from app.engine.monitor_metrics import summary as _mon
+
+    tot = with8 = regress = 0
+    for sp_ in sports:
+        d = date
+        if sp_ == "mlb":
+            from app.pipeline import mlb_slate_date
+
+            d = mlb_slate_date()
+        m = await _mon(redis, sp_, d)
+        tot += m["mat_total"]
+        with8 += m["mat_with8"]
+        regress += m["regress"]
+    met = []
+    if regress or tot:
+        met.append(f"역행 {regress}건")
+    if tot:
+        met.append(f"자료8 주입 {with8 / tot:.0%}")
+    try:
+        an = await pool.fetchval(
+            """SELECT count(*) FROM lineups
+                WHERE jsonb_array_length(batting_order) <> 9
+                  AND captured_at >= now() - interval '20 hours'""")
+        if an:
+            met.append(f"타순 길이 이상 {an}건")
+    except Exception as exc:
+        logger.debug("[daily-summary] M-3 집계 실패: %s", exc)
+    if met:
+        parts.append("계측: " + ", ".join(met))
+    return [f"🔍 감시: {' · '.join(parts)}"] if parts else []
+
+
 async def build(pool, sports: tuple[str, ...], title: str, date: str,
                 *, window_hours: int = 18, redis=None) -> str:
     """요약 카드 1장. 판정이 없으면 그 사실을 말한다 — 빈 카드를 보내지 않는다.
@@ -242,6 +329,9 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str,
     cl = await cost_lines(redis, sports, date)
     if cl:
         out += [""] + cl
+    ml = await monitor_lines(pool, redis, sports, date)
+    if ml:
+        out += ml
     fl = await freeze_progress_lines(pool, sports)
     if fl:
         out += fl
