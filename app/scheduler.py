@@ -1337,6 +1337,14 @@ async def startup_backfill_job() -> None:
         #   못 읽는다. "며칠째 배당이 죽어 있었나", "타순이 몇 건 오염됐나"는
         #   서버가 스스로 말해야 한다.
         await _repair_impossible_live(pool)
+        # [리허설 · MLB] `REHEARSAL_MLB=1` 일 때 기동 시 1회. 격리·읽기 전용.
+        if os.getenv("REHEARSAL_MLB") == "1":
+            try:
+                from tools.rehearsal_mlb import run as _reh_mlb
+
+                await _reh_mlb(pool, redis)
+            except Exception as exc:
+                logger.error("[reh-mlb] 실행 실패: %r", exc)
 
         await _startup_forensics(pool, redis)
         # [리허설] `REHEARSAL=1` 일 때 기동 시 1회. 격리 키·발송 차단.
