@@ -203,6 +203,18 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
     return None
 
 
+#: 폼 호출의 역할 이름. 사슬 조회에 쓴다 — 문자열을 여기저기 적지 않는다.
+FORM_ROLE = "form"
+
+
+def _free_primary(role: str) -> bool:
+    """무료 경로가 **주전**인가. 판단은 `judge_route.chain` 이 원본이다."""
+    from app.llm.judge_route import chain
+
+    routes = chain(role)
+    return bool(routes) and routes[0][0] != "anthropic"
+
+
 async def complete_json(prompt: str, *, model: str, max_tokens: int,
                         role: str = "form", mock: bool | None = None) -> str:
     """폼·매치업 전용. Judge 모델·토큰을 쓰지 않는다. 도구 없이 본문 JSON만."""
@@ -461,10 +473,30 @@ async def analyze_games(redis, sport: str, date: str, games: list[dict],
                 try:
                     form = await analyze_team(
                         redis, sport, team, date, pkt, news, force=force, mock=mock)
-                except ApiQuotaError:
-                    logger.error("[form] 크레딧 소진 — 슬레이트 중단 sport=%s done=%s remaining_at=%s",
-                                 sport, list(out), team)
-                    raise
+                except ApiQuotaError as exc:
+                    # 🔴 [P0 2026-09-04] 종전에는 여기서 `raise` 해 **종목 전체를
+                    #    중단**했다. Anthropic 이 유일한 provider 이던 시절의 보호다 —
+                    #    잔액이 없으면 나머지 팀도 어차피 실패하니 빨리 멈추자는 것.
+                    #    무료 전환 뒤에는 그 전제가 깨졌다: 크레딧 오류는
+                    #    **비상 꼬리(Anthropic)가 없다**는 뜻이지, 무료 경로가
+                    #    죽었다는 뜻이 아니다. 그런데도 첫 한 팀이 유료로 떨어지는
+                    #    순간 슬레이트가 통째로 멈췄다.
+                    #    실측 2026-09-04 16:37: NPB 10팀 중 3번째 팀에서 400
+                    #    (credit) → `팀 폼 0/10팀` → **NPB 판정 0건 · 카드 0장.**
+                    #    폼은 **보조 신호다** — 판정 게이트는 3경기 박스스코어에
+                    #    걸리고, 뉴스가 없어도 "숫자만으로 판정한다"가 정상 경로다.
+                    #    보조가 필수를 죽이면 안 된다.
+                    #  ⚠️ 무료 경로가 주전일 때만 강등한다. Anthropic 이 주전이면
+                    #     종전 보호를 그대로 둔다 — 그때는 정말 아무것도 못 한다.
+                    if not _free_primary(FORM_ROLE):
+                        logger.error("[form] 크레딧 소진 — 슬레이트 중단 sport=%s "
+                                     "done=%s remaining_at=%s",
+                                     sport, list(out), team)
+                        raise
+                    logger.error("[form] 🔴 크레딧 소진 — 이 팀만 폼 없이 간다 "
+                                 "sport=%s team=%s (판정은 박스스코어로 성립한다): %s",
+                                 sport, team, exc)
+                    form = unavailable_form(team, cause=CAUSE_CREDIT)
                 out[team] = form
             else:
                 form = out[team]
