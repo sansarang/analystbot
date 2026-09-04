@@ -210,6 +210,15 @@ def _lineup_of(jg: dict, side: str):
     order = ((jg.get("research") or {}).get(f"{side}_lineup") or {})
     if isinstance(order, dict) and order.get("order"):
         return order["order"]
+    # 🔴 [2026-09-04] KBO·NPB 는 크롤러가 준 타순을 research 에 **문자열**로
+    #    담는다("홍창기-신민재-오스틴"). 종전에는 dict 만 보고 문자열은
+    #    통째로 흘려보내 `None` 을 돌려줬다 — 그래서 T5(라인업 이상)와
+    #    T6(최초 공시)가 **야구에서 여전히 죽어 있었다.**
+    #    2026-09-01 에 "키가 어긋나 T5 가 한 번도 발동하지 않았다"를 고쳤는데,
+    #    그때는 dict 경로만 열고 문자열 경로는 안 열었다. 같은 결함의 절반이
+    #    남아 있었던 것이다(실측 2026-09-04 KBO 저녁 재판정 8건).
+    if isinstance(order, str) and order.strip():
+        return order
     nine = ((jg.get("today_nine") or {}).get(side) or {}).get("order")
     return nine or None
 
@@ -837,16 +846,26 @@ def first_lineup_evidence(jg: dict, prev_lineup: dict | None) -> bool:
     """
     if (jg.get("lineup_status") or "") != "confirmed":
         return False
-    r = jg.get("research") or {}
-    now_has = any((r.get(f"{side}_lineup") or {}).get("order")
-                  for side in ("home", "away"))
-    if not now_has:
+    # 🔴 [2026-09-04] 종전에는 `research[f"{side}_lineup"]` 이 **dict 라고
+    #    가정**하고 `.get("order")` 를 불렀다. KBO·NPB 는 크롤러가 준 타순을
+    #    **문자열**("홍창기-신민재-…")로 담는다 — 그래서 라인업이 확정될
+    #    때마다 `AttributeError: 'str' object has no attribute 'get'` 가 나고,
+    #    호출부의 넓은 except 가 그것을 삼켰다:
+    #      [pipeline] 재판정 딥서치 생략 — 판정은 계속: 'str' object has no …
+    #    결과: **T4·T5·T6 가 야구에서 통째로 죽어 있었다.** 딥서치가 꺼져 있어도
+    #    "어떤 경기가 걸리는가"를 관찰하는 것이 이 단계의 목적인데 그 관찰이
+    #    한 건도 남지 않았다(실측 2026-09-04 KBO 저녁 슬레이트, 재판정 8건 전부).
+    #    ⚠️ 같은 실수가 이 파일에 이미 한 번 기록돼 있다(`_lineup_of` 주석,
+    #       2026-09-01 "키가 어긋나 T5 가 한 번도 발동하지 않았다"). 그때는
+    #       `_lineup_of` 만 고쳤고 여기는 안 고쳤다.
+    #    → **모양을 아는 곳은 한 군데뿐이어야 한다.** `_lineup_of`+`_names` 를
+    #       재사용한다. 여기에 모양 분기를 다시 적으면 그것이 다음 사본이다.
+    if not any(_names(_lineup_of(jg, side)) for side in ("home", "away")):
         return False
     # ⚠️ `prev_lineup` 은 **껍데기가 항상 온다** — `{"research": {"home_lineup": {},
     #    "away_lineup": {}}}`. dict 가 truthy 라고 "직전이 있다"로 읽으면
     #    T6 가 영원히 안 걸린다. **안에 실제 타순이 있는지**를 봐야 한다.
-    pr = (prev_lineup or {}).get("research") or {}
-    prev_has = any((pr.get(f"{side}_lineup") or {}).get("order")
+    prev_has = any(_names(_lineup_of(prev_lineup or {}, side))
                    for side in ("home", "away"))
     return not prev_has              # 직전 타순이 있으면 '변동'이라 T4·T5 소관
 
