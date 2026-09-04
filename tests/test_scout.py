@@ -28,9 +28,11 @@ class _Redis:
     async def get(self, k):
         return self.store.get(k)
 
-    async def keys(self, pattern):
-        pre = pattern.rstrip("*")
-        return [k for k in self.store if k.startswith(pre)]
+    async def scan_iter(self, match=None, count=None):
+        pre = (match or "*").rstrip("*")
+        for k in list(self.store):
+            if k.startswith(pre):
+                yield k
 
 
 class _Pool:
@@ -280,3 +282,16 @@ def test_every_active_scout_sport_has_a_call_site():
     covered = {"kbo", "npb", "mlb"}
     missing = {x.sport for x in scout_sports(active_only=True)} - covered
     assert not missing, f"배선 없는 활성 종목: {missing}"
+
+
+def test_scout_records_are_read_with_scan_not_keys():
+    """🔴 `KEYS` 는 운영 Redis 전체를 훑는 O(N) 이다. 워치독이 5분마다 그것을
+    하면 워치독이 고장의 원인이 된다."""
+    from pathlib import Path
+
+    for f in ("app/watchdog.py", "app/engine/daily_summary.py",
+              "app/engine/scout.py"):
+        src = Path(f).read_text(encoding="utf-8")
+        assert "redis.keys(" not in src, f
+    src = Path("app/engine/scout.py").read_text(encoding="utf-8")
+    assert "scan_iter" in src and "limit" in src, "상한 없는 순회는 폭주한다"

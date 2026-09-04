@@ -204,24 +204,15 @@ async def scout_lines(redis, sports: tuple[str, ...]) -> list[str]:
     ⚠️ 시장 값(배당 숫자 자체)은 싣지 않는다 — 몇 건 들어왔는지만 센다.
        배당은 판정·서술에 흐르지 않는다는 절대 규칙이 정찰 카드에도 적용된다.
     """
-    import json as _json
-
-    from app.engine.scout import LINEUP_CONFIRMED, LINEUP_NONE, LINEUP_PARTIAL
+    from app.engine.scout import (
+        LINEUP_CONFIRMED, LINEUP_NONE, LINEUP_PARTIAL, scan_scout,
+    )
 
     if redis is None:
         return []
     out: list[str] = []
     for sport in sports:
-        try:
-            keys = await redis.keys(f"scout:{sport}:*")
-            recs = []
-            for k in keys or []:
-                raw = await redis.get(k)
-                if raw:
-                    recs.append(_json.loads(raw))
-        except Exception as exc:
-            logger.debug("[scout] 요약 조회 실패 %s: %s", sport, exc)
-            continue
+        recs = await scan_scout(redis, f"scout:{sport}:*")
         if not recs:
             continue
         cnt = {LINEUP_CONFIRMED: 0, LINEUP_PARTIAL: 0, LINEUP_NONE: 0}

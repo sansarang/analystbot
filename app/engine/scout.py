@@ -200,3 +200,31 @@ async def observe_slate(pool, redis, games: list[dict], date: str,
         if rec is not None:
             out.append(rec)
     return out
+
+async def scan_scout(redis, pattern: str, *, limit: int = 200) -> list[dict]:
+    """`scout:*` 기록을 **SCAN 으로** 모은다. 반환은 파싱된 dict 목록.
+
+    🔴 **`KEYS` 를 쓰지 않는다.** 운영 Redis 는 판정 캐시·해시·서명으로
+       키가 수만 개다. `KEYS` 는 전체를 훑는 O(N) 이고 그동안 다른 명령이
+       막힌다 — 워치독이 5분마다 그것을 하면 워치독이 고장의 원인이 된다.
+    ⚠️ 상한을 둔다. 슬레이트는 종목당 5~15경기라 200 이면 충분하고,
+       패턴이 잘못돼 폭주하는 경우를 여기서 끊는다.
+    """
+    import json as _json
+
+    out: list[dict] = []
+    if redis is None:
+        return out
+    try:
+        async for key in redis.scan_iter(match=pattern, count=100):
+            raw = await redis.get(key)
+            if raw:
+                try:
+                    out.append(_json.loads(raw))
+                except (TypeError, ValueError):
+                    continue
+            if len(out) >= limit:
+                break
+    except Exception as exc:
+        logger.debug("[scout] 기록 조회 실패 %s: %s", pattern, exc)
+    return out

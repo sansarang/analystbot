@@ -469,24 +469,14 @@ async def check_source_drift(pool, redis) -> list[tuple[str, str, str]]:
     ⚠️ 정찰 창 안이면서 **라인업 공시 시각을 지난** 경기만 센다 — 아직
        발표 전인 것을 고장이라 부르면 매일 저녁 오탐이 난다.
     """
-    import json as _json
-
+    from app.engine.scout import scan_scout
     from app.registry import scout_sports
 
     out: list[tuple[str, str, str]] = []
     if redis is None:
         return out
     for sc in scout_sports():
-        recs = []
-        try:
-            keys = await redis.keys(f"scout:{sc.sport}:*")
-            for k in keys or []:
-                raw = await redis.get(k)
-                if raw:
-                    recs.append(_json.loads(raw))
-        except Exception as exc:
-            logger.debug("[watchdog] 정찰 기록 조회 실패 %s: %s", sc.sport, exc)
-            continue
+        recs = await scan_scout(redis, f"scout:{sc.sport}:*")
         # 라인업 공시 관행을 지난 경기만 (관행은 config 가 원본이다)
         due = [r for r in recs
                if (r.get("hours_to_start") or 99) <= _lineup_lead_h(sc.sport)]
