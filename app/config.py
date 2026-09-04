@@ -118,6 +118,21 @@ class Settings(BaseSettings):
     #  받고 본문을 안 받는다 — 우리도 가볍고 상대 서버도 가볍다.
     crawl_cond_cache_sec: int = 6 * 3600
 
+    # ── [무료 전환 2026-09-04] 판정·폼 provider 라우팅 ───────────────
+    #: 판정·폼을 어디로 보낼 것인가. `anthropic` 이면 종전 경로 그대로다.
+    #  🔴 **Anthropic 경로를 지우지 않았다.** 이 값 하나로 되돌아온다.
+    judge_provider: str = Field(default="anthropic", validation_alias=AliasChoices(
+        "JUDGE_PROVIDER", "judge_provider"))
+    #: 무료 provider 로 갈 때 쓸 모델. 오디션 결과로 정한다.
+    free_judge_model: str = Field(default="", validation_alias=AliasChoices(
+        "FREE_JUDGE_MODEL", "free_judge_model"))
+    free_form_model: str = Field(default="", validation_alias=AliasChoices(
+        "FREE_FORM_MODEL", "free_form_model"))
+    #: 🔴 **비상용이 일상용으로 새는 것을 막는 캡.** 하루 이 수를 넘으면
+    #   Anthropic 을 부르지 않는다. 폴백 사슬의 마지막이지 기본값이 아니다.
+    anthropic_daily_cap: int = Field(default=10, validation_alias=AliasChoices(
+        "ANTHROPIC_DAILY_CAP", "anthropic_daily_cap"))
+
     #: 판정 프롬프트 원문 보관 TTL(초). 사실 감시가 **판정 시점의** 원문을
     #  읽어야 한다 — 재렌더하면 그 사이 바뀐 재료를 보게 된다.
     prompt_keep_ttl_sec: int = 24 * 3600

@@ -143,6 +143,57 @@ def form_cache_usable(obj) -> bool:
     return isinstance(obj, dict) and not obj.get("unavailable")
 
 
+async def _redis():
+    try:
+        import redis.asyncio as aioredis
+
+        return aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    except Exception:
+        return None
+
+
+async def _paid_ok(role: str) -> bool:
+    """Anthropic 호출 전 캡 확인 + 사용 기록. 캡을 넘으면 False."""
+    from app.llm.judge_route import note_paid_call, paid_allowed
+
+    r = await _redis()
+    try:
+        if not await paid_allowed(r):
+            return False
+        await note_paid_call(r, role)
+        return True
+    finally:
+        if r is not None:
+            try:
+                await r.aclose()
+            except Exception:
+                pass
+
+
+async def _complete_free(routes, prompt: str, max_tokens: int,
+                         role: str) -> str | None:
+    """무료 사슬을 순서대로. 전부 실패하면 None (호출부가 유료로 내려간다)."""
+    from app.llm.openai_compat import complete
+
+    for provider, model in routes:
+        if provider == "anthropic":
+            break
+        r = await complete(provider, model, prompt, max_tokens=max_tokens)
+        logger.info("[%s] free provider=%s model=%s ok=%s %.1fs%s",
+                    role, provider, model, r["ok"], r["elapsed"],
+                    f" err={str(r['error'])[:120]}" if r["error"] else "")
+        if r["ok"]:
+            u = r.get("usage") or {}
+            LAST_USAGE.clear()
+            LAST_USAGE.update({"role": role, "model": f"{provider}/{model}",
+                               "input_tokens": u.get("prompt_tokens"),
+                               "output_tokens": u.get("completion_tokens"),
+                               "stop_reason": "free"})
+            return r["text"]
+    logger.warning("[%s] 무료 provider 전부 실패 — 유료 폴백 검토", role)
+    return None
+
+
 async def complete_json(prompt: str, *, model: str, max_tokens: int,
                         role: str = "form", mock: bool | None = None) -> str:
     """폼·매치업 전용. Judge 모델·토큰을 쓰지 않는다. 도구 없이 본문 JSON만."""
@@ -151,7 +202,19 @@ async def complete_json(prompt: str, *, model: str, max_tokens: int,
     settings = get_settings()
     if settings.mock_judge if mock is None else mock:
         return ""
+    # [무료 전환 2026-09-04] provider 라우팅. `JUDGE_PROVIDER=anthropic` 이면
+    #   아래 종전 경로가 그대로 돈다 — **경로를 지우지 않았다.**
+    from app.llm.judge_route import chain
+
+    routes = chain(role)
+    if routes and routes[0][0] != "anthropic":
+        out = await _complete_free(routes, prompt, max_tokens, role)
+        if out is not None:
+            return out
+        # 무료가 전부 실패했다 — 캡 안에서만 유료로 내려간다.
     abort_if_credit_gone(role)
+    if not await _paid_ok(role):
+        raise ApiQuotaError(f"anthropic({role})", "일일 캡 도달 — 호출 차단")
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     n_chars = len(prompt or "")
     kwargs = message_kwargs(model, max_tokens, prompt)
