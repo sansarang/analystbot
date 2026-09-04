@@ -1340,6 +1340,15 @@ async def startup_backfill_job() -> None:
         # [리허설 · MLB] `REHEARSAL_MLB=1` 일 때 기동 시 1회. 격리·읽기 전용.
         # [리허설 · KBO] 저녁 슬레이트 **사전 예측**. `REHEARSAL_KBO=1` 일 때만.
         #   ⚠️ 17:00 이후에는 스스로 멈춘다 — 실슬레이트가 정본이다.
+        # [오디션] 무료 LLM 판정 후보 실측. `LLM_AUDITION=1` 일 때만.
+        #   ⚠️ Anthropic 0콜 — 프롬프트는 순수 함수로 렌더한다.
+        if os.getenv("LLM_AUDITION") == "1":
+            try:
+                from tools.llm_audition import run as _audition
+
+                await _audition(pool, redis)
+            except Exception as exc:
+                logger.error("[audition] 실행 실패: %r", exc)
         if os.getenv("REHEARSAL_KBO") == "1":
             try:
                 from tools.rehearsal_kbo import run as _reh_kbo
