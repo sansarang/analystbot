@@ -211,3 +211,47 @@ def test_draw_odds_are_not_collected():
     """무승부 배당 수집 확장 금지 — 2-way 로만 계산한다."""
     assert "Draw" not in SRC and "무승부" in SRC
     assert "devig_two_way" in SRC and "three" not in SRC.lower()
+
+
+# ═════════ 프롬프트 렌더 추출이 동작을 안 바꿨는가 ═════════
+
+def test_render_matchup_prompt_is_pure():
+    """🔴 `judge_matchup` 에서 꺼낸 것이지 새로 쓴 게 아니다."""
+    import inspect
+
+    from app.engine.matchup import render_matchup_prompt
+
+    src = inspect.getsource(render_matchup_prompt)
+    # 모델을 부르지 않는다
+    for banned in ("complete_json", "await ", "anthropic", "client"):
+        assert banned not in src, f"{banned} — 순수 함수가 아니다"
+    # 자리표시자를 전부 채운다
+    for slot in ("BOXSCORE_JSON", "NEWS_JSON", "LINEUPS_JSON",
+                 "STARTERS_RECENT_JSON", "PREV_VERDICT_JSON",
+                 "LINEUP_INTENT_JSON", "STARTER_SEASON_JSON",
+                 "LINEUP_SEASON_JSON", "BULLPEN_JSON"):
+        assert slot in src, slot
+    assert "insert_material10" in src
+
+
+def test_judge_matchup_calls_the_extracted_renderer():
+    import inspect
+
+    from app.engine.matchup import judge_matchup
+
+    src = inspect.getsource(judge_matchup)
+    assert "render_matchup_prompt(jg, boxes, news, prev)" in src
+    assert "fill(" not in src, "렌더가 두 곳에 남아 있다 — 복제는 드리프트다"
+
+
+def test_no_placeholder_survives_render():
+    """자리표시자가 남으면 모델이 `{{...}}` 를 그대로 읽는다."""
+    from app.engine.matchup import render_matchup_prompt
+
+    import re
+
+    out = render_matchup_prompt({"sport": "mlb"}, {"home": {}, "away": {}},
+                                {}, None)
+    # ⚠️ `}}` 만 보면 안 된다 — 출력 JSON 예시의 **중첩 중괄호**가 걸린다.
+    #    자리표시자는 `{{대문자}}` 형태다.
+    assert not re.findall(r"\{\{[A-Z_]+\}\}", out)

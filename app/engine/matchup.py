@@ -350,6 +350,36 @@ def prev_verdict(jg: dict) -> dict | None:
     return {k: m[k] for k in PREV_FIELDS if k in m}
 
 
+def render_matchup_prompt(jg: dict, boxes: dict, news: dict,
+                          prev: dict | None) -> str:
+    """매치업 프롬프트 렌더. **순수 함수 — 모델을 부르지 않는다.**
+
+    🔴 `judge_matchup` 안에 인라인이던 것을 그대로 꺼냈다. 동작은 한 글자도
+       바뀌지 않는다(테스트가 자리표시자 잔여 0을 확인한다).
+       꺼낸 이유: 오디션·리허설이 **모델 호출 없이** 프롬프트만 필요할 때가
+       있는데, 인라인이면 그 재료를 복제해야 한다 — 복제는 곧 드리프트다.
+    """
+    prompt = fill(
+        MATCHUP,
+        BOXSCORE_JSON=json.dumps(boxes, ensure_ascii=False, default=str),
+        NEWS_JSON=json.dumps(news, ensure_ascii=False, default=str),
+        LINEUPS_JSON=json.dumps(lineups_payload(jg), ensure_ascii=False, default=str),
+        STARTERS_RECENT_JSON=json.dumps(
+            starters_recent_payload(jg), ensure_ascii=False, default=str),
+        PREV_VERDICT_JSON=json.dumps(prev, ensure_ascii=False, default=str),
+        LINEUP_INTENT_JSON=json.dumps(intent_payload(jg), ensure_ascii=False,
+                                      default=str),
+        STARTER_SEASON_JSON=json.dumps(starters_season_payload(jg),
+                                       ensure_ascii=False, default=str),
+        LINEUP_SEASON_JSON=json.dumps(lineup_season_payload(jg),
+                                      ensure_ascii=False, default=str),
+        BULLPEN_JSON=json.dumps(bullpen_payload(jg), ensure_ascii=False, default=str),
+    )
+    # [자료10] 해당 경기에만 끼운다. 해당 없으면 프롬프트가 종전과 동일하다.
+    prompt = insert_material10(prompt, material10_payload(jg))
+    return prompt
+
+
 async def judge_matchup(jg: dict, redis, date: str, *,
                         mock: bool | None = None) -> dict | None:
     """form: 히트면 재분석하지 않는다. 미스면 팀 분석을 한 뒤 매치업을 돌린다."""
@@ -395,24 +425,7 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #   아니라 "무엇이 바뀌어 어디로 움직였나"가 되게 한다.
     #   (실측 사례: 안우진 등판 확인 → 두산 0.62→0.59 철회)
     prev = prev_verdict(jg)
-    prompt = fill(
-        MATCHUP,
-        BOXSCORE_JSON=json.dumps(boxes, ensure_ascii=False, default=str),
-        NEWS_JSON=json.dumps(news, ensure_ascii=False, default=str),
-        LINEUPS_JSON=json.dumps(lineups_payload(jg), ensure_ascii=False, default=str),
-        STARTERS_RECENT_JSON=json.dumps(
-            starters_recent_payload(jg), ensure_ascii=False, default=str),
-        PREV_VERDICT_JSON=json.dumps(prev, ensure_ascii=False, default=str),
-        LINEUP_INTENT_JSON=json.dumps(intent_payload(jg), ensure_ascii=False,
-                                      default=str),
-        STARTER_SEASON_JSON=json.dumps(starters_season_payload(jg),
-                                       ensure_ascii=False, default=str),
-        LINEUP_SEASON_JSON=json.dumps(lineup_season_payload(jg),
-                                      ensure_ascii=False, default=str),
-        BULLPEN_JSON=json.dumps(bullpen_payload(jg), ensure_ascii=False, default=str),
-    )
-    # [자료10] 해당 경기에만 끼운다. 해당 없으면 프롬프트가 종전과 동일하다.
-    prompt = insert_material10(prompt, material10_payload(jg))
+    prompt = render_matchup_prompt(jg, boxes, news, prev)
     # [M-2 계측] 자료8·9 가 **실제로 프롬프트에 실렸는가.** 수집률(100%)과
     #   주입률이 갈리던 것을 잡는다 — 2026-09-02 카드 2장이 "자료8 부재"라
     #   적었는데 로그는 매칭 18/18 이었다.
