@@ -102,37 +102,139 @@ RETIRED = {7: "폐지 2026-09-04 (대원칙: 시즌 누적은 판정 입력이 �
            8: "폐지 2026-09-04 (대원칙: 시즌 누적은 판정 입력이 아니다)"}
 
 
+#: 원장의 조립 줄에서 `자료N=Y|N|해당없음` 을 읽는다. **재계산하지 않는다** —
+#  판정이 그때 무엇을 봤는지는 그 시점 로그가 원본이다.
+_MAT_STATE = re.compile(r"자료(\d{1,2})=([^\s(]+)")
+
+
+def filled_at(trace: list[dict], num: int) -> tuple[str | None, str | None]:
+    """자료 N 이 **언제 채워졌나**. 반환 (시각, 마지막 상태).
+
+    🔴 [2026-09-05] 종전 리포트는 한 시점만 보고 "없음"이라 적었다.
+       실측 2026-09-04 game=1708: 17:00 프리페치에 `자료3=N(타순 0명)` 이었고
+       18:1x 재판정에서 라인업이 확정돼 채워졌다. **없었던 게 아니라 아직
+       공시 전이었다**(KBO 공시는 시작 1시간 전). 한 시점만 보면 그 구분이
+       사라지고, 정상 동작이 결함처럼 보인다.
+    """
+    first_yes, last = None, None
+    for t in trace:
+        if t.get("stage") != "조립":
+            continue
+        for n, st in _MAT_STATE.findall(t.get("summary") or ""):
+            if int(n) != num:
+                continue
+            last = st
+            if st == "Y" and first_yes is None:
+                first_yes = _kst(t.get("at"))
+    return first_yes, last
+
+
+def _news_row(jg: dict) -> list[str]:
+    """자료2 를 **세 줄로 분해**한다.
+
+    🔴 자료2 는 수집한 기사가 아니라 **팀 폼 모델이 만든 `뉴스태그` 배열**이다
+       (`matchup.news_payload`). 그래서 "기사 46건 수집"과 "자료2 없음"이
+       동시에 성립한다. 한 줄로 "없음"이라 적으면 어디서 끊겼는지 못 본다.
+    """
+    r = jg.get("research") or {}
+    seen = r.get("news_articles_seen")
+    quotes = r.get("news_quotes") or []
+    tags = 0
+    for side in ("home", "away"):
+        tags += len(((jg.get(f"{side}_form") or {}).get("뉴스태그")) or [])
+    def _st(v, unit):
+        return f"{v}{unit}" if v else f"0{unit}"
+    na = "조립 로그 미각인"           # 자료2 는 [materials] 줄에 안 찍힌다
+    return [
+        f"| 2-a | 읽은 기사 | {'있음' if seen else NONE_MARK} | {na} | "
+        f"{_st(seen, '건') if seen is not None else '미기록 — 수집기가 건수를 남기지 않았다'} |",
+        f"| 2-b | 추출된 인용 | {'있음' if quotes else NONE_MARK} | {na} | "
+        f"{_st(len(quotes), '건')}"
+        f"{'' if quotes else ' — 인용 게이트(발화동사+이름) 통과 0'} |",
+        f"| 2-c | **판정에 실린 뉴스태그** | {'있음' if tags else NONE_MARK} | {na} | "
+        f"{_st(tags, '개')}{'' if tags else ' — 팀 폼이 태그를 내지 않았다'} |",
+    ]
+
+
 def section_materials(jg: dict, trace: list[dict]) -> str:
     r = jg.get("research") or {}
-    rows = ["| 자료 | 이름 | 상태 | 요약 |", "|---|---|---|---|"]
+    rows = ["| 자료 | 이름 | 상태 | 채워진 시각 | 요약 |",
+            "|---|---|---|---|---|"]
+
+    #: 조립 로그(`[materials]`)가 도장을 찍는 자료. 나머지는 시각을 알 수 없다 —
+    #  **빈 칸으로 두지 않고 그 사실을 적는다.** 빈 칸은 또 다른 "없음"이다.
+    stamped = {3, 9, 10, 11}
+
+    def _line(num, name, state, when, note):
+        if not when:
+            when = ("공시/조립 전" if num in stamped
+                    else "조립 로그 미각인")
+        rows.append(f"| {num} | {name} | {state} | {when} | {note} |")
+
     for num, name, key in MATERIALS:
+        when, last = filled_at(trace, num)
         if num in RETIRED:
-            rows.append(f"| {num} | {name} | — | {RETIRED[num]} |")
+            _line(num, name, "폐지", "해당 없음(폐지)", RETIRED[num])
+            continue
+        if num == 2:
+            # 분해 3줄. 원장 시각은 조립 줄에 자료2 가 안 찍혀 없다.
+            rows += _news_row(jg)
             continue
         if num == 5:
             prev = (jg.get("matchup") or {}).get("직전대비")
-            rows.append(f"| 5 | {name} | {'있음' if prev else NONE_MARK} | "
-                        f"{_fmt(json.dumps(prev, ensure_ascii=False) if prev else None, '최초 판정')} |")
+            _line(5, name, "있음" if prev else "해당없음", when,
+                  _summarize(prev) if prev else
+                  "최초 판정 — 비교할 직전 판정이 없다(정상)")
             continue
-        if num == 10:
-            st = jg.get("material10_status") or "해당없음"
-            rows.append(f"| 10 | {name} | {st} | "
-                        f"{_summarize(jg.get('material10'))} |")
-            continue
-        if num == 11:
-            st = jg.get("material11_status") or "해당없음"
-            rows.append(f"| 11 | {name} | {st} | "
-                        f"{_summarize(jg.get('material11'))} |")
+        if num in (10, 11):
+            st = jg.get(f"material{num}_status") or "해당없음"
+            blk = jg.get(f"material{num}") or {}
+            _line(num, name, st, when,
+                  _summarize(blk) if blk else _why_na(num, jg))
             continue
         got = {s: r.get(f"{s}_{key}") for s in ("home", "away")} if key else {}
         have = any(bool(v) for v in got.values())
-        rows.append(f"| {num} | {name} | {'있음' if have else NONE_MARK} | "
-                    f"{_summarize(got) if have else '수집 실패 또는 미공시'} |")
-    # 원장이 본 조립 시각 — 리포트가 지어내지 않고 원장에서 읽는다
-    asm = [t for t in trace if t["stage"] == "조립"]
-    when = _kst(asm[0]["at"]) if asm else "—"
+        note = _summarize(got) if have else _why_empty(num, last)
+        _line(num, name, "있음" if have else NONE_MARK, when, note)
+
+    asm = [t for t in trace if t.get("stage") == "조립"]
+    head = (f"조립 관측 {len(asm)}회"
+            + (f" ({_kst(asm[0]['at'])} ~ {_kst(asm[-1]['at'])})" if asm else ""))
     return ("## ① 무엇을 수집했나\n\n"
-            f"조립 시각(원장): {when}\n\n" + "\n".join(rows) + "\n")
+            f"{head}\n\n" + "\n".join(rows) + "\n")
+
+
+#: 자료10·11 이 "해당없음"인 **이유**. 코드가 그렇게 정한 조건을 그대로 적는다.
+def _why_na(num: int, jg: dict) -> str:
+    if num == 10:
+        return ("해당 경기가 아니다 — 선발 표본이 충분하고 폼·시즌 괴리가 "
+                "임계 미만(variable_ref.attach_material10 조건)")
+    if num == 11:
+        r = jg.get("research") or {}
+        miss = [k for k in ("home_usage", "away_usage") if not r.get(k)]
+        if miss:
+            return f"최근 경기 목록이 없다 ({', '.join(miss)}) — 연전·이동을 셀 수 없다"
+        return "날짜·홈원정을 읽지 못했다 (돔구장이면 날씨도 비어 있다)"
+    return NONE_MARK
+
+
+def _why_empty(num: int, last: str | None) -> str:
+    """비어 있는 이유. **관측된 마지막 상태**를 근거로 말한다."""
+    if num == 3:
+        if last and last.startswith("N"):
+            return ("공시 전이거나 미수집 — 원장 마지막 관측이 "
+                    f"`자료3={last}`. KBO 는 시작 1시간 전, NPB 30분 전, "
+                    "MLB 3시간 전 공시다")
+        return "라인업 미수집"
+    if num == 6:
+        return "자료3(타순)이 없으면 의도를 해석할 대상이 없다 — 자료3 행을 먼저 보라"
+    if num == 1:
+        return "🔴 3경기 박스스코어 없음 — 판정 게이트가 여기서 탈락시킨다"
+    if num == 4:
+        return "선발 최근 등판 미수집 — 선발 미정이거나 등판 기록 0건"
+    if num == 9:
+        return "불펜 최근 폼 미수집"
+    return "수집 실패 또는 미공시"
 
 
 def _summarize(v, limit: int = 90) -> str:
@@ -336,6 +438,33 @@ def filename(jg: dict) -> str:
 
 
 # ─────────────────────────── DB 로더 ───────────────────────────
+
+async def load_final_jg(redis, sport: str, game_id, date: str) -> dict | None:
+    """리포트가 읽을 **최종 상태의 판정 캐시**. 없으면 None.
+
+    🔴 [2026-09-05] 리포트는 반드시 **마지막 재판정 결과**를 읽어야 한다.
+       프리페치 시점 값을 보여주면 자료3·6 이 영원히 "없음"으로 남는다 —
+       KBO 라인업 공시가 시작 1시간 전이라 14:00·17:00 프리페치에는 원래
+       없는 것이 정상이고, 18:1x 재판정에서 채워진다(실측 game=1708).
+       "아직 안 나온 것"과 "끝내 못 받은 것"은 다른 사실이다.
+    ⚠️ 캐시 키는 `matchup.analysis_game_key` 가 원본이다 — 여기 적지 않는다.
+    """
+    if redis is None or game_id is None:
+        return None
+    from app.engine.matchup import analysis_game_key
+
+    try:
+        raw = await redis.get(analysis_game_key(sport, game_id, date))
+    except Exception as exc:
+        logger.debug("[glass] 판정 캐시 조회 실패 game=%s: %s", game_id, exc)
+        return None
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except ValueError:
+        return None
+
 
 async def load_sources(pool, game_id) -> dict:
     """리포트가 읽을 원장들. **재계산 없음** — 있는 행을 그대로 가져온다."""

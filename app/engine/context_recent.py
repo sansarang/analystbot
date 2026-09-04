@@ -108,9 +108,14 @@ def build(jg: dict, *, today: _date | None = None) -> dict:
     # 오늘 선발의 투구 손 — **사실이지 스플릿이 아니다.**
     #   플래툰 "성적"은 시즌 스플릿이라 대원칙이 막는다. 손은 오늘 사실이므로
     #   싣고, 판정이 자료1(3경기)과 함께 읽게 한다.
+    #  🔴 [2026-09-05] 키 이름이 틀려 **선발손이 영원히 안 붙었다.**
+    #     읽던 키 `{side}_starter` 는 코드베이스 어디에도 없다(전수 grep 확인).
+    #     실제 키는 `{side}_pitcher` 다 — `naver_kbo.merge_into_research` 가
+    #     `research.setdefault(f"{side}_pitcher", {})` 로 만든다.
+    #     자료11 을 만든 그날(2026-09-04) 실측이 0건이라 아무도 못 봤다.
     hands = {}
     for side in ("home", "away"):
-        h = ((jg.get("research") or {}).get(f"{side}_starter") or {}).get("throws")
+        h = ((jg.get("research") or {}).get(f"{side}_pitcher") or {}).get("throws")
         if h:
             hands[side] = h
     if hands:

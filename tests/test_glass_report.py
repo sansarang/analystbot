@@ -36,9 +36,19 @@ def _jg():
             "away_starter_recent": [{"innings": 5.0, "r": 3}],
             "home_bullpen": {"최근3경기": {"실점": 7}},
             "away_bullpen": {"최근3경기": {"실점": 2}},
+            # 재판정에서 채워진 것들 (17:00 엔 없었다)
+            "home_lineup": "박찬호-김도영-나성범", "away_lineup": "로하스-강백호",
+            "home_intent": {"부호": "▲"}, "away_intent": {"부호": "="},
+            "news_articles_seen": 46,
+            "news_quotes": [{"text": "이범호 감독은…", "url": "http://x"}],
         },
         "material10_status": "Y", "material10": {"이닝분포": {"p50": 5.2}},
-        "material11_status": "해당없음",
+        "material11_status": "Y",
+        "material11": {"home": {"연전": 3, "이동": "원정→홈"},
+                       "날씨": "맑음 24도", "선발손": {"home": "R", "away": "R"}},
+        # 팀 폼이 낸 뉴스태그 — 자료2 의 실체
+        "home_form": {"뉴스태그": [{"tag": "마무리 교체", "dir": "▼"}]},
+        "away_form": {"뉴스태그": []},
     }
 
 
@@ -48,7 +58,10 @@ def _trace():
     from datetime import timedelta
     return [
         {"stage": "조립", "at": t,
-         "summary": "[materials] game=1708 자료3=N(타순 0명) 자료9=Y 자료10=Y 자료11=해당없음",
+         "summary": "[materials] game=1708 자료3=N(타순 0명) 자료9=Y 자료10=Y 자료11=Y",
+         "ref": None},
+        {"stage": "조립", "at": t + timedelta(minutes=74),
+         "summary": "[materials] game=1708 자료3=Y(타순 9명) 자료9=Y 자료10=Y 자료11=Y",
          "ref": None},
         {"stage": "판정", "at": t + timedelta(minutes=2),
          "summary": "[matchup] game=1708 Kia Tigers vs KT Wiz p_home=0.580 "
@@ -104,11 +117,47 @@ def test_generator_never_recomputes_probability():
 # ─────────────────── ① 재료 ───────────────────
 
 def test_missing_material_says_none_with_a_reason():
+    """🔴 [2026-09-05] "없음" 한 단어를 금지한다 — 왜 없는지가 함께 나온다."""
     jg = _jg()
     jg["research"].pop("home_bullpen")
     jg["research"].pop("away_bullpen")
     md = gr.section_materials(jg, _trace())
-    assert "없음" in md and "수집 실패 또는 미공시" in md
+    assert "없음" in md
+    assert "불펜 최근 폼 미수집" in md, "이유 없이 '없음'만 적으면 안 된다"
+
+
+def test_no_bare_dash_in_the_timing_column():
+    """빈 칸은 또 다른 '없음'이다 — 시각을 모르면 그 사실을 적는다."""
+    md = gr.section_materials(_jg(), _trace())
+    for line in md.splitlines():
+        if not line.startswith("| ") or line.startswith("| 자료") or "---" in line:
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        assert len(cells) == 5, f"열 수가 5가 아니다: {line}"
+        assert cells[3] not in ("", "—"), f"시각 칸이 비었다: {line}"
+
+
+def test_lineup_timing_is_shown_not_called_missing():
+    """🔴 실측 2026-09-04 game=1708: 17:00 미공시 → 18:14 확정.
+
+    한 시점만 보고 '없음'이라 적으면 **정상 동작이 결함처럼 보인다.**
+    """
+    md = gr.section_materials(_jg(), _trace())
+    row = [x for x in md.splitlines() if "오늘 확정 라인업" in x][0]
+    assert "18:14" in row, row
+    assert "없음" not in row, row
+
+
+def test_material2_is_split_into_three_stages():
+    """🔴 자료2 는 수집한 기사가 아니라 팀 폼이 만든 태그다.
+
+    '기사 46건 수집'과 '자료2 없음'이 동시에 성립하므로, 한 줄로 적으면
+    어디서 끊겼는지 못 본다.
+    """
+    md = gr.section_materials(_jg(), _trace())
+    assert "2-a | 읽은 기사" in md and "46건" in md
+    assert "2-b | 추출된 인용" in md
+    assert "2-c | **판정에 실린 뉴스태그**" in md
 
 
 def test_retired_materials_stay_listed_with_the_reason():

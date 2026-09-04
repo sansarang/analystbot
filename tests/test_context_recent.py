@@ -71,7 +71,7 @@ def _jg():
                 "home_usage": {"games": [{"date": "2026-09-03", "home": False}]},
                 "away_usage": {"games": [{"date": "2026-09-03", "home": True}]},
                 "weather": {"요약": "맑음 24도"},
-                "home_starter": {"throws": "L"}}}
+                "home_pitcher": {"throws": "L"}}}
 
 
 def test_build_collects_all_three_axes():

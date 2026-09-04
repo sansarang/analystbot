@@ -864,6 +864,12 @@ def merge_source_data(research: dict, jg: dict, sport: str,
             _absorb(research, _mnews(research, jg, statcast_data["kbo_news"]),
                     SRC_NEWS)
             done.append("kbo_news")
+        else:
+            # 🔴 [2026-09-05] **조용한 0 을 없앤다.** 이 분기가 말없이 넘어가
+            #    재판정마다 뉴스가 빠졌고, 자료2 가 "없음"으로 나가는 동안
+            #    어디서 끊겼는지 알려주는 줄이 한 개도 없었다.
+            logger.warning("[pipeline] kbo_news 키 없음 — 뉴스 병합 생략 "
+                           "game=%s (번들 구성 확인)", jg.get("game_id"))
         # [§8-34] 카드 ④칸("무게") — 순위·게임차·잔여경기.
         #   그날 프리뷰 5경기가 10팀 순위를 모두 담고 있어 **추가 HTTP가 없다**
         #   (순위 전용 엔드포인트는 403이다 — 2026-08-27 실측).
@@ -949,6 +955,8 @@ async def load_source_bundle(redis, sport: str, date: str) -> dict:
             except Exception as exc:
                 logger.warning("[pipeline] 번들 네이버 재수집 실패: %s", exc)
                 naver = naver or {}
+        from app.collectors.kbo_news import load as load_news
+
         bundle.update({
             "kbo_teams": kteams or {},
             "kbo_pitchers": kpitchers or {},
@@ -956,6 +964,10 @@ async def load_source_bundle(redis, sport: str, date: str) -> dict:
             "naver": naver,
             "kbo_usage": await load_usage(redis, date) or {},
             "kbo_roster": await load_roster(redis, date) or {},
+            # 🔴 [2026-09-05] 이 키가 없어서 재판정에 뉴스가 100% 누락됐다.
+            #    `merge_source_data` 는 `.get("kbo_news") is not None` 으로
+            #    분기하므로, **키가 없으면 조용히 병합을 건너뛴다.**
+            "kbo_news": await load_news(redis, date) or {},
         })
     elif sport == "npb":
         from app.collectors.npb_stats import load as load_npb_stats
@@ -1752,7 +1764,18 @@ async def build_analysis(
                 from app.collectors.kbo_news import fetch_for_games as fetch_news
 
                 try:
-                    news_quotes = await fetch_news(_up, date)
+                    _news_meta: dict = {}
+                    news_quotes = await fetch_news(_up, date,
+                                                   meta_out=_news_meta)
+                    # 🔴 [2026-09-05] **캐시에 남긴다.** 종전에는 지역변수로만
+                    #    존재해 재판정 경로(`load_source_bundle`)가 뉴스를
+                    #    통째로 못 봤다 — KBO 소스 6개 중 이것만 캐시가 없었다.
+                    from app.collectors.kbo_news import META_KEY as _NMETA
+                    from app.collectors.kbo_news import save as _save_news
+
+                    await _save_news(redis, date, news_quotes, _news_meta)
+                    if _news_meta:
+                        news_quotes = {**news_quotes, _NMETA: _news_meta}
                 except Exception as exc:      # 기사 실패가 분석을 막지 않는다
                     logger.warning("[pipeline] KBO 기사 발췌 실패: %s", exc)
                     news_quotes = {}

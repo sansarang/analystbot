@@ -33,6 +33,8 @@ CACHE_TTL = 20 * 60        # 감독 발언은 **경기 19분 전**에도 나온�
                            # 길게 잡으면 그 발언을 통째로 놓친다.
 MAX_PER_OUTLET = 14        # 매체당 기사 상한 — 전부 받으면 느리고 대부분 무관하다
 MAX_QUOTES_PER_GAME = 4
+#: 조회 건수를 담는 자리. 경기 키는 "원정@홈" 이라 절대 안 겹친다.
+META_KEY = "_meta"
 
 # 매체 등록부: (이름, 인덱스 URL, 기사 링크 정규식, 상대경로 기준 도메인)
 #   ⚠️ 한 매체만 쓰면 수율이 낮다 — 실측(2026-08-26): 스포츠조선 단독으로
@@ -260,7 +262,8 @@ class ChosunClient:
 
 
 async def fetch_for_games(games: list[dict], date: str,
-                          client: ChosunClient | None = None) -> dict[str, list[dict]]:
+                          client: ChosunClient | None = None,
+                          meta_out: dict | None = None) -> dict[str, list[dict]]:
     """{"원정@홈": [{"text","url","at"}]}. 게이트 ①②③를 전부 통과한 것만.
 
     ⚠️ 게이트 ① — 기사 게시 시각이 **경기 시작 이전**이어야 한다.
@@ -327,21 +330,124 @@ async def fetch_for_games(games: list[dict], date: str,
             out[key] = picked
     logger.info("[kbo_news] %s — %d경기에 인용 발췌 (기사 %d건 조회)",
                 date, len(out), len(articles))
+    # 🔴 [2026-09-05] 조회 건수를 **반환 dict 에 넣지 않는다.** 이 dict 은
+    #    "모든 키가 경기"라는 계약이고, `_meta` 를 끼웠더니 그 계약을 믿고
+    #    순회하던 테스트가 즉시 깨졌다(TypeError). 계약을 깨는 대신
+    #    호출자가 건네는 `meta_out` 에 담는다.
+    if meta_out is not None:
+        meta_out["articles"] = len(articles)
+        meta_out["date"] = date
+    return out
+
+
+#: 타순 문자열에서 이름만 뽑는다 — "1.홍창기(중견수)" · "홍창기-신민재-…" 둘 다.
+_ORDER_SPLIT = re.compile(r"[-,·]|\d+\.")
+
+
+def _order_names(v) -> set[str]:
+    """타순 값에서 선수 이름 집합. **모양을 여러 개 받는다.**
+
+    KBO·NPB 는 크롤러가 문자열로, 축구는 dict 로 담는다. 한 모양만 가정하면
+    나머지가 통째로 빠진다 — `deepsearch._lineup_of` 가 같은 실수로 트리거를
+    두 번 죽였다(2026-09-01·09-04).
+    """
+    if isinstance(v, dict):
+        v = v.get("order") or v.get("선발") or v.get("타순") or ""
+    if isinstance(v, (list, tuple)):
+        parts = [str((x.get("name") if isinstance(x, dict) else x) or "")
+                 for x in v]
+    elif isinstance(v, str):
+        parts = _ORDER_SPLIT.split(v)
+    else:
+        return set()
+    out = set()
+    for pt in parts:
+        nm = pt.split("(")[0].strip()
+        if 1 < len(nm) <= 6 and not nm.isdigit():
+            out.add(nm)
     return out
 
 
 def _game_names(g: dict) -> set[str]:
-    """게이트 ②용 — 이 경기를 특정하는 이름들 (팀 한국어 표기 + 선발)."""
+    """게이트 ③용 — 이 경기를 특정하는 이름들.
+
+    팀 한국어 표기 + 선발 + **오늘 타순 9명**.
+
+    🔴 [2026-09-05] 종전에는 팀 약칭과 선발뿐이라 사전이 5개였고, 그 결과
+       **감독·타자 발언이 통째로 탈락했다.** 실측 2026-09-04 KT@기아:
+       경기 전 이 경기 기사 5건 중 인용이 나온 것은 1건뿐이었고, 떨어진 4건이
+       전부 사람 이름이 든 인용이었다 —
+         "…새로운 친구를 보고 싶어 3루수로 김요셉을 기용했다"   (감독 발언)
+         "오랜만에 불펜 고충을 느껴…"                        (오원석)
+         "의식하면 칠 수 없다는 걸 그때 일찍 깨달았기 때문에…"   (김도영)
+       타순 9명을 넣으면 이 중 타자 발언이 걸린다.
+
+    ⚠️ **감독 이름은 넣지 않는다.** 그 사전을 손으로 적으면 감독이 바뀔 때
+       따라가지 않는 사본이 된다(설계 규율 §사본 금지). 감독 발언은 기사 안에
+       팀 약칭이나 선수 이름이 함께 나오는 경우에만 걸린다 — 그 한계는
+       리포트 ①절이 "추출 N건"으로 드러낸다.
+    """
     odds_to_kr = {}
     for kr, odds in TEAM_KR.items():
         odds_to_kr.setdefault(odds, set()).add(kr)
     names: set[str] = set()
+    research = g.get("research") or {}
     for side in ("home", "away"):
         names |= odds_to_kr.get(g.get(side) or "", set())
-        p = (g.get("research") or {}).get(f"{side}_pitcher") or {}
+        p = research.get(f"{side}_pitcher") or {}
         if p.get("name"):
             names.add(p["name"])
+        names |= _order_names(research.get(f"{side}_lineup"))
+        names |= _order_names(g.get(f"lineup_{side}"))
     return {n for n in names if n}
+
+
+#: 발췌 결과 캐시. 🔴 [2026-09-05] KBO 소스 6개 중 **이것만** 캐시가 없어서
+#  재판정 경로(`load_source_bundle`)에서 뉴스가 100% 누락됐다. 프리페치는
+#  지역변수로 직접 넘기고, 재판정은 번들을 읽는데 번들에 키가 아예 없었다.
+#  ⚠️ TTL 은 슬레이트 하루를 덮는다. 날짜가 키에 있어 다음날과 안 섞인다.
+SAVE_TTL = 12 * 3600
+_SAVE_KEY = "kbo_news:{date}"
+
+
+async def save(redis, date: str, table: dict, meta: dict | None = None) -> None:
+    """발췌 결과를 캐시에 넣는다. 실패해도 수집을 막지 않는다.
+
+    ⚠️ 캐시는 우리 것이라 `_meta` 를 함께 담아도 계약이 깨지지 않는다 —
+       `fetch_for_games` 의 **반환값**에만 넣지 않는다.
+    """
+    if redis is None:
+        return
+    import json
+
+    payload = dict(table or {})
+    if meta:
+        payload[META_KEY] = meta
+    try:
+        await redis.set(_SAVE_KEY.format(date=date),
+                        json.dumps(payload, ensure_ascii=False,
+                                   default=str), ex=SAVE_TTL)
+    except Exception as exc:
+        logger.warning("[kbo_news] 캐시 저장 실패 %s: %s", date, exc)
+
+
+async def load(redis, date: str) -> dict:
+    """캐시된 발췌. 없으면 빈 dict — 다른 KBO 수집기와 같은 계약이다."""
+    if redis is None:
+        return {}
+    import json
+
+    try:
+        raw = await redis.get(_SAVE_KEY.format(date=date))
+    except Exception as exc:
+        logger.warning("[kbo_news] 캐시 조회 실패 %s: %s", date, exc)
+        return {}
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except ValueError:
+        return {}
 
 
 def merge_into_research(research: dict, jg: dict, table: dict) -> list[str]:
@@ -353,6 +459,10 @@ def merge_into_research(research: dict, jg: dict, table: dict) -> list[str]:
     """
     from app.research.crosscheck_sources import mark_collected
 
+    meta = (table or {}).get(META_KEY) or {}
+    if meta.get("articles") is not None:
+        # 리포트 ①절이 "기사 N건 읽고 인용 M건"을 말할 수 있게 남긴다.
+        research["news_articles_seen"] = int(meta["articles"])
     rows = (table or {}).get(f"{jg.get('away')}@{jg.get('home')}")
     mark_collected(research, "rotation_plan")   # 조사했다 — 인용이 없어도
     if not rows:
