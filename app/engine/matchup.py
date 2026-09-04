@@ -233,35 +233,6 @@ def starters_recent_payload(jg: dict) -> dict:
     return out
 
 
-def lineup_season_payload(jg: dict) -> dict:
-    """[D 2026-09-02] 오늘 타순 9명의 시즌 타격 라인 — **정식 근거.**
-
-    선발 시즌 라인(`starters_season_payload`)과 달리 표본 보정 전용이 아니다.
-    3경기 팀 총득점보다 표본이 크므로 프롬프트가 타선 평가의 주 근거로 쓴다.
-    ⚠️ 재료가 없으면 그 쪽을 **넣지 않는다** — 빈 칸을 만들면 판정이 "타선
-       자료 없음"과 "타선이 나쁨"을 구분하지 못한다.
-    """
-    r = jg.get("research") or {}
-    out = {}
-    for side in ("home", "away"):
-        blk = r.get(f"{side}_lineup_season") or {}
-        if blk.get("타자"):
-            out[side] = blk
-    return out
-
-
-def starters_season_payload(jg: dict) -> dict:
-    """[C] 선발 시즌 라인 — **표본 보정 전용.** 타선은 8번 자료가 따로 있다."""
-    r = jg.get("research") or {}
-    out = {}
-    for side in ("home", "away"):
-        line = r.get(f"{side}_starter_season") or {}
-        n = len(r.get(f"{side}_starter_recent") or [])
-        if line or n:
-            out[side] = {"시즌": line, "최근등판수": n}
-    return out
-
-
 def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
     s = settings or get_settings()
     p = clip_p_home(verdict.get("p_home"), s)
@@ -369,10 +340,6 @@ def render_matchup_prompt(jg: dict, boxes: dict, news: dict,
         PREV_VERDICT_JSON=json.dumps(prev, ensure_ascii=False, default=str),
         LINEUP_INTENT_JSON=json.dumps(intent_payload(jg), ensure_ascii=False,
                                       default=str),
-        STARTER_SEASON_JSON=json.dumps(starters_season_payload(jg),
-                                       ensure_ascii=False, default=str),
-        LINEUP_SEASON_JSON=json.dumps(lineup_season_payload(jg),
-                                      ensure_ascii=False, default=str),
         BULLPEN_JSON=json.dumps(bullpen_payload(jg), ensure_ascii=False, default=str),
     )
     # [자료10] 해당 경기에만 끼운다. 해당 없으면 프롬프트가 종전과 동일하다.
@@ -426,28 +393,29 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #   (실측 사례: 안우진 등판 확인 → 두산 0.62→0.59 철회)
     prev = prev_verdict(jg)
     prompt = render_matchup_prompt(jg, boxes, news, prev)
-    # [M-2 계측] 자료8·9 가 **실제로 프롬프트에 실렸는가.** 수집률(100%)과
+    # [M-2 계측] 재료가 **실제로 프롬프트에 실렸는가.** 수집률(100%)과
     #   주입률이 갈리던 것을 잡는다 — 2026-09-02 카드 2장이 "자료8 부재"라
     #   적었는데 로그는 매칭 18/18 이었다.
-    _m8 = lineup_season_payload(jg)
+    #   🔴 [2026-09-04] 자료8(타선 시즌)이 폐지되어 계측 대상을 **자료3(오늘
+    #      타순 9명)** 으로 옮긴다. 같은 결함(수집≠주입)을 보는 자리이고,
+    #      자료8이 사라졌다고 이 감시까지 사라지면 안 된다.
     # ⚠️ [2026-09-03] 자료3 은 **타순 9명이 있을 때만** Y 다.
     #    `lineups_payload` 는 선발투수 키를 항상 넣어 dict 가 비지 않는다 —
     #    비어있음으로 재면 타순이 없어도 Y 가 나온다(리허설에서 확인:
-    #    `자료8=N slots=0` 인데 자료3=Y). 로그·계측만 고친다. 조립은 불변.
+    #    `slots=0` 인데 자료3=Y). 로그·계측만 고친다. 조립은 불변.
     _m3 = lineups_payload(jg)
     _slots = min(len((( _m3.get(side) or {}).get("타순") or []))
                  for side in ("home", "away")) if _m3 else 0
-    logger.info("[materials] game=%s 자료3=%s(타순 %d명) 자료8=%s slots=%d "
-                "자료9=%s 자료10=%s",
-                jg.get("game_id"), "Y" if _slots >= 9 else "N", _slots,
-                "Y" if _m8 else "N", len(_m8),
+    _has3 = _slots >= 9
+    logger.info("[materials] game=%s 자료3=%s(타순 %d명) 자료9=%s 자료10=%s",
+                jg.get("game_id"), "Y" if _has3 else "N", _slots,
                 "Y" if bullpen_payload(jg) else "N",
                 jg.get("material10_status") or "해당없음")
     # 같은 사실을 일일 요약이 읽을 수 있게 센다. 세기만 한다 — 이 결과는
     #   프롬프트에도 판정에도 되돌아가지 않는다.
     from app.engine.monitor_metrics import note_materials
 
-    await note_materials(redis, sport, date, bool(_m8))
+    await note_materials(redis, sport, date, _has3)
     # [감시 L1] 판정 **시점의** 프롬프트를 남긴다. 사실 감사가 재렌더하면
     #   그 사이 바뀐 재료를 보게 되므로, 그때 그 원문이어야 한다.
     #   ⚠️ 이것은 **기록이다.** 판정 입력·프롬프트·모델 호출을 바꾸지 않는다.

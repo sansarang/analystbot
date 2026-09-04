@@ -106,44 +106,32 @@ def test_interpreter_model_is_pinned_not_opus_fallback():
     assert resolve_model("interpreter", s) != s.judge_model
 
 
-def test_season_line_is_sample_correction_only():
-    """🔴 규율 개정 2026-09-01 — "시즌 ERA 금지"를 **선발투수 한 칸만** 푼다.
+def test_season_lines_were_abolished():
+    """🔴 대원칙 2026-09-04 — 시즌 누적은 판정 입력이 아니다. **예외 없음.**
 
-    실사고(NYY@LAA 1:7): 최근 등판 1경기(6이닝 3실점)를 "안정적"으로 읽고
-    NYY 66% 추천. 그 투수의 시즌은 ERA 5.40·BB/9 5.4 였고 오늘 3.2이닝
-    3볼넷 4실점으로 무너졌다. 시즌 데이터가 결과를 예측하고 있었는데
-    판정이 볼 수 없게 되어 있었다.
+    이 자리에는 두 개의 옛 계약이 있었다:
+      · `test_season_line_is_sample_correction_only` (자료7, 2026-09-01 개정)
+      · `test_batting_season_is_first_class_evidence` (자료8, 2026-09-02 개정)
+    둘 다 "시즌 값을 보여줘야 표본을 제대로 읽는다"는 논리로 들어왔고,
+    사용자 지시(2026-09-04)가 그 논리 자체를 닫았다. 되살리려면 대원칙을
+    먼저 고쳐야 한다 — 테스트를 지우고 슬쩍 넣는 길을 막아둔다.
+
+    ⚠️ **대체는 하지 않았다.** 최근 5경기 타격은 MLB(statsapi lastXGames)만
+       되고 KBO(기록실 최근 N경기 스플릿 없음)·NPB(시즌표뿐)는 경로가 없다.
+       MLB 만 바꾸면 3리그 표본이 갈리므로 경로가 생길 때 동시에 넣는다.
     """
-    assert "{{STARTER_SEASON_JSON}}" in MATCHUP
-    assert "표본 보정 전용" in MATCHUP
-    assert "이것으로\n  우세를 정하지 마라" in MATCHUP
-    assert '"표본 보정:"으로 시작하라' in MATCHUP
-    # 자료7은 여전히 **선발투수 전용** 이다 — 타선은 자료8로 분리돼 있다.
-    assert "이 칸은 선발투수다. 타선 시즌은 8번 자료를 쓴다." in MATCHUP
+    assert "{{STARTER_SEASON_JSON}}" not in MATCHUP
+    assert "{{LINEUP_SEASON_JSON}}" not in MATCHUP
+    assert "표본 보정 전용" not in MATCHUP
+    assert "자료8(타선 시즌)은 **정식 근거다.**" not in MATCHUP
+    # 빈 칸이 아니라 **폐지**임을 판정 모델에게 명시한다.
+    assert "폐지됨 (2026-09-04)" in MATCHUP
+    assert "시즌 누적·통산·상대전적은 판정 입력이 아니다" in MATCHUP
 
 
-def test_batting_season_is_first_class_evidence():
-    """🔴 규율 개정 2026-09-02 — "타선·팀 시즌 지표 금지"를 **해제**한다.
-
-    9/01 개정은 선발투수 한 칸만 풀고 타선은 닫아뒀다. 그런데 판정은 "오늘
-    나온 9명이 기준"이라고 말하면서 그 9명이 어떤 타자인지는 볼 수 없었다 —
-    타선 재료가 팀 3경기 총득점 하나뿐이었기 때문이다. 표본 3이고 상대
-    선발에 좌우된다. 선발에서 겪은 실수를 타선에서 반복할 구조였다.
-
-    선발과 달리 **표본 보정 전용이 아니라 정식 근거**다 (사용자 결정 2026-09-02).
-    """
-    assert "{{LINEUP_SEASON_JSON}}" in MATCHUP
-    assert "자료8(타선 시즌)은 **정식 근거다.**" in MATCHUP
-    assert "타선 평가의 주 근거로 쓴다" in MATCHUP
-    assert '"타선 시즌:"으로 시작하라' in MATCHUP
-    # 금지문이 실제로 사라졌는가
-    assert "타선·팀 지표의 시즌 값은 여전히 쓰지 않는다" not in MATCHUP
-
-
-def test_batting_season_does_not_override_the_starter():
-    """타선은 9명이 나눠 갖고 선발은 혼자 던진다 — 반대를 가리키면 선발이 무겁다."""
+def test_starter_weight_survived_the_abolition():
+    """타선·선발이 반대를 가리킬 때 선발이 무겁다는 규칙은 시즌 값과 무관하다."""
     assert "선발 쪽을 무겁게 본다" in MATCHUP
-    assert "`PA`가 작은 타자" in MATCHUP
 
 
 def test_missing_batting_material_is_not_a_bad_lineup():
@@ -160,8 +148,10 @@ def test_hard_limits_survive_the_revision():
 
 def test_low_recent_sample_pulls_toward_half():
     """표본이 적으면 0.50 쪽으로 당긴다 — 적은 표본에 확신을 싣지 않는다."""
-    assert "**2경기 이하**면 그 표본은 그 투수를 대표하지 않는다" in MATCHUP
-    assert "표본이 적을수록 0.50 쪽으로 당긴다" in MATCHUP
+    # [C2 2026-09-04] 처방이 "시즌으로 메운다" 에서 "0.50 으로 당긴다" 로 바뀌었다.
+    assert "**2경기 이하**면 그 표본은" in MATCHUP
+    assert "0.50 쪽으로 당겨라" in MATCHUP
+    assert "시즌 라인으로 메우지 말고" in MATCHUP
 
 
 def test_judge_reads_numbers_not_another_models_grades():

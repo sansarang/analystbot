@@ -85,9 +85,11 @@ def test_frozen_sentences_are_untouched():
     """§3 밖 문장은 그대로다 — diff 가 이 블록을 넘으면 반려다."""
     for kept in ("p_home은 0.32~0.68 범위를 벗어나지 않는다",
                  "근거는 위 자료 안에서만 찾는다",
-                 "{{BOXSCORE_JSON}}", "{{LINEUP_SEASON_JSON}}",
-                 "{{BULLPEN_JSON}}", "{{STARTER_SEASON_JSON}}"):
+                 "{{BOXSCORE_JSON}}", "{{BULLPEN_JSON}}"):
         assert kept in MATCHUP, kept
+    # [C2 2026-09-04] 자료7·8 은 대원칙에 따라 폐지됐다 — 동결 목록에서 뺀다.
+    for gone in ("{{LINEUP_SEASON_JSON}}", "{{STARTER_SEASON_JSON}}"):
+        assert gone not in MATCHUP, gone
 
 
 def test_card_emits_the_variable_verbatim():

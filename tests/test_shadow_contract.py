@@ -88,7 +88,9 @@ def test_design_freeze_tests_still_pass():
     from app.engine.prompts import MATCHUP
 
     assert "p_home은 0.32~0.68 범위를 벗어나지 않는다" in MATCHUP
-    assert "{{BOXSCORE_JSON}}" in MATCHUP and "{{LINEUP_SEASON_JSON}}" in MATCHUP
+    # [C2 2026-09-04] 자료8 폐지 — 나머지 동결 계약은 그대로다.
+    assert "{{BOXSCORE_JSON}}" in MATCHUP
+    assert "{{LINEUP_SEASON_JSON}}" not in MATCHUP
     assert clip_p_home(0.99) == pytest.approx(0.68)
 
 

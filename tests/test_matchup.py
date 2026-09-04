@@ -329,17 +329,15 @@ def test_low_sample_needs_a_pitcher_name():
     assert low_sample_sides(jg) == []
 
 
-def test_season_payload_carries_recent_count():
-    """판정이 "이 시즌 라인을 얼마나 쓸지"를 정하려면 최근 등판 수가 필요하다."""
-    from app.engine.matchup import starters_season_payload
+def test_starter_season_payload_is_gone():
+    """🔴 [C2 2026-09-04] 자료7 폐지 — 조립 함수 자체가 없어야 한다.
 
-    jg = {"research": {"home_starter_season": {"ERA": "2.85", "BB9": 4.68},
-                       "home_starter_recent": [{}, {}, {}],
-                       "away_starter_season": {"ERA": "5.40", "BB9": 5.5},
-                       "away_starter_recent": [{}]}}
-    out = starters_season_payload(jg)
-    assert out["home"]["최근등판수"] == 3 and out["away"]["최근등판수"] == 1
-    assert out["away"]["시즌"]["BB9"] == 5.5
+    함수만 남겨두면 다음에 `fill(...)` 한 줄로 조용히 되살아난다.
+    """
+    import app.engine.matchup as M
+
+    assert not hasattr(M, "starters_season_payload")
+    assert not hasattr(M, "lineup_season_payload")
 
 
 def test_season_line_has_no_win_loss():

@@ -2497,28 +2497,11 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
         except Exception as exc:
             logger.warning("[pipeline] 선발 최근 등판 실패 game=%s: %s",
                            jg.get("game_id"), exc)
-        # [C 2026-09-01] 표본 보정용 시즌 라인. **실패해도 판정을 막지 않는다** —
-        #   못 받으면 빈 dict 이고 그러면 종전과 같은 판정이 된다.
-        try:
-            from app.collectors.starter_season import attach as _season
-
-            await _season(jg, redis=redis)
-        except Exception as exc:
-            logger.warning("[pipeline] 선발 시즌 라인 실패 game=%s: %s",
-                           jg.get("game_id"), exc)
-        # [M-2 계측] 자료8 이 실제로 판정에 주입되는지 — 수집 100% 인데
-        #   카드가 "자료8 부재" 라고 적은 경기가 있었다(2026-09-02 2장).
-        #   수집률과 주입률을 따로 센다.
-        # [D 2026-09-02] 오늘 타순 9명의 시즌 타격 라인. 사용자 지시로
-        #   "타선·팀 시즌 지표 금지"를 해제하고 **정식 근거**로 넣는다.
-        #   선발 시즌 라인과 같은 계약: 실패해도 판정을 막지 않는다.
-        try:
-            from app.collectors.lineup_season import attach as _bats
-
-            await _bats(jg, redis=redis)
-        except Exception as exc:
-            logger.warning("[pipeline] 타선 시즌 라인 실패 game=%s: %s",
-                           jg.get("game_id"), exc)
+        # 🔴 [C2 2026-09-04] 선발 시즌 라인(자료7)·타선 시즌 라인(자료8)의
+        #   부착을 **없앴다.** 대원칙: 시즌 누적은 판정 입력이 아니다.
+        #   호출을 지우면 외부 크롤(statsapi people·KBO 기록실·npb.jp)도
+        #   함께 사라진다 — 재료를 안 쓰면서 긁기만 하는 상태를 남기지 않는다.
+        #   수집기 자체는 지우지 않았다: `variable_ref` 가 자료10 참조에 쓴다.
         # [C1 2026-09-04] 자료9 를 **최근 폼으로 교체**한다.
         #   🔴 대원칙: 시즌 누적은 판정 입력이 아니다. 시즌 ERA 를 지우고
         #      최근 3경기 실점 + 최근 3일 가용성을 넣는다.

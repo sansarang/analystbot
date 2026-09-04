@@ -423,7 +423,10 @@ def test_judgement_design_was_not_touched():
 
     assert "p_home은 0.32~0.68 범위를 벗어나지 않는다" in MATCHUP
     assert "확률을 최대 ±3%p까지만 조정" in MATCHUP
-    assert "{{BOXSCORE_JSON}}" in MATCHUP and "{{LINEUP_SEASON_JSON}}" in MATCHUP
+    # [C2 2026-09-04] `{{LINEUP_SEASON_JSON}}` 은 대원칙에 따라 폐지됐다.
+    #   동결의 나머지(클립·±3%p·박스스코어)는 그대로다.
+    assert "{{BOXSCORE_JSON}}" in MATCHUP
+    assert "{{LINEUP_SEASON_JSON}}" not in MATCHUP
     assert clip_p_home(0.99) == pytest.approx(0.68)
     assert clip_p_home(0.01) == pytest.approx(0.32)
 

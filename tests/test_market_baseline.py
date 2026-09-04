@@ -228,8 +228,7 @@ def test_render_matchup_prompt_is_pure():
     # 자리표시자를 전부 채운다
     for slot in ("BOXSCORE_JSON", "NEWS_JSON", "LINEUPS_JSON",
                  "STARTERS_RECENT_JSON", "PREV_VERDICT_JSON",
-                 "LINEUP_INTENT_JSON", "STARTER_SEASON_JSON",
-                 "LINEUP_SEASON_JSON", "BULLPEN_JSON"):
+                 "LINEUP_INTENT_JSON", "BULLPEN_JSON"):
         assert slot in src, slot
     assert "insert_material10" in src
 

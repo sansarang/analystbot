@@ -70,7 +70,8 @@ async def test_line_shape_matches_spec():
     assert "검사역 이의 4(유효 2)" in line
     assert "패널 편차>8%p 1건" in line
     assert "역행 1건" in line
-    assert "자료8 주입 67%" in line          # 2/3
+    # [C2 2026-09-04] 자료8 폐지 → M-2 계측 대상이 자료3(오늘 타순)으로 옮겨졌다.
+    assert "타순 주입 67%" in line          # 2/3
     assert "타순 길이 이상 17건" in line
 
 
@@ -141,7 +142,7 @@ async def test_counter_failure_is_silent():
 
     await mm.note_materials(Dead(), "kbo", "2026-09-03", True)   # 예외 없이 통과
     assert await mm.summary(Dead(), "kbo", "2026-09-03") == {
-        "mat_total": 0, "mat_with8": 0, "regress": 0}
+        "mat_total": 0, "mat_injected": 0, "regress": 0}
 
 
 @pytest.mark.asyncio

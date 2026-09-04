@@ -1,4 +1,4 @@
-"""[감시 C3] 계측 카운터 — M-1 역행 · M-2 자료8 주입.
+"""[감시 C3] 계측 카운터 — M-1 역행 · M-2 타순(자료3) 주입.
 
 🔴 **로그는 사후에 세기 어렵다.** M 계측(C1)은 전부 `logger.info` 한 줄이라
    원인을 추적할 때는 훌륭하지만, 일일 요약에 "역행 r건 · 주입 p%"를 적으려면
@@ -32,15 +32,17 @@ async def _bump(redis, sport: str, date: str, field: str, n: int = 1) -> None:
         logger.debug("[monitor] 계측 실패 %s.%s: %s", sport, field, exc)
 
 
-async def note_materials(redis, sport: str, date: str, has8: bool) -> None:
-    """[M-2] 판정 1건의 자료8 주입 여부. 분모는 **판정 횟수**다.
+async def note_materials(redis, sport: str, date: str, injected: bool) -> None:
+    """[M-2] 판정 1건의 **타순 9명(자료3) 주입 여부.** 분모는 판정 횟수다.
 
     ⚠️ 수집률이 아니라 **주입률**이다. 2026-09-02 에 수집 로그는 18/18 인데
        카드 2장이 "자료8 부재"라고 적었다 — 두 숫자가 갈리는 지점을 본다.
+    🔴 [2026-09-04] 자료8(타선 시즌)이 대원칙에 따라 폐지되면서 계측 대상을
+       자료3 으로 옮겼다. 감시 대상이 사라진 게 아니라 자리를 옮긴 것이다.
     """
     await _bump(redis, sport, date, "mat_total")
-    if has8:
-        await _bump(redis, sport, date, "mat_with8")
+    if injected:
+        await _bump(redis, sport, date, "mat_injected")
 
 
 async def note_lineup_regress(redis, sport: str, date: str) -> None:
@@ -54,8 +56,8 @@ async def note_lineup_regress(redis, sport: str, date: str) -> None:
 
 
 async def summary(redis, sport: str, date: str) -> dict:
-    """{mat_total, mat_with8, regress}. 재료가 없으면 전부 0."""
-    out = {"mat_total": 0, "mat_with8": 0, "regress": 0}
+    """{mat_total, mat_injected, regress}. 재료가 없으면 전부 0."""
+    out = {"mat_total": 0, "mat_injected": 0, "regress": 0}
     if redis is None:
         return out
     try:

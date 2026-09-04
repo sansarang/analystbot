@@ -190,7 +190,7 @@ async def monitor_lines(pool, redis, sports: tuple[str, ...],
     """[감시 C3] 감시 3층 + 계측을 한 줄로.
 
         🔍 감시: 사실 v/d/nf/m · 검사역 이의 k(유효 j) · 패널 편차>8%p m건
-           · 계측: 역행 r건, 자료8 주입 p%
+           · 계측: 역행 r건, 타순 주입 p%
 
     ⚠️ 이 줄은 **운영 요약**에만 붙는다. 분석 카드 텍스트는 건드리지 않는다 —
        감시 결과를 카드에 표기하는 것은 v1.4 승격 때다.
@@ -242,7 +242,7 @@ async def monitor_lines(pool, redis, sports: tuple[str, ...],
     # 계측 — M-1·M-2 는 Redis 카운터, M-3 는 lineups 테이블이 원본이다.
     from app.engine.monitor_metrics import summary as _mon
 
-    tot = with8 = regress = 0
+    tot = inj = regress = 0
     for sp_ in sports:
         d = date
         if sp_ == "mlb":
@@ -251,13 +251,13 @@ async def monitor_lines(pool, redis, sports: tuple[str, ...],
             d = mlb_slate_date()
         m = await _mon(redis, sp_, d)
         tot += m["mat_total"]
-        with8 += m["mat_with8"]
+        inj += m["mat_injected"]
         regress += m["regress"]
     met = []
     if regress or tot:
         met.append(f"역행 {regress}건")
     if tot:
-        met.append(f"자료8 주입 {with8 / tot:.0%}")
+        met.append(f"타순 주입 {inj / tot:.0%}")
     try:
         # 🔴 [2026-09-03 교정] **확정 상태만 센다.** `save_lineup` 은 라인업
         #    공시 **전**(`predicted`)에도 저장하고, 그때 타순이 9명이 아닌 것은

@@ -145,23 +145,17 @@ def test_header_mismatch_yields_nothing():
 
 # ─────────────────── 프롬프트·페이로드 ───────────────────
 
-def test_payload_omits_side_without_material():
-    """한쪽만 있으면 없는 쪽은 넣지 않는다 — '없음'과 '나쁨'을 섞지 않는다."""
-    from app.engine.matchup import lineup_season_payload
+def test_batting_season_no_longer_reaches_the_prompt():
+    """🔴 [C2 2026-09-04] 자료8 폐지 — 수집기는 남지만 판정으로 가지 않는다.
 
-    jg = {"research": {"home_lineup_season": {"타자": [{"이름": "A"}], "팀": {}},
-                       "away_lineup_season": {}}}
-    out = lineup_season_payload(jg)
-    assert set(out) == {"home"}
-
-
-def test_prompt_exposes_batting_season_and_drops_the_ban():
-    """규율 개정이 프롬프트에 실제로 반영됐는가."""
+    이 파일의 나머지 테스트(파싱·캐시·재현 억제)는 그대로 유효하다.
+    `variable_ref` 가 자료10 참조에 같은 수집기를 쓰기 때문이다. 바뀐 것은
+    **판정 입력에서 뺐다**는 것뿐이다.
+    """
     from app.engine.prompts import MATCHUP
 
-    assert "{{LINEUP_SEASON_JSON}}" in MATCHUP
-    assert "타선 시즌:" in MATCHUP
-    assert "타선·팀 지표의 시즌 값은 여전히 쓰지 않는다" not in MATCHUP
+    assert "{{LINEUP_SEASON_JSON}}" not in MATCHUP
+    assert "타선 시즌:" not in MATCHUP
     # 완화하면 안 되는 것들은 그대로여야 한다.
     assert "0.32~0.68" in MATCHUP
     assert "±3%p" in MATCHUP
@@ -207,11 +201,10 @@ def test_matchup_render_leaves_no_placeholder():
                STARTERS_RECENT_JSON=J(M.starters_recent_payload(jg)),
                PREV_VERDICT_JSON="null",
                LINEUP_INTENT_JSON=J(M.intent_payload(jg)),
-               STARTER_SEASON_JSON=J(M.starters_season_payload(jg)),
-               LINEUP_SEASON_JSON=J(M.lineup_season_payload(jg)),
                BULLPEN_JSON=J(M.bullpen_payload(jg)))
     assert "{{" not in out
-    assert "가중OPS" in out
+    # [C2 2026-09-04] 자료8 이 폐지되어 가중OPS 는 **실리면 안 된다.**
+    assert "가중OPS" not in out
     assert '"runs": 3' in out, "원본 숫자가 그대로 실려야 한다"
 
 
