@@ -176,8 +176,20 @@ async def check_llm(redis) -> list[tuple[str, str, str]]:
         last = await redis.get(f"{LLM_FAIL_KEY}:last") or ""
     except Exception:
         last = ""
-    return [("W-LLM-FAIL", "judge",
-             f"연속 {n}회 실패 — 판정이 멈춰 있다" + (f" ({last})" if last else ""))]
+    # 🔴 [2026-09-04] 종전 문구는 **"판정이 멈춰 있다"** 였는데 사실이 아니었다.
+    #    이 카운터를 올리는 것은 구 체인(`llm/provider.py`)뿐이고, 그것이
+    #    맡는 역할은 narrator·interpreter·intent·judge_a 다. **매치업 판정은
+    #    무료 사슬(`judge_route`)이라 이 카운터와 무관하다.**
+    #    실측 2026-09-04: 이 경보가 24회로 울리는 동안 KBO·NPB 카드는 정상
+    #    발송됐다. 틀린 문구가 사람을 엉뚱한 곳으로 보냈다.
+    #    ⚠️ 역할 이름은 `last` 안에 이미 들어 있다("narrator: …"). 지어내지 않고
+    #       그것을 그대로 보여준다.
+    role = (last.split(":", 1)[0] or "").strip() if last else ""
+    what = f"{role} 계열" if role else "보조 LLM 역할(서술·해석·의도)"
+    return [("W-LLM-FAIL", role or "aux",
+             f"연속 {n}회 실패 — {what}이 멈춰 있다 "
+             f"(매치업 판정은 별도 무료 사슬이라 무관)"
+             + (f" ({last})" if last else ""))]
 
 
 async def check_store(pool, redis) -> list[tuple[str, str, str]]:

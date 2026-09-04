@@ -380,6 +380,19 @@ class GeminiProvider(Provider):
         return text, (extract_json(text) if schema else None)
 
 
+#: 툴 호출이 **거부된** 400 인가. 진짜 잘못된 요청(스키마 오류 등)과 구분한다.
+#  🔴 문구는 실측한 응답에서 왔다 — 상상해 넣지 않았다:
+#     "Tool call validation failed: attempted to call tool 'json' which was
+#      not in request.tools" (groq openai/gpt-oss-120b, 2026-09-04)
+_TOOL_REJECT_MARKS = ("tool_use_failed", "tool call validation failed",
+                      "attempted to call tool")
+
+
+def _tool_call_rejected(body: str) -> bool:
+    low = (body or "").lower()
+    return any(m in low for m in _TOOL_REJECT_MARKS)
+
+
 class OpenAICompatProvider(Provider):
     """OpenAI 호환 `/chat/completions` — Groq · DeepSeek · Ollama · xAI 공통.
 
@@ -407,9 +420,32 @@ class OpenAICompatProvider(Provider):
         await _THROTTLE.wait(self.name, _S().openai_compat_min_interval)
         url = f"{self.base_url.rstrip('/')}/chat/completions"
         rate_left = _S().llm_rate_retries
+        tool_left = 1          # 툴 호출이 거부되면 표준 구조화 출력으로 1회 강등
         async with httpx.AsyncClient(timeout=self.timeout) as c:
             while True:
                 r = await c.post(url, headers=headers, json=body)
+                # 🔴 [실측 2026-09-04] Groq `openai/gpt-oss-120b` 는 강제 함수호출
+                #    (`tool_choice`)에서 **자기 내부 `json` 툴을 대신 부른다**:
+                #      400 "Tool call validation failed: attempted to call tool
+                #           'json' which was not in request.tools"
+                #    입력에 따라 나기도 안 나기도 하는 간헐 결함이라 후보를
+                #    통째로 버릴 수 없다. 표준 구조화 출력으로 한 번 강등한다 —
+                #    같은 모델·같은 스키마로 `response_format: json_schema` 는
+                #    두 번 다 200 이었다(실측).
+                #    ⚠️ 이 경로가 죽으면 narrator·interpreter·intent 가 전부
+                #       gemini 로 몰려 429 가 나고, 그 429 가 credit 으로
+                #       오분류돼 체인이 통째로 멈췄다(W-LLM-FAIL 24회).
+                if (r.status_code == 400 and schema and tool_left > 0
+                        and _tool_call_rejected(r.text)):
+                    tool_left -= 1
+                    body.pop("tools", None)
+                    body.pop("tool_choice", None)
+                    body["response_format"] = {
+                        "type": "json_schema",
+                        "json_schema": {"name": "result", "schema": schema}}
+                    logger.warning("[%s] 툴 호출 거부 — 표준 구조화 출력으로 재시도",
+                                   self.name)
+                    continue
                 # ⚠️ 429를 크레딧 소진으로 오분류하면 **잔액이 있는데 폴백**한다.
                 #    이 프로젝트가 Perplexity에서 이미 겪은 사고다.
                 if r.status_code == 429 and rate_left > 0:
@@ -427,10 +463,18 @@ class OpenAICompatProvider(Provider):
                     await asyncio.sleep(wait)
                     continue
                 break
-        if r.status_code == 402 or "credit" in r.text.lower():
+        if r.status_code == 402 or (r.status_code != 429
+                                    and "credit" in r.text.lower()):
             raise ApiQuotaError(self.name, r.text[:300])
         if r.status_code == 429:
-            raise ApiQuotaError(self.name, f"레이트리밋 재시도 소진: {r.text[:250]}")
+            # 🔴 [실측 2026-09-04] 429 를 `ApiQuotaError` 로 던지면 **체인이
+            #    거기서 멈춘다** — 크레딧 소진은 폴백 없이 즉시 중단이기 때문이다.
+            #    Gemini 무료 티어의 429 본문은 "quota"·"billing"을 말하지만
+            #    그것은 **분당·일일 한도**이지 잔액이 아니다. 시간이 지나면
+            #    풀린다(실측: 같은 키가 몇 분 뒤 정상 응답).
+            #    한도 초과는 **다음 provider 로 넘어갈 사유**이지 중단 사유가 아니다.
+            #    CLAUDE.md 가 기록한 "429를 크레딧 소진으로 오분류" 사고의 재발이다.
+            raise LLMError(f"{self.name} 레이트리밋 재시도 소진: {r.text[:250]}")
         if r.status_code >= 400:
             raise LLMError(f"{self.name} HTTP {r.status_code}: {r.text[:300]}")
         choice = ((r.json().get("choices") or [{}])[0].get("message") or {})
