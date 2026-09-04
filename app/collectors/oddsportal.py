@@ -32,15 +32,16 @@ import re
 logger = logging.getLogger(__name__)
 
 PROVIDER = "oddsportal"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
-TIMEOUT = 30.0
 
-# ─────────────────── 크롤 예절 (상한을 코드에 박는다) ───────────────────
-#: 재시도 **총 2회**(첫 시도 포함). 남의 서버는 우리 사정으로 두들길 대상이 아니다.
-MAX_ATTEMPTS = 2
-#: 재시도 백오프 초. 지수로 늘린다.
-BACKOFF_SEC = 3.0
+# ─────────────────── 크롤 예절 ───────────────────
+# 🔴 [정찰 C1-이관 2026-09-04] UA·타임아웃·재시도·백오프를 **여기서 지웠다.**
+#    네 개 다 `app/net/polite_client.py` + config 가 원본이고, 여기 있던 것은
+#    사본이었다. 사본은 원본이 바뀔 때 따라가지 않는다 — 설계 규율 §사본 금지.
+#    (종전 값: UA 하드코딩 · TIMEOUT 30.0 · MAX_ATTEMPTS 2 · BACKOFF_SEC 3.0
+#     → 지금은 crawl_timeout_sec 20.0 · crawl_retries 3 · crawl_backoff_sec 1.5)
+#: 같은 리그를 이 간격 안에 두 번 부르지 않는다. 30분 주기 + 발송 직전 1회를
+#  허용하되, 폴링 틱이 겹쳐도 실제 요청은 이 간격으로 막힌다.
+#  ⚠️ 이것은 **이 소스 고유의 예절**이라 polite_client 로 옮기지 않는다.
 #: 같은 리그를 이 간격 안에 두 번 부르지 않는다. 30분 주기 + 발송 직전 1회를
 #  허용하되, 폴링 틱이 겹쳐도 실제 요청은 이 간격으로 막힌다.
 MIN_INTERVAL_SEC = 10 * 60
@@ -156,10 +157,9 @@ def to_rows(home: str, away: str, odds: dict) -> list[dict]:
 
 async def fetch_league(sport: str, *, force: bool = False) -> dict[str, dict]:
     """리그 1회 요청 → {eventId: {home, away, rows[]}}. 실패하면 빈 dict."""
-    import httpx
-
-    import asyncio
     import time
+
+    from app.net.polite_client import PoliteClient
 
     url = LEAGUE_URL.get(sport)
     if not url:
@@ -172,22 +172,22 @@ async def fetch_league(sport: str, *, force: bool = False) -> dict[str, dict]:
                         "(최소 간격 %d분)", sport, MIN_INTERVAL_SEC - left,
                         MIN_INTERVAL_SEC // 60)
             return {}
+    # ⚠️ **조건부 요청(ETag)을 쓰지 않는다.** 304 면 본문이 없어 빈 dict 을
+    #    돌려주게 되고, 그러면 `odds_snapshots` 에 아무것도 안 쌓여 나이가
+    #    늘어난다 — `W-ODDS-STALE` 이 "안 바뀌었다"를 "고장났다"로 읽는다.
+    #    이 소스는 매번 본문을 받는다. 재시도·백오프·타임아웃은 클라이언트가 한다.
     html = None
-    for attempt in range(MAX_ATTEMPTS):
-        try:
-            async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True,
-                                         headers={"User-Agent": UA}) as c:
-                r = await c.get(url)
-                r.raise_for_status()
+    try:
+        async with PoliteClient(PROVIDER) as c:
+            r = await c.get(url, conditional=False)
+            if r.status_code == 200:
                 html = r.text
-                logger.info("[oddsportal] %s 응답 %dB (시도 %d/%d)",
-                            sport, len(r.content), attempt + 1, MAX_ATTEMPTS)
-            break
-        except Exception as exc:
-            logger.warning("[oddsportal] %s 조회 실패 (시도 %d/%d): %s",
-                           sport, attempt + 1, MAX_ATTEMPTS, exc)
-            if attempt < MAX_ATTEMPTS - 1:
-                await asyncio.sleep(BACKOFF_SEC * (attempt + 1))
+            else:
+                # 401·403·429 는 클라이언트가 이미 "우회하지 않는다"고 남겼다.
+                logger.warning("[oddsportal] %s 응답 %d — 이번 회차는 건너뛴다",
+                               sport, r.status_code)
+    except Exception as exc:
+        logger.warning("[oddsportal] %s 조회 실패: %s", sport, exc)
     _last_call[sport] = time.monotonic()
     if html is None:
         return {}

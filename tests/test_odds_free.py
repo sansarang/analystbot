@@ -432,27 +432,43 @@ def test_unmapped_team_is_reported_not_silently_dropped(caplog):
 # ─────────────────── 크롤 예절 (B) ───────────────────
 
 def test_crawl_etiquette_limits_are_constants():
-    """상한을 코드에 박는다 — 남의 서버를 우리 사정으로 두들기지 않는다."""
-    from app.collectors.oddsportal import (
-        BACKOFF_SEC, MAX_ATTEMPTS, MIN_INTERVAL_SEC,
-    )
+    """상한은 여전히 있다. 다만 **원본이 옮겨졌다** (2026-09-04 이관).
 
-    assert MAX_ATTEMPTS == 2, "재시도는 총 2회(첫 시도 포함)"
-    assert BACKOFF_SEC >= 1.0
+    재시도·백오프·타임아웃은 `polite_client` + config 가 원본이다 —
+    수집기에 사본을 두면 원본이 바뀔 때 따라가지 않는다.
+    최소 간격만 이 소스 고유의 예절이라 여기 남는다.
+    """
+    from app.collectors.oddsportal import MIN_INTERVAL_SEC
+    from app.config import get_settings
+
+    s = get_settings()
+    assert s.crawl_retries >= 2, "재시도 상한이 있어야 한다"
+    assert s.crawl_backoff_sec >= 1.0
     assert MIN_INTERVAL_SEC >= 10 * 60, "같은 리그를 10분 안에 두 번 부르지 않는다"
 
 
 def test_second_call_within_the_interval_makes_no_request(monkeypatch):
-    """폴링 틱이 겹쳐도 실제 요청은 최소 간격으로 막힌다."""
+    """폴링 틱이 겹쳐도 실제 요청은 최소 간격으로 막힌다.
+
+    ⚠️ [2026-09-04 이관] 이제 `PoliteClient` 를 통해 나간다. 가짜 응답은
+       httpx 가 아니라 **클라이언트 경계**에서 준다 — 내부 구현(request/
+       aclose/헤더)을 흉내 내면 그 흉내가 곧 다음 사고의 사본이 된다.
+    """
     import asyncio
 
     from app.collectors import oddsportal as op
+    from app.net import polite_client as pc
 
     calls = []
 
-    class FakeClient:
-        def __init__(self, *a, **k):
-            pass
+    class _R:
+        status_code = 200
+        content = b"x"
+        text = ""
+
+    class FakePolite:
+        def __init__(self, source, **kw):
+            self.source = source
 
         async def __aenter__(self):
             return self
@@ -460,27 +476,41 @@ def test_second_call_within_the_interval_makes_no_request(monkeypatch):
         async def __aexit__(self, *a):
             return False
 
-        async def get(self, url):
+        async def get(self, url, **kw):
             calls.append(url)
+            return _R()
 
-            class R:
-                status_code = 200
-                content = b"x"
-                text = ""
-
-                def raise_for_status(self):
-                    return None
-            return R()
-
-    import httpx
-
-    monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(pc, "PoliteClient", FakePolite)
     monkeypatch.setattr(op, "_last_call", {})
     asyncio.run(op.fetch_league("kbo"))
     asyncio.run(op.fetch_league("kbo"))          # 곧바로 두 번째
     assert len(calls) == 1, "간격 안 두 번째는 요청하지 않는다"
     asyncio.run(op.fetch_league("kbo", force=True))   # 발송 직전 강제 1회
     assert len(calls) == 2, "force 는 통과한다"
+
+
+def test_block_status_is_not_retried(monkeypatch):
+    """🔴 403·429 는 재시도하지 않고 그 회차를 건너뛴다 — 우회하지 않는다."""
+    import asyncio
+
+    from app.collectors import oddsportal as op
+    from app.net import polite_client as pc
+
+    class _R:
+        status_code = 403
+        content = b""
+        text = ""
+
+    class FakePolite:
+        def __init__(self, source, **kw): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, url, **kw): return _R()
+
+    monkeypatch.setattr(pc, "PoliteClient", FakePolite)
+    monkeypatch.setattr(op, "_last_call", {})
+    out = asyncio.run(op.fetch_league("kbo"))
+    assert out == {}, "차단이면 빈 결과 — 조용히 옛 값을 쓰지 않는다"
 
 
 # ─────────────────── 배당 없음 강등 경로 (A-2) ───────────────────

@@ -136,11 +136,17 @@ def test_constants_come_from_config():
         assert name in SRC
 
 
-def test_no_collector_migrated_yet():
-    """⚠️ 이 커밋은 **클라이언트만** 만든다. 이관은 소스당 커밋 1개다."""
+def test_migration_advances_one_source_at_a_time():
+    """이관은 **소스당 커밋 1개**다 — 13개를 한 번에 옮기면 되돌릴 수가 없다.
+
+    🔴 [2026-09-04] 카나리아 1건(`oddsportal`) 이관됨. 이 숫자를 올릴 때는
+       직전 소스가 한 사이클 이상 정상 수집한 것을 로그로 확인한 뒤에 한다.
+       한꺼번에 늘어나면 이 테스트가 반려한다.
+    """
     import subprocess
 
-    r = subprocess.run(["grep", "-rl", "polite_client", "app/collectors"],
-                       capture_output=True, text=True)
-    assert not r.stdout.strip(), \
-        f"이관이 섞여 들어왔다: {r.stdout.strip()} — 소스당 커밋 1개 원칙"
+    r = subprocess.run(["grep", "-rl", "--include=*.py", "polite_client",
+                        "app/collectors"], capture_output=True, text=True)
+    migrated = sorted(x for x in r.stdout.split() if x.strip())
+    assert migrated == ["app/collectors/oddsportal.py"], (
+        f"이관 목록이 바뀌었다: {migrated} — 소스당 커밋 1개 원칙")
