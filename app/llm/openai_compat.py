@@ -24,6 +24,39 @@ ENDPOINTS: dict[str, tuple[str, str]] = {
     "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
 }
 
+#: 🔴 [2026-09-04 실측] provider 별 **최소 호출 간격(초).**
+#   프리페치 첫 실전에서 폼 10팀을 연속으로 때렸다가 이렇게 무너졌다:
+#     nvidia  3건 성공(18.7~55.2초) → 4번째 `503 Service temporarily overloaded`
+#     mistral 폴백 → `429 rate limited`  (RPM 2 한도)
+#   둘 다 **영구 실패가 아니다** — 간격을 두면 통과한다. 간격 없이 때린 것이
+#   문제였고, Mistral RPM 2 는 가입 조사 때 내가 직접 적어놓고도 무시했다.
+#   ⚠️ [재실측 14:30] Mistral 은 31초 간격을 두고 4회 재시도해도 **계속 429** 였다
+#      (95초 낭비 후 실패). 무료 티어가 사실상 막혀 있다 — **폴백에서 뺐다.**
+#      대신 Groq(0.4s)·OpenRouter(3.3s) 가 즉시 응답했다.
+MIN_INTERVAL_SEC: dict[str, float] = {
+    "mistral": 31.0,      # RPM 2 → 30초 + 여유 (현재 폴백 미사용)
+    "nvidia": 2.0,        # RPM ~40 → 1.5초면 되지만 503 여유를 둔다
+    "groq": 2.0,
+    "openrouter": 2.0,
+}
+
+#: provider 별 마지막 호출 시각(프로세스 내).
+_last_call: dict[str, float] = {}
+
+
+async def _throttle(provider: str) -> None:
+    """그 provider 의 최소 간격을 지킨다. **호출부가 잊어도 지켜진다.**"""
+    import asyncio
+
+    gap = MIN_INTERVAL_SEC.get(provider, 1.0)
+    last = _last_call.get(provider)
+    if last is not None:
+        wait = gap - (time.monotonic() - last)
+        if wait > 0:
+            logger.info("[net] %s 최소 간격 %.1fs 대기", provider, wait)
+            await asyncio.sleep(wait)
+    _last_call[provider] = time.monotonic()
+
 
 def available(provider: str) -> bool:
     import os
@@ -57,7 +90,8 @@ async def complete(provider: str, model: str, prompt: str, *,
     body = {"model": model, "max_tokens": max_tokens, "temperature": 0,
             "messages": [{"role": "user", "content": prompt}]}
     t0 = time.monotonic()
-    for attempt in range(3):
+    for attempt in range(4):
+        await _throttle(provider)
         try:
             async with httpx.AsyncClient(timeout=timeout) as c:
                 r = await c.post(f"{base}/chat/completions", json=body,
@@ -65,19 +99,46 @@ async def complete(provider: str, model: str, prompt: str, *,
         except Exception as exc:
             out["retries"] = attempt + 1
             out["error"] = f"{type(exc).__name__}: {exc}"
-            if attempt == 2:
-                break
-            continue
-        out["status"] = r.status_code
-        if r.status_code == 429:
-            # 🔴 우회하지 않는다. 한도는 한도다 — 오디션 점수에 반영한다.
-            out["error"] = "429 rate limited"
-            out["retries"] = attempt + 1
-            if attempt == 2:
+            if attempt == 3:
                 break
             import asyncio
 
-            await asyncio.sleep(8 * (attempt + 1))
+            await asyncio.sleep(3.0 * (attempt + 1))
+            continue
+        out["status"] = r.status_code
+        if r.status_code == 429:
+            # 🔴 우회하지 않는다. **기다린다** — 한도는 한도이고, 기다리면 풀린다.
+            #    `Retry-After` 가 있으면 그것을 따르고, 없으면 그 provider 의
+            #    최소 간격만큼 쉰다.
+            out["error"] = "429 rate limited"
+            out["retries"] = attempt + 1
+            if attempt == 3:
+                break
+            import asyncio
+
+            ra = r.headers.get("Retry-After")
+            try:
+                wait = float(ra) if ra else MIN_INTERVAL_SEC.get(provider, 30.0)
+            except (TypeError, ValueError):
+                wait = MIN_INTERVAL_SEC.get(provider, 30.0)
+            logger.warning("[net] %s 429 — %.0f초 후 재시도 (%d/4)",
+                           provider, wait, attempt + 1)
+            await asyncio.sleep(min(wait, 60.0))
+            continue
+        if r.status_code >= 500:
+            # 🔴 [실측] `503 Service temporarily overloaded` 가 무료 인프라의
+            #    주 실패 형태다. 오디션 6건 중 1건, 프리페치 연속 호출에선
+            #    4번째부터 났다. **잠깐 밀린 것이지 거절이 아니다** — 쉬고 다시.
+            out["error"] = f"{r.status_code} {r.text[:160]}"
+            out["retries"] = attempt + 1
+            if attempt == 3:
+                break
+            import asyncio
+
+            wait = 4.0 * (2 ** attempt)
+            logger.warning("[net] %s %d — %.0f초 후 재시도 (%d/4)",
+                           provider, r.status_code, wait, attempt + 1)
+            await asyncio.sleep(wait)
             continue
         if r.status_code != 200:
             out["error"] = f"{r.status_code} {r.text[:200]}"
