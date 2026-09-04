@@ -5200,11 +5200,28 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
                 from app.engine.deepsearch import run_for_rejudge
                 from app.engine.pregame_push import lineup_hash
 
-                await run_for_rejudge(
+                _ds = await run_for_rejudge(
                     jg, redis, date,
                     lineup_sig=lineup_hash(jg),
                     slate_size=len(analysis.get("games") or []),
                     prev_lineup=prev_lineup_snapshot)
+                # [G1] **미발동도 기록한다.** "조사 안 했다"와 "조사했는데
+                #   아무것도 없었다"는 다르고, 리포트 ②절이 그 둘을 구분해야 한다.
+                _ds_msg = ("[deepsearch] game=%s 발동=%s 트리거=%s source=%s "
+                           "status=%s 검색=%s 이동=%s%%p" % (
+                               game["id"], _ds.get("triggered"),
+                               ",".join(_ds.get("triggers") or []) or "-",
+                               _ds.get("source") or "-", _ds.get("status") or "-",
+                               _ds.get("searches"), _ds.get("moved_pp")))
+                logger.info("%s", _ds_msg)
+                try:
+                    from app.engine.game_trace import DEEPSEARCH, note as _tnote
+
+                    await _tnote(pool, game_id=game["id"],
+                                 sport=game.get("sport") or "", date=date,
+                                 stage=DEEPSEARCH, summary=_ds_msg, ref=_ds)
+                except Exception as exc:
+                    logger.debug("[trace] 딥서치 기록 생략: %s", exc)
             except Exception as exc:
                 logger.warning("[pipeline] 재판정 딥서치 생략 — 판정은 계속: %s", exc)
         else:
@@ -5261,7 +5278,17 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
 
         card = await generate_card(analysis)
         await _save_caches(redis, analysis, card)
-        logger.info("[pipeline] 라인업 재판정 완료 game=%s (%s)", game["id"], note[:80])
+        _rj_msg = "[pipeline] 라인업 재판정 완료 game=%s (%s)" % (
+            game["id"], note[:80])
+        logger.info("%s", _rj_msg)
+        # [G1] 원장 — 로그와 같은 문자열. 실패해도 재판정을 막지 않는다.
+        try:
+            from app.engine.game_trace import REJUDGE, note as _tnote
+
+            await _tnote(pool, game_id=game["id"], sport=game.get("sport") or "",
+                         date=date, stage=REJUDGE, summary=_rj_msg)
+        except Exception as exc:
+            logger.debug("[trace] 재판정 기록 생략 game=%s: %s", game["id"], exc)
         # [감시 L1] 판정 산출물이 저장된 **뒤에** 감사한다. 별도 태스크라
         #   판정·발송을 한 밀리초도 지연시키지 않는다 (P1).
         _spawn_fact_audit(jg)

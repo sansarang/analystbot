@@ -584,3 +584,23 @@ CREATE TABLE IF NOT EXISTS market_baseline_ledger (
 );
 CREATE INDEX IF NOT EXISTS idx_market_baseline_pending
     ON market_baseline_ledger (sport, graded_at) WHERE graded_at IS NULL;
+
+-- [투명 리포트 G1 2026-09-04] 경기 서사 원장.
+--   경기 하나가 파이프라인을 어떻게 통과했는지 **시간순 한 테이블**로 남긴다.
+--   🔴 **원장은 로그보다 많이 알면 안 된다.** 각 행의 `summary` 는 그 자리에서
+--      이미 찍히는 로그 문자열을 **그대로 복사**한 것이다. 새 계측을 추가해
+--      원장에만 있는 사실을 만들면, 리포트가 로그로 검증 불가능해진다.
+--   ⚠️ 이 테이블은 **기록·표시 층**이다. 판정·게이트·발송은 이것을 읽지 않는다.
+CREATE TABLE IF NOT EXISTS game_trace (
+    id         BIGSERIAL   PRIMARY KEY,
+    game_id    BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+    sport      TEXT        NOT NULL,
+    slate_date TEXT        NOT NULL,          -- 슬레이트 날짜(표시용 KST 기준)
+    stage      TEXT        NOT NULL,          -- 수집|조립|판정|재판정|딥서치|게이트|발송
+    at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    summary    TEXT        NOT NULL,          -- 그 자리 로그 문자열 원문
+    ref        JSONB                          -- 원문 참조(prompt_sha·캐시키 등)
+);
+
+CREATE INDEX IF NOT EXISTS idx_game_trace_game ON game_trace (game_id, at);
+CREATE INDEX IF NOT EXISTS idx_game_trace_slate ON game_trace (sport, slate_date);

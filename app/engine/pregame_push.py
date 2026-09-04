@@ -603,8 +603,30 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
     if await _send_card(text):
         await redis.set(card_sig_key(gid), _sent_payload(jg), ex=SENT_TTL_SEC)
         outcome = "revised" if revision else "sent"
-        logger.info("[pregame] %s game=%s %s", sport, gid, outcome)
+        # [G1] 게이트 결과와 발송을 **같은 문자열**로 남긴다. 리포트 ④·⑤절이
+        #   "무엇이 어떤 자격으로 나갔나"를 이 두 줄로 재구성한다.
+        #   ⚠️ 새 계측이 아니다 — jg 에 이미 있는 값을 찍는다.
+        _pick = jg.get("pick_summary") or {}
+        _gate_msg = ("[gate] %s game=%s 결과=%s 확신도=%s p=%.3f 시장p=%s" % (
+            sport, gid, _pick.get("desc") or jg.get("gate_result") or "-",
+            jg.get("judge_confidence"), float(jg.get("p_claude") or 0),
+            jg.get("p_market_send")))
+        _send_msg = "[pregame] %s game=%s %s" % (sport, gid, outcome)
+        logger.info("%s", _gate_msg)
+        logger.info("%s", _send_msg)
         await ds.record(redis, sport, date_s, outcome)
+        try:
+            from app.db import get_pool as _gp2
+            from app.engine.game_trace import GATE, SEND, note as _tnote
+
+            _pool2 = await _gp2()
+            await _tnote(_pool2, game_id=gid, sport=sport, date=date_s,
+                         stage=GATE, summary=_gate_msg)
+            await _tnote(_pool2, game_id=gid, sport=sport, date=date_s,
+                         stage=SEND, summary=_send_msg,
+                         ref={"revision": bool(revision)})
+        except Exception as exc:
+            logger.debug("[trace] 발송 기록 생략 game=%s: %s", gid, exc)
         # [시장 기준선] 발송된 경기만 원장에 남긴다 — 시장과 우리를 **같은
         #   경기 집합**에서 비교하기 위해서다. 실패해도 발송에 영향 없다.
         try:

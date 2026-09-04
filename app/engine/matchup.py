@@ -264,6 +264,36 @@ def starters_recent_payload(jg: dict) -> dict:
     return out
 
 
+def _sha(text: str) -> str:
+    """프롬프트 원문의 지문. 리포트가 "이 판정이 본 프롬프트"를 가리키는 열쇠다.
+
+    ⚠️ 원문 자체는 이미 `fact_audit.PROMPT_KEY` 로 Redis 에 보관된다.
+       원장에는 **지문만** 둔다 — 같은 원문을 두 곳에 복제하지 않는다.
+    """
+    import hashlib
+
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()[:12]
+
+
+#: [투명 리포트 G1] 원장 단계 이름 — `game_trace` 가 원본이다(사본 금지).
+from app.engine.game_trace import ASSEMBLE as TRACE_ASSEMBLE  # noqa: E402
+from app.engine.game_trace import JUDGE as TRACE_JUDGE  # noqa: E402
+
+
+async def _trace(jg: dict, date: str, stage: str, *, summary: str,
+                 ref: dict | None = None) -> None:
+    """원장 1행. **실패해도 판정을 막지 않는다** — 기록이 본체를 죽이면 안 된다."""
+    try:
+        from app.db import get_pool
+        from app.engine.game_trace import note
+
+        await note(await get_pool(), game_id=jg.get("game_id"),
+                   sport=jg.get("sport") or "", date=date, stage=stage,
+                   summary=summary, ref=ref)
+    except Exception as exc:
+        logger.debug("[trace] 기록 생략 game=%s: %s", jg.get("game_id"), exc)
+
+
 def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
     s = settings or get_settings()
     p = clip_p_home(verdict.get("p_home"), s)
@@ -440,12 +470,16 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     _slots = min(len((( _m3.get(side) or {}).get("타순") or []))
                  for side in ("home", "away")) if _m3 else 0
     _has3 = _slots >= 9
-    logger.info("[materials] game=%s 자료3=%s(타순 %d명) 자료9=%s 자료10=%s "
-                "자료11=%s",
-                jg.get("game_id"), "Y" if _has3 else "N", _slots,
-                "Y" if bullpen_payload(jg) else "N",
-                jg.get("material10_status") or "해당없음",
-                jg.get("material11_status") or "해당없음")
+    # [G1] 로그 문자열을 **한 번만** 만든다. 로그와 원장이 같은 것을 쓴다 —
+    #   포맷을 두 번 적으면 언젠가 갈리고, 그때 리포트는 로그로 검증할 수 없다.
+    _mat_msg = ("[materials] game=%s 자료3=%s(타순 %d명) 자료9=%s 자료10=%s "
+                "자료11=%s" % (
+                    jg.get("game_id"), "Y" if _has3 else "N", _slots,
+                    "Y" if bullpen_payload(jg) else "N",
+                    jg.get("material10_status") or "해당없음",
+                    jg.get("material11_status") or "해당없음"))
+    logger.info("%s", _mat_msg)
+    await _trace(jg, date, TRACE_ASSEMBLE, summary=_mat_msg)
     # 같은 사실을 일일 요약이 읽을 수 있게 센다. 세기만 한다 — 이 결과는
     #   프롬프트에도 판정에도 되돌아가지 않는다.
     from app.engine.monitor_metrics import note_materials
@@ -496,5 +530,18 @@ async def judge_matchup(jg: dict, redis, date: str, *,
                        home, away, model)
         return None
     apply_matchup(jg, parsed, settings)
+    # [G1] 판정 결과 1줄. 종전에는 판정이 **끝났다는 로그가 아예 없어서**
+    #   "언제 어떤 확률이 나왔나"를 레저 스냅샷으로 역추적해야 했다.
+    #   ⚠️ 새 계측이 아니다 — 이미 jg 에 들어간 값을 그대로 찍는다.
+    #      원장은 이 줄을 복사할 뿐 더 알지 않는다.
+    _jm = jg.get("matchup") or {}
+    _judge_msg = ("[matchup] game=%s %s vs %s p_home=%.3f 우세=%s 확신도=%s "
+                  "model=%s" % (
+                      jg.get("game_id"), home, away, float(jg.get("p_claude") or 0),
+                      _jm.get("우세"), _jm.get("확신도"), _jm.get("model")))
+    logger.info("%s", _judge_msg)
+    await _trace(jg, date, TRACE_JUDGE, summary=_judge_msg,
+                 ref={"prompt_sha": _sha(prompt), "근거": _jm.get("근거"),
+                      "변수": _jm.get("변수")})
     await persist_matchup_record(redis, jg, date)
     return parsed
