@@ -650,6 +650,20 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
             if cancelled:
                 await void_analysis_games(redis, sport, date, cancelled)
                 rows = [r for r in rows if r["id"] not in set(cancelled)]
+            # [정찰 C3] 이 틱의 슬레이트를 정찰한다. **새 잡을 만들지 않는다** —
+            #   이미 도는 폴링에 얹는다. 읽기만 하고 판정·발송을 건드리지 않으며,
+            #   실패해도 폴링을 막지 않는다(정찰이 발송을 멈추면 본말전도다).
+            try:
+                from app.engine.scout import observe_slate
+
+                await observe_slate(
+                    pool, redis,
+                    [{"sport": sport, "game_id": r["id"],
+                      "starts_at": r["starts_at"]} for r in rows],
+                    date, now=now)
+            except Exception as exc:
+                logger.warning("[scout] %s 정찰 실패 — 폴링은 계속한다: %s",
+                               sport, exc)
             jobs: list[tuple] = []
             catchup: list = []
             for r in rows:

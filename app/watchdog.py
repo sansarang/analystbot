@@ -11,6 +11,7 @@
   W-JOB-LATE       잡의 마지막 실행이 주기의 2배를 넘김
   W-CARD-LATE      첫 카드 보장선(T-30)을 넘겼는데 카드가 없다
   W-GAME-INVISIBLE 경기가 폴링 조회에서 사라졌다 (상태 오적재)
+  W-SOURCE-DRIFT   정찰 창인데 한 소스만 조용하다 (그 소스가 바뀐 것이다)
 
 🔴 왜 필요한가 (이번 주 실사고):
    · 배당이 **차단 상태로 며칠간 조용히 멈춰 있었다** — 매 실행 로그는
@@ -455,6 +456,67 @@ async def check_invisible_games(pool, redis) -> list[tuple[str, str, str]]:
     return out
 
 
+async def check_source_drift(pool, redis) -> list[tuple[str, str, str]]:
+    """[정찰 C5] 같은 슬레이트에서 **한 소스만** 비어 있으면 그 소스가 바뀐 것이다.
+
+    🔴 왜 "전체가 0"이 아니라 "하나만 0"을 보는가.
+       전체가 0 이면 시각(너무 이르다)이나 우리 쪽 고장이고, 그건 이미
+       `W-CARD-LATE`·`W-STORE-DOWN` 이 본다. 반면 **다른 경기는 다 들어왔는데
+       한 축만 비어 있으면** 그 소스의 페이지 구조·경로가 바뀐 것이다 —
+       조용히 0 을 반환하는 파서가 제일 늦게 발견된다.
+
+    ⚠️ 정찰 기록(`scout:…`)만 읽는다. 새 크롤도, 새 쿼리도 하지 않는다.
+    ⚠️ 정찰 창 안이면서 **라인업 공시 시각을 지난** 경기만 센다 — 아직
+       발표 전인 것을 고장이라 부르면 매일 저녁 오탐이 난다.
+    """
+    import json as _json
+
+    from app.registry import scout_sports
+
+    out: list[tuple[str, str, str]] = []
+    if redis is None:
+        return out
+    for sc in scout_sports():
+        recs = []
+        try:
+            keys = await redis.keys(f"scout:{sc.sport}:*")
+            for k in keys or []:
+                raw = await redis.get(k)
+                if raw:
+                    recs.append(_json.loads(raw))
+        except Exception as exc:
+            logger.debug("[watchdog] 정찰 기록 조회 실패 %s: %s", sc.sport, exc)
+            continue
+        # 라인업 공시 관행을 지난 경기만 (관행은 config 가 원본이다)
+        due = [r for r in recs
+               if (r.get("hours_to_start") or 99) <= _lineup_lead_h(sc.sport)]
+        if len(due) < 2:                     # 표본이 1건이면 "하나만"이 성립 안 한다
+            continue
+        for axis, empty in (
+            ("라인업", lambda r: (r.get("lineup") or {}).get("sides", 0) == 0),
+            ("배당", lambda r: (r.get("market") or {}).get("rows", 0) == 0),
+        ):
+            n_empty = sum(1 for r in due if empty(r))
+            if n_empty == len(due):
+                out.append(("W-SOURCE-DRIFT", f"{sc.sport.upper()}/{axis}",
+                            f"정찰 {len(due)}경기 전부 {axis} 0 — 소스가 바뀌었을 "
+                            f"가능성이 높다(파서가 조용히 0을 반환)"))
+    return out
+
+
+def _lineup_lead_h(sport: str) -> float:
+    """그 종목 라인업 공시 관행(시간).
+
+    🔴 사본 금지 — `config.lineup_lead_{sport}` 가 원본이다. 여기 숫자를 적으면
+       config 가 바뀔 때 따라가지 않는다(워치독 오탐 4건이 전부 그 실수였다).
+    ⚠️ 없는 종목이면 **감시하지 않는다**(0 반환). 관행을 모르는데 "늦었다"고
+       말할 수는 없다.
+    """
+    from app.config import get_settings
+
+    return float(getattr(get_settings(), f"lineup_lead_{sport}", 0.0) or 0.0)
+
+
 async def run_checks(pool, redis) -> list[tuple[str, str, str]]:
     """전 점검. 하나가 죽어도 나머지는 돈다 — 워치독이 눈을 감으면 안 된다."""
     found: list[tuple[str, str, str]] = []
@@ -466,6 +528,7 @@ async def run_checks(pool, redis) -> list[tuple[str, str, str]]:
         ("sends", check_pending_sends(pool, redis)),
         ("card_late", check_card_late(pool, redis)),
         ("invisible", check_invisible_games(pool, redis)),
+        ("source_drift", check_source_drift(pool, redis)),
     ):
         try:
             found += await coro

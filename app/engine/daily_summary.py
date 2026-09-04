@@ -185,6 +185,55 @@ async def cost_lines(redis, sports: tuple[str, ...], date: str) -> list[str]:
     return out
 
 
+async def scout_lines(redis, sports: tuple[str, ...]) -> list[str]:
+    """[정찰 C4] 정찰 한 줄 — **무엇을 아직 모르는가**.
+
+        🔭 정찰 KBO: 5경기 · 라인업 확정 2 / 잠정 1 / 없음 2 · 배당 5/5 ·
+           최초 공시 T-63분(중앙값)
+
+    🔴 재료가 없으면 **빈 목록**이다. 매일 "정찰 0"을 보내면 휴면과 정상을
+       구분할 수 없다 — 감시 줄과 같은 규칙이다.
+    ⚠️ 이 줄은 **운영 요약**에만 붙는다. 분석 카드 텍스트는 건드리지 않는다.
+    ⚠️ 시장 값(배당 숫자 자체)은 싣지 않는다 — 몇 건 들어왔는지만 센다.
+       배당은 판정·서술에 흐르지 않는다는 절대 규칙이 정찰 카드에도 적용된다.
+    """
+    import json as _json
+
+    from app.engine.scout import LINEUP_CONFIRMED, LINEUP_NONE, LINEUP_PARTIAL
+
+    if redis is None:
+        return []
+    out: list[str] = []
+    for sport in sports:
+        try:
+            keys = await redis.keys(f"scout:{sport}:*")
+            recs = []
+            for k in keys or []:
+                raw = await redis.get(k)
+                if raw:
+                    recs.append(_json.loads(raw))
+        except Exception as exc:
+            logger.debug("[scout] 요약 조회 실패 %s: %s", sport, exc)
+            continue
+        if not recs:
+            continue
+        cnt = {LINEUP_CONFIRMED: 0, LINEUP_PARTIAL: 0, LINEUP_NONE: 0}
+        for r in recs:
+            st = (r.get("lineup") or {}).get("state") or LINEUP_NONE
+            cnt[st] = cnt.get(st, 0) + 1
+        with_odds = sum(1 for r in recs if (r.get("market") or {}).get("rows"))
+        leads = sorted(x for x in
+                       ((r.get("lineup") or {}).get("lead_min") for r in recs)
+                       if isinstance(x, (int, float)))
+        part = (f"🔭 정찰 {sport.upper()}: {len(recs)}경기 · 라인업 "
+                f"확정 {cnt[LINEUP_CONFIRMED]} / 잠정 {cnt[LINEUP_PARTIAL]} / "
+                f"없음 {cnt[LINEUP_NONE]} · 배당 {with_odds}/{len(recs)}")
+        if leads:
+            part += f" · 최초 공시 T-{leads[len(leads) // 2]:.0f}분(중앙값)"
+        out.append(part)
+    return out
+
+
 async def monitor_lines(pool, redis, sports: tuple[str, ...],
                         date: str) -> list[str]:
     """[감시 C3] 감시 3층 + 계측을 한 줄로.
@@ -409,6 +458,14 @@ async def build(pool, sports: tuple[str, ...], title: str, date: str,
     ml = await monitor_lines(pool, redis, sports, date)
     if ml:
         out += ml
+    # [정찰 C4] 무엇을 아직 모르는가. 재료 없으면 줄 자체가 없다.
+    try:
+        sl = await scout_lines(redis, sports)
+    except Exception as exc:                       # 요약이 정찰 때문에 죽지 않는다
+        logger.warning("[scout] 요약 줄 생성 실패: %s", exc)
+        sl = []
+    if sl:
+        out += sl
     fl = await freeze_progress_lines(pool, sports)
     if fl:
         out += fl
