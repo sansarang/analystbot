@@ -1866,7 +1866,20 @@ def _job_specs() -> list[tuple]:
     ]
 
 
+#: 기동 직후 **한 번 바로** 돌려야 하는 잡. IntervalTrigger 는 첫 실행이
+#  주기만큼 뒤라, 재배포마다 그 길이만큼 눈먼 구간이 생긴다.
+#  🔴 실측 2026-09-04: `odds_snapshot_30m` 이 그래서 굶었다. 15:21 기동 →
+#     첫 실행 15:51. 그 사이 워치독이 `W-ODDS-STALE oddsportal` 을 66·71·76분
+#     으로 세 번 울렸다. oddsportal 은 멀쩡했다(같은 시각 직접 호출 200,
+#     KBO 15경기·NPB 12경기 파싱). 소스가 아니라 **우리 배포 리듬**이 원인이다.
+#     같은 사고가 ENGINEERING.md §4 `[근거 134d37b]` 로 이미 한 번 적혀 있다.
+#  ⚠️ 무거운 잡은 넣지 마라 — 여기 있는 것은 요청 1~2건짜리다.
+RUN_AT_BOOT = ("odds_snapshot_30m",)
+
+
 def build_scheduler() -> AsyncIOScheduler:
+    from datetime import datetime as _dt
+
     scheduler = AsyncIOScheduler(timezone=KST)
     for job_id, fn, trigger in _job_specs():
         _JOB_TRIGGERS[job_id] = trigger
@@ -1874,9 +1887,13 @@ def build_scheduler() -> AsyncIOScheduler:
             grace = 4 * 60
         else:
             grace = MISFIRE_GRACE_SEC
+        kw = {}
+        if job_id in RUN_AT_BOOT:
+            # 기동 시각 그대로 두면 스키마 적용·DB 연결과 겹친다. 30초 뒤로.
+            kw["next_run_time"] = _dt.now(KST) + timedelta(seconds=30)
         scheduler.add_job(_instrument(job_id, fn), trigger, id=job_id,
                           misfire_grace_time=grace, coalesce=True,
-                          max_instances=1)
+                          max_instances=1, **kw)
     # [7-5] 하트비트 — 이게 살아 있어야 /health가 "스케줄러 실행 중"이라고 말한다
     scheduler.add_job(heartbeat_job, IntervalTrigger(minutes=2), id="heartbeat_2m",
                       misfire_grace_time=60, coalesce=True, max_instances=1)
