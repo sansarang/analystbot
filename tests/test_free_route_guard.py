@@ -41,8 +41,10 @@ def test_paid_openrouter_candidate_is_dropped_from_the_chain(monkeypatch):
     assert ("openrouter", "deepseek/deepseek-r1") not in got
     assert ("openrouter", "minimax/minimax-m3:free") in got
     assert got[0] == ("nvidia", "nvidia/nemotron-3-ultra-550b-a55b")
-    # 비상 복귀는 사슬 **끝**에만 — 캡이 지킨다.
-    assert got[-1][0] == "anthropic"
+    # 🔴 [2026-09-04] 비상 꼬리를 **떼어냈다.** 잔액 0 이면 캡은 아무것도
+    #    지키지 못하고, 그 400 이 종목 전체를 멈춘다(NPB 판정 0건).
+    #    무료 후보가 있으면 사슬은 무료로만 구성된다.
+    assert "anthropic" not in [p for p, _ in got]
 
 
 def test_groq_and_gemini_are_no_longer_disabled_by_default():

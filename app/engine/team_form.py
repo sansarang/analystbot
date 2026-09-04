@@ -172,12 +172,24 @@ async def _paid_ok(role: str) -> bool:
 
 async def _complete_free(routes, prompt: str, max_tokens: int,
                          role: str) -> str | None:
-    """무료 사슬을 순서대로. 전부 실패하면 None (호출부가 유료로 내려간다).
+    """무료 사슬을 순서대로. 전부 실패하면 None.
 
-    🔴 폼(role="form")은 **추론을 끄고** 부른다. 실측 2026-09-04: Nemotron 의
-       사고가 1500토큰 예산을 통째로 먹어 JSON 이 안 나왔다(파싱 실패 4~7/10).
-       폼은 박스스코어를 읽어 등급·태그를 매기는 구조화 출력이라 사고가
-       필요 없다 — 2026-08-27 에 2단 해석봇에서 같은 결론을 냈다.
+    🔴 [2026-09-04] **"응답이 왔다"와 "쓸 수 있는 답이 왔다"는 다르다.**
+       종전에는 본문이 비어 있지만 않으면(`ok`) 그대로 돌려줬다. 그런데
+       Nemotron 은 JSON 대신 **영어 사고문**을 돌려주는 회차가 있다 —
+       비어 있지 않으니 `ok=True` 고, 호출부는 그것을 받아 파싱에 실패한다.
+       그리고 재시도는 **같은 provider** 로 다시 가고, 두 번 실패하면
+       사슬이 끝난 것으로 보고 유료(Anthropic)로 떨어졌다.
+       실측 2026-09-04 16:37: 그 경로로 NPB 가 통째로 죽었다
+       (`💸 Anthropic 폴백 2/10 (role=form)` → 400 credit → 판정 0건).
+
+       이제 **파싱까지가 성공 조건**이다. JSON 이 안 나오면 그 provider 는
+       실패로 치고 **다음 무료 provider 로 넘어간다.** 사슬을 둔 이유가
+       이것이다 — 하나가 이상한 답을 줄 때 다음이 받는 것.
+
+    🔴 폼(role="form")은 **추론을 끄고** 부른다. 사고가 1500토큰 예산을
+       통째로 먹어 JSON 이 안 나왔다(파싱 실패 4~7/10). 폼은 구조화 출력이라
+       사고가 필요 없다 — 2026-08-27 에 2단 해석봇에서 같은 결론을 냈다.
        판정(role="matchup")은 **켠 채로 둔다.** 거기선 사고가 품질이다.
     """
     from app.llm.openai_compat import complete
@@ -188,10 +200,12 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
             break
         r = await complete(provider, model, prompt, max_tokens=max_tokens,
                            reasoning=reasoning)
-        logger.info("[%s] free provider=%s model=%s ok=%s %.1fs%s",
-                    role, provider, model, r["ok"], r["elapsed"],
+        usable = bool(r["ok"]) and parse_json_object(r["text"]) is not None
+        logger.info("[%s] free provider=%s model=%s ok=%s 파싱=%s %.1fs%s",
+                    role, provider, model, r["ok"], "OK" if usable else "실패",
+                    r["elapsed"],
                     f" err={str(r['error'])[:120]}" if r["error"] else "")
-        if r["ok"]:
+        if usable:
             u = r.get("usage") or {}
             LAST_USAGE.clear()
             LAST_USAGE.update({"role": role, "model": f"{provider}/{model}",
@@ -199,7 +213,14 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
                                "output_tokens": u.get("completion_tokens"),
                                "stop_reason": "free"})
             return r["text"]
-    logger.warning("[%s] 무료 provider 전부 실패 — 유료 폴백 검토", role)
+        if r["ok"]:
+            # 응답은 왔는데 JSON 이 아니다. 무엇이 왔는지 남긴다 —
+            # 다음 사람이 "빈 응답"과 구분할 수 있어야 한다.
+            logger.warning("[%s] %s/%s 응답이 JSON 이 아니다 — 다음 무료 후보로 "
+                           "넘어간다 (%d자) 앞=%r", role, provider, model,
+                           len(r["text"] or ""), (r["text"] or "")[:160])
+    logger.warning("[%s] 무료 사슬 전부 실패 (%d후보)", role,
+                   sum(1 for p, _ in routes if p != "anthropic"))
     return None
 
 
@@ -232,7 +253,17 @@ async def complete_json(prompt: str, *, model: str, max_tokens: int,
         out = await _complete_free(routes, prompt, max_tokens, role)
         if out is not None:
             return out
-        # 무료가 전부 실패했다 — 캡 안에서만 유료로 내려간다.
+        # 🔴 [2026-09-04] 무료가 전부 실패해도 **유료로 내려가지 않는다.**
+        #    사용자 지시: 무료 사슬로 진행한다. 종전에는 여기서 Anthropic 을
+        #    불렀고, 잔액 0 이라 400 → ApiQuotaError → trip_credit → 종목 전체
+        #    중단으로 번졌다 (실측 2026-09-04 16:37, NPB 판정 0건).
+        #    빈 문자열을 돌려주면 호출부가 파싱 실패로 읽어 그 팀만
+        #    `unavailable(parse_fail)` 이 된다 — 나머지 팀은 계속 간다.
+        #    ⚠️ 조용하지 않다: `_complete_free` 가 후보별 실패를 전부 남겼고,
+        #       일일 요약의 폼 성공률에 그대로 잡힌다.
+        logger.error("[%s] 🔴 무료 사슬 전부 실패 — 유료로 내려가지 않는다. "
+                     "이 건은 재료 없이 간다", role)
+        return ""
     abort_if_credit_gone(role)
     if not await _paid_ok(role):
         raise ApiQuotaError(f"anthropic({role})", "일일 캡 도달 — 호출 차단")

@@ -75,9 +75,18 @@ def chain(role: str) -> list[tuple[str, str]]:
         out.append((prv, mdl))
     if not out and raw:
         out.append((prov, raw))
-    # 비상 복귀는 사슬 끝에만 — 캡이 지킨다.
-    out.append(("anthropic", s.matchup_model if role == "matchup"
-                else s.team_form_model))
+    # 🔴 [2026-09-04] **비상 꼬리를 붙이지 않는다.** 사용자 지시: 무료 사슬로
+    #    진행한다. 종전에는 사슬 끝에 Anthropic 을 두고 "캡이 지킨다"고 했는데,
+    #    잔액이 0 이면 캡은 아무것도 지키지 못한다 — 호출은 400 을 받고,
+    #    그 400 이 `ApiQuotaError` → `trip_credit` 으로 번져 **종목 전체가
+    #    멈췄다** (실측 2026-09-04 16:37, NPB 판정 0건 · 카드 0장).
+    #    무료 후보가 하나도 없을 때만 종전 경로(유료)로 되돌아간다.
+    if not out:
+        logger.warning("[judge-route] role=%s 무료 후보가 없다 — 유료 경로로 "
+                       "되돌아간다 (FREE_%s_MODEL 확인)", role,
+                       "JUDGE" if role == "matchup" else "FORM")
+        out.append(("anthropic", s.matchup_model if role == "matchup"
+                    else s.team_form_model))
     return out
 
 
