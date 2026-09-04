@@ -2534,6 +2534,15 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
         except Exception as exc:
             logger.warning("[pipeline] MLB 팀 투수 지표 실패 game=%s: %s",
                            jg.get("game_id"), exc)
+        # [자료11 C2] 이동·연전·날씨 — **새 수집 없음.** 이미 research 에 있는
+        #   날짜·홈원정·오늘 예보를 읽어 센다. 판정 호출 앞에서 끝낸다.
+        try:
+            from app.engine.context_recent import attach as _ctx
+
+            _ctx(jg)
+        except Exception as exc:
+            logger.warning("[pipeline] 자료11 조립 실패 game=%s: %s",
+                           jg.get("game_id"), exc)
         if await judge_matchup(jg, redis, date):
             n += 1
             _spawn_fact_audit(jg)        # [감시 L1] 저장 후 사후 감사

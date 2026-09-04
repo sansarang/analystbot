@@ -146,6 +146,37 @@ _M10_BLOCK = """10. 변수 참조 — **변수의 크기를 여기서 가져온�
 """
 
 
+_M11_BLOCK = """11. 최근 맥락 — 이동·연전·날씨 (해당 경기만):
+   {payload}
+   `연전`: **오늘까지 며칠 연속** 경기인가. 휴식일이 끼면 거기서 끊긴 값이다.
+     불펜 가용성(자료9)과 **함께** 읽어라 — 연전 4일차의 '가용'은 3일차의
+     '가용'과 무게가 다르다.
+   `이동`: 직전 경기 대비 홈/원정 **전환**. ⚠️ 거리가 아니다 — 구장 좌표가
+     없어 실제 이동량은 모른다. 전환 사실만 있다.
+   `날씨`: **오늘** 예보.
+   `선발손`: 오늘 선발의 투구 손. **사실이지 스플릿이 아니다** — 좌우 상대
+     성적(시즌 스플릿)은 판정 입력이 아니다. 자료1의 3경기와 함께 읽어라.
+   ⚠️ 이 블록은 **변수의 크기를 뒷받침하는 참조**다. 이것으로 우세를 정하지 마라.
+
+"""
+
+
+def material11_payload(jg: dict) -> dict:
+    """자료11(최근 맥락). **읽기만 한다** — 조립은 파이프라인이 끝냈다."""
+    return jg.get("material11") or {}
+
+
+def insert_material11(prompt: str, payload: dict) -> str:
+    """자료11 블록을 규칙 앞에 끼운다. 비면 **원문 그대로** 돌려준다."""
+    if not payload:
+        return prompt
+    import json as _json
+
+    blk = _M11_BLOCK.format(payload=_json.dumps(payload, ensure_ascii=False,
+                                                default=str))
+    return prompt.replace(_RULES_MARK, blk + _RULES_MARK, 1)
+
+
 def insert_material10(prompt: str, payload: dict) -> str:
     """자료10 블록을 규칙 앞에 끼운다. 비면 **원문 그대로** 돌려준다.
 
@@ -344,6 +375,8 @@ def render_matchup_prompt(jg: dict, boxes: dict, news: dict,
     )
     # [자료10] 해당 경기에만 끼운다. 해당 없으면 프롬프트가 종전과 동일하다.
     prompt = insert_material10(prompt, material10_payload(jg))
+    # [자료11 C2] 이동·연전·날씨. 같은 계약 — 비면 원문 그대로다.
+    prompt = insert_material11(prompt, material11_payload(jg))
     return prompt
 
 
@@ -407,10 +440,12 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     _slots = min(len((( _m3.get(side) or {}).get("타순") or []))
                  for side in ("home", "away")) if _m3 else 0
     _has3 = _slots >= 9
-    logger.info("[materials] game=%s 자료3=%s(타순 %d명) 자료9=%s 자료10=%s",
+    logger.info("[materials] game=%s 자료3=%s(타순 %d명) 자료9=%s 자료10=%s "
+                "자료11=%s",
                 jg.get("game_id"), "Y" if _has3 else "N", _slots,
                 "Y" if bullpen_payload(jg) else "N",
-                jg.get("material10_status") or "해당없음")
+                jg.get("material10_status") or "해당없음",
+                jg.get("material11_status") or "해당없음")
     # 같은 사실을 일일 요약이 읽을 수 있게 센다. 세기만 한다 — 이 결과는
     #   프롬프트에도 판정에도 되돌아가지 않는다.
     from app.engine.monitor_metrics import note_materials
