@@ -65,6 +65,21 @@ def available(provider: str) -> bool:
     return bool(ep and (os.environ.get(ep[1]) or "").strip())
 
 
+#: 사고를 줄이는 값의 **강등 순서.** 제공자가 거부하면 다음으로 내려간다.
+#  🔴 추측으로 만든 목록이 아니다 — 400 응답이 직접 알려준 값들이다:
+#     "`reasoning_effort` must be one of `low`, `medium`, or `high`" (groq gpt-oss)
+_REASONING_OFF = ("none", "low")
+
+
+def _next_reasoning(cur: str | None) -> str | None:
+    """현재 값 다음 단계. 끝이면 None (= 필드를 뺀다)."""
+    try:
+        i = _REASONING_OFF.index(cur or "")
+    except ValueError:
+        return None
+    return _REASONING_OFF[i + 1] if i + 1 < len(_REASONING_OFF) else None
+
+
 async def complete(provider: str, model: str, prompt: str, *,
                    max_tokens: int = 6000, timeout: float = 180.0,
                    reasoning: bool = True) -> dict:
@@ -104,7 +119,7 @@ async def complete(provider: str, model: str, prompt: str, *,
         #    소모). 그때 결론이 "짧은 판정은 사고를 끈다" 였다.
         #    ⚠️ 세 제공자 모두 이 필드를 받는 것을 실호출로 확인했다
         #       (nvidia reasoning 222자→0자 · groq 200 · openrouter 200).
-        body["reasoning_effort"] = "none"
+        body["reasoning_effort"] = _REASONING_OFF[0]
     t0 = time.monotonic()
     for attempt in range(4):
         await _throttle(provider)
@@ -155,6 +170,27 @@ async def complete(provider: str, model: str, prompt: str, *,
             logger.warning("[net] %s %d — %.0f초 후 재시도 (%d/4)",
                            provider, r.status_code, wait, attempt + 1)
             await asyncio.sleep(wait)
+            continue
+        if r.status_code == 400 and "reasoning_effort" in (r.text or ""):
+            # 🔴 [실측 2026-09-04] 값이 제공자·모델마다 다르다. 추측하지 않고
+            #    **응답이 말해주는 대로** 한 단계씩 내려간다.
+            #      groq `qwen/qwen3.8-27b`   → "none" 수용
+            #      groq `openai/gpt-oss-120b` → 400
+            #        "`reasoning_effort` must be one of `low`, `medium`, or `high`"
+            #    마지막에는 필드를 아예 뺀다 — 사고가 켜지지만 **호출은 된다.**
+            #    한 모델이 이 필드를 모른다고 그 후보를 통째로 버리면,
+            #    사슬을 여럿 둔 의미가 없어진다.
+            cur = body.get("reasoning_effort")
+            nxt = _next_reasoning(cur)
+            if nxt is not None:
+                logger.warning("[net] %s reasoning_effort=%r 거부 — %r 로 재시도",
+                               provider, cur, nxt)
+                body["reasoning_effort"] = nxt
+            else:
+                logger.warning("[net] %s reasoning_effort 미지원 — 필드를 빼고 재시도",
+                               provider)
+                body.pop("reasoning_effort", None)
+            out["retries"] = attempt + 1
             continue
         if r.status_code != 200:
             out["error"] = f"{r.status_code} {r.text[:200]}"
