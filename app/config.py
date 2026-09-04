@@ -229,8 +229,12 @@ class Settings(BaseSettings):
     # mock(키 없음)도 오류도 아니다. 여기 있는 이름은 HTTP를 나가지 않고
     # 알림도 내지 않는다. 콤마 구분.
     # 2026-08-28 사용자 지시: AI API는 Anthropic만 충전. Grok·Perplexity 충전 안 함.
-    # 2026-08-28 저녁: Groq·Gemini 키 불량 → 오늘 건너뛰고 Claude만.
-    disabled_providers: str = "grok,perplexity,groq,gemini"
+    # 🔴 [2026-09-04] Groq·Gemini 를 목록에서 뺀다. 8/28 저녁에 "키 불량"으로
+    #    넣은 임시 조치가 그대로 굳어, **무료 전환 뒤에도** 2단 해석봇과 서술이
+    #    Groq·Gemini 를 건너뛰고 크레딧 0 인 Anthropic 으로 떨어졌다.
+    #    오늘 실호출로 두 키 모두 확인했다(Groq `openai/gpt-oss-120b` 200 ·
+    #    Gemini `gemini-3.6-flash` 200). Grok·Perplexity 는 사용자 결정대로 유지.
+    disabled_providers: str = "grok,perplexity"
 
     # ── [§9 카드 ④칸] 순위 경쟁권 판정 ────────────────────────────────────
     # 두 팀이 **모두** 경쟁권 밖이면 순위 차이가 동기 차이를 뜻하지 않는다.

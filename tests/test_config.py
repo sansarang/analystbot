@@ -46,13 +46,19 @@ def test_force_mock_overrides_keys():
 
 
 def test_grok_and_perplexity_are_disabled_by_default():
-    """의도적 미사용. 키 유무와 무관하다 — 키가 있어도 부르지 않는다."""
+    """의도적 미사용. 키 유무와 무관하다 — 키가 있어도 부르지 않는다.
+
+    🔴 [2026-09-04] Groq·Gemini 는 목록에서 뺐다. 8/28 저녁 "키 불량"으로 넣은
+       임시 조치가 굳어, 무료 전환 뒤에도 2단 해석봇·서술이 두 무료 제공자를
+       건너뛰고 크레딧 0 인 Anthropic 으로 떨어지고 있었다. 두 키 모두 오늘
+       실호출로 확인했다. Grok·Perplexity 는 사용자 결정대로 유지.
+    """
     s = make(xai_api_key="k", pplx_api_key="k")
     assert s.is_disabled("grok") and s.is_disabled("perplexity")
-    assert s.is_disabled("groq") and s.is_disabled("gemini")
+    assert not s.is_disabled("groq") and not s.is_disabled("gemini")
     assert not s.is_disabled("odds")
     assert not s.mock_grok and not s.mock_perplexity
-    assert s.disabled_providers == "grok,perplexity,groq,gemini"
+    assert s.disabled_providers == "grok,perplexity"
 
 
 def test_disabled_can_be_cleared():

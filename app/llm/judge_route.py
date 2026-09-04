@@ -24,6 +24,23 @@ def _cfg():
     return get_settings()
 
 
+#: OpenRouter 는 같은 모델 이름으로 **유료·무료 두 변형**을 판다. 무료판만
+#  `:free` 로 끝난다 — 접미사가 없으면 과금된다(실측 2026-09-04).
+#  다른 제공자(nvidia NIM·groq)는 계정 자체가 무료 티어라 이름으로 갈리지 않는다.
+_SUFFIX_REQUIRED = {"openrouter"}
+
+
+def is_free(provider: str, model: str) -> bool:
+    """이 후보가 **돈이 안 드는가.** 확실하지 않으면 False 다.
+
+    ⚠️ 사본 금지: 무료 모델 목록을 여기 적지 않는다. 규칙만 둔다 —
+       목록은 제공자가 바꾸고, 우리 사본은 따라가지 않는다.
+    """
+    if (provider or "").strip().lower() in _SUFFIX_REQUIRED:
+        return (model or "").strip().endswith(":free")
+    return True
+
+
 def chain(role: str) -> list[tuple[str, str]]:
     """`[(provider, model), ...]`. 첫 항목이 주전이다.
 
@@ -46,7 +63,16 @@ def chain(role: str) -> list[tuple[str, str]]:
             continue
         prv, _, mdl = item.partition("/")
         # ⚠️ 모델 ID 자체에 `/` 가 있다(예: nvidia/nemotron-...). 첫 `/` 만 쪼갠다.
-        out.append((prv.strip(), mdl.strip()))
+        prv, mdl = prv.strip(), mdl.strip()
+        if not is_free(prv, mdl):
+            # 🔴 "무료 전환"이라 해놓고 유료 모델이 사슬에 앉아 있었다.
+            #    실측 2026-09-04: `openrouter/deepseek/deepseek-r1` 은 무료판이
+            #    아니어서 키 사용액이 $0 이 아니었다(usage 0.0002594).
+            #    조용히 지나가지 않는다 — 태우고, 사슬에서 뺀다.
+            logger.warning("[judge-route] 유료 후보 제외 %s/%s — "
+                           "무료 전환 중이다(:free 접미사 필요)", prv, mdl)
+            continue
+        out.append((prv, mdl))
     if not out and raw:
         out.append((prov, raw))
     # 비상 복귀는 사슬 끝에만 — 캡이 지킨다.
