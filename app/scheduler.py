@@ -393,6 +393,20 @@ async def mlb_pregame_poll() -> None:
             ORDER BY starts_at
             """
         )
+        # [정찰 C3] MLB 도 정찰한다. **레지스트리에 등록해 놓고 호출처가
+        #   KBO·NPB 폴링뿐이면 MLB 는 등록만 되고 한 번도 안 돈다** —
+        #   섀도 패널이 아시아 사이클에만 있어 MLB 가 조용히 감시 밖에 있던
+        #   것과 같은 결함이다(2026-09-03). 정찰이 실패해도 폴링은 계속한다.
+        try:
+            from app.engine.scout import observe_slate
+
+            await observe_slate(
+                pool, redis,
+                [{"sport": "mlb", "game_id": r["id"],
+                  "starts_at": r["starts_at"]} for r in rows],
+                date, now=now)
+        except Exception as exc:
+            logger.warning("[scout] mlb 정찰 실패 — 폴링은 계속한다: %s", exc)
         pending = [r for r in rows
                    if (r["lineup_status"] or "") != "confirmed"]
         client = MLBLineupClient()

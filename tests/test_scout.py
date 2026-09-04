@@ -260,3 +260,23 @@ def test_soccer_is_recorded_but_not_connected():
     assert scout_sport("soccer").active is False
     assert scout_sport("soccer").reason
     assert "soccer" not in [x.sport for x in scout_sports(active_only=True)]
+
+
+def test_every_active_scout_sport_has_a_call_site():
+    """🔴 레지스트리에 등록만 하고 호출처가 없으면 그 종목은 영영 정찰 밖이다.
+
+    실사고 2026-09-03: 섀도 패널이 아시아 사이클에만 있어 MLB 가 조용히
+    감시 밖에 있었다. 같은 실수를 정찰에서 반복하지 않는다.
+    """
+    from pathlib import Path
+
+    from app.registry import scout_sports
+
+    src = Path("app/scheduler.py").read_text(encoding="utf-8")
+    # 정찰을 부르는 잡 두 곳: 아시아 폴링(kbo·npb) · MLB 폴링
+    assert src.count("from app.engine.scout import observe_slate") == 2, (
+        "정찰 호출처가 둘이 아니다 — 새 종목을 등록했다면 배선도 같이 한다")
+    assert '"sport": "mlb"' in src, "MLB 정찰 배선이 없다"
+    covered = {"kbo", "npb", "mlb"}
+    missing = {x.sport for x in scout_sports(active_only=True)} - covered
+    assert not missing, f"배선 없는 활성 종목: {missing}"
