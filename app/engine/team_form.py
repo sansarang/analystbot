@@ -385,8 +385,14 @@ async def analyze_team(redis, league: str, team: str, date: str,
             out = parsed
             break
         last_cause = CAUSE_PARSE
-        logger.warning("[form] %s %s JSON 파싱 실패 %d회 model=%s prompt_chars=%d",
-                       league, team, attempt, model, len(prompt))
+        # 🔴 [계측 2026-09-04] **원문을 남긴다.** 15:04 프리페치에서 폼이
+        #    7/10 파싱 실패했는데, 절단 가설을 실측으로 반증했고(1500토큰에서도
+        #    정상 파싱) 무엇이 왔는지 알 방법이 없었다.
+        #    ENGINEERING §3: 재현 없는 수정 금지 — 재현이 안 되면 계측을 먼저.
+        logger.warning("[form] %s %s JSON 파싱 실패 %d회 model=%s "
+                       "prompt_chars=%d resp_chars=%d 앞=%r 뒤=%r",
+                       league, team, attempt, model, len(prompt),
+                       len(text or ""), (text or "")[:200], (text or "")[-200:])
     if out is None:
         out = unavailable_form(team, model, last_cause)
     ttl = FORM_TTL if not out.get("unavailable") else FORM_UNAVAILABLE_TTL

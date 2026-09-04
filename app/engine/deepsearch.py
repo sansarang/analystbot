@@ -527,6 +527,26 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
         tools = [{"type": "web_search_20260318", "name": "web_search",
                   "max_uses": int(s.deepsearch_max_searches)}]
         await _spend_paid(redis)
+    # 🔴 [P0 2026-09-04] **무료 라우팅이 켜져 있으면 딥서치도 무료로 간다.**
+    #    이 호출이 `complete_json` 을 안 타서 Anthropic 을 직접 불렀고,
+    #    400(credit) 에서 `trip_credit` 이 **전역 가드를 걸어 NPB 파이프라인
+    #    전체를 죽였다**(실측 15:04: "NPB 팀 폼 0/10 · 파이프라인 0/1").
+    #    ⚠️ 무료 provider 에는 web_search 도구가 없다. `tools` 가 필요한
+    #       유료 검색 경로는 종전대로 두고, **RSS 경로만** 무료로 돌린다 —
+    #       RSS 는 우리가 이미 기사를 넣어 줬으므로 도구가 필요 없다.
+    from app.llm.judge_route import chain as _chain
+
+    _routes = _chain("matchup")
+    if not tools and _routes and _routes[0][0] != "anthropic":
+        from app.engine.team_form import _complete_free
+
+        body = await _complete_free(_routes, prompt,
+                                    int(s.deepsearch_max_tokens), "deepsearch")
+        if body:
+            return body, 0, source
+        logger.warning("[deepsearch] 무료 경로 실패 — 원판정 유지 %s@%s",
+                       jg.get("away"), jg.get("home"))
+        return None, 0, source
     cli = anthropic.AsyncAnthropic(api_key=s.anthropic_api_key)
     try:
         resp = await asyncio.wait_for(
@@ -541,7 +561,13 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
         return None, 0, source
     except anthropic.APIStatusError as exc:
         if exc.status_code == 400 and "credit" in str(exc).lower():
-            trip_credit(f"deepsearch/{s.matchup_model}", exc)
+            # ⚠️ 무료 라우팅 중이면 **전역 가드를 걸지 않는다.** 딥서치는
+            #    보조 단계인데, 여기서 가드를 걸면 판정·발송이 통째로 멈춘다.
+            if _routes and _routes[0][0] == "anthropic":
+                trip_credit(f"deepsearch/{s.matchup_model}", exc)
+            else:
+                logger.warning("[deepsearch] 유료 크레딧 없음 — 조사만 생략 "
+                               "(무료 라우팅 중이라 전역 차단 안 함)")
         logger.warning("[deepsearch] 호출 실패(source=%s) %s@%s: %s",
                        source, jg.get("away"), jg.get("home"), exc)
         return None, 0, source
