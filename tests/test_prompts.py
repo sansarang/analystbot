@@ -194,7 +194,15 @@ def test_batting_order_carries_slot_and_position():
 def test_bullpen_is_an_input():
     """선발이 일찍 내려가면 불펜에서 갈린다."""
     assert "{{BULLPEN_JSON}}" in MATCHUP
-    assert "ERA와 별개 항목" in MATCHUP, "컨디션을 ERA 등급으로 오독하면 안 된다"
+    # 🔴 [C1 2026-09-04] **계약이 바뀌었다.**
+    #   전: 자료9 = 시즌 팀 불펜 ERA + 컨디션. "ERA와 별개 항목" 을 잠갔다.
+    #   후: 자료9 = **최근 3경기 실점 + 최근 3일 가용성.** 시즌 값은 제거.
+    #   사유: 대원칙(최근 폼 전용, 2026-09-04 사용자 확정) — 시즌 누적은
+    #        판정 입력이 아니다.
+    assert "최근 폼만" in MATCHUP
+    assert "최근3경기" in MATCHUP and "가용성" in MATCHUP
+    assert "단독 근거로 쓰지 마라" in MATCHUP, "얇은 표본 경고가 빠졌다"
+    assert "상대 타자 수를 소모 대리값" in MATCHUP, "대리값임을 숨기면 안 된다"
 
 
 def test_three_game_sample_rules_survive():

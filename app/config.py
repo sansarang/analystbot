@@ -133,6 +133,21 @@ class Settings(BaseSettings):
     anthropic_daily_cap: int = Field(default=10, validation_alias=AliasChoices(
         "ANTHROPIC_DAILY_CAP", "anthropic_daily_cap"))
 
+    # ── [C1 불펜 가용성] 최근 3일 소모 임계 (2026-09-04) ──────────────
+    #: ⚠️ **투구수가 DB 에 없다.** `pitcher_appearances` 는 `batters`(TBF) 만
+    #   갖고 있어 이를 대리값으로 쓴다. 통상 타자당 ~4구이므로
+    #   30구≈8타자 · 50구≈13타자로 환산했다. 이 환산을 프롬프트에도 적는다.
+    bullpen_fatigue_tbf: int = 8       # 이 이상이면 '피로'
+    bullpen_spent_tbf: int = 13        # 이 이상이면 '소진'
+    bullpen_fatigue_apps: int = 2      # 최근 3일 등판 이 수 이상이면 '피로'
+    bullpen_spent_apps: int = 3        # 3연투면 '소진'
+    #: 주력 불펜 선정 창(일)과 인원. **선정만** 이 창을 쓰고, 판정 입력은
+    #  최근 3일 수치다 — 대원칙(최근 폼 전용)과 충돌하지 않는다.
+    bullpen_core_days: int = 14
+    bullpen_core_size: int = 5
+    #: 불펜 최근 실점을 볼 경기 수.
+    bullpen_recent_games: int = 3
+
     #: 판정 프롬프트 원문 보관 TTL(초). 사실 감시가 **판정 시점의** 원문을
     #  읽어야 한다 — 재렌더하면 그 사이 바뀐 재료를 보게 된다.
     prompt_keep_ttl_sec: int = 24 * 3600

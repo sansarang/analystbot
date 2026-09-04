@@ -2519,6 +2519,17 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
         except Exception as exc:
             logger.warning("[pipeline] 타선 시즌 라인 실패 game=%s: %s",
                            jg.get("game_id"), exc)
+        # [C1 2026-09-04] 자료9 를 **최근 폼으로 교체**한다.
+        #   🔴 대원칙: 시즌 누적은 판정 입력이 아니다. 시즌 ERA 를 지우고
+        #      최근 3경기 실점 + 최근 3일 가용성을 넣는다.
+        #   ⚠️ 시즌 부착(위 `mlb_team_pitching` 등)보다 **뒤**여야 지워진다.
+        try:
+            from app.engine.bullpen_recent import attach as _bp_recent
+
+            await _bp_recent(pool, jg)
+        except Exception as exc:
+            logger.warning("[pipeline] 불펜 최근 폼 실패 game=%s: %s",
+                           jg.get("game_id"), exc)
         # [자료10] 변수 정량화 참조 + 자료1 의 상대 선발 시즌 ERA.
         #   ⚠️ **판정 호출 앞**에서 끝낸다 — 판정 경로는 읽기만 한다.
         #   ⚠️ 실패해도 판정을 막지 않는다. 못 붙으면 종전과 같은 판정이다.
