@@ -66,8 +66,12 @@ def available(provider: str) -> bool:
 
 
 async def complete(provider: str, model: str, prompt: str, *,
-                   max_tokens: int = 6000, timeout: float = 180.0) -> dict:
+                   max_tokens: int = 6000, timeout: float = 180.0,
+                   reasoning: bool = True) -> dict:
     """1회 호출. 반환 {text, ok, status, elapsed, retries, error, usage}.
+
+    `reasoning=False` 면 추론을 끈다 — 짧은 구조화 출력(폼 평가서)에서
+    사고가 출력 예산을 잠식하는 것을 막는다. 판정(matchup)은 켠 채로 둔다.
 
     ⚠️ **예외를 던지지 않는다.** 오디션은 실패도 데이터다 — 어느 후보가
        몇 번 실패했는지가 채점 항목(⑤)이다.
@@ -89,6 +93,18 @@ async def complete(provider: str, model: str, prompt: str, *,
         return out
     body = {"model": model, "max_tokens": max_tokens, "temperature": 0,
             "messages": [{"role": "user", "content": prompt}]}
+    if not reasoning:
+        # 🔴 [실측 2026-09-04] 추론 토큰이 `max_tokens` 를 통째로 먹었다.
+        #    Nemotron 3 Ultra 는 `reasoning_content` 를 따로 주기도 하고
+        #    `content` 안에 그대로 쏟기도 한다(비결정적). 후자일 때 1500토큰
+        #    예산이 사고로 소진돼 JSON 이 아예 안 나왔다.
+        #      · 프리페치 15:13 Samsung Lions 1회차 resp 599자 = 잘린 JSON
+        #      · 2회차 resp 3881자 = 영어 사고문 ("The user wants me to analyze…")
+        #    같은 사고가 2026-08-27 에 이미 있었다(2단 해석봇, 300 중 285를 사고가
+        #    소모). 그때 결론이 "짧은 판정은 사고를 끈다" 였다.
+        #    ⚠️ 세 제공자 모두 이 필드를 받는 것을 실호출로 확인했다
+        #       (nvidia reasoning 222자→0자 · groq 200 · openrouter 200).
+        body["reasoning_effort"] = "none"
     t0 = time.monotonic()
     for attempt in range(4):
         await _throttle(provider)

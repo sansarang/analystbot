@@ -172,13 +172,22 @@ async def _paid_ok(role: str) -> bool:
 
 async def _complete_free(routes, prompt: str, max_tokens: int,
                          role: str) -> str | None:
-    """무료 사슬을 순서대로. 전부 실패하면 None (호출부가 유료로 내려간다)."""
+    """무료 사슬을 순서대로. 전부 실패하면 None (호출부가 유료로 내려간다).
+
+    🔴 폼(role="form")은 **추론을 끄고** 부른다. 실측 2026-09-04: Nemotron 의
+       사고가 1500토큰 예산을 통째로 먹어 JSON 이 안 나왔다(파싱 실패 4~7/10).
+       폼은 박스스코어를 읽어 등급·태그를 매기는 구조화 출력이라 사고가
+       필요 없다 — 2026-08-27 에 2단 해석봇에서 같은 결론을 냈다.
+       판정(role="matchup")은 **켠 채로 둔다.** 거기선 사고가 품질이다.
+    """
     from app.llm.openai_compat import complete
 
+    reasoning = role != "form"
     for provider, model in routes:
         if provider == "anthropic":
             break
-        r = await complete(provider, model, prompt, max_tokens=max_tokens)
+        r = await complete(provider, model, prompt, max_tokens=max_tokens,
+                           reasoning=reasoning)
         logger.info("[%s] free provider=%s model=%s ok=%s %.1fs%s",
                     role, provider, model, r["ok"], r["elapsed"],
                     f" err={str(r['error'])[:120]}" if r["error"] else "")
