@@ -273,6 +273,20 @@ def starters_recent_payload(jg: dict) -> dict:
     return out
 
 
+def _real_model(configured: str | None) -> str:
+    """**실제로 응답한** provider/model. 못 읽으면 설정값 그대로.
+
+    ⚠️ `LAST_USAGE` 는 이 프로세스의 **직전 호출** 값이다. 판정 직후에만
+       읽는다 — 다른 역할(폼)이 그 사이에 끼면 그 모델이 잡힌다.
+       그래서 role 이 matchup 인지 확인하고, 아니면 설정값으로 돌아간다.
+    """
+    from app.engine.team_form import LAST_USAGE
+
+    if (LAST_USAGE or {}).get("role") == "matchup" and LAST_USAGE.get("model"):
+        return str(LAST_USAGE["model"])
+    return str(configured or "")
+
+
 def _sha(text: str) -> str:
     """프롬프트 원문의 지문. 리포트가 "이 판정이 본 프롬프트"를 가리키는 열쇠다.
 
@@ -542,10 +556,24 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #   ⚠️ 새 계측이 아니다 — 이미 jg 에 들어간 값을 그대로 찍는다.
     #      원장은 이 줄을 복사할 뿐 더 알지 않는다.
     _jm = jg.get("matchup") or {}
+    # 🔴 [2026-09-06] **설정값이 아니라 실제 응답 모델을 찍는다.**
+    #    종전에는 `_jm["model"]`(= settings.matchup_model)을 찍었다. 무료
+    #    사슬로 옮긴 뒤에는 그것이 거짓이다 — 시뮬 실측 2026-09-05:
+    #      free provider=nvidia model=nvidia/nemotron-3-ultra-550b-a55b ok=True
+    #      [matchup] … model=claude-sonnet-5      ← 로그와 원장이 다른 말을 했다
+    #    폴백이 일어나면 어느 모델이 그 판정을 했는지가 사라지고, 그러면
+    #    모델별 성적을 영영 못 가른다.
+    #    `LAST_USAGE` 는 무료 경로(`_complete_free`)와 유료 경로 양쪽이
+    #    호출 직후 채운다 — 그것이 원본이다.
+    _actual = _real_model(_jm.get("model"))
+    if _actual != _jm.get("model"):
+        _jm["model_configured"] = _jm.get("model")
+        _jm["model"] = _actual
+        jg["model"] = _actual
     _judge_msg = ("[matchup] game=%s %s vs %s p_home=%.3f 우세=%s 확신도=%s "
                   "model=%s" % (
                       jg.get("game_id"), home, away, float(jg.get("p_claude") or 0),
-                      _jm.get("우세"), _jm.get("확신도"), _jm.get("model")))
+                      _jm.get("우세"), _jm.get("확신도"), _actual))
     logger.info("%s", _judge_msg)
     await _trace(jg, date, TRACE_JUDGE, summary=_judge_msg,
                  ref={"prompt_sha": _sha(prompt), "근거": _jm.get("근거"),

@@ -403,7 +403,10 @@ def build(jg: dict, *, trace: list[dict], ledger: dict | None,
     head = (f"# {(jg.get('sport') or '').upper()} "
             f"{jg.get('away')} @ {jg.get('home')}\n\n"
             f"- 경기 ID `{jg.get('game_id')}` · 슬레이트 {jg.get('date') or ''}\n"
-            f"- 이 문서는 **원장·로그의 원문 발췌**다. 생성 과정에 LLM 호출이 없다.\n")
+            f"- 이 문서는 **원장·로그의 원문 발췌**다. 생성 과정에 LLM 호출이 없다.\n"
+            f"- ⚠️ **2026-09-06 이전 기록은 모델명 표기가 부정확하다** — 그때까지는\n"
+            f"  설정값을 찍어, 무료 사슬 폴백이 일어난 판정도 설정 모델명으로\n"
+            f"  남았다. 소급 정정은 불가하다(그 시점 실제 모델을 알 수 없다).\n")
     body = "\n".join([
         head,
         section_materials(jg, trace),

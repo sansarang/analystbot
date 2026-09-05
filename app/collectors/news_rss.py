@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import html
 import logging
 import re
 from datetime import UTC, datetime
@@ -108,6 +109,44 @@ def parse_feed(xml: str, *, now=None, max_age_hours: int = MAX_AGE_HOURS) -> lis
     return out
 
 
+#: 제목 끝의 " - 매체명" 꼬리. Google News RSS 가 모든 제목에 붙인다.
+_OUTLET_TAIL = re.compile(r"\s*[-–—]\s*[^-–—]{1,30}$")
+#: 정규화에서 지울 것 — 공백·따옴표·괄호·구두점. 의미는 안 건드린다.
+_NOISE_CHARS = re.compile(r"[\s'\"“”‘’\[\]()（）【】…·・,\.!?~]+")
+
+
+def title_key(title: str) -> str:
+    """중복 판정용 제목 지문.
+
+    🔴 [2026-09-06] 같은 기사가 여러 매체 URL 로 들어온다. 실측 2026-09-05
+       KIA 뉴스태그 2개가 **같은 기사**였다:
+         "'4G ERA 15.00' KIA 이대로 괜찮나… - v.daum.net"
+         "'4G ERA 15.00' KIA 이대로 괜찮나… - xportsnews.com"
+       판정은 그것을 두 개의 신호로 읽는다 — 없는 반복을 근거로 삼는 것이다.
+
+    ⚠️ **제목만 정규화한다.** 본문·URL 로 비교하지 않는다 — 같은 기사를
+       매체가 조금씩 고쳐 싣기 때문에 본문 비교는 오히려 갈린다.
+    ⚠️ 지우는 것은 매체 꼬리와 구두점·공백뿐이다. 단어를 건드리면 다른
+       기사가 같은 것으로 뭉친다.
+    """
+    t = html.unescape(str(title or ""))
+    t = _OUTLET_TAIL.sub("", t)
+    return _NOISE_CHARS.sub("", t).lower()
+
+
+def dedupe_by_title(items: list[dict]) -> list[dict]:
+    """제목 지문 기준 중복 제거. **먼저 온 것을 남긴다**(최신순 정렬 유지)."""
+    seen: set[str] = set()
+    out: list[dict] = []
+    for it in items or []:
+        k = title_key(it.get("title"))
+        if not k or k in seen:
+            continue
+        seen.add(k)
+        out.append(it)
+    return out
+
+
 async def fetch_team(sport: str, team: str, *, limit: int = 20) -> list[dict]:
     """팀 1개의 최근 기사. 실패하면 빈 목록 — 딥서치가 폴백을 결정한다."""
     import httpx
@@ -192,6 +231,13 @@ async def by_side(jg: dict, redis=None, *, limit: int = 12) -> dict[str, list[di
             continue
         rows = [{k: v for k, v in it.items() if k != "team"}
                 for it in items if it.get("team") == team]
+        # 🔴 [2026-09-06] **태그를 만들기 전에** 중복을 없앤다. 팀 폼이
+        #    같은 기사를 두 번 보면 태그도 두 번 나오고, 판정은 그것을
+        #    두 신호로 읽는다(실측 2026-09-05 KIA 태그 2개 = 같은 기사).
+        before = len(rows)
+        rows = dedupe_by_title(rows)
+        if before != len(rows):
+            logger.info("[news_rss] %s 중복 제거 %d → %d건", team, before, len(rows))
         if rows:
             out[side] = rows[:limit]
     return out
