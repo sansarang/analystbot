@@ -111,22 +111,23 @@ def test_material11_reaches_the_prompt_only_when_present():
 
     jg = _jg()
     plain = render_matchup_prompt(jg, boxes={}, news={}, prev=None)
-    assert "11. 최근 맥락" not in plain, "안 붙였는데 블록이 있다"
+    # [C4 2026-09-05] 자료11 은 대장의 [맥락] 축이 됐다.
+    assert "[맥락]" not in plain, "안 붙였는데 블록이 있다"
 
     attach(jg)
     out = render_matchup_prompt(jg, boxes={}, news={}, prev=None)
-    assert "11. 최근 맥락" in out
+    assert "[맥락]" in out and "10. 변수 대장" in out
     assert "원정→홈" in out and "기온 24도" in out
     assert "타자 유리" in out or "투수 유리" in out or "중립" in out
     assert "{{" not in out
 
 
 def test_material11_says_it_is_a_reference_not_a_verdict():
-    from app.engine.matchup import _M11_BLOCK
+    from app.engine.matchup import _LEDGER_CTX, _LEDGER_TAIL
 
-    assert "변수의 크기를 뒷받침하는 참조" in _M11_BLOCK
-    assert "우세를 정하지 마라" in _M11_BLOCK
-    assert "거리가 아니다" in _M11_BLOCK
+    assert "변수의 크기를 뒷받침하는 참조" in _LEDGER_TAIL
+    assert "우세를 정하지 마라" in _LEDGER_TAIL
+    assert "거리가 아니다" in _LEDGER_CTX
 
 
 # ─────────────────── C5 BvP 금지 ───────────────────
@@ -141,9 +142,9 @@ def test_bvp_and_head_to_head_are_banned_in_the_prompt():
 
 def test_starter_hand_is_a_fact_not_a_split():
     """`선발손` 을 주는 이유를 프롬프트가 스스로 말한다."""
-    from app.engine.matchup import _M11_BLOCK
+    from app.engine.matchup import _LEDGER_CTX, _LEDGER_TAIL
 
-    assert "사실이지 스플릿이 아니다" in _M11_BLOCK
+    assert "사실이지 스플릿이 아니다" in _LEDGER_CTX
 
 
 # ─────────────────── C6 동결 ───────────────────

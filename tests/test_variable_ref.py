@@ -11,7 +11,20 @@ from datetime import UTC, datetime
 import pytest
 
 from app.engine import variable_ref as VR
-from app.engine.matchup import insert_material10, material10_payload
+from app.engine.matchup import insert_ledger, ledger_payload
+
+
+def insert_material10(prompt, payload):
+    """[C4 2026-09-05] 자료10 은 **변수 대장**으로 합쳐졌다.
+
+    이 얇은 어댑터는 기존 계약(빈 payload → 원문 그대로,
+    규칙 앞에 삽입)을 그대로 검사하기 위한 것이다.
+    """
+    return insert_ledger(prompt, {"ref": payload or {}, "ctx": {}})
+
+
+def material10_payload(jg):
+    return ledger_payload(jg)["ref"]
 
 NOW = datetime(2026, 9, 3, tzinfo=UTC)
 
@@ -164,7 +177,8 @@ def test_material10_goes_before_the_rules():
     base = "1. 자료\n\n[판정 규칙]\n- 규칙"
     out = insert_material10(base, {"home": {"이닝분포": {"p50": 1.2}}})
     assert out != base
-    assert out.index("10. 변수 참조") < out.index("[판정 규칙]")
+    # [C4 2026-09-05] "10. 변수 대장" → "10. 변수 대장"(자료10·11 통합)
+    assert out.index("10. 변수 대장") < out.index("[판정 규칙]")
     assert "1.2" in out
 
 

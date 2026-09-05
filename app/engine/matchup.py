@@ -134,65 +134,74 @@ def material10_payload(jg: dict) -> dict:
 #: 자료10 을 끼워 넣을 자리. 이 문구 **앞**에 붙는다.
 _RULES_MARK = "[판정 규칙]"
 
-_M10_BLOCK = """10. 변수 참조 — **변수의 크기를 여기서 가져온다** (해당 경기만):
-   {payload}
+#: [C4 변수 대장 2026-09-05] 자료10·11 을 **한 블록**으로 낸다.
+#  🔴 종전에는 두 블록이 따로 붙어 판정이 "이닝분포"(자료10)와 "연전"(자료11)을
+#     다른 성격의 자료로 읽었다. 둘 다 **변수의 크기를 뒷받침하는 참조**이고
+#     쓰임이 같다. 한 대장으로 묶어 순서를 고정한다:
+#       불펜(자료9 참조) → 이동·연전 → 날씨 → [플래툰: 보류]
+#  ⚠️ prior 헤더는 `config.variable_ledger_prior` 가 원본이다 — 여기 적지 않는다.
+_LEDGER_HEAD = """10. 변수 대장 — **변수의 크기를 여기서 가져온다** (해당 경기만):
+   {{PRIOR}}
+
+"""
+
+_LEDGER_REF = """   [참조] {{REF}}
    `이닝분포`: 그 투수 최근 등판의 실제 이닝 배열과 분위수(p25/p50/p75)·최장.
      `선발등판`이 0~2면 "예측 불가"가 아니라 **이 분포가 답**이다.
    `부진후회귀`: 같은 리그에서 직전 3등판이 부진했던 선발의 **다음 등판**
      평균 이닝·실점과 표본 수. `주의`에 "참조 불충분"이 있으면 표본이 적다는
      뜻이니 단정하지 마라.
-   ⚠️ 이 블록은 **해당 경기에만** 실린다. 없으면 그 경기는 대상이 아니다.
 
 """
 
-
-_M11_BLOCK = """11. 최근 맥락 — 이동·연전·날씨 (해당 경기만):
-   {payload}
+_LEDGER_CTX = """   [맥락] {{CTX}}
    `연전`: **오늘까지 며칠 연속** 경기인가. 휴식일이 끼면 거기서 끊긴 값이다.
-     불펜 가용성(자료9)과 **함께** 읽어라 — 연전 4일차의 '가용'은 3일차의
-     '가용'과 무게가 다르다.
-   `이동`: 직전 경기 대비 홈/원정 **전환**. ⚠️ 거리가 아니다 — 구장 좌표가
-     없어 실제 이동량은 모른다. 전환 사실만 있다.
-   `날씨`: **오늘** 예보.
-   `선발손`: 오늘 선발의 투구 손. **사실이지 스플릿이 아니다** — 좌우 상대
-     성적(시즌 스플릿)은 판정 입력이 아니다. 자료1의 3경기와 함께 읽어라.
-   ⚠️ 이 블록은 **변수의 크기를 뒷받침하는 참조**다. 이것으로 우세를 정하지 마라.
+     불펜 가용성(자료9)과 **함께** 읽어라 — 연전 4일차의 '가용'은 3일차와 다르다.
+   `원정연전`: 직전까지 연속 원정 경기 수.
+   `이동`·`구장변경`: 홈/원정 **전환**과 구장이 바뀌었는지.
+     ⚠️ 거리가 아니다 — 구장 좌표가 없어 실제 이동량은 모른다.
+     ⚠️ `구장변경` 이 없으면 **알 수 없다는 뜻**이다(원정→원정은 상대가
+        같은지 모른다). 없는 것을 '안 바뀜'으로 읽지 마라.
+   `날씨`: `라벨`{타자 유리|투수 유리|중립}과 `계수`. 계수는 리그 득점
+     환경 계수이지 이 경기의 예측이 아니다. **총득점 방향으로만** 읽어라.
+   `선발손`: 오늘 선발의 투구 손. **사실이지 스플릿이 아니다** —
+     좌우 상대 성적(시즌 누적)은 판정 입력이 아니다.
+   ⚠️ 플래툰 성적은 **보류**다(3리그 모두 최근 창×손타입 조합 불가, 2026-09-05 실측).
+
+"""
+
+_LEDGER_TAIL = """   ⚠️ 이 대장은 **변수의 크기를 뒷받침하는 참조**다. 이것으로 우세를 정하지 마라.
 
 """
 
 
-def material11_payload(jg: dict) -> dict:
-    """자료11(최근 맥락). **읽기만 한다** — 조립은 파이프라인이 끝냈다."""
-    return jg.get("material11") or {}
+def ledger_payload(jg: dict) -> dict:
+    """변수 대장의 두 축. **읽기만 한다** — 조립은 파이프라인이 끝냈다."""
+    return {"ref": jg.get("material10") or {},
+            "ctx": jg.get("material11") or {}}
 
 
-def insert_material11(prompt: str, payload: dict) -> str:
-    """자료11 블록을 규칙 앞에 끼운다. 비면 **원문 그대로** 돌려준다."""
-    if not payload:
+def insert_ledger(prompt: str, payload: dict, settings=None) -> str:
+    """대장을 규칙 앞에 끼운다. 두 축이 모두 비면 **원문 그대로** 돌려준다."""
+    ref, ctx = (payload or {}).get("ref") or {}, (payload or {}).get("ctx") or {}
+    if not ref and not ctx:
         return prompt
     import json as _json
 
-    blk = _M11_BLOCK.format(payload=_json.dumps(payload, ensure_ascii=False,
-                                                default=str))
+    from app.config import get_settings
+
+    s = settings or get_settings()
+    # ⚠️ `.format` 을 쓰지 않는다 — 블록 안에 `{타자 유리|…}` 같은 중괄호가
+    #    있어 포맷 문자열로 해석되면 KeyError 가 난다(실측). 자리표시자만 바꾼다.
+    blk = _LEDGER_HEAD.replace("{{PRIOR}}", s.variable_ledger_prior)
+    if ref:
+        blk += _LEDGER_REF.replace(
+            "{{REF}}", _json.dumps(ref, ensure_ascii=False, default=str))
+    if ctx:
+        blk += _LEDGER_CTX.replace(
+            "{{CTX}}", _json.dumps(ctx, ensure_ascii=False, default=str))
+    blk += _LEDGER_TAIL
     return prompt.replace(_RULES_MARK, blk + _RULES_MARK, 1)
-
-
-def insert_material10(prompt: str, payload: dict) -> str:
-    """자료10 블록을 규칙 앞에 끼운다. 비면 **원문 그대로** 돌려준다.
-
-    🔴 빈 블록을 넣지 않는다 — 해당 없는 경기의 프롬프트는 종전과 바이트가
-       같아야 한다(계약 테스트가 잠근다).
-    """
-    if not payload:
-        return prompt
-    import json as _json
-
-    block = _M10_BLOCK.format(
-        payload=_json.dumps(payload, ensure_ascii=False, default=str))
-    i = prompt.find(_RULES_MARK)
-    if i < 0:
-        return prompt + "\n" + block
-    return prompt[:i] + block + prompt[i:]
 
 
 def news_payload(home_form: dict, away_form: dict) -> dict:
@@ -403,10 +412,8 @@ def render_matchup_prompt(jg: dict, boxes: dict, news: dict,
                                       default=str),
         BULLPEN_JSON=json.dumps(bullpen_payload(jg), ensure_ascii=False, default=str),
     )
-    # [자료10] 해당 경기에만 끼운다. 해당 없으면 프롬프트가 종전과 동일하다.
-    prompt = insert_material10(prompt, material10_payload(jg))
-    # [자료11 C2] 이동·연전·날씨. 같은 계약 — 비면 원문 그대로다.
-    prompt = insert_material11(prompt, material11_payload(jg))
+    # [C4 변수 대장] 자료10·11 을 한 블록으로. 둘 다 비면 원문 그대로다.
+    prompt = insert_ledger(prompt, ledger_payload(jg))
     return prompt
 
 

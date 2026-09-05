@@ -230,7 +230,7 @@ def test_render_matchup_prompt_is_pure():
                  "STARTERS_RECENT_JSON", "PREV_VERDICT_JSON",
                  "LINEUP_INTENT_JSON", "BULLPEN_JSON"):
         assert slot in src, slot
-    assert "insert_material10" in src
+    assert "insert_ledger" in src
 
 
 def test_judge_matchup_calls_the_extracted_renderer():
