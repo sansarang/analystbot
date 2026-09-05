@@ -223,14 +223,25 @@ T-15(17:45) 종료.**
 계속 호출하면 요금만 태운다. 해제는 사람이 `tools/unblock` 으로 한다.
 
 ```bash
-railway run python -m tools.unblock --list          # 무엇이 막혀 있나
-railway run python -m tools.unblock --provider odds # 해제 (충전 확인 후)
-railway run python -m tools.resend --sport mlb --dry-run   # 무엇이 나갈지
-railway run python -m tools.resend --sport mlb --rebuild   # 캐시부터 재생성
+# ⚠️ `railway run` 을 쓰지 마라 — **로컬에서** 실행돼 운영 DB·Redis 에 닿지
+#    않는다(`.railway.internal`). 로컬 저장소를 건드리고 "됐다"고 착각한다.
+#    닿는 방법은 `railway ssh` 뿐이다 — 컨테이너 안에서 돈다.
+#    SSH 키가 에이전트에 올라와 있어야 한다: `ssh-add ~/.ssh/id_ed25519`
+RS="railway ssh --project d29edc63-4309-4656-a8af-543b8b773437 \
+    --environment production --service analystbot-scheduler"
+
+$RS "python -m tools.unblock --list"           # 무엇이 막혀 있나
+$RS "python -m tools.unblock --provider odds"  # 해제 (충전 확인 후)
+$RS "python -m tools.resend --sport mlb --dry-run"  # 무엇이 나갈지
+$RS "python -m tools.resend --sport mlb --rebuild"  # 캐시부터 재생성
 ```
 
 ⚠️ **`tools/resend`·`tools/unblock` 은 서버에서 돌린다.** 로컬 Redis·DB 는 운영과
 다른 저장소라 로컬 실행은 서버 상태를 바꾸지 못한다 (실측 2026-09-01).
+🔴 **`railway run` 은 "서버에서 돌린다"가 아니다** — 운영 **환경변수만** 주입해
+   **로컬에서** 실행한다. 그래서 `REDIS_URL` 이 `.railway.internal` 을 가리켜도
+   로컬에서는 이름 해석이 안 되거나 엉뚱한 로컬 저장소에 붙는다.
+   컨테이너 안에서 도는 것은 **`railway ssh`** 뿐이다 (실측 2026-09-05).
 
 **리서치 신선도 게이트**: 캐시 6시간 이내 & 킥오프 3시간 이상 → 캐시 즉답.
 캐시 6시간 초과 또는 킥오프 3시간 이내 → 재리서치 + 재판정. 실패 시 캐시 폴백.
