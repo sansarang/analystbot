@@ -190,10 +190,25 @@ async def regression_reference(pool, redis, sport: str, season_start: str) -> di
 
 # ══════════════ 1-c. 타선 침체 맥락 — 상대 선발 시즌 ERA ══════════════
 
+#: 🔴 [2026-09-05] **외부 경기 ID 로 찾지 않는다. 날짜+팀으로 찾는다.**
+#   ID 공간이 셋으로 갈려 있었다:
+#     games.ext_id              "kbo:2026-09-04:18:30:KT Wiz:Kia Tigers"
+#     usage.games[].game_id     "20260904HHLT02026"   ← 네이버 형식
+#     pitcher_appearances.game_id  BIGINT (= games.id)
+#   종전 코드는 `int(gid)` 로 네이버 문자열을 정수로 바꾸려 했고, KBO 전
+#   경기에서 터졌다(운영 실측 2026-09-05):
+#     [var-ref] 상대 선발 조회 실패 game=20260904HHLT02026:
+#               invalid literal for int() with base 10
+#   ⚠️ 캐스팅으로 못 고친다 — 설령 정수였어도 네이버 ID 로는 우리 games.id 를
+#      찾을 수 없다. `ext_id` 형식이 아예 다르기 때문이다.
+#   날짜+팀은 세 리그가 모두 갖고 있는 값이라 ID 공간에 의존하지 않는다.
 _OPP_STARTER = """
     SELECT a.pitcher
       FROM pitcher_appearances a
-     WHERE a.game_id = $1 AND a.team = $2 AND a.is_starter
+      JOIN games g ON g.id = a.game_id
+     WHERE g.sport = $1
+       AND (g.starts_at AT TIME ZONE 'Asia/Seoul')::date = $2::date
+       AND a.team = $3 AND a.is_starter
      LIMIT 1
 """
 
@@ -221,12 +236,14 @@ async def attach_opp_starter_era(pool, jg: dict, redis=None) -> int:
     for side in ("home", "away"):
         for g in ((research.get(f"{side}_usage") or {}).get("games") or []):
             gid, opp = g.get("game_id"), g.get("opponent")
-            if not gid or not opp or "opp_starter_season_era" in g:
+            gdate = g.get("date")
+            if not gdate or not opp or "opp_starter_season_era" in g:
                 continue
             try:
-                name = await pool.fetchval(_OPP_STARTER, int(gid), opp)
+                name = await pool.fetchval(_OPP_STARTER, sport, str(gdate), opp)
             except Exception as exc:
-                logger.warning("[var-ref] 상대 선발 조회 실패 game=%s: %s", gid, exc)
+                logger.warning("[var-ref] 상대 선발 조회 실패 %s %s vs %s: %s",
+                               sport, gdate, opp, exc)
                 continue
             if not name:
                 g["opp_starter_season_era"] = None

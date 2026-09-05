@@ -150,8 +150,11 @@ async def test_sufficient_sample_has_no_warning():
 @pytest.mark.asyncio
 async def test_unmatched_opponent_starter_is_null_with_log(caplog):
     """이름 매칭 실패 → null + 로그. **조용히 지나가지 않는다.**"""
+    # 🔴 [2026-09-05] 조회 키가 **날짜+팀** 으로 바뀌었다. 외부 경기 ID
+    #   (네이버 "20260904HHLT02026")로는 우리 games.id 를 찾을 수 없다.
     jg = {"sport": "kbo", "research": {"home_usage": {"games": [
-        {"game_id": 1, "opponent": "LG"}]}}}
+        {"game_id": "20260904HHLT02026", "date": "2026-09-04",
+         "opponent": "LG"}]}}}
     with caplog.at_level("INFO"):
         await VR.attach_opp_starter_era(Pool(opp={}), jg)
     g = jg["research"]["home_usage"]["games"][0]
@@ -281,3 +284,23 @@ def test_uses_the_existing_normaliser_not_a_new_one():
     src = Path("app/engine/variable_ref.py").read_text(encoding="utf-8")
     assert "from app.engine.starter_recent import _aware" in src
     assert "_aware(jg.get(\"starts_at\"))" in src
+
+
+@pytest.mark.asyncio
+async def test_naver_string_game_id_no_longer_crashes():
+    """🔴 운영 실측 2026-09-05 — KBO 전 경기에서 터졌다.
+
+    [var-ref] 상대 선발 조회 실패 game=20260904HHLT02026:
+              invalid literal for int() with base 10
+
+    ID 공간이 셋으로 갈려 있었다(games.ext_id / 네이버 id /
+    pitcher_appearances.game_id). 날짜+팀은 세 리그가 다 갖고 있다.
+    """
+    import inspect
+
+    src = inspect.getsource(VR.attach_opp_starter_era)
+    assert "int(gid)" not in src, "외부 ID 를 정수로 바꾸려 하고 있다"
+    assert "gdate" in src and "sport" in src
+    sql = VR._OPP_STARTER
+    assert "g.starts_at" in sql and "a.team = $3" in sql
+    assert "a.game_id = $1" not in sql
