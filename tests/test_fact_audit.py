@@ -177,3 +177,72 @@ def test_notation_reading_only_for_innings():
     """`.1`/`.2` 해석은 이닝만이다. ERA 3.2 는 3⅔ 가 아니다."""
     assert fact_audit.readings(5.2, "ip") == [5.2, 5.667]
     assert fact_audit.readings(3.2, "era") == [3.2]
+
+
+# ── [2026-09-05] L1 오탐 3종 — 운영 judgement_audit 원문으로 특정했다 ────
+# 실판정 20건(MLB 16 · NPB 4)에 걸어 측정: 불일치 3→1 · 검증됨 184→194 ·
+# 검증불가 23→9 · 악화 0.
+_P = '''1. 박스스코어: {"home": {"runs_per_game_l3": 5.0}}
+4. 선발 최근 등판: {"home": {"선발등판": [{"innings": 6.0, "r": 1}]}}
+9. 불펜: {"home": {"최근3경기": {"실점": 6, "이닝": 8.0}, "era": 3.10}}
+10. 대장: {"이닝분포": {"p50": 2.0, "최장": 3.0}}
+'''
+
+
+def test_a_era_computed_from_innings_and_runs_is_not_a_hallucination():
+    """(a) 8.0이닝 6실점 → ERA 6.75. 6×9÷8=6.75 로 판정이 맞다."""
+    v = {"근거": ["홈 불펜 최근3경기 8.0이닝 6실점 ERA 6.75 — 자료9"]}
+    res = fact_audit.audit(v, _P)
+    assert res["mismatch_n"] == 0, res["mismatch_detail"]
+    assert res["derived_n"] >= 1, "ERA 를 재계산으로 인정해야 한다"
+
+
+def test_a_wrong_era_is_still_caught():
+    """반대 위험 — 계산이 틀린 ERA 는 잡아야 한다.
+
+    ⚠️ 원문에 ERA 가 **있을 때만** "불일치"라고 말할 수 있다. 없으면
+       `not_found`(검증 못 했다)가 옳다 — 그것이 이 층의 설계다.
+    """
+    v = {"근거": ["홈 불펜 최근3경기 8.0이닝 6실점 ERA 19.9 — 자료9"]}
+    assert fact_audit.audit(v, _P)["mismatch_n"] >= 1
+
+
+def test_b_bullpen_numbers_are_not_compared_against_starter_numbers():
+    """(b) 불펜 이닝을 자료4 선발 이닝과 대조하지 않는다."""
+    v = {"근거": ["홈 불펜 최근3경기 8.0이닝 6실점 — 자료9"]}
+    res = fact_audit.audit(v, _P)
+    assert res["mismatch_n"] == 0, res["mismatch_detail"]
+
+
+def test_b_relief_is_not_a_bullpen_cue():
+    """`구원` 은 자료4(구원등판)·자료10 얘기다 — 자료9 로 좁히면 오탐이 난다."""
+    assert fact_audit.claim_scope("구원 3경기 p50 2.0이닝", 14) != "bullpen"
+    assert fact_audit.claim_scope("홈 불펜 최근3경기 8.0이닝", 12) == "bullpen"
+
+
+def test_b_scope_is_decided_per_number_not_per_line():
+    """한 줄에 선발과 불펜이 섞여 있다 — 숫자마다 가장 가까운 단서로 가른다."""
+    line = "홈 선발 6.0이닝 소화 · 원정 불펜 8.0이닝 부담"
+    claims = {c["value"]: c["scope"] for c in fact_audit.extract_claims({"근거": [line]})}
+    assert claims[6.0] == "starter"
+    assert claims[8.0] == "bullpen"
+
+
+def test_c_rate_denominator_is_not_an_innings_claim():
+    """(c) "9이닝 4.4볼넷" 의 9 는 BB/9 의 분모다."""
+    line = "홈 선발 최근 5경기 5.0이닝 2.4실점·9이닝 4.4볼넷 — 자료4"
+    vals = [c["value"] for c in fact_audit.extract_claims({"근거": [line]})
+            if c["unit"] == "ip"]
+    assert 9.0 not in vals
+    assert 5.0 in vals
+
+
+def test_c_projection_is_not_a_citation():
+    """전망은 인용이 아니다 — "6이닝↑ 소화 부담" 은 원문에 없어야 정상이다."""
+    v = {"근거": ["홈 불펜 6이닝↑ 소화 부담(자료9)"]}
+    assert fact_audit.audit(v, _P)["mismatch_n"] == 0
+
+
+def test_sample_size_reads_starts_too():
+    """"최근 3선발 21이닝" 은 3등판 합계다 — 표본수를 읽어야 재계산이 된다."""
+    assert fact_audit.sample_n("원정 선발 최근 3선발 21이닝 3실점") == 3

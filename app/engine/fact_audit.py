@@ -35,8 +35,12 @@ UNIT_PATTERNS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     (r"(\d+(?:\.\d+)?)\s*이닝", "ip",
      ("innings", "starter_ip", "이닝", "최장", "p25", "p50", "p75",
       "다음등판_평균이닝")),
+    # ⚠️ [2026-09-05] `실점`·`경기당실점` 은 **자료9(불펜)의 실제 키**다.
+    #    목록에 없어 불펜 실점이 감시에 통째로 안 보였다 — 실판정 20건에
+    #    걸어보고 알았다(불펜 블록의 숫자 키를 세어 확인).
     (r"(\d+(?:\.\d+)?)\s*실점", "r",
-     ("r", "starter_r", "opp_runs", "runs_allowed_l3", "다음등판_평균실점")),
+     ("r", "starter_r", "opp_runs", "runs_allowed_l3", "다음등판_평균실점",
+      "실점", "경기당실점")),
     (r"(\d+(?:\.\d+)?)\s*자책", "er", ("er", "자책")),
     (r"ERA\s*(?:환산\s*)?(?:약\s*)?(\d+(?:\.\d+)?)", "era", ("ERA", "era")),
     (r"WHIP\s*(\d+(?:\.\d+)?)", "whip", ("WHIP", "whip")),
@@ -101,7 +105,97 @@ def same_number(claimed: float, source: float, unit: str, tol: float) -> bool:
 
 
 #: "최근 4경기" · "3등판" — 표본 크기를 명시한 표현.
-SAMPLE_N_RE = re.compile(r"(\d+)\s*(?:경기|등판)")
+#  ⚠️ [2026-09-05] `선발` 이 빠져 있었다. "최근 3선발 21이닝 3실점 26삼진" 은
+#     3등판 **합계**인데 표본수를 못 읽어 재계산을 못 했고, 합계가 개별 등판
+#     이닝과 대조돼 환각으로 찍혔다 (실측 game=2882, 2건).
+SAMPLE_N_RE = re.compile(r"(\d+)\s*(?:경기|등판|선발)")
+
+#: 🔴 (c) [2026-09-05] **비율의 분모는 값이 아니다.**
+#   "5.0이닝 2.4실점·9이닝 4.4볼넷" 의 `9이닝` 은 BB/9 의 분모이지 "9이닝을
+#   던졌다"는 주장이 아니다. 감시가 그것을 이닝 주장으로 읽어 원문의 11.0 과
+#   대조했다 (실측 game=1714, `ip 주장 9.0 vs 원문 11.0`).
+#   ⚠️ 좁게 잡는다 — **정확히 9이닝**이고 **바로 뒤에 다른 지표가 붙을 때만**
+#      분모로 본다. 그래서 완투(9이닝 1실점)도 걸러지지만, 감시는 놓치는 쪽이
+#      틀리는 쪽보다 낫다.
+_RATE_DENOM = re.compile(r"^\s*\d+(?:\.\d+)?\s*(?:실점|자책|볼넷|삼진|안타|홈런)")
+
+#: 🔴 [2026-09-05] **전망은 인용이 아니다.** "홈 불펜 6이닝↑ 소화 부담" 의 6 은
+#   "6이닝을 던졌다"가 아니라 "6이닝 이상 던져야 할 수도 있다"는 예상이다.
+#   원문에 없는 것이 당연하다 — 감시가 이것을 환각으로 찍었다(실측 game=2888).
+#   ⚠️ **화살표·부호만** 본다. `미만`·`이상` 까지 넣었더니 변수의 조건
+#      ("원정 선발 3이닝 미만 조기 강판 … 근거 자료10 최장 3.0이닝")에서
+#      3이닝이 빠져 자료10 검증이 깨졌다 — 기존 계약 테스트가 잡았다.
+#      그 값은 자료10 에 실재하므로 검증 대상이 맞다. 측정한 것만 넣는다.
+_THRESHOLD = re.compile(r"^\s*(?:↑|↓|\+)")
+
+
+def is_rate_denominator(text: str, value: float, end: int) -> bool:
+    return abs(value - 9.0) < 1e-9 and bool(_RATE_DENOM.match(text[end:]))
+
+
+def is_threshold(text: str, end: int) -> bool:
+    """관측치가 아니라 문턱·전망을 가리키는 수인가."""
+    return bool(_THRESHOLD.match(text[end:]))
+
+
+#: 🔴 (b) [2026-09-05] **선발과 불펜을 한 풀에 섞지 않는다.**
+#   프롬프트는 자료를 번호로 나눈다 — `4.` 선발 최근 등판, `9.` 불펜 최근 폼.
+#   종전에는 둘의 이닝·실점이 같은 단위 키로 수집돼 **서로 대조됐다**:
+#   "원정 불펜 최근 3경기 0.67실점/11이닝(자료9)" 의 11이닝이 자료4 의 선발
+#   이닝과 비교됐다 (실측 game=1712 `ip 주장 5.8 vs 원문 6.0`, game=3203).
+_BULLPEN_NO = 9
+#: ⚠️ **`구원` 은 불펜 단서가 아니다.** 구원 등판 기록은 자료4(`구원등판`)와
+#   자료10(이닝분포)에 있다 — 오늘 선발이 최근에 구원으로 나왔다는 뜻이기
+#   때문이다. 단서로 넣었더니 "구원 3경기 p50 2.0이닝(근거 10)" 같은 자료10
+#   인용이 자료9 에서 검색돼 오탐 4건이 새로 생겼다(실판정 20건 실측).
+_BULLPEN_WORDS = ("불펜", "자료9")
+
+
+def material_block(prompt: str, n: int) -> str:
+    """프롬프트의 `N. …` 자료 블록. 못 찾으면 빈 문자열 — 추측하지 않는다."""
+    m = re.search(rf"(?m)^{n}\.\s", prompt)
+    if not m:
+        return ""
+    tail = prompt[m.end():]
+    nxt = re.search(r"(?m)^\d+\.\s", tail)
+    return tail[: nxt.start()] if nxt else tail
+
+
+#: 선발 쪽 단서. 불펜 단서와 **가까운 쪽**이 이긴다.
+_STARTER_WORDS = ("선발", "등판", "자료4")
+
+
+def claim_scope(text: str, at: int) -> str | None:
+    """이 **숫자**가 어느 자료 얘기인가. 모르면 None — 범위를 좁히지 않는다.
+
+    🔴 [2026-09-05] 종전에는 **줄 단위**로 판단했다. 그런데 한 근거 줄에는
+       선발과 불펜 숫자가 섞여 있다:
+         "선발 이닝 소화력(5.8이닝) … 불펜은 원정 우위"
+       줄에 "불펜"이 한 번 나왔다고 그 줄의 모든 숫자를 불펜 블록에서만
+       찾으면, 선발 숫자가 통째로 `not_found` 가 된다.
+       실측: 실판정 20건에 걸어보니 검증 184건 → 137건, 불일치 3건 → 12건으로
+       **오히려 나빠졌다.** 그래서 `claim_subject` 와 같은 방식으로 —
+       **그 숫자 바로 앞의 가장 가까운 단서**로 가른다.
+    """
+    best, kind = -1, None
+    for words, label in ((_BULLPEN_WORDS, "bullpen"), (_STARTER_WORDS, "starter")):
+        for w in words:
+            i = text.rfind(w, 0, at)
+            if i > best:
+                best, kind = i, label
+    return kind
+
+
+def scope_text(prompt: str, scope: str | None) -> str:
+    """그 자료의 원문. 불펜만 좁힌다.
+
+    ⚠️ 선발·불명은 **좁히지 않는다.** 좁히면 못 찾는 값이 늘어 오탐이 된다.
+       감시는 놓치는 쪽이 틀리는 쪽보다 낫다 — 이 층의 최대 리스크는 오탐이다.
+    """
+    if scope != "bullpen":
+        return prompt
+    return material_block(prompt, _BULLPEN_NO) or prompt
+
 
 #: 주체 귀속 — 이 말이 있으면 그쪽 진영의 배열만 본다.
 SUBJECT_WORDS = {"home": ("home", "홈", "홈팀"), "away": ("away", "원정", "원정팀")}
@@ -191,9 +285,14 @@ def extract_claims(verdict: dict, names: dict[str, str] | None = None) -> list[d
                         val = float(m.group(1))
                     except (TypeError, ValueError):
                         continue
+                    if unit == "ip" and is_rate_denominator(s, val, m.end()):
+                        continue
+                    if is_threshold(s, m.end()):
+                        continue
                     out.append({"text": s[:200], "unit": unit, "value": val,
                                 "derived": any(k in s for k in DERIVED_MARKERS),
                                 "subject": claim_subject(s, m.start(), names),
+                                "scope": claim_scope(s, m.start()),
                                 "n": sample_n(s)})
     return out
 
@@ -284,6 +383,27 @@ def _recompute_hits(val: float, vals: list[float], n: int | None,
     return False
 
 
+#: 🔴 (a) [2026-09-05] **판정이 한 정확한 산수를 감시가 못 따라갔다.**
+#   근거에 "최근3경기 8.0이닝 6실점 ERA 6.75" 라고 썼다. 6×9÷8 = 6.75 로
+#   **판정이 맞다.** 그런데 원문에 그 ERA 가 없으니 감시가 환각으로 찍었다
+#   (실측 game=1713, `era 주장 6.75 vs 원문 15.0` — 2건).
+#   ERA 는 이닝과 실점에서 나오는 값이다. 같은 문장에 재료가 있으면 계산해
+#   본다 — 원문에 그 숫자가 없다는 것은 환각의 증거가 아니다.
+def era_recomputed(text: str, claimed: float, tolerance: float) -> bool:
+    """같은 문장의 (이닝, 실점) 조합으로 ERA 를 복원할 수 있는가."""
+    ips = [float(m.group(1)) for m in re.finditer(UNIT_PATTERNS[0][0], text)]
+    rs = [float(m.group(1)) for m in re.finditer(UNIT_PATTERNS[1][0], text)]
+    rs += [float(m.group(1)) for m in re.finditer(UNIT_PATTERNS[2][0], text)]
+    for ip in ips:
+        for r in rs:
+            for reading in readings(ip, "ip"):
+                if reading <= 0:
+                    continue
+                if abs(r * 9.0 / reading - claimed) <= tolerance:
+                    return True
+    return False
+
+
 def classify(claim: dict, prompt: str, tolerance: float) -> tuple[str, dict | None]:
     """한 인용의 판정. 반환 (verified|derived|not_found|mismatch, 상세|None).
 
@@ -298,11 +418,16 @@ def classify(claim: dict, prompt: str, tolerance: float) -> tuple[str, dict | No
     """
     unit = claim["unit"]
     val = round(float(claim["value"]), 3)
+    # (b) 이 **숫자**가 불펜 얘기면 자료9 안에서만 찾는다.
+    prompt = scope_text(prompt, claim.get("scope"))
     pool = numbers_in_prompt(prompt, unit)
-    if not pool:
-        return "not_found", None
     if any(same_number(val, x, unit, tolerance) for x in pool):
         return "verified", None
+    # (a) ERA 는 이닝·실점에서 나온다. 같은 문장에 재료가 있으면 복원해 본다.
+    if unit == "era" and era_recomputed(claim.get("text") or "", val, tolerance):
+        return "derived", None
+    if not pool:
+        return "not_found", None
 
     # 주체가 특정되면 **그 진영의 배열만** 본다.
     # ⚠️ 모호함은 진영이 **둘 다 있을 때만** 생긴다. 원문에 진영 구조가 아예
