@@ -443,8 +443,19 @@ async def judge_matchup(jg: dict, redis, date: str, *,
         jg["judgement_void"] = True
         return None
     from app.engine.credit_guard import abort_if_credit_gone, trip_credit
+    from app.engine.team_form import _free_primary
 
-    abort_if_credit_gone(f"matchup:{jg.get('away')}@{jg.get('home')}")
+    # 🔴 [P0 2026-09-06] **Anthropic 차단기는 Anthropic 경로에만 걸린다.**
+    #    종전에는 경로를 보기 전에 무조건 불렀다. 그래서 축구 실험
+    #    (`soccer_trial`)이 Anthropic 400 을 맞고 공용 차단기를 내리자,
+    #    무료 사슬(Gemini)로 도는 야구 판정이 **호출도 못 해보고** 죽었다.
+    #      실사고 2026-09-05~06: MLB 발송 0/85 (0%). 오류 문자열이 구조를
+    #      그대로 보여준다 —
+    #      "잔액 소진으로 중단 (matchup:SF@NYM): soccer-trial/claude-sonnet-5"
+    #      앞은 야구 호출부, 뒤는 축구가 남긴 사유다.
+    #    무료가 주전이면 Anthropic 잔액은 이 판정과 무관하다.
+    if not _free_primary("matchup"):
+        abort_if_credit_gone(f"matchup:{jg.get('away')}@{jg.get('home')}")
     settings = get_settings()
     is_mock = settings.mock_judge if mock is None else mock
     home, away = jg.get("home") or "", jg.get("away") or ""

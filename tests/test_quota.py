@@ -107,7 +107,7 @@ async def test_matchup_quota_stops_analysis_instead_of_faking_a_card(
     assert sent == ["anthropic(matchup)"]
 
 
-async def test_credit_breaker_stops_further_matchup_calls(redis_client):
+async def test_credit_breaker_stops_further_matchup_calls(redis_client, monkeypatch):
     """첫 소진에서 차단기가 내려가면, 남은 경기는 호출 없이 즉시 중단된다.
 
     재시도는 일시 장애용이지 잔액 0을 위한 것이 아니다 —
@@ -117,13 +117,25 @@ async def test_credit_breaker_stops_further_matchup_calls(redis_client):
     `abort_if_credit_gone`은 `judge_matchup` 진입부에 있어 **목 모드보다
     먼저** 걸린다 — 그래서 이 테스트가 목 판정에 가려지지 않는다.
     외부로 나가지 않는다는 것은 conftest의 HTTP 차단이 함께 보증한다.
+
+    ⚠️ [2026-09-06] **유료가 주전일 때의 이야기다.** 무료 사슬이 주전이면
+       Anthropic 잔액은 이 판정과 무관하므로 막지 않는다 — 그것을 막았다가
+       MLB 발송이 0/85 였다(`tests/test_credit_guard_scope.py`).
+       그래서 이 테스트는 경로를 **명시적으로 유료로 고정**한다.
     """
+    import app.engine.team_form as tf
+
     jg = {"game_id": 1, "sport": "mlb", "status": "scheduled",
           "home": "NYY", "away": "BOS"}
     try:
+        monkeypatch.setattr(tf, "_free_primary", lambda role: False)  # 유료 주전
         credit_guard.trip_credit("matchup:BOS@NYY", RuntimeError("credit balance is too low"))
         with pytest.raises(ApiQuotaError):
             await matchup_mod.judge_matchup(jg, redis_client, DATE)
+
+        # 무료가 주전이면 같은 차단기로 막지 않는다.
+        monkeypatch.setattr(tf, "_free_primary", lambda role: True)
+        await matchup_mod.judge_matchup(dict(jg), redis_client, DATE)
     finally:
         credit_guard.reset()   # 전역 차단기 — 반드시 되돌린다
 

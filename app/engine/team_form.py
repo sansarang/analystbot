@@ -427,7 +427,10 @@ async def analyze_team(redis, league: str, team: str, date: str,
 
     from app.engine.credit_guard import abort_if_credit_gone, trip_credit
 
-    abort_if_credit_gone(f"form:{league}:{team}")
+    # [P0 2026-09-06] 무료 사슬이 주전이면 Anthropic 잔액과 무관하다.
+    #   같은 사고로 팀 폼도 0/30 이었다. → matchup.py 의 같은 자리 주석 참조.
+    if not _free_primary(FORM_ROLE):
+        abort_if_credit_gone(f"form:{league}:{team}")
     news = news if news is not None else []
     model = settings.team_form_model
     prompt = fill(
