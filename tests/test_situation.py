@@ -313,3 +313,60 @@ def test_xsearch_prompt_leads_with_situation_and_excludes_recaps():
     assert "팀의 공기" in PROMPT
     assert "경기 전 것만" in PROMPT
     assert "결과 회고" in PROMPT
+
+
+# ── [2026-09-06] x_search 가 가져온 것이 판정에 도달하는가 ──────────
+@pytest.mark.parametrize("title,kind", [
+    # 전부 운영 x_search 실수집분(2026-09-06 MLB).
+    ("Athletics roster moves announced", "roster_move"),
+    ("Dodgers notes: Bobby Miller activated, Wrobleski bulk role", "roster_move"),
+    ("Dodgers activate Bobby Miller from IL, option Kyle Hurt, DFA Alek Thomas",
+     "roster_move"),
+])
+def test_club_account_roster_wording_is_caught(title, kind):
+    """🔴 구단 공식 계정이 쓰는 말을 못 잡았다.
+
+    `@Athletics` 의 "roster moves announced" 가 0건이었고, 같은 유형인 다저스
+    건은 "option Kyle Hurt" 의 `option` 이 **우연히** 걸려서 잡혔다.
+    운에 기대는 수집은 수집이 아니다.
+    """
+    tags = situation.classify(
+        [{"title": title, "url": "https://x.com/a/1",
+          "source_url": "https://x.com"}], "mlb")
+    assert any(t["유형"] == kind for t in tags), (title, tags)
+
+
+def test_game_recap_is_still_not_a_roster_move():
+    """반대 위험 — 경기 결과에 'beat' 가 있다고 로스터로 읽으면 안 된다."""
+    assert situation.classify(
+        [{"title": "Mariners beat Athletics 7-6", "url": "https://x",
+          "source_url": "https://espn.com"}], "mlb") == []
+
+
+@pytest.mark.asyncio
+async def test_new_articles_invalidate_the_form_cache():
+    """🔴 팀 폼이 캐시라 x_search 가 넣은 새 기사를 읽지 못했다(실측).
+
+    자료2 뉴스태그 경로가 통째로 끊겨 있었다 — `Athletics roster moves
+    announced` 가 판정 프롬프트에 없었다. 새 기사가 들어온 팀만 지운다.
+    """
+    from app.collectors.news_rss import invalidate_form_cache
+    from app.engine.team_form import form_key
+
+    deleted = []
+
+    class _R:
+        async def delete(self, key):
+            deleted.append(key)
+            return 1
+
+    jg = {"sport": "mlb", "game_id": 1, "home": "Seattle Mariners",
+          "away": "Athletics", "_form_date": "2026-09-05"}
+    n = await invalidate_form_cache(_R(), jg, ["away"])
+    assert n == 1
+    assert deleted == [form_key("mlb", "Athletics", "2026-09-05")]
+
+    # 새 기사가 없으면 아무것도 지우지 않는다 — 매번 지우면 캐시가 없는 것과 같다.
+    deleted.clear()
+    assert await invalidate_form_cache(_R(), jg, []) == 0
+    assert deleted == []

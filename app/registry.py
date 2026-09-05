@@ -240,7 +240,8 @@ _SIT_EN = {
     "ceremony": ("jersey retirement", "hall of fame", "tribute", "first pitch"),
     "manager": ("manager fired", "manager resigns", "interim manager"),
     "coaching": ("coaching staff", "hitting coach fired"),
-    "trade": ("traded", "designated for assignment", "DFA", "waivers", "released"),
+    "trade": ("traded", "designated for assignment", "DFA", "waivers",
+              "released", "dfa'd", "outrighted", "acquired", "trade"),
     "contract": ("extension", "free agent deal", "signs"),
     "streak": ("losing streak", "winning streak", "skid"),
     "extra_practice": ("extra batting practice", "team meeting", "players-only"),
@@ -249,7 +250,15 @@ _SIT_EN = {
     "travel": ("long road trip", "no off day", "getaway day"),
     "conflict": ("benches clear", "hit by pitch", "retaliation", "brawl"),
     "captain": ("named captain", "stripped of captaincy"),
-    "roster_move": ("call-up", "optioned", "recalled", "sent down"),
+    # ⚠️ [2026-09-06 실측] `@Athletics` 공식 계정의 "Athletics roster moves
+    #    announced" 를 못 잡았다. 같은 유형인 다저스 건은 "option Kyle Hurt" 의
+    #    `option` 이 우연히 걸려서 잡혔다 — 운이었다.
+    #    구단 계정이 실제로 쓰는 말을 넣는다.
+    "roster_move": ("call-up", "optioned", "recalled", "sent down",
+                    "roster move", "activated", "activate", "reinstated",
+                    "injured list", " il ", "placed on the il", "promoted",
+                    "claimed off waivers", "selected the contract",
+                    "60-day", "10-day", "rehab assignment"),
 }
 _SIT_SOCCER = {
     "retirement": ("testimonial", "은퇴 경기", "farewell match"),

@@ -2539,6 +2539,8 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
                                _g.get("game_id"), exc)
                 continue
             _research = _g.setdefault("research", {})
+            _g["_form_date"] = date          # 폼 캐시 키에 쓰는 날짜
+            _before = {sd: len(_tbl.get(sd) or []) for sd in ("home", "away")}
             # [AI 뉴스층 2026-09-06] **판별은 항상 한다. 호출만 조건부다.**
             #   판별 로그가 없으면 "발동 안 함"과 "판별조차 안 함"을 구분할 수
             #   없다 — 그 구분이 없어서 어제 x_search 배선 여부를 로그로
@@ -2548,6 +2550,11 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
             except Exception as exc:
                 logger.warning("[xsearch] %s 층 실패 — RSS 만으로 진행: %s",
                                _g.get("game_id"), exc)
+            # 🔴 AI 층(x_search)이 **새 기사를 넣은 팀**은 폼 캐시를 지운다.
+            #    안 지우면 폼이 옛 캐시를 그대로 써서 새 헤드라인을 못 읽고,
+            #    자료2 뉴스태그 경로가 끊긴다(실측 2026-09-06).
+            _grew = [sd for sd in ("home", "away")
+                     if len(_tbl.get(sd) or []) > _before.get(sd, 0)]
             n_news += len(_mnews_rss(_research, _g, _tbl))
             # [상황 변수 2026-09-06] Gemini 검색 그라운딩 — 경기당 1회.
             #   RSS 를 **덮지 않고 덧붙인다.** 실패해도 RSS 만으로 계속 간다.
@@ -2556,10 +2563,21 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
                 from app.collectors.grounding import merge_into_research as _gr_merge
 
                 _gr = await _gr_fetch(_g, date, r)
-                n_ground += _gr_merge(_research, _gr)
+                _added = _gr_merge(_research, _gr)
+                n_ground += _added
+                if _added:
+                    _grew = sorted(set(_grew) | set(_gr.keys()))
             except Exception as exc:
                 logger.warning("[grounding] game=%s 실패 — RSS 만으로 진행: %s",
                                _g.get("game_id"), exc)
+            if _grew:
+                from app.collectors.news_rss import invalidate_form_cache
+
+                try:
+                    await invalidate_form_cache(r, _g, _grew)
+                except Exception as exc:
+                    logger.warning("[news_rss] 폼 캐시 무효화 실패 game=%s: %s",
+                                   _g.get("game_id"), exc)
         logger.info("[pipeline] %s RSS 기사 주입 — %d개 사이드 채움 "
                     "(%d경기 · 그라운딩 추가 %d건)",
                     sport, n_news, len(games), n_ground)

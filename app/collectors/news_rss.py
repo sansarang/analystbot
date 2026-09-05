@@ -331,6 +331,40 @@ async def by_side(jg: dict, redis=None, *, limit: int = 12) -> dict[str, list[di
     return out
 
 
+async def invalidate_form_cache(redis, jg: dict, sides: list[str]) -> int:
+    """새 기사가 들어온 팀의 **팀 폼 캐시를 지운다.** 반환 지운 수.
+
+    🔴 [2026-09-06] 팀 폼은 `form:{sport}:{team}:{date}` 로 캐시된다. 그래서
+       재실행에서 x_search·그라운딩이 새 기사를 넣어도 **폼은 옛 캐시를 그대로
+       쓰고 새 헤드라인을 읽지 않았다** — 자료2 뉴스태그 경로가 통째로 끊겨
+       있었다(실측 2026-09-06: x_search 가 가져온 `Athletics roster moves
+       announced`·`Lazaro Montes 부상`이 판정 프롬프트에 없었다).
+
+    ⚠️ **새 기사가 실제로 들어온 팀만** 지운다. 매번 지우면 슬레이트마다 폼을
+       다시 계산하게 되고, 그건 캐시를 없앤 것과 같다.
+    """
+    from app.engine.team_form import form_key
+
+    if redis is None or not sides:
+        return 0
+    sport = (jg.get("sport") or "").lower()
+    date = jg.get("_form_date") or jg.get("date") or ""
+    n = 0
+    for side in sides:
+        team = jg.get(side) or ""
+        if not team or not date:
+            continue
+        try:
+            n += int(await redis.delete(form_key(sport, team, date)) or 0)
+        except Exception as exc:
+            logger.debug("[news_rss] 폼 캐시 무효화 실패 %s: %s", team, exc)
+    if n:
+        logger.info("[news_rss] %s game=%s 새 기사로 팀 폼 캐시 %d건 무효화 "
+                    "— 폼이 새 헤드라인을 다시 읽는다",
+                    sport, jg.get("game_id"), n)
+    return n
+
+
 def merge_into_research(research: dict, jg: dict, table: dict) -> list[str]:
     """`{side}_news` 를 채운다. 반환은 채운 키 목록.
 
