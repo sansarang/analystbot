@@ -168,6 +168,15 @@ class Settings(BaseSettings):
     #      수용 실측(2026-09-05): nvidia·groq·openrouter 전부 200.
     llm_seed: int = Field(default=20260905, validation_alias=AliasChoices(
         "LLM_SEED", "llm_seed"))
+    # [상황 변수 2026-09-06] Gemini 검색 그라운딩 — 구글 검색 전체를 눈으로 쓴다.
+    #   경기당 1회 고정이고, 하루 총량을 이 캡이 막는다.
+    #   기본 60: KBO 5 + NPB 6 + MLB 15 = 26경기 × 1회에 재판정 여유를 더한 값.
+    #   ⚠️ Redis 로 센다. 셀 수 없으면(Redis 없음) **부르지 않는다** —
+    #      캡 없는 AI 호출을 만들지 않는다.
+    grounding_enabled: bool = Field(default=True, validation_alias=AliasChoices(
+        "GROUNDING_ENABLED", "grounding_enabled"))
+    grounding_daily_cap: int = Field(default=60, validation_alias=AliasChoices(
+        "GROUNDING_DAILY_CAP", "grounding_daily_cap"))
 
     # ── [C1 불펜 가용성] 최근 3일 소모 임계 (2026-09-04) ──────────────
     #: ⚠️ **투구수가 DB 에 없다.** `pitcher_appearances` 는 `batters`(TBF) 만

@@ -2527,7 +2527,7 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
         #    `뉴스태그` 가 비어 자료2 가 "없음"으로 나갔다.
         #    ⚠️ 새로 긁지 않는다 — `for_game` 캐시를 그대로 탄다.
         #    ⚠️ 한 경기 실패가 슬레이트를 막지 않는다.
-        n_news = 0
+        n_news = n_ground = 0
         from app.collectors.news_rss import by_side as _news_by_side
         from app.collectors.news_rss import merge_into_research as _mnews_rss
 
@@ -2549,8 +2549,20 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
                 logger.warning("[xsearch] %s 층 실패 — RSS 만으로 진행: %s",
                                _g.get("game_id"), exc)
             n_news += len(_mnews_rss(_research, _g, _tbl))
-        logger.info("[pipeline] %s RSS 기사 주입 — %d개 사이드 채움 (%d경기)",
-                    sport, n_news, len(games))
+            # [상황 변수 2026-09-06] Gemini 검색 그라운딩 — 경기당 1회.
+            #   RSS 를 **덮지 않고 덧붙인다.** 실패해도 RSS 만으로 계속 간다.
+            try:
+                from app.collectors.grounding import fetch_for_game as _gr_fetch
+                from app.collectors.grounding import merge_into_research as _gr_merge
+
+                _gr = await _gr_fetch(_g, date, r)
+                n_ground += _gr_merge(_research, _gr)
+            except Exception as exc:
+                logger.warning("[grounding] game=%s 실패 — RSS 만으로 진행: %s",
+                               _g.get("game_id"), exc)
+        logger.info("[pipeline] %s RSS 기사 주입 — %d개 사이드 채움 "
+                    "(%d경기 · 그라운딩 추가 %d건)",
+                    sport, n_news, len(games), n_ground)
         forms = await analyze_games(r, sport, date, games)
     finally:
         if close:

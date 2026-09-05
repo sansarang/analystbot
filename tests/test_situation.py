@@ -199,3 +199,60 @@ def test_situation_query_has_no_hardcoded_site():
     q = situation_query("kbo", "SSG Landers")
     assert q and "site:" not in q and "http" not in q
     assert situation_query("handball", "X") == ""
+
+
+# ── Gemini 검색 그라운딩 ────────────────────────────────────────────
+def test_grounding_query_is_sport_driven_and_site_free():
+    from app.collectors.grounding import build_query
+
+    q = build_query("kbo", "SSG Landers")
+    assert "은퇴식" in q and "검색" in q
+    assert "site:" not in q and "http" not in q
+    assert build_query("handball", "X") == ""
+
+
+def test_grounding_drops_non_news_hosts():
+    """백과·정적 문서는 오늘의 공기가 아니다."""
+    from app.collectors import grounding
+
+    assert any("namu.wiki" in h for h in grounding._NON_NEWS_HOSTS)
+    assert any("wikipedia.org" in h for h in grounding._NON_NEWS_HOSTS)
+
+
+def test_grounding_reads_publish_time_from_page():
+    """🔴 그라운딩 결과에는 발행일이 없다 — 페이지에서 직접 읽어야
+       지난 시즌 기사가 오늘 태그로 붙지 않는다(실측 2026-09-06)."""
+    from app.collectors.grounding import _published_at
+
+    assert _published_at(
+        '<meta property="article:published_time" content="2026-09-06T10:00:00+09:00">')
+    assert _published_at('{"datePublished":"2026-09-05T22:00:00Z"}')
+    assert _published_at("<html>없음</html>") is None
+
+
+def test_grounding_unescapes_entities():
+    """`&quot;` 가 남으면 키워드 매칭이 어긋난다."""
+    from app.collectors.grounding import _unescape
+
+    assert _unescape("&quot;세상에&quot;") == '"세상에"'
+
+
+def test_grounding_needs_redis_to_count_cap():
+    """캡 없는 AI 호출을 만들지 않는다 — 셀 수 없으면 부르지 않는다."""
+    import asyncio
+
+    from app.collectors.grounding import _cap_ok, _once_ok
+
+    assert asyncio.run(_cap_ok(None, "2026-09-06")) is False
+    assert asyncio.run(_once_ok(None, "kbo", 1, "2026-09-06")) is False
+
+
+def test_grounding_merge_does_not_erase_rss():
+    """덧붙이지 덮지 않는다."""
+    from app.collectors.grounding import merge_into_research
+
+    research = {"home_news": [{"title": "RSS 기사", "url": "https://a"}]}
+    merge_into_research(research, {"home": [{"title": "그라운딩 기사",
+                                             "url": "https://b"}]})
+    titles = [x["title"] for x in research["home_news"]]
+    assert "RSS 기사" in titles and "그라운딩 기사" in titles
