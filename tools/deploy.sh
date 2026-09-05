@@ -68,6 +68,27 @@ deploy_one() {
   echo "▶ $svc 배포 ($cmd)"
   ( cd "$path" && railway up --project "$PROJ" --environment "$ENVIRON" \
       --service "$svc" --detach )
+  DEPLOYED="$DEPLOYED $svc"
+}
+
+# 🔴 [2026-09-05] **"배포 요청 완료"는 배포된 것이 아니다.** 종전에는 요청만
+#    보내고 "대시보드나 /health 로 확인하라"고 사람에게 떠넘겼다.
+#    실사고: 요청은 갔는데 마지막 SUCCESS 는 하루 전이었다 — 아무도 몰랐다.
+#    이제 기계가 확인한다. 사람의 다짐이 아니라 종료 코드다.
+wait_success() {
+  local svc="$1" st="" i
+  for i in $(seq 1 40); do
+    st=$(railway deployment list --project "$PROJ" --environment "$ENVIRON" \
+         --service "$svc" --json 2>/dev/null \
+         | python3 -c 'import sys,json;print(json.load(sys.stdin)[0]["status"])' 2>/dev/null)
+    case "$st" in
+      SUCCESS) echo "  ✅ $svc SUCCESS ($(date '+%H:%M:%S'))"; return 0 ;;
+      FAILED|CRASHED) echo "  🔴 $svc $st — 빌드 로그를 확인하라"; return 1 ;;
+    esac
+    sleep 12
+  done
+  echo "  🔴 $svc 8분 안에 SUCCESS 가 안 떴다 (마지막 상태: ${st:-unknown})"
+  return 1
 }
 
 # ⚠️ **스케줄러를 먼저** 배포한다 — 기동 시 DB 스키마를 적용하므로,
@@ -82,4 +103,11 @@ case "$TARGET" in
   *) echo "사용: $0 [bot|scheduler|crawler|all]"; exit 1 ;;
 esac
 
-echo "✅ 배포 요청 완료 — 상태는 Railway 대시보드나 /health 로 확인하라"
+echo "▶ SUCCESS 확인 중 (요청 ≠ 배포)..."
+RC=0
+for svc in $DEPLOYED; do wait_success "$svc" || RC=1; done
+if [ $RC -ne 0 ]; then
+  echo "❌ 배포가 SUCCESS 에 도달하지 못했다 — 서버는 옛 코드로 돌고 있다"
+  exit 1
+fi
+echo "✅ 배포 완료 — 커밋 ${SHA:0:7} 이 서버에서 돈다"
