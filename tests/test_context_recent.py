@@ -70,7 +70,9 @@ def _jg():
             "research": {
                 "home_usage": {"games": [{"date": "2026-09-03", "home": False}]},
                 "away_usage": {"games": [{"date": "2026-09-03", "home": True}]},
-                "weather": {"요약": "맑음 24도"},
+                # ⚠️ 실제 모양은 **문자열**이다 (weather.py:215 —
+                #    `research["weather"] = info["text"]`).
+                "weather": "기온 24도, 풍속 2.0m/s",
                 "home_pitcher": {"throws": "L"}}}
 
 
@@ -78,7 +80,10 @@ def test_build_collects_all_three_axes():
     out = build(_jg())
     assert out["home"]["연전"] == 2 and out["home"]["이동"] == "원정→홈"
     assert out["away"]["이동"] == "홈→원정"
-    assert out["날씨"] == {"요약": "맑음 24도"}
+    # [C2 2026-09-05] 날씨는 라벨+수치 블록이 됐다. 라벨은 새 임계가 아니라
+    #   `scoring._weather_factor` 의 계수에서 나온다.
+    assert out["날씨"]["수치"] == "기온 24도, 풍속 2.0m/s"
+    assert out["날씨"]["라벨"] in ("타자 유리", "투수 유리", "중립")
     assert out["선발손"] == {"home": "L"}
 
 
@@ -111,7 +116,8 @@ def test_material11_reaches_the_prompt_only_when_present():
     attach(jg)
     out = render_matchup_prompt(jg, boxes={}, news={}, prev=None)
     assert "11. 최근 맥락" in out
-    assert "원정→홈" in out and "맑음 24도" in out
+    assert "원정→홈" in out and "기온 24도" in out
+    assert "타자 유리" in out or "투수 유리" in out or "중립" in out
     assert "{{" not in out
 
 
@@ -151,3 +157,62 @@ def test_freeze_was_not_restarted_again():
     assert FREEZE_RESTART_IS_FINAL is True
     assert freeze_start("kbo") == "2026-09-04"
     assert "대원칙" in FREEZE_RESTART_REASON
+
+
+# ─────────────────── C2 확장 (2026-09-05) ───────────────────
+
+def test_away_streak_counts_until_the_first_home_game():
+    """연속 원정 차수. 🔴 못 읽으면 None — 0 과 다르다."""
+    from app.engine.context_recent import away_streak
+
+    assert away_streak([False, False, True]) == 2     # 최신순
+    assert away_streak([True, False]) == 0
+    assert away_streak([]) is None
+    assert away_streak([None]) is None
+
+
+def test_venue_change_says_none_when_it_cannot_know():
+    """🔴 `games` 에 구장이 없다. 아는 것만 말하고 모르면 None 이다."""
+    from app.engine.context_recent import venue_changed
+
+    # 어제 원정 → 오늘 홈: 구장이 바뀌었다(우리 구장으로 왔다)
+    assert venue_changed([{"home": False, "opponent": "NC"}], True) is True
+    # 어제 홈 → 오늘 홈: 안 바뀌었다
+    assert venue_changed([{"home": True}], True) is False
+    # 어제 원정 → 오늘 원정: **상대가 같은지 알 수 없다** → None
+    assert venue_changed([{"home": False, "opponent": "NC"}], False) is None
+    assert venue_changed([], True) is None
+
+
+def test_weather_label_comes_from_the_scoring_factor_not_new_thresholds():
+    """🔴 사본 금지 — 임계를 새로 만들지 않고 `_weather_factor` 를 읽는다."""
+    import inspect
+
+    from app.engine.context_recent import BATTER, PITCHER, weather_label
+    from app.engine import context_recent as cr
+
+    src = inspect.getsource(cr.weather_label)
+    assert "_weather_factor" in src
+    assert "20" not in src and "도" not in src, "임계를 손으로 적었다"
+
+    hot = weather_label({"weather": "기온 30도"})
+    cold = weather_label({"weather": "기온 10도"})
+    assert hot and hot[0] == BATTER and hot[1] > 1.0
+    assert cold and cold[0] == PITCHER and cold[1] < 1.0
+    # 계수를 못 내면 라벨을 붙이지 않는다
+    assert weather_label({"weather": "흐림"}) is None
+    assert weather_label({}) is None
+
+
+def test_extra_innings_is_absent_with_the_reason_recorded():
+    """🔴 이닝 수가 데이터에 없다 — 추정해 넣지 않았다는 사실을 코드가 말한다."""
+    import inspect
+
+    from app.engine import context_recent as cr
+
+    src = inspect.getsource(cr._side_block)
+    assert "연장" in src and "이닝 수가 없다" in src
+    out = cr.build({"sport": "kbo", "starts_at": "2026-09-05T09:30:00+00:00",
+                    "research": {"home_usage": {"games": [{"date": "2026-09-04",
+                                                           "home": True}]}}})
+    assert "연장" not in str(out)
