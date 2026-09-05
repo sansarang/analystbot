@@ -19,17 +19,17 @@ log_audit() { printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$AUDIT"; }
 #    워크플로(테스트 → 커밋 → 배포)의 배포가 매번 막혔다. 코드는 한 글자도
 #    바뀌지 않았는데 게이트가 "검증 안 됐다"고 한 것이다.
 #    막아야 하는 것은 **코드가 바뀐 것**이지 커밋이 생긴 것이 아니다.
-#      · ls-files -s : 추적 파일의 blob 해시 — 커밋해도 그대로다
-#      · diff        : 스테이지되지 않은 수정
-#      · ls-files -o : 미추적 파일 내용 (새 테스트를 안 돌리고 커밋하는 것 방지)
+#    ⚠️ blob 해시(ls-files -s)와 미추적 내용을 섞어도 안 된다 — 새 파일이
+#       커밋되며 **미추적→추적**으로 표현이 바뀌면 서명이 또 달라진다
+#       (실측 2026-09-06, 같은 사고를 두 번 겪었다).
+#       그래서 추적 여부와 무관하게 **파일 내용만** 해싱한다.
 worktree_sig() {
   cd "$REPO" || return 1
-  {
-    git ls-files -s 2>/dev/null
-    git diff 2>/dev/null
-    git ls-files -o --exclude-standard -z 2>/dev/null \
-      | xargs -0 -I{} shasum "{}" 2>/dev/null
-  } | shasum | cut -d' ' -f1
+  # 추적 여부와 **무관하게** 내용만 해싱한다.
+  #   `-c`(추적) + `-o`(미추적), `--exclude-standard`(gitignore 존중).
+  #   실측 0.15초 / 파일 전체. 게이트에서만 부르므로 충분하다.
+  git ls-files -c -o --exclude-standard -z 2>/dev/null \
+    | sort -z | xargs -0 shasum 2>/dev/null | shasum | cut -d' ' -f1
 }
 
 # 지금 KST 시각(HHMM, 10진수)

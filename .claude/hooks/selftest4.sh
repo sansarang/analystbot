@@ -40,7 +40,21 @@ cp "$BAK" README.md; rm -f "$BAK"
 if [ "$A" != "$D" ]; then PASS=$((PASS+1)); echo "  ✅ 추적 파일 수정 → 서명 변함"; \
    else FAIL=$((FAIL+1)); echo "  🔴 추적 파일 수정을 못 본다"; fi
 
-# ④ 원상 복구 확인
+# ④ 🔴 새 파일이 커밋되며 미추적→추적으로 바뀌어도 서명은 그대로여야 한다.
+#    같은 사고를 두 번 겪었다 — blob 해시와 미추적 내용을 섞어 해싱했더니
+#    표현이 바뀌면서 서명이 달라졌고, 배포가 또 막혔다.
+NEWF="docs/.newfile_probe.md"
+echo "새 파일 내용" > "$NEWF"
+F=$(worktree_sig)
+git add "$NEWF" >/dev/null 2>&1
+git commit -q -m "probe(자동): 새 파일 커밋 후 서명 확인" >/dev/null 2>&1
+G2=$(worktree_sig)
+git reset --soft HEAD~1 >/dev/null 2>&1
+git restore --staged "$NEWF" >/dev/null 2>&1
+rm -f "$NEWF"
+ok "$F" "$G2" "새 파일 커밋 후에도 서명 불변 (${G2:0:12}…)"
+
+# ⑤ 원상 복구 확인
 E=$(worktree_sig)
 ok "$A" "$E" "정리 후 원래 서명으로 복귀"
 
