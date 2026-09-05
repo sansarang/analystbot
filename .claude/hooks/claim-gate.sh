@@ -33,7 +33,14 @@ for i, r in enumerate(rows):
         if isinstance(c, str) or (isinstance(c, list) and any(
                 b.get("type") == "text" for b in c if isinstance(b, dict))):
             start = i
-text, ran_tests = [], False
+# 🔴 [2026-09-06] **파일을 고친 턴에만 본다.** 조사·보고만 한 턴에서
+#    "확인 완료" 같은 말에 헛울렸다 — 코드를 안 고쳤으면 돌릴 테스트도 없다.
+#    헛경보가 쌓이면 이 훅은 곧 꺼지고, 꺼진 훅은 없는 훅이다.
+EDIT_TOOLS = {"Edit", "Write", "NotebookEdit", "MultiEdit"}
+#: Bash 로 파일을 고치는 흔한 형태(이 저장소는 python 힙독 패치를 쓴다).
+WRITE_HINTS = ("> ", ">>", "sed -i", "tee ", "io.open(", "patch ")
+
+text, ran_tests, edited = [], False, False
 for r in rows[start:]:
     m = r.get("message") or {}
     for b in (m.get("content") or []) if isinstance(m.get("content"), list) else []:
@@ -42,18 +49,26 @@ for r in rows[start:]:
         if b.get("type") == "text":
             text.append(b.get("text") or "")
         if b.get("type") == "tool_use":
+            if b.get("name") in EDIT_TOOLS:
+                edited = True
             cmd = str((b.get("input") or {}).get("command") or "")
             if "pytest" in cmd:
                 ran_tests = True
-print(json.dumps({"text": "\n".join(text)[-4000:], "ran_tests": ran_tests},
-                 ensure_ascii=False))
+            if any(h in cmd for h in WRITE_HINTS):
+                edited = True
+print(json.dumps({"text": "\n".join(text)[-4000:], "ran_tests": ran_tests,
+                  "edited": edited}, ensure_ascii=False))
 PY
 )
 CLAIM=$(printf '%s' "$EV" | jq -r '.text' | grep -cE '완료(했|됐|입니다|\.|$)|끝냈|다 됐|해결했' || true)
 RAN=$(printf '%s' "$EV" | jq -r '.ran_tests')
 
+EDITED=$(printf '%s' "$EV" | jq -r '.edited')
+
 [ "${CLAIM:-0}" -eq 0 ] && exit 0
 [ "$RAN" = "true" ] && exit 0
+# 파일을 안 고친 턴은 통과 — 조사·보고만 한 것이다.
+[ "$EDITED" = "true" ] || exit 0
 
 # 문서·설정만 만진 턴은 테스트가 없을 수 있다 — 그래도 알린다(차단은 아님).
 log_audit "CLAIM-GATE 완료 주장에 테스트 실행 없음"

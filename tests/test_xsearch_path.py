@@ -35,6 +35,19 @@ class _Redis:
 
 # ─────────────────── 발동 판별 ───────────────────
 
+class _LegacyCfg:
+    """상황 상시를 끈 설정 — **종전 조건**(라인업 정찰)만 본다.
+
+    🔴 [2026-09-06] 기본값은 이제 `scout_xsearch_situation=True` 라 전 경기가
+       발동한다(사용자 지시: 경기가 아니라 변수를 서치한다). 종전 두 조건은
+       사라진 게 아니라 **상시가 꺼졌을 때의 폴백**이므로 여기서 계속 잠근다.
+    """
+
+    scout_xsearch_situation = False
+    scout_xsearch_rss_floor = 5
+    scout_xsearch_lineup_min = 90.0
+
+
 @pytest.mark.parametrize("rss,lineup,mins,fire", [
     (0,  "confirmed", 300, True),    # 🔴 0건도 발동한다
     (4,  "confirmed", 300, True),    # RSS < 5
@@ -44,15 +57,26 @@ class _Redis:
     (20, "predicted", 300, False),   # 아직 T-90 밖
     (20, None,        None, False),  # 시각 미상 — 모르면 발동하지 않는다
 ])
-def test_fire_conditions(rss, lineup, mins, fire):
-    got, why = xs.should_fire(rss, lineup, mins)
+def test_fire_conditions_when_situation_switch_is_off(rss, lineup, mins, fire):
+    got, why = xs.should_fire(rss, lineup, mins, _LegacyCfg())
     assert got is fire, why
 
 
 def test_zero_rss_reaches_the_check():
     """🔴 지난 시뮬 결함① 교훈 — 0건 경로가 판별에 도달하는지."""
-    fire, why = xs.should_fire(0, "confirmed", 300)
+    fire, why = xs.should_fire(0, "confirmed", 300, _LegacyCfg())
     assert fire is True and "0건" in why
+
+
+def test_situation_mode_fires_for_every_game():
+    """기본값에서는 종목·라인업과 무관하게 발동한다 (경기당 1콜·캡 내)."""
+    from app.config import get_settings
+
+    s = get_settings()
+    assert s.scout_xsearch_situation is True
+    for args in ((23, "confirmed", -16), (24, "none", 519), (5, "confirmed", 300)):
+        fire, why = xs.should_fire(*args, s)
+        assert fire is True and "상황" in why, (args, why)
 
 
 # ─────────────────── 상한 ───────────────────

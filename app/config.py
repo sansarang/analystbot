@@ -118,6 +118,14 @@ class Settings(BaseSettings):
     #: 켜짐 여부. 끄면 판별만 하고 호출하지 않는다(로그는 남는다).
     scout_xsearch_enabled: bool = Field(default=False, validation_alias=AliasChoices(
         "SCOUT_XSEARCH_ENABLED", "scout_xsearch_enabled"))
+    # [2026-09-06 사용자 지시] 경기가 아니라 **변수**를 서치한다.
+    #   종전 두 조건(RSS 하한·라인업 창)은 라인업 정찰용이라 MLB·KBO 에서
+    #   영영 안 걸렸다(운영 실측: 1회 표식 NPB 4 · MLB 0 · KBO 0).
+    #   ⚠️ 상시라도 경기당 1콜·일일 캡은 그대로다. 캡(기본 12)이 슬레이트
+    #      경기 수보다 작으면 뒤쪽 경기는 못 받는다 — 그 사실이 로그에 남는다.
+    scout_xsearch_situation: bool = Field(
+        default=True, validation_alias=AliasChoices(
+            "SCOUT_XSEARCH_SITUATION", "scout_xsearch_situation"))
 
     # ── [C4 변수 대장 2026-09-05] prior 헤더 ─────────────────────────
     #: 🔴 **고정 텍스트다.** 대장 맨 앞에 붙어 "이 숫자들이 무엇인지"를
