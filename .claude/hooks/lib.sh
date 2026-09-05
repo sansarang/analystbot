@@ -12,14 +12,21 @@ mkdir -p "$STATE"
 
 log_audit() { printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$AUDIT"; }
 
-# 작업트리 서명 — 커밋 여부와 무관하게 "지금 이 코드"를 가리킨다.
-#   추적 변경(diff) + 미추적 파일 내용까지 본다. 새 테스트 파일을 추가하고
-#   테스트를 안 돌린 채 커밋하는 것도 막아야 하기 때문이다.
+# 작업트리 서명 — **파일 내용만** 본다. 커밋 여부와 무관해야 한다.
+#
+# 🔴 [2026-09-06] 종전에는 `git rev-parse HEAD` 를 넣었다. 그래서 테스트를
+#    통과시키고 **커밋하는 순간** 서명이 바뀌어 마커가 무효가 됐고, 정상
+#    워크플로(테스트 → 커밋 → 배포)의 배포가 매번 막혔다. 코드는 한 글자도
+#    바뀌지 않았는데 게이트가 "검증 안 됐다"고 한 것이다.
+#    막아야 하는 것은 **코드가 바뀐 것**이지 커밋이 생긴 것이 아니다.
+#      · ls-files -s : 추적 파일의 blob 해시 — 커밋해도 그대로다
+#      · diff        : 스테이지되지 않은 수정
+#      · ls-files -o : 미추적 파일 내용 (새 테스트를 안 돌리고 커밋하는 것 방지)
 worktree_sig() {
   cd "$REPO" || return 1
   {
-    git rev-parse HEAD 2>/dev/null
-    git diff HEAD 2>/dev/null
+    git ls-files -s 2>/dev/null
+    git diff 2>/dev/null
     git ls-files -o --exclude-standard -z 2>/dev/null \
       | xargs -0 -I{} shasum "{}" 2>/dev/null
   } | shasum | cut -d' ' -f1

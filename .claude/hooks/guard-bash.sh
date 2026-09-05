@@ -42,6 +42,23 @@ if printf '%s' "$SCAN" | grep -qE '\brm\b[^|;]*-[a-zA-Z]*[rR][a-zA-Z]*f|\brm\b[^
   fi
 fi
 
+# 🔴 [2026-09-06] `git reset --hard` — **커밋 안 된 작업을 조용히 지운다.**
+#    실사고: 훅 자기테스트에 `git reset --hard HEAD~1` 을 썼다가 커밋하지
+#    않은 lib.sh 수정을 통째로 날렸다. 되돌릴 방법이 없다(reflog 에도 없다 —
+#    커밋된 적이 없으니까).
+#    `--soft`(HEAD 만 이동)·`--mixed`(인덱스만)는 작업트리를 건드리지 않는다.
+if printf '%s' "$SCAN" | grep -qE '\bgit\b[^|;]*\breset\b[^|;]*--hard'; then
+  if [ -n "$(cd "$REPO" && git status --porcelain 2>/dev/null)" ]; then
+    log_audit "DENY reset-hard ${CMD:0:80}"
+    deny "🚫 git reset --hard 차단 — 커밋 안 된 변경이 있다.
+$(cd "$REPO" && git status --short | head -6)
+   이 명령은 위 내용을 되돌릴 수 없게 지운다 (커밋된 적이 없어 reflog 에도 없다).
+   · HEAD 만 되돌리려면  git reset --soft
+   · 인덱스만 되돌리려면  git reset --mixed
+   · 정말 버릴 것이면 먼저 git stash 로 대피시켜라."
+  fi
+fi
+
 # main 강제 push
 if printf '%s' "$SCAN" | grep -qE 'git[^|;]*push' \
    && printf '%s' "$SCAN" | grep -qE '(--force([^-]|$)|--force-with-lease|-f( |$))' \
