@@ -9,6 +9,7 @@ import asyncio
 
 import pytest
 
+from app.engine import fact_audit
 from app.engine.fact_audit import audit, classify, extract_claims
 
 #: 2026-09-02 실카드 SSG@키움 근거 전문 (사용자 수신분)
@@ -132,3 +133,47 @@ def test_no_hardcoded_thresholds():
     src = Path("app/engine/fact_audit.py").read_text(encoding="utf-8")
     assert "get_settings().fact_audit_tolerance" in src
     assert "fact_audit_enabled" in src
+
+
+# ── [2026-09-05] 야구 이닝 표기법 오탐 ────────────────────────────────
+# 실사고: 운영 경보 W-FACT-MISMATCH game=1711 "ip 주장 5.6 vs 원문 5.667".
+# 원문 이닝은 `parse_innings` 가 만든 소수(5⅔ → 5.667)인데 판정은 같은 이닝을
+# 야구 표기(5.2)나 1자리 절사(5.6)로 적는다. 숫자만 비교해 **정확한 인용이
+# 환각으로 찍혔다.**
+_IP_PROMPT = '{"home": {"starter_recent": [{"innings": 5.667}, {"innings": 6.333}]}}'
+
+
+@pytest.mark.parametrize("line", [
+    "홈 선발 5.2이닝",   # 야구 표기 5⅔ — 원문 5.667 과 같은 값
+    "홈 선발 6.1이닝",   # 야구 표기 6⅓ — 원문 6.333 과 같은 값
+    "홈 선발 5.6이닝",   # 1자리 절사 (5.667 → 5.6)
+    "홈 선발 5.7이닝",   # 1자리 반올림
+])
+def test_innings_notation_is_not_a_hallucination(line):
+    """같은 이닝을 다르게 적은 것은 불일치가 아니다."""
+    res = fact_audit.audit({"근거": [line]}, _IP_PROMPT)
+    assert res["mismatch_n"] == 0, res["mismatch_detail"]
+
+
+@pytest.mark.parametrize("line,claimed", [
+    ("홈 선발 9.0이닝", 9.0),
+    ("홈 선발 2.1이닝", 2.1),
+    ("홈 선발 5.9이닝", 5.9),
+])
+def test_real_mismatch_still_caught(line, claimed):
+    """반대 위험 — 표기법을 봐준다고 진짜 불일치를 놓치면 안 된다."""
+    res = fact_audit.audit({"근거": [line]}, _IP_PROMPT)
+    assert res["mismatch_n"] == 1
+    assert res["mismatch_detail"][0]["claimed"] == claimed
+
+
+def test_written_at_does_not_swallow_whole_innings():
+    """정수 인용이 큰 오차를 덮지 않는다 — 자릿수 해석 상한 0.1."""
+    assert fact_audit.written_at(6.0, 6.049)
+    assert not fact_audit.written_at(6.0, 6.9)
+
+
+def test_notation_reading_only_for_innings():
+    """`.1`/`.2` 해석은 이닝만이다. ERA 3.2 는 3⅔ 가 아니다."""
+    assert fact_audit.readings(5.2, "ip") == [5.2, 5.667]
+    assert fact_audit.readings(3.2, "era") == [3.2]

@@ -55,6 +55,51 @@ UNIT_PATTERNS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
 #     판정은 옳았고 감시가 틀렸다 (리허설 실측 2026-09-03, NPB 2건).
 DERIVED_MARKERS = ("평균", "경기당", "/경기", "환산", "합계", "총", "도합")
 
+#: 야구 이닝 표기 — `.1` = ⅓(1아웃), `.2` = ⅔(2아웃).
+#  🔴 [2026-09-05] 원문 이닝은 `kbo_usage.parse_innings` 가 만든 **소수**다
+#     (5⅔ → 5.667). 판정은 같은 이닝을 **야구 표기**(5.2)로 적는다. 숫자만
+#     비교하면 5.2 ≠ 5.667 이라 **정확한 인용이 환각으로 찍힌다.**
+#     실측 2026-09-05: `5.2이닝`·`6.1이닝`(원문과 동일한 값) 둘 다 mismatch,
+#     game=1711 경보가 이것이었다.
+_IP_NOTATION = {1: 1.0 / 3.0, 2: 2.0 / 3.0}
+
+#: 자릿수 해석의 상한. 정수 인용("6이닝")이 6.9 를 덮지 않게 막는다.
+_WRITTEN_MAX_GAP = 0.1
+
+
+def readings(value: float, unit: str) -> list[float]:
+    """이 인용이 가리킬 수 있는 값들. 이닝만 표기법 해석을 덧붙인다."""
+    out = [round(value, 3)]
+    if unit == "ip":
+        whole = int(value)
+        tenth = round((value - whole) * 10)
+        if abs((value - whole) - tenth / 10.0) < 1e-9 and tenth in _IP_NOTATION:
+            out.append(round(whole + _IP_NOTATION[tenth], 3))
+    return out
+
+
+def written_at(claimed: float, source: float) -> bool:
+    """원문을 **인용이 쓴 자릿수로** 줄이면 같아지는가.
+
+    쓰지 않은 자릿수를 요구할 수 없다 — 5.667 을 "5.6" 으로 적은 것은 절사이지
+    오류가 아니다. 종전 tolerance(0.05)는 1자리 절사 최대오차(0.0999)보다
+    작아 정상 인용을 걸렀다.
+    """
+    if abs(claimed - source) >= _WRITTEN_MAX_GAP:
+        return False
+    txt = f"{claimed:.6f}".rstrip("0")
+    d = len(txt.split(".")[1]) if "." in txt else 0
+    f = 10 ** d
+    return (abs(int(source * f) / f - claimed) < 1e-9
+            or abs(round(source * f) / f - claimed) < 1e-9)
+
+
+def same_number(claimed: float, source: float, unit: str, tol: float) -> bool:
+    """인용과 원문이 **같은 수를 가리키는가.** 표기법·자릿수를 함께 본다."""
+    return any(abs(r - source) <= tol or written_at(r, source)
+               for r in readings(claimed, unit))
+
+
 #: "최근 4경기" · "3등판" — 표본 크기를 명시한 표현.
 SAMPLE_N_RE = re.compile(r"(\d+)\s*(?:경기|등판)")
 
@@ -256,7 +301,7 @@ def classify(claim: dict, prompt: str, tolerance: float) -> tuple[str, dict | No
     pool = numbers_in_prompt(prompt, unit)
     if not pool:
         return "not_found", None
-    if any(abs(val - x) <= 1e-6 for x in pool):
+    if any(same_number(val, x, unit, tolerance) for x in pool):
         return "verified", None
 
     # 주체가 특정되면 **그 진영의 배열만** 본다.
@@ -273,7 +318,8 @@ def classify(claim: dict, prompt: str, tolerance: float) -> tuple[str, dict | No
         vals = []                          # 진영은 있는데 어느 쪽인지 모른다
 
     if claim.get("derived"):
-        if vals and _recompute_hits(val, vals, claim.get("n"), tolerance):
+        if vals and any(_recompute_hits(r, vals, claim.get("n"), tolerance)
+                        for r in readings(val, unit)):
             return "derived", None
         # 주체 불명이거나 재계산 실패 → **추측하지 않는다.**
         return "not_found", None
@@ -284,11 +330,13 @@ def classify(claim: dict, prompt: str, tolerance: float) -> tuple[str, dict | No
         vals = values_in(prompt, unit)
     if not vals:
         return "not_found", None
-    near = min(vals, key=lambda x: abs(x - val))
-    if abs(near - val) <= tolerance:
+    near = min(vals, key=lambda x: min(abs(x - r)
+                                      for r in readings(val, unit)))
+    if same_number(val, near, unit, tolerance):
         return "verified", None
     # 합계로 읽으면 맞는 경우가 있다 — 마커가 없어도 한 번 봐준다.
-    if _recompute_hits(val, vals, claim.get("n"), tolerance):
+    if any(_recompute_hits(r, vals, claim.get("n"), tolerance)
+           for r in readings(val, unit)):
         return "derived", None
     return "mismatch", {"claim": claim["text"], "unit": unit,
                         "claimed": val, "nearest_in_source": near,
