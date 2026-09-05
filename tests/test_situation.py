@@ -256,3 +256,16 @@ def test_grounding_merge_does_not_erase_rss():
                                              "url": "https://b"}]})
     titles = [x["title"] for x in research["home_news"]]
     assert "RSS 기사" in titles and "그라운딩 기사" in titles
+
+
+def test_prompt_forbids_remembered_team_names():
+    """🔴 판정이 기억 속 연고지를 갖다 붙였다 (실측 2026-09-06).
+
+    카드 근거에 "원정 오클랜드" 가 실렸다. statsapi 공식 표기는 `Athletics`,
+    연고지 `Sacramento`, 구장 `Sutter Health Park` 다 — 오클랜드가 아니다.
+    우리 자료는 전부 맞았고 **모델이 자기 기억을 끌어왔다.**
+    """
+    from app.engine.prompts import MATCHUP
+
+    assert "자료에 적힌 표기를 그대로" in MATCHUP
+    assert "Athletics" in MATCHUP
