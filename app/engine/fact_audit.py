@@ -396,10 +396,18 @@ async def _alert(res: dict) -> None:
         from app.alerts import watchdog
 
         first = (res["mismatch_detail"] or [{}])[0]
+        # 🔴 [2026-09-05] **인용 원문을 함께 보낸다.** 종전 경보는
+        #    "ip 주장 5.8 vs 원문 6.0" 까지만 줬고, 그 숫자만으로는
+        #    무엇을 잘못 인용했는지 알 수 없어 원인 특정이 불가능했다 —
+        #    실제 문장은 `mismatch_detail["claim"]` 에 **이미 담겨 있었는데**
+        #    경보가 그것을 버리고 있었다. DB 를 열 수 없는 상황에서는
+        #    경보가 유일한 창이다.
+        claim = str(first.get("claim") or "").replace("\n", " ")[:180]
         await watchdog("W-FACT-MISMATCH",
-                       f"{res['mismatch_n']}건 — 예: {first.get('unit')} "
+                       f"{res['mismatch_n']}건 — {first.get('unit')} "
                        f"주장 {first.get('claimed')} vs 원문 "
-                       f"{first.get('nearest_in_source')}",
+                       f"{first.get('nearest_in_source')}"
+                       + (f'\n  인용: "{claim}"' if claim else ""),
                        target=f"game={res['game_id']}")
     except Exception as exc:
         logger.warning("[fact-audit] 경보 실패: %s", exc)

@@ -171,3 +171,32 @@ def test_run_passes_pitcher_names():
 
     src = Path("app/engine/fact_audit.py").read_text(encoding="utf-8")
     assert "audit(verdict, prompt, names=names or None)" in src
+
+
+@pytest.mark.asyncio
+async def test_alert_carries_the_quoted_sentence(monkeypatch):
+    """🔴 [2026-09-05] 숫자만으로는 무엇을 잘못 인용했는지 알 수 없다.
+
+    운영 경보: `game=1712 — 2건 — 예: ip 주장 5.8 vs 원문 6.0`
+    이 문구로는 원인 특정이 불가능했다 — 이닝 진법인지, 평균 오산인지,
+    다른 경기 값을 가져온 것인지. 실제 문장은 `mismatch_detail["claim"]` 에
+    **이미 담겨 있었는데** 경보가 그것을 버리고 있었다.
+    DB 를 열 수 없는 상황에서는 경보가 유일한 창이다.
+    """
+    from app.engine import fact_audit as fa
+
+    sent = {}
+
+    async def _fake(code, detail, target=None):
+        sent.update(code=code, detail=detail, target=target)
+
+    import app.alerts
+    monkeypatch.setattr(app.alerts, "watchdog", _fake)
+    await fa._alert({"game_id": 1712, "sport": "kbo", "mismatch_n": 2,
+                     "mismatch_detail": [{
+                         "claim": "홈 선발 최근 3등판 평균 5.8이닝",
+                         "unit": "ip", "claimed": 5.8,
+                         "nearest_in_source": 6.0}]})
+    assert "5.8" in sent["detail"] and "6.0" in sent["detail"]
+    assert "평균 5.8이닝" in sent["detail"], "인용 원문이 빠졌다"
+    assert sent["target"] == "game=1712"
