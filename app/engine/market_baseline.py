@@ -256,12 +256,22 @@ async def grade(pool, sport: str | None = None) -> dict:
             logger.debug("[market] our_hit 복사 실패 game=%s: %s", r["game_id"], exc)
             our_hit = None
         try:
+            # 🔴 [P1 2026-09-05] `$2` 를 **캐스팅한다.** 종전에는 같은 파라미터가
+            #    `SET p_market_close = $2`(컬럼 타입)와 `our_p - $2`(산술) 두
+            #    문맥에 쓰여 Postgres 가 타입을 통일하지 못했다:
+            #      asyncpg.exceptions.AmbiguousParameterError:
+            #      could not determine data type of parameter $2
+            #    값과 무관하게 **항상** 실패한다(재현 완료: p_close 가 None 이든
+            #    0.512 든 동일). 그래서 2026-09-04 이후 시장 채점이 **한 건도**
+            #    기록되지 않았고, 13:00 잡이 매번 `채점 기록 실패 id=…` 만 남겼다.
+            #    ⚠️ 파라미터 개수를 바꾸지 않는다 — 호출부 불변이 최소 침습이다.
             await pool.execute(
                 """UPDATE market_baseline_ledger
-                      SET p_market_close = $2, market_favored = COALESCE($3,
-                              market_favored),
-                          divergence = CASE WHEN our_p IS NOT NULL AND $2 IS NOT NULL
-                                            THEN our_p - $2 END,
+                      SET p_market_close = $2::numeric,
+                          market_favored = COALESCE($3, market_favored),
+                          divergence = CASE
+                              WHEN our_p IS NOT NULL AND $2::numeric IS NOT NULL
+                              THEN our_p - $2::numeric END,
                           market_hit = $4, our_hit = $5, void = $6,
                           graded_at = now()
                     WHERE id = $1""",
