@@ -468,6 +468,14 @@ async def check_invisible_games(pool, redis) -> list[tuple[str, str, str]]:
     return out
 
 
+def _today(sport: str) -> str:
+    """그 종목의 오늘 슬레이트 날짜. **원본은 파이프라인이다** — 여기서
+    날짜 계산 규칙을 다시 쓰지 않는다(MLB 는 미국 동부 기준이라 다르다)."""
+    from app.pipeline import mlb_slate_date, today_kst
+
+    return mlb_slate_date() if (sport or "").lower() == "mlb" else today_kst()
+
+
 async def check_source_drift(pool, redis) -> list[tuple[str, str, str]]:
     """[정찰 C5] 같은 슬레이트에서 **한 소스만** 비어 있으면 그 소스가 바뀐 것이다.
 
@@ -488,7 +496,15 @@ async def check_source_drift(pool, redis) -> list[tuple[str, str, str]]:
     if redis is None:
         return out
     for sc in scout_sports():
-        recs = await scan_scout(redis, f"scout:{sc.sport}:*")
+        # 🔴 [오탐 수정 2026-09-06] **오늘 슬레이트만 본다.** 종전에는
+        #    `scout:{sport}:*` 로 전 날짜를 긁었고, 기록 TTL 이 36시간이라
+        #    **어제 경기가 오늘 판정에 섞였다.** 어제 경기는 시작 직전에
+        #    관측돼 `hours_to_start` 가 작고, 그때 라인업이 없었으면 sides=0 —
+        #    그래서 "전부 0"이 성립해 버린다.
+        #    실사고 2026-09-05 16:01: KBO 5경기가 T-2.5h(공시 전)인데
+        #    `W-SOURCE-DRIFT KBO/라인업` 이 울렸다. 베팅이 걸린 저녁이었다.
+        #    ⚠️ 날짜는 키에 이미 있다 — 패턴에 넣으면 된다(사본 아님).
+        recs = await scan_scout(redis, f"scout:{sc.sport}:*:{_today(sc.sport)}")
         # 라인업 공시 관행을 지난 경기만 (관행은 config 가 원본이다)
         due = [r for r in recs
                if (r.get("hours_to_start") or 99) <= _lineup_lead_h(sc.sport)]

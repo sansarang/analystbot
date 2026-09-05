@@ -102,6 +102,23 @@ class Settings(BaseSettings):
     #: 1-b 리그별 캐시 수명(초). 하루 1회 계산이면 충분하다.
     var_ref_cache_sec: int = 26 * 3600
 
+    # ── [정찰 AI 뉴스층 2026-09-06] x_search 상한 ────────────────────
+    #: 🔴 **캡 없는 AI 호출 금지.** Grok 은 유료다.
+    scout_xsearch_daily_cap: int = Field(default=12, validation_alias=AliasChoices(
+        "SCOUT_XSEARCH_DAILY_CAP", "scout_xsearch_daily_cap"))
+    #: RSS 가 이 미만이면 발동. **0건도 포함된다** — 재료가 아예 없는 경기가
+    #  바로 AI 층이 필요한 경우인데, `if rss_count:` 같은 판별을 쓰면 0건이
+    #  통째로 빠진다(조용한 0).
+    scout_xsearch_rss_floor: int = Field(default=5, validation_alias=AliasChoices(
+        "SCOUT_XSEARCH_RSS_FLOOR", "scout_xsearch_rss_floor"))
+    #: 라인업 미확정 발동선(분). 이 시각 안인데 확정이 아니면 발동한다.
+    scout_xsearch_lineup_min: float = Field(
+        default=90.0, validation_alias=AliasChoices(
+            "SCOUT_XSEARCH_LINEUP_MIN", "scout_xsearch_lineup_min"))
+    #: 켜짐 여부. 끄면 판별만 하고 호출하지 않는다(로그는 남는다).
+    scout_xsearch_enabled: bool = Field(default=False, validation_alias=AliasChoices(
+        "SCOUT_XSEARCH_ENABLED", "scout_xsearch_enabled"))
+
     # ── [C4 변수 대장 2026-09-05] prior 헤더 ─────────────────────────
     #: 🔴 **고정 텍스트다.** 대장 맨 앞에 붙어 "이 숫자들이 무엇인지"를
     #   판정에게 한 번 설명한다. 매 경기 모델이 다시 해석하게 두면 해석이

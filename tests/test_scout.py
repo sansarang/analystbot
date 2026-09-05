@@ -29,9 +29,13 @@ class _Redis:
         return self.store.get(k)
 
     async def scan_iter(self, match=None, count=None):
-        pre = (match or "*").rstrip("*")
+        # ⚠️ 실제 Redis 는 **glob** 이다. 접두사 비교로 흉내 내면
+        #    `scout:kbo:*:2026-09-05` 같은 중간 와일드카드가 안 먹고,
+        #    가짜가 실제와 다르게 동작해 테스트가 거짓말을 한다.
+        import fnmatch
+
         for k in list(self.store):
-            if k.startswith(pre):
+            if fnmatch.fnmatch(k, match or "*"):
                 yield k
 
 
@@ -171,11 +175,12 @@ def test_poll_calls_scout_and_survives_its_failure():
 async def test_drift_fires_only_when_one_axis_is_empty_across_the_slate():
     import json
 
-    from app.watchdog import check_source_drift
+    from app.watchdog import _today, check_source_drift
 
     r = _Redis()
+    today = _today("kbo")
     for i in (1, 2, 3):
-        r.store[f"scout:kbo:{i}:2026-09-04"] = json.dumps(
+        r.store[f"scout:kbo:{i}:{today}"] = json.dumps(
             {"hours_to_start": 0.5,            # KBO 공시 관행 1.0h 를 지났다
              "lineup": {"sides": 0}, "market": {"rows": 2}})
     found = await check_source_drift(None, r)
@@ -189,11 +194,12 @@ async def test_drift_is_silent_before_the_announcement_time():
     """아직 발표 전인 것을 고장이라 부르면 매일 저녁 오탐이 난다."""
     import json
 
-    from app.watchdog import check_source_drift
+    from app.watchdog import _today, check_source_drift
 
     r = _Redis()
+    today = _today("kbo")
     for i in (1, 2, 3):
-        r.store[f"scout:kbo:{i}:2026-09-04"] = json.dumps(
+        r.store[f"scout:kbo:{i}:{today}"] = json.dumps(
             {"hours_to_start": 3.0,            # 공시 관행 1.0h 전이다
              "lineup": {"sides": 0}, "market": {"rows": 0}})
     assert await check_source_drift(None, r) == []
@@ -204,10 +210,11 @@ async def test_drift_needs_more_than_one_game():
     """표본 1건이면 '하나만 비었다'가 성립하지 않는다."""
     import json
 
-    from app.watchdog import check_source_drift
+    from app.watchdog import _today, check_source_drift
 
     r = _Redis()
-    r.store["scout:kbo:1:2026-09-04"] = json.dumps(
+    today = _today("kbo")
+    r.store[f"scout:kbo:1:{today}"] = json.dumps(
         {"hours_to_start": 0.5, "lineup": {"sides": 0}, "market": {"rows": 0}})
     assert await check_source_drift(None, r) == []
 
@@ -295,3 +302,39 @@ def test_scout_records_are_read_with_scan_not_keys():
         assert "redis.keys(" not in src, f
     src = Path("app/engine/scout.py").read_text(encoding="utf-8")
     assert "scan_iter" in src and "limit" in src, "상한 없는 순회는 폭주한다"
+
+
+@pytest.mark.asyncio
+async def test_drift_ignores_yesterday_records():
+    """🔴 실사고 2026-09-05 16:01 — 어제 기록이 오늘 판정에 섞여 오탐이 났다.
+
+    기록 TTL 이 36시간이라 어제 경기가 살아 있다. 어제 경기는 시작 직전에
+    관측돼 `hours_to_start` 가 작고 그때 라인업이 없었으면 sides=0 —
+    그래서 "전부 0"이 성립해 버린다. 오늘 KBO 는 T-2.5h(공시 전)였다.
+    """
+    import json
+
+    from app.watchdog import _today, check_source_drift
+
+    r = _Redis()
+    today = _today("kbo")
+    # 어제 기록 3건 — 시작 직전 관측 · 라인업 0
+    for i in (1, 2, 3):
+        r.store[f"scout:kbo:{i}:2026-09-04"] = json.dumps(
+            {"hours_to_start": 0.2, "lineup": {"sides": 0}, "market": {"rows": 2}})
+    # 오늘 기록 2건 — 아직 공시 전(T-2.5h)
+    for i in (11, 12):
+        r.store[f"scout:kbo:{i}:{today}"] = json.dumps(
+            {"hours_to_start": 2.5, "lineup": {"sides": 0}, "market": {"rows": 2}})
+    assert await check_source_drift(None, r) == [], "어제 기록으로 오탐이 났다"
+
+
+def test_today_uses_the_pipeline_rule_not_a_copy():
+    """🔴 MLB 는 미국 동부 기준이다 — 날짜 계산을 여기서 다시 쓰지 않는다."""
+    import inspect
+
+    from app.watchdog import _today
+
+    src = inspect.getsource(_today)
+    assert "mlb_slate_date" in src and "today_kst" in src
+    assert "timedelta" not in src and "ZoneInfo" not in src
