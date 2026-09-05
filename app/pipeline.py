@@ -2477,6 +2477,27 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
         r = aioredis.from_url(get_settings().redis_url, decode_responses=True)
         close = True
     try:
+        # 🔴 [1단계 2026-09-05] **팀 폼을 부르기 전에** 72h RSS 기사를
+        #    `research[f"{side}_news"]` 에 꽂는다. 그 키를 종전에는 아무도
+        #    채우지 않아(전수 grep 0건) 팀 폼이 늘 뉴스 없이 돌았고, 그래서
+        #    `뉴스태그` 가 비어 자료2 가 "없음"으로 나갔다.
+        #    ⚠️ 새로 긁지 않는다 — `for_game` 캐시를 그대로 탄다.
+        #    ⚠️ 한 경기 실패가 슬레이트를 막지 않는다.
+        n_news = 0
+        from app.collectors.news_rss import by_side as _news_by_side
+        from app.collectors.news_rss import merge_into_research as _mnews_rss
+
+        for _g in games:
+            try:
+                _tbl = await _news_by_side(_g, r)
+            except Exception as exc:
+                logger.warning("[pipeline] RSS 기사 조회 실패 game=%s: %s",
+                               _g.get("game_id"), exc)
+                continue
+            _research = _g.setdefault("research", {})
+            n_news += len(_mnews_rss(_research, _g, _tbl))
+        logger.info("[pipeline] %s RSS 기사 주입 — %d개 사이드 채움 (%d경기)",
+                    sport, n_news, len(games))
         forms = await analyze_games(r, sport, date, games)
     finally:
         if close:

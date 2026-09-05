@@ -166,3 +166,49 @@ async def for_game(jg: dict, redis=None, *, limit: int = 12) -> list[dict]:
             merged.append({**it, "team": team})
     merged.sort(key=lambda x: (x.get("age_h") is None, x.get("age_h") or 0))
     return merged[:limit]
+
+
+async def by_side(jg: dict, redis=None, *, limit: int = 12) -> dict[str, list[dict]]:
+    """`{"home": [기사…], "away": [기사…]}`. **팀 매칭은 쿼리 팀명으로 한다.**
+
+    🔴 [1단계 2026-09-05] 팀 폼이 읽는 `research[f"{side}_news"]` 를 **아무도
+       채우지 않고 있었다**(전수 grep 0건). 그래서 RSS 로 팀당 99~100건을
+       받아 놓고도 판정에는 한 건도 도달하지 않았다 — 그 기사들은
+       `deepsearch._free_articles` 전용이고, KBO·NPB 는 딥서치가 꺼져 있어
+       통째로 버려졌다.
+
+    ⚠️ **새로 긁지 않는다.** `for_game` 과 같은 캐시(`KEY`)를 타므로 같은
+       슬레이트에서 두 번 요청하지 않는다.
+    ⚠️ 72시간 창은 `parse_feed` 가 강제한다 — 여기서 다시 자르지 않는다.
+       두 곳에서 자르면 어느 쪽이 실제 창인지 알 수 없게 된다.
+    ⚠️ 팀 매칭은 `for_game` 이 붙여 준 `team`(= 우리 팀명)으로 한다.
+       기사 본문에서 팀을 다시 추정하지 않는다 — 추정은 다음 사고다.
+    """
+    items = await for_game(jg, redis, limit=limit * 2)
+    out: dict[str, list[dict]] = {}
+    for side in ("home", "away"):
+        team = jg.get(side) or ""
+        if not team:
+            continue
+        rows = [{k: v for k, v in it.items() if k != "team"}
+                for it in items if it.get("team") == team]
+        if rows:
+            out[side] = rows[:limit]
+    return out
+
+
+def merge_into_research(research: dict, jg: dict, table: dict) -> list[str]:
+    """`{side}_news` 를 채운다. 반환은 채운 키 목록.
+
+    ⚠️ **가공하지 않는다.** 제목·URL·시각을 그대로 넣는다 — 팀 폼이
+       그것을 읽고 태그를 만든다(자료2). 여기서 요약하면 그 요약이
+       판정 재료가 된다.
+    """
+    filled: list[str] = []
+    for side in ("home", "away"):
+        rows = (table or {}).get(side)
+        if not rows:
+            continue
+        research[f"{side}_news"] = rows
+        filled.append(f"{side}_news")
+    return filled
