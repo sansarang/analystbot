@@ -11,13 +11,21 @@ CMD=$(printf '%s' "$IN" | jq -r '.tool_input.command // ""' 2>/dev/null)
 OUT=$(printf '%s' "$IN" | jq -r '(.tool_response.stdout // "") + "\n" + (.tool_response.stderr // "") + "\n" + (.tool_response | if type=="string" then . else "" end)' 2>/dev/null)
 
 # 전체 스위트인가. `-k`/단일 파일 지정은 부분 실행이므로 인정하지 않는다.
-case "$CMD" in
-  *pytest*tests*) : ;;
-  *) exit 0 ;;
-esac
-case "$CMD" in
-  *" -k "*|*"tests/test_"*) exit 0 ;;      # 부분 실행 — 마커 없음
-esac
+#
+# 🔴 [2026-09-06] **명령을 구간별로 본다.** 종전에는 명령 전체를 한 덩어리로
+#    봐서, `pytest tests/test_x.py && pytest tests -q` 처럼 부분 실행과 전체
+#    실행이 한 줄에 있으면 부분으로 판정하고 마커를 남기지 않았다.
+#    그러면 전체를 돌렸는데도 커밋이 막힌다 — 실제로 막혔다.
+FULL=0
+while IFS= read -r seg; do
+  case "$seg" in *pytest*) : ;; *) continue ;; esac
+  case "$seg" in *" -k "*) continue ;; esac          # 필터 실행
+  case "$seg" in *"tests/test_"*|*"tests/"*.py*) continue ;; esac  # 단일 파일
+  case "$seg" in *pytest*tests*) FULL=1 ;; esac
+done <<EOF
+$(printf '%s' "$CMD" | tr ';&|' '\n')
+EOF
+[ "$FULL" -eq 1 ] || exit 0
 
 # pytest 요약줄만 믿는다. "N passed" 가 있고 failed/error 가 없어야 한다.
 if ! printf '%s' "$OUT" | grep -qE '[0-9]+ passed'; then exit 0; fi

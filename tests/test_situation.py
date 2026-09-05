@@ -12,26 +12,75 @@ from app.registry import situation_axes, situation_types
 
 
 # ── 수집 ────────────────────────────────────────────────────────────
-def test_ssg_retirement_is_captured():
-    """실기사 회귀 — SSG 김성현 은퇴식 (2026-09-06 Google News 실수집분)."""
-    items = [
-        {"title": "마음을 모아…김성현 은퇴식이 있던 날, SSG 1점차 승리 - 네이트",
-         "url": "https://news.google.com/rss/articles/X",
-         "source_url": "https://m.news.nate.com/view/1"},
-        {"title": "SSG 선발 김민준 6이닝 무실점",
-         "url": "https://news.google.com/rss/articles/Y",
-         "source_url": "https://sportschosun.com/a/2"},
-    ]
-    tags = situation.classify(items, "kbo")
+def test_ssg_retirement_pregame_article_is_captured():
+    """실기사 회귀 — SSG 김성현 은퇴식 (2026-09-06 Google News 실수집분).
+
+    🔴 **경기 전 기사만** 잡는다. 같은 은퇴식이라도 "있던 날 … 1점차 승리" 는
+       어제 끝난 경기의 상보라 오늘 경기의 공기가 아니다.
+    """
+    pre = {"title": "'21년 원클럽맨' SSG 김성현, 은퇴식 특별 엔트리 등록…2루수 선발 출전",
+           "url": "https://news.google.com/rss/articles/X",
+           "source_url": "https://newsis.com/view/1"}
+    post = {"title": "마음을 모아…김성현 은퇴식이 있던 날, SSG 1점차 승리 - 네이트",
+            "url": "https://news.google.com/rss/articles/Y",
+            "source_url": "https://m.news.nate.com/view/1"}
+    tags = situation.classify([pre, post], "kbo")
     assert [t["유형"] for t in tags] == ["retirement"], tags
-    assert "은퇴식" in tags[0]["제목"]
+    assert "엔트리 등록" in tags[0]["제목"], "경기 전 기사가 아니라 상보가 잡혔다"
+
+
+@pytest.mark.parametrize("title,sport", [
+    ("마음을 모아…김성현 은퇴식이 있던 날, SSG 1점차 승리", "kbo"),
+    ("[AI상보] 김성현 은퇴식서 김민준 호투 SSG, 두산 3-2 제압", "kbo"),
+    ("SSG 전의산, 역전 스리런으로 이틀 연속 홈런…두산 5연패 추락", "kbo"),
+    ("[사진]5연패 빠진 두산", "kbo"),
+    ("【巨人】大城卓三が途中交代 9回には脇腹に死球", "npb"),
+    ("22/7・南伊織が巨人vs中日戦の始球式に登場", "npb"),
+    ("Yankees beat Red Sox 5-3", "mlb"),
+])
+def test_postgame_articles_are_excluded(title, sport):
+    """🔴 경기 후 기사는 의미가 없다 (사용자 지시 2026-09-06).
+
+    지나간 사건을 오늘의 공기로 오인하면 판정이 어제를 오늘로 읽는다.
+    아래는 전부 **실수집분**이고, 처음 표지 19개로는 그대로 통과했다.
+    """
+    assert situation.is_recap(title, sport), title
+
+
+@pytest.mark.parametrize("title,sport", [
+    ("SSG 김강민 은퇴식, 25일 문학구장서 열린다", "kbo"),
+    ("한화 김경문 감독 경질설 확산", "kbo"),
+    ("巨人 監督交代 決定的", "npb"),
+    ("Yankees manager fired after collapse", "mlb"),
+])
+def test_pregame_articles_survive(title, sport):
+    """반대 위험 — 예고·공지·논란까지 걸러내면 이 층은 아무것도 못 준다."""
+    assert not situation.is_recap(title, sport), title
+
+
+def test_articles_published_after_start_are_dropped():
+    """경기 시작 뒤에 나온 기사는 그 경기의 사전 정보가 아니다."""
+    late = {"title": "감독 경질설 확산", "url": "https://x",
+            "source_url": "https://yna.co.kr",
+            "published": "Sun, 06 Sep 2026 12:00:00 +0000"}
+    early = {**late, "published": "Sun, 06 Sep 2026 06:00:00 +0000"}
+    start = "2026-09-06T09:00:00+00:00"
+    assert situation.classify([early], "kbo", starts_at=start)
+    assert situation.classify([late], "kbo", starts_at=start) == []
+
+
+def test_missing_publish_time_is_kept():
+    """시각을 모른다고 버리지 않는다 — 그 매체가 통째로 사라진다."""
+    it = {"title": "감독 경질설 확산", "url": "https://x",
+          "source_url": "https://yna.co.kr"}
+    assert situation.classify([it], "kbo", starts_at="2026-09-06T09:00:00+00:00")
 
 
 @pytest.mark.parametrize("sport,title", [
     ("kbo", "한화 김경문 감독 경질설 확산"),
     ("npb", "巨人 監督交代 決定的"),
     ("mlb", "Yankees manager fired after collapse"),
-    ("soccer", "Arsenal boss sacked after defeat"),
+    ("soccer", "Arsenal sack head coach after board meeting"),
 ])
 def test_works_across_every_sport(sport, title):
     """종목 분기를 코드에 두지 않는다 — registry 키워드만으로 전 종목 동작."""
@@ -39,6 +88,21 @@ def test_works_across_every_sport(sport, title):
         [{"title": title, "url": "https://x", "source_url": "https://yna.co.kr"}],
         sport)
     assert any(t["유형"] == "manager" for t in tags), (sport, tags)
+
+
+def test_recap_filter_costs_recall_and_we_know_it():
+    """⚠️ **정밀도를 위해 재현율을 버렸다** — 그 사실을 테스트가 기록한다.
+
+    "sacked after defeat" 처럼 상황 사건과 경기 결과가 한 제목에 섞이면
+    상보로 걸러진다. 실측 2026-09-06: 실기사 160건 → 상황태그 4건.
+    이 층의 원칙은 "놓치는 쪽이 틀리는 쪽보다 낫다" 이므로 의도한 손실이다.
+    잃은 것이 너무 크다고 판단되면 `registry.RECAP_MARKERS` 를 줄인다 —
+    코드가 아니라 표를 고친다.
+    """
+    assert situation.is_recap("Arsenal boss sacked after defeat", "soccer")
+    assert situation.classify(
+        [{"title": "Arsenal boss sacked after defeat", "url": "https://x",
+          "source_url": "https://bbc.com"}], "soccer") == []
 
 
 def test_unknown_sport_is_silent_but_not_broken():

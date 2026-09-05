@@ -72,8 +72,62 @@ def match_types(text: str, axes: dict[str, tuple[str, ...]]) -> list[str]:
     return hit
 
 
-def classify(items: list[dict], sport: str) -> list[dict]:
+def is_recap(title: str, sport: str) -> bool:
+    """경기 **결과**를 말하는 기사인가.
+
+    🔴 [2026-09-06 사용자 지시] **경기 후 기사는 의미가 없다.**
+       "김성현 은퇴식이 있던 날, SSG 1점차 승리" 는 어제 끝난 경기의 상보다.
+       그 은퇴식은 **어제 일**이지 오늘 일이 아니다 — 오늘 경기에 붙이면
+       지나간 사건을 오늘의 공기로 오인한다.
+    ⚠️ 예고·공지·논란(아직 일어나지 않았거나 계속되는 것)은 걸리면 안 된다.
+    """
+    import re as _re
+
+    from app.registry import SCORE_PATTERN, recap_markers
+
+    t = _norm(title)
+    if not t:
+        return False
+    if _re.search(SCORE_PATTERN, t):          # 점수 표기 = 가장 강한 표지
+        return True
+    return any(_norm(w) in t for w in recap_markers(sport))
+
+
+def published_before(item: dict, starts_at) -> bool:
+    """이 기사가 **경기 시작 전**에 나왔는가. 시각을 모르면 통과시킨다.
+
+    ⚠️ 모르는 것을 버리지 않는다 — RSS 가 pubDate 를 안 주는 매체가 있고,
+       그걸 버리면 그 매체의 기사가 통째로 사라진다.
+    """
+    from datetime import datetime, timezone
+    from email.utils import parsedate_to_datetime
+
+    if starts_at is None:
+        return True
+    raw = (item or {}).get("published")
+    if not raw:
+        return True
+    try:
+        dt = parsedate_to_datetime(str(raw))
+    except (TypeError, ValueError):
+        return True
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    st = starts_at
+    if isinstance(st, str):
+        try:
+            st = datetime.fromisoformat(st.replace("Z", "+00:00"))
+        except ValueError:
+            return True
+    if getattr(st, "tzinfo", None) is None:
+        st = st.replace(tzinfo=timezone.utc)
+    return dt < st
+
+
+def classify(items: list[dict], sport: str, *, starts_at=None) -> list[dict]:
     """기사 목록 → 상황 태그. 종목을 모르면 빈 목록(수집은 멈추지 않는다).
+
+    `starts_at` 이 오면 **그 시각 이전 기사만** 본다.
 
     반환 항목: `{유형, 라벨, 제목, url, 출처, 확인}`
       · `확인`: "공식" | "미확인" — `registry.is_trusted_source` 가 판단한다.
@@ -85,10 +139,17 @@ def classify(items: list[dict], sport: str) -> list[dict]:
         return []
     out: list[dict] = []
     seen: set[tuple[str, str]] = set()
+    n_recap = n_late = 0
     for it in items or []:
         if not isinstance(it, dict):
             continue
         title = str(it.get("title") or "")
+        if is_recap(title, sport):
+            n_recap += 1
+            continue
+        if not published_before(it, starts_at):
+            n_late += 1
+            continue
         url = str(it.get("url") or it.get("link") or "")
         dom = source_of(it)
         for kind in match_types(title, axes):
@@ -108,15 +169,18 @@ def classify(items: list[dict], sport: str) -> list[dict]:
                 "출처": dom,
                 "확인": "공식" if trusted else "미확인",
             })
+    if n_recap or n_late:
+        logger.info("[situation] %s 경기후 기사 %d건 · 시작 이후 %d건 제외",
+                    sport, n_recap, n_late)
     return out
 
 
-def by_side(research: dict, sport: str) -> dict[str, list[dict]]:
+def by_side(research: dict, sport: str, *, starts_at=None) -> dict[str, list[dict]]:
     """`{side}_news` 를 읽어 진영별 상황 태그. 없으면 빈 dict."""
     out: dict[str, list[dict]] = {}
     for side in ("home", "away"):
         rows = (research or {}).get(f"{side}_news") or []
-        tags = classify(rows, sport)
+        tags = classify(rows, sport, starts_at=starts_at)
         if tags:
             out[side] = tags
     return out
@@ -140,7 +204,8 @@ def attach(jg: dict) -> int:
     """
     sport = (jg.get("sport") or "").lower()
     research = jg.get("research") or {}
-    tags = by_side(research, sport)
+    tags = by_side(research, sport,
+                   starts_at=jg.get("starts_at") or jg.get("starts_at_utc"))
     jg["situation_tags"] = tags
     n = sum(len(v) for v in tags.values())
     logger.info("[situation] %s game=%s 태그 %d건 (home=%d away=%d)",
