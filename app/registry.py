@@ -187,3 +187,124 @@ WATCHED_JOBS: tuple[WatchedJob, ...] = (
 )
 
 JOB_GRACE = {j.job_id: j.grace_min for j in WATCHED_JOBS}
+
+
+# ── [상황 변수 2026-09-06] 팀의 공기 ────────────────────────────────
+# 🔴 **여기가 원본이다.** 코드에는 종목 분기를 두지 않는다 — 수집기·분류기는
+#    `situation_axes(sport)` 만 부르고, 종목별 차이는 이 표에만 있다.
+#    새 종목이 생기면 여기 한 줄을 더한다.
+#
+# 각 축은 `(유형, (키워드…))`. 유형은 **전 종목 공통 스키마**이고
+# 키워드만 리그 현지어다 — 그래야 `variable_ledger` 가 종목을 가로질러
+# 같은 유형을 20건까지 셀 수 있다.
+SITUATION_TYPES: tuple[str, ...] = (
+    "retirement", "ceremony", "manager", "coaching", "trade", "contract",
+    "streak", "extra_practice", "front_office", "crowd", "travel",
+    "conflict", "captain", "roster_move",
+)
+
+_SIT_KO = {
+    "retirement": ("은퇴식", "은퇴 경기", "은퇴 투어"),
+    "ceremony": ("영구결번", "시상식", "기념 행사", "헌액", "시구"),
+    "manager": ("감독 경질", "감독 사퇴", "감독 교체", "감독대행", "경질설"),
+    "coaching": ("코치 경질", "코치진 개편", "수석코치", "코치 보직"),
+    "trade": ("트레이드", "웨이버", "방출", "지명 철회"),
+    "contract": ("FA 계약", "다년 계약", "연장 계약", "잔류"),
+    "streak": ("연패", "연승", "분위기 반전", "탈꼴찌"),
+    "extra_practice": ("특타", "특별타격훈련", "긴급 미팅", "선수단 미팅"),
+    "front_office": ("구단주", "사장 방문", "단장 방문", "프런트"),
+    "crowd": ("매진", "만원 관중", "팬 이벤트", "홈 최종전"),
+    "travel": ("장거리 이동", "원정 강행군", "이동일 없이"),
+    "conflict": ("벤치클리어링", "사구", "빈볼", "충돌"),
+    "captain": ("주장 교체", "주장 선임", "주장 박탈"),
+    "roster_move": ("2군 강등", "1군 말소", "콜업", "1군 등록"),
+}
+_SIT_JA = {
+    "retirement": ("引退試合", "引退セレモニー", "現役引退"),
+    "ceremony": ("永久欠番", "表彰式", "始球式", "記念試合"),
+    "manager": ("監督交代", "監督解任", "監督辞任", "代行"),
+    "coaching": ("コーチ解任", "コーチ人事"),
+    "trade": ("トレード", "戦力外", "自由契約"),
+    "contract": ("契約更改", "複数年契約", "残留"),
+    "streak": ("連敗", "連勝", "巻き返し"),
+    "extra_practice": ("特打", "緊急ミーティング", "居残り練習"),
+    "front_office": ("オーナー", "球団社長", "編成"),
+    "crowd": ("満員御礼", "ファンイベント", "最終戦"),
+    "travel": ("移動日なし", "長距離移動"),
+    "conflict": ("乱闘", "死球", "報復"),
+    "captain": ("主将交代", "キャプテン"),
+    "roster_move": ("抹消", "昇格", "登録"),
+}
+_SIT_EN = {
+    "retirement": ("retirement ceremony", "final game", "retires"),
+    "ceremony": ("jersey retirement", "hall of fame", "tribute", "first pitch"),
+    "manager": ("manager fired", "manager resigns", "interim manager"),
+    "coaching": ("coaching staff", "hitting coach fired"),
+    "trade": ("traded", "designated for assignment", "DFA", "waivers", "released"),
+    "contract": ("extension", "free agent deal", "signs"),
+    "streak": ("losing streak", "winning streak", "skid"),
+    "extra_practice": ("extra batting practice", "team meeting", "players-only"),
+    "front_office": ("owner", "front office", "general manager visit"),
+    "crowd": ("sellout", "fan event", "home finale"),
+    "travel": ("long road trip", "no off day", "getaway day"),
+    "conflict": ("benches clear", "hit by pitch", "retaliation", "brawl"),
+    "captain": ("named captain", "stripped of captaincy"),
+    "roster_move": ("call-up", "optioned", "recalled", "sent down"),
+}
+_SIT_SOCCER = {
+    "retirement": ("testimonial", "은퇴 경기", "farewell match"),
+    "ceremony": ("trophy presentation", "시상식"),
+    "manager": ("sack", "sacked", "manager fired", "감독 경질", "caretaker"),
+    "coaching": ("assistant coach", "코치진"),
+    "trade": ("transfer", "loan move", "이적"),
+    "contract": ("new contract", "재계약"),
+    "streak": ("winless run", "연패", "unbeaten run"),
+    "extra_practice": ("crisis talks", "긴급 미팅"),
+    "front_office": ("owner", "sporting director", "구단주"),
+    "crowd": ("sold out", "fan protest", "매진"),
+    "travel": ("midweek travel", "원정 연전"),
+    "conflict": ("red card", "touchline row", "충돌"),
+    "captain": ("captaincy", "주장 박탈", "new captain"),
+    "roster_move": ("squad list", "명단 제외"),
+}
+
+#: 종목 → 상황 축 키워드. 없는 종목은 빈 표(수집은 돌되 태그가 안 붙는다).
+SITUATION_AXES: dict[str, dict[str, tuple[str, ...]]] = {
+    "kbo": _SIT_KO, "npb": _SIT_JA, "mlb": _SIT_EN, "soccer": _SIT_SOCCER,
+}
+
+
+def situation_axes(sport: str) -> dict[str, tuple[str, ...]]:
+    """그 종목의 상황 축. 모르는 종목이면 빈 표 — 수집을 멈추지 않는다."""
+    return SITUATION_AXES.get((sport or "").lower(), {})
+
+
+def situation_types() -> tuple[str, ...]:
+    """전 종목 공통 유형 목록. `variable_ledger` 가 이것으로 센다."""
+    return SITUATION_TYPES
+
+
+#: 공식·언론으로 인정하는 도메인 조각. 여기 없으면 `[미확인]` 이고 %p 0 이다.
+#  ⚠️ 사이트를 **허용하기 위한** 목록이 아니라 **신뢰도를 표시하기 위한**
+#     목록이다. 수집은 열린 웹 전체에서 하고, 라벨만 여기서 갈린다.
+TRUSTED_SOURCE_MARKERS: tuple[str, ...] = (
+    # 통신·방송·일간지 (공통 접미 포함)
+    ".go.kr", ".or.kr", "yna.co.kr", "newsis.com", "news1.kr", "chosun.com",
+    "joongang.co.kr", "donga.com", "hankyung.com", "mk.co.kr", "khan.co.kr",
+    "hani.co.kr", "sportschosun.com", "sportsseoul.com", "osen.co.kr",
+    "mydaily.co.kr", "xportsnews.com", "spotvnews.co.kr", "star.mt.co.kr",
+    "nikkansports.com", "sponichi.co.jp", "hochi.news", "sanspo.com",
+    "asahi.com", "yomiuri.co.jp", "mainichi.jp", "nikkei.com", "nhk.or.jp",
+    "baseball.yahoo.co.jp", "npb.jp",
+    "mlb.com", "espn.com", "cbssports.com", "si.com", "theathletic.com",
+    "apnews.com", "reuters.com", "nytimes.com", "washingtonpost.com",
+    "usatoday.com", "nbcsports.com", "foxsports.com", "bleacherreport.com",
+    "bbc.co.uk", "bbc.com", "skysports.com", "goal.com", "uefa.com",
+    "fifa.com", "premierleague.com", "kbaseball.or.kr", "koreabaseball.com",
+)
+
+
+def is_trusted_source(url_or_domain: str) -> bool:
+    """공식·언론인가. **모르면 False** — 모호하면 `[미확인]` 이 안전하다."""
+    s = (url_or_domain or "").lower()
+    return any(m in s for m in TRUSTED_SOURCE_MARKERS)

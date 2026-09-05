@@ -226,3 +226,103 @@ async def team_report(pool, sports: tuple[str, ...]) -> list[dict]:
                       f"표본 부족 (채점가능 {gradable}/{TEAM_MIN_SAMPLE})",
         })
     return out
+
+
+# ── [상황 변수 2026-09-06] 유형별 효과 측정 ─────────────────────────
+# 🔴 **prior 는 우리 채점 데이터가 만든다.** 상황 유형은 처음엔 연구 근거가
+#    없으므로 프롬프트가 %p 를 ±1.0 으로 묶어둔다. 여기서 유형별로 20건이
+#    쌓이고 리그 평균 대비 유의 편차가 나오면, 그때 비로소 그 유형에 %p 를
+#    실을 자격이 생긴다.
+#    ⚠️ 승격은 **사람이 승인해 프롬프트에 반영**한다. 이 함수는 후보만 낸다 —
+#       측정이 스스로 판정 입력을 바꾸면 감시가 아니라 되먹임이 된다.
+SITUATION_MIN_SAMPLE = 20
+
+#: 유의하다고 보는 최소 편차(비율 포인트). 이보다 작으면 잡음으로 본다.
+SITUATION_MIN_EDGE = 0.15
+
+_SIT_ROWS = """
+    SELECT v.sport, v.raw, v.realized
+      FROM variable_ledger v
+     WHERE v.raw LIKE '%[상황]%'
+       AND ($1::text IS NULL OR v.sport = $1)
+"""
+
+_ALL_ROWS = """
+    SELECT v.sport, v.realized
+      FROM variable_ledger v
+     WHERE ($1::text IS NULL OR v.sport = $1)
+"""
+
+
+def situation_kind_of(raw: str) -> str | None:
+    """변수 원문에서 상황 유형을 읽는다. `[상황] retirement — …` 형식."""
+    from app.registry import situation_types
+
+    s = raw or ""
+    if "[상황]" not in s:
+        return None
+    for kind in situation_types():
+        if kind in s:
+            return kind
+    return None
+
+
+async def situation_report(pool, sport: str | None = None) -> dict:
+    """유형별 표본·현실화율. 20건 미만은 `표본 부족`으로만 답한다.
+
+    반환: `{"baseline": float|None, "types": [{유형, n, true, rate, status}]}`
+    """
+    out: dict = {"baseline": None, "types": []}
+    if pool is None:
+        return out
+    try:
+        rows = await pool.fetch(_SIT_ROWS, sport)
+        allrows = await pool.fetch(_ALL_ROWS, sport)
+    except Exception as exc:
+        logger.warning("[var-ledger] 상황 리포트 조회 실패: %s", exc)
+        return out
+
+    # 리그 평균 — 채점 가능한 것만 센다. `unverifiable` 은 분모가 아니다.
+    gradable = [r["realized"] for r in allrows if r["realized"] in (TRUE, FALSE)]
+    base = (sum(1 for v in gradable if v == TRUE) / len(gradable)
+            if gradable else None)
+    out["baseline"] = round(base, 4) if base is not None else None
+
+    buckets: dict[str, list[str]] = {}
+    for r in rows:
+        kind = situation_kind_of(r["raw"])
+        if not kind:
+            continue
+        buckets.setdefault(kind, []).append(r["realized"])
+
+    for kind, vals in sorted(buckets.items()):
+        g = [v for v in vals if v in (TRUE, FALSE)]
+        rec: dict = {"유형": kind, "n": len(vals), "채점가능": len(g)}
+        if len(g) < SITUATION_MIN_SAMPLE:
+            rec["status"] = f"표본 부족 ({len(g)}/{SITUATION_MIN_SAMPLE})"
+            rec["rate"] = None
+        else:
+            rate = sum(1 for v in g if v == TRUE) / len(g)
+            rec["rate"] = round(rate, 4)
+            edge = None if base is None else rate - base
+            rec["edge"] = None if edge is None else round(edge, 4)
+            if edge is not None and abs(edge) >= SITUATION_MIN_EDGE:
+                rec["status"] = ("prior 승격 후보 "
+                                 f"(리그 {base:.0%} 대비 {edge:+.0%})")
+            else:
+                rec["status"] = "유의 편차 없음 — %p 상한 유지"
+        out["types"].append(rec)
+    logger.info("[var-ledger] 상황 유형 %d종 · 리그 기준선 %s",
+                len(out["types"]), out["baseline"])
+    return out
+
+
+def situation_lines(report: dict) -> list[str]:
+    """일일 요약에 실을 줄. 후보가 없으면 한 줄로 끝낸다."""
+    types = (report or {}).get("types") or []
+    if not types:
+        return []
+    lines = ["🧭 상황 변수 유형별"]
+    for t in types:
+        lines.append(f"  · {t['유형']:14s} {t['채점가능']:3d}건 — {t['status']}")
+    return lines

@@ -204,7 +204,7 @@ def insert_ledger(prompt: str, payload: dict, settings=None) -> str:
     return prompt.replace(_RULES_MARK, blk + _RULES_MARK, 1)
 
 
-def news_payload(home_form: dict, away_form: dict) -> dict:
+def news_payload(home_form: dict, away_form: dict, jg: dict | None = None) -> dict:
     """팀 평가서에서 **뉴스태그만** 꺼낸다.
 
     🔴 등급(`타선`·`선발진`·`불펜`·`흐름`·`종합`)은 넘기지 않는다 — 그건 다른
@@ -214,7 +214,15 @@ def news_payload(home_form: dict, away_form: dict) -> dict:
     """
     out = {}
     for side, form in (("home", home_form), ("away", away_form)):
-        tags = (form or {}).get("뉴스태그") or []
+        tags = list((form or {}).get("뉴스태그") or [])
+        # [상황 변수 2026-09-06] 팀의 공기. **키워드 매칭이라 LLM 0회**이고,
+        #   `[미확인]` 출처는 라벨만 붙여 넘긴다 — 버리지 않는다. 확률 오염은
+        #   프롬프트 규칙(±1.0%p 상한 · 미확인 0%p 고정)이 막는다.
+        for sit in ((jg or {}).get("situation_tags") or {}).get(side) or []:
+            tags.append({"tag": f"{sit.get('라벨')} {sit.get('유형')}",
+                         "dir": "=",          # 방향은 판정이 정한다 — 우리가 정하지 않는다
+                         "근거": f"{sit.get('제목')} ({sit.get('출처') or '출처불명'})",
+                         "확인": sit.get("확인")})
         if tags:
             out[side] = tags
     return out
@@ -473,7 +481,15 @@ async def judge_matchup(jg: dict, redis, date: str, *,
                     "(home=%s away=%s)", home, away,
                     bool(boxes.get("home")), bool(boxes.get("away")))
         return None
-    news = news_payload(home_form, away_form)
+    # 상황 태그를 먼저 새긴다 — 실패해도 판정은 계속된다(로그 1줄).
+    try:
+        from app.engine.situation import attach as _sit_attach
+
+        _sit_attach(jg)
+    except Exception as exc:
+        logger.warning("[situation] game=%s 부착 실패 — 판정은 계속: %s",
+                       jg.get("game_id"), exc)
+    news = news_payload(home_form, away_form, jg)
     if not news:
         logger.info("[matchup] %s vs %s 뉴스 없음 — 숫자만으로 판정한다", home, away)
     if is_mock:

@@ -33,6 +33,8 @@ _TTL = 26 * 3600
 PROMPT = """오늘({date}) {league} 경기 "{away} @ {home}" 에 대한 X(트위터) 속보를 찾아라.
 
 찾을 것: 선발 변경 · 결장/부상 · 라인업 발표 · 구단 공지.
+또한 **팀의 공기**: {situation}.
+  — 구단 공식 계정·비트기자의 현장 속보가 여기 먼저 뜬다.
 찾지 말 것: 응원·예상·중계 안내·과거 경기 회고.
 
 **JSON 배열만 출력한다. 다른 말 금지.** 최대 8건.
@@ -178,8 +180,15 @@ async def fetch_for_game(jg: dict, date: str, redis=None,
         return []
     from app.research.grok import GrokClient
 
+    # [상황 변수 2026-09-06] 상황 축을 쿼리에 함께 싣는다. **캡은 그대로다**
+    #   (경기당 1회·일 12콜) — 늘어난 것은 프롬프트 한 줄뿐이다.
+    #   종목별 키워드는 registry 가 원본이다.
+    from app.registry import situation_axes as _axes
+
+    _terms = [w[0] for w in _axes(sport).values() if w][:8]
     prompt = PROMPT.format(date=date, league=sport.upper(),
-                           away=jg.get("away"), home=jg.get("home"))
+                           away=jg.get("away"), home=jg.get("home"),
+                           situation=" · ".join(_terms) or "구단 주변 상황")
     #  ⚠️ `GrokClient.__init__(mock=None)` 만 받는다 — settings 를 넘기면
     #     TypeError 다(시뮬 실측 2026-09-06). 설정은 생성자가 스스로 읽는다.
     try:

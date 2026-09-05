@@ -104,7 +104,13 @@ def parse_feed(xml: str, *, now=None, max_age_hours: int = MAX_AGE_HOURS) -> lis
         # 구글 RSS 제목은 "제목 - 매체" 형식이다. 매체를 따로 떼 신뢰도 판단에 쓴다.
         source = grab("source") or (title.rsplit(" - ", 1)[-1]
                                     if " - " in title else "")
+        # 🔴 [2026-09-06] `<source url="…">` 의 **속성**이 실제 언론사 도메인이다.
+        #    `link` 는 news.google.com 리다이렉트라 그것으로 신뢰도를 보면
+        #    **모든 기사가 `[미확인]`** 이 된다(실측: 상황 태그 전건 미확인).
+        m_su = re.search(r"<source[^>]*\burl=[\"']([^\"']+)[\"']", block, re.S)
+        source_url = _text(m_su.group(1)) if m_su else ""
         out.append({"title": title, "url": link, "source": source,
+                    "source_url": source_url,
                     "published": pub, "age_h": round(age, 1) if age else None})
     return out
 
@@ -147,25 +153,107 @@ def dedupe_by_title(items: list[dict]) -> list[dict]:
     return out
 
 
+#: 상황 축 쿼리에 쓸 유형 수 상한. 전 축을 한 쿼리에 넣으면 URL 이 길어지고
+#  Google News 가 조용히 잘라낸다 — 대표 키워드만 OR 로 묶는다.
+_SIT_QUERY_TERMS = 8
+
+
+def situation_query(sport: str, team: str) -> str:
+    """`팀명 (키워드 OR 키워드 …)`. 종목 분기는 registry 가 갖는다.
+
+    ⚠️ 사이트를 지정하지 않는다. Google News RSS 는 그 자체가 **전 웹 집계**라
+       특정 사이트를 박으면 오히려 좁아진다.
+    """
+    from app.registry import situation_axes
+
+    axes = situation_axes(sport)
+    if not axes:
+        return ""
+    terms: list[str] = []
+    for words in axes.values():          # 유형마다 대표 1개씩
+        if words:
+            terms.append(words[0])
+    if not terms:
+        return ""
+    picked = terms[:_SIT_QUERY_TERMS]
+    name = QUERY_ALIAS.get(team, team)
+    return f'{name} ({" OR ".join(picked)})'
+
+
+async def fetch_team_situation(sport: str, team: str, *,
+                               limit: int = 20) -> list[dict]:
+    """상황 축 전용 쿼리 1회. **실패해도 기존 수집에 영향이 없다.**
+
+    ⚠️ 조용히 실패하지 않는다 — 실패도 로그 한 줄을 남긴다.
+    """
+    import httpx
+
+    loc = LOCALE.get(sport)
+    q = situation_query(sport, team)
+    if not loc or not q:
+        logger.info("[news_rss] %s %s 상황 쿼리 생략 (로케일=%s 쿼리=%s)",
+                    sport, team, bool(loc), bool(q))
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True,
+                                     headers={"User-Agent": UA}) as c:
+            r = await c.get(BASE, params={"q": q, **loc})
+            r.raise_for_status()
+            items = parse_feed(r.text)
+    except Exception as exc:
+        logger.warning("[news_rss] %s %s 상황 쿼리 실패 — 기존 수집은 계속: %s",
+                       sport, team, exc)
+        return []
+    logger.info("[news_rss] %s %s 상황 쿼리 %d건 (q=%r)",
+                sport, team, len(items), q[:80])
+    return items[:limit]
+
+
 async def fetch_team(sport: str, team: str, *, limit: int = 20) -> list[dict]:
-    """팀 1개의 최근 기사. 실패하면 빈 목록 — 딥서치가 폴백을 결정한다."""
+    """팀 1개의 최근 기사. 실패하면 빈 목록 — 딥서치가 폴백을 결정한다.
+
+    🔴 [상황 변수 2026-09-06] 일반 쿼리와 **상황 축 쿼리를 함께** 던진다.
+       한 곳에서 합치므로 호출부(`for_game`·`by_side`)는 손댈 것이 없다.
+       ⚠️ 상황 쿼리가 실패해도 일반 결과는 그대로 돌려준다 — 새 수집이
+          기존 수집을 깨뜨리면 안 된다. 실패는 로그 한 줄로 남는다.
+       ⚠️ RSS 는 무료다. 늘어난 것은 **쿼리 수**뿐이고 그것을 로그에 적는다.
+    """
+    import asyncio
+
     import httpx
 
     loc = LOCALE.get(sport)
     if not loc or not team:
         return []
-    try:
+    q_main = QUERY_ALIAS.get(team, team)
+
+    async def _one(q: str) -> list[dict]:
         async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True,
                                      headers={"User-Agent": UA}) as c:
-            r = await c.get(BASE, params={"q": QUERY_ALIAS.get(team, team), **loc})
+            r = await c.get(BASE, params={"q": q, **loc})
             r.raise_for_status()
-            items = parse_feed(r.text)
+            return parse_feed(r.text)
+
+    try:
+        items = await _one(q_main)
     except Exception as exc:
         logger.warning("[news_rss] %s %s 조회 실패: %s", sport, team, exc)
-        return []
-    logger.info("[news_rss] %s %s — 72시간 내 기사 %d건 (쿼리=%r)",
-                sport, team, len(items), QUERY_ALIAS.get(team, team))
-    return items[:limit]
+        items = []
+    n_main = len(items)
+
+    sit: list[dict] = []
+    q_sit = situation_query(sport, team)
+    if q_sit:
+        try:
+            sit = await _one(q_sit)
+        except Exception as exc:
+            logger.warning("[news_rss] %s %s 상황 쿼리 실패 — 일반 결과는 유지: %s",
+                           sport, team, exc)
+    merged = dedupe_by_title(items + sit)
+    logger.info("[news_rss] %s %s — 72시간 내 기사 %d건 "
+                "(일반 %d + 상황 %d, 중복 제거 후 %d · 쿼리 2회)",
+                sport, team, len(merged), n_main, len(sit), len(merged))
+    return merged[:limit]
 
 
 async def for_game(jg: dict, redis=None, *, limit: int = 12) -> list[dict]:
