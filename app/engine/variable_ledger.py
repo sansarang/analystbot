@@ -180,3 +180,49 @@ async def summary(pool, sports: tuple[str, ...]) -> dict | None:
         logger.debug("[var-ledger] 집계 실패: %s", exc)
         return None
     return dict(row) if row and int(row["n"]) else None
+
+
+# ── [C5 팀별 보정 스텁 2026-09-05] ────────────────────────────────
+#: 팀×변수 현실화율을 볼 최소 표본. **미만이면 숫자를 내지 않는다.**
+#  🔴 왜 스텁인가: 지금 대장에 쌓인 표본이 얇다(2026-09-05 기준 채점 114건
+#     중 현실화 판정 가능은 5건, 나머지는 임계 미명시로 `unverifiable`).
+#     그 상태에서 팀별로 쪼개면 팀당 한 자리 수가 되고, 한 자리 수로 만든
+#     보정은 보정이 아니라 잡음이다.
+#  ⚠️ **이 함수는 판정에 흐르지 않는다.** 리포트·요약 표시 전용이다.
+TEAM_MIN_SAMPLE = 20
+
+
+async def team_report(pool, sports: tuple[str, ...]) -> list[dict]:
+    """팀×변수 현실화 리포트. 표본 미만이면 `status='표본 부족'` 만 돌려준다.
+
+    반환 행: {team, n, realized, unverifiable, rate|None, status}
+    `rate` 는 표본이 `TEAM_MIN_SAMPLE` 이상일 때만 채운다 — 그 전에는
+    **숫자를 만들지 않는다.** 얇은 표본의 비율은 보는 순간 믿게 된다.
+    """
+    if pool is None:
+        return []
+    try:
+        rows = await pool.fetch(
+            """SELECT g.home AS team, count(*) AS n,
+                      count(*) FILTER (WHERE v.realized = 'true') AS realized,
+                      count(*) FILTER (WHERE v.realized = 'unverifiable') AS unver
+                 FROM variable_ledger v JOIN games g ON g.id = v.game_id
+                WHERE v.sport = ANY($1::text[]) AND v.graded_at IS NOT NULL
+                GROUP BY g.home ORDER BY n DESC""", list(sports))
+    except Exception as exc:
+        logger.debug("[var-ledger] 팀별 집계 실패: %s", exc)
+        return []
+    out = []
+    for r in rows:
+        n = int(r["n"])
+        gradable = n - int(r["unver"])
+        enough = gradable >= TEAM_MIN_SAMPLE
+        out.append({
+            "team": r["team"], "n": n, "realized": int(r["realized"]),
+            "unverifiable": int(r["unver"]),
+            "rate": (round(int(r["realized"]) / gradable, 3)
+                     if enough and gradable else None),
+            "status": "집계" if enough else
+                      f"표본 부족 (채점가능 {gradable}/{TEAM_MIN_SAMPLE})",
+        })
+    return out
