@@ -213,6 +213,26 @@ _OPP_STARTER = """
 """
 
 
+def _as_date(v):
+    """`date` 객체로 정규화. 못 읽으면 None.
+
+    🔴 [2026-09-05] asyncpg 는 `$2::date` 파라미터에 **`date` 객체**를 요구한다.
+       문자열을 넘기면 캐스트 표기가 있어도
+       `'str' object has no attribute 'toordinal'` 로 죽는다 —
+       실측: NPB 전 경기에서 자료10 상대 선발 조회가 통째로 실패했다.
+    """
+    import datetime as _dt
+
+    if isinstance(v, _dt.datetime):
+        return v.date()
+    if isinstance(v, _dt.date):
+        return v
+    try:
+        return _dt.date.fromisoformat(str(v)[:10])
+    except (TypeError, ValueError):
+        return None
+
+
 async def attach_opp_starter_era(pool, jg: dict, redis=None) -> int:
     """자료1 각 경기에 **그때 상대 선발의 시즌 ERA** 를 붙인다. 반환 채운 수.
 
@@ -236,11 +256,11 @@ async def attach_opp_starter_era(pool, jg: dict, redis=None) -> int:
     for side in ("home", "away"):
         for g in ((research.get(f"{side}_usage") or {}).get("games") or []):
             gid, opp = g.get("game_id"), g.get("opponent")
-            gdate = g.get("date")
+            gdate = _as_date(g.get("date"))
             if not gdate or not opp or "opp_starter_season_era" in g:
                 continue
             try:
-                name = await pool.fetchval(_OPP_STARTER, sport, str(gdate), opp)
+                name = await pool.fetchval(_OPP_STARTER, sport, gdate, opp)
             except Exception as exc:
                 logger.warning("[var-ref] 상대 선발 조회 실패 %s %s vs %s: %s",
                                sport, gdate, opp, exc)

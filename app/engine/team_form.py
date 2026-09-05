@@ -170,6 +170,17 @@ async def _paid_ok(role: str) -> bool:
                 pass
 
 
+#: 하드 실패 시 허용하는 후보 이동 횟수. 1 = 주전 + 예비 하나까지.
+#  🔴 사슬 전체를 걷지 않는다 — 걷는 순간 "한 판정 한 모델"이 깨진다.
+_MAX_HOPS = 2
+
+
+def _seed() -> int | None:
+    """판정 호출에 실을 고정 seed. 원본은 config 다 — 숫자를 여기 적지 않는다."""
+    v = get_settings().llm_seed
+    return int(v) if v else None
+
+
 async def _complete_free(routes, prompt: str, max_tokens: int,
                          role: str) -> str | None:
     """무료 사슬을 순서대로. 전부 실패하면 None.
@@ -195,32 +206,50 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
     from app.llm.openai_compat import complete
 
     reasoning = role != "form"
-    for provider, model in routes:
-        if provider == "anthropic":
-            break
-        r = await complete(provider, model, prompt, max_tokens=max_tokens,
-                           reasoning=reasoning)
-        usable = bool(r["ok"]) and parse_json_object(r["text"]) is not None
-        logger.info("[%s] free provider=%s model=%s ok=%s 파싱=%s %.1fs%s",
-                    role, provider, model, r["ok"], "OK" if usable else "실패",
-                    r["elapsed"],
-                    f" err={str(r['error'])[:120]}" if r["error"] else "")
-        if usable:
-            u = r.get("usage") or {}
-            LAST_USAGE.clear()
-            LAST_USAGE.update({"role": role, "model": f"{provider}/{model}",
-                               "input_tokens": u.get("prompt_tokens"),
-                               "output_tokens": u.get("completion_tokens"),
-                               "stop_reason": "free"})
-            return r["text"]
-        if r["ok"]:
+    seed = _seed()
+    # 🔴 [P0 안정성 2026-09-05] **한 판정은 한 모델이 낸다.**
+    #    종전에는 JSON 파싱 실패만으로도 다음 provider 로 넘어갔다. 그래서
+    #    같은 경기의 재판정이 회차마다 다른 모델의 답을 받았고, 같은 재료로
+    #    우세가 뒤집혔다 (실측 2026-09-05 KBO game=1713:
+    #    기아 0.440 → 0.590 → KT 0.450, 50% 선을 두 번 넘었다).
+    #    이제:
+    #      · 소프트 실패(응답은 왔는데 JSON 이 아님) → **같은 모델로 1회 재시도**,
+    #        그래도 안 되면 포기한다. provider 를 회전시키지 않는다.
+    #      · 하드 실패(호출 자체 불가) → 다음 후보로 **1회만** 넘어간다.
+    #    ⚠️ 회전을 없앤 대신 카드가 못 나갈 위험이 는다. 그 위험은 조용하지
+    #       않다 — 아래 error 로그와 일일 요약 성공률에 그대로 잡힌다.
+    candidates = [(p, m) for p, m in routes if p != "anthropic"]
+    for hop, (provider, model) in enumerate(candidates[:_MAX_HOPS]):
+        for attempt in range(2):
+            r = await complete(provider, model, prompt, max_tokens=max_tokens,
+                               reasoning=reasoning, seed=seed)
+            usable = bool(r["ok"]) and parse_json_object(r["text"]) is not None
+            logger.info("[%s] free provider=%s model=%s hop=%d 시도=%d ok=%s "
+                        "파싱=%s seed=%s %.1fs%s",
+                        role, provider, model, hop, attempt + 1, r["ok"],
+                        "OK" if usable else "실패", seed, r["elapsed"],
+                        f" err={str(r['error'])[:120]}" if r["error"] else "")
+            if usable:
+                u = r.get("usage") or {}
+                LAST_USAGE.clear()
+                LAST_USAGE.update({"role": role, "model": f"{provider}/{model}",
+                                   "input_tokens": u.get("prompt_tokens"),
+                                   "output_tokens": u.get("completion_tokens"),
+                                   "stop_reason": "free"})
+                return r["text"]
+            if not r["ok"]:
+                break                       # 하드 실패 → 다음 후보(1회만)
             # 응답은 왔는데 JSON 이 아니다. 무엇이 왔는지 남긴다 —
             # 다음 사람이 "빈 응답"과 구분할 수 있어야 한다.
-            logger.warning("[%s] %s/%s 응답이 JSON 이 아니다 — 다음 무료 후보로 "
-                           "넘어간다 (%d자) 앞=%r", role, provider, model,
-                           len(r["text"] or ""), (r["text"] or "")[:160])
-    logger.warning("[%s] 무료 사슬 전부 실패 (%d후보)", role,
-                   sum(1 for p, _ in routes if p != "anthropic"))
+            logger.warning("[%s] %s/%s 응답이 JSON 이 아니다 (%d자) 앞=%r",
+                           role, provider, model, len(r["text"] or ""),
+                           (r["text"] or "")[:160])
+        else:
+            logger.error("[%s] %s/%s JSON 2회 실패 — provider 를 회전시키지 "
+                         "않는다. 이 건은 재료 없이 간다", role, provider, model)
+            return None
+    logger.warning("[%s] 무료 사슬 실패 (하드 실패 폴백 %d회 소진)", role,
+                   min(len(candidates), _MAX_HOPS))
     return None
 
 

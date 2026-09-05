@@ -33,6 +33,26 @@ if ! docker build -q -t analystbot:ctx "$TMP" >/dev/null; then
 fi
 echo "✅ 배포 컨텍스트 빌드 성공"
 
+# ── 2.5) 판정 안정성 스모크 ──────────────────────────────────────────
+# [P0 2026-09-05] 같은 재료가 같은 숫자를 내는가. 같은 프롬프트 3회를 실제
+# 판정 모델에 보내 **우세가 갈리면 배포를 막는다.**
+#   실사고: KBO game=1713 이 같은 재료로 기아 0.440 → 0.590 → KT 0.450 으로
+#   50% 선을 두 번 넘었고, 그 사이 수정 카드가 나갔다.
+# ⚠️ 인프라 장애(503)는 막지 않는다 — 유효 응답 2건 미만이면 SKIP 이다.
+#    503 이 배포를 막으면 이 게이트는 곧 꺼지고, 꺼진 게이트는 없는 게이트다.
+# ⚠️ SKIP_STABILITY=1 로 끌 수 있다. 끄면 그 사실이 로그에 남는다.
+if [ "${SKIP_STABILITY:-0}" = "1" ]; then
+  echo "⏭  판정 안정성 스모크 건너뜀 (SKIP_STABILITY=1)"
+else
+  echo "▶ 판정 안정성 스모크..."
+  if ! PYTHONPATH=. TELEGRAM_BOT_TOKEN="" uv run python -m tools.stability_smoke; then
+    echo "❌ 같은 재료가 다른 답을 냈다 — 배포 중단"
+    echo "   (인프라 장애가 아니라 판정 불안정이다. 원인을 고치거나,"
+    echo "    의도한 배포라면 SKIP_STABILITY=1 로 명시적으로 넘겨라)"
+    exit 1
+  fi
+fi
+
 # ── 3) 커밋 정보 주입 ────────────────────────────────────────────────
 # 타르볼 업로드 배포는 RAILWAY_GIT_COMMIT_SHA를 주지 않는다(GitHub 연동 전용).
 # 이게 없으면 /health가 "코드 unknown"이 돼 버전 추적이 무력해진다.

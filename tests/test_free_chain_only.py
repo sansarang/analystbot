@@ -21,17 +21,48 @@
 import pytest
 
 
+# 🔴 [P0 안정성 2026-09-05] **계약이 바뀌었다 — 한 판정은 한 모델이 낸다.**
+#    종전 계약은 "사고문을 받으면 다음 무료 후보로 넘어간다"였다. 그것이
+#    2026-09-04 사고(유료 400 → 종목 전체 중단)를 막았지만, 같은 경기의
+#    재판정이 회차마다 다른 모델의 답을 받는 부작용을 낳았다 —
+#    실측 2026-09-05 KBO game=1713 이 같은 재료로 기아 0.440 → 0.590 →
+#    KT 0.450 으로 50% 선을 두 번 넘었다.
+#    새 계약: 소프트 실패(JSON 아님)는 **같은 모델로 1회 재시도**하고,
+#    그래도 안 되면 포기한다. provider 를 회전시키지 않는다.
+#    ⚠️ 2026-09-04 사고의 방지선은 그대로다 — 아래
+#       `test_all_free_failing_does_not_call_anthropic` 가 지킨다.
 @pytest.mark.asyncio
-async def test_unparseable_response_advances_to_the_next_free_provider(monkeypatch):
-    """🔴 이것이 핵심 결함이었다 — 사고문을 받고도 다음 후보로 안 갔다."""
+async def test_soft_failure_retries_the_same_model_and_does_not_rotate(monkeypatch):
+    """JSON 이 아니면 같은 모델 1회 재시도 — 다음 provider 로 가지 않는다."""
     import app.engine.team_form as tf
     import app.llm.openai_compat as oc
 
     called = []
 
-    async def _fake(provider, model, prompt, *, max_tokens, reasoning=True):
+    async def _fake(provider, model, prompt, *, max_tokens, reasoning=True, **kw):
         called.append(provider)
-        if provider == "nvidia":                 # 사고문 — 비어 있지 않지만 JSON 아님
+        return {"ok": True, "text": "The user wants me to analyze…",
+                "elapsed": 1.0, "error": None, "usage": {}, "status": 200}
+
+    monkeypatch.setattr(oc, "complete", _fake)
+    out = await tf._complete_free([("nvidia", "n"), ("groq", "g")], "p", 100, "form")
+
+    assert called == ["nvidia", "nvidia"], "같은 모델로 1회 재시도해야 한다"
+    assert "groq" not in called, "소프트 실패로 provider 를 회전시켰다"
+    assert out is None
+
+
+@pytest.mark.asyncio
+async def test_soft_failure_recovers_when_the_retry_parses(monkeypatch):
+    """재시도가 성사되면 그 모델의 답을 쓴다 — 회전 없이 회복한다."""
+    import app.engine.team_form as tf
+    import app.llm.openai_compat as oc
+
+    called = []
+
+    async def _fake(provider, model, prompt, *, max_tokens, reasoning=True, **kw):
+        called.append(provider)
+        if len(called) == 1:
             return {"ok": True, "text": "The user wants me to analyze…",
                     "elapsed": 1.0, "error": None, "usage": {}, "status": 200}
         return {"ok": True, "text": '{"team":"A","불펜":{}}',
@@ -40,8 +71,49 @@ async def test_unparseable_response_advances_to_the_next_free_provider(monkeypat
     monkeypatch.setattr(oc, "complete", _fake)
     out = await tf._complete_free([("nvidia", "n"), ("groq", "g")], "p", 100, "form")
 
-    assert called == ["nvidia", "groq"], "다음 무료 후보로 넘어가지 않았다"
+    assert called == ["nvidia", "nvidia"]
     assert out == '{"team":"A","불펜":{}}'
+
+
+@pytest.mark.asyncio
+async def test_hard_failure_falls_back_once_only(monkeypatch):
+    """호출 자체가 불가하면 다음 후보로 — 단 1회다. 사슬을 다 걷지 않는다."""
+    import app.engine.team_form as tf
+    import app.llm.openai_compat as oc
+
+    called = []
+
+    async def _fake(provider, model, prompt, *, max_tokens, reasoning=True, **kw):
+        called.append(provider)
+        return {"ok": False, "text": "", "elapsed": 1.0,
+                "error": "503", "usage": None, "status": 503}
+
+    monkeypatch.setattr(oc, "complete", _fake)
+    out = await tf._complete_free(
+        [("nvidia", "n"), ("groq", "g"), ("openrouter", "o")], "p", 100, "form")
+
+    assert called == ["nvidia", "groq"], "폴백은 하드 실패 시 1회뿐이다"
+    assert "openrouter" not in called
+    assert out is None
+
+
+@pytest.mark.asyncio
+async def test_judgement_calls_carry_a_fixed_seed(monkeypatch):
+    """결정성 — 판정 호출에 고정 seed 를 명시 전송한다."""
+    import app.engine.team_form as tf
+    import app.llm.openai_compat as oc
+    from app.config import get_settings
+
+    seen = {}
+
+    async def _fake(provider, model, prompt, *, max_tokens, reasoning=True, **kw):
+        seen.update(kw)
+        return {"ok": True, "text": '{"team":"A","불펜":{}}',
+                "elapsed": 1.0, "error": None, "usage": {}, "status": 200}
+
+    monkeypatch.setattr(oc, "complete", _fake)
+    await tf._complete_free([("nvidia", "n")], "p", 100, "matchup")
+    assert seen.get("seed") == int(get_settings().llm_seed)
 
 
 @pytest.mark.asyncio
@@ -50,7 +122,7 @@ async def test_all_free_failing_does_not_call_anthropic(monkeypatch):
     import app.engine.team_form as tf
     import app.llm.openai_compat as oc
 
-    async def _fake(provider, model, prompt, *, max_tokens, reasoning=True):
+    async def _fake(provider, model, prompt, *, max_tokens, reasoning=True, **kw):
         return {"ok": False, "text": "", "elapsed": 0.1, "error": "503",
                 "usage": {}, "status": 503}
 
@@ -111,3 +183,62 @@ def test_form_failure_is_still_loud():
     src = Path("app/engine/team_form.py").read_text(encoding="utf-8")
     assert "응답이 JSON 이 아니다" in src
     assert "무료 사슬 전부 실패" in src
+
+
+# ── [P0 안정성 2026-09-05] Gemini 주전 승격 ──────────────────────────
+# 오디션 실측(동일 프롬프트 10회): nemotron 산포 10.00%p·뒤집힘 4,
+# gpt-oss 12.00%p·뒤집힘 3, gemini 2.00%p·뒤집힘 0 — 사슬에서 유일한 합격.
+def test_gemini_is_reachable_through_the_chain():
+    """Gemini 가 사슬 provider 로 등록돼 있다 — 별도 클라이언트만으로는 못 쓴다."""
+    from app.llm.openai_compat import ENDPOINTS
+
+    assert "gemini" in ENDPOINTS
+    base, env = ENDPOINTS["gemini"]
+    assert env == "GEMINI_API_KEY"
+    assert base.endswith("/openai"), "OpenAI 호환 경로여야 사슬 구조를 쓴다"
+
+
+def test_seed_is_omitted_for_providers_that_reject_it(monkeypatch):
+    """Gemini 는 seed 를 400 으로 거부한다 — 실으면 판정이 통째로 죽는다."""
+    import httpx
+
+    import app.llm.openai_compat as oc
+
+    sent = {}
+
+    class _Resp:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {"choices": [{"message": {"content": '{"ok":true}'}}],
+                    "usage": {}}
+
+    class _Client:
+        def __init__(self, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, json=None, headers=None):
+            sent.update(json or {})
+            return _Resp()
+
+    monkeypatch.setenv("GEMINI_API_KEY", "x")
+    monkeypatch.setenv("NVIDIA_API_KEY", "x")
+    # `httpx` 는 함수 안에서 임포트된다 — 모듈 자체를 갈아끼운다.
+    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+
+    import asyncio
+
+    asyncio.run(oc.complete("gemini", "m", "p", max_tokens=8, seed=42))
+    assert "seed" not in sent, "Gemini 에 seed 를 실었다 — 400 이 난다"
+    assert sent.get("temperature") == 0
+
+    sent.clear()
+    asyncio.run(oc.complete("nvidia", "m", "p", max_tokens=8, seed=42))
+    assert sent.get("seed") == 42, "seed 를 받는 provider 에는 실어야 한다"

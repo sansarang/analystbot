@@ -22,6 +22,16 @@ ENDPOINTS: dict[str, tuple[str, str]] = {
     "mistral": ("https://api.mistral.ai/v1", "MISTRAL_API_KEY"),
     "groq": ("https://api.groq.com/openai/v1", "GROQ_API_KEY"),
     "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
+    # 🔴 [P0 안정성 2026-09-05] Gemini 를 **사슬에 넣는다.** 종전에는 별도
+    #    클라이언트(`app/llm/gemini.py`)만 있어 판정 사슬에서 쓸 수 없었다.
+    #    Google 이 OpenAI 호환 엔드포인트를 제공하므로 구조를 그대로 쓴다.
+    #    승격 근거(실측 2026-09-05, 동일 프롬프트 10회):
+    #      nemotron  산포 10.00%p · 우세 뒤집힘 4회  ❌
+    #      gpt-oss   산포 12.00%p · 뒤집힘 3회       ❌
+    #      gemini    산포  2.00%p · 뒤집힘 0회       ✅  ← 유일한 실질 합격
+    #    ⚠️ `app/llm/gemini.py` 는 지우지 않았다 — 감시 L2·L3 가 쓴다.
+    "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai",
+               "GEMINI_API_KEY"),
 }
 
 #: 🔴 [2026-09-04 실측] provider 별 **최소 호출 간격(초).**
@@ -38,7 +48,19 @@ MIN_INTERVAL_SEC: dict[str, float] = {
     "nvidia": 2.0,        # RPM ~40 → 1.5초면 되지만 503 여유를 둔다
     "groq": 2.0,
     "openrouter": 2.0,
+    # ⚠️ 무료 티어는 429 가 잦다(오디션에서 10회 중 2회 503/429). 유료 전환
+    #    후에도 간격은 남긴다 — 없애는 것은 실측을 보고 결정한다.
+    "gemini": 2.0,
 }
+
+#: `seed` 를 받지 않는 provider. **실호출로 확인한 것만 넣는다.**
+#   실측 2026-09-05 (OpenAI 호환 엔드포인트):
+#     nvidia·groq·openrouter  seed 200 수용
+#     gemini                  400 `Unknown name "seed"` — 나머지 필드는 전부 수용
+#   ⚠️ seed 를 못 싣는다고 판정 자격을 잃지 않는다. 결정성의 실체는 오디션
+#      산포이지 파라미터 수용 여부가 아니다 — Gemini 는 seed 없이도 산포
+#      2.00%p·뒤집힘 0 으로 사슬에서 유일하게 합격했다.
+_NO_SEED = {"gemini"}
 
 #: provider 별 마지막 호출 시각(프로세스 내).
 _last_call: dict[str, float] = {}
@@ -82,7 +104,7 @@ def _next_reasoning(cur: str | None) -> str | None:
 
 async def complete(provider: str, model: str, prompt: str, *,
                    max_tokens: int = 6000, timeout: float = 180.0,
-                   reasoning: bool = True) -> dict:
+                   reasoning: bool = True, seed: int | None = None) -> dict:
     """1회 호출. 반환 {text, ok, status, elapsed, retries, error, usage}.
 
     `reasoning=False` 면 추론을 끈다 — 짧은 구조화 출력(폼 평가서)에서
@@ -108,6 +130,13 @@ async def complete(provider: str, model: str, prompt: str, *,
         return out
     body = {"model": model, "max_tokens": max_tokens, "temperature": 0,
             "messages": [{"role": "user", "content": prompt}]}
+    # [P0 안정성 2026-09-05] 같은 재료는 같은 숫자를 내야 한다.
+    #   ⚠️ `temperature=0` 만으로는 결정적이지 않다 — 대형 MoE 서빙은 배치
+    #      구성에 따라 부동소수 누산 순서가 달라진다. `seed` 는 그 위에 얹는
+    #      **최선 노력** 장치이고, 실제 효과는 오디션 실측으로 판단한다
+    #      (수용 여부: nvidia·groq·openrouter 전부 200, 2026-09-05 실측).
+    if seed is not None and provider not in _NO_SEED:
+        body["seed"] = int(seed)
     if not reasoning:
         # 🔴 [실측 2026-09-04] 추론 토큰이 `max_tokens` 를 통째로 먹었다.
         #    Nemotron 3 Ultra 는 `reasoning_content` 를 따로 주기도 하고

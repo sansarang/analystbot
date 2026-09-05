@@ -68,7 +68,7 @@ async def test_form_turns_reasoning_off_and_matchup_keeps_it(monkeypatch):
 
     calls = []
 
-    async def _fake(provider, model, prompt, *, max_tokens, reasoning=True):
+    async def _fake(provider, model, prompt, *, max_tokens, reasoning=True, **kw):
         calls.append((provider, reasoning))
         return {"ok": True, "text": "{}", "elapsed": 0.1, "error": None,
                 "usage": {}, "status": 200}

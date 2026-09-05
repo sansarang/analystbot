@@ -161,6 +161,13 @@ class Settings(BaseSettings):
     #   Anthropic 을 부르지 않는다. 폴백 사슬의 마지막이지 기본값이 아니다.
     anthropic_daily_cap: int = Field(default=10, validation_alias=AliasChoices(
         "ANTHROPIC_DAILY_CAP", "anthropic_daily_cap"))
+    # [P0 안정성 2026-09-05] 판정 호출에 싣는 고정 seed. 0 이면 보내지 않는다.
+    #   ⚠️ `temperature=0` 만으로는 결정적이지 않다 — 대형 MoE 서빙은 배치
+    #      구성에 따라 누산 순서가 달라진다. seed 는 최선 노력 장치이고,
+    #      실제 효과는 `tools/stability_audition.py` 실측으로 판단한다.
+    #      수용 실측(2026-09-05): nvidia·groq·openrouter 전부 200.
+    llm_seed: int = Field(default=20260905, validation_alias=AliasChoices(
+        "LLM_SEED", "llm_seed"))
 
     # ── [C1 불펜 가용성] 최근 3일 소모 임계 (2026-09-04) ──────────────
     #: ⚠️ **투구수가 DB 에 없다.** `pitcher_appearances` 는 `batters`(TBF) 만
