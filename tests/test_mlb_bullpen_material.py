@@ -169,4 +169,6 @@ def test_mlb_freeze_counter_starts_after_the_bullpen_deploy():
     #    센다(§5). MLB 만 따로 두던 기준은 그 안에 흡수됐다 — 09-03 기준이
     #    남아 있으면 자료10 없이 내린 판정이 같은 표본에 섞인다.
     assert freeze_start("mlb") == freeze_start("kbo") == freeze_start("npb")
-    assert freeze_start("mlb") == "2026-09-04"
+    # 🔴 [C6 2026-09-05] 변수 대장 완성으로 **전 종목 일괄 재시작**했다.
+    #   FREEZE_RESTART_IS_FINAL=True — 이것이 마지막 재시작이다.
+    assert freeze_start("mlb") == "2026-09-05"

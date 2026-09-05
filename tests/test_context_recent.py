@@ -156,8 +156,8 @@ def test_freeze_was_not_restarted_again():
     )
 
     assert FREEZE_RESTART_IS_FINAL is True
-    assert freeze_start("kbo") == "2026-09-04"
-    assert "대원칙" in FREEZE_RESTART_REASON
+    assert freeze_start("kbo") == "2026-09-05"
+    assert "변수 대장" in FREEZE_RESTART_REASON
 
 
 # ─────────────────── C2 확장 (2026-09-05) ───────────────────
