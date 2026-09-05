@@ -70,6 +70,16 @@ def rec_label(jg: dict, settings=None) -> str:
         return "보드만"
     if jg.get("judge_confidence") == "low" or jg.get("judge_pass"):
         return "보드만"
+    # [A 2026-09-01] 오늘 선발의 최근 등판이 1경기 이하면 추천하지 않는다.
+    #   🔴 이 규칙은 `pipeline.qualifies()` 에만 있었고 **카드 경로에는 없었다.**
+    #      게이트가 둘로 갈려, 사용자가 받는 카드는 느슨한 쪽이었다.
+    #      실사고 2026-09-05: NC 카드가 근거3에 "이재학 704일 만 복귀(표본 0)"
+    #      라고 스스로 적어놓고 `우세 NC 66.0% · 🟢 · 추천` 으로 나갔다.
+    #      같은 슬레이트의 일일 요약은 "선발 표본 부족 3경기 — 추천 자격 없음"
+    #      이라고 정확히 셌다 — 요약과 카드가 서로 다른 말을 했다.
+    #      이는 규칙이 생긴 계기(1:7 패)와 **같은 실패**다.
+    if jg.get("starter_low_sample"):
+        return "보드만"
     side, p = favored_side_and_p(jg)
     if p is None:
         return "보드만"
