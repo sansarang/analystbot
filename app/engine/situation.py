@@ -124,7 +124,22 @@ def published_before(item: dict, starts_at) -> bool:
     return dt < st
 
 
-def classify(items: list[dict], sport: str, *, starts_at=None) -> list[dict]:
+def _is_official(item: dict, dom: str, url: str, teams: tuple) -> bool:
+    """이 항목의 소식통이 공식인가.
+
+    🔴 [2026-09-06] X 항목은 **계정**으로 본다. 도메인으로 보면 `@Athletics`
+       구단 공식 발표가 익명 계정과 똑같이 `x.com` 이라 함께 `[미확인]` 이
+       된다 — 실측에서 그렇게 됐다.
+    """
+    from app.registry import is_trusted_source, x_account_is_official
+
+    if "x.com" in (dom or url or "") or "twitter.com" in (dom or url or ""):
+        return x_account_is_official(str((item or {}).get("account") or ""), teams)
+    return is_trusted_source(dom) if dom else is_trusted_source(url)
+
+
+def classify(items: list[dict], sport: str, *, starts_at=None,
+             teams: tuple = ()) -> list[dict]:
     """기사 목록 → 상황 태그. 종목을 모르면 빈 목록(수집은 멈추지 않는다).
 
     `starts_at` 이 오면 **그 시각 이전 기사만** 본다.
@@ -132,7 +147,7 @@ def classify(items: list[dict], sport: str, *, starts_at=None) -> list[dict]:
     반환 항목: `{유형, 라벨, 제목, url, 출처, 확인}`
       · `확인`: "공식" | "미확인" — `registry.is_trusted_source` 가 판단한다.
     """
-    from app.registry import is_trusted_source, situation_axes
+    from app.registry import situation_axes
 
     axes = situation_axes(sport)
     if not axes:
@@ -160,7 +175,8 @@ def classify(items: list[dict], sport: str, *, starts_at=None) -> list[dict]:
             seen.add(key)
             # ⚠️ **해결된 출처**로 판단한다. `url` 은 집계자 리다이렉트라
             #    그것을 보면 전건이 `[미확인]` 이 된다(실측 2026-09-06).
-            trusted = is_trusted_source(dom) if dom else is_trusted_source(url)
+            #    X 항목은 도메인이 아니라 **계정**으로 본다.
+            trusted = _is_official(it, dom, url, teams)
             out.append({
                 "유형": kind,
                 "라벨": LABEL if trusted else f"{LABEL}{UNVERIFIED}",
@@ -175,12 +191,13 @@ def classify(items: list[dict], sport: str, *, starts_at=None) -> list[dict]:
     return out
 
 
-def by_side(research: dict, sport: str, *, starts_at=None) -> dict[str, list[dict]]:
+def by_side(research: dict, sport: str, *, starts_at=None,
+            teams: tuple = ()) -> dict[str, list[dict]]:
     """`{side}_news` 를 읽어 진영별 상황 태그. 없으면 빈 dict."""
     out: dict[str, list[dict]] = {}
     for side in ("home", "away"):
         rows = (research or {}).get(f"{side}_news") or []
-        tags = classify(rows, sport, starts_at=starts_at)
+        tags = classify(rows, sport, starts_at=starts_at, teams=teams)
         if tags:
             out[side] = tags
     return out
@@ -205,7 +222,8 @@ def attach(jg: dict) -> int:
     sport = (jg.get("sport") or "").lower()
     research = jg.get("research") or {}
     tags = by_side(research, sport,
-                   starts_at=jg.get("starts_at") or jg.get("starts_at_utc"))
+                   starts_at=jg.get("starts_at") or jg.get("starts_at_utc"),
+                   teams=(jg.get("home") or "", jg.get("away") or ""))
     jg["situation_tags"] = tags
     n = sum(len(v) for v in tags.values())
     logger.info("[situation] %s game=%s 태그 %d건 (home=%d away=%d)",

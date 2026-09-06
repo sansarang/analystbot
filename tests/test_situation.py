@@ -149,14 +149,21 @@ def test_unknown_source_defaults_to_unverified():
 
 
 # ── 격리: 확률로 새지 않는가 ────────────────────────────────────────
-def test_prompt_binds_situation_to_conservative_reflection():
-    """프롬프트가 상한·0 규칙을 실제로 걸고 있는가."""
+def test_prompt_does_not_quantify_situation():
+    """🔴 [2026-09-06 설계 전환] 상황에 %p 를 매기지 않는다.
+
+    종전에는 "prior 없으면 ±1.0%p 상한" 이었다. 그런데 은퇴식이 몇 %p 인지
+    우리는 모른다 — 모르는 것에 숫자를 붙이면 지어낸 계수다.
+    승률은 이미 폼·선발·불펜으로 나왔고, 상황의 역할은 그것을 **검증**하는
+    것이다(지지/불일치/무관). 강등은 `situation_gate` 가 한다.
+    """
     from app.engine.prompts import MATCHUP
 
     assert "[상황]" in MATCHUP
-    assert "±1.0%p" in MATCHUP
-    assert "%p 0 고정" in MATCHUP        # [미확인] 항목
-    assert "%p 0으로 기재만" in MATCHUP   # 방향 불명
+    assert "±1.0%p" not in MATCHUP, "옛 수치화 규칙이 남아 있다"
+    assert "%p 반영은 0" in MATCHUP
+    assert "상황판정" in MATCHUP
+    assert "소식통이 확인되지 않은" in MATCHUP
 
 
 def test_situation_tags_reach_material2_with_source():

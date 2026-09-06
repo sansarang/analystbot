@@ -151,6 +151,16 @@ def render_form_card(jg: dict, sport: str | None = None, *,
         bit = " ".join(str(x) for x in (adj, why) if x).strip()
         if bit:
             lines.append(f"뉴스반영 {bit}")
+    # [소식통 2026-09-06] 현지 상황이 이 승률을 뒷받침하는가.
+    #   ⚠️ 확률을 바꾸지 않는다. 사용자가 숫자와 현장을 같이 보게 한다.
+    try:
+        from app.engine.situation_gate import card_line
+
+        sit = card_line(jg.get("situation_check") or {})
+        if sit:
+            lines.append(sit)
+    except Exception:      # 카드가 이 한 줄 때문에 못 나가면 안 된다
+        pass
     lines.append(rec_label(jg))
     if revision:
         lines.append("라인업 변경 재판정")

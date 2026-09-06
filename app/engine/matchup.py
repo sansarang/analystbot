@@ -338,6 +338,20 @@ def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
     reasons = verdict.get("근거") or []
     jg["verdict"] = " ".join(str(x) for x in reasons) or "매치업 판정"
     jg["form_unavailable"] = False
+    # [소식통 2026-09-06] 상황이 승률을 뒷받침하는가. **확률은 안 건드린다** —
+    #   확신도만 1단계 내리고, 그것도 공식 소식통이 있을 때만이다.
+    #   ⚠️ 판정이 확신도를 직접 내리게 하지 않는다. 모델은 `상황판정` 만 내고
+    #      소식통 검사와 강등은 코드가 한다 — 모델에게 거부권을 주지 않는다.
+    try:
+        from app.engine.situation_gate import apply as _sit_gate
+
+        jg["situation_check"] = _sit_gate(jg)
+        # 강등이 '하'까지 갔으면 거부권도 함께 선다.
+        if jg.get("judge_confidence") == "low":
+            jg["judge_pass"] = True
+    except Exception as exc:
+        logger.warning("[situation-gate] game=%s 실패 — 판정은 그대로: %s",
+                       jg.get("game_id"), exc)
 
 
 async def _keep_prompt(redis, game_id, prompt: str) -> None:

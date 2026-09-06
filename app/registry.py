@@ -367,3 +367,54 @@ SCORE_PATTERN = r"\d{1,2}\s*[-–:：対vsVS]\s*\d{1,2}"
 def recap_markers(sport: str) -> tuple[str, ...]:
     """그 종목의 상보 표지. 모르는 종목은 빈 튜플 — 거르지 않는다."""
     return RECAP_MARKERS.get((sport or "").lower(), ())
+
+
+# ── [소식통 2026-09-06] X 계정 신뢰도 ───────────────────────────────
+# 🔴 **소식통이 관건이다** (사용자 지시 2026-09-06).
+#    `@Athletics` 가 올린 로스터 무브와 익명 계정이 올린 "카더라"는 무게가
+#    다르다. 그런데 도메인으로 보면 둘 다 `x.com` 이라 똑같이 `[미확인]` 이
+#    된다 — 구단 공식 발표가 블로그와 같은 취급을 받았다(실측 2026-09-06).
+#
+# ⚠️ 계정을 **막기 위한** 목록이 아니라 **무게를 재기 위한** 목록이다.
+#    여기 없는 계정도 수집되고 카드에 보인다. 다른 것은 확신도를 흔들 수
+#    있느냐뿐이다.
+#
+# ⚠️ 구단 공식 계정은 **팀명에서 유도한다** — 목록을 손으로 적으면 팀이
+#    바뀔 때 따라가지 않는다(사본 금지). 아래는 팀명으로 유도되지 않는
+#    리그·언론 계정만 적는다.
+TRUSTED_X_ACCOUNTS: tuple[str, ...] = (
+    # 리그·기구 공식
+    "mlb", "mlbnetwork", "mlbpipeline", "npb", "pacificleaguetv",
+    "koreabaseball", "kbo",
+    # 언론 (야구 전담 계정)
+    "sponichiyakyu", "sanspo_eagles", "nikkansports", "hochi_giants",
+    "daily_online", "yna_kr", "newsis_", "osen_official", "sportschosun",
+    "sportsseoul", "spotvnews", "mydaily", "xportsnews",
+    "espn", "espnmlb", "theathletic", "athleticmlb", "apsports",
+    "bbcsport", "skysportsnews", "goal",
+)
+
+
+def x_account_is_official(account: str, teams: tuple[str, ...] = ()) -> bool:
+    """이 X 계정이 **공식 소식통**인가.
+
+    ① 구단 공식 — 팀명에서 유도한다(`Athletics` → `@Athletics`,
+       `Seattle Mariners` → `@Mariners`). 목록을 적지 않는다.
+    ② 리그·언론 — 위 목록.
+    모르면 False 다. 모호하면 무게를 주지 않는 쪽이 안전하다.
+    """
+    a = (account or "").lstrip("@").strip().lower()
+    if not a:
+        return False
+    if a in TRUSTED_X_ACCOUNTS:
+        return True
+    for team in teams or ():
+        t = (team or "").lower()
+        if not t:
+            continue
+        # "Seattle Mariners" → {"seattle","mariners","seattlemariners"}
+        words = [w for w in t.replace("-", " ").split() if len(w) > 2]
+        cands = set(words) | {"".join(words)}
+        if a in cands:
+            return True
+    return False
