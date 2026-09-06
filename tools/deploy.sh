@@ -60,6 +60,12 @@ SHA=$(git rev-parse HEAD)
 SUBJ=$(git log -1 --format=%s)
 echo "▶ 배포 커밋 ${SHA:0:7} — $SUBJ"
 
+# 🔴 [2026-09-06] **초기화를 빠뜨려 배포가 중간에 죽었다.** `set -u` 아래서
+#    첫 `DEPLOYED="$DEPLOYED $svc"` 가 unbound 로 터졌다 — 스케줄러 업로드는
+#    이미 나간 뒤라, 봇·크롤러가 구버전으로 남고 아무도 모를 뻔했다.
+#    (실측 15:15: "tools/deploy.sh: line 71: DEPLOYED: unbound variable")
+DEPLOYED=""
+
 deploy_one() {
   local svc="$1" cmd="$2" path="${3:-.}"
   railway variables --project "$PROJ" --environment "$ENVIRON" --service "$svc" \
