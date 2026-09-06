@@ -455,6 +455,30 @@ async def final_done(redis, jg: dict, date: str) -> bool:
         return False
 
 
+async def release_final(redis, jg: dict, date: str) -> None:
+    """최종 권한을 **되돌린다.** 판정을 못 냈으면 권한만 태운 것이다.
+
+    🔴 [P0 실사고 2026-09-06] 락은 잡혔는데 판정이 없는 상태가 실제로 났다
+       (npb game=3603, 니혼햄@라쿠텐). 그러면 그 뒤 모든 재판정이 "이미 완료"로
+       막혀 **카드가 영영 안 나간다** — `W-SEND-PENDING` 이 그것을 잡았다.
+       실패했으면 권한을 돌려놓아 다음 폴링이 다시 시도하게 한다.
+    """
+    if redis is None:
+        return
+    try:
+        await redis.delete(_final_key(jg, date))
+        logger.warning("[matchup] game=%s 최종 판정 실패 — 권한 반납(다음 폴링 재시도)",
+                       jg.get("game_id"))
+    except Exception as exc:
+        logger.warning("[matchup] 최종 락 반납 실패 game=%s: %s",
+                       jg.get("game_id"), exc)
+
+
+def has_verdict(jg: dict) -> bool:
+    """이 경기에 이미 판정이 붙어 있는가. `pregame_push._judged` 와 같은 기준."""
+    return isinstance(jg.get("p_claude"), (int, float))
+
+
 async def claim_final(redis, jg: dict, date: str) -> bool:
     """이 경기의 최종 판정 권한을 **선착순 1회**만 준다.
 
@@ -555,11 +579,22 @@ async def judge_matchup(jg: dict, redis, date: str, *,
         return None
     final = bool(allow_final) and lineup_is_confirmed(jg)
     if await final_done(redis, jg, date):
-        # 🔴 이미 최종을 낸 경기다. **예비로도 다시 돌지 않는다** — 재판정이
-        #    한 번 더 돌면 카드가 한 장 더 나가고, 픽은 두 장이어야 한다.
-        logger.info("[matchup] game=%s 최종 판정 이미 완료 — 재판정하지 않는다",
-                    jg.get("game_id"))
-        return None
+        if has_verdict(jg):
+            # 이미 최종을 낸 경기다. **예비로도 다시 돌지 않는다** — 재판정이
+            # 한 번 더 돌면 카드가 한 장 더 나가고, 픽은 두 장이어야 한다.
+            logger.info("[matchup] game=%s 최종 판정 이미 완료 — 재판정하지 않는다",
+                        jg.get("game_id"))
+            return None
+        # 🔴 [P0 실사고 2026-09-06] **락은 있는데 판정이 없다.** 그 최종은
+        #    실패했거나(파싱 실패·크레딧) 중간에 프로세스가 끊겼다.
+        #    종전에는 여기서도 그냥 반환해서 **그 경기는 영영 카드가 못 나갔다**
+        #    (npb game=3603 니혼햄@라쿠텐, W-SEND-PENDING 이 잡았다).
+        #    잠긴 것은 "유료 최종을 또 부르지 않는다"까지다 — 판정 자체를
+        #    막는 것이 아니다. 무료 예비로 내려가 **한 장은 낸다.**
+        logger.warning("[matchup] game=%s 최종 락은 있는데 판정이 없다 — "
+                       "예비(무료)로 진행한다. 카드 0장을 만들지 않는다",
+                       jg.get("game_id"))
+        final = False
     role = MATCHUP_ROLE if final else PRELIM_ROLE
     from app.engine.credit_guard import abort_if_credit_gone, trip_credit
     from app.engine.team_form import _free_primary
@@ -705,6 +740,10 @@ async def judge_matchup(jg: dict, redis, date: str, *,
                            budget)
     if parsed is None:
         jg["form_unavailable"] = True
+        # 🔴 최종이 답을 못 냈으면 **권한을 돌려놓는다.** 안 그러면 다음
+        #    폴링이 "이미 완료"로 막혀 그 경기는 카드가 0장이 된다.
+        if final:
+            await release_final(redis, jg, date)
         logger.warning("[matchup] %s vs %s 분석 불가 model=%s — 추천 탈락",
                        home, away, model)
         return None

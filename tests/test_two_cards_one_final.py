@@ -66,6 +66,9 @@ class _FakeRedis:
     def __init__(self):
         self.kv = {}
 
+    async def delete(self, key):
+        return int(self.kv.pop(key, None) is not None)
+
     async def set(self, key, val, ex=None, nx=False):
         if nx and key in self.kv:
             return None
@@ -84,6 +87,79 @@ def test_claim_final_grants_exactly_one():
     first = asyncio.run(claim_final(r, jg, "2026-09-06"))
     second = asyncio.run(claim_final(r, jg, "2026-09-06"))
     assert (first, second) == (True, False)
+
+
+def test_stranded_lock_falls_back_to_prelim_not_silence(monkeypatch):
+    """🔴 P0 실사고 2026-09-06 (npb game=3603 니혼햄@라쿠텐).
+
+    락은 잡혔는데 판정이 없는 상태가 실제로 났다. 종전에는 그 뒤 모든
+    재판정이 "이미 완료"로 막혀 **그 경기는 카드가 영영 0장**이었다 —
+    `W-SEND-PENDING` 이 15:29 에 잡을 때까지 8분간 조용히 막혀 있었다.
+    잠긴 것은 "유료 최종을 또 부르지 않는다"까지다. 판정 자체가 아니다.
+    """
+    from app.llm.judge_route import PRELIM_ROLE
+
+    r = _FakeRedis()
+    jg = _jg(lineup_status="confirmed")
+    asyncio.run(r.set("matchup:final:kbo:1713:2026-09-06", "1", nx=True))
+
+    from app.engine import matchup as m
+
+    seen = {}
+
+    async def _fake_complete(prompt, *, model, max_tokens, role, mock):
+        seen["role"] = role
+        return json.dumps({"p_home": 0.55, "우세": "홈", "확신도": "중",
+                           "근거": ["x"], "변수": []})
+
+    monkeypatch.setattr(m, "complete_json", _fake_complete)
+    monkeypatch.setattr(m, "_form_or_analyze", lambda *a, **k: asyncio.sleep(0, {}))
+    monkeypatch.setattr(m, "boxscore_payload", lambda _jg: {"home": [1], "away": [1]})
+    monkeypatch.setattr(m, "persist_matchup_record", lambda *a, **k: asyncio.sleep(0))
+    monkeypatch.setattr(m, "_trace", lambda *a, **k: asyncio.sleep(0))
+
+    out = asyncio.run(m.judge_matchup(jg, r, "2026-09-06", mock=False,
+                                      allow_final=True))
+    assert out is not None, "락 때문에 판정이 통째로 막혔다 — 카드 0장이 된다"
+    assert seen["role"] == PRELIM_ROLE, "유료 최종을 또 불렀다"
+
+
+def test_already_final_with_verdict_is_not_rejudged(monkeypatch):
+    """판정이 이미 붙어 있으면 재판정하지 않는다 — 픽은 두 장이다."""
+    from app.engine import matchup as m
+
+    r = _FakeRedis()
+    asyncio.run(r.set("matchup:final:kbo:1713:2026-09-06", "1", nx=True))
+    jg = _jg(lineup_status="confirmed", p_claude=0.61)
+
+    async def boom(*a, **k):
+        raise AssertionError("판정이 있는데 다시 물었다")
+
+    monkeypatch.setattr(m, "complete_json", boom)
+    assert asyncio.run(m.judge_matchup(jg, r, "2026-09-06", mock=False,
+                                       allow_final=True)) is None
+
+
+def test_failed_final_returns_the_permit(monkeypatch):
+    """최종이 답을 못 내면 권한을 돌려놓는다 — 다음 폴링이 다시 시도한다."""
+    from app.engine import matchup as m
+
+    r = _FakeRedis()
+    jg = _jg(lineup_status="confirmed")
+
+    async def _empty(prompt, *, model, max_tokens, role, mock):
+        return ""                      # 파싱 실패
+
+    monkeypatch.setattr(m, "complete_json", _empty)
+    monkeypatch.setattr(m, "_form_or_analyze", lambda *a, **k: asyncio.sleep(0, {}))
+    monkeypatch.setattr(m, "boxscore_payload", lambda _jg: {"home": [1], "away": [1]})
+    monkeypatch.setattr(m, "persist_matchup_record", lambda *a, **k: asyncio.sleep(0))
+    monkeypatch.setattr(m, "_trace", lambda *a, **k: asyncio.sleep(0))
+
+    assert asyncio.run(m.judge_matchup(jg, r, "2026-09-06", mock=False,
+                                       allow_final=True)) is None
+    assert "matchup:final:kbo:1713:2026-09-06" not in r.kv, \
+        "권한만 태우고 판정은 못 냈다 — 그 경기는 영영 카드가 없다"
 
 
 def test_claim_final_allows_when_redis_is_absent():
