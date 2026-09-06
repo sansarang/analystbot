@@ -126,6 +126,10 @@ _RATE_DENOM = re.compile(r"^\s*\d+(?:\.\d+)?\s*(?:실점|자책|볼넷|삼진|�
 #      ("원정 선발 3이닝 미만 조기 강판 … 근거 자료10 최장 3.0이닝")에서
 #      3이닝이 빠져 자료10 검증이 깨졌다 — 기존 계약 테스트가 잡았다.
 #      그 값은 자료10 에 실재하므로 검증 대상이 맞다. 측정한 것만 넣는다.
+#   ⚠️ [2026-09-06] "꾸준히 6이닝 이상을 책임져온" 같은 **서술형 문턱**은
+#      여전히 새어 들어온다(실측 game=1716). 값이 원문에 있으면 검증되고
+#      없으면 `not_found` 가 되므로 **경보로는 가지 않는다** — mismatch 는
+#      "같은 단위 값이 원문에 있는데 다를 때"만이다. 그 구분에 기댄다.
 _THRESHOLD = re.compile(r"^\s*(?:↑|↓|\+)")
 
 
@@ -136,6 +140,19 @@ def is_rate_denominator(text: str, value: float, end: int) -> bool:
 def is_threshold(text: str, end: int) -> bool:
     """관측치가 아니라 문턱·전망을 가리키는 수인가."""
     return bool(_THRESHOLD.match(text[end:]))
+
+
+#: 🔴 [2026-09-06] **자료 번호는 값이 아니다.**
+#   "근거 자료10 이닝분포 p25" 의 `10` 이 `(\d+)\s*이닝` 에 걸려 "10이닝"으로
+#   읽혔다. 자료10 의 이름이 하필 "이닝분포"라서, **자료10 을 인용하는 변수는
+#   전부 이 오탐이 난다** — 그래서 같은 경보가 반복됐다
+#   (실측 game=1716: ip 주장 10.0 vs 원문 12.0).
+_MATERIAL_REF = re.compile(r"자료\s*$")
+
+
+def is_material_ref(text: str, start: int) -> bool:
+    """이 숫자가 `자료N` 의 번호인가. 앞이 "자료"면 값이 아니다."""
+    return bool(_MATERIAL_REF.search(text[:start]))
 
 
 #: 🔴 (b) [2026-09-05] **선발과 불펜을 한 풀에 섞지 않는다.**
@@ -288,6 +305,8 @@ def extract_claims(verdict: dict, names: dict[str, str] | None = None) -> list[d
                     if unit == "ip" and is_rate_denominator(s, val, m.end()):
                         continue
                     if is_threshold(s, m.end()):
+                        continue
+                    if is_material_ref(s, m.start()):
                         continue
                     out.append({"text": s[:200], "unit": unit, "value": val,
                                 "derived": any(k in s for k in DERIVED_MARKERS),

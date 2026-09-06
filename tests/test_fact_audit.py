@@ -246,3 +246,38 @@ def test_c_projection_is_not_a_citation():
 def test_sample_size_reads_starts_too():
     """"최근 3선발 21이닝" 은 3등판 합계다 — 표본수를 읽어야 재계산이 된다."""
     assert fact_audit.sample_n("원정 선발 최근 3선발 21이닝 3실점") == 3
+
+
+# ── [2026-09-06] 자료 번호를 값으로 읽었다 ──────────────────────────
+def test_material_reference_number_is_not_a_value():
+    """🔴 `자료10 이닝분포` 의 `10` 이 "10이닝"으로 읽혔다.
+
+    자료10 의 이름이 하필 "이닝분포"라서 `(\\d+)\\s*이닝` 에 걸린다.
+    **자료10 을 인용하는 변수는 전부 이 오탐이 난다** — 같은 경보가 반복됐다.
+    실측 game=1716: `ip 주장 10.0 vs 원문 12.0`.
+    """
+    line = ("후라도가 이닝분포 하단(p25 6.0)에 그치고 피로한 원정 불펜이 조기 "
+            "투입될 리스크 — 발생 시 홈 방향 약 2%p · 현재 p에 1%p 기반영 · "
+            "근거 자료10 이닝분포 p25(n=2)")
+    vals = [c["value"] for c in fact_audit.extract_claims({"변수": [line]})
+            if c["unit"] == "ip"]
+    assert 10.0 not in vals, f"자료 번호를 이닝으로 읽었다: {vals}"
+
+
+def test_real_innings_next_to_a_material_ref_still_counts():
+    """반대 위험 — 자료10 을 **인용한 값**은 그대로 검증한다."""
+    line = "원정 선발 3이닝 미만 조기 강판 — 근거 자료10 (p50 1.2이닝, 최장 3.0이닝)"
+    vals = sorted({c["value"] for c in fact_audit.extract_claims({"변수": [line]})
+                   if c["unit"] == "ip"})
+    assert vals == [1.2, 3.0], vals
+
+
+@pytest.mark.parametrize("line,expect", [
+    ("근거 자료4 선발등판", None),
+    ("자료 10 이닝분포", None),
+    ("홈 선발 6.0이닝 2실점 — 자료4", 6.0),
+])
+def test_material_ref_detection(line, expect):
+    got = [c["value"] for c in fact_audit.extract_claims({"근거": [line]})
+           if c["unit"] == "ip"]
+    assert (got[0] if got else None) == expect, (line, got)
