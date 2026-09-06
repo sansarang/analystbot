@@ -101,14 +101,15 @@ def build_query(sport: str, team: str) -> str:
     ⚠️ **명시적으로 "검색하라"고 말한다.** 실측 2026-09-06: 일반 서술형
        질문은 도구를 발동시키지 않아 `groundingChunks` 가 0 이었다.
     """
-    from app.collectors.news_rss import QUERY_ALIAS
+    from app.collectors.news_rss import qualified
     from app.registry import situation_axes
 
     axes = situation_axes(sport)
     if not axes:
         return ""
     terms = [w[0] for w in axes.values() if w][:8]
-    name = QUERY_ALIAS.get(team, team)
+    # 리그 한정어를 함께 — 팀명만 주면 다른 종목이 딸려온다(실측 2026-09-06).
+    name = qualified(sport, team)
     return (f"{name} 구단의 최근 뉴스를 검색해서 알려줘. "
             f"특히 다음과 관련된 것: {', '.join(terms)}. "
             f"경기 결과·스코어 기사는 제외하고, 아직 열리지 않은 일정·발표·"

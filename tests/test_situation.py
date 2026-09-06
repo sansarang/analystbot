@@ -377,3 +377,42 @@ async def test_new_articles_invalidate_the_form_cache():
     deleted.clear()
     assert await invalidate_form_cache(_R(), jg, []) == 0
     assert deleted == []
+
+
+# ── [2026-09-06] 팀명만으로 검색하면 다른 종목이 딸려온다 ────────────
+def test_queries_carry_a_league_qualifier():
+    """🔴 실측: MLB `Athletics` 기사 102건 중 **60건(59%)** 이 타 종목이었다.
+
+      "Athletic Bilbao crush Simeone's flat Atletico"   ← 스페인 축구
+      "Quakers Outlast Coppin State in Five Set Thriller" ← 대학 배구
+    둘 다 `roster_move` 태그로 잡혀 판정 재료에 들어갔다.
+    `MLB` 를 붙이니 47건 중 6건(13%)으로 떨어졌고, 상황 태그의 타 종목은
+    **0건**이 됐다.
+    """
+    from app.collectors.news_rss import qualified, situation_query
+
+    assert qualified("mlb", "Athletics") == "Athletics MLB"
+    assert qualified("kbo", "SSG Landers") == "SSG 랜더스 KBO"
+    assert qualified("npb", "Yomiuri Giants").endswith("プロ野球")
+    assert situation_query("mlb", "Athletics").startswith("Athletics MLB (")
+
+
+def test_unknown_sport_gets_no_qualifier():
+    """모르는 종목은 팀명 그대로 — 수집을 멈추지 않는다."""
+    from app.collectors.news_rss import qualified
+
+    assert qualified("handball", "Some Team") == "Some Team"
+
+
+def test_grounding_query_is_qualified_too():
+    from app.collectors.grounding import build_query
+
+    assert build_query("mlb", "Athletics").startswith("Athletics MLB")
+
+
+def test_qualifier_lives_in_registry_not_code():
+    """사본 금지 — 한정어는 registry 가 원본이다."""
+    from app.registry import league_query_term
+
+    assert league_query_term("mlb") == "MLB"
+    assert league_query_term("handball") == ""

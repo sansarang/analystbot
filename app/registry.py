@@ -418,3 +418,27 @@ def x_account_is_official(account: str, teams: tuple[str, ...] = ()) -> bool:
         if a in cands:
             return True
     return False
+
+
+# ── [오수집 방지 2026-09-06] 리그 한정어 ────────────────────────────
+# 🔴 팀명만으로 검색하면 다른 종목·학교가 딸려온다.
+#    실측 2026-09-06 (MLB `Athletics`):
+#      "Athletic Bilbao crush Simeone's flat Atletico"        ← 스페인 축구
+#      "Quakers Outlast Coppin State in Five Set Thriller"    ← 대학 배구
+#    둘 다 `roster_move` 상황 태그로 잡혀 판정 재료에 들어갔다. 평의회가
+#    "타 종목 노이즈"라고 걸러냈지만, **유료 조사 1콜을 태워 노이즈를 거르는
+#    것은 낭비다** — 수집 단계에서 막는다.
+#
+# ⚠️ 한정어는 **재현율을 깎는다.** 리그명을 안 쓰는 기사가 빠진다.
+#    그래서 종목별로 실측해 고른 값이고, 빈 문자열이면 안 붙인다.
+LEAGUE_QUERY_TERM: dict[str, str] = {
+    "mlb": "MLB",
+    "kbo": "KBO",
+    "npb": "プロ野球",
+    "soccer": "football",
+}
+
+
+def league_query_term(sport: str) -> str:
+    """검색 쿼리에 붙일 리그 한정어. 없으면 빈 문자열 — 안 붙인다."""
+    return LEAGUE_QUERY_TERM.get((sport or "").lower(), "")

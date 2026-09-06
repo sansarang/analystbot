@@ -158,6 +158,26 @@ def dedupe_by_title(items: list[dict]) -> list[dict]:
 _SIT_QUERY_TERMS = 8
 
 
+def qualified(sport: str, team: str) -> str:
+    """팀명 + 리그 한정어. 한정어가 없으면 팀명 그대로.
+
+    🔴 [2026-09-06] 팀명만으로 검색하면 다른 종목·학교가 딸려온다.
+       실측: MLB `Athletics` 기사 102건 중 **60건(59%)** 이 스페인 축구
+       (Athletic Bilbao)·대학 스포츠(Penn/Elon Athletics)였다. 그것들이
+       `roster_move` 상황 태그로 잡혀 판정 재료에 들어갔다.
+       `MLB` 를 붙이니 47건 중 6건(13%)으로 떨어졌다.
+
+    ⚠️ 한정어는 재현율을 깎는다(비모호 팀은 85→43건). 그래도 붙이는 이유는
+       **우리가 실제로 쓰는 양이 팀당 12~20건**이라 43건이면 넘치기 때문이다.
+       KBO·NPB 는 오히려 늘었다(85→100 · 71→76).
+    """
+    from app.registry import league_query_term
+
+    name = QUERY_ALIAS.get(team, team)
+    term = league_query_term(sport)
+    return f"{name} {term}".strip() if term else name
+
+
 def situation_query(sport: str, team: str) -> str:
     """`팀명 (키워드 OR 키워드 …)`. 종목 분기는 registry 가 갖는다.
 
@@ -176,8 +196,7 @@ def situation_query(sport: str, team: str) -> str:
     if not terms:
         return ""
     picked = terms[:_SIT_QUERY_TERMS]
-    name = QUERY_ALIAS.get(team, team)
-    return f'{name} ({" OR ".join(picked)})'
+    return f'{qualified(sport, team)} ({" OR ".join(picked)})'
 
 
 async def fetch_team_situation(sport: str, team: str, *,
@@ -225,7 +244,7 @@ async def fetch_team(sport: str, team: str, *, limit: int = 20) -> list[dict]:
     loc = LOCALE.get(sport)
     if not loc or not team:
         return []
-    q_main = QUERY_ALIAS.get(team, team)
+    q_main = qualified(sport, team)
 
     async def _one(q: str) -> list[dict]:
         async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True,
