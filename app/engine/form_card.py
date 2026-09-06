@@ -89,6 +89,34 @@ def rec_label(jg: dict, settings=None) -> str:
     return "추천" if p >= need else "보드만"
 
 
+def _bet_line(jg: dict, settings=None) -> str:
+    """베팅 자격 한 줄. **결론과 분리한다.**
+
+    `보드만` 은 "승자를 모른다"가 아니라 "걸 만큼 확실하지 않다"는 뜻이다.
+    이유를 함께 적지 않으면 카드의 마지막 말이 결론처럼 읽힌다(실측 2026-09-06).
+    """
+    s = settings or get_settings()
+    label = rec_label(jg, s)
+    if label != "보드만":
+        return label
+    side, p = favored_side_and_p(jg)
+    why = None
+    if jg.get("judge_confidence") == "low" or jg.get("judge_pass"):
+        why = "확신도 하"
+    elif jg.get("starter_low_sample"):
+        why = "선발 표본 부족"
+    elif p is not None:
+        need = s.min_win_prob + (s.away_prob_penalty if side == "away" else 0.0)
+        if p < need:
+            why = f"추천 하한 {need:.0%} 미달 ({p:.0%})"
+    from app.collectors.lineups import pick_state as _ps
+
+    state = jg.get("pick_state") or _ps(jg.get("lineup_status"))[0]
+    if state != "final":
+        why = "라인업 미확정"
+    return f"보드만 — {why}" if why else "보드만"
+
+
 def render_form_card(jg: dict, sport: str | None = None, *,
                      revision: bool = False) -> str:
     """판정 JSON → 카드 본문. 언더오버·런라인·F5 없음."""
@@ -138,6 +166,17 @@ def render_form_card(jg: dict, sport: str | None = None, *,
             lines.append(_ml)
     except Exception:
         pass
+    # 🔴 [2026-09-06] **결론이 먼저다.** 종전 카드는 확률·근거·변수만 늘어놓고
+    #    마지막 줄이 `보드만`(베팅 라벨)이라 "승자를 모르겠다"로 읽혔다.
+    #    판정의 답은 확률이 아니라 결론이고, 확률은 그 표현일 뿐이다.
+    concl = m.get("결론") or {}
+    if isinstance(concl, dict):
+        winner = str(concl.get("승자") or "").strip()
+        judged = str(concl.get("판단") or "").strip()
+        if winner:
+            lines.append(f"🎯 결론 — {_team(winner)} 승")
+        if judged:
+            lines.append(f"   {judged}")
     reasons = [str(x).strip() for x in (m.get("근거") or []) if str(x).strip()]
     for i, r in enumerate(reasons[:3], 1):
         lines.append(f"근거{i} {r}")
@@ -166,7 +205,9 @@ def render_form_card(jg: dict, sport: str | None = None, *,
             lines.append(cl)
     except Exception:      # 카드가 이 한 줄 때문에 못 나가면 안 된다
         pass
-    lines.append(rec_label(jg))
+    # 🔴 베팅 라벨은 **승자 판단이 아니라 걸 자격**이다. 이유를 붙여
+    #    "승자를 모르겠다"로 읽히지 않게 한다.
+    lines.append(_bet_line(jg))
     if revision:
         lines.append("라인업 변경 재판정")
     return "\n".join(lines)
