@@ -289,3 +289,77 @@ async def test_form_still_retries(monkeypatch):
     monkeypatch.setattr(oc, "complete", _fake)
     await tf._complete_free([("nvidia", "n")], "p", 100, "form")
     assert calls == ["nvidia", "nvidia"], "폼 재시도가 사라졌다"
+
+
+# ── [2026-09-06] 유료가 주전이면 매 호출이 경보가 되면 안 된다 ───────
+# 🔴 실사고 2026-09-02: 워치독 오탐 4건이 15분마다 울려 **진짜 고장 하나가
+#    묻힐 뻔했다.** Fable 이 주전이 된 지금 종전 조건이면 경기마다(하루 26회+)
+#    W-LLM-PAID 가 울린다.
+@pytest.mark.asyncio
+async def test_paid_primary_stays_quiet_until_near_cap(monkeypatch):
+    import app.llm.judge_route as jr
+
+    alerts = []
+
+    class _R:
+        def __init__(self):
+            self.n = 0
+
+        async def incr(self, k):
+            self.n += 1
+            return self.n
+
+        async def expire(self, k, t):
+            return True
+
+    async def _wd(code, detail, target=None):
+        alerts.append((code, detail))
+
+    import app.alerts as al
+
+    monkeypatch.setattr(al, "watchdog", _wd)
+    monkeypatch.setattr(jr, "_cfg", lambda: type(
+        "S", (), {"anthropic_daily_cap": 10, "judge_provider": "anthropic"})())
+    monkeypatch.setattr("app.pipeline.today_kst", lambda: "2026-09-06")
+
+    r = _R()
+    for _ in range(7):                     # 캡 10의 80% = 8회 미만
+        await jr.note_paid_call(r, "matchup")
+    assert alerts == [], f"주전인데 {len(alerts)}번 울렸다"
+
+    await jr.note_paid_call(r, "matchup")  # 8회째 — 80% 도달
+    assert len(alerts) == 1
+    assert "캡에 근접" in alerts[0][1]
+
+
+@pytest.mark.asyncio
+async def test_paid_fallback_alerts_on_first_call(monkeypatch):
+    """반대 위험 — 유료가 **폴백**이면 1콜부터 울려야 한다.
+
+    그건 "무료가 죽었다"는 신호이고, 조용하면 그 사실을 아무도 모른다.
+    """
+    import app.alerts as al
+    import app.llm.judge_route as jr
+
+    alerts = []
+
+    class _R:
+        async def incr(self, k):
+            return 1
+
+        async def expire(self, k, t):
+            return True
+
+    monkeypatch.setattr(al, "watchdog",
+                        lambda c, d, target=None: alerts.append((c, d)) or _noop())
+    monkeypatch.setattr(jr, "_cfg", lambda: type(
+        "S", (), {"anthropic_daily_cap": 80, "judge_provider": "gemini"})())
+    monkeypatch.setattr("app.pipeline.today_kst", lambda: "2026-09-06")
+
+    await jr.note_paid_call(_R(), "matchup")
+    assert len(alerts) == 1
+    assert "무료 provider 가 실패" in alerts[0][1]
+
+
+async def _noop():
+    return None

@@ -102,8 +102,24 @@ async def paid_calls_today(redis) -> int:
         return 0
 
 
+#: 캡의 몇 %를 넘으면 경보할지. 주전이 유료일 때는 **잔량**이 신호다.
+_PAID_WARN_RATIO = 0.8
+
+
 async def note_paid_call(redis, role: str) -> int:
-    """Anthropic 1콜 기록 + 캡 근접 시 경보. 반환 오늘 누적."""
+    """Anthropic 1콜 기록. 반환 오늘 누적.
+
+    🔴 [2026-09-06] 경보 조건이 바뀌었다. 이 경보는 Anthropic 이 **비상용**
+       이던 시절에 만들었다 — 불리면 곧 "무료가 실패했다"는 뜻이었다.
+       사용자 지시로 **Fable 이 주전**이 된 지금은 유료 호출이 정상 동작이고,
+       종전 조건이면 경기마다(하루 26회+) 울린다.
+       그 상태를 만든 적이 있다 — 워치독 오탐 4건이 15분마다 울려 **진짜 고장
+       하나가 묻힐 뻔했다**(실사고 2026-09-02).
+
+       이제 두 갈래로 나눈다:
+         · 유료가 **폴백**일 때 → 종전대로 1콜부터 경보(무료가 죽었다는 신호)
+         · 유료가 **주전**일 때 → 캡의 80%를 넘을 때만 경보(잔량이 신호)
+    """
     from app.pipeline import today_kst
 
     if redis is None:
@@ -116,13 +132,19 @@ async def note_paid_call(redis, role: str) -> int:
         logger.debug("[judge-route] 유료 카운터 기록 실패: %s", exc)
         return 0
     cap = int(_cfg().anthropic_daily_cap)
-    logger.warning("[judge-route] 💸 Anthropic 폴백 %d/%d (role=%s) — "
-                   "무료 경로가 실패했다", n, cap, role)
+    primary = (_cfg().judge_provider or "").lower() == "anthropic"
+    logger.info("[judge-route] Anthropic %s %d/%d (role=%s)",
+                "주전" if primary else "💸 폴백", n, cap, role)
+    if primary and n < max(1, int(cap * _PAID_WARN_RATIO)):
+        return n        # 주전이면 잔량이 넉넉할 때 조용히 간다
+    detail = (f"유료 주전 사용량 {n}/{cap}회 (role={role}) — 캡에 근접했다. "
+              f"넘으면 그 뒤 경기는 판정 없이 간다"
+              if primary else
+              f"Anthropic 폴백 {n}/{cap}회 (role={role}) — 무료 provider 가 실패하고 있다")
     try:
         from app.alerts import watchdog as _wd
 
-        await _wd("W-LLM-PAID", f"Anthropic 폴백 {n}/{cap}회 (role={role}) — "
-                                f"무료 provider 가 실패하고 있다", target=role)
+        await _wd("W-LLM-PAID", detail, target=role)
     except Exception as exc:
         logger.debug("[judge-route] 경보 실패: %s", exc)
     return n
