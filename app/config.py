@@ -224,8 +224,12 @@ class Settings(BaseSettings):
     odds_provider: str = Field(default="free", validation_alias=AliasChoices(
         "ODDS_PROVIDER", "odds_provider"))
 
+    # 🔴 [2026-09-06 사용자 지시] 최종 판정은 **Anthropic Fable** 이 한 번에 낸다.
+    #    "마지막 판정은 단 한 번으로 제한하고 안트로픽 fable 로 정해라."
+    #    ⚠️ 재시도 없음 — `team_form.complete_json` 이 role="matchup" 이면
+    #       1회만 부른다. 같은 재료를 여러 번 물으면 회차마다 답이 달라진다.
     matchup_model: str = Field(
-        default="claude-sonnet-5",
+        default="claude-fable-5",
         validation_alias=AliasChoices("MODEL_MATCHUP", "matchup_model"),
     )
     team_form_max_tokens: int = 1500

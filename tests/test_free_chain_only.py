@@ -242,3 +242,50 @@ def test_seed_is_omitted_for_providers_that_reject_it(monkeypatch):
     sent.clear()
     asyncio.run(oc.complete("nvidia", "m", "p", max_tokens=8, seed=42))
     assert sent.get("seed") == 42, "seed 를 받는 provider 에는 실어야 한다"
+
+
+# ── [2026-09-06] 최종 판정은 단 한 번이다 ───────────────────────────
+# 사용자 지시: "마지막 판정은 단 한 번으로 제한하고 안트로픽 fable 로 정해라."
+# 같은 재료를 여러 번 물으면 회차마다 답이 달라진다 — 오늘 실측이 그것이었다.
+def test_judgement_model_is_fable():
+    from app.config import get_settings
+
+    assert get_settings().matchup_model == "claude-fable-5"
+
+
+@pytest.mark.asyncio
+async def test_judgement_calls_the_model_only_once(monkeypatch):
+    """🔴 판정은 실패해도 다시 묻지 않는다."""
+    import app.engine.team_form as tf
+    import app.llm.openai_compat as oc
+
+    calls = []
+
+    async def _fake(provider, model, prompt, *, max_tokens, reasoning=True, **kw):
+        calls.append(provider)
+        return {"ok": True, "text": "사고문 — JSON 아님", "elapsed": 1.0,
+                "error": None, "usage": {}, "status": 200}
+
+    monkeypatch.setattr(oc, "complete", _fake)
+    out = await tf._complete_free([("gemini", "g"), ("nvidia", "n")], "p", 100,
+                                  "matchup")
+    assert calls == ["gemini"], f"판정을 {len(calls)}번 불렀다: {calls}"
+    assert out is None
+
+
+@pytest.mark.asyncio
+async def test_form_still_retries(monkeypatch):
+    """반대 위험 — 폼은 재료를 만드는 단계라 재시도가 남아야 한다."""
+    import app.engine.team_form as tf
+    import app.llm.openai_compat as oc
+
+    calls = []
+
+    async def _fake(provider, model, prompt, *, max_tokens, reasoning=True, **kw):
+        calls.append(provider)
+        return {"ok": True, "text": "사고문", "elapsed": 1.0,
+                "error": None, "usage": {}, "status": 200}
+
+    monkeypatch.setattr(oc, "complete", _fake)
+    await tf._complete_free([("nvidia", "n")], "p", 100, "form")
+    assert calls == ["nvidia", "nvidia"], "폼 재시도가 사라졌다"

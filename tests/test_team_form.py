@@ -117,7 +117,8 @@ def test_message_kwargs_locks_temperature_zero_and_does_not_use_judge_tokens():
     assert kw["max_tokens"] == 1500
     assert kw["extra_body"]["temperature"] == 0
     kw2 = message_kwargs(s.matchup_model, s.matchup_max_tokens, "hi")
-    assert kw2["model"] == "claude-sonnet-5"
+    # [2026-09-06] 최종 판정은 Fable 이 한 번에 낸다.
+    assert kw2["model"] == "claude-fable-5"
     assert kw2["max_tokens"] == 6000   # [v1.3 A-3] 절단 실측으로 상향
     assert "extra_body" not in kw2
     from app.engine.judge import JUDGE_MAX_TOKENS

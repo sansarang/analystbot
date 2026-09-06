@@ -70,14 +70,20 @@ def analysis_game_key(league: str, game_id, date: str) -> str:
     return f"analysis:{league}:{game_id}:{date}"
 
 
-def _sampling_allowed(model: str) -> bool:
-    """실측 2026-08-29: claude-sonnet-5 는 extra_body temperature=0 이 400.
+#: temperature 를 거부하는 Claude 계열. **실측된 것 + 같은 세대**를 넣는다.
+#  실측 2026-08-29: `claude-sonnet-5` 는 extra_body temperature=0 이 400 —
+#    "`temperature` is deprecated for this model." Haiku 4.5 는 0 이 통과했다.
+#  🔴 [2026-09-06] `claude-fable-5`·`claude-opus-5` 는 **아직 측정하지 못했다**
+#     (Anthropic 잔액 0). 같은 Claude 5 세대이므로 **안 보내는 쪽**으로 둔다 —
+#     판정은 이제 **단 한 번**이라 400 이 나면 그 경기는 판정 없이 끝난다.
+#     측정 후 통과하면 여기서 빼면 된다.
+_NO_SAMPLING = ("claude-sonnet-5", "claude-fable-5", "claude-opus-5")
 
-    '`temperature` is deprecated for this model.'
-    문서: non-default sampling → 400. 생략만 허용. Haiku 4.5는 0이 통과했다.
-    """
+
+def _sampling_allowed(model: str) -> bool:
+    """이 모델이 `temperature` 를 받는가. **모르면 안 보낸다.**"""
     m = (model or "").lower()
-    return "claude-sonnet-5" not in m
+    return not any(x in m for x in _NO_SAMPLING)
 
 
 def message_kwargs(model: str, max_tokens: int, prompt: str) -> dict:
@@ -219,8 +225,14 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
     #    ⚠️ 회전을 없앤 대신 카드가 못 나갈 위험이 는다. 그 위험은 조용하지
     #       않다 — 아래 error 로그와 일일 요약 성공률에 그대로 잡힌다.
     candidates = [(p, m) for p, m in routes if p != "anthropic"]
+    # 🔴 [2026-09-06 사용자 지시] **최종 판정은 단 한 번이다.**
+    #    소프트 실패 재시도도 같은 재료로 다시 묻는 것이라 회차마다 답이
+    #    달라진다. 판정은 한 번 묻고 그 답을 쓴다.
+    #    ⚠️ 폼은 종전대로 1회 재시도한다 — 재료 결손을 줄이는 쪽이 낫고,
+    #       폼이 여러 번 돌아도 판정이 흔들리지 않는다.
+    soft_retries = 1 if role == "matchup" else 2
     for hop, (provider, model) in enumerate(candidates[:_MAX_HOPS]):
-        for attempt in range(2):
+        for attempt in range(soft_retries):
             r = await complete(provider, model, prompt, max_tokens=max_tokens,
                                reasoning=reasoning, seed=seed)
             usable = bool(r["ok"]) and parse_json_object(r["text"]) is not None
@@ -300,8 +312,14 @@ async def complete_json(prompt: str, *, model: str, max_tokens: int,
     n_chars = len(prompt or "")
     kwargs = message_kwargs(model, max_tokens, prompt)
     last_exc: BaseException | None = None
-    # 최초 1회 + 재시도 최대 2회
-    for attempt in range(3):
+    # 🔴 [2026-09-06 사용자 지시] **최종 판정은 단 한 번이다.**
+    #    재시도는 같은 재료로 모델을 여러 번 부르는 것이고, 그러면 회차마다
+    #    다른 답이 나온다 — 오늘 실측이 그것이었다(같은 재료로 우세가 뒤집힘).
+    #    판정은 한 번 묻고 그 답을 쓴다. 실패하면 그 경기는 판정 없이 간다.
+    #    ⚠️ 폼(role="form")은 종전대로 재시도한다 — 폼은 재료를 만드는
+    #       단계라 실패가 곧 재료 결손이고, 여러 번 물어도 판정이 흔들리지 않는다.
+    attempts = 1 if role == "matchup" else 3
+    for attempt in range(attempts):
         try:
             resp = await client.messages.create(**kwargs)
             last_exc = None
@@ -312,19 +330,20 @@ async def complete_json(prompt: str, *, model: str, max_tokens: int,
                 trip_credit(role, err)
                 raise err from exc
             last_exc = exc
-            if not _retryable_api(exc) or attempt == 2:
+            if not _retryable_api(exc) or attempt == attempts - 1:
                 logger.warning("[%s] API 실패 model=%s prompt_chars=%d: %s",
                                role, model, n_chars, exc)
                 raise
         except Exception as exc:
             last_exc = exc
-            if not _retryable_api(exc) or attempt == 2:
+            if not _retryable_api(exc) or attempt == attempts - 1:
                 logger.warning("[%s] API 실패 model=%s prompt_chars=%d: %s",
                                role, model, n_chars, exc)
                 raise
         wait = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
-        logger.warning("[%s] API 재시도 %d/2 model=%s prompt_chars=%d wait=%.1fs: %s",
-                       role, attempt + 1, model, n_chars, wait, last_exc)
+        logger.warning("[%s] API 재시도 %d/%d model=%s prompt_chars=%d wait=%.1fs: %s",
+                       role, attempt + 1, attempts - 1, model, n_chars, wait,
+                       last_exc)
         await asyncio.sleep(wait)
     else:
         raise last_exc or RuntimeError(f"{role} API 실패")
