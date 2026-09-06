@@ -477,6 +477,15 @@ class Settings(BaseSettings):
     #   Anthropic 은 최종 판정에서만 쓴다. 되살리려면 이 값을 켜기 전에
     #   soccer_trial 을 무료 사슬로 옮겨야 한다.
     soccer_trial_enabled: bool = False
+    #: 🔴 [2026-09-06 사용자 지시] 구 Judge(축구 판정) 스위치 — **기본 꺼짐**.
+    #   "2차만 안트로픽 사용하고 관련없는 거는 빼라."
+    #   `app/engine/judge.py` 는 `judge_model`(claude-opus-4-6)을 직접 부르는
+    #   마지막 Anthropic 경로였다. 야구 2차 최종 판정과 잔액을 나눠 쓰므로,
+    #   축구가 많이 쓰면 야구의 그 한 번이 캡에 막힌다.
+    #   ⚠️ 끄면 **축구는 판정도 카드도 없다.** 무료 사슬은 이 경로의 tool-use
+    #      규약을 타지 않아 그냥 옮길 수 없다 — 옮기려면 별도 작업이다.
+    #   되살리려면 `SOCCER_JUDGE_ENABLED=true` 한 줄.
+    soccer_judge_enabled: bool = False
     max_win_prob_soccer: float = 0.72
     min_win_prob_soccer: float = 0.10   # 3-way라 원정 승 확률은 낮게 나올 수 있다
     # 세계 최고 조직(Starlizard, 분석가 200명)의 시장 대비 엣지가 1~2%다.

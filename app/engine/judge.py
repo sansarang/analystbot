@@ -247,6 +247,16 @@ class Judge:
             logger.warning("[judge] 야구(%s)는 구 Judge를 쓰지 않는다 — 판정 없이 반환 "
                            "(폼·매치업 경로가 담당)", sport)
             return {"games": []}
+        # 🔴 [2026-09-06 사용자 지시] **안트로픽은 야구 2차 최종 판정에만 쓴다.**
+        #    이 경로는 `judge_model`(Opus)을 직접 부르는 마지막 Anthropic
+        #    자리였고, 같은 잔액을 야구의 그 한 번과 나눠 썼다.
+        #    ⚠️ 목 모드는 통과시킨다 — 테스트가 이 경로의 계약을 계속 검사한다.
+        if not self.mock and not self.settings.soccer_judge_enabled:
+            logger.warning("[judge] 구 Judge 꺼짐(SOCCER_JUDGE_ENABLED=false) — "
+                           "%s %d경기 판정 없이 반환. 안트로픽은 야구 2차 "
+                           "최종 판정 전용이다", sport,
+                           len(payload.get("games") or []))
+            return {"games": []}
         games = payload.get("games") or []
         if not self.mock and len(games) > JUDGE_BATCH:
             merged: list[dict] = []

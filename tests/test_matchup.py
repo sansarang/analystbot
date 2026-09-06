@@ -205,7 +205,13 @@ async def test_old_judge_refuses_baseball_payloads(sport, monkeypatch):
 
 
 async def test_old_judge_still_reaches_soccer(monkeypatch):
-    """가드가 과잉 적용되면 축구 판정이 통째로 사라진다 — 그 회귀를 막는다."""
+    """가드가 과잉 적용되면 축구 판정이 통째로 사라진다 — 그 회귀를 막는다.
+
+    🔴 [계약 갱신 2026-09-06] 이제 축구 판정에는 **스위치**가 하나 더 있다
+    (`SOCCER_JUDGE_ENABLED`, 기본 꺼짐). 안트로픽을 야구 2차 최종 판정에만
+    쓰기 위해서다. 여기서 검사하는 것은 그대로다: **야구 가드가 축구까지
+    잡아먹지 않는다.** 스위치를 켠 상태에서 축구가 도달하는지 본다.
+    """
     from app.engine.judge import Judge
 
     seen = []
@@ -215,11 +221,19 @@ async def test_old_judge_still_reaches_soccer(monkeypatch):
         return {"games": [{"game_id": 1, "p_claude": 0.6, "verdict": "v"}]}
 
     monkeypatch.setattr(Judge, "_judge_once", ok)
-    out = await Judge(mock=False).judge(
-        {"date": "2026-08-30", "sport": "soccer",
-         "games": [{"game_id": 1, "home": "A", "away": "B"}]})
+    j = Judge(mock=False)
+    monkeypatch.setattr(j.settings, "soccer_judge_enabled", True)
+    payload = {"date": "2026-08-30", "sport": "soccer",
+               "games": [{"game_id": 1, "home": "A", "away": "B"}]}
+    out = await j.judge(payload)
     assert seen == ["soccer"]
     assert out["games"][0]["p_claude"] == 0.6
+
+    # 스위치를 끄면 축구도 호출 없이 빈 판정이다 — 안트로픽 경로가 닫힌다.
+    monkeypatch.setattr(j.settings, "soccer_judge_enabled", False)
+    seen.clear()
+    assert await j.judge(payload) == {"games": []}
+    assert seen == [], "스위치가 꺼졌는데 호출이 나갔다"
 
 
 def test_pipeline_runs_form_before_matchup_and_skips_form_on_rejudge():

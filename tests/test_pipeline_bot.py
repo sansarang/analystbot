@@ -732,6 +732,9 @@ async def test_judge_batches_large_slates(monkeypatch):
 
     monkeypatch.setattr(Judge, "_judge_once", fake_once)
     j = Judge(mock=False)
+    # [2026-09-06] 구 Judge 는 기본 꺼짐(안트로픽은 야구 2차 판정 전용).
+    #   여기서 보는 것은 배치 분할 기계다 — 스위치를 켜고 검사한다.
+    monkeypatch.setattr(j.settings, "soccer_judge_enabled", True)
     n = JUDGE_BATCH * 2 + 2
     out = await j.judge({"games": [{"game_id": i} for i in range(n)]})
     assert len(out["games"]) == n
@@ -755,7 +758,9 @@ async def test_judge_batch_failure_keeps_other_batches(monkeypatch):
     from app.engine.judge import JUDGE_BATCH
 
     n = JUDGE_BATCH * 2 + 1
-    out = await Judge(mock=False).judge({"games": [{"game_id": i} for i in range(n)]})
+    j = Judge(mock=False)
+    monkeypatch.setattr(j.settings, "soccer_judge_enabled", True)
+    out = await j.judge({"games": [{"game_id": i} for i in range(n)]})
     # 첫 배치만 잃고 나머지 배치의 판정은 살아 있다
     assert {g["game_id"] for g in out["games"]} == set(range(JUDGE_BATCH, n))
 

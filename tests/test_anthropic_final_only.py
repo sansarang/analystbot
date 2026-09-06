@@ -131,6 +131,31 @@ def test_parse_intent_is_rule_based():
     assert asyncio.run(parse_intent(text)) == parse_intent_mock(text)
 
 
+# ── ⑤ 축구 구 Judge ─────────────────────────────────────────────
+def test_old_soccer_judge_is_off_by_default():
+    """마지막 Anthropic 경로였다. 안트로픽은 야구 2차 최종 판정 전용이다."""
+    from app.config import Settings
+
+    assert Settings.model_fields["soccer_judge_enabled"].default is False
+
+
+def test_old_soccer_judge_returns_empty_without_calling(monkeypatch):
+    from app.engine.judge import Judge
+
+    called = []
+
+    async def boom(self, payload):
+        called.append(1)
+        raise AssertionError("꺼져 있는데 호출했다")
+
+    monkeypatch.setattr(Judge, "_judge_once", boom)
+    j = Judge(mock=False)
+    monkeypatch.setattr(j.settings, "soccer_judge_enabled", False)
+    out = asyncio.run(j.judge({"sport": "soccer",
+                               "games": [{"game_id": 1, "home": "A", "away": "B"}]}))
+    assert out == {"games": []} and not called
+
+
 # ── 전수: 야구 경로에 남은 Anthropic 호출 지점 ──────────────────
 #: 최종 판정 1곳 + 축구 전용 경로. 여기 없는 파일이 새로 뜨면 운다.
 _ALLOWED = {
