@@ -125,16 +125,27 @@ async def test_credit_breaker_stops_further_matchup_calls(redis_client, monkeypa
     """
     import app.engine.team_form as tf
 
+    # ⚠️ [2026-09-06] **최종 판정 경로의 이야기다.** 판정이 1차(예비·항상
+    #    무료)와 2차(최종·Anthropic)로 갈렸다. 예비는 정의상 Anthropic 을
+    #    부르지 않으므로 잔액과 무관하고, 거기에 가드를 걸면 최종이 잔액을
+    #    다 쓴 순간 다음 슬레이트의 1차 카드가 죽는다.
+    #    그래서 최종이 열리는 조건(`allow_final` + 타순 확정)을 고정한다.
     jg = {"game_id": 1, "sport": "mlb", "status": "scheduled",
-          "home": "NYY", "away": "BOS"}
+          "home": "NYY", "away": "BOS", "lineup_status": "confirmed"}
     try:
         monkeypatch.setattr(tf, "_free_primary", lambda role: False)  # 유료 주전
         credit_guard.trip_credit("matchup:BOS@NYY", RuntimeError("credit balance is too low"))
         with pytest.raises(ApiQuotaError):
-            await matchup_mod.judge_matchup(jg, redis_client, DATE)
+            await matchup_mod.judge_matchup(jg, redis_client, DATE,
+                                            allow_final=True)
 
         # 무료가 주전이면 같은 차단기로 막지 않는다.
         monkeypatch.setattr(tf, "_free_primary", lambda role: True)
+        await matchup_mod.judge_matchup(dict(jg), redis_client, DATE,
+                                        allow_final=True)
+
+        # 예비 판정은 유료 주전이어도 막히지 않는다 — Anthropic 을 안 부른다.
+        monkeypatch.setattr(tf, "_free_primary", lambda role: False)
         await matchup_mod.judge_matchup(dict(jg), redis_client, DATE)
     finally:
         credit_guard.reset()   # 전역 차단기 — 반드시 되돌린다

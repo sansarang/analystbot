@@ -307,20 +307,29 @@ def card_signature(jg: dict) -> str:
     return f"{lineup_hash(jg)}|{verdict_hash(jg)}"
 
 
-def _sent_payload(jg: dict) -> str:
-    return json.dumps({"lineup": lineup_hash(jg), "verdict": verdict_hash(jg)})
+#: 🔴 [2026-09-06 사용자 지시] **픽은 경기당 두 장이다.**
+#   1차 `🕐 잠정`(타순 전, 무료 판정) · 2차 `✅ 최종`(타순 확정, Anthropic).
+#   종전에는 라인업이나 판정 해시가 바뀔 때마다 무제한으로 나갔다.
+CARD_CAP = 2
+
+
+def _sent_payload(jg: dict, n: int) -> str:
+    return json.dumps({"lineup": lineup_hash(jg), "verdict": verdict_hash(jg),
+                       "n": int(n)})
 
 
 def _parse_sent(raw) -> dict:
+    """저장된 발송 기록. `n` 이 없으면 **1장 나갔다**고 읽는다(구키 호환)."""
     if not raw:
         return {}
     try:
         obj = json.loads(raw)
         if isinstance(obj, dict):
+            obj.setdefault("n", 1)
             return obj
     except (TypeError, ValueError):
         pass
-    return {"legacy": str(raw)}
+    return {"legacy": str(raw), "n": 1}
 
 
 def _judged(jg: dict) -> bool:
@@ -577,6 +586,14 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
         logger.debug("[pregame] 시장 확률 생략 game=%s: %s", gid, exc)
     lu, vd = lineup_hash(jg), verdict_hash(jg)
     prev = _parse_sent(await redis.get(card_sig_key(gid)))
+    # 🔴 [2026-09-06 사용자 지시] 두 장을 넘기지 않는다. 판정 쪽에도 문이
+    #    있지만(최종은 경기당 1회) 발송 쪽에도 둔다 — 라인업만 바뀌어도
+    #    카드가 나가는 갈래가 있어서, 판정 문 하나로는 두 장이 보장되지 않는다.
+    _n = int(prev.get("n") or 0)
+    if _n >= CARD_CAP:
+        logger.info("[pregame] %s game=%s skipped skip_reason=card_cap "
+                    "(이미 %d장)", sport, gid, _n)
+        return await _skip("card_cap")
     # 🔴 재발송은 **(라인업 변경) OR (판정 변경)** 이다.
     #    종전에는 둘 중 하나라도 같으면 스킵했다. 그래서 라인업이 실제로
     #    바뀌었는데 확률·우세·확신도가 우연히 같으면 사용자는 **바뀐
@@ -589,10 +606,23 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
                     sport, gid)
         # 이미 도달한 카드다 — 미발송이 아니다. 분자에 넣는다.
         return await _skip("unchanged")
+    # 🔴 **두 번째 자리는 최종 카드의 몫이다.** 타순 확정 전에도 예비 재판정이
+    #    돌면 판정 해시가 바뀌고, 그 카드가 두 번째 자리를 먹으면 정작
+    #    `✅ 최종` 이 상한에 막혀 못 나간다 — 사용자가 기다린 그 한 장이다.
+    #    ⚠️ 해시 비교 **뒤**에 둔다. 아무것도 안 바뀐 카드의 사유는 종전대로
+    #       `변경 없음` 이어야 한다 — 사유가 뭉개지면 집계를 못 읽는다.
+    if _n >= 1 and not jg.get("final_verdict"):
+        logger.info("[pregame] %s game=%s skipped skip_reason=card_reserved "
+                    "(예비 재판정 — 2장째는 최종 카드 몫)", sport, gid)
+        return await _skip("card_reserved")
     revision = bool(prev) and "legacy" not in prev
     if prev.get("legacy"):
         revision = True
-    if revision and lineup_changed and not verdict_changed:
+    # 🔴 최종 판정이 돈 경기는 **전체 카드**로 나간다. 라인업만 바뀐 것으로
+    #    보고 라인업 전용 카드를 내면, 두 장뿐인 픽 중 마지막 장에서 바뀐
+    #    판정을 사용자가 못 본다.
+    if revision and lineup_changed and not verdict_changed \
+            and not jg.get("final_verdict"):
         # 라인업만 바뀌었다 — 전체 카드를 다시 보내면 무엇이 달라졌는지 묻힌다.
         changes = lineup_diff(prev.get("lineup"), lu)
         text = compose_lineup_only_card(jg, sport, changes)
@@ -600,8 +630,23 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
                     sport, gid, len(changes))
     else:
         text = compose_card(jg, analysis.get("news") or "", sport, revision=revision)
+        # 🔴 [실사고 2026-09-02] 전체 카드만 다시 보내면 **무엇이 달라졌는지**
+        #    묻힌다. 그때 축약 카드를 만든 이유가 그것이었다. 최종 카드는
+        #    전체 카드여야 하므로, 축약본 대신 **diff 줄을 얹는다** — 두
+        #    계약(전체 카드 · 변경점 노출)을 둘 다 지킨다.
+        if revision and lineup_changed:
+            changes = lineup_diff(prev.get("lineup"), lu)
+            if changes:
+                text += "\n\n🔄 라인업 변경\n" + "\n".join(
+                    f"  · {c}" for c in changes[:8])
+                if len(changes) > 8:
+                    text += f"\n  · 외 {len(changes) - 8}건"
+                logger.info("[pregame] %s game=%s 라인업 diff %d건 첨부",
+                            sport, gid, len(changes))
     if await _send_card(text):
-        await redis.set(card_sig_key(gid), _sent_payload(jg), ex=SENT_TTL_SEC)
+        await redis.set(card_sig_key(gid),
+                        _sent_payload(jg, int(prev.get("n") or 0) + 1),
+                        ex=SENT_TTL_SEC)
         outcome = "revised" if revision else "sent"
         # [G1] 게이트 결과와 발송을 **같은 문자열**로 남긴다. 리포트 ④·⑤절이
         #   "무엇이 어떤 자격으로 나갔나"를 이 두 줄로 재구성한다.

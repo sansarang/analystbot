@@ -97,8 +97,9 @@ def test_recommendation_thresholds_are_config_driven():
     assert s.npb_last3_verified is True
     assert s.lambda_h2h_min_edge == 0.05
     assert s.team_form_model == "claude-haiku-4-5-20251001"
-    # [2026-09-06 사용자 지시] 최종 판정은 Anthropic Fable 이 **한 번에** 낸다.
-    assert s.matchup_model == "claude-fable-5"
+    # [2026-09-06 사용자 지시] 최종 판정은 Anthropic 이 **한 번에** 낸다.
+    #   같은 날 "모델을 페이블이 아닌 opus 로 한다" 로 바뀌었다.
+    assert s.matchup_model == "claude-opus-5"
     assert s.team_form_max_tokens == 1500
     # [v1.3 A-3] 4000 → 6000. 실측: 성공 output 3661~3789 인데 상한 4000이라
     #   여유 200토큰뿐이었고, output=4000 stop=max_tokens 로 잘린 응답이

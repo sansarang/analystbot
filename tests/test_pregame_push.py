@@ -151,10 +151,14 @@ def _row(gid=11, sport="kbo", minutes=45):
     }
 
 
-def _game(gid=11, sport="kbo", p=0.61, pitcher="임찬규", nine="김현수"):
+def _game(gid=11, sport="kbo", p=0.61, pitcher="임찬규", nine="김현수",
+          final=False):
+    # [2026-09-06] `final_verdict` 는 "이 판정이 최종(Anthropic)인가"다.
+    #   두 번째 카드 자리는 최종의 몫이라, 재발송 검사는 최종을 세워야 한다.
     return {
         "game_id": gid, "sport": sport, "home": "LG Twins", "away": "NC Dinos",
         "starts_at_kst": "08/28 18:30", "status": "scheduled", "league": "KBO",
+        "final_verdict": final,
         "p_claude": p, "judge_confidence": "medium", "verdict": "홈 우세",
         "best_odds": {}, "expert_picks": [], "stats": {},
         "research": {
@@ -246,7 +250,7 @@ async def test_lineup_change_resends_as_revision(monkeypatch):
 
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "sent"
     rds.store["analysis:kbo:2026-08-28"] = _analysis(
-        pitcher="켈리", nine="오스틴", p=0.64)
+        pitcher="켈리", nine="오스틴", p=0.64, final=True)
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "revised"
     assert "라인업 변경 재판정" in sent[1]
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "skipped"
@@ -272,7 +276,7 @@ async def test_verdict_change_resends_even_if_lineup_same(monkeypatch):
     _block_claude(monkeypatch)
     monkeypatch.setattr("app.notify.send_telegram", fake_send)
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "sent"
-    rds.store["analysis:kbo:2026-08-28"] = _analysis(p=0.66)
+    rds.store["analysis:kbo:2026-08-28"] = _analysis(p=0.66, final=True)
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "revised"
     assert len(sent) == 2
     assert "라인업 변경 재판정" in sent[1]
@@ -280,12 +284,18 @@ async def test_verdict_change_resends_even_if_lineup_same(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_lineup_change_same_verdict_sends_compact_card(monkeypatch):
-    """🔴 [계약 갱신] 종전에는 여기서 스킵했다 — 라인업이 실제로 바뀌었는데
-    확률·우세·확신도가 우연히 같으면 사용자는 **바뀐 라인업을 영영 못 봤다.**
+    """🔴 [계약 갱신 ②, 2026-09-06] 라인업만 바뀐 두 번째 카드도 **전체 카드**다.
 
-    야구 추천은 확정 라인업이 요건이므로 "무엇으로 확정됐나"를 못 보는 것은
-    그 자체로 결함이다. 이제 축약 카드로 보낸다 — 선수 diff 는 싣고,
-    확률은 "변동 없음"이라고 **명시**한다(침묵하면 판정도 바뀐 줄 안다).
+    종전 계약(2026-09-02): 라인업이 실제로 바뀌었는데 확률·우세·확신도가
+    우연히 같으면 스킵됐고, 사용자는 **바뀐 라인업을 영영 못 봤다.** 그래서
+    축약 카드(`compose_lineup_only_card`)를 만들었다.
+
+    이번 계약(사용자 지시): 픽은 두 장이고 두 번째는 **최종 판정 카드**다.
+    그 한 장이 이 경기에 대한 마지막 답이므로 축약본이 아니라 전체 카드로
+    나가야 한다 — 라인업만 바뀌었더라도 사용자가 마지막으로 보는 것은
+    승률·근거가 다 실린 카드여야 한다.
+    ⚠️ 그 결과 `compose_lineup_only_card` 는 도달하지 않는다. 지우지 않고
+       둔다 — 계약이 또 바뀔 때 되살릴 자리다.
     """
     now, row = _row()
     rds = _Redis()
@@ -299,13 +309,18 @@ async def test_lineup_change_same_verdict_sends_compact_card(monkeypatch):
     _block_claude(monkeypatch)
     monkeypatch.setattr("app.notify.send_telegram", fake_send)
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "sent"
-    rds.store["analysis:kbo:2026-08-28"] = _analysis(pitcher="켈리", p=0.61)
+    rds.store["analysis:kbo:2026-08-28"] = _analysis(pitcher="켈리", p=0.61,
+                                                     final=True)
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "revised"
     assert len(sent) == 2
     card = sent[1]
-    assert "라인업 변경 반영 — 판정 동일" in card
+    assert "라인업 변경 재판정" in card, "수정 카드 표기가 없다"
+    assert "우세" in card and "%" in card, "최종 카드인데 승률이 없다"
     assert "임찬규 → 켈리" in card, "무엇이 바뀌었는지 카드에 없다"
-    assert "판정 변동 없음" in card
+    # 종전 축약 카드는 "판정 변동 없음"이라고 **적었다** — 침묵하면 판정도
+    #   바뀐 줄 알기 때문이다. 전체 카드는 확률을 그대로 실으므로 침묵이
+    #   아니다: 61% 가 카드에 있고 사용자는 직전 카드와 대조할 수 있다.
+    assert "61.0%" in card, "전체 카드인데 판정 수치가 없다"
 
 
 @pytest.mark.asyncio
@@ -495,7 +510,7 @@ async def test_resend_matrix_is_lineup_or_verdict(monkeypatch, second, expect, w
     _block_claude(monkeypatch)
     monkeypatch.setattr("app.notify.send_telegram", fake_send)
     assert await send_game_prediction(rds, row, "2026-08-28", now=now) == "sent"
-    rds.store["analysis:kbo:2026-08-28"] = _analysis(**second)
+    rds.store["analysis:kbo:2026-08-28"] = _analysis(final=True, **second)
     out = await send_game_prediction(rds, row, "2026-08-28", now=now)
     assert out == expect, f"{why}: {out}"
     assert len(sent) == (1 if expect == "skipped" else 2)

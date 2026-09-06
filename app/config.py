@@ -228,8 +228,13 @@ class Settings(BaseSettings):
     #    "마지막 판정은 단 한 번으로 제한하고 안트로픽 fable 로 정해라."
     #    ⚠️ 재시도 없음 — `team_form.complete_json` 이 role="matchup" 이면
     #       1회만 부른다. 같은 재료를 여러 번 물으면 회차마다 답이 달라진다.
+    #    🔴 [2026-09-06 사용자 지시] fable → **opus**. "모델을 페이블이 아닌
+    #       opus 로 한다." 최종 판정 전용이므로 호출 수는 라인업이 확정된
+    #       경기 수(하루 최대 슬레이트 규모)로 묶이고, `ANTHROPIC_DAILY_CAP`
+    #       이 그 위에 상한을 건다. 단가는 확인하지 않았다 — 첫 사이클에서
+    #       실제 호출 수와 `stop_reason` 을 재고 보고한다.
     matchup_model: str = Field(
-        default="claude-fable-5",
+        default="claude-opus-5",
         validation_alias=AliasChoices("MODEL_MATCHUP", "matchup_model"),
     )
     team_form_max_tokens: int = 1500

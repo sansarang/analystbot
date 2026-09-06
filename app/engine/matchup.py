@@ -300,7 +300,9 @@ def _real_model(configured: str | None) -> str:
     """
     from app.engine.team_form import LAST_USAGE
 
-    if (LAST_USAGE or {}).get("role") == "matchup" and LAST_USAGE.get("model"):
+    from app.llm.judge_route import JUDGE_ROLES
+
+    if (LAST_USAGE or {}).get("role") in JUDGE_ROLES and LAST_USAGE.get("model"):
         return str(LAST_USAGE["model"])
     return str(configured or "")
 
@@ -425,6 +427,67 @@ async def _form_or_analyze(jg: dict, redis, date: str, side: str, mock: bool | N
 PREV_FIELDS = ("p_home", "우세", "근거", "변수", "확신도")
 
 
+#: 🔴 [2026-09-06 사용자 지시] **최종 분석은 경기당 딱 한 번이다.**
+#   "픽은 두 번만 오고, 두 번째가 왔을 때만 Anthropic 이 최종 분석한다."
+#   라인업이 두 번 이상 바뀌어도 유료 호출이 두 번 나가지 않게 코드가 잠근다.
+FINAL_KEY = "matchup:final:{sport}:{game_id}:{date}"
+FINAL_TTL_SEC = 12 * 3600
+
+
+def _final_key(jg: dict, date: str) -> str:
+    return FINAL_KEY.format(sport=jg.get("sport") or "", date=date,
+                            game_id=jg.get("game_id"))
+
+
+async def final_done(redis, jg: dict, date: str) -> bool:
+    """이 경기의 최종 판정이 **이미 나갔는가.** 읽기만 한다.
+
+    선점(`claim_final`)보다 앞서 부른다 — 이미 끝났으면 폼·심의까지 돌릴
+    이유가 없다. 못 읽으면 "안 나갔다"로 본다: 판정을 막는 쪽이 더 나쁘다.
+    """
+    if redis is None:
+        return False
+    try:
+        return bool(await redis.get(_final_key(jg, date)))
+    except Exception as exc:
+        logger.warning("[matchup] 최종 여부 조회 실패 game=%s — 진행한다: %s",
+                       jg.get("game_id"), exc)
+        return False
+
+
+async def claim_final(redis, jg: dict, date: str) -> bool:
+    """이 경기의 최종 판정 권한을 **선착순 1회**만 준다.
+
+    🔴 **재료 게이트를 모두 통과한 뒤에 부른다.** 박스스코어가 없어 판정이
+       탈락하는 자리에서 먼저 잠그면, 나중에 자료가 도착해도 그 경기는 영영
+       최종을 못 받는다 — 권한만 태우고 판정은 안 한 꼴이다.
+
+    ⚠️ redis 가 없으면(테스트·도구) 잠그지 못한다 — 그때는 허용한다.
+       잠금 실패로 판정이 통째로 막히는 쪽이 더 나쁘다.
+    """
+    if redis is None:
+        return True
+    try:
+        return bool(await redis.set(_final_key(jg, date), "1",
+                                    ex=FINAL_TTL_SEC, nx=True))
+    except Exception as exc:
+        logger.warning("[matchup] 최종 락 실패 game=%s — 허용한다: %s",
+                       jg.get("game_id"), exc)
+        return True
+
+
+#: 최종 픽 자격이 있는 라인업 상태. **규칙을 여기 베끼지 않는다** —
+#  타순 9명을 세는 것은 `pregame_push.lineup_confirmed` 이고, 그 결과를
+#  `pipeline.promote_lineup_status` 가 이 필드에 새긴다. 우리는 결과만 읽는다.
+#  ⚠️ `conflict`(소스 불일치)는 확정이 아니다 — 자격 박탈이 그 상태의 뜻이다.
+LINEUP_FINAL_STATUS = "confirmed"
+
+
+def lineup_is_confirmed(jg: dict) -> bool:
+    """타순이 확정됐는가. 확정의 정의는 다른 곳에 있고 여기는 읽기만 한다."""
+    return (jg.get("lineup_status") or "") == LINEUP_FINAL_STATUS
+
+
 def prev_verdict(jg: dict) -> dict | None:
     """이 경기의 직전 판정. 최초 판정이면 None.
 
@@ -464,9 +527,25 @@ def render_matchup_prompt(jg: dict, boxes: dict, news: dict,
 
 
 async def judge_matchup(jg: dict, redis, date: str, *,
-                        mock: bool | None = None) -> dict | None:
-    """form: 히트면 재분석하지 않는다. 미스면 팀 분석을 한 뒤 매치업을 돌린다."""
+                        mock: bool | None = None,
+                        allow_final: bool = False) -> dict | None:
+    """form: 히트면 재분석하지 않는다. 미스면 팀 분석을 한 뒤 매치업을 돌린다.
+
+    🔴 [2026-09-06 사용자 지시] **판정은 경기당 두 번, 최종은 한 번이다.**
+       "픽은 딱 두 번만 오고, 두 번째가 왔을 때만 Anthropic 이 최종 분석한다."
+
+         1차(예비) — 타순 전. `PRELIM_ROLE` → 어떤 설정에서도 **무료 사슬**.
+                     `🕐 잠정` 카드가 여기서 나간다.
+         2차(최종) — 타순 확정 뒤. `MATCHUP_ROLE` → 유료가 허용되는 유일한
+                     역할. `✅ 최종` 카드가 여기서 나가고, 그 뒤로는 없다.
+
+       `allow_final` 은 호출부가 "여기는 최종이 될 수 있는 자리인가"만 말한다.
+       **실제 판단은 코드가 한다** — 타순이 확정됐는가(`lineup_is_confirmed`)와
+       아직 아무도 최종을 쓰지 않았는가(`claim_final`). 호출부마다 조건을
+       적으면 그것이 사본이고, 사본은 원본이 바뀔 때 따라가지 않는다.
+    """
     from app.engine.scoring import BASEBALL_SPORTS
+    from app.llm.judge_route import MATCHUP_ROLE, PRELIM_ROLE
 
     sport = jg.get("sport") or ""
     if sport not in BASEBALL_SPORTS:
@@ -474,6 +553,14 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     if jg.get("judgement_void") or jg.get("status") in ("cancelled", "suspended"):
         jg["judgement_void"] = True
         return None
+    final = bool(allow_final) and lineup_is_confirmed(jg)
+    if await final_done(redis, jg, date):
+        # 🔴 이미 최종을 낸 경기다. **예비로도 다시 돌지 않는다** — 재판정이
+        #    한 번 더 돌면 카드가 한 장 더 나가고, 픽은 두 장이어야 한다.
+        logger.info("[matchup] game=%s 최종 판정 이미 완료 — 재판정하지 않는다",
+                    jg.get("game_id"))
+        return None
+    role = MATCHUP_ROLE if final else PRELIM_ROLE
     from app.engine.credit_guard import abort_if_credit_gone, trip_credit
     from app.engine.team_form import _free_primary
 
@@ -486,7 +573,9 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #      "잔액 소진으로 중단 (matchup:SF@NYM): soccer-trial/claude-sonnet-5"
     #      앞은 야구 호출부, 뒤는 축구가 남긴 사유다.
     #    무료가 주전이면 Anthropic 잔액은 이 판정과 무관하다.
-    if not _free_primary("matchup"):
+    #    ⚠️ 예비 판정은 정의상 무료다 — Anthropic 잔액과 무관하므로 가드도 걸지
+    #       않는다. 걸면 최종이 잔액을 다 쓴 순간 다음 슬레이트의 1차가 죽는다.
+    if final and not _free_primary(role):
         abort_if_credit_gone(f"matchup:{jg.get('away')}@{jg.get('home')}")
     settings = get_settings()
     is_mock = settings.mock_judge if mock is None else mock
@@ -523,12 +612,20 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     except Exception as exc:
         logger.warning("[council] game=%s 실패 — 심의 없이 판정한다: %s",
                        jg.get("game_id"), exc)
+    # 🔴 재료가 다 모인 지금 최종 권한을 선점한다. 박스스코어가 없어 위에서
+    #    탈락했다면 권한은 아직 남아 있고, 자료가 도착한 다음 호출이 가져간다.
+    if final and not await claim_final(redis, jg, date):
+        logger.info("[matchup] game=%s 최종 권한을 다른 호출이 가져갔다 — 중단",
+                    jg.get("game_id"))
+        return None
     news = news_payload(home_form, away_form, jg)
     if not news:
         logger.info("[matchup] %s vs %s 뉴스 없음 — 숫자만으로 판정한다", home, away)
     if is_mock:
         verdict = _mock_matchup(home, away)
         apply_matchup(jg, verdict, settings)
+        jg["final_verdict"] = final
+        jg["judge_stage"] = "final" if final else "prelim"
         await persist_matchup_record(redis, jg, date)
         return verdict
 
@@ -581,7 +678,7 @@ async def judge_matchup(jg: dict, redis, date: str, *,
         try:
             text = await complete_json(
                 prompt, model=model, max_tokens=budget,
-                role="matchup", mock=False)
+                role=role, mock=False)
         except ApiQuotaError as exc:
             trip_credit(f"matchup:{away}@{home}", exc)
             jg["form_unavailable"] = True
@@ -612,6 +709,11 @@ async def judge_matchup(jg: dict, redis, date: str, *,
                        home, away, model)
         return None
     apply_matchup(jg, parsed, settings)
+    # 🔴 카드가 이 값을 읽는다. 최종 판정이 돈 경기는 **전체 카드**로 나가야
+    #    한다 — 라인업만 바뀐 것으로 보고 라인업 전용 카드를 내면, 사용자는
+    #    두 장뿐인 픽 중 한 장에서 바뀐 판정을 못 본다.
+    jg["final_verdict"] = final
+    jg["judge_stage"] = "final" if final else "prelim"
     # [G1] 판정 결과 1줄. 종전에는 판정이 **끝났다는 로그가 아예 없어서**
     #   "언제 어떤 확률이 나왔나"를 레저 스냅샷으로 역추적해야 했다.
     #   ⚠️ 새 계측이 아니다 — 이미 jg 에 들어간 값을 그대로 찍는다.
@@ -632,9 +734,10 @@ async def judge_matchup(jg: dict, redis, date: str, *,
         _jm["model"] = _actual
         jg["model"] = _actual
     _judge_msg = ("[matchup] game=%s %s vs %s p_home=%.3f 우세=%s 확신도=%s "
-                  "model=%s" % (
+                  "model=%s 회차=%s" % (
                       jg.get("game_id"), home, away, float(jg.get("p_claude") or 0),
-                      _jm.get("우세"), _jm.get("확신도"), _actual))
+                      _jm.get("우세"), _jm.get("확신도"), _actual,
+                      "최종" if final else "예비"))
     logger.info("%s", _judge_msg)
     await _trace(jg, date, TRACE_JUDGE, summary=_judge_msg,
                  ref={"prompt_sha": _sha(prompt), "근거": _jm.get("근거"),

@@ -20,6 +20,13 @@ PAID_KEY = "llm:anthropic:calls:{date}"
 #: 🔴 **유료가 허용되는 유일한 역할.** 다른 역할은 어떤 설정에서도 무료다.
 #   문자열을 호출부마다 적지 않는다 — 여기가 원본이다.
 MATCHUP_ROLE = "matchup"
+#: 🔴 [2026-09-06 사용자 지시] **1차 예비 판정.** 픽은 두 장이다 —
+#   T-30 잠정 카드와 라인업 확정 뒤의 최종 카드. 앞의 것은 **어떤 설정에서도
+#   무료**로 간다. 종전에는 역할이 하나라 `JUDGE_PROVIDER=anthropic` 하나가
+#   경기당 3~5회를 전부 유료로 보냈다 (실측 2026-09-06 11:15~11:27, 12분에 11콜).
+PRELIM_ROLE = "matchup_prelim"
+#: 판정 역할 전체. 같은 프롬프트·같은 자료를 쓰고 **모델만 다르다.**
+JUDGE_ROLES = (MATCHUP_ROLE, PRELIM_ROLE)
 
 
 def _cfg():
@@ -63,7 +70,9 @@ def chain(role: str) -> list[tuple[str, str]]:
     #    `503 Service temporarily overloaded` 로 놓쳤다 — 무료 인프라는
     #    가끔 밀린다. 하나만 두면 그 경기는 카드가 못 나간다.
     #    형식: "provider/model,provider/model" (앞이 주전)
-    raw = (s.free_judge_model if role == "matchup" else s.free_form_model)
+    #: 예비 판정도 **판정용** 무료 모델을 쓴다. 폼 모델이 아니다 —
+    #  같은 프롬프트를 받으므로 폼 사슬로 보내면 재료 대신 다른 답이 온다.
+    raw = (s.free_judge_model if role in JUDGE_ROLES else s.free_form_model)
     out: list[tuple[str, str]] = []
     for item in (raw or "").split(","):
         item = item.strip()
@@ -98,7 +107,7 @@ def chain(role: str) -> list[tuple[str, str]]:
     if not out:
         logger.error("[judge-route] role=%s 무료 후보가 하나도 없다 — "
                      "유료로 되돌아가지 않는다. FREE_%s_MODEL 을 확인하라",
-                     role, "JUDGE" if role == MATCHUP_ROLE else "FORM")
+                     role, "JUDGE" if role in JUDGE_ROLES else "FORM")
     return out
 
 

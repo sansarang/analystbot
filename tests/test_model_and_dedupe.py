@@ -96,7 +96,10 @@ def test_log_line_uses_the_actual_model():
 
     src = Path("app/engine/matchup.py").read_text(encoding="utf-8")
     assert "_actual = _real_model(" in src
-    assert '_jm.get("확신도"), _actual))' in src
+    assert '_jm.get("확신도"), _actual,' in src, "로그가 실제 모델을 안 찍는다"
+    # [2026-09-06] 같은 줄에 회차(예비/최종)가 붙었다 — 어느 판정이
+    # 어느 모델로 갔는지 로그 한 줄로 갈려야 한다.
+    assert '"최종" if final else "예비"' in src
 
 
 def test_report_carries_the_inaccuracy_footnote():

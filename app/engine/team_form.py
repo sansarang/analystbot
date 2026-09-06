@@ -230,7 +230,11 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
     #    달라진다. 판정은 한 번 묻고 그 답을 쓴다.
     #    ⚠️ 폼은 종전대로 1회 재시도한다 — 재료 결손을 줄이는 쪽이 낫고,
     #       폼이 여러 번 돌아도 판정이 흔들리지 않는다.
-    soft_retries = 1 if role == "matchup" else 2
+    #    🔴 [2026-09-06] 예비 판정(1차 카드)도 **한 번만** 묻는다. 카드를
+    #       만드는 판정이면 회차마다 답이 달라지는 위험은 1차에도 똑같다.
+    from app.llm.judge_route import JUDGE_ROLES
+
+    soft_retries = 1 if role in JUDGE_ROLES else 2
     for hop, (provider, model) in enumerate(candidates[:_MAX_HOPS]):
         for attempt in range(soft_retries):
             r = await complete(provider, model, prompt, max_tokens=max_tokens,
@@ -325,7 +329,9 @@ async def complete_json(prompt: str, *, model: str, max_tokens: int,
     #    판정은 한 번 묻고 그 답을 쓴다. 실패하면 그 경기는 판정 없이 간다.
     #    ⚠️ 폼(role="form")은 종전대로 재시도한다 — 폼은 재료를 만드는
     #       단계라 실패가 곧 재료 결손이고, 여러 번 물어도 판정이 흔들리지 않는다.
-    attempts = 1 if role == "matchup" else 3
+    from app.llm.judge_route import JUDGE_ROLES
+
+    attempts = 1 if role in JUDGE_ROLES else 3
     for attempt in range(attempts):
         try:
             resp = await client.messages.create(**kwargs)

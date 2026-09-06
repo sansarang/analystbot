@@ -2605,8 +2605,15 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
             impact="평가 불가 팀은 추천에서 제외됩니다")
 
 
-async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
-    """라인업 확정·변경 시 경기당 매치업. 폼 캐시 히트면 재분석하지 않는다."""
+async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
+                                 allow_final: bool = False) -> int:
+    """라인업 확정·변경 시 경기당 매치업. 폼 캐시 히트면 재분석하지 않는다.
+
+    🔴 [2026-09-06 사용자 지시] `allow_final` 은 **"여기가 최종이 될 수 있는
+       자리인가"** 만 말한다. 타순이 실제로 확정됐는지, 이미 최종을 냈는지는
+       `judge_matchup` 이 판단한다 — 조건을 호출부마다 적으면 사본이 된다.
+       기본은 예비(무료)다. 최종은 라인업 재판정 경로에서만 열린다.
+    """
     from app.engine.matchup import judge_matchup
     from app.engine.starter_recent import attach_starter_recent
 
@@ -2670,7 +2677,7 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict]) -> int:
         except Exception as exc:
             logger.warning("[pipeline] 자료11 조립 실패 game=%s: %s",
                            jg.get("game_id"), exc)
-        if await judge_matchup(jg, redis, date):
+        if await judge_matchup(jg, redis, date, allow_final=allow_final):
             n += 1
             _spawn_fact_audit(jg)        # [감시 L1] 저장 후 사후 감사
             # [C3] 변수 원장 적재. 판정 **뒤**이고, 실패해도 판정을 막지 않는다.
@@ -5002,25 +5009,16 @@ async def _rejudge_after_breaking(analysis: dict, changes: list[dict]) -> dict:
 
     old_ps = {jg["game_id"]: jg.get("p_claude") for jg in affected}
     if sport in BASEBALL_SPORTS:
-        r = aioredis.from_url(settings.redis_url, decode_responses=True)
-        try:
-            await _run_baseball_matchups(r, analysis["date"], affected)
-        except (ApiQuotaError, Exception) as exc:
-            logger.warning("[pipeline] breaking matchup failed, keeping cached verdicts: %s", exc)
-            return analysis
-        finally:
-            await r.aclose()
-        for jg in affected:
-            old_p = old_ps.get(jg["game_id"])
-            p = jg.get("p_claude")
-            change_txt = "; ".join(jg.get("breaking_changes", []))[:120]
-            old_txt = f"{old_p:.0%}" if old_p is not None else "?"
-            new_txt = f"{p:.0%}" if p is not None else "?"
-            jg["breaking_note"] = (
-                f"🔄 속보 반영: {change_txt} → 승률 계산 {old_txt}→{new_txt}"
-                + (", 패스로 전환" if jg.get("judge_pass") else "")
-            )
-    else:
+        # 🔴 [2026-09-06 사용자 지시] **야구는 속보로 재판정하지 않는다.**
+        #    판정은 경기당 두 번이다 — 1차(예비·무료)와 2차(최종·Anthropic).
+        #    속보가 그 사이에 한 번 더 돌면 카드가 세 장째 나가고 최종 분석이
+        #    두 번 도는 길이 열린다. 속보가 버려지는 것은 아니다 — 리서치·뉴스
+        #    태그로 남아 2차 최종 분석의 재료(자료)로 들어간다.
+        #    ⚠️ 축구(아래 else)는 종전 구 Judge 경로 그대로다.
+        logger.info("[pipeline] 속보 %d경기 — 야구는 재판정하지 않는다 "
+                    "(판정은 1차·최종 두 번뿐)", len(affected))
+        return analysis
+    if sport not in BASEBALL_SPORTS:      # 축구 — 구 Judge 경로 그대로
         payload = {
             "date": analysis["date"], "sport": sport, "games": affected,
             "breaking_news": analysis["news"],
@@ -5114,11 +5112,11 @@ async def _refresh_stale_research(
     _prepare_games_for_judge(refreshed, sport)
     from app.engine.scoring import BASEBALL_SPORTS
     if sport in BASEBALL_SPORTS:
-        try:
-            await _run_baseball_matchups(redis, analysis["date"], refreshed)
-        except Exception as exc:
-            logger.warning("[pipeline] refresh matchup failed, keeping verdicts: %s", exc)
-            await notify_api_error(exc)
+        # 🔴 [2026-09-06 사용자 지시] 위와 같은 이유로 **야구는 재판정하지
+        #    않는다.** 리서치 갱신 자체는 계속 돈다 — 갱신된 값은 2차 최종
+        #    분석이 읽는 자료로 들어간다. 바뀐 것은 "여기서 한 번 더 묻는가"다.
+        logger.info("[pipeline] 리서치 갱신 %d경기 — 야구는 재판정하지 않는다 "
+                    "(판정은 1차·최종 두 번뿐)", len(refreshed))
     else:
         payload = {
             "date": analysis["date"], "sport": sport, "games": refreshed,
@@ -5300,7 +5298,7 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
         from app.engine.scoring import BASEBALL_SPORTS
         if sport in BASEBALL_SPORTS:
             try:
-                await _run_baseball_matchups(redis, date, [jg])
+                await _run_baseball_matchups(redis, date, [jg], allow_final=True)
             except Exception as exc:
                 logger.warning("[pipeline] 라인업 매치업 실패: %s", exc)
                 await notify_api_error(exc)
@@ -5449,7 +5447,7 @@ async def ensure_game_fresh(sport: str, date: str, game_id: int) -> tuple[dict |
         from app.engine.scoring import BASEBALL_SPORTS
         if sport in BASEBALL_SPORTS:
             try:
-                await _run_baseball_matchups(redis, date, [jg])
+                await _run_baseball_matchups(redis, date, [jg], allow_final=True)
             except Exception as exc:
                 logger.warning("[pipeline] single-game matchup failed: %s", exc)
                 await notify_api_error(exc)
