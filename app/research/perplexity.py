@@ -206,3 +206,49 @@ async def save_expert_picks(pool: asyncpg.Pool, picks: list[dict]) -> int:
             saved += 1
     logger.info("[perplexity] saved %d expert picks", saved)
     return saved
+
+
+async def ask_json(prompt: str, *, max_tokens: int = 900) -> dict | None:
+    """[변수 평의회 2026-09-06] 조사 1콜 → JSON dict. 실패하면 None.
+
+    🔴 **요약문을 저장하지 않는다.** 호출부가 JSON 필드만 쓴다.
+    ⚠️ 예외를 밖으로 던지지 않는다 — 조사 실패가 판정을 막으면 안 된다.
+       크레딧 소진(401 insufficient_quota)도 여기서 조용히 None 이 되고,
+       호출부가 무료 사슬로 축소 조사한다.
+    """
+    import os
+
+    import httpx
+
+    from app.config import get_settings
+
+    s = get_settings()
+    key = (s.pplx_api_key or os.environ.get("PPLX_API_KEY") or "").strip()
+    if not key:
+        logger.info("[pplx] PPLX_API_KEY 없음 — 조사 생략")
+        return None
+    if "perplexity" in (s.disabled_providers or "").lower():
+        logger.info("[pplx] DISABLED_PROVIDERS 로 차단됨 — 조사 생략")
+        return None
+    url = f"{s.pplx_base_url.rstrip('/')}{s.pplx_chat_path}"
+    body = {"model": s.pplx_model or "sonar",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": int(max_tokens), "temperature": 0}
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as c:
+            r = await c.post(url, json=body,
+                             headers={"Authorization": f"Bearer {key}",
+                                      "Content-Type": "application/json"})
+        if r.status_code != 200:
+            logger.warning("[pplx] 조사 HTTP %d — %s", r.status_code,
+                           r.text[:160])
+            return None
+        data = normalize_response(r.json())
+        txt = (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
+    except Exception as exc:
+        logger.warning("[pplx] 조사 실패: %s", str(exc)[:160])
+        return None
+    from app.engine.matchup import parse_json_object
+
+    got = parse_json_object(txt or "")
+    return got if isinstance(got, dict) else None

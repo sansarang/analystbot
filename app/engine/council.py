@@ -1,0 +1,288 @@
+"""[변수 평의회 2026-09-06] 상황 변수를 심의해 **판정의 재료**로 만든다.
+
+🔴 **재판정이 아니다.** 심의는 판정 **앞**에 선다. 자료1~11 과 같은 줄에서
+   한 상에 올라가고, 판정은 그 전부를 보고 **한 번** 결론을 낸다.
+   그래서 "원판정 63% → 최종 64%" 같은 이동도, 이동 상한도, 잡음 판별도
+   없다 — 움직일 원판정이 애초에 없다.
+   (사용자 지시 2026-09-06: "최종 숫자를 내는 게 아니라 우리가 모은 데이터·
+    변수·딥서치를 한 흐름으로 해서 최종 결론을 AI 가 내는 것. 수치는 그냥
+    확률이잖아.")
+
+🔴 **%p 를 만들지 않는다.** 심의가 만드는 것은 **사실**이다 —
+   "은퇴 선수가 오늘 선발 출전한다" 처럼. 그 사실을 판정이 읽고 결론을 낸다.
+   심의가 숫자를 붙이면 그건 다시 지어낸 계수다.
+
+⚠️ 발동은 **상황 태그가 수집된 경기만**이고 슬레이트당 상한이 있다.
+   판정 앞에 서므로 시간 예산이 곧 발송 마감선이다.
+
+조사(ⓐ)는 퍼플렉시티가 주전이고, 못 쓰면 무료 사슬로 **축소 조사**한다 —
+수집된 기사 제목만 보고 실마리를 뽑는다. 어느 경로였는지 로그에 남는다.
+"""
+from __future__ import annotations
+
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+CAP_KEY = "council:calls:{date}"
+ONCE_KEY = "council:done:{sport}:{game_id}:{date}"
+TTL = 26 * 3600
+
+SRC_PPLX = "perplexity"
+SRC_FREE = "free_chain"
+SRC_NONE = "none"
+
+#: 조사 질문. **"없으면 없다고 답하라"** 가 이 프롬프트의 핵심이다 —
+#  실마리를 못 찾았을 때 지어내면 심의 전체가 오염된다.
+INVESTIGATE = """당신은 스포츠 경기 조사원이다. 아래 상황이 오늘 경기에
+실제로 어떻게 작용하는지, **수집된 기사에서 확인되는 것만** 찾아라.
+
+경기: {away} @ {home} ({league}, {date})
+상황: {situation}
+
+수집된 기사 제목:
+{headlines}
+
+찾을 것 (기사에서 확인되는 것만):
+① 라인업·기용 변화 — 그 선수가 오늘 선발인가, 빠지는가, 대타인가
+② 과거 유사 사례 언급 — 기사가 비슷한 상황의 전례를 말하는가
+③ 현장 분위기 서술 — 감독·선수 코멘트, 구단 조치
+
+🔴 기사에 없으면 **"없음"** 이 답이다. 추측·일반론·네가 아는 지식을 쓰지 마라.
+🔴 요약하지 마라. 확인된 사실만 짧게 적어라.
+
+JSON 만 출력한다:
+{{"라인업변화": "확인된 사실 또는 없음",
+  "유사사례": "확인된 사실 또는 없음",
+  "현장분위기": "확인된 사실 또는 없음",
+  "인용": ["근거가 된 기사 제목", "..."]}}"""
+
+#: 심의 3문. 검사역 모델(무료)이 답한다. **%p 를 묻지 않는다.**
+DELIBERATE = """당신은 야구 판정의 검사역이다. 아래 상황 변수가 오늘 경기에
+작용하는 **기전**을 판단하라. 확률이나 %p 를 말하지 마라 — 그건 판정가의 몫이다.
+
+경기: {away} @ {home}
+상황: {situation}
+조사 결과: {findings}
+
+세 문항에 답하라:
+① 기전 — 이 상황이 경기력에 작용한다면 **무엇을 통해서인가**
+   (라인업 변화 / 동기 / 어수선함 / 없음)
+② 방향 — 어느 팀에 유리한가 (홈 / 원정 / 불명)
+③ 확실성 — 조사 결과가 이 판단을 뒷받침하는가 (뒷받침 / 약함 / 없음)
+
+🔴 **"불명"으로 답해도 된다.** 단 왜 불명인지 한 줄을 반드시 적어라.
+   근거 없이 방향을 정하는 것보다 불명이 정직하다.
+
+JSON 만 출력한다:
+{{"기전": "라인업변화|동기|어수선함|없음",
+  "방향": "홈|원정|불명",
+  "확실성": "뒷받침|약함|없음",
+  "사유": "1~2문장. 왜 그렇게 읽었는지. 불명이면 왜 불명인지."}}"""
+
+
+def _cfg():
+    from app.config import get_settings
+
+    return get_settings()
+
+
+def targets(games: list[dict], settings=None) -> list[dict]:
+    """심의 대상 — **상황 태그가 수집된 경기만.**
+
+    ⚠️ "상황판정이 무관인 경기"가 아니다. 그건 판정 뒤에나 알 수 있는데,
+       심의는 판정 **앞**에 서기 때문이다.
+    """
+    s = settings or _cfg()
+    out = []
+    for jg in games or []:
+        tags = jg.get("situation_tags") or {}
+        if sum(len(v or []) for v in tags.values()):
+            out.append(jg)
+    cap = int(s.council_slate_cap)
+    if len(out) > cap:
+        logger.warning("[council] 대상 %d경기 — 상한 %d로 자른다 "
+                       "(나머지는 심의 없이 간다)", len(out), cap)
+        out = out[:cap]
+    return out
+
+
+def _headlines(jg: dict, limit: int = 12) -> str:
+    rows = []
+    for side in ("home", "away"):
+        for it in ((jg.get("research") or {}).get(f"{side}_news") or [])[:limit]:
+            t = str((it or {}).get("title") or "").strip()
+            if t:
+                rows.append(f"- {t}")
+    return "\n".join(rows[:limit]) or "(없음)"
+
+
+def _situation_text(jg: dict) -> str:
+    from app.engine.situation import as_lines
+
+    lines = []
+    for side, rows in (jg.get("situation_tags") or {}).items():
+        for ln in as_lines(rows):
+            lines.append(f"[{side}] {ln}")
+    return "\n".join(lines) or "(없음)"
+
+
+async def _cap_ok(redis, date: str) -> bool:
+    """일일 캡. 셀 수 없으면 **부르지 않는다** — 캡 없는 AI 호출을 만들지 않는다."""
+    if redis is None:
+        logger.info("[council] Redis 없음 — 캡을 셀 수 없어 생략한다")
+        return False
+    cap = int(_cfg().council_daily_cap)
+    try:
+        n = int(await redis.get(CAP_KEY.format(date=date)) or 0)
+    except Exception as exc:
+        logger.warning("[council] 캡 조회 실패 — 생략: %s", exc)
+        return False
+    if n >= cap:
+        logger.warning("[council] 일일 캡 도달 %d/%d", n, cap)
+        return False
+    return True
+
+
+async def _once_ok(redis, sport: str, gid, date: str) -> bool:
+    if redis is None:
+        return False
+    try:
+        return bool(await redis.set(ONCE_KEY.format(sport=sport, game_id=gid,
+                                                    date=date),
+                                    "1", ex=TTL, nx=True))
+    except Exception as exc:
+        logger.warning("[council] 1회 표식 실패 — 생략: %s", exc)
+        return False
+
+
+async def _note(redis, date: str) -> None:
+    if redis is None:
+        return
+    try:
+        k = CAP_KEY.format(date=date)
+        await redis.incr(k)
+        await redis.expire(k, TTL)
+    except Exception as exc:
+        logger.debug("[council] 카운터 기록 실패: %s", exc)
+
+
+async def investigate(jg: dict) -> tuple[dict | None, str]:
+    """ⓐ 조사 — 퍼플렉시티 주전, 실패하면 무료 사슬로 축소 조사.
+
+    반환 `(결과 | None, 사용한 경로)`. **실패는 None 이고 판정을 막지 않는다.**
+    """
+    prompt = INVESTIGATE.format(
+        away=jg.get("away"), home=jg.get("home"),
+        league=(jg.get("league") or jg.get("sport") or "").upper(),
+        date=jg.get("starts_at_kst") or "",
+        situation=_situation_text(jg), headlines=_headlines(jg))
+
+    # 주전 — 퍼플렉시티. 검색+읽기+종합이 한 콜이라 이 일에 가장 맞다.
+    try:
+        from app.research.perplexity import ask_json
+
+        got = await ask_json(prompt)
+        if got:
+            return got, SRC_PPLX
+    except Exception as exc:
+        logger.info("[council] 퍼플렉시티 조사 실패 — 무료 사슬로 축소 조사: %s",
+                    str(exc)[:120])
+
+    # 폴백 — 무료 사슬. 수집된 제목만 보고 실마리를 뽑는다(검색은 못 한다).
+    try:
+        from app.engine.team_form import complete_json
+
+        txt = await complete_json(prompt, model="", max_tokens=800,
+                                  role="matchup")
+        from app.engine.matchup import parse_json_object
+
+        got = parse_json_object(txt or "")
+        if isinstance(got, dict):
+            return got, SRC_FREE
+    except Exception as exc:
+        logger.warning("[council] 축소 조사도 실패 — 심의 없이 간다: %s",
+                       str(exc)[:120])
+    return None, SRC_NONE
+
+
+async def deliberate(jg: dict, findings: dict) -> dict | None:
+    """ⓑ 심의 — 검사역 모델(무료). **%p 를 묻지 않는다.**"""
+    from app.engine.matchup import parse_json_object
+    from app.engine.team_form import complete_json
+
+    prompt = DELIBERATE.format(
+        away=jg.get("away"), home=jg.get("home"),
+        situation=_situation_text(jg),
+        findings=json.dumps(findings or {}, ensure_ascii=False))
+    try:
+        txt = await complete_json(prompt, model="", max_tokens=600,
+                                  role="matchup")
+    except Exception as exc:
+        logger.warning("[council] 심의 실패 — 조사 결과만 넘긴다: %s",
+                       str(exc)[:120])
+        return None
+    got = parse_json_object(txt or "")
+    return got if isinstance(got, dict) else None
+
+
+async def run(jg: dict, date: str, redis=None) -> dict | None:
+    """경기 1건 심의. 판정 **앞**에서 부른다. 실패해도 판정은 계속된다.
+
+    성공하면 `jg["council"]` 에 심의록을 새기고 그것을 돌려준다.
+    """
+    if not _cfg().council_enabled:
+        return None
+    tags = jg.get("situation_tags") or {}
+    if not sum(len(v or []) for v in tags.values()):
+        return None
+    sport, gid = (jg.get("sport") or "").lower(), jg.get("game_id")
+    if not await _cap_ok(redis, date):
+        return None
+    if not await _once_ok(redis, sport, gid, date):
+        logger.info("[council] game=%s 이미 심의함 — 생략", gid)
+        return None
+
+    findings, src = await investigate(jg)
+    await _note(redis, date)
+    if findings is None:
+        logger.warning("[council] game=%s 조사 실패 — 심의록 없이 간다", gid)
+        return None
+    verdict = await deliberate(jg, findings)
+    rec = {"조사": findings, "조사경로": src, "심의": verdict or {},
+           "상황": _situation_text(jg)}
+    jg["council"] = rec
+    logger.info("[council] game=%s 심의 완료 (조사=%s 기전=%s 방향=%s 확실성=%s)",
+                gid, src, (verdict or {}).get("기전"),
+                (verdict or {}).get("방향"), (verdict or {}).get("확실성"))
+    return rec
+
+
+def payload(jg: dict) -> dict:
+    """판정 프롬프트에 실을 [상황·심의] 블록. 없으면 빈 dict.
+
+    ⚠️ **자료2 확장이다.** 프롬프트 구조를 바꾸지 않는다 — 자료2 JSON 안에
+       한 항목으로 들어간다.
+    """
+    rec = jg.get("council") or {}
+    if not rec:
+        return {}
+    d = rec.get("심의") or {}
+    return {"상황·심의": {
+        "기전": d.get("기전"), "방향": d.get("방향"),
+        "확실성": d.get("확실성"), "사유": d.get("사유"),
+        "조사": rec.get("조사"), "조사경로": rec.get("조사경로")}}
+
+
+def card_line(jg: dict) -> str:
+    """카드 한 줄. 심의가 없거나 알맹이가 없으면 빈 줄."""
+    rec = jg.get("council") or {}
+    d = (rec.get("심의") or {})
+    if not d:
+        return ""
+    why = str(d.get("사유") or "").strip()
+    if d.get("방향") == "불명":
+        return f"심의 [상황·심의] 심의 후에도 불명 — {why}" if why else ""
+    return (f"심의 [상황·심의] 기전 {d.get('기전')} · {d.get('방향')} 방향 "
+            f"({d.get('확실성')}) — {why}").strip()

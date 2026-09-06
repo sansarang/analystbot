@@ -185,6 +185,15 @@ class Settings(BaseSettings):
         "GROUNDING_ENABLED", "grounding_enabled"))
     grounding_daily_cap: int = Field(default=60, validation_alias=AliasChoices(
         "GROUNDING_DAILY_CAP", "grounding_daily_cap"))
+    # [변수 평의회 2026-09-06] 상황 태그가 있는 경기만 심의한다.
+    #   판정 **앞**에 서므로 시간 예산이 곧 발송 마감선이다 — 슬레이트 상한을
+    #   작게 잡는다. 경기당 조사 1 + 심의 1 = 2콜.
+    council_enabled: bool = Field(default=True, validation_alias=AliasChoices(
+        "COUNCIL_ENABLED", "council_enabled"))
+    council_slate_cap: int = Field(default=5, validation_alias=AliasChoices(
+        "COUNCIL_SLATE_CAP", "council_slate_cap"))
+    council_daily_cap: int = Field(default=20, validation_alias=AliasChoices(
+        "COUNCIL_DAILY_CAP", "council_daily_cap"))
 
     # ── [C1 불펜 가용성] 최근 3일 소모 임계 (2026-09-04) ──────────────
     #: ⚠️ **투구수가 DB 에 없다.** `pitcher_appearances` 는 `batters`(TBF) 만

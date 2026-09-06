@@ -225,6 +225,16 @@ def news_payload(home_form: dict, away_form: dict, jg: dict | None = None) -> di
                          "확인": sit.get("확인")})
         if tags:
             out[side] = tags
+    # [변수 평의회] 심의록을 자료2 **확장**으로 싣는다 — 프롬프트 구조 불변.
+    #   ⚠️ %p 를 담지 않는다. 심의가 만든 것은 사실이고, 결론은 판정이 낸다.
+    try:
+        from app.engine.council import payload as _council_payload
+
+        blk = _council_payload(jg or {})
+        if blk:
+            out.update(blk)
+    except Exception:      # 심의록 한 칸 때문에 판정을 막지 않는다
+        pass
     return out
 
 
@@ -502,6 +512,16 @@ async def judge_matchup(jg: dict, redis, date: str, *,
         _sit_attach(jg)
     except Exception as exc:
         logger.warning("[situation] game=%s 부착 실패 — 판정은 계속: %s",
+                       jg.get("game_id"), exc)
+    # [변수 평의회 2026-09-06] 심의는 판정 **앞**에 선다 — 재판정이 아니라
+    #   재료를 만드는 단계다. 자료1~11 과 같은 줄에서 한 상에 올라간다.
+    #   실패해도 판정은 계속된다(심의록 없이 간다).
+    try:
+        from app.engine.council import run as _council
+
+        await _council(jg, date, redis)
+    except Exception as exc:
+        logger.warning("[council] game=%s 실패 — 심의 없이 판정한다: %s",
                        jg.get("game_id"), exc)
     news = news_payload(home_form, away_form, jg)
     if not news:

@@ -159,6 +159,11 @@ def render_form_card(jg: dict, sport: str | None = None, *,
         sit = card_line(jg.get("situation_check") or {})
         if sit:
             lines.append(sit)
+        from app.engine.council import card_line as _council_line
+
+        cl = _council_line(jg)
+        if cl:
+            lines.append(cl)
     except Exception:      # 카드가 이 한 줄 때문에 못 나가면 안 된다
         pass
     lines.append(rec_label(jg))
