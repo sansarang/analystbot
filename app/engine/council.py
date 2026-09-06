@@ -27,6 +27,14 @@ logger = logging.getLogger(__name__)
 
 CAP_KEY = "council:calls:{date}"
 ONCE_KEY = "council:done:{sport}:{game_id}:{date}"
+#: 🔴 [2026-09-06] **심의록을 저장한다.** 종전에는 `jg["council"]` 메모리에만
+#   새겼다. 그래서 분석 캐시가 재생성되면 심의록은 날아가고 `council:done`
+#   플래그만 남아, 그 뒤 전부 "이미 심의함 — 생략"으로 반환됐다 —
+#   **되살릴 경로가 없었다** (실측 2026-09-06 15:34: KBO 4경기·NPB 2경기의
+#   심의록이 통째로 사라졌고, 니혼햄 카드의 サンスポ 근거도 함께 잃었다).
+#   같은 날 아침 최종 판정 락에서 고친 것과 같은 결함이다 —
+#   **표식과 결과를 따로 두면, 결과가 유실될 때 표식이 복구를 막는다.**
+REC_KEY = "council:rec:{sport}:{game_id}:{date}"
 TTL = 26 * 3600
 
 #: 🔴 [2026-09-06] 심의·조사는 **절대 유료 판정 경로를 타지 않는다.**
@@ -152,6 +160,28 @@ async def _cap_ok(redis, date: str) -> bool:
     return True
 
 
+async def load_record(redis, sport: str, gid, date: str) -> dict | None:
+    """저장된 심의록. 캐시가 재생성돼도 여기서 되살린다."""
+    if redis is None:
+        return None
+    try:
+        raw = await redis.get(REC_KEY.format(sport=sport, game_id=gid, date=date))
+        return json.loads(raw) if raw else None
+    except Exception as exc:
+        logger.warning("[council] 심의록 조회 실패 game=%s: %s", gid, exc)
+        return None
+
+
+async def _save_record(redis, sport: str, gid, date: str, rec: dict) -> None:
+    if redis is None:
+        return
+    try:
+        await redis.set(REC_KEY.format(sport=sport, game_id=gid, date=date),
+                        json.dumps(rec, ensure_ascii=False, default=str), ex=TTL)
+    except Exception as exc:
+        logger.warning("[council] 심의록 저장 실패 game=%s: %s", gid, exc)
+
+
 async def _once_ok(redis, sport: str, gid, date: str) -> bool:
     if redis is None:
         return False
@@ -162,6 +192,16 @@ async def _once_ok(redis, sport: str, gid, date: str) -> bool:
     except Exception as exc:
         logger.warning("[council] 1회 표식 실패 — 생략: %s", exc)
         return False
+
+
+async def _release_once(redis, sport: str, gid, date: str) -> None:
+    """1회 표식 반납. 조사가 실패했으면 권한만 태운 것이다."""
+    if redis is None:
+        return
+    try:
+        await redis.delete(ONCE_KEY.format(sport=sport, game_id=gid, date=date))
+    except Exception as exc:
+        logger.warning("[council] 표식 반납 실패 game=%s: %s", gid, exc)
 
 
 async def _note(redis, date: str) -> None:
@@ -245,21 +285,35 @@ async def run(jg: dict, date: str, redis=None) -> dict | None:
     if not sum(len(v or []) for v in tags.values()):
         return None
     sport, gid = (jg.get("sport") or "").lower(), jg.get("game_id")
+    # 🔴 저장된 심의록이 있으면 **되살린다.** 캐시가 재생성돼 jg 에서 사라져도
+    #    심의를 다시 하지 않고 그대로 붙인다 — 유료 조사를 두 번 하지 않으면서
+    #    카드가 심의록을 잃지도 않는다.
+    saved = await load_record(redis, sport, gid, date)
+    if saved:
+        jg["council"] = saved
+        logger.info("[council] game=%s 저장된 심의록 복원", gid)
+        return saved
     if not await _cap_ok(redis, date):
         return None
     if not await _once_ok(redis, sport, gid, date):
-        logger.info("[council] game=%s 이미 심의함 — 생략", gid)
+        # 표식은 있는데 심의록이 없다 — 그 심의는 실패했거나 중간에 끊겼다.
+        logger.info("[council] game=%s 이미 심의함(심의록 없음) — 생략", gid)
         return None
 
     findings, src = await investigate(jg)
     await _note(redis, date)
     if findings is None:
-        logger.warning("[council] game=%s 조사 실패 — 심의록 없이 간다", gid)
+        # 🔴 조사가 실패했으면 **1회 표식을 반납한다.** 안 그러면 그 경기는
+        #    오늘 다시 심의할 길이 없다(최종 판정 락과 같은 이유).
+        await _release_once(redis, sport, gid, date)
+        logger.warning("[council] game=%s 조사 실패 — 심의록 없이 간다 "
+                       "(표식 반납, 다음 회차 재시도)", gid)
         return None
     verdict = await deliberate(jg, findings)
     rec = {"조사": findings, "조사경로": src, "심의": verdict or {},
            "상황": _situation_text(jg)}
     jg["council"] = rec
+    await _save_record(redis, sport, gid, date, rec)
     logger.info("[council] game=%s 심의 완료 (조사=%s 기전=%s 방향=%s 확실성=%s)",
                 gid, src, (verdict or {}).get("기전"),
                 (verdict or {}).get("방향"), (verdict or {}).get("확실성"))

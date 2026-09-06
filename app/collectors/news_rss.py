@@ -22,6 +22,12 @@ from email.utils import parsedate_to_datetime
 logger = logging.getLogger(__name__)
 
 BASE = "https://news.google.com/rss/search"
+#: 🔴 상황 검색의 시간 창. Google News 연산자 — `when:1d` 는 최근 24시간.
+#   달력상 "오늘"이 아니라 **최근 24시간**인 이유: 경기가 17~18시라 전날
+#   저녁 예고·공지(선발 예고·엔트리 말소)까지는 오늘 경기의 재료다.
+#   ⚠️ 이 값만으로는 부족하다 — 분류 쪽 `situation.published_in_window` 가
+#      경기 시작 전인지까지 **코드로** 다시 잠근다. 검색어는 요청일 뿐이다.
+SITUATION_RECENCY = "when:1d"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
 
@@ -196,7 +202,15 @@ def situation_query(sport: str, team: str) -> str:
     if not terms:
         return ""
     picked = terms[:_SIT_QUERY_TERMS]
-    return f'{qualified(sport, team)} ({" OR ".join(picked)})'
+    # 🔴 [2026-09-06 사용자 지시] **오늘 날짜로 검색한다.**
+    #    "은퇴경기는 지난 경기다. 오늘 경기 전 오늘 날짜 서치를 해야 한다."
+    #    실측 2026-09-06: 상황 기사 219건 중 133건(61%)이 어제 이전이었고,
+    #    그 표본은 전부 어제 경기 리뷰였다. 그중 '김성현 은퇴식 특별 엔트리
+    #    등록'(뉴시스, 09-05 16:11)이 **공식 소식통**으로 오늘 카드에 실려,
+    #    지나간 사건이 오늘의 공기로 오인됐다.
+    #    Google News 의 `when:` 은 발행 시각 기준 상대 창이다.
+    return (f'{qualified(sport, team)} ({" OR ".join(picked)}) '
+            f'{SITUATION_RECENCY}')
 
 
 async def fetch_team_situation(sport: str, team: str, *,

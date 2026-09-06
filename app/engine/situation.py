@@ -93,11 +93,26 @@ def is_recap(title: str, sport: str) -> bool:
     return any(_norm(w) in t for w in recap_markers(sport))
 
 
+#: 🔴 [2026-09-06 사용자 지시] 상황 기사의 **하한**. 경기 시작 기준 이만큼
+#   앞까지만 오늘 경기의 재료로 본다.
+#   "은퇴경기는 지난 경기다. 오늘 경기 전 오늘 날짜 서치를 해야 한다."
+#   종전에는 상한(`발행 < 경기시작`)만 있어 **사흘 전 기사도 통과했다**.
+#   실측 2026-09-06 KBO game=1718: '김성현 은퇴식 특별 엔트리 등록'(뉴시스,
+#   09-05 16:11 발행 = 어제 경기 기사)이 **공식 소식통**으로 오늘 카드에 실렸다.
+#   24시간인 이유: 경기가 17~18시라 전날 저녁 예고·공지까지는 오늘의 재료다.
+#   같은 날 0시를 자르면 그 예고들이 통째로 사라진다.
+SITUATION_WINDOW_HOURS = 24
+
+
 def published_before(item: dict, starts_at) -> bool:
-    """이 기사가 **경기 시작 전**에 나왔는가. 시각을 모르면 통과시킨다.
+    """이 기사가 **경기 직전 창 안에서** 나왔는가. 시각을 모르면 통과시킨다.
+
+    창은 `[경기시작 - SITUATION_WINDOW_HOURS, 경기시작)` 이다.
 
     ⚠️ 모르는 것을 버리지 않는다 — RSS 가 pubDate 를 안 주는 매체가 있고,
        그걸 버리면 그 매체의 기사가 통째로 사라진다.
+       (실측 2026-09-06: 수집 219건 중 pubDate 누락 0건이라 지금은 손실 0이다.
+        그래도 규칙은 "모르면 통과"로 둔다 — 매체가 바뀌면 다시 생긴다.)
     """
     from datetime import datetime, timezone
     from email.utils import parsedate_to_datetime
@@ -121,7 +136,9 @@ def published_before(item: dict, starts_at) -> bool:
             return True
     if getattr(st, "tzinfo", None) is None:
         st = st.replace(tzinfo=timezone.utc)
-    return dt < st
+    from datetime import timedelta
+
+    return st - timedelta(hours=SITUATION_WINDOW_HOURS) <= dt < st
 
 
 def _is_official(item: dict, dom: str, url: str, teams: tuple) -> bool:
