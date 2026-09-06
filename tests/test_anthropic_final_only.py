@@ -134,13 +134,41 @@ def test_parse_intent_is_rule_based():
 # ── 전수: 야구 경로에 남은 Anthropic 호출 지점 ──────────────────
 #: 최종 판정 1곳 + 축구 전용 경로. 여기 없는 파일이 새로 뜨면 운다.
 _ALLOWED = {
-    "app/engine/team_form.py",     # 최종 판정 — chain() 이 matchup 으로 잠근다
+    "app/engine/team_form.py",     # 2차 최종 판정 — chain() 이 matchup 으로 잠근다
     "app/engine/judge.py",         # 구 Judge — 축구 전용 (야구는 else 분기)
-    "app/llm/provider.py",         # 역할 체인 — 역할 provider 가 anthropic 일 때만
     # ⚠️ 코드는 남아 있으나 `SOCCER_TRIAL_ENABLED` 기본 꺼짐으로 닫혀 있다.
     #    스위치를 켜기 전에 무료 사슬로 옮겨야 한다.
     "app/engine/soccer_trial.py",
+    # 🔴 `app/llm/provider.py` 는 2026-09-06 에 목록에서 **빠졌다.**
+    #    역할 체인(interpreter·judge_a·narrator·intent)의 Anthropic 경로를
+    #    클래스째 지웠다 — 기본값만 바꾸면 env 한 줄로 다시 열린다.
 }
+
+
+def test_role_chain_cannot_reach_anthropic_at_all():
+    """`*_PROVIDER=anthropic` 을 넣어도 거절돼야 한다 — 기본값이 아니라 부재로."""
+    from app.config import Settings
+    from app.llm.provider import LLMError, _KIND_TO_CLASS, provider_chain
+
+    assert "anthropic" not in _KIND_TO_CLASS
+    s = Settings(_env_file=None, force_mock=False,
+                 judge_a_provider="anthropic", anthropic_api_key="k")
+    with pytest.raises(LLMError, match="알 수 없는 provider"):
+        provider_chain("judge_a", s)
+
+
+def test_role_defaults_carry_no_anthropic():
+    """env 가 하나도 없는 환경에서도 열리지 않는다."""
+    from app.config import Settings
+
+    s = Settings(_env_file=None)
+    for role in ("interpreter", "judge_a", "judge_b", "narrator", "intent"):
+        prov = (getattr(s, f"{role}_provider", "") or "")
+        fb = (getattr(s, f"{role}_fallback", "") or "")
+        assert "anthropic" not in f"{prov},{fb}", \
+            f"{role} 기본값에 anthropic 이 남아 있다: {prov!r} / {fb!r}"
+    # 해석봇에 claude 모델명을 박아두면 groq 으로 넘어간다.
+    assert "claude" not in (s.interpreter_model or "").lower()
 
 
 def test_no_new_anthropic_call_sites():

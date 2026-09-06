@@ -256,10 +256,11 @@ def test_seed_is_omitted_for_providers_that_reject_it(monkeypatch):
 # ── [2026-09-06] 최종 판정은 단 한 번이다 ───────────────────────────
 # 사용자 지시: "마지막 판정은 단 한 번으로 제한하고 안트로픽 fable 로 정해라."
 # 같은 재료를 여러 번 물으면 회차마다 답이 달라진다 — 오늘 실측이 그것이었다.
-def test_judgement_model_is_fable():
+def test_judgement_model_is_opus():
+    """[2026-09-06 사용자 지시] fable → opus. 2차 최종 판정 전용 모델이다."""
     from app.config import get_settings
 
-    assert get_settings().matchup_model == "claude-fable-5"
+    assert get_settings().matchup_model == "claude-opus-5"
 
 
 @pytest.mark.asyncio

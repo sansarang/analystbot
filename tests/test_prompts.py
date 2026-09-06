@@ -95,15 +95,25 @@ def test_interpreter_role_is_actually_usable():
 
 
 def test_interpreter_model_is_pinned_not_opus_fallback():
-    """⚠️ 비우면 역할 폴백이 judge_model(=Opus)을 넣는다. 해석봇은 경기×양팀이라
-    호출량이 가장 많은 역할이다 — 슬레이트당 20콜이 조용히 Opus가 된다."""
+    """⚠️ 해석봇은 경기×양팀이라 호출량이 가장 많다 — 슬레이트당 20콜이
+    조용히 Opus 가 되면 안 된다.
+
+    🔴 [계약 갱신 2026-09-06] 지키는 방법이 바뀌었다. 종전에는
+    `interpreter_model` 에 Haiku 를 **박아** 두는 것으로 막았다. 이제
+    해석봇 provider 가 groq 이므로 모델을 박으면 오히려 **claude 모델명이
+    groq 으로 넘어간다.** `resolve_model` 은 명시값 → provider 기본값 →
+    역할 폴백 순이라, 비워 두면 그 벤더의 기본 모델이 온다.
+    지켜야 할 성질은 그대로다: **해석봇이 judge_model(Opus) 로 가지 않는다.**
+    """
     from app.config import Settings
     from app.llm.provider import resolve_model
 
     s = Settings(_env_file=None)
-    assert s.interpreter_model, "비어 있으면 Opus 폴백이다"
-    assert resolve_model("interpreter", s) == s.interpreter_model
-    assert resolve_model("interpreter", s) != s.judge_model
+    resolved = resolve_model("interpreter", s, s.interpreter_provider)
+    assert resolved and resolved != s.judge_model, "해석봇이 Opus 로 간다"
+    assert "claude" not in resolved.lower(), \
+        f"anthropic 이 아닌 provider 에 claude 모델명이 간다: {resolved}"
+    assert s.interpreter_provider != "anthropic"
 
 
 def test_season_lines_were_abolished():

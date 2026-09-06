@@ -172,54 +172,16 @@ class MockProvider(Provider):
         return "(mock 응답)", None
 
 
-class AnthropicProvider(Provider):
-    name = "anthropic"
-    supports_native_schema = True
-
-    async def _call(self, system, messages, schema, max_tokens, temperature, thinking=0):
-        import anthropic
-
-        # ⚠️ `is_quota_error`는 `collectors.base`에 있다. perplexity에서
-        #   import하면 ImportError가 나고, 그것이 "anthropic 실패"로 뭉뚱그려져
-        #   **크레딧 문제로 오진**된다(실측 2026-08-27: 체크 도구가 잡았다).
-        from app.collectors.base import ApiQuotaError, is_quota_error
-
-        client = anthropic.AsyncAnthropic(api_key=self.api_key)
-        # ⚠️ **anthropic SDK 1.0.0은 `temperature`를 제거했다.**
-        #   넘기면 TypeError가 나고, 그것이 "체인 전부 실패"로 뭉뚱그려져
-        #   크레딧 문제로 오진된다(실측 2026-08-27: 체크 도구가 잡았다).
-        #   결정성이 필요하면 `output_config`를 쓴다 — 지금은 기본값에 맡긴다.
-        #   `temperature` 인자는 인터페이스 통일을 위해 받되 여기서 버린다.
-        kwargs: dict[str, Any] = {
-            "model": self.model, "max_tokens": max_tokens, "messages": messages,
-        }
-        if system:
-            kwargs["system"] = system
-        if thinking > 0:
-            # ⚠️ 강제 tool_choice와 extended thinking은 함께 쓸 수 없다.
-            #   구조화 출력이 필요하면 사고를 끈다 — 도구 호출이 우선이다.
-            if not schema:
-                kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking}
-        if schema:
-            kwargs["tools"] = [{"name": "result", "description": "구조화 결과 제출",
-                                "input_schema": schema}]
-            kwargs["tool_choice"] = {"type": "tool", "name": "result"}
-        try:
-            resp = await client.messages.create(**kwargs)
-        except anthropic.APIStatusError as exc:
-            if is_quota_error(exc.status_code, str(exc)):
-                from app.engine.credit_guard import trip_credit
-
-                err = ApiQuotaError("anthropic", str(exc))
-                trip_credit(f"anthropic/{self.model}", err)
-                raise err from exc
-            raise LLMError(f"anthropic: {exc}") from exc
-        text = "".join(b.text for b in resp.content if b.type == "text")
-        data = next((b.input for b in resp.content
-                     if b.type == "tool_use" and b.name == "result"), None)
-        if schema and data is None:
-            raise LLMParseError("anthropic: tool_use 블록 없음")
-        return text, data
+# 🔴 [2026-09-06 사용자 지시] **AnthropicProvider 를 지웠다.**
+#    "2차 판정만 안트로픽 사용하고 관련없는 거는 빼라."
+#    이 클래스는 역할 체인(`provider_chain`)용이었다 — interpreter·judge_a·
+#    narrator·intent 가 여기로 갔다. 2차 판정과는 **무관한 경로**다:
+#    최종 판정은 `team_form.complete_json` 이 Anthropic SDK 를 직접 부른다.
+#    기본값에서 빼는 것만으로는 부족하다. 종전에도 운영 env 가 덮고 있었을
+#    뿐 코드는 열려 있었고, 덮개 없는 환경에서 그대로 새어 나갔다 —
+#    실측 2026-09-06: `interpreter` 의 400(credit) 이 `trip_credit` 으로
+#    번져 NC 최종 판정을 막았다. 이제 **경로 자체가 없다.**
+#    되살리려면 이 클래스와 `_KIND_TO_CLASS` 항목을 함께 되돌려야 한다.
 
 
 def _S():
@@ -535,8 +497,10 @@ def stub_from_schema(schema: dict) -> Any:
 # ---------------------------------------------------------------- 라우팅 (B-2)
 
 
+#: 🔴 `anthropic` 은 **여기 없다** (2026-09-06). 역할 체인으로는 Anthropic 에
+#   갈 수 없다 — 유일한 경로는 2차 최종 판정(`judge_route.MATCHUP_ROLE`)이다.
+#   `*_PROVIDER=anthropic` 을 넣으면 `build_provider` 가 LLMError 로 거절한다.
 _KIND_TO_CLASS = {
-    "anthropic": AnthropicProvider,
     "gemini": GeminiProvider,
     "mock": MockProvider,
     # 아래는 전부 OpenAI 호환 — base_url만 다르다
@@ -565,7 +529,7 @@ def build_provider(kind: str, model: str, settings=None) -> Provider:
         raise LLMError(f"알 수 없는 provider: {kind!r} "
                        f"(가능: {', '.join(sorted(_KIND_TO_CLASS))})")
     key = {
-        "anthropic": s.anthropic_api_key, "gemini": getattr(s, "gemini_api_key", None),
+        "gemini": getattr(s, "gemini_api_key", None),
         "groq": getattr(s, "groq_api_key", None),
         "deepseek": getattr(s, "deepseek_api_key", None),
         "xai": s.xai_api_key, "ollama": None, "mock": None,
@@ -630,7 +594,8 @@ def resolve_model(role: str, settings=None, kind: str = "") -> str:
 def provider_chain(role: str, settings=None) -> list[Provider]:
     """역할 → provider 폴백 체인. 첫 번째가 기본, 나머지는 폴백.
 
-    설정 예: `JUDGE_A_PROVIDER=anthropic` · `JUDGE_A_FALLBACK=gemini,groq`
+    설정 예: `JUDGE_A_PROVIDER=gemini` · `JUDGE_A_FALLBACK=groq`
+    ⚠️ `anthropic` 은 이 체인에 없다 — 2차 최종 판정 전용이다.
     """
     if role not in ROLES:
         raise LLMError(f"알 수 없는 역할: {role!r} (가능: {', '.join(ROLES)})")

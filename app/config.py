@@ -361,29 +361,39 @@ class Settings(BaseSettings):
     #   Gemini 무료 티어는 분당 제한이 빡빡해 4~5콜이면 429가 난다. 2단은
     #   경기당 2콜(팀별) × 슬레이트라 호출량이 가장 많다 → **Groq가 1순위**다.
     #   Gemini는 폴백으로 두고, 품질이 필요한 3단만 Anthropic을 앞에 둔다.
-    # 🔴 기본값이 서로 모순이었다: interpreter_provider="groq" 인데 groq 은
-    #    disabled_providers 기본값에 들어 있다. 그래서 라인업 의도 해석이
-    #    **한 번도 돌지 않았다** — 변경점(사실)만 카드에 실리고 "감독이 왜
-    #    그렇게 짰나"(해석)는 통째로 비어 있었다 (실측 2026-09-01).
-    interpreter_provider: str = "anthropic"  # 2단 해석봇 — 칸 단위 판정 (호출량 최다)
-    # ⚠️ **비워두지 마라.** 비면 역할 폴백이 judge_model(=Opus)을 넣는다.
-    #    해석봇은 경기×양팀으로 호출량이 가장 많은 역할이라 Opus 로 돌면
-    #    슬레이트당 20콜이 Opus 가 된다. 분류·요약 작업이므로 팀 폼과 같은
-    #    등급(Haiku)이 맞다.
-    interpreter_model: str = "claude-haiku-4-5-20251001"
-    interpreter_fallback: str = "gemini,anthropic"
-    judge_a_provider: str = "anthropic"     # 3단 대조봇 A — 품질 우선
-    judge_a_model: str = ""                 # 비우면 judge_model을 쓴다
-    judge_a_fallback: str = "gemini,groq"
+    # 🔴 [2026-09-06 사용자 지시] **이 역할들의 기본값에서 anthropic 을 뺐다.**
+    #    "안트로픽은 2차 판정만 한다." 종전에는 운영 env 네 줄
+    #    (INTERPRETER_PROVIDER·INTERPRETER_FALLBACK·JUDGE_A_PROVIDER·
+    #     NARRATOR_FALLBACK·INTENT_FALLBACK)이 anthropic 기본값을 덮어써서
+    #    닫혀 있었다. env 는 원본이 아니라 **덮개**였고, 덮개가 없는 환경에서는
+    #    그대로 열렸다 — 실측 2026-09-06 로컬 실행: `interpreter` 가
+    #    claude-haiku 를 부르러 갔고, 400(credit) 이 `trip_credit` 으로 번져
+    #    **NC 최종 판정이 호출도 못 해보고 막혔다**(아침 MLB 0/85 와 같은 구조).
+    #    이제 코드가 보장한다. 되살리려면 env 로 명시해야 한다.
+    #
+    # ⚠️ 위 주석에 "groq 은 disabled_providers 기본값에 들어 있다"고 적혀
+    #    있었으나 **틀렸다.** 기본값은 `grok,perplexity` 이고 `grok`(xAI)은
+    #    `groq` 과 다른 provider 다. 한 글자 차이가 사본으로 굳어 있었다.
+    interpreter_provider: str = "groq"      # 2단 해석봇 — 칸 단위 판정 (호출량 최다)
+    # 🔴 **비워 둔다.** `resolve_model` 은 명시값 → provider 기본값 → 역할
+    #    폴백 순이라, 비우면 provider 의 기본 모델(groq: gpt-oss-120b)이 온다.
+    #    비우지 않으면 provider 를 바꿔도 **claude 모델명이 groq 으로 넘어간다.**
+    #    (종전 주석은 "비면 judge_model=Opus 가 온다"고 했는데, provider 기본이
+    #     역할 폴백보다 앞선 지금은 해당하지 않는다.)
+    interpreter_model: str = ""
+    interpreter_fallback: str = "gemini"
+    judge_a_provider: str = "gemini"        # 3단 대조봇 A — 축구 전용 (야구는 건너뜀)
+    judge_a_model: str = ""                 # 비우면 provider 기본 모델
+    judge_a_fallback: str = "groq"
     judge_b_provider: str = ""              # 3단 대조봇 B (병렬 비교군) — 기본 꺼짐
     judge_b_model: str = ""
     judge_b_fallback: str = ""
     narrator_provider: str = "gemini"       # 서술
     narrator_model: str = ""
-    narrator_fallback: str = "groq,anthropic"   # 서술은 슬레이트당 1~3콜이라 Gemini로 충분
+    narrator_fallback: str = "groq"         # 서술은 슬레이트당 1~3콜이라 Gemini로 충분
     intent_provider: str = "groq"           # 의도 파싱 — 질문마다 1콜이라 빠른 쪽
     intent_model: str = ""
-    intent_fallback: str = "gemini,anthropic"  # groq·gemini 미사용 시 Claude
+    intent_fallback: str = "gemini"
     # 자체호스팅·프록시 주소 (Ollama·사내 게이트웨이 등)
     # ── 사고 예산 (역할별) ────────────────────────────────────────────────
     # ⚠️ **사고 토큰은 출력 예산(max_tokens)을 잠식한다.** 사고형 모델에서

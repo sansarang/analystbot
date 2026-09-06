@@ -17,10 +17,13 @@ def _settings(**over):
     #    이 파일의 테스트들은 네트워크를 치지 않고 **라우팅만** 본다(build_provider는
     #    인스턴스를 만들 뿐 호출하지 않는다). 목 게이트가 켜져 있으면 라우팅이
     #    전부 MockProvider로 접혀 "env만 바꿔서 벤더 전환" 자체를 검증할 수 없다.
+    # ⚠️ [2026-09-06] 예시 provider 가 `anthropic` 이었다. Anthropic 은 이제
+    #    역할 체인에 없다(2차 최종 판정 전용) — `xai` 로 바꾼다. 검증하는
+    #    성질은 그대로다: "코드 수정 없이 env 만으로 벤더가 바뀐다".
     base = dict(force_mock=False,
-                interpreter_provider="mock", judge_a_provider="anthropic",
-                judge_a_model="claude-x", judge_b_provider="",
-                narrator_provider="anthropic", anthropic_api_key="k")
+                interpreter_provider="mock", judge_a_provider="xai",
+                judge_a_model="grok-x", judge_b_provider="",
+                narrator_provider="xai", xai_api_key="k")
     base.update(over)
     return Settings(**base)
 
@@ -35,14 +38,16 @@ SCHEMA = {"type": "object",
 
 def test_env_alone_switches_provider():
     """🔴 이 작업의 성공 기준 — 코드 수정 없이 provider가 바뀌어야 한다."""
-    a = P.provider_chain("judge_a", _settings(judge_a_provider="anthropic"))
+    a = P.provider_chain("judge_a", _settings(judge_a_provider="xai"))
     g = P.provider_chain("judge_a", _settings(judge_a_provider="gemini",
                                               gemini_api_key="g"))
     o = P.provider_chain("judge_a", _settings(judge_a_provider="ollama"))
-    assert [p.name for p in (a[0], g[0], o[0])] == ["anthropic", "gemini", "ollama"]
-    assert isinstance(a[0], P.AnthropicProvider)
+    assert [p.name for p in (a[0], g[0], o[0])] == ["xai", "gemini", "ollama"]
     assert isinstance(g[0], P.GeminiProvider)
     assert isinstance(o[0], P.OpenAICompatProvider)
+    # 🔴 anthropic 은 역할 체인에서 **거절**된다 — 2차 최종 판정 전용이다.
+    with pytest.raises(P.LLMError, match="알 수 없는 provider"):
+        P.provider_chain("judge_a", _settings(judge_a_provider="anthropic"))
 
 
 def test_openai_compatible_backends_share_one_implementation():
@@ -83,10 +88,10 @@ def test_fallback_chain_is_parsed_from_env():
     s = _settings(judge_a_fallback="gemini,groq:custom-model",
                   gemini_api_key="g", groq_api_key="q")
     chain = P.provider_chain("judge_a", s)
-    assert [p.name for p in chain] == ["anthropic", "gemini", "groq"]
+    assert [p.name for p in chain] == ["xai", "gemini", "groq"]
     assert chain[2].model == "custom-model", "체인에서 모델까지 지정할 수 있어야 한다"
     # 🔴 폴백에 모델을 안 적으면 **그 벤더의 기본 모델**을 쓴다.
-    #   역할 모델(claude-x)은 1순위 provider의 것이라 물려주면 404가 난다.
+    #   역할 모델(grok-x)은 1순위 provider의 것이라 물려주면 404가 난다.
     assert chain[1].model.startswith("gemini-"), \
         f"폴백에 다른 벤더 모델명이 갔다: {chain[1].model}"
 
@@ -270,12 +275,12 @@ def test_provider_default_model_beats_role_fallback():
 
 def test_fallback_provider_uses_its_own_vendor_model():
     """폴백이 앞 provider의 모델명을 물려받으면 벤더가 바뀌는 순간 404다."""
-    s = _settings(judge_a_provider="anthropic", judge_a_model="claude-x",
+    s = _settings(judge_a_provider="xai", judge_a_model="grok-x",
                   judge_a_fallback="gemini", gemini_api_key="g")
     chain = P.provider_chain("judge_a", s)
-    assert chain[0].model == "claude-x"
+    assert chain[0].model == "grok-x"
     assert chain[1].model.startswith("gemini-"), \
-        f"폴백에 Claude 모델명이 갔다: {chain[1].model}"
+        f"폴백에 앞 벤더 모델명이 갔다: {chain[1].model}"
 
 
 def test_gemini_default_model_is_not_a_retired_one():
@@ -375,8 +380,8 @@ def test_force_mock_blocks_every_provider():
     from app.llm.provider import MockProvider, provider_chain
 
     s = Settings(force_mock=True, interpreter_provider="groq",
-                 interpreter_fallback="gemini,anthropic",
-                 groq_api_key="x", gemini_api_key="y", anthropic_api_key="z")
+                 interpreter_fallback="gemini,xai",
+                 groq_api_key="x", gemini_api_key="y", xai_api_key="z")
     chain = provider_chain("interpreter", s)
     assert all(isinstance(p, MockProvider) for p in chain), \
         f"실 provider가 새어 나갔다: {[type(p).__name__ for p in chain]}"
