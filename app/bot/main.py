@@ -13,7 +13,6 @@ import re
 
 from datetime import datetime, timedelta
 
-import anthropic
 import redis.asyncio as aioredis
 
 import html as html_mod
@@ -23,11 +22,10 @@ from app.collectors.base import (
     ApiAuthError,
     ApiRateLimitError,
     ApiServiceError,
-    is_quota_error,
 )
 from app.config import get_settings
 from app.db import close_pool, get_pool
-from app.notify import notify_api_error, notify_quota
+from app.notify import notify_api_error
 from app.pipeline import (
     DETAIL_SEP,
     build_analysis,
@@ -264,48 +262,16 @@ def parse_intent_mock(text: str) -> dict:
 
 
 async def parse_intent(text: str) -> dict:
-    """자유 질문 → {sport, date, teams, depth}. Haiku 없으면 규칙 기반."""
-    settings = get_settings()
-    if settings.mock_judge:  # ANTHROPIC_API_KEY 기준
-        return parse_intent_mock(text)
-    try:
-        return await _parse_intent_live(text, settings)
-    except anthropic.APIStatusError as exc:
-        if is_quota_error(exc.status_code, str(exc)):
-            await notify_quota("anthropic(intent)", str(exc))   # 크레딧 소진만 알림
-        else:
-            logger.warning("[bot] live intent parse failed, using rule-based: %s", exc)
-        return parse_intent_mock(text)
+    """자유 질문 → {sport, date, teams, depth}. **규칙 기반 고정.**
 
-
-async def _parse_intent_live(text: str, settings) -> dict:
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-    response = await client.messages.create(
-        model=settings.intent_model,
-        max_tokens=300,
-        system=intent_system(),
-        messages=[{"role": "user", "content": text}],
-        output_config={
-            "format": {
-                "type": "json_schema",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "sport": {"type": "string", "enum": ["mlb", "soccer"]},
-                        "date": {"type": ["string", "null"]},
-                        "teams": {"type": "array", "items": {"type": "string"}},
-                        "depth": {"type": "string", "enum": ["brief", "full"]},
-                    },
-                    "required": ["sport", "date", "teams", "depth"],
-                    "additionalProperties": False,
-                },
-            }
-        },
-    )
-    out = json.loads(next(b.text for b in response.content if b.type == "text"))
-    # 모델이 만들어낸 날짜를 그대로 신뢰하지 않는다
-    out["date"] = sanitize_intent_date(out.get("date"), out.get("sport", "mlb"))
-    return out
+    🔴 [2026-09-06 사용자 지시] Anthropic 은 최종 판정에서만 쓴다.
+       종전에는 여기서 `claude-haiku-4-5` 를 직접 불렀다 — 사용자가 자유
+       문장을 보낼 때마다 나가는 유료 호출인데, `abort_if_credit_gone` 도
+       일일 캡도 붙어 있지 않았다. 판정과 예산을 나눠 쓰면서 계량되지 않는
+       유일한 경로였다.
+       의도 파싱은 종목·날짜·깊이 세 개를 뽑는 일이라 규칙으로 충분하다.
+    """
+    return parse_intent_mock(text)
 
 
 def _quota_reply(exc: ApiServiceError) -> str:

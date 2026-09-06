@@ -168,15 +168,29 @@ def test_prompt_carries_source_rules_and_status():
 
 
 def test_search_count_is_capped_by_api_not_just_prompt():
-    """max_uses 로 API가 강제한다 — 모델의 자제에 기대지 않는다."""
+    """유료 검색 자체가 없어졌다 — 상한이 아니라 **0** 이다.
+
+    종전에는 `max_uses` 로 API가 경기당 검색 횟수를 강제했다. 2026-09-06
+    사용자 지시로 Anthropic 을 최종 판정에만 쓰기로 하면서 유료 web_search
+    폴백을 삭제했다. 상한을 재는 것보다 도구가 없는 것이 강한 보장이다.
+    """
     src = Path("app/engine/deepsearch.py").read_text(encoding="utf-8")
-    assert '"max_uses": int(s.deepsearch_max_searches)' in src
-    assert "web_search_20260318" in src
+    assert "web_search_20260318" not in src
+    assert "max_uses" not in src
 
 
 def test_credit_guard_applies_to_this_path():
+    """유료 가드 대신 **유료 경로 부재**가 이 자리를 지킨다.
+
+    가드는 유료 호출이 있을 때만 뜻이 있다. 딥서치가 무료 사슬 전용이 된
+    지금 가드를 남겨 두면, 최종 판정이 Anthropic 잔액을 소진한 순간 조사까지
+    함께 멈춘다 — 실제로 그 형태로 종목이 통째로 멈춘 적이 있다
+    (2026-09-04 16:37 NPB 판정 0건 · 2026-09-06 아침 MLB 0/85).
+    """
     src = Path("app/engine/deepsearch.py").read_text(encoding="utf-8")
-    assert "abort_if_credit_gone" in src and "trip_credit" in src
+    assert "anthropic.AsyncAnthropic" not in src
+    assert "trip_credit" not in src
+    assert "abort_if_credit_gone" not in src
 
 
 def test_prompt_output_asks_for_additional_checks():
@@ -231,8 +245,10 @@ def test_search_count_comes_from_usage_not_block_count():
     정확한 값은 usage.server_tool_use.web_search_requests 다.
     """
     src = Path("app/engine/deepsearch.py").read_text(encoding="utf-8")
-    assert "web_search_requests" in src
+    # 유료 검색이 사라져 셀 블록도 없다. 반환값의 검색 수는 항상 0 이다.
+    assert "web_search_requests" not in src
     assert 'getattr(b, "type", "") == "server_tool_use")' not in src
+    assert "return data, 0, source" in src
 
 
 def test_prompt_states_search_budget_and_forces_conclusion():
@@ -259,9 +275,11 @@ def test_parse_failure_logs_evidence_not_just_the_word_failure(caplog):
     """
     src = Path("app/engine/deepsearch.py").read_text(encoding="utf-8")
     head = src[src.index("JSON 파싱 실패"):src.index("JSON 파싱 실패") + 600]
-    assert "stop_reason" in head, "절단인지 형식 이탈인지 구분할 수 없다"
-    assert "output_tokens" in head
-    assert "%.400s" in head, "본문을 남기지 않으면 형식 이탈을 못 본다"
+    assert "len(body)" in head, "몇 자가 왔는지 없으면 절단을 못 본다"
+    assert "%.300s" in head, "본문을 남기지 않으면 형식 이탈을 못 본다"
+    # 무료 사슬 쪽 진단은 `_complete_free` 가 남긴다 — provider·model·앞부분.
+    tf = Path("app/engine/team_form.py").read_text(encoding="utf-8")
+    assert "응답이 JSON 이 아니다" in tf and "앞=%r" in tf
 
 
 def test_output_budget_is_configurable_and_larger_than_matchup():

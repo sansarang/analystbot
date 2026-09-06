@@ -196,10 +196,18 @@ async def soccer_trial_job() -> None:
     """
     import redis.asyncio as aioredis
 
-    from app.engine.soccer_trial import run_once
     from app.notify import send_telegram
 
     s = get_settings()
+    # 🔴 [2026-09-06 사용자 지시] Anthropic 은 최종 판정에서만 쓴다.
+    #    soccer_trial 은 `judge_route.chain` 을 타지 않고 Anthropic 을 직접
+    #    부르므로, 스위치가 꺼져 있으면 **수집도 하지 않고** 돌아간다.
+    if not s.soccer_trial_enabled:
+        logger.info("[soccer-trial] 꺼짐(SOCCER_TRIAL_ENABLED=false) — "
+                    "Anthropic 직접 호출 경로라 돌리지 않는다")
+        return
+    from app.engine.soccer_trial import run_once
+
     redis = aioredis.from_url(s.redis_url, decode_responses=True)
     try:
         pool = await get_pool()

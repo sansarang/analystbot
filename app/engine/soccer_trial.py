@@ -466,11 +466,18 @@ async def run_once(pool, redis, *, send, now=None) -> dict:
       provisional → confirmed 를 잡고 재판정 컷(T-20) 전이면 재판정 + 확정판 발송
       confirmed   → 더 하지 않는다 (경기당 최대 2콜)
     """
+    from app.config import get_settings
     from app.pipeline import today_kst
 
+    out = {"judged": 0, "resent": 0, "skipped": 0, "capped": 0}
+    # 🔴 [2026-09-06 사용자 지시] Anthropic 은 최종 판정에서만 쓴다.
+    #    이 모듈은 `judge_route.chain` 을 타지 않고 `s.matchup_model` 을
+    #    직접 부른다 — 무료 우회가 없다. 스케줄러 밖에서 불려도 막힌다.
+    if not get_settings().soccer_trial_enabled:
+        logger.info("[soccer-trial] 꺼짐(SOCCER_TRIAL_ENABLED=false)")
+        return out
     now = now or datetime.now(UTC)
     date = today_kst()
-    out = {"judged": 0, "resent": 0, "skipped": 0, "capped": 0}
     games = await collect(JUDGE_LEAD_MIN)
     for g in games:
         lead = (g["kickoff"] - now).total_seconds() / 60

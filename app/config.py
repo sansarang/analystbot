@@ -454,6 +454,14 @@ class Settings(BaseSettings):
     # 우리 상한은 그보다 보수적으로 잡는다. 이를 넘는 값은 '강한 픽'이 아니라 계산 오류다.
     max_win_prob_mlb: float = 0.68
     min_win_prob_mlb: float = 0.32
+    #: 🔴 [2026-09-06 사용자 지시] 축구 시범 운영 스위치 — **기본 꺼짐**.
+    #   `soccer_trial` 은 `judge_route.chain` 을 타지 않고 Anthropic 을
+    #   직접 부른다(무료 우회 없음). 그 호출이 400(credit) 을 받으면
+    #   `trip_credit` 이 **전역** 가드를 걸어 야구 판정까지 멈춘다 —
+    #   실측 2026-09-06 아침 MLB 0/85 가 이 경로였다.
+    #   Anthropic 은 최종 판정에서만 쓴다. 되살리려면 이 값을 켜기 전에
+    #   soccer_trial 을 무료 사슬로 옮겨야 한다.
+    soccer_trial_enabled: bool = False
     max_win_prob_soccer: float = 0.72
     min_win_prob_soccer: float = 0.10   # 3-way라 원정 승 확률은 낮게 나올 수 있다
     # 세계 최고 조직(Starlizard, 분석가 200명)의 시장 대비 엣지가 1~2%다.

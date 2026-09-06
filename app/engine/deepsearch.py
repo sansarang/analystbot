@@ -383,7 +383,10 @@ def _today_kst() -> str:
 
 #: 조사 재료 출처. 로그·결과에 그대로 실린다 — 무엇을 읽고 낸 판단인지 남긴다.
 SRC_RSS = "rss"          # 무료: Google News RSS + web_fetch
-SRC_PAID = "web_search"  # 유료 폴백: Anthropic 검색 도구
+SRC_PAID = "web_search"  # (폐지) 유료 폴백이었다 — 2026-09-06 삭제
+#: 🔴 딥서치의 라우팅 역할. **`matchup` 이 아니다** — matchup 만 유료가
+#   허용되고, 딥서치는 최종 판정이 아니다. 문자열을 호출부마다 적지 않는다.
+DEEPSEARCH_ROLE = "deepsearch"
 
 PAID_KEY = "deepsearch:paid:{date}"
 #: 본문을 붙일 기사 수. 많이 넣으면 프롬프트만 부풀고 판단은 안 나아진다.
@@ -485,17 +488,17 @@ _UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 
 async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None,
                       redis=None):
-    """경기 1건 조사. 반환: (결과 dict | None, 검색 사용 수).
+    """경기 1건 조사. 반환: (결과 dict | None, 검색 사용 수, 소스).
+
+    🔴 [2026-09-06 사용자 지시] **Anthropic 을 부르지 않는다.** 최종 판정이
+       아닌 자리에서 나가는 유료 호출을 전부 없앴다. 검색 사용 수는 항상 0 이다.
 
     ⚠️ 실패·타임아웃이면 (None, 0) — **원판정을 그대로 둔다.** 조사가 안 됐다고
        판정을 흔들지 않는다. 폴백이 곧 "조사 없음"이다.
     """
     import asyncio
 
-    import anthropic
-
     from app.config import get_settings
-    from app.engine.credit_guard import abort_if_credit_gone, trip_credit
 
     s = get_settings()
     sport = jg.get("sport") or ""
@@ -505,7 +508,11 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
     #    호출을 붙일 때는 목 분기를 **같은 커밋에서** 넣어야 한다.
     if s.mock_judge:
         return None, 0, SRC_RSS
-    abort_if_credit_gone(f"deepsearch:{jg.get('away')}@{jg.get('home')}")
+    # 🔴 [2026-09-06 사용자 지시] 유료 크레딧 가드를 뗐다. 딥서치는 이제
+    #    **무료 사슬 전용**이라 Anthropic 잔액과 무관하다. 남겨 두면 최종
+    #    판정이 잔액을 소진한 순간 조사까지 함께 멈춘다 — 실제로 그 형태로
+    #    종목이 통째로 멈춘 적이 있다(2026-09-04 16:37 NPB 판정 0건,
+    #    2026-09-06 아침 MLB 0/85).
     m = jg.get("matchup") or {}
     prompt = PROMPT.format(
         league=jg.get("league") or sport.upper(),
@@ -518,94 +525,61 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
         lang=SEARCH_LANG.get(sport, "영어"),
         budget=int(s.deepsearch_max_searches),
         today=_today_kst())
-    # 🔴 [무과금 전환 2b] **검색을 우리가 대신한다.** Anthropic `web_search` 는
-    #    검색 1회당 과금이고 경기당 최대 5회다. RSS(무료)로 기사를 먼저 모아
-    #    본문까지 붙여 프롬프트의 "검색 결과" 자리에 주입하면, LLM 은 읽기만
-    #    하면 되고 수수료가 0원이 된다. 프롬프트 규칙·조정 상한(±4%p)은 불변이다.
+    # 🔴 [무과금 전환 2b] **검색을 우리가 대신한다.** RSS(무료)로 기사를
+    #    먼저 모아 본문까지 붙여 프롬프트의 "검색 결과" 자리에 주입하면,
+    #    LLM 은 읽기만 하면 되고 수수료가 0원이 된다.
+    #    프롬프트 규칙·조정 상한(±4%p)은 불변이다.
     articles = await _free_articles(jg, redis)
-    source = SRC_RSS if articles else SRC_PAID
-    tools = []
-    if articles:
-        prompt = _inject_articles(prompt, articles)
-    else:
-        # 폴백: RSS 가 0건이면 종전처럼 유료 검색 1회 — 단, **하루 총량** 안에서만.
-        if not await _paid_budget_left(redis):
-            logger.info("[deepsearch] RSS 0건 · 유료 검색 일일 상한 소진 — "
-                        "조사 생략 %s@%s", jg.get("away"), jg.get("home"))
-            return None, 0, SRC_PAID
-        tools = [{"type": "web_search_20260318", "name": "web_search",
-                  "max_uses": int(s.deepsearch_max_searches)}]
-        await _spend_paid(redis)
-    # 🔴 [P0 2026-09-04] **무료 라우팅이 켜져 있으면 딥서치도 무료로 간다.**
-    #    이 호출이 `complete_json` 을 안 타서 Anthropic 을 직접 불렀고,
-    #    400(credit) 에서 `trip_credit` 이 **전역 가드를 걸어 NPB 파이프라인
-    #    전체를 죽였다**(실측 15:04: "NPB 팀 폼 0/10 · 파이프라인 0/1").
-    #    ⚠️ 무료 provider 에는 web_search 도구가 없다. `tools` 가 필요한
-    #       유료 검색 경로는 종전대로 두고, **RSS 경로만** 무료로 돌린다 —
-    #       RSS 는 우리가 이미 기사를 넣어 줬으므로 도구가 필요 없다.
+    source = SRC_RSS
+    if not articles:
+        # 🔴 [2026-09-06 사용자 지시] **유료 web_search 폴백을 삭제했다.**
+        #    종전에는 RSS 0건이면 Anthropic `web_search` 도구를 직접 불렀다.
+        #    조사는 보강이지 요건이 아니다 — 재료가 없으면 조사하지 않는다.
+        logger.info("[deepsearch] RSS 0건 — 조사 생략(유료 검색 안 한다) %s@%s",
+                    jg.get("away"), jg.get("home"))
+        return None, 0, source
+    prompt = _inject_articles(prompt, articles)
+    # 🔴 역할은 `matchup` 이 **아니다.** `judge_route.chain` 에서 유료가
+    #    허용되는 유일한 역할이 matchup(=최종 판정)이라, 여기서 matchup 을
+    #    물으면 최종 판정 설정(`JUDGE_PROVIDER=anthropic`)이 그대로 딥서치까지
+    #    유료로 끌고 온다 — RSS 가 있어도 무료 우회 조건을 못 넘겼다.
     from app.llm.judge_route import chain as _chain
 
-    _routes = _chain("matchup")
-    if not tools and _routes and _routes[0][0] != "anthropic":
-        from app.engine.team_form import _complete_free
+    _routes = [r for r in _chain(DEEPSEARCH_ROLE) if r[0] != "anthropic"]
+    if not _routes:
+        logger.error("[deepsearch] 무료 후보가 없다 — 조사 생략한다. "
+                     "유료로 되돌아가지 않는다 %s@%s",
+                     jg.get("away"), jg.get("home"))
+        return None, 0, source
+    from app.engine.team_form import _complete_free, parse_json_object
 
-        body = await _complete_free(_routes, prompt,
-                                    int(s.deepsearch_max_tokens), "deepsearch")
-        if body:
-            return body, 0, source
+    try:
+        body = await asyncio.wait_for(
+            _complete_free(_routes, prompt, int(s.deepsearch_max_tokens),
+                           DEEPSEARCH_ROLE),
+            timeout=timeout if timeout is not None else float(s.deepsearch_timeout_sec))
+    except TimeoutError:
+        logger.warning("[deepsearch] 타임아웃 — 원판정 유지 %s@%s",
+                       jg.get("away"), jg.get("home"))
+        return None, 0, source
+    except Exception as exc:
+        logger.warning("[deepsearch] 예기치 못한 실패 %s@%s: %s",
+                       jg.get("away"), jg.get("home"), exc)
+        return None, 0, source
+    if not body:
         logger.warning("[deepsearch] 무료 경로 실패 — 원판정 유지 %s@%s",
                        jg.get("away"), jg.get("home"))
         return None, 0, source
-    cli = anthropic.AsyncAnthropic(api_key=s.anthropic_api_key)
-    try:
-        resp = await asyncio.wait_for(
-            cli.messages.create(model=s.matchup_model,
-                                max_tokens=int(s.deepsearch_max_tokens),
-                                tools=tools,
-                                messages=[{"role": "user", "content": prompt}]),
-            timeout=timeout if timeout is not None else float(s.deepsearch_timeout_sec))
-    except TimeoutError:
-        logger.warning("[deepsearch] 타임아웃(source=%s) — 원판정 유지 %s@%s",
-                       source, jg.get("away"), jg.get("home"))
+    # 🔴 `_complete_free` 가 돌려주는 것은 **본문 문자열**이다. 종전 유료
+    #    경로는 여기서 JSON 을 파싱해 dict 를 넘겼는데, 무료 경로는 문자열을
+    #    그대로 넘기고 있었다 — 호출부(`apply_findings`)는 dict 를 기대한다.
+    data = parse_json_object(body)
+    if data is None:
+        logger.warning("[deepsearch] JSON 파싱 실패 — 원판정 유지 %s@%s "
+                       "· %d자: %.300s", jg.get("away"), jg.get("home"),
+                       len(body), body.replace("\n", " ")[:300])
         return None, 0, source
-    except anthropic.APIStatusError as exc:
-        if exc.status_code == 400 and "credit" in str(exc).lower():
-            # ⚠️ 무료 라우팅 중이면 **전역 가드를 걸지 않는다.** 딥서치는
-            #    보조 단계인데, 여기서 가드를 걸면 판정·발송이 통째로 멈춘다.
-            if _routes and _routes[0][0] == "anthropic":
-                trip_credit(f"deepsearch/{s.matchup_model}", exc)
-            else:
-                logger.warning("[deepsearch] 유료 크레딧 없음 — 조사만 생략 "
-                               "(무료 라우팅 중이라 전역 차단 안 함)")
-        logger.warning("[deepsearch] 호출 실패(source=%s) %s@%s: %s",
-                       source, jg.get("away"), jg.get("home"), exc)
-        return None, 0, source
-    except Exception as exc:
-        logger.warning("[deepsearch] 예기치 못한 실패(source=%s) %s@%s: %s",
-                       source, jg.get("away"), jg.get("home"), exc)
-        return None, 0, source
-    # 🔴 검색 횟수는 **usage 에서 읽는다.** server_tool_use 블록 수를 세면
-    #    틀린다 — 실측 2026-08-31: 블록 15개인데 실제 검색은 그보다 적었고,
-    #    그 오독으로 "max_uses 를 넘겼다"고 잘못 보고했다. API는 상한을
-    #    정확히 지키고 있었다 (max_uses=2 → web_search_requests=2 확인).
-    stu = getattr(resp.usage, "server_tool_use", None)
-    used = int(getattr(stu, "web_search_requests", 0) or 0)
-    text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
-    try:
-        data = json.loads(text[text.index("{"):text.rindex("}") + 1])
-    except (ValueError, json.JSONDecodeError):
-        # 🔴 **원문을 버리지 마라.** 실측 2026-09-01: 4/4 파싱 실패인데
-        #    로그가 "실패"만 남겨 원인을 특정할 수 없었고, 그 사이 잔액이
-        #    소진돼 재현조차 못 했다. 다음 실패는 스스로 진단돼야 한다.
-        #    stop_reason 이 "max_tokens" 면 절단, "end_turn" 이면 형식 이탈이다.
-        logger.warning(
-            "[deepsearch] JSON 파싱 실패 %s@%s · stop=%s · out=%s토큰 · "
-            "검색=%d · 본문%d자: %.400s",
-            jg.get("away"), jg.get("home"), getattr(resp, "stop_reason", None),
-            getattr(resp.usage, "output_tokens", None), used, len(text),
-            text.replace("\n", " ") or "(텍스트 블록 없음)")
-        return None, used, source
-    return data, used, source
+    return data, 0, source
 
 
 #: 배당 오염 탐지어. 조사 결과에 이것이 섞이면 조정을 받지 않는다.

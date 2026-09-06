@@ -246,12 +246,16 @@ def test_no_redis_means_no_paid_search():
 
 
 def test_free_path_needs_no_search_tool():
-    """RSS 가 있으면 `tools` 가 비어야 한다 — 도구를 넘기면 과금이 다시 붙는다."""
+    """검색 도구가 아예 없어야 한다 — 도구를 넘기면 과금이 다시 붙는다.
+
+    2026-09-06: RSS 0건일 때의 유료 폴백까지 삭제했다. 이제 기사가 없으면
+    조사를 생략한다 — 조사는 보강이지 요건이 아니다.
+    """
     from pathlib import Path
 
     src = Path("app/engine/deepsearch.py").read_text(encoding="utf-8")
-    assert "tools = []" in src
-    assert "if articles:" in src and "_inject_articles" in src
+    assert "tools=" not in src and "web_search_20260318" not in src
+    assert "if not articles:" in src and "_inject_articles" in src
 
 
 def test_cost_lines_report_paid_calls_as_numbers():
