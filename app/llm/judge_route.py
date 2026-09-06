@@ -17,6 +17,10 @@ logger = logging.getLogger(__name__)
 
 PAID_KEY = "llm:anthropic:calls:{date}"
 
+#: 🔴 **유료가 허용되는 유일한 역할.** 다른 역할은 어떤 설정에서도 무료다.
+#   문자열을 호출부마다 적지 않는다 — 여기가 원본이다.
+MATCHUP_ROLE = "matchup"
+
 
 def _cfg():
     from app.config import get_settings
@@ -48,9 +52,13 @@ def chain(role: str) -> list[tuple[str, str]]:
     """
     s = _cfg()
     prov = (s.judge_provider or "anthropic").lower()
-    if prov == "anthropic":
-        return [("anthropic", s.matchup_model if role == "matchup"
-                 else s.team_form_model)]
+    # 🔴 [2026-09-06 사용자 지시] **Anthropic 은 최종 판정에서만 쓴다.**
+    #    "안트로픽 폴백하는 거 전부 삭제하고 맨 나중에 최종 판정만 하게."
+    #    종전에는 `JUDGE_PROVIDER=anthropic` 이 역할을 안 가려 **팀 폼까지**
+    #    유료로 끌고 갔다 — 실측 2026-09-06 11:15~11:27, 12분에 11콜이 나갔다
+    #    (경기당 Fable 2회 + haiku 2회). 그게 자금 누수였다.
+    if prov == "anthropic" and role == MATCHUP_ROLE:
+        return [("anthropic", s.matchup_model)]
     # 🔴 무료 후보를 **여럿** 둔다. Nemotron 이 오디션에서 6건 중 1건을
     #    `503 Service temporarily overloaded` 로 놓쳤다 — 무료 인프라는
     #    가끔 밀린다. 하나만 두면 그 경기는 카드가 못 나간다.
@@ -74,19 +82,23 @@ def chain(role: str) -> list[tuple[str, str]]:
             continue
         out.append((prv, mdl))
     if not out and raw:
-        out.append((prov, raw))
+        # ⚠️ provider 를 못 쪼갠 한 덩어리 문자열. **anthropic 은 넣지 않는다.**
+        if prov != "anthropic":
+            out.append((prov, raw))
     # 🔴 [2026-09-04] **비상 꼬리를 붙이지 않는다.** 사용자 지시: 무료 사슬로
     #    진행한다. 종전에는 사슬 끝에 Anthropic 을 두고 "캡이 지킨다"고 했는데,
     #    잔액이 0 이면 캡은 아무것도 지키지 못한다 — 호출은 400 을 받고,
     #    그 400 이 `ApiQuotaError` → `trip_credit` 으로 번져 **종목 전체가
     #    멈췄다** (실측 2026-09-04 16:37, NPB 판정 0건 · 카드 0장).
-    #    무료 후보가 하나도 없을 때만 종전 경로(유료)로 되돌아간다.
+    # 🔴 [2026-09-06 사용자 지시] **유료 폴백을 삭제했다.**
+    #    종전에는 무료 후보가 없으면 Anthropic 으로 되돌아갔다. 그 경로가
+    #    판정 아닌 역할(폼·심의)까지 유료로 끌고 갔다.
+    #    이제 무료 후보가 없으면 **빈 목록**이다 — 호출부가 재료 없이 간다.
+    #    조용하지 않다: error 로그 한 줄이 남고 일일 요약 성공률에 잡힌다.
     if not out:
-        logger.warning("[judge-route] role=%s 무료 후보가 없다 — 유료 경로로 "
-                       "되돌아간다 (FREE_%s_MODEL 확인)", role,
-                       "JUDGE" if role == "matchup" else "FORM")
-        out.append(("anthropic", s.matchup_model if role == "matchup"
-                    else s.team_form_model))
+        logger.error("[judge-route] role=%s 무료 후보가 하나도 없다 — "
+                     "유료로 되돌아가지 않는다. FREE_%s_MODEL 을 확인하라",
+                     role, "JUDGE" if role == MATCHUP_ROLE else "FORM")
     return out
 
 

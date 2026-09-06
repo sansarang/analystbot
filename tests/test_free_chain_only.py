@@ -161,8 +161,15 @@ def test_chain_has_no_paid_tail_when_free_is_configured(monkeypatch):
     assert "anthropic" not in [p for p, _ in got], "비상 꼬리가 다시 붙었다"
 
 
-def test_chain_falls_back_to_paid_only_when_no_free_candidate(monkeypatch):
-    """무료 후보가 하나도 없으면 종전 경로로 되돌아간다 — 조용히 죽지 않는다."""
+def test_chain_never_falls_back_to_paid(monkeypatch, caplog):
+    """🔴 [2026-09-06 계약 변경] 무료 후보가 없어도 **유료로 되돌아가지 않는다.**
+
+    종전 계약은 "무료가 없으면 Anthropic 으로 되돌아간다" 였다. 그 경로가
+    판정 아닌 역할(폼)까지 유료로 끌고 갔다 — 실측 12분에 11콜.
+    이제 빈 목록이고, 조용히 죽지도 않는다(error 로그 1줄).
+    """
+    import logging
+
     from app.config import get_settings
     from app.llm.judge_route import chain
 
@@ -170,10 +177,12 @@ def test_chain_falls_back_to_paid_only_when_no_free_candidate(monkeypatch):
     monkeypatch.setenv("JUDGE_PROVIDER", "nvidia")
     monkeypatch.setenv("FREE_FORM_MODEL", "")
     try:
-        got = chain("form")
+        with caplog.at_level(logging.ERROR):
+            got = chain("form")
     finally:
         get_settings.cache_clear()
-    assert [p for p, _ in got] == ["anthropic"]
+    assert got == []
+    assert any("유료로 되돌아가지 않는다" in r.message for r in caplog.records)
 
 
 def test_form_failure_is_still_loud():
@@ -363,3 +372,77 @@ async def test_paid_fallback_alerts_on_first_call(monkeypatch):
 
 async def _noop():
     return None
+
+
+# ── [2026-09-06] Anthropic 은 최종 판정에서만 ────────────────────────
+# 사용자 지시: "안트로픽 폴백하는 거 전부 삭제하고, 안트로픽은 맨 나중에
+# 최종 판정만 하게 바꿔라."
+# 🔴 실사고 2026-09-06 11:15~11:27: `JUDGE_PROVIDER=anthropic` 이 역할을
+#    안 가려 **팀 폼까지** 유료로 갔다. 12분에 11콜(경기당 Fable 2 + haiku 2).
+@pytest.mark.parametrize("role", ["form", "council", "deepsearch", "aux"])
+def test_only_matchup_may_use_anthropic(role, monkeypatch):
+    """판정 외 어떤 역할도 유료로 가지 않는다."""
+    import app.llm.judge_route as jr
+
+    monkeypatch.setattr(jr, "_cfg", lambda: type("S", (), {
+        "judge_provider": "anthropic",
+        "matchup_model": "claude-fable-5",
+        "team_form_model": "claude-haiku-4-5-20251001",
+        "free_judge_model": "gemini/gemini-3.7-flash",
+        "free_form_model": "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+    })())
+    got = jr.chain(role)
+    assert all(p != "anthropic" for p, _ in got), (role, got)
+
+
+def test_matchup_uses_anthropic_when_selected(monkeypatch):
+    import app.llm.judge_route as jr
+
+    monkeypatch.setattr(jr, "_cfg", lambda: type("S", (), {
+        "judge_provider": "anthropic",
+        "matchup_model": "claude-fable-5",
+        "team_form_model": "claude-haiku-4-5-20251001",
+        "free_judge_model": "", "free_form_model": "",
+    })())
+    assert jr.chain("matchup") == [("anthropic", "claude-fable-5")]
+
+
+def test_empty_free_chain_never_falls_back_to_paid(monkeypatch):
+    """🔴 유료 폴백을 삭제했다 — 빈 사슬이면 빈 목록이다."""
+    import app.llm.judge_route as jr
+
+    monkeypatch.setattr(jr, "_cfg", lambda: type("S", (), {
+        "judge_provider": "gemini",
+        "matchup_model": "claude-fable-5",
+        "team_form_model": "claude-haiku-4-5-20251001",
+        "free_judge_model": "", "free_form_model": "",
+    })())
+    assert jr.chain("matchup") == []
+    assert jr.chain("form") == []
+
+
+def test_council_does_not_use_the_matchup_role():
+    """평의회가 판정 역할을 쓰면 유료로 샌다 — 소스로 잠근다."""
+    from pathlib import Path
+
+    from app.engine.council import COUNCIL_ROLE
+    from app.llm.judge_route import MATCHUP_ROLE
+
+    assert COUNCIL_ROLE != MATCHUP_ROLE
+    # ⚠️ 주석에는 나온다(왜 바꿨는지 적혀 있다) — **코드 줄만** 본다.
+    code = [ln for ln in Path("app/engine/council.py")
+            .read_text(encoding="utf-8").splitlines()
+            if not ln.lstrip().startswith("#")]
+    assert not any('role="matchup"' in ln for ln in code)
+
+
+@pytest.mark.asyncio
+async def test_empty_chain_returns_empty_string_not_paid_call(monkeypatch):
+    import app.engine.team_form as tf
+    import app.llm.judge_route as jr
+
+    # `chain` 은 함수 안에서 임포트된다 — 원본 모듈을 갈아끼운다.
+    monkeypatch.setattr(jr, "chain", lambda role: [])
+    out = await tf.complete_json("p", model="m", max_tokens=10, role="form",
+                                 mock=False)
+    assert out == "", "빈 사슬인데 유료로 내려갔다"

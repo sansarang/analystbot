@@ -29,6 +29,13 @@ CAP_KEY = "council:calls:{date}"
 ONCE_KEY = "council:done:{sport}:{game_id}:{date}"
 TTL = 26 * 3600
 
+#: 🔴 [2026-09-06] 심의·조사는 **절대 유료 판정 경로를 타지 않는다.**
+#   종전에는 `role="matchup"` 으로 불러서 `JUDGE_PROVIDER=anthropic` 일 때
+#   심의와 조사 폴백까지 Fable 로 갔다 — 경기당 유료 3콜이었다(실측 2026-09-06).
+#   `judge_route.chain()` 은 `matchup` 역할에만 유료를 허용하므로, 다른 이름을
+#   쓰는 것만으로 무료가 보장된다.
+COUNCIL_ROLE = "council"
+
 SRC_PPLX = "perplexity"
 SRC_FREE = "free_chain"
 SRC_NONE = "none"
@@ -195,7 +202,7 @@ async def investigate(jg: dict) -> tuple[dict | None, str]:
         from app.engine.team_form import complete_json
 
         txt = await complete_json(prompt, model="", max_tokens=800,
-                                  role="matchup")
+                                  role=COUNCIL_ROLE)
         from app.engine.matchup import parse_json_object
 
         got = parse_json_object(txt or "")
@@ -218,7 +225,7 @@ async def deliberate(jg: dict, findings: dict) -> dict | None:
         findings=json.dumps(findings or {}, ensure_ascii=False))
     try:
         txt = await complete_json(prompt, model="", max_tokens=600,
-                                  role="matchup")
+                                  role=COUNCIL_ROLE)
     except Exception as exc:
         logger.warning("[council] 심의 실패 — 조사 결과만 넘긴다: %s",
                        str(exc)[:120])

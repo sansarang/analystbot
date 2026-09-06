@@ -290,6 +290,13 @@ async def complete_json(prompt: str, *, model: str, max_tokens: int,
     from app.llm.judge_route import chain
 
     routes = chain(role)
+    if not routes:
+        # 🔴 [2026-09-06] 무료 후보가 없으면 **유료로 되돌아가지 않는다.**
+        #    조용히 넘어가지도 않는다 — 이 건은 재료 없이 가고 그 사실이
+        #    error 로그와 일일 요약 성공률에 남는다.
+        logger.error("[%s] 🔴 사슬이 비었다 — 유료로 내려가지 않는다. "
+                     "이 건은 재료 없이 간다", role)
+        return ""
     if routes and routes[0][0] != "anthropic":
         out = await _complete_free(routes, prompt, max_tokens, role)
         if out is not None:
