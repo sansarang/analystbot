@@ -393,3 +393,81 @@ def test_프롬프트가_발생확률의_출처를_자료14로_못박는다():
     assert "발생 확률 X%" in MATCHUP
     assert "자료14 가 그 리스크의 빈도를 알려줬을 때만" in MATCHUP
     assert "확률을 지어내지 마라" in MATCHUP
+
+
+# ═══════════════ ⑦ 변수도 질문이다 — 타선 회귀 해결사
+
+class _OffPool:
+    def __init__(self, peer_n=60, next_runs=4.1, league=4.4):
+        self.peer_n, self.next_runs, self.league = peer_n, next_runs, league
+        self.calls = []
+
+    async def fetchrow(self, sql, *a):
+        self.calls.append((sql, a))
+        if "n3 = 3" in sql:
+            return {"n": self.peer_n, "next_runs": self.next_runs}
+        return {"rpg": self.league}
+
+
+@pytest.mark.asyncio
+async def test_눌린_타선의_다음_경기를_리그_표본이_답한다():
+    """🔴 실측 2026-09-07 NYY@SD 변수2 — "홈 타선 배율 0.46이 일시적 침체일
+    가능성 … **근거 없음 — 보수 반영**". 답이 DB 에 있는데 아무도 묻지 않았다."""
+    from app.engine.branch_resolve import offense_outlook
+
+    out = await offense_outlook(_OffPool(), "mlb", "SD", "2026-09-06", 2.33)
+    assert out["표본"] == 60
+    assert out["다음경기_평균득점"] == 4.1
+    assert out["리그_경기당득점"] == 4.4, "리그 평균을 나란히 줘야 읽을 수 있다"
+    assert "2.33" in out["조건"]
+
+
+@pytest.mark.asyncio
+async def test_타선_회귀도_표본이_얇으면_싣지_않는다():
+    from app.engine.branch_resolve import offense_outlook
+
+    s = get_settings()
+    out = await offense_outlook(_OffPool(peer_n=s.branch_min_n - 1), "mlb",
+                                "SD", "2026-09-06", 2.33)
+    assert out == {}
+
+
+@pytest.mark.asyncio
+async def test_회귀_폭을_우리가_계산해_주지_않는다():
+    """⚠️ 두 수를 나란히 놓을 뿐 하나로 합치지 않는다 — 자료13 의 교훈."""
+    from app.engine.branch_resolve import offense_outlook
+
+    out = await offense_outlook(_OffPool(), "mlb", "SD", "2026-09-06", 2.33)
+    assert set(out) == {"질문", "조건", "표본", "다음경기_평균득점", "리그_경기당득점"}
+
+
+@pytest.mark.asyncio
+async def test_변수의_리스크가_질문으로_들어간다():
+    """🔴 `attach` 가 분기점·추가확인만 보던 것을 고쳤다."""
+    from app.engine.branch_resolve import attach
+
+    jg = {"sport": "mlb", "game_id": 1, "home": "H", "away": "A",
+          "research": {"absences": [],
+                       "home_usage": {"runs_per_game_l3": 2.33}},
+          "matchup": {"전개": {"분기점": "오늘 가용 여부"},
+                      "변수": ["홈 타선의 최근 배율이 일시적 침체일 가능성 — "
+                               "발생 시 홈 방향 약 4%p · 현재 p에 1%p 기반영 · "
+                               "근거 자료1"]}}
+    await attach(_OffPool(), jg)
+    qs = [x["질문"] for x in jg["branch"]["항목"]]
+    assert any("침체" in q for q in qs), f"변수가 질문에 안 들어갔다: {qs}"
+
+
+@pytest.mark.asyncio
+async def test_변수의_퍼센트는_질문으로_보내지_않는다():
+    """%p 는 판정의 몫이지 조사할 대상이 아니다 — 리스크 서술만 떼어 보낸다."""
+    from app.engine.branch_resolve import attach
+
+    jg = {"sport": "mlb", "game_id": 1, "home": "H", "away": "A",
+          "research": {"absences": [], "home_usage": {"runs_per_game_l3": 2.3}},
+          "matchup": {"변수": ["타선 침체 지속 — 발생 시 홈 방향 약 4%p · "
+                               "현재 p에 1%p 기반영 · 근거 자료1"]}}
+    await attach(_OffPool(), jg)
+    q = jg["branch"]["항목"][0]["질문"]
+    assert "%p" not in q and "기반영" not in q, f"수치가 질문에 섞였다: {q}"
+    assert q == "타선 침체 지속"

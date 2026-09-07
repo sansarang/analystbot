@@ -38,7 +38,9 @@ RECORD, NEWS, LIVE, UNKNOWN = "기록형", "뉴스형", "실시간형", "미분�
 #     `투구`·`등판`·`계획` 을 함께 본다 — 실제로 온 문장으로 폭을 정한다.
 _RECORD_PAT = (
     r"이닝|소화|투구|워크로드|롱릴리프|불펜\s*소모|연투|등판|"
-    r"오프너|벌크|피로|가용|타순|득점력|최근\s*폼"
+    r"오프너|벌크|피로|가용|타순|득점력|최근\s*폼|"
+    # [2026-09-07] 변수에서 오는 타선 질문 — "배율 0.46이 일시적 침체인가"
+    r"타선|득점|배율|침체|반등|부진"
 )
 _NEWS_PAT = r"부상|결장|IL|로스터|트레이드|영입|방출|감독|징계|날씨|우천|비"
 #  🔴 "구단 발표"·"제한 여부" 는 **기록형보다 먼저** 본다. 실측 2026-09-07:
@@ -223,6 +225,71 @@ async def live_status(pool, jg: dict, pitcher: str | None) -> dict:
     return out
 
 
+# ── 기록형 해결사 ④: 최근 타선이 눌린 팀은 다음 경기에 어떻게 됐나
+#    🔴 변수에서 오는 질문이다. 실측 2026-09-07 NYY@SD 변수2 —
+#       "홈 타선 배율 0.46이 표본 3의 일시적 침체일 가능성 … 근거 없음".
+#       아무도 조사하지 않아 판정이 "보수 반영" 으로 넘어갔다.
+_OFFENSE_PEERS = """
+    WITH g AS (
+      SELECT id, starts_at, home AS team,
+             home_score AS runs, away_score AS allowed FROM games
+       WHERE sport = $1 AND status = 'final' AND home_score IS NOT NULL
+         AND starts_at < $2
+      UNION ALL
+      SELECT id, starts_at, away, away_score, home_score FROM games
+       WHERE sport = $1 AND status = 'final' AND home_score IS NOT NULL
+         AND starts_at < $2
+    ), w AS (
+      SELECT team, starts_at, runs,
+             avg(runs) OVER (PARTITION BY team ORDER BY starts_at
+                             ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS prev3,
+             count(*) OVER (PARTITION BY team ORDER BY starts_at
+                            ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS n3
+        FROM g
+    )
+    SELECT count(*) AS n, avg(runs) AS next_runs
+      FROM w WHERE n3 = 3 AND prev3 <= $3
+"""
+
+
+async def offense_outlook(pool, sport: str, team: str, before,
+                          recent_rpg: float | None) -> dict:
+    """최근 3경기 득점이 눌린 팀의 **다음 경기** 득점. 못 내면 빈 dict.
+
+    ⚠️ 배율이 아니라 **경기당 득점**으로 건다 — 배율은 상대 실점률까지
+       엮여 있어 리그 표본을 만들 조건으로 쓰면 표본이 잘게 쪼개진다.
+    ⚠️ 리그 평균과 **나란히** 낸다. 회귀 폭을 우리가 계산해 주지 않는다 —
+       그건 판정의 일이다.
+    """
+    if pool is None or not sport or before is None or recent_rpg is None:
+        return {}
+    s = _cfg()
+    try:
+        peer = await pool.fetchrow(_OFFENSE_PEERS, sport, before,
+                                   float(recent_rpg))
+        base = await pool.fetchrow(
+            """SELECT avg(v) AS rpg FROM (
+                 SELECT home_score AS v FROM games
+                  WHERE sport = $1 AND status='final' AND home_score IS NOT NULL
+                    AND starts_at < $2
+                 UNION ALL
+                 SELECT away_score FROM games
+                  WHERE sport = $1 AND status='final' AND home_score IS NOT NULL
+                    AND starts_at < $2) t""", sport, before)
+    except Exception as exc:
+        logger.warning("[branch] %s 타선 회귀 조회 실패: %s", team, exc)
+        return {}
+    n = int((peer or {}).get("n") or 0)
+    if n < int(s.branch_min_n) or not base:
+        return {}
+    return {"질문": f"{team} 최근 3경기 경기당 {recent_rpg:.2f}득점이 "
+                    f"다음 경기에 반등하는가",
+            "조건": f"직전 3경기 경기당 {recent_rpg:.2f}득점 이하였던 팀",
+            "표본": n,
+            "다음경기_평균득점": round(float(peer["next_runs"] or 0), 2),
+            "리그_경기당득점": round(float(base["rpg"] or 0), 2)}
+
+
 async def resolve(pool, jg: dict, question: str) -> dict:
     """분기점 1건을 푼다. 반환 `{유형, 질문, 답 or 사유}`.
 
@@ -248,6 +315,30 @@ async def resolve(pool, jg: dict, question: str) -> dict:
 
     before = _aware(jg.get("starts_at"))
     sport = (jg.get("sport") or "").lower()
+    # 타선 질문이면 타선 해결사로. 투수 이름이 없는 질문이 여기 온다.
+    if re.search(r"타선|득점|배율|침체|반등|부진", question):
+        res = jg.get("research") or {}
+        off = {}
+        for side in ("home", "away"):
+            u = res.get(f"{side}_usage") or {}
+            rpg = u.get("runs_per_game_l3")
+            if rpg is None:
+                continue
+            # 질문이 한쪽만 가리키면 그쪽만 본다.
+            hint = {"home": ("홈", jg.get("home") or ""),
+                    "away": ("원정", jg.get("away") or "")}[side]
+            other = {"home": "원정", "away": "홈"}[side]
+            if other in question and hint[0] not in question:
+                continue
+            blk = await offense_outlook(pool, sport, jg.get(side) or "",
+                                        before, float(rpg))
+            if blk:
+                off[side] = blk
+        if off:
+            rec["답"] = off
+            return rec
+        rec["사유"] = "타선 회귀 표본이 부족하다"
+        return rec
     # 질문에 이름이 있으면 그 투수, 없으면 양쪽 선발을 다 본다.
     found = {}
     for side in ("home", "away"):
@@ -279,6 +370,16 @@ async def attach(pool, jg: dict) -> bool:
     bp = ((m.get("전개") or {}).get("분기점") or "").strip()
     if bp:
         qs.append(bp)
+    # 🔴 [2026-09-07] **변수도 질문이다.** 실측 NYY@SD 변수2 —
+    #    "홈 타선 배율 0.46이 일시적 침체일 가능성 … 근거 없음 — 보수 반영".
+    #    답이 우리 DB 에 있는데 아무도 묻지 않아 판정이 확률을 지어낼 뻔했다.
+    #    리스크 서술만 떼어 보낸다(%p 는 판정의 몫이지 질문이 아니다).
+    from app.engine.variable_parse import parse_all
+
+    for row in parse_all(m):
+        risk = (row.get("parsed") or {}).get("risk")
+        if risk:
+            qs.append(risk.strip())
     for q in (m.get("추가확인") or [])[:2]:
         if isinstance(q, str) and q.strip():
             qs.append(q.strip())

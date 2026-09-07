@@ -144,7 +144,8 @@ class Settings(BaseSettings):
     #  얇은 답으로 얇은 표본을 메우면 자료13 이 무너진 자리로 돌아간다.
     branch_min_n: int = 20
     #: 한 경기에서 풀 분기점 수 상한. 프롬프트를 비대하게 만들지 않는다.
-    branch_max_questions: int = 3
+    #: 분기점 + 변수 + 추가확인을 다 받으므로 상한을 조금 올린다.
+    branch_max_questions: int = 4
 
     # ── [정찰 AI 뉴스층 2026-09-06] x_search 상한 ────────────────────
     #: 🔴 **캡 없는 AI 호출 금지.** Grok 은 유료다.
