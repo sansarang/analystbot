@@ -31,13 +31,28 @@ async def main() -> int:
     s = get_settings()
     budget = int(s.matchup_max_tokens)
     seed = int(s.llm_seed) or None
-    cands = chain_candidates()
+    # 🔴 [2026-09-07] 종전에는 주전이 유료면 **그냥 넘어갔다.** v1.4 로
+    #    2차 최종이 Opus 가 된 뒤로 이 게이트는 매 배포마다 SKIP 이었다 —
+    #    게이트 하나가 조용히 사라진 상태였다.
+    #    이제 유료면 **1차 예비 사슬(무료)** 로 잰다. 1차는 모든 경기의
+    #    첫 카드를 만드는 판정이라, 그것이 흔들리면 잠정 카드가 흔들린다.
+    #    ⚠️ 유료 최종을 배포마다 3회 부르지는 않는다 — 그건 게이트가 아니라
+    #       비용이다.
+    from app.llm.judge_route import MATCHUP_ROLE, PRELIM_ROLE
+
+    role = MATCHUP_ROLE
+    cands = chain_candidates(role)
+    if cands and cands[0][0] == "anthropic":
+        role = PRELIM_ROLE
+        cands = chain_candidates(role)
+        print(f"  ↪ 최종이 유료({cands and '무료 예비로 대체' or ''}) — "
+              f"1차 예비 사슬로 잰다")
     if not cands:
         print("  ⏭  판정 사슬이 비었다 — SKIP")
         return 0
     provider, model = cands[0][0], cands[0][1]
     if provider == "anthropic":
-        print(f"  ⏭  주전이 유료({model}) — 무료 스모크 SKIP")
+        print(f"  ⏭  예비 사슬까지 유료({model}) — SKIP")
         return 0
 
     prompt = build_prompt()

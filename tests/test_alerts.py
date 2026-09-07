@@ -391,8 +391,12 @@ def test_combo_stage_only_fails_with_legs():
 
     src = Path("app/pipeline.py").read_text(encoding="utf-8")
     i = src.index('await record("조합 구성"')
-    guard = src[max(0, i - 500):i]
-    assert "if _priced_legs:" in guard, "배당 있는 레그 가드가 없다"
+    guard = src[max(0, i - 1200):i]
+    assert "_priced_legs" in guard, "배당 있는 레그 가드가 없다"
+    # 🔴 [2026-09-07] 가드가 한 겹 늘었다 — 배당 있는 레그가 **한 경기분**
+    #    뿐이어도 조합은 성립하지 않는다(조합은 2경기 이상).
+    #    실측 2026-09-06 NPB: "조합 구성 0/1건 🔴 (승인 레그 1개)" 오탐.
+    assert "_priced_games" in guard, "경기 수 가드가 없다"
 
 
 def test_baseball_crosscheck_zero_is_not_failure():

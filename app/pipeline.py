@@ -2357,7 +2357,24 @@ async def build_analysis(
     # 배당이 있는 레그가 있는데 조합이 0일 때만 구성 실패다.
     # 야구는 승부 배당을 조회하지 않으므로 승인 레그가 있어도 조합 0이 정상
     # (실측 2026-08-29 MLB: 조합 0건 / 승인 레그 8개 🔴).
-    if _priced_legs:
+    #
+    # 🔴 [2026-09-07] 조건이 한 겹 모자랐다. **조합은 정의상 2경기 이상**이다
+    #    (`parlay.build_tiered_parlays`: `if distinct_games < 2: return []`).
+    #    배당 있는 레그가 **한 경기분뿐**이면 조합 0건이 정답인데 🔴 실패로
+    #    기록했다 — 실측 2026-09-06 NPB: "조합 구성 0/1건 — 데이터 없음
+    #    (조합 0건 / 승인 레그 1개)". 워치독 오탐 한 건이 진짜 고장 하나를
+    #    묻을 수 있다(실사고 2026-09-02: 오탐 4건이 15분마다 울었다).
+    #    ⚠️ 경기 수로 센다 — 같은 경기의 레그 여러 개는 조합이 못 된다.
+    _priced_games = len({l.get("game_id") for l in _priced_legs
+                         if l.get("game_id") is not None})
+    if _priced_legs and _priced_games < 2:
+        await record("조합 구성", 0, 0, cause=None, zero_ok=True,
+                     detail=f"배당 있는 레그가 {_priced_games}경기분뿐 — "
+                            f"조합은 2경기 이상이어야 성립한다 "
+                            f"(레그 {len(_priced_legs)}개 / 승인 {len(_legs)}개)",
+                     unit="건", expect_full=False,
+                     impact="조합을 만들지 않습니다 (정상)")
+    elif _priced_legs:
         await record("조합 구성", _combo_n, max(1, _combo_n),
                      cause=None if _combo_n else "missing",
                      detail=f"조합 {_combo_n}건 / 승인 레그 {len(_legs)}개"

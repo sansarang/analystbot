@@ -159,11 +159,12 @@ def summarize(out: dict) -> dict:
     return out
 
 
-def chain_candidates() -> list[tuple[str, str, str]]:
+def chain_candidates(role: str | None = None) -> list[tuple[str, str, str]]:
     """운영 사슬을 **원본에서** 읽는다 — 목록을 손으로 적지 않는다."""
-    from app.llm.judge_route import chain
+    from app.llm.judge_route import MATCHUP_ROLE, chain
 
-    return [(p, m, f"{p}/{m.split('/')[-1]}") for p, m in chain("matchup")]
+    return [(p, m, f"{p}/{m.split('/')[-1]}")
+            for p, m in chain(role or MATCHUP_ROLE)]
 
 
 async def main() -> None:

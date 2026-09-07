@@ -180,10 +180,20 @@ async def observe(pool, redis, jg: dict, date: str, *, now=None) -> dict | None:
                             json.dumps(rec, ensure_ascii=False), ex=TTL_SEC)
         except Exception as exc:
             logger.debug("[scout] 기록 저장 실패 game=%s: %s", gid, exc)
-    logger.info("[scout] %s game=%s T-%.1fh 라인업=%s(%d면) 배당=%s %d행 뉴스=%d",
+    # 🔴 [2026-09-07] `뉴스=%d` 에 **None 이 온다.** `_factor_state` 는
+    #    "0건"과 "안 봤다"를 구분하려고 일부러 None 을 내는데(폴링 경로는
+    #    재료를 안 싣는다), 포맷은 그 구분을 모른다. 그래서 폴링마다
+    #    `--- Logging error --- TypeError: %d format: a real number is
+    #    required, not NoneType` 트레이스백이 쌓였다.
+    #    파이프라인은 안 막지만 로그를 오염시켜 **진짜 오류를 묻는다.**
+    #    ⚠️ None 을 0 으로 바꾸지 않는다 — 그러면 "안 봤다"가 "0건"이 되어
+    #       이 필드를 만든 이유가 사라진다. 표기만 `미상` 으로 한다.
+    _news = rec["factor"]["news"]
+    logger.info("[scout] %s game=%s T-%.1fh 라인업=%s(%s면) 배당=%s %s행 뉴스=%s",
                 sport, gid, rec["hours_to_start"], rec["lineup"]["state"],
                 rec["lineup"]["sides"], rec["market"]["provider"],
-                rec["market"]["rows"], rec["factor"]["news"])
+                rec["market"]["rows"],
+                "미상" if _news is None else _news)
     return rec
 
 
