@@ -65,6 +65,46 @@ def gate_result_of(jg: dict, pick: dict | None) -> str:
     return GATE_RECOMMENDED
 
 
+def _market_cols(jg: dict, pick: dict | None) -> dict:
+    """시장 3칸. 값이 없으면 **NULL 로 남긴다** — 지어내지 않는다.
+
+    `divergence_pp` 부호는 `market_baseline_ledger.divergence` 와 같은 방향
+    (우리 − 시장, %p)이다. 두 표가 반대 부호를 쓰면 대조할 때마다 헷갈린다.
+    """
+    mkt = jg.get("p_market_send")
+    our = jg.get("p_claude")
+    div = None
+    if mkt is not None and our is not None:
+        div = round((float(our) - float(mkt)) * 100, 2)
+    return {
+        "odds": (pick or {}).get("odds"),
+        "market_prob": float(mkt) if mkt is not None else None,
+        "divergence_pp": div,
+    }
+
+
+async def _fill_market(conn, ledger_id: int, row: dict) -> None:
+    """이미 있는 행의 시장 칸만 채운다. **판정 칸은 손대지 않는다.**
+
+    ⚠️ `COALESCE(기존, 새값)` 이다 — 한 번 새긴 시장값을 나중 스냅샷으로
+       덮어쓰지 않는다. 판정 시점의 시장이 우리가 재려는 것이고, 경기가
+       가까워질수록 시장은 정답에 수렴하므로 덮어쓰면 사후확신이 된다.
+    """
+    if row.get("market_prob") is None and row.get("odds") is None:
+        return
+    try:
+        await conn.execute(
+            """UPDATE pick_ledger
+                  SET odds          = COALESCE(odds, $2),
+                      market_prob   = COALESCE(market_prob, $3),
+                      divergence_pp = COALESCE(divergence_pp, $4)
+                WHERE id = $1""",
+            ledger_id, row.get("odds"), row.get("market_prob"),
+            row.get("divergence_pp"))
+    except Exception as exc:                       # 측정 장치가 본체를 죽이지 않는다
+        logger.warning("[ledger] 시장 칸 기록 실패 id=%s: %s", ledger_id, exc)
+
+
 def predicted_side(favored: str | None, p_home: float | None) -> str | None:
     """채점에 쓸 예측 방향.
 
@@ -98,6 +138,14 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         "lineup_status": jg.get("lineup_status") or "none",
         "gate_result": gate_result_of(jg, pick),
         "model": jg.get("model") or matchup.get("model"),
+        # [시장 2026-09-07] 파이프라인이 판정 직후 이미 계산해 둔 값을 **버리고**
+        #   있었다. 컬럼은 처음부터 있었고 INSERT 만 안 썼다.
+        #   🔴 실측: 원장 621행 중 divergence_pp 0 · market_prob 0 — 시장 신호가
+        #      캘리브레이션에 한 번도 닿은 적이 없다. 같은 56경기에서 시장
+        #      60.7% · 우리 50.0% 였는데 그 격차를 볼 방법이 없었다.
+        #   ⚠️ 배당 격리는 그대로다 — 이 값은 **판정이 끝난 뒤** 붙는 기록이고,
+        #      판정 프롬프트로는 가지 않는다.
+        **_market_cols(jg, pick),
     }
 
 
@@ -151,6 +199,11 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         " FOR UPDATE",
                         row["game_id"], row["date"])
                     if existing is not None and _same_judgement(row, existing):
+                        # 🔴 판정은 그대로여도 **시장은 나중에 온다.** 여기서
+                        #    그냥 넘기면 판정이 배당보다 먼저 끝난 경기는
+                        #    시장 칸이 영영 NULL 로 남는다.
+                        #    이력 행은 늘리지 않는다 — 시장은 판정이 아니다.
+                        await _fill_market(conn, existing["id"], row)
                         stats["unchanged"] += 1
                         continue
                     n = 0
@@ -163,12 +216,15 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         """INSERT INTO pick_ledger
                              (game_id, sport, league, date, p_home, favored,
                               confidence, lineup_status, gate_result, model,
-                              rejudge_count, is_final, trial)
-                           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12)""",
+                              rejudge_count, is_final, trial,
+                              odds, market_prob, divergence_pp)
+                           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,
+                                   $13,$14,$15)""",
                         row["game_id"], row["sport"], row["league"], row["date"],
                         row["p_home"], row["favored"], row["confidence"],
                         row["lineup_status"], row["gate_result"], row["model"], n,
-                        trial)
+                        trial,
+                        row["odds"], row["market_prob"], row["divergence_pp"])
                     stats["rejudged" if existing is not None else "inserted"] += 1
         except Exception as exc:
             # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —

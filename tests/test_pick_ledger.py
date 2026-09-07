@@ -525,3 +525,88 @@ async def test_calibration_splits_by_league_not_by_trial(db_pool):
     assert await db_pool.fetchval(
         "SELECT count(*) FROM pick_ledger WHERE trial") == 0, \
         "신규 기록에 trial 이 세워졌다"
+
+
+# ═══════════════ 시장을 판정 원장에 새긴다 (2026-09-07)
+#
+# 🔴 실측: 원장 621행 중 `market_prob` 0 · `divergence_pp` 0 · `odds` 0.
+#    컬럼은 처음부터 있었는데 INSERT 가 안 썼다. 그래서 "시장 동의 게이트"가
+#    실제로 도움이 되는지 **한 번도 잴 수 없었다.**
+
+def test_시장값이_행에_실린다():
+    from app.engine.pick_ledger import _row_from_game
+
+    jg = {"game_id": 1, "matchup": {"p_home": 0.57, "우세": "home", "확신도": "중"},
+          "p_claude": 0.57, "p_market_send": 0.64}
+    row = _row_from_game(jg, {"sport": "mlb", "date": "2026-09-07"},
+                         {1: {"odds": 1.85, "recommended": False}})
+    assert row["market_prob"] == pytest.approx(0.64)
+    assert row["odds"] == pytest.approx(1.85)
+    # 부호는 `market_baseline_ledger.divergence` 와 같은 방향(우리 − 시장)
+    assert row["divergence_pp"] == pytest.approx(-7.0)
+
+
+def test_시장이_없으면_NULL_이고_기록을_막지_않는다():
+    """⚠️ 수집 실패가 판정 기록을 막으면 원장이 통째로 빈다."""
+    from app.engine.pick_ledger import _row_from_game
+
+    row = _row_from_game({"game_id": 1, "p_claude": 0.57,
+                          "matchup": {"p_home": 0.57, "우세": "home"}},
+                         {"sport": "mlb", "date": "2026-09-07"}, {})
+    assert row is not None and row["p_home"] == pytest.approx(0.57)
+    assert row["market_prob"] is None and row["divergence_pp"] is None
+    assert row["odds"] is None
+
+
+def test_시장값은_같은_판정의_정의에_들어가지_않는다():
+    """🔴 **가장 중요한 계약.** 시장은 스냅샷마다 흔들린다. 이걸 `_SIG_FIELDS`
+    에 넣으면 배당이 갱신될 때마다 재판정 이력 행이 새로 생기고, 원장이
+    한 경기당 수십 행으로 불어난다.
+
+    ⚠️ 오늘 확신도를 잘못 읽은 원인이 바로 그 중복이었다 — 재판정 4.3배로
+       부풀린 598행을 독립 표본처럼 세서 "확신도 하 62.5%" 라고 보고했다.
+       접으면 134경기 · 58.8% 다.
+    """
+    from app.engine.pick_ledger import _SIG_FIELDS
+
+    for f in ("market_prob", "divergence_pp", "odds"):
+        assert f not in _SIG_FIELDS, f"{f} 가 재판정을 유발한다"
+
+
+def test_판정_불변이면_시장_칸만_채운다():
+    """판정이 배당보다 먼저 끝난 경기 — 그냥 넘기면 영영 NULL 로 남는다."""
+    import inspect
+
+    from app.engine import pick_ledger as pl
+
+    src = inspect.getsource(pl.record_analysis)
+    i = src.index('stats["unchanged"]')
+    assert "_fill_market" in src[:i], "unchanged 경로에서 시장을 안 채운다"
+    # 판정 칸은 건드리지 않는다
+    fill = inspect.getsource(pl._fill_market)
+    for banned in ("p_home", "favored", "confidence", "gate_result", "model"):
+        assert f"{banned} " not in fill, f"시장 갱신이 {banned} 을 건드린다"
+    assert "COALESCE" in fill, "한 번 새긴 시장값을 덮어쓰면 사후확신이 된다"
+
+
+def test_배당_격리는_그대로다():
+    """⚠️ 시장을 원장에 넣는 것과 **판정에 넣는 것**은 다르다.
+    이 테스트가 그 선을 지킨다 — `market_prob` 은 판정 뒤 기록일 뿐이다."""
+    from pathlib import Path
+
+    src = Path("app/engine/matchup.py").read_text(encoding="utf-8")
+    for banned in ("p_market_send", "market_prob", "divergence_pp",
+                   "odds_snapshots", "market_baseline"):
+        assert banned not in src, f"판정 모듈이 {banned} 를 본다 — 배당 격리 위반"
+
+
+def test_백필은_apply_없이는_쓰지_않는다():
+    """1회성 도구가 기본값으로 운영 원장을 바꾸면 안 된다."""
+    from pathlib import Path
+
+    src = Path("tools/backfill_market.py").read_text(encoding="utf-8")
+    assert 'add_argument("--apply", action="store_true"' in src
+    assert "if args.apply:" in src
+    assert "COALESCE(market_prob" in src, "덮어쓰기 금지"
+    # 판정 칸을 쓰지 않는다
+    assert "SET p_home" not in src and "gate_result =" not in src
