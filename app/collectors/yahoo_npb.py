@@ -109,6 +109,34 @@ class YahooNPBClient:
 _START_HHMM = re.compile(r"\b([01]?\d|2[0-3]):([0-5]\d)\b")
 
 
+#: 🔴 **시작의 적극적 증거.** "시각이 없다"만으로 시작을 단정하지 않는다 —
+#   앵커에서 시각을 못 읽는 날이 오면 아직 안 한 경기를 슬레이트에서 떨군다.
+#   실조회 2026-09-06 원문:
+#     '甲子園 阪神 DeNA 1 - 4 試合終了 …'                → 종료
+#     'エスコンF ライブ配信中 日本ハム ロッテ 0 - 2 1回表'  → 진행
+#     '神宮 ヤクルト 中日 - 試合中止'                      → 중지
+#     '神宮 ヤクルト 巨人 18:00'                          → 예정
+_STARTED_MARKS = ("試合終了", "ライブ配信中", "回表", "回裏", "試合中")
+#: 스코어 표기(`1 - 4`). 중지행의 `- 試合中止` 와 달리 **양쪽에 숫자**가 있다.
+_SCORE_RE = re.compile(r"\d+\s*-\s*\d+")
+
+
+def _state_of(txt: str, hhmm: str | None) -> str:
+    """앵커 텍스트 → `scheduled` | `started` | `cancelled`.
+
+    ⚠️ 시각이 있으면 그것이 우선이다 — 야후는 시작 전까지 시각을 보여준다.
+    ⚠️ 시각도 없고 시작 증거도 없으면 **예정으로 남긴다.** 모르는 것을
+       'live' 로 만들어 슬레이트에서 떨구지 않는다(조용한 누락 금지).
+    """
+    if hhmm:
+        return "scheduled"
+    if "中止" in txt:
+        return "cancelled"
+    if any(w in txt for w in _STARTED_MARKS) or _SCORE_RE.search(txt):
+        return "started"
+    return "scheduled"
+
+
 def parse_schedule(html: str) -> list[dict]:
     """일정 HTML → [{game_id, home, away, starters_confirmed, start_hhmm}].
 
@@ -120,6 +148,14 @@ def parse_schedule(html: str) -> list[dict]:
     `start_hhmm`: 앵커 텍스트의 **JST 개시 시각**("18:00"). 없으면 None —
     이미 시작한 경기는 시각 대신 이닝·스코어가 실린다(실조회 2026-08-30:
     `'エスコンF ライブ配信中 日本ハム ロッテ 0 - 2 1回表'`).
+
+    `state`: 그 행이 말하는 **경기 상태**. 시각이 있으면 `scheduled`,
+    `中止`가 있으면 `cancelled`, 그 밖에 시각이 없으면 `started` 다.
+    🔴 [2026-09-07 실사고] 시각이 없다는 것은 "18:00 예정"이 아니라
+       **"이미 시작했다"** 는 뜻이다. 종전에는 그 구분 없이 18:00 을 지어내
+       `scheduled` 로 넣었고, 그래서 토요일 13:00 에 끝난 롯데@오릭스·
+       세이부@소프트뱅크가 "오늘 18:00 예정"으로 슬레이트에 들어와
+       판정·타순까지 만들어졌다. 주말·공휴일 편성마다 재발하는 결함이었다.
     ⚠️ 종전에는 이 값을 버리고 전 경기를 18:00 JST로 고정했다. 실조회
     2026-08-30 6경기 중 14:00·17:00이 각각 1경기 — 최대 4시간 어긋났다.
     경기 시작 상대(T-) 트리거는 이 값이 정확해야 성립한다.
@@ -137,13 +173,16 @@ def parse_schedule(html: str) -> list[dict]:
         # 등장 순서: 홈이 먼저 (실조회: "神宮 ヤクルト 巨人 18:00")
         teams.sort(key=txt.index)
         m = _START_HHMM.search(txt)
+        hhmm = f"{int(m.group(1)):02d}:{m.group(2)}" if m else None
+        state = _state_of(txt, hhmm)
         out.append({
             "game_id": gid,
             "home": TEAM_TO_ODDS[teams[0]], "away": TEAM_TO_ODDS[teams[1]],
             "home_kr": teams[0], "away_kr": teams[1],
             # (先) = 확정 발표 / (予) = 예상
             "starters_confirmed": "(先)" in txt,
-            "start_hhmm": f"{int(m.group(1)):02d}:{m.group(2)}" if m else None,
+            "start_hhmm": hhmm,
+            "state": state,
         })
     return out
 
@@ -675,8 +714,19 @@ async def upsert_schedule(pool, date: str,
     KBO와 같은 이유다 — 배당을 판정에 쓰지 않는데 일정 소스가 Odds라
     크레딧이 마르면 응답 전체가 죽었다. 반환 계약은 Odds 경로와 같다.
 
-    시각: 일정 페이지의 개시 시각(JST)을 그대로 쓴다. 소스가 안 주는 경기
-    (이미 시작해 이닝·스코어가 실린 경우)만 18:00 JST로 폴백하고 로그를 남긴다.
+    시각: 일정 페이지의 개시 시각(JST)을 그대로 쓴다.
+
+    🔴 [2026-09-07 실사고] **시각이 없으면 `scheduled` 로 넣지 않는다.**
+       야후는 경기가 시작되면 시각 칸을 스코어·이닝으로 바꾼다. 즉 시각
+       미상은 "18:00 예정"이 아니라 **"이미 시작했다"** 는 뜻이다.
+       종전에는 18:00 을 지어내 `scheduled` 로 넣었고, 토요일 13:00 에 끝난
+       두 경기가 "오늘 18:00 예정"으로 슬레이트에 들어와 판정·타순까지
+       만들어졌다(2026-09-06 롯데@오릭스·세이부@소프트뱅크).
+       이제 상태는 `parse_schedule` 이 원문에서 읽은 `state` 를 따른다:
+         시각 있음 → scheduled · 中止 → cancelled · 그 밖 → live
+       ⚠️ 타임스탬프는 매칭용으로 18:00 폴백을 **남긴다.**
+          `game_match.MATCH_WINDOW_HOURS = 20` 이라 같은 날 어느 시각이든
+          기존 행을 찾아 갱신한다 — 시각을 못 읽는다고 결과를 잃지 않는다.
     ⚠️ 종전에는 **전 경기를 18:00 JST로 고정**했다. 실조회 2026-08-30 6경기 중
        14:00·17:00이 각각 1경기 — 최대 4시간 어긋났다. 경기 시작 상대(T-)
        트리거는 이 값이 정확해야 성립한다.
@@ -691,25 +741,40 @@ async def upsert_schedule(pool, date: str,
     html = score_card_html(await client.schedule(date))
     games = parse_schedule(html)
     by_final = {g["game_id"]: g for g in parse_finals(html)}
-    counts = {"scheduled": 0, "final": 0, "total": len(games), "time_missing": 0}
+    counts = {"scheduled": 0, "live": 0, "cancelled": 0, "final": 0,
+              "total": len(games), "time_missing": 0}
     for g in games:
         fin = by_final.get(g["game_id"])
         done = fin is not None
         hhmm = g.get("start_hhmm")
+        state = g.get("state") or ("scheduled" if hhmm else "started")
         if not hhmm:
             counts["time_missing"] += 1
-            logger.info("[yahoo_npb] %s 개시 시각 없음 game=%s — 18:00 JST 폴백 "
-                        "(이미 시작한 경기일 수 있다)", date, g["game_id"])
+            logger.info("[yahoo_npb] %s game=%s 개시 시각 없음 — 상태=%s 로 적재 "
+                        "(야후는 시작한 경기의 시각 칸을 스코어로 바꾼다). "
+                        "타임스탬프는 매칭용 18:00 JST 폴백",
+                        date, g["game_id"], state)
             hhmm = "18:00"
+        # 🔴 **예정은 시각이 있을 때만이다.** 없으면 이미 시작했거나 중지다.
+        if done:
+            status = "final"
+        elif state == "cancelled":
+            status = "cancelled"
+        elif state == "started":
+            status = "live"
+        else:
+            status = "scheduled"
         starts = datetime.fromisoformat(f"{date}T{hhmm}:00").replace(tzinfo=jst)
         await apply_result(
             pool, sport="npb", league="NPB", ext_id=f"yahoo:{g['game_id']}",
             starts_at=starts.astimezone(UTC), home=g["home"], away=g["away"],
-            status="final" if done else "scheduled",
+            status=status,
             home_score=fin["home_score"] if fin else None,
             away_score=fin["away_score"] if fin else None)
-        counts["final" if done else "scheduled"] += 1
-    logger.info("[yahoo_npb] %s 일정 %d경기 적재 (예정 %d / 종료 %d · 시각 미상 %d) "
-                "— Yahoo 소스", date, counts["total"], counts["scheduled"],
-                counts["final"], counts["time_missing"])
+        counts[status] = counts.get(status, 0) + 1
+    logger.info("[yahoo_npb] %s 일정 %d경기 적재 (예정 %d / 진행 %d / 중지 %d / "
+                "종료 %d · 시각 미상 %d) — Yahoo 소스",
+                date, counts["total"], counts.get("scheduled", 0),
+                counts.get("live", 0), counts.get("cancelled", 0),
+                counts.get("final", 0), counts["time_missing"])
     return counts

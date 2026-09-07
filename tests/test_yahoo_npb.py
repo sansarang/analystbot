@@ -219,8 +219,16 @@ async def test_upsert_schedule_writes_final_scores(monkeypatch):
     assert len(finals) == 2
     yak = next(c for c in finals if c["home"] == "Tokyo Yakult Swallows")
     assert yak["home_score"] == 6 and yak["away_score"] == 8
+    # 🔴 [계약 갱신 2026-09-07] `0 - 0 試合中` 은 **진행 중**이다.
+    #    종전에는 이것을 `scheduled` 로 넣었다 — 이미 시작한 경기가 오늘
+    #    슬레이트에 "예정"으로 들어와 판정·타순까지 만들어졌다
+    #    (실사고 2026-09-06 롯데@오릭스·세이부@소프트뱅크, 13:00 종료).
     live = next(c for c in captured if c["ext_id"].endswith("2021039340"))
-    assert live["status"] == "scheduled" and live["home_score"] is None
+    assert live["status"] == "live", "시작한 경기를 예정으로 넣었다"
+    assert live["home_score"] is None, "진행 중 점수를 최종처럼 쓰면 안 된다"
+    # 시각이 있는 행은 그대로 예정이다
+    sched = next(c for c in captured if c["ext_id"].endswith("2021039331"))
+    assert sched["status"] == "scheduled"
 
 
 def test_ingest_finals_prefers_yahoo_for_npb():

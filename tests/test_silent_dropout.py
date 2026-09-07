@@ -19,10 +19,30 @@ WATCH = Path("app/watchdog.py").read_text(encoding="utf-8")
 
 # ═════════ ① 소스별로 "경기 전 live" 가 가능한가 ═════════
 
-def test_npb_source_cannot_emit_live():
-    """NPB 는 **구조적으로 안전하다** — `live` 상태가 아예 없다."""
+def test_npb_live_requires_positive_evidence_of_having_started():
+    """🔴 [계약 갱신 2026-09-07] NPB 도 이제 `live` 를 낸다.
+
+    종전 계약은 "NPB 는 live 가 아예 없어 구조적으로 안전하다"였다. 그런데
+    그 안전은 **거짓말로 산 것**이었다 — 이미 시작한 경기를 `scheduled` 로
+    넣고 18:00 을 지어냈다. 그래서 09-06(토) 13:00 에 끝난 두 경기가
+    "오늘 18:00 예정"으로 슬레이트에 들어와 판정·타순까지 만들어졌고,
+    우천취소된 경기에는 픽 카드가 나갔다.
+
+    이제 `live` 를 내되, **시작의 적극적 증거가 있을 때만** 낸다 —
+    시각을 못 읽었다는 이유로 경기를 떨구면 그것이 조용한 누락이다.
+    (KBO 의 `_has_started` 가드와 같은 정신이다.)
+    """
+    from app.collectors.yahoo_npb import _state_of
+
     src = Path("app/collectors/yahoo_npb.py").read_text(encoding="utf-8")
-    assert 'status="final" if done else "scheduled"' in src
+    assert 'status = "live"' in src
+    # 증거가 있을 때만 started
+    assert _state_of("甲子園 阪神 DeNA 1 - 4 試合終了", None) == "started"
+    assert _state_of("エスコンF ライブ配信中 日本ハム 0 - 2 1回表", None) == "started"
+    assert _state_of("神宮 ヤクルト 中日 - 試合中止", None) == "cancelled"
+    # 🔴 모르면 예정으로 남긴다 — 슬레이트에서 조용히 떨구지 않는다
+    assert _state_of("神宮 ヤクルト 巨人", None) == "scheduled"
+    assert _state_of("神宮 ヤクルト 巨人 18:00", "18:00") == "scheduled"
 
 
 def test_mlb_status_comes_from_the_authoritative_field():
