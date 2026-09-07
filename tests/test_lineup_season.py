@@ -244,12 +244,22 @@ def test_lineup_payload_uses_slots_when_available():
 
 
 def test_lineup_payload_falls_back_to_order_string():
-    """today_nine 이 없으면 종전 문자열로 간다 — 없다고 빈 칸을 만들지 않는다."""
+    """`today_nine` 이 없으면 `order` 문자열로 폴백한다.
+
+    ⚠️ [계약 갱신 2026-09-07] 종전에는 **문자열을 그대로** 실었고, 이 단언이
+       그것을 못박고 있었다. 그래서 길이를 세는 계측이 문자 수를 세
+       `[materials] 자료3=Y(타순 35명)` 이 나왔다(실측 KBO game=1721).
+       9명 확인이 곧 확정 판정의 조건(v1.3 A-1)이라 이 착시는 확정 판별을
+       양쪽으로 틀리게 만들 수 있다.
+       → 이제 폴백도 **슬롯 리스트**로 통일한다. 형태가 하나여야 센 수를 믿는다.
+    """
     from app.engine.matchup import lineups_payload
 
     jg = {"research": {"home_lineup": {"order": "A-B-C"}}}
-    assert lineups_payload(jg)["home"]["타순"] == "A-B-C"
-
+    got = lineups_payload(jg)["home"]["타순"]
+    assert isinstance(got, list) and len(got) == 3
+    assert [x["이름"] for x in got] == ["A", "B", "C"]
+    assert [x["타순"] for x in got] == [1, 2, 3]
 
 def test_no_odds_import_boundary():
     """🔴 배당은 판정 입력에 절대 흐르지 않는다 — 새 수집기도 같은 경계 안이다."""

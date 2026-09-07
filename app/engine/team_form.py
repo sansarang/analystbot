@@ -32,16 +32,31 @@ _RETRY_BACKOFF = (1.0, 2.0)
 LAST_USAGE: dict = {}
 
 
+#: 후행 쉼표 — `,` 뒤에 공백/줄바꿈만 있고 바로 `}` 또는 `]` 가 오는 자리.
+#  🔴 [P0 실사고 2026-09-07] opus 가 이것을 종종 만든다. 엄격 파서는 거부하고,
+#     `judge_matchup` 은 2회 재시도 후 포기해 **판정이 통째로 `{}` 가 된다** —
+#     그 경기는 카드가 안 나간다. 실측: KBO game=1721 최종 판정 2회 실패
+#     (`stop=end_turn`·응답 2544자·절단 아님), 같은 날 MLB 다저스 판정 원문도
+#     `"판단": "...",\n  },` 로 같은 결함이 있었다(3회 중 1회 발생).
+#  ⚠️ **내용을 고치지 않는다.** 문법만 회수한다 — 값·키를 우리가 주무르면
+#     그건 파싱이 아니라 창작이다(`gemini.parse_json_lenient` 와 같은 태도).
+_TRAILING_COMMA = re.compile(r",(\s*[}\]])")
+
+
 def _loads_dict(raw: str) -> dict | None:
-    try:
-        obj = json.loads(raw)
-        return obj if isinstance(obj, dict) else None
-    except json.JSONDecodeError:
+    for candidate in (raw, _TRAILING_COMMA.sub(r"\1", raw)):
         try:
-            obj, _ = json.JSONDecoder().raw_decode(raw.lstrip())
+            obj = json.loads(candidate)
+            return obj if isinstance(obj, dict) else None
         except json.JSONDecodeError:
-            return None
-        return obj if isinstance(obj, dict) else None
+            pass
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(candidate.lstrip())
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            return obj
+    return None
 
 
 def parse_json_object(text: str) -> dict | None:

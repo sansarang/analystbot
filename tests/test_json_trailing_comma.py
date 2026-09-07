@@ -1,0 +1,84 @@
+"""판정 JSON 회수 — 후행 쉼표로 경기가 통째로 날아가지 않게.
+
+🔴 [P0 실사고 2026-09-07] opus 가 후행 쉼표를 종종 만든다.
+   `_loads_dict` 는 엄격 파서라 거부하고, `judge_matchup` 은 2회 재시도 후
+   포기해 **판정이 `{}` 가 된다** — 그 경기는 카드가 안 나간다.
+
+   실측:
+     · KBO game=1721 최종 판정 2회 실패
+       (`stop=end_turn` · 응답 2544자/2383자 · 절단 아님)
+     · 같은 날 MLB 다저스 판정 원문도 `"판단": "...",\n  },` 로 같은 결함
+       (당일 opus 호출 3회 중 1회 발생)
+
+⚠️ **문법만 회수한다.** 값·키를 우리가 주무르면 그건 파싱이 아니라 창작이다.
+"""
+
+import json
+
+import pytest
+
+from app.engine.team_form import parse_json_object
+
+
+def test_후행_쉼표가_있어도_회수한다():
+    """🔴 이 파일이 존재하는 이유."""
+    raw = '{"a": 1, "b": {"c": 2,}, }'
+    got = parse_json_object(raw)
+    assert got == {"a": 1, "b": {"c": 2}}
+
+
+def test_배열의_후행_쉼표도_회수한다():
+    got = parse_json_object('{"근거": ["x", "y",], "p_home": 0.56,}')
+    assert got == {"근거": ["x", "y"], "p_home": 0.56}
+
+
+def test_실측_형태_그대로_회수한다():
+    """다저스 판정 원문에서 실제로 난 모양."""
+    raw = ('{\n  "결론": {\n    "승자": "LAD",\n'
+           '    "판단": "…배율(홈 0.81 대 원정 0.54)에서…",\n  },\n'
+           '  "p_home": 0.56\n}')
+    got = parse_json_object(raw)
+    assert got["p_home"] == 0.56
+    assert got["결론"]["승자"] == "LAD"
+
+
+def test_값_안의_쉼표는_건드리지_않는다():
+    """⚠️ 반대 위험 — 문자열 안의 `,` 를 지우면 내용이 바뀐다."""
+    raw = '{"판단": "홈 0.81, 원정 0.54, 격차 34.4", "p": 1,}'
+    got = parse_json_object(raw)
+    assert got["판단"] == "홈 0.81, 원정 0.54, 격차 34.4"
+
+
+def test_정상_JSON_은_그대로_통과한다():
+    raw = json.dumps({"p_home": 0.56, "우세": "home"}, ensure_ascii=False)
+    assert parse_json_object(raw) == {"p_home": 0.56, "우세": "home"}
+
+
+def test_코드펜스와_후행쉼표가_같이_와도_회수한다():
+    assert parse_json_object('```json\n{"a": 1,}\n```') == {"a": 1}
+
+
+def test_산문이_앞뒤에_붙어도_회수한다():
+    got = parse_json_object('생각해보면 다음과 같다.\n{"a": 1,}\n이상입니다.')
+    assert got == {"a": 1}
+
+
+@pytest.mark.parametrize("raw", [
+    "", None, "판정을 못 하겠습니다", "{", '{"a": ',
+])
+def test_회수할_수_없으면_None_이다(raw):
+    """⚠️ 잘린 JSON 을 지어내 채우지 않는다."""
+    assert parse_json_object(raw) is None
+
+
+def test_객체가_아니면_None_이다():
+    assert parse_json_object('[1, 2, 3]') is None
+
+
+def test_내용을_고치지_않는다():
+    """문법 회수만 한다 — 없는 키를 만들거나 값을 바꾸지 않는다."""
+    src = open("app/engine/team_form.py", encoding="utf-8").read()
+    i = src.index("def _loads_dict")
+    seg = src[i:src.index("\ndef parse_json_object")]
+    for banned in ("setdefault", "or 0.5", '"p_home"'):
+        assert banned not in seg, f"파서가 내용을 만든다: {banned}"

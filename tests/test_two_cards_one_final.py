@@ -178,8 +178,14 @@ def test_lineup_confirmation_is_read_not_recopied():
     assert lineup_is_confirmed({"lineup_status": "conflict"}) is False, \
         "소스 불일치는 최종 픽 자격 박탈이다"
     assert lineup_is_confirmed({}) is False
+    # ⚠️ [범위 정정 2026-09-07] 파일 전체를 보면 **다른 함수**가 정당하게
+    #    `parse_order` 를 부르는 것까지 걸린다(`lineups_payload` 폴백).
+    #    이 테스트가 막을 것은 **확정 판별 함수 안에서** 9명을 다시 세는 것이다.
     src = _src("app/engine/matchup.py")
-    assert "parse_order" not in src, "확정 판별 규칙을 베꼈다"
+    i = src.index("def lineup_is_confirmed")
+    seg = src[i:src.index("\ndef ", i + 10)]
+    assert "parse_order" not in seg, "확정 판별 규칙을 베꼈다"
+    assert "9" not in seg, "9명 세기를 확정 판별에 베꼈다"
 
 
 # ── ③ judge_matchup 의 회차 ────────────────────────────────────

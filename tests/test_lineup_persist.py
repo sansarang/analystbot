@@ -159,3 +159,52 @@ def test_판정이_돌았을_때만_재판정을_기록한다():
     seg = src[i:src.index("\nasync def ", i + 10)]
     assert "judged = await _run_baseball_matchups(" in seg
     assert "if judged or sport not in BASEBALL_SPORTS:" in seg
+
+
+# ═══════════════ ④ 타순 인원 계측 — 문자 수를 세지 않는다
+
+def test_문자열_타순도_9명으로_센다():
+    """🔴 실측 2026-09-07: `[materials] 자료3=Y(타순 **35명**)`.
+    `today_nine` 이 없으면 폴백이 `"최원준-김민혁-…"` 문자열을 그대로 넣어
+    길이 계측이 **문자 수**를 셌다. 9명 확인이 곧 확정 판정의 조건이므로
+    (v1.3 A-1) 이 착시는 확정 판별을 양쪽으로 틀리게 만들 수 있다."""
+    from app.engine.matchup import lineups_payload
+
+    order = "-".join(["최원준", "김민혁", "안현민", "힐리어드", "김현수",
+                      "허경민", "김상수", "한승택", "권동진"])
+    out = lineups_payload({"research": {"home_lineup": {"order": order},
+                                        "away_lineup": {"order": order}}})
+    for side in ("home", "away"):
+        seq = out[side]["타순"]
+        assert isinstance(seq, list), f"{side} 타순이 리스트가 아니다: {type(seq)}"
+        assert len(seq) == 9, f"{side} 타순 {len(seq)}명 — 문자 수를 셌다"
+        assert seq[0]["이름"] == "최원준" and seq[0]["타순"] == 1
+
+
+def test_today_nine_이_있으면_그것을_쓴다():
+    """⚠️ 반대 위험 — 폴백 수리가 정상 경로를 덮으면 안 된다."""
+    from app.engine.matchup import lineups_payload
+
+    jg = {"research": {"today_nine": {
+        "home": {"order": [{"slot": 3, "name": "홍길동", "pos": "중"}]}}}}
+    seq = lineups_payload(jg)["home"]["타순"]
+    assert seq == [{"타순": 3, "이름": "홍길동", "포지션": "중"}]
+
+
+def test_타순이_없으면_만들지_않는다():
+    from app.engine.matchup import lineups_payload
+
+    out = lineups_payload({"research": {}})
+    assert out["home"]["타순"] in (None, [], "")
+
+
+def test_이름_분해_규칙을_베끼지_않는다():
+    """⚠️ `lineup_diff.parse_order` 가 원본이다 — 하이픈 이름 재결합 규칙이
+    거기 있다(9명이 10조각으로 갈리던 결함)."""
+    src = open("app/engine/matchup.py", encoding="utf-8").read()
+    i = src.index("def lineups_payload")
+    seg = src[i:src.index("\ndef boxscore_payload")]
+    assert "parse_order" in seg, "원본 함수를 부르지 않는다"
+    code = "\n".join(x for x in seg.splitlines()
+                     if not x.strip().startswith("#"))
+    assert 'split("-")' not in code, "분해 규칙을 베꼈다"

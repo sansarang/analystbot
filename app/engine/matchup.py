@@ -73,8 +73,22 @@ def lineups_payload(jg: dict) -> dict:
                             "포지션": x.get("pos")}
                            for x in slots if isinstance(x, dict)]
         else:
-            blk["타순"] = ((r.get(f"{side}_lineup") or {}).get("order")
-                           or jg.get(f"lineup_{side}"))
+            # 🔴 [2026-09-07] 폴백이 **문자열을 그대로** 넣고 있었다.
+            #    `"최원준-김민혁-…"` 이 들어가면 길이를 세는 계측이 문자 수를
+            #    센다 — 실측 `[materials] 자료3=Y(타순 35명)`.
+            #    9명 확인이 곧 확정 판정의 조건(v1.3 A-1)이므로 이 착시는
+            #    "확정인데 확정 아님"·"아닌데 확정"을 둘 다 만들 수 있다.
+            #    ⚠️ 이름 분해 규칙은 `lineup_diff.parse_order` 가 원본이다 —
+            #       여기서 `split("-")` 를 다시 쓰지 않는다(사본 금지).
+            raw = ((r.get(f"{side}_lineup") or {}).get("order")
+                   or jg.get(f"lineup_{side}"))
+            if isinstance(raw, str) and raw:
+                from app.engine.lineup_diff import parse_order
+
+                blk["타순"] = [{"타순": i, "이름": nm, "포지션": pos}
+                               for i, (nm, pos) in enumerate(parse_order(raw), 1)]
+            else:
+                blk["타순"] = raw
         out[side] = blk
     return out
 
