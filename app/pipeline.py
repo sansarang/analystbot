@@ -612,10 +612,34 @@ def _merge_mlb(research: dict, jg: dict, ctx: dict) -> list[str]:
     lu = info.get("lineup") or {}
     lu_f: list[str] = []
     prev_status = jg.get("lineup_status") or "none"
-    if lu.get("confirmed") and prev_status != "conflict":
+    # 🔴 [P0 실사고 2026-09-05] 종전에는 `lu["confirmed"]` **플래그만** 보고
+    #    확정으로 올렸다. 바로 아래 루프는 타순이 9명일 때만 `research` 에
+    #    싣는데, 플래그는 그것과 무관하게 켜진다. 둘이 갈리면 이런 일이 난다
+    #    (실측 game=2881 원장):
+    #      12:10 [조립] 자료3=N(타순 0명)
+    #      12:12 [판정] model=claude-sonnet-5  ← 유료 = **최종** 판정
+    #      18:28~22:05 [재판정] 30여 회 — 조립·판정 기록 없음
+    #      22:05 lineups 표에 confirmed 타순 9명 (시작 T-5분)
+    #    `lineup_is_confirmed` 가 이 플래그를 읽어 **타순 0명으로 최종을 냈고**,
+    #    `claim_final` 락이 걸려 진짜 타순이 온 뒤의 재판정이 전부 조기
+    #    반환됐다. 09-05 MLB 13경기가 통째로 이 상태였다.
+    #    ⚠️ 확정의 정의는 `pregame_push.lineup_confirmed` **하나**다
+    #       (v1.3 A-1). 여기서 9명을 세지 않고 그 함수를 부른다 — 사본 금지.
+    from app.engine.pregame_push import lineup_confirmed as _lu_ok
+
+    _orders = {s: (lu.get(s) or {}).get("batting_order") or []
+               for s in ("home", "away")}
+    if _lu_ok(_orders["home"], _orders["away"]) and prev_status != "conflict":
         jg["lineup_status"] = "confirmed"
-    elif prev_status == "none" and any(
-            len((lu.get(s) or {}).get("batting_order") or []) for s in ("home", "away")):
+    elif prev_status == "none" and any(_orders.values()):
+        jg["lineup_status"] = "predicted"
+    elif lu.get("confirmed") and prev_status == "none":
+        # 소스는 확정이라는데 타순이 안 왔다 — **예정으로 둔다.**
+        #   "확정"으로 올리면 그 순간 유료 최종이 타순 없이 나간다.
+        logger.info("[lineup-status] game=%s 소스는 confirmed 인데 타순 %s명 "
+                    "— predicted 로 둔다",
+                    jg.get("game_id"),
+                    [len(v) for v in _orders.values()])
         jg["lineup_status"] = "predicted"
     for side in ("home", "away"):
         order = (lu.get(side) or {}).get("batting_order") or []
@@ -761,10 +785,59 @@ async def sync_lineup_status(pool, jg: dict) -> bool:
             "UPDATE games SET lineup_status = 'confirmed', updated_at = now() "
             " WHERE id = $1 AND lineup_status <> 'confirmed'", int(gid))
         logger.info("[lineup-status] game=%s →confirmed at=db_sync", gid)
-        return True
     except Exception as exc:
         logger.warning("[pipeline] 라인업 확정 DB 반영 실패 game=%s: %s", gid, exc)
         return False
+    await _persist_lineup_rows(pool, jg)
+    return True
+
+
+async def _persist_lineup_rows(pool, jg: dict) -> int:
+    """[2026-09-07] 확정 타순을 `lineups` 표에 남긴다. 반환: 기록한 행 수.
+
+    🔴 실측 2026-09-07 (최근 14일): `lineups` 표에 **MLB 558행뿐이고
+       KBO·NPB 는 0행**이었다. `save_lineup` 을 부르는 곳이
+       `refresh_mlb_lineup` 하나뿐이라, 두 리그의 타순은 분석 캐시(Redis,
+       TTL 12시간)에만 있었다.
+       결과: **12시간 뒤면 그 경기에 누가 나왔는지 DB 에서 알 수 없다.**
+       채점·재현·사후 검증이 전부 막히고, 오늘 붙인 자료14·자료1 상대보정
+       같은 소급 계산이 두 리그에서는 애초에 불가능하다.
+
+    ⚠️ 저장 실패가 발송을 막지 않는다 — 캐시는 이미 확정이라 카드는 나간다.
+    ⚠️ 타순 9명이 아닌 쪽은 넣지 않는다. 확정의 정의는
+       `pregame_push.lineup_confirmed` 하나다(v1.3 A-1).
+    """
+    from app.collectors.lineups import save_lineup
+    from app.engine.lineup_diff import parse_order
+
+    research = jg.get("research") or {}
+    gid = int(jg.get("game_id"))
+    src = jg.get("lineup_source") or "crawler"
+    n = 0
+    for side in ("home", "away"):
+        blk = research.get(f"{side}_lineup") or {}
+        # ⚠️ `parse_order` 는 `(이름, 포지션)` 튜플을 준다. DB 의
+        #    `batting_order` 는 **이름 배열**이므로(스키마 주석) 이름만 뽑는다.
+        parsed = parse_order(blk.get("order") or "")
+        order = [nm for nm, _pos in parsed]
+        if len(order) < 9:
+            continue
+        try:
+            await save_lineup(
+                pool, gid, side, "confirmed", src,
+                {"starter": (research.get(f"{side}_pitcher") or {}).get("name")
+                            or blk.get("starter"),
+                 "batting_order": order,
+                 "scratches": blk.get("scratches") or []},
+                caller="sync_lineup_status")
+            n += 1
+        except Exception as exc:
+            logger.warning("[pipeline] 라인업 행 저장 실패 game=%s %s: %s",
+                           gid, side, exc)
+    if n:
+        logger.info("[lineups] game=%s %s 확정 타순 %d행 기록 (source=%s)",
+                    gid, jg.get("sport"), n, src)
+    return n
 
 
 def merge_source_data(research: dict, jg: dict, sport: str,
@@ -5497,9 +5570,11 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
 
         _prepare_games_for_judge([jg], sport)
         from app.engine.scoring import BASEBALL_SPORTS
+        judged = 0
         if sport in BASEBALL_SPORTS:
             try:
-                await _run_baseball_matchups(redis, date, [jg], allow_final=True)
+                judged = await _run_baseball_matchups(
+                    redis, date, [jg], allow_final=True)
             except Exception as exc:
                 logger.warning("[pipeline] 라인업 매치업 실패: %s", exc)
                 await notify_api_error(exc)
@@ -5604,17 +5679,28 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
 
         card = await generate_card(analysis)
         await _save_caches(redis, analysis, card)
+        # 🔴 [2026-09-07] **판정이 실제로 돌았을 때만 기록한다.**
+        #    실측 game=2881 원장: `라인업 확정 반영` 이 **30회 넘게** 찍혔는데
+        #    그중 판정이 돈 것은 한 번뿐이었다. 나머지는 `judge_matchup` 이
+        #    "이미 최종을 냈다"로 조기 반환한 5분 폴링 틱이다.
+        #    하지도 않은 일을 원장에 적으면 그것으로는 아무것도 셀 수 없다.
         _rj_msg = "[pipeline] 라인업 재판정 완료 game=%s (%s)" % (
             game["id"], note[:80])
-        logger.info("%s", _rj_msg)
-        # [G1] 원장 — 로그와 같은 문자열. 실패해도 재판정을 막지 않는다.
-        try:
-            from app.engine.game_trace import REJUDGE, note as _tnote
+        if judged or sport not in BASEBALL_SPORTS:
+            logger.info("%s", _rj_msg)
+            # [G1] 원장 — 로그와 같은 문자열. 실패해도 재판정을 막지 않는다.
+            try:
+                from app.engine.game_trace import REJUDGE, note as _tnote
 
-            await _tnote(pool, game_id=game["id"], sport=game.get("sport") or "",
-                         date=date, stage=REJUDGE, summary=_rj_msg)
-        except Exception as exc:
-            logger.debug("[trace] 재판정 기록 생략 game=%s: %s", game["id"], exc)
+                await _tnote(pool, game_id=game["id"],
+                             sport=game.get("sport") or "", date=date,
+                             stage=REJUDGE, summary=_rj_msg)
+            except Exception as exc:
+                logger.debug("[trace] 재판정 기록 생략 game=%s: %s",
+                             game["id"], exc)
+        else:
+            logger.debug("[pipeline] game=%s 판정 없음(이미 최종·재료 부족) — "
+                         "재판정 기록 생략", game["id"])
         # [감시 L1] 판정 산출물이 저장된 **뒤에** 감사한다. 별도 태스크라
         #   판정·발송을 한 밀리초도 지연시키지 않는다 (P1).
         _spawn_fact_audit(jg)
