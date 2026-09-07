@@ -5052,9 +5052,62 @@ async def _record_ledger(analysis: dict) -> None:
         sport, date, last_exc)
 
 
+#: 판정이 경기에 새기는 필드. 원본은 `matchup.apply_matchup` 이다 —
+#  여기 목록을 손으로 늘리기 전에 그 함수를 먼저 봐라(사본 금지).
+_VERDICT_FIELDS = (
+    "p_claude", "matchup", "model", "judge_confidence", "judge_pass",
+    "verdict", "form_unavailable", "situation_check", "judge_stage",
+    "final_verdict", "p_market_send", "elo", "council", "situation_tags",
+)
+
+
+def _carry_verdicts(old_games: list[dict], games: list[dict]) -> int:
+    """이전 캐시의 판정을 **판정이 없는** 경기에만 옮긴다. 반환: 옮긴 수.
+
+    🔴 [실사고 2026-09-06 15:34] 캐시를 통째로 덮어써서 판정이 사라졌다.
+       15:32 에 Opus 최종 판정(p=0.37)이 붙어 카드까지 나갔는데, 15:34 의
+       캐시 재생성이 그 경기를 판정 없는 상태로 되돌렸다. 유료 호출 하나가
+       그냥 버려졌고, 최종 락은 잡힌 채라 다시 낼 수도 없었다.
+
+    ⚠️ **덮어쓰지 않는다.** 새 빌드가 판정을 냈으면 그것이 최신이다.
+       비어 있을 때만 옛것을 살린다 — 재판정 결과를 되돌리지 않기 위해서다.
+    """
+    if not old_games:
+        return 0
+    prev = {g.get("game_id"): g for g in old_games if g.get("game_id") is not None}
+    n = 0
+    for jg in games:
+        if jg.get("p_claude") is not None:
+            continue                      # 새 판정이 있다 — 손대지 않는다
+        old = prev.get(jg.get("game_id"))
+        if not old or old.get("p_claude") is None:
+            continue
+        for k in _VERDICT_FIELDS:
+            if k in old:
+                jg[k] = old[k]
+        n += 1
+        logger.info("[pipeline] 판정 승계 game=%s p=%s 회차=%s 모델=%s "
+                    "— 캐시 재생성이 지우지 않게",
+                    jg.get("game_id"), old.get("p_claude"),
+                    old.get("judge_stage"), (old.get("matchup") or {}).get("model"))
+    return n
+
+
 async def _save_caches(redis: aioredis.Redis, analysis: dict, card: str) -> None:
     settings = get_settings()
     sport, date = analysis["sport"], analysis["date"]
+    # 🔴 저장 **직전에** 이전 캐시를 읽어 판정을 승계한다. 여기가 유일한
+    #    전체 덮어쓰기 지점이라, 막을 곳도 여기 한 곳이다.
+    try:
+        _prev_raw = await redis.get(f"analysis:{sport}:{date}")
+        if _prev_raw:
+            _n = _carry_verdicts((json.loads(_prev_raw) or {}).get("games") or [],
+                                 analysis.get("games") or [])
+            if _n:
+                logger.warning("[pipeline] %s %s 캐시 재생성 — 판정 %d건 승계",
+                               sport, date, _n)
+    except Exception as exc:
+        logger.warning("[pipeline] 판정 승계 실패 — 새 빌드로 덮어쓴다: %s", exc)
     await redis.set(f"analysis:{sport}:{date}",
                     json.dumps(analysis, ensure_ascii=False, default=str),
                     ex=settings.report_cache_ttl)
