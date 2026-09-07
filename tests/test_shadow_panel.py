@@ -88,6 +88,11 @@ def test_targets_are_gate_passers_capped_by_config():
     from app.engine.pick_ledger import GATE_BOARD_ONLY, GATE_RECOMMENDED
     from app.engine.shadow_panel import pick_targets
 
+    # ⚠️ [2026-09-07] 이 테스트가 `gate_result` 를 **직접 넣어** 통과시키고
+    #    있었다. 실제 분석 캐시에는 그 키가 없어(15/15 None) 운영에서는
+    #    대상이 언제나 0건이었고 L2·L3 가 한 번도 돌지 않았다.
+    #    → 새겨진 등급 경로는 여기서, 캐시 경로는
+    #      `tests/test_shadow_targets.py` 가 잠근다.
     games = [{"game_id": i, "gate_result": GATE_RECOMMENDED,
               "matchup": {"p_home": 0.50 + i / 100}} for i in range(1, 9)]
     games.append({"game_id": 99, "gate_result": GATE_BOARD_ONLY,

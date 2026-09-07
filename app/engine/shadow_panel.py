@@ -92,10 +92,29 @@ def pick_targets(games: list[dict], *, limit: int | None = None) -> list[dict]:
     from app.config import get_settings
 
     cap = limit if limit is not None else int(get_settings().shadow_max_per_slate)
-    from app.engine.pick_ledger import GATE_EDGE, GATE_RECOMMENDED
+    from app.engine.pick_ledger import (GATE_EDGE, GATE_RECOMMENDED,
+                                        gate_result_of)
+
+    # 🔴 [P0 실사고 2026-09-07] 종전에는 `g["gate_result"]` 를 읽었는데
+    #    **분석 캐시의 경기 dict 에는 그 키가 없다**(실측 `analysis:mlb:
+    #    2026-09-06` 15경기 전부 None). 게이트 등급은 `pick_ledger` 에만
+    #    기록되고 캐시에는 안 남는다. 그래서 `pick_targets` 가 **언제나 0건**
+    #    이었고, 감시 L2·L3 가 한 번도 돌지 않았다 —
+    #    `judge_review` 0행 · `shadow_panel` 0행(전 기간).
+    #    ⚠️ 등급 규칙을 여기 베끼지 않는다. `gate_result_of` 가 원본이고
+    #       `pick_summary` 만 있으면 다시 계산된다.
+    def _grade(g: dict) -> str:
+        # 이미 새겨진 등급이 있으면 그것을 쓴다(발송 경로가 넣어 준 경우).
+        got = g.get("gate_result")
+        if got:
+            return got
+        try:
+            return gate_result_of(g, g.get("pick_summary") or {})
+        except Exception:          # 등급을 못 내면 대상에서 빠질 뿐이다
+            return ""
 
     ok = [g for g in games
-          if (g.get("gate_result") in (GATE_EDGE, GATE_RECOMMENDED))
+          if _grade(g) in (GATE_EDGE, GATE_RECOMMENDED)
           and (g.get("matchup") or {}).get("p_home") is not None]
 
     def confidence(g):
