@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 from datetime import date as date_cls
 
@@ -105,11 +106,24 @@ async def main() -> int:
         if a.force:
             for r in targets:
                 await redis.delete(card_sig_key(r["id"]))
+        # 🔴 [배선 지도 §3 2026-09-07] 수동 재발송 카드도 **감사받는다.**
+        #    `_spawn_fact_audit` 은 `_run_baseball_matchups` 안에만 있어
+        #    (pipeline.py:2732), resend 로 나간 카드는 L1 을 통과한 적이 없었다.
+        #    "무엇이 무엇을 부르는가"를 그려보고서야 보인 빈 칸이다.
+        #    ⚠️ 감사는 발송을 막지 않는다 — 실패는 전부 감사 안에서 삼켜진다.
+        from app.pipeline import _spawn_fact_audit
+
+        raw = await redis.get(f"analysis:{a.sport}:{slate}")
+        by_id = {g.get("game_id"): g
+                 for g in (json.loads(raw).get("games") if raw else []) or []}
         sent = 0
         for r in targets:
             res = await send_game_prediction(redis, r, slate, now=now)
             logger.info("  game=%s → %s", r["id"], res)
             sent += res in ("sent", "revised")
+            jg = by_id.get(r["id"])
+            if res in ("sent", "revised") and jg and jg.get("p_claude") is not None:
+                _spawn_fact_audit(jg)
         logger.info("[resend] 완료 — 발송 %d/%d", sent, len(targets))
         return 0 if sent == len(targets) else 1
     finally:

@@ -2704,6 +2704,27 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
                            jg.get("game_id"), exc)
         # [자료11 C2] 이동·연전·날씨 — **새 수집 없음.** 이미 research 에 있는
         #   날짜·홈원정·오늘 예보를 읽어 센다. 판정 호출 앞에서 끝낸다.
+        # ── [자료6 2026-09-07] 라인업 의도 — **확정 타순일 때만** ──────
+        #   🔴 배선 지도(docs/WIRING_MAP_2026-09-07.md §2)가 잡은 구멍이다.
+        #      `_attach_lineup_intent` 는 pipeline.py:1995 의 `if sport not in
+        #      _BB_SKIP_OLD` 안에 있어 **축구에서만** 불렸다. 프롬프트 자리
+        #      (`{{LINEUP_INTENT_JSON}}` prompts.py:67)도, payload 함수
+        #      (`intent_payload` matchup.py:260)도, 렌더 인자(matchup.py:563)도
+        #      다 있는데 야구는 그 자리에 **항상 빈 객체**를 받고 있었다.
+        #   ⚠️ 프리페치가 아니라 **확정 라인업 재판정 경로**에만 붙인다
+        #      (사용자 결정): 의도 해석은 확정 타순이 있어야 의미가 있고,
+        #      잠정 단계 해석은 비용·잡음만 늘린다.
+        #   ⚠️ 확정 판별은 `matchup.lineup_is_confirmed` 가 원본이다 —
+        #      조건을 여기 베끼지 않는다(사본 금지).
+        if allow_final:
+            try:
+                from app.engine.matchup import lineup_is_confirmed
+
+                if lineup_is_confirmed(jg):
+                    await _attach_lineup_intent(pool, [jg], _sport)
+            except Exception as exc:
+                logger.warning("[pipeline] 자료6 라인업 의도 실패 game=%s "
+                               "— 판정은 계속: %s", jg.get("game_id"), exc)
         try:
             from app.engine.context_recent import attach as _ctx
 
