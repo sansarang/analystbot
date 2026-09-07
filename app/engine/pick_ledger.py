@@ -83,6 +83,23 @@ def _market_cols(jg: dict, pick: dict | None) -> dict:
     }
 
 
+def _probe_col(jg: dict, market: dict) -> dict:
+    """시장 3칸 + **확신도 후보 기록 칸.**
+
+    🔴 후보는 게이트로 가지 않는다. `gate_result_of` 는 여전히
+       `judge_confidence`(자기신고)만 읽는다 — 계약 테스트가 잠근다.
+    ⚠️ 시장값을 다시 계산하지 않는다. `_market_cols` 가 낸 것을 그대로 넘긴다.
+    """
+    import json
+
+    from app.engine.confidence import probe
+
+    got = probe(jg, market_prob=market.get("market_prob"),
+                divergence_pp=market.get("divergence_pp"))
+    return {**market,
+            "confidence_probe": json.dumps(got, ensure_ascii=False) if got else None}
+
+
 async def _fill_market(conn, ledger_id: int, row: dict) -> None:
     """이미 있는 행의 시장 칸만 채운다. **판정 칸은 손대지 않는다.**
 
@@ -90,17 +107,19 @@ async def _fill_market(conn, ledger_id: int, row: dict) -> None:
        덮어쓰지 않는다. 판정 시점의 시장이 우리가 재려는 것이고, 경기가
        가까워질수록 시장은 정답에 수렴하므로 덮어쓰면 사후확신이 된다.
     """
-    if row.get("market_prob") is None and row.get("odds") is None:
+    if all(row.get(k) is None
+           for k in ("market_prob", "odds", "confidence_probe")):
         return
     try:
         await conn.execute(
             """UPDATE pick_ledger
-                  SET odds          = COALESCE(odds, $2),
-                      market_prob   = COALESCE(market_prob, $3),
-                      divergence_pp = COALESCE(divergence_pp, $4)
+                  SET odds             = COALESCE(odds, $2),
+                      market_prob      = COALESCE(market_prob, $3),
+                      divergence_pp    = COALESCE(divergence_pp, $4),
+                      confidence_probe = COALESCE(confidence_probe, $5::jsonb)
                 WHERE id = $1""",
             ledger_id, row.get("odds"), row.get("market_prob"),
-            row.get("divergence_pp"))
+            row.get("divergence_pp"), row.get("confidence_probe"))
     except Exception as exc:                       # 측정 장치가 본체를 죽이지 않는다
         logger.warning("[ledger] 시장 칸 기록 실패 id=%s: %s", ledger_id, exc)
 
@@ -145,7 +164,7 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         #      60.7% · 우리 50.0% 였는데 그 격차를 볼 방법이 없었다.
         #   ⚠️ 배당 격리는 그대로다 — 이 값은 **판정이 끝난 뒤** 붙는 기록이고,
         #      판정 프롬프트로는 가지 않는다.
-        **_market_cols(jg, pick),
+        **_probe_col(jg, _market_cols(jg, pick)),
     }
 
 
@@ -217,14 +236,16 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                              (game_id, sport, league, date, p_home, favored,
                               confidence, lineup_status, gate_result, model,
                               rejudge_count, is_final, trial,
-                              odds, market_prob, divergence_pp)
+                              odds, market_prob, divergence_pp,
+                              confidence_probe)
                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,
-                                   $13,$14,$15)""",
+                                   $13,$14,$15,$16::jsonb)""",
                         row["game_id"], row["sport"], row["league"], row["date"],
                         row["p_home"], row["favored"], row["confidence"],
                         row["lineup_status"], row["gate_result"], row["model"], n,
                         trial,
-                        row["odds"], row["market_prob"], row["divergence_pp"])
+                        row["odds"], row["market_prob"], row["divergence_pp"],
+                        row["confidence_probe"])
                     stats["rejudged" if existing is not None else "inserted"] += 1
         except Exception as exc:
             # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —

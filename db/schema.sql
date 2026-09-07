@@ -470,6 +470,12 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS merged_from BIGINT;
 -- 검증된 파이프라인과 시범 경로의 성적을 한 표에 섞으면 둘 다 못 믿게 된다.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS trial BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- [확신도 후보 2026-09-07] 확신도를 무엇으로 정할지 **아직 정하지 않았다.**
+--   자기신고(`confidence`)는 그대로 게이트를 움직이고, 이 칸은 후보들을
+--   나란히 새기기만 한다 — 2주 뒤 SEND 데이터로 대조해 고른다.
+--   🔴 게이트는 이 칸을 읽지 않는다. 계약 테스트가 강제한다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS confidence_probe JSONB;
+
 -- [운영 안정화 0a · 2026-09-02] 하이픈 실명이 타순을 쪼갠 오염 행 표시.
 --   `Pete Crow-Armstrong` 같은 이름이 `order.split("-")` 에 두 조각으로 갈려
 --   저장된 배열이 10칸이 됐다. 슬롯이 통째로 밀려 라인업 의도·T5 가 없는

@@ -610,3 +610,96 @@ def test_백필은_apply_없이는_쓰지_않는다():
     assert "COALESCE(market_prob" in src, "덮어쓰기 금지"
     # 판정 칸을 쓰지 않는다
     assert "SET p_home" not in src and "gate_result =" not in src
+
+
+# ═══════════════ 확신도 후보 — 재기만 한다 (2026-09-07)
+#
+# 🔴 교체를 승인받았으나 **배포 전 관문에서 떨어졌다.** 재료-결측 방식은
+#    57경기 전부 `상` 이 나와 변별력 0 이었고, 넣으면 거부권이 11→0 건이 된다.
+#    시장식은 변별력이 있지만 검증값이 CLOSE(백필)라 게이트가 보는 SEND 가
+#    아니다. → 후보를 나란히 새기고 2주 뒤 SEND 로 고른다.
+
+def test_후보는_게이트에_닿지_않는다():
+    """🔴 **가장 중요한 계약.** 게이트는 자기신고만 읽는다."""
+    import inspect
+
+    from app.engine import pick_ledger as pl
+
+    src = inspect.getsource(pl.gate_result_of)
+    for banned in ("confidence_probe", "confidence.", "by_market",
+                   "by_materials", "probe("):
+        assert banned not in src, f"게이트가 후보를 읽는다: {banned}"
+    assert "judge_confidence" in src
+
+
+def test_후보는_재판정을_유발하지_않는다():
+    from app.engine.pick_ledger import _SIG_FIELDS
+
+    assert "confidence_probe" not in _SIG_FIELDS
+
+
+def test_후보_네_종이_모두_새겨진다():
+    import json
+
+    from app.engine.pick_ledger import _row_from_game
+
+    jg = {"game_id": 1, "p_claude": 0.57, "p_market_send": 0.64,
+          "matchup": {"p_home": 0.57, "우세": "home", "확신도": "중"}}
+    row = _row_from_game(jg, {"sport": "mlb", "date": "2026-09-07"}, {})
+    got = json.loads(row["confidence_probe"])
+    assert got["자기신고"] == "중"
+    assert got["시장괴리pp"] == pytest.approx(-7.0)
+    assert got["시장동의"] is True          # 둘 다 홈
+    assert got["A"] == "중" and got["B"] == "중" and got["C"] == "중"
+    assert got["기준"] == "send", "CLOSE 백필과 섞이면 안 된다"
+
+
+def test_시장이_없으면_시장식_후보는_None():
+    """🔴 수집 실패가 거부권이 되면 안 된다 — 실측: 시장 미수집 34경기가
+    오히려 61.8% 로 가장 잘 맞았다. `None` 을 `하` 로 읽으면 그 34경기를
+    통째로 버린다."""
+    import json
+
+    from app.engine.pick_ledger import _row_from_game
+
+    row = _row_from_game({"game_id": 1, "p_claude": 0.57,
+                          "matchup": {"p_home": 0.57, "우세": "home"}},
+                         {"sport": "mlb", "date": "2026-09-07"}, {})
+    got = json.loads(row["confidence_probe"])
+    assert got["A"] is None and got["B"] is None and got["C"] is None
+    assert got["M"] is not None, "재료식은 시장 없이도 나온다"
+
+
+@pytest.mark.parametrize("div,same,want", [
+    # A — 거리만 본다
+    (20.0, False, ("하", "하", "하")),
+    (8.0, True, ("중", "중", "중")),
+    (3.0, True, ("상", "상", "상")),
+    # 방향이 갈릴 때 셋이 갈린다
+    (12.0, False, ("중", "하", "하")),
+    (3.0, False, ("상", "하", "중")),
+])
+def test_ABC_가_실제로_다른_규칙이다(div, same, want):
+    """세 후보가 같은 답만 내면 비교할 이유가 없다."""
+    from app.engine.confidence import by_market
+
+    got = tuple(by_market(div, same, rule=r) for r in ("A", "B", "C"))
+    assert got == want
+
+
+def test_재료식은_변별력이_없다는_사실을_남긴다():
+    """⚠️ 실측 57경기 전부 `상`. 지우면 "안 되더라"도 사라진다."""
+    from app.engine.confidence import by_materials
+
+    assert by_materials(0, False) == "상"
+    assert by_materials(1, False) == "상"
+    assert by_materials(2, False) == "중"
+    assert by_materials(4, False) == "하"
+    assert by_materials(0, True) == "중", "분기점 미해결이면 한 단계 내린다"
+
+
+def test_후보_계산이_실패해도_원장_기록을_막지_않는다():
+    """⚠️ 측정 장치가 본체를 죽이면 안 된다."""
+    from app.engine.confidence import probe
+
+    assert probe(None) == {}          # 예외가 밖으로 안 나온다
