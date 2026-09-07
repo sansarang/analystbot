@@ -235,7 +235,16 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
     from app.llm.judge_route import JUDGE_ROLES
 
     soft_retries = 1 if role in JUDGE_ROLES else 2
-    for hop, (provider, model) in enumerate(candidates[:_MAX_HOPS]):
+    # 🔴 [2026-09-07 실측] **회전 금지는 판정에만 적용한다.**
+    #    "한 판정은 한 모델이 낸다"는 2026-09-05 안정성 규칙인데, 그것이
+    #    평의회·딥서치처럼 판정이 **아닌** 역할까지 묶고 있었다.
+    #    실측: 평의회 심의가 nemotron 사고문(2362자·2416자)에 두 번 막히자
+    #    뒤에 있던 groq×2·openrouter 후보를 **한 번도 안 가고** 포기했다.
+    #    그래서 심의는 구조적으로 늘 빈 dict 였고, 퍼플렉시티 조사비만 나갔다.
+    #    판정이 아닌 역할은 사슬 끝까지 돈다 — 사슬을 둔 이유가 그것이다.
+    judged = role in JUDGE_ROLES
+    hops = _MAX_HOPS if judged else len(candidates)
+    for hop, (provider, model) in enumerate(candidates[:hops]):
         for attempt in range(soft_retries):
             r = await complete(provider, model, prompt, max_tokens=max_tokens,
                                reasoning=reasoning, seed=seed)
@@ -261,11 +270,15 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
                            role, provider, model, len(r["text"] or ""),
                            (r["text"] or "")[:160])
         else:
-            logger.error("[%s] %s/%s JSON 2회 실패 — provider 를 회전시키지 "
-                         "않는다. 이 건은 재료 없이 간다", role, provider, model)
-            return None
-    logger.warning("[%s] 무료 사슬 실패 (하드 실패 폴백 %d회 소진)", role,
-                   min(len(candidates), _MAX_HOPS))
+            if judged:
+                logger.error("[%s] %s/%s JSON %d회 실패 — provider 를 회전시키지 "
+                             "않는다(판정은 한 모델이 낸다). 이 건은 재료 없이 간다",
+                             role, provider, model, soft_retries)
+                return None
+            logger.warning("[%s] %s/%s JSON %d회 실패 — 다음 후보로 넘어간다",
+                           role, provider, model, soft_retries)
+    logger.warning("[%s] 무료 사슬 실패 (후보 %d개 소진)", role,
+                   min(len(candidates), hops))
     return None
 
 

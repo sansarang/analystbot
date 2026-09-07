@@ -33,7 +33,14 @@ import pytest
 #       `test_all_free_failing_does_not_call_anthropic` 가 지킨다.
 @pytest.mark.asyncio
 async def test_soft_failure_retries_the_same_model_and_does_not_rotate(monkeypatch):
-    """JSON 이 아니면 같은 모델 1회 재시도 — 다음 provider 로 가지 않는다."""
+    """JSON 이 아니면 다음 provider 로 가지 않는다 — **판정 역할에 한해서다.**
+
+    🔴 [2026-09-07] 이 규칙의 적용 범위가 좁아졌다. "한 판정은 한 모델이
+       낸다"는 2026-09-05 안정성 규칙인데, 그것이 평의회·딥서치처럼 판정이
+       **아닌** 역할까지 묶어 사슬을 무력화하고 있었다(실측: 평의회 심의가
+       nemotron 사고문에 막혀 groq 후보를 한 번도 안 갔다).
+       판정이 아닌 역할의 회전은 `tests/test_free_chain_rotation.py` 가 본다.
+    """
     import app.engine.team_form as tf
     import app.llm.openai_compat as oc
 
@@ -45,10 +52,14 @@ async def test_soft_failure_retries_the_same_model_and_does_not_rotate(monkeypat
                 "elapsed": 1.0, "error": None, "usage": {}, "status": 200}
 
     monkeypatch.setattr(oc, "complete", _fake)
-    out = await tf._complete_free([("nvidia", "n"), ("groq", "g")], "p", 100, "form")
+    from app.llm.judge_route import MATCHUP_ROLE
 
-    assert called == ["nvidia", "nvidia"], "같은 모델로 1회 재시도해야 한다"
-    assert "groq" not in called, "소프트 실패로 provider 를 회전시켰다"
+    out = await tf._complete_free([("nvidia", "n"), ("groq", "g")], "p", 100,
+                                  MATCHUP_ROLE)
+
+    # 판정은 재시도 1회(`soft_retries=1`)라 같은 모델을 한 번만 부른다.
+    assert called == ["nvidia"], called
+    assert "groq" not in called, "판정이 provider 를 회전시켰다"
     assert out is None
 
 
@@ -77,7 +88,11 @@ async def test_soft_failure_recovers_when_the_retry_parses(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_hard_failure_falls_back_once_only(monkeypatch):
-    """호출 자체가 불가하면 다음 후보로 — 단 1회다. 사슬을 다 걷지 않는다."""
+    """호출 자체가 불가하면 다음 후보로 — **판정은** 단 1회다.
+
+    🔴 [2026-09-07] 판정 한정이다. 판정이 아닌 역할은 사슬 끝까지 간다 —
+       사슬을 여러 개 둔 이유가 그것이다.
+    """
     import app.engine.team_form as tf
     import app.llm.openai_compat as oc
 
@@ -89,10 +104,13 @@ async def test_hard_failure_falls_back_once_only(monkeypatch):
                 "error": "503", "usage": None, "status": 503}
 
     monkeypatch.setattr(oc, "complete", _fake)
-    out = await tf._complete_free(
-        [("nvidia", "n"), ("groq", "g"), ("openrouter", "o")], "p", 100, "form")
+    from app.llm.judge_route import MATCHUP_ROLE
 
-    assert called == ["nvidia", "groq"], "폴백은 하드 실패 시 1회뿐이다"
+    out = await tf._complete_free(
+        [("nvidia", "n"), ("groq", "g"), ("openrouter", "o")], "p", 100,
+        MATCHUP_ROLE)
+
+    assert called == ["nvidia", "groq"], "판정 폴백은 하드 실패 시 1회뿐이다"
     assert "openrouter" not in called
     assert out is None
 

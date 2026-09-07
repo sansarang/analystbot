@@ -48,6 +48,43 @@ def test_window_is_a_named_constant_not_a_magic_number():
     assert SITUATION_WINDOW_HOURS == 24
 
 
+# ── [2026-09-07 실측] MLB 만 창이 넓다 ──────────────────────────
+def test_mlb_window_is_wider_because_its_day_straddles_kst():
+    """🔴 24h 는 KBO·NPB 기준이었다 — MLB 는 현지 하루가 KST 로 걸쳐 있다.
+
+    실측 2026-09-06 슬레이트(MLB 기사 332건) 창별 통과 태그:
+      12h=5 · 24h=32 · **36h=34** · 48h=34 · 72h=34
+    36h 위로는 늘지 않는다 — 잘려나가던 것은 T-24~36h 의 2건뿐이었다.
+    """
+    from app.engine.situation import window_hours
+
+    assert window_hours("mlb") == 36
+    assert window_hours("kbo") == window_hours("npb") == 24
+    assert window_hours(None) == 24, "모르는 종목은 좁은 쪽이 안전하다"
+
+
+def test_mlb_morning_game_keeps_the_day_before_report():
+    """KST 오전 경기 — 미국 현지 '경기 당일 아침' 기사가 살아야 한다."""
+    from app.engine.situation import published_before
+
+    start = datetime(2026, 9, 7, 11, 10, tzinfo=KST)      # 실제 #3725
+    it = _item(datetime(2026, 9, 6, 10, 4, tzinfo=KST),   # T-25.1h
+               "Ohtani out for 3rd straight day as Dodgers weigh potential IL stint")
+    assert published_before(it, start, "mlb") is True
+    assert published_before(it, start, "kbo") is False, "KBO 창까지 넓히면 안 된다"
+
+
+def test_kbo_window_still_drops_the_retirement_article():
+    """🔴 넓히기가 김성현 은퇴식(T-24.8h)을 되살리면 안 된다."""
+    from app.engine.situation import published_before
+
+    start = datetime(2026, 9, 6, 17, 0, tzinfo=KST)
+    it = _item(datetime(2026, 9, 5, 16, 11, tzinfo=KST),
+               "'21년 원클럽맨' SSG 김성현, 은퇴식 특별 엔트리 등록…2루수 선발 출전")
+    assert published_before(it, start, "kbo") is False
+    assert published_before(it, start) is False, "종목 미지정도 좁은 쪽"
+
+
 def test_unknown_publish_time_is_kept():
     """모르는 것을 버리지 않는다 — pubDate 를 안 주는 매체가 통째로 사라진다."""
     from app.engine.situation import published_before

@@ -102,9 +102,27 @@ def is_recap(title: str, sport: str) -> bool:
 #   24시간인 이유: 경기가 17~18시라 전날 저녁 예고·공지까지는 오늘의 재료다.
 #   같은 날 0시를 자르면 그 예고들이 통째로 사라진다.
 SITUATION_WINDOW_HOURS = 24
+#: 🔴 [2026-09-07 실측] **MLB 만 창이 넓다.** 24h 는 KBO·NPB 기준이었다 —
+#   저녁 경기라 전날 저녁 예고까지가 하루 안에 들어온다.
+#   MLB 는 현지 하루가 KST 로 걸쳐 있다: 경기가 KST 오전 11시면 창이
+#   `전날 11시 ~ 당일 11시` 인데, 미국 현지 기사는 대부분 그 앞에 나온다.
+#   실측 2026-09-06 슬레이트(MLB 기사 332건) — 창별 통과 태그 수:
+#     12h=5 · **24h=32** · **36h=34** · 48h=34 · 72h=34
+#   36h 위로는 늘지 않는다. 잘려나가던 것은 T-24~36h 구간 2건뿐이고,
+#   개별로는 `Ohtani out for 3rd straight day`(T-25.1h)·
+#   `Dodgers Cut 5-Year MLB Player Before Nationals Game`(T-26.5h) 같은
+#   **명백한 경기 전 상황 정보**였다.
+#   ⚠️ KBO·NPB 는 24h 그대로다 — 넓히면 김성현 은퇴식(T-24.8h)이 되살아난다.
+SITUATION_WINDOW_BY_SPORT = {"mlb": 36}
 
 
-def published_before(item: dict, starts_at) -> bool:
+def window_hours(sport: str | None) -> int:
+    """그 종목의 상황 창(시간). 모르는 종목은 기본값."""
+    return SITUATION_WINDOW_BY_SPORT.get((sport or "").lower(),
+                                         SITUATION_WINDOW_HOURS)
+
+
+def published_before(item: dict, starts_at, sport: str | None = None) -> bool:
     """이 기사가 **경기 직전 창 안에서** 나왔는가. 시각을 모르면 통과시킨다.
 
     창은 `[경기시작 - SITUATION_WINDOW_HOURS, 경기시작)` 이다.
@@ -138,7 +156,7 @@ def published_before(item: dict, starts_at) -> bool:
         st = st.replace(tzinfo=timezone.utc)
     from datetime import timedelta
 
-    return st - timedelta(hours=SITUATION_WINDOW_HOURS) <= dt < st
+    return st - timedelta(hours=window_hours(sport)) <= dt < st
 
 
 def _is_official(item: dict, dom: str, url: str, teams: tuple) -> bool:
@@ -179,7 +197,7 @@ def classify(items: list[dict], sport: str, *, starts_at=None,
         if is_recap(title, sport):
             n_recap += 1
             continue
-        if not published_before(it, starts_at):
+        if not published_before(it, starts_at, sport):
             n_late += 1
             continue
         url = str(it.get("url") or it.get("link") or "")
