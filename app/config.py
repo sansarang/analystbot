@@ -131,6 +131,21 @@ class Settings(BaseSettings):
     #: 상대 표본이 이 수 미만이면 그 경기는 보정에서 뺀다.
     m1_opp_min_games: int = 3
 
+    # ── [자료14 분기점 해결 2026-09-07] 질문을 맞는 해결사에게 보낸다 ────
+    #
+    # 🔴 실측: deepsearch 기록 6건이 전부 **미확인**이었다. 전부 기록으로
+    #    답할 질문("투구수 한도"·"이닝 소화 계획")을 뉴스 검색기에 보낸 탓이다.
+    #    같은 질문을 DB 에 물으니 리그 표본 232건짜리 답이 즉시 나왔다.
+    #: "깊게 간다"의 기준 이닝. 분기점 대부분이 "선발이 5이닝을 넘기는가"다.
+    branch_deep_innings: float = 5.0
+    #: 소속팀 선발 관측 창(일).
+    branch_team_days: int = 30
+    #: 해결사 답의 최소 표본. 미만이면 그 갈래를 싣지 않는다 —
+    #  얇은 답으로 얇은 표본을 메우면 자료13 이 무너진 자리로 돌아간다.
+    branch_min_n: int = 20
+    #: 한 경기에서 풀 분기점 수 상한. 프롬프트를 비대하게 만들지 않는다.
+    branch_max_questions: int = 3
+
     # ── [정찰 AI 뉴스층 2026-09-06] x_search 상한 ────────────────────
     #: 🔴 **캡 없는 AI 호출 금지.** Grok 은 유료다.
     scout_xsearch_daily_cap: int = Field(default=12, validation_alias=AliasChoices(

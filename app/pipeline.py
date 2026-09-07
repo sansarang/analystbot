@@ -2743,6 +2743,19 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
             except Exception as exc:
                 logger.warning("[pipeline] 자료1 상대 보정 실패 game=%s: %s",
                                jg.get("game_id"), exc)
+        # [자료14 분기점 조사 2026-09-07] **직전 회차가 지목한 분기점**을
+        #   유형별로 갈라 답해 이번 판정의 재료로 넣는다.
+        #   🔴 유료 호출이 늘지 않는다 — 예비(무료)가 분기점을 내고, 확정(opus)이
+        #      그 답을 들고 판정한다. 기존 2단 구조를 그대로 쓴다.
+        #   ⚠️ 실패해도 판정을 막지 않는다. 없으면 자료14 없이 간다.
+        if pool is not None:
+            try:
+                from app.engine.branch_resolve import attach as _branch
+
+                await _branch(pool, jg)
+            except Exception as exc:
+                logger.warning("[pipeline] 자료14 분기점 조사 실패 game=%s: %s",
+                               jg.get("game_id"), exc)
         if await judge_matchup(jg, redis, date, allow_final=allow_final):
             n += 1
             # ── [v1.4] 시장 기준선을 **게이트보다 먼저** 새긴다 ──────────

@@ -202,6 +202,9 @@ def test_matchup_render_leaves_no_placeholder():
                STARTERS_RECENT_JSON=J(M.starters_recent_payload(jg)),
                PREV_VERDICT_JSON="null",
                LINEUP_INTENT_JSON=J(M.intent_payload(jg)),
+               # [자료14 2026-09-07] 분기점 조사. 비어 있어도 자리는 채운다 —
+               #   이 테스트가 "새 자료를 넣고 fill 을 안 고쳤다"를 잡는다.
+               BRANCH_JSON=J(M.branch_payload(jg)),
                BULLPEN_JSON=J(M.bullpen_payload(jg)))
     assert "{{" not in out
     # [C2 2026-09-04] 자료8 이 폐지되어 가중OPS 는 **실리면 안 된다.**

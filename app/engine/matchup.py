@@ -205,6 +205,18 @@ def elo_payload(jg: dict) -> dict:
             "격차": round(float(h.get("레이팅") or 0) - float(a.get("레이팅") or 0), 1)}
 
 
+def branch_payload(jg: dict) -> dict:
+    """자료14 — 분기점 조사 결과. **읽기만 한다** — 조립은 파이프라인이 끝냈다.
+
+    🔴 판정이 지목한 분기점을 유형별로 갈라 답한 것이다. 기록형은 우리 DB 가
+       즉답한다 — 실측 2026-09-07: 퍼플렉시티가 "미확인"으로 돌려준 질문
+       6건이 전부 기록으로 답할 수 있는 것이었다.
+    """
+    from app.engine.branch_resolve import payload as _bp
+
+    return _bp(jg)
+
+
 def ledger_payload(jg: dict) -> dict:
     """변수 대장의 두 축. **읽기만 한다** — 조립은 파이프라인이 끝냈다."""
     return {"ref": jg.get("material10") or {},
@@ -575,6 +587,8 @@ def render_matchup_prompt(jg: dict, boxes: dict, news: dict,
                                       default=str),
         BULLPEN_JSON=json.dumps(bullpen_payload(jg), ensure_ascii=False, default=str),
         ELO_JSON=json.dumps(elo_payload(jg), ensure_ascii=False, default=str),
+        BRANCH_JSON=json.dumps(branch_payload(jg), ensure_ascii=False,
+                               default=str),
     )
     # [C4 변수 대장] 자료10·11 을 한 블록으로. 둘 다 비면 원문 그대로다.
     prompt = insert_ledger(prompt, ledger_payload(jg))
