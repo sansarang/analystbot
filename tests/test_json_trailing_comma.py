@@ -82,3 +82,44 @@ def test_내용을_고치지_않는다():
     seg = src[i:src.index("\ndef parse_json_object")]
     for banned in ("setdefault", "or 0.5", '"p_home"'):
         assert banned not in seg, f"파서가 내용을 만든다: {banned}"
+
+
+# ═══════════════ 변수 방향 표기 — 영문도 읽는다
+
+import pytest as _pytest
+
+
+@_pytest.mark.parametrize("side_txt,expect", [
+    ("홈", "home"), ("원정", "away"),
+    ("home", "home"), ("away", "away"),
+    ("Home", "home"), ("AWAY", "away"),
+])
+def test_방향_표기가_영문이어도_읽는다(side_txt, expect):
+    """🔴 실측 2026-09-07 grok 판정: "발생 시 **home** 방향 약 2%p · …"
+    종전 정규식은 `홈|원정` 만 받아 `parsed=None` 이 됐고, 그러면 그 변수는
+    예산 검사·자료14 루프·원장에서 통째로 빠진다. opus 는 한국어를 써서
+    이 결함이 안 보였다 — 대체 모델을 쓰는 순간 정량화가 무력화된다."""
+    from app.engine.variable_parse import parse_variable
+
+    line = (f"연전 피로 — 발생 시 {side_txt} 방향 약 2%p · 발생 확률 40% · "
+            f"현재 p에 1%p 기반영 · 근거 자료10 연전")
+    got = parse_variable(line)
+    assert got and got["side"] == expect
+    assert got["n"] == 2.0 and got["m"] == 1.0 and got["q"] == 40.0
+    assert got["risk"] == "연전 피로"
+
+
+def test_모르는_방향_표기는_버린다():
+    """⚠️ 관대함이 창작이 되면 안 된다 — 모르는 값을 홈으로 찍지 않는다."""
+    from app.engine.variable_parse import parse_variable
+
+    assert parse_variable("x — 발생 시 중립 방향 약 2%p · 현재 p에 1%p "
+                          "기반영 · 근거 자료10") is None
+
+
+def test_프롬프트가_한국어_표기를_못박는다():
+    """쓰는 쪽은 좁게, 읽는 쪽만 관대하게."""
+    from app.engine.prompts import MATCHUP
+
+    assert "`홈` 또는 `원정` 한국어로 쓴다" in MATCHUP
+    assert "`home`·`away` 로 쓰지 마라" in MATCHUP

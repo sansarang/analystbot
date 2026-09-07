@@ -105,7 +105,10 @@ def test_recommendation_thresholds_are_config_driven():
     #   여유 200토큰뿐이었고, output=4000 stop=max_tokens 로 잘린 응답이
     #   JSON 파싱 2회 실패 → KIA@NC 판정 탈락(2026-09-02).
     #   딥서치(8000) > 매치업 불변식은 유지된다.
-    assert s.matchup_max_tokens == 6000
+    # [계약 갱신 2026-09-07] 6000 → 12000. `전개` 추가로 출력이 길어져
+    #   예비 판정이 잘렸다(gemini 1482자에서 JSON 미완결, 실측).
+    #   근거 수치는 `app/config.py` 주석에 있다 — 여기 베끼지 않는다.
+    assert s.matchup_max_tokens == 12000
     assert s.judge_model == "claude-opus-4-6"
 
 

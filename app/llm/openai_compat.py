@@ -21,6 +21,12 @@ ENDPOINTS: dict[str, tuple[str, str]] = {
     "nvidia": ("https://integrate.api.nvidia.com/v1", "NVIDIA_API_KEY"),
     "mistral": ("https://api.mistral.ai/v1", "MISTRAL_API_KEY"),
     "groq": ("https://api.groq.com/openai/v1", "GROQ_API_KEY"),
+    # 🔴 [2026-09-07 사용자 지시] **Anthropic 소진 시 최종 판정 대체.**
+    #    실측(현행 프롬프트 17,741자, 다저스전): grok-4.3-latest 가 전개·
+    #    홈/원정 경로·분기점·예상점수를 모두 냈고 10초·출력 735토큰으로
+    #    후보 중 가장 경제적이었다. 검색 모델이 아니라 판정 규칙(배당·사전
+    #    지식 금지)을 우회할 위험도 없다(퍼플렉시티는 그 위험이 있다).
+    "xai": ("https://api.x.ai/v1", "XAI_API_KEY"),
     "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
     # 🔴 [P0 안정성 2026-09-05] Gemini 를 **사슬에 넣는다.** 종전에는 별도
     #    클라이언트(`app/llm/gemini.py`)만 있어 판정 사슬에서 쓸 수 없었다.

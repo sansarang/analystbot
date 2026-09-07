@@ -17,7 +17,19 @@ import re
 logger = logging.getLogger(__name__)
 
 #: 방향 표기 → 내부 값.
-_SIDE = {"홈": "home", "원정": "away"}
+#  🔴 [2026-09-07] **영문도 받는다.** 모델이 `home`/`away` 로 쓰면 종전 정규식이
+#     못 잡아 `parsed=None` 이 됐고, 그러면 그 변수는
+#       · 예산 검사(`check_budget`)에서 빠지고
+#       · 자료14 조사 루프의 입력에서 사라지고
+#       · `variable_ledger` 에 `unverifiable` 로 쌓인다.
+#     실측 2026-09-07 grok 판정: "발생 시 **home** 방향 약 2%p · …" → 미분류.
+#     opus 는 한국어를 써서 이 결함이 안 보였다 — 대체 모델을 쓰는 순간
+#     변수 정량화가 통째로 무력화된다.
+#  ⚠️ **쓰는 쪽은 한국어로 못박고 읽는 쪽만 관대하게 한다.** 형식을 넓히는
+#     것이 아니라, 형식을 어겨도 값을 잃지 않게 하는 것이다.
+_SIDE = {"홈": "home", "원정": "away",
+         "home": "home", "away": "away",
+         "HOME": "home", "AWAY": "away"}
 
 #: 🔴 [2026-09-07] `발생확률` 은 **선택적**이다 — 자료14 가 답을 준 변수만
 #   쓸 수 있다. 필수로 만들면 답이 없는 변수가 형식 위반으로 통째로 버려진다
@@ -25,7 +37,8 @@ _SIDE = {"홈": "home", "원정": "away"}
 #   실측 2026-09-07 NYY@SD: 판정이 자료14 의 "5이닝 이상 35/51=69%" 를
 #   인용하고도 발생 확률(31%)을 적을 칸이 없어 근거 문자열에 묻었다.
 _PAT = re.compile(
-    r"^(?P<risk>.+?)\s*[—-]\s*발생\s*시\s*(?P<side>홈|원정)\s*방향\s*약\s*"
+    r"^(?P<risk>.+?)\s*[—-]\s*발생\s*시\s*(?P<side>홈|원정|[Hh]ome|[Aa]way|HOME|AWAY)"
+    r"\s*방향\s*약\s*"
     r"(?P<n>[-+]?\d+(?:\.\d+)?)\s*%p\s*[·,]\s*"
     r"(?:발생\s*확률\s*(?P<q>\d+(?:\.\d+)?)\s*%\s*[·,]\s*)?"
     r"현재\s*p에\s*"
@@ -46,7 +59,10 @@ def parse_variable(text: str) -> dict | None:
     except (TypeError, ValueError):
         return None
     q = m.group("q")
-    return {"risk": m.group("risk").strip(), "side": _SIDE[m.group("side")],
+    side = _SIDE.get(m.group("side")) or _SIDE.get(m.group("side").lower())
+    if side is None:
+        return None
+    return {"risk": m.group("risk").strip(), "side": side,
             "n": n, "m": mm, "source": m.group("src").strip(),
             # 자료14 가 답을 준 변수만 값이 있다. 없으면 None — 지어내지 않는다.
             "q": (float(q) if q is not None else None)}

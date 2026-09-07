@@ -119,7 +119,9 @@ def test_message_kwargs_locks_temperature_zero_and_does_not_use_judge_tokens():
     kw2 = message_kwargs(s.matchup_model, s.matchup_max_tokens, "hi")
     # [2026-09-06] 최종 판정은 Opus 가 한 번에 낸다 (fable → opus, 사용자 지시).
     assert kw2["model"] == "claude-opus-5"
-    assert kw2["max_tokens"] == 6000   # [v1.3 A-3] 절단 실측으로 상향
+    # ⚠️ [사본 제거 2026-09-07] 숫자를 여기 적어 두니 config 를 올릴 때마다
+    #    이 테스트가 깨졌다. 이 테스트가 볼 것은 **값이 그대로 전달되는가**다.
+    assert kw2["max_tokens"] == s.matchup_max_tokens
     assert "extra_body" not in kw2
     from app.engine.judge import JUDGE_MAX_TOKENS
 

@@ -52,6 +52,17 @@ def is_free(provider: str, model: str) -> bool:
     return True
 
 
+def _anthropic_gone() -> bool:
+    """Anthropic 잔액이 소진됐는가. **읽기만 한다** — 판정의 원본은 provider 다."""
+    try:
+        from app.llm.provider import _is_exhausted
+
+        return bool(_is_exhausted("anthropic"))
+    except Exception as exc:      # 모르면 "안 끊겼다" — 대체를 함부로 켜지 않는다
+        logger.debug("[judge-route] 소진 여부 조회 실패: %s", exc)
+        return False
+
+
 def chain(role: str) -> list[tuple[str, str]]:
     """`[(provider, model), ...]`. 첫 항목이 주전이다.
 
@@ -65,6 +76,19 @@ def chain(role: str) -> list[tuple[str, str]]:
     #    유료로 끌고 갔다 — 실측 2026-09-06 11:15~11:27, 12분에 11콜이 나갔다
     #    (경기당 Fable 2회 + haiku 2회). 그게 자금 누수였다.
     if prov == "anthropic" and role == MATCHUP_ROLE:
+        # 🔴 [2026-09-07 사용자 지시] **소진이면 grok 으로 대체한다.**
+        #    실측 400: "Your credit balance is too low to access the
+        #    Anthropic API" (req_011CeopbocAgP9C1UneLpve6). 종전에는 이때
+        #    최종 판정이 응답 0자로 실패하고 그 경기는 카드가 안 나갔다.
+        #    ⚠️ **"한 판정은 한 모델이 낸다"를 깨지 않는다.** 호출 중에
+        #       갈아타는 것이 아니라, 부르기 **전에** 소진을 확인해 사슬
+        #       자체를 바꾼다. 그 판정은 처음부터 끝까지 grok 하나가 낸다.
+        #    ⚠️ 소진 판정의 원본은 `provider._is_exhausted` 다 — 여기서
+        #       400 문자열을 다시 해석하지 않는다(사본 금지).
+        if _anthropic_gone() and s.xai_api_key:
+            logger.warning("[judge-route] Anthropic 소진 — 최종 판정을 "
+                           "grok(%s) 로 대체한다", s.grok_model)
+            return [("xai", s.grok_model)]
         return [("anthropic", s.matchup_model)]
     # 🔴 무료 후보를 **여럿** 둔다. Nemotron 이 오디션에서 6건 중 1건을
     #    `503 Service temporarily overloaded` 로 놓쳤다 — 무료 인프라는
