@@ -113,3 +113,54 @@ def test_record_hook_is_after_the_judge_call():
     src = Path("app/pipeline.py").read_text(encoding="utf-8")
     seg = src[src.index("async def _run_baseball_matchups"):]
     assert seg.index("await judge_matchup") < seg.index("variable_ledger import record")
+
+
+# ═══════════════ 지시어를 실제 주체로 읽는다 (2026-09-07)
+#
+# 🔴 실측 638건 분해: 임계O·주체X **16건(2.5%)**. 전부 같은 모양이었다 —
+#    "홈 선발이 5이닝 이하로 조기강판 시…". 임계는 명시했는데 이름 대신
+#    자리를 가리켰고, `subject_of` 는 이름 문자열만 찾아 통째로 버렸다.
+#    그 자리에 누가 있는지는 **이미 우리가 아는 사실**이다.
+
+_JG = {"home": "Cincinnati Reds", "away": "Milwaukee Brewers",
+       "home_pitcher": "Brady Singer", "away_pitcher": "Quinn Priester"}
+
+
+@pytest.mark.parametrize("risk,want", [
+    ("홈 선발이 5이닝 이하로 조기강판 시 추가 실점", ("Brady Singer", "pitcher")),
+    ("원정 선발 조기 강판 리스크", ("Quinn Priester", "pitcher")),
+    ("어웨이 선발이 4이닝 미만", ("Quinn Priester", "pitcher")),
+    ("홈 타선 3경기 연속 2득점 이하 부진", ("Cincinnati Reds", "team")),
+    ("원정 불펜 조기 가동", ("Milwaukee Brewers", "team")),
+])
+def test_지시어를_그_경기의_주체로_읽는다(risk, want):
+    from app.engine.variable_ledger import subject_of
+
+    assert subject_of(risk, _JG) == want
+
+
+def test_이름이_지시어를_이긴다():
+    """이름이 있으면 그게 더 정확하다."""
+    from app.engine.variable_ledger import subject_of
+
+    assert subject_of("원정 선발 Brady Singer 조기강판", _JG) \
+        == ("Brady Singer", "pitcher")
+
+
+@pytest.mark.parametrize("risk", [
+    "선발이 흔들릴 수 있다",          # 어느 쪽인지 없다
+    "홈 날씨 변수",                   # 역할어가 없다
+    "경기 흐름이 바뀔 수 있다",
+])
+def test_모르면_여전히_버린다(risk):
+    """⚠️ 관대함이 창작이 되면 안 된다. 잘못된 주체로 채점하면 더 나쁘다."""
+    from app.engine.variable_ledger import subject_of
+
+    assert subject_of(risk, _JG) == (None, None)
+
+
+def test_선발을_모르면_팀으로_넘기지_않는다():
+    from app.engine.variable_ledger import subject_of
+
+    jg = {"home": "Cincinnati Reds", "away": "Milwaukee Brewers"}
+    assert subject_of("홈 선발이 5이닝 이하", jg) == (None, None)

@@ -32,22 +32,53 @@ def threshold_of(risk: str) -> dict | None:
             "cmp": m.group("cmp")}
 
 
+#: 지시어 → 그 경기의 어느 쪽인가. **판정이 실제로 쓰는 말**만 넣는다.
+#   실측 2026-09-07: 임계는 있는데 주체를 못 잡은 16건이 전부 이 모양이었다 —
+#   "홈 선발이 5이닝 이하로 조기강판 시…", "홈 타선 3경기 연속 2득점 이하…".
+#   이름 대신 자리를 가리킨 것이고, 그 자리에 누가 있는지는 **이미 우리가 안다.**
+_SIDE_WORDS = {"home": ("홈",), "away": ("원정", "어웨이", "아웨이")}
+#: 자리 뒤에 붙는 말 → 주체 종류. 없으면 지시어로 안 친다.
+_ROLE_WORDS = {"pitcher": ("선발", "선발투수", "투수"),
+               "team": ("타선", "타자", "불펜", "팀")}
+
+
 def subject_of(risk: str, jg: dict) -> tuple[str | None, str | None]:
     """주체 추정 — 오늘 선발 이름이 들어 있으면 그 투수, 아니면 팀.
 
-    ⚠️ 이름이 안 잡히면 `(None, None)` 이다. 억지로 팀으로 넘기지 않는다 —
-       잘못된 주체로 채점하면 그 결과가 더 나쁘다.
+    이름이 없어도 **`홈 선발`·`원정 타선` 같은 지시어**는 읽는다. 그 자리에
+    누가 있는지는 이미 아는 사실이고, 추정이 아니다.
+
+    ⚠️ 이름도 지시어도 없으면 `(None, None)` 이다. 억지로 팀으로 넘기지
+       않는다 — 잘못된 주체로 채점하면 그 결과가 더 나쁘다.
     """
     from app.engine.starter_recent import pitcher_name
 
+    text = risk or ""
     for side in ("home", "away"):
         name = pitcher_name(jg, side)
-        if name and name in (risk or ""):
+        if name and name in text:
             return name, "pitcher"
     for side in ("home", "away"):
         team = jg.get(side)
-        if team and str(team) in (risk or ""):
+        if team and str(team) in text:
             return str(team), "team"
+    # ── 지시어. 이름이 없을 때만 본다 (이름이 이겨야 한다).
+    for side in ("home", "away"):
+        for word in _SIDE_WORDS[side]:
+            if word not in text:
+                continue
+            for kind, roles in _ROLE_WORDS.items():
+                if not any(f"{word} {r}" in text or f"{word}{r}" in text
+                           for r in roles):
+                    continue
+                if kind == "pitcher":
+                    name = pitcher_name(jg, side)
+                    if name:
+                        return name, "pitcher"
+                    continue          # 선발을 모르면 팀으로 넘기지 않는다
+                team = jg.get(side)
+                if team:
+                    return str(team), "team"
     return None, None
 
 

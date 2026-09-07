@@ -471,3 +471,161 @@ async def test_변수의_퍼센트는_질문으로_보내지_않는다():
     q = jg["branch"]["항목"][0]["질문"]
     assert "%p" not in q and "기반영" not in q, f"수치가 질문에 섞였다: {q}"
     assert q == "타선 침체 지속"
+
+
+# ═══════════════ 불펜·연전 해결사 (2026-09-07)
+#
+# 🔴 실측: 기록형 변수 501건의 내역 — 불펜 274건(42.9%) · 연전 68건(10.7%).
+#    둘 다 해결사가 없어 `사유: 대상 선발을 특정하지 못했다` 로 끝났고,
+#    "연전 4일차 away 피로" 는 분류가 기록형인데 답이 **빈 dict** 로 나갔다.
+
+def test_연전_일차_세기():
+    """오늘 포함, 하루라도 비면 끊긴다."""
+    from datetime import date
+
+    from app.engine.branch_resolve import consecutive_days
+
+    t = date(2026, 9, 7)
+    assert consecutive_days([date(2026, 9, 6), date(2026, 9, 5),
+                             date(2026, 9, 4)], t) == 4
+    assert consecutive_days([date(2026, 9, 6), date(2026, 9, 4)], t) == 2
+    assert consecutive_days([date(2026, 9, 5)], t) == 1     # 어제가 비었다
+    assert consecutive_days([], t) == 1
+    # 더블헤더 — 같은 날 두 경기는 하루로 센다
+    assert consecutive_days([date(2026, 9, 6), date(2026, 9, 6)], t) == 2
+
+
+def test_불펜_질문이_선발_이름_없이도_풀린다():
+    """🔴 이 라우팅이 없어서 기록형의 절반(불펜 42.9%)이 답 없이 끝났다.
+
+    ⚠️ 소스 문자열 위치로 재지 않는다 — 주석에 같은 문구를 쓰는 순간
+       테스트가 깨지고, 그때 고쳐지는 것은 코드가 아니라 주석이다.
+       **실제로 호출해서** 답이 나오는지 본다.
+    """
+    import asyncio
+    from datetime import UTC, datetime
+
+    from app.engine.branch_resolve import resolve
+
+    jg = {"sport": "mlb", "home": "Cincinnati Reds", "away": "Milwaukee Brewers",
+          "starts_at": datetime(2026, 9, 7, 23, 10, tzinfo=UTC)}
+    rec = asyncio.run(resolve(_FakePool(), jg, "홈 불펜이 조기 가동되는가"))
+    assert rec["유형"] == "기록형"
+    assert rec.get("사유") != "질문에서 대상 선발을 특정하지 못했다"
+    assert "home" in (rec.get("답") or {}), rec
+    assert "away" not in (rec.get("답") or {}), "한쪽만 물었는데 양쪽을 냈다"
+    assert rec["답"]["home"]["같은처지"]["표본"] == 40
+
+
+def test_연전_질문이_선발_이름_없이도_풀린다():
+    import asyncio
+    from datetime import UTC, datetime
+
+    from app.engine.branch_resolve import resolve
+
+    jg = {"sport": "mlb", "home": "Cincinnati Reds", "away": "Milwaukee Brewers",
+          "starts_at": datetime(2026, 9, 7, 23, 10, tzinfo=UTC)}
+    rec = asyncio.run(resolve(_FakePool(), jg, "연전 4일차 원정 피로"))
+    assert rec["유형"] == "기록형"
+    assert "away" in (rec.get("답") or {}), rec
+    assert rec["답"]["away"]["연전일차"] == 3
+
+
+def test_해결사가_답을_못_내면_사유를_남긴다():
+    """모듈 규약 — 빈 칸을 만들지 않는다."""
+    import inspect
+
+    from app.engine import branch_resolve as br
+
+    for fn in (br.bullpen_outlook, br.series_outlook):
+        src = inspect.getsource(fn)
+        assert "return {}" in src, f"{fn.__name__} 이 실패 경로를 안 그린다"
+    # 라우팅은 빈 답을 그대로 두지 않는다
+    src = inspect.getsource(br.resolve)
+    assert '표본이 하한에 못 미친다' in src
+
+
+def test_연전이_아니면_그렇게_적는다():
+    """⚠️ "연전이 아니다"도 답이다. 조용히 빠지면 판정이 계속 물어본다."""
+    import asyncio
+    import inspect
+
+    from app.engine.branch_resolve import series_outlook
+
+    src = inspect.getsource(series_outlook)
+    assert "연전이 아니다" in src
+    assert asyncio.run(series_outlook(None, "mlb", "T", None)) == {}
+
+
+def test_해결사가_판단하지_않는다():
+    """⚠️ '지쳤다/괜찮다'는 판정의 일이다. 우리는 숫자를 나란히 놓을 뿐이다.
+
+    ⚠️ **코드 줄만 본다.** 주석까지 잡으면 그 다짐을 주석에 적을 수 없게 된다
+       (`test_shadow_panel.test_no_sdk_dependency_added` 와 같은 이유).
+    """
+    import ast
+    import inspect
+
+    from app.engine.branch_resolve import bullpen_outlook, series_outlook
+
+    for fn in (bullpen_outlook, series_outlook):
+        tree = ast.parse(inspect.getsource(fn).lstrip())
+        lits = [n.value for n in ast.walk(tree)
+                if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+        body = " ".join(lits[1:])            # [0] 은 독스트링
+        for verdict in ("지쳤", "위험", "불리", "유리", "약하", "강하"):
+            assert verdict not in body, f"{fn.__name__} 이 판단어를 만든다: {verdict}"
+
+
+class _FakePool:
+    """불펜·연전 해결사가 쓰는 두 질의만 흉내낸다."""
+
+    async def fetch(self, sql, *a):
+        from datetime import date
+        if "NOT a.is_starter" in sql:                       # 최근 3경기 불펜 소모
+            return [{"d": date(2026, 9, 6), "arms": 4, "ip": 3.0},
+                    {"d": date(2026, 9, 5), "arms": 3, "ip": 2.0},
+                    {"d": date(2026, 9, 4), "arms": 5, "ip": 4.0}]
+        if "ORDER BY g.starts_at DESC LIMIT 12" in sql:      # 연전 날짜
+            return [{"d": date(2026, 9, 6)}, {"d": date(2026, 9, 5)}]
+        return []
+
+    async def fetchrow(self, sql, *a):
+        if "next_r" in sql:
+            return {"n": 40, "next_r": 3.1, "next_ip": 3.4}
+        if "avg(allowed)" in sql:
+            return {"n": 55, "runs": 4.2, "allowed": 4.6}
+        return None
+
+
+def test_불펜_연전이_기록형으로_분류된다():
+    """🔴 종전 `불펜\\s*소모` 는 "홈 불펜이 조기 가동되는가" 를 놓쳤고,
+    `연전` 은 패턴에 아예 없어 `연투`·`피로` 에 우연히 걸리고 있었다.
+
+    ⚠️ 반대 위험을 실변수 638건으로 측정했다 (2026-09-07):
+       기록형 501 → 559 (+58) · 미분류 123 → 65 (−58)
+       **뉴스형 → 기록형 탈취 0건.** 넓혀도 뉴스 조사가 줄지 않는다.
+    """
+    from app.engine.branch_resolve import classify
+
+    for q in ("홈 불펜이 조기 가동되는가", "원정 불펜 과부하",
+              "연전 4일차 홈 vs 원정 전환", "구원 소모가 누적됐는가"):
+        assert classify(q) == "기록형", q
+
+
+def test_실시간이_기록형보다_먼저다():
+    """⚠️ "필승조 **가용 여부**" 는 오늘의 사실이지 기록이 아니다.
+    넓힌 기록형이 이 우선순위를 깨지 않았음을 잠근다."""
+    from app.engine.branch_resolve import classify
+
+    assert classify("필승조 가용 여부는") == "실시간형"
+    assert classify("불펜 구단 발표 여부") == "실시간형"
+
+
+def test_뉴스형은_그대로_뉴스로_간다():
+    """넓힌 쪽이 뉴스 조사를 빼앗지 않는다 — 실측 0건을 계약으로 잠근다."""
+    from app.engine.branch_resolve import classify
+
+    for q in ("주전 포수 부상 이탈 여부", "트레이드 마감 영입 효과",
+              "우천 취소 가능성", "감독 징계 여파"):
+        assert classify(q) == "뉴스형", q

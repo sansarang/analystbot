@@ -37,10 +37,16 @@ RECORD, NEWS, LIVE, UNKNOWN = "기록형", "뉴스형", "실시간형", "미분�
 #  ⚠️ `투구수` 만 잡으면 실측 사례 "아리게티 **투구 계획**" 을 놓친다.
 #     `투구`·`등판`·`계획` 을 함께 본다 — 실제로 온 문장으로 폭을 정한다.
 _RECORD_PAT = (
-    r"이닝|소화|투구|워크로드|롱릴리프|불펜\s*소모|연투|등판|"
+    r"이닝|소화|투구|워크로드|롱릴리프|연투|등판|"
     r"오프너|벌크|피로|가용|타순|득점력|최근\s*폼|"
     # [2026-09-07] 변수에서 오는 타선 질문 — "배율 0.46이 일시적 침체인가"
-    r"타선|득점|배율|침체|반등|부진"
+    r"타선|득점|배율|침체|반등|부진|"
+    # [2026-09-07 ②] 종전에는 `불펜\s*소모` 라서 "홈 불펜이 조기 가동되는가" 가
+    #   **미분류**로 빠졌다. 실측상 불펜은 기록형 질문의 42.9% 로 최다다.
+    #   `연전` 도 없었다 — `연투` 만 있어서 "연전 4일차 피로" 가 다른 낱말
+    #   (피로) 덕에 우연히 걸리고 있었다.
+    #   ⚠️ 반대 위험(뉴스형을 빼앗음)을 실변수 638건으로 측정했다 → 아래 주석
+    r"불펜|구원|필승조|연전"
 )
 _NEWS_PAT = r"부상|결장|IL|로스터|트레이드|영입|방출|감독|징계|날씨|우천|비"
 #  🔴 "구단 발표"·"제한 여부" 는 **기록형보다 먼저** 본다. 실측 2026-09-07:
@@ -290,6 +296,153 @@ async def offense_outlook(pool, sport: str, team: str, before,
             "리그_경기당득점": round(float(base["rpg"] or 0), 2)}
 
 
+# ── 기록형 해결사 ④: 불펜이 얼마나 닳았나
+#
+# 🔴 실측 2026-09-07: 기록형 변수 501건 중 **불펜 274건(42.9%)** 이 최다인데
+#    해결사가 없었다. "불펜 조기 가동", "불펜 소모로 체력 저하" 같은 질문이
+#    전부 `사유: 대상 선발을 특정하지 못했다` 로 끝났다.
+_BULLPEN_OWN = """
+    SELECT g.starts_at::date AS d,
+           count(*) FILTER (WHERE NOT a.is_starter)      AS arms,
+           coalesce(sum(a.innings) FILTER (WHERE NOT a.is_starter), 0) AS ip
+      FROM pitcher_appearances a JOIN games g ON g.id = a.game_id
+     WHERE g.sport = $1 AND a.team = $2 AND g.status = 'final'
+       AND g.starts_at < $3
+     GROUP BY g.id, g.starts_at
+     ORDER BY g.starts_at DESC LIMIT $4
+"""
+# 같은처지 = 직전 N경기 구원 이닝 합이 비슷했던 팀들의 **다음 경기** 구원 실점.
+_BULLPEN_PEERS = """
+    WITH per AS (
+      SELECT g.id, g.starts_at, a.team,
+             coalesce(sum(a.innings) FILTER (WHERE NOT a.is_starter), 0) AS ip,
+             coalesce(sum(a.r)       FILTER (WHERE NOT a.is_starter), 0) AS r
+        FROM pitcher_appearances a JOIN games g ON g.id = a.game_id
+       WHERE g.sport = $1 AND g.status = 'final' AND g.starts_at < $2
+       GROUP BY g.id, g.starts_at, a.team
+    ), w AS (
+      SELECT team, starts_at, r, ip,
+             sum(ip) OVER (PARTITION BY team ORDER BY starts_at
+                           ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS prev_ip,
+             count(*) OVER (PARTITION BY team ORDER BY starts_at
+                            ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING) AS n3
+        FROM per
+    )
+    SELECT count(*) AS n, avg(r) AS next_r, avg(ip) AS next_ip
+      FROM w WHERE n3 = 3 AND prev_ip >= $3
+"""
+
+
+async def bullpen_outlook(pool, sport: str, team: str, before) -> dict:
+    """최근 3경기 불펜 소모 → 같은처지 팀의 다음 경기 구원 실점. 못 내면 `{}`.
+
+    ⚠️ "지쳤다/괜찮다"를 우리가 판단하지 않는다. 소모량과 같은처지 실적을
+       **나란히** 낼 뿐이다 — 판단은 판정의 일이다.
+    """
+    if pool is None or not sport or not team or before is None:
+        return {}
+    s = _cfg()
+    try:
+        own = await pool.fetch(_BULLPEN_OWN, sport, team, before, 3)
+        if not own:
+            return {}
+        used_ip = sum(float(r["ip"] or 0) for r in own)
+        peer = await pool.fetchrow(_BULLPEN_PEERS, sport, before, used_ip)
+    except Exception as exc:
+        logger.warning("[branch] %s 불펜 소모 조회 실패: %s", team, exc)
+        return {}
+    n = int((peer or {}).get("n") or 0)
+    if n < int(s.branch_min_n):
+        return {}
+    return {"질문": f"{team} 불펜이 최근 3경기 소모로 흔들리는가",
+            "최근3경기": [{"날짜": str(r["d"]), "투입": int(r["arms"] or 0),
+                          "이닝": round(float(r["ip"] or 0), 1)} for r in own],
+            "소모_구원이닝": round(used_ip, 1),
+            "같은처지": {"조건": f"직전 3경기 구원 {used_ip:.1f}이닝 이상 던진 팀",
+                        "표본": n,
+                        "다음경기_구원실점": round(float(peer["next_r"] or 0), 2),
+                        "다음경기_구원이닝": round(float(peer["next_ip"] or 0), 1)}}
+
+
+# ── 기록형 해결사 ⑤: 연전 몇 일차인가, 그때 어떻게 됐나
+#
+# 🔴 실측 2026-09-07: 연전 68건(10.7%). "연전 4일차 away 피로" 가 `기록형` 으로
+#    분류되고도 답이 **빈 dict** 로 나갔다 — 분류는 맞는데 풀 사람이 없었다.
+_SERIES_DAYS = """
+    SELECT g.starts_at::date AS d FROM games g
+     WHERE g.sport = $1 AND ($2 = g.home OR $2 = g.away)
+       AND g.status = 'final' AND g.starts_at < $3
+     ORDER BY g.starts_at DESC LIMIT 12
+"""
+_SERIES_PEERS = """
+    WITH g AS (
+      SELECT id, starts_at, home AS team, home_score AS runs,
+             away_score AS allowed FROM games
+       WHERE sport = $1 AND status='final' AND home_score IS NOT NULL
+         AND starts_at < $2
+      UNION ALL
+      SELECT id, starts_at, away, away_score, home_score FROM games
+       WHERE sport = $1 AND status='final' AND home_score IS NOT NULL
+         AND starts_at < $2
+    ), w AS (
+      SELECT team, starts_at::date AS d, runs, allowed,
+             lag(starts_at::date, $3) OVER (PARTITION BY team
+                                            ORDER BY starts_at) AS back
+        FROM g
+    )
+    SELECT count(*) AS n, avg(runs) AS runs, avg(allowed) AS allowed
+      FROM w WHERE back IS NOT NULL AND d - back = $3
+"""
+
+
+def consecutive_days(dates: list, today) -> int:
+    """오늘이 연전 몇 일차인가. 오늘 포함, 하루라도 비면 끊긴다.
+
+    ⚠️ 날짜만 본다 — 더블헤더로 같은 날 두 경기면 하루로 센다.
+    """
+    from datetime import timedelta
+
+    seen = sorted({d for d in dates if d is not None}, reverse=True)
+    day, n = today, 1
+    for d in seen:
+        if d == day:
+            continue
+        if d == day - timedelta(days=1):
+            n += 1
+            day = d
+            continue
+        break
+    return n
+
+
+async def series_outlook(pool, sport: str, team: str, before) -> dict:
+    """연전 N일차 판별 + 리그가 그 N일차에 어땠는가. 못 내면 `{}`."""
+    if pool is None or not sport or not team or before is None:
+        return {}
+    s = _cfg()
+    try:
+        rows = await pool.fetch(_SERIES_DAYS, sport, team, before)
+        if not rows:
+            return {}
+        nth = consecutive_days([r["d"] for r in rows], before.date())
+        if nth < 2:
+            return {"질문": f"{team} 이 연전 피로 구간인가", "연전일차": nth,
+                    "사유": "연전이 아니다 — 직전 경기가 어제가 아니다"}
+        peer = await pool.fetchrow(_SERIES_PEERS, sport, before, nth - 1)
+    except Exception as exc:
+        logger.warning("[branch] %s 연전 조회 실패: %s", team, exc)
+        return {}
+    n = int((peer or {}).get("n") or 0)
+    if n < int(s.branch_min_n):
+        return {"질문": f"{team} 이 연전 {nth}일차 피로 구간인가",
+                "연전일차": nth, "사유": f"리그 표본 {n}건 — 하한 미만"}
+    return {"질문": f"{team} 이 연전 {nth}일차에서 처지는가",
+            "연전일차": nth,
+            "같은처지": {"조건": f"연전 {nth}일차 경기", "표본": n,
+                        "평균득점": round(float(peer["runs"] or 0), 2),
+                        "평균실점": round(float(peer["allowed"] or 0), 2)}}
+
+
 async def resolve(pool, jg: dict, question: str) -> dict:
     """분기점 1건을 푼다. 반환 `{유형, 질문, 답 or 사유}`.
 
@@ -315,6 +468,29 @@ async def resolve(pool, jg: dict, question: str) -> dict:
 
     before = _aware(jg.get("starts_at"))
     sport = (jg.get("sport") or "").lower()
+    # ── [2026-09-07] 불펜·연전 해결사. **투수 이름보다 먼저 본다** —
+    #    "홈 불펜이 조기 가동되는가" 에는 선발 이름이 없어서 종전에는
+    #    `사유: 대상 선발을 특정하지 못했다` 로 끝났다. 실측상 불펜 42.9%·
+    #    연전 10.7% 로 기록형의 절반이 여기 있었다.
+    #    ⚠️ 질문이 한쪽을 가리키면 그쪽만, 아니면 양쪽 다 낸다.
+    for pat, fn, tag in ((r"불펜|구원|필승조|롱릴리프", bullpen_outlook, "불펜"),
+                         (r"연전|연투|휴식일|등판\s*간격", series_outlook, "연전")):
+        if not re.search(pat, question):
+            continue
+        got = {}
+        for side in ("home", "away"):
+            other = {"home": "원정", "away": "홈"}[side]
+            mine = {"home": "홈", "away": "원정"}[side]
+            if other in question and mine not in question:
+                continue
+            blk = await fn(pool, sport, jg.get(side) or "", before)
+            if blk:
+                got[side] = blk
+        if got:
+            rec["답"] = got
+            return rec
+        rec["사유"] = f"{tag} 표본이 하한에 못 미친다"
+        return rec
     # 타선 질문이면 타선 해결사로. 투수 이름이 없는 질문이 여기 온다.
     if re.search(r"타선|득점|배율|침체|반등|부진", question):
         res = jg.get("research") or {}
