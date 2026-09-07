@@ -511,6 +511,7 @@ WATCHDOG_CODES = {
     "W-CARD-LATE": "첫 카드 보장선(T-30) 초과 — 카드 없음",
     "W-GAME-INVISIBLE": "경기가 폴링 조회에서 사라짐 (상태 오적재)",
     "W-RESCUE-DEAD": "판정 캐시 구제 실패",
+    "W-STALE-GAME": "시작한 지 오래됐는데 종료로 확정 안 된 경기",
     # 감시 3층 (v1.3-monitor) — 전부 사후 관측이고 발송을 막지 않는다.
     "W-FACT-MISMATCH": "판정이 인용한 수치가 원문과 다름",
     "W-PANEL-DIVERGE": "독립 판정과 편차 큼",

@@ -468,6 +468,99 @@ async def check_invisible_games(pool, redis) -> list[tuple[str, str, str]]:
     return out
 
 
+#: `finals.STALE_AFTER_HOURS` 의 몇 배가 지나야 경보할 것인가. 정합 잡은
+#  하루 한 번(13:00 KST) 도므로 **한 사이클은 지나고** 알린다 — 그 전에
+#  울리면 "아직 정합 잡이 안 돌았다"를 결함으로 보고하는 셈이다.
+STALE_ALERT_MULT = 4
+
+#: 이미 알린 미확정 경기. **서 있는 더미를 다시 울리지 않기 위한 상태**다.
+STALE_SEEN_KEY = "watchdog:stale-games:seen"
+STALE_SEEN_TTL = 30 * 24 * 3600
+
+
+async def check_stale_games(pool, redis) -> list[tuple[str, str, str]]:
+    """(i) 🔴 **소스가 끝내 확정하지 않은 경기.** 유령 행을 드러낸다.
+
+    실측 2026-09-07 (운영 DB, 24시간 문턱): `scheduled` 로 굳은 경기가
+    **kbo 7(최장 1531h·63.8일) · npb 4(643h) · soccer 16(354h) = 27건**.
+    워치독 어느 코드도 이것을 보지 않았다 — `W-GAME-INVISIBLE` 은 **앞으로
+    6시간**만 보고, `W-CARD-LATE` 는 발송 창만 본다. 지난 경기는 아무의
+    관할도 아니었다. 이 행들은 `final` 이 아니라서 자료12 elo·자료1 표본에서
+    조용히 빠진다.
+
+    🔴 **`reconcile_stale_games` 가 매일 집어가면서 "고쳤다 0" 으로 조용히
+       끝난다.** 그 잡은 `ingest_finals` 를 부르는데 수집기는 소스가 `final`
+       이라고 한 것만 반영하므로, 소스가 확정을 안 주면 영원히 비-final 이다.
+       원인은 둘 다 소스 쪽이었다 — KBO 공식 소스가 10일 뒤에도 `scheduled`,
+       NPB 야후는 `試合中止`(취소)인데 우리가 취소를 사후 반영하지 않는다.
+
+    🔴 **서 있는 더미가 아니라 늘어난 것만 울린다.** 27건이 남아 있는 한
+       상시 경보는 15분마다 영원히 울리고, 그러면 내일 슬레이트에서 정작
+       봐야 할 `W-SEND-PENDING`·`W-CARD-LATE` 가 묻힌다. 코드가 답할 질문은
+       "지금 유령이 몇 개냐"(→ `evidence/OPEN.md` #15 가 든다)가 아니라
+       **"오늘 새로 안 끝난 경기가 있냐"** 다. 등록부가 할 일을 사이렌에
+       시키지 않는다.
+    ⚠️ 그래서 **첫 실행은 기준선만 심고 울리지 않는다.** 배포 직후 27건이
+       한꺼번에 터지는 것이야말로 이 설계가 막으려는 것이다.
+    ⚠️ 상태를 못 읽으면(Redis 부재·오류) **점검을 건너뛴다.** 기준선 없이
+       울리면 그게 곧 27건 폭주다.
+
+    ⚠️ **취소 계열은 뺀다.** 안 빼면 KBO 우천취소가 매일 오탐으로 뜬다
+       (실측: 취소 미제외 시 kbo 53건 → 제외 시 7건, 오탐 46건 차단).
+       반대 위험(정상 데이터를 경보로 태우는 것)이 이 필터의 값이다.
+    ⚠️ 문턱은 `finals.STALE_AFTER_HOURS` 를 **원본으로 참조**한다 — 숫자를
+       여기 베껴 적으면 원본이 바뀔 때 따라가지 않는다(사본 금지).
+    """
+    if pool is None or redis is None:
+        return []
+    from app.collectors.finals import STALE_AFTER_HOURS
+
+    hours = STALE_AFTER_HOURS * STALE_ALERT_MULT
+    try:
+        rows = await pool.fetch(
+            """SELECT id, sport, home, away,
+                      round(extract(epoch FROM (now() - starts_at)) / 3600) AS hrs
+                 FROM games
+                WHERE status NOT IN ('final', 'cancelled', 'postponed', 'suspended')
+                  AND starts_at < now() - make_interval(hours => $1)
+                ORDER BY starts_at""", hours)
+    except Exception as exc:
+        logger.debug("[watchdog] 미확정 경기 조회 실패: %s", exc)
+        return []
+
+    cur = {str(r["id"]) for r in rows}
+    try:
+        raw = await redis.get(STALE_SEEN_KEY)
+        await redis.set(STALE_SEEN_KEY, ",".join(sorted(cur)), ex=STALE_SEEN_TTL)
+    except Exception as exc:
+        logger.warning("[watchdog] 미확정 경기 상태 접근 실패 — 점검 생략: %s", exc)
+        return []
+    if raw is None:
+        # 기준선을 심는 첫 실행. 서 있는 더미는 등록부의 몫이다.
+        logger.info("[watchdog] 미확정 경기 기준선 %d건 기록 — 이번엔 알리지 않는다",
+                    len(cur))
+        return []
+    if isinstance(raw, bytes):
+        raw = raw.decode()
+    prev = {x for x in str(raw).split(",") if x}
+    fresh = [r for r in rows if str(r["id"]) not in prev]
+    if not fresh:
+        return []
+
+    by_sport: dict[str, list] = {}
+    for r in fresh:
+        by_sport.setdefault(r["sport"], []).append(r)
+    out: list[tuple[str, str, str]] = []
+    for sport, gs in sorted(by_sport.items()):
+        names = ", ".join(f"{g['away']}@{g['home']}" for g in gs[:3])
+        out.append(("W-STALE-GAME", sport.upper(),
+                    f"시작한 지 {hours}시간 넘게 종료로 확정되지 않은 경기가 "
+                    f"{len(gs)}건 **새로** 생겼다 (최장 {int(max(g['hrs'] for g in gs))}"
+                    f"시간) — 소스가 결과를 주지 않거나 취소가 반영되지 않았다: "
+                    f"{names}"))
+    return out
+
+
 def _today(sport: str) -> str:
     """그 종목의 오늘 슬레이트 날짜. **원본은 파이프라인이다** — 여기서
     날짜 계산 규칙을 다시 쓰지 않는다(MLB 는 미국 동부 기준이라 다르다)."""
@@ -547,6 +640,7 @@ async def run_checks(pool, redis) -> list[tuple[str, str, str]]:
         ("card_late", check_card_late(pool, redis)),
         ("invisible", check_invisible_games(pool, redis)),
         ("source_drift", check_source_drift(pool, redis)),
+        ("stale_games", check_stale_games(pool, redis)),
     ):
         try:
             found += await coro
