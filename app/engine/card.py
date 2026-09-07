@@ -653,3 +653,114 @@ def card_summary_line(jg: dict) -> str | None:
     if even:
         parts.append(f"대등 {even}칸")
     return "🃏 " + " · ".join(parts) if parts else "🃏 상태 카드 — 우세 칸 없음"
+
+
+# ═══════════════════ 판정 블록 (2026-09-07 형식 개편) ═══════════════════
+#
+# 🔴 종전 블록은 `pipeline.py` 가 `" ".join(근거)[:300]` 을 그대로 찍었다.
+#    실측 2026-09-07 실카드(`card:mlb:2026-09-06`)에서 드러난 것:
+#      ① 문장이 잘렸다 — "…홈 확률을 0.50" 에서 끝났다(300자 상한).
+#      ② 근거 3개가 뭉개졌다 — "…득실 흐름은 홈 쪽 자료4: Washington…"
+#         앞 근거의 끝과 다음 근거의 시작이 구분 없이 붙었다.
+#      ③ 팀 이름이 두 언어로 섞였다 — 제목 "LA 다저스", 본문 "Los Angeles Dodgers".
+#      ④ 내부 용어가 샜다 — "신뢰도 medium", "근거 지지 축 없음".
+#      ⑤ 양쪽 승률을 둘 다 적었다(54.0% / 46.0% — 같은 정보).
+#      ⑥ 전개·분기점·예상점수·발생확률이 카드에 하나도 없었다.
+#
+# 🔴 **카드가 써야 할 문장은 `근거` 가 아니라 `결론.판단` 이다.**
+#    `근거` 는 자료 번호가 붙은 감사용 문장이고(L1 이 그것을 대조한다),
+#    `결론.판단` 은 판정이 사람에게 하는 말이다 — 자료 번호가 없고,
+#    무엇이 경기를 가르는지 말하고, 흔들릴 지점까지 붙어 있다.
+#
+# ⚠️ 자르지 않는다. 길이가 문제면 상한을 늘리는 것이 아니라 **줄 수를 줄인다** —
+#    문장 중간에서 끊긴 카드는 없느니만 못하다(v1.3 A-3 `max_tokens` 와 같은 교훈).
+
+#: 확신도 내부값 → 사람 말. `CONF_MAP` 의 역이지만 **표시 문구는 여기서만** 만든다.
+_CONF_KR = {"high": "높음", "medium": "보통", "low": "낮음"}
+
+
+def _kr_name(name: str) -> str:
+    """팀 표기를 한 언어로 고정한다. 실패하면 원문 그대로 — 지어내지 않는다."""
+    try:
+        from app.bot.aliases import kr_team
+
+        return kr_team(name or "") or (name or "")
+    except Exception:
+        return name or ""
+
+
+def _branch_odds(verdict: dict) -> tuple[float | None, float | None, str]:
+    """분기점에 걸린 변수에서 (발생확률%, 영향%p, 방향)을 꺼낸다.
+
+    ⚠️ 변수는 `발생 확률` 을 **선택 칸**으로 갖는다(자료14 가 답을 준 것만).
+       없으면 None — 카드가 확률을 지어내지 않는다.
+    """
+    from app.engine.variable_parse import parse_all
+
+    for row in parse_all(verdict):
+        p = row.get("parsed") or {}
+        if p.get("q") is not None:
+            side = "홈" if p["side"] == "home" else "원정"
+            return p["q"], p["n"], side
+    for row in parse_all(verdict):
+        p = row.get("parsed") or {}
+        if p:
+            side = "홈" if p["side"] == "home" else "원정"
+            return None, p["n"], side
+    return None, None, ""
+
+
+def verdict_block(jg: dict) -> list[str]:
+    """경기 1건의 판정 블록. 판정이 없으면 빈 리스트.
+
+    구조: 제목 → 한 줄 판정 → 판단 서술 → 갈림길 → 확인 불가
+    """
+    m = jg.get("matchup") or {}
+    p = jg.get("p_claude")
+    if p is None:
+        return []
+    home = _kr_name(jg.get("home") or "홈")
+    away = _kr_name(jg.get("away") or "원정")
+    kick = (jg.get("starts_at_kst") or "")[-5:]
+    out = [f"■ {away} @ {home}" + (f"  ·  {kick} KST" if kick else "")]
+
+    # ── 한 줄 판정. **한쪽만** 적는다 — 반대편은 같은 정보다.
+    fav = m.get("우세")
+    if fav == "home":
+        lead = f"{home} 우세 {p:.0%}"
+    elif fav == "away":
+        lead = f"{away} 우세 {1 - p:.0%}"
+    else:
+        lead = f"박빙 (홈 {p:.0%})"
+    bits = [lead]
+    sc = (m.get("전개") or {}).get("예상점수") or {}
+    if sc.get("홈") is not None and sc.get("원정") is not None:
+        bits.append(f"예상 {sc['원정']}-{sc['홈']}")
+    conf = _CONF_KR.get(jg.get("judge_confidence") or "", "")
+    if conf:
+        bits.append(f"확신도 {conf}")
+    out.append("   " + "  ·  ".join(bits))
+
+    # ── 판단 서술. 자료 번호가 없는 문장이라 그대로 읽힌다.
+    judgment = ((m.get("결론") or {}).get("판단") or "").strip()
+    if judgment:
+        out.append("")
+        out.append("   " + judgment)
+
+    # ── 갈림길 = 전개.분기점 + 그 리스크의 발생 확률·영향
+    branch = ((m.get("전개") or {}).get("분기점") or "").strip()
+    if branch:
+        out.append("")
+        out.append(f"   ⚠️ 갈림길 — {branch}")
+        q, n, side = _branch_odds(m)
+        if q is not None and n is not None:
+            out.append(f"      발생 확률 {q:.0f}% · 그때 {side} 쪽으로 {n:.0f}%p")
+        elif n is not None:
+            out.append(f"      발생하면 {side} 쪽으로 {n:.0f}%p (발생 확률은 미확인)")
+
+    # ── 확인 불가. **모르는 것을 밝히는 것도 정보다.**
+    unknown = [str(x) for x in (m.get("추가확인") or []) if str(x).strip()]
+    if unknown:
+        out.append("")
+        out.append("   확인 불가 — " + " / ".join(unknown[:2]))
+    return out

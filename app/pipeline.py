@@ -4192,28 +4192,35 @@ def render_star_board(games: list[dict]) -> tuple[list[str], list[str]]:
         if unpriced:
             lines.append("   ⚪ 확률 미산출: " + ", ".join(r["desc"] for r in unpriced))
 
-        # ── 심층: 이 경기의 근거를 마켓 행마다 1:1로 남긴다 ──
-        detail.append(f"■ {matchup(g)}")
-        for r in priced:
-            # [§8-18] 돈·손익분기·시장 환산을 뺐다. 남는 것은 확률과 근거뿐이다.
-            detail.append(
-                f"  {('★' * r['stars']) if r['stars'] else '─'}{r['warn']} {r['desc']}: "
-                f"승률 {r['p']:.1%} / 근거 {r['axes'] or '없음'}"
-                + (f" / 제외: {r['reject']}" if r.get("reject") else ""))
-        for r in unpriced:
-            detail.append(f"  ─ {r['desc']}: 확률 미산출 — 재료 부족")
+        # ── 심층: 이 경기의 판정을 사람이 읽는 형태로 남긴다 ──
+        # 🔴 [형식 개편 2026-09-07] 종전에는 `" ".join(근거)[:300]` 을 그대로
+        #    찍어 문장이 잘리고 근거 3개가 뭉개졌다(실측 `card:mlb:2026-09-06`).
+        #    이제 `card.verdict_block` 이 판정의 구조화 필드로 조립한다 —
+        #    문구를 두 곳에 적지 않는다(사본 금지).
+        from app.engine.card import verdict_block
+
+        block = verdict_block(g)
+        if block:
+            detail.extend(block)
+        else:
+            detail.append(f"■ {matchup(g)}")
+        # 마켓 행은 **판정이 없을 때만** 남긴다 — 있으면 판정 블록이 대신한다.
+        if not block:
+            for r in priced:
+                detail.append(
+                    f"  {('★' * r['stars']) if r['stars'] else '─'}{r['warn']} "
+                    f"{r['desc']}: 승률 {r['p']:.1%}"
+                    + (f" / 제외: {r['reject']}" if r.get("reject") else ""))
+            for r in unpriced:
+                detail.append(f"  ─ {r['desc']}: 확률 미산출 — 재료 부족")
         if g.get("lambda_trace"):
             detail.append("  λ 산출: " + " → ".join(g["lambda_trace"]))
         if g.get("lambda_missing"):
             detail.append("  λ 미확보 입력: " + ", ".join(g["lambda_missing"]))
-        if g.get("p_claude") is not None:
-            detail.append(f"  판정 승률(홈) {g['p_claude']:.1%} "
-                          f"· 신뢰도 {g.get('judge_confidence') or '?'}")
-        if g.get("verdict"):
-            detail.append(f"  판정 근거: {str(g['verdict'])[:300]}")
         unused = ((g.get("prob_adjust") or {}).get("unused")) or []
         if unused:
             detail.append("  (확률 미반영) " + ", ".join(unused))
+        detail.append("")
     return lines, detail
 
 def _guard_basic(text: str, where: str) -> str:
