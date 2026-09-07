@@ -77,9 +77,22 @@ async def innings_profile(pool, sport: str, pitcher: str, before) -> dict:
     starts = sum(1 for r in rows if r["is_starter"])
     out = {"n": len(rows), "이닝": [round(x, 2) for x in ip],
            "선발등판": starts, "구원등판": len(rows) - starts,
-           "최장": round(max(ip), 2), **quantiles(ip)}
-    logger.info("[var-ref] %s %s 이닝 분포 n=%d 선발%d p50=%s 최장=%s",
-                sport, pitcher, out["n"], starts, out.get("p50"), out["최장"])
+           "최장": round(max(ip), 2)}
+    # 🔴 [표본 하한 2026-09-07] **분위수는 표본이 받쳐줄 때만 낸다.**
+    #    `quantiles` 는 보간하지 않고 실제 값 하나를 고르므로 n<5 에서는
+    #    p50 과 p75 가 같은 값으로 퇴화한다(n=2·4 실측). 그 상태로 나가면
+    #    판정이 "p25 = 2.0이닝"을 결정 변수의 크기로 인용하는데, 그 2.0 은
+    #    분포가 아니라 **두 값 중 작은 쪽**이다 (실측 2026-09-07 Wrobleski).
+    #    원시 `이닝` 배열은 사실이므로 그대로 남긴다 — 지우는 것은 추정뿐이다.
+    min_q = int(_cfg().var_ref_min_quantile_n)
+    if len(ip) >= min_q:
+        out.update(quantiles(ip))
+    else:
+        out["주의"] = (f"등판 {len(ip)}건 — 분위수 생략(최소 {min_q}건). "
+                       f"`이닝` 배열을 직접 읽어라")
+    logger.info("[var-ref] %s %s 이닝 분포 n=%d 선발%d p50=%s 최장=%s%s",
+                sport, pitcher, out["n"], starts, out.get("p50"), out["최장"],
+                "" if len(ip) >= min_q else f" (분위수 생략 n<{min_q})")
     return out
 
 
@@ -307,6 +320,76 @@ async def attach_opp_starter_era(pool, jg: dict, redis=None) -> int:
 M10_YES, M10_MISSING, M10_NA = "Y", "N", "해당없음"
 
 
+# ══════════════ 1-c. 리그 선발 기준선 (얇은 선발이 기댈 자) ══════════════
+
+_LEAGUE_STARTER = """
+    SELECT count(*) AS n,
+           avg(a.innings) AS ip,
+           avg(a.r) AS r
+      FROM pitcher_appearances a
+      JOIN games g ON g.id = a.game_id
+     WHERE g.sport = $1 AND a.is_starter AND g.status = 'final'
+       AND a.innings > 0
+       AND g.starts_at < $2
+       AND g.starts_at >= $2 - make_interval(days => $3)
+"""
+
+
+async def league_starter_reference(pool, redis, sport: str, before) -> dict:
+    """그 리그 선발의 **최근 창** 평균 이닝·실점. 못 내면 빈 dict.
+
+    🔴 왜 필요한가 (실측 2026-09-07 WSH@LAD): 자료4 가 Wrobleski 에 대해
+       `선발 1회(6이닝 4실점)·구원 1회` 두 줄만 줬다. 판정은 그걸 상대
+       선발의 `4선발 21.3이닝 6실점` 과 나란히 놓고 "선발 항목은 원정 우위"
+       라고 결론냈는데, **표본 2와 표본 4를 맨눈으로 비교한 것**이다.
+       얇은 쪽이 리그 평균과 비교해 어디쯤인지 알려줄 자가 없었다.
+
+    ⚠️ **시즌 누적이 아니다.** `var_ref_league_days` 창 안의 선발 등판만
+       센다 — 대원칙의 집계표 금지에 걸리지 않는 최근 창 상태값이다.
+    ⚠️ 리그를 섞지 않는다. KBO 기준선을 NPB 에 대지 않는다.
+    ⚠️ 표본이 `var_ref_league_min_n` 미만이면 **빈 dict** — 얇은 선발을
+       더 얇은 기준선으로 재는 것은 없느니만 못하다.
+    """
+    if pool is None or not sport or before is None:
+        return {}
+    s = _cfg()
+    days = int(s.var_ref_league_days)
+    key = f"var_ref:league_sp:{sport}:{_as_date(before)}:{days}"
+    if redis is not None:
+        try:
+            import json as _json
+
+            raw = await redis.get(key)
+            if raw:
+                return _json.loads(raw)
+        except Exception as exc:
+            logger.debug("[var-ref] 리그 기준선 캐시 읽기 실패: %s", exc)
+    try:
+        row = await pool.fetchrow(_LEAGUE_STARTER, sport, before, days)
+    except Exception as exc:
+        logger.warning("[var-ref] %s 리그 선발 기준선 조회 실패: %s", sport, exc)
+        return {}
+    n = int((row or {}).get("n") or 0)
+    if n < int(s.var_ref_league_min_n):
+        logger.info("[var-ref] %s 리그 선발 기준선 표본 부족 n=%d (<%d) — 생략",
+                    sport, n, s.var_ref_league_min_n)
+        return {}
+    out = {"리그": sport.upper(), "창": f"최근 {days}일", "표본": n,
+           "평균이닝": round(float(row["ip"] or 0), 2),
+           "평균실점": round(float(row["r"] or 0), 2)}
+    logger.info("[var-ref] %s 리그 선발 기준선 n=%d %.2f이닝 %.2f실점 (최근 %d일)",
+                sport, n, out["평균이닝"], out["평균실점"], days)
+    if redis is not None:
+        try:
+            import json as _json
+
+            await redis.set(key, _json.dumps(out, ensure_ascii=False),
+                            ex=int(s.var_ref_cache_sec))
+        except Exception as exc:
+            logger.debug("[var-ref] 리그 기준선 캐시 쓰기 실패: %s", exc)
+    return out
+
+
 async def attach_material10(pool, redis, jg: dict) -> str:
     """`jg["material10"]` 과 상태를 채운다. 반환 상태 3값.
 
@@ -354,9 +437,11 @@ async def build_material10(pool, redis, jg: dict) -> dict:
     before = _aware(jg.get("starts_at")) or datetime.now(UTC)
     from app.engine.starter_recent import pitcher_name
 
+    thin = False
     for side in ("home", "away"):
         blk: dict = {}
         if needs_innings_profile(jg, side):
+            thin = True
             prof = await innings_profile(pool, sport, pitcher_name(jg, side), before)
             if prof:
                 blk["이닝분포"] = prof
@@ -368,4 +453,10 @@ async def build_material10(pool, redis, jg: dict) -> dict:
                 blk["부진후회귀"] = {"최근3등판_시즌대비": gap, **ref}
         if blk:
             out[side] = blk
+    # 🔴 얇은 선발이 **한쪽이라도** 있으면 리그 기준선을 붙인다. 팀별 값이
+    #    아니라 리그 하나이므로 최상위에 한 번만 둔다(사본 금지).
+    if thin:
+        ref = await league_starter_reference(pool, redis, sport, before)
+        if ref:
+            out["선발기준선"] = ref
     return out

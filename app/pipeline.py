@@ -2732,6 +2732,17 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
         except Exception as exc:
             logger.warning("[pipeline] 자료11 조립 실패 game=%s: %s",
                            jg.get("game_id"), exc)
+        # [자료1 상대 보정 2026-09-07] 최근 3경기 득점을 **상대의 최근 실점률**
+        #   로 나눈 배율. 판정이 서술로만 하던 보정을 숫자로 준다.
+        #   ⚠️ 실패해도 판정을 막지 않는다 — 없으면 종전대로 원시 득점만 간다.
+        if pool is not None:
+            try:
+                from app.engine.opponent_adjust import attach as _m1adj
+
+                await _m1adj(pool, jg)
+            except Exception as exc:
+                logger.warning("[pipeline] 자료1 상대 보정 실패 game=%s: %s",
+                               jg.get("game_id"), exc)
         if await judge_matchup(jg, redis, date, allow_final=allow_final):
             n += 1
             # ── [v1.4] 시장 기준선을 **게이트보다 먼저** 새긴다 ──────────
