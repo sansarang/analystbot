@@ -385,6 +385,13 @@ async def mlb_pregame_poll() -> None:
     redis = aioredis.from_url(s.redis_url, decode_responses=True)
     date = mlb_slate_date()
     now = datetime.now(UTC)
+    # 🔴 [2026-09-07] 시각을 크론에 박는 대신 **오늘 실제 경기 시각**으로 연다.
+    #    `asia_poll_window` 와 같은 규약 — 경기가 없으면 창이 자연히 닫힌다.
+    open_, why = await mlb_poll_window(pool, now)
+    if not open_:
+        logger.debug("[mlb-pregame] 창 닫힘 — %s", why)
+        await redis.aclose()
+        return
     t0 = _time.monotonic()
     rep: list[str] = []
     errs: list[dict] = []
@@ -520,6 +527,52 @@ async def asia_poll_window(pool, now) -> tuple[bool, str]:
     if not row or row["lo"] is None:
         return False, "오늘 예정 경기 없음"
     lead = timedelta(minutes=SEND_OPEN_MIN["kbo"] + 20)
+    if now < row["lo"] - lead:
+        return False, f"창 이전 (첫 경기 {row['lo']:%H:%M}Z)"
+    if now > row["hi"]:
+        return False, f"창 이후 (막 경기 {row['hi']:%H:%M}Z)"
+    return True, ""
+
+
+async def mlb_poll_window(pool, now) -> tuple[bool, str]:
+    """지금이 MLB 폴링 창인가. 반환 (열림, 사유).
+
+    🔴 [2026-09-07] **종전에는 `CronTrigger(hour="5-11", …)` 였다.**
+       KBO·NPB 가 `hour="17,18"` 로 시각을 박아 낮경기·순연을 통째로 놓쳤던
+       것과 **같은 결함**이 MLB 에만 남아 있었다. 실측(최근 30일 337경기):
+       01시 7 · 02시 40 · 03시 25 · 04시 9 = **81경기(24%)가 창 밖**이라
+       발송 창이 열려도(T-180) 폴링이 자고 있어 카드가 나가지 못했다.
+       `CLAUDE.md` 발송 규율의 "첫 카드 보장선 T-30"이 그 24%에는
+       적용된 적이 없다.
+
+    창 = [가장 이른 경기 − (MLB 발송창 + 20분), 가장 늦은 경기 시작]
+
+    ⚠️ **새 상수를 만들지 않는다.** `SEND_OPEN_MIN["mlb"]`(180) + 20분 여유다
+       — `asia_poll_window` 와 같은 규약이다.
+    ⚠️ 날짜 기준은 **미국 동부**다(`CLAUDE.md` 규칙 5). KST 날짜로 자르면
+       01~04시 KST 경기가 전날 슬레이트로 밀려 또 빠진다.
+       `mlb_slate_date()` 가 원본이므로 규칙을 여기 다시 쓰지 않는다.
+    ⚠️ 조회 실패도 닫힘이다 — 모르는 것을 폴링의 근거로 쓰지 않는다.
+    """
+    from datetime import date as _date
+
+    from app.engine.pregame_push import SEND_OPEN_MIN
+
+    if pool is None:
+        return False, "pool 없음"
+    try:
+        row = await pool.fetchrow(
+            """SELECT min(starts_at) AS lo, max(starts_at) AS hi
+                 FROM games
+                WHERE sport = 'mlb' AND status = 'scheduled'
+                  AND (starts_at AT TIME ZONE 'America/New_York')::date = $1""",
+            _date.fromisoformat(mlb_slate_date()))
+    except Exception as exc:
+        logger.warning("[scheduler] MLB 폴링 창 조회 실패 — 닫힘: %s", exc)
+        return False, "조회 실패"
+    if not row or row["lo"] is None:
+        return False, "오늘 슬레이트 예정 경기 없음"
+    lead = timedelta(minutes=SEND_OPEN_MIN["mlb"] + 20)
     if now < row["lo"] - lead:
         return False, f"창 이전 (첫 경기 {row['lo']:%H:%M}Z)"
     if now > row["hi"]:
@@ -1877,10 +1930,14 @@ def _job_specs() -> list[tuple]:
         #   20분뿐이다. 5분 간격이면 4틱, 공시 직후 한 틱을 놓치면 그 경기는
         #   끝이다. NPB만 2분으로 따로 돈다 — 창 게이트는 같은 것을 쓴다.
         ("npb_pregame_2m", npb_pregame_2m, IntervalTrigger(minutes=2)),
-        # MLB 아침 슬레이트 (05~11 KST). 사이트는 statsapi. 캐시만 보낸다.
-        ("mlb_pregame_5m", mlb_pregame_poll,
-         CronTrigger(hour="5-11", minute="0,5,10,15,20,25,30,35,40,45,50,55",
-                     timezone=KST)),
+        # MLB 폴링. 사이트는 statsapi. 캐시만 보낸다.
+        # 🔴 [2026-09-07] 종전에는 `CronTrigger(hour="5-11", …)` 로 **시각을
+        #    박아** 01~04시 KST 경기 81건(최근 30일 337경기의 24%)에서 아예
+        #    돌지 않았다. 발송 창이 T-180 에 열려도 폴링이 자고 있으니
+        #    "첫 카드 보장선 T-30"이 그 24%에는 적용된 적이 없다.
+        #    KBO·NPB 가 `hour="17,18"` 로 겪었던 것과 같은 결함이다.
+        #    이제 5분마다 돌되 `mlb_poll_window` 가 실제 경기 시각으로 연다.
+        ("mlb_pregame_5m", mlb_pregame_poll, IntervalTrigger(minutes=5)),
         ("statcast_daily", statcast_refresh_job,
          CronTrigger(hour=3, minute=30, timezone=KST)),
         # 파크팩터는 시즌 누적이라 천천히 변한다 — 주 1회면 충분하고 statsapi 1콜이다

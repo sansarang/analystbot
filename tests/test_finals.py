@@ -44,8 +44,14 @@ def test_scheduler_jobs_registered():
     #   통째로 놓쳤다. 창은 이제 `asia_poll_window` 가 DB 경기 시각으로 연다.
     trig = str(jobs["asia_pregame_5m"].trigger)
     assert "interval" in trig and "0:05:00" in trig
+    # [계약 갱신 2026-09-07] MLB 도 같은 전환. 종전 `hour="5-11"` 은 01~04시
+    #   KST 경기를 통째로 놓쳤다 — 실측 최근 30일 337경기 중 **81경기(24%)**
+    #   (01시 7 · 02시 40 · 03시 25 · 04시 9). 발송 창이 T-180 에 열려도
+    #   폴링이 자고 있어 "첫 카드 보장선 T-30"이 그 24% 에는 적용된 적이 없다.
+    #   ⚠️ 종전 이 단언(`"5" in trig and "11" in trig`)이 **결함을 계약으로
+    #      고정**하고 있었다. 창은 이제 `mlb_poll_window` 가 DB 경기 시각으로 연다.
     mlb_trig = str(jobs["mlb_pregame_5m"].trigger)
-    assert "5" in mlb_trig and "11" in mlb_trig
+    assert "interval" in mlb_trig and "0:05:00" in mlb_trig
     assert "0:02:00" in str(jobs["heartbeat_2m"].trigger)
     assert "day_of_week='mon'" in str(jobs["elo_refresh_weekly"].trigger)
     assert str(jobs["prefetch_evening"].trigger) == "cron[hour='21', minute='0']"
