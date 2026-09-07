@@ -175,6 +175,25 @@ _LEDGER_TAIL = """   ⚠️ 이 대장은 **변수의 크기를 뒷받침하는 
 """
 
 
+def elo_payload(jg: dict) -> dict:
+    """자료12 — 팀 실력 레이팅. 한쪽이라도 없으면 **빈 dict**.
+
+    🔴 **팀당 숫자 하나만 넘긴다.** 시즌 집계표를 여기 얹으면 대원칙 위반이다
+       (`app/engine/CLAUDE.md` — 집계표 금지, 레이팅만 예외).
+    ⚠️ 한 팀만 있으면 격차를 낼 수 없다. 반쪽 정보를 실력차로 읽게 하느니
+       자료12 자체를 생략한다.
+    """
+    e = jg.get("elo") or {}
+    h, a = e.get("home"), e.get("away")
+    if not h or not a:
+        return {}
+    return {"홈": {"레이팅": h.get("레이팅"), "리그평균대비": h.get("리그평균대비"),
+                   "경기수": h.get("경기수")},
+            "원정": {"레이팅": a.get("레이팅"), "리그평균대비": a.get("리그평균대비"),
+                     "경기수": a.get("경기수")},
+            "격차": round(float(h.get("레이팅") or 0) - float(a.get("레이팅") or 0), 1)}
+
+
 def ledger_payload(jg: dict) -> dict:
     """변수 대장의 두 축. **읽기만 한다** — 조립은 파이프라인이 끝냈다."""
     return {"ref": jg.get("material10") or {},
@@ -544,6 +563,7 @@ def render_matchup_prompt(jg: dict, boxes: dict, news: dict,
         LINEUP_INTENT_JSON=json.dumps(intent_payload(jg), ensure_ascii=False,
                                       default=str),
         BULLPEN_JSON=json.dumps(bullpen_payload(jg), ensure_ascii=False, default=str),
+        ELO_JSON=json.dumps(elo_payload(jg), ensure_ascii=False, default=str),
     )
     # [C4 변수 대장] 자료10·11 을 한 블록으로. 둘 다 비면 원문 그대로다.
     prompt = insert_ledger(prompt, ledger_payload(jg))

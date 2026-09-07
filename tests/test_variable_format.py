@@ -109,11 +109,14 @@ def test_sample_restarts_for_all_three_leagues():
     )
 
     assert freeze_start("kbo") == freeze_start("npb") == freeze_start("mlb")
-    assert freeze_start("kbo") == "2026-09-05"
-    # 🔴 [2026-09-04] 사유 문구가 갱신됐다. 같은 날 자료7·8 폐지 · 자료9 최근폼
-    #    교체 · 자료11 신설이 이어졌고, **날짜는 다시 끊지 않았다** —
-    #    그날 슬레이트를 새 재료로 다시 돌려 덮었기 때문에 표본이 섞이지 않는다.
-    assert "변수 대장" in FREEZE_RESTART_REASON
+    from app.engine.daily_summary import FREEZE_START_DEFAULT
+
+    assert freeze_start("kbo") == FREEZE_START_DEFAULT
+    # 🔴 사유 문구는 재시작마다 바뀐다 — **문구를 베끼지 않는다.**
+    #    (2026-09-04 "변수 대장" → v1.4 2026-09-07 "실력 축 복원")
+    #    지켜야 할 성질은 "사유가 비어 있지 않다" 하나다. 숫자가 0 부터
+    #    시작하는 이유를 사용자가 묻기 전에 답할 수 있으면 된다.
+    assert FREEZE_RESTART_REASON.strip()
     # 🔴 이 재시작이 마지막이다 — 재료를 바꿀 때마다 버리면 50건에 영영 못 간다
     assert FREEZE_RESTART_IS_FINAL is True
 
@@ -128,4 +131,8 @@ async def test_summary_states_the_restart_reason():
             return [{"sport": "kbo", "n": 2}]
 
     lines = await freeze_progress_lines(Pool(), ("kbo",))
-    assert any("표본 재시작" in x and "변수 대장" in x for x in lines), lines
+    # 사유 문구는 재시작마다 바뀐다 — 문구를 베끼지 말고 **원본과 대조**한다.
+    from app.engine.daily_summary import FREEZE_RESTART_REASON
+
+    assert any("표본 재시작" in x and FREEZE_RESTART_REASON in x
+               for x in lines), lines

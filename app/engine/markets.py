@@ -384,13 +384,20 @@ STARS_BY_GRADE = {GRADE_GREEN: 4, GRADE_YELLOW: 3, GRADE_RED: 1, GRADE_BLANK: 0}
 
 
 def row_stars(c: dict, confidence: str | None = None) -> int:
-    """[3] 마켓별 신뢰도 ★ 개수 (0~5). 판정 신뢰도가 높으면 한 칸 올린다."""
-    stars = STARS_BY_GRADE.get(c.get("grade"), 0)
-    if stars and confidence == "high":
-        stars = min(5, stars + 1)
-    elif stars > 1 and confidence == "low":
-        stars -= 1
-    return stars
+    """[3] 마켓별 신뢰도 ★ 개수 (0~5). **확률 등급만으로** 센다.
+
+    🔴 [v1.4 2026-09-07 사용자 지시] 종전에는 확신도 `상` 이면 한 칸 올리고
+       `하` 면 한 칸 내렸다. 620행 분석에서 **확신도 표기가 역정보**로 나왔다 —
+       추천(확신 높은 쪽) 적중 30.8%(n=13) < 보드만 59.7%(n=77).
+       확신을 별점으로 증폭하면 사용자가 가장 못 맞히는 픽을 가장 굵게 본다.
+       재캘리브레이션으로 확신도가 정보임이 확인될 때까지 **표시에서 뺀다.**
+
+    ⚠️ **거부권은 그대로다.** 확신도 `하` → `거부권탈락` 은 데이터상 잘
+       작동한다(62.5% n=16). 뺀 것은 `상/중` 의 **표기**이지 `하` 의 게이트가
+       아니다. 원장의 확신도 기록은 계속한다 — 재캘리브레이션 재료다.
+    ⚠️ `confidence` 인자는 호출 규약 유지를 위해 남기고 여기서 버린다.
+    """
+    return STARS_BY_GRADE.get(c.get("grade"), 0)
 
 
 def grade_candidate(c: dict, settings=None) -> tuple[str, str]:

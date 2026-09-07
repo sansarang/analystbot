@@ -153,7 +153,11 @@ def test_hard_limits_survive_the_revision():
     """개정이 완화하면 안 되는 것까지 건드리지 않았는가."""
     assert "0.32~0.68" in MATCHUP
     assert "±3%p" in MATCHUP
-    assert "배당, 팀 명성, 시즌 승률, 사전 지식은 쓰지 않는다" in MATCHUP
+    # [v1.4 2026-09-07] 문장이 좁아졌다 — 시즌 승률 금지 → 시즌 **집계표**
+    #   금지 + 자료12 레이팅 예외. **배당 금지는 한 글자도 안 바뀌었다.**
+    assert "배당, 팀 명성, 사전 지식은 쓰지 않는다" in MATCHUP
+    assert "시즌 **집계표**" in MATCHUP
+    assert "자료12 실력 레이팅은 예외다" in MATCHUP
 
 
 def test_low_recent_sample_pulls_toward_half():

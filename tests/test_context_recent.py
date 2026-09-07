@@ -150,14 +150,23 @@ def test_starter_hand_is_a_fact_not_a_split():
 # ─────────────────── C6 동결 ───────────────────
 
 def test_freeze_was_not_restarted_again():
-    """🔴 재시작은 이미 최종이다 — 재료를 바꿀 때마다 미루면 50건에 못 간다."""
+    """🔴 재시작은 최종이다 — 재료를 바꿀 때마다 미루면 50건에 못 간다.
+
+    ⚠️ [v1.4 2026-09-07] **이 잠금을 한 번 넘었다.** 사용자 지시로 재시작했다 —
+       자료12(실력 레이팅)가 판정 입력에 들어갔고 추천 게이트에 시장 동의
+       조건이 붙었다. 09-06 까지와 같은 시스템이 아니다.
+       근거: 2026-09-06 620행 분석(확신 역전 4중 확인 · 실력 축 부재).
+       이 테스트는 이제 **날짜를 베끼지 않고** 원본을 읽는다 — 다음에 또
+       날짜가 바뀌면 사유가 함께 바뀌었는지를 본다.
+    """
     from app.engine.daily_summary import (
-        FREEZE_RESTART_IS_FINAL, FREEZE_RESTART_REASON, freeze_start,
+        FREEZE_RESTART_IS_FINAL, FREEZE_RESTART_REASON, FREEZE_START_DEFAULT,
+        freeze_start,
     )
 
     assert FREEZE_RESTART_IS_FINAL is True
-    assert freeze_start("kbo") == "2026-09-05"
-    assert "변수 대장" in FREEZE_RESTART_REASON
+    assert freeze_start("kbo") == FREEZE_START_DEFAULT
+    assert FREEZE_RESTART_REASON.strip(), "재시작 사유가 비어 있다"
 
 
 # ─────────────────── C2 확장 (2026-09-05) ───────────────────

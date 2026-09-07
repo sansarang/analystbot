@@ -46,7 +46,10 @@ def test_prompts_carry_no_odds_fields():
     for p in (MATCHUP, TEAM_FORM):
         assert "배당" not in p or "배당, 팀 명성" in p or "배당을" in p
     # 매치업은 "배당을 쓰지 않는다"는 금지 문구만 있어야 한다
-    assert "배당, 팀 명성, 시즌 승률, 사전 지식은 쓰지 않는다" in MATCHUP
+    # [v1.4 2026-09-07] 문장이 바뀌었다 — 시즌 승률 금지가 "시즌 **집계표**
+    #   금지 + 자료12 레이팅 예외"로 좁아졌다. **배당 금지는 그대로다.**
+    assert "배당, 팀 명성, 사전 지식은 쓰지 않는다" in MATCHUP
+    assert "시즌 **집계표**" in MATCHUP
 
 
 def test_market_edge_does_not_import_judgement_modules():

@@ -12,6 +12,7 @@
    KBO(기록실에 최근 N경기 스플릿 없음)·NPB(시즌표뿐)는 경로가 없다 —
    MLB 만 바꾸면 3리그 표본이 갈린다. 경로가 생기면 3리그 동시에 넣는다.
 """
+import json
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,53 @@ def test_matchup_prompt_has_no_season_placeholders():
     """폐지된 두 자료의 자리표시자가 프롬프트에 남아 있지 않다."""
     assert "{{STARTER_SEASON_JSON}}" not in MATCHUP
     assert "{{LINEUP_SEASON_JSON}}" not in MATCHUP
+
+
+# ── [v1.4 2026-09-07] 자료12 예외 — 삭제가 아니라 **갱신**이다 ───────────
+#   대원칙 개정: "시즌 누적 통계(집계표)는 금지 — 유지. 단, 경기 단위로
+#   갱신되는 실력 레이팅(ELO, 최근 가중)은 누적 통계가 아니라 '오늘 시점
+#   실력 상태값'이므로 자료12로 허용한다." (사용자 결정, 620행 분석 근거)
+#   아래 기존 집계표 차단 단언은 **하나도 빼지 않았다.**
+
+def test_material12_elo_is_allowed():
+    """자료12 는 프롬프트에 실린다 — 이것이 개정된 계약이다."""
+    from app.engine.prompts import MATCHUP
+
+    assert "{{ELO_JSON}}" in MATCHUP
+    assert "실력 레이팅" in MATCHUP
+    assert "기본 축" in MATCHUP and "조정 축" in MATCHUP
+
+
+def test_material12_is_a_state_value_not_a_table():
+    """팀당 **숫자 하나**여야 한다. 집계표를 얹으면 대원칙 위반이다."""
+    from app.engine.matchup import elo_payload
+
+    jg = {"elo": {"home": {"레이팅": 1530.0, "리그평균대비": 30.0, "경기수": 41},
+                  "away": {"레이팅": 1470.0, "리그평균대비": -30.0, "경기수": 38}}}
+    out = elo_payload(jg)
+    assert out["격차"] == 60.0
+    assert set(out["홈"]) == {"레이팅", "리그평균대비", "경기수"}
+    blob = json.dumps(out, ensure_ascii=False)
+    for banned in ("타율", "ERA", "승패", "스플릿", "통산", "상대전적", "OPS", "WHIP"):
+        assert banned not in blob, f"집계표가 자료12 에 섞였다: {banned}"
+
+
+def test_material12_needs_both_teams():
+    """한 팀만 있으면 격차를 못 낸다 — 반쪽을 실력차로 읽게 하지 않는다."""
+    from app.engine.matchup import elo_payload
+
+    assert elo_payload({"elo": {"home": {"레이팅": 1530}, "away": None}}) == {}
+    assert elo_payload({}) == {}
+
+
+def test_ban_now_targets_tables_not_all_season_data():
+    """금지선이 '시즌 데이터 전부'에서 '집계표'로 좁아졌다."""
+    from app.engine.prompts import MATCHUP
+
+    assert "시즌 **집계표**" in MATCHUP
+    assert "자료12 실력 레이팅은 예외다" in MATCHUP
+    # 종전 문구는 사라져야 한다 — 두 규칙이 공존하면 판정이 헷갈린다.
+    assert "배당, 팀 명성, 시즌 승률, 사전 지식은 쓰지 않는다" not in MATCHUP
 
 
 def test_matchup_prompt_states_the_ban():

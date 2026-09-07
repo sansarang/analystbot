@@ -42,7 +42,9 @@ LABEL_TO_CODE = [
 ]
 
 K_FACTOR = 20.0
-LOG10 = math.log(10.0)
+# 🔴 [C7 2026-09-07] ELO 커널을 `elo_core` 로 뽑았다 — 야구 자료12 가 같은
+#    식을 쓴다. 여기서 다시 정의하지 않는다(사본 금지).
+from app.models.elo_core import LOG10, replay, sigmoid as _sigmoid  # noqa: E402
 
 # 배당 컬럼 우선순위 (마감가 → 평균가 → 개장가)
 ODDS_COLS = [
@@ -50,14 +52,6 @@ ODDS_COLS = [
     ("PH", "PD", "PA"), ("PSH", "PSD", "PSA"), ("AvgH", "AvgD", "AvgA"),
     ("B365H", "B365D", "B365A"),
 ]
-
-
-def _sigmoid(z: float) -> float:
-    if z < -35:
-        return 0.0
-    if z > 35:
-        return 1.0
-    return 1.0 / (1.0 + math.exp(-z))
 
 
 def probs_from_diff(d: float, c1: float, c2: float) -> tuple[float, float, float]:
@@ -149,21 +143,6 @@ def load_matches(code: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------- 리플레이·피팅
-
-def replay(matches: list[dict], home_adv: float, k: float = K_FACTOR):
-    """시간순 리플레이. 예측은 갱신 '전' 레이팅으로 → walk-forward 백테스트 그대로 사용."""
-    ratings: dict[str, float] = defaultdict(lambda: 1500.0)
-    records = []  # (elo_diff_incl_HA, res, market_probs, season)
-    for m in matches:
-        d = ratings[m["home"]] + home_adv - ratings[m["away"]]
-        records.append((d, m["res"], m["market"], m["season"]))
-        expected = _sigmoid(d * LOG10 / 400.0)
-        score = 1.0 if m["res"] == "H" else 0.5 if m["res"] == "D" else 0.0
-        delta = k * (score - expected)
-        ratings[m["home"]] += delta
-        ratings[m["away"]] -= delta
-    return dict(ratings), records
-
 
 RES_IDX = {"H": 0, "D": 1, "A": 2}
 

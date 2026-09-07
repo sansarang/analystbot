@@ -80,6 +80,13 @@ def rec_label(jg: dict, settings=None) -> str:
     #      이는 규칙이 생긴 계기(1:7 패)와 **같은 실패**다.
     if jg.get("starter_low_sample"):
         return "보드만"
+    # [v1.4] 시장 동의 게이트. 🔴 `pipeline.qualifies` 와 **같은 함수**를 부른다 —
+    #   게이트가 둘로 갈리면 카드와 요약이 서로 다른 말을 한다(2026-09-05 실사고).
+    from app.pipeline import market_disagreement
+
+    if market_disagreement({"p_market_send": jg.get("p_market_send"),
+                            "p_home": jg.get("p_claude")}, s) is not None:
+        return "보드만"
     side, p = favored_side_and_p(jg)
     if p is None:
         return "보드만"
@@ -87,6 +94,23 @@ def rec_label(jg: dict, settings=None) -> str:
     if side == "away":
         need += s.away_prob_penalty
     return "추천" if p >= need else "보드만"
+
+
+def _market_why(jg: dict, settings=None) -> str | None:
+    """시장 동의 게이트 탈락 사유 문구. 통과했으면 None.
+
+    🔴 판정은 `pipeline.market_disagreement` 하나가 한다 — 여기서는 문구만 만든다.
+    """
+    from app.pipeline import MARKET_DISAGREE, market_disagreement
+
+    md = market_disagreement({"p_market_send": jg.get("p_market_send"),
+                              "p_home": jg.get("p_claude")}, settings)
+    if md is None:
+        return None
+    if md == MARKET_DISAGREE:
+        m, o = jg.get("p_market_send"), jg.get("p_claude")
+        return f"시장 이견 (우리 {float(o):.0%} vs 시장 {float(m):.0%})"
+    return "시장 미수집"
 
 
 def _bet_line(jg: dict, settings=None) -> str:
@@ -105,6 +129,9 @@ def _bet_line(jg: dict, settings=None) -> str:
         why = "확신도 하"
     elif jg.get("starter_low_sample"):
         why = "선발 표본 부족"
+    elif _market_why(jg, s):
+        # [v1.4] **정보는 보이되 추천 딱지만 뗀다** — 왜 보드만인지 적는다.
+        why = _market_why(jg, s)
     elif p is not None:
         need = s.min_win_prob + (s.away_prob_penalty if side == "away" else 0.0)
         if p < need:

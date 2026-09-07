@@ -195,6 +195,7 @@ def test_matchup_render_leaves_no_placeholder():
                                "팀": {"가중OPS": 0.8}}}}
     J = lambda x: json.dumps(x, ensure_ascii=False, default=str)   # noqa: E731
     out = fill(MATCHUP,
+               ELO_JSON=J(M.elo_payload(jg)),          # [v1.4] 자료12
                BOXSCORE_JSON=J(M.boxscore_payload(jg)),
                NEWS_JSON=J(M.news_payload({}, {})),
                LINEUPS_JSON=J(M.lineups_payload(jg)),

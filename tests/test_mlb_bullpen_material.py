@@ -171,4 +171,6 @@ def test_mlb_freeze_counter_starts_after_the_bullpen_deploy():
     assert freeze_start("mlb") == freeze_start("kbo") == freeze_start("npb")
     # 🔴 [C6 2026-09-05] 변수 대장 완성으로 **전 종목 일괄 재시작**했다.
     #   FREEZE_RESTART_IS_FINAL=True — 이것이 마지막 재시작이다.
-    assert freeze_start("mlb") == "2026-09-05"
+    from app.engine.daily_summary import FREEZE_START_DEFAULT
+
+    assert freeze_start("mlb") == FREEZE_START_DEFAULT

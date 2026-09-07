@@ -2624,8 +2624,25 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
         pool = await get_pool()
     except Exception as exc:
         logger.debug("[pipeline] 선발 등판 조회 생략: %s", exc)
+    # ── [v1.4 자료12] 팀 실력 레이팅 ──────────────────────────────────
+    #   🔴 슬레이트당 **한 번만** 계산한다. 경기마다 리플레이를 돌리면
+    #      같은 값을 N 번 만든다.
+    #   ⚠️ 실패해도 판정을 막지 않는다 — 자료12 없이 간다(빈 dict).
+    _elo_map: dict = {}
+    _sport = (games[0].get("sport") if games else "") or ""
+    try:
+        from app.models import team_elo as _team_elo
+
+        _elo_map = await _team_elo.load(redis, _sport, date)
+        if not _elo_map and pool is not None:
+            _elo_map = await _team_elo.refresh(pool, redis, _sport, date)
+    except Exception as exc:
+        logger.warning("[pipeline] 자료12 레이팅 생략 — 판정은 계속: %s", exc)
     n = 0
     for jg in games:
+        # 자료12 는 **팀당 숫자 하나**다. 집계표를 붙이지 않는다(대원칙).
+        jg["elo"] = {"home": _elo_map.get(jg.get("home")),
+                     "away": _elo_map.get(jg.get("away"))}
         try:
             await attach_starter_recent(jg, pool)
         except Exception as exc:
@@ -2679,6 +2696,22 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
                            jg.get("game_id"), exc)
         if await judge_matchup(jg, redis, date, allow_final=allow_final):
             n += 1
+            # ── [v1.4] 시장 기준선을 **게이트보다 먼저** 새긴다 ──────────
+            #   🔴 종전에는 `pregame_push`(발송 시점)에서만 불렀다. 추천
+            #      게이트는 그보다 앞이라 시장값을 볼 수 없었다.
+            #   ⚠️ 실패해도 판정을 막지 않는다 — 값이 없으면 게이트가
+            #      `market_missing` 으로 보드만 처리한다(추천을 지어내지 않는다).
+            if pool is not None:
+                try:
+                    from app.engine.market_baseline import SEND, p_market
+
+                    _snap = await p_market(pool, {**jg, "id": jg.get("game_id"),
+                                                  "starts_at": jg.get("starts_at")},
+                                           purpose=SEND)
+                    jg["p_market_send"] = _snap.get("p")
+                except Exception as exc:
+                    logger.debug("[pipeline] 시장 기준선 생략 game=%s: %s",
+                                 jg.get("game_id"), exc)
             _spawn_fact_audit(jg)        # [감시 L1] 저장 후 사후 감사
             # [C3] 변수 원장 적재. 판정 **뒤**이고, 실패해도 판정을 막지 않는다.
             try:
@@ -2998,9 +3031,46 @@ def qualifies(pick: dict, settings=None) -> bool:
             state = _ps(pick.get("lineup_status"))[0]
         if state != "final":
             return False
+        if market_disagreement(pick, s) is not None:
+            return False
     elif pick.get("two_source") is False:
         return False
     return p is not None and p >= need
+
+
+#: 시장 동의 게이트의 탈락 사유. 카드·근접픽이 그대로 쓴다 — 문구를 두 곳에
+#  적지 않는다(사본 금지).
+MARKET_MISSING = "market_missing"
+MARKET_DISAGREE = "market_disagree"
+
+
+def market_disagreement(pick: dict, settings=None) -> str | None:
+    """시장과 갈렸는가. 갈렸으면 사유 문자열, 아니면 None.
+
+    🔴 [v1.4 임시 방어 2026-09-07 사용자 지시] **추천은 시장과 같은 방향일 때만.**
+       근거: 620행 분석 — 추천 게이트 통과분 적중 30.8%(n=13) vs 보드만
+       59.7%(n=77). 우세팀이 갈린 8경기는 시장 7승 우리 3승.
+       시장을 거스르는 확신이 데이터상 **안티 신호**였다.
+
+    ⚠️ **이 조건은 구조적으로 시장을 이길 수 없게 만든다.** 정보 우위가
+       있어도 추천으로 낼 수 없다. 재캘리브레이션이 끝나면
+       `MARKET_AGREE_REQUIRED=false` 로 꺼라 — 종전 동작으로 돌아간다.
+    ⚠️ 임계값은 `market_divergence_pp` 하나에서 온다. 카드의 "시장 이견"
+       판정(`market_baseline.market_line`)과 **같은 값**이어야 한다.
+    """
+    from app.config import get_settings
+
+    s = settings or get_settings()
+    if not getattr(s, "market_agree_required", False):
+        return None
+    mkt = pick.get("p_market_send")
+    if mkt is None:
+        return MARKET_MISSING
+    ours = pick.get("p_home")
+    if ours is None:
+        return MARKET_MISSING
+    thr = float(s.market_divergence_pp) / 100.0
+    return MARKET_DISAGREE if abs(float(ours) - float(mkt)) >= thr else None
 
 
 def near_miss_picks(picks: list[dict], settings=None, n: int = 3) -> list[dict]:
@@ -3047,6 +3117,10 @@ def approved_market_legs(games: list[dict]) -> list[dict]:
                        "lineup_status": jg.get("lineup_status") or "none",
                        "pick_state": _pick_state(jg)[0],
                        "form_unavailable": bool(jg.get("form_unavailable")),
+                       # [v1.4] 시장 동의 게이트가 읽는다. `_compute_picks` 는
+                       #   DB 를 안 타므로 판정 단계에서 새긴 값을 옮기기만 한다.
+                       "p_market_send": jg.get("p_market_send"),
+                       "p_home": jg.get("p_claude"),
                        "starter_low_sample": list(jg.get("starter_low_sample") or [])}
             if c.get("approved") and qualifies(wrapped):
                 legs.append({
@@ -3085,6 +3159,10 @@ def qualified_singles(games: list[dict], settings=None,
                        "lineup_status": jg.get("lineup_status") or "none",
                        "pick_state": _pick_state(jg)[0],
                        "form_unavailable": bool(jg.get("form_unavailable")),
+                       # [v1.4] 시장 동의 게이트가 읽는다. `_compute_picks` 는
+                       #   DB 를 안 타므로 판정 단계에서 새긴 값을 옮기기만 한다.
+                       "p_market_send": jg.get("p_market_send"),
+                       "p_home": jg.get("p_claude"),
                        "starter_low_sample": list(jg.get("starter_low_sample") or [])}
             if not (c.get("approved") and qualifies(wrapped, settings)):
                 continue
@@ -4740,9 +4818,10 @@ def _render_card(analysis: dict) -> str:
     detail.extend(board_detail)
     _s = get_settings()
     lines.append("")
-    lines.append(f"★ = 충족한 조건 수: 승률 {_s.min_win_prob:.0%}↑ / {_s.signal_green_prob:.0%}↑ / "
-                 f"근거 2축↑ / 판정 신뢰도 높음")
-    lines.append("⚠ = 판정 신뢰도가 낮음 — 별점과 별개로 한 번 더 확인하십시오")
+    # [v1.4 2026-09-07] 범례에서 확신도를 뺐다 — `row_stars` 가 더는 안 본다.
+    #   확신도 표기가 역정보였다(620행 분석). 원장 기록은 계속한다.
+    lines.append(f"★ = 충족한 조건 수: 승률 {_s.min_win_prob:.0%}↑ / "
+                 f"{_s.signal_green_prob:.0%}↑ / 근거 2축↑")
     # 자격 통과 여부는 **기본층**에 쓴다 — "기준을 넘는 게 있었나"는 접으면 안 되는 정보다.
     if recommended:
         _stake = next((r.get("stake_krw") for r in recommended if r.get("stake_krw")), None)

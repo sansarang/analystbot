@@ -6,6 +6,14 @@ import os
 os.environ.setdefault("FORCE_MOCK", "true")
 # 운영 기본값은 grok,perplexity disabled. 테스트는 기존 경로(목 리서치)를 유지한다.
 os.environ.setdefault("DISABLED_PROVIDERS", "")
+# 🔴 [v1.4 2026-09-07] 시장 동의 게이트를 **테스트 기본에서는 끈다.**
+#   이 스위치가 켜져 있으면 시장값이 없는 픽스처가 전부 `market_missing` 으로
+#   탈락해, 확률·라인업·표본 게이트를 검사하던 테스트 15건이 시장 부재에
+#   뭉개진다 — 무엇이 깨졌는지 알 수 없게 된다.
+#   ⚠️ 스위치 자체는 `tests/test_market_agree_gate.py` 가 **켜고** 검사하고,
+#      운영 기본값이 True 인 것은 같은 파일이 따로 잠근다. 여기서 끈다고
+#      제품 기본값이 바뀌지 않는다.
+os.environ.setdefault("MARKET_AGREE_REQUIRED", "false")
 
 import asyncpg
 import pytest

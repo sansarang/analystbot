@@ -49,7 +49,15 @@ def test_no_line_when_market_is_missing():
 def test_card_omits_the_line_when_absent():
     assert 'lines.append(_ml)' in CARD
     assert "if _ml:" in CARD
-    assert "시장 미수집" not in CARD
+    # 🔴 [v1.4 2026-09-07] 계약이 갈렸다. 지켜야 할 성질은 그대로다 —
+    #    **시장 줄(`_ml`)은 값이 없으면 안 찍는다**(`if _ml:` 이 그것이다).
+    #    바뀐 것은 베팅 자격 줄이다: 시장이 없어서 추천이 아니면 이제 그
+    #    **사유를 적는다**(사용자 지시 "괴리 픽은 보드만+사유 표기").
+    #    두 줄은 다른 줄이다 — 시장 줄은 여전히 침묵한다.
+    seg = CARD[CARD.index("def market_line") if "def market_line" in CARD
+               else 0:]
+    assert "시장 미수집" in CARD, "사유 표기가 사라졌다"
+    assert "_market_why" in CARD, "사유를 만드는 자리가 없다"
 
 
 def test_no_reason_sentence_is_generated():
