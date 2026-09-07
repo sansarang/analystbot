@@ -311,3 +311,85 @@ def test_프롬프트가_오늘의사실을_설명한다():
 
     assert "오늘의사실" in MATCHUP
     assert "투수자원" in MATCHUP and "로테이션이 무너져" in MATCHUP
+
+
+# ═══════════════ ⑤ 전개 정합 — 틀린 값을 카드로 내보내지 않는다
+
+@pytest.mark.parametrize("sport,h,a,p,bad", [
+    ("mlb", 3, 3, 0.53, True),    # 실측 2026-09-07 NYY@SD
+    ("kbo", 3, 3, 0.50, False),   # KBO·NPB 는 무승부가 있다
+    ("npb", 2, 2, 0.50, False),
+    ("mlb", 2, 5, 0.60, True),    # 점수와 확률이 반대
+    ("mlb", 5, 3, 0.56, False),   # 정상
+    ("mlb", 5, 3, 0.50, False),   # 0.50 은 어느 쪽도 아니다
+])
+def test_예상점수가_판정과_어긋나면_무효다(sport, h, a, p, bad):
+    """🔴 실측: `승자 = San Diego Padres` 인데 `예상점수 3-3` 이었다.
+    MLB 는 연장으로 승부를 가르므로 존재할 수 없는 스코어다."""
+    from app.engine.matchup import check_flow
+
+    why = check_flow({"전개": {"예상점수": {"홈": h, "원정": a}}, "p_home": p},
+                     sport)
+    assert bool(why) is bad, why
+
+
+def test_예상점수가_없으면_검사할_것도_없다():
+    from app.engine.matchup import check_flow
+
+    assert check_flow({"전개": {}}, "mlb") == []
+    assert check_flow({}, "mlb") == []
+
+
+def test_어긋난_예상점수는_고쳐_쓰지_않고_지운다():
+    """⚠️ 점수를 우리가 지어내면 그건 판정이 아니라 우리 추정이다."""
+    from app.engine.matchup import apply_matchup
+
+    jg = {"sport": "mlb", "game_id": 1}
+    apply_matchup(jg, {"p_home": 0.53, "확신도": "중", "근거": ["x"],
+                       "전개": {"분기점": "q", "예상점수": {"홈": 3, "원정": 3}}})
+    flow = jg["matchup"]["전개"]
+    assert "예상점수" not in flow, "존재할 수 없는 스코어가 살아남았다"
+    assert "무승부" in flow["예상점수_생략"], "왜 뺐는지 남기지 않았다"
+    assert flow["분기점"] == "q", "나머지 전개까지 지웠다"
+
+
+def test_정상_예상점수는_그대로_실린다():
+    """🔴 반대 위험 — 검사가 멀쩡한 값을 버리면 안 된다."""
+    from app.engine.matchup import apply_matchup
+
+    jg = {"sport": "mlb", "game_id": 1}
+    apply_matchup(jg, {"p_home": 0.56, "확신도": "중", "근거": ["x"],
+                       "전개": {"예상점수": {"홈": 5, "원정": 3}}})
+    assert jg["matchup"]["전개"]["예상점수"] == {"홈": 5, "원정": 3}
+
+
+# ═══════════════ ⑥ 변수의 발생 확률 — 자료14 가 답을 준 것만
+
+def test_발생확률은_선택_칸이라_기존_형식도_통과한다():
+    """필수로 만들면 답 없는 변수가 통째로 형식 위반이 되어 예산에서 빠진다."""
+    from app.engine.variable_parse import parse_variable
+
+    old = ("선발 조기 강판 — 발생 시 원정 방향 약 8%p · "
+           "현재 p에 3%p 기반영 · 근거 자료10")
+    r = parse_variable(old)
+    assert r and r["n"] == 8.0 and r["m"] == 3.0 and r["q"] is None
+
+
+def test_발생확률이_있으면_숫자로_잡힌다():
+    """🔴 실측 NYY@SD: 자료14 의 '5이닝 이상 35/51=69%' 를 인용하고도
+    발생 확률(31%)을 적을 칸이 없어 근거 문자열에 묻혔다."""
+    from app.engine.variable_parse import parse_variable
+
+    new = ("선발 조기 강판 — 발생 시 원정 방향 약 8%p · 발생 확률 31% · "
+           "현재 p에 3%p 기반영 · 근거 자료14 같은처지 35/51")
+    r = parse_variable(new)
+    assert r and r["q"] == 31.0 and r["m"] == 3.0
+    assert "자료14" in r["source"]
+
+
+def test_프롬프트가_발생확률의_출처를_자료14로_못박는다():
+    from app.engine.prompts import MATCHUP
+
+    assert "발생 확률 X%" in MATCHUP
+    assert "자료14 가 그 리스크의 빈도를 알려줬을 때만" in MATCHUP
+    assert "확률을 지어내지 마라" in MATCHUP

@@ -14,8 +14,10 @@ GOOD = ("원정 선발 이로운 3이닝 미만 조기 강판 — 발생 시 홈
 
 def test_parses_the_specified_format():
     p = parse_variable(GOOD)
+    # [2026-09-07] `q`(발생 확률) 는 **선택 칸**이라 없으면 None 이다.
+    #   자료14 가 그 리스크의 빈도를 알려줬을 때만 값이 붙는다.
     assert p == {"risk": "원정 선발 이로운 3이닝 미만 조기 강판", "side": "home",
-                 "n": 8.0, "m": 3.0, "source": "자료10"}
+                 "n": 8.0, "m": 3.0, "source": "자료10", "q": None}
 
 
 def test_away_direction_and_decimals():

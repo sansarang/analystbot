@@ -1,7 +1,8 @@
 """[C2] 변수 한 줄 파싱 — 정량 변수를 기계가 읽을 수 있게.
 
 형식(프롬프트 §변수 형식과 **같은 문장**이어야 한다):
-  "<리스크 서술> — 발생 시 <홈|원정> 방향 약 N%p · 현재 p에 M%p 기반영 · 근거 <자료 번호>"
+  "<리스크 서술> — 발생 시 <홈|원정> 방향 약 N%p · [발생 확률 X% ·] 현재 p에 M%p 기반영 · 근거 <자료 번호>"
+  (`발생 확률` 은 자료14 가 답을 준 변수에만 붙는다 — 선택 칸이다)
 
 🔴 **파싱 실패를 조용히 넘기지 않는다.** 실패는 `unverifiable` 로 남고 로그가
    찍힌다 — 그게 곧 형식 위반 감시다.
@@ -18,9 +19,16 @@ logger = logging.getLogger(__name__)
 #: 방향 표기 → 내부 값.
 _SIDE = {"홈": "home", "원정": "away"}
 
+#: 🔴 [2026-09-07] `발생확률` 은 **선택적**이다 — 자료14 가 답을 준 변수만
+#   쓸 수 있다. 필수로 만들면 답이 없는 변수가 형식 위반으로 통째로 버려진다
+#   (`parse_all` 이 `parsed=None` 으로 남기지만 예산 검사에서 빠진다).
+#   실측 2026-09-07 NYY@SD: 판정이 자료14 의 "5이닝 이상 35/51=69%" 를
+#   인용하고도 발생 확률(31%)을 적을 칸이 없어 근거 문자열에 묻었다.
 _PAT = re.compile(
     r"^(?P<risk>.+?)\s*[—-]\s*발생\s*시\s*(?P<side>홈|원정)\s*방향\s*약\s*"
-    r"(?P<n>[-+]?\d+(?:\.\d+)?)\s*%p\s*[·,]\s*현재\s*p에\s*"
+    r"(?P<n>[-+]?\d+(?:\.\d+)?)\s*%p\s*[·,]\s*"
+    r"(?:발생\s*확률\s*(?P<q>\d+(?:\.\d+)?)\s*%\s*[·,]\s*)?"
+    r"현재\s*p에\s*"
     r"(?P<m>[-+]?\d+(?:\.\d+)?)\s*%p\s*기반영\s*[·,]\s*근거\s*(?P<src>.+?)\s*$"
 )
 
@@ -37,8 +45,11 @@ def parse_variable(text: str) -> dict | None:
         mm = float(m.group("m"))
     except (TypeError, ValueError):
         return None
+    q = m.group("q")
     return {"risk": m.group("risk").strip(), "side": _SIDE[m.group("side")],
-            "n": n, "m": mm, "source": m.group("src").strip()}
+            "n": n, "m": mm, "source": m.group("src").strip(),
+            # 자료14 가 답을 준 변수만 값이 있다. 없으면 None — 지어내지 않는다.
+            "q": (float(q) if q is not None else None)}
 
 
 def parse_all(verdict: dict) -> list[dict]:

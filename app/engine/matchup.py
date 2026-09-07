@@ -379,13 +379,68 @@ async def _trace(jg: dict, date: str, stage: str, *, summary: str,
         logger.debug("[trace] 기록 생략 game=%s: %s", jg.get("game_id"), exc)
 
 
+#: MLB 정규시즌은 연장으로 승부를 가른다 — 무승부 최종 스코어가 없다.
+#  KBO·NPB 는 무승부가 있다(`elo_core` 가 `D` 를 다룬다).
+_DRAW_LEAGUES = ("kbo", "npb")
+
+
+def check_flow(verdict: dict, sport: str) -> list[str]:
+    """`전개.예상점수` 가 판정과 어긋나는지 본다. 반환은 무효 사유 목록.
+
+    🔴 **프롬프트에 적는 것만으로는 부족하다** — `clamp_adjustment` 와 같은
+       태도다. 모델이 규칙을 어겨도 틀린 값이 카드로 나가면 안 된다.
+
+    실측 2026-09-07 NYY@SD: `승자 = San Diego Padres` 인데 `예상점수 3-3`
+    (무승부)이었다. MLB 는 무승부로 끝나지 않으므로 그 스코어는 존재할 수
+    없는 값이고, 승자 지목과도 어긋난다. 프롬프트는 "예상 점수와 p 가
+    어긋나면 다시 보라"고 이미 적고 있었는데 통과하지 못했다.
+
+    ⚠️ **고쳐 쓰지 않고 지운다.** 점수를 우리가 지어내면 그건 판정이 아니라
+       우리 추정이다. 틀린 값을 빼고 왜 뺐는지 남긴다.
+    """
+    flow = (verdict or {}).get("전개") or {}
+    sc = flow.get("예상점수") or {}
+    if not sc:
+        return []
+    bad: list[str] = []
+    try:
+        h, a = int(sc.get("홈")), int(sc.get("원정"))
+    except (TypeError, ValueError):
+        return ["예상점수가 정수가 아니다"]
+    if h < 0 or a < 0:
+        bad.append(f"예상점수가 음수다 ({a}-{h})")
+    if h == a and (sport or "").lower() not in _DRAW_LEAGUES:
+        bad.append(f"{sport.upper()} 는 무승부로 끝나지 않는데 예상점수가 "
+                   f"동점이다 ({a}-{h})")
+    p = verdict.get("p_home")
+    if p is not None and h != a:
+        try:
+            pf = float(p)
+        except (TypeError, ValueError):
+            pf = None
+        # 확률과 점수가 **반대**를 가리키면 무효. 0.50 은 어느 쪽도 아니다.
+        if pf is not None and pf != 0.5 and (pf > 0.5) != (h > a):
+            bad.append(f"예상점수({a}-{h})와 p_home({pf})가 반대를 가리킨다")
+    return bad
+
+
 def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
     s = settings or get_settings()
     p = clip_p_home(verdict.get("p_home"), s)
     conf_kr = verdict.get("확신도") or "중"
     model = verdict.get("model") or s.matchup_model
     jg["p_claude"] = p
-    jg["matchup"] = {**verdict, "p_home": p, "model": model}
+    # 🔴 전개 정합 — 어긋난 예상점수는 **싣지 않는다.** 고쳐 쓰지 않는다.
+    v = dict(verdict)
+    why = check_flow({**v, "p_home": p}, jg.get("sport") or "")
+    if why:
+        flow = dict(v.get("전개") or {})
+        flow.pop("예상점수", None)
+        flow["예상점수_생략"] = " · ".join(why)
+        v["전개"] = flow
+        logger.warning("[matchup] game=%s 예상점수 생략 — %s",
+                       jg.get("game_id"), " · ".join(why))
+    jg["matchup"] = {**v, "p_home": p, "model": model}
     jg["model"] = model
     jg["judge_confidence"] = CONF_MAP.get(conf_kr, "medium")
     jg["judge_pass"] = conf_kr == "하"
