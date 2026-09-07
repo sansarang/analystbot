@@ -629,3 +629,50 @@ def test_뉴스형은_그대로_뉴스로_간다():
     for q in ("주전 포수 부상 이탈 여부", "트레이드 마감 영입 효과",
               "우천 취소 가능성", "감독 징계 여파"):
         assert classify(q) == "뉴스형", q
+
+
+def test_분기점도_지시어를_읽는다():
+    """🔴 같은 결함이 두 모듈에 있었다. 변수 원장 쪽만 고쳤더니 분기점 쪽에
+    "홈 선발이 5이닝을 넘기는가" 가 `사유: 대상 선발을 특정하지 못했다` 로
+    남았다 — 실측 2026-09-07 배포 후 확인.
+    """
+    import asyncio
+    from datetime import UTC, datetime
+
+    from app.engine.branch_resolve import resolve
+
+    jg = {"sport": "mlb", "home": "Cincinnati Reds", "away": "Milwaukee Brewers",
+          "home_pitcher": "Brady Singer", "away_pitcher": "Quinn Priester",
+          "starts_at": datetime(2026, 9, 7, 23, 10, tzinfo=UTC)}
+    rec = asyncio.run(resolve(_InningsPool(), jg, "홈 선발이 5이닝을 넘기는가"))
+    assert rec.get("사유") != "질문에서 대상 선발을 특정하지 못했다", rec
+    assert "home" in (rec.get("답") or {}), rec
+    assert "away" not in rec["답"], "홈만 물었는데 원정까지 냈다"
+
+
+def test_판별_규칙을_베끼지_않는다():
+    """⚠️ 사본 금지. 지시어 규칙은 `variable_ledger.subject_of` 하나뿐이다."""
+    from pathlib import Path
+
+    src = Path("app/engine/branch_resolve.py").read_text(encoding="utf-8")
+    assert "from app.engine.variable_ledger import subject_of" in src
+    for copied in ("_SIDE_WORDS", "_ROLE_WORDS", '"어웨이"'):
+        assert copied not in src, f"지시어 규칙을 베꼈다: {copied}"
+
+
+class _InningsPool(_FakePool):
+    """선발 이닝 해결사가 쓰는 세 질의를 흉내낸다."""
+
+    async def fetch(self, sql, *a):
+        from datetime import date
+        if "a.pitcher = $2" in sql:                    # 본인 등판
+            return [{"d": date(2026, 9, 1), "is_starter": True, "innings": 6.0,
+                     "batters": 24, "r": 2}] * 4
+        return await super().fetch(sql, *a)
+
+    async def fetchrow(self, sql, *a):
+        if "avg(a.innings)" in sql:                    # 소속팀 선발
+            return {"n": 22, "ip": 5.4, "tbf": 22.0, "deep": 14}
+        if "avg(innings)" in sql:                      # 같은처지
+            return {"n": 45, "ip": 5.2, "deep": 30}
+        return await super().fetchrow(sql, *a)

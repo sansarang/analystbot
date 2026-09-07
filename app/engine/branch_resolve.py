@@ -515,13 +515,24 @@ async def resolve(pool, jg: dict, question: str) -> dict:
             return rec
         rec["사유"] = "타선 회귀 표본이 부족하다"
         return rec
-    # 질문에 이름이 있으면 그 투수, 없으면 양쪽 선발을 다 본다.
+    # 질문에 이름이 있으면 그 투수. 이름 대신 **자리**를 가리켰으면(`홈 선발`)
+    #   그 자리의 선발로 읽는다.
+    #   🔴 실측 2026-09-07: "홈 선발이 5이닝을 넘기는가" 가 `사유: 대상 선발을
+    #      특정하지 못했다` 로 끝났다. 같은 결함을 변수 원장 쪽에서 먼저 고쳤는데
+    #      여기는 남아 있었다.
+    #   ⚠️ 판별 규칙을 여기 다시 적지 않는다 — `variable_ledger.subject_of` 를
+    #      **부른다.** 두 곳에 적으면 하나가 바뀔 때 다른 하나가 안 따라간다.
+    from app.engine.variable_ledger import subject_of
+
+    named, kind = subject_of(question, jg)
+    hinted = named if kind == "pitcher" else None
     found = {}
     for side in ("home", "away"):
         nm = pitcher_name(jg, side)
         if not nm:
             continue
-        if nm.split()[-1] not in question and nm not in question:
+        if (nm.split()[-1] not in question and nm not in question
+                and nm != hinted):
             continue
         team = jg.get(side) or ""
         blk = await innings_outlook(pool, sport, nm, team, before)
