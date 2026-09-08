@@ -1995,6 +1995,12 @@ def build_scheduler() -> AsyncIOScheduler:
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    # 🔴 [SEC-1] 키가 로그에 평문으로 찍히지 않게 한다. basicConfig **뒤**라야
+    #    루트 핸들러가 이미 있어 거기에도 필터가 걸린다 (전파된 레코드는 상위
+    #    로거 필터를 다시 타지 않는다 — 핸들러 필터만이 본다).
+    from app.secrets_mask import install_log_filter
+
+    install_log_filter()
     from app.version import boot_line
 
     logger.info(boot_line("scheduler"))

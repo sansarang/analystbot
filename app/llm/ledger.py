@@ -17,6 +17,8 @@ import json
 import logging
 from datetime import UTC, datetime
 
+from app.secrets_mask import mask_secrets
+
 logger = logging.getLogger(__name__)
 
 TTL = 14 * 24 * 3600        # 2주 — 폴백 순서를 재검토할 최소 관측 기간
@@ -76,7 +78,10 @@ async def record_outage(redis, provider: str, role: str, kind: str,
         await redis.lpush(key, json.dumps(
             {"at": datetime.now(UTC).isoformat(timespec="seconds"),
              "provider": provider, "role": role, "kind": kind,
-             "detail": detail[:200]}, ensure_ascii=False))
+             # 🔴 [SEC-1] **자르기 전에 가린다.** 먼저 자르면 키가 200자
+             #    경계에서 잘려 앞부분이 그대로 남는다. 로그는 회전되지만
+             #    이 값은 TTL 14일 동안 조회 가능하다 (실사고 2026-09-07).
+             "detail": mask_secrets(detail)[:200]}, ensure_ascii=False))
         await redis.ltrim(key, 0, MAX_OUTAGES - 1)
         await redis.expire(key, TTL)
     except Exception as exc:

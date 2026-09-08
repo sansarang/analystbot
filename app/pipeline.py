@@ -5903,6 +5903,12 @@ async def _cli() -> None:
                              "오늘 운영 기본은 제외. 예측 테이블에는 쓰지 않는다.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
+    # 🔴 [SEC-1] 키가 로그에 평문으로 찍히지 않게 한다. basicConfig **뒤**라야
+    #    루트 핸들러가 이미 있어 거기에도 필터가 걸린다 (전파된 레코드는 상위
+    #    로거 필터를 다시 타지 않는다 — 핸들러 필터만이 본다).
+    from app.secrets_mask import install_log_filter
+
+    install_log_filter()
 
     date = args.date or (mlb_slate_date() if args.sport == "mlb" else today_kst())
     pool = await get_pool()
