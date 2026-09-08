@@ -50,21 +50,23 @@ _UPSERT = """
                        status, home_score, away_score)
     VALUES ('mlb', 'MLB', $1, $2, $3, $4, $5, $6, $7)
     ON CONFLICT (sport, ext_id) DO UPDATE SET
-        status = EXCLUDED.status,
+        -- 🔴 [ELO-2] **종료를 되돌리지 않는다.** 점수는 COALESCE 로 지켜
+        --    놓고 status 는 안 지켰다. 외부가 한 번 'Preview' 를 주면 이미
+        --    final 인 경기가 예정으로 돌아가고, 그 경기는 채점에서 빠진 채
+        --    카드 경로로 되돌아간다.
+        status = CASE WHEN games.status = 'final' THEN games.status
+                      ELSE EXCLUDED.status END,
         home_score = COALESCE(EXCLUDED.home_score, games.home_score),
         away_score = COALESCE(EXCLUDED.away_score, games.away_score),
         updated_at = now()
 """
 
-#: 중복 그룹 수 — 적재 전후로 센다. 늘면 `merge_duplicate_games` 가 과거
-#  경기를 병합하기 시작한다는 뜻이고, 그건 조용한 손실이다.
-_DUP_GROUPS = """
-    SELECT count(*) FROM (
-      SELECT 1 FROM games
-       WHERE sport = 'mlb'
-       GROUP BY sport, home, away, date_trunc('day', starts_at AT TIME ZONE 'UTC')
-      HAVING count(*) > 1) x
-"""
+#: 🔴 [ELO-2 2026-09-09] 중복 그룹 수는 **`game_match` 에서 읽는다.**
+#   종전에는 여기 같은 뜻의 쿼리를 손으로 적어 뒀고, GM-3 이 병합 창을
+#   UTC 날짜 → ±2시간으로 바꿀 때 **이쪽은 따라오지 않았다.** 그래서 이
+#   가드가 병합이 하지도 않을 일을 경고했다 — 시즌 백필 직후 "262개 늘었다"
+#   인데 실제 병합은 0건. 오탐이 잦으면 사람이 경고를 끄고, 꺼진 가드는
+#   없는 가드다.
 
 
 async def backfill_mlb(pool, *, start: str | None = None, end: str | None = None,
@@ -84,7 +86,9 @@ async def backfill_mlb(pool, *, start: str | None = None, end: str | None = None
             raise ValueError("schedule 이 없으면 start·end 가 필요하다")
         schedule = await (client or MLBClient()).fetch_schedule_range(start, end)
 
-    dup_before = await pool.fetchval(_DUP_GROUPS)
+    from app.collectors.game_match import duplicate_group_count
+
+    dup_before = await duplicate_group_count(pool, "mlb")
     games = _parse_games(schedule)
     finals = 0
     for g in games:
@@ -92,10 +96,10 @@ async def backfill_mlb(pool, *, start: str | None = None, end: str | None = None
                            g["status"], g["home_score"], g["away_score"])
         if g["status"] == "final":
             finals += 1
-    dup_after = await pool.fetchval(_DUP_GROUPS)
+    dup_after = await duplicate_group_count(pool, "mlb")
 
     out = {"loaded": len(games), "finals": finals,
-           "dup_before": int(dup_before or 0), "dup_after": int(dup_after or 0)}
+           "dup_before": int(dup_before), "dup_after": int(dup_after)}
     if out["dup_after"] > out["dup_before"]:
         # 🔴 조용히 넘기지 않는다. 늘어난 중복은 다음 13:00 `finals_job` 이
         #    병합하고, 그 병합은 되돌릴 수 없다.

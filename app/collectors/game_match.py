@@ -216,6 +216,42 @@ async def _move_cascade_rows(pool, keep: int, dups: list[int]) -> dict:
     return out
 
 
+#: 🔴 [ELO-2 2026-09-09] **중복 그룹의 정의는 여기 하나뿐이다.**
+#   종전에는 `backfill._DUP_GROUPS` 에 같은 뜻의 쿼리가 하나 더 있었고,
+#   GM-3 이 창을 UTC 날짜 → ±2시간으로 바꿀 때 **그쪽은 따라오지 않았다.**
+#   그래서 백필의 가드가 병합이 하지도 않을 일을 경고한다. 이 저장소가
+#   네 번 데인 병이다(2026-09-02 워치독 오탐 4건) — 사본은 원본을 못 따라간다.
+_GROUP_SQL = """
+    SELECT g.id, g.sport, g.home, g.away,
+           (SELECT min(g2.id) FROM games g2
+             WHERE g2.sport = g.sport AND g2.home = g.home
+               AND g2.away = g.away
+               AND abs(extract(epoch FROM (g2.starts_at - g.starts_at)))
+                   <= {win} * 3600) AS cid
+      FROM games g {where}
+"""
+
+
+def _group_sql(where: str) -> str:
+    return _GROUP_SQL.format(win=MERGE_WINDOW_HOURS, where=where)
+
+
+async def duplicate_group_count(pool, sport: str | None = None) -> int:
+    """지금 병합 대상이 되는 중복 그룹 수. **병합과 같은 정의를 쓴다.**
+
+    적재 전후로 이 수를 재면 "내가 넣은 것이 다음 병합을 부르는가"를 알 수 있다.
+    """
+    where = "WHERE sport = $1" if sport else ""
+    args = [sport] if sport else []
+    try:
+        return int(await pool.fetchval(
+            f"SELECT count(*) FROM (SELECT 1 FROM ({_group_sql(where)}) t "
+            f"GROUP BY sport, home, away, cid HAVING count(*) > 1) x", *args) or 0)
+    except Exception as exc:
+        logger.warning("[game_match] 중복 그룹 계수 실패: %s", exc)
+        return 0
+
+
 async def merge_duplicate_games(pool, sport: str | None = None) -> dict:
     """이미 갈라진 중복 행을 합친다. 반환: {"merged", "moved_predictions", ...}.
 
@@ -252,15 +288,7 @@ async def merge_duplicate_games(pool, sport: str | None = None) -> dict:
     groups = await pool.fetch(
         f"""
         SELECT sport, home, away, cid, array_agg(id ORDER BY id) AS ids
-          FROM (
-            SELECT g.id, g.sport, g.home, g.away,
-                   (SELECT min(g2.id) FROM games g2
-                     WHERE g2.sport = g.sport AND g2.home = g.home
-                       AND g2.away = g.away
-                       AND abs(extract(epoch FROM (g2.starts_at - g.starts_at)))
-                           <= {MERGE_WINDOW_HOURS} * 3600) AS cid
-              FROM games g {where}
-          ) t
+          FROM ({_group_sql(where)}) t
          GROUP BY 1, 2, 3, 4
         HAVING count(*) > 1
         """, *args)
