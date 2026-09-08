@@ -310,3 +310,92 @@ async def test_손수_처리하는_세_표는_일반_경로가_건드리지_않�
     from app.collectors.game_match import _HAND_MOVED
 
     assert set(_HAND_MOVED) == {"predictions", "expert_picks", "pick_ledger"}
+
+
+# ═══════════════ [GM-3 2026-09-08] 병합 기준이 UTC 날짜라 다른 경기를 묶는다
+#
+# 🔴 `merge_duplicate_games` 는 이렇게 묶는다:
+#      GROUP BY sport, home, away, date_trunc('day', starts_at AT TIME ZONE 'UTC')
+#    그런데 **같은 파일의 `apply_result` 는 그 함정을 알고 시각 근접으로 찾는다**:
+#      "⚠️ 날짜가 아니라 시각 근접으로 찾는다. UTC 날짜로 맞추면 MLB 야간경기가
+#       다음 날로 넘어가 못 찾는다(19:00 ET = 23:00 UTC, 서머타임에 따라 02:00 UTC)."
+#    한 함수는 알고 다른 함수는 모른다.
+#
+# 🔴 **실측 2026-09-08 — 이것이 데이터 파괴로 이어진다.** MLB 2026 정규시즌
+#    2,458경기를 적재하면 `(홈·원정·UTC날짜)` 가 같은 그룹이 **262개** 생긴다.
+#    실제 더블헤더는 시즌당 30~50건뿐이다. 나머지는 **금요일 야간(토 00:00 UTC)과
+#    토요일 낮(토 18:00 UTC)** 이 같은 UTC 날짜에 떨어진 것이다.
+#    그대로 두면 매일 13:00 `finals_job` 이 262쌍을 병합해 **각 쌍의 한 경기를
+#    지운다.** 되돌릴 수 없다.
+#
+# 실측 263쌍의 시간 간격 분포 — 창을 정하는 근거:
+#      0.0~0.5h    3건   ← 진짜 중복(같은 경기가 두 행)
+#      0.5~4.0h    0건   ← **빈 띠**
+#      4.0~6.0h   11건   ← 더블헤더
+#      6.0~9.0h    8건
+#      9.0~24.0h 241건   ← 서로 다른 날 경기
+#    0.5h 와 4h 사이가 비어 있어 **±2시간**이면 진짜 중복만 잡는다.
+
+
+@pytest.mark.asyncio
+async def test_18시간_차_같은_대진을_병합하지_않는다(db_pool):
+    """🔴 금요일 야간 + 토요일 낮 = 같은 UTC 날짜. 다른 경기다."""
+    night = await _mk_game(db_pool, "mlb:fri-night",
+                           datetime(2026, 4, 4, 0, 5, tzinfo=UTC), "final", 5, 3)
+    day = await _mk_game(db_pool, "mlb:sat-day",
+                         datetime(2026, 4, 4, 18, 5, tzinfo=UTC), "final", 1, 9)
+    out = await merge_duplicate_games(db_pool, sport="kbo")
+    left = await db_pool.fetch(
+        "SELECT id, home_score FROM games WHERE id = ANY($1::int[]) ORDER BY id", [night, day])
+    assert len(left) == 2, f"18시간 차 두 경기를 병합했다 (merged={out['merged']})"
+    assert [r["home_score"] for r in left] == [5, 1], "스코어가 서로 덮어썼다"
+
+
+@pytest.mark.asyncio
+async def test_더블헤더를_병합하지_않는다(db_pool):
+    """⚠️ 같은 날 4~6시간 간격 두 경기 — 실측 11건이 이 구간이다."""
+    g1 = await _mk_game(db_pool, "mlb:dh-1",
+                        datetime(2026, 5, 2, 17, 5, tzinfo=UTC), "final", 2, 1)
+    g2 = await _mk_game(db_pool, "mlb:dh-2",
+                        datetime(2026, 5, 2, 22, 10, tzinfo=UTC), "final", 0, 7)
+    await merge_duplicate_games(db_pool, sport="kbo")
+    left = await db_pool.fetch(
+        "SELECT id FROM games WHERE id = ANY($1::int[])", [g1, g2])
+    assert len(left) == 2, "더블헤더를 한 경기로 합쳤다"
+
+
+@pytest.mark.asyncio
+async def test_같은_경기_두_행은_여전히_병합한다(db_pool):
+    """⚠️ 반대 위험 — 진짜 중복(시각이 사실상 같다)은 계속 합쳐야 한다.
+
+    이것이 이 함수의 존재 이유다. 창을 좁히면서 이걸 잃으면 안 된다.
+    """
+    a = await _mk_game(db_pool, "odds:same", datetime(2026, 6, 1, 10, 0, tzinfo=UTC))
+    b = await _mk_game(db_pool, "kbo:same", datetime(2026, 6, 1, 10, 5, tzinfo=UTC),
+                       "final", 3, 2)
+    await db_pool.execute(
+        "INSERT INTO predictions (game_id, pick, model_p, method) "
+        "VALUES ($1,'h2h:x',0.55,'shadow')", a)
+    out = await merge_duplicate_games(db_pool, sport="kbo")
+    assert out["merged"] >= 1, "5분 차 같은 경기를 안 합쳤다"
+    assert await db_pool.fetchval("SELECT count(*) FROM games WHERE id=$1", b) == 0
+    row = await db_pool.fetchrow("SELECT status, home_score FROM games WHERE id=$1", a)
+    assert row["status"] == "final" and row["home_score"] == 3
+
+
+def test_병합_창이_실측_빈띠_안에_있다():
+    """🔴 창 상수가 근거 있는 범위 안인가.
+
+    ⚠️ 소스에 `date_trunc` 가 없는지로 재지 않는다 — 주석이 "종전에는 이랬다"고
+       설명하면 그 문자열이 그대로 남아 테스트가 깨진다. 이 저장소가 이미
+       배운 함정이고(주석이 테스트를 깬다) 오늘만 세 번 겪었다.
+       **바뀐 동작은 위 두 테스트(18시간 차·더블헤더)가 잠근다.**
+    """
+    from app.collectors import game_match as gm
+
+    assert hasattr(gm, "MERGE_WINDOW_HOURS"), "병합 창 상수가 없다"
+    assert 0.5 < gm.MERGE_WINDOW_HOURS < 4, (
+        f"창 {gm.MERGE_WINDOW_HOURS}h — 실측상 진짜 중복은 0.5h 이내, "
+        "더블헤더는 4h 이상이라 그 사이여야 한다")
+    assert gm.MERGE_WINDOW_HOURS < gm.MATCH_WINDOW_HOURS, (
+        "병합 창이 결과 매칭 창보다 넓다 — 목적이 다른 두 창을 섞었다")

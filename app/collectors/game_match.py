@@ -25,6 +25,15 @@ logger = logging.getLogger(__name__)
 # 겹치지 않는 크기다(하루 1경기 종목 기준).
 MATCH_WINDOW_HOURS = 20
 
+#: 🔴 [GM-3 2026-09-08] **병합 전용 창.** `MATCH_WINDOW_HOURS`(20h)와 목적이
+#   다르다 — 저것은 "이 결과를 어느 경기에 붙일까"이고 이것은 "이 두 행이 같은
+#   경기인가"다. 20h 로 병합하면 3연전의 야간→주간 경기(18h 차)가 합쳐진다.
+#   실측 2026-09-08 (MLB 2026 정규시즌 263쌍의 간격):
+#     0~0.5h 3건 · **0.5~4h 0건** · 4~6h 11건 · 6~9h 8건 · 9~24h 241건
+#   빈 띠 한가운데인 2시간을 쓴다. 좁히면 진짜 중복이 안 합쳐져 예측이 붙은
+#   행이 미채점으로 남고(실사고 2026-08-27), 넓히면 다른 경기를 지운다.
+MERGE_WINDOW_HOURS = 2
+
 # ⚠️ `$4::timestamptz` 캐스트가 **필수**다. 없으면 PostgreSQL이
 #    `$4 - make_interval(...)`에서 $4의 타입을 interval로 추론해
 #    "operator does not exist: timestamp with time zone >= interval"로 죽는다.
@@ -199,13 +208,41 @@ async def merge_duplicate_games(pool, sport: str | None = None) -> dict:
     """
     where = "WHERE sport = $1" if sport else ""
     args = [sport] if sport else []
+    # 🔴 [GM-3 2026-09-08] **UTC 날짜로 묶지 않는다 — 시각 근접으로 묶는다.**
+    #    종전: `GROUP BY sport, home, away, date_trunc('day', starts_at AT TIME ZONE 'UTC')`
+    #    바로 위 `apply_result` 는 그 함정을 이미 알고 시각 근접으로 찾는다 —
+    #    "UTC 날짜로 맞추면 MLB 야간경기가 다음 날로 넘어가 못 찾는다."
+    #    **같은 파일 안에서 한 함수는 알고 다른 함수는 몰랐다.**
+    #
+    #    실측 2026-09-08: MLB 2026 정규시즌 2,458경기를 적재하면
+    #    `(홈·원정·UTC날짜)` 그룹이 **262개** 생긴다. 실제 더블헤더는 시즌당
+    #    30~50건뿐이다 — 나머지는 **금요일 야간(토 00:05 UTC)과 토요일 낮
+    #    (토 18:05 UTC)** 이 같은 UTC 날짜에 떨어진 것이다. 그대로 두면 매일
+    #    13:00 `finals_job` 이 262쌍을 병합해 **각 쌍의 한 경기를 지운다.**
+    #
+    #    263쌍의 시간 간격 분포가 창을 정해 준다:
+    #      0.0~0.5h    3건   ← 진짜 중복(같은 경기가 두 행)
+    #      0.5~4.0h    0건   ← **빈 띠**
+    #      4.0~6.0h   11건   ← 더블헤더
+    #      6.0~9.0h    8건
+    #      9.0~24.0h 241건   ← 서로 다른 날 경기
+    #
+    # ⚠️ `MATCH_WINDOW_HOURS`(20h)를 그대로 쓰지 않는다. 그것은 "결과를 붙일
+    #    경기 찾기"용이고 여기는 "같은 경기인가"라 목적이 다르다.
+    #    각 행을 **자기 근방에서 가장 작은 id** 에 붙여 묶는다(단일 연결).
     groups = await pool.fetch(
         f"""
-        SELECT sport, home, away,
-               date_trunc('day', starts_at AT TIME ZONE 'UTC') AS d,
-               array_agg(id ORDER BY id) AS ids
-        FROM games {where}
-        GROUP BY 1, 2, 3, 4
+        SELECT sport, home, away, cid, array_agg(id ORDER BY id) AS ids
+          FROM (
+            SELECT g.id, g.sport, g.home, g.away,
+                   (SELECT min(g2.id) FROM games g2
+                     WHERE g2.sport = g.sport AND g2.home = g.home
+                       AND g2.away = g.away
+                       AND abs(extract(epoch FROM (g2.starts_at - g.starts_at)))
+                           <= {MERGE_WINDOW_HOURS} * 3600) AS cid
+              FROM games g {where}
+          ) t
+         GROUP BY 1, 2, 3, 4
         HAVING count(*) > 1
         """, *args)
     out = {"groups": len(groups), "merged": 0, "moved_predictions": 0,
