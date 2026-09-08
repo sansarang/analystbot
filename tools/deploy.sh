@@ -66,6 +66,15 @@ echo "▶ 배포 커밋 ${SHA:0:7} — $SUBJ"
 #    (실측 15:15: "tools/deploy.sh: line 71: DEPLOYED: unbound variable")
 DEPLOYED=""
 
+# 🔴 [DEP-2 2026-09-08] 실행 명령을 **여기 손으로 적지 않는다.** 종전에는
+#    `deploy_one analystbot-crawler "crawler -interval 10m"` 처럼 적어 화면에
+#    찍었는데, 그 값은 `railway up` 에 전달되지 않는다 — 배포할 때마다 **틀린
+#    값**이 사람에게 보고됐고, 그걸 믿고 CRW-6 항목이 닫혔다.
+#    크롤러의 원본은 이미지 CMD 이므로 거기서 읽어 찍는다.
+crawler_cmd() {
+  sed -n 's/^CMD \[\(.*\)\]/\1/p' crawler/Dockerfile | tr -d '"' | sed 's/, */ /g'
+}
+
 deploy_one() {
   local svc="$1" cmd="$2" path="${3:-.}"
   railway variables --project "$PROJ" --environment "$ENVIRON" --service "$svc" \
@@ -97,12 +106,18 @@ wait_success() {
   return 1
 }
 
+# ⚠️ [DEP-3] 봇·스케줄러의 실제 실행 명령은 **저장소에 없다** — Railway 대시보드의
+#    startCommand 다(스케줄러는 preDeployCommand 로 DB 스키마도 적용한다).
+#    그래서 여기서는 명령이 아니라 **어디서 오는지**를 찍는다. 아는 척하지 않는다.
+SCHED_CMD="대시보드 startCommand (저장소 밖 · DEP-3)"
+BOT_CMD="대시보드 startCommand (저장소 밖 · DEP-3)"
+
 # ⚠️ **스케줄러를 먼저** 배포한다 — 기동 시 DB 스키마를 적용하므로,
 #    봇이 먼저 새 코드로 뜨면 아직 없는 컬럼을 참조할 수 있다.
 case "$TARGET" in
-  bot)       deploy_one analystbot-bot "python -m app.bot" ;;
-  scheduler) deploy_one analystbot-scheduler "python -m app.scheduler" ;;
-  crawler)   deploy_one analystbot-crawler "crawler -interval 10m" crawler ;;
+  bot)       deploy_one analystbot-bot "$BOT_CMD" ;;
+  scheduler) deploy_one analystbot-scheduler "$SCHED_CMD" ;;
+  crawler)   deploy_one analystbot-crawler "$(crawler_cmd)  ← crawler/Dockerfile CMD" crawler ;;
   all)       # 🔴 [DEP-1 2026-09-08] **스케줄러가 SUCCESS 에 닿을 때까지 기다린 뒤**
              #    나머지를 올린다. 종전에는 셋을 연달아 `railway up --detach` 로
              #    올리고(업로드만 시작하고 즉시 반환) SUCCESS 확인은 그 뒤에 했다 —
@@ -110,15 +125,15 @@ case "$TARGET" in
              #    빌드 시간이 서비스마다 다르므로(Go 크롤러는 짧고 파이썬은
              #    uv sync 가 있다) 기동 순서는 얼마든지 뒤집힐 수 있었다.
              #    주석이 막으려던 상황이 정확히 그것이다.
-             deploy_one analystbot-scheduler "python -m app.scheduler"
+             deploy_one analystbot-scheduler "$SCHED_CMD"
              if ! wait_success analystbot-scheduler; then
                echo "❌ 스케줄러가 SUCCESS 에 도달하지 못했다 — 봇·크롤러는 올리지 않는다."
                echo "   (봇이 새 스키마 없이 뜨는 것보다 옛 코드로 도는 편이 낫다)"
                exit 1
              fi
              DEPLOYED=""          # 확인이 끝났으므로 아래 루프에서 다시 기다리지 않는다
-             deploy_one analystbot-bot "python -m app.bot"
-             deploy_one analystbot-crawler "crawler -interval 10m" crawler ;;
+             deploy_one analystbot-bot "$BOT_CMD"
+             deploy_one analystbot-crawler "$(crawler_cmd)  ← crawler/Dockerfile CMD" crawler ;;
   *) echo "사용: $0 [bot|scheduler|crawler|all]"; exit 1 ;;
 esac
 
