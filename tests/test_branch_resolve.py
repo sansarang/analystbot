@@ -676,3 +676,119 @@ class _InningsPool(_FakePool):
         if "avg(innings)" in sql:                      # 같은처지
             return {"n": 45, "ip": 5.2, "deep": 30}
         return await super().fetchrow(sql, *a)
+
+
+# ═══════════════ [BRR-1 2026-09-08] 라우팅이 질문과 다른 영역의 답을 붙였다
+#
+# 🔴 실측 2026-09-08 운영 `variable_ledger` 680행 — 기록형 618건의 라우팅:
+#      불펜 325 · 투수 162 · 타선 105 · 연전 26
+#    그중 **타선 분기가 가로챈 투수 질문 31건**(타선 분기의 30%).
+#    가로채는 낱말은 `타선` 이 아니라 `부진`·`반등` 이었다:
+#      "홈 선발 카라스코 최근 3경기 평균 5.78이닝 3.67실점 **부진** — …"
+#    사용자가 본 형태(2026-09-07 다저스 실카드):
+#      질문 "Nick Lodolo가 홈 타선을 상대로 5이닝 이상을 소화하며 버텨주는가"
+#      답   "Los Angeles Dodgers 최근 3경기 경기당 6.00득점이 다음 경기에 반등하는가"
+#    투수 이닝을 물었는데 상대팀 득점 회귀가 답으로 갔다.
+#
+# ⚠️ 반대 위험(진짜 타선 질문을 투수로 빼앗음)을 아래에서 함께 잠근다.
+
+class _BothPool:
+    """타선·투수 **두 해결사가 모두 답할 수 있는** 상태.
+
+    🔴 한쪽 자료를 비워 두면 "라우팅이 옳아서" 가 아니라 "자료가 없어서"
+       통과할 수 있다. 그러면 라우팅이 되돌아가도 테스트가 안 운다.
+    """
+
+    async def fetch(self, sql, *a):                      # _OWN (본인 등판)
+        return [_own("2026-09-01", True, 5.2), _own("2026-08-26", True, 6.0)]
+
+    async def fetchrow(self, sql, *a):
+        if "prev_starts" in sql:                          # _PEERS
+            return {"n": 232, "ip": 4.12, "deep": 121}
+        if "n3 = 3" in sql:                               # 타선 회귀 동류
+            return {"n": 60, "next_runs": 4.1}
+        if "a.is_starter AND a.team" in sql:              # _TEAM
+            return {"n": 22, "ip": 5.64, "tbf": 23.4, "deep": 20}
+        return {"rpg": 4.4}                               # 리그 평균 득점
+
+
+def _dodgers_jg():
+    from datetime import UTC, datetime
+    return {"sport": "mlb", "home": "Los Angeles Dodgers",
+            "away": "Cincinnati Reds",
+            "home_pitcher": "Emmet Sheehan", "away_pitcher": "Nick Lodolo",
+            "starts_at": datetime(2026, 9, 8, 2, 10, tzinfo=UTC),
+            # 타선 해결사도 답할 수 있게 재료를 준다
+            "research": {"home_usage": {"runs_per_game_l3": 6.0},
+                         "away_usage": {"runs_per_game_l3": 8.0}}}
+
+
+def test_투수_질문이_타선_분기에_가로채이지_않는다():
+    """🔴 2026-09-07 다저스 실카드의 질문 그대로."""
+    import asyncio
+
+    from app.engine.branch_resolve import resolve
+
+    q = "Nick Lodolo가 홈 타선을 상대로 5이닝 이상을 소화하며 버텨주는가"
+    rec = asyncio.run(resolve(_BothPool(), _dodgers_jg(), q))
+    ans = rec.get("답") or {}
+    assert ans, rec
+    blk = ans.get("away") or {}
+    assert "같은처지" in blk or "본인" in blk, (
+        f"투수 이닝 질문인데 투수 해결사로 안 갔다: {rec}")
+    flat = str(ans)
+    assert "다음경기_평균득점" not in flat, "타선 회귀가 답으로 붙었다"
+
+
+def test_부진이라는_낱말이_투수_질문을_타선으로_보내지_않는다():
+    """실측 31건의 다수 형태 — `부진` 하나로 영역이 바뀌었다."""
+    import asyncio
+
+    from app.engine.branch_resolve import resolve
+
+    q = "홈 선발 Emmet Sheehan 최근 3경기 평균 5.78이닝 3.67실점 부진"
+    rec = asyncio.run(resolve(_BothPool(), _dodgers_jg(), q))
+    blk = (rec.get("답") or {}).get("home") or {}
+    assert "같은처지" in blk or "본인" in blk, rec
+
+
+def test_진짜_타선_질문은_투수_이름이_있어도_타선이_답한다():
+    """⚠️ 반대 위험 — 이름만 보고 투수로 보내면 타선 회귀를 잃는다.
+
+    투수 **결과**를 묻는 낱말(이닝·실점·소화)이 없으면 타선 그대로다.
+    """
+    import asyncio
+
+    from app.engine.branch_resolve import resolve
+
+    q = "원정 타선이 Nick Lodolo를 상대로 최근 3경기 배율 1.29를 유지하는가"
+    rec = asyncio.run(resolve(_BothPool(), _dodgers_jg(), q))
+    flat = str(rec.get("답") or {})
+    assert "다음경기_평균득점" in flat, f"타선 질문이 투수로 샜다: {rec}"
+
+
+def test_라인업_확정_여부는_실시간형이다():
+    """🔴 2026-09-07 다저스 실카드 — 답이 우리 DB 에 있는데 못 받았다.
+
+    "Ohtani의 선발 라인업 복귀 및 타순 배치 확정 여부"
+      → `_RECORD_PAT` 의 `타순` 에 걸려 기록형 → 투수 분기로 낙하
+      → 사유 "질문에서 대상 선발을 특정하지 못했다" (답 없음)
+    라인업 공시와 결장은 `live_status` 가 이미 답한다.
+    """
+    from app.engine.branch_resolve import LIVE, classify
+
+    for q in ("Ohtani의 선발 라인업 복귀 및 타순 배치 확정 여부",
+              "주전 포수의 라인업 복귀 여부",
+              "오타니 타순 배치 확정 여부"):
+        assert classify(q) == LIVE, f"{q!r} → {classify(q)}"
+
+
+def test_실시간형_확장이_기록형을_빼앗지_않는다():
+    """⚠️ 반대 위험 — 기록형을 빼앗으면 리그 표본 답을 통째로 잃는다."""
+    from app.engine.branch_resolve import RECORD, classify
+
+    for q in ("타순 상위 3명의 최근 3경기 득점력",
+              "부상 복귀 후 투구수 관리 계획",
+              "홈 불펜이 조기 가동되는가",
+              "연전 4일차 원정 피로"):
+        assert classify(q) == RECORD, f"{q!r} → {classify(q)}"
