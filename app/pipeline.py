@@ -5648,6 +5648,31 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
                 #    ⚠️ 되돌리는 것은 **재시도 자격**이지 판정이 아니다.
                 #       다음 폴링이 같은 라인업을 다시 확정으로 올리며 재판정한다.
                 await _revert_lineup_for_retry(jg, exc)
+        else:
+            payload = {
+                "date": date, "sport": sport, "games": [jg],
+                "breaking_news": analysis.get("news", ""),
+                "instruction": ("확정 라인업이 수신됐다. 확정 선발·타순·결장과 "
+                                "today_nine·lineup_matchup·lineup_record·pitcher_matchup를 반영해 "
+                                "경기력 기준으로 승률을 재산출하라. 배당은 보지 마라. "
+                                "승부는 오늘 9명이다. 결장 건수로 사이드를 뒤집지 마라. "
+                                "유사 타순 전적·맞대결 ERA는 표본 3 미만이면 승률 근거로 쓰지 마라. "
+                                "era_vs_opponent는 시즌 상대팀이지 오늘 9명이 아니다."),
+            }
+            try:
+                verdict = await Judge().judge(payload)
+                _attach_verdicts([jg], verdict)
+            except Exception as exc:
+                logger.warning("[pipeline] 라인업 재판정 실패: %s", exc)
+                await notify_api_error(exc)
+
+        # 🔴 [RJG-2 2026-09-09] **판정 게이트 밖이다.**
+        #    RJG-1 이 이 블록을 `elif` 안에 남겨 두어, 타순만 바뀐 경기에서
+        #    딥서치 T5(라인업 이상)·T6(첫 라인업)까지 함께 꺼졌다.
+        #    하필 그 경우가 T4(선발 변경)는 안 걸리고 **T5·T6 만 걸릴 수
+        #    있는** 경우다 — 껐어야 할 것은 재료 없는 재판정이지 증거 기반
+        #    조사가 아니다.
+        if sport in BASEBALL_SPORTS:
             # [v1.1 6단계] T4·T5 발동 경로. 폴링마다 태우는 force 가 아니라
             #   "선발이 바뀌었다/라인업이 이상하다"일 때만, 같은 라인업당
             #   1회, 슬레이트 상한 안에서만 조사한다.
@@ -5680,24 +5705,6 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
                     logger.debug("[trace] 딥서치 기록 생략: %s", exc)
             except Exception as exc:
                 logger.warning("[pipeline] 재판정 딥서치 생략 — 판정은 계속: %s", exc)
-        else:
-            payload = {
-                "date": date, "sport": sport, "games": [jg],
-                "breaking_news": analysis.get("news", ""),
-                "instruction": ("확정 라인업이 수신됐다. 확정 선발·타순·결장과 "
-                                "today_nine·lineup_matchup·lineup_record·pitcher_matchup를 반영해 "
-                                "경기력 기준으로 승률을 재산출하라. 배당은 보지 마라. "
-                                "승부는 오늘 9명이다. 결장 건수로 사이드를 뒤집지 마라. "
-                                "유사 타순 전적·맞대결 ERA는 표본 3 미만이면 승률 근거로 쓰지 마라. "
-                                "era_vs_opponent는 시즌 상대팀이지 오늘 9명이 아니다."),
-            }
-            try:
-                verdict = await Judge().judge(payload)
-                _attach_verdicts([jg], verdict)
-            except Exception as exc:
-                logger.warning("[pipeline] 라인업 재판정 실패: %s", exc)
-                await notify_api_error(exc)
-
         # [8] **세 마켓을 모두 갱신한다.** 승패만 다시 계산하면 라인업 변경이
         #   총득점·점수차에 준 영향이 반영되지 않는다.
         card_note = ""
@@ -5753,6 +5760,12 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
             except Exception as exc:
                 logger.debug("[trace] 재판정 기록 생략 game=%s: %s",
                              game["id"], exc)
+        elif sport in BASEBALL_SPORTS and not _rj_ok:
+            # 🔴 [RJG-2] **생략은 사유가 따로 있다.** 종전에는 아래 문구가 그대로
+            #    찍혀 "재료 부족"으로 읽혔다 — 원장에는 이미 생략 사유를 남겼는데
+            #    로그만 다른 말을 했다.
+            logger.debug("[pipeline] game=%s 판정 생략(%s) — 재판정 기록은 위에서 남겼다",
+                         game["id"], _rj_why)
         else:
             logger.debug("[pipeline] game=%s 판정 없음(이미 최종·재료 부족) — "
                          "재판정 기록 생략", game["id"])
