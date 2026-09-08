@@ -76,3 +76,98 @@ def test_soccer_trial_still_trips_for_itself():
     src = Path("app/engine/soccer_trial.py").read_text(encoding="utf-8")
     assert "trip_credit(" in src
     assert "abort_if_credit_gone(" in src
+
+
+# ─────────────────────────────────────────────────────────────────────
+# [CG-1 2026-09-08] 같은 결함이 **`provider.py` 에도** 있었다.
+#
+# 2026-09-06 에는 `matchup.py` 호출부만 좁혔다. 그런데 무료 사슬 역할 넷
+# (interpreter·narrator·intent·judge_a)이 지나는 `provider.complete()` 는
+# 사슬을 보기도 전에 `abort_if_credit_gone(role)` 을 무조건 불렀다.
+# 운영 실효 사슬은 셋 다 `groq → gemini` 다 — Anthropic 과 무관한데
+# Anthropic 이 소진되면 통째로 죽었다. 실제 피해는 2026-09-07 자료6
+# (라인업 의도) 해석 20여 건이다(감사 CG-1·CG-3).
+#
+# ⚠️ 위의 기존 계약은 그대로 둔다 — 삭제·약화 금지. 아래는 **추가**다.
+# ─────────────────────────────────────────────────────────────────────
+from types import SimpleNamespace
+
+from app.collectors.base import ApiQuotaError
+from app.llm import provider as P
+
+class _FakeProvider:
+    def __init__(self, name: str, fail: bool = False):
+        self.name, self.model, self.fail = name, f"{name}-m", fail
+
+    async def complete(self, messages, **kw):
+        if self.fail:
+            raise RuntimeError(f"{self.name} 일시 장애")
+        return SimpleNamespace(text="ok", data={"ok": True}, provider=self.name,
+                               model=self.model, attempts=1)
+
+
+_SETTINGS = SimpleNamespace(is_disabled=lambda name: False)
+
+
+@pytest.fixture(autouse=True)
+def _isolated(monkeypatch):
+    credit_guard.reset()
+
+    async def _no_redis():
+        return None
+
+    monkeypatch.setattr(P, "_ledger_redis", _no_redis)
+    yield
+    credit_guard.reset()
+
+
+def _chain(monkeypatch, *providers):
+    monkeypatch.setattr(P, "provider_chain",
+                        lambda role, settings=None: list(providers))
+
+
+async def _call(role="interpreter"):
+    return await P.complete(role, [{"role": "user", "content": "x"}],
+                            thinking=0, settings=_SETTINGS)
+
+
+@pytest.mark.asyncio
+async def test_무료_사슬은_anthropic_소진과_무관하다(monkeypatch):
+    """🔴 이것이 CG-1 의 본체 — 운영 사슬 그대로(groq → gemini)."""
+    _chain(monkeypatch, _FakeProvider("groq"), _FakeProvider("gemini"))
+    P._mark_exhausted("anthropic", "축구 실험이 남긴 400")
+    res = await _call()
+    assert res.text == "ok" and res.provider == "groq"
+
+
+@pytest.mark.asyncio
+async def test_사슬에_anthropic_이_있고_1순위가_살아_있으면_돈다(monkeypatch):
+    _chain(monkeypatch, _FakeProvider("groq"), _FakeProvider("anthropic"))
+    P._mark_exhausted("anthropic", "잔액 0")
+    res = await _call()
+    assert res.provider == "groq"
+
+
+@pytest.mark.asyncio
+async def test_anthropic_단독_사슬은_소진이면_충전_안내로_간다(monkeypatch):
+    """반대 위험 — 잔액 없는 키로 계속 호출하지 않는다."""
+    _chain(monkeypatch, _FakeProvider("anthropic"))
+    P._mark_exhausted("anthropic", "잔액 0")
+    with pytest.raises(ApiQuotaError):
+        await _call()
+
+
+@pytest.mark.asyncio
+async def test_앞이_죽고_뒤가_anthropic_이면_크레딧_오류로_끝난다(monkeypatch):
+    """분류가 `LLMError` 로 뭉개지면 충전 안내가 안 나간다 — 그건 다른 결함이다."""
+    _chain(monkeypatch, _FakeProvider("groq", fail=True), _FakeProvider("anthropic"))
+    P._mark_exhausted("anthropic", "잔액 0")
+    with pytest.raises(ApiQuotaError):
+        await _call()
+
+
+@pytest.mark.asyncio
+async def test_소진이_아니면_anthropic_도_그대로_호출된다(monkeypatch):
+    _chain(monkeypatch, _FakeProvider("anthropic"))
+    res = await _call()
+    assert res.provider == "anthropic"

@@ -652,11 +652,32 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
     from app.collectors.base import ApiQuotaError
     from app.engine.credit_guard import abort_if_credit_gone
 
-    abort_if_credit_gone(role)
+    # 🔴 [CG-1 2026-09-08] **Anthropic 차단기는 Anthropic 을 부르기 직전에만 본다.**
+    #    종전에는 사슬을 보기도 전에 무조건 여기서 불렀다. 그런데 이 함수를 지나는
+    #    역할 넷(interpreter·narrator·intent·judge_a)의 운영 사슬은 전부
+    #    `groq → gemini` 다 — **Anthropic 과 아무 관계가 없는데 Anthropic 이
+    #    소진되면 넷이 통째로 죽었다.**
+    #      실사고 2026-09-05~06: 축구 실험이 400 을 맞고 공용 차단기를 내리자
+    #      무료 사슬로 도는 야구 판정이 호출도 못 해보고 죽었다(MLB 발송 0/85).
+    #      `matchup.py` 는 2026-09-06 에 좁혀 고쳤는데 여기만 남아 있었다.
+    #      실제 피해는 2026-09-07 자료6(라인업 의도) 해석 20여 건이다.
+    #    ⚠️ 늦게 보면 반대 위험이 생긴다(잔액 없는 키로 반복 호출). 그래서
+    #       "부르기 직전"이고, 사슬이 그것으로 끝나면 `ApiQuotaError` 를 그대로
+    #       올려 충전 안내가 계속 나가게 한다(아래 raise).
     for p in chain:
         if s.is_disabled(p.name):
             tried.append(f"{p.name}(disabled)")
             continue
+        # ⚠️ 일반 소진 검사보다 **앞**이다. 뒤에 두면 anthropic 이 여기서
+        #    `LLMError` 로 잡혀 나가고, 그러면 `notify_api_error` 가 충전
+        #    안내로 못 보낸다 — 오류의 **종류**가 사라진다.
+        if p.name == "anthropic":
+            try:
+                abort_if_credit_gone(role)
+            except ApiQuotaError as exc:
+                tried.append("anthropic(잔액 소진·생략)")
+                last = exc
+                continue
         if (why := _is_exhausted(p.name)):
             tried.append(f"{p.name}(소진·생략)")
             last = last or LLMError(f"{p.name}: {why}")
@@ -710,6 +731,10 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
     await _ledger.record_blackout(redis, role)
     # [운영 안정화 2] 연속 실패를 워치독에 남긴다 — 3회면 경보가 나간다.
     await _wd_fail(redis, f"{role}: 체인 전멸 ({'→'.join(tried)})")
+    # 🔴 [CG-1] 마지막 사유가 잔액 소진이면 **그 종류를 유지한다.** `LLMError` 로
+    #    뭉개면 `notify_api_error` 가 충전 안내로 라우팅하지 못한다.
+    if isinstance(last, ApiQuotaError):
+        raise last
     raise LLMError(f"역할 {role}: 체인 전부 실패 ({'→'.join(tried)})") from last
 
 
