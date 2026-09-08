@@ -2831,6 +2831,28 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
                                jg.get("game_id"), exc)
         if await judge_matchup(jg, redis, date, allow_final=allow_final):
             n += 1
+            # ── [BRR-3 2026-09-08] **이번 회차 분기점을 한 번 더 조사한다.**
+            #   위 조사는 판정 **앞**이라 직전 회차 분기점을 푼다 — 그것이
+            #   판정의 재료가 되는 것은 옳다(유료 호출을 늘리지 않는 2단 설계).
+            #   문제는 **카드가 그 캐시를 읽는다**는 것이다. 실측 2026-09-08:
+            #   분기점·조사가 둘 다 있는 9경기 중 **22%(2건)** 가 어긋나 있었다.
+            #     mlb 4101(사용자가 지적한 다저스 경기) 유사도 0.29 —
+            #       이번 분기점 "Emmet Sheehan이 5이닝을 넘기며…"   (홈 선발)
+            #       붙은 조사   "Nick Lodolo가 홈 타선을 상대로…"   (원정 선발)
+            #   🔴 **판정 입력은 바뀌지 않는다.** 다음 회차는 판정 앞에서 같은
+            #      matchup 을 다시 푸는데 그 결과가 이것과 동일하다(멱등).
+            #      `test_재조사는_다음_회차_판정_입력을_바꾸지_않는다` 가 잠근다.
+            #      v1.4 동결은 판정 입력·프롬프트·게이트가 대상이고 이것은 표시다.
+            #   ⚠️ LLM 호출은 늘지 않는다 — DB 질의만이다.
+            #   ⚠️ 실패해도 판정을 막지 않는다. 옛 답이 남을 뿐이다.
+            if pool is not None:
+                try:
+                    from app.engine.branch_resolve import attach as _branch
+
+                    await _branch(pool, jg)
+                except Exception as exc:
+                    logger.warning("[pipeline] 자료14 재조사 실패 game=%s: %s",
+                                   jg.get("game_id"), exc)
             # ── [v1.4] 시장 기준선을 **게이트보다 먼저** 새긴다 ──────────
             #   🔴 종전에는 `pregame_push`(발송 시점)에서만 불렀다. 추천
             #      게이트는 그보다 앞이라 시장값을 볼 수 없었다.

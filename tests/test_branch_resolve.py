@@ -834,3 +834,84 @@ def test_타선이_주어면_투수_이름이_있어도_타선이_답한다():
         rec = asyncio.run(resolve(_BothPool(), _dodgers_jg(), q))
         assert "다음경기_평균득점" in str(rec.get("답") or {}), \
             f"타선 질문이 투수로 샜다: {q!r} → {rec}"
+
+
+# ═══════════════ [BRR-3 2026-09-08] 카드의 분기점과 붙은 답이 다른 질문이었다
+#
+# 🔴 실측 2026-09-08 운영 캐시 — 분기점과 조사 질문이 둘 다 있는 9경기:
+#      유사도 ≥0.6 (사실상 같은 질문) 7건 (78%)
+#      유사도 <0.6 (다른 질문)        2건 (22%)
+#    판정이 회차마다 거의 같은 분기점을 반복해서 대부분은 안 보인다. 문제는 22%:
+#      [mlb 4101] 유사도 0.29  ← 사용자가 지적한 어제 다저스 경기
+#        이번 분기점 : "Emmet Sheehan이 5이닝을 넘기며 3실점 이하로 막는가"  (홈 선발)
+#        붙은 조사   : "Nick Lodolo가 홈 타선을 상대로 5이닝 이상을 …"       (원정 선발)
+#      [npb 4415] 유사도 0.38 — 같은 투수인데 기준이 5이닝 vs 7이닝
+#
+# 원인은 2단 구조다(`pipeline.py:2820` 주석): `attach` 는 판정 **앞**에서 돌아
+# **직전 회차**의 분기점을 푼다. 그 답이 판정의 재료가 되는 것은 옳다 —
+# 유료 호출을 늘리지 않는 설계다. 문제는 **카드가 그 캐시를 읽는다**는 것이다.
+#
+# 고침: 판정이 끝난 뒤 한 번 더 조사해 **이번 회차** 분기점의 답을 캐시에 남긴다.
+#   · 판정 입력은 안 바뀐다 — 다음 회차 `attach` 가 어차피 같은 matchup 을
+#     다시 풀므로 결과가 동일하다(아래 테스트가 그 등가성을 잠근다).
+#   · LLM 호출 0. DB 질의만 경기당 4~8개.
+#   · v1.4 동결(판정 입력·프롬프트·게이트)에 저촉되지 않는다 — 표시 계층이다.
+
+
+@pytest.mark.asyncio
+async def test_재조사는_이번_회차_분기점을_푼다():
+    """🔴 판정이 새 분기점을 내면 `attach` 는 **그것**을 푼다."""
+    from app.engine.branch_resolve import attach
+
+    jg = _dodgers_jg()
+    jg["matchup"] = {"전개": {"분기점": "Nick Lodolo가 5이닝을 넘기는가"}}
+    await attach(_BothPool(), jg)
+    first = (jg["branch"].get("항목") or [{}])[0].get("질문")
+    assert "Lodolo" in str(first), first
+
+    # 판정이 돌아 분기점이 바뀌었다 (다저스 경기에서 실제로 일어난 일)
+    jg["matchup"] = {"전개": {"분기점": "Emmet Sheehan이 5이닝을 넘기는가"}}
+    await attach(_BothPool(), jg)
+    second = (jg["branch"].get("항목") or [{}])[0].get("질문")
+    assert "Sheehan" in str(second), (
+        f"판정이 새 분기점을 냈는데 옛 질문이 남아 있다: {second}")
+
+
+@pytest.mark.asyncio
+async def test_재조사는_다음_회차_판정_입력을_바꾸지_않는다():
+    """⚠️ 이 수정의 안전성이 여기 걸려 있다.
+
+    판정 뒤에 다시 조사해 두면, 다음 회차가 판정 **앞**에서 같은 matchup 을
+    다시 푼 결과와 **같아야** 한다. 같지 않으면 판정 재료를 바꾼 것이고
+    v1.4 동결 위반이다.
+    """
+    from app.engine.branch_resolve import attach
+
+    jg1, jg2 = _dodgers_jg(), _dodgers_jg()
+    m = {"전개": {"분기점": "Emmet Sheehan이 5이닝을 넘기는가"}}
+    jg1["matchup"] = dict(m)
+    jg2["matchup"] = dict(m)
+    await attach(_BothPool(), jg1)                     # 판정 뒤 재조사
+    await attach(_BothPool(), jg2)                     # 다음 회차 판정 앞 조사
+    assert jg1["branch"] == jg2["branch"], "두 시점의 조사 결과가 다르다"
+
+
+def test_파이프라인이_판정_뒤에도_분기점을_푼다():
+    """배선 — 판정 앞뒤로 두 번 돈다. 앞은 판정 재료, 뒤는 카드가 읽는 캐시."""
+    src = open("app/pipeline.py", encoding="utf-8").read()
+    i = src.index("async def _run_baseball_matchups")
+    seg = src[i:src.index("\nasync def ", i + 10)]
+    j = seg.index("if await judge_matchup(jg, redis, date, allow_final=allow_final)")
+    assert "_branch(" in seg[:j], "판정 앞 조사가 사라졌다 — 판정 재료가 빈다"
+    assert "_branch(" in seg[j:], "판정 뒤 재조사가 없다 — 카드가 옛 질문의 답을 본다"
+
+
+def test_재조사_실패가_판정을_막지_않는다():
+    """⚠️ 표시용이다. 실패해도 카드는 나가야 한다."""
+    src = open("app/pipeline.py", encoding="utf-8").read()
+    i = src.index("async def _run_baseball_matchups")
+    seg = src[i:src.index("\nasync def ", i + 10)]
+    j = seg.index("if await judge_matchup(jg, redis, date, allow_final=allow_final)")
+    tail = seg[j:]
+    k = tail.index("_branch(")
+    assert "except Exception" in tail[k:k + 600], "재조사 실패가 판정을 죽인다"
