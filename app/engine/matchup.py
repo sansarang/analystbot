@@ -51,6 +51,10 @@ def _mock_matchup(home: str, away: str) -> dict:
     }
 
 
+#: 창 길이는 `batter_recent` 한 곳에만 산다. 여기서 숫자를 다시 적지 않는다.
+from app.engine.batter_recent import RECENT_GAMES as BATTER_RECENT_GAMES
+
+
 def lineups_payload(jg: dict) -> dict:
     """오늘 선발 + 타순 9명. **슬롯 번호와 포지션을 붙인다.**
 
@@ -68,10 +72,26 @@ def lineups_payload(jg: dict) -> dict:
                             or jg.get(f"{side}_pitcher"))}
         slots = ((nine.get(side) or {}).get("order")
                  if isinstance(nine.get(side), dict) else None)
+        # 🔴 [BAT-4 2026-09-08] 이름 옆에 **최근 창의 숫자**를 얹는다.
+        #    종전 자료3 은 이름·포지션뿐이고 숫자가 0개였다. 그래서 판정은
+        #    타자를 **순서에서 추론**할 수밖에 없었다(잠정 70.4% vs 확정 51.5%).
+        #    ⚠️ 여기는 **읽기만 한다.** 집계·창 길이는 `batter_recent` 가
+        #       원본이고, 자료 번호를 새로 만들지 않는다.
+        recent = r.get(f"{side}_batter_recent") or {}
+        rkey = f"최근{BATTER_RECENT_GAMES}"
         if slots:
-            blk["타순"] = [{"타순": x.get("slot"), "이름": x.get("name"),
-                            "포지션": x.get("pos")}
-                           for x in slots if isinstance(x, dict)]
+            blk["타순"] = []
+            for x in slots:
+                if not isinstance(x, dict):
+                    continue
+                item = {"타순": x.get("slot"), "이름": x.get("name"),
+                        "포지션": x.get("pos")}
+                # ⚠️ 자료가 없는 선수에게 **빈 칸을 만들지 않는다** — 0으로
+                #    채우면 수집 실패가 부진으로 읽힌다.
+                stat = recent.get(str(x.get("name") or "").strip())
+                if stat:
+                    item[rkey] = stat
+                blk["타순"].append(item)
         else:
             # 🔴 [2026-09-07] 폴백이 **문자열을 그대로** 넣고 있었다.
             #    `"최원준-김민혁-…"` 이 들어가면 길이를 세는 계측이 문자 수를
@@ -85,8 +105,12 @@ def lineups_payload(jg: dict) -> dict:
             if isinstance(raw, str) and raw:
                 from app.engine.lineup_diff import parse_order
 
-                blk["타순"] = [{"타순": i, "이름": nm, "포지션": pos}
-                               for i, (nm, pos) in enumerate(parse_order(raw), 1)]
+                blk["타순"] = []
+                for i, (nm, pos) in enumerate(parse_order(raw), 1):
+                    item = {"타순": i, "이름": nm, "포지션": pos}
+                    if recent.get(nm):
+                        item[rkey] = recent[nm]
+                    blk["타순"].append(item)
             else:
                 blk["타순"] = raw
         out[side] = blk

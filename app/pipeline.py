@@ -2704,6 +2704,7 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
        `judge_matchup` 이 판단한다 — 조건을 호출부마다 적으면 사본이 된다.
        기본은 예비(무료)다. 최종은 라인업 재판정 경로에서만 열린다.
     """
+    from app.engine.batter_recent import attach_batter_recent
     from app.engine.matchup import judge_matchup
     from app.engine.starter_recent import attach_starter_recent
 
@@ -2737,6 +2738,13 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
             await attach_starter_recent(jg, pool)
         except Exception as exc:
             logger.warning("[pipeline] 선발 최근 등판 실패 game=%s: %s",
+                           jg.get("game_id"), exc)
+        # 🔴 [BAT-4 2026-09-08] 자료3 에 타자 숫자를 붙인다. 투수 축과
+        #    **같은 자리·같은 규약**이다 — 실패해도 판정은 그대로 돈다.
+        try:
+            await attach_batter_recent(jg, pool)
+        except Exception as exc:
+            logger.warning("[pipeline] 타자 최근 기록 실패 game=%s: %s",
                            jg.get("game_id"), exc)
         # 🔴 [C2 2026-09-04] 선발 시즌 라인(자료7)·타선 시즌 라인(자료8)의
         #   부착을 **없앴다.** 대원칙: 시즌 누적은 판정 입력이 아니다.
