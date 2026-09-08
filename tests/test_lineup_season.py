@@ -186,7 +186,7 @@ def test_matchup_render_leaves_no_placeholder():
     from pathlib import Path
 
     from app.engine import matchup as M
-    from app.engine.prompts import MATCHUP, fill
+    from app.engine.prompts import MATCHUP, baseball_material_note, fill
 
     jg = {"research": {
         "home_usage": {"games": [{"runs": 3, "opp_runs": 2}]},
@@ -205,6 +205,8 @@ def test_matchup_render_leaves_no_placeholder():
                # [자료14 2026-09-07] 분기점 조사. 비어 있어도 자리는 채운다 —
                #   이 테스트가 "새 자료를 넣고 fill 을 안 고쳤다"를 잡는다.
                BRANCH_JSON=J(M.branch_payload(jg)),
+               # 🔒 [BAT-6] 동결 게이트가 꺼져 있으면 빈 문자열이다.
+               BATTER_MATERIAL_NOTE=baseball_material_note(),
                BULLPEN_JSON=J(M.bullpen_payload(jg)))
     assert "{{" not in out
     # [C2 2026-09-04] 자료8 이 폐지되어 가중OPS 는 **실리면 안 된다.**

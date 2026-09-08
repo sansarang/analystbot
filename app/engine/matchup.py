@@ -6,7 +6,7 @@ import logging
 
 from app.collectors.base import ApiQuotaError
 from app.config import get_settings
-from app.engine.prompts import MATCHUP, fill
+from app.engine.prompts import MATCHUP, baseball_material_note, fill
 from app.engine.team_form import (
     FORM_TTL,
     analysis_game_key,
@@ -77,7 +77,11 @@ def lineups_payload(jg: dict) -> dict:
         #    타자를 **순서에서 추론**할 수밖에 없었다(잠정 70.4% vs 확정 51.5%).
         #    ⚠️ 여기는 **읽기만 한다.** 집계·창 길이는 `batter_recent` 가
         #       원본이고, 자료 번호를 새로 만들지 않는다.
-        recent = r.get(f"{side}_batter_recent") or {}
+        # 🔒 [BAT-6] 동결 게이트. 꺼져 있으면 자료3 은 BAT-4 이전과 같다.
+        from app.config import get_settings
+
+        recent = ((r.get(f"{side}_batter_recent") or {})
+                  if get_settings().batter_material_enabled else {})
         rkey = f"최근{BATTER_RECENT_GAMES}"
         if slots:
             blk["타순"] = []
@@ -673,6 +677,8 @@ def render_matchup_prompt(jg: dict, boxes: dict, news: dict,
         BOXSCORE_JSON=json.dumps(boxes, ensure_ascii=False, default=str),
         NEWS_JSON=json.dumps(news, ensure_ascii=False, default=str),
         LINEUPS_JSON=json.dumps(lineups_payload(jg), ensure_ascii=False, default=str),
+        # 🔒 [BAT-6] 동결 게이트가 꺼져 있으면 빈 문자열이다.
+        BATTER_MATERIAL_NOTE=baseball_material_note(),
         STARTERS_RECENT_JSON=json.dumps(
             starters_recent_payload(jg), ensure_ascii=False, default=str),
         PREV_VERDICT_JSON=json.dumps(prev, ensure_ascii=False, default=str),

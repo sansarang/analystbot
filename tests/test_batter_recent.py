@@ -104,9 +104,17 @@ async def test_풀이_없으면_빈_객체다():
     assert jg["research"]["away_batter_recent"] == {}
 
 
-async def test_자료3_에_숫자가_실린다():
-    """🔴 새 자료 번호를 만들지 않는다 — 자료3 을 채운다."""
+async def test_자료3_에_숫자가_실린다(monkeypatch):
+    """🔴 새 자료 번호를 만들지 않는다 — 자료3 을 채운다.
+
+    🔒 [BAT-6] 주입은 **동결 게이트 뒤**다. 여기서는 켠 상태를 검증한다 —
+       꺼진 상태의 계약은 `tests/test_batter_freeze_gate.py` 가 잠근다.
+    """
+    from app.config import get_settings
     from app.engine.matchup import lineups_payload
+
+    monkeypatch.setenv("BATTER_MATERIAL_ENABLED", "1")
+    get_settings.cache_clear()
 
     jg = _jg(["박해민", "오스틴"])
     jg["research"]["home_batter_recent"] = {
@@ -117,6 +125,7 @@ async def test_자료3_에_숫자가_실린다():
     assert first["이름"] == "박해민" and first["최근5"]["안타"] == 6
     # 자료가 없는 선수에게 빈 칸을 만들지 않는다
     assert "최근5" not in second
+    get_settings.cache_clear()
 
 
 async def test_타순_없으면_아무것도_안_한다():
