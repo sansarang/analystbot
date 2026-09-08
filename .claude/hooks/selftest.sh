@@ -46,7 +46,28 @@ if [ "$H" -ge 17 ] && [ "$H" -lt 22 ]; then
   fi
 else
   echo "  ⏭  지금은 슬레이트 창이 아니다(${H}시) — 창 밖 동작만 확인한다"
-  check "창 밖 배포는 다른 게이트로" deny "tools/deploy.sh scheduler"
+  # 🔴 [2026-09-08] 종전에는 그냥 deny 를 기대했다. 그 기대는 "작업트리가
+  #    더럽거나 마커가 낡았다"는 **주변 상태에 얹혀 있었다.** 전부 커밋하고
+  #    전체 스위트를 통과시킨 직후(= 정상 배포 가능 상태)에는 통과가 옳고,
+  #    테스트만 빨개졌다. 이 파일이 커밋 게이트 절에 적어둔 규율 그대로다 —
+  #    **상태는 테스트가 직접 만든다.**
+  # ⚠️ **lib.sh 를 먼저 읽는다.** 이 절이 쓰이는 시점에는 아래 커밋 게이트 절의
+  #    GREEN= 이 아직 실행되지 않았다. 종전 판에서 그걸 빠뜨려 빈 경로에 쓰고,
+  #    마지막 정리에서 **진짜 마커를 지웠다**(실측 2026-09-08, 내가 냈다).
+  source .claude/hooks/lib.sh
+  GBAK=$(mktemp); HADG=0
+  [ -f "$GREEN" ] && { cp "$GREEN" "$GBAK"; HADG=1; }
+  printf 'deadbeef\n2000-01-01 00:00:00\n0 passed\n' > "$GREEN"   # 미검증 코드
+  check "창 밖 배포 · 마커 낡음"    deny  "tools/deploy.sh scheduler"
+  printf '%s\n%s\n%s\n' "$(worktree_sig)" "$(date '+%F %T')" "9999 passed" > "$GREEN"
+  if [ -z "$(git status --porcelain)" ]; then
+    check "창 밖 배포 · 깨끗+검증됨"  allow "tools/deploy.sh scheduler"
+  else
+    check "창 밖 배포 · 미커밋 있음"  deny  "tools/deploy.sh scheduler"
+  fi
+  # 원상 복구 — 있었으면 되돌리고, 없었으면 없는 상태로 되돌린다.
+  if [ "$HADG" = 1 ]; then cp "$GBAK" "$GREEN"; else rm -f "$GREEN"; fi
+  rm -f "$GBAK"
 fi
 
 echo "══ (a) 커밋 게이트 ══"
