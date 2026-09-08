@@ -122,12 +122,22 @@ def test_문구가_없는_칸을_약속하지_않는다(monkeypatch):
     get_settings.cache_clear()
     note = baseball_material_note()
     assert "홈런" not in note and "볼넷" not in note and "삼진" not in note, note
-    assert "리그마다" in note, "칸이 리그마다 다르다는 사실을 말해야 한다"
+    # 🔴 [정정 2026-09-09] 종전에는 "리그마다 다르다"를 요구했다. BAT-9 로 세
+    #    리그가 같은 여덟 칸을 주게 되어 **그 문장 자체가 거짓이 됐다.**
+    #    잠글 것은 특정 문구가 아니라 규칙이다 — 칸 이름을 열거하지 않는 것,
+    #    그리고 "있는 칸만 사실"이라고 말하는 것.
+    assert "있는 칸만 사실" in note, note
     get_settings.cache_clear()
 
 
-def test_kbo_는_홈런_볼넷_삼진이_없다():
-    """⚠️ 없는 칸을 **만들지 않는다**. 0으로 채우면 그것은 지어낸 사실이다."""
+def test_타석표가_없으면_지어내지_않는다():
+    """⚠️ 없는 칸을 **만들지 않는다**. 0으로 채우면 그것은 지어낸 사실이다.
+
+    🔴 [정정 2026-09-09] 이 테스트의 이름은 원래 "kbo 는 홈런·볼넷·삼진이
+       없다"였다. **BAT-9 이후 거짓이다** — KBO 도 `table2`(타석별 결과)에서
+       세 칸을 채운다. 여기서 잠그는 것은 리그가 아니라 **자료가 없을 때의
+       태도**다: `table2` 가 비면 `None` 이지 0이 아니다.
+    """
     from app.collectors.kbo_boxscore import parse_batting
 
     box = {"arrHitter": [
