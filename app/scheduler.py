@@ -1930,7 +1930,19 @@ def _job_specs() -> list[tuple]:
         ("calibration_weekly", calibration_report_job,
          CronTrigger(day_of_week="sun", hour=23, minute=30, timezone=KST)),
         ("research_retry_45m", research_retry_job, IntervalTrigger(minutes=45)),
-        ("lineup_poll_30m", lineup_poll_job, IntervalTrigger(minutes=30)),
+        # 🔴 [SCH-2 2026-09-08] `lineup_poll_30m` 을 **뺐다 — 고유 커버리지가 0이었다.**
+        #      lineup_poll_30m → mlb_pregame_poll() + crawler_lineup_poll(("npb","kbo"))
+        #      mlb_pregame_5m  → mlb_pregame_poll()              ← 같은 함수
+        #      asia_pregame_5m → crawler_lineup_poll(("kbo",))   ← 같은 함수
+        #      npb_pregame_2m  → crawler_lineup_poll(("npb",))   ← 같은 함수
+        #    창 게이트(`mlb_poll_window`·`asia_poll_window`)도 같은 것을 쓴다.
+        #    30분마다 이미 하는 일을 한 번 더 했고, 5분/2분 잡과 **동시에 발화하면
+        #    경합**했다. 크레딧을 두 번 태우고 원장에 두 번 찍힌다.
+        #    ⚠️ 이 잡만이 원장 폭주의 원인은 아니다 — 주 원인은 재판정 방아쇠
+        #       (`changed = status != prev or bool(notes)`)다. 여기서 줄이는 몫은
+        #       KBO 기준 시간당 12회 대비 2회, **약 14%** 다. 과장하지 않는다.
+        #    ⚠️ `lineup_poll_job` 함수는 **지우지 않았다** — 등록만 뺐다.
+        #       수동 호출·테스트가 그것을 쓸 수 있고, 지우는 것은 별건이다.
         # NPB 18:00 → 17:45까지 크롤·분석 종료. KBO는 시작 직전까지 5분마다.
         # 🔴 종전에는 CronTrigger(hour="17,18") 였다 — **시각을 코드에 박아**
         #    17~18시 슬레이트만 다뤘다. 주말 낮경기(14:00·17:00)·더블헤더·

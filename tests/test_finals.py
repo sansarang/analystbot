@@ -15,7 +15,7 @@ def test_scheduler_jobs_registered():
     jobs = {j.id: j for j in scheduler.get_jobs()}
     assert set(jobs) == {"prefetch_evening", "prefetch_dawn", "prefetch_asia",
                          "odds_snapshot_30m", "ingest_finals_13h",
-                         "elo_refresh_weekly", "research_retry_45m", "lineup_poll_30m",
+                         "elo_refresh_weekly", "research_retry_45m",
                          "statcast_daily", "soccerdata_daily", "park_weekly",
                          "kbo_lineup_history", "npb_lineup_history",
                          "mlb_lineup_history",

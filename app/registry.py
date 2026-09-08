@@ -182,7 +182,11 @@ WATCHED_JOBS: tuple[WatchedJob, ...] = (
     WatchedJob("asia_pregame_5m", 10, "KBO 저녁 폴링"),
     WatchedJob("npb_pregame_2m", 6, "NPB 공시~T-10 창이 좁다"),
     WatchedJob("odds_snapshot_30m", 35, "배당 수집"),
-    WatchedJob("lineup_poll_30m", 35, "라인업 폴링"),
+    # 🔴 [SCH-2 2026-09-08] `lineup_poll_30m` 을 등록표에서 뺐다(고유 커버리지 0).
+    #    여기 남겨 두면 워치독이 **안 도는 잡**으로 오탐한다 — 감시 대상은
+    #    등록된 잡과 같아야 한다(`test_watched_jobs_match_the_scheduler`).
+    #    라인업 폴링 자체는 mlb_pregame_5m·asia_pregame_5m·npb_pregame_2m 이
+    #    이미 감시 대상으로 들어 있다 — 커버리지 손실 없다.
     WatchedJob("research_retry_45m", 50, "리서치 재시도 큐"),
 )
 
