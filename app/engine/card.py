@@ -710,8 +710,59 @@ def _branch_odds(verdict: dict) -> tuple[float | None, float | None, str]:
     return None, None, ""
 
 
-def branch_lines(verdict: dict) -> list[str]:
+def _answer_summary(item: dict) -> str:
+    """자료14 가 **DB 에서 찾은 답**을 한 줄로. 못 요약하면 빈 문자열.
+
+    🔴 [CARD-2 2026-09-08 사용자 지시] "분기점이 나오면 그 분기점을 찾아서
+       **예측을** 하게 했다. 변수도 마찬가지다. **물음표는 없어야 한다.**"
+       설계도 그렇게 되어 있다(프롬프트 자료14): "본인 표본이 얇을 때
+       `같은처지`가 답이다. **'예측 불가'라고 쓰지 마라**."
+       답은 이미 찾아 놓았는데 카드에는 질문만 나가고 있었다.
+
+    ⚠️ **세 갈래를 곱해 단일 수를 만들지 않는다.** 자료13 이 그것으로 무너졌다
+       (얇은 비율의 곱 → 예측 sd 5.25 vs 실제 3.82). 나란히 놓기만 한다.
+    ⚠️ 비율 문자열("17/20 (85%)")은 해결사가 만든 것을 **그대로 옮긴다** —
+       카드가 다시 계산하지 않는다(사본 금지). 임계값도 여기 적지 않는다.
+    ⚠️ 해결사마다 `답` 모양이 다르다. **아는 키만 읽고 모르면 건너뛴다** —
+       새 해결사가 생겨도 카드가 깨지지 않는다.
+    """
+    ans = item.get("답")
+    if not isinstance(ans, dict):
+        return ""
+    bits: list[str] = []
+    for blk in ans.values():
+        if not isinstance(blk, dict):
+            continue
+        # ── 투수 세 갈래 (innings_outlook)
+        own = blk.get("본인") or {}
+        apps = [a for a in (own.get("등판") or []) if isinstance(a, dict)]
+        if apps:
+            ip = " · ".join(f"{float(a.get('이닝') or 0):.1f}" for a in apps[:5])
+            bits.append(f"본인 최근 {ip}이닝")
+        for key, label in (("소속팀", "소속팀"), ("같은처지", "리그 동류")):
+            sub = blk.get(key) or {}
+            ratio = next((str(v) for k, v in sub.items()
+                          if k.endswith("이닝이상") and v), "")
+            if ratio:
+                bits.append(f"{label} {ratio}".replace(" (", "("))
+            elif sub.get("표본"):
+                bits.append(f"{label} 표본 {sub['표본']}")
+        # ── 타선 회귀 (offense_outlook)
+        if blk.get("다음경기_평균득점") is not None:
+            bits.append(f"직전 3경기 뒤 평균 {blk['다음경기_평균득점']}득점"
+                        f"(리그 {blk.get('리그_경기당득점')}) 표본 {blk.get('표본')}")
+        # ── 오늘의 사실 (live_status)
+        if blk.get("상태"):
+            bits.append(f"라인업 {blk['상태']}")
+    return " · ".join(x for x in bits if x)
+
+
+def branch_lines(verdict: dict, probe: dict | None = None) -> list[str]:
     """갈림길 블록. `["⚠️ 갈림길 — …", "   발생 확률 …"]` · 분기점이 없으면 빈 리스트.
+
+    `probe` 는 `jg["branch"]`(자료14 조사 결과)다. 주면 **찾은 답을 함께 싣는다.**
+    ⚠️ 인자 이름을 `branch` 로 두면 아래 지역 변수(분기점 **문장**)와 가려진다 —
+       실제로 그렇게 썼다가 `AttributeError: str object has no attribute get` 이 났다.
 
     🔴 [CARD-1 2026-09-08] **보드와 발송 카드가 이것을 함께 쓴다.**
        종전에는 이 조립이 `verdict_block` 안에만 있었고, 그 함수를 부르는 곳은
@@ -731,6 +782,13 @@ def branch_lines(verdict: dict) -> list[str]:
     if not branch:
         return []
     out = [f"⚠️ 갈림길 — {branch}"]
+    # 🔴 [CARD-2] 물음표로 끝내지 않는다 — 자료14 가 DB 에서 찾은 수를 올린다.
+    #    ⚠️ 답이 없고 `사유` 만 있으면 아무 줄도 안 붙인다. 없는 것을 지어내지 않는다.
+    for item in ((probe or {}).get("항목") or []):
+        summary = _answer_summary(item)
+        if summary:
+            out.append(f"   {summary}")
+            break
     q, n, side = _branch_odds(verdict)
     if q is not None and n is not None:
         out.append(f"   발생 확률 {q:.0f}% · 그때 {side} 쪽으로 {n:.0f}%p")
@@ -777,7 +835,7 @@ def verdict_block(jg: dict) -> list[str]:
         out.append("   " + judgment)
 
     # ── 갈림길 = 전개.분기점 + 그 리스크의 발생 확률·영향
-    bl = branch_lines(m)
+    bl = branch_lines(m, jg.get("branch"))
     if bl:
         out.append("")
         out.extend("   " + x for x in bl)

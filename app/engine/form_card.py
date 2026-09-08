@@ -214,13 +214,28 @@ def render_form_card(jg: dict, sport: str | None = None, *,
     #    ⚠️ 문구를 여기 적지 않는다 — `card.branch_lines` 를 **부른다**(사본 금지).
     from app.engine.card import branch_lines
 
-    lines.extend(branch_lines(m))
+    #    🔴 [CARD-2] `jg["branch"]` 를 함께 넘긴다 — 자료14 가 DB 에서 찾은 답을
+    #       갈림길 아래 한 줄로 싣는다. 물음표로 끝내지 않는다.
+    lines.extend(branch_lines(m, jg.get("branch")))
     reasons = [str(x).strip() for x in (m.get("근거") or []) if str(x).strip()]
     for i, r in enumerate(reasons[:3], 1):
         lines.append(f"근거{i} {r}")
     variables = [str(x).strip() for x in (m.get("변수") or []) if str(x).strip()]
     for v in variables[:2]:
+        # 🔴 [CARD-2] `발생 확률` 칸은 **자료14 가 답을 준 변수에만** 붙는다.
+        #    비어 있는 것을 그냥 두면 사용자가 "안 찾은 것"과 "찾았는데 답이
+        #    없는 것"을 구분할 수 없다. 없으면 없다고 적는다 —
+        #    지어내지 않되 침묵하지도 않는다.
+        #    ⚠️ **변수 문자열은 한 글자도 건드리지 않는다** — L1 사실 감시가
+        #       카드의 그 줄을 프롬프트 원문과 대조한다
+        #       (`test_card_emits_the_variable_verbatim`). 표시는 **다음 줄**에 둔다.
+        #       처음에 같은 줄에 이어 붙였다가 그 계약을 깼고, 전체 스위트가 잡았다.
+        from app.engine.variable_parse import parse_variable
+
         lines.append(f"변수 {v}")
+        p = parse_variable(v)
+        if p and p.get("q") is None:
+            lines.append("     · 자료14 미조사 — 발생 확률을 찾지 못했다")
     news = m.get("뉴스반영") or {}
     if isinstance(news, dict) and news.get("적용"):
         adj = news.get("조정폭") or ""
