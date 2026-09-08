@@ -176,7 +176,21 @@ async def complete(provider: str, model: str, prompt: str, *,
             # 🔴 우회하지 않는다. **기다린다** — 한도는 한도이고, 기다리면 풀린다.
             #    `Retry-After` 가 있으면 그것을 따르고, 없으면 그 provider 의
             #    최소 간격만큼 쉰다.
-            out["error"] = "429 rate limited"
+            # 🔴 [LLM-1 2026-09-08] **본문을 버리지 않는다.** 종전에는 이 줄이
+            #    `"429 rate limited"` 로 덮어써서 응답이 무슨 말을 했든 사라졌다.
+            #    바로 아래 5xx 분기는 `r.text[:160]` 을 보존하는데 429 만 버렸다.
+            #    실사고 2026-09-08: 운영 gemini 가 이렇게 답하고 있었다 —
+            #      429 RESOURCE_EXHAUSTED "Your prepayment credits are depleted.
+            #                              Please go to AI Studio ... billing."
+            #    로그에는 "rate limited" 만 남아 사람이 "기다리면 풀린다"로 읽었고,
+            #    잔액이 0인 채로 **11경기 판정이 0건**으로 슬레이트가 지나갔다.
+            #    ⚠️ **분류는 바꾸지 않는다.** 429 를 credit 으로 승격시키면 반대
+            #       사고가 난다 — 2026-09-05, 툴 결함으로 세 역할이 gemini 로 몰려
+            #       난 429 가 credit 으로 오분류돼 체인이 통째로 멈췄다
+            #       (W-LLM-FAIL 24회, `provider.py` 주석). 어댑터는 분류하지
+            #       않는다. 재시도·대기·차단기 전부 그대로다. **보이게만 한다.**
+            detail = (r.text or "").strip().replace("\n", " ")[:160]
+            out["error"] = f"429 rate limited — {detail}" if detail else "429 rate limited"
             out["retries"] = attempt + 1
             if attempt == 3:
                 break
@@ -187,8 +201,8 @@ async def complete(provider: str, model: str, prompt: str, *,
                 wait = float(ra) if ra else MIN_INTERVAL_SEC.get(provider, 30.0)
             except (TypeError, ValueError):
                 wait = MIN_INTERVAL_SEC.get(provider, 30.0)
-            logger.warning("[net] %s 429 — %.0f초 후 재시도 (%d/4)",
-                           provider, wait, attempt + 1)
+            logger.warning("[net] %s 429 — %.0f초 후 재시도 (%d/4) · 본문: %s",
+                           provider, wait, attempt + 1, detail or "(없음)")
             await asyncio.sleep(min(wait, 60.0))
             continue
         if r.status_code >= 500:

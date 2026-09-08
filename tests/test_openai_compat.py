@@ -128,3 +128,94 @@ def test_no_bypass():
     assert "우회하지 않는다" in SRC
     assert "기다린다" in SRC
     assert "random" not in SRC and "User-Agent" not in SRC
+
+
+# ═══════════════ [LLM-1 2026-09-08] 429 본문을 버려 진짜 원인이 가려졌다
+#
+# 🔴 실사고 2026-09-08: 운영 gemini 잔액이 소진돼 **11경기 판정이 0건**이 됐는데
+#    아무도 몰랐다. 응답 본문은 이렇게 말하고 있었다:
+#      429 {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED",
+#           "message": "Your prepayment credits are depleted. Please go to
+#                       AI Studio ... to manage your project and billing."}}
+#    그런데 어댑터가 `out["error"] = "429 rate limited"` 로 **덮어썼다.**
+#    바로 아래 5xx 분기는 `r.text[:160]` 을 보존하는데 429 만 버린다.
+#    로그를 본 사람은 "한도니까 기다리면 풀린다"고 읽었고, 잔액이 0인 채로
+#    슬레이트가 통째로 지나갔다.
+#
+# ⚠️ **분류를 바꾸지 않는다.** 429 를 credit 으로 승격시키면 반대 사고가 난다 —
+#    실측 2026-09-05: 툴 호출 결함으로 narrator·interpreter·intent 가 gemini 로
+#    몰려 429 가 났고, 그 429 가 credit 으로 오분류돼 **체인이 통째로 멈췄다**
+#    (W-LLM-FAIL 24회, `provider.py` 주석). 재시도도 차단기도 그대로 둔다.
+#    고치는 것은 **보이게 하는 것** 하나다.
+
+_DEPLETED = ('{"error": {"code": 429, "status": "RESOURCE_EXHAUSTED", "message": '
+             '"Your prepayment credits are depleted. Please go to AI Studio."}}')
+
+
+def _mock_client(monkeypatch, handler):
+    import httpx as _h
+
+    orig = _h.AsyncClient
+
+    class C(orig):
+        def __init__(self, *a, **kw):
+            kw["transport"] = _t(handler)
+            super().__init__(*a, **kw)
+
+    monkeypatch.setattr(_h, "AsyncClient", C)
+
+
+@pytest.mark.asyncio
+async def test_429_본문이_error_에_남는다(monkeypatch):
+    """🔴 잔액 소진이 '한도'로 읽히면 아무도 충전하지 않는다."""
+    async def no_sleep(x):
+        pass
+
+    monkeypatch.setattr("asyncio.sleep", no_sleep)
+    monkeypatch.setenv("MISTRAL_API_KEY", "k")
+    monkeypatch.setattr(OC, "ENDPOINTS",
+                        {**OC.ENDPOINTS, "mistral": ("http://localhost/v1",
+                                                     "MISTRAL_API_KEY")})
+    _mock_client(monkeypatch, lambda req: httpx.Response(429, text=_DEPLETED))
+    r = await OC.complete("mistral", "m", "p")
+    assert r["ok"] is False
+    assert "depleted" in (r["error"] or ""), (
+        f"본문이 버려졌다 — 진짜 원인을 못 본다: {r['error']!r}")
+
+
+@pytest.mark.asyncio
+async def test_429_는_여전히_기다리고_재시도한다(monkeypatch):
+    """⚠️ 반대 위험 — 본문을 살렸다고 재시도를 없애면 진짜 한도에서 손해다."""
+    calls = {"n": 0}
+    slept = []
+
+    async def no_sleep(x):
+        slept.append(x)
+
+    monkeypatch.setattr("asyncio.sleep", no_sleep)
+    monkeypatch.setenv("MISTRAL_API_KEY", "k")
+    monkeypatch.setattr(OC, "ENDPOINTS",
+                        {**OC.ENDPOINTS, "mistral": ("http://localhost/v1",
+                                                     "MISTRAL_API_KEY")})
+
+    def handler(req):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(429, headers={"Retry-After": "7"},
+                                  text="rate limit exceeded")
+        return httpx.Response(200, json={"choices": [
+            {"message": {"content": "ok"}}]})
+
+    _mock_client(monkeypatch, handler)
+    r = await OC.complete("mistral", "m", "p")
+    assert r["ok"] is True and calls["n"] == 2
+    assert 7.0 in slept, f"Retry-After 를 안 따랐다: {slept}"
+
+
+def test_429_분류를_바꾸지_않는다():
+    """⚠️ 반대 위험 — 429 를 credit 으로 승격시키면 2026-09-05 사고가 재발한다.
+
+    어댑터는 **분류하지 않는다.** 본문을 보존해 넘길 뿐이다.
+    """
+    assert "trip_credit" not in SRC and "ApiQuotaError" not in SRC
+    assert "우회하지 않는다" in SRC and "기다린다" in SRC
