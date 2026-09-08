@@ -792,3 +792,45 @@ def test_실시간형_확장이_기록형을_빼앗지_않는다():
               "홈 불펜이 조기 가동되는가",
               "연전 4일차 원정 피로"):
         assert classify(q) == RECORD, f"{q!r} → {classify(q)}"
+
+
+# ═══════════════ [BRR-2 2026-09-08] BRR-1 의 조건이 좁았다
+#
+# 🔴 **오늘 카드에서 그대로 났다.** 운영 `analysis:kbo:2026-09-08` game=1721
+#    (KIA @ 삼성, stage=final):
+#      질문 "최원태의 이전 맞대결 부진 재발"
+#      답   "Samsung Lions 최근 3경기 경기당 5.67득점이 다음 경기에 반등하는가"
+#    투수를 물었는데 팀 득점 회귀가 왔다 — 2026-09-07 다저스와 같은 결함이다.
+#    BRR-1 은 `주체가 투수 **그리고** 투수 결과 낱말(이닝·실점·소화…)` 을
+#    요구했는데 이 문장에는 그 낱말이 없다(`맞대결 부진 재발`). 그래서 못 잡았다.
+#
+# ⚠️ `부진` 을 그냥 더하면 진짜 타선 질문을 빼앗는다. 가르는 신호는
+#    **주격 조사**다 — `타선이/타선은/타선의` 면 타선이 주어이고,
+#    `타선을 상대로` 는 목적어다. 조사가 붙지 않으면 주체 판별을 따른다.
+
+def test_투수_주체면_결과_낱말이_없어도_투수가_답한다():
+    """🔴 운영 2026-09-08 KBO 1721 실문장."""
+    import asyncio
+
+    from app.engine.branch_resolve import resolve
+
+    q = "Emmet Sheehan의 이전 맞대결 부진 재발"
+    rec = asyncio.run(resolve(_BothPool(), _dodgers_jg(), q))
+    blk = (rec.get("답") or {}).get("home") or {}
+    assert "같은처지" in blk or "본인" in blk, (
+        f"투수를 물었는데 투수 해결사로 안 갔다: {rec}")
+    assert "다음경기_평균득점" not in str(rec.get("답") or {})
+
+
+def test_타선이_주어면_투수_이름이_있어도_타선이_답한다():
+    """⚠️ 반대 위험 — 주격 조사가 붙은 타선은 빼앗지 않는다."""
+    import asyncio
+
+    from app.engine.branch_resolve import resolve
+
+    for q in ("원정 타선이 Nick Lodolo를 상대로 최근 3경기 배율 1.29를 유지하는가",
+              "홈 타선의 최근 침체가 Emmet Sheehan 상대로 반등하는가",
+              "원정 득점력이 반등하는가"):
+        rec = asyncio.run(resolve(_BothPool(), _dodgers_jg(), q))
+        assert "다음경기_평균득점" in str(rec.get("답") or {}), \
+            f"타선 질문이 투수로 샜다: {q!r} → {rec}"

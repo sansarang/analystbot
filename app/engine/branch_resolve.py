@@ -520,10 +520,30 @@ async def resolve(pool, jg: dict, question: str) -> dict:
     from app.engine.variable_ledger import subject_of as _subject_of
 
     _named, _kind = _subject_of(question, jg)
+    # 🔴 [BRR-2 2026-09-08] BRR-1 의 조건이 좁았다. **오늘 카드에서 그대로 났다** —
+    #    운영 `analysis:kbo:2026-09-08` game=1721(KIA@삼성, stage=final):
+    #      질문 "최원태의 이전 맞대결 부진 재발"
+    #      답   "Samsung Lions 최근 3경기 경기당 5.67득점이 다음 경기에 반등하는가"
+    #    투수를 물었는데 팀 득점 회귀가 왔다. BRR-1 은 투수 **결과 낱말**
+    #    (이닝·실점·소화…)을 함께 요구했는데 이 문장에는 그것이 없다.
+    #    ⚠️ `부진` 을 결과 낱말에 그냥 더하면 진짜 타선 질문을 빼앗는다.
+    #       가르는 신호는 **주격·소유격 조사**다 — "타선**이**"·"타선**의**" 는
+    #       타선이 주어이고, "타선**을** 상대로" 는 목적어다. 조사가 없으면
+    #       주체 판별(`subject_of`)을 따른다.
+    #    🔴 두 조건은 **배타가 아니라 OR 다.** 처음에 조사 규칙으로 갈아치웠더니
+    #       685행 실측에서 **역방향 2건**이 나왔다 — BRR-1 이 옳게 보내던 것을
+    #       되돌렸다:
+    #         "원정 선발 화이트의 최근 2등판(연속 5이닝 4실점) 부진이 반복되고
+    #          **홈 타선이** 초반 리드를 잡는 경우"
+    #         "**원정 타선의** 장타 집중으로 인한 홈 선발 **조기 강판** 리스크"
+    #       둘 다 투수 결과 낱말이 있는데 타선 주격 조사가 함께 있어 밀려났다.
+    #       복합 문장에서는 **투수 쪽 결과가 걸려 있으면 투수**가 맞다.
     _pitcher_outcome = re.search(
         r"이닝|투구수|퀄리티스타트|조기\s*강판|실점|소화|버텨", question)
+    _offense_subject = re.search(r"(?:타선|타격|득점력?)\s*(?:이|은|는|의)(?![가-힣])",
+                                 question)
     # 타선 질문이면 타선 해결사로. 투수 이름이 없는 질문이 여기 온다.
-    if not (_kind == "pitcher" and _pitcher_outcome) \
+    if not (_kind == "pitcher" and (_pitcher_outcome or not _offense_subject)) \
             and re.search(r"타선|득점|배율|침체|반등|부진", question):
         res = jg.get("research") or {}
         off = {}
