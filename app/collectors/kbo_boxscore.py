@@ -111,6 +111,61 @@ def _cells(tbl) -> tuple[list[list[str]], list[str]]:
     return rows, (tf[0] if tf else [])
 
 
+#: [BAT-9 2026-09-09] 타석 결과 코드 → 우리 칸. **실측으로 만든 목록이다** —
+#  KBO 9월 62경기 전수에서 서로 다른 표기 81종 · 1,537칸을 세어 확인했다.
+#    홈런  좌홈 · 우홈 · 중홈 · 좌중홈 · 우중홈   → 전부 `홈` 으로 끝난다
+#    삼진  삼진 · 스낫(스트라이크낫아웃)
+#    볼넷  4구 · 고4(고의4구)
+#    사구  사구  ← **볼넷이 아니다.** MLB `baseOnBalls`·NPB `四球` 와 같은 경계다.
+#  ⚠️ 목록을 손으로 적는 것은 이 저장소가 가장 자주 데인 형태다. 없앨 수는
+#     없으니(원본에 사전이 없다) **틀렸을 때 울리게** 만들었다 —
+#     아래 `_cross_check` 가 같은 응답의 투수 기록과 대조한다.
+_PA_SO = ("삼진", "스낫")
+_PA_BB = ("4구", "고4")
+_PA_HBP = ("사구",)
+
+#: 한 이닝에 두 타석이면 한 칸에 합쳐진다 — `사구<br />/ 삼진`.
+#  실측: 구분자는 이 하나뿐이고 62경기에 10칸 있었다. 나누지 않으면 **둘 다**
+#  사라진다(대조에서 삼진·4사구가 1~2씩 모자랐다).
+_PA_SPLIT = re.compile(r"<br\s*/?>\s*/?\s*")
+
+
+def _pa_counts(cells) -> dict:
+    """타석 결과 칸들 → {"hr","bb","so","hbp"}. 모르는 표기는 세지 않는다."""
+    out = {"hr": 0, "bb": 0, "so": 0, "hbp": 0}
+    for c in cells or ():
+        for part in _PA_SPLIT.split(str(c or "")):
+            t = part.replace("&nbsp;", "").strip()
+            if not t:
+                continue
+            if t.endswith("홈"):
+                out["hr"] += 1
+            elif t in _PA_SO:
+                out["so"] += 1
+            elif t in _PA_BB:
+                out["bb"] += 1
+            elif t in _PA_HBP:
+                out["hbp"] += 1
+    return out
+
+
+def _opp_totals(box: dict, side_idx: int) -> dict | None:
+    """상대 투수진의 피홈런·4사구·삼진 합계. 못 읽으면 None.
+
+    🔴 **이것이 타석 코드 목록의 감시자다.** `arrPitcher[0]` 이 원정 투수,
+       `[1]` 이 홈 투수이므로 타자 블록 `i` 의 상대는 `1 - i` 다.
+    """
+    pit = box.get("arrPitcher") or []
+    if len(pit) < 2:
+        return None
+    rows = parse_official_pitchers(_pitcher_table(pit[1 - side_idx]))
+    if not rows:
+        return None
+    return {"hr": sum(p.get("hr") or 0 for p in rows),
+            "bb4": sum(p.get("bb") or 0 for p in rows),
+            "so": sum(p.get("k") or 0 for p in rows)}
+
+
 def parse_batting(box: dict) -> dict:
     """KBO 공식 박스스코어 `arrHitter` → {"home": [...], "away": [...]}.
 
@@ -133,11 +188,21 @@ def parse_batting(box: dict) -> dict:
     out: dict = {"home": [], "away": []}
     blocks = (box or {}).get("arrHitter") or []
     # 실측: [0]=원정, [1]=홈
-    for side, blk in zip(("away", "home"), blocks):
+    for _i, (side, blk) in enumerate(zip(("away", "home"), blocks)):
         rows1, _ = _cells((blk or {}).get("table1"))
         rows3, tf3 = _cells((blk or {}).get("table3"))
+        # 🔴 [BAT-9] 타석 결과. **행수가 다르면 채우지 않는다** — 줄이 어긋난
+        #    채로 붙이면 남의 홈런이 내 기록이 된다.
+        rows2, _ = _cells((blk or {}).get("table2"))
+        if len(rows2) != len(rows1):
+            if rows2:
+                logger.warning("[kbo_box] %s 타석표 행수 불일치 %d vs %d — "
+                               "홈런·볼넷·삼진을 채우지 않는다",
+                               side, len(rows2), len(rows1))
+            rows2 = []
+        pa_sum = {"hr": 0, "bb": 0, "so": 0, "hbp": 0}
         sums = [0, 0, 0, 0]
-        for names, nums in zip(rows1, rows3):
+        for _r, (names, nums) in enumerate(zip(rows1, rows3)):
             if len(names) < 3 or len(nums) < 4:
                 continue
             name = (names[2] or "").strip()
@@ -150,6 +215,10 @@ def parse_batting(box: dict) -> dict:
                 if vals[-1] is not None:
                     sums[i] += vals[-1]
             slot = (names[0] or "").strip()
+            pa = _pa_counts(rows2[_r]) if _r < len(rows2) else None
+            if pa:
+                for k in pa_sum:
+                    pa_sum[k] += pa[k]
             out[side].append({
                 "batter": name,
                 "slot": int(slot) if slot.isdigit() else None,
@@ -159,16 +228,32 @@ def parse_batting(box: dict) -> dict:
                 "pos": normalize_position(names[1]) or None,
                 "sub": is_substitute(names[1]),
                 "ab": vals[0], "h": vals[1], "rbi": vals[2], "r": vals[3],
-                "hr": None, "bb": None, "so": None,
+                "hr": pa["hr"] if pa else None,
+                "bb": pa["bb"] if pa else None,
+                "so": pa["so"] if pa else None,
             })
         # 🔴 헤더가 없으니 합계로 검증한다. 조용히 뒤바뀌면 안 된다.
         if tf3:
             tot = [int(x) if (x or "").strip().lstrip("-").isdigit() else None
                    for x in tf3[:4]]
             if any(t is not None and t != s for t, s in zip(tot, sums)):
-                out["_mismatch"] = {"side": side, "tfoot": tot, "sum": sums}
+                out.setdefault("_mismatch", {})[f"{side}_tfoot"] = {
+                    "tfoot": tot, "sum": sums}
                 logger.warning("[kbo_box] 타자표 합계 불일치 %s — tfoot %s vs 합 %s "
                                "(열 순서가 바뀌었을 수 있다)", side, tot, sums)
+        # 🔴 [BAT-9] **타석 코드 목록의 감시자.** 같은 응답의 상대 투수 기록과
+        #    대조한다 — 코드가 하나 늘거나 표기가 바뀌면 여기서 어긋난다.
+        #    투수 표의 `4사구` 는 볼넷+사구 합이므로 그렇게 비교한다.
+        opp = _opp_totals(box, _i) if rows2 else None
+        if opp:
+            got = {"hr": pa_sum["hr"], "bb4": pa_sum["bb"] + pa_sum["hbp"],
+                   "so": pa_sum["so"]}
+            if got != opp:
+                out.setdefault("_mismatch", {})[f"{side}_pa"] = {
+                    "타자표": got, "투수표": opp}
+                logger.warning("[kbo_box] %s 타석 코드 대조 불일치 — 타자표 %s "
+                               "vs 투수표 %s (코드 표기가 바뀌었을 수 있다)",
+                               side, got, opp)
     return out
 
 
