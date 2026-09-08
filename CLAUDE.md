@@ -174,9 +174,13 @@ tools/deploy.sh all          # 스케줄러 → 봇 → 크롤러
 
 ## 워치독 (5분) — 읽기만 한다
 
-`W-SEND-PENDING` · `W-ODDS-BLOCKED` · `W-ODDS-STALE` · `W-LLM-FAIL` ·
-`W-STORE-DOWN` · `W-JOB-LATE` · `W-RESCUE-DEAD` · `W-FACT-MISMATCH` ·
-`W-MONITOR-DOWN`
+**경보 코드 목록은 여기 적지 않는다** — 원본은 `app/alerts.py` 의
+`WATCHDOG_CODES` 다. 손으로 적은 사본 넷이 전부 달랐고, 라벨이 빠진 코드 둘이
+`점검 필요` 로 나가고 있었다(실측 2026-09-08 WD-1). 지금 목록을 보려면:
+
+```bash
+python -c "from app.alerts import WATCHDOG_CODES as W; [print(k,'·',v) for k,v in W.items()]"
+```
 
 **차단을 자동으로 풀지 않는다** — 잔액 없는 키로 계속 호출하면 요금만 태운다.
 해제는 사람이 `tools/unblock` 으로 한다 (`railway ssh` 로 실행).

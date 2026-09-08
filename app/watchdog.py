@@ -3,15 +3,12 @@
 사람이 먼저 발견하는 고장은 0건이어야 한다. 5분마다 다섯 가지를 보고,
 하나라도 걸리면 관리자 채널로 코드가 붙은 1줄 경보를 보낸다.
 
-  W-SEND-PENDING   발송 창인데 안 나간 경기
-  W-ODDS-STALE     배당 스냅샷 나이 > 60분
-  W-ODDS-BLOCKED   배당 API가 차단 상태 (TTL이 없어 스스로 안 풀린다)
-  W-LLM-FAIL       LLM 호출 연속 실패
-  W-STORE-DOWN     DB·Redis 오류
-  W-JOB-LATE       잡의 마지막 실행이 주기의 2배를 넘김
-  W-CARD-LATE      첫 카드 보장선(T-30)을 넘겼는데 카드가 없다
-  W-GAME-INVISIBLE 경기가 폴링 조회에서 사라졌다 (상태 오적재)
-  W-SOURCE-DRIFT   정찰 창인데 한 소스만 조용하다 (그 소스가 바뀐 것이다)
+🔴 **코드 목록을 여기 적지 않는다.** 원본은 `app.alerts.WATCHDOG_CODES` 다.
+   이 모듈은 숫자(주기·문턱·보장선)를 전부 원본에서 읽으면서 **코드 목록만
+   손으로 적고 있었고**, 그래서 네 곳(코드 16 · 라벨 14 · 이 독스트링 9 ·
+   CLAUDE.md 9)이 전부 달랐다(실측 2026-09-08 WD-1).
+   지금 무엇이 있는지 보려면:  python -c "from app.alerts import WATCHDOG_CODES
+   as W; [print(k, '·', v) for k, v in W.items()]"
 
 🔴 왜 필요한가 (이번 주 실사고):
    · 배당이 **차단 상태로 며칠간 조용히 멈춰 있었다** — 매 실행 로그는
