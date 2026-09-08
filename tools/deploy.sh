@@ -117,3 +117,16 @@ if [ $RC -ne 0 ]; then
   exit 1
 fi
 echo "✅ 배포 완료 — 커밋 ${SHA:0:7} 이 서버에서 돈다"
+
+# ── ⑧ 단계 기록 ─────────────────────────────────────────────────────
+# 🔴 **SUCCESS 를 확인한 뒤에만** 남긴다. 요청 ≠ 배포 ≠ 단계 통과.
+#    활성 수정 단위가 있을 때만 기록하고, 없으면 아무 일도 하지 않는다.
+#    (활성 여부 판단은 lib.sh 의 fix_active 원본을 쓴다 — 여기에 규칙을
+#     다시 적으면 그것이 곧 사본이 된다.)
+source .claude/hooks/lib.sh
+FIXNOW=$(fix_active || true)
+if [ -n "${FIXNOW:-}" ]; then
+  .claude/hooks/step.sh record deploy "$FIXNOW" "$(echo $DEPLOYED)" || true
+  echo "   다음은 ⑨ 첫 사이클 실측이다 — 새 코드가 **처음 실행되는** 로그 라인을 잡아라:"
+  echo "   .claude/hooks/step.sh cycle $FIXNOW -- '<확인 명령>'"
+fi

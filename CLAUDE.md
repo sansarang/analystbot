@@ -12,7 +12,7 @@ KBO·NPB·MLB 자동 발송. 축구는 요청 시에만.
 
 | 어디 | 무엇 |
 |---|---|
-| `.claude/hooks/` | 커밋·배포·위험 명령 게이트 (**기계가 강제**) |
+| `.claude/hooks/` | 커밋·배포·위험 명령·**수정 단계** 게이트 (**기계가 강제**) |
 | `app/engine/CLAUDE.md` | 판정 도메인 세칙 — 자료 구성·프롬프트 (조건부 로드) |
 | [docs/DISCIPLINE.md](docs/DISCIPLINE.md) | 픽 선정·자금·적중 목표 |
 | [docs/MODEL.md](docs/MODEL.md) | 확률 모델 · λ 아카이브 |
