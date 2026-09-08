@@ -187,6 +187,90 @@ async def innings_outlook(pool, sport: str, pitcher: str, team: str,
     return out if len(out) > 1 else {}
 
 
+# ── [BAT-5 2026-09-08] 기록형 해결사 ⑥: **개별 타자**
+#
+# 🔴 실측 2026-09-07~08: 해결사가 전부 투수 쪽이었다 — 불펜 42.9% · 선발 30% ·
+#    타선 9%, 그리고 그 타선 해결사조차 **팀 단위**(`offense_outlook`)다.
+#    "이 타자가 살아나는가" 에 답할 도구가 없어서 개별 타자 질문은 팀 득점
+#    회귀로 바꿔치기되거나 `사유: 대상 선발을 특정하지 못했다` 로 끝났다.
+#
+# ⚠️ 창 길이를 여기 적지 않는다 — `batter_recent.RECENT_GAMES` 가 원본이다.
+_BAT_OWN = """
+    SELECT g.starts_at::date AS d, a.opponent, a.ab, a.h, a.hr, a.rbi,
+           a.r, a.bb, a.so
+      FROM batter_appearances a JOIN games g ON g.id = a.game_id
+     WHERE g.sport = $1 AND a.batter = $2 AND g.status = 'final'
+       AND g.starts_at < $3
+     ORDER BY g.starts_at DESC LIMIT $4
+"""
+
+#: 리그 동류 — **직전 창의 타율이 그 이하였던 타자들의 다음 경기.**
+#  본인 표본이 5경기여도 리그가 수백 건을 준다(투수 `_PEERS` 와 같은 발상).
+#  ⚠️ 회귀 폭을 우리가 계산해 주지 않는다. 나란히 놓고 판정이 읽는다.
+_BAT_PEERS = """
+    WITH b AS (
+      SELECT a.batter, g.starts_at, a.ab, a.h,
+             sum(a.ab) OVER w AS prev_ab,
+             sum(a.h)  OVER w AS prev_h,
+             count(*)  OVER w AS prev_n
+        FROM batter_appearances a JOIN games g ON g.id = a.game_id
+       WHERE g.sport = $1 AND g.status = 'final' AND g.starts_at < $2
+         AND a.ab IS NOT NULL AND a.h IS NOT NULL
+      WINDOW w AS (PARTITION BY a.batter ORDER BY g.starts_at
+                   ROWS BETWEEN $3 PRECEDING AND 1 PRECEDING)
+    )
+    SELECT count(*) AS n,
+           avg(h::float) AS next_h,
+           avg(CASE WHEN ab > 0 THEN h::float / ab END) AS next_avg
+      FROM b
+     WHERE prev_n = $3 AND prev_ab >= $3
+       AND prev_h::float / prev_ab <= $4
+"""
+
+
+async def batter_outlook(pool, sport: str, batter: str, before) -> dict:
+    """"그 타자가 살아나는가" 에 두 갈래로 답한다. 못 내면 빈 dict.
+
+    ⚠️ 두 갈래를 **곱하지 않는다** — `innings_outlook` 과 같은 규율이다.
+       자료13 이 무너진 자리가 얇은 비율의 곱이었다.
+    ⚠️ **타율을 본인 답에 넣지 않는다.** 원본 숫자만 준다
+       ("수치는 있는 그대로, 분석만 AI"). 리그 동류의 조건에만 쓴다 —
+       조건은 표본을 고르는 기준이지 우리가 낸 평가가 아니다.
+    """
+    from app.engine.batter_recent import RECENT_GAMES, _sum_rows
+
+    if pool is None or not sport or not batter or before is None:
+        return {}
+    s = _cfg()
+    out: dict = {"질문": f"{batter} 의 최근 타격이 이어지는가"}
+    try:
+        rows = await pool.fetch(_BAT_OWN, sport, batter, before, RECENT_GAMES)
+    except Exception as exc:
+        logger.warning("[branch] %s 본인 타석 조회 실패: %s", batter, exc)
+        return {}
+    if rows:
+        own = _sum_rows(rows)
+        own["타석"] = [{"날짜": str(r["d"]), "상대": r["opponent"],
+                        "타수": r["ab"], "안타": r["h"], "홈런": r["hr"],
+                        "타점": r["rbi"]} for r in rows]
+        out["본인"] = own
+        ab, h = own.get("타수") or 0, own.get("안타") or 0
+        if ab:
+            try:
+                r = await pool.fetchrow(_BAT_PEERS, sport, before,
+                                        RECENT_GAMES, h / ab)
+            except Exception as exc:
+                logger.warning("[branch] 타자 동류 조회 실패: %s", exc)
+                r = None
+            if r and int(r["n"] or 0) >= int(s.branch_min_n):
+                out["같은처지"] = {
+                    "조건": f"직전 {RECENT_GAMES}경기 타율이 {h / ab:.3f} 이하였던 타자",
+                    "표본": int(r["n"]),
+                    "다음경기_평균안타": round(float(r["next_h"] or 0), 2),
+                    "다음경기_평균타율": round(float(r["next_avg"] or 0), 3)}
+    return out if len(out) > 1 else {}
+
+
 _LINEUP = """
     SELECT lineup_status,
            round(extract(epoch FROM (starts_at - lineup_confirmed_at)) / 60) AS lead_min
@@ -502,6 +586,45 @@ async def resolve(pool, jg: dict, question: str) -> dict:
             rec["답"] = got
             return rec
         rec["사유"] = f"{tag} 표본이 하한에 못 미친다"
+        return rec
+    # ── [BAT-5 2026-09-08] **개별 타자**. 타선(팀) 분기보다 앞에 선다 —
+    #    "반등"·"침체" 같은 낱말을 팀 분기가 먼저 삼키기 때문이다.
+    #    ⚠️ **빼앗지 않는 것이 먼저다.** 오늘 타순에 있는 이름일 때만,
+    #       그 이름이 오늘 선발투수가 아닐 때만 여기로 온다. BRR-1·2·3 이
+    #       고친 자리가 바로 옆이다.
+    #    ⚠️ 타순 이름 원본은 `batter_recent.today_names` 다(사본 금지).
+    #    🔴 **가장 위험한 형태는 타자 이름이 든 투수 질문이다** —
+    #       "손주영이 정수빈을 상대로 버티는가". `정수빈` 은 오늘 타순에 있고
+    #       선발도 아니라서 이름만 보면 타자 질문처럼 보인다. 주체가 투수이면
+    #       내려보내지 않는다. 주체 판별은 `variable_ledger.subject_of` 가
+    #       원본이다 — 여기 다시 적지 않는다.
+    from app.engine.batter_recent import today_names
+    from app.engine.variable_ledger import subject_of as _subj
+
+    _s_named, _s_kind = _subj(question, jg)
+    _pit_word = re.search(r"이닝|투구수|퀄리티스타트|조기\s*강판|실점|소화|버텨|"
+                          r"선발|불펜|구원", question)
+    _pitchers = {pitcher_name(jg, sd) for sd in ("home", "away")}
+    _pitchers = {p for p in _pitchers if p}
+    _hit = None
+    for _sd in ("home", "away"):
+        for _nm in today_names(jg, _sd):
+            if _nm in _pitchers:
+                continue
+            # 성만 적힌 표기도 받는다 (MLB "Aaron Judge" → "Judge").
+            if _nm in question or (" " in _nm and _nm.split()[-1] in question):
+                _hit = _nm
+                break
+        if _hit:
+            break
+    if _hit and (_s_kind == "pitcher" or _pit_word):
+        _hit = None       # 투수 질문이다 — 빼앗지 않는다
+    if _hit:
+        blk = await batter_outlook(pool, sport, _hit, before)
+        if blk:
+            rec["답"] = {"타자": blk}
+            return rec
+        rec["사유"] = f"{_hit} 의 최근 타석 기록이 없다"
         return rec
     # 🔴 [BRR-1 2026-09-08] **투수 결과를 묻는 질문을 타선이 가로챘다.**
     #    실측 2026-09-08 운영 683행 — 기록형 618건 중 타선 분기로 간 105건의

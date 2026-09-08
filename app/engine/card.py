@@ -739,12 +739,23 @@ def _answer_summary(item: dict) -> str:
         if apps:
             ip = " · ".join(f"{float(a.get('이닝') or 0):.1f}" for a in apps[:5])
             bits.append(f"본인 최근 {ip}이닝")
+        # ── 타자 (batter_outlook) — 타석 기록이 있으면 그것이 본인 답이다
+        pa = [a for a in (own.get("타석") or []) if isinstance(a, dict)]
+        if pa:
+            line = (f"본인 최근 {own.get('경기')}경기 "
+                    f"{own.get('타수')}타수 {own.get('안타')}안타")
+            if own.get("홈런"):
+                line += f" {own['홈런']}홈런"
+            bits.append(line)
         for key, label in (("소속팀", "소속팀"), ("같은처지", "리그 동류")):
             sub = blk.get(key) or {}
             ratio = next((str(v) for k, v in sub.items()
                           if k.endswith("이닝이상") and v), "")
             if ratio:
                 bits.append(f"{label} {ratio}".replace(" (", "("))
+            elif sub.get("다음경기_평균타율") is not None:
+                bits.append(f"{label} 다음 경기 타율 "
+                            f"{sub['다음경기_평균타율']} (표본 {sub.get('표본')})")
             elif sub.get("표본"):
                 bits.append(f"{label} 표본 {sub['표본']}")
         # ── 타선 회귀 (offense_outlook)
