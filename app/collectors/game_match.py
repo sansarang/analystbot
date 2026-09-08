@@ -177,18 +177,37 @@ async def _move_cascade_rows(pool, keep: int, dups: list[int]) -> dict:
             clash = " OR ".join(f"({c})" for c in conds)
             where_free = (f" AND NOT EXISTS (SELECT 1 FROM {_q(tbl)} k "
                           f"WHERE k.{_q(col)} = $1 AND ({clash}))")
+        # 🔴 [GM-4 2026-09-09] **dup 을 한 개씩 옮긴다.**
+        #    종전에는 `ANY($2)` 로 전부 한 UPDATE 에 넣었다. 충돌 검사는
+        #    `keep` 쪽만 보므로, **dup 끼리 같은 키를 갖고 keep 에는 없으면**
+        #    둘 다 검사를 통과해 같은 문장 안에서 유니크 제약을 깼다.
+        #    그러면 예외 → `continue` → **그 표를 통째로 건너뛴다** —
+        #    충돌하지 않는 행까지 CASCADE 로 사라지고 `dropped` 는 0으로 남아
+        #    요약이 손실을 축소 보고했다.
+        #    실측 재현(로컬 DB, 합성 경기 3행): moved 0 · dropped 0 · 실손실 2행.
+        #    한 개씩 돌리면 앞 dup 이 옮긴 행이 이미 keep 에 있으므로 다음
+        #    dup 은 **이미 있는 시끄러운 손실 경로**로 들어간다.
+        failed = False
+        for one in dups:
+            try:
+                moved = await pool.fetchval(
+                    f"WITH m AS (UPDATE {_q(tbl)} s SET {_q(col)} = $1 "
+                    f" WHERE s.{_q(col)} = $2{where_free} "
+                    f" RETURNING 1) SELECT count(*) FROM m", keep, one) or 0
+            except Exception as exc:
+                logger.warning("[game_match] %s game=%s 이관 실패: %s", tbl, one, exc)
+                failed = True
+                continue
+            out["moved"] += int(moved)
         try:
-            moved = await pool.fetchval(
-                f"WITH m AS (UPDATE {_q(tbl)} s SET {_q(col)} = $1 "
-                f" WHERE s.{_q(col)} = ANY($2::bigint[]){where_free} "
-                f" RETURNING 1) SELECT count(*) FROM m", keep, dups) or 0
             left = await pool.fetchval(
                 f"SELECT count(*) FROM {_q(tbl)} WHERE {_q(col)} = ANY($1::bigint[])",
                 dups) or 0
         except Exception as exc:
-            logger.warning("[game_match] %s 이관 실패 — 건너뜀: %s", tbl, exc)
+            logger.warning("[game_match] %s 잔여 계수 실패: %s", tbl, exc)
             continue
-        out["moved"] += int(moved)
+        if failed and not left:
+            continue
         out["tables"] += 1
         if left:
             out["dropped"] += int(left)
