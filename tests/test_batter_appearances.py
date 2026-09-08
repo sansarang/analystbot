@@ -451,3 +451,60 @@ async def test_빈_결과는_디비를_건드리지_않는다():
     assert await store_batting(_Loud(), 1, "npb", {"home": [], "away": []},
                                source="boxscore") == 0
     assert await store_batting(_Loud(), 1, "npb", {}, source="boxscore") == 0
+
+
+# ── [BAT-10] 칸이 통째로 비면 시끄러워야 한다 ────────────────────────────
+#
+# 🔴 **왜 (실사고 2026-09-09).** KBO 타자 행 **653개가 내내 `hr/bb/so` 전부
+#    NULL** 이었다(MLB 582/582 · NPB 439/439 는 정상). 파서가 그 칸을 못
+#    만들고 있었는데 **아무것도 알려주지 않았다** — 내가 우연히 쿼리해서
+#    찾았다. 자료3 은 그동안 리그마다 다른 두께로 나가고 있었다.
+#
+# ⚠️ **0 과 NULL 은 다르다.** 홈런 0개인 경기는 흔하고 정상이다. 여기서
+#    잡는 것은 "그 경기 **모든** 선수에게 그 칸이 `None`" 인 경우 —
+#    수집이 그 칸을 만들지 못했다는 뜻이다.
+
+async def test_칸이_통째로_비면_경고한다(caplog):
+    import logging
+
+    from app.collectors.batter_log import store_batting
+
+    caplog.set_level(logging.WARNING, logger="app.collectors.batter_log")
+    parsed = {"home": [{"batter": "가", "ab": 4, "h": 1, "r": 0, "rbi": 0,
+                        "hr": None, "bb": None, "so": None},
+                       {"batter": "나", "ab": 3, "h": 0, "r": 0, "rbi": 0,
+                        "hr": None, "bb": None, "so": None}],
+              "away": []}
+    await store_batting(_BatPool(), 7, "kbo", parsed, source="t")
+    txt = "\n".join(r.getMessage() for r in caplog.records)
+    assert "hr" in txt and "bb" in txt and "so" in txt, txt
+    assert "칸" in txt or "결손" in txt, txt
+
+
+async def test_값이_0이면_경고하지_않는다(caplog):
+    """⚠️ 홈런 0개인 경기는 정상이다 — 0 을 결손으로 읽으면 오탐이 쏟아진다."""
+    import logging
+
+    from app.collectors.batter_log import store_batting
+
+    caplog.set_level(logging.WARNING, logger="app.collectors.batter_log")
+    parsed = {"home": [{"batter": "가", "ab": 4, "h": 1, "r": 0, "rbi": 0,
+                        "hr": 0, "bb": 0, "so": 0}], "away": []}
+    await store_batting(_BatPool(), 7, "kbo", parsed, source="t")
+    assert not [r for r in caplog.records if "칸" in r.getMessage()], caplog.records
+
+
+async def test_한_명만_비는_것은_정상이다(caplog):
+    """⚠️ 교체 선수 한 명의 칸이 비는 것은 흔하다 — 전원이 빌 때만 말한다."""
+    import logging
+
+    from app.collectors.batter_log import store_batting
+
+    caplog.set_level(logging.WARNING, logger="app.collectors.batter_log")
+    parsed = {"home": [{"batter": "가", "ab": 4, "h": 1, "r": 0, "rbi": 0,
+                        "hr": 1, "bb": 0, "so": 1},
+                       {"batter": "나", "ab": None, "h": None, "r": None,
+                        "rbi": None, "hr": None, "bb": None, "so": None}],
+              "away": []}
+    await store_batting(_BatPool(), 7, "kbo", parsed, source="t")
+    assert not [r for r in caplog.records if "칸" in r.getMessage()], caplog.records

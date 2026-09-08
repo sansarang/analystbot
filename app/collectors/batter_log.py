@@ -79,4 +79,33 @@ async def store_batting(pool, game_id: int, sport: str, parsed: dict,
     if n:
         logger.info("[batter_log] game=%s %s 타자 %d행 적재 (%s)",
                     game_id, sport, n, source)
+        _warn_empty_columns(game_id, sport, parsed)
     return n
+
+
+#: 감시 대상 칸. `_UPSERT` 가 쓰는 이름을 그대로 쓴다(사본 금지).
+_WATCH = ("ab", "h", "r", "rbi", "hr", "bb", "so")
+
+
+def _warn_empty_columns(game_id: int, sport: str, parsed: dict) -> list[str]:
+    """그 경기 **전원**에게 `None` 인 칸을 경고한다. 반환: 그 칸 이름들.
+
+    🔴 [BAT-10 2026-09-09] **실사고.** KBO 타자 행 653개가 내내 `hr/bb/so` 가
+       전부 NULL 이었다(MLB 582/582 · NPB 439/439 는 정상). 파서가 그 칸을
+       만들지 못하고 있었는데 **아무것도 알려주지 않았다** — 우연히 쿼리해서
+       찾았다. 자료3 이 그동안 리그마다 다른 두께로 나갔다.
+
+    ⚠️ **0 과 None 은 다르다.** 홈런 0개인 경기는 흔하고 정상이다.
+    ⚠️ 교체 선수 한 명의 칸이 비는 것도 흔하다 — **한 명이라도 값이 있으면
+       조용하다.** 오탐이 잦으면 사람이 경고를 끄고, 꺼진 가드는 없는 가드다.
+    """
+    rows = [b for side in ("home", "away") for b in (parsed.get(side) or [])
+            if isinstance(b, dict)]
+    if not rows:
+        return []
+    empty = [c for c in _WATCH if all(b.get(c) is None for b in rows)]
+    if empty:
+        logger.warning("[batter_log] game=%s %s 칸 결손 — %s 가 %d명 **전원** "
+                       "비어 있다 (수집이 그 칸을 만들지 못했다)",
+                       game_id, sport, "·".join(empty), len(rows))
+    return empty
