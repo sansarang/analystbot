@@ -974,6 +974,19 @@ async def guarantee_first_cards(pool, redis, sport: str, date: str, rows,
                 if errs is not None:
                     errs.append({"what": f"{sport} T-30 첫 카드 보장 실패 game={gid}",
                                  "detail": f"{row['away']}@{row['home']} — {sent}"})
+                # 🔴 [PGP-2 2026-09-08] **침묵 대신 사실을 보낸다.**
+                #    여기가 "보내야 하는데 못 보냈다"가 확정되는 자리다 —
+                #    그 앞은 아직 기다릴 수 있는 시간이다. 판정 불가 카드는
+                #    2026-09-02 에 만들어졌지만 호출부가 죽은 함수 안에만 있어
+                #    6일간 0장이었다(감사 PGP-2·SCH-1). 사용자는 "봇이 죽었나"와
+                #    "오늘 픽이 없나"를 구분할 수 없었다.
+                from app.engine.pregame_push import explain_missing
+
+                if await explain_missing(redis, row, sport, now):
+                    logger.warning("[guarantee] %s game=%s 판정 불가 카드 발송",
+                                   sport, gid)
+                    if tally is not None:
+                        tally["unavailable"] = tally.get("unavailable", 0) + 1
         except Exception as exc:
             logger.warning("[guarantee] %s 보장 실패 game=%s: %s", sport, gid, exc)
             if errs is not None:

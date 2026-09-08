@@ -744,6 +744,27 @@ async def run_pregame_push(pool, redis, now=None) -> dict:
             "skipped": skipped, "failed": failed, "unavailable": unavailable}
 
 
+async def explain_missing(redis, row, sport: str, now) -> bool:
+    """판정이 없어 카드가 못 나간 경기에 **사실이라도** 보낸다. 보냈으면 True.
+
+    🔴 [PGP-2 2026-09-08] 이 세 함수(`_should_say_unavailable` ·
+       `_unavailable_reason` · `send_unavailable`)는 2026-09-02 에 만들어졌지만
+       **6일간 발송 0건**이었다. 호출부가 `run_pregame_push` 안에만 있었고
+       그 함수를 부르는 곳이 없다 — 스케줄러가 같은 일을 따로 구현했고
+       (`send_game_prediction` 직접 호출 6곳), 살아 있는 쪽에는 이 분기가
+       없었다. 운영 확인: `pregame:unavailable:*` 키 0개.
+       "새 것을 만들고 옛 호출부를 회수하지 않는" 이 저장소의 반복 패턴인데,
+       이번엔 방향이 반대였다 — **새로 만든 쪽이 죽고 옛 경로가 살아 있었다.**
+
+    ⚠️ 오발송이 더 나쁘다. 판단은 여기서 새로 만들지 않고
+       `_should_say_unavailable` 을 그대로 쓴다(창·판정 유무·취소 여부).
+       중복은 `send_unavailable` 의 `nx=True` 가드가 막는다.
+    """
+    if not await _should_say_unavailable(redis, row, now):
+        return False
+    return await send_unavailable(redis, row, sport, await _unavailable_reason(redis))
+
+
 async def _should_say_unavailable(redis, row, now) -> bool:
     """판정 불가 카드를 보낼 상황인가.
 
