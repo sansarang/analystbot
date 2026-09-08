@@ -710,6 +710,35 @@ def _branch_odds(verdict: dict) -> tuple[float | None, float | None, str]:
     return None, None, ""
 
 
+def branch_lines(verdict: dict) -> list[str]:
+    """갈림길 블록. `["⚠️ 갈림길 — …", "   발생 확률 …"]` · 분기점이 없으면 빈 리스트.
+
+    🔴 [CARD-1 2026-09-08] **보드와 발송 카드가 이것을 함께 쓴다.**
+       종전에는 이 조립이 `verdict_block` 안에만 있었고, 그 함수를 부르는 곳은
+       `pipeline.render_star_board`(슬레이트 보드) 하나뿐이었다. 실제 발송
+       카드는 `pregame_push.compose_card → form_card.render_form_card` 를
+       타는데 거기엔 전개·분기점이 **한 글자도 없었다**.
+       바로 위 ⑥("전개·분기점·예상점수·발생확률이 카드에 하나도 없었다")을
+       고친 2026-09-07 개편이 **발송 경로에는 배선되지 않은 것**이다 —
+       PGP-2 와 같은 형태(새로 만든 쪽이 죽고 옛 경로가 살아 있었다).
+       실측 2026-09-08 KBO game=1721: 판정은 분기점을 냈고 자료14 는 발생
+       확률 15% 까지 냈는데, 사용자가 받은 카드에는 둘 다 없었다.
+
+    ⚠️ **문구는 여기에만 있다.** form_card 로 옮겨 적으면 그 순간 사본이고,
+       사본은 원본이 바뀔 때 따라가지 않는다.
+    """
+    branch = ((verdict.get("전개") or {}).get("분기점") or "").strip()
+    if not branch:
+        return []
+    out = [f"⚠️ 갈림길 — {branch}"]
+    q, n, side = _branch_odds(verdict)
+    if q is not None and n is not None:
+        out.append(f"   발생 확률 {q:.0f}% · 그때 {side} 쪽으로 {n:.0f}%p")
+    elif n is not None:
+        out.append(f"   발생하면 {side} 쪽으로 {n:.0f}%p (발생 확률은 미확인)")
+    return out
+
+
 def verdict_block(jg: dict) -> list[str]:
     """경기 1건의 판정 블록. 판정이 없으면 빈 리스트.
 
@@ -748,15 +777,10 @@ def verdict_block(jg: dict) -> list[str]:
         out.append("   " + judgment)
 
     # ── 갈림길 = 전개.분기점 + 그 리스크의 발생 확률·영향
-    branch = ((m.get("전개") or {}).get("분기점") or "").strip()
-    if branch:
+    bl = branch_lines(m)
+    if bl:
         out.append("")
-        out.append(f"   ⚠️ 갈림길 — {branch}")
-        q, n, side = _branch_odds(m)
-        if q is not None and n is not None:
-            out.append(f"      발생 확률 {q:.0f}% · 그때 {side} 쪽으로 {n:.0f}%p")
-        elif n is not None:
-            out.append(f"      발생하면 {side} 쪽으로 {n:.0f}%p (발생 확률은 미확인)")
+        out.extend("   " + x for x in bl)
 
     # ── 확인 불가. **모르는 것을 밝히는 것도 정보다.**
     unknown = [str(x) for x in (m.get("추가확인") or []) if str(x).strip()]

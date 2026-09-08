@@ -204,6 +204,17 @@ def render_form_card(jg: dict, sport: str | None = None, *,
             lines.append(f"🎯 결론 — {_team(winner)} 승")
         if judged:
             lines.append(f"   {judged}")
+    # 🔴 [CARD-1 2026-09-08] **갈림길을 결론 바로 뒤에 싣는다.**
+    #    판정은 `전개.분기점` 을 내고 자료14 는 그 리스크의 발생 확률까지 냈는데,
+    #    그것을 찍는 코드(`card.verdict_block`)를 쓰는 곳은 슬레이트 보드
+    #    하나뿐이었다 — **발송 카드에는 6일간 한 줄도 안 나갔다**.
+    #    실측 2026-09-08 KBO game=1721: 분기점 "최원태가 5이닝을 넘기며 2실점
+    #    이하로 막아내는가" · 발생 확률 15% · 원정 4%p 가 전부 있었는데
+    #    사용자가 받은 카드에는 없었다. PGP-2 와 같은 형태다.
+    #    ⚠️ 문구를 여기 적지 않는다 — `card.branch_lines` 를 **부른다**(사본 금지).
+    from app.engine.card import branch_lines
+
+    lines.extend(branch_lines(m))
     reasons = [str(x).strip() for x in (m.get("근거") or []) if str(x).strip()]
     for i, r in enumerate(reasons[:3], 1):
         lines.append(f"근거{i} {r}")

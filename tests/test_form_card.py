@@ -176,3 +176,64 @@ def test_missing_conclusion_does_not_break_the_card():
     """모델이 칸을 안 채워도 카드는 나가야 한다."""
     out = render_form_card(_jg())
     assert "우세" in out and "🎯 결론" not in out
+
+
+# ═══════════════ [CARD-1 2026-09-08] 갈림길이 만들어지는데 카드엔 안 나갔다
+#
+# 🔴 사용자 보고: "분기점도 안 나오고, 변수를 DB에서 찾아 측정하는 것도 안 나온다."
+#    조사 결과 **판정은 분기점을 내고 있었고, 자료14 도 답을 내고 있었다.**
+#    운영 2026-09-08 KBO game=1721(stage=final) 실판정:
+#      전개.분기점 = "최원태가 5이닝을 넘기며 2실점 이하로 막아내는가"
+#      그 리스크의 발생 확률 15% · 원정 쪽 4%p  ← 자료14 가 답을 준 변수
+#    `card.verdict_block` 은 이것을 "⚠️ 갈림길 —" 로 조립한다. 그런데 그 함수를
+#    쓰는 곳은 `pipeline.render_star_board`(슬레이트 보드) **하나뿐**이고,
+#    실제 발송 카드는 `pregame_push.compose_card → form_card.render_form_card`
+#    를 타는데 거기엔 전개·분기점이 **한 글자도 없었다.**
+#    `card.py:668` 이 "⑥ 전개·분기점·예상점수·발생확률이 카드에 하나도 없었다"
+#    고 적고 고친 2026-09-07 개편이 **발송 경로에는 배선되지 않았다.**
+#    PGP-2("새로 만든 쪽이 죽고 옛 경로가 살아 있었다")와 같은 형태다.
+#
+# ⚠️ 문구를 두 곳에 적지 않는다 — `card.branch_lines` 를 **부른다**.
+
+_BRANCH_M = {
+    "p_home": 0.52, "우세": "home",
+    "근거": ["자료4 최근 등판", "자료1 타선", "자료12 레이팅"],
+    "변수": ["최원태의 이전 맞대결 부진 재발 — 발생 시 원정 방향 약 4%p · "
+             "발생 확률 15% · 현재 p에 1%p 기반영 · 근거 자료4"],
+    "뉴스반영": {"적용": False, "조정폭": "0", "사유": ""},
+    "확신도": "중",
+    "전개": {"홈승리경로": "…", "원정승리경로": "…",
+             "분기점": "최원태가 5이닝을 넘기며 2실점 이하로 막아내는가",
+             "예상점수": {"홈": 5, "원정": 4}},
+    "결론": {"승자": "삼성", "판단": "박빙이다."},
+}
+
+
+def test_카드가_갈림길을_싣는다():
+    """🔴 판정이 낸 분기점이 발송 카드에 나가야 한다."""
+    text = render_form_card(_jg(matchup=_BRANCH_M))
+    assert "갈림길" in text, f"갈림길이 카드에 없다:\n{text}"
+    assert "최원태가 5이닝을 넘기며 2실점 이하로 막아내는가" in text
+
+
+def test_카드가_발생확률과_영향을_함께_싣는다():
+    """자료14 가 답을 준 변수만 발생 확률을 갖는다 — 그 수가 카드에 보여야 한다."""
+    text = render_form_card(_jg(matchup=_BRANCH_M))
+    assert "15%" in text and "4%p" in text, f"발생 확률·영향이 없다:\n{text}"
+
+
+def test_분기점이_없으면_그_줄도_없다():
+    """⚠️ 반대 위험 — 없는 것을 지어내거나 빈 제목만 남기지 않는다."""
+    m = {k: v for k, v in _BRANCH_M.items() if k != "전개"}
+    assert "갈림길" not in render_form_card(_jg(matchup=m))
+
+
+def test_발송_카드가_같은_조립기를_쓴다():
+    """⚠️ 사본 금지 — 보드와 카드가 같은 함수를 부른다."""
+    from app.engine.card import branch_lines
+
+    lines = branch_lines(_BRANCH_M)
+    assert lines and "갈림길" in lines[0]
+    text = compose_card(_jg(matchup=_BRANCH_M), "", "kbo")
+    for ln in lines:
+        assert ln.strip() in text, f"조립기 출력이 카드에 그대로 안 들어갔다: {ln!r}"
