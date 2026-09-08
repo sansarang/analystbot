@@ -210,14 +210,15 @@ async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
                    schedule_client: MLBClient | None = None,
                    lineup_client: MLBLineupClient | None = None) -> dict:
     """최근 종료 경기 선발 9명·등판을 `source='boxscore'`로 적재한다."""
+    from app.collectors import batter_log
     from app.collectors.lineup_history import record
     from app.collectors.pitcher_log import record_appearances
 
     as_of = as_of or datetime.now(ET).date()
     schedule_client = schedule_client or MLBClient()
     lineup_client = lineup_client or MLBLineupClient()
-    stats = {"games": 0, "rows": 0, "appearances": 0, "skipped": 0,
-             "no_game": 0, "teams": 0}
+    stats = {"games": 0, "rows": 0, "appearances": 0, "batters": 0,
+             "skipped": 0, "no_game": 0, "teams": 0}
     per_team: dict[str, int] = {}
 
     for back in range(days):
@@ -249,6 +250,13 @@ async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
                 logger.debug("[MLB백필] %s boxscore 실패: %s", g["ext_id"], exc)
                 stats["skipped"] += 1
                 continue
+            # 🔴 [BAT-3] **타순 확정 관문보다 앞에서 적재한다.** 아래
+            #    `confirmed` 가 False 면 이 경기는 통째로 버려지는데, 타자
+            #    성적은 타순 확정 여부와 무관하게 이미 응답에 와 있다.
+            #    NPB 가 2026-09-01 에 같은 모양의 결함을 겪었다(打順 실패가
+            #    등판까지 버려 선발 32.6%가 표본 ≤1).
+            stats["batters"] += await batter_log.store_batting(
+                pool, gid_db, "mlb", parse_batting(box), source="boxscore")
             parsed = parse_boxscore(box)
             if not parsed.get("confirmed"):
                 stats["skipped"] += 1
@@ -270,7 +278,8 @@ async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
                 pool, gid_db, "mlb", g["home"], g["away"], pits,
                 source="boxscore")
     stats["teams"] = len(per_team)
-    logger.info("[MLB백필] 경기 %d · 적재 %d행 · 등판 %d · %d팀 (건너뜀 %d · 경기없음 %d)",
+    logger.info("[MLB백필] 경기 %d · 적재 %d행 · 등판 %d · 타자 %d · %d팀 "
+                "(건너뜀 %d · 경기없음 %d)",
                 stats["games"], stats["rows"], stats.get("appearances", 0),
-                stats["teams"], stats["skipped"], stats["no_game"])
+                stats["batters"], stats["teams"], stats["skipped"], stats["no_game"])
     return stats

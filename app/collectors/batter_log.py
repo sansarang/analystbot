@@ -44,10 +44,17 @@ async def store_batting(pool, game_id: int, sport: str, parsed: dict,
     (박스스코어의 표기와 우리 표기가 갈리면 조회가 조용히 0이 된다).
 
     ⚠️ **멱등하다.** 같은 경기를 몇 번 적재해도 행이 늘지 않는다.
+    ⚠️ [BAT-3] **이 함수는 기존 경로를 죽이지 않는다.** 세 리그 `backfill()`
+       한가운데서 불리므로, 여기서 예외가 새면 투수 등판·타순 적재까지 함께
+       멈춘다. 실패는 경고 한 줄로 남기고 0을 돌려준다.
     """
-    if pool is None or not parsed:
+    if pool is None or not ((parsed or {}).get("home") or (parsed or {}).get("away")):
         return 0
-    row = await pool.fetchrow(_SIDES, game_id)
+    try:
+        row = await pool.fetchrow(_SIDES, game_id)
+    except Exception as exc:
+        logger.warning("[batter_log] game=%s 팀 조회 실패: %s", game_id, exc)
+        return 0
     if row is None:
         logger.warning("[batter_log] game=%s 가 games 에 없다 — 적재 생략", game_id)
         return 0

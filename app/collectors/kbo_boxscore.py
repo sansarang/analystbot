@@ -285,6 +285,8 @@ def parse_box(j: dict, date: str, game_id: str) -> dict:
     out = {
         "away": parse_starting_order((hitters[0] or {}).get("table1")),
         "home": parse_starting_order((hitters[1] or {}).get("table1")),
+        # 🔴 [BAT-3] 같은 응답에 이미 와 있다. 두 번 받지 않는다.
+        "batting": parse_batting(j),
         "away_pitchers": parse_official_pitchers(_pitcher_table(pitchers[0]))
         if len(pitchers) >= 1 else [],
         "home_pitchers": parse_official_pitchers(_pitcher_table(pitchers[1]))
@@ -356,11 +358,12 @@ async def backfill(pool, season: int, months: tuple[int, ...],
     from datetime import UTC, datetime
     from zoneinfo import ZoneInfo
 
+    from app.collectors import batter_log
     from app.collectors.game_match import _FIND
     from app.collectors.lineup_history import record
     from app.collectors.pitcher_log import record_appearances
 
-    stats = {"games": 0, "rows": 0, "appearances": 0,
+    stats = {"games": 0, "rows": 0, "appearances": 0, "batters": 0,
              "skipped": 0, "no_game": 0, "teams": 0}
     per_team: dict[str, int] = {}
     games: list[dict] = []
@@ -388,6 +391,11 @@ async def backfill(pool, season: int, months: tuple[int, ...],
             logger.debug("[백필] %s 조회 실패: %s", g["game_id"], exc)
             stats["skipped"] += 1
             continue
+        # 🔴 [BAT-3] **선발 9명 파싱 관문보다 앞에서 적재한다.**
+        #    `parse_starting_order` 는 9명이 안 되면 빈 목록을 주고, 그러면
+        #    아래에서 이 경기가 통째로 버려진다. 타자 성적은 그것과 무관하다.
+        stats["batters"] += await batter_log.store_batting(
+            pool, gid_db, "kbo", (lu or {}).get("batting") or {}, source="boxscore")
         if not lu or not (lu.get("home") and lu.get("away")):
             stats["skipped"] += 1
             continue
@@ -409,7 +417,8 @@ async def backfill(pool, season: int, months: tuple[int, ...],
             source="boxscore")
         stats["appearances"] += n_app
     stats["teams"] = len(per_team)
-    logger.info("[백필] 경기 %d · 적재 %d행 · 등판 %d · %d팀 (건너뜀 %d · 경기없음 %d)",
-                stats["games"], stats["rows"], stats["appearances"], stats["teams"],
-                stats["skipped"], stats["no_game"])
+    logger.info("[백필] 경기 %d · 적재 %d행 · 등판 %d · 타자 %d · %d팀 "
+                "(건너뜀 %d · 경기없음 %d)",
+                stats["games"], stats["rows"], stats["appearances"],
+                stats["batters"], stats["teams"], stats["skipped"], stats["no_game"])
     return stats

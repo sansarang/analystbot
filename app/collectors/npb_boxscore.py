@@ -81,13 +81,14 @@ async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
     타순 이력은 팀당 `limit_per_team`에서 멈춘다. 등판 로그는 창 안의
     종료 경기를 건너뛰지 않는다 — 건너뛰면 오늘 선발의 2~3등판이 빈다.
     """
+    from app.collectors import batter_log
     from app.collectors.game_match import _FIND
     from app.collectors.lineup_history import record
     from app.collectors.pitcher_log import record_appearances
 
     client = client or YahooNPBClient()
     as_of = as_of or datetime.now(JST).date()
-    stats = {"games": 0, "rows": 0, "appearances": 0,
+    stats = {"games": 0, "rows": 0, "appearances": 0, "batters": 0,
              "skipped": 0, "no_game": 0, "teams": 0}
     per_team: dict[str, int] = {}
     seen: set[str] = set()
@@ -130,10 +131,16 @@ async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
             except Exception as exc:
                 logger.debug("[NPB백필] %s 打順 조회 실패: %s", gid, exc)
             pits = {"home": [], "away": []}
+            bats: dict = {}
             try:
-                pits = parse_pitching_stats(await client.stats(gid))
+                # 🔴 [BAT-3] 투수표와 타자표가 **같은 페이지**다. 한 번만 받는다.
+                st_html = await client.stats(gid)
+                pits = parse_pitching_stats(st_html)
+                bats = parse_batting(st_html)
             except Exception as exc:
                 logger.debug("[NPB백필] %s /stats 실패: %s", gid, exc)
+            stats["batters"] += await batter_log.store_batting(
+                pool, gid_db, "npb", bats, source="boxscore")
 
             # 등판 기록 — 타순 성패와 무관하게 먼저 적재한다.
             n_app = await record_appearances(
@@ -159,9 +166,9 @@ async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
                     stats["rows"] += 1
                     per_team[team] = per_team.get(team, 0) + 1
     stats["teams"] = len(per_team)
-    logger.info("[NPB백필] 경기 %d · 적재 %d행 · 등판 %d · %d팀 "
+    logger.info("[NPB백필] 경기 %d · 적재 %d행 · 등판 %d · 타자 %d · %d팀 "
                 "(건너뜀 %d · 경기없음 %d · 타순만실패 %d → 등판 %d건 회수)",
                 stats["games"], stats["rows"], stats.get("appearances", 0),
-                stats["teams"], stats["skipped"], stats["no_game"],
+                stats["batters"], stats["teams"], stats["skipped"], stats["no_game"],
                 stats.get("lineup_only_skip", 0), stats.get("rescued_app", 0))
     return stats

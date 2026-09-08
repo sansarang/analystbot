@@ -33,6 +33,8 @@
 """
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 
@@ -278,3 +280,174 @@ def test_npb_헤더가_없으면_지어내지_않는다():
 
     out = parse_batting("<table><tr><td>4</td><td>2</td></tr></table>")
     assert out == {"home": [], "away": []}
+
+
+# ── [BAT-3] 파서를 적재 경로에 배선한다 ───────────────────────────────────
+#
+# 🔴 BAT-2 로 세 리그 파서가 다 생겼지만 **아무도 부르지 않았다.** 파서는
+#    있는데 표가 비어 있으면 BAT-4(자료3 주입)가 조용히 0을 읽는다.
+#
+# ⚠️ **타순 파싱 실패가 타자 성적까지 버리게 두지 않는다.** NPB 가 2026-09-01
+#    에 정확히 그 결함을 겪었다 — `/top` 打順 실패가 `/stats` 등판까지 버려
+#    선발의 32.6%가 표본 ≤1 로 추천 자격을 잃었다. 같은 실수를 반복하지 않게
+#    아래 세 테스트가 **타순이 실패한 상태에서** 타자 적재를 요구한다.
+
+class _BatPool:
+    """games 조회는 성공, 나머지는 무해하게 받아넘긴다."""
+
+    def __init__(self):
+        self.rows = []
+
+    async def fetchval(self, sql, *a):
+        return 42
+
+    async def fetchrow(self, sql, *a):
+        return {"home": "H팀", "away": "A팀"}
+
+    async def execute(self, sql, *a):
+        self.rows.append(a)
+
+    async def fetch(self, sql, *a):
+        return []
+
+
+def _spy_store(monkeypatch):
+    seen = []
+
+    async def fake(pool, game_id, sport, parsed, *, source):
+        n = len(parsed.get("home") or []) + len(parsed.get("away") or [])
+        seen.append({"game_id": game_id, "sport": sport, "n": n, "source": source})
+        return n
+
+    monkeypatch.setattr("app.collectors.batter_log.store_batting", fake)
+    return seen
+
+
+async def test_mlb_백필이_타자를_적재한다(monkeypatch):
+    """⚠️ 타순 미확정(`confirmed=False`)이어도 타자 성적은 버리지 않는다."""
+    from app.collectors import mlb_boxscore
+
+    seen = _spy_store(monkeypatch)
+    box = {"teams": {
+        "home": {"players": {"ID1": {"person": {"fullName": "A Hitter"},
+                                     "battingOrder": "100",
+                                     "position": {"abbreviation": "2B"},
+                                     "stats": {"batting": {"atBats": 4, "hits": 2}}}}},
+        "away": {"players": {"ID2": {"person": {"fullName": "B Hitter"},
+                                     "battingOrder": "200",
+                                     "position": {"abbreviation": "CF"},
+                                     "stats": {"batting": {"atBats": 3, "hits": 0}}}}}}}
+
+    class _Sched:
+        async def fetch_schedule(self, day):
+            return {"dates": [{"games": [{}]}]}
+
+    class _Lineup:
+        async def fetch_boxscore(self, ext):
+            return box
+
+    monkeypatch.setattr(mlb_boxscore, "upsert_games",
+                        lambda *a, **k: _noop())
+    monkeypatch.setattr("app.collectors.mlb._parse_games", lambda s: [
+        {"ext_id": "777", "status": "final", "home": "H팀", "away": "A팀"}])
+    # 타순은 미확정 — 그래도 타자는 적재돼야 한다
+    monkeypatch.setattr(mlb_boxscore, "parse_boxscore", lambda b: {"confirmed": False})
+
+    stats = await mlb_boxscore.backfill(_BatPool(), as_of=date(2026, 9, 7), days=1,
+                                        schedule_client=_Sched(), lineup_client=_Lineup())
+    assert seen, "MLB 백필이 store_batting 을 부르지 않는다"
+    assert seen[0]["sport"] == "mlb" and seen[0]["n"] == 2
+    assert seen[0]["source"] == "boxscore"
+    assert stats.get("batters") == 2, stats
+
+
+async def _noop():
+    return None
+
+
+async def test_kbo_백필이_타자를_적재한다(monkeypatch):
+    """⚠️ 선발 9명 파싱이 실패해도(`parse_starting_order` 빈 목록) 타자는 남긴다."""
+    from app.collectors import kbo_boxscore
+
+    seen = _spy_store(monkeypatch)
+    box = {"arrHitter": [
+        _kbo_block([["1", "二", "신민재"]], [["4", "1", "0", "1", "0.263"]]),
+        _kbo_block([["1", "유", "박찬호"]], [["3", "0", "0", "0", "0.291"]]),
+    ], "arrPitcher": []}
+
+    async def fake_ids(season, month):
+        return [{"game_id": "20260907LGOB0", "date": "2026-09-07",
+                 "home": "H팀", "away": "A팀"}]
+
+    monkeypatch.setattr(kbo_boxscore, "fetch_game_ids", fake_ids)
+    monkeypatch.setattr(kbo_boxscore, "fetch_box", lambda gid: _box(box))
+
+    stats = await kbo_boxscore.backfill(_BatPool(), 2026, (9,), limit_per_team=10)
+    assert seen, "KBO 백필이 store_batting 을 부르지 않는다"
+    assert seen[0]["sport"] == "kbo" and seen[0]["n"] == 2
+    assert stats.get("batters") == 2, stats
+
+
+async def _box(b):
+    return b
+
+
+async def test_npb_백필이_타자를_적재한다(monkeypatch):
+    """⚠️ `/top` 打順이 실패해도 `/stats` 타자는 남긴다 — 2026-09-01 결함의 재발 방지."""
+    from app.collectors import npb_boxscore
+
+    seen = _spy_store(monkeypatch)
+    tbl = _npb_table([
+        ["(右)", "カナリオ", ".246", "4", "2", "1", "0", "1", "1", "0", "0", "0", "0", "0"],
+    ])
+
+    class _C:
+        async def schedule(self, day):
+            if day == "2026-09-07":
+                return ('<div id="gm_card"><a href="/npb/game/2021039331/index">'
+                        '神宮 ヤクルト 巨人 6 - 8 試合終了</a></div>')
+            return '<div id="gm_card"></div>'
+
+        async def game(self, gid):
+            raise RuntimeError("打順 페이지가 죽었다")
+
+        async def stats(self, gid):
+            return tbl + tbl
+
+    stats = await npb_boxscore.backfill(_BatPool(), as_of=date(2026, 9, 7), days=1,
+                                        limit_per_team=10, client=_C())
+    assert seen, "NPB 백필이 store_batting 을 부르지 않는다"
+    assert seen[0]["sport"] == "npb" and seen[0]["n"] == 2
+    assert stats.get("batters") == 2, stats
+
+
+async def test_적재_실패가_백필을_죽이지_않는다():
+    """🔴 새 수집기가 기존 경로를 인질로 잡지 않는다.
+
+    `store_batting` 은 세 리그 `backfill()` 한가운데서 불린다. 여기서 예외가
+    새면 **투수 등판·타순 적재까지 함께 멈춘다** — 있던 재료가 새 재료 때문에
+    사라지는 것이 가장 나쁜 결과다.
+    """
+    from app.collectors.batter_log import store_batting
+
+    class _Broken:
+        async def fetchrow(self, sql, *a):
+            raise RuntimeError("DB 가 죽었다")
+
+    n = await store_batting(_Broken(), 1, "kbo",
+                            {"home": [{"batter": "가"}], "away": []},
+                            source="boxscore")
+    assert n == 0
+
+
+async def test_빈_결과는_디비를_건드리지_않는다():
+    """파싱이 0행이면 조회조차 하지 않는다 — 빈 dict 는 '실패'가 아니라 '없음'이다."""
+    from app.collectors.batter_log import store_batting
+
+    class _Loud:
+        async def fetchrow(self, sql, *a):
+            raise AssertionError("빈 결과인데 DB 를 조회했다")
+
+    assert await store_batting(_Loud(), 1, "npb", {"home": [], "away": []},
+                               source="boxscore") == 0
+    assert await store_batting(_Loud(), 1, "npb", {}, source="boxscore") == 0
