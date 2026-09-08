@@ -30,6 +30,12 @@ TEAM_CODE_TO_NAME = {
     "LAA": "Los Angeles Angels", "ARI": "Arizona Diamondbacks", "ATL": "Atlanta Braves",
     "BAL": "Baltimore Orioles", "BOS": "Boston Red Sox", "CHC": "Chicago Cubs",
     "CIN": "Cincinnati Reds", "CLE": "Cleveland Guardians", "COL": "Colorado Rockies",
+    # 🔴 [STC-1 2026-09-08] **원본이 주는 코드는 `AZ` 다.** `ARI` 는 한 번도
+    #    오지 않는다(실측: statcast 응답 팀코드 30종에 AZ 있고 ARI 없음).
+    #    그래서 애리조나 행이 전부 `None` 이 되어 조용히 버려졌고, 캐시가
+    #    29팀이었다 — 애리조나 경기 25건에서 λ 타선 축·불펜 과소모·타자
+    #    랭킹이 통째로 비었다. `ARI` 는 남겨 둔다(OAK/ATH 와 같은 이유).
+    "AZ": "Arizona Diamondbacks",
     "CWS": "Chicago White Sox", "DET": "Detroit Tigers", "HOU": "Houston Astros",
     "KC": "Kansas City Royals", "LAD": "Los Angeles Dodgers", "WSH": "Washington Nationals",
     "NYM": "New York Mets", "OAK": "Athletics", "ATH": "Athletics",
@@ -39,6 +45,47 @@ TEAM_CODE_TO_NAME = {
     "PHI": "Philadelphia Phillies", "NYY": "New York Yankees", "MIL": "Milwaukee Brewers",
     "MIA": "Miami Marlins",
 }
+
+
+#: MLB 구단 수. 캐시가 이보다 적으면 **어떤 팀의 재료가 통째로 빈 것**이다.
+#  ⚠️ 0건이 아니라 29/30 이라 종전에는 아무도 못 봤다. 로그는 "팀 29개"라고
+#     정확히 찍었지만 **30이어야 한다고 말해 줄 것이 없었다.**
+MLB_TEAM_COUNT = 30
+
+
+def audit_team_coverage(seen_codes, team_names) -> dict:
+    """원본 팀코드·집계 팀명을 대사한다. 문제가 있으면 **시끄럽게** 남긴다.
+
+    반환: {"unknown_codes": [...], "missing_teams": [...]}
+
+    🔴 '조용한 성공' — 분모가 사라지는 실패에는 경보를 함께 넣는다
+       (ENGINEERING §1-④). 모르는 코드는 `_team_of_batter` 가 `None` 으로
+       만들고 `notna()` 가 버린다. 버리는 것 자체는 옳지만, **버렸다는
+       사실이 어디에도 남지 않는 것**이 결함이었다.
+    """
+    unknown = sorted(str(c) for c in seen_codes if str(c) not in TEAM_CODE_TO_NAME)
+    missing = sorted(set(TEAM_CODE_TO_NAME.values()) - set(team_names))
+    if unknown:
+        logger.error("[statcast] 🔴 매핑에 없는 팀코드 %s — 그 팀 재료가 통째로 "
+                     "빈다 (팀 코드가 바뀌었을 수 있다)", unknown)
+    if missing:
+        logger.error("[statcast] 🔴 집계에서 빠진 팀 %s", missing)
+    return {"unknown_codes": unknown, "missing_teams": missing}
+
+
+async def _alert_coverage(gaps: dict) -> None:
+    """대사 결과를 워치독으로. 실패해도 수집을 막지 않는다."""
+    if not gaps["unknown_codes"] and not gaps["missing_teams"]:
+        return
+    try:
+        from app.alerts import watchdog
+
+        await watchdog("W-SOURCE-DRIFT",
+                       f"statcast 팀 매핑 어긋남 — 모르는 코드 "
+                       f"{gaps['unknown_codes']} · 빠진 팀 {gaps['missing_teams']}",
+                       target="statcast")
+    except Exception as exc:
+        logger.debug("[statcast] 커버리지 경보 실패: %s", exc)
 
 
 def _fetch_statcast(start: str, end: str):
@@ -439,8 +486,16 @@ async def refresh(redis, date: str | None = None) -> dict:
                           ("league", baselines)):
         await redis.set(_key(kind, date), json.dumps(payload, ensure_ascii=False),
                         ex=CACHE_TTL)
-    logger.info("[statcast] %s 갱신 — 팀 %d개, 투수 %d명, 불펜 %d팀 (원본 %d행)",
-                date, len(offense), len(pitchers), len(bullpen), len(df))
+    # 🔴 [STC-1] **버렸다는 사실을 남긴다.** 원본 팀코드와 집계 결과를 대사해
+    #    매핑이 어긋나면 로그 + 워치독으로 시끄럽게 알린다.
+    seen = set()
+    for col in ("home_team", "away_team"):
+        if col in df.columns:
+            seen |= {str(x) for x in df[col].dropna().unique()}
+    gaps = audit_team_coverage(seen, set(offense))
+    await _alert_coverage(gaps)
+    logger.info("[statcast] %s 갱신 — 팀 %d/%d, 투수 %d명, 불펜 %d팀 (원본 %d행)",
+                date, len(offense), MLB_TEAM_COUNT, len(pitchers), len(bullpen), len(df))
     return {"ok": True, "teams": len(offense), "pitchers": len(pitchers),
             "bullpen": len(bullpen), "rows": len(df)}
 
