@@ -103,7 +103,20 @@ case "$TARGET" in
   bot)       deploy_one analystbot-bot "python -m app.bot" ;;
   scheduler) deploy_one analystbot-scheduler "python -m app.scheduler" ;;
   crawler)   deploy_one analystbot-crawler "crawler -interval 10m" crawler ;;
-  all)       deploy_one analystbot-scheduler "python -m app.scheduler"
+  all)       # 🔴 [DEP-1 2026-09-08] **스케줄러가 SUCCESS 에 닿을 때까지 기다린 뒤**
+             #    나머지를 올린다. 종전에는 셋을 연달아 `railway up --detach` 로
+             #    올리고(업로드만 시작하고 즉시 반환) SUCCESS 확인은 그 뒤에 했다 —
+             #    보장되는 것은 "스케줄러 **업로드**가 먼저 시작됐다"뿐이었다.
+             #    빌드 시간이 서비스마다 다르므로(Go 크롤러는 짧고 파이썬은
+             #    uv sync 가 있다) 기동 순서는 얼마든지 뒤집힐 수 있었다.
+             #    주석이 막으려던 상황이 정확히 그것이다.
+             deploy_one analystbot-scheduler "python -m app.scheduler"
+             if ! wait_success analystbot-scheduler; then
+               echo "❌ 스케줄러가 SUCCESS 에 도달하지 못했다 — 봇·크롤러는 올리지 않는다."
+               echo "   (봇이 새 스키마 없이 뜨는 것보다 옛 코드로 도는 편이 낫다)"
+               exit 1
+             fi
+             DEPLOYED=""          # 확인이 끝났으므로 아래 루프에서 다시 기다리지 않는다
              deploy_one analystbot-bot "python -m app.bot"
              deploy_one analystbot-crawler "crawler -interval 10m" crawler ;;
   *) echo "사용: $0 [bot|scheduler|crawler|all]"; exit 1 ;;
@@ -123,8 +136,13 @@ echo "✅ 배포 완료 — 커밋 ${SHA:0:7} 이 서버에서 돈다"
 #    활성 수정 단위가 있을 때만 기록하고, 없으면 아무 일도 하지 않는다.
 #    (활성 여부 판단은 lib.sh 의 fix_active 원본을 쓴다 — 여기에 규칙을
 #     다시 적으면 그것이 곧 사본이 된다.)
-source .claude/hooks/lib.sh
-FIXNOW=$(fix_active || true)
+# ⚠️ 훅이 없는 저장소(테스트 샌드박스·클론)에서도 배포는 성공으로 끝나야 한다.
+#    `set -e` 아래서 없는 파일을 source 하면 **성공한 배포가 실패로 보인다.**
+FIXNOW=""
+if [ -f .claude/hooks/lib.sh ]; then
+  source .claude/hooks/lib.sh
+  FIXNOW=$(fix_active || true)
+fi
 if [ -n "${FIXNOW:-}" ]; then
   .claude/hooks/step.sh record deploy "$FIXNOW" "$(echo $DEPLOYED)" || true
   echo "   다음은 ⑨ 첫 사이클 실측이다 — 새 코드가 **처음 실행되는** 로그 라인을 잡아라:"
