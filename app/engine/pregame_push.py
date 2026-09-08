@@ -220,13 +220,63 @@ def lineup_pending_card(sport: str, home: str, away: str, left_min: float) -> st
 
 
 def roster_signature(home_pitcher, away_pitcher, lineup_home, lineup_away) -> str:
-    """선발·타순만. 잠정/확정 시계는 재판정 사유가 아니다."""
+    """선발·타순만. 잠정/확정 시계는 재판정 사유가 아니다.
+
+    ⚠️ [RJG-1 2026-09-08] 이 서명은 **"수정 카드를 보낼까"** 를 정한다 —
+       타순이 바뀌면 카드는 다시 보내야 하므로 타순을 계속 포함한다.
+       **"LLM 판정을 다시 돌릴까"** 는 아래 `needs_rejudge` 가 따로 정한다.
+       둘을 한 서명으로 묶었던 것이 문제였다.
+    """
     return "|".join([
         (home_pitcher or "").strip(),
         (away_pitcher or "").strip(),
         (lineup_home or "").strip(),
         (lineup_away or "").strip(),
     ])
+
+
+def needs_rejudge(jg: dict, before: dict, notes=None) -> tuple[bool, str]:
+    """라인업이 갱신됐을 때 **LLM 판정을 다시 돌려야 하는가.** 반환 (필요, 사유).
+
+    🔴 [RJG-1 2026-09-08] 종전에는 라인업이 조금이라도 바뀌면 무조건 재판정했다.
+       그런데 **라인업 확정이 판정에 새로 주는 것은 이름뿐이다** —
+         today_nine.order = [{"slot":1,"name":"度会 隆輝","pos":"左"}, …]
+       타율도 최근 폼도 좌우 스플릿도 없다. 투수 쪽과 두께가 다르다:
+         home_starter_recent = [{"innings":7.0,"r":1,"hits":4,"k":7,…}, ×5]
+       프롬프트는 그 빈자리를 "순서가 곧 정보다"로 메운다. 숫자가 없으니 타순
+       순서에서 추론하라는 뜻이고, 그 추론이 확률을 흔든다.
+
+    운영 실측(경기 단위 `is_final`, 157경기, 기준 54.8%):
+        잠정            27경기  70.4%      ← 투수 재료만으로 낸 1차 판정
+        확정(재판정함)   130경기  51.5%
+        확률 이동 없음   48경기  62.5%  ·  큼(>=0.10)  7경기  28.6%
+        우세가 뒤집힌 11경기 — 1차 7 맞음 / 최종 4 맞음  ← 같은 경기 안 비교
+    **이동이 없던 구간이 가장 좋았다.** 1차 숫자를 그대로 두고 최종으로
+    승격시키는 것이 그 구간을 재현하는 것이다.
+
+    ⚠️ **반대 위험이 크다.** 선발이 바뀌었는데 생략하면 틀린 투수로 판정한
+       카드가 최종으로 나간다. 그래서 넷 중 하나라도 걸리면 재판정한다.
+    ⚠️ NPB 는 선발 공시가 T-30 이라 1차 판정이 선발을 모른 채 나가는 일이 잦다.
+       `starter_change_notes` 는 **양쪽이 다 있을 때만** 발화해 그 경우를 못
+       잡는다 — 그래서 "새로 확인"을 따로 본다.
+    ⚠️ 이 함수는 **판정 여부만** 정한다. `pick_state` 승격·수정 카드 발송은
+       이것과 무관하게 진행된다(그렇지 않으면 카드가 영원히 잠정이고 추천이 0이 된다).
+    """
+    if jg.get("p_claude") is None:
+        return True, "판정 없음"
+    res = jg.get("research") or {}
+    for side, label in (("home", "홈"), ("away", "원정")):
+        old = ((before or {}).get(side) or "").strip()
+        new = ((res.get(f"{side}_pitcher") or {}).get("name") or "").strip()
+        if new and not old:
+            return True, f"{label} 선발 새로 확인: {new}"
+        if old and new and old != new:
+            return True, f"{label} 선발 변경: {old} → {new}"
+    for n in (notes or []):
+        s = str(n)
+        if "선발" in s and ("변경" in s or "불일치" in s):
+            return True, f"선발 통지: {s[:60]}"
+    return False, "선발 불변 — 타순만 변경"
 
 
 def header_line(sport: str, *, revision: bool = False) -> str:

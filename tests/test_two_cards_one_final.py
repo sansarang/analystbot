@@ -328,3 +328,116 @@ def test_opus_gets_no_temperature():
     from app.engine.team_form import _sampling_allowed
 
     assert _sampling_allowed("claude-opus-5") is False
+
+
+# ═══════════════ [RJG-1 2026-09-08] 타순만 바뀌었는데 판정을 다시 돌렸다
+#
+# 🔴 운영 실측(경기 단위 `is_final`, 157경기, 기준 54.8%):
+#      잠정            27경기  70.4%      ← 투수 재료만으로 낸 1차 판정
+#      확정(재판정함)   130경기  51.5%
+#      확률 이동 없음   48경기  62.5%  |  큼(>=0.10)  7경기  28.6%
+#      우세가 뒤집힌 11경기 — 1차 7 맞음 / 최종 4 맞음   ← 같은 경기 안 비교
+#      평균 이동 2.59%p · 중앙값 2.00%p · 이동 0인 경기 42건
+#
+#    이유는 **재료 비대칭**이다. 라인업이 확정되면 도착하는 것은
+#      today_nine.order = [{"slot":1,"name":"度会 隆輝","pos":"左"}, …]
+#    **이름과 포지션뿐, 숫자가 하나도 없다.** 투수 쪽은 개인 경기별 로그가 있다:
+#      home_starter_recent = [{"innings":7.0,"r":1,"hits":4,"k":7,…}, ×5]
+#    프롬프트가 그 빈자리를 "순서가 곧 정보다"로 메운다 — 숫자가 없으니 타순
+#    순서에서 추론하라는 뜻이다. 그 추론이 확률을 흔들고, 흔들린 만큼 나빠진다.
+#
+# ⚠️ **순진하게 재판정을 끄면 추천이 영원히 0이 된다.** `form_card.rec_label` 이
+#    `pick_state != "final"` 이면 무조건 보드만인데, `pick_state` 는
+#    `rejudge_after_lineup` **안에서** 설정된다. 그래서 그 함수는 계속 돌리고
+#    **안쪽 `_run_baseball_matchups` 호출만** 조건부로 만든다.
+
+
+def _jg_with(p_claude, home_name, away_name):
+    return {"sport": "kbo", "p_claude": p_claude,
+            "research": {"home_pitcher": {"name": home_name},
+                         "away_pitcher": {"name": away_name}}}
+
+
+def test_타순만_바뀌면_판정을_다시_돌리지_않는다():
+    """🔴 이 경우가 실측에서 판정을 나쁘게 만든 자리다."""
+    from app.engine.pregame_push import needs_rejudge
+
+    jg = _jg_with(0.58, "최원태", "하영민")
+    ok, why = needs_rejudge(jg, {"home": "최원태", "away": "하영민"}, notes=[])
+    assert ok is False, why
+    assert "선발" in why
+
+
+def test_선발이_바뀌면_다시_돌린다():
+    from app.engine.pregame_push import needs_rejudge
+
+    jg = _jg_with(0.58, "박세웅", "하영민")
+    ok, why = needs_rejudge(jg, {"home": "최원태", "away": "하영민"}, notes=[])
+    assert ok is True and "변경" in why
+
+
+def test_선발이_새로_밝혀지면_다시_돌린다():
+    """⚠️ NPB 는 선발 공시가 T-30 이다. 1차 판정이 선발을 모른 채 나갔다면
+    라인업 확정이 **처음으로** 선발을 알려주는 순간이므로 반드시 재판정한다.
+
+    🔴 기존 `starter_change_notes` 는 양쪽이 **다 있을 때만** 발화해서
+       이 경우를 못 잡는다. 그래서 판별을 따로 둔다.
+    """
+    from app.engine.pregame_push import needs_rejudge
+
+    jg = _jg_with(0.58, "최원태", "하영민")
+    ok, why = needs_rejudge(jg, {"home": "", "away": "하영민"}, notes=[])
+    assert ok is True and ("새로" in why or "확인" in why), why
+
+
+def test_판정이_없으면_다시_돌린다():
+    from app.engine.pregame_push import needs_rejudge
+
+    jg = _jg_with(None, "최원태", "하영민")
+    ok, why = needs_rejudge(jg, {"home": "최원태", "away": "하영민"}, notes=[])
+    assert ok is True and "판정" in why
+
+
+def test_불일치_통지가_오면_다시_돌린다():
+    """`refresh_mlb_lineup` 이 statsapi 와 예고가 어긋났다고 알리는 경우."""
+    from app.engine.pregame_push import needs_rejudge
+
+    jg = _jg_with(0.58, "최원태", "하영민")
+    ok, _ = needs_rejudge(jg, {"home": "최원태", "away": "하영민"},
+                          notes=["home 선발 정보 불일치 — statsapi A vs 예고 B"])
+    assert ok is True
+
+
+def test_파이프라인이_그_판별로_판정을_가른다():
+    """배선 — `rejudge_after_lineup` 이 `needs_rejudge` 로 판정을 감싼다."""
+    src = (ROOT / "app" / "pipeline.py").read_text(encoding="utf-8")
+    i = src.index("async def rejudge_after_lineup")
+    seg = src[i:src.index("\nasync def ", i + 10)]
+    j = seg.index("_run_baseball_matchups")
+    assert "needs_rejudge" in seg[:j], "판정 앞에 판별이 없다 — 타순만 바뀌어도 돈다"
+
+
+def test_최종_승격은_판별과_무관하다():
+    """🔴 **추천이 죽지 않는 것을 잠근다.**
+
+    `pick_state` 는 판정 여부와 상관없이 라인업 상태만 보고 정해져야 한다.
+    이것이 깨지면 카드가 영원히 '🕐 잠정'이고 추천 자격을 못 얻는다.
+    """
+    from app.collectors.lineups import pick_state
+
+    assert pick_state("confirmed")[0] == "final"
+    src = (ROOT / "app" / "pipeline.py").read_text(encoding="utf-8")
+    i = src.index("async def rejudge_after_lineup")
+    seg = src[i:src.index("\nasync def ", i + 10)]
+    ps = seg.index("pick_state(lineup[")
+    nj = seg.index("needs_rejudge")
+    assert ps < nj, "pick_state 승격이 판정 판별 뒤로 밀렸다 — 추천이 죽는다"
+
+
+def test_건너뛸_때_조용하지_않다():
+    """⚠️ 조용한 생략은 다음에도 아무도 모른다."""
+    src = (ROOT / "app" / "pipeline.py").read_text(encoding="utf-8")
+    i = src.index("async def rejudge_after_lineup")
+    seg = src[i:src.index("\nasync def ", i + 10)]
+    j = seg.index("needs_rejudge")
+    assert "logger." in seg[j:j + 900], "생략을 로그로 남기지 않는다"

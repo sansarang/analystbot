@@ -5593,7 +5593,32 @@ async def rejudge_after_lineup(game: dict, lineup: dict) -> bool:
         _prepare_games_for_judge([jg], sport)
         from app.engine.scoring import BASEBALL_SPORTS
         judged = 0
-        if sport in BASEBALL_SPORTS:
+        # 🔴 [RJG-1 2026-09-08] **타순만 바뀌었으면 판정을 다시 돌리지 않는다.**
+        #    라인업 확정이 판정에 새로 주는 것은 **이름뿐**이다(숫자 0). 투수
+        #    쪽은 개인 경기별 로그가 있어 1차 판정이 이미 그것으로 나왔다.
+        #    운영 실측(경기 단위 is_final, 157경기, 기준 54.8%):
+        #      잠정 70.4%(27) vs 확정(재판정함) 51.5%(130)
+        #      확률 이동 없음 62.5%(48) vs 큼(>=0.10) 28.6%(7)
+        #      우세가 뒤집힌 11경기 — 1차 7 맞음 / 최종 4 맞음
+        #    ⚠️ **위 pick_state 승격과 아래 수정 카드 발송은 그대로 진행된다.**
+        #       이 게이트는 LLM 판정 호출 하나만 가른다. 둘을 함께 끄면 카드가
+        #       영원히 '잠정'이라 추천 자격을 못 얻는다(form_card.rec_label).
+        #    ⚠️ 판별을 여기 적지 않는다 — pregame_push.needs_rejudge 가 원본이다.
+        from app.engine.pregame_push import needs_rejudge
+
+        _rj_ok, _rj_why = needs_rejudge(jg, before_names, notes)
+        if sport in BASEBALL_SPORTS and not _rj_ok:
+            logger.info("[rejudge] game=%s 판정 생략 — %s "
+                        "(라인업 상태·카드는 그대로 갱신한다)", game["id"], _rj_why)
+            try:
+                from app.engine.game_trace import REJUDGE, note as _tnote
+
+                await _tnote(pool, game_id=game["id"], sport=sport, date=date,
+                             stage=REJUDGE, summary=f"판정 생략 — {_rj_why}",
+                             ref={"skipped": True, "reason": _rj_why})
+            except Exception as exc:
+                logger.debug("[trace] 판정 생략 기록 실패: %s", exc)
+        elif sport in BASEBALL_SPORTS:
             try:
                 judged = await _run_baseball_matchups(
                     redis, date, [jg], allow_final=True)
