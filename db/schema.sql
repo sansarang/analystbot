@@ -396,6 +396,47 @@ CREATE INDEX IF NOT EXISTS idx_pitcher_appearances_lookup
     ON pitcher_appearances (sport, pitcher);
 
 
+-- ─────────────────────────────────────────── 타자 개인 성적 (BAT-1 2026-09-08)
+--
+-- 🔴 **판정 재료의 절반이 비어 있었다.** 투수는 자료4·9·10·14 에 개인 경기별
+--    로그가 있는데, 타자는 자료1(팀 3경기 합계)과 자료3(**이름·포지션뿐, 숫자 0**)
+--    이 전부였다. 프롬프트가 그 빈자리를 "순서가 곧 정보다"로 메운다.
+--    실측 2026-09-08 (경기 단위, 157경기, 기준 54.8%):
+--      잠정(투수 재료만으로 낸 1차)  27경기  70.4%
+--      확정(라인업 받고 재판정)     130경기  51.5%
+--    이름 아홉 개가 도착해 재판정을 촉발하고, 그 재판정이 예측을 나쁘게 했다.
+--
+-- 🔴 수집원이 없는 게 아니라 **이미 손에 들어오는 것을 버리고 있었다** —
+--    MLB statsapi 는 선수별 batting 을 응답에 담아 보내는데 투수만 읽었다.
+--
+-- ⚠️ `pitcher_appearances` 와 **같은 모양**으로 둔다. 그래야 `starter_recent` 와
+--    같은 규약으로 읽을 수 있다(사본 금지).
+-- ⚠️ `ON DELETE CASCADE` 다 — GM-2 가 이관 목록을 카탈로그에서 읽으므로
+--    코드를 고치지 않아도 병합 때 옮겨진다.
+CREATE TABLE IF NOT EXISTS batter_appearances (
+    id          BIGSERIAL PRIMARY KEY,
+    game_id     BIGINT      NOT NULL REFERENCES games (id) ON DELETE CASCADE,
+    sport       TEXT        NOT NULL,
+    team        TEXT        NOT NULL,
+    opponent    TEXT        NOT NULL,
+    batter      TEXT        NOT NULL,
+    slot        INT,          -- 타순 1~9 (교체는 선발 슬롯으로 읽는다)
+    pos         TEXT,
+    ab          INT,          -- 타수. **없으면 행을 만들지 않는다** (대주자·투수)
+    h           INT,
+    r           INT,
+    rbi         INT,
+    hr          INT,
+    bb          INT,
+    so          INT,
+    source      TEXT        NOT NULL,
+    UNIQUE (game_id, team, batter)
+);
+
+CREATE INDEX IF NOT EXISTS idx_batter_appearances_lookup
+    ON batter_appearances (sport, batter);
+
+
 -- ─────────────────────────────────────────────────────────── 픽 레저 (v1.1 0단계)
 --
 -- 판정 전건을 영구 보존한다. **TTL 없는 DB 테이블이어야 한다** — Redis 키로

@@ -187,6 +187,15 @@ _SEED = {
                             "VALUES ($1,'kbo','Kia Tigers','Lotte Giants','P',true,6.0,'box')"),
     "variable_ledger": ("INSERT INTO variable_ledger (game_id, sport, raw) "
                         "VALUES ($1,'kbo','GM-2 재현용 변수')"),
+    # 🔴 [BAT-1 2026-09-08] **이 줄은 카탈로그 테스트가 울려서 추가됐다.**
+    #    `batter_appearances` 를 만들자 `test_카탈로그가_아는_표를_이_테스트도_안다`
+    #    가 즉시 실패했다 — GM-2 가 "새 표를 만들면 이 목록에 반드시 추가한다"는
+    #    주석을 **기계가 강제하게** 바꾼 것이 그날 안에 값을 했다.
+    #    (종전에는 그 주석이 문장뿐이라 표 아홉이 조용히 빠졌다)
+    "batter_appearances": (
+        "INSERT INTO batter_appearances (game_id, sport, team, opponent, batter, "
+        " slot, ab, h, source) "
+        "VALUES ($1,'kbo','Kia Tigers','Lotte Giants','타자1',1,4,2,'box')"),
 }
 
 _CASCADE_SQL = """

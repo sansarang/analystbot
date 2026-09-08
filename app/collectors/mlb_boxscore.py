@@ -70,6 +70,56 @@ def parse_pitching(box: dict) -> dict[str, list[dict]]:
     return out
 
 
+def parse_batting(box: dict) -> dict[str, list[dict]]:
+    """boxscore → {"home": [타자 성적, ...], "away": [...]}.
+
+    🔴 [BAT-1 2026-09-08] **이 응답은 늘 오고 있었는데 버리고 있었다.**
+       바로 위 `parse_pitching` 이 투수만 읽는다. 같은 `players` 사전에
+       `stats.batting` 이 선수별로 들어 있다(실측: 팀당 11명).
+       그래서 판정은 타자에 대해 자료3 의 **이름 아홉 개**밖에 몰랐고,
+       라인업 확정이 재판정을 촉발하면 타순 **순서에서 추론**할 수밖에 없었다.
+       실측: 잠정 70.4%(27경기) vs 확정 51.5%(130경기).
+
+    ⚠️ **타석이 없는 선수는 싣지 않는다.** 대주자·대수비·투수는 `atBats` 가
+       없거나 0인데, 그것을 0타수로 넣으면 뒤에서 타율을 낼 때 분모가 오염된다.
+    ⚠️ `battingOrder` 는 `"100"`(1번) · `"501"`(5번 자리 교체) 처럼 백 단위다.
+       앞자리가 타순이다.
+    """
+    out: dict[str, list[dict]] = {"home": [], "away": []}
+    teams = (box or {}).get("teams") or {}
+    for side in ("home", "away"):
+        team = teams.get(side) or {}
+        for pdata in (team.get("players") or {}).values():
+            person = (pdata or {}).get("person") or {}
+            name = (person.get("fullName") or "").strip()
+            if not name:
+                continue
+            st = ((pdata.get("stats") or {}).get("batting") or {})
+            ab = st.get("atBats")
+            if ab is None:
+                continue                      # 타석 기록이 없다 — 지어내지 않는다
+            order = pdata.get("battingOrder")
+            slot = None
+            try:
+                if order is not None:
+                    slot = int(str(order)) // 100 or None
+            except (TypeError, ValueError):
+                slot = None
+            out[side].append({
+                "batter": name,
+                "slot": slot,
+                "pos": ((pdata.get("position") or {}).get("abbreviation") or "").strip() or None,
+                "ab": ab,
+                "h": st.get("hits"),
+                "r": st.get("runs"),
+                "rbi": st.get("rbi"),
+                "hr": st.get("homeRuns"),
+                "bb": st.get("baseOnBalls"),
+                "so": st.get("strikeOuts"),
+            })
+    return out
+
+
 def _opt_stat(d: dict, *keys):
     for k in keys:
         v = d.get(k)
