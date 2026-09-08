@@ -101,3 +101,48 @@ def test_꺼지면_프롬프트가_BAT4_이전과_바이트로_같다(monkeypatc
     exec(compile(src, "old_prompts.py", "exec"), ns)
     assert now == ns["MATCHUP"]
     get_settings.cache_clear()
+
+
+def test_문구가_없는_칸을_약속하지_않는다(monkeypatch):
+    """🔴 [BAT-7] 내가 쓴 문구가 KBO 에 없는 칸을 약속하고 있었다.
+
+    실측 2026-09-08 로컬 적재 1,392행:
+        mlb  hr/bb/so **582/582**
+        npb  hr/bb/so **119/119**
+        kbo  hr/bb/so **0/691**   ← 공식 `arrHitter.table3` 이 5열뿐이다
+                                    [타수, 안타, 타점, 득점, 타율]
+    그런데 문구는 "경기·타수·안타·홈런·타점·득점·볼넷·삼진"이라고 **여덟 칸을
+    적어 놓았다.** 판정이 없는 칸을 찾다가 "자료 결손"으로 읽거나, 없는 것을
+    0으로 상상할 수 있다. 손으로 적은 목록이 곧 미래의 오탐이다.
+    """
+    from app.config import get_settings
+    from app.engine.prompts import baseball_material_note
+
+    monkeypatch.setenv("BATTER_MATERIAL_ENABLED", "1")
+    get_settings.cache_clear()
+    note = baseball_material_note()
+    assert "홈런" not in note and "볼넷" not in note and "삼진" not in note, note
+    assert "리그마다" in note, "칸이 리그마다 다르다는 사실을 말해야 한다"
+    get_settings.cache_clear()
+
+
+def test_kbo_는_홈런_볼넷_삼진이_없다():
+    """⚠️ 없는 칸을 **만들지 않는다**. 0으로 채우면 그것은 지어낸 사실이다."""
+    from app.collectors.kbo_boxscore import parse_batting
+
+    box = {"arrHitter": [
+        _kbo_blk([["1", "二", "신민재"]], [["4", "1", "0", "1", "0.263"]]),
+        _kbo_blk([], []),
+    ]}
+    b = parse_batting(box)["away"][0]
+    assert b["ab"] == 4 and b["h"] == 1
+    assert b["hr"] is None and b["bb"] is None and b["so"] is None
+
+
+def _kbo_blk(rows1, rows3):
+    import json
+
+    def tbl(rows):
+        return json.dumps({"rows": [{"row": [{"Text": c} for c in r]} for r in rows],
+                           "tfoot": []}, ensure_ascii=False)
+    return {"table1": tbl(rows1), "table2": tbl([]), "table3": tbl(rows3)}
