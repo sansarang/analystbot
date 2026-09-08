@@ -138,3 +138,74 @@ async def test_summary_states_the_restart_reason():
 
     assert any("표본 재시작" in x and FREEZE_RESTART_REASON in x
                for x in lines), lines
+
+
+# ── [VARP-1 2026-09-08] 읽는 쪽이 실문장을 못 받아 7%가 버려졌다 ────────
+#
+# 🔴 실측 2026-09-08 운영 `variable_ledger` 680행: `parse_variable` 성공 631 ·
+#    **실패 49(7%)**. 버려지면 `variable_ledger` 에 `unverifiable` 로 쌓일 뿐
+#    아니라 `branch_resolve.attach` 의 질문 목록에서도 빠져 — **자료14 의 DB
+#    조회가 시작조차 안 된다.** 사용자가 "변수를 DB에서 찾아 측정하는 것이
+#    안 나온다"고 본 것이 이 자리다.
+#
+# ⚠️ 이 모듈은 같은 계열의 사고를 이미 겪었다(위 `_SIDE` 주석, 2026-09-07
+#    grok `home` 표기). 원칙도 거기 적혀 있다 —
+#    **"쓰는 쪽은 한국어로 못박고 읽는 쪽만 관대하게 한다."**
+#    아래 문장은 전부 **운영 원장에서 그대로 가져온 것**이다. 지어내지 않았다.
+
+#: 구분자가 `—` 가 아니라 `,` 였다.
+REAL_COMMA = ("홈 라인업 주전 3명(Ohtani·Muncy·Rortvedt) 결장 vs 원정 주전 "
+              "2명(Burleson·Gorman) 결장 — 순 1명 차이로 저득점 방향이 홈에 "
+              "소폭 더 불리, 발생 시 원정 방향 약 1.5%p · 현재 p에 -1.5%p "
+              "기반영 · 근거 자료6")
+#: 구분자가 `→` 였다.
+REAL_ARROW = ("홈 선발 김진욱 기복 위험 — 직전 등판 4.33이닝 7실점, 5경기 중 "
+              "2경기 6실점 이상 → 발생 시 홈 방향 약 5%p · 현재 p에 3%p "
+              "기반영 · 근거 자료4")
+#: `약` 이 없었다.
+REAL_NO_APPROX = ("손성빈 손목 부상으로 타선 한 자리 약화 가능성 — 발생 시 "
+                  "home 방향 -2%p · 현재 p에 -2%p 기반영 · 근거 자료2")
+#: `발생 시` 가 아니라 `재현 시` 였다 (같은 형태 10건).
+REAL_RECUR = ("ジャクソン 직전 등판 4이닝 6실점 부진 재현 시 홈 방향 약 3%p · "
+              "현재 p에 2%p 기반영 · 근거 자료4")
+#: `현재 p에` 자리를 다른 말로 채웠다 (2026-09-08 KBO 실측).
+REAL_NO_CURP = ("박시원의 투구수 누적 및 4이닝 미만 조기 강판 리스크 — 발생 시 "
+                "원정 방향 약 4%p · 근거 없음 — 보수 반영 1.5%p 기반영 · "
+                "근거 자료4")
+
+
+@pytest.mark.parametrize("text,side,n,m", [
+    (REAL_COMMA, "away", 1.5, -1.5),
+    (REAL_ARROW, "home", 5.0, 3.0),
+    (REAL_NO_APPROX, "home", -2.0, -2.0),
+    (REAL_RECUR, "home", 3.0, 2.0),
+    (REAL_NO_CURP, "away", 4.0, 1.5),
+])
+def test_운영에서_실제로_온_문장을_버리지_않는다(text, side, n, m):
+    """🔴 실패하면 그 변수는 자료14 조사에서 통째로 사라진다."""
+    p = parse_variable(text)
+    assert p is not None, f"버려졌다: {text[:60]}"
+    assert p["side"] == side
+    assert p["n"] == n and p["m"] == m
+
+
+def test_서술형은_여전히_실패한다():
+    """⚠️ 반대 위험 — 읽는 쪽을 넓혔다고 정량이 아닌 것을 통과시키면 안 된다.
+
+    형식을 넓히는 것이 아니라 **형식을 어겨도 값을 잃지 않게** 하는 것이다.
+    """
+    for bad in ("원정 선발 이로운은 선발등판 기록이 0건이라 이닝 소화력 예측 불가",
+                "홈 불펜이 피로하다",
+                "발생 시 홈 방향 약 3%p",           # 리스크 서술이 없다
+                "리스크 — 발생 시 홈 방향 약 3%p"):  # 기반영 칸이 없다
+        assert parse_variable(bad) is None, f"통과하면 안 된다: {bad}"
+
+
+def test_기존_형식의_해석은_한_글자도_바뀌지_않는다():
+    """⚠️ 631건이 이미 이 형식으로 파싱되고 있다. 값이 변하면 원장이 흔들린다."""
+    assert parse_variable(GOOD) == {
+        "risk": "원정 선발 이로운 3이닝 미만 조기 강판", "side": "home",
+        "n": 8.0, "m": 3.0, "source": "자료10", "q": None}
+    q = parse_variable("리스크 — 발생 시 홈 방향 약 6%p · 발생 확률 35% · "
+                       "현재 p에 2%p 기반영 · 근거 자료14")
+    assert q["q"] == 35.0 and q["n"] == 6.0 and q["m"] == 2.0
