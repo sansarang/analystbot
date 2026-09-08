@@ -66,6 +66,17 @@ rm -rf "$FIXDIR/$FIXID"; printf '%s\n' "$FIXID" > "$FIXDIR/active"
 hook "$(edit_json app/x.py)"     ; chk "①미실행 → 코드 편집"        deny "기록된 적이 없다"
 hook "$(bash_json 'sed -i "" s/a/b/ app/x.py')" ; chk "①미실행 → sed -i" deny
 
+# 🔴 실측 오탐 2026-09-08: 테스트 파일을 쓰는 명령의 **본문에** 운영 경로가
+#    있다고 "운영 코드 편집"으로 읽었다. 쓰기 힌트와 경로는 같은 줄에 있어야 한다.
+FP_CMD='cat > tests/test_deploy_order.py <<EOF
+import shutil, subprocess
+shutil.copy(SRC, DST)
+subprocess.run(["tools/deploy.sh", "all"])
+EOF'
+hook "$(bash_json "$FP_CMD")"  ; chk "운영 경로를 언급만 하는 테스트 작성" allow
+REAL_EDIT='sed -i "" s/a/b/ app/pipeline.py'
+hook "$(bash_json "$REAL_EDIT")" ; chk "진짜 운영 코드 편집"            deny
+
 echo "══ 세 상태를 구분한다 (미실행 · 실패 · 건너뜀) ══"
 $S repro "$FIXID" -- true >/dev/null 2>&1      # 재현 실패(명령이 통과해 버림)
 hook "$(edit_json app/x.py)"     ; chk "①실패 → 편집"               deny "실패로 기록됐다"

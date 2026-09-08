@@ -159,8 +159,15 @@ if [ -n "$FILE" ] && is_prod_path "$FILE"; then NEEDS_B=1; fi
 if [ "$TOOL" = Bash ]; then
   # 리다이렉트는 **대상이 운영 경로일 때만**. `grep app/x.py > /tmp/o` 는 쓰기가 아니다.
   printf '%s' "$CMD" | grep -qE '>>?[[:space:]]*"?'"'"'?(\./)?(app|crawler|tools)/' && NEEDS_B=1
-  if printf '%s' "$CMD" | grep -qE '(sed -i|tee |io\.open\(|shutil\.copy|patch )' \
-     && printf '%s' "$CMD" | grep -qE '(^|[^A-Za-z0-9_/])(\./)?(app|crawler|tools)/'; then NEEDS_B=1; fi
+  # 🔴 [2026-09-08 실측 오탐] 종전에는 쓰기 힌트와 운영 경로가 **명령 어디에든**
+  #    있으면 걸었다. 그래서 운영 경로를 문자열로 언급하는 **테스트 파일을 쓰는
+  #    것**만으로 차단됐다(내가 직접 걸렸다 — 두 번). 이제 **같은 줄**에 둘 다
+  #    있어야 한다. `shutil.copy` 는 힌트에서 뺐다 — 테스트 코드에 흔하고
+  #    대상이 임시 경로다. 오탐이 잦으면 사람이 override 를 습관으로 쓰게 되고,
+  #    그러면 게이트가 사라진다.
+  if printf '%s' "$CMD" | grep -qE '(sed -i|tee |io\.open\(|patch )[^|;]*(^|[^A-Za-z0-9_/])(\./)?(app|crawler|tools)/'; then
+    NEEDS_B=1
+  fi
 fi
 
 if [ "$NEEDS_B" = 1 ]; then
