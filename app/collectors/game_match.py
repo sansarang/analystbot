@@ -74,6 +74,120 @@ async def apply_result(pool, *, sport: str, league: str, ext_id: str,
     return "inserted"
 
 
+#: 🔴 [GM-2 2026-09-08] **표 목록을 손으로 적지 않는다.** 종전 결함의 원인이
+#   정확히 그것이었다 — 이 모듈은 "새 표를 만들면 이 목록에 반드시 추가한다"고
+#   자기 손으로 못박아 놓고(2026-08-27 predictions · 08-31 pick_ledger), 그 뒤
+#   만들어진 표 **아홉 중 하나도 추가하지 않았다.** 문장에는 강제력이 없다.
+#   `games` 삭제 시 CASCADE 로 함께 지워지는 표를 카탈로그에서 읽는다.
+_CASCADE_TABLES = """
+SELECT DISTINCT tc.table_name AS t, kcu.column_name AS c
+  FROM information_schema.table_constraints tc
+  JOIN information_schema.key_column_usage kcu
+    ON kcu.constraint_name = tc.constraint_name
+  JOIN information_schema.referential_constraints rc
+    ON rc.constraint_name = tc.constraint_name
+  JOIN information_schema.constraint_column_usage ccu
+    ON ccu.constraint_name = tc.constraint_name
+ WHERE tc.constraint_type = 'FOREIGN KEY'
+   AND ccu.table_name = 'games' AND rc.delete_rule = 'CASCADE'
+ ORDER BY 1
+"""
+
+#: 유니크 제약의 컬럼들. 이관이 충돌하는지 판단하는 데 쓴다.
+#  ⚠️ 부분 인덱스(`WHERE is_final`)도 유니크다 — `pick_ledger` 가 그것이고,
+#     그래서 아래 일반 경로는 그 표를 건드리지 않는다(특수 처리가 이미 있다).
+_UNIQUE_COLS = """
+SELECT i.relname AS idx,
+       array_agg(a.attname ORDER BY k.ord) AS cols,
+       ix.indpred IS NOT NULL AS partial
+  FROM pg_index ix
+  JOIN pg_class i ON i.oid = ix.indexrelid
+  JOIN pg_class t ON t.oid = ix.indrelid
+  JOIN pg_namespace n ON n.oid = t.relnamespace AND n.nspname = 'public'
+  JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ord) ON TRUE
+  JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
+ WHERE t.relname = $1 AND ix.indisunique AND NOT ix.indisprimary
+ GROUP BY 1, 3
+"""
+
+#: 이미 **표마다 다른 충돌 정책**으로 손수 처리하는 표. 일반 경로가 건드리지
+#  않는다 — 픽은 겹치면 지우고(정보 손실 없음), 레저는 지우지 않고 이력으로
+#  강등한다(판정 기록을 지우지 않는 것이 그 표의 존재 이유다).
+_HAND_MOVED = ("predictions", "expert_picks", "pick_ledger")
+
+
+def _q(name: str) -> str:
+    """식별자 인용. 이름은 카탈로그에서 왔지만 그대로 문자열에 끼우지 않는다."""
+    return '"' + str(name).replace('"', '""') + '"'
+
+
+async def _move_cascade_rows(pool, keep: int, dups: list[int]) -> dict:
+    """CASCADE 표의 행을 keep 으로 옮긴다. 반환 {"moved": n, "dropped": n, ...}.
+
+    🔴 [GM-2] 종전에는 `DELETE FROM games` 의 CASCADE 가 **아홉 개 표를 소리
+       없이** 지웠다. 가장 무거운 것은 `pitcher_appearances` — 자료4·9·10·14 의
+       원천이라, 그 등판이 **모든 투수의 이력에서 영구히** 사라졌다. 다음 날
+       그 투수의 "최근 5등판"은 4등판이 되고 리그 표본도 그만큼 줄었다.
+       실측: 병합은 이미 31회 일어났고, 지금도 MLB 중복 그룹이 31개다.
+
+    ⚠️ **못 옮기는 행을 조용히 보내지 않는다.** 유니크 제약이 걸리면 그 행은
+       여전히 CASCADE 로 사라지는데, 그때는 수를 세어 로그로 남긴다.
+       조용한 삭제를 시끄러운 삭제로 바꾸는 것이 이 함수의 나머지 절반이다.
+    """
+    out = {"moved": 0, "dropped": 0, "tables": 0}
+    try:
+        rows = await pool.fetch(_CASCADE_TABLES)
+    except Exception as exc:
+        logger.warning("[game_match] CASCADE 표 조회 실패 — 이관 생략: %s", exc)
+        return out
+    for r in rows:
+        tbl, col = r["t"], r["c"]
+        if tbl in _HAND_MOVED:
+            continue
+        try:
+            uq = await pool.fetch(_UNIQUE_COLS, tbl)
+        except Exception as exc:
+            logger.warning("[game_match] %s 유니크 조회 실패 — 건너뜀: %s", tbl, exc)
+            continue
+        # 부분 유니크는 조건을 여기서 재현할 수 없다 — 손수 처리 대상이지
+        # 일반 경로의 몫이 아니다. 건드리지 않고 넘긴다.
+        if any(u["partial"] for u in uq):
+            logger.info("[game_match] %s 부분 유니크 — 일반 이관에서 제외", tbl)
+            continue
+        # keep 쪽에 같은 키가 이미 있으면 그 행은 옮길 수 없다.
+        conds = []
+        for u in uq:
+            cols = [c for c in u["cols"] if c != col]
+            if not cols:                      # game_id 단독 유니크(경기당 1행)
+                conds.append("TRUE")
+                continue
+            conds.append(" AND ".join(
+                f"k.{_q(c)} IS NOT DISTINCT FROM s.{_q(c)}" for c in cols))
+        where_free = ""
+        if conds:
+            clash = " OR ".join(f"({c})" for c in conds)
+            where_free = (f" AND NOT EXISTS (SELECT 1 FROM {_q(tbl)} k "
+                          f"WHERE k.{_q(col)} = $1 AND ({clash}))")
+        try:
+            moved = await pool.fetchval(
+                f"WITH m AS (UPDATE {_q(tbl)} s SET {_q(col)} = $1 "
+                f" WHERE s.{_q(col)} = ANY($2::bigint[]){where_free} "
+                f" RETURNING 1) SELECT count(*) FROM m", keep, dups) or 0
+            left = await pool.fetchval(
+                f"SELECT count(*) FROM {_q(tbl)} WHERE {_q(col)} = ANY($1::bigint[])",
+                dups) or 0
+        except Exception as exc:
+            logger.warning("[game_match] %s 이관 실패 — 건너뜀: %s", tbl, exc)
+            continue
+        out["moved"] += int(moved)
+        out["tables"] += 1
+        if left:
+            out["dropped"] += int(left)
+            logger.warning("[game_match] %s — %d행은 유니크 충돌로 옮기지 못했다 "
+                           "(CASCADE 로 사라진다) keep=%s", tbl, left, keep)
+    return out
+
+
 async def merge_duplicate_games(pool, sport: str | None = None) -> dict:
     """이미 갈라진 중복 행을 합친다. 반환: {"merged", "moved_predictions", ...}.
 
@@ -158,9 +272,20 @@ async def merge_duplicate_games(pool, sport: str | None = None) -> dict:
             "  merged_from = COALESCE(merged_from, game_id) "
             "WHERE game_id = ANY($2::int[]) RETURNING 1) SELECT count(*) FROM m",
             keep, dups) or 0)
+        # 🔴 [GM-2 2026-09-08] **나머지 CASCADE 표를 여기서 옮긴다.**
+        #    위 세 표는 표마다 충돌 정책이 달라 손수 처리하고, 그 밖의 표는
+        #    카탈로그에서 읽어 일반 규칙으로 옮긴다. 이 줄이 없던 동안
+        #    아홉 개 표가 아래 DELETE 로 소리 없이 사라졌다.
+        #    ⚠️ **DELETE 앞이어야 한다** — 순서를 바꾸면 옮길 행이 이미 없다.
+        _c = await _move_cascade_rows(pool, keep, dups)
+        for k in ("moved", "dropped", "tables"):
+            out[f"cascade_{k}"] = out.get(f"cascade_{k}", 0) + _c[k]
         await pool.execute("DELETE FROM games WHERE id = ANY($1::int[])", dups)
         out["merged"] += len(dups)
     if out["merged"]:
-        logger.info("[game_match] 중복 경기 %d행 병합 — 예측 %d건 · 레저 %d건 이관",
-                    out["merged"], out["moved_predictions"], out["moved_ledger"])
+        logger.info("[game_match] 중복 경기 %d행 병합 — 예측 %d건 · 레저 %d건 · "
+                    "기타 CASCADE %d행/%d표 이관 (충돌로 못 옮긴 행 %d)",
+                    out["merged"], out["moved_predictions"], out["moved_ledger"],
+                    out.get("cascade_moved", 0), out.get("cascade_tables", 0),
+                    out.get("cascade_dropped", 0))
     return out
