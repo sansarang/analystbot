@@ -187,6 +187,10 @@ async def innings_outlook(pool, sport: str, pitcher: str, team: str,
     return out if len(out) > 1 else {}
 
 
+#: 세대 접미사. 사람을 가리키지 않는다 — `Jr.` 하나에 세 명이 걸렸다.
+_SUFFIX = {"jr.", "jr", "sr.", "sr", "ii", "iii", "iv"}
+
+
 # ── [BAT-5 2026-09-08] 기록형 해결사 ⑥: **개별 타자**
 #
 # 🔴 실측 2026-09-07~08: 해결사가 전부 투수 쪽이었다 — 불펜 42.9% · 선발 30% ·
@@ -606,17 +610,33 @@ async def resolve(pool, jg: dict, question: str) -> dict:
                           r"선발|불펜|구원", question)
     _pitchers = {pitcher_name(jg, sd) for sd in ("home", "away")}
     _pitchers = {p for p in _pitchers if p}
-    _hit = None
-    for _sd in ("home", "away"):
-        for _nm in today_names(jg, _sd):
-            if _nm in _pitchers:
+    _roster = [n for sd in ("home", "away") for n in today_names(jg, sd)
+               if n and n not in _pitchers]
+    # 🔴 [BAT-8 2026-09-09] **전체 이름이 먼저다.** 이름을 다 적었으면 토큰
+    #    규칙과 무관하게 그 사람이다.
+    _hit = next((n for n in _roster if n in question), None)
+    if _hit is None:
+        # 성만 적는 표기("Judge 가 살아나는가")는 흔해서 폴백을 남긴다.
+        # ⚠️ 다만 **토큰이 사람을 가리킬 때만**이다. 운영 표본 실측 2026-09-09:
+        #      mlb 타자 384명 중 타자끼리 같은 토큰 28 · 투수와 겹치는 토큰 63
+        #      npb 237명 중 12 · 64      kbo 181명 중 0 · 3
+        #    `Jr.` 는 세 명이 공유하고 **`Jr.` 가 든 어떤 질문에도** 걸렸다.
+        #    `Soto` 는 오늘 선발 투수와도 겹칠 수 있다. 그렇게 고른 답은
+        #    질문과 무관한 선수의 기록이다 — BRR-1·2·3 이 고친 그 병이다.
+        _ptok = {p.split()[-1] for p in _pitchers if p}
+        _cnt: dict = {}
+        for n in _roster:
+            if " " in n:
+                _cnt[n.split()[-1]] = _cnt.get(n.split()[-1], 0) + 1
+        for n in _roster:
+            if " " not in n:
                 continue
-            # 성만 적힌 표기도 받는다 (MLB "Aaron Judge" → "Judge").
-            if _nm in question or (" " in _nm and _nm.split()[-1] in question):
-                _hit = _nm
+            tok = n.split()[-1]
+            if tok.lower() in _SUFFIX or _cnt.get(tok, 0) > 1 or tok in _ptok:
+                continue
+            if tok in question:
+                _hit = n
                 break
-        if _hit:
-            break
     if _hit and (_s_kind == "pitcher" or _pit_word):
         _hit = None       # 투수 질문이다 — 빼앗지 않는다
     if _hit:
