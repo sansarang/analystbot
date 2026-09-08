@@ -36,8 +36,8 @@
 
 | 항목 | 상태 |
 |---|---|
-| **SEC-1(a)** GROQ·NVIDIA·OPENROUTER 키 3개 재발급 | **사용자 작업** — 콘솔 접근이 필요하다. 코드·데이터 쪽은 끝났지만 **이미 샌 값은 회전해야만 무효가 된다** |
-| **MISTRAL_API_KEY 삭제** | 보류 — 변수 삭제가 재배포를 부르는데 30분 재배포 규율에 걸렸다. 운영 사슬 어디에도 없음을 확인했다(config·provider 에 mistral 참조 0, 실효 사슬 `groq→gemini`) |
+| **SEC-1(a)** 키 3개 재발급 | ✅ **완료(16:2x)** — 세 변수 교체를 지문으로 대조, GROQ 는 운영 **실호출 200**(provider=groq), NVIDIA·OpenRouter 는 공급자 API 인증 200. NVIDIA·OpenRouter 는 사슬 밖이라 `--skip-deploys`(다음 배포에 적용). ⚠️ **남은 것: 각 콘솔에서 옛 키를 폐기**해야 유출이 무효가 된다 |
+| **MISTRAL_API_KEY 삭제** | 보류 — 변수 삭제가 재배포를 부르는데 30분 재배포 규율에 걸렸다. 값도 유출분이므로 **Mistral 콘솔에서도 폐기**해야 한다. 운영 사슬 어디에도 없음을 확인했다(config·provider 에 mistral 참조 0, 실효 사슬 `groq→gemini`) |
 | **GM-2** 병합이 CASCADE 12표 중 3표만 이관 | 미착수. **되돌릴 수 없는 유일한 항목**이라 로컬 DB 재현부터 한다 |
 | **SCH-2** `lineup_poll_30m` 중복 | 미착수. 잡을 **빼는** 작업이라 DSP-1(정직해진 발송률)로 전후를 재고 나서 |
 | **DEP-3** 실행 명령이 저장소 밖 | 부분 — `deploy.sh` 가 이제 "대시보드 startCommand(저장소 밖)"라고 정직하게 찍는다. ⚠️ Railway 가 `railway.json`(Config as Code)을 **2026-12-01 폐기** 예고했다. `.railway/railway.ts` 이관과 함께 다뤄야 한다 |
