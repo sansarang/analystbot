@@ -20,8 +20,20 @@ TTL = 30 * 3600           # 슬레이트 하루 + 여유
 #  미발송이 아니다. 이걸 실패로 세면 발송률이 영원히 100%가 안 된다.
 DELIVERED = ("sent", "revised", "unchanged")
 
+#: 🔴 [DSP-1 2026-09-08] **카드가 이미 다 나간 상태.** 분모에서 빼되 **숨기지 않는다.**
+#   실측 2026-09-07 MLB: card_cap 186건이 미발송으로 집계돼 발송률이 57.8% 로
+#   나갔다. 그 186건은 카드 2장을 이미 다 보낸 경기를 5분 폴링이 계속 다시
+#   집어서 그때마다 하나씩 적은 것이다 — **목표가 100%인 지표가 잘 돌아갈수록
+#   낮아졌다.** `window_not_open` 을 빼는 것과 같은 이유다("지금 보낼 상황이
+#   아닌 것"). 다만 이 안에는 진짜 결함이 숨을 수 있다(예비 재판정이 2장째를
+#   먹어 최종 카드가 막히는 경우) — 그래서 `reached` 로 계속 보인다.
+REACHED = ("card_cap", "card_reserved")
+
 #: 대상이 아닌 결과 — 분모에서 뺀다. 아직 창이 안 열렸거나 이미 시작한 경기.
-NOT_TARGET = ("window_not_open", "already_started", "not_supported", "void")
+NOT_TARGET = ("window_not_open", "already_started", "not_supported", "void") + REACHED
+
+#: 진짜 미발송 — 사유가 붙어 사람에게 간다. (모르는 값도 여기로 떨어진다)
+FAILED = ("cache_missing", "unjudged", "both_hash_same", "send_failed")
 
 #: 사람이 읽는 사유. 코드에 없는 값이 오면 그대로 쓴다 — 숨기지 않는다.
 REASON_KR = {
@@ -57,13 +69,37 @@ async def record(redis, sport: str, date: str, outcome: str) -> None:
         logger.debug("[dispatch] 기록 실패 %s %s: %s", sport, outcome, exc)
 
 
+def classify(counts: dict) -> dict:
+    """사유별 건수 → {target, sent, revised, unchanged, misses, reached, raw}.
+
+    ⚠️ **순수 함수다.** Redis 없이 같은 규칙을 테스트할 수 있어야 한다 —
+       집계 규칙이 틀렸을 때 그것을 알려줄 방법이 조회 경로뿐이면 안 된다.
+    """
+    out = {"target": 0, "sent": 0, "revised": 0, "unchanged": 0,
+           "misses": {}, "reached": {}, "raw": dict(counts)}
+    for name, n in counts.items():
+        if name in REACHED:
+            label = REASON_KR.get(name, name)
+            out["reached"][label] = out["reached"].get(label, 0) + n
+            continue
+        if name in NOT_TARGET:
+            continue
+        out["target"] += n
+        if name in DELIVERED:
+            out[name] = out.get(name, 0) + n
+        else:
+            # 모르는 사유도 숨기지 않는다 — 사유 없는 미발송이 "조용한 0"이다.
+            out["misses"][REASON_KR.get(name, name)] = n
+    return out
+
+
 async def summary(redis, sport: str, date: str) -> dict:
-    """{target, sent, revised, unchanged, misses:{사유:건수}, raw:{...}}.
+    """{target, sent, revised, unchanged, misses:{사유:건수}, reached, raw}.
 
     `target` = 전체 − 대상 아님. 미발송은 **전건 사유**가 붙는다.
     """
     out = {"sport": sport, "date": date, "target": 0, "sent": 0,
-           "revised": 0, "unchanged": 0, "misses": {}, "raw": {}}
+           "revised": 0, "unchanged": 0, "misses": {}, "reached": {}, "raw": {}}
     if redis is None:
         return out
     try:
@@ -72,15 +108,8 @@ async def summary(redis, sport: str, date: str) -> dict:
         logger.debug("[dispatch] 조회 실패 %s: %s", sport, exc)
         return out
     counts = {k: int(v) for k, v in raw.items() if str(v).lstrip("-").isdigit()}
-    out["raw"] = counts
-    for name, n in counts.items():
-        if name in NOT_TARGET:
-            continue
-        out["target"] += n
-        if name in DELIVERED:
-            out[name] = out.get(name, 0) + n
-        else:
-            out["misses"][REASON_KR.get(name, name)] = n
+    out.update(classify(counts))
+    out["sport"], out["date"] = sport, date
     return out
 
 
@@ -103,4 +132,12 @@ def render(stats: dict, label: str) -> list[str]:
     out = [line]
     for reason, n in sorted(stats.get("misses", {}).items(), key=lambda kv: -kv[1]):
         out.append(f"   · 미발송 {n}건 — {reason}")
+    # 🔴 [DSP-1] 이미 카드가 다 나간 건은 **미발송이 아니다.** 분모에서 빼되
+    #    건수는 계속 보여 준다 — 여기 진짜 결함이 숨을 수 있다(예비 재판정이
+    #    2장째를 먹어 최종 카드가 막히는 경우).
+    reached = stats.get("reached") or {}
+    if reached:
+        total = sum(reached.values())
+        detail = " · ".join(f"{k} {v}" for k, v in sorted(reached.items(), key=lambda kv: -kv[1]))
+        out.append(f"   · 이미 도달 {total}건 ({detail})")
     return out
