@@ -99,6 +99,79 @@ def parse_starting_order(table_json: str | dict) -> list[str]:
 _FRAC_IP = {"1/3": 1 / 3, "2/3": 2 / 3}
 
 
+def _cells(tbl) -> tuple[list[list[str]], list[str]]:
+    """`{"rows":[{"row":[{"Text":…}]}], "tfoot":[…]}` → (행 목록, 합계 행)."""
+    import json as _json
+
+    d = _json.loads(tbl) if isinstance(tbl, str) else (tbl or {})
+    rows = [[(c or {}).get("Text") or "" for c in (r.get("row") or [])]
+            for r in (d.get("rows") or [])]
+    tf = [[(c or {}).get("Text") or "" for c in (r.get("row") or [])]
+          for r in (d.get("tfoot") or [])]
+    return rows, (tf[0] if tf else [])
+
+
+def parse_batting(box: dict) -> dict:
+    """KBO 공식 박스스코어 `arrHitter` → {"home": [...], "away": [...]}.
+
+    🔴 [BAT-2 2026-09-08] **원본을 실제로 열어 확인했다(추측 아님).**
+       `arrHitter` 는 원소 2개이고 각각 `table1/2/3` 을 갖는다:
+         table1 = [타순, 포지션, 이름]
+         table3 = [타수, 안타, 타점, 득점, 타율]   ← **헤더가 없다**
+         table2 = 이닝별 결과 (여기서는 안 쓴다)
+       실측 20260901LGOB0: `arrHitter[0]` = LG(원정), `[1]` = 두산(홈).
+       교체 선수는 **같은 타순 번호를 공유**한다(5,5 / 9,9,9,9).
+
+    ⚠️ **열 순서가 NPB 와 다르다.** NPB 는 `打数·得点·安打·打点` 이고
+       KBO 는 `타수·안타·타점·득점` 이다. 헤더가 없으니 위치로 읽되,
+       **tfoot 합계와 대조**해 열이 바뀌면 `_mismatch` 로 알린다.
+       열 의미 검증 근거(실측): 두산 4열 합계 1 = DB `home_score` 1,
+       양의지(타점1·득점0)·안재석(타점0·득점1)이 의미와 맞았다.
+
+    ⚠️ 팀 이름을 여기서 만들지 않는다 — 적재가 `games` 에서 읽는다.
+    """
+    out: dict = {"home": [], "away": []}
+    blocks = (box or {}).get("arrHitter") or []
+    # 실측: [0]=원정, [1]=홈
+    for side, blk in zip(("away", "home"), blocks):
+        rows1, _ = _cells((blk or {}).get("table1"))
+        rows3, tf3 = _cells((blk or {}).get("table3"))
+        sums = [0, 0, 0, 0]
+        for names, nums in zip(rows1, rows3):
+            if len(names) < 3 or len(nums) < 4:
+                continue
+            name = (names[2] or "").strip()
+            if not name:
+                continue
+            vals = []
+            for i in range(4):
+                t = (nums[i] or "").strip()
+                vals.append(int(t) if t.lstrip("-").isdigit() else None)
+                if vals[-1] is not None:
+                    sums[i] += vals[-1]
+            slot = (names[0] or "").strip()
+            out[side].append({
+                "batter": name,
+                "slot": int(slot) if slot.isdigit() else None,
+                # 🔴 포지션 사전을 새로 만들지 않는다 — `parse_starting_order` 와
+                #    같은 `normalize_position` 을 쓴다(사본 금지). 실측: 같은
+                #    표에 `二`(2루수)와 `중`(중견수)이 섞여 온다.
+                "pos": normalize_position(names[1]) or None,
+                "sub": is_substitute(names[1]),
+                "ab": vals[0], "h": vals[1], "rbi": vals[2], "r": vals[3],
+                "hr": None, "bb": None, "so": None,
+            })
+        # 🔴 헤더가 없으니 합계로 검증한다. 조용히 뒤바뀌면 안 된다.
+        if tf3:
+            tot = [int(x) if (x or "").strip().lstrip("-").isdigit() else None
+                   for x in tf3[:4]]
+            if any(t is not None and t != s for t, s in zip(tot, sums)):
+                out["_mismatch"] = {"side": side, "tfoot": tot, "sum": sums}
+                logger.warning("[kbo_box] 타자표 합계 불일치 %s — tfoot %s vs 합 %s "
+                               "(열 순서가 바뀌었을 수 있다)", side, tot, sums)
+    return out
+
+
 def _pitcher_cell(c) -> str:
     raw = (c or {}).get("Text", "") if isinstance(c, dict) else str(c or "")
     raw = re.sub(r"<[^>]+>", "", raw)

@@ -421,6 +421,62 @@ def parse_batting_stats(html: str) -> dict[str, dict]:
     return {"away": found[0], "home": found[1]}
 
 
+#: 🔴 [BAT-2 2026-09-08] **실제 페이지를 열어 확인한 헤더다(추측 아님).**
+#   位置 選手名 打率 打数 得点 安打 打点 三振 四球 死球 犠打 盗塁 失策 本塁打 1回…9回
+#   ⚠️ **KBO 와 열 순서가 다르다** — KBO 는 `타수·안타·타점·득점`,
+#      NPB 는 `打数·得点·安打·打点`. 위치로 읽으면 득점과 안타가 뒤바뀐다.
+#      그래서 여기서는 **헤더로만** 매핑하고, 헤더가 없으면 아무것도 만들지 않는다.
+_BATTER_COLS = {
+    "打数": "ab", "得点": "r", "安打": "h", "打点": "rbi",
+    "三振": "so", "四球": "bb", "本塁打": "hr",
+}
+#: 선발은 `(二)`·`(右)` 처럼 괄호가 있고, 교체는 `投`·`打`·`二` 로 괄호가 없다
+#  (실측 2026-09-07 中日전: `(二)福永` 다음 `投 松山` 이 같은 타순을 이어받았다).
+_POS_STARTER = re.compile(r"^[(（]\s*(.+?)\s*[)）]$")
+
+
+def parse_batter_rows(html: str) -> list[list[dict]]:
+    """Yahoo `/stats` 타격표 → 표별 개인 타자 행 목록. 첫 표가 원정.
+
+    🔴 `parse_batting_stats` 는 같은 표에서 **`合計` 한 줄만** 읽고 개인 행을
+       버린다. 여기가 그 버려지던 행을 읽는다(사본이 아니라 다른 층위다).
+
+    ⚠️ 타순은 표에 숫자로 없다. **괄호 있는 위치가 나올 때만 1씩 올린다** —
+       교체 선수는 앞 타순을 이어받는다. 괄호 행이 하나도 없으면 타순은 `None`.
+    """
+    found: list[list[dict]] = []
+    for tb in re.findall(r"<table[^>]*>(.*?)</table>", html, re.S):
+        rows = [r for r in (_cells(tr) for tr in
+                            re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S)) if r]
+        if not rows:
+            continue
+        head = rows[0]
+        if "安打" not in head or "選手名" not in head or "投球回" in head:
+            continue
+        idx = {name: i for i, name in enumerate(head)}
+        if "打数" not in idx:
+            continue
+        out: list[dict] = []
+        slot = 0
+        for r in rows[1:]:
+            pos_raw = (r[0] if r else "").strip()
+            name = (r[idx["選手名"]] if idx["選手名"] < len(r) else "").strip()
+            if not name or pos_raw == "合計":
+                continue
+            m = _POS_STARTER.match(pos_raw)
+            if m:
+                slot += 1
+            b = {"batter": name, "slot": slot or None,
+                 "pos": (m.group(1) if m else pos_raw) or None,
+                 "sub": not m}
+            for jp, en in _BATTER_COLS.items():
+                i = idx.get(jp)
+                b[en] = _opt_int_cell(r[i]) if i is not None and i < len(r) else None
+            out.append(b)
+        found.append(out)
+    return found
+
+
 def parse_standings(html: str) -> dict[str, dict]:
     """Yahoo 시즌 순위표 → {Odds 팀명: {rank, w, l, d, win_pct}}.
 

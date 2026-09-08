@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 from app.collectors.yahoo_npb import (
     TEAM_TO_ODDS,
     YahooNPBClient,
+    parse_batter_rows,
     parse_batting_orders,
     parse_finals,
     parse_pitching_stats,
@@ -38,6 +39,20 @@ async def fetch_final_lineups(game_id: str, client: YahooNPBClient) -> dict:
     if not lu["home"] or not lu["away"]:
         return {}
     return lu
+
+
+def parse_batting(html: str) -> dict:
+    """[BAT-2] Yahoo `/stats` → {"home": [...], "away": [...]}.
+
+    ⚠️ **첫 표가 원정**이다 — `parse_pitching_stats`·`parse_batting_stats` 와
+       같은 규약이고, `/top` 打順(홈 먼저)과는 **반대**다. 섞지 않는다.
+    ⚠️ 표가 둘 다 잡히지 않으면 **빈 목록**을 준다. 한쪽만 있는 것을 홈/원정
+       중 하나로 고르면 반대편 팀에 붙는다.
+    """
+    found = parse_batter_rows(html)
+    if len(found) < 2:
+        return {"home": [], "away": []}
+    return {"away": found[0], "home": found[1]}
 
 
 # 선발 로테이션 × 최근 등판. 타순 이력 상한(팀당 10경기)과 창을 나눈다.

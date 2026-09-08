@@ -143,3 +143,138 @@ async def test_적재는_멱등하다(db_pool):
     n = await db_pool.fetchval(
         "SELECT count(*) FROM batter_appearances WHERE game_id=$1", gid)
     assert n == 1, f"같은 타석이 {n}행 쌓였다"
+
+
+# ═══════════════ [BAT-2] KBO·NPB 파서 — 열 순서가 리그마다 다르다
+#
+# 🔴 **원본 구조를 실제로 열어 확인했다(2026-09-08). 추측하지 않았다.**
+#
+#   KBO 공식 `arrHitter` — 원소 2개(0=원정, 1=홈), 각 `table1/2/3`:
+#     table1 = [타순, 포지션, 이름]
+#     table3 = [타수, 안타, 타점, 득점, 타율]      ← **헤더가 없다**
+#     교체 선수는 **같은 타순 번호를 공유**한다(5,5 / 9,9,9,9)
+#     검증: 두산 4열 합계 1 = DB home_score 1 · 양의지(타점1·득점0)·
+#           안재석(타점0·득점1)이 의미와 맞는다
+#
+#   NPB Yahoo `/stats` 의 `打撃成績` — **헤더가 있다**:
+#     位置 | 選手名 | 打率 | 打数 | 得点 | 安打 | 打点 | 三振 | 四球 | 死球 | …
+#
+# ⚠️ **두 리그의 열 순서가 다르다** — KBO 는 `타수·안타·타점·득점`,
+#    NPB 는 `打数·得点·安打·打点`. 확인하지 않았으면 득점과 안타를 뒤바꿨다.
+#    NPB 는 헤더로 매핑하고, 헤더가 없는 KBO 는 **합계 대조 가드**를 둔다.
+
+
+def _kbo_block(rows1, rows3, tfoot=None):
+    import json
+
+    def tbl(rows, tf=None):
+        return json.dumps({
+            "rows": [{"row": [{"Text": c} for c in r]} for r in rows],
+            "tfoot": [{"row": [{"Text": c} for c in tf]}] if tf else [],
+        }, ensure_ascii=False)
+    return {"table1": tbl(rows1), "table2": tbl([]), "table3": tbl(rows3, tfoot)}
+
+
+def test_kbo_타자표를_읽는다():
+    from app.collectors.kbo_boxscore import parse_batting
+
+    box = {"arrHitter": [
+        _kbo_block([["1", "二", "신민재"], ["2", "중", "박해민"]],
+                   [["4", "1", "0", "1", "0.263"], ["4", "1", "0", "0", "0.286"]],
+                   ["8", "2", "0", "1", "0.270"]),
+        _kbo_block([["1", "유", "박찬호"]], [["3", "0", "0", "0", "0.291"]],
+                   ["3", "0", "0", "0", "0.291"]),
+    ]}
+    out = parse_batting(box)
+    assert set(out) == {"home", "away"}
+    # arrHitter[0] 이 원정이다 (실측: LG@두산 에서 [0]=LG)
+    away = {b["batter"]: b for b in out["away"]}
+    assert set(away) == {"신민재", "박해민"}
+    s = away["신민재"]
+    assert (s["slot"], s["pos"], s["ab"], s["h"], s["rbi"], s["r"]) == (
+        1, "2루수", 4, 1, 0, 1)   # 🔴 `normalize_position` 원본을 쓴다
+    assert {b["batter"] for b in out["home"]} == {"박찬호"}
+
+
+def test_kbo_교체선수는_같은_타순을_쓴다():
+    """실측: 두산 9번 자리에 정수빈·박지훈·류승민·김기연 네 명이 들어갔다."""
+    from app.collectors.kbo_boxscore import parse_batting
+
+    box = {"arrHitter": [
+        _kbo_block([["9", "중", "정수빈"], ["9", "타중", "박지훈"]],
+                   [["2", "0", "0", "0", "0.258"], ["1", "0", "0", "0", "0.264"]]),
+        _kbo_block([], []),
+    ]}
+    out = parse_batting(box)
+    assert [b["slot"] for b in out["away"]] == [9, 9]
+    assert [b["batter"] for b in out["away"]] == ["정수빈", "박지훈"]
+    assert [b["sub"] for b in out["away"]] == [False, True]
+
+
+def test_kbo_열이_바뀌면_알아챈다():
+    """🔴 헤더가 없으니 열 순서를 합계로 검증한다 — 조용히 뒤바뀌면 안 된다."""
+    from app.collectors.kbo_boxscore import parse_batting
+
+    box = {"arrHitter": [
+        _kbo_block([["1", "二", "신민재"]], [["4", "1", "0", "1", "0.263"]],
+                   ["99", "99", "99", "99", "0.000"]),   # 합계가 행과 안 맞는다
+        _kbo_block([], []),
+    ]}
+    out = parse_batting(box)
+    assert out.get("_mismatch"), "합계 불일치를 알리지 않는다"
+
+
+_NPB_HEAD = ("<tr><th>位置</th><th>選手名</th><th>打率</th><th>打数</th><th>得点</th>"
+             "<th>安打</th><th>打点</th><th>三振</th><th>四球</th><th>死球</th>"
+             "<th>犠打</th><th>盗塁</th><th>失策</th><th>本塁打</th></tr>")
+
+
+def _npb_table(rows):
+    body = "".join("<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>" for r in rows)
+    return f"<table>{_NPB_HEAD}{body}</table>"
+
+
+def test_npb_타자표를_헤더로_읽는다():
+    """⚠️ NPB 는 `打数·得点·安打·打点` 순이다 — KBO(`타수·안타·타점·득점`)와 다르다."""
+    from app.collectors.npb_boxscore import parse_batting
+
+    away = _npb_table([
+        ["(右)", "カナリオ", ".246", "4", "2", "1", "0", "1", "1", "0", "0", "0", "0", "0"],
+        ["(二)", "滝澤 夏央", ".280", "4", "0", "0", "0", "1", "0", "0", "0", "0", "0", "0"],
+        ["合計", "", "8", "2", "1", "0", "2", "1", "0", "0", "0", "0", "0"],
+    ])
+    home = _npb_table([
+        ["(中)", "岡林 勇希", ".234", "4", "1", "1", "3", "0", "0", "0", "0", "0", "0", "0"],
+    ])
+    out = parse_batting(away + home)
+    assert set(out) == {"home", "away"}
+    assert len(out["away"]) == 2, out["away"]
+    c = {r["batter"]: r for r in out["away"]}["カナリオ"]
+    assert c["ab"] == 4 and c["r"] == 2 and c["h"] == 1 and c["rbi"] == 0
+    assert c["so"] == 1 and c["bb"] == 1 and c["hr"] == 0
+    assert c["pos"] == "右" and c["slot"] == 1
+    assert {r["batter"] for r in out["home"]} == {"岡林 勇希"}
+
+
+def test_npb_교체선수는_앞_타순을_이어받는다():
+    """🔴 실측: 괄호 있는 위치가 선발, 괄호 없는 행(`投`·`打`)이 교체다."""
+    from app.collectors.npb_boxscore import parse_batting
+
+    t = _npb_table([
+        ["(二)", "福永 裕基", ".282", "4", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"],
+        ["投", "松山 晋也", "-", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"],
+        ["(遊)", "村松 開人", ".259", "4", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"],
+    ])
+    out = parse_batting(t + t)
+    assert [(r["batter"], r["slot"]) for r in out["away"]] == [
+        ("福永 裕基", 1), ("松山 晋也", 1), ("村松 開人", 2)]
+    assert out["away"][1]["ab"] == 0
+    assert [r["sub"] for r in out["away"]] == [False, True, False]
+
+
+def test_npb_헤더가_없으면_지어내지_않는다():
+    """⚠️ 위치로 추측하면 得点과 安打가 뒤바뀐다. 헤더가 없으면 빈 목록이다."""
+    from app.collectors.npb_boxscore import parse_batting
+
+    out = parse_batting("<table><tr><td>4</td><td>2</td></tr></table>")
+    assert out == {"home": [], "away": []}
