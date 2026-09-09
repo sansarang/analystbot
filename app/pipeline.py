@@ -2540,6 +2540,27 @@ async def _renarrate(games: list[dict], sport: str) -> None:
         await attach_narratives(games, sport)
     except Exception as exc:
         logger.warning("[pipeline] 재서술 실패, 기존 서술 유지: %s", exc)
+    # 🔴 [DS-11 2026-09-10] **종합 판단 한 줄을 여기서 계산한다.**
+    #    카드 렌더는 동기라 LLM 을 기다릴 수 없다 — 미리 채워 두고 카드는 읽기만
+    #    한다. 서술과 같은 시점에 도는 것이 맞다: 둘 다 판정 이후의 글이다.
+    #    ⚠️ 실패는 조용히 넘긴다 — 규칙 뼈대가 카드에서 폴백으로 나간다.
+    import asyncio as _aio
+
+    from app.engine.synthesis import synthesize_async
+
+    async def _syn(g: dict) -> None:
+        try:
+            line = await synthesize_async(g)
+            if line:
+                g["synthesis_line"] = line
+        except Exception as exc:
+            logger.debug("[pipeline] 종합 판단 생략 game=%s: %s",
+                         g.get("game_id"), exc)
+
+    try:
+        await _aio.gather(*[_syn(g) for g in games])
+    except Exception as exc:
+        logger.warning("[pipeline] 종합 판단 실패, 뼈대만: %s", exc)
 
 
 def _prepare_games_for_judge(games: list[dict], sport: str) -> None:

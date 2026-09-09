@@ -298,7 +298,9 @@ def render_form_card(jg: dict, sport: str | None = None, *,
     try:
         from app.engine.synthesis import synthesize
 
-        _syn = synthesize(jg)
+        # [DS-11] 판단 한 줄은 **미리 계산된 값**을 쓴다 — 카드 렌더는 동기이고
+        #   LLM 을 기다리면 발송이 늦는다. 파이프라인이 `synthesis_line` 을 채운다.
+        _syn = jg.get("synthesis_line") or synthesize(jg)
         if _syn:
             lines.append(_syn)
     except Exception:

@@ -11,6 +11,8 @@
 """
 from __future__ import annotations
 
+import pytest
+
 from app.engine.synthesis import synthesize
 
 
@@ -65,3 +67,57 @@ def test_synthesis_agreement_is_not_called_contradiction():
     jg = _jg(situation_check={"direction": "away", "verdict": "뒷받침"})
     out = synthesize(jg)
     assert "반대" not in out
+
+
+# ── [DS-11 2026-09-10 사용자 지시] 심의 동의도 명시 + LLM 판단 한 줄 ───────
+
+def test_agreement_is_stated_not_silent():
+    """🔴 사용자 지시: "심의가 같은 방향일 때도 명시해라."
+
+    실측(CHC@MIL): 심의가 결론과 같은 방향(홈 뒷받침)이라 종합이 **침묵**했다.
+    침묵은 고려가 아니다 — 사용자가 "심의를 봤는지" 알 수 없다.
+    """
+    jg = _jg(situation_check={"direction": "away", "verdict": "뒷받침"})
+    out = synthesize(jg)
+    assert "현지 상황" in out, out
+    assert "뒷받침" in out or "지지" in out or "같은" in out, out
+
+
+def test_contradiction_still_flagged():
+    """반대일 때는 여전히 모순으로 명시한다(DS-10 계약 유지)."""
+    out = synthesize(_jg())          # 결론 away · 심의 home
+    assert "반대" in out
+
+
+@pytest.mark.asyncio
+async def test_llm_verdict_line_is_appended(monkeypatch):
+    """🔴 사용자 지시: "붙여라."
+
+    규칙 뼈대만으로는 값을 옮길 뿐 **견줘본 판단**이 없다(실측: 종합이 갈림길·
+    조사 문장을 통째로 재인용했다). 마지막 한 줄만 LLM 이 쓴다.
+    ⚠️ 숫자는 여전히 규칙이 만든다 — LLM 은 판단 문장만 덧붙인다.
+    """
+    from app.engine import synthesis as syn
+
+    async def fake(prompt, **kw):
+        assert "갈림길" in prompt and "심의" in prompt, "견줄 재료가 안 들어갔다"
+        return "근거가 갈림길의 답을 이미 갖고 있어 확률을 신뢰할 만하다."
+
+    monkeypatch.setattr(syn, "_verdict_line", fake)
+    out = await syn.synthesize_async(_jg())
+    assert "→ " in out, out
+    assert "갈림길의 답" in out
+
+
+@pytest.mark.asyncio
+async def test_llm_failure_keeps_the_rule_skeleton(monkeypatch):
+    """LLM 이 죽어도 규칙 뼈대는 그대로 나간다 — 회귀 없음."""
+    from app.engine import synthesis as syn
+
+    async def dead(prompt, **kw):
+        return None
+
+    monkeypatch.setattr(syn, "_verdict_line", dead)
+    out = await syn.synthesize_async(_jg())
+    assert out.startswith("🧭 종합 —")
+    assert "→ " not in out
