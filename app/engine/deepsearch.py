@@ -77,8 +77,20 @@ def triggers(jg: dict, settings, *, prev_lineup: dict | None = None) -> list[str
         if abs(p - need) * 100 <= BOUNDARY_PP:
             out.append(T1_BOUNDARY)
 
-    # T2 — 4단계 플래그 (엣지 승격의 필수 관문 / 시장 우위 검토)
-    if jg.get("edge_status") == "candidate" or jg.get("market_divergence"):
+    # T2 — 시장 괴리
+    #   🔴 [MKT-7 2026-09-09] **이 트리거는 한 번도 발동한 적이 없었다.**
+    #      옛 조건(`edge_status`·`market_divergence`)을 세팅하는 곳은
+    #      `market_edge.py` 하나뿐인데 그 모듈은 운영에서 아무도 안 부른다(E-1).
+    #      운영 실측: 딥서치 400건 중 발동 87 — T5 83 · T6 37 · T4 25 ·
+    #      **T1 0 · T2 0 · T3 0**, `edge_status` 는 원장 763건 전부 NULL.
+    #   ✅ 괴리는 `market_edge` 없이도 안다 — `p_market_send` 와 `p_claude` 뿐이다.
+    #      임계값을 여기 적지 않는다: `market_variable.DIVERGENCE_PP` 가 원본이다.
+    #   ⚠️ 옛 두 조건은 **그대로 둔다** — `market_edge` 가 언젠가 배선되면
+    #      그 경로도 계속 살아야 한다.
+    from app.engine.market_variable import divergence_variable
+
+    if (jg.get("edge_status") == "candidate" or jg.get("market_divergence")
+            or divergence_variable(jg) is not None):
         out.append(T2_MARKET)
 
     # T3 — 판정이 스스로 "이건 더 봐야 한다"고 말했다
