@@ -35,6 +35,9 @@ def parse_statcast_csv(text: str) -> list[dict]:
     """Savant CSV → [{game_date, pitch_type, release_speed(str)}]."""
     if not text:
         return []
+    # 🔴 [SAT-9] Savant CSV 는 BOM(﻿)이 앞에 붙어 온다 — 벗기지 않으면 첫
+    #    컬럼명이 '﻿pitch_type' 이 돼 조회가 전부 실패한다(실측: 371KB·0행).
+    text = text.lstrip("﻿")
     out = []
     for row in csv.DictReader(io.StringIO(text)):
         if row.get("game_date") and row.get("pitch_type"):

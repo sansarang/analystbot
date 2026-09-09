@@ -28,6 +28,16 @@ def test_parse_statcast_csv():
     assert rows[0]["game_date"] == "2026-08-20"
 
 
+def test_parse_statcast_csv_strips_bom():
+    """🔴 실측 2026-09-09: Savant CSV 는 앞에 BOM(\\ufeff)이 붙어 온다.
+    그러면 첫 컬럼명이 '\\ufeffpitch_type' 이 돼 조회가 전부 실패, 371KB 인데
+    0행이 파싱됐다. BOM 을 벗겨야 한다."""
+    rows = sv.parse_statcast_csv("﻿" + _CSV)
+    assert len(rows) == 7
+    assert rows[0]["pitch_type"] == "FF"        # BOM 벗긴 뒤 컬럼명이 정상
+    assert sv.velocity_by_game(rows)             # 집계도 된다
+
+
 def test_velocity_by_game_uses_fastball_only():
     rows = sv.parse_statcast_csv(_CSV)
     byg = sv.velocity_by_game(rows)
