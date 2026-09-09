@@ -37,6 +37,8 @@ _PROMPT = """당신은 스포츠 분석 카드를 쓰는 필자다. 아래 내�
 [리스크 변수]
 {variables}
 [추가 조사 결과] {ds}
+[조사가 찾아낸 사실]
+{findings}
 [현지 상황 심의] {sit}
 
 🔴 **쓰는 법**
@@ -44,6 +46,14 @@ _PROMPT = """당신은 스포츠 분석 카드를 쓰는 필자다. 아래 내�
         숫자(이닝·득점·레이팅)는 문장 안에 자연스럽게 녹인다.
 2문단 — **무엇이 이 판단을 흔드는가.** 갈림길과 리스크를 말하고, 조사·현지
         상황이 그것을 지지하는지 반박하는지 함께 적는다.
+
+🔴 **조사 사실은 옮겨 적지 말고 해석하라.**
+   [조사가 찾아낸 사실]에 있는 항목은 우리가 경기 직전에 직접 확인한 것이다.
+   각 사실을 그냥 나열하지 말고 **그것이 이 승부에 무슨 의미인지** 써라 —
+   누구에게 유리해지는가, 위 근거를 강화하는가 무너뜨리는가, 갈림길의 답이
+   되는가. 의미를 못 찾는 사실은 아예 쓰지 마라.
+   ⚠️ 조사가 **답을 못 찾았다는 것도 결과다.** 확인이 안 된 부분이 있으면
+      "확인되지 않았다"고 솔직히 적어라.
 
 🔴 **금지**
 - "자료4", "자료12", "리그 동류 표본", "기반영", "심의", "딥서치" 같은
@@ -79,6 +89,32 @@ async def _ask(prompt: str, *, max_tokens: int = 1200) -> dict | None:
     return got if isinstance(got, dict) else None
 
 
+#: [CARD-4 2026-09-10] 서술에 넘길 조사 사실 최대 개수.
+#  🔴 종전에는 `deepsearch["요약"]` **한 줄만** 넘어갔다 — 위성이 40여 건,
+#     퍼플렉시티가 몇 건을 뒤져 찾아낸 사실들이 한 문장으로 뭉개져, 서술은
+#     그것을 인용만 하고 의미를 해석할 수 없었다.
+#     사용자 지적 2026-09-10: "딥서치한 거는 분석 안 하냐?"
+FINDINGS_MAX = 6
+
+
+def _findings_block(ds: dict) -> str:
+    """조사 발견을 프롬프트 줄로. 없으면 그 사실을 명시한다(조용한 공백 금지)."""
+    items = ds.get("발견") or ds.get("findings") or []
+    lines: list[str] = []
+    for it in items:
+        if isinstance(it, dict):
+            txt = it.get("사실") or it.get("fact") or it.get("내용") or ""
+            src = it.get("소스유형") or it.get("출처") or it.get("source") or ""
+            txt = str(txt).strip()
+            if txt:
+                lines.append(f"  - {txt}" + (f" ({src})" if src else ""))
+        elif str(it).strip():
+            lines.append(f"  - {str(it).strip()}")
+        if len(lines) >= FINDINGS_MAX:
+            break
+    return "\n".join(lines) or "  - (경기 직전 조사에서 새로 확인된 사실 없음)"
+
+
 def _prompt(jg: dict) -> str:
     from app.engine.form_card import favored_side_and_p
 
@@ -102,6 +138,7 @@ def _prompt(jg: dict) -> str:
         branch=((m.get("전개") or {}).get("분기점") or "(없음)"),
         variables="\n".join(f"  - {x}" for x in (m.get("변수") or [])[:2]) or "  - (없음)",
         ds=(ds.get("요약") or "(조사 없음)"),
+        findings=_findings_block(ds),
         sit=(sit.get("summary") or sit.get("verdict") or "(심의 없음)"))
 
 

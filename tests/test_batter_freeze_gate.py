@@ -89,7 +89,8 @@ def test_꺼지면_프롬프트가_BAT4_이전과_바이트로_같다(monkeypatc
     import subprocess
 
     from app.config import get_settings
-    from app.engine.prompts import MATCHUP, baseball_material_note, fill
+    from app.engine.prompts import (MATCHUP, VARIABLE_AXES,
+                                    baseball_material_note, fill)
 
     monkeypatch.delenv("BATTER_MATERIAL_ENABLED", raising=False)
     get_settings.cache_clear()
@@ -99,7 +100,12 @@ def test_꺼지면_프롬프트가_BAT4_이전과_바이트로_같다(monkeypatc
                          capture_output=True, text=True).stdout
     ns: dict = {}
     exec(compile(src, "old_prompts.py", "exec"), ns)
-    assert now == ns["MATCHUP"]
+    # 🔓 [VAR-1 2026-09-10] 이 시점 이후 **의도적으로 승인된 변경**은 변수 축
+    #    블록 하나뿐이다(사용자 명시 지시 · v1.4 동결 예외). 그것을 걷어낸
+    #    나머지는 여전히 BAT-1 과 바이트로 같아야 한다 — 계약을 풀지 않고
+    #    **예외를 한 개로 고정**한다. 블록은 원본에서 읽는다(사본 금지).
+    assert VARIABLE_AXES in now, "승인된 예외 블록이 프롬프트에서 사라졌다"
+    assert now.replace(VARIABLE_AXES, "") == ns["MATCHUP"]
     get_settings.cache_clear()
 
 

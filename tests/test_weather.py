@@ -73,3 +73,40 @@ def test_pick_hour_matches_game_time():
     assert f["wind_mph"] == 10          # 18:00 이 18:30 에 가장 가깝다
     assert f["wind_from_deg"] == 180
     assert f["precip_pct"] == 10
+
+
+# ── [WX-1 2026-09-10] 실제 예보가 LLM 산문에 밀려 버려졌다 ─────────────────
+#   🔴 절대규칙 2 위반: "LLM 출력의 수치는 API 숫자와 교차검증. 충돌 시 API가
+#      이긴다." `merge_into_research` 가 `if research.get("weather"): return None`
+#      으로 **리서치 LLM 이 먼저 채웠으면 Open-Meteo 예보를 통째로 버렸다.**
+#   실측 2026-09-09 MLB 10경기: 자료11 날씨 10/10 부착됐으나 **전부 LLM 산문**
+#      이고 계수 라벨은 3/10 만 붙었다. PHI 는 이렇게 왔다 —
+#      "구체적인 수치는 실시간 기상 데이터에 접근해야 하나, 일반적으로 초가을
+#       동부 지역 저녁 기온은 섭씨 20도 내외 … 경우가 많다"
+
+def test_api_forecast_beats_llm_prose():
+    from app.collectors.weather import merge_into_research
+
+    research = {"weather": "일반적으로 초가을 저녁은 섭씨 20도 내외로 예상되는 경우가 많다."}
+    jg = {"game_id": "g1"}
+    note = merge_into_research(research, jg, {"g1": {"text": "기온 29°C · 풍속 14km/h"}})
+    assert "29°C" in research["weather"], "실제 예보가 LLM 산문을 못 이긴다"
+    assert note, "덮었으면 사유가 남아야 한다"
+
+
+def test_llm_prose_is_kept_not_destroyed():
+    """⚠️ 반대 위험 — 리서치가 찾은 문장(우천 취소 언급 등)을 없애면 안 된다."""
+    from app.collectors.weather import merge_into_research
+
+    research = {"weather": "현지 우천으로 지연 가능성이 언급된다."}
+    merge_into_research(research, {"game_id": "g1"}, {"g1": {"text": "기온 21°C"}})
+    assert any("우천" in str(v) for v in research.values()), "리서치 문장이 사라졌다"
+
+
+def test_no_forecast_leaves_research_alone():
+    """예보가 없으면 기존 문장을 유지한다 — 빈 값으로 덮지 않는다."""
+    from app.collectors.weather import merge_into_research
+
+    research = {"weather": "리서치 문장"}
+    merge_into_research(research, {"game_id": "g1"}, {})
+    assert research["weather"] == "리서치 문장"

@@ -201,19 +201,38 @@ async def fetch_for_games(games: list[dict], client: OpenMeteoClient | None = No
 
 
 def merge_into_research(research: dict, jg: dict, weather: dict) -> str | None:
-    """날씨 문장을 리서치에 얹는다. 리서치가 이미 채웠으면 덮지 않는다."""
-    if research.get("weather"):
-        return None
+    """날씨 문장을 리서치에 얹는다.
+
+    🔴 **[WX-1 2026-09-10] 실제 예보가 리서치 산문을 이긴다.**
+       종전 첫 줄은 `if research.get("weather"): return None` — 리서치 LLM 이
+       먼저 채워 놓으면 Open-Meteo 예보를 **통째로 버렸다.** 절대규칙 2
+       ("LLM 출력의 수치는 API 숫자와 교차검증. 충돌 시 API가 이긴다") 위반이다.
+
+       실측 2026-09-09 MLB 10경기: 자료11 날씨가 10/10 붙었는데 전부 LLM
+       산문이었고, 그래서 `_weather_factor` 가 숫자를 못 뽑아 **계수 라벨이
+       3/10** 밖에 안 붙었다. 필라델피아는 이렇게 왔다 —
+       "구체적인 수치는 실시간 기상 데이터에 접근해야 하나, 일반적으로 초가을
+        동부 지역 저녁 기온은 섭씨 20도 내외 … 경우가 많다."
+       예보가 아니라 추측이고, 그것이 판정의 환경 자료였다.
+
+    ⚠️ **리서치 문장을 지우지는 않는다.** 우천 지연 언급처럼 예보 수치에 없는
+       현지 사실이 거기 있을 수 있어 `weather_research` 로 옮겨 보존한다.
+    ⚠️ 예보가 없으면(수집 실패·키 없음) 기존 문장을 **그대로 둔다** — 빈 값으로
+       덮으면 있던 정보까지 잃는다.
+    """
     info = (weather or {}).get(jg.get("game_id"))
     if not info:
         return None
+    prior = research.get("weather")
     if info.get("dome"):
         research["weather_note"] = "돔구장 — 날씨 보정 없음"
         return "날씨 돔구장(보정 제외)"
     if not info.get("text"):
         return None
+    if prior and prior != info["text"]:
+        research["weather_research"] = prior
     research["weather"] = info["text"]
-    return f"날씨 {info['text']}"
+    return f"날씨 {info['text']}" + (" (리서치 문장 대체)" if prior else "")
 
 
 # ── [SAT-10] 위성 고급정보: 풍향→홈런 효과 ────────────────────────────────

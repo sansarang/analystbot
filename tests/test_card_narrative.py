@@ -98,3 +98,34 @@ async def test_narrative_failure_returns_none(monkeypatch):
 
     monkeypatch.setattr(nc, "_ask", dead)
     assert await nc.build(_jg()) is None
+
+
+# ── [CARD-4 2026-09-10] 딥서치 발견을 서술이 분석한다 ────────────────────
+
+@pytest.mark.asyncio
+async def test_narrative_gets_findings_not_just_summary(monkeypatch):
+    """🔴 사용자 지적: "딥서치한 거는 분석 안 하냐?"
+
+    실측: 서술 프롬프트에 `deepsearch["요약"]` 한 줄만 넘어가고 `발견` 배열은
+    버려졌다. 조사가 위성 40여 건 + PPLX 를 뒤져 찾은 사실들이 한 줄로 뭉개져,
+    서술은 그것을 **인용**만 하고 의미를 해석하지 못했다.
+    """
+    from app.engine import narrative_card as nc
+
+    seen = {}
+
+    async def fake(prompt, **kw):
+        seen["p"] = prompt
+        return {"서술": "본문"}
+
+    monkeypatch.setattr(nc, "_ask", fake)
+    jg = _jg(deepsearch={
+        "요약": "헨더슨 강세 유지",
+        "발견": [{"사실": "바우어스 왼손 통증으로 결장 가능"},
+                 {"사실": "컵스 선발이 미시오로스키로 교체됐다"}],
+        "이동_pp": -1.0})
+    await nc.build(jg)
+    p = seen["p"]
+    assert "바우어스 왼손 통증" in p, "발견 사실이 서술 재료에 없다"
+    assert "미시오로스키" in p
+    assert "의미" in p or "해석" in p, "조사를 해석하라는 지시가 없다"

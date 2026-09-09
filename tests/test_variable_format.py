@@ -209,3 +209,27 @@ def test_기존_형식의_해석은_한_글자도_바뀌지_않는다():
     q = parse_variable("리스크 — 발생 시 홈 방향 약 6%p · 발생 확률 35% · "
                        "현재 p에 2%p 기반영 · 근거 자료14")
     assert q["q"] == 35.0 and q["n"] == 6.0 and q["m"] == 2.0
+
+
+# ── [VAR-1 2026-09-10 사용자 지시] 변수 축 편중 ────────────────────────────
+#   🔴 v1.4 동결(판정 프롬프트 문구) **예외**. 사용자 명시 지시 "셋 다 진행해라".
+#      실측 2026-09-10 MLB 슬레이트 변수 16건:
+#        선발 투수 11건(69%) · 타자 1건(6%) · 환경 0건(0%) · 시장괴리 4건(25%)
+#      판정이 스스로 낸 12건 중 11건이 투수였다. 자료가 두꺼운 축(자료4·9·10·14)
+#      에서만 뽑은 결과다 — 타자는 자료1·3 뿐이고 환경은 자료11 에 있는데도
+#      한 번도 변수가 되지 못했다.
+
+def test_variable_axes_are_not_pitcher_only():
+    """프롬프트가 변수 축을 한쪽에 몰지 말라고 지시하는가."""
+    from app.engine.prompts import MATCHUP as P
+
+    assert "축" in P and "몰지" in P, "축 편중 금지 지시가 없다"
+    for axis in ("불펜", "타선", "환경", "로스터"):
+        assert axis in P, f"변수 후보 축에 {axis} 가 없다"
+
+
+def test_variable_axes_do_not_force_padding():
+    """⚠️ 반대 위험 — 축을 채우려 없는 리스크를 지어내면 더 나쁘다."""
+    from app.engine.prompts import MATCHUP as P
+
+    assert "억지로" in P or "지어내지" in P, "억지 채움 금지가 없다"
