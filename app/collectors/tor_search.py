@@ -35,8 +35,14 @@ _tor_ready = False
 
 #: 한국어 음절 블록. 하나라도 있으면 토르로 보내지 않는다.
 _HANGUL = re.compile(r"[\uac00-\ud7a3]")
+#: 🔴 [SAT-11 실측 2026-09-09] DDG lite 는 class 를 **홑따옴표**로 쓰고 href 가
+#   class 보다 **앞**에 온다. 종전 패턴(겹따옴표·class 선행)은 200 OK 에 결과가
+#   10건 있어도 0건으로 읽었다 — 토르가 살아 있는데 보강이 통째로 죽어 있었다.
+#   속성 순서는 고정으로 보지 않는다 — `result-link` 앵커를 먼저 잡고 href 를
+#   따로 뽑는다. DDG 가 순서를 또 바꿔도 안 깨진다.
 _DDG_LINK = re.compile(
-    r'<a[^>]*class="result-link"[^>]*href="(https?://[^"]+)"[^>]*>(.*?)</a>', re.S)
+    r'<a[^>]*result-link[^>]*>.*?</a>', re.S)
+_HREF = re.compile(r'href=["\'](https?://[^"\']+)["\']')
 
 
 def is_tor_safe_query(query: str) -> bool:
@@ -52,11 +58,16 @@ def parse_ddg_lite(html: str) -> list[dict]:
     """DDG lite HTML → [{url, title, snippet}]. duckduckgo 내부 링크(광고)는 버린다."""
     out: list[dict] = []
     for m in _DDG_LINK.finditer(html or ""):
-        url, raw = m.group(1), _strip(m.group(2))
+        anchor = m.group(0)
+        hm = _HREF.search(anchor)
+        if hm is None:
+            continue
+        url = hm.group(1)
+        raw = _strip(re.sub(r"^<a[^>]*>|</a>$", "", anchor))
         if "duckduckgo.com" in url or not raw:
             continue
         tail = (html or "")[m.end():m.end() + 3000]
-        sm = re.search(r'class="result-snippet"[^>]*>(.*?)</td>', tail, re.S)
+        sm = re.search(r'class=["\']result-snippet["\'][^>]*>(.*?)</td>', tail, re.S)
         snip = _strip(sm.group(1)) if sm else ""
         out.append({"url": url, "title": _html.unescape(raw),
                     "snippet": _html.unescape(snip)[:220]})

@@ -25,6 +25,30 @@ _DDG_HTML = '''
 '''
 
 
+#: 🔴 실측 2026-09-09 (배포 후 토르 경유): DDG lite 는 **홑따옴표** class 를 쓰고
+#   href 가 class 보다 **앞**에 온다. 내 패턴은 겹따옴표·class선행만 봐서 200 OK
+#   응답에 결과가 10건 있는데도 0건으로 읽었다. 이 픽스처가 실제 응답 형태다.
+_DDG_REAL = (
+    "<a rel=\"nofollow\" href=\"https://fantasyteamadvice.com/mlb/injuries\" "
+    "class='result-link'>Detroit Tigers Injury Report 2026</a>"
+    "<td class='result-snippet'>Riley Greene is on the 10-day IL.</td>"
+    "<a rel=\"nofollow\" href=\"https://duckduckgo.com/y.js?ad\" class='result-link'>ad</a>"
+    "<a rel=\"nofollow\" href=\"https://www.espn.com/mlb/injuries\" "
+    "class='result-link'>Tigers Injury Status - ESPN</a>"
+)
+
+
+def test_parse_ddg_lite_handles_real_markup():
+    """실제 DDG 응답(홑따옴표 class · href 선행)을 파싱한다."""
+    out = tor_search.parse_ddg_lite(_DDG_REAL)
+    urls = [r["url"] for r in out]
+    assert "https://fantasyteamadvice.com/mlb/injuries" in urls
+    assert "https://www.espn.com/mlb/injuries" in urls
+    assert not any("duckduckgo.com" in u for u in urls)
+    assert out[0]["title"] == "Detroit Tigers Injury Report 2026"
+    assert "10-day IL" in out[0]["snippet"]
+
+
 def test_parse_ddg_lite_extracts_external_results():
     """외부 결과 링크·제목·스니펫을 뽑고, duckduckgo 내부 링크(광고)는 버린다."""
     out = tor_search.parse_ddg_lite(_DDG_HTML)
