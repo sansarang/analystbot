@@ -246,6 +246,24 @@ def render_form_card(jg: dict, sport: str | None = None, *,
         p = parse_variable(v)
         if p and p.get("q") is None:
             lines.append("     · 자료14 미조사 — 발생 확률을 찾지 못했다")
+    # 🔴 [DS-4 2026-09-10] **딥서치 결과를 카드에 싣는다.**
+    #    실측(CLE@BAL): 조사가 실제로 돌아 발견 3건을 냈는데 카드에 한 글자도
+    #    안 나왔다 — `form_card` 가 `jg["deepsearch"]` 를 읽지 않았다(축구 카드
+    #    `soccer_trial.py` 는 읽는다). 조사했는지를 카드로 알 수 없으면
+    #    "조용한 0"과 구분되지 않는다.
+    #    ⚠️ 조정이 0이어도 **조사했다는 사실**은 보여준다 — 미조사와 다르다.
+    #    ⚠️ 조사 자체가 없었으면 줄을 만들지 않는다(없는 것을 지어내지 않는다).
+    ds = jg.get("deepsearch") or {}
+    if ds:
+        _sum = str(ds.get("요약") or "").strip()
+        _moved = ds.get("이동_pp")
+        if not _sum:
+            _n = len(ds.get("발견") or [])
+            _sum = f"새 사실 {_n}건" if _n else "새 사실 없음"
+        _tail = (f" (이동 {float(_moved):+.1f}%p)"
+                 if isinstance(_moved, (int, float)) and abs(float(_moved)) > 1e-9
+                 else " (조정 없음)")
+        lines.append(f"🔍 추가 조사 반영: {_sum}{_tail}")
     news = m.get("뉴스반영") or {}
     if isinstance(news, dict) and news.get("적용"):
         adj = news.get("조정폭") or ""

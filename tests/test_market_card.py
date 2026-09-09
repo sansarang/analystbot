@@ -154,3 +154,54 @@ def test_card_market_line_uses_home_basis_not_favored_side():
     # 홈 기준(0.47 vs 0.54 = 7%p)이므로 '이견' 이어야 한다
     assert "시장 이견" in line, f"원정 우세인데 기준이 어긋났다: {line}"
     assert "우리 47%" in line, f"우세팀 기준(53%)을 쓰고 있다: {line}"
+
+
+# ── [DS-4 2026-09-10] 딥서치 결과가 야구 카드에 드러나야 한다 ────────────
+
+def test_baseball_card_shows_deepsearch_result():
+    """🔴 실측 2026-09-10 (CLE@BAL): 딥서치가 실제로 돌아 발견 3건을 냈는데
+    **카드에 한 글자도 안 나왔다.** form_card 가 `jg["deepsearch"]` 를 읽지
+    않기 때문이다(축구 카드 soccer_trial.py:133 은 읽는다).
+
+    사용자가 "조사가 됐는지"를 카드로 알 수 없으면 딥서치가 일하는지 확인할
+    방법이 없다 — '조용한 0'과 구분되지 않는다.
+    """
+    from app.engine.form_card import render_form_card
+
+    jg = {
+        "sport": "mlb", "league": "MLB", "home": "H", "away": "A",
+        "p_claude": 0.45, "lineup_status": "confirmed",
+        "matchup": {"p_home": 0.45, "우세": "away", "확신도": "중", "근거": []},
+        "deepsearch": {"발견": [{"사실": "헨더슨 무릎 타박 Day-to-Day"}],
+                       "요약": "헨더슨 DTD — 결장 확정 아님",
+                       "이동_pp": 0.0, "조정_사유": "근거 불충분"},
+    }
+    body = render_form_card(jg, "mlb")
+    assert "추가 조사" in body, "딥서치 결과가 카드에 없다"
+    assert "헨더슨" in body
+
+
+def test_card_says_investigated_even_when_no_change():
+    """조정 0이어도 '조사했다'는 사실은 보여야 한다 — 미조사와 구분되게."""
+    from app.engine.form_card import render_form_card
+
+    jg = {
+        "sport": "mlb", "league": "MLB", "home": "H", "away": "A",
+        "p_claude": 0.50, "lineup_status": "confirmed",
+        "matchup": {"p_home": 0.50, "우세": "home", "확신도": "중", "근거": []},
+        "deepsearch": {"발견": [], "요약": "괴리 원인 미확인",
+                       "이동_pp": 0.0, "조정_사유": None},
+    }
+    body = render_form_card(jg, "mlb")
+    assert "추가 조사" in body
+    assert "미확인" in body
+
+
+def test_no_deepsearch_key_means_no_line():
+    """조사 자체가 없었으면 줄을 만들지 않는다 — 없는 것을 지어내지 않는다."""
+    from app.engine.form_card import render_form_card
+
+    jg = {"sport": "mlb", "league": "MLB", "home": "H", "away": "A",
+          "p_claude": 0.50, "lineup_status": "confirmed",
+          "matchup": {"p_home": 0.50, "우세": "home", "확신도": "중", "근거": []}}
+    assert "추가 조사" not in render_form_card(jg, "mlb")
