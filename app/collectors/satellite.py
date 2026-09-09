@@ -77,6 +77,7 @@ def transactions_to_articles(txs: list[dict], teams: set[str],
        마이너 팀(ACL Brewers·Buffalo Bisons 등)은 name 이 안 맞아 자동으로 빠진다.
     """
     out: list[dict] = []
+    seen: set[str] = set()   # 🔴 statsapi 는 같은 이벤트를 중복 행으로 준다(실측 09-09)
     for t in txs or []:
         if not isinstance(t, dict):
             continue
@@ -88,8 +89,9 @@ def transactions_to_articles(txs: list[dict], teams: set[str],
         if not matched:
             continue
         desc = (t.get("description") or "").strip()
-        if not desc:
+        if not desc or desc in seen:
             continue
+        seen.add(desc)
         pid = (t.get("person") or {}).get("id")
         url = (f"https://www.mlb.com/player/{pid}" if pid
                else "https://www.mlb.com/transactions")

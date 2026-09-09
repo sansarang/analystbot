@@ -73,6 +73,17 @@ def test_empty_transactions_safe():
         _SAMPLE_TX["transactions"], set()) == []
 
 
+def test_duplicate_transactions_deduped():
+    """🔴 실측 2026-09-09: statsapi 가 같은 이벤트를 중복 행으로 준다
+    (Riley Greene 재활·Tommy Pham 트레이드가 각각 두 번). 같은 문장을 요약기에
+    두 번 먹이지 않도록 description 으로 중복을 없앤다."""
+    dup = {"typeCode": "SC", "description": "Colorado Rockies activated 3B Kyle Karros from the 7-day injured list.",
+           "date": "2026-09-07", "toTeam": {"id": 115, "name": "Colorado Rockies"}}
+    txs = [dict(dup, id=1), dict(dup, id=2)]   # 같은 문장, 다른 id
+    arts = satellite.transactions_to_articles(txs, {"Colorado Rockies"})
+    assert len(arts) == 1, "같은 이벤트 중복이 제거되지 않았다"
+
+
 class _MemRedis:
     def __init__(self):
         self.store: dict = {}
