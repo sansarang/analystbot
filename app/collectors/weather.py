@@ -117,7 +117,12 @@ class OpenMeteoClient(BaseAPIClient):
             "GET", "/forecast",
             params={
                 "latitude": lat, "longitude": lon,
-                "hourly": "temperature_2m,wind_speed_10m",
+                # [WX-2] 강수확률·풍향 추가. 🔴 앞의 둘은 순서까지 그대로 둔다 —
+                #   `pick_hour` 가 `temperature_2m`·`wind_speed_10m` 를 이름으로
+                #   읽으므로 깨지지 않지만, λ 경로 계약을 눈으로 확인할 수 있게
+                #   기존 문자열을 건드리지 않고 뒤에만 이어 붙인다.
+                "hourly": ("temperature_2m,wind_speed_10m"
+                           ",precipitation_probability,wind_direction_10m"),
                 "start_date": day, "end_date": day,
                 "timezone": "UTC",
             },
@@ -144,6 +149,31 @@ def pick_hour(payload: dict, hour_utc: str) -> tuple[float | None, float | None]
     # Open-Meteo 기본 풍속 단위는 km/h — m/s로 환산한다
     return (float(temp) if temp is not None else None,
             round(float(wind) / 3.6, 1) if wind is not None else None)
+
+
+def pick_extra(payload: dict, hour_utc: str) -> tuple[float | None, float | None]:
+    """[WX-2] 해당 시각의 (강수확률 %, 풍향 도). 없으면 (None, None).
+
+    🔴 `pick_hour` 의 2-튜플 반환은 λ 경로의 계약이라 **건드리지 않는다.**
+       필요한 값이 늘었다고 기존 함수의 모양을 바꾸면 호출부가 조용히 깨진다.
+    """
+    hourly = (payload or {}).get("hourly") or {}
+    times = hourly.get("time") or []
+    if not times:
+        return None, None
+    idx = None
+    for i, t in enumerate(times):
+        if str(t).startswith(hour_utc):
+            idx = i
+            break
+    if idx is None:
+        idx = len(times) // 2
+
+    def _at(key):
+        arr = hourly.get(key) or []
+        return arr[idx] if idx < len(arr) else None
+
+    return _at("precipitation_probability"), _at("wind_direction_10m")
 
 
 def describe(temp_c: float | None, wind_ms: float | None) -> str | None:
@@ -195,8 +225,10 @@ async def fetch_for_games(games: list[dict], client: OpenMeteoClient | None = No
             logger.warning("[weather] 조회 실패 %s: %s", home, exc)
             continue
         temp, wind = pick_hour(payload, hour_utc)
+        precip, wdir = pick_extra(payload, hour_utc)      # [WX-2]
         out[gid] = {"text": describe(temp, wind), "dome": False,
-                    "temp_c": temp, "wind_ms": wind}
+                    "temp_c": temp, "wind_ms": wind,
+                    "precip_pct": precip, "wind_from_deg": wdir}
     return out
 
 
@@ -224,6 +256,15 @@ def merge_into_research(research: dict, jg: dict, weather: dict) -> str | None:
     if not info:
         return None
     prior = research.get("weather")
+    # 🔴 [WX-2 2026-09-10 사용자 지시] "실시간 날씨가 나와야 한다 — 경기 시작
+    #    몇 시간 전이라도." 카드에는 날씨 줄이 **한 줄도 없었다.** 예보는 이미
+    #    경기 시각 기준으로 수집되는데(`pick_hour` 가 그 시각을 고른다) 손님상에
+    #    오르지 않고 λ 계수로만 쓰였다.
+    #    ⚠️ 여기 한 곳에서 붙인다 — 세 리그의 날씨가 전부 이 함수를 지난다
+    #       (pipeline 986·3686·3705 · statcast 591, 전수 grep 확인). 리그별로
+    #       따로 적으면 그것이 사본이고, 사본은 원본이 바뀔 때 안 따라간다.
+    jg["weather_card"] = {k: info.get(k) for k in
+                          ("dome", "temp_c", "wind_ms", "precip_pct", "wind_from_deg")}
     if info.get("dome"):
         research["weather_note"] = "돔구장 — 날씨 보정 없음"
         return "날씨 돔구장(보정 제외)"

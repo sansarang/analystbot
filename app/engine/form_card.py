@@ -144,6 +144,44 @@ def _bet_line(jg: dict, settings=None) -> str:
     return f"보드만 — {why}" if why else "보드만"
 
 
+#: [WX-2 2026-09-10 사용자 지시] 카드 날씨 한 줄.
+#  🔴 값이 **없으면 그 칸을 통째로 뺀다.** "강수 -%"·"풍속 None" 같은 빈 라벨을
+#     만들면 그건 정보가 아니라 소음이고, 없는 것을 있는 것처럼 보이게 한다.
+#  ⚠️ 풍향은 **방위만** 적는다. 외야/홈 홈런 효과 판정은 구장 방위각이 있어야
+#     하고 그건 MLB 전용·비동기다(위성이 이미 발견 기사로 만들어 서술에 태운다).
+#     여기서 효과를 단정하면 그건 지어낸 것이다.
+_COMPASS = ("북", "북동", "동", "남동", "남", "남서", "서", "북서")
+
+
+def _wind_dir(deg) -> str:
+    try:
+        d = float(deg)
+    except (TypeError, ValueError):
+        return ""
+    return _COMPASS[int((d % 360) / 45.0 + 0.5) % 8]
+
+
+def weather_line(jg: dict) -> str:
+    """`jg["weather_card"]` → 한 줄. 재료가 없으면 빈 문자열."""
+    wc = jg.get("weather_card") or {}
+    if not wc:
+        return ""
+    if wc.get("dome"):
+        return "날씨 🏟 돔구장 — 경기 영향 없음"
+    bits: list[str] = []
+    t = wc.get("temp_c")
+    if t is not None:
+        bits.append(f"기온 {float(t):.0f}도")
+    w = wc.get("wind_ms")
+    if w is not None:
+        d = _wind_dir(wc.get("wind_from_deg"))
+        bits.append(f"{d + '풍 ' if d else '풍속 '}{float(w):.1f}m/s")
+    pp = wc.get("precip_pct")
+    if pp is not None:
+        bits.append(f"강수 {float(pp):.0f}%")
+    return ("날씨 🌤 " + " · ".join(bits)) if bits else ""
+
+
 def render_form_card(jg: dict, sport: str | None = None, *,
                      revision: bool = False) -> str:
     """판정 JSON → 카드 본문. 언더오버·런라인·F5 없음."""
@@ -160,6 +198,9 @@ def render_form_card(jg: dict, sport: str | None = None, *,
     info = " ".join(x for x in (when, park) if x)
     if info:
         lines.append(info)
+    _wx = weather_line(jg)          # [WX-2] 경기 시각 기준 예보
+    if _wx:
+        lines.append(_wx)
     if fav_name is not None and p is not None:
         # [v1.1 5단계] 별표는 우세팀 확률로. 라인업 미확정이면 "(잠정)" 병기.
         from app.engine.value_gate import required_odds, stars

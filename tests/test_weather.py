@@ -110,3 +110,48 @@ def test_no_forecast_leaves_research_alone():
     research = {"weather": "리서치 문장"}
     merge_into_research(research, {"game_id": "g1"}, {})
     assert research["weather"] == "리서치 문장"
+
+
+# ── [WX-2 2026-09-10 사용자 지시] 카드에 실시간 날씨가 없다 ────────────────
+#   🔴 "실시간 날씨가 나와야 한다.. 경기 시작 몇 시간 전이라도.."
+#   실측: 카드 어디에도 날씨 줄이 없다. 서술 안에 "외야 방향 바람" 한 조각이
+#   스쳐 지나갈 뿐이고, 그것도 딥서치가 찾았을 때만이다. 예보는 이미 경기 시각
+#   기준으로 수집되는데(`pick_hour`) 손님상에 오르지 않았다.
+
+def test_weather_card_field_is_attached():
+    from app.collectors.weather import merge_into_research
+
+    jg = {"game_id": "g1"}
+    merge_into_research({}, jg, {"g1": {"text": "기온 29도, 풍속 4.5m/s",
+                                        "temp_c": 29.0, "wind_ms": 4.5,
+                                        "precip_pct": 0, "wind_from_deg": 200}})
+    wc = jg.get("weather_card")
+    assert wc, "카드용 날씨 필드가 안 붙었다"
+    assert wc.get("temp_c") == 29.0 and wc.get("precip_pct") == 0
+
+
+def test_weather_card_marks_dome():
+    from app.collectors.weather import merge_into_research
+
+    jg = {"game_id": "g1"}
+    merge_into_research({}, jg, {"g1": {"dome": True}})
+    assert (jg.get("weather_card") or {}).get("dome") is True
+
+
+def test_card_renders_weather_line():
+    from app.engine.form_card import render_form_card
+
+    jg = {"home": "Baltimore Orioles", "away": "Cleveland Guardians", "sport": "mlb",
+          "weather_card": {"temp_c": 31.0, "wind_ms": 4.8, "precip_pct": 10,
+                           "wind_from_deg": 200}}
+    out = render_form_card(jg, "mlb")
+    assert "31" in out and "날씨" in out, f"카드에 날씨 줄이 없다:\n{out}"
+    assert "강수" in out
+
+
+def test_card_without_weather_is_unchanged():
+    """⚠️ 반대 위험 — 날씨가 없으면 빈 줄·빈 라벨을 만들지 않는다."""
+    from app.engine.form_card import render_form_card
+
+    jg = {"home": "Baltimore Orioles", "away": "Cleveland Guardians", "sport": "mlb"}
+    assert "날씨" not in render_form_card(jg, "mlb")
