@@ -466,7 +466,30 @@ FETCH_CHARS = 1200
 
 
 async def _free_articles(jg: dict, redis) -> list[dict]:
-    """RSS 기사 + 상위 N건 본문. 실패하면 빈 목록(→ 유료 폴백 판단)."""
+    """조사 재료. **위성 캐시를 먼저 읽고**, 없으면 기존 RSS 로 폴백한다.
+
+    🔴 [SAT-3] 위성(`app/collectors/satellite.py`)이 미리 긁어 둔 재료는 DB에 없는
+       경기 정보(부상·말소·트레이드…)이고 **본문이 이미 채워져 있다** — RSS 의
+       본문 0%·팀라벨 76% 오류 문제가 없다. 재료 모양은 news_rss 와 동일하므로
+       하류(`_inject_articles`·요약·±4%p)는 출처를 구분하지 못한다.
+
+    ⚠️ 위성 캐시가 비면(어댑터 없는 종목·위성 꺼짐·수집 실패) **정확히 종전
+       RSS 경로로 폴백**한다 — 회귀 없음.
+    """
+    sport = (jg.get("sport") or "").lower()
+    gid = jg.get("game_id") or jg.get("id")
+    try:
+        from app.collectors.satellite import read_cache
+
+        sat = await read_cache(redis, sport, gid)
+    except Exception as exc:
+        logger.warning("[deepsearch] 위성 캐시 읽기 실패 — RSS 폴백: %s", exc)
+        sat = []
+    if sat:
+        logger.info("[deepsearch] 위성 캐시 %d건 사용 %s@%s",
+                    len(sat), jg.get("away"), jg.get("home"))
+        return sat
+
     try:
         from app.collectors.news_rss import for_game
 

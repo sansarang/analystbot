@@ -169,3 +169,61 @@ async def test_run_satellite_no_adapter_sport_noop():
     out = await satellite.run_satellite(
         _FakePool(rows), r, sports=["kbo"], now=now, client=_FakeMLB(_SAMPLE_TX))
     assert out["gathered"] == 0
+
+
+# ── 증분 2: 딥서치가 위성 캐시를 읽는다 (SAT-3) ───────────────────────────
+
+_SAT_ITEM = {"title": "Colorado Rockies activated 3B Kyle Karros from the 7-day injured list.",
+             "url": "https://www.mlb.com/player/11", "source": "MLB Transactions",
+             "team": "Colorado Rockies", "age_h": 24.0,
+             "body": "Colorado Rockies activated 3B Kyle Karros from the 7-day injured list."}
+
+
+@pytest.mark.asyncio
+async def test_free_articles_prefers_satellite(monkeypatch):
+    """위성 캐시에 재료가 있으면 그것을 쓰고, RSS 는 부르지 않는다."""
+    from app.engine import deepsearch
+    from app.collectors import news_rss, satellite as sat_mod
+
+    called = {"rss": False}
+
+    async def fake_read_cache(redis, sport, gid):
+        return [dict(_SAT_ITEM)]
+
+    async def fake_for_game(jg, redis):
+        called["rss"] = True
+        return [{"title": "x", "url": "y", "source": "z", "age_h": 1.0, "team": "t"}]
+
+    monkeypatch.setattr(sat_mod, "read_cache", fake_read_cache)
+    monkeypatch.setattr(news_rss, "for_game", fake_for_game)
+    jg = {"sport": "mlb", "game_id": 1,
+          "home": "Colorado Rockies", "away": "San Francisco Giants"}
+    arts = await deepsearch._free_articles(jg, None)
+    assert arts and arts[0]["source"] == "MLB Transactions"
+    assert arts[0]["body"], "위성 재료는 본문이 이미 채워져 있어야 한다"
+    assert called["rss"] is False, "위성이 있으면 RSS 를 부르지 않는다"
+
+
+@pytest.mark.asyncio
+async def test_free_articles_falls_back_to_rss(monkeypatch):
+    """위성 캐시가 비면 기존 RSS 경로로 폴백 — 회귀 없음."""
+    from app.engine import deepsearch
+    from app.collectors import news_rss, satellite as sat_mod
+
+    async def empty_cache(redis, sport, gid):
+        return []
+
+    async def fake_for_game(jg, redis):
+        return [{"title": "폴백 기사", "url": "https://x", "source": "s",
+                 "age_h": 2.0, "team": jg["home"]}]
+
+    async def fake_body(url):
+        return "폴백 본문"
+
+    monkeypatch.setattr(sat_mod, "read_cache", empty_cache)
+    monkeypatch.setattr(news_rss, "for_game", fake_for_game)
+    monkeypatch.setattr(deepsearch, "_fetch_body", fake_body)
+    jg = {"sport": "kbo", "game_id": 5, "home": "한화 이글스", "away": "LG 트윈스"}
+    arts = await deepsearch._free_articles(jg, None)
+    assert arts and arts[0]["title"] == "폴백 기사"
+    assert arts[0]["body"] == "폴백 본문"
