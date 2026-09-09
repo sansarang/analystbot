@@ -346,8 +346,34 @@ async def _fetch_article_body(url: str | None) -> str:
     return _strip_html(html)[:1200]
 
 
-#: KBO 상황 검색어 — 선발·부상·결장이 승부에 직결되는 축이다(타자 전용 아님).
-_KBO_TERMS = "선발 부상 결장 말소 라인업"
+#: KBO 상황 검색어 — 축마다 **짧은 쿼리를 따로** 던진다(타자 전용 아님).
+#  🔴 [SAT-12 실측 2026-09-09] 종전에는 "선발 부상 결장 말소 라인업" 을 한 번에
+#     붙여 던졌는데, 다음이 그 AND 조합에 맞는 **오래된** 기사까지 긁어와 72h 필터
+#     뒤에 1건만 남았다(나이 533~2715h). 축을 나눠 짧게 던지면 같은 필터에서
+#     **31건**이 남는다 — 쿼리를 길게 쓴 것이 문제였지 정렬·필터가 아니었다.
+_KBO_TERMS_LIST = ("라인업", "부상", "선발", "엔트리")
+
+
+def _mentions_team(title: str, team: str) -> bool:
+    """제목이 그 팀을 말하는가. **팀명이 없으면 그 경기 재료가 아니다.**
+
+    🔴 [SAT-12 실측 2026-09-09] 다음검색은 팀 쿼리에 KBO 일반 기사를 섞어 준다 —
+       36건 중 5건(14%)이 딴 팀이었고, 키움@두산 경기에 롯데 결장 기사가 재료로
+       들어갔다. ±10%p 상한에서 그런 기사가 판정을 움직이면 그대로 오판이다.
+
+    ⚠️ **반대 위험(정상 폐기)을 함께 막는다.** 기사는 'LG는'·'KT 위즈' 처럼
+       축약해 쓰므로 별칭 전체뿐 아니라 **앞토큰**('LG'·'KT'·'삼성')도 인정한다.
+       오염률이 14% 뿐이라 전량 폐기가 아니라 그 14%만 걸러내는 것이 목적이다.
+    """
+    from app.collectors.news_rss import QUERY_ALIAS
+
+    t = title or ""
+    if not t or not team:
+        return False
+    alias = QUERY_ALIAS.get(team, team)
+    cands = {alias, alias.split()[0] if alias else "",
+             team, team.split()[0] if team else ""} - {""}
+    return any(c in t for c in cands)
 
 
 async def gather_kbo(jg: dict, *, client=None, now: datetime | None = None) -> list[dict]:
@@ -366,22 +392,34 @@ async def gather_kbo(jg: dict, *, client=None, now: datetime | None = None) -> l
         if not team:
             continue
         alias = QUERY_ALIAS.get(team, team)
-        try:
-            html = await _daum_fetch(f"{alias} {_KBO_TERMS}")
-        except Exception as exc:
-            logger.warning("[satellite] KBO 다음검색 실패 %s: %s", team, exc)
-            continue
-        for it in parse_daum_news(html)[:_KBO_TOP_N]:
-            u = it["url"]
-            if u in seen:
+        picked = 0
+        for term in _KBO_TERMS_LIST:
+            if picked >= _KBO_TOP_N:
+                break
+            try:
+                html = await _daum_fetch(f"{alias} {term}")
+            except Exception as exc:
+                logger.warning("[satellite] KBO 다음검색 실패 %s/%s: %s",
+                               team, term, exc)
                 continue
-            seen.add(u)
-            age = _daum_age_h(u, now)
-            if age is not None and age > MAX_AGE_HOURS:
-                continue
-            body = await _fetch_article_body(u)
-            out.append(_article(title=it["title"], url=u, source="다음뉴스",
-                                team=team, body=body or it["title"], age_h=age))
+            for it in parse_daum_news(html):
+                if picked >= _KBO_TOP_N:
+                    break
+                u = it["url"]
+                if u in seen:
+                    continue
+                if not _mentions_team(it["title"], team):
+                    logger.debug("[satellite] KBO 딴 팀 기사 폐기 (%s): %.50s",
+                                 team, it["title"])
+                    continue
+                age = _daum_age_h(u, now)
+                if age is not None and age > MAX_AGE_HOURS:
+                    continue
+                seen.add(u)
+                picked += 1
+                body = await _fetch_article_body(u)
+                out.append(_article(title=it["title"], url=u, source="다음뉴스",
+                                    team=team, body=body or it["title"], age_h=age))
     logger.info("[satellite] KBO %s@%s 다음뉴스 기사 %d건",
                 jg.get("away"), jg.get("home"), len(out))
     return out

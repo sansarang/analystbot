@@ -344,6 +344,47 @@ def test_daum_age_from_url_timestamp():
     assert age is not None and 2.5 < age < 3.5   # 18:08 KST → 약 3시간 전
 
 
+def test_kbo_title_mentions_team():
+    """🔴 [SAT-12 실측 2026-09-09] 다음검색은 팀 쿼리에 KBO 일반 기사를 섞어 준다.
+    36건 중 5건(14%)이 딴 팀 기사였다 — 키움@두산 경기에 롯데 결장 기사가 재료로
+    들어갔다. 제목에 그 팀이 없으면 버린다(별칭 전체 또는 앞토큰으로 판정)."""
+    from app.collectors import satellite
+
+    assert satellite._mentions_team("삼성 라이온즈 외야수 김지찬이 결장", "Samsung Lions")
+    assert satellite._mentions_team("KT 위즈 이강철 감독은", "KT Wiz")      # 앞토큰 'KT'
+    assert satellite._mentions_team("LG는 18일부터 잠실구장에서", "LG Twins")  # 축약 'LG'
+    # 딴 팀 기사 — 버려야 한다
+    assert not satellite._mentions_team(
+        "김태형 롯데 자이언츠 감독은 12일 잠실에서", "Kiwoom Heroes")
+    assert not satellite._mentions_team("", "Samsung Lions")
+
+
+@pytest.mark.asyncio
+async def test_gather_kbo_drops_other_team_articles(monkeypatch):
+    """딴 팀 기사는 캐시에 넣지 않는다 — 판정이 엉뚱한 근거로 움직이지 않게."""
+    from app.collectors import satellite
+
+    html = (
+        '<a href="http://v.daum.net/v/20260909180000000">한화 이글스 문현빈 결장</a>'
+        '<a href="http://v.daum.net/v/20260909170000000">롯데 자이언츠 손성빈 말소</a>'
+    )
+
+    async def fake_daum(query):
+        return html
+
+    async def fake_body(url):
+        return "본문"
+
+    monkeypatch.setattr(satellite, "_daum_fetch", fake_daum)
+    monkeypatch.setattr(satellite, "_fetch_article_body", fake_body)
+    from datetime import datetime, timezone
+    jg = {"sport": "kbo", "game_id": 1, "home": "한화 이글스", "away": "LG 트윈스"}
+    arts = await satellite.gather_kbo(jg, now=datetime(2026, 9, 9, 12, tzinfo=timezone.utc))
+    titles = [a["title"] for a in arts]
+    assert any("한화" in t for t in titles)
+    assert not any("롯데" in t for t in titles), "딴 팀 기사가 재료로 들어갔다"
+
+
 @pytest.mark.asyncio
 async def test_gather_kbo_shape_and_team(monkeypatch):
     """KBO 어댑터가 다음 결과를 news_rss 모양으로 정규화하고 팀을 붙인다."""
