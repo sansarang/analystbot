@@ -214,3 +214,134 @@ def merge_into_research(research: dict, jg: dict, weather: dict) -> str | None:
         return None
     research["weather"] = info["text"]
     return f"날씨 {info['text']}"
+
+
+# ── [SAT-10] 위성 고급정보: 풍향→홈런 효과 ────────────────────────────────
+#   🔴 이전 세션이 풍향을 뺀 이유(위 docstring)는 **구장 방위표가 출처마다
+#      다르다**였다. statsapi venue 의 `azimuthAngle`(홈→중견)은 MLB 공식값이라
+#      그 우려가 해소된다 — 그래서 MLB 에 한해 풍향을 쓴다(KBO/NPB 는 방위 없음).
+#   ⚠️ 여기 함수는 **위성(딥서치 재료)** 전용이다. λ 경로(pick_hour/describe/
+#      merge_into_research)는 손대지 않는다 — 풍속·기온만 쓰던 그 계약 그대로다.
+
+import re as _re  # noqa: E402
+
+OUT = "외야(홈런 촉진)"
+IN = "홈(홈런 억제)"
+CROSS = "옆바람"
+CALM = "약함"
+
+WIND_MIN_MPH = 8.0          # 이 미만은 무시(연구 5mph, 보수적으로 8)
+RAIN_PCT = 50              # 순연·불펜 리스크로 보는 강수확률(%)
+TEMP_HOT, TEMP_COLD = 30, 5
+
+
+def _bearing_diff(a: float, b: float) -> float:
+    d = abs((a - b) % 360)
+    return min(d, 360 - d)
+
+
+def wind_effect(*, wind_from_deg: float, wind_mph: float,
+                field_azimuth_deg: float) -> str:
+    """풍향(불어오는 방향)·풍속·구장 방위 → 외야/홈/옆/약.
+
+    기상 풍향은 **불어오는 방향**이라 실제로 부는 방향 = from+180. 구장 방위
+    (홈→중견)와의 각도차가 작으면 외야로(홈런 촉진), 크면 홈으로(억제).
+    """
+    if wind_mph is None or wind_mph < WIND_MIN_MPH:
+        return CALM
+    blows_toward = (wind_from_deg + 180) % 360
+    diff = _bearing_diff(blows_toward, field_azimuth_deg)
+    if diff <= 45:
+        return OUT
+    if diff >= 135:
+        return IN
+    return CROSS
+
+
+def _hkey(iso: str) -> int:
+    s = _re.sub(r"[^0-9]", "", (iso or "")[:13])
+    return int(s) if s else 0
+
+
+def _at(hourly: dict, key: str, idx: int):
+    arr = (hourly or {}).get(key) or []
+    return arr[idx] if 0 <= idx < len(arr) else None
+
+
+def forecast_at(hourly: dict, when_iso: str) -> dict | None:
+    """시간별 예보에서 경기 시각에 가장 가까운 시간을 고른다.
+
+    반환 {wind_mph, wind_from_deg, temp_c, precip_pct}. 못 고르면 None.
+    ⚠️ 이 payload 의 풍속 단위는 **mph** 다(`hourly_rich` 가 mph 로 받아온다).
+       λ 경로의 `pick_hour`(km/h→m/s)와 다른 계약이라 섞지 않는다.
+    """
+    times = (hourly or {}).get("time") or []
+    if not times:
+        return None
+    tgt = _hkey(when_iso)
+    idx = min(range(len(times)), key=lambda i: abs(_hkey(times[i]) - tgt))
+    return {
+        "wind_mph": _at(hourly, "wind_speed_10m", idx),
+        "wind_from_deg": _at(hourly, "wind_direction_10m", idx),
+        "temp_c": _at(hourly, "temperature_2m", idx),
+        "precip_pct": _at(hourly, "precipitation_probability", idx),
+    }
+
+
+def weather_article(*, team: str, forecast: dict,
+                    field_azimuth_deg: float | None) -> dict | None:
+    """예보 → 위성 발견 기사(news_rss 모양). 센 바람·비·이상기온일 때만.
+
+    평범하면 None — 소음을 만들지 않는다. `field_azimuth_deg` 가 없으면(KBO/NPB)
+    풍향 효과는 빼고 풍속·기온·강수만 쓴다.
+    """
+    if not forecast:
+        return None
+    wind = forecast.get("wind_mph")
+    precip = forecast.get("precip_pct")
+    temp = forecast.get("temp_c")
+    eff = CALM
+    if field_azimuth_deg is not None and wind is not None:
+        eff = wind_effect(wind_from_deg=forecast.get("wind_from_deg") or 0,
+                          wind_mph=wind, field_azimuth_deg=field_azimuth_deg)
+    notable = (eff in (OUT, IN)
+               or (precip is not None and precip >= RAIN_PCT)
+               or (temp is not None and (temp >= TEMP_HOT or temp <= TEMP_COLD)))
+    if not notable:
+        return None
+    parts = []
+    if wind is not None:
+        parts.append(f"바람 {wind:.0f}mph" + (f" {eff}" if eff != CALM else ""))
+    if temp is not None:
+        parts.append(f"기온 {temp:.0f}℃")
+    if precip is not None:
+        parts.append(f"강수확률 {precip:.0f}%"
+                     + (" (순연·불펜 리스크)" if precip >= RAIN_PCT else ""))
+    body = f"{team} 홈구장 날씨 — " + " · ".join(parts) + "."
+    return {"title": body, "url": "https://open-meteo.com", "source": "Open-Meteo",
+            "team": team, "body": body, "age_h": None}
+
+
+async def hourly_rich(lat: float, lon: float, *, client=None) -> dict | None:
+    """위성용 시간별 예보(풍향+강수 포함, 풍속 **mph**). 실패는 None.
+
+    ⚠️ λ 경로의 `OpenMeteoClient.hourly`(km/h·temp+wind만)와 별개다 — 그쪽 계약을
+       바꾸지 않으려 풍향·강수를 여기서 따로 받는다.
+    """
+    if client is not None:
+        return await client(lat, lon)
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as c:
+            r = await c.get(
+                "https://api.open-meteo.com/v1/forecast",
+                params={"latitude": lat, "longitude": lon,
+                        "hourly": "wind_speed_10m,wind_direction_10m,"
+                                  "temperature_2m,precipitation_probability",
+                        "wind_speed_unit": "mph", "forecast_days": 2})
+            r.raise_for_status()
+            return r.json().get("hourly")
+    except Exception as exc:
+        logger.warning("[weather] rich 예보 실패 %s,%s: %s", lat, lon, exc)
+        return None

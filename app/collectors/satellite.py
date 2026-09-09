@@ -133,6 +133,7 @@ async def gather_mlb(jg: dict, *, client=None, now: datetime | None = None) -> l
     logger.info("[satellite] MLB %s@%s transactions %d건 → 기사 %d건",
                 away, home, len(data.get("transactions") or []), len(arts))
     arts += await _mlb_velocity_articles(jg, client, now)
+    arts += await _mlb_weather_article(jg, client, now)
     arts += await _tor_supplement(jg, [
         (home, f"{home} injury roster move 2026"),
         (away, f"{away} injury roster move 2026")])
@@ -174,6 +175,62 @@ async def _mlb_velocity_articles(jg: dict, client, now: datetime) -> list[dict]:
         logger.info("[satellite] MLB %s@%s 구속 추세 발견 %d건",
                     jg.get("away"), jg.get("home"), len(out))
     return out
+
+
+async def _mlb_weather_article(jg: dict, client, now: datetime) -> list[dict]:
+    """[SAT-10] 홈구장 날씨(바람·기온·강수) 발견 기사. 신호 없으면 빈 리스트.
+
+    🔴 풍향→홈런효과는 statsapi venue 의 azimuthAngle(MLB 공식)로 판정한다 —
+       좌표·돔 여부는 기존 weather.PARK_COORDS/DOMED 를 재사용한다(사본 금지).
+    """
+    from app.collectors import weather as wx
+
+    home = jg.get("home")
+    if not home or home in wx.DOMED:          # 돔은 날씨 무관
+        return []
+    coords = wx.PARK_COORDS.get(home)
+    if coords is None:
+        return []
+    starts = jg.get("starts_at") or now
+    when_iso = starts.strftime("%Y-%m-%dT%H:%M") if hasattr(starts, "strftime") else str(starts)
+    try:
+        azimuth = await _mlb_venue_azimuth(jg, client,
+                                           when_iso[:10] or now.strftime("%Y-%m-%d"))
+        hourly = await wx.hourly_rich(coords[0], coords[1])
+    except Exception as exc:
+        logger.warning("[satellite] 날씨 조회 실패 %s: %s", home, exc)
+        return []
+    if not hourly:
+        return []
+    fc = wx.forecast_at(hourly, when_iso)
+    art = wx.weather_article(team=home, forecast=fc or {}, field_azimuth_deg=azimuth)
+    if art:
+        logger.info("[satellite] MLB %s 날씨 발견", home)
+        return [art]
+    return []
+
+
+async def _mlb_venue_azimuth(jg: dict, client, date_str: str) -> float | None:
+    """경기 구장의 방위각(홈→중견). statsapi venue(location).azimuthAngle."""
+    if client is None:
+        from app.collectors.mlb import MLBClient
+        client = MLBClient()
+    try:
+        sched = await client.fetch_schedule(date_str)
+    except Exception:
+        return None
+    home, away = jg.get("home"), jg.get("away")
+    for d in sched.get("dates", []):
+        for g in d.get("games", []):
+            t = g.get("teams", {})
+            if (t.get("home", {}).get("team") or {}).get("name") != home:
+                continue
+            if (t.get("away", {}).get("team") or {}).get("name") != away:
+                continue
+            loc = (g.get("venue") or {}).get("location") or {}
+            az = loc.get("azimuthAngle")
+            return float(az) if az is not None else None
+    return None
 
 
 async def _mlb_probable_pitchers(jg: dict, client, date_str: str) -> dict:

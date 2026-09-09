@@ -301,6 +301,11 @@ def _no_outbound_collectors(monkeypatch):
     monkeypatch.setattr(weather_mod, "fetch_for_games", _empty)
     monkeypatch.setattr(absences_mod, "fetch_for_games", _empty)
 
+    # [SAT-10] 위성 날씨도 외부 HTTP 다 — 테스트에서 실호출 막는다.
+    async def _none(*a, **kw):
+        return None
+    monkeypatch.setattr(weather_mod, "hourly_rich", _none)
+
 
 @pytest.fixture(autouse=True)
 def _api_guard_isolated():

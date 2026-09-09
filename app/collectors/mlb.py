@@ -221,7 +221,10 @@ class MLBClient(BaseAPIClient):
             return self.load_mock("mlb_schedule.json")
         return await self._get(
             "/schedule",
-            params={"sportId": 1, "date": date, "hydrate": "probablePitcher"},
+            params={"sportId": 1, "date": date,
+                    # venue(location): [SAT-10] 구장 좌표·방위각(풍향→홈런효과).
+                    #   추가 필드일 뿐 _parse_games 는 무시한다.
+                    "hydrate": "probablePitcher,venue(location)"},
         )
 
     async def fetch_pitcher_stats(self, person_ids: list[int]) -> list[dict]:
