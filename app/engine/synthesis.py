@@ -115,7 +115,10 @@ _VERDICT_PROMPT = """아래는 한 야구 경기의 분석 조각들이다. 조�
 🔴 규칙
 - **새 수치를 만들지 마라.** 위에 없는 숫자·이름을 쓰면 안 된다.
 - 위 문장을 그대로 베끼지 마라. **관계를 말하라.**
-- 한국어 한 문장, 120자 이내. 다른 말 없이 그 문장만 출력한다."""
+- 한국어 한 문장, 120자 이내.
+
+[출력] 아래 JSON만 출력한다. 다른 텍스트, 마크다운 백틱 금지.
+{{"판단": "한 문장"}}"""
 
 
 async def _verdict_line(prompt: str, *, max_tokens: int = 300) -> str | None:
@@ -134,6 +137,17 @@ async def _verdict_line(prompt: str, *, max_tokens: int = 300) -> str | None:
             _complete_free(routes, prompt, max_tokens, "deepsearch"), timeout=45)
     except Exception:
         return None
+    # 🔴 [DS-12] `_complete_free` 는 **JSON 파싱까지가 성공 조건**이다(의도된
+    #    설계 — Nemotron 이 영어 사고문을 돌려주는 회차를 걸러낸다). 실측
+    #    2026-09-10: 평문을 요구했더니 groq 가 좋은 문장을 냈는데도
+    #    "응답이 JSON 이 아니다"로 통째로 버려졌다. 그래서 JSON 으로 받는다.
+    from app.engine.team_form import parse_json_object
+
+    data = parse_json_object(body or "")
+    if isinstance(data, dict):
+        got = str(data.get("판단") or "").strip()
+        if got:
+            return got
     return (body or "").strip() or None
 
 

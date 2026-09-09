@@ -121,3 +121,37 @@ async def test_llm_failure_keeps_the_rule_skeleton(monkeypatch):
     out = await syn.synthesize_async(_jg())
     assert out.startswith("🧭 종합 —")
     assert "→ " not in out
+
+
+def test_verdict_prompt_asks_for_json():
+    """🔴 실측 2026-09-10: LLM 이 좋은 문장을 냈는데 **버려졌다.**
+        groq: "근거와 조사가 헨더슨의 안정성을 일관되게 지지해 57% 확률은
+               신뢰할 만하나, 불펜 피로라는 미확인 변수가 유일한 발목이다."
+        [deepsearch] 응답이 JSON 이 아니다 (69자) → 무료 사슬 실패
+
+    `_complete_free` 는 **JSON 파싱까지가 성공 조건**이다(의도된 설계 —
+    Nemotron 이 영어 사고문을 돌려주는 회차를 걸러내려고 그렇게 만들었다).
+    평문 한 문장을 요구한 내 프롬프트가 그 계약과 어긋났다.
+    """
+    from app.engine.synthesis import _verdict_prompt
+
+    p = _verdict_prompt(_jg())
+    assert "JSON" in p, "JSON 을 요구하지 않으면 무료 사슬이 응답을 버린다"
+    assert "판단" in p
+
+
+@pytest.mark.asyncio
+async def test_verdict_line_parses_json(monkeypatch):
+    """JSON 으로 와도 문장만 뽑아 쓴다."""
+    from app.engine import synthesis as syn
+    from app.engine import team_form
+
+    async def fake_complete(routes, prompt, max_tokens, role):
+        return '{"판단": "근거와 조사가 서로를 지지해 확률을 믿을 만하다"}'
+
+    from app.llm import judge_route
+
+    monkeypatch.setattr(team_form, "_complete_free", fake_complete)
+    monkeypatch.setattr(judge_route, "chain", lambda role: [("groq", "m")])
+    line = await syn._verdict_line("prompt")
+    assert line == "근거와 조사가 서로를 지지해 확률을 믿을 만하다"
