@@ -2878,6 +2878,21 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
                     logger.debug("[pipeline] 시장 기준선 생략 game=%s: %s",
                                  jg.get("game_id"), exc)
             _spawn_fact_audit(jg)        # [감시 L1] 저장 후 사후 감사
+            # ── [MKT-5 2026-09-09] **괴리를 변수로 등록한다** ──────────
+            #   🔴 반드시 여기다 — 판정(위)과 변수 적재(아래) **사이**.
+            #      판정 앞에서 부르면 프롬프트에 시장이 실려 앵커링이 되살아난다.
+            #      실측(MKT-4 A/B): 시장을 자료로 주면 |p-시장| 이 67.9% 수축했고
+            #      반복 호출이 전부 같은 값으로 고정됐다.
+            #   ⚠️ 8%p 초과에서만 붙는다 — 그 아래는 시장이 우리를 못 이긴다
+            #      (실측: 4~8%p 우리 51.3% vs 시장 43.6%).
+            try:
+                from app.engine.market_variable import attach as _mkt_var
+
+                if _mkt_var(jg):
+                    logger.info("[market-var] game=%s 괴리 변수 등록",
+                                jg.get("game_id"))
+            except Exception as exc:
+                logger.debug("[market-var] 생략 game=%s: %s", jg.get("game_id"), exc)
             # [C3] 변수 원장 적재. 판정 **뒤**이고, 실패해도 판정을 막지 않는다.
             try:
                 from app.engine.variable_ledger import record as _rec_vars
