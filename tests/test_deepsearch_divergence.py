@@ -28,6 +28,8 @@
 """
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 
@@ -261,3 +263,78 @@ async def test_rejudge_investigates_even_when_only_batting_order_changed(monkeyp
     assert out["triggered"] is True, "타순만 바뀌었다고 조사를 건너뛰었다"
     assert calls["n"] == 1, "investigate 가 불리지 않았다"
     assert ds.T0_ALL in out["triggers"]
+
+
+# ── [DS-7 2026-09-10] 딥서치 병렬화 — 발송 창을 침범하지 않게 ─────────────
+
+@pytest.mark.asyncio
+async def test_slate_investigations_run_in_parallel(monkeypatch):
+    """🔴 실측 2026-09-10: 전 경기 조사로 프리페치가 13분 32초로 늘었고
+    W-SEND-PENDING 경보가 떴다(발송 창인데 카드가 없다 3경기).
+
+    조사는 대부분 외부 I/O 대기다. 순차로 돌 이유가 없다 — 동시에 돌리면
+    벽시계 시간이 슬레이트 크기가 아니라 **가장 느린 한 건**에 수렴한다.
+    """
+    import time
+    from app.config import Settings
+    from app.engine import deepsearch as ds
+
+    async def slow(jg, trig, **kw):
+        await asyncio.sleep(0.3)
+        return {"발견": [], "조정": {"delta_pp": 0}, "요약": "x"}, 0, "rss"
+
+    monkeypatch.setattr(ds, "investigate", slow)
+
+    class _R:
+        def __init__(self): self.store = {}
+        async def get(self, k): return self.store.get(k)
+        async def set(self, k, v, ex=None): self.store[k] = v; return True
+        async def incr(self, k):
+            self.store[k] = int(self.store.get(k, 0)) + 1
+            return self.store[k]
+        async def expire(self, k, s): return True
+
+    games = [{"sport": "mlb", "game_id": i, "league": "MLB",
+              "home": f"H{i}", "away": f"A{i}", "p_claude": 0.55,
+              "matchup": {"p_home": 0.55, "우세": "home", "추가확인": []}}
+             for i in range(6)]
+    s = Settings(_env_file=None, DEEPSEARCH_ENABLED="true",
+                 DEEPSEARCH_DAILY_CAP=1.0)
+    t0 = time.monotonic()
+    out = await ds.run_for_slate(games, _R(), "2026-09-10", settings=s)
+    dt = time.monotonic() - t0
+    assert out["investigated"] == 6, out
+    # 순차면 6×0.3=1.8초. 병렬이면 0.3초대. 넉넉히 1.0초로 자른다.
+    assert dt < 1.0, f"조사가 순차로 돌고 있다 ({dt:.2f}초)"
+
+
+@pytest.mark.asyncio
+async def test_parallel_respects_cap(monkeypatch):
+    """병렬이어도 상한을 넘지 않는다 — 동시 실행이 예산을 초과하면 안 된다."""
+    from app.config import Settings
+    from app.engine import deepsearch as ds
+
+    async def ok(jg, trig, **kw):
+        return {"발견": [], "조정": {"delta_pp": 0}, "요약": "x"}, 0, "rss"
+
+    monkeypatch.setattr(ds, "investigate", ok)
+
+    class _R:
+        def __init__(self): self.store = {}
+        async def get(self, k): return self.store.get(k)
+        async def set(self, k, v, ex=None): self.store[k] = v; return True
+        async def incr(self, k):
+            self.store[k] = int(self.store.get(k, 0)) + 1
+            return self.store[k]
+        async def expire(self, k, s): return True
+
+    games = [{"sport": "mlb", "game_id": i, "league": "MLB",
+              "home": f"H{i}", "away": f"A{i}", "p_claude": 0.55,
+              "matchup": {"p_home": 0.55, "우세": "home", "추가확인": []}}
+             for i in range(10)]
+    # 상한 = 10경기 × 0.3 = 3건
+    s = Settings(_env_file=None, DEEPSEARCH_ENABLED="true",
+                 DEEPSEARCH_DAILY_CAP=0.3)
+    out = await ds.run_for_slate(games, _R(), "2026-09-10", settings=s)
+    assert out["investigated"] == 3, f"상한 3인데 {out['investigated']}건 조사했다"
+    assert out["skipped"] == 7

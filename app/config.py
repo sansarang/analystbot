@@ -376,6 +376,14 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("DEEPSEARCH_ENABLED", "deepsearch_investigate"))
 
+    #: [DS-7 2026-09-10] 슬레이트 딥서치 동시 실행 수. 조사는 대부분 외부 I/O
+    #   대기라 순차로 돌면 프리페치가 길어져 발송 창(T-30)을 침범한다
+    #   (실측: 전 경기 조사로 13분 32초 → W-SEND-PENDING 경보).
+    #   ⚠️ 무한정 올리지 않는다 — 무료 LLM 은 레이트리밋(groq TPD)이 있고
+    #      한꺼번에 쏟으면 그 한도에 더 빨리 닿는다.
+    deepsearch_concurrency: int = Field(default=4, validation_alias=AliasChoices(
+        "DEEPSEARCH_CONCURRENCY", "deepsearch_concurrency"))
+
     #: [DS-3 2026-09-10 사용자 지시] 딥서치에 Perplexity 병행. **기본 켜짐.**
     #   위성/RSS 가 못 물어온 사실을 PPLX 가 직접 웹에서 찾아 재료로 얹는다.
     #   ⚠️ 유료다 — 전 경기 병행 시 MLB15+KBO5+NPB5 ≈ 25건/일 × $0.01 ≈ 월 $7.5.

@@ -989,18 +989,32 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
                                if c["blind"]["zero"] else "") + ")"
                             for c in ranked))
         return out
-    for c in ranked:
-        if out["investigated"] >= remaining:
-            out["skipped"] += 1
-            continue
+    # 🔴 [DS-7 2026-09-10] **조사를 동시에 돌린다.** 실측: 전 경기 조사(DS-3)로
+    #    프리페치가 13분 32초가 됐고 "W-SEND-PENDING 3경기 — 발송 창인데 카드가
+    #    없다" 경보가 떴다. 조사는 대부분 외부 I/O 대기라 순차로 돌 이유가 없다.
+    #    ⚠️ **조사만 병렬이다.** apply_findings·카운터·기록은 아래에서 원래
+    #       순서대로 직렬 처리한다 — 동시에 하면 상한을 넘고 순위가 무의미해진다.
+    #    ⚠️ 동시성은 제한한다. 무료 LLM 은 레이트리밋(groq TPD)이 있고, 한꺼번에
+    #       쏟으면 그 한도에 더 빨리 닿는다.
+    import asyncio as _aio
+
+    todo = [c for c in ranked[:remaining] if by_id.get(c["game_id"]) is not None]
+    out["skipped"] = max(0, len(ranked) - len(todo))
+    _sem = _aio.Semaphore(max(1, int(getattr(s, "deepsearch_concurrency", 4))))
+
+    async def _one(c):
+        async with _sem:
+            try:
+                return await investigate(by_id[c["game_id"]], c["triggers"],
+                                         redis=redis)
+            except Exception as exc:   # 한 경기 실패가 나머지를 막지 않는다
+                logger.warning("[deepsearch] 조사 실패 %s: %s", c["match"], exc)
+                return None, 0, None
+
+    results = await _aio.gather(*[_one(c) for c in todo]) if todo else []
+
+    for c, (data, used, src) in zip(todo, results):
         jg = by_id.get(c["game_id"])
-        if jg is None:
-            continue
-        try:
-            data, used, src = await investigate(jg, c["triggers"], redis=redis)
-        except Exception as exc:              # 한 경기 실패가 나머지를 막지 않는다
-            logger.warning("[deepsearch] 조사 실패 %s: %s", c["match"], exc)
-            continue
         out["searches"] += used
         if data is None:
             continue
