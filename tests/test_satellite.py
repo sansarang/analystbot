@@ -215,6 +215,86 @@ async def test_free_articles_prefers_satellite(monkeypatch):
     assert called["rss"] is False, "위성이 있으면 RSS 를 부르지 않는다"
 
 
+# ── 증분 5: KBO 어댑터 (다음 뉴스검색) ───────────────────────────────────
+
+_DAUM_HTML = '''
+<ul><li class="c-item"><div class="item-title">
+  <a href="http://v.daum.net/v/20260909180837574" class="tit-g">3</a>
+  <a href="http://v.daum.net/v/20260909180837574" class="tit_main">'대만 초대형 변수' 왕옌청, 한국전 선발?</a>
+  <a href="http://v.daum.net/v/20260909180837574">투수가 아닌 대만의 에이스 역할이 부상으로</a>
+</div></li>
+<li class="c-item"><div class="item-title">
+  <a href="http://v.daum.net/v/20260909133000000" class="tit_main">한화 문현빈 결장, 라인업 변경</a>
+</div></li></ul>
+'''
+
+
+def test_parse_daum_news_dedups_by_url_keeps_longest_title():
+    """다음 검색: 같은 기사가 썸네일·제목·요약으로 3번 링크된다. URL 중복 제거,
+    제목은 가장 긴 앵커텍스트('3' 같은 배지는 버린다)."""
+    from app.collectors import satellite
+    items = satellite.parse_daum_news(_DAUM_HTML)
+    urls = {i["url"] for i in items}
+    assert len(urls) == 2                       # 중복 제거
+    first = [i for i in items if "20260909180837574" in i["url"]][0]
+    assert "왕옌청" in first["title"]            # 배지 '3' 이 아니라 진짜 제목
+    assert first["title"] != "3"
+
+
+def test_daum_age_from_url_timestamp():
+    """v.daum.net URL 에 박힌 시각(KST)으로 나이를 잰다."""
+    from datetime import datetime, timezone
+    from app.collectors import satellite
+    now = datetime(2026, 9, 9, 12, 0, tzinfo=timezone.utc)  # = 21:00 KST
+    age = satellite._daum_age_h("http://v.daum.net/v/20260909180837574", now)
+    assert age is not None and 2.5 < age < 3.5   # 18:08 KST → 약 3시간 전
+
+
+@pytest.mark.asyncio
+async def test_gather_kbo_shape_and_team(monkeypatch):
+    """KBO 어댑터가 다음 결과를 news_rss 모양으로 정규화하고 팀을 붙인다."""
+    from datetime import datetime, timezone
+    from app.collectors import satellite
+
+    async def fake_daum(query):
+        return _DAUM_HTML
+
+    async def fake_body(url):
+        return "본문 " + url[-6:]
+
+    monkeypatch.setattr(satellite, "_daum_fetch", fake_daum)
+    monkeypatch.setattr(satellite, "_fetch_article_body", fake_body)
+    jg = {"sport": "kbo", "game_id": 1, "home": "한화 이글스", "away": "LG 트윈스"}
+    now = datetime(2026, 9, 9, 12, 0, tzinfo=timezone.utc)
+    arts = await satellite.gather_kbo(jg, now=now)
+    assert arts
+    for a in arts:
+        for k in _SHAPE_KEYS:
+            assert k in a
+        assert a["team"] in ("한화 이글스", "LG 트윈스")
+        assert a["body"]
+
+
+@pytest.mark.asyncio
+async def test_gather_dispatches_kbo(monkeypatch):
+    """gather 디스패처가 kbo 를 KBO 어댑터로 보낸다(캐시 적재까지)."""
+    from app.collectors import satellite
+
+    async def fake_daum(query):
+        return _DAUM_HTML
+
+    async def fake_body(url):
+        return "본문"
+
+    monkeypatch.setattr(satellite, "_daum_fetch", fake_daum)
+    monkeypatch.setattr(satellite, "_fetch_article_body", fake_body)
+    r = _MemRedis()
+    jg = {"sport": "kbo", "game_id": 55, "home": "한화 이글스", "away": "LG 트윈스"}
+    n = await satellite.gather(jg, r)
+    assert n > 0
+    assert await satellite.read_cache(r, "kbo", 55)
+
+
 @pytest.mark.asyncio
 async def test_free_articles_falls_back_to_rss(monkeypatch):
     """위성 캐시가 비면 기존 RSS 경로로 폴백 — 회귀 없음."""

@@ -21,9 +21,14 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
+
+_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 
 #: Redis 캐시 키·수명. 위성이 15분마다 T-N 까지 갱신하므로 캐시는 늘 신선하다.
 CACHE_KEY = "satellite:{sport}:{game_id}"
@@ -130,9 +135,134 @@ async def gather_mlb(jg: dict, *, client=None, now: datetime | None = None) -> l
     return arts
 
 
-#: 종목별 어댑터. NPB·KBO 는 후속 증분에서 채운다(직접 경로).
+# ── KBO 어댑터 (다음 뉴스검색 — AWS IP 로 도달, 토르 불필요) ──────────────
+#   🔴 [SAT-5] 검색 애그리게이터(DDG·구글)는 AWS IP 로 막혔지만 다음 뉴스검색은
+#      200 을 준다(실측 2026-09-09). v.daum.net URL·제목을 얻고 본문은 직접 수집한다.
+
+_DAUM_URL = "https://search.daum.net/search"
+_DAUM_ITEM = re.compile(r'<a[^>]+href="(https?://v\.daum\.net/v/\d+)"[^>]*>(.*?)</a>', re.S)
+_DAUM_TS = re.compile(r"/v/(\d{14})")
+_KST = ZoneInfo("Asia/Seoul")
+_KBO_TOP_N = 6          # 팀당 상위 N건 본문 수집
+_HTML_ENT = (("&#39;", "'"), ("&quot;", '"'), ("&amp;", "&"),
+             ("&nbsp;", " "), ("&lt;", "<"), ("&gt;", ">"))
+
+
+def _strip_html(s: str | None) -> str:
+    s = re.sub(r"<[^>]+>", " ", s or "")
+    for a, b in _HTML_ENT:
+        s = s.replace(a, b)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def parse_daum_news(html: str) -> list[dict]:
+    """다음 뉴스검색 → [{url, title}]. **URL 중복 제거**(같은 기사가 썸네일·제목·
+    요약으로 여러 번 링크된다). 제목은 가장 긴 앵커텍스트('3' 같은 배지는 버린다)."""
+    by_url: dict[str, str] = {}
+    for m in _DAUM_ITEM.finditer(html or ""):
+        u, raw = m.group(1), _strip_html(m.group(2))
+        if not raw or raw.isdigit():
+            continue
+        if len(raw) > len(by_url.get(u, "")):
+            by_url[u] = raw
+    return [{"url": u, "title": t} for u, t in by_url.items()]
+
+
+def _daum_age_h(url: str, now: datetime | None) -> float | None:
+    """v.daum.net URL 에 박힌 시각(KST)으로 나이(시간)를 잰다."""
+    m = _DAUM_TS.search(url or "")
+    if not m:
+        return None
+    now = now or datetime.now(timezone.utc)
+    try:
+        dt = datetime.strptime(m.group(1), "%Y%m%d%H%M%S").replace(tzinfo=_KST)
+    except ValueError:
+        return None
+    return round((now - dt).total_seconds() / 3600, 1)
+
+
+async def _daum_fetch(query: str) -> str:
+    """다음 뉴스검색 HTML(최신순). 실패는 호출부가 처리."""
+    import httpx
+
+    async with httpx.AsyncClient(timeout=20.0, follow_redirects=True,
+                                 headers={"User-Agent": _UA,
+                                          "Accept-Language": "ko"}) as c:
+        r = await c.get(_DAUM_URL,
+                        params={"w": "news", "q": query, "sort": "recency"})
+        r.raise_for_status()
+        return r.text
+
+
+async def _fetch_article_body(url: str | None) -> str:
+    """기사 본문 앞부분. 무료 HTTP. 실패하면 빈 문자열(제목만 쓴다).
+
+    ⚠️ 딥서치 `_fetch_body` 와 목적이 같지만, 엔진→수집기 순환 의존을 피하려
+       여기 둔다. 본문 길이 상한은 딥서치와 같은 1200자.
+    """
+    if not url:
+        return ""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True,
+                                     headers={"User-Agent": _UA}) as c:
+            r = await c.get(url)
+            r.raise_for_status()
+            html = r.text
+    except Exception as exc:
+        logger.debug("[satellite] 본문 수집 실패 %s: %s", str(url)[:60], exc)
+        return ""
+    html = re.sub(r"<(script|style|nav|header|footer|aside)[^>]*>.*?</\1>", " ",
+                  html, flags=re.S | re.I)
+    return _strip_html(html)[:1200]
+
+
+#: KBO 상황 검색어 — 선발·부상·결장이 승부에 직결되는 축이다(타자 전용 아님).
+_KBO_TERMS = "선발 부상 결장 말소 라인업"
+
+
+async def gather_kbo(jg: dict, *, client=None, now: datetime | None = None) -> list[dict]:
+    """KBO 경기 1건 — 다음 뉴스검색으로 팀별 최신 기사·본문을 news_rss 모양으로.
+
+    🔴 팀명은 news_rss.QUERY_ALIAS(한국어)를 재사용한다(사본 금지).
+    ⚠️ 실패해도 빈 리스트 — 다른 팀·다른 경기를 막지 않는다.
+    """
+    from app.collectors.news_rss import MAX_AGE_HOURS, QUERY_ALIAS
+
+    now = now or datetime.now(timezone.utc)
+    out: list[dict] = []
+    seen: set[str] = set()
+    for side in ("home", "away"):
+        team = jg.get(side) or ""
+        if not team:
+            continue
+        alias = QUERY_ALIAS.get(team, team)
+        try:
+            html = await _daum_fetch(f"{alias} {_KBO_TERMS}")
+        except Exception as exc:
+            logger.warning("[satellite] KBO 다음검색 실패 %s: %s", team, exc)
+            continue
+        for it in parse_daum_news(html)[:_KBO_TOP_N]:
+            u = it["url"]
+            if u in seen:
+                continue
+            seen.add(u)
+            age = _daum_age_h(u, now)
+            if age is not None and age > MAX_AGE_HOURS:
+                continue
+            body = await _fetch_article_body(u)
+            out.append(_article(title=it["title"], url=u, source="다음뉴스",
+                                team=team, body=body or it["title"], age_h=age))
+    logger.info("[satellite] KBO %s@%s 다음뉴스 기사 %d건",
+                jg.get("away"), jg.get("home"), len(out))
+    return out
+
+
+#: 종목별 어댑터. NPB(토르→DDG)는 후속 증분에서 채운다.
 _ADAPTERS = {
     "mlb": gather_mlb,
+    "kbo": gather_kbo,
 }
 
 
