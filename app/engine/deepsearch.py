@@ -286,6 +286,40 @@ def _absent_names(jg: dict) -> set[str]:
 
 # ---------------------------------------------------------------- 상한
 
+#: [DS-5] 그날 본 **최대** 슬레이트 크기. 상한 기준을 하루 내내 고정한다.
+DAY_SIZE_KEY = "deepsearch:daysize:{sport}:{date}"
+
+
+async def remember_day_size(redis, sport: str, date: str, now_size: int) -> int:
+    """그날 총 경기 수(고수위선)를 기억하고 돌려준다.
+
+    🔴 **왜 필요한가 (실측 2026-09-10 05:03).** 딥서치가 오후에 전부 막혔다:
+           "슬레이트 10경기 · 후보 10 · 조사 0 · 예산 13/10 · 상한초과 생략 10"
+       카운터는 **하루 누적**인데 상한은 **지금 이 순간 슬레이트 크기**로 계산됐다.
+       경기가 시작돼 `status='scheduled'` 에서 빠지면 슬레이트가 줄고 상한도 줄지만
+       카운터는 안 줄어든다 — 그래서 낮·저녁에는 항상 초과가 되어 **재판정·수정
+       카드가 전부 딥서치 없이 나갔다.**
+
+    ⚠️ 최대값만 올린다(내려가지 않는다). 더블헤더 추가처럼 늘어나는 경우는 따라간다.
+    ⚠️ redis 가 없거나 실패하면 현재 크기를 그대로 쓴다 — 조사를 막지 않는다.
+    """
+    n = max(0, int(now_size or 0))
+    if redis is None:
+        return n
+    key = DAY_SIZE_KEY.format(sport=(sport or ""), date=date)
+    try:
+        prev = int(await redis.get(key) or 0)
+    except Exception:
+        return n
+    if n <= prev:
+        return prev
+    try:
+        await redis.set(key, n, ex=CACHE_TTL)
+    except Exception:
+        pass
+    return n
+
+
 def daily_cap(slate_size: int, settings) -> int:
     """하루 발동 상한 = 슬레이트의 N%. 최소 1건은 허용한다.
 
@@ -911,7 +945,10 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
     from app.config import get_settings
 
     s = settings or get_settings()
-    cap = daily_cap(len(games), s)
+    # 🔴 [DS-5] 상한 기준은 **그날 총 경기 수**다. 지금 슬레이트로 재면 경기가
+    #    시작될수록 상한이 줄어 낮·저녁 조사가 통째로 막힌다(실측 2026-09-10).
+    _sport0 = (games[0].get("sport") if games else "") or ""
+    cap = daily_cap(await remember_day_size(redis, _sport0, date, len(games)), s)
     if max_investigations is not None:
         cap = min(cap, max_investigations)
     # 🔴 **예산은 하나다.** 종전에는 1차 판정(run_for_slate)이 로컬 카운터만
@@ -1098,7 +1135,9 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
         _record(jg, out)
         return out
 
-    cap = daily_cap(slate_size, s)
+    # 🔴 [DS-5] 재판정도 같은 기준이다 — **수정 카드에 딥서치가 붙으려면**
+    #    상한이 하루 내내 안정적이어야 한다(사용자 지시 2026-09-10).
+    cap = daily_cap(await remember_day_size(redis, sport, date, slate_size), s)
     used = int(await _get(redis, count_key) or 0)
     # 🔴 [사용자 지시 2026-09-02] **T6 는 상한에 막지 않는다.**
     #    슬레이트 30% 상한은 `web_search` **검색 수수료** 때문에 걸었던 것이다.

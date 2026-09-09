@@ -170,3 +170,43 @@ async def test_pplx_failure_is_silent(monkeypatch):
     jg = {"sport": "mlb", "home": "H", "away": "A", "p_claude": 0.5,
           "matchup": {"p_home": 0.5, "우세": "home"}}
     assert await deepsearch._pplx_articles(jg) == []
+
+
+# ── [DS-5 2026-09-10] 상한은 그날 총 경기 수 기준이어야 한다 ──────────────
+
+@pytest.mark.asyncio
+async def test_day_size_is_the_high_water_mark():
+    """🔴 실측 2026-09-10: 딥서치가 오후에 전부 막혔다.
+
+        카운터 13(하루 누적) · 지금 슬레이트 10경기 → 상한 10 → 남은 -3
+
+    카운터는 **하루 누적**인데 상한은 **지금 이 순간 슬레이트 크기**로 계산됐다.
+    경기가 시작돼 status='scheduled' 에서 빠지면 슬레이트가 줄고 상한도 줄지만
+    카운터는 안 줄어든다 — 그래서 오후·저녁에는 항상 상한 초과가 되어 재판정·
+    수정 카드가 전부 딥서치 없이 나갔다.
+
+    그날 **최대 경기 수**를 기억해 상한 기준으로 쓴다(고수위선).
+    """
+    from app.engine.deepsearch import remember_day_size
+
+    class _R:
+        def __init__(self): self.store = {}
+        async def get(self, k): return self.store.get(k)
+        async def set(self, k, v, ex=None): self.store[k] = v; return True
+        async def expire(self, k, s): return True
+
+    r = _R()
+    # 새벽: 15경기
+    assert await remember_day_size(r, "mlb", "2026-09-10", 15) == 15
+    # 오후: 슬레이트가 10으로 줄어도 기준은 15를 유지한다
+    assert await remember_day_size(r, "mlb", "2026-09-10", 10) == 15
+    # 더 큰 값이 오면 갱신된다(더블헤더 추가 등)
+    assert await remember_day_size(r, "mlb", "2026-09-10", 18) == 18
+
+
+@pytest.mark.asyncio
+async def test_day_size_survives_missing_redis():
+    """redis 가 없으면 지금 슬레이트 크기를 그대로 쓴다 — 크래시하지 않는다."""
+    from app.engine.deepsearch import remember_day_size
+
+    assert await remember_day_size(None, "mlb", "2026-09-10", 7) == 7
