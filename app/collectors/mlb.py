@@ -278,6 +278,20 @@ class MLBClient(BaseAPIClient):
             return self.load_mock("mlb_finals.json")
         return await self._get("/schedule", params={"sportId": 1, "date": date})
 
+    async def fetch_transactions(self, start: str, end: str) -> dict:
+        """statsapi `/transactions` — 부상·등록·말소·트레이드를 구조화 JSON 으로.
+
+        위성(`app/collectors/satellite.py`)이 **DB에 없는 로스터 정보**를 긁는
+        데 쓴다. `description` 이 완결 문장이라 그대로 재료가 된다
+        (예: "... activated 3B Kyle Karros from the 7-day injured list").
+
+        ⚠️ 목은 인라인 빈 결과다 — 키 없이도 크래시하지 않는다(절대 규칙 3).
+        """
+        if self.mock:
+            return {"transactions": []}
+        return await self._get(
+            "/transactions", params={"startDate": start, "endDate": end})
+
 
 def _parse_games(schedule: dict) -> list[dict]:
     out = []
