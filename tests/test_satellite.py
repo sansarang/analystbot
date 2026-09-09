@@ -190,6 +190,69 @@ _SAT_ITEM = {"title": "Colorado Rockies activated 3B Kyle Karros from the 7-day 
              "body": "Colorado Rockies activated 3B Kyle Karros from the 7-day injured list."}
 
 
+# ── 증분 6: NPB 어댑터 (야후재팬 뉴스검색) ───────────────────────────────
+
+_YAHOO_HTML = '''
+<a href="https://news.yahoo.co.jp/articles/aaaa1111bbbb2222" class="x">【西武】菅井信也が5月以来の1軍先発へ</a>
+<a href="https://news.yahoo.co.jp/articles/aaaa1111bbbb2222">サムネ</a>
+<a href="https://news.yahoo.co.jp/articles/cccc3333dddd4444">西武 桑原が右脚負傷で登録抹消の見込み</a>
+'''
+
+
+def test_parse_yahoo_news_dedups():
+    """야후 검색: 같은 기사가 여러 번 링크된다. URL 중복 제거·최장 제목."""
+    from app.collectors import satellite
+    items = satellite.parse_yahoo_news(_YAHOO_HTML)
+    assert len({i["url"] for i in items}) == 2
+    first = [i for i in items if "aaaa1111" in i["url"]][0]
+    assert "菅井" in first["title"] and first["title"] != "サムネ"
+
+
+@pytest.mark.asyncio
+async def test_gather_npb_shape_and_team(monkeypatch):
+    """NPB 어댑터가 야후 결과를 news_rss 모양으로 정규화하고 팀을 붙인다."""
+    from app.collectors import satellite
+
+    async def fake_yahoo(query):
+        return _YAHOO_HTML
+
+    async def fake_body(url):
+        return "本文 " + url[-6:]
+
+    monkeypatch.setattr(satellite, "_yahoo_fetch", fake_yahoo)
+    monkeypatch.setattr(satellite, "_fetch_article_body", fake_body)
+    jg = {"sport": "npb", "game_id": 4783,
+          "home": "Orix Buffaloes", "away": "Saitama Seibu Lions"}
+    arts = await satellite.gather_npb(jg)
+    assert arts
+    for a in arts:
+        for k in _SHAPE_KEYS:
+            assert k in a
+        assert a["team"] in ("Orix Buffaloes", "Saitama Seibu Lions")
+        assert a["body"]
+
+
+@pytest.mark.asyncio
+async def test_gather_dispatches_npb(monkeypatch):
+    """gather 디스패처가 npb 를 NPB 어댑터로 보낸다."""
+    from app.collectors import satellite
+
+    async def fake_yahoo(query):
+        return _YAHOO_HTML
+
+    async def fake_body(url):
+        return "本文"
+
+    monkeypatch.setattr(satellite, "_yahoo_fetch", fake_yahoo)
+    monkeypatch.setattr(satellite, "_fetch_article_body", fake_body)
+    r = _MemRedis()
+    jg = {"sport": "npb", "game_id": 4783,
+          "home": "Orix Buffaloes", "away": "Saitama Seibu Lions"}
+    n = await satellite.gather(jg, r)
+    assert n > 0
+    assert await satellite.read_cache(r, "npb", 4783)
+
+
 @pytest.mark.asyncio
 async def test_free_articles_prefers_satellite(monkeypatch):
     """위성 캐시에 재료가 있으면 그것을 쓰고, RSS 는 부르지 않는다."""

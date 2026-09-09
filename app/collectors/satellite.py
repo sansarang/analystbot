@@ -155,17 +155,25 @@ def _strip_html(s: str | None) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
-def parse_daum_news(html: str) -> list[dict]:
-    """다음 뉴스검색 → [{url, title}]. **URL 중복 제거**(같은 기사가 썸네일·제목·
-    요약으로 여러 번 링크된다). 제목은 가장 긴 앵커텍스트('3' 같은 배지는 버린다)."""
+def _dedup_titled_links(html: str, pattern: re.Pattern) -> list[dict]:
+    """검색결과 HTML → [{url, title}]. **URL 중복 제거**(같은 기사가 썸네일·제목·
+    요약으로 여러 번 링크된다). 제목은 가장 긴 앵커텍스트(숫자 배지는 버린다).
+
+    🔴 다음·야후 둘 다 같은 형태라 파서를 하나로 둔다(사본 금지).
+    """
     by_url: dict[str, str] = {}
-    for m in _DAUM_ITEM.finditer(html or ""):
+    for m in pattern.finditer(html or ""):
         u, raw = m.group(1), _strip_html(m.group(2))
         if not raw or raw.isdigit():
             continue
         if len(raw) > len(by_url.get(u, "")):
             by_url[u] = raw
     return [{"url": u, "title": t} for u, t in by_url.items()]
+
+
+def parse_daum_news(html: str) -> list[dict]:
+    """다음 뉴스검색 → [{url, title}]."""
+    return _dedup_titled_links(html, _DAUM_ITEM)
 
 
 def _daum_age_h(url: str, now: datetime | None) -> float | None:
@@ -259,10 +267,74 @@ async def gather_kbo(jg: dict, *, client=None, now: datetime | None = None) -> l
     return out
 
 
-#: 종목별 어댑터. NPB(토르→DDG)는 후속 증분에서 채운다.
+# ── NPB 어댑터 (야후재팬 뉴스검색 — AWS IP 로 도달, 토르 불필요) ───────────
+#   🔴 [SAT-6] 야후재팬 뉴스검색은 AWS IP 로 200 을 준다(실측 2026-09-09,
+#      기사 24건·본문 3039자). 다음(KBO)과 같은 형태라 파서를 공유한다.
+
+_YAHOO_URL = "https://news.yahoo.co.jp/search"
+_YAHOO_ITEM = re.compile(
+    r'<a[^>]+href="(https://news\.yahoo\.co\.jp/articles/[0-9a-f]+)"[^>]*>(.*?)</a>', re.S)
+_NPB_TOP_N = 6
+#: NPB 상황 검색어 — 선발·부상·말소·등록·스타메가 승부에 직결(타자 전용 아님).
+_NPB_TERMS = "先発 故障 抹消 登録 スタメン"
+
+
+def parse_yahoo_news(html: str) -> list[dict]:
+    """야후재팬 뉴스검색 → [{url, title}]."""
+    return _dedup_titled_links(html, _YAHOO_ITEM)
+
+
+async def _yahoo_fetch(query: str) -> str:
+    """야후재팬 뉴스검색 HTML. 실패는 호출부가 처리."""
+    import httpx
+
+    async with httpx.AsyncClient(timeout=20.0, follow_redirects=True,
+                                 headers={"User-Agent": _UA,
+                                          "Accept-Language": "ja"}) as c:
+        r = await c.get(_YAHOO_URL, params={"p": query, "ei": "utf-8"})
+        r.raise_for_status()
+        return r.text
+
+
+async def gather_npb(jg: dict, *, client=None, now: datetime | None = None) -> list[dict]:
+    """NPB 경기 1건 — 야후재팬 뉴스검색으로 팀별 기사·본문을 news_rss 모양으로.
+
+    🔴 팀명은 news_rss.QUERY_ALIAS(일본어)를 재사용한다(사본 금지).
+    ⚠️ 야후 기사 URL 에는 시각이 없어 age_h 는 None 이다(야후 최신순 정렬에 의존).
+    ⚠️ 실패해도 빈 리스트 — 다른 팀·경기를 막지 않는다.
+    """
+    from app.collectors.news_rss import QUERY_ALIAS
+
+    out: list[dict] = []
+    seen: set[str] = set()
+    for side in ("home", "away"):
+        team = jg.get(side) or ""
+        if not team:
+            continue
+        alias = QUERY_ALIAS.get(team, team)
+        try:
+            html = await _yahoo_fetch(f"{alias} {_NPB_TERMS}")
+        except Exception as exc:
+            logger.warning("[satellite] NPB 야후검색 실패 %s: %s", team, exc)
+            continue
+        for it in parse_yahoo_news(html)[:_NPB_TOP_N]:
+            u = it["url"]
+            if u in seen:
+                continue
+            seen.add(u)
+            body = await _fetch_article_body(u)
+            out.append(_article(title=it["title"], url=u, source="Yahoo!ニュース",
+                                team=team, body=body or it["title"], age_h=None))
+    logger.info("[satellite] NPB %s@%s 야후뉴스 기사 %d건",
+                jg.get("away"), jg.get("home"), len(out))
+    return out
+
+
+#: 종목별 어댑터. 세 리그 전부 직접 경로(토르 불필요) — 토르는 순수 보강(SAT-7).
 _ADAPTERS = {
     "mlb": gather_mlb,
     "kbo": gather_kbo,
+    "npb": gather_npb,
 }
 
 
