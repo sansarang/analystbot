@@ -290,6 +290,19 @@ def render_form_card(jg: dict, sport: str | None = None, *,
         pass
     # 🔴 베팅 라벨은 **승자 판단이 아니라 걸 자격**이다. 이유를 붙여
     #    "승자를 모르겠다"로 읽히지 않게 한다.
+    # 🔴 [DS-10 2026-09-10 사용자 지시] **종합 판단을 마지막에 남긴다.**
+    #    "분석은 다 됐어. 그래서 종합평가는? 누가 이길 것이라는 서술이 있어야 해."
+    #    카드가 조각을 나열만 하면 판단을 사용자에게 떠넘기는 것이다.
+    #    ⚠️ 숫자는 전부 기존 값에서 조립한다 — 지어내기가 구조적으로 불가능하다.
+    #    ⚠️ 확률·게이트·추천 라벨은 건드리지 않는다. 종합은 서술이지 계산이 아니다.
+    try:
+        from app.engine.synthesis import synthesize
+
+        _syn = synthesize(jg)
+        if _syn:
+            lines.append(_syn)
+    except Exception:
+        pass
     lines.append(_bet_line(jg))
     if revision:
         lines.append("라인업 변경 재판정")
