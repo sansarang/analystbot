@@ -99,3 +99,42 @@ def install_log_filter(logger: logging.Logger | None = None) -> MaskingFilter | 
         filt = filt or MaskingFilter()
         t.addFilter(filt)
     return filt
+
+
+# ── [SEC-2 2026-09-09] 설정 객체 마스킹 ────────────────────────────────
+#
+# 🔴 실사고: `getattr(settings, "deepsearch_enabled")` 가 **메서드**여서
+#    바운드 메서드 repr 에 `Settings(...)` 전체가 딸려 나왔고, 키 11종이
+#    평문으로 노출됐다(2026-09-09). 가리는 장치는 여기 있었는데 **설정 객체
+#    자신에는 물려 있지 않았다.**
+
+#: 이름이 이러면 비밀이다. 값이 아니라 **필드 이름**으로 가른다 —
+#  값 모양으로만 가르면 접두사 없는 키(Mistral·Odds 등)를 놓친다.
+_SECRET_SUFFIX = ("_key", "_token", "_secret", "_password")
+
+
+def is_secret_field(name: str, value=None) -> bool:
+    """이 설정 필드가 비밀인가.
+
+    ⚠️ `*_url` 을 통째로 가리지 않는다 — `pplx_base_url` 같은 진단값이 사라진다.
+       **자격증명이 들어 있는 URL**(`scheme://user:pass@host`)만 가린다.
+    """
+    n = (name or "").lower()
+    if n.endswith(_SECRET_SUFFIX):
+        return True
+    if isinstance(value, str) and "://" in value:
+        head = value.split("://", 1)[1]
+        return "@" in head.split("/", 1)[0] and ":" in head.split("@", 1)[0]
+    return False
+
+
+def mask_field(name: str, value):
+    """비밀이면 길이만 남긴 표기로, 아니면 값 그대로.
+
+    ⚠️ **필드 이름은 지우지 않는다.** 무엇이 있었는지가 남아야 진단이 된다.
+    """
+    if value is None or value == "":
+        return value
+    if not is_secret_field(name, value):
+        return value
+    return f"…{len(str(value))}자 가림"

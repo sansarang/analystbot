@@ -15,6 +15,27 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
+    # ── [SEC-2 2026-09-09] **찍어도 비밀이 안 새게 한다** ─────────────────
+    #   🔴 실사고: `getattr(s, "deepsearch_enabled")` 가 메서드라 바운드 메서드
+    #      repr 에 `Settings(...)` 전체가 딸려 나왔고 키 11종이 평문 노출됐다.
+    #      예외 문자열·디버그 로그·프로브 어디로든 이 객체는 흘러간다.
+    #   ⚠️ **값 접근은 그대로다** — 가리는 것은 표시뿐이고 동작은 안 바뀐다.
+    #   ⚠️ 규칙은 `app/secrets_mask.py` 가 원본이다(사본 금지). 여기서는
+    #      필드를 훑어 그 함수에 넘기기만 한다.
+    def __repr__(self) -> str:
+        from app.secrets_mask import mask_field
+
+        parts = []
+        for name in type(self).model_fields:
+            try:
+                v = getattr(self, name)
+            except Exception:
+                continue
+            parts.append(f"{name}={mask_field(name, v)!r}")
+        return f"{type(self).__name__}({', '.join(parts)})"
+
+    __str__ = __repr__
+
     # API 키 — 없으면 해당 모듈은 mock_data/ 목 모드로 동작한다.
     telegram_bot_token: str | None = None
     telegram_admin_chat_id: str | None = None  # 쿼터 소진 등 운영 알림 수신 채팅
