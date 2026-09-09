@@ -188,7 +188,17 @@ def render_form_card(jg: dict, sport: str | None = None, *,
     try:
         from app.engine.market_baseline import market_line
 
-        _ml = market_line(jg.get("p_market_send"), p)
+        # 🔴 [MKT-9 2026-09-10] **홈 기준끼리 비교한다.** `p_market_send` 는
+        #    `devig_two_way` 가 낸 **홈 확률**인데 종전에는 우세팀 확률(p)을
+        #    넘겨, 원정 우세 경기에서 기준이 어긋났다.
+        #      실측(MIN@DET): 홈 0.47·시장 0.54 인데 카드는 "우리 53% — 시장
+        #      동의(1%p)"로 찍고, 같은 카드 마지막 줄은 게이트가 낸 "시장 이견
+        #      (우리 47% vs 54%)"을 달았다 — 한 카드가 두 말을 했다.
+        #    ⚠️ 홈 우세면 p_fav == p_home 이라 증상이 없다. 원정 우세 전용 결함.
+        _p_home = m.get("p_home")
+        if _p_home is None:
+            _p_home = jg.get("p_claude")
+        _ml = market_line(jg.get("p_market_send"), _p_home)
         if _ml:
             lines.append(_ml)
     except Exception:

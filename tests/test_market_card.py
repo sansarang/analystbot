@@ -124,3 +124,33 @@ async def test_summary_is_silent_without_material():
                     "diverged": 0, "diverged_hit": 0}
 
     assert await market_lines(Pool(), ("kbo",)) == []
+
+
+def test_card_market_line_uses_home_basis_not_favored_side():
+    """🔴 [MKT-9 실측 2026-09-10] 카드가 같은 경기에서 우리 확률을 두 번 다르게
+    말했다 — 상단 "시장 54% vs 우리 53% (시장 동의)" 인데 하단은 "시장 이견
+    (우리 47% vs 시장 54%)".
+
+    원인: `market_line` 호출부가 **우세팀 확률(0.53)** 을 넘기는데 시장값
+    `p_market_send`(0.54)는 **홈 기준**이다. 원정 우세 경기에서 기준이 어긋나
+    7%p 갈린 경기를 "동의"로 표시했다. 게이트(`market_disagreement`)는 홈끼리
+    비교해 옳게 "이견"을 냈으므로, 틀린 쪽은 카드 줄이다.
+
+    ⚠️ 홈 우세 경기는 p_fav == p_home 이라 증상이 없다 — **원정 우세에서만** 난다.
+    """
+    from app.engine.form_card import render_form_card
+
+    jg = {
+        "sport": "mlb", "league": "MLB",
+        "home": "Detroit Tigers", "away": "Minnesota Twins",
+        "p_claude": 0.47, "p_market_send": 0.54,
+        "lineup_status": "confirmed",
+        "matchup": {"p_home": 0.47, "우세": "away", "확신도": "중", "근거": []},
+    }
+    body = render_form_card(jg, "mlb")
+    market_lines = [ln for ln in body.splitlines() if ln.startswith("시장 ")]
+    assert market_lines, "시장 줄이 없다"
+    line = market_lines[0]
+    # 홈 기준(0.47 vs 0.54 = 7%p)이므로 '이견' 이어야 한다
+    assert "시장 이견" in line, f"원정 우세인데 기준이 어긋났다: {line}"
+    assert "우리 47%" in line, f"우세팀 기준(53%)을 쓰고 있다: {line}"
