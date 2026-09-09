@@ -171,3 +171,32 @@ async def test_narrative_without_weather_says_so(monkeypatch):
     monkeypatch.setattr(nc, "_ask", fake)
     await nc.build(_jg())
     assert "미수집" in seen["p"] or "없음" in seen["p"]
+
+
+# ── [CARD-6 2026-09-10] 1차 카드는 서술을 받지 못했다 ─────────────────────
+#   🔴 사용자 지적: "la 다저스는 또 왜 이렇게 나오냐?"
+#      08:13 에 나간 CIN@LAD **1차 카드**가 종전 구조 카드 그대로였다.
+#   실측(운영 캐시 `analysis:mlb:2026-09-09` 10경기): **서술 0/10 · 날씨 0/10.**
+#      `narrative_card` 를 채우는 곳은 `_renarrate` 하나뿐인데(전수 grep),
+#      그것은 재판정 3곳에서만 불린다 —
+#        `_refresh_stale_research` · `rejudge_after_lineup` · `ensure_game_fresh`
+#      슬레이트 본경로(프리페치→판정→1차 발송)는 서술을 **아예 만들지 않는다.**
+#      그래서 사용자가 실제로 T-30 에 받는 첫 카드는 항상 구 형식이었다.
+#   ⚠️ 서술은 딥서치 **뒤에** 만들어야 조사 사실을 해석할 수 있다.
+
+def test_slate_path_builds_narrative_after_deepsearch():
+    """배선 계약 — 딥서치 직후에 서술이 붙는가.
+
+    구조 검사인 이유: 이 배선은 4천 줄짜리 함수 한가운데 있어 단위 호출로
+    떼어낼 수 없다. 그래도 **빠지면 알려주는 것**이 없는 것보다는 낫다 —
+    실제로 빠져 있었고 6일 넘게 아무도 몰랐다.
+    """
+    import pathlib
+    import re
+
+    src = pathlib.Path("app/pipeline.py").read_text()
+    m = re.search(r"await run_for_slate\(.*?\)", src, re.S)
+    assert m, "딥서치 슬레이트 호출을 못 찾았다"
+    tail = src[m.end():m.end() + 1200]
+    assert "_renarrate(" in tail, (
+        "딥서치 뒤에 서술 생성이 없다 — 1차 카드가 구조 카드로 나간다")

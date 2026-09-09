@@ -2131,6 +2131,21 @@ async def build_analysis(
                     await run_for_slate(upcoming, bb_redis, date)
                 except Exception as exc:
                     logger.warning("[pipeline] 딥서치 생략 — 판정은 계속: %s", exc)
+                # 🔴 [CARD-6 2026-09-10] **1차 카드에도 서술을 붙인다.**
+                #    실측(운영 캐시 analysis:mlb:2026-09-09 10경기): 서술 0/10.
+                #    `narrative_card` 를 채우는 곳은 `_renarrate` 하나뿐인데
+                #    그것이 재판정 3곳(`_refresh_stale_research`·
+                #    `rejudge_after_lineup`·`ensure_game_fresh`)에서만 불렸다.
+                #    슬레이트 본경로는 서술을 아예 만들지 않아, 사용자가 T-30 에
+                #    실제로 받는 **첫 카드가 항상 구 구조 카드**였다.
+                #    사용자 지적: "la 다저스는 또 왜 이렇게 나오냐?"
+                #  ⚠️ **딥서치 뒤여야 한다** — 서술은 조사 발견을 해석한다(CARD-4).
+                #     앞에 두면 발견이 없는 상태로 글을 쓴다.
+                #  ⚠️ 실패는 경기별로 삼켜진다 — 그 경기만 구조 카드로 폴백한다.
+                try:
+                    await _renarrate(upcoming, sport)
+                except Exception as exc:
+                    logger.warning("[pipeline] 1차 서술 생략 — 발송은 계속: %s", exc)
                 if upcoming and not any(st.name == "매치업 판정" for st in stages):
                     _parse_n = sum(1 for g in upcoming
                                    if (g.get("matchup") or {}).get("p_home") is not None)
