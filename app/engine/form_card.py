@@ -203,6 +203,23 @@ def render_form_card(jg: dict, sport: str | None = None, *,
             lines.append(_ml)
     except Exception:
         pass
+    # 🔴 [CARD-3 2026-09-10 사용자 지시] **손님상 모드 — 주방을 감춘다.**
+    #    "갈림길 현지상황들을 저렇게 다 안 보여줘도 된다… 식당에서 음식을 파는데
+    #     굳이 주방은 보여줄 필요가 없다."
+    #    서술이 준비돼 있으면 헤더 + 서술 + 베팅 라벨만 낸다. 자료 번호·표본 수·
+    #    기반영 %p·심의 메커니즘은 전부 문장 안에 녹아 사라진다.
+    #    ⚠️ 헤더 숫자와 베팅 라벨은 **여기까지 규칙이 만든 것**을 그대로 쓴다 —
+    #       서술이 숫자를 지어낼 수 없게 하는 방어선이다.
+    #    ⚠️ 서술이 없으면(생성 실패·구경로) 아래 구조 카드로 폴백한다.
+    _narr = str(jg.get("narrative_card") or "").strip()
+    if _narr:
+        lines.append("")
+        lines.extend(_narr.splitlines())
+        lines.append("")
+        lines.append(_bet_line(jg))
+        if revision:
+            lines.append("라인업 변경 재판정")
+        return "\n".join(lines)
     # 🔴 [2026-09-06] **결론이 먼저다.** 종전 카드는 확률·근거·변수만 늘어놓고
     #    마지막 줄이 `보드만`(베팅 라벨)이라 "승자를 모르겠다"로 읽혔다.
     #    판정의 답은 확률이 아니라 결론이고, 확률은 그 표현일 뿐이다.

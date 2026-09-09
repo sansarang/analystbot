@@ -2548,6 +2548,8 @@ async def _renarrate(games: list[dict], sport: str) -> None:
 
     from app.engine.synthesis import synthesize_async
 
+    from app.engine.narrative_card import build as _build_narrative
+
     async def _syn(g: dict) -> None:
         try:
             line = await synthesize_async(g)
@@ -2555,6 +2557,15 @@ async def _renarrate(games: list[dict], sport: str) -> None:
                 g["synthesis_line"] = line
         except Exception as exc:
             logger.debug("[pipeline] 종합 판단 생략 game=%s: %s",
+                         g.get("game_id"), exc)
+        # 🔴 [CARD-3] 손님상 서술도 여기서 만든다 — 카드 렌더는 동기라
+        #    LLM 을 기다릴 수 없다. 실패하면 카드가 구조 카드로 폴백한다.
+        try:
+            narr = await _build_narrative(g)
+            if narr:
+                g["narrative_card"] = narr
+        except Exception as exc:
+            logger.debug("[pipeline] 서술 카드 생략 game=%s: %s",
                          g.get("game_id"), exc)
 
     try:
