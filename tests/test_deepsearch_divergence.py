@@ -338,3 +338,43 @@ async def test_parallel_respects_cap(monkeypatch):
     out = await ds.run_for_slate(games, _R(), "2026-09-10", settings=s)
     assert out["investigated"] == 3, f"상한 3인데 {out['investigated']}건 조사했다"
     assert out["skipped"] == 7
+
+
+# ── [DS-8 2026-09-10 사용자 지시] 조사가 갈림길·변수를 겨냥한다 ───────────
+
+def test_prompt_carries_branch_and_variables():
+    """🔴 사용자 지적: "DB 수치와 조사 사실이 만나야 하는 지점에서 안 만난다.
+    갈림길도 그렇다."
+
+    실측(TB@ATL): 갈림길이 "부상 복귀전 로페즈가 몇 이닝 버티나"를 **질문**했고
+    조사는 "로페즈 IL 복귀 활성화"를 **찾았는데**, 둘이 만나지 않아 갈림길 아래엔
+    여전히 "자료14 미조사 — 발생 확률을 찾지 못했다"가 붙었다.
+
+    원인: 딥서치 프롬프트가 `추가확인` 만 받고 **갈림길·변수는 안 받는다**.
+    조사가 질문을 모르니 표적 없이 훑는다. 질문을 주면 답이 붙어 온다.
+    """
+    from app.engine.deepsearch import T0_ALL, build_prompt
+
+    jg = {"sport": "mlb", "league": "MLB", "home": "H", "away": "A",
+          "starts_at_kst": "09/10 08:15", "p_claude": 0.47,
+          "matchup": {"p_home": 0.47, "우세": "away", "확신도": "하", "근거": [],
+                      "추가확인": [],
+                      "전개": {"분기점": "부상 복귀전 로페즈가 몇 이닝 버티나"},
+                      "변수": ["선발 Jax 조기 강판 리스크 — 발생 시 홈 방향 약 6%p"]}}
+    p = build_prompt(jg, [T0_ALL])
+    assert "로페즈" in p, "갈림길이 조사 프롬프트에 없다"
+    assert "Jax" in p, "변수가 조사 프롬프트에 없다"
+    assert "이 질문에 답하라" in p or "답하라" in p, \
+        "질문으로 제시되지 않으면 조사가 표적을 갖지 못한다"
+
+
+def test_prompt_without_branch_is_unchanged():
+    """갈림길·변수가 없으면 그 문단을 만들지 않는다 — 없는 것을 지어내지 않는다."""
+    from app.engine.deepsearch import T0_ALL, build_prompt
+
+    jg = {"sport": "mlb", "league": "MLB", "home": "H", "away": "A",
+          "starts_at_kst": "", "p_claude": 0.5,
+          "matchup": {"p_home": 0.5, "우세": "home", "확신도": "중", "근거": [],
+                      "추가확인": []}}
+    p = build_prompt(jg, [T0_ALL])
+    assert "[판정이 낸 갈림길" not in p

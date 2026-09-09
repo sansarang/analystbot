@@ -363,7 +363,7 @@ PROMPT = """당신은 스포츠 경기 조사원이다. 아래 판정이 확신�
 [경기] {league} · {away} (원정) @ {home} (홈) · {kickoff} KST
 [현재 판정] {verdict}
 [발동 트리거] {triggers}{divergence}
-[판정이 요청한 추가확인] {asked}
+[판정이 요청한 추가확인] {asked}{questions}
 
 [오늘] {today} (KST). 이 경기는 **오늘 또는 내일** 열린다.
 🔴 검색은 지난 시즌 기사를 먼저 물어온다. 연도를 확인하지 않으면 **1년 전
@@ -434,6 +434,25 @@ delta_pp = **홈 승률을 몇 %p 올릴지**(원정 쪽 근거면 음수, 없�
 }}"""
 
 
+#: [DS-8 2026-09-10 사용자 지시] **판정이 낸 질문을 조사에 넘긴다.**
+#  🔴 실측(TB@ATL): 갈림길이 "부상 복귀전 로페즈가 몇 이닝 버티나"를 물었고
+#     조사는 "로페즈 IL 복귀 활성화"를 찾았는데, 둘이 만나지 않아 갈림길 아래엔
+#     "자료14 미조사"가 그대로 남았다. 조사가 질문을 모르니 표적 없이 훑은 것이다.
+#  ⚠️ 기존 체크리스트를 지우지 않는다 — 우선순위만 준다. 질문에 끌려가 다른
+#     중요 사실을 놓치면 그것도 손실이다.
+_QUESTIONS = """
+
+[🎯 판정이 낸 갈림길·변수 — **이 질문에 답하라**]
+판정은 아래 지점에서 승부가 갈린다고 봤다. 조사의 첫 목적은 **이 질문에 답하는
+사실**을 찾는 것이다. DB 는 과거 통계만 안다 — 오늘의 사정(부상 복귀·투구수 제한·
+결장 확정 여부)은 여기서만 나온다.
+{items}
+- 답이 되는 **사실**을 찾으면 [발견]에 그 질문과 묶어 적는다.
+- **DB 통계가 오늘 적용되지 않는 사정**을 찾으면 그것도 답이다
+  (예: "소속팀 74%는 정상 컨디션 표본인데 오늘은 부상 복귀전이다").
+- 못 찾으면 "미확인"이라고 적는다. 그것도 답이다 — 지어내지 마라."""
+
+
 #: [DS-2 2026-09-09] T2 가 걸렸을 때만 붙는 괴리 문단.
 #  ⚠️ 안 걸린 경기에 시장 이야기를 넣으면 **그 자체가 앵커**다 —
 #     실측(MKT-4): 시장 숫자를 판정 자료로 주자 |p−시장| 이 67.9% 수축했다.
@@ -451,6 +470,21 @@ _DIVERGENCE = """
 - 찾으면 [발견]에 **사실로** 적는다. 시장 가격은 적지 마라.
 - **못 찾으면 [조정]은 0 이고 [요약]에 "괴리 원인 미확인"이라고 적는다.**
   못 찾았다는 것도 결과다 — 지어내면 그게 더 나쁘다."""
+
+
+def _questions_block(m: dict) -> str:
+    """판정이 낸 갈림길·변수를 조사 질문으로. 없으면 빈 문자열(문단 자체가 없다)."""
+    items = []
+    branch = ((m.get("전개") or {}).get("분기점") or "").strip()
+    if branch:
+        items.append(f"  · 갈림길: {branch}")
+    for v in (m.get("변수") or [])[:2]:
+        v = str(v).strip()
+        if v:
+            items.append(f"  · 변수: {v}")
+    if not items:
+        return ""
+    return _QUESTIONS.format(items="\n".join(items))
 
 
 def build_prompt(jg: dict, trig: list[str]) -> str:
@@ -486,6 +520,7 @@ def build_prompt(jg: dict, trig: list[str]) -> str:
         triggers=", ".join(trig or []),
         divergence=div,
         asked=_json.dumps(m.get("추가확인") or [], ensure_ascii=False),
+        questions=_questions_block(m),
         lang=SEARCH_LANG.get(sport, "영어"),
         budget=int(s.deepsearch_max_searches),
         today=_today_kst())
