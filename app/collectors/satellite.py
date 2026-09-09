@@ -162,6 +162,59 @@ async def _write_cache(redis, sport: str, game_id, articles: list[dict]) -> None
         logger.warning("[satellite] 캐시 기록 실패 %s:%s — %s", sport, game_id, exc)
 
 
+#: 대상 경기 — 예정이고 탐색 창 안에 시작. 컷오프는 아래 파이썬에서 건다(원본
+#  `minutes_until_start` 를 재사용하려면 행별로 계산해야 하므로 SQL 로 안 자른다).
+_DUE_SQL = """
+    SELECT id, sport, home, away, starts_at
+      FROM games
+     WHERE status = 'scheduled'
+       AND sport = ANY($1::text[])
+       AND starts_at BETWEEN now() AND now() + make_interval(hours => $2)
+     ORDER BY starts_at
+"""
+
+
+async def run_satellite(pool, redis, *, sports: list[str], now=None,
+                        cutoff_min: int = 10, lookahead_h: int = 24,
+                        client=None) -> dict:
+    """탐색 창 안 예정 경기를 골라 각각 수집한다. 반환 `{games, gathered}`.
+
+    🔴 **컷오프 = 위성 정지선.** 시작 T-N분 안에 든 경기는 더 긁지 않는다 —
+       사용자 표현대로 "T-N분에 정지"한다. 컷오프 판정은 원본
+       `minutes_until_start`(pregame_push)를 재사용한다(재정의 금지).
+
+    ⚠️ 어댑터 없는 종목은 `gather` 가 0을 돌려주므로 자연히 건너뛴다.
+    ⚠️ 한 경기 실패가 다른 경기를 막지 않는다 — 경기별 try 로 감싼다.
+    """
+    from app.engine.pregame_push import minutes_until_start
+
+    if not sports:
+        return {"games": 0, "gathered": 0}
+    try:
+        rows = await pool.fetch(_DUE_SQL, list(sports), int(lookahead_h))
+    except Exception as exc:
+        logger.warning("[satellite] 대상 경기 조회 실패: %s", exc)
+        return {"games": 0, "gathered": 0}
+
+    games = gathered = 0
+    for r in rows:
+        left = minutes_until_start(r["starts_at"], now)
+        if left is None or left <= cutoff_min:
+            continue                        # 컷오프 안 — 위성 정지
+        jg = {"sport": r["sport"], "game_id": r["id"],
+              "home": r["home"], "away": r["away"]}
+        try:
+            n = await gather(jg, redis, client=client, now=now)
+        except Exception as exc:
+            logger.warning("[satellite] 수집 실패 game=%s: %s", r["id"], exc)
+            continue
+        games += 1
+        gathered += n
+    logger.info("[satellite] 수집 사이클 — 대상 %d경기 · 기사 %d건 (%s)",
+                games, gathered, ",".join(sports))
+    return {"games": games, "gathered": gathered}
+
+
 async def read_cache(redis, sport: str, game_id) -> list[dict]:
     """캐시된 기사 리스트. 없거나 실패하면 빈 리스트(딥서치는 news_rss 로 폴백)."""
     if redis is None or game_id is None:

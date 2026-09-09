@@ -376,6 +376,20 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("DEEPSEARCH_ENABLED", "deepsearch_investigate"))
 
+    # ── 위성 수집기 (Phase1 직접 경로) ──────────────────────────────────
+    #: [SAT] DB에 없는 경기 정보를 미리 긁어 satellite:{sport}:{game_id} 캐시에
+    #   쌓는 백그라운드 잡. **기본 꺼짐** — 켜기 전엔 잡이 즉시 반환해 무해하다.
+    #   딥서치가 이 캐시를 읽는 것은 별개 배선(증분2)이라, 이 토글만으로는
+    #   판정 경로가 바뀌지 않는다.
+    satellite_enabled: bool = Field(default=False, validation_alias=AliasChoices(
+        "SATELLITE_ENABLED", "satellite_enabled"))
+    #: 위성이 수집하는 종목(콤마 구분). 어댑터가 있는 종목만 실제로 돈다(현재 mlb).
+    satellite_sports: str = "mlb"
+    #: 수집 정지선 — 시작 T-N분 안이면 그 경기는 더 긁지 않는다(위성이 정지).
+    satellite_cutoff_min: int = 10
+    #: 대상 경기 탐색 창(시간). status='scheduled' 이고 이 안에 시작하는 경기.
+    satellite_lookahead_h: int = 24
+
     # ── 프로바이더 의도적 미사용 ────────────────────────────────────────
     # mock(키 없음)도 오류도 아니다. 여기 있는 이름은 HTTP를 나가지 않고
     # 알림도 내지 않는다. 콤마 구분.

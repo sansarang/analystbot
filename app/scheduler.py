@@ -308,6 +308,33 @@ async def statcast_refresh_job() -> None:
         await redis.aclose()
 
 
+async def satellite_job() -> None:
+    """[SAT] 위성 수집 — DB에 없는 경기 정보를 미리 긁어 캐시에 쌓는다.
+
+    ⚠️ **기본 꺼짐.** `satellite_enabled` 가 아니면 즉시 반환한다 — 배포해도
+       무해하다. 딥서치가 이 캐시를 읽는 것은 별개 배선(증분2)이라, 이 잡만으로는
+       판정 경로가 바뀌지 않는다.
+    """
+    from app.collectors import satellite
+
+    s = get_settings()
+    if not s.satellite_enabled:
+        return
+    sports = [x.strip() for x in (s.satellite_sports or "").split(",") if x.strip()]
+    if not sports:
+        return
+    redis = aioredis.from_url(s.redis_url, decode_responses=True)
+    try:
+        pool = await get_pool()
+        out = await satellite.run_satellite(
+            pool, redis, sports=sports,
+            cutoff_min=s.satellite_cutoff_min,
+            lookahead_h=s.satellite_lookahead_h)
+        logger.info("[scheduler] 위성 수집: %s", out)
+    finally:
+        await redis.aclose()
+
+
 async def soccer_stats_refresh_job() -> None:
     """[§2-3] Understat xG + Club Elo 일 1회 갱신. 스크래핑이라 느려 새벽에만 돈다."""
     from app.collectors.soccer_stats import UNSUPPORTED, refresh_elo, refresh_league
@@ -1909,6 +1936,9 @@ def _job_specs() -> list[tuple]:
          CronTrigger(hour=14, minute=0, timezone=KST)),
         ("watchdog_5m", watchdog_job, IntervalTrigger(minutes=5)),
         ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
+        # [SAT] 위성 수집 — 기본 꺼짐(satellite_enabled). 켜면 15분마다 DB에 없는
+        #   경기 정보를 미리 긁어 캐시에 쌓는다. 판정 경로는 아직 안 읽는다(증분2 전).
+        ("satellite_15m", satellite_job, IntervalTrigger(minutes=15)),
         ("ingest_finals_13h", finals_job, CronTrigger(hour=13, minute=0, timezone=KST)),
         # [축구 시범 운영] 10분마다 — T-3h 판정 · confirmed 재판정.
         #   유럽 경기는 KST 심야~새벽이라 창을 넓게 둔다.

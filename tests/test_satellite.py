@@ -123,3 +123,49 @@ async def test_gather_empty_still_writes_marker():
     jg = {"sport": "mlb", "game_id": 7, "home": "X Team", "away": "Y Team"}
     n = await satellite.gather(jg, r, client=_FakeMLB({"transactions": []}))
     assert n == 0
+
+
+# ── 증분 1b: run_satellite (대상 경기 선정 + 컷오프) ──────────────────────
+
+from datetime import datetime, timedelta, timezone
+
+
+class _FakePool:
+    def __init__(self, rows):
+        self._rows = rows
+
+    async def fetch(self, sql, *args):
+        return self._rows
+
+
+def _row(gid, sport, home, away, mins_ahead, now):
+    return {"id": gid, "sport": sport, "home": home, "away": away,
+            "starts_at": now + timedelta(minutes=mins_ahead)}
+
+
+@pytest.mark.asyncio
+async def test_run_satellite_gathers_due_games_and_skips_cutoff():
+    """컷오프(T-N) 안에 든 경기는 더 긁지 않는다 — 위성이 정지한다."""
+    now = datetime(2026, 9, 9, 12, 0, tzinfo=timezone.utc)
+    rows = [
+        _row(1, "mlb", "Colorado Rockies", "San Francisco Giants", 300, now),  # 5h 전 → 수집
+        _row(2, "mlb", "X Team", "Y Team", 5, now),                            # T-5분 → 정지
+    ]
+    r = _MemRedis()
+    out = await satellite.run_satellite(
+        _FakePool(rows), r, sports=["mlb"], now=now,
+        cutoff_min=10, client=_FakeMLB(_SAMPLE_TX))
+    assert out["games"] == 1                    # 컷오프 안 경기는 셈에서 빠진다
+    assert await satellite.read_cache(r, "mlb", 1)   # 대상 경기는 캐시가 찼다
+    assert await satellite.read_cache(r, "mlb", 2) == []  # 정지 경기는 안 긁었다
+
+
+@pytest.mark.asyncio
+async def test_run_satellite_no_adapter_sport_noop():
+    """어댑터 없는 종목(kbo)은 지금은 건너뛴다 — 크래시하지 않는다."""
+    now = datetime(2026, 9, 9, 12, 0, tzinfo=timezone.utc)
+    rows = [_row(9, "kbo", "한화 이글스", "LG 트윈스", 200, now)]
+    r = _MemRedis()
+    out = await satellite.run_satellite(
+        _FakePool(rows), r, sports=["kbo"], now=now, client=_FakeMLB(_SAMPLE_TX))
+    assert out["gathered"] == 0

@@ -28,6 +28,8 @@ def test_scheduler_jobs_registered():
                          # [운영 안정화 2] 워치독 — 고장을 시스템이 먼저 알린다.
                          #   사람이 먼저 발견하는 고장 0건이 목표다.
                          "watchdog_5m",
+                         # [SAT] 위성 수집 — 기본 꺼짐(satellite_enabled).
+                         "satellite_15m",
                          # [v1.1 0단계] 주간 캘리브레이션 리포트. **측정 전용**이다 —
                          #   삭제된 픽 채점기(grade_yesterday)의 부활이 아니다.
                          #   그쪽은 성적표를 판정에 되먹였고, 이쪽은 판정 경로가
