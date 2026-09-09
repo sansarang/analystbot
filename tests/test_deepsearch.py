@@ -88,9 +88,26 @@ def test_t5_fires_when_form_key_player_is_absent():
     assert lineup_anomaly(jg) is True
 
 
-def test_no_trigger_means_no_investigation():
-    """편안한 확률·이상 없음 → 발동하지 않는다. 상시 검색 금지."""
-    assert triggers(_jg(p_claude=0.66), S) == []
+def test_every_game_investigated_but_real_triggers_still_visible():
+    """🔴 [DS-3 2026-09-10 사용자 지시] **계약이 바뀌었다.**
+
+    종전 계약은 "편안한 확률·이상 없음 → 발동하지 않는다(상시 검색 금지)"였다.
+    그 금지는 유료 web_search 시절의 비용 방어였는데, 딥서치가 무료 사슬 전용이
+    된 뒤로 근거가 약해졌고 사용자가 전수 조사를 지시했다:
+        "트리거 걸린 경기만 하지 말고 전부 다 해라."
+
+    이제 조용한 경기도 T0_전수 하나로 조사 대상이 된다. 다만 **진짜 트리거는
+    앞에 그대로** 남아야 한다 — 발동 원인 추적(어떤 경기가 왜 조사됐나)이
+    죽으면 실측이 불가능해진다.
+    """
+    from app.engine.deepsearch import T0_ALL
+
+    quiet = triggers(_jg(p_claude=0.66), S)
+    assert quiet == [T0_ALL], "조용한 경기는 전수 트리거 하나만 붙어야 한다"
+
+    loud = triggers(_jg(p_claude=0.58), S)      # T1 경계에 걸리는 경기
+    assert loud[0] == T1_BOUNDARY, "진짜 트리거가 앞에 와야 원인 추적이 산다"
+    assert loud[-1] == T0_ALL
 
 
 # ---------------------------------------------------------------- 상한

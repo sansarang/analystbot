@@ -376,6 +376,13 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("DEEPSEARCH_ENABLED", "deepsearch_investigate"))
 
+    #: [DS-3 2026-09-10 사용자 지시] 딥서치에 Perplexity 병행. **기본 켜짐.**
+    #   위성/RSS 가 못 물어온 사실을 PPLX 가 직접 웹에서 찾아 재료로 얹는다.
+    #   ⚠️ 유료다 — 전 경기 병행 시 MLB15+KBO5+NPB5 ≈ 25건/일 × $0.01 ≈ 월 $7.5.
+    #      끄려면 이 값을 false 로. PPLX 실패는 조용한 폴백이라 회귀는 없다.
+    deepsearch_pplx_enabled: bool = Field(default=True, validation_alias=AliasChoices(
+        "DEEPSEARCH_PPLX_ENABLED", "deepsearch_pplx_enabled"))
+
     # ── 위성 수집기 (Phase1 직접 경로) ──────────────────────────────────
     #: [SAT] DB에 없는 경기 정보를 미리 긁어 satellite:{sport}:{game_id} 캐시에
     #   쌓는 백그라운드 잡. **기본 꺼짐** — 켜기 전엔 잡이 즉시 반환해 무해하다.

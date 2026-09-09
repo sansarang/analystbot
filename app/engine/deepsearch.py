@@ -36,6 +36,12 @@ T5_LINEUP = "T5_라인업이상"
 #      가장 정보가 많은 시점인데 조사를 안 하고 있었다.
 #      변동이 아니라 **발표**가 방아쇠다.
 T6_FIRST_LINEUP = "T6_라인업최초확정"
+#: [DS-3 2026-09-10 사용자 지시] **전 경기 조사.** "트리거 걸린 경기만 하지 말고
+#  전부 다 해라." 아무 트리거도 안 걸린 조용한 경기에도 이것이 붙어 조사 대상이
+#  된다. 진짜 트리거는 앞에 그대로 남으므로 원인 추적이 죽지 않는다.
+#  ⚠️ 상한은 별개 축이다 — `deepsearch_daily_cap` 이 1.0(100%)이어야 실제로
+#     전 경기가 돈다. 둘 중 하나만 열면 여전히 일부가 빠진다.
+T0_ALL = "T0_전수"
 
 #: 조사 언어 — 원문 소스가 그 언어로 쓰여 있다. 영어로만 찾으면
 #: KBO 구단 공지·NPB 스포츠지가 통째로 빠진다.
@@ -105,6 +111,9 @@ def triggers(jg: dict, settings, *, prev_lineup: dict | None = None) -> list[str
     # T5 — 라인업 이상 (2026-08-31 신설)
     if t5_evidence(jg, prev_lineup)[0]:
         out.append(T5_LINEUP)
+    # T0 — [DS-3] 전수. 아무것도 안 걸려도 조사한다(사용자 지시). **맨 뒤에** 붙여
+    #      진짜 트리거가 앞에 오게 한다 — 발동 원인 추적을 잃지 않기 위해서다.
+    out.append(T0_ALL)
     return out
 
 
@@ -459,6 +468,7 @@ def _today_kst() -> str:
 #: 조사 재료 출처. 로그·결과에 그대로 실린다 — 무엇을 읽고 낸 판단인지 남긴다.
 SRC_RSS = "rss"          # 무료: Google News RSS + web_fetch
 SRC_PAID = "web_search"  # (폐지) 유료 폴백이었다 — 2026-09-06 삭제
+SRC_PPLX = "rss+pplx"    # [DS-3] 위성/RSS 재료 + Perplexity 조사 병행
 #: 🔴 딥서치의 라우팅 역할. **`matchup` 이 아니다** — matchup 만 유료가
 #   허용되고, 딥서치는 최종 판정이 아니다. 문자열을 호출부마다 적지 않는다.
 DEEPSEARCH_ROLE = "deepsearch"
@@ -506,6 +516,82 @@ async def _free_articles(jg: dict, redis) -> list[dict]:
     for it in items[:FETCH_TOP_N]:
         it["body"] = await _fetch_body(it.get("url"))
     return items
+
+
+#: [DS-3] PPLX 조사 프롬프트. **사실만 요구한다** — 확률·조정은 묻지 않는다.
+#  판정은 기존 무료 요약기가 하고, PPLX 는 재료를 늘릴 뿐이다.
+_PPLX_PROMPT = """당신은 야구 경기 조사원이다. 오늘 경기의 **승부에 영향을 주는
+사실**만 웹에서 찾아 보고하라.
+
+[경기] {league} · {away} (원정) @ {home} (홈)
+[오늘] {today} (KST)
+
+찾을 것 — 우리 시스템은 **최근 3~5경기 기록만** 본다. 그 창 밖의 사실이 필요하다:
+- 선발 투수의 부상·복귀·구속 저하·등판 간격 이상
+- 불펜 소모(연투·마무리 이탈)
+- 주축 타자 부상·결장·말소
+- 로스터 변동(콜업·트레이드·대표팀 차출)
+- 팀 내부 사정·감독 발언, 구장·날씨 특이사항
+
+🔴 규칙
+- **최근 7일 이내** 정보만. 기사 날짜를 확인하라.
+- 배당·머니라인·시장 확률은 **적지 마라**(가격은 근거가 아니다).
+- 확률이나 승부 예측을 하지 마라. **사실만** 적는다.
+- 못 찾으면 빈 배열로 답하라. 지어내지 마라.
+
+JSON만 출력(백틱 금지):
+{{"발견": [{{"사실": "1문장", "소스유형": "공식|기록|뉴스", "url": "..."}}]}}"""
+
+
+async def _pplx_findings(prompt: str, *, max_tokens: int = 900) -> dict | None:
+    """Perplexity 1콜. 얇은 래퍼 — 테스트가 여기만 바꿔치면 된다."""
+    from app.research.perplexity import ask_json
+
+    return await ask_json(prompt, max_tokens=max_tokens)
+
+
+async def _pplx_articles(jg: dict) -> list[dict]:
+    """[DS-3 2026-09-10 사용자 지시] PPLX 가 찾은 사실을 **재료**로 바꾼다.
+
+    🔴 PPLX 에 판정을 넘기지 않는다. 확률 조정은 기존 무료 요약기가 하고, 여기서는
+       재료(발견 사실)만 늘린다 — 유료 모델이 p_home 을 직접 움직이면 검증이 없다.
+
+    ⚠️ 실패·크레딧 소진·미설정은 전부 빈 리스트다(ask_json 이 조용한 None).
+       조사는 위성/RSS 재료만으로 계속된다 — 회귀 없음.
+    """
+    from app.config import get_settings
+
+    s = get_settings()
+    if not getattr(s, "deepsearch_pplx_enabled", False):
+        return []
+    sport = (jg.get("sport") or "").lower()
+    prompt = _PPLX_PROMPT.format(
+        league=jg.get("league") or sport.upper(),
+        home=jg.get("home"), away=jg.get("away"), today=_today_kst())
+    try:
+        data = await _pplx_findings(prompt)
+    except Exception as exc:
+        logger.warning("[deepsearch] PPLX 조사 실패 %s@%s: %s",
+                       jg.get("away"), jg.get("home"), exc)
+        return []
+    if not isinstance(data, dict):
+        return []
+    out: list[dict] = []
+    for f in (data.get("발견") or []):
+        if not isinstance(f, dict):
+            continue
+        fact = (f.get("사실") or "").strip()
+        if not fact:
+            continue
+        out.append({
+            "title": fact, "url": f.get("url") or "",
+            "source": f"Perplexity/{f.get('소스유형') or '조사'}",
+            "team": jg.get("home") or "", "age_h": None, "body": fact,
+        })
+    if out:
+        logger.info("[deepsearch] PPLX 재료 %d건 %s@%s",
+                    len(out), jg.get("away"), jg.get("home"))
+    return out
 
 
 async def _fetch_body(url: str | None) -> str:
@@ -619,6 +705,13 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
     #    프롬프트 규칙·조정 상한(±10%p)은 불변이다.
     articles = await _free_articles(jg, redis)
     source = SRC_RSS
+    # 🔴 [DS-3 2026-09-10 사용자 지시] **Perplexity 병행.** 위성/RSS 가 못 물어온
+    #    사실을 PPLX 가 직접 웹에서 찾아 재료에 얹는다. 실패하면 빈 리스트라
+    #    기존 재료만으로 계속된다(회귀 없음).
+    pplx = await _pplx_articles(jg)
+    if pplx:
+        articles = list(articles) + pplx
+        source = SRC_PPLX
     if not articles:
         # 🔴 [2026-09-06 사용자 지시] **유료 web_search 폴백을 삭제했다.**
         #    종전에는 RSS 0건이면 Anthropic `web_search` 도구를 직접 불렀다.
