@@ -82,3 +82,35 @@ def attach(jg: dict) -> bool:
         return False                      # 재판정에서 두 번 붙이지 않는다
     m["변수"] = vs + [line]
     return True
+
+
+#: 괴리 변수를 다른 변수와 가르는 표식. `divergence_variable` 이 근거로 적는다.
+SOURCE_TAG = "시장 기준선"
+
+
+def is_divergence(raw: str) -> bool:
+    """이 변수가 괴리 변수인가. 표식 하나로 가른다(사본 금지)."""
+    return SOURCE_TAG in str(raw or "")
+
+
+def realized_of(side: str | None, home_score, away_score) -> bool | None:
+    """[MKT-6] 괴리가 현실화됐는가 = **시장 방향이 이겼는가**. 모르면 None.
+
+    🔴 이 변수는 채점이 가장 쉽다 — 그런데 `variable_ledger.grade()` 는
+       `subject_kind` 가 `pitcher`/`team` 일 때만 실측을 조회해서, 괴리 변수는
+       `threshold_of → None` · `judge_realized(None, None) → unverifiable` 로
+       **전건이 검증불가로 쌓였다.** 만들어 놓고 재지 않는 것은 이 저장소가
+       가장 자주 데인 형태다.
+
+    ⚠️ **모르는 것을 False 로 적지 않는다.** 점수가 없거나 무승부면 None 이다.
+       NPB 는 무승부가 있고, 그때 "방향이 맞았다"고 할 수 없다.
+    """
+    if side not in ("home", "away") or home_score is None or away_score is None:
+        return None
+    try:
+        h, a = int(home_score), int(away_score)
+    except (TypeError, ValueError):
+        return None
+    if h == a:
+        return None
+    return (h > a) if side == "home" else (a > h)

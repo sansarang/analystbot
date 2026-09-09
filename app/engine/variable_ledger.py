@@ -132,7 +132,7 @@ async def record(pool, jg: dict, ledger_id: int | None = None) -> int:
 
 
 _PENDING = """
-    SELECT v.id, v.game_id, v.subject, v.subject_kind, v.raw
+    SELECT v.id, v.game_id, v.subject, v.subject_kind, v.raw, v.direction
       FROM variable_ledger v JOIN games g ON g.id = v.game_id
      WHERE v.graded_at IS NULL AND g.status = 'final'
        AND ($1::text IS NULL OR v.sport = $1)
@@ -173,7 +173,22 @@ async def grade(pool, sport: str | None = None) -> dict:
                     actual = {"runs": runs}
         except Exception as exc:
             logger.warning("[var-ledger] 실측 조회 실패 id=%s: %s", r["id"], exc)
-        verdict = judge_realized(threshold_of(r["raw"]), actual)
+        # ── [MKT-6 2026-09-09] 괴리 변수는 실측 조회가 다르다 ──────────
+        #   `subject_kind` 가 투수·팀이 아니라서 위 조회가 비었고, 그대로 두면
+        #   `judge_realized(None, None)` 이 **전건을 검증불가**로 만든다.
+        #   이 변수의 현실화는 "시장 방향이 이겼는가" 한 줄이면 끝난다.
+        from app.engine.market_variable import is_divergence, realized_of
+
+        if is_divergence(r["raw"]):
+            sc = await pool.fetchrow(
+                "SELECT home_score, away_score FROM games WHERE id = $1", r["game_id"])
+            got = realized_of(r["direction"], sc["home_score"], sc["away_score"]) \
+                if sc else None
+            verdict = UNVERIFIABLE if got is None else (TRUE if got else FALSE)
+            actual = None if sc is None else {"home_score": sc["home_score"],
+                                              "away_score": sc["away_score"]}
+        else:
+            verdict = judge_realized(threshold_of(r["raw"]), actual)
         try:
             await pool.execute(
                 """UPDATE variable_ledger

@@ -87,3 +87,82 @@ def test_판정_뒤에_붙는다():
     # 그리고 **변수 적재보다는 앞**이어야 원장에 실린다
     assert body.index("market_variable") < body.index("variable_ledger"), \
         "괴리 변수가 원장 적재보다 뒤다 — 등록해도 원장에 안 들어간다"
+
+
+# ── [MKT-6] 괴리 변수를 **채점**한다 ─────────────────────────────────────
+#
+# 🔴 MKT-5 로 변수를 만들었더니 **채점이 안 됐다.** `variable_ledger.grade` 는
+#    `subject_kind` 가 `pitcher`/`team` 일 때만 실측을 조회한다. 괴리 변수는
+#      subject_of  → (None, None)
+#      threshold_of → None
+#      judge_realized(None, None) → **unverifiable**
+#    로 떨어져 전건이 검증불가로 쌓인다. 만들어 놓고 재지 않는 것은
+#    이 저장소가 가장 자주 데인 형태다(BAT-10 · 자료13 · 감시 3층).
+#
+# ✅ **이 변수는 채점이 가장 쉽다.** "시장 방향이 이겼는가" 한 줄이면 끝난다.
+#    실측(운영 원장 141경기 중 발화 59건): 41/59 = **69.5%** 가 실현됐고,
+#    변수가 주장한 발생 확률 70% 와 일치했다.
+
+def test_시장_방향이_이기면_현실화다():
+    from app.engine.market_variable import realized_of
+
+    # 변수 방향이 away 인데 원정이 이겼다 → 현실화
+    assert realized_of("away", home_score=3, away_score=5) is True
+    assert realized_of("home", home_score=6, away_score=1) is True
+
+
+def test_시장_방향이_지면_현실화가_아니다():
+    from app.engine.market_variable import realized_of
+
+    assert realized_of("away", home_score=6, away_score=1) is False
+    assert realized_of("home", home_score=1, away_score=6) is False
+
+
+def test_점수가_없으면_판정하지_않는다():
+    """⚠️ 모르는 것을 False 로 적으면 채점이 거짓말이 된다."""
+    from app.engine.market_variable import realized_of
+
+    assert realized_of("home", home_score=None, away_score=2) is None
+    assert realized_of(None, home_score=1, away_score=2) is None
+
+
+def test_무승부는_판정하지_않는다():
+    """야구는 연장이 있지만 NPB 는 무승부가 있다 — 방향이 맞았다고 못 한다."""
+    from app.engine.market_variable import realized_of
+
+    assert realized_of("home", home_score=3, away_score=3) is None
+
+
+def test_채점기가_괴리_변수를_안다():
+    """🔴 `grade()` 가 이 변수를 검증불가로 버리지 않는다."""
+    from pathlib import Path
+
+    src = Path("app/engine/variable_ledger.py").read_text(encoding="utf-8")
+    assert "market_variable" in src or "시장 기준선" in src, \
+        "채점기가 괴리 변수를 모른다 — 전건이 unverifiable 로 쌓인다"
+
+
+async def test_채점기가_실제로_채점한다(db_pool):
+    """🔴 순수 함수가 아니라 `grade()` 전체가 도는지 본다 — 실제 DB로."""
+    from datetime import UTC, datetime
+
+    from app.engine.variable_ledger import grade
+
+    gid = await db_pool.fetchval(
+        "INSERT INTO games (sport, league, ext_id, starts_at, home, away, status,"
+        " home_score, away_score) VALUES ('mlb','MLB','mkt6',$1,'H팀','A팀','final',"
+        " 2, 7) RETURNING id", datetime(2026, 5, 1, tzinfo=UTC))
+    raw = ("우리와 시장이 14.0%p 갈렸다(우리 60% vs 시장 46%) — 발생 시 원정 방향 "
+           "약 14.0%p · 발생 확률 70% · 현재 p에 0.0%p 기반영 · 근거 시장 기준선")
+    await db_pool.execute(
+        "INSERT INTO variable_ledger (game_id, sport, raw, direction, claimed_n,"
+        " claimed_m, source_ref) VALUES ($1,'mlb',$2,'away','14.0','0.0','시장 기준선')",
+        gid, raw)
+
+    out = await grade(db_pool, "mlb")
+    assert out["graded"] == 1, out
+    assert out["unverifiable"] == 0, f"괴리 변수가 검증불가로 떨어졌다: {out}"
+    assert out["realized"] == 1, "원정이 7-2 로 이겼는데 현실화로 안 잡혔다"
+    row = await db_pool.fetchrow(
+        "SELECT realized, actual FROM variable_ledger WHERE game_id=$1", gid)
+    assert row["realized"] == "true", row["realized"]
