@@ -132,6 +132,9 @@ async def gather_mlb(jg: dict, *, client=None, now: datetime | None = None) -> l
     arts = transactions_to_articles(data.get("transactions") or [], teams, now=now)
     logger.info("[satellite] MLB %s@%s transactions %d건 → 기사 %d건",
                 away, home, len(data.get("transactions") or []), len(arts))
+    arts += await _tor_supplement(jg, [
+        (home, f"{home} injury roster move 2026"),
+        (away, f"{away} injury roster move 2026")])
     return arts
 
 
@@ -325,6 +328,11 @@ async def gather_npb(jg: dict, *, client=None, now: datetime | None = None) -> l
             body = await _fetch_article_body(u)
             out.append(_article(title=it["title"], url=u, source="Yahoo!ニュース",
                                 team=team, body=body or it["title"], age_h=None))
+    # 토르 보강 — 일본어 질의(출구노드로 DDG 도달). QUERY_ALIAS 재사용.
+    from app.collectors.news_rss import QUERY_ALIAS as _QA
+    out += await _tor_supplement(jg, [
+        (jg.get(side) or "", f"{_QA.get(jg.get(side) or '', jg.get(side) or '')} 故障 抹消 先発 2026")
+        for side in ("home", "away") if jg.get(side)])
     logger.info("[satellite] NPB %s@%s 야후뉴스 기사 %d건",
                 jg.get("away"), jg.get("home"), len(out))
     return out
@@ -336,6 +344,42 @@ _ADAPTERS = {
     "kbo": gather_kbo,
     "npb": gather_npb,
 }
+
+
+async def _tor_supplement(jg: dict, queries: list[tuple[str, str]]) -> list[dict]:
+    """[SAT-7] 토르 경유 DDG 보강. **satellite_tor_enabled 일 때만.**
+
+    ⚠️ 한국 소스는 부르지 않는다(호출부가 KBO 를 넘기지 않고, tor_search 도
+       한국어 질의를 거부한다 — 이중 방어). 실패는 빈 리스트.
+    """
+    from app.config import get_settings
+
+    if not get_settings().satellite_tor_enabled:
+        return []
+    from app.collectors import tor_search
+
+    out: list[dict] = []
+    seen: set[str] = set()
+    for team, q in queries:
+        try:
+            hits = await tor_search.search(q)
+        except Exception as exc:
+            logger.warning("[satellite] 토르 보강 실패 %s: %s", team, exc)
+            continue
+        for h in hits:
+            u = h.get("url")
+            if not u or u in seen:
+                continue
+            seen.add(u)
+            body = await _fetch_article_body(u)
+            out.append(_article(
+                title=h.get("title") or "", url=u, source="DDG(토르)",
+                team=team, body=body or h.get("snippet") or h.get("title") or "",
+                age_h=None))
+    if out:
+        logger.info("[satellite] 토르 보강 %s@%s +%d건",
+                    jg.get("away"), jg.get("home"), len(out))
+    return out
 
 
 async def gather(jg: dict, redis, *, client=None, now: datetime | None = None) -> int:

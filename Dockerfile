@@ -11,8 +11,10 @@ FROM python:3.12-slim
 
 # tzdata: KST/미국 동부 날짜 경계 계산에 필요 (슬레이트 날짜 규칙의 근간)
 # curl: 헬스체크·디버깅용
+# tor: [SAT-7] 위성 보강 검색용 — AWS IP 로 막힌 DDG/Bing 을 출구노드로 되살린다.
+#      **기본 꺼짐**(satellite_tor_enabled). 데몬은 스케줄러가 필요 시 띄운다.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata curl \
+    && apt-get install -y --no-install-recommends tzdata curl tor \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv

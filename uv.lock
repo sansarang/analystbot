@@ -177,6 +177,7 @@ dependencies = [
     { name = "redis" },
     { name = "scikit-learn" },
     { name = "soccerdata" },
+    { name = "socksio" },
     { name = "uvicorn" },
 ]
 
@@ -200,6 +201,7 @@ requires-dist = [
     { name = "redis", specifier = ">=5.0" },
     { name = "scikit-learn", specifier = ">=1.9.0" },
     { name = "soccerdata", specifier = ">=1.9.1" },
+    { name = "socksio", specifier = ">=1.0.0" },
     { name = "uvicorn", specifier = ">=0.30" },
 ]
 
@@ -3014,6 +3016,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d1/a2/a2f97263f6ad12494966fc50cea363be1654f0e03a6749fd3757071a0cba/soccerdata-1.9.1.tar.gz", hash = "sha256:5c903a9813b58bd6eab30e50fddc1400eb42426fa1accbbc1a0aad0141d679d6", size = 1809738, upload-time = "2026-07-24T12:21:53.639Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/86/a4/6c714aa3806eb5413dc35c20763ebcd274a871bd785df7bfb48d393f22cc/soccerdata-1.9.1-py3-none-any.whl", hash = "sha256:15c135e9995f27535cd26ba360edccdbf664051796675ba2cd5109e0cc63d2bc", size = 52631, upload-time = "2026-07-24T12:21:52.25Z" },
+]
+
+[[package]]
+name = "socksio"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/5c/48a7d9495be3d1c651198fd99dbb6ce190e2274d0f28b9051307bdec6b85/socksio-1.0.0.tar.gz", hash = "sha256:f88beb3da5b5c38b9890469de67d0cb0f9d494b78b106ca1845f96c10b91c4ac", size = 19055, upload-time = "2020-04-17T15:50:34.664Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/37/c3/6eeb6034408dac0fa653d126c9204ade96b819c936e136c5e8a6897eee9c/socksio-1.0.0-py3-none-any.whl", hash = "sha256:95dc1f15f9b34e8d7b16f06d74b8ccf48f609af32ab33c608d08761c5dcbb1f3", size = 12763, upload-time = "2020-04-17T15:50:31.878Z" },
 ]
 
 [[package]]

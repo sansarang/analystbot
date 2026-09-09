@@ -233,6 +233,24 @@ async def test_gather_npb_shape_and_team(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_tor_supplement_off_by_default(monkeypatch):
+    """satellite_tor_enabled 가 꺼져 있으면 토르를 아예 부르지 않는다."""
+    from app.collectors import satellite, tor_search
+
+    called = {"tor": False}
+
+    async def spy_search(q, **kw):
+        called["tor"] = True
+        return []
+
+    monkeypatch.setattr(tor_search, "search", spy_search)
+    out = await satellite._tor_supplement(
+        {"home": "A", "away": "B"}, [("A", "A injury")])
+    assert out == []
+    assert called["tor"] is False   # 플래그 꺼짐 → 호출조차 안 한다
+
+
+@pytest.mark.asyncio
 async def test_gather_dispatches_npb(monkeypatch):
     """gather 디스패처가 npb 를 NPB 어댑터로 보낸다."""
     from app.collectors import satellite
