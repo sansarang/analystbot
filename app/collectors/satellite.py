@@ -132,10 +132,70 @@ async def gather_mlb(jg: dict, *, client=None, now: datetime | None = None) -> l
     arts = transactions_to_articles(data.get("transactions") or [], teams, now=now)
     logger.info("[satellite] MLB %s@%s transactions %d건 → 기사 %d건",
                 away, home, len(data.get("transactions") or []), len(arts))
+    arts += await _mlb_velocity_articles(jg, client, now)
     arts += await _tor_supplement(jg, [
         (home, f"{home} injury roster move 2026"),
         (away, f"{away} injury roster move 2026")])
     return arts
+
+
+async def _mlb_velocity_articles(jg: dict, client, now: datetime) -> list[dict]:
+    """[SAT-8] 오늘 예고선발의 최근 구속 추세를 발견 기사로. 신호 없으면 빈 리스트.
+
+    🔴 고급정보 — 박스스코어에 없는 투수 건강/폼. 예고선발 id 는 statsapi 에서,
+       구속은 Savant 에서 온다(둘 다 무키·AWS 도달).
+    """
+    from app.collectors import statcast_velo as sv
+
+    date = jg.get("starts_at") or now
+    date_str = date.strftime("%Y-%m-%d") if hasattr(date, "strftime") else str(now.date())
+    season = int(date_str[:4])
+    start = (now - timedelta(days=40)).strftime("%Y-%m-%d")
+    try:
+        pitchers = await _mlb_probable_pitchers(jg, client, date_str)
+    except Exception as exc:
+        logger.warning("[satellite] MLB 예고선발 조회 실패 %s@%s: %s",
+                       jg.get("away"), jg.get("home"), exc)
+        return []
+    out = []
+    for team, (pid, name) in pitchers.items():
+        try:
+            t = await sv.pitcher_trend(pid, name, season=season,
+                                       start=start, end=date_str)
+        except Exception as exc:
+            logger.warning("[satellite] 구속 추세 실패 %s: %s", name, exc)
+            continue
+        if t:
+            out.append(_article(
+                title=t["body"],
+                url=f"https://baseballsavant.mlb.com/savant-player/{pid}",
+                source="Statcast", team=team, body=t["body"], age_h=None))
+    if out:
+        logger.info("[satellite] MLB %s@%s 구속 추세 발견 %d건",
+                    jg.get("away"), jg.get("home"), len(out))
+    return out
+
+
+async def _mlb_probable_pitchers(jg: dict, client, date_str: str) -> dict:
+    """경기의 홈/원정 예고선발 → {team: (id, name)}. statsapi schedule 재사용."""
+    if client is None:
+        from app.collectors.mlb import MLBClient
+        client = MLBClient()
+    sched = await client.fetch_schedule(date_str)
+    home, away = jg.get("home"), jg.get("away")
+    out: dict = {}
+    for d in sched.get("dates", []):
+        for g in d.get("games", []):
+            t = g.get("teams", {})
+            gh = (t.get("home", {}).get("team") or {}).get("name")
+            ga = (t.get("away", {}).get("team") or {}).get("name")
+            if gh != home or ga != away:
+                continue
+            for side, team in (("home", home), ("away", away)):
+                pp = t.get(side, {}).get("probablePitcher")
+                if pp and pp.get("id"):
+                    out[team] = (pp["id"], pp.get("fullName") or "선발")
+    return out
 
 
 # ── KBO 어댑터 (다음 뉴스검색 — AWS IP 로 도달, 토르 불필요) ──────────────
@@ -450,7 +510,8 @@ async def run_satellite(pool, redis, *, sports: list[str], now=None,
         if left is None or left <= cutoff_min:
             continue                        # 컷오프 안 — 위성 정지
         jg = {"sport": r["sport"], "game_id": r["id"],
-              "home": r["home"], "away": r["away"]}
+              "home": r["home"], "away": r["away"],
+              "starts_at": r["starts_at"]}
         try:
             n = await gather(jg, redis, client=client, now=now)
         except Exception as exc:
