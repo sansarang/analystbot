@@ -1116,8 +1116,16 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
     if t5_hit:
         trig.append(T5_LINEUP)
         srcs.append(t5_src)
+    # 🔴 [DS-6 2026-09-10 사용자 지시] **재판정 수정 카드에도 딥서치를 붙인다.**
+    #    실측(HOU@PHI): 타순만 바뀌자 T4/T5/T6 이 전부 미해당이라 조사가 통째로
+    #    생략됐다("발동=False 트리거=-"). 상한은 여유가 있었다(13/15) — 원인은
+    #    이 경로가 `triggers()` 를 부르지 않아 DS-3 의 T0_전수가 안 닿은 것이다.
+    #    조사는 판정과 별개다. 라인업이 확정되는 시점이 정보가 가장 많다.
+    #    ⚠️ 중복은 그대로 `(game_id, 라인업 서명)` 키가 막는다 — 5분 폴링이
+    #       같은 라인업으로 반복해도 조사는 1회다.
     if not trig:
-        return out
+        trig.append(T0_ALL)
+        srcs.append(SRC_FACT)
     out["triggered"] = True
     out["triggers"] = trig
     # 근거 출처를 남긴다 — 모델 자백으로 걸린 건과 사실로 걸린 건은

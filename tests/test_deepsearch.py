@@ -568,7 +568,17 @@ async def test_rejudge_records_trigger_when_flag_off(monkeypatch, caplog):
 
 @pytest.mark.asyncio
 async def test_rejudge_ignores_t1_t3_only():
-    """재판정 경로는 T4·T5 에만 반응한다 — T1·T3 는 1차 판정에서 이미 봤다."""
+    """🔴 [DS-6 2026-09-10 사용자 지시] **계약이 바뀌었다.**
+
+    종전 계약: "재판정 경로는 T4·T5 에만 반응한다 — T1·T3 는 1차 판정에서 이미 봤다."
+    그래서 타순만 바뀐 재판정은 조사가 통째로 생략됐다(실측 HOU@PHI:
+    "발동=False 트리거=-", 상한은 13/15 로 여유 있었다). 사용자 지시:
+        "재판정 수정카드도 딥서치 있게 나가야 한다."
+
+    이제 T4/T5/T6 이 없어도 T0_전수가 붙어 조사한다. 다만 **T1·T3 를 재판정
+    트리거로 승격시키지는 않는다** — 그 둘은 1차 판정에서 이미 봤고, 여기서
+    걸리는 것은 어디까지나 전수 조사(T0)다. 중복은 라인업 서명 키가 막는다.
+    """
     from app.engine import deepsearch as ds
 
     jg = _rejudge_jg(p_claude=0.58,
@@ -578,8 +588,10 @@ async def test_rejudge_ignores_t1_t3_only():
     assert ds.T1_BOUNDARY in trig and ds.T3_ASKED in trig
     out = await ds.run_for_rejudge(jg, _FakeRedis(), "2026-09-01",
                                    lineup_sig="x", slate_size=10, settings=S)
-    assert out["triggered"] is False and out["status"] is None
-    assert "deepsearch_trigger" not in jg
+    assert out["triggered"] is True              # 전수 조사로 발동한다
+    assert out["triggers"] == [ds.T0_ALL], "T1·T3 가 재판정 트리거로 승격되면 안 된다"
+    # 조사 호출 자체는 `deepsearch_investigate` 가 꺼져 있어 여기서 멈춘다
+    assert out["status"] == "disabled"
 
 
 # ------------------------------------------------- T4·T5 하드 증거 (2026-09-01)

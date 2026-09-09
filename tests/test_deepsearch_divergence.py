@@ -210,3 +210,54 @@ async def test_day_size_survives_missing_redis():
     from app.engine.deepsearch import remember_day_size
 
     assert await remember_day_size(None, "mlb", "2026-09-10", 7) == 7
+
+
+# ── [DS-6 2026-09-10 사용자 지시] 재판정 수정 카드에도 딥서치 ────────────
+
+@pytest.mark.asyncio
+async def test_rejudge_investigates_even_when_only_batting_order_changed(monkeypatch):
+    """🔴 사용자 지시: "재판정 수정카드도 딥서치 있게 나가야 한다."
+
+    실측 2026-09-10 (HOU@PHI): 타순만 바뀐 재판정에서
+        [rejudge] 판정 생략 — 선발 불변 — 타순만 변경
+        [deepsearch] 발동=False 트리거=-
+    상한은 여유가 있었다(카운터 13 · 상한 15). 원인은 `run_for_rejudge` 가
+    **T4·T5·T6 만** 보기 때문이다 — DS-3 의 T0_전수는 `triggers()` 안에 있는데
+    재판정 경로는 그 함수를 부르지 않는다.
+
+    조사는 판정과 별개다. 라인업이 확정되는 시점이 정보가 가장 많은 때이므로,
+    타순만 바뀌어도 조사는 돌아야 한다.
+    """
+    from app.engine import deepsearch as ds
+
+    calls = {"n": 0}
+
+    async def fake_investigate(jg, trig, **kw):
+        calls["n"] += 1
+        return {"발견": [], "조정": {"delta_pp": 0}, "요약": "새 사실 없음"}, 0, "rss"
+
+    monkeypatch.setattr(ds, "investigate", fake_investigate)
+
+    class _R:
+        def __init__(self): self.store = {}
+        async def get(self, k): return self.store.get(k)
+        async def set(self, k, v, ex=None): self.store[k] = v; return True
+        async def incr(self, k):
+            self.store[k] = int(self.store.get(k, 0)) + 1
+            return self.store[k]
+        async def expire(self, k, s): return True
+
+    # 선발 불변·라인업 이상 없음 = T4/T5/T6 전부 미해당
+    jg = {"sport": "mlb", "game_id": 1, "home": "H", "away": "A",
+          "p_claude": 0.55, "lineup_notes": [],
+          "matchup": {"p_home": 0.55, "우세": "home", "추가확인": [],
+                      "직전대비": {"변경입력": []}}}
+    from app.config import Settings
+
+    _s = Settings(_env_file=None, DEEPSEARCH_ENABLED="true")
+    out = await ds.run_for_rejudge(jg, _R(), "2026-09-10",
+                                   lineup_sig="sig-1", slate_size=15,
+                                   settings=_s)
+    assert out["triggered"] is True, "타순만 바뀌었다고 조사를 건너뛰었다"
+    assert calls["n"] == 1, "investigate 가 불리지 않았다"
+    assert ds.T0_ALL in out["triggers"]
