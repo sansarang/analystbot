@@ -36,6 +36,7 @@ _PROMPT = """당신은 스포츠 분석 카드를 쓰는 필자다. 아래 내�
 [승부의 갈림길] {branch}
 [리스크 변수]
 {variables}
+[날씨] {wx}
 [추가 조사 결과] {ds}
 [조사가 찾아낸 사실]
 {findings}
@@ -46,6 +47,14 @@ _PROMPT = """당신은 스포츠 분석 카드를 쓰는 필자다. 아래 내�
         숫자(이닝·득점·레이팅)는 문장 안에 자연스럽게 녹인다.
 2문단 — **무엇이 이 판단을 흔드는가.** 갈림길과 리스크를 말하고, 조사·현지
         상황이 그것을 지지하는지 반박하는지 함께 적는다.
+
+🔴 **날씨는 우세가 아니라 총득점 방향으로 읽어라.**
+   더운 날·외야 쪽 바람·낮은 습도는 타구가 더 뻗어 **점수가 늘어나는** 쪽이고,
+   찬 날·홈 쪽 바람은 줄어드는 쪽이다. 강수 확률이 높으면 지연·중단 위험이다.
+   그것이 **이 경기의 승부에 어떻게 걸리는지** 써라 — 타선이 강한 쪽에 유리한가,
+   불펜을 오래 써야 하는 쪽에 불리한가. 수치만 복창하지 마라.
+   ⚠️ 돔구장이면 날씨 이야기를 **아예 쓰지 마라.** 영향이 없다.
+   ⚠️ 날씨가 "미수집"이면 없는 날씨를 지어내지 마라.
 
 🔴 **조사 사실은 옮겨 적지 말고 해석하라.**
    [조사가 찾아낸 사실]에 있는 항목은 우리가 경기 직전에 직접 확인한 것이다.
@@ -115,6 +124,19 @@ def _findings_block(ds: dict) -> str:
     return "\n".join(lines) or "  - (경기 직전 조사에서 새로 확인된 사실 없음)"
 
 
+def _weather_text(jg: dict) -> str:
+    """[CARD-5] 서술용 날씨 한 줄. **카드와 같은 문장을 쓴다**(사본 금지).
+
+    🔴 WX-2 로 카드 머리에 수치는 올랐지만 서술은 날씨를 몰랐다. 필라델피아
+       카드가 "외야 방향 바람"을 말한 것은 딥서치가 그 사실을 우연히 찾았을
+       때뿐이었다 — 조사가 날씨를 안 물으면 29도·강수 0% 를 눈앞에 두고도
+       한 줄도 못 쓴다.
+    """
+    from app.engine.form_card import weather_line
+
+    return weather_line(jg).replace("날씨 ", "", 1).strip() or "미수집"
+
+
 def _prompt(jg: dict) -> str:
     from app.engine.form_card import favored_side_and_p
 
@@ -138,6 +160,7 @@ def _prompt(jg: dict) -> str:
         branch=((m.get("전개") or {}).get("분기점") or "(없음)"),
         variables="\n".join(f"  - {x}" for x in (m.get("변수") or [])[:2]) or "  - (없음)",
         ds=(ds.get("요약") or "(조사 없음)"),
+        wx=_weather_text(jg),
         findings=_findings_block(ds),
         sit=(sit.get("summary") or sit.get("verdict") or "(심의 없음)"))
 

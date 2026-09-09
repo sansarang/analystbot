@@ -129,3 +129,45 @@ async def test_narrative_gets_findings_not_just_summary(monkeypatch):
     assert "바우어스 왼손 통증" in p, "발견 사실이 서술 재료에 없다"
     assert "미시오로스키" in p
     assert "의미" in p or "해석" in p, "조사를 해석하라는 지시가 없다"
+
+
+# ── [CARD-5 2026-09-10 사용자 지시] "날씨영향도.." ─────────────────────────
+#   🔴 WX-2 로 카드 머리에 날씨 **수치**는 올랐지만, 서술은 날씨를 모른다.
+#      실측: 서술 프롬프트에 날씨 칸이 아예 없다. 필라델피아 카드가 "외야 방향
+#      바람"을 말한 것은 딥서치가 그 사실을 **우연히 찾았을 때**뿐이고, 조사가
+#      날씨를 안 물으면 29도·강수 0% 를 눈앞에 두고도 한 줄도 못 쓴다.
+
+@pytest.mark.asyncio
+async def test_narrative_gets_weather(monkeypatch):
+    from app.engine import narrative_card as nc
+
+    seen = {}
+
+    async def fake(prompt, **kw):
+        seen["p"] = prompt
+        return {"서술": "본문"}
+
+    monkeypatch.setattr(nc, "_ask", fake)
+    jg = _jg()
+    jg["weather_card"] = {"temp_c": 29.0, "wind_ms": 4.6,
+                          "precip_pct": 0, "wind_from_deg": 200}
+    await nc.build(jg)
+    p = seen["p"]
+    assert "29" in p and "날씨" in p, "서술 재료에 날씨가 없다"
+    assert "득점" in p, "날씨를 어떻게 읽어야 하는지 지시가 없다"
+
+
+@pytest.mark.asyncio
+async def test_narrative_without_weather_says_so(monkeypatch):
+    """⚠️ 반대 위험 — 날씨가 없는데 있는 척하면 지어낸 것이다."""
+    from app.engine import narrative_card as nc
+
+    seen = {}
+
+    async def fake(prompt, **kw):
+        seen["p"] = prompt
+        return {"서술": "본문"}
+
+    monkeypatch.setattr(nc, "_ask", fake)
+    await nc.build(_jg())
+    assert "미수집" in seen["p"] or "없음" in seen["p"]
