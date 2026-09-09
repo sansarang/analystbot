@@ -95,6 +95,16 @@ def synthesize(jg: dict) -> str | None:
 #   ⚠️ 숫자는 **여기서 만들지 않는다.** 뼈대가 이미 다 적었고, 이 줄은 그것들이
 #      서로 지지하는지 충돌하는지만 말한다.
 
+#: [DS-13 2026-09-10 사용자 지시] **종합은 최종 판정과 같은 사슬로.**
+#  "최종 결론 글도 gemini로 해라."
+#  실측 사슬: deepsearch = nvidia→groq→openrouter (**gemini 없음**)
+#            matchup    = **gemini/gemini-3.7-flash** → groq
+#  종합은 카드의 마지막 판단이므로 조사 요약이 아니라 판정과 같은 급을 쓴다.
+#  ⚠️ matchup 은 유료(anthropic)가 허용되는 유일한 역할이다 — `_verdict_line`
+#     이 anthropic 을 걸러 유료로 새지 않는다(계약 테스트가 잠근다).
+VERDICT_ROLE = "matchup"
+
+
 _VERDICT_PROMPT = """아래는 한 야구 경기의 분석 조각들이다. 조각을 **서로 견줘**
 한 문장으로 실전 판단을 써라.
 
@@ -127,14 +137,14 @@ async def _verdict_line(prompt: str, *, max_tokens: int = 300) -> str | None:
     from app.engine.team_form import _complete_free
     from app.llm.judge_route import chain
 
-    routes = [r for r in chain("deepsearch") if r[0] != "anthropic"]
+    routes = [r for r in chain(VERDICT_ROLE) if r[0] != "anthropic"]
     if not routes:
         return None
     try:
         import asyncio
 
         body = await asyncio.wait_for(
-            _complete_free(routes, prompt, max_tokens, "deepsearch"), timeout=45)
+            _complete_free(routes, prompt, max_tokens, VERDICT_ROLE), timeout=45)
     except Exception:
         return None
     # 🔴 [DS-12] `_complete_free` 는 **JSON 파싱까지가 성공 조건**이다(의도된

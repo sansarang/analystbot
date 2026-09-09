@@ -155,3 +155,36 @@ async def test_verdict_line_parses_json(monkeypatch):
     monkeypatch.setattr(judge_route, "chain", lambda role: [("groq", "m")])
     line = await syn._verdict_line("prompt")
     assert line == "근거와 조사가 서로를 지지해 확률을 믿을 만하다"
+
+
+def test_verdict_uses_the_judge_chain_gemini_first():
+    """🔴 사용자 지시 2026-09-10: "최종 결론 글도 gemini로 해라."
+
+    종합은 카드의 **마지막 판단**이다. 조사 요약(deepsearch 역할, nvidia 우선)이
+    아니라 최종 판정과 같은 사슬(matchup, gemini 우선)을 써야 격이 맞는다.
+    실측: deepsearch 사슬은 nvidia → groq → openrouter 이고 gemini 가 없다.
+    """
+    from app.engine.synthesis import VERDICT_ROLE
+
+    assert VERDICT_ROLE == "matchup"
+
+
+@pytest.mark.asyncio
+async def test_verdict_never_falls_back_to_paid(monkeypatch):
+    """⚠️ matchup 은 **유료(anthropic)가 허용되는 유일한 역할**이다.
+    종합이 그 문을 타면 카드 한 줄에 유료 호출이 붙는다 — 무료만 남긴다."""
+    from app.engine import synthesis as syn
+    from app.llm import judge_route
+
+    seen = {}
+
+    async def spy(routes, prompt, max_tokens, role):
+        seen["routes"] = routes
+        return '{"판단": "ok"}'
+
+    monkeypatch.setattr(judge_route, "chain",
+                        lambda role: [("anthropic", "claude"), ("gemini", "g")])
+    from app.engine import team_form
+    monkeypatch.setattr(team_form, "_complete_free", spy)
+    await syn._verdict_line("p")
+    assert all(p != "anthropic" for p, _ in seen["routes"]), seen["routes"]
