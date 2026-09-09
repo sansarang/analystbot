@@ -205,3 +205,43 @@ def test_no_deepsearch_key_means_no_line():
           "p_claude": 0.50, "lineup_status": "confirmed",
           "matchup": {"p_home": 0.50, "우세": "home", "확신도": "중", "근거": []}}
     assert "추가 조사" not in render_form_card(jg, "mlb")
+
+
+# ── [DS-9 2026-09-10] 조사 답을 갈림길 아래로 (2단계) ────────────────────
+
+def test_deepsearch_findings_sit_under_the_branch():
+    """🔴 사용자 지적: "근거들이 따로 논다. 수치는 수치대로."
+
+    갈림길이 질문하고 조사가 답을 찾았는데, 카드에서는 갈림길과 조사 결과가
+    멀리 떨어져 있어 독자가 둘을 잇지 못했다. 답은 질문 **바로 아래**에 둔다.
+    """
+    from app.engine.form_card import render_form_card
+
+    jg = {
+        "sport": "mlb", "league": "MLB", "home": "H", "away": "A",
+        "p_claude": 0.47, "lineup_status": "confirmed",
+        "matchup": {"p_home": 0.47, "우세": "away", "확신도": "하",
+                    "근거": ["근거A", "근거B"],
+                    "전개": {"분기점": "로페즈가 몇 이닝 버티나"}},
+        "deepsearch": {"발견": [{"사실": "로페즈 IL 복귀 활성화"}],
+                       "요약": "복귀 확인·투구수 제한 미확인",
+                       "이동_pp": 1.0},
+    }
+    body = render_form_card(jg, "mlb")
+    lines = body.splitlines()
+    bi = next(i for i, ln in enumerate(lines) if "갈림길" in ln)
+    di = next(i for i, ln in enumerate(lines) if "추가 조사" in ln)
+    ri = next(i for i, ln in enumerate(lines) if ln.startswith("근거1"))
+    assert bi < di < ri, (
+        f"조사 답이 갈림길({bi})과 근거({ri}) 사이에 있어야 한다 — 지금 {di}")
+
+
+def test_deepsearch_line_still_shown_without_branch():
+    """갈림길이 없어도 조사 결과는 나온다(위치만 뒤로)."""
+    from app.engine.form_card import render_form_card
+
+    jg = {"sport": "mlb", "league": "MLB", "home": "H", "away": "A",
+          "p_claude": 0.5, "lineup_status": "confirmed",
+          "matchup": {"p_home": 0.5, "우세": "home", "확신도": "중", "근거": []},
+          "deepsearch": {"발견": [], "요약": "새 사실 없음", "이동_pp": 0.0}}
+    assert "추가 조사" in render_form_card(jg, "mlb")
