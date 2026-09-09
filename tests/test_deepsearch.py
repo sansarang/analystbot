@@ -313,15 +313,32 @@ def test_prompt_pins_today_so_last_season_news_is_not_read_as_today():
     assert _today_kst() == datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
 
 
-def test_prompt_does_not_ask_about_odds():
-    """🔴 프롬프트 체크리스트 ④가 "시장이 아는데 우리가 모르는 정보
-    (배당 급변·역방향 사유)"를 물었다 — 배당을 보라고 코드가 시킨 것이다.
+def test_prompt_bans_odds_as_a_reason_not_as_a_subject():
+    """🔴 [DS-2 2026-09-09 사용자 지시] **조사 금지는 풀었다.** 선이 옮겨졌다.
+
+    종전 문구는 "배당·머니라인·스포츠북·시장 내재확률을 **조사하지 마라**"였고,
+    그래서 `T2_시장괴리` 가 발동해도 조사가 아무것도 묻지 못했다.
+    금지의 근거였던 실사고(2026-09-01 MIL@CHC)를 다시 읽으면 문제는 조사가
+    아니라 **숫자를 조정 사유로 쓴 것**이었다 — 내재확률 51~53%를 근거로
+    p_home 0.59→0.56.
+
+    그래서 지금 잠그는 것은 셋이다:
+      ① 옛 체크리스트 문구("배당 급변"·"시장이 아는데")는 여전히 없다
+      ② **가격을 조정 사유로 쓰지 말라**는 지시가 프롬프트에 있다
+      ③ 그리고 그것은 **런타임 가드**(`strip_odds`)가 실제로 강제한다 —
+         프롬프트는 부탁이고, 강제는 코드가 한다.
     """
-    from app.engine.deepsearch import PROMPT
+    from app.engine.deepsearch import PROMPT, strip_odds
 
     assert "배당 급변" not in PROMPT
     assert "시장이 아는데" not in PROMPT
-    assert "배당·머니라인·스포츠북·시장 내재확률을 조사하지 마라" in PROMPT
+    assert "사유가 될 수 없다" in PROMPT
+    assert "가격 자체" in PROMPT
+    # ③ 말로만이 아니라 코드가 막는다
+    out, dropped = strip_odds({"발견": [], "조정": {"p_home": 0.56,
+                                                   "사유": "시장 내재확률 53%"}})
+    assert "p_home" not in out["조정"], "배당 사유 조정이 폐기되지 않았다"
+    assert dropped
 
 
 def test_odds_reason_voids_the_adjustment_not_just_the_sentence():

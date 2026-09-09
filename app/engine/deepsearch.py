@@ -318,7 +318,7 @@ PROMPT = """당신은 스포츠 경기 조사원이다. 아래 판정이 확신�
 
 [경기] {league} · {away} (원정) @ {home} (홈) · {kickoff} KST
 [현재 판정] {verdict}
-[발동 트리거] {triggers}
+[발동 트리거] {triggers}{divergence}
 [판정이 요청한 추가확인] {asked}
 
 [오늘] {today} (KST). 이 경기는 **오늘 또는 내일** 열린다.
@@ -355,14 +355,16 @@ PROMPT = """당신은 스포츠 경기 조사원이다. 아래 판정이 확신�
    8/26 2군 복귀전 4이닝 무실점, 감독 코멘트까지 나온다. 조사가 그걸
    안 찾은 것은 이 항목이 체크리스트에 없었기 때문이다.
 
-🔴 **배당·머니라인·스포츠북·시장 내재확률을 조사하지 마라. 근거로도 쓰지 마라.**
-   검색 중에 눈에 들어와도 [발견]에 적지 않고 [조정]의 사유로 삼지 않는다.
-   실측 2026-09-01: 이 항목이 "시장이 아는 정보"를 묻고 있어, 조사가
-   스포츠북 머니라인 내재확률 51~53%를 근거로 p_home 을 0.59→0.56 으로
-   내렸다. 추천 1건이 그대로 보드만으로 떨어졌다 — **판정 숫자가 배당에
-   좌우된 것이고, 이 저장소가 금지선으로 둔 바로 그 일이다.**
-   시장과의 괴리는 판정이 **끝난 뒤** 4단계(market_edge)가 따로 잰다.
-   여기서 미리 베끼면 그 괴리 측정 자체가 무의미해진다.
+🔴 **시장 숫자는 [조정]의 사유가 될 수 없다.**
+   시장이 왜 그렇게 봤는지 **조사하는 것은 허용된다**(2026-09-09 개정).
+   금지되는 것은 그 **숫자를 조정 사유로 삼는 것** 하나다.
+   실측 2026-09-01: 조사가 스포츠북 머니라인 내재확률 51~53%를 **근거로**
+   p_home 을 0.59→0.56 으로 내렸다. 추천 1건이 보드만으로 떨어졌다 —
+   문제는 조사가 아니라 **숫자를 베낀 것**이었다.
+   - 쓸 수 있는 근거: 조사로 **발견한 사실**(부상·결장·구속 저하·날씨·로스터·
+     라인이 움직인 시점의 발표).
+   - 쓸 수 없는 근거: "시장이 55%다", "머니라인이 −140이다" 같은 **가격 자체**.
+   - 사실을 못 찾으면 **조정 0**. 못 찾았다는 것도 결과다.
 
 [소스 규칙]
 ① 조회 우선순위: 공식 소스(구단 공홈·리그 공시·경기 기록 페이지) → 기록·통계
@@ -383,6 +385,63 @@ PROMPT = """당신은 스포츠 경기 조사원이다. 아래 판정이 확신�
   "조정": {{"p_home": 0.00, "사유": "1문장", "단일기사여부": true|false}},
   "요약": "카드에 실을 1문장"
 }}"""
+
+
+#: [DS-2 2026-09-09] T2 가 걸렸을 때만 붙는 괴리 문단.
+#  ⚠️ 안 걸린 경기에 시장 이야기를 넣으면 **그 자체가 앵커**다 —
+#     실측(MKT-4): 시장 숫자를 판정 자료로 주자 |p−시장| 이 67.9% 수축했다.
+_DIVERGENCE = """
+
+[🔴 시장 괴리 — 이번 조사의 최우선 항목]
+우리 판정은 {ours:.0%}({ours_side} 우세)인데 **시장은 {mkt:.0%}({mkt_side} 우세)** 다.
+차이 **{gap:.1f}%p**. 이만큼 갈릴 때 실측상 우리가 50.0% · 시장이 68.3% 맞았다
+(운영 원장 60경기). 그리고 그 차이는 **우리 수치로 설명되지 않았다** —
+시장이 고른 팀은 최근5 승률 우위가 39%로 오히려 열세였다.
+**즉 원인은 수치가 아니라 정보다. 그 정보를 찾는 것이 이 조사의 목적이다.**
+
+- 시장이 {mkt_side} 쪽을 높게 보는 **사실**을 찾아라: 결장·부상 발표, 선발 교체,
+  구속 저하, 콜업·트레이드, 날씨·구장, 팀 내부 사정.
+- 찾으면 [발견]에 **사실로** 적는다. 시장 가격은 적지 마라.
+- **못 찾으면 [조정]은 0 이고 [요약]에 "괴리 원인 미확인"이라고 적는다.**
+  못 찾았다는 것도 결과다 — 지어내면 그게 더 나쁘다."""
+
+
+def build_prompt(jg: dict, trig: list[str]) -> str:
+    """조사 프롬프트를 만든다. **모델을 부르지 않는다.**
+
+    🔴 `investigate` 안에 인라인이던 것을 그대로 꺼냈다. 꺼낸 이유는
+       `render_matchup_prompt` 와 같다 — 프롬프트만 검사하는 계약을 걸려면
+       모델 호출 없이 만들 수 있어야 한다. 재료를 복제하면 곧 드리프트다.
+    """
+    import json as _json
+
+    from app.config import get_settings
+
+    s = get_settings()
+    sport = jg.get("sport") or ""
+    m = jg.get("matchup") or {}
+    div = ""
+    if T2_MARKET in (trig or []):
+        from app.engine.market_variable import divergence_variable
+
+        if divergence_variable(jg) is not None:
+            ours, mkt = float(jg["p_claude"]), float(jg["p_market_send"])
+            div = _DIVERGENCE.format(
+                ours=ours, mkt=mkt, gap=abs(ours - mkt) * 100,
+                ours_side="홈" if ours > 0.5 else "원정",
+                mkt_side="홈" if mkt > 0.5 else "원정")
+    return PROMPT.format(
+        league=jg.get("league") or sport.upper(),
+        home=jg.get("home"), away=jg.get("away"),
+        kickoff=jg.get("starts_at_kst") or "",
+        verdict=_json.dumps({k: m.get(k) for k in ("p_home", "우세", "근거", "확신도")},
+                            ensure_ascii=False, default=str),
+        triggers=", ".join(trig or []),
+        divergence=div,
+        asked=_json.dumps(m.get("추가확인") or [], ensure_ascii=False),
+        lang=SEARCH_LANG.get(sport, "영어"),
+        budget=int(s.deepsearch_max_searches),
+        today=_today_kst())
 
 
 def _today_kst() -> str:
@@ -526,17 +585,7 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
     #    종목이 통째로 멈춘 적이 있다(2026-09-04 16:37 NPB 판정 0건,
     #    2026-09-06 아침 MLB 0/85).
     m = jg.get("matchup") or {}
-    prompt = PROMPT.format(
-        league=jg.get("league") or sport.upper(),
-        home=jg.get("home"), away=jg.get("away"),
-        kickoff=jg.get("starts_at_kst") or "",
-        verdict=json.dumps({k: m.get(k) for k in ("p_home", "우세", "근거", "확신도")},
-                           ensure_ascii=False, default=str),
-        triggers=", ".join(trig),
-        asked=json.dumps(m.get("추가확인") or [], ensure_ascii=False),
-        lang=SEARCH_LANG.get(sport, "영어"),
-        budget=int(s.deepsearch_max_searches),
-        today=_today_kst())
+    prompt = build_prompt(jg, trig)
     # 🔴 [무과금 전환 2b] **검색을 우리가 대신한다.** RSS(무료)로 기사를
     #    먼저 모아 본문까지 붙여 프롬프트의 "검색 결과" 자리에 주입하면,
     #    LLM 은 읽기만 하면 되고 수수료가 0원이 된다.
