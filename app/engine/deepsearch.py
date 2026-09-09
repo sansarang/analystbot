@@ -6,7 +6,7 @@
 **야구·축구 공통이다.** 종목 분기 없이 하나의 모듈이 양쪽 판정 경로에 붙는다.
 언어만 종목별로 다르다 — 원문 소스가 그 언어로 쓰여 있기 때문이다.
 
-⚠️ 검색 결과는 **크롤 정형 데이터보다 낮은 신뢰 등급**이다. 조정은 ±4%p로
+⚠️ 검색 결과는 **크롤 정형 데이터보다 낮은 신뢰 등급**이다. 조정은 ±10%p로
    묶고 우세 방향은 단독으로 뒤집지 못한다. 이 두 가지는 프롬프트 지시가
    아니라 **코드가 강제**한다 — 모델이 규칙을 어겨도 값이 새어 나가지 않게.
 """
@@ -18,7 +18,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 #: 확률 조정 상한. 클리핑과 같은 방식으로 코드가 강제한다.
-ADJUST_CAP_PP = 4.0
+ADJUST_CAP_PP = 10.0   # [MKT-8 2026-09-09 사용자 지시] ±4 → ±10%p. 괴리 정보가
+                       #   판정을 실제로 움직이게 한다. 상한은 코드가 강제한다.
 
 #: 게이트 임계 ±이 값 안이면 경계 경기(T1).
 BOUNDARY_PP = 3.0
@@ -289,7 +290,7 @@ def daily_cap(slate_size: int, settings) -> int:
 
 def clamp_adjustment(p_before: float, p_after: float | None,
                      favored: str | None) -> tuple[float, str | None]:
-    """조정 ±4%p 상한 + 우세 방향 단독 뒤집기 금지. **코드가 강제한다.**
+    """조정 ±10%p 상한 + 우세 방향 단독 뒤집기 금지. **코드가 강제한다.**
 
     반환: (적용할 p, 사람이 읽는 사유 or None)
 
@@ -376,13 +377,16 @@ PROMPT = """당신은 스포츠 경기 조사원이다. 아래 판정이 확신�
 
 [결과의 지위]
 - 검색 결과는 **크롤 정형 데이터보다 낮은 신뢰 등급**이다.
-- 확률 조정은 **±4%p 이내**. 우세 방향을 검색 결과 단독으로 뒤집지 않는다.
+- 확률 조정은 **±10%p 이내**. 우세 방향을 검색 결과 단독으로 뒤집지 않는다.
 - 조사해도 새 사실이 없으면 **조정 0**으로 두고 그렇게 적는다. 억지로 움직이지 마라.
+
+delta_pp = **홈 승률을 몇 %p 올릴지**(원정 쪽 근거면 음수, 없으면 0). 절대 확률이
+아니라 **증감**이다. 코드가 ±10%p 로 절사하고 우세 방향은 뒤집지 않는다.
 
 [출력] 아래 JSON만 출력한다. 다른 텍스트, 마크다운 백틱 금지.
 {{
   "발견": [{{"사실": "1문장", "소스유형": "공식|기록|뉴스", "url": "..."}}],
-  "조정": {{"p_home": 0.00, "사유": "1문장", "단일기사여부": true|false}},
+  "조정": {{"delta_pp": 0, "사유": "1문장", "단일기사여부": true|false}},
   "요약": "카드에 실을 1문장"
 }}"""
 
@@ -471,7 +475,7 @@ async def _free_articles(jg: dict, redis) -> list[dict]:
     🔴 [SAT-3] 위성(`app/collectors/satellite.py`)이 미리 긁어 둔 재료는 DB에 없는
        경기 정보(부상·말소·트레이드…)이고 **본문이 이미 채워져 있다** — RSS 의
        본문 0%·팀라벨 76% 오류 문제가 없다. 재료 모양은 news_rss 와 동일하므로
-       하류(`_inject_articles`·요약·±4%p)는 출처를 구분하지 못한다.
+       하류(`_inject_articles`·요약·±10%p)는 출처를 구분하지 못한다.
 
     ⚠️ 위성 캐시가 비면(어댑터 없는 종목·위성 꺼짐·수집 실패) **정확히 종전
        RSS 경로로 폴백**한다 — 회귀 없음.
@@ -533,7 +537,7 @@ def _inject_articles(prompt: str, articles: list[dict]) -> str:
     """프롬프트의 "검색 결과" 자리에 무료 수집분을 넣는다.
 
     ⚠️ **프롬프트 규칙은 건드리지 않는다.** 자료를 덧붙일 뿐이다 — 조정 상한
-       ±4%p, 우세 뒤집기 금지, 신뢰 등급은 그대로다.
+       ±10%p, 우세 뒤집기 금지, 신뢰 등급은 그대로다.
     """
     lines = ["", "[수집된 기사] — 아래가 검색 결과다. 추가 검색 도구는 없다.",
              "각 항목: 제목 · 매체 · 몇 시간 전 · 본문 앞부분(있으면).",
@@ -612,7 +616,7 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
     # 🔴 [무과금 전환 2b] **검색을 우리가 대신한다.** RSS(무료)로 기사를
     #    먼저 모아 본문까지 붙여 프롬프트의 "검색 결과" 자리에 주입하면,
     #    LLM 은 읽기만 하면 되고 수수료가 0원이 된다.
-    #    프롬프트 규칙·조정 상한(±4%p)은 불변이다.
+    #    프롬프트 규칙·조정 상한(±10%p)은 불변이다.
     articles = await _free_articles(jg, redis)
     source = SRC_RSS
     if not articles:
@@ -718,10 +722,23 @@ def apply_findings(jg: dict, data: dict) -> dict:
         logger.warning("[deepsearch] 배당 오염 차단 %s@%s: %s",
                        jg.get("away"), jg.get("home"), " · ".join(dropped))
     adj = (data or {}).get("조정") or {}
-    p_after = adj.get("p_home")
-    if p_before is None or p_after is None:
+    if p_before is None:
         return {"moved": 0.0, "note": None}
     p_before = float(p_before)
+    # 🔴 [MKT-8] 요약기는 **부호 있는 %p 증감(delta_pp)** 을 낸다 — 절대 p_home 은
+    #    절대/증분 모호(세이부 4783: 0.03 이 극단 원정으로 오해돼 반대로 클램프)라
+    #    폐기했다. delta_pp 가 없으면 옛 절대 p_home 으로 폴백(하위호환).
+    dpp = adj.get("delta_pp")
+    if dpp is not None:
+        try:
+            p_after = p_before + float(dpp) / 100.0
+        except (TypeError, ValueError):
+            p_after = None
+    else:
+        pa = adj.get("p_home")
+        p_after = float(pa) if pa is not None else None
+    if p_after is None:
+        return {"moved": 0.0, "note": None}
     if adj.get("단일기사여부"):
         p_after = p_before + (float(p_after) - p_before) / 2
     p, note = clamp_adjustment(p_before, p_after, m.get("우세"))

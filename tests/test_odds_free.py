@@ -199,7 +199,7 @@ def test_articles_are_injected_without_touching_the_rules():
     assert got.startswith(PROMPT), "기존 프롬프트를 그대로 두고 뒤에 붙인다"
     assert "수집된 기사" in got and "본문 앞부분" in got
     # 완화하면 안 되는 것들이 살아 있는가
-    assert "±4%p" in got and "우세 방향을" in got
+    assert "±10%p" in got and "우세 방향을" in got
 
 
 def test_paid_fallback_is_locked_by_a_daily_cap():

@@ -389,9 +389,9 @@ class Settings(BaseSettings):
     satellite_cutoff_min: int = 10
     #: 대상 경기 탐색 창(시간). status='scheduled' 이고 이 안에 시작하는 경기.
     satellite_lookahead_h: int = 24
-    #: [SAT-7] 토르 보강 검색 켜기. **기본 꺼짐** — 세 리그 다 직접 경로로 이미
-    #   재료를 얻으므로 토르는 순수 추가 발굴이다. 한국 소스에는 쓰지 않는다.
-    satellite_tor_enabled: bool = Field(default=False, validation_alias=AliasChoices(
+    #: [SAT-7] 토르 보강 검색 켜기. **기본 켜짐**(2026-09-09 사용자 지시) —
+    #   DDG 로 추가 발굴한다. 한국 소스에는 쓰지 않는다(tor_search 가 한국어 거부).
+    satellite_tor_enabled: bool = Field(default=True, validation_alias=AliasChoices(
         "SATELLITE_TOR_ENABLED", "satellite_tor_enabled"))
 
     # ── 프로바이더 의도적 미사용 ────────────────────────────────────────

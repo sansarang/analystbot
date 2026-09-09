@@ -306,6 +306,12 @@ def _no_outbound_collectors(monkeypatch):
         return None
     monkeypatch.setattr(weather_mod, "hourly_rich", _none)
 
+    # [SAT-7] 토르 보강도 외부다 — 테스트에서 빈 결과로 막는다.
+    import app.collectors.tor_search as tor_mod
+    async def _empty_list(*a, **kw):
+        return []
+    monkeypatch.setattr(tor_mod, "search", _empty_list)
+
 
 @pytest.fixture(autouse=True)
 def _api_guard_isolated():

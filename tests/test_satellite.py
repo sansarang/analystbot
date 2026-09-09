@@ -233,9 +233,12 @@ async def test_gather_npb_shape_and_team(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_tor_supplement_off_by_default(monkeypatch):
-    """satellite_tor_enabled 가 꺼져 있으면 토르를 아예 부르지 않는다."""
+async def test_tor_supplement_respects_flag(monkeypatch):
+    """satellite_tor_enabled 가 게이트한다 — 꺼지면 호출조차 안 하고, 켜지면 부른다.
+    (기본값은 2026-09-09 사용자 지시로 True 지만, 이 테스트는 default 와 무관하게
+    게이트 동작을 잠근다.)"""
     from app.collectors import satellite, tor_search
+    import app.config as cfg
 
     called = {"tor": False}
 
@@ -244,10 +247,20 @@ async def test_tor_supplement_off_by_default(monkeypatch):
         return []
 
     monkeypatch.setattr(tor_search, "search", spy_search)
-    out = await satellite._tor_supplement(
-        {"home": "A", "away": "B"}, [("A", "A injury")])
-    assert out == []
-    assert called["tor"] is False   # 플래그 꺼짐 → 호출조차 안 한다
+
+    class _Off:
+        satellite_tor_enabled = False
+
+    monkeypatch.setattr(cfg, "get_settings", lambda: _Off())
+    out = await satellite._tor_supplement({"home": "A", "away": "B"}, [("A", "A injury")])
+    assert out == [] and called["tor"] is False    # 꺼짐 → 호출 안 함
+
+    class _On:
+        satellite_tor_enabled = True
+
+    monkeypatch.setattr(cfg, "get_settings", lambda: _On())
+    await satellite._tor_supplement({"home": "A", "away": "B"}, [("A", "A injury")])
+    assert called["tor"] is True                    # 켜짐 → 호출함
 
 
 @pytest.mark.asyncio

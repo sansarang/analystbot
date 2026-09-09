@@ -106,13 +106,34 @@ def test_daily_cap_allows_at_least_one():
     assert daily_cap(1, S) == 1
 
 
-def test_adjustment_is_capped_at_4pp():
-    """🔴 프롬프트가 아니라 코드가 강제한다."""
+def test_adjustment_is_capped_at_10pp():
+    """🔴 [2026-09-09 사용자 지시] 조정 상한을 ±4%p → ±10%p 로 올렸다.
+    괴리 정보가 판정을 실제로 움직이게 하려는 것. 상한은 프롬프트가 아니라 코드가 강제."""
+    assert ADJUST_CAP_PP == 10.0
     p, note = clamp_adjustment(0.60, 0.75, "home")
-    assert p == pytest.approx(0.64)
+    assert p == pytest.approx(0.70)          # +10%p 상한
     assert f"±{ADJUST_CAP_PP:g}%p" in note
     p2, _ = clamp_adjustment(0.60, 0.40, "home")
-    assert p2 == pytest.approx(0.56)
+    assert p2 == pytest.approx(0.50)         # -10%p 상한 (플립가드가 0.50 에서 멈춤)
+
+
+def test_delta_pp_moves_home_probability():
+    """🔴 [MKT-8] 요약기가 절대 p_home 대신 **부호 있는 %p 증감(delta_pp)** 을 낸다.
+    세이부 사고: 절대/증분 모호성으로 0.03 이 극단 원정으로 오해돼 반대로 클램프됐다."""
+    jg = _jg(p_claude=0.50, matchup={"우세": "home"})
+    apply_findings(jg, {"조정": {"delta_pp": 8}, "요약": "s"})
+    assert jg["p_claude"] == pytest.approx(0.58)
+
+
+def test_delta_pp_is_capped_and_falls_back_to_p_home():
+    # 상한: +25%p 요청도 +10%p 로 절사
+    jg = _jg(p_claude=0.50, matchup={"우세": "home"})
+    apply_findings(jg, {"조정": {"delta_pp": 25}, "요약": "s"})
+    assert jg["p_claude"] == pytest.approx(0.60)
+    # 하위호환: delta_pp 없으면 옛 절대 p_home 경로 그대로
+    jg2 = _jg(p_claude=0.60, matchup={"우세": "home"})
+    apply_findings(jg2, {"조정": {"p_home": 0.66}, "요약": "s"})
+    assert jg2["p_claude"] == pytest.approx(0.66)
 
 
 def test_adjustment_within_cap_passes_through():
@@ -164,7 +185,7 @@ def test_prompt_carries_source_rules_and_status():
     assert "단일 기사 하나뿐이면 조정 폭을 절반으로" in PROMPT
     assert "루머·익명 소스·커뮤니티발" in PROMPT
     assert "크롤 정형 데이터보다 낮은 신뢰 등급" in PROMPT
-    assert "±4%p" in PROMPT
+    assert "±10%p" in PROMPT
 
 
 def test_search_count_is_capped_by_api_not_just_prompt():
