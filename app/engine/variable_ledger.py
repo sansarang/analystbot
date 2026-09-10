@@ -58,6 +58,19 @@ def subject_of(risk: str, jg: dict) -> tuple[str | None, str | None]:
         name = pitcher_name(jg, side)
         if name and name in text:
             return name, "pitcher"
+    # 🔴 [VAR-2 2026-09-11] **성(姓)만 써도 잡는다.** 실측: 임계는 멀쩡한데
+    #    주체를 못 잡아 버려진 변수가 14건이고, 전부 이 모양이었다 —
+    #      "Gilbert 5이닝 미만 또는 4실점 이상"   (선발은 `Logan Gilbert`)
+    #      "펠트너가 5이닝 4실점 이상으로 조기 강판되는가"
+    #    ⚠️ **3글자 이상 토큰만 본다.** 짧은 토큰은 아무 문장에나 걸려
+    #       **틀린 주체로 채점**되고, 그 결과는 못 채점하는 것보다 나쁘다.
+    for side in ("home", "away"):
+        name = pitcher_name(jg, side)
+        if not name:
+            continue
+        for tok in str(name).replace(".", " ").split():
+            if len(tok) >= 3 and tok in text:
+                return name, "pitcher"
     for side in ("home", "away"):
         team = jg.get(side)
         if team and str(team) in text:

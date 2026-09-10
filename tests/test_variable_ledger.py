@@ -164,3 +164,80 @@ def test_선발을_모르면_팀으로_넘기지_않는다():
 
     jg = {"home": "Cincinnati Reds", "away": "Milwaukee Brewers"}
     assert subject_of("홈 선발이 5이닝 이하", jg) == (None, None)
+
+
+# ── [VAR-2 2026-09-11 사용자 지시] 변수를 채점 가능하게 만든다 ─────────────
+#   🔴 실측(운영 변수 871건, 왜 채점이 안 되는지 전수 분류):
+#        임계 표현이 아예 없다      777건 (85.1%)   ← 서술형 문장
+#        임계는 있는데 주체 못 잡음  14건 ( 1.5%)   ← 성(姓)만 써서 매칭 실패
+#        실측값 없음                35건 ( 3.8%)
+#        ✅ 채점됨                  85건 ( 9.3%)
+#      채점이 안 되면 "우리 변수가 맞나"를 영원히 잴 수 없다.
+#
+#   실사고 2026-09-10 텍사스@시애틀(❌ 3:4 홈승): 갈림길에 "길버트가 5이닝을
+#      3실점 이하로 막는가 · 발생 확률 70%"라고 써놓고 그대로 일어났는데,
+#      변수 원장은 그 예측이 맞았는지 기록조차 못 했다.
+
+def test_subject_matches_surname_only():
+    """실측 예시: `Gilbert 5이닝 미만` — 성만 써도 오늘 선발로 잡아야 한다."""
+    from app.engine.variable_ledger import subject_of
+
+    jg = {"home": "Seattle Mariners", "away": "Texas Rangers",
+          "research": {"home_pitcher": {"name": "Logan Gilbert"},
+                       "away_pitcher": {"name": "Jacob deGrom"}}}
+    name, kind = subject_of("Gilbert 5이닝 미만 또는 4실점 이상", jg)
+    assert kind == "pitcher" and name == "Logan Gilbert", (name, kind)
+
+
+def test_surname_match_does_not_grab_short_tokens():
+    """⚠️ 반대 위험 — 짧은 토큰이 아무 문장에나 걸리면 **틀린 주체**로 채점된다."""
+    from app.engine.variable_ledger import subject_of
+
+    jg = {"home": "Seattle Mariners", "away": "Texas Rangers",
+          "research": {"home_pitcher": {"name": "Ha Ru"},
+                       "away_pitcher": {"name": "Jo An"}}}
+    name, kind = subject_of("홈 타선이 3득점 이하", jg)
+    assert kind != "pitcher", f"두 글자 토큰이 잘못 걸렸다: {name}"
+
+
+def test_prompt_requires_gradeable_threshold():
+    """프롬프트가 **채점기가 읽는 형태**를 명시적으로 요구하는가.
+
+    🔴 사본 금지: 요구 문구를 손으로 베끼지 않고 `VARIABLE_GRADEABLE` 상수를
+       원본으로 읽는다. 채점기가 실제로 읽는 단위·비교어와 대조한다.
+    """
+    from app.engine.prompts import MATCHUP as P, VARIABLE_GRADEABLE
+    from app.engine import variable_ledger as VL
+
+    assert VARIABLE_GRADEABLE in P, "채점 가능 요구 블록이 프롬프트에 없다"
+    pat = VL._THRESHOLD.pattern
+    for unit in ("이닝", "실점", "득점"):
+        assert unit in pat and unit in VARIABLE_GRADEABLE, unit
+    for cmpw in ("미만", "이하", "이상", "초과"):
+        assert cmpw in pat and cmpw in VARIABLE_GRADEABLE, cmpw
+
+
+def test_prompt_gives_an_exit_instead_of_faking():
+    """⚠️ 반대 위험 — 임계를 못 만드는 리스크에 숫자를 **지어내면** 더 나쁘다.
+
+    버릴 곳이 아니라 **옮길 곳**을 알려줘야 한다(근거·판단으로).
+    """
+    from app.engine.prompts import VARIABLE_GRADEABLE as G
+
+    assert "지어내지" in G, "임계 날조 금지가 없다"
+    assert "근거" in G and "판단" in G, "옮길 곳을 안 알려준다"
+
+
+def test_gradeable_example_actually_parses():
+    """프롬프트가 든 예시가 **채점기를 실제로 통과**해야 한다.
+
+    예시가 파서를 못 통과하면 그 프롬프트는 거짓말을 가르치는 것이다.
+    """
+    from app.engine.prompts import VARIABLE_GRADEABLE as G
+    from app.engine.variable_ledger import threshold_of
+
+    import re
+    ex = re.findall(r"·\s*예\)\s*(.+)", G)
+    assert ex, "프롬프트에 예시가 없다"
+    for line in ex:
+        assert threshold_of(line), f"예시가 채점기를 못 통과한다: {line!r}"
