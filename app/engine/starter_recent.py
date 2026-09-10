@@ -152,6 +152,38 @@ async def attach_starter_recent(jg: dict, pool) -> None:
     mark_low_sample(jg)
 
 
+#: [SR-1 2026-09-10] **얇은 표본** 기준. `MIN_STARTS`(=1, 추천 자동 탈락)와
+#  **다른 규칙**이다 — 이쪽은 확률을 0.50 쪽으로 당기고 확신도를 낮춘다.
+#  `app/engine/CLAUDE.md` 대원칙에 이미 있던 문장을 코드로 옮긴 것이다:
+#    "최근 등판이 2경기 이하면 시즌으로 메우지 말고 0.50 쪽으로 당기고
+#     확신도를 낮춘다. 표본이 적다는 사실 자체가 정보다."
+THIN_STARTS = 2
+
+#: 얇을 때 남길 확신의 비율. `|p-0.50|` 에 곱한다.
+#  🔴 실측(운영 195경기, 선발 30일 등판 수로 재구성):
+#       ≤2경기 36/78 = 46.2% · 브라이어 0.2644  ← 0.25 보다 나쁘다
+#       ≥3경기 61/110 = 55.5% · 브라이어 0.2487
+#       평균 |p-0.5| 는 7.7 vs 7.6%p — **얇을 때도 같은 확신으로 찍고 있었다**
+#     λ 를 훑으면 얇음 브라이어 최소는 λ=0(0.2500)이다. 그래도 0.5 로 잡았다 —
+#     재구성이 DB 보유 기간에 좌우되고("0경기" 군이 53.1%로 나온 건 진짜
+#     신인이 아니라 이력이 없는 경우가 섞인 탓), 두 군 차이도 유의하지 않다
+#     (z≈1.26 · p≈0.21). 최적값을 그대로 쓰지 않고 보수적으로 절반만 깎는다.
+#  ⚠️ 1.0 으로 두면 축소가 항등이 되어 종전 동작으로 돌아간다.
+THIN_SHRINK = 0.5
+
+
+def thin_sample_sides(jg: dict) -> list[str]:
+    """[SR-1] 자료4 등판이 `THIN_STARTS` 이하인 쪽. 빈 목록이면 정상."""
+    r = jg.get("research") or {}
+    out = []
+    for side in ("home", "away"):
+        if not pitcher_name(jg, side):
+            continue
+        if len(r.get(f"{side}_starter_recent") or []) <= THIN_STARTS:
+            out.append(side)
+    return out
+
+
 def low_sample_sides(jg: dict) -> list[str]:
     """[A] 최근 등판 표본이 하한 이하인 쪽. 빈 목록이면 정상."""
     r = jg.get("research") or {}

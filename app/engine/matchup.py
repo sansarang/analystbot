@@ -467,6 +467,9 @@ def check_flow(verdict: dict, sport: str) -> list[str]:
 
 
 def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
+    from app.engine.starter_recent import (THIN_SHRINK, THIN_STARTS,
+                                           thin_sample_sides)
+
     s = settings or get_settings()
     p = clip_p_home(verdict.get("p_home"), s)
     conf_kr = verdict.get("확신도") or "중"
@@ -482,6 +485,28 @@ def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
         v["전개"] = flow
         logger.warning("[matchup] game=%s 예상점수 생략 — %s",
                        jg.get("game_id"), " · ".join(why))
+    # 🔴 [SR-1 2026-09-10] **표본이 얇으면 확신을 깎는다.** 규칙은 대원칙에
+    #    이미 있었는데(`app/engine/CLAUDE.md`) 코드가 강제하지 않아 안 지켜졌다.
+    #    실사고 2026-09-09 LAA@Boston: 근거2 가 "최근 **2경기** 12이닝 3실점
+    #    14K 0BB — 뛰어난 제구 안정감"이었고 그걸로 홈 54% 를 냈다. 실제
+    #    5.1이닝 6자책, 원정 6-4 승.
+    #    ⚠️ **방향은 바꾸지 않는다** — 0.50 쪽으로 당기는 것이지 넘기는 것이
+    #       아니다. 적중률은 그대로고 보정만 좋아진다(실측 확인).
+    thin = thin_sample_sides(jg)
+    if thin:
+        p = round(0.5 + (p - 0.5) * THIN_SHRINK, 4)
+        # 🔴 **`중` → `하` 로는 낮추지 않는다.** `하` 는 단순한 낮은 확신이
+        #    아니라 **거부권**이다(CLAUDE.md: "확신도 '하'/패스는 거부권").
+        #    한 단계씩 기계적으로 내리면 얇은 표본 경기가 전부 "판정 패스"로
+        #    바뀐다 — 대원칙이 말한 "낮춘다"가 아니라 "죽인다"가 된다.
+        #    계약 테스트(test_flagged_pick_never_recommended_regression)가
+        #    이것을 잡았다: 목 슬레이트 전 경기가 거부권으로 넘어갔다.
+        conf_kr = "중" if conf_kr == "상" else conf_kr
+        v = {**v, "확신도": conf_kr,
+             "표본축소": f"선발 최근 등판 {THIN_STARTS}경기 이하 ({','.join(thin)})"}
+        jg["p_claude"] = p
+        logger.info("[matchup] game=%s 표본 얇음 %s — p→%.3f 확신도→%s",
+                    jg.get("game_id"), ",".join(thin), p, conf_kr)
     jg["matchup"] = {**v, "p_home": p, "model": model}
     jg["model"] = model
     jg["judge_confidence"] = CONF_MAP.get(conf_kr, "medium")
