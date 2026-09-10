@@ -331,14 +331,45 @@ def daily_cap(slate_size: int, settings) -> int:
     return max(1, int(slate_size * float(settings.deepsearch_daily_cap)))
 
 
+#: [DS-14 2026-09-10 사용자 지시 "권한을 바꿔라"] 뒤집기 허용 조건.
+#  🔴 **왜 바꾸나 — 실측이 근거다** (채점 완료 172경기, game_id 중복 제거):
+#       딥서치 적용 전 88/172 = 51.2%
+#       딥서치 적용 후 88/172 = 51.2%   ← 완전히 같다
+#       우세가 뒤집힌 경기 **0건** · |이동| 중앙 4.0%p
+#       브라이어 0.2565 → 0.2559 (개선 0.0006 = 잡음)
+#     원인은 조사 품질이 아니라 **권한**이었다. 아래 가드가 0.50 에서 멈춰 세워
+#     딥서치는 같은 팀 안에서 확률만 밀 수 있었다 — 승패 적중률에 기여할 길이
+#     원천 차단돼 있었다.
+#  ⚠️ 권한을 주되 **아무 근거로나 주지 않는다.** 뉴스 한 줄로 픽이 뒤집히면
+#     그건 개선이 아니라 소음이다. 두 조건을 **모두** 요구한다.
+
+#: 뒤집으려면 `발견` 에 이 소스유형이 하나는 있어야 한다. 공시·기록은 확인
+#  가능한 사실이고, 뉴스는 아직 사실이 아닐 수 있다.
+HARD_SOURCES = ("공식", "기록")
+
+#: 뒤집은 뒤 0.50 에서 이만큼은 넘어가야 한다. 0.499 는 뒤집기가 아니라 잡음이다.
+FLIP_MARGIN_PP = 2.0
+
+
+def _has_hard_evidence(evidence) -> bool:
+    """`발견` 중 공시·기록이 하나라도 있는가. 형식이 이상하면 **없는 것으로 본다.**"""
+    for f in (evidence or []):
+        if isinstance(f, dict) and str(f.get("소스유형") or "").strip() in HARD_SOURCES:
+            return True
+    return False
+
+
 def clamp_adjustment(p_before: float, p_after: float | None,
-                     favored: str | None) -> tuple[float, str | None]:
-    """조정 ±10%p 상한 + 우세 방향 단독 뒤집기 금지. **코드가 강제한다.**
+                     favored: str | None, *, evidence=None) -> tuple[float, str | None]:
+    """조정 ±10%p 상한 + **조건부** 우세 뒤집기. **코드가 강제한다.**
 
     반환: (적용할 p, 사람이 읽는 사유 or None)
 
     ⚠️ 프롬프트에 적는 것만으로는 부족하다. 모델이 규칙을 어겨도 값이 새어
        나가지 않아야 한다 — 클리핑과 같은 태도다.
+    ⚠️ `evidence` 를 안 넘기면 **종전 그대로 막는다.** 기본값이 조용히
+       느슨해지면 안 된다 — 호출부가 명시적으로 근거를 건네야 권한이 열린다.
+    ⚠️ 조정 폭 ±10%p 와 클립은 **바꾸지 않았다.** 바뀐 것은 방향 권한뿐이다.
     """
     if p_after is None:
         return p_before, None
@@ -347,12 +378,19 @@ def clamp_adjustment(p_before: float, p_after: float | None,
     note = None
     if abs(float(p_after) - p) > 1e-9:
         note = f"조정 상한 ±{ADJUST_CAP_PP:g}%p 적용 ({p_after:.3f}→{p:.3f})"
-    # 우세 방향이 뒤집히면 되돌린다 — 검색 결과 단독으로는 방향을 못 바꾼다.
-    if favored == "home" and p_before >= 0.5 > p:
-        p, note = 0.5, "우세 방향 단독 뒤집기 금지 — 0.50에서 멈춤"
-    elif favored == "away" and p_before <= 0.5 < p:
-        p, note = 0.5, "우세 방향 단독 뒤집기 금지 — 0.50에서 멈춤"
-    return round(p, 4), note
+
+    flips = ((favored == "home" and p_before >= 0.5 > p)
+             or (favored == "away" and p_before <= 0.5 < p))
+    if not flips:
+        return round(p, 4), note
+
+    margin = abs(p - 0.5) * 100
+    if _has_hard_evidence(evidence) and margin >= FLIP_MARGIN_PP:
+        return round(p, 4), (f"조사가 우세를 뒤집었다 — 공시·기록 근거 "
+                             f"({p_before:.3f}→{p:.3f})")
+    why = ("결정적이지 않다" if _has_hard_evidence(evidence)
+           else "공시·기록 근거 없음")
+    return 0.5, f"우세 뒤집기 금지({why}) — 0.50에서 멈춤"
 
 
 # ---------------------------------------------------------------- 조사 엔진
@@ -903,7 +941,9 @@ def apply_findings(jg: dict, data: dict) -> dict:
         return {"moved": 0.0, "note": None}
     if adj.get("단일기사여부"):
         p_after = p_before + (float(p_after) - p_before) / 2
-    p, note = clamp_adjustment(p_before, p_after, m.get("우세"))
+    # [DS-14] 근거를 함께 넘겨야 뒤집기 권한이 열린다. 안 넘기면 종전대로 막힌다.
+    p, note = clamp_adjustment(p_before, p_after, m.get("우세"),
+                               evidence=(data or {}).get("발견") or [])
     jg["p_claude"] = p
     m["p_home"] = p
     jg["deepsearch"] = {

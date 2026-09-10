@@ -966,3 +966,48 @@ async def test_t6_still_dedupes_per_lineup(monkeypatch):
         await ds.run_for_rejudge(jg, rds, "2026-09-02", lineup_sig="same",
                                  slate_size=5, prev_lineup=shell, settings=S)
     assert len(calls) == 1, "같은 라인업으로 두 번 조사하면 안 된다"
+
+
+# ── [DS-14 2026-09-10 사용자 지시] "권한을 바꿔라" ─────────────────────────
+#   🔴 실측이 이 변경의 근거다 (채점 완료 172경기, `game_id` 중복 제거):
+#        딥서치 적용 전 88/172 = 51.2%
+#        딥서치 적용 후 88/172 = 51.2%   ← 완전히 같다
+#        우세가 뒤집힌 경기 **0건**
+#      원인은 조사 품질이 아니라 **권한**이었다. `clamp_adjustment` 가
+#      "우세 방향 단독 뒤집기 금지"로 0.50 에서 멈춰 세워, 딥서치는 같은 팀
+#      안에서 확률만 밀 수 있었다. 승패 적중률에 기여할 길이 원천 차단돼 있었다.
+#   ⚠️ 권한을 주되 **아무 근거로나 주지 않는다.** 뉴스 한 줄로 픽이 뒤집히면
+#      그건 개선이 아니라 소음이다.
+
+def test_flip_allowed_with_hard_evidence():
+    from app.engine.deepsearch import clamp_adjustment
+
+    hard = [{"사실": "선발 교체 공시", "소스유형": "공식"}]
+    p, note = clamp_adjustment(0.54, 0.46, "home", evidence=hard)
+    assert p < 0.5, f"공식 근거로도 못 뒤집는다: {p} {note}"
+
+
+def test_flip_blocked_without_hard_evidence():
+    """⚠️ 반대 위험 — 뉴스·소문만으로 픽이 뒤집히면 안 된다."""
+    from app.engine.deepsearch import clamp_adjustment
+
+    soft = [{"사실": "결장 가능성이 거론된다", "소스유형": "뉴스"}]
+    p, _ = clamp_adjustment(0.54, 0.46, "home", evidence=soft)
+    assert p >= 0.5, "뉴스만으로 뒤집혔다"
+
+
+def test_flip_must_be_decisive():
+    """⚠️ 0.4999 같은 간발의 뒤집기는 뒤집기가 아니라 잡음이다."""
+    from app.engine.deepsearch import clamp_adjustment
+
+    hard = [{"사실": "선발 교체 공시", "소스유형": "공식"}]
+    p, _ = clamp_adjustment(0.54, 0.499, "home", evidence=hard)
+    assert p >= 0.5, "간발 차 뒤집기가 통과했다"
+
+
+def test_no_evidence_keeps_old_guard():
+    """근거 정보가 없으면 종전 그대로 — 기본값이 느슨해지지 않는다."""
+    from app.engine.deepsearch import clamp_adjustment
+
+    p, note = clamp_adjustment(0.54, 0.46, "home")
+    assert p == 0.5 and note and "뒤집기 금지" in note
