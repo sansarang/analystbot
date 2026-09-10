@@ -379,8 +379,21 @@ def clamp_adjustment(p_before: float, p_after: float | None,
     if abs(float(p_after) - p) > 1e-9:
         note = f"조정 상한 ±{ADJUST_CAP_PP:g}%p 적용 ({p_after:.3f}→{p:.3f})"
 
-    flips = ((favored == "home" and p_before >= 0.5 > p)
-             or (favored == "away" and p_before <= 0.5 < p))
+    # 🔴 [DS-15 2026-09-10] **지켜야 할 방향은 숫자로 정한다.**
+    #    종전에는 `favored` 라벨을 봤다. 그건 모델이 스스로 붙인 말이고,
+    #    우리가 실제로 행동하는 값은 `p_before` 다. 라벨이 "박빙"이면 검사가
+    #    **아예 안 돌았다** —
+    #        clamp_adjustment(0.52, 0.49, "박빙") → (0.49, None)   그냥 통과
+    #        clamp_adjustment(0.52, 0.49, "home") → (0.50, 뒤집기 금지)
+    #    실측: 채점 181경기 중 **31건(17%)이 박빙 라벨** — 그 경기들은 검사
+    #    없이 0.50 을 넘나들 수 있었다. 오늘 텍사스@시애틀(0.52→0.49, 실제
+    #    홈승)이 그 첫 발현으로 보인다.
+    #    ⚠️ p_before 가 정확히 0.50 이면 지킬 방향이 없다 — 막지 않는다.
+    _EPS = 1e-9
+    side = ("home" if p_before > 0.5 + _EPS
+            else "away" if p_before < 0.5 - _EPS else None)
+    flips = ((side == "home" and p < 0.5)
+             or (side == "away" and p > 0.5))
     if not flips:
         return round(p, 4), note
 

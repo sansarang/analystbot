@@ -1011,3 +1011,38 @@ def test_no_evidence_keeps_old_guard():
 
     p, note = clamp_adjustment(0.54, 0.46, "home")
     assert p == 0.5 and note and "뒤집기 금지" in note
+
+
+# ── [DS-15 2026-09-10] 뒤집기 가드가 모델의 **라벨**을 보고 있었다 ─────────
+#   🔴 `favored` 는 모델이 스스로 붙인 말이고, 우리가 실제로 행동하는 값은
+#      `p_before` 숫자다. 라벨이 "박빙"이면 가드가 **아예 안 돌았다** —
+#        clamp_adjustment(0.52, 0.49, "박빙") → (0.49, None)   ← 그냥 통과
+#        clamp_adjustment(0.52, 0.49, "home") → (0.50, "뒤집기 금지")
+#   실측: 채점 181경기 중 **31건(17%)이 박빙 라벨** — 그 경기들은 검사 없이
+#      딥서치가 0.50 을 넘나들 수 있었다. 오늘 텍사스@시애틀(0.52→0.49,
+#      실제 홈승)이 그 첫 발현으로 보인다.
+
+def test_guard_uses_number_not_label():
+    from app.engine.deepsearch import clamp_adjustment
+
+    p, note = clamp_adjustment(0.52, 0.49, "박빙")
+    assert p == 0.5 and note and "뒤집기 금지" in note, f"박빙 라벨로 새어나갔다: {p}"
+    p2, _ = clamp_adjustment(0.48, 0.52, None)
+    assert p2 == 0.5, "라벨이 없으면 무방비다"
+
+
+def test_label_cannot_override_number():
+    """라벨과 숫자가 어긋나면 **숫자가 이긴다**."""
+    from app.engine.deepsearch import clamp_adjustment
+
+    # 모델은 home 우세라 적었지만 숫자는 원정(0.48)이다 → 지켜야 할 쪽은 원정
+    p, _ = clamp_adjustment(0.48, 0.53, "home")
+    assert p == 0.5, "라벨을 믿고 원정 우세를 뒤집었다"
+
+
+def test_exact_half_before_is_not_a_flip():
+    """⚠️ 반대 위험 — p_before 가 정확히 0.50 이면 지킬 방향이 없다."""
+    from app.engine.deepsearch import clamp_adjustment
+
+    p, _ = clamp_adjustment(0.50, 0.54, "박빙")
+    assert p == pytest.approx(0.54), "지킬 방향이 없는데 막았다"
