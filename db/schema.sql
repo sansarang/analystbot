@@ -491,8 +491,13 @@ CREATE TABLE IF NOT EXISTS pick_ledger (
 
 -- 경기·날짜당 최종 판정은 하나뿐이다. 재판정은 옛 행을 is_final=false로 내리고
 -- 새 행을 올린다 — 이 부분 유니크 인덱스가 그 규칙을 DB에서 강제한다.
+-- 🔴 [LED-1 2026-09-10] 한 경기에 최종 판정은 **하나**다.
+--    종전 `(game_id, date)` 는 같은 경기가 다른 슬레이트 날짜로 들어오면
+--    통과시켰다 — 실측 잉여 10건, 그중 방향이 반대인 쌍도 있었다.
+--    ⚠️ 이 인덱스는 중복이 남아 있으면 **생성에 실패한다.** 백필
+--       (tools/backfill_ledger.py --led1)이 먼저 돌아야 한다.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
-    ON pick_ledger (game_id, date) WHERE is_final;
+    ON pick_ledger (game_id) WHERE is_final;
 
 CREATE INDEX IF NOT EXISTS idx_pick_ledger_grade
     ON pick_ledger (graded_at) WHERE graded_at IS NULL;

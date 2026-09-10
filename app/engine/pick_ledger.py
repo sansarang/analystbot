@@ -214,9 +214,20 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         "SELECT id, rejudge_count, "
                         + ", ".join(_SIG_FIELDS) +
                         " FROM pick_ledger"
-                        " WHERE game_id = $1 AND date = $2 AND is_final"
+                        # 🔴 [LED-1 2026-09-10] **날짜로 갈라 찾지 않는다.**
+                        #    종전 `game_id AND date` 는 같은 경기가 다른 슬레이트
+                        #    날짜로 한 번 더 들어오면 기존 행을 못 찾고 새 최종
+                        #    행을 만들었다. 실측: is_final 209행 / 고유 경기 199
+                        #    — 잉여 10건이 전부 이 경로다.
+                        #    game=1853 Athletics@Texas(실제 8-5 홈승)은
+                        #      09-01 p=0.60 home(적중) · 09-02 p=0.46 away(실패)
+                        #    두 개의 "최종"을 갖고 있었다 — 어느 행을 읽느냐로
+                        #    적중률이 바뀐다.
+                        #    ⚠️ 더블헤더는 game_id 가 따로 발급된다.
+                        #       한 경기 = 한 최종 판정이 맞다.
+                        " WHERE game_id = $1 AND is_final"
                         " FOR UPDATE",
-                        row["game_id"], row["date"])
+                        row["game_id"])
                     if existing is not None and _same_judgement(row, existing):
                         # 🔴 판정은 그대로여도 **시장은 나중에 온다.** 여기서
                         #    그냥 넘기면 판정이 배당보다 먼저 끝난 경기는

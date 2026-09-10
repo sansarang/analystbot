@@ -703,3 +703,41 @@ def test_후보_계산이_실패해도_원장_기록을_막지_않는다():
     from app.engine.confidence import probe
 
     assert probe(None) == {}          # 예외가 밖으로 안 나온다
+
+
+# ── [LED-1 2026-09-10] 한 경기에 최종 판정이 둘 있었다 ────────────────────
+#   🔴 실측(운영 DB): `is_final` 209행 · 고유 경기 199 — **잉여 10건.**
+#      원인은 조회 키가 `(game_id, date)` 였다는 것이다. 같은 경기가 다른
+#      슬레이트 날짜로 한 번 더 들어오면 기존 행을 **못 찾고 새로 만든다.**
+#      유니크 인덱스도 `(game_id, date)` 라 막지 못했다.
+#
+#      game=1853 Athletics@Texas (실제 8-5 홈승)
+#        date=2026-09-01  p=0.60 home  hit=True    ← 올바른 슬레이트 날짜
+#        date=2026-09-02  p=0.46 away  hit=False   ← 잉여. 방향이 반대다
+#      한 경기에 상반된 "최종" 두 개가 남아, 어느 행을 읽느냐로 적중률이 바뀐다.
+#      실제로 10건 전부 날짜가 달랐다.
+#
+#   ⚠️ 더블헤더는 game_id 가 따로 발급된다 — 한 경기 = 한 최종 판정이 맞다.
+
+def test_final_lookup_is_keyed_on_game_only():
+    """조회가 날짜를 함께 보면 같은 경기가 두 번 최종이 된다."""
+    import pathlib
+
+    src = pathlib.Path("app/engine/pick_ledger.py").read_text()
+    # 주석이 아닌 **실제 SQL 조각**만 본다.
+    sql = [ln for ln in src.splitlines()
+           if "WHERE game_id" in ln and not ln.lstrip().startswith("#")]
+    assert sql, "최종 판정 조회문을 못 찾았다"
+    for ln in sql:
+        assert "is_final" in ln, ln
+        assert "date" not in ln, f"조회가 아직 날짜로 갈린다: {ln.strip()!r}"
+
+
+def test_schema_unique_index_is_game_only():
+    """스키마도 같이 좁혀야 한다 — 코드만 고치면 과거 중복이 되살아난다."""
+    import pathlib
+
+    sql = pathlib.Path("db/schema.sql").read_text()
+    i = sql.index("idx_pick_ledger_final")
+    body = sql[i:i + 200]
+    assert "(game_id)" in body, f"유니크 인덱스가 아직 날짜를 포함한다:\n{body[:160]}"
