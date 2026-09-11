@@ -3236,6 +3236,12 @@ def qualifies(pick: dict, settings=None) -> bool:
     from app.engine.scoring import BASEBALL_SPORTS
 
     s = settings or get_settings()
+    # 🔴 [ORD-3 2026-09-11 사용자 지시] "추천 로직도 다 삭제."
+    #    새 순서 경기에는 확률 자체가 없다 — 하한과 비교할 값이 없고, 카드도
+    #    조사 결과만 싣는다. 게이트를 통과시키면 `p=None` 이 하한 비교에서
+    #    조용히 False 가 되는 것에 의존하게 된다. **명시적으로 막는다.**
+    if pick.get("order_v2"):
+        return False
     p = pick.get("p")
     need = pick.get("required_prob") or s.min_win_prob
     sport = pick.get("sport")
@@ -3350,6 +3356,7 @@ def approved_market_legs(games: list[dict]) -> list[dict]:
                        "lineup_status": jg.get("lineup_status") or "none",
                        "pick_state": _pick_state(jg)[0],
                        "form_unavailable": bool(jg.get("form_unavailable")),
+                       "order_v2": bool(jg.get("order_v2")),
                        # [v1.4] 시장 동의 게이트가 읽는다. `_compute_picks` 는
                        #   DB 를 안 타므로 판정 단계에서 새긴 값을 옮기기만 한다.
                        "p_market_send": jg.get("p_market_send"),
@@ -3392,6 +3399,7 @@ def qualified_singles(games: list[dict], settings=None,
                        "lineup_status": jg.get("lineup_status") or "none",
                        "pick_state": _pick_state(jg)[0],
                        "form_unavailable": bool(jg.get("form_unavailable")),
+                       "order_v2": bool(jg.get("order_v2")),
                        # [v1.4] 시장 동의 게이트가 읽는다. `_compute_picks` 는
                        #   DB 를 안 타므로 판정 단계에서 새긴 값을 옮기기만 한다.
                        "p_market_send": jg.get("p_market_send"),
@@ -3630,6 +3638,7 @@ def _compute_picks(
                 "lineup_status": jg.get("lineup_status") or "none",
                 "pick_state": _pick_state(jg)[0], "pick_state_label": _pick_state(jg)[1],
                 "form_unavailable": bool(jg.get("form_unavailable")),
+                "order_v2": bool(jg.get("order_v2")),
                 "starter_low_sample": list(jg.get("starter_low_sample") or []),
                 "p_legacy": None,
                 "p_market_side": None,

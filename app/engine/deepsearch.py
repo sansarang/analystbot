@@ -1093,12 +1093,25 @@ async def reinforce(jg: dict, pre: dict, redis=None, *,
     #    실측 2026-09-11 game=5624 에서 48건이 전부 트랜잭션 줄이었다. 이것을
     #    "답" 칸에 섞으면 결론이 무관한 48줄을 갈림길의 근거로 읽는다.
     #    **따로, 상한을 걸어, 참고라고 밝혀** 싣는다.
-    for a in sat[:MAX_SAT]:
+    # 🔴 **최신순으로 자른다.** 실측 2026-09-11 game=5629: 위성 25건 중 7일
+    #    이내가 10건이었는데 앞에서 15건을 자르니 그 10건이 통째로 밖으로
+    #    밀려났다(MLB 트랜잭션은 시간순이 아니다). 자르는 기준이 순서면
+    #    무엇이 남을지는 운이다.
+    #    ⚠️ 나이를 모르는 것(`age_h=None`)은 **맨 뒤로 보내되 버리지 않는다** —
+    #       "모른다"는 "오래됐다"가 아니다(NPB 가 그렇다).
+    _by_age = sorted(sat, key=lambda a: (a.get("age_h") is None,
+                                         float(a.get("age_h") or 0.0)))
+    for a in _by_age[:MAX_SAT]:
+        title = (a.get("title") or "").strip()
         body = (a.get("body") or "").strip()
-        rows.append({"질문": "", "답": (a.get("title") or "").strip()
-                     + (f" — {body[:300]}" if body else ""),
-                     "소스": "satellite",
+        # 🔴 실측 2026-09-11: MLB 트랜잭션은 title == body 라 종전 코드가
+        #    "X 를 IL 에 올렸다 — X 를 IL 에 올렸다" 를 만들었다. 같은 문장을
+        #    두 번 싣는 것은 정보가 아니라 소음이다.
+        text = title if (not body or body.startswith(title[:40])) \
+            else (f"{title} — {body[:300]}" if title else body[:300])
+        rows.append({"질문": "", "답": text, "소스": "satellite",
                      "소스유형": str(a.get("source") or ""),
+                     "age_h": a.get("age_h"),
                      "url": str(a.get("url") or "")})
     if len(sat) > MAX_SAT:
         logger.info("[reinforce] 위성 %d건 중 %d건만 싣는다", len(sat), MAX_SAT)

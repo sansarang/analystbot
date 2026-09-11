@@ -169,21 +169,31 @@ def test_보강_0건이면_0건이라고_적는다():
     assert "아는 척하지 마라" in p
 
 
-def test_출력_스키마를_판정에서_잘라_쓴다():
-    """🔴 사본 금지 — 스키마를 다시 적으면 카드가 읽는 키가 갈린다."""
-    from app.engine.prompts import CONCLUDE, MATCHUP, MATCHUP_OUTPUT_BLOCK
-
-    assert MATCHUP_OUTPUT_BLOCK in MATCHUP
-    assert MATCHUP_OUTPUT_BLOCK in CONCLUDE
-    assert '"p_home"' in MATCHUP_OUTPUT_BLOCK
-
-
-def test_없는_자료번호를_적지_말라고_한다():
-    """공용 [변수 형식] 은 자료4·10·14 를 가리키는데 이 자리엔 없다."""
+def test_출력은_승자_하나다():
+    """🔴 [ORD-3] "어느팀이 승리한다만 제미나이가 판다."
+    확률·근거·변수·전개·확신도는 전부 설명이고, 설명은 카드에 나가지 않는다."""
     from app.engine.prompts import CONCLUDE
 
-    assert "없는 자료 번호를 적지 마라" in CONCLUDE
-    assert "근거 보강" in CONCLUDE
+    out = CONCLUDE[CONCLUDE.index("[출력]"):]
+    assert '"승자"' in out
+    # 출력 칸에 승자 말고는 아무것도 없다. (본문의 "…적지 마라" 는 금지 문구다)
+    for gone in ("p_home", "우세", "확신도", "전개", "예상점수", "직전대비",
+                 "뉴스반영", "추가확인", "자료필요", "근거", "변수"):
+        assert gone not in out, gone
+
+
+def test_확률과_설명을_적지_말라고_한다():
+    from app.engine.prompts import CONCLUDE
+
+    assert "확률·근거·설명을 적지 마라" in CONCLUDE
+    assert "기억으로 판단하지 마라" in CONCLUDE
+
+
+def test_승자는_두_팀_중_하나여야_한다고_못박는다():
+    from app.engine.prompts import CONCLUDE
+
+    assert "두 팀 중 하나의 이름을 그대로" in CONCLUDE
+    assert "KT Wiz" in CONCLUDE          # 실측 사례를 근거로 남긴다
 
 
 # ═══════════════ ④ 는 없다 — DB 를 전부 뺐다 (ORD-2)
@@ -205,19 +215,12 @@ def test_결론이_DB_를_요청할_칸이_없다():
     assert "여기 있는 것이 전부다" in CONCLUDE
 
 
-def test_모르면_모른다고_하라고_한다():
+def test_DB_가_오지_않는다고_못박는다():
     """🔴 DB 를 뺀 자리를 기억으로 메우는 것이 유일하게 치명적인 실패다."""
     from app.engine.prompts import CONCLUDE
 
-    assert "모르는 것은 모른다고 말하라" in CONCLUDE
-    assert "기억으로 숫자를 적지 마라" in CONCLUDE
-
-
-def test_추가확인은_남긴다():
-    """무엇이 없었는지를 버리면 다음에 무엇을 찾아야 할지 모른다."""
-    from app.engine.prompts import CONCLUDE
-
-    assert "`추가확인` 은 그대로 쓴다" in CONCLUDE
+    assert "너에게 오지 않는다" in CONCLUDE
+    assert "조사 결과가 가리키는 쪽을 고른다" in CONCLUDE
 
 
 def test_박스스코어와_폼을_새_순서에서는_만들지_않는다():
@@ -378,13 +381,332 @@ def test_객체_하나만_와도_버리지_않는다():
     assert len(_rows({"질문번호": 1, "답": "x"}, ["q"], "x")) == 1
 
 
-def test_원장에_무엇으로_판정했는지_남는다():
-    """🔴 갈림길 몇 개·질문 몇 개·보강 몇 건으로 낸 판정인지가 없으면
-    나중에 "왜 그 카드가 그랬나"를 못 푼다."""
+def test_카드가_읽을_조사_원문이_남는다():
+    """🔴 카드가 자료를 다시 모으면 그것이 사본이고, 두 곳이 다른 것을 본다."""
     src = open("app/engine/matchup.py", encoding="utf-8").read()
-    i = src.rindex('jg["order_v2"] = {"갈림길"')
-    for k in ("질문", "보강", "출처", "추가확인"):
+    i = src.rindex('jg["order_v2"] = {"갈림길목록"')
+    for k in ("자료", "질문", "출처"):
         assert k in src[i:i + 500], k
     # 탈락한 경기에도 사유가 남아야 한다 — "조용한 0" 금지
     j = src.index('jg["order_v2"] = {"갈림길"')
-    assert "탈락" in src[j:j + 500]
+    assert "탈락" in src[j:j + 600]
+
+
+# ═══════════════ ORD-3 — 카드는 조사 결과만, 판정은 승자만
+
+def _ov_jg():
+    """ORD-3 판정을 끝낸 경기. 카드가 읽는 것이 전부 여기 있다."""
+    return {"sport": "mlb", "league": "MLB",
+            "home": "Milwaukee Brewers", "away": "Cincinnati Reds",
+            "starts_at_kst": "09/12 08:45", "lineup_status": "none",
+            "winner": "Milwaukee Brewers",
+            "matchup": {"승자": "Milwaukee Brewers"},
+            "order_v2": {
+                "갈림길목록": [{"질문": "애벗이 5이닝 이상을 3실점 이하로 막는가",
+                              "왜": "x"}],
+                "질문": ["앤드루 애벗 최근 5경기 이닝", "레즈 원정 득점"],
+                "출처": {"pplx": 1, "satellite": 2},
+                "자료": [
+                    {"질문": "앤드루 애벗 최근 5경기 이닝", "답": "8/29 3.0이닝 7자책",
+                     "소스": "pplx", "소스유형": "기록", "url": "u"},
+                    {"질문": "", "답": "Brewers activated RHP Abner Uribe",
+                     "소스": "satellite", "소스유형": "MLB Transactions", "url": ""},
+                    {"질문": "", "답": "Brewers activated LHP JoJo Romero",
+                     "소스": "satellite", "소스유형": "MLB Transactions", "url": ""}]}}
+
+
+def test_카드에_우리_수치가_하나도_없다():
+    """🔴 "추천 로직도 다 삭제...수치는 전부다 삭제..." · "서술형 기본 레이팅도 삭제" """
+    from app.engine.form_card import render_form_card
+
+    card = render_form_card(_ov_jg(), "mlb")
+    for gone in ("%", "★", "신호등", "가치", "배당", "시장", "레이팅",
+                 "보드만", "추천", "엣지"):
+        assert gone not in card, gone
+
+
+def test_카드에_설명이_없다():
+    """🔴 "설명도 삭제...서치에 의한 정보만 명시..." """
+    jg = _ov_jg()
+    jg["narrative_card"] = "밀워키가 여러모로 앞선다."
+    jg["matchup"]["근거"] = ["레이팅이 앞선다"]
+    from app.engine.form_card import render_form_card
+
+    card = render_form_card(jg, "mlb")
+    assert "밀워키가 여러모로" not in card
+    assert "근거" not in card and "변수" not in card
+
+
+def test_카드에_조사_결과가_질문별로_실린다():
+    from app.engine.form_card import render_form_card
+
+    card = render_form_card(_ov_jg(), "mlb")
+    assert "🔎 조사 결과" in card
+    assert "앤드루 애벗 최근 5경기 이닝" in card
+    assert "8/29 3.0이닝 7자책 (퍼플렉시티)" in card
+
+
+def test_못_찾은_질문을_지우지_않는다():
+    """🔴 지우면 카드가 다 아는 것처럼 보인다."""
+    from app.engine.form_card import render_form_card
+
+    card = render_form_card(_ov_jg(), "mlb")
+    i = card.index("레즈 원정 득점")
+    assert "찾지 못함" in card[i:i + 80]
+
+
+def test_공시는_따로_실린다():
+    from app.engine.form_card import render_form_card
+
+    card = render_form_card(_ov_jg(), "mlb")
+    assert "📋 최근 공시" in card
+    assert card.index("🔎 조사 결과") < card.index("📋 최근 공시")
+    assert "Abner Uribe" in card
+
+
+def test_공시가_많으면_자르고_몇_건인지_밝힌다():
+    from app.engine import form_card as FC
+
+    jg = _ov_jg()
+    jg["order_v2"]["자료"] += [{"질문": "", "답": f"공시{i}", "소스": "satellite",
+                               "소스유형": "t", "url": ""} for i in range(20)]
+    card = FC.render_form_card(jg, "mlb")
+    assert f"외 {22 - FC._NOTICE_MAX}건" in card
+
+
+def test_카드_마지막은_승자다():
+    from app.engine.form_card import render_form_card
+
+    card = render_form_card(_ov_jg(), "mlb")
+    assert "🏆 승리 예상 — 밀워키 브루어스" in card
+
+
+def test_잠정과_최종을_밝힌다():
+    from app.engine.form_card import render_form_card
+
+    assert "🕐 잠정 · 타순 전" in render_form_card(_ov_jg(), "mlb")
+    jg = _ov_jg()
+    jg["lineup_status"] = "confirmed"
+    assert "✅ 최종 · 타순 확정" in render_form_card(jg, "mlb")
+
+
+def test_종전_경로_카드는_한_글자도_안_바뀐다():
+    """🔴 스위치가 꺼진 경기·축구는 종전 카드 그대로여야 한다."""
+    from app.engine.form_card import render_form_card
+
+    jg = {"sport": "mlb", "league": "MLB", "home": "A", "away": "B",
+          "lineup_status": "confirmed", "p_claude": 0.64,
+          "matchup": {"p_home": 0.64, "우세": "home"}}
+    card = render_form_card(jg, "mlb")
+    assert "64.0%" in card and "신호등" in card
+
+
+# ── 추천
+
+def test_새_순서_경기는_추천되지_않는다():
+    """🔴 "추천 로직도 다 삭제." 확률이 없어 하한과 비교할 값도 없다."""
+    from app.pipeline import qualifies
+
+    assert qualifies({"sport": "mlb", "p": 0.90, "pick_state": "final",
+                      "order_v2": True}) is False
+
+
+def test_픽_딕셔너리가_표식을_싣는다():
+    """🔴 존재하는 것과 전달되는 것은 다르다 — 게이트가 못 보면 무의미하다."""
+    src = open("app/pipeline.py", encoding="utf-8").read()
+    assert src.count('"order_v2": bool(jg.get("order_v2"))') >= 2
+
+
+# ── 승자 정합성 · 원장
+
+def test_경기의_팀이_아니면_판정을_버린다():
+    """🔴 확률이 없으므로 고쳐 쓸 근거가 없다. 실측: gemini 가 `KT Wiz` 를 냈다."""
+    jg = {"game_id": 1, "home": "Samsung Lions", "away": "Kiwoom Heroes"}
+    assert MU.apply_winner(jg, {"승자": "KT Wiz"}) is False
+    assert "matchup" not in jg and "winner" not in jg
+
+
+@pytest.mark.parametrize("w", ["삼성", "Samsung Lions", "samsung lions"])
+def test_약칭도_정식표기도_받는다(w):
+    jg = {"game_id": 1, "home": "Samsung Lions", "away": "Kiwoom Heroes"}
+    assert MU.apply_winner(jg, {"승자": w}) is True
+    assert jg["winner"] == "Samsung Lions"
+
+
+def test_확률이_없어도_원장에_남는다():
+    """🔴 안 남기면 이 방식이 맞는지 영영 못 잰다 — 조용한 손실."""
+    from app.engine.pick_ledger import _row_from_game
+
+    jg = {"game_id": 9, "sport": "mlb", "home": "Milwaukee Brewers",
+          "away": "Cincinnati Reds", "winner": "Milwaukee Brewers",
+          "matchup": {"승자": "Milwaukee Brewers"}}
+    row = _row_from_game(jg, {"sport": "mlb", "date": "2026-09-11"}, {})
+    assert row is not None
+    assert row["p_home"] is None
+    assert row["predicted_side"] == "home"
+
+
+def test_예측을_실제_승자_칸에_넣지_않는다():
+    """🔴 `winner` 는 채점이 채우는 **실제 승자**다. 같은 칸을 쓰면 채점이
+    제 예측을 정답으로 덮어쓴다."""
+    from app.engine.pick_ledger import _row_from_game
+
+    jg = {"game_id": 9, "sport": "mlb", "home": "A", "away": "B",
+          "matchup": {"승자": "A"}}
+    row = _row_from_game(jg, {"sport": "mlb", "date": "2026-09-11"}, {})
+    assert "winner" not in row
+
+
+def test_채점이_저장된_방향을_읽는다():
+    from app.engine.pick_ledger import predicted_side
+
+    assert predicted_side(None, None, "away") == "away"
+    assert predicted_side("home", None, "away") == "home"   # 우세가 우선
+    assert predicted_side(None, 0.61, None) == "home"       # 종전 규약 불변
+
+
+# ── ORD-3 실측이 잡은 것 (2026-09-11 23:0x 리허설)
+
+def test_공시의_제목과_본문을_두_번_싣지_않는다():
+    """🔴 실측 game=5629: MLB 트랜잭션은 title == body 라 카드가
+    "X 를 IL 에 올렸다 — X 를 IL 에 올렸다" 를 찍었다."""
+    from app.engine.deepsearch import MAX_SAT  # noqa: F401
+    import app.engine.deepsearch as DS
+
+    same = "Milwaukee Brewers activated RHP Abner Uribe from the 15-day IL."
+    rows = []
+
+    class _Fake:
+        pass
+
+    # `reinforce` 내부 조립과 같은 규칙을 직접 확인한다
+    import asyncio
+
+    async def _run():
+        async def _sat(*a, **k):
+            return [{"title": same, "body": same, "url": "", "source": "t"}]
+
+        async def _none(*a, **k):
+            return []
+
+        orig = DS._free_articles, DS._ask_pplx, DS._ask_grok
+        DS._free_articles, DS._ask_pplx, DS._ask_grok = _sat, _none, _none
+        try:
+            return await DS.reinforce(_jg(), _pre(), None)
+        finally:
+            DS._free_articles, DS._ask_pplx, DS._ask_grok = orig
+
+    out = asyncio.get_event_loop().run_until_complete(_run()) \
+        if False else asyncio.run(_run())
+    rows = out["자료"]
+    assert rows[0]["답"] == same
+    assert rows[0]["답"].count("Abner Uribe") == 1
+
+
+def test_오래된_공시는_안_보인다():
+    """🔴 "오늘 공시"라 써놓고 2주 전 것을 보이면 그것이 거짓말이다."""
+    from app.engine import form_card as FC
+
+    jg = _ov_jg()
+    jg["order_v2"]["자료"] = [
+        {"질문": "", "답": "어제 복귀", "소스": "satellite", "age_h": 20.0, "url": ""},
+        {"질문": "", "답": "2주 전 이적", "소스": "satellite", "age_h": 400.0,
+         "url": ""}]
+    card = FC.render_form_card(jg, "mlb")
+    assert "어제 복귀" in card
+    assert "2주 전 이적" not in card
+    assert "7일 지난 공시 1건 제외" in card
+
+
+def test_며칠_전_로스터_이동은_남는다():
+    """🔴 48시간으로 잡았더니 실측에서 15건이 전부 빠졌다 — 유리베·로메로
+    IL 복귀처럼 오늘 경기에 그대로 유효한 것까지 사라졌다."""
+    from app.engine import form_card as FC
+
+    jg = _ov_jg()
+    jg["order_v2"]["자료"] = [{"질문": "", "답": "유리베 IL 복귀",
+                              "소스": "satellite", "age_h": 72.0, "url": ""}]
+    assert "유리베 IL 복귀" in FC.render_form_card(jg, "mlb")
+
+
+def test_나이를_모르는_공시는_버리지_않는다():
+    """🔴 `age_h=None` 은 "오래됐다"가 아니라 "모른다"다(NPB 가 그렇다)."""
+    from app.engine import form_card as FC
+
+    jg = _ov_jg()
+    jg["order_v2"]["자료"] = [{"질문": "", "답": "나이 미상 공시",
+                              "소스": "satellite", "url": ""}]
+    assert "나이 미상 공시" in FC.render_form_card(jg, "mlb")
+
+
+def test_헤더에_산문이_들어오면_자른다():
+    """🔴 실측 game=5624: 구장 칸에 LLM 산문 400자가 들어와 카드 둘째 줄을
+    통째로 먹었다."""
+    from app.engine import form_card as FC
+
+    jg = _ov_jg()
+    jg["venue"] = "로저스 센터는 " + "가" * 500
+    card = FC.render_form_card(jg, "mlb")
+    assert "가가가" not in card, "잘라 붙이면 잘린 산문이 남는다 — 빼야 한다"
+    assert "09/12 08:45" in card, "시각까지 함께 지우면 안 된다"
+
+
+def test_짧은_구장_이름은_그대로_싣는다():
+    from app.engine import form_card as FC
+
+    jg = _ov_jg()
+    jg["venue"] = "American Family Field"
+    assert "American Family Field" in FC.render_form_card(jg, "mlb")
+
+
+@pytest.mark.asyncio
+async def test_위성은_최신순으로_자른다(monkeypatch):
+    """🔴 실측 2026-09-11 game=5629: 위성 25건 중 7일 이내가 10건이었는데
+    앞에서 15건을 자르니 그 10건이 통째로 밀려났다 — 카드 공시가 0건이 됐다."""
+    import app.engine.deepsearch as DS
+
+    old = [{"title": f"old{i}", "body": "", "url": "", "age_h": 500.0 + i}
+           for i in range(DS.MAX_SAT)]
+    fresh = [{"title": "오늘 복귀", "body": "", "url": "", "age_h": 3.0}]
+
+    async def _sat(*a, **k):
+        return old + fresh          # 신선한 것이 **뒤에** 있다
+
+    async def _none(*a, **k):
+        return []
+
+    monkeypatch.setattr(DS, "_free_articles", _sat)
+    monkeypatch.setattr(DS, "_ask_pplx", _none, raising=False)
+    monkeypatch.setattr(DS, "_ask_grok", _none, raising=False)
+    out = await DS.reinforce(_jg(), _pre(), None)
+    assert any(r["답"] == "오늘 복귀" for r in out["자료"])
+
+
+@pytest.mark.asyncio
+async def test_나이를_모르는_위성도_버리지_않는다(monkeypatch):
+    import app.engine.deepsearch as DS
+
+    async def _sat(*a, **k):
+        return [{"title": "나이 미상", "body": "", "url": ""}]
+
+    async def _none(*a, **k):
+        return []
+
+    monkeypatch.setattr(DS, "_free_articles", _sat)
+    monkeypatch.setattr(DS, "_ask_pplx", _none, raising=False)
+    monkeypatch.setattr(DS, "_ask_grok", _none, raising=False)
+    out = await DS.reinforce(_jg(), _pre(), None)
+    assert [r["답"] for r in out["자료"]] == ["나이 미상"]
+
+
+def test_옛_모양의_캐시를_만나도_카드가_죽지_않는다():
+    """🔴 배포 직후 Redis `analysis:*` 에는 숫자만 담긴 `order_v2` 가 남아 있다.
+    거기서 죽으면 그 경기는 카드가 통째로 못 나간다."""
+    from app.engine.form_card import render_form_card
+
+    jg = {"sport": "mlb", "league": "MLB", "home": "A", "away": "B",
+          "lineup_status": "none", "winner": "A",
+          "order_v2": {"갈림길": 2, "질문": 4, "보강": 6, "출처": {"pplx": 3}}}
+    card = render_form_card(jg, "mlb")
+    assert "🏆 승리 예상" in card
+    assert "🔎 조사 결과" in card

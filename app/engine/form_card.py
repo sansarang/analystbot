@@ -182,9 +182,139 @@ def weather_line(jg: dict) -> str:
     return ("날씨 🌤 " + " · ".join(bits)) if bits else ""
 
 
+#: 조사 답 한 줄의 길이 상한. 텔레그램 한 화면을 넘기면 아무도 안 읽는다.
+_ANS_MAX = 240
+#: 공시(위성) 표시 상한.
+_NOTICE_MAX = 6
+#: 공시가 카드에 남을 기간. **7일이다.**
+#   🔴 48시간으로 잡았더니 실측 2026-09-11 game=5629 에서 15건이 전부
+#      빠졌다 — MLB 트랜잭션 수집 창이 14일이라 대부분이 며칠 전 것이고,
+#      그중에 유리베·로메로 IL 복귀처럼 **오늘 경기에 그대로 유효한** 것이
+#      섞여 있다. 로스터 이동은 하루 지났다고 무효가 되지 않는다.
+#   ⚠️ 그래도 14일 전체를 싣지는 않는다 — 그건 "최근"이 아니다.
+_NOTICE_MAX_AGE_H = 168.0
+#: 구장 이름 길이 상한. **이름이 아니면 싣지 않는다.**
+#   실측 2026-09-11 game=5624: 구장 칸에 LLM 산문 400자가 들어와 카드 둘째
+#   줄을 통째로 먹었다. 잘라 붙이면 잘린 산문이 남는다 — 이름이 아니면 뺀다.
+_PARK_NAME_MAX = 40
+
+_SRC_KR = {"pplx": "퍼플렉시티", "x": "X", "satellite": "공시"}
+
+
+def render_search_card(jg: dict, sport: str | None = None) -> str:
+    """[ORD-3 2026-09-11 사용자 지시] **서치가 찾아온 것과 승자만.**
+
+    "추천 로직도 다 삭제…수치는 전부다 삭제…" · "서술형 기본 레이팅도 삭제…" ·
+    "설명도 삭제…서치에 의한 정보만 명시…" · "어느팀이 승리한다만 제미나이가 판다…"
+
+    🔴 그래서 이 카드에는 확률·별표·신호등·가치·시장 비교·서술·근거·변수가
+       **하나도 없다.** 헤더 + 갈림길별 조사 답 + 공시 + 승자. 끝이다.
+    ⚠️ 자료를 여기서 다시 모으지 않는다 — `jg["order_v2"]` 가 원본이다.
+    """
+    ov = jg.get("order_v2") or {}
+    sport = sport or jg.get("sport") or ""
+    home, away = _team(jg.get("home") or "?"), _team(jg.get("away") or "?")
+    league = jg.get("league") or sport.upper()
+    lines = [f"{league}  {away} @ {home}"]
+    _pk = _park(jg)
+    if len(_pk) > _PARK_NAME_MAX:          # 이름이 아니라 산문이다 — 뺀다
+        _pk = ""
+    info = " ".join(x for x in (jg.get("starts_at_kst") or "", _pk) if x)
+    if info.strip():
+        lines.append(info)
+    wx = weather_line(jg)
+    if wx:
+        lines.append(wx)
+
+    # 🔴 캐시에 남은 **옛 모양**을 만나도 카드가 죽지 않는다. 배포 직후
+    #    Redis 의 `analysis:*` 에는 숫자만 담긴 `order_v2` 가 남아 있고,
+    #    거기에 `list()` 를 걸면 TypeError 로 그 경기 카드가 통째로 못 나간다.
+    def _lst(key):
+        v = ov.get(key)
+        return v if isinstance(v, list) else []
+
+    rows = [r for r in _lst("자료") if isinstance(r, dict)]
+    answers = [r for r in rows if r.get("소스") != "satellite"]
+    notices = [r for r in rows if r.get("소스") == "satellite"]
+    # 🔴 나이를 아는 것만 최근으로 거른다. **모르는 것은 버리지 않는다** —
+    #    `age_h=None` 은 "오래됐다"가 아니라 "모른다"다(NPB 가 그렇다).
+    _fresh = [r for r in notices
+              if r.get("age_h") is None or float(r["age_h"]) <= _NOTICE_MAX_AGE_H]
+    _dropped_old = len(notices) - len(_fresh)
+    notices = _fresh
+    asked = [str(q) for q in _lst("질문")]
+
+    branches = [b for b in _lst("갈림길목록") if isinstance(b, dict)]
+    if branches:
+        lines.append("")
+        lines.append("⚡ 갈림길")
+        for i, b in enumerate(branches, 1):
+            q = str((b or {}).get("질문") or "").strip()
+            if q:
+                lines.append(f"{i}. {q}")
+
+    lines.append("")
+    lines.append("🔎 조사 결과")
+    used = set()
+    for q in asked:
+        hits = [r for r in answers if (r.get("질문") or "") == q]
+        for r in hits:
+            used.add(id(r))
+        lines.append(f"· {q}")
+        if not hits:
+            # 🔴 못 찾은 것을 지우면 카드가 다 아는 것처럼 보인다.
+            lines.append("   — 찾지 못함")
+            continue
+        for r in hits:
+            lines.append(f"   {_ans(r)}")
+    # 질문에 못 붙은 답도 버리지 않는다(질문번호가 없던 응답).
+    orphan = [r for r in answers if id(r) not in used]
+    for r in orphan:
+        lines.append(f"· {_ans(r)}")
+
+    if notices or _dropped_old:
+        lines.append("")
+        lines.append("📋 최근 공시")
+        for r in notices[:_NOTICE_MAX]:
+            lines.append(f"· {_clip(r.get('답'), _ANS_MAX)}")
+        if len(notices) > _NOTICE_MAX:
+            lines.append(f"· … 외 {len(notices) - _NOTICE_MAX}건")
+        if _dropped_old:
+            # 🔴 뺀 것을 세어 밝힌다 — 조용히 사라지면 공시가 없었는지
+            #    오래돼서 뺐는지 구분할 수 없다.
+            lines.append(f"· (7일 지난 공시 {_dropped_old}건 제외)")
+
+    w = jg.get("winner") or (jg.get("matchup") or {}).get("승자")
+    if w:
+        lines.append("")
+        lines.append(f"🏆 승리 예상 — {_team(w)}")
+
+    from app.collectors.lineups import pick_state as _ps
+
+    state = jg.get("pick_state") or _ps(jg.get("lineup_status"))[0]
+    lines.append("")
+    lines.append("✅ 최종 · 타순 확정" if state == "final" else "🕐 잠정 · 타순 전")
+    return "\n".join(lines)
+
+
+def _clip(t, n: int) -> str:
+    t = " ".join(str(t or "").split())
+    return t if len(t) <= n else t[:n] + "…"
+
+
+def _ans(r: dict) -> str:
+    src = _SRC_KR.get(r.get("소스") or "", r.get("소스") or "")
+    return f"{_clip(r.get('답'), _ANS_MAX)} ({src})"
+
+
 def render_form_card(jg: dict, sport: str | None = None, *,
                      revision: bool = False) -> str:
     """판정 JSON → 카드 본문. 언더오버·런라인·F5 없음."""
+    # 🔴 [ORD-3] **설정이 아니라 데이터로 가른다.** `order_v2` 가 붙은 경기는
+    #    새 방식으로 판정된 것이고, 한 슬레이트에 두 방식이 섞여도 각 카드가
+    #    제 방식대로 그려진다.
+    if jg.get("order_v2"):
+        return render_search_card(jg, sport)
     sport = sport or jg.get("sport") or ""
     home, away = _team(jg.get("home") or "?"), _team(jg.get("away") or "?")
     league = jg.get("league") or sport.upper()

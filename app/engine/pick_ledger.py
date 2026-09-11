@@ -126,7 +126,21 @@ async def _fill_market(conn, ledger_id: int, row: dict) -> None:
         logger.warning("[ledger] 시장 칸 기록 실패 id=%s: %s", ledger_id, exc)
 
 
-def predicted_side(favored: str | None, p_home: float | None) -> str | None:
+def _side_of(jg: dict, winner: str | None) -> str | None:
+    """승자 팀 이름 → `home`|`away`. 이름 대조는 `matchup._name_hits` 가 원본이다."""
+    if not winner:
+        return None
+    from app.engine.matchup import _name_hits
+
+    h = _name_hits(winner, jg.get("home") or "")
+    a = _name_hits(winner, jg.get("away") or "")
+    if h == a:
+        return None
+    return "home" if h else "away"
+
+
+def predicted_side(favored: str | None, p_home: float | None,
+                   stored: str | None = None) -> str | None:
     """채점에 쓸 예측 방향.
 
     `우세`가 home/away면 그대로 쓴다. '박빙'이면 방향 선언이 없으므로
@@ -136,6 +150,9 @@ def predicted_side(favored: str | None, p_home: float | None) -> str | None:
     """
     if favored in ("home", "away"):
         return favored
+    # [ORD-3] 확률이 없는 판정은 `predicted_side` 칸에 방향이 그대로 적혀 있다.
+    if stored in ("home", "away"):
+        return stored
     if p_home is None:
         return None
     return "home" if p_home >= 0.5 else "away"
@@ -145,7 +162,13 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
     """판정된 경기 1건 → 레저 행. 판정이 없으면 None(기록하지 않는다)."""
     gid = jg.get("game_id")
     matchup = jg.get("matchup") or {}
-    if gid is None or matchup.get("p_home") is None:
+    # 🔴 [ORD-3 2026-09-11] 새 순서 판정에는 **확률이 없다** — 출력이 승자
+    #    하나다. 종전 조건을 그대로 두면 그 경기들이 원장에 한 줄도 안 남고,
+    #    그러면 이 방식이 맞는지 **영영 못 잰다**(조용한 손실).
+    #    확률이 없으면 브라이어·AUC 는 계산할 수 없다. 남는 지표는 승자 적중률
+    #    하나이고, 그 하나는 반드시 남긴다.
+    if gid is None or (matchup.get("p_home") is None
+                       and not matchup.get("승자")):
         return None                      # 판정 없음 — 레저는 판정의 원장이다
     pick = picks_by_game.get(gid)
     return {
@@ -154,6 +177,10 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         "league": jg.get("league"),
         "date": analysis.get("date") or "",
         "p_home": jg.get("p_claude"),
+        # 🔴 `winner` 가 아니다 — 그 칸은 채점이 채우는 **실제 승자**다.
+        #    예측은 `predicted_side` 에 home|away 로 넣는다(팀 이름이 아니라
+        #    방향이어야 `hit` 비교가 종전 규약 그대로 된다).
+        "predicted_side": _side_of(jg, matchup.get("승자") or jg.get("winner")),
         "favored": matchup.get("우세"),
         "confidence": matchup.get("확신도"),
         "lineup_status": jg.get("lineup_status") or "none",
@@ -254,9 +281,9 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                               confidence, lineup_status, gate_result, model,
                               rejudge_count, is_final, trial,
                               odds, market_prob, divergence_pp,
-                              confidence_probe, shadow_blend)
+                              confidence_probe, shadow_blend, predicted_side)
                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,
-                                   $13,$14,$15,$16::jsonb,$17::jsonb)""",
+                                   $13,$14,$15,$16::jsonb,$17::jsonb,$18)""",
                         row["game_id"], row["sport"], row["league"], row["date"],
                         row["p_home"], row["favored"], row["confidence"],
                         row["lineup_status"], row["gate_result"], row["model"], n,
@@ -264,7 +291,8 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         row["odds"], row["market_prob"], row["divergence_pp"],
                         row["confidence_probe"],
                         json.dumps(row.get("shadow_blend"), ensure_ascii=False)
-                        if row.get("shadow_blend") else None)
+                        if row.get("shadow_blend") else None,
+                        row.get("predicted_side"))
                     stats["rejudged" if existing is not None else "inserted"] += 1
         except Exception as exc:
             # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —
@@ -318,6 +346,7 @@ async def grade_pending(pool, sport: str | None = None) -> dict:
     args = [sport] if sport else []
     rows = await pool.fetch(
         f"""SELECT l.id, l.game_id, l.sport, l.favored, l.p_home,
+                  l.predicted_side,
                   g.status, g.home_score, g.away_score
               FROM pick_ledger l JOIN games g ON g.id = l.game_id
              WHERE l.graded_at IS NULL
@@ -332,7 +361,7 @@ async def grade_pending(pool, sport: str | None = None) -> dict:
             continue
         h, a = int(r["home_score"]), int(r["away_score"])
         winner = "home" if h > a else "away" if a > h else "draw"
-        side = predicted_side(r["favored"], r["p_home"])
+        side = predicted_side(r["favored"], r["p_home"], r.get("predicted_side"))
         # ⚠️ **무승부는 채점 분모에서 제외한다(void 아님).** hit=None 으로 두어
         #    캘리브레이션 집계가 건너뛰게 한다. 경기는 정상 성립했으므로
         #    void(우천취소·서스펜디드)와 구분해야 한다. KBO 는 연장 12회에도

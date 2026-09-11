@@ -556,6 +556,30 @@ def normalize_winner(verdict: dict, jg: dict) -> str | None:
     return want
 
 
+def apply_winner(jg: dict, verdict: dict) -> bool:
+    """[ORD-3 2026-09-11 사용자 지시] **어느 팀이 이기는지만 싣는다.**
+
+    "추천 로직도 다 삭제…수치는 전부다 삭제…" / "설명도 삭제…서치에 의한
+     정보만 명시…" / "그리고 어느팀이 승리한다만 제미나이가 판다…"
+
+    🔴 확률이 없으므로 `normalize_winner` 의 정정도 없다 — 고칠 근거가 사라졌다.
+       그래서 **경기의 팀이 아니면 판정을 버린다.** 실측 2026-09-11: gemini 가
+       경기에 없는 `KT Wiz` 를 4회 중 1회 냈다. 고쳐 쓰지 않고 버린다.
+
+    반환: 실었으면 True, 승자가 이 경기의 팀이 아니면 False.
+    """
+    w = str((verdict or {}).get("승자") or "").strip()
+    home, away = jg.get("home") or "", jg.get("away") or ""
+    hit_h, hit_a = _name_hits(w, home), _name_hits(w, away)
+    if hit_h == hit_a:                      # 둘 다거나 둘 다 아니다
+        logger.warning("[order] 🔴 승자 %r 가 이 경기(%s@%s)의 팀이 아니다 — "
+                       "판정을 버린다 (game=%s)", w, away, home, jg.get("game_id"))
+        return False
+    jg["matchup"] = {"승자": home if hit_h else away, "model": verdict.get("model")}
+    jg["winner"] = jg["matchup"]["승자"]
+    return True
+
+
 def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
     from app.engine.starter_recent import (THIN_SHRINK, THIN_STARTS,
                                            thin_sample_sides)
@@ -1207,12 +1231,27 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #    삭제…db가 답을 바꾼다."  실측(ORD-1 리허설 3경기)이 그 말대로였다 —
     #    ④ 가 3/3 돌았고 NYM@NYY 는 0.54 NYY → 0.46 NYM 으로 승자째 뒤집혔다.
     #    DB 를 **뒤에** 붙여도 DB 가 답을 정하면 순서를 바꾼 것이 아니다.
-    if _order_v2:
-        jg["order_v2"] = {"갈림길": len((_pre or {}).get("갈림길") or []),
-                          "질문": len((_reinf or {}).get("질문") or []),
-                          "보강": len((_reinf or {}).get("자료") or []),
-                          "출처": (_reinf or {}).get("출처") or {},
-                          "추가확인": (parsed or {}).get("추가확인") or []}
+    if _order_v2 and parsed is not None:
+        # 🔴 카드가 읽을 **조사 원문**을 그대로 싣는다. 카드가 자료를 다시
+        #    모으면 그것이 사본이고, 두 곳이 다른 것을 보게 된다.
+        jg["order_v2"] = {"갈림길목록": _pre.get("갈림길") or [],
+                          "자료": (_reinf or {}).get("자료") or [],
+                          "질문": (_reinf or {}).get("질문") or [],
+                          "출처": (_reinf or {}).get("출처") or {}}
+        if not apply_winner(jg, parsed):
+            jg["form_unavailable"] = True
+            jg["order_v2"]["탈락"] = "승자가 이 경기의 팀이 아니다"
+            if final:
+                await release_final(redis, jg, date)
+            return None
+        jg["final_verdict"] = final
+        jg["judge_stage"] = "final" if final else "prelim"
+        await persist_matchup_record(redis, jg, date)
+        logger.info("[order] game=%s 승자 %s (갈림길 %d · 조사 %d건 %s)",
+                    jg.get("game_id"), jg.get("winner"),
+                    len(jg["order_v2"]["갈림길목록"]),
+                    len(jg["order_v2"]["자료"]), jg["order_v2"]["출처"])
+        return parsed
     if parsed is None:
         jg["form_unavailable"] = True
         # 🔴 최종이 답을 못 냈으면 **권한을 돌려놓는다.** 안 그러면 다음

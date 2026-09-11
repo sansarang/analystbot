@@ -526,6 +526,13 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS confidence_probe JSONB;
 --   판정 AUC 0.470~0.519 vs 단순 Elo 0.558(2026-09-08 실측). 섞는 것이 나은지
 --   재려면 매 판정에 섞은 값이 남아 있어야 한다. 가중 0.3/0.5/0.7 세 값.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS shadow_blend JSONB;
+-- [ORD-3 2026-09-11] 새 순서 판정의 출력은 **승자 하나**다(확률 없음).
+--   확률이 없는 판정도 원장에 남아야 채점이 된다 — 없으면 이 방식이 맞는지
+--   영영 못 잰다. 종전 경로는 이 칸이 NULL 이고 아무것도 바뀌지 않는다.
+-- ⚠️ `winner` 가 아니라 `predicted_side` 다 — `winner` 는 채점 때 채우는
+--    **실제 승자**(home|away|draw)로 이미 쓰이고 있다. 같은 칸에 두 뜻을
+--    담으면 채점이 제 예측을 정답으로 덮어쓴다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS predicted_side TEXT;
 
 -- [운영 안정화 0a · 2026-09-02] 하이픈 실명이 타순을 쪼갠 오염 행 표시.
 --   `Pete Crow-Armstrong` 같은 이름이 `order.split("-")` 에 두 조각으로 갈려
