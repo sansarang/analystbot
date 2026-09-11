@@ -522,6 +522,11 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS trial BOOLEAN NOT NULL DEFAULT 
 --   🔴 게이트는 이 칸을 읽지 않는다. 계약 테스트가 강제한다.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS confidence_probe JSONB;
 
+-- [BLD-1 2026-09-11] PL-1 섀도 앙상블. **기록 전용** — 카드·게이트가 읽지 않는다.
+--   판정 AUC 0.470~0.519 vs 단순 Elo 0.558(2026-09-08 실측). 섞는 것이 나은지
+--   재려면 매 판정에 섞은 값이 남아 있어야 한다. 가중 0.3/0.5/0.7 세 값.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS shadow_blend JSONB;
+
 -- [운영 안정화 0a · 2026-09-02] 하이픈 실명이 타순을 쪼갠 오염 행 표시.
 --   `Pete Crow-Armstrong` 같은 이름이 `order.split("-")` 에 두 조각으로 갈려
 --   저장된 배열이 10칸이 됐다. 슬롯이 통째로 밀려 라인업 의도·T5 가 없는

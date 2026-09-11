@@ -20,6 +20,8 @@ import re
 
 logger = logging.getLogger(__name__)
 
+from app.engine import shadow_blend as _shadow  # noqa: E402
+
 # gate_result 값 집합. 엣지·가치 계열은 4·5단계에서 채워진다 —
 # 지금 쓰이는 것은 추천·보드만·거부권탈락 셋뿐이다.
 GATE_RECOMMENDED = "추천"
@@ -165,6 +167,10 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         #   ⚠️ 배당 격리는 그대로다 — 이 값은 **판정이 끝난 뒤** 붙는 기록이고,
         #      판정 프롬프트로는 가지 않는다.
         **_probe_col(jg, _market_cols(jg, pick)),
+        # [BLD-1 2026-09-11] PL-1 섀도 앙상블 — **기록만 한다.**
+        #   카드·게이트·판정은 이 값을 읽지 않는다. 계산이 터져도 원장 기록을
+        #   막지 않는다(`safe_compute`). 리그별 50건 시점에 비교 리포트를 만든다.
+        "shadow_blend": _shadow.safe_compute(jg),
     }
 
 
@@ -248,15 +254,17 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                               confidence, lineup_status, gate_result, model,
                               rejudge_count, is_final, trial,
                               odds, market_prob, divergence_pp,
-                              confidence_probe)
+                              confidence_probe, shadow_blend)
                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,
-                                   $13,$14,$15,$16::jsonb)""",
+                                   $13,$14,$15,$16::jsonb,$17::jsonb)""",
                         row["game_id"], row["sport"], row["league"], row["date"],
                         row["p_home"], row["favored"], row["confidence"],
                         row["lineup_status"], row["gate_result"], row["model"], n,
                         trial,
                         row["odds"], row["market_prob"], row["divergence_pp"],
-                        row["confidence_probe"])
+                        row["confidence_probe"],
+                        json.dumps(row.get("shadow_blend"), ensure_ascii=False)
+                        if row.get("shadow_blend") else None)
                     stats["rejudged" if existing is not None else "inserted"] += 1
         except Exception as exc:
             # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —
