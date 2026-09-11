@@ -885,6 +885,231 @@ async def scout(jg: dict, materials_prompt: str, redis=None, *,
     return out
 
 
+# ═══════════════════════════════════════════════════════════════════
+# [ORD-1 2026-09-11 사용자 지시] 순서를 바꾼다 — ① 갈림길 → ② 보강 → ③ 결론 →
+#   ④ 애매한 것만 DB. 아래 둘이 ①②다. ③④는 `matchup.judge_matchup` 에 있다.
+# ═══════════════════════════════════════════════════════════════════
+
+async def prescout(jg: dict, brief: str, *,
+                   timeout: float | None = None) -> dict | None:
+    """① **경기만 보고** 갈림길·변수·조사요청을 세운다. DB 수치를 주지 않는다.
+
+    🔴 왜 DB 를 안 주나. 실측 2026-09-11 MLB 15경기 — 근거 45줄 중 40줄이
+       자료1~14 인용이었다. 자료를 먼저 주면 자료가 답을 정하고, 조사는
+       이미 정해진 답의 각주가 된다. 순서를 바꾸는 것이 이 수정의 전부다.
+
+    반환 `{"갈림길": [...], "변수": [...], "조사요청": [...]}` 또는 None.
+    ⚠️ **실패는 None 이다.** 호출부가 종전 경로로 간다 — 갈림길을 못 세웠다고
+       판정을 멈추지 않는다.
+    """
+    from app.config import get_settings
+    from app.engine.prompts import PRESCOUT
+
+    s = get_settings()
+    if s.mock_judge:
+        return None
+    prompt = PRESCOUT.format(league=(jg.get("league")
+                                     or (jg.get("sport") or "").upper()),
+                             away=jg.get("away") or "", home=jg.get("home") or "",
+                             today=_today_kst(), brief=brief or "(없음)")
+    from app.llm.judge_route import chain as _chain
+
+    routes = [r for r in _chain(DEEPSEARCH_ROLE) if r[0] != "anthropic"]
+    if not routes:
+        logger.error("[prescout] 후보가 없다 — 종전 경로로 간다")
+        return None
+    from app.engine.team_form import _complete_free, parse_json_object
+
+    try:
+        body = await asyncio.wait_for(
+            _complete_free(routes, prompt, int(s.deepsearch_max_tokens),
+                           DEEPSEARCH_ROLE),
+            timeout=timeout if timeout is not None
+            else float(s.deepsearch_timeout_sec))
+    except Exception as exc:
+        logger.warning("[prescout] 실패 — 종전 경로로 간다 %s@%s: %s",
+                       jg.get("away"), jg.get("home"), exc)
+        return None
+    body = body or ""
+    data = parse_json_object(body)
+    if not isinstance(data, dict):
+        logger.warning("[prescout] JSON 파싱 실패 — 종전 경로로 간다 %s@%s "
+                       "· %d자: %.300s", jg.get("away"), jg.get("home"),
+                       len(body), body.replace("\n", " ")[:300])
+        return None
+    # 🔴 배당 오염은 여기서도 막는다 — 갈림길이 가격을 물고 오면 격리선이 뚫린다.
+    data, dropped = strip_odds(data)
+    if dropped:
+        logger.warning("[prescout] 배당 오염 차단: %s", " · ".join(dropped))
+    br = [b for b in (data.get("갈림길") or []) if isinstance(b, dict)]
+    asks = [str(q).strip() for q in (data.get("조사요청") or []) if str(q).strip()]
+    out = {"갈림길": br,
+           "변수": [str(v).strip() for v in (data.get("변수") or []) if str(v).strip()],
+           "조사요청": asks[:MAX_ASKS]}
+    if not br and not asks:
+        logger.warning("[prescout] 갈림길·조사요청이 둘 다 비었다 — 종전 경로로 간다 "
+                       "%s@%s", jg.get("away"), jg.get("home"))
+        return None
+    logger.info("[prescout] %s@%s 갈림길 %d · 변수 %d · 조사요청 %d",
+                jg.get("away"), jg.get("home"), len(br), len(out["변수"]),
+                len(out["조사요청"]))
+    return out
+
+
+#: 조사요청 상한. 질문이 많을수록 각 답이 얕아지고 콜이 길어진다.
+MAX_ASKS = 6
+
+#: 위성 참고 목록 상한. 실측 2026-09-11: MLB 경기당 25~62건이 전부 트랜잭션
+#  줄이었다. 전량을 실으면 결론 프롬프트의 절반이 무관한 이적 공시가 된다.
+MAX_SAT = 15
+
+
+def _fmt_asks(asks: list[str]) -> str:
+    return "\n".join(f"{i}. {q}" for i, q in enumerate(asks, 1))
+
+
+async def _ask_pplx(jg: dict, asks: list[str]) -> list[dict]:
+    """퍼플렉시티에게 **①이 정한 질문만** 던진다. 실패는 빈 목록."""
+    from app.config import get_settings
+    from app.engine.prompts import REINFORCE_ASK
+
+    s = get_settings()
+    if not getattr(s, "deepsearch_pplx_enabled", False):
+        return []
+    prompt = REINFORCE_ASK.format(
+        today=_today_kst(), league=jg.get("league")
+        or (jg.get("sport") or "").upper(),
+        away=jg.get("away"), home=jg.get("home"), questions=_fmt_asks(asks))
+    try:
+        data = await _pplx_findings(prompt, max_tokens=1400)
+    except Exception as exc:
+        logger.warning("[reinforce] PPLX 실패 %s@%s: %s",
+                       jg.get("away"), jg.get("home"), exc)
+        return []
+    return _rows(data, asks, "pplx")
+
+
+async def _ask_grok(jg: dict, asks: list[str]) -> list[dict]:
+    """X(그록)에게 같은 질문을 던진다. 실패는 빈 목록.
+
+    ⚠️ `xsearch.fetch_for_game` 을 쓰지 않는다 — 그쪽은 **일반 속보**를 긁는
+       경로이고 경기당 1회 캡이 걸려 있다. 여기는 질문이 곧 검색 범위다.
+    """
+    from app.config import get_settings
+    from app.engine.prompts import REINFORCE_ASK
+
+    s = get_settings()
+    if s.mock_grok or not getattr(s, "xai_api_key", None):
+        return []
+    prompt = REINFORCE_ASK.format(
+        today=_today_kst(), league=jg.get("league")
+        or (jg.get("sport") or "").upper(),
+        away=jg.get("away"), home=jg.get("home"), questions=_fmt_asks(asks))
+    try:
+        from app.research.grok import GrokClient
+
+        text = await GrokClient()._search_call(prompt)
+    except Exception as exc:
+        logger.warning("[reinforce] X 실패 %s@%s: %s",
+                       jg.get("away"), jg.get("home"), exc)
+        return []
+    return _rows(_parse_array(text), asks, "x")
+
+
+def _parse_array(text: str | None):
+    """JSON **배열**을 먼저 찾는다.
+
+    🔴 실측 2026-09-11 game=5624: Grok 이 `**[{...},{...}]**` 로 정답 2건을
+       돌려줬는데 `parse_json_object` 가 **첫 객체 하나만** 떼어 dict 로 줬고,
+       그래서 `_rows` 가 0건을 냈다. 그 함수는 이름대로 "object" 파서다 —
+       배열 응답에는 그것을 먼저 쓰면 안 된다.
+    """
+    import json as _json
+    import re as _re
+
+    t = text or ""
+    m = _re.search(r"\[.*\]", t, _re.S)
+    if m:
+        try:
+            return _json.loads(m.group(0))
+        except Exception:
+            pass
+    from app.engine.team_form import parse_json_object
+
+    return parse_json_object(t)
+
+
+def _rows(data, asks: list[str], src: str) -> list[dict]:
+    """응답을 `{질문·답·소스·url}` 행으로. **답이 없는 항목은 버린다.**
+
+    🔴 "찾지 못했다"를 답으로 실으면 결론 단계가 그것을 사실로 읽는다.
+    """
+    if isinstance(data, list):
+        items = data
+    elif isinstance(data, dict):
+        # 배열을 못 찾아 객체 하나만 온 경우 — 그 한 줄도 답이다. 버리지 않는다.
+        items = next((v for k in ("발견", "답", "items")
+                      if isinstance(v := data.get(k), list)), None)
+        if items is None:
+            items = [data] if (data.get("답") or data.get("사실")) else []
+    else:
+        items = []
+    out: list[dict] = []
+    for it in items if isinstance(items, list) else []:
+        if not isinstance(it, dict):
+            continue
+        ans = str(it.get("답") or it.get("사실") or "").strip()
+        if not ans:
+            continue
+        try:
+            qno = int(it.get("질문번호"))
+        except (TypeError, ValueError):
+            qno = 0
+        out.append({"질문": asks[qno - 1] if 1 <= qno <= len(asks) else "",
+                    "답": ans, "소스": src,
+                    "소스유형": str(it.get("소스유형") or "").strip(),
+                    "url": str(it.get("url") or "").strip()})
+    return out
+
+
+async def reinforce(jg: dict, pre: dict, redis=None, *,
+                    timeout: float | None = None) -> dict:
+    """② 위성·퍼플렉시티·X 가 **①이 정한 질문만** 보강한다.
+
+    반환 `{"자료": [...], "출처": {...}, "질문": [...]}`.
+    ⚠️ **빈 결과도 반환한다** — 0건이라는 사실이 결론 프롬프트에 그대로 실려야
+       한다. 조용히 DB 로 돌아가면 앞 단계가 무의미해진 것을 아무도 모른다.
+    """
+    asks = list(pre.get("조사요청") or [])
+    sat = await _free_articles(jg, redis)
+    rows: list[dict] = []
+    if asks:
+        got = await asyncio.gather(_ask_pplx(jg, asks), _ask_grok(jg, asks),
+                                   return_exceptions=True)
+        for g in got:
+            if isinstance(g, list):
+                rows.extend(g)
+    # 🔴 위성은 **질문에 답한 것이 아니다.** 오늘 긁어 둔 공시·이적·부상 목록이고,
+    #    실측 2026-09-11 game=5624 에서 48건이 전부 트랜잭션 줄이었다. 이것을
+    #    "답" 칸에 섞으면 결론이 무관한 48줄을 갈림길의 근거로 읽는다.
+    #    **따로, 상한을 걸어, 참고라고 밝혀** 싣는다.
+    for a in sat[:MAX_SAT]:
+        body = (a.get("body") or "").strip()
+        rows.append({"질문": "", "답": (a.get("title") or "").strip()
+                     + (f" — {body[:300]}" if body else ""),
+                     "소스": "satellite",
+                     "소스유형": str(a.get("source") or ""),
+                     "url": str(a.get("url") or "")})
+    if len(sat) > MAX_SAT:
+        logger.info("[reinforce] 위성 %d건 중 %d건만 싣는다", len(sat), MAX_SAT)
+    src: dict = {}
+    for r in rows:
+        src[r["소스"]] = src.get(r["소스"], 0) + 1
+    logger.info("[reinforce] %s@%s 질문 %d · 자료 %d건 %s",
+                jg.get("away"), jg.get("home"), len(asks), len(rows), src)
+    return {"자료": rows, "출처": src, "질문": asks}
+
+
 async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None,
                       redis=None):
     """경기 1건 조사. 반환: (결과 dict | None, 검색 사용 수, 소스).

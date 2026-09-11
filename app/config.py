@@ -418,6 +418,18 @@ class Settings(BaseSettings):
     deepsearch_first: bool = Field(default=True, validation_alias=AliasChoices(
         "DEEPSEARCH_FIRST", "deepsearch_first"))
 
+    #: 🔴 [ORD-1 2026-09-11 사용자 지시] **순서를 바꾼다.**
+    #     "경기가 나왔어 → AI 가 먼저 변수 및 갈림길을 찾는다 → 그 후에 인공위성·
+    #      퍼플렉시티·X 가 보강자료를 찾는다 → 결론 → 애매한 것은 우리 DB 참조."
+    #   켜면 판정이 **자료1~14 없이** 시작한다. 갈림길 → 보강 → 결론이고,
+    #   결론이 `자료필요` 를 내면 그때만 DB 를 붙여 한 번 더 묻는다.
+    #   ⚠️ **기본 꺼짐이다.** 이 스위치는 판정 입력을 통째로 바꾼다 —
+    #      실측 전에 전 슬레이트에 켜면 무엇이 달라졌는지 대조할 기준이 없다.
+    #      `ORDER_V2=1` 로 켠다. `DEEPSEARCH_FIRST` 와는 배타다(켜지면 이쪽이 이긴다).
+    #   ⚠️ 경기당 LLM 호출이 **2~3회**가 된다(갈림길·결론·애매할 때 재질의).
+    order_v2: bool = Field(default=False, validation_alias=AliasChoices(
+        "ORDER_V2", "order_v2"))
+
     #: [DS-3 2026-09-10 사용자 지시] 딥서치에 Perplexity 병행. **기본 켜짐.**
     #   위성/RSS 가 못 물어온 사실을 PPLX 가 직접 웹에서 찾아 재료로 얹는다.
     #   ⚠️ 유료다 — 전 경기 병행 시 MLB15+KBO5+NPB5 ≈ 25건/일 × $0.01 ≈ 월 $7.5.

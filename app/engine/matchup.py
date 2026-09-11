@@ -812,6 +812,149 @@ def render_matchup_prompt(jg: dict, boxes: dict, news: dict,
     return prompt
 
 
+# ═══════════════════════════════════════════════════════════════════
+# [ORD-1 2026-09-11 사용자 지시] ③ 결론 · ④ 애매할 때만 DB.
+#   ①② 는 `deepsearch.prescout` · `deepsearch.reinforce` 다.
+# ═══════════════════════════════════════════════════════════════════
+
+def game_brief(jg: dict) -> str:
+    """① 이 보는 **경기 정보 전부.** 수치·DB 는 들어가지 않는다.
+
+    🔴 여기 무엇을 넣느냐가 이 수정의 경계선이다. 성적·레이팅·최근 폼을 한 줄이라도
+       넣으면 그 순간 다시 "DB 먼저"가 된다. 넣는 것은 **경기 자체**뿐이다 —
+       누가 어디서 언제 붙고, 선발이 누구이며, 일정·환경이 어떤가.
+    ⚠️ 값은 전부 `jg` 가 원본이다. 여기서 계산하거나 손으로 적지 않는다.
+    """
+    sport = (jg.get("sport") or "").lower()
+    lines = [f"· 종목/리그: {jg.get('league') or sport.upper()}",
+             f"· 대진: {jg.get('away')} (원정) @ {jg.get('home')} (홈)"]
+    st = jg.get("starts_at")
+    if st:
+        lines.append(f"· 시작(UTC): {st}")
+    for side, label in (("away", "원정"), ("home", "홈")):
+        lines.append(f"· {label} 선발: {_starter(jg, side) or '미정'}")
+    if jg.get("venue"):
+        lines.append(f"· 구장: {jg.get('venue')}")
+    lines.append(f"· 타순 상태: {jg.get('lineup_status') or 'none'}")
+    ctx = jg.get("material11") or {}
+    for side, label in (("away", "원정"), ("home", "홈")):
+        c = ctx.get(side) or {}
+        if c:
+            lines.append(f"· {label} 일정: "
+                         + " · ".join(f"{k} {_short(v)}" for k, v in c.items()))
+    w = ctx.get("날씨")
+    if w:
+        lines.append("· 날씨: " + (" · ".join(f"{k} {_short(v)}"
+                                             for k, v in w.items())
+                                  if isinstance(w, dict) else _short(w)))
+    return "\n".join(lines)
+
+
+#: 한 항목의 길이 상한. 자료11 `날씨.수치` 는 LLM 산문이라 400자가 넘게 온다 —
+#  그것이 통째로 들어가면 ① 이 "경기 한 장"이 아니라 남의 분석문을 읽게 된다.
+_BRIEF_MAX = 120
+
+
+def _short(v) -> str:
+    t = " ".join(str(v).split())
+    return t if len(t) <= _BRIEF_MAX else t[:_BRIEF_MAX] + "…"
+
+
+def _starter(jg: dict, side: str) -> str:
+    """오늘 선발 이름. **API 예고 선발(games 컬럼)이 먼저다.**
+
+    🔴 `starter_recent.pitcher_name` 은 `research.{side}_pitcher` 를 먼저 본다.
+       그 칸은 LLM 이 채운 것이라 실측 2026-09-11 game=5624 에서
+       `"Baltimore SP (확정 선발 불명)"` 이 들어 있었고 — 같은 경기의 games
+       컬럼에는 `Chris Bassitt` 이 있었다. ① 은 경기 사실만 봐야 하므로
+       **API 값을 먼저 쓰고, 없을 때만** 종전 함수로 내려간다.
+    ⚠️ `pitcher_name` 자체는 건드리지 않는다 — 자료4 조립이 그것을 쓴다.
+    """
+    api = str(jg.get(f"{side}_pitcher") or "").strip()
+    if api:
+        return api
+    from app.engine.starter_recent import pitcher_name
+
+    return pitcher_name(jg, side)
+
+
+#: 판정 프롬프트에서 **자료 본문만** 잘라내는 경계. 원본은 `prompts.MATCHUP` 이다.
+_DB_HEAD, _DB_TAIL = "[입력 자료]", "[변수 형식]"
+
+
+def db_block(prompt: str) -> str:
+    """④ 에 붙일 자료 본문. **판정 프롬프트에서 잘라 온다.**
+
+    🔴 자료 조립을 여기서 다시 하지 않는다 — 두 벌이 되면 한쪽만 갱신된다.
+       `render_matchup_prompt` 가 만든 그 문자열을 그대로 쓴다.
+    """
+    try:
+        i, j = prompt.index(_DB_HEAD), prompt.index(_DB_TAIL)
+    except ValueError:                       # 경계가 바뀌었다 — 통째로 준다
+        logger.warning("[order] 자료 경계를 못 찾았다 — 프롬프트 전체를 붙인다")
+        return prompt
+    return prompt[i:j].rstrip() + "\n"
+
+
+def _fmt_branches(pre: dict) -> str:
+    out = []
+    for i, b in enumerate(pre.get("갈림길") or [], 1):
+        q = str(b.get("질문") or "").strip()
+        why = str(b.get("왜") or "").strip()
+        out.append(f"{i}. {q}" + (f"  ← {why}" if why else ""))
+    return "\n".join(out) or "(없음)"
+
+
+def _fmt_evidence(reinf: dict) -> str:
+    """🔴 0건이면 **0건이라고 쓴다.** 빈 칸으로 두면 결론이 지어내기 시작한다."""
+    rows = (reinf or {}).get("자료") or []
+    if not rows:
+        asks = (reinf or {}).get("질문") or []
+        return ("🔴 **조사 결과 0건.** 위 갈림길에 대해 위성·퍼플렉시티·X 가 오늘 "
+                "아무것도 찾지 못했다"
+                + (f" (던진 질문 {len(asks)}개)." if asks else ".")
+                + " 답을 모르는 상태로 결론을 내라 — 모르는 것을 아는 척하지 마라.")
+    # 🔴 **답과 참고를 갈라 싣는다.** 위성은 질문에 답한 것이 아니라 오늘
+    #    긁어 둔 공시·이적 목록이다(실측 2026-09-11 game=5624: 48건 전부
+    #    트랜잭션). 한 칸에 섞으면 결론이 무관한 줄을 갈림길의 근거로 읽는다.
+    ans = [r for r in rows if r.get("소스") != "satellite"]
+    ref = [r for r in rows if r.get("소스") == "satellite"]
+    out = []
+    if ans:
+        out.append("【질문에 대한 답】")
+        for i, r in enumerate(ans, 1):
+            q = str(r.get("질문") or "").strip()
+            tag = (f"[{r.get('소스')}"
+                   + (f"/{r.get('소스유형')}" if r.get("소스유형") else "") + "]")
+            out.append(f"{i}. {tag} " + (f"({q}) " if q else "")
+                       + str(r.get("답") or "")
+                       + (f"  {r.get('url')}" if r.get("url") else ""))
+    else:
+        out.append("【질문에 대한 답】 🔴 0건 — 위 갈림길에 아무도 답하지 못했다.")
+    if ref:
+        out.append("\n【참고 · 오늘 구단 공시/이적】 — **질문에 대한 답이 아니다.** "
+                   "갈림길과 직접 닿는 줄만 골라 쓰고, 나머지는 무시하라.")
+        for i, r in enumerate(ref, 1):
+            out.append(f"참고{i}. {str(r.get('답') or '')[:200]}")
+    return "\n".join(out)
+
+
+def render_conclude_prompt(jg: dict, brief: str, pre: dict, reinf: dict) -> str:
+    """③ 결론 프롬프트. **자료1~14 가 들어가지 않는다.**"""
+    from app.engine.deepsearch import _today_kst
+    from app.engine.prompts import CONCLUDE
+
+    sport = (jg.get("sport") or "").lower()
+    return fill(CONCLUDE,
+                LEAGUE=jg.get("league") or sport.upper(),
+                AWAY=jg.get("away") or "", HOME=jg.get("home") or "",
+                TODAY=_today_kst(), BRIEF=brief,
+                BRANCHES=_fmt_branches(pre),
+                VARIABLES="\n".join(f"· {v}" for v in (pre.get("변수") or []))
+                or "(없음)",
+                EVIDENCE=_fmt_evidence(reinf))
+
+
 async def judge_matchup(jg: dict, redis, date: str, *,
                         mock: bool | None = None,
                         allow_final: bool = False) -> dict | None:
@@ -936,7 +1079,32 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #    자료 + 외부 사실을 보고 **변수를 정하고**, 최종 판정이 그것을 받아
     #    승패를 낸다. 스위치가 꺼져 있으면 종전 경로 그대로다.
     #    ⚠️ 정찰 실패는 None → 프롬프트가 바뀌지 않는다(종전 동작).
-    if getattr(settings, "deepsearch_first", False):
+    # 🔴 [ORD-1 2026-09-11 사용자 지시] **순서를 바꾼다.**
+    #    "경기가 나왔어 → AI 가 먼저 변수 및 갈림길을 찾는다 → 그 후에 인공위성·
+    #     퍼플렉시티·X 가 보강자료를 찾는다 → 결론 → 애매한 것은 우리 DB 참조."
+    #    ①② 가 여기, ③ 은 프롬프트 교체, ④ 는 아래 재질의다.
+    #    ⚠️ `_db_prompt` 는 **버리지 않는다** — ④ 가 그 자료를 잘라 쓴다.
+    #    ⚠️ ① 이 실패하면 `_order_v2` 가 False 로 내려가 **종전 경로 그대로**다.
+    _db_prompt, _pre, _reinf = prompt, None, None
+    _order_v2 = bool(getattr(settings, "order_v2", False)) and not is_mock
+    if _order_v2:
+        try:
+            from app.engine.deepsearch import prescout as _prescout
+            from app.engine.deepsearch import reinforce as _reinforce
+
+            _brief = game_brief(jg)
+            _pre = await _prescout(jg, _brief)
+            if _pre is not None:
+                _reinf = await _reinforce(jg, _pre, redis)
+                prompt = render_conclude_prompt(jg, _brief, _pre, _reinf)
+            else:
+                _order_v2 = False
+        except Exception as exc:
+            logger.warning("[order] game=%s 갈림길·보강 실패 — 종전 경로로 간다: %s",
+                           jg.get("game_id"), exc)
+            _order_v2, _pre, _reinf = False, None, None
+            prompt = _db_prompt
+    if not _order_v2 and getattr(settings, "deepsearch_first", False):
         try:
             from app.engine.deepsearch import scout as _scout
 
@@ -984,36 +1152,75 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #    근거가 잘려 판정이 얇아진다 — 고칠 것은 출력이 아니라 그릇이다.
     #    실측 2026-09-02: output=4000 stop=max_tokens 로 잘린 응답이 JSON
     #    파싱에 2회 실패해 KIA@NC 판정이 통째로 탈락했다.
-    budget = int(settings.matchup_max_tokens)
-    for attempt in (1, 2):
-        try:
-            text = await complete_json(
-                prompt, model=model, max_tokens=budget,
-                role=role, mock=False)
-        except ApiQuotaError as exc:
-            trip_credit(f"matchup:{away}@{home}", exc)
-            jg["form_unavailable"] = True
-            logger.warning("[matchup] 크레딧 소진 model=%s prompt_chars=%d: %s",
-                           model, len(prompt), exc)
-            raise
-        except Exception as exc:
-            logger.warning("[matchup] 호출 실패 %d회 model=%s prompt_chars=%d: %s",
-                           attempt, model, len(prompt), exc)
-            text = ""
-        parsed = parse_json_object(text)
-        if parsed and "p_home" in parsed:
-            parsed["model"] = model
-            break
+    async def _ask(prompt: str) -> dict | None:
+        """모델 1문. **루프 본문은 종전 그대로다** — 들여쓰기만 바뀌었다.
+        꺼낸 이유: ④(애매하면 DB 붙여 재질의)가 같은 루프를 써야 하는데,
+        인라인이면 그 자리에 루프를 한 벌 더 적게 된다 — 사본이다.
+        """
         parsed = None
-        truncated = bool(text) and not str(text).rstrip().endswith("}")
-        logger.warning("[matchup] JSON 파싱 실패 %d회 model=%s prompt_chars=%d "
-                       "max_tokens=%d 응답%d자 절단추정=%s",
-                       attempt, model, len(prompt), budget, len(text or ""),
-                       truncated)
-        if truncated and attempt == 1:
-            budget = min(budget * 2, MAX_TOKENS_CEILING)
-            logger.warning("[matchup] 절단으로 보인다 — 한도 %d 로 올려 재시도",
-                           budget)
+        budget = int(settings.matchup_max_tokens)
+        for attempt in (1, 2):
+            try:
+                text = await complete_json(
+                    prompt, model=model, max_tokens=budget,
+                    role=role, mock=False)
+            except ApiQuotaError as exc:
+                trip_credit(f"matchup:{away}@{home}", exc)
+                jg["form_unavailable"] = True
+                logger.warning("[matchup] 크레딧 소진 model=%s prompt_chars=%d: %s",
+                               model, len(prompt), exc)
+                raise
+            except Exception as exc:
+                logger.warning("[matchup] 호출 실패 %d회 model=%s prompt_chars=%d: %s",
+                               attempt, model, len(prompt), exc)
+                text = ""
+            parsed = parse_json_object(text)
+            if parsed and "p_home" in parsed:
+                parsed["model"] = model
+                break
+            parsed = None
+            truncated = bool(text) and not str(text).rstrip().endswith("}")
+            logger.warning("[matchup] JSON 파싱 실패 %d회 model=%s prompt_chars=%d "
+                           "max_tokens=%d 응답%d자 절단추정=%s",
+                           attempt, model, len(prompt), budget, len(text or ""),
+                           truncated)
+            if truncated and attempt == 1:
+                budget = min(budget * 2, MAX_TOKENS_CEILING)
+                logger.warning("[matchup] 절단으로 보인다 — 한도 %d 로 올려 재시도",
+                               budget)
+        return parsed
+
+    parsed = await _ask(prompt)
+    # 🔴 [ORD-1 ④] **애매할 때만 DB 를 본다.** 결론이 `자료필요` 를 적었으면
+    #    그때 자료1~14 를 붙여 **한 번 더** 묻는다. 판정이 "됐다"고 하면
+    #    DB 는 아예 안 본다 — 그것이 이 순서의 요점이다.
+    #    ⚠️ 두 번째 질문이 실패하면 **첫 답을 그대로 쓴다.** 있던 판정을
+    #       재질의 실패로 잃지 않는다.
+    if _order_v2 and parsed is not None:
+        need = [str(x).strip() for x in (parsed.get("자료필요") or [])
+                if str(x).strip()]
+        jg["order_v2"] = {"갈림길": len((_pre or {}).get("갈림길") or []),
+                          "질문": len((_reinf or {}).get("질문") or []),
+                          "보강": len((_reinf or {}).get("자료") or []),
+                          "출처": (_reinf or {}).get("출처") or {},
+                          "자료필요": need}
+        if need:
+            logger.info("[order] game=%s 애매 — DB 를 붙여 재질의한다: %s",
+                        jg.get("game_id"), " · ".join(need[:5]))
+            from app.engine.prompts import DB_ON_DEMAND
+
+            _again = prompt + DB_ON_DEMAND + db_block(_db_prompt)
+            await _keep_prompt(redis, jg.get("game_id"), _again)
+            _second = await _ask(_again)
+            if _second is not None:
+                parsed = _second
+                jg["order_v2"]["db참조"] = True
+            else:
+                logger.warning("[order] game=%s 재질의 실패 — 첫 답을 쓴다",
+                               jg.get("game_id"))
+                jg["order_v2"]["db참조"] = "재질의 실패"
+        else:
+            jg["order_v2"]["db참조"] = False
     if parsed is None:
         jg["form_unavailable"] = True
         # 🔴 최종이 답을 못 냈으면 **권한을 돌려놓는다.** 안 그러면 다음
