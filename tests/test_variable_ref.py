@@ -233,7 +233,18 @@ def test_l1_sees_material10_numbers():
                   "(최근 10등판 p50 1.2이닝, 최장 3.0이닝)"]}
     res = audit(v, prompt)
     assert res["not_found_n"] == 0, res
-    assert res["verified_n"] >= 3, res
+    # 🔴 [FA-2 2026-09-11] 이 단언이 `>= 3` 이었다. 셋 중 하나는 조건절
+    #    ("3이닝 **미만** 조기 강판")이었고, 그건 **가정이지 근거 수치가
+    #    아니다.** 이 테스트가 원래 재려던 것은 "자료10 을 인용한 변수의
+    #    **근거 수치**가 검증되는가" 이므로, 그 둘(p50 1.2 · 최장 3.0)을
+    #    이름으로 못 박는다 — 개수로 세면 조건절이 슬쩍 섞인다.
+    #    ⚠️ 가드를 무르게 한 것이 아니다. 조건절은 `condition_n` 으로
+    #       따로 세어 남는다(조용한 손실 금지).
+    assert res["verified_n"] >= 2, res
+    assert res["condition_n"] >= 1, "조건절을 세지 않았다"
+    pool_ip = numbers_in_prompt(prompt, "ip")
+    for want in (1.2, 3.0):          # p50 · 최장 — 자료10 의 실재 값
+        assert want in pool_ip, want
 
 
 def test_l1_reads_regression_reference_numbers():

@@ -168,6 +168,37 @@ _RATE_DENOM = re.compile(r"^\s*\d+(?:\.\d+)?\s*(?:실점|자책|볼넷|삼진|�
 #      "같은 단위 값이 원문에 있는데 다를 때"만이다. 그 구분에 기댄다.
 _THRESHOLD = re.compile(r"^\s*(?:↑|↓|\+)")
 
+#: 🔴 [FA-2 2026-09-11] 위 주석이 인지만 하고 두었던 지점을 **코드로 닫는다.**
+#   `미만`·`이상` 을 문장 단위로 빼면 자료10 인용이 함께 빠진다 — 그래서
+#   종전에 뺄 수 없었다. 그런데 둘은 **같은 문장의 다른 자리**에 있다.
+#
+#   변수 문장 형식의 원본은 `prompts.MATCHUP` 의 [변수 형식] 이다:
+#       "<리스크 서술> — 발생 시 <홈|원정> 방향 약 N%p · … · 근거 <자료 번호>"
+#   `발생 시` **앞**이 리스크 서술(=가정), **뒤**가 효과와 근거(=실재 주장)다.
+#
+#   실측 2026-09-11 경보 2건이 전부 이 자리였다:
+#     game=1735 "이준기가 3이닝 미만으로 조기 강판 — 발생 시 … 근거 자료10
+#                이닝분포 최장 1.0이닝"
+#               → 앞의 `3` 은 가정, 뒤의 `1.0` 은 자료10 에 실재(verified).
+#     game=1736 "원정 불펜진이 4실점 이상 허용하며 붕괴 — 발생 시 … 근거
+#                자료9 가용성 소진"
+#               → `4` 는 가정. 자료9 실제 실점은 5 이고, 판정은 그것을
+#                 인용한 적이 없다.
+#
+#   ⚠️ **비교어가 붙은 값만** 뺀다. 리스크 서술 안의 맨숫자는 인용일 수 있다
+#      ("벤자민 50구 제한 조기 강판" 의 50 은 자료2 의 사실이다).
+#   ⚠️ 형식을 안 지킨 변수 문장은 **종전처럼 감사된다** — 안전한 쪽이다.
+_VARIABLE_EFFECT = "발생 시"
+_COMPARATOR = re.compile(r"^\s*(?:미만|이상|이하|초과)")
+
+
+def is_variable_condition(text: str, start: int, end: int) -> bool:
+    """변수 문장의 **조건절 문턱**인가. 조건은 가정이지 인용이 아니다."""
+    i = text.find(_VARIABLE_EFFECT)
+    if i < 0 or start >= i:
+        return False          # 변수 문장이 아니거나, 근거부의 값이다
+    return bool(_COMPARATOR.match(text[end:]))
+
 
 def is_rate_denominator(text: str, value: float, end: int) -> bool:
     return abs(value - 9.0) < 1e-9 and bool(_RATE_DENOM.match(text[end:]))
@@ -293,10 +324,28 @@ def claim_subject(text: str, at: int | None = None,
     return max(before, key=lambda x: x[0])[1]
 
 
-def sample_n(text: str) -> int | None:
-    """"최근 N경기" 의 N. 여러 개면 **가장 앞의 것** (그 문장의 주 표본)."""
-    m = SAMPLE_N_RE.search(text)
-    return int(m.group(1)) if m else None
+def sample_n(text: str, pos: int | None = None) -> int | None:
+    """"최근 N경기" 의 N.
+
+    🔴 [FA-2 2026-09-11] `pos` 를 주면 **그 값 앞에서 가장 가까운** 표기를
+       쓴다. 한 문장에 투수가 둘 섞이면 앞의 표본이 뒤 값에 잘못 붙는다.
+
+       실측 game=1734:
+         "선발 로건은 최근 5경기 … 김진욱은 최근 2경기 9이닝 11실점으로 부진"
+       11실점의 표본이 **5** 로 잡혀, 합계 재계산이 `vals[:5]`(합 19)만 보고
+       정답인 `vals[:2]`(4+7=11)를 건너뛰었다. 판정은 정확했는데 환각으로
+       찍혔다 — 경보의 "원문 10.0" 은 대조 상대가 아니라 **가장 가까운 값**이다.
+
+    ⚠️ `pos` 앞에 표기가 없으면 종전대로 가장 앞의 것을 쓴다(문장 주 표본).
+    """
+    ms = list(SAMPLE_N_RE.finditer(text))
+    if not ms:
+        return None
+    if pos is not None:
+        before = [m for m in ms if m.start() < pos]
+        if before:
+            return int(before[-1].group(1))
+    return int(ms[0].group(1))
 
 
 def _region(prompt: str, side: str) -> str:
@@ -322,7 +371,8 @@ def _region(prompt: str, side: str) -> str:
     return "\n".join(out)
 
 
-def extract_claims(verdict: dict, names: dict[str, str] | None = None) -> list[dict]:
+def extract_claims(verdict: dict, names: dict[str, str] | None = None,
+                   *, conditions: list | None = None) -> list[dict]:
     """판정 JSON → [{text, unit, value, …}]. 단위 없는 수치는 뽑지 않는다.
 
     `names`: 선수명 → 진영. 있으면 "곽빈 … 6.4이닝"처럼 **이름만 나오는**
@@ -342,13 +392,22 @@ def extract_claims(verdict: dict, names: dict[str, str] | None = None) -> list[d
                         continue
                     if is_threshold(s, m.end()):
                         continue
+                    if is_variable_condition(s, m.start(), m.end()):
+                        # 🔴 [FA-2] **세어서 남긴다.** 감사 대상에서 빼는 것과
+                        #    소리 없이 사라지는 것은 다르다 — 전후 측정에서
+                        #    verified 가 17 줄었고, 그 전부가 이 자리였다.
+                        #    칸이 없으면 다음 사람은 그 감소를 설명할 수 없다.
+                        if conditions is not None:
+                            conditions.append({"text": s[:200], "unit": unit,
+                                               "value": val})
+                        continue
                     if is_material_ref(s, m.start()):
                         continue
                     out.append({"text": s[:200], "unit": unit, "value": val,
                                 "derived": any(k in s for k in DERIVED_MARKERS),
                                 "subject": claim_subject(s, m.start(), names),
                                 "scope": claim_scope(s, m.start()),
-                                "n": sample_n(s)})
+                                "n": sample_n(s, m.start())})
     return out
 
 
@@ -533,12 +592,16 @@ def audit(verdict: dict, prompt: str, *, tolerance: float | None = None,
 
     tol = tolerance if tolerance is not None else get_settings().fact_audit_tolerance
     out = {"verified_n": 0, "derived_n": 0, "not_found_n": 0,
-           "mismatch_n": 0, "mismatch_detail": []}
-    for c in extract_claims(verdict, names):
+           "mismatch_n": 0, "condition_n": 0, "mismatch_detail": []}
+    conds: list = []
+    for c in extract_claims(verdict, names, conditions=conds):
         kind, detail = classify(c, prompt, tol)
         out[f"{kind}_n"] += 1
         if detail:
             out["mismatch_detail"].append(detail)
+    # 🔴 [FA-2] 변수 조건절은 **가정**이라 감사하지 않는다. 다만 몇 개였는지는
+    #    남긴다 — 분모가 조용히 줄어드는 것을 막는 유일한 방법이다.
+    out["condition_n"] = len(conds)
     return out
 
 
@@ -589,9 +652,10 @@ async def run(pool, redis, jg: dict) -> dict | None:
         res = audit(verdict, prompt, names=names or None)
         res.update(game_id=gid, sport=jg.get("sport") or "")
         await _store(pool, res)
-        logger.info("[fact-audit] game=%s v=%d d=%d nf=%d mismatch=%d",
+        logger.info("[fact-audit] game=%s v=%d d=%d nf=%d mismatch=%d 조건절제외=%d",
                     gid, res["verified_n"], res["derived_n"],
-                    res["not_found_n"], res["mismatch_n"])
+                    res["not_found_n"], res["mismatch_n"],
+                    res.get("condition_n") or 0)
         if res["mismatch_n"]:
             await _alert(res)
         return res
@@ -609,10 +673,11 @@ async def _store(pool, res: dict) -> None:
         await pool.execute(
             """INSERT INTO judgement_audit
                    (game_id, sport, judged_at, verified_n, derived_n,
-                    not_found_n, mismatch_n, mismatch_detail)
-               VALUES ($1,$2, now(), $3,$4,$5,$6,$7::jsonb)""",
+                    not_found_n, mismatch_n, condition_n, mismatch_detail)
+               VALUES ($1,$2, now(), $3,$4,$5,$6,$7,$8::jsonb)""",
             int(res["game_id"]), res["sport"], res["verified_n"],
             res["derived_n"], res["not_found_n"], res["mismatch_n"],
+            int(res.get("condition_n") or 0),
             json.dumps(res["mismatch_detail"], ensure_ascii=False))
     except Exception as exc:
         logger.warning("[fact-audit] 저장 실패: %s", exc)

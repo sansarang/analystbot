@@ -561,6 +561,11 @@ CREATE TABLE IF NOT EXISTS judgement_audit (
     mismatch_detail JSONB,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- [FA-2 2026-09-11] 변수 조건절(가정값)은 감사하지 않는다. 다만 **몇 개였는지**
+--   남긴다 — 전후 측정에서 verified 가 17 줄었고 그 전부가 이 자리였다.
+--   칸이 없으면 다음 사람은 그 감소를 설명할 수 없다(조용한 손실 금지).
+ALTER TABLE judgement_audit ADD COLUMN IF NOT EXISTS condition_n INT NOT NULL DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS idx_judgement_audit_sport
     ON judgement_audit (sport, judged_at DESC);
 
