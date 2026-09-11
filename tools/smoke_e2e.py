@@ -347,27 +347,51 @@ def _gates(jg: dict, m: dict, snap: dict) -> dict:
     return out
 
 
-def report(results: list[Result]) -> None:
+def report(results: list[Result], skipped: list[str] | None = None) -> bool:
+    """보고하고 **통과 여부를 돌려준다.** 반환 False 면 종료 코드 1 이다.
+
+    🔴 [SMK-1 2026-09-11] 종전에는 `ok == tot` 로 판정해서 **`tot` 이 0 이면
+       0 == 0 이 참**이 됐다. 대상이 한 경기도 없는데 10단계 전부 `✅ 0/0
+       PASS` 가 찍히고 "FAIL 원인: 없음" 이 붙었다 —
+       실측 2026-09-11 13:37 (로컬 DB 에 오늘 슬레이트 없음, 운영에는 KBO 8건·
+       NPB 3건이 있던 시각). **아무것도 검사하지 않고 전부 통과라고 말했다.**
+       CLAUDE.md 5대 반복 결함의 "조용한 성공"(분모가 사라지는 실패)이다.
+
+    ⚠️ 반대 위험: 정당하게 경기가 없는 날도 실패가 된다. 그래서 **무엇이
+       0 이었는지**를 사유로 적는다 — 사람이 읽고 판단할 수 있어야 한다.
+    """
     print("\n" + "=" * 78)
     print(f"   {'리그':5s} {'경기':26s} " + " ".join(s[0] for s in STEPS))
     for r in results:
         print(r.row())
     print("\n   범례: " + " · ".join(STEPS))
     tot = len(results)
-    for i, s in enumerate(STEPS):
-        got = [r.steps.get(s) for r in results]
-        ok = sum(1 for g in got if g and g[0])
-        na = sum(1 for g in got if g is None)
-        mark = "✅" if ok == tot else ("🔴" if ok == 0 else "⚠️")
-        print(f"   {mark} {s} {ok}/{tot} PASS" + (f" · 미실행 {na}" if na else ""))
+    if tot == 0:
+        print("   🔴 대상 0경기 — **아무것도 검사하지 않았다.** 통과가 아니다.")
+    else:
+        for i, s in enumerate(STEPS):
+            got = [r.steps.get(s) for r in results]
+            ok = sum(1 for g in got if g and g[0])
+            na = sum(1 for g in got if g is None)
+            mark = "✅" if ok == tot else ("🔴" if ok == 0 else "⚠️")
+            print(f"   {mark} {s} {ok}/{tot} PASS"
+                  + (f" · 미실행 {na}" if na else ""))
     print("\n── FAIL 원인 ──")
     any_fail = False
+    for sp in (skipped or []):
+        any_fail = True
+        print(f"   {sp} 슬레이트 0경기 — 검사 대상이 없었다 "
+              f"(휴식일인지 수집 실패인지 사람이 판단하라)")
+    if tot == 0 and not skipped:
+        any_fail = True
+        print("   대상 0경기 — 검사 대상이 없었다")
     for r in results:
         for step, why in r.fails():
             any_fail = True
             print(f"   {r.sport} {r.label} {step}: {why}")
     if not any_fail:
         print("   없음")
+    return not any_fail
 
 
 async def main() -> None:
@@ -392,6 +416,7 @@ async def main() -> None:
     rredis = RehearsalRedis(inner)
     guards = _install_guards()
     results: list[Result] = []
+    skipped: list[str] = []
     try:
         for sport in [x.strip() for x in args.sport.split(",") if x.strip()]:
             from app.pipeline import mlb_slate_date, today_kst
@@ -402,6 +427,7 @@ async def main() -> None:
               sport.upper(), date, len(db_rows))
             if not db_rows:
                 L("[smoke] 🔴 %s %s 슬레이트 0경기 — 스모크 불가", sport, date)
+                skipped.append(f"{sport} {date}")
                 continue
             games = await build_slate(pool, rredis, sport, date)
             L("[smoke] build_analysis → %d경기 조립", len(games))
@@ -420,7 +446,10 @@ async def main() -> None:
           left, guards["sent"]["n"])
         await inner.aclose()
         await close_pool()
-    report(results)
+    # 🔴 [SMK-1] **종료 코드를 낸다.** 종전에는 무엇이 나와도 0 이라
+    #    이 도구를 게이트에 걸 수 없었다.
+    if not report(results, skipped):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
