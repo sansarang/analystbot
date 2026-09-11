@@ -102,10 +102,14 @@ async def test_보장선_부근의_진짜_미발송은_반드시_운다():
 
 @pytest.mark.asyncio
 async def test_NPB_사각은_유예만큼만이다():
-    """창이 가장 좁은 NPB(T-40). T-38 은 조용하고 T-34 는 운다."""
-    assert await check_pending_sends(_Pool([_g(5, "npb", left=38)]), _Redis()) == []
+    """창이 가장 좁은 NPB(T-40). 유예 2.0분 — T-39 조용 · T-36 경보.
+
+    🔴 [GRC-1] 유예가 5분 고정일 때 이 값은 T-38/T-34 였다. 창 비례(5%)로
+       바뀌며 NPB 유예가 **줄었다** — 감시가 더 빨리 운다.
+    """
+    assert await check_pending_sends(_Pool([_g(5, "npb", left=39)]), _Redis()) == []
     assert len(await check_pending_sends(
-        _Pool([_g(5, "npb", left=34)]), _Redis())) == 1
+        _Pool([_g(5, "npb", left=36)]), _Redis())) == 1
 
 
 # ═══════════════ ③ 종전 계약은 그대로
@@ -138,11 +142,35 @@ def test_발송_창은_종전대로_즉시_열린다():
     assert send_overdue("kbo", just_open) is False
 
 
-def test_유예는_폴링_한_틱이다():
-    """가장 느린 프리게임 폴링이 5분이다 (`asia_pregame_5m`·`mlb_pregame_5m`)."""
-    from app.engine.pregame_push import SEND_WATCH_GRACE_MIN
+def test_유예는_창의_5퍼센트다():
+    """🔴 [GRC-1] 종목별 숫자를 적지 않는다 — 창 하나에서 파생시킨다."""
+    from app.engine.pregame_push import SEND_WATCH_GRACE_RATIO
 
-    assert SEND_WATCH_GRACE_MIN == 5
+    from app.engine.pregame_push import grace_min
+
+    assert SEND_WATCH_GRACE_RATIO == 0.05
+    for sp, open_m in SEND_OPEN_MIN.items():
+        assert grace_min(sp) == open_m * 0.05, sp
+
+
+def test_사각_비율이_종목마다_같다():
+    """고정 5분이던 시절의 사각은 npb 12.5% · kbo 7.1% · mlb 2.8% 였다."""
+    from app.engine.pregame_push import grace_min
+
+    ratios = {sp: grace_min(sp) / open_m for sp, open_m in SEND_OPEN_MIN.items()}
+    assert len(set(round(v, 6) for v in ratios.values())) == 1, ratios
+
+
+def test_MLB_유예가_늘어_정상_발송에_덜_운다():
+    """실측 2026-09-10 Rays@Braves: T-177 경보 → T-161 발송(운영상 정상).
+
+    창 T-180 에 유예 9분이면 T-171 까지는 조용하다. 종전 5분(T-175)보다
+    4분 더 참는다 — 그래도 16분 걸린 그 건은 여전히 운다. **완전히
+    없애지 못한다는 사실을 숨기지 않는다.**
+    """
+    from app.engine.pregame_push import grace_min
+
+    assert grace_min("mlb") == 9.0
 
 
 # ═══════════════ ⑤ 사본 금지 — 워치독은 숫자를 갖지 않는다

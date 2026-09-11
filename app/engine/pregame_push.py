@@ -181,21 +181,36 @@ def in_send_window(sport: str, starts_at, now=None, settings=None) -> bool:
     return open_m is not None and left <= open_m
 
 
-#: 🔴 [SP-1 2026-09-11] 발송 창에 들어온 직후의 **감시 유예**(분).
+#: 🔴 [SP-1 2026-09-11 · GRC-1 2026-09-11] 발송 창에 들어온 직후의 **감시 유예**를
+#   창의 몇 %로 둘 것인가. **숫자가 아니라 비율이다.**
+#
 #   발송은 창이 열리는 즉시 시도하지만, 카드가 실제로 나가려면 프리게임
 #   폴링이 한 틱 와야 한다. 워치독도 5분 주기라 **워치독 틱이 폴링 틱보다
 #   먼저 오면 정상 경기가 항상 걸린다.**
-#     실측 2026-09-10 (docs/TIMING_2026-09-11.md §2-A): 경보 3건 전부
-#     경보 1분 안에 카드가 나갔다. Texas 는 T-177 발송으로 창(T-180)
-#     바로 뒤였다 — **오탐 100%.**
-#   ⚠️ 이 값은 폴링 주기의 **사본이 아니라 상한**이다. 주기의 원본은
-#      `scheduler._JOB_TRIGGERS`(asia 5m · mlb 5m · npb 2m)이고, 종목→잡
-#      대응표를 새로 손으로 적지 않기 위해 그중 최댓값 하나만 둔다.
-#   ⚠️ NPB 창은 T-40 뿐이라 5분이 창의 12.5% 다. 10분이면 25% — 과하다.
-#      가려진 창 초반은 보장선 감시(`check_card_late`, T-30)가 뒤에서 덮는다.
+#     실측 2026-09-10: 경보 6건 중 3건이 경보와 **같은 분**에 카드가 나갔다
+#     (Reds@Dodgers · Astros@Phillies · Rangers@Mariners, 전부 T-177).
+#
+#   🔴 [GRC-1] 종전에는 고정 5분이었다. 그런데 창이 4.5배 차이 난다
+#      (KBO 70 · NPB 40 · MLB 180). 같은 5분이 NPB 에서는 창의 12.5%,
+#      MLB 에서는 2.8% 였다 — **사각의 크기가 종목마다 제멋대로였다.**
+#      실측 2026-09-10 Rays@Braves: T-177 경보 → T-161 발송. 보장선(T-30)
+#      기준으로 아무 문제가 없는 정상 발송인데 MLB 는 유예가 너무 짧아 울었다.
+#      이제 창에 비례시킨다 — 사각이 전 종목 5% 로 고르다.
+#
+#   ⚠️ 종목별 숫자를 적지 않는다. 창의 원본은 `SEND_OPEN_MIN` 하나이고
+#      유예는 거기서 파생된다 — 숫자 셋을 적는 순간 그것이 사본이다.
 #   ⚠️ **발송 경로는 건드리지 않는다.** `in_send_window` 는 종전 그대로 즉시
 #      열린다 — 유예는 감시 전용이다.
-SEND_WATCH_GRACE_MIN = 5
+#   ⚠️ 가려진 창 초반은 보장선 감시(`check_card_late`, T-30)가 뒤에서 덮는다.
+SEND_WATCH_GRACE_RATIO = 0.05
+
+
+def grace_min(sport: str) -> float:
+    """그 종목의 감시 유예(분) = 발송 창 × 비율.
+
+    kbo 3.5 · npb 2.0 · mlb 9.0 (2026-09-11 기준). 창이 바뀌면 같이 따라간다.
+    """
+    return (SEND_OPEN_MIN.get(sport) or 0) * SEND_WATCH_GRACE_RATIO
 
 
 def send_overdue(sport: str, starts_at, now=None) -> bool:
@@ -207,7 +222,7 @@ def send_overdue(sport: str, starts_at, now=None) -> bool:
     open_m = SEND_OPEN_MIN.get(sport)
     if left is None or open_m is None:
         return False
-    return 0 < left <= open_m - SEND_WATCH_GRACE_MIN
+    return 0 < left <= open_m - grace_min(sport)
 
 
 #: 🔴 [2026-09-03 사용자 결정] **첫 카드 보장선 — 시작 T-30.**
