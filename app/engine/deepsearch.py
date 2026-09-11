@@ -477,9 +477,15 @@ PROMPT = """당신은 스포츠 경기 조사원이다. 아래 판정이 확신�
 delta_pp = **홈 승률을 몇 %p 올릴지**(원정 쪽 근거면 음수, 없으면 0). 절대 확률이
 아니라 **증감**이다. 코드가 ±10%p 로 절사하고 우세 방향은 뒤집지 않는다.
 
+[근거번호] 각 발견에 그것이 나온 **[수집된 기사] 번호**를 적어라.
+   수집된 기사에서 나온 것이 아니면(네가 이미 알던 것·추론) `null` 을 적는다.
+   🔴 지어내지 마라. 번호를 못 대면 `null` 이 정답이다 — 우리는 이 값으로
+      "모아 준 재료가 실제로 쓰였는가"를 잰다. 틀린 번호는 그 측정을 망친다.
+
 [출력] 아래 JSON만 출력한다. 다른 텍스트, 마크다운 백틱 금지.
 {{
-  "발견": [{{"사실": "1문장", "소스유형": "공식|기록|뉴스", "url": "..."}}],
+  "발견": [{{"사실": "1문장", "소스유형": "공식|기록|뉴스", "url": "...",
+            "근거번호": 1}}],
   "조정": {{"delta_pp": 0, "사유": "1문장", "단일기사여부": true|false}},
   "요약": "카드에 실을 1문장"
 }}"""
@@ -599,7 +605,7 @@ FETCH_TOP_N = 4
 FETCH_CHARS = 1200
 
 
-async def _free_articles(jg: dict, redis) -> list[dict]:
+async def _free_articles(jg: dict, redis, *, meta: dict | None = None) -> list[dict]:
     """조사 재료. **위성 캐시를 먼저 읽고**, 없으면 기존 RSS 로 폴백한다.
 
     🔴 [SAT-3] 위성(`app/collectors/satellite.py`)이 미리 긁어 둔 재료는 DB에 없는
@@ -622,6 +628,8 @@ async def _free_articles(jg: dict, redis) -> list[dict]:
     if sat:
         logger.info("[deepsearch] 위성 캐시 %d건 사용 %s@%s",
                     len(sat), jg.get("away"), jg.get("home"))
+        if meta is not None:
+            meta["origin"] = "satellite"
         return sat
 
     try:
@@ -635,6 +643,8 @@ async def _free_articles(jg: dict, redis) -> list[dict]:
         return []
     for it in items[:FETCH_TOP_N]:
         it["body"] = await _fetch_body(it.get("url"))
+    if meta is not None:
+        meta["origin"] = "rss"
     return items
 
 
@@ -823,7 +833,10 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
     #    먼저 모아 본문까지 붙여 프롬프트의 "검색 결과" 자리에 주입하면,
     #    LLM 은 읽기만 하면 되고 수수료가 0원이 된다.
     #    프롬프트 규칙·조정 상한(±10%p)은 불변이다.
-    articles = await _free_articles(jg, redis)
+    _meta: dict = {}
+    articles = await _free_articles(jg, redis, meta=_meta)
+    _origin = _meta.get("origin") or "none"
+    _base_n = len(articles)
     source = SRC_RSS
     # 🔴 [DS-3 2026-09-10 사용자 지시] **Perplexity 병행.** 위성/RSS 가 못 물어온
     #    사실을 PPLX 가 직접 웹에서 찾아 재료에 얹는다. 실패하면 빈 리스트라
@@ -840,6 +853,15 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
                     jg.get("away"), jg.get("home"))
         return None, 0, source
     prompt = _inject_articles(prompt, articles)
+    # 🔴 [DSM-1 2026-09-11] **무엇을 몇 건 넣었는지 세어 둔다.**
+    #    종전 성과 지표는 `이동_pp` 하나였고, 0.0%p 가 두 가지를 뭉갰다 —
+    #    "재료가 쓸모없었다" 와 "재료는 좋았는데 안 썼다". 위성을 고쳐도
+    #    나아졌는지 증명할 방법이 없었다(실측 2026-09-11: 4경기 전부 0.0%p).
+    #    ⚠️ 시그니처를 늘리지 않는다. 호출부가 둘이라 하나를 빠뜨리기 쉽다.
+    _mix = {"satellite": _base_n if _origin == "satellite" else 0,
+            "rss": _base_n if _origin == "rss" else 0,
+            "pplx": len(pplx)}
+    _urls = [(i, (a.get("url") or "")) for i, a in enumerate(articles, 1)]
     # 🔴 역할은 `matchup` 이 **아니다.** `judge_route.chain` 에서 유료가
     #    허용되는 유일한 역할이 matchup(=최종 판정)이라, 여기서 matchup 을
     #    물으면 최종 판정 설정(`JUDGE_PROVIDER=anthropic`)이 그대로 딥서치까지
@@ -875,6 +897,8 @@ async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None
     #    경로는 여기서 JSON 을 파싱해 dict 를 넘겼는데, 무료 경로는 문자열을
     #    그대로 넘기고 있었다 — 호출부(`apply_findings`)는 dict 를 기대한다.
     data = parse_json_object(body)
+    if isinstance(data, dict):
+        data["_재료"] = {"n": len(articles), "출처": _mix, "urls": _urls}
     if data is None:
         logger.warning("[deepsearch] JSON 파싱 실패 — 원판정 유지 %s@%s "
                        "· %d자: %.300s", jg.get("away"), jg.get("home"),
@@ -921,6 +945,60 @@ def strip_odds(data: dict) -> tuple[dict, list[str]]:
     return out, dropped
 
 
+def _norm_url(u: str) -> str:
+    """호스트+경로만 남긴다. 쿼리·프래그먼트·스킴 차이로 매칭이 깨지지 않게."""
+    u = (u or "").strip().lower()
+    for pre in ("https://", "http://"):
+        if u.startswith(pre):
+            u = u[len(pre):]
+            break
+    u = u.split("#")[0].split("?")[0]
+    if u.startswith("www."):
+        u = u[4:]
+    return u.rstrip("/")
+
+
+def citation_stats(data: dict) -> dict:
+    """조사가 **우리가 모아 준 재료를 실제로 썼는가.**
+
+    🔴 [DSM-1 2026-09-11] 종전 성과 지표는 `이동_pp` 하나였다. 0.0%p 가 두
+       가지를 뭉갠다 — "재료가 쓸모없었다" 와 "재료는 좋았는데 안 썼다".
+       실측 2026-09-11: 4경기 전부 0.0%p · 발견 소스유형 100% 뉴스.
+       위성을 고쳐도 나아졌는지 증명할 방법이 없었다.
+
+    두 축으로 센다. **모델 자백만 믿지 않는다**(`_src` 와 같은 태도):
+      · `번호` — 모델이 발견마다 적은 `근거번호`
+      · `url`  — 우리가 주입 기사 url 과 맞춘 것
+    ⚠️ `url` 축은 **하한**이다. 기사를 읽고 썼는데 url 을 안 적거나 다른 것을
+       적을 수 있다. 보고할 때 "인용률 ≥ x%" 로만 읽어야 한다.
+    """
+    mat = (data or {}).get("_재료") or {}
+    urls = {_norm_url(u): i for i, u in (mat.get("urls") or []) if u}
+    n_in = int(mat.get("n") or 0)
+    by_no: set[int] = set()
+    by_url: set[int] = set()
+    cited = 0
+    for f in ((data or {}).get("발견") or []):
+        if not isinstance(f, dict):
+            continue
+        hit = False
+        no = f.get("근거번호")
+        if isinstance(no, int) and 1 <= no <= n_in:
+            by_no.add(no)
+            hit = True
+        i = urls.get(_norm_url(f.get("url") or ""))
+        if i:
+            by_url.add(i)
+            hit = True
+        if hit:
+            cited += 1
+    used = by_no | by_url
+    return {"주입": n_in, "출처": mat.get("출처") or {},
+            "인용_발견": cited, "인용_기사": len(used),
+            "축": {"번호": len(by_no), "url": len(by_url)},
+            "인용률": round(len(used) / n_in, 3) if n_in else None}
+
+
 def apply_findings(jg: dict, data: dict) -> dict:
     """조사 결과를 판정에 반영. 상한·방향은 코드가 강제한다.
 
@@ -929,6 +1007,11 @@ def apply_findings(jg: dict, data: dict) -> dict:
     """
     m = jg.get("matchup") or {}
     p_before = jg.get("p_claude")
+    # [DSM-1] 계측을 **먼저** 뽑고 원본에서 뗀다. `strip_odds` 가 사본을
+    #   돌려주므로 그 뒤에 떼면 호출부의 dict 에 내부 키가 남는다.
+    stats = citation_stats(data)
+    if isinstance(data, dict):
+        data.pop("_재료", None)
     # 🔴 배당이 판정 숫자를 움직이지 않는다 — 조정을 반영하기 **전에** 거른다.
     data, dropped = strip_odds(data)
     if dropped:
@@ -936,6 +1019,10 @@ def apply_findings(jg: dict, data: dict) -> dict:
                        jg.get("away"), jg.get("home"), " · ".join(dropped))
     adj = (data or {}).get("조정") or {}
     if p_before is None:
+        # 판정이 없어도 **재료는 들어갔다.** 그 사실을 버리지 않는다.
+        jg["deepsearch"] = {"재료": stats, "발견": [],
+                            "요약": None, "조정_사유": None, "단일기사": False,
+                            "이동_pp": 0.0, "상한_적용": None}
         return {"moved": 0.0, "note": None}
     p_before = float(p_before)
     # 🔴 [MKT-8] 요약기는 **부호 있는 %p 증감(delta_pp)** 을 낸다 — 절대 p_home 은
@@ -960,6 +1047,7 @@ def apply_findings(jg: dict, data: dict) -> dict:
     jg["p_claude"] = p
     m["p_home"] = p
     jg["deepsearch"] = {
+        "재료": stats,
         "발견": (data or {}).get("발견") or [],
         "요약": (data or {}).get("요약"),
         "조정_사유": adj.get("사유"),
@@ -1119,14 +1207,31 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
                                ensure_ascii=False, default=str), ex=CACHE_TTL)
             except Exception as exc:
                 logger.warning("[deepsearch] 기록 실패 %s: %s", c["match"], exc)
-        logger.info("[deepsearch] %s 트리거=%s 검색=%d 이동=%+.1f%%p",
-                    c["match"], ",".join(c["triggers"]), used, res["moved"])
+        # [DSM-1] 재료가 **쓰였는지**를 같은 줄에 남긴다. 이동 0.0%p 만으로는
+        #   "재료가 없었다" 와 "있었는데 안 썼다" 를 구분할 수 없다.
+        _m = (jg.get("deepsearch") or {}).get("재료") or {}
+        c["재료"] = _m
+        logger.info("[deepsearch] %s 트리거=%s 검색=%d 이동=%+.1f%%p "
+                    "재료=%s(%s) 인용=%s (번호%s·url%s)",
+                    c["match"], ",".join(c["triggers"]), used, res["moved"],
+                    _m.get("주입"),
+                    ",".join(f"{k}{v}" for k, v in (_m.get("출처") or {}).items() if v)
+                    or "없음",
+                    _m.get("인용_기사"),
+                    (_m.get("축") or {}).get("번호"), (_m.get("축") or {}).get("url"))
+    # [DSM-1] 슬레이트 합계 — **이것이 위성 개선의 채점표다.**
+    _inj = sum((c.get("재료") or {}).get("주입") or 0 for c in out["candidates"])
+    _cit = sum((c.get("재료") or {}).get("인용_기사") or 0 for c in out["candidates"])
+    out["재료_주입"], out["재료_인용"] = _inj, _cit
+    out["인용률"] = round(_cit / _inj, 3) if _inj else None
     if out["candidates"]:
         logger.info("[deepsearch] 슬레이트 %d경기 · 후보 %d · 조사 %d "
-                    "· 예산 %d/%d(이전 %d) · 검색 %d · 상한초과 생략 %d",
+                    "· 예산 %d/%d(이전 %d) · 검색 %d · 상한초과 생략 %d "
+                    "· 재료 %d건 중 인용 %d건(%s)",
                     out["slate"], len(out["candidates"]), out["investigated"],
                     used0 + out["investigated"], cap, used0,
-                    out["searches"], out["skipped"])
+                    out["searches"], out["skipped"], _inj, _cit,
+                    f"{out['인용률']:.0%}" if out["인용률"] is not None else "—")
     return out
 
 # ---------------------------------------------------------------- 재판정 경로

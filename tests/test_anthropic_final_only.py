@@ -67,7 +67,9 @@ def test_deepsearch_skips_when_rss_is_empty(monkeypatch):
     """기사가 0건이면 조사를 생략한다 — 유료 검색으로 넘어가지 않는다."""
     from app.engine import deepsearch as ds
 
-    async def _none(jg, redis):
+    async def _none(jg, redis, **kw):
+        # ⚠️ [DSM-1] `meta=` 를 받는다 — 딥서치가 출처(위성/RSS)를 세기 위해
+        #    넘긴다. 목이 키워드를 안 받으면 여기서만 깨진다.
         return []
 
     def _boom(*a, **k):                      # 유료 예산을 건드리면 실패
