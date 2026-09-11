@@ -549,8 +549,40 @@ async def gather(jg: dict, redis, *, client=None, now: datetime | None = None) -
     if adapter is None:
         return 0
     articles = await adapter(jg, client=client, now=now)
+    # 🔴 [ROS-1 2026-09-11] **공시를 맨 앞에 둔다.** 검색 기사보다 공식이 먼저다.
+    #    실측 2026-09-11: 위성 재료 76건 중 조사 인용 0건이었고, 모인 것은
+    #    굿즈·타팀 FA 전망이었다. KBO 는 **말소로 결장을 알리는데** 우리는
+    #    그 사건을 재료로 만들지 않고 있었다.
+    if sport == "kbo":
+        articles = await _kbo_official(jg, redis) + articles
     await _write_cache(redis, sport, gid, articles)
     return len(articles)
+
+
+async def _kbo_official(jg: dict, redis) -> list[dict]:
+    """KBO 1군 엔트리 **변동**을 재료로. 없으면 빈 목록(사유는 로그).
+
+    ⚠️ 변화 0건이면 기사 0건이다 — "변화 없음"으로 프롬프트를 채우지 않는다.
+    ⚠️ 어떤 실패도 위성 전체를 막지 않는다.
+    """
+    if redis is None:
+        return []
+    try:
+        from app.collectors.kbo_roster import delta_articles, roster_delta
+        from app.pipeline import today_kst
+
+        delta = await roster_delta(redis, today_kst())
+        if delta.get("사유"):
+            logger.info("[satellite] KBO 공시 델타 생략 — %s", delta["사유"])
+            return []
+        arts = delta_articles(delta, [jg.get("home"), jg.get("away")])
+        if arts:
+            logger.info("[satellite] KBO 공시 델타 %d건 (기준 %s) game=%s",
+                        len(arts), delta.get("기준"), jg.get("game_id"))
+        return arts
+    except Exception as exc:
+        logger.warning("[satellite] KBO 공시 델타 실패 — 검색 재료만 쓴다: %s", exc)
+        return []
 
 
 async def _write_cache(redis, sport: str, game_id, articles: list[dict]) -> None:

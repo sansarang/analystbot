@@ -37,6 +37,19 @@ TEAM_TO_ODDS = {
 # 야수만 본다 — 결장 판정 대상은 타석 상위 9명이다.
 BATTER_COLUMNS = ("포수", "내야수", "외야수")
 
+#: 🔴 [ROS-1 2026-09-11] **델타용은 투수까지 본다.** 결장 판정(야수 9명)과
+#   목적이 다르다 — 선발이 말소되면 그것이야말로 오늘 승부의 사건이다.
+#   실측 2026-09-11: 갈림길 8/8·변수 15/17 이 투수였는데, 정작 투수 이탈을
+#   알려 줄 공시 경로가 없었다.
+ALL_COLUMNS = ("투수",) + BATTER_COLUMNS
+
+#: 전 포지션 스냅샷. **결장 판정용 키와 섞지 않는다** — 소비자도 수명도 다르다.
+FULL_KEY = "kbo_roster_full:{date}"
+#: 어제와 비교하려면 하루를 넘겨 살아 있어야 한다. 5일이면 연휴도 덮는다.
+FULL_TTL = 5 * 86400
+#: 델타를 낼 때 거슬러 볼 최대 일수(휴식일·수집 실패를 건너뛴다).
+LOOKBACK_DAYS = 5
+
 _TAG = re.compile(r"<[^>]+>")
 _NAME = re.compile(r"([^()0-9]+)\((\d+)\)")
 
@@ -46,7 +59,7 @@ def _cells(row: str) -> list[str]:
             for x in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)]
 
 
-def parse_registered(html: str) -> dict[str, set[str]]:
+def parse_registered(html: str, columns=BATTER_COLUMNS) -> dict[str, set[str]]:
     """전체 등록 현황 HTML → {Odds 팀명: {등록 야수 이름}}.
 
     표는 헤더행과 데이터행이 번갈아 나온다. 헤더에서 열 위치를 읽어
@@ -69,7 +82,7 @@ def parse_registered(html: str) -> dict[str, set[str]]:
             continue
         names: set[str] = set()
         for i, col in enumerate(header):
-            if col not in BATTER_COLUMNS or i >= len(cells):
+            if col not in columns or i >= len(cells):
                 continue
             names |= {m.group(1).strip() for m in _NAME.finditer(cells[i])}
         if names:
@@ -86,13 +99,17 @@ class KBORosterClient:
         self.mock = mock
 
     async def fetch(self) -> dict[str, set[str]]:
+        return parse_registered(await self.fetch_html())
+
+    async def fetch_html(self) -> str:
+        """원문 HTML. **한 번만 받아 두 번 판다** — 요청을 늘리지 않는다."""
         import httpx
 
         async with httpx.AsyncClient(timeout=self.timeout,
                                      follow_redirects=True) as c:
             r = await c.get(BASE + REGISTER_ALL, headers=HEADERS)
         r.raise_for_status()
-        return parse_registered(r.text)
+        return r.text
 
 
 def absent_regulars(regulars: list[dict], registered: set[str]) -> list[dict]:
@@ -123,7 +140,13 @@ async def refresh(redis, date: str, client: KBORosterClient | None = None) -> di
         return {"ok": False, "teams": 0, "mock": True}
 
     client = client or KBORosterClient()
-    table = await client.fetch()
+    # [ROS-1] 원문을 한 번 받아 두 번 판다. 요청은 늘지 않는다.
+    html = None
+    try:
+        html = await client.fetch_html()
+        table = parse_registered(html)
+    except AttributeError:               # 옛 목 클라이언트(테스트) 호환
+        table = await client.fetch()
     if not table:
         from app.alerts import StageResult, stage_failed
 
@@ -134,8 +157,19 @@ async def refresh(redis, date: str, client: KBORosterClient | None = None) -> di
     await redis.set(_key(date),
                     json.dumps({k: sorted(v) for k, v in table.items()},
                                ensure_ascii=False), ex=CACHE_TTL)
-    logger.info("[kbo_roster] %s — %d팀 등록 명단", date, len(table))
-    return {"teams": len(table)}
+    # [ROS-1] 전 포지션 스냅샷 — **델타의 재료**다. 어제와 비교하려면 하루를
+    #   넘겨 살아 있어야 해서 수명이 다르다(기존 키는 6시간 그대로).
+    full = 0
+    if html is not None:
+        table_all = parse_registered(html, ALL_COLUMNS)
+        if table_all:
+            await redis.set(FULL_KEY.format(date=date),
+                            json.dumps({k: sorted(v) for k, v in table_all.items()},
+                                       ensure_ascii=False), ex=FULL_TTL)
+            full = len(table_all)
+    logger.info("[kbo_roster] %s — %d팀 등록 명단 (전포지션 스냅샷 %d팀)",
+                date, len(table), full)
+    return {"teams": len(table), "full_teams": full}
 
 
 async def load(redis, date: str) -> dict[str, set[str]]:
@@ -143,6 +177,95 @@ async def load(redis, date: str) -> dict[str, set[str]]:
 
     raw = await redis.get(_key(date))
     return {k: set(v) for k, v in json.loads(raw).items()} if raw else {}
+
+
+async def load_full(redis, date: str) -> dict[str, set[str]]:
+    """전 포지션 스냅샷. 없으면 빈 dict."""
+    import json
+
+    raw = await redis.get(FULL_KEY.format(date=date))
+    return {k: set(v) for k, v in json.loads(raw).items()} if raw else {}
+
+
+def _shift(date: str, days: int) -> str:
+    from datetime import date as _d
+    from datetime import timedelta
+
+    y, m, d = (int(x) for x in date.split("-"))
+    return (_d(y, m, d) - timedelta(days=days)).isoformat()
+
+
+async def roster_delta(redis, date: str) -> dict:
+    """어제 대비 **말소·등록**. 공시를 '상태'가 아니라 '사건'으로 만든다.
+
+    🔴 [ROS-1 2026-09-11] KBO 는 **말소로 결장을 알린다**(`kbo_roster` 머리말).
+       그런데 우리는 '지금 명단에 없다'만 알았고 '오늘 빠졌다'를 몰랐다 —
+       스냅샷 수명이 6시간이라 어제 것이 안 남았기 때문이다.
+       MLB 는 `statsapi/transactions` 로 이미 사건을 받는다. 그 축을 KBO 에 맞춘다.
+
+    반환: {"기준": 어제날짜|None, "사유": str|None,
+           "팀": {팀명: {"말소": [...], "등록": [...]}}}
+
+    ⚠️ 이전 스냅샷이 없으면 **빈 팀 dict + 사유**다. 빈 것을 "변화 없음"으로
+       적지 않는다 — "모른다"와 "없다"는 다른 사실이다.
+    """
+    today = await load_full(redis, date)
+    if not today:
+        return {"기준": None, "사유": "오늘 전포지션 스냅샷 없음", "팀": {}}
+    for back in range(1, LOOKBACK_DAYS + 1):
+        prev_date = _shift(date, back)
+        prev = await load_full(redis, prev_date)
+        if prev:
+            break
+    else:
+        return {"기준": None,
+                "사유": f"직전 {LOOKBACK_DAYS}일 안에 비교할 스냅샷이 없음",
+                "팀": {}}
+    teams = {}
+    for team, names in today.items():
+        before = prev.get(team)
+        if before is None:
+            continue                      # 그 팀은 어제 자료가 없다 — 모른다
+        out_ = sorted(before - names)
+        in_ = sorted(names - before)
+        if out_ or in_:
+            teams[team] = {"말소": out_, "등록": in_}
+    return {"기준": prev_date, "사유": None, "팀": teams}
+
+
+def delta_articles(delta: dict, teams: list[str], now=None) -> list[dict]:
+    """델타 → **위성 재료**(기사 dict). 사건이 있는 팀만 만든다.
+
+    ⚠️ 기사 모양의 원본은 `satellite._article` 이다 — 여기서 키를 손으로
+       늘리지 않는다.
+    ⚠️ 변화가 0건이면 **기사도 0건**이다. 프롬프트를 "변화 없음"으로 채우지
+       않는다 — 그건 정보가 아니라 잡음이다.
+    """
+    from app.collectors.satellite import _article
+
+    base = delta.get("기준")
+    out = []
+    for team in teams:
+        d = (delta.get("팀") or {}).get(team)
+        if not d:
+            continue
+        bits = []
+        if d.get("말소"):
+            bits.append(f"1군 말소: {', '.join(d['말소'])}")
+        if d.get("등록"):
+            bits.append(f"1군 등록: {', '.join(d['등록'])}")
+        if not bits:
+            continue
+        body = (f"KBO 공식 전체 등록 현황 기준, {base} 대비 {team} 의 "
+                f"1군 엔트리 변동이다. " + " · ".join(bits) +
+                ". 말소된 선수는 오늘 경기에 출전할 수 없다.")
+        out.append(_article(
+            title=f"[공시] {team} 1군 엔트리 변동 ({base} 대비) — "
+                  + " · ".join(bits),
+            url=BASE + REGISTER_ALL,
+            source="KBO 공시(전체 등록 현황)",
+            team=team, body=body, age_h=0.0))
+    return out
 
 
 def merge_into_research(research: dict, jg: dict, roster: dict) -> list[str]:
