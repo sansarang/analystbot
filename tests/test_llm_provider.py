@@ -397,3 +397,102 @@ def test_force_mock_still_respects_disabled_role():
     s = Settings(force_mock=True, judge_b_provider="")
     with pytest.raises(LLMError):
         provider_chain("judge_b", s)
+
+
+# ── [GRD-1 2026-09-11 사용자 지시] 크레딧 소진이 조용히 지나갔다 ───────────
+#   🔴 실사고 2026-09-10: Gemini 가 429 본문
+#        "Your prepayment credits are depleted … RESOURCE_EXHAUSTED"
+#      로 죽었는데 **아무 경보도 안 나갔다.** KBO 4/4 · NPB 6/6 판정 0건이
+#      됐고, 내가 직접 파보기 전까지 아무도 몰랐다.
+#      `api:blocked:*` 에도 gemini 가 없었다 — 워치독이 볼 수가 없었다.
+#
+#   원인: `_mark_exhausted` 는 **파이썬 dict** 에만 쓴다.
+#        Redis 차단 키도, 텔레그램 알림도, 재기동 후 기억도 없다.
+#        `api_guard.trip_credit` 이 그 셋을 이미 다 하는데 LLM 경로가 안 부른다.
+#
+#   ⚠️ **일일 한도와 크레딧 소진은 다르다.**
+#      groq TPD 200k 소진은 **내일 풀린다** — 영구 차단하면 멀쩡한 provider 를
+#      사람이 손으로 풀 때까지 버리는 것이다(차단은 시간으로 안 풀린다).
+#      크레딧 소진만 `trip_credit` 대상이다.
+
+def test_credit_wording_is_recognized():
+    """실제 응답 문구로 맞춘다 — 추측한 문구는 안 맞는다(모듈 주석의 교훈)."""
+    from app.llm.provider import _looks_credit
+
+    real = ("gemini: {'error': {'code': 429, 'message': 'Your prepayment "
+            "credits are depleted. Please go to AI Studio…', "
+            "'status': 'RESOURCE_EXHAUSTED'}}")
+    assert _looks_credit(Exception(real)), "실측 gemini 크레딧 문구를 못 잡는다"
+    anthropic = "Your credit balance is too low to access the Anthropic API"
+    assert _looks_credit(Exception(anthropic))
+
+
+def test_daily_ratelimit_is_not_credit():
+    """⚠️ 반대 위험 — TPD 소진은 **내일 풀린다.** 영구 차단하면 안 된다."""
+    from app.llm.provider import _looks_credit, _looks_daily
+
+    tpd = ("groq 레이트리밋: Rate limit reached for model `openai/gpt-oss-120b` "
+           "on tokens per day (TPD): Limit 200000, Used 198512. "
+           "Please try again in 37m1.776s")
+    assert _looks_daily(Exception(tpd)), "일일 한도로는 잡아야 한다"
+    assert not _looks_credit(Exception(tpd)), "TPD 를 크레딧으로 오분류했다"
+
+    otpm = ("Request too large … on output tokens per minute (OTPM): "
+            "Limit 1000, Requested 1837")
+    assert not _looks_credit(Exception(otpm)), "분당 한도를 크레딧으로 오분류했다"
+
+
+@pytest.mark.asyncio
+async def test_credit_exhaustion_trips_the_block(monkeypatch):
+    """크레딧 소진이면 Redis 차단 + 알림 경로(`trip_credit`)를 탄다."""
+    import app.llm.provider as P
+
+    seen = {}
+
+    async def fake_trip(name, detail):
+        seen["name"], seen["detail"] = name, detail
+        return True
+
+    monkeypatch.setattr("app.api_guard.trip_credit", fake_trip)
+    P.reset_exhausted()
+    await P._note_exhaustion("gemini", Exception(
+        "Your prepayment credits are depleted. RESOURCE_EXHAUSTED"))
+    assert seen.get("name") == "gemini", f"차단 경로를 안 탔다: {seen}"
+    assert P._is_exhausted("gemini"), "프로세스 내 건너뛰기도 유지돼야 한다"
+
+
+@pytest.mark.asyncio
+async def test_daily_limit_does_not_trip_the_block(monkeypatch):
+    """⚠️ 반대 위험 — 일일 한도는 차단하지 않는다(프로세스 내 건너뛰기만)."""
+    import app.llm.provider as P
+
+    called = {"n": 0}
+
+    async def fake_trip(name, detail):
+        called["n"] += 1
+        return True
+
+    monkeypatch.setattr("app.api_guard.trip_credit", fake_trip)
+    P.reset_exhausted()
+    await P._note_exhaustion("groq", Exception(
+        "Rate limit reached … tokens per day (TPD): Limit 200000"))
+    assert called["n"] == 0, "TPD 로 영구 차단을 걸었다"
+    assert P._is_exhausted("groq"), "이 프로세스에서는 건너뛰어야 한다"
+
+
+@pytest.mark.asyncio
+async def test_explicit_quota_error_also_trips(monkeypatch):
+    """400-크레딧(anthropic 류) 명시 예외도 차단·알림까지 간다."""
+    import app.llm.provider as P
+
+    seen = {}
+
+    async def fake_trip(name, detail):
+        seen["name"] = name
+        return True
+
+    monkeypatch.setattr("app.api_guard.trip_credit", fake_trip)
+    P.reset_exhausted()
+    await P._note_exhaustion("anthropic", Exception(
+        "Your credit balance is too low to access the Anthropic API"))
+    assert seen.get("name") == "anthropic"

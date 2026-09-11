@@ -706,6 +706,10 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
             # 크레딧 소진은 체인 폴백 없이 즉시 중단이다 — 여기서 세지 않으면
             # 아래 전멸 카운터에 닿지 못해 워치독이 못 본다.
             await _wd_fail(redis, f"{role}: 크레딧 소진 {exc}")
+            # [GRD-1] 명시적 크레딧 예외도 **차단·알림까지** 간다. 종전에는
+            #   여기서 raise 만 해서, 호출부가 `notify_api_error` 로 라우팅하지
+            #   못하면 그대로 조용히 지나갔다.
+            await _note_exhaustion(p.name, exc)
             raise
         except LLMBudgetError as exc:
             # 🔴 **조용히 넘기지 않는다.** 빈 응답으로 넘어가면 목 출력과
@@ -723,8 +727,9 @@ async def complete(role: str, messages: list[dict], *, system: str = "",
             await _ledger.record_call(redis, p.name, role, False)
             await _ledger.record_outage(redis, p.name, role,
                                         _outage_kind(exc), str(exc))
-            if _looks_daily(exc):
-                _mark_exhausted(p.name, str(exc))
+            # [GRD-1] 크레딧이면 차단·알림까지, 일일 한도면 건너뛰기만.
+            if _looks_daily(exc) or _looks_credit(exc):
+                await _note_exhaustion(p.name, exc)
     if starved:
         await _notify_budget(role, budget, max_tokens, last)
     # [#73] 체인 전부 실패 = 전멸. 하루 누적을 세어 provider 추가 필요를 알린다.
@@ -794,10 +799,61 @@ _DAILY_MARKERS = ("per day", "tpd", "daily", "quota exceeded",
                   "credit balance", "used all available credits",
                   "monthly spending limit")
 
+#: 🔴 [GRD-1 2026-09-11] **크레딧 소진**만 고른다 — 일일 한도와 다르다.
+#   일일 한도(TPD)는 **내일 풀린다.** 크레딧은 사람이 충전해야 풀린다.
+#   차단(`api_guard`)은 시간으로 안 풀리므로, TPD 를 크레딧으로 오분류하면
+#   멀쩡한 provider 를 사람이 손으로 풀 때까지 버리게 된다.
+#   ⚠️ **실제 응답 문구로 맞춘다** (위 `_DAILY_MARKERS` 주석과 같은 교훈):
+#     gemini    "Your prepayment credits are depleted"  (2026-09-10 실측)
+#     anthropic "Your credit balance is too low"        (2026-09-10 실측)
+_CREDIT_MARKERS = ("prepayment credits are depleted", "credits are depleted",
+                   "credit balance", "used all available credits",
+                   "insufficient credit", "insufficient_quota",
+                   "billing", "payment required", "monthly spending limit")
+
+#: 이 말이 함께 있으면 크레딧이 아니다 — 시간이 지나면 풀리는 한도다.
+#   실측: groq "tokens per day (TPD): Limit 200000 … try again in 37m",
+#         groq "output tokens per minute (OTPM): Limit 1000".
+_NOT_CREDIT_MARKERS = ("per day", "per minute", "tpd", "tpm", "otpm",
+                       "rate limit", "try again in")
+
 
 def _looks_daily(exc: Exception) -> bool:
     txt = str(exc).lower()
     return any(m in txt for m in _DAILY_MARKERS)
+
+
+def _looks_credit(exc: Exception) -> bool:
+    """잔액 소진인가. **한도 문구가 함께 있으면 아니다.**"""
+    txt = str(exc).lower()
+    if any(m in txt for m in _NOT_CREDIT_MARKERS):
+        return False
+    return any(m in txt for m in _CREDIT_MARKERS)
+
+
+async def _note_exhaustion(name: str, exc: Exception) -> None:
+    """소진을 기록한다. **크레딧이면 차단·알림까지 간다.**
+
+    🔴 실사고 2026-09-10: Gemini 가 크레딧 소진으로 죽었는데 로그 한 줄만
+       남고 `api:blocked:*` 에도 안 잡혀, KBO 4/4 · NPB 6/6 판정 0건이 될
+       때까지 아무도 몰랐다. `_mark_exhausted` 가 **파이썬 dict** 에만 썼기
+       때문이다 — 재기동하면 그 기억조차 사라진다.
+    ⚠️ 차단 구현을 여기 다시 적지 않는다 — `api_guard.trip_credit` 이 차단 키·
+       `notify_quota`·키 지문 자동해제를 이미 한다(사본 금지).
+    ⚠️ 일일 한도는 **차단하지 않는다.** 내일 풀리는 것을 영구 차단하면
+       사람이 손으로 풀 때까지 멀쩡한 provider 를 버린다.
+    ⚠️ 차단에 실패해도 프로세스 내 건너뛰기는 **반드시** 남긴다 — 알림이
+       안 갔다고 소진된 키를 계속 때리면 더 나쁘다.
+    """
+    _mark_exhausted(name, str(exc))
+    if not _looks_credit(exc):
+        return
+    try:
+        from app.api_guard import trip_credit
+
+        await trip_credit(name, str(exc))
+    except Exception as e:      # 차단 실패가 호출 흐름을 죽이지 않는다
+        logger.warning("[llm] %s 크레딧 차단 실패 — 건너뛰기만 유지: %s", name, e)
 
 
 def _outage_kind(exc: Exception) -> str:
