@@ -186,35 +186,75 @@ def test_없는_자료번호를_적지_말라고_한다():
     assert "근거 보강" in CONCLUDE
 
 
-# ═══════════════ ④ 애매할 때만 DB
+# ═══════════════ ④ 는 없다 — DB 를 전부 뺐다 (ORD-2)
 
-def test_DB_블록을_판정_프롬프트에서_잘라_온다():
-    """🔴 자료 조립을 두 벌 만들지 않는다."""
-    p = "머리말\n[입력 자료]\n1. 박스스코어 {...}\n[변수 형식]\n규칙\n[출력]\n{}"
-    b = MU.db_block(p)
-    assert b.startswith("[입력 자료]")
-    assert "박스스코어" in b
-    assert "[변수 형식]" not in b and "[출력]" not in b
+def test_DB_참조_경로가_없다():
+    """🔴 사용자 지시 2026-09-11: "데이타 베이스는 전부 삭제…db가 답을 바꾼다."
+    실측(ORD-1 리허설 3경기): ④ 가 3/3 돌았고 NYM@NYY 는 0.54 NYY → 0.46 NYM
+    으로 **승자째 뒤집혔다.** DB 를 뒤로 미뤄도 DB 가 답을 정했다."""
+    from app.engine import prompts as P
 
-
-def test_경계를_못_찾으면_통째로_준다():
-    """🔴 조용히 빈 문자열을 주면 재질의가 자료 없이 돈다."""
-    assert MU.db_block("자료 경계가 없는 문자열") == "자료 경계가 없는 문자열"
+    assert not hasattr(MU, "db_block")
+    assert not hasattr(P, "DB_ON_DEMAND")
 
 
-def test_DB_블록이_참조임을_밝힌다():
-    from app.engine.prompts import DB_ON_DEMAND
-
-    assert "이것은 참조다" in DB_ON_DEMAND
-    assert "처음부터" in DB_ON_DEMAND and "다시 쓰지 마라" in DB_ON_DEMAND
-    assert "여기가 마지막이다" in DB_ON_DEMAND
-
-
-def test_결론이_자료필요_칸을_갖는다():
+def test_결론이_DB_를_요청할_칸이_없다():
     from app.engine.prompts import CONCLUDE
 
-    assert '"자료필요"' in CONCLUDE
-    assert "습관적으로 채우지 마라" in CONCLUDE
+    assert "자료필요" not in CONCLUDE
+    assert "여기 있는 것이 전부다" in CONCLUDE
+
+
+def test_모르면_모른다고_하라고_한다():
+    """🔴 DB 를 뺀 자리를 기억으로 메우는 것이 유일하게 치명적인 실패다."""
+    from app.engine.prompts import CONCLUDE
+
+    assert "모르는 것은 모른다고 말하라" in CONCLUDE
+    assert "기억으로 숫자를 적지 마라" in CONCLUDE
+
+
+def test_추가확인은_남긴다():
+    """무엇이 없었는지를 버리면 다음에 무엇을 찾아야 할지 모른다."""
+    from app.engine.prompts import CONCLUDE
+
+    assert "`추가확인` 은 그대로 쓴다" in CONCLUDE
+
+
+def test_박스스코어와_폼을_새_순서에서는_만들지_않는다():
+    """🔴 "최근 3경기 폼도 삭제" — 만들어 봐야 프롬프트에 안 들어간다."""
+    src = open("app/engine/matchup.py", encoding="utf-8").read()
+    body = src[src.index("async def judge_matchup"):]
+    assert "boxes = {} if _order_v2 else boxscore_payload(jg)" in body
+    i = body.index('_form_or_analyze(jg, redis, date, "home"')
+    assert "if _order_v2:" in body[i - 700:i]
+
+
+def test_새_순서는_판정_프롬프트를_조립하지_않는다():
+    src = open("app/engine/matchup.py", encoding="utf-8").read()
+    body = src[src.index("async def judge_matchup"):]
+    i = body.index("render_matchup_prompt(jg, boxes, news, prev)")
+    assert "else:" in body[i - 60:i], "종전 경로에서만 조립해야 한다"
+
+
+def test_조사가_비면_판정하지_않는다():
+    """🔴 절대 규칙 6 — 재료 없으면 분석 생성 금지. 팀 이름 위에서 확률을
+    만드는 것이 곧 '기억으로 판정하기'다."""
+    src = open("app/engine/matchup.py", encoding="utf-8").read()
+    body = src[src.index("async def judge_matchup"):]
+    i = body.index('if not (_reinf.get("자료") or [])')
+    blk = body[i:i + 900]
+    assert 'jg["form_unavailable"] = True' in blk
+    assert "return None" in blk
+    assert "보강 0건" in blk        # 미발송 사유가 남는다
+
+
+def test_새_순서는_종전_경로로_폴백하지_않는다():
+    """자료를 조립하지 않았으므로 폴백해도 빈 프롬프트다 — 조용한 0 을 만든다."""
+    src = open("app/engine/matchup.py", encoding="utf-8").read()
+    body = src[src.index("async def judge_matchup"):]
+    assert "prompt = _db_prompt" not in body
+    i = body.index("_pre = await _prescout")
+    assert "추천 탈락" in body[i:i + 800]
 
 
 # ═══════════════ 스위치 · 배선
@@ -231,7 +271,7 @@ def test_판정_문에_배선돼_있다():
     src = open("app/engine/matchup.py", encoding="utf-8").read()
     body = src[src.index("async def judge_matchup"):]
     for need in ("prescout", "reinforce", "render_conclude_prompt",
-                 "game_brief", "db_block", "DB_ON_DEMAND"):
+                 "game_brief"):
         assert need in body, need
 
 
@@ -244,19 +284,14 @@ def test_순서가_지켜진다():
             < body.index("render_conclude_prompt(jg, _brief"))
 
 
-def test_갈림길_실패는_종전_경로다():
-    """조사가 안 됐다고 판정을 멈추지 않는다."""
+def test_갈림길_실패는_조용하지_않다():
+    """🔴 판정을 안 한 이유가 남아야 한다 — "조용한 0" 은 결함이다."""
     src = open("app/engine/matchup.py", encoding="utf-8").read()
-    body = src[src.index("_order_v2 = bool("):]
-    assert "_order_v2 = False" in body[:1400]
-    assert "prompt = _db_prompt" in body[:1800]
-
-
-def test_재질의_실패는_첫_답을_쓴다():
-    """🔴 있던 판정을 재질의 실패로 잃지 않는다."""
-    src = open("app/engine/matchup.py", encoding="utf-8").read()
-    i = src.index("_second = await _ask(_again)")
-    assert "첫 답을 쓴다" in src[i:i + 600]
+    i = src.index("갈림길을 못 세웠다")
+    assert "추천 탈락" in src[i:i + 120]
+    blk = src[i - 500:i]
+    assert 'jg["form_unavailable"] = True' in blk
+    assert "release_final" in blk, "최종 권한을 돌려놔야 다음 폴링이 다시 본다"
 
 
 # ═══════════════ 실측이 잡은 것 (2026-09-11 game=5624 리허설)
@@ -343,9 +378,13 @@ def test_객체_하나만_와도_버리지_않는다():
     assert len(_rows({"질문번호": 1, "답": "x"}, ["q"], "x")) == 1
 
 
-def test_추가확인과_자료필요를_잇는다():
-    """🔴 실측 2026-09-11 game=5624: 판정이 `추가확인` 에 "최근 3경기 득점력 및
-    불펜 소모"를 적고 `자료필요` 는 비워 냈다 — 같은 말인데 ④ 가 안 돌았다."""
-    from app.engine.prompts import CONCLUDE
-
-    assert "`추가확인` 에 적은 것 중 우리 DB 가 줄 수 있는 것" in CONCLUDE
+def test_원장에_무엇으로_판정했는지_남는다():
+    """🔴 갈림길 몇 개·질문 몇 개·보강 몇 건으로 낸 판정인지가 없으면
+    나중에 "왜 그 카드가 그랬나"를 못 푼다."""
+    src = open("app/engine/matchup.py", encoding="utf-8").read()
+    i = src.rindex('jg["order_v2"] = {"갈림길"')
+    for k in ("질문", "보강", "출처", "추가확인"):
+        assert k in src[i:i + 500], k
+    # 탈락한 경기에도 사유가 남아야 한다 — "조용한 0" 금지
+    j = src.index('jg["order_v2"] = {"갈림길"')
+    assert "탈락" in src[j:j + 500]

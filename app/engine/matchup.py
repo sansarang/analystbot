@@ -878,24 +878,6 @@ def _starter(jg: dict, side: str) -> str:
     return pitcher_name(jg, side)
 
 
-#: 판정 프롬프트에서 **자료 본문만** 잘라내는 경계. 원본은 `prompts.MATCHUP` 이다.
-_DB_HEAD, _DB_TAIL = "[입력 자료]", "[변수 형식]"
-
-
-def db_block(prompt: str) -> str:
-    """④ 에 붙일 자료 본문. **판정 프롬프트에서 잘라 온다.**
-
-    🔴 자료 조립을 여기서 다시 하지 않는다 — 두 벌이 되면 한쪽만 갱신된다.
-       `render_matchup_prompt` 가 만든 그 문자열을 그대로 쓴다.
-    """
-    try:
-        i, j = prompt.index(_DB_HEAD), prompt.index(_DB_TAIL)
-    except ValueError:                       # 경계가 바뀌었다 — 통째로 준다
-        logger.warning("[order] 자료 경계를 못 찾았다 — 프롬프트 전체를 붙인다")
-        return prompt
-    return prompt[i:j].rstrip() + "\n"
-
-
 def _fmt_branches(pre: dict) -> str:
     out = []
     for i, b in enumerate(pre.get("갈림길") or [], 1):
@@ -1020,15 +1002,23 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     settings = get_settings()
     is_mock = settings.mock_judge if mock is None else mock
     home, away = jg.get("home") or "", jg.get("away") or ""
-    home_form = await _form_or_analyze(jg, redis, date, "home", mock)
-    away_form = await _form_or_analyze(jg, redis, date, "away", mock)
+    # 🔴 [ORD-2 2026-09-11 사용자 지시] **최근 3경기 폼도 삭제.** 새 순서에서
+    #    판정은 오늘 조사 결과만 본다 — 폼을 만들어 봐야 프롬프트에 들어가지
+    #    않는다. 만들지 않으면 팀당 LLM 호출 1회도 함께 사라진다.
+    #    ⚠️ 스위치가 꺼진 종전 경로는 한 글자도 바뀌지 않는다.
+    _order_v2 = bool(getattr(settings, "order_v2", False)) and not is_mock
+    if _order_v2:
+        home_form, away_form = {}, {}
+    else:
+        home_form = await _form_or_analyze(jg, redis, date, "home", mock)
+        away_form = await _form_or_analyze(jg, redis, date, "away", mock)
     # 🔴 [E 2026-09-02] 게이트를 **폼이 아니라 숫자**에 건다.
     #    판정 입력이 등급에서 원본 박스스코어로 바뀌었으므로, 없으면 못 하는 것은
     #    "헤이쿠 평가서"가 아니라 "3경기 숫자"다. 뉴스(평가서)는 보조 신호라
     #    빠져도 판정은 성립한다 — 없으면 뉴스 없이 간다.
     #    ⚠️ 숫자가 없으면 종전과 똑같이 탈락이다. 재료 없이 분석을 만들지 않는다.
-    boxes = boxscore_payload(jg)
-    if not boxes.get("home") or not boxes.get("away"):
+    boxes = {} if _order_v2 else boxscore_payload(jg)
+    if not _order_v2 and (not boxes.get("home") or not boxes.get("away")):
         jg["form_unavailable"] = True
         logger.info("[matchup] %s vs %s 3경기 박스스코어 없음 — 추천 탈락 "
                     "(home=%s away=%s)", home, away,
@@ -1048,7 +1038,10 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     try:
         from app.engine.council import run as _council
 
-        await _council(jg, date, redis)
+        # [ORD-2] 새 순서에서는 심의록이 들어갈 칸(자료2)이 없다 — 돌리면
+        #   쓰이지 않는 LLM 호출만 나간다.
+        if not _order_v2:
+            await _council(jg, date, redis)
     except Exception as exc:
         logger.warning("[council] game=%s 실패 — 심의 없이 판정한다: %s",
                        jg.get("game_id"), exc)
@@ -1074,36 +1067,55 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #   아니라 "무엇이 바뀌어 어디로 움직였나"가 되게 한다.
     #   (실측 사례: 안우진 등판 확인 → 두산 0.62→0.59 철회)
     prev = prev_verdict(jg)
-    prompt = render_matchup_prompt(jg, boxes, news, prev)
-    # 🔴 [SCT-1 2026-09-11 사용자 지시] **순서를 뒤집는다.** 정찰(딥서치)이
-    #    자료 + 외부 사실을 보고 **변수를 정하고**, 최종 판정이 그것을 받아
-    #    승패를 낸다. 스위치가 꺼져 있으면 종전 경로 그대로다.
-    #    ⚠️ 정찰 실패는 None → 프롬프트가 바뀌지 않는다(종전 동작).
-    # 🔴 [ORD-1 2026-09-11 사용자 지시] **순서를 바꾼다.**
-    #    "경기가 나왔어 → AI 가 먼저 변수 및 갈림길을 찾는다 → 그 후에 인공위성·
-    #     퍼플렉시티·X 가 보강자료를 찾는다 → 결론 → 애매한 것은 우리 DB 참조."
-    #    ①② 가 여기, ③ 은 프롬프트 교체, ④ 는 아래 재질의다.
-    #    ⚠️ `_db_prompt` 는 **버리지 않는다** — ④ 가 그 자료를 잘라 쓴다.
-    #    ⚠️ ① 이 실패하면 `_order_v2` 가 False 로 내려가 **종전 경로 그대로**다.
-    _db_prompt, _pre, _reinf = prompt, None, None
-    _order_v2 = bool(getattr(settings, "order_v2", False)) and not is_mock
+    # 🔴 [ORD-2 2026-09-11 사용자 지시] **DB 를 판정 입력에서 전부 뺀다.**
+    #    "데이타 베이스는 전부 삭제...최근 3경기 폼도 삭제...db가 답을 바꾼다."
+    #    그래서 새 순서에서는 `render_matchup_prompt` 를 **부르지 않는다** —
+    #    빈 자료로 부르면 "자료1 없음"이 찍힌 프롬프트가 만들어질 뿐이다.
+    #
+    #    ⚠️ **종전 경로로 폴백하지 않는다.** ORD-1 에는 폴백이 있었지만, 이제
+    #       자료가 조립돼 있지 않아 폴백해도 빈 프롬프트다. 조사가 안 됐으면
+    #       **판정하지 않는다** — 절대 규칙 6 "재료 없으면 분석 생성 금지".
+    #       미발송에는 사유가 남는다(`form_unavailable` + 로그).
+    _pre = _reinf = None
     if _order_v2:
-        try:
-            from app.engine.deepsearch import prescout as _prescout
-            from app.engine.deepsearch import reinforce as _reinforce
+        from app.engine.deepsearch import prescout as _prescout
+        from app.engine.deepsearch import reinforce as _reinforce
 
-            _brief = game_brief(jg)
+        _brief = game_brief(jg)
+        try:
             _pre = await _prescout(jg, _brief)
-            if _pre is not None:
-                _reinf = await _reinforce(jg, _pre, redis)
-                prompt = render_conclude_prompt(jg, _brief, _pre, _reinf)
-            else:
-                _order_v2 = False
         except Exception as exc:
-            logger.warning("[order] game=%s 갈림길·보강 실패 — 종전 경로로 간다: %s",
-                           jg.get("game_id"), exc)
-            _order_v2, _pre, _reinf = False, None, None
-            prompt = _db_prompt
+            logger.warning("[order] game=%s 갈림길 실패: %s", jg.get("game_id"), exc)
+            _pre = None
+        if _pre is None:
+            jg["form_unavailable"] = True
+            if final:
+                await release_final(redis, jg, date)
+            logger.warning("[order] %s vs %s 갈림길을 못 세웠다 — 추천 탈락",
+                           away, home)
+            return None
+        try:
+            _reinf = await _reinforce(jg, _pre, redis)
+        except Exception as exc:
+            logger.warning("[order] game=%s 보강 실패: %s", jg.get("game_id"), exc)
+            _reinf = {"자료": [], "출처": {}, "질문": _pre.get("조사요청") or []}
+        # 🔴 조사가 통째로 비면 남는 것은 팀 이름뿐이다. 그 위에서 확률을 만드는
+        #    것이 바로 "기억으로 판정하기"다. 만들지 않는다.
+        if not (_reinf.get("자료") or []):
+            jg["form_unavailable"] = True
+            jg["order_v2"] = {"갈림길": len(_pre.get("갈림길") or []),
+                              "질문": len(_reinf.get("질문") or []),
+                              "보강": 0, "출처": {}, "탈락": "보강 0건"}
+            if final:
+                await release_final(redis, jg, date)
+            logger.warning("[order] %s vs %s 보강 자료 0건 — 추천 탈락 "
+                           "(질문 %d개를 던졌으나 아무도 답하지 못했다)",
+                           away, home, len(_reinf.get("질문") or []))
+            return None
+        prompt = render_conclude_prompt(jg, _brief, _pre, _reinf)
+    else:
+        prompt = render_matchup_prompt(jg, boxes, news, prev)
+    # 🔴 [SCT-1 2026-09-11] 종전 경로의 정찰. 스위치가 꺼져 있을 때만 돈다.
     if not _order_v2 and getattr(settings, "deepsearch_first", False):
         try:
             from app.engine.deepsearch import scout as _scout
@@ -1191,36 +1203,16 @@ async def judge_matchup(jg: dict, redis, date: str, *,
         return parsed
 
     parsed = await _ask(prompt)
-    # 🔴 [ORD-1 ④] **애매할 때만 DB 를 본다.** 결론이 `자료필요` 를 적었으면
-    #    그때 자료1~14 를 붙여 **한 번 더** 묻는다. 판정이 "됐다"고 하면
-    #    DB 는 아예 안 본다 — 그것이 이 순서의 요점이다.
-    #    ⚠️ 두 번째 질문이 실패하면 **첫 답을 그대로 쓴다.** 있던 판정을
-    #       재질의 실패로 잃지 않는다.
-    if _order_v2 and parsed is not None:
-        need = [str(x).strip() for x in (parsed.get("자료필요") or [])
-                if str(x).strip()]
+    # 🔴 [ORD-2 2026-09-11 사용자 지시] **④ 는 없다.** "데이타 베이스는 전부
+    #    삭제…db가 답을 바꾼다."  실측(ORD-1 리허설 3경기)이 그 말대로였다 —
+    #    ④ 가 3/3 돌았고 NYM@NYY 는 0.54 NYY → 0.46 NYM 으로 승자째 뒤집혔다.
+    #    DB 를 **뒤에** 붙여도 DB 가 답을 정하면 순서를 바꾼 것이 아니다.
+    if _order_v2:
         jg["order_v2"] = {"갈림길": len((_pre or {}).get("갈림길") or []),
                           "질문": len((_reinf or {}).get("질문") or []),
                           "보강": len((_reinf or {}).get("자료") or []),
                           "출처": (_reinf or {}).get("출처") or {},
-                          "자료필요": need}
-        if need:
-            logger.info("[order] game=%s 애매 — DB 를 붙여 재질의한다: %s",
-                        jg.get("game_id"), " · ".join(need[:5]))
-            from app.engine.prompts import DB_ON_DEMAND
-
-            _again = prompt + DB_ON_DEMAND + db_block(_db_prompt)
-            await _keep_prompt(redis, jg.get("game_id"), _again)
-            _second = await _ask(_again)
-            if _second is not None:
-                parsed = _second
-                jg["order_v2"]["db참조"] = True
-            else:
-                logger.warning("[order] game=%s 재질의 실패 — 첫 답을 쓴다",
-                               jg.get("game_id"))
-                jg["order_v2"]["db참조"] = "재질의 실패"
-        else:
-            jg["order_v2"]["db참조"] = False
+                          "추가확인": (parsed or {}).get("추가확인") or []}
     if parsed is None:
         jg["form_unavailable"] = True
         # 🔴 최종이 답을 못 냈으면 **권한을 돌려놓는다.** 안 그러면 다음
