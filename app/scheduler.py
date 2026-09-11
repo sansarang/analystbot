@@ -394,6 +394,16 @@ async def lineup_poll_job() -> None:
     await crawler_lineup_poll()
 
 
+def pregame_clock(start):
+    """[SND-1] 잡 시작 시각 + 그 뒤 실제로 흐른 시간. 원본은 `pregame_push.Clock`.
+
+    ⚠️ 여기 시각 계산을 적지 않는다 — 사본이 되면 한쪽만 고쳐진다.
+    """
+    from app.engine.pregame_push import Clock
+
+    return Clock(start)
+
+
 async def mlb_pregame_poll() -> None:
     """MLB 아침 창 — statsapi 라인업 + 캐시 발송. Go 크롤러 없음.
 
@@ -412,6 +422,10 @@ async def mlb_pregame_poll() -> None:
     redis = aioredis.from_url(s.redis_url, decode_responses=True)
     date = mlb_slate_date()
     now = datetime.now(UTC)
+    # 🔴 [SND-1] MLB 창은 T-180 이라 이 결함의 **발현은 없었다**(실측 위반 0건).
+    #    그래도 같은 구조이므로 같이 고친다 — 증상이 안 났다고 결함이 없는 것은
+    #    아니다. 프리페치가 길어지면 MLB 도 같은 자리에 선다.
+    clock = pregame_clock(now)
     # 🔴 [2026-09-07] 시각을 크론에 박는 대신 **오늘 실제 경기 시각**으로 연다.
     #    `asia_poll_window` 와 같은 규약 — 경기가 없으면 창이 자연히 닫힌다.
     open_, why = await mlb_poll_window(pool, now)
@@ -479,7 +493,8 @@ async def mlb_pregame_poll() -> None:
                 ok = await rejudge_after_lineup(game, res)
                 if ok:
                     tally["rejudged"] += 1
-                    sent = await send_game_prediction(redis, game, date, now=now)
+                    sent = await send_game_prediction(redis, game, date,
+                                                      now=clock.utc())
                     if sent in ("sent", "revised"):
                         tally[sent] += 1
                         logger.info("[scheduler] mlb 예측 카드 %s game=%s",
@@ -501,7 +516,8 @@ async def mlb_pregame_poll() -> None:
             if r["id"] in rejudged or not still_upcoming(r["starts_at"], now):
                 continue
             try:
-                sent = await send_game_prediction(redis, dict(r), date, now=now)
+                sent = await send_game_prediction(redis, dict(r), date,
+                                                  now=clock.utc())
                 if sent in ("sent", "revised"):
                     logger.info("[scheduler] mlb 예측 카드 %s game=%s",
                                 sent, r["id"])
@@ -513,7 +529,7 @@ async def mlb_pregame_poll() -> None:
         if updated:
             rep.append(f"  MLB 대상 {len(rows)}경기 · 라인업 변동 {len(updated)}")
         # [T-30 보장] 아시아와 **대칭**이다. 보장선은 종목을 가리지 않는다.
-        await guarantee_first_cards(pool, redis, "mlb", date, rows, now,
+        await guarantee_first_cards(pool, redis, "mlb", date, rows, clock.utc(),
                                     tally, errs)
         # [감시 L2·L3] 아시아 사이클과 **대칭**이다. 여기가 비어 있어 MLB 만
         #   그림자 패널을 못 받고 있었다 (실측 2026-09-03).
@@ -718,6 +734,10 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
     s = get_settings()
     pool = await get_pool()
     now = datetime.now(UTC)
+    # 🔴 [SND-1 2026-09-11] 이 잡은 재판정(LLM)을 품고 있어 **38분까지 걸린다**
+    #    (실측 2026-09-10). 발송 검사는 잡 머리의 시각이 아니라 **호출 시점**을
+    #    봐야 한다 — 그렇지 않으면 이미 시작한 경기에 카드가 나간다.
+    clock = pregame_clock(now)
     # 🔴 5분마다 돌되 경기 시각으로 창을 연다. 빈 틱은 **로그 없이** 끝난다 —
     #    하루 288틱 중 대부분이 창 밖이라 로그를 남기면 그것이 소음이 된다.
     open_, why = await asia_poll_window(pool, now)
@@ -879,7 +899,8 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
                     if ok:
                         tally["rejudged"] += 1
                         await redis.set(sig_key, roster, ex=86400)
-                        sent = await send_game_prediction(redis, row, _date, now=now)
+                        sent = await send_game_prediction(redis, row, _date,
+                                                          now=clock.utc())
                         if sent in ("sent", "revised"):
                             tally[sent] += 1
                             logger.info("[scheduler] %s 예측 카드 %s game=%s",
@@ -904,7 +925,8 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
                     return_exceptions=True)
             for row in catchup:
                 try:
-                    sent = await send_game_prediction(redis, row, date, now=now)
+                    sent = await send_game_prediction(redis, row, date,
+                                                      now=clock.utc())
                     if sent in ("sent", "revised"):
                         tally[sent] += 1
                         logger.info("[scheduler] %s 예측 카드 %s game=%s",
@@ -916,8 +938,8 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
                                    sport, row["id"], exc)
             # [T-30 보장] 창은 이미 열려 있다(KBO T-70 · NPB T-40). 그래도
             #   판정이 없어 못 나간 경기가 남을 수 있다 — 보장선에서 강제한다.
-            await guarantee_first_cards(pool, redis, sport, date, rows, now,
-                                        tally, errs)
+            await guarantee_first_cards(pool, redis, sport, date, rows,
+                                        clock.utc(), tally, errs)
             # [npb-window] T-10에도 확정이 안 온 NPB 경기는 조용히 두지 않는다.
             if sport == "npb":
                 await _npb_pending_notice(redis, rows, now)
@@ -953,15 +975,23 @@ async def guarantee_first_cards(pool, redis, sport: str, date: str, rows,
        그 경로를 대체하지 않는다.
     """
     from app.engine.pregame_push import (
-        already_sent, guarantee_due, send_game_prediction, still_upcoming,
+        Clock, already_sent, guarantee_due, send_game_prediction, still_upcoming,
     )
     from app.pipeline import (analysis_cache_ready, ensure_analysis_cache,
                               rejudge_after_lineup)
 
+    # 🔴 [SND-1 2026-09-11] **인자로 받은 `now` 를 발송까지 들고 가지 않는다.**
+    #    아래 `rejudge_after_lineup` 은 LLM 호출이라 분 단위로 걸린다 —
+    #    실사고 2026-09-10: 38분 뒤 발송에 그 시각을 그대로 써서, 이미
+    #    시작한 경기(18:30)에 19:06 에 1차 카드가 나갔다.
+    #    ⚠️ 시그니처는 그대로다. 시각이 고정된 기존 테스트는 경과가 0 이라
+    #       종전과 똑같이 동작한다.
+    clock = Clock(now)
     n = 0
     for r in rows:
         row = dict(r)
         gid = row["id"]
+        now = clock.utc()
         if not still_upcoming(row["starts_at"], now):
             continue
         if not guarantee_due(row["starts_at"], now):
@@ -969,7 +999,7 @@ async def guarantee_first_cards(pool, redis, sport: str, date: str, rows,
         if await already_sent(redis, gid):
             continue
         try:
-            sent = await send_game_prediction(redis, row, date, now=now)
+            sent = await send_game_prediction(redis, row, date, now=clock.utc())
             if sent in ("sent", "revised"):
                 n += 1
                 if tally is not None:
@@ -988,7 +1018,13 @@ async def guarantee_first_cards(pool, redis, sport: str, date: str, rows,
                       "starters": {"home": row.get("home_pitcher") or None,
                                    "away": row.get("away_pitcher") or None},
                       "injuries": {}})
-            sent = await send_game_prediction(redis, row, date, now=now)
+            # 🔴 [SND-1] 강제 판정은 **몇 분이 걸린다.** 그 사이 경기가 시작했을
+            #    수 있다 — 다시 묻는다. 실사고 2026-09-10 이 정확히 여기다.
+            if not still_upcoming(row["starts_at"], clock.utc()):
+                logger.warning("[guarantee] %s 강제 판정 중 경기가 시작했다 — "
+                               "발송하지 않는다 game=%s", sport, gid)
+                continue
+            sent = await send_game_prediction(redis, row, date, now=clock.utc())
             if sent in ("sent", "revised"):
                 n += 1
                 if tally is not None:

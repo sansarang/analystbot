@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, date, datetime
+import time
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 #: 표시는 언제나 KST. 저장·비교는 UTC (CLAUDE.md 절대규칙 4).
@@ -111,6 +112,42 @@ def cache_date(sport: str) -> str:
 
 def card_sig_key(game_id: int) -> str:
     return f"pregame_card_sig:{game_id}"
+
+
+#: 🔴 [SND-1 2026-09-11] 테스트가 갈아끼울 수 있게 **모듈 이름**으로 둔다.
+#   `time.monotonic` 을 직접 부르면 잡의 경과 시간을 흉내 낼 방법이 없다.
+_monotonic = time.monotonic
+
+
+class Clock:
+    """잡이 시작한 시각 + **그 뒤 실제로 흐른 시간**.
+
+    🔴 **왜 필요한가 (실사고 2026-09-10).** `아시아 판정 19:06 (소요 38분 18초)`
+       가 18:28 에 시작해 19:06 에 끝났고, 그때 `18:30` 시작 KBO 경기 2건의
+       1차 카드가 나갔다 — **시작 36분 뒤다.** 잡이 머리에서 `now` 를 한 번
+       잡아 발송까지 들고 갔고, 그 사이 재판정(LLM)이 38분을 먹었다.
+       그래서 발송 직전 `still_upcoming` 은 **38분 전의 시각**으로 판단했다.
+       "그 카드는 정확해도 걸 수가 없다" 는 마감선의 취지가 통째로 무너진다.
+
+    ⚠️ **뒤로 가지 않는다.** monotonic 차이만 더하므로 잡이 빠르면 차이가
+       0 에 가깝고, 그때는 종전과 완전히 같게 동작한다 — 그래서 시각을
+       고정해 두고 도는 기존 테스트가 깨지지 않는다.
+    ⚠️ 시계를 두 벌 만들지 않는다. 잡이 따로 재던 경과 시간과 같은 개념이다.
+    ⚠️ 메서드 이름이 `now` 가 아니라 `utc` 인 이유: `tests/test_time_discipline`
+       이 인자 없는 `now()` 호출을 AST 로 잡는다(서버 로컬시간 의존 금지).
+       **가드를 느슨하게 하지 않고 이름을 피했다.**
+    """
+
+    __slots__ = ("start", "_t0")
+
+    def __init__(self, start=None):
+        self.start = start or datetime.now(UTC)
+        if self.start.tzinfo is None:
+            self.start = self.start.replace(tzinfo=UTC)
+        self._t0 = _monotonic()
+
+    def utc(self) -> datetime:
+        return self.start + timedelta(seconds=max(0.0, _monotonic() - self._t0))
 
 
 def still_upcoming(starts_at, now=None) -> bool:
