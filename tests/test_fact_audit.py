@@ -281,3 +281,61 @@ def test_material_ref_detection(line, expect):
     got = [c["value"] for c in fact_audit.extract_claims({"근거": [line]})
            if c["unit"] == "ip"]
     assert (got[0] if got else None) == expect, (line, got)
+
+
+# ── [FA-1 2026-09-11] 감시가 한국어 조사에 소수점을 잘랐다 ────────────────
+#   🔴 운영 경보 실측 2026-09-11 — `W-FACT-MISMATCH` 8건을 전수 확인했더니
+#      **8건 모두 판정이 옳고 감시가 틀렸다.**
+#
+#      elo 5건: `\b(1\d{3}(?:\.\d+)?)\b` 의 **뒤 `\b`** 가 문제다. 숫자 뒤에
+#        한국어 조사(`로`·`으로`)가 붙으면 둘 다 단어문자라 경계가 성립하지
+#        않아, 정규식이 **정수까지만** 잡는다.
+#          "볼티모어 1489.9로"  → 1489   (경보: 주장 1489.0 vs 원문 1489.9)
+#          "홈팀이 1503.3으로"  → 1503
+#          "원정이 1501.2로"    → 1501
+#        쉼표·괄호가 뒤에 오면(`1509.5,` `1497.4)`) 멀쩡히 잡힌다.
+#        경보의 "주장" 값이 **전부 `.0` 으로 끝나는 것**이 증거였다.
+#
+#   ⚠️ `app/engine/CLAUDE.md`: "이 층의 최대 리스크는 **오탐**이다. 놓치는
+#      쪽이 틀리는 쪽보다 낫다." 지금은 오탐이 쏟아져 **진짜 환각이 묻힌다.**
+
+import pytest
+
+
+@pytest.mark.parametrize("text,want", [
+    ("자료12: 실력 레이팅 토론토 1509.5, 볼티모어 1489.9로 토론토가 우세",
+     ["1509.5", "1489.9"]),
+    ("실력 레이팅에서 홈팀이 1503.3으로 원정팀(1497.4)에 미세 우위",
+     ["1503.3", "1497.4"]),
+    ("실력 레이팅에서 원정이 1501.2로 홈(1482.2) 대비 우위", ["1501.2", "1482.2"]),
+    ("자료12: 실력 레이팅 홈 1480.3 vs 원정 1485.5로 격차 -5.2점", ["1480.3", "1485.5"]),
+])
+def test_elo_survives_korean_particle(text, want):
+    import re
+
+    from app.engine.fact_audit import UNIT_PATTERNS
+
+    pat = next(p for p, unit, _ in UNIT_PATTERNS if unit == "elo")
+    assert re.findall(pat, text) == want, f"조사 뒤에서 소수점이 잘렸다: {text!r}"
+
+
+def test_elo_still_rejects_longer_numbers():
+    """⚠️ 반대 위험 — 앵커를 풀었다고 더 긴 숫자의 앞부분을 물면 안 된다."""
+    import re
+
+    from app.engine.fact_audit import UNIT_PATTERNS
+
+    pat = next(p for p, unit, _ in UNIT_PATTERNS if unit == "elo")
+    assert re.findall(pat, "관중 15095명") == [], "5자리 숫자의 앞 4자리를 물었다"
+    assert re.findall(pat, "코드 21489 참조") == [], "숫자 중간을 물었다"
+
+
+def test_elo_range_unchanged():
+    """1000~1999 만 잡는다는 기존 계약은 그대로다."""
+    import re
+
+    from app.engine.fact_audit import UNIT_PATTERNS
+
+    pat = next(p for p, unit, _ in UNIT_PATTERNS if unit == "elo")
+    assert re.findall(pat, "레이팅 1489.9") == ["1489.9"]
+    assert re.findall(pat, "레이팅 2489.9") == []
