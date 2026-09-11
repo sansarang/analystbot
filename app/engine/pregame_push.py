@@ -144,6 +144,35 @@ def in_send_window(sport: str, starts_at, now=None, settings=None) -> bool:
     return open_m is not None and left <= open_m
 
 
+#: 🔴 [SP-1 2026-09-11] 발송 창에 들어온 직후의 **감시 유예**(분).
+#   발송은 창이 열리는 즉시 시도하지만, 카드가 실제로 나가려면 프리게임
+#   폴링이 한 틱 와야 한다. 워치독도 5분 주기라 **워치독 틱이 폴링 틱보다
+#   먼저 오면 정상 경기가 항상 걸린다.**
+#     실측 2026-09-10 (docs/TIMING_2026-09-11.md §2-A): 경보 3건 전부
+#     경보 1분 안에 카드가 나갔다. Texas 는 T-177 발송으로 창(T-180)
+#     바로 뒤였다 — **오탐 100%.**
+#   ⚠️ 이 값은 폴링 주기의 **사본이 아니라 상한**이다. 주기의 원본은
+#      `scheduler._JOB_TRIGGERS`(asia 5m · mlb 5m · npb 2m)이고, 종목→잡
+#      대응표를 새로 손으로 적지 않기 위해 그중 최댓값 하나만 둔다.
+#   ⚠️ NPB 창은 T-40 뿐이라 5분이 창의 12.5% 다. 10분이면 25% — 과하다.
+#      가려진 창 초반은 보장선 감시(`check_card_late`, T-30)가 뒤에서 덮는다.
+#   ⚠️ **발송 경로는 건드리지 않는다.** `in_send_window` 는 종전 그대로 즉시
+#      열린다 — 유예는 감시 전용이다.
+SEND_WATCH_GRACE_MIN = 5
+
+
+def send_overdue(sport: str, starts_at, now=None) -> bool:
+    """발송 창에 들어온 지 유예를 넘겼는가 — **감시 전용 판정**.
+
+    워치독이 창 산술을 직접 하지 않도록 여기 한 곳에 둔다(사본 금지).
+    """
+    left = minutes_until_start(starts_at, now)
+    open_m = SEND_OPEN_MIN.get(sport)
+    if left is None or open_m is None:
+        return False
+    return 0 < left <= open_m - SEND_WATCH_GRACE_MIN
+
+
 #: 🔴 [2026-09-03 사용자 결정] **첫 카드 보장선 — 시작 T-30.**
 #   그 시점에 카드가 없으면 라인업이 미공시여도 지금 있는 재료로 판정해
 #   내보낸다. "라인업을 기다리다 카드가 아예 안 나가는" 것이 가장 나쁘다.

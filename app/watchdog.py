@@ -313,11 +313,17 @@ async def check_pending_sends(pool, redis) -> list[tuple[str, str, str]]:
 
     ⚠️ **판정이 있는데 안 나간 것만** 센다. 판정 자체가 없는 것은
        구제·크레딧 경보가 따로 잡는다 — 같은 고장을 두 번 울리지 않는다.
+
+    🔴 [SP-1 2026-09-11] 창이 **열리는 순간**부터 세면 오탐이 100% 다.
+       카드는 폴링이 한 틱 와야 나가는데 워치독도 같은 주기라, 워치독이
+       먼저 오면 정상 경기가 항상 걸린다(실측 2026-09-10 경보 3건 전부
+       1분 안에 발송됨). 창 진입 유예는 `pregame_push.send_overdue` 가
+       판정한다 — **여기에 창 폭도 유예도 적지 않는다**(사본 금지).
     """
     if pool is None:
         return []
     from app.engine.pregame_push import (
-        SPORTS, card_sig_key, in_send_window, still_upcoming,
+        SPORTS, card_sig_key, send_overdue, still_upcoming,
     )
     from app.pipeline import mlb_slate_date, today_kst
 
@@ -335,7 +341,7 @@ async def check_pending_sends(pool, redis) -> list[tuple[str, str, str]]:
     for r in rows:
         sport = r["sport"]
         if not still_upcoming(r["starts_at"], now) or \
-                not in_send_window(sport, r["starts_at"], now):
+                not send_overdue(sport, r["starts_at"], now):
             continue
         try:
             if await redis.get(card_sig_key(r["id"])):
