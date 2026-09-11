@@ -1,4 +1,13 @@
-"""[4번 2026-09-04] "완전 무료"가 실제로 무료인지 잠근다.
+"""[4번 2026-09-04 · BUD-1 2026-09-11] 무엇이 유료인지 잠근다.
+
+🔴 [BUD-1 2026-09-11] **정책이 바뀌었다.** 2026-09-04 의 "완전 무료" 지시는
+   2026-09-11 유료 전면 전환(gemini 주전 · xai 폴백)으로 대체됐다.
+   그래서 계약도 둘로 갈린다:
+     · 무엇이 유료인가 — 판정은 그대로 잠근다(오히려 더 엄격해졌다)
+     · 유료 후보를 어떻게 다루는가 — **배제가 아니라 토큰 상한**이다
+   종전 구현은 독스트링이 "확실하지 않으면 False" 라고 적어 놓고 **모르는
+   provider 를 전부 무료로 통과**시켰다. 그래서 gemini·xai 가 무료로 분류돼
+   상한이 걸리는 경로가 Anthropic 하나뿐이었다.
 
 🔴 실측 2026-09-04: `FREE_JUDGE_MODEL` 에 `openrouter/deepseek/deepseek-r1`
    이 들어 있었다. OpenRouter 는 같은 이름의 **유료·무료 두 변형**을 파는데
@@ -19,32 +28,86 @@ from app.llm.judge_route import chain, is_free
     ("openrouter", "deepseek/deepseek-r1:free", True),
     ("nvidia", "nvidia/nemotron-3-ultra-550b-a55b", True),   # 계정이 무료 티어
     ("groq", "qwen/qwen3.8-27b", True),
+    # 🔴 [BUD-1] 여기가 통째로 뒤집힌 자리다. 이 둘이 True 였다.
+    ("gemini", "gemini-3.7-flash", False),
+    ("xai", "grok-4.3-latest", False),
+    # 모르는 provider 는 **유료로 본다** — 독스트링이 원래 약속한 방향이다.
+    ("whoknows", "some-model", False),
 ])
 def test_is_free(provider, model, expected):
     assert is_free(provider, model) is expected
 
 
-def test_paid_openrouter_candidate_is_dropped_from_the_chain(monkeypatch):
-    """유료 후보는 사슬에 앉지 못한다 — 조용히 통과시키지 않는다."""
+@pytest.mark.parametrize("provider,paid", [
+    ("gemini", True), ("xai", True), ("anthropic", True), ("deepseek", True),
+    ("groq", False), ("nvidia", False), ("ollama", False), ("mock", False),
+    ("", True), ("처음보는것", True),          # 모르면 유료
+])
+def test_is_paid_provider(provider, paid):
+    """상한을 태울지 말지가 여기서 갈린다. **모르면 유료**다."""
+    from app.llm.judge_route import is_paid_provider
+
+    assert is_paid_provider(provider) is paid
+
+
+def test_paid_candidate_stays_in_the_chain_and_is_capped(monkeypatch):
+    """🔴 [BUD-1] 운영 사슬이 유료다 — 배제하면 판정이 통째로 0건이 된다.
+
+    2026-09-11 운영값 그대로: `gemini/gemini-3.7-flash,xai/grok-4.3-latest`.
+    종전 구현은 이 둘을 "무료"로 착각해 통과시켰고, 지금은 **유료인 줄 알면서**
+    통과시킨다. 차이는 토큰 상한이 붙는다는 것이다.
+    """
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    monkeypatch.setenv("JUDGE_PROVIDER", "gemini")
+    monkeypatch.setenv("JUDGE_CHAIN",
+                       "gemini/gemini-3.7-flash,xai/grok-4.3-latest")
+    try:
+        got = chain("matchup")
+    finally:
+        get_settings.cache_clear()
+    assert got == [("gemini", "gemini-3.7-flash"), ("xai", "grok-4.3-latest")], got
+    assert all(not is_free(p, m) for p, m in got), "유료인 줄 알고 태워야 한다"
+
+
+def test_paid_candidate_is_dropped_in_free_only_mode(monkeypatch):
+    """무료 전용으로 되돌리는 길 — 설정 한 줄이다 (2026-09-04 정책)."""
     from app.config import get_settings
 
     get_settings.cache_clear()
     monkeypatch.setenv("JUDGE_PROVIDER", "nvidia")
-    monkeypatch.setenv("FREE_JUDGE_MODEL",
+    monkeypatch.setenv("PAID_LLM_ALLOWED", "0")
+    monkeypatch.setenv("JUDGE_CHAIN",
                        "nvidia/nvidia/nemotron-3-ultra-550b-a55b,"
                        "openrouter/deepseek/deepseek-r1,"
+                       "gemini/gemini-3.7-flash,"
                        "openrouter/minimax/minimax-m3:free")
     try:
         got = chain("matchup")
     finally:
         get_settings.cache_clear()
     assert ("openrouter", "deepseek/deepseek-r1") not in got
+    assert ("gemini", "gemini-3.7-flash") not in got
     assert ("openrouter", "minimax/minimax-m3:free") in got
     assert got[0] == ("nvidia", "nvidia/nemotron-3-ultra-550b-a55b")
     # 🔴 [2026-09-04] 비상 꼬리를 **떼어냈다.** 잔액 0 이면 캡은 아무것도
     #    지키지 못하고, 그 400 이 종목 전체를 멈춘다(NPB 판정 0건).
-    #    무료 후보가 있으면 사슬은 무료로만 구성된다.
     assert "anthropic" not in [p for p, _ in got]
+
+
+def test_old_env_name_still_works(monkeypatch):
+    """개명은 배포와 env 변경을 분리한다 — 옛 이름이 그대로 읽혀야 한다."""
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    monkeypatch.setenv("JUDGE_PROVIDER", "gemini")
+    monkeypatch.delenv("JUDGE_CHAIN", raising=False)
+    monkeypatch.setenv("FREE_JUDGE_MODEL", "gemini/gemini-3.7-flash")
+    try:
+        assert chain("matchup") == [("gemini", "gemini-3.7-flash")]
+    finally:
+        get_settings.cache_clear()
 
 
 def test_groq_and_gemini_are_no_longer_disabled_by_default():

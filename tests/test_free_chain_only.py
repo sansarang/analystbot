@@ -407,8 +407,9 @@ def test_only_matchup_may_use_anthropic(role, monkeypatch):
         "judge_provider": "anthropic",
         "matchup_model": "claude-fable-5",
         "team_form_model": "claude-haiku-4-5-20251001",
-        "free_judge_model": "gemini/gemini-3.7-flash",
-        "free_form_model": "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+        "paid_llm_allowed": True,
+        "judge_chain": "gemini/gemini-3.7-flash",
+        "form_chain": "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
     })())
     got = jr.chain(role)
     assert all(p != "anthropic" for p, _ in got), (role, got)
@@ -421,7 +422,8 @@ def test_matchup_uses_anthropic_when_selected(monkeypatch):
         "judge_provider": "anthropic",
         "matchup_model": "claude-fable-5",
         "team_form_model": "claude-haiku-4-5-20251001",
-        "free_judge_model": "", "free_form_model": "",
+        "paid_llm_allowed": True,
+        "judge_chain": "", "form_chain": "",
     })())
     assert jr.chain("matchup") == [("anthropic", "claude-fable-5")]
 
@@ -434,7 +436,8 @@ def test_empty_free_chain_never_falls_back_to_paid(monkeypatch):
         "judge_provider": "gemini",
         "matchup_model": "claude-fable-5",
         "team_form_model": "claude-haiku-4-5-20251001",
-        "free_judge_model": "", "free_form_model": "",
+        "paid_llm_allowed": True,
+        "judge_chain": "", "form_chain": "",
     })())
     assert jr.chain("matchup") == []
     assert jr.chain("form") == []

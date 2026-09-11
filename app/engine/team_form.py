@@ -224,8 +224,6 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
        사고가 필요 없다 — 2026-08-27 에 2단 해석봇에서 같은 결론을 냈다.
        판정(role="matchup")은 **켠 채로 둔다.** 거기선 사고가 품질이다.
     """
-    from app.llm.openai_compat import complete
-
     reasoning = role != "form"
     seed = _seed()
     # 🔴 [P0 안정성 2026-09-05] **한 판정은 한 모델이 낸다.**
@@ -259,7 +257,35 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
     #    판정이 아닌 역할은 사슬 끝까지 돈다 — 사슬을 둔 이유가 그것이다.
     judged = role in JUDGE_ROLES
     hops = _MAX_HOPS if judged else len(candidates)
+    # 🔴 [BUD-1 2026-09-11] 유료 후보는 **일일 토큰 상한**을 탄다.
+    #    이 사슬은 2026-09-11 전환으로 더 이상 무료가 아니다(gemini·xai).
+    #    상한 확인과 토큰 누적이 둘 다 redis 를 쓰므로 여기서 한 번 연다.
+    #    ⚠️ redis 가 없으면 **막지 않는다** — 모른다고 판정을 멈추면 카드가
+    #       안 나간다. 그쪽이 더 나쁘다.
+    budget_redis = await _redis()
+    try:
+        return await _run_chain(candidates, hops, soft_retries, judged,
+                                prompt, max_tokens, role, reasoning, seed,
+                                budget_redis)
+    finally:
+        if budget_redis is not None:
+            try:
+                await budget_redis.aclose()
+            except Exception:
+                pass
+
+
+async def _run_chain(candidates, hops, soft_retries, judged, prompt,
+                     max_tokens, role, reasoning, seed, budget_redis):
+    """사슬을 걷는다. `_complete_free` 에서 갈라 나온 본체다 (redis 수명 분리)."""
+    from app.llm import token_budget
+    from app.llm.openai_compat import complete
+
     for hop, (provider, model) in enumerate(candidates[:hops]):
+        ok_budget, why = await token_budget.allowed(budget_redis, provider)
+        if not ok_budget:
+            logger.error("[%s] %s 건너뜀 — %s", role, provider, why)
+            continue
         for attempt in range(soft_retries):
             r = await complete(provider, model, prompt, max_tokens=max_tokens,
                                reasoning=reasoning, seed=seed)
@@ -276,6 +302,12 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
                                    "input_tokens": u.get("prompt_tokens"),
                                    "output_tokens": u.get("completion_tokens"),
                                    "stop_reason": "free"})
+                # [BUD-1] 같은 usage 를 상한 카운터에도 올린다. **새로 파싱하지
+                #   않는다** — 원본은 provider 응답의 usage 하나다.
+                await token_budget.note_usage(
+                    budget_redis, provider, role=role, model=model,
+                    input_tokens=u.get("prompt_tokens"),
+                    output_tokens=u.get("completion_tokens"))
                 return r["text"]
             if not r["ok"]:
                 break                       # 하드 실패 → 다음 후보(1회만)
@@ -292,7 +324,7 @@ async def _complete_free(routes, prompt: str, max_tokens: int,
                 return None
             logger.warning("[%s] %s/%s JSON %d회 실패 — 다음 후보로 넘어간다",
                            role, provider, model, soft_retries)
-    logger.warning("[%s] 무료 사슬 실패 (후보 %d개 소진)", role,
+    logger.warning("[%s] 판정 사슬 실패 (후보 %d개 소진)", role,
                    min(len(candidates), hops))
     return None
 

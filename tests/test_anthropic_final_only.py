@@ -48,8 +48,9 @@ def test_deepsearch_role_is_free_even_when_judge_provider_is_anthropic():
     class _S:
         judge_provider = "anthropic"
         matchup_model = "claude-fable-5"
-        free_judge_model = "gemini/gemini-3.7-flash"
-        free_form_model = "gemini/gemini-3.7-flash"
+        paid_llm_allowed = True
+        judge_chain = "gemini/gemini-3.7-flash"
+        form_chain = "gemini/gemini-3.7-flash"
 
     from app.engine.deepsearch import DEEPSEARCH_ROLE
 

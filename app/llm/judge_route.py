@@ -37,8 +37,30 @@ def _cfg():
 
 #: OpenRouter 는 같은 모델 이름으로 **유료·무료 두 변형**을 판다. 무료판만
 #  `:free` 로 끝난다 — 접미사가 없으면 과금된다(실측 2026-09-04).
-#  다른 제공자(nvidia NIM·groq)는 계정 자체가 무료 티어라 이름으로 갈리지 않는다.
 _SUFFIX_REQUIRED = {"openrouter"}
+
+#: 🔴 **비용이 0 임이 확인된 provider 만 여기 있다.**
+#   · ollama = 로컬 실행 · mock = 호출 자체가 없음
+#   · groq · nvidia NIM = 계정이 무료 티어라 모델 이름으로 갈리지 않는다
+#   ⚠️ 모델 목록이 아니라 **provider 규칙**이다. 모델 이름은 적지 않는다.
+FREE_PROVIDERS = {"ollama", "mock", "groq", "nvidia"}
+
+#: 유료로 보는 provider — `snapshot()` 이 훑을 후보다. **판정 근거가 아니다**
+#  (판정은 `is_paid_provider` 의 규칙이 한다). 여기 없는 이름도 규칙상
+#  유료면 유료로 취급된다.
+PAID_PROVIDER_HINTS = ("gemini", "xai", "anthropic", "deepseek", "openrouter")
+
+
+def is_paid_provider(provider: str) -> bool:
+    """이 provider 는 **돈이 드는가.** 모르면 유료로 본다.
+
+    🔴 [BUD-1 2026-09-11] **이 방향이 원래 계약이었다.** 종전 `is_free` 의
+       독스트링은 "확실하지 않으면 False(=무료 아님)"라고 적어 놓고, 구현은
+       그 반대로 **모르는 provider 를 전부 무료로 통과**시켰다. 그래서
+       2026-09-11 유료 전환 뒤 gemini·xai 가 "무료 후보"로 사슬에 앉았고,
+       **상한이 걸리는 경로가 Anthropic 하나뿐**이 됐다.
+    """
+    return (provider or "").strip().lower() not in FREE_PROVIDERS
 
 
 def is_free(provider: str, model: str) -> bool:
@@ -47,9 +69,10 @@ def is_free(provider: str, model: str) -> bool:
     ⚠️ 사본 금지: 무료 모델 목록을 여기 적지 않는다. 규칙만 둔다 —
        목록은 제공자가 바꾸고, 우리 사본은 따라가지 않는다.
     """
-    if (provider or "").strip().lower() in _SUFFIX_REQUIRED:
+    prov = (provider or "").strip().lower()
+    if prov in _SUFFIX_REQUIRED:
         return (model or "").strip().endswith(":free")
-    return True
+    return not is_paid_provider(prov)
 
 
 def _anthropic_gone() -> bool:
@@ -96,7 +119,7 @@ def chain(role: str) -> list[tuple[str, str]]:
     #    형식: "provider/model,provider/model" (앞이 주전)
     #: 예비 판정도 **판정용** 무료 모델을 쓴다. 폼 모델이 아니다 —
     #  같은 프롬프트를 받으므로 폼 사슬로 보내면 재료 대신 다른 답이 온다.
-    raw = (s.free_judge_model if role in JUDGE_ROLES else s.free_form_model)
+    raw = (s.judge_chain if role in JUDGE_ROLES else s.form_chain)
     out: list[tuple[str, str]] = []
     for item in (raw or "").split(","):
         item = item.strip()
@@ -109,10 +132,18 @@ def chain(role: str) -> list[tuple[str, str]]:
             # 🔴 "무료 전환"이라 해놓고 유료 모델이 사슬에 앉아 있었다.
             #    실측 2026-09-04: `openrouter/deepseek/deepseek-r1` 은 무료판이
             #    아니어서 키 사용액이 $0 이 아니었다(usage 0.0002594).
-            #    조용히 지나가지 않는다 — 태우고, 사슬에서 뺀다.
-            logger.warning("[judge-route] 유료 후보 제외 %s/%s — "
-                           "무료 전환 중이다(:free 접미사 필요)", prv, mdl)
-            continue
+            # 🔴 [BUD-1 2026-09-11] 그때는 **무료 전용 정책**이라 빼는 것이
+            #    맞았다. 2026-09-11 유료 전환으로 정책이 바뀌었다 — 이제
+            #    유료 후보를 **빼지 않고 태우되, 토큰 상한이 잡는다.**
+            #    ⚠️ 여기서 빼버리면 지금 운영 사슬(gemini,xai)이 통째로
+            #       비어 **전 슬레이트 판정이 0건**이 된다.
+            #    ⚠️ 무료 전용으로 되돌리는 길은 열어 둔다 — 설정 한 줄이다.
+            if not _cfg().paid_llm_allowed:
+                logger.warning("[judge-route] 유료 후보 제외 %s/%s — "
+                               "무료 전용 모드다(PAID_LLM_ALLOWED=0)", prv, mdl)
+                continue
+            logger.info("[judge-route] 💸 유료 후보 %s/%s — 일일 토큰 상한이 "
+                        "적용된다(token_budget)", prv, mdl)
         out.append((prv, mdl))
     if not out and raw:
         # ⚠️ provider 를 못 쪼갠 한 덩어리 문자열. **anthropic 은 넣지 않는다.**
@@ -129,8 +160,8 @@ def chain(role: str) -> list[tuple[str, str]]:
     #    이제 무료 후보가 없으면 **빈 목록**이다 — 호출부가 재료 없이 간다.
     #    조용하지 않다: error 로그 한 줄이 남고 일일 요약 성공률에 잡힌다.
     if not out:
-        logger.error("[judge-route] role=%s 무료 후보가 하나도 없다 — "
-                     "유료로 되돌아가지 않는다. FREE_%s_MODEL 을 확인하라",
+        logger.error("[judge-route] role=%s 후보가 하나도 없다 — "
+                     "유료로 되돌아가지 않는다. %s_CHAIN 을 확인하라",
                      role, "JUDGE" if role in JUDGE_ROLES else "FORM")
     return out
 
@@ -148,7 +179,9 @@ async def paid_calls_today(redis) -> int:
 
 
 #: 캡의 몇 %를 넘으면 경보할지. 주전이 유료일 때는 **잔량**이 신호다.
-_PAID_WARN_RATIO = 0.8
+#  ⚠️ `token_budget` 이 같은 값을 읽는다 — 두 캡(콜·토큰)이 같은 비율로 운다.
+#     사본을 만들지 않기 위해 공개 이름이다.
+PAID_WARN_RATIO = 0.8
 
 
 async def note_paid_call(redis, role: str) -> int:
@@ -180,7 +213,7 @@ async def note_paid_call(redis, role: str) -> int:
     primary = (_cfg().judge_provider or "").lower() == "anthropic"
     logger.info("[judge-route] Anthropic %s %d/%d (role=%s)",
                 "주전" if primary else "💸 폴백", n, cap, role)
-    if primary and n < max(1, int(cap * _PAID_WARN_RATIO)):
+    if primary and n < max(1, int(cap * PAID_WARN_RATIO)):
         return n        # 주전이면 잔량이 넉넉할 때 조용히 간다
     detail = (f"유료 주전 사용량 {n}/{cap}회 (role={role}) — 캡에 근접했다. "
               f"넘으면 그 뒤 경기는 판정 없이 간다"

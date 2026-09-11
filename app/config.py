@@ -226,11 +226,33 @@ class Settings(BaseSettings):
     #  🔴 **Anthropic 경로를 지우지 않았다.** 이 값 하나로 되돌아온다.
     judge_provider: str = Field(default="anthropic", validation_alias=AliasChoices(
         "JUDGE_PROVIDER", "judge_provider"))
-    #: 무료 provider 로 갈 때 쓸 모델. 오디션 결과로 정한다.
-    free_judge_model: str = Field(default="", validation_alias=AliasChoices(
-        "FREE_JUDGE_MODEL", "free_judge_model"))
-    free_form_model: str = Field(default="", validation_alias=AliasChoices(
-        "FREE_FORM_MODEL", "free_form_model"))
+    #: 판정·폼 사슬 (앞이 주전). 형식 "provider/model,provider/model".
+    #  🔴 [BUD-1 2026-09-11] `FREE_JUDGE_MODEL` → **`JUDGE_CHAIN`** 으로 개명.
+    #     2026-09-11 유료 전환으로 이 사슬은 더 이상 무료가 아니다
+    #     (gemini · xai). 이름이 "FREE" 인 채로 두면 다음 사람이 "여긴 공짜"로
+    #     읽는다 — 실제로 그 오해가 상한 부재의 뿌리였다.
+    #  ⚠️ **옛 이름을 alias 로 남긴다.** 운영 env 를 바꾸지 않아도 그대로
+    #     읽히므로, 배포와 env 변경을 분리할 수 있다.
+    judge_chain: str = Field(default="", validation_alias=AliasChoices(
+        "JUDGE_CHAIN", "judge_chain", "FREE_JUDGE_MODEL", "free_judge_model"))
+    form_chain: str = Field(default="", validation_alias=AliasChoices(
+        "FORM_CHAIN", "form_chain", "FREE_FORM_MODEL", "free_form_model"))
+
+    #: 🔴 [BUD-1] **유료 후보를 사슬에 허용할 것인가.** 2026-09-11 전환으로
+    #   기본 켜짐이다. 끄면 2026-09-04~09-10 의 "무료 전용" 정책으로 한 줄
+    #   되돌아간다(유료 후보는 사슬에서 빠진다).
+    paid_llm_allowed: bool = Field(default=True, validation_alias=AliasChoices(
+        "PAID_LLM_ALLOWED", "paid_llm_allowed"))
+
+    #: 🔴 [BUD-1] 유료 provider 의 **일일 토큰 상한**(provider 당). 넘으면
+    #   호출을 막고 `W-LLM-PAID` 로 알린다.
+    #   ⚠️ **기본값 0 = 관측만.** 하루치 실측이 없어 숫자를 정할 근거가 아직
+    #      없다(추측 금지). 0 인 동안 이 가드는 **세고 보고할 뿐 막지 않는다** —
+    #      로그에 "상한 미설정"이 그대로 찍힌다.
+    #   ⚠️ 축이 콜이 아니라 토큰인 이유: 역할마다 콜 하나의 크기가 10배 넘게
+    #      다르다(판정 15k자 프롬프트 vs 의도 해석 몇 줄).
+    token_cap_daily: int = Field(default=0, validation_alias=AliasChoices(
+        "TOKEN_CAP_DAILY", "token_cap_daily"))
     #: 🔴 **비상용이 일상용으로 새는 것을 막는 캡.** 하루 이 수를 넘으면
     #   Anthropic 을 부르지 않는다. 폴백 사슬의 마지막이지 기본값이 아니다.
     anthropic_daily_cap: int = Field(default=10, validation_alias=AliasChoices(
@@ -824,8 +846,25 @@ class Settings(BaseSettings):
     def mock_judge(self) -> bool:
         return self.force_mock or not self.anthropic_api_key
 
+    @property
+    def mock_gemini(self) -> bool:
+        """🔴 [BUD-1 2026-09-11] **판정 사슬의 주전이 여기 없었다.**
+
+        실측(키 전부 제거, 2026-09-11): `mock_judge` 는 `anthropic_api_key` 만
+        보고 `mock_grok` 은 `xai_api_key` 만 본다. 2026-09-11 전환으로 판정
+        주전은 **gemini** 인데, 그 키가 없어도 기동 로그·상태 표시에는 아무
+        것도 안 떴다 — 표시가 실제 경로와 어긋나 있었다.
+
+        ⚠️ 이 속성은 **표시용이다.** 판정 사슬은 목으로 폴백하지 않는다 —
+           키가 없으면 빈 응답을 돌려주고 그 경기는 "재료 없이" 간다
+           (절대규칙 6: 재료 없으면 분석 생성 금지). 목 판정을 카드로 내보내는
+           것이 더 나쁘기 때문이다. 실측에서 크래시는 없었다(절대규칙 3 후단).
+        """
+        return self.force_mock or not self.gemini_api_key
+
     def log_mock_status(self) -> None:
-        for name in ("mlb", "odds", "football", "perplexity", "grok", "judge"):
+        for name in ("mlb", "odds", "football", "perplexity", "gemini",
+                     "grok", "judge"):
             if self.is_disabled(name):
                 mode = "DISABLED"
             else:

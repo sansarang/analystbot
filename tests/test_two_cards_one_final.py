@@ -27,8 +27,9 @@ class _Cfg:
     """최종 판정이 Anthropic 인 설정 — 가장 위험한 상태에서 검사한다."""
     judge_provider = "anthropic"
     matchup_model = "claude-opus-5"
-    free_judge_model = "gemini/gemini-3.7-flash,nvidia/nvidia/nemotron-3"
-    free_form_model = "groq/qwen3"
+    paid_llm_allowed = True
+    judge_chain = "gemini/gemini-3.7-flash,nvidia/nvidia/nemotron-3"
+    form_chain = "groq/qwen3"
 
 
 @pytest.fixture
