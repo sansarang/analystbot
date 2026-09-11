@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 
@@ -798,6 +799,90 @@ async def _spend_paid(redis) -> None:
 
 _UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
        "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+
+
+async def scout(jg: dict, materials_prompt: str, redis=None, *,
+                timeout: float | None = None) -> dict | None:
+    """[SCT-1] **판정 전 정찰** — 자료 + 외부 사실을 보고 **변수를 직접 정한다.**
+
+    사용자 지시 2026-09-11: "변수를 딥서치가 정하게 하고 찾아온 딥서치를
+    최종 제미나이가 분석해서 승패를 예측하게 해라."
+
+    `materials_prompt` 는 **이미 렌더된 판정 프롬프트**다(자료1~14 포함).
+    같은 재료를 그대로 쓴다 — 정찰용으로 재료를 다시 조립하면 그것이 사본이고,
+    두 경로가 서로 다른 자료를 보게 된다.
+
+    반환 `{"발견": [...], "변수": [...], "요약": str, "재료": {...}}` 또는 None.
+    ⚠️ **실패는 None 이다.** 그러면 호출부가 종전 경로로 간다 — 정찰이 안 됐다고
+       판정을 멈추지 않는다.
+    """
+    from app.config import get_settings
+    from app.engine.prompts import SCOUT
+
+    s = get_settings()
+    if s.mock_judge:
+        return None
+    _meta: dict = {}
+    articles = await _free_articles(jg, redis, meta=_meta)
+    _origin = _meta.get("origin") or "none"
+    _base_n = len(articles)
+    pplx = await _pplx_articles(jg)
+    if pplx:
+        articles = list(articles) + pplx
+    if not articles:
+        logger.info("[scout] 재료 0건 — 정찰 생략 %s@%s",
+                    jg.get("away"), jg.get("home"))
+        return None
+    head = SCOUT.format(league=(jg.get("sport") or "").upper(),
+                        away=jg.get("away") or "", home=jg.get("home") or "",
+                        today=_today_kst())
+    prompt = _inject_articles(materials_prompt + "\n\n" + head, articles)
+    from app.llm.judge_route import chain as _chain
+
+    routes = [r for r in _chain(DEEPSEARCH_ROLE) if r[0] != "anthropic"]
+    if not routes:
+        logger.error("[scout] 후보가 없다 — 정찰 생략")
+        return None
+    from app.engine.team_form import _complete_free, parse_json_object
+
+    try:
+        body = await asyncio.wait_for(
+            _complete_free(routes, prompt, int(s.deepsearch_max_tokens),
+                           DEEPSEARCH_ROLE),
+            timeout=timeout if timeout is not None
+            else float(s.deepsearch_timeout_sec))
+    except Exception as exc:
+        logger.warning("[scout] 실패 — 종전 경로로 간다 %s@%s: %s",
+                       jg.get("away"), jg.get("home"), exc)
+        return None
+    body = body or ""
+    data = parse_json_object(body)
+    if not isinstance(data, dict):
+        # 🔴 실패 로그는 **다음 사람이 원인을 짚을 수 있어야 한다** —
+        #    몇 자가 왔는지(절단)와 본문 앞부분(형식 이탈)을 남긴다.
+        #    `investigate` 와 같은 규약이다(tests/test_deepsearch.py 가 잠근다).
+        logger.warning("[scout] JSON 파싱 실패 — 종전 경로로 간다 %s@%s "
+                       "· %d자: %.300s", jg.get("away"), jg.get("home"),
+                       len(body), body.replace("\n", " ")[:300])
+        return None
+    data["_재료"] = {"n": len(articles),
+                     "출처": {"satellite": _base_n if _origin == "satellite" else 0,
+                              "rss": _base_n if _origin == "rss" else 0,
+                              "pplx": len(pplx)},
+                     "urls": [(i, (a.get("url") or ""))
+                              for i, a in enumerate(articles, 1)]}
+    stats = citation_stats(data)
+    data.pop("_재료", None)
+    # 🔴 배당 오염은 여기서도 막는다 — 정찰이 가격을 근거로 쓰면 격리선이 뚫린다.
+    data, dropped = strip_odds(data)
+    if dropped:
+        logger.warning("[scout] 배당 오염 차단: %s", " · ".join(dropped))
+    out = {"발견": data.get("발견") or [], "변수": data.get("변수") or [],
+           "요약": data.get("요약"), "재료": stats}
+    logger.info("[scout] %s@%s 변수 %d건 · 발견 %d건 · 재료 %d건 중 인용 %d건",
+                jg.get("away"), jg.get("home"), len(out["변수"]),
+                len(out["발견"]), stats.get("주입"), stats.get("인용_기사"))
+    return out
 
 
 async def investigate(jg: dict, trig: list[str], *, timeout: float | None = None,

@@ -406,6 +406,18 @@ class Settings(BaseSettings):
     deepsearch_concurrency: int = Field(default=4, validation_alias=AliasChoices(
         "DEEPSEARCH_CONCURRENCY", "deepsearch_concurrency"))
 
+    #: 🔴 [SCT-1 2026-09-11 사용자 지시] **순서를 뒤집는다** — 딥서치가 변수를
+    #   정하고, 최종 판정이 그것을 받아 승패를 낸다.
+    #   🔴 **기본 켜짐** — 사용자 지시 2026-09-11 16:4x KST:
+    #      "스위치 기본 켜라 … 오늘 이 시간 이후부터 모든 경기에 전부 적용해라."
+    #      같은 지시로 **슬레이트 성역(마지막 경기 시작 후 배포)을 이번만 면제**했다
+    #      (KBO 18:30 시작 1시간 49분 전 배포).
+    #   ⚠️ 끄면 종전 경로(판정이 변수를 만든다)로 한 줄에 돌아간다 —
+    #      `DEEPSEARCH_FIRST=0`. 전후 비교가 필요하면 그 값을 쓴다.
+    #   ⚠️ 경기당 LLM 호출이 **1회 는다**(정찰). 토큰은 BUD-1 이 센다.
+    deepsearch_first: bool = Field(default=True, validation_alias=AliasChoices(
+        "DEEPSEARCH_FIRST", "deepsearch_first"))
+
     #: [DS-3 2026-09-10 사용자 지시] 딥서치에 Perplexity 병행. **기본 켜짐.**
     #   위성/RSS 가 못 물어온 사실을 PPLX 가 직접 웹에서 찾아 재료로 얹는다.
     #   ⚠️ 유료다 — 전 경기 병행 시 MLB15+KBO5+NPB5 ≈ 25건/일 × $0.01 ≈ 월 $7.5.

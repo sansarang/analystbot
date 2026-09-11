@@ -265,6 +265,28 @@ def ledger_payload(jg: dict) -> dict:
             "ctx": jg.get("material11") or {}}
 
 
+def insert_scout(prompt: str, scout: dict | None) -> str:
+    """[SCT-1] 정찰 결과를 자료15 로 규칙 앞에 끼운다.
+
+    🔴 정찰이 비면 **원문 그대로** 돌려준다 — 프롬프트가 바이트 동일이라
+       `test_batter_freeze_gate`(BAT-1 시점 대조)가 깨지지 않는다.
+    ⚠️ `.format` 을 쓰지 않는다 — 블록 안 중괄호가 포맷으로 해석되면 터진다
+       (`insert_ledger` 가 같은 이유로 replace 를 쓴다).
+    """
+    if not scout or not (scout.get("변수") or scout.get("발견")):
+        return prompt
+    import json as _json
+
+    from app.engine.prompts import SCOUT_BLOCK
+
+    body = _json.dumps({"발견": scout.get("발견") or [],
+                        "변수": scout.get("변수") or [],
+                        "요약": scout.get("요약")},
+                       ensure_ascii=False, default=str)
+    return prompt.replace(_RULES_MARK,
+                          SCOUT_BLOCK.replace("{{SCOUT}}", body) + _RULES_MARK, 1)
+
+
 def insert_ledger(prompt: str, payload: dict, settings=None) -> str:
     """대장을 규칙 앞에 끼운다. 두 축이 모두 비면 **원문 그대로** 돌려준다."""
     ref, ctx = (payload or {}).get("ref") or {}, (payload or {}).get("ctx") or {}
@@ -466,11 +488,82 @@ def check_flow(verdict: dict, sport: str) -> list[str]:
     return bad
 
 
+def _name_hits(winner: str, team: str) -> bool:
+    """승자 표기가 그 팀을 가리키는가.
+
+    🔴 판정은 **현지어 약칭**으로 쓴다("삼성"·"西武"). `jg` 의 팀명은 Odds 표기
+       ("Samsung Lions")라 문자열로는 안 맞는다 — 내 계약 테스트가 이것을 잡았다.
+    ⚠️ 대응표를 여기 적지 않는다. 원본은 `news_rss.QUERY_ALIAS`(Odds→현지어)다.
+       없는 팀은 그대로 두므로 KBO·NPB 밖에서도 안전하다.
+    """
+    w = (winner or "").strip().lower()
+    if not w:
+        return False
+    cands = [team]
+    try:
+        from app.collectors.news_rss import QUERY_ALIAS
+
+        alias = QUERY_ALIAS.get(team)
+        if alias:
+            cands.append(alias)
+    except Exception:          # 별칭을 못 읽어도 Odds 표기로는 본다
+        pass
+    for c in cands:
+        t = (c or "").strip().lower()
+        if t and (w == t or w in t or t in w):
+            return True
+    return False
+
+
+def normalize_winner(verdict: dict, jg: dict) -> str | None:
+    """`결론.승자` 가 **이 경기의 팀**을 가리키는지 본다. 아니면 p_home 으로 정정.
+
+    🔴 **아무도 이 칸을 검사하지 않았다.** `check_flow` 는 예상점수만 본다.
+       절제 실험 2026-09-11 (운영 재료 game=1733 키움@삼성, 4회 호출):
+         승자='home' 2회 · 승자='KT Wiz'(**경기에 없는 팀**) 1회 · 정상 2회
+       gemini 는 seed 를 받지 않아(`openai_compat._NO_SEED`) 회차마다 흔들린다.
+
+    ⚠️ **정정은 창작이 아니다** — 방향은 `p_home` 이 이미 정했다. 원장 쪽
+       `predicted_side` 도 "favored 가 없으면 p_home 으로 환산한다"는 같은 규약을
+       쓴다. 다만 **정정했다는 사실을 숨기지 않는다**(로그 + `승자_정정`).
+       ⚠️ 모듈 이름을 여기 적지 않는다 — `test_judgement_paths_do_not_read_the_ledger`
+          가 판정 코드에서 그 문자열을 소스로 막는다(판정 비개입). 가드가 맞다.
+    ⚠️ 모호하면 손대지 않는다: p_home 이 없거나 0.50 이거나, 승자 표기가 두 팀
+       **모두**에 걸리면 그대로 둔다.
+    """
+    c = (verdict or {}).get("결론") or {}
+    w = str(c.get("승자") or "").strip()
+    home, away = jg.get("home") or "", jg.get("away") or ""
+    hit_h, hit_a = _name_hits(w, home), _name_hits(w, away)
+    if hit_h != hit_a:                 # 한쪽에만 걸린다 = 정상
+        return None
+    p = verdict.get("p_home")
+    try:
+        pf = float(p)
+    except (TypeError, ValueError):
+        return None
+    if pf == 0.5:
+        return None                    # 방향이 없다 — 손대지 않는다
+    want = home if pf > 0.5 else away
+    if not want:
+        return None
+    why = (f"승자 {w!r} 가 이 경기의 팀이 아니다"
+           if not (hit_h or hit_a) else f"승자 {w!r} 가 두 팀 모두에 걸린다")
+    c["승자"] = want
+    verdict["결론"] = c
+    verdict["승자_정정"] = f"{why} — p_home={pf} 로 {want} 로 정정"
+    logger.warning("[matchup] 🔴 %s → %s (game=%s)", why, want, jg.get("game_id"))
+    return want
+
+
 def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:
     from app.engine.starter_recent import (THIN_SHRINK, THIN_STARTS,
                                            thin_sample_sides)
 
     s = settings or get_settings()
+    # [WIN-1] 승자 칸이 이 경기의 팀을 가리키는지 **먼저** 본다. 클립 전에 해야
+    #   p_home 원값으로 방향을 판단한다.
+    normalize_winner(verdict, jg)
     p = clip_p_home(verdict.get("p_home"), s)
     conf_kr = verdict.get("확신도") or "중"
     model = verdict.get("model") or s.matchup_model
@@ -839,6 +932,20 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #   (실측 사례: 안우진 등판 확인 → 두산 0.62→0.59 철회)
     prev = prev_verdict(jg)
     prompt = render_matchup_prompt(jg, boxes, news, prev)
+    # 🔴 [SCT-1 2026-09-11 사용자 지시] **순서를 뒤집는다.** 정찰(딥서치)이
+    #    자료 + 외부 사실을 보고 **변수를 정하고**, 최종 판정이 그것을 받아
+    #    승패를 낸다. 스위치가 꺼져 있으면 종전 경로 그대로다.
+    #    ⚠️ 정찰 실패는 None → 프롬프트가 바뀌지 않는다(종전 동작).
+    if getattr(settings, "deepsearch_first", False):
+        try:
+            from app.engine.deepsearch import scout as _scout
+
+            jg["scout"] = await _scout(jg, prompt, redis)
+        except Exception as exc:
+            logger.warning("[matchup] 정찰 실패 — 종전 경로로 간다 game=%s: %s",
+                           jg.get("game_id"), exc)
+            jg["scout"] = None
+        prompt = insert_scout(prompt, jg.get("scout"))
     # [M-2 계측] 재료가 **실제로 프롬프트에 실렸는가.** 수집률(100%)과
     #   주입률이 갈리던 것을 잡는다 — 2026-09-02 카드 2장이 "자료8 부재"라
     #   적었는데 로그는 매칭 18/18 이었다.
