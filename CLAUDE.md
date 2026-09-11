@@ -20,6 +20,7 @@ KBO·NPB·MLB 자동 발송. 축구는 요청 시에만.
 | [docs/DATAFLOW.md](docs/DATAFLOW.md) | 수집→판정→발송 흐름 |
 | [docs/RESEARCH_VALIDATION.md](docs/RESEARCH_VALIDATION.md) | 리서치 검증 |
 | [docs/JUDGE_STABILITY_2026-09-05.md](docs/JUDGE_STABILITY_2026-09-05.md) | 판정 안정성 실측 |
+| [docs/TIMING_2026-09-11.md](docs/TIMING_2026-09-11.md) | 발송 타이밍 실측 · **결정 대기** · 무료→유료 되돌리기 값 |
 
 ---
 
