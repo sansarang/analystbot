@@ -298,7 +298,18 @@ async def summary(pool, sports: tuple[str, ...]) -> dict | None:
                       count(*) FILTER (WHERE market_hit IS FALSE) AS m_l,
                       count(*) FILTER (WHERE our_hit) AS o_w,
                       count(*) FILTER (WHERE our_hit IS FALSE) AS o_l,
-                      count(*) FILTER (WHERE abs(divergence) * 100 >= $2) AS diverged,
+                      -- 🔴 [MB-1 2026-09-11] 분모에서 **모르는 것을 뺀다.**
+                      -- 종전에는 `our_hit IS NULL` 까지 세어, 채점 안 된 경기가
+                      -- **틀린 것으로 계산**됐다. 실측 2026-09-11 MLB:
+                      --   채점행 80 · our_hit NULL 67
+                      --   이견 53건 (그중 아는 것 8) · 적중 4
+                      --   표기 4/53 = 7.5%  ←→  실제 4/8 = 50.0%
+                      -- 이 줄은 "시장을 이기고 있는가"를 보는 유일한 벤치마크라
+                      -- 분모가 틀리면 사람이 **정반대 결론**을 낸다.
+                      -- ⚠️ 실패(our_hit = FALSE)는 분모에 그대로 남는다 —
+                      --    빼면 비율이 100%가 된다(계약 테스트가 잠근다).
+                      count(*) FILTER (WHERE abs(divergence) * 100 >= $2
+                                         AND our_hit IS NOT NULL) AS diverged,
                       count(*) FILTER (WHERE abs(divergence) * 100 >= $2
                                          AND our_hit) AS diverged_hit
                  FROM market_baseline_ledger

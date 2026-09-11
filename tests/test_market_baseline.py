@@ -254,3 +254,71 @@ def test_no_placeholder_survives_render():
     # ⚠️ `}}` 만 보면 안 된다 — 출력 JSON 예시의 **중첩 중괄호**가 걸린다.
     #    자리표시자는 `{{대문자}}` 형태다.
     assert not re.findall(r"\{\{[A-Z_]+\}\}", out)
+
+
+# ── [MB-1 2026-09-11] 이견 적중률의 분모가 "모르는 것"을 포함했다 ─────────
+#   🔴 운영 요약이 이렇게 나갔다:
+#        🎯 시장 39승31패 · 우리 8승5패 · **이견 51건 중 4적중**
+#      바로 앞 줄이 "우리 8승5패"(13경기)인데 이견은 51건이다 — 안 맞는다.
+#
+#   실측(운영 DB · MLB · 임계 4.0%p):
+#        채점행 80 · **our_hit 이 NULL 인 것 67**
+#        이견 53건 — 그중 our_hit 을 아는 것은 **8건뿐**
+#        이견 적중 4
+#        요약 표기  4/53 = 7.5%     ← "시장과 갈리면 92% 틀린다"로 읽힌다
+#        실제 값    4/8  = 50.0%
+#
+#   원인: `diverged` 는 `our_hit IS NULL` 까지 세고 `diverged_hit` 은 참만 센다.
+#         **모르는 것이 틀린 것으로 계산된다.**
+#   ⚠️ 이 줄은 "시장을 이기고 있는가"를 보는 벤치마크다. 분모가 틀리면
+#      사람이 정반대 결론을 내린다.
+
+@pytest.mark.asyncio
+async def test_diverged_denominator_excludes_unknown(db_pool):
+    """이견 분모는 **채점된 것만** 센다."""
+    from app.engine.market_baseline import summary
+
+    async with db_pool.acquire() as c:
+        await c.execute("DELETE FROM market_baseline_ledger")
+        # 이견 3건: 적중1 · 실패1 · **our_hit 모름1** (+ 이견 아닌 것 1)
+        for gid, our_hit, div in ((9001, True, 0.10), (9002, False, 0.10),
+                                  (9003, None, 0.10), (9004, True, 0.01)):
+            await c.execute(
+                """INSERT INTO games (id, sport, league, ext_id, starts_at,
+                                        home, away)
+                   VALUES ($1,'mlb','MLB',$2,now(),'H','A')
+                   ON CONFLICT (id) DO NOTHING""", gid, str(gid))
+            await c.execute(
+                """INSERT INTO market_baseline_ledger
+                     (game_id, sport, slate_date, divergence, our_hit,
+                      market_hit, graded_at, void)
+                   VALUES ($1,'mlb','2026-09-11',$2,$3,TRUE,now(),FALSE)""",
+                gid, div, our_hit)
+    row = await summary(db_pool, ("mlb",))
+    assert row is not None
+    assert row["diverged_hit"] == 1
+    assert row["diverged"] == 2, (
+        f"모르는 것(our_hit NULL)이 분모에 들어갔다: {row['diverged']}")
+
+
+@pytest.mark.asyncio
+async def test_diverged_counts_losses(db_pool):
+    """⚠️ 반대 위험 — 실패를 분모에서 빼버리면 100%가 되어버린다."""
+    from app.engine.market_baseline import summary
+
+    async with db_pool.acquire() as c:
+        await c.execute("DELETE FROM market_baseline_ledger")
+        for gid, our_hit in ((9101, True), (9102, False), (9103, False)):
+            await c.execute(
+                """INSERT INTO games (id, sport, league, ext_id, starts_at,
+                                        home, away)
+                   VALUES ($1,'mlb','MLB',$2,now(),'H','A')
+                   ON CONFLICT (id) DO NOTHING""", gid, str(gid))
+            await c.execute(
+                """INSERT INTO market_baseline_ledger
+                     (game_id, sport, slate_date, divergence, our_hit,
+                      market_hit, graded_at, void)
+                   VALUES ($1,'mlb','2026-09-11',0.10,$2,TRUE,now(),FALSE)""",
+                gid, our_hit)
+    row = await summary(db_pool, ("mlb",))
+    assert row["diverged"] == 3 and row["diverged_hit"] == 1
