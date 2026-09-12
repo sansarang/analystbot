@@ -1095,7 +1095,7 @@ X_ASK = """오늘({today}) {league} 경기 "{away} @ {home}" 를 앞두고
 async def _ask_grok(jg: dict, asks: list[str]) -> list[dict]:
     """X(그록)에게 **①이 정한 질문만** 던진다. 실패는 빈 목록.
 
-    ⚠️ `xsearch.fetch_for_game` 을 쓰지 않는다 — 그쪽은 **일반 속보**를 긁는
+    ⚠️ 일반 속보 수집기를 쓰지 않는다 — 그쪽은 넓게 긁는
        경로이고 경기당 1회 캡이 걸려 있다. 여기는 질문이 곧 검색 범위다.
     """
     from app.config import get_settings

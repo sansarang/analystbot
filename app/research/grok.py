@@ -112,7 +112,7 @@ class GrokClient(BaseAPIClient):
         """당일 속보 요약 텍스트 반환.
 
         xAI Live Search(search_parameters)는 폐기됨 → Agent Tools API
-        (/v1/responses + web_search·x_search 툴) 사용. 날짜 필터는 프롬프트로 제약.
+        (/v1/responses + web_search 툴) 사용. 날짜 필터는 프롬프트로 제약.
         """
         if self.mock:
             resp = self.load_mock("grok_live.json")
@@ -153,41 +153,31 @@ class GrokClient(BaseAPIClient):
             text = await self._search_call(prompt + KOREAN_RETRY_SUFFIX)
         return text
 
-    #: [ORD-18 2026-09-12] 검색 도구. 🔴 **기본은 x_search 전용이다.**
-    #   실측(운영, 질문 4종 × 2변형):
-    #     web+x  합계 $1.3524 · 답 4/4   (입력 13,153~27,584 토큰)
-    #     x만    합계 $0.6164 · 답 3/4   (입력  3,702~ 6,923 토큰)  ← 54% 싸다
-    #   그리고 **둘 다 주면 모델이 비싼 쪽을 고른다** — 4건 중 3건에서
-    #   web_search 2~3회 · x_search **0회**. 우리가 원한 X 게시물을 안 찾았다.
-    #     선수 상태  web+x $0.3386 (x=0 w=3)  vs  x만 $0.1643 (x=2)
-    #     불펜       web+x $0.4734 (x=0 w=3)  vs  x만 $0.1786 (x=2)
-    #   ⚠️ 대가: 같은 실측에서 "X 속보" 질문 하나가 x 전용으로는 `No X posts
-    #      found` 였고 web+x 는 웹에서 답을 찾았다(3/4 vs 4/4). 다만 Grok 의
-    #      x_search 수율은 이미 흔들린다(같은 프롬프트 5회에 답 [0,0,1,0,1]).
-    #      **지우지 않고 옵트인으로 남긴다** — 웹이 꼭 필요한 경로는 web=True.
-    X_ONLY = [{"type": "x_search"}]
-    WEB_AND_X = [{"type": "web_search"}, {"type": "x_search"}]
+    #: 검색 도구. 🔴 [SRCH-1 2026-09-12] **x_search 를 지웠다**
+    #   (사용자 지시 "x seach 삭제"). 실측 2026-09-12:
+    #     x_search  호출당 $0.413 · 우리가 쓴 본문 0건
+    #     grok+web  질문 3개에 $0.495~1.082 · 정답 0~1.5/3
+    #     anthropic 질문 3개에 $0.102 · 날짜 게이트 시 **정답 3/3**
+    #   ⚠️ 여기 남은 web_search 는 브리핑·여론·델타·속보 넷이 쓴다.
+    #      판정 경로의 검색이 아니다 — 그쪽은 Anthropic 이 맡는다.
+    TOOLS = [{"type": "web_search"}]
 
-    def _tools(self, web: bool) -> list[dict]:
-        return self.WEB_AND_X if web else self.X_ONLY
-
-    async def _search_call(self, prompt: str, *, web: bool = False) -> str:
+    async def _search_call(self, prompt: str) -> str:
         resp = await self._post(
             "/responses",
             headers={"Authorization": f"Bearer {self.api_key}"},
             json_body={
                 "model": self.model,
                 "input": prompt,
-                "tools": self._tools(web),
+                "tools": self.TOOLS,
             },
         )
         # 🔴 **어떤 도구로 불렀는지·얼마 들었는지 남긴다.** 안 남기면 비용이
         #    왜 변했는지 못 푼다 — 오늘 이 결함이 그래서 숨어 있었다.
-        _log_usage(resp, "web+x" if web else "x")
+        _log_usage(resp, "web")
         return extract_output_text(resp)
 
-    async def search_with_citations(self, prompt: str, *,
-                                    web: bool = False) -> tuple[str, list[str]]:
+    async def search_with_citations(self, prompt: str) -> tuple[str, list[str]]:
         """[ORD-8] 본문과 **x.com 인용 목록**을 함께 돌려준다.
 
         🔴 왜 필요한가. 진단 실측 2026-09-12: x_search 는 정상 작동 중인데
@@ -202,10 +192,10 @@ class GrokClient(BaseAPIClient):
             json_body={
                 "model": self.model,
                 "input": prompt,
-                "tools": self._tools(web),
+                "tools": self.TOOLS,
             },
         )
-        _log_usage(resp, "web+x" if web else "x")
+        _log_usage(resp, "web")
         urls: list[str] = []
         for item in resp.get("output") or []:
             for ct in (item.get("content") or []):

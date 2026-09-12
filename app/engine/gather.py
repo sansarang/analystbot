@@ -6,8 +6,9 @@
 🔴 왜 순서를 또 바꾸나 — 질문에 매인 수집이 세 가지로 새고 있었다(실측 09-12):
      · 퍼플렉시티 경기당 최대 4콜 → **429 발생**
      · X 는 질답을 강요당해 같은 프롬프트 5회에 답 `[0,0,1,0,1]`
-       (자유 서술로 물으면 클레빈저 영입·선발 예고를 한 번에 냈다)
-     · `xsearch.fetch_for_game` — 질문 없는 속보 수집기가 **놀고 있었다**
+
+🔴 [SRCH-1 2026-09-12] **X 채널을 지웠다**(사용자 지시 "x seach 삭제").
+   실측: 호출당 $0.413 · 본문 수율 0. 그 자리는 Anthropic 웹 검색이 받는다.
 
 ⚠️ **이 단계는 잡음을 줄이지 않는다.** 거르는 일은 전부 ②(선별)가 한다.
    그러니 합격 기준은 "적게 가져오기"가 아니라 **"빠뜨리지 않고, 출처와
@@ -85,34 +86,6 @@ async def _satellite(jg: dict, redis) -> list[dict]:
                             url=str(a.get("url") or "")))
             out[-1]["age_h"] = a.get("age_h")
     return out
-
-
-async def _x_news(jg: dict, date: str, redis) -> list[dict]:
-    """X 속보. **`xsearch` 가 원본이다** — 프롬프트·URL 검증·캡을 다시 만들지 않는다.
-
-    🔴 ORD-8 에서 내가 여기에 질답 틀을 씌운 것이 잘못이었다. 실측: 같은
-       질답 프롬프트 5회에 답 `[0,0,1,0,1]`. 자유 서술로 물으면 한 번에 답했다.
-    ⚠️ 경기당 1콜·일일 캡은 `xsearch` 안에 있다. 우회하지 않는다.
-    """
-    from app.collectors.xsearch import fetch_for_game, load_cache
-
-    sport = (jg.get("sport") or "").lower()
-    gid = jg.get("game_id")
-    # 🔴 **먼저 캐시를 읽는다.** `xsearch` 는 경기당 1콜이라, 스케줄러가 낮에
-    #    소진했으면 여기서 다시 쏴도 빈손이다(실측 2026-09-12: KBO·NPB 전부 0건).
-    #    먼저 쏜 쪽이 채우고 나머지는 읽는다. 캡을 우회하지 않는다.
-    items = await load_cache(redis, sport, gid, date)
-    if not items:
-        items = await fetch_for_game(jg, date, redis)
-    # 🔴 **키를 손으로 적지 마라.** `parse_items` 는 `headline` 을 받아
-    #    `title` 로 **바꿔서** 돌려준다(xsearch.py:150). 실측 2026-09-12:
-    #    `headline` 으로 읽어 NPB 4건·2건이 통째로 버려졌고, 로그에는
-    #    "적재 4건"이라 찍혀 있었다 — 수집기는 성공했는데 우리가 못 읽었다.
-    return [_row(str(it.get("title") or "").strip(), src="x", kind="뉴스",
-                 when=str(it.get("at") or "")[:10],
-                 account=str(it.get("account") or ""),
-                 url=str(it.get("url") or ""))
-            for it in (items or []) if (it.get("title") or "").strip()]
 
 
 async def _preview(jg: dict) -> list[dict]:
@@ -265,9 +238,13 @@ async def collect(jg: dict, redis=None, date: str = "", *, pool=None) -> dict:
     """
     # 🔴 [ORD-16] **먼저 메운다.** 이 뒤에 `game_brief` 를 부르면 선발이 보인다.
     await enrich(jg, redis, date)
+    # 🔴 [ORD-21 · SRCH-1] **여기서는 유료 검색을 하지 않는다.**
+    #    "퍼플릭스와 x seach는 안트로픽 api키가 요청을 할때만 켜는걸로 하자."
+    #    실측 2026-09-12: 위성·크롤러만으로도 갈림길이 나왔다
+    #    ("문보경이 지명타자로 복귀해…"). 못 가리겠을 때만 검색한다.
+    #    ⚠️ `_preview`(퍼플렉시티)는 지우지 않는다 — ②선별이 "없는 것"을
+    #       지목했을 때 SRCH-3 이 부른다. X 는 지웠다(SRCH-1).
     jobs = {"satellite": _satellite(jg, redis),
-            "x": _x_news(jg, date, redis),
-            "pplx": _preview(jg),
             # [ORD-14] 크롤러가 긁어 둔 오늘 선발·타순. 외부 호출 0.
             "라인업": _lineup(jg, redis, date),
             "크롤러": _bullpen(pool, jg)}

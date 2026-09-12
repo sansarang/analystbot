@@ -113,7 +113,10 @@ class ScoutSport:
     """
 
     sport: str
-    #: 뉴스 소스. `rss` 는 무료 상시, `xsearch` 는 조건부(캡 있음).
+    #: 뉴스 소스. `rss` 는 무료 상시다.
+    #  🔴 [SRCH-1 2026-09-12] `xsearch` 를 뺐다 — 사용자 지시 "x seach 삭제".
+    #     실측: 호출당 $0.413 인데 본문 수율 0. 자리는 Anthropic 웹 검색이
+    #     받는다(경기당 $0.102 · 날짜 게이트 시 정답 3/3).
     news_sources: tuple[str, ...] = ("rss",)
     #: 라인업이 오는 경로. 종목마다 다르다 — 여기가 원본이다.
     lineup_source: str = ""
@@ -128,9 +131,9 @@ class ScoutSport:
 #: 정찰 대상 전수. 배당 provider 는 `ODDS_PROVIDERS` 가 원본이라 **여기 적지
 #  않는다** — `odds_provider_for()` 로 조회한다(사본 금지).
 SCOUT_SPORTS: tuple[ScoutSport, ...] = (
-    ScoutSport("kbo", ("rss", "xsearch"), lineup_source="naver_kbo"),
-    ScoutSport("npb", ("rss", "xsearch"), lineup_source="yahoo_npb"),
-    ScoutSport("mlb", ("rss", "xsearch"), lineup_source="statsapi"),
+    ScoutSport("kbo", ("rss",), lineup_source="naver_kbo"),
+    ScoutSport("npb", ("rss",), lineup_source="yahoo_npb"),
+    ScoutSport("mlb", ("rss",), lineup_source="statsapi"),
     # ⚠️ 축구는 **정찰 기록만** 한다. 카드·딥서치에 연결하지 않는다.
     #    이유: `soccer_trial` 경로가 야구와 달리 실전 검증을 못 거쳤고,
     #    라인업 공시 리드타임·소스 신뢰도 실측이 없다. 검증 없는 신호를

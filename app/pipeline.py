@@ -2601,50 +2601,6 @@ def _prepare_games_for_judge(games: list[dict], sport: str) -> None:
                            jg.get("game_id"), exc)
 
 
-async def _maybe_xsearch(jg: dict, date: str, redis, table: dict) -> dict:
-    """[AI 뉴스층] 발동 조건이면 X 속보를 붙여 돌려준다. 아니면 원본 그대로.
-
-    🔴 **판별은 무조건 로그를 남긴다.** 발동/미발동 어느 쪽이든 그 줄이
-       "이 경로가 실제로 돌았다"는 유일한 증거다.
-    🔴 적재는 **기존 뉴스 키 경로** 그대로다 — 새 테이블을 만들지 않는다.
-       AI 발 항목은 `source="xsearch"` 라벨로 구분된다(1주 기여도 비교용).
-    """
-    from app.collectors.xsearch import fetch_for_game, should_fire
-
-    s = get_settings()
-    rss_n = sum(len(v or []) for v in (table or {}).values())
-    lineup = jg.get("lineup_status")
-    mins = None
-    starts = jg.get("starts_at")
-    if starts is not None:
-        try:
-            from datetime import UTC, datetime
-
-            if isinstance(starts, str):
-                starts = datetime.fromisoformat(starts.replace("Z", "+00:00"))
-            if starts.tzinfo is None:
-                starts = starts.replace(tzinfo=UTC)
-            mins = (starts - datetime.now(UTC)).total_seconds() / 60
-        except (TypeError, ValueError):
-            mins = None
-    fire, why = should_fire(rss_n, lineup, mins, s)
-    logger.info("[scout] xsearch 판별 game=%s 발동=%s (%s) enabled=%s",
-                jg.get("game_id"), fire, why, s.scout_xsearch_enabled)
-    if not fire or not s.scout_xsearch_enabled:
-        return table
-    items = await fetch_for_game(jg, date, redis, s)
-    if not items:
-        return table
-    out = {k: list(v or []) for k, v in (table or {}).items()}
-    # 양 팀 모두에 붙인다 — X 속보는 경기 단위다.
-    for side in ("home", "away"):
-        out.setdefault(side, [])
-        out[side] = out[side] + items
-    logger.info("[scout] xsearch 적재 game=%s +%d건 (source=xsearch)",
-                jg.get("game_id"), len(items))
-    return out
-
-
 async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
                               record=None) -> None:
     """낮 프리페치: 팀당 폼 1회. 저녁 재판정은 이 함수를 부르지 않는다."""
@@ -2678,18 +2634,9 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
             _research = _g.setdefault("research", {})
             _g["_form_date"] = date          # 폼 캐시 키에 쓰는 날짜
             _before = {sd: len(_tbl.get(sd) or []) for sd in ("home", "away")}
-            # [AI 뉴스층 2026-09-06] **판별은 항상 한다. 호출만 조건부다.**
-            #   판별 로그가 없으면 "발동 안 함"과 "판별조차 안 함"을 구분할 수
-            #   없다 — 그 구분이 없어서 어제 x_search 배선 여부를 로그로
-            #   확인할 방법이 없었다.
-            try:
-                _tbl = await _maybe_xsearch(_g, date, r, _tbl)
-            except Exception as exc:
-                logger.warning("[xsearch] %s 층 실패 — RSS 만으로 진행: %s",
-                               _g.get("game_id"), exc)
-            # 🔴 AI 층(x_search)이 **새 기사를 넣은 팀**은 폼 캐시를 지운다.
-            #    안 지우면 폼이 옛 캐시를 그대로 써서 새 헤드라인을 못 읽고,
-            #    자료2 뉴스태그 경로가 끊긴다(실측 2026-09-06).
+            # 🔴 [SRCH-1 2026-09-12] AI 뉴스층(x_search)을 지웠다.
+            #    `_before`/`_grew` 는 아래 그라운딩 층이 계속 쓴다 —
+            #    **새 기사를 넣은 팀은 폼 캐시를 지운다**(실측 2026-09-06).
             _grew = [sd for sd in ("home", "away")
                      if len(_tbl.get(sd) or []) > _before.get(sd, 0)]
             n_news += len(_mnews_rss(_research, _g, _tbl))

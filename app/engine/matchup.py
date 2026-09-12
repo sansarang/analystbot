@@ -971,7 +971,7 @@ def render_conclude_prompt(jg: dict, brief: str, pre: dict, reinf: dict) -> str:
 
 async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
                     pool=None) -> dict | None:
-    """[ORD-20 · 5단계] 수집 → 선별 → 판정 → DB 참조.
+    """[ORD-20 · SRCH-1] 수집 → 선별 → 판정 → DB 참조. **제미니 1회로 끝난다.**
 
     사용자 지시 2026-09-12: "경기에 대한 것만 서치해 온다…ai가 거른다…
     ai가 db 참조 승패를 예측한다" · "db 관련도 ai 판단에 의해…자율적으로"
@@ -1012,6 +1012,10 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
         return await _drop("판정 실패")
 
     # ④ DB 참조 — 통째로 주고 AI 가 자율 판단. 실패해도 ③ 판정을 쓴다.
+    #    🔴 [SRCH-1 2026-09-12] **여기가 끝이다.** 2차 검증(Anthropic)을 지웠다 —
+    #       사용자 지시 "최종 판정 2단계는 삭제..1단계로 제미니 최종 판정으로 간다".
+    #       ⚠️ 2차가 검색 요청자였다. 그 역할은 ②선별(`triage.없는것`)로 간다
+    #          (SRCH-3). 그전까지 이 경로의 외부 유료 호출은 **0** 이다.
     ref = await dbref.recheck(jg, tri, v)
     jg["order_v3"] = {
         "수집": col["출처"], "계측": tri["계측"],

@@ -279,50 +279,6 @@ def test_prompt_forbids_remembered_team_names():
 
 
 # ── x_search 발동 조건 ──────────────────────────────────────────────
-def test_xsearch_fires_for_situation_on_every_sport():
-    """🔴 종전 조건은 라인업 정찰용이라 MLB·KBO 에서 영영 안 걸렸다.
-
-    운영 실측 2026-09-06: 1회 표식이 NPB 4건 · MLB 0 · KBO 0 이었다.
-      MLB RSS 21~23 · 라인업 confirmed(3시간 전 공시) → 두 조건 다 미달
-      KBO RSS 23~27 · 판별 시점이 T-90분 밖          → 두 조건 다 미달
-    X 의 값어치는 라인업이 아니라 **현장 속보**다.
-    """
-    from app.collectors.xsearch import should_fire
-    from app.config import get_settings
-
-    s = get_settings()
-    assert s.scout_xsearch_situation is True
-    for rss, lu, mins in ((23, "confirmed", -16),   # MLB 실측 형태
-                          (24, "none", 519),        # KBO 실측 형태
-                          (22, "none", 459)):       # NPB 실측 형태
-        fire, why = should_fire(rss, lu, mins, s)
-        assert fire, (rss, lu, mins, why)
-        assert "상황" in why
-
-
-def test_xsearch_situation_switch_can_be_turned_off():
-    """끄면 종전 조건으로 돌아간다 — 되돌릴 수 있어야 한다."""
-    from app.collectors.xsearch import should_fire
-
-    class Off:
-        scout_xsearch_situation = False
-        scout_xsearch_rss_floor = 5
-        scout_xsearch_lineup_min = 90.0
-
-    assert should_fire(23, "confirmed", -16, Off())[0] is False
-    assert should_fire(2, "confirmed", -16, Off())[0] is True     # RSS 하한
-    assert should_fire(23, "none", 30, Off())[0] is True          # 라인업 창
-
-
-def test_xsearch_prompt_leads_with_situation_and_excludes_recaps():
-    from app.collectors.xsearch import PROMPT
-
-    assert "팀의 공기" in PROMPT
-    assert "경기 전 것만" in PROMPT
-    assert "결과 회고" in PROMPT
-
-
-# ── [2026-09-06] x_search 가 가져온 것이 판정에 도달하는가 ──────────
 @pytest.mark.parametrize("title,kind", [
     # 전부 운영 x_search 실수집분(2026-09-06 MLB).
     ("Athletics roster moves announced", "roster_move"),

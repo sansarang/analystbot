@@ -992,16 +992,53 @@ def test_grok_이_인용을_돌려준다():
 
 def test_기존_search_call_은_프롬프트_계약을_지킨다():
     """🔴 브리핑·여론·델타·속보 넷이 그것을 쓴다 — 위치 인자는 그대로다.
-    ⚠️ ORD-18 에서 `web` **키워드**를 더했다(기본 False = x_search 전용).
-       위치 인자를 바꾸지 않았으므로 네 경로는 그대로 돈다."""
+    ⚠️ [SRCH-1 2026-09-12] `web` 키워드를 지웠다(사용자 지시 "x seach 삭제").
+       도구가 `web_search` 하나뿐이라 고를 것이 없다."""
     import inspect
 
     from app.research.grok import GrokClient
 
     p = inspect.signature(GrokClient._search_call).parameters
-    assert list(p)[:2] == ["self", "prompt"]
-    assert p["web"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert p["web"].default is False
+    assert list(p) == ["self", "prompt"]
+
+
+def test_x_search_도구를_아무도_선언하지_않는다():
+    """🔴 [SRCH-1] 사용자 지시 "x seach 삭제". 실측 2026-09-12:
+    호출당 $0.413 인데 우리가 쓴 본문은 0건이었다.
+
+    ⚠️ **주석은 보지 않는다.** 실측 기록("x_search 가 9번 불렸다")은 남겨야
+       하는 사실이고, 지워야 하는 것은 **도구 선언과 모듈**이다. 문자열로
+       뭉뚱그려 세면 기록을 지우게 된다.
+    """
+    import pathlib
+
+    from app.research.grok import GrokClient
+
+    assert GrokClient.TOOLS == [{"type": "web_search"}]
+    for f in pathlib.Path("app").rglob("*.py"):
+        src = f.read_text(encoding="utf-8")
+        assert '"x_search"' not in src, f"{f} 가 x_search 도구를 선언한다"
+        assert "collectors.xsearch" not in src, f"{f} 가 지운 모듈을 임포트한다"
+        assert "collectors import xsearch" not in src, f
+
+
+def test_x_속보_모듈이_사라졌다():
+    import pathlib
+
+    assert not pathlib.Path("app/collectors/xsearch.py").exists()
+
+
+def test_2차_검증이_사라졌다():
+    """🔴 사용자 지시 2026-09-12: "최종 판정 2단계는 삭제..1단계로 제미니
+    최종 판정으로 간다." 최종 판정은 ④ DB 참조에서 끝난다."""
+    import pathlib
+
+    assert not pathlib.Path("app/engine/verify.py").exists()
+    src = pathlib.Path("app/engine/matchup.py").read_text(encoding="utf-8")
+    body = src[src.index("async def _judge_v3"):]
+    body = body[:body.index("\nasync def judge_matchup")]
+    assert "verify" not in body, "판정 문에 2차가 남아 있다"
+    assert 'apply_winner(jg, {"승자": ref["승자"]' in body, "④가 최종이어야 한다"
 
 
 # ── 영어 1차 → 모국어 2차

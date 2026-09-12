@@ -33,7 +33,7 @@ JUDGE_ROLES = (MATCHUP_ROLE, PRELIM_ROLE)
 #   🔴 `chain()` 의 기존 분기를 건드리지 않는다. 실측 2026-09-12:
 #      `JUDGE_PROVIDER=gemini` 라 `chain(matchup)` 에 Anthropic 이 없다.
 #      1차 사슬을 만지면 판정 전체가 흔들린다 — 2차만 켜고 끌 수 있어야 한다.
-#   ⚠️ 이 역할은 `chain()` 을 타지 않는다. `verify` 가 `verify_model` 로 직접 부른다.
+#   ⚠️ [SRCH-1 2026-09-12] 2차 검증을 지웠다 — 이 역할은 비어 있다.
 VERIFY_ROLE = "verify"
 
 

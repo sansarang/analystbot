@@ -180,31 +180,6 @@ class Settings(BaseSettings):
     #: 분기점 + 변수 + 추가확인을 다 받으므로 상한을 조금 올린다.
     branch_max_questions: int = 4
 
-    # ── [정찰 AI 뉴스층 2026-09-06] x_search 상한 ────────────────────
-    #: 🔴 **캡 없는 AI 호출 금지.** Grok 은 유료다.
-    scout_xsearch_daily_cap: int = Field(default=12, validation_alias=AliasChoices(
-        "SCOUT_XSEARCH_DAILY_CAP", "scout_xsearch_daily_cap"))
-    #: RSS 가 이 미만이면 발동. **0건도 포함된다** — 재료가 아예 없는 경기가
-    #  바로 AI 층이 필요한 경우인데, `if rss_count:` 같은 판별을 쓰면 0건이
-    #  통째로 빠진다(조용한 0).
-    scout_xsearch_rss_floor: int = Field(default=5, validation_alias=AliasChoices(
-        "SCOUT_XSEARCH_RSS_FLOOR", "scout_xsearch_rss_floor"))
-    #: 라인업 미확정 발동선(분). 이 시각 안인데 확정이 아니면 발동한다.
-    scout_xsearch_lineup_min: float = Field(
-        default=90.0, validation_alias=AliasChoices(
-            "SCOUT_XSEARCH_LINEUP_MIN", "scout_xsearch_lineup_min"))
-    #: 켜짐 여부. 끄면 판별만 하고 호출하지 않는다(로그는 남는다).
-    scout_xsearch_enabled: bool = Field(default=False, validation_alias=AliasChoices(
-        "SCOUT_XSEARCH_ENABLED", "scout_xsearch_enabled"))
-    # [2026-09-06 사용자 지시] 경기가 아니라 **변수**를 서치한다.
-    #   종전 두 조건(RSS 하한·라인업 창)은 라인업 정찰용이라 MLB·KBO 에서
-    #   영영 안 걸렸다(운영 실측: 1회 표식 NPB 4 · MLB 0 · KBO 0).
-    #   ⚠️ 상시라도 경기당 1콜·일일 캡은 그대로다. 캡(기본 12)이 슬레이트
-    #      경기 수보다 작으면 뒤쪽 경기는 못 받는다 — 그 사실이 로그에 남는다.
-    scout_xsearch_situation: bool = Field(
-        default=True, validation_alias=AliasChoices(
-            "SCOUT_XSEARCH_SITUATION", "scout_xsearch_situation"))
-
     # ── [C4 변수 대장 2026-09-05] prior 헤더 ─────────────────────────
     #: 🔴 **고정 텍스트다.** 대장 맨 앞에 붙어 "이 숫자들이 무엇인지"를
     #   판정에게 한 번 설명한다. 매 경기 모델이 다시 해석하게 두면 해석이
@@ -440,20 +415,6 @@ class Settings(BaseSettings):
     #      따로 잠근다(지금 둘 다 꺼져 있다 — 비용 차단 2026-09-12).
     order_v3: bool = Field(default=False, validation_alias=AliasChoices(
         "ORDER_V3", "order_v3"))
-
-    #: [ORD-17 2026-09-12 사용자 지시] **2차 검증.** "1차는 제미니로 하고
-    #   2차를 안트로픽을 추가하자…제미니가 이렇게 승패를 냈다..2차검증을 하는거다."
-    #   🔴 **기본 꺼짐.** 실측 2026-09-12: Anthropic 크레딧이 0 이다
-    #      (400 "Your credit balance is too low"). 충전 뒤 `VERIFY_ENABLED=1`.
-    #   ⚠️ 유료 호출이 경기당 1회 는다 — 하루 약 26회(KBO 5+NPB 6+MLB 15).
-    verify_enabled: bool = Field(default=False, validation_alias=AliasChoices(
-        "VERIFY_ENABLED", "verify_enabled"))
-    #: 2차 모델. 🔴 Opus 가 아니라 **Sonnet** 이다(사용자 결정 2026-09-12).
-    #   판정이 아니라 "반대 근거가 있나"를 묻는 자리라 더 싼 모델로 시작하고,
-    #   재보고 올린다. ⚠️ `matchup_model` 과 **별개**다 — 1차를 안 건드린다.
-    verify_model: str = Field(default="claude-sonnet-5",
-                              validation_alias=AliasChoices(
-                                  "VERIFY_MODEL", "verify_model"))
 
     #: 🔴 [ORD-1 2026-09-11 사용자 지시] **순서를 바꾼다.**
     #     "경기가 나왔어 → AI 가 먼저 변수 및 갈림길을 찾는다 → 그 후에 인공위성·
