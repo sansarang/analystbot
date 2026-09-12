@@ -710,3 +710,39 @@ def test_옛_모양의_캐시를_만나도_카드가_죽지_않는다():
     card = render_form_card(jg, "mlb")
     assert "🏆 승리 예상" in card
     assert "🔎 조사 결과" in card
+
+
+# ═══════════════ ORD-4 — 판정 수락 조건 (P0 실사고 2026-09-12)
+
+def test_새_순서는_승자_출력을_수락한다():
+    """🔴 실사고 2026-09-12 09:4x 운영: ORDER_V2 를 켠 첫 슬레이트에서
+    MLB 5632·5633 이 둘 다 탈락했다. 로그가 원인을 그대로 적었다 —
+      "JSON 파싱 실패 1회 … 응답19자 절단추정=False" → "분석 불가 — 추천 탈락"
+    그 19자는 `{"승자": "Athletics"}` 로 **정상**이었고, 수락 조건이
+    `"p_home" in parsed` 라 새 출력을 전부 버렸다. 카드 0장이 되는 길이었다.
+    """
+    src = open("app/engine/matchup.py", encoding="utf-8").read()
+    body = src[src.index("async def judge_matchup"):]
+    i = body.index("parsed = parse_json_object(text)")
+    blk = body[i:i + 900]
+    assert '_want = "승자" if _order_v2 else "p_home"' in blk
+    assert "if parsed and _want in parsed:" in blk
+
+
+def test_종전_경로의_수락_조건은_느슨해지지_않는다():
+    """🔴 종전 경로는 확률이 필수다 — 승자만 온 응답을 받으면 안 된다."""
+    src = open("app/engine/matchup.py", encoding="utf-8").read()
+    body = src[src.index("async def judge_matchup"):]
+    i = body.index("parsed = parse_json_object(text)")
+    assert 'else "p_home"' in body[i:i + 900]
+    # 키를 안 보고 `if parsed:` 로 통과시키면 빈 dict 도 판정이 된다
+    assert "if parsed:\n" not in body[i:i + 900]
+
+
+def test_실패_로그가_무엇을_기대했는지_밝힌다():
+    """🔴 이 줄이 "응답19자"만 말해 모델 탓처럼 읽혔다 — 실제로는 우리가
+    엉뚱한 키를 찾고 있었다."""
+    src = open("app/engine/matchup.py", encoding="utf-8").read()
+    i = src.index("JSON 파싱 실패 %d회")
+    blk = src[i:i + 500]
+    assert "기대키=%s" in blk and "받은키=%s" in blk

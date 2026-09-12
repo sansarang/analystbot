@@ -1211,15 +1211,27 @@ async def judge_matchup(jg: dict, redis, date: str, *,
                                attempt, model, len(prompt), exc)
                 text = ""
             parsed = parse_json_object(text)
-            if parsed and "p_home" in parsed:
+            # 🔴 [ORD-4 P0 2026-09-12] **수락 키가 경로마다 다르다.**
+            #    새 순서의 출력은 `{"승자": "..."}` 하나이고 확률이 없다.
+            #    종전 조건(`"p_home" in parsed`)이 그대로 남아 있어 정상
+            #    판정을 전부 버렸다 — 실사고 09:4x MLB 5632·5633 둘 다
+            #    "응답19자 · 분석 불가 · 추천 탈락". 슬레이트가 통째로
+            #    카드 0장이 되는 길이었다.
+            #    ⚠️ 종전 경로는 **느슨해지지 않는다** — 그쪽은 확률이 필수다.
+            _want = "승자" if _order_v2 else "p_home"
+            if parsed and _want in parsed:
                 parsed["model"] = model
                 break
             parsed = None
             truncated = bool(text) and not str(text).rstrip().endswith("}")
+            # 🔴 **무엇을 기대했는지 함께 적는다.** ORD-4 실사고에서 이 줄이
+            #    "응답19자"만 말해 모델 탓처럼 읽혔다 — 실제로는 그 19자가
+            #    정상 답이었고 우리가 엉뚱한 키를 찾고 있었다.
             logger.warning("[matchup] JSON 파싱 실패 %d회 model=%s prompt_chars=%d "
-                           "max_tokens=%d 응답%d자 절단추정=%s",
+                           "max_tokens=%d 응답%d자 절단추정=%s 기대키=%s 받은키=%s",
                            attempt, model, len(prompt), budget, len(text or ""),
-                           truncated)
+                           truncated, _want,
+                           sorted(parse_json_object(text) or {}) or "(없음)")
             if truncated and attempt == 1:
                 budget = min(budget * 2, MAX_TOKENS_CEILING)
                 logger.warning("[matchup] 절단으로 보인다 — 한도 %d 로 올려 재시도",
