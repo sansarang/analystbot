@@ -27,6 +27,8 @@
 import pytest
 
 from app.collectors import satellite as SAT
+# [SAT-S3] 축구는 제 파일로 나갔다 — 공용 검색은 여전히 `SAT` 에 있다.
+from app.collectors import satellite_soccer as SOC
 
 
 def _jg(league="K리그1", home="Ulsan Hyundai FC", away="FC Seoul"):
@@ -39,7 +41,7 @@ def _jg(league="K리그1", home="Ulsan Hyundai FC", away="FC Seoul"):
 def test_축구_어댑터가_등록돼_있다():
     """🔴 실측: `_ADAPTERS` 에 soccer 가 없어 `gather` 가 0 을 반환했다."""
     assert "soccer" in SAT._ADAPTERS
-    assert SAT._ADAPTERS["soccer"] is SAT.gather_soccer
+    assert SAT._ADAPTERS["soccer"] is SOC.gather_soccer
 
 
 def test_기존_세_종목을_건드리지_않았다():
@@ -57,14 +59,14 @@ def test_팀명만_검색한다():
     프로야구 기사가 왔다."""
     import inspect
 
-    src = inspect.getsource(SAT.gather_soccer)
+    src = inspect.getsource(SOC.gather_soccer)
     assert "_SOCCER_TERMS" in src
 
 
 def test_검색어_상수가_비어_있다():
     """야구(`_KBO_TERMS_LIST` 4개)와 **반대**다 — 그 근거가 주석에 있어야 한다."""
-    assert SAT._SOCCER_TERMS == ""
-    src = open("app/collectors/satellite.py", encoding="utf-8").read()
+    assert SOC._SOCCER_TERMS == ""
+    src = open("app/collectors/satellite_soccer.py", encoding="utf-8").read()
     i = src.index("_SOCCER_TERMS")
     assert "39" in src[i - 900:i + 300], "실측 근거가 없다"
 
@@ -81,7 +83,7 @@ async def test_K리그1은_다음을_쓴다(monkeypatch):
 
     monkeypatch.setattr(SAT, "_daum_fetch", _daum)
     monkeypatch.setattr(SAT, "parse_daum_news", lambda h: [])
-    await SAT.gather_soccer(_jg("K리그1"))
+    await SOC.gather_soccer(_jg("K리그1"))
     assert seen, "다음 검색을 부르지 않았다"
 
 
@@ -95,7 +97,7 @@ async def test_J1은_야후를_쓴다(monkeypatch):
 
     monkeypatch.setattr(SAT, "_yahoo_fetch", _yahoo)
     monkeypatch.setattr(SAT, "parse_yahoo_news", lambda h: [])
-    await SAT.gather_soccer(_jg("J1 리그", "FC Machida Zelvia", "Urawa Red Diamonds"))
+    await SOC.gather_soccer(_jg("J1 리그", "FC Machida Zelvia", "Urawa Red Diamonds"))
     assert seen, "야후 검색을 부르지 않았다"
 
 
@@ -110,7 +112,7 @@ async def test_소스가_없는_리그는_빈손이고_로그를_남긴다(caplo
     import logging
 
     with caplog.at_level(logging.INFO):
-        out = await SAT.gather_soccer(_jg("리그앙", "Paris SG", "Lyon"))
+        out = await SOC.gather_soccer(_jg("리그앙", "Paris SG", "Lyon"))
     assert out == []
     assert any("리그앙" in r.getMessage() for r in caplog.records), caplog.text
 
@@ -119,18 +121,18 @@ async def test_소스가_없는_리그는_빈손이고_로그를_남긴다(caplo
 
 def test_한국어_별칭을_쓴다():
     """DB 는 영어로 저장한다(`Ulsan Hyundai FC`). 다음 검색은 한국어다."""
-    assert SAT.soccer_query("Ulsan Hyundai FC") == "울산 HD"
-    assert SAT.soccer_query("FC Seoul") == "FC서울"
+    assert SOC.soccer_query("Ulsan Hyundai FC") == "울산 HD"
+    assert SOC.soccer_query("FC Seoul") == "FC서울"
 
 
 def test_일본어_별칭을_쓴다():
-    assert SAT.soccer_query("FC Machida Zelvia") == "FC町田ゼルビア"
+    assert SOC.soccer_query("FC Machida Zelvia") == "FC町田ゼルビア"
 
 
 def test_별칭이_없으면_영어_그대로_쓴다():
     """🔴 **버리지 않는다.** 영어로도 뭔가 나올 수 있고, 0 으로 만들면
     그 팀은 영영 재료가 없다."""
-    assert SAT.soccer_query("Unknown United") == "Unknown United"
+    assert SOC.soccer_query("Unknown United") == "Unknown United"
 
 
 @pytest.mark.asyncio
@@ -144,7 +146,7 @@ async def test_별칭이_없으면_로그로_센다(caplog, monkeypatch):
     monkeypatch.setattr(SAT, "_daum_fetch", _daum)
     monkeypatch.setattr(SAT, "parse_daum_news", lambda h: [])
     with caplog.at_level(logging.INFO):
-        await SAT.gather_soccer(_jg("K리그1", "Unknown United", "FC Seoul"))
+        await SOC.gather_soccer(_jg("K리그1", "Unknown United", "FC Seoul"))
     assert any("별칭" in r.getMessage() for r in caplog.records), caplog.text
 
 
@@ -164,7 +166,7 @@ async def test_기사_모양이_주입_계약을_지킨다(monkeypatch):
         return "본문"
 
     monkeypatch.setattr(SAT, "_fetch_article_body", _body)
-    out = await SAT.gather_soccer(_jg("K리그1"))
+    out = await SOC.gather_soccer(_jg("K리그1"))
     assert out
     for k in ("title", "url", "source", "team", "body"):
         assert k in out[0], k
@@ -184,7 +186,7 @@ async def test_같은_기사를_두_번_싣지_않는다(monkeypatch):
         return "본문"
 
     monkeypatch.setattr(SAT, "_fetch_article_body", _body)
-    out = await SAT.gather_soccer(_jg("K리그1"))
+    out = await SOC.gather_soccer(_jg("K리그1"))
     assert len(out) == 1, "양 팀 검색에서 같은 url 이 두 번 실렸다"
 
 
@@ -206,7 +208,7 @@ async def test_한_팀이_터져도_나머지가_산다(monkeypatch, caplog):
         return "본문"
 
     monkeypatch.setattr(SAT, "_fetch_article_body", _body)
-    out = await SAT.gather_soccer(_jg("K리그1"))
+    out = await SOC.gather_soccer(_jg("K리그1"))
     assert len(out) == 1
 
 
@@ -249,7 +251,7 @@ def test_프로그램의_모든_축구_리그가_위성에_있다():
     from app.leagues import LEAGUES
 
     labels = {cfg["label"] for cfg in LEAGUES.values()}
-    missing = labels - set(SAT._SOCCER_SOURCE)
+    missing = labels - set(SOC._SOCCER_SOURCE)
     assert not missing, f"위성 소스가 없는 리그: {missing}"
 
 
@@ -258,8 +260,8 @@ def test_유럽은_다음_한국어로_긁는다():
     두껍게 다룬다 — EPL 33/40 · 라리가 33/40 · 분데스리가 32/40 ·
     세리에A 30/40 · 덴마크 27/40. 다음 하나로 여섯 리그가 된다."""
     for lg in ("EPL", "라리가", "세리에A", "분데스리가", "덴마크 수페르리가"):
-        assert SAT._SOCCER_SOURCE[lg] == "daum", lg
-    assert SAT._SOCCER_SOURCE["J1 리그"] == "yahoo", "J1 은 일본어가 정확하다"
+        assert SOC._SOCCER_SOURCE[lg] == "daum", lg
+    assert SOC._SOCCER_SOURCE["J1 리그"] == "yahoo", "J1 은 일본어가 정확하다"
 
 
 def test_별칭표가_DB의_팀을_덮는다():
@@ -277,12 +279,12 @@ def test_별칭표가_DB의_팀을_덮는다():
     }
     for lg, teams in need.items():
         for t in teams:
-            assert t in SAT.SOCCER_ALIAS, f"{lg} {t} 별칭 없음"
+            assert t in SOC.SOCCER_ALIAS, f"{lg} {t} 별칭 없음"
 
 
 def test_별칭이_영어_이름과_다르다():
     """별칭표에 영어를 그대로 적어 두면 폴백과 구분이 안 된다."""
-    for en, alias in SAT.SOCCER_ALIAS.items():
+    for en, alias in SOC.SOCCER_ALIAS.items():
         assert alias != en, en
 
 
@@ -297,7 +299,7 @@ def test_토르_보강을_부른다():
     """
     import inspect
 
-    assert "_tor_supplement" in inspect.getsource(SAT.gather_soccer)
+    assert "_tor_supplement" in inspect.getsource(SOC.gather_soccer)
 
 
 def test_토르_질의가_영어다():
@@ -305,9 +307,9 @@ def test_토르_질의가_영어다():
     (`tor_search.is_tor_safe_query` 가 거부). 영어 꼬리를 붙인다."""
     from app.collectors.tor_search import is_tor_safe_query
 
-    assert is_tor_safe_query(SAT._SOCCER_TOR_TAIL)
+    assert is_tor_safe_query(SOC._SOCCER_TOR_TAIL)
     for w in ("injury", "lineup"):
-        assert w in SAT._SOCCER_TOR_TAIL
+        assert w in SOC._SOCCER_TOR_TAIL
 
 
 def test_토르는_보강이지_주력이_아니다():
@@ -315,8 +317,10 @@ def test_토르는_보강이지_주력이_아니다():
     1/3 만 통과했다. 경기당 질의를 늘리면 전부 막힌다."""
     import inspect
 
-    src = inspect.getsource(SAT.gather_soccer)
-    i = src.index("_tor_supplement")
+    src = inspect.getsource(SOC.gather_soccer)
+    # ⚠️ [SAT-S3] 첫 `_tor_supplement` 는 **임포트 줄**이다(공용 함수를 함수
+    #    안에서 가져온다). 실측 주석이 붙은 곳은 **호출부**다.
+    i = src.index("out += await _tor_supplement")
     assert "403" in src[i - 900:i], "속도 제한 실측이 주석에 없다"
     # 팀당 1질의 = 경기당 2질의
     assert src[i:i + 400].count('for side in ("home", "away")') == 1
@@ -328,7 +332,7 @@ def test_지원_목록을_로그에_손으로_적지_않는다():
     SAT-S2 에서 일곱 리그가 됐는데 문구는 그대로였다."""
     import inspect
 
-    src = inspect.getsource(SAT.gather_soccer)
+    src = inspect.getsource(SOC.gather_soccer)
     i = src.index("위성 소스가 없다")
     assert "_SOCCER_SOURCE" in src[i:i + 400], "지원 목록을 원본에서 만들지 않는다"
     assert "K리그1·J1 만" not in src
