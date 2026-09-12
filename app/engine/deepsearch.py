@@ -1067,6 +1067,9 @@ def _rows(data, asks: list[str], src: str) -> list[dict]:
             qno = 0
         out.append({"질문": asks[qno - 1] if 1 <= qno <= len(asks) else "",
                     "답": ans, "소스": src,
+                    # 🔴 언제 있었던 일인가. 실측 2026-09-12: 변수를 묻기
+                    #    시작하자 4·6·7월 기사가 오늘 일처럼 돌아왔다.
+                    "시점": str(it.get("시점") or "").strip(),
                     "소스유형": str(it.get("소스유형") or "").strip(),
                     "url": str(it.get("url") or "").strip()})
     return out

@@ -303,8 +303,14 @@ def _clip(t, n: int) -> str:
 
 
 def _ans(r: dict) -> str:
+    """🔴 **언제 있었던 일인지를 함께 보인다.** 지난 일을 오늘 상태로 읽으면
+    그건 조사가 아니라 오해다(실측 2026-09-12: 4·6·7월 기사가 섞여 왔다).
+    답 문장이 이미 날짜로 시작하면 겹쳐 적지 않는다."""
     src = _SRC_KR.get(r.get("소스") or "", r.get("소스") or "")
-    return f"{_clip(r.get('답'), _ANS_MAX)} ({src})"
+    t = _clip(r.get("답"), _ANS_MAX)
+    when = str(r.get("시점") or "").strip()
+    head = f"[{when}] " if when and not t.startswith(when) else ""
+    return f"{head}{t} ({src})"
 
 
 def render_form_card(jg: dict, sport: str | None = None, *,

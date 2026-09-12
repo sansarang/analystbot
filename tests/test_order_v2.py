@@ -746,3 +746,105 @@ def test_실패_로그가_무엇을_기대했는지_밝힌다():
     i = src.index("JSON 파싱 실패 %d회")
     blk = src[i:i + 500]
     assert "기대키=%s" in blk and "받은키=%s" in blk
+
+
+# ═══════════════ ORD-5 — 조사요청이 성적이 아니라 변수를 겨눈다
+
+def test_성적_조회를_금지한다():
+    """🔴 실측 2026-09-12: 실제로 나간 조사요청 38문 중 28문(74%)이 성적
+    조회였다. 적중률은 성적 65% · 변수 67% — 검색이 못 찾는 것이 아니라
+    우리가 변수를 안 물었다. 원인은 PRESCOUT 의 한 줄이었다:
+      "숫자가 필요하면 그것을 `조사요청` 에 적어라. 그것이 이 단계의 목적이다."
+    ORD-2 에서 DB 를 지웠는데 그 줄이 남아 검색이 통계 조회기가 됐다."""
+    from app.engine.prompts import PRESCOUT
+
+    assert "숫자가 필요하면 그것을 `조사요청` 에 적어라" not in PRESCOUT
+    assert "조사요청에 성적을 묻지 마라" in PRESCOUT
+    for banned in ("시즌 성적", "평균자책점", "팀 타율", "OPS", "게임로그",
+                   "통산 전적"):
+        assert banned in PRESCOUT, banned
+
+
+def test_변수_축을_제시한다():
+    """🔴 금지만 하면 모델이 질문을 줄이고, 그러면 보강 0건 → 경기 탈락이
+    는다. 무엇을 물어야 하는지 축을 함께 준다."""
+    from app.engine.prompts import PRESCOUT
+
+    for axis in ("부상", "말소", "투구수 제한", "연투", "지붕 개폐",
+                 "라인업", "트레이드"):
+        assert axis in PRESCOUT, axis
+
+
+def test_리그별_이름을_함께_적는다():
+    """🔴 같은 사건을 KBO 는 '말소', MLB 는 'IL' 이라 부른다. 한쪽만 적으면
+    다른 리그가 그 축을 통째로 건너뛴다."""
+    from app.engine.prompts import PRESCOUT
+
+    assert "KBO" in PRESCOUT and "MLB" in PRESCOUT
+    assert "1군 등록·말소" in PRESCOUT and "IL" in PRESCOUT
+
+
+def test_좋은_예와_나쁜_예가_실측이다():
+    """🔴 예시를 지어내면 그것이 미래의 오탐이다 — 실제로 나간 질문과
+    실제로 답이 온 질문만 적는다."""
+    from app.engine.prompts import PRESCOUT
+
+    assert "George Kirby 2026 season stats" in PRESCOUT      # 실제로 나갔던 것
+    assert "Wilber Dotel" in PRESCOUT                        # 실제로 답이 온 것
+    assert "실제로 답이 온 질문" in PRESCOUT
+
+
+def test_개수를_억지로_채우지_말라고_한다():
+    """🔴 지어낸 질문은 "찾지 못함" 한 줄로 돌아온다 — 카드만 지저분해진다."""
+    from app.engine.prompts import PRESCOUT
+
+    assert "억지로 개수를 채우지 마라" in PRESCOUT
+
+
+def test_답에_시점을_요구한다():
+    """🔴 실측 2026-09-12: 변수를 묻기 시작하자 4·6·7월 기사가 오늘 일처럼
+    돌아왔다 — "Scherzer 4월 27일 부상자 명단", "May 7월 초 발목 타박상"."""
+    from app.engine.prompts import REINFORCE_ASK
+
+    assert "언제 있었던 일인지를 `시점`" in REINFORCE_ASK
+    assert "가장 최근 것 하나만" in REINFORCE_ASK
+
+
+def test_날짜를_모른다고_답을_버리지_않는다():
+    """🔴 규칙을 조이면 답이 함께 줄어든다. 실측 2026-09-12: 같은 질문 2개에
+    PPLX 가 6회 중 2~6건으로 흔들렸고 한 번은 `{"답": []}` 을 냈다 —
+    표본이 작을 때 "규칙 탓"과 "채널 변동"은 구분되지 않는다."""
+    from app.engine.prompts import REINFORCE_ASK
+
+    assert "날짜를 모른다고 답을 버리지는 마라" in REINFORCE_ASK
+    assert "채널 변동" in REINFORCE_ASK
+
+
+def test_시점을_행에_싣는다():
+    from app.engine.deepsearch import _rows
+
+    r = _rows([{"질문번호": 1, "답": "x", "시점": "2026-09-10"}], ["q"], "pplx")[0]
+    assert r["시점"] == "2026-09-10"
+
+
+def test_카드가_시점을_보여준다():
+    from app.engine import form_card as FC
+
+    jg = _ov_jg()
+    jg["order_v2"]["자료"] = [{"질문": "앤드루 애벗 최근 5경기 이닝",
+                              "답": "발목 타박상으로 65구 제한",
+                              "시점": "2026-07-03", "소스": "pplx", "url": ""}]
+    assert "[2026-07-03] 발목 타박상으로 65구 제한 (퍼플렉시티)" in \
+        FC.render_form_card(jg, "mlb")
+
+
+def test_날짜로_시작하는_답은_겹쳐_적지_않는다():
+    from app.engine import form_card as FC
+
+    jg = _ov_jg()
+    jg["order_v2"]["자료"] = [{"질문": "앤드루 애벗 최근 5경기 이닝",
+                              "답": "2026-09-10 IL 복귀", "시점": "2026-09-10",
+                              "소스": "x", "url": ""}]
+    card = FC.render_form_card(jg, "mlb")
+    assert "[2026-09-10] 2026-09-10" not in card
+    assert "2026-09-10 IL 복귀 (X)" in card
