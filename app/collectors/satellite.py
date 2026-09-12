@@ -322,6 +322,52 @@ async def _daum_fetch(query: str) -> str:
         return r.text
 
 
+#: 동의 배너·안내문 표식. 이런 문구가 든 후보는 본문이 아니다.
+#  실측 2026-09-12: Standard 기사의 `<p>` 는 **전부** Exco Player 동의 배너였다.
+_BOILER = ("allow and continue", "cookies or similar technologies",
+           "ad-supported tier", "skip to main content", "enable javascript",
+           "이 콘텐츠를 보려면")
+_BODY_CLEAN = re.compile(
+    r"<(script|style|nav|header|footer|aside|form|svg|button)[^>]*>.*?</\1>",
+    re.S | re.I)
+_BODY_P = re.compile(r"<p[^>]*>(.*?)</p>", re.S | re.I)
+_BODY_BLOCK = re.compile(r"</(?:div|section|article|li|td|p|h[1-6])>", re.I)
+
+
+def extract_body(html: str, limit: int = 1200) -> str:
+    """기사 본문. 🔴 **페이지 앞부분을 그냥 자르면 메뉴가 온다.**
+
+    실측 2026-09-12 23:00 (위성 캐시의 실제 라인업 기사 5개 URL, 같은 HTML):
+
+        앞 1200자 자르기   0/5   전부 내비게이션·광고·쿠키 배너
+        `<p>` 모음         3/5   SI 는 `<p>` 0개 · Standard 는 전부 동의 배너
+        최장 블록          4/5   Standard 에서 "Pedro Neto ... will celebrate
+                                 his new contract with a start at left
+                                 wing-back" 을 건졌다 — 선발 정보다
+        둘 중 나은 쪽      5/5
+
+    ⚠️ 후보가 하나도 없으면 **종전대로** 통째로 긁는다 — 빈손을 주지 않는다.
+    """
+    h = _BODY_CLEAN.sub(" ", html or "")
+
+    def _ok(t: str, n: int) -> bool:
+        # 🔴 배너는 **덩어리 단위로** 버린다. 합친 뒤에 거르면 배너가 본문을
+        #    끌고 들어가 둘 다 잃는다(실측: Standard 기사).
+        return len(t) > n and not any(b in t.lower() for b in _BOILER)
+
+    cands: list[str] = []
+    paras = [_strip_html(m).strip() for m in _BODY_P.findall(h)]
+    paras = [t for t in paras if _ok(t, 60)]
+    if paras:
+        cands.append(" ".join(paras))
+    blocks = [_strip_html(x).strip() for x in _BODY_BLOCK.split(h)]
+    blocks = [t for t in blocks if _ok(t, 80)]
+    if blocks:
+        cands.append(max(blocks, key=len))
+    best = max(cands, key=len, default="")
+    return (best or _strip_html(h))[:limit]
+
+
 async def _fetch_article_body(url: str | None) -> str:
     """기사 본문 앞부분. 무료 HTTP. 실패하면 빈 문자열(제목만 쓴다).
 
@@ -341,9 +387,7 @@ async def _fetch_article_body(url: str | None) -> str:
     except Exception as exc:
         logger.debug("[satellite] 본문 수집 실패 %s: %s", str(url)[:60], exc)
         return ""
-    html = re.sub(r"<(script|style|nav|header|footer|aside)[^>]*>.*?</\1>", " ",
-                  html, flags=re.S | re.I)
-    return _strip_html(html)[:1200]
+    return extract_body(html)
 
 
 #: KBO 상황 검색어 — 축마다 **짧은 쿼리를 따로** 던진다(타자 전용 아님).
