@@ -943,9 +943,13 @@ async def prescout(jg: dict, brief: str, *,
         logger.warning("[prescout] 배당 오염 차단: %s", " · ".join(dropped))
     br = [b for b in (data.get("갈림길") or []) if isinstance(b, dict)]
     asks = [str(q).strip() for q in (data.get("조사요청") or []) if str(q).strip()]
+    nat = [str(q).strip() for q in (data.get("조사요청_현지어") or []) if str(q).strip()]
     out = {"갈림길": br,
            "변수": [str(v).strip() for v in (data.get("변수") or []) if str(v).strip()],
-           "조사요청": asks[:MAX_ASKS]}
+           "조사요청": asks[:MAX_ASKS],
+           # ⚠️ 개수가 어긋나면 짝이 안 맞는다 — 그러면 2차를 통째로 포기한다.
+           #    잘못 짝지어 엉뚱한 질문에 답을 붙이는 것보다 안 하는 편이 낫다.
+           "조사요청_현지어": nat[:MAX_ASKS] if len(nat) == len(asks) else []}
     if not br and not asks:
         logger.warning("[prescout] 갈림길·조사요청이 둘 다 비었다 — 종전 경로로 간다 "
                        "%s@%s", jg.get("away"), jg.get("home"))
@@ -1017,31 +1021,66 @@ async def _ask_pplx(jg: dict, asks: list[str]) -> list[dict]:
     return _rows(data, asks, "pplx")
 
 
+#: [ORD-8] X 전용 틀. 🔴 **`url` 을 요구하지 않는다.**
+#   진단 실측 2026-09-12 (xAI /responses 원문, 같은 질문 A/B):
+#     JSON + url 필수  x.com 인용 5건 → 반환 **0건** (`{"답": []}`)
+#     JSON + url 없음  x.com 인용 14건 → 반환 **5건**
+#   게시물 주소는 본문이 아니라 `annotations` 로 온다. 모델이 그것을 본문에
+#   옮겨 적지 못해, "url 없으면 항목을 빼라"가 **전부**를 버렸다.
+#   버려진 것 예(오늘 KBO): "9/12 선발 예고 두산 잭로그 vs NC 구창모"
+#   — @doosanbears1982 등 4계정 일치. 퍼플렉시티도 위성도 못 가져온 것이다.
+#   ⚠️ 대신 **계정**을 받아 출처를 밝히고, x.com 인용 수를 로그에 남긴다.
+X_ASK = """오늘({today}) {league} 경기 "{away} @ {home}" 를 앞두고
+아래 질문의 답을 **X(트위터) 게시물에서** 찾아라.
+
+[질문]
+{questions}
+
+🔴 **X 게시물만 본다.** 기사·통계 사이트는 다른 채널이 이미 본다. 너는 구단
+   공식 계정·비트기자의 **게시물**을 찾아라 — 기사보다 먼저 뜨는 것이 값이다.
+🔴 **답을 모르면 그 항목을 빼라.** 추측·일반론으로 채우지 마라.
+🔴 **경기 전 것만.** 끝난 경기의 결과·하이라이트·팬 반응은 빼라.
+🔴 `계정` 은 그 게시물을 올린 핸들이다. **모르면 그 항목을 빼라** — 누가 한
+   말인지 모르는 문장은 근거가 아니다.
+⚠️ **url 은 적지 않아도 된다.** 주소를 못 적겠으면 비워 두고 내용을 남겨라.
+
+[출력] 아래 JSON만 출력한다. 다른 텍스트, 마크다운 백틱 금지. 최대 8건.
+{{"답": [{{"질문번호": 1, "답": "게시물 요지 1문장", "시점": "YYYY-MM-DD",
+        "계정": "@handle", "소스유형": "공식|기록|뉴스"}}]}}
+찾은 것이 없으면 `{{"답": []}}` 을 출력하라."""
+
+
 async def _ask_grok(jg: dict, asks: list[str]) -> list[dict]:
-    """X(그록)에게 같은 질문을 던진다. 실패는 빈 목록.
+    """X(그록)에게 **①이 정한 질문만** 던진다. 실패는 빈 목록.
 
     ⚠️ `xsearch.fetch_for_game` 을 쓰지 않는다 — 그쪽은 **일반 속보**를 긁는
        경로이고 경기당 1회 캡이 걸려 있다. 여기는 질문이 곧 검색 범위다.
     """
     from app.config import get_settings
-    from app.engine.prompts import REINFORCE_ASK
 
     s = get_settings()
     if s.mock_grok or not getattr(s, "xai_api_key", None):
         return []
-    prompt = REINFORCE_ASK.format(
+    prompt = X_ASK.format(
         today=_today_kst(), league=jg.get("league")
         or (jg.get("sport") or "").upper(),
         away=jg.get("away"), home=jg.get("home"), questions=_fmt_asks(asks))
     try:
         from app.research.grok import GrokClient
 
-        text = await GrokClient()._search_call(prompt)
+        text, cites = await GrokClient().search_with_citations(prompt)
     except Exception as exc:
         logger.warning("[reinforce] X 실패 %s@%s: %s",
                        jg.get("away"), jg.get("home"), exc)
         return []
-    return _rows(_parse_array(text), asks, "x")
+    rows = _rows(_parse_array(text), asks, "x")
+    # 🔴 **인용 수를 남긴다.** 이번 결함이 그래서 오래 숨었다 — x_search 가 9번
+    #    돌고 인용 9건을 받아 왔는데 우리 손에는 `{"답": []}` 만 남았고, 로그에는
+    #    그 사실이 한 줄도 없었다.
+    logger.info("[reinforce] X %s@%s x.com 인용 %d건 → 답 %d건",
+                jg.get("away"), jg.get("home"), len(cites), len(rows))
+    # 계정이 없는 행은 버린다 — 누가 한 말인지 모르는 문장은 근거가 아니다.
+    return [r for r in rows if r.get("계정")]
 
 
 def _parse_array(text: str | None):
@@ -1099,7 +1138,41 @@ def _rows(data, asks: list[str], src: str) -> list[dict]:
                     #    시작하자 4·6·7월 기사가 오늘 일처럼 돌아왔다.
                     "시점": str(it.get("시점") or "").strip(),
                     "소스유형": str(it.get("소스유형") or "").strip(),
+                    # [ORD-8] X 는 url 대신 **계정**이 출처 단서다.
+                    "계정": str(it.get("계정") or "").strip(),
                     "url": str(it.get("url") or "").strip()})
+    return out
+
+
+async def _native_pass(jg: dict, asks: list[str], native: list[str],
+                       rows: list[dict]) -> list[dict]:
+    """영어로 못 찾은 질문만 그 나라 말로 다시 묻는다.
+
+    ⚠️ 번역을 우리가 하지 않는다 — ① 이 처음부터 두 벌을 냈다. 번역 호출을
+       따로 만들면 그것이 또 하나의 실패 지점이다.
+    ⚠️ 돌아온 답의 `질문` 은 **영어 원문으로 되돌린다** — 카드가 질문별로
+       묶어 보여주는데 같은 질문이 두 언어로 갈라지면 두 줄이 된다.
+    """
+    if not native or len(native) != len(asks):
+        return []
+    done = {r.get("질문") for r in rows if r.get("답")}
+    gap = [(i, native[i]) for i, q in enumerate(asks) if q not in done]
+    if not gap:
+        return []
+    qs = [q for _, q in gap]
+    got = await asyncio.gather(_retrying(_ask_pplx, jg, qs, "PPLX(현지어)"),
+                               _retrying(_ask_grok, jg, qs, "X(현지어)"),
+                               return_exceptions=True)
+    back = {native[i]: asks[i] for i, _ in gap}
+    out: list[dict] = []
+    for g in got:
+        if not isinstance(g, list):
+            continue
+        for r in g:
+            r["질문"] = back.get(r.get("질문"), "")
+            out.append(r)
+    logger.info("[reinforce] 현지어 2차 %s@%s 질문 %d개 → 답 %d건",
+                jg.get("away"), jg.get("home"), len(qs), len(out))
     return out
 
 
@@ -1112,6 +1185,8 @@ async def reinforce(jg: dict, pre: dict, redis=None, *,
        한다. 조용히 DB 로 돌아가면 앞 단계가 무의미해진 것을 아무도 모른다.
     """
     asks = list(pre.get("조사요청") or [])
+    native = [str(q).strip() for q in (pre.get("조사요청_현지어") or [])
+              if str(q).strip()]
     sat = await _free_articles(jg, redis)
     rows: list[dict] = []
     if asks:
@@ -1122,6 +1197,10 @@ async def reinforce(jg: dict, pre: dict, redis=None, *,
         for g in got:
             if isinstance(g, list):
                 rows.extend(g)
+        # 🔴 [ORD-8 사용자 지시] "최우선은 영어로 서치하고 그후로는 모국어로."
+        #    **못 찾은 질문이 남을 때만** 그 나라 말로 다시 던진다. 전부
+        #    답했으면 2차는 없다(MLB 는 현지어가 영어라 애초에 2차가 없다).
+        rows.extend(await _native_pass(jg, asks, native, rows))
         # 🔴 [ORD-7 사용자 지시] **검색이 약한 축은 우리가 긁어 둔 것으로 답한다.**
         #    실측 2026-09-12 game=5633: "텍사스 불펜·마무리 가용"을 두 차례 모두
         #    못 찾았다. 그런데 `pitcher_appearances` 에는 그 기록이 있었다.

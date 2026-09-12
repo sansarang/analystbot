@@ -912,18 +912,160 @@ def test_reinforce_가_재시도를_거쳐_부른다():
     assert "_retrying(_ask_pplx" in src and "_retrying(_ask_grok" in src
 
 
-def test_MLB_는_영어로_묻는다():
+def test_질문은_영어가_1순위다():
     """🔴 실측 2026-09-12, 같은 질문 4개 3회씩:
-       X 한국어 [0,0,0] (0/12) · 영어 [0,2,2] — 한국어면 X 채널이 통째로 죽는다."""
+       X 한국어 [0,0,0] (0/12) · 영어 [0,2,2] — 한국어면 X 채널이 통째로 죽는다.
+    ⚠️ ORD-8 에서 "MLB 만 영어"를 **전 리그 영어 1순위**로 넓혔다(사용자 지시).
+       넓힌 근거는 위 실측이고, 모국어는 버리지 않고 2차로 돌린다."""
     from app.engine.prompts import PRESCOUT
 
-    assert "MLB 경기면 조사요청을 영어로 써라" in PRESCOUT
+    assert "리그를 불문하고 영어로 쓴다" in PRESCOUT
     assert "[0,0,0]" in PRESCOUT
 
 
-def test_KBO_NPB_언어는_건드리지_않는다():
-    """🔴 그쪽 측정은 질문 2개짜리다 — 모르는 것을 아는 것처럼 바꾸지 않는다."""
+# ═══════════════ ORD-8 — X 를 버리지 않고, 영어 1차 → 모국어 2차
+
+def test_X_는_url_을_요구하지_않는다():
+    """🔴 진단 실측 2026-09-12 (xAI /responses 원문, 같은 질문 A/B):
+       JSON + url 필수  x.com 인용 5건 → 반환 0건 (`{"답": []}`)
+       JSON + url 없음  x.com 인용 14건 → 반환 5건
+    게시물 주소는 본문이 아니라 annotations 로 온다. 모델이 그걸 본문에 못
+    옮겨 적어, "url 없으면 항목을 빼라"가 전부를 버렸다."""
+    from app.engine.deepsearch import X_ASK
+
+    assert "url 은 적지 않아도 된다" in X_ASK
+    assert "X(트위터) 게시물에서" in X_ASK
+
+
+def test_X_는_계정을_요구한다():
+    """🔴 url 을 안 받는 대신 계정이 출처 단서다."""
+    from app.engine.deepsearch import X_ASK
+
+    assert '"계정"' in X_ASK
+    assert "`계정` 은 그 게시물을 올린 핸들이다" in X_ASK
+    assert "모르면 그 항목을 빼라" in X_ASK
+
+
+@pytest.mark.asyncio
+async def test_계정_없는_X_답은_버린다(monkeypatch):
+    import app.engine.deepsearch as DS
+
+    class _C:
+        async def search_with_citations(self, prompt):
+            return ('{"답": [{"질문번호": 1, "답": "a", "계정": "@x"},'
+                    ' {"질문번호": 1, "답": "b"}]}', ["https://x.com/i/status/1"])
+
+    import types
+
+    import app.config as CFG
+    import app.research.grok as G
+
+    monkeypatch.setattr(G, "GrokClient", _C)
+    monkeypatch.setattr(CFG, "get_settings", lambda: types.SimpleNamespace(
+        mock_grok=False, xai_api_key="xai-test"))
+    rows = await DS._ask_grok({"sport": "kbo", "league": "KBO", "home": "A",
+                               "away": "B"}, ["q"])
+    assert [r["답"] for r in rows] == ["a"]
+
+
+def test_인용_수를_로그에_남긴다():
+    """🔴 이번 결함이 그래서 오래 숨었다 — 인용 9건을 받고 답 0건이 됐는데
+    로그에 그 사실이 한 줄도 없었다."""
+    import inspect
+
+    import app.engine.deepsearch as DS
+
+    assert "x.com 인용 %d건 → 답 %d건" in inspect.getsource(DS._ask_grok)
+
+
+def test_grok_이_인용을_돌려준다():
+    import inspect
+
+    from app.research.grok import GrokClient
+
+    src = inspect.getsource(GrokClient.search_with_citations)
+    assert "annotations" in src and "x.com" in src
+
+
+def test_기존_search_call_은_건드리지_않았다():
+    """🔴 브리핑·여론·델타·속보 넷이 그것을 쓴다."""
+    import inspect
+
+    from app.research.grok import GrokClient
+
+    sig = inspect.signature(GrokClient._search_call)
+    assert list(sig.parameters) == ["self", "prompt"]
+
+
+# ── 영어 1차 → 모국어 2차
+
+def test_질문은_영어로_쓰고_현지어를_한_벌_더():
     from app.engine.prompts import PRESCOUT
 
-    assert "KBO·NPB 는 **한국어 그대로** 쓴다" in PRESCOUT
-    assert "방향을 말할 수 없다" in PRESCOUT
+    assert "조사요청은 리그를 불문하고 영어로 쓴다" in PRESCOUT
+    assert "조사요청_현지어" in PRESCOUT
+    assert "KBO 는 한국어" in PRESCOUT and "NPB 는 일본어" in PRESCOUT
+
+
+@pytest.mark.asyncio
+async def test_못_찾은_질문만_현지어로_다시_묻는다(monkeypatch):
+    import app.engine.deepsearch as DS
+
+    seen = {}
+
+    async def _pplx(jg, asks):
+        seen["asks"] = list(asks)
+        return [{"질문": asks[0], "답": "찾음", "소스": "pplx", "url": ""}]
+
+    async def _none(*a, **k):
+        return []
+
+    monkeypatch.setattr(DS, "_ask_pplx", _pplx, raising=False)
+    monkeypatch.setattr(DS, "_ask_grok", _none, raising=False)
+    rows = [{"질문": "EN-1", "답": "이미 찾음"}]
+    out = await DS._native_pass(_jg(), ["EN-1", "EN-2"], ["KO-1", "KO-2"], rows)
+    assert seen["asks"] == ["KO-2"], "이미 답한 질문은 다시 안 묻는다"
+    assert out[0]["질문"] == "EN-2", "질문은 영어 원문으로 되돌린다"
+
+
+@pytest.mark.asyncio
+async def test_전부_찾았으면_2차는_없다(monkeypatch):
+    import app.engine.deepsearch as DS
+
+    called = {"n": 0}
+
+    async def _boom(*a, **k):
+        called["n"] += 1
+        return []
+
+    monkeypatch.setattr(DS, "_ask_pplx", _boom, raising=False)
+    monkeypatch.setattr(DS, "_ask_grok", _boom, raising=False)
+    out = await DS._native_pass(_jg(), ["EN-1"], ["KO-1"],
+                                [{"질문": "EN-1", "답": "찾음"}])
+    assert out == [] and called["n"] == 0
+
+
+@pytest.mark.asyncio
+async def test_현지어가_없으면_2차를_건너뛴다():
+    """MLB 는 현지어가 영어라 이 칸이 비어 있다."""
+    import app.engine.deepsearch as DS
+
+    assert await DS._native_pass(_jg(), ["EN-1"], [], []) == []
+
+
+@pytest.mark.asyncio
+async def test_개수가_어긋나면_짝을_짓지_않는다():
+    """🔴 잘못 짝지어 엉뚱한 질문에 답을 붙이는 것보다 안 하는 편이 낫다."""
+    import app.engine.deepsearch as DS
+
+    assert await DS._native_pass(_jg(), ["A", "B"], ["가"], []) == []
+
+
+def test_카드가_계정을_밝힌다():
+    from app.engine import form_card as FC
+
+    jg = _ov_jg()
+    jg["order_v2"]["자료"] = [{"질문": "앤드루 애벗 최근 5경기 이닝",
+                              "답": "선발 예고 두산 잭로그", "시점": "2026-09-11",
+                              "계정": "@doosanbears1982", "소스": "x", "url": ""}]
+    assert "(X @doosanbears1982)" in FC.render_form_card(jg, "mlb")

@@ -308,6 +308,10 @@ def _ans(r: dict) -> str:
     그건 조사가 아니라 오해다(실측 2026-09-12: 4·6·7월 기사가 섞여 왔다).
     답 문장이 이미 날짜로 시작하면 겹쳐 적지 않는다."""
     src = _SRC_KR.get(r.get("소스") or "", r.get("소스") or "")
+    # [ORD-8] X 는 url 대신 **계정**이 출처 단서다 — 누가 한 말인지 밝힌다.
+    acct = str(r.get("계정") or "").strip()
+    if acct:
+        src = f"{src} {acct}"
     t = _clip(r.get("답"), _ANS_MAX)
     when = str(r.get("시점") or "").strip()
     head = f"[{when}] " if when and not t.startswith(when) else ""

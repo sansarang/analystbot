@@ -165,6 +165,33 @@ class GrokClient(BaseAPIClient):
         )
         return extract_output_text(resp)
 
+    async def search_with_citations(self, prompt: str) -> tuple[str, list[str]]:
+        """[ORD-8] 본문과 **x.com 인용 목록**을 함께 돌려준다.
+
+        🔴 왜 필요한가. 진단 실측 2026-09-12: x_search 는 정상 작동 중인데
+           (`x_search_calls` 9 · `web_search_calls` 0) 우리가 받은 본문은
+           `{"답": []}` 였다. 게시물 주소는 본문이 아니라 **annotations** 로
+           오고, 우리 프롬프트가 `url` 을 필수로 걸어 모델이 전부 버렸다.
+        ⚠️ `_search_call` 은 건드리지 않는다 — 브리핑·여론·델타·속보 넷이 쓴다.
+        """
+        resp = await self._post(
+            "/responses",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json_body={
+                "model": self.model,
+                "input": prompt,
+                "tools": [{"type": "web_search"}, {"type": "x_search"}],
+            },
+        )
+        urls: list[str] = []
+        for item in resp.get("output") or []:
+            for ct in (item.get("content") or []):
+                for a in (ct.get("annotations") or []):
+                    u = a.get("url") or ""
+                    if "x.com" in u or "twitter.com" in u:
+                        urls.append(u)
+        return extract_output_text(resp), urls
+
     async def counter_briefing(self, items: list[str]) -> str:
         """[정보 수집 전용] 논쟁 경기 판정의 '반대 근거' 팩트만 수집 (판정 아님)."""
         if self.mock:
