@@ -848,3 +848,82 @@ def test_날짜로_시작하는_답은_겹쳐_적지_않는다():
     card = FC.render_form_card(jg, "mlb")
     assert "[2026-09-10] 2026-09-10" not in card
     assert "2026-09-10 IL 복귀 (X)" in card
+
+
+# ═══════════════ ORD-6 — 빈손이면 다시 묻고, MLB 는 영어로 묻는다
+
+@pytest.mark.asyncio
+async def test_빈손이면_한_번_더_묻는다(monkeypatch):
+    """🔴 실측 2026-09-12: 파이프라인에서 "찾지 못함" 이던 질문 5개를 **그대로
+    다시** 물으니 퍼플렉시티가 5/5 답했다 — 질문이 나쁜 게 아니라 채널이
+    흔들린다. Grok 은 같은 영어 질문 4개에 3회 [0,2,2] 였다."""
+    import app.engine.deepsearch as DS
+
+    calls = {"n": 0}
+
+    async def _flaky(jg, asks):
+        calls["n"] += 1
+        return [] if calls["n"] == 1 else [{"질문": asks[0], "답": "찾음",
+                                            "소스": "x", "url": ""}]
+
+    rows = await DS._retrying(_flaky, _jg(), ["q"], "X")
+    assert calls["n"] == 2 and len(rows) == 1
+
+
+@pytest.mark.asyncio
+async def test_답이_있으면_다시_묻지_않는다():
+    """🔴 두 번째가 더 낫다는 보장이 없다 — PPLX 는 4→4→1 이었다."""
+    import app.engine.deepsearch as DS
+
+    calls = {"n": 0}
+
+    async def _ok(jg, asks):
+        calls["n"] += 1
+        return [{"질문": asks[0], "답": "찾음", "소스": "pplx", "url": ""}]
+
+    await DS._retrying(_ok, _jg(), ["q"], "PPLX")
+    assert calls["n"] == 1
+
+
+@pytest.mark.asyncio
+async def test_재시도에도_빈손이면_빈_목록이다():
+    import app.engine.deepsearch as DS
+
+    async def _empty(jg, asks):
+        return []
+
+    assert await DS._retrying(_empty, _jg(), ["q"], "X") == []
+
+
+def test_재시도_상한이_있다():
+    """무한 재시도는 요금을 태운다."""
+    import app.engine.deepsearch as DS
+
+    assert 2 <= DS._ASK_TRIES <= 3
+
+
+def test_reinforce_가_재시도를_거쳐_부른다():
+    """🔴 존재하는 것과 불리는 것은 다르다(PGP-2)."""
+    import inspect
+
+    import app.engine.deepsearch as DS
+
+    src = inspect.getsource(DS.reinforce)
+    assert "_retrying(_ask_pplx" in src and "_retrying(_ask_grok" in src
+
+
+def test_MLB_는_영어로_묻는다():
+    """🔴 실측 2026-09-12, 같은 질문 4개 3회씩:
+       X 한국어 [0,0,0] (0/12) · 영어 [0,2,2] — 한국어면 X 채널이 통째로 죽는다."""
+    from app.engine.prompts import PRESCOUT
+
+    assert "MLB 경기면 조사요청을 영어로 써라" in PRESCOUT
+    assert "[0,0,0]" in PRESCOUT
+
+
+def test_KBO_NPB_언어는_건드리지_않는다():
+    """🔴 그쪽 측정은 질문 2개짜리다 — 모르는 것을 아는 것처럼 바꾸지 않는다."""
+    from app.engine.prompts import PRESCOUT
+
+    assert "KBO·NPB 는 **한국어 그대로** 쓴다" in PRESCOUT
+    assert "방향을 말할 수 없다" in PRESCOUT

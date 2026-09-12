@@ -959,6 +959,15 @@ async def prescout(jg: dict, brief: str, *,
 #: 조사요청 상한. 질문이 많을수록 각 답이 얕아지고 콜이 길어진다.
 MAX_ASKS = 6
 
+#: 빈손일 때 다시 묻는 횟수(채널당 총 시도). 🔴 실측 2026-09-12:
+#   파이프라인에서 "찾지 못함" 이던 질문 5개를 **그대로 다시** 물으니
+#   퍼플렉시티가 5/5 답했다 — 질문이 나쁜 게 아니라 채널이 흔들린다.
+#     PPLX 같은 질문 3회: 한국어 [4,4,1] · 영어 [4,4,4]
+#     Grok 같은 질문 3회: 한국어 [0,0,0] · 영어 [0,2,2] (3회 누적 3/4)
+#   ⚠️ **빈손일 때만** 다시 묻는다. 답이 하나라도 있으면 그대로 쓴다 —
+#      두 번째 응답이 더 나으리라는 보장이 없다(PPLX 는 4→4→1 이었다).
+_ASK_TRIES = 2
+
 #: 위성 참고 목록 상한. 실측 2026-09-11: MLB 경기당 25~62건이 전부 트랜잭션
 #  줄이었다. 전량을 실으면 결론 프롬프트의 절반이 무관한 이적 공시가 된다.
 MAX_SAT = 15
@@ -966,6 +975,25 @@ MAX_SAT = 15
 
 def _fmt_asks(asks: list[str]) -> str:
     return "\n".join(f"{i}. {q}" for i, q in enumerate(asks, 1))
+
+
+async def _retrying(fn, jg: dict, asks: list[str], label: str) -> list[dict]:
+    """빈손이면 한 번 더 묻는다. 답이 있으면 그대로 쓴다.
+
+    🔴 재시도 횟수를 **로그에 남긴다.** 안 남기면 호출이 왜 두 배인지
+       나중에 아무도 모른다.
+    """
+    rows: list[dict] = []
+    for i in range(1, _ASK_TRIES + 1):
+        rows = await fn(jg, asks)
+        if rows:
+            if i > 1:
+                logger.info("[reinforce] %s 재시도 %d회차에 %d건 %s@%s",
+                            label, i, len(rows), jg.get("away"), jg.get("home"))
+            return rows
+    logger.info("[reinforce] %s %d회 모두 빈손 %s@%s",
+                label, _ASK_TRIES, jg.get("away"), jg.get("home"))
+    return rows
 
 
 async def _ask_pplx(jg: dict, asks: list[str]) -> list[dict]:
@@ -1087,8 +1115,10 @@ async def reinforce(jg: dict, pre: dict, redis=None, *,
     sat = await _free_articles(jg, redis)
     rows: list[dict] = []
     if asks:
-        got = await asyncio.gather(_ask_pplx(jg, asks), _ask_grok(jg, asks),
-                                   return_exceptions=True)
+        got = await asyncio.gather(
+            _retrying(_ask_pplx, jg, asks, "PPLX"),
+            _retrying(_ask_grok, jg, asks, "X"),
+            return_exceptions=True)
         for g in got:
             if isinstance(g, list):
                 rows.extend(g)
