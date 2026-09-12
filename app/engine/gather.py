@@ -263,6 +263,32 @@ async def collect(jg: dict, redis=None, date: str = "", *, pool=None) -> dict:
     return {"자료": rows, "출처": src}
 
 
+async def _pplx_ask(jg: dict, asks: list[str], date: str) -> list[dict]:
+    """[SRCH-4] 퍼플렉시티에 **같은 질문**을 던지고 **같은 문**을 지나게 한다.
+
+    🔴 게이트를 새로 만들지 않는다 — `websearch.gate_rows` 를 부른다.
+       두 벌이면 한쪽만 고쳐지고, 그게 이 저장소의 사본 드리프트다.
+    ⚠️ 질문 프롬프트와 스위치는 `deepsearch._ask_pplx` 가 원본이다. 그쪽
+       동작을 바꾸지 않는다 — 반환값에 게이트를 걸 뿐이다(ORDER_V2 의
+       `reinforce` 도 같은 함수를 쓴다).
+    ⚠️ `DEEPSEARCH_PPLX_ENABLED` 가 꺼져 있으면 `_ask_pplx` 가 빈손을
+       돌려준다. 운영은 지금 **0** 이다 — 붙였다고 도는 것이 아니다.
+    """
+    from app.collectors.websearch import gate_rows
+    from app.engine.deepsearch import _ask_pplx
+
+    rows = await _ask_pplx(jg, asks)
+    if not rows:
+        return []
+    kept, m = gate_rows(rows, date)
+    if m["폐기"]:
+        logger.info("[search] pplx 날짜 게이트 — 받음 %d · 채택 %d · 폐기 %d "
+                    "(오래됨 %d · 날짜없음 %d · 미래 %d)",
+                    m["받음"], m["채택"], m["폐기"], m["폐기_오래됨"],
+                    m["폐기_날짜없음"], m["폐기_미래"])
+    return kept
+
+
 async def search(jg: dict, asks: list[str], date: str) -> dict:
     """[SRCH-3] **요청받은 질문만** 검색한다. 반환 `{"자료","출처"}`.
 
@@ -284,7 +310,8 @@ async def search(jg: dict, asks: list[str], date: str) -> dict:
     if not qs:
         return {"자료": [], "출처": {}}
 
-    jobs = {websearch.SOURCE: websearch.ask(jg, qs, today=date)}
+    jobs = {websearch.SOURCE: websearch.ask(jg, qs, today=date),
+            "pplx": _pplx_ask(jg, qs, date)}
     got = await asyncio.gather(*jobs.values(), return_exceptions=True)
     rows: list[dict] = []
     src: dict = {}

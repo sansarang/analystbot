@@ -38,6 +38,18 @@ logger = logging.getLogger(__name__)
 #: 이 채널의 행 라벨. 수집 출처 집계에 그대로 쓰인다.
 SOURCE = "anthropic"
 
+#: [SRCH-4] **"찾아봤는데 없더라"** 를 표시하는 소스유형.
+#  🔴 왜 필요한가. 실측 2026-09-12(SRCH-3 배선 증명): 강제 주입한 두 질문이
+#     "우천 취소 보도가 있는가" · "마무리가 어제 연투했는가" 였고 **둘 다
+#     답이 "없다"** 였다. 부재를 확인한 답에는 인용할 기사가 없으니 근거일자를
+#     못 적고, 날짜 게이트가 전부 버렸다 — 누적 8문 중 3건(37.5%).
+#     "우천 취소 보도 없음"은 갈림길을 실제로 가르는 답이다. $0.12 를 쓰고
+#     받아서 버린 것이다.
+#  ⚠️ 근거는 기사가 아니라 **검색한 날**이다. 그래서 시점이 오늘이 된다.
+#  ⚠️ 판정이 "기사로 확인된 사실"과 구분할 수 있어야 하므로 `소스유형` 을
+#     이 값으로 **덮어쓴다** — 모델이 "뉴스"라 적어도 바뀐다.
+ABSENCE = "부재확인"
+
 #: 경기당 질문 수 (사용자 결정 2026-09-12 "경기당 1회 질문 3개로 해라").
 #  🔴 **이 상수 하나가 원본이다** — 프롬프트에도 `TOOL` 에도 숫자를 또 적지
 #     않는다. `max_uses` 는 API 가 자른다. 프롬프트는 부탁이고 API 는 강제다.
@@ -82,6 +94,12 @@ ASK = """오늘은 **{today}** 이다. 아래 질문에 웹 검색으로 답하�
    기사를 인용해 답한 일이 있었다. 그것이 이 규칙이 있는 이유다.
 🔴 **답마다 `근거일자` 를 적는다** — 기사에 적힌 날짜다. 오늘 날짜를 그냥
    옮겨 적지 마라. 기사 날짜를 모르면 그 답은 쓰지 마라.
+🔴 **찾아봤는데 없더라도 그건 답이다.** 질문이 "그런 보도가 있는가" 인데
+   {floor} 이후 기사에 아무것도 없으면, `근거유형` 을 `"부재확인"` 으로 적고
+   답에 "…확인되지 않았다" 라고 써라. 그때는 `근거일자` 를 비워도 된다 —
+   근거가 기사가 아니라 **네가 오늘 찾아봤다는 사실**이기 때문이다.
+   ⚠️ 무언가 **있었다고 주장할 때는** `근거유형` 이 `"기사"` 이고 근거일자가
+      반드시 있어야 한다. 없으면 우리가 버린다.
 🔴 **{floor} 이후 기사를 못 찾았으면 `"답": "모름"` 으로 두어라.**
    오래된 기사로 채우지 마라 — 그게 가장 나쁜 답이다. 모른다고 적는 편이
    우리에게 훨씬 쓸모 있다.
@@ -91,8 +109,8 @@ ASK = """오늘은 **{today}** 이다. 아래 질문에 웹 검색으로 답하�
    실점은 **존재하지 않는다.**
 
 [출력] 아래 JSON만 출력한다. 다른 텍스트, 마크다운 백틱 금지.
-{{"답": [{{"번호": 1, "답": "한 문장", "근거일자": "YYYY-MM-DD",
-        "소스유형": "공식|기록|뉴스", "url": "..."}}]}}"""
+{{"답": [{{"번호": 1, "답": "한 문장", "근거유형": "기사|부재확인",
+        "근거일자": "YYYY-MM-DD", "소스유형": "공식|기록|뉴스", "url": "..."}}]}}"""
 
 
 def _row(answer: str, *, question: str = "", kind: str = "", when: str = "",
@@ -135,6 +153,46 @@ def build_prompt(jg: dict, questions: list[str], today: str) -> str:
         questions="\n".join(f"{i}. {q}" for i, q in enumerate(qs, 1)) or "(없음)")
 
 
+def gate_rows(rows: list[dict], today: str, *,
+              max_age_days: int = MAX_AGE_DAYS) -> tuple[list[dict], dict]:
+    """이미 만들어진 행들에 **날짜 게이트**를 건다. 반환 `(통과한 행, 계측)`.
+
+    🔴 **이 문이 하나뿐이어야 한다.** 퍼플렉시티도 여기를 지난다 — 게이트를
+       두 벌 만들면 한쪽만 고쳐지고, 그게 이 저장소의 사본 드리프트다.
+    ⚠️ 행의 `시점` 을 본다. `부재확인` 행은 `parse_answers` 가 시점을 오늘로
+       채워 보내므로 여기서 특별 취급이 없다 — 규칙이 한 벌로 유지된다.
+    """
+    m = {"받음": 0, "채택": 0, "폐기": 0,
+         "폐기_오래됨": 0, "폐기_날짜없음": 0, "폐기_미래": 0}
+    try:
+        today_d = _parse_date(today)
+    except ValueError:
+        logger.error("[websearch] 오늘 날짜가 잘못됐다: %r — 게이트를 걸 수 없다",
+                     today)
+        return [], m
+    out: list[dict] = []
+    for r in rows or []:
+        m["받음"] += 1
+        try:
+            when = _parse_date(str((r or {}).get("시점") or ""))
+        except ValueError:
+            m["폐기"] += 1
+            m["폐기_날짜없음"] += 1
+            continue
+        if when > today_d:
+            # 🔴 오늘보다 뒤인 기사는 존재하지 않는다 — 지어낸 것이다.
+            m["폐기"] += 1
+            m["폐기_미래"] += 1
+            continue
+        if (today_d - when).days > max_age_days:
+            m["폐기"] += 1
+            m["폐기_오래됨"] += 1
+            continue
+        out.append(r)
+        m["채택"] += 1
+    return out, m
+
+
 def parse_answers(text: str, today: str, *,
                   questions: list[str] | None = None,
                   max_age_days: int = MAX_AGE_DAYS) -> tuple[list[dict], dict]:
@@ -150,7 +208,7 @@ def parse_answers(text: str, today: str, *,
     """
     from app.engine.team_form import parse_json_object
 
-    m = {"받음": 0, "채택": 0, "모름": 0, "폐기": 0,
+    m = {"받음": 0, "채택": 0, "모름": 0, "부재": 0, "폐기": 0,
          "폐기_오래됨": 0, "폐기_날짜없음": 0, "폐기_미래": 0}
     got = parse_json_object(text or "")
     items = (got or {}).get("답") if isinstance(got, dict) else None
@@ -162,53 +220,46 @@ def parse_answers(text: str, today: str, *,
         return [], m
 
     qs = [str(q).strip() for q in (questions or [])][:MAX_ASKS]
-    try:
-        today_d = _parse_date(today)
-    except ValueError:
-        logger.error("[websearch] 오늘 날짜가 잘못됐다: %r — 게이트를 걸 수 없다",
-                     today)
-        return [], m
-
-    rows: list[dict] = []
+    cand: list[dict] = []
     for it in items:
-        m["받음"] += 1
         if not isinstance(it, dict):
-            m["폐기"] += 1
-            m["폐기_날짜없음"] += 1
+            # 모양이 아닌 것은 날짜를 읽을 수 없다 — 게이트가 세게 한다.
+            cand.append({"시점": ""})
             continue
         ans = " ".join(str(it.get("답") or "").split())
         if not ans or ans == "모름":
             # 못 찾았다고 적은 것이다. 행은 안 만들되 **폐기도 아니다.**
             m["모름"] += 1
             continue
-        try:
-            when = _parse_date(str(it.get("근거일자") or ""))
-        except ValueError:
-            m["폐기"] += 1
-            m["폐기_날짜없음"] += 1
-            continue
-        if when > today_d:
-            # 🔴 오늘보다 뒤인 기사는 존재하지 않는다 — 지어낸 것이다.
-            m["폐기"] += 1
-            m["폐기_미래"] += 1
-            continue
-        if (today_d - when).days > max_age_days:
-            m["폐기"] += 1
-            m["폐기_오래됨"] += 1
-            continue
+        # 🔴 [SRCH-4] **"찾아봤는데 없더라"도 답이다.** 근거가 기사가 아니라
+        #    검색한 날이므로 시점을 오늘로 채운다 — 그러면 게이트를 자연히
+        #    지난다. 규칙을 두 벌로 만들지 않기 위해서다.
+        #    ⚠️ 긍정 주장은 여전히 근거일자가 필요하다. 이 칸으로 우회하면
+        #       SRCH-2 가 막은 결함(5개월 전 기사)이 그대로 돌아온다.
+        absent = str(it.get("근거유형") or "").strip() == ABSENCE
+        when = str(it.get("근거일자") or "").strip()
+        if absent:
+            m["부재"] += 1
+            when = when or today
         no = it.get("번호")
         # 🔴 지어낸 번호로 엉뚱한 질문에 붙이면 그게 창작이다 — 공란이 낫다.
         q = qs[no - 1] if isinstance(no, int) and 1 <= no <= len(qs) else ""
-        rows.append(_row(ans, question=q,
-                         kind=str(it.get("소스유형") or "").strip(),
-                         when=when.isoformat(),
+        cand.append(_row(ans, question=q,
+                         kind=ABSENCE if absent
+                         else str(it.get("소스유형") or "").strip(),
+                         when=when,
                          url=str(it.get("url") or "").strip()))
-        m["채택"] += 1
 
-    if m["폐기"] or m["모름"]:
-        logger.info("[websearch] 받음 %d · 채택 %d · 모름 %d · 폐기 %d "
-                    "(오래됨 %d · 날짜없음 %d · 미래 %d)",
-                    m["받음"], m["채택"], m["모름"], m["폐기"],
+    # 🔴 **문은 하나다.** 퍼플렉시티도 같은 `gate_rows` 를 지난다.
+    rows, gm = gate_rows(cand, today, max_age_days=max_age_days)
+    m["받음"] = gm["받음"] + m["모름"]
+    for k in ("채택", "폐기", "폐기_오래됨", "폐기_날짜없음", "폐기_미래"):
+        m[k] = gm[k]
+
+    if m["폐기"] or m["모름"] or m["부재"]:
+        logger.info("[websearch] 받음 %d · 채택 %d · 모름 %d · 부재확인 %d · "
+                    "폐기 %d (오래됨 %d · 날짜없음 %d · 미래 %d)",
+                    m["받음"], m["채택"], m["모름"], m["부재"], m["폐기"],
                     m["폐기_오래됨"], m["폐기_날짜없음"], m["폐기_미래"])
     return rows, m
 

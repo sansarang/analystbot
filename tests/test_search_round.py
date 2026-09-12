@@ -24,6 +24,16 @@ from app.engine import matchup as MU
 from app.engine import triage as TR
 
 
+@pytest.fixture(autouse=True)
+def _no_pplx(monkeypatch):
+    """🔴 테스트가 실망을 타지 않게 한다. 퍼플렉시티를 쓰는 계약은 자기가
+    다시 패치한다 — 여기 기본은 '꺼짐'이다."""
+    async def _off(jg, asks):
+        return []
+
+    monkeypatch.setattr("app.engine.deepsearch._ask_pplx", _off)
+
+
 def _jg():
     return {"game_id": 1, "sport": "kbo", "league": "KBO",
             "home": "Samsung Lions", "away": "LG Twins"}
@@ -291,3 +301,54 @@ async def _wire(monkeypatch, *, triage, search=None, decide=None):
     jg = _jg()
     await MU._judge_v3(jg, None, "2026-09-12", final=False)
     return jg
+
+
+# ═══════════════ SRCH-4 — 퍼플렉시티도 같은 문을 지난다
+
+@pytest.mark.asyncio
+async def test_퍼플렉시티도_검색_라운드에_있다(monkeypatch):
+    """사용자 지시 2026-09-12: "퍼플릭스와 안트로픽"."""
+    seen = {}
+
+    async def _pplx(jg, asks):
+        seen["asks"] = list(asks)
+        return [_row("퍼플렉시티가 찾은 것", src="pplx")]
+
+    async def _ws(*a, **k):
+        return []
+
+    monkeypatch.setattr("app.engine.deepsearch._ask_pplx", _pplx)
+    monkeypatch.setattr("app.collectors.websearch.ask", _ws)
+    out = await G.search(_jg(), ["q1"], "2026-09-12")
+    assert seen["asks"] == ["q1"]
+    assert out["출처"] == {"pplx": 1}
+
+
+@pytest.mark.asyncio
+async def test_퍼플렉시티_행도_날짜_게이트를_지난다(monkeypatch):
+    """🔴 게이트 없이 붙이면 SRCH-2 가 막은 결함(5개월 전 기사)을 다시 연다."""
+    async def _pplx(jg, asks):
+        return [_row("오늘 일", src="pplx", when="2026-09-12"),
+                _row("4월 부상", src="pplx", when="2026-04-14")]
+
+    async def _ws(*a, **k):
+        return []
+
+    monkeypatch.setattr("app.engine.deepsearch._ask_pplx", _pplx)
+    monkeypatch.setattr("app.collectors.websearch.ask", _ws)
+    out = await G.search(_jg(), ["q"], "2026-09-12")
+    assert [r["답"] for r in out["자료"]] == ["오늘 일"]
+
+
+@pytest.mark.asyncio
+async def test_두_채널이_병렬이고_한쪽이_죽어도_산다(monkeypatch):
+    async def _pplx(jg, asks):
+        raise RuntimeError("터졌다")
+
+    async def _ws(*a, **k):
+        return [_row("웹검색이 찾은 것")]
+
+    monkeypatch.setattr("app.engine.deepsearch._ask_pplx", _pplx)
+    monkeypatch.setattr("app.collectors.websearch.ask", _ws)
+    out = await G.search(_jg(), ["q"], "2026-09-12")
+    assert out["출처"] == {"anthropic": 1}
