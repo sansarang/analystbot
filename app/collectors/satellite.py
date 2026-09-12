@@ -493,11 +493,123 @@ async def gather_npb(jg: dict, *, client=None, now: datetime | None = None) -> l
     return out
 
 
+# ══════════════════ [SAT-S1] 축구 위성 ══════════════════
+#
+# 사용자 지시 2026-09-12: "우선 축구전용 인공위성을 만들어라"
+#
+#: 🔴 **검색어를 붙이지 않는다.** 실측 2026-09-12(운영, 상위 8건 중 축구 기사):
+#     K리그1·다음 (5팀 40건 만점)
+#       (팀명만)   **39**  ← 최선
+#       K리그 선발   37 · 부상 결장 34 · 선발 라인업 32 · 축구 라인업 32 · 라인업 30
+#     J1·야후 (팀명만)  6팀 전부 **8/8**
+#       검색어를 붙이자 맥도날드·프로야구·연예 기사가 왔다
+#   **야구와 반대다** — KBO 는 `_KBO_TERMS_LIST` 4개를 돌지만 축구는 팀명만이
+#   가장 정확하다. 이 상수를 채우기 전에 **반드시 다시 재라.**
+_SOCCER_TERMS = ""
+
+#: 팀당 상위 N. 야구(`_KBO_TOP_N`=6)와 값을 공유하지 않는다 — 수율이 다르다.
+_SOCCER_TOP_N = 6
+
+#: 영어 팀명 → 검색용 현지 표기.
+#  🔴 `news_rss.QUERY_ALIAS` 에 섞지 않는다 — 그쪽은 야구 팀이고 RSS 질의가
+#     쓴다. 한 표를 공유하면 한쪽을 고칠 때 다른 쪽이 깨진다.
+#  ⚠️ **없으면 영어 이름 그대로 검색한다.** 버리면 그 팀은 영영 재료가 없다.
+#     대신 "별칭 없음"을 로그로 세어 표를 언제 늘릴지 알 수 있게 한다.
+SOCCER_ALIAS: dict[str, str] = {
+    # ── K리그1 (DB 실측 12팀, 2026-09-12)
+    "Ulsan Hyundai FC": "울산 HD",
+    "Jeonbuk Hyundai Motors": "전북 현대",
+    "FC Seoul": "FC서울",
+    "Pohang Steelers": "포항 스틸러스",
+    "Daejeon Citizen": "대전 하나시티즌",
+    "Gwangju FC": "광주FC",
+    "Gangwon FC": "강원FC",
+    "Incheon United": "인천 유나이티드",
+    "Jeju United FC": "제주 유나이티드",
+    "FC Anyang": "FC안양",
+    "Bucheon FC 1995": "부천FC",
+    "Sangju Sangmu FC": "김천 상무",
+    # ── J1 (야후 실측으로 표기 확인, 2026-09-12)
+    "FC Machida Zelvia": "FC町田ゼルビア",
+    "Urawa Red Diamonds": "浦和レッズ",
+    "Yokohama F. Marinos": "横浜F・マリノス",
+    "Gamba Osaka": "ガンバ大阪",
+    "FC Tokyo": "FC東京",
+    "Sanfrecce Hiroshima": "サンフレッチェ広島",
+    "Cerezo Osaka": "セレッソ大阪",
+    "V-Varen Nagasaki": "V・ファーレン長崎",
+    "Nagoya Grampus": "名古屋グランパス",
+}
+
+#: 리그 라벨 → 검색 갈래. 🔴 라벨 원본은 `app/leagues.py` 다.
+_SOCCER_SOURCE = {"K리그1": "daum", "J1 리그": "yahoo"}
+
+
+def soccer_query(team: str) -> str:
+    """검색용 팀 표기. 별칭이 없으면 **영어 그대로** — 버리지 않는다."""
+    return SOCCER_ALIAS.get(team, team)
+
+
+async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None) -> list[dict]:
+    """축구 경기 1건 — 리그에 맞는 뉴스검색으로 팀별 기사·본문을 긁는다.
+
+    🔴 **검색어를 붙이지 않는다**(`_SOCCER_TERMS` 주석의 실측).
+    🔴 소스가 없는 리그(유럽 5리그)는 **빈손 + 로그**다 — "소스가 없다"와
+       "긁었는데 0건"을 가를 수 있어야 한다.
+    ⚠️ 한 팀이 터져도 나머지는 산다. 실패는 로그 한 줄.
+    """
+    league = jg.get("league") or ""
+    kind = _SOCCER_SOURCE.get(league)
+    if kind is None:
+        logger.info("[satellite] 축구 %s — 이 리그는 아직 위성 소스가 없다 "
+                    "(K리그1·J1 만 지원)", league or "(리그 없음)")
+        return []
+    out: list[dict] = []
+    seen: set[str] = set()
+    no_alias: list[str] = []
+    for side in ("home", "away"):
+        team = jg.get(side) or ""
+        if not team:
+            continue
+        if team not in SOCCER_ALIAS:
+            no_alias.append(team)
+        q = f"{soccer_query(team)} {_SOCCER_TERMS}".strip()
+        try:
+            if kind == "daum":
+                items = parse_daum_news(await _daum_fetch(q))
+                src_name = "다음뉴스"
+            else:
+                items = parse_yahoo_news(await _yahoo_fetch(q))
+                src_name = "Yahoo!ニュース"
+        except Exception as exc:
+            logger.warning("[satellite] 축구 %s 검색 실패 %s: %s",
+                           league, team, exc)
+            continue
+        for it in items[:_SOCCER_TOP_N]:
+            u = it.get("url") or ""
+            if not u or u in seen:
+                continue
+            seen.add(u)
+            body = await _fetch_article_body(u)
+            out.append(_article(title=it.get("title") or "", url=u,
+                                source=src_name, team=team,
+                                body=body or it.get("title") or "", age_h=None))
+    if no_alias:
+        # 🔴 커버리지를 모르면 별칭표를 언제 늘려야 하는지 알 수 없다.
+        logger.info("[satellite] 축구 %s 별칭 없음 %d팀: %s — 영어 이름으로 검색했다",
+                    league, len(no_alias), no_alias)
+    logger.info("[satellite] 축구 %s %s@%s 기사 %d건",
+                league, jg.get("away"), jg.get("home"), len(out))
+    return out
+
+
 #: 종목별 어댑터. 세 리그 전부 직접 경로(토르 불필요) — 토르는 순수 보강(SAT-7).
 _ADAPTERS = {
     "mlb": gather_mlb,
     "kbo": gather_kbo,
     "npb": gather_npb,
+    # [SAT-S1 2026-09-12] 축구 — K리그1(다음) · J1(야후). 유럽은 소스 미정.
+    "soccer": gather_soccer,
 }
 
 

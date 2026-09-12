@@ -139,6 +139,12 @@ SCOUT_SPORTS: tuple[ScoutSport, ...] = (
     #    라인업 공시 리드타임·소스 신뢰도 실측이 없다. 검증 없는 신호를
     #    카드에 실으면 그 카드의 다른 숫자까지 못 믿게 된다.
     #    → 켜기 전에 필요한 것: 라인업 소스 확정 + 리드타임 실측 표본.
+    # ⚠️ [SAT-S1 2026-09-12] `active` 는 **정찰**(`engine/scout.observe_slate`)
+    #   스위치다 — **위성과 다른 축이다.** 위성은 `SATELLITE_SPORTS` 가 켠다.
+    #   축구 위성 어댑터를 만들면서 여기를 켰다가 **되돌렸다**:
+    #   `test_every_active_scout_sport_has_a_call_site` 가 잡았다 — 스케줄러에
+    #   축구 정찰 호출부가 없어서, 켜면 "등록만 하고 안 불리는" 상태가 된다.
+    #   위 `reason` 은 그대로 유효하다(정찰 파이프라인 미검증·리드타임 미측정).
     ScoutSport("soccer", ("rss",), lineup_source="", active=False,
                reason="파이프라인 미검증 — 라인업 소스·리드타임 실측 없음"),
 )

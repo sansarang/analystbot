@@ -457,8 +457,12 @@ class Settings(BaseSettings):
     #   판정 경로가 바뀌지 않는다.
     satellite_enabled: bool = Field(default=False, validation_alias=AliasChoices(
         "SATELLITE_ENABLED", "satellite_enabled"))
-    #: 위성이 수집하는 종목(콤마 구분). 어댑터가 있는 종목만 실제로 돈다(현재 mlb).
-    satellite_sports: str = "mlb"
+    #: 위성이 수집하는 종목(콤마 구분). **어댑터가 있는 종목만 실제로 돈다.**
+    #  🔴 [SAT-S1 2026-09-12] `soccer` 를 더했다 — K리그1(다음)·J1(야후).
+    #     유럽 5리그는 소스가 없어 빈손이고 그 사실을 로그로 밝힌다.
+    #  ⚠️ 이 값은 운영 env(`SATELLITE_SPORTS`)가 덮는다 — 실제로 켜려면
+    #     거기에도 넣어야 한다(실측 2026-09-12 운영값 `mlb,kbo,npb`).
+    satellite_sports: str = "mlb,kbo,npb,soccer"
     #: 수집 정지선 — 시작 T-N분 안이면 그 경기는 더 긁지 않는다(위성이 정지).
     satellite_cutoff_min: int = 10
     #: 대상 경기 탐색 창(시간). status='scheduled' 이고 이 안에 시작하는 경기.
