@@ -416,6 +416,21 @@ class Settings(BaseSettings):
     order_v3: bool = Field(default=False, validation_alias=AliasChoices(
         "ORDER_V3", "order_v3"))
 
+    #: [SRCH-2 2026-09-12 사용자 지시] **Anthropic 웹 검색.**
+    #   "x seach 삭제....그자리에 안트로픽 서치로" · "퍼플릭스와 안트로픽"
+    #   🔴 **기본 꺼짐.** 유료다 — 경기당 약 $0.102 (실측 2026-09-12:
+    #      입력 31,069 · 출력 625 · 검색 3회). 켜는 것은 사람이 한다.
+    #   ⚠️ 이 스위치만으로는 아무 일도 안 난다. 부르는 쪽(2단계 선별이
+    #      "없는 것"을 지목했을 때)이 있어야 돈다.
+    websearch_enabled: bool = Field(default=False, validation_alias=AliasChoices(
+        "WEBSEARCH_ENABLED", "websearch_enabled"))
+    #: 검색 모델. 🔴 Opus 가 아니라 **Sonnet** 이다 — 실측에서 질문 3개에
+    #   $0.102 로 정답 3/3 이었다(grok-4.20 은 $1.082 에 1.5/3).
+    #   ⚠️ `matchup_model` 과 **별개**다. 판정은 제미니가 한다(SRCH-1).
+    websearch_model: str = Field(default="claude-sonnet-5",
+                                 validation_alias=AliasChoices(
+                                     "WEBSEARCH_MODEL", "websearch_model"))
+
     #: 🔴 [ORD-1 2026-09-11 사용자 지시] **순서를 바꾼다.**
     #     "경기가 나왔어 → AI 가 먼저 변수 및 갈림길을 찾는다 → 그 후에 인공위성·
     #      퍼플렉시티·X 가 보강자료를 찾는다 → 결론 → 애매한 것은 우리 DB 참조."
