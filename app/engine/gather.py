@@ -271,10 +271,24 @@ async def collect(jg: dict, redis=None, date: str = "", *, pool=None) -> dict:
     #    ("문보경이 지명타자로 복귀해…"). 못 가리겠을 때만 검색한다.
     #    ⚠️ `_preview`(퍼플렉시티)는 지우지 않는다 — ②선별이 "없는 것"을
     #       지목했을 때 SRCH-3 이 부른다. X 는 지웠다(SRCH-1).
-    jobs = {"satellite": _satellite(jg, redis),
-            # [ORD-14] 크롤러가 긁어 둔 오늘 선발·타순. 외부 호출 0.
-            "라인업": _lineup(jg, redis, date),
-            "크롤러": _bullpen(pool, jg)}
+    # 🔴 [SOC-1] **채널을 종목 표에서 읽는다** — 하드코딩하면 축구를 끼울 때
+    #    `if sport == "soccer"` 가 엔진 전체에 번진다. 원본은
+    #    `registry.COLLECT_CHANNELS` 이고, 이름은 곧 `출처` 키다(원장이 대조).
+    from app.registry import COLLECT_CHANNELS, collect_channels
+
+    sport = (jg.get("sport") or "").lower()
+    if sport not in COLLECT_CHANNELS:
+        # 🔴 조용한 0 금지 — 표를 안 채우고 종목을 늘리면 영영 재료가 0 이다.
+        logger.info("[gather] %s 는 수집 채널 표에 없다 — 위성만 쓴다 (표: %s)",
+                    sport or "(종목 없음)", ", ".join(sorted(COLLECT_CHANNELS)))
+    _MAKE = {
+        "satellite": lambda: _satellite(jg, redis),
+        # [ORD-14] 크롤러가 긁어 둔 오늘 선발·타순. 외부 호출 0.
+        "라인업": lambda: _lineup(jg, redis, date),
+        "크롤러": lambda: _bullpen(pool, jg),
+    }
+    jobs = {name: _MAKE[name]() for name in collect_channels(sport)
+            if name in _MAKE}
     got = await asyncio.gather(*jobs.values(), return_exceptions=True)
     rows: list[dict] = []
     src: dict = {}

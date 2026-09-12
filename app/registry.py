@@ -149,6 +149,33 @@ SCOUT_SPORTS: tuple[ScoutSport, ...] = (
                reason="파이프라인 미검증 — 라인업 소스·리드타임 실측 없음"),
 )
 
+#: [SOC-1 2026-09-12] **v3 수집 채널** — 종목별로 무엇을 긁는가.
+#  🔴 이름은 `gather` 의 함수 키이자 `order_v3["수집"]` 의 **출처 키**다.
+#     원장·카드·로그가 그 이름으로 대조하므로 **바꾸지 않는다.**
+#  🔴 축구에는 선발투수도 불펜도 없다 — 야구 채널을 부르면 빈손 호출만 늘고
+#     "축구도 라인업을 긁는다"는 착시를 만든다.
+#     축구의 라인업·부상은 **위성이 기사로** 가져온다(SAT-S2 실측: 예상 라인업이
+#     토르 DDG 기사 제목에 그대로 있다).
+#  ⚠️ 표에 없는 종목은 위성만 쓰고 **로그를 남긴다**(조용한 0 금지).
+#  ⚠️ 유료 채널(퍼플렉시티·안트로픽)은 여기 넣지 않는다 — 수집은 무료다.
+#     요청받았을 때만 `gather.search` 가 돈다(SRCH-3).
+COLLECT_CHANNELS: dict[str, tuple[str, ...]] = {
+    "kbo": ("satellite", "라인업", "크롤러"),
+    "npb": ("satellite", "라인업", "크롤러"),
+    "mlb": ("satellite", "라인업", "크롤러"),
+    "soccer": ("satellite",),
+}
+
+#: 표에 없는 종목의 기본. 위성은 어댑터가 없으면 스스로 0 을 돌려준다.
+DEFAULT_COLLECT_CHANNELS: tuple[str, ...] = ("satellite",)
+
+
+def collect_channels(sport: str) -> tuple[str, ...]:
+    """그 종목이 긁는 채널. 표에 없으면 기본(위성만)."""
+    return COLLECT_CHANNELS.get((sport or "").lower(),
+                                DEFAULT_COLLECT_CHANNELS)
+
+
 _SCOUT_BY_SPORT = {x.sport: x for x in SCOUT_SPORTS}
 
 
