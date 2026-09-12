@@ -4908,6 +4908,70 @@ def data_limitation_line(analysis: dict) -> str | None:
     return f"⚠️ 이 리포트의 한계: {' · '.join(bad)} — {basis}"
 
 
+def _render_card_v3(analysis: dict, scheduled: list[dict],
+                    lines: list[str], detail: list[str]) -> str:
+    """[SRCH-5] ORDER_V3 슬레이트 카드 — **승자와 조사 내용만.**
+
+    사용자 지시 2026-09-11~12: "추천 로직도 다 삭제…수치는 전부다 삭제" ·
+    "설명도 삭제…서치에 의한 정보만 명시" · "어느팀이 승리한다만 제미나이가 판다"
+
+    🔴 확률·별점·자격·조합이 **하나도 없다.** 그것들은 전부 확률 위에 서 있고,
+       이 경로는 확률을 내지 않는다. 남는 신호는 `확신` 한 칸뿐이다.
+    🔴 **판정 못 받은 경기를 조용히 빼지 않는다** — 몇 경기가 빠졌는지
+       사용자가 알아야 한다(§9-3단).
+    ⚠️ 경기별 본문을 여기서 다시 만들지 않는다. 원본은
+       `form_card.render_form_card` 이고 그 안에 v3 분기가 이미 있다.
+    """
+    judged = [g for g in scheduled
+              if (g.get("winner") or (g.get("matchup") or {}).get("승자"))]
+    missing = [g for g in scheduled if g not in judged]
+
+    if not judged:
+        # 🔴 게이트를 넓히다 **진짜 실패**를 못 보면 그게 더 나쁘다.
+        lines.append("")
+        lines.append("⚠️ 판정 실패 — 오늘 경기 판정을 받지 못해 분석을 완료하지 못했습니다.")
+        detail.append(f"판정 부착 0건 / 분석 대상 {len(scheduled)}경기")
+        return _guard_basic("\n".join(lines[:CARD_MAX_LINES])[:CARD_MAX_CHARS]
+                            + DETAIL_SEP + "\n".join(detail[:DETAIL_MAX_LINES]),
+                            "card")
+
+    lines.append("")
+    lines.append("🏆 오늘의 예측 — 조사한 것만으로 고른 승자입니다")
+    for g in judged:
+        away = g.get("away_kr") or g.get("away") or "?"
+        home = g.get("home_kr") or g.get("home") or "?"
+        w = g.get("winner") or (g.get("matchup") or {}).get("승자") or "?"
+        w_kr = _kr(w) if w in (g.get("home"), g.get("away")) else w
+        conf = (g.get("matchup") or {}).get("확신") or ""
+        kst = (g.get("starts_at_kst") or "")[11:16]
+        ov = g.get("order_v3") or g.get("order_v2") or {}
+        mark = " 🔴기록 보고 승자 바꿈" if ov.get("승자변경") else ""
+        lines.append(f"· {away} @ {home}"
+                     + (f" [{kst}]" if kst else "")
+                     + f" — {w_kr}"
+                     + (f" (확신 {conf})" if conf else "") + mark)
+    if missing:
+        names = ", ".join((g.get("away_kr") or g.get("away") or "?") + " @ "
+                          + (g.get("home_kr") or g.get("home") or "?")
+                          for g in missing)
+        lines.append(f"({len(missing)}경기는 판정을 받지 못했습니다: {names})")
+
+    lines.append("")
+    lines.append("⚠️ 확률도 추천도 내지 않습니다. 조사한 사실과 승자뿐입니다.")
+
+    # 경기별 분석글 — 갈림길·조사 결과·승자. 원본 렌더러를 그대로 쓴다.
+    for g in judged:
+        try:
+            detail.append("")
+            detail.append(render_game_easy(g).replace(DETAIL_SEP, "\n"))
+        except Exception as exc:      # 한 경기가 터져도 나머지는 낸다
+            logger.warning("[card] v3 경기 카드 실패 game=%s: %s",
+                           g.get("game_id"), exc)
+    return _guard_basic("\n".join(lines[:CARD_MAX_LINES])[:CARD_MAX_CHARS]
+                        + DETAIL_SEP + "\n".join(detail[:DETAIL_MAX_LINES]),
+                        "card")
+
+
 def _render_card(analysis: dict) -> str:
     """결론 카드 2층: 보이는 줄은 쉬운 말(20줄), 수치 근거는 <<DETAIL>> 뒤(접힘)."""
     games = analysis.get("games", [])
@@ -4950,6 +5014,15 @@ def _render_card(analysis: dict) -> str:
     # 없고 이 리포트와 무관한 경고다.
     if analysis.get("quota_warning") and analysis.get("sport") not in ("kbo", "npb", "mlb"):
         lines.append("⚠️ 배당 데이터 잔여 쿼터 부족 — 배당 갱신이 지연될 수 있습니다")
+    # 🔴 [SRCH-5] **ORDER_V3 슬레이트는 여기서 갈라진다.**
+    #    아래 전부(확률 비교·별점 보드·자격·조합)가 확률 위에 서 있는데,
+    #    v3 는 확률을 통째로 지운 경로다(ORD-3 "수치는 전부다 삭제").
+    #    실측 2026-09-12: 판정 4/4 성공인데 카드가 "판정 부착 0건"으로 나갔다.
+    #    ⚠️ **설정이 아니라 데이터로 가른다.** `s.order_v3` 를 읽으면 스위치를
+    #       끈 뒤에도 옛 원장이 새 카드로 렌더된다. `form_card.py` 가 같은
+    #       이유로 데이터 분기를 쓴다(ORD-3).
+    if any(g.get("order_v3") or g.get("order_v2") for g in scheduled):
+        return _render_card_v3(analysis, scheduled, lines, detail)
     scored = [g for g in scheduled if g.get("p_market") is not None and g.get("p_claude") is not None]
     if scored:
         surest = max(scored, key=lambda g: {"high": 2, "medium": 1, "low": 0}.get(g.get("judge_confidence", "medium"), 1) * 100 - abs(g["p_claude"] - g["p_market"]) * 100)
