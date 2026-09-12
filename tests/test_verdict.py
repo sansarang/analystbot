@@ -141,7 +141,8 @@ async def test_파싱_실패는_None(monkeypatch):
 async def test_정상이면_승자와_확신을_돌려준다(monkeypatch):
     _patch(monkeypatch, '{"승자": "Doosan Bears", "확신": "중"}')
     out = await V.decide(_jg(), "b", _tri())
-    assert out == {"승자": "Doosan Bears", "확신": "중"}
+    # [SRCH-6] `서술` 이 늘었다 — 안 오면 빈 문자열이고 판정은 그대로 산다.
+    assert out == {"승자": "Doosan Bears", "확신": "중", "서술": ""}
 
 
 @pytest.mark.asyncio

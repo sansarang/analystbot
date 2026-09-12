@@ -584,6 +584,11 @@ def apply_winner(jg: dict, verdict: dict) -> bool:
         from app.engine.verdict import level as _lvl
 
         jg["matchup"]["확신"] = _lvl(verdict.get("확신"))
+    # 🔴 [SRCH-6] 제미니가 쓴 분석글. **왔을 때만 싣는다** — ORD-3 경로(승자만)와
+    #    ORDER_V2 는 이 칸이 없고, 그쪽 동작은 바뀌지 않는다.
+    #    ⚠️ 한 글자도 고치지 않는다(사용자 지시 "그대로 보여달라").
+    if str(verdict.get("서술") or "").strip():
+        jg["matchup"]["서술"] = str(verdict["서술"]).strip()
     jg["winner"] = jg["matchup"]["승자"]
     return True
 

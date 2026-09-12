@@ -286,6 +286,15 @@ def render_search_card(jg: dict, sport: str | None = None) -> str:
             #    오래돼서 뺐는지 구분할 수 없다.
             lines.append(f"· (7일 지난 공시 {_dropped_old}건 제외)")
 
+    # 🔴 [SRCH-6] 제미니가 쓴 분석글을 **그대로** 싣는다. 우리가 다듬으면
+    #    그 순간 사본이고, 사용자 지시("그대로 보여달라")와도 어긋난다.
+    #    ⚠️ 결론보다 **앞**에 온다 — 이유 없는 결론은 읽을 것이 없다.
+    story = str((jg.get("matchup") or {}).get("서술") or "").strip()
+    if story:
+        lines.append("")
+        lines.append("🧠 분석")
+        lines.append(story)
+
     w = jg.get("winner") or (jg.get("matchup") or {}).get("승자")
     if w:
         lines.append("")

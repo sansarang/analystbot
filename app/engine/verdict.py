@@ -69,7 +69,7 @@ def render(jg: dict, brief: str, tri: dict) -> str:
 
 async def decide(jg: dict, brief: str, tri: dict, *,
                  role: str | None = None) -> dict | None:
-    """③-a 판정. 반환 `{"승자","확신"}` 또는 None.
+    """③-a 판정. 반환 `{"승자","확신","서술"}` 또는 None.
 
     🔴 **채택 0 건이면 판정하지 않는다.** 2단계가 전부 기각했다는 뜻이고,
        팀 이름 위에서 승자를 고르는 것이 곧 "기억으로 판정하기"다
@@ -100,8 +100,12 @@ async def decide(jg: dict, brief: str, tri: dict, *,
                        jg.get("away"), jg.get("home"), len(text or ""),
                        (text or "").replace("\n", " ")[:200])
         return None
-    out = {"승자": str(parsed["승자"]).strip(), "확신": level(parsed.get("확신"))}
-    logger.info("[verdict] %s@%s 승자 %s · 확신 %s (채택 %d · 없는것 %d)",
+    # 🔴 [SRCH-6] 서술은 **선택 칸**이다 — 없어도 판정은 산다. 승자가 본체다.
+    #    사용자 지시 2026-09-12: "제미니가 분석한 글을 그대로 보여달라고 해라".
+    out = {"승자": str(parsed["승자"]).strip(), "확신": level(parsed.get("확신")),
+           "서술": " ".join(str(parsed.get("서술") or "").split())}
+    logger.info("[verdict] %s@%s 승자 %s · 확신 %s · 서술 %d자 (채택 %d · 없는것 %d)",
                 jg.get("away"), jg.get("home"), out["승자"], out["확신"],
-                len(tri.get("채택") or []), len(tri.get("없는것") or []))
+                len(out["서술"]), len(tri.get("채택") or []),
+                len(tri.get("없는것") or []))
     return out
