@@ -575,7 +575,15 @@ def apply_winner(jg: dict, verdict: dict) -> bool:
         logger.warning("[order] 🔴 승자 %r 가 이 경기(%s@%s)의 팀이 아니다 — "
                        "판정을 버린다 (game=%s)", w, away, home, jg.get("game_id"))
         return False
-    jg["matchup"] = {"승자": home if hit_h else away, "model": verdict.get("model")}
+    jg["matchup"] = {"승자": home if hit_h else away,
+                     "model": verdict.get("model")}
+    # [ORD-12 사용자 지시] "확신 한 칸만 살려라." 온 경우에만 싣는다 —
+    #   ORD-3 경로(승자만)는 이 칸이 없고, 그쪽 동작은 바뀌지 않는다.
+    #   ⚠️ 모르는 라벨은 `하` 로 떨어뜨린다(`verdict.level`). 낮은 쪽이 안전하다.
+    if verdict.get("확신") is not None:
+        from app.engine.verdict import level as _lvl
+
+        jg["matchup"]["확신"] = _lvl(verdict.get("확신"))
     jg["winner"] = jg["matchup"]["승자"]
     return True
 

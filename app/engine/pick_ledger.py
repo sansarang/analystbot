@@ -182,7 +182,9 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         #    방향이어야 `hit` 비교가 종전 규약 그대로 된다).
         "predicted_side": _side_of(jg, matchup.get("승자") or jg.get("winner")),
         "favored": matchup.get("우세"),
-        "confidence": matchup.get("확신도"),
+        # [ORD-12] 새 순서는 `확신`(상|중|하) 한 칸만 낸다 — 종전 `확신도` 와
+        #   **같은 눈금**이라 같은 컬럼에 넣는다. 새 컬럼을 만들지 않는다.
+        "confidence": matchup.get("확신도") or matchup.get("확신"),
         "lineup_status": jg.get("lineup_status") or "none",
         "gate_result": gate_result_of(jg, pick),
         "model": jg.get("model") or matchup.get("model"),
