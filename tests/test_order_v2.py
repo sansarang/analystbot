@@ -283,7 +283,7 @@ def test_순서가_지켜진다():
     src = open("app/engine/matchup.py", encoding="utf-8").read()
     body = src[src.index("async def judge_matchup"):]
     assert (body.index("_prescout(jg, _brief)")
-            < body.index("_reinforce(jg, _pre, redis)")
+            < body.index("_reinforce(jg, _pre, redis")
             < body.index("render_conclude_prompt(jg, _brief"))
 
 

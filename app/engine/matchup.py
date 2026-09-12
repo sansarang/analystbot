@@ -963,7 +963,7 @@ def render_conclude_prompt(jg: dict, brief: str, pre: dict, reinf: dict) -> str:
 
 async def judge_matchup(jg: dict, redis, date: str, *,
                         mock: bool | None = None,
-                        allow_final: bool = False) -> dict | None:
+                        allow_final: bool = False, pool=None) -> dict | None:
     """form: 히트면 재분석하지 않는다. 미스면 팀 분석을 한 뒤 매치업을 돌린다.
 
     🔴 [2026-09-06 사용자 지시] **판정은 경기당 두 번, 최종은 한 번이다.**
@@ -1119,7 +1119,7 @@ async def judge_matchup(jg: dict, redis, date: str, *,
                            away, home)
             return None
         try:
-            _reinf = await _reinforce(jg, _pre, redis)
+            _reinf = await _reinforce(jg, _pre, redis, pool=pool)
         except Exception as exc:
             logger.warning("[order] game=%s 보강 실패: %s", jg.get("game_id"), exc)
             _reinf = {"자료": [], "출처": {}, "질문": _pre.get("조사요청") or []}

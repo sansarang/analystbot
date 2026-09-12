@@ -198,7 +198,8 @@ _NOTICE_MAX_AGE_H = 168.0
 #   줄을 통째로 먹었다. 잘라 붙이면 잘린 산문이 남는다 — 이름이 아니면 뺀다.
 _PARK_NAME_MAX = 40
 
-_SRC_KR = {"pplx": "퍼플렉시티", "x": "X", "satellite": "공시"}
+_SRC_KR = {"pplx": "퍼플렉시티", "x": "X", "satellite": "공시",
+           "크롤러": "우리 기록"}
 
 
 def render_search_card(jg: dict, sport: str | None = None) -> str:

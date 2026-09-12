@@ -260,7 +260,7 @@ def test_파이프라인이_판정_앞에서_분기점을_푼다():
     src = open("app/pipeline.py", encoding="utf-8").read()
     assert "from app.engine.branch_resolve import attach as _branch" in src
     b = src.index("branch_resolve import attach")
-    j = src.index("if await judge_matchup(jg, redis, date, allow_final=allow_final)")
+    j = src.index("if await judge_matchup(jg, redis, date")
     assert b < j, "분기점 조사는 판정보다 앞이어야 한다"
 
 
@@ -901,7 +901,7 @@ def test_파이프라인이_판정_뒤에도_분기점을_푼다():
     src = open("app/pipeline.py", encoding="utf-8").read()
     i = src.index("async def _run_baseball_matchups")
     seg = src[i:src.index("\nasync def ", i + 10)]
-    j = seg.index("if await judge_matchup(jg, redis, date, allow_final=allow_final)")
+    j = seg.index("if await judge_matchup(jg, redis, date")
     assert "_branch(" in seg[:j], "판정 앞 조사가 사라졌다 — 판정 재료가 빈다"
     assert "_branch(" in seg[j:], "판정 뒤 재조사가 없다 — 카드가 옛 질문의 답을 본다"
 
@@ -911,7 +911,7 @@ def test_재조사_실패가_판정을_막지_않는다():
     src = open("app/pipeline.py", encoding="utf-8").read()
     i = src.index("async def _run_baseball_matchups")
     seg = src[i:src.index("\nasync def ", i + 10)]
-    j = seg.index("if await judge_matchup(jg, redis, date, allow_final=allow_final)")
+    j = seg.index("if await judge_matchup(jg, redis, date")
     tail = seg[j:]
     k = tail.index("_branch(")
     assert "except Exception" in tail[k:k + 600], "재조사 실패가 판정을 죽인다"

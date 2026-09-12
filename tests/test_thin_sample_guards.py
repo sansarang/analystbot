@@ -251,7 +251,7 @@ def test_파이프라인이_자료11_뒤에_보정을_부른다():
     assert "from app.engine.opponent_adjust import attach as _m1adj" in src
     ctx = src.index("자료11 조립 실패")
     adj = src.index("opponent_adjust import attach")
-    judge = src.index("if await judge_matchup(jg, redis, date, allow_final=allow_final)")
+    judge = src.index("if await judge_matchup(jg, redis, date")
     assert ctx < adj < judge, "보정은 자료11 뒤·판정 앞이어야 한다"
 
 

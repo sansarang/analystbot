@@ -2884,7 +2884,8 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
             except Exception as exc:
                 logger.warning("[pipeline] 자료14 분기점 조사 실패 game=%s: %s",
                                jg.get("game_id"), exc)
-        if await judge_matchup(jg, redis, date, allow_final=allow_final):
+        if await judge_matchup(jg, redis, date, allow_final=allow_final,
+                               pool=pool):
             n += 1
             # ── [BRR-3 2026-09-08] **이번 회차 분기점을 한 번 더 조사한다.**
             #   위 조사는 판정 **앞**이라 직전 회차 분기점을 푼다 — 그것이

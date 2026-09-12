@@ -1104,7 +1104,7 @@ def _rows(data, asks: list[str], src: str) -> list[dict]:
 
 
 async def reinforce(jg: dict, pre: dict, redis=None, *,
-                    timeout: float | None = None) -> dict:
+                    pool=None, timeout: float | None = None) -> dict:
     """② 위성·퍼플렉시티·X 가 **①이 정한 질문만** 보강한다.
 
     반환 `{"자료": [...], "출처": {...}, "질문": [...]}`.
@@ -1122,6 +1122,16 @@ async def reinforce(jg: dict, pre: dict, redis=None, *,
         for g in got:
             if isinstance(g, list):
                 rows.extend(g)
+        # 🔴 [ORD-7 사용자 지시] **검색이 약한 축은 우리가 긁어 둔 것으로 답한다.**
+        #    실측 2026-09-12 game=5633: "텍사스 불펜·마무리 가용"을 두 차례 모두
+        #    못 찾았다. 그런데 `pitcher_appearances` 에는 그 기록이 있었다.
+        #    ⚠️ 자료9 를 되살리는 것이 아니다 — **①이 물었을 때만** 답한다.
+        try:
+            from app.collectors import bullpen_usage
+
+            rows.extend(await bullpen_usage.answers(pool, jg, asks))
+        except Exception as exc:
+            logger.warning("[reinforce] 불펜 기록 조회 실패 — 계속한다: %s", exc)
     # 🔴 위성은 **질문에 답한 것이 아니다.** 오늘 긁어 둔 공시·이적·부상 목록이고,
     #    실측 2026-09-11 game=5624 에서 48건이 전부 트랜잭션 줄이었다. 이것을
     #    "답" 칸에 섞으면 결론이 무관한 48줄을 갈림길의 근거로 읽는다.
