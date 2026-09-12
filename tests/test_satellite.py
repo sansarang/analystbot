@@ -149,8 +149,12 @@ class _FakePool:
         return self._rows
 
 
-def _row(gid, sport, home, away, mins_ahead, now):
+def _row(gid, sport, home, away, mins_ahead, now, league=None):
+    # ⚠️ [SOC-5] `_DUE_SQL` 이 `league` 도 뽑는다 — 가짜 행이 실제 조회와
+    #    같은 모양이어야 한다. 축구 어댑터는 이 값으로 뉴스 소스를 가르고,
+    #    없으면 12경기 전부 "소스 없음"으로 떨어진다(실측 2026-09-12).
     return {"id": gid, "sport": sport, "home": home, "away": away,
+            "league": league or sport.upper(),
             "starts_at": now + timedelta(minutes=mins_ahead)}
 
 

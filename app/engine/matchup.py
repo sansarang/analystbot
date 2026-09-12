@@ -1135,6 +1135,15 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
     return {"승자": ref["승자"], "확신": ref["확신"]}
 
 
+
+def _v3_enabled() -> bool:
+    """[SOC-6] 새 순서 스위치. **목 모드면 꺼진 것으로 본다** — 목에서 축구가
+    이 문을 지나면 종전과 다른 길로 간다."""
+    st = get_settings()
+    return (bool(getattr(st, "order_v3", False))
+            and not bool(getattr(st, "mock_judge", False)))
+
+
 async def judge_matchup(jg: dict, redis, date: str, *,
                         mock: bool | None = None,
                         allow_final: bool = False, pool=None) -> dict | None:
@@ -1157,7 +1166,11 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     from app.llm.judge_route import MATCHUP_ROLE, PRELIM_ROLE
 
     sport = jg.get("sport") or ""
-    if sport not in BASEBALL_SPORTS:
+    # 🔴 [SOC-6] 축구는 **새 순서가 켜졌을 때만** 이 문을 지난다. 종전 경로는
+    #    야구 모양이라(선발·타순 칸) 축구가 새면 프롬프트가 망가진다. 새 순서
+    #    에서는 야구 전용 단계가 전부 꺼지므로 축구가 지나가도 걸리는 것이 없다.
+    #    실측 2026-09-12 22:11: 이 줄 때문에 축구 12경기 판정 0건이었다.
+    if sport not in BASEBALL_SPORTS and not (sport == "soccer" and _v3_enabled()):
         return None
     if jg.get("judgement_void") or jg.get("status") in ("cancelled", "suspended"):
         jg["judgement_void"] = True

@@ -600,7 +600,7 @@ async def _write_cache(redis, sport: str, game_id, articles: list[dict]) -> None
 #: 대상 경기 — 예정이고 탐색 창 안에 시작. 컷오프는 아래 파이썬에서 건다(원본
 #  `minutes_until_start` 를 재사용하려면 행별로 계산해야 하므로 SQL 로 안 자른다).
 _DUE_SQL = """
-    SELECT id, sport, home, away, starts_at
+    SELECT id, sport, league, home, away, starts_at
       FROM games
      WHERE status = 'scheduled'
        AND sport = ANY($1::text[])
@@ -636,7 +636,10 @@ async def run_satellite(pool, redis, *, sports: list[str], now=None,
         left = minutes_until_start(r["starts_at"], now)
         if left is None or left <= cutoff_min:
             continue                        # 컷오프 안 — 위성 정지
-        jg = {"sport": r["sport"], "game_id": r["id"],
+        # 🔴 [SOC-5] `league` 를 반드시 싣는다. 축구 어댑터는 리그로 뉴스
+        #    소스를 가르므로, 없으면 12경기 전부 "소스 없음"으로 떨어진다
+        #    (실측 2026-09-12 22:11, 기사 0건). 야구 어댑터는 읽지 않는다.
+        jg = {"sport": r["sport"], "game_id": r["id"], "league": r["league"],
               "home": r["home"], "away": r["away"],
               "starts_at": r["starts_at"]}
         try:

@@ -2196,6 +2196,29 @@ async def build_analysis(
         finally:
             if bb_close:
                 await bb_redis.aclose()
+    elif sport == "soccer" and upcoming and bool(
+            getattr(get_settings(), "order_v3", False)):
+        # 🔴 [SOC-6] 축구도 야구와 **같은 문**(judge_matchup → _judge_v3)으로
+        #    간다. 러너만 다르다 — 축구에는 야구 전용 부착이 없다.
+        sc_redis, sc_close = redis, False
+        if sc_redis is None:
+            sc_redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+            sc_close = True
+        try:
+            try:
+                _judged = await _run_soccer_matchups(sc_redis, date, upcoming)
+            except Exception as exc:
+                logger.exception("[pipeline] 축구 매치업 실패: %s", exc)
+                _judged = 0
+            await record("매치업 판정", _judged, len(upcoming), unit="경기",
+                         impact="판정 못 받은 경기는 추천에서 제외됩니다")
+            try:
+                await _renarrate(upcoming, sport)
+            except Exception as exc:
+                logger.warning("[pipeline] 축구 서술 생략 — 발송은 계속: %s", exc)
+        finally:
+            if sc_close:
+                await sc_redis.aclose()
     elif not upcoming:
         verdict = {"games": []}
     else:
@@ -2725,6 +2748,7 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
             impact="평가 불가 팀은 추천에서 제외됩니다")
 
 
+
 async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
                                  allow_final: bool = False) -> int:
     """라인업 확정·변경 시 경기당 매치업. 폼 캐시 히트면 재분석하지 않는다.
@@ -2975,6 +2999,40 @@ def _enforce_data_rules(judge_games: list[dict]) -> None:
 
 
 ODDS_STALE_HOURS = 3   # 이보다 오래된 스냅샷은 '개장 배당'으로 표기
+
+
+async def _run_soccer_matchups(redis, date: str, games: list[dict]) -> int:
+    """축구 매치업 — **v3 경로만.** 야구 전용 부착을 하나도 부르지 않는다.
+
+    🔴 [SOC-6] 실측 2026-09-12 22:11: 파이프라인이 `sport in BASEBALL_SPORTS`
+       일 때만 매치업 러너를 불러서, 축구는 `ORDER_V3=1` 이어도 구 Judge 로
+       갔고 그것은 꺼져 있다 → 12경기 판정 0건.
+
+    ⚠️ 축구에는 선발·타자·불펜·Elo 부착이 없다. 넣으면 시간만 쓴다 —
+       수집 채널은 `registry.COLLECT_CHANNELS` 가 원본이고 축구는 위성뿐이다.
+    ⚠️ `allow_final` 을 주지 않는다. 축구에 타순 확정 개념이 없어 최종 권한
+       선점이 의미가 없다 — 예비(무료 사슬)로 한 번 판정한다.
+    ⚠️ 한 경기가 터져도 나머지는 산다.
+    """
+    from app.engine.matchup import judge_matchup
+
+    pool = None
+    try:
+        from app.db import get_pool
+
+        pool = await get_pool()
+    except Exception as exc:
+        logger.debug("[pipeline] 축구 매치업 pool 없음: %s", exc)
+    n = 0
+    for jg in games:
+        try:
+            if await judge_matchup(jg, redis, date, pool=pool):
+                n += 1
+        except Exception as exc:
+            logger.warning("[pipeline] 축구 매치업 실패 game=%s: %s",
+                           jg.get("game_id"), exc)
+    logger.info("[pipeline] 축구 매치업 %d/%d경기", n, len(games))
+    return n
 
 
 async def _attach_card_compare(judge_games: list[dict], sport: str,
