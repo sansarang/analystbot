@@ -17,8 +17,11 @@
 
 from __future__ import annotations
 
+import html as _html
 import logging
-from datetime import datetime
+import re
+import unicodedata as _ud
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +125,191 @@ def soccer_query(team: str) -> str:
     return SOCCER_ALIAS.get(team, team)
 
 
+# ═══════════════ [SAT-S4] 층1 — Transfermarkt 부상표 (구조화된 표)
+#
+# 🔴 **여기까지가 "검색"이고 아래는 "표"다.** 위의 다음·야후·토르는 전부
+#    검색이라 제목에 있어야 얻는다. 야구에는 그 아래 층이 하나 더 있다
+#    (`transactions_to_articles`·`_kbo_official`·`_mlb_velocity_articles`).
+#    축구에는 그 층이 통째로 없었다.
+#
+#    실측 2026-09-12 (운영 컨테이너, 7리그 전수):
+#      한 URL 모양으로 7리그 전부 파싱된다 — 선수·소속·부위·복귀예정일이 칸으로.
+#      행 수  세리에A 67 · 분데스 67 · EPL 60 · J1 50 · 덴마크 35 · 라리가 24 · K리그1 18
+#
+# 🔴 **토르를 쓰지 않는다.** 실측 2026-09-12 — 토르는 **검색엔진 전용**이다:
+#      Transfermarkt   직접 200 · 토르 202 · 본문 0자
+#      PremierInjuries 직접 200 · 44KB · 토르 403
+#      DDG 검색        직접 불가(AWS IP) · 토르 200
+#
+# 🔴 **퍼지 매칭을 쓰지 않는다.** 처음엔 토큰 점수로 우리 팀명 ↔ TM 팀명을
+#    맞추려 했고 **오매칭이 나왔다**: `AC Milan → Inter Milan`(0.50, 2위 0.00).
+#    `AC` 가 두 글자라 토큰에서 빠지고 `milan` 만 남았고, 부상표에는 그날
+#    부상자가 있는 팀만 있어 **진짜 AC밀란이라는 선택지가 없었다.**
+#    남의 팀 부상자가 붙는 것은 빈손보다 나쁘다 — 판정이 조용히 틀린다.
+#    → 법인격 토큰만 떼고 **완전일치**, 진짜 다른 이름만 실측 별칭표.
+#      전수 재측정: 맞음 76 · 표에없음 14 · **오매칭 0 · 키충돌 0**.
+
+_TM_URL = "https://www.transfermarkt.com/x/verletztespieler/wettbewerb/{code}"
+
+#: 행을 `<tr class="odd|even">` 로 **쪼갠다**. 🔴 비탐욕 `</tr>` 로는 안 된다 —
+#  선수 칸 안에 `<table class="inline-table">` 이 중첩돼 있어 0행이 나왔다.
+_TM_SPLIT = re.compile(r'<tr class="(?:odd|even)">')
+_TM_PLAYER = re.compile(r'href="/[^"]*/profil/spieler/\d+"[^>]*>([^<]+)<')
+_TM_TEAM = re.compile(r'<a title="([^"]+)" href="/[^"]*/startseite/verein/\d+"')
+_TM_INJ = re.compile(r'<td class="links">([^<]+)</td>')
+_TM_CELL = re.compile(r'<td class="zentriert">([^<]*)</td>')
+#: 🔴 복귀예정일(`until`)은 **행의 첫 `zentriert` 칸 하나뿐**이다. 실측한 실제
+#  마크업(2026-09-12):
+#      <td class="zentriert no-border-rechts"> … 구단(로고)   ← 클래스가 다르다
+#      <td class="links">Cruciate ligament tear</td>          ← 부상
+#      <td class="zentriert">30/09/2026</td>                  ← until
+#      <td class="rechts">€45.00m</td>                        ← 시장가치
+#  ⚠️ 처음엔 **마지막** 칸을 집었다가 `Uche — Knee injury (복귀 예정 9)` 가
+#     나왔다. 표 뒤에 붙은 **순위표 위젯**(머리말 `# · Club · +/- · Pts`)의
+#     칸이 청크에 흘러든 것이다. 연도 확인은 그 부류를 한 겹 더 막는다.
+#     **없는 사실을 지어내느니 비운다.**
+_TM_YEAR = re.compile(r"(19|20)\d{2}")
+#: 한 행이 다음 행까지 흘러가지 않게 자른다.
+_TM_CHUNK = 6000
+
+#: 북유럽·동유럽 글자. NFKD 로 분해되지 않아 따로 접는다(ø·æ·å·ß·đ·ł·ð·þ).
+_TM_FOLD = str.maketrans({"ø": "o", "Ø": "O", "æ": "ae", "Æ": "AE",
+                          "å": "a", "Å": "A", "ß": "ss", "đ": "d", "Đ": "D",
+                          "ł": "l", "Ł": "L", "ð": "d", "þ": "th"})
+
+#: 법인격·리그 표기 토큰. 팀을 가르지 않는 부분이라 뗀다.
+#  ⚠️ **팀을 가르는 말은 절대 넣지 마라.** 실측에서 `city`·`united`·`real` 을
+#     넣었다가 맨시티·맨유·Athletic Club 을 내가 못 맞췄다.
+_TM_NOISE = frozenset({
+    "fc", "afc", "ac", "acf", "as", "ss", "ssc", "us", "sc", "cf", "cfc",
+    "bc", "rc", "rcd", "ca", "ud", "if", "bk", "gf", "sv", "vfb", "sk", "hd",
+    "de", "la", "and", "club", "calcio", "fodbold", "boldklub", "futbol",
+})
+
+#: 우리 DB 표기 → TM 표기. **정규화한 뒤의 키**로 적는다.
+#  🔴 `SOCCER_ALIAS`(검색용 한국어)와 **다른 표**다 — 목적이 다르다. 합치면
+#     한쪽 실측이 다른 쪽을 망친다.
+#  실측 2026-09-12: 우리 DB 90팀 × TM 7리그 부상표 전수에서 남은 열 쌍.
+TM_ALIAS: dict[str, str] = {
+    "rayo vallecano madrid": "rayo vallecano",
+    "real racing santander": "racing santander",
+    "athletic": "athletic bilbao",
+    "internazionale milano": "inter milan",
+    "bayern munchen": "bayern munich",
+    "agf aarhus": "aarhus",
+    "ob odense": "odense",
+    "daejeon citizen": "daejeon hana citizen",
+    "jeju united": "jeju",
+    "ulsan hyundai": "ulsan",
+}
+
+#: 리그 코드 × 날짜 캐시. 한 슬레이트에 같은 리그 경기가 여럿이다.
+_TM_CACHE: dict[str, tuple[str, list[dict]]] = {}
+
+
+def _tm_cache_clear() -> None:
+    _TM_CACHE.clear()
+
+
+def tm_key(name: str) -> str:
+    """팀 이름 → 대조용 키. **점수도 임계값도 없다.**"""
+    t = _html.unescape(name or "").translate(_TM_FOLD)
+    t = _ud.normalize("NFKD", t)
+    t = "".join(c for c in t if not _ud.combining(c))
+    t = re.sub(r"[^\w\s]", " ", t).lower()
+    core = " ".join(x for x in t.split() if len(x) > 1 and x not in _TM_NOISE)
+    return TM_ALIAS.get(core, core)
+
+
+def parse_tm_injuries(html: str) -> list[dict]:
+    """부상표 HTML → [{팀·선수·부상·복귀}]. 못 읽은 행은 버린다."""
+    out: list[dict] = []
+    for blk in _TM_SPLIT.split(html or "")[1:]:
+        blk = blk[:_TM_CHUNK]
+        p, t, j = (_TM_PLAYER.search(blk), _TM_TEAM.search(blk),
+                   _TM_INJ.search(blk))
+        if not (p and t and j):
+            continue
+        cell = _TM_CELL.search(blk)
+        until = _html.unescape(cell.group(1)).strip() if cell else ""
+        out.append({"팀": _html.unescape(t.group(1)),
+                    "선수": _html.unescape(p.group(1)).strip(),
+                    "부상": j.group(1).strip(),
+                    "복귀": until if _TM_YEAR.search(until) else ""})
+    return out
+
+
+async def _tm_fetch(code: str) -> str:
+    """부상표 HTML. 🔴 **직접 HTTP 다 — 토르를 경유하지 않는다**(위 실측)."""
+    import httpx
+
+    from app.collectors.satellite import _UA
+
+    async with httpx.AsyncClient(timeout=20.0, follow_redirects=True,
+                                 headers={"User-Agent": _UA,
+                                          "Accept-Language": "en"}) as c:
+        r = await c.get(_TM_URL.format(code=code))
+        r.raise_for_status()
+        return r.text
+
+
+async def _tm_rows(code: str, today: str) -> list[dict]:
+    hit = _TM_CACHE.get(code)
+    if hit and hit[0] == today:
+        return hit[1]
+    rows = parse_tm_injuries(await _tm_fetch(code))
+    for stale in [k for k, v in _TM_CACHE.items() if v[0] != today]:
+        _TM_CACHE.pop(stale, None)
+    _TM_CACHE[code] = (today, rows)
+    return rows
+
+
+async def _tm_injuries(jg: dict, today: str) -> list[dict]:
+    """이 경기 **두 팀만** 뽑아 기사 모양으로. 표에 없으면 아무것도 안 만든다."""
+    from app.collectors.satellite import _article
+    from app.leagues import LEAGUES
+
+    label = jg.get("league") or ""
+    # 🔴 리그 코드를 여기에 베껴 적지 않는다 — `app/leagues.py` 가 원본이다.
+    code = next((c.get("tm_code") for c in LEAGUES.values()
+                 if c.get("label") == label), None)
+    if not code:
+        return []
+    idx: dict[str, list[dict]] = {}
+    for r in await _tm_rows(code, today):
+        idx.setdefault(tm_key(r["팀"]), []).append(r)
+
+    out: list[dict] = []
+    miss: list[str] = []
+    for side in ("home", "away"):
+        team = jg.get(side) or ""
+        key = tm_key(team)
+        if not key:
+            continue
+        got = idx.get(key)
+        if not got:
+            miss.append(key)
+            continue
+        lines = [f"{r['선수']} — {r['부상']}"
+                 + (f" (복귀 예정 {r['복귀']})" if r["복귀"] else "")
+                 for r in got]
+        out.append(_article(
+            title=f"{team} 부상자 {len(got)}명 (Transfermarkt)",
+            url=_TM_URL.format(code=code), source="Transfermarkt",
+            team=team, body=" · ".join(lines),
+            # 🔴 **None 이면 안 된다.** `gather._satellite` 가 `age_h is None` 을
+            #    뒤로 보내고 `MAX_SAT` 에서 자른다 — 질이 가장 높은 자료가 가장
+            #    먼저 버려진다. 방금 받은 **살아 있는 표**이므로 0.0 이 정직하다.
+            age_h=0.0))
+    if miss:
+        # 🔴 표에 없는 이유는 둘이다 — 부상자가 없거나, 이름이 안 맞거나.
+        #    **우리는 그것을 가를 수 없다.** 그래서 "부상자 없음"이라고 쓰지
+        #    않고 키를 남긴다(별칭표를 늘릴 단서).
+        logger.info("[satellite] 축구 %s 부상표에 없는 팀 %s — 부상자가 없거나 "
+                    "이름이 안 맞는다. '부상자 없음'으로 쓰지 않는다", label, miss)
+    return out
+
+
 async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None) -> list[dict]:
     """축구 경기 1건 — 리그에 맞는 뉴스검색으로 팀별 기사·본문을 긁는다.
 
@@ -146,6 +334,12 @@ async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None) -
                     league or "(리그 없음)", ", ".join(sorted(_SOCCER_SOURCE)))
         return []
     out: list[dict] = []
+    # 🔴 [SAT-S4] **층1 먼저** — 검색이 아니라 표다(선수·부위·복귀일이 칸으로).
+    #    보강이므로 터져도 검색 경로는 그대로 돈다. 실패는 로그 한 줄.
+    try:
+        out += await _tm_injuries(jg, (now or datetime.now(timezone.utc)).date().isoformat())
+    except Exception as exc:
+        logger.warning("[satellite] 축구 %s 부상표 실패: %s", league, exc)
     seen: set[str] = set()
     no_alias: list[str] = []
     for side in ("home", "away"):

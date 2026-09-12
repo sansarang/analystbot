@@ -125,6 +125,14 @@ async def test_축구가_공용_검색을_쓴다(monkeypatch):
         return []
 
     monkeypatch.setattr(SAT, "_tor_supplement", _no_tor)
+
+    # ⚠️ [SAT-S4] 층1(Transfermarkt 부상표)이 붙었다. 막지 않으면 이 계약이
+    #    **실제 HTTP 를 때린다** — 이 시험이 보려는 것은 검색 배선뿐이다.
+    async def _no_tm(code):
+        return ""
+
+    monkeypatch.setattr(SOC, "_tm_fetch", _no_tm)
+    SOC._tm_cache_clear()
     await SOC.gather_soccer({"game_id": 1, "sport": "soccer", "league": "K리그1",
                              "home": "Ulsan Hyundai FC", "away": "FC Seoul"})
     assert seen, "공용 다음 검색을 쓰지 않았다"
