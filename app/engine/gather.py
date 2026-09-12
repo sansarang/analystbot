@@ -261,3 +261,40 @@ async def collect(jg: dict, redis=None, date: str = "", *, pool=None) -> dict:
     logger.info("[gather] %s@%s 수집 %d건 %s",
                 jg.get("away"), jg.get("home"), len(rows), src)
     return {"자료": rows, "출처": src}
+
+
+async def search(jg: dict, asks: list[str], date: str) -> dict:
+    """[SRCH-3] **요청받은 질문만** 검색한다. 반환 `{"자료","출처"}`.
+
+    사용자 지시 2026-09-12: "퍼플릭스와 안트로픽" ·
+    "안트로픽 api키가 요청을 할때만 켜는걸로 하자" · "경기당 1회 질문 3개로 해라"
+
+    🔴 **`collect` 와 다른 지갑이다.** 수집은 무료(위성·크롤러)이고 이쪽은
+       유료다 — 경기당 약 $0.10 (실측 2026-09-12: $0.079~0.139).
+       그래서 요청이 없으면 **한 채널도 부르지 않는다.**
+    🔴 **채널 하나가 터져도 나머지는 산다.** 검색 실패로 판정을 멈추지 않는다.
+    ⚠️ 스위치는 각 채널이 본다(`websearch._enabled`). 여기서 다시 보지 않는다 —
+       두 곳에서 보면 그게 사본이고, 한쪽만 바뀐다.
+    ⚠️ 퍼플렉시티는 SRCH-4 가 **같은 날짜 게이트를 붙여** 이 `jobs` 에 더한다.
+       게이트 없이 붙이면 SRCH-2 가 막은 결함(5개월 전 기사)을 다시 연다.
+    """
+    from app.collectors import websearch
+
+    qs = [str(q).strip() for q in (asks or []) if str(q).strip()]
+    if not qs:
+        return {"자료": [], "출처": {}}
+
+    jobs = {websearch.SOURCE: websearch.ask(jg, qs, today=date)}
+    got = await asyncio.gather(*jobs.values(), return_exceptions=True)
+    rows: list[dict] = []
+    src: dict = {}
+    for name, g in zip(jobs, got):
+        if isinstance(g, list):
+            rows.extend(g)
+            if g:
+                src[name] = len(g)
+        else:
+            logger.warning("[search] %s 실패 — 나머지로 계속한다: %s", name, g)
+    logger.info("[search] %s@%s 질문 %d → %d건 %s",
+                jg.get("away"), jg.get("home"), len(qs), len(rows), src)
+    return {"자료": rows, "출처": src}

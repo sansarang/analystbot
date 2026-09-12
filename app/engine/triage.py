@@ -19,6 +19,11 @@ logger = logging.getLogger(__name__)
 
 DEEPSEARCH_ROLE = "deepsearch"      # 정찰이 쓰던 그 역할. 새 라우팅을 만들지 않는다.
 
+#: [SRCH-3] 검색 질문 상한. 🔴 **원본은 `websearch.MAX_ASKS` 다** — 사용자
+#  결정("경기당 1회 질문 3개")을 두 곳에 적지 않는다. 여기서 자르는 이유는
+#  프롬프트가 어겨질 수 있기 때문이다(실측: grok 이 날짜 지시를 어겼다).
+from app.collectors.websearch import MAX_ASKS  # noqa: E402
+
 #: 한 항목을 프롬프트에 실을 때의 길이 상한.
 _ROW_MAX = 260
 
@@ -54,7 +59,7 @@ async def run(jg: dict, brief: str, rows: list[dict], *,
     """② 선별. 반환은 아래 모양, 실패하면 None.
 
         {"채택": [행...], "기각": [{"행","사유"}...], "갈림길", "변수",
-         "없는것", "DB요청", "계측": {"수집","채택","기각","미분류"}}
+         "없는것", "DB요청", "검색요청", "계측": {"수집","채택","기각","미분류"}}
 
     ⚠️ **실패는 None 이다.** 여기서 판정을 대신 내리지 않는다 — 호출부(5단계)가
        그때 무엇을 할지 정한다.
@@ -118,6 +123,9 @@ async def run(jg: dict, brief: str, rows: list[dict], *,
         "변수": [str(v).strip() for v in (data.get("변수") or []) if str(v).strip()],
         "없는것": [str(x).strip() for x in (data.get("없는것") or []) if str(x).strip()],
         "DB요청": [str(x).strip() for x in (data.get("DB요청") or []) if str(x).strip()],
+        # 🔴 [SRCH-3] 웹에 물을 것. **코드가 자른다** — 유료다.
+        "검색요청": [str(x).strip() for x in (data.get("검색요청") or [])
+                     if str(x).strip()][:MAX_ASKS],
         "계측": {"수집": n, "채택": len(keep), "기각": len(drop),
                  "미분류": len(unseen)},
     }
@@ -125,8 +133,9 @@ async def run(jg: dict, brief: str, rows: list[dict], *,
     if not out["채택"]:
         logger.warning("[triage] %s@%s 수집 %d건이 전부 기각됐다 — 재료 없음",
                        jg.get("away"), jg.get("home"), n)
-    logger.info("[triage] %s@%s %s · 갈림길 %d · 변수 %d · 없는것 %d · DB요청 %d",
+    logger.info("[triage] %s@%s %s · 갈림길 %d · 변수 %d · 없는것 %d · "
+                "DB요청 %d · 검색요청 %d",
                 jg.get("away"), jg.get("home"), out["계측"],
                 len(out["갈림길"]), len(out["변수"]),
-                len(out["없는것"]), len(out["DB요청"]))
+                len(out["없는것"]), len(out["DB요청"]), len(out["검색요청"]))
     return out

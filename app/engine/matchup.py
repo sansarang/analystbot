@@ -1006,7 +1006,16 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
         # 🔴 재료 없이 판정하지 않는다(절대 규칙 6).
         return await _drop("채택 0건")
 
-    # ③ 판정 — 조사 결과만으로 승자 + 확신.
+    # 🔴 [SRCH-3] **검색 — 선별이 요청했을 때만.** 여기가 이 경로의 유일한
+    #    유료 검색 지점이다. 요청이 비면 한 채널도 안 부른다(경기당 $0.10).
+    #    ⚠️ 결과를 `채택` 에 **합친다** — 검색해 놓고 ③이 못 보면 돈만 쓴 것이다.
+    #       다만 `계측` 은 덮지 않는다. 선별이 센 숫자와 섞으면 상태 이원화다.
+    asks = tri.get("검색요청") or []
+    found = await gather.search(jg, asks, date) if asks else {"자료": [], "출처": {}}
+    if found["자료"]:
+        tri["채택"] = list(tri["채택"]) + found["자료"]
+
+    # ③ 판정 — 조사 결과 + 검색 결과로 승자 + 확신.
     v = await verdict.decide(jg, brief, tri)
     if v is None:
         return await _drop("판정 실패")
@@ -1024,16 +1033,19 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
         "없는것": tri["없는것"],
         "DB있음": ref["있음"], "DB없음": ref["없음"], "DB본것": ref["본것"],
         "DB판정": ref["판정"], "승자변경": ref["승자변경"], "DB사유": ref["사유"],
+        # 🔴 [SRCH-3] 조용한 0 금지 — "검색을 안 했다"와 "했는데 0건"은 다르다.
+        "검색요청": list(asks), "검색n": len(found["자료"]),
+        "검색출처": found["출처"],
     }
     if not apply_winner(jg, {"승자": ref["승자"], "확신": ref["확신"]}):
         return await _drop("승자가 이 경기의 팀이 아니다")
     jg["final_verdict"] = final
     jg["judge_stage"] = "final" if final else "prelim"
     await persist_matchup_record(redis, jg, date)
-    logger.info("[v3] %s@%s 승자 %s · 확신 %s · 수집%s 채택%d · DB %s%s",
+    logger.info("[v3] %s@%s 승자 %s · 확신 %s · 수집%s 채택%d · 검색%d→%d · DB %s%s",
                 jg.get("away"), jg.get("home"), jg.get("winner"),
                 (jg.get("matchup") or {}).get("확신"), col["출처"],
-                tri["계측"]["채택"], ref["판정"],
+                tri["계측"]["채택"], len(asks), len(found["자료"]), ref["판정"],
                 " 🔴승자변경" if ref["승자변경"] else "")
     return {"승자": ref["승자"], "확신": ref["확신"]}
 
