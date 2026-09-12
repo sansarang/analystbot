@@ -73,13 +73,25 @@ class FootballDataClient(BaseAPIClient):
         self.headers = {"X-Auth-Token": settings.football_data_key or ""}
 
     async def fetch_matches(self, date_kst: str) -> dict:
-        """KST 날짜에 걸치는 경기 (UTC로는 전날 15:00~당일 15:00) — 구독 대회 전체."""
+        """KST 날짜에 걸치는 경기 (UTC로는 전날 15:00~당일 15:00) — 구독 대회 전체.
+
+        🔴 [SOC-3] `dateTo` 는 **그 날짜 00:00 시각까지**다. 실측 2026-09-12:
+             from=09-12 to=09-12 →  1건 (09-12T00:00:00Z 하나)
+             from=09-12 to=09-13 → 49건 (09-12 UTC 48 + 09-13 00:00 1)
+           그래서 `dateTo=D` 로는 **UTC D-1 하루만** 받았고, KST D 09:00~24:00
+           킥오프가 통째로 빠졌다(그날 세리에A 1 · 분데스 5 · EPL 5).
+           HTTP 200 이었다 — 상태값은 증거가 아니다.
+
+        ⚠️ 창을 넓혀도 다른 날이 새지 않는다. KST 날짜로 거르는 일은
+           `upsert_games_from_football_data` 가 이미 한다(거기가 원본이다).
+        """
         if self.mock:
             return self.load_mock("footballdata_matches.json")
         d = datetime.strptime(date_kst, "%Y-%m-%d").date()
         return await self._get(
             "/matches",
-            params={"dateFrom": (d - timedelta(days=1)).isoformat(), "dateTo": d.isoformat()},
+            params={"dateFrom": (d - timedelta(days=1)).isoformat(),
+                    "dateTo": (d + timedelta(days=1)).isoformat()},
             headers=self.headers,
         )
 
