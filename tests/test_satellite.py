@@ -412,7 +412,15 @@ async def test_gather_kbo_shape_and_team(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_gather_dispatches_kbo(monkeypatch):
-    """gather 디스패처가 kbo 를 KBO 어댑터로 보낸다(캐시 적재까지)."""
+    """gather 디스패처가 kbo 를 KBO 어댑터로 보낸다(캐시 적재까지).
+
+    🔴 [2026-09-12] `now` 를 **반드시 고정한다.** 종전에는 실제 시각을 썼는데
+       `_DAUM_HTML` 의 기사 날짜가 2026-09-09 로 고정이라, 실행 시각이
+       `news_rss.MAX_AGE_HOURS` 를 넘기는 순간 기사가 전부 걸러져 0건이 됐다.
+       실측: 오전 스위트는 통과(3211 passed)했고 오후 13:5x 에 같은 코드가
+       실패했다 — 코드가 아니라 **시계가 바꾼 실패**다.
+       바로 위 `test_gather_kbo_shape` 는 이미 `now` 를 넣고 있었다.
+    """
     from app.collectors import satellite
 
     async def fake_daum(query):
@@ -425,7 +433,8 @@ async def test_gather_dispatches_kbo(monkeypatch):
     monkeypatch.setattr(satellite, "_fetch_article_body", fake_body)
     r = _MemRedis()
     jg = {"sport": "kbo", "game_id": 55, "home": "한화 이글스", "away": "LG 트윈스"}
-    n = await satellite.gather(jg, r)
+    now = datetime(2026, 9, 9, 12, 0, tzinfo=timezone.utc)
+    n = await satellite.gather(jg, r, now=now)
     assert n > 0
     assert await satellite.read_cache(r, "kbo", 55)
 

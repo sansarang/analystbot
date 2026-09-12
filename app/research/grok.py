@@ -153,19 +153,41 @@ class GrokClient(BaseAPIClient):
             text = await self._search_call(prompt + KOREAN_RETRY_SUFFIX)
         return text
 
-    async def _search_call(self, prompt: str) -> str:
+    #: [ORD-18 2026-09-12] 검색 도구. 🔴 **기본은 x_search 전용이다.**
+    #   실측(운영, 질문 4종 × 2변형):
+    #     web+x  합계 $1.3524 · 답 4/4   (입력 13,153~27,584 토큰)
+    #     x만    합계 $0.6164 · 답 3/4   (입력  3,702~ 6,923 토큰)  ← 54% 싸다
+    #   그리고 **둘 다 주면 모델이 비싼 쪽을 고른다** — 4건 중 3건에서
+    #   web_search 2~3회 · x_search **0회**. 우리가 원한 X 게시물을 안 찾았다.
+    #     선수 상태  web+x $0.3386 (x=0 w=3)  vs  x만 $0.1643 (x=2)
+    #     불펜       web+x $0.4734 (x=0 w=3)  vs  x만 $0.1786 (x=2)
+    #   ⚠️ 대가: 같은 실측에서 "X 속보" 질문 하나가 x 전용으로는 `No X posts
+    #      found` 였고 web+x 는 웹에서 답을 찾았다(3/4 vs 4/4). 다만 Grok 의
+    #      x_search 수율은 이미 흔들린다(같은 프롬프트 5회에 답 [0,0,1,0,1]).
+    #      **지우지 않고 옵트인으로 남긴다** — 웹이 꼭 필요한 경로는 web=True.
+    X_ONLY = [{"type": "x_search"}]
+    WEB_AND_X = [{"type": "web_search"}, {"type": "x_search"}]
+
+    def _tools(self, web: bool) -> list[dict]:
+        return self.WEB_AND_X if web else self.X_ONLY
+
+    async def _search_call(self, prompt: str, *, web: bool = False) -> str:
         resp = await self._post(
             "/responses",
             headers={"Authorization": f"Bearer {self.api_key}"},
             json_body={
                 "model": self.model,
                 "input": prompt,
-                "tools": [{"type": "web_search"}, {"type": "x_search"}],
+                "tools": self._tools(web),
             },
         )
+        # 🔴 **어떤 도구로 불렀는지·얼마 들었는지 남긴다.** 안 남기면 비용이
+        #    왜 변했는지 못 푼다 — 오늘 이 결함이 그래서 숨어 있었다.
+        _log_usage(resp, "web+x" if web else "x")
         return extract_output_text(resp)
 
-    async def search_with_citations(self, prompt: str) -> tuple[str, list[str]]:
+    async def search_with_citations(self, prompt: str, *,
+                                    web: bool = False) -> tuple[str, list[str]]:
         """[ORD-8] 본문과 **x.com 인용 목록**을 함께 돌려준다.
 
         🔴 왜 필요한가. 진단 실측 2026-09-12: x_search 는 정상 작동 중인데
@@ -180,9 +202,10 @@ class GrokClient(BaseAPIClient):
             json_body={
                 "model": self.model,
                 "input": prompt,
-                "tools": [{"type": "web_search"}, {"type": "x_search"}],
+                "tools": self._tools(web),
             },
         )
+        _log_usage(resp, "web+x" if web else "x")
         urls: list[str] = []
         for item in resp.get("output") or []:
             for ct in (item.get("content") or []):
@@ -217,6 +240,24 @@ class GrokClient(BaseAPIClient):
             return [d for d in data if isinstance(d, dict) and d.get("game") and d.get("change")]
         except _json.JSONDecodeError:
             return []
+
+
+def _log_usage(resp: dict, tools: str) -> None:
+    """호출 하나의 도구·토큰·비용을 한 줄로. 🔴 이것이 없어서 오늘 x_search
+    비용(호출당 $0.40)이 오래 숨어 있었다.
+
+    ⚠️ `cost_in_usd_ticks` 는 xAI 가 주는 값이다 — 우리가 단가를 곱해 계산하지
+       않는다(사본 금지). tick 은 1e-9 USD 로 역산됐다(실측 2026-09-12:
+       527토큰 도구 없는 호출 = 9,068,500 ticks ≈ $0.009).
+    """
+    u = (resp or {}).get("usage") or {}
+    if not u:
+        return
+    d = u.get("server_side_tool_usage_details") or {}
+    logger.info("[grok] 도구=%s 입력=%s 출력=%s x=%s web=%s $%.4f",
+                tools, u.get("input_tokens"), u.get("output_tokens"),
+                d.get("x_search_calls"), d.get("web_search_calls"),
+                (u.get("cost_in_usd_ticks") or 0) * 1e-9)
 
 
 def extract_output_text(resp: dict) -> str:

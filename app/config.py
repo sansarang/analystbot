@@ -418,6 +418,20 @@ class Settings(BaseSettings):
     deepsearch_first: bool = Field(default=True, validation_alias=AliasChoices(
         "DEEPSEARCH_FIRST", "deepsearch_first"))
 
+    #: [ORD-17 2026-09-12 사용자 지시] **2차 검증.** "1차는 제미니로 하고
+    #   2차를 안트로픽을 추가하자…제미니가 이렇게 승패를 냈다..2차검증을 하는거다."
+    #   🔴 **기본 꺼짐.** 실측 2026-09-12: Anthropic 크레딧이 0 이다
+    #      (400 "Your credit balance is too low"). 충전 뒤 `VERIFY_ENABLED=1`.
+    #   ⚠️ 유료 호출이 경기당 1회 는다 — 하루 약 26회(KBO 5+NPB 6+MLB 15).
+    verify_enabled: bool = Field(default=False, validation_alias=AliasChoices(
+        "VERIFY_ENABLED", "verify_enabled"))
+    #: 2차 모델. 🔴 Opus 가 아니라 **Sonnet** 이다(사용자 결정 2026-09-12).
+    #   판정이 아니라 "반대 근거가 있나"를 묻는 자리라 더 싼 모델로 시작하고,
+    #   재보고 올린다. ⚠️ `matchup_model` 과 **별개**다 — 1차를 안 건드린다.
+    verify_model: str = Field(default="claude-sonnet-5",
+                              validation_alias=AliasChoices(
+                                  "VERIFY_MODEL", "verify_model"))
+
     #: 🔴 [ORD-1 2026-09-11 사용자 지시] **순서를 바꾼다.**
     #     "경기가 나왔어 → AI 가 먼저 변수 및 갈림길을 찾는다 → 그 후에 인공위성·
     #      퍼플렉시티·X 가 보강자료를 찾는다 → 결론 → 애매한 것은 우리 DB 참조."

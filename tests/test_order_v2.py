@@ -987,14 +987,18 @@ def test_grok_이_인용을_돌려준다():
     assert "annotations" in src and "x.com" in src
 
 
-def test_기존_search_call_은_건드리지_않았다():
-    """🔴 브리핑·여론·델타·속보 넷이 그것을 쓴다."""
+def test_기존_search_call_은_프롬프트_계약을_지킨다():
+    """🔴 브리핑·여론·델타·속보 넷이 그것을 쓴다 — 위치 인자는 그대로다.
+    ⚠️ ORD-18 에서 `web` **키워드**를 더했다(기본 False = x_search 전용).
+       위치 인자를 바꾸지 않았으므로 네 경로는 그대로 돈다."""
     import inspect
 
     from app.research.grok import GrokClient
 
-    sig = inspect.signature(GrokClient._search_call)
-    assert list(sig.parameters) == ["self", "prompt"]
+    p = inspect.signature(GrokClient._search_call).parameters
+    assert list(p)[:2] == ["self", "prompt"]
+    assert p["web"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert p["web"].default is False
 
 
 # ── 영어 1차 → 모국어 2차
