@@ -1318,6 +1318,48 @@ async def is_rest_day(pool, sport: str, day: str) -> bool:
     return int(today) == 0 and int(around) > 0
 
 
+
+#: [SOC-4] 배당이 담당하는 리그 = football-data 가 못 보는 리그.
+#  🔴 목록을 손으로 적지 않는다 — `fd_names` 가 빈 리그가 곧 그것이다.
+def _odds_only_league_labels() -> list[str]:
+    from app.leagues import LEAGUES
+
+    return sorted(c["label"] for c in LEAGUES.values() if not c.get("fd_names"))
+
+
+async def _load_soccer_fixtures(pool, date: str, league_key, fd) -> list[str]:
+    """축구 일정을 1순위(football-data) → 2순위(Odds 이벤트) 로 받는다.
+
+    🔴 [SOC-4] **한 소스가 막혀도 다른 소스는 산다.** 실측 2026-09-12 22:03:
+       football-data 로 12경기를 이미 받아 놓고도 배당의
+       `ProviderBlockedError: already OUT_OF_USAGE_CREDITS` 가 위로 올라와
+       축구 분석이 통째로 끝났다. 배당은 8/27부터 크레딧 소진이고, 그 조회는
+       **2순위**다 — football-data 가 못 보는 리그만 담당한다.
+
+    ⚠️ 삼키지 않는다. 실패한 **소스 이름과 그 소스가 담당하는 리그**를
+       경고로 남긴다 — 그래야 "소스가 막혔다"와 "경기가 없다"를 가른다.
+    """
+    from app.collectors.football import upsert_games_from_football_data
+    from app.collectors.odds import upsert_games_from_odds_events
+    from app.leagues import LEAGUES
+
+    out: list[str] = []
+    if not fd.mock:
+        try:
+            out += await upsert_games_from_football_data(
+                pool, date, client=fd, league_key=league_key)
+        except Exception as exc:
+            logger.warning("[pipeline] 축구 일정 소스 실패 — football-data "
+                           "(EPL·라리가·세리에A·분데스리가): %s", exc)
+    only_keys = [LEAGUES[league_key]["odds_key"]] if league_key else None
+    try:
+        out += await upsert_games_from_odds_events(pool, date, only_keys=only_keys)
+    except Exception as exc:
+        logger.warning("[pipeline] 축구 일정 소스 실패 — 배당(odds) "
+                       "(%s): %s", " · ".join(_odds_only_league_labels()), exc)
+    return out
+
+
 async def build_analysis(
     pool: asyncpg.Pool, sport: str, date: str,
     team: str | None = None, league_key: str | None = None, progress=None,
@@ -1438,16 +1480,10 @@ async def build_analysis(
         if not ext_ids:
             # API-Football Free 플랜은 현재 시즌 미지원(비활성 폴백으로 유지) →
             # 1순위 football-data.org(메이저), 2순위 Odds API 이벤트(마이너, 중복 제외)
-            from app.collectors.football import FootballDataClient, upsert_games_from_football_data
-            from app.collectors.odds import upsert_games_from_odds_events
-            from app.leagues import LEAGUES
+            from app.collectors.football import FootballDataClient
 
-            only_keys = [LEAGUES[league_key]["odds_key"]] if league_key else None
-            fd = FootballDataClient()
-            if not fd.mock:
-                ext_ids += await upsert_games_from_football_data(
-                    pool, date, client=fd, league_key=league_key)
-            ext_ids += await upsert_games_from_odds_events(pool, date, only_keys=only_keys)
+            ext_ids += await _load_soccer_fixtures(
+                pool, date, league_key, FootballDataClient())
         stats_coro = None  # 경기 확정 후 생성 — 순위표는 경기 있는 리그만 조회
         league = "soccer"
 
