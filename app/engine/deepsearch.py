@@ -944,12 +944,14 @@ async def prescout(jg: dict, brief: str, *,
     br = [b for b in (data.get("갈림길") or []) if isinstance(b, dict)]
     asks = [str(q).strip() for q in (data.get("조사요청") or []) if str(q).strip()]
     nat = [str(q).strip() for q in (data.get("조사요청_현지어") or []) if str(q).strip()]
+    lay = [str(x).strip() for x in (data.get("조사요청_층") or []) if str(x).strip()]
     out = {"갈림길": br,
            "변수": [str(v).strip() for v in (data.get("변수") or []) if str(v).strip()],
            "조사요청": asks[:MAX_ASKS],
-           # ⚠️ 개수가 어긋나면 짝이 안 맞는다 — 그러면 2차를 통째로 포기한다.
+           # ⚠️ 개수가 어긋나면 짝이 안 맞는다 — 그러면 통째로 포기한다.
            #    잘못 짝지어 엉뚱한 질문에 답을 붙이는 것보다 안 하는 편이 낫다.
-           "조사요청_현지어": nat[:MAX_ASKS] if len(nat) == len(asks) else []}
+           "조사요청_현지어": nat[:MAX_ASKS] if len(nat) == len(asks) else [],
+           "조사요청_층": lay[:MAX_ASKS] if len(lay) == len(asks) else []}
     if not br and not asks:
         logger.warning("[prescout] 갈림길·조사요청이 둘 다 비었다 — 종전 경로로 간다 "
                        "%s@%s", jg.get("away"), jg.get("home"))
@@ -975,6 +977,46 @@ _ASK_TRIES = 2
 #: 위성 참고 목록 상한. 실측 2026-09-11: MLB 경기당 25~62건이 전부 트랜잭션
 #  줄이었다. 전량을 실으면 결론 프롬프트의 절반이 무관한 이적 공시가 된다.
 MAX_SAT = 15
+
+
+#: 층. 원본 정의는 `prompts.PRESCOUT` 이고 여기서는 이름만 쓴다.
+LAYERS = ("리그", "팀", "선수", "구장", "경기")
+
+
+def alias_hint(jg: dict) -> str:
+    """팀명 영문 + 현지 표기 병기. 모르는 팀은 영문 그대로.
+
+    🔴 실측 2026-09-12 (KBO 두산 vs NC, 선발 예고): 영문+한글을 함께 넣은
+       질문에서 X 가 2건을 냈는데, 팀 단위 영문만으로는 0건이었다.
+    ⚠️ 대응표를 여기 적지 않는다 — 원본은 `news_rss.QUERY_ALIAS` 다.
+    """
+    try:
+        from app.collectors.news_rss import QUERY_ALIAS
+    except Exception:
+        return ""
+    bits = []
+    for side in ("away", "home"):
+        t = jg.get(side) or ""
+        a = QUERY_ALIAS.get(t)
+        if t and a and a != t:
+            bits.append(f"{t}({a})")
+    return " / ".join(bits)
+
+
+def scoped(jg: dict, q: str, layer: str) -> str:
+    """층에 맞춰 질문에 검색 단서를 덧댄다. **질문 자체는 고쳐 쓰지 않는다.**
+
+    🔴 문장을 우리가 다시 쓰면(팀명 제거 같은) 그것이 창작이다. ① 이 층에
+       맞게 쓰도록 프롬프트가 지시했고, 여기서는 **표기 단서만** 얹는다.
+    """
+    lg = jg.get("league") or (jg.get("sport") or "").upper()
+    if layer == "리그":
+        # 리그 일괄 공시는 우리 팀 이름이 문장에 없다 — 팀을 덧대지 않는다.
+        return f"{q} ({lg} league-wide announcement)"
+    if layer in ("팀", "경기"):
+        hint = alias_hint(jg)
+        return f"{q} ({hint})" if hint else q
+    return q                                   # 선수·구장은 이미 고유명이 있다
 
 
 def _fmt_asks(asks: list[str]) -> str:
@@ -1144,35 +1186,22 @@ def _rows(data, asks: list[str], src: str) -> list[dict]:
     return out
 
 
-async def _native_pass(jg: dict, asks: list[str], native: list[str],
-                       rows: list[dict]) -> list[dict]:
-    """영어로 못 찾은 질문만 그 나라 말로 다시 묻는다.
+def _dedup(rows: list[dict]) -> list[dict]:
+    """같은 답을 두 번 싣지 않는다.
 
-    ⚠️ 번역을 우리가 하지 않는다 — ① 이 처음부터 두 벌을 냈다. 번역 호출을
-       따로 만들면 그것이 또 하나의 실패 지점이다.
-    ⚠️ 돌아온 답의 `질문` 은 **영어 원문으로 되돌린다** — 카드가 질문별로
-       묶어 보여주는데 같은 질문이 두 언어로 갈라지면 두 줄이 된다.
+    🔴 영어·현지어를 **동시에** 띄우면 같은 사실이 두 언어 경로로 돌아온다.
+       종전 순차 방식에는 없던 문제다 — 병렬로 바꾼 대가다.
+    ⚠️ 문장 앞 120자로만 본다. 같은 사실을 다른 말로 쓴 것은 못 걸러낸다 —
+       걸러내려면 뜻을 봐야 하고, 그건 또 한 번의 모델 호출이다.
     """
-    if not native or len(native) != len(asks):
-        return []
-    done = {r.get("질문") for r in rows if r.get("답")}
-    gap = [(i, native[i]) for i, q in enumerate(asks) if q not in done]
-    if not gap:
-        return []
-    qs = [q for _, q in gap]
-    got = await asyncio.gather(_retrying(_ask_pplx, jg, qs, "PPLX(현지어)"),
-                               _retrying(_ask_grok, jg, qs, "X(현지어)"),
-                               return_exceptions=True)
-    back = {native[i]: asks[i] for i, _ in gap}
-    out: list[dict] = []
-    for g in got:
-        if not isinstance(g, list):
+    seen: set = set()
+    out = []
+    for r in rows:
+        k = (r.get("소스"), " ".join(str(r.get("답") or "").split())[:120])
+        if k in seen:
             continue
-        for r in g:
-            r["질문"] = back.get(r.get("질문"), "")
-            out.append(r)
-    logger.info("[reinforce] 현지어 2차 %s@%s 질문 %d개 → 답 %d건",
-                jg.get("away"), jg.get("home"), len(qs), len(out))
+        seen.add(k)
+        out.append(r)
     return out
 
 
@@ -1187,30 +1216,48 @@ async def reinforce(jg: dict, pre: dict, redis=None, *,
     asks = list(pre.get("조사요청") or [])
     native = [str(q).strip() for q in (pre.get("조사요청_현지어") or [])
               if str(q).strip()]
+    layers = list(pre.get("조사요청_층") or [])
+    if len(layers) != len(asks):
+        layers = ["경기"] * len(asks)          # 짝이 안 맞으면 종전 동작
     sat = await _free_articles(jg, redis)
     rows: list[dict] = []
     if asks:
-        got = await asyncio.gather(
-            _retrying(_ask_pplx, jg, asks, "PPLX"),
-            _retrying(_ask_grok, jg, asks, "X"),
-            return_exceptions=True)
-        for g in got:
-            if isinstance(g, list):
-                rows.extend(g)
-        # 🔴 [ORD-8 사용자 지시] "최우선은 영어로 서치하고 그후로는 모국어로."
-        #    **못 찾은 질문이 남을 때만** 그 나라 말로 다시 던진다. 전부
-        #    답했으면 2차는 없다(MLB 는 현지어가 영어라 애초에 2차가 없다).
-        rows.extend(await _native_pass(jg, asks, native, rows))
-        # 🔴 [ORD-7 사용자 지시] **검색이 약한 축은 우리가 긁어 둔 것으로 답한다.**
-        #    실측 2026-09-12 game=5633: "텍사스 불펜·마무리 가용"을 두 차례 모두
-        #    못 찾았다. 그런데 `pitcher_appearances` 에는 그 기록이 있었다.
-        #    ⚠️ 자료9 를 되살리는 것이 아니다 — **①이 물었을 때만** 답한다.
+        # 🔴 [ORD-9 사용자 지시] "병렬로 돌리고 층으로 지정해라."
+        #    종전에는 영어 1차 → (못 찾은 것만) 현지어 2차가 **직렬**이었고,
+        #    각 단계 안의 재시도도 직렬이라 X 호출이 최대 4번 줄을 섰다.
+        #    실측 2026-09-12: 같은 KBO 1경기 전체 실행 **266초**.
+        #    이제 영어·현지어 × 채널 2 를 **한 번에** 띄운다(PARALLEL).
+        #    ⚠️ 대가: 현지어를 늘 함께 부르므로 콜 수가 는다(KBO·NPB 4콜).
+        #       벽시계는 가장 느린 하나로 수렴한다.
+        en = [scoped(jg, q, layers[i]) for i, q in enumerate(asks)]
+        jobs = [_retrying(_ask_pplx, jg, en, "PPLX"),
+                _retrying(_ask_grok, jg, en, "X")]
+        back = dict(zip(en, asks))
+        if len(native) == len(asks):
+            nat = [scoped(jg, q, layers[i]) for i, q in enumerate(native)]
+            jobs += [_retrying(_ask_pplx, jg, nat, "PPLX(현지어)"),
+                     _retrying(_ask_grok, jg, nat, "X(현지어)")]
+            back.update(dict(zip(nat, asks)))
         try:
             from app.collectors import bullpen_usage
 
-            rows.extend(await bullpen_usage.answers(pool, jg, asks))
+            jobs.append(bullpen_usage.answers(pool, jg, asks))
         except Exception as exc:
             logger.warning("[reinforce] 불펜 기록 조회 실패 — 계속한다: %s", exc)
+        for g in await asyncio.gather(*jobs, return_exceptions=True):
+            if not isinstance(g, list):
+                continue
+            for r in g:
+                # 🔴 질문을 **영어 원문으로 되돌린다** — 카드가 질문별로 묶는데
+                #    같은 질문이 두 언어로 갈리면 두 줄이 된다.
+                r["질문"] = back.get(r.get("질문"), r.get("질문") or "")
+                rows.append(r)
+        rows = _dedup(rows)
+        _by = {}
+        for i, q in enumerate(asks):
+            _by[layers[i]] = _by.get(layers[i], 0) + sum(
+                1 for r in rows if r.get("질문") == q)
+        logger.info("[reinforce] 층별 답 %s", _by)
     # 🔴 위성은 **질문에 답한 것이 아니다.** 오늘 긁어 둔 공시·이적·부상 목록이고,
     #    실측 2026-09-11 game=5624 에서 48건이 전부 트랜잭션 줄이었다. 이것을
     #    "답" 칸에 섞으면 결론이 무관한 48줄을 갈림길의 근거로 읽는다.

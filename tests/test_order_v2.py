@@ -1007,58 +1007,124 @@ def test_질문은_영어로_쓰고_현지어를_한_벌_더():
     assert "KBO 는 한국어" in PRESCOUT and "NPB 는 일본어" in PRESCOUT
 
 
-@pytest.mark.asyncio
-async def test_못_찾은_질문만_현지어로_다시_묻는다(monkeypatch):
+def test_영어와_현지어를_한_번에_띄운다():
+    """🔴 사용자 지시 2026-09-12: "병렬로 돌리고 층으로 지정해라."
+    종전 영어 1차 → 현지어 2차 직렬 + 단계별 재시도로 X 호출이 최대 4번
+    줄을 섰다. 실측: 같은 KBO 1경기 전체 실행 **266초**."""
+    import inspect
+
     import app.engine.deepsearch as DS
 
-    seen = {}
-
-    async def _pplx(jg, asks):
-        seen["asks"] = list(asks)
-        return [{"질문": asks[0], "답": "찾음", "소스": "pplx", "url": ""}]
-
-    async def _none(*a, **k):
-        return []
-
-    monkeypatch.setattr(DS, "_ask_pplx", _pplx, raising=False)
-    monkeypatch.setattr(DS, "_ask_grok", _none, raising=False)
-    rows = [{"질문": "EN-1", "답": "이미 찾음"}]
-    out = await DS._native_pass(_jg(), ["EN-1", "EN-2"], ["KO-1", "KO-2"], rows)
-    assert seen["asks"] == ["KO-2"], "이미 답한 질문은 다시 안 묻는다"
-    assert out[0]["질문"] == "EN-2", "질문은 영어 원문으로 되돌린다"
+    src = inspect.getsource(DS.reinforce)
+    assert "PARALLEL" in src
+    assert not hasattr(DS, "_native_pass"), "직렬 2차 경로는 사라져야 한다"
+    # 한 번의 gather 로 묶는다
+    assert src.count("await asyncio.gather") == 1
 
 
-@pytest.mark.asyncio
-async def test_전부_찾았으면_2차는_없다(monkeypatch):
+def test_현지어_답의_질문을_영어_원문으로_되돌린다():
+    """카드가 질문별로 묶는데 같은 질문이 두 언어로 갈리면 두 줄이 된다."""
+    import inspect
+
     import app.engine.deepsearch as DS
 
-    called = {"n": 0}
-
-    async def _boom(*a, **k):
-        called["n"] += 1
-        return []
-
-    monkeypatch.setattr(DS, "_ask_pplx", _boom, raising=False)
-    monkeypatch.setattr(DS, "_ask_grok", _boom, raising=False)
-    out = await DS._native_pass(_jg(), ["EN-1"], ["KO-1"],
-                                [{"질문": "EN-1", "답": "찾음"}])
-    assert out == [] and called["n"] == 0
+    src = inspect.getsource(DS.reinforce)
+    assert 'back.get(r.get("질문")' in src
 
 
-@pytest.mark.asyncio
-async def test_현지어가_없으면_2차를_건너뛴다():
-    """MLB 는 현지어가 영어라 이 칸이 비어 있다."""
+def test_같은_답을_두_번_싣지_않는다():
+    """🔴 병렬로 바꾼 대가 — 같은 사실이 두 언어 경로로 돌아온다."""
+    from app.engine.deepsearch import _dedup
+
+    rows = [{"소스": "pplx", "답": "구창모 선발"},
+            {"소스": "pplx", "답": "구창모  선발"},      # 공백만 다름
+            {"소스": "x", "답": "구창모 선발"}]          # 채널이 다르면 남긴다
+    assert len(_dedup(rows)) == 2
+
+
+# ── 층
+
+def test_층을_질문마다_정하게_한다():
+    """🔴 실측 2026-09-12 (KBO 두산 vs NC, 엔트리 등말소):
+       경기 0건 · 팀 0건 · **리그 1건** · 계정 0건.
+    리그 층이 찾아온 문장에는 두산도 NC도 없었다 — 경기명으로 좁히면
+    구조적으로 못 잡는다."""
+    from app.engine.prompts import PRESCOUT
+
+    assert "조사요청_층" in PRESCOUT
+    assert "리그 일괄 공시" in PRESCOUT
+    for layer in ("리그", "팀", "선수", "구장", "경기"):
+        assert f"`{layer}`" in PRESCOUT, layer
+
+
+def test_리그_층에는_팀_이름을_넣지_말라고_한다():
+    from app.engine.prompts import PRESCOUT
+
+    assert "이 층의 질문에는 **팀 이름을 넣지 마라.**" in PRESCOUT
+
+
+def test_리그_층은_팀명을_덧대지_않는다():
+    """🔴 리그 일괄 공시에는 우리 팀 이름이 없다."""
+    from app.engine.deepsearch import scoped
+
+    jg = {"sport": "kbo", "league": "KBO",
+          "home": "Doosan Bears", "away": "NC Dinos"}
+    q = scoped(jg, "roster moves", "리그")
+    assert "Doosan" not in q and "두산" not in q
+    assert "KBO" in q
+
+
+def test_팀_경기_층은_영문과_현지_표기를_함께_붙인다():
+    """🔴 실측: 영문+한글 병기에서 X 가 2건, 영문만으로는 0건."""
+    from app.engine.deepsearch import scoped
+
+    jg = {"sport": "kbo", "league": "KBO",
+          "home": "Doosan Bears", "away": "NC Dinos"}
+    for layer in ("팀", "경기"):
+        q = scoped(jg, "lineup news", layer)
+        assert "Doosan Bears" in q and "두산 베어스" in q
+
+
+def test_선수_구장_층은_손대지_않는다():
+    """이미 고유명이 들어 있다 — 덧대면 잡음이다."""
+    from app.engine.deepsearch import scoped
+
+    jg = {"sport": "kbo", "league": "KBO",
+          "home": "Doosan Bears", "away": "NC Dinos"}
+    assert scoped(jg, "Koo Chang-mo injury", "선수") == "Koo Chang-mo injury"
+    assert scoped(jg, "Jamsil roof", "구장") == "Jamsil roof"
+
+
+def test_별칭표를_베끼지_않는다():
+    """🔴 원본은 `news_rss.QUERY_ALIAS` 다."""
+    src = open("app/engine/deepsearch.py", encoding="utf-8").read()
+    assert "QUERY_ALIAS" in src
+    assert "두산 베어스" not in src, "표기를 손으로 옮겨 적으면 사본이다"
+
+
+def test_모르는_팀은_영문_그대로():
+    from app.engine.deepsearch import alias_hint
+
+    assert alias_hint({"home": "Unknown FC", "away": "Nobody"}) == ""
+
+
+def test_층이_어긋나면_종전처럼_경기로_본다():
+    """🔴 잘못 짝지어 엉뚱한 층으로 묻는 것보다 낫다."""
+    import inspect
+
     import app.engine.deepsearch as DS
 
-    assert await DS._native_pass(_jg(), ["EN-1"], [], []) == []
+    src = inspect.getsource(DS.reinforce)
+    assert 'layers = ["경기"] * len(asks)' in src
 
 
-@pytest.mark.asyncio
-async def test_개수가_어긋나면_짝을_짓지_않는다():
-    """🔴 잘못 짝지어 엉뚱한 질문에 답을 붙이는 것보다 안 하는 편이 낫다."""
+def test_층별_답_수를_로그에_남긴다():
+    """안 남기면 "리그 층이 정말 나은가"를 다음에 다시 물어야 한다."""
+    import inspect
+
     import app.engine.deepsearch as DS
 
-    assert await DS._native_pass(_jg(), ["A", "B"], ["가"], []) == []
+    assert "층별 답 %s" in inspect.getsource(DS.reinforce)
 
 
 def test_카드가_계정을_밝힌다():
