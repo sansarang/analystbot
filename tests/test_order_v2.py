@@ -224,12 +224,15 @@ def test_DB_가_오지_않는다고_못박는다():
 
 
 def test_박스스코어와_폼을_새_순서에서는_만들지_않는다():
-    """🔴 "최근 3경기 폼도 삭제" — 만들어 봐야 프롬프트에 안 들어간다."""
+    """🔴 "최근 3경기 폼도 삭제" — 만들어 봐야 프롬프트에 안 들어간다.
+    ⚠️ ORD-20 에서 v3 가 생기며 조건이 `_skip_db = _order_v2 or _order_v3` 로
+       넓어졌다. 건너뛴다는 계약은 그대로다."""
     src = open("app/engine/matchup.py", encoding="utf-8").read()
     body = src[src.index("async def judge_matchup"):]
-    assert "boxes = {} if _order_v2 else boxscore_payload(jg)" in body
+    assert "_skip_db = _order_v2 or _order_v3" in body
+    assert "boxes = {} if _skip_db else boxscore_payload(jg)" in body
     i = body.index('_form_or_analyze(jg, redis, date, "home"')
-    assert "if _order_v2:" in body[i - 700:i]
+    assert "if _skip_db:" in body[i - 700:i]
 
 
 def test_새_순서는_판정_프롬프트를_조립하지_않는다():

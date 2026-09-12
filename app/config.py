@@ -430,6 +430,17 @@ class Settings(BaseSettings):
     deepsearch_first: bool = Field(default=True, validation_alias=AliasChoices(
         "DEEPSEARCH_FIRST", "deepsearch_first"))
 
+    #: [ORD-20 2026-09-12] **새 순서(1~4단계).** 수집 → 선별 → 판정 → DB 참조.
+    #   🔴 **기본 꺼짐.** 세 순서가 공존한다 — 구경로(자료1~14) · ORDER_V2
+    #      (갈림길 먼저) · ORDER_V3(신규). 우선순위는 v3 > v2 > 구경로.
+    #      앞의 둘을 지우지 않는다: 오늘 하루에만 순서를 세 번 바꿨고, 되돌릴
+    #      길이 없으면 다음 사고 때 멈출 수단이 사라진다.
+    #   ⚠️ 이 스위치는 **검색을 켜지 않는다.** x_search 는
+    #      `SCOUT_XSEARCH_ENABLED`, 퍼플렉시티는 `DEEPSEARCH_PPLX_ENABLED` 가
+    #      따로 잠근다(지금 둘 다 꺼져 있다 — 비용 차단 2026-09-12).
+    order_v3: bool = Field(default=False, validation_alias=AliasChoices(
+        "ORDER_V3", "order_v3"))
+
     #: [ORD-17 2026-09-12 사용자 지시] **2차 검증.** "1차는 제미니로 하고
     #   2차를 안트로픽을 추가하자…제미니가 이렇게 승패를 냈다..2차검증을 하는거다."
     #   🔴 **기본 꺼짐.** 실측 2026-09-12: Anthropic 크레딧이 0 이다

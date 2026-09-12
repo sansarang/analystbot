@@ -969,6 +969,71 @@ def render_conclude_prompt(jg: dict, brief: str, pre: dict, reinf: dict) -> str:
                 EVIDENCE=_fmt_evidence(reinf))
 
 
+async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
+                    pool=None) -> dict | None:
+    """[ORD-20 · 5단계] 수집 → 선별 → 판정 → DB 참조.
+
+    사용자 지시 2026-09-12: "경기에 대한 것만 서치해 온다…ai가 거른다…
+    ai가 db 참조 승패를 예측한다" · "db 관련도 ai 판단에 의해…자율적으로"
+
+    🔴 **탈락 사유를 전부 남긴다.** 어느 단계에서 멈췄는지 모르면 "봇이 죽었나"와
+       "재료가 없었나"를 사용자가 구분할 수 없다(실측 2026-09-01 전례).
+    🔴 최종 권한을 잡았다가 실패하면 **반납한다** — 안 그러면 다음 폴링이
+       "이미 완료"로 막혀 그 경기는 카드가 0장이 된다(P0 전례 2026-09-06).
+    """
+    from app.engine import dbref, gather, triage, verdict
+
+    async def _drop(why: str):
+        jg["form_unavailable"] = True
+        jg.setdefault("order_v3", {})["탈락"] = why
+        if final:
+            await release_final(redis, jg, date)
+        logger.warning("[v3] %s@%s 탈락 — %s",
+                       jg.get("away"), jg.get("home"), why)
+        return None
+
+    # ① 수집 — 질문 없이. collect 가 크롤러 선발로 jg 를 먼저 메운다(ORD-16).
+    col = await gather.collect(jg, redis, date, pool=pool)
+    if not col["자료"]:
+        return await _drop("수집 0건")
+    brief = game_brief(jg)
+
+    # ② 선별 — AI 가 거르고 갈림길을 세운다.
+    tri = await triage.run(jg, brief, col["자료"])
+    if tri is None:
+        return await _drop("선별 실패")
+    if not tri["채택"]:
+        # 🔴 재료 없이 판정하지 않는다(절대 규칙 6).
+        return await _drop("채택 0건")
+
+    # ③ 판정 — 조사 결과만으로 승자 + 확신.
+    v = await verdict.decide(jg, brief, tri)
+    if v is None:
+        return await _drop("판정 실패")
+
+    # ④ DB 참조 — 통째로 주고 AI 가 자율 판단. 실패해도 ③ 판정을 쓴다.
+    ref = await dbref.recheck(jg, tri, v)
+    jg["order_v3"] = {
+        "수집": col["출처"], "계측": tri["계측"],
+        "갈림길목록": tri["갈림길"], "자료": tri["채택"],
+        "질문": [], "출처": col["출처"],
+        "없는것": tri["없는것"],
+        "DB있음": ref["있음"], "DB없음": ref["없음"], "DB본것": ref["본것"],
+        "DB판정": ref["판정"], "승자변경": ref["승자변경"], "DB사유": ref["사유"],
+    }
+    if not apply_winner(jg, {"승자": ref["승자"], "확신": ref["확신"]}):
+        return await _drop("승자가 이 경기의 팀이 아니다")
+    jg["final_verdict"] = final
+    jg["judge_stage"] = "final" if final else "prelim"
+    await persist_matchup_record(redis, jg, date)
+    logger.info("[v3] %s@%s 승자 %s · 확신 %s · 수집%s 채택%d · DB %s%s",
+                jg.get("away"), jg.get("home"), jg.get("winner"),
+                (jg.get("matchup") or {}).get("확신"), col["출처"],
+                tri["계측"]["채택"], ref["판정"],
+                " 🔴승자변경" if ref["승자변경"] else "")
+    return {"승자": ref["승자"], "확신": ref["확신"]}
+
+
 async def judge_matchup(jg: dict, redis, date: str, *,
                         mock: bool | None = None,
                         allow_final: bool = False, pool=None) -> dict | None:
@@ -1039,7 +1104,11 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #    않는다. 만들지 않으면 팀당 LLM 호출 1회도 함께 사라진다.
     #    ⚠️ 스위치가 꺼진 종전 경로는 한 글자도 바뀌지 않는다.
     _order_v2 = bool(getattr(settings, "order_v2", False)) and not is_mock
-    if _order_v2:
+    # 🔴 [ORD-20] v3 도 자료1~14 를 안 쓴다 — 여기서 함께 건너뛰지 않으면
+    #    **팀 폼 LLM 2콜을 만들어 놓고 버린다.** 계약 테스트가 이 자리를 잠근다.
+    _order_v3 = bool(getattr(settings, "order_v3", False)) and not is_mock
+    _skip_db = _order_v2 or _order_v3
+    if _skip_db:
         home_form, away_form = {}, {}
     else:
         home_form = await _form_or_analyze(jg, redis, date, "home", mock)
@@ -1049,8 +1118,8 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #    "헤이쿠 평가서"가 아니라 "3경기 숫자"다. 뉴스(평가서)는 보조 신호라
     #    빠져도 판정은 성립한다 — 없으면 뉴스 없이 간다.
     #    ⚠️ 숫자가 없으면 종전과 똑같이 탈락이다. 재료 없이 분석을 만들지 않는다.
-    boxes = {} if _order_v2 else boxscore_payload(jg)
-    if not _order_v2 and (not boxes.get("home") or not boxes.get("away")):
+    boxes = {} if _skip_db else boxscore_payload(jg)
+    if not _skip_db and (not boxes.get("home") or not boxes.get("away")):
         jg["form_unavailable"] = True
         logger.info("[matchup] %s vs %s 3경기 박스스코어 없음 — 추천 탈락 "
                     "(home=%s away=%s)", home, away,
@@ -1072,7 +1141,7 @@ async def judge_matchup(jg: dict, redis, date: str, *,
 
         # [ORD-2] 새 순서에서는 심의록이 들어갈 칸(자료2)이 없다 — 돌리면
         #   쓰이지 않는 LLM 호출만 나간다.
-        if not _order_v2:
+        if not _skip_db:
             await _council(jg, date, redis)
     except Exception as exc:
         logger.warning("[council] game=%s 실패 — 심의 없이 판정한다: %s",
@@ -1099,6 +1168,12 @@ async def judge_matchup(jg: dict, redis, date: str, *,
     #   아니라 "무엇이 바뀌어 어디로 움직였나"가 되게 한다.
     #   (실측 사례: 안우진 등판 확인 → 두산 0.62→0.59 철회)
     prev = prev_verdict(jg)
+    # 🔴 [ORD-20 2026-09-12] **새 순서(1~4단계).** 수집 → 선별 → 판정 → DB 참조.
+    #    ⚠️ 호출 순서가 계약이다: collect → game_brief → triage → decide →
+    #       recheck. collect 가 먼저여야 game_brief 가 선발을 본다(ORD-16).
+    #    ⚠️ 단계마다 탈락 사유가 다르고 **전부 남긴다** — 조용한 0 을 만들지 않는다.
+    if _order_v3:
+        return await _judge_v3(jg, redis, date, final=final, pool=pool)
     # 🔴 [ORD-2 2026-09-11 사용자 지시] **DB 를 판정 입력에서 전부 뺀다.**
     #    "데이타 베이스는 전부 삭제...최근 3경기 폼도 삭제...db가 답을 바꾼다."
     #    그래서 새 순서에서는 `render_matchup_prompt` 를 **부르지 않는다** —

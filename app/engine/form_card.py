@@ -212,7 +212,8 @@ def render_search_card(jg: dict, sport: str | None = None) -> str:
        **하나도 없다.** 헤더 + 갈림길별 조사 답 + 공시 + 승자. 끝이다.
     ⚠️ 자료를 여기서 다시 모으지 않는다 — `jg["order_v2"]` 가 원본이다.
     """
-    ov = jg.get("order_v2") or {}
+    # [ORD-20] v3 · v2 가 같은 모양을 낸다 — 카드는 둘을 구분하지 않는다.
+    ov = jg.get("order_v3") or jg.get("order_v2") or {}
     sport = sport or jg.get("sport") or ""
     home, away = _team(jg.get("home") or "?"), _team(jg.get("away") or "?")
     league = jg.get("league") or sport.upper()
@@ -288,7 +289,17 @@ def render_search_card(jg: dict, sport: str | None = None) -> str:
     w = jg.get("winner") or (jg.get("matchup") or {}).get("승자")
     if w:
         lines.append("")
-        lines.append(f"🏆 승리 예상 — {_team(w)}")
+        conf = (jg.get("matchup") or {}).get("확신")
+        # [ORD-12] 되살린 것은 확신 한 칸뿐이다 — 설명이 아니라 라벨이다.
+        lines.append(f"🏆 승리 예상 — {_team(w)}"
+                     + (f" · 확신 {conf}" if conf else ""))
+        # 🔴 [ORD-15] DB 참조로 승자가 바뀌었으면 **드러낸다.** 막지 않는
+        #    대신 조용한 변경만 없앤다.
+        if ov.get("승자변경"):
+            lines.append(f"   🔴 우리 기록을 보고 승자를 바꿨다 — {ov.get('DB사유')}")
+        seen = ov.get("DB본것")
+        if seen:
+            lines.append(f"   (우리 기록에서 본 것: {' · '.join(seen)})")
 
     from app.collectors.lineups import pick_state as _ps
 
@@ -324,7 +335,7 @@ def render_form_card(jg: dict, sport: str | None = None, *,
     # 🔴 [ORD-3] **설정이 아니라 데이터로 가른다.** `order_v2` 가 붙은 경기는
     #    새 방식으로 판정된 것이고, 한 슬레이트에 두 방식이 섞여도 각 카드가
     #    제 방식대로 그려진다.
-    if jg.get("order_v2"):
+    if jg.get("order_v3") or jg.get("order_v2"):
         return render_search_card(jg, sport)
     sport = sport or jg.get("sport") or ""
     home, away = _team(jg.get("home") or "?"), _team(jg.get("away") or "?")
