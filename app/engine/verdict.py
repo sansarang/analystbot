@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 #: 확신 눈금. 원본은 `prompts.MATCHUP` 의 `확신도` 다 — 새 눈금을 만들지 않는다.
 LEVELS = ("상", "중", "하")
 
+#: 재요청 상한. 🔴 원본은 `websearch.MAX_ASKS` — 숫자를 두 곳에 적지 않는다.
+from app.collectors.websearch import MAX_ASKS as _MAX_ASKS  # noqa: E402
+
 
 def level(raw) -> str:
     """모르는 라벨은 `하` 로 떨어뜨린다.
@@ -58,7 +61,12 @@ def render(jg: dict, brief: str, tri: dict) -> str:
     from app.engine.deepsearch import _today_kst
     from app.engine.prompts import JUDGE2, fill
 
-    return fill(JUDGE2,
+    # 🔴 [SRCH-7] **DB 항목 이름을 프롬프트에 손으로 적지 않는다** — 원본은
+    #    `dbref.ITEMS` 다. 손으로 옮기면 항목이 늘 때 프롬프트만 옛것이 된다.
+    from app.engine.dbref import ITEMS as _ITEMS
+
+    menu = "\n".join(f"      · {n}" for n, _ in _ITEMS)
+    return fill(JUDGE2, DB_MENU=menu,
                 LEAGUE=jg.get("league") or (jg.get("sport") or "").upper(),
                 AWAY=jg.get("away") or "", HOME=jg.get("home") or "",
                 TODAY=_today_kst(), BRIEF=brief or "(없음)",
@@ -103,7 +111,10 @@ async def decide(jg: dict, brief: str, tri: dict, *,
     # 🔴 [SRCH-6] 서술은 **선택 칸**이다 — 없어도 판정은 산다. 승자가 본체다.
     #    사용자 지시 2026-09-12: "제미니가 분석한 글을 그대로 보여달라고 해라".
     out = {"승자": str(parsed["승자"]).strip(), "확신": level(parsed.get("확신")),
-           "서술": " ".join(str(parsed.get("서술") or "").split())}
+           "서술": " ".join(str(parsed.get("서술") or "").split()),
+           # 🔴 [SRCH-7] 재요청. **코드가 자른다** — 상한 원본은 websearch 다.
+           "추가요청": [str(x).strip() for x in (parsed.get("추가요청") or [])
+                        if str(x).strip()][:_MAX_ASKS]}
     logger.info("[verdict] %s@%s 승자 %s · 확신 %s · 서술 %d자 (채택 %d · 없는것 %d)",
                 jg.get("away"), jg.get("home"), out["승자"], out["확신"],
                 len(out["서술"]), len(tri.get("채택") or []),

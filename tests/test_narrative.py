@@ -148,3 +148,37 @@ def test_서술_칸에_머리표가_있다():
         _jg(matchup={"승자": "Doosan Bears", "확신": "중", "서술": "두산이 앞선다."}),
         "kbo")
     assert "🧠" in out
+
+
+# ═══════════════ ③ 배선 — 판정에서 카드까지 실제로 닿는가
+
+def test_판정_문이_서술을_흘리지_않는다():
+    """🔴 실측 2026-09-12: 제미니가 분석글을 썼는데 4/4 전부 **0자**로
+    카드에 닿았다. `_judge_v3` 가 `apply_winner(… ref["승자"], ref["확신"])`
+    만 넘겨 `v["서술"]` 을 버렸기 때문이다.
+
+    영향지도에 `apply_winner` 를 적어 놓고 **거기 무엇이 들어가는지는
+    따라가지 않았다** — 같은 실수를 카드에서도 했다(SRCH-5).
+    """
+    import inspect
+
+    src = inspect.getsource(MU._judge_v3)
+    i = src.index("apply_winner")
+    assert "서술" in src[max(0, i - 500):i + 200], "서술이 배선에 없다"
+
+
+def test_DB가_승자를_바꾸면_서술을_버린다():
+    """🔴 그 글은 **다른 팀**을 설명한 것이다. 남기면 카드가 앞뒤가 안 맞는다."""
+    import inspect
+
+    src = inspect.getsource(MU._judge_v3)
+    assert '승자변경' in src[src.index("_story"):src.index("_story") + 200]
+
+
+def test_서술이_원장에도_남는다():
+    """🔴 카드만 보고 끝나면 나중에 "무슨 근거였나"를 못 묻는다."""
+    import inspect
+
+    src = inspect.getsource(MU._judge_v3)
+    body = src[src.index('jg["order_v3"] = {'):]
+    assert '"서술"' in body[:900]

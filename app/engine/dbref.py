@@ -73,6 +73,56 @@ def bundle(jg: dict) -> dict:
     return {"줄": rows, "있음": have, "없음": miss}
 
 
+#: 이 채널의 행 라벨. 수집 출처 집계에 그대로 쓰인다.
+SOURCE = "우리 기록"
+
+
+def _norm(t: str) -> str:
+    return "".join(str(t or "").split()).lower()
+
+
+def fetch(jg: dict, names, *, with_miss: bool = False):
+    """[SRCH-7] 이름으로 DB 항목을 꺼내 **수집 행**으로 돌려준다.
+
+    사용자 지시 2026-09-12: "양팀 선발의 상세 투구는 있다.. 없으면 안트로픽이나
+    퍼플릭스한테 요청을 해서 받으라고 해야 한다."
+
+    🔴 왜. 실측 2026-09-12: 제미니 분석글 4/4 가 "선발 투수의 최근 등판
+       세부 기록을 확인하지 못했다"로 끝났는데, **그 기록은 우리 DB에 있다**
+       (`선발 최근 등판`). 2단계 선별도 `DB요청` 으로 정확히 지목하고 있었다 —
+       그 칸을 아무도 읽지 않았을 뿐이다.
+
+    🔴 **못 맞춘 이름을 조용히 버리지 않는다.** 실측 2026-09-12: 4경기 중
+       2경기가 "양 팀 선발 투수의 최근 등판 성적 및 평균자책점"처럼 풀어 써서
+       매핑에 실패했다. `with_miss=True` 로 못 맞춘 것을 함께 돌려준다.
+    ⚠️ 값이 빈 항목은 행을 만들지 않는다 — 실으면 판정이 "있다"로 읽는다.
+    """
+    want = [str(x).strip() for x in (names or []) if str(x).strip()]
+    if not want:
+        return ([], []) if with_miss else []
+    have = {name: val for name, val in bundle(jg)["줄"]}
+    rows: list[dict] = []
+    miss: list[str] = []
+    for w in want:
+        wn = _norm(w)
+        hit = next((k for k in have if _norm(k) == wn), None)
+        if hit is None:
+            # 풀어 쓴 이름 — 항목 이름의 글자가 전부 들어 있으면 그것으로 본다.
+            hit = next((k for k in have
+                        if all(ch in wn for ch in _norm(k))), None)
+        val = have.get(hit) if hit else None
+        if not (val and str(val).strip()):
+            miss.append(w)
+            continue
+        rows.append({"질문": "", "답": f"{hit} — {str(val).strip()}",
+                     "소스": SOURCE, "소스유형": "기록", "시점": "",
+                     "계정": "", "url": ""})
+    if miss:
+        logger.info("[dbref] %s@%s DB로 못 채운 요청 %d개: %s",
+                    jg.get("away"), jg.get("home"), len(miss), miss)
+    return (rows, miss) if with_miss else rows
+
+
 def fmt(rows: list[tuple[str, str | None]]) -> str:
     return "\n".join(f"· {n} — {t if t else '없음'}" for n, t in rows) or "(없음)"
 

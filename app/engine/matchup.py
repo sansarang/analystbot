@@ -1020,10 +1020,44 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
     if found["자료"]:
         tri["채택"] = list(tri["채택"]) + found["자료"]
 
-    # ③ 판정 — 조사 결과 + 검색 결과로 승자 + 확신.
+    # 🔴 [SRCH-7] **2단계가 지목한 DB 항목을 판정 앞에서 채운다.**
+    #    실측 2026-09-12: 제미니 분석글 4/4 가 "선발 투수의 최근 등판 세부
+    #    기록을 확인하지 못했다"로 끝났는데, 그 기록은 우리 DB에 있었다.
+    #    2단계도 `DB요청: 선발 최근 등판` 으로 정확히 지목했는데 **아무도
+    #    읽지 않았다**(ORD-15 에서 죽은 칸이 됐다). 공짜이고, 판정 뒤가
+    #    아니라 앞에 줘야 판정이 쓴다.
+    db_rows = dbref.fetch(jg, tri.get("DB요청"))
+    if db_rows:
+        tri["채택"] = list(tri["채택"]) + db_rows
+
+    # ③ 판정 — 조사 + 검색 + DB 보충으로 승자 + 확신.
     v = await verdict.decide(jg, brief, tri)
     if v is None:
         return await _drop("판정 실패")
+
+    # 🔴 [SRCH-7] **재요청 — 딱 한 번.** 사용자 지시: "제미니는 필요한 거를
+    #    재요청할 수 있다". 무한 되묻기는 호출을 폭발시키므로 1회로 묶는다.
+    #    ⚠️ **공짜를 먼저 쓴다** — DB로 채우고, 못 채운 것만 검색한다.
+    asks2 = list(v.get("추가요청") or [])
+    more: list[dict] = []
+    miss2: list[str] = []
+    if asks2:
+        more, miss2 = dbref.fetch(jg, asks2, with_miss=True)
+        if miss2:
+            got2 = await gather.search(jg, miss2, date)
+            more += got2["자료"]
+    if more:
+        tri["채택"] = list(tri["채택"]) + more
+        logger.info("[v3] %s@%s 재요청 %d개 → DB %d · 검색 %d — 다시 판정한다",
+                    jg.get("away"), jg.get("home"), len(asks2),
+                    len(more) - len(miss2), len(miss2))
+        v2 = await verdict.decide(jg, brief, tri)
+        if v2 is not None:
+            if v2.get("승자") != v.get("승자"):
+                logger.warning("[v3] 🔴 %s@%s 보충 뒤 승자가 바뀌었다 %s → %s",
+                               jg.get("away"), jg.get("home"),
+                               v.get("승자"), v2.get("승자"))
+            v = v2
 
     # ④ DB 참조 — 통째로 주고 AI 가 자율 판단. 실패해도 ③ 판정을 쓴다.
     #    🔴 [SRCH-1 2026-09-12] **여기가 끝이다.** 2차 검증(Anthropic)을 지웠다 —
@@ -1031,6 +1065,13 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
     #       ⚠️ 2차가 검색 요청자였다. 그 역할은 ②선별(`triage.없는것`)로 간다
     #          (SRCH-3). 그전까지 이 경로의 외부 유료 호출은 **0** 이다.
     ref = await dbref.recheck(jg, tri, v)
+    # 🔴 [SRCH-6] **서술을 여기서 흘리지 않는다.** 실측 2026-09-12: 제미니가
+    #    분석글을 썼는데 4/4 전부 0자로 카드에 닿았다 — `ref` 에는 서술이
+    #    없는데 여기서 `ref` 만 넘겼기 때문이다.
+    #    ⚠️ DB 참조가 승자를 바꿨으면 서술을 버린다. 그 글은 **다른 팀**을
+    #       설명한 것이고, 남기면 카드가 앞뒤가 안 맞는다. 바뀐 이유는
+    #       `DB사유` 가 이미 드러낸다(ORD-15).
+    _story = "" if ref["승자변경"] else (v.get("서술") or "")
     jg["order_v3"] = {
         "수집": col["출처"], "계측": tri["계측"],
         "갈림길목록": tri["갈림길"], "자료": tri["채택"],
@@ -1038,11 +1079,16 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
         "없는것": tri["없는것"],
         "DB있음": ref["있음"], "DB없음": ref["없음"], "DB본것": ref["본것"],
         "DB판정": ref["판정"], "승자변경": ref["승자변경"], "DB사유": ref["사유"],
+        "서술": _story,
         # 🔴 [SRCH-3] 조용한 0 금지 — "검색을 안 했다"와 "했는데 0건"은 다르다.
         "검색요청": list(asks), "검색n": len(found["자료"]),
         "검색출처": found["출처"],
+        # 🔴 [SRCH-7] 보충을 조용히 넘기지 않는다 — "안 물었다"와 "물었는데
+        #    못 받았다"는 다르다.
+        "DB보충": len(db_rows), "재요청": list(asks2), "재요청n": len(more),
     }
-    if not apply_winner(jg, {"승자": ref["승자"], "확신": ref["확신"]}):
+    if not apply_winner(jg, {"승자": ref["승자"], "확신": ref["확신"],
+                             "서술": _story}):
         return await _drop("승자가 이 경기의 팀이 아니다")
     jg["final_verdict"] = final
     jg["judge_stage"] = "final" if final else "prelim"

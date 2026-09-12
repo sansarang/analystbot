@@ -77,11 +77,22 @@ def test_출력은_승자와_확신_둘뿐이다():
         assert gone not in out, gone
 
 
-def test_DB가_이_자리에_오지_않는다고_못박는다():
+def test_기억으로_판단하지_말라고_못박는다():
+    """🔴 [SRCH-7 2026-09-12] 종전 계약은 "우리 DB는 이 자리에 오지 않는다"
+    였다. 사용자 지시로 **뒤집혔다** — "양팀 선발의 상세 투구는 있다..
+    제미니는 필요한 거를 재요청할 수 있다".
+
+    실측이 그 지시의 근거다: 제미니 분석글 4/4 가 "선발 투수의 최근 등판
+    세부 기록을 확인하지 못했다"로 끝났는데 그 기록은 DB에 있었다.
+    이제 2단계가 지목한 DB 항목은 판정 자리에 **온다**(SRCH-7).
+
+    ⚠️ 그러나 **기억 금지는 그대로다** — 온 것만 쓰고, 안 온 것은 요청한다.
+    """
     from app.engine.prompts import JUDGE2
 
-    assert "이 자리에 오지 않는다" in JUDGE2
     assert "기억으로 판단하지 마라" in JUDGE2
+    assert "이 자리에 오지 않는다" not in JUDGE2
+    assert "추가요청" in JUDGE2, "요청할 길이 없으면 기억 금지가 막다른 길이다"
 
 
 # ═══════════════ ③ 2단계 산출을 그대로 받는다
@@ -142,7 +153,9 @@ async def test_정상이면_승자와_확신을_돌려준다(monkeypatch):
     _patch(monkeypatch, '{"승자": "Doosan Bears", "확신": "중"}')
     out = await V.decide(_jg(), "b", _tri())
     # [SRCH-6] `서술` 이 늘었다 — 안 오면 빈 문자열이고 판정은 그대로 산다.
-    assert out == {"승자": "Doosan Bears", "확신": "중", "서술": ""}
+    # [SRCH-6] `서술` · [SRCH-7] `추가요청` 이 늘었다 — 둘 다 선택 칸이다.
+    assert out == {"승자": "Doosan Bears", "확신": "중", "서술": "",
+                   "추가요청": []}
 
 
 @pytest.mark.asyncio
