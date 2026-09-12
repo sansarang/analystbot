@@ -185,7 +185,19 @@ async def _bullpen(pool, jg: dict) -> list[dict]:
         team = jg.get(side) or ""
         if not team:
             continue
-        text = BU.to_answer(team, await BU.recent(pool, sport, team))
+        data = await BU.recent(pool, sport, team)
+        # 🔴 [SRCH-8] **읽은 것을 버리지 않는다.** 종전에는 문장으로만 쓰고
+        #    끝냈고, `bullpen_payload` 는 `research` 를 보므로 4단계 DB가
+        #    영영 `없음` 이었다(실측 2026-09-12). 같은 사실이 두 갈래로
+        #    갈라져 있던 것이다.
+        #    ⚠️ `era` 는 스탯 수집기가 채운다 — `setdefault` 로 덮지 않는다.
+        #    ⚠️ 기록이 없으면 칸을 만들지 않는다 — 빈 칸은 `bundle` 이
+        #       "있음"으로 세고, 그러면 모르는 것이 아는 것이 된다.
+        if data.get("투수"):
+            blk = (jg.setdefault("research", {})
+                     .setdefault(f"{side}_bullpen", {}))
+            blk.setdefault("최근", data)
+        text = BU.to_answer(team, data)
         if text:
             out.append(_row(text, src="크롤러", kind="기록"))
     return out
@@ -222,9 +234,24 @@ async def enrich(jg: dict, redis, date: str) -> list[str]:
         if name:
             jg[f"{side}_pitcher"] = name
             filled.append(f"{side}={name}")
+    # 🔴 [SRCH-8] **타순도 메운다.** `lineups_payload` 에는 이 칸을 읽는
+    #    폴백이 **이미 있었다**(`jg["lineup_{side}"]`). 그런데 아무도 안 채워서
+    #    영영 안 걸렸다 — 실측 2026-09-12: 4단계 DB가 `오늘 타순` 을 "있음"으로
+    #    세면서도 `타순: null` 이었고, 수집 행에도 타순 줄이 없었다.
+    #    크롤러는 그 값을 10분마다 긁고 있었다.
+    #    ⚠️ 파싱은 `lineup_diff.parse_order` 가 원본이다 — 여기서 자르지 않는다.
+    #    ⚠️ **비어 있을 때만.** 기존 값을 덮으면 그게 더 나쁘다(선발과 같은 규약).
+    for side in ("home", "away"):
+        key = f"lineup_{side}"
+        if str(jg.get(key) or "").strip():
+            continue
+        raw = str(row.get(key) or "").strip()
+        if raw:
+            jg[key] = raw
+            filled.append(f"{key}={raw[:18]}…")
     if filled:
         # 🔴 어디서 온 값인지 안 남기면 "왜 선발이 바뀌었나"를 못 푼다.
-        logger.info("[gather] 크롤러로 선발을 메웠다 %s@%s · %s",
+        logger.info("[gather] 크롤러로 메웠다 %s@%s · %s",
                     jg.get("away"), jg.get("home"), " ".join(filled))
     return filled
 

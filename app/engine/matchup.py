@@ -1015,20 +1015,24 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
     #    유료 검색 지점이다. 요청이 비면 한 채널도 안 부른다(경기당 $0.10).
     #    ⚠️ 결과를 `채택` 에 **합친다** — 검색해 놓고 ③이 못 보면 돈만 쓴 것이다.
     #       다만 `계측` 은 덮지 않는다. 선별이 센 숫자와 섞으면 상태 이원화다.
-    asks = tri.get("검색요청") or []
-    found = await gather.search(jg, asks, date) if asks else {"자료": [], "출처": {}}
-    if found["자료"]:
-        tri["채택"] = list(tri["채택"]) + found["자료"]
-
     # 🔴 [SRCH-7] **2단계가 지목한 DB 항목을 판정 앞에서 채운다.**
     #    실측 2026-09-12: 제미니 분석글 4/4 가 "선발 투수의 최근 등판 세부
     #    기록을 확인하지 못했다"로 끝났는데, 그 기록은 우리 DB에 있었다.
     #    2단계도 `DB요청: 선발 최근 등판` 으로 정확히 지목했는데 **아무도
     #    읽지 않았다**(ORD-15 에서 죽은 칸이 됐다). 공짜이고, 판정 뒤가
     #    아니라 앞에 줘야 판정이 쓴다.
-    db_rows = dbref.fetch(jg, tri.get("DB요청"))
-    if db_rows:
-        tri["채택"] = list(tri["채택"]) + db_rows
+    #    ⚠️ **검색보다 먼저** 부른다 — DB로 채워지는 것을 유료로 사지 않는다.
+    db_rows, db_miss = dbref.fetch(jg, tri.get("DB요청"), with_miss=True)
+
+    # 🔴 [SRCH-8] **DB에 없으면 검색으로 넘긴다.** 사용자 지시 2026-09-12:
+    #    "없으면 안트로픽이나 퍼플릭스한테 요청을 해서 받으라고 해야 한다".
+    #    실측: 2단계가 `DB요청: 불펜 최근 폼과 가용성` 을 냈는데 DB에 없어
+    #    **조용히 버려졌다**(SRCH-7 은 판정의 `추가요청` 만 넘겼다).
+    #    ⚠️ ③의 `검색요청` 과 **한 라운드로 합친다** — 라운드가 늘면 비용도 는다.
+    asks = list(tri.get("검색요청") or []) + list(db_miss)
+    found = await gather.search(jg, asks, date) if asks else {"자료": [], "출처": {}}
+    if found["자료"] or db_rows:
+        tri["채택"] = list(tri["채택"]) + db_rows + found["자료"]
 
     # ③ 판정 — 조사 + 검색 + DB 보충으로 승자 + 확신.
     v = await verdict.decide(jg, brief, tri)
@@ -1085,7 +1089,8 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
         "검색출처": found["출처"],
         # 🔴 [SRCH-7] 보충을 조용히 넘기지 않는다 — "안 물었다"와 "물었는데
         #    못 받았다"는 다르다.
-        "DB보충": len(db_rows), "재요청": list(asks2), "재요청n": len(more),
+        "DB보충": len(db_rows), "DB못채움": list(db_miss),
+        "재요청": list(asks2), "재요청n": len(more),
     }
     if not apply_winner(jg, {"승자": ref["승자"], "확신": ref["확신"],
                              "서술": _story}):
