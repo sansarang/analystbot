@@ -101,14 +101,18 @@ async def test_J1은_야후를_쓴다(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_소스가_없는_리그는_빈손이고_로그를_남긴다(caplog):
-    """🔴 **조용한 0 금지.** 유럽 리그는 아직 소스가 없다 — 없다고 말해야
-    "소스가 없다"와 "긁었는데 0건"을 가를 수 있다."""
+    """🔴 **조용한 0 금지.** 화이트리스트 밖 리그(리그앙·브라질 등)는 소스가
+    없다 — 없다고 말해야 "소스가 없다"와 "긁었는데 0건"을 가를 수 있다.
+
+    ⚠️ [SAT-S2] 종전에는 EPL 로 시험했는데 이제 EPL 은 지원된다.
+       그대로 뒀다면 이 계약이 **실제 HTTP 를 때리면서 통과**했을 것이다.
+    """
     import logging
 
     with caplog.at_level(logging.INFO):
-        out = await SAT.gather_soccer(_jg("EPL", "Arsenal FC", "Chelsea FC"))
+        out = await SAT.gather_soccer(_jg("리그앙", "Paris SG", "Lyon"))
     assert out == []
-    assert any("EPL" in r.getMessage() for r in caplog.records), caplog.text
+    assert any("리그앙" in r.getMessage() for r in caplog.records), caplog.text
 
 
 # ═══════════════ ④ 팀 이름 — 별칭이 없으면 영어 그대로, 그리고 센다
@@ -232,3 +236,99 @@ def test_정찰_스위치는_건드리지_않았다():
     sc = scout_sport("soccer")
     assert sc is not None and sc.active is False
     assert sc.reason, "이유 없는 비활성은 다음 사람이 켜 본다"
+
+
+# ═══════════════ SAT-S2 — 전 리그 + 토르 보강
+
+def test_프로그램의_모든_축구_리그가_위성에_있다():
+    """사용자 지시 2026-09-12: "j리그 k리그 국한하지 말고 내 프로그램에 있는
+    전 리그를 인공위성에 추가해라".
+
+    🔴 리그 목록의 원본은 `app/leagues.py` 다 — 여기 손으로 적지 않는다.
+    """
+    from app.leagues import LEAGUES
+
+    labels = {cfg["label"] for cfg in LEAGUES.values()}
+    missing = labels - set(SAT._SOCCER_SOURCE)
+    assert not missing, f"위성 소스가 없는 리그: {missing}"
+
+
+def test_유럽은_다음_한국어로_긁는다():
+    """🔴 실측 2026-09-12(상위 8건 중 축구 기사): 한국 언론이 유럽 축구를
+    두껍게 다룬다 — EPL 33/40 · 라리가 33/40 · 분데스리가 32/40 ·
+    세리에A 30/40 · 덴마크 27/40. 다음 하나로 여섯 리그가 된다."""
+    for lg in ("EPL", "라리가", "세리에A", "분데스리가", "덴마크 수페르리가"):
+        assert SAT._SOCCER_SOURCE[lg] == "daum", lg
+    assert SAT._SOCCER_SOURCE["J1 리그"] == "yahoo", "J1 은 일본어가 정확하다"
+
+
+def test_별칭표가_DB의_팀을_덮는다():
+    """🔴 실측: 영어 이름으로는 다음 검색이 거의 안 나온다
+    (Arsenal FC 0/8 · SSC Napoli 0/8 · Brondby IF 0/8, 한국어는 7·7·6).
+    별칭이 없으면 그 팀은 사실상 재료가 0 이다."""
+    need = {
+        "EPL": ["Arsenal FC", "Chelsea FC", "Liverpool FC", "Manchester City"],
+        "라리가": ["Real Madrid CF", "FC Barcelona", "Sevilla FC"],
+        "세리에A": ["Juventus FC", "AC Milan", "SSC Napoli"],
+        "분데스리가": ["FC Bayern München", "Borussia Dortmund"],
+        "덴마크 수페르리가": ["Brondby IF", "FC Midtjylland"],
+        "K리그1": ["Ulsan Hyundai FC", "FC Seoul"],
+        "J1 리그": ["FC Machida Zelvia"],
+    }
+    for lg, teams in need.items():
+        for t in teams:
+            assert t in SAT.SOCCER_ALIAS, f"{lg} {t} 별칭 없음"
+
+
+def test_별칭이_영어_이름과_다르다():
+    """별칭표에 영어를 그대로 적어 두면 폴백과 구분이 안 된다."""
+    for en, alias in SAT.SOCCER_ALIAS.items():
+        assert alias != en, en
+
+
+# ── 토르 보강 (고급 검색)
+
+def test_토르_보강을_부른다():
+    """🔴 사용자 지적 2026-09-12: "고급 서치 기능이 있다".
+    `tor_search` 는 토르 경유 DDG 다 — MLB·NPB 는 이미 쓰는데 축구는 안 썼다.
+
+    실측: 질이 높다 — "Chelsea vs Hull: predicted lineup, confirmed team news,
+    injury/suspension list" 가 한 기사에 다 들어 있다.
+    """
+    import inspect
+
+    assert "_tor_supplement" in inspect.getsource(SAT.gather_soccer)
+
+
+def test_토르_질의가_영어다():
+    """🔴 한국어는 토르로 보내지 않는다 — 한국 사이트가 출구노드에 깨진다
+    (`tor_search.is_tor_safe_query` 가 거부). 영어 꼬리를 붙인다."""
+    from app.collectors.tor_search import is_tor_safe_query
+
+    assert is_tor_safe_query(SAT._SOCCER_TOR_TAIL)
+    for w in ("injury", "lineup"):
+        assert w in SAT._SOCCER_TOR_TAIL
+
+
+def test_토르는_보강이지_주력이_아니다():
+    """🔴 실측 2026-09-12: DDG 는 연속 질의에 403 을 준다. 15초를 띄워도
+    1/3 만 통과했다. 경기당 질의를 늘리면 전부 막힌다."""
+    import inspect
+
+    src = inspect.getsource(SAT.gather_soccer)
+    i = src.index("_tor_supplement")
+    assert "403" in src[i - 900:i], "속도 제한 실측이 주석에 없다"
+    # 팀당 1질의 = 경기당 2질의
+    assert src[i:i + 400].count('for side in ("home", "away")') == 1
+
+
+def test_지원_목록을_로그에_손으로_적지_않는다():
+    """🔴 사본 드리프트 — 리그가 늘면 로그만 옛것이 된다.
+    실제로 그럴 뻔했다: SAT-S1 의 로그가 "K리그1·J1 만 지원" 이었고
+    SAT-S2 에서 일곱 리그가 됐는데 문구는 그대로였다."""
+    import inspect
+
+    src = inspect.getsource(SAT.gather_soccer)
+    i = src.index("위성 소스가 없다")
+    assert "_SOCCER_SOURCE" in src[i:i + 400], "지원 목록을 원본에서 만들지 않는다"
+    assert "K리그1·J1 만" not in src
