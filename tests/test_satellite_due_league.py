@@ -57,7 +57,7 @@ async def test_어댑터가_리그를_받는다(monkeypatch):
     """🔴 실측된 결함 그대로 — 리그가 없으면 축구는 '소스 없음'으로 떨어진다."""
     seen = {}
 
-    async def _gather(jg, redis, client=None, now=None):
+    async def _gather(jg, redis, client=None, now=None, pool=None):
         seen.update(jg)
         return 3
 
@@ -72,7 +72,7 @@ async def test_야구는_그대로다(monkeypatch):
     """⚠️ 반대 위험 — 야구 어댑터는 리그를 안 본다. 키가 늘어도 동작 불변."""
     seen = {}
 
-    async def _gather(jg, redis, client=None, now=None):
+    async def _gather(jg, redis, client=None, now=None, pool=None):
         seen.update(jg)
         return 12
 

@@ -581,7 +581,8 @@ async def _tor_supplement(jg: dict, queries: list[tuple[str, str]]) -> list[dict
     return out
 
 
-async def gather(jg: dict, redis, *, client=None, now: datetime | None = None) -> int:
+async def gather(jg: dict, redis, *, client=None, now: datetime | None = None,
+                 pool=None) -> int:
     """경기 1건을 긁어 캐시에 쓴다. 반환: 적재 기사 수.
 
     ⚠️ 재료 0건이어도 크래시하지 않고 0을 돌려준다(조용한 0 금지). redis 가 없으면
@@ -592,7 +593,12 @@ async def gather(jg: dict, redis, *, client=None, now: datetime | None = None) -
     adapter = _ADAPTERS.get(sport)
     if adapter is None:
         return 0
-    articles = await adapter(jg, client=client, now=now)
+    # 🔴 [SOC-9] 축구만 pool 을 받는다 — 라인업을 `lineups` 에 남긴다.
+    #    야구 어댑터 시그니처는 건드리지 않는다.
+    if sport == "soccer":
+        articles = await adapter(jg, client=client, now=now, pool=pool)
+    else:
+        articles = await adapter(jg, client=client, now=now)
     # 🔴 [ROS-1 2026-09-11] **공시를 맨 앞에 둔다.** 검색 기사보다 공식이 먼저다.
     #    실측 2026-09-11: 위성 재료 76건 중 조사 인용 0건이었고, 모인 것은
     #    굿즈·타팀 FA 전망이었다. KBO 는 **말소로 결장을 알리는데** 우리는
@@ -687,7 +693,7 @@ async def run_satellite(pool, redis, *, sports: list[str], now=None,
               "home": r["home"], "away": r["away"],
               "starts_at": r["starts_at"]}
         try:
-            n = await gather(jg, redis, client=client, now=now)
+            n = await gather(jg, redis, client=client, now=now, pool=pool)
         except Exception as exc:
             logger.warning("[satellite] 수집 실패 game=%s: %s", r["id"], exc)
             continue

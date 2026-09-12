@@ -1028,6 +1028,16 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
 
     # ① 수집 — 질문 없이. collect 가 크롤러 선발로 jg 를 먼저 메운다(ORD-16).
     col = await gather.collect(jg, redis, date, pool=pool)
+    # 🔴 [SOC-10] 위성이 DB에 넣은 라인업·결장자를 **선별 앞에서** 붙인다.
+    #    통에 있어야 제미나이가 고를 수 있다(`dbref` 원칙).
+    if (jg.get("sport") or "").lower() == "soccer":
+        from app.engine import soccer_db
+
+        try:
+            await soccer_db.attach(pool, jg)
+        except Exception as exc:
+            logger.warning("[v3] 축구 DB 부착 실패 game=%s: %s",
+                           jg.get("game_id"), exc)
     if not col["자료"]:
         return await _drop("수집 0건")
     brief = game_brief(jg)
@@ -1142,6 +1152,31 @@ def _v3_enabled() -> bool:
     st = get_settings()
     return (bool(getattr(st, "order_v3", False))
             and not bool(getattr(st, "mock_judge", False)))
+
+
+
+def soccer_lineup_payload(jg: dict) -> dict:
+    """[SOC-10] DB에 저장된 오늘 선발 라인업. 없으면 빈손이다."""
+    lu = jg.get("soccer_lineup") or {}
+    out = {}
+    for side, key in (("home", "홈"), ("away", "원정")):
+        t = lu.get(side)
+        if t and t.get("선발"):
+            out[f"{key} {jg.get(side) or ''}"] = {
+                "포메이션": t.get("포메이션") or "", "선발": t["선발"],
+                "교체 대기": (t.get("교체") or [])[:9]}
+    return out
+
+
+def soccer_injury_payload(jg: dict) -> dict:
+    """[SOC-10] DB에 저장된 부상·결장자. 없으면 빈손이다."""
+    inj = jg.get("soccer_injuries") or {}
+    out = {}
+    for side, key in (("home", "홈"), ("away", "원정")):
+        rows = inj.get(side)
+        if rows:
+            out[f"{key} {jg.get(side) or ''}"] = rows
+    return out
 
 
 async def judge_matchup(jg: dict, redis, date: str, *,

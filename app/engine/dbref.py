@@ -39,6 +39,9 @@ ITEMS: tuple[tuple[str, str], ...] = (
     ("일정·이동·환경", "ledger_payload"),
     ("라인업 의도", "intent_payload"),
     ("변수 대장", "material10_payload"),
+    # [SOC-10] 축구. 야구에서는 빈 값이라 `없음` 으로 빠진다.
+    ("오늘 선발 라인업", "soccer_lineup_payload"),
+    ("부상·결장자", "soccer_injury_payload"),
 )
 
 #: 한 항목의 길이 상한. 전량이라도 무한은 아니다 — 7종 실측 약 9,300자.

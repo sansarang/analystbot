@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import html as _html
+import json as _json
 import logging
 import re
 import unicodedata as _ud
@@ -264,7 +265,7 @@ async def _tm_rows(code: str, today: str) -> list[dict]:
     return rows
 
 
-async def _tm_injuries(jg: dict, today: str) -> list[dict]:
+async def _tm_injuries(jg: dict, today: str, pool=None) -> list[dict]:
     """이 경기 **두 팀만** 뽑아 기사 모양으로. 표에 없으면 아무것도 안 만든다."""
     from app.collectors.satellite import _article
     from app.leagues import LEAGUES
@@ -293,6 +294,24 @@ async def _tm_injuries(jg: dict, today: str) -> list[dict]:
         lines = [f"{r['선수']} — {r['부상']}"
                  + (f" (복귀 예정 {r['복귀']})" if r["복귀"] else "")
                  for r in got]
+        # 🔴 [SOC-10] 결장자를 DB에 남긴다 — 제미나이가 DB에서 고른다.
+        #    `lineups.scratches` 가 결장자 자리다. 새 테이블을 만들지 않는다.
+        if pool is not None:
+            try:
+                await pool.execute(
+                    """
+                    INSERT INTO lineups (game_id, side, status, source,
+                                         starter, batting_order, scratches)
+                    VALUES ($1, $2, 'injury', 'transfermarkt', NULL,
+                            '[]'::jsonb, $3::jsonb)
+                    ON CONFLICT (game_id, side, source, status) DO UPDATE
+                      SET scratches = EXCLUDED.scratches, captured_at = now()
+                    """,
+                    jg.get("game_id"), side,
+                    _json.dumps(lines, ensure_ascii=False))
+            except Exception as exc:
+                logger.warning("[satellite] 축구 결장자 저장 실패 game=%s %s: %s",
+                               jg.get("game_id"), side, exc)
         out.append(_article(
             title=f"{team} 부상자 {len(got)}명 (Transfermarkt)",
             url=_TM_URL.format(code=code), source="Transfermarkt",
@@ -310,7 +329,75 @@ async def _tm_injuries(jg: dict, today: str) -> list[dict]:
     return out
 
 
-async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None) -> list[dict]:
+async def _fs_lineups(jg: dict, today: str, pool=None) -> list[dict]:
+    """[SOC-8] Flashscore 선발 라인업 — 층1. 킥오프 **1시간 전**에 나온다.
+
+    🔴 경기 매칭은 **양 팀 슬러그 + 킥오프 시각** 3중이다(`find_fixture`).
+    🔴 아직 안 나왔으면 **기사를 만들지 않는다** — "라인업 없음"이라고 쓰지 않는다.
+    """
+    from app.collectors import flashscore as FS
+    from app.collectors.satellite import _article
+
+    starts = jg.get("starts_at")
+    if not starts:
+        return []
+    fx = await FS.fixtures_for(today)
+    mid = FS.find_fixture(fx, set(tm_key(jg.get("home") or "").split()),
+                          set(tm_key(jg.get("away") or "").split()),
+                          int(starts.timestamp()))
+    if not mid:
+        logger.info("[satellite] 축구 %s@%s — Flashscore 경기를 못 찾았다",
+                    jg.get("away"), jg.get("home"))
+        return []
+    lu = await FS.lineup_for(mid)
+    out: list[dict] = []
+    for side, key in (("home", "홈"), ("away", "원정")):
+        t = lu[key]
+        if not t["선발"]:
+            continue
+        team = jg.get(side) or ""
+        xi = " · ".join(f"{p['이름']}({p['번호']})" if p["번호"] else p["이름"]
+                        for p in t["선발"])
+        bench = ", ".join(p["이름"] for p in t["교체"][:9])
+        body = f"포메이션 {t['포메이션']} — 선발 {xi}"
+        if bench:
+            body += f" / 교체 대기 {bench}"
+        out.append(_article(title=f"{team} 선발 라인업 {len(t['선발'])}명 (Flashscore)",
+                            url=f"https://www.flashscore.com/match/{mid}/",
+                            source="Flashscore", team=team, body=body, age_h=0.0))
+        # 🔴 [SOC-9] `lineups` 테이블에 남긴다 — 야구와 같은 테이블·같은 충돌키.
+        #    ⚠️ `save_lineup` 을 거치지 않는다: 그 함수는 타순이 9가 아니면
+        #       `[lineups-anomaly]` 를 남기는데, 축구는 11이라 매 경기 울린다.
+        #       야구 계측을 축구 소음으로 덮지 않는다.
+        #    ⚠️ 저장이 실패해도 **기사는 그대로 돌려준다** — DB가 없다고
+        #       재료까지 잃으면 안 된다.
+        if pool is not None:
+            try:
+                await pool.execute(
+                    """
+                    INSERT INTO lineups (game_id, side, status, source,
+                                         starter, batting_order, scratches)
+                    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)
+                    ON CONFLICT (game_id, side, source, status) DO UPDATE
+                      SET starter = EXCLUDED.starter,
+                          batting_order = EXCLUDED.batting_order,
+                          captured_at = now()
+                    """,
+                    jg.get("game_id"), side, "predicted", "flashscore",
+                    t["포메이션"],
+                    _json.dumps([p["이름"] for p in t["선발"]], ensure_ascii=False),
+                    _json.dumps([p["이름"] for p in t["교체"]], ensure_ascii=False))
+            except Exception as exc:
+                logger.warning("[satellite] 축구 라인업 저장 실패 game=%s %s: %s",
+                               jg.get("game_id"), side, exc)
+    if not out:
+        logger.info("[satellite] 축구 %s@%s — 라인업 아직 미발표(킥오프 1시간 전 제공)",
+                    jg.get("away"), jg.get("home"))
+    return out
+
+
+async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None,
+                        pool=None) -> list[dict]:
     """축구 경기 1건 — 리그에 맞는 뉴스검색으로 팀별 기사·본문을 긁는다.
 
     🔴 **검색어를 붙이지 않는다**(`_SOCCER_TERMS` 주석의 실측).
@@ -336,10 +423,16 @@ async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None) -
     out: list[dict] = []
     # 🔴 [SAT-S4] **층1 먼저** — 검색이 아니라 표다(선수·부위·복귀일이 칸으로).
     #    보강이므로 터져도 검색 경로는 그대로 돈다. 실패는 로그 한 줄.
+    _today = (now or datetime.now(timezone.utc)).date().isoformat()
     try:
-        out += await _tm_injuries(jg, (now or datetime.now(timezone.utc)).date().isoformat())
+        out += await _tm_injuries(jg, _today, pool)
     except Exception as exc:
         logger.warning("[satellite] 축구 %s 부상표 실패: %s", league, exc)
+    # 🔴 [SOC-8] 선발 라인업(층1) — 검색이 아니라 피드다.
+    try:
+        out += await _fs_lineups(jg, _today, pool)
+    except Exception as exc:
+        logger.warning("[satellite] 축구 %s 라인업 실패: %s", league, exc)
     seen: set[str] = set()
     no_alias: list[str] = []
     for side in ("home", "away"):
