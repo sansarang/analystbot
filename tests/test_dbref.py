@@ -1,11 +1,14 @@
-"""ORD-13 (4단계) — DB 는 참조용이다. 확인하거나 반박할 뿐, 정하지 않는다.
+"""ORD-15 (4단계) — DB 를 통째로 주고 AI 가 자율로 판단한다.
 
-사용자 지시 2026-09-12: "db가치를 내린다..db는 단순 참조용이다"
+사용자 지시 2026-09-12: "경기 관련 DB를 통째로 주고, AI가 그 안에서 필요한 걸
+찾아 쓰게 한다...db 관련도 ai 판단에 의해 결정나게 해라..자율적으로"
 
-🔴 왜 필요한가: 3단계 실측 2026-09-12 — 확신 4/4 전부 `하`, `DB요청` 이 네 경기
-   모두 ['선발 최근 등판', '오늘 타순']. 검색으로 못 채우는데 우리는 갖고 있다.
-🔴 동시에 왜 위험한가: ORD-1 실측 — DB 를 뒤에 붙였더니 ④가 3/3 돌았고
-   NYM@NYY 는 **승자째 뒤집혔다**(0.54 NYY → 0.46 NYM). 막을 장치가 없었다.
+🔴 종전(ORD-13)은 AI 가 `DB요청` 이름을 적고 우리가 키워드로 맞춰 골라 줬다.
+   **그 왕복이 샜다** — 실측 2026-09-12: 4경기 중 2경기가 이름을 풀어 써서
+   매핑에 실패했다. 우리가 고르는 구조 자체가 새는 지점이었다.
+🔴 그리고 코드가 결과를 강제했다(승자 불변·확신 강등). 이제 막지 않는다.
+   대신 **전부 센다** — 이 저장소가 `check_flow` 에 적어 둔 "프롬프트만으로는
+   부족하다"의 대가를 알고 하는 선택이다. 조용한 변경만 없앤다.
 """
 
 import pytest
@@ -18,14 +21,20 @@ def _jg():
             "home": "Doosan Bears", "away": "NC Dinos"}
 
 
-def _tri(req=None):
+def _tri():
     return {"갈림길": [{"질문": "구창모가 5이닝을 넘기는가"}],
-            "채택": [{"답": "x", "소스": "pplx"}],
-            "DB요청": req if req is not None else ["선발 최근 등판"]}
+            "채택": [{"답": "x", "소스": "pplx"}]}
 
 
-def _patch(monkeypatch, text, payload=None):
+def _payloads(monkeypatch, have=("lineups_payload",), big=False):
     import app.engine.matchup as MU
+
+    for _, fn in D.ITEMS:
+        val = ({"x": "가" * 5000} if big else {"a": 1}) if fn in have else {}
+        monkeypatch.setattr(MU, fn, lambda jg, _v=val: _v)
+
+
+def _reply(monkeypatch, text):
     import app.engine.team_form as TF
 
     async def _cj(prompt, *, model, max_tokens, role, mock=False):
@@ -33,134 +42,139 @@ def _patch(monkeypatch, text, payload=None):
         return text
 
     monkeypatch.setattr(TF, "complete_json", _cj)
-    for fn in D.SOURCES.values():
-        monkeypatch.setattr(MU, fn, lambda jg, _p=payload: _p if _p is not None
-                            else {"home": {"선발등판": [{"innings": 5.0}]}})
     return _cj
 
 
-# ═══════════════ ① 요청한 것만, 한 줄씩
+# ═══════════════ ① 통째로 준다 — 요청 왕복이 없다
 
-def test_요청한_것만_붙인다(monkeypatch):
-    import app.engine.matchup as MU
-
-    called = []
-    for name, fn in D.SOURCES.items():
-        monkeypatch.setattr(MU, fn, lambda jg, _n=name: called.append(_n) or {"a": 1})
-    got = D.summarize(_jg(), ["선발 최근 등판"])
-    assert called == ["starters_recent_payload"] or called == ["선발 최근 등판"]
-    assert [n for n, _ in got["붙임"]] == ["선발 최근 등판"]
+def test_요청_매핑_왕복이_사라졌다():
+    """🔴 실측 2026-09-12: 4경기 중 2경기가 이름을 풀어 써서 매핑 실패."""
+    assert not hasattr(D, "_match")
+    assert not hasattr(D, "_HINTS")
+    assert not hasattr(D, "SOURCES")
 
 
-def test_이름이_2단계_목록과_같다():
-    """🔴 두 곳이 다른 이름을 쓰면 요청이 영영 안 붙는다."""
+def test_항목_이름이_2단계_목록과_같다():
     from app.engine.prompts import TRIAGE
 
-    for name in D.SOURCES:
+    for name, _ in D.ITEMS[:5]:
         assert name in TRIAGE, name
 
 
-def test_모르는_요청은_조용히_버리지_않는다():
-    got = D.summarize(_jg(), ["점성술 궁합"])
-    assert got["붙임"] == []
-    assert got["모르는요청"] == ["점성술 궁합"]
+def test_있는_것과_없는_것을_모두_돌려준다(monkeypatch):
+    _payloads(monkeypatch, have=("lineups_payload", "elo_payload"))
+    b = D.bundle(_jg())
+    assert b["있음"] == ["오늘 타순", "실력 레이팅"]
+    assert len(b["없음"]) == len(D.ITEMS) - 2
+    assert len(b["줄"]) == len(D.ITEMS)
 
 
-def test_같은_것을_두_번_붙이지_않는다(monkeypatch):
-    _patch(monkeypatch, "{}")
-    got = D.summarize(_jg(), ["선발 최근 등판", "선발 최근 등판 기록"])
-    assert len(got["붙임"]) == 1
+def test_없는_것을_없음이라_적는다(monkeypatch):
+    """🔴 조용히 빠뜨리면 AI 는 원래 없는 건지 아직 안 온 건지 모른다.
+    실측 2026-09-12: 오늘 KBO/NPB 는 research 가 안 차서 9종 중 3종만 있었다."""
+    _payloads(monkeypatch, have=("lineups_payload",))
+    t = D.fmt(D.bundle(_jg())["줄"])
+    assert "· 오늘 타순 — {" in t
+    assert "· 실력 레이팅 — 없음" in t
 
 
-def test_한_줄을_자른다(monkeypatch):
-    """🔴 길면 그 자체로 판정을 끌고 간다. 전량 주입(21,000자)은 하지 않는다."""
-    _patch(monkeypatch, "{}", payload={"x": "가" * 5000})
-    got = D.summarize(_jg(), ["선발 최근 등판"])
-    assert len(got["붙임"][0][1]) <= D.ROW_MAX + 1
-    assert D.ROW_MAX <= 400
-
-
-def test_조립이_터져도_나머지가_산다(monkeypatch):
+def test_한_항목이_터져도_나머지가_산다(monkeypatch):
     import app.engine.matchup as MU
+
+    _payloads(monkeypatch, have=("lineups_payload",))
 
     def boom(jg):
         raise RuntimeError("터졌다")
 
-    monkeypatch.setattr(MU, "starters_recent_payload", boom)
-    monkeypatch.setattr(MU, "lineups_payload", lambda jg: {"a": 1})
-    got = D.summarize(_jg(), ["선발 최근 등판", "오늘 타순"])
-    assert [n for n, _ in got["붙임"]] == ["오늘 타순"]
+    monkeypatch.setattr(MU, "elo_payload", boom)
+    assert D.bundle(_jg())["있음"] == ["오늘 타순"]
+
+
+def test_긴_항목은_자른다(monkeypatch):
+    _payloads(monkeypatch, have=("lineups_payload",), big=True)
+    _, text = D.bundle(_jg())["줄"][1]
+    assert len(text) <= D.ITEM_MAX + 1
 
 
 def test_숫자를_여기서_계산하지_않는다():
     """원본은 `matchup.*_payload` 다."""
     src = open("app/engine/dbref.py", encoding="utf-8").read()
-    assert "payload" in src
     for banned in ("sum(", "round(", "/ len(", "mean"):
         assert banned not in src, banned
 
 
-# ═══════════════ ② 승자를 뒤집지 않는다 — 이 단계의 본업
+# ═══════════════ ② 자율 — 막지 않는다
 
 @pytest.mark.asyncio
-async def test_모순이어도_승자를_바꾸지_않는다(monkeypatch):
-    """🔴 ORD-1 에서 DB 가 승자를 뒤집었다. 이번엔 막는 것이 본업이다."""
-    _patch(monkeypatch, '{"판정": "모순", "사유": "선발 등판이 반대를 가리킨다"}')
-    v = {"승자": "Doosan Bears", "확신": "중"}
-    out = await D.recheck(_jg(), _tri(), v)
-    assert out["판정"] == "모순"
-    assert v["승자"] == "Doosan Bears", "승자는 손대지 않는다"
-    assert "승자" not in out
-
-
-@pytest.mark.asyncio
-async def test_모순이면_확신을_한_단계_내린다(monkeypatch):
-    _patch(monkeypatch, '{"판정": "모순", "사유": "어긋난다"}')
-    out = await D.recheck(_jg(), _tri(), {"승자": "두산", "확신": "상"})
-    assert out["확신"] == "중"
-
-
-def test_하에서는_더_내리지_않는다():
-    """🔴 3단계가 이미 4/4 `하` 였다. 또 내리면 바닥에 깔려 신호가 죽는다."""
-    assert D.lower("상") == "중"
-    assert D.lower("중") == "하"
-    assert D.lower("하") == "하"
-    assert D.lower("모르는값") == "하"
+async def test_AI_가_승자를_바꿀_수_있다(monkeypatch):
+    """🔴 종전에는 코드가 막았다. 이제 AI 판단이다."""
+    _payloads(monkeypatch)
+    _reply(monkeypatch, '{"본것": ["오늘 타순"], "승자": "NC Dinos", '
+                        '"확신": "중", "사유": "타순에서 주전 4명이 빠졌다"}')
+    out = await D.recheck(_jg(), _tri(), {"승자": "Doosan Bears", "확신": "하"})
+    assert out["승자"] == "NC Dinos"
+    assert out["승자변경"] is True and out["판정"] == "정정"
+    assert out["사유"] == "타순에서 주전 4명이 빠졌다"
 
 
 @pytest.mark.asyncio
-async def test_확인이면_확신이_그대로다(monkeypatch):
-    _patch(monkeypatch, '{"판정": "확인", "사유": ""}')
-    out = await D.recheck(_jg(), _tri(), {"승자": "두산", "확신": "중"})
-    assert out["판정"] == "확인" and out["확신"] == "중"
+async def test_AI_가_확신을_올릴_수도_있다(monkeypatch):
+    """🔴 종전에는 내리기만 했다(`lower`). 이제 양방향이다."""
+    _payloads(monkeypatch)
+    _reply(monkeypatch, '{"본것": ["오늘 타순"], "승자": "Doosan Bears", '
+                        '"확신": "상", "사유": ""}')
+    out = await D.recheck(_jg(), _tri(), {"승자": "Doosan Bears", "확신": "하"})
+    assert out["확신"] == "상" and out["승자변경"] is False
 
 
 @pytest.mark.asyncio
-async def test_사유_없는_모순은_확인으로_본다(monkeypatch):
-    """🔴 사유 없는 모순은 셀 수 없다."""
-    _patch(monkeypatch, '{"판정": "모순", "사유": ""}')
-    out = await D.recheck(_jg(), _tri(), {"승자": "두산", "확신": "상"})
-    assert out["판정"] == "확인" and out["확신"] == "상"
+async def test_그대로_두면_그대로다(monkeypatch):
+    _payloads(monkeypatch)
+    _reply(monkeypatch, '{"본것": [], "승자": "Doosan Bears", "확신": "하",'
+                        ' "사유": ""}')
+    out = await D.recheck(_jg(), _tri(), {"승자": "Doosan Bears", "확신": "하"})
+    assert out["판정"] == "확인" and out["승자변경"] is False
 
 
-# ═══════════════ ③ 있던 판정을 잃지 않는다
-
-@pytest.mark.asyncio
-async def test_재질의_실패면_3단계_확신_그대로(monkeypatch):
-    import app.engine.matchup as MU
-    import app.engine.team_form as TF
-
-    async def boom(*a, **k):
-        raise RuntimeError("터졌다")
-
-    monkeypatch.setattr(TF, "complete_json", boom)
-    monkeypatch.setattr(MU, "starters_recent_payload", lambda jg: {"a": 1})
-    out = await D.recheck(_jg(), _tri(), {"승자": "두산", "확신": "중"})
-    assert out["판정"] == "조회실패" and out["확신"] == "중"
-
+# ═══════════════ ③ 조용한 변경만 없앤다
 
 @pytest.mark.asyncio
-async def test_요청이_없으면_부르지_않는다(monkeypatch):
+async def test_사유_없는_승자_변경은_되돌린다(monkeypatch, caplog):
+    """🔴 사유 없는 변경은 자율이 아니라 실수다."""
+    _payloads(monkeypatch)
+    _reply(monkeypatch, '{"본것": [], "승자": "NC Dinos", "확신": "중",'
+                        ' "사유": ""}')
+    with caplog.at_level("WARNING"):
+        out = await D.recheck(_jg(), _tri(), {"승자": "Doosan Bears", "확신": "하"})
+    assert out["승자"] == "Doosan Bears" and out["승자변경"] is False
+    assert "사유 없이 승자를 바꾸려" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_승자_변경은_경고로_남는다(monkeypatch, caplog):
+    """🔴 막지는 않되 반드시 드러낸다."""
+    _payloads(monkeypatch)
+    _reply(monkeypatch, '{"본것": [], "승자": "NC Dinos", "확신": "중",'
+                        ' "사유": "이유"}')
+    with caplog.at_level("WARNING"):
+        await D.recheck(_jg(), _tri(), {"승자": "Doosan Bears", "확신": "하"})
+    assert "DB 참조로 승자 변경" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_본것은_우리가_실은_것만_인정한다(monkeypatch):
+    """🔴 자기 보고다 — 상한이 아니라 하한으로 읽는다. 안 실은 것을 봤다고
+    적으면 세지 않는다."""
+    _payloads(monkeypatch, have=("lineups_payload",))
+    _reply(monkeypatch, '{"본것": ["오늘 타순", "실력 레이팅", "점성술"],'
+                        ' "승자": "Doosan Bears", "확신": "하", "사유": ""}')
+    out = await D.recheck(_jg(), _tri(), {"승자": "Doosan Bears", "확신": "하"})
+    assert out["본것"] == ["오늘 타순"]
+
+
+@pytest.mark.asyncio
+async def test_기록이_통째로_비면_부르지_않는다(monkeypatch):
+    _payloads(monkeypatch, have=())
     called = {"n": 0}
     import app.engine.team_form as TF
 
@@ -169,64 +183,58 @@ async def test_요청이_없으면_부르지_않는다(monkeypatch):
         return "{}"
 
     monkeypatch.setattr(TF, "complete_json", _cj)
-    out = await D.recheck(_jg(), _tri([]), {"승자": "두산", "확신": "상"})
+    out = await D.recheck(_jg(), _tri(), {"승자": "두산", "확신": "중"})
     assert out["판정"] == "미조회" and called["n"] == 0
-    assert out["확신"] == "상"
+    assert out["확신"] == "중"
 
 
-# ═══════════════ ④ 근거로 샐 자리가 없다
+@pytest.mark.asyncio
+async def test_호출_실패면_3단계_판정_그대로(monkeypatch):
+    _payloads(monkeypatch)
+    import app.engine.team_form as TF
 
-def test_출력에_근거_칸이_없다():
-    """🔴 3·4단계 출력에 근거 칸 자체가 없다 — "근거 중 DB 인용 0줄"은
-    구조로 이미 참이다. 계약으로 잠근다."""
-    from app.engine.prompts import DB_CHECK
+    async def boom(*a, **k):
+        raise RuntimeError("터졌다")
 
-    out = DB_CHECK[DB_CHECK.index("[출력]"):]
-    assert '"판정"' in out and '"사유"' in out
-    for gone in ("근거", "변수", "p_home", "승자", "전개"):
-        assert gone not in out, gone
-
-
-def test_근거가_될_수_없다고_못박는다():
-    from app.engine.prompts import DB_CHECK
-
-    assert "근거가 될 수 없다" in DB_CHECK
-    assert "승자를 뒤집지 마라" in DB_CHECK
-    assert "새 근거를 만들지 마라" in DB_CHECK
+    monkeypatch.setattr(TF, "complete_json", boom)
+    out = await D.recheck(_jg(), _tri(), {"승자": "두산", "확신": "중"})
+    assert out["판정"] == "조회실패"
+    assert out["승자"] == "두산" and out["확신"] == "중"
 
 
-def test_모순을_아껴_쓰라고_한다():
-    from app.engine.prompts import DB_CHECK
+# ═══════════════ ④ 프롬프트 계약
 
-    assert "`모순` 은 아껴 써라" in DB_CHECK
-    assert "모순에는 사유를 한 줄 붙여라" in DB_CHECK
+def test_찾아_보라고_한다():
+    from app.engine.prompts import DB_OPEN
 
-
-# ═══════════════ ⑤ 실측이 잡은 것 (2026-09-12 ORD-14 리허설)
-
-@pytest.mark.parametrize("req,want", [
-    ("양 팀 선발 투수의 최근 등판 성적 및 평균자책점", "선발 최근 등판"),
-    ("양 팀의 오늘 확정 선발 타순", "오늘 타순"),
-    ("오늘 경기 확정 선발 라인업", "오늘 타순"),
-    ("나카가와 말소 이후 오릭스의 오늘 확정 선발 타순", "오늘 타순"),
-    ("신시내티 불펜 연투 현황", "불펜 최근 폼과 가용성"),
-])
-def test_풀어_쓴_요청도_받는다(req, want):
-    """🔴 실측 2026-09-12: 4경기 중 2경기가 이름을 풀어 써서 매핑에 실패했다.
-    프롬프트가 "이름을 그대로 쓰라"고 말하지만, 안 지켜졌을 때의 그물이다."""
-    assert D._match(req) == want
+    assert "필요한 것만 찾아 봐라" in DB_OPEN
+    assert "전부 읽고 전부 쓰려 들지 마라" in DB_OPEN
 
 
-@pytest.mark.parametrize("req", ["점성술 궁합", "선발 투수 이름", "관중 수",
-                                 "감독 인터뷰"])
-def test_핵심어가_하나만_걸리면_맞추지_않는다(req):
-    """🔴 하나만 걸리게 하면 "선발"이 들어간 모든 요청이 등판 기록으로
-    빨려 들어간다."""
-    assert D._match(req) is None
+def test_어떻게_쓸지는_네_판단이라고_한다():
+    from app.engine.prompts import DB_OPEN
+
+    assert "어떻게 쓸지는 네 판단이다" in DB_OPEN
+    assert "우리는 막지 않는다" in DB_OPEN
 
 
-def test_프롬프트가_이름을_그대로_쓰라고_한다():
-    from app.engine.prompts import TRIAGE
+def test_조사_결과가_먼저라고_알린다():
+    """🔴 기록은 오늘 무엇이 달라졌는지를 모른다 — 부상·말소·연투는 조사에만."""
+    from app.engine.prompts import DB_OPEN
 
-    assert "이 이름을 그대로 하나씩 써라" in TRIAGE
-    assert "풀어 쓰지 마라" in TRIAGE
+    assert "조사 결과로 내린 것이 먼저다" in DB_OPEN
+    assert "부상·말소·연투는 조사 결과에만 있다" in DB_OPEN
+
+
+def test_사유와_본것을_요구한다():
+    from app.engine.prompts import DB_OPEN
+
+    assert "승자를 바꾸려면 사유를 써라" in DB_OPEN
+    assert "본 것을 적어라" in DB_OPEN
+    assert "안 본 것을 봤다고 적지" in DB_OPEN
+
+
+def test_없음_항목을_가정하지_말라고_한다():
+    from app.engine.prompts import DB_OPEN
+
+    assert "`없음` 인 항목은 없는 것이다" in DB_OPEN

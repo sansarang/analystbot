@@ -460,3 +460,85 @@ def test_카드가_출처를_밝힌다():
     from app.engine.form_card import _SRC_KR
 
     assert _SRC_KR["라인업"] == "크롤러·공시"
+
+
+# ═══════════════ ⑧ ORD-16 — 크롤러 선발로 jg 를 메운다
+
+@pytest.mark.asyncio
+async def test_빈_선발을_크롤러로_메운다(monkeypatch):
+    """🔴 실측 2026-09-12 13:14: 크롤러는 정상이었고(KBO 4·NPB 6경기, 선발
+    이름 전부 있음) games 테이블만 NULL 이었다. `games.home_pitcher` 를 쓰는
+    코드가 KBO·NPB 에 없다 — MLB 만 채운다."""
+    import app.collectors.crawler_feed as CF
+
+    async def _ls(redis, sport, date):
+        return {"x": {}}
+
+    monkeypatch.setattr(CF, "load_snapshot", _ls)
+    monkeypatch.setattr(CF, "snapshot_for_game",
+                        lambda snap, jg: {"home_pitcher": "후라도",
+                                          "away_pitcher": "톨허스트"})
+    jg = _jg()
+    filled = await G.enrich(jg, None, "2026-09-12")
+    assert jg["home_pitcher"] == "후라도" and jg["away_pitcher"] == "톨허스트"
+    assert len(filled) == 2
+
+
+@pytest.mark.asyncio
+async def test_이미_있으면_덮지_않는다(monkeypatch):
+    """🔴 MLB 는 statsapi 예고 선발이 이미 차 있다 — 덮으면 더 나빠질 수 있다."""
+    import app.collectors.crawler_feed as CF
+
+    async def _ls(redis, sport, date):
+        return {"x": {}}
+
+    monkeypatch.setattr(CF, "load_snapshot", _ls)
+    monkeypatch.setattr(CF, "snapshot_for_game",
+                        lambda snap, jg: {"home_pitcher": "크롤러값"})
+    jg = _jg(); jg["home_pitcher"] = "Shota Imanaga"
+    await G.enrich(jg, None, "2026-09-12")
+    assert jg["home_pitcher"] == "Shota Imanaga"
+
+
+@pytest.mark.asyncio
+async def test_스냅샷이_터져도_수집은_계속된다(monkeypatch):
+    import app.collectors.crawler_feed as CF
+
+    async def boom(*a, **k):
+        raise RuntimeError("터졌다")
+
+    monkeypatch.setattr(CF, "load_snapshot", boom)
+    jg = _jg()
+    assert await G.enrich(jg, None, "2026-09-12") == []
+    assert "home_pitcher" not in jg
+
+
+@pytest.mark.asyncio
+async def test_수집이_메우기를_먼저_한다(monkeypatch):
+    """🔴 호출 순서가 계약이다 — 반대면 game_brief 가 '미정' 을 낸다."""
+    order = []
+
+    async def _e(jg, redis, date):
+        order.append("enrich")
+        return []
+
+    async def _mk(*a, **k):
+        order.append("channel")
+        return []
+
+    monkeypatch.setattr(G, "enrich", _e)
+    _patch(monkeypatch, _satellite=_mk, _x_news=_mk, _preview=_mk,
+           _lineup=_mk, _bullpen=_mk)
+    await G.collect(_jg(), None, "2026-09-12")
+    assert order[0] == "enrich"
+
+
+def test_game_brief_는_안_바꿨다():
+    """🔴 선발 우선순위 규약의 원본은 `matchup._starter`(ORD-3) 다.
+    이 수정은 그 함수를 바꾸지 않고 **입력을 채울 뿐이다.**"""
+    import inspect
+
+    from app.engine import matchup as MU
+
+    src = inspect.getsource(MU._starter)
+    assert "crawler" not in src and "gather" not in src

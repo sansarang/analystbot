@@ -218,6 +218,44 @@ async def _bullpen(pool, jg: dict) -> list[dict]:
     return out
 
 
+async def enrich(jg: dict, redis, date: str) -> list[str]:
+    """[ORD-16] 크롤러가 아는 **선발 이름**으로 `jg` 의 빈 칸을 메운다.
+
+    🔴 왜. 실측 2026-09-12 13:14 운영 — 크롤러는 정상이었다(심장박동 13:14 ·
+       KBO 4경기 · NPB 6경기, 선발 이름까지 전부 있음). 그런데 `games` 테이블은
+       **선발 -/- 전부 NULL** 이었다. `games.home_pitcher` 를 쓰는 코드가
+       KBO·NPB 에 없다(MLB 만 채운다). 크롤러 값은 `merge_into_research` 로
+       research 에만 흘러가고, 그건 **프리페치가 돌아야** 찬다.
+       그래서 `matchup.game_brief` 가 KBO/NPB 에서 늘 "미정" 을 냈다.
+
+    ⚠️ **비어 있을 때만 채운다.** MLB 는 `games` 컬럼이 statsapi 예고 선발로
+       이미 차 있다 — 크롤러로 덮으면 더 나쁜 값이 될 수 있다.
+    ⚠️ 호출 순서가 계약이다: `collect` → `game_brief`. 반대로 부르면 종전처럼
+       "미정" 이 나간다.
+    """
+    from app.collectors import crawler_feed as CF
+
+    try:
+        snap = await CF.load_snapshot(redis, (jg.get("sport") or "").lower(), date)
+        row = CF.snapshot_for_game(snap, jg)
+    except Exception as exc:
+        logger.warning("[gather] 크롤러 스냅샷 실패 — 메우지 않는다: %s", exc)
+        return []
+    filled = []
+    for side in ("home", "away"):
+        if str(jg.get(f"{side}_pitcher") or "").strip():
+            continue
+        name = str(row.get(f"{side}_pitcher") or "").strip()
+        if name:
+            jg[f"{side}_pitcher"] = name
+            filled.append(f"{side}={name}")
+    if filled:
+        # 🔴 어디서 온 값인지 안 남기면 "왜 선발이 바뀌었나"를 못 푼다.
+        logger.info("[gather] 크롤러로 선발을 메웠다 %s@%s · %s",
+                    jg.get("away"), jg.get("home"), " ".join(filled))
+    return filled
+
+
 async def collect(jg: dict, redis=None, date: str = "", *, pool=None) -> dict:
     """① 수집. 반환 `{"자료": [...], "출처": {...}}`.
 
@@ -225,6 +263,8 @@ async def collect(jg: dict, redis=None, date: str = "", *, pool=None) -> dict:
     ⚠️ 채널 하나가 터져도 나머지는 산다. 채널별 건수를 로그에 남긴다 —
        ORD-8 에서 배운 것이다(중간 수치가 없으면 "왜 0건인가"를 다시 물어야 한다).
     """
+    # 🔴 [ORD-16] **먼저 메운다.** 이 뒤에 `game_brief` 를 부르면 선발이 보인다.
+    await enrich(jg, redis, date)
     jobs = {"satellite": _satellite(jg, redis),
             "x": _x_news(jg, date, redis),
             "pplx": _preview(jg),
