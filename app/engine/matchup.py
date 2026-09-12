@@ -568,8 +568,30 @@ def apply_winner(jg: dict, verdict: dict) -> bool:
 
     반환: 실었으면 True, 승자가 이 경기의 팀이 아니면 False.
     """
-    w = str((verdict or {}).get("승자") or "").strip()
     home, away = jg.get("home") or "", jg.get("away") or ""
+    # 🔴 [SOC-2] **3-way** — 축구는 무승부가 정상 결과다. `결과` 가 오면
+    #    그쪽으로 읽고, 없으면 종전대로 `승자` 이름으로 읽는다.
+    #    ⚠️ 종목으로 가르지 않는다 — **입력의 모양**으로 가른다. 다만 야구가
+    #       실수로 `무` 를 보내면 버린다(야구에 무승부 판정은 없다).
+    #    ⚠️ 라벨 원본은 `verdict.THREEWAY` 다 — 여기 손으로 적지 않는다.
+    if verdict and verdict.get("결과") is not None:
+        from app.engine.verdict import DRAW, THREEWAY
+
+        res = str(verdict.get("결과") or "").strip()
+        if res not in THREEWAY or (jg.get("sport") or "").lower() != "soccer":
+            logger.warning("[order] 🔴 결과 %r 를 읽을 수 없다 (%s · %s@%s) — "
+                           "판정을 버린다 (game=%s)", res,
+                           jg.get("sport"), away, home, jg.get("game_id"))
+            return False
+        # 무는 **승자가 없다.** 판정 실패가 아니다 — `결과` 가 판정의 증거다.
+        won = None if res == DRAW else (home if res == "홈승" else away)
+        jg["matchup"] = {"결과": res, "승자": won,
+                         "model": verdict.get("model")}
+        jg["winner"] = won
+        _apply_extras(jg, verdict)
+        return True
+
+    w = str((verdict or {}).get("승자") or "").strip()
     hit_h, hit_a = _name_hits(w, home), _name_hits(w, away)
     if hit_h == hit_a:                      # 둘 다거나 둘 다 아니다
         logger.warning("[order] 🔴 승자 %r 가 이 경기(%s@%s)의 팀이 아니다 — "
@@ -580,17 +602,24 @@ def apply_winner(jg: dict, verdict: dict) -> bool:
     # [ORD-12 사용자 지시] "확신 한 칸만 살려라." 온 경우에만 싣는다 —
     #   ORD-3 경로(승자만)는 이 칸이 없고, 그쪽 동작은 바뀌지 않는다.
     #   ⚠️ 모르는 라벨은 `하` 로 떨어뜨린다(`verdict.level`). 낮은 쪽이 안전하다.
+    _apply_extras(jg, verdict)
+    jg["winner"] = jg["matchup"]["승자"]
+    return True
+
+
+def _apply_extras(jg: dict, verdict: dict) -> None:
+    """확신·서술을 싣는다. 🔴 2-way·3-way 가 **같은 것**을 쓴다(사본 금지)."""
+    # [ORD-12 사용자 지시] "확신 한 칸만 살려라." 온 경우에만 싣는다 —
+    #   ORD-3 경로(승자만)는 이 칸이 없고, 그쪽 동작은 바뀌지 않는다.
+    #   ⚠️ 모르는 라벨은 `하` 로 떨어뜨린다(`verdict.level`). 낮은 쪽이 안전하다.
     if verdict.get("확신") is not None:
         from app.engine.verdict import level as _lvl
 
         jg["matchup"]["확신"] = _lvl(verdict.get("확신"))
-    # 🔴 [SRCH-6] 제미니가 쓴 분석글. **왔을 때만 싣는다** — ORD-3 경로(승자만)와
-    #    ORDER_V2 는 이 칸이 없고, 그쪽 동작은 바뀌지 않는다.
+    # 🔴 [SRCH-6] 제미니가 쓴 분석글. **왔을 때만 싣는다.**
     #    ⚠️ 한 글자도 고치지 않는다(사용자 지시 "그대로 보여달라").
     if str(verdict.get("서술") or "").strip():
         jg["matchup"]["서술"] = str(verdict["서술"]).strip()
-    jg["winner"] = jg["matchup"]["승자"]
-    return True
 
 
 def apply_matchup(jg: dict, verdict: dict, settings=None) -> None:

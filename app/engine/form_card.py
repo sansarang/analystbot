@@ -295,12 +295,17 @@ def render_search_card(jg: dict, sport: str | None = None) -> str:
         lines.append("🧠 분석")
         lines.append(story)
 
-    w = jg.get("winner") or (jg.get("matchup") or {}).get("승자")
-    if w:
+    _m = jg.get("matchup") or {}
+    w = jg.get("winner") or _m.get("승자")
+    # 🔴 [SOC-2] 축구 3-way — 무는 승자가 없다. **판정 실패가 아니다.**
+    from app.engine.verdict import DRAW as _DRAW
+
+    _draw = _m.get("결과") == _DRAW
+    if w or _draw:
         lines.append("")
-        conf = (jg.get("matchup") or {}).get("확신")
+        conf = _m.get("확신")
         # [ORD-12] 되살린 것은 확신 한 칸뿐이다 — 설명이 아니라 라벨이다.
-        lines.append(f"🏆 승리 예상 — {_team(w)}"
+        lines.append(("🏆 무승부 예상" if _draw else f"🏆 승리 예상 — {_team(w)}")
                      + (f" · 확신 {conf}" if conf else ""))
         # 🔴 [ORD-15] DB 참조로 승자가 바뀌었으면 **드러낸다.** 막지 않는
         #    대신 조용한 변경만 없앤다.

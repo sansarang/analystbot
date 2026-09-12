@@ -4922,8 +4922,11 @@ def _render_card_v3(analysis: dict, scheduled: list[dict],
     ⚠️ 경기별 본문을 여기서 다시 만들지 않는다. 원본은
        `form_card.render_form_card` 이고 그 안에 v3 분기가 이미 있다.
     """
+    # 🔴 [SOC-2] **무승부는 판정이다.** 축구 3-way 에서 무는 `winner` 가 없다 —
+    #    그대로 두면 "판정 실패"로 나간다(SRCH-5 에서 고친 P0 와 같은 결함).
     judged = [g for g in scheduled
-              if (g.get("winner") or (g.get("matchup") or {}).get("승자"))]
+              if (g.get("winner") or (g.get("matchup") or {}).get("승자")
+                  or (g.get("matchup") or {}).get("결과"))]
     missing = [g for g in scheduled if g not in judged]
 
     if not judged:
@@ -4940,8 +4943,15 @@ def _render_card_v3(analysis: dict, scheduled: list[dict],
     for g in judged:
         away = g.get("away_kr") or g.get("away") or "?"
         home = g.get("home_kr") or g.get("home") or "?"
-        w = g.get("winner") or (g.get("matchup") or {}).get("승자") or "?"
-        w_kr = _kr(w) if w in (g.get("home"), g.get("away")) else w
+        m = g.get("matchup") or {}
+        w = g.get("winner") or m.get("승자")
+        # 🔴 [SOC-2] 무는 승자가 없다 — 이름 자리에 결과 라벨을 쓴다.
+        if not w:
+            from app.engine.verdict import DRAW
+
+            w_kr = "무승부" if m.get("결과") == DRAW else "?"
+        else:
+            w_kr = _kr(w) if w in (g.get("home"), g.get("away")) else w
         conf = (g.get("matchup") or {}).get("확신") or ""
         kst = (g.get("starts_at_kst") or "")[11:16]
         ov = g.get("order_v3") or g.get("order_v2") or {}

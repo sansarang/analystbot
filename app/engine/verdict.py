@@ -17,6 +17,12 @@ logger = logging.getLogger(__name__)
 #: 확신 눈금. 원본은 `prompts.MATCHUP` 의 `확신도` 다 — 새 눈금을 만들지 않는다.
 LEVELS = ("상", "중", "하")
 
+#: [SOC-2] 3-way 결과 라벨. 축구는 무승부가 **정상 결과**다.
+#  🔴 이 셋이 원본이다 — 프롬프트·판정·카드가 전부 여기를 쓴다.
+#     문자열을 손으로 옮겨 적으면 한쪽만 고쳐진다.
+THREEWAY = ("홈승", "무", "원정승")
+DRAW = "무"
+
 #: 재요청 상한. 🔴 원본은 `websearch.MAX_ASKS` — 숫자를 두 곳에 적지 않는다.
 from app.collectors.websearch import MAX_ASKS as _MAX_ASKS  # noqa: E402
 
