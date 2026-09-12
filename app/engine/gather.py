@@ -142,6 +142,66 @@ async def _preview(jg: dict) -> list[dict]:
     return out
 
 
+async def _lineup(jg: dict, redis, date: str) -> list[dict]:
+    """[ORD-14] 크롤러가 긁어 둔 **오늘 선발 예고·타순·변화 이력**.
+
+    사용자 지적 2026-09-12: "go언어가 네이버 야후 mlb는 다른곳에서 크롤링을
+    한다…경기시작 전에 라인업 선발을 가지고 온다…그거 역시도 수집에 들어가야 한다"
+
+    🔴 **이건 DB 수치가 아니라 오늘의 사실이다.** 타순·선발 예고·"18:05 에
+       4번 타자가 빠졌다"는 성적이 아니라 오늘 바뀐 것이고, 그래서 4단계
+       (참조용 DB)가 아니라 **1단계(수집)** 에 들어간다.
+    🔴 근거: 3단계 실측 2026-09-12 — 네 경기 전부 `없는것` 이
+       ['선발 최근 등판', '오늘 타순'] 이었고 확신이 4/4 `하` 로 깔렸다.
+       그런데 오늘 타순·선발 예고는 **우리가 이미 10분마다 긁고 있었다.**
+    ⚠️ 외부 호출 0. 값의 원본은 `crawler_feed` 와 `matchup.lineups_payload` 다.
+    """
+    from app.collectors import crawler_feed as CF
+    from app.engine.matchup import lineups_payload
+
+    sport = (jg.get("sport") or "").lower()
+    out: list[dict] = []
+    try:
+        snap = await CF.load_snapshot(redis, sport, date)
+        row = CF.snapshot_for_game(snap, jg)
+    except Exception as exc:
+        logger.warning("[gather] 크롤러 스냅샷 실패: %s", exc)
+        row = {}
+
+    lp = lineups_payload(jg) or {}
+    state = jg.get("lineup_status") or "none"
+    for side, label in (("away", "원정"), ("home", "홈")):
+        blk = lp.get(side) or {}
+        name = blk.get("선발투수") or row.get(f"{side}_pitcher") or "미정"
+        out.append(_row(f"{label} 선발 예고 — {name}", src="라인업",
+                        kind="공시"))
+        order = blk.get("타순") or []
+        if order:
+            names = " · ".join(
+                f"{o.get('순번', i + 1)}{o.get('이름') or o}"
+                if isinstance(o, dict) else str(o)
+                for i, o in enumerate(order))
+            out.append(_row(f"{label} 오늘 타순 — {names}", src="라인업",
+                            kind="공시"))
+    if state != "confirmed":
+        # 🔴 "타순 미확정"도 사실이다 — 잠정 카드가 왜 잠정인지를 ②가 알아야 한다.
+        out.append(_row(f"오늘 타순 상태 — {state} (확정 전)", src="라인업",
+                        kind="공시"))
+
+    try:
+        changes = await CF.load_changes(redis, sport, date)
+        tl = CF.lineup_timeline(changes, jg)
+    except Exception as exc:
+        logger.warning("[gather] 크롤러 변화 이력 실패: %s", exc)
+        tl = {}
+    when = tl.get("lineup_announced_at")
+    if when:
+        out.append(_row(f"라인업 발표 시각 — {when}", src="라인업", kind="공시"))
+    for line in (tl.get("lineup_changes") or []) + (tl.get("starter_changes") or []):
+        out.append(_row(str(line), src="라인업", kind="공시"))
+    return [r for r in out if len(r["답"]) < 400]
+
+
 async def _bullpen(pool, jg: dict) -> list[dict]:
     """우리 기록. **질문을 기다리지 않는다** — 불펜은 매 경기 걸리는 축이다."""
     from app.collectors import bullpen_usage as BU
@@ -168,6 +228,8 @@ async def collect(jg: dict, redis=None, date: str = "", *, pool=None) -> dict:
     jobs = {"satellite": _satellite(jg, redis),
             "x": _x_news(jg, date, redis),
             "pplx": _preview(jg),
+            # [ORD-14] 크롤러가 긁어 둔 오늘 선발·타순. 외부 호출 0.
+            "라인업": _lineup(jg, redis, date),
             "크롤러": _bullpen(pool, jg)}
     got = await asyncio.gather(*jobs.values(), return_exceptions=True)
     rows: list[dict] = []

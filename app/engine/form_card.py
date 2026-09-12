@@ -199,7 +199,7 @@ _NOTICE_MAX_AGE_H = 168.0
 _PARK_NAME_MAX = 40
 
 _SRC_KR = {"pplx": "퍼플렉시티", "x": "X", "satellite": "공시",
-           "크롤러": "우리 기록"}
+           "크롤러": "우리 기록", "라인업": "크롤러·공시"}
 
 
 def render_search_card(jg: dict, sport: str | None = None) -> str:

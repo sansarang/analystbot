@@ -39,6 +39,21 @@ SOURCES: dict[str, str] = {
 ROW_MAX = 300
 
 
+#: 풀어 쓴 요청을 받기 위한 **핵심어**. 🔴 프롬프트가 이름을 그대로 쓰라고
+#  이미 말한다 — 이건 그것이 안 지켜졌을 때의 그물이다.
+#  ⚠️ **전부 포함**일 때만 맞춘다. 하나만 걸리게 하면 "선발"이 들어간 모든
+#     요청이 등판 기록으로 빨려 들어간다.
+#  실측 2026-09-12: 4경기 중 2경기가 "양 팀 선발 투수의 최근 등판 성적 및
+#  평균자책점" 처럼 풀어 써서 매핑에 실패했다.
+_HINTS: dict[str, tuple[tuple[str, ...], ...]] = {
+    "선발 최근 등판": (("선발", "등판"),),
+    "오늘 타순": (("타순",), ("선발", "라인업"), ("라인업",)),
+    "불펜 최근 폼과 가용성": (("불펜",), ("구원",)),
+    "실력 레이팅": (("레이팅",), ("elo",)),
+    "최근 3경기 박스스코어": (("박스스코어",), ("최근", "3경기")),
+}
+
+
 def _match(req: str) -> str | None:
     """요청 이름을 아는 항목에 맞춘다. 모르면 None(조용히 버리지 않는다)."""
     t = " ".join(str(req or "").split())
@@ -47,6 +62,11 @@ def _match(req: str) -> str | None:
     for name in SOURCES:
         if name in t or t in name:
             return name
+    low = t.lower()
+    for name, groups in _HINTS.items():
+        for words in groups:
+            if all(w.lower() in low for w in words):
+                return name
     return None
 
 
