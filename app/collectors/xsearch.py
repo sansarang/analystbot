@@ -27,6 +27,11 @@ SOURCE = "xsearch"
 
 #: 발동 판별에 쓰는 RSS 하한. config 가 원본 — 여기 숫자를 적지 않는다.
 _ONCE_KEY = "xsearch:done:{sport}:{game_id}:{date}"
+#: [ORD-10] 속보 **결과** 캐시. 🔴 종전에는 한 번 쏘고 결과를 버렸다 —
+#   경기당 1콜(`_ONCE_KEY`)이라 두 번째 호출부는 영원히 빈손이었다.
+#   실측 2026-09-12: 스케줄러가 낮에 소진해, 판정 시점의 수집이 X 0건이 됐다.
+#   먼저 쏜 쪽이 채우고 나머지는 읽는다. **1콜 캡은 그대로다.**
+_ITEMS_KEY = "xsearch:items:{sport}:{game_id}:{date}"
 _CAP_KEY = "xsearch:calls:{date}"
 _TTL = 26 * 3600
 
@@ -218,4 +223,40 @@ async def fetch_for_game(jg: dict, date: str, redis=None,
     logger.info("[xsearch] game=%s 응답 %d항목", gid, len(items))
     kept, stat = await verify_urls(items)
     logger.info("[xsearch] game=%s 적재 %d건 (검증 %s)", gid, len(kept), stat)
+    await _store(redis, sport, gid, date, kept)
     return kept
+
+
+async def _store(redis, sport: str, game_id, date: str,
+                 items: list[dict]) -> None:
+    """결과를 남긴다. 실패해도 호출부를 막지 않는다(수집은 이미 끝났다)."""
+    if redis is None or not items:
+        return
+    try:
+        await redis.set(_ITEMS_KEY.format(sport=sport, game_id=game_id,
+                                          date=date),
+                        json.dumps(items, ensure_ascii=False), ex=_TTL)
+    except Exception as exc:
+        logger.warning("[xsearch] 결과 캐시 실패 game=%s: %s", game_id, exc)
+
+
+async def load_cache(redis, sport: str, game_id, date: str) -> list[dict]:
+    """이미 쏜 결과를 읽는다. 없으면 빈 목록.
+
+    🔴 이것이 없으면 경기당 1콜 캡이 곧 "한 호출부만 쓸 수 있다"가 된다.
+    """
+    if redis is None:
+        return []
+    try:
+        raw = await redis.get(_ITEMS_KEY.format(sport=sport, game_id=game_id,
+                                                date=date))
+    except Exception as exc:
+        logger.warning("[xsearch] 결과 캐시 읽기 실패 game=%s: %s", game_id, exc)
+        return []
+    if not raw:
+        return []
+    try:
+        got = json.loads(raw)
+    except ValueError:
+        return []
+    return [x for x in got if isinstance(x, dict)] if isinstance(got, list) else []
