@@ -129,3 +129,37 @@ async def test_호출이_usage_를_찍는다(monkeypatch, caplog):
     with caplog.at_level("INFO"):
         await c._search_call("q")
     assert "[grok] 도구=x" in caplog.text
+
+
+# ═══════════════ ORD-19 — 퍼플렉시티 기본을 sonar 로
+
+def test_퍼플렉시티_기본이_sonar_다():
+    """🔴 실측 2026-09-12 (조사 질문 4종 × 2회):
+         sonar $0.00511 · sonar-pro $0.00724 — 42% 비싸다.
+       답 품질 차이는 찾지 못했다(8/8 둘 다 실질적으로 답했다).
+       비용의 대부분은 토큰이 아니라 요청료다(sonar $0.005 · pro $0.006).
+    ⚠️ 절감액은 작다 — 월 약 $1.7. 큰 절감은 경기당 1콜 캡이다."""
+    from app.config import Settings
+
+    assert Settings.model_fields["pplx_model"].default == "sonar"
+
+
+def test_되돌릴_길이_있다():
+    """🔴 표본 8건이고 내 정답 검사기가 오분류했다 — 환경변수로 즉시 복귀."""
+    from app.config import Settings
+
+    f = Settings.model_fields["pplx_model"]
+    names = getattr(f.validation_alias, "choices", None) or []
+    src = open("app/config.py", encoding="utf-8").read()
+    assert "PPLX_MODEL=sonar-pro" in src, "되돌리는 법이 적혀 있어야 한다"
+
+
+def test_모델명을_호출부에_적지_않았다():
+    """원본은 `config.pplx_model` 한 곳이다."""
+    import inspect
+
+    from app.research import perplexity as P
+
+    src = inspect.getsource(P.ask_json)
+    assert "s.pplx_model" in src
+    assert "sonar-pro" not in src

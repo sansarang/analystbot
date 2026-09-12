@@ -59,7 +59,19 @@ class Settings(BaseSettings):
     pplx_base_url: str = "https://api.perplexity.ai"
     pplx_chat_path: str = "/chat/completions"
     pplx_agent_path: str = "/v1/agent"
-    pplx_model: str = "sonar-pro"                  # chat 모드 모델명
+    #: [ORD-19 2026-09-12] chat 모드 모델. 🔴 **`sonar` 다.**
+    #   실측(운영, 조사 질문 4종 × 2회):
+    #     sonar     호출당 $0.00511
+    #     sonar-pro 호출당 $0.00724   ← 42% 비싸다
+    #   답 품질 차이는 **찾지 못했다** — 8/8 둘 다 실질적으로 답했다(선발 예고
+    #   "두산 잭 로그, NC 구창모" · 부상 "4월 전완건염·6월 허리 경련" ·
+    #   지붕 "Closed" 전부 양쪽 동일). 비용의 대부분은 토큰이 아니라
+    #   **요청료**다(sonar $0.005 · pro $0.006).
+    #   ⚠️ 표본 8건이고 내 정답 검사기가 오분류했다("맥스 슈어저"를 "Scherzer"
+    #      로 못 찾음). 되돌리려면 `PPLX_MODEL=sonar-pro` 한 줄이다.
+    #   ⚠️ 절감액 자체는 작다 — 월 약 $1.7. x_search 가 호출당 $0.16 이라
+    #      32배 차이다. 큰 절감은 경기당 1콜 캡(5단계 배선)이다.
+    pplx_model: str = "sonar"
     pplx_agent_preset: str = "medium"              # agent 모드 프리셋(fast|low|medium|high|xhigh)
 
     # Perplexity 레이트리밋 방어 — 동시 실행/최소 간격/429 백오프
