@@ -225,13 +225,28 @@ def test_all_three_leagues_reach_the_same_prompt_slots():
 # ─────────────── D. 동결 선언 ───────────────
 
 def test_freeze_is_declared_where_every_session_reads_it():
-    """규율이 코드에만 있으면 다음 세션이 또 만진다."""
+    """규율이 코드에만 있으면 다음 세션이 또 만진다.
+
+    🔓 [2026-09-13] 동결이 **해제**됐다(사용자 지시). 이 계약이 잠그는 것은
+       "동결 중"이 아니라 **동결 상태가 루트에 적혀 있는가**다 — 다음 세션이
+       읽고 판단할 수 있어야 한다. 그래서 해제 사실과 그 근거·범위를 잠근다.
+       ⚠️ 다시 동결하면 이 계약도 함께 되돌린다.
+    """
     from pathlib import Path
 
     md = Path("CLAUDE.md").read_text(encoding="utf-8")
-    assert "v1.3 동결" in md
-    assert "리그별 `graded` 50건" in md
-    assert "발송 중단급 P0" in md
+    assert "v1.4 동결은 2026-09-13 사용자 지시로 해제됐다" in md
+    # 해제 범위가 한계값까지 번지지 않았음을 루트가 말해야 한다
+    assert "동결이 아니라 안전선" in md
+    # 해제 근거를 어디서 읽는지도 루트가 가리켜야 한다
+    assert "app/engine/CLAUDE.md" in md
+
+    eng = Path("app/engine/CLAUDE.md").read_text(encoding="utf-8")
+    assert "v1.4 동결 **해제**" in eng
+    assert "AUC 0.5151" in eng, "해제 근거 수치가 없다"
+    assert "npb 43" in eng, "카운터 미충족 사실이 없다"
+    # 종전 동결문을 지우지 않았는가 — 무엇을 풀었는지 알아야 한다
+    assert "(종전) v1.4 동결" in eng
 
 
 @pytest.mark.asyncio
