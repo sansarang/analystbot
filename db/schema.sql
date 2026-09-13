@@ -532,6 +532,14 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS model_src    TEXT;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS model_w      DOUBLE PRECISION;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS model_gap_pp DOUBLE PRECISION;
 
+-- [PRI-1 2026-09-13 지시문 Phase 2] 사전값(티어 + 올해 성적).
+--   🔴 `p_code` 에 **더하지 않는다**(지시문 금지 사항 · 3차 결정 G).
+--      쓰이는 곳은 Phase 3 괴리 게이트와 카드 서술뿐이다.
+--   `prior_src` 는 "tier" | "tier:미기입" | "elo" | "dc" — 티어가 비어 있어
+--   중앙값으로 계산했는지가 여기 남는다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_prior   DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS prior_src TEXT;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
     ON pick_ledger (game_id) WHERE is_final;
 
