@@ -540,6 +540,11 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS model_gap_pp DOUBLE PRECISION;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_prior   DOUBLE PRECISION;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS prior_src TEXT;
 
+-- [GATE-1 2026-09-13 지시문 Phase 3] 괴리 게이트 사유.
+--   `gate_result` 는 이미 있다 — 여기에는 **왜 그렇게 갈렸는지**를 남긴다.
+--   분류: 동의 | 시장 과대 | 가치 의심 | 보드 고정
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_reason TEXT;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
     ON pick_ledger (game_id) WHERE is_final;
 
