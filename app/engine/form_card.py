@@ -25,7 +25,8 @@ def favored_side_and_p(jg: dict) -> tuple[str | None, float | None]:
     m = jg.get("matchup") or {}
     # 🔴 [SEND-1 결정 B-1] **`p_send` 가 먼저다** — 시장 + 조정 + 딥서치.
     #    없으면(배당 미수집) 종전대로 제미나이 확률로 폴백한다.
-    p = jg.get("p_send")
+    sent = jg.get("p_send")
+    p = sent
     if p is None:
         p = m.get("p_home")
     if p is None:
@@ -34,6 +35,14 @@ def favored_side_and_p(jg: dict) -> tuple[str | None, float | None]:
         p = float(p)
     except (TypeError, ValueError):
         return None, None
+    # 🔴 [SEND-2 결정 "가" 2026-09-13] **우세도 확률이 정한다.**
+    #    종전에는 확률은 시장, 우세는 제미나이라 둘이 갈리면
+    #    `우세 NC 다이노스 43.3%` 처럼 **50% 아래인 우세**가 나갔다
+    #    (실측 배포 전, 오늘 슬레이트 8경기 중 2건).
+    #    제미나이의 승자는 서술·원장에 그대로 남는다 — 카드의 우세 표시만
+    #    확률 한 뿌리에서 낸다.
+    if sent is not None:
+        return ("home", p) if p >= 0.5 else ("away", round(1.0 - p, 4))
     side = m.get("우세")
     if side == "away":
         return "away", 1.0 - p

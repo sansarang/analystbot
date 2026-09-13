@@ -126,3 +126,53 @@ def test_원장의_p_code는_실제_나간_값이다():
 
     src = inspect.getsource(L._row_from_game)
     assert 'jg.get("p_send")' in src, src
+
+
+# ── [SEND-2] 우세도 확률에서 정한다 (사용자 결정 "가", 2026-09-13)
+
+def _fc():
+    from app.engine import form_card as F
+
+    return F
+
+
+def test_우세는_확률이_정한다():
+    """🔴 SEND-1 직후 실측: 승자는 제미나이, 확률은 시장이라 둘이 갈리면
+       **'우세인데 50% 아래'** 가 나갔다 — 오늘 슬레이트 8경기 중 2건.
+         우세 NC 다이노스 43.3%  ·  우세 삼성 라이온즈 45.6%
+    """
+    F = _fc()
+    # 제미나이는 원정(NC)을 골랐지만 p_send 는 홈(두산)이 우세하다고 본다
+    jg = {"sport": "kbo", "home": "Doosan Bears", "away": "NC Dinos",
+          "p_send": 0.567, "p_claude": 0.48,
+          "matchup": {"p_home": 0.48, "우세": "away"}}
+    assert F.favored_side_and_p(jg) == ("home", 0.567)
+
+
+def test_확률이_홈_아래면_원정_우세다():
+    F = _fc()
+    jg = {"sport": "kbo", "home": "Samsung Lions", "away": "LG Twins",
+          "p_send": 0.456, "p_claude": 0.54,
+          "matchup": {"p_home": 0.54, "우세": "home"}}
+    side, p = F.favored_side_and_p(jg)
+    assert side == "away" and p == pytest.approx(0.544)
+
+
+@pytest.mark.parametrize("ps", [0.30, 0.45, 0.499, 0.50, 0.55, 0.68])
+def test_우세_확률은_절대_50_아래로_안_간다(ps):
+    """🔴 이 계약이 없어서 결함이 배포 직전까지 갔다."""
+    F = _fc()
+    for want in ("home", "away", None):
+        jg = {"sport": "mlb", "home": "H", "away": "A", "p_send": ps,
+              "matchup": {"p_home": 0.5, "우세": want}}
+        _, p = F.favored_side_and_p(jg)
+        assert p >= 0.5 - 1e-9, (ps, want, p)
+
+
+def test_p_send가_없으면_제미나이_우세를_따른다():
+    """배당 미수집 경기 — 종전 경로 그대로다."""
+    F = _fc()
+    jg = {"sport": "mlb", "home": "H", "away": "A", "p_claude": 0.48,
+          "matchup": {"p_home": 0.48, "우세": "away"}}
+    side, p = F.favored_side_and_p(jg)
+    assert side == "away" and p == pytest.approx(0.52)
