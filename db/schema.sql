@@ -576,6 +576,18 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS odds_open   DOUBLE PRECISION;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS move_class  TEXT;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS move_reason TEXT;
 
+-- [ANL-1 2026-09-13 Part 3] 분석 LLM 출력. **기록 전용**이다.
+--   🔴 p_code·확신·pick 을 바꾸지 않는다. 구조 후보는 Phase 5-2 에 제출될 뿐.
+--   `gate_vs_llm` 은 코드 게이트와 LLM 판단의 불일치 — 그 자체가 측정 대상이다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS main_axis            TEXT;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS counter_axis         TEXT;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS market_view          TEXT;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS swap_agree           BOOLEAN;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS structure_candidates JSONB;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS analyze_model        TEXT;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_vs_llm          TEXT;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS analyze_failed       BOOLEAN;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
     ON pick_ledger (game_id) WHERE is_final;
 
