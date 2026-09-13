@@ -129,6 +129,37 @@ def shrink_and_cap(adj: dict[str, float] | None) -> dict[str, float]:
     return out
 
 
+def p_send(jg: dict, settings=None) -> float | None:
+    """[SEND-1 결정 B-1] **카드와 보드가 함께 쓰는 홈 승 확률.**
+
+        p_send = 시장(디빅) + Σ조정 + 딥서치 이동 → 합계 절사 → 승률 절사
+
+    🔴 시장이 없으면 **None 이다.** 0.5 나 Elo 로 대체하지 않는다 —
+       소비 지점이 종전 값(제미나이 확률)으로 폴백한다.
+    🔴 **딥서치 이동을 더한다**(사용자 결정 2026-09-13). 호출 비용을 이미
+       썼는데 버리면 그 돈이 낭비다. 다만 조정과 **같은 상한** 안에 둔다 —
+       LLM 이 낸 %p 가 시장에서 무한정 멀어지지 못하게.
+    ⚠️ 딥서치는 **판정 뒤에** 돈다(`build_analysis`: 판정 2145 → 딥서치 2167).
+       그래서 이 함수는 딥서치 **뒤**에서 불려야 값이 온전하다.
+    """
+    mkt = jg.get("p_market_spine")
+    if mkt is None:
+        return None
+    sport = (jg.get("sport") or "").lower()
+    moved = ((jg.get("deepsearch") or {}).get("이동_pp")) or 0.0
+    try:
+        moved = float(moved)
+    except (TypeError, ValueError):
+        moved = 0.0
+    total = sum(shrink_and_cap(adjustments(jg)).values()) + moved
+    if abs(total) > ADJ_SUM_CAP:
+        total = ADJ_SUM_CAP if total > 0 else -ADJ_SUM_CAP
+    from app.engine.scoring import cap_probability
+
+    capped, _ = cap_probability(float(mkt) + total / 100.0, sport, settings)
+    return round(float(capped), 4)
+
+
 #: [결정 G 2026-09-13] 모델 확률의 가중치. **0 에서 시작한다** —
 #  기록만 하고 발송 숫자에 영향이 없다. 300건 뒤 사용자가 상향을 판정한다:
 #    4단계 A/D 에서 모델이 ELO 를 이겼고, 전방 300건에서 p_model 브라이어가

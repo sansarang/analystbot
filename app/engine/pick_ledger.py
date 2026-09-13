@@ -184,7 +184,9 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         "llm_winner": matchup.get("승자") or jg.get("winner"),
         "llm_level": matchup.get("확신") or matchup.get("확신도"),
         "p_market_spine": jg.get("p_market_spine"),
-        "p_code": jg.get("p_code"),
+        # 🔴 [SEND-1] **실제 나간 값**을 남긴다. `p_code` 는 판정 직후(딥서치
+        #    앞) 값이라 카드 숫자와 다르다 — 사후 대조는 나간 값으로 해야 한다.
+        "p_code": jg.get("p_send") or jg.get("p_code"),
         "adj_pp": jg.get("adj_pp"),
         # [MBF-1] 야구 모델 확률 — **기록 전용**(`model_w = 0`).
         "p_model": jg.get("p_model"),

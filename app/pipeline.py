@@ -3678,7 +3678,14 @@ def _compute_picks(
         from app.engine.scoring import BASEBALL_SPORTS
         market = jg.get("market_probs") or {}
         if sport in BASEBALL_SPORTS:
-            ph = jg.get("p_claude")
+            # 🔴 [SEND-1 결정 B-1 2026-09-13] **야구는 이 분기를 탄다** —
+            #    아래 `continue` 로 λ 경로를 건너뛰므로, 여기서 갈아끼우지
+            #    않으면 KBO·NPB·MLB 보드는 옛 값 그대로다.
+            #    `p_send` 가 없으면(배당 미수집) 종전대로 제미나이 확률.
+            from app.engine import prob as _prob_send
+
+            jg["p_send"] = _prob_send.p_send(jg)
+            ph = jg.get("p_send") or jg.get("p_claude")
             jg["distribution"] = None
             jg["lam"] = None
             jg["lambda_trace"] = []
@@ -3983,6 +3990,20 @@ def _compute_picks(
         if dist is None and home_adj is not None and jg["away"] in p_final:
             shift = home_adj["p"] - p_ens.get(jg["home"], home_adj["p"])
             p_final[jg["away"]] = round(max(0.02, min(0.96, p_final[jg["away"]] - shift)), 4)
+        # 🔴 [SEND-1 결정 B-1 2026-09-13] **카드와 보드가 같은 값을 쓴다.**
+        #    여기는 딥서치(`run_for_slate`) **뒤**다 — `p_code` 는 판정 직후
+        #    (딥서치 앞) 값이라 딥서치 이동이 빠져 있다. `p_send` 가 셋을 합친다.
+        #    🔴 게이트가 둘로 갈리면 한 카드가 두 말을 한다(실사고 2026-09-05):
+        #       카드의 `추천/보드만` 은 `favored_side_and_p`, 보드의 `자격 통과`
+        #       는 이 `p_final` 이다. 둘 다 `p_send` 를 보게 한다.
+        #    ⚠️ 시장이 없으면 None 이고, 그러면 **종전 앙상블 그대로** 간다.
+        from app.engine import prob as _prob_send
+
+        _ps = _prob_send.p_send(jg)
+        jg["p_send"] = _ps
+        if _ps is not None:
+            p_final[jg["home"]] = round(_ps, 4)
+            p_final[jg["away"]] = round(max(0.0, 1.0 - _ps - (p_draw_m or 0.0)), 4)
         jg["prob_adjust"] = home_adj          # 조정 과정 trace (상세 데이터 표시용)
         jg["p_legacy"] = p_legacy             # [6] 병렬 채점용 시장 반영 확률
         jg["p_final"] = p_final               # 홈/원정 키. 시뮬레이션 채점이 쓴다

@@ -23,7 +23,11 @@ def _park(jg: dict) -> str:
 def favored_side_and_p(jg: dict) -> tuple[str | None, float | None]:
     """우세 사이드와 그 승률. p_home 기반. 없으면 (None, None)."""
     m = jg.get("matchup") or {}
-    p = m.get("p_home")
+    # 🔴 [SEND-1 결정 B-1] **`p_send` 가 먼저다** — 시장 + 조정 + 딥서치.
+    #    없으면(배당 미수집) 종전대로 제미나이 확률로 폴백한다.
+    p = jg.get("p_send")
+    if p is None:
+        p = m.get("p_home")
     if p is None:
         p = jg.get("p_claude")
     try:
@@ -85,7 +89,7 @@ def rec_label(jg: dict, settings=None) -> str:
     from app.pipeline import market_disagreement
 
     if market_disagreement({"p_market_send": jg.get("p_market_send"),
-                            "p_home": jg.get("p_claude")}, s) is not None:
+                            "p_home": jg.get("p_send") or jg.get("p_claude")}, s) is not None:
         return "보드만"
     side, p = favored_side_and_p(jg)
     if p is None:
@@ -104,11 +108,11 @@ def _market_why(jg: dict, settings=None) -> str | None:
     from app.pipeline import MARKET_DISAGREE, market_disagreement
 
     md = market_disagreement({"p_market_send": jg.get("p_market_send"),
-                              "p_home": jg.get("p_claude")}, settings)
+                              "p_home": jg.get("p_send") or jg.get("p_claude")}, settings)
     if md is None:
         return None
     if md == MARKET_DISAGREE:
-        m, o = jg.get("p_market_send"), jg.get("p_claude")
+        m, o = jg.get("p_market_send"), jg.get("p_send") or jg.get("p_claude")
         return f"시장 이견 (우리 {float(o):.0%} vs 시장 {float(m):.0%})"
     return "시장 미수집"
 
@@ -402,7 +406,7 @@ def render_form_card(jg: dict, sport: str | None = None, *,
         #      동의(1%p)"로 찍고, 같은 카드 마지막 줄은 게이트가 낸 "시장 이견
         #      (우리 47% vs 54%)"을 달았다 — 한 카드가 두 말을 했다.
         #    ⚠️ 홈 우세면 p_fav == p_home 이라 증상이 없다. 원정 우세 전용 결함.
-        _p_home = m.get("p_home")
+        _p_home = jg.get("p_send") or m.get("p_home")
         if _p_home is None:
             _p_home = jg.get("p_claude")
         _ml = market_line(jg.get("p_market_send"), _p_home)
