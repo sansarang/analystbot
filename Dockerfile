@@ -29,6 +29,11 @@ COPY app/ ./app/
 COPY db/ ./db/
 COPY mock_data/ ./mock_data/
 COPY tools/ ./tools/
+# 🔴 [CFG-1 2026-09-13] **설정도 올린다.** 이게 빠져서 서버의 검색어·소스·
+#    티어 표가 전부 비어 있었다(실측: `[scout] 설정 없음` · 리그 0 · 소스 0).
+#    모듈은 예외 없이 **빈 값으로 정상 동작**하므로 로그 한 줄이 유일한
+#    신호였다. 계약이 `Path(...)` 로 읽는 디렉토리를 전수로 대조한다.
+COPY config/ ./config/
 
 # data/ 는 **이미지에 넣지 않는다.** .gitignore에 있어 배포 업로드에서 빠지므로
 # COPY 하면 빌드가 깨진다(실사고 2026-08-26: `"/data": not found`).
