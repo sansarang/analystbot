@@ -108,17 +108,29 @@ def _players(box: dict, side: str):
 
 
 def parse_pitching(box: dict, *, game_id: int) -> list[dict]:
+    """투구 기록. 🔴 [MBL-2] **선발은 `gamesStarted` 로 가른다.**
+
+    실측 2026-09-13: `gameStatus` 에 `isStarter` 키가 **없다**
+    (`isCurrentBatter·isCurrentPitcher·isOnBench·isSubstitute` 뿐).
+    그 키를 가정해 2024시즌 2,429경기 전부 `home_sp = NULL` 이었다.
+    ⚠️ 폴백으로 `teams.{side}.pitchers[0]`(등판 순서)을 쓴다 — 신호 하나가
+       빠진 응답에서 조용히 NULL 이 되는 것이 이번 결함의 본질이다.
+    """
     out = []
     for side in ("home", "away"):
         blk, players = _players(box, side)
         team = (blk.get("team") or {}).get("id")
+        first = (blk.get("pitchers") or [None])[0]
         for p in players.values():
             st = ((p.get("stats") or {}).get("pitching") or {})
             if not st:
                 continue
-            starter = bool((p.get("gameStatus") or {}).get("isStarter"))
+            pid = (p.get("person") or {}).get("id")
+            gs = st.get("gamesStarted")
+            starter = (int(gs) >= 1) if gs is not None else (
+                pid is not None and first is not None and int(pid) == int(first))
             out.append({
-                "game_id": game_id, "pitcher_id": (p.get("person") or {}).get("id"),
+                "game_id": game_id, "pitcher_id": pid,
                 "team": team, "role": "SP" if starter else "RP",
                 "ip": parse_ip(st.get("inningsPitched")),
                 "er": st.get("earnedRuns"), "r": st.get("runs"),

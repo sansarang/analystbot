@@ -61,9 +61,11 @@ _BOX = {"teams": {
                                                     "triples": 0, "homeRuns": 1,
                                                     "baseOnBalls": 0, "hitByPitch": 0,
                                                     "strikeOuts": 1, "plateAppearances": 4}}},
+                 # ⚠️ [MBL-2] 종전 고정구는 `gameStatus.isStarter` 를 썼는데
+                 #    statsapi 에 **그런 키가 없다**. 실제 신호로 바꿨다.
                  "ID543037": {"person": {"id": 543037},
-                              "gameStatus": {"isStarter": True},
-                              "stats": {"pitching": {"inningsPitched": "6.1",
+                              "stats": {"pitching": {"gamesStarted": 1,
+                                                     "inningsPitched": "6.1",
                                                      "earnedRuns": 2, "runs": 3,
                                                      "strikeOuts": 7, "baseOnBalls": 1,
                                                      "hits": 5, "numberOfPitches": 95}}}}},
@@ -128,3 +130,48 @@ def test_배당은_원값으로_저장한다():
     src = inspect.getsource(L)
     for bad in ("devig", "implied_prob", "1.0 /"):
         assert bad not in src, bad
+
+
+# ── [MBL-2] 선발 식별
+
+_BOX2 = {"teams": {"home": {
+    "team": {"id": 147},
+    "pitchers": [571760, 592351],
+    "battingOrder": [],
+    "players": {
+        "ID571760": {"person": {"id": 571760},
+                     "gameStatus": {"isCurrentPitcher": False, "isSubstitute": False},
+                     "stats": {"pitching": {"gamesStarted": 1, "inningsPitched": "5.2",
+                                            "earnedRuns": 3, "strikeOuts": 5}}},
+        "ID592351": {"person": {"id": 592351},
+                     "gameStatus": {"isCurrentPitcher": False, "isSubstitute": True},
+                     "stats": {"pitching": {"gamesStarted": 0, "inningsPitched": "1.0",
+                                            "earnedRuns": 0, "strikeOuts": 2}}}}},
+    "away": {"team": {"id": 111}, "pitchers": [], "battingOrder": [], "players": {}}}}
+
+
+def test_선발은_gamesStarted로_가른다():
+    """🔴 **실측 2026-09-13**: `gameStatus` 에 `isStarter` 가 **없다**.
+    내가 그 키를 가정해 한 시즌 2,429경기 전부 `home_sp = NULL` 이었다.
+    확실한 신호는 `stats.pitching.gamesStarted == 1` 이다.
+    """
+    rows = L.parse_pitching(_BOX2, game_id=1)
+    by = {r["pitcher_id"]: r["role"] for r in rows}
+    assert by[571760] == "SP", rows
+    assert by[592351] == "RP", rows
+
+
+def test_gamesStarted가_없으면_첫_투수를_선발로_본다():
+    """⚠️ 폴백. `teams.{side}.pitchers[0]` 가 선발이다(등판 순서)."""
+    box = json.loads(json.dumps(_BOX2))
+    for p in box["teams"]["home"]["players"].values():
+        p["stats"]["pitching"].pop("gamesStarted", None)
+    rows = L.parse_pitching(box, game_id=1)
+    by = {r["pitcher_id"]: r["role"] for r in rows}
+    assert by[571760] == "SP" and by[592351] == "RP", rows
+
+
+def test_선발이_경기행에_실린다():
+    rows = L.parse_pitching(_BOX2, game_id=1)
+    hs, as_ = L.starters(rows, home=147, away=111)
+    assert hs == 571760 and as_ is None
