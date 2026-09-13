@@ -178,6 +178,8 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         "date": analysis.get("date") or "",
         "p_home": jg.get("p_claude"),
         # [PROB-1] 시장 뼈대·코드 조정. 판정(LLM)은 이 값을 보지 않는다.
+        # [CONF-1] 확신은 **코드 등급**이다. LLM 자기신고는 llm_level(결정 D)로.
+        "code_confidence": jg.get("code_confidence"),
         "p_market_spine": jg.get("p_market_spine"),
         "p_code": jg.get("p_code"),
         "adj_pp": jg.get("adj_pp"),
@@ -188,7 +190,10 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         "favored": matchup.get("우세"),
         # [ORD-12] 새 순서는 `확신`(상|중|하) 한 칸만 낸다 — 종전 `확신도` 와
         #   **같은 눈금**이라 같은 컬럼에 넣는다. 새 컬럼을 만들지 않는다.
-        "confidence": matchup.get("확신도") or matchup.get("확신"),
+        # 🔴 [CONF-1] **코드 등급이 우선한다.** 없으면 종전 LLM 자기신고로 폴백
+        #    한다 — v3 가 꺼진 경로에는 아직 코드 등급이 없다.
+        "confidence": (jg.get("code_confidence")
+                       or matchup.get("확신도") or matchup.get("확신")),
         "lineup_status": jg.get("lineup_status") or "none",
         "gate_result": gate_result_of(jg, pick),
         "model": jg.get("model") or matchup.get("model"),

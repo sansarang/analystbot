@@ -170,3 +170,79 @@ def probe(jg: dict, *, market_prob=None, divergence_pp=None) -> dict:
         #    예외 처리기가 예외를 내고, 계측이 본체를 죽인다는 바로 그 사고다.
         logger.warning("[confidence] 후보 계산 실패: %s", exc)
         return {}
+
+
+# ══════════ [CONF-1 2026-09-13] 확신 등급을 **코드가** 정한다 ══════════
+#
+# 사용자 결정(1차 결정 3): 종전 `verdict.level()` 은 라벨 정규화뿐이었고 등급은
+# LLM 자기신고였다 — AUC 0.5122 짜리 판정에 AI 가 스스로 붙인 등급을 실어 보냈다.
+#
+# ⚠️ `DB본것`·채택 자료 수·뉴스 건수는 **입력에서 뺀다**(자기보고).
+# ⚠️ [2차 결정 C] `divergence_pp = p_code − p_market = Σadj` 로 정의를 고정한다.
+
+#: 종목별 필수 축. 🔴 이름의 원본은 `dbref.ITEMS` 다 — 손으로 적지 않는다.
+REQUIRED_AXES: dict[str, tuple[str, ...]] = {
+    "mlb": ("선발 최근 등판", "불펜 최근 폼과 가용성"),
+    "kbo": ("선발 최근 등판", "불펜 최근 폼과 가용성"),
+    "npb": ("선발 최근 등판", "불펜 최근 폼과 가용성"),
+    "soccer": ("축구 선발 라인업", "축구 부상·결장자"),
+}
+
+#: 등급 문턱. 지시문 표 그대로.
+CODE_HIGH_P = 0.63
+CODE_MID_P = 0.58
+CODE_DIV_MAX = 4.0      # |p_code − p_market| %p
+CODE_HIGH_ADJ_N = 2     # 상은 조정 항목 2개 이상
+
+
+def divergence_pp(p_code, p_market) -> float | None:
+    """우리 − 시장 (%p). 🔴 [결정 C] 이것이 **Σadj** 다 —
+    LLM 확률과 시장의 차이가 아니다."""
+    if p_code is None or p_market is None:
+        return None
+    return round((float(p_code) - float(p_market)) * 100, 2)
+
+
+def _adj_count(jg: dict) -> int:
+    import json as _json
+
+    raw = jg.get("adj_pp")
+    if isinstance(raw, dict):
+        return len(raw)
+    try:
+        return len(_json.loads(raw or "{}"))
+    except (TypeError, ValueError):
+        return 0
+
+
+def by_code(jg: dict, have: list | tuple | set | None) -> str:
+    """규칙표대로 등급을 정한다. 반환은 `verdict.LEVELS` 의 값.
+
+    `have` — 이 경기에서 값이 있는 DB 항목 이름들(`dbref.bundle`의 `있음`).
+    🔴 자기보고(`DB본것`)가 아니라 **있음**을 쓴다.
+    """
+    from app.collectors.lineups import STATUS_CONFIRMED
+
+    sport = (jg.get("sport") or "").lower()
+    axes = REQUIRED_AXES.get(sport, ())
+    got = {a for a in axes if a in set(have or ())}
+    p_code, p_mkt = jg.get("p_code"), jg.get("p_market_spine")
+    # 🔴 뼈대가 없으면 등급을 붙이지 않는다
+    if p_code is None or p_mkt is None:
+        return LOW
+    if (jg.get("lineup_status") or "") != STATUS_CONFIRMED:
+        return LOW
+    if not axes or not got:
+        return LOW
+    div = abs(divergence_pp(p_code, p_mkt) or 0.0)
+    if div > CODE_DIV_MAX:
+        return LOW
+    p = float(p_code)
+    # ⚠️ 2종에서 "2/3 이상"은 1.33 → **올림하여 전부**로 읽는다(보수적).
+    need_mid = -(-2 * len(axes) // 3)
+    if (p >= CODE_HIGH_P and len(got) == len(axes)
+            and _adj_count(jg) >= CODE_HIGH_ADJ_N):
+        return HIGH
+    if p >= CODE_MID_P and len(got) >= need_mid:
+        return MID
+    return LOW

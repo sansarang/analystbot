@@ -2779,8 +2779,21 @@ async def _attach_market_spine(pool, jg: dict) -> None:
         jg["p_market_spine"] = mkt
         jg["adj_pp"] = _prob.adj_json(adj)
         jg["p_code"] = _prob.p_code(mkt, adj, sport)
-        logger.info("[prob] game=%s p_market=%s adj=%s p_code=%s",
-                    jg.get("game_id"), mkt, adj, jg.get("p_code"))
+        # 🔴 [CONF-1] 확신 등급을 **코드가** 정한다. LLM 자기신고를 쓰지 않는다.
+        #    `있음`(자기보고 아님)을 필수 축 판정에 쓴다.
+        try:
+            from app.engine import confidence as _conf
+            from app.engine import dbref as _dbref
+
+            have = _dbref.bundle(jg)["있음"]
+            jg["code_confidence"] = _conf.by_code(jg, have)
+            jg["divergence_pp"] = _conf.divergence_pp(jg.get("p_code"), mkt)
+        except Exception as exc:
+            logger.warning("[conf] game=%s 등급 산출 실패: %s",
+                           jg.get("game_id"), exc)
+        logger.info("[prob] game=%s p_market=%s adj=%s p_code=%s 확신=%s",
+                    jg.get("game_id"), mkt, adj, jg.get("p_code"),
+                    jg.get("code_confidence"))
     except Exception as exc:
         logger.warning("[prob] game=%s 시장 뼈대 실패 — NULL 로 둔다: %s",
                        jg.get("game_id"), exc)

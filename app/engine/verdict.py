@@ -27,14 +27,21 @@ DRAW = "무"
 from app.collectors.websearch import MAX_ASKS as _MAX_ASKS  # noqa: E402
 
 
-def level(raw) -> str:
-    """모르는 라벨은 `하` 로 떨어뜨린다.
+def level(raw, expected: str | None = None):
+    """[CONF-1] 등급을 **코드가 정하고**, LLM 출력은 그것과 같은지만 본다.
 
-    🔴 그대로 실으면 카드가 못 읽는다. 낮은 쪽이 안전한 방향이다 — 확신을
-       높게 쓰는 것이 이 구조에서 가장 나쁜 실패다.
+    🔴 사용자 결정(1차 결정 3): 종전에는 이 함수가 라벨 정규화만 하고 등급은
+       LLM 자기신고였다 — AUC 0.5122 짜리 판정에 AI 가 붙인 등급을 그대로
+       실어 보냈다.
+    🔴 `expected` 가 주어지면 **글자 단위로 일치**해야 한다. 다르면 `None`
+       (호출부가 반려한다) — 모르는 라벨을 조용히 `하` 로 떨어뜨리지 않는다.
+    ⚠️ `expected` 가 없으면 **종전 그대로** 정규화한다. 아직 기대값을 주지
+       못하는 호출부가 있고, 그 경로를 깨지 않는다.
     """
     t = str(raw or "").strip()
-    return t if t in LEVELS else "하"
+    if expected is None:
+        return t if t in LEVELS else "하"
+    return t if t == expected else None
 
 
 #: 기사 한 줄의 상한. 🔴 [PRM-2] **DB 행에는 쓰지 않는다.**
