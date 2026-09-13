@@ -1225,7 +1225,8 @@ async def _free_odds_snapshot() -> None:
     KBO·NPB  배트맨 스냅샷(Go 크롤러 적재)을 DB 로 옮긴다
     ⚠️ 한 리그 실패가 나머지를 막지 않는다.
     """
-    from app.collectors.odds_free import collect_asia, collect_mlb, coverage
+    from app.collectors.odds_free import (collect_asia, collect_mlb,
+                                          collect_soccer, coverage)
     from app.pipeline import mlb_slate_date, today_kst
 
     pool = await get_pool()
@@ -1259,6 +1260,15 @@ async def _free_odds_snapshot() -> None:
             except Exception as exc:
                 logger.warning("[odds] %s 배트맨 수집 실패: %s", sport, exc)
                 summary.append(f"{sport}=실패")
+        # 🔴 [ODP-1 2026-09-13] 축구 1X2. 종전에는 축구 배당이 **0건**이었다
+        #    (최근 14일 69경기) — oddsportal 리그 표에 축구가 없어서였다.
+        #    ⚠️ 실패해도 야구 수집을 막지 않는다.
+        try:
+            r = await collect_soccer(pool, redis, today_kst())
+            summary.append(f"soccer={r['rows']}행/{r['matched']}경기")
+        except Exception as exc:
+            logger.warning("[odds] 축구 수집 실패: %s", exc)
+            summary.append("soccer=실패")
         # [검증 3] 리그별 커버리지를 매 스냅샷마다 남긴다 — 3일 집계의 재료다.
         # 커버리지도 **실제 대상 날짜**로 잰다. 대상이 없으면 재지 않는다 —
         # 분모가 0인 비율을 만들면 그게 곧 오탐이다.

@@ -23,7 +23,9 @@ def test_every_provider_declares_its_leagues():
     """담당 리그가 없는 소스는 감시 범위를 정할 수 없다."""
     for p in ODDS_PROVIDERS:
         assert p.sports, f"{p.name} 담당 리그 미선언"
-        assert all(sp in ("mlb", "kbo", "npb") for sp in p.sports), p.name
+        # 🔓 [ODP-1 2026-09-13] 축구가 종목에 들어왔다 — oddsportal 이 1X2 를
+        #    낸다. 목록을 손으로 적지 않는다: 우리가 다루는 종목 전부다.
+        assert all(sp in ("mlb", "kbo", "npb", "soccer") for sp in p.sports), p.name
 
 
 def test_provider_names_are_unique():
@@ -60,8 +62,21 @@ def test_key_presence_activates_the_fallback(monkeypatch):
 def test_league_coverage_is_disjoint_where_it_matters():
     """ESPN 은 MLB 전용이다 — 이 사실이 오탐 ①의 해소 근거다."""
     assert sports_of("espn") == ("mlb",)
-    assert set(sports_of("oddsportal")) == {"kbo", "npb"}
-    assert watched_sports() == ("mlb", "kbo", "npb")
+    # 🔓 [ODP-1] oddsportal 이 축구 1X2 도 담당한다. 종전에는 축구 배당이
+    #    **0건**이었다(최근 14일 69경기) — 리그 표에 축구가 없어서였다.
+    assert set(sports_of("oddsportal")) == {"kbo", "npb", "soccer"}
+    # ⚠️ 축구를 담당하는 소스는 아직 이것 하나다 — 늘면 이 줄이 먼저 깨진다
+    assert [p.name for p in ODDS_PROVIDERS if "soccer" in p.sports] == ["oddsportal"]
+    # 🔴 사본 금지 — 감시 종목은 **활성 소스에서 파생**된다. 손으로 적은
+    #    목록과 비교하면 소스가 늘 때마다 이 줄이 거짓 경보를 낸다.
+    expected = []
+    for p in ODDS_PROVIDERS:
+        if p.wired and not p.key_setting:
+            for sp in p.sports:
+                if sp not in expected:
+                    expected.append(sp)
+    assert set(watched_sports()) == set(expected)
+    assert "soccer" in watched_sports(), "축구 배당이 감시 범위 밖이다"
 
 
 # ─────────────────── 사본 금지 (핵심) ───────────────────

@@ -25,9 +25,11 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +54,104 @@ LEAGUE_URL = {
     "npb": "https://www.oddsportal.com/baseball/japan/npb/",
 }
 
-#: 2-way 승패 마켓. 야구는 무승부가 없다.
+#: 2-way 승패 마켓. 야구는 무승부가 없다. (scopeId 1)
 BETTING_TYPE_H2H = 3
+#: 🔴 [ODP-1 2026-09-13] 축구 1X2. 실측: 리그 페이지가 `bettingTypeId:1` ·
+#   `scopeId:2` 로 세 값을 준다(EPL 90개=30경기×3, 라리가 87개).
+#   ⚠️ 파생 시장(핸디·언더오버)은 **리그 페이지에 없다** — `handicapValue`
+#      0건. 경기별 상세에만 있고 링크조차 HTML 에 안 실린다.
+BETTING_TYPE_1X2 = 1
+SCOPE_1X2 = 2
+
+#: 축구 리그 URL. 🔴 **키는 `leagues.LEAGUES` 와 같아야 한다** — 목록을 손으로
+#  적으면 그것이 사본이고, 리그가 늘 때 따라가지 않는다(계약이 전수 대조).
+SOCCER_URL = {
+    "epl":        "https://www.oddsportal.com/football/england/premier-league/",
+    "la_liga":    "https://www.oddsportal.com/football/spain/laliga/",
+    "serie_a":    "https://www.oddsportal.com/football/italy/serie-a/",
+    "bundesliga": "https://www.oddsportal.com/football/germany/bundesliga/",
+    "j1":         "https://www.oddsportal.com/football/japan/j1-league/",
+    "denmark":    "https://www.oddsportal.com/football/denmark/superliga/",
+    "kleague1":   "https://www.oddsportal.com/football/south-korea/k-league-1/",
+}
+
+#: 🔴 정규화에서 **지우는 토큰**. 법인 형태 접미사와 창단 연도뿐이다.
+#   실측 2026-09-13: `united`·`city`·`real`·`atletico` 까지 지웠더니
+#   **맨시티=맨유 · 레알=AtM** 이 같은 키가 됐다. 팀을 구분하는 토큰은
+#   절대 지우지 않는다 — 퍼지 매칭이 낸 사고(AC밀란→인테르)와 같은 구조다.
+_DROP_TOKENS = {
+    "fc", "afc", "cf", "cfc", "sc", "sv", "ac", "as", "ss", "ssc", "us",
+    "rc", "rcd", "ca", "ud", "bc", "bk", "if", "calcio", "club", "de",
+    "fussball", "fk", "balompie", "futbol",
+    "1", "07", "04", "05", "1899", "1909", "1913", "1907", "1995",
+}
+
+
+def norm(name: str) -> str:
+    """팀명 → 대조 키. **결정적이다 — 유사도를 쓰지 않는다.**"""
+    import unicodedata
+
+    s = unicodedata.normalize("NFKD", str(name or ""))
+    s = "".join(c for c in s if not unicodedata.combining(c)).lower()
+    s = re.sub(r"[^a-z0-9\s]", " ", s)
+    return " ".join(t for t in s.split()
+                    if t not in _DROP_TOKENS and not t.isdigit())
+
+
+#: oddsportal 표기 → **우리 games 표기**. 정규화로 안 붙는 것만 적는다
+#  (실측: 정규화만으로 66/122). 값은 최종 표기다 — 다시 별칭 키가 되면 순환이다.
+SOCCER_ALIAS = {
+    # EPL
+    "Brighton": "Brighton & Hove Albion FC",
+    "Coventry": "Coventry City FC",
+    "Hull": "Hull City AFC",
+    "Ipswich": "Ipswich Town FC",
+    "Leeds": "Leeds United FC",
+    "Manchester Utd": "Manchester United FC",
+    "Newcastle": "Newcastle United FC",
+    "Nottingham": "Nottingham Forest FC",
+    "Tottenham": "Tottenham Hotspur FC",
+    # 라리가
+    "Alaves": "Deportivo Alavés",
+    "Ath Bilbao": "Athletic Club",
+    "Atl. Madrid": "Club Atlético de Madrid",
+    "Betis": "Real Betis Balompié",
+    "Dep. A Coruna": "RC Deportivo La Coruña",
+    "Espanyol": "RCD Espanyol de Barcelona",
+    "Racing Santander": "Real Racing Club de Santander",
+    "Rayo Vallecano": "Rayo Vallecano de Madrid",
+    # 세리에A
+    "Fiorentina": "ACF Fiorentina",
+    "Inter": "FC Internazionale Milano",
+    # 분데스리가
+    "B. Monchengladbach": "Borussia Mönchengladbach",
+    "Bayern Munich": "FC Bayern München",
+    "Dortmund": "Borussia Dortmund",
+    "Hoffenheim": "TSG 1899 Hoffenheim",
+    "Mainz": "1. FSV Mainz 05",
+    "Stuttgart": "VfB Stuttgart",
+    # 덴마크
+    "Aarhus": "AGF Aarhus",
+    "Odense": "OB Odense BK",
+    # K리그1
+    "Daejeon": "Daejeon Citizen",
+    # ⚠️ 연고 이전(상주→김천)으로 같은 팀이라고 **판단**한 것이다. 측정이
+    #    아니므로 첫 사이클에서 날짜·상대로 대조한다.
+    "Gimcheon Sangmu": "Sangju Sangmu FC",
+    "Incheon": "Incheon United",
+    "Jeju SK": "Jeju United FC",
+    "Jeonbuk": "Jeonbuk Hyundai Motors",
+    "Pohang": "Pohang Steelers",
+    "Ulsan HD": "Ulsan Hyundai FC",
+    # J1 — 우리 DB 에 경기가 있는 팀만. 나머지 18팀은 **추측해서 만들지 않는다.**
+    "Machida": "FC Machida Zelvia",
+    "Urawa Reds": "Urawa Red Diamonds",
+}
+
+
+def team_key(op_name: str) -> str:
+    """oddsportal 표기 → 대조 키(별칭을 거친 뒤 정규화)."""
+    return norm(SOCCER_ALIAS.get(op_name, op_name))
 
 #: oddsportal 표기 → 우리 games 팀명.
 TEAM_MAP = {
@@ -108,7 +206,7 @@ def parse_rows(html: str) -> dict[int, dict]:
     return out
 
 
-def parse_odds(html: str) -> dict[int, dict]:
+def parse_odds(html: str, *, three_way: bool = False) -> dict[int, dict]:
     """eventId → {home, away} 평균배당. h2h(2-way)만.
 
     🔴 **순서가 홈|원정이다.** `resultId` 로는 못 가른다 — 오늘 경기는 두
@@ -125,28 +223,38 @@ def parse_odds(html: str) -> dict[int, dict]:
     """
     flat = _unescape(html)
     out: dict[int, dict] = {}
+    # 🔴 [ODP-1] `three_way` 기본값은 **False** — 야구 경로가 종전 그대로다.
+    bt, scope, want = ((BETTING_TYPE_1X2, SCOPE_1X2, 3) if three_way
+                       else (BETTING_TYPE_H2H, 1, 2))
     for m in re.finditer(
             r'"[A-Za-z0-9]{6,10}":\{"event":(\d{6,9}),"odds":\[(\{.*?\})\],"cnt"',
             flat, re.S):
         eid, blob = int(m.group(1)), m.group(2)
         vals = re.findall(
-            r'"avgOdds":([\d.]+),"bettingTypeId":%d,"scopeId":1' % BETTING_TYPE_H2H,
+            r'"avgOdds":([\d.]+),"bettingTypeId":%d,"scopeId":%d' % (bt, scope),
             blob)
-        if len(vals) != 2:
-            continue          # 2-way 가 아니면 손대지 않는다
+        if len(vals) != want:
+            continue          # 칸 수가 다르면 손대지 않는다
         try:
-            home, away = float(vals[0]), float(vals[1])
+            nums = [float(v) for v in vals]
         except ValueError:
             continue
-        if home > 1.0 and away > 1.0:
-            out[eid] = {"home": round(home, 3), "away": round(away, 3)}
+        if any(v <= 1.0 for v in nums):
+            continue
+        # oddsportal 관례: 1X2 는 **홈|무|원정**, 2-way 는 홈|원정
+        keys = ("home", "draw", "away") if three_way else ("home", "away")
+        out[eid] = {k: round(v, 3) for k, v in zip(keys, nums)}
     return out
 
 
 def to_rows(home: str, away: str, odds: dict) -> list[dict]:
     """우리 적재 계약. 한쪽만 있으면 그 한쪽만 — 역산하지 않는다."""
     out = []
-    for side, team in (("home", home), ("away", away)):
+    # 🔴 [ODP-1] 무승부는 **`draw` 키가 있을 때만** 만든다. 야구에 무승부
+    #    칸이 생기면 디빅이 3-way 로 잘못 돌아 승/패 확률이 부풀고
+    #    전 경기 +EV 착시가 난다(`_market_probs` 실사고 이력).
+    sides = (("home", home), ("draw", "Draw"), ("away", away))
+    for side, team in sides:
         v = odds.get(side)
         if v and team:
             out.append({"book": "oddsportal-avg", "market": "h2h",
@@ -154,41 +262,83 @@ def to_rows(home: str, away: str, odds: dict) -> list[dict]:
     return out
 
 
-async def fetch_league(sport: str, *, force: bool = False) -> dict[str, dict]:
-    """리그 1회 요청 → {eventId: {home, away, rows[]}}. 실패하면 빈 dict."""
+async def _get(url: str, tag: str) -> str | None:
+    """한 번 요청. 실패하면 None. **간격 기록은 호출부가 이미 했다.**
+
+    ⚠️ 요청 블록을 두 벌 적지 않기 위해 꺼냈다 — 야구·축구가 같은 것을 쓴다.
+    """
     import httpx
 
-    import asyncio
-    import time
-
-    url = LEAGUE_URL.get(sport)
-    if not url:
-        return {}
-    if not force:
-        last = _last_call.get(sport)
-        if last is not None and (time.monotonic() - last) < MIN_INTERVAL_SEC:
-            left = MIN_INTERVAL_SEC - (time.monotonic() - last)
-            logger.info("[oddsportal] %s — %.0f초 전에 받았다. 요청 생략 "
-                        "(최소 간격 %d분)", sport, MIN_INTERVAL_SEC - left,
-                        MIN_INTERVAL_SEC // 60)
-            return {}
-    html = None
     for attempt in range(MAX_ATTEMPTS):
         try:
             async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True,
                                          headers={"User-Agent": UA}) as c:
                 r = await c.get(url)
                 r.raise_for_status()
-                html = r.text
                 logger.info("[oddsportal] %s 응답 %dB (시도 %d/%d)",
-                            sport, len(r.content), attempt + 1, MAX_ATTEMPTS)
-            break
+                            tag, len(r.content), attempt + 1, MAX_ATTEMPTS)
+                _last_call[tag] = time.monotonic()
+                return r.text
         except Exception as exc:
             logger.warning("[oddsportal] %s 조회 실패 (시도 %d/%d): %s",
-                           sport, attempt + 1, MAX_ATTEMPTS, exc)
+                           tag, attempt + 1, MAX_ATTEMPTS, exc)
             if attempt < MAX_ATTEMPTS - 1:
                 await asyncio.sleep(BACKOFF_SEC * (attempt + 1))
-    _last_call[sport] = time.monotonic()
+    _last_call[tag] = time.monotonic()
+    return None
+
+
+def _throttled(tag: str) -> bool:
+    last = _last_call.get(tag)
+    if last is None or (time.monotonic() - last) >= MIN_INTERVAL_SEC:
+        return False
+    logger.info("[oddsportal] %s — %.0f초 전에 받았다. 요청 생략 (최소 간격 %d분)",
+                tag, time.monotonic() - last, MIN_INTERVAL_SEC // 60)
+    return True
+
+
+async def fetch_soccer_league(league: str, *, force: bool = False) -> list[dict]:
+    """[ODP-1] 축구 리그 1회 요청 → `[{home_raw, away_raw, key_home, key_away, rows}]`.
+
+    🔴 팀명을 **여기서 우리 표기로 바꾸지 않는다.** 대조 키만 낸다 —
+       실제 경기 행과 맞추는 것은 `odds_free.collect_soccer` 의 몫이고,
+       그래야 같은 팀의 두 표기(`Aston Villa` / `Aston Villa FC`)가 둘 다 붙는다.
+    """
+    url = SOCCER_URL.get(league)
+    if not url or (not force and _throttled(league)):
+        return []
+    html = await _get(url, league)
+    if html is None:
+        return []
+    rows, odds = parse_rows(html), parse_odds(html, three_way=True)
+    out: list[dict] = []
+    for eid, g in rows.items():
+        o = odds.get(eid)
+        if not o:
+            continue
+        r_ = to_rows(g["home_raw"], g["away_raw"], o)
+        if not r_:
+            continue
+        out.append({"event": str(eid),
+                    "home_raw": g["home_raw"], "away_raw": g["away_raw"],
+                    "key_home": team_key(g["home_raw"]),
+                    "key_away": team_key(g["away_raw"]),
+                    "rows": r_})
+    logger.info("[oddsportal] %s — 경기 %d · 배당 %d · 확보 %d",
+                league, len(rows), len(odds), len(out))
+    return out
+
+
+async def fetch_league(sport: str, *, force: bool = False) -> dict[str, dict]:
+    """리그 1회 요청 → {eventId: {home, away, rows[]}}. 실패하면 빈 dict."""
+
+
+    url = LEAGUE_URL.get(sport)
+    if not url:
+        return {}
+    if not force and _throttled(sport):
+        return {}
+    html = await _get(url, sport)
     if html is None:
         return {}
     rows, odds = parse_rows(html), parse_odds(html)

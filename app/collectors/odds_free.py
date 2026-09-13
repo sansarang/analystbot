@@ -191,6 +191,83 @@ async def collect_asia(pool, redis, sport: str, date: str) -> dict:
     return out
 
 
+async def collect_soccer(pool, redis, date: str) -> dict:
+    """[ODP-1] 축구 1X2 배당 — oddsportal, **리그당 1요청**.
+
+    🔴 팀명은 **결정적 정규화 + 명시 별칭**으로만 맞춘다. 유사도(퍼지)를 쓰지
+       않는다 — AC밀란이 인테르로 붙은 사고가 그것 때문이었다.
+    🔴 **양쪽 키가 다 맞아야** 붙인다. 한쪽만 맞으면 버린다(미매칭으로 남긴다).
+    ⚠️ 실패해도 다른 리그를 막지 않는다.
+    """
+    from app.collectors.oddsportal import (
+        PROVIDER as OP, SOCCER_URL, fetch_soccer_league, norm,
+    )
+
+    out = {"provider": OP, "games": 0, "rows": 0, "matched": 0,
+           "unmatched": [], "no_games": False}
+    if OP not in _chain("soccer"):
+        logger.info("[odds_free] SOCCER — %s 가 활성 소스가 아니다. 생략", OP)
+        out["provider"] = None
+        return out
+    idx = await _match_soccer_ids(pool, date)
+    if not idx:
+        out["no_games"] = True
+        logger.info("[odds_free] SOCCER %s — games 에 그 슬레이트가 없다", date)
+        return out
+    for league in SOCCER_URL:
+        try:
+            slate = await fetch_soccer_league(league)
+        except Exception as exc:
+            logger.warning("[odds_free] SOCCER %s 수집 실패: %s", league, exc)
+            continue
+        out["games"] += len(slate)
+        for blk in slate:
+            gid = idx.get((blk["key_home"], blk["key_away"]))
+            if gid is None:
+                out["unmatched"].append(
+                    f"{blk['away_raw']}@{blk['home_raw']}({league})")
+                continue
+            # 🔴 저장은 **우리 표기**로 한다 — 디빅이 games 팀명으로 찾는다.
+            names = idx_names.get((blk["key_home"], blk["key_away"]), {})
+            rows = []
+            for r in blk["rows"]:
+                side = r["side"]
+                if norm(side) == blk["key_home"]:
+                    side = names.get("home", side)
+                elif norm(side) == blk["key_away"]:
+                    side = names.get("away", side)
+                rows.append({**r, "side": side})
+            out["matched"] += 1
+            out["rows"] += await store_rows(pool, gid, rows, OP)
+    logger.info("[odds_free] SOCCER %s — 경기 %d · 매칭 %d · 행 %d%s",
+                date, out["games"], out["matched"], out["rows"],
+                f" · 미매칭 {out['unmatched'][:6]}" if out["unmatched"] else "")
+    return out
+
+
+#: `collect_soccer` 가 이름 환원에 쓰는 표. `_match_soccer_ids` 가 채운다.
+idx_names: dict[tuple[str, str], dict] = {}
+
+
+async def _match_soccer_ids(pool, date: str) -> dict[tuple[str, str], int]:
+    """(정규화 홈키, 정규화 원정키) → games.id. 없는 경기는 만들지 않는다."""
+    from app.collectors.oddsportal import norm
+
+    rows = await pool.fetch(
+        """SELECT id, home, away FROM games
+            WHERE sport = 'soccer'
+              AND (starts_at AT TIME ZONE 'Asia/Seoul')::date
+                  BETWEEN $1::date - 1 AND $1::date + 1""",
+        date)
+    out: dict[tuple[str, str], int] = {}
+    idx_names.clear()
+    for r in rows:
+        k = (norm(r["home"]), norm(r["away"]))
+        out[k] = r["id"]
+        idx_names[k] = {"home": r["home"], "away": r["away"]}
+    return out
+
+
 async def coverage(pool, sport: str, date: str) -> dict:
     """[검증 3] 커버리지 — 그 슬레이트 경기 중 배당이 붙은 비율."""
     from datetime import date as _d
