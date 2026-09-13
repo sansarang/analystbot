@@ -588,6 +588,17 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS analyze_model        TEXT;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_vs_llm          TEXT;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS analyze_failed       BOOLEAN;
 
+-- [OBS-1 2026-09-13 Part 4] 상시 관측. 침묵이 기본이다.
+--   watch_state: 관측 | 후보 | 추천대기 | 추천 | 취소 | 종료
+--   🔴 상태 전이는 **코드만** 한다. LLM 출력은 조건 A·B 의 입력일 뿐이다.
+ALTER TABLE games ADD COLUMN IF NOT EXISTS watch_state TEXT;
+CREATE INDEX IF NOT EXISTS idx_games_watch_state
+    ON games (watch_state) WHERE watch_state IS NOT NULL;
+
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS promoted_at   TIMESTAMPTZ;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS finalized_at  TIMESTAMPTZ;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS cancel_reason TEXT;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
     ON pick_ledger (game_id) WHERE is_final;
 
