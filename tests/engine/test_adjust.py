@@ -187,3 +187,76 @@ def test_원장에는_축소_전_값을_남긴다():
     adj = P.adjustments({"sport": "mlb", "out_starters": 2})
     assert adj["주전결장"] == -3.0            # 표 그대로
     assert P.shrink_and_cap(adj)["주전결장"] == -1.5   # 적용은 절반
+
+
+# ── [ADJ-2] 이동연전이 구조적으로 발생할 수 없었다
+
+@pytest.mark.asyncio
+async def test_오늘_경기를_이동연전_계산에서_제외한다():
+    """🔴 실측 2026-09-13: 오늘 KBO·NPB 9경기 전부 `연속원정 = 0` 이었다.
+
+    `_TRIP` 이 `starts_at <= $3` 라 **오늘 경기 자신이 첫 행**으로 잡히고,
+    홈팀은 오늘 홈경기이므로 첫 바퀴에서 `break` — `streak` 는 영원히 0 이다.
+    3연전 이상 원정을 돌고 돌아온 홈팀이어도 조정이 붙지 않는다.
+
+    ⚠️ 가짜 풀이 **SQL 의 부등호를 실제로 지킨다** — 문자열만 보는 계약은
+       DB 가 어떻게 읽는지를 재지 못한다.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime(2026, 9, 13, 8, 0, tzinfo=timezone.utc)
+    me = "Doosan Bears"
+    # 오늘: 홈경기. 그 전 3경기는 연속 원정.
+    history = [
+        {"home": me, "away": "NC Dinos", "starts_at": now},                       # 오늘
+        {"home": "KT Wiz", "away": me, "starts_at": now - timedelta(days=1)},
+        {"home": "KT Wiz", "away": me, "starts_at": now - timedelta(days=2)},
+        {"home": "KT Wiz", "away": me, "starts_at": now - timedelta(days=3)},
+        {"home": me, "away": "LG Twins", "starts_at": now - timedelta(days=4)},
+    ]
+
+    class _Pool:
+        async def fetchval(self, *a, **k): return None
+
+        async def fetch(self, sql, *a):
+            if "pa.pitcher" in sql:          # 불펜
+                return []
+            if "g.home, g.away" not in sql:  # 주전
+                return []
+            cutoff = a[2]
+            # 🔴 SQL 이 `<=` 면 오늘 경기가 들어온다. `<` 면 빠진다.
+            strict = "g.starts_at < $3" in sql
+            rows = [r for r in history
+                    if (r["starts_at"] < cutoff if strict else r["starts_at"] <= cutoff)]
+            return sorted(rows, key=lambda r: r["starts_at"], reverse=True)[:8]
+
+    jg = {"sport": "kbo", "game_id": 1741, "home": me, "away": "NC Dinos",
+          "starts_at": now, "lineup_status": "confirmed"}
+    await A.attach(jg, _Pool())
+    assert jg["adj_inputs"]["이동연전"]["연속원정"] == 3, jg["adj_inputs"]
+    assert jg["trip_day"] == 1
+
+
+@pytest.mark.asyncio
+async def test_원정을_돌지_않았으면_이동연전은_0이다():
+    """반대 위험 — 부등호를 고치다 멀쩡한 홈팀에 벌점을 주면 안 된다."""
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime(2026, 9, 13, 8, 0, tzinfo=timezone.utc)
+    me = "Kia Tigers"
+    history = [{"home": me, "away": "X", "starts_at": now - timedelta(days=i)}
+               for i in range(5)]
+
+    class _Pool:
+        async def fetchval(self, *a, **k): return None
+
+        async def fetch(self, sql, *a):
+            if "g.home, g.away" not in sql or "pa.pitcher" in sql:
+                return []
+            return [r for r in history if r["starts_at"] < a[2]][:8]
+
+    jg = {"sport": "kbo", "game_id": 1743, "home": me, "away": "Y",
+          "starts_at": now, "lineup_status": "confirmed"}
+    await A.attach(jg, _Pool())
+    assert jg["adj_inputs"]["이동연전"]["연속원정"] == 0
+    assert jg["trip_day"] == 0

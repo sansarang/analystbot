@@ -97,9 +97,12 @@ _PEN = """
        AND g.starts_at >= $2 AND g.starts_at < $3
 """
 
+#: 🔴 [ADJ-2 2026-09-13] **오늘 경기를 뺀다**(`<`). 종전 `<=` 는 오늘 경기
+#   자신을 첫 행으로 잡았고, 홈팀은 오늘 홈경기라 첫 바퀴에서 break —
+#   `연속원정` 이 **항상 0** 이었다. 실측: 9/9 경기 0.
 _TRIP = """
     SELECT g.home, g.away FROM games g
-     WHERE g.sport = $1 AND (g.home = $2 OR g.away = $2) AND g.starts_at <= $3
+     WHERE g.sport = $1 AND (g.home = $2 OR g.away = $2) AND g.starts_at < $3
      ORDER BY g.starts_at DESC LIMIT 8
 """
 
