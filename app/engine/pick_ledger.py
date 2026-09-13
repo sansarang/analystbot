@@ -296,6 +296,13 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         if row.get("shadow_blend") else None,
                         row.get("predicted_side"))
                     stats["rejudged" if existing is not None else "inserted"] += 1
+                    # [CLV-1] 판정 시각 배당을 남긴다. **저장 전용** — 판정은
+                    #   이 값을 읽지 않는다(§4-1). 실패해도 판정을 막지 않는다.
+                    try:
+                        await record_clv(pool, game_id=row["game_id"], at="verdict")
+                    except Exception as exc:
+                        logger.warning("[clv] game=%s 판정시각 배당 기록 실패: %s",
+                                       row["game_id"], exc)
         except Exception as exc:
             # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —
             # 레저가 판정의 유일한 영구 기록이 된 이상, 기록 실패는 그 판정이
@@ -355,6 +362,13 @@ async def grade_pending(pool, sport: str | None = None) -> dict:
                AND g.status IN ('final', 'cancelled', 'suspended', 'postponed')
                {where_sport}""", *args)
     for r in rows:
+        # [CLV-1] 마감 배당을 남긴다 — `_CLV_SNAP` 이 **킥오프 이전** 마지막
+        #   스냅샷만 고르므로 채점 시점에 불러도 값은 마감 배당이다.
+        #   ⚠️ 저장 전용. 채점 결과(`hit`)에 이 값을 쓰지 않는다.
+        try:
+            await record_clv(pool, game_id=r["game_id"], at="closing")
+        except Exception as exc:
+            logger.warning("[clv] game=%s 마감 배당 기록 실패: %s", r["game_id"], exc)
         if r["status"] != "final" or r["home_score"] is None or r["away_score"] is None:
             await pool.execute(
                 "UPDATE pick_ledger SET void = TRUE, graded_at = now() WHERE id = $1",
@@ -455,3 +469,70 @@ async def backfill_from_redis(pool, redis, since: str, *, dry_run: bool = False,
         except Exception:
             pass
     return stats
+
+
+# ── [CLV-1 2026-09-13] CLV 기록 — **저장 전용.** 판정은 이 값을 읽지 않는다.
+#   사용자 지시(4단계): "판정의 값어치를 측정할 유일한 지표를 남긴다.
+#   §4-1 '배당은 판정 입력 금지'는 그대로 — 여기서는 저장만 한다."
+
+#: 킥오프 **이전** 마지막 스냅샷. 경기가 시작된 뒤의 배당은 결과를 반영한다.
+_CLV_SNAP = """
+    SELECT o.odds
+      FROM odds_snapshots o
+      JOIN games g ON g.id = o.game_id
+     WHERE o.game_id = $1 AND o.market = 'h2h'
+       AND o.captured_at <= LEAST($2::timestamptz, g.starts_at)
+     ORDER BY o.captured_at DESC
+     LIMIT 1
+"""
+
+_CLV_SAVE = """
+    UPDATE pick_ledger SET {col} = $2,
+           clv = CASE WHEN odds_at_verdict IS NOT NULL AND odds_closing IS NOT NULL
+                      THEN round(((1.0/odds_at_verdict) - (1.0/odds_closing))::numeric * 100, 2)
+                      ELSE clv END
+     WHERE game_id = $1 AND is_final
+"""
+
+
+def _implied_prob(odds) -> float | None:
+    """소수 배당 → 내재 확률. 값이 없거나 1 이하면 **None**(지어내지 않는다)."""
+    try:
+        v = float(odds)
+    except (TypeError, ValueError):
+        return None
+    return 1.0 / v if v > 1.0 else None
+
+
+def clv_pp(at_verdict, closing) -> float | None:
+    """판정 시각 대비 마감의 확률 차이(%p).
+
+    부호: **(판정시각 확률 − 마감 확률) × 100**. 양수면 우리가 좋은 값에 잡았다.
+    ⚠️ `divergence_pp`(우리 − 시장)와 같은 방향 규약이다 — 두 표가 반대 부호를
+       쓰면 대조할 때마다 헷갈린다.
+    """
+    a, b = _implied_prob(at_verdict), _implied_prob(closing)
+    if a is None or b is None:
+        return None
+    return round((a - b) * 100, 2)
+
+
+async def record_clv(pool, *, game_id: int, at: str, now=None) -> float | None:
+    """판정 시각(`at="verdict"`) 또는 마감(`at="closing"`) 배당을 남긴다.
+
+    반환: 저장한 배당값(없으면 None).
+    ⚠️ **새 소스를 부르지 않는다** — `odds_snapshots` 에 이미 있는 값만 읽는다.
+    ⚠️ 값이 없으면 **아무것도 쓰지 않는다.** 0 으로 채우지 않는다.
+    """
+    from datetime import datetime, timezone
+
+    col = "odds_at_verdict" if at == "verdict" else "odds_closing"
+    when = now or datetime.now(timezone.utc)
+    async with pool.acquire() as conn:
+        odds = await conn.fetchval(_CLV_SNAP, game_id, when)
+        if odds is None:
+            logger.info("[clv] game=%s %s — 배당 스냅샷 없음, NULL 로 남긴다",
+                        game_id, at)
+            return None
+        await conn.execute(_CLV_SAVE.format(col=col), game_id, float(odds))
+    return float(odds)

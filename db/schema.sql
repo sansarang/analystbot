@@ -496,6 +496,18 @@ CREATE TABLE IF NOT EXISTS pick_ledger (
 --    통과시켰다 — 실측 잉여 10건, 그중 방향이 반대인 쌍도 있었다.
 --    ⚠️ 이 인덱스는 중복이 남아 있으면 **생성에 실패한다.** 백필
 --       (tools/backfill_ledger.py --led1)이 먼저 돌아야 한다.
+-- [CLV-1 2026-09-13] 판정의 값어치를 재는 유일한 지표. **저장 전용이다.**
+--   🔴 §4-1 "배당은 판정·폼·서술의 입력에 절대 넣지 않는다" 는 그대로다.
+--      여기 담긴 값을 판정 경로가 읽으면 안 된다(계약이 전수 grep 으로 막는다).
+--   실측(운영 원장 178경기): 판정 확률 AUC 0.5122 · 브라이어 0.2537
+--   (50%로 찍는 것보다 나쁘다) / 시장 확률 AUC 0.6421 — 유일하게 유의.
+--   적중률만으로는 판정이 시장보다 나은지 알 수 없다.
+--   ⚠️ 기존 odds·market_prob 는 **한 시점**의 값이다(_fill_market 이 나중에
+--      채운다). 판정 시각과 마감 시각을 나눠 두 번 남겨야 차이가 계산된다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS odds_at_verdict DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS odds_closing    DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS clv             DOUBLE PRECISION;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
     ON pick_ledger (game_id) WHERE is_final;
 
