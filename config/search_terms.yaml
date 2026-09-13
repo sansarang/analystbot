@@ -1,26 +1,71 @@
-# 딥서치(층2) 검색어 — 리그별 **현지어 2개**. 지시문 Phase 4-1.
+# 딥서치(층2) 검색어 — 리그별 현지어, **2단계**. 지시문 Part 2 / 4-1.
 #
-# 🔴 이것은 **층2(딥서치)** 의 검색어다. 층1 위성(다음 뉴스검색)의
-#    `_SOCCER_TERMS = ""` 를 대체하지 않는다 — 거기 검색어를 붙였더니
-#    맥도날드·프로야구·연예 기사가 왔다(실측 2026-09-12, 코드 주석 참조).
+#   pre    : T-3h. 예상 라인업·결장 — 게이트 대상 경기만
+#   lineup : T-60m. 공식 확정 — Flashscore 가 official 을 주면 생략
 #
-# ⚠️ `{team}` 에는 **현지 표기**가 들어간다(Heerenveen 이 아니라 `sc Heerenveen`).
-# ⚠️ 한국어 검색어는 **토르로 못 나간다**(`tor_search.is_tor_safe_query` 가
-#    거부한다 — 한국 사이트가 깨진다). 그 리그는 다음·그라운딩으로 간다.
+# 🔴 층1 위성(다음 뉴스검색)의 `_SOCCER_TERMS = ""` 를 대체하지 않는다.
+#    거기 검색어를 붙였더니 맥도날드·프로야구·연예 기사가 왔다(실측 2026-09-12).
+#
+# ⚠️ `{team}` 에는 **현지 표기**가 들어간다(`sc Heerenveen`·`Lecce`·`ソフトバンク`).
+# ⚠️ 한국어 검색어는 토르로 못 나간다(`is_tor_safe_query` 거부). 다음·그라운딩으로.
 #
 # ⚠️ 지시문에 있으나 우리 시스템에 **리그가 없어** 넣지 않은 것:
-#      ligue1(리그1) · eredivisie(에레디비시) · j2 · kleague2
-# ⚠️ 우리에만 있고 지시문에 **없는** 리그: denmark.
-#    덴마크어 검색어를 **지어내지 않았다** — 영어로 둔다. 사용자가 정해 주면 바꾼다.
+#      ligue1 · eredivisie · championship · j2 · kleague2
+#    (`app/leagues.py` 가 원본 — EPL·라리가·세리에A·분데스·J1·덴마크·K리그1)
+# ⚠️ 우리에만 있고 지시문에 **없는** 리그: denmark. 덴마크어를 지어내지 않고
+#    영어로 둔다. 사용자가 정해 주면 바꾼다.
 
 terms:
-  epl:        ["{team} team news", "{team} predicted lineup injuries"]
-  la_liga:    ["{team} alineación oficial", "{team} bajas lesionados"]
-  serie_a:    ["{team} probabili formazioni", "{team} infortunati"]
-  bundesliga: ["{team} Aufstellung", "{team} Ausfälle"]
-  j1:         ["{team} スタメン", "{team} 負傷 欠場"]
-  kleague1:   ["{team} 선발 라인업", "{team} 부상 결장"]
-  denmark:    ["{team} starting lineup", "{team} injuries absences"]   # 임시(영어)
-  npb:        ["{team} スタメン", "{team} 予告先発"]
-  kbo:        ["{team} 선발 라인업", "{team} 엔트리 말소"]
-  mlb:        ["{team} lineup", "{team} injury report"]
+  epl:
+    pre:    ["{team} team news predicted lineup injuries"]
+    lineup: ["{team} confirmed lineup starting XI"]
+  la_liga:
+    pre:    ["{team} alineación probable bajas lesionados"]
+    lineup: ["{team} alineación oficial once titular hoy"]
+  serie_a:
+    pre:    ["{team} probabili formazioni infortunati"]
+    lineup: ["{team} formazioni ufficiali"]
+  bundesliga:
+    pre:    ["{team} voraussichtliche Aufstellung Ausfälle"]
+    lineup: ["{team} Aufstellung offiziell"]
+  j1:
+    pre:    ["{team} 予想スタメン 負傷 欠場"]
+    lineup: ["{team} スタメン発表"]
+  kleague1:
+    pre:    ["{team} 프리뷰 부상 결장"]
+    lineup: ["{team} 선발 라인업"]
+  denmark:
+    pre:    ["{team} forventet startopstilling skader"]   # 임시 — 사용자 확인 필요
+    lineup: ["{team} startopstilling officiel"]
+  npb:
+    pre:    ["{team} 予告先発"]
+    lineup: ["{team} スタメン"]
+  kbo:
+    pre:    ["{team} 내일의 선발투수", "{team} 엔트리 말소"]
+    lineup: ["{team} 선발 라인업 타순"]
+  mlb:
+    pre:    ["{team} probable pitcher injury report"]
+    lineup: ["{team} lineup today"]
+
+# `lineup` 단계에서 제목에 이 말이 있으면 tier 무관 최우선(지시문 4-3 ④).
+confirm_keywords:
+  - 확정
+  - oficial
+  - oficiales
+  - ufficiali
+  - offiziell
+  - bekend
+  - confirmed
+  - 発表
+  - officiel
+
+# 날짜 문(4-3 ②) — 제목·스니펫에 이 중 하나가 있어야 통과.
+today_words:
+  - 오늘
+  - hoy
+  - oggi
+  - heute
+  - vandaag
+  - today
+  - 本日
+  - i dag

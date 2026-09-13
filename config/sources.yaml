@@ -1,35 +1,56 @@
-# 딥서치 소스 화이트리스트. 지시문 Phase 4-2.
+# 딥서치 소스 화이트리스트. 지시문 Part 2 / 4-2.
 #
-# 우선순위: tier1 → tier2 → tier3 순으로 **최대 3개만** fetch 한다.
-# `blocked` 는 어떤 경우에도 안 본다.
+# 우선순위 tier1 → tier2 → tier3. 검색 결과에서 tier 순으로 **최대 3개** fetch.
+# `blocked`·`js_only` 는 정렬 전에 제거한다.
 #
-# 🔴 `tier1_official`(구단 공식 도메인)은 **사용자가 채운다.**
-#    Claude Code 가 100여 개를 추측해 적지 않는다 — 티어 표와 같은 규칙이다.
-#    비어 있으면 tier2 부터 본다. 그 사실은 로그에 남는다.
-#
-# ⚠️ tier2·tier3 는 **지시문이 직접 준 도메인**만 넣었다. 임의로 늘리지 않는다.
-# ⚠️ 여기 없는 도메인은 등급 9(미상)이고 fetch 대상에서 빠진다.
+# ⚠️ 리그 키는 `app/leagues.py` 기준이다(지시문의 laliga → la_liga 등).
+# ⚠️ 지시문에 **"구단 공식 도메인 목록"** 이라고만 적힌 자리는 비워 둔다 —
+#    Claude Code 가 도메인을 추측해 채우지 않는다(티어 표와 같은 규칙).
+# ⚠️ 우리 시스템에 없는 리그(ligue1·eredivisie·championship)의 도메인은
+#    넣지 않았다. 리그가 생기면 그때 지시문 목록을 옮긴다.
 
-tier1_official: []          # 사용자가 채운다
+tier1_club_local:            # 구단 공식·지역지·팬 매체 — 기자회견 원문에서 결장이 나온다
+  serie_a:    [calciolecce.it, monza-news.it, monzaindiretta.it, forzamonza.it,
+               calcionapoli24.it, areanapoli.it, noibianconeri24.it]
+  bundesliga: [fcbinside.de, footy.de, baykusen.de]
+  epl:        [sussexexpress.co.uk, 3addedminutes.com]
+  la_liga:    [101tv.es, elespanol.com, riazor.org]
+  j1:         [jleague.jp]
+  kleague1:   [gwangjufc.com]          # + 구단 공식 도메인 — 사용자가 채운다
+  npb:        [baseball.yahoo.co.jp]
+  kbo:        [gukjenews.com]          # + 구단 공식 도메인 — 사용자가 채운다
+  denmark:    []                       # 사용자가 채운다
+  mlb:        []                       # 사용자가 채운다
 
-tier2_local:
-  - feanonline.nl
-  - calciolecce.it
-  - monza-news.it
-  - grootheerenveen.nl
-  - losclive.com
-  - sussexexpress.co.uk
-  - 101tv.es
-  - elespanol.com
+tier2_aggregator:            # 판타지·집계 — 결장 표를 가장 빨리 정리한다
+  epl:        [sportsmole.co.uk, whoscored.com, thefootballfaithful.com, sports.yahoo.com]
+  serie_a:    [fantacalcio.it, fantamaster.it, spaziocalcio.it, goal.com]
+  bundesliga: [ligainsider.de, magazin.comunio.de, eurosport.de]
+  la_liga:    [jornadaperfecta.com, eldesmarque.com, sportsmole.co.uk, whoscored.com]
+  j1:         [matchcalendar.football]
+  npb:        [nikkansports.com]
+  denmark:    [fotmob.com]
+  kleague1:   []
+  kbo:        []
+  mlb:        []
 
-tier3_aggregator:
-  - sportsmole.co.uk
-  - whoscored.com
-  - fotmob.com
-  - fantamaster.it
-  - comunio.de
-  - ligainsider.de
-  - voetbalwedden.eu
-  - maxifoot.fr
+tier3_wire:                  # 통신사 — 라인업 확정 속보
+  common:     [infobae.com, efe.com, ansa.it]
 
-blocked: []                 # 베팅 제휴·팬 포럼 도메인을 여기에
+blocked:                     # 절대 열지 않는다
+  - oddschecker.com
+  - tipico.de
+  - reddit.com
+  - wikipedia.org
+
+# 도메인에 이 조각이 들어가면 차단(베팅 제휴).
+blocked_fragments:
+  - bet
+  - odds
+  - tipster
+
+js_only:                     # 열어도 표가 없다 — fetch 금지. 기존 피드로만 본다
+  - flashscore.com
+  - flashscore.co.kr
+  - sports.daum.net
+  - sports.news.naver.com
