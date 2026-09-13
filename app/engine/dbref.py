@@ -182,20 +182,16 @@ async def recheck(jg: dict, tri: dict, v: dict, *,
     new_w = str(parsed.get("승자") or "").strip()
     why = " ".join(str(parsed.get("사유") or "").split())
     if new_w and new_w != (v.get("승자") or ""):
-        if not why:
-            # 🔴 사유 없는 변경은 자율이 아니라 실수다. 받지 않는다.
-            logger.warning("[dbref] 🔴 %s@%s 사유 없이 승자를 바꾸려 했다 "
-                           "(%s → %s) — 되돌린다",
-                           jg.get("away"), jg.get("home"), v.get("승자"), new_w)
-        else:
-            # 🔴 **조용한 변경만 없앤다.** 막지는 않되 반드시 드러낸다.
-            logger.warning("[dbref] 🔴 %s@%s DB 참조로 승자 변경 %s → %s · %s",
-                           jg.get("away"), jg.get("home"), v.get("승자"),
-                           new_w, why)
-            out["승자"] = new_w
-            out["승자변경"] = True
-            out["사유"] = why
-            out["판정"] = "정정"
+        # 🔴 [LLMS-1 2026-09-13 결정 D] **승자를 바꾸지 않는다.**
+        #    (a) 구조에서 승자는 `p_code`(시장 뼈대 + 코드 조정)가 정한다.
+        #    여기서 승자를 바꾸면 그 구조가 깨진다. 다른 의견은 버리지 않고
+        #    **서술의 반대 근거**로 남긴다 — 서술 문장 3이 그것을 쓴다.
+        out["반대근거"] = why or f"DB 참조가 {new_w} 쪽을 지목했다"
+        out["사유"] = out["반대근거"]
+        logger.info("[dbref] %s@%s DB 참조가 다른 승자를 지목 (%s → %s) — "
+                    "승자는 그대로 두고 반대 근거로 남긴다: %s",
+                    jg.get("away"), jg.get("home"), v.get("승자"), new_w,
+                    out["반대근거"])
     logger.info("[dbref] %s@%s %s · 있음 %d · 본것 %s · 확신 %s→%s",
                 jg.get("away"), jg.get("home"), out["판정"], len(b["있음"]),
                 out["본것"], v.get("확신"), out["확신"])

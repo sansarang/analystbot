@@ -774,3 +774,19 @@ def _nearest_line(table: dict | None, line: float) -> dict | None:
         return None
     key = min(table, key=lambda k: abs(float(k) - line))
     return table[key] if abs(float(key) - line) <= 0.5 else None
+
+
+# ── [LLMS-1 2026-09-13 결정 D] 시장 동의의 정의를 바꾼다.
+#   🔴 뼈대가 시장이므로 "우리 확률 vs 시장"은 **항상 0** 이다(PROB-1).
+#      이제 재는 것은 **코드가 시장에서 얼마나 벗어났는가** = Σadj 다.
+ADJ_AGREE_MAX_PP = 4.0
+
+MARKET_DISAGREE_ADJ = "market_disagree"
+
+
+def market_disagree_by_adj(divergence_pp) -> str | None:
+    """|Σadj| 가 `ADJ_AGREE_MAX_PP` 를 넘으면 이견. 값이 없으면 판단하지 않는다."""
+    if divergence_pp is None:
+        return None
+    return (MARKET_DISAGREE_ADJ
+            if abs(float(divergence_pp)) > ADJ_AGREE_MAX_PP else None)

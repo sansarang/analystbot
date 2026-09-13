@@ -106,15 +106,21 @@ def test_숫자를_여기서_계산하지_않는다():
 # ═══════════════ ② 자율 — 막지 않는다
 
 @pytest.mark.asyncio
-async def test_AI_가_승자를_바꿀_수_있다(monkeypatch):
-    """🔴 종전에는 코드가 막았다. 이제 AI 판단이다."""
+async def test_AI_가_다른_승자를_지목하면_반대근거로_남는다(monkeypatch):
+    """🔴 [LLMS-1 2026-09-13 결정 D] **승자를 바꾸지 않는다.**
+
+    ⚠️ 이 계약은 종전에 `test_AI_가_승자를_바꿀_수_있다` 였다
+       ("종전에는 코드가 막았다. 이제 AI 판단이다"). (a) 구조에서 승자는
+       `p_code`(시장 뼈대 + 코드 조정)가 정하므로 여기서 바꾸면 구조가 깨진다.
+       다른 의견은 **버리지 않고** 서술의 반대 근거로 남긴다.
+    """
     _payloads(monkeypatch)
     _reply(monkeypatch, '{"본것": ["오늘 타순"], "승자": "NC Dinos", '
                         '"확신": "중", "사유": "타순에서 주전 4명이 빠졌다"}')
     out = await D.recheck(_jg(), _tri(), {"승자": "Doosan Bears", "확신": "하"})
-    assert out["승자"] == "NC Dinos"
-    assert out["승자변경"] is True and out["판정"] == "정정"
-    assert out["사유"] == "타순에서 주전 4명이 빠졌다"
+    assert out["승자"] == "Doosan Bears"          # 그대로
+    assert out["승자변경"] is False
+    assert out["반대근거"] == "타순에서 주전 4명이 빠졌다"
 
 
 @pytest.mark.asyncio
@@ -139,26 +145,33 @@ async def test_그대로_두면_그대로다(monkeypatch):
 # ═══════════════ ③ 조용한 변경만 없앤다
 
 @pytest.mark.asyncio
-async def test_사유_없는_승자_변경은_되돌린다(monkeypatch, caplog):
-    """🔴 사유 없는 변경은 자율이 아니라 실수다."""
+async def test_사유가_없어도_반대근거는_남는다(monkeypatch, caplog):
+    """🔴 [결정 D] 승자는 어차피 안 바뀐다. 사유가 비면 **우리가 문장을 만든다** —
+    "다른 의견이 있었다"는 사실 자체가 서술의 재료이므로 잃지 않는다.
+
+    ⚠️ 종전 계약은 `test_사유_없는_승자_변경은_되돌린다` 였다
+       ("사유 없는 변경은 자율이 아니라 실수다"). 이제 변경 자체가 없다.
+    """
     _payloads(monkeypatch)
     _reply(monkeypatch, '{"본것": [], "승자": "NC Dinos", "확신": "중",'
                         ' "사유": ""}')
-    with caplog.at_level("WARNING"):
-        out = await D.recheck(_jg(), _tri(), {"승자": "Doosan Bears", "확신": "하"})
+    out = await D.recheck(_jg(), _tri(), {"승자": "Doosan Bears", "확신": "하"})
     assert out["승자"] == "Doosan Bears" and out["승자변경"] is False
-    assert "사유 없이 승자를 바꾸려" in caplog.text
+    assert "NC Dinos" in out["반대근거"]
 
 
 @pytest.mark.asyncio
-async def test_승자_변경은_경고로_남는다(monkeypatch, caplog):
-    """🔴 막지는 않되 반드시 드러낸다."""
+async def test_다른_승자_지목은_로그로_드러난다(monkeypatch, caplog):
+    """🔴 조용히 삼키지 않는다. 승자는 안 바꾸되 **지목이 있었다는 사실**은 남긴다.
+
+    ⚠️ 종전 계약은 `test_승자_변경은_경고로_남는다`(막지는 않되 드러낸다)였다.
+    """
     _payloads(monkeypatch)
     _reply(monkeypatch, '{"본것": [], "승자": "NC Dinos", "확신": "중",'
                         ' "사유": "이유"}')
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("INFO"):
         await D.recheck(_jg(), _tri(), {"승자": "Doosan Bears", "확신": "하"})
-    assert "DB 참조로 승자 변경" in caplog.text
+    assert "다른 승자를 지목" in caplog.text
 
 
 @pytest.mark.asyncio

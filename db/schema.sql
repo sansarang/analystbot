@@ -517,6 +517,13 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_market DOUBLE PRECISION;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_code   DOUBLE PRECISION;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS adj_pp   JSONB;
 
+-- [LLMS-1 2026-09-13 결정 D] LLM 판정 출력을 버리지 않고 무료 섀도로 남긴다.
+--   (a) 구조에서 승자는 p_code 가 정한다. 그래도 LLM 의 승자·확신을 기록해
+--   300건 시점에 AUC 를 나란히 본다 — LLM 이 나은 조합이 있으면 그것이
+--   조정 변수 후보다. 🔴 카드·발송에는 쓰지 않는다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS llm_winner TEXT;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS llm_level  TEXT;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
     ON pick_ledger (game_id) WHERE is_final;
 

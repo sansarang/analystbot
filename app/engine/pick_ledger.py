@@ -178,8 +178,11 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         "date": analysis.get("date") or "",
         "p_home": jg.get("p_claude"),
         # [PROB-1] 시장 뼈대·코드 조정. 판정(LLM)은 이 값을 보지 않는다.
-        # [CONF-1] 확신은 **코드 등급**이다. LLM 자기신고는 llm_level(결정 D)로.
+        # [CONF-1] 확신은 **코드 등급**이다. LLM 자기신고는 아래 섀도 칸으로.
         "code_confidence": jg.get("code_confidence"),
+        # [LLMS-1 결정 D] LLM 출력은 **기록 전용** — 카드·발송에 쓰지 않는다.
+        "llm_winner": matchup.get("승자") or jg.get("winner"),
+        "llm_level": matchup.get("확신") or matchup.get("확신도"),
         "p_market_spine": jg.get("p_market_spine"),
         "p_code": jg.get("p_code"),
         "adj_pp": jg.get("adj_pp"),
@@ -293,10 +296,10 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                               rejudge_count, is_final, trial,
                               odds, market_prob, divergence_pp,
                               confidence_probe, shadow_blend, predicted_side,
-                              p_market, p_code, adj_pp)
+                              p_market, p_code, adj_pp, llm_winner, llm_level)
                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,
                                    $13,$14,$15,$16::jsonb,$17::jsonb,$18,
-                                   $19,$20,$21::jsonb)""",
+                                   $19,$20,$21::jsonb,$22,$23)""",
                         row["game_id"], row["sport"], row["league"], row["date"],
                         row["p_home"], row["favored"], row["confidence"],
                         row["lineup_status"], row["gate_result"], row["model"], n,
@@ -307,7 +310,8 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         if row.get("shadow_blend") else None,
                         row.get("predicted_side"),
                         row.get("p_market_spine"), row.get("p_code"),
-                        row.get("adj_pp"))
+                        row.get("adj_pp"), row.get("llm_winner"),
+                        row.get("llm_level"))
                     stats["rejudged" if existing is not None else "inserted"] += 1
                     # [CLV-1] 판정 시각 배당을 남긴다. **저장 전용** — 판정은
                     #   이 값을 읽지 않는다(§4-1). 실패해도 판정을 막지 않는다.
