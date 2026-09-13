@@ -70,8 +70,9 @@ def test_clv는_확률_퍼센트포인트_차이다():
     """판정 시각 2.00(50%) → 마감 1.50(66.7%) 이면 우리가 **불리해진** 것이다.
     부호 규약: clv = (판정시각 확률 − 마감 확률) × 100 %p.
     양수면 우리가 좋은 값에 잡았다는 뜻이다."""
-    assert PL.clv_pp(2.00, 2.50) == pytest.approx(10.0, abs=0.01)   # 50% → 40%
-    assert PL.clv_pp(2.00, 1.50) == pytest.approx(-16.67, abs=0.01)
+    # 🔴 [CLV-3] 부호를 바로잡았다 — 마감보다 좋은 값에 잡으면 **양수**다.
+    assert PL.clv_pp(2.00, 2.50) == pytest.approx(-10.0, abs=0.01)   # 50% → 40%
+    assert PL.clv_pp(2.00, 1.50) == pytest.approx(16.67, abs=0.01)
     assert PL.clv_pp(None, 2.0) is None
     assert PL.clv_pp(2.0, None) is None
 
@@ -92,6 +93,10 @@ async def test_배당이_없으면_NULL로_남긴다():
     """⚠️ 없는 것을 0 으로 채우지 않는다."""
     class _Conn:
         def __init__(self): self.saved = None
+        # [CLV-3] 방향은 정해지지만 스냅샷이 없는 경우다
+        async def fetchrow(self, sql, *a):
+            return {"favored": "home", "p_home": 0.6, "predicted_side": None,
+                    "home": "H", "away": "A"}
         async def fetchval(self, sql, *a): return None
         async def execute(self, sql, *a): self.saved = a
 
@@ -150,6 +155,9 @@ async def test_열린_커넥션을_그대로_쓴다():
     """
     class _Conn:
         def __init__(self): self.n = 0
+        async def fetchrow(self, *a):
+            return {"favored": "home", "p_home": 0.6, "predicted_side": None,
+                    "home": "H", "away": "A"}
         async def fetchval(self, *a): return 2.0
         async def execute(self, *a): self.n += 1
 
@@ -164,3 +172,95 @@ def test_기록부가_커넥션을_넘긴다():
 
     src = inspect.getsource(PL.record_analysis)
     assert "record_clv(conn" in src, "pool 을 그대로 넘기고 있다"
+
+
+# ── [CLV-3] 부호와 사이드 (2026-09-13)
+
+def test_마감보다_좋은_값에_잡으면_양수다():
+    """🔴 종전 부호가 뒤집혀 있었다.
+
+    2.00 에 잡아 1.50 에 닫혔으면 **시장을 크게 이긴 것**이다(우리가 더 좋은
+    값을 먹었다). 종전 식은 그걸 −16.67 로 찍었고, 머리말은 "양수면 좋은 값에
+    잡았다"고 적혀 있었다 — **식과 말이 반대**였다. 수익을 재는 유일한
+    지표라 부호가 뒤집히면 결론이 통째로 뒤집힌다.
+    """
+    from app.engine import pick_ledger as PL
+
+    assert PL.clv_pp(2.00, 1.50) == pytest.approx(+16.67, abs=0.01)   # 이겼다
+    assert PL.clv_pp(2.00, 2.50) == pytest.approx(-10.00, abs=0.01)   # 졌다
+    assert PL.clv_pp(2.00, 2.00) == pytest.approx(0.0, abs=1e-9)
+
+
+def test_SQL도_같은_부호를_쓴다():
+    """🔴 파이썬과 SQL 이 다른 부호를 쓰면 원장과 집계가 반대를 말한다."""
+    from app.engine import pick_ledger as PL
+
+    for k in ("verdict", "closing"):
+        sql = PL._CLV_SAVE[k]
+        # (마감 확률 − 판정시각 확률) 순서여야 한다
+        assert "odds_closing" in sql and "odds_at_verdict" in sql
+    v, c = PL._CLV_SAVE["verdict"], PL._CLV_SAVE["closing"]
+    assert "(1.0/odds_closing) - (1.0/$2" in v.replace("\n", " "), v
+    assert "(1.0/$2::double precision) - (1.0/odds_at_verdict)" in c.replace("\n", " "), c
+
+
+def test_스냅샷은_우리가_고른_쪽만_본다():
+    """🔴 한 경기에 홈·원정 스냅샷이 각 38행씩 있다(실측 2026-09-13 game 1741).
+
+    side 를 안 가리면 **마지막에 들어온 아무 쪽**을 집는다. 판정 시각엔 홈,
+    마감엔 원정을 집으면 그 차이는 아무 의미가 없다.
+    """
+    from app.engine import pick_ledger as PL
+
+    import inspect
+
+    s = PL._CLV_SNAP.replace("\n", " ")
+    assert "o.side = $3" in s, s
+    # 🔴 방향은 **채점과 같은 헬퍼**가 정한다 — 컬럼만 읽으면 안 된다.
+    #    실측: `predicted_side` 컬럼이 오늘 9행 전부 NULL 인데 채점은 폴백으로 돈다.
+    src = inspect.getsource(PL.record_clv)
+    assert "predicted_side(" in src, src
+    assert "_CLV_PICK" in src, src
+
+
+@pytest.mark.asyncio
+async def test_고른_쪽을_모르면_기록하지_않는다():
+    """0 이나 반대쪽 값으로 채우지 않는다 — 무의미한 값이 NULL 보다 나쁘다."""
+    from app.engine import pick_ledger as PL
+
+    calls = []
+
+    class _Conn:
+        async def fetchrow(self, *a, **k):
+            # 우세도 확률도 없다 → 방향을 못 정한다
+            return {"favored": "박빙", "p_home": None, "predicted_side": None,
+                    "home": "H", "away": "A"}
+        async def fetchval(self, *a, **k):
+            raise AssertionError("방향을 모르는데 스냅샷을 조회했다")
+        async def execute(self, *a, **k):
+            calls.append(a)
+
+    out = await PL.record_clv(_Conn(), game_id=1, at="verdict")
+    assert out is None and calls == []
+
+
+@pytest.mark.asyncio
+async def test_우세가_원정이면_원정_배당을_집는다():
+    """🔴 반대쪽을 집으면 CLV 가 통째로 무의미해진다."""
+    from app.engine import pick_ledger as PL
+
+    seen = {}
+
+    class _Conn:
+        async def fetchrow(self, *a, **k):
+            return {"favored": "away", "p_home": 0.62, "predicted_side": None,
+                    "home": "Doosan Bears", "away": "NC Dinos"}
+        async def fetchval(self, sql, *a):
+            seen["team"] = a[2]
+            return 2.13
+        async def execute(self, *a, **k):
+            seen["wrote"] = a
+
+    out = await PL.record_clv(_Conn(), game_id=1741, at="verdict")
+    assert seen["team"] == "NC Dinos", seen
+    assert out == 2.13

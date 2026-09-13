@@ -503,12 +503,27 @@ async def backfill_from_redis(pool, redis, since: str, *, dry_run: bool = False,
 #   사용자 지시(4단계): "판정의 값어치를 측정할 유일한 지표를 남긴다.
 #   §4-1 '배당은 판정 입력 금지'는 그대로 — 여기서는 저장만 한다."
 
+#: 🔴 [CLV-3] 우리가 **어느 쪽을 골랐는지**는 채점과 **같은 헬퍼**가 정한다
+#   (`predicted_side`: 우세 → 저장값 → p_home 폴백). 컬럼만 읽으면 안 된다 —
+#   실측 2026-09-13: `predicted_side` 컬럼이 오늘 9행 **전부 NULL** 인데
+#   채점은 폴백으로 정상 동작하고 있었다. 여기서 컬럼만 보면 CLV 는 영원히 빈다.
+_CLV_PICK = """
+    SELECT l.favored, l.p_home, l.predicted_side, g.home, g.away
+      FROM pick_ledger l JOIN games g ON g.id = l.game_id
+     WHERE l.game_id = $1 AND l.is_final
+     ORDER BY l.id DESC LIMIT 1
+"""
+
 #: 킥오프 **이전** 마지막 스냅샷. 경기가 시작된 뒤의 배당은 결과를 반영한다.
+#  🔴 [CLV-3 2026-09-13] **우리가 고른 쪽만** 본다($3). 한 경기에 홈·원정
+#     스냅샷이 각각 쌓인다(실측 game 1741: 두산 38행 · NC 38행). side 를 안
+#     가리면 마지막에 들어온 아무 쪽을 집고, 판정 시각엔 홈·마감엔 원정을
+#     집으면 그 차이는 **아무 의미가 없다.**
 _CLV_SNAP = """
     SELECT o.odds
       FROM odds_snapshots o
       JOIN games g ON g.id = o.game_id
-     WHERE o.game_id = $1 AND o.market = 'h2h'
+     WHERE o.game_id = $1 AND o.market = 'h2h' AND o.side = $3
        AND o.captured_at <= LEAST($2::timestamptz, g.starts_at)
      ORDER BY o.captured_at DESC
      LIMIT 1
@@ -523,17 +538,20 @@ _CLV_SNAP = """
 #   참조해야 한다 — 종전에는 둘 다 컬럼명으로 읽어 두 칸이 다 찬 뒤에도
 #   `clv` 가 NULL 로 남았다(실측 2026-09-13 MLB 8건 전부 NULL).
 _CLV_SAVE = {
+    # 🔴 [CLV-3] 부호는 **(마감 확률 − 판정시각 확률)** 이다. 양수면 우리가
+    #    마감보다 좋은 값에 잡았다는 뜻이다(2.00 에 잡아 1.50 에 닫히면 +16.67).
+    #    종전에는 뺄셈이 반대라 이긴 경우가 음수로 찍혔다.
     "verdict": """
     UPDATE pick_ledger SET odds_at_verdict = $2::double precision,
            clv = CASE WHEN odds_closing IS NOT NULL
-                      THEN round(((1.0/$2::double precision) - (1.0/odds_closing))::numeric * 100, 2)
+                      THEN round(((1.0/odds_closing) - (1.0/$2::double precision))::numeric * 100, 2)
                       ELSE clv END
      WHERE game_id = $1 AND is_final
 """,
     "closing": """
     UPDATE pick_ledger SET odds_closing = $2::double precision,
            clv = CASE WHEN odds_at_verdict IS NOT NULL
-                      THEN round(((1.0/odds_at_verdict) - (1.0/$2::double precision))::numeric * 100, 2)
+                      THEN round(((1.0/$2::double precision) - (1.0/odds_at_verdict))::numeric * 100, 2)
                       ELSE clv END
      WHERE game_id = $1 AND is_final
 """,
@@ -552,14 +570,18 @@ def _implied_prob(odds) -> float | None:
 def clv_pp(at_verdict, closing) -> float | None:
     """판정 시각 대비 마감의 확률 차이(%p).
 
-    부호: **(판정시각 확률 − 마감 확률) × 100**. 양수면 우리가 좋은 값에 잡았다.
-    ⚠️ `divergence_pp`(우리 − 시장)와 같은 방향 규약이다 — 두 표가 반대 부호를
-       쓰면 대조할 때마다 헷갈린다.
+    부호: **(마감 확률 − 판정시각 확률) × 100**. 양수면 우리가 마감보다
+    **좋은 값에 잡았다** — 2.00 에 잡아 1.50 에 닫히면 `+16.67`.
+
+    🔴 [CLV-3 2026-09-13] 종전에는 뺄셈이 반대라 **이긴 경우가 음수**로
+       찍혔고, 머리말은 "양수면 좋은 값"이라고 적혀 있었다. 식과 말이
+       반대였다 — 수익을 재는 유일한 지표라 부호가 뒤집히면 결론이 통째로
+       뒤집힌다. `_CLV_SAVE` 의 SQL 도 같은 방향으로 맞춰 두었다.
     """
     a, b = _implied_prob(at_verdict), _implied_prob(closing)
     if a is None or b is None:
         return None
-    return round((a - b) * 100, 2)
+    return round((b - a) * 100, 2)
 
 
 async def record_clv(conn_or_pool, *, game_id: int, at: str,
@@ -590,7 +612,17 @@ async def record_clv(conn_or_pool, *, game_id: int, at: str,
             yield conn_or_pool
 
     async with _conn() as conn:
-        odds = await conn.fetchval(_CLV_SNAP, game_id, when)
+        # 🔴 [CLV-3] 고른 쪽을 먼저 정한다. 모르면 **아무것도 쓰지 않는다** —
+        #    반대쪽 배당으로 채우면 CLV 가 통째로 무의미해진다.
+        pick = await conn.fetchrow(_CLV_PICK, game_id)
+        side = predicted_side(pick["favored"], pick["p_home"],
+                              pick["predicted_side"]) if pick else None
+        if side is None:
+            logger.info("[clv] game=%s %s — 고른 쪽 미상, 기록하지 않는다",
+                        game_id, at)
+            return None
+        team = pick["away"] if side == "away" else pick["home"]
+        odds = await conn.fetchval(_CLV_SNAP, game_id, when, team)
         if odds is None:
             logger.info("[clv] game=%s %s — 배당 스냅샷 없음, NULL 로 남긴다",
                         game_id, at)
