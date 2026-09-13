@@ -328,3 +328,108 @@ async def test_홈이_더_지쳤을_때는_종전과_같다():
     from app.engine import prob as P
 
     assert P.adjustments(jg)["필승조연투"] == -2.0   # 실측 2026-09-13 과 같은 값
+
+
+# ── [ADJ-4] 주전결장 배선 — `lineups` 가 아니라 `lineup_events` 다
+
+def test_타순_원소에서_포지션을_떼어낸다():
+    """🔴 실측 2026-09-13: 포지션이 2가지 이상인 선수가 **KBO 30% · NPB 18%**.
+
+    `"양의지(포수)"` 와 `"양의지(지명타자)"` 를 다른 사람으로 세면
+      (a) 주전 판정에서 누락되고(원문 67명 → 이름만 78명)
+      (b) 오늘 포지션이 바뀐 주전이 **결장으로 오인된다** ← 반대 위험
+    """
+    assert A._arr('["양의지(포수)", "김민석(좌익수)"]') == ["양의지", "김민석"]
+    assert A._arr('["赤羽 由紘(三)"]') == ["赤羽 由紘"]
+    assert A._arr('[{"이름": "오지환(유격수)"}]') == ["오지환"]
+    # 포지션이 없으면 그대로
+    assert A._arr('["홍창기"]') == ["홍창기"]
+
+
+def test_포지션이_바뀐_주전은_결장이_아니다():
+    regulars = {"양의지", "김민석", "박찬호"}
+    today = A._arr('["양의지(지명타자)", "김민석(우익수)", "박찬호(3루수)"]')
+    assert A.count_out(regulars, today) == 0
+
+
+@pytest.mark.asyncio
+async def test_주전결장을_lineup_events에서_읽는다():
+    """🔴 `lineups` 는 KBO 0행 · NPB 2행뿐이었다(실측 2026-09-13).
+       타순 본문은 `lineup_events` 에 있다 — 매일 KBO 4경기 8행.
+    """
+    import json
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime(2026, 9, 13, 8, 0, tzinfo=timezone.utc)
+    home, away = "Samsung Lions", "LG Twins"
+    # 홈 주전 9명이 10경기 내내 나왔고, 오늘은 그중 둘이 빠졌다.
+    hist = ["디아즈(1루수)", "강민호(포수)", "김지찬(중견수)", "김성윤(우익수)",
+            "최형우(지명타자)", "류지혁(2루수)", "김영웅(3루수)",
+            "심재훈(유격수)", "박승규(좌익수)"]
+    today_home = ["디아즈(지명타자)", "강민호(포수)", "김지찬(중견수)",
+                  "김성윤(우익수)", "류지혁(2루수)", "김영웅(3루수)",
+                  "심재훈(유격수)"]                       # 최형우·박승규 빠짐(2명)
+    seen = {}
+
+    class _Pool:
+        async def fetch(self, sql, *a):
+            if "pa.pitcher" in sql or "g.home, g.away" in sql:
+                return []
+            seen["regulars_sql"] = sql
+            # 🔴 팀 기준으로 조회해야 한다 — side 기준이면 상대 라인업이 섞인다
+            team = a[0]
+            bo = hist if team == home else ["x%d(포수)" % i for i in range(9)]
+            return [{"batting_order": json.dumps(bo, ensure_ascii=False)}
+                    for _ in range(10)]
+
+        async def fetchval(self, sql, *a):
+            seen["today_sql"] = sql
+            side = a[1]
+            bo = today_home if side == "home" else ["x%d(포수)" % i for i in range(9)]
+            return json.dumps(bo, ensure_ascii=False)
+
+    jg = {"sport": "kbo", "game_id": 1742, "home": home, "away": away,
+          "starts_at": now, "lineup_status": "confirmed"}
+    await A.attach(jg, _Pool())
+
+    assert "lineup_events" in seen["regulars_sql"], seen["regulars_sql"]
+    assert "lineup_events" in seen["today_sql"], seen["today_sql"]
+    assert "out_starters" not in (jg.get("adj_missing") or []), jg.get("adj_missing")
+    assert jg["adj_inputs"]["주전결장"] == {"home": 2, "away": 0}
+    assert jg["out_starters"] == 2
+
+    from app.engine import prob as P
+
+    assert P.adjustments(jg)["주전결장"] == -3.0      # 2명 × −1.5
+
+
+@pytest.mark.asyncio
+async def test_원정이_더_빠지면_홈에_유리하게_잡힌다():
+    """ADJ-3 와 같은 비대칭 — `max(0, …)` 이면 원정 결장은 영원히 0 이다."""
+    import json
+    from datetime import datetime, timezone
+
+    now = datetime(2026, 9, 13, 8, 0, tzinfo=timezone.utc)
+    hist = [f"p{i}(포수)" for i in range(9)]
+
+    class _Pool:
+        async def fetch(self, sql, *a):
+            if "pa.pitcher" in sql or "g.home, g.away" in sql:
+                return []
+            return [{"batting_order": json.dumps(hist)} for _ in range(10)]
+
+        async def fetchval(self, sql, *a):
+            # 홈은 전원 출전, 원정은 3명 결장
+            bo = hist if a[1] == "home" else hist[:6]
+            return json.dumps(bo)
+
+    jg = {"sport": "kbo", "game_id": 1, "home": "H", "away": "A",
+          "starts_at": now, "lineup_status": "confirmed"}
+    await A.attach(jg, _Pool())
+    assert jg["adj_inputs"]["주전결장"] == {"home": 0, "away": 3}
+    assert jg["out_starters"] == -3
+    assert jg.get("out_starters_away") is None, "아무도 안 읽는 죽은 키다"
+
+    from app.engine import prob as P
+
+    assert P.adjustments(jg)["주전결장"] == 4.5       # 3명 × +1.5 (상한 5)

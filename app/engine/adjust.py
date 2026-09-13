@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import date, timedelta
 
 logger = logging.getLogger(__name__)
@@ -76,18 +77,23 @@ def midweek_away(jg: dict):
     return jg.get("midweek_away_known")
 
 
+#: 🔴 [ADJ-4 2026-09-13] 타순 본문은 `lineups` 가 아니라 **`lineup_events`** 다.
+#   실측: `lineups` 최근 5일에 kbo 0행 · npb 2행 · mlb 8~76행.
+#         `lineup_events` 는 kbo 매일 8행/4경기 · npb 8~12행으로 꾸준하다.
+#   🔴 그리고 **팀 기준**으로 조회한다. 종전 `side` 기준은 우리 팀이 원정이던
+#      경기의 `side='home'` 행(= 상대 라인업)을 주전 집계에 섞어 넣었다.
 _REGULARS = """
-    SELECT l.batting_order
-      FROM lineups l JOIN games g ON g.id = l.game_id
-     WHERE l.side = $1 AND l.status = $2 AND g.sport = $3
-       AND (g.home = $4 OR g.away = $4) AND g.starts_at < $5
-     ORDER BY g.starts_at DESC LIMIT $6
+    SELECT le.batting_order
+      FROM lineup_events le JOIN games g ON g.id = le.game_id
+     WHERE le.team = $1 AND le.is_final AND g.sport = $2
+       AND g.starts_at < $3
+     ORDER BY g.starts_at DESC LIMIT $4
 """
 
 _TODAY_ORDER = """
-    SELECT batting_order FROM lineups
-     WHERE game_id = $1 AND side = $2 AND status = $3
-     ORDER BY captured_at DESC LIMIT 1
+    SELECT batting_order FROM lineup_events
+     WHERE game_id = $1 AND side = $2 AND is_final
+     ORDER BY observed_at DESC LIMIT 1
 """
 
 _PEN = """
@@ -107,22 +113,33 @@ _TRIP = """
 """
 
 
+#: 🔴 [ADJ-4] 타순 원소는 `"양의지(포수)"` 처럼 **포지션이 붙어 온다**.
+#   실측 2026-09-13(14일): 포지션이 2가지 이상인 선수가 KBO 30% · NPB 18%.
+#   떼지 않으면 (a) 주전 판정에서 분산돼 누락되고(67명 → 78명)
+#   (b) 오늘 포지션이 바뀐 주전이 **결장으로 오인된다** ← 반대 위험.
+_POS = re.compile(r"\s*\([^)]*\)\s*$")
+
+
+def _name(x) -> str:
+    s = x.get("이름") if isinstance(x, dict) else x
+    return _POS.sub("", str(s or "")).strip()
+
+
 def _arr(v) -> list:
     if isinstance(v, list):
-        return v
-    try:
-        out = json.loads(v or "[]")
-    except (TypeError, ValueError):
-        return []
-    if not isinstance(out, list):
-        return []
-    return [x.get("이름") if isinstance(x, dict) else x for x in out]
+        out = v
+    else:
+        try:
+            out = json.loads(v or "[]")
+        except (TypeError, ValueError):
+            return []
+        if not isinstance(out, list):
+            return []
+    return [n for n in (_name(x) for x in out) if n]
 
 
 async def attach(jg: dict, pool) -> None:
     """조정 입력 키를 `jg` 에 세팅한다. 실패는 **미계산**으로 남긴다."""
-    from app.collectors.lineups import STATUS_CONFIRMED
-
     missing: list[str] = []
     inputs: dict = {}
     # 🔴 T-24h 선발 스냅샷 테이블이 없다(검색 결과 `odds_snapshots` 뿐).
@@ -148,16 +165,14 @@ async def attach(jg: dict, pool) -> None:
     for side in ("home", "away"):
         team = jg.get(side) or ""
         try:
-            rows = await pool.fetch(_REGULARS, side, STATUS_CONFIRMED, sport,
-                                    team, starts, win)
+            rows = await pool.fetch(_REGULARS, team, sport, starts, win)
             cnt: dict[str, int] = {}
             for r in rows:
                 for nm in _arr(r["batting_order"]):
                     if nm:
                         cnt[nm] = cnt.get(nm, 0) + 1
             regulars = {k for k, v in cnt.items() if v >= need}
-            cur = await pool.fetchval(_TODAY_ORDER, jg.get("game_id"), side,
-                                      STATUS_CONFIRMED)
+            cur = await pool.fetchval(_TODAY_ORDER, jg.get("game_id"), side)
             n = count_out(regulars, _arr(cur))
         except Exception as exc:
             logger.warning("[adjust] game=%s %s 주전결장 실패: %s",
@@ -169,10 +184,11 @@ async def attach(jg: dict, pool) -> None:
     if outs["home"] is None or outs["away"] is None:
         missing.append("out_starters")
     else:
-        # 홈이 더 많이 빠지면 홈에 불리 → 음수. 차이만 쓴다.
-        jg["out_starters"] = max(0, outs["home"] - outs["away"])
-        if outs["away"] > outs["home"]:
-            jg["out_starters_away"] = outs["away"] - outs["home"]
+        # 🔴 [ADJ-4] **부호를 연다.** 종전 `max(0, …)` 은 원정 결장을 언제나
+        #    0 으로 만들었고(ADJ-3 과 같은 결함), 대신 두던 `out_starters_away`
+        #    는 `ADJ_RULES` 에 없어 **아무도 읽지 않는 죽은 키**였다.
+        #    홈이 더 빠지면 양수(홈에 불리) · 원정이 더 빠지면 음수(홈에 유리).
+        jg["out_starters"] = outs["home"] - outs["away"]
 
     # ── 불펜 연투
     try:
