@@ -114,7 +114,8 @@ def test_두_시점_모두_배선돼_있다():
     """🔴 함수만 만들고 안 부르면 원장은 영원히 NULL 이다."""
     a = inspect.getsource(PL.record_analysis)
     g = inspect.getsource(PL.grade_pending)
-    assert 'record_clv(pool, game_id=row["game_id"], at="verdict")' in a, a[-400:]
+    # ⚠️ [CLV-2] 트랜잭션 안이라 **커넥션**을 넘긴다(풀이면 교착한다)
+    assert 'record_clv(conn, game_id=row["game_id"], at="verdict")' in a, a[-400:]
     assert 'at="closing"' in g, g[:600]
 
 
@@ -137,3 +138,29 @@ def test_clv를_갱신되는_값으로_계산한다():
     # 자기 자신을 컬럼명으로 읽으면 안 된다
     assert "1.0/odds_at_verdict" not in v, v
     assert "1.0/odds_closing" not in c, c
+
+
+@pytest.mark.asyncio
+async def test_열린_커넥션을_그대로_쓴다():
+    """🔴 **실측 2026-09-13**: `record_analysis` 가 `conn.transaction()` 안에서
+    `record_clv(pool, …)` 를 불러 **교착**했다(EXIT=124 타임아웃). 바깥
+    트랜잭션이 잠근 같은 행을 새 커넥션이 UPDATE 하려 했기 때문이다.
+
+    ⚠️ 커넥션을 받으면 **새로 얻지 않는다.**
+    """
+    class _Conn:
+        def __init__(self): self.n = 0
+        async def fetchval(self, *a): return 2.0
+        async def execute(self, *a): self.n += 1
+
+    c = _Conn()
+    out = await PL.record_clv(c, game_id=1, at="verdict")
+    assert out == 2.0 and c.n == 1
+
+
+def test_기록부가_커넥션을_넘긴다():
+    """🔴 배선이 없으면 교착이 그대로 남는다."""
+    import inspect
+
+    src = inspect.getsource(PL.record_analysis)
+    assert "record_clv(conn" in src, "pool 을 그대로 넘기고 있다"

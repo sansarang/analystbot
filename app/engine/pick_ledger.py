@@ -316,7 +316,7 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                     # [CLV-1] 판정 시각 배당을 남긴다. **저장 전용** — 판정은
                     #   이 값을 읽지 않는다(§4-1). 실패해도 판정을 막지 않는다.
                     try:
-                        await record_clv(pool, game_id=row["game_id"], at="verdict")
+                        await record_clv(conn, game_id=row["game_id"], at="verdict")
                     except Exception as exc:
                         logger.warning("[clv] game=%s 판정시각 배당 기록 실패: %s",
                                        row["game_id"], exc)
@@ -551,18 +551,34 @@ def clv_pp(at_verdict, closing) -> float | None:
     return round((a - b) * 100, 2)
 
 
-async def record_clv(pool, *, game_id: int, at: str, now=None) -> float | None:
+async def record_clv(conn_or_pool, *, game_id: int, at: str,
+                     now=None) -> float | None:
     """판정 시각(`at="verdict"`) 또는 마감(`at="closing"`) 배당을 남긴다.
 
     반환: 저장한 배당값(없으면 None).
+    🔴 [CLV-2] **커넥션을 받으면 새로 얻지 않는다.** 실측 2026-09-13:
+       `record_analysis` 가 `conn.transaction()` 안에서 풀을 넘겨 호출해
+       **교착**했다(400초 타임아웃). 바깥 트랜잭션이 잠근 같은 행을 새
+       커넥션이 UPDATE 하려 했기 때문이다.
+       ⚠️ 호출부마다 다른 함수를 만들지 않는다 — 한 함수가 둘 다 받는다.
     ⚠️ **새 소스를 부르지 않는다** — `odds_snapshots` 에 이미 있는 값만 읽는다.
     ⚠️ 값이 없으면 **아무것도 쓰지 않는다.** 0 으로 채우지 않는다.
     """
+    from contextlib import asynccontextmanager
     from datetime import datetime, timezone
 
     sql = _CLV_SAVE["verdict" if at == "verdict" else "closing"]
     when = now or datetime.now(timezone.utc)
-    async with pool.acquire() as conn:
+
+    @asynccontextmanager
+    async def _conn():
+        if hasattr(conn_or_pool, "acquire"):
+            async with conn_or_pool.acquire() as c:
+                yield c
+        else:
+            yield conn_or_pool
+
+    async with _conn() as conn:
         odds = await conn.fetchval(_CLV_SNAP, game_id, when)
         if odds is None:
             logger.info("[clv] game=%s %s — 배당 스냅샷 없음, NULL 로 남긴다",
