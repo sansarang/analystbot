@@ -100,6 +100,30 @@ def adjustments(jg: dict) -> dict[str, float]:
     return out
 
 
+#: [결정 B 2026-09-13] **표의 크기를 절반으로 시작한다.**
+#  🔴 178경기·변수별 표본은 회귀 추정에 부족하다 — 과거 원장 회귀는 하지 않는다.
+#     대신 사전값을 축소해 넣고 CLV 로 사후 검증한다(1차 결정 6).
+#     변수별 100건 이상 쌓이고 평균 CLV 부호가 조정 방향과 같으면 1.0,
+#     반대면 0 으로 — 변수 단위로 개별 조정한다. 판단은 사용자가 한다.
+ADJ_SHRINK = 0.5
+
+#: 합계 절사. 조정이 아무리 겹쳐도 시장에서 이만큼 넘게 떨어지지 않는다.
+ADJ_SUM_CAP = 6.0
+
+
+def shrink_and_cap(adj: dict[str, float] | None) -> dict[str, float]:
+    """표 크기 → 축소 → 합계 절사. **원장에는 축소 전 값을 남긴다**
+    (어떤 변수가 얼마로 발생했는지가 사후 검증의 재료다)."""
+    if not adj:
+        return {}
+    out = {k: round(v * ADJ_SHRINK, 2) for k, v in adj.items()}
+    total = sum(out.values())
+    if abs(total) > ADJ_SUM_CAP and total:
+        scale = ADJ_SUM_CAP / abs(total)
+        out = {k: round(v * scale, 2) for k, v in out.items()}
+    return out
+
+
 def p_code(market: float | None, adj: dict[str, float] | None,
            sport: str, settings=None) -> float | None:
     """`p_market + Σ adj`(%p) 를 승률 상·하한으로 절사한 값.
@@ -110,7 +134,8 @@ def p_code(market: float | None, adj: dict[str, float] | None,
         return None
     from app.engine.scoring import cap_probability
 
-    p = float(market) + sum((adj or {}).values()) / 100.0
+    # 🔴 [결정 B] 표 크기를 그대로 더하지 않는다 — 축소·절사를 거친다.
+    p = float(market) + sum(shrink_and_cap(adj).values()) / 100.0
     capped, _ = cap_probability(p, sport, settings)
     return round(float(capped), 4)
 

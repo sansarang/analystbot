@@ -2761,8 +2761,15 @@ async def _attach_market_spine(pool, jg: dict) -> None:
        (AUC 0.440~0.477, 혼합하면 더 나빠진다).
     ⚠️ 실패해도 판정·발송을 막지 않는다 — 없으면 NULL 로 남는다.
     """
+    from app.engine import adjust as _adjust
     from app.engine import prob as _prob
 
+    # 🔴 [ADJ-1 결정 A] 조정 변수를 DB 원자료에서 채운다. **뼈대 계산 직전**이다.
+    try:
+        await _adjust.attach(jg, pool)
+    except Exception as exc:
+        logger.warning("[prob] game=%s 조정 변수 부착 실패 — 조정 없이 간다: %s",
+                       jg.get("game_id"), exc)
     try:
         probs, _best = await _market_probs(pool, int(jg["game_id"]),
                                            jg.get("home") or "", jg.get("away") or "")
