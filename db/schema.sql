@@ -545,6 +545,23 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS prior_src TEXT;
 --   분류: 동의 | 시장 과대 | 가치 의심 | 보드 고정
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_reason TEXT;
 
+-- [TRG-1 2026-09-13 Part A] 경기별 시점 트리거.
+--   5시점: open(T-24h) · pre(T-3h) · lineup(T-60m) · late(T-10m) · close(T+0)
+--   🔴 (game_id, kind) 유일 — 없으면 재등록할 때마다 트리거가 불어난다.
+--   🔴 `fired_at` 이 NULL 인 것만 due 로 본다. 재발사를 막는 유일한 장치다.
+CREATE TABLE IF NOT EXISTS game_triggers (
+    id        BIGSERIAL PRIMARY KEY,
+    game_id   BIGINT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    kind      TEXT   NOT NULL,
+    due_at    TIMESTAMPTZ NOT NULL,
+    fired_at  TIMESTAMPTZ,
+    attempts  INT NOT NULL DEFAULT 0,
+    note      TEXT,
+    UNIQUE (game_id, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_game_triggers_due
+    ON game_triggers (due_at) WHERE fired_at IS NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
     ON pick_ledger (game_id) WHERE is_final;
 

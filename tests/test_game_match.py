@@ -187,6 +187,13 @@ _SEED = {
                             "VALUES ($1,'kbo','Kia Tigers','Lotte Giants','P',true,6.0,'box')"),
     "variable_ledger": ("INSERT INTO variable_ledger (game_id, sport, raw) "
                         "VALUES ($1,'kbo','GM-2 재현용 변수')"),
+    # 🔴 [TRG-1 2026-09-13] **이 줄도 카탈로그 테스트가 울려서 추가됐다.**
+    #    `game_triggers` 를 만들자마자 실패했다. 판단: 병합 시 **패자 행의
+    #    트리거는 CASCADE 로 지워지는 것이 맞다** — 승자는 자기 5행을 이미
+    #    갖고 있고, `(game_id, kind)` 가 유일이라 이관하면 충돌한다.
+    #    그래서 `moved_by_hand` 가 아니라 여기(재현 씨앗)에 넣는다.
+    "game_triggers": ("INSERT INTO game_triggers (game_id, kind, due_at) "
+                      "VALUES ($1,'open', now())"),
     # 🔴 [BAT-1 2026-09-08] **이 줄은 카탈로그 테스트가 울려서 추가됐다.**
     #    `batter_appearances` 를 만들자 `test_카탈로그가_아는_표를_이_테스트도_안다`
     #    가 즉시 실패했다 — GM-2 가 "새 표를 만들면 이 목록에 반드시 추가한다"는
