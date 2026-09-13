@@ -1,0 +1,35 @@
+# 딥서치 소스 화이트리스트. 지시문 Phase 4-2.
+#
+# 우선순위: tier1 → tier2 → tier3 순으로 **최대 3개만** fetch 한다.
+# `blocked` 는 어떤 경우에도 안 본다.
+#
+# 🔴 `tier1_official`(구단 공식 도메인)은 **사용자가 채운다.**
+#    Claude Code 가 100여 개를 추측해 적지 않는다 — 티어 표와 같은 규칙이다.
+#    비어 있으면 tier2 부터 본다. 그 사실은 로그에 남는다.
+#
+# ⚠️ tier2·tier3 는 **지시문이 직접 준 도메인**만 넣었다. 임의로 늘리지 않는다.
+# ⚠️ 여기 없는 도메인은 등급 9(미상)이고 fetch 대상에서 빠진다.
+
+tier1_official: []          # 사용자가 채운다
+
+tier2_local:
+  - feanonline.nl
+  - calciolecce.it
+  - monza-news.it
+  - grootheerenveen.nl
+  - losclive.com
+  - sussexexpress.co.uk
+  - 101tv.es
+  - elespanol.com
+
+tier3_aggregator:
+  - sportsmole.co.uk
+  - whoscored.com
+  - fotmob.com
+  - fantamaster.it
+  - comunio.de
+  - ligainsider.de
+  - voetbalwedden.eu
+  - maxifoot.fr
+
+blocked: []                 # 베팅 제휴·팬 포럼 도메인을 여기에

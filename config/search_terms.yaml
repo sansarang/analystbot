@@ -1,0 +1,26 @@
+# 딥서치(층2) 검색어 — 리그별 **현지어 2개**. 지시문 Phase 4-1.
+#
+# 🔴 이것은 **층2(딥서치)** 의 검색어다. 층1 위성(다음 뉴스검색)의
+#    `_SOCCER_TERMS = ""` 를 대체하지 않는다 — 거기 검색어를 붙였더니
+#    맥도날드·프로야구·연예 기사가 왔다(실측 2026-09-12, 코드 주석 참조).
+#
+# ⚠️ `{team}` 에는 **현지 표기**가 들어간다(Heerenveen 이 아니라 `sc Heerenveen`).
+# ⚠️ 한국어 검색어는 **토르로 못 나간다**(`tor_search.is_tor_safe_query` 가
+#    거부한다 — 한국 사이트가 깨진다). 그 리그는 다음·그라운딩으로 간다.
+#
+# ⚠️ 지시문에 있으나 우리 시스템에 **리그가 없어** 넣지 않은 것:
+#      ligue1(리그1) · eredivisie(에레디비시) · j2 · kleague2
+# ⚠️ 우리에만 있고 지시문에 **없는** 리그: denmark.
+#    덴마크어 검색어를 **지어내지 않았다** — 영어로 둔다. 사용자가 정해 주면 바꾼다.
+
+terms:
+  epl:        ["{team} team news", "{team} predicted lineup injuries"]
+  la_liga:    ["{team} alineación oficial", "{team} bajas lesionados"]
+  serie_a:    ["{team} probabili formazioni", "{team} infortunati"]
+  bundesliga: ["{team} Aufstellung", "{team} Ausfälle"]
+  j1:         ["{team} スタメン", "{team} 負傷 欠場"]
+  kleague1:   ["{team} 선발 라인업", "{team} 부상 결장"]
+  denmark:    ["{team} starting lineup", "{team} injuries absences"]   # 임시(영어)
+  npb:        ["{team} スタメン", "{team} 予告先発"]
+  kbo:        ["{team} 선발 라인업", "{team} 엔트리 말소"]
+  mlb:        ["{team} lineup", "{team} injury report"]
