@@ -123,3 +123,14 @@ def test_채점_결과에_배당을_쓰지_않는다():
     g = inspect.getsource(PL.grade_pending)
     i = g.index("winner =")
     assert "odds" not in g[i:i + 600], g[i:i + 600]
+
+
+def test_clv를_갱신되는_값으로_계산한다():
+    """🔴 실측 2026-09-13: MLB 8건 전부 두 칸이 찼는데 clv 가 NULL 이었다.
+    `UPDATE` 안의 `CASE` 는 **갱신 전 값**을 읽는다 — 지금 쓰는 칸은 `$2` 다."""
+    v, c = PL._CLV_SAVE["verdict"], PL._CLV_SAVE["closing"]
+    assert "1.0/$2" in v and "odds_closing IS NOT NULL" in v, v
+    assert "1.0/$2" in c and "odds_at_verdict IS NOT NULL" in c, c
+    # 자기 자신을 컬럼명으로 읽으면 안 된다
+    assert "1.0/odds_at_verdict" not in v, v
+    assert "1.0/odds_closing" not in c, c

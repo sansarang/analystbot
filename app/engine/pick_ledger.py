@@ -486,13 +486,25 @@ _CLV_SNAP = """
      LIMIT 1
 """
 
-_CLV_SAVE = """
-    UPDATE pick_ledger SET {col} = $2,
-           clv = CASE WHEN odds_at_verdict IS NOT NULL AND odds_closing IS NOT NULL
-                      THEN round(((1.0/odds_at_verdict) - (1.0/odds_closing))::numeric * 100, 2)
+#: 🔴 `UPDATE` 안의 `CASE` 는 **갱신 전 값**을 읽는다. 지금 쓰는 칸은 `$2` 로
+#   참조해야 한다 — 종전에는 둘 다 컬럼명으로 읽어 두 칸이 다 찬 뒤에도
+#   `clv` 가 NULL 로 남았다(실측 2026-09-13 MLB 8건 전부 NULL).
+_CLV_SAVE = {
+    "verdict": """
+    UPDATE pick_ledger SET odds_at_verdict = $2,
+           clv = CASE WHEN odds_closing IS NOT NULL
+                      THEN round(((1.0/$2) - (1.0/odds_closing))::numeric * 100, 2)
                       ELSE clv END
      WHERE game_id = $1 AND is_final
-"""
+""",
+    "closing": """
+    UPDATE pick_ledger SET odds_closing = $2,
+           clv = CASE WHEN odds_at_verdict IS NOT NULL
+                      THEN round(((1.0/odds_at_verdict) - (1.0/$2))::numeric * 100, 2)
+                      ELSE clv END
+     WHERE game_id = $1 AND is_final
+""",
+}
 
 
 def _implied_prob(odds) -> float | None:
@@ -526,7 +538,7 @@ async def record_clv(pool, *, game_id: int, at: str, now=None) -> float | None:
     """
     from datetime import datetime, timezone
 
-    col = "odds_at_verdict" if at == "verdict" else "odds_closing"
+    sql = _CLV_SAVE["verdict" if at == "verdict" else "closing"]
     when = now or datetime.now(timezone.utc)
     async with pool.acquire() as conn:
         odds = await conn.fetchval(_CLV_SNAP, game_id, when)
@@ -534,5 +546,5 @@ async def record_clv(pool, *, game_id: int, at: str, now=None) -> float | None:
             logger.info("[clv] game=%s %s — 배당 스냅샷 없음, NULL 로 남긴다",
                         game_id, at)
             return None
-        await conn.execute(_CLV_SAVE.format(col=col), game_id, float(odds))
+        await conn.execute(sql, game_id, float(odds))
     return float(odds)
