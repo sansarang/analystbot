@@ -562,6 +562,20 @@ CREATE TABLE IF NOT EXISTS game_triggers (
 CREATE INDEX IF NOT EXISTS idx_game_triggers_due
     ON game_triggers (due_at) WHERE fired_at IS NULL;
 
+-- [MOV-1 2026-09-13 Part 1] 배당 이동 분석.
+--   `snap_tag` 는 `triggers.KINDS` 와 **같은 이름**이다 — 두 이름표를 만들면
+--   대조가 깨진다: open · pre · lineup · late · close
+--   🔴 `move_line_hcp`·`move_line_ou` 는 **만들지 않았다.** 핸디·U/O 라인이
+--      크롤에 없다(실측: oddsportal handicapValue 0건 · theodds 08-27 정지).
+--      원자료 없는 칸은 영원히 NULL 이고, 그 칸이 있다는 사실이 착각을 만든다.
+ALTER TABLE odds_snapshots ADD COLUMN IF NOT EXISTS snap_tag TEXT;
+CREATE INDEX IF NOT EXISTS idx_odds_snap_tag
+    ON odds_snapshots (game_id, snap_tag) WHERE snap_tag IS NOT NULL;
+
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS odds_open   DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS move_class  TEXT;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS move_reason TEXT;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
     ON pick_ledger (game_id) WHERE is_final;
 
