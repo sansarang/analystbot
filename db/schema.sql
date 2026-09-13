@@ -508,6 +508,15 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS odds_at_verdict DOUBLE PRECISIO
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS odds_closing    DOUBLE PRECISION;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS clv             DOUBLE PRECISION;
 
+-- [PROB-1 2026-09-13] 확률 뼈대를 시장으로. 조정은 코드가, 서술만 LLM이.
+--   사용자 결정: p = 시장확률(디빅) -> 검증된 변수로 코드가 ±%p -> LLM은 서술만.
+--   🔴 p_market 이 NULL 이면 p_code 도 NULL 이다 — Elo 로 대체하지 않는다
+--      (AUC 0.440~0.477, 혼합하면 더 나빠진다).
+--   adj_pp 는 {변수명: %p} JSON. 조정이 없으면 '{}' — NULL 이 아니다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_market DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_code   DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS adj_pp   JSONB;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
     ON pick_ledger (game_id) WHERE is_final;
 

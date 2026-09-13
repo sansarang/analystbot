@@ -177,6 +177,10 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         "league": jg.get("league"),
         "date": analysis.get("date") or "",
         "p_home": jg.get("p_claude"),
+        # [PROB-1] 시장 뼈대·코드 조정. 판정(LLM)은 이 값을 보지 않는다.
+        "p_market_spine": jg.get("p_market_spine"),
+        "p_code": jg.get("p_code"),
+        "adj_pp": jg.get("adj_pp"),
         # 🔴 `winner` 가 아니다 — 그 칸은 채점이 채우는 **실제 승자**다.
         #    예측은 `predicted_side` 에 home|away 로 넣는다(팀 이름이 아니라
         #    방향이어야 `hit` 비교가 종전 규약 그대로 된다).
@@ -283,9 +287,11 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                               confidence, lineup_status, gate_result, model,
                               rejudge_count, is_final, trial,
                               odds, market_prob, divergence_pp,
-                              confidence_probe, shadow_blend, predicted_side)
+                              confidence_probe, shadow_blend, predicted_side,
+                              p_market, p_code, adj_pp)
                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,
-                                   $13,$14,$15,$16::jsonb,$17::jsonb,$18)""",
+                                   $13,$14,$15,$16::jsonb,$17::jsonb,$18,
+                                   $19,$20,$21::jsonb)""",
                         row["game_id"], row["sport"], row["league"], row["date"],
                         row["p_home"], row["favored"], row["confidence"],
                         row["lineup_status"], row["gate_result"], row["model"], n,
@@ -294,7 +300,9 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         row["confidence_probe"],
                         json.dumps(row.get("shadow_blend"), ensure_ascii=False)
                         if row.get("shadow_blend") else None,
-                        row.get("predicted_side"))
+                        row.get("predicted_side"),
+                        row.get("p_market_spine"), row.get("p_code"),
+                        row.get("adj_pp"))
                     stats["rejudged" if existing is not None else "inserted"] += 1
                     # [CLV-1] 판정 시각 배당을 남긴다. **저장 전용** — 판정은
                     #   이 값을 읽지 않는다(§4-1). 실패해도 판정을 막지 않는다.

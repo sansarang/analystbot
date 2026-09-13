@@ -2749,6 +2749,36 @@ async def _run_baseball_forms(redis, sport: str, date: str, games: list[dict],
 
 
 
+
+async def _attach_market_spine(pool, jg: dict) -> None:
+    """[PROB-1] 시장 뼈대 확률과 코드 조정을 `jg` 에 붙인다.
+
+    사용자 결정 2026-09-13(결정 1): `p = 시장확률(디빅) → 검증된 변수로 코드가
+    ±%p → LLM은 서술만`. **이 값은 판정 뒤에 붙는다** — LLM 프롬프트에는
+    배당·시장확률·괴리 숫자가 들어가지 않는다(계약이 전수 grep 한다).
+
+    🔴 `p_market` 이 없으면 `p_code` 도 None 이다. Elo 로 대체하지 않는다
+       (AUC 0.440~0.477, 혼합하면 더 나빠진다).
+    ⚠️ 실패해도 판정·발송을 막지 않는다 — 없으면 NULL 로 남는다.
+    """
+    from app.engine import prob as _prob
+
+    try:
+        probs, _best = await _market_probs(pool, int(jg["game_id"]),
+                                           jg.get("home") or "", jg.get("away") or "")
+        sport = (jg.get("sport") or "").lower()
+        mkt = _prob.p_market(probs, jg.get("home") or "", jg.get("away") or "", sport)
+        adj = _prob.adjustments(jg)
+        jg["p_market_spine"] = mkt
+        jg["adj_pp"] = _prob.adj_json(adj)
+        jg["p_code"] = _prob.p_code(mkt, adj, sport)
+        logger.info("[prob] game=%s p_market=%s adj=%s p_code=%s",
+                    jg.get("game_id"), mkt, adj, jg.get("p_code"))
+    except Exception as exc:
+        logger.warning("[prob] game=%s 시장 뼈대 실패 — NULL 로 둔다: %s",
+                       jg.get("game_id"), exc)
+
+
 async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
                                  allow_final: bool = False) -> int:
     """라인업 확정·변경 시 경기당 매치업. 폼 캐시 히트면 재분석하지 않는다.
@@ -2894,6 +2924,9 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
         if await judge_matchup(jg, redis, date, allow_final=allow_final,
                                pool=pool):
             n += 1
+            # [PROB-1] 판정 **뒤에** 시장 뼈대를 붙인다(LLM은 보지 않는다).
+            if pool is not None:
+                await _attach_market_spine(pool, jg)
             # ── [BRR-3 2026-09-08] **이번 회차 분기점을 한 번 더 조사한다.**
             #   위 조사는 판정 **앞**이라 직전 회차 분기점을 푼다 — 그것이
             #   판정의 재료가 되는 것은 옳다(유료 호출을 늘리지 않는 2단 설계).
@@ -3028,6 +3061,9 @@ async def _run_soccer_matchups(redis, date: str, games: list[dict]) -> int:
         try:
             if await judge_matchup(jg, redis, date, pool=pool):
                 n += 1
+                # [PROB-1] 판정 뒤에 시장 뼈대를 붙인다(LLM은 보지 않는다).
+                if pool is not None:
+                    await _attach_market_spine(pool, jg)
         except Exception as exc:
             logger.warning("[pipeline] 축구 매치업 실패 game=%s: %s",
                            jg.get("game_id"), exc)
