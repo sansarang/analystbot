@@ -2776,9 +2776,23 @@ async def _attach_market_spine(pool, jg: dict) -> None:
         sport = (jg.get("sport") or "").lower()
         mkt = _prob.p_market(probs, jg.get("home") or "", jg.get("away") or "", sport)
         adj = _prob.adjustments(jg)
+        # 🔴 [MBF-1 결정 F(C)+G] 야구 모델 확률. **기록 전용**이다 —
+        #    `prob.MODEL_W = 0` 이라 `p_code` 는 한 글자도 안 바뀐다.
+        #    이미 `jg` 에 붙은 재료만 쓴다(새 수집·DB 호출 없음).
+        if sport in ("mlb", "kbo", "npb"):
+            try:
+                from app.model_baseball import forward as _fwd
+
+                m = _fwd.build(jg)
+                jg["p_model"], jg["model_src"] = m["p_model"], m["src"]
+                jg["model_w"] = _prob.MODEL_W
+            except Exception as exc:
+                logger.warning("[model] game=%s 모델 확률 실패: %s",
+                               jg.get("game_id"), exc)
         jg["p_market_spine"] = mkt
         jg["adj_pp"] = _prob.adj_json(adj)
-        jg["p_code"] = _prob.p_code(mkt, adj, sport)
+        jg["p_code"] = _prob.p_code(mkt, adj, sport, p_model=jg.get("p_model"))
+        jg["model_gap_pp"] = _prob.model_gap_pp(jg.get("p_model"), mkt)
         # 🔴 [CONF-1] 확신 등급을 **코드가** 정한다. LLM 자기신고를 쓰지 않는다.
         #    `있음`(자기보고 아님)을 필수 축 판정에 쓴다.
         try:

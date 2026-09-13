@@ -186,6 +186,11 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         "p_market_spine": jg.get("p_market_spine"),
         "p_code": jg.get("p_code"),
         "adj_pp": jg.get("adj_pp"),
+        # [MBF-1] 야구 모델 확률 — **기록 전용**(`model_w = 0`).
+        "p_model": jg.get("p_model"),
+        "model_src": jg.get("model_src"),
+        "model_w": jg.get("model_w"),
+        "model_gap_pp": jg.get("model_gap_pp"),
         # 🔴 `winner` 가 아니다 — 그 칸은 채점이 채우는 **실제 승자**다.
         #    예측은 `predicted_side` 에 home|away 로 넣는다(팀 이름이 아니라
         #    방향이어야 `hit` 비교가 종전 규약 그대로 된다).
@@ -296,10 +301,12 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                               rejudge_count, is_final, trial,
                               odds, market_prob, divergence_pp,
                               confidence_probe, shadow_blend, predicted_side,
-                              p_market, p_code, adj_pp, llm_winner, llm_level)
+                              p_market, p_code, adj_pp, llm_winner, llm_level,
+                              p_model, model_src, model_w, model_gap_pp)
                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,
                                    $13,$14,$15,$16::jsonb,$17::jsonb,$18,
-                                   $19,$20,$21::jsonb,$22,$23)""",
+                                   $19,$20,$21::jsonb,$22,$23,
+                                   $24,$25,$26,$27)""",
                         row["game_id"], row["sport"], row["league"], row["date"],
                         row["p_home"], row["favored"], row["confidence"],
                         row["lineup_status"], row["gate_result"], row["model"], n,
@@ -311,7 +318,9 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         row.get("predicted_side"),
                         row.get("p_market_spine"), row.get("p_code"),
                         row.get("adj_pp"), row.get("llm_winner"),
-                        row.get("llm_level"))
+                        row.get("llm_level"),
+                        row.get("p_model"), row.get("model_src"),
+                        row.get("model_w"), row.get("model_gap_pp"))
                     stats["rejudged" if existing is not None else "inserted"] += 1
                     # [CLV-1] 판정 시각 배당을 남긴다. **저장 전용** — 판정은
                     #   이 값을 읽지 않는다(§4-1). 실패해도 판정을 막지 않는다.

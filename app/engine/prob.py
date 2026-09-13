@@ -124,8 +124,23 @@ def shrink_and_cap(adj: dict[str, float] | None) -> dict[str, float]:
     return out
 
 
+#: [결정 G 2026-09-13] 모델 확률의 가중치. **0 에서 시작한다** —
+#  기록만 하고 발송 숫자에 영향이 없다. 300건 뒤 사용자가 상향을 판정한다:
+#    4단계 A/D 에서 모델이 ELO 를 이겼고, 전방 300건에서 p_model 브라이어가
+#    p_market + 0.005 이하이며, model_gap_pp 방향 가상 pick 의 CLV 평균 > 0,
+#    CI 하한 > 0 → 0.5. 다음 300건에서 같으면 1.0(= 뼈대 교체).
+MODEL_W = 0.0
+
+
+def model_gap_pp(p_model, p_market) -> float | None:
+    """모델 − 시장 (%p). 사후 분해의 재료다."""
+    if p_model is None or p_market is None:
+        return None
+    return round((float(p_model) - float(p_market)) * 100, 2)
+
+
 def p_code(market: float | None, adj: dict[str, float] | None,
-           sport: str, settings=None) -> float | None:
+           sport: str, settings=None, *, p_model=None, model_w=None) -> float | None:
     """`p_market + Σ adj`(%p) 를 승률 상·하한으로 절사한 값.
 
     🔴 `market` 이 None 이면 **None** 이다 — 대체값을 만들지 않는다.
@@ -136,6 +151,10 @@ def p_code(market: float | None, adj: dict[str, float] | None,
 
     # 🔴 [결정 B] 표 크기를 그대로 더하지 않는다 — 축소·절사를 거친다.
     p = float(market) + sum(shrink_and_cap(adj).values()) / 100.0
+    # 🔴 [결정 G] 모델 축. `model_w = 0` 이면 **항등**이다(계약이 단언).
+    w = MODEL_W if model_w is None else float(model_w)
+    if p_model is not None and w:
+        p += w * (float(p_model) - float(market))
     capped, _ = cap_probability(p, sport, settings)
     return round(float(capped), 4)
 

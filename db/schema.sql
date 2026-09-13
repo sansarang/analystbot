@@ -524,6 +524,14 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS adj_pp   JSONB;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS llm_winner TEXT;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS llm_level  TEXT;
 
+-- [MBF-1 2026-09-13 결정 F(C)+G] 야구 모델 확률. **기록 전용**이다.
+--   p_code = p_market + Sigma adj + model_w * (p_model - p_market), model_w = 0 시작.
+--   🔴 Gemini 프롬프트에는 가지 않는다(결정 F(C)). 계약이 전수 grep 한다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_model      DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS model_src    TEXT;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS model_w      DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS model_gap_pp DOUBLE PRECISION;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
     ON pick_ledger (game_id) WHERE is_final;
 
