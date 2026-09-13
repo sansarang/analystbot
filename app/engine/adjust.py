@@ -189,7 +189,11 @@ async def attach(jg: dict, pool) -> None:
         if b2b["home"] is None or b2b["away"] is None:
             missing.append("bullpen_b2b")
         else:
-            jg["bullpen_b2b"] = max(0, b2b["home"] - b2b["away"])
+            # 🔴 [ADJ-3 2026-09-13] **부호를 연다.** 종전 `max(0, …)` 은
+            #    원정이 더 지친 경우를 언제나 0 으로 만들었다 —
+            #    실측 롯데@KT 원정 3명 · 홈 1명인데 조정 0 이었다.
+            #    음수면 원정이 더 지친 것이고, 홈에 유리로 읽힌다.
+            jg["bullpen_b2b"] = b2b["home"] - b2b["away"]
             inputs["필승조연투"] = b2b
     except Exception as exc:
         logger.warning("[adjust] game=%s 불펜 연투 실패: %s", jg.get("game_id"), exc)

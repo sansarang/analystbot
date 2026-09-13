@@ -260,3 +260,71 @@ async def test_원정을_돌지_않았으면_이동연전은_0이다():
     await A.attach(jg, _Pool())
     assert jg["adj_inputs"]["이동연전"]["연속원정"] == 0
     assert jg["trip_day"] == 0
+
+
+# ── [ADJ-3] 원정 팀 피로가 구조적으로 반영되지 않았다
+
+@pytest.mark.asyncio
+async def test_원정_불펜이_더_지쳤으면_홈에_유리하게_잡힌다():
+    """🔴 실측 2026-09-13 롯데@KT: 원정 3명 연투 · 홈 1명인데 조정 0.
+
+    `max(0, home - away)` 라 **원정 팀 피로는 영원히 0** 이었다. 제미나이는
+    글에 "롯데 불펜 연투 피로 누적"이라고 썼는데 코드 축은 비어 있었다.
+    차이를 **부호 있는 값**으로 남긴다 — 음수면 원정이 더 지친 것이다.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime(2026, 9, 13, 8, 0, tzinfo=timezone.utc)
+    # 홈 1명 연투 · 원정 3명 연투
+    pen = {"KT Wiz": {"h1": 2},
+           "Lotte Giants": {"a1": 2, "a2": 2, "a3": 2}}
+
+    class _Pool:
+        async def fetchval(self, *a, **k): return None
+
+        async def fetch(self, sql, *a):
+            if "pa.pitcher" not in sql:
+                return []
+            team = a[0]
+            rows = []
+            for name, days in pen.get(team, {}).items():
+                for i in range(1, days + 1):
+                    rows.append({"pitcher": name, "d": (now - timedelta(days=i)).date()})
+            return rows
+
+    jg = {"sport": "kbo", "game_id": 1744, "home": "KT Wiz", "away": "Lotte Giants",
+          "starts_at": now, "lineup_status": "confirmed"}
+    await A.attach(jg, _Pool())
+    assert jg["adj_inputs"]["필승조연투"] == {"home": 1, "away": 3}
+    assert jg["bullpen_b2b"] == -2, jg["bullpen_b2b"]
+
+    from app.engine import prob as P
+
+    assert P.adjustments(jg)["필승조연투"] == 2.0     # 홈에 유리
+
+
+@pytest.mark.asyncio
+async def test_홈이_더_지쳤을_때는_종전과_같다():
+    """반대 위험 — 부호를 열다 기존 방향이 바뀌면 안 된다."""
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime(2026, 9, 13, 8, 0, tzinfo=timezone.utc)
+    pen = {"Samsung Lions": {"h1": 2, "h2": 2}, "LG Twins": {}}
+
+    class _Pool:
+        async def fetchval(self, *a, **k): return None
+
+        async def fetch(self, sql, *a):
+            if "pa.pitcher" not in sql:
+                return []
+            return [{"pitcher": n, "d": (now - timedelta(days=i)).date()}
+                    for n, d in pen.get(a[0], {}).items() for i in range(1, d + 1)]
+
+    jg = {"sport": "kbo", "game_id": 1742, "home": "Samsung Lions", "away": "LG Twins",
+          "starts_at": now, "lineup_status": "confirmed"}
+    await A.attach(jg, _Pool())
+    assert jg["bullpen_b2b"] == 2
+
+    from app.engine import prob as P
+
+    assert P.adjustments(jg)["필승조연투"] == -2.0   # 실측 2026-09-13 과 같은 값

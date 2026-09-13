@@ -95,7 +95,12 @@ def adjustments(jg: dict) -> dict[str, float]:
         if not n:
             continue
         raw = per * n
-        val = max(raw, cap) if cap < 0 else min(raw, cap)
+        # 🔴 [ADJ-3 2026-09-13] 상한은 **크기**에 건다. 종전
+        #    `max(raw, cap) if cap < 0 else min(raw, cap)` 은 한쪽만 막았다 —
+        #    입력이 음수가 되는 순간(원정이 더 지침) 절사 없이 통과했다.
+        #    입력이 0 이상인 구간에서는 두 식의 결과가 같다(계약이 단언).
+        lim = abs(cap)
+        val = max(-lim, min(raw, lim))
         out[name] = round(val, 2)
     return out
 

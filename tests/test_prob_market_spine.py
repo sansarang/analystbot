@@ -163,3 +163,22 @@ def test_원장_행에_세_칸이_실린다():
     src = inspect.getsource(L._row_from_game)
     for k in ("p_market_spine", "p_code", "adj_pp"):
         assert k in src, k
+
+
+# ── [ADJ-3] 상한은 **크기**에 걸린다. 한쪽만 막으면 반대편이 터진다.
+
+def test_상한은_양쪽_모두에_걸린다():
+    """🔴 종전에는 `max(raw, cap) if cap < 0 else min(raw, cap)` 였다.
+
+    `필승조연투` 의 cap 은 −3.0 이라 음수 쪽만 막혔다. 입력이 음수(=원정이 더
+    지침)가 되는 순간 `max(+9.0, −3.0) = +9.0` — **절사 없이 통과**한다.
+    """
+    from app.engine import prob as P
+
+    assert P.adjustments({"sport": "mlb", "bullpen_b2b": 9})["필승조연투"] == -3.0
+    assert P.adjustments({"sport": "mlb", "bullpen_b2b": -9})["필승조연투"] == 3.0
+    assert P.adjustments({"sport": "mlb", "out_starters": 9})["주전결장"] == -5.0
+    assert P.adjustments({"sport": "mlb", "out_starters": -9})["주전결장"] == 5.0
+    # 양수 cap(선발변경) 도 양쪽으로 막힌다
+    assert P.adjustments({"sport": "mlb", "starter_changed": 9})["선발변경"] == 6.0
+    assert P.adjustments({"sport": "mlb", "starter_changed": -9})["선발변경"] == -6.0
