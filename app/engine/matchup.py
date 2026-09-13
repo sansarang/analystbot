@@ -389,7 +389,14 @@ def starters_recent_payload(jg: dict) -> dict:
     r = jg.get("research") or {}
     out = {}
     for side in ("home", "away"):
-        blk = {"선발등판": r.get(f"{side}_starter_recent") or []}
+        # 🔴 [PRM-1] **블록 안에 팀·선발 이름을 적는다.** `home`/`away` 뿐이면
+        #    원정이 눈에 띄지 않는다 — 실측 2026-09-13: 양 팀 5경기씩이 잘리지
+        #    않고 프롬프트에 들어갔는데도 제미니가 "원정 선발 Bryan Woo의 최근
+        #    등판 기록이 확인되지 않았다"고 썼다(`DB본것` 에는 그 칸을 적었다).
+        blk = {"팀": jg.get(side) or "",
+               "선발": ((r.get(f"{side}_pitcher") or {}).get("name")
+                        or jg.get(f"{side}_pitcher") or ""),
+               "선발등판": r.get(f"{side}_starter_recent") or []}
         relief = r.get(f"{side}_starter_relief") or []
         if relief:
             blk["구원등판"] = relief
