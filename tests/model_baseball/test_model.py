@@ -169,3 +169,65 @@ def test_상하한이_승률_상한_규약과_같다():
     from app.config import get_settings
 
     assert M.P_CAP == pytest.approx(float(get_settings().max_win_prob_mlb))
+
+
+# ── [MBM-3] 방향. 분포만 재면 부호가 뒤집혀도 통과한다.
+
+_LG = {"woba": 0.320, "rpg": 4.40}
+
+
+def _side(sp_r=3.0, bp_r=4.0, woba=None):
+    return {"sp": M.sp_axis([{"ip": 6.0, "r": sp_r}] * 3, 4.40),
+            "bp": M.bp_axis([{"ip": 10.0, "r": bp_r}], 4.40),
+            "off": M.team_offense(woba, None, _LG)}
+
+
+#: 양쪽이 똑같을 때의 값. ⚠️ 0.5 가 아니다 — 홈 이점이 들어 있다.
+#  방향 계약은 **이 값 대비**로 본다. 0.5 로 재면 불펜처럼 효과가 작은 축은
+#  홈 이점에 묻혀 "원정이 나은데도 홈 승률 0.51" 이 되고, 계약이 헛돈다.
+_NEUTRAL = M.predict(_side(), _side())["p_home"]
+
+
+def test_중립값은_홈_이점만큼이다():
+    assert _NEUTRAL == pytest.approx(0.54, abs=1e-9)
+
+
+def test_선발이_좋은_쪽이_이긴다():
+    """🔴 MBM-3 — 이 계약이 없어서 부호가 뒤집힌 채 배포됐다."""
+    out = M.predict(_side(sp_r=1.0), _side(sp_r=6.0))
+    assert out["p_home"] > _NEUTRAL, out["components"]
+    rev = M.predict(_side(sp_r=6.0), _side(sp_r=1.0))
+    assert rev["p_home"] < _NEUTRAL, rev["components"]
+
+
+def test_불펜이_좋은_쪽이_이긴다():
+    assert M.predict(_side(bp_r=2.0), _side(bp_r=8.0))["p_home"] > _NEUTRAL
+    assert M.predict(_side(bp_r=8.0), _side(bp_r=2.0))["p_home"] < _NEUTRAL
+
+
+def test_타선이_좋은_쪽이_이긴다():
+    assert M.predict(_side(woba=0.360), _side(woba=0.280))["p_home"] > _NEUTRAL
+    assert M.predict(_side(woba=0.280), _side(woba=0.360))["p_home"] < _NEUTRAL
+
+
+def test_양쪽을_맞바꾸면_확률이_뒤집힌다():
+    """홈 이점만큼만 어긋난다."""
+    # ⚠️ 절사(0.32~0.68) 밖으로 나가면 합이 1.0 으로 눌린다 — 안쪽 입력을 쓴다.
+    h, a = _side(sp_r=3.4, woba=0.330), _side(sp_r=4.2, woba=0.312)
+    p1 = M.predict(h, a)["p_home"]
+    p2 = M.predict(a, h)["p_home"]
+    assert p1 + p2 == pytest.approx(1.0 + 2 * 0.04, abs=0.02), (p1, p2)
+
+
+def test_총득점은_배정과_무관하다():
+    """`(rs+ra)` 넷의 합이라 홈/원정 배정이 바뀌어도 같다."""
+    h, a = _side(sp_r=1.0, woba=0.360), _side(sp_r=7.0, woba=0.280)
+    assert M.predict(h, a)["exp_total"] == pytest.approx(M.predict(a, h)["exp_total"])
+
+
+def test_극단에서도_절사된다():
+    lo = M.predict(_side(sp_r=12.0, bp_r=12.0, woba=0.250),
+                   _side(sp_r=0.0, bp_r=0.0, woba=0.400))["p_home"]
+    hi = M.predict(_side(sp_r=0.0, bp_r=0.0, woba=0.400),
+                   _side(sp_r=12.0, bp_r=12.0, woba=0.250))["p_home"]
+    assert 1.0 - M.P_CAP <= lo and hi <= M.P_CAP, (lo, hi)

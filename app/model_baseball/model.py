@@ -132,8 +132,11 @@ def win_prob(rs_h, ra_h, rs_a, ra_a, hfa=0.04) -> float:
 
 def predict(home: dict, away: dict, park=1.0, hfa=0.04) -> dict:
     """축 → 승률·총득점·기여값. 입력은 `sp_axis`·`bp_axis`·`team_offense` 결과."""
-    ra_h = expected_runs(away["sp"]["ra9"], away["sp"]["ip"], away["bp"]["ra9"])
-    ra_a = expected_runs(home["sp"]["ra9"], home["sp"]["ip"], home["bp"]["ra9"])
+    # 🔴 [MBM-3 2026-09-13] `ra_h` 는 **홈이 내주는 점수** = 홈 투수진이다.
+    #    종전에는 원정 투수진을 넣어 부호가 통째로 뒤집혀 있었다 —
+    #    선발·불펜이 다 나은 팀의 승률이 0.364 로 나왔다.
+    ra_h = expected_runs(home["sp"]["ra9"], home["sp"]["ip"], home["bp"]["ra9"])
+    ra_a = expected_runs(away["sp"]["ra9"], away["sp"]["ip"], away["bp"]["ra9"])
     # 구장은 양쪽 득점에 같은 방향으로 작용한다
     rs_h = float(home["off"]["rpg"]) * float(park)
     rs_a = float(away["off"]["rpg"]) * float(park)
