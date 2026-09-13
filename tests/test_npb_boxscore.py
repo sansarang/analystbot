@@ -58,7 +58,11 @@ class _Pool:
         self.find = []
 
     async def fetchval(self, sql, *a):
-        if "ext_id" in sql:
+        # ⚠️ [GM-4 2026-09-13] 종전에는 `"ext_id" in sql` 로 갈랐는데,
+        #    `game_match._FIND` 가 같은 소스의 다른 경기를 배제하려고 ext_id 를
+        #    조건에 쓰면서 오분류됐다. 두 쿼리를 **모양으로** 가른다 —
+        #    `_FIND` 는 홈/원정으로 찾고, ext_id 조회는 그렇지 않다.
+        if "home = $2" not in sql:
             return 42 if self.ext_id_hit else None
         self.find.append(a)
         return 42

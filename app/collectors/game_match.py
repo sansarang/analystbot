@@ -21,8 +21,10 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-# 같은 경기로 볼 시각 허용 폭. 순연·시각 정정을 흡수하되 연전 다음 경기와는
-# 겹치지 않는 크기다(하루 1경기 종목 기준).
+# 같은 경기로 볼 시각 허용 폭. 순연·시각 정정을 흡수한다.
+# 🔴 [GM-4] **연전이면 이 창만으로는 못 가른다** — 실측 2026-09-13: 같은 대진이
+#   19.5h 간격으로 이틀 연속 열려 창 안에 들어왔다. 그래서 `_FIND` 가 ext_id
+#   접두사로 한 겹 더 가른다. 창 자체는 좁히지 않는다(순연·시각정정을 놓친다).
 MATCH_WINDOW_HOURS = 20
 
 #: 🔴 [GM-3 2026-09-08] **병합 전용 창.** `MATCH_WINDOW_HOURS`(20h)와 목적이
@@ -38,11 +40,20 @@ MERGE_WINDOW_HOURS = 2
 #    `$4 - make_interval(...)`에서 $4의 타입을 interval로 추론해
 #    "operator does not exist: timestamp with time zone >= interval"로 죽는다.
 #    그러면 공식 소스 적재가 조용히 폴백 경로로 새어 나간다(실측 2026-08-27).
+#: 🔴 [GM-4 2026-09-13] **같은 소스의 다른 id 는 다른 경기다.**
+#   실사고: 오늘 `yahoo:2021039419`(13:30) 가 어제 `yahoo:2021039414`(18:00)
+#   행을 갱신했고, 봇이 **어제 경기를 판정**했다. 두 경기 간격 19.5h 로
+#   `MATCH_WINDOW_HOURS`(20h) 안이었다 — 연전이면 창만으로는 못 가른다.
+#   ⚠️ **소스가 다른 병합은 그대로 둔다.** 그것이 이 모듈의 존재 이유다
+#      (실사고 2026-08-27: `odds:…` 행과 `kbo:…` 행이 남남이라 채점이 막혔다).
+#      가르는 기준은 `ext_id` 의 접두사다 — 같으면 다른 경기, 다르면 병합.
 _FIND = """
     SELECT id FROM games
     WHERE sport = $1 AND home = $2 AND away = $3
       AND starts_at BETWEEN $4::timestamptz - make_interval(hours => $5)
                         AND $4::timestamptz + make_interval(hours => $5)
+      AND NOT (ext_id IS DISTINCT FROM $6
+               AND split_part(ext_id, ':', 1) = split_part($6::text, ':', 1))
     ORDER BY abs(extract(epoch FROM (starts_at - $4::timestamptz)))
     LIMIT 1
 """
@@ -74,7 +85,8 @@ async def apply_result(pool, *, sport: str, league: str, ext_id: str,
 
     기존 행을 찾으면 **그 행을 갱신**한다 — 그래야 그 행에 붙은 예측이 채점된다.
     """
-    gid = await pool.fetchval(_FIND, sport, home, away, starts_at, MATCH_WINDOW_HOURS)
+    gid = await pool.fetchval(_FIND, sport, home, away, starts_at,
+                              MATCH_WINDOW_HOURS, ext_id)
     if gid is not None:
         await pool.execute(_UPDATE, gid, status, home_score, away_score)
         return "updated"
