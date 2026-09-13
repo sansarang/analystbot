@@ -37,15 +37,30 @@ def level(raw) -> str:
     return t if t in LEVELS else "하"
 
 
+#: 기사 한 줄의 상한. 🔴 [PRM-2] **DB 행에는 쓰지 않는다.**
+_NEWS_CAP = 300
+
+
 def fmt_kept(rows: list[dict]) -> str:
-    """채택 자료를 번호 붙여 싣는다. 원문 그대로 — 다시 쓰지 않는다."""
+    """채택 자료를 번호 붙여 싣는다. 원문 그대로 — 다시 쓰지 않는다.
+
+    🔴 [PRM-2] **상한을 소스로 가른다.** 300자는 기사 한 줄에 맞춘 값인데
+       DB 행(실측 1331자)이 같은 줄로 들어가 `{"home": …}` 까지만 남고
+       `"away"` 가 통째로 사라졌다. 실측 2026-09-13(Seattle@Athletics):
+       프롬프트에 `선발등판` 이 1회뿐이었고(두 블록이면 2회), 복사만 시키는
+       분리 실험에서도 모델이 "없음"이라 답했다 — 정말 없었다.
+    ⚠️ DB 행의 길이 원본은 `dbref.ITEM_MAX` 다. 숫자를 두 곳에 적지 않는다.
+    """
+    from app.engine import dbref
+
     out = []
     for i, r in enumerate(rows or [], 1):
         src = r.get("소스") or ""
         acct = f" {r.get('계정')}" if r.get("계정") else ""
         when = f"[{r.get('시점')}] " if r.get("시점") else ""
+        cap = dbref.ITEM_MAX if src == dbref.SOURCE else _NEWS_CAP
         out.append(f"{i}. [{src}{acct}] {when}"
-                   + " ".join(str(r.get("답") or "").split())[:300])
+                   + " ".join(str(r.get("답") or "").split())[:cap])
     return "\n".join(out) or "(없음)"
 
 
