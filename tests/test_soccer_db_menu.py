@@ -25,8 +25,8 @@ from app.engine import dbref, matchup as MU
 def test_DB_메뉴에_축구_두_칸이_있다():
     """🔴 메뉴에 없으면 제미나이는 요청할 수조차 없다."""
     names = [n for n, _ in dbref.ITEMS]
-    assert "오늘 선발 라인업" in names, names
-    assert "부상·결장자" in names, names
+    assert "축구 선발 라인업" in names, names
+    assert "축구 부상·결장자" in names, names
 
 
 def test_축구_칸은_야구를_밀어내지_않는다():

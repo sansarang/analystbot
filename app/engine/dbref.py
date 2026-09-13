@@ -40,8 +40,12 @@ ITEMS: tuple[tuple[str, str], ...] = (
     ("라인업 의도", "intent_payload"),
     ("변수 대장", "material10_payload"),
     # [SOC-10] 축구. 야구에서는 빈 값이라 `없음` 으로 빠진다.
-    ("오늘 선발 라인업", "soccer_lineup_payload"),
-    ("부상·결장자", "soccer_injury_payload"),
+    # 🔴 [DBM-1] 이름에 **종목을 붙인다.** `오늘 선발 라인업` 은 야구의
+    #    `오늘 타순` 과 같은 것을 가리켜, 제미니가 야구 경기에서 축구 이름을
+    #    부르고 빈손을 받았다(실측 2026-09-13 Seattle@Athletics: 선발·타순이
+    #    DB에 다 있는데 "공개되지 않아"라고 썼다).
+    ("축구 선발 라인업", "soccer_lineup_payload"),
+    ("축구 부상·결장자", "soccer_injury_payload"),
 )
 
 #: 한 항목의 길이 상한. 전량이라도 무한은 아니다 — 7종 실측 약 9,300자.
