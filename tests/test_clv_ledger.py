@@ -131,6 +131,9 @@ def test_clv를_갱신되는_값으로_계산한다():
     v, c = PL._CLV_SAVE["verdict"], PL._CLV_SAVE["closing"]
     assert "1.0/$2" in v and "odds_closing IS NOT NULL" in v, v
     assert "1.0/$2" in c and "odds_at_verdict IS NOT NULL" in c, c
+    # ⚠️ 실측 2026-09-13: 캐스트가 없으면 AmbiguousParameterError 로 죽는다
+    for q in (v, c):
+        assert q.count("$2::double precision") >= 2, q
     # 자기 자신을 컬럼명으로 읽으면 안 된다
     assert "1.0/odds_at_verdict" not in v, v
     assert "1.0/odds_closing" not in c, c

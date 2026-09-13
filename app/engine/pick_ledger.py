@@ -486,21 +486,26 @@ _CLV_SNAP = """
      LIMIT 1
 """
 
+#: ⚠️ `$2` 에 **명시 캐스트가 필수**다. 한 문장에서 컬럼 대입(double precision)과
+#   나눗셈(numeric)에 같이 쓰이면 PostgreSQL 이 타입을 못 정한다 —
+#   `AmbiguousParameterError: inconsistent types deduced for parameter $2`
+#   (실측 2026-09-13 운영). 계약은 SQL **문자열**만 보므로 이런 타입 오류는
+#   못 잡는다. 실DB 실행이 유일한 검증이다.
 #: 🔴 `UPDATE` 안의 `CASE` 는 **갱신 전 값**을 읽는다. 지금 쓰는 칸은 `$2` 로
 #   참조해야 한다 — 종전에는 둘 다 컬럼명으로 읽어 두 칸이 다 찬 뒤에도
 #   `clv` 가 NULL 로 남았다(실측 2026-09-13 MLB 8건 전부 NULL).
 _CLV_SAVE = {
     "verdict": """
-    UPDATE pick_ledger SET odds_at_verdict = $2,
+    UPDATE pick_ledger SET odds_at_verdict = $2::double precision,
            clv = CASE WHEN odds_closing IS NOT NULL
-                      THEN round(((1.0/$2) - (1.0/odds_closing))::numeric * 100, 2)
+                      THEN round(((1.0/$2::double precision) - (1.0/odds_closing))::numeric * 100, 2)
                       ELSE clv END
      WHERE game_id = $1 AND is_final
 """,
     "closing": """
-    UPDATE pick_ledger SET odds_closing = $2,
+    UPDATE pick_ledger SET odds_closing = $2::double precision,
            clv = CASE WHEN odds_at_verdict IS NOT NULL
-                      THEN round(((1.0/odds_at_verdict) - (1.0/$2))::numeric * 100, 2)
+                      THEN round(((1.0/odds_at_verdict) - (1.0/$2::double precision))::numeric * 100, 2)
                       ELSE clv END
      WHERE game_id = $1 AND is_final
 """,
