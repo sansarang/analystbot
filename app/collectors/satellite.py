@@ -545,6 +545,26 @@ _ADAPTERS = {
 }
 
 
+
+def _title_hits(title: str, team: str) -> bool:
+    """[URL-1] 제목이 그 팀을 말하는가. **본문을 열기 전에** 본다.
+
+    🔴 실측 2026-09-13(몬차@레체): 위성 26건 중 24건이 "레체 데 티그레 & 김치",
+       "둘세 데 레체 1400kg", "몬차 서킷 F1 그랑프리"였는데 **전부 본문까지
+       열었다.** 경기당 12회 × 12경기 = 144회.
+
+    ⚠️ **반대 위험(정상 폐기)을 막는다** — 제목이 비면 통과시키고, 팀명의
+       **토큰 하나라도** 맞으면 인정한다(`Mariners`처럼 줄여 쓴다).
+       오염만 걷어내는 것이 목적이지 전량 폐기가 아니다.
+    ⚠️ KBO 는 별칭표를 쓰는 `_mentions_team` 을 그대로 쓴다(SAT-12).
+    """
+    t, n = (title or "").lower(), (team or "").lower()
+    if not t or not n:
+        return True
+    toks = [w for w in re.split(r"[^\w가-힣]+", n) if len(w) > 2]
+    return not toks or any(w in t for w in toks)
+
+
 async def _tor_supplement(jg: dict, queries: list[tuple[str, str]]) -> list[dict]:
     """[SAT-7] 토르 경유 DDG 보강. **satellite_tor_enabled 일 때만.**
 
@@ -559,6 +579,7 @@ async def _tor_supplement(jg: dict, queries: list[tuple[str, str]]) -> list[dict
 
     out: list[dict] = []
     seen: set[str] = set()
+    dropped = 0
     for team, q in queries:
         try:
             hits = await tor_search.search(q)
@@ -570,14 +591,21 @@ async def _tor_supplement(jg: dict, queries: list[tuple[str, str]]) -> list[dict
             if not u or u in seen:
                 continue
             seen.add(u)
+            # 🔴 [URL-1] **열기 전에 제목을 본다.** 팀을 말하지 않는 기사는
+            #    본문을 열지 않는다 — 실측 2026-09-13: 위성 26건 중 24건이
+            #    음식·F1 기사였는데 전부 본문까지 열었다.
+            if not _title_hits(h.get("title") or "", team):
+                dropped += 1
+                continue
             body = await _fetch_article_body(u)
             out.append(_article(
                 title=h.get("title") or "", url=u, source="DDG(토르)",
                 team=team, body=body or h.get("snippet") or h.get("title") or "",
                 age_h=None))
-    if out:
-        logger.info("[satellite] 토르 보강 %s@%s +%d건",
-                    jg.get("away"), jg.get("home"), len(out))
+    if out or dropped:
+        # ⚠️ 조용히 줄이지 않는다 — 반대 위험(정상 폐기)을 재려면 건수가 남아야 한다
+        logger.info("[satellite] 토르 보강 %s@%s +%d건 · 제목 불일치 폐기 %d건",
+                    jg.get("away"), jg.get("home"), len(out), dropped)
     return out
 
 
