@@ -323,7 +323,10 @@ def test_토르는_보강이지_주력이_아니다():
     i = src.index("out += await _tor_supplement")
     assert "403" in src[i - 900:i], "속도 제한 실측이 주석에 없다"
     # 팀당 1질의 = 경기당 2질의
-    assert src[i:i + 400].count('for side in ("home", "away")') == 1
+    # ⚠️ [SCT-4 2026-09-14] 질의 조립 루프가 **호출 위**로 옮겨졌다(현지어
+    #    검색어를 먼저 고르고 부른다). 창을 호출 앞까지 넓힌다 — 세는 것은
+    #    그대로 "팀당 1질의"다.
+    assert src[i - 900:i + 400].count('for side in ("home", "away")') == 1
 
 
 def test_지원_목록을_로그에_손으로_적지_않는다():
@@ -424,7 +427,7 @@ def _조용한_뉴스(monkeypatch):
     monkeypatch.setattr(SAT, "_yahoo_fetch", _empty)
     monkeypatch.setattr(SAT, "parse_daum_news", lambda h: [])
     monkeypatch.setattr(SAT, "parse_yahoo_news", lambda h: [])
-    async def _notor(jg, queries):
+    async def _notor(jg, queries, **kw):
         return []
     monkeypatch.setattr(SAT, "_tor_supplement", _notor)
 
@@ -607,7 +610,7 @@ async def test_부상표가_터져도_뉴스가_산다(monkeypatch, caplog):
     async def _body(u):
         return "본문"
     monkeypatch.setattr(SAT, "_fetch_article_body", _body)
-    async def _notor(jg, queries):
+    async def _notor(jg, queries, **kw):
         return []
     monkeypatch.setattr(SAT, "_tor_supplement", _notor)
     with caplog.at_level(logging.WARNING):

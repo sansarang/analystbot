@@ -396,6 +396,20 @@ async def _fs_lineups(jg: dict, today: str, pool=None) -> list[dict]:
     return out
 
 
+def _tor_stage(jg: dict, now=None) -> str:
+    """[SCT-4] 검색 단계. 킥오프 75분 안이면 `lineup`, 아니면 `pre`.
+
+    🔴 남은 시간은 **원본**(`pregame_push.minutes_until_start`)으로 잰다 —
+       여기서 다시 계산하면 시점 정의가 두 벌이 된다.
+    ⚠️ 시각을 모르면 `pre` 다. 모르는 것을 `lineup` 으로 읽으면 신선도 상한이
+       3시간으로 좁아져 정상 기사가 폐기된다(반대 위험).
+    """
+    from app.engine.pregame_push import minutes_until_start
+
+    left = minutes_until_start(jg.get("starts_at"), now)
+    return "lineup" if (left is not None and 0 < left <= 75) else "pre"
+
+
 async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None,
                         pool=None) -> list[dict]:
     """축구 경기 1건 — 리그에 맞는 뉴스검색으로 팀별 기사·본문을 긁는다.
@@ -469,6 +483,24 @@ async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None,
         #       한국어는 7·7·6). 별칭이 답이고 폴백은 최후 수단이다.
         logger.info("[satellite] 축구 %s 별칭 없음 %d팀: %s — 영어 이름으로 검색했다",
                     league, len(no_alias), no_alias)
+    # 🔴 [SCT-4 2026-09-14] **현지어 검색어·tier 선별을 여기서 쓴다**
+    #    (지시문 Part 2 / 4-1·4-3). `scout_config` 가 원본이고, 여기서는
+    #    리그 키와 단계만 정한다.
+    #    ⚠️ 한국어 질의는 토르가 거부하므로(`tor_safe`) K리그1 은 종전 꼬리말로
+    #       돌아간다 — 조용히 빈손이 되게 두지 않는다.
+    from app.engine import scout_config as SC
+    from app.leagues import league_labels
+
+    lkey = league_labels().get(league)
+    stage = _tor_stage(jg, now)
+    _qs: list[tuple[str, str]] = []
+    for side in ("home", "away"):
+        team = jg.get(side) or ""
+        if not team:
+            continue
+        local = SC.queries(lkey, team, stage) if (lkey and SC.tor_safe(lkey)) else []
+        _qs.append((team, local[0] if local
+                    else f"{team} {_SOCCER_TOR_TAIL}".strip()))
     # 🔴 [SAT-S2] **토르 DDG 영어 보강** — 고급 검색(SAT-7). MLB·NPB 는 이미
     #    쓰는데 축구는 안 썼다. 실측 2026-09-12: 질이 높다 —
     #    "Chelsea vs Hull: predicted lineup, confirmed team news, injury/
@@ -477,9 +509,9 @@ async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None,
     #       통과했다. 그래서 **경기당 2질의**(팀당 1)로 묶는다. 늘리면 전부 막힌다.
     #    ⚠️ `tor_search` 머리말대로 **순수 보강**이다 — 주력은 위 뉴스검색이다.
     #    ⚠️ 한국어는 나가지 않는다(`is_tor_safe_query` 가 거부).
-    out += await _tor_supplement(jg, [
-        (jg.get(side) or "", f"{jg.get(side) or ''} {_SOCCER_TOR_TAIL}")
-        for side in ("home", "away") if jg.get(side)])
+    out += await _tor_supplement(jg, _qs, league=lkey if lkey else None,
+                                 stage=stage, kickoff=jg.get("starts_at"),
+                                 now=now)
     logger.info("[satellite] 축구 %s %s@%s 기사 %d건",
                 league, jg.get("away"), jg.get("home"), len(out))
     return out

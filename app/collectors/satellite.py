@@ -565,11 +565,18 @@ def _title_hits(title: str, team: str) -> bool:
     return not toks or any(w in t for w in toks)
 
 
-async def _tor_supplement(jg: dict, queries: list[tuple[str, str]]) -> list[dict]:
+async def _tor_supplement(jg: dict, queries: list[tuple[str, str]], *,
+                          league: str | None = None, stage: str = "pre",
+                          kickoff=None, now=None) -> list[dict]:
     """[SAT-7] 토르 경유 DDG 보강. **satellite_tor_enabled 일 때만.**
 
     ⚠️ 한국 소스는 부르지 않는다(호출부가 KBO 를 넘기지 않고, tor_search 도
        한국어 질의를 거부한다 — 이중 방어). 실패는 빈 리스트.
+
+    🔴 [SCT-4 2026-09-14] `league` 를 주면 **선별을 `scout_config` 에 맡긴다**
+       (지시문 Part 2 / 4-3: 제목·날짜·신선도 문 → tier 정렬 → 상위 3개).
+       안 주면 종전 그대로 제목 문만 본다 — 야구 호출부의 동작은 바뀌지 않는다.
+       ⚠️ 규칙을 여기에 베끼지 않는다. `rank_and_pick` 이 원본이다.
     """
     from app.config import get_settings
 
@@ -586,6 +593,14 @@ async def _tor_supplement(jg: dict, queries: list[tuple[str, str]]) -> list[dict
         except Exception as exc:
             logger.warning("[satellite] 토르 보강 실패 %s: %s", team, exc)
             continue
+        if league:
+            from app.engine import scout_config as SC
+
+            picked, disc = SC.rank_and_pick(hits, league=league, stage=stage,
+                                            team=team, kickoff=kickoff, now=now,
+                                            with_discard=True)
+            dropped += sum(disc.values())
+            hits = picked
         for h in hits:
             u = h.get("url")
             if not u or u in seen:
@@ -594,7 +609,10 @@ async def _tor_supplement(jg: dict, queries: list[tuple[str, str]]) -> list[dict
             # 🔴 [URL-1] **열기 전에 제목을 본다.** 팀을 말하지 않는 기사는
             #    본문을 열지 않는다 — 실측 2026-09-13: 위성 26건 중 24건이
             #    음식·F1 기사였는데 전부 본문까지 열었다.
-            if not _title_hits(h.get("title") or "", team):
+            #    ⚠️ `league` 를 준 경로는 `rank_and_pick` 이 이미 같은 문을
+            #       지났다 — 두 번 걸러도 결과는 같고, 건수만 이중으로 세지
+            #       않게 여기서는 건너뛴다.
+            if not league and not _title_hits(h.get("title") or "", team):
                 dropped += 1
                 continue
             body = await _fetch_article_body(u)

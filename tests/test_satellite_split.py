@@ -121,7 +121,7 @@ async def test_축구가_공용_검색을_쓴다(monkeypatch):
     monkeypatch.setattr(SAT, "_daum_fetch", _daum)
     monkeypatch.setattr(SAT, "parse_daum_news", lambda h: [])
 
-    async def _no_tor(jg, queries):
+    async def _no_tor(jg, queries, **kw):
         return []
 
     monkeypatch.setattr(SAT, "_tor_supplement", _no_tor)
