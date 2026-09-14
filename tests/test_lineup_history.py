@@ -86,3 +86,59 @@ def test_스키마에_이력_표가_있다():
     for col in ("player_id", "player_name", "started", "minutes",
                 "lineup_type", "kickoff_utc", "team_id"):
         assert col in sql.split("lineup_history")[1][:900], col
+
+
+# ── LH-1: 리그·킥오프 칸
+
+@pytest.mark.asyncio
+async def test_적재할_때_리그와_킥오프를_함께_남긴다():
+    pool = _Pool()
+
+    await FM.save_lineup_history(pool, _lineup("standard"),
+                                 kickoff_utc="2026-09-14T16:30:00.000Z",
+                                 league="Serie A", ccode="ITA")
+
+    args = pool.rows[0]
+    assert args[8] == "Serie A" and args[9] == "ITA"
+    assert args[10] == "2026-09-14", "kickoff_date 는 날짜만"
+
+
+@pytest.mark.asyncio
+async def test_역매핑은_날짜별_목록만_쓴다(monkeypatch):
+    """🔴 사용자 지시: 경기 상세 재호출 금지. 목록에 ccode·league·utc 가 있다."""
+    detail_calls = []
+
+    async def _slate(d):
+        return [{"id": 5749678, "ccode": "ITA", "league": "Serie A",
+                 "home": "Torino", "away": "Roma",
+                 "utc": "2026-09-14T16:30:00.000Z"}]
+
+    async def _detail(mid):
+        detail_calls.append(mid)
+        return {}
+
+    monkeypatch.setattr(FM, "slate", _slate)
+    monkeypatch.setattr(FM, "match_lineup", _detail)
+
+    class _P:
+        def __init__(self):
+            self.args = []
+
+        async def execute(self, sql, *a):
+            self.args.append(a)
+            return "UPDATE 42"
+
+    p = _P()
+    out = await FM.backfill_meta(p, ["20260914"])
+
+    assert out == {"20260914": 42}
+    assert not detail_calls, "경기 상세를 부르면 안 된다"
+    assert p.args[0] == (5749678, "Serie A", "ITA", "2026-09-14")
+
+
+def test_스키마에_리그_칸이_있다():
+    import pathlib
+
+    sql = pathlib.Path("db/schema.sql").read_text()
+    for col in ("league", "ccode", "kickoff_date"):
+        assert f"ADD COLUMN IF NOT EXISTS {col}" in sql, col

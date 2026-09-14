@@ -800,3 +800,11 @@ CREATE INDEX IF NOT EXISTS idx_lineup_history_player
     ON lineup_history (player_id, kickoff_utc DESC);
 CREATE INDEX IF NOT EXISTS idx_lineup_history_team
     ON lineup_history (team_id, kickoff_utc DESC);
+
+-- [LH-1 2026-09-14 사용자 지시] 리그별 집계를 위한 칸. 과거 행은 NULL 로 남고
+--   날짜별 목록 역매핑이 채우는 만큼만 찬다(경기 상세 재호출 금지).
+ALTER TABLE lineup_history ADD COLUMN IF NOT EXISTS league TEXT;
+ALTER TABLE lineup_history ADD COLUMN IF NOT EXISTS ccode TEXT;
+ALTER TABLE lineup_history ADD COLUMN IF NOT EXISTS kickoff_date DATE;
+CREATE INDEX IF NOT EXISTS idx_lineup_history_league
+    ON lineup_history (ccode, kickoff_date);

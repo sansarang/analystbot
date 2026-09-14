@@ -266,17 +266,60 @@ BACKFILL_CCODES = ("ITA", "ESP", "ENG", "GER", "FRA", "NED", "KOR", "JPN", "POR"
 
 _HISTORY_SQL = """
     INSERT INTO lineup_history (game_id, team_id, player_id, player_name,
-                                started, minutes, lineup_type, kickoff_utc)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                                started, minutes, lineup_type, kickoff_utc,
+                                league, ccode, kickoff_date)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     ON CONFLICT (game_id, team_id, player_id, lineup_type) DO UPDATE
       SET started = EXCLUDED.started,
           minutes = COALESCE(EXCLUDED.minutes, lineup_history.minutes),
           player_name = EXCLUDED.player_name,
+          -- 🔴 [LH-1] 이미 있는 값을 NULL 로 덮지 않는다.
+          league = COALESCE(EXCLUDED.league, lineup_history.league),
+          ccode = COALESCE(EXCLUDED.ccode, lineup_history.ccode),
+          kickoff_date = COALESCE(EXCLUDED.kickoff_date,
+                                  lineup_history.kickoff_date),
           captured_at = now()
 """
 
+#: [LH-1] 과거 행의 리그를 날짜별 목록으로 역매핑한다. **경기 상세는 부르지
+#  않는다**(사용자 지시). 목록에 id·ccode·league·utc 가 다 들어 있다.
+_HISTORY_META_SQL = """
+    UPDATE lineup_history
+       SET league = COALESCE(league, $2), ccode = COALESCE(ccode, $3),
+           kickoff_date = COALESCE(kickoff_date, $4::date)
+     WHERE game_id = $1 AND (league IS NULL OR ccode IS NULL
+                             OR kickoff_date IS NULL)
+"""
 
-async def save_lineup_history(pool, lineup: dict, *, kickoff_utc=None) -> int:
+
+async def backfill_meta(pool, dates: list[str]) -> dict:
+    """[LH-1] 이미 쌓인 행에 리그·킥오프를 채운다. 반환 `{날짜: 갱신 행 수}`.
+
+    🔴 **날짜별 목록만 쓴다** — 경기 상세 재호출 금지(사용자 지시).
+    ⚠️ 못 찾은 `game_id` 는 **건드리지 않는다**. NULL 이 곧 "모른다"다.
+    """
+    out: dict = {}
+    for d in dates:
+        rows = await slate(d)
+        n = 0
+        for r in rows:
+            if not r.get("id"):
+                continue
+            kd = str(r.get("utc") or "")[:10] or None
+            try:
+                res = await pool.execute(_HISTORY_META_SQL, int(r["id"]),
+                                         r.get("league"), r.get("ccode"), kd)
+                n += int(str(res or "").split()[-1] or 0)
+            except Exception as exc:
+                logger.warning("[fotmob] 메타 갱신 실패 game=%s: %s", r["id"], exc)
+        out[d] = n
+        logger.info("[fotmob] 메타 %s — %d경기 목록 · %d행 갱신", d, len(rows), n)
+    return out
+
+
+async def save_lineup_history(pool, lineup: dict, *, kickoff_utc=None,
+                              league: str | None = None,
+                              ccode: str | None = None) -> int:
     """[FOT-5] 선발·벤치를 이력 표에 남긴다. 반환 적재 행 수.
 
     🔴 **선수 id 가 없으면 건너뛴다.** 0을 키로 쓰면 서로 다른 선수가 한
@@ -302,7 +345,9 @@ async def save_lineup_history(pool, lineup: dict, *, kickoff_utc=None) -> int:
             try:
                 await pool.execute(_HISTORY_SQL, int(gid), tid, int(pid),
                                    p.get("name") or "", started,
-                                   p.get("minutes"), lt, kickoff_utc)
+                                   p.get("minutes"), lt, kickoff_utc,
+                                   league, ccode,
+                                   str(kickoff_utc)[:10] if kickoff_utc else None)
                 n += 1
             except Exception as exc:
                 logger.warning("[fotmob] 이력 적재 실패 game=%s player=%s: %s",
@@ -324,7 +369,9 @@ async def backfill(pool, dates: list[str], *, ccodes=BACKFILL_CCODES) -> dict:
             lu = await match_lineup(r["id"])
             if not lu:
                 continue
-            got = await save_lineup_history(pool, lu, kickoff_utc=None)
+            got = await save_lineup_history(
+                pool, lu, kickoff_utc=r.get("utc"),
+                league=r.get("league"), ccode=r.get("ccode"))
             if got:
                 key = f"{r.get('ccode')} {r.get('league')}"
                 out[key] = out.get(key, 0) + 1
