@@ -790,6 +790,15 @@ async def gather(jg: dict, redis, *, client=None, now: datetime | None = None,
     # 🔴 [SOC-9] 축구만 pool 을 받는다 — 라인업을 `lineups` 에 남긴다.
     #    야구 어댑터 시그니처는 건드리지 않는다.
     if sport == "soccer":
+        # 🔴 [FOT-2 사용자 지시] **구조 JSON 이 먼저다.** 층1(부상표·피드)보다
+        #    앞에서 붙여야 어댑터가 그 값을 보고, 기사 추출이 보조로 내려간다.
+        #    ⚠️ 실패는 결측이다 — 수집을 막지 않는다.
+        try:
+            from app.collectors import fotmob
+
+            await fotmob.attach(jg, redis=redis)
+        except Exception as exc:
+            logger.warning("[fotmob] 부착 실패 game=%s: %s", gid, exc)
         articles = await adapter(jg, client=client, now=now, pool=pool)
     else:
         articles = await adapter(jg, client=client, now=now)

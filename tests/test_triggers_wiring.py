@@ -34,8 +34,15 @@ class _Pool:
 
 
 @pytest.mark.asyncio
-async def test_due_트리거가_스냅샷에_이름표를_붙이고_닫힌다():
+async def test_due_트리거가_스냅샷에_이름표를_붙이고_닫힌다(monkeypatch):
     from app import scheduler
+
+    # ⚠️ [FOT-2] `lineup` 시점은 라인업을 다시 받는다 — **계약 테스트가 외부를
+    #    치면 안 된다.** 여기서 재는 것은 이름표 부착이다.
+    async def _no_recheck(*a, **k):
+        return None
+
+    monkeypatch.setattr(scheduler, "_lineup_recheck", _no_recheck)
 
     now = datetime(2026, 9, 14, 6, 0, tzinfo=UTC)
     due = [{"id": 77, "game_id": 7432, "kind": "lineup", "due_at": now,

@@ -2042,6 +2042,15 @@ async def _triggers_tick(pool=None, now=None) -> dict:
                 logger.info("[triggers] game=%s %s — 최근 %d분 안에 잡힌 배당이 "
                             "없다. 이름표 없이 닫는다",
                             row["game_id"], row["kind"], TRIGGER_SNAP_MAX_AGE_MIN)
+            # 🔴 [FOT-2 사용자 지시] **T-60 에 라인업을 다시 받는다.**
+            #    시점 이름(`lineup`)은 `triggers.KINDS` 가 원본이다 — 여기에
+            #    분(分)을 적지 않는다. 실패는 결측이고 이름표 작업을 막지 않는다.
+            if row.get("kind") == "lineup" and (row.get("sport") or "") == "soccer":
+                try:
+                    await _lineup_recheck(pool, row, now)
+                except Exception as exc:
+                    logger.warning("[triggers] 라인업 재확인 실패 game=%s: %s",
+                                   row.get("game_id"), exc)
             try:
                 await pool.execute(T.MARK_SQL, row["id"], now)
                 out["발사"] += 1
@@ -2058,6 +2067,48 @@ async def _triggers_tick(pool=None, now=None) -> dict:
                     "(우선순위 gap 미배선 → due 순)",
                     out["계획"], out["발사"], out["태그"], out["무스냅"])
     return out
+
+
+async def _lineup_recheck(pool, row: dict, now) -> None:
+    """[FOT-2] T-60 재호출 — `confirmed` 로 바뀌면 예상 XI 와 대조한다.
+
+    🔴 **두 시점 값을 모두 원장에 남긴다**(사용자 지시). "안 바뀌었다"와
+       "못 받았다"를 나중에 갈라야 한다.
+    ⚠️ diff 는 `fotmob.diff_xi` 가 **id 기준**으로 센다 — 이름 매칭 금지.
+    """
+    from app.collectors import fotmob
+    from app.engine import game_trace as GT
+
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        jg = {"game_id": row["game_id"], "sport": row.get("sport"),
+              "home": row.get("home"), "away": row.get("away"),
+              "starts_at": row.get("starts_at")}
+        got = await fotmob.attach(jg, redis=redis)
+        date = (row.get("starts_at") or now).astimezone(KST).strftime("%Y-%m-%d")
+        if not got:
+            await GT.note(pool, game_id=row["game_id"], sport="soccer", date=date,
+                          stage=GT.COLLECT, summary="T-60 라인업 재확인 — 받지 못했다",
+                          ref={"event": "fotmob_lineup", "lineup_type": None})
+            return
+        await GT.note(
+            pool, game_id=row["game_id"], sport="soccer", date=date,
+            stage=GT.COLLECT,
+            summary=(f"T-60 라인업 {got.get('lineup_type')} · "
+                     f"홈 {len((got.get('home') or {}).get('starters') or [])}명 · "
+                     f"원정 {len((got.get('away') or {}).get('starters') or [])}명"
+                     + (f" · diff {got.get('diff')}" if got.get("diff") else "")),
+            ref={"event": "fotmob_lineup", "lineup_type": got.get("lineup_type"),
+                 "diff": got.get("diff"), "missing": got.get("missing"),
+                 "home_xi": [p.get("name")
+                             for p in (got.get("home") or {}).get("starters") or []],
+                 "away_xi": [p.get("name")
+                             for p in (got.get("away") or {}).get("starters") or []]})
+        logger.info("[triggers] game=%s T-60 라인업 %s%s", row["game_id"],
+                    got.get("lineup_type"),
+                    f" · diff {got.get('diff')}" if got.get("diff") else "")
+    finally:
+        await redis.aclose()
 
 
 async def triggers_job() -> None:
