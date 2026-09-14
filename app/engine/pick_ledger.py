@@ -338,6 +338,13 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                     except Exception as exc:
                         logger.warning("[move] game=%s 이동 분류 실패: %s",
                                        row["game_id"], exc)
+                    # [GATE-2] 사전값·괴리도 같은 자리에서. 저장 전용이고
+                    #   실패해도 판정을 막지 않는다.
+                    try:
+                        await record_prior(conn, game_id=row["game_id"])
+                    except Exception as exc:
+                        logger.warning("[gate] game=%s 사전값 기록 실패: %s",
+                                       row["game_id"], exc)
         except Exception as exc:
             # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —
             # 레저가 판정의 유일한 영구 기록이 된 이상, 기록 실패는 그 판정이
@@ -589,6 +596,106 @@ def clv_pp(at_verdict, closing) -> float | None:
     if a is None or b is None:
         return None
     return round((b - a) * 100, 2)
+
+
+# ── [GATE-2 2026-09-14] 사전값·괴리·게이트 배선 — **저장 전용.**
+#   `PRI-1`(prior)·`GATE-1`(gate)이 순수 함수를 만들었지만 부르는 곳이 없었다.
+#   티어 표가 채워졌으므로(192/193) 이제 계산할 값이 있다.
+
+#: 🔴 게이트 판정은 **말로 적는다**(`gate_reason`). 라벨을 따로 저장하지 않는
+#   이유: 같은 사실을 두 칸에 적으면 한쪽만 고쳐진다(사본 금지). 라벨은 이
+#   문자열의 **첫 토큰**이고, 구분자는 " · " 다.
+_PRIOR_SAVE = """
+    UPDATE pick_ledger
+       SET p_prior = $2::double precision,
+           prior_src = $3,
+           p_market = COALESCE(p_market, $4::double precision),
+           gate_reason = $5
+     WHERE game_id = $1 AND is_final
+"""
+
+
+def _tier_key(sport: str, league: str) -> str | None:
+    """티어 파일 키. 축구는 리그 라벨→키, 야구는 종목이 곧 키다."""
+    from app.leagues import league_labels
+
+    sp = (sport or "").lower()
+    if sp in ("mlb", "kbo", "npb"):
+        return sp
+    return league_labels().get(league)
+
+
+async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
+    """[GATE-2] 티어 사전값과 `open` 시장을 대조해 게이트를 원장에 남긴다.
+
+    반환 `{"label", "gap_pp", "side", "p_prior", "prior_src"}` · 못 재면 None.
+
+    🔴 **판정은 이 값을 읽지 않는다.** 측정 전용이다(pick_ledger 머리말 규약).
+    🔴 기준선은 `open` 이다 — `odds_move.baseline` 이 그 규칙의 원본이고,
+       여기서 다시 고르지 않는다.
+    🔴 티어가 비면 `prior_src` 가 "tier:미기입" 으로 남는다(prior 모듈이 정한
+       규약). 조용히 중앙값으로 메우고 끝내지 않는다.
+    ⚠️ 올해 성적(승·무·패)은 아직 배선 전이라 티어만으로 계산한다.
+       `team_elo` 가 그것을 받게 돼 있으므로, 붙이는 자리는 여기 한 곳이다.
+    """
+    from contextlib import asynccontextmanager
+
+    from app.engine import gate as G
+    from app.engine import odds_move as M
+    from app.engine import prior as P
+
+    @asynccontextmanager
+    async def _conn():
+        if hasattr(conn_or_pool, "acquire"):
+            async with conn_or_pool.acquire() as c:
+                yield c
+        else:
+            yield conn_or_pool
+
+    async with _conn() as conn:
+        g = await conn.fetchrow(
+            "SELECT sport, league, home, away FROM games WHERE id = $1", game_id)
+        if g is None:
+            return None
+        sport = (g["sport"] or "").lower()
+        key = _tier_key(sport, g["league"])
+        tiers = P.load_tiers(key) if key else {}
+        if not tiers:
+            logger.info("[gate] game=%s — 티어 표가 없다(%s). 기록하지 않는다",
+                        game_id, key or "리그 미상")
+            return None
+        th, sh = P.team_elo(tiers.get(g["home"]), w=0, d=0, lose=0)
+        ta, sa = P.team_elo(tiers.get(g["away"]), w=0, d=0, lose=0)
+        src = "tier" if (sh == "tier" and sa == "tier") else "tier:미기입"
+        if sport == "soccer":
+            pri = P.soccer_prior(th, ta)
+            p_home = pri[0]
+        else:
+            p_home = P.baseball_prior(th, ta)
+            pri = p_home
+
+        rows = await conn.fetch(_MOVE_SNAP_SQL, game_id)
+        snaps = _snap_probs(rows)
+        prov = _best_provider(snaps)
+        base = M.baseline([v for k, v in snaps.items() if k[0] == prov]) if prov else None
+        if base is None:
+            logger.info("[gate] game=%s — 기준선 시장 확률이 없다. "
+                        "사전값만으로 판정하지 않는다", game_id)
+            return None
+        from app.engine.market_edge import implied_probs
+
+        mp = implied_probs(base["odds"]) or {}
+        mkt = ((mp.get("home"), mp.get("draw"), mp.get("away"))
+               if sport == "soccer" else mp.get("home"))
+        v = G.classify(pri, mkt, sport)
+        await conn.execute(_PRIOR_SAVE, game_id, float(p_home), src,
+                           mp.get("home"), f"{v.label} · {v.reason}")
+    logger.info("[gate] game=%s %s vs %s — 사전값 %.3f(%s) · 시장 %.3f · "
+                "%s gap=%s side=%s", game_id, g["home"], g["away"],
+                float(p_home), src, float(mp.get("home") or 0), v.label,
+                v.gap_pp, v.side)
+    return {"label": v.label, "gap_pp": v.gap_pp, "side": v.side,
+            "p_prior": float(p_home), "prior_src": src}
 
 
 # ── [MOV-2 2026-09-14] 배당 이동 분류 배선 — **저장 전용.** 판정은 읽지 않는다.

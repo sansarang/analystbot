@@ -1,0 +1,95 @@
+"""GATE-2 — 사전값·괴리·게이트 배선.
+
+🔴 실측 결함 2026-09-14: `PRI-1`(prior)·`GATE-1`(gate)이 순수 함수를 만들었는데
+   **부르는 곳이 0** 이었다. `pick_ledger.p_prior·prior_src·gate_reason` 은
+   영원히 NULL 이었고, 딥서치 대상 선정(조건 A)이 설 자리가 없었다.
+
+⚠️ 게이트 라벨을 별도 칸에 복사하지 않는다 — `gate_reason` 의 **첫 토큰**이
+   라벨이고 구분자는 " · " 다. 같은 사실을 두 칸에 적으면 한쪽만 고쳐진다.
+"""
+import ast
+import inspect
+
+import pytest
+
+from app.engine import gate as G
+from app.engine import pick_ledger as PL
+
+
+class _Conn:
+    def __init__(self, game, snaps):
+        self.game = game
+        self.snaps = snaps
+        self.executed: list[tuple] = []
+
+    async def fetchrow(self, sql, *args):
+        return self.game if "FROM games" in sql else None
+
+    async def fetch(self, sql, *args):
+        return self.snaps
+
+    async def execute(self, sql, *args):
+        self.executed.append((sql, args))
+        return "UPDATE 1"
+
+
+def _snap(side, odds, home, away, tag="open"):
+    return {"provider": "oddsportal", "snap_tag": tag, "side": side,
+            "odds": odds, "home": home, "away": away}
+
+
+@pytest.mark.asyncio
+async def test_티어_사전값과_open_시장을_대조해_원장에_남긴다():
+    home, away = "FC Internazionale Milano", "Udinese Calcio"   # 티어 1 · 3
+    conn = _Conn({"sport": "soccer", "league": "세리에A", "home": home, "away": away},
+                 [_snap(home, 2.00, home, away), _snap(away, 2.00, home, away)])
+
+    out = await PL.record_prior(conn, game_id=7434)
+
+    assert out["prior_src"] == "tier", "티어가 채워졌으면 미기입이 아니다"
+    assert 0.55 < out["p_prior"] < 0.70, out["p_prior"]
+    assert out["label"] in (G.OVER, G.DOUBT, G.AGREE, G.BOARD)
+    assert len(conn.executed) == 1
+    _, args = conn.executed[0]
+    assert args[0] == 7434
+    assert args[2] == "tier"
+    # 🔴 라벨은 gate_reason 의 첫 토큰이다(별도 칸에 복사하지 않는다).
+    assert args[4].split(" · ")[0] == out["label"]
+
+
+@pytest.mark.asyncio
+async def test_티어가_비면_미기입으로_남는다():
+    """🔴 조용히 중앙값으로 메우지 않는다 — 채웠는지 안 채웠는지가 남아야 한다."""
+    conn = _Conn({"sport": "soccer", "league": "덴마크 수페르리가",
+                  "home": "AC Horsens", "away": "AGF Aarhus"},
+                 [_snap("AC Horsens", 2.0, "AC Horsens", "AGF Aarhus"),
+                  _snap("AGF Aarhus", 2.0, "AC Horsens", "AGF Aarhus")])
+
+    out = await PL.record_prior(conn, game_id=1)
+
+    assert out["prior_src"] == "tier:미기입"
+
+
+@pytest.mark.asyncio
+async def test_기준선_시장이_없으면_기록하지_않는다():
+    conn = _Conn({"sport": "soccer", "league": "세리에A",
+                  "home": "AC Milan", "away": "AS Roma"}, [])
+
+    assert await PL.record_prior(conn, game_id=1) is None
+    assert not conn.executed
+
+
+def test_티어_파일_키는_야구가_종목_축구가_리그다():
+    assert PL._tier_key("mlb", "MLB") == "mlb"
+    assert PL._tier_key("kbo", "KBO") == "kbo"
+    assert PL._tier_key("soccer", "세리에A") == "serie_a"
+    assert PL._tier_key("soccer", "없는리그") is None
+
+
+def test_판정_기록이_사전값을_부른다():
+    tree = ast.parse(inspect.getsource(PL))
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.AsyncFunctionDef) and n.name == "record_analysis")
+    calls = [n for n in ast.walk(fn)
+             if isinstance(n, ast.Call) and getattr(n.func, "id", "") == "record_prior"]
+    assert len(calls) == 1
