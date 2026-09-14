@@ -954,6 +954,18 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
     if not have:
         logger.info("[scout] %s@%s — 본문 있는 기사가 없다", away, home)
         return {}
+    # 🔴 [BIG-2 사용자 지시] **LLM 추출은 빅매치에만.** 그 외 경기는 구조
+    #    JSON(FotMob)만으로 간다. 건너뛴 이유를 남긴다 — 조용한 0콜은
+    #    "모델이 죽었다"와 구분이 안 된다.
+    from app.engine.bigmatch import is_big_match
+
+    tag = is_big_match(league=league, home=home, away=away,
+                       rank_home=(jg or {}).get("rank_home"),
+                       rank_away=(jg or {}).get("rank_away"))
+    if not tag.big:
+        logger.info("[scout] %s@%s — 빅매치 아님(%s) · LLM 추출 생략",
+                    away, home, tag.reason)
+        return {}
     # 등급 순으로 상위 몇 건만(SCT-10). 팀이 갈려 있어도 경기 단위로 모은다.
     ranked = sorted(enumerate(have),
                     key=lambda t: (min(rank(t[1].get("url") or "", league),

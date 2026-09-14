@@ -265,7 +265,7 @@ async def _tm_rows(code: str, today: str) -> list[dict]:
     return rows
 
 
-def cross_check_unavailable(jg: dict, idx: dict) -> dict:
+def cross_check_unavailable(jg: dict, idx: dict, *, league_key: str = "") -> dict:
     """[FOT-3 사용자 지시] FotMob 결장 ↔ Transfermarkt 부상표 교차검증.
 
     규칙(그대로):
@@ -307,7 +307,19 @@ def cross_check_unavailable(jg: dict, idx: dict) -> dict:
             report[side] = f"transfermarkt {len(tm_names)}명"
         else:
             # ③ 둘 다 없다 — 모른다. 0 으로 쓰지 않는다.
-            report[side] = "모름(유지)"
+            #    🔴 [BIG-2] 빅매치면 그 사실을 남긴다 — Phase D3(구단 공식
+            #       RSS)가 붙을 자리이고, 지금은 **대상 수를 세는 것**이 일이다.
+            from app.engine.bigmatch import is_big_match
+
+            tag = is_big_match(league=league_key, home=jg.get("home") or "",
+                               away=jg.get("away") or "",
+                               rank_home=jg.get("rank_home"),
+                               rank_away=jg.get("rank_away"))
+            report[side] = "모름(유지)" + (" · 빅매치" if tag.big else "")
+            if tag.big:
+                msg = f"{side} 결장 명단 미제공 (빅매치 · {tag.reason})"
+                fm["missing"] = [m for m in (fm.get("missing") or [])
+                                 if not m.startswith(f"{side} ")] + [msg]
     return report
 
 
@@ -329,7 +341,10 @@ async def _tm_injuries(jg: dict, today: str, pool=None) -> list[dict]:
     # 🔴 [FOT-3] 방금 받은 표로 **교차검증**부터 한다(추가 요청 0).
     #    FotMob 이 먼저 붙어 있다(FOT-2 가 정한 순서).
     try:
-        rep = cross_check_unavailable(jg, idx)
+        from app.leagues import league_labels
+
+        rep = cross_check_unavailable(jg, idx,
+                                      league_key=league_labels().get(label) or "")
         if rep:
             logger.info("[fotmob] 결장 교차검증 %s@%s — %s",
                         jg.get("away"), jg.get("home"), rep)

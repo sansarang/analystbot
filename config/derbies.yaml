@@ -21,6 +21,17 @@ derbies:
   bundesliga:
     - ["Borussia Dortmund", "FC Schalke 04"]
     - ["FC Bayern München", "Borussia Dortmund"]
-  kleague1: []        # 사용자가 채운다
-  j1: []              # 사용자가 채운다
-  denmark: []         # 사용자가 채운다
+  # [BIG-2 2026-09-14 사용자 지시] 이름은 운영 DB 표기다(config/tiers 와 같은 키).
+  kleague1:
+    - ["Ulsan Hyundai FC", "Pohang Steelers"]        # 동해안 더비
+    - ["FC Seoul", "Suwon FC"]
+    - ["Jeonbuk Hyundai Motors", "Ulsan Hyundai FC"]  # 현대가 더비
+    - ["FC Seoul", "Incheon United"]
+  j1:
+    - ["Yokohama F Marinos", "Kawasaki"]
+    - ["Gamba Osaka", "Cerezo Osaka"]                # 오사카 더비
+    - ["Urawa Red Diamonds", "Kashima"]
+    - ["Tokyo Verdy", "FC Tokyo"]                    # 도쿄 더비
+  denmark:
+    - ["FC Copenhagen", "Brondby IF"]                # 뉴 파이어벌
+    - ["AGF Aarhus", "Randers FC"]

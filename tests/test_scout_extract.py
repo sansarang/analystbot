@@ -15,7 +15,9 @@ import pytest
 from app.collectors import satellite as SAT
 from app.engine import scout_config as SC
 
-HOME, AWAY = "Torino FC", "AS Roma"
+# 🔴 [BIG-2] 추출은 **빅매치에만** 돈다 — 더비 대진으로 잰다
+#    (순위를 몰라도 더비면 빅매치다).
+HOME, AWAY = "AC Milan", "FC Internazionale Milano"
 
 
 def _art(team, url, body="본문"):
@@ -198,7 +200,7 @@ async def test_out_은_JSON_이_정본이고_LLM_과_다르면_충돌이다(monk
                             {"team": HOME, "out": ["지어낸 선수"],
                              "notes": "중원 결장", "midweek": "UCL 목요일"},
                             {"team": AWAY, "out": []}]}))
-    jg = {"fotmob": _fm(un_home=[{"name": "Ché Adams"}],
+    jg = {"rank_home": 1, "rank_away": 2, "fotmob": _fm(un_home=[{"name": "Ché Adams"}],
                         starters=[{"id": 1, "name": "Perri"}])}
 
     out = await SAT.extract_game_facts([_art(HOME, "https://www.gazzetta.it/a")],
@@ -231,7 +233,7 @@ async def test_bench_notable_은_코드가_채운다(monkeypatch):
     monkeypatch.setattr("app.engine.team_form._complete_free",
                         _fake({"teams": [{"team": HOME, "bench_notable": ["엉뚱한 값"]},
                                          {"team": AWAY}]}))
-    jg = {"fotmob": _fm(lineup_type="confirmed",
+    jg = {"rank_home": 1, "rank_away": 2, "fotmob": _fm(lineup_type="confirmed",
                         diff={"home": {"bench_notable": ["Simeone"],
                                        "surprise_in": ["Ngonge"]}})}
 
