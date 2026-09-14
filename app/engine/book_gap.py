@@ -43,7 +43,8 @@ def favored_side(p: dict | None) -> str | None:
     return "home" if h >= a else "away"
 
 
-def pinnacle_gap(soft: dict | None, sharp: dict | None) -> dict | None:
+def pinnacle_gap(soft: dict | None, sharp: dict | None, *,
+                 sharp_absent: bool = False) -> dict | None:
     """`p_soft(강팀) − p_sharp_proxy(강팀)` (%p). 한쪽이라도 없으면 None.
 
     반환 `{"gap_pp", "side", "p_soft", "p_sharp", "label"}`.
@@ -65,4 +66,9 @@ def pinnacle_gap(soft: dict | None, sharp: dict | None) -> dict | None:
         label = "사설 짬(강팀 승패 후보)"
     else:
         label = "차이 없음"
-    return {"gap_pp": gap, "side": side, "p_soft": a, "p_sharp": b, "label": label}
+    if sharp_absent:
+        # 🔴 [D1-4] 값은 지우지 않는다. **해석을 막는다** — 비교 대상이
+        #    샤프가 아니었다는 사실이 라벨을 타고 원장·카드까지 간다.
+        label = f"샤프 부재 · {label}(소프트북끼리 비교)"
+    return {"gap_pp": gap, "side": side, "p_soft": a, "p_sharp": b,
+            "label": label, "sharp_absent": bool(sharp_absent)}

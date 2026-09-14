@@ -123,3 +123,36 @@ def test_soft_proxy_줄이_저장된다():
     assert "soft_proxy" in {r["book"] for r in rows}
     soft = {r["side"]: r["odds"] for r in rows if r["book"] == "soft_proxy"}
     assert soft == {"Torino": 5.4, "Draw": 3.45, "Roma": 1.71}, soft
+
+
+# ── D1-4: 샤프 부재 플래그 (오즈포털 북 넷이 전부 소프트북)
+
+def test_최고_환급률이_96_미만이면_샤프_부재다():
+    """🔴 실측 2026-09-14: 오늘 3경기 최고 환급률 94.8 · 95.7 · 95.9%.
+    피나클급(97~98%)이 하나도 없다."""
+    got = OP.parse_books(BLOB, three_way=True)[10692547]
+
+    assert got["top_payout"] == 95.0        # 851
+    assert got["sharp_absent"] is True
+    assert OP.SHARP_MIN_PAYOUT == 96.0
+
+
+def test_샤프가_있으면_플래그가_서지_않는다():
+    rich = BLOB.replace('"highestPayout":95}', '"highestPayout":97.5}')
+    got = OP.parse_books(rich, three_way=True)[10692547]
+
+    assert got["top_payout"] == 97.5 and got["sharp_absent"] is False
+
+
+def test_샤프_부재면_값은_두고_해석을_막는다():
+    """🔴 값을 지우지 않는다 — 비교 대상이 샤프가 아니었다는 사실을 라벨로."""
+    soft = {"home": 1.80, "draw": 3.60, "away": 4.50}
+    sharp = {"home": 1.55, "draw": 3.90, "away": 5.50}
+
+    plain = BG.pinnacle_gap(soft, sharp)
+    flagged = BG.pinnacle_gap(soft, sharp, sharp_absent=True)
+
+    assert flagged["gap_pp"] == plain["gap_pp"], "값은 그대로다"
+    assert flagged["sharp_absent"] is True
+    assert flagged["label"].startswith("샤프 부재 · ")
+    assert "소프트북끼리" in flagged["label"]

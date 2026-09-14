@@ -267,6 +267,12 @@ def _balanced(text: str, start: int) -> str:
     return ""
 
 
+#: [D1-4 사용자 지시] 이 환급률 미만이면 **샤프북이 없다**고 본다.
+#  🔴 실측 2026-09-14: 오즈포털이 주는 북 넷의 환급률이 92.6~95.9% 였다.
+#     피나클급(97~98%)이 하나도 없다 — `sharp_proxy` 는 "덜 넓은 마진의
+#     소프트북"일 뿐이고, 그 사실을 값에 붙여 다녀야 해석이 안 뒤집힌다.
+SHARP_MIN_PAYOUT = 96.0
+
 #: [D1-1] `sharp_proxy` 를 세우는 최소 활성 북 수(사용자 지시).
 #  🔴 표본이 적으면 "가장 높은 환급률"이 우연이다. 그때는 **만들지 않는다.**
 SHARP_MIN_BOOKS = 3
@@ -325,8 +331,12 @@ def parse_books(blob: str, *, three_way: bool = False) -> dict[int, dict]:
                 # 같은 북을 양쪽에 놓으면 gap 이 늘 0이다 — 둘 다 세우지 않는다.
                 sharp = soft = None
         if full:
+            top = max((payout.get(b, 0.0) for b in full), default=0.0)
             out[eid] = {"books": full, "payout": payout, "sharp_id": sharp,
-                        "soft_id": soft, "n": len(full)}
+                        "soft_id": soft, "n": len(full),
+                        "top_payout": round(top, 1),
+                        # 🔴 [D1-4] 값은 그대로 두고 **해석에 플래그를 붙인다.**
+                        "sharp_absent": top < SHARP_MIN_PAYOUT}
     return out
 
 
