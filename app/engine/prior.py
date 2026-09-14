@@ -109,6 +109,42 @@ def form_pp(last5: str) -> float:
 
 
 @functools.lru_cache(maxsize=32)
+def load_season(league: str) -> str:
+    """그 리그 티어 파일의 `season` 문자열. 없으면 빈 문자열."""
+    import yaml
+
+    p = TIER_DIR / f"{league}.yaml"
+    if not p.exists():
+        return ""
+    try:
+        doc = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        logger.warning("[prior] 시즌 읽기 실패 %s: %s", p, exc)
+        return ""
+    return str(doc.get("season") or "")
+
+
+def season_start(league: str):
+    """올해 성적을 세기 시작하는 날. **티어 파일의 `season` 이 원본이다.**
+
+    🔴 달력 규칙을 새로 만들지 않는다 — `"2026-27"`(가을~봄 리그)은 그해
+       7월 1일, `"2026"`(봄~가을 리그·야구)은 그해 1월 1일이다. 형식이
+       그것을 이미 말하고 있다.
+    ⚠️ 모르면 `None` — 호출부가 "성적 없음"으로 읽는다. 지어내지 않는다.
+    """
+    from datetime import date as _date
+
+    raw = (load_season(league) or "").strip()
+    if not raw:
+        return None
+    head = raw.split("-")[0]
+    if not head.isdigit() or len(head) != 4:
+        return None
+    y = int(head)
+    return _date(y, 7, 1) if "-" in raw else _date(y, 1, 1)
+
+
+@functools.lru_cache(maxsize=32)
 def load_tiers(league: str) -> dict:
     """`config/tiers/{league}.yaml` → `{팀: 티어|None}`. 없으면 빈 dict."""
     import yaml

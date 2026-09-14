@@ -615,6 +615,39 @@ _PRIOR_SAVE = """
 """
 
 
+#: [PRI-4] 올해 **리그** 성적. 🔴 컵·대항전은 애초에 이 표에 없다 —
+#  `games` 는 football-data 의 **리그 일정만** 적재한다(`upsert_games_from_
+#  football_data` 가 league_key 로 부른다). 그래서 리그 라벨로 거르는 것이
+#  곧 컵 제외다. 종목·리그·시즌 시작일로 좁힌다.
+_FORM_SQL = """
+    SELECT
+      count(*) FILTER (WHERE (home = $4 AND home_score > away_score)
+                          OR (away = $4 AND away_score > home_score)) AS w,
+      count(*) FILTER (WHERE home_score = away_score)                 AS d,
+      count(*) FILTER (WHERE (home = $4 AND home_score < away_score)
+                          OR (away = $4 AND away_score < home_score)) AS l
+      FROM games
+     WHERE sport = $1 AND league = $2 AND status = 'final'
+       AND home_score IS NOT NULL AND away_score IS NOT NULL
+       AND starts_at >= $3
+       AND $4 IN (home, away)
+"""
+
+
+async def _season_form(conn, *, sport: str, league: str, team: str,
+                       start) -> tuple[int, int, int]:
+    """올해 (승, 무, 패). 시즌 시작일을 모르면 **전부 0** — 지어내지 않는다."""
+    if start is None or not team:
+        return 0, 0, 0
+    from datetime import datetime, time, timezone
+
+    since = datetime.combine(start, time.min, tzinfo=timezone.utc)
+    r = await conn.fetchrow(_FORM_SQL, sport, league, since, team)
+    if r is None:
+        return 0, 0, 0
+    return int(r["w"] or 0), int(r["d"] or 0), int(r["l"] or 0)
+
+
 def _tier_key(sport: str, league: str) -> str | None:
     """티어 파일 키. 축구는 리그 라벨→키, 야구는 종목이 곧 키다."""
     from app.leagues import league_labels
@@ -664,9 +697,23 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
             logger.info("[gate] game=%s — 티어 표가 없다(%s). 기록하지 않는다",
                         game_id, key or "리그 미상")
             return None
-        th, sh = P.team_elo(tiers.get(g["home"]), w=0, d=0, lose=0)
-        ta, sa = P.team_elo(tiers.get(g["away"]), w=0, d=0, lose=0)
+        # 🔴 [PRI-4 2026-09-14 사용자 지시] **올해 성적을 넣는다.** gp=0 으로
+        #    넣으면 team_elo 가 티어 elo 를 그대로 돌려주고, 한 단계 차이가
+        #    홈 이점과 상쇄돼 사전값이 평평해진다(실측: 로마 3전 전승인데
+        #    Roma@Torino 36.5/27.0/36.5).
+        start = P.season_start(key)
+        hw, hd, hl = await _season_form(conn, sport=sport, league=g["league"],
+                                        team=g["home"], start=start)
+        aw, ad, al = await _season_form(conn, sport=sport, league=g["league"],
+                                        team=g["away"], start=start)
+        th, sh = P.team_elo(tiers.get(g["home"]), w=hw, d=hd, lose=hl)
+        ta, sa = P.team_elo(tiers.get(g["away"]), w=aw, d=ad, lose=al)
         src = "tier" if (sh == "tier" and sa == "tier") else "tier:미기입"
+        gp_h, gp_a = hw + hd + hl, aw + ad + al
+        if gp_h or gp_a:
+            # ⚠️ 티어만 쓴 것과 성적이 섞인 것을 구분한다 — 나중에 "왜 이
+            #    값이 나왔나"를 원장만 보고 답할 수 있어야 한다.
+            src = f"{src}+form({gp_h}/{gp_a})"
         if sport == "soccer":
             pri = P.soccer_prior(th, ta)
             p_home = pri[0]

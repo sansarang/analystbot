@@ -23,6 +23,9 @@ class _Conn:
         self.executed: list[tuple] = []
 
     async def fetchrow(self, sql, *args):
+        # ⚠️ [PRI-4] 성적 집계도 `FROM games` 다 — 경기 조회와 구분해야 한다.
+        if "count(*) FILTER" in sql:
+            return {"w": 0, "d": 0, "l": 0}
         return self.game if "FROM games" in sql else None
 
     async def fetch(self, sql, *args):
@@ -122,3 +125,61 @@ async def test_기준선_배당이_없어도_사유를_원장에_남긴다():
     assert args[4].split(" · ")[0] == G.BOARD
     assert "기준선" in args[4], "왜 못 쟀는지가 남아야 한다"
     assert out is not None and out["label"] == G.BOARD
+
+
+# ── PRI-4: 올해 성적이 사전값에 들어간다
+
+class _FormConn(_Conn):
+    """성적 집계에 답하는 커넥션. 팀별 (승,무,패)를 주입한다."""
+
+    def __init__(self, game, snaps, form):
+        super().__init__(game, snaps)
+        self.form = form
+        self.form_args: list[tuple] = []
+
+    async def fetchrow(self, sql, *args):
+        if "count(*) FILTER" in sql:
+            self.form_args.append(args)
+            w, d, l = self.form.get(args[3], (0, 0, 0))
+            return {"w": w, "d": d, "l": l}
+        return await super().fetchrow(sql, *args)
+
+
+@pytest.mark.asyncio
+async def test_올해_성적이_사전값을_움직인다():
+    """🔴 실측 2026-09-14: gp=0 으로 넣으면 티어 한 단계 차이가 홈 이점(60)과
+    상쇄돼 Roma@Torino 가 36.5/27.0/36.5 로 평평했다. 로마는 3전 전승이었다."""
+    game = {"sport": "soccer", "league": "세리에A",
+            "home": "Torino FC", "away": "AS Roma"}
+    flat = await PL.record_prior(_FormConn(game, [], {}), game_id=7433)
+    conn = _FormConn(game, [], {"AS Roma": (3, 0, 0), "Torino FC": (0, 0, 2)})
+    with_form = await PL.record_prior(conn, game_id=7433)
+
+    assert flat["prior_src"] == "tier"
+    assert with_form["prior_src"] == "tier+form(2/3)", "gp 를 원장이 말해야 한다"
+    assert with_form["p_prior"] < flat["p_prior"] - 0.05, \
+        "2패 팀의 홈 사전값이 내려가야 한다"
+
+
+@pytest.mark.asyncio
+async def test_성적_집계는_그_리그_그_시즌만_센다():
+    """🔴 컵·대항전은 `games` 에 없다(리그 일정만 적재). 그래도 **리그·시즌**으로
+    좁히는 것을 계약으로 잠근다 — 나중에 컵이 들어와도 새지 않게."""
+    game = {"sport": "soccer", "league": "세리에A",
+            "home": "Torino FC", "away": "AS Roma"}
+    conn = _FormConn(game, [], {})
+
+    await PL.record_prior(conn, game_id=7433)
+
+    assert len(conn.form_args) == 2
+    for args in conn.form_args:
+        assert args[0] == "soccer" and args[1] == "세리에A"
+        assert args[2].date().isoformat() == "2026-07-01", "티어 파일의 시즌이 원본"
+
+
+def test_시즌_시작일은_티어_파일이_정한다():
+    from app.engine import prior as P
+
+    assert P.season_start("serie_a").isoformat() == "2026-07-01"   # 가을~봄
+    assert P.season_start("kbo").isoformat() == "2026-01-01"       # 달력 연도
+    assert P.season_start("없는리그") is None
