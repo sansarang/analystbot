@@ -1,10 +1,12 @@
-"""SCT-5 — 위성이 긁은 본문을 4-4 스키마로 추출한다.
+"""SCT-5·SCT-10·EXT-1 — 위성이 긁은 본문을 4-4 스키마로 추출한다.
 
-🔴 실측 결함 2026-09-14: `SCT-3` 이 스키마·검증·병합을 만들었는데 **부르는
-   곳이 0** 이었다. 본문은 긁어 캐시에 쌓였지만 결장·XI·최근3 이 칸으로
-   서지 않아, 분석 LLM 이 "결장 없음"을 사실로 읽게 되는 자리였다.
+🔴 실측 결함들이 이 파일을 만들었다:
+   · 2026-09-14 추출 호출부가 0 이었다(SCT-5)
+   · 목록 앞 3건만 읽어 tier1/2 현지 기사를 놓쳤다(SCT-10)
+   · 팀별 3건 = **경기당 6콜** 이 groq 무료 한도를 태웠다
+     (429 백오프 340~467초) → **경기당 1콜 + 창 + URL 해시 캐시**(EXT-1)
 
-⚠️ 실제 호출로 단언한다 — 소스 grep 이 아니다.
+⚠️ 주력 채널(다음·야후)에는 tier 선별을 걸지 않는다 — 그 도메인은 표에 없다.
 """
 import json
 
@@ -13,56 +15,127 @@ import pytest
 from app.collectors import satellite as SAT
 from app.engine import scout_config as SC
 
+HOME, AWAY = "Torino FC", "AS Roma"
+
 
 def _art(team, url, body="본문"):
     return {"team": team, "url": url, "body": body}
 
 
-def _fake(payload):
+def _fake(payload, calls=None):
     async def _f(routes, prompt, max_tokens, role):
         assert role == "form", "구조화 출력은 추론을 끄고 부른다"
+        if calls is not None:
+            calls.append(prompt)
         return json.dumps(payload, ensure_ascii=False)
     return _f
 
 
-@pytest.mark.asyncio
-async def test_스키마_밖은_버리고_칸만_남는다(monkeypatch):
-    monkeypatch.setattr("app.engine.team_form._complete_free",
-                        _fake({"team": "Como 1907", "out": ["Hilgers"],
-                               "xi_status": "official", "notes": "중원 결장",
-                               "전적": "버려야 한다", "베팅팁": "홈 승"}))
-
-    got = await SAT.extract_facts([_art("Como 1907", "https://calciolecce.it/a")],
-                                  team="Como 1907", league="serie_a")
-
-    assert got["out"] == ["Hilgers"] and got["xi_status"] == "official"
-    assert "전적" not in got and "베팅팁" not in got
-    assert set(got) <= set(SC.EXTRACT_SCHEMA) | {"source", "conflict"}
+def _two_teams(home_out=("Casadei",), away_out=()):
+    return {"teams": [
+        {"team": HOME, "out": list(home_out), "xi_status": "predicted",
+         "notes": "중원 결장", "전적": "버려야 한다"},
+        {"team": AWAY, "out": list(away_out), "xi_status": "official"},
+    ]}
 
 
 @pytest.mark.asyncio
-async def test_팀_칸이_없으면_버린다(monkeypatch):
-    """🔴 팀을 모르는 추출은 어느 쪽 사실인지 모르는 것이다."""
+async def test_경기당_한_번만_묻는다(monkeypatch):
+    calls: list[str] = []
     monkeypatch.setattr("app.engine.team_form._complete_free",
-                        _fake({"out": ["X"], "xi_status": "predicted"}))
+                        _fake(_two_teams(), calls))
 
-    assert await SAT.extract_facts([_art("Como 1907", "https://calciolecce.it/a")],
-                                   team="Como 1907", league="serie_a") is None
+    out = await SAT.extract_game_facts(
+        [_art(HOME, "https://www.gazzetta.it/a"),
+         _art(AWAY, "https://www.fantacalcio.it/b"),
+         _art(HOME, "https://www.romatoday.it/c")],
+        home=HOME, away=AWAY, league="serie_a")
+
+    assert len(calls) == 1, "기사 3건·팀 2개라도 호출은 한 번이다"
+    assert out["home"]["out"] == ["Casadei"] and out["away"]["xi_status"] == "official"
+    assert "전적" not in out["home"], "스키마 밖은 버린다"
+
+
+@pytest.mark.asyncio
+async def test_기사_전문_대신_창만_넣는다(monkeypatch):
+    calls: list[str] = []
+    body = "머리말 " * 400 + " Casadei out injury " + " 꼬리말 " * 400
+    monkeypatch.setattr("app.engine.team_form._complete_free",
+                        _fake(_two_teams(), calls))
+
+    await SAT.extract_game_facts([_art(HOME, "https://www.gazzetta.it/a", body)],
+                                 home=HOME, away=AWAY, league="serie_a")
+
+    sent = calls[0]
+    assert "Casadei out injury" in sent, "단서 주변은 남긴다"
+    assert len(sent) < len(body), "전문을 넣지 않는다"
+    assert SAT.WINDOW_SPAN == 300
+
+
+def test_단서가_없으면_머리만_준다():
+    """🔴 빈손으로 부르면 "읽었는데 없다"와 "안 읽었다"가 같아진다."""
+    w = SAT._windows("가" * 5000, ("Torino",))
+    assert len(w) == SAT.WINDOW_SPAN * 2
+
+
+@pytest.mark.asyncio
+async def test_같은_URL_묶음이면_다시_묻지_않는다(monkeypatch):
+    calls: list[str] = []
+    monkeypatch.setattr("app.engine.team_form._complete_free",
+                        _fake(_two_teams(), calls))
+
+    class _R:
+        def __init__(self):
+            self.kv = {}
+
+        async def get(self, k):
+            return self.kv.get(k)
+
+        async def set(self, k, v, ex=None):
+            self.kv[k] = v
+
+    r = _R()
+    arts = [_art(HOME, "https://www.gazzetta.it/a")]
+    first = await SAT.extract_game_facts(arts, home=HOME, away=AWAY,
+                                         league="serie_a", redis=r)
+    second = await SAT.extract_game_facts(arts, home=HOME, away=AWAY,
+                                          league="serie_a", redis=r)
+
+    assert len(calls) == 1, "두 번째는 캐시가 답한다"
+    assert first == second
+    assert list(r.kv)[0].startswith("scout:x:")
+
+
+@pytest.mark.asyncio
+async def test_등급_순으로_읽는다(monkeypatch):
+    """🔴 수집 순서는 층1→다음→RSS 다. 앞에서 자르면 tier1/2 가 늘 잘린다."""
+    calls: list[str] = []
+    monkeypatch.setattr("app.engine.team_form._complete_free",
+                        _fake(_two_teams(), calls))
+
+    await SAT.extract_game_facts(
+        [_art(HOME, "https://www.transfermarkt.com/x"),
+         _art(HOME, "http://v.daum.net/v/1"),
+         _art(HOME, "http://v.daum.net/v/2"),
+         _art(HOME, "https://www.teleradiostereo.it/a"),
+         _art(AWAY, "https://www.fantacalcio.it/b")],
+        home=HOME, away=AWAY, league="serie_a")
+
+    sent = calls[0]
+    assert "teleradiostereo.it" in sent and "fantacalcio.it" in sent
+    assert SC.FETCH_PER_STAGE == 3
 
 
 @pytest.mark.asyncio
 async def test_본문이_없으면_부르지_않는다(monkeypatch):
-    called = []
+    calls: list[str] = []
+    monkeypatch.setattr("app.engine.team_form._complete_free",
+                        _fake(_two_teams(), calls))
 
-    async def _f(*a, **k):
-        called.append(1)
-        return "{}"
+    out = await SAT.extract_game_facts([_art(HOME, "https://x.it/a", body="")],
+                                       home=HOME, away=AWAY, league="serie_a")
 
-    monkeypatch.setattr("app.engine.team_form._complete_free", _f)
-
-    assert await SAT.extract_facts([_art("T", "https://x.it/a", body="")],
-                                   team="T", league="serie_a") is None
-    assert not called, "본문 없는 기사에 LLM 을 태우지 않는다"
+    assert out == {} and not calls
 
 
 @pytest.mark.asyncio
@@ -94,43 +167,15 @@ async def test_야구는_추출하지_않는다(monkeypatch):
 
     async def _ex(*a, **k):
         called.append(1)
-        return {"team": "x"}
+        return {"home": {"team": "x"}}
 
     async def _adapter(jg, client=None, now=None):
         return [{"team": "Mariners", "body": "b", "url": "u"}]
 
-    monkeypatch.setattr(SAT, "extract_facts", _ex)
+    monkeypatch.setattr(SAT, "extract_game_facts", _ex)
     monkeypatch.setitem(SAT._ADAPTERS, "mlb", _adapter)
 
     n = await SAT.gather({"sport": "mlb", "game_id": 1, "home": "Mariners",
                           "away": "A", "league": "MLB"}, None)
 
     assert n == 1 and not called
-
-
-# ── SCT-10: 추출은 **등급 순**으로 읽는다
-
-@pytest.mark.asyncio
-async def test_추출은_tier_순으로_읽는다(monkeypatch):
-    """🔴 실측 2026-09-14: 수집 순서가 층1(트랜스퍼마크트)→다음→RSS 라
-    목록 앞 3건을 자르면 **tier1/2 현지 기사가 항상 잘린다.** 로마 추출
-    출처가 v.daum.net 이었고, Dybala 선발이 든 teleradiostereo.it 는
-    열어 놓고 읽지 않았다."""
-    seen: list[str] = []
-
-    async def _fake(routes, prompt, max_tokens, role):
-        return json.dumps({"team": "Torino FC", "out": ["X"]}, ensure_ascii=False)
-
-    monkeypatch.setattr("app.engine.team_form._complete_free", _fake)
-
-    arts = [_art("Torino FC", "https://www.transfermarkt.com/x"),
-            _art("Torino FC", "http://v.daum.net/v/1"),
-            _art("Torino FC", "http://v.daum.net/v/2"),
-            _art("Torino FC", "https://www.teleradiostereo.it/a"),   # tier1
-            _art("Torino FC", "https://www.fantacalcio.it/b")]       # tier2
-
-    got = await SAT.extract_facts(arts, team="Torino FC", league="serie_a")
-
-    # tier1 이 먼저 채택된다(merge 가 tier 높은 쪽을 고른다).
-    assert "teleradiostereo" in got["source"], got["source"]
-    _ = seen

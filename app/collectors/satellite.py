@@ -807,15 +807,11 @@ async def gather(jg: dict, redis, *, client=None, now: datetime | None = None,
         from app.leagues import league_labels
 
         lkey = league_labels().get(jg.get("league") or "") or ""
-        facts: dict = {}
-        for side in ("home", "away"):
-            team = jg.get(side) or ""
-            if not team:
-                continue
-            mine = [a for a in articles if (a.get("team") or "") == team]
-            got = await extract_facts(mine, team=team, league=lkey)
-            if got:
-                facts[side] = got
+        # 🔴 [EXT-1] **경기당 1콜.** 종전 팀별 3건(=6콜)이 groq 무료 한도를
+        #    매 사이클 태웠다(실측 2026-09-14: 429 백오프 340~467초).
+        facts = await extract_game_facts(articles, home=jg.get("home") or "",
+                                         away=jg.get("away") or "",
+                                         league=lkey, redis=redis)
         await _write_extract(redis, sport, gid, facts)
     return len(articles)
 
@@ -855,83 +851,189 @@ def _extract_key(sport: str, game_id) -> str:
     return EXTRACT_KEY.format(sport=(sport or "").lower(), game_id=game_id)
 
 
-def _extract_prompt(team: str, body: str) -> str:
-    """추출 프롬프트. 🔴 스키마를 손으로 적지 않는다 — `EXTRACT_SCHEMA` 에서 만든다."""
+#: [EXT-1] 관련 문단 창 반폭(자). 지시문 후속 지시 — 기사 전문 대신 이만큼만.
+WINDOW_SPAN = 300
+#: 한 경기에서 LLM 에 넣는 창의 총 상한(자). 로컬 3B 의 문맥·속도를 고려한 값.
+WINDOW_BUDGET = 6000
+#: 창을 잡을 단서. 🔴 리그별 현지어는 `search_terms` 가 원본이라 여기서는
+#  **팀 이름**과 만국 공통 표기만 쓴다 — 낱말 목록을 새로 만들지 않는다.
+_WINDOW_HINTS = ("out", "injur", "infortun", "formazion", "alineac", "aufstellung",
+                 "opstelling", "compos", "lineup", "XI", "결장", "선발", "부상")
+
+
+def _windows(body: str, terms, *, span: int = WINDOW_SPAN) -> str:
+    """[EXT-1] 단서 주변 ±`span` 자만 남긴다. 겹치면 합친다.
+
+    🔴 기사 전문을 넣지 않는다 — 경기당 1콜로 줄이려면 입력이 작아야 하고,
+       결장·라인업은 **문단 하나**에 모여 있다(실측: 프리뷰 기사 구조).
+    ⚠️ 단서가 하나도 없으면 **머리 `span`×2 자**를 준다. 빈손으로 부르면
+       "기사를 읽었는데 아무것도 없다"와 "안 읽었다"가 같아진다.
+    """
+    text = " ".join(str(body or "").split())
+    if not text:
+        return ""
+    low = text.lower()
+    hits: list[tuple[int, int]] = []
+    for t in list(terms or []) + list(_WINDOW_HINTS):
+        t = str(t or "").strip().lower()
+        if len(t) < 2:
+            continue
+        i = low.find(t)
+        while i >= 0:
+            hits.append((max(0, i - span), min(len(text), i + len(t) + span)))
+            i = low.find(t, i + len(t))
+    if not hits:
+        return text[:span * 2]
+    hits.sort()
+    merged = [list(hits[0])]
+    for a, b in hits[1:]:
+        if a <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+    return " … ".join(text[a:b] for a, b in merged)
+
+
+def _extract_prompt(home: str, away: str, blocks: list[tuple[str, str]]) -> str:
+    """[EXT-1] **경기 하나에 프롬프트 하나.** 두 팀을 한 번에 묻는다.
+
+    🔴 스키마를 손으로 적지 않는다 — `EXTRACT_SCHEMA` 에서 만든다.
+    """
     from app.engine.scout_config import EXTRACT_SCHEMA
 
     keys = ", ".join(f'"{k}"' for k in EXTRACT_SCHEMA)
+    src = "\n\n".join(f"[기사 {i + 1} · {u}]\n{w}"
+                        for i, (u, w) in enumerate(blocks))
     return (
-        "다음 기사에서 경기 전 정보만 뽑아 JSON 하나로 답한다.\n"
-        f"허용된 칸은 이것뿐이다: {keys}\n"
+        "다음 기사 발췌에서 **두 팀 각각**의 경기 전 정보를 뽑아 JSON 하나로 답한다.\n"
+        '형식: {"teams": [{...홈...}, {...원정...}]}\n'
+        f"각 팀 객체에 허용된 칸은 이것뿐이다: {keys}\n"
         "규칙\n"
-        "1. 기사에 없는 것은 만들지 않는다. 모르면 빈 목록·빈 문자열.\n"
+        "1. 발췌에 없는 것은 만들지 않는다. 모르면 빈 목록·빈 문자열.\n"
         "2. 전적·감독 예상 스코어·팬 반응·베팅 팁은 뽑지 않는다.\n"
         "3. xi_status 는 'predicted' 또는 'official' 둘 중 하나다.\n"
         "4. notes 는 한 줄이다.\n"
-        "5. JSON 만 출력한다.\n"
-        f"[대상 팀] {team}\n[기사]\n{body[:4000]}"
+        "5. team 칸에는 아래 주어진 팀 이름을 그대로 쓴다.\n"
+        "6. JSON 만 출력한다.\n"
+        f"[홈] {home}\n[원정] {away}\n\n{src}"
     )
 
 
-async def extract_facts(articles: list[dict], *, team: str, league: str) -> dict | None:
-    """[SCT-5] 기사 본문 → 지시문 4-4 스키마 JSON. **무료 사슬만 쓴다.**
+def _extract_cache_key(urls, home: str, away: str) -> str:
+    """[EXT-1] URL 해시 캐시 키. **같은 기사 묶음이면 다시 묻지 않는다.**"""
+    import hashlib
 
-    🔴 스키마 밖은 `scout_config.validate` 가 버린다. 여러 소스는
-       `merge` 가 tier 높은 쪽으로 합치고 충돌이면 `conflict=true` 를 남긴다.
-    🔴 실패해도 예외를 올리지 않는다 — 위성은 재료 수집이고, 추출 실패가
-       기사 수집을 되돌리면 안 된다.
-    ⚠️ 추론을 끈다(role="form"). 구조화 출력이라 사고가 예산만 먹는다
-       (실측 근거는 `team_form._complete_free` 머리말).
+    raw = "|".join(sorted(str(u or "") for u in urls)) + f"|{home}|{away}"
+    return "scout:x:" + hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+
+
+async def extract_game_facts(articles: list[dict], *, home: str, away: str,
+                             league: str, redis=None) -> dict:
+    """[EXT-1] 경기 하나 → `{"home": {...}, "away": {...}}`. **LLM 1콜.**
+
+    🔴 종전에는 팀별 3건 = **경기당 6콜**이었고 기사 전문을 넣었다. groq 무료
+       한도가 그 때문에 매 사이클 429 였다(실측 2026-09-14: 백오프 340~467초).
+    🔴 같은 URL 묶음이면 **다시 묻지 않는다**(URL 해시 캐시).
+    ⚠️ 실패해도 예외를 올리지 않는다 — 추출 실패가 기사 수집을 되돌리면 안 된다.
     """
     from app.engine.scout_config import (FETCH_PER_STAGE, RANK_UNLISTED, merge,
                                          rank, validate)
     from app.engine.team_form import _complete_free, parse_json_object
     from app.llm.judge_route import chain
 
-    # 🔴 [SCT-10 2026-09-14] **등급 순으로 읽는다.** 종전에는 목록 앞에서 3건을
-    #    잘랐는데, 수집 순서가 층1(트랜스퍼마크트·플래시스코어) → 다음 → RSS 라
-    #    **tier1/2 현지 기사가 항상 잘렸다**(실측: 로마 출처가 v.daum.net 이고
-    #    Dybala 선발이 든 teleradiostereo.it 는 열어 놓고 안 읽었다).
-    #    ⚠️ 등급은 `rank()` 원본이 정한다. 목록에 없는 곳은 `RANK_UNLISTED`.
-    rows: list[dict] = []
-    _with_body = [x for x in (articles or []) if (x.get("body") or "").strip()]
-    _ranked = sorted(
-        enumerate(_with_body),
-        key=lambda t: (min(rank(t[1].get("url") or "", league), RANK_UNLISTED), t[0]))
-    for a in [x for _, x in _ranked][:FETCH_PER_STAGE]:
-        try:
-            raw = await _complete_free(chain("form"),
-                                       _extract_prompt(team, a.get("body") or ""),
-                                       1024, "form")
-        except Exception as exc:
-            logger.warning("[scout] 추출 호출 실패 %s: %s", team, exc)
+    have = [a for a in (articles or []) if (a.get("body") or "").strip()]
+    if not have:
+        logger.info("[scout] %s@%s — 본문 있는 기사가 없다", away, home)
+        return {}
+    # 등급 순으로 상위 몇 건만(SCT-10). 팀이 갈려 있어도 경기 단위로 모은다.
+    ranked = sorted(enumerate(have),
+                    key=lambda t: (min(rank(t[1].get("url") or "", league),
+                                       RANK_UNLISTED), t[0]))
+    picked, seen_url = [], set()
+    for _, a in ranked:
+        u = a.get("url") or ""
+        if u in seen_url:
             continue
-        got = validate(parse_json_object(raw) or {}) if raw else None
-        if got is None:
-            logger.info("[scout] 추출 폐기 — 팀 칸이 없거나 JSON 이 아니다 (%s)",
-                        a.get("url"))
-            continue
-        got["source"] = str(a.get("url") or "")
-        rows.append(got)
-    out = merge(rows, league=league)
-    # 🔴 [SCT-9 사용자 지시] **미상으로 열린 도메인의 성적을 남긴다** —
-    #    tier 승격 후보 보고다. "열어 봤는데 쓸모없었다"와 "열었더니 결장이
-    #    나왔다"를 구분해야 표를 넓힐지 판단할 수 있다.
-    from app.engine.scout_config import RANK_UNKNOWN, _domain, rank
+        seen_url.add(u)
+        picked.append(a)
+        if len(picked) >= FETCH_PER_STAGE:
+            break
 
-    for r in rows:
-        src = str(r.get("source") or "")
-        if rank(src, league) >= RANK_UNKNOWN:
-            logger.info("[scout] 승격후보 %s — out %d · xi %s (%s)",
-                        _domain(src), len(r.get("out") or []),
-                        r.get("xi_status"), team)
-    if out is None:
-        logger.info("[scout] %s — 추출 0건", team)
-    else:
-        logger.info("[scout] %s 추출 — out %d · xi %s · 소스 %d건%s",
-                    team, len(out.get("out") or []), out.get("xi_status"),
-                    len(rows), " · 충돌" if out.get("conflict") else "")
+    key = _extract_cache_key([a.get("url") for a in picked], home, away)
+    if redis is not None:
+        try:
+            hit = await redis.get(key)
+        except Exception:
+            hit = None
+        if hit:
+            logger.info("[scout] %s@%s — 캐시 적중(%s), 묻지 않는다", away, home, key)
+            try:
+                return json.loads(hit) or {}
+            except Exception:
+                pass
+
+    blocks, used = [], 0
+    for a in picked:
+        w = _windows(a.get("body") or "", (home, away))
+        if not w:
+            continue
+        w = w[:max(0, WINDOW_BUDGET - used)]
+        if not w:
+            break
+        used += len(w)
+        blocks.append((a.get("url") or "", w))
+    if not blocks:
+        return {}
+
+    try:
+        raw = await _complete_free(chain("form"),
+                                   _extract_prompt(home, away, blocks),
+                                   1536, "form")
+    except Exception as exc:
+        logger.warning("[scout] 추출 호출 실패 %s@%s: %s", away, home, exc)
+        return {}
+    parsed = parse_json_object(raw) or {}
+    rows = [validate(x) for x in (parsed.get("teams") or []) if isinstance(x, dict)]
+    rows = [r for r in rows if r]
+    if not rows:
+        logger.info("[scout] %s@%s — 추출 0건(JSON 불량 또는 팀 칸 없음)", away, home)
+        return {}
+    out: dict = {}
+    for side, name in (("home", home), ("away", away)):
+        mine = [r for r in rows if _same_team(r.get("team"), name)]
+        got = merge(mine, league=league)
+        if got:
+            got.setdefault("source", picked[0].get("url") or "")
+            out[side] = got
+    for a in picked:
+        u = a.get("url") or ""
+        if rank(u, league) >= RANK_UNLISTED:
+            logger.info("[scout] 승격후보 %s (%s@%s)", _domain_of(u), away, home)
+    logger.info("[scout] %s@%s 추출 1콜 — 기사 %d건 · 창 %d자 · 홈 out %d · 원정 out %d",
+                away, home, len(blocks), used,
+                len((out.get("home") or {}).get("out") or []),
+                len((out.get("away") or {}).get("out") or []))
+    if redis is not None and out:
+        try:
+            await redis.set(key, json.dumps(out, ensure_ascii=False), ex=CACHE_TTL)
+        except Exception as exc:
+            logger.debug("[scout] 캐시 기록 실패 %s: %s", key, exc)
     return out
+
+
+def _same_team(a, b) -> bool:
+    """LLM 이 `team` 을 살짝 달리 쓸 수 있다. 토큰 하나만 겹쳐도 같은 팀이다."""
+    import re as _re
+
+    ta = {t for t in _re.split(r"[^\w가-힣]+", str(a or "").lower()) if len(t) > 2}
+    tb = {t for t in _re.split(r"[^\w가-힣]+", str(b or "").lower()) if len(t) > 2}
+    return bool(ta & tb)
+
+
+def _domain_of(url: str) -> str:
+    from app.engine.scout_config import _domain
+
+    return _domain(url)
 
 
 async def _write_extract(redis, sport: str, game_id, payload: dict) -> None:
