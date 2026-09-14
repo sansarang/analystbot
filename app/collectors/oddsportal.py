@@ -299,10 +299,17 @@ def parse_books(blob: str, *, three_way: bool = False) -> dict[int, dict]:
                 if pos >= len(keys):
                     continue
                 inner = _balanced(chunk, pos_m.end() - 1)
+                # 🔴 [D1-2] **포지션마다 `odds` 모양이 다르다**(실측 2026-09-14):
+                #    위치 0 은 배열 `[5.25]`, 위치 1·2 는 객체 `{"1":3.8}`.
+                #    배열만 받던 정규식이 무·원정 칸을 통째로 비워 북별 파싱이
+                #    0건이 됐다. 두 모양을 다 받는다.
                 for bm in re.finditer(
-                        r'"(\d{2,5})":\{"odds":\[([\d.]+)\][^}]*?'
+                        r'"(\d{2,5})":\{"odds":(?:\[([\d.]+)\]'
+                        r'|\{"\d+":([\d.]+)\})[^}]*?'
                         r'"highestPayout":([\d.]+)', inner):
-                    bid, odd, pay = int(bm.group(1)), float(bm.group(2)), float(bm.group(3))
+                    bid = int(bm.group(1))
+                    odd = float(bm.group(2) or bm.group(3))
+                    pay = float(bm.group(4))
                     if odd <= 1.0:
                         continue
                     books.setdefault(bid, {})[keys[pos]] = round(odd, 3)

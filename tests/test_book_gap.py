@@ -8,16 +8,19 @@
 from app.collectors import oddsportal as OP
 from app.engine import book_gap as BG
 
+# 🔴 [D1-2] **실측 원문 모양 그대로다.** 위치 0 은 배열 `[5.25]`, 위치 1·2 는
+#    객체 `{"1":3.8}` — 배열만 받던 정규식이 무·원정 칸을 비워 북별 파싱이
+#    0건이 됐다(실측 2026-09-14, 3경기 전부 sharp_proxy 없음).
 BLOB = ('{"aaaaaa":{"event":10692547,"odds":[{"active":true,"maxOdds":5.4,'
         '"avgOdds":5.23,"bettingTypeId":1,"scopeId":2,"outcomeId":"x",'
         '"resultId":1,"cntActive":4,"eventId":10692547,"maxOddsProviderId":1133,'
         '"positionsWithProviders":{"0":{"549":{"odds":[5.25],"highestPayout":94.4},'
         '"851":{"odds":[5.25],"highestPayout":95},"1133":{"odds":[5.4],'
         '"highestPayout":92.9},"1205":{"odds":[5],"highestPayout":92.3}},'
-        '"1":{"549":{"odds":[3.4],"highestPayout":94.4},"851":{"odds":[3.5],'
-        '"highestPayout":95},"1133":{"odds":[3.45],"highestPayout":92.9}},'
-        '"2":{"549":{"odds":[1.7],"highestPayout":94.4},"851":{"odds":[1.72],'
-        '"highestPayout":95},"1133":{"odds":[1.71],"highestPayout":92.9}}}}],'
+        '"1":{"549":{"odds":{"1":3.4},"highestPayout":94.4},"851":{"odds":{"1":3.5},'
+        '"highestPayout":95},"1133":{"odds":{"1":3.45},"highestPayout":92.9}},'
+        '"2":{"549":{"odds":{"2":1.7},"highestPayout":94.4},"851":{"odds":{"2":1.72},'
+        '"highestPayout":95},"1133":{"odds":{"2":1.71},"highestPayout":92.9}}}}],'
         '"cnt":1}')
 
 
@@ -34,8 +37,8 @@ def test_북별_값을_읽고_환급률_최대를_샤프대용으로_고른다()
 def test_활성_북이_적으면_샤프대용을_만들지_않는다():
     """🔴 표본이 적으면 '가장 높은 환급률'이 우연이다."""
     small = BLOB.replace('"851":{"odds":[5.25],"highestPayout":95},', "") \
-                .replace('"851":{"odds":[3.5],"highestPayout":95},', "") \
-                .replace('"851":{"odds":[1.72],"highestPayout":95},', "")
+                .replace('"851":{"odds":{"1":3.5},"highestPayout":95},', "") \
+                .replace('"851":{"odds":{"2":1.72},"highestPayout":95},', "")
     got = OP.parse_books(small, three_way=True)[10692547]
 
     assert got["n"] == 2 and got["sharp_id"] is None
