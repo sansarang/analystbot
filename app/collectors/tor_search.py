@@ -127,6 +127,30 @@ async def ensure_tor(timeout: int = 60) -> bool:
     return False
 
 
+#: 🔴 [TOR-1 2026-09-14 사용자 지시] 질의 **최소 간격(초).** 실측:
+#   15초를 띄워도 1/3 만 통과했고(2026-09-12), 오늘은 경기당 2질의가 전부
+#   403 이었다. 30초로 넓힌다. **값만 바꾼다 — 질의 수는 그대로다.**
+MIN_GAP_SEC = 30
+
+#: 마지막 질의 시각(단조 시계). 프로세스 안에서만 의미가 있다.
+_last_query_at: float = 0.0
+
+#: 이번 프로세스에서 마지막으로 403 을 본 시각. 호출부가 원장에 남긴다.
+RATE_LIMITED_AT: float = 0.0
+
+
+async def _pace() -> None:
+    """앞 질의로부터 `MIN_GAP_SEC` 이 지날 때까지 기다린다."""
+    global _last_query_at
+    import time
+
+    gap = MIN_GAP_SEC - (time.monotonic() - _last_query_at)
+    if _last_query_at and gap > 0:
+        logger.info("[tor] 질의 간격 %.0fs 대기", gap)
+        await asyncio.sleep(gap)
+    _last_query_at = time.monotonic()
+
+
 async def search(query: str, *, limit: int = 6, timeout: int = 60) -> list[dict]:
     """토르 경유 DDG lite 검색. [{url, title, snippet}]. 실패·미가용이면 빈 리스트.
 
@@ -136,6 +160,7 @@ async def search(query: str, *, limit: int = 6, timeout: int = 60) -> list[dict]
         return []
     if not await ensure_tor(timeout=timeout):
         return []
+    await _pace()
     import httpx
 
     try:
@@ -145,6 +170,13 @@ async def search(query: str, *, limit: int = 6, timeout: int = 60) -> list[dict]
                              data={"q": query})
         if r.status_code != 200:
             logger.info("[tor] DDG %s — 보강 없음 (%s)", r.status_code, query[:40])
+            if r.status_code in (403, 429):
+                # 🔴 속도 제한은 **사실로 남긴다** — 호출부가 원장에 적는다.
+                #    "검색했는데 0건"과 "막혀서 못 했다"는 다른 말이다.
+                global RATE_LIMITED_AT
+                import time
+
+                RATE_LIMITED_AT = time.monotonic()
             return []
         return parse_ddg_lite(r.text)[:limit]
     except Exception as exc:

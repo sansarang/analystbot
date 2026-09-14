@@ -519,7 +519,7 @@ async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None,
     if not _rss:
         out += await _tor_supplement(jg, _qs, league=lkey if lkey else None,
                                      stage=stage, kickoff=jg.get("starts_at"),
-                                     now=now)
+                                     now=now, pool=pool)
     else:
         logger.info("[satellite] 축구 %s %s@%s — RSS %d건이라 토르 보강 생략",
                     league, jg.get("away"), jg.get("home"), len(_rss))

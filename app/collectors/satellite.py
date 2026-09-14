@@ -663,7 +663,7 @@ async def rss_supplement(jg: dict, queries: list[tuple[str, str]], *,
 
 async def _tor_supplement(jg: dict, queries: list[tuple[str, str]], *,
                           league: str | None = None, stage: str = "pre",
-                          kickoff=None, now=None) -> list[dict]:
+                          kickoff=None, now=None, pool=None) -> list[dict]:
     """[SAT-7] 토르 경유 DDG 보강. **satellite_tor_enabled 일 때만.**
 
     ⚠️ 한국 소스는 부르지 않는다(호출부가 KBO 를 넘기지 않고, tor_search 도
@@ -683,6 +683,9 @@ async def _tor_supplement(jg: dict, queries: list[tuple[str, str]], *,
     out: list[dict] = []
     seen: set[str] = set()
     dropped = 0
+    # 🔴 [TOR-1] 이번 호출에서 403 을 봤는지. "검색했는데 0건"과 "막혀서 못
+    #    했다"는 다른 말이고, 뒤엣것은 원장에 남아야 다음에 다시 재지 않는다.
+    _rl_before = tor_search.RATE_LIMITED_AT
     for team, q in queries:
         try:
             hits = await tor_search.search(q)
@@ -727,6 +730,22 @@ async def _tor_supplement(jg: dict, queries: list[tuple[str, str]], *,
                 title=h.get("title") or "", url=u, source="DDG(토르)",
                 team=team, body=body or h.get("snippet") or h.get("title") or "",
                 age_h=None))
+    if tor_search.RATE_LIMITED_AT != _rl_before:
+        # 🔴 [TOR-1 사용자 지시] 속도 제한을 **원장에** 남긴다.
+        #    ⚠️ 새 stage 를 만들지 않는다 — `game_trace.STAGES` 가 원본이고,
+        #       사건 이름은 `ref.event` 로 남긴다.
+        from app.engine import game_trace as GT
+
+        await GT.note(pool, game_id=jg.get("game_id"),
+                      sport=(jg.get("sport") or "soccer"),
+                      date=(now or datetime.now(timezone.utc)).date().isoformat(),
+                      stage=GT.COLLECT,
+                      summary=f"tor_rate_limited — DDG 403/429 (질의 {len(queries)}건)",
+                      ref={"event": "tor_rate_limited",
+                           "queries": [q for _, q in queries][:4],
+                           "min_gap_sec": tor_search.MIN_GAP_SEC})
+        logger.info("[tor] 속도 제한 — 원장에 tor_rate_limited 로 남겼다 (game=%s)",
+                    jg.get("game_id"))
     if out or dropped:
         # ⚠️ 조용히 줄이지 않는다 — 반대 위험(정상 폐기)을 재려면 건수가 남아야 한다
         logger.info("[satellite] 토르 보강 %s@%s +%d건 · 제목 불일치 폐기 %d건",
