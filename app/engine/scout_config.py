@@ -111,6 +111,23 @@ def queries(league: str, team: str | None = None, stage: str = "pre", *,
     return out
 
 
+#: [ALI-1] 현지 표기 별칭. 🔴 한국어 별칭표(`SOCCER_ALIAS`)와 **용도가 다르다** —
+#  저쪽은 한국어 매체 검색·카드 표시, 이쪽은 현지어 검색 질의다.
+_ALIAS_DOC = _load("aliases_local.yaml")
+LOCAL_ALIASES: dict[str, dict] = dict(_ALIAS_DOC.get("aliases") or {})
+
+
+def local_name(league: str, team: str) -> str:
+    """검색 질의에 쓸 **현지 표기**. 표에 없으면 원래 이름 그대로.
+
+    🔴 실측 2026-09-14: `"Como 1907 infortunati oggi"` 는 0건, `"Como …"` 는
+       기사가 나온다. 법인격(FC·AC·US)과 창단연도는 이름이 아니라 형식이다.
+    ⚠️ 값은 목록이다 — **첫 번째**를 쓴다. 나머지는 사람이 고를 여지다.
+    """
+    vals = (LOCAL_ALIASES.get(league) or {}).get(team) or []
+    return str(vals[0]) if vals else str(team or "")
+
+
 LOCALES: dict[str, dict] = dict(_TERMS_DOC.get("locales") or {})
 
 

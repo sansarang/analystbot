@@ -1,0 +1,210 @@
+# 현지 표기 별칭표 — 검색 질의에 쓰는 이름. [ALI-1 2026-09-14 사용자 지시]
+#
+# 🔴 **한국어 별칭표(`satellite_soccer.SOCCER_ALIAS`)와 용도가 다르다.**
+#    저쪽은 한국어 매체 검색·카드 표시용(코모·파르마)이고, 이 표는
+#    **현지어 검색 질의용**(Como·Parma)이다. 둘을 섞지 않는다.
+#
+# 🔴 왜 필요한가 — 실측 2026-09-14:
+#      q="Como 1907 infortunati oggi"        → 0건
+#      q="Parma Calcio 1913 infortunati oggi" → 0건
+#    현지 매체는 `Como`·`Parma` 로 쓴다. 법인격(FC·AC·US·SSC)과 창단연도
+#    (1907·1913)는 이름이 아니라 형식이다.
+#
+# ⚠️ 세리에A 12건은 **사용자가 준 값** 그대로다. 나머지는 같은 규칙
+#    (법인격·연도 제거)으로 자동 생성했다 — 사용자가 고친다.
+# ⚠️ 값은 목록이다(별칭이 여럿일 수 있다). 검색은 **첫 번째**를 쓴다.
+# ⚠️ 이름이 그대로면 적지 않는다(사본 금지 — 표가 길어지면 원본이 흐려진다).
+aliases:
+  epl:
+aliases:
+  epl:
+    AFC Bournemouth:
+    - Bournemouth
+    Arsenal FC:
+    - Arsenal
+    Aston Villa FC:
+    - Aston Villa
+    Brentford FC:
+    - Brentford
+    Brighton & Hove Albion FC:
+    - Brighton Hove Albion
+    Chelsea FC:
+    - Chelsea
+    Coventry City FC:
+    - Coventry City
+    Crystal Palace FC:
+    - Crystal Palace
+    Everton FC:
+    - Everton
+    Fulham FC:
+    - Fulham
+    Hull City AFC:
+    - Hull City
+    Ipswich Town FC:
+    - Ipswich Town
+    Liverpool FC:
+    - Liverpool
+    Manchester City FC:
+    - Manchester City
+    Manchester United FC:
+    - Manchester United
+    Newcastle United FC:
+    - Newcastle United
+    Nottingham Forest FC:
+    - Nottingham Forest
+    Sunderland AFC:
+    - Sunderland
+    Tottenham Hotspur FC:
+    - Tottenham Hotspur
+  la_liga:
+    Athletic Club:
+    - Athletic
+    CA Osasuna:
+    - Osasuna
+    Club Atlético de Madrid:
+    - Atlético Madrid
+    Elche CF:
+    - Elche
+    FC Barcelona:
+    - Barcelona
+    Getafe CF:
+    - Getafe
+    Levante UD:
+    - Levante
+    Málaga CF:
+    - Málaga
+    RC Celta de Vigo:
+    - Celta Vigo
+    RC Deportivo La Coruña:
+    - Deportivo La Coruña
+    RCD Espanyol de Barcelona:
+    - Espanyol Barcelona
+    Rayo Vallecano de Madrid:
+    - Rayo Vallecano Madrid
+    Real Betis Balompié:
+    - Real Betis
+    Real Madrid CF:
+    - Real Madrid
+    Real Racing Club de Santander:
+    - Real Racing Santander
+    Real Sociedad de Fútbol:
+    - Real Sociedad
+    Sevilla FC:
+    - Sevilla
+    Valencia CF:
+    - Valencia
+    Villarreal CF:
+    - Villarreal
+  serie_a:
+    AC Milan:
+    - Milan
+    AC Monza:
+    - Monza
+    AS Roma:
+    - Roma
+    Bologna FC 1909:
+    - Bologna
+    Cagliari Calcio:
+    - Cagliari
+    Como 1907:
+    - Como
+    FC Internazionale Milano:
+    - Inter
+    Frosinone Calcio:
+    - Frosinone
+    Juventus FC:
+    - Juventus
+    Parma Calcio 1913:
+    - Parma
+    SS Lazio:
+    - Lazio
+    SSC Napoli:
+    - Napoli
+    Torino FC:
+    - Torino
+    US Lecce:
+    - Lecce
+    US Sassuolo Calcio:
+    - Sassuolo
+    Udinese Calcio:
+    - Udinese
+    Venezia FC:
+    - Venezia
+  bundesliga:
+    1. FC Köln:
+    - Köln
+    1. FC Union Berlin:
+    - Union Berlin
+    1. FSV Mainz 05:
+    - Mainz
+    Bayer 04 Leverkusen:
+    - Bayer Leverkusen
+    FC Augsburg:
+    - Augsburg
+    FC Bayern München:
+    - Bayern München
+    FC Schalke 04:
+    - Schalke
+    Hamburger SV:
+    - Hamburger
+    RB Leipzig:
+    - Leipzig
+    SC Freiburg:
+    - Freiburg
+    SC Paderborn 07:
+    - Paderborn
+    SV 07 Elversberg:
+    - Elversberg
+    SV Werder Bremen:
+    - Werder Bremen
+    TSG 1899 Hoffenheim:
+    - Hoffenheim
+    VfB Stuttgart:
+    - Stuttgart
+  j1:
+    FC Machida Zelvia:
+    - Machida Zelvia
+    FC Tokyo:
+    - Tokyo
+    Yokohama FC:
+    - Yokohama
+  denmark:
+    AC Horsens:
+    - Horsens
+    Brondby IF:
+    - Brondby
+    FC Midtjylland:
+    - Midtjylland
+    FC Nordsjaelland:
+    - Nordsjaelland
+    OB Odense BK:
+    - OB Odense
+    Randers FC:
+    - Randers
+    Silkeborg IF:
+    - Silkeborg
+    FC Copenhagen:
+    - Copenhagen
+  kleague1:
+    Bucheon FC 1995:
+    - Bucheon
+    FC Anyang:
+    - Anyang
+    FC Seoul:
+    - Seoul
+    Gangwon FC:
+    - Gangwon
+    Gwangju FC:
+    - Gwangju
+    Jeju United FC:
+    - Jeju United
+    Sangju Sangmu FC:
+    - Sangju Sangmu
+    Ulsan Hyundai FC:
+    - Ulsan Hyundai
+    Suwon FC:
+    - Suwon
+  mlb: {}
+  kbo: {}
+  npb: {}
+

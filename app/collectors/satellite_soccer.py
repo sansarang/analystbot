@@ -496,14 +496,20 @@ async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None,
     # 🔴 [SCT-8] **대진 질의 먼저.** 팀 질의는 대진이 모자랄 때만 — 실측
     #    2026-09-14: 팀 질의만 쓰면 구글이 과거 전체를 매칭해 48시간 안이
     #    0건이었다(80건 중 0). 대진 질의는 1.6~5.1h 가 열 건 넘게 나왔다.
-    _pair_qs = SC.queries(lkey, None, stage, home=jg.get("home"),
-                          away=jg.get("away")) if lkey else []
+    # 🔴 [ALI-1] 질의에는 **현지 표기**를 쓴다(Como 1907 → Como). 우리 DB 표기
+    #    로는 현지 매체가 안 걸린다(실측: 팀 질의 0건).
+    #    ⚠️ 기사 귀속·추출은 그대로 **DB 표기**로 한다 — 표기를 바꾸면 나중에
+    #       경기와 못 맞춘다.
+    _pair_qs = SC.queries(lkey, None, stage,
+                          home=SC.local_name(lkey, jg.get("home") or ""),
+                          away=SC.local_name(lkey, jg.get("away") or "")) \
+        if lkey else []
     _qs: list[tuple[str, str]] = []
     for side in ("home", "away"):
         team = jg.get(side) or ""
         if not team:
             continue
-        local = SC.queries(lkey, team, stage) if lkey else []
+        local = SC.queries(lkey, SC.local_name(lkey, team), stage) if lkey else []
         _qs.append((team, local[0] if local
                     else f"{team} {_SOCCER_TOR_TAIL}".strip()))
     # 🔴 [SAT-S2] **토르 DDG 영어 보강** — 고급 검색(SAT-7). MLB·NPB 는 이미
