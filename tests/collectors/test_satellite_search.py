@@ -30,14 +30,36 @@ def test_단계가_둘이다():
 
 
 def test_지시문_현지어_그대로다():
-    assert SC.queries("la_liga", "Celta Vigo", "pre") == [
-        "Celta Vigo alineación probable bajas lesionados"]
-    assert SC.queries("la_liga", "Celta Vigo", "lineup") == [
-        "Celta Vigo alineación oficial once titular hoy"]
-    assert SC.queries("serie_a", "Lecce", "pre") == [
-        "Lecce probabili formazioni infortunati"]
+    """⚠️ [SCT-8 2026-09-14 사용자 지시] 유럽 리그는 **두 벌**이 됐다 —
+    대진 질의(`{home} {away}`)가 기사 매칭용, 팀 질의(`{team} … 오늘`)가
+    결장 뉴스용이다. 실측이 바꿨다: 팀 질의만 쓰면 구글이 과거 전체를
+    매칭해 80건 중 48시간 안이 **0건**이었다.
+    ⚠️ 야구·아시아 리그는 **팀 질의 그대로**다(현지 매체가 팀 단위로 쓴다).
+    """
+    assert SC.queries("la_liga", None, "pre", home="Celta Vigo", away="Málaga") == [
+        "Celta Vigo Málaga alineaciones probables"]
+    assert SC.queries("la_liga", "Celta Vigo", "pre") == ["Celta Vigo bajas hoy"]
+    assert SC.queries("la_liga", None, "lineup", home="Celta Vigo",
+                      away="Málaga") == ["Celta Vigo Málaga alineación oficial"]
+    assert SC.queries("serie_a", None, "pre", home="Lecce", away="Monza") == [
+        "Lecce Monza probabili formazioni"]
     assert SC.queries("kbo", "KT Wiz", "pre") == [
         "KT Wiz 내일의 선발투수", "KT Wiz 엔트리 말소"]
+
+
+def test_팀_질의에는_신선도_토큰이_붙는다():
+    """🔴 사용자 지시 — 토큰이 없으면 구글이 과거 전체를 매칭한다(실측)."""
+    tokens = set(SC.TODAY_WORDS) | {"aujourd'hui", "heute", "vandaag"}
+    for lg in ("epl", "la_liga", "serie_a", "bundesliga", "ligue1", "eredivisie"):
+        team_q = SC.queries(lg, "X", "pre")
+        assert team_q, lg
+        assert any(t in q.lower() for q in team_q for t in tokens), (lg, team_q)
+
+
+def test_채울_수_없는_자리표시자는_그_줄을_뺀다():
+    """🔴 빈 문자열로 채우면 반쪽 질의가 나가고, 그게 다시 과거 전체를 긁는다."""
+    assert SC.queries("serie_a", None, "pre") == []          # home·away 없음
+    assert SC.queries("serie_a", "Lecce", "lineup") == []     # lineup 은 대진 전용
 
 
 def test_우리_리그가_전부_있다():

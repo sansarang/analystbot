@@ -16,18 +16,34 @@
 #    영어로 둔다. 사용자가 정해 주면 바꾼다.
 
 terms:
+  # 🔴 [SCT-8 2026-09-14 사용자 지시] **두 벌이다.**
+  #    첫 줄 = 대진 질의(오늘 경기 기사) · 둘째 줄 = 팀 질의(결장 뉴스).
+  #    팀 질의에는 **신선도 토큰**(오늘/oggi/hoy/heute/today…)을 반드시 붙인다 —
+  #    실측 2026-09-14: 토큰이 없으면 구글이 과거 전체를 매칭해 80건 중
+  #    48시간 안이 **0건**이었다(434h·3386h·5881h…). 대진 질의는 같은 통로에서
+  #    1.6~5.1h 짜리가 열 건 넘게 나왔다.
+  #    ⚠️ 대진 질의가 10건 이상이면 팀 질의는 생략한다(`PAIR_HITS_ENOUGH`).
   epl:
-    pre:    ["{team} team news predicted lineup injuries"]
-    lineup: ["{team} confirmed lineup starting XI"]
+    pre:    ["{home} v {away} team news", "{team} injury news today"]
+    lineup: ["{home} v {away} confirmed lineups"]
   la_liga:
-    pre:    ["{team} alineación probable bajas lesionados"]
-    lineup: ["{team} alineación oficial once titular hoy"]
+    pre:    ["{home} {away} alineaciones probables", "{team} bajas hoy"]
+    lineup: ["{home} {away} alineación oficial"]
   serie_a:
-    pre:    ["{team} probabili formazioni infortunati"]
-    lineup: ["{team} formazioni ufficiali"]
+    pre:    ["{home} {away} probabili formazioni", "{team} infortunati oggi"]
+    lineup: ["{home} {away} formazioni ufficiali"]
   bundesliga:
-    pre:    ["{team} voraussichtliche Aufstellung Ausfälle"]
-    lineup: ["{team} Aufstellung offiziell"]
+    pre:    ["{home} {away} Aufstellung", "{team} Ausfälle heute"]
+    lineup: ["{home} {away} Aufstellung offiziell"]
+  # ⚠️ 아래 둘은 **우리 시스템에 리그가 없다**(app/leagues.py 가 원본).
+  #    사용자가 모양을 지정했으므로 적어 두되, 리그가 생기기 전에는 안 쓰인다.
+  ligue1:
+    pre:    ["{home} {away} compos probables", "{team} blessés aujourd'hui"]
+    lineup: ["{home} {away} compos officielles"]
+  eredivisie:
+    pre:    ["{home} {away} opstelling", "{team} blessures vandaag"]
+    lineup: ["{home} {away} opstelling bekend"]
+  # ⚠️ 아래는 **팀 질의 유지**(사용자 지시) — 현지 매체가 팀 단위로 쓴다.
   j1:
     pre:    ["{team} 予想スタメン 負傷 欠場"]
     lineup: ["{team} スタメン発表"]

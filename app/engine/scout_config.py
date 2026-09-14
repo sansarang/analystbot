@@ -71,10 +71,37 @@ SOURCES: dict = {k: _SRC_DOC.get(k) or ({} if k.startswith("tier") else [])
                            "blocked", "blocked_fragments", "js_only")}
 
 
-def queries(league: str, team: str, stage: str = "pre") -> list[str]:
-    """리그·팀·단계 → 질의 목록."""
-    terms = (SEARCH_TERMS.get(league) or {}).get(stage) or []
-    return [t.replace("{team}", str(team or "")).strip() for t in terms]
+#: [SCT-8] 대진 질의가 이만큼 나오면 팀 질의는 생략한다(사용자 지시).
+PAIR_HITS_ENOUGH = 10
+
+
+def queries(league: str, team: str | None = None, stage: str = "pre", *,
+            home: str | None = None, away: str | None = None) -> list[str]:
+    """리그·단계 → 질의 목록. **채울 수 없는 자리표시자가 있으면 그 줄은 뺀다.**
+
+    🔴 [SCT-8 2026-09-14 사용자 지시] 검색어가 두 벌이다:
+       · 대진 질의 `{home} {away} …` — 오늘 경기 기사를 잡는다
+       · 팀 질의  `{team} … 오늘` — 결장 뉴스를 잡는다
+       실측(2026-09-14)이 이유다. `"{team} probabili formazioni infortunati"` 는
+       구글이 **과거 전체**에서 매칭해 80건 중 48시간 안이 0건이었다
+       (434h·3386h·5881h…). 같은 통로에 두 팀 이름을 넣으면 1.6~5.1h 가
+       열 건 넘게 나온다.
+    ⚠️ 빈 자리를 빈 문자열로 채우지 않는다 — 그러면 `" probabili formazioni"`
+       같은 반쪽 질의가 나가고, 그게 다시 과거 전체를 긁는다.
+    """
+    out: list[str] = []
+    for t in ((SEARCH_TERMS.get(league) or {}).get(stage) or []):
+        q = str(t)
+        need = {"{team}": team, "{home}": home, "{away}": away}
+        if any(k in q and not v for k, v in need.items()):
+            continue
+        for k, v in need.items():
+            if v:
+                q = q.replace(k, str(v))
+        q = q.strip()
+        if q:
+            out.append(q)
+    return out
 
 
 LOCALES: dict[str, dict] = dict(_TERMS_DOC.get("locales") or {})

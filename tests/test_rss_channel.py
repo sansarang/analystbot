@@ -120,3 +120,39 @@ def test_RSS_기본값을_손으로_적지_않는다():
                 if isinstance(n, ast.ImportFrom) and n.module == "app.collectors.news_rss"
                 for a in n.names}
     assert {"BASE", "UA", "parse_feed"} <= imported
+
+
+# ── SCT-8: 대진 질의 먼저, 팀 질의는 모자랄 때만
+
+@pytest.mark.asyncio
+async def test_대진_기사는_양_팀_모두의_재료다(monkeypatch):
+    """🔴 "Torino-Roma: le probabili formazioni" 는 두 팀 다 설명한다.
+    본문은 한 번만 열고 행만 둘로 만든다 — 추출이 팀으로 기사를 고른다."""
+    opened: list[str] = []
+    monkeypatch.setattr("httpx.AsyncClient", _client([]))
+
+    async def _body(u):
+        opened.append(u)
+        return "본문"
+
+    monkeypatch.setattr(SAT, "_fetch_article_body", _body)
+    stats: dict = {}
+
+    out = await SAT.rss_supplement({"home": "Torino FC", "away": "AS Roma"},
+                                   [(None, "Torino Roma probabili formazioni")],
+                                   league="serie_a", stage="lineup",
+                                   kickoff=KICK, now=NOW, stats=stats)
+
+    assert len(opened) == 1, "본문은 한 번만 연다"
+    assert sorted(a["team"] for a in out) == ["AS Roma", "Torino FC"]
+    assert stats["hits"] == 2, "호출부가 '대진이 충분한가'를 볼 근거"
+
+
+def test_대진이_충분하면_팀_질의를_생략한다():
+    import inspect
+
+    src = inspect.getsource(SOC.gather_soccer)
+    assert "_pair_qs" in src and "PAIR_HITS_ENOUGH" in src
+    # 🔴 상한을 코드에 적지 않는다 — scout_config 상수를 읽는다.
+    assert "< 10" not in src
+    assert src.index("_pair_qs") < src.index("PAIR_HITS_ENOUGH")

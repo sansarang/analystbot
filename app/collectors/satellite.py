@@ -619,22 +619,37 @@ async def rss_hits(query: str, *, league: str, stage: str = "pre",
 
 async def rss_supplement(jg: dict, queries: list[tuple[str, str]], *,
                          league: str, stage: str = "pre", kickoff=None,
-                         now=None) -> list[dict]:
+                         now=None, stats: dict | None = None) -> list[dict]:
     """[SCT-7] RSS 결과를 **같은 문**(rank_and_pick)에 태워 상위만 연다.
 
     🔴 선별 규칙을 여기 복사하지 않는다 — 토르 경로와 **같은 함수**를 쓴다.
+    ⚠️ [SCT-8] `team` 이 `None` 인 항목은 **대진 질의**다. 제목에 두 팀이 다
+       나오므로 홈으로 문을 지나게 하고, 결과는 **양 팀에 모두** 붙인다
+       (추출이 팀별로 기사를 고르기 때문이다). 본문은 한 번만 연다.
+    ⚠️ `stats` 를 주면 `{"hits": n}` 을 채운다 — 호출부가 "대진 질의가
+       충분한가"를 판단할 근거다.
     """
     from app.engine.scout_config import rank_and_pick
 
     out: list[dict] = []
     seen: set[str] = set()
     dropped = 0
+    hits_total = 0
     for team, q in queries:
         hits = await rss_hits(q, league=league, stage=stage, now=now)
+        hits_total += len(hits)
         if not hits:
             continue
-        picked, disc = rank_and_pick(hits, league=league, stage=stage, team=team,
-                                     kickoff=kickoff, now=now, with_discard=True)
+        pair = team is None
+        screen_team = jg.get("home") if pair else team
+        picked, disc = rank_and_pick(hits, league=league, stage=stage,
+                                     team=screen_team, kickoff=kickoff, now=now,
+                                     with_discard=True)
+        if pair and not picked:
+            # 제목이 원정 팀만 말하는 경우도 있다 — 한 번 더 본다.
+            picked, disc = rank_and_pick(hits, league=league, stage=stage,
+                                         team=jg.get("away"), kickoff=kickoff,
+                                         now=now, with_discard=True)
         dropped += sum(disc.values())
         for h in picked:
             u = h.get("url") or ""
@@ -650,14 +665,21 @@ async def rss_supplement(jg: dict, queries: list[tuple[str, str]], *,
                     dropped += 1
                     logger.info("[rss] 본문 재검사 폐기 %s — %s", u, why)
                     continue
-            out.append(_article(
-                title=h.get("title") or "", url=u,
-                source=h.get("source") or "Google News",
-                team=team, body=body or h.get("title") or "",
-                age_h=None))
+            # 🔴 대진 기사는 **양 팀 모두**의 재료다. 본문은 한 번만 열고
+            #    행만 둘로 만든다(추출이 팀으로 기사를 고른다).
+            for t in ([jg.get("home"), jg.get("away")] if pair else [team]):
+                if not t:
+                    continue
+                out.append(_article(
+                    title=h.get("title") or "", url=u,
+                    source=h.get("source") or "Google News",
+                    team=t, body=body or h.get("title") or "",
+                    age_h=None))
+    if stats is not None:
+        stats["hits"] = hits_total
     if out or dropped:
-        logger.info("[rss] %s@%s +%d건 · 폐기 %d건",
-                    jg.get("away"), jg.get("home"), len(out), dropped)
+        logger.info("[rss] %s@%s 검색결과 %d건 → 기사 %d건 · 폐기 %d건",
+                    jg.get("away"), jg.get("home"), hits_total, len(out), dropped)
     return out
 
 

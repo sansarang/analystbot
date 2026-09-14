@@ -493,12 +493,17 @@ async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None,
 
     lkey = league_labels().get(league)
     stage = _tor_stage(jg, now)
+    # 🔴 [SCT-8] **대진 질의 먼저.** 팀 질의는 대진이 모자랄 때만 — 실측
+    #    2026-09-14: 팀 질의만 쓰면 구글이 과거 전체를 매칭해 48시간 안이
+    #    0건이었다(80건 중 0). 대진 질의는 1.6~5.1h 가 열 건 넘게 나왔다.
+    _pair_qs = SC.queries(lkey, None, stage, home=jg.get("home"),
+                          away=jg.get("away")) if lkey else []
     _qs: list[tuple[str, str]] = []
     for side in ("home", "away"):
         team = jg.get(side) or ""
         if not team:
             continue
-        local = SC.queries(lkey, team, stage) if (lkey and SC.tor_safe(lkey)) else []
+        local = SC.queries(lkey, team, stage) if lkey else []
         _qs.append((team, local[0] if local
                     else f"{team} {_SOCCER_TOR_TAIL}".strip()))
     # 🔴 [SAT-S2] **토르 DDG 영어 보강** — 고급 검색(SAT-7). MLB·NPB 는 이미
@@ -512,9 +517,21 @@ async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None,
     # 🔴 [SCT-7 2026-09-14 사용자 지시] **RSS 가 1순위다.** pubDate 를 싣고
     #    속도 제한이 없다. DDG/토르는 RSS 가 0건일 때만 부른다 —
     #    실측 2026-09-14: DDG 는 경기당 2질의에도 403 을 줬다.
-    _rss = await rss_supplement(jg, _qs, league=lkey or "", stage=stage,
-                                kickoff=jg.get("starts_at"), now=now) \
-        if lkey else []
+    _rss: list[dict] = []
+    if lkey:
+        _st: dict = {}
+        if _pair_qs:
+            _rss += await rss_supplement(jg, [(None, q) for q in _pair_qs],
+                                         league=lkey, stage=stage,
+                                         kickoff=jg.get("starts_at"), now=now,
+                                         stats=_st)
+        # ⚠️ 대진 질의가 충분하면 팀 질의는 생략한다(사용자 지시·예산).
+        if _st.get("hits", 0) < SC.PAIR_HITS_ENOUGH:
+            _rss += await rss_supplement(jg, _qs, league=lkey, stage=stage,
+                                         kickoff=jg.get("starts_at"), now=now)
+        else:
+            logger.info("[rss] %s %s@%s — 대진 질의 %d건이라 팀 질의 생략",
+                        league, jg.get("away"), jg.get("home"), _st["hits"])
     out += _rss
     if not _rss:
         out += await _tor_supplement(jg, _qs, league=lkey if lkey else None,
