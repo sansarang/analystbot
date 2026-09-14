@@ -1473,10 +1473,20 @@ async def build_analysis(
                     league, len(ext_ids), counts["scheduled"], counts["final"],
                     " ⚠️ 공식 소스 실패 — 기존 일정" if schedule_stale else "")
     else:
-        fb = APIFootballClient()
-        fixtures = await fb.fetch_fixtures(date)
-        await upsert_soccer_games(pool, date, client=fb, fixtures=fixtures)
-        ext_ids = [str(i["fixture"]["id"]) for i in fixtures.get("response", [])]
+        # 🔴 [FOT-3 2026-09-14 사용자 지시] **API-Football 실호출 0.**
+        #    무료 플랜이 현 시즌을 막는다(실측 원문: "Free plans do not have
+        #    access to this season, try from 2022 to 2024"). 늘 빈손이라
+        #    폴백으로 갔고, 호출만 한 번 태우고 있었다. 키는 남긴다.
+        #    ⚠️ **목 모드는 남긴다** — 네트워크를 타지 않고, 테스트·개발의
+        #       일정 소스가 그것이다(실측: 이 줄을 지우자 축구 파이프라인
+        #       테스트가 5경기 → 1경기로 떨어졌다).
+        fixtures = {"response": []}
+        ext_ids: list[str] = []
+        if get_settings().mock_football:
+            fb = APIFootballClient()
+            fixtures = await fb.fetch_fixtures(date)
+            await upsert_soccer_games(pool, date, client=fb, fixtures=fixtures)
+            ext_ids = [str(i["fixture"]["id"]) for i in fixtures.get("response", [])]
         if not ext_ids:
             # API-Football Free 플랜은 현재 시즌 미지원(비활성 폴백으로 유지) →
             # 1순위 football-data.org(메이저), 2순위 Odds API 이벤트(마이너, 중복 제외)

@@ -265,6 +265,52 @@ async def _tm_rows(code: str, today: str) -> list[dict]:
     return rows
 
 
+def cross_check_unavailable(jg: dict, idx: dict) -> dict:
+    """[FOT-3 사용자 지시] FotMob 결장 ↔ Transfermarkt 부상표 교차검증.
+
+    규칙(그대로):
+      1. FotMob 에 있으면 **FotMob 이 정본**, TM 은 conflict 검사만.
+      2. FotMob 이 None 이고 TM 에 그 팀이 있으면 **TM 명단을 out 으로**.
+      3. 둘 다 없으면 `missing` 유지 — **0 으로 쓰지 않는다.**
+
+    🔴 추가 요청이 없다 — 호출부가 방금 받은 표(`idx`)를 그대로 넘긴다.
+    반환: 사이드별 결과 요약(로그용).
+    """
+    fm = jg.get("fotmob") or {}
+    if not fm:
+        return {}
+    report: dict = {}
+    for side in ("home", "away"):
+        team = jg.get(side) or ""
+        got = idx.get(tm_key(team)) or []
+        cur = (fm.get(side) or {})
+        have = cur.get("unavailable")
+        tm_names = [str(r.get("선수") or "").strip() for r in got if r.get("선수")]
+        if have is not None:
+            # ① FotMob 정본. 이름이 갈리면 표시만 한다.
+            fm_names = {str(x.get("name") or "").strip() for x in have}
+            if tm_names and fm_names and set(tm_names) != fm_names:
+                cur["conflict"] = True
+            cur.setdefault("unavailable_src", "fotmob")
+            report[side] = f"fotmob {len(have)}명" + (" · 충돌" if cur.get("conflict") else "")
+            continue
+        if tm_names:
+            # ② TM 으로 메운다. 출처를 남긴다.
+            cur["unavailable"] = [
+                {"id": None, "name": r.get("선수"), "type": r.get("부상"),
+                 "expected_return": r.get("복귀") or None} for r in got]
+            cur["unavailable_src"] = "transfermarkt"
+            fm[side] = cur
+            miss = [m for m in (fm.get("missing") or [])
+                    if not m.startswith(f"{side} ")]
+            fm["missing"] = miss
+            report[side] = f"transfermarkt {len(tm_names)}명"
+        else:
+            # ③ 둘 다 없다 — 모른다. 0 으로 쓰지 않는다.
+            report[side] = "모름(유지)"
+    return report
+
+
 async def _tm_injuries(jg: dict, today: str, pool=None) -> list[dict]:
     """이 경기 **두 팀만** 뽑아 기사 모양으로. 표에 없으면 아무것도 안 만든다."""
     from app.collectors.satellite import _article
@@ -279,6 +325,16 @@ async def _tm_injuries(jg: dict, today: str, pool=None) -> list[dict]:
     idx: dict[str, list[dict]] = {}
     for r in await _tm_rows(code, today):
         idx.setdefault(tm_key(r["팀"]), []).append(r)
+
+    # 🔴 [FOT-3] 방금 받은 표로 **교차검증**부터 한다(추가 요청 0).
+    #    FotMob 이 먼저 붙어 있다(FOT-2 가 정한 순서).
+    try:
+        rep = cross_check_unavailable(jg, idx)
+        if rep:
+            logger.info("[fotmob] 결장 교차검증 %s@%s — %s",
+                        jg.get("away"), jg.get("home"), rep)
+    except Exception as exc:
+        logger.warning("[fotmob] 교차검증 실패 game=%s: %s", jg.get("game_id"), exc)
 
     out: list[dict] = []
     miss: list[str] = []
