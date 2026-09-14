@@ -820,7 +820,7 @@ async def gather(jg: dict, redis, *, client=None, now: datetime | None = None,
         #    매 사이클 태웠다(실측 2026-09-14: 429 백오프 340~467초).
         facts = await extract_game_facts(articles, home=jg.get("home") or "",
                                          away=jg.get("away") or "",
-                                         league=lkey, redis=redis)
+                                         league=lkey, redis=redis, jg=jg)
         await _write_extract(redis, sport, gid, facts)
     return len(articles)
 
@@ -937,7 +937,7 @@ def _extract_cache_key(urls, home: str, away: str) -> str:
 
 
 async def extract_game_facts(articles: list[dict], *, home: str, away: str,
-                             league: str, redis=None) -> dict:
+                             league: str, redis=None, jg: dict | None = None) -> dict:
     """[EXT-1] 경기 하나 → `{"home": {...}, "away": {...}}`. **LLM 1콜.**
 
     🔴 종전에는 팀별 3건 = **경기당 6콜**이었고 기사 전문을 넣었다. groq 무료
@@ -1013,7 +1013,7 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
         got = merge(mine, league=league)
         if got:
             got.setdefault("source", picked[0].get("url") or "")
-            out[side] = got
+            out[side] = _json_wins(got, (jg or {}).get("fotmob"), side)
     for a in picked:
         u = a.get("url") or ""
         if rank(u, league) >= RANK_UNLISTED:
@@ -1027,6 +1027,44 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
             await redis.set(key, json.dumps(out, ensure_ascii=False), ex=CACHE_TTL)
         except Exception as exc:
             logger.debug("[scout] 캐시 기록 실패 %s: %s", key, exc)
+    return out
+
+
+def _json_wins(llm: dict, fm: dict | None, side: str) -> dict:
+    """[FOT-4 사용자 지시] **out·xi 는 구조 JSON 이 정본.** LLM 은 보조 칸만.
+
+    🔴 LLM 이 `out` 을 돌려줘도 JSON 과 다르면 **JSON 채택 + conflict 플래그**다.
+       LLM 값을 버리지 않고 비교만 한다 — 버리면 왜 달랐는지 영영 모른다.
+    ⚠️ JSON 이 없으면(축구가 아니거나 FotMob 결측) 종전 동작 그대로다.
+    """
+    if not fm:
+        llm.setdefault("out_src", "llm")
+        return llm
+    box = (fm.get(side) or {})
+    out = dict(llm)
+    un = box.get("unavailable")
+    if un is not None:
+        names = [str(x.get("name") or "").strip() for x in un if x.get("name")]
+        if set(names) != {str(x).strip() for x in (llm.get("out") or [])}:
+            out["conflict"] = True
+            out["out_llm"] = list(llm.get("out") or [])
+        out["out"] = names
+        out["out_src"] = "fotmob"
+    else:
+        out["out_src"] = "llm"
+    starters = [p.get("name") for p in (box.get("starters") or []) if p.get("name")]
+    if starters:
+        out["xi"] = starters
+        out["xi_status"] = fm.get("lineup_type") or out.get("xi_status")
+        out["xi_src"] = "fotmob"
+    # bench_notable 은 코드가 채운다(FotMob diff). LLM 값은 그때 덮인다.
+    d = (fm.get("diff") or {}).get(side) or {}
+    if d.get("bench_notable"):
+        out["bench_notable"] = d["bench_notable"]
+        out["surprise_in"] = d.get("surprise_in") or []
+    if out.get("conflict"):
+        logger.info("[scout] %s 결장 충돌 — JSON %s vs LLM %s",
+                    llm.get("team"), out.get("out"), out.get("out_llm"))
     return out
 
 

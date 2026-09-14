@@ -179,3 +179,64 @@ async def test_야구는_추출하지_않는다(monkeypatch):
                           "away": "A", "league": "MLB"}, None)
 
     assert n == 1 and not called
+
+
+# ── FOT-4: out·xi 는 JSON 정본, LLM 은 보조
+
+def _fm(un_home=None, starters=None, lineup_type="predicted", diff=None):
+    return {"lineup_type": lineup_type,
+            "home": {"starters": starters or [], "unavailable": un_home},
+            "away": {"starters": [], "unavailable": None},
+            "diff": diff or {}}
+
+
+@pytest.mark.asyncio
+async def test_out_은_JSON_이_정본이고_LLM_과_다르면_충돌이다(monkeypatch):
+    """🔴 사용자 지시: LLM 이 out 을 돌려줘도 JSON 과 다르면 JSON 채택 + conflict."""
+    monkeypatch.setattr("app.engine.team_form._complete_free",
+                        _fake({"teams": [
+                            {"team": HOME, "out": ["지어낸 선수"],
+                             "notes": "중원 결장", "midweek": "UCL 목요일"},
+                            {"team": AWAY, "out": []}]}))
+    jg = {"fotmob": _fm(un_home=[{"name": "Ché Adams"}],
+                        starters=[{"id": 1, "name": "Perri"}])}
+
+    out = await SAT.extract_game_facts([_art(HOME, "https://www.gazzetta.it/a")],
+                                       home=HOME, away=AWAY, league="serie_a", jg=jg)
+
+    h = out["home"]
+    assert h["out"] == ["Ché Adams"] and h["out_src"] == "fotmob"
+    assert h["conflict"] is True
+    assert h["out_llm"] == ["지어낸 선수"], "LLM 값을 버리지 않는다(왜 달랐는지 남긴다)"
+    assert h["xi"] == ["Perri"] and h["xi_status"] == "predicted"
+    # 보조 칸은 LLM 것이 그대로 산다.
+    assert h["notes"] == "중원 결장" and h["midweek"] == "UCL 목요일"
+
+
+@pytest.mark.asyncio
+async def test_JSON_이_없으면_종전대로_LLM_을_쓴다(monkeypatch):
+    monkeypatch.setattr("app.engine.team_form._complete_free",
+                        _fake({"teams": [{"team": HOME, "out": ["A"]},
+                                         {"team": AWAY, "out": []}]}))
+
+    out = await SAT.extract_game_facts([_art(HOME, "https://www.gazzetta.it/a")],
+                                       home=HOME, away=AWAY, league="serie_a")
+
+    assert out["home"]["out"] == ["A"] and out["home"]["out_src"] == "llm"
+
+
+@pytest.mark.asyncio
+async def test_bench_notable_은_코드가_채운다(monkeypatch):
+    """🔴 LLM 자기보고가 아니라 예상→공식 diff 다(지시문 4-4)."""
+    monkeypatch.setattr("app.engine.team_form._complete_free",
+                        _fake({"teams": [{"team": HOME, "bench_notable": ["엉뚱한 값"]},
+                                         {"team": AWAY}]}))
+    jg = {"fotmob": _fm(lineup_type="confirmed",
+                        diff={"home": {"bench_notable": ["Simeone"],
+                                       "surprise_in": ["Ngonge"]}})}
+
+    out = await SAT.extract_game_facts([_art(HOME, "https://www.gazzetta.it/a")],
+                                       home=HOME, away=AWAY, league="serie_a", jg=jg)
+
+    assert out["home"]["bench_notable"] == ["Simeone"]
+    assert out["home"]["surprise_in"] == ["Ngonge"]
