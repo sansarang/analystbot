@@ -106,3 +106,31 @@ async def test_야구는_추출하지_않는다(monkeypatch):
                           "away": "A", "league": "MLB"}, None)
 
     assert n == 1 and not called
+
+
+# ── SCT-10: 추출은 **등급 순**으로 읽는다
+
+@pytest.mark.asyncio
+async def test_추출은_tier_순으로_읽는다(monkeypatch):
+    """🔴 실측 2026-09-14: 수집 순서가 층1(트랜스퍼마크트)→다음→RSS 라
+    목록 앞 3건을 자르면 **tier1/2 현지 기사가 항상 잘린다.** 로마 추출
+    출처가 v.daum.net 이었고, Dybala 선발이 든 teleradiostereo.it 는
+    열어 놓고 읽지 않았다."""
+    seen: list[str] = []
+
+    async def _fake(routes, prompt, max_tokens, role):
+        return json.dumps({"team": "Torino FC", "out": ["X"]}, ensure_ascii=False)
+
+    monkeypatch.setattr("app.engine.team_form._complete_free", _fake)
+
+    arts = [_art("Torino FC", "https://www.transfermarkt.com/x"),
+            _art("Torino FC", "http://v.daum.net/v/1"),
+            _art("Torino FC", "http://v.daum.net/v/2"),
+            _art("Torino FC", "https://www.teleradiostereo.it/a"),   # tier1
+            _art("Torino FC", "https://www.fantacalcio.it/b")]       # tier2
+
+    got = await SAT.extract_facts(arts, team="Torino FC", league="serie_a")
+
+    # tier1 이 먼저 채택된다(merge 가 tier 높은 쪽을 고른다).
+    assert "teleradiostereo" in got["source"], got["source"]
+    _ = seen

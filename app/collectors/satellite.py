@@ -883,12 +883,22 @@ async def extract_facts(articles: list[dict], *, team: str, league: str) -> dict
     ⚠️ 추론을 끈다(role="form"). 구조화 출력이라 사고가 예산만 먹는다
        (실측 근거는 `team_form._complete_free` 머리말).
     """
-    from app.engine.scout_config import FETCH_PER_STAGE, merge, validate
+    from app.engine.scout_config import (FETCH_PER_STAGE, RANK_UNLISTED, merge,
+                                         rank, validate)
     from app.engine.team_form import _complete_free, parse_json_object
     from app.llm.judge_route import chain
 
+    # 🔴 [SCT-10 2026-09-14] **등급 순으로 읽는다.** 종전에는 목록 앞에서 3건을
+    #    잘랐는데, 수집 순서가 층1(트랜스퍼마크트·플래시스코어) → 다음 → RSS 라
+    #    **tier1/2 현지 기사가 항상 잘렸다**(실측: 로마 출처가 v.daum.net 이고
+    #    Dybala 선발이 든 teleradiostereo.it 는 열어 놓고 안 읽었다).
+    #    ⚠️ 등급은 `rank()` 원본이 정한다. 목록에 없는 곳은 `RANK_UNLISTED`.
     rows: list[dict] = []
-    for a in [x for x in (articles or []) if (x.get("body") or "").strip()][:FETCH_PER_STAGE]:
+    _with_body = [x for x in (articles or []) if (x.get("body") or "").strip()]
+    _ranked = sorted(
+        enumerate(_with_body),
+        key=lambda t: (min(rank(t[1].get("url") or "", league), RANK_UNLISTED), t[0]))
+    for a in [x for _, x in _ranked][:FETCH_PER_STAGE]:
         try:
             raw = await _complete_free(chain("form"),
                                        _extract_prompt(team, a.get("body") or ""),

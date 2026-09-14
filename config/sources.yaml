@@ -13,7 +13,10 @@ tier1_club_local:            # 구단 공식·지역지·팬 매체 — 기자�
   serie_a:    [calciolecce.it, monza-news.it, monzaindiretta.it, forzamonza.it,
                calcionapoli24.it, areanapoli.it, noibianconeri24.it,
                # [SCT-9 2026-09-14 사용자 지시] 오늘 실제로 프리뷰를 낸 지역·팬 매체
-               romatoday.it, teleradiostereo.it, sportparma.com, dallaplatea.it]
+               romatoday.it, teleradiostereo.it, sportparma.com, dallaplatea.it,
+               # [SCT-10 2026-09-14 사용자 지시] 이탈리아 3대 매체 — 판타지
+               # 결장표를 함께 싣는다
+               gazzetta.it, corrieredellosport.it, sport.sky.it]
   bundesliga: [fcbinside.de, footy.de, baykusen.de]
   epl:        [sussexexpress.co.uk, 3addedminutes.com]
   la_liga:    [101tv.es, elespanol.com, riazor.org]
@@ -29,7 +32,9 @@ tier2_aggregator:            # 판타지·집계 — 결장 표를 가장 빨리
   serie_a:    [fantacalcio.it, fantamaster.it, spaziocalcio.it, goal.com,
                # [SCT-9 2026-09-14 사용자 지시] 집계·전국지
                eurosport.it, ilmessaggero.it, lapresse.it, calciomercato.com,
-               diretta.it, calcio.com]
+               diretta.it, calcio.com,
+               # [SCT-10 2026-09-14 사용자 지시]
+               ilriformista.it, dazn.com]
   bundesliga: [ligainsider.de, magazin.comunio.de, eurosport.de]
   la_liga:    [jornadaperfecta.com, eldesmarque.com, sportsmole.co.uk, whoscored.com]
   j1:         [matchcalendar.football]
@@ -45,6 +50,9 @@ tier3_wire:                  # 통신사 — 라인업 확정 속보
 blocked:                     # 절대 열지 않는다
   - oddschecker.com
   - tipico.de
+  # [SCT-10 2026-09-14 사용자 지시] 베팅 사이트 · 판정 근거 없는 픽 사이트
+  - sportnews.snai.it
+  - sudefuturi.it
   - reddit.com
   - wikipedia.org
 
