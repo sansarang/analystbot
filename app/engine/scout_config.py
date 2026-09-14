@@ -14,7 +14,7 @@ import functools
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -123,6 +123,10 @@ def rank(url: str, league: str) -> int:
 class Screen:
     keep: bool
     reason: str
+    #: 🔴 [SCT-6] 날짜를 **모르는** 결과. 버리지 않고 tier 를 한 단계 내려
+    #  통과시킨 뒤, 본문을 열고 다시 본다(`body_date_ok`).
+    #  "모른다"와 "오래됐다"는 다른 말이다.
+    undated: bool = False
 
 
 def _tokens(team: str) -> list[str]:
@@ -143,6 +147,13 @@ def screen(hit: dict, *, team: str, kickoff, stage: str, now=None) -> Screen:
     if toks and not any(t.lower() in low for t in toks):
         return Screen(False, "제목")
     # ② 날짜 문 — 경기 날짜(±1일) · "오늘" 말 · 다른 연도가 아닐 것
+    #
+    # 🔴 [SCT-6 2026-09-14 사용자 지시] **소스별로 가른다.**
+    #    RSS 는 `pubDate` 를 싣는다 — 날짜를 알므로 종전 규칙 그대로다.
+    #    DDG/토르는 스니펫에 날짜가 거의 없다. 그 경우를 폐기로 처리했더니
+    #    **정상 기사까지 통째로 버려졌다**(실측 2026-09-14: 세리에A 3경기
+    #    보강 6건 → 0건, 폐기 사유의 최다가 '날짜'). 이제 모르면 버리지 않고
+    #    `undated` 로 통과시켜 tier 를 한 단계 내리고, 본문을 연 뒤 다시 본다.
     ok_date = any(w in low for w in TODAY_WORDS)
     if not ok_date and kickoff is not None:
         for delta in (-1, 0, 1):
@@ -150,19 +161,65 @@ def screen(hit: dict, *, team: str, kickoff, stage: str, now=None) -> Screen:
             if d in text or d.replace("-", "/") in text:
                 ok_date = True
                 break
-    if not ok_date:
-        years = {m.group(0) for m in _YEAR.finditer(text)}
-        this = str((kickoff or now or datetime.now(timezone.utc)).year)
-        ok_date = bool(years) and this in years
-    if not ok_date:
-        return Screen(False, "날짜")
-    # ③ 신선도 — ⚠️ 모르는 것과 오래된 것은 다르다. 모르면 버리지 않는다.
+    years = {m.group(0) for m in _YEAR.finditer(text)}
+    this = str((kickoff or now or datetime.now(timezone.utc)).year)
+    if not ok_date and years:
+        # 연도가 **명시**돼 있는데 올해가 아니면 지난 시즌 글이다 — 버린다.
+        ok_date = this in years
+        if not ok_date:
+            return Screen(False, "날짜")
     pub = hit.get("published")
     if isinstance(pub, datetime):
+        # ③ 신선도 — pubDate 를 아는 소스(RSS)에만 건다.
         cur = now or datetime.now(timezone.utc)
         if (cur - pub) > timedelta(hours=MAX_AGE_H.get(stage, 48)):
             return Screen(False, "신선도")
-    return Screen(True, "")
+        if not ok_date:
+            return Screen(False, "날짜")
+        return Screen(True, "")
+    # pubDate 가 없는 소스(DDG/토르) — 날짜 토큰이 있으면 통과, 없으면 undated.
+    return Screen(True, "") if ok_date else Screen(True, "", True)
+
+
+#: 본문 날짜 후보. `article:published_time` 이 1순위, 없으면 본문 첫 ISO 날짜.
+_META_PUB = re.compile(
+    r"""article:published_time["']?\s*(?:content=)?["']([0-9]{4}-[0-9]{2}-[0-9]{2})""",
+    re.I)
+_ISO_DATE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
+
+#: 본문 날짜가 경기일에서 이만큼 벗어나면 지난 경기 글이다(지시문 후속 지시).
+BODY_DATE_TOLERANCE_D = 2
+
+
+def body_date_ok(body: str, *, kickoff, now=None) -> tuple[bool, str]:
+    """[SCT-6] 날짜를 모르고 연 기사를 **본문으로** 다시 본다.
+
+    🔴 **증거가 있을 때만 버린다.** 본문에도 날짜가 없으면 통과다 —
+       "모른다"를 "오래됐다"로 바꾸지 않는다(그 혼동이 보강을 0건으로 만들었다).
+    반환 `(통과, 사유)`.
+    """
+    text = str(body or "")
+    if not text:
+        return True, ""
+    m = _META_PUB.search(text) or _ISO_DATE.search(text)
+    if m:
+        try:
+            g = m.groups()
+            d = (date.fromisoformat(g[0]) if len(g) == 1
+                 else date(int(g[0]), int(g[1]), int(g[2])))
+        except (TypeError, ValueError):
+            d = None
+        if d is not None and kickoff is not None:
+            kd = kickoff.date() if hasattr(kickoff, "date") else kickoff
+            gap = abs((d - kd).days)
+            if gap > BODY_DATE_TOLERANCE_D:
+                return False, f"본문 날짜 {d} — 경기일에서 {gap}일"
+            return True, ""
+    years = {mm.group(0) for mm in _YEAR.finditer(text)}
+    this = str((kickoff or now or datetime.now(timezone.utc)).year)
+    if years and this not in years:
+        return False, f"본문에 지난 연도만 있다 {sorted(years)[:3]}"
+    return True, ""
 
 
 def _confirmed(title: str) -> bool:
@@ -182,10 +239,13 @@ def rank_and_pick(hits: list[dict], *, league: str, stage: str,
     kept, discard = [], {}
     for i, h in enumerate(hits or []):
         if team is not None:
-            s = screen(h, team=team, kickoff=kickoff, stage=stage, now=now)
-            if not s.keep:
-                discard[s.reason] = discard.get(s.reason, 0) + 1
+            sc = screen(h, team=team, kickoff=kickoff, stage=stage, now=now)
+            if not sc.keep:
+                discard[sc.reason] = discard.get(sc.reason, 0) + 1
                 continue
+            if sc.undated:
+                # 🔴 호출부가 본문을 열고 다시 봐야 한다는 표시.
+                h["undated"] = True
         elif blocked(h.get("url") or "") or js_only(h.get("url") or ""):
             discard["차단"] = discard.get("차단", 0) + 1
             continue
@@ -193,8 +253,10 @@ def rank_and_pick(hits: list[dict], *, league: str, stage: str,
         if r >= RANK_UNKNOWN:
             discard["미상"] = discard.get("미상", 0) + 1
             continue
-        boost = 0 if (stage == "lineup" and _confirmed(h.get("title"))) else 1
-        kept.append((boost, r, i, h))
+        # 🔴 [SCT-6] 날짜를 모르는 결과는 **한 단계 내린다** — 버리지는 않는다.
+        #    본문을 열고 다시 보는 것은 호출부(`body_date_ok`)의 몫이다.
+        kept.append((0 if (stage == "lineup" and _confirmed(h.get("title"))) else 1,
+                     r + (1 if h.get("undated") else 0), i, h))
     kept.sort(key=lambda t: (t[0], t[1], t[2]))
     out = [h for _, _, _, h in kept[:FETCH_PER_STAGE]]
     if discard:

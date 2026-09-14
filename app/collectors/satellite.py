@@ -616,6 +616,17 @@ async def _tor_supplement(jg: dict, queries: list[tuple[str, str]], *,
                 dropped += 1
                 continue
             body = await _fetch_article_body(u)
+            # 🔴 [SCT-6] 날짜를 **모르고** 연 기사는 본문으로 다시 본다.
+            #    증거(article:published_time·본문 날짜·지난 연도)가 있을 때만
+            #    버린다 — 본문에도 날짜가 없으면 통과다.
+            if h.get("undated") and body:
+                from app.engine.scout_config import body_date_ok
+
+                ok, why = body_date_ok(body, kickoff=kickoff, now=now)
+                if not ok:
+                    dropped += 1
+                    logger.info("[scout] 본문 재검사 폐기 %s — %s", u, why)
+                    continue
             out.append(_article(
                 title=h.get("title") or "", url=u, source="DDG(토르)",
                 team=team, body=body or h.get("snippet") or h.get("title") or "",
