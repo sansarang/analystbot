@@ -305,7 +305,7 @@ async def backfill_meta(pool, dates: list[str]) -> dict:
         for r in rows:
             if not r.get("id"):
                 continue
-            kd = str(r.get("utc") or "")[:10] or None
+            kd = _as_date(r.get("utc"))
             try:
                 res = await pool.execute(_HISTORY_META_SQL, int(r["id"]),
                                          r.get("league"), r.get("ccode"), kd)
@@ -315,6 +315,34 @@ async def backfill_meta(pool, dates: list[str]) -> dict:
         out[d] = n
         logger.info("[fotmob] 메타 %s — %d경기 목록 · %d행 갱신", d, len(rows), n)
     return out
+
+
+def _as_dt(v):
+    """ISO 문자열 → `datetime`. 🔴 [LH-2] asyncpg 는 TIMESTAMPTZ 에 문자열을
+    받지 않는다(ODP-2 와 같은 결함이 재발했다). 모르면 None."""
+    from datetime import datetime as _dt
+
+    if v is None or isinstance(v, _dt):
+        return v
+    try:
+        return _dt.fromisoformat(str(v).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_date(v):
+    """ISO 문자열/datetime → `date`. 🔴 `$n::date` 는 `date` 만 받는다."""
+    from datetime import date as _d
+    from datetime import datetime as _dt
+
+    if v is None or isinstance(v, _d) and not isinstance(v, _dt):
+        return v
+    if isinstance(v, _dt):
+        return v.date()
+    try:
+        return _d.fromisoformat(str(v)[:10])
+    except (TypeError, ValueError):
+        return None
 
 
 async def save_lineup_history(pool, lineup: dict, *, kickoff_utc=None,
@@ -345,9 +373,8 @@ async def save_lineup_history(pool, lineup: dict, *, kickoff_utc=None,
             try:
                 await pool.execute(_HISTORY_SQL, int(gid), tid, int(pid),
                                    p.get("name") or "", started,
-                                   p.get("minutes"), lt, kickoff_utc,
-                                   league, ccode,
-                                   str(kickoff_utc)[:10] if kickoff_utc else None)
+                                   p.get("minutes"), lt, _as_dt(kickoff_utc),
+                                   league, ccode, _as_date(kickoff_utc))
                 n += 1
             except Exception as exc:
                 logger.warning("[fotmob] 이력 적재 실패 game=%s player=%s: %s",

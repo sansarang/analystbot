@@ -92,6 +92,12 @@ def test_스키마에_이력_표가_있다():
 
 @pytest.mark.asyncio
 async def test_적재할_때_리그와_킥오프를_함께_남긴다():
+    """🔴 [LH-2] **타입까지 단언한다.** 가짜 풀은 값만 받아 적어서 타입을
+    못 잡는다 — 그래서 `$n::date` 에 문자열을 넘긴 결함이 하루에 두 번 났다
+    (ODP-2 아침 · LH-1 밤, 18,507행 갱신 전부 실패).
+    """
+    from datetime import date, datetime
+
     pool = _Pool()
 
     await FM.save_lineup_history(pool, _lineup("standard"),
@@ -100,7 +106,9 @@ async def test_적재할_때_리그와_킥오프를_함께_남긴다():
 
     args = pool.rows[0]
     assert args[8] == "Serie A" and args[9] == "ITA"
-    assert args[10] == "2026-09-14", "kickoff_date 는 날짜만"
+    assert isinstance(args[7], datetime), "TIMESTAMPTZ 에 문자열을 넘기면 안 된다"
+    assert args[10] == date(2026, 9, 14), "$::date 는 date 객체만 받는다"
+    assert not isinstance(args[10], str)
 
 
 @pytest.mark.asyncio
@@ -133,7 +141,10 @@ async def test_역매핑은_날짜별_목록만_쓴다(monkeypatch):
 
     assert out == {"20260914": 42}
     assert not detail_calls, "경기 상세를 부르면 안 된다"
-    assert p.args[0] == (5749678, "Serie A", "ITA", "2026-09-14")
+    from datetime import date
+
+    assert p.args[0] == (5749678, "Serie A", "ITA", date(2026, 9, 14))
+    assert not isinstance(p.args[0][3], str), "역매핑도 date 객체여야 한다"
 
 
 def test_스키마에_리그_칸이_있다():
