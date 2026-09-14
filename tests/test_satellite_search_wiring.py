@@ -28,7 +28,7 @@ def test_단계는_킥오프_75분_경계로_갈린다():
 
 
 @pytest.mark.asyncio
-async def test_league_을_주면_tier_밖_도메인을_열지_않는다(monkeypatch):
+async def test_league_을_주면_tier_순으로_열고_차단은_버린다(monkeypatch):
     opened: list[str] = []
     hits = [
         {"url": "https://calciolecce.it/a", "title": "Napoli formazioni ufficiali", "snippet": "2026"},
@@ -55,8 +55,10 @@ async def test_league_을_주면_tier_밖_도메인을_열지_않는다(monkeypa
     out = await S._tor_supplement(jg, [("Napoli", "q")], league="serie_a",
                                   stage="lineup", kickoff=jg["starts_at"], now=now)
 
-    assert opened == ["https://calciolecce.it/a"], opened
-    assert len(out) == 1
+    # ⚠️ [SCT-9 2026-09-14 사용자 지시] 미상(v.daum.net)은 **버리지 않고**
+    #    tier 4 로 통과한다 — tier1 뒤에 붙는다. 차단(tipico)만 버린다.
+    assert opened == ["https://calciolecce.it/a", "https://v.daum.net/v/1"], opened
+    assert len(out) == 2
 
 
 @pytest.mark.asyncio

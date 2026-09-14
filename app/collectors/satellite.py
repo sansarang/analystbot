@@ -904,6 +904,17 @@ async def extract_facts(articles: list[dict], *, team: str, league: str) -> dict
         got["source"] = str(a.get("url") or "")
         rows.append(got)
     out = merge(rows, league=league)
+    # 🔴 [SCT-9 사용자 지시] **미상으로 열린 도메인의 성적을 남긴다** —
+    #    tier 승격 후보 보고다. "열어 봤는데 쓸모없었다"와 "열었더니 결장이
+    #    나왔다"를 구분해야 표를 넓힐지 판단할 수 있다.
+    from app.engine.scout_config import RANK_UNKNOWN, _domain, rank
+
+    for r in rows:
+        src = str(r.get("source") or "")
+        if rank(src, league) >= RANK_UNKNOWN:
+            logger.info("[scout] 승격후보 %s — out %d · xi %s (%s)",
+                        _domain(src), len(r.get("out") or []),
+                        r.get("xi_status"), team)
     if out is None:
         logger.info("[scout] %s — 추출 0건", team)
     else:

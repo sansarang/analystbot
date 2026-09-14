@@ -29,8 +29,15 @@ FETCH_PER_STAGE = 3      # 한 단계에서 여는 상위 개수
 #: 신선도 상한(시간). 지시문 4-3 ③.
 MAX_AGE_H = {"pre": 48, "lineup": 3}
 
-#: 등급. 낮을수록 먼저 본다. 9 는 미상(목록에 없는 도메인) — fetch 하지 않는다.
+#: 등급. 낮을수록 먼저 본다. 9 는 미상(목록에 없는 도메인).
 RANK_UNKNOWN = 9
+#: 🔴 [SCT-9 2026-09-14 사용자 지시] **미상을 버리지 않는다 — tier 4 로 통과**
+#   시킨다. 실측 2026-09-14: 오늘 프리뷰를 낸 이탈리아 매체 28건 중 24건이
+#   목록에 없어 폐기됐다(eurosport·ilmessaggero·romatoday…). 상위 3건은 tier
+#   순이라 등록 매체가 있으면 미상은 자연히 밀린다.
+#   ⚠️ `blocked`·`js_only` 는 그대로 버린다 — 그쪽은 "모르는 곳"이 아니라
+#      "열면 안 되는 곳"이다.
+RANK_UNLISTED = 4
 
 #: 추출 스키마(지시문 4-4). 이 칸 **외에는 버린다**.
 EXTRACT_SCHEMA = {
@@ -179,7 +186,10 @@ def _tokens(team: str) -> list[str]:
 
 def screen(hit: dict, *, team: str, kickoff, stage: str, now=None) -> Screen:
     """fetch 전 선별(지시문 4-3). 버리는 이유를 **이름으로** 남긴다."""
-    url = hit.get("url") or ""
+    # 🔴 [SCT-9] 차단·js_only 는 **매체 도메인**으로 본다. 구글 RSS 의 `link` 는
+    #    news.google.com 이라 그것으로 보면 베팅 사이트도 통과한다
+    #    (실측 2026-09-14: 미상을 tier 4 로 통과시키자 tipico.de 가 열렸다).
+    url = hit.get("source_url") or hit.get("url") or ""
     if blocked(url):
         return Screen(False, "차단")
     if js_only(url):
@@ -283,7 +293,7 @@ def rank_and_pick(hits: list[dict], *, league: str, stage: str,
        (지시문 4-3 ④). `pre` 에서는 먹지 않는다 — 예상 기사에 "공식"이
        붙어 있을 리 없고, 붙어 있다면 지난 경기 것이다.
     """
-    kept, discard = [], {}
+    kept, discard, unlisted = [], {}, []
     for i, h in enumerate(hits or []):
         if team is not None:
             sc = screen(h, team=team, kickoff=kickoff, stage=stage, now=now)
@@ -302,8 +312,11 @@ def rank_and_pick(hits: list[dict], *, league: str, stage: str,
         #    (news_rss 가 같은 이유로 `<source url>` 을 따로 읽는다).
         r = rank(h.get("source_url") or h.get("url") or "", league)
         if r >= RANK_UNKNOWN:
-            discard["미상"] = discard.get("미상", 0) + 1
-            continue
+            # 🔴 [SCT-9] 미상은 **버리지 않고** tier 4 로 내려 후보에 남긴다.
+            #    나중에 tier 승격 후보로 보고하려고 표시를 남긴다.
+            r = RANK_UNLISTED
+            h["unlisted"] = True
+            unlisted.append(_domain(h.get("source_url") or h.get("url") or ""))
         # 🔴 [SCT-6] 날짜를 모르는 결과는 **한 단계 내린다** — 버리지는 않는다.
         #    본문을 열고 다시 보는 것은 호출부(`body_date_ok`)의 몫이다.
         kept.append((0 if (stage == "lineup" and _confirmed(h.get("title"))) else 1,
@@ -312,6 +325,13 @@ def rank_and_pick(hits: list[dict], *, league: str, stage: str,
     out = [h for _, _, _, h in kept[:FETCH_PER_STAGE]]
     if discard:
         logger.info("[scout] %s %s — 폐기 %s", league, stage, discard)
+    if unlisted:
+        # 🔴 [SCT-9] 목록에 없는 도메인을 **매일 남긴다** — tier 승격 후보다.
+        picked_unlisted = [_domain(h.get("source_url") or h.get("url") or "")
+                           for h in out if h.get("unlisted")]
+        logger.info("[scout] %s %s — 미상 %d건(후보 %s) · 그중 fetch %s",
+                    league, stage, len(unlisted), sorted(set(unlisted))[:8],
+                    picked_unlisted or "없음")
     return (out, discard) if with_discard else out
 
 

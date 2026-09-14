@@ -71,3 +71,37 @@ def test_본문_재검사는_증거가_있을_때만_버린다():
     # 🔴 본문에도 날짜가 없으면 통과다 — 모르는 것을 오래된 것으로 바꾸지 않는다.
     assert SC.body_date_ok("날짜가 없는 본문", kickoff=KICK, now=NOW)[0] is True
     assert SC.body_date_ok("Preview 2021 season", kickoff=KICK, now=NOW)[0] is False
+
+
+# ── SCT-9: 미상은 버리지 않고 tier 4 로 통과 (사용자 지시)
+
+def test_목록에_없는_도메인은_tier4_로_통과한다():
+    """🔴 실측 2026-09-14: 오늘 프리뷰를 낸 이탈리아 매체 28건 중 24건이
+    목록에 없어 폐기됐다. 등록 매체가 있으면 미상은 tier 순으로 자연히 밀린다."""
+    hits = [
+        {"url": "https://news.google.com/a", "source_url": "https://www.unknown-blog.it",
+         "title": "Torino-Roma probabili formazioni", "snippet": "", "published": NOW},
+        {"url": "https://news.google.com/b", "source_url": "https://www.fantacalcio.it",
+         "title": "Torino-Roma le probabili", "snippet": "", "published": NOW},
+    ]
+    picked, disc = SC.rank_and_pick(hits, league="serie_a", stage="pre",
+                                    team="Torino", kickoff=KICK, now=NOW,
+                                    with_discard=True)
+
+    assert "미상" not in disc
+    # tier2(fantacalcio) 가 tier4(미상)보다 먼저다.
+    assert [h["source_url"] for h in picked] == ["https://www.fantacalcio.it",
+                                                 "https://www.unknown-blog.it"]
+    assert picked[1]["unlisted"] is True, "승격 후보 보고용 표시"
+    assert SC.RANK_UNLISTED == 4
+
+
+def test_차단은_매체_도메인으로_본다():
+    """🔴 구글 RSS 의 link 는 news.google.com 이다. 그것으로 차단을 보면
+    베팅 사이트가 통과한다(실측: 미상을 열자 tipico.de 가 열렸다)."""
+    bet = {"url": "https://news.google.com/c", "source_url": "https://tipico.de/x",
+           "title": "Torino-Roma tips", "snippet": "", "published": NOW}
+
+    s = SC.screen(bet, team="Torino", kickoff=KICK, stage="pre", now=NOW)
+
+    assert s.keep is False and s.reason == "차단"
