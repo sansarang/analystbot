@@ -72,3 +72,37 @@ def pinnacle_gap(soft: dict | None, sharp: dict | None, *,
         label = f"샤프 부재 · {label}(소프트북끼리 비교)"
     return {"gap_pp": gap, "side": side, "p_soft": a, "p_sharp": b,
             "label": label, "sharp_absent": bool(sharp_absent)}
+
+
+def _median(vals: list[float]) -> float | None:
+    v = sorted(x for x in vals if x is not None)
+    if not v:
+        return None
+    n = len(v)
+    return v[n // 2] if n % 2 else round((v[n // 2 - 1] + v[n // 2]) / 2, 6)
+
+
+def gap_vs_median(dk: dict | None, books: list[dict] | None) -> dict | None:
+    """[D1-6 사용자 지시] `draftkings` vs **오즈포털 북 중앙값** 차이(%p).
+
+    🔴 **샤프 비교가 아니다.** 오즈포털 북은 전부 소프트북 대역이었다
+       (실측 2026-09-14: 최고 환급률 94.8~95.9%, 피나클급 없음). 그래서
+       라벨에 그 사실을 박는다 — 값만 보고 샤프 대비로 읽는 것을 막는다.
+    ⚠️ 한쪽이라도 없으면 None. 평균으로 대체하지 않는다.
+    """
+    pd = _probs(dk)
+    ps = [_probs(b) for b in (books or [])]
+    ps = [x for x in ps if x]
+    if not pd or not ps:
+        return None
+    side = favored_side(pd)
+    if side is None:
+        return None
+    med = _median([x.get(side) for x in ps])
+    a = pd.get(side)
+    if med is None or a is None:
+        return None
+    gap = round((float(a) - float(med)) * 100, 2)
+    return {"gap_pp": gap, "side": side, "p_dk": a, "p_median": round(med, 4),
+            "n_books": len(ps), "sharp_absent": True,
+            "label": f"샤프 비교 아님 · DK vs 오즈포털 {len(ps)}북 중앙값"}

@@ -301,7 +301,7 @@ def _sides(comp: dict) -> tuple[str, str]:
 
 
 async def fetch_soccer(league_key: str, date_yyyymmdd: str, *,
-                       only_names: set | None = None) -> dict:
+                       only_names: set | None = None, redis=None) -> dict:
     """[D1-5] 그 리그·날짜의 축구 배당. `{경기이름: [행]}`.
 
     🔴 `only_names` 가 비면 **아무 요청도 하지 않는다** — 게이트 대상만
@@ -347,6 +347,17 @@ async def fetch_soccer(league_key: str, date_yyyymmdd: str, *,
                     out[name] = rows
     except Exception as exc:
         logger.warning("[espn_odds] 축구 %s 실패: %s", league_key, exc)
+    # 🔴 [D1-6] 예산 카운터 — 형식은 `llm/ledger.record_call` 과 같다
+    #    (일자 해시 + TTL). 새 방식을 만들지 않는다.
+    if redis is not None and n:
+        try:
+            from datetime import UTC, datetime
+
+            key = f"api_calls:{datetime.now(UTC).date().isoformat()}"
+            await redis.hincrby(key, "espn_soccer", n)
+            await redis.expire(key, 7 * 24 * 3600)
+        except Exception as exc:
+            logger.debug("[espn_odds] 예산 기록 실패: %s", exc)
     logger.info("[espn_odds] 축구 %s %s — 경기 %d · 요청 %d (상한 %d)",
                 league_key, date_yyyymmdd, len(out), n, cap)
     return out

@@ -1269,6 +1269,14 @@ async def _free_odds_snapshot() -> None:
         except Exception as exc:
             logger.warning("[odds] 축구 수집 실패: %s", exc)
             summary.append("soccer=실패")
+        # 🔴 [D1-6 사용자 지시] ESPN 축구(DraftKings)는 **게이트 대상만** 친다.
+        #    대상이 없으면 요청 0이다. 실패해도 다른 수집을 막지 않는다.
+        try:
+            n_dk = await _espn_soccer_snapshot(pool, redis)
+            if n_dk:
+                summary.append(f"dk={n_dk}행")
+        except Exception as exc:
+            logger.warning("[odds] ESPN 축구 실패: %s", exc)
         # [검증 3] 리그별 커버리지를 매 스냅샷마다 남긴다 — 3일 집계의 재료다.
         # 커버리지도 **실제 대상 날짜**로 잰다. 대상이 없으면 재지 않는다 —
         # 분모가 0인 비율을 만들면 그게 곧 오탐이다.
@@ -1288,6 +1296,66 @@ async def _free_odds_snapshot() -> None:
         logger.info("[odds] 무료 수집 완료 — %s", " · ".join(summary))
     finally:
         await redis.aclose()
+
+
+#: [D1-6] 게이트 대상으로 보는 라벨. 🔴 문자열을 베끼지 않는다 — gate 상수다.
+def _gate_target_labels() -> tuple[str, ...]:
+    from app.engine.gate import DOUBT, OVER
+
+    return (OVER, DOUBT)
+
+
+async def _espn_soccer_snapshot(pool, redis) -> int:
+    """[D1-6] 게이트 대상 축구 경기만 ESPN(DraftKings) 배당을 받는다.
+
+    🔴 대상 선정은 **원장(gate_reason)과 더비표**에서 읽는다 — 새 기준을
+       만들지 않는다. 대상이 없으면 요청 0.
+    ⚠️ 예산: 경기당 최대 10요청(`espn_odds.SOCCER_MAX_REQ_PER_GAME`).
+    """
+    from datetime import UTC, datetime
+
+    from app.collectors import espn_odds as E
+    from app.collectors.odds_free import store_rows
+    from app.engine.bigmatch import is_big_match
+    from app.leagues import league_labels
+
+    rows = await pool.fetch(
+        """SELECT g.id, g.league, g.home, g.away, l.gate_reason
+             FROM games g
+             LEFT JOIN pick_ledger l ON l.game_id = g.id AND l.is_final
+            WHERE g.sport = 'soccer' AND g.status = 'scheduled'
+              AND g.starts_at BETWEEN now() - interval '1 hour'
+                                  AND now() + interval '30 hours'""")
+    labels = _gate_target_labels()
+    keys = league_labels()
+    want: dict[str, set] = {}
+    gid_by: dict[str, list] = {}
+    for r in rows:
+        lk = keys.get(r["league"] or "")
+        if not lk or lk not in E.SOCCER_LEAGUES:
+            continue
+        reason = r["gate_reason"] or ""
+        big = is_big_match(league=lk, home=r["home"] or "", away=r["away"] or "")
+        if not (any(reason.startswith(x) for x in labels) or big.big):
+            continue
+        want.setdefault(lk, set()).add(r["home"] or "")
+        gid_by.setdefault(lk, []).append(r)
+    if not want:
+        logger.info("[espn_odds] 축구 — 게이트 대상 0(요청 0)")
+        return 0
+    date = datetime.now(UTC).strftime("%Y%m%d")
+    total = 0
+    for lk, names in want.items():
+        got = await E.fetch_soccer(lk, date, only_names=names, redis=redis)
+        for name, odd_rows in got.items():
+            g = next((x for x in gid_by[lk]
+                      if E._hit(name, x["home"] or "")), None)
+            if g is None:
+                continue
+            total += await store_rows(pool, g["id"], odd_rows, "espn")
+    logger.info("[espn_odds] 축구 — 대상 %d경기 · 적재 %d행",
+                sum(len(v) for v in want.values()), total)
+    return total
 
 
 async def odds_snapshot_job() -> None:
