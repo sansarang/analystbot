@@ -316,12 +316,17 @@ def parse_books(blob: str, *, three_way: bool = False) -> dict[int, dict]:
                     payout[bid] = pay
         # 칸이 다 찬 북만 센다 — 반쪽 배당으로 디빅하면 확률이 부푼다.
         full = {b: v for b, v in books.items() if len(v) == len(keys)}
-        sharp = None
+        sharp = soft = None
         if len(full) >= SHARP_MIN_BOOKS:
             sharp = max(full, key=lambda b: (payout.get(b, 0.0), -b))
+            # 🔴 [D1-3 사용자 지시] 마진이 가장 **넓은** 북이 사설 대용이다.
+            soft = min(full, key=lambda b: (payout.get(b, 0.0), b))
+            if soft == sharp:
+                # 같은 북을 양쪽에 놓으면 gap 이 늘 0이다 — 둘 다 세우지 않는다.
+                sharp = soft = None
         if full:
-            out[eid] = {"books": full, "payout": payout,
-                        "sharp_id": sharp, "n": len(full)}
+            out[eid] = {"books": full, "payout": payout, "sharp_id": sharp,
+                        "soft_id": soft, "n": len(full)}
     return out
 
 
@@ -349,12 +354,14 @@ def to_rows(home: str, away: str, odds: dict,
             if v and team:
                 out.append({"book": f"op-{bid}", "market": "h2h",
                             "side": team, "line": None, "odds": v})
-    sid = (books or {}).get("sharp_id")
-    if sid is not None:
+    for key, label in (("sharp_id", "sharp_proxy"), ("soft_id", "soft_proxy")):
+        pid = (books or {}).get(key)
+        if pid is None:
+            continue
         for side, team in sides:
-            v = ((books.get("books") or {}).get(sid) or {}).get(side)
+            v = ((books.get("books") or {}).get(pid) or {}).get(side)
             if v and team:
-                out.append({"book": "sharp_proxy", "market": "h2h",
+                out.append({"book": label, "market": "h2h",
                             "side": team, "line": None, "odds": v})
     return out
 

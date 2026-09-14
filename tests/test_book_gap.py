@@ -52,7 +52,9 @@ def test_평균_줄은_그대로_남고_북별_줄이_는다():
                       books=books)
 
     kinds = sorted({r["book"] for r in rows})
-    assert kinds == ["oddsportal-avg", "op-1133", "op-549", "op-851", "sharp_proxy"]
+    # [D1-3] soft_proxy 가 더해졌다(마진 최대 북).
+    assert kinds == ["oddsportal-avg", "op-1133", "op-549", "op-851",
+                     "sharp_proxy", "soft_proxy"]
     sharp = [r for r in rows if r["book"] == "sharp_proxy"]
     assert {r["side"]: r["odds"] for r in sharp} == {"Torino": 5.25, "Draw": 3.5,
                                                      "Roma": 1.72}
@@ -82,3 +84,42 @@ def test_강팀_기준으로_사설이_후하면_양수다():
     flip = BG.pinnacle_gap(sharp, soft)
     assert flip["gap_pp"] > BG.GAP_STRONG_PP
     assert flip["label"] == "사설 후함(약팀 파생 후보)"
+
+
+# ── D1-3: soft_proxy (마진 최대 북)
+
+def test_마진이_가장_넓은_북이_사설_대용이다():
+    """🔴 ESPN 축구는 우리 IP 에서 403 이다(실측). 같은 스냅샷 안에서 채운다."""
+    got = OP.parse_books(BLOB, three_way=True)[10692547]
+
+    # payout: 549=94.4 · 851=95 · 1133=92.9  → 최대 851(sharp) · 최소 1133(soft)
+    assert got["sharp_id"] == 851 and got["soft_id"] == 1133
+
+
+def test_샤프와_사설이_같은_북이면_둘_다_없다():
+    """같은 북을 양쪽에 놓으면 gap 이 늘 0이다."""
+    one = ('{"x":{"event":1234567,"odds":[{"positionsWithProviders":{'
+           '"0":{"549":{"odds":[5.25],"highestPayout":94.4},'
+           '"851":{"odds":[5.25],"highestPayout":94.4},'
+           '"1133":{"odds":[5.4],"highestPayout":94.4}},'
+           '"1":{"549":{"odds":{"1":3.8},"highestPayout":94.4},'
+           '"851":{"odds":{"1":3.75},"highestPayout":94.4},'
+           '"1133":{"odds":{"1":3.7},"highestPayout":94.4}},'
+           '"2":{"549":{"odds":{"2":1.65},"highestPayout":94.4},'
+           '"851":{"odds":{"2":1.68},"highestPayout":94.4},'
+           '"1133":{"odds":{"2":1.61},"highestPayout":94.4}}}}],"cnt":1}')
+
+    got = OP.parse_books(one, three_way=True)[1234567]
+
+    assert got["sharp_id"] is None and got["soft_id"] is None
+
+
+def test_soft_proxy_줄이_저장된다():
+    books = OP.parse_books(BLOB, three_way=True)[10692547]
+
+    rows = OP.to_rows("Torino", "Roma", {"home": 5.23, "draw": 3.45, "away": 1.71},
+                      books=books)
+
+    assert "soft_proxy" in {r["book"] for r in rows}
+    soft = {r["side"]: r["odds"] for r in rows if r["book"] == "soft_proxy"}
+    assert soft == {"Torino": 5.4, "Draw": 3.45, "Roma": 1.71}, soft

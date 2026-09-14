@@ -17,8 +17,12 @@ logger = logging.getLogger(__name__)
 #: 이 이상이면 "사설이 강팀을 후하게 부른다" = 약팀 파생 시장 후보(지시문).
 GAP_STRONG_PP = 3.0
 
-#: 사설 기준. ESPN 경로가 적재하는 북 이름이 원본이다.
-SOFT_BOOK = "draftkings"
+#: 사설 기준. 🔴 [D1-3] ESPN 축구는 우리 IP 에서 403 이다(실측 2026-09-14:
+#  site.api.espn.com ita.1·esp.1·eng.1 전부 Access Denied). 그래서 같은
+#  오즈포털 스냅샷의 **마진 최대 북**을 사설 대용으로 쓴다.
+#  ⚠️ ESPN 이 열리는 종목(야구)은 `draftkings` 가 그대로 사설 값이다.
+SOFT_BOOK = "soft_proxy"
+SOFT_BOOK_DK = "draftkings"
 SHARP_BOOK = "sharp_proxy"
 
 
