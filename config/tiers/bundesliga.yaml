@@ -33,14 +33,11 @@ tiers:
   "Hamburger SV": 5
   "RB Leipzig": 2
   "SC Freiburg": 3
-  "SC Paderborn 07": null
+  "SC Paderborn 07": 5
   "SV 07 Elversberg": 5
   "SV Werder Bremen": 3
   "TSG 1899 Hoffenheim": 4
   "VfB Stuttgart": 2
-
-  # 사용자 표에는 있으나 운영 DB 최근 90일에 없던 팀 —
-  # 경기가 생기면 이 이름으로 매칭된다.
   "Heidenheim": 4
   "St Pauli": 4
   "Wolfsburg": 3

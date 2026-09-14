@@ -16,12 +16,18 @@
 season: "2026-27"
 tiers:
   "AC Horsens": null
-  "AGF Aarhus": null
-  "Brondby IF": null
-  "FC Midtjylland": null
-  "FC Nordsjaelland": null
-  "Lyngby": null
-  "OB Odense BK": null
-  "Randers FC": null
-  "Silkeborg IF": null
-  "SonderjyskE": null
+  "AGF Aarhus": 2
+  "Brondby IF": 2
+  "FC Midtjylland": 1
+  "FC Nordsjaelland": 2
+  "Lyngby": 4
+  "OB Odense BK": 4
+  "Randers FC": 3
+  "Silkeborg IF": 3
+  "SonderjyskE": 4
+
+  # 사용자 표에는 있으나 운영 DB 최근 90일에 없던 팀
+  "FC Copenhagen": 1
+  "Fredericia": 5
+  "Vejle": 5
+  "Viborg": 3
