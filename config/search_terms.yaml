@@ -69,3 +69,22 @@ today_words:
   - today
   - 本日
   - i dag
+
+# ── [SCT-7 2026-09-14 사용자 지시] Google News RSS 로케일.
+#
+# 🔴 새로 정하는 값이 아니다 — 위 `terms` 가 **이미 그 언어로** 쓰여 있고,
+#    여기는 같은 사실을 RSS 파라미터 모양으로 적을 뿐이다(세리에A = it/IT).
+# 🔴 `ceid` 는 적지 않는다 — `{gl}:{hl 앞 2자}` 로 코드가 만든다(사본 금지).
+# ⚠️ 덴마크는 `terms` 가 영어다(덴마크어를 지어내지 않았다). 로케일도 그에
+#    맞춰 en/DK 다. 사용자가 덴마크어 검색어를 주면 둘을 함께 바꾼다.
+locales:
+  epl:        {hl: en, gl: GB}
+  la_liga:    {hl: es, gl: ES}
+  serie_a:    {hl: it, gl: IT}
+  bundesliga: {hl: de, gl: DE}
+  j1:         {hl: ja, gl: JP}
+  kleague1:   {hl: ko, gl: KR}
+  denmark:    {hl: en, gl: DK}
+  mlb:        {hl: en, gl: US}
+  kbo:        {hl: ko, gl: KR}
+  npb:        {hl: ja, gl: JP}

@@ -77,6 +77,22 @@ def queries(league: str, team: str, stage: str = "pre") -> list[str]:
     return [t.replace("{team}", str(team or "")).strip() for t in terms]
 
 
+LOCALES: dict[str, dict] = dict(_TERMS_DOC.get("locales") or {})
+
+
+def locale(league: str) -> dict | None:
+    """[SCT-7] 리그 → Google News RSS 로케일. 없으면 None(=RSS 안 쓴다).
+
+    🔴 `ceid` 는 표에 적지 않는다 — `{gl}:{hl 앞 2자}` 규칙으로 만든다.
+       두 곳에 적으면 한쪽만 고쳐진다.
+    """
+    loc = LOCALES.get(league) or {}
+    hl, gl = str(loc.get("hl") or ""), str(loc.get("gl") or "")
+    if not hl or not gl:
+        return None
+    return {"hl": hl, "gl": gl, "ceid": f"{gl}:{hl[:2]}"}
+
+
 @functools.lru_cache(maxsize=64)
 def tor_safe(league: str) -> bool:
     """토르로 보내도 되는가. 🔴 한국어는 거부된다(`is_tor_safe_query` 가 원본)."""
@@ -174,8 +190,12 @@ def screen(hit: dict, *, team: str, kickoff, stage: str, now=None) -> Screen:
         cur = now or datetime.now(timezone.utc)
         if (cur - pub) > timedelta(hours=MAX_AGE_H.get(stage, 48)):
             return Screen(False, "신선도")
-        if not ok_date:
-            return Screen(False, "날짜")
+        # 🔴 [SCT-7] **pubDate 가 곧 날짜 증거다.** 발행 시각을 정확히 알면서
+        #    제목에 "오늘"이 없다고 버리는 것은 같은 사실을 두 번 재는 것이고,
+        #    그 둘째 검사는 증거값이 없다(실측 2026-09-14: 1시간 전 발행된
+        #    "Torino, formazioni ufficiali" 가 날짜 문에서 폐기됐다).
+        #    날짜 문은 pubDate 가 **없을 때** 그 자리를 대신하려고 있던 것이다.
+        #    ⚠️ 지난 연도가 제목에 **명시**된 글은 위에서 이미 걸러졌다.
         return Screen(True, "")
     # pubDate 가 없는 소스(DDG/토르) — 날짜 토큰이 있으면 통과, 없으면 undated.
     return Screen(True, "") if ok_date else Screen(True, "", True)
@@ -246,10 +266,14 @@ def rank_and_pick(hits: list[dict], *, league: str, stage: str,
             if sc.undated:
                 # 🔴 호출부가 본문을 열고 다시 봐야 한다는 표시.
                 h["undated"] = True
-        elif blocked(h.get("url") or "") or js_only(h.get("url") or ""):
+        elif blocked(h.get("source_url") or h.get("url") or "") \
+                or js_only(h.get("source_url") or h.get("url") or ""):
             discard["차단"] = discard.get("차단", 0) + 1
             continue
-        r = rank(h.get("url") or "", league)
+        # 🔴 [SCT-7] 등급은 **매체 도메인**으로 본다. 구글 RSS 의 `link` 는
+        #    news.google.com 리다이렉트라 그것으로 보면 전건이 '미상'이 된다
+        #    (news_rss 가 같은 이유로 `<source url>` 을 따로 읽는다).
+        r = rank(h.get("source_url") or h.get("url") or "", league)
         if r >= RANK_UNKNOWN:
             discard["미상"] = discard.get("미상", 0) + 1
             continue

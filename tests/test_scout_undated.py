@@ -37,11 +37,17 @@ def test_RSS_는_종전_규칙_그대로다():
                      now=NOW).reason == "신선도"
     fresh = _hit(published=NOW - timedelta(hours=2))
     s = SC.screen(fresh, team="Napoli", kickoff=KICK, stage="pre", now=NOW)
-    # 🔴 RSS 는 날짜를 아는 소스다 — undated 로 빠져나가지 않는다.
-    assert s.keep is False and s.reason == "날짜"
-    dated = _hit(snippet="oggi", published=NOW - timedelta(hours=2))
-    assert SC.screen(dated, team="Napoli", kickoff=KICK, stage="pre",
-                     now=NOW) == SC.Screen(True, "")
+    # 🔴 [SCT-7 2026-09-14] **pubDate 가 곧 날짜 증거다.** 발행 시각을 아는데
+    #    제목에 "오늘"이 없다고 버리면 같은 사실을 두 번 재는 것이고, 실측에서
+    #    1시간 전 발행된 공식 라인업 기사가 그렇게 폐기됐다.
+    #    ⚠️ RSS 는 undated 로도 빠지지 않는다 — 날짜를 아는 소스다.
+    assert s == SC.Screen(True, "")
+    stale = _hit(published=NOW - timedelta(hours=100))
+    assert SC.screen(stale, team="Napoli", kickoff=KICK, stage="pre",
+                     now=NOW).reason == "신선도"
+    old_year = _hit(title="Napoli 2021 preview", published=NOW - timedelta(hours=2))
+    assert SC.screen(old_year, team="Napoli", kickoff=KICK, stage="pre",
+                     now=NOW).reason == "날짜", "연도가 명시된 지난 글은 버린다"
 
 
 def test_undated_는_tier_를_한_단계_내린다():

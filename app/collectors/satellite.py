@@ -565,6 +565,102 @@ def _title_hits(title: str, team: str) -> bool:
     return not toks or any(w in t for w in toks)
 
 
+async def rss_hits(query: str, *, league: str, stage: str = "pre",
+                   now=None) -> list[dict]:
+    """[SCT-7] Google News RSS — **현지어 질의 1순위 통로.**
+
+    반환은 `_tor_supplement` 가 쓰는 hit 모양이다:
+    `{url, title, snippet, source, source_url, published(datetime)}`.
+
+    🔴 **BASE·UA·파서를 새로 만들지 않는다** — `news_rss` 가 원본이다.
+    🔴 `source_url`(매체 도메인)을 함께 싣는다. `link` 는 news.google.com
+       리다이렉트라 그것으로 등급을 보면 전건이 '미상'이 된다.
+    ⚠️ `published` 를 **datetime 으로** 넘긴다 — `scout_config.screen` 이 그
+       타입으로 "pubDate 를 아는 소스"(RSS)를 가른다(SCT-6).
+    """
+    from email.utils import parsedate_to_datetime
+
+    import httpx
+
+    from app.collectors.news_rss import BASE, UA, TIMEOUT, parse_feed
+    from app.engine.scout_config import MAX_AGE_H, locale
+
+    loc = locale(league)
+    if not loc or not query:
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True,
+                                     headers={"User-Agent": UA}) as c:
+            r = await c.get(BASE, params={"q": query, **loc})
+            r.raise_for_status()
+            items = parse_feed(r.text, now=now,
+                               max_age_hours=MAX_AGE_H.get(stage, 48))
+    except Exception as exc:
+        logger.warning("[rss] %s 조회 실패 %s: %s", league, query[:40], exc)
+        return []
+    out: list[dict] = []
+    for it in items:
+        pub = None
+        if it.get("published"):
+            try:
+                pub = parsedate_to_datetime(it["published"])
+                if pub.tzinfo is None:
+                    pub = pub.replace(tzinfo=timezone.utc)
+            except (TypeError, ValueError):
+                pub = None
+        out.append({"url": it.get("url") or "", "title": it.get("title") or "",
+                    "snippet": it.get("source") or "",
+                    "source": it.get("source") or "",
+                    "source_url": it.get("source_url") or "",
+                    "published": pub})
+    logger.info("[rss] %s %s — %d건", league, query[:40], len(out))
+    return out
+
+
+async def rss_supplement(jg: dict, queries: list[tuple[str, str]], *,
+                         league: str, stage: str = "pre", kickoff=None,
+                         now=None) -> list[dict]:
+    """[SCT-7] RSS 결과를 **같은 문**(rank_and_pick)에 태워 상위만 연다.
+
+    🔴 선별 규칙을 여기 복사하지 않는다 — 토르 경로와 **같은 함수**를 쓴다.
+    """
+    from app.engine.scout_config import rank_and_pick
+
+    out: list[dict] = []
+    seen: set[str] = set()
+    dropped = 0
+    for team, q in queries:
+        hits = await rss_hits(q, league=league, stage=stage, now=now)
+        if not hits:
+            continue
+        picked, disc = rank_and_pick(hits, league=league, stage=stage, team=team,
+                                     kickoff=kickoff, now=now, with_discard=True)
+        dropped += sum(disc.values())
+        for h in picked:
+            u = h.get("url") or ""
+            if not u or u in seen:
+                continue
+            seen.add(u)
+            body = await _fetch_article_body(u)
+            if h.get("undated") and body:
+                from app.engine.scout_config import body_date_ok
+
+                ok, why = body_date_ok(body, kickoff=kickoff, now=now)
+                if not ok:
+                    dropped += 1
+                    logger.info("[rss] 본문 재검사 폐기 %s — %s", u, why)
+                    continue
+            out.append(_article(
+                title=h.get("title") or "", url=u,
+                source=h.get("source") or "Google News",
+                team=team, body=body or h.get("title") or "",
+                age_h=None))
+    if out or dropped:
+        logger.info("[rss] %s@%s +%d건 · 폐기 %d건",
+                    jg.get("away"), jg.get("home"), len(out), dropped)
+    return out
+
+
 async def _tor_supplement(jg: dict, queries: list[tuple[str, str]], *,
                           league: str | None = None, stage: str = "pre",
                           kickoff=None, now=None) -> list[dict]:

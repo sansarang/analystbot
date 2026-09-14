@@ -424,7 +424,7 @@ async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None,
     from app.collectors.satellite import (_article, _daum_fetch,
                                           _fetch_article_body, _tor_supplement,
                                           _yahoo_fetch, parse_daum_news,
-                                          parse_yahoo_news)
+                                          parse_yahoo_news, rss_supplement)
 
     league = jg.get("league") or ""
     kind = _SOCCER_SOURCE.get(league)
@@ -509,9 +509,20 @@ async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None,
     #       통과했다. 그래서 **경기당 2질의**(팀당 1)로 묶는다. 늘리면 전부 막힌다.
     #    ⚠️ `tor_search` 머리말대로 **순수 보강**이다 — 주력은 위 뉴스검색이다.
     #    ⚠️ 한국어는 나가지 않는다(`is_tor_safe_query` 가 거부).
-    out += await _tor_supplement(jg, _qs, league=lkey if lkey else None,
-                                 stage=stage, kickoff=jg.get("starts_at"),
-                                 now=now)
+    # 🔴 [SCT-7 2026-09-14 사용자 지시] **RSS 가 1순위다.** pubDate 를 싣고
+    #    속도 제한이 없다. DDG/토르는 RSS 가 0건일 때만 부른다 —
+    #    실측 2026-09-14: DDG 는 경기당 2질의에도 403 을 줬다.
+    _rss = await rss_supplement(jg, _qs, league=lkey or "", stage=stage,
+                                kickoff=jg.get("starts_at"), now=now) \
+        if lkey else []
+    out += _rss
+    if not _rss:
+        out += await _tor_supplement(jg, _qs, league=lkey if lkey else None,
+                                     stage=stage, kickoff=jg.get("starts_at"),
+                                     now=now)
+    else:
+        logger.info("[satellite] 축구 %s %s@%s — RSS %d건이라 토르 보강 생략",
+                    league, jg.get("away"), jg.get("home"), len(_rss))
     logger.info("[satellite] 축구 %s %s@%s 기사 %d건",
                 league, jg.get("away"), jg.get("home"), len(out))
     return out
