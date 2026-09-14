@@ -71,12 +71,17 @@ async def test_티어가_비면_미기입으로_남는다():
 
 
 @pytest.mark.asyncio
-async def test_기준선_시장이_없으면_기록하지_않는다():
+async def test_기준선_시장이_없어도_확률을_지어내지_않는다():
+    """⚠️ [GATE-3 2026-09-14] 종전 계약은 "아무것도 쓰지 않는다" 였다. 사용자
+    지시로 **사유는 남기되 값은 비운다** 로 바뀌었다 — 아래 GATE-3 테스트가
+    본문을 단언한다. 여기서는 **없는 값을 채우지 않는다**만 지킨다."""
     conn = _Conn({"sport": "soccer", "league": "세리에A",
                   "home": "AC Milan", "away": "AS Roma"}, [])
 
-    assert await PL.record_prior(conn, game_id=1) is None
-    assert not conn.executed
+    await PL.record_prior(conn, game_id=1)
+
+    assert len(conn.executed) == 1
+    assert conn.executed[0][1][3] is None, "시장 확률을 지어내지 않는다"
 
 
 def test_티어_파일_키는_야구가_종목_축구가_리그다():
@@ -93,3 +98,27 @@ def test_판정_기록이_사전값을_부른다():
     calls = [n for n in ast.walk(fn)
              if isinstance(n, ast.Call) and getattr(n.func, "id", "") == "record_prior"]
     assert len(calls) == 1
+
+
+# ── GATE-3: 기준선이 없어도 사유를 남긴다
+
+@pytest.mark.asyncio
+async def test_기준선_배당이_없어도_사유를_원장에_남긴다():
+    """🔴 [GATE-3 사용자 지시] 조용히 빠져나가면 "게이트를 안 돌린 경기"와
+    "배당이 없어 못 돌린 경기"를 나중에 구분할 수 없다.
+
+    ⚠️ 시장 확률을 지어내지 않는다 — `gate.classify(prior, None)` 이 돌려주는
+       **보드 고정**을 그대로 쓴다(판정 규칙은 원본이 정한다).
+    """
+    conn = _Conn({"sport": "soccer", "league": "세리에A",
+                  "home": "FC Internazionale Milano", "away": "Udinese Calcio"}, [])
+
+    out = await PL.record_prior(conn, game_id=7434)
+
+    assert len(conn.executed) == 1, "기록 없이 빠져나가면 안 된다"
+    _, args = conn.executed[0]
+    assert args[0] == 7434
+    assert args[3] is None, "없는 시장 확률을 채우지 않는다"
+    assert args[4].split(" · ")[0] == G.BOARD
+    assert "기준선" in args[4], "왜 못 쟀는지가 남아야 한다"
+    assert out is not None and out["label"] == G.BOARD

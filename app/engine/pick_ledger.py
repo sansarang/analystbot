@@ -678,18 +678,26 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
         snaps = _snap_probs(rows)
         prov = _best_provider(snaps)
         base = M.baseline([v for k, v in snaps.items() if k[0] == prov]) if prov else None
-        if base is None:
-            logger.info("[gate] game=%s — 기준선 시장 확률이 없다. "
-                        "사전값만으로 판정하지 않는다", game_id)
-            return None
         from app.engine.market_edge import implied_probs
 
-        mp = implied_probs(base["odds"]) or {}
-        mkt = ((mp.get("home"), mp.get("draw"), mp.get("away"))
-               if sport == "soccer" else mp.get("home"))
+        # 🔴 [GATE-3 2026-09-14 사용자 지시] 기준선이 없어도 **사유를 남긴다.**
+        #    종전에는 조용히 빠져나가 원장이 비었고, 그러면 "게이트를 안 돌린
+        #    경기"와 "배당이 없어 못 돌린 경기"를 나중에 구분할 수 없다.
+        #    ⚠️ 시장 확률을 지어내지 않는다 — `gate.classify` 에 None 을 주면
+        #       그쪽이 **보드 고정**을 돌려준다. 판정 규칙은 원본이 정한다.
+        mp = implied_probs(base["odds"]) if base else None
+        if mp:
+            mkt = ((mp.get("home"), mp.get("draw"), mp.get("away"))
+                   if sport == "soccer" else mp.get("home"))
+        else:
+            mkt = None
         v = G.classify(pri, mkt, sport)
+        why = v.reason if mp else (
+            f"{v.reason} (이름표 붙은 기준선 스냅샷 없음"
+            + (f" · 소스 {prov}" if prov else " · 배당 0건") + ")")
         await conn.execute(_PRIOR_SAVE, game_id, float(p_home), src,
-                           mp.get("home"), f"{v.label} · {v.reason}")
+                           (mp or {}).get("home"), f"{v.label} · {why}")
+        mp = mp or {}
     logger.info("[gate] game=%s %s vs %s — 사전값 %.3f(%s) · 시장 %.3f · "
                 "%s gap=%s side=%s", game_id, g["home"], g["away"],
                 float(p_home), src, float(mp.get("home") or 0), v.label,
