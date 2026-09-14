@@ -652,6 +652,23 @@ async def gather(jg: dict, redis, *, client=None, now: datetime | None = None,
     if sport == "kbo":
         articles = await _kbo_official(jg, redis) + articles
     await _write_cache(redis, sport, gid, articles)
+    # 🔴 [SCT-5] **추출은 축구만.** 야구 스키마(타순·등판)는 4-4 에 없고,
+    #    없는 칸을 억지로 채우면 그게 곧 거짓 재료가 된다.
+    #    ⚠️ 추출이 실패해도 기사 수집 결과(반환값)는 그대로다.
+    if sport == "soccer":
+        from app.leagues import league_labels
+
+        lkey = league_labels().get(jg.get("league") or "") or ""
+        facts: dict = {}
+        for side in ("home", "away"):
+            team = jg.get(side) or ""
+            if not team:
+                continue
+            mine = [a for a in articles if (a.get("team") or "") == team]
+            got = await extract_facts(mine, team=team, league=lkey)
+            if got:
+                facts[side] = got
+        await _write_extract(redis, sport, gid, facts)
     return len(articles)
 
 
@@ -679,6 +696,103 @@ async def _kbo_official(jg: dict, redis) -> list[dict]:
     except Exception as exc:
         logger.warning("[satellite] KBO 공시 델타 실패 — 검색 재료만 쓴다: %s", exc)
         return []
+
+
+#: [SCT-5] 추출 캐시 키. 기사 캐시와 **다른 키**다 — 원문(기사)과 해석(추출)을
+#  한 칸에 섞으면 어느 쪽이 실패했는지 못 가른다.
+EXTRACT_KEY = "scout:{sport}:{game_id}"
+
+
+def _extract_key(sport: str, game_id) -> str:
+    return EXTRACT_KEY.format(sport=(sport or "").lower(), game_id=game_id)
+
+
+def _extract_prompt(team: str, body: str) -> str:
+    """추출 프롬프트. 🔴 스키마를 손으로 적지 않는다 — `EXTRACT_SCHEMA` 에서 만든다."""
+    from app.engine.scout_config import EXTRACT_SCHEMA
+
+    keys = ", ".join(f'"{k}"' for k in EXTRACT_SCHEMA)
+    return (
+        "다음 기사에서 경기 전 정보만 뽑아 JSON 하나로 답한다.\n"
+        f"허용된 칸은 이것뿐이다: {keys}\n"
+        "규칙\n"
+        "1. 기사에 없는 것은 만들지 않는다. 모르면 빈 목록·빈 문자열.\n"
+        "2. 전적·감독 예상 스코어·팬 반응·베팅 팁은 뽑지 않는다.\n"
+        "3. xi_status 는 'predicted' 또는 'official' 둘 중 하나다.\n"
+        "4. notes 는 한 줄이다.\n"
+        "5. JSON 만 출력한다.\n"
+        f"[대상 팀] {team}\n[기사]\n{body[:4000]}"
+    )
+
+
+async def extract_facts(articles: list[dict], *, team: str, league: str) -> dict | None:
+    """[SCT-5] 기사 본문 → 지시문 4-4 스키마 JSON. **무료 사슬만 쓴다.**
+
+    🔴 스키마 밖은 `scout_config.validate` 가 버린다. 여러 소스는
+       `merge` 가 tier 높은 쪽으로 합치고 충돌이면 `conflict=true` 를 남긴다.
+    🔴 실패해도 예외를 올리지 않는다 — 위성은 재료 수집이고, 추출 실패가
+       기사 수집을 되돌리면 안 된다.
+    ⚠️ 추론을 끈다(role="form"). 구조화 출력이라 사고가 예산만 먹는다
+       (실측 근거는 `team_form._complete_free` 머리말).
+    """
+    from app.engine.scout_config import FETCH_PER_STAGE, merge, validate
+    from app.engine.team_form import _complete_free, parse_json_object
+    from app.llm.judge_route import chain
+
+    rows: list[dict] = []
+    for a in [x for x in (articles or []) if (x.get("body") or "").strip()][:FETCH_PER_STAGE]:
+        try:
+            raw = await _complete_free(chain("form"),
+                                       _extract_prompt(team, a.get("body") or ""),
+                                       1024, "form")
+        except Exception as exc:
+            logger.warning("[scout] 추출 호출 실패 %s: %s", team, exc)
+            continue
+        got = validate(parse_json_object(raw) or {}) if raw else None
+        if got is None:
+            logger.info("[scout] 추출 폐기 — 팀 칸이 없거나 JSON 이 아니다 (%s)",
+                        a.get("url"))
+            continue
+        got["source"] = str(a.get("url") or "")
+        rows.append(got)
+    out = merge(rows, league=league)
+    if out is None:
+        logger.info("[scout] %s — 추출 0건", team)
+    else:
+        logger.info("[scout] %s 추출 — out %d · xi %s · 소스 %d건%s",
+                    team, len(out.get("out") or []), out.get("xi_status"),
+                    len(rows), " · 충돌" if out.get("conflict") else "")
+    return out
+
+
+async def _write_extract(redis, sport: str, game_id, payload: dict) -> None:
+    """추출 결과를 **기사와 다른 키**에 남긴다. 없으면 쓰지 않는다."""
+    if redis is None or game_id is None or not payload:
+        return
+    try:
+        await redis.set(_extract_key(sport, game_id),
+                        json.dumps({"gathered_at": datetime.now(timezone.utc).isoformat(),
+                                    "teams": payload}, ensure_ascii=False),
+                        ex=CACHE_TTL)
+    except Exception as exc:
+        logger.warning("[scout] 추출 기록 실패 %s:%s — %s", sport, game_id, exc)
+
+
+async def read_extract(redis, sport: str, game_id) -> dict:
+    """저장된 추출 JSON. 없으면 빈 dict — 0 으로 읽지 않는다."""
+    if redis is None or game_id is None:
+        return {}
+    try:
+        raw = await redis.get(_extract_key(sport, game_id))
+    except Exception as exc:
+        logger.debug("[scout] 추출 읽기 실패 %s:%s — %s", sport, game_id, exc)
+        return {}
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw) or {}
+    except Exception:
+        return {}
 
 
 async def _write_cache(redis, sport: str, game_id, articles: list[dict]) -> None:
