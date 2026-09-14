@@ -13,28 +13,40 @@
 # ⚠️ 나중에 clubelo·Dixon-Coles 가 오면 이 파일을 **대체**한다
 #    (모델 우선, 티어는 폴백). 그때 `prior_src` 가 "tier"→"elo"|"dc" 로 바뀐다.
 
+# 🔴 [2026-09-14] 값은 **사용자가 준 표** 그대로다 (페이블 사전값,
+#    2026-27 / 2026 시즌). Claude Code 가 티어를 만들지 않았다.
+#    이름은 운영 DB 표기이고, 표의 짧은 이름과는 기계 매칭했다.
+#    매칭 안 된 팀은 **null 로 남겼다** — 추측해 채우지 않는다.
+
 season: "2026-27"
 tiers:
-  "AFC Bournemouth": null
-  "Arsenal FC": null
-  "Aston Villa": null
-  "Aston Villa FC": null
-  "Bournemouth": null
-  "Brentford FC": null
-  "Brighton & Hove Albion FC": null
-  "Brighton and Hove Albion": null
-  "Chelsea FC": null
-  "Coventry City FC": null
-  "Crystal Palace FC": null
-  "Everton FC": null
-  "Fulham FC": null
-  "Hull City AFC": null
-  "Ipswich Town FC": null
-  "Liverpool FC": null
-  "Manchester City": null
-  "Manchester City FC": null
-  "Manchester United FC": null
-  "Newcastle United FC": null
-  "Nottingham Forest FC": null
-  "Sunderland AFC": null
-  "Tottenham Hotspur FC": null
+  "AFC Bournemouth": 3
+  "Arsenal FC": 1
+  "Aston Villa": 2
+  "Aston Villa FC": 2
+  "Bournemouth": 3
+  "Brentford FC": 3
+  "Brighton & Hove Albion FC": 3
+  "Brighton and Hove Albion": 3
+  "Chelsea FC": 2
+  "Coventry City FC": 5
+  "Crystal Palace FC": 3
+  "Everton FC": 3
+  "Fulham FC": 3
+  "Hull City AFC": 5
+  "Ipswich Town FC": 5
+  "Liverpool FC": 1
+  "Manchester City": 1
+  "Manchester City FC": 1
+  "Manchester United FC": 2
+  "Newcastle United FC": 2
+  "Nottingham Forest FC": 3
+  "Sunderland AFC": 5
+  "Tottenham Hotspur FC": 2
+
+  # 사용자 표에는 있으나 운영 DB 최근 90일에 없던 팀 —
+  # 경기가 생기면 이 이름으로 매칭된다.
+  "Burnley": 5
+  "Leeds": 4
+  "West Ham": 3
+  "Wolves": 4

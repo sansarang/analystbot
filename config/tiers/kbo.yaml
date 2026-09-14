@@ -13,15 +13,20 @@
 # ⚠️ 나중에 clubelo·Dixon-Coles 가 오면 이 파일을 **대체**한다
 #    (모델 우선, 티어는 폴백). 그때 `prior_src` 가 "tier"→"elo"|"dc" 로 바뀐다.
 
+# 🔴 [2026-09-14] 값은 **사용자가 준 표** 그대로다 (페이블 사전값,
+#    2026-27 / 2026 시즌). Claude Code 가 티어를 만들지 않았다.
+#    이름은 운영 DB 표기이고, 표의 짧은 이름과는 기계 매칭했다.
+#    매칭 안 된 팀은 **null 로 남겼다** — 추측해 채우지 않는다.
+
 season: "2026-27"
 tiers:
-  "Doosan Bears": null
-  "Hanwha Eagles": null
-  "KT Wiz": null
-  "Kia Tigers": null
-  "Kiwoom Heroes": null
-  "LG Twins": null
-  "Lotte Giants": null
-  "NC Dinos": null
-  "SSG Landers": null
-  "Samsung Lions": null
+  "Doosan Bears": 2
+  "Hanwha Eagles": 3
+  "KT Wiz": 1
+  "Kia Tigers": 2
+  "Kiwoom Heroes": 5
+  "LG Twins": 1
+  "Lotte Giants": 4
+  "NC Dinos": 2
+  "SSG Landers": 3
+  "Samsung Lions": 1

@@ -13,17 +13,27 @@
 # ⚠️ 나중에 clubelo·Dixon-Coles 가 오면 이 파일을 **대체**한다
 #    (모델 우선, 티어는 폴백). 그때 `prior_src` 가 "tier"→"elo"|"dc" 로 바뀐다.
 
+# 🔴 [2026-09-14] 값은 **사용자가 준 표** 그대로다 (페이블 사전값,
+#    2026-27 / 2026 시즌). Claude Code 가 티어를 만들지 않았다.
+#    이름은 운영 DB 표기이고, 표의 짧은 이름과는 기계 매칭했다.
+#    매칭 안 된 팀은 **null 로 남겼다** — 추측해 채우지 않는다.
+
 season: "2026-27"
 tiers:
   "Bucheon FC 1995": null
-  "Daejeon Citizen": null
-  "FC Anyang": null
-  "FC Seoul": null
-  "Gangwon FC": null
-  "Gwangju FC": null
+  "Daejeon Citizen": 2
+  "FC Anyang": 4
+  "FC Seoul": 3
+  "Gangwon FC": 2
+  "Gwangju FC": 3
   "Incheon United": null
-  "Jeju United FC": null
-  "Jeonbuk Hyundai Motors": null
-  "Pohang Steelers": null
-  "Sangju Sangmu FC": null
-  "Ulsan Hyundai FC": null
+  "Jeju United FC": 4
+  "Jeonbuk Hyundai Motors": 1
+  "Pohang Steelers": 2
+  "Sangju Sangmu FC": 2
+  "Ulsan Hyundai FC": 1
+
+  # 사용자 표에는 있으나 운영 DB 최근 90일에 없던 팀 —
+  # 경기가 생기면 이 이름으로 매칭된다.
+  "Daegu": 4
+  "Suwon FC": 3

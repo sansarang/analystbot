@@ -13,25 +13,35 @@
 # ⚠️ 나중에 clubelo·Dixon-Coles 가 오면 이 파일을 **대체**한다
 #    (모델 우선, 티어는 폴백). 그때 `prior_src` 가 "tier"→"elo"|"dc" 로 바뀐다.
 
+# 🔴 [2026-09-14] 값은 **사용자가 준 표** 그대로다 (페이블 사전값,
+#    2026-27 / 2026 시즌). Claude Code 가 티어를 만들지 않았다.
+#    이름은 운영 DB 표기이고, 표의 짧은 이름과는 기계 매칭했다.
+#    매칭 안 된 팀은 **null 로 남겼다** — 추측해 채우지 않는다.
+
 season: "2026-27"
 tiers:
-  "Athletic Club": null
-  "CA Osasuna": null
-  "Club Atlético de Madrid": null
-  "Deportivo Alavés": null
-  "Elche CF": null
-  "FC Barcelona": null
-  "Getafe CF": null
-  "Levante UD": null
-  "Málaga CF": null
-  "RC Celta de Vigo": null
-  "RC Deportivo La Coruña": null
-  "RCD Espanyol de Barcelona": null
-  "Rayo Vallecano de Madrid": null
-  "Real Betis Balompié": null
-  "Real Madrid CF": null
+  "Athletic Club": 2
+  "CA Osasuna": 3
+  "Club Atlético de Madrid": 2
+  "Deportivo Alavés": 4
+  "Elche CF": 5
+  "FC Barcelona": 1
+  "Getafe CF": 3
+  "Levante UD": 5
+  "Málaga CF": 5
+  "RC Celta de Vigo": 3
+  "RC Deportivo La Coruña": 5
+  "RCD Espanyol de Barcelona": 4
+  "Rayo Vallecano de Madrid": 3
+  "Real Betis Balompié": 2
+  "Real Madrid CF": 1
   "Real Racing Club de Santander": null
-  "Real Sociedad de Fútbol": null
-  "Sevilla FC": null
-  "Valencia CF": null
-  "Villarreal CF": null
+  "Real Sociedad de Fútbol": 3
+  "Sevilla FC": 3
+  "Valencia CF": 3
+  "Villarreal CF": 2
+
+  # 사용자 표에는 있으나 운영 DB 최근 90일에 없던 팀 —
+  # 경기가 생기면 이 이름으로 매칭된다.
+  "Girona": 4
+  "Mallorca": 4

@@ -13,7 +13,33 @@
 # ⚠️ 나중에 clubelo·Dixon-Coles 가 오면 이 파일을 **대체**한다
 #    (모델 우선, 티어는 폴백). 그때 `prior_src` 가 "tier"→"elo"|"dc" 로 바뀐다.
 
+# 🔴 [2026-09-14] 값은 **사용자가 준 표** 그대로다 (페이블 사전값,
+#    2026-27 / 2026 시즌). Claude Code 가 티어를 만들지 않았다.
+#    이름은 운영 DB 표기이고, 표의 짧은 이름과는 기계 매칭했다.
+#    매칭 안 된 팀은 **null 로 남겼다** — 추측해 채우지 않는다.
+
 season: "2026-27"
 tiers:
-  "FC Machida Zelvia": null
-  "Urawa Red Diamonds": null
+  "FC Machida Zelvia": 2
+  "Urawa Red Diamonds": 2
+
+  # 사용자 표에는 있으나 운영 DB 최근 90일에 없던 팀 —
+  # 경기가 생기면 이 이름으로 매칭된다.
+  "Avispa Fukuoka": 3
+  "Cerezo Osaka": 3
+  "FC Tokyo": 3
+  "Gamba Osaka": 3
+  "JEF Chiba": 5
+  "Kashima": 1
+  "Kashiwa": 4
+  "Kawasaki": 2
+  "Kyoto": 3
+  "Nagoya": 3
+  "Okayama": 5
+  "Sanfrecce Hiroshima": 2
+  "Shimizu": 5
+  "Shonan": 4
+  "Tokyo Verdy": 4
+  "Vissel Kobe": 1
+  "Yokohama F Marinos": 2
+  "Yokohama FC": 5
