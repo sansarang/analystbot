@@ -225,3 +225,128 @@ async def fetch_slate(date: str, sport: str = "mlb",
             logger.warning("[espn_odds] 경기 조회 실패 %s: %s", url[-30:], exc)
     logger.info("[espn_odds] %s %s — 배당 확보 %d경기", sport.upper(), date, len(out))
     return out
+
+
+# ── [D1-5 2026-09-14 사용자 지시] 축구 배당 — 게이트 대상만 ─────────────
+#
+# 🔴 **주소는 실측으로 갈렸다**: site.api.espn.com 은 403(우리 egress IP),
+#    sports.core.api.espn.com 은 200. 아래는 core 경로다.
+# 🔴 **축구는 미국식 배당만 온다**(`moneyLine: -500`). 야구는 decimal 이
+#    오므로 `_decimal` 이 환산을 거부한다 — 그 규약을 깨지 않으려고 축구
+#    전용 파서를 따로 둔다.
+
+#: 사용자가 준 리그 코드.
+SOCCER_LEAGUES = {"epl": "eng.1", "la_liga": "esp.1", "serie_a": "ita.1",
+                  "bundesliga": "ger.1", "ligue1": "fra.1", "eredivisie": "ned.1",
+                  "kleague1": "kor.1", "j1": "jpn.1"}
+
+#: 경기당 요청 상한(사용자 지시: 5시점 × 1~2).
+SOCCER_MAX_REQ_PER_GAME = 10
+
+
+def from_american(v) -> float | None:
+    """미국식 → 소수배당. 🔴 **축구에서만** 쓴다(야구는 decimal 이 온다).
+
+    항등식이라 추측이 아니다: 음수 −a → 1 + 100/a · 양수 +b → 1 + b/100.
+    """
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    if f == 0:
+        return None
+    dec = 1 + (100.0 / abs(f)) if f < 0 else 1 + (f / 100.0)
+    return round(dec, 3) if dec > 1.0 else None
+
+
+def _ml(block) -> float | None:
+    """`{"moneyLine": -500}` 또는 숫자. 없으면 None."""
+    if isinstance(block, dict):
+        return from_american(block.get("moneyLine"))
+    return from_american(block)
+
+
+def parse_soccer_odds(item: dict, home: str, away: str) -> list[dict]:
+    """odds 항목 1건 → 적재 행(홈·무·원정). 라이브 북은 버린다."""
+    book = ((item.get("provider") or {}).get("name") or "espn").lower()
+    if is_live_book(book):
+        return []
+    book = book.replace(" ", "")          # "Bet 365" → "bet365"
+    out = []
+    for key, team in (("homeTeamOdds", home), ("drawOdds", "Draw"),
+                      ("awayTeamOdds", away)):
+        dec = _ml(item.get(key))
+        if dec is not None and team:
+            out.append({"book": book, "market": "h2h", "side": team,
+                        "line": None, "odds": dec})
+    return out
+
+
+def _hit(name: str, want: str) -> bool:
+    """ESPN 경기 이름에 우리 팀 이름 조각이 들어 있는가. 퍼지 금지."""
+    n, w = (name or "").lower(), (want or "").lower()
+    return bool(w) and any(t in n for t in w.split() if len(t) > 2)
+
+
+def _sides(comp: dict) -> tuple[str, str]:
+    home = away = ""
+    for t in comp.get("competitors") or []:
+        nm = ((t.get("team") or {}).get("displayName")
+              or (t.get("team") or {}).get("name") or "")
+        if (t.get("homeAway") or "") == "home":
+            home = nm
+        elif (t.get("homeAway") or "") == "away":
+            away = nm
+    return home, away
+
+
+async def fetch_soccer(league_key: str, date_yyyymmdd: str, *,
+                       only_names: set | None = None) -> dict:
+    """[D1-5] 그 리그·날짜의 축구 배당. `{경기이름: [행]}`.
+
+    🔴 `only_names` 가 비면 **아무 요청도 하지 않는다** — 게이트 대상만
+       친다는 예산 규칙이 여기서 지켜진다(사용자 지시).
+    ⚠️ 실패는 결측이다. 요청 수를 로그에 남긴다.
+    """
+    import httpx
+
+    code = SOCCER_LEAGUES.get(league_key)
+    if not code or not only_names:
+        logger.info("[espn_odds] 축구 %s — 대상 없음(요청 0)", league_key)
+        return {}
+    base = f"https://sports.core.api.espn.com/v2/sports/soccer/leagues/{code}"
+    cap = SOCCER_MAX_REQ_PER_GAME * max(1, len(only_names))
+    out: dict = {}
+    n = 0
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True,
+                                     headers={"User-Agent": UA}) as c:
+            r = await c.get(f"{base}/events", params={"dates": date_yyyymmdd})
+            n += 1
+            for it in (r.json() or {}).get("items") or []:
+                if n >= cap:
+                    logger.warning("[espn_odds] 축구 %s — 요청 상한 도달(%d)",
+                                   league_key, n)
+                    break
+                ev = (await c.get(it["$ref"])).json()
+                n += 1
+                name = ev.get("name") or ""
+                if not any(_hit(name, x) for x in only_names):
+                    continue
+                comp = (ev.get("competitions") or [{}])[0]
+                ref = (comp.get("odds") or {}).get("$ref")
+                if not ref:
+                    continue
+                od = (await c.get(ref)).json()
+                n += 1
+                home, away = _sides(comp)
+                rows = []
+                for o in (od or {}).get("items") or []:
+                    rows += parse_soccer_odds(o, home, away)
+                if rows:
+                    out[name] = rows
+    except Exception as exc:
+        logger.warning("[espn_odds] 축구 %s 실패: %s", league_key, exc)
+    logger.info("[espn_odds] 축구 %s %s — 경기 %d · 요청 %d (상한 %d)",
+                league_key, date_yyyymmdd, len(out), n, cap)
+    return out
