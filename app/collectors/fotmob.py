@@ -257,3 +257,76 @@ async def attach(jg: dict, *, redis=None, date_yyyymmdd: str | None = None) -> d
 def _n(lu: dict, side: str) -> str:
     v = (lu.get(side) or {}).get("unavailable")
     return "모름" if v is None else str(len(v))
+
+
+#: [FOT-5] 소급 적재 대상 국가 코드(사용자 지시).
+#  🔴 리그 **이름**으로 거르지 않는다 — "Serie A" 는 이탈리아와 에콰도르가
+#     같이 쓴다(실측 2026-09-14: Delfín vs Técnico Universitario 가 섞였다).
+BACKFILL_CCODES = ("ITA", "ESP", "ENG", "GER", "FRA", "NED", "KOR", "JPN", "POR")
+
+_HISTORY_SQL = """
+    INSERT INTO lineup_history (game_id, team_id, player_id, player_name,
+                                started, minutes, lineup_type, kickoff_utc)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    ON CONFLICT (game_id, team_id, player_id, lineup_type) DO UPDATE
+      SET started = EXCLUDED.started,
+          minutes = COALESCE(EXCLUDED.minutes, lineup_history.minutes),
+          player_name = EXCLUDED.player_name,
+          captured_at = now()
+"""
+
+
+async def save_lineup_history(pool, lineup: dict, *, kickoff_utc=None) -> int:
+    """[FOT-5] 선발·벤치를 이력 표에 남긴다. 반환 적재 행 수.
+
+    🔴 **선수 id 가 없으면 건너뛴다.** 0을 키로 쓰면 서로 다른 선수가 한
+       사람이 된다(실측: 일부 리그에 `id=0` 이 있다).
+    ⚠️ `lineup_type` 을 그대로 남긴다 — confirmed(T-60 이후)와 standard
+       (경기 후)를 **따로** 세야 출장률이 정직하다.
+    """
+    if pool is None or not lineup:
+        return 0
+    gid, lt = lineup.get("match_id"), lineup.get("lineup_type")
+    if gid is None or not lt:
+        return 0
+    n = 0
+    for side in ("home", "away"):
+        box = lineup.get(side) or {}
+        tid = box.get("team_id")
+        rows = [(p, True) for p in (box.get("starters") or [])]
+        rows += [(p, False) for p in (box.get("bench") or [])]
+        for p, started in rows:
+            pid = p.get("id")
+            if not pid:
+                continue
+            try:
+                await pool.execute(_HISTORY_SQL, int(gid), tid, int(pid),
+                                   p.get("name") or "", started,
+                                   p.get("minutes"), lt, kickoff_utc)
+                n += 1
+            except Exception as exc:
+                logger.warning("[fotmob] 이력 적재 실패 game=%s player=%s: %s",
+                               gid, pid, exc)
+    if n:
+        logger.info("[fotmob] 이력 %d행 (match=%s %s)", n, gid, lt)
+    return n
+
+
+async def backfill(pool, dates: list[str], *, ccodes=BACKFILL_CCODES) -> dict:
+    """[FOT-5] 과거 날짜의 확정 XI 를 이력 표에 소급 적재한다.
+
+    반환 `{리그: 적재 경기 수}`. 🔴 국가 코드로 거른다(이름 겹침 실측).
+    """
+    out: dict = {}
+    for d in dates:
+        rows = [r for r in await slate(d) if r.get("ccode") in ccodes]
+        for r in rows:
+            lu = await match_lineup(r["id"])
+            if not lu:
+                continue
+            got = await save_lineup_history(pool, lu, kickoff_utc=None)
+            if got:
+                key = f"{r.get('ccode')} {r.get('league')}"
+                out[key] = out.get(key, 0) + 1
+        logger.info("[fotmob] 소급 %s — 대상 %d경기 · 누적 %s", d, len(rows), out)
+    return out

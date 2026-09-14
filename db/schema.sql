@@ -776,3 +776,27 @@ CREATE TABLE IF NOT EXISTS game_trace (
 
 CREATE INDEX IF NOT EXISTS idx_game_trace_game ON game_trace (game_id, at);
 CREATE INDEX IF NOT EXISTS idx_game_trace_slate ON game_trace (sport, slate_date);
+
+-- ── [FOT-5 2026-09-14 사용자 지시] 선발 이력 — 주전 판정(출장률)의 재료.
+--   🔴 `game_id` 는 **FotMob match id** 다(우리 games.id 아님). 소급 적재가
+--      우리 일정에 없는 경기도 담기 때문이다. 우리 경기와의 이음줄은
+--      `fotmob_match_id` 로 따로 둔다.
+--   🔴 두 시점을 **따로** 남긴다 — T-60 이후(confirmed)와 경기 후(standard).
+--      같은 (game_id, team_id, player_id, lineup_type) 은 한 행이다.
+CREATE TABLE IF NOT EXISTS lineup_history (
+    id           BIGSERIAL PRIMARY KEY,
+    game_id      BIGINT NOT NULL,
+    team_id      BIGINT,
+    player_id    BIGINT NOT NULL,
+    player_name  TEXT NOT NULL,
+    started      BOOLEAN NOT NULL,
+    minutes      INTEGER,
+    lineup_type  TEXT NOT NULL,
+    kickoff_utc  TIMESTAMPTZ,
+    captured_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (game_id, team_id, player_id, lineup_type)
+);
+CREATE INDEX IF NOT EXISTS idx_lineup_history_player
+    ON lineup_history (player_id, kickoff_utc DESC);
+CREATE INDEX IF NOT EXISTS idx_lineup_history_team
+    ON lineup_history (team_id, kickoff_utc DESC);

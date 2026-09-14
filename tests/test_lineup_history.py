@@ -1,0 +1,88 @@
+"""FOT-5 — 선발 이력 + 시즌 소급 적재 (사용자 지시).
+
+🔴 실측 2026-09-14: FotMob 은 과거 날짜도 준다(`lineupType="standard"`,
+   선발 11 + 벤치). 그래서 개막~오늘 소급 적재가 가능하다.
+🔴 리그 **이름**으로 거르면 안 된다 — "Serie A" 는 이탈리아와 에콰도르가
+   같이 쓴다(실측: Delfín vs Técnico Universitario 가 섞였다).
+"""
+import pytest
+
+from app.collectors import fotmob as FM
+
+
+class _Pool:
+    def __init__(self):
+        self.rows = []
+
+    async def execute(self, sql, *args):
+        self.rows.append(args)
+        return "INSERT 1"
+
+
+def _lineup(lt="confirmed"):
+    return {"match_id": 5749678, "lineup_type": lt,
+            "home": {"team_id": 9804,
+                     "starters": [{"id": 1, "name": "Perri"},
+                                  {"id": 0, "name": "id 없는 선수"},
+                                  {"id": None, "name": "id 없는 선수2"}],
+                     "bench": [{"id": 5, "name": "Ngonge"}]},
+            "away": {"team_id": 8686, "starters": [{"id": 3, "name": "Svilar"}],
+                     "bench": []}}
+
+
+@pytest.mark.asyncio
+async def test_선발과_벤치를_남기고_id_없는_행은_건너뛴다():
+    """🔴 0을 키로 쓰면 서로 다른 선수가 한 사람이 된다."""
+    pool = _Pool()
+
+    n = await FM.save_lineup_history(pool, _lineup())
+
+    assert n == 3, "Perri·Ngonge·Svilar 만 남는다"
+    ids = [a[2] for a in pool.rows]
+    assert 0 not in ids and None not in ids
+    started = {a[2]: a[4] for a in pool.rows}
+    assert started[1] is True and started[5] is False
+
+
+@pytest.mark.asyncio
+async def test_lineup_type_을_그대로_남긴다():
+    """confirmed(T-60 이후)와 standard(경기 후)를 **따로** 세야 정직하다."""
+    pool = _Pool()
+
+    await FM.save_lineup_history(pool, _lineup("standard"))
+
+    assert {a[6] for a in pool.rows} == {"standard"}
+
+
+@pytest.mark.asyncio
+async def test_소급_적재는_국가_코드로_거른다(monkeypatch):
+    seen = []
+
+    async def _slate(d):
+        return [{"id": 1, "ccode": "ITA", "league": "Serie A",
+                 "home": "Torino", "away": "Roma"},
+                {"id": 2, "ccode": "ECU", "league": "Serie A",
+                 "home": "Delfín", "away": "Técnico Universitario"}]
+
+    async def _lu(mid):
+        seen.append(mid)
+        return _lineup("standard")
+
+    monkeypatch.setattr(FM, "slate", _slate)
+    monkeypatch.setattr(FM, "match_lineup", _lu)
+
+    out = await FM.backfill(_Pool(), ["20260906"])
+
+    assert seen == [1], "에콰도르 세리에A 를 열면 안 된다"
+    assert out == {"ITA Serie A": 1}
+    assert "ITA" in FM.BACKFILL_CCODES and "ECU" not in FM.BACKFILL_CCODES
+
+
+def test_스키마에_이력_표가_있다():
+    import pathlib
+
+    sql = pathlib.Path("db/schema.sql").read_text()
+    assert "CREATE TABLE IF NOT EXISTS lineup_history" in sql
+    for col in ("player_id", "player_name", "started", "minutes",
+                "lineup_type", "kickoff_utc", "team_id"):
+        assert col in sql.split("lineup_history")[1][:900], col
