@@ -1952,6 +1952,119 @@ def _instrument(job_id: str, fn):
     return wrapper
 
 
+# ── [TRG-2 2026-09-14] 시점 트리거 1분 루프 — Part A 배선 ───────────────
+#: 이름표를 붙일 배당 스냅샷의 최대 나이(분). 배당 수집 주기의 두 배 + 여유다.
+#  더 오래된 값에 `open` 을 붙이면 괴리 기준선이 거짓이 된다.
+TRIGGER_SNAP_MAX_AGE_MIN = 70
+#: 한 tick 에서 집어 오는 due 상한. 우선순위로 고른 뒤 동시 상한만큼 쏜다.
+TRIGGER_DUE_LIMIT = 60
+
+#: 계획 대상 — 트리거가 아직 없거나, 킥오프가 옮겨져 `close` 가 어긋난 경기.
+_TRIGGER_PLAN_SQL = """
+    SELECT g.id, g.starts_at
+      FROM games g
+      LEFT JOIN game_triggers t ON t.game_id = g.id AND t.kind = 'close'
+     WHERE g.starts_at IS NOT NULL
+       AND g.starts_at BETWEEN $1 AND $2
+       AND (t.id IS NULL OR (t.fired_at IS NULL AND t.due_at <> g.starts_at))
+"""
+
+#: 그 경기의 **가장 최근** 배당에만 이름표를 붙인다(소스·시장·쪽·라인별 1행).
+_TRIGGER_TAG_SQL = """
+    WITH latest AS (
+        SELECT DISTINCT ON (provider, market, side, line) id
+          FROM odds_snapshots
+         WHERE game_id = $1 AND snap_tag IS NULL AND captured_at >= $3
+         ORDER BY provider, market, side, line, captured_at DESC
+    )
+    UPDATE odds_snapshots SET snap_tag = $2
+     WHERE id IN (SELECT id FROM latest)
+"""
+
+
+async def _triggers_tick(pool=None, now=None) -> dict:
+    """[TRG-2] 시점이 된 트리거를 쏜다. 반환 `{계획, 발사, 태그, 무스냅}`.
+
+    🔴 **여기서 배당을 새로 긁지 않는다.** 이미 수집된 스냅샷에 이름표를 붙일
+       뿐이다(`record_clv` 와 같은 원칙 — "새 소스를 부르지 않는다"). 트리거가
+       수집을 부르기 시작하면 1분마다 외부 호출이 늘고 예산이 무너진다.
+    ⚠️ 스냅샷이 없어도 트리거는 fired 로 닫는다 — 안 닫으면 1분마다 영원히
+       재시도한다. 대신 사유를 로그에 남긴다(조용한 0 금지).
+    ⚠️ 시점표·동시 상한·SQL 은 `app.engine.triggers` 가 원본이다. 여기에
+       베끼지 않는다.
+    """
+    from app.engine import triggers as T
+
+    pool = pool or await get_pool()
+    now = now or datetime.now(UTC)
+    out = {"계획": 0, "발사": 0, "태그": 0, "무스냅": 0}
+
+    # ① 계획 — 킥오프가 있는 예정 경기에 5시점을 등록/갱신한다.
+    try:
+        rows = await pool.fetch(_TRIGGER_PLAN_SQL,
+                                now - timedelta(hours=6), now + timedelta(hours=30))
+    except Exception as exc:
+        logger.warning("[triggers] 계획 대상 조회 실패: %s", exc)
+        rows = []
+    for r in rows:
+        for p in T.plan(r["starts_at"]):
+            try:
+                await pool.execute(T.UPSERT_SQL, r["id"], p["kind"], p["due_at"])
+                out["계획"] += 1
+            except Exception as exc:
+                logger.warning("[triggers] 계획 실패 game=%s %s: %s",
+                               r["id"], p["kind"], exc)
+
+    # ② 발사 — 시각이 된 것을 우선순위대로. 동시 상한은 원본을 쓴다.
+    try:
+        due = [dict(r) for r in await pool.fetch(T.DUE_SQL, now, TRIGGER_DUE_LIMIT)]
+    except Exception as exc:
+        logger.warning("[triggers] due 조회 실패: %s", exc)
+        due = []
+    due = T.prioritize(due)
+    sem = asyncio.Semaphore(T.MAX_CONCURRENT)
+    since = now - timedelta(minutes=TRIGGER_SNAP_MAX_AGE_MIN)
+
+    async def _one(row: dict) -> None:
+        async with sem:
+            try:
+                res = await pool.execute(_TRIGGER_TAG_SQL, row["game_id"],
+                                         row["kind"], since)
+                n = int(str(res or "").split()[-1] or 0)
+            except Exception as exc:
+                logger.warning("[triggers] 이름표 실패 game=%s %s: %s",
+                               row["game_id"], row["kind"], exc)
+                n = 0
+            if n:
+                out["태그"] += n
+            else:
+                out["무스냅"] += 1
+                logger.info("[triggers] game=%s %s — 최근 %d분 안에 잡힌 배당이 "
+                            "없다. 이름표 없이 닫는다",
+                            row["game_id"], row["kind"], TRIGGER_SNAP_MAX_AGE_MIN)
+            try:
+                await pool.execute(T.MARK_SQL, row["id"], now)
+                out["발사"] += 1
+            except Exception as exc:
+                logger.warning("[triggers] fired 기록 실패 id=%s: %s",
+                               row["id"], exc)
+
+    if due:
+        await asyncio.gather(*(_one(r) for r in due))
+    if out["계획"] or out["발사"]:
+        # ⚠️ 우선순위는 |gap| 순인데 gap 을 넣어 주는 배선(GATE-1)이 아직 없다.
+        #    그래서 지금은 사실상 due 순이다 — 그 사실을 로그가 말한다.
+        logger.info("[triggers] 계획 %d · 발사 %d · 이름표 %d행 · 무스냅 %d "
+                    "(우선순위 gap 미배선 → due 순)",
+                    out["계획"], out["발사"], out["태그"], out["무스냅"])
+    return out
+
+
+async def triggers_job() -> None:
+    """[TRG-2] 1분 트리거 루프. 수집·판정은 하지 않는다 — 시각만 관리한다."""
+    await _triggers_tick()
+
+
 _JOB_TRIGGERS: dict = {}
 
 # 실사고(2026-08-26): 04:00 프리페치가 `was missed by 0:09:58`로 **건너뛰어졌다**.
@@ -1980,6 +2093,8 @@ def _job_specs() -> list[tuple]:
         # 21:00 슬롯에 넣으면 당일 경기는 이미 끝나 있다.
         ("prefetch_asia", prefetch_asia_job,
          CronTrigger(hour=14, minute=0, timezone=KST)),
+        # [TRG-2] 시점 트리거 — 1분. 배당을 긁지 않고 이름표만 붙인다.
+        ("triggers_1m", triggers_job, IntervalTrigger(minutes=1)),
         ("watchdog_5m", watchdog_job, IntervalTrigger(minutes=5)),
         ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
         # [SAT] 위성 수집 — 기본 꺼짐(satellite_enabled). 켜면 15분마다 DB에 없는
