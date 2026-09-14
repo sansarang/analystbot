@@ -247,8 +247,85 @@ def parse_odds(html: str, *, three_way: bool = False) -> dict[int, dict]:
     return out
 
 
-def to_rows(home: str, away: str, odds: dict) -> list[dict]:
-    """우리 적재 계약. 한쪽만 있으면 그 한쪽만 — 역산하지 않는다."""
+def _balanced(text: str, start: int) -> str:
+    """`text[start]` 의 `{` 부터 짝이 맞는 `}` 까지. 못 찾으면 빈 문자열.
+
+    🔴 JSON 조각을 정규식으로 자르면 중첩에서 잘린다(실측 2026-09-14:
+       `positionsWithProviders` 가 첫 북에서 끊겼다).
+    """
+    if start < 0 or start >= len(text) or text[start] != "{":
+        return ""
+    depth = 0
+    for i in range(start, len(text)):
+        c = text[i]
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    return ""
+
+
+#: [D1-1] `sharp_proxy` 를 세우는 최소 활성 북 수(사용자 지시).
+#  🔴 표본이 적으면 "가장 높은 환급률"이 우연이다. 그때는 **만들지 않는다.**
+SHARP_MIN_BOOKS = 3
+
+
+def parse_books(blob: str, *, three_way: bool = False) -> dict[int, dict]:
+    """[D1-1] eventId → 북별 배당 + `sharp_proxy`.
+
+    반환 `{eid: {"books": {id: {home,draw,away}}, "payout": {id: %},
+                 "sharp_id": id|None, "n": 활성 북 수}}`
+
+    🔴 **피나클을 이름으로 특정할 수 없다**(북메이커 페이지에 id↔이름 표가
+       없다 — 실측). 그래서 `sharp_id` 는 그 스냅샷에서 `highestPayout` 이
+       가장 높은 id 다. **피나클이라 단정하지 않는다.**
+    ⚠️ 결과 위치(0=홈·1=무·2=원정)는 `parse_odds` 와 **같은 관례**다.
+    """
+    keys = ("home", "draw", "away") if three_way else ("home", "away")
+    out: dict[int, dict] = {}
+    for m in re.finditer(
+            r'"event":(\d{6,9}),"odds":\[(\{.*?\})\],"cnt"', blob or "", re.S):
+        eid, body = int(m.group(1)), m.group(2)
+        books: dict[int, dict] = {}
+        payout: dict[int, float] = {}
+        # 🔴 정규식으로 중첩 객체를 자르지 않는다 — `(.*?)\}\}` 는 첫 북에서
+        #    잘린다(실측). **괄호 균형**으로 정확히 떼어낸다.
+        for mk in re.finditer(r'"positionsWithProviders":', body):
+            chunk = _balanced(body, body.find("{", mk.end()))
+            for pos_m in re.finditer(r'"([012])":\{', chunk):
+                pos = int(pos_m.group(1))
+                if pos >= len(keys):
+                    continue
+                inner = _balanced(chunk, pos_m.end() - 1)
+                for bm in re.finditer(
+                        r'"(\d{2,5})":\{"odds":\[([\d.]+)\][^}]*?'
+                        r'"highestPayout":([\d.]+)', inner):
+                    bid, odd, pay = int(bm.group(1)), float(bm.group(2)), float(bm.group(3))
+                    if odd <= 1.0:
+                        continue
+                    books.setdefault(bid, {})[keys[pos]] = round(odd, 3)
+                    payout[bid] = pay
+        # 칸이 다 찬 북만 센다 — 반쪽 배당으로 디빅하면 확률이 부푼다.
+        full = {b: v for b, v in books.items() if len(v) == len(keys)}
+        sharp = None
+        if len(full) >= SHARP_MIN_BOOKS:
+            sharp = max(full, key=lambda b: (payout.get(b, 0.0), -b))
+        if full:
+            out[eid] = {"books": full, "payout": payout,
+                        "sharp_id": sharp, "n": len(full)}
+    return out
+
+
+def to_rows(home: str, away: str, odds: dict,
+            books: dict | None = None) -> list[dict]:
+    """우리 적재 계약. 한쪽만 있으면 그 한쪽만 — 역산하지 않는다.
+
+    🔴 [D1-1] `books` 를 주면 **북별 줄**(`op-{id}`)과 `sharp_proxy` 를 더한다.
+       평균 줄(`oddsportal-avg`)은 **그대로 남긴다**(사용자 지시 — 비교용).
+       안 주면 종전과 똑같은 한 벌이다(야구 경로 무영향).
+    """
     out = []
     # 🔴 [ODP-1] 무승부는 **`draw` 키가 있을 때만** 만든다. 야구에 무승부
     #    칸이 생기면 디빅이 3-way 로 잘못 돌아 승/패 확률이 부풀고
@@ -259,6 +336,19 @@ def to_rows(home: str, away: str, odds: dict) -> list[dict]:
         if v and team:
             out.append({"book": "oddsportal-avg", "market": "h2h",
                         "side": team, "line": None, "odds": v})
+    for bid, vals in ((books or {}).get("books") or {}).items():
+        for side, team in sides:
+            v = vals.get(side)
+            if v and team:
+                out.append({"book": f"op-{bid}", "market": "h2h",
+                            "side": team, "line": None, "odds": v})
+    sid = (books or {}).get("sharp_id")
+    if sid is not None:
+        for side, team in sides:
+            v = ((books.get("books") or {}).get(sid) or {}).get(side)
+            if v and team:
+                out.append({"book": "sharp_proxy", "market": "h2h",
+                            "side": team, "line": None, "odds": v})
     return out
 
 
@@ -311,12 +401,18 @@ async def fetch_soccer_league(league: str, *, force: bool = False) -> list[dict]
     if html is None:
         return []
     rows, odds = parse_rows(html), parse_odds(html, three_way=True)
+    # 🔴 [D1-1] **같은 응답을 더 파싱할 뿐이다 — 요청은 늘지 않는다.**
+    books = parse_books(_unescape(html), three_way=True)
     out: list[dict] = []
+    n_sharp = 0
     for eid, g in rows.items():
         o = odds.get(eid)
         if not o:
             continue
-        r_ = to_rows(g["home_raw"], g["away_raw"], o)
+        bk = books.get(eid)
+        if bk and bk.get("sharp_id") is not None:
+            n_sharp += 1
+        r_ = to_rows(g["home_raw"], g["away_raw"], o, books=bk)
         if not r_:
             continue
         out.append({"event": str(eid),
@@ -324,8 +420,10 @@ async def fetch_soccer_league(league: str, *, force: bool = False) -> list[dict]
                     "key_home": team_key(g["home_raw"]),
                     "key_away": team_key(g["away_raw"]),
                     "rows": r_})
-    logger.info("[oddsportal] %s — 경기 %d · 배당 %d · 확보 %d",
-                league, len(rows), len(odds), len(out))
+    logger.info("[oddsportal] %s — 경기 %d · 배당 %d · 확보 %d · "
+                "북별 %d경기(샤프대용 %d · 최소 %d북)",
+                league, len(rows), len(odds), len(out), len(books), n_sharp,
+                SHARP_MIN_BOOKS)
     return out
 
 
@@ -342,6 +440,9 @@ async def fetch_league(sport: str, *, force: bool = False) -> dict[str, dict]:
     if html is None:
         return {}
     rows, odds = parse_rows(html), parse_odds(html)
+    # 🔴 [D1-1] 야구도 같은 응답에서 북별 값을 받는다(요청 증가 0).
+    #    2-way 라 칸이 둘이고, 그 판정은 `parse_books` 의 `three_way` 가 한다.
+    books = parse_books(_unescape(html))
     out: dict[str, dict] = {}
     unmapped: set[str] = set()
     for eid, g in rows.items():
@@ -352,7 +453,7 @@ async def fetch_league(sport: str, *, force: bool = False) -> dict[str, dict]:
             unmapped.update(x for x in (g["home_raw"], g["away_raw"])
                             if x not in TEAM_MAP)
             continue
-        r_ = to_rows(g["home"], g["away"], o)
+        r_ = to_rows(g["home"], g["away"], o, books=books.get(eid))
         if r_:
             out[str(eid)] = {"home": g["home"], "away": g["away"], "rows": r_}
     if unmapped:
