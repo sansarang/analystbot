@@ -1,0 +1,26 @@
+# 더비 목록 — 빅매치 태그(BIG-1)의 셋째 조건. **사용자가 채운다.**
+#
+# 🔴 Claude Code 가 더비를 판단하지 않는다. 골격과 명백한 것 몇 개만 두고,
+#    나머지는 사용자가 더한다.
+# ⚠️ 이름은 **운영 DB 표기**로 적는다(config/tiers/*.yaml 과 같은 키).
+#    비교는 정규화 후 하므로 법인격(FC·AC)은 있어도 되고 없어도 된다.
+derbies:
+  serie_a:
+    - ["AS Roma", "SS Lazio"]                 # 데르비 델라 카피탈레
+    - ["AC Milan", "FC Internazionale Milano"]  # 데르비 델라 마돈니나
+    - ["Juventus FC", "Torino FC"]            # 데르비 델라 몰레
+    - ["Juventus FC", "FC Internazionale Milano"]  # 데르비 디탈리아
+  la_liga:
+    - ["Real Madrid CF", "FC Barcelona"]      # 엘 클라시코
+    - ["Real Madrid CF", "Club Atlético de Madrid"]
+    - ["Sevilla FC", "Real Betis Balompié"]
+  epl:
+    - ["Manchester United FC", "Manchester City FC"]
+    - ["Liverpool FC", "Everton FC"]
+    - ["Arsenal FC", "Tottenham Hotspur FC"]
+  bundesliga:
+    - ["Borussia Dortmund", "FC Schalke 04"]
+    - ["FC Bayern München", "Borussia Dortmund"]
+  kleague1: []        # 사용자가 채운다
+  j1: []              # 사용자가 채운다
+  denmark: []         # 사용자가 채운다
