@@ -136,3 +136,35 @@ def test_수집_함수가_있고_스케줄러가_부른다():
 
     assert hasattr(odds_free, "collect_soccer")
     assert "collect_soccer" in inspect.getsource(scheduler)
+
+
+# ── ODP-2: 날짜 인자의 타입
+
+@pytest.mark.asyncio
+async def test_슬레이트_조회는_date_객체를_넘긴다():
+    """🔴 [ODP-2] `$1::date` 에 문자열을 넘기면 asyncpg 가 bind 에서 터진다.
+
+    실측 결함: `DataError: invalid input for query argument $1: '2026-09-14'
+    ('str' object has no attribute 'toordinal')` → 호출부가 삼켜 축구 배당이
+    12시간 0건이었다. 그래서 **호출 인자의 타입**을 단언한다.
+    """
+    import datetime as dt
+
+    from app.collectors import odds_free
+
+    seen = []
+
+    class _Pool:
+        async def fetch(self, sql, *args):
+            seen.append((sql, args))
+            return []
+
+    await odds_free._match_soccer_ids(_Pool(), "2026-09-14")
+
+    assert len(seen) == 1
+    (sql, args) = seen[0]
+    assert "$1::date" in sql
+    assert len(args) == 1
+    arg = args[0]
+    assert not isinstance(arg, str), f"문자열을 넘기고 있다: {arg!r}"
+    assert isinstance(arg, dt.date) and arg == dt.date(2026, 9, 14)

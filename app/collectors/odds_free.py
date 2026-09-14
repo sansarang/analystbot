@@ -250,7 +250,16 @@ idx_names: dict[tuple[str, str], dict] = {}
 
 
 async def _match_soccer_ids(pool, date: str) -> dict[tuple[str, str], int]:
-    """(정규화 홈키, 정규화 원정키) → games.id. 없는 경기는 만들지 않는다."""
+    """(정규화 홈키, 정규화 원정키) → games.id. 없는 경기는 만들지 않는다.
+
+    🔴 [ODP-2] `$1::date` 에는 **`datetime.date` 를 넘긴다.** 문자열을 주면
+       asyncpg 가 bind 에서 `DataError: 'str' object has no attribute
+       'toordinal'` 로 터지고, 호출부가 그것을 삼켜 축구 배당이 조용히
+       0건이 된다(실측 2026-09-13~14, 12시간 0건). 같은 파일 `coverage` 와
+       같은 형태다.
+    """
+    from datetime import date as _d
+
     from app.collectors.oddsportal import norm
 
     rows = await pool.fetch(
@@ -258,7 +267,7 @@ async def _match_soccer_ids(pool, date: str) -> dict[tuple[str, str], int]:
             WHERE sport = 'soccer'
               AND (starts_at AT TIME ZONE 'Asia/Seoul')::date
                   BETWEEN $1::date - 1 AND $1::date + 1""",
-        date)
+        _d.fromisoformat(date))
     out: dict[tuple[str, str], int] = {}
     idx_names.clear()
     for r in rows:
