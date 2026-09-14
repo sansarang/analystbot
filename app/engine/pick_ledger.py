@@ -331,6 +331,13 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                     except Exception as exc:
                         logger.warning("[clv] game=%s 판정시각 배당 기록 실패: %s",
                                        row["game_id"], exc)
+                    # [MOV-2] 같은 자리에서 이동도 분류한다. **저장 전용**이고,
+                    #   실패해도 판정을 막지 않는다(CLV 와 같은 규약).
+                    try:
+                        await record_move(conn, game_id=row["game_id"])
+                    except Exception as exc:
+                        logger.warning("[move] game=%s 이동 분류 실패: %s",
+                                       row["game_id"], exc)
         except Exception as exc:
             # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —
             # 레저가 판정의 유일한 영구 기록이 된 이상, 기록 실패는 그 판정이
@@ -582,6 +589,122 @@ def clv_pp(at_verdict, closing) -> float | None:
     if a is None or b is None:
         return None
     return round((b - a) * 100, 2)
+
+
+# ── [MOV-2 2026-09-14] 배당 이동 분류 배선 — **저장 전용.** 판정은 읽지 않는다.
+#   `MOV-1`(odds_move)이 규칙을 만들었지만 부르는 곳이 없었다. 이름표를 붙이는
+#   쪽(TRG-2)이 생겼으니 여기서 읽어 원장에 남긴다.
+
+#: 이름표가 붙은 승부 배당만 본다. 태그가 없는 행은 시점을 모르는 행이다.
+_MOVE_SNAP_SQL = """
+    SELECT o.provider, o.snap_tag, o.side, o.odds, g.home, g.away
+      FROM odds_snapshots o JOIN games g ON g.id = o.game_id
+     WHERE o.game_id = $1 AND o.market = 'h2h' AND o.snap_tag IS NOT NULL
+"""
+
+#: 🔴 `odds_open` 은 **고른 쪽**의 기준선 배당이다 — `odds_at_verdict`·
+#   `odds_closing` 과 같은 쪽이어야 세 값이 한 줄로 읽힌다.
+_MOVE_SAVE = """
+    UPDATE pick_ledger
+       SET odds_open = COALESCE($2::double precision, odds_open),
+           move_class = $3, move_reason = $4
+     WHERE game_id = $1 AND is_final
+"""
+
+
+def _snap_probs(rows: list) -> dict[tuple[str, str], dict]:
+    """(소스, 시점) → {p_home, odds{side→배당}}. 마진 제거는 원본을 쓴다."""
+    from app.engine.market_edge import implied_probs
+
+    grouped: dict[tuple[str, str], dict] = {}
+    for r in rows:
+        key = (r["provider"], r["snap_tag"])
+        side = str(r["side"] or "")
+        if side == r["home"]:
+            slot = "home"
+        elif side == r["away"]:
+            slot = "away"
+        elif side.lower() in ("draw", "무승부", "x"):
+            slot = "draw"
+        else:
+            continue
+        grouped.setdefault(key, {})[slot] = float(r["odds"])
+    out: dict[tuple[str, str], dict] = {}
+    for key, odds in grouped.items():
+        probs = implied_probs(odds)
+        if not probs:
+            continue
+        out[key] = {"provider": key[0], "snap_tag": key[1],
+                    "p_home": probs.get("home"), "odds": odds}
+    return out
+
+
+def _best_provider(snaps: dict) -> str | None:
+    """시점을 가장 많이 가진 소스. 🔴 소스를 섞으면 마진 차를 이동으로 읽는다."""
+    count: dict[str, int] = {}
+    for (prov, _tag) in snaps:
+        count[prov] = count.get(prov, 0) + 1
+    if not count:
+        return None
+    return sorted(count.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+
+
+async def record_move(conn_or_pool, *, game_id: int,
+                      news: dict | None = None) -> dict | None:
+    """[MOV-2] 이름표 붙은 스냅샷으로 이동을 분류해 원장에 남긴다.
+
+    반환 `{"move_class", "move_pp", "reason", "from", "to"}` · 못 재면 None.
+
+    🔴 **새 소스를 부르지 않는다** — `odds_snapshots` 에 이미 있는 값만 읽는다.
+    🔴 값이 없으면 **아무것도 쓰지 않는다.** "안 움직였다"(none)와 "모른다"는
+       다른 말이라, 잴 수 없으면 `move_class` 를 비워 둔다(0 으로 채우지 않는다).
+    ⚠️ `news` 가 없으면 `odds_move.classify` 는 `money`/`none` 만 낸다 — 근거
+       없이 `news` 를 붙이면 확증이 거짓으로 선다. 딥서치 배선 전에는 정상이다.
+    ⚠️ `record_clv` 와 같은 커넥션 규약을 쓴다(풀을 받으면 잠깐 빌린다).
+    """
+    from contextlib import asynccontextmanager
+
+    from app.engine import odds_move as M
+
+    @asynccontextmanager
+    async def _conn():
+        if hasattr(conn_or_pool, "acquire"):
+            async with conn_or_pool.acquire() as c:
+                yield c
+        else:
+            yield conn_or_pool
+
+    async with _conn() as conn:
+        rows = await conn.fetch(_MOVE_SNAP_SQL, game_id)
+        snaps = _snap_probs(rows)
+        prov = _best_provider(snaps)
+        if not prov:
+            logger.info("[move] game=%s — 이름표 붙은 배당이 없다. 기록하지 않는다",
+                        game_id)
+            return None
+        mine = [v for k, v in snaps.items() if k[0] == prov]
+        base = M.baseline(mine)
+        # 기준선보다 **나중** 시점 중 가장 늦은 것과 비교한다.
+        order = list(M.BASELINE_ORDER)
+        later = [s for s in mine
+                 if order.index(s["snap_tag"]) > order.index(base["snap_tag"])]
+        if not later:
+            logger.info("[move] game=%s %s — 기준선(%s) 뒤 시점이 아직 없다",
+                        game_id, prov, base["snap_tag"])
+            return None
+        now = max(later, key=lambda s: order.index(s["snap_tag"]))
+        pp = M.move_pp(now.get("p_home"), base.get("p_home"))
+        mv = M.classify(move_pp=pp, news=news)
+
+        pick = await conn.fetchrow(_CLV_PICK, game_id)
+        side = predicted_side(pick["favored"], pick["p_home"],
+                              pick["predicted_side"]) if pick else None
+        o_open = base["odds"].get(side) if side in ("home", "away") else None
+        await conn.execute(_MOVE_SAVE, game_id, o_open, mv.label, mv.reason)
+    logger.info("[move] game=%s %s %s→%s %s (%s)", game_id, prov,
+                base["snap_tag"], now["snap_tag"], mv.label, mv.reason)
+    return {"move_class": mv.label, "move_pp": mv.move_pp, "reason": mv.reason,
+            "from": base["snap_tag"], "to": now["snap_tag"], "provider": prov}
 
 
 async def record_clv(conn_or_pool, *, game_id: int, at: str,
