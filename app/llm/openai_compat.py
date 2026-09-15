@@ -221,7 +221,18 @@ async def complete(provider: str, model: str, prompt: str, *,
                            provider, r.status_code, wait, attempt + 1)
             await asyncio.sleep(wait)
             continue
-        if r.status_code == 400 and "reasoning_effort" in (r.text or ""):
+        if r.status_code == 400 and "reasoning_effort" in body:
+            # 🔴 [CHN-2 2026-09-15] 조건이 종전엔 `in (r.text or "")` 였다 —
+            #    **응답이 필드명을 말해줄 때만** 걸렸다. groq 는 말해주고
+            #    gemini 는 안 한다. 운영 실측(gemini-3.5-flash-lite, OpenAI 호환):
+            #      reasoning_effort=none  400 "Request contains an invalid argument."
+            #      reasoning_effort=low   200 · minimal 200 · 필드없음 200
+            #    `reasoning = role != "form"`(team_form.py:227)이라 이 경로를 타는
+            #    것은 **팀 폼 전건**이고, gemini 를 1순위로 올린 CHN-1 이 그대로
+            #    회귀를 만들었다(400 → groq 8,000 TPM 으로 낙하).
+            #    ⚠️ 그래도 400 을 **전부** 강등으로 읽지는 않는다 — 조건은
+            #       "우리가 이 필드를 **보냈는가**" 다. 안 보냈으면 종전대로
+            #       즉시 실패한다(모델명 오타를 세 번 더 때리지 않는다).
             # 🔴 [실측 2026-09-04] 값이 제공자·모델마다 다르다. 추측하지 않고
             #    **응답이 말해주는 대로** 한 단계씩 내려간다.
             #      groq `qwen/qwen3.8-27b`   → "none" 수용
