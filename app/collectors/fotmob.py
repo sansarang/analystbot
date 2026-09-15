@@ -97,8 +97,12 @@ def find_match(rows: list[dict], *, home: str, away: str) -> dict | None:
        다른 쪽을 **포함**하면 같은 팀으로 본다(`Torino` ⊂ `Torino FC`).
     """
     h, a = norm(home), norm(away)
+    # 🔴 [ACL-2 2026-09-15] **FotMob 쪽만** canonical 을 거친다. `home`/`away`
+    #    인자는 이미 우리 `games` 표기(=canonical)라 또 매핑하면 안 된다.
+    #    ACL-1 이 `Daejeon Hana Citizen → Daejeon Citizen` 을 넣은 순간
+    #    이 함수가 그 경기를 못 찾았다(실측: C-5 매칭 0).
     for r in rows or []:
-        rh, ra = norm(r.get("home")), norm(r.get("away"))
+        rh, ra = norm(canonical(r.get("home"))), norm(canonical(r.get("away")))
         if not rh or not ra:
             continue
         if (rh in h or h in rh) and (ra in a or a in ra):

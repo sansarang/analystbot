@@ -200,7 +200,7 @@ async def collect_soccer(pool, redis, date: str) -> dict:
     ⚠️ 실패해도 다른 리그를 막지 않는다.
     """
     from app.collectors.oddsportal import (
-        PROVIDER as OP, SOCCER_URL, fetch_soccer_league, norm,
+        PROVIDER as OP, SOCCER_URL, fetch_soccer_league, team_key,
     )
 
     out = {"provider": OP, "games": 0, "rows": 0, "matched": 0,
@@ -232,9 +232,15 @@ async def collect_soccer(pool, redis, date: str) -> dict:
             rows = []
             for r in blk["rows"]:
                 side = r["side"]
-                if norm(side) == blk["key_home"]:
+                # 🔴 [ACL-2 2026-09-15] **키를 만든 것과 같은 함수로 비교한다.**
+                #    `key_home`/`key_away` 는 `team_key()`(국가 접미사 제거 +
+                #    별칭)로 만들어 놓고 여기서만 `norm()` 으로 비교했다.
+                #    ACL-1 이 접미사 제거를 넣은 순간 둘이 갈라졌고,
+                #    홈·원정 줄이 오즈포털 원표기로 저장돼 **Draw 만** 우리
+                #    팀명과 맞았다(실측 2026-09-15: 4경기 전부 None/4.8/None).
+                if team_key(side) == blk["key_home"]:
                     side = names.get("home", side)
-                elif norm(side) == blk["key_away"]:
+                elif team_key(side) == blk["key_away"]:
                     side = names.get("away", side)
                 rows.append({**r, "side": side})
             out["matched"] += 1
