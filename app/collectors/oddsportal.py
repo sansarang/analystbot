@@ -73,6 +73,12 @@ SOCCER_URL = {
     "j1":         "https://www.oddsportal.com/football/japan/j1-league/",
     "denmark":    "https://www.oddsportal.com/football/denmark/superliga/",
     "kleague1":   "https://www.oddsportal.com/football/south-korea/k-league-1/",
+    # 🔴 [ACL-1 2026-09-15] 실측으로 고른 URL 이다.
+    #    /asia/afc-champions-league-elite/ → HTML 276,511자 · **경기행 0**
+    #    /asia/afc-champions-league/       → HTML 645,657자 · 경기행 15 · 배당 16  ✅
+    #    ⚠️ 이 페이지엔 `positionsWithProviders` 가 없다 — 북별 파싱 0경기.
+    #       ACL 은 **평균 배당만** 된다(sharp/soft proxy 불가).
+    "acl":        "https://www.oddsportal.com/football/asia/afc-champions-league/",
 }
 
 #: 🔴 정규화에서 **지우는 토큰**. 법인 형태 접미사와 창단 연도뿐이다.
@@ -101,6 +107,13 @@ def norm(name: str) -> str:
 #: oddsportal 표기 → **우리 games 표기**. 정규화로 안 붙는 것만 적는다
 #  (실측: 정규화만으로 66/122). 값은 최종 표기다 — 다시 별칭 키가 되면 순환이다.
 SOCCER_ALIAS = {
+    # 🔴 [ACL-1 2026-09-15] ACL 엘리트 — 오즈포털은 짧게 적고 FotMob 은 길게 적는다.
+    #    값은 **FotMob 표기**다(경기를 FotMob 이 적재하므로 그쪽이 canonical).
+    #    ⚠️ `Daejeon`·`Pohang` 은 **K리그1 에 이미 있다**(아래). 여기 다시 적으면
+    #       같은 구단이 리그마다 다른 이름을 갖는다 — 적지 않는다.
+    #       FotMob 쪽 긴 표기는 `fotmob.SLATE_CANONICAL` 이 맞춘다.
+    "Kyoto": "Kyoto Sanga FC",
+    "Cong An Ha Noi": "Công An Hà Nội",
     # EPL
     "Brighton": "Brighton & Hove Albion FC",
     "Coventry": "Coventry City FC",
@@ -149,9 +162,21 @@ SOCCER_ALIAS = {
 }
 
 
+#: 🔴 [ACL-1] 국제 대회 표에서만 붙는 **국가 접미사**. `Gamba Osaka (Jpn)`.
+#   ⚠️ 패턴을 좁게 잡는다 — **끝에 붙은 괄호 3글자**만. `Hull City AFC` 처럼
+#      괄호 없는 이름이나 `1. FC Köln` 같은 것은 건드리지 않는다(계약이 잠근다).
+_COUNTRY_SUFFIX = re.compile(r"\s*\([A-Za-z]{3}\)\s*$")
+
+
+def strip_country(op_name: str) -> str:
+    """`'Gamba Osaka (Jpn) '` → `'Gamba Osaka'`. 그 외는 공백만 다듬는다."""
+    return _COUNTRY_SUFFIX.sub("", str(op_name or "")).strip()
+
+
 def team_key(op_name: str) -> str:
-    """oddsportal 표기 → 대조 키(별칭을 거친 뒤 정규화)."""
-    return norm(SOCCER_ALIAS.get(op_name, op_name))
+    """oddsportal 표기 → 대조 키(국가 접미사 제거 → 별칭 → 정규화)."""
+    base = strip_country(op_name)
+    return norm(SOCCER_ALIAS.get(base, base))
 
 #: oddsportal 표기 → 우리 games 팀명.
 TEAM_MAP = {

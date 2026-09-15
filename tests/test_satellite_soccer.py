@@ -569,19 +569,34 @@ def test_리그코드를_손으로_적지_않는다():
     from app.leagues import LEAGUES
 
     assert not hasattr(SOC, "_TM_CODE"), "위성이 리그 코드를 따로 들고 있다"
+    # 🔴 [ACL-1 2026-09-15] `tm_code` 는 **칸이 있어야 한다.** 다만 값이
+    #    `None` 일 수 있다 — Transfermarkt 부상표는 **정규 리그별**이고 컵
+    #    대회 표가 없다. 실측(ACL 3개 코드 전수):
+    #      AFCL 92,394자 → 부상 0행 · ACL 91,958자 → 0행 · AFC1 204,951자 → 0행
+    #    빠뜨린 것과 없는 것을 구분한다 — 키 자체는 반드시 있어야 한다.
     for key, cfg in LEAGUES.items():
-        assert cfg.get("tm_code"), f"{key} 에 tm_code 가 없다"
-    assert {c["tm_code"] for c in LEAGUES.values()} == {
+        assert "tm_code" in cfg, f"{key} 에 tm_code 칸이 없다"
+    assert {c["tm_code"] for c in LEAGUES.values() if c["tm_code"]} == {
         "GB1", "ES1", "IT1", "L1", "JAP1", "DK1", "RSK1"}
+    assert LEAGUES["acl"]["tm_code"] is None, "ACL 은 TM 부상표가 없다(실측)"
 
 
 @pytest.mark.asyncio
 async def test_위성_소스가_있는_리그는_전부_부상표도_받는다(monkeypatch, _조용한_뉴스):
     """🔴 리그를 빠뜨리면 그 리그만 조용히 층1 이 0 이다."""
+    from app.leagues import LEAGUES, league_labels
+
     for label in sorted(SOC._SOCCER_SOURCE):
         seen = []
         _tm_고정(monkeypatch, _tm_html(), seen)
         await SOC.gather_soccer(_jg(label, home="A", away="B"))
+        # 🔴 [ACL-1 2026-09-15] `tm_code` 가 None 인 리그는 부상표 자체가 없다.
+        #    실측: AFC 3개 코드 전부 0행(AFCL 92,394자 → 0 · ACL 91,958자 → 0 ·
+        #    AFC1 204,951자 → 0). 면제하되 **조용히 넘기지 않는다** —
+        #    tm_code 가 있는데 안 받았으면 그건 결함이고 아래에서 걸린다.
+        if not (LEAGUES[league_labels()[label]] or {}).get("tm_code"):
+            assert not seen, f"{label} 은 tm_code 가 없는데 부상표를 불렀다"
+            continue
         assert seen, f"{label} 은 부상표를 받지 않았다"
 
 

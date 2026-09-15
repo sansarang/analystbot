@@ -20,7 +20,9 @@ from app.leagues import LEAGUES
 
 SPORT_KEYS: dict[str, list[str]] = {
     "mlb": ["baseball_mlb"],
-    "soccer": [cfg["odds_key"] for cfg in LEAGUES.values()],  # 화이트리스트 7개 리그
+    # 🔴 [ACL-1] `odds_key` 가 **None 인 리그가 있다**(acl — The Odds API 에
+    #    AFC 키가 없다). None 이 여기 섞이면 /v4/sports/None/... 을 때린다.
+    "soccer": [cfg["odds_key"] for cfg in LEAGUES.values() if cfg.get("odds_key")],
     # [§8-14] KBO·NPB — statsapi가 껍데기(sportId 31/32는 팀 명단만, totalGames=0)라
     #   일정·점수를 받을 다른 경로가 없다. Odds API `/scores`가 **일정·완료여부·점수**를
     #   한 번에 주므로 이것이 두 리그의 유일한 채점 경로다.
@@ -41,7 +43,9 @@ def odds_markets_for(sport: str) -> str:
 
 
 LEAGUE_LABEL_BY_SPORT = {"kbo": "KBO", "npb": "NPB", "mlb": "MLB"}
-SOCCER_LEAGUE_LABELS = {cfg["odds_key"]: cfg["label"] for cfg in LEAGUES.values()}
+# 🔴 [ACL-1] None 키를 넣으면 한 리그가 다른 리그 라벨을 덮는다.
+SOCCER_LEAGUE_LABELS = {cfg["odds_key"]: cfg["label"]
+                        for cfg in LEAGUES.values() if cfg.get("odds_key")}
 
 
 async def record_odds_quota(client: "OddsClient") -> None:

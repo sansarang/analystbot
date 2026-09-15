@@ -48,13 +48,34 @@ LEAGUES: dict[str, dict] = {
         "tm_code": "RSK1",
         "aliases": ["k리그", "케이리그", "k리그1", "한국"],
     },
+    # 🔴 [ACL-1 2026-09-15 사용자 지시] AFC 챔피언스리그 엘리트.
+    #    ⚠️ `odds_key` 가 **None** 이다 — The Odds API 종목 178개를 전수 조회했고
+    #       AFC 계열 키가 하나도 없다(2026-09-15). 그래서 이 리그는
+    #       **경기를 FotMob 에서** 받고(`fotmob.upsert_slate`) **배당은
+    #       오즈포털**에서 받는다. 읽는 쪽이 None 을 걸러야 한다 —
+    #       계약(test_acl_wiring)이 그 자리를 전수로 잠근다.
+    #    ⚠️ `elo` 도 None 이다(CSV 미제공) → 모델 무효. K리그1 과 같은 처지다.
+    #    ⚠️ `tm_code` 없음 — Transfermarkt 는 대회별 부상표라 ACL 표가 없다.
+    #       결장 정보는 FotMob `unavailable` 로만 온다.
+    "acl": {
+        "fd_code": None, "odds_key": None, "label": "ACL엘리트", "elo": None,
+        "fd_names": [],
+        "tm_code": None,
+        #: FotMob 리그명에 이 문자열이 들어가면 이 리그로 적재한다.
+        "fotmob_contains": "AFC Champions League Elite",
+        "aliases": ["acl", "acle", "챔스", "아챔", "챔피언스리그엘리트",
+                    "afc챔피언스리그"],
+    },
 }
 
 # 명시적으로 미지원임을 알려줄 리그 별칭 (지원 리그 오매칭 방지 — '세리에B' 등)
 UNSUPPORTED_LEAGUE_ALIASES = [
     "세리에b", "분데스리가2", "분데스2", "2부", "리그앙", "리그1", "리그 1",
     "포르투갈", "프리메이라", "브라질", "에레디비시", "네덜란드", "챔피언십",
-    "라리가2", "k리그2", "mls", "사우디", "챔스", "챔피언스리그", "유로파",
+    "라리가2", "k리그2", "mls", "사우디", "유로파",
+    # 🔴 [ACL-1] "챔스"·"챔피언스리그" 를 뺐다 — 이제 acl 이 지원 리그다.
+    #    ⚠️ UEFA 챔스는 여전히 미지원이다. 그 구분은 별칭으로 못 한다 —
+    #       사용자가 "챔스"라고 하면 ACL 로 간다. 알고 남긴다.
 ]
 
 

@@ -9,7 +9,10 @@ from app.pipeline import clean_invisible, contains_english_sentence, render_sour
 
 
 def test_league_registry_and_aliases():
-    assert set(LEAGUES) == {"epl", "la_liga", "serie_a", "bundesliga", "j1", "denmark", "kleague1"}
+    # 🔴 [ACL-1 2026-09-15] acl 추가. 이 명단은 **손으로 적는 것이 맞다** —
+    #    리그가 늘어난 것을 사람이 승인했다는 표시다(조용히 늘지 않는다).
+    assert set(LEAGUES) == {"epl", "la_liga", "serie_a", "bundesliga", "j1",
+                            "denmark", "kleague1", "acl"}
     assert LEAGUES["kleague1"]["odds_key"] == "soccer_korea_kleague1"
     assert find_league("분데스리가 오늘 분석해줘") == "bundesliga"
     assert find_league("라리가 어때") == "la_liga"

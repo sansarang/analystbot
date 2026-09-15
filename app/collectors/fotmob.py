@@ -404,3 +404,74 @@ async def backfill(pool, dates: list[str], *, ccodes=BACKFILL_CCODES) -> dict:
                 out[key] = out.get(key, 0) + 1
         logger.info("[fotmob] 소급 %s — 대상 %d경기 · 누적 %s", d, len(rows), out)
     return out
+
+
+#: 🔴 [ACL-1 2026-09-15] FotMob 표기 → 우리 canonical 표기.
+#   지금은 **항등**이다 — ACL 팀은 FotMob 이 유일한 적재원이라 그 표기가 곧
+#   canonical 이다. 표를 비워 두지 않고 명시하는 이유는, 다른 소스(오즈포털)가
+#   같은 팀을 다르게 적기 때문이다. 그쪽 별칭은 `oddsportal.SOCCER_ALIAS` 에 있고
+#   **값이 이 표의 키**다. 두 표가 만나는 지점을 계약이 대조한다.
+SLATE_CANONICAL: dict[str, str] = {
+    # 🔴 같은 구단이 리그마다 다른 이름을 갖지 않게 한다. K리그1 은 이미
+    #    `Daejeon Citizen` 으로 들어와 있다(oddsportal.SOCCER_ALIAS) — ACL 이
+    #    `Daejeon Hana Citizen` 으로 또 만들면 **한 구단이 두 팀**이 된다.
+    "Daejeon Hana Citizen": "Daejeon Citizen",
+}
+
+
+def canonical(name: str) -> str | None:
+    """FotMob 팀명 → 우리 표기. 모르면 **None**(조용히 지어내지 않는다)."""
+    n = " ".join(str(name or "").split())
+    if not n:
+        return None
+    return SLATE_CANONICAL.get(n, n)
+
+
+async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str) -> dict:
+    """[ACL-1] FotMob 슬레이트 → `games`. 반환 `{fetched, matched, saved, skipped}`.
+
+    🔴 **The Odds API 에 없는 대회를 받는 유일한 길이다.** 종목 178개를 전수
+       조회했고 AFC 계열 키가 0개였다(실측 2026-09-15). 기존 적재
+       (`odds.upsert_games_from_odds_events`)는 `odds_key` 가 있어야 돈다.
+    🔴 키는 **fotmob_id** 다 — `ext_id = 'fotmob:{id}'`. `odds:{id}` 와 섞이지
+       않는다(UNIQUE(sport, ext_id)).
+    🔴 별칭으로 canonical 을 못 찾으면 **로그를 남기고 제외**한다. 이름을
+       추측해서 넣으면 배당이 엉뚱한 경기에 붙는다(AC밀란 오매칭 전례).
+    ⚠️ 이 함수는 ACL 전용이 아니다 — `league_key` 의 `fotmob_contains` 로
+       고른다. ACL2·컵대회·A매치도 항목만 추가하면 같은 길로 들어온다.
+    """
+    from app.leagues import LEAGUES
+
+    cfg = LEAGUES.get(league_key) or {}
+    needle = cfg.get("fotmob_contains")
+    out = {"fetched": 0, "matched": 0, "saved": 0, "skipped": []}
+    if not needle:
+        logger.warning("[fotmob] %s 에 fotmob_contains 가 없다 — 적재 생략", league_key)
+        return out
+    rows = await slate(date_yyyymmdd)
+    out["fetched"] = len(rows)
+    for r in rows:
+        if needle not in (r.get("league") or ""):
+            continue
+        out["matched"] += 1
+        h, a = canonical(r.get("home")), canonical(r.get("away"))
+        ko = _as_dt(r.get("utc"))
+        if not (h and a and ko and r.get("id")):
+            out["skipped"].append(f"{r.get('away')}@{r.get('home')}"
+                                  f"(이름·시각·id 결측)")
+            logger.warning("[fotmob] 적재 제외 %s @ %s — canonical/시각/id 결측",
+                           r.get("away"), r.get("home"))
+            continue
+        await pool.execute(
+            """
+            INSERT INTO games (sport, league, ext_id, starts_at, home, away, status)
+            VALUES ('soccer', $1, $2, $3, $4, $5, 'scheduled')
+            ON CONFLICT (sport, ext_id) DO UPDATE SET
+                starts_at = EXCLUDED.starts_at, updated_at = now()
+            """,
+            cfg.get("label") or league_key, f"fotmob:{r['id']}", ko, h, a)
+        out["saved"] += 1
+    logger.info("[fotmob] %s 적재 — 슬레이트 %d · 해당 %d · 저장 %d · 제외 %d",
+                league_key, out["fetched"], out["matched"], out["saved"],
+                len(out["skipped"]))
+    return out

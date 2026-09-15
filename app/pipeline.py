@@ -1351,12 +1351,33 @@ async def _load_soccer_fixtures(pool, date: str, league_key, fd) -> list[str]:
         except Exception as exc:
             logger.warning("[pipeline] 축구 일정 소스 실패 — football-data "
                            "(EPL·라리가·세리에A·분데스리가): %s", exc)
-    only_keys = [LEAGUES[league_key]["odds_key"]] if league_key else None
+    # 🔴 [ACL-1] `odds_key` 가 None 인 리그가 있다(acl). None 을 넘기면
+    #    The Odds API 를 `/sports/None/events` 로 때린다.
+    _ok = (LEAGUES.get(league_key) or {}).get("odds_key") if league_key else None
+    only_keys = [_ok] if _ok else None
     try:
         out += await upsert_games_from_odds_events(pool, date, only_keys=only_keys)
     except Exception as exc:
         logger.warning("[pipeline] 축구 일정 소스 실패 — 배당(odds) "
                        "(%s): %s", " · ".join(_odds_only_league_labels()), exc)
+    # 🔴 [ACL-1 2026-09-15] 3순위 — **FotMob 슬레이트.** The Odds API 에 없는
+    #    대회(ACL 엘리트 등)를 받는 유일한 길이다. 종목 178개를 전수 조회했고
+    #    AFC 계열 키가 0개였다(실측). `fotmob_contains` 가 있는 리그만 돈다 —
+    #    리그 표가 원본이고 여기 대회명을 손으로 적지 않는다.
+    #    ⚠️ 위 둘과 같은 규칙: 실패해도 다른 소스를 막지 않는다.
+    for _k, _cfg in LEAGUES.items():
+        if not _cfg.get("fotmob_contains"):
+            continue
+        if league_key and _k != league_key:
+            continue
+        try:
+            from app.collectors.fotmob import upsert_slate
+
+            _r = await upsert_slate(pool, date.replace("-", ""), league_key=_k)
+            out += [f"fotmob:{_k}"] * int(_r.get("saved") or 0)
+        except Exception as exc:
+            logger.warning("[pipeline] 축구 일정 소스 실패 — FotMob (%s): %s",
+                           _cfg.get("label") or _k, exc)
     return out
 
 
@@ -1532,7 +1553,8 @@ async def build_analysis(
         from app.leagues import LEAGUES as _L
 
         labels_present = {g["league"] for g in games}
-        active_keys = [c["odds_key"] for c in _L.values() if c["label"] in labels_present]
+        active_keys = [c["odds_key"] for c in _L.values()
+                       if c["label"] in labels_present and c.get("odds_key")]
 
     await progress(2, 4, "배당·딥서치 수집")
     if stats_coro is None:

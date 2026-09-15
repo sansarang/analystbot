@@ -1387,7 +1387,10 @@ async def odds_snapshot_job() -> None:
             "WHERE status = 'scheduled' AND starts_at > now() - interval '1 hour' "
             "GROUP BY sport, league"
         )
-        label_to_key = {c["label"]: c["odds_key"] for c in LEAGUES.values()}
+        # 🔴 [ACL-1] odds_key 가 None 인 리그(acl)는 이 경로를 타지 않는다 —
+        #    배당은 오즈포털에서 온다.
+        label_to_key = {c["label"]: c["odds_key"] for c in LEAGUES.values()
+                        if c.get("odds_key")}
         due: dict[str, list[str]] = {}
         now = datetime.now(KST)
         for r in rows:

@@ -410,7 +410,9 @@ async def _next_game_message(league_key: str) -> str:
 
     cfg = LEAGUES[league_key]
     try:
-        events = await OddsClient().fetch_events(cfg["odds_key"])
+        # 🔴 [ACL-1] odds_key 가 None 이면 부르지 않는다(acl).
+        events = (await OddsClient().fetch_events(cfg["odds_key"])
+                  if cfg.get("odds_key") else [])
     except Exception:
         events = []
     now = datetime.now(UTC)
