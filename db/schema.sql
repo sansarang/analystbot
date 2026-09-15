@@ -558,6 +558,11 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS unknown_axes JSONB;
 -- [U8 2026-09-15] 조정에서 **뺀** 변수(|기여| < 2%p). 잡음이 결정축에
 --   끼는 것을 막되, 뺐다는 사실은 남긴다 — 버리면 왜 안 썼는지 모른다.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS adj_dropped JSONB;
+-- [U9 2026-09-15] 시장 흐름 — open→pre→lineup 구간별 분류와 사유.
+--   {"from","to","class","reason","move_pp","n_books","book_disagree",
+--    "confirm","stake_mult","cancel"}
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS market_flow JSONB;
+
 
 
 

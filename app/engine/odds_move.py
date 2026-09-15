@@ -24,6 +24,20 @@ NEWS = "news"
 MONEY = "money"
 CONTRA = "contra"
 NONE = "none"
+#: 🔴 [U9 2026-09-15] **여러 북이 동시에 같은 방향으로 크게.** `money` 와
+#   구분한다 — 한 북이 흔들린 것과 시장 전체가 밀린 것은 다른 신호다.
+STEAM = "steam"
+
+#: steam 조건: 이만큼의 북이 · 이만큼 움직였다.
+STEAM_MIN_BOOKS = 3
+STEAM_MIN_PP = 3.0
+
+#: 북별 확률 표준편차가 이 값(%p)을 넘으면 북들이 갈린 것이다. **표시만** 한다.
+DISAGREE_SD_PP = 2.0
+
+#: 🔴 핸디 라인 → 확률(%p) 환산. 지시문 값이다(0.5 = 4%p · 1.0 = 8%p).
+#   ⚠️ **핸디에만 쓴다.** 토탈(U/O)에 같은 계수를 쓰면 의미가 다르다.
+LINE_PP_PER_HALF = 4.0
 
 #: 이동으로 치는 최소 폭(%p). 지시문 1-B-2.
 MOVE_MIN_PP = 2.0
@@ -99,16 +113,28 @@ def move_between(snaps: list[dict], now_tag: str, prev_tag: str,
     return move_pp(a.get(key), b.get(key))
 
 
-def classify(*, move_pp: float | None, news: dict | None) -> Move:
+def classify(*, move_pp: float | None, news: dict | None,
+             n_books: int | None = None) -> Move:
     """이동 + 뉴스 방향 → 원인. **코드 규칙이다. LLM 을 부르지 않는다.**
 
-    ⚠️ 딥서치가 없는 경기(`news is None`)는 `money`/`none` 만 나온다 —
+    🔴 [U9 2026-09-15] `n_books` 를 주면 **steam** 이 나올 수 있다 —
+       3북 이상이 같은 방향으로 3%p 이상. 한 북이 흔들린 것(`money`)과
+       시장 전체가 밀린 것은 다른 신호다.
+       ⚠️ 북 수를 **모르면 종전대로**다. 없는 정보로 더 센 라벨을 붙이지 않는다.
+       ⚠️ steam 이 **뉴스 반대 방향**이면 `contra` 다(지시문 4-4). 순서를
+          뒤집으면 취소 신호가 묻힌다.
+    ⚠️ 딥서치가 없는 경기(`news is None`)는 `money`/`steam`/`none` 만 나온다 —
        근거 없이 `news` 를 붙이면 확증이 거짓으로 선다.
     """
     if not moved(move_pp):
         return Move(NONE, move_pp, "이동이 임계 미만이다")
     pp = float(move_pp)
+    steam = (n_books is not None and int(n_books) >= STEAM_MIN_BOOKS
+             and abs(pp) >= STEAM_MIN_PP)
     if not news:
+        if steam:
+            return Move(STEAM, pp,
+                        f"{abs(pp):.1f}%p 이동 · {n_books}북 동시 — 시장 전체가 밀렸다")
         return Move(MONEY, pp,
                     f"{abs(pp):.1f}%p 이동 — 뉴스 근거 없음(딥서치 미실행 또는 무소득)")
     # 이동 부호: 양수면 홈 쪽으로 갔다는 뜻이다.
@@ -116,7 +142,16 @@ def classify(*, move_pp: float | None, news: dict | None) -> Move:
     want = str(news.get("direction") or "")
     why = str(news.get("why") or "").strip()
     if toward == want:
+        if steam:
+            return Move(STEAM, pp,
+                        f"{abs(pp):.1f}%p {toward} 쪽 · {n_books}북 동시 — "
+                        f"뉴스와 같은 방향: {why}")
         return Move(NEWS, pp, f"{abs(pp):.1f}%p {toward} 쪽 이동 — 뉴스와 같다: {why}")
+    # 🔴 steam 이 뉴스 반대면 contra 다 — 취소 신호가 우선이다.
+    if steam:
+        return Move(CONTRA, pp,
+                    f"{abs(pp):.1f}%p {toward} 쪽 · {n_books}북 동시 — "
+                    f"뉴스({want})와 **반대**: {why}")
     if abs(pp) >= CONTRA_MIN_PP:
         return Move(CONTRA, pp,
                     f"{abs(pp):.1f}%p {toward} 쪽 이동 — 뉴스({want})와 **반대**: {why}")
@@ -136,3 +171,49 @@ def confirm(label: str, *, adj_pp: float | None, move_pp: float | None) -> int:
 def cancels(label: str) -> bool:
     """`contra` 면 픽·구조 픽을 취소한다(지시문 1-B-4 ④)."""
     return label == CONTRA
+
+
+def book_disagree(probs: list | None) -> dict | None:
+    """[U9] 북별 확률이 갈렸는가. `{sd_pp, disagree, n}` — **표시만** 한다.
+
+    🔴 확률을 바꾸지 않는다. 갈렸다는 사실이 확신 등급에 쓰인다(U10).
+    ⚠️ 두 북 미만이면 판단하지 않는다(None).
+    """
+    vals = [float(p) for p in (probs or []) if p is not None]
+    if len(vals) < 2:
+        return None
+    mean = sum(vals) / len(vals)
+    var = sum((v - mean) ** 2 for v in vals) / len(vals)
+    sd_pp = round((var ** 0.5) * 100, 2)
+    return {"sd_pp": sd_pp, "disagree": sd_pp > DISAGREE_SD_PP, "n": len(vals)}
+
+
+def line_to_pp(line_move: float | None) -> float | None:
+    """[U9] **핸디** 라인 이동 → 확률(%p). 0.5 = 4%p · 1.0 = 8%p.
+
+    🔴 핸디에만 쓴다. 토탈(U/O)은 같은 계수가 아니다 — 호출부가 시장을 가른다.
+    """
+    if line_move is None:
+        return None
+    return round(float(line_move) / 0.5 * LINE_PP_PER_HALF, 2)
+
+
+def adj_confirm(label: str, *, adj_pp: float | None,
+                move_pp: float | None) -> dict:
+    """[U9] 흐름이 판정에 무엇을 하는가. 지시문 1-B-4.
+
+        news   우리 방향이면 **확증**(크기는 안 바꾼다)
+        money  **무시**하되 판돈은 절반
+        steam  money 와 같다(확증은 아니다 — 이유를 모른다)
+        contra **취소**
+    """
+    out = {"label": label, "confirm": 0, "stake_mult": 1.0, "cancel": False}
+    if label == CONTRA:
+        out["cancel"] = True
+        out["stake_mult"] = 0.0
+        return out
+    if label in (MONEY, STEAM):
+        out["stake_mult"] = 0.5
+        return out
+    out["confirm"] = confirm(label, adj_pp=adj_pp, move_pp=move_pp)
+    return out
