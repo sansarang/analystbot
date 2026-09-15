@@ -111,14 +111,52 @@ def find_match(rows: list[dict], *, home: str, away: str) -> dict | None:
 
 
 def _players(side: dict) -> list[dict]:
-    """선발 명단 → `[{id, name}]`. 🔴 **id 를 반드시 싣는다** — 주전 판정은
-    이름이 아니라 id 로 센다(사용자 지시)."""
+    """선발 명단 → `[{id, name, market_value, position_id, shirt}]`.
+
+    🔴 **id 를 반드시 싣는다** — 주전 판정은 이름이 아니라 id 로 센다(사용자 지시).
+    🔴 [U6 2026-09-15] 시장가치를 함께 싣는다. 원자료에 있는데 버리고 있었다
+       (실측: `starters[].marketValue = 1173408`). U8 의 `importance` 가 이
+       값을 쓴다 — 없으면 결장이 **이름 수**로 세어진다.
+    ⚠️ 기존 키(`id`·`name`)는 **그대로 둔다.** 읽는 곳이 넷이다.
+    """
     out: list[dict] = []
     for grp in (side or {}).get("starters") or []:
         items = grp if isinstance(grp, list) else [grp]
         for x in items:
             if isinstance(x, dict) and (x.get("id") or x.get("name")):
-                out.append({"id": x.get("id"), "name": x.get("name") or x.get("fullName")})
+                out.append({
+                    "id": x.get("id"),
+                    "name": x.get("name") or x.get("fullName"),
+                    "market_value": x.get("marketValue"),
+                    "position_id": x.get("positionId"),
+                    "shirt": x.get("shirtNumber"),
+                })
+    return out
+
+
+def parse_form(details: dict) -> dict:
+    """[U6] 최근 경기 결과 → `{"home": [...], "away": [...]}`.
+
+    🔴 원본은 `content.matchFacts.teamForm` 이고 **[홈, 원정] 두 칸**이다.
+       한 경기는 `{"resultString": "W", "date": {...}, "linkToMatch": …}`.
+    ⚠️ 없으면 빈 목록이다 — 0승으로 읽지 않는다.
+    """
+    tf = (((details or {}).get("content") or {}).get("matchFacts") or {}) \
+        .get("teamForm")
+    out = {"home": [], "away": []}
+    if not isinstance(tf, list):
+        return out
+    for i, key in enumerate(("home", "away")):
+        rows = tf[i] if len(tf) > i and isinstance(tf[i], list) else []
+        for m in rows[:5]:
+            if not isinstance(m, dict):
+                continue
+            out[key].append({
+                "result": m.get("resultString"),
+                "utc": ((m.get("date") or {}).get("utcTime")
+                        if isinstance(m.get("date"), dict) else None),
+                "link": m.get("linkToMatch"),
+            })
     return out
 
 
@@ -148,6 +186,10 @@ def parse_lineup(details: dict) -> dict | None:
         out[key] = {
             "team_id": t.get("id"), "team": t.get("name"),
             "formation": t.get("formation"),
+            # 🔴 [U6] 팀 선발 총가치. importance 의 분모다
+            #    (실측: 가시마 6,352,468 · 뉴캐슬제츠 4,098,733).
+            "total_market_value": t.get("totalStarterMarketValue"),
+            "avg_age": t.get("averageStarterAge"),
             "starters": _players(t),
             "bench": [{"id": x.get("id"), "name": x.get("name")}
                       for x in (t.get("subs") or []) if isinstance(x, dict)],
@@ -155,6 +197,8 @@ def parse_lineup(details: dict) -> dict | None:
             "coach": ((t.get("coach") or {}) or {}).get("name")
             if isinstance(t.get("coach"), dict) else t.get("coach"),
         }
+    # 🔴 [U6] 최근 5경기. 같은 응답에서 읽는다 — 요청은 늘지 않는다.
+    out["last5"] = parse_form(details)
     return out
 
 

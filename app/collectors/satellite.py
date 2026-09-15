@@ -937,12 +937,19 @@ def _extract_cache_key(urls, home: str, away: str) -> str:
 
 
 async def extract_game_facts(articles: list[dict], *, home: str, away: str,
-                             league: str, redis=None, jg: dict | None = None) -> dict:
+                             league: str, redis=None, jg: dict | None = None,
+                             need: list | None = None) -> dict:
     """[EXT-1] 경기 하나 → `{"home": {...}, "away": {...}}`. **LLM 1콜.**
 
     🔴 종전에는 팀별 3건 = **경기당 6콜**이었고 기사 전문을 넣었다. groq 무료
        한도가 그 때문에 매 사이클 429 였다(실측 2026-09-14: 백오프 340~467초).
     🔴 같은 URL 묶음이면 **다시 묻지 않는다**(URL 해시 캐시).
+    🔴 [U6 2026-09-15] `need` 를 주면 **그 칸만** 판정 입력으로 남긴다
+       (`hypothesis.need_keys` 모양: `["home.out", "away.midweek", …]`).
+       나머지는 버리지 않고 `collected_extra` 로 세기만 한다 — 왜 안 썼는지를
+       나중에 답할 수 있어야 한다.
+    ⚠️ **`need` 를 못 받으면 종전대로 전부 쓴다.** need 가 빈 목록인 것(보드
+       고정)과 안 받은 것(호출부 미배선)은 다르다 — 굶기지 않는다.
     ⚠️ 실패해도 예외를 올리지 않는다 — 추출 실패가 기사 수집을 되돌리면 안 된다.
     """
     from app.engine.scout_config import (FETCH_PER_STAGE, RANK_UNLISTED, merge,
@@ -1042,6 +1049,42 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
     return out
 
 
+#: 🔴 [U6 2026-09-15] 추출 스키마 **8칸**. 원본은 `hypothesis.FIELDS` 다 —
+#   여기 목록을 손으로 적지 않는다(두 이름표를 만들면 U7 이 못 맞춘다).
+def _schema_fields() -> tuple:
+    from app.engine.hypothesis import FIELDS
+
+    return tuple(FIELDS)
+
+
+def fill_schema(box: dict) -> dict:
+    """8칸을 **전부** 채운다. 없는 칸은 `None`(모른다)이지 빈 값이 아니다.
+
+    🔴 종전에는 doubt·last3·midweek·notes 가 프롬프트에만 있고 저장되지 않아
+       U7(확인 판정)이 맞출 대상이 없었다(실측 2026-09-15: 8칸 중 4칸 유실).
+    ⚠️ **0 이나 빈 목록으로 채우지 않는다.** "모른다"와 "없다"는 다르다 —
+       `out=[]` 는 결장 0명이고 `out=None` 은 안 봤다는 뜻이다.
+    """
+    out = dict(box or {})
+    for f in _schema_fields():
+        out.setdefault(f, None)
+    return out
+
+
+def snippet_level(source_tier: int | None, box: dict) -> bool:
+    """[U6] 이 자료가 **조각**인가 — tier 3 이상인데 수치가 하나도 없다.
+
+    🔴 조각이면 확신 상한이 내려간다(U10 이 쓴다). 여기서는 표시만 한다.
+    """
+    if source_tier is None or int(source_tier) < 3:
+        return False
+    for f in ("out", "xi", "bench_notable", "last3"):
+        v = (box or {}).get(f)
+        if v:
+            return False
+    return True
+
+
 def _json_wins(llm: dict, fm: dict | None, side: str) -> dict:
     """[FOT-4 사용자 지시] **out·xi 는 구조 JSON 이 정본.** LLM 은 보조 칸만.
 
@@ -1077,6 +1120,37 @@ def _json_wins(llm: dict, fm: dict | None, side: str) -> dict:
     if out.get("conflict"):
         logger.info("[scout] %s 결장 충돌 — JSON %s vs LLM %s",
                     llm.get("team"), out.get("out"), out.get("out_llm"))
+    # 🔴 [U6] 8칸을 전부 채워 내보낸다. 없는 칸은 None 이다.
+    out = fill_schema(out)
+    out["snippet_level"] = snippet_level(out.get("source_tier"), out)
+    return out
+
+
+def apply_need(box: dict, side: str, need_keys: list | None) -> dict:
+    """[U6] need 밖 칸을 **판정 입력에서 뺀다.** 지우지 않고 옮긴다.
+
+    🔴 `need_keys` 가 `None` 이면 **종전대로 전부**다(호출부 미배선).
+       빈 목록은 "찾을 것이 없다"(보드 고정)라 전부 뺀다 — 둘을 구분한다.
+    🔴 뺀 칸은 `collected_extra` 에 이름만 남긴다. 버리면 "왜 안 썼나"를
+       영영 모른다.
+    """
+    if need_keys is None:
+        return dict(box or {})
+    want = {k.split(".", 1)[1] for k in need_keys
+            if k.startswith(f"{side}.")}
+    out, extra = {}, []
+    for f in _schema_fields():
+        v = (box or {}).get(f)
+        if f in want:
+            out[f] = v
+        else:
+            out[f] = None
+            if v:
+                extra.append(f)
+    for k, v in (box or {}).items():
+        if k not in out:
+            out[k] = v
+    out["collected_extra"] = extra
     return out
 
 

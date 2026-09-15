@@ -89,18 +89,20 @@ def test_need_이름이_추출_스키마_8칸과_같다():
     assert tuple(H.FIELDS) == SCHEMA_8
 
 
-def test_S5가_아직_저장하지_않는_칸을_기록한다():
-    """⚠️ **U6 의 작업 범위다.** 지금 S5 는 8칸 중 일부만 저장한다 —
-    그 사실을 숫자로 남긴다. U6 가 닫으면 이 테스트가 먼저 알려준다.
-    🔴 "언젠가 되겠지" 대신 **지금 몇 칸인지**를 계약이 들고 있는다.
+def test_S5가_8칸을_전부_저장한다():
+    """🔴 U5 때는 8칸 중 4칸(doubt·last3·midweek·notes)이 프롬프트에만 있고
+    저장되지 않았다. **U6 가 닫았고 이 테스트가 먼저 알려줬다** —
+    "언젠가 되겠지" 대신 지금 몇 칸인지를 계약이 들고 있었기 때문이다.
+    이제는 8칸 전부를 요구한다.
     """
-    src = pathlib.Path("app/collectors/satellite.py").read_text(encoding="utf-8")
-    have = [f for f in H.FIELDS if f'"{f}"' in src or f"'{f}'" in src]
-    missing = [f for f in H.FIELDS if f not in have]
-    # 실측 2026-09-15 — S5 가 저장하는 칸: out · xi_status · bench_notable
-    #   빠진 칸: doubt · xi · last3 · midweek · notes  ← **U6 가 닫는다**
-    assert set(missing) == {"doubt", "last3", "midweek", "notes"}, missing
-    assert set(have) == {"out", "xi", "xi_status", "bench_notable"}, have
+    from app.collectors.satellite import fill_schema
+
+    box = fill_schema({"out": ["A"]})
+    missing = [f for f in H.FIELDS if f not in box]
+    assert missing == [], missing
+    assert box["out"] == ["A"]
+    # 🔴 없는 칸은 None 이지 빈 값이 아니다 — "모른다"와 "없다"는 다르다
+    assert box["doubt"] is None and box["doubt"] != []
 
 
 def test_게이트_라벨을_베껴적지_않는다():

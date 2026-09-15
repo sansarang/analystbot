@@ -175,9 +175,17 @@ def js_only(url: str) -> bool:
     return _in(_domain(url), SOURCES["js_only"])
 
 
+#: 🔴 [U6 2026-09-15] tier0 — 구단 공식·담당 기자. tier1 보다 **앞선다**.
+#   0 이 가장 좋은 등급이고 숫자가 클수록 나쁘다 — 기존 순서(1·2·3·4·9)를
+#   그대로 잇는다. 계약이 0 < 1 < 2 < 3 < RANK_UNLISTED < RANK_UNKNOWN 을 본다.
+RANK_PRIMARY = 0
+
+
 def rank(url: str, league: str) -> int:
-    """도메인 → 등급(1·2·3). 목록에 없으면 `RANK_UNKNOWN`."""
+    """도메인 → 등급(0·1·2·3). 목록에 없으면 `RANK_UNKNOWN`."""
     d = _domain(url)
+    if _in(d, (SOURCES.get("tier0_primary") or {}).get(league) or []):
+        return RANK_PRIMARY
     for i, key in enumerate(("tier1_club_local", "tier2_aggregator"), start=1):
         if _in(d, (SOURCES[key] or {}).get(league) or []):
             return i
