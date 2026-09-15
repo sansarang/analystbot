@@ -142,3 +142,30 @@ def test_manual_태그는_표에_있는_값만():
 ])
 def test_입력_모양_파싱(spec, want):
     assert MO.parse_pair(spec) == want
+
+
+@pytest.mark.asyncio
+async def test_행의_snap_tag가_저장까지_간다():
+    """🔴 실측 2026-09-15: ESPN 이 open 을 줬는데 DB 에는 open_proxy 가 붙었다.
+    store_rows 가 행의 snap_tag 를 버리고, 뒤늦게 tag_open 이 대용품을 붙였다.
+    진짜 개장가를 대용품으로 이름 붙이는 셈이었다."""
+    from app.collectors import odds_free as OF
+
+    seen = []
+
+    class _Pool:
+        async def execute(self, sql, *a):
+            seen.append((sql, a))
+
+        async def fetchrow(self, sql, *a):
+            return None          # tag_open 은 아무것도 안 한다
+
+    rows = [{"book": "dk", "market": "h2h", "side": "H", "odds": 2.0,
+             "snap_tag": "open"},
+            {"book": "dk", "market": "h2h", "side": "A", "odds": 3.0}]
+    await OF.store_rows(_Pool(), 1, rows, "espn")
+    ins = [a for sql, a in seen if "INSERT INTO odds_snapshots" in sql]
+    assert len(ins) == 2
+    assert "snap_tag" in [s for s, _ in seen if "INSERT" in s][0]
+    assert ins[0][-1] == "open", ins[0]
+    assert ins[1][-1] is None, "이름표 없는 행에 값이 붙었다"

@@ -130,12 +130,16 @@ async def store_rows(pool, game_id: int, rows: list[dict], provider: str) -> int
     n = 0
     for r in rows:
         try:
+            # 🔴 [U2 2026-09-15] 행이 이름표를 들고 오면 **그대로 싣는다.**
+            #    ESPN 은 `open` 블록으로 **진짜 개장가**를 준다(유일한 소스).
+            #    종전에는 이 칸을 버려서 `tag_open` 이 뒤늦게 `open_proxy` 를
+            #    붙였다 — 진짜 개장가를 대용품으로 이름 붙이는 셈이었다.
             await pool.execute(
                 """INSERT INTO odds_snapshots
-                       (game_id, book, market, side, line, odds, provider)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7)""",
+                       (game_id, book, market, side, line, odds, provider, snap_tag)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
                 game_id, r["book"], r["market"], r["side"],
-                r.get("line"), r["odds"], provider)
+                r.get("line"), r["odds"], provider, r.get("snap_tag"))
             n += 1
         except Exception as exc:
             logger.warning("[odds_free] 적재 실패 game=%s %s: %s",
