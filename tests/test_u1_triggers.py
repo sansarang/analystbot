@@ -113,3 +113,19 @@ def test_ingest_gap이_배선돼_있다():
 
     src = inspect.getsource(PL._load_soccer_fixtures)
     assert "ingest_gap(" in src and "_src_counts" in src
+
+
+def test_종류가_늘면_기존_경기에도_붙는다():
+    """🔴 실측 2026-09-15: ACTIONS 8종을 넣었는데 game=8205 는 5행 그대로였다.
+    계획 SQL 이 `kind='close'` 하나를 보초로 써서, 그게 있으면 경기를 통째로
+    건너뛰었다. 트리거 **개수**를 함께 봐야 한다."""
+    from app import scheduler as SC
+
+    sql = SC._TRIGGER_PLAN_SQL
+    assert "count(*)" in sql and "COALESCE(t.n, 0) < $3" in sql, sql
+    # 킥오프 변경 조건은 그대로 남아 있어야 한다
+    assert "close_due IS DISTINCT FROM g.starts_at" in sql
+
+    src = inspect.getsource(SC._triggers_tick)
+    assert "len(T.ALL_KINDS)" in src, "종류 수를 손으로 적었다(사본 금지)"
+    assert "13" not in src.split("_TRIGGER_PLAN_SQL")[1][:300]

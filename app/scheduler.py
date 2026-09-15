@@ -2031,13 +2031,28 @@ TRIGGER_SNAP_MAX_AGE_MIN = 70
 TRIGGER_DUE_LIMIT = 60
 
 #: 계획 대상 — 트리거가 아직 없거나, 킥오프가 옮겨져 `close` 가 어긋난 경기.
+#: 🔴 [U1 2026-09-15] 종전에는 `kind='close'` **하나를 보초**로 썼다. 그게
+#   있으면 경기를 통째로 건너뛰므로 **종류가 늘어도 기존 경기엔 안 붙었다**
+#   (실측: ACTIONS 8종을 넣었는데 game=8205 는 그대로 5행).
+#   → 트리거 **개수**를 함께 본다($3 = len(triggers.ALL_KINDS)).
+#   ⚠️ 개수만 보면 안 된다 — 킥오프가 바뀐 경우도 종전대로 다시 계획한다.
 _TRIGGER_PLAN_SQL = """
     SELECT g.id, g.starts_at
       FROM games g
-      LEFT JOIN game_triggers t ON t.game_id = g.id AND t.kind = 'close'
+      LEFT JOIN (
+            SELECT game_id,
+                   count(*)                                             AS n,
+                   max(due_at)   FILTER (WHERE kind = 'close')          AS close_due,
+                   bool_or(fired_at IS NOT NULL)
+                       FILTER (WHERE kind = 'close')                    AS close_fired
+              FROM game_triggers GROUP BY game_id
+      ) t ON t.game_id = g.id
      WHERE g.starts_at IS NOT NULL
        AND g.starts_at BETWEEN $1 AND $2
-       AND (t.id IS NULL OR (t.fired_at IS NULL AND t.due_at <> g.starts_at))
+       AND (t.game_id IS NULL
+            OR COALESCE(t.n, 0) < $3
+            OR (COALESCE(t.close_fired, FALSE) = FALSE
+                AND t.close_due IS DISTINCT FROM g.starts_at))
 """
 
 #: 그 경기의 **가장 최근** 배당에만 이름표를 붙인다(소스·시장·쪽·라인별 1행).
@@ -2074,8 +2089,11 @@ async def _triggers_tick(pool=None, now=None) -> dict:
     try:
         # 🔴 [U1 2026-09-15] 창을 **전후 30시간**으로. 종전 −6h 는 늦게 적재된
         #    경기(ACL 은 킥오프 당일에 처음 들어왔다)의 지난 시점을 놓쳤다.
+        # 🔴 [U1] 종류 수는 `triggers.ALL_KINDS` 가 원본이다 — 숫자를 여기
+        #    적지 않는다(사본 금지).
         rows = await pool.fetch(_TRIGGER_PLAN_SQL,
-                                now - timedelta(hours=30), now + timedelta(hours=30))
+                                now - timedelta(hours=30), now + timedelta(hours=30),
+                                len(T.ALL_KINDS))
     except Exception as exc:
         logger.warning("[triggers] 계획 대상 조회 실패: %s", exc)
         rows = []
