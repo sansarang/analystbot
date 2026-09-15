@@ -135,3 +135,75 @@ def build(gate_label: str, *, sport: str, side: str | None = None,
 def need_keys(h: Hypothesis) -> list[str]:
     """`["home.out", "away.midweek", …]`. U6 가 수집을 좁힐 때 쓴다."""
     return [n.key for n in h.need]
+
+
+# ═══════════════ [U7 2026-09-15] 확인 판정 H2
+#
+# 🔴 왜: `confirmed/refuted/unknown` 이 없어서 지금은 **자료가 많으면 픽**이
+#    된다. U5 가 need 를 만들고 U6 가 그것만 모으게 했는데, 모은 것이 가설을
+#    세웠는지 무너뜨렸는지 판정하는 자리가 비어 있었다.
+# 🔴 `unknown 과반 → 보드` 가 원칙 4·11 의 구현이다. 모르는 것이 절반을 넘으면
+#    픽을 내지 않는다.
+#
+# ⚠️ U6 의 `fill_schema` 가 만든 구분이 이 판정의 전제다:
+#      값이 있다(truthy) → confirmed   찾았다
+#      값이 [] / False   → refuted     봤는데 없다
+#      값이 None         → unknown     안 봤다 / 소스가 없다
+#    `[]` 를 unknown 으로 읽으면 "결장 0명"이라는 **정보**를 모른다고 치게 되고,
+#    멀쩡한 경기가 보드로 간다.
+
+CONFIRMED, REFUTED, UNKNOWN = "confirmed", "refuted", "unknown"
+
+
+def _verdict_of(value) -> str:
+    """한 칸의 판정. 🔴 None 과 빈 값을 **구분**한다."""
+    if value is None:
+        return UNKNOWN
+    if value is False or (hasattr(value, "__len__") and len(value) == 0):
+        return REFUTED
+    return CONFIRMED
+
+
+def _unknown_ratio() -> float:
+    """미상 과반 기준. ⚠️ U13 에서 `config/rules.yaml` 로 옮긴다."""
+    try:
+        from app.config import get_settings
+
+        return float(get_settings().unknown_board_ratio)
+    except Exception:
+        return 0.5
+
+
+def confirm(h: Hypothesis, collected: dict | None) -> dict:
+    """가설 + 수집 → `{confirmed[], refuted[], unknown[], sufficient, board}`.
+
+    `collected` 는 `{"home": {필드: 값}, "away": {...}}` — U6 추출 8칸 모양.
+
+    🔴 `sufficient` 는 confirmed 수가 문턱 이상인가다. need 가 **비어 있으면
+       무조건 False** — 아무것도 안 찾고 픽이 나가면 안 된다.
+    🔴 `board` 는 unknown 이 과반인가다.
+    ⚠️ 순수 함수다. DB·HTTP 를 부르지 않는다.
+    """
+    box = collected or {}
+    buckets: dict[str, list] = {CONFIRMED: [], REFUTED: [], UNKNOWN: []}
+    for n in h.need:
+        # 🔴 **그 팀 칸만** 본다. 상대편 값을 내 근거로 읽으면 반대 방향
+        #    근거가 내 근거가 된다.
+        side_box = box.get(n.side) or {}
+        buckets[_verdict_of(side_box.get(n.field))].append(n.key)
+
+    total = len(h.need)
+    n_conf = len(buckets[CONFIRMED])
+    n_unk = len(buckets[UNKNOWN])
+    sufficient = bool(total) and n_conf >= int(h.sufficient_count)
+    board = (n_unk / total) > _unknown_ratio() if total else True
+
+    out = {CONFIRMED: buckets[CONFIRMED], REFUTED: buckets[REFUTED],
+           UNKNOWN: buckets[UNKNOWN], "sufficient": sufficient,
+           "board": board, "need_n": total,
+           "sufficient_count": int(h.sufficient_count)}
+    logger.info("[confirm] need %d → 확인 %d · 반증 %d · 미상 %d "
+                "· 문턱 %d · 충족 %s · 보드 %s",
+                total, n_conf, len(buckets[REFUTED]), n_unk,
+                h.sufficient_count, sufficient, board)
+    return out

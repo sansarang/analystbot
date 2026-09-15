@@ -549,6 +549,13 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_reason TEXT;
 --   {"direction","need":[{"field","side","why"}],"sufficient_count","reason"}
 --   🔴 무엇을 찾기로 했는지를 남겨야 "왜 못 찾았나"를 나중에 답할 수 있다.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS hypothesis JSONB;
+-- [U7 2026-09-15] 확인 판정 H2 — 무엇이 확인/반증/미상인가.
+--   🔴 `[]`(봤는데 없다)와 NULL(안 봤다)을 구분해 담는다. 그 구분이
+--      없으면 "결장 0명"이라는 정보가 "모른다"로 바뀐다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS confirmed    JSONB;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS refuted      JSONB;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS unknown_axes JSONB;
+
 
 -- [TRG-1 2026-09-13 Part A] 경기별 시점 트리거.
 --   5시점: open(T-24h) · pre(T-3h) · lineup(T-60m) · late(T-10m) · close(T+0)

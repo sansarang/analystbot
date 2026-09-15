@@ -616,6 +616,11 @@ class Settings(BaseSettings):
     xai_base_url: str | None = None
 
     # 인프라
+    #: 🔴 [U7 2026-09-15] `unknown 과반 → 보드`. 원칙 4·11 의 구현이다.
+    #   모르는 것이 이 비율을 **넘으면** 픽을 내지 않는다.
+    #   ⚠️ 임시 자리다 — U13 에서 `config/rules.yaml` 로 옮긴다(지시문).
+    unknown_board_ratio: float = 0.5
+
     database_url: str = "postgresql://analyst:analyst@localhost:5432/analystbot"
     redis_url: str = "redis://localhost:6379"
 
