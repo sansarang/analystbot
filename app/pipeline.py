@@ -2996,6 +2996,12 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
             # [PROB-1] 판정 **뒤에** 시장 뼈대를 붙인다(LLM은 보지 않는다).
             if pool is not None:
                 await _attach_market_spine(pool, jg)
+                # 🔴 [P0-1 2026-09-15] 뼈대가 붙은 **직후** 승자·확신을 코드
+                #    값으로 덮어쓴다. 카드 렌더는 한참 뒤(build_card)라 항상
+                #    덮어쓴 값을 읽는다. LLM 값은 jg["llm_verdict"] 에 남는다.
+                from app.engine.matchup import apply_code_verdict
+
+                apply_code_verdict(jg)
             # ── [BRR-3 2026-09-08] **이번 회차 분기점을 한 번 더 조사한다.**
             #   위 조사는 판정 **앞**이라 직전 회차 분기점을 푼다 — 그것이
             #   판정의 재료가 되는 것은 옳다(유료 호출을 늘리지 않는 2단 설계).
@@ -3133,6 +3139,10 @@ async def _run_soccer_matchups(redis, date: str, games: list[dict]) -> int:
                 # [PROB-1] 판정 뒤에 시장 뼈대를 붙인다(LLM은 보지 않는다).
                 if pool is not None:
                     await _attach_market_spine(pool, jg)
+                    # 🔴 [P0-1 2026-09-15] 축구도 같다 — 사본 금지.
+                    from app.engine.matchup import apply_code_verdict
+
+                    apply_code_verdict(jg)
         except Exception as exc:
             logger.warning("[pipeline] 축구 매치업 실패 game=%s: %s",
                            jg.get("game_id"), exc)

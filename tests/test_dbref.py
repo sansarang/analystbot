@@ -124,13 +124,17 @@ async def test_AI_가_다른_승자를_지목하면_반대근거로_남는다(mo
 
 
 @pytest.mark.asyncio
-async def test_AI_가_확신을_올릴_수도_있다(monkeypatch):
-    """🔴 종전에는 내리기만 했다(`lower`). 이제 양방향이다."""
+async def test_AI_는_확신을_바꾸지_못한다(monkeypatch):
+    """🔴 [P0-1 2026-09-15] 종전에는 양방향으로 바꿀 수 있었다. 이제 못 바꾼다.
+
+    등급은 코드가 정한다(CONF-1). DB 참조가 "상"이라고 답해도 3단계 등급이
+    남는다 — 다른 의견은 버리지 않고 `반대근거` 로 서술에 실린다.
+    """
     _payloads(monkeypatch)
     _reply(monkeypatch, '{"본것": ["오늘 타순"], "승자": "Doosan Bears", '
                         '"확신": "상", "사유": ""}')
     out = await D.recheck(_jg(), _tri(), {"승자": "Doosan Bears", "확신": "하"})
-    assert out["확신"] == "상" and out["승자변경"] is False
+    assert out["확신"] == "하" and out["승자변경"] is False
 
 
 @pytest.mark.asyncio

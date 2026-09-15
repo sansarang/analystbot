@@ -27,20 +27,35 @@ DRAW = "무"
 from app.collectors.websearch import MAX_ASKS as _MAX_ASKS  # noqa: E402
 
 
-def level(raw, expected: str | None = None):
-    """[CONF-1] 등급을 **코드가 정하고**, LLM 출력은 그것과 같은지만 본다.
+def shadow_level(raw) -> str:
+    """LLM 자기신고 등급을 **라벨로만** 정규화한다. 🔴 섀도 전용이다.
+
+    🔴 [P0-1 2026-09-15] 이 값은 **카드에 실리지 않는다.** 원장의
+       `llm_level` 로만 간다 — "무료 판정이 얼마나 틀리는가"를 재는 칸이다.
+       카드로 가는 등급은 `level(raw, expected)` 를 거친 코드 등급뿐이다.
+    ⚠️ 모르는 라벨은 `하` 로 떨어뜨린다. 낮은 쪽이 안전하다.
+    """
+    t = str(raw or "").strip()
+    return t if t in LEVELS else LEVELS[-1]
+
+
+def level(raw, expected: str):
+    """[CONF-1] 등급은 **코드가 정하고**, LLM 출력은 그것과 같은지만 본다.
 
     🔴 사용자 결정(1차 결정 3): 종전에는 이 함수가 라벨 정규화만 하고 등급은
        LLM 자기신고였다 — AUC 0.5122 짜리 판정에 AI 가 붙인 등급을 그대로
        실어 보냈다.
-    🔴 `expected` 가 주어지면 **글자 단위로 일치**해야 한다. 다르면 `None`
-       (호출부가 반려한다) — 모르는 라벨을 조용히 `하` 로 떨어뜨리지 않는다.
-    ⚠️ `expected` 가 없으면 **종전 그대로** 정규화한다. 아직 기대값을 주지
-       못하는 호출부가 있고, 그 경로를 깨지 않는다.
+    🔴 [P0-1 2026-09-15 사용자 지시] `expected` 는 **필수**다. 종전에는 기본값
+       `None` 이 있었고, 그 모양이 곧 빠져나갈 구멍이었다 — `decide()` 가
+       `level(parsed.get("확신"))` 로 불러 자기신고를 그대로 통과시켰고,
+       7432 가 "파르마 승 · 확신 상"으로 나왔다. 기본값을 없애 **부르는 쪽이
+       기대값을 대지 않으면 터지게** 한다. 정규화만 필요하면 `shadow_level`.
+    🔴 다르면 `None` — 호출부가 반려한다. 모르는 라벨을 조용히 `하` 로
+       떨어뜨리지 않는다.
     """
-    t = str(raw or "").strip()
     if expected is None:
-        return t if t in LEVELS else "하"
+        raise ValueError("level() 은 expected 가 필수다 — 정규화는 shadow_level()")
+    t = str(raw or "").strip()
     return t if t == expected else None
 
 
@@ -138,7 +153,7 @@ async def decide(jg: dict, brief: str, tri: dict, *,
         return None
     # 🔴 [SRCH-6] 서술은 **선택 칸**이다 — 없어도 판정은 산다. 승자가 본체다.
     #    사용자 지시 2026-09-12: "제미니가 분석한 글을 그대로 보여달라고 해라".
-    out = {"승자": str(parsed["승자"]).strip(), "확신": level(parsed.get("확신")),
+    out = {"승자": str(parsed["승자"]).strip(), "확신": shadow_level(parsed.get("확신")),   # 🔴 섀도 — 카드로 안 간다
            "서술": " ".join(str(parsed.get("서술") or "").split()),
            # 🔴 [SRCH-7] 재요청. **코드가 자른다** — 상한 원본은 websearch 다.
            "추가요청": [str(x).strip() for x in (parsed.get("추가요청") or [])

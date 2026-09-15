@@ -96,12 +96,24 @@ def test_level은_입력값_복사_검증이다():
     assert V.level("없는등급", expected="하") is None
 
 
-def test_level은_기대값이_없으면_종전처럼_정규화한다():
-    """⚠️ 호출부가 아직 기대값을 못 주는 경로가 있다 — 회귀를 막는다."""
+def test_level은_기대값을_반드시_받는다():
+    """🔴 [P0-1 2026-09-15] 종전 이 테스트는 **결함을 잠그고 있었다.**
+
+    "호출부가 아직 기대값을 못 주는 경로가 있다"며 `level(raw)` 를 허용했고,
+    `verdict.decide()` 가 바로 그 모양으로 불러 LLM 자기신고를 통과시켰다
+    (7432 "파르마 승 · 확신 상"). 이제 기대값은 필수다 — 정규화만 필요하면
+    `shadow_level` 이고, 그 값은 **카드에 실리지 않는다.**
+    """
+    import pytest as _pt
+
     from app.engine import verdict as V
 
-    assert V.level("중") == "중"
-    assert V.level("없는등급") == "하"
+    with _pt.raises(TypeError):
+        V.level("중")
+    assert V.level("중", "중") == "중"
+    assert V.level("상", "중") is None
+    assert V.shadow_level("중") == "중"
+    assert V.shadow_level("없는등급") == "하"
 
 
 def test_파이프라인이_코드등급을_세운다():

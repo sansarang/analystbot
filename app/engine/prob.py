@@ -198,3 +198,33 @@ def p_code(market: float | None, adj: dict[str, float] | None,
 def adj_json(adj: dict[str, float] | None) -> str:
     """원장에 남길 JSON. 빈 조정은 `{}` — NULL 이 아니다(조사했는데 없었다는 뜻)."""
     return json.dumps(adj or {}, ensure_ascii=False)
+
+
+def code_pick(jg: dict) -> dict | None:
+    """[P0-1] **코드가 고른 결과.** LLM 은 여기에 관여하지 않는다.
+
+    반환은 `apply_winner` 가 그대로 먹는 모양이다 —
+    축구는 `{"결과": 홈승|무|원정승}`, 야구는 `{"승자": 팀명}`.
+
+    🔴 `p_code` 가 없으면 **None** 이다. 시장 뼈대가 없다는 뜻이고, 그때는
+       승자를 지어내지 않는다(사용자 지시 2026-09-15). 호출부가 보드로 내린다.
+    ⚠️ 축구 3-way 는 `p_code`(홈) · 시장 무승부 · 나머지(원정)로 읽는다.
+       `1 - p_home ≠ p_away` 이므로 **무승부 질량을 빼야** 한다 —
+       `pipeline._run_*` 가 `p_claude_away` 를 만드는 방식과 같다(사본 금지).
+    """
+    p = jg.get("p_code")
+    if p is None:
+        return None
+    home, away = jg.get("home") or "", jg.get("away") or ""
+    if (jg.get("sport") or "").lower() != "soccer":
+        return {"승자": home if float(p) >= 0.5 else away}
+    from app.engine.verdict import THREEWAY
+
+    tri = market_triple(jg.get("market_probs"), home, away)
+    if tri is None:
+        return None
+    draw = tri[1]
+    rest = max(0.0, 1.0 - float(p) - float(draw))
+    best = max((float(p), THREEWAY[0]), (float(draw), THREEWAY[1]),
+               (rest, THREEWAY[2]))
+    return {"결과": best[1]}

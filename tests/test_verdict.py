@@ -40,13 +40,13 @@ def _patch(monkeypatch, text):
 
 @pytest.mark.parametrize("raw,want", [("상", "상"), ("중", "중"), ("하", "하")])
 def test_세_값을_그대로_쓴다(raw, want):
-    assert V.level(raw) == want
+    assert V.shadow_level(raw) == want
 
 
 @pytest.mark.parametrize("raw", ["high", "높음", "", None, "매우 높음", 3])
 def test_모르는_라벨은_하로_떨어뜨린다(raw):
     """🔴 그대로 실으면 카드가 못 읽는다. 낮은 쪽이 안전한 방향이다."""
-    assert V.level(raw) == "하"
+    assert V.shadow_level(raw) == "하"
 
 
 def test_눈금을_새로_만들지_않았다():

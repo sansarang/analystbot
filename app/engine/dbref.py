@@ -144,12 +144,18 @@ async def recheck(jg: dict, tri: dict, v: dict, *,
     from app.config import get_settings
     from app.engine.prompts import DB_OPEN, fill
     from app.engine.team_form import complete_json, parse_json_object
-    from app.engine.verdict import fmt_branches, level
+    from app.engine.verdict import fmt_branches, level, shadow_level
     from app.llm.judge_route import PRELIM_ROLE
 
     b = bundle(jg)
+    # 🔴 [P0-1 2026-09-15] `expected` 없이 `level()` 을 부르지 않는다. 그 모양은
+    #    LLM 자기신고를 그대로 통과시킨다(CONF-1 이 막으려던 바로 그것).
+    #    ⚠️ 여기서 기대값은 **3단계가 이미 정한 등급**이다 — 코드 등급의 원본은
+    #       `confidence.by_code` 이고, 그 값은 `apply_code_verdict` 가 덮어쓴다.
+    #       이 함수는 등급을 **만들지 않고 지킨다.**
+    _exp = shadow_level(v.get("확신"))
     out = {"있음": b["있음"], "없음": b["없음"], "본것": [],
-           "승자": v.get("승자"), "확신": level(v.get("확신")),
+           "승자": v.get("승자"), "확신": _exp,
            "승자변경": False, "사유": "", "판정": "미조회"}
     if not b["있음"]:
         logger.info("[dbref] %s@%s 우리 기록이 통째로 비었다 — 참조 생략",
@@ -178,7 +184,8 @@ async def recheck(jg: dict, tri: dict, v: dict, *,
     out["판정"] = "확인"
     # `본것` 은 자기 보고다 — 우리가 실제로 실은 것만 인정한다.
     out["본것"] = [x for x in (parsed.get("본것") or []) if x in b["있음"]]
-    out["확신"] = level(parsed.get("확신"))
+    # 🔴 [P0-1] DB 참조는 등급을 **바꾸지 못한다.** 다르면 3단계 등급이 남는다.
+    out["확신"] = level(parsed.get("확신"), _exp) or _exp
     new_w = str(parsed.get("승자") or "").strip()
     why = " ".join(str(parsed.get("사유") or "").split())
     if new_w and new_w != (v.get("승자") or ""):

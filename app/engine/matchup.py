@@ -563,7 +563,9 @@ def normalize_winner(verdict: dict, jg: dict) -> str | None:
     return want
 
 
-def apply_winner(jg: dict, verdict: dict) -> bool:
+def apply_winner(jg: dict, verdict: dict, *,
+                 expected_level: str | None = None,
+                 source: str = "llm") -> bool:
     """[ORD-3 2026-09-11 사용자 지시] **어느 팀이 이기는지만 싣는다.**
 
     "추천 로직도 다 삭제…수치는 전부다 삭제…" / "설명도 삭제…서치에 의한
@@ -576,6 +578,15 @@ def apply_winner(jg: dict, verdict: dict) -> bool:
     반환: 실었으면 True, 승자가 이 경기의 팀이 아니면 False.
     """
     home, away = jg.get("home") or "", jg.get("away") or ""
+    # 🔴 [P0-1 2026-09-15 사용자 결정 D] **덮어쓰기 전에 LLM 값을 대피시킨다.**
+    #    종전에는 원장 기록부가 `matchup["승자"]` 를 그대로 `llm_winner` 로
+    #    적었다. 코드 값으로 덮어쓰면 그 칸이 오염돼 **섀도 비교가 불가능**해진다
+    #    — 무료 판정이 얼마나 틀리는지 재려고 만든 칸인데 코드 값이 들어간다.
+    #    ⚠️ 한 번만 담는다. 코드가 두 번 불려도 LLM 값은 첫 것이 원본이다.
+    if source == "code" and jg.get("llm_verdict") is None:
+        m = jg.get("matchup") or {}
+        jg["llm_verdict"] = {"승자": m.get("승자"),
+                             "확신": m.get("확신") or m.get("확신도")}
     # 🔴 [SOC-2] **3-way** — 축구는 무승부가 정상 결과다. `결과` 가 오면
     #    그쪽으로 읽고, 없으면 종전대로 `승자` 이름으로 읽는다.
     #    ⚠️ 종목으로 가르지 않는다 — **입력의 모양**으로 가른다. 다만 야구가
@@ -595,7 +606,7 @@ def apply_winner(jg: dict, verdict: dict) -> bool:
         jg["matchup"] = {"결과": res, "승자": won,
                          "model": verdict.get("model")}
         jg["winner"] = won
-        _apply_extras(jg, verdict)
+        _apply_extras(jg, verdict, expected_level)
         return True
 
     w = str((verdict or {}).get("승자") or "").strip()
@@ -609,20 +620,84 @@ def apply_winner(jg: dict, verdict: dict) -> bool:
     # [ORD-12 사용자 지시] "확신 한 칸만 살려라." 온 경우에만 싣는다 —
     #   ORD-3 경로(승자만)는 이 칸이 없고, 그쪽 동작은 바뀌지 않는다.
     #   ⚠️ 모르는 라벨은 `하` 로 떨어뜨린다(`verdict.level`). 낮은 쪽이 안전하다.
-    _apply_extras(jg, verdict)
+    _apply_extras(jg, verdict, expected_level)
     jg["winner"] = jg["matchup"]["승자"]
     return True
 
 
-def _apply_extras(jg: dict, verdict: dict) -> None:
+def apply_code_verdict(jg: dict) -> bool:
+    """[P0-1 2026-09-15 사용자 결정 B] **승자·확신을 코드 값으로 덮어쓴다.**
+
+    🔴 `verdict.decide()` 는 건드리지 않는다. LLM 은 계속 승자·확신을 내도
+       되고(무료 섀도), 그 값은 `jg["llm_verdict"]` 로 보존된다. 카드에 실리는
+       것만 코드 값이다.
+    🔴 **반드시 `_attach_market_spine` 뒤에 부른다.** 그 앞에는 `p_code` 가
+       아직 없다 — 어젯밤 로그 순서가 그 증거다([verdict] → [v3] → [prob]).
+    🔴 `p_code` 가 없으면 승자를 **지어내지 않는다** — 승자 None · 확신 하 ·
+       보드. 반환 False 는 "판정 실패"가 아니라 "코드가 고를 수 없었다"이다.
+
+    반환: 덮어썼으면 True.
+    """
+    from app.engine import prob as _prob
+    from app.engine.verdict import LEVELS
+
+    pick = _prob.code_pick(jg)
+    lvl = jg.get("code_confidence") or LEVELS[-1]
+    if pick is None:
+        # 대피는 여기서도 해야 한다 — 덮어쓰지 않아도 LLM 값은 원장에 남는다.
+        m = jg.get("matchup") or {}
+        if jg.get("llm_verdict") is None:
+            jg["llm_verdict"] = {"승자": m.get("승자"),
+                                 "확신": m.get("확신") or m.get("확신도")}
+        jg["matchup"] = dict(m, 승자=None, 확신=LEVELS[-1])
+        jg["winner"] = None
+        jg["board_only"] = True
+        logger.warning("[P0-1] game=%s p_code 없음 — 승자 None · 확신 %s · 보드 "
+                       "(LLM 은 %r 을 냈다)", jg.get("game_id"), LEVELS[-1],
+                       (jg.get("llm_verdict") or {}).get("승자"))
+        return False
+    pick = dict(pick, 확신=lvl, model=(jg.get("matchup") or {}).get("model"))
+    before = dict(jg.get("matchup") or {})
+    ok = apply_winner(jg, pick, expected_level=lvl, source="code")
+    if not ok:
+        logger.warning("[P0-1] game=%s 코드 승자를 실을 수 없다: %r",
+                       jg.get("game_id"), pick)
+        return False
+    # 🔴 [P0-1 ③] 코드 승자와 LLM 승자의 불일치를 원장 칸에 적는다.
+    #    ⚠️ `analyze.gate_vs_llm(게이트, 시장_판단)` 을 쓰지 **않는다.** 그 함수는
+    #       LLM 이 스스로 낸 `시장_판단`("과대/과소/적정")을 받는데, 그 값을
+    #       만드는 `analyze` 는 아직 배선돼 있지 않다(호출부 0건). 없는 값을
+    #       승자에서 역산해 넣으면 그건 측정이 아니라 지어내기다.
+    #       여기 적는 것은 **승자 대조**뿐이고, analyze 가 배선되면 그 값이 이
+    #       칸의 원본이 된다.
+    llm_w = (jg.get("llm_verdict") or {}).get("승자")
+    jg["gate_vs_llm"] = "same" if llm_w == jg.get("winner") else "diff"
+    if before.get("승자") != jg.get("winner") or before.get("확신") != lvl:
+        logger.info("[P0-1] game=%s 코드가 덮어썼다 — 승자 %s→%s · 확신 %s→%s "
+                    "(LLM 원값 보존)", jg.get("game_id"), before.get("승자"),
+                    jg.get("winner"), before.get("확신"), lvl)
+    return True
+
+
+def _apply_extras(jg: dict, verdict: dict,
+                  expected_level: str | None = None) -> None:
     """확신·서술을 싣는다. 🔴 2-way·3-way 가 **같은 것**을 쓴다(사본 금지)."""
     # [ORD-12 사용자 지시] "확신 한 칸만 살려라." 온 경우에만 싣는다 —
     #   ORD-3 경로(승자만)는 이 칸이 없고, 그쪽 동작은 바뀌지 않는다.
-    #   ⚠️ 모르는 라벨은 `하` 로 떨어뜨린다(`verdict.level`). 낮은 쪽이 안전하다.
-    if verdict.get("확신") is not None:
+    # 🔴 [P0-1] `expected_level` 이 오면 **코드 등급이 이긴다.** `level()` 은
+    #    다르면 None 을 주므로(CONF-1) 그때 코드 등급으로 되돌린다 —
+    #    LLM 이 뭐라 했든 카드에는 코드가 정한 등급만 실린다.
+    if expected_level is not None:
         from app.engine.verdict import level as _lvl
 
-        jg["matchup"]["확신"] = _lvl(verdict.get("확신"))
+        jg["matchup"]["확신"] = _lvl(verdict.get("확신"),
+                                     expected_level) or expected_level
+    elif verdict.get("확신") is not None:
+        # 🔴 [P0-1] 코드 등급이 아직 없는 단계(3단계 LLM 판정)다. 섀도로 담고,
+        #    `apply_code_verdict` 가 뼈대 뒤에 코드 등급으로 덮어쓴다.
+        from app.engine.verdict import shadow_level as _shadow
+
+        jg["matchup"]["확신"] = _shadow(verdict.get("확신"))
     # 🔴 [SRCH-6] 제미니가 쓴 분석글. **왔을 때만 싣는다.**
     #    ⚠️ 한 글자도 고치지 않는다(사용자 지시 "그대로 보여달라").
     if str(verdict.get("서술") or "").strip():

@@ -181,8 +181,16 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         # [CONF-1] 확신은 **코드 등급**이다. LLM 자기신고는 아래 섀도 칸으로.
         "code_confidence": jg.get("code_confidence"),
         # [LLMS-1 결정 D] LLM 출력은 **기록 전용** — 카드·발송에 쓰지 않는다.
-        "llm_winner": matchup.get("승자") or jg.get("winner"),
-        "llm_level": matchup.get("확신") or matchup.get("확신도"),
+        # 🔴 [P0-1 2026-09-15 결정 D] **LLM 원값을 적는다.** 코드가 덮어쓴
+        #    뒤라면 `matchup["승자"]` 는 이미 코드 값이다 — 그것을 여기 적으면
+        #    섀도 비교가 자기 자신과의 비교가 된다(항상 일치).
+        #    대피본(`jg["llm_verdict"]`)이 있으면 그것이 원본이다.
+        "llm_winner": ((jg.get("llm_verdict") or {}).get("승자")
+                       if jg.get("llm_verdict") is not None
+                       else (matchup.get("승자") or jg.get("winner"))),
+        "llm_level": ((jg.get("llm_verdict") or {}).get("확신")
+                      if jg.get("llm_verdict") is not None
+                      else (matchup.get("확신") or matchup.get("확신도"))),
         "p_market_spine": jg.get("p_market_spine"),
         # 🔴 [SEND-1] **실제 나간 값**을 남긴다. `p_code` 는 판정 직후(딥서치
         #    앞) 값이라 카드 숫자와 다르다 — 사후 대조는 나간 값으로 해야 한다.
@@ -198,6 +206,10 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         #    방향이어야 `hit` 비교가 종전 규약 그대로 된다).
         "predicted_side": _side_of(jg, matchup.get("승자") or jg.get("winner")),
         "favored": matchup.get("우세"),
+        # 🔴 [P0-1 2026-09-15] 코드 승자와 LLM 승자의 불일치. 칸은 스키마에
+        #    있었는데 **쓰는 코드가 없었다**(실측: 4경기 전부 NULL).
+        #    원본은 `matchup.apply_code_verdict` 가 `jg["gate_vs_llm"]` 에 넣는다.
+        "gate_vs_llm": jg.get("gate_vs_llm"),
         # [ORD-12] 새 순서는 `확신`(상|중|하) 한 칸만 낸다 — 종전 `확신도` 와
         #   **같은 눈금**이라 같은 컬럼에 넣는다. 새 컬럼을 만들지 않는다.
         # 🔴 [CONF-1] **코드 등급이 우선한다.** 없으면 종전 LLM 자기신고로 폴백
@@ -304,11 +316,12 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                               odds, market_prob, divergence_pp,
                               confidence_probe, shadow_blend, predicted_side,
                               p_market, p_code, adj_pp, llm_winner, llm_level,
-                              p_model, model_src, model_w, model_gap_pp)
+                              p_model, model_src, model_w, model_gap_pp,
+                              gate_vs_llm)
                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,
                                    $13,$14,$15,$16::jsonb,$17::jsonb,$18,
                                    $19,$20,$21::jsonb,$22,$23,
-                                   $24,$25,$26,$27)""",
+                                   $24,$25,$26,$27,$28)""",
                         row["game_id"], row["sport"], row["league"], row["date"],
                         row["p_home"], row["favored"], row["confidence"],
                         row["lineup_status"], row["gate_result"], row["model"], n,
@@ -322,7 +335,8 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         row.get("adj_pp"), row.get("llm_winner"),
                         row.get("llm_level"),
                         row.get("p_model"), row.get("model_src"),
-                        row.get("model_w"), row.get("model_gap_pp"))
+                        row.get("model_w"), row.get("model_gap_pp"),
+                        row.get("gate_vs_llm"))
                     stats["rejudged" if existing is not None else "inserted"] += 1
                     # [CLV-1] 판정 시각 배당을 남긴다. **저장 전용** — 판정은
                     #   이 값을 읽지 않는다(§4-1). 실패해도 판정을 막지 않는다.
