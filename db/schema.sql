@@ -567,6 +567,13 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS market_flow JSONB;
 --   structure_pick: {"market","side","line","p_ours","p_market","edge_pp","grade"}
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS watch_state    TEXT;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS structure_pick JSONB;
+-- [U11 2026-09-15] T-60 재판정 결과. 🔴 원래 값을 덮지 않는다 —
+--   adj·p_code·confidence 는 그대로 두고 여기에 따로 남긴다.
+--   그래야 "판정이 어떻게 바뀌었나"를 나중에 볼 수 있다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS adj_after    JSONB;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_code_after DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS grade_after  TEXT;
+
 
 
 
