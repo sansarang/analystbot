@@ -34,6 +34,9 @@ ADJ_DEFS = {
     "soccer_regular_min": 8,
     "rest_days_max": 3,           # 직전 공식전 N일 이하면 짧은 휴식
     "midweek_days": 4,            # 직전 N일 내 대항전 원정
+    # 🔴 [U8 2026-09-15] 9종으로. 종전 7종에는 핵심결장·직전대패가 없었다.
+    "key_out_importance": 1.2,    # importance 가 이 값 이상이면 '핵심결장'
+    "rout_margin": 3,             # 직전 경기 이 점수차 이상 패배면 '직전대패'
 }
 
 
@@ -241,3 +244,104 @@ async def attach(jg: dict, pool) -> None:
     jg["adj_inputs"] = inputs
     logger.info("[adjust] game=%s 입력=%s 미계산=%s",
                 jg.get("game_id"), inputs, missing)
+
+
+# ═══════════════ [U8 2026-09-15] 가중 · 결정축
+#
+# 🔴 왜: 지금은 주전 3명 결장과 후보 3명 결장이 **같은 −3** 이다. 결장이
+#    **이름 수**로 세어진다. U6 가 시장가치를 저장했는데 쓰는 곳이 없었다.
+# 🔴 그리고 `main_axis` 를 **미배선 analyze(LLM)** 가 채우게 돼 있었다.
+#    코드가 정한다 — 그래야 LLM 이 없어도 결정축이 선다.
+
+#: 결장 배율·상한. 🔴 `prob.ADJ_SUM_CAP`(±6) 과 **다른 층**이다 —
+#  이건 결장 항목 **안쪽** 상한이고, 그건 조정 **전체** 상한이다.
+OUT_MULT = 1.5
+OUT_CAP = 6.0
+#: 복귀는 결장의 1.5배로 되돌린다(예상 결장이 실제 출전).
+RETURN_MULT = 1.5
+
+#: 기여가 이 값(%p) 미만이면 조정에서 뺀다. 잡음이 결정축에 끼는 것을 막는다.
+MIN_CONTRIB_PP = 2.0
+
+#: 최근 N경기 선발 창(출장률 분모).
+RECENT_STARTS_N = 10
+
+#: 무조건 최소 1.0 인 자리. GK·주장·득점 1위.
+MIN_IMPORTANCE_ROLES = ("gk", "captain", "top_scorer")
+
+
+def importance(player: dict, *, team_total_value=None, n_starters: int = 11,
+               recent_starts: int | None = None) -> float:
+    """선수 한 명의 중요도. 1.0 이 '평균 주전'이다.
+
+        0.5·(최근10 선발/10) + 0.5·(시장가치 / (팀 선발 총가치/11))
+
+    🔴 출장 이력이 없으면 **시장가치 단독**이다. 0 으로 읽으면 신입·이적생이
+       전부 0.5 가 된다 — 안 본 것과 안 뛴 것은 다르다.
+    🔴 팀 총가치가 없으면 **출장률 단독**이다. 둘 다 없으면 1.0(중립) —
+       지어내지 않는다.
+    🔴 GK·주장·득점 1위는 **최소 1.0**. 시장가치가 낮아도 빠지면 아프다.
+    """
+    p = player or {}
+    parts = []
+    if recent_starts is not None:
+        parts.append(max(0.0, min(1.0, float(recent_starts) / RECENT_STARTS_N)))
+    mv = p.get("market_value")
+    if mv and team_total_value:
+        avg = float(team_total_value) / max(1, int(n_starters))
+        if avg > 0:
+            parts.append(float(mv) / avg)
+    if not parts:
+        base = 1.0
+    elif len(parts) == 1:
+        base = parts[0]
+    else:
+        base = 0.5 * parts[0] + 0.5 * parts[1]
+    if any(bool(p.get(r)) for r in MIN_IMPORTANCE_ROLES):
+        base = max(base, 1.0)
+    return round(float(base), 3)
+
+
+def contrib_out(players: list, **kw) -> float:
+    """결장 기여(%p). 음수다. 🔴 상한 −6 — 여기서만 자른다."""
+    total = sum(importance(p, **kw) for p in (players or []))
+    return round(max(-OUT_CAP, -total * OUT_MULT), 2)
+
+
+def contrib_return(players: list, **kw) -> float:
+    """복귀 기여(%p). 양수이고 결장의 1.5배로 되돌린다."""
+    total = sum(importance(p, **kw) for p in (players or []))
+    return round(min(OUT_CAP, total * OUT_MULT * RETURN_MULT), 2)
+
+
+def drop_small(adj: dict | None) -> tuple:
+    """`(남긴 것, 뺀 것)`. |기여| < 2%p 는 뺀다.
+
+    🔴 **축소(`prob.shrink_and_cap`) 앞에서** 한다. 뒤에서 빼면 축소된 값으로
+       2%p 를 재게 되어 기준이 달라진다.
+    """
+    keep, dropped = {}, {}
+    for k, v in (adj or {}).items():
+        (keep if abs(float(v)) >= MIN_CONTRIB_PP else dropped)[k] = v
+    return keep, dropped
+
+
+def axes(adj: dict | None) -> dict:
+    """결정축·반대축을 **코드가** 고른다.
+
+    `main_axis` = |기여| 상위 2 · `counter_axis` = **반대 방향 최대 1개**.
+
+    🔴 반대축을 같은 방향에서 고르면 "반대 근거"가 아니라 "약한 같은 근거"가
+       된다. 방향이 갈리는 것이 없으면 **없는 것**이다(지어내지 않는다).
+    """
+    items = [(k, float(v)) for k, v in (adj or {}).items() if v]
+    if not items:
+        return {"main_axis": [], "counter_axis": None, "direction": None}
+    items.sort(key=lambda kv: abs(kv[1]), reverse=True)
+    main = items[:2]
+    sign = 1 if main[0][1] > 0 else -1
+    counter = next((k for k, v in items
+                    if (1 if v > 0 else -1) != sign), None)
+    return {"main_axis": [k for k, _ in main],
+            "counter_axis": counter,
+            "direction": "home" if sign > 0 else "away"}

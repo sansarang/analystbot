@@ -555,6 +555,10 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS hypothesis JSONB;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS confirmed    JSONB;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS refuted      JSONB;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS unknown_axes JSONB;
+-- [U8 2026-09-15] 조정에서 **뺀** 변수(|기여| < 2%p). 잡음이 결정축에
+--   끼는 것을 막되, 뺐다는 사실은 남긴다 — 버리면 왜 안 썼는지 모른다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS adj_dropped JSONB;
+
 
 
 -- [TRG-1 2026-09-13 Part A] 경기별 시점 트리거.
