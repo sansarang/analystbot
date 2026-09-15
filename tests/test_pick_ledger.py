@@ -723,9 +723,15 @@ def test_final_lookup_is_keyed_on_game_only():
     """조회가 날짜를 함께 보면 같은 경기가 두 번 최종이 된다."""
     import pathlib
 
+    import re
+
     src = pathlib.Path("app/engine/pick_ledger.py").read_text()
-    # 주석이 아닌 **실제 SQL 조각**만 본다.
-    sql = [ln for ln in src.splitlines()
+    # 🔴 **문장 단위로** 본다. 줄 단위로 보면 같은 파일의 다른 테이블
+    #    (odds_snapshots 등) 조회가 걸려 오탐이 난다 — 규칙은 "pick_ledger 의
+    #    최종 판정 조회"에만 해당한다.
+    stmts = [s for s in re.split(r"\n\s*\n|\"\"\"", src)
+             if "WHERE game_id" in s and "pick_ledger" in s]
+    sql = [ln for s in stmts for ln in s.splitlines()
            if "WHERE game_id" in ln and not ln.lstrip().startswith("#")]
     assert sql, "최종 판정 조회문을 못 찾았다"
     for ln in sql:

@@ -1,0 +1,16 @@
+# 페이블 사례집 — **사용자가 채운다.** (엔진 사양 5절 · 24건)
+#
+# 🔴 Claude Code 는 사례를 지어내지 않는다. 골격만 만들고 대기한다.
+# 🔴 유사 검색은 **네 축**으로만 한다(app/engine/cases.py):
+#      league_group · gap_bucket · confirmed · rest_bucket
+#    퍼지 문자열 유사도를 쓰지 않는다 — AC밀란 오매칭의 원인이었다.
+#
+# 한 건의 모양:
+#   - id: 2026-08-31-torino-roma
+#     league_group: 유럽5대          # 유럽5대 · 아시아 · 컵대회
+#     gap_bucket: "8-15"            # 0-4 · 4-8 · 8-15 · 15+
+#     confirmed: [핵심결장, 주중대항전]   # hypothesis.FIELDS 와 같은 어휘
+#     rest_bucket: 짧음              # 짧음(<=3) · 보통(4~6) · 충분(7+)
+#     lesson: "…"                   # 그때 무엇을 배웠나(한 문단)
+#     outcome: null                 # 적중 여부 — U13 이 자동으로 채운다
+cases: []

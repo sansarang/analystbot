@@ -200,3 +200,112 @@ def to_ledger(out: dict | None, *, model: str | None,
         "gate_vs_llm": gate_vs_llm(gate_label, o.get("시장_판단")),
         "analyze_failed": bool(failed),
     }
+
+
+# ═══════════════ [U12 2026-09-15] L2 · 금지어
+#
+# 🔴 L1 은 **숫자·이름**이 자료에 있는지 본다(이미 있다). L2 는 **승자·확신이
+#    코드 값과 글자 그대로 같은지** 본다. 둘은 다른 것을 잡는다 —
+#    L1 을 통과해도 서술이 다른 팀을 고를 수 있다(7432 사건).
+
+#: 🔴 카드에 나오면 안 되는 말. 확정·보장·단정은 우리가 낼 수 없는 말이다.
+#   ⚠️ 목록을 늘릴 때는 **오탐**을 재라 — 정상 문장을 반려하면 카드가 0장이 된다.
+BANNED = ("확실", "무조건", "보장", "100%", "절대", "필승", "몰빵",
+          "올인", "따논", "쉬운 돈")
+
+
+def l2(out: dict | None, *, code_winner: str | None,
+       code_level: str | None) -> tuple:
+    """L2 — 서술의 승자·확신이 **코드 값과 같은가.** `(통과, 사유)`.
+
+    🔴 P0-1 에서 고친 것이 여기서 다시 샐 수 있다. 서술이 코드와 다른 팀을
+       말하면 카드가 자기 모순이다 — 반려한다.
+    """
+    o = out or {}
+    w = str(o.get("승자") or "").strip()
+    lv = str(o.get("확신") or "").strip()
+    if code_winner and w and w != str(code_winner).strip():
+        return False, f"서술 승자 {w!r} 가 코드 승자 {code_winner!r} 와 다르다"
+    if code_level and lv and lv != str(code_level).strip():
+        return False, f"서술 확신 {lv!r} 가 코드 확신 {code_level!r} 와 다르다"
+    return True, ""
+
+
+def banned_words(text: str | None) -> list:
+    """금지어. 하나라도 있으면 반려한다."""
+    t = str(text or "")
+    return [w for w in BANNED if w in t]
+
+
+# ═══════════════ [U12 2026-09-15] 3단 배선 — 추출 → 스왑 → 서술
+#
+# 🔴 이 모듈은 두 달 전에 만들어졌는데 **호출부가 0건**이었다(실측: app/ 전체
+#    grep 결과 테스트 하나뿐). 그래서 결정축·시장 판단·구조 후보가 전부
+#    NULL 이었다. 여기가 그 배선이다.
+#
+# 🔴 **발송을 켜지 않는다.** 결과를 원장에만 남긴다 — 경로 전환은 U14 다.
+# 🔴 **게이트 대상에만** 돌린다. 전 경기에 돌리면 무료 한도가 즉시 터진다
+#    (CHN-1 실측: groq 8,000 TPM · 판정 1콜이 그 한도를 넘는다).
+
+#: L1 반려가 이 횟수를 넘으면 ② 없이 ③ 으로 간다(기존 상수 재사용).
+SWAP_TRIES = 2
+
+
+async def run(jg: dict, blk: dict, *, gate_label: str | None,
+              code_winner: str | None = None, code_level: str | None = None,
+              role: str | None = None) -> dict:
+    """게이트 대상 한 경기 → 분석 JSON + 검사 결과.
+
+    반환 `{out, swap_agree, l1, l2, banned, ledger, skipped}`.
+
+    ⚠️ 실패는 결측이다 — 예외를 올리지 않는다. 판정이 이미 서 있고 이건 서술이다.
+    """
+    from app.config import get_settings
+    from app.engine import gate as G
+    from app.engine.team_form import complete_json, parse_json_object
+    from app.llm.judge_route import PRELIM_ROLE
+
+    out = {"out": None, "swap_agree": None, "l1": None, "l2": None,
+           "banned": [], "ledger": None, "skipped": None}
+    if gate_label not in (G.OVER, G.DOUBT):
+        out["skipped"] = f"게이트가 {gate_label!r} — 분석 대상이 아니다"
+        return out
+
+    s = get_settings()
+    prompt = build_input(blk)
+    try:
+        text = await complete_json(prompt, model=s.matchup_model,
+                                   max_tokens=int(s.matchup_max_tokens),
+                                   role=role or PRELIM_ROLE, mock=False)
+    except Exception as exc:
+        logger.warning("[analyze] 호출 실패 %s: %s", jg.get("game_id"), exc)
+        out["skipped"] = f"호출 실패: {type(exc).__name__}"
+        out["ledger"] = to_ledger(None, model=None, gate_label=gate_label,
+                                  failed=True)
+        return out
+
+    parsed = parse_json_object(text or "")
+    if not isinstance(parsed, dict):
+        out["skipped"] = "JSON 이 아니다"
+        out["ledger"] = to_ledger(None, model=s.matchup_model,
+                                  gate_label=gate_label, failed=True)
+        return out
+
+    ok1, why1 = l1(parsed, blk)
+    ok2, why2 = l2(parsed, code_winner=code_winner, code_level=code_level)
+    bad = banned_words(parsed.get("서술"))
+    out.update({"out": parsed, "l1": (ok1, why1), "l2": (ok2, why2),
+                "banned": bad})
+    led = to_ledger(parsed, model=s.matchup_model, gate_label=gate_label)
+
+    # 🔴 `main_axis` 는 **U8 코드 값이 정본**이다. 다르면 기록만 하고 코드를 쓴다.
+    code_axes = (jg.get("axes") or {}).get("main_axis")
+    if code_axes and led.get("main_axis") and led["main_axis"] not in code_axes:
+        led["axis_disagree"] = f"코드 {code_axes} vs 분석 {led['main_axis']!r}"
+        logger.info("[analyze] game=%s 결정축 불일치 — 코드 값을 쓴다: %s",
+                    jg.get("game_id"), led["axis_disagree"])
+        led["main_axis"] = code_axes[0]
+    out["ledger"] = led
+    logger.info("[analyze] game=%s L1=%s L2=%s 금지어=%s",
+                jg.get("game_id"), ok1, ok2, bad or "없음")
+    return out

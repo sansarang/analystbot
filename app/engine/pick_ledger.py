@@ -205,7 +205,14 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         #    예측은 `predicted_side` 에 home|away 로 넣는다(팀 이름이 아니라
         #    방향이어야 `hit` 비교가 종전 규약 그대로 된다).
         "predicted_side": _side_of(jg, matchup.get("승자") or jg.get("winner")),
-        "favored": matchup.get("우세"),
+        # 🔴 [U0-c → U12 2026-09-15] v3 경로는 `우세` 키를 쓰지 않는다.
+        #    실측: ACL 4경기 favored 전부 NULL. 예측은 predicted_side 에만
+        #    들어갔고, 그 탓에 favored 로 채점하는 옛 리포트가 v3 경기를
+        #    통째로 못 봤다.
+        #    ⚠️ **predicted_side 를 그대로** 넣는다. 새로 계산하지 않는다 —
+        #       두 칸이 갈리면 채점이 어느 쪽인지 모른다.
+        "favored": (matchup.get("우세")
+                    or _side_of(jg, matchup.get("승자") or jg.get("winner"))),
         # 🔴 [P0-1 2026-09-15] 코드 승자와 LLM 승자의 불일치. 칸은 스키마에
         #    있었는데 **쓰는 코드가 없었다**(실측: 4경기 전부 NULL).
         #    원본은 `matchup.apply_code_verdict` 가 `jg["gate_vs_llm"]` 에 넣는다.
@@ -355,9 +362,18 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                     # [GATE-2] 사전값·괴리도 같은 자리에서. 저장 전용이고
                     #   실패해도 판정을 막지 않는다.
                     try:
-                        await record_prior(conn, game_id=row["game_id"])
+                        _gate = await record_prior(conn, game_id=row["game_id"])
                     except Exception as exc:
+                        _gate = None
                         logger.warning("[gate] game=%s 사전값 기록 실패: %s",
+                                       row["game_id"], exc)
+                    # [U12] 확인 판정(U7) + 분석(analyze). **게이트 대상만.**
+                    #   저장 전용이고 실패해도 판정을 막지 않는다.
+                    try:
+                        await record_confirm_and_analysis(
+                            conn, game_id=row["game_id"], gate=_gate)
+                    except Exception as exc:
+                        logger.warning("[analysis] game=%s 실패: %s",
                                        row["game_id"], exc)
         except Exception as exc:
             # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —
@@ -971,3 +987,155 @@ async def record_clv(conn_or_pool, *, game_id: int, at: str,
             return None
         await conn.execute(sql, game_id, float(odds))
     return float(odds)
+
+
+# ═══════════════ [U12 2026-09-15] 확인 판정 + 분석 배선
+#
+# 🔴 U7 의 `confirm` 과 `analyze` 가 둘 다 **부르는 곳이 0건**이었다.
+#    여기가 그 자리다 — `record_prior` 가 게이트 라벨을 돌려주는 바로 뒤.
+# 🔴 **발송을 켜지 않는다.** 원장에만 남긴다(경로 전환은 U14).
+# 🔴 **게이트 대상에만** 돌린다 — 전 경기에 돌리면 무료 한도가 즉시 터진다.
+
+_CONFIRM_SAVE = """
+    UPDATE pick_ledger
+       SET confirmed = $2::jsonb, refuted = $3::jsonb, unknown_axes = $4::jsonb
+     WHERE game_id = $1 AND is_final
+"""
+
+_ANALYZE_SAVE = """
+    UPDATE pick_ledger
+       SET main_axis = $2, counter_axis = $3, market_view = $4,
+           swap_agree = $5, structure_candidates = $6::jsonb,
+           analyze_model = $7, gate_vs_llm = COALESCE($8, gate_vs_llm),
+           analyze_failed = $9
+     WHERE game_id = $1 AND is_final
+"""
+
+
+async def record_confirm_and_analysis(conn, *, game_id: int,
+                                      gate: dict | None,
+                                      redis=None) -> dict | None:
+    """[U12] S6 확인 판정 + S11 분석을 원장에 남긴다. **저장 전용.**
+
+    ⚠️ 이름이 `record_analysis` 가 아니다 — 그건 이 파일 257행의 **원장 저장
+       본체**다. 같은 이름을 쓰면 뒤 정의가 앞을 덮어 원장이 통째로 멈춘다
+       (실제로 한 번 그렇게 썼다가 즉시 고쳤다).
+
+    ⚠️ 실패해도 판정을 막지 않는다(CLV·이동과 같은 규약).
+    """
+    from app.engine import gate as G
+
+    label = (gate or {}).get("label")
+    if label not in (G.OVER, G.DOUBT):
+        return None
+
+    g = await conn.fetchrow(
+        "SELECT id, sport, league, home, away, starts_at FROM games WHERE id = $1",
+        game_id)
+    if g is None:
+        return None
+
+    row = await conn.fetchrow(
+        "SELECT hypothesis, p_code, adj_pp, p_market, predicted_side, "
+        "confidence FROM pick_ledger WHERE game_id = $1 AND is_final", game_id)
+    if row is None:
+        return None
+
+    # ── S6 확인 판정 (U7)
+    out: dict = {}
+    collected = {}
+    own_redis = None
+    if redis is None:
+        # 호출자(`record_analysis`)는 redis 를 들고 있지 않다. 게이트 대상은
+        # 슬레이트당 한 자릿수라 여기서 열고 닫는다.
+        try:
+            import redis.asyncio as aioredis
+
+            from app.config import get_settings
+
+            redis = own_redis = aioredis.from_url(
+                get_settings().redis_url, decode_responses=True)
+        except Exception as exc:
+            logger.info("[analysis] redis 연결 실패: %s", exc)
+    try:
+        if redis is not None:
+            from app.collectors.satellite import read_extract
+
+            # 🔴 `read_extract` 는 `{"gathered_at", "teams"}` 로 감싸 돌려준다.
+            #    `confirm` 이 원하는 것은 **teams 안쪽**이다 — 통째로 넘기면
+            #    home·away 칸이 없어 need 전건이 '미상'이 된다.
+            collected = (await read_extract(redis, g["sport"], game_id)
+                         or {}).get("teams") or {}
+    except Exception as exc:
+        logger.info("[analysis] game=%s 수집 캐시 없음: %s", game_id, exc)
+    finally:
+        if own_redis is not None:
+            try:
+                await own_redis.aclose()
+            except Exception:
+                pass
+    try:
+        from app.engine import hypothesis as HY
+
+        hyp_raw = row["hypothesis"]
+        hyp = json.loads(hyp_raw) if isinstance(hyp_raw, str) else (hyp_raw or {})
+        need = tuple(HY.Need(n["field"], n["side"], n.get("why", ""))
+                     for n in (hyp.get("need") or []))
+        h = HY.Hypothesis(hyp.get("direction"), need,
+                          int(hyp.get("sufficient_count") or 2),
+                          hyp.get("reason") or "")
+        conf = HY.confirm(h, collected)
+        await conn.execute(_CONFIRM_SAVE, game_id,
+                           json.dumps(conf["confirmed"], ensure_ascii=False),
+                           json.dumps(conf["refuted"], ensure_ascii=False),
+                           json.dumps(conf["unknown"], ensure_ascii=False))
+        out["confirm"] = conf
+    except Exception as exc:
+        logger.warning("[analysis] game=%s 확인 판정 실패: %s", game_id, exc)
+
+    # ── 파생 디빅 부착 (U10)
+    adj_raw = row["adj_pp"]
+    adj = json.loads(adj_raw) if isinstance(adj_raw, str) else (adj_raw or {})
+    from zoneinfo import ZoneInfo
+
+    ks = g["starts_at"]
+    KST = ZoneInfo("Asia/Seoul")
+    blk = {"home": g["home"], "away": g["away"], "league": g["league"],
+           "p_prior": None, "p_market": row["p_market"],
+           "gap_pp": (gate or {}).get("gap_pp"), "gate": label,
+           "adj_pp": adj, "p_code": row["p_code"],
+           "kickoff_kst": (ks.astimezone(KST).strftime("%m-%d %H:%M")
+                           if ks is not None else None),
+           "home_facts": collected.get("home") or {},
+           "away_facts": collected.get("away") or {}}
+    try:
+        from app.engine.structure import attach_derived
+
+        rows = await conn.fetch(
+            """SELECT market, side, line, odds FROM odds_snapshots
+                WHERE game_id = $1 AND market IN ('spreads','totals')
+                  AND snap_tag IS NOT NULL""", game_id)
+        blk = attach_derived(blk, [dict(r) for r in rows],
+                             home=g["home"], away=g["away"])
+    except Exception as exc:
+        logger.info("[analysis] game=%s 파생 디빅 없음: %s", game_id, exc)
+
+    # ── S11 분석 (U12)
+    try:
+        from app.engine import analyze as AN
+
+        res = await AN.run({"game_id": game_id}, blk, gate_label=label,
+                           code_winner=row["predicted_side"],
+                           code_level=row["confidence"])
+        led = res.get("ledger") or {}
+        if led:
+            await conn.execute(
+                _ANALYZE_SAVE, game_id, led.get("main_axis"),
+                led.get("counter_axis"), led.get("market_view"),
+                led.get("swap_agree"), led.get("structure_candidates"),
+                led.get("analyze_model"), led.get("gate_vs_llm"),
+                bool(led.get("analyze_failed")))
+        out["analyze"] = {k: res.get(k) for k in ("l1", "l2", "banned", "skipped")}
+    except Exception as exc:
+        logger.warning("[analysis] game=%s 분석 실패: %s", game_id, exc)
+    return out
