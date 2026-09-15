@@ -1374,7 +1374,10 @@ async def _load_soccer_fixtures(pool, date: str, league_key, fd) -> list[str]:
             from app.collectors.fotmob import upsert_slate
 
             _r = await upsert_slate(pool, date.replace("-", ""), league_key=_k)
-            out += [f"fotmob:{_k}"] * int(_r.get("saved") or 0)
+            # 🔴 [ACL-3] **실제 ext_id** 를 더한다. 종전에는 개수만큼
+            #    `fotmob:{리그키}` 를 채워 넣어 슬레이트에 한 건도 안 들었다
+            #    (실측: 8경기 저장하고 카드는 "축구 5경기").
+            out += list(_r.get("ext_ids") or [])
         except Exception as exc:
             logger.warning("[pipeline] 축구 일정 소스 실패 — FotMob (%s): %s",
                            _cfg.get("label") or _k, exc)

@@ -448,7 +448,11 @@ async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str) -> dict:
 
     cfg = LEAGUES.get(league_key) or {}
     needle = cfg.get("fotmob_contains")
-    out = {"fetched": 0, "matched": 0, "saved": 0, "skipped": []}
+    # 🔴 [ACL-3 2026-09-15] `ext_ids` 를 **반드시** 돌려준다. 축구는 슬레이트를
+    #    DB 에서 다시 읽지 않고 이 반환값을 그대로 쓴다(ext_id 재조회는 야구
+    #    전용 분기다). 형제 함수(`upsert_games_from_football_data`·
+    #    `upsert_games_from_odds_events`)와 같은 계약이다.
+    out = {"fetched": 0, "matched": 0, "saved": 0, "skipped": [], "ext_ids": []}
     if not needle:
         logger.warning("[fotmob] %s 에 fotmob_contains 가 없다 — 적재 생략", league_key)
         return out
@@ -474,6 +478,7 @@ async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str) -> dict:
                 starts_at = EXCLUDED.starts_at, updated_at = now()
             """,
             cfg.get("label") or league_key, f"fotmob:{r['id']}", ko, h, a)
+        out["ext_ids"].append(f"fotmob:{r['id']}")
         out["saved"] += 1
     logger.info("[fotmob] %s 적재 — 슬레이트 %d · 해당 %d · 저장 %d · 제외 %d",
                 league_key, out["fetched"], out["matched"], out["saved"],
