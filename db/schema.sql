@@ -562,6 +562,12 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS adj_dropped JSONB;
 --   {"from","to","class","reason","move_pp","n_books","book_disagree",
 --    "confirm","stake_mult","cancel"}
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS market_flow JSONB;
+-- [U10 2026-09-15] 관측 상태기계와 구조 픽.
+--   watch_state: 관측·후보·추천대기·추천·취소·종료 (코드만 전이한다)
+--   structure_pick: {"market","side","line","p_ours","p_market","edge_pp","grade"}
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS watch_state    TEXT;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS structure_pick JSONB;
+
 
 
 

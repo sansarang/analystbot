@@ -246,3 +246,27 @@ def by_code(jg: dict, have: list | tuple | set | None) -> str:
     if p >= CODE_MID_P and len(got) >= need_mid:
         return MID
     return LOW
+
+
+# ═══════════════ [U10 2026-09-15] 구조 등급 · 조각 자료 상한
+#
+# 🔴 **기존 등급 경로(`by_code`·`probe`)를 바꾸지 않는다.** 여기 있는 것은
+#    덮개(cap)와 별도 등급뿐이다. 승패 규칙을 건드리면 CONF-1 이 깨진다.
+
+def structure_grade(edge_pp: float | None) -> str | None:
+    """구조 픽 등급. 원본은 `structure.grade` 다 — 숫자를 여기 적지 않는다."""
+    from app.engine.structure import grade as _g
+
+    return _g(edge_pp)
+
+
+def cap_by_snippet(level: str, snippet: bool) -> str:
+    """자료가 **조각**이면 승패 등급 상한을 `하` 로 내린다.
+
+    🔴 tier 3 이상인데 수치가 하나도 없는 자료다(`satellite.snippet_level`).
+       그런 근거로 `상` 을 실으면 카드가 자신을 과장한다.
+    ⚠️ 조각이 아니면 **그대로 돌려준다.** 올리지 않는다.
+    """
+    if not snippet:
+        return level
+    return LOW
