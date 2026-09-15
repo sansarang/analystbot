@@ -1,0 +1,56 @@
+# 페이블 엔진 상수표 (U13 · 실행판 PART 3)
+#
+# 🔴 **여기가 원본이다.** 코드는 읽기만 한다 — `app/engine/rules.py`.
+#    파이썬 모듈에 같은 값을 다시 적지 마라. 두 곳에 적으면 사본이 되고,
+#    사본은 원본이 바뀔 때 따라가지 않는다.
+# 🔴 **값 변경은 사용자가 한다.** 클로드는 지시 없이 이 파일의 숫자를
+#    바꾸지 않는다(CLAUDE.md "지시받지 않은 파라미터 변경 금지").
+# ⚠️ 여기 있는 값은 U13 착수 시점(2026-09-15) 코드에 있던 값 **그대로**다.
+#    U13 커밋은 값을 하나도 바꾸지 않았다 — 계약 테스트가 그것을 잰다.
+#
+# ⚠️ 승률 상한·추천 하한·신호등 같은 **안전선은 여기 없다.** 그건
+#    CLAUDE.md §한계값 과 MODEL.md §1 이 원본이고, 동결이 아니라 안전선이다.
+
+# ── U8 가중·결정축 (app/engine/adjust.py)
+adjust:
+  out_mult: 1.5          # 결장 contrib = −Σ importance × 이 값
+  out_cap: 6.0           # 결장 합계 상한(%p)
+  return_mult: 1.5       # 복귀는 결장 가중에 이 배수를 더 곱한다
+  min_contrib_pp: 2.0    # 이보다 작은 변수는 adj 에서 빼고 adj_dropped 에만
+  recent_starts_n: 10    # 주전 판정 창(최근 N경기 선발)
+
+# ── U9 시장 흐름 (app/engine/odds_move.py)
+odds_move:
+  steam_min_books: 3     # 한 스냅샷에서 같은 방향인 북 수
+  steam_min_pp: 3.0      # 그 방향 이동 폭(%p)
+  disagree_sd_pp: 2.0    # 북별 확률 표준편차가 이보다 크면 book_disagree
+  line_pp_per_half: 4.0  # 라인 0.5 = 이만큼(%p). 1.0 이면 두 배
+
+# ── U10 구조 픽 (app/engine/structure.py)
+structure:
+  edge_min_pp: 6.0       # 채택 하한. 이 미만은 후보에서 반려
+  grade_high_pp: 8.0     # 이상이면 등급 '상'
+  ah_lines: [0.5, 1.0, 1.5]
+
+# ── U5·U7 가설·확인 (app/engine/hypothesis.py)
+hypothesis:
+  sufficient_default: 2  # confirmed 가 이만큼이면 충족
+  sufficient_bigmatch: 3 # 🔴 빅매치는 자료가 많아 우연 일치가 쉽다
+  unknown_board_ratio: 0.5  # unknown 이 이 비율을 넘으면 보드
+
+# ── 확률 (app/engine/prob.py)
+prob:
+  adj_shrink: 0.5        # 가감 합계에 곱하는 축소율
+  adj_sum_cap: 6.0       # 가감 합계 상한(%p)
+
+# ── U12 사례집 유사도 4축 (app/engine/cases.py)
+cases:
+  weights:
+    league_group: 0.25
+    gap_bucket: 0.30
+    confirmed: 0.30
+    rest_bucket: 0.15
+
+# ── U13 리포트 구간 (app/engine/report.py)
+report:
+  checkpoints: [50, 150, 300]   # 위생·방향·결정 리포트를 내는 표본 수

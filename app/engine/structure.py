@@ -14,15 +14,20 @@ import logging
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
+# 🔴 [U13] 값은 `config/rules.yaml` 이 원본이다. 여기에 숫자를 **다시
+#    적지 마라** — 두 곳에 적으면 사본이 되고, 사본은 원본이 바뀔 때
+#    따라가지 않는다(실사고 2026-09-02 워치독 오탐 4건).
+from app.engine import rules as _R
+
 
 #: 채택 문턱(%p). 우리 확률 − 시장 확률이 이만큼은 돼야 후보다.
-EDGE_MIN_PP = 6.0
+EDGE_MIN_PP = _R.get("structure.edge_min_pp")
 
 #: 구조 등급. 지시문 3-3.
-GRADE_HIGH_PP = 8.0
+GRADE_HIGH_PP = _R.get("structure.grade_high_pp")
 
 #: 약팀 핸디는 이 범위만 본다. +2.5 이상은 경기 성격이 달라진다.
-AH_LINES = (0.5, 1.0, 1.5)
+AH_LINES = tuple(_R.get("structure.ah_lines"))
 
 
 @dataclass(frozen=True)

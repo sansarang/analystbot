@@ -842,3 +842,13 @@ ALTER TABLE lineup_history ADD COLUMN IF NOT EXISTS ccode TEXT;
 ALTER TABLE lineup_history ADD COLUMN IF NOT EXISTS kickoff_date DATE;
 CREATE INDEX IF NOT EXISTS idx_lineup_history_league
     ON lineup_history (ccode, kickoff_date);
+
+-- [U13 2026-09-15] 마감·채점 3칸. **저장 전용** — 판정은 이 값을 읽지 않는다.
+--   clv_line_shift      : 판정 시각 → 마감 라인 이동(%p 환산). 승패 CLV 와
+--                         **다른 것**이다 — 핸디·토탈은 라인이 움직인다.
+--   flow_class          : U9 5분류(news·money·steam·contra·잡음)의 마감 시점 값.
+--   cancel_virtual_clv  : 🔴 **취소한 픽**을 그대로 밀었다면 받았을 CLV.
+--                         취소가 옳았는지는 이 값 없이는 영영 못 센다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS clv_line_shift     DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS flow_class         TEXT;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS cancel_virtual_clv DOUBLE PRECISION;

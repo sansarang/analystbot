@@ -252,19 +252,24 @@ async def attach(jg: dict, pool) -> None:
 #    **이름 수**로 세어진다. U6 가 시장가치를 저장했는데 쓰는 곳이 없었다.
 # 🔴 그리고 `main_axis` 를 **미배선 analyze(LLM)** 가 채우게 돼 있었다.
 #    코드가 정한다 — 그래야 LLM 이 없어도 결정축이 선다.
+# 🔴 [U13] 값은 `config/rules.yaml` 이 원본이다. 여기에 숫자를 **다시
+#    적지 마라** — 두 곳에 적으면 사본이 되고, 사본은 원본이 바뀔 때
+#    따라가지 않는다(실사고 2026-09-02 워치독 오탐 4건).
+from app.engine import rules as _R
+
 
 #: 결장 배율·상한. 🔴 `prob.ADJ_SUM_CAP`(±6) 과 **다른 층**이다 —
 #  이건 결장 항목 **안쪽** 상한이고, 그건 조정 **전체** 상한이다.
-OUT_MULT = 1.5
-OUT_CAP = 6.0
+OUT_MULT = _R.get("adjust.out_mult")
+OUT_CAP = _R.get("adjust.out_cap")
 #: 복귀는 결장의 1.5배로 되돌린다(예상 결장이 실제 출전).
-RETURN_MULT = 1.5
+RETURN_MULT = _R.get("adjust.return_mult")
 
 #: 기여가 이 값(%p) 미만이면 조정에서 뺀다. 잡음이 결정축에 끼는 것을 막는다.
-MIN_CONTRIB_PP = 2.0
+MIN_CONTRIB_PP = _R.get("adjust.min_contrib_pp")
 
 #: 최근 N경기 선발 창(출장률 분모).
-RECENT_STARTS_N = 10
+RECENT_STARTS_N = _R.get("adjust.recent_starts_n")
 
 #: 무조건 최소 1.0 인 자리. GK·주장·득점 1위.
 MIN_IMPORTANCE_ROLES = ("gk", "captain", "top_scorer")

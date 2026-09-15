@@ -104,16 +104,21 @@ def adjustments(jg: dict) -> dict[str, float]:
         out[name] = round(val, 2)
     return out
 
+# 🔴 [U13] 값은 `config/rules.yaml` 이 원본이다. 여기에 숫자를 **다시
+#    적지 마라** — 두 곳에 적으면 사본이 되고, 사본은 원본이 바뀔 때
+#    따라가지 않는다(실사고 2026-09-02 워치독 오탐 4건).
+from app.engine import rules as _R
+
 
 #: [결정 B 2026-09-13] **표의 크기를 절반으로 시작한다.**
 #  🔴 178경기·변수별 표본은 회귀 추정에 부족하다 — 과거 원장 회귀는 하지 않는다.
 #     대신 사전값을 축소해 넣고 CLV 로 사후 검증한다(1차 결정 6).
 #     변수별 100건 이상 쌓이고 평균 CLV 부호가 조정 방향과 같으면 1.0,
 #     반대면 0 으로 — 변수 단위로 개별 조정한다. 판단은 사용자가 한다.
-ADJ_SHRINK = 0.5
+ADJ_SHRINK = _R.get("prob.adj_shrink")
 
 #: 합계 절사. 조정이 아무리 겹쳐도 시장에서 이만큼 넘게 떨어지지 않는다.
-ADJ_SUM_CAP = 6.0
+ADJ_SUM_CAP = _R.get("prob.adj_sum_cap")
 
 
 def shrink_and_cap(adj: dict[str, float] | None) -> dict[str, float]:

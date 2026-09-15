@@ -20,9 +20,13 @@ CASES_PATH = Path("config/fable_cases.yaml")
 #: 프롬프트에 넣는 개수. 늘리면 토큰이 는다.
 TOP_N = 3
 
+# 🔴 [U13] 값은 `config/rules.yaml` 이 원본이다. 여기에 숫자를 **다시
+#    적지 마라** — 두 곳에 적으면 사본이 되고, 사본은 원본이 바뀔 때
+#    따라가지 않는다(실사고 2026-09-02 워치독 오탐 4건).
+from app.engine import rules as _R
+
 #: 축별 배점. 합이 1.0 이다.
-WEIGHTS = {"league_group": 0.25, "gap_bucket": 0.30,
-           "confirmed": 0.30, "rest_bucket": 0.15}
+WEIGHTS = dict(_R.get("cases.weights"))
 
 
 def gap_bucket(gap_pp: float | None) -> str | None:
@@ -95,3 +99,42 @@ def similar(*, league_group: str | None = None, gap_pp: float | None = None,
     scored = [(s, c) for s, c in scored if s > 0]
     scored.sort(key=lambda sc: -sc[0])
     return [dict(c, _score=s) for s, c in scored[:n]]
+
+
+# ═══════════════ [U13] outcome 자동 채움
+#
+# 🔴 사례집은 **끝난 경기**로만 배운다. 채점되지 않은 행을 넣으면 사례집이
+#    "그때 그렇게 봤다"는 기록이 아니라 **바람**이 된다.
+# ⚠️ 파일을 쓰지 않는다 — 채워진 사례 목록을 **돌려줄 뿐**이다. 값 변경은
+#    사용자가 한다(`config/rules.yaml` 과 같은 규약).
+
+#: 결과 라벨. 🔴 '무승부'는 적중도 실패도 아니다 — 축구는 셋이다.
+WON, LOST, PUSH = "적중", "실패", "무효"
+
+
+def fill_outcome(cases: list | None, ledger: list | None) -> list:
+    """사례 + 채점된 원장 → `outcome`·`clv` 가 채워진 사례 목록.
+
+    대조 키는 `game_id` 다. 🔴 **채점 안 된 행은 건너뛴다** — `hit` 가
+    None 이면 아직 결과가 없다는 뜻이고, 그걸 실패로 세면 사례집이 거짓이 된다.
+    """
+    by_id = {}
+    for r in (ledger or []):
+        gid = r.get("game_id")
+        if gid is not None and r.get("hit") is not None:
+            by_id[gid] = r
+
+    out = []
+    for c in (cases or []):
+        c = dict(c)
+        row = by_id.get(c.get("game_id"))
+        if row is None:
+            out.append(c)          # 그대로 둔다. 지어내지 않는다.
+            continue
+        hit = row.get("hit")
+        c["outcome"] = (PUSH if row.get("void") else
+                        (WON if int(hit) == 1 else LOST))
+        if row.get("clv") is not None:
+            c["clv"] = row["clv"]
+        out.append(c)
+    return out

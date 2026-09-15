@@ -27,17 +27,22 @@ NONE = "none"
 #: 🔴 [U9 2026-09-15] **여러 북이 동시에 같은 방향으로 크게.** `money` 와
 #   구분한다 — 한 북이 흔들린 것과 시장 전체가 밀린 것은 다른 신호다.
 STEAM = "steam"
+# 🔴 [U13] 값은 `config/rules.yaml` 이 원본이다. 여기에 숫자를 **다시
+#    적지 마라** — 두 곳에 적으면 사본이 되고, 사본은 원본이 바뀔 때
+#    따라가지 않는다(실사고 2026-09-02 워치독 오탐 4건).
+from app.engine import rules as _R
+
 
 #: steam 조건: 이만큼의 북이 · 이만큼 움직였다.
-STEAM_MIN_BOOKS = 3
-STEAM_MIN_PP = 3.0
+STEAM_MIN_BOOKS = _R.get("odds_move.steam_min_books")
+STEAM_MIN_PP = _R.get("odds_move.steam_min_pp")
 
 #: 북별 확률 표준편차가 이 값(%p)을 넘으면 북들이 갈린 것이다. **표시만** 한다.
-DISAGREE_SD_PP = 2.0
+DISAGREE_SD_PP = _R.get("odds_move.disagree_sd_pp")
 
 #: 🔴 핸디 라인 → 확률(%p) 환산. 지시문 값이다(0.5 = 4%p · 1.0 = 8%p).
 #   ⚠️ **핸디에만 쓴다.** 토탈(U/O)에 같은 계수를 쓰면 의미가 다르다.
-LINE_PP_PER_HALF = 4.0
+LINE_PP_PER_HALF = _R.get("odds_move.line_pp_per_half")
 
 #: 이동으로 치는 최소 폭(%p). 지시문 1-B-2.
 MOVE_MIN_PP = 2.0

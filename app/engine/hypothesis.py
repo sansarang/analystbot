@@ -30,10 +30,15 @@ FIELDS = ("out", "doubt", "xi_status", "xi", "bench_notable",
 
 #: 방향. 게이트 side 를 그대로 쓴다(home·draw·away) — 사본 금지.
 HOME, DRAW, AWAY = "home", "draw", "away"
+# 🔴 [U13] 값은 `config/rules.yaml` 이 원본이다. 여기에 숫자를 **다시
+#    적지 마라** — 두 곳에 적으면 사본이 되고, 사본은 원본이 바뀔 때
+#    따라가지 않는다(실사고 2026-09-02 워치독 오탐 4건).
+from app.engine import rules as _R
+
 
 #: 문턱. **빅매치는 3** — 자료가 많아 우연 일치가 쉽다.
-SUFFICIENT_DEFAULT = 2
-SUFFICIENT_BIGMATCH = 3
+SUFFICIENT_DEFAULT = _R.get("hypothesis.sufficient_default")
+SUFFICIENT_BIGMATCH = _R.get("hypothesis.sufficient_bigmatch")
 
 
 @dataclass(frozen=True)
@@ -165,13 +170,21 @@ def _verdict_of(value) -> str:
 
 
 def _unknown_ratio() -> float:
-    """미상 과반 기준. ⚠️ U13 에서 `config/rules.yaml` 로 옮긴다."""
+    """미상 과반 기준. [U13] 원본은 `config/rules.yaml` 이다.
+
+    ⚠️ `.env` 로 덮어쓰던 경로(`settings.unknown_board_ratio`)를 **남겨둔다** —
+       운영에서 이미 값을 넣었을 수 있고, 조용히 무시하면 종전과 다르게 돈다.
+       env 가 값을 주면 그게 이긴다(사람이 직접 넣은 값이다).
+    """
     try:
         from app.config import get_settings
 
-        return float(get_settings().unknown_board_ratio)
+        v = get_settings().unknown_board_ratio
+        if v is not None:
+            return float(v)
     except Exception:
-        return 0.5
+        pass
+    return float(_R.get("hypothesis.unknown_board_ratio", 0.5))
 
 
 def confirm(h: Hypothesis, collected: dict | None) -> dict:
