@@ -52,7 +52,13 @@ async def test_티어_사전값과_open_시장을_대조해_원장에_남긴다(
     assert out["prior_src"] == "tier", "티어가 채워졌으면 미기입이 아니다"
     assert 0.55 < out["p_prior"] < 0.70, out["p_prior"]
     assert out["label"] in (G.OVER, G.DOUBT, G.AGREE, G.BOARD)
-    assert len(conn.executed) == 1
+    # 🔴 [U5 2026-09-15] 종전 계약은 "원장 UPDATE 1회"였다. 가설(H1)을
+    #    게이트 직후에 기록하면서 2회가 된다 — **둘 다 필요하다**.
+    #    재는 뜻은 그대로다: 같은 값을 여러 번 쓰지 않는다.
+    prior_w = [c for c in conn.executed if "prior_src" in str(c[0])]
+    hyp_w = [c for c in conn.executed if "SET hypothesis" in str(c[0])]
+    assert len(prior_w) == 1, conn.executed
+    assert len(hyp_w) <= 1, conn.executed
     _, args = conn.executed[0]
     assert args[0] == 7434
     assert args[2] == "tier"
@@ -93,7 +99,13 @@ async def test_기준선_시장이_없어도_확률을_지어내지_않는다():
 
     await PL.record_prior(conn, game_id=1)
 
-    assert len(conn.executed) == 1
+    # 🔴 [U5 2026-09-15] 종전 계약은 "원장 UPDATE 1회"였다. 가설(H1)을
+    #    게이트 직후에 기록하면서 2회가 된다 — **둘 다 필요하다**.
+    #    재는 뜻은 그대로다: 같은 값을 여러 번 쓰지 않는다.
+    prior_w = [c for c in conn.executed if "prior_src" in str(c[0])]
+    hyp_w = [c for c in conn.executed if "SET hypothesis" in str(c[0])]
+    assert len(prior_w) == 1, conn.executed
+    assert len(hyp_w) <= 1, conn.executed
     assert conn.executed[0][1][3] is None, "시장 확률을 지어내지 않는다"
 
 
@@ -128,7 +140,13 @@ async def test_기준선_배당이_없어도_사유를_원장에_남긴다():
 
     out = await PL.record_prior(conn, game_id=7434)
 
-    assert len(conn.executed) == 1, "기록 없이 빠져나가면 안 된다"
+    # 🔴 [U5 2026-09-15] 종전 계약은 "원장 UPDATE 1회"였다. 가설(H1)을
+    #    게이트 직후에 기록하면서 2회가 된다 — **둘 다 필요하다**.
+    #    재는 뜻은 그대로다: 같은 값을 여러 번 쓰지 않는다.
+    prior_w = [c for c in conn.executed if "prior_src" in str(c[0])]
+    hyp_w = [c for c in conn.executed if "SET hypothesis" in str(c[0])]
+    assert len(prior_w) == 1, conn.executed
+    assert len(hyp_w) <= 1, conn.executed
     _, args = conn.executed[0]
     assert args[0] == 7434
     assert args[3] is None, "없는 시장 확률을 채우지 않는다"

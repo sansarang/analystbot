@@ -545,6 +545,11 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS prior_src TEXT;
 --   분류: 동의 | 시장 과대 | 가치 의심 | 보드 고정
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_reason TEXT;
 
+-- [U5 2026-09-15] 가설 H1 — 검색 **전에** 무엇을 찾을지 정한 기록.
+--   {"direction","need":[{"field","side","why"}],"sufficient_count","reason"}
+--   🔴 무엇을 찾기로 했는지를 남겨야 "왜 못 찾았나"를 나중에 답할 수 있다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS hypothesis JSONB;
+
 -- [TRG-1 2026-09-13 Part A] 경기별 시점 트리거.
 --   5시점: open(T-24h) · pre(T-3h) · lineup(T-60m) · late(T-10m) · close(T+0)
 --   🔴 (game_id, kind) 유일 — 없으면 재등록할 때마다 트리거가 불어난다.

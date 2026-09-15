@@ -766,11 +766,41 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
         else:
             mkt = None
         v = G.classify(pri, mkt, sport)
+        # 🔴 [U5 2026-09-15] **게이트 직후 가설을 세운다.** 검색 전에 무엇을
+        #    찾을지 정하는 자리다 — 지금까지는 수집이 need 와 무관하게 전부
+        #    돌았고 그래서 S6·S9 가 고를 수 없었다.
+        #    ⚠️ 이 U 는 **만들어 기록만** 한다. 수집을 좁히는 것은 U6,
+        #       확인 판정은 U7 이다(한 U 한 변경).
+        hyp = None
+        try:
+            from app.engine import hypothesis as HY
+
+            # 빅매치는 이미 로드한 티어로 판정한다 — 새로 부르지 않는다.
+            #    ⚠️ 순위를 모르면 `is_big_match` 가 0 으로 읽지 않는다(BIG-1).
+            from app.engine.bigmatch import is_big_match
+
+            tag = is_big_match(league=key or "", home=g["home"], away=g["away"],
+                               rank_home=tiers.get(g["home"]),
+                               rank_away=tiers.get(g["away"]))
+            h = HY.build(v.label, sport=sport, side=v.side,
+                         bigmatch=bool(getattr(tag, "big", False)),
+                         gap_pp=v.gap_pp)
+            hyp = json.dumps(h.as_dict(), ensure_ascii=False)
+            logger.info("[hypothesis] game=%s %s → 방향 %s · need %d · 문턱 %d",
+                        game_id, v.label, h.direction, len(h.need),
+                        h.sufficient_count)
+        except Exception as exc:
+            logger.warning("[hypothesis] game=%s 실패 — 판정은 그대로 간다: %s",
+                           game_id, exc)
         why = v.reason if mp else (
             f"{v.reason} (이름표 붙은 기준선 스냅샷 없음"
             + (f" · 소스 {prov}" if prov else " · 배당 0건") + ")")
         await conn.execute(_PRIOR_SAVE, game_id, float(p_home), src,
                            (mp or {}).get("home"), f"{v.label} · {why}")
+        if hyp is not None:
+            await conn.execute(
+                "UPDATE pick_ledger SET hypothesis = $2::jsonb "
+                "WHERE game_id = $1 AND is_final", game_id, hyp)
         mp = mp or {}
     logger.info("[gate] game=%s %s vs %s — 사전값 %.3f(%s) · 시장 %.3f · "
                 "%s gap=%s side=%s", game_id, g["home"], g["away"],
