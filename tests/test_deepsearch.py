@@ -329,8 +329,14 @@ def test_output_budget_is_configurable_and_larger_than_matchup():
     쓰는데 절반만 준 것이 결함이었다. 하드코딩도 함께 걷어낸다.
     """
     s = Settings(_env_file=None)
-    assert s.deepsearch_max_tokens > s.matchup_max_tokens
-    assert s.deepsearch_max_tokens >= 5804, "실측 소진량보다 작으면 또 잘린다"
+    # 🔴 [CHN-1 2026-09-15] 종전 불변식은 "딥서치 > 매치업"이었고 하한이 5,804
+    #    이었다 — 둘 다 **유료 Claude/gemini-3.x 시절 실측**이다(12000·16000).
+    #    이제 무료 사슬이다: groq 무료 티어가 분당 8,000토큰이라 1콜이 그 안에
+    #    들어야 하고, 주전 gemini-3.5-flash-lite 는 사고 토큰을 안 먹는다
+    #    (실측 2026-09-15: 프롬프트 9,247자 → 출력 260자 · JSON 파싱 OK).
+    #    남는 규칙은 **딥서치가 매치업보다 작지 않다**와 **한도 안**이다.
+    assert s.deepsearch_max_tokens >= s.matchup_max_tokens
+    assert s.deepsearch_max_tokens <= 1500, "무료 티어 분당 한도를 넘는다"
     src = Path("app/engine/deepsearch.py").read_text(encoding="utf-8")
     assert "max_tokens=2000" not in src, "출력 예산이 하드코딩으로 남아 있다"
     assert "s.deepsearch_max_tokens" in src

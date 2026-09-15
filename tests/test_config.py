@@ -108,7 +108,7 @@ def test_recommendation_thresholds_are_config_driven():
     # [계약 갱신 2026-09-07] 6000 → 12000. `전개` 추가로 출력이 길어져
     #   예비 판정이 잘렸다(gemini 1482자에서 JSON 미완결, 실측).
     #   근거 수치는 `app/config.py` 주석에 있다 — 여기 베끼지 않는다.
-    assert s.matchup_max_tokens == 12000
+    assert s.matchup_max_tokens == 1500   # [CHN-1 2026-09-15] 무료 사슬 한도
     assert s.judge_model == "claude-opus-4-6"
 
 

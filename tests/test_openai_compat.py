@@ -74,7 +74,7 @@ async def test_503_is_retried(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_429_waits_and_retries(monkeypatch):
+async def test_429_는_기다리지_않고_즉시_나간다(monkeypatch):
     calls = {"n": 0}
     slept = []
 
@@ -105,8 +105,15 @@ async def test_429_waits_and_retries(monkeypatch):
 
     monkeypatch.setattr(_h, "AsyncClient", C)
     r = await OC.complete("mistral", "m", "p")
-    assert r["ok"] is True and calls["n"] == 2
-    assert 7.0 in slept, f"Retry-After 를 안 따랐다: {slept}"
+    # 🔴 [CHN-1 2026-09-15 사용자 지시] **429 는 기다리지 않는다.**
+    #    종전 규칙("Retry-After 를 따라 재시도")의 전제는 쓸 만한 제공자가
+    #    하나뿐이라는 것이었다. 이제 사슬이 둘 이상이고, 실측에서 이 자리가
+    #    453초를 잡아먹어 슬레이트 전체가 멈췄다(2026-09-15).
+    #    한 번 보고 즉시 나가고, 다음 제공자는 `_run_chain` 이 고른다.
+    assert r["ok"] is False and calls["n"] == 1, "재시도했다"
+    assert slept == [] or max(slept) <= OC.MIN_INTERVAL_SEC.get("mistral", 31.0), \
+        f"429 에서 잤다: {slept}"
+    assert "429" in str(r["error"])
 
 
 @pytest.mark.asyncio
@@ -184,8 +191,9 @@ async def test_429_본문이_error_에_남는다(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_429_는_여전히_기다리고_재시도한다(monkeypatch):
-    """⚠️ 반대 위험 — 본문을 살렸다고 재시도를 없애면 진짜 한도에서 손해다."""
+async def test_429_본문을_살린_채로_즉시_나간다(monkeypatch):
+    """⚠️ 반대 위험 — 재시도를 없애면서 **본문까지 버리면** LLM-1 사고가 재발한다.
+    실사고 2026-09-08: 로그에 "rate limited" 만 남아 잔액 0 을 못 봤다."""
     calls = {"n": 0}
     slept = []
 
@@ -208,8 +216,17 @@ async def test_429_는_여전히_기다리고_재시도한다(monkeypatch):
 
     _mock_client(monkeypatch, handler)
     r = await OC.complete("mistral", "m", "p")
-    assert r["ok"] is True and calls["n"] == 2
-    assert 7.0 in slept, f"Retry-After 를 안 따랐다: {slept}"
+    # 🔴 [CHN-1 2026-09-15 사용자 지시] **429 는 기다리지 않는다.**
+    #    종전 규칙("Retry-After 를 따라 재시도")의 전제는 쓸 만한 제공자가
+    #    하나뿐이라는 것이었다. 이제 사슬이 둘 이상이고, 실측에서 이 자리가
+    #    453초를 잡아먹어 슬레이트 전체가 멈췄다(2026-09-15).
+    #    한 번 보고 즉시 나가고, 다음 제공자는 `_run_chain` 이 고른다.
+    assert r["ok"] is False and calls["n"] == 1, "재시도했다"
+    assert slept == [] or max(slept) <= OC.MIN_INTERVAL_SEC.get("mistral", 31.0), \
+        f"429 에서 잤다: {slept}"
+    assert "429" in str(r["error"])
+    assert "rate limit exceeded" in str(r["error"]), \
+        "본문을 버렸다 — LLM-1 회귀"
 
 
 def test_429_분류를_바꾸지_않는다():

@@ -226,6 +226,20 @@ async def test_analyze_games_stops_on_quota(monkeypatch):
         return {"team": team, "unavailable": False}
 
     monkeypatch.setattr("app.engine.team_form.analyze_team", fake)
+    # 🔴 [CHN-1 2026-09-15] 이 테스트는 "**Anthropic 이 주전일 때만** 슬레이트를
+    #    멈춘다"를 잰다(`_free_primary`). 종전에는 그 조건을 개발자 `.env` 에
+    #    맡기고 있었다 — `.env` 에 FORM_CHAIN 이 생기자 조용히 깨졌다.
+    #    환경이 아니라 **테스트가** 조건을 세운다.
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    monkeypatch.setenv("PAID_LLM_ALLOWED", "1")
+    monkeypatch.setenv("FORM_CHAIN", "anthropic/claude-opus-5")
+    monkeypatch.setenv("JUDGE_CHAIN", "anthropic/claude-opus-5")
+    from app.llm.judge_route import chain
+    from app.engine.team_form import FORM_ROLE
+    assert chain(FORM_ROLE)[0][0] == "anthropic", chain(FORM_ROLE)
+
     games = [
         {"home": "한화", "away": "KIA", "research": {}},
         {"home": "롯데", "away": "SSG", "research": {}},
@@ -234,3 +248,4 @@ async def test_analyze_games_stops_on_quota(monkeypatch):
         await analyze_games(r, "kbo", "2026-08-29", games, mock=False)
     assert seen == ["한화", "KIA"]
     reset()
+    get_settings.cache_clear()

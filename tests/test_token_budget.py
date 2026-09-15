@@ -1,4 +1,7 @@
 """BUD-1 — 유료 LLM 일일 토큰 상한의 계약.
+# 🔴 [CHN-1 2026-09-15] 예시 provider 를 gemini → **deepseek** 로 바꿨다.
+#    gemini 는 AI Studio 무료 티어 키로 옮겨졌고(FREE_PROVIDERS), 이 모듈은
+#    설계상 **유료 provider 만** 센다. 기구를 재는 테스트라 예시만 바꾸면 된다.
 
 🔴 왜 이 모듈이 생겼나. 2026-09-11 유료 전면 전환(gemini 주전 · xai 폴백) 뒤
    상한이 걸리는 경로가 `anthropic_daily_cap` 하나였다. 그 캡은 Anthropic 만
@@ -60,21 +63,21 @@ async def test_무료_provider_는_세지_않는다():
 @pytest.mark.asyncio
 async def test_유료_provider_는_입출력을_합쳐_누적한다():
     r = _Redis()
-    await tb.note_usage(r, "gemini", role="matchup", model="g",
+    await tb.note_usage(r, "deepseek", role="matchup", model="g",
                         input_tokens=4000, output_tokens=1500)
-    await tb.note_usage(r, "gemini", role="form", model="g",
+    await tb.note_usage(r, "deepseek", role="form", model="g",
                         input_tokens=300, output_tokens=200)
-    assert await tb.spent_today(r, "gemini") == 6000
+    assert await tb.spent_today(r, "deepseek") == 6000
 
 
 @pytest.mark.asyncio
 async def test_provider_별로_따로_센다():
     r = _Redis()
-    await tb.note_usage(r, "gemini", role="matchup", model="g",
+    await tb.note_usage(r, "deepseek", role="matchup", model="g",
                         input_tokens=100, output_tokens=0)
     await tb.note_usage(r, "xai", role="matchup", model="k",
                         input_tokens=700, output_tokens=0)
-    assert await tb.spent_today(r, "gemini") == 100
+    assert await tb.spent_today(r, "deepseek") == 100
     assert await tb.spent_today(r, "xai") == 700
 
 
@@ -85,7 +88,7 @@ async def test_usage_가_없으면_0으로_덮지_않는다(caplog):
 
     r = _Redis()
     with caplog.at_level(logging.WARNING):
-        n = await tb.note_usage(r, "gemini", role="matchup", model="g",
+        n = await tb.note_usage(r, "deepseek", role="matchup", model="g",
                                 input_tokens=None, output_tokens=None)
     assert n == 0 and r.store == {}, "모르는데 누적했다"
     assert "usage 없음" in caplog.text, "조용히 지나갔다"
@@ -98,7 +101,7 @@ async def test_상한이_0이면_막지_않는다_관측만(cap):
     """🔴 실측 없이 숫자를 정하지 않는다. 0 인 동안은 세기만 한다."""
     cap(0)
     r = _Redis(start=10 ** 9)
-    ok, why = await tb.allowed(r, "gemini")
+    ok, why = await tb.allowed(r, "deepseek")
     assert ok is True and why is None
 
 
@@ -106,9 +109,9 @@ async def test_상한이_0이면_막지_않는다_관측만(cap):
 async def test_상한을_넘으면_막는다(cap):
     cap(1000)
     r = _Redis()
-    await tb.note_usage(r, "gemini", role="matchup", model="g",
+    await tb.note_usage(r, "deepseek", role="matchup", model="g",
                         input_tokens=600, output_tokens=500)   # 1100
-    ok, why = await tb.allowed(r, "gemini")
+    ok, why = await tb.allowed(r, "deepseek")
     assert ok is False
     assert "1,000" in why and "1,100" in why
 
@@ -117,9 +120,9 @@ async def test_상한을_넘으면_막는다(cap):
 async def test_상한_안이면_통과한다(cap):
     cap(1000)
     r = _Redis()
-    await tb.note_usage(r, "gemini", role="matchup", model="g",
+    await tb.note_usage(r, "deepseek", role="matchup", model="g",
                         input_tokens=400, output_tokens=100)
-    assert (await tb.allowed(r, "gemini"))[0] is True
+    assert (await tb.allowed(r, "deepseek"))[0] is True
 
 
 @pytest.mark.asyncio
@@ -133,15 +136,15 @@ async def test_무료_provider_는_상한과_무관하다(cap):
 async def test_redis_가_없으면_막지_않는다(cap):
     """모른다고 판정을 멈추면 카드가 안 나간다. 그쪽이 더 나쁘다."""
     cap(10)
-    assert (await tb.allowed(None, "gemini"))[0] is True
-    assert await tb.note_usage(None, "gemini", role="matchup", model="g",
+    assert (await tb.allowed(None, "deepseek"))[0] is True
+    assert await tb.note_usage(None, "deepseek", role="matchup", model="g",
                                input_tokens=99, output_tokens=99) == 0
 
 
 @pytest.mark.asyncio
 async def test_redis_가_고장이면_막지_않는다(cap):
     cap(10)
-    assert (await tb.allowed(_Redis(boom=True), "gemini"))[0] is True
+    assert (await tb.allowed(_Redis(boom=True), "deepseek"))[0] is True
 
 
 # ═══════════════ ③ 경보 — 잔량이 신호다
@@ -159,14 +162,14 @@ async def test_80퍼센트를_넘으면_경보한다(cap, monkeypatch):
     monkeypatch.setattr(alerts, "watchdog", _wd)
 
     r = _Redis()
-    await tb.note_usage(r, "gemini", role="matchup", model="g",
+    await tb.note_usage(r, "deepseek", role="matchup", model="g",
                         input_tokens=700, output_tokens=0)     # 70% — 조용
     assert sent == []
-    await tb.note_usage(r, "gemini", role="matchup", model="g",
+    await tb.note_usage(r, "deepseek", role="matchup", model="g",
                         input_tokens=200, output_tokens=0)     # 90% — 경보
     assert len(sent) == 1
     code, detail, target = sent[0]
-    assert code == "W-LLM-PAID" and target == "gemini"
+    assert code == "W-LLM-PAID" and target == "deepseek"
     assert "900" in detail
 
 
@@ -203,10 +206,10 @@ async def test_판정_사슬이_토큰을_실제로_누적한다(monkeypatch, ca
                 "usage": {"prompt_tokens": 5000, "completion_tokens": 1200}}
 
     monkeypatch.setattr(oc, "complete", _fake)
-    out = await tf._complete_free([("gemini", "gemini-3.7-flash")], "p",
+    out = await tf._complete_free([("deepseek", "deepseek-r1")], "p",
                                   max_tokens=100, role="matchup")
     assert out == '{"p_home": 0.55}'
-    assert await tb.spent_today(r, "gemini") == 6200, "카운터가 배선되지 않았다"
+    assert await tb.spent_today(r, "deepseek") == 6200, "카운터가 배선되지 않았다"
 
 
 @pytest.mark.asyncio
@@ -217,7 +220,7 @@ async def test_상한을_넘긴_provider_는_호출_자체를_건너뛴다(monke
     import app.llm.openai_compat as oc
 
     r = _Redis()
-    r.store[tb.KEY.format(provider="gemini", date=tb._today())] = 999
+    r.store[tb.KEY.format(provider="deepseek", date=tb._today())] = 999
     monkeypatch.setattr(tf, "_redis", lambda: _async(r))
 
     called = []
@@ -228,7 +231,7 @@ async def test_상한을_넘긴_provider_는_호출_자체를_건너뛴다(monke
                 "status": 200, "usage": {}}
 
     monkeypatch.setattr(oc, "complete", _fake)
-    out = await tf._complete_free([("gemini", "gemini-3.7-flash")], "p",
+    out = await tf._complete_free([("deepseek", "deepseek-r1")], "p",
                                   max_tokens=100, role="matchup")
     assert called == [], "상한을 넘겼는데 불렀다"
     assert out is None
@@ -238,15 +241,15 @@ async def test_상한을_넘긴_provider_는_호출_자체를_건너뛴다(monke
 async def test_상한을_넘긴_뒤에도_다음_후보로_넘어간다(monkeypatch, cap):
     """🔴 반대 위험: 가드가 카드를 통째로 막으면 안 된다.
 
-    gemini 가 상한에 닿아도 xai 가 남아 있으면 그 경기는 판정을 받는다.
+    deepseek 가 상한에 닿아도 xai 가 남아 있으면 그 경기는 판정을 받는다.
     """
     import app.engine.team_form as tf
     import app.llm.openai_compat as oc
 
     monkeypatch.setattr(tb, "cap_for",
-                        lambda provider: 100 if provider == "gemini" else 0)
+                        lambda provider: 100 if provider == "deepseek" else 0)
     r = _Redis()
-    r.store[tb.KEY.format(provider="gemini", date=tb._today())] = 999
+    r.store[tb.KEY.format(provider="deepseek", date=tb._today())] = 999
     monkeypatch.setattr(tf, "_redis", lambda: _async(r))
 
     called = []
@@ -259,7 +262,7 @@ async def test_상한을_넘긴_뒤에도_다음_후보로_넘어간다(monkeypa
 
     monkeypatch.setattr(oc, "complete", _fake)
     out = await tf._complete_free(
-        [("gemini", "gemini-3.7-flash"), ("xai", "grok-4.3-latest")], "p",
+        [("deepseek", "deepseek-r1"), ("xai", "grok-4.3-latest")], "p",
         max_tokens=100, role="matchup")
     assert called == ["xai"], called
     assert out == '{"ok": 1}'

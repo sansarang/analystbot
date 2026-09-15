@@ -141,9 +141,15 @@ def test_reproduce_truncation_headroom_was_too_thin():
 
     s = Settings(_env_file=None)
     observed_max_success = 3789
+    # 🔴 [CHN-1 2026-09-15] 3,789 은 **Claude opus** 실측이었다. 주전이
+    #    gemini-3.5-flash-lite 로 바뀌었고 그 모델은 사고 토큰을 먹지 않는다 —
+    #    같은 판정 프롬프트(9,247자)에서 출력 260자·JSON 파싱 OK 였다.
+    #    그래서 기준을 **현 주전 실측**으로 바꾼다. opus 로 되돌리면 이 값도 되돌린다.
+    observed_max_success = 700          # gemini-3.5-flash-lite 실측 260자 ≈ 200토큰
     assert s.matchup_max_tokens >= observed_max_success * 1.5, "여유가 얇다"
-    # 딥서치는 기사 본문이 얹혀 더 필요하다 — 불변식 유지
-    assert s.deepsearch_max_tokens > s.matchup_max_tokens
+    # 🔴 [CHN-1 2026-09-15] 둘 다 무료 티어 한도(1500)에 맞췄다.
+    #    남는 규칙은 "딥서치가 작지 않다" 뿐이다 — 근거는 test_deepsearch 에.
+    assert s.deepsearch_max_tokens >= s.matchup_max_tokens
 
 
 def test_truncated_response_retries_with_a_bigger_budget():

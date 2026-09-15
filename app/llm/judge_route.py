@@ -51,7 +51,11 @@ _SUFFIX_REQUIRED = {"openrouter"}
 #   · ollama = 로컬 실행 · mock = 호출 자체가 없음
 #   · groq · nvidia NIM = 계정이 무료 티어라 모델 이름으로 갈리지 않는다
 #   ⚠️ 모델 목록이 아니라 **provider 규칙**이다. 모델 이름은 적지 않는다.
-FREE_PROVIDERS = {"ollama", "mock", "groq", "nvidia"}
+#   · gemini = **Google AI Studio 무료 티어 키**(2026-09-15 사용자 지급).
+#     ⚠️ 이 분류는 **키의 성질**에 달렸다 — 같은 provider 라도 결제를 켜면
+#        거짓이 된다. 안전판은 `DISABLED_PROVIDERS` 다(거기 넣으면 즉시 빠진다).
+#     실측 2026-09-15: gemini-3.5-flash-lite 200·0.9s · 6,013토큰 6연속 무 429.
+FREE_PROVIDERS = {"ollama", "mock", "groq", "nvidia", "gemini"}
 
 #: 유료로 보는 provider — `snapshot()` 이 훑을 후보다. **판정 근거가 아니다**
 #  (판정은 `is_paid_provider` 의 규칙이 한다). 여기 없는 이름도 규칙상

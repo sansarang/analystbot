@@ -172,8 +172,18 @@ async def complete(provider: str, model: str, prompt: str, *,
             await asyncio.sleep(3.0 * (attempt + 1))
             continue
         out["status"] = r.status_code
-        if r.status_code == 429:
-            # 🔴 우회하지 않는다. **기다린다** — 한도는 한도이고, 기다리면 풀린다.
+        if r.status_code in (429, 401):
+            # 🔴 [CHN-1 2026-09-15 사용자 지시] **기다리지 않는다 — 즉시 다음
+            #    제공자로 간다.** 종전 규칙("우회하지 않는다. 기다린다")의 전제는
+            #    쓸 만한 제공자가 하나뿐이라는 것이었다. 이제 둘이다.
+            #    실측 2026-09-15: 이 자리에서 **453초**를 기다렸고(4회 × 상한 60초 +
+            #    간격), 그동안 슬레이트 전체가 멈췄다. groq 무료 티어는
+            #    `x-ratelimit-limit-tokens = 8000`(분당)이라 판정 1콜에 바로 걸린다.
+            #    401 도 같이 즉시 나간다 — 키가 틀린 것은 기다려도 안 풀린다
+            #    (openrouter `User not found` 로 사슬이 통째로 늦어졌다).
+            #    ⚠️ **분류는 바꾸지 않는다**(아래 종전 주석 그대로). 보이게만 한다.
+            #    ⚠️ 라운드로빈 본 구현 전까지의 임시 규칙이다 — `remaining` 추적은
+            #       아직 없다.
             #    `Retry-After` 가 있으면 그것을 따르고, 없으면 그 provider 의
             #    최소 간격만큼 쉰다.
             # 🔴 [LLM-1 2026-09-08] **본문을 버리지 않는다.** 종전에는 이 줄이
@@ -190,21 +200,12 @@ async def complete(provider: str, model: str, prompt: str, *,
             #       (W-LLM-FAIL 24회, `provider.py` 주석). 어댑터는 분류하지
             #       않는다. 재시도·대기·차단기 전부 그대로다. **보이게만 한다.**
             detail = (r.text or "").strip().replace("\n", " ")[:160]
-            out["error"] = f"429 rate limited — {detail}" if detail else "429 rate limited"
+            kind = "429 rate limited" if r.status_code == 429 else "401 unauthorized"
+            out["error"] = f"{kind} — {detail}" if detail else kind
             out["retries"] = attempt + 1
-            if attempt == 3:
-                break
-            import asyncio
-
-            ra = r.headers.get("Retry-After")
-            try:
-                wait = float(ra) if ra else MIN_INTERVAL_SEC.get(provider, 30.0)
-            except (TypeError, ValueError):
-                wait = MIN_INTERVAL_SEC.get(provider, 30.0)
-            logger.warning("[net] %s 429 — %.0f초 후 재시도 (%d/4) · 본문: %s",
-                           provider, wait, attempt + 1, detail or "(없음)")
-            await asyncio.sleep(min(wait, 60.0))
-            continue
+            logger.warning("[net] %s %d — 즉시 다음 제공자로 (대기 0초) · 본문: %s",
+                           provider, r.status_code, detail or "(없음)")
+            break
         if r.status_code >= 500:
             # 🔴 [실측] `503 Service temporarily overloaded` 가 무료 인프라의
             #    주 실패 형태다. 오디션 6건 중 1건, 프리페치 연속 호출에선

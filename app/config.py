@@ -342,7 +342,12 @@ class Settings(BaseSettings):
     #         grok  735 · pplx 1,728 · gemini 916~1,024 (max 12000 에서 성공)
     #       Claude 5·grok 모두 출력 상한이 이보다 훨씬 크므로 12000 은
     #       SDK 제한에 닿지 않는다.
-    matchup_max_tokens: int = 12000
+    # 🔴 [CHN-1 2026-09-15 사용자 지시] 12000 → **1500**.
+    #    "matchup_max_tokens·triage·dbref max_tokens → 1500".
+    #    ⚠️ 위 실측들과 **정면으로 부딪친다** — 2000 에서 4/4 파싱 실패였다.
+    #       그래서 내린 직후 실제 판정 크기로 재고, 절단이 나면 그 수치를 들고
+    #       되돌린다(그 측정이 이 값의 근거다).
+    matchup_max_tokens: int = 1500
 
     # ── [A-5단계] 리그별 딥서치 스위치 ─────────────────────────────────────
     # 콤마 구분 종목 목록. 여기 없는 종목은 **딥서치를 부르지 않는다.**
@@ -369,7 +374,8 @@ class Settings(BaseSettings):
     #   JSON이 743자에서 절단. 4/4 파싱 실패의 원인이었다.
     # [2026-09-07] matchup 12000 상향에 맞춰 불변식 유지 —
     #   딥서치는 기사 본문이 얹혀 **매치업보다 커야 한다**(실측 소진 5,804).
-    deepsearch_max_tokens: int = 16000
+    # 🔴 [CHN-1 2026-09-15] 16000 → 1500 (같은 지시).
+    deepsearch_max_tokens: int = 1500
     #: [무과금 전환 2c] 유료 `web_search` 폴백의 **하루 총량**.
     #   RSS 에 기사가 0건일 때만 쓴다. 0 이면 유료 검색을 아예 안 한다.
     #   ⚠️ 경기당 상한(`deepsearch_max_searches`)과 다른 축이다 —

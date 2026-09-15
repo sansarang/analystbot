@@ -29,7 +29,9 @@ from app.llm.judge_route import chain, is_free
     ("nvidia", "nvidia/nemotron-3-ultra-550b-a55b", True),   # 계정이 무료 티어
     ("groq", "qwen/qwen3.8-27b", True),
     # 🔴 [BUD-1] 여기가 통째로 뒤집힌 자리다. 이 둘이 True 였다.
-    ("gemini", "gemini-3.7-flash", False),
+    # 🔴 [CHN-1 2026-09-15] gemini = AI Studio 무료 티어 키 → 무료로 분류.
+    ("gemini", "gemini-3.5-flash-lite", True),
+    ("처음보는provider", "m", False),          # 모르면 여전히 유료(BUD-1)
     ("xai", "grok-4.3-latest", False),
     # 모르는 provider 는 **유료로 본다** — 독스트링이 원래 약속한 방향이다.
     ("whoknows", "some-model", False),
@@ -39,7 +41,7 @@ def test_is_free(provider, model, expected):
 
 
 @pytest.mark.parametrize("provider,paid", [
-    ("gemini", True), ("xai", True), ("anthropic", True), ("deepseek", True),
+    ("gemini", False), ("xai", True), ("anthropic", True), ("deepseek", True),
     ("groq", False), ("nvidia", False), ("ollama", False), ("mock", False),
     ("", True), ("처음보는것", True),          # 모르면 유료
 ])
@@ -53,21 +55,24 @@ def test_is_paid_provider(provider, paid):
 def test_paid_candidate_stays_in_the_chain_and_is_capped(monkeypatch):
     """🔴 [BUD-1] 운영 사슬이 유료다 — 배제하면 판정이 통째로 0건이 된다.
 
-    2026-09-11 운영값 그대로: `gemini/gemini-3.7-flash,xai/grok-4.3-latest`.
-    종전 구현은 이 둘을 "무료"로 착각해 통과시켰고, 지금은 **유료인 줄 알면서**
-    통과시킨다. 차이는 토큰 상한이 붙는다는 것이다.
+    2026-09-11 운영값은 `gemini/…,xai/…` 였다. 종전 구현은 이 둘을 "무료"로
+    착각해 통과시켰고, 지금은 **유료인 줄 알면서** 통과시킨다. 차이는 토큰
+    상한이 붙는다는 것이다.
+    🔴 [CHN-1 2026-09-15] gemini 가 무료 티어 키로 옮겨졌으므로(FREE_PROVIDERS)
+       유료 예시를 `deepseek/xai` 로 바꾼다. **재는 것은 그대로다** —
+       "유료라도 사슬에 남고, 남는 대신 상한이 붙는다".
     """
     from app.config import get_settings
 
     get_settings.cache_clear()
-    monkeypatch.setenv("JUDGE_PROVIDER", "gemini")
+    monkeypatch.setenv("JUDGE_PROVIDER", "deepseek")
     monkeypatch.setenv("JUDGE_CHAIN",
-                       "gemini/gemini-3.7-flash,xai/grok-4.3-latest")
+                       "deepseek/deepseek-r1,xai/grok-4.3-latest")
     try:
         got = chain("matchup")
     finally:
         get_settings.cache_clear()
-    assert got == [("gemini", "gemini-3.7-flash"), ("xai", "grok-4.3-latest")], got
+    assert got == [("deepseek", "deepseek-r1"), ("xai", "grok-4.3-latest")], got
     assert all(not is_free(p, m) for p, m in got), "유료인 줄 알고 태워야 한다"
 
 
@@ -81,14 +86,16 @@ def test_paid_candidate_is_dropped_in_free_only_mode(monkeypatch):
     monkeypatch.setenv("JUDGE_CHAIN",
                        "nvidia/nvidia/nemotron-3-ultra-550b-a55b,"
                        "openrouter/deepseek/deepseek-r1,"
-                       "gemini/gemini-3.7-flash,"
+                       # 🔴 [CHN-1 2026-09-15] 유료 예시를 gemini → xai 로.
+                       #    gemini 는 무료 티어 키로 옮겨졌다(FREE_PROVIDERS).
+                       "xai/grok-4.3-latest,"
                        "openrouter/minimax/minimax-m3:free")
     try:
         got = chain("matchup")
     finally:
         get_settings.cache_clear()
     assert ("openrouter", "deepseek/deepseek-r1") not in got
-    assert ("gemini", "gemini-3.7-flash") not in got
+    assert ("xai", "grok-4.3-latest") not in got
     assert ("openrouter", "minimax/minimax-m3:free") in got
     assert got[0] == ("nvidia", "nvidia/nemotron-3-ultra-550b-a55b")
     # 🔴 [2026-09-04] 비상 꼬리를 **떼어냈다.** 잔액 0 이면 캡은 아무것도
