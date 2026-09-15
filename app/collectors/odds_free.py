@@ -43,6 +43,81 @@ async def _match_game_ids(pool, sport: str, date: str) -> dict[str, int]:
     return {f"{r['home']}|{r['away']}": r["id"] for r in rows}
 
 
+#: 🔴 [SNAP-1 2026-09-15] 첫 스냅샷에 이름표를 붙인다.
+#   ⚠️ **트리거가 붙인 태그를 덮지 않는다** — `snap_tag IS NULL` 인 행만,
+#      그리고 그 (경기·provider) 에 open 계열이 **아직 없을 때만** 붙인다.
+#      `pre`·`lineup` 이 `open_proxy` 로 바뀌면 이동 기준선이 뒤집힌다.
+#   ⚠️ 멱등이다 — 두 번 돌려도 같은 결과다(계약이 단언한다).
+_TAG_OPEN_SQL = """
+    WITH first_seen AS (
+        SELECT id FROM odds_snapshots
+         WHERE game_id = $1 AND provider = $2 AND snap_tag IS NULL
+           AND captured_at = (SELECT min(captured_at) FROM odds_snapshots
+                               WHERE game_id = $1 AND provider = $2)
+    )
+    UPDATE odds_snapshots SET snap_tag = $3
+     WHERE id IN (SELECT id FROM first_seen)
+       AND NOT EXISTS (SELECT 1 FROM odds_snapshots
+                        WHERE game_id = $1 AND provider = $2
+                          AND snap_tag IN ('open', 'open_proxy'))
+"""
+
+
+async def tag_open(pool, game_id: int, provider: str) -> str | None:
+    """이 경기·소스의 **가장 이른** 스냅샷에 `open`/`open_proxy` 를 붙인다.
+
+    반환: 붙인 이름표(이미 있으면 None).
+    🔴 `open` 의 정의(T-24h)는 `triggers.KINDS` 가 원본이다 — 숫자를 베끼지 않는다.
+    """
+    from app.engine.odds_move import open_tag
+
+    row = await pool.fetchrow(
+        """SELECT g.starts_at ko,
+                  (SELECT min(captured_at) FROM odds_snapshots
+                    WHERE game_id = $1 AND provider = $2) first_seen,
+                  (SELECT count(*) FROM odds_snapshots
+                    WHERE game_id = $1 AND provider = $2
+                      AND snap_tag IN ('open', 'open_proxy')) already
+             FROM games g WHERE g.id = $1""", game_id, provider)
+    if not row or row["first_seen"] is None or row["already"]:
+        return None
+    tag = open_tag(row["ko"], row["first_seen"])
+    await pool.execute(_TAG_OPEN_SQL, game_id, provider, tag)
+    logger.info("[odds_free] snap_tag game=%s provider=%s → %s "
+                "(첫값 %s · 킥오프 %s)", game_id, provider, tag,
+                row["first_seen"], row["ko"])
+    return tag
+
+
+async def backfill_open_tags(pool, *, since_days: int = 400) -> dict:
+    """[SNAP-1] 기존 행에 소급으로 `open`/`open_proxy` 를 붙인다.
+
+    🔴 **한 번만 의미가 있고 멱등이다.** 이미 open 계열이 있는 (경기·소스) 는
+       건드리지 않고, 트리거가 붙인 `pre`·`lineup` 등도 그대로 둔다.
+    ⚠️ 규칙은 사용자 지시 그대로: 킥오프 T-24h 이전 첫 값 = `open`,
+       그 이후 첫 값 = `open_proxy`.
+    """
+    pairs = await pool.fetch(
+        """SELECT o.game_id, o.provider
+             FROM odds_snapshots o JOIN games g ON g.id = o.game_id
+            WHERE g.starts_at > now() - ($1 || ' days')::interval
+            GROUP BY 1, 2
+           HAVING count(*) FILTER (
+                    WHERE o.snap_tag IN ('open', 'open_proxy')) = 0""",
+        str(int(since_days)))
+    out = {"pairs": len(pairs), "open": 0, "open_proxy": 0, "skip": 0}
+    for r in pairs:
+        tag = await tag_open(pool, r["game_id"], r["provider"])
+        if tag is None:
+            out["skip"] += 1
+        else:
+            out[tag] += 1
+    logger.info("[odds_free] snap_tag 소급 — 대상 %d쌍 · open %d · open_proxy %d "
+                "· 생략 %d", out["pairs"], out["open"], out["open_proxy"],
+                out["skip"])
+    return out
+
+
 async def store_rows(pool, game_id: int, rows: list[dict], provider: str) -> int:
     """행 목록을 `odds_snapshots` 에 적재. 반환 적재 건수."""
     n = 0
@@ -58,6 +133,13 @@ async def store_rows(pool, game_id: int, rows: list[dict], provider: str) -> int
         except Exception as exc:
             logger.warning("[odds_free] 적재 실패 game=%s %s: %s",
                            game_id, r.get("side"), exc)
+    # 🔴 [SNAP-1] 넣었으면 첫 값에 이름표를 붙인다. 실패해도 적재는 산다 —
+    #    이름표는 분석용이고 값이 본체다.
+    if n:
+        try:
+            await tag_open(pool, game_id, provider)
+        except Exception as exc:
+            logger.warning("[odds_free] snap_tag 실패 game=%s: %s", game_id, exc)
     return n
 
 

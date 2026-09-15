@@ -31,7 +31,24 @@ MOVE_MIN_PP = 2.0
 CONTRA_MIN_PP = 3.0
 
 #: 기준선 우선순위. `triggers.KINDS` 와 **같은 이름**을 쓴다.
-BASELINE_ORDER = ("open", "pre", "lineup", "late", "close")
+#: 🔴 [SNAP-1 2026-09-15] `open_proxy` 를 **open 바로 뒤**에 넣는다.
+#   뜻: "진짜 개장가(T-24h 이전)를 못 봤고, 우리가 처음 본 값이 이것이다."
+#   실측 근거 — 배당이 18일간 차단돼 있었고(P2-0) 해제 직후 받은 ACL 7경기의
+#   첫 값은 전부 T-4.7h ~ T-13.0h 였다. 그것을 `open` 이라 부르면 이동 분석이
+#   "돈이 들어오기 전"이라는 전제를 거짓으로 깔게 된다.
+#   ⚠️ 순서에 넣지 않으면 `record_move` 의 `order.index()` 가 ValueError 로
+#      터져 이동 분석이 통째로 죽는다(계약이 잠근다).
+BASELINE_ORDER = ("open", "open_proxy", "pre", "lineup", "late", "close")
+
+#: T-24h 이전이면 진짜 개장가로 본다. 원본은 `triggers.KINDS["open"]` 이다 —
+#  숫자를 여기 손으로 적지 않는다.
+def open_tag(kickoff, captured_at) -> str:
+    """첫 스냅샷의 이름표. `open` 또는 `open_proxy`."""
+    from app.engine.triggers import KINDS
+
+    if kickoff is None or captured_at is None:
+        return "open_proxy"
+    return "open" if captured_at <= kickoff + KINDS["open"] else "open_proxy"
 
 
 @dataclass(frozen=True)
