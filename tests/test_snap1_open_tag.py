@@ -104,3 +104,41 @@ async def test_이미_태그가_있으면_아무것도_안_한다():
     p = _Pool()
     assert await OF.tag_open(p, 1, "oddsportal") is None
     assert p.execs == []
+
+
+# ═══════════════ U0-b — 묶음 태깅 · NULL 제외
+
+def test_첫값은_같은_묶음_전체에_붙는다():
+    """🔴 실측 2026-09-15: g=8199 open_proxy **1행** / None 35행.
+    홈·무·원정은 행마다 따로 INSERT 돼 captured_at 이 마이크로초 단위로 다르다.
+    `= min(captured_at)` 으로 잡으면 셋 중 하나만 붙는다."""
+    sql = OF._TAG_OPEN_SQL
+    assert "= (SELECT min(captured_at)" not in sql, "여전히 한 행만 잡는다"
+    assert "< (SELECT min(captured_at)" in sql
+    assert "interval '1 second'" in sql
+
+
+def test_창은_1초다_다음_스냅샷을_삼키지_않는다():
+    """🔴 반대 위험 — 창이 넓으면 다음 회차까지 open 으로 이름 붙는다."""
+    import re
+
+    m = re.search(r"interval '(\d+) (second|minute|hour)", OF._TAG_OPEN_SQL)
+    assert m, OF._TAG_OPEN_SQL
+    assert (m.group(1), m.group(2)) == ("1", "second"), m.groups()
+    # 2차 방어: open 계열이 이미 있으면 아예 안 붙는다
+    assert "NOT EXISTS" in OF._TAG_OPEN_SQL
+
+
+def test_NULL_행은_이동계산에서_빠진다():
+    """⚠️ 규칙 정정(사용자 2026-09-15): NULL 0% 가 목표가 아니다.
+    경기당 open 계열 1묶음 + 5시점 묶음이고 나머지 NULL 은 이름 없는 중간값이다.
+    대신 그 NULL 이 이동·CLV 계산에 **섞이면 안 된다**."""
+    import inspect
+
+    from app.engine import pick_ledger as PL
+
+    src = inspect.getsource(PL)
+    i = src.index("SELECT o.provider, o.snap_tag")
+    assert "snap_tag IS NOT NULL" in src[i:i + 400], "NULL 행이 섞인다"
+    # baseline 도 태그가 있는 것부터 고른다
+    assert "BASELINE_ORDER" in inspect.getsource(M.baseline)

@@ -50,10 +50,17 @@ async def _match_game_ids(pool, sport: str, date: str) -> dict[str, int]:
 #   ⚠️ 멱등이다 — 두 번 돌려도 같은 결과다(계약이 단언한다).
 _TAG_OPEN_SQL = """
     WITH first_seen AS (
+        -- 🔴 [U0-b 2026-09-15] **묶음 전체**를 잡는다. 홈·무·원정은 행마다
+        --    따로 INSERT 돼 `captured_at` 이 마이크로초 단위로 다르다 —
+        --    `= min(captured_at)` 으로 잡으면 셋 중 하나만 붙는다
+        --    (실측: g=8199 open_proxy 1행 / None 35행).
+        --    ⚠️ 창을 넓히면 다음 회차를 삼킨다. 1초다 — 같은 pass 의 행은
+        --       같은 초에 들어오고 다음 회차는 몇 분 뒤다.
         SELECT id FROM odds_snapshots
          WHERE game_id = $1 AND provider = $2 AND snap_tag IS NULL
-           AND captured_at = (SELECT min(captured_at) FROM odds_snapshots
+           AND captured_at < (SELECT min(captured_at) FROM odds_snapshots
                                WHERE game_id = $1 AND provider = $2)
+                             + interval '1 second'
     )
     UPDATE odds_snapshots SET snap_tag = $3
      WHERE id IN (SELECT id FROM first_seen)

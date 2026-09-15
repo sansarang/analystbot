@@ -192,3 +192,48 @@ def test_gate_vs_llm_이_덮어쓰기_안에서_붙는다():
     jg2 = _llm_said(_jg(), 승자=COMO)           # 둘 다 코모
     apply_code_verdict(jg2)
     assert jg2["gate_vs_llm"] == "same"
+
+
+# ═══════════════ U0-b — 종목 분기. 8199 실수 재발 방지
+
+def test_code_pick이_종목으로_갈린다():
+    """🔴 실사고 2026-09-15: D-10 을 검증하며 **축구를 야구 규칙으로 쟀다.**
+    8199 Kyoto@Daejeon 은 p_code=0.4473 이라 `>= 0.5` 로는 '원정'인데,
+    3-way 최대값(홈 45.1 / 무 27.1 / 원정 27.9)은 **홈승**이다.
+    분기가 `code_pick` 한 곳에만 있다는 것을 계약으로 잠근다.
+    """
+    soccer = {"sport": "soccer", "home": "Daejeon Citizen", "away": "Kyoto Sanga FC",
+              "p_code": 0.4473,
+              "market_probs": {"Daejeon Citizen": 0.451, "Draw": 0.271,
+                               "Kyoto Sanga FC": 0.279}}
+    assert P.code_pick(soccer) == {"결과": "홈승"}, "축구를 야구 규칙으로 쟀다"
+
+    baseball = {"sport": "mlb", "home": "H", "away": "A", "p_code": 0.4473}
+    assert P.code_pick(baseball) == {"승자": "A"}, "야구는 0.5 기준이다"
+
+    # 같은 숫자인데 결과가 다르다 — 그게 분기의 증거다
+    assert P.code_pick(soccer) != P.code_pick(baseball)
+
+
+def test_종목_분기가_한_곳에만_있다():
+    """🔴 사본 금지 — 다른 곳에서 승패 방향을 또 정하면 축구가 틀린다."""
+    import pathlib
+    import re
+
+    #: "p_code 를 0.5 와 비교" 하는 줄. 있어도 되는 곳은 `prob.code_pick` 뿐이다.
+    pat = re.compile(r"p_code[^\n]{0,24}>=\s*0\.5|>=\s*0\.5[^\n]{0,24}p_code"
+                     r"|float\(p\)\s*>=\s*0\.5|p\)\s*>=\s*0\.5")
+    hits = []
+    for f in pathlib.Path("app").rglob("*.py"):
+        for i, ln in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            if ln.strip().startswith("#") or pat.search(ln) is None:
+                continue
+            hits.append(f"{f}:{i}")
+    assert all(h.startswith("app/engine/prob.py") for h in hits), hits
+    assert len(hits) <= 1, f"분기가 여러 곳이다: {hits}"
+
+    # 그리고 그 한 곳이 종목을 본다
+    import inspect
+    src = inspect.getsource(P.code_pick)
+    assert 'sport' in src and 'soccer' in src
+    assert "market_triple" in src, "축구 3-way 를 안 본다"
