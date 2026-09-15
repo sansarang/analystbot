@@ -2072,8 +2072,10 @@ async def _triggers_tick(pool=None, now=None) -> dict:
 
     # ① 계획 — 킥오프가 있는 예정 경기에 5시점을 등록/갱신한다.
     try:
+        # 🔴 [U1 2026-09-15] 창을 **전후 30시간**으로. 종전 −6h 는 늦게 적재된
+        #    경기(ACL 은 킥오프 당일에 처음 들어왔다)의 지난 시점을 놓쳤다.
         rows = await pool.fetch(_TRIGGER_PLAN_SQL,
-                                now - timedelta(hours=6), now + timedelta(hours=30))
+                                now - timedelta(hours=30), now + timedelta(hours=30))
     except Exception as exc:
         logger.warning("[triggers] 계획 대상 조회 실패: %s", exc)
         rows = []
@@ -2098,21 +2100,32 @@ async def _triggers_tick(pool=None, now=None) -> dict:
 
     async def _one(row: dict) -> None:
         async with sem:
-            try:
-                res = await pool.execute(_TRIGGER_TAG_SQL, row["game_id"],
-                                         row["kind"], since)
-                n = int(str(res or "").split()[-1] or 0)
-            except Exception as exc:
-                logger.warning("[triggers] 이름표 실패 game=%s %s: %s",
-                               row["game_id"], row["kind"], exc)
-                n = 0
-            if n:
-                out["태그"] += n
+            # 🔴 [U1 2026-09-15] **스냅샷 종류만 이름표를 붙인다.** 행동 트리거
+            #    (model·rejudge·card…)의 kind 가 `snap_tag` 로 새면
+            #    `odds_move.BASELINE_ORDER` 에 없는 값이 되어 `record_move` 의
+            #    `order.index()` 가 ValueError 로 터진다 — 이동 분석이 죽는다.
+            #    판정의 원본은 `triggers.is_snapshot` 이다(목록을 여기 적지 않는다).
+            n = 0
+            if T.is_snapshot(row.get("kind")):
+                try:
+                    res = await pool.execute(_TRIGGER_TAG_SQL, row["game_id"],
+                                             row["kind"], since)
+                    n = int(str(res or "").split()[-1] or 0)
+                except Exception as exc:
+                    logger.warning("[triggers] 이름표 실패 game=%s %s: %s",
+                                   row["game_id"], row["kind"], exc)
+                    n = 0
+                if n:
+                    out["태그"] += n
+                else:
+                    out["무스냅"] += 1
+                    logger.info("[triggers] game=%s %s — 최근 %d분 안에 잡힌 배당이 "
+                                "없다. 이름표 없이 닫는다",
+                                row["game_id"], row["kind"], TRIGGER_SNAP_MAX_AGE_MIN)
             else:
-                out["무스냅"] += 1
-                logger.info("[triggers] game=%s %s — 최근 %d분 안에 잡힌 배당이 "
-                            "없다. 이름표 없이 닫는다",
-                            row["game_id"], row["kind"], TRIGGER_SNAP_MAX_AGE_MIN)
+                # ⚠️ 자리만 있는 트리거다(U5~U11 이 붙인다). 조용히 닫지 않는다.
+                out.setdefault("행동", 0)
+                out["행동"] += 1
             # 🔴 [FOT-2 사용자 지시] **T-60 에 라인업을 다시 받는다.**
             #    시점 이름(`lineup`)은 `triggers.KINDS` 가 원본이다 — 여기에
             #    분(分)을 적지 않는다. 실패는 결측이고 이름표 작업을 막지 않는다.

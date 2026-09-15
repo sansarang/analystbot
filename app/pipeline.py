@@ -1344,6 +1344,8 @@ async def _load_soccer_fixtures(pool, date: str, league_key, fd) -> list[str]:
     from app.leagues import LEAGUES
 
     out: list[str] = []
+    #: 🔴 [U1] 소스가 "넣었다"고 한 건수. DB 실적재와 대조한다.
+    _src_counts: dict[str, int] = {}
     if not fd.mock:
         try:
             out += await upsert_games_from_football_data(
@@ -1374,6 +1376,8 @@ async def _load_soccer_fixtures(pool, date: str, league_key, fd) -> list[str]:
             from app.collectors.fotmob import upsert_slate
 
             _r = await upsert_slate(pool, date.replace("-", ""), league_key=_k)
+            _lbl = _cfg.get("label") or _k
+            _src_counts[_lbl] = _src_counts.get(_lbl, 0) + int(_r.get("matched") or 0)
             # 🔴 [ACL-3] **실제 ext_id** 를 더한다. 종전에는 개수만큼
             #    `fotmob:{리그키}` 를 채워 넣어 슬레이트에 한 건도 안 들었다
             #    (실측: 8경기 저장하고 카드는 "축구 5경기").
@@ -1381,6 +1385,28 @@ async def _load_soccer_fixtures(pool, date: str, league_key, fd) -> list[str]:
         except Exception as exc:
             logger.warning("[pipeline] 축구 일정 소스 실패 — FotMob (%s): %s",
                            _cfg.get("label") or _k, exc)
+    # 🔴 [U1 2026-09-15] **적재 자기검증.** 소스가 준 건수와 DB 에 실제로 든
+    #    건수를 리그별로 대조한다. J1·K리그1·ACL 이 18일간 0건이었는데
+    #    "소스 실패" 한 줄만 남아 "경기가 없다"와 구분되지 않았다(P2-0).
+    #    ⚠️ 경고만 한다 — 자동 복구하지 않는다(차단기와 같은 태도).
+    try:
+        from app.engine.triggers import ingest_gap, ingest_gap_note
+
+        db_rows = await pool.fetch(
+            """SELECT league, count(*) n FROM games
+                WHERE sport = 'soccer' AND ext_id = ANY($1::text[])
+                GROUP BY 1""", out)
+        db_counts = {r["league"]: int(r["n"]) for r in db_rows}
+        gaps = ingest_gap(_src_counts, db_counts)
+        if gaps:
+            logger.warning("[ingest_gap] 소스에 있는데 DB 에 없다 — %s",
+                           ingest_gap_note(gaps))
+        else:
+            logger.info("[ingest_gap] 소스 %d건 = DB %d건 (리그 %d개) — 차이 없음",
+                        sum(_src_counts.values()), sum(db_counts.values()),
+                        len(db_counts))
+    except Exception as exc:
+        logger.warning("[ingest_gap] 대조 실패 — 적재는 그대로 간다: %s", exc)
     return out
 
 

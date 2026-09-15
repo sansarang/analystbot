@@ -23,10 +23,13 @@ KO = datetime(2026, 9, 14, 10, 0, tzinfo=timezone.utc)
 
 # ── 계획
 
-def test_다섯_시점이다():
+def test_열세_시점이다():
+    """🔴 [U1 2026-09-15] 스냅샷 5 + 행동 8. 종전 5종에는 S4~S11 이 붙을
+    시각이 없었다. ⚠️ 이름표는 여전히 `KINDS` 5종만 붙는다."""
     rows = T.plan(KO)
-    assert [r["kind"] for r in rows] == list(T.KINDS)
-    assert len(rows) == 5
+    assert len(rows) == 13
+    assert {r["kind"] for r in rows} == set(T.ALL_KINDS)
+    assert set(T.KINDS) < set(T.ALL_KINDS)
 
 
 def test_시점_오프셋이_지시문_그대로다():
@@ -47,7 +50,7 @@ def test_이미_지난_시점도_계획에_남긴다():
     """⚠️ 지난 시점을 빼면 '늦게 등록된 경기'가 open 을 영영 못 받는다.
        지났는지는 due 조회가 판단한다."""
     late = datetime(2026, 9, 13, 0, 0, tzinfo=timezone.utc)
-    assert len(T.plan(late)) == 5
+    assert len(T.plan(late)) == 13
 
 
 # ── 순서·중복
