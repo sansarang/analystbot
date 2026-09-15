@@ -266,8 +266,25 @@ def _ml(block) -> float | None:
     return from_american(block)
 
 
+def _num(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
 def parse_soccer_odds(item: dict, home: str, away: str) -> list[dict]:
-    """odds 항목 1건 → 적재 행(홈·무·원정). 라이브 북은 버린다."""
+    """odds 항목 1건 → 적재 행. 라이브 북은 버린다.
+
+    🔴 [U2 2026-09-15] **h2h 에 더해 `spreads`·`totals` 도 낸다.** 실소스에
+       값이 있는데 버리고 있었다(실측: spread=-0.5 · overUnder=2.5 ·
+       overOdds=-110 · underOdds=-115). 그 탓에 S8 라인 이동과 S9 구조 픽이
+       통째로 불가능했다.
+    🔴 `open` 블록이 있으면 그 행에 `snap_tag='open'` 을 붙인다. ESPN 은
+       **진짜 개장가를 주는 첫 소스**다(다른 경로는 전부 `open_proxy`).
+       ⚠️ 현재가 행에는 붙이지 않는다 — 거짓 개장가가 된다.
+    ⚠️ 요청은 늘지 않는다. **같은 응답을 더 읽을 뿐이다.**
+    """
     book = ((item.get("provider") or {}).get("name") or "espn").lower()
     if is_live_book(book):
         return []
@@ -279,6 +296,44 @@ def parse_soccer_odds(item: dict, home: str, away: str) -> list[dict]:
         if dec is not None and team:
             out.append({"book": book, "market": "h2h", "side": team,
                         "line": None, "odds": dec})
+
+    # ── 핸디캡. `spread` 는 **홈 기준**이다 — 원정은 부호를 뒤집는다.
+    #    둘 다 있어야 디빅이 된다.
+    sp = _num(item.get("spread"))
+    if sp is not None:
+        for key, team, sign in (("homeTeamOdds", home, 1.0),
+                                ("awayTeamOdds", away, -1.0)):
+            dec = from_american((item.get(key) or {}).get("spreadOdds"))
+            if dec is not None and team:
+                out.append({"book": book, "market": "spreads", "side": team,
+                            "line": round(sp * sign, 2), "odds": dec})
+
+    # ── 언더/오버. 라인 하나에 양쪽 배당.
+    ou = _num(item.get("overUnder"))
+    if ou is not None:
+        for key, side in (("overOdds", "Over"), ("underOdds", "Under")):
+            dec = from_american(item.get(key))
+            if dec is not None:
+                out.append({"book": book, "market": "totals", "side": side,
+                            "line": ou, "odds": dec})
+
+    # ── 개장가. ESPN 만 준다.
+    op = (item.get("homeTeamOdds") or {}).get("open") or {}
+    if op:
+        o_ml = ((op.get("moneyLine") or {}).get("american")
+                if isinstance(op.get("moneyLine"), dict) else op.get("moneyLine"))
+        dec = from_american(o_ml)
+        if dec is not None and home:
+            out.append({"book": book, "market": "h2h", "side": home,
+                        "line": None, "odds": dec, "snap_tag": "open"})
+        o_sp = op.get("pointSpread") or {}
+        o_line = _num(o_sp.get("alternateDisplayValue")
+                      if isinstance(o_sp, dict) else o_sp)
+        o_sp_odds = from_american(
+            (o_sp.get("american") if isinstance(o_sp, dict) else None))
+        if o_line is not None and o_sp_odds is not None and home:
+            out.append({"book": book, "market": "spreads", "side": home,
+                        "line": o_line, "odds": o_sp_odds, "snap_tag": "open"})
     return out
 
 
