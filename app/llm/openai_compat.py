@@ -172,6 +172,14 @@ async def complete(provider: str, model: str, prompt: str, *,
             await asyncio.sleep(3.0 * (attempt + 1))
             continue
         out["status"] = r.status_code
+        # 🔴 [U14] 잔량을 **모든 응답에서** 기록한다. 429 일 때만 보면
+        #    "곧 터진다"를 못 본다 — 터진 뒤에야 안다.
+        try:
+            from app.llm import quota as _quota
+
+            _quota.note_headers(provider, r.headers, status=r.status_code)
+        except Exception as exc:                       # 측정이 본체를 죽이면 안 된다
+            logger.debug("[quota] 기록 실패 %s: %s", provider, exc)
         if r.status_code in (429, 401):
             # 🔴 [CHN-1 2026-09-15 사용자 지시] **기다리지 않는다 — 즉시 다음
             #    제공자로 간다.** 종전 규칙("우회하지 않는다. 기다린다")의 전제는
@@ -182,8 +190,10 @@ async def complete(provider: str, model: str, prompt: str, *,
             #    401 도 같이 즉시 나간다 — 키가 틀린 것은 기다려도 안 풀린다
             #    (openrouter `User not found` 로 사슬이 통째로 늦어졌다).
             #    ⚠️ **분류는 바꾸지 않는다**(아래 종전 주석 그대로). 보이게만 한다.
-            #    ⚠️ 라운드로빈 본 구현 전까지의 임시 규칙이다 — `remaining` 추적은
-            #       아직 없다.
+            #    ⚠️ [U14 2026-09-15] `remaining` 추적이 붙었다(`app/llm/quota.py`).
+            #       즉시 다음으로 가는 규칙은 그대로이고, 그 위에 "한도를 맞은
+            #       제공자는 **다음 호출에서 뒤로**"가 얹혔다. 종전에는 방금
+            #       한도를 맞은 제공자를 다음 호출에서 또 먼저 불렀다.
             #    `Retry-After` 가 있으면 그것을 따르고, 없으면 그 provider 의
             #    최소 간격만큼 쉰다.
             # 🔴 [LLM-1 2026-09-08] **본문을 버리지 않는다.** 종전에는 이 줄이

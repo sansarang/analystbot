@@ -175,6 +175,22 @@ def chain(role: str) -> list[tuple[str, str]]:
         logger.error("[judge-route] role=%s 후보가 하나도 없다 — "
                      "유료로 되돌아가지 않는다. %s_CHAIN 을 확인하라",
                      role, "JUDGE" if role in JUDGE_ROLES else "FORM")
+    # 🔴 [U14 2026-09-15] **한도를 맞은 제공자는 뒤로 민다.** 순서를 뒤집는
+    #    것이 아니다 — 쉬는 중인 것만 뒤로 가고, 잔량 미상은 자리를 지킨다.
+    #    종전에는 방금 429 를 맞은 제공자를 다음 호출에서 **또 먼저** 불렀다.
+    #    ⚠️ 전부 쉬는 중이면 원래 순서 그대로다(그때는 호출부가 기다린다).
+    try:
+        from app.llm import quota as _quota
+
+        ordered = _quota.order_by_remaining([f"{p}/{m}" for p, m in out])
+        by_key = {f"{p}/{m}": (p, m) for p, m in out}
+        moved = [by_key[k] for k in ordered if k in by_key]
+        if moved and moved != out:
+            logger.info("[judge-route] 한도 반영 재정렬 %s → %s",
+                        [p for p, _ in out], [p for p, _ in moved])
+        out = moved or out
+    except Exception as exc:                  # 측정이 본체를 죽이면 안 된다
+        logger.debug("[judge-route] 잔량 재정렬 실패: %s", exc)
     return out
 
 

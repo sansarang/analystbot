@@ -325,3 +325,20 @@ def _api_guard_isolated():
     api_guard.reset()
     api_guard.set_redis(None)
     api_guard.set_network_redis(False)
+
+
+@pytest.fixture(autouse=True)
+def _quota_isolated():
+    """[U14] 제공자 잔량도 **프로세스 전역 가변 상태**다 — 테스트끼리 섞지 않는다.
+
+    🔴 실측 2026-09-15: CHN-1 테스트가 흉내낸 429 가 `quota` 에 남아,
+       한참 뒤 `test_chain_has_no_paid_tail_when_free_is_configured` 의
+       사슬 순서를 바꿔놨다. 같이 돌릴 때만 빨개져서 원인을 찾기 어렵다.
+    ⚠️ 이건 결함이 아니라 **의도된 동작**이다(한도 맞은 제공자는 뒤로).
+       격리는 테스트 쪽 몫이다.
+    """
+    from app.llm import quota
+
+    quota.reset()
+    yield
+    quota.reset()
