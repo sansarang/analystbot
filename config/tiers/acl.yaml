@@ -10,7 +10,9 @@
 # 티어 1=우승권 · 2=상위권 · 3=중위권 · 4=하위권 · 5=승격팀/약체
 #
 # 아래 8팀은 2026-09-15 슬레이트에 실제로 나온 팀이다(FotMob 표기 = canonical).
-teams:
+# 🔴 [U3] 키는 **tiers** 다 — load_tiers 가 그것을 읽는다.
+#    ACL-1 에서 teams: 로 잘못 써서 처음부터 0팀이었다.
+tiers:
   Kashima Antlers: null
   Newcastle Jets: null
   Gamba Osaka: null

@@ -61,8 +61,12 @@ async def test_티어_사전값과_open_시장을_대조해_원장에_남긴다(
 
 
 @pytest.mark.asyncio
-async def test_티어가_비면_미기입으로_남는다():
-    """🔴 조용히 중앙값으로 메우지 않는다 — 채웠는지 안 채웠는지가 남아야 한다."""
+async def test_티어가_비면_사전값을_안_만든다():
+    """🔴 [U3 2026-09-15 사용자 지시] 종전 계약은 "중앙값으로 메우되 그 사실을
+    남긴다"(prior_src='tier:미기입')였다. 이제 **사전값 자체를 만들지 않는다** —
+    채운 팀과 안 채운 팀이 같은 근거를 가진 것처럼 보이면 안 된다(리즈 사례).
+    ⚠️ 조용히 빠지지도 않는다. p_prior=NULL · prior_src='none' 으로 **기록**하고
+       gate_reason 에 어느 팀이 비었는지 남긴다."""
     conn = _Conn({"sport": "soccer", "league": "덴마크 수페르리가",
                   "home": "AC Horsens", "away": "AGF Aarhus"},
                  [_snap("AC Horsens", 2.0, "AC Horsens", "AGF Aarhus"),
@@ -70,7 +74,13 @@ async def test_티어가_비면_미기입으로_남는다():
 
     out = await PL.record_prior(conn, game_id=1)
 
-    assert out["prior_src"] == "tier:미기입"
+    assert out is None, out
+    saved = [c for c in conn.executed if "prior_src" in str(c[0])]
+    assert saved, "조용히 빠졌다 — 기록이 없다"
+    args = saved[-1][1]
+    assert args[1] is None, f"p_prior 가 NULL 이 아니다: {args[1]}"
+    assert args[2] == "none", args[2]
+    assert "티어 미기입" in str(args[4]), args[4]
 
 
 @pytest.mark.asyncio

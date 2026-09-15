@@ -35,8 +35,13 @@ HFA_SOCCER, HFA_BASEBALL = 60.0, 25.0
 DRAW_BASE, DRAW_SLOPE = 0.27, 0.00035
 DRAW_MIN, DRAW_MAX = 0.10, 0.34
 
-#: 최근 5경기가 **극단일 때만** 주는 보정(%p).
+#: 최근 5경기 보정(%p). 🔴 [U3 2026-09-15 사용자 지시] **네 등급**이다.
+#   전승·전패        → ±4
+#   무패(패 0·무 있음)·무승(승 0·무 있음) → ±2
+#   그 외            → 0
+#   ⚠️ 실측 근거가 있는 값이 아니라 **지시문 값**이다. 출처를 여기 남긴다.
 FORM_PP = 4.0
+FORM_PP_SOFT = 2.0
 
 TIER_DIR = Path("config/tiers")
 
@@ -47,15 +52,20 @@ def w_tier(games_played: int) -> float:
     return max(W_TIER_FLOOR, 1.0 - gp / W_TIER_FULL_GP)
 
 
-def team_elo(tier: int | None, *, w: int, d: int, lose: int) -> tuple[float, str]:
-    """티어 + 올해 성적 → 레이팅. 반환 `(elo, prior_src)`.
+def team_elo(tier: int | None, *, w: int, d: int, lose: int) -> tuple:
+    """티어 + 올해 성적 → 레이팅. 반환 `(elo|None, prior_src)`.
 
-    🔴 티어가 비면 **중앙(3)** 으로 계산하고 그 사실을 `prior_src` 에 남긴다.
-       조용히 메우면 채웠는지 안 채웠는지를 영영 모른다.
+    🔴 [U3 2026-09-15 사용자 지시] 티어가 비면 **`(None, "none")`** 이다.
+       종전에는 리그 중앙(3 → 1560)으로 메웠다. 그러면 채운 팀과 안 채운 팀이
+       **같은 근거를 가진 것처럼 보인다** — 리즈 사례가 그 결과였다
+       (`config/tiers/epl.yaml` 키 "Leeds" vs DB "Leeds United FC" → 미기입 →
+       중앙값 → 게이트 오분류).
+       호출부는 이 None 을 보고 `p_prior=None · prior_src="none"` 으로 끝낸다.
+       "모른다"를 "보통이다"로 바꾸지 않는다.
     """
-    src = "tier"
     if tier is None:
-        tier, src = TIER_DEFAULT, "tier:미기입"
+        return None, "none"
+    src = "tier"
     base = float(TIER_ELO.get(int(tier), TIER_ELO[TIER_DEFAULT]))
     gp = int(w or 0) + int(d or 0) + int(lose or 0)
     if gp <= 0:
@@ -95,16 +105,16 @@ def baseball_prior(elo_home: float, elo_away: float, settings=None) -> float:
 def form_pp(last5: str) -> float:
     """최근 5경기 → 보정(%p). **극단일 때만** 준다.
 
-    전승·무패(패 0) → +4 · 전패·무승(승 0) → −4 · 그 외 0.
+    전승 +4 · 무패(패 0·무 있음) +2 · 전패 −4 · 무승(승 0·무 있음) −2 · 그 외 0.
     ⚠️ 5경기가 안 되면 0 이다 — 얇은 표본에 보정을 붙이지 않는다.
     """
     s = (last5 or "").upper()
     if len(s) != 5 or set(s) - set("WDL"):
         return 0.0
-    if "L" not in s:
-        return FORM_PP
-    if "W" not in s:
-        return -FORM_PP
+    if "L" not in s:                       # 패가 없다
+        return FORM_PP if "D" not in s else FORM_PP_SOFT
+    if "W" not in s:                       # 승이 없다
+        return -FORM_PP if "D" not in s else -FORM_PP_SOFT
     return 0.0
 
 

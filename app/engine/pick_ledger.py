@@ -722,8 +722,21 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
                                         team=g["away"], start=start)
         th, sh = P.team_elo(tiers.get(g["home"]), w=hw, d=hd, lose=hl)
         ta, sa = P.team_elo(tiers.get(g["away"]), w=aw, d=ad, lose=al)
-        src = "tier" if (sh == "tier" and sa == "tier") else "tier:미기입"
         gp_h, gp_a = hw + hd + hl, aw + ad + al
+        # 🔴 [U3 2026-09-15 사용자 지시] **티어가 비면 사전값을 만들지 않는다.**
+        #    종전에는 리그 중앙(3 → 1560)으로 메워 채운 팀과 안 채운 팀이
+        #    같은 근거를 가진 것처럼 보였다(리즈 사례). `team_elo` 가 None 을
+        #    주면 여기서 끝낸다 — `soccer_prior(None, …)` 은 TypeError 다.
+        #    ⚠️ 조용히 빠지지 않는다. p_prior=NULL · prior_src='none' 으로
+        #       **기록하고** 그 사실이 게이트까지 간다(U4 가 보드고정으로 읽는다).
+        if th is None or ta is None:
+            miss = [n for n, v in ((g["home"], th), (g["away"], ta)) if v is None]
+            logger.info("[gate] game=%s 티어 미기입 %s — 사전값 없음(none)",
+                        game_id, miss)
+            await conn.execute(_PRIOR_SAVE, game_id, None, "none", None,
+                               f"보드고정 · 티어 미기입({' · '.join(miss)})")
+            return None
+        src = "tier"
         if gp_h or gp_a:
             # ⚠️ 티어만 쓴 것과 성적이 섞인 것을 구분한다 — 나중에 "왜 이
             #    값이 나왔나"를 원장만 보고 답할 수 있어야 한다.

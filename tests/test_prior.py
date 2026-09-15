@@ -33,11 +33,14 @@ def test_티어_상수는_지시문_그대로다():
     assert P.TIER_ELO == {1: 1700, 2: 1620, 3: 1560, 4: 1510, 5: 1460}
 
 
-def test_미기입_팀은_중앙_3이고_그_사실이_남는다():
-    """🔴 Claude Code 가 티어를 추측해 채우지 않는다 — 빈 칸은 빈 칸이다."""
-    e, src = P.team_elo(None, w=0, d=0, lose=0)
-    assert e == P.TIER_ELO[3]
-    assert src == "tier:미기입"
+def test_미기입_팀은_사전값이_서지_않는다():
+    """🔴 [U3 2026-09-15 사용자 지시] 종전에는 **중앙(3)** 으로 메웠다.
+    그러면 채운 팀과 안 채운 팀이 같은 근거를 가진 것처럼 보인다 —
+    리즈 사례(키 "Leeds" vs DB "Leeds United FC")가 그 결과였다.
+    "모른다"를 "보통이다"로 바꾸지 않는다."""
+    elo, src = P.team_elo(None, w=2, d=1, lose=1)
+    assert elo is None
+    assert src == "none"
 
 
 def test_승격팀은_5다():
@@ -92,10 +95,11 @@ def test_야구는_홈어드밴티지_25이고_절사된다():
 
 @pytest.mark.parametrize("last5,delta", [
     ("WWWWW", +4.0), ("LLLLL", -4.0),
-    ("WWWWD", +4.0),          # 무패
-    ("LLLLD", -4.0),          # 무승
+    ("WWWWD", +2.0),          # 무패 — [U3] ±2
+    ("LLLLD", -2.0),          # 무승 — [U3] ±2
     ("WWWLL", 0.0), ("WDLWD", 0.0), ("", 0.0), ("WWW", 0.0),
 ])
+# 🔴 [U3] 네 등급이다 — 전승·전패 ±4 · 무패·무승 ±2 · 그 외 0.
 def test_폼_보정은_극단일_때만_준다(last5, delta):
     assert P.form_pp(last5) == pytest.approx(delta)
 
