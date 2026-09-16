@@ -1190,7 +1190,7 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
            "home_facts": collected.get("home") or {},
            "away_facts": collected.get("away") or {}}
     try:
-        from app.engine.structure import attach_derived
+        from app.engine.structure import attach_derived, derived_probs
 
         rows = await conn.fetch(
             """SELECT market, side, line, odds FROM odds_snapshots
@@ -1198,6 +1198,34 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
                   AND snap_tag IS NOT NULL""", game_id)
         blk = attach_derived(blk, [dict(r) for r in rows],
                              home=g["home"], away=g["away"])
+        # 🔴 [PA-17 · U10] **후보를 뽑아 원장에 남긴다.** 종전에는 파생 디빅을
+        #    만들어 놓고 `structure.candidates` 를 아무도 안 불러서 구조 픽이
+        #    통째로 버려졌다(PART A 실측 structure_pick 0/2경기).
+        # 🔴 **저장 전용이다.** 승패 판정·확신을 건드리지 않는다 — 구조 픽은
+        #    파생 시장 후보일 뿐이고, 발송 여부는 조건 B 의 몫이다.
+        from app.engine import structure as ST
+
+        der = derived_probs([dict(r) for r in rows])
+        picks = ST.candidates(p_code=row["p_code"], derived=der,
+                              home=g["home"], away=g["away"])
+        if picks:
+            top = max(picks, key=lambda x: x.edge_pp)
+            payload = {"market": top.market, "side": top.side,
+                       "line": top.line, "edge_pp": top.edge_pp,
+                       # ⚠️ 필드는 `reason` 이다 — 처음에 `why` 로 적었다가
+                       #    조용히 except 로 빠졌다(로그만 남았다).
+                       "grade": ST.grade(top.edge_pp), "why": top.reason,
+                       "n_candidates": len(picks)}
+            await conn.execute(
+                "UPDATE pick_ledger SET structure_pick = $2::jsonb "
+                "WHERE game_id = $1 AND is_final",
+                game_id, json.dumps(payload, ensure_ascii=False))
+            logger.info("[structure] game=%s %s %s %+.1f%%p 등급 %s (후보 %d)",
+                        game_id, top.market, top.side, top.edge_pp,
+                        payload["grade"], len(picks))
+        else:
+            logger.info("[structure] game=%s 구조 후보 없음 (edge < %s%%p)",
+                        game_id, ST.EDGE_MIN_PP)
     except Exception as exc:
         logger.info("[analysis] game=%s 파생 디빅 없음: %s", game_id, exc)
 
