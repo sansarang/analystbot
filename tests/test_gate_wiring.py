@@ -80,7 +80,15 @@ async def test_티어가_비면_사전값을_안_만든다():
 
     out = await PL.record_prior(conn, game_id=1)
 
-    assert out is None, out
+    # 🔴 [PA-6 2026-09-16] 종전에는 `out is None` 을 단언했다. 그건 규칙이
+    #    아니라 **구현 방식**이었다 — 그 조기 반환 때문에 U5~U12 가 통째로
+    #    건너뛰어졌다(실측 ACLE 2경기: 가설·확인·가감·흐름·구조·결정축 전부 빔).
+    #    U3 이 말로 적은 규칙("사전값을 만들지 않고 NULL·none 으로 기록한다")은
+    #    그대로다 — 아래에서 그 규칙을 직접 잰다.
+    from app.engine import gate as _G
+    assert out is not None, "보드 고정을 돌려줘야 U5~U12 가 돈다"
+    assert out["label"] == _G.BOARD, out
+    assert out["p_prior"] is None and out["prior_src"] == "none", out
     saved = [c for c in conn.executed if "prior_src" in str(c[0])]
     assert saved, "조용히 빠졌다 — 기록이 없다"
     args = saved[-1][1]

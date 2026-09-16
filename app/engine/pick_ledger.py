@@ -751,7 +751,35 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
                         game_id, miss)
             await conn.execute(_PRIOR_SAVE, game_id, None, "none", None,
                                f"보드고정 · 티어 미기입({' · '.join(miss)})")
-            return None
+            # 🔴 [PA-6 2026-09-16] **여기서 끝내지 않는다.** 종전 `return None`
+            #    은 사전값만 적고 돌아갔고, 그러면 아래 가설 생성(U5)도,
+            #    호출부의 확인 판정(U7)·분석(U12)도 통째로 건너뛰어졌다.
+            #    실측 2026-09-16 ACLE 2경기: v3 판정 2/2 · 위성 15건 · 딥서치
+            #    성공인데 가설·확인·가감·흐름·구조·결정축이 **전부 비었다.**
+            #    야구가 되고 축구가 안 되던 이유가 이것이다 — 야구는 티어가
+            #    채워져 있어 이 가드를 지나간다.
+            # 🔴 **사전값을 지어내지 않는다.** U3 규약(`p_prior=NULL`,
+            #    `prior_src='none'`)은 그대로다. 중앙값으로 메우면 U3 을 되돌린다.
+            # 🔴 **LLM 비용은 안 는다.** `analyze.run` 은 게이트가
+            #    `OVER|DOUBT` 가 아니면 스스로 건너뛴다. 보드 고정은 대상이 아니다.
+            board_hyp = None
+            try:
+                from app.engine import hypothesis as HY
+
+                h = HY.build(G.BOARD, sport=sport, side=None,
+                             bigmatch=False, gap_pp=None)
+                board_hyp = json.dumps(h.as_dict(), ensure_ascii=False)
+                logger.info("[hypothesis] game=%s %s → %s",
+                            game_id, G.BOARD, h.reason)
+            except Exception as exc:
+                logger.warning("[hypothesis] game=%s 보드 가설 실패 — "
+                               "판정은 그대로 간다: %s", game_id, exc)
+            if board_hyp is not None:
+                await conn.execute(
+                    "UPDATE pick_ledger SET hypothesis = $2::jsonb "
+                    "WHERE game_id = $1 AND is_final", game_id, board_hyp)
+            return {"label": G.BOARD, "gap_pp": None, "side": None,
+                    "p_prior": None, "prior_src": "none"}
         src = "tier"
         if gp_h or gp_a:
             # ⚠️ 티어만 쓴 것과 성적이 섞인 것을 구분한다 — 나중에 "왜 이
