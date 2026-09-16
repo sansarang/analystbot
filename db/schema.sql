@@ -860,3 +860,13 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS cancel_virtual_clv DOUBLE PRECI
 --   🔴 위성이 이 칸을 읽어 지시문 §3 대로 검색 대상을 고른다.
 --      읽는 것은 **선별 신호**이지 판정(확률·승자)이 아니다.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_label TEXT;
+
+-- [PA-14 2026-09-16 · 지시문 Phase D1] 북 간 비교. **저장 전용.**
+--   pinnacle_gap       : p_soft(강팀) − p_sharp(강팀) (%p). ≥ +3 이면 사설이
+--                        강팀을 후하게 부른 것 = 약팀 파생 시장 후보.
+--   pinnacle_gap_label : 해석 문구. 샤프가 없으면 "샤프 부재 · …" 가 붙어
+--                        비교 대상이 샤프가 아니었다는 사실이 원장까지 간다.
+--   🔴 한쪽 북이 없으면 **NULL** 이다. 사설 평균으로 대체하지 않는다
+--      (지시문 "하지 말 것": 피나클 값이 없다고 사설 평균으로 대체하기).
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS pinnacle_gap       DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS pinnacle_gap_label TEXT;

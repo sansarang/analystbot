@@ -359,6 +359,13 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                     except Exception as exc:
                         logger.warning("[move] game=%s 이동 분류 실패: %s",
                                        row["game_id"], exc)
+                    # [PA-14 · D1] 샤프 대 사설 괴리. **저장 전용**이고
+                    #   실패해도 판정을 막지 않는다.
+                    try:
+                        await record_book_gap(conn, game_id=row["game_id"])
+                    except Exception as exc:
+                        logger.warning("[book-gap] game=%s 실패: %s",
+                                       row["game_id"], exc)
                     # [GATE-2] 사전값·괴리도 같은 자리에서. 저장 전용이고
                     #   실패해도 판정을 막지 않는다.
                     try:
@@ -1173,3 +1180,54 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
     except Exception as exc:
         logger.warning("[analysis] game=%s 분석 실패: %s", game_id, exc)
     return out
+
+
+
+# ═══════════════ [PA-14 2026-09-16 · 지시문 Phase D1] 북 간 비교
+#
+# 🔴 `book_gap` 은 만들어져 있는데 **운영 호출이 0건**이었다 —
+#    analyze·gate.select·U9 흐름·U10 구조에 이어 다섯 번째다.
+# 🔴 **저장 전용이다.** 지시문 D1 은 "괴리 기준선을 p_market 에서 p_sharp 로
+#    교체"까지 말하지만 여기서는 가지 않는다 — 게이트를 바꾸는 일이라 별도
+#    단위다. 먼저 값을 쌓고 표를 봐야 교체가 옳은지 안다.
+# 🔴 **사설 평균으로 샤프를 대체하지 않는다.** 한쪽이 없으면 NULL 이다.
+
+_BOOKS_SQL = """
+    SELECT DISTINCT ON (book, side) book, side, odds
+      FROM odds_snapshots
+     WHERE game_id = $1 AND market = 'h2h' AND book = ANY($2::text[])
+     ORDER BY book, side, captured_at DESC
+"""
+
+_GAP_SAVE = """
+    UPDATE pick_ledger
+       SET pinnacle_gap = $2::double precision, pinnacle_gap_label = $3
+     WHERE game_id = $1 AND is_final
+"""
+
+
+async def record_book_gap(conn, *, game_id: int) -> dict | None:
+    """[D1] 샤프 대 사설 괴리를 원장에 남긴다. **저장 전용.**
+
+    ⚠️ 실패해도 판정을 막지 않는다(CLV·이동과 같은 규약).
+    ⚠️ 북 이름·문턱은 `book_gap` 이 원본이다 — 여기 적지 않는다.
+    """
+    from app.engine import book_gap as BG
+
+    rows = await conn.fetch(_BOOKS_SQL, game_id, [BG.SHARP_BOOK, BG.SOFT_BOOK])
+    by_book: dict[str, dict] = {}
+    for r in rows:
+        by_book.setdefault(r["book"], {})[r["side"]] = r["odds"]
+
+    sharp = by_book.get(BG.SHARP_BOOK)
+    soft = by_book.get(BG.SOFT_BOOK)
+    got = BG.pinnacle_gap(soft, sharp)
+    if not got:
+        logger.info("[book-gap] game=%s 한쪽 북이 없다 — NULL 로 둔다 "
+                    "(샤프 %s · 사설 %s)", game_id,
+                    "있음" if sharp else "없음", "있음" if soft else "없음")
+        return None
+    await conn.execute(_GAP_SAVE, game_id, float(got["gap_pp"]), got["label"])
+    logger.info("[book-gap] game=%s %s %+.2f%%p — %s", game_id,
+                got["side"], got["gap_pp"], got["label"])
+    return got
