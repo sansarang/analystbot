@@ -175,6 +175,44 @@ def js_only(url: str) -> bool:
     return _in(_domain(url), SOURCES["js_only"])
 
 
+#: 🔴 [PA-21 2026-09-16] 같은 본문이 이 수 이상 반복되면 기사가 아니라
+#   **사이트 안내문**이다. 2 로 둔다 — 서로 다른 두 기사가 글자까지 같은
+#   본문을 갖는 일은 없다(요약 기사도 제목·수치가 다르다).
+BOILER_MIN_REPEAT = 2
+
+#: 비교에 쓰는 앞부분 길이. 본문 전체를 비교하면 광고 꼬리 하나로 갈린다.
+BOILER_HEAD = 200
+
+
+def drop_boilerplate(articles: list | None) -> list:
+    """반복되는 사이트 안내문을 버린다. 🔴 **길이 검사가 못 잡는 것**이다.
+
+    실측 2026-09-16 g8360: 캐시 기사 17건 중 15건이 v.daum.net 의 같은
+    안내문 1,200자였다(§7 의 "본문 < 500자" 검사를 통과한다). LLM 이 뽑을
+    사실이 없어 `out 0` 이 됐고, 그것이 S6 확인 0건의 원인이었다.
+
+    ⚠️ **반대 위험**: 정상 기사를 죽이면 자료가 줄어든다. 그래서 (a) 앞
+       200자만 비교하고 (b) **2건 이상 겹칠 때만** 버린다. 한 번만 나온
+       본문은 아무리 짧아도 건드리지 않는다.
+    """
+    arts = list(articles or [])
+    if len(arts) < BOILER_MIN_REPEAT:
+        return arts
+    seen: dict[str, int] = {}
+    for a in arts:
+        head = " ".join((a.get("body") or "").split())[:BOILER_HEAD]
+        if head:
+            seen[head] = seen.get(head, 0) + 1
+    dup = {h for h, n in seen.items() if n >= BOILER_MIN_REPEAT}
+    if not dup:
+        return arts
+    out = [a for a in arts
+           if " ".join((a.get("body") or "").split())[:BOILER_HEAD] not in dup]
+    logger.info("[scout] 반복 본문 폐기 %d건 (서로 다른 안내문 %d종) — 남은 %d건",
+                len(arts) - len(out), len(dup), len(out))
+    return out
+
+
 #: 🔴 [U6 2026-09-15] tier0 — 구단 공식·담당 기자. tier1 보다 **앞선다**.
 #   0 이 가장 좋은 등급이고 숫자가 클수록 나쁘다 — 기존 순서(1·2·3·4·9)를
 #   그대로 잇는다. 계약이 0 < 1 < 2 < 3 < RANK_UNLISTED < RANK_UNKNOWN 을 본다.

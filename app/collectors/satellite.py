@@ -977,7 +977,11 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
     from app.engine.team_form import _complete_free, parse_json_object
     from app.llm.judge_route import chain
 
-    have = [a for a in (articles or []) if (a.get("body") or "").strip()]
+    # 🔴 [PA-21] **반복 본문을 먼저 버린다.** 길이 검사는 1,200자짜리
+    #    사이트 안내문을 못 잡는다(실측 g8360: 17건 중 15건).
+    from app.engine.scout_config import drop_boilerplate
+
+    have = [a for a in drop_boilerplate(articles) if (a.get("body") or "").strip()]
     if not have:
         logger.info("[scout] %s@%s — 본문 있는 기사가 없다", away, home)
         return {}

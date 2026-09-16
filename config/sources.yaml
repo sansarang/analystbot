@@ -104,4 +104,9 @@ js_only:                     # 열어도 표가 없다 — fetch 금지. 기존 
   - flashscore.com
   - flashscore.co.kr
   - sports.daum.net
+  # 🔴 [PA-21 2026-09-16] v.daum.net 은 JS 셸이라 본문 대신 **사이트 안내문**이
+  #   긁힌다. 실측 g8360: 15건이 전부 "가장 빠른 뉴스가 있고 다양한 정보,
+  #   쌍방향 소통이 숨쉬는 다음뉴스를 만나보세요…" 1,200자였다.
+  #   길이 검사(§7: 본문 < 500자)를 통과해서 여태 안 걸렸다.
+  - v.daum.net
   - sports.news.naver.com

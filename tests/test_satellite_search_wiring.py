@@ -32,7 +32,12 @@ async def test_league_을_주면_tier_순으로_열고_차단은_버린다(monke
     opened: list[str] = []
     hits = [
         {"url": "https://calciolecce.it/a", "title": "Napoli formazioni ufficiali", "snippet": "2026"},
-        {"url": "https://v.daum.net/v/1", "title": "Napoli 선발", "snippet": "2026"},
+        # ⚠️ [PA-21 2026-09-16] 종전 예시는 v.daum.net 이었다. 실측으로 그곳이
+        #    **JS 셸**임이 드러나(본문 대신 사이트 안내문 1,200자) js_only 에
+        #    넣었다 — 이제 fetch 대상이 아니다. SCT-9 규칙("미상은 버리지 않고
+        #    tier 4 로 통과")은 그대로이고, **예시만** 진짜 미상 도메인으로 바꾼다.
+        {"url": "https://sports-earth.net/napoli", "title": "Napoli 선발",
+         "snippet": "2026"},
         {"url": "https://tipico.de/wett-tipps/x", "title": "Napoli tips", "snippet": "2026"},
     ]
 
@@ -57,7 +62,8 @@ async def test_league_을_주면_tier_순으로_열고_차단은_버린다(monke
 
     # ⚠️ [SCT-9 2026-09-14 사용자 지시] 미상(v.daum.net)은 **버리지 않고**
     #    tier 4 로 통과한다 — tier1 뒤에 붙는다. 차단(tipico)만 버린다.
-    assert opened == ["https://calciolecce.it/a", "https://v.daum.net/v/1"], opened
+    assert opened == ["https://calciolecce.it/a",
+                      "https://sports-earth.net/napoli"], opened
     assert len(out) == 2
 
 

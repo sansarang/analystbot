@@ -20,8 +20,19 @@ from app.engine import scout_config as SC
 HOME, AWAY = "AC Milan", "FC Internazionale Milano"
 
 
-def _art(team, url, body="본문"):
-    return {"team": team, "url": url, "body": body}
+_SEQ = iter(range(1, 10_000))
+
+
+def _art(team, url, body=None):
+    """⚠️ [PA-21] 본문을 **기사마다 다르게** 만든다.
+
+    종전에는 전부 "본문" 이었는데, 그건 실제 기사에서는 나올 수 없는 모양이고
+    이제 `drop_boilerplate` 가 **사이트 안내문**으로 보고 버린다(실측 g8360:
+    17건 중 15건이 같은 안내문이었다). 픽스처 편의가 새 규칙과 부딪힌 것이라
+    픽스처를 실제에 맞춘다 — 검사를 느슨하게 하지 않는다.
+    """
+    return {"team": team, "url": url,
+            "body": body if body is not None else f"본문 {next(_SEQ)}"}
 
 
 def _fake(payload, calls=None):
