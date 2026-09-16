@@ -254,6 +254,44 @@ def _same_judgement(row: dict, existing) -> bool:
     return True
 
 
+async def _record_side_effects(conn, game_id: int, redis=None, *,
+                               clv_at: str | None = None) -> None:
+    """[PA-19] 판정 뒤 **저장 전용** 기록을 한 자리에서 돌린다.
+
+    🔴 **판정이 바뀌었든 아니든 돈다.** 이 값들은 판정이 같아도 시간이 지나면
+       달라진다 — 배당은 나중에 오고, 라인업은 T-60 에 뜨고, 위성 추출은 다음
+       사이클에 붙는다. 종전에는 `unchanged` 에서 `continue` 로 끊겨
+       사전값·게이트·가설·확인·흐름·구조·북간이 **영원히 안 찼다.**
+    🔴 **하나가 터져도 나머지는 돈다.** 각각을 따로 감싼다.
+    🔴 **판정을 건드리지 않는다.** 전부 저장 전용이다.
+    ⚠️ `clv_at` 은 판정 시각 배당(CLV-1) 전용이다 — 판정이 안 바뀐 회차에는
+       다시 찍지 않는다(그 시각은 이미 지났다).
+    """
+    if clv_at:
+        try:
+            await record_clv(conn, game_id=game_id, at=clv_at)
+        except Exception as exc:
+            logger.warning("[clv] game=%s 판정시각 배당 기록 실패: %s", game_id, exc)
+    try:
+        await record_move(conn, game_id=game_id)
+    except Exception as exc:
+        logger.warning("[move] game=%s 이동 분류 실패: %s", game_id, exc)
+    try:
+        await record_book_gap(conn, game_id=game_id)
+    except Exception as exc:
+        logger.warning("[book-gap] game=%s 실패: %s", game_id, exc)
+    gate = None
+    try:
+        gate = await record_prior(conn, game_id=game_id)
+    except Exception as exc:
+        logger.warning("[gate] game=%s 사전값 기록 실패: %s", game_id, exc)
+    try:
+        await record_confirm_and_analysis(conn, game_id=game_id, gate=gate,
+                                          redis=redis)
+    except Exception as exc:
+        logger.warning("[analysis] game=%s 실패: %s", game_id, exc)
+
+
 async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
     """분석 1슬레이트의 판정 전건을 레저에 반영. 반환: {inserted, rejudged, unchanged}.
 
@@ -307,6 +345,22 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         #    시장 칸이 영영 NULL 로 남는다.
                         #    이력 행은 늘리지 않는다 — 시장은 판정이 아니다.
                         await _fill_market(conn, existing["id"], row)
+                        # 🔴 [PA-19 2026-09-16] **부수 기록도 여기서 돈다.**
+                        #    종전에는 `continue` 로 끊어서 사전값·게이트·가설·
+                        #    확인·흐름·구조·북간이 전부 건너뛰어졌다. 그 값들은
+                        #    **판정이 같아도 시간이 지나면 달라진다** — 배당은
+                        #    나중에 오고, 라인업은 T-60 에 뜨고, 위성 추출은
+                        #    다음 사이클에 붙는다. 시장에 대해서만 그것을 알고
+                        #    예외를 뒀는데 나머지 여섯은 안 뒀다.
+                        #    🔴 실측 2026-09-16: ACLE 2경기가 `[v3]` 판정을
+                        #       두 번 냈는데 원장은 judged_at 06:16 그대로 ·
+                        #       사전값 None · 게이트 None · need 0 이었다.
+                        #       축구는 같은 승자가 반복돼 **영원히 unchanged** 라
+                        #       티어를 채우고 길을 열어도 값이 안 찼다.
+                        #    ⚠️ **이력 행은 늘리지 않는다**(시장과 같은 규약).
+                        # ⚠️ redis 는 안 넘긴다 — `record_confirm_and_analysis` 가
+                        #    필요할 때 스스로 연다(호출부에 핸들이 없다).
+                        await _record_side_effects(conn, row["game_id"])
                         stats["unchanged"] += 1
                         continue
                     n = 0
@@ -345,43 +399,10 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         row.get("model_w"), row.get("model_gap_pp"),
                         row.get("gate_vs_llm"))
                     stats["rejudged" if existing is not None else "inserted"] += 1
-                    # [CLV-1] 판정 시각 배당을 남긴다. **저장 전용** — 판정은
-                    #   이 값을 읽지 않는다(§4-1). 실패해도 판정을 막지 않는다.
-                    try:
-                        await record_clv(conn, game_id=row["game_id"], at="verdict")
-                    except Exception as exc:
-                        logger.warning("[clv] game=%s 판정시각 배당 기록 실패: %s",
-                                       row["game_id"], exc)
-                    # [MOV-2] 같은 자리에서 이동도 분류한다. **저장 전용**이고,
-                    #   실패해도 판정을 막지 않는다(CLV 와 같은 규약).
-                    try:
-                        await record_move(conn, game_id=row["game_id"])
-                    except Exception as exc:
-                        logger.warning("[move] game=%s 이동 분류 실패: %s",
-                                       row["game_id"], exc)
-                    # [PA-14 · D1] 샤프 대 사설 괴리. **저장 전용**이고
-                    #   실패해도 판정을 막지 않는다.
-                    try:
-                        await record_book_gap(conn, game_id=row["game_id"])
-                    except Exception as exc:
-                        logger.warning("[book-gap] game=%s 실패: %s",
-                                       row["game_id"], exc)
-                    # [GATE-2] 사전값·괴리도 같은 자리에서. 저장 전용이고
-                    #   실패해도 판정을 막지 않는다.
-                    try:
-                        _gate = await record_prior(conn, game_id=row["game_id"])
-                    except Exception as exc:
-                        _gate = None
-                        logger.warning("[gate] game=%s 사전값 기록 실패: %s",
-                                       row["game_id"], exc)
-                    # [U12] 확인 판정(U7) + 분석(analyze). **게이트 대상만.**
-                    #   저장 전용이고 실패해도 판정을 막지 않는다.
-                    try:
-                        await record_confirm_and_analysis(
-                            conn, game_id=row["game_id"], gate=_gate)
-                    except Exception as exc:
-                        logger.warning("[analysis] game=%s 실패: %s",
-                                       row["game_id"], exc)
+                    # [PA-19] 부수 기록은 **한 곳**이다 — unchanged 분기와
+                    #   같은 함수를 부른다(두 곳에 적으면 한쪽만 늘어난다).
+                    await _record_side_effects(conn, row["game_id"],
+                                               clv_at="verdict")
         except Exception as exc:
             # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —
             # 레저가 판정의 유일한 영구 기록이 된 이상, 기록 실패는 그 판정이

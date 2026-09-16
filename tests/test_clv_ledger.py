@@ -120,7 +120,11 @@ def test_두_시점_모두_배선돼_있다():
     a = inspect.getsource(PL.record_analysis)
     g = inspect.getsource(PL.grade_pending)
     # ⚠️ [CLV-2] 트랜잭션 안이라 **커넥션**을 넘긴다(풀이면 교착한다)
-    assert 'record_clv(conn, game_id=row["game_id"], at="verdict")' in a, a[-400:]
+    # 🔴 [PA-19 2026-09-16] CLV 호출이 `_record_side_effects` 안으로 한 단계
+    #    들어갔다 — 부수 기록을 한 곳에 모았기 때문이다(사본 금지).
+    #    뜻은 그대로다: 판정 시각 배당을 **커넥션으로** 기록한다.
+    a += inspect.getsource(PL._record_side_effects)
+    assert 'record_clv(conn, game_id=game_id, at=clv_at)' in a, a[-400:]
     assert 'at="closing"' in g, g[:600]
 
 
@@ -171,6 +175,10 @@ def test_기록부가_커넥션을_넘긴다():
     import inspect
 
     src = inspect.getsource(PL.record_analysis)
+    # 🔴 [PA-19 2026-09-16] CLV 호출이 `_record_side_effects` 안으로 한 단계
+    #    들어갔다 — 부수 기록을 한 곳에 모았기 때문이다(사본 금지).
+    #    뜻은 그대로다: 판정 시각 배당을 **커넥션으로** 기록한다.
+    src += inspect.getsource(PL._record_side_effects)
     assert "record_clv(conn" in src, "pool 을 그대로 넘기고 있다"
 
 

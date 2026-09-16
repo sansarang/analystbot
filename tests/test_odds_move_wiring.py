@@ -94,9 +94,19 @@ async def test_소스를_섞지_않는다():
 def test_판정_기록이_이동_분류를_부른다():
     """AST 로 **실제 호출**을 확인한다 — 주석·문자열은 세지 않는다."""
     tree = ast.parse(inspect.getsource(PL))
+    # 🔴 [PA-19 2026-09-16] 호출이 `_record_side_effects` 안으로 한 단계
+    #    들어갔다 — `unchanged` 분기와 삽입 분기가 **같은 함수**를 부르게
+    #    모았기 때문이다(사본 금지). 뜻은 그대로다: 판정 기록이 이것을 부른다.
+    #    그래서 `record_analysis` 본문이 아니라 **호출 사슬**을 본다.
     fn = next(n for n in ast.walk(tree)
               if isinstance(n, ast.AsyncFunctionDef) and n.name == "record_analysis")
-    calls = [n for n in ast.walk(fn)
+    assert [n for n in ast.walk(fn) if isinstance(n, ast.Call)
+            and getattr(n.func, "id", "") == "_record_side_effects"], \
+        "record_analysis 가 부수 기록을 안 부른다"
+    helper = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.AsyncFunctionDef)
+                  and n.name == "_record_side_effects")
+    calls = [n for n in ast.walk(helper)
              if isinstance(n, ast.Call) and getattr(n.func, "id", "") == "record_move"]
     assert len(calls) == 1, "record_analysis 가 record_move 를 정확히 한 번 부른다"
     kw = {k.arg for k in calls[0].keywords}
