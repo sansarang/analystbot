@@ -885,7 +885,8 @@ _MOVE_SNAP_SQL = """
 _MOVE_SAVE = """
     UPDATE pick_ledger
        SET odds_open = COALESCE($2::double precision, odds_open),
-           move_class = $3, move_reason = $4
+           move_class = $3, move_reason = $4,
+           market_flow = $5::jsonb, flow_class = $3
      WHERE game_id = $1 AND is_final
 """
 
@@ -972,17 +973,54 @@ async def record_move(conn_or_pool, *, game_id: int,
             return None
         now = max(later, key=lambda s: order.index(s["snap_tag"]))
         pp = M.move_pp(now.get("p_home"), base.get("p_home"))
-        mv = M.classify(move_pp=pp, news=news)
+        # 🔴 [PA-16 · U9] **북 수를 넘긴다.** 종전에는 안 넘겨서 `steam`
+        #    (3북 이상 같은 방향 3%p)이 영원히 안 떴다 — 5분류가 4분류로
+        #    남아 있었다. 한 북이 흔들린 것과 시장 전체가 밀린 것은 다르다.
+        #    ⚠️ 같은 시점(snap_tag)에 값을 낸 **북 수**다. 모르면 None 이고,
+        #       그때는 종전대로 4분류다(없는 정보로 센 라벨을 붙이지 않는다).
+        same_tag = [s for s in snaps.values()
+                    if s.get("snap_tag") == now.get("snap_tag")
+                    and s.get("p_home") is not None]
+        n_books = len({s.get("provider") for s in same_tag}) or None
+        mv = M.classify(move_pp=pp, news=news, n_books=n_books)
+        # 🔴 [PA-16 · U9] 북 불일치. **표시만** 한다 — 확률을 안 건드린다.
+        disagree = M.book_disagree([s["p_home"] for s in same_tag])
 
         pick = await conn.fetchrow(_CLV_PICK, game_id)
         side = predicted_side(pick["favored"], pick["p_home"],
                               pick["predicted_side"]) if pick else None
         o_open = base["odds"].get(side) if side in ("home", "away") else None
-        await conn.execute(_MOVE_SAVE, game_id, o_open, mv.label, mv.reason)
+        # 🔴 [PA-16 · U9] 흐름을 **원장 칸으로** 남긴다. 종전에는 라벨과 사유만
+        #    남고 북 수·불일치·기준선이 사라져서, 나중에 "왜 이 분류였나"를
+        #    원장만 보고 답할 수 없었다.
+        # 🔴 [PA-16 · U9] **흐름이 판정에 무엇을 하는가**를 함께 남긴다.
+        #    news=확증 · money/steam=판돈 절반 · contra=취소.
+        #    ⚠️ **저장 전용이다.** 여기서 판돈을 실제로 줄이거나 픽을 취소하지
+        #       않는다 — 그건 발송 규칙(조건 B)의 몫이고 별도 단위다.
+        adj_row = await conn.fetchrow(
+            "SELECT adj_pp FROM pick_ledger WHERE game_id = $1 AND is_final",
+            game_id)
+        # ⚠️ `.get` 으로 읽는다 — 가짜 행·옛 스키마에서 KeyError 로 이동 분류가
+        #    통째로 죽지 않게(PA-13 과 같은 규약).
+        adj_raw = (adj_row.get("adj_pp")
+                   if adj_row is not None and hasattr(adj_row, "get") else None)
+        adj_map = (json.loads(adj_raw) if isinstance(adj_raw, str)
+                   else (adj_raw or {}))
+        adj_total = sum(float(v) for v in (adj_map or {}).values()
+                        if isinstance(v, (int, float)))
+        act = M.adj_confirm(mv.label, adj_pp=adj_total or None, move_pp=pp)
+        flow = {"class": mv.label, "reason": mv.reason, "pp": pp,
+                "from": base["snap_tag"], "to": now["snap_tag"],
+                "provider": prov, "n_books": n_books,
+                "book_disagree": disagree, "action": act}
+        await conn.execute(_MOVE_SAVE, game_id, o_open, mv.label, mv.reason,
+                           json.dumps(flow, ensure_ascii=False))
     logger.info("[move] game=%s %s %s→%s %s (%s)", game_id, prov,
                 base["snap_tag"], now["snap_tag"], mv.label, mv.reason)
     return {"move_class": mv.label, "move_pp": mv.move_pp, "reason": mv.reason,
-            "from": base["snap_tag"], "to": now["snap_tag"], "provider": prov}
+            "from": base["snap_tag"], "to": now["snap_tag"], "provider": prov,
+            # [PA-16 · U9] 흐름 판단까지 돌려준다. 발송 규칙이 이것을 읽는다.
+            "n_books": n_books, "book_disagree": disagree, "action": act}
 
 
 async def record_clv(conn_or_pool, *, game_id: int, at: str,
