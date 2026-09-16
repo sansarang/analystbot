@@ -463,8 +463,11 @@ def _parse_sent(raw) -> dict:
     return {"legacy": str(raw), "n": 1}
 
 
-def _judged(jg: dict) -> bool:
-    return isinstance(jg.get("p_claude"), (int, float))
+# [PA-2 2026-09-16] 🔴 **규칙을 여기 적지 않는다** — `matchup.has_verdict` 가
+#   원본이고 이것은 **같은 함수**다(래퍼도 아니다). 종전에는 같은 본문이 두
+#   벌이었고, 파이프라인 집계는 아예 세 번째 규칙을 들고 있었다.
+#   두 곳에 적으면 한쪽이 바뀔 때 다른 쪽이 안 따라간다(실사고 2026-09-02).
+from app.engine.matchup import has_verdict as _judged  # noqa: E402
 
 
 async def _send_card(text: str) -> bool:

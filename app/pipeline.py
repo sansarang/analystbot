@@ -2417,12 +2417,19 @@ async def build_analysis(
         _board_rows = sum(len(g.get("market_board") or []) for g in _scheduled)
         if sport in _BB:
             from app.engine.pregame_push import in_send_window, minutes_until_start
+            from app.engine.matchup import has_verdict as _has_verdict
             _gate_ok = 0
             for _g in _scheduled:
                 left = minutes_until_start(_g.get("starts_at"))
                 open_w = in_send_window(sport, _g.get("starts_at"))
-                has_m = bool((_g.get("matchup") or {}).get("p_home") is not None
-                             and _g.get("model"))
+                # 🔴 [PA-2 2026-09-16] **규칙을 여기 적지 않는다.**
+                #    종전 조건 `matchup.p_home 그리고 jg.model` 은 v3 를 못 봤다 —
+                #    v3 는 matchup 에 p_home 을 안 넣고 jg["model"] 도 세팅하지
+                #    않는다. 그래서 승자 2건이 난 실행이 `판정 0` 으로 보고됐고,
+                #    사람이 "봇이 죽었나"와 "판정이 없나"를 구분할 수 없었다.
+                #    ⚠️ 이 단계 이름이 **게이트·발송**이므로, 발송이 쓰는
+                #       기준과 같아야 한다. 그 원본이 `matchup.has_verdict` 다.
+                has_m = _has_verdict(_g)
                 if has_m:
                     _gate_ok += 1
                 logger.info(

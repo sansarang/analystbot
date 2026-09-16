@@ -880,7 +880,22 @@ async def release_final(redis, jg: dict, date: str) -> None:
 
 
 def has_verdict(jg: dict) -> bool:
-    """이 경기에 이미 판정이 붙어 있는가. `pregame_push._judged` 와 같은 기준."""
+    """이 경기에 판정이 붙어 있는가. 🔴 **이것이 원본이다.**
+
+    🔴 [PA-2 2026-09-16] 종전에는 같은 규칙이 세 벌이었다:
+       · `pregame_push._judged`  — 본문까지 같은 사본 (지금은 여기로 위임한다)
+       · `pipeline` 게이트·발송 집계 — `matchup.p_home` **그리고** `jg.model`
+    v3 는 `matchup` 에 `p_home` 을 넣지 않고 `jg["model"]` 도 세팅하지 않아
+    (`:618` 은 승자·model 만, `jg["model"]=` 은 v2 경로 `:751` 만), 파이프라인
+    집계만 0 으로 셌다. 실측 2026-09-16: v3 가 승자 2건을 냈는데 같은 실행이
+    `게이트·발송 0/2경기 — 판정 0` 이라고 보고했다.
+
+    ⚠️ **원장 기준(ORD-3: `p_home` 또는 `승자`)과는 다른 질문이다.** 저기는
+       "원장에 남길 판정인가", 여기는 "발송할 판정인가". 합치지 않는다 —
+       합치면 확률 없는 판정이 발송 대상이 된다.
+       (모듈 이름을 여기 적으면 `test_judgement_paths_do_not_read_the_ledger`
+        가 판정이 원장을 읽는 것으로 오인한다. 근거는 docs/maps/PA-2.md 에 있다.)
+    """
     return isinstance(jg.get("p_claude"), (int, float))
 
 
