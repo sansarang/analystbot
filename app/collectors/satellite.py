@@ -809,10 +809,21 @@ async def gather(jg: dict, redis, *, client=None, now: datetime | None = None,
     if sport == "kbo":
         articles = await _kbo_official(jg, redis) + articles
     await _write_cache(redis, sport, gid, articles)
-    # 🔴 [SCT-5] **추출은 축구만.** 야구 스키마(타순·등판)는 4-4 에 없고,
-    #    없는 칸을 억지로 채우면 그게 곧 거짓 재료가 된다.
-    #    ⚠️ 추출이 실패해도 기사 수집 결과(반환값)는 그대로다.
-    if sport == "soccer":
+    # 🔴 [PA-12 2026-09-16 사용자 지시 "위성수집으로 하면 되잖아"]
+    #    **종목을 가르지 않는다.** 종전 SCT-5 는 "추출은 축구만"이었고, 이유는
+    #    "야구 스키마(타순·등판)는 4-4 에 없고 없는 칸을 억지로 채우면 그게 곧
+    #    거짓 재료가 된다" 였다.
+    #    그런데 **야구 가설이 요구하는 칸은 타순·등판이 아니다** — `out`·
+    #    `doubt`·`last3` 셋이고 전부 공용 스키마에 있다. 그리고 추출 스키마에
+    #    타순·등판 칸이 **아예 없어서** LLM 이 그 칸을 만들 자리가 없다.
+    #    SCT-5 의 걱정은 스키마로 이미 막혀 있다.
+    # 🔴 실측 2026-09-16: 야구가 기사 **35건을 모으고 추출 0회** 였고, 그래서
+    #    원장 g8773 의 need 5개가 **전부 '미상'** 이었다. 가설을 세우고
+    #    아무것도 확인하지 못한 채 판정하고 있었다.
+    # ⚠️ 콜이 순증한다 — 경기당 1콜 × (MLB 15 + KBO 5 + NPB 6) ≈ 하루 26콜.
+    #    위성은 15분 잡이라 분산되고, 같은 URL 묶음이면 다시 묻지 않는다.
+    # ⚠️ 추출이 실패해도 기사 수집 결과(반환값)는 그대로다.
+    if articles:
         from app.leagues import league_labels
 
         lkey = league_labels().get(jg.get("league") or "") or ""

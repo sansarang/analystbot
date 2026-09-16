@@ -163,8 +163,22 @@ async def test_추출은_기사와_다른_키에_남는다():
 
 
 @pytest.mark.asyncio
-async def test_야구는_추출하지_않는다(monkeypatch):
-    """🔴 4-4 스키마는 축구 칸이다. 야구에 억지로 채우면 거짓 재료가 된다."""
+async def test_야구도_모은_기사에서_추출한다(monkeypatch):
+    """🔴 [PA-12 2026-09-16 사용자 지시 "위성수집으로 하면 되잖아"] 뒤집힌 계약.
+
+    종전(SCT-5)은 `test_야구는_추출하지_않는다` 였다 — "4-4 스키마는 축구 칸이라
+    야구에 억지로 채우면 거짓 재료가 된다."
+
+    그 규칙의 대가가 실측으로 드러났다(2026-09-16): 야구가 기사 **35건을 모으고
+    추출 0회** 였고, 원장 g8773 의 need 5개가 **전부 '미상'** 이었다. 가설을
+    세우고 아무것도 확인하지 못한 채 판정하고 있었다.
+
+    ⚠️ SCT-5 의 걱정은 여기서 사라진 것이 아니라 **다른 곳이 막고 있다** —
+       추출 스키마에 타순·등판 칸이 아예 없어 LLM 이 만들 자리가 없다.
+       `test_pa12_baseball_extract.py::test_추출_스키마에_타순_등판이_없다` 가
+       그 방어선을 지킨다. 야구 가설이 요구하는 칸은 out·doubt·last3 셋뿐이고
+       전부 공용 칸이다.
+    """
     called = []
 
     async def _ex(*a, **k):
@@ -180,7 +194,7 @@ async def test_야구는_추출하지_않는다(monkeypatch):
     n = await SAT.gather({"sport": "mlb", "game_id": 1, "home": "Mariners",
                           "away": "A", "league": "MLB"}, None)
 
-    assert n == 1 and not called
+    assert n == 1 and called, "기사를 모으고도 추출을 안 했다"
 
 
 # ── FOT-4: out·xi 는 JSON 정본, LLM 은 보조
