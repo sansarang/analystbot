@@ -24,6 +24,7 @@ dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "python-lsp-server>=1.15.0",
+    "ruff>=0.16.7",
 ]
 
 [tool.uv]
@@ -32,3 +33,32 @@ package = false
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+# ═══════════════ [LINT-1 2026-09-16] 린터
+#
+# 🔴 **버그 급만 막는다.** 스타일은 게이트가 아니다 — 스타일로 커밋을 막으면
+#    사람이 게이트를 통째로 끄게 된다.
+# 🔴 F811(중복 정의)이 이 단위를 만든 이유다. 2026-09-15, 같은 파일에 이미
+#    있는 `record_analysis` 를 뒤에 다시 정의해 **원장 저장 본체가 통째로
+#    죽을 뻔했다.** 스위트 4,395건이 그걸 못 잡았다 — 덮인 함수를 부르는
+#    테스트가 그 경로까지 안 갔기 때문이다. ruff 는 1초 만에 잡는다.
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = ["mock_data", ".venv", "crawler"]
+
+[tool.ruff.lint]
+#: 게이트가 보는 규칙. 전부 **실행 중에 터지는 것들**이다.
+#   F811 중복 정의 · F821 없는 이름 · F822 __all__ 의 없는 이름
+#   F823 선언 전 사용. (문법 오류는 ruff 0.16 에서 규칙이 아니라 **항상**
+#   검사한다 — E999 는 선택할 수 없다.)
+# ⚠️ F401(안 쓰는 import)·F841(안 쓰는 변수)은 **일부러 뺐다.** 착수 시점
+#    실측 97건·18건인데, 그걸 지금 고치면 수십 파일이 한 커밋에 섞인다.
+#    보고는 `ruff check --select F` 로 따로 낸다(LINT-1-c).
+select = ["F811", "F821", "F822", "F823"]
+
+[tool.ruff.lint.per-file-ignores]
+# 🔴 **숨기는 것이 아니라 표시해 두는 것이다.** 아래 둘은 착수 시점에
+#    이미 있던 F821 이고, 각각 LINT-1-b 로 등록했다. 새 F821 은 그대로 막힌다.
+"app/research/deep.py" = ["F821"]      # normalize_response 미정의 — 실제 결함
+"tests/test_kbo_usage.py" = ["F821"]   # `if False else` 죽은 가지

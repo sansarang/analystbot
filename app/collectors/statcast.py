@@ -470,7 +470,6 @@ async def refresh(redis, date: str | None = None) -> dict:
 
     # [§8-6] 원본은 30일치를 받되 **집계는 최근 N경기로 자른다.**
     #        30일을 받는 이유: 15경기(≈17일)를 담고도 휴식일·우천취소 여유가 필요하다.
-    from app.config import get_settings
 
     _s = get_settings()
     offense = aggregate_team_offense(df, window_games=_s.recent_window_games)

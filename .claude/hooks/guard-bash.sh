@@ -133,5 +133,20 @@ if printf '%s' "$SCAN" | grep -qE '\bgit\b[^|;]*\bcommit\b'; then
    PYTHONPATH=. uv run pytest tests -q
    ⚠️ 문서·설정만 고쳤다면: SKIP_TEST_GATE=1 git commit ..."
   fi
+  # ── [LINT-1 2026-09-16] 버그 급 린트.
+  #    🔴 스위트가 못 잡는 종류가 있다. 2026-09-15, 같은 파일에
+  #       `record_analysis` 를 두 번 정의해 **원장 저장 본체가 죽을 뻔했는데**
+  #       4,395건이 통과했다 — 덮힌 함수를 부르는 테스트가 그 경로까지 안 갔다.
+  #    ⚠️ 규칙은 `pyproject.toml [tool.ruff.lint] select` 가 원본이다.
+  #       여기에 규칙 이름을 적지 않는다(사본 금지).
+  #    ⚠️ ruff 가 없으면 **막지 않는다** — 없는 도구로 막으면 저장소가 잠긴다.
+  if [ -x "$REPO/.venv/bin/ruff" ]; then
+    if ! LINT=$("$REPO/.venv/bin/ruff" check app tools tests 2>&1); then
+      log_audit "DENY commit-lint"
+      deny "🚫 커밋 차단 — 린터가 버그 급 위반을 찾았다.
+$(printf '%s' "$LINT" | head -20)
+   고친 뒤 다시 커밋하라. 규칙은 pyproject.toml [tool.ruff.lint] 이 원본이다."
+    fi
+  fi
 fi
 exit 0
