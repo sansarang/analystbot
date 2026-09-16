@@ -648,7 +648,8 @@ _PRIOR_SAVE = """
            prior_src = $3,
            p_market = COALESCE(p_market, $4::double precision),
            gate_reason = $5,
-           gate_label = $6
+           gate_label = $6,
+           gate_gap_pp = $7::double precision
      WHERE game_id = $1 AND is_final
 """
 
@@ -762,7 +763,7 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
             #    `G.BOARD` 와 글자가 다르다 — 그래서 파싱을 못 쓴다.
             await conn.execute(_PRIOR_SAVE, game_id, None, "none", None,
                                f"보드고정 · 티어 미기입({' · '.join(miss)})",
-                               G.BOARD)
+                               G.BOARD, None)
             # 🔴 [PA-6 2026-09-16] **여기서 끝내지 않는다.** 종전 `return None`
             #    은 사전값만 적고 돌아갔고, 그러면 아래 가설 생성(U5)도,
             #    호출부의 확인 판정(U7)·분석(U12)도 통째로 건너뛰어졌다.
@@ -853,7 +854,8 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
             + (f" · 소스 {prov}" if prov else " · 배당 0건") + ")")
         await conn.execute(_PRIOR_SAVE, game_id, float(p_home), src,
                            (mp or {}).get("home"), f"{v.label} · {why}",
-                           v.label)
+                           v.label,
+                           None if v.gap_pp is None else float(v.gap_pp))
         if hyp is not None:
             await conn.execute(
                 "UPDATE pick_ledger SET hypothesis = $2::jsonb "

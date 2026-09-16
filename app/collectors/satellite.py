@@ -1244,7 +1244,7 @@ async def _write_cache(redis, sport: str, game_id, articles: list[dict]) -> None
 #      종전대로 빅매치만 본다.
 _DUE_SQL = """
     SELECT g.id, g.sport, g.league, g.home, g.away, g.starts_at,
-           l.gate_label
+           l.gate_label, l.gate_gap_pp
       FROM games g
       LEFT JOIN pick_ledger l ON l.game_id = g.id AND l.is_final
      WHERE g.status = 'scheduled'
@@ -1252,6 +1252,31 @@ _DUE_SQL = """
        AND g.starts_at BETWEEN now() AND now() + make_interval(hours => $2)
      ORDER BY g.starts_at
 """
+
+
+def select_search_targets(rows: list) -> list:
+    """[PA-15 · 지시문 §3] 검색 대상 고르기. **상한 슬레이트 30% · 최소 2 · 최대 8.**
+
+    🔴 예산 규칙은 `gate.select` 가 원본이다 — 30%·2·8 을 여기 적지 않는다.
+       그 함수는 §3 을 글자 그대로 구현해 놓고 **호출이 0건**이었다.
+    🔴 PA-13 이 "게이트 대상이면 추출"을 열었는데 **몇 건까지인지는 안 걸었다.**
+       게이트 대상이 많은 날이면 무료 한도(groq 분당 8,000 토큰)가 그대로 터진다.
+    ⚠️ 라벨이 없는 경기(판정 전)는 여기서 뽑히지 않는다 — 그 경기는 종전대로
+       빅매치 판정으로 간다(PA-13). 예산은 **게이트 대상에만** 건다.
+    """
+    from app.engine import gate as _G
+
+    cand = [{"id": r["id"],
+             "label": (r.get("gate_label") if hasattr(r, "get") else None),
+             "gap_pp": (r.get("gate_gap_pp") if hasattr(r, "get") else None)}
+            for r in (rows or [])]
+    picked = _G.select(cand)
+    ids = {c["id"] for c in picked}
+    logger.info("[satellite] §3 대상 선별 — 슬레이트 %d · 게이트 대상 %d · 선별 %d %s",
+                len(cand),
+                sum(1 for c in cand if c["label"] in (_G.OVER, _G.DOUBT)),
+                len(picked), sorted(ids))
+    return [r for r in (rows or []) if r["id"] in ids]
 
 
 async def run_satellite(pool, redis, *, sports: list[str], now=None,
@@ -1276,6 +1301,12 @@ async def run_satellite(pool, redis, *, sports: list[str], now=None,
         logger.warning("[satellite] 대상 경기 조회 실패: %s", exc)
         return {"games": 0, "gathered": 0}
 
+    # 🔴 [PA-15 · §3] 예산을 **여기서** 건다. 선별된 경기만 게이트 대상으로
+    #    표시하고, 나머지는 라벨을 지워 빅매치 판정으로 보낸다.
+    #    ⚠️ 수집(기사 긁기) 자체는 막지 않는다 — §3 의 상한은 **검색·추출**
+    #       예산이고, 층1 수집은 전 경기가 그대로 받는다.
+    selected = {r["id"] for r in select_search_targets(rows)}
+
     games = gathered = 0
     for r in rows:
         left = minutes_until_start(r["starts_at"], now)
@@ -1291,8 +1322,11 @@ async def run_satellite(pool, redis, *, sports: list[str], now=None,
               #    그때는 종전대로 빅매치만 본다.
               # ⚠️ `.get` 으로 읽는다 — 스키마가 아직 안 붙은 컨테이너나
               #    옛 가짜 행에서 KeyError 로 수집 사이클이 통째로 죽지 않게.
-              "gate_label": (r.get("gate_label")
-                             if hasattr(r, "get") else None)}
+              # 🔴 [PA-15] 예산 밖이면 라벨을 싣지 않는다 — 그 경기는
+              #    빅매치일 때만 추출된다(§3 상한).
+              "gate_label": ((r.get("gate_label")
+                              if hasattr(r, "get") else None)
+                             if r["id"] in selected else None)}
         try:
             n = await gather(jg, redis, client=client, now=now, pool=pool)
         except Exception as exc:

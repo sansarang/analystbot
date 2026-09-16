@@ -870,3 +870,8 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_label TEXT;
 --      (지시문 "하지 말 것": 피나클 값이 없다고 사설 평균으로 대체하기).
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS pinnacle_gap       DOUBLE PRECISION;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS pinnacle_gap_label TEXT;
+
+-- [PA-15 2026-09-16 · 지시문 §3] 게이트 괴리 %p. 위성이 |gap| 큰 순으로
+--   검색 대상을 고를 때 쓴다(상한 슬레이트 30% · 최소 2 · 최대 8).
+--   🔴 `gate_label` 과 한 쌍이다 — 라벨만으로는 우선순위를 못 정한다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_gap_pp DOUBLE PRECISION;
