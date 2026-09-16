@@ -852,3 +852,11 @@ CREATE INDEX IF NOT EXISTS idx_lineup_history_league
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS clv_line_shift     DOUBLE PRECISION;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS flow_class         TEXT;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS cancel_virtual_clv DOUBLE PRECISION;
+
+-- [PA-13 2026-09-16] 게이트 라벨을 **칸으로** 남긴다.
+--   🔴 종전에는 `gate_reason` 텍스트 안에만 있었다(`f"{label} · {why}"`).
+--      그런데 PA-6 이 쓴 "보드고정"은 띄어쓰기가 없어 `gate.BOARD`("보드 고정")와
+--      글자가 다르다 — 파싱하면 조용히 어긋난다.
+--   🔴 위성이 이 칸을 읽어 지시문 §3 대로 검색 대상을 고른다.
+--      읽는 것은 **선별 신호**이지 판정(확률·승자)이 아니다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_label TEXT;

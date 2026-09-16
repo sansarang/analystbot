@@ -640,7 +640,8 @@ _PRIOR_SAVE = """
        SET p_prior = $2::double precision,
            prior_src = $3,
            p_market = COALESCE(p_market, $4::double precision),
-           gate_reason = $5
+           gate_reason = $5,
+           gate_label = $6
      WHERE game_id = $1 AND is_final
 """
 
@@ -749,8 +750,12 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
             miss = [n for n, v in ((g["home"], th), (g["away"], ta)) if v is None]
             logger.info("[gate] game=%s 티어 미기입 %s — 사전값 없음(none)",
                         game_id, miss)
+            # 🔴 [PA-13] 라벨을 **칸으로도** 남긴다. 텍스트는 사람이 읽고,
+            #    칸은 코드가 읽는다. 여기 "보드고정"은 띄어쓰기가 없어
+            #    `G.BOARD` 와 글자가 다르다 — 그래서 파싱을 못 쓴다.
             await conn.execute(_PRIOR_SAVE, game_id, None, "none", None,
-                               f"보드고정 · 티어 미기입({' · '.join(miss)})")
+                               f"보드고정 · 티어 미기입({' · '.join(miss)})",
+                               G.BOARD)
             # 🔴 [PA-6 2026-09-16] **여기서 끝내지 않는다.** 종전 `return None`
             #    은 사전값만 적고 돌아갔고, 그러면 아래 가설 생성(U5)도,
             #    호출부의 확인 판정(U7)·분석(U12)도 통째로 건너뛰어졌다.
@@ -840,7 +845,8 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
             f"{v.reason} (이름표 붙은 기준선 스냅샷 없음"
             + (f" · 소스 {prov}" if prov else " · 배당 0건") + ")")
         await conn.execute(_PRIOR_SAVE, game_id, float(p_home), src,
-                           (mp or {}).get("home"), f"{v.label} · {why}")
+                           (mp or {}).get("home"), f"{v.label} · {why}",
+                           v.label)
         if hyp is not None:
             await conn.execute(
                 "UPDATE pick_ledger SET hypothesis = $2::jsonb "

@@ -980,10 +980,24 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
     tag = is_big_match(league=league, home=home, away=away,
                        rank_home=(jg or {}).get("rank_home"),
                        rank_away=(jg or {}).get("rank_away"))
-    if not tag.big:
-        logger.info("[scout] %s@%s — 빅매치 아님(%s) · LLM 추출 생략",
-                    away, home, tag.reason)
+    # 🔴 [PA-13 2026-09-16] 지시문 §3: **검색 대상 = 시장 과대·가치 의심
+    #    + 태그 빅매치.** "빅매치"는 더해진 조건이지 유일한 조건이 아니다.
+    #    종전 코드는 빅매치 하나만 봐서 게이트 대상인 평범한 경기가 전부
+    #    빠졌다 — 실측 2026-09-16 NPB 2경기 기사 7건씩에 추출 0건.
+    # 🔴 라벨은 `gate` 상수로 비교한다. `gate_reason` 텍스트는 읽지
+    #    않는다 — PA-6 이 쓴 "보드고정"과 `G.BOARD`("보드 고정")가 글자부터
+    #    다르다(파싱하면 조용히 어긋난다).
+    from app.engine import gate as _G
+
+    _label = (jg or {}).get("gate_label")
+    gate_target = _label in (_G.OVER, _G.DOUBT)
+    if not (gate_target or tag.big):
+        logger.info("[scout] %s@%s — 게이트 %s · 빅매치 아님(%s) · LLM 추출 생략",
+                    away, home, _label or "미판정", tag.reason)
         return {}
+    if gate_target and not tag.big:
+        logger.info("[scout] %s@%s — 게이트 대상(%s) 으로 추출한다",
+                    away, home, _label)
     # 등급 순으로 상위 몇 건만(SCT-10). 팀이 갈려 있어도 경기 단위로 모은다.
     ranked = sorted(enumerate(have),
                     key=lambda t: (min(rank(t[1].get("url") or "", league),
@@ -1224,13 +1238,19 @@ async def _write_cache(redis, sport: str, game_id, articles: list[dict]) -> None
 
 #: 대상 경기 — 예정이고 탐색 창 안에 시작. 컷오프는 아래 파이썬에서 건다(원본
 #  `minutes_until_start` 를 재사용하려면 행별로 계산해야 하므로 SQL 로 안 자른다).
+#: 🔴 [PA-13] 게이트 라벨을 함께 싣는다 — 지시문 §3 "입력: 게이트 결과".
+#   읽는 것은 **선별 신호**다. 확률·승자는 읽지 않는다(레저는 측정 전용).
+#   ⚠️ LEFT JOIN 이다 — 아직 판정 전인 경기는 라벨이 NULL 이고, 그때는
+#      종전대로 빅매치만 본다.
 _DUE_SQL = """
-    SELECT id, sport, league, home, away, starts_at
-      FROM games
-     WHERE status = 'scheduled'
-       AND sport = ANY($1::text[])
-       AND starts_at BETWEEN now() AND now() + make_interval(hours => $2)
-     ORDER BY starts_at
+    SELECT g.id, g.sport, g.league, g.home, g.away, g.starts_at,
+           l.gate_label
+      FROM games g
+      LEFT JOIN pick_ledger l ON l.game_id = g.id AND l.is_final
+     WHERE g.status = 'scheduled'
+       AND g.sport = ANY($1::text[])
+       AND g.starts_at BETWEEN now() AND now() + make_interval(hours => $2)
+     ORDER BY g.starts_at
 """
 
 
@@ -1266,7 +1286,13 @@ async def run_satellite(pool, redis, *, sports: list[str], now=None,
         #    (실측 2026-09-12 22:11, 기사 0건). 야구 어댑터는 읽지 않는다.
         jg = {"sport": r["sport"], "game_id": r["id"], "league": r["league"],
               "home": r["home"], "away": r["away"],
-              "starts_at": r["starts_at"]}
+              "starts_at": r["starts_at"],
+              # 🔴 [PA-13] 지시문 §3 의 선별 입력. 없으면 None 이고
+              #    그때는 종전대로 빅매치만 본다.
+              # ⚠️ `.get` 으로 읽는다 — 스키마가 아직 안 붙은 컨테이너나
+              #    옛 가짜 행에서 KeyError 로 수집 사이클이 통째로 죽지 않게.
+              "gate_label": (r.get("gate_label")
+                             if hasattr(r, "get") else None)}
         try:
             n = await gather(jg, redis, client=client, now=now, pool=pool)
         except Exception as exc:
