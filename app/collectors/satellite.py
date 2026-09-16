@@ -159,6 +159,7 @@ async def _mlb_velocity_articles(jg: dict, client, now: datetime) -> list[dict]:
                        jg.get("away"), jg.get("home"), exc)
         return []
     out = []
+    velo: dict = {}
     for team, (pid, name) in pitchers.items():
         try:
             t = await sv.pitcher_trend(pid, name, season=season,
@@ -171,6 +172,12 @@ async def _mlb_velocity_articles(jg: dict, client, now: datetime) -> list[dict]:
                 title=t["body"],
                 url=f"https://baseballsavant.mlb.com/savant-player/{pid}",
                 source="Statcast", team=team, body=t["body"], age_h=None))
+            # 🔴 [PA-18 · D2] **숫자를 버리지 않는다.** 종전에는 문장만
+            #    기사로 남고 delta_mph 가 사라져서, 판정이 구속 하락을
+            #    가감으로 쓸 길이 없었다(D2: −1.0mph 이상이면 −2%p).
+            velo[team] = t.get("delta_mph")
+    if velo:
+        await _write_velo(redis_of(jg), jg, velo)
     if out:
         logger.info("[satellite] MLB %s@%s 구속 추세 발견 %d건",
                     jg.get("away"), jg.get("home"), len(out))
@@ -784,6 +791,8 @@ async def gather(jg: dict, redis, *, client=None, now: datetime | None = None,
     """
     sport = (jg.get("sport") or "").lower()
     gid = jg.get("game_id") or jg.get("id")
+    # [PA-18] SAT-8 이 구속 숫자를 남길 수 있게 핸들을 실어 둔다.
+    jg["_redis"] = redis
     adapter = _ADAPTERS.get(sport)
     if adapter is None:
         return 0
@@ -1205,6 +1214,41 @@ async def _write_extract(redis, sport: str, game_id, payload: dict) -> None:
                         ex=CACHE_TTL)
     except Exception as exc:
         logger.warning("[scout] 추출 기록 실패 %s:%s — %s", sport, game_id, exc)
+
+
+#: 🔴 [PA-18 · 통로 A] 구속은 **하루 지나면 무의미**하다 — TTL 로 사는
+#   값이라 원장·스키마를 늘리지 않고 redis 에 둔다(사용자 결정 2026-09-16).
+def _velo_key(sport: str, game_id) -> str:
+    return f"scout:velo:{sport}:{game_id}"
+
+
+def redis_of(jg: dict):
+    """SAT-8 이 쓸 redis 핸들. `gather` 가 jg 에 실어 둔 것을 쓴다."""
+    return (jg or {}).get("_redis")
+
+
+async def _write_velo(redis, jg: dict, velo: dict) -> None:
+    """팀별 구속 변화(mph)를 남긴다. 없으면 쓰지 않는다."""
+    gid = jg.get("game_id") or jg.get("id")
+    if redis is None or gid is None or not velo:
+        return
+    try:
+        await redis.set(_velo_key((jg.get("sport") or "").lower(), gid),
+                        json.dumps(velo, ensure_ascii=False), ex=CACHE_TTL)
+        logger.info("[scout] 구속 기록 game=%s %s", gid, velo)
+    except Exception as exc:
+        logger.warning("[scout] 구속 기록 실패 %s: %s", gid, exc)
+
+
+async def read_velo(redis, sport: str, game_id) -> dict:
+    """저장된 팀별 구속 변화. 없으면 빈 dict — 0 으로 읽지 않는다."""
+    if redis is None or game_id is None:
+        return {}
+    try:
+        raw = await redis.get(_velo_key((sport or "").lower(), game_id))
+        return json.loads(raw) if raw else {}
+    except Exception:
+        return {}
 
 
 async def read_extract(redis, sport: str, game_id) -> dict:

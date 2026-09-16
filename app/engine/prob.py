@@ -33,6 +33,12 @@ ADJ_RULES: dict[str, dict[str, tuple[str, float, float]]] = {
         "주전결장": ("out_starters", -1.5, -5.0),
         "필승조연투": ("bullpen_b2b", -1.0, -3.0),
         "이동연전": ("trip_day", -1.0, -1.0),
+        # 🔴 [PA-18 · 지시문 D2] 선발 최근 등판 평균 구속이 시즌 평균 대비
+        #    −1.0mph 이상 떨어지면 **그 팀 −2%p**. 문턱은 statcast_velo 가
+        #    원본이고(`VELO_DELTA_MIN`), 여기는 크기만 정한다.
+        #    ⚠️ 부호는 호출부가 준다 — `velo_drop` 은 **홈 기준 차이**다
+        #       (홈이 떨어졌으면 음수, 원정이 떨어졌으면 양수).
+        "구속하락": ("velo_drop", -2.0, -2.0),
     },
     "soccer": {
         "주전결장": ("out_starters", -1.5, -6.0),

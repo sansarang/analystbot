@@ -234,6 +234,28 @@ async def attach(jg: dict, pool) -> None:
         logger.warning("[adjust] game=%s 불펜 연투 실패: %s", jg.get("game_id"), exc)
         missing.append("bullpen_b2b")
 
+    # ── 구속 하락 (D2 · PA-18)
+    # 🔴 **새 HTTP 를 켜지 않는다.** 위성이 이미 재서 redis 에 남긴 값을 읽는다.
+    #    판정 경로에서 Savant 를 치면 느리고 실패한다.
+    # 🔴 **홈 기준 부호**다 — 홈이 떨어졌으면 음수(홈에 불리), 원정이
+    #    떨어졌으면 양수. 결장·연투와 같은 규약(ADJ-3/ADJ-4).
+    try:
+        from app.collectors.satellite import read_velo
+
+        velo = await read_velo(jg.get("_redis"), sport, jg.get("game_id"))
+        dh, da = velo.get(jg.get("home")), velo.get(jg.get("away"))
+        if dh is None and da is None:
+            missing.append("velo_drop")
+        else:
+            # 떨어진 쪽만 센다. 오른 것은 신호가 아니다(D2 는 하락만 말한다).
+            drop_h = 1 if (dh is not None and dh <= -VELO_MIN) else 0
+            drop_a = 1 if (da is not None and da <= -VELO_MIN) else 0
+            jg["velo_drop"] = drop_h - drop_a
+            inputs["구속하락"] = {"home": dh, "away": da}
+    except Exception as exc:
+        logger.warning("[adjust] game=%s 구속 하락 실패: %s", jg.get("game_id"), exc)
+        missing.append("velo_drop")
+
     # ── 이동 연전 (홈 팀 기준)
     try:
         rows = await pool.fetch(_TRIP, sport, jg.get("home") or "", starts)
@@ -283,6 +305,10 @@ RETURN_MULT = _R.get("adjust.return_mult")
 
 #: 기여가 이 값(%p) 미만이면 조정에서 뺀다. 잡음이 결정축에 끼는 것을 막는다.
 MIN_CONTRIB_PP = _R.get("adjust.min_contrib_pp")
+
+#: 🔴 구속 하락 문턱(mph). **원본은 `statcast_velo.VELO_DELTA_MIN`** 이다 —
+#   여기서 숫자를 다시 적지 않는다.
+from app.collectors.statcast_velo import VELO_DELTA_MIN as VELO_MIN  # noqa: E402
 
 #: 최근 N경기 선발 창(출장률 분모).
 RECENT_STARTS_N = _R.get("adjust.recent_starts_n")
