@@ -70,9 +70,28 @@ def test_모든_티어_파일이_tiers_키다(league):
 
 
 def test_acl_티어가_실제로_로드된다():
+    """🔴 ACL-1: `teams:` 로 잘못 써서 처음부터 0팀이었다. 그게 이 계약의 뜻이다.
+
+    ⚠️ [PA-7 2026-09-16] 종전에는 `len(t) == 8`(골격 시절 팀 수)을 박아
+       뒀는데, 값을 채우면 팀이 늘어 빨개진다. **개수가 아니라 '로드되는가'와
+       '오늘 쓰는 팀이 풀리는가'를 잰다** — 이쪽이 더 강한 계약이다.
+    """
     t = P.load_tiers("acl")
-    assert len(t) == 8, sorted(t)
+    assert t, "ACL 티어가 0팀 — tiers 키를 확인하라(ACL-1)"
     assert "Daejeon Citizen" in t or "Daejeon Hana Citizen" in t
+    # 🔴 이름 불일치는 조용히 미기입이 된다(리즈 사례). DB 표기로 풀려야 한다.
+    for name in ("Jeonbuk Hyundai Motors FC", "Kashiwa Reysol",
+                 "Vissel Kobe", "Port FC"):
+        assert name in t, f"{name} 가 티어 표에 없다 — DB 표기와 어긋났다"
+
+
+def test_acl_티어값은_1에서_5_사이다():
+    """값을 채운 팀은 TIER_ELO 가 아는 범위여야 한다. 모르면 null 이다."""
+    t = P.load_tiers("acl")
+    filled = {k: v for k, v in t.items() if v is not None}
+    assert filled, "값이 하나도 안 채워졌다"
+    assert all(isinstance(v, int) and 1 <= v <= 5 for v in filled.values()), \
+        {k: v for k, v in filled.items() if not (isinstance(v, int) and 1 <= v <= 5)}
 
 
 @pytest.mark.parametrize("last5,want", [
