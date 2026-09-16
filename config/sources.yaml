@@ -79,10 +79,26 @@ blocked:                     # 절대 열지 않는다
   - wikipedia.org
 
 # 도메인에 이 조각이 들어가면 차단(베팅 제휴).
+# 🔴 [PA-20 2026-09-16] 실측으로 늘렸다. 2026-09-16 18:08 ACLE 위성 사이클이
+#   **coinbase.com(암호화폐)를 본문 fetch** 했고, 후보 11건이
+#   freetips·footballpredictions·livetipsportal·sportsgambler 로 채워졌다.
+#   종전 목록(bet·odds·tipster)이 그것들을 못 걸렀다.
+# ⚠️ **반대 위험을 먼저 쟀다** — 등록된 정상 소스 53개와 충돌 **0건**이다.
+#   (지시문 "하지 말 것": 팬 포럼·예측 채널·전문가 픽 사이트 수집)
 blocked_fragments:
   - bet
   - odds
   - tipster
+  - tips
+  - predict
+  - gambl
+  - wett
+  - forecast
+  - crypto
+  - coinbase
+  - casino
+  - parlay
+  - sportskeeda
 
 js_only:                     # 열어도 표가 없다 — fetch 금지. 기존 피드로만 본다
   - flashscore.com

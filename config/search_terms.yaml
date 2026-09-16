@@ -39,10 +39,22 @@ terms:
   #    한 언어로 못 모은다(한국·일본·중국·베트남·호주).
   #    ⚠️ 현지어가 더 나은 건 분명하지만, 그건 팀별 로케일이 필요하고
   #       지금 구조는 **리그별**이다. 한계를 알고 영어로 둔다.
+  # 🔴 [PA-20 2026-09-16] **현지어를 더한다.** 지시문 §2 "하지 말 것":
+  #   *영어 검색어로 비영어권 리그 검색(지역지가 안 잡힌다)*.
+  #   ACL 엘리트 동부는 J리그·K리그 팀이 대부분인데 검색어가 영어뿐이었고,
+  #   그 결과 후보가 베팅·예측 사이트로 채워졌다(실측 2026-09-16 18:08).
+  #   ⚠️ 영어 질의도 **남긴다** — 태국·호주·중국 팀은 그쪽이 낫다.
+  #      대회 이름을 각 언어로 쓰는 것이 핵심이다(AFC 챔피언스리그 엘리트).
   acl:
-    pre:    ["{home} vs {away} AFC Champions League preview",
-             "{team} team news AFC Champions League"]
-    lineup: ["{home} vs {away} confirmed lineup AFC Champions League"]
+    pre:
+      - "{home} vs {away} AFC Champions League preview"
+      - "{team} team news AFC Champions League"
+      - "{team} 予想スタメン 負傷 欠場 ACL"
+      - "{team} 프리뷰 부상 결장 ACL"
+    lineup:
+      - "{home} vs {away} confirmed lineup AFC Champions League"
+      - "{team} スタメン発表 ACL"
+      - "{team} 선발 라인업 ACL"
   # ⚠️ 아래 둘은 **우리 시스템에 리그가 없다**(app/leagues.py 가 원본).
   #    사용자가 모양을 지정했으므로 적어 두되, 리그가 생기기 전에는 안 쓰인다.
   ligue1:
