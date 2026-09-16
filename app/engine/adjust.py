@@ -158,7 +158,23 @@ async def attach(jg: dict, pool) -> None:
         return
 
     sport = (jg.get("sport") or "").lower()
-    starts = jg.get("starts_at")
+    # 🔴 [PA-1 2026-09-16] **문자열을 datetime 으로 연다.** 파이프라인이 넣는
+    #    `starts_at` 은 ISO 문자열이라 asyncpg 의 TIMESTAMPTZ 파라미터에 못
+    #    들어가고, 아래 `starts.date()`·`starts - timedelta(...)` 도 터진다.
+    #    실측 2026-09-16 PART A: 경기당 4건 × 2경기 = **8건 전건 실패**
+    #      invalid input for query argument $3: '2026-09-16T01:38:00+00:00'
+    #      (expected a datetime.date or datetime.datetime instance, got 'str')
+    #    그래서 주전결장·필승조연투·이동연전이 통째로 빠지고, 결정축은 뽑을
+    #    것이 없어진다.
+    # 🔴 **파서를 다시 만들지 않는다** — `starter_recent._aware` 가 원본이고
+    #    다른 엔진 모듈 셋이 이미 같은 자리에서 쓴다. 여기만 안 쓰고 있었다.
+    #    (어느 셋인지는 docs/maps/PA-1.md 에 적었다 — 이 파일에 모듈 이름을
+    #     적으면 `test_수집기를_건드리지_않는다` 가 호출로 오인한다.)
+    # 🔴 못 읽으면 **None 그대로** 둔다. "지금"으로 채우면 과거 경기를 미래로
+    #    읽는다 — 아래 분기가 None 을 미계산으로 처리한다.
+    from app.engine.starter_recent import _aware
+
+    starts = _aware(jg.get("starts_at"))
     soccer = sport == "soccer"
     win = ADJ_DEFS["soccer_regular_window"] if soccer else ADJ_DEFS["regular_window"]
     need = ADJ_DEFS["soccer_regular_min"] if soccer else ADJ_DEFS["regular_min"]
