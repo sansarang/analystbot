@@ -88,7 +88,8 @@ def _edge(p_ours, p_market) -> float | None:
 
 
 def candidates(*, p_code: float | None, derived: dict | None,
-               home: str, away: str, draw_p: float | None = None) -> list:
+               home: str, away: str, draw_p: float | None = None,
+               ours_totals: dict | None = None) -> list:
     """구조 픽 후보. `edge >= 6%p` 만 남기고 **상관 픽은 하나**로 줄인다.
 
     `p_code` 는 홈 승 확률이다. 약팀(=낮은 쪽) 핸디는 그 반대다.
@@ -112,9 +113,24 @@ def candidates(*, p_code: float | None, derived: dict | None,
                 p_ours = max(0.0, min(1.0, base - shift))
                 why = f"{side} {line:+.1f} — 우리 {p_ours*100:.1f}%"
             elif market == "totals":
-                # ⚠️ 득점 환경 모델이 없다. 시장을 그대로 쓰면 edge 가 0 이다 —
-                #    **후보로 만들지 않는다**(지어내지 않는다).
-                continue
+                # 🔴 [STR-1 2026-09-17] 종전 주석은 "득점 환경 모델이 없다"였다.
+                #    **틀렸다** — `scoring.game_distribution` 이 총점 확률을 이미
+                #    낸다(`out["totals"][line] = {"Over":…, "Under":…}`).
+                #    `pipeline:4008` 이 그걸 받아 놓고 **버리고 있었을 뿐**이다.
+                #    사용자 목표 분석이 쓰는 계산이 정확히 이것이다 —
+                #    "언더 1.91 요구 52.4% vs 내 추정 52~54%".
+                # 🔴 **우리 확률이 없으면 종전대로 건너뛴다.** 시장을 그대로
+                #    쓰면 edge 가 0 이고, 그건 지어내는 것이다.
+                # ⚠️ 야구·축구 공통이다 — 종목으로 가르지 않는다. 축구는 시장
+                #    총점이 이미 쌓여 있어(실측 14일 150건) 바로 쓰인다.
+                if line is None:
+                    continue
+                p_ours = ((ours_totals or {}).get(float(line))
+                          or (ours_totals or {}).get(line) or {}).get(side)
+                if p_ours is None:
+                    continue
+                p_ours = float(p_ours)
+                why = f"{side} {line} — 우리 {p_ours * 100:.1f}%"
             else:
                 continue
             e = _edge(p_ours, p_mkt)

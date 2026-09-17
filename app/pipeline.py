@@ -4022,6 +4022,12 @@ def _compute_picks(
             # [§9] λ 값 자체를 스칼라로 남긴다 — LambdaResult는 JSON 캐시에서
             #      default=str로 뭉개져 검증 때 읽을 수 없다.
             jg["lam"] = {"home": dist["lam"].home, "away": dist["lam"].away}
+            # 🔴 [STR-1 2026-09-17] **우리 총점·핸디 확률을 버리지 않는다.**
+            #    종전에는 λ 스칼라와 trace 만 남기고 `dist["probs"]` 를 통째로
+            #    버렸다. 그래서 `structure.candidates` 가 "득점 환경 모델이
+            #    없다"며 총점을 건너뛰었다 — 모델은 있었고 값을 안 실었을 뿐이다.
+            #    ⚠️ 야구·축구 공통이다(soccer_lambdas 도 같은 자리로 온다).
+            jg["model_probs"] = dist.get("probs") or {}
             jg["lambda_trace"] = dist["lam"].trace
             jg["lambda_missing"] = dist["lam"].missing
             jg["prob_cap_note"] = dist["capped"]
