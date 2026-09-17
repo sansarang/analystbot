@@ -892,3 +892,14 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_base JSONB;
 --   ⚠️ **폐기하지 않는다. 표시만 한다** — 우연히 같을 가능성이 0은 아니고,
 --      판단은 원장을 보는 사람이 한다.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS placeholder_suspect BOOLEAN;
+
+-- [PA-23 2026-09-17 · 지시문 5단계] 변수별 **근거**.
+--   모양: {"주전결장": {"value": {"home":1,"away":0}, "source": "lineup_events",
+--                      "evidence": "홈 주전 1명 결장 · 원정 0명"}}
+--   🔴 `adj_pp`(= {변수명: %p})는 **그대로 둔다.** 소비자가 다섯이다 —
+--      pipeline:2861 · pick_ledger 합산(PA-16) · analyze:85(`{v:+g}`) ·
+--      confidence:209(len). 모양을 바꾸면 그 다섯이 조용히 깨진다.
+--      지시문이 요구한 (name, value, delta_pp, source, evidence)는
+--      `adj_pp`(delta_pp) + 이 칸(나머지)으로 함께 만족한다.
+--   ⚠️ 10단계 변수별 채점이 "이 −2%p 가 어디서 왔나"를 여기서 읽는다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS adj_evidence JSONB;

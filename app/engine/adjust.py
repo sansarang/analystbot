@@ -145,6 +145,17 @@ async def attach(jg: dict, pool) -> None:
     """조정 입력 키를 `jg` 에 세팅한다. 실패는 **미계산**으로 남긴다."""
     missing: list[str] = []
     inputs: dict = {}
+    # 🔴 [PA-23 · 지시문 5단계] 변수마다 **근거**를 함께 남긴다.
+    #    `adj_pp` 는 delta 만 들고 있어 "이 −2%p 가 어디서 왔나"를 원장만 보고
+    #    답할 수 없었다 — 10단계 변수별 채점이 무엇을 채점하는지 모른다.
+    #    ⚠️ `adj_pp` 모양은 **안 바꾼다**(소비자 다섯). 별도 칸으로 남긴다.
+    ev: dict = {}
+
+    def _ev(name: str, value, source: str, evidence: str) -> None:
+        """변수 하나의 근거. 값이 없으면 남기지 않는다(지어내지 않는다)."""
+        if value is None:
+            return
+        ev[name] = {"value": value, "source": source, "evidence": evidence}
     # 🔴 T-24h 선발 스냅샷 테이블이 없다(검색 결과 `odds_snapshots` 뿐).
     #    트리거 추가는 통합 지시문 Part A 의 몫이다 — 여기서 만들지 않는다.
     missing.append("starter_changed")
@@ -153,6 +164,7 @@ async def attach(jg: dict, pool) -> None:
         jg["adj_pending"] = True
         jg["adj_missing"] = missing + ["out_starters"]
         jg["adj_inputs"] = inputs
+        jg["adj_evidence"] = ev
         logger.info("[adjust] game=%s 타순 미확정(%s) — 결장 변수 미계산",
                     jg.get("game_id"), jg.get("lineup_status"))
         return
@@ -200,6 +212,9 @@ async def attach(jg: dict, pool) -> None:
         outs[side] = n
         if n is not None:
             inputs.setdefault("주전결장", {})[side] = n
+            _ev("주전결장", inputs["주전결장"], "lineup_events",
+                f"창 {win}경기 중 {need}회 이상 선발한 주전 기준 · "
+                + " · ".join(f"{k} {v}명" for k, v in inputs["주전결장"].items()))
     if outs["home"] is None or outs["away"] is None:
         missing.append("out_starters")
     else:
@@ -230,6 +245,9 @@ async def attach(jg: dict, pool) -> None:
             #    음수면 원정이 더 지친 것이고, 홈에 유리로 읽힌다.
             jg["bullpen_b2b"] = b2b["home"] - b2b["away"]
             inputs["필승조연투"] = b2b
+            _ev("필승조연투", b2b, "pitcher_appearances",
+                f"직전 {ADJ_DEFS['pen_b2b_days']}일 연속 등판 · "
+                + " · ".join(f"{k} {v}명" for k, v in b2b.items()))
     except Exception as exc:
         logger.warning("[adjust] game=%s 불펜 연투 실패: %s", jg.get("game_id"), exc)
         missing.append("bullpen_b2b")
@@ -252,6 +270,9 @@ async def attach(jg: dict, pool) -> None:
             drop_a = 1 if (da is not None and da <= -VELO_MIN) else 0
             jg["velo_drop"] = drop_h - drop_a
             inputs["구속하락"] = {"home": dh, "away": da}
+            _ev("구속하락", {"home": dh, "away": da}, "statcast",
+                f"시즌 평균 대비 홈 {dh}mph · 원정 {da}mph "
+                f"(문턱 {VELO_MIN}mph)")
     except Exception as exc:
         logger.warning("[adjust] game=%s 구속 하락 실패: %s", jg.get("game_id"), exc)
         missing.append("velo_drop")
@@ -267,6 +288,9 @@ async def attach(jg: dict, pool) -> None:
                 break
         jg["trip_day"] = trip_flag(streak)
         inputs["이동연전"] = {"연속원정": streak}
+        _ev("이동연전", {"연속원정": streak}, "games",
+            f"홈팀 직전 연속 원정 {streak}경기 "
+            f"(문턱 {ADJ_DEFS['trip_min']})")
     except Exception as exc:
         logger.warning("[adjust] game=%s 이동연전 실패: %s", jg.get("game_id"), exc)
         missing.append("trip_day")
@@ -280,6 +304,7 @@ async def attach(jg: dict, pool) -> None:
 
     jg["adj_missing"] = missing
     jg["adj_inputs"] = inputs
+    jg["adj_evidence"] = ev
     logger.info("[adjust] game=%s 입력=%s 미계산=%s",
                 jg.get("game_id"), inputs, missing)
 

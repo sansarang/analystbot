@@ -196,6 +196,9 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         #    앞) 값이라 카드 숫자와 다르다 — 사후 대조는 나간 값으로 해야 한다.
         "p_code": jg.get("p_send") or jg.get("p_code"),
         "adj_pp": jg.get("adj_pp"),
+        # [PA-23 · 지시문 5단계] delta 옆에 **근거**를 같이 남긴다.
+        "adj_evidence": (json.dumps(jg.get("adj_evidence"), ensure_ascii=False)
+                         if jg.get("adj_evidence") else None),
         # [MBF-1] 야구 모델 확률 — **기록 전용**(`model_w = 0`).
         "p_model": jg.get("p_model"),
         "model_src": jg.get("model_src"),
@@ -376,13 +379,14 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                               rejudge_count, is_final, trial,
                               odds, market_prob, divergence_pp,
                               confidence_probe, shadow_blend, predicted_side,
-                              p_market, p_code, adj_pp, llm_winner, llm_level,
+                              p_market, p_code, adj_pp, adj_evidence,
+                              llm_winner, llm_level,
                               p_model, model_src, model_w, model_gap_pp,
                               gate_vs_llm)
                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,
                                    $13,$14,$15,$16::jsonb,$17::jsonb,$18,
-                                   $19,$20,$21::jsonb,$22,$23,
-                                   $24,$25,$26,$27,$28)""",
+                                   $19,$20,$21::jsonb,$22::jsonb,$23,$24,
+                                   $25,$26,$27,$28,$29)""",
                         row["game_id"], row["sport"], row["league"], row["date"],
                         row["p_home"], row["favored"], row["confidence"],
                         row["lineup_status"], row["gate_result"], row["model"], n,
@@ -393,7 +397,8 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         if row.get("shadow_blend") else None,
                         row.get("predicted_side"),
                         row.get("p_market_spine"), row.get("p_code"),
-                        row.get("adj_pp"), row.get("llm_winner"),
+                        row.get("adj_pp"), row.get("adj_evidence"),
+                        row.get("llm_winner"),
                         row.get("llm_level"),
                         row.get("p_model"), row.get("model_src"),
                         row.get("model_w"), row.get("model_gap_pp"),
