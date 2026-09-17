@@ -627,6 +627,13 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS structure_candidates JSONB;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS analyze_model        TEXT;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_vs_llm          TEXT;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS analyze_failed       BOOLEAN;
+-- [ANL-4 2026-09-17] 분석 **검사 결과**. {l1, l1_why, l2, l2_why, banned, skipped}
+--   🔴 L1·L2·금지어는 재기만 하고 **원장에 안 남았다.** 실측 2026-09-17:
+--      L1=(False, '결정축_근거 에 확률·배당 숫자가 있다') 인데 원장에는
+--      main_axis='주전 결장' 만 남아 **반려당한 값인지 알 수 없었다.**
+--   🔴 로그에만 있으면 재배포 때 날아간다 — 오늘 실제로 그래서 원인을 못 봤다.
+--   ⚠️ 칸 하나로 모은다. 다섯으로 쪼갤 근거는 아직 없다(무엇을 자주 조회할지 모른다).
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS analyze_check JSONB;
 
 -- [OBS-1 2026-09-13 Part 4] 상시 관측. 침묵이 기본이다.
 --   watch_state: 관측 | 후보 | 추천대기 | 추천 | 취소 | 종료

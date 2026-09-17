@@ -231,6 +231,17 @@ def gate_vs_llm(gate_label: str | None, market_view: str | None) -> str | None:
     return "same" if same.get(gate_label) == market_view else "diff"
 
 
+def check_row(ok1, why1, ok2, why2, banned, skipped) -> dict:
+    """[ANL-4] 원장에 남길 **검사 결과** 한 덩어리.
+
+    🔴 재기만 하고 안 남기면 나중에 "이 결정축을 믿어도 되나"를 못 답한다.
+    ⚠️ 판정을 **바꾸지 않는다.** 반려해도 결정축은 남는다(ANL-2 에서 잠근 성질).
+    """
+    return {"l1": ok1, "l1_why": why1 or None,
+            "l2": ok2, "l2_why": why2 or None,
+            "banned": list(banned or []), "skipped": skipped or None}
+
+
 def answered_model(configured: str | None) -> str | None:
     """**실제로 응답한** provider/model. 못 읽으면 설정값, 그것도 없으면 None.
 
@@ -350,6 +361,9 @@ async def run(jg: dict, blk: dict, *, gate_label: str | None,
         out["skipped"] = f"호출 실패: {type(exc).__name__}"
         out["ledger"] = to_ledger(None, model=None, gate_label=gate_label,
                                   failed=True)
+        # 🔴 [ANL-4] "안 했다"와 "했는데 반려"를 갈라야 한다.
+        out["ledger"]["analyze_check"] = check_row(
+            None, None, None, None, [], out["skipped"])
         return out
 
     parsed = parse_json_object(text or "")
@@ -358,6 +372,8 @@ async def run(jg: dict, blk: dict, *, gate_label: str | None,
         # 🔴 [ANL-3] **실제로 답한 모델**을 적는다. 설정값은 폴백하면 거짓이다.
         out["ledger"] = to_ledger(None, model=answered_model(s.matchup_model),
                                   gate_label=gate_label, failed=True)
+        out["ledger"]["analyze_check"] = check_row(
+            None, None, None, None, [], out["skipped"])
         return out
 
     ok1, why1 = l1(parsed, blk)
@@ -375,6 +391,11 @@ async def run(jg: dict, blk: dict, *, gate_label: str | None,
         logger.info("[analyze] game=%s 결정축 불일치 — 코드 값을 쓴다: %s",
                     jg.get("game_id"), led["axis_disagree"])
         led["main_axis"] = code_axes[0]
+    # 🔴 [ANL-4 2026-09-17] **잰 것을 남긴다.** 종전에는 L1·L2·금지어를 재고
+    #    `out["analyze"]` 로 돌려주기만 했다 — 원장에는 결정축만 남아서
+    #    **반려당한 값인지 아닌지를 원장만 보면 알 수 없었다.**
+    #    로그에만 있으면 재배포 때 날아간다(오늘 실제로 겪었다).
+    led["analyze_check"] = check_row(ok1, why1, ok2, why2, bad, None)
     out["ledger"] = led
     logger.info("[analyze] game=%s L1=%s L2=%s 금지어=%s",
                 jg.get("game_id"), ok1, ok2, bad or "없음")

@@ -1161,12 +1161,16 @@ _CONFIRM_SAVE = """
      WHERE game_id = $1 AND is_final
 """
 
+# 🔴 [ANL-4 2026-09-17] `analyze_check` 를 함께 적는다 — L1·L2·금지어를 재고
+#    안 남기면 "이 결정축이 반려당한 값인가"를 원장만 보고 못 답한다.
+#    ⚠️ 칸을 늘렸으면 **자리표도 늘린다.** PA-23 에서 칸만 늘리고 $N 을 안
+#       늘려 원장 저장이 통째로 터질 뻔했다. 계약이 자리표 수를 잰다.
 _ANALYZE_SAVE = """
     UPDATE pick_ledger
        SET main_axis = $2, counter_axis = $3, market_view = $4,
            swap_agree = $5, structure_candidates = $6::jsonb,
            analyze_model = $7, gate_vs_llm = COALESCE($8, gate_vs_llm),
-           analyze_failed = $9
+           analyze_failed = $9, analyze_check = $10::jsonb
      WHERE game_id = $1 AND is_final
 """
 
@@ -1430,7 +1434,8 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
                 led.get("counter_axis"), led.get("market_view"),
                 led.get("swap_agree"), led.get("structure_candidates"),
                 led.get("analyze_model"), led.get("gate_vs_llm"),
-                bool(led.get("analyze_failed")))
+                bool(led.get("analyze_failed")),
+                json.dumps(led.get("analyze_check") or {}, ensure_ascii=False))
         out["analyze"] = {k: res.get(k) for k in ("l1", "l2", "banned", "skipped")}
     except Exception as exc:
         logger.warning("[analysis] game=%s 분석 실패: %s", game_id, exc)
