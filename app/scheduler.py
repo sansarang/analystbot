@@ -1409,9 +1409,13 @@ async def _match_oddsapinet(pool, sport: str, evs: list) -> list:
             continue
         when = datetime.fromtimestamp(int(ts), timezone.utc)
         row = await pool.fetchrow(
+            # ⚠️ `$2` 에 **명시 캐스트**를 준다. 없으면 asyncpg 가 타입을
+            #    추론하지 못해 `operator does not exist: timestamptz >= interval`
+            #    로 터진다(⑨ 첫 사이클이 잡았다).
             """SELECT id, home, away FROM games
-                WHERE sport = $1 AND starts_at BETWEEN $2 - interval '3 hours'
-                                                   AND $2 + interval '3 hours'""",
+                WHERE sport = $1
+                  AND starts_at BETWEEN $2::timestamptz - interval '3 hours'
+                                    AND $2::timestamptz + interval '3 hours'""",
             sport, when)
         if row is None:
             logger.info("[oddsapinet] 못 맞춤 %s @ %s (%s)",
