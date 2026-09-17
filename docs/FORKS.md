@@ -353,6 +353,47 @@ LLM 이 정하고 LLM 이 설명    → 앞뒤는 맞지만 **설명이 진짜 �
 
 ---
 
+## F-10 · 결장 **한 명**을 셀 것인가 (2026-09-17 · S7 가감이 12/18 빔)
+
+**갈림길** — 결장 1명은 `1.5%p` 인데 잡음 문턱이 `2.0%p` 다. **한 명은 늘 버려진다.**
+실측:
+```
+딥서치 결장 1명 → adj_after={}              버림={라인업결장 -1.5}  changed=False
+        2명 → adj_after={라인업결장 -3.0}   반영
+```
+그래서 오늘 딥서치가 **"서호철 1군 말소"·"고종욱 1군 말소"를 찾아냈는데
+가감은 0** 이었다. 야구는 결장이 보통 한 명씩 난다.
+
+**찾은 자료 — 1.5%p 라는 *크기*는 맞다.**
+
+WAR 는 "그 선수를 잃으면 시즌 순위가 몇 경기 떨어지나"다
+(Baseball-Reference · FanGraphs). 경기당으로 나누면:
+
+| 선수 | 시즌 WAR | 경기당 = WAR/162 |
+|---|---|---|
+| 평균 주전 | 2 | **1.2%p** |
+| 좋은 주전 | 4 | 2.5%p |
+| 준스타 | 6 | 3.7%p |
+| 역대급(예: 11.5 WAR) | 11.5 | **7.1%p** |
+
+→ 중요도를 모르는 선수에게 주는 **1.5%p 는 "평균 주전" 자리**다. **크기는 맞다.**
+
+**틀린 것은 문턱이다.** `MIN_CONTRIB_PP = 2.0` 은 **WAR 3.2 미만을 전부 버린다.**
+야구에서 결장은 대개 한 명이고, 그 한 명은 대개 평균 주전이다 →
+**구조적으로 항상 버려진다.**
+
+⚠️ 축구는 다르다. F-1 에서 찾은 "라인업 변경 하나가 승률 2~9%p" 는 이 문턱을
+   넘는다. **같은 문턱이 두 종목에 다르게 작동한다.**
+
+🔴 **안 고쳤다.** 문턱은 `config/rules.yaml adjust.min_contrib_pp` 이고
+   표 크기와 같은 **사용자 결정** 영역이다(CLAUDE.md "지시받지 않은 파라미터
+   변경 금지"). 선택지는 셋:
+   1. 문턱을 낮춘다(예 1.0) — 한 명도 센다. 잡음도 는다
+   2. 종목별로 가른다 — 야구 1.0 · 축구 2.0
+   3. 그대로 둔다 — 야구는 결장 2명 이상일 때만 센다
+
+---
+
 ### 출처
 
 - [Sportmonks — Predicted Lineups](https://www.sportmonks.com/football-api/predicted-lineups/)
@@ -361,6 +402,8 @@ LLM 이 정하고 LLM 이 설명    → 앞뒤는 맞지만 **설명이 진짜 �
 - [FanGraphs — Replacement Level](https://library.fangraphs.com/misc/war/replacement-level/)
 - [Hockey Graphs — WAR: Replacement Level (Part 3)](https://hockey-graphs.com/2019/01/18/wins-above-replacement-replacement-level-decisions-results-and-final-remarks-part-3/)
 - [panna #242 — zero-fill reads as average](https://github.com/peteowen1/panna/issues/242)
+- [Baseball-Reference — Position Player WAR](https://www.baseball-reference.com/about/war_explained_position.shtml)
+- [FanGraphs — Win Probability Added](https://blogs.fangraphs.com/i-think-win-probability-added-is-a-neat-statistic/)
 - [Post-Hoc Reasoning in Chain of Thought (arXiv 2603.01437)](https://arxiv.org/html/2603.01437)
 - [CoT Reasoning In The Wild Is Not Always Faithful (arXiv 2503.08679)](https://arxiv.org/pdf/2503.08679)
 - [DEV — Feed the validation error back into the retry](https://dev.to/nhirschfeld/when-an-llm-response-fails-validation-feed-the-error-back-into-the-retry-2e1e)
