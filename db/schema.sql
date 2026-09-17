@@ -884,3 +884,11 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_gap_pp DOUBLE PRECISION;
 --      10단계 변수별 채점의 전제가 없었다.
 --   ⚠️ `p_prior`(홈 확률)는 그대로 둔다 — 읽는 곳이 여럿이다. 이 칸은 추가다.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_base JSONB;
+
+-- [PA-22-b 2026-09-17 · 지시문 2단계] 자리표 의심 표시.
+--   같은 슬레이트의 다른 경기가 **소수점까지 같은 시장 확률**이면 참이다.
+--   🔴 실사고: SEA@ATH 40.9/59.1 이 두 경기에 그대로 들어왔다 — 소스가 값을
+--      못 줘서 앞 경기 값을 되풀이한 것이다.
+--   ⚠️ **폐기하지 않는다. 표시만 한다** — 우연히 같을 가능성이 0은 아니고,
+--      판단은 원장을 보는 사람이 한다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS placeholder_suspect BOOLEAN;

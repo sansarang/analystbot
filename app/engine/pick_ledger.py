@@ -844,12 +844,56 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
         #    경기"와 "배당이 없어 못 돌린 경기"를 나중에 구분할 수 없다.
         #    ⚠️ 시장 확률을 지어내지 않는다 — `gate.classify` 에 None 을 주면
         #       그쪽이 **보드 고정**을 돌려준다. 판정 규칙은 원본이 정한다.
-        mp = implied_probs(base["odds"]) if base else None
+        # 🔴 [PA-22-b 2026-09-17 · 지시문 2단계] **위생 검사를 여기서 건다.**
+        #    종전에는 마진이 이상한 배당도 그대로 게이트까지 갔다 — 실측
+        #    재현: 마진 0(합 100.0%)짜리가 `시장 과대 · gap -22.46` 을 만들었다.
+        #    만들어진 값으로 괴리를 재면 그 게이트는 거짓이다.
+        #    ⚠️ 통과 못 하면 **시장 없음**으로 둔다(`gate.classify` 가 None 을
+        #       받으면 보드 고정을 돌려준다) — 확률을 지어내지 않는다.
+        from app.engine.market_edge import devig_ok, margin_ok
+
+        mp = None
+        if base:
+            if not margin_ok(base["odds"]):
+                logger.info("[gate] game=%s 배당 마진이 범위 밖 — 시장 없음으로 "
+                            "둔다 (odds=%s)", game_id, base["odds"])
+            else:
+                cand = implied_probs(base["odds"])
+                if devig_ok(cand):
+                    mp = cand
+                else:
+                    logger.warning("[gate] game=%s 디빅 결과 합이 1이 아니다 — "
+                                   "시장 없음으로 둔다 (%s)", game_id, cand)
         if mp:
             mkt = ((mp.get("home"), mp.get("draw"), mp.get("away"))
                    if sport == "soccer" else mp.get("home"))
         else:
             mkt = None
+        # 🔴 [PA-22-b] 같은 슬레이트의 다른 경기와 **소수점까지 같은** 시장
+        #    확률이면 자리표를 의심한다(실사고 SEA@ATH 40.9/59.1 두 번).
+        #    ⚠️ 폐기하지 않는다 — 표시만 하고 판단은 사람이 한다.
+        if mp:
+            try:
+                from app.engine.market_edge import placeholder_suspect
+
+                peers = await conn.fetch(
+                    """SELECT l.p_market FROM pick_ledger l
+                         JOIN games g2 ON g2.id = l.game_id
+                        WHERE l.is_final AND l.game_id <> $1
+                          AND g2.sport = $2 AND l.p_market IS NOT NULL
+                          AND l.judged_at > now() - interval '24 hours'""",
+                    game_id, sport)
+                others = [{"home": float(r["p_market"])} for r in peers]
+                if placeholder_suspect({"home": mp.get("home")}, others):
+                    logger.warning("[gate] game=%s 시장 확률이 다른 경기와 "
+                                   "소수점까지 같다 — 자리표 의심 (%.4f)",
+                                   game_id, mp.get("home"))
+                    await conn.execute(
+                        "UPDATE pick_ledger SET placeholder_suspect = TRUE "
+                        "WHERE game_id = $1 AND is_final", game_id)
+            except Exception as exc:
+                logger.info("[gate] game=%s 자리표 검사 실패: %s", game_id, exc)
+
         v = G.classify(pri, mkt, sport)
         # 🔴 [U5 2026-09-15] **게이트 직후 가설을 세운다.** 검색 전에 무엇을
         #    찾을지 정하는 자리다 — 지금까지는 수집이 need 와 무관하게 전부
