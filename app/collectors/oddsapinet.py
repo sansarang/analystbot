@@ -59,6 +59,21 @@ def _num(v):
         return None
 
 
+def _line_of(raw):
+    """`"over 7.5"` → `("Over", 7.5)` · `"-1.5"` → `(None, -1.5)`.
+
+    🔴 [ODN-1-b] 총점·팀토탈은 **방향이 라인 문자열 안에** 있다(실측).
+    ⚠️ `even`·`odd` 는 **홀짝**이라 총점이 아니다 — `(None, None)` 으로 버린다.
+    """
+    t = str(raw or "").strip().lower()
+    if not t or t in ("even", "odd"):
+        return None, None
+    for word, name in (("over", "Over"), ("under", "Under")):
+        if t.startswith(word):
+            return name, _num(t[len(word):])
+    return None, _num(t)
+
+
 async def _get(path: str, params: dict | None = None):
     """GET 한 번. 키가 없거나 실패하면 None — 예외를 올리지 않는다."""
     key = _key()
@@ -140,17 +155,28 @@ def to_rows(items: list[dict], *, home: str, away: str) -> list[dict]:
         if not market:
             continue
         odds = _num(it.get("odds"))
-        line = _num(it.get("line"))
+        # 🔴 [ODN-1-b] 총점·팀토탈은 `line` 이 `"over 7.5"` 처럼 **방향+숫자**다.
+        #    핸디는 `"-1.5"` 처럼 숫자뿐이다. 둘을 함께 읽는다.
+        direction, line = _line_of(it.get("line"))
         if odds is None or odds <= 1.0 or line is None:
             continue
         side = str(it.get("side") or "").lower()
-        if market == "totals":
-            name = "Over" if side.startswith("o") else "Under"
-        else:
+        if market == "spreads":
             name = home if side == "home" else away if side == "away" else None
-            if market == "team_totals":
-                # 팀토탈은 `selection_name` 이 팀이다(side 는 over/under).
-                name = str(it.get("selection_name") or "").strip() or None
+        else:
+            # 🔴 [ODN-1-b] **방향은 `line` 안에 있다**(side 가 아니다).
+            #    실측: total 은 side=None · line="over 7.5" / "under 7.5"
+            #          team total 은 side=home/away(팀) · line="over 4.5"
+            #    핸디만 side·line 이 따로다 — 그래서 핸디만 통과했었다.
+            if direction is None:
+                continue          # 홀짝(even/odd) — 총점이 아니다
+            if market == "totals":
+                name = direction
+            else:                 # team_totals: 팀 + 방향이 둘 다 있어야 한다
+                team = home if side == "home" else away if side == "away" else None
+                # ⚠️ 읽는 쪽이 아직 없다(structure 는 spreads·totals 만 본다).
+                #    쌓아두는 값이고, 소비자가 생기면 이 형식을 쓰면 된다.
+                name = f"{team} {direction}" if team else None
         if not name:
             continue
         # ⚠️ 핸디는 API 가 **쪽마다 라인을 따로** 준다(home −1.5 / away +1.5) —

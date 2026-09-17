@@ -15,18 +15,23 @@ import pytest
 
 from app.collectors import oddsapinet as ON
 
+# 🔴 **실측 모양 그대로다**(운영에서 직접 확인 2026-09-17):
+#    total       side=None · line="over 7.5"        ← 방향이 line 안에 있다
+#    team total  side=home/away · line="over 4.5"
+#    handicap    side=home/away · line="-1.5"
+#    처음에 내가 지어낸 `side="over"` 로 통과시켰다가 운영에서 totals 0행이
+#    나왔다(ODN-1-b). 지어낸 모양을 재면 고친 코드가 아니라 상상을 잰다.
 ITEMS = [
-    {"bet_type": "total", "bookmaker": "pinnacle", "line": "7.5",
-     "side": "over", "odds": 1.91, "period": "full time", "is_available": True},
-    {"bet_type": "total", "bookmaker": "pinnacle", "line": "7.5",
-     "side": "under", "odds": 1.95, "period": "full time", "is_available": True},
+    {"bet_type": "total", "bookmaker": "pinnacle", "line": "over 7.5",
+     "side": None, "odds": 1.91, "period": "full time", "is_available": True},
+    {"bet_type": "total", "bookmaker": "pinnacle", "line": "under 7.5",
+     "side": None, "odds": 1.95, "period": "full time", "is_available": True},
     {"bet_type": "handicap", "bookmaker": "bet365", "line": "-1.5",
      "side": "home", "odds": 2.05, "period": "full time", "is_available": True},
     {"bet_type": "handicap", "bookmaker": "bet365", "line": "+1.5",
      "side": "away", "odds": 1.80, "period": "full time", "is_available": True},
-    {"bet_type": "team total", "bookmaker": "pinnacle", "line": "4.5",
-     "side": "over", "odds": 1.85, "period": "full time",
-     "selection_name": "NC Dinos", "is_available": True},
+    {"bet_type": "team total", "bookmaker": "pinnacle", "line": "over 4.5",
+     "side": "home", "odds": 1.85, "period": "full time", "is_available": True},
 ]
 KW = {"home": "KIA", "away": "키움"}
 
@@ -47,9 +52,10 @@ def test_핸디가_쪽마다_제_라인을_갖는다():
     assert s == {"KIA": -1.5, "키움": 1.5}
 
 
-def test_팀토탈은_팀_이름이_쪽이다():
+def test_팀토탈은_팀과_방향을_둘_다_갖는다():
+    """🔴 side 는 팀, line 은 방향+숫자 — 둘 다 있어야 한 줄이 된다."""
     t = [r for r in _rows() if r["market"] == "team_totals"]
-    assert t and t[0]["side"] == "NC Dinos" and t[0]["line"] == 4.5
+    assert t and t[0]["side"] == "KIA Over" and t[0]["line"] == 4.5
 
 
 def test_라인이_숫자다():
@@ -82,6 +88,12 @@ def test_라인이나_배당이_없으면_버린다():
         assert _rows([dict(ITEMS[0], **bad)]) == []
 
 
+def test_홀짝은_총점이_아니다():
+    """🔴 `even`·`odd` 는 다른 시장이고 라인이 없다."""
+    for v in ("even", "odd"):
+        assert _rows([dict(ITEMS[0], line=v)]) == []
+
+
 # ── 예산·키
 
 def test_예산_문턱이_있다():
@@ -91,19 +103,27 @@ def test_예산_문턱이_있다():
 
 
 @pytest.mark.asyncio
-async def test_모르면_멈춘다():
-    """🔴 `/usage` 를 못 읽으면 **안전한 쪽**으로 멈춘다."""
-    assert await ON.budget_ok() in (True, False)
-    import app.collectors.oddsapinet as M
+async def test_예산을_읽고_판단한다(monkeypatch):
+    """🔴 `/usage` 를 못 읽으면 **안전한 쪽**으로 멈춘다.
 
-    orig = M._get
-    try:
-        async def _none(*a, **k):
-            return None
-        M._get = _none
-        assert await M.budget_ok() is False
-    finally:
-        M._get = orig
+    ⚠️ **망을 타지 않는다.** 처음에 `budget_ok()` 를 그냥 불렀더니 실제
+       HTTP 를 쳐서 스위트가 600초 넘게 멈췄다(샌드박스가 막는다).
+    """
+    async def _fake(result):
+        async def _g(*a, **k):
+            return result
+        return _g
+
+    monkeypatch.setattr(ON, "_get", await _fake(None))
+    assert await ON.budget_ok() is False                      # 못 읽으면 멈춘다
+
+    monkeypatch.setattr(ON, "_get", await _fake(
+        {"api_credits_limit": 1000, "api_credits_used": 100}))
+    assert await ON.budget_ok() is True                       # 10% — 간다
+
+    monkeypatch.setattr(ON, "_get", await _fake(
+        {"api_credits_limit": 1000, "api_credits_used": 900}))
+    assert await ON.budget_ok() is False                      # 90% — 멈춘다
 
 
 def test_키가_코드에_없다():
