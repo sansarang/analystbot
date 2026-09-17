@@ -23,6 +23,33 @@ KEY_OUT = "라인업결장"
 #   여기서 뜻을 새로 만들지 않는다.
 KEY_BASE_OUT = "주전결장"
 
+# ═══ [PA-27-d 2026-09-17 · docs/FORKS.md F-2] **대체 권한은 출처마다 다르다**
+#
+# 🔴 딥서치로 찾은 자료가 가리키는 바(자세히는 docs/FORKS.md F-2):
+#      Most Trusted Source Wins   공식 팀시트 > 기사    → 주전결장이 이긴다
+#      Most Complete Wins         전체 집계 > 부분 명단  → 주전결장이 이긴다
+#      Profisee: "완전성 규칙은 오류 위험이 높다" ·
+#                "**속성 단위로** 규칙을 짜라 — 레코드 통째 신뢰는 문제가 된다"
+#    베팅 쪽도 같다 — 리그·구단 **공식 명단이 정산 기준**이고 기사는 못 뒤집는다.
+#
+# 🔴 그래서 규칙 하나로 좁힌다: **대체는 완전한 출처만 한다.**
+#      공식 XI    완전 + 신뢰  → 대체할 수 있다
+#      기사 명단  부분        → **빈자리만 채운다. 남의 자리를 못 뺏는다**
+#    부분 출처가 대체하면 기사가 둘만 말했을 때 −6.0 이 −3.0 으로 **줄어든다**.
+#    부분 출처를 위에 얹으면 PA-27-b 가 고친 **이중 계산**이 되살아난다.
+#    그래서 주전결장이 있으면 부분 출처의 결장 축은 **뺀다**.
+#
+# ⚠️ 손해가 아니다 — `주전결장` 은 타순이 확정돼야 생긴다. 축구 판정은 T-3h 라
+#    그 구간엔 주전결장이 없고, 거기서는 기사 명단이 **유일한 신호**이고 그대로
+#    쓰인다. 물러나는 것은 **더 좋은 자료가 이미 있는 구간**뿐이다.
+
+#: 공식 XI(fotmob diff) — 완전하고 신뢰할 수 있다.
+SRC_OFFICIAL = "official_xi"
+#: 기사 결장 명단(딥서치 추출) — **부분이다.** 원장 `regraded_by` 에도 이 값이 간다.
+SRC_NEWS = "deepsearch"
+#: 🔴 이 출처만 기존 축을 **대체**할 수 있다.
+CAN_REPLACE = (SRC_OFFICIAL,)
+
 
 def _by_name(players: dict | None, names) -> list:
     """이름 목록 → 선수 dict. 못 찾으면 **빈 dict**(중요도 1.0 중립)."""
@@ -47,7 +74,8 @@ def _market_of(p_code: float | None, adj: dict | None):
 def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
             players: dict | None = None, grade: str | None = None,
             sport: str = "soccer", team_total_value=None,
-            snippet: bool = False, settings=None) -> dict:
+            snippet: bool = False, settings=None,
+            source: str = SRC_OFFICIAL) -> dict:
     """확정 라인업 차이 → `{adj_after, p_code_after, grade_after, changed, why}`.
 
     `diff` 는 `fotmob.diff_xi` 모양: `{side: {bench_notable[], surprise_in[]}}`.
@@ -56,6 +84,8 @@ def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
        ×1.5×1.5), 예상 선발이 빠지면 `−`(×1.5). 한 규칙으로 뭉치면 둘 중
        하나가 거꾸로 간다.
     🔴 diff 가 비어 있으면 **아무것도 안 바꾼다.** `changed=False` 로 남긴다.
+    🔴 `source` 가 `CAN_REPLACE` 밖이면 **기존 결장 축을 못 뺏는다**(PA-27-d).
+       기본값은 공식 XI 다 — 부분 출처를 쓰는 쪽이 그 사실을 밝히게 한다.
     """
     from app.engine import adjust as A
     from app.engine import prob as P
@@ -71,11 +101,21 @@ def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
 
     add: dict[str, float] = {}
     notes = []
+    # 🔴 [PA-27-d · FORKS F-3] **값을 몇 명이나 알았는지 남긴다.**
+    #    값을 모르면 `importance` 가 1.0(평균 주전)을 쓴다 — 자료가 지지하는
+    #    처리다(미측정 프로는 대체선수가 아니라 리그 평균으로 본다). 그러나
+    #    panna #242: 채워 넣은 값을 **진짜 평균과 구별하지 못하면** 나중에
+    #    표를 읽을 수 없다. 계산은 안 바꾸고 **사실만** 남긴다.
+    known = total = 0
     for side, box in (diff or {}).items():
         # 원정 쪽 변화는 홈 확률 기준으로 **부호가 뒤집힌다**.
         sign = 1.0 if side == "home" else -1.0
         ins = _by_name(players, (box or {}).get("surprise_in"))
         outs = _by_name(players, (box or {}).get("bench_notable"))
+        for pl in ins + outs:
+            total += 1
+            if pl.get("market_value") and team_total_value:
+                known += 1
         if ins:
             v = A.contrib_return(ins, team_total_value=team_total_value) * sign
             add[f"{KEY_IN}:{side}"] = round(v, 2)
@@ -84,8 +124,12 @@ def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
             v = A.contrib_out(outs, team_total_value=team_total_value) * sign
             add[f"{KEY_OUT}:{side}"] = round(v, 2)
             notes.append(f"{side} 결장 {len(outs)}명 {v:+.1f}%p")
+    cover = {"known": known, "total": total}
+    if known < total:
+        notes.append(f"가치 아는 선수 {known}/{total}")
     if not add:
         out["why"] = "diff 는 있으나 변화 인원 0"
+        out["value_coverage"] = cover
         return out
 
     # 🔴 [PA-27-a 2026-09-17] **새로 더한 것에만 잡음 제외를 건다.**
@@ -110,11 +154,30 @@ def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
     #    ⚠️ **결장이 실제로 확인됐을 때만** 대체한다. 공식 XI 가 없거나
     #       복귀만 있으면 종전대로 `주전결장` 을 유지한다 — 모르면 안 바꾼다.
     #    ⚠️ 결장과 무관한 축(이동연전·휴식 등)은 건드리지 않는다.
+    #    🔴 [PA-27-d] **대체 권한은 출처마다 다르다**(위 SRC_* 주석 · FORKS F-2).
+    #       부분 출처(기사)는 대체도 가산도 못 한다 — 결장 축을 **뺀다.**
     replaced = None
+    yielded: dict[str, float] = {}
     if any(k.startswith(KEY_OUT) for k in add_kept) and KEY_BASE_OUT in base_adj:
-        base_adj = {k: v for k, v in base_adj.items() if k != KEY_BASE_OUT}
-        replaced = KEY_BASE_OUT
+        if source in CAN_REPLACE:
+            base_adj = {k: v for k, v in base_adj.items() if k != KEY_BASE_OUT}
+            replaced = KEY_BASE_OUT
+        else:
+            yielded = {k: v for k, v in add_kept.items()
+                       if k.startswith(KEY_OUT)}
+            add_kept = {k: v for k, v in add_kept.items()
+                        if not k.startswith(KEY_OUT)}
+            dropped = {**dropped, **yielded}
     kept = {**base_adj, **add_kept}
+    if not add_kept and not replaced:
+        # 🔴 물러났으면 물러났다고 남긴다. `changed=False` 라 원장도 안 쓴다.
+        out.update({"adj_dropped_after": dropped, "yielded_to": KEY_BASE_OUT,
+                    "value_coverage": cover,
+                    "why": (f"{source} 는 부분 출처라 {KEY_BASE_OUT} 을 두고 물러났다"
+                            f" · {' · '.join(notes)}")})
+        logger.info("[rejudge] 부분 출처(%s)가 %s 앞에서 물러났다 · %s",
+                    source, KEY_BASE_OUT, out["why"])
+        return out
     # 🔴 `prob.p_code` 를 그대로 쓴다 — 승률 상한이 여기서 다시 걸린다.
     # 🔴 [PA-27-c 2026-09-17] 되짚기는 **`orig_adj`** 로 한다. PA-27-b 가 축을
     #    빼고 난 `base_adj` 로 되짚으면 시장을 그만큼 높게 잡는다 —
@@ -139,7 +202,7 @@ def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
     if replaced:
         notes.append(f"{replaced} → 확정 XI 로 대체")
     out.update({"adj_after": kept, "adj_dropped_after": dropped,
-                "replaced_axis": replaced,
+                "replaced_axis": replaced, "value_coverage": cover,
                 "p_code_after": p_after, "grade_after": grade_after,
                 "changed": True, "why": " · ".join(notes),
                 "axes_after": A.axes(kept)})

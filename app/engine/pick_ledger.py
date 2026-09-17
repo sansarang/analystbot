@@ -1189,8 +1189,9 @@ _REJUDGE_SAVE = """
      WHERE game_id = $1 AND is_final
 """
 
-#: 재판정 출처. 🔴 T-60 라인업 diff 와 구분한다 — 같은 칸을 쓰기 때문이다.
-REGRADE_DEEPSEARCH = "deepsearch"
+# 🔴 [PA-27-d] 출처 상수는 **`rejudge` 가 원본**이다 — 여기 다시 적지 않는다.
+#    거기서는 "대체 권한"까지 함께 정한다(docs/FORKS.md F-2). 이름만 베끼면
+#    권한 없이 이름만 같은 사본이 된다.
 
 
 async def record_confirm_and_analysis(conn, *, game_id: int,
@@ -1354,13 +1355,17 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
             if names:
                 diff[side] = {"bench_notable": list(names), "surprise_in": []}
         if diff:
+            # 🔴 [PA-27-d] **부분 출처라고 밝힌다.** 기사 명단은 기사에 이름이
+            #    난 선수만 담는다 — `주전결장`(오늘 타순 전체 집계)이 이미
+            #    있으면 그 앞에서 물러난다(docs/FORKS.md F-2).
             rj = RJ.reweigh(adj=adj, p_code=row["p_code"], diff=diff,
-                            sport=g["sport"], grade=row["confidence"])
+                            sport=g["sport"], grade=row["confidence"],
+                            source=RJ.SRC_NEWS)
             if rj.get("changed"):
                 await conn.execute(
                     _REJUDGE_SAVE, game_id,
                     json.dumps(rj["adj_after"], ensure_ascii=False),
-                    rj["p_code_after"], rj["grade_after"], REGRADE_DEEPSEARCH)
+                    rj["p_code_after"], rj["grade_after"], RJ.SRC_NEWS)
                 out["rejudge"] = rj
                 logger.info(
                     "[rejudge] game=%s 딥서치 결장 %s → p_code %s → %s · "
@@ -1370,6 +1375,10 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
                     rj["grade_after"],
                     " · 등급이 바뀌었다" if rj["grade_after"] != row["confidence"]
                     else "")
+            else:
+                # 🔴 [PA-27-d] 안 쓴 이유를 남긴다 — "조용한 0"은 결함이다.
+                logger.info("[rejudge] game=%s 재판정 안 함 — %s",
+                            game_id, rj.get("why"))
         else:
             logger.info("[rejudge] game=%s 추출에 결장자 이름이 없다 — 재판정 안 함",
                         game_id)

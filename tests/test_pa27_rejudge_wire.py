@@ -110,7 +110,9 @@ async def test_출처가_deepsearch로_남는다(no_llm, extract):
     """🔴 T-60 라인업 diff 와 **같은 칸**을 쓴다 — 출처가 없으면 못 가른다."""
     conn = _Conn()
     await _run(conn, extract, {"home": {"out": ["A", "B"]}})
-    assert conn.rejudge_saves()[-1][4] == PL.REGRADE_DEEPSEARCH == "deepsearch"
+    from app.engine import rejudge as RJ
+
+    assert conn.rejudge_saves()[-1][4] == RJ.SRC_NEWS == "deepsearch"
 
 
 @pytest.mark.asyncio
