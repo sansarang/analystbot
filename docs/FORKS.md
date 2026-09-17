@@ -135,6 +135,36 @@ docstring 에 "지어내지 않는다"고 적혀 있다(①은 지켰다). 그�
 
 ---
 
+## F-4 · 변수를 **적중률로 채점할까 CLV 로 채점할까** (2026-09-17 · PA-28)
+
+**갈림길** — 지시문 10단계는 "delta 방향이 **결과와** 맞았는가"라고 쓴다.
+결과는 경기 결과(적중)인가, 마감 라인(CLV)인가.
+
+**찾은 자료 — CLV 다. 갈리지 않는다.**
+
+| 출처 | 내용 |
+|---|---|
+| ThePowerRank · Sharp Football | 포화된 시장에서는 **승률보다 CLV 가 더 나은 지표**다 |
+| Pikkit · TheLines | 프로는 승패 기록이 아니라 CLV 를 주지표로 쓴다 — **장기 수익성을 더 잘 예측**한다 |
+| Bet2Invest | CLV 는 **여러 베팅에 걸쳐 합산되므로** 개별 사건에 덜 흔들린다 → 작은 표본에서 유리 |
+| XCLSV | "승패 기록은 그 자체로는 거의 아무 의미가 없다 — 55% 를 맞혀도 물밑일 수 있다" |
+
+**우리 실측도 같은 쪽이다**(CLAUDE.md §1): 판정 확률 **AUC 0.5122**(판별력
+없음) · 시장 확률 AUC 0.6421. 100건 남짓 표본에서 적중률로 변수를 끄고 켜는
+것은 잡음을 재는 것이다.
+
+**그래서 통계는 "평균 CLV"다.** Bet2Invest 의 "걸쳐 합산" 이 그 근거이고,
+`prob.py` 결정 B 도 이미 **"평균 CLV 부호"** 라고 적어 두었다. 건별 부호
+일치율은 **참고로만** 낸다(같은 평균이라도 흩어짐이 다를 수 있어 눈으로
+보기에는 쓸모가 있다). 적중률도 표에 내되 **판정 근거로 쓰지 않는다** —
+계약이 그것까지 잰다(`test_적중률은_참고일_뿐_판정을_안_바꾼다`).
+
+**적용** — PA-28. 표본 문턱 100 은 `config/rules.yaml report.var_min_n` 이
+원본이고, 못 미치면 **판단하지 않는다**("표본 부족"). 적은 표본으로 변수를
+끄는 쪽이 켜 두는 쪽보다 위험하다 — **끈 변수는 다시 켜 볼 기회가 없다.**
+
+---
+
 ### 출처
 
 - [Sportmonks — Predicted Lineups](https://www.sportmonks.com/football-api/predicted-lineups/)
@@ -143,5 +173,8 @@ docstring 에 "지어내지 않는다"고 적혀 있다(①은 지켰다). 그�
 - [FanGraphs — Replacement Level](https://library.fangraphs.com/misc/war/replacement-level/)
 - [Hockey Graphs — WAR: Replacement Level (Part 3)](https://hockey-graphs.com/2019/01/18/wins-above-replacement-replacement-level-decisions-results-and-final-remarks-part-3/)
 - [panna #242 — zero-fill reads as average](https://github.com/peteowen1/panna/issues/242)
+- [ThePowerRank — Closing line value](https://thepowerrank.com/2021/07/29/closing-line-value/)
+- [Sharp Football — CLV betting](https://www.sharpfootballanalysis.com/sportsbook/clv-betting/)
+- [Bet2Invest — CLV applied to sports betting](https://bet2invest.com/blog/Closing-Line-Value-(CLV)-Applied-to-Sports-Betting:-A-Key-Indicator-for-Bettors)
 - [ActionNetwork — Prop betting rules: if the player doesn't play](https://www.actionnetwork.com/education/prop-betting-rules-what-happens-if-player-doesnt-play)
 - [OddsIndex — How injuries impact betting lines](https://oddsindex.com/guides/injury-impact-betting-guide)
