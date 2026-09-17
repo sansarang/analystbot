@@ -1170,6 +1170,28 @@ _ANALYZE_SAVE = """
      WHERE game_id = $1 AND is_final
 """
 
+# ═══════════════ [PA-27 2026-09-17 · 지시문 7단계] 딥서치 → 판정 되먹임
+#
+# 🔴 지시문 7단계: "추출된 결장 명단을 5단계 원장의 **결장 변수로 재계산**
+#    (LLM 이 문장으로 반영하는 게 아니라 **코드가 delta 를 다시 매김**).
+#    재계산 후 gap 재판정. 등급이 바뀌면 원장에 `regraded_by=deepsearch`."
+# 🔴 종전: `rejudge.reweigh` 를 **부르는 코드가 app/ 전체에 0건**이었다.
+#    U11 을 만들어 놓고 안 이었다 — analyze·gate.select·U9·U10·book_gap·예산·
+#    adj_confirm·velo_drop 에 이어 **아홉 번째 "만들고 안 이었다"** 다.
+#    딥서치가 결장자를 찾아내도 확률이 1%p 도 안 움직였다.
+# 🔴 **저장 전용이다. 원래 값을 덮지 않는다.** `p_code`·`confidence`·`adj_pp`
+#    는 그대로 두고 `*_after` 에만 남긴다. 카드도 발송도 이 칸을 아직 안 읽는다
+#    — PA-14 와 같은 순서다(먼저 값을 쌓고 표를 봐야 교체가 옳은지 안다).
+_REJUDGE_SAVE = """
+    UPDATE pick_ledger
+       SET adj_after = $2::jsonb, p_code_after = $3::double precision,
+           grade_after = $4, regraded_by = $5
+     WHERE game_id = $1 AND is_final
+"""
+
+#: 재판정 출처. 🔴 T-60 라인업 diff 와 구분한다 — 같은 칸을 쓰기 때문이다.
+REGRADE_DEEPSEARCH = "deepsearch"
+
 
 async def record_confirm_and_analysis(conn, *, game_id: int,
                                       gate: dict | None,
@@ -1306,6 +1328,53 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
                         game_id, ST.EDGE_MIN_PP)
     except Exception as exc:
         logger.info("[analysis] game=%s 파생 디빅 없음: %s", game_id, exc)
+
+    # ── S7 재판정 — 딥서치 결장 명단을 **결장 변수로 다시 매긴다** (PA-27)
+    #
+    # 🔴 `collected` 는 위성 추출 결과다. `out` 은 기사가 말한 **결장자 이름**
+    #    이고, `EXTRACT_SCHEMA` 가 그 이름의 원본이다 — 여기서 새로 짓지 않는다.
+    # 🔴 `reweigh` 는 `{side: {bench_notable, surprise_in}}` 모양을 받는다
+    #    (`fotmob.diff_xi` 와 같은 모양). 결장 명단은 `bench_notable` 자리다.
+    # ⚠️ **선수 시장가치가 없다.** 추출은 이름만 준다 — `importance` 가 1.0
+    #    중립으로 잡히고 한 명당 1.5%p 로 세어진다. 가치를 지어내지 않는다.
+    # ⚠️ 축 이름은 `라인업결장` 으로 찍힌다(`reweigh` 의 `KEY_OUT`). 출처가
+    #    T-60 라인업이 아니라 딥서치라는 것은 `regraded_by` 가 말한다.
+    try:
+        from app.engine import rejudge as RJ
+        from app.engine.scout_config import EXTRACT_SCHEMA
+
+        # 🔴 결장 명단 칸 이름은 **추출 스키마가 원본**이다. 스키마에서
+        #    사라지면 조용히 빈 diff 가 되는 대신 경고가 뜨게 한다
+        #    (아래 except 가 받아 `재판정 실패` 로 남긴다). 계약이 함께 잰다.
+        out_key = "out"
+        assert out_key in EXTRACT_SCHEMA, "추출 스키마에 결장 칸이 없다"
+        diff = {}
+        for side in ("home", "away"):
+            names = (collected.get(side) or {}).get(out_key) or []
+            if names:
+                diff[side] = {"bench_notable": list(names), "surprise_in": []}
+        if diff:
+            rj = RJ.reweigh(adj=adj, p_code=row["p_code"], diff=diff,
+                            sport=g["sport"], grade=row["confidence"])
+            if rj.get("changed"):
+                await conn.execute(
+                    _REJUDGE_SAVE, game_id,
+                    json.dumps(rj["adj_after"], ensure_ascii=False),
+                    rj["p_code_after"], rj["grade_after"], REGRADE_DEEPSEARCH)
+                out["rejudge"] = rj
+                logger.info(
+                    "[rejudge] game=%s 딥서치 결장 %s → p_code %s → %s · "
+                    "등급 %s → %s%s", game_id,
+                    {k: len(v["bench_notable"]) for k, v in diff.items()},
+                    row["p_code"], rj["p_code_after"], row["confidence"],
+                    rj["grade_after"],
+                    " · 등급이 바뀌었다" if rj["grade_after"] != row["confidence"]
+                    else "")
+        else:
+            logger.info("[rejudge] game=%s 추출에 결장자 이름이 없다 — 재판정 안 함",
+                        game_id)
+    except Exception as exc:
+        logger.warning("[analysis] game=%s 재판정 실패: %s", game_id, exc)
 
     # ── S11 분석 (U12)
     try:

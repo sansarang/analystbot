@@ -573,6 +573,12 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS structure_pick JSONB;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS adj_after    JSONB;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_code_after DOUBLE PRECISION;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS grade_after  TEXT;
+-- [PA-27 2026-09-17 · 지시문 7단계] **누가** 재판정했나.
+--   'deepsearch' — 위성 추출 결장 명단으로 결장 변수를 다시 매겼다
+--   🔴 위 셋(adj_after·p_code_after·grade_after)은 **누가 했는지**를 안 남겼다.
+--      T-60 라인업 diff 와 딥서치 추출은 출처가 다른데 같은 칸에 들어간다 —
+--      나중에 "어느 쪽이 맞았나"를 채점하려면 출처가 있어야 한다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS regraded_by  TEXT;
 
 
 

@@ -122,7 +122,16 @@ def test_등급이_따라_움직인다():
 
     down = _rw({"home": {"bench_notable": ["Star"]}}, p_code=0.60, grade="중")
     assert down["p_code_after"] < 0.60
-    assert down["grade_after"] == C.LOW
+    # 🔴 [PA-27-b·c 2026-09-17 정정] 종전 기대는 `C.LOW` 였는데, 그 값은
+    #    **결장을 두 번 세야만** 나온다. 되짚기까지 고치고 나면 0.585 다:
+    #        시장 되짚기 0.615(= 0.60 + 주전결장 축소 1.5%p)
+    #        확정 XI 가 주전결장을 **대체** → {라인업결장:home −6.0} → 축소 −3.0
+    #        0.615 − 0.03 = 0.585 ≥ CODE_MID_P(0.58) → 중
+    #    ⚠️ PA-27-b 만 넣었을 때 이 테스트가 통과한 것은 **우연**이었다 —
+    #       줄어든 adj 로 되짚은 오차(+0.75~1.5%p)가 대체분을 정확히 상쇄했다.
+    #       그래서 값을 박는다. 등급만 재면 같은 상쇄를 또 놓친다.
+    assert down["p_code_after"] == pytest.approx(0.585, abs=1e-6)
+    assert down["grade_after"] == C.MID
 
 
 def test_조각_자료면_등급이_눌린다():

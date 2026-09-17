@@ -60,7 +60,10 @@ def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
     from app.engine import adjust as A
     from app.engine import prob as P
 
-    base_adj = dict(adj or {})
+    # 🔴 [PA-27-c] **되짚기용 원본을 따로 잡는다.** `base_adj` 는 아래에서
+    #    대체(PA-27-b)로 줄어드는데, `p_code` 를 만든 것은 **줄기 전의 adj** 다.
+    orig_adj = dict(adj or {})
+    base_adj = dict(orig_adj)
     out = {"adj_after": base_adj, "p_code_after": p_code,
            "grade_after": grade, "changed": False, "why": "diff 없음"}
     if not diff:
@@ -113,7 +116,13 @@ def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
         replaced = KEY_BASE_OUT
     kept = {**base_adj, **add_kept}
     # 🔴 `prob.p_code` 를 그대로 쓴다 — 승률 상한이 여기서 다시 걸린다.
-    p_after = P.p_code(_market_of(p_code, base_adj), kept, sport,
+    # 🔴 [PA-27-c 2026-09-17] 되짚기는 **`orig_adj`** 로 한다. PA-27-b 가 축을
+    #    빼고 난 `base_adj` 로 되짚으면 시장을 그만큼 높게 잡는다 —
+    #    실측: adj={'주전결장':-1.5,'짧은휴식':-2.0}·p_code=0.62 에 홈 결장 2명
+    #      되짚기 base_adj → 시장 0.6300 → p_after 0.6050
+    #      되짚기 orig_adj → 시장 0.6375 → p_after 0.6125   ← 맞다
+    #    **0.75%p** 차이이고 방향이 늘 결장 쪽이다(대체된 축을 두 번 뺀 셈).
+    p_after = P.p_code(_market_of(p_code, orig_adj), kept, sport,
                        settings=settings)
     grade_after = grade
     if p_after is not None:
