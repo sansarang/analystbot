@@ -1228,8 +1228,22 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
         "DB보충": len(db_rows), "DB못채움": list(db_miss),
         "재요청": list(asks2), "재요청n": len(more),
     }
+    # 🔴 [MDL-1 2026-09-17] **어느 모델이 이 승자를 냈는지 함께 싣는다.**
+    #    종전에는 이 호출에 `model` 이 없어 `jg["matchup"]["model"]` 이 None 이
+    #    됐고, 원장 `model` 칸이 통째로 비었다 — 실측 09-17 **20건 전건 NULL**
+    #    (같은 날 model_src 20/20 · llm_winner 20/20). v2 경로(:752·:1629)에만
+    #    `_real_model` 보정이 있고 v3 는 그 자리를 안 지난다(:888 이 이미 적어
+    #    둔 사실이다).
+    # 🔴 **설정값이 아니라 실제 응답 모델이다.** 무료 사슬은 폴백한다 —
+    #    실측 2026-09-05: provider=nvidia 인데 로그는 claude-sonnet-5 였다.
+    #    `_real_model` 이 `LAST_USAGE`(호출 직후 채워지는 원본)에서 읽는다.
+    #    ⚠️ 직전 판정 호출은 바로 위 `dbref.recheck`(role 이 JUDGE_ROLES 안)
+    #       이다 — 그 승자를 낸 모델이 맞다. 다른 역할이 끼면 설정값으로
+    #       떨어지고, 그것도 없으면 **None** 이다(빈 문자열을 쓰면 "모름"과
+    #       "빈 이름"이 같아진다).
+    _mdl = _real_model(get_settings().matchup_model) or None
     if not apply_winner(jg, {"승자": ref["승자"], "확신": ref["확신"],
-                             "서술": _story}):
+                             "서술": _story, "model": _mdl}):
         return await _drop("승자가 이 경기의 팀이 아니다")
     jg["final_verdict"] = final
     jg["judge_stage"] = "final" if final else "prelim"
