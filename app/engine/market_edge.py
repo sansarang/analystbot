@@ -72,6 +72,83 @@ def implied_probs(odds: dict) -> dict | None:
     return out
 
 
+# ═══════════════ [PA-22 2026-09-17 · 지시문 2단계] 시장 확률 위생
+#
+# 🔴 **검사 위치를 나눈다.** 지시문은 "p_mkt 합이 100±0.5 아니면 폐기"라고
+#    적었는데, 그건 **디빅된 확률**을 전제한 문장이다. 우리가 저장하는 것은
+#    배당 **원값**이라 합이 마진만큼 100 을 넘는 것이 정상이다.
+#    실측 2026-09-17 (48h · h2h 묶음 523개):
+#      합 100±0.5 안 0 · 밖 523 · 내재확률 합 101.5 ~ 105.1 ~ 109.0 %
+#    지시문 숫자를 원값에 그대로 걸면 **배당이 523/523 전부 폐기**되고
+#    전 경기가 보드 고정이 된다 — "조용한 0"이 바로 그 모양이다.
+#    → 사용자 결정 2026-09-17: 원값은 마진 범위 · 디빅 후 합 100±0.5.
+
+#: 원값 마진 허용 범위(%). 하한 100 초과 — 마진 0 인 북은 실제로 없다.
+#  상한은 실측(최대 109.0)에 여유를 둔 값이다.
+MARGIN_MIN_PCT, MARGIN_MAX_PCT = 100.5, 115.0
+
+#: 디빅 뒤 합 허용 오차(지시문 2단계 숫자 그대로).
+DEVIG_TOL = 0.005
+
+
+def margin_pct(odds: dict | None) -> float | None:
+    """배당 원값의 내재확률 합(%). 못 재면 None — 0 으로 읽지 않는다."""
+    raw = []
+    for v in (odds or {}).values():
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            continue
+        if f > 1.0:
+            raw.append(1.0 / f)
+    if len(raw) < 2:
+        return None
+    return round(sum(raw) * 100, 2)
+
+
+def margin_ok(odds: dict | None) -> bool:
+    """마진이 정상 범위인가. 🔴 **범위 밖은 만들어진 값이거나 못 쓸 값이다.**
+
+    ⚠️ 이 검사를 통과 못 하면 `market_missing` 이다 — 확률을 지어내지 않는다.
+    """
+    m = margin_pct(odds)
+    return m is not None and MARGIN_MIN_PCT <= m <= MARGIN_MAX_PCT
+
+
+def devig_ok(probs: dict | None) -> bool:
+    """디빅 결과 합이 1 인가(지시문 2단계의 100±0.5). 못 재면 False."""
+    if not probs:
+        return False
+    try:
+        return abs(sum(float(v) for v in probs.values()) - 1.0) <= DEVIG_TOL
+    except (TypeError, ValueError):
+        return False
+
+
+def placeholder_suspect(probs: dict | None, others: list | None) -> bool:
+    """다른 경기가 **소수점까지 같은 확률**이면 자리표(placeholder)를 의심한다.
+
+    🔴 실사고: SEA@ATH 40.9/59.1 이 두 경기에 그대로 들어왔다. 서로 다른
+       경기가 소수 넷째 자리까지 같을 수는 없다 — 소스가 값을 못 줘서
+       앞 경기 값을 되풀이한 것이다.
+    ⚠️ **폐기하지 않는다. 표시만 한다** — 우연히 같을 가능성이 0은 아니고,
+       판단은 원장을 보는 사람이 한다.
+    """
+    if not probs:
+        return False
+    me = tuple(sorted((k, round(float(v), 4)) for k, v in probs.items()))
+    for o in (others or []):
+        if not o:
+            continue
+        try:
+            it = tuple(sorted((k, round(float(v), 4)) for k, v in o.items()))
+        except (TypeError, ValueError):
+            continue
+        if it == me:
+            return True
+    return False
+
+
 def classify(p_ours: float | None, favored: str | None,
              odds: dict | None) -> dict:
     """판정 vs 시장 3분류. 반환은 항상 dict — 배당이 없으면 값이 None이다.
