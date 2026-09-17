@@ -129,16 +129,37 @@ def parse_odds(item: dict, home: str, away: str) -> list[dict]:
         if dec is not None and team:
             out.append({"book": book, "market": "h2h", "side": team,
                         "line": None, "odds": dec})
-    ou = item.get("overUnder")
+    # ── [ODF-1 2026-09-17] **언더/오버.** 종전에는 "ESPN 은 O/U 가격을 따로
+    #    안 준다"며 라인만 보고 버렸다. **실측으로 그 판단이 틀렸다**(운영에서
+    #    Core API 직접 호출, 2026-09-17):
+    #      DraftKings … overUnder 7.0 · overOdds 101.0 · underOdds -122.0
+    #    같은 파일의 `parse_soccer_odds` 는 **이미 그 필드를 읽고 있었다.**
+    #    🔴 원칙은 그대로다 — **가격이 없으면 안 넣는다.** −110 으로 지어내지
+    #       않는다. 필드가 있을 때만 넣는다.
+    #    ⚠️ O/U·핸디 가격은 야구도 **미국식**이다(101.0 / −122.0). 머니라인만
+    #       소수로 온다 — 그래서 `_decimal` 과 `from_american` 을 갈라 쓴다.
+    ou = _num(item.get("overUnder"))
     if ou is not None:
-        try:
-            line = float(ou)
-        except (TypeError, ValueError):
-            line = None
-        if line is not None:
-            # ESPN 은 O/U 가격을 따로 안 준다 — 라인만 있고 가격이 없으면
-            # 적재하지 않는다. 없는 값을 -110 으로 지어내지 않는다.
-            logger.debug("[espn_odds] O/U %s 라인만 있고 가격 없음 — 생략", line)
+        for key, side in (("overOdds", "Over"), ("underOdds", "Under")):
+            dec = from_american(item.get(key))
+            if dec is not None:
+                out.append({"book": book, "market": "totals", "side": side,
+                            "line": ou, "odds": dec})
+
+    # ── [ODF-1] **핸디캡.** `spread` 는 홈 기준이다 — 원정은 부호를 뒤집는다
+    #    (`parse_soccer_odds` 와 같은 방식. 사본 금지).
+    #    ⚠️ 야구는 핸디 **가격이 소수**로 온다(`current.spread.value` = 2.42) —
+    #       축구의 `spreadOdds`(미국식)와 자리도 단위도 다르다. 환산하지 않는다.
+    sp = _num(item.get("spread"))
+    if sp is not None:
+        for key, team, sign in (("homeTeamOdds", home, 1.0),
+                                ("awayTeamOdds", away, -1.0)):
+            cur = ((item.get(key) or {}).get("current") or {})
+            dec = _num((cur.get("spread") or {}).get("value"))
+            if dec is not None and dec > 1.0 and team:
+                out.append({"book": book, "market": "spreads", "side": team,
+                            "line": round(sp * sign, 2),
+                            "odds": round(float(dec), 3)})
     return out
 
 
@@ -245,7 +266,11 @@ SOCCER_MAX_REQ_PER_GAME = 10
 
 
 def from_american(v) -> float | None:
-    """미국식 → 소수배당. 🔴 **축구에서만** 쓴다(야구는 decimal 이 온다).
+    """미국식 → 소수배당.
+
+    🔴 [ODF-1 2026-09-17 정정] 종전 머리말은 "**축구에서만** 쓴다(야구는
+       decimal 이 온다)"였다. **머니라인만 그렇다** — 야구도 O/U 가격은
+       미국식으로 온다(실측 overOdds 101.0 · underOdds −122.0).
 
     항등식이라 추측이 아니다: 음수 −a → 1 + 100/a · 양수 +b → 1 + b/100.
     """
