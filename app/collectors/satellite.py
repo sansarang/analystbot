@@ -782,6 +782,29 @@ async def _tor_supplement(jg: dict, queries: list[tuple[str, str]], *,
     return out
 
 
+def _need_of(jg: dict) -> list | None:
+    """[HYP-1] 원장 가설 → `["home.out", …]`. 없으면 **None**(종전대로 전부).
+
+    🔴 키 모양은 `hypothesis.Need.key` 가 원본이다 — 여기서 손으로 짓지 않는다.
+    ⚠️ 빈 목록("찾을 것 없음" = 보드 고정)과 **None**(가설 없음)은 다르다.
+    """
+    raw = (jg or {}).get("hypothesis")
+    if not raw:
+        return None
+    try:
+        import json as _j
+
+        from app.engine import hypothesis as HY
+
+        hyp = _j.loads(raw) if isinstance(raw, str) else raw
+        need = [HY.Need(n["field"], n["side"], n.get("why", ""))
+                for n in (hyp.get("need") or [])]
+        return [n.key for n in need]
+    except Exception as exc:
+        logger.info("[scout] game=%s 가설을 못 읽었다: %s", jg.get("game_id"), exc)
+        return None
+
+
 async def gather(jg: dict, redis, *, client=None, now: datetime | None = None,
                  pool=None) -> int:
     """경기 1건을 긁어 캐시에 쓴다. 반환: 적재 기사 수.
@@ -838,9 +861,15 @@ async def gather(jg: dict, redis, *, client=None, now: datetime | None = None,
         lkey = league_labels().get(jg.get("league") or "") or ""
         # 🔴 [EXT-1] **경기당 1콜.** 종전 팀별 3건(=6콜)이 groq 무료 한도를
         #    매 사이클 태웠다(실측 2026-09-14: 429 백오프 340~467초).
+        # 🔴 [HYP-1 2026-09-17] **가설을 수집으로 내려보낸다.**
+        #    `hypothesis.py` 가 "페이블 순서의 핵심"이라고 적은 자리인데
+        #    호출부가 없어서 need 가 한 번도 수집에 닿은 적이 없었다.
+        #    ⚠️ 가설이 없으면(판정 전·보드 고정·옛 행) **None** 이고 그때는
+        #       종전 그대로다 — 굶기지 않는다.
         facts = await extract_game_facts(articles, home=jg.get("home") or "",
                                          away=jg.get("away") or "",
-                                         league=lkey, redis=redis, jg=jg)
+                                         league=lkey, redis=redis, jg=jg,
+                                         need=_need_of(jg))
         await _write_extract(redis, sport, gid, facts)
     return len(articles)
 
@@ -923,14 +952,28 @@ def _windows(body: str, terms, *, span: int = WINDOW_SPAN) -> str:
     return " … ".join(text[a:b] for a, b in merged)
 
 
-def _extract_prompt(home: str, away: str, blocks: list[tuple[str, str]]) -> str:
+def _extract_prompt(home: str, away: str, blocks: list[tuple[str, str]],
+                   need: list | None = None) -> str:
     """[EXT-1] **경기 하나에 프롬프트 하나.** 두 팀을 한 번에 묻는다.
 
     🔴 스키마를 손으로 적지 않는다 — `EXTRACT_SCHEMA` 에서 만든다.
+    🔴 [HYP-1 2026-09-17] `need` 를 주면 **무엇을 찾는지 말한다.**
+       `hypothesis.py` 가 "이것이 페이블 순서의 핵심"이라고 적은 자리다 —
+       게이트가 방향을 정하고 방향이 need 를 정하는데, 수집이 그 need 를
+       **본 적이 없었다**(호출부 미배선).
+    ⚠️ **지휘는 "무엇을 찾을지 말해 주는 것"이지 "찾은 것을 버리는 것"이
+       아니다.** 스키마 8칸은 그대로 다 돌려받는다 — need 밖 칸을 비우면
+       분석 입력이 도로 좁아진다(ANL-5 로 넣은 notes 가 사라진다).
+    ⚠️ `need` 가 없으면 프롬프트는 **종전과 글자 하나 안 다르다.**
     """
     from app.engine.scout_config import EXTRACT_SCHEMA
 
     keys = ", ".join(f'"{k}"' for k in EXTRACT_SCHEMA)
+    want = ""
+    if need:
+        # 🔴 키 모양(`home.out`)은 `hypothesis.Need.key` 가 원본이다.
+        want = ("7. 이 경기에서 **우선 찾는 것**: " + " · ".join(need)
+                + ". 다른 칸도 발췌에 있으면 채운다.\n")
     src = "\n\n".join(f"[기사 {i + 1} · {u}]\n{w}"
                         for i, (u, w) in enumerate(blocks))
     return (
@@ -944,7 +987,8 @@ def _extract_prompt(home: str, away: str, blocks: list[tuple[str, str]]) -> str:
         "4. notes 는 한 줄이다.\n"
         "5. team 칸에는 아래 주어진 팀 이름을 그대로 쓴다.\n"
         "6. JSON 만 출력한다.\n"
-        f"[홈] {home}\n[원정] {away}\n\n{src}"
+        + want
+        + f"[홈] {home}\n[원정] {away}\n\n{src}"
     )
 
 
@@ -1052,8 +1096,13 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
         return {}
 
     try:
+        # 🔴 [HYP-1] **가설이 수집을 지휘한다.** need 를 프롬프트에 실어
+        #    "무엇을 찾는지"를 말한다. 못 받으면 종전과 같은 프롬프트다.
+        if need:
+            logger.info("[scout] %s@%s 가설 지휘 — 우선 찾을 것 %s",
+                        away, home, need)
         raw = await _complete_free(chain("form"),
-                                   _extract_prompt(home, away, blocks),
+                                   _extract_prompt(home, away, blocks, need),
                                    1536, "form")
     except Exception as exc:
         logger.warning("[scout] 추출 호출 실패 %s@%s: %s", away, home, exc)
@@ -1292,7 +1341,7 @@ async def _write_cache(redis, sport: str, game_id, articles: list[dict]) -> None
 #      종전대로 빅매치만 본다.
 _DUE_SQL = """
     SELECT g.id, g.sport, g.league, g.home, g.away, g.starts_at,
-           l.gate_label, l.gate_gap_pp
+           l.gate_label, l.gate_gap_pp, l.hypothesis
       FROM games g
       LEFT JOIN pick_ledger l ON l.game_id = g.id AND l.is_final
      WHERE g.status = 'scheduled'
@@ -1374,7 +1423,12 @@ async def run_satellite(pool, redis, *, sports: list[str], now=None,
               #    빅매치일 때만 추출된다(§3 상한).
               "gate_label": ((r.get("gate_label")
                               if hasattr(r, "get") else None)
-                             if r["id"] in selected else None)}
+                             if r["id"] in selected else None),
+              # 🔴 [HYP-1] 가설을 수집에 내려보낸다. `.get` 으로 읽는 이유는
+              #    gate_label 과 같다 — 옛 행·스키마 미적용에서 KeyError 로
+              #    수집 사이클이 통째로 죽지 않게.
+              "hypothesis": (r.get("hypothesis")
+                             if hasattr(r, "get") else None)}
         try:
             n = await gather(jg, redis, client=client, now=now, pool=pool)
         except Exception as exc:
