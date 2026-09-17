@@ -386,15 +386,42 @@ def contrib_return(players: list, **kw) -> float:
     return round(min(OUT_CAP, total * OUT_MULT * RETURN_MULT), 2)
 
 
-def drop_small(adj: dict | None) -> tuple:
-    """`(남긴 것, 뺀 것)`. |기여| < 2%p 는 뺀다.
+def min_contrib(sport: str | None = None) -> float:
+    """[THR-1 2026-09-17] 잡음 문턱. **종목마다 다르다.**
+
+    🔴 2.0 하나가 **야구 결장 한 명(1.5%p)을 구조적으로 배제**했다 — 야구는
+       결장이 대개 한 명씩 난다. 실측 2026-09-17: 딥서치가 "서호철 1군 말소"를
+       찾아냈는데 가감이 0 이었다.
+    🔴 **크기는 맞았다.** WAR/162 환산 — 평균 주전 2 WAR = 1.2%p · 좋은 주전
+       4 WAR = 2.5%p. 1.5%p 는 "평균 주전" 자리다. 틀린 것은 문턱이었다
+       (2.0 = WAR 3.2 컷). 근거 → docs/FORKS.md F-10
+    ⚠️ **축구는 2.0 그대로다** — "확정 라인업 변경 하나 = 승률 2~9%p"(F-1)라
+       문턱을 넘는다. 낮출 근거가 없다.
+    ⚠️ 종목을 모르면 **기본값**이다 — 옛 호출부가 안 깨진다.
+    🔴 값도 종목 분류도 손으로 안 적는다 — `config/rules.yaml` 과
+       `scoring.BASEBALL_SPORTS` 가 원본이다(`prob._table` 과 같은 것).
+    """
+    if not sport:
+        return MIN_CONTRIB_PP
+    from app.engine.scoring import BASEBALL_SPORTS
+
+    key = "baseball" if str(sport).lower() in BASEBALL_SPORTS else "soccer"
+    by = _R.get("adjust.min_contrib_pp_by_sport") or {}
+    v = (by or {}).get(key)
+    return float(v) if v is not None else MIN_CONTRIB_PP
+
+
+def drop_small(adj: dict | None, sport: str | None = None) -> tuple:
+    """`(남긴 것, 뺀 것)`. |기여| < 문턱 은 뺀다. 문턱은 **종목별**이다.
 
     🔴 **축소(`prob.shrink_and_cap`) 앞에서** 한다. 뒤에서 빼면 축소된 값으로
-       2%p 를 재게 되어 기준이 달라진다.
+       문턱을 재게 되어 기준이 달라진다.
+    ⚠️ `sport` 를 안 주면 종전 그대로다(기본 문턱).
     """
+    floor = min_contrib(sport)
     keep, dropped = {}, {}
     for k, v in (adj or {}).items():
-        (keep if abs(float(v)) >= MIN_CONTRIB_PP else dropped)[k] = v
+        (keep if abs(float(v)) >= floor else dropped)[k] = v
     return keep, dropped
 
 

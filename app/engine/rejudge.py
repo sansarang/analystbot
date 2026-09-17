@@ -142,7 +142,9 @@ def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
     #       U8 의 "contrib < 2%p 제외"는 adj 를 **만들 때** 거는 규칙이지
     #       재판정 때 소급해 다시 거는 규칙이 아니다.
     #    🔴 잡음 제외는 U8 규칙 그대로 — 축소 **앞**이다.
-    add_kept, dropped = A.drop_small(add)
+    # 🔴 [THR-1] 문턱은 **종목별**이다 — 야구 결장 한 명(1.5%p)이
+    #    2.0 하나에 구조적으로 배제되고 있었다(FORKS F-10).
+    add_kept, dropped = A.drop_small(add, sport)
     # 🔴 [PA-27-b 2026-09-17] **확정 XI 가 예상치를 대체한다. 얹지 않는다.**
     #    `주전결장`(이력의 주전이 오늘 명단에 없다)과 `라인업결장`(예상 XI 에
     #    있던 선수가 공식 XI 에 없다)은 기준선이 다르지만 **같은 선수가 양쪽에
