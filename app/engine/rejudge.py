@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 KEY_IN = "라인업복귀"
 KEY_OUT = "라인업결장"
 
+#: 🔴 [PA-27-b] 확정 XI 가 **대체하는** 축. 이름은 `prob.ADJ_RULES` 의 키다 —
+#   여기서 뜻을 새로 만들지 않는다.
+KEY_BASE_OUT = "주전결장"
+
 
 def _by_name(players: dict | None, names) -> list:
     """이름 목록 → 선수 dict. 못 찾으면 **빈 dict**(중요도 1.0 중립)."""
@@ -92,6 +96,21 @@ def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
     #       재판정 때 소급해 다시 거는 규칙이 아니다.
     #    🔴 잡음 제외는 U8 규칙 그대로 — 축소 **앞**이다.
     add_kept, dropped = A.drop_small(add)
+    # 🔴 [PA-27-b 2026-09-17] **확정 XI 가 예상치를 대체한다. 얹지 않는다.**
+    #    `주전결장`(이력의 주전이 오늘 명단에 없다)과 `라인업결장`(예상 XI 에
+    #    있던 선수가 공식 XI 에 없다)은 기준선이 다르지만 **같은 선수가 양쪽에
+    #    걸린다** — 함께 두면 한 사람을 두 번 센다.
+    #    실측 재현: {'주전결장': -1.5, '라인업결장:home': -3.0} 이 함께 남았다.
+    #    딥서치 근거(2026-09-17): "예상 라인업은 구단이 팀을 발표할 때까지만
+    #    유효하고 그 뒤에는 **확정 11명으로 대체된다**"(Sportmonks). 현대 Elo
+    #    계열도 확정 라인업을 얹지 않고 갈아끼운다(PlayerElo · FanPick).
+    #    ⚠️ **결장이 실제로 확인됐을 때만** 대체한다. 공식 XI 가 없거나
+    #       복귀만 있으면 종전대로 `주전결장` 을 유지한다 — 모르면 안 바꾼다.
+    #    ⚠️ 결장과 무관한 축(이동연전·휴식 등)은 건드리지 않는다.
+    replaced = None
+    if any(k.startswith(KEY_OUT) for k in add_kept) and KEY_BASE_OUT in base_adj:
+        base_adj = {k: v for k, v in base_adj.items() if k != KEY_BASE_OUT}
+        replaced = KEY_BASE_OUT
     kept = {**base_adj, **add_kept}
     # 🔴 `prob.p_code` 를 그대로 쓴다 — 승률 상한이 여기서 다시 걸린다.
     p_after = P.p_code(_market_of(p_code, base_adj), kept, sport,
@@ -108,7 +127,10 @@ def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
             grade_after = C.LOW
         grade_after = C.cap_by_snippet(grade_after, snippet)
 
+    if replaced:
+        notes.append(f"{replaced} → 확정 XI 로 대체")
     out.update({"adj_after": kept, "adj_dropped_after": dropped,
+                "replaced_axis": replaced,
                 "p_code_after": p_after, "grade_after": grade_after,
                 "changed": True, "why": " · ".join(notes),
                 "axes_after": A.axes(kept)})
