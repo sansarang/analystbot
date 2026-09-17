@@ -1346,6 +1346,30 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
                            if ks is not None else None),
            "home_facts": collected.get("home") or {},
            "away_facts": collected.get("away") or {}}
+    # 🔴 [STD-1 2026-09-17] **팀 성적을 붙인다.** 목표 분석의 첫 축이고,
+    #    새 소스 없이 `games(status='final')` 로 만든다.
+    # ⚠️ 시즌 전체가 아니라 **보유 구간**이다 — 그 사실을 함께 싣는다.
+    # ⚠️ 실패해도 분석을 막지 않는다.
+    try:
+        from app.engine.standings import table as _std_table
+
+        srows = await conn.fetch(
+            """SELECT home, away, home_score, away_score FROM games
+                WHERE sport = $1 AND status = 'final'
+                  AND home_score IS NOT NULL AND starts_at < $2::timestamptz
+                ORDER BY starts_at""",
+            g["sport"], g["starts_at"])
+        if srows:
+            blk["standings"] = _std_table([dict(r) for r in srows])
+            first = await conn.fetchval(
+                """SELECT min(starts_at)::date FROM games
+                    WHERE sport = $1 AND status = 'final'
+                      AND home_score IS NOT NULL""", g["sport"])
+            blk["standings_note"] = (f"보유 구간 {first} 이후 {len(srows)}경기"
+                                     if first else "보유 구간")
+    except Exception as exc:
+        logger.info("[analysis] game=%s 팀 성적 없음: %s", game_id, exc)
+
     # 🔴 [MKT-4 2026-09-17] **요구 확률을 붙인다.** 디빅 확률은 "방향이 맞나",
     #    요구 확률은 "값이 있나" 를 답한다. 종전에는 뒤를 아무도 계산하지 않아
     #    "방향은 맞지만 가격이 엣지를 다 먹었다"를 코드가 말할 수 없었다.

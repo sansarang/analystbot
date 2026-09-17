@@ -178,6 +178,20 @@ def build_input(blk: dict, *, with_schema: bool = False) -> str:
         if f.get("notes"):
             bits.append(str(f["notes"]))
         lines.append(f"[{label} 사실] " + " · ".join(bits))
+    # 🔴 [STD-1 2026-09-17] **팀 성적을 싣는다.** 목표 분석의 첫 축이다
+    #    ("KIA .544(4위) vs 키움 .352(최하위, 3연패)").
+    #    ⚠️ **"보유 구간"이라고 밝힌다** — 우리 DB 는 시즌 전체가 아니다
+    #       (KBO 는 2026-06-28 부터). 시즌 순위인 척하면 그게 거짓 재료다.
+    #    ⚠️ 양 팀이 다 없으면 줄을 안 쓴다.
+    st = b.get("standings") or {}
+    if st:
+        from app.engine.standings import line_of
+
+        got = [x for x in (line_of(st, b.get("home")),
+                           line_of(st, b.get("away"))) if x]
+        if got:
+            note = b.get("standings_note") or "보유 구간"
+            lines.append(f"[팀 성적 · {note}] " + " / ".join(got))
     # 🔴 [ANL-9 2026-09-17] **선발을 싣는다.** 사용자가 준 목표 분석이
     #    "선발 축이 이 경기의 전부"라고 한 축인데 모델이 본 적이 없었다.
     #    ⚠️ **ERA 를 만들지 않는다** — `starter_recent.slim_start` 머리말이
@@ -245,6 +259,10 @@ def fact_words(blk: dict) -> set[str]:
             if not v:
                 continue
             parts += [str(x) for x in v] if kind is list else [str(v)]
+    # 🔴 [STD-1] 연승·연패도 사실이다("3연패").
+    for t, bx in ((blk or {}).get("standings") or {}).items():
+        parts.append(t)
+        parts.append((bx or {}).get("streak"))
     # 🔴 [ANL-9] 선발 이름·상대도 **사실**이다 — l1 이 인용을 알아보게 한다.
     for side in ("home_starter", "away_starter"):
         st = (blk or {}).get(side) or {}
