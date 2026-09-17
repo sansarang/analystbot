@@ -199,6 +199,84 @@ APScheduler 가 있고 `_send_daily_summary`(잡 → 순수 함수 → 텔레그
 
 ---
 
+## F-6 · 승자를 **LLM 이 정하나 코드가 정하나** (2026-09-17 · 규격 문서 §0)
+
+**갈림길** — 「Gemini 판정 서술 규격」 §0 은 "Gemini 를 **판정하는 자에서
+설명하는 자로** 바꾼다"고 한다. 그런데 이 저장소는 **페이블 방식**이다:
+
+```
+5d54e94  "최종 판정은 Anthropic Fable 이 단 한 번에 낸다"
+         사용자 지시 2026-09-06: "마지막 판정은 단 한 번으로 제한하고 fable 로 정해라"
+verdict.decide:  parsed["승자"] 가 없으면 판정 자체가 없다 · 주석 "승자가 본체다"
+```
+**지금은 LLM 이 승자를 정한다. 그게 설계다.** 규격은 그 뿌리를 바꾸자는 것이다.
+
+**찾은 자료 — 갈린다. 그리고 갈리는 지점이 분명하다.**
+
+### ① "LLM 은 판정 못 한다"는 **너무 센 말이다**
+
+| 출처 | 내용 |
+|---|---|
+| LLM-SoccerArena (arXiv 2607.24573 · WC2026 104경기) | **Gemini 3.1 Pro 평균 브라이어 0.497 vs 시장 0.498** — 사실상 동률 |
+| 같은 논문 | 웹 접근이 브라이어를 **0.535 → 0.512** 로 내린다(T−24h) |
+| WC2026-Agents | 웹 에이전트 4종 중 **시장을 이긴 것은 없다** |
+| AI World Cup (arXiv 2608.03416) | 10개 LLM 단일 예측 — GPT-5.5 Thinking 744점 선두 |
+
+→ **프런티어 LLM 은 시장과 비긴다. 이기지는 못한다.**
+
+### ② 그런데 **자기보고 확신은 확률이 아니다** — 여기는 안 갈린다
+
+> "자기보고 확신은 정확도·총점 어느 쪽과도 무관했다. **자기보고 확신을
+>  보정된 확률로 취급해서는 안 된다.**" — AI World Cup
+> "보고된 확신은 반드시 보정돼 있지 않다 … **예측이 맞는지에 대한 신호로
+>  해석해서는 안 된다.**" — LLM-SoccerArena
+
+→ 우리는 이미 맞게 하고 있다. `verdict.shadow_level` 이 LLM 확신을 **섀도로
+   내려 카드에 안 보낸다.** 규격 §0 의 절반은 **이미 구현돼 있다.**
+
+### ③ 운영 구조의 통설은 규격 편이다
+
+> 결정적 데이터 처리 계층이 분석의 뼈대를 맡고, **LLM 은 해석·설명·전달에
+> 집중한다.** LLM 은 언어에 강하지만 **신뢰할 수 있는 수치 분석에는 여전히
+> 약하고**, 최적화 목표가 재현성이 아니라 **그럴듯함**이다. — Towards Data Science
+> 결정 계층이 판정을 내고 **서술 계층이 사람이 읽을 글을 만든다.** 이 분리가
+> **사후 서술이 거짓 근거로 쓰이는 것을 막는다.** — 같은 글
+
+→ 마지막 문장이 이 저장소와 정면으로 맞닿는다. 지금은 **같은 LLM 이 승자도
+   정하고 그 승자를 정당화하는 글도 쓴다.** 서술이 판정의 독립 검증이 못 된다.
+
+### 🔴 우리 실측은 **두 겹으로 오염돼 있다** — 이것부터 말해야 한다
+
+CLAUDE.md 는 판정 확률 **AUC 0.5122 · 브라이어 0.2537**(시장 0.6421 · 0.2394)
+을 근거로 쓴다. 오늘 운영 표도 355건에 **적중 0.549 · 브라이어 0.251** 이다.
+그런데 그 숫자는 아래 두 조건에서 나왔다:
+
+1. **판정이 배당을 못 봤다.** 종전 규칙이 "배당을 판정 입력에 절대 넣지
+   않는다"였고 **2026-09-13 에 뒤집혔다.** 벤치마크는 개방형 접근이 브라이어를
+   0.023 개선한다고 말한다 — 눈을 가린 판정을 재고 "LLM 은 못 한다"고 결론
+   내린 셈이다.
+2. **프런티어 모델이 아니다.** 시장과 비긴 것은 **Gemini 3.1 Pro** 다. 우리
+   운영 판정은 무료 사슬이고, 오늘 배포 스모크에서 `gemini-3.5-flash-lite` 가
+   **3회 중 2회 파싱 실패**했다.
+
+→ **"LLM 이 승자를 정하면 안 된다"는 아직 측정으로 뒷받침되지 않았다.**
+   측정된 것은 "**눈 가린 소형 모델**이 승자를 정하면 AUC 0.51"이다.
+
+### 결론 — 셋으로 나뉘고, 셋의 확실성이 다르다
+
+| | 자료가 말하는 것 | 지금 |
+|---|---|---|
+| **확신 등급** | LLM 자기보고를 쓰면 안 된다 — **확실** | ✅ 이미 섀도 |
+| **서술·판정 분리** | 같은 주체가 결정하고 정당화하면 서술이 검증이 못 된다 — **통설** | 🔴 안 됨 |
+| **승자** | 프런티어면 시장과 비긴다 · 우리 실측은 오염 — **미결** | LLM 이 정한다 |
+
+🔴 **승자를 코드로 옮기는 것은 지금 결정하지 않는다.** 먼저 **잴 수 있다** —
+원장의 `gate_vs_llm = 'diff'`(오늘 355건 중 **25건**)가 정확히 "코드와 LLM 이
+갈린 경기"다. 갈렸을 때 누가 맞았는지를 세면 이 갈림길이 **자료가 아니라
+우리 원장으로** 닫힌다. 25건은 아직 적고, 오늘 배포로 쌓이기 시작한다.
+
+---
+
 ### 출처
 
 - [Sportmonks — Predicted Lineups](https://www.sportmonks.com/football-api/predicted-lineups/)
@@ -207,6 +285,9 @@ APScheduler 가 있고 `_send_daily_summary`(잡 → 순수 함수 → 텔레그
 - [FanGraphs — Replacement Level](https://library.fangraphs.com/misc/war/replacement-level/)
 - [Hockey Graphs — WAR: Replacement Level (Part 3)](https://hockey-graphs.com/2019/01/18/wins-above-replacement-replacement-level-decisions-results-and-final-remarks-part-3/)
 - [panna #242 — zero-fill reads as average](https://github.com/peteowen1/panna/issues/242)
+- [LLM-SoccerArena (arXiv 2607.24573)](https://arxiv.org/abs/2607.24573)
+- [AI World Cup 2026 (arXiv 2608.03416)](https://arxiv.org/abs/2608.03416)
+- [Towards Data Science — Hybrid AI: deterministic analytics + LLM reasoning](https://towardsdatascience.com/hybrid-ai-combining-deterministic-analytics-with-llm-reasoning/)
 - [LogRocket — Slack workflows for PMs who hate dashboards](https://blog.logrocket.com/product-management/ai-powered-slack-workflows-for-product-managers/)
 - [Kaelio — Automated metrics digests in Slack](https://www.kaelio.com/blog/how-to-set-up-automated-business-metrics-digests-in-slack)
 - [Bigeye — Which scheduler should I use](https://www.bigeye.com/blog/which-scheduler-should-i-use-for-dbt-jobs)
