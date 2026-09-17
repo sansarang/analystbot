@@ -231,6 +231,25 @@ def gate_vs_llm(gate_label: str | None, market_view: str | None) -> str | None:
     return "same" if same.get(gate_label) == market_view else "diff"
 
 
+def answered_model(configured: str | None) -> str | None:
+    """**실제로 응답한** provider/model. 못 읽으면 설정값, 그것도 없으면 None.
+
+    🔴 [ANL-3 2026-09-17] 종전에는 원장에 `s.matchup_model`(설정값)을 적었다.
+       무료 사슬은 폴백하므로 그건 거짓이 된다 — 실측: 원장 'claude-opus-5',
+       실제 응답 'gemini/gemini-3.5-flash-lite'. `matchup.py:1621` 이 이미
+       적어 둔 병이다("폴백이 일어나면 … 모델별 성적을 영영 못 가른다").
+    ⚠️ `LAST_USAGE` 는 **직전 호출** 값이다. 폼 같은 다른 역할이 끼면 그
+       모델이 잡히므로 역할을 확인하고, 아니면 설정값으로 돌아간다
+       (`matchup._real_model` 과 같은 규약 — 거기는 v2 판정 경로가 쓴다).
+    """
+    from app.engine.team_form import LAST_USAGE
+    from app.llm.judge_route import JUDGE_ROLES
+
+    if (LAST_USAGE or {}).get("role") in JUDGE_ROLES and LAST_USAGE.get("model"):
+        return str(LAST_USAGE["model"])
+    return str(configured) if configured else None
+
+
 def to_ledger(out: dict | None, *, model: str | None,
               gate_label: str | None, failed: bool = False) -> dict:
     """원장 칸으로. ⚠️ 확률·확신·pick 은 **건드리지 않는다.**"""
@@ -336,7 +355,8 @@ async def run(jg: dict, blk: dict, *, gate_label: str | None,
     parsed = parse_json_object(text or "")
     if not isinstance(parsed, dict):
         out["skipped"] = "JSON 이 아니다"
-        out["ledger"] = to_ledger(None, model=s.matchup_model,
+        # 🔴 [ANL-3] **실제로 답한 모델**을 적는다. 설정값은 폴백하면 거짓이다.
+        out["ledger"] = to_ledger(None, model=answered_model(s.matchup_model),
                                   gate_label=gate_label, failed=True)
         return out
 
@@ -345,7 +365,8 @@ async def run(jg: dict, blk: dict, *, gate_label: str | None,
     bad = banned_words(parsed.get("서술"))
     out.update({"out": parsed, "l1": (ok1, why1), "l2": (ok2, why2),
                 "banned": bad})
-    led = to_ledger(parsed, model=s.matchup_model, gate_label=gate_label)
+    led = to_ledger(parsed, model=answered_model(s.matchup_model),
+                    gate_label=gate_label)
 
     # 🔴 `main_axis` 는 **U8 코드 값이 정본**이다. 다르면 기록만 하고 코드를 쓴다.
     code_axes = (jg.get("axes") or {}).get("main_axis")

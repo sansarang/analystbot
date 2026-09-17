@@ -114,5 +114,7 @@ def test_L1_반려가_원장을_막지_않는다():
     이 성질 때문에 ANL-2 하나로 `analyze_failed` 6/6 이 풀린다."""
     src = inspect.getsource(AN.run)
     tail = src.split("ok1, why1 = l1(", 1)[1]
-    assert "to_ledger(parsed, model=s.matchup_model, gate_label=gate_label)" in tail
-    assert "failed=True" not in tail
+    # ⚠️ **뜻으로 잰다.** 처음에 호출 한 줄을 글자 그대로 박았더니 ANL-3 이
+    #    같은 줄의 `model=` 만 바꿨는데 계약이 깨졌다 — 뜻은 그대로인데.
+    assert "to_ledger(parsed" in tail, "반려 뒤 원장 기록이 사라졌다"
+    assert "failed=True" not in tail, "L1 반려를 실패로 적고 있다"
