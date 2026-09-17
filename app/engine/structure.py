@@ -147,6 +147,14 @@ def grade(edge_pp: float | None) -> str | None:
     return MID if e >= EDGE_MIN_PP else None
 
 
+#: 🔴 [ANL-8 2026-09-17] 구조 후보 **한 항목의 모양.** `attach_derived` 가 이
+#   이름으로 만들고, `analyze.l1` 이 이 이름으로 대조하고, `analyze.output_spec`
+#   이 이 이름으로 모델에게 말한다. 세 곳이 각자 적으면 곧 사본이 된다.
+#   ⚠️ 계약이 **생산물의 키**와 이 상수가 같은지 잰다 — 상수만 고치고 생산을
+#      안 고치는 사고를 막는다.
+CAND_FIELDS = ("시장", "라인", "쪽", "확률")
+
+
 def attach_derived(blk: dict, rows: list | None, *, home: str = "",
                    away: str = "") -> dict:
     """[U10 항목 2] 파생 디빅을 `blk["derived"]` 에 **붙인다.**

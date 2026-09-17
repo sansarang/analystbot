@@ -84,6 +84,13 @@ def _pct3(t) -> str:
 JSON_ONLY = "아래 JSON만 출력한다. 다른 텍스트, 마크다운 백틱 금지."
 
 
+def _cand_fields() -> tuple:
+    """구조 후보 항목의 칸 이름. 🔴 원본은 `structure.CAND_FIELDS` 다."""
+    from app.engine.structure import CAND_FIELDS
+
+    return CAND_FIELDS
+
+
 def output_spec() -> str:
     """출력 지시. 🔴 칸 이름·라벨을 **손으로 적지 않는다** — 스키마에서 만든다.
 
@@ -95,7 +102,10 @@ def output_spec() -> str:
         "칸: " + " · ".join(SCHEMA),
         "결정축_방향: " + " | ".join(DIRECTIONS),
         "시장_판단: " + " | ".join(MARKET_VIEWS),
-        "구조_후보: 목록. 없으면 빈 목록",
+        # 🔴 [ANL-8] **항목 모양까지 말한다.** 안 말하면 모델이 문자열을 넣고
+        #    L1 이 반려한다(종전에는 터졌다). 이름 원본은 structure.CAND_FIELDS.
+        "구조_후보: 목록. 항목은 칸 " + "·".join(_cand_fields())
+        + " 를 가진 객체. 없으면 빈 목록",
         "근거_수: 정수",
         # 🔴 `l1` 이 반려하는 규칙을 **미리 말한다.** 목록은 `NO_NUM_KEYS` 가
         #    원본이다 — 여기서 칸 이름을 다시 적지 않는다.
@@ -263,10 +273,19 @@ def l1(out: dict, blk: dict) -> tuple[bool, str]:
         return False, "결정축_근거가 비었다"
     if not cites(reason, fact_words(blk)):
         return False, "결정축_근거가 입력 블록에 없는 사실이다"
-    names = {str(d.get("시장") or "") for d in (blk or {}).get("derived") or []}
+    from app.engine.structure import CAND_FIELDS
+
+    key = CAND_FIELDS[0]
+    names = {str(d.get(key) or "") for d in (blk or {}).get("derived") or []}
     for c in out.get("구조_후보") or []:
-        if str(c.get("시장") or "") not in names:
-            return False, f"구조_후보가 파생 디빅에 없는 시장이다: {c.get('시장')!r}"
+        # 🔴 [ANL-8 2026-09-17] **모양을 믿지 않는다.** 실측: 모델이 문자열
+        #    목록을 내자 `c.get` 이 터졌다(운영 game=1754 분석 실패).
+        #    모양이 틀린 것은 **반려 사유**지 크래시가 아니다 — 크래시는
+        #    analyze_failed 로도 안 남고 로그 한 줄로 사라진다.
+        if not isinstance(c, dict):
+            return False, f"구조_후보 항목 모양이 표 밖이다: {type(c).__name__}"
+        if str(c.get(key) or "") not in names:
+            return False, f"구조_후보가 파생 디빅에 없는 시장이다: {c.get(key)!r}"
     return True, ""
 
 
