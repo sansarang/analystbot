@@ -102,5 +102,6 @@ def test_record_prior가_라벨을_칸으로_쓴다():
     src = pathlib.Path("app/engine/pick_ledger.py").read_text(encoding="utf-8")
     assert "gate_label = $6" in src
     # 보드 고정 분기도 같은 칸을 쓴다(PA-6 경로)
-    # ⚠️ [PA-15] gap 인자가 뒤에 붙어 `G.BOARD, None)` 이 됐다 — 칸을 쓰는지만 본다.
-    assert "G.BOARD, None)" in src or "G.BOARD)" in src
+    # ⚠️ 인자가 늘 때마다 꼬리가 바뀐다(PA-15 gap · PA-24 p_base).
+    #    **칸을 쓰는지**만 본다 — 꼬리 모양은 계약이 아니다.
+    assert "G.BOARD," in src or "G.BOARD)" in src

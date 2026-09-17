@@ -670,7 +670,8 @@ _PRIOR_SAVE = """
            p_market = COALESCE(p_market, $4::double precision),
            gate_reason = $5,
            gate_label = $6,
-           gate_gap_pp = $7::double precision
+           gate_gap_pp = $7::double precision,
+           p_base = $8::jsonb
      WHERE game_id = $1 AND is_final
 """
 
@@ -784,7 +785,7 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
             #    `G.BOARD` 와 글자가 다르다 — 그래서 파싱을 못 쓴다.
             await conn.execute(_PRIOR_SAVE, game_id, None, "none", None,
                                f"보드고정 · 티어 미기입({' · '.join(miss)})",
-                               G.BOARD, None)
+                               G.BOARD, None, None)
             # 🔴 [PA-6 2026-09-16] **여기서 끝내지 않는다.** 종전 `return None`
             #    은 사전값만 적고 돌아갔고, 그러면 아래 가설 생성(U5)도,
             #    호출부의 확인 판정(U7)·분석(U12)도 통째로 건너뛰어졌다.
@@ -822,9 +823,15 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
         if sport == "soccer":
             pri = P.soccer_prior(th, ta)
             p_home = pri[0]
+            # 🔴 [PA-24 · 지시문 8단계] **3-way 를 통째로 남긴다.** 종전에는
+            #    `pri[0]` 에서 무·원정이 사라져, 조정이 얼마나 움직였는지를
+            #    원장만 보고 답할 수 없었다(10단계 채점의 전제).
+            p_base = {"h": pri[0], "d": pri[1], "a": pri[2]}
         else:
             p_home = P.baseball_prior(th, ta)
             pri = p_home
+            # 야구는 2-way 라 홈만이다. 없는 칸을 만들지 않는다.
+            p_base = {"h": p_home}
 
         rows = await conn.fetch(_MOVE_SNAP_SQL, game_id)
         snaps = _snap_probs(rows)
@@ -876,7 +883,8 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
         await conn.execute(_PRIOR_SAVE, game_id, float(p_home), src,
                            (mp or {}).get("home"), f"{v.label} · {why}",
                            v.label,
-                           None if v.gap_pp is None else float(v.gap_pp))
+                           None if v.gap_pp is None else float(v.gap_pp),
+                           json.dumps(p_base, ensure_ascii=False))
         if hyp is not None:
             await conn.execute(
                 "UPDATE pick_ledger SET hypothesis = $2::jsonb "
@@ -887,7 +895,7 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
                 float(p_home), src, float(mp.get("home") or 0), v.label,
                 v.gap_pp, v.side)
     return {"label": v.label, "gap_pp": v.gap_pp, "side": v.side,
-            "p_prior": float(p_home), "prior_src": src}
+            "p_prior": float(p_home), "prior_src": src, "p_base": p_base}
 
 
 # ── [MOV-2 2026-09-14] 배당 이동 분류 배선 — **저장 전용.** 판정은 읽지 않는다.

@@ -875,3 +875,12 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS pinnacle_gap_label TEXT;
 --   검색 대상을 고를 때 쓴다(상한 슬레이트 30% · 최소 2 · 최대 8).
 --   🔴 `gate_label` 과 한 쌍이다 — 라벨만으로는 우선순위를 못 정한다.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS gate_gap_pp DOUBLE PRECISION;
+
+-- [PA-24 2026-09-17 · 지시문 8단계] 조정 **전** 기본 확률(4단계 Elo 결과).
+--   모양: {"h": 0.562, "d": 0.214, "a": 0.224}  (야구는 h 만)
+--   🔴 종전에는 `record_prior` 가 `soccer_prior(...)` 로 3-way 를 만들어 놓고
+--      `p_home = pri[0]` 로 홈만 남겼다 — 무·원정이 그 줄에서 사라졌다.
+--      그래서 "조정이 얼마나 움직였나"를 원장만 보고 답할 수 없었고,
+--      10단계 변수별 채점의 전제가 없었다.
+--   ⚠️ `p_prior`(홈 확률)는 그대로 둔다 — 읽는 곳이 여럿이다. 이 칸은 추가다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS p_base JSONB;
