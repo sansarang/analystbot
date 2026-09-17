@@ -227,6 +227,7 @@ class _StubConn:
                                          "why": "x"}],
                                "sufficient_count": 2, "reason": ""},
                 "p_code": 0.61, "adj_pp": {}, "p_market": 0.55, "p_prior": 0.58,
+                "odds": None, "model_probs": None,
                 "predicted_side": "home", "confidence": "중"}
 
     async def fetch(self, sql, *a):

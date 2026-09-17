@@ -634,6 +634,11 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS analyze_failed       BOOLEAN;
 --   🔴 로그에만 있으면 재배포 때 날아간다 — 오늘 실제로 그래서 원인을 못 봤다.
 --   ⚠️ 칸 하나로 모은다. 다섯으로 쪼갤 근거는 아직 없다(무엇을 자주 조회할지 모른다).
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS analyze_check JSONB;
+-- [LAM-1 2026-09-17] **우리** 마켓 확률 {"totals": {라인: {"Over","Under"}}, …}.
+--   🔴 `scoring.game_distribution` 이 이미 계산하는데 pipeline 이 버리고 있었다.
+--      그래서 structure.candidates 가 "득점 환경 모델이 없다"며 총점을 건너뛰었다.
+--   ⚠️ 시장 확률(p_market)과 **다른 것**이다 — 이건 우리 모델의 값이다.
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS model_probs JSONB;
 
 -- [OBS-1 2026-09-13 Part 4] 상시 관측. 침묵이 기본이다.
 --   watch_state: 관측 | 후보 | 추천대기 | 추천 | 취소 | 종료

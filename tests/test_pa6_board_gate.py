@@ -102,6 +102,7 @@ async def test_보드고정은_analyze를_부르지_않는다(monkeypatch):
                 return {"id": 1, "sport": "soccer", "league": "ACL엘리트",
                         "home": "A", "away": "B", "starts_at": None}
             return {"hypothesis": {}, "p_code": 0.5, "adj_pp": {}, "p_prior": 0.5,
+                    "odds": None, "model_probs": None,
                     "p_market": 0.5, "predicted_side": "home",
                     "confidence": "하"}
 

@@ -27,7 +27,8 @@ class _Conn:
             return {"id": 1, "sport": "soccer", "league": "세리에A",
                     "home": "H", "away": "A", "starts_at": None}
         return {"hypothesis": {}, "p_code": 0.62, "adj_pp": {},
-                "p_market": 0.55, "p_prior": 0.58,
+                "p_market": 0.55, "p_prior": 0.58, "odds": None,
+                "model_probs": None,
                 "predicted_side": "home", "confidence": "중"}
 
     async def fetch(self, sql, *a):

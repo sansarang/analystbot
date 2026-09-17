@@ -81,7 +81,8 @@ async def test_자리표_수가_실제로_맞는다():
                 return {"id": 1, "sport": "mlb", "league": "MLB",
                         "home": "H", "away": "A", "starts_at": None}
             return {"hypothesis": {}, "p_code": 0.62, "adj_pp": {},
-                    "p_market": 0.55, "p_prior": 0.58, "predicted_side": "home",
+                    "p_market": 0.55, "p_prior": 0.58, "odds": None,
+                    "model_probs": None, "predicted_side": "home",
                     "confidence": "중"}
 
         async def fetch(self, sql, *a):

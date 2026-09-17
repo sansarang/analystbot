@@ -191,6 +191,10 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         "llm_level": ((jg.get("llm_verdict") or {}).get("확신")
                       if jg.get("llm_verdict") is not None
                       else (matchup.get("확신") or matchup.get("확신도"))),
+        # 🔴 [LAM-1 2026-09-17] **우리 마켓 확률을 버리지 않는다.**
+        #    scoring 이 총점·핸디 확률을 이미 내는데 pipeline 이 담아만 두고
+        #    원장에 안 실어서, 구조 픽이 총점을 영영 못 골랐다.
+        "model_probs": jg.get("model_probs"),
         "p_market_spine": jg.get("p_market_spine"),
         # 🔴 [SEND-1] **실제 나간 값**을 남긴다. `p_code` 는 판정 직후(딥서치
         #    앞) 값이라 카드 숫자와 다르다 — 사후 대조는 나간 값으로 해야 한다.
@@ -382,11 +386,11 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                               p_market, p_code, adj_pp, adj_evidence,
                               llm_winner, llm_level,
                               p_model, model_src, model_w, model_gap_pp,
-                              gate_vs_llm)
+                              gate_vs_llm, model_probs)
                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12,
                                    $13,$14,$15,$16::jsonb,$17::jsonb,$18,
                                    $19,$20,$21::jsonb,$22::jsonb,$23,$24,
-                                   $25,$26,$27,$28,$29)""",
+                                   $25,$26,$27,$28,$29,$30::jsonb)""",
                         row["game_id"], row["sport"], row["league"], row["date"],
                         row["p_home"], row["favored"], row["confidence"],
                         row["lineup_status"], row["gate_result"], row["model"], n,
@@ -402,7 +406,11 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         row.get("llm_level"),
                         row.get("p_model"), row.get("model_src"),
                         row.get("model_w"), row.get("model_gap_pp"),
-                        row.get("gate_vs_llm"))
+                        row.get("gate_vs_llm"),
+                        # 🔴 [LAM-1] 칸을 늘렸으면 **자리표도 늘린다**($30).
+                        #    PA-23 에서 칸만 늘리고 안 늘려 저장이 터질 뻔했다.
+                        json.dumps(row.get("model_probs"), ensure_ascii=False)
+                        if row.get("model_probs") else None)
                     stats["rejudged" if existing is not None else "inserted"] += 1
                     # [PA-19] 부수 기록은 **한 곳**이다 — unchanged 분기와
                     #   같은 함수를 부른다(두 곳에 적으면 한쪽만 늘어난다).
@@ -1264,7 +1272,7 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
         #    분석은 "p_prior None" 을 보고 있었다.
         # 🔴 [MKT-4] `odds` 를 함께 읽는다 — 요구 확률(1/배당)의 재료다.
         "SELECT hypothesis, p_code, adj_pp, p_market, predicted_side, "
-        "confidence, p_prior, odds FROM pick_ledger "
+        "confidence, p_prior, odds, model_probs FROM pick_ledger "
         "WHERE game_id = $1 AND is_final", game_id)
     if row is None:
         return None
@@ -1391,8 +1399,20 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
         from app.engine import structure as ST
 
         der = derived_probs([dict(r) for r in rows])
+        # 🔴 [LAM-1 2026-09-17] **우리 총점 확률을 넘긴다.** 없으면 종전대로
+        #    총점은 건너뛴다(지어내지 않는다).
+        # ⚠️ JSON 을 거치면 라인 키가 **문자열**이 된다("7.5") — 숫자로 되돌린다.
+        mp = row["model_probs"]
+        mp = json.loads(mp) if isinstance(mp, str) else (mp or {})
+        ours = {}
+        for k, v in ((mp.get("totals") or {}) if isinstance(mp, dict) else {}).items():
+            try:
+                ours[float(k)] = v
+            except (TypeError, ValueError):
+                continue
         picks = ST.candidates(p_code=row["p_code"], derived=der,
-                              home=g["home"], away=g["away"])
+                              home=g["home"], away=g["away"],
+                              ours_totals=ours or None)
         if picks:
             top = max(picks, key=lambda x: x.edge_pp)
             payload = {"market": top.market, "side": top.side,
