@@ -277,6 +277,82 @@ CLAUDE.md 는 판정 확률 **AUC 0.5122 · 브라이어 0.2537**(시장 0.6421 
 
 ---
 
+## F-7 · 승자를 코드가 덮으면 **서술은 무엇이 되나** (2026-09-17 · 규격 §0)
+
+**갈림길** — P0-1(코드가 승자·확신을 덮어쓴다)을 되돌릴까, 둘까.
+
+**찾은 자료 — 선택지 자체가 틀렸다. 둘 다 서술을 믿으면 안 된다.**
+
+| 출처 | 내용 |
+|---|---|
+| Post-Hoc Reasoning in CoT (arXiv 2603.01437) | 모델은 **설명하기 전에 이미 답을 정해 놓았다** — 마지막 pre-CoT 토큰 활성에서 선형 디코딩으로 **AUC 0.9 이상** |
+| 같은 논문 | 자기가 안 고른 답을 정당화하라고 **강제하면** 두 가지가 나온다: **confabulation(거짓 전제를 지어냄)** · non-entailment(전제는 맞는데 결론이 안 따라옴) |
+| CoT in the Wild Is Not Always Faithful (arXiv 2503.08679) | 숨은 단서로 답해 놓고 **CoT 에서는 빼고** 사후 합리화를 쓴다 |
+| Chain-of-Thought Is Not Explainability | 서술은 설명이 아니다 |
+
+**두 갈래가 각자 다른 병을 앓는다:**
+
+```
+LLM 이 정하고 LLM 이 설명    → 앞뒤는 맞지만 **설명이 진짜 이유가 아니다**(사후 합리화)
+코드가 정하고 LLM 이 설명    → **자기가 안 고른 답을 정당화**하는 상황 = confabulation 유발
+```
+
+🔴 **P0-1 의 구조가 정확히 두 번째다.** 우리 시스템은 이미 그 위험 위에 있다.
+
+**그래서 답은 "누가 정하나"가 아니다:**
+1. **서술을 검증으로 쓰지 않는다.** 검증은 `l1` 처럼 **외부 자료와 대조**하는 것뿐이다.
+2. **승자가 바뀌면 서술을 버린다.** v3 는 DB 가 승자를 바꿀 때 이미 그렇게 한다
+   (`_story = "" if ref["승자변경"]`). **코드 덮어쓰기(P0-1)에도 같은 규칙이
+   있는지는 안 쟀다.** 없으면 그건 결정이 아니라 **결함**이다.
+
+---
+
+## F-8 · 서술 반려 뒤 **재호출을 허용할까** (2026-09-17 · 규격 §7-7)
+
+**갈림길** — 규격은 "반려 시 재호출 최대 2회", 커밋 `5d54e94` 는 **"판정은 단
+한 번"**(같은 재료로 0.440 → 0.590 → 0.450 으로 갈린 실측이 근거).
+
+**찾은 자료 — 갈리지 않는다. 둘은 다른 것이다.**
+
+| 출처 | 내용 |
+|---|---|
+| DEV (검증 실패 시 오류를 재시도에 먹여라) | **같은 프롬프트로 그냥 재시도하면 성공 확률이 대체로 같다.** 대신 검증 오류와 모델의 잘못된 출력을 **다음 프롬프트에 넣고** 그것만 고치라고 해야 한다 |
+| 같은 글 | 오류를 입력으로 주면 "이름 붙은 구체적 실수"를 고치는 일이 되어 **훨씬 싼 작업**이다 |
+| 실무 패턴 | 오류 유형별 힌트를 붙여 최대 3회 재호출 · 소진하면 결정적 폴백 |
+
+```
+막아야 할 것:  같은 재료로 **다시 굴리기**        ← 5d54e94 가 막은 것
+허용해야 할 것: "네가 쓴 X 가 규칙 Y 를 어겼다, Y 만 고쳐라"  ← 다시 굴리기가 아니다
+```
+
+**안전장치까지 자료가 준다** — 재호출 결과의 **승자가 바뀌면 버린다.** 그러면
+"판정은 단 한 번"이 글자 그대로 지켜지면서 형식 반려만 고쳐진다.
+
+---
+
+## F-9 · 서술의 **어조를 기계로 강제할까** (2026-09-17 · 규격 §5, §4)
+
+**갈림길** — §5 "등급별 톤"·§4 "금지 패턴 8종"을 정규식으로 강제할까.
+
+**찾은 자료 — 결정적 검사와 판단을 **가르라**고 한다.**
+
+| 출처 | 내용 |
+|---|---|
+| Pydantic Logfire | **구조·스키마·필수 칸·금지 문자열·범위 안의 숫자** — 이건 결정적이고 비용이 0 이며 흔들리지 않는다. 그러나 **어조가 적절한지**는 문자열 비교가 아니다 |
+| ThumbGate #3687 | 어휘 정규식이 **최종 심판**이면 그 오탐이 **상시 비용**이 된다 |
+| 같은 이슈 | 그래서 어휘 일치가 나면 **싼 모델을 심판으로 한 번 더** 부르고, 그 판정을 전부 로그로 남겨 **오탐률을 실제로 잴 수 있게** 한다 |
+| Pydantic Logfire | LLM 심판은 **성문 루브릭 + 실제 실패 예시**가 있어야 한다 — 실패 예시 없는 루브릭은 **전부 B 를 준다** |
+
+**결론:**
+- **§3 문장 수 · 300자 · 칸 누락**: 결정적 검사로 **바로 넣는다**(공짜·무드리프트)
+- **§4 금지 패턴**: 넣되 **최종 심판으로 두지 않는다** — **표시(flag)** 로 두고
+  오탐률을 원장에 쌓는다. 종전 계획("한 종류씩 넣고 오탐 측정")보다 한 걸음
+  더 나간 것이고, 자료가 그쪽을 지지한다.
+- **§5 등급별 톤**: **지금은 안 한다.** 실패 예시가 0 건이라 루브릭을 쓸 수
+  없다. 위 표시가 쌓이면 그때 LLM 심판을 붙인다.
+
+---
+
 ### 출처
 
 - [Sportmonks — Predicted Lineups](https://www.sportmonks.com/football-api/predicted-lineups/)
@@ -285,6 +361,10 @@ CLAUDE.md 는 판정 확률 **AUC 0.5122 · 브라이어 0.2537**(시장 0.6421 
 - [FanGraphs — Replacement Level](https://library.fangraphs.com/misc/war/replacement-level/)
 - [Hockey Graphs — WAR: Replacement Level (Part 3)](https://hockey-graphs.com/2019/01/18/wins-above-replacement-replacement-level-decisions-results-and-final-remarks-part-3/)
 - [panna #242 — zero-fill reads as average](https://github.com/peteowen1/panna/issues/242)
+- [Post-Hoc Reasoning in Chain of Thought (arXiv 2603.01437)](https://arxiv.org/html/2603.01437)
+- [CoT Reasoning In The Wild Is Not Always Faithful (arXiv 2503.08679)](https://arxiv.org/pdf/2503.08679)
+- [DEV — Feed the validation error back into the retry](https://dev.to/nhirschfeld/when-an-llm-response-fails-validation-feed-the-error-back-into-the-retry-2e1e)
+- [Pydantic Logfire — LLM as a Judge: rubrics, scores, agreement](https://pydantic.dev/logfire/llm-as-a-judge)
 - [LLM-SoccerArena (arXiv 2607.24573)](https://arxiv.org/abs/2607.24573)
 - [AI World Cup 2026 (arXiv 2608.03416)](https://arxiv.org/abs/2608.03416)
 - [Towards Data Science — Hybrid AI: deterministic analytics + LLM reasoning](https://towardsdatascience.com/hybrid-ai-combining-deterministic-analytics-with-llm-reasoning/)
