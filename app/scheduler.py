@@ -2209,8 +2209,86 @@ async def _lineup_recheck(pool, row: dict, now) -> None:
         logger.info("[triggers] game=%s T-60 라인업 %s%s", row["game_id"],
                     got.get("lineup_type"),
                     f" · diff {got.get('diff')}" if got.get("diff") else "")
+        # 🔴 [FOT-3 2026-09-17] **diff 를 다시 계산에 넣는다.** 종전에는
+        #    game_trace 에 적고 끝나서, 확정 라인업이 예상과 달라도 p_code 도
+        #    등급도 그대로였다 — T-60 재판정이 이름뿐이었다(PART A 표 S10).
+        # 🔴 출처는 **공식 XI** 다. docs/FORKS.md F-2 의 권한표에서 `주전결장`
+        #    을 **대체할 수 있는 유일한 출처**이고, 정작 그쪽이 안 이어져
+        #    있었다(딥서치 경로만 PA-27 로 이어졌다).
+        # 🔴 **저장 전용이다.** p_code·confidence·adj_pp 를 안 덮고 *_after 에만
+        #    남긴다. 실패해도 트리거를 막지 않는다(CLV·이동과 같은 규약).
+        try:
+            await _rejudge_from_xi(pool, row["game_id"], got)
+        except Exception as exc:
+            logger.warning("[triggers] game=%s T-60 재판정 실패: %s",
+                           row["game_id"], exc)
     finally:
         await redis.aclose()
+
+
+def _xi_players(got: dict) -> tuple[dict, float | None]:
+    """공식·예상 XI 선수 → `({이름: 선수}, 기준 총가치)`.
+
+    🔴 **팀별 총가치로 중요도를 맞춘다.** `adjust.importance` 의 분모는 그
+       선수 **자기 팀**의 선발 총가치인데 `rejudge.reweigh` 는
+       `team_total_value` 를 하나만 받는다. 그래서 여기서 원정 선수 가치를
+       `홈총액/원정총액` 으로 **환산해** 넣는다 — 계산이 같아지고 reweigh
+       시그니처를 안 바꾼다.
+    ⚠️ 갈림길이 아니다 — 분모가 자기 팀이라는 것은 `importance` 문서가 이미
+       정해 놓았다.
+    🔴 총가치가 없으면 **환산하지 않는다.** 없는 값을 지어내지 않는다.
+    """
+    tot = {side: (got.get(side) or {}).get("total_market_value")
+           for side in ("home", "away")}
+    ref = tot.get("home") or tot.get("away")
+    box: dict = {}
+    for side in ("home", "away"):
+        scale = 1.0
+        if ref and tot.get(side):
+            scale = float(ref) / float(tot[side])
+        for pl in ((got.get(side) or {}).get("starters") or []):
+            name = pl.get("name")
+            if not name:
+                continue
+            mv = pl.get("market_value")
+            box[str(name)] = {**pl,
+                              "market_value": (float(mv) * scale if mv
+                                               else mv)}
+    return box, (float(ref) if ref else None)
+
+
+async def _rejudge_from_xi(pool, game_id: int, got: dict) -> bool:
+    """[FOT-3] 공식 XI diff → 재가감 → 원장 `*_after`. **저장 전용.**
+
+    🔴 `diff` 가 없으면 아무것도 안 한다 — `fotmob.attach` 는 `confirmed` 일
+       때만 diff 를 채운다. 예상 XI 단계에서 재판정하지 않는다.
+    🔴 원장 행이 없으면 안 쓴다 — 판정 전이면 되짚을 `p_code` 가 없다.
+    """
+    from app.engine import pick_ledger as PL
+    from app.engine import rejudge as RJ
+
+    diff = got.get("diff")
+    if not diff:
+        return False
+    row = await pool.fetchrow(
+        "SELECT p_code, adj_pp, confidence FROM pick_ledger "
+        "WHERE game_id = $1 AND is_final", game_id)
+    if row is None or row["p_code"] is None:
+        logger.info("[rejudge] game=%s 원장 판정이 없다 — T-60 재판정 안 함",
+                    game_id)
+        return False
+    raw = row["adj_pp"]
+    adj = json.loads(raw) if isinstance(raw, str) else (raw or {})
+    players, total = _xi_players(got)
+    rj = RJ.reweigh(adj=adj, p_code=row["p_code"], diff=diff, players=players,
+                    team_total_value=total, grade=row["confidence"],
+                    sport="soccer", source=RJ.SRC_OFFICIAL)
+    wrote = await PL.record_rejudge(pool, game_id=game_id, rj=rj,
+                                    by=RJ.SRC_OFFICIAL)
+    logger.info("[rejudge] game=%s 공식 XI → p_code %s → %s · 등급 %s → %s · "
+                "%s · 저장 %s", game_id, row["p_code"], rj.get("p_code_after"),
+                row["confidence"], rj.get("grade_after"), rj.get("why"), wrote)
+    return wrote
 
 
 async def triggers_job() -> None:

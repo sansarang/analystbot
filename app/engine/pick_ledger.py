@@ -1194,6 +1194,40 @@ _REJUDGE_SAVE = """
 #    권한 없이 이름만 같은 사본이 된다.
 
 
+async def record_rejudge(conn_or_pool, *, game_id: int, rj: dict,
+                         by: str) -> bool:
+    """[FOT-3] 재판정 결과를 원장에 남긴다. **저장 전용 · 유일한 쓰기 통로.**
+
+    🔴 `_REJUDGE_SAVE` 를 쓰는 곳은 여기 **하나뿐**이다. 경로가 둘(딥서치 ·
+       T-60 공식 XI)이라 SQL 을 각자 들고 있으면 곧 사본이 된다.
+    🔴 `rj["changed"]` 가 거짓이면 **아무것도 안 쓴다** — 안 바뀐 것을 쓰면
+       "재판정했는데 그대로"와 "재판정 안 함"이 같아진다.
+    🔴 `by` 는 `rejudge.SRC_*` 다. 출처마다 대체 권한이 다르므로(FORKS F-2)
+       원장에서도 갈라 둬야 나중에 어느 쪽이 맞았는지 잴 수 있다.
+    ⚠️ 커넥션을 받으면 새로 얻지 않는다(`record_clv` 와 같은 규약 — 바깥
+       트랜잭션 안에서 풀을 넘기면 교착한다).
+    """
+    from contextlib import asynccontextmanager
+
+    if not (rj or {}).get("changed"):
+        return False
+
+    @asynccontextmanager
+    async def _conn():
+        if hasattr(conn_or_pool, "acquire"):
+            async with conn_or_pool.acquire() as c:
+                yield c
+        else:
+            yield conn_or_pool
+
+    async with _conn() as conn:
+        await conn.execute(
+            _REJUDGE_SAVE, game_id,
+            json.dumps(rj.get("adj_after") or {}, ensure_ascii=False),
+            rj.get("p_code_after"), rj.get("grade_after"), by)
+    return True
+
+
 async def record_confirm_and_analysis(conn, *, game_id: int,
                                       gate: dict | None,
                                       redis=None) -> dict | None:
@@ -1361,11 +1395,8 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
             rj = RJ.reweigh(adj=adj, p_code=row["p_code"], diff=diff,
                             sport=g["sport"], grade=row["confidence"],
                             source=RJ.SRC_NEWS)
-            if rj.get("changed"):
-                await conn.execute(
-                    _REJUDGE_SAVE, game_id,
-                    json.dumps(rj["adj_after"], ensure_ascii=False),
-                    rj["p_code_after"], rj["grade_after"], RJ.SRC_NEWS)
+            if await record_rejudge(conn, game_id=game_id, rj=rj,
+                                    by=RJ.SRC_NEWS):
                 out["rejudge"] = rj
                 logger.info(
                     "[rejudge] game=%s 딥서치 결장 %s → p_code %s → %s · "
