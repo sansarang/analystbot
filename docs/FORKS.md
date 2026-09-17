@@ -165,6 +165,40 @@ docstring 에 "지어내지 않는다"고 적혀 있다(①은 지켰다). 그�
 
 ---
 
+## F-5 · 표를 **어떻게 내놓을까** — 도구인가 정기 발송인가 (2026-09-17 · RPT-1)
+
+**갈림길** — `report.py` 다섯 함수가 전부 순수 함수라 **행을 넣어주는 쪽**이
+없다(운영·도구 import 0건). 무엇을 만들어야 하나.
+
+**찾은 자료 — 세 가지가 서로를 보탠다.**
+
+| 출처 | 내용 |
+|---|---|
+| LogRocket | **대시보드 피로는 실재**하고 BI 를 실제로 쓰는 직원은 **약 30%** 뿐 — 대시보드는 "**누가 열어주기를 기다린다**" |
+| LogRocket · Kaelio | 그래서 **이미 일하는 곳으로 밀어 넣는다.** 단 **전용 채널**에, **훑어볼 수 있게** — 아니면 알림 피로가 온다 |
+| DEV · Bigeye | 개발 중엔 임시 CLI 로 되지만 **운영은 정기 잡 + 모니터링**이 권장(신뢰성·감사·알림) |
+
+**깎아야 하는 지점 — 자료를 그대로 따르면 안 된다.**
+Airflow·Dagster 같은 오케스트레이션은 **우리 규모에 과하다.** 우리는 이미
+APScheduler 가 있고 `_send_daily_summary`(잡 → 순수 함수 → 텔레그램)가 같은
+일을 한다.
+그리고 **변수별 채점은 매일 볼 것이 아니다** — 문턱이 100건이라 그 전에는
+전부 "표본 부족"이 나온다. 매일 보내면 같은 문구를 90일 보내게 되고, 그게
+자료가 경고한 **알림 피로**다. `report.py` 는 이미 답을 갖고 있다 —
+`CHECKPOINTS = [50, 150, 300]`, "그 수가 쌓일 때마다 다시 본다".
+
+**결론 — 둘로 나눈다. A 를 먼저.**
+
+| | 무엇 | 왜 이 순서인가 |
+|---|---|---|
+| **A** | `tools/report_vars.py` — 원장에서 행을 뽑아 `report.py` 에 넣고 찍는다 | B 가 A 없이는 못 만들어지고, **A 만으로 오늘 밤 결과를 볼 수 있다** |
+| B | 그 어댑터를 스케줄러가 재사용해 **체크포인트에 닿았을 때만** 텔레그램 발송 | A 가 쓸 만한 표를 내는 것을 **본 뒤**에 건다 — 안 그러면 또 "만들고 안 이었다" |
+
+**적용** — A = RPT-1 (2026-09-17). B 는 **안 만들었다** — 사용자 지시가
+"a만 먼저" 였다.
+
+---
+
 ### 출처
 
 - [Sportmonks — Predicted Lineups](https://www.sportmonks.com/football-api/predicted-lineups/)
@@ -173,6 +207,9 @@ docstring 에 "지어내지 않는다"고 적혀 있다(①은 지켰다). 그�
 - [FanGraphs — Replacement Level](https://library.fangraphs.com/misc/war/replacement-level/)
 - [Hockey Graphs — WAR: Replacement Level (Part 3)](https://hockey-graphs.com/2019/01/18/wins-above-replacement-replacement-level-decisions-results-and-final-remarks-part-3/)
 - [panna #242 — zero-fill reads as average](https://github.com/peteowen1/panna/issues/242)
+- [LogRocket — Slack workflows for PMs who hate dashboards](https://blog.logrocket.com/product-management/ai-powered-slack-workflows-for-product-managers/)
+- [Kaelio — Automated metrics digests in Slack](https://www.kaelio.com/blog/how-to-set-up-automated-business-metrics-digests-in-slack)
+- [Bigeye — Which scheduler should I use](https://www.bigeye.com/blog/which-scheduler-should-i-use-for-dbt-jobs)
 - [ThePowerRank — Closing line value](https://thepowerrank.com/2021/07/29/closing-line-value/)
 - [Sharp Football — CLV betting](https://www.sharpfootballanalysis.com/sportsbook/clv-betting/)
 - [Bet2Invest — CLV applied to sports betting](https://bet2invest.com/blog/Closing-Line-Value-(CLV)-Applied-to-Sports-Betting:-A-Key-Indicator-for-Bettors)
