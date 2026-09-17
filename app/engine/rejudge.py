@@ -81,9 +81,18 @@ def reweigh(*, adj: dict | None, p_code: float | None, diff: dict | None,
         out["why"] = "diff 는 있으나 변화 인원 0"
         return out
 
-    merged = {**base_adj, **add}
-    # 🔴 잡음 제외는 U8 규칙 그대로 — 축소 **앞**이다.
-    kept, dropped = A.drop_small(merged)
+    # 🔴 [PA-27-a 2026-09-17] **새로 더한 것에만 잡음 제외를 건다.**
+    #    종전에는 `merged` 전체에 걸어서 **기존 가감까지 지웠다** —
+    #    실측: adj={'주전결장': -1.5} 에 홈 결장 1명을 더하니 둘 다 1.5 라
+    #    문턱(2.0) 아래로 떨어져 `adj_after={}` 가 됐고, 확률이 시장으로
+    #    되돌아가 **0.55 → 0.5575 로 올랐다.** 결장을 확인했는데 홈이
+    #    유리해지는 거꾸로 된 신호다.
+    #    ⚠️ 기존 가감은 **이미 이 규칙을 통과해** adj_pp 에 들어온 값이다.
+    #       U8 의 "contrib < 2%p 제외"는 adj 를 **만들 때** 거는 규칙이지
+    #       재판정 때 소급해 다시 거는 규칙이 아니다.
+    #    🔴 잡음 제외는 U8 규칙 그대로 — 축소 **앞**이다.
+    add_kept, dropped = A.drop_small(add)
+    kept = {**base_adj, **add_kept}
     # 🔴 `prob.p_code` 를 그대로 쓴다 — 승률 상한이 여기서 다시 걸린다.
     p_after = P.p_code(_market_of(p_code, base_adj), kept, sport,
                        settings=settings)

@@ -136,10 +136,29 @@ def test_결정축도_다시_고른다():
 
 
 def test_잡음은_재판정에서도_빠진다():
-    got = _rw({"home": {"surprise_in": ["Star"]}},
-              adj={"주전결장": -3.0, "잡음": -0.4})
-    assert "잡음" not in got["adj_after"]
-    assert "잡음" in got["adj_dropped_after"]
+    """🔴 [PA-27-a 2026-09-17] **새로 더한 것**에만 건다.
+
+    종전에는 `merged` 전체에 `drop_small` 을 걸어 **기존 가감까지** 지웠다.
+    그런데 `ADJ_RULES` 의 기본 delta 는 -1.0 · -1.5 로 전부 문턱(2.0) 아래라,
+    그 규칙을 기존 가감에 걸면 **설계된 조정 대부분이 지워진다.**
+    실측: adj={'주전결장': -1.5} + 홈 결장 1명 → adj_after={} 가 되고
+    확률이 시장으로 되돌아가 **0.55 → 0.5575 로 올랐다**(결장인데 홈 유리).
+
+    그래서 이 계약의 뜻을 **"새로 더한 잡음이 빠진다"**로 좁힌다 —
+    기존 가감을 소급해 지우는 것은 U8 의 규칙이 아니었다.
+    """
+    # ⚠️ 중요도는 `market_value`/`team_total_value` 로 정해진다 —
+    #    `{"importance": …}` 키는 읽지 않는다(기본 1.0 중립).
+    got = _rw({"home": {"surprise_in": ["Tiny"]}},
+              adj={"주전결장": -3.0},
+              players={"Tiny": {"market_value": 1}},
+              team_total_value=1000)
+    # 새로 더한 복귀 기여(0.1 × 1.5 × 1.5 ≈ 0.2%p)는 문턱 아래라 빠진다
+    assert not [k for k in got["adj_after"] if k.startswith("라인업복귀")]
+    assert [k for k in (got.get("adj_dropped_after") or {})
+            if k.startswith("라인업복귀")]
+    # 기존 가감은 **그대로 남는다**
+    assert got["adj_after"]["주전결장"] == -3.0
 
 
 # ── 야구
