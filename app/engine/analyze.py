@@ -24,6 +24,18 @@ SCHEMA = ("결정축", "결정축_근거", "결정축_방향", "반대축",
 DIRECTIONS = ("홈 하향", "홈 상향", "판단불가")
 MARKET_VIEWS = ("과대", "적정", "과소")
 
+#: 🔴 [ANL-2] **숫자를 쓸 수 없는 칸.** `l1` 이 이 목록으로 반려하고,
+#   `output_spec` 이 같은 목록으로 미리 말해 준다 — 두 곳에 손으로 적으면 사본이다.
+#   실측 2026-09-17: 지시문을 붙이자 JSON 은 왔는데 L1 이 "결정축_근거 에
+#   확률·배당 숫자가 있다"로 반려했다. 금지를 **말하지 않고** 반려하고 있었다.
+NO_NUM_KEYS = ("결정축", "결정축_근거", "반대축")
+
+#: 🔴 [ANL-2] `시장_판단_이유` 에서 금지하는 말. `l1` 이 이 목록으로 반려하고
+#   `output_spec` 이 같은 목록으로 미리 말한다. 실측 2026-09-17: 숫자 금지를
+#   말해 준 뒤 다음 반려가 "시장_판단_이유 에 배당이 있다" 였다 — 반려 사유를
+#   하나씩 말해 주지 않으면 통과할 수 없는 시험이었다.
+REASON_BANNED = ("배당",)
+
 #: 🔴 **실측이 지시문을 뒤집었다**(2026-09-13).
 #     지시문 1순위 gemini-pro 무료 → 429 "prepayment credits are depleted"
 #                                    (무료 티어가 아니라 유료 선불, 잔액 0)
@@ -66,10 +78,42 @@ def _pct3(t) -> str:
     return "/".join(str(round(float(x) * 100)) for x in t)
 
 
-def build_input(blk: dict) -> str:
+#: 🔴 [ANL-2 2026-09-17] 되고 있는 판정 프롬프트에서 **그대로 베낀 문장**이다
+#   (`prompts.py` :29 :104 :338). 계약이 그 문장이 실재하는지 대조한다 —
+#   거기서 바뀌면 여기가 사본으로 남는 것을 막는다.
+JSON_ONLY = "아래 JSON만 출력한다. 다른 텍스트, 마크다운 백틱 금지."
+
+
+def output_spec() -> str:
+    """출력 지시. 🔴 칸 이름·라벨을 **손으로 적지 않는다** — 스키마에서 만든다.
+
+    🔴 **숫자를 한 글자도 쓰지 않는다.** `l1` 이 "시장_판단_이유의 숫자가 입력
+       블록에 있는가"를 재는데, 지시문에 숫자가 있으면 그 기준이 넓어진다.
+    """
+    return "\n".join([
+        "[출력] " + JSON_ONLY,
+        "칸: " + " · ".join(SCHEMA),
+        "결정축_방향: " + " | ".join(DIRECTIONS),
+        "시장_판단: " + " | ".join(MARKET_VIEWS),
+        "구조_후보: 목록. 없으면 빈 목록",
+        "근거_수: 정수",
+        # 🔴 `l1` 이 반려하는 규칙을 **미리 말한다.** 목록은 `NO_NUM_KEYS` 가
+        #    원본이다 — 여기서 칸 이름을 다시 적지 않는다.
+        " · ".join(NO_NUM_KEYS) + ": 확률·배당 숫자를 쓰지 않는다. 사실만 쓴다",
+        # 🔴 `l1` 의 나머지 반려 사유도 미리 말한다. 목록 원본은 위 상수다.
+        "시장_판단_이유: 위 [숫자] 에 있는 값만 인용한다. "
+        + "·".join(REASON_BANNED) + " 이라는 말은 쓰지 않는다",
+    ])
+
+
+def build_input(blk: dict, *, with_schema: bool = False) -> str:
     """코드가 조립하는 입력 블록(지시문 4.5-2). **이 외에는 넣지 않는다.**
 
     🔴 배당 원값 없음. 전적·BvP·시즌 누적 없음.
+    🔴 [ANL-2] `with_schema` 는 **기본이 거짓**이다. `l1` 이 이 함수를 검사
+       기준으로도 쓰기 때문이다 — 지시문이 섞이면 "근거가 입력의 사실인가"를
+       스키마 이름으로 때워도 통과하고, 숫자 검사의 기준도 넓어진다.
+       그래서 **실제 호출만** 참으로 부른다(:run).
     """
     b = blk or {}
     pp = b.get("p_prior")
@@ -113,6 +157,8 @@ def build_input(blk: dict) -> str:
         lines.append(f"[notes] {b['notes']}")
     miss = b.get("missing") or []
     lines.append("[missing] " + ("·".join(miss) if miss else "없음"))
+    if with_schema:
+        lines.append(output_spec())
     return "\n".join(lines)
 
 
@@ -136,7 +182,7 @@ def l1(out: dict, blk: dict) -> tuple[bool, str]:
         return False, f"시장_판단 라벨이 표 밖이다: {out.get('시장_판단')!r}"
     blk_text = build_input(blk)
     # 🔴 **사실 칸은 숫자를 못 쓴다.** LLM 이 확률을 지어내는 것을 막는 자리다.
-    for key in ("결정축", "결정축_근거", "반대축"):
+    for key in NO_NUM_KEYS:
         if _NUM.search(str(out.get(key) or "")):
             return False, f"{key} 에 확률·배당 숫자가 있다"
     # ⚠️ `시장_판단_이유` 만 예외다 — 지시문 규칙("% 출력 금지")과 지시문 예시
@@ -146,8 +192,8 @@ def l1(out: dict, blk: dict) -> tuple[bool, str]:
     for m in _NUM.finditer(str(out.get("시장_판단_이유") or "")):
         tok = m.group(0).replace(" ", "")
         bare = tok.rstrip("%")
-        if tok == "배당":
-            return False, "시장_판단_이유 에 배당이 있다"
+        if tok in REASON_BANNED:
+            return False, f"시장_판단_이유 에 {tok}이 있다"
         if bare not in blk_text.replace(" ", ""):
             return False, f"시장_판단_이유 에 입력에 없는 숫자가 있다: {tok}"
     src = _nouns(blk_text)
@@ -272,7 +318,10 @@ async def run(jg: dict, blk: dict, *, gate_label: str | None,
         return out
 
     s = get_settings()
-    prompt = build_input(blk)
+    # 🔴 [ANL-2] **출력 지시를 붙여서 묻는다.** 종전에는 자료 블록만 줬고,
+    #    그래서 실측 6/6 이 마크다운 산문으로 왔다(1033자). JSON 을 내라고
+    #    말한 적 없이 JSON 이 아니라고 버리고 있었다.
+    prompt = build_input(blk, with_schema=True)
     try:
         text = await complete_json(prompt, model=s.matchup_model,
                                    max_tokens=int(s.matchup_max_tokens),
