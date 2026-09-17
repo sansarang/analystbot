@@ -1250,7 +1250,10 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
         return None
 
     g = await conn.fetchrow(
-        "SELECT id, sport, league, home, away, starts_at FROM games WHERE id = $1",
+        # 🔴 [ANL-9] 예고 선발을 함께 읽는다 — 목표 분석이 "선발 축이 전부"라고
+        #    한 축인데 분석 입력에 없었다.
+        "SELECT id, sport, league, home, away, starts_at, "
+        "home_pitcher, away_pitcher FROM games WHERE id = $1",
         game_id)
     if g is None:
         return None
@@ -1334,6 +1337,26 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
                            if ks is not None else None),
            "home_facts": collected.get("home") or {},
            "away_facts": collected.get("away") or {}}
+    # 🔴 [ANL-9] **선발을 붙인다.** `attach_starter_recent` 는 pipeline 이 쓰는
+    #    그 함수다 — 다시 만들지 않는다(사본 금지). `conn` 은 `.fetch` 가 있어
+    #    pool 자리에 그대로 맞는다.
+    # ⚠️ 실패해도 분석을 막지 않는다 — 선발 줄만 없다.
+    try:
+        from app.engine.starter_recent import attach_starter_recent
+
+        sjg = {"sport": g["sport"], "starts_at": g["starts_at"],
+               "home_pitcher": g["home_pitcher"],
+               "away_pitcher": g["away_pitcher"]}
+        await attach_starter_recent(sjg, conn)
+        res = sjg.get("research") or {}
+        for side in ("home", "away"):
+            nm = str(g[f"{side}_pitcher"] or "").strip()
+            if nm:
+                blk[f"{side}_starter"] = {
+                    "name": nm,
+                    "recent": res.get(f"{side}_starter_recent") or []}
+    except Exception as exc:
+        logger.info("[analysis] game=%s 선발 재료 없음: %s", game_id, exc)
     try:
         from app.engine.structure import attach_derived, derived_probs
 

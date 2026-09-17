@@ -168,6 +168,31 @@ def build_input(blk: dict, *, with_schema: bool = False) -> str:
         if f.get("notes"):
             bits.append(str(f["notes"]))
         lines.append(f"[{label} 사실] " + " · ".join(bits))
+    # 🔴 [ANL-9 2026-09-17] **선발을 싣는다.** 사용자가 준 목표 분석이
+    #    "선발 축이 이 경기의 전부"라고 한 축인데 모델이 본 적이 없었다.
+    #    ⚠️ **ERA 를 만들지 않는다** — `starter_recent.slim_start` 머리말이
+    #       "ERA 키는 만들지 않는다"고 못 박았다. 이닝·실점·피안타·득점지원만.
+    #    ⚠️ 없으면 줄을 안 쓴다 — "없음"을 쓰면 없는 사실이 있어 보인다.
+    for side, label in (("home_starter", "홈 선발"),
+                        ("away_starter", "원정 선발")):
+        st = b.get(side) or {}
+        nm = str(st.get("name") or "").strip()
+        if not nm:
+            continue
+        bits = [nm]
+        for r in (st.get("recent") or []):
+            piece = []
+            if r.get("innings") is not None:
+                piece.append(f"{r['innings']}이닝")
+            if r.get("r") is not None:
+                piece.append(f"{r['r']}실점")
+            if r.get("hits") is not None:
+                piece.append(f"{r['hits']}피안타")
+            if r.get("run_support") is not None:
+                piece.append(f"득점지원 {r['run_support']}")
+            if piece:
+                bits.append(f"{r.get('date') or ''} " + " ".join(piece))
+        lines.append(f"[{label}] " + " · ".join(bits))
     reg = b.get("regulars") or {}
     if reg:
         lines.append("[주전 판정] "
@@ -210,6 +235,11 @@ def fact_words(blk: dict) -> set[str]:
             if not v:
                 continue
             parts += [str(x) for x in v] if kind is list else [str(v)]
+    # 🔴 [ANL-9] 선발 이름·상대도 **사실**이다 — l1 이 인용을 알아보게 한다.
+    for side in ("home_starter", "away_starter"):
+        st = (blk or {}).get(side) or {}
+        parts.append(st.get("name"))
+        parts += [r.get("opponent") for r in (st.get("recent") or [])]
     parts += list((blk.get("adj_pp") or {}).keys())
     parts += list((blk.get("regulars") or {}).keys())
     parts += [d.get("시장") for d in (blk.get("derived") or [])]
