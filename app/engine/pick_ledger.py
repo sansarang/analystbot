@@ -1256,8 +1256,12 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
         return None
 
     row = await conn.fetchrow(
+        # 🔴 [ANL-5] `p_prior` 를 함께 읽는다 — 아래 blk 에 하드코딩 None 을
+        #    넣고 있었다. 원장에는 값이 있는데(실측 0.5487 / 0.68 / 0.574)
+        #    분석은 "p_prior None" 을 보고 있었다.
         "SELECT hypothesis, p_code, adj_pp, p_market, predicted_side, "
-        "confidence FROM pick_ledger WHERE game_id = $1 AND is_final", game_id)
+        "confidence, p_prior FROM pick_ledger "
+        "WHERE game_id = $1 AND is_final", game_id)
     if row is None:
         return None
 
@@ -1321,7 +1325,9 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
     ks = g["starts_at"]
     KST = ZoneInfo("Asia/Seoul")
     blk = {"home": g["home"], "away": g["away"], "league": g["league"],
-           "p_prior": None, "p_market": row["p_market"],
+           # 🔴 [ANL-5] 종전 `None` 하드코딩. 없으면 그때 None 이다 —
+           #    0.5 로 채우지 않는다.
+           "p_prior": row["p_prior"], "p_market": row["p_market"],
            "gap_pp": (gate or {}).get("gap_pp"), "gate": label,
            "adj_pp": adj, "p_code": row["p_code"],
            "kickoff_kst": (ks.astimezone(KST).strftime("%m-%d %H:%M")

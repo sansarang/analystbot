@@ -26,7 +26,7 @@ SRC = inspect.getsource(PL.record_confirm_and_analysis)
 class _Conn:
     def __init__(self, *, adj=None, p_code=0.62, grade="중"):
         self.row = {"hypothesis": {}, "p_code": p_code, "adj_pp": adj or {},
-                    "p_market": 0.55, "predicted_side": "home",
+                    "p_market": 0.55, "p_prior": 0.58, "predicted_side": "home",
                     "confidence": grade}
         self.saved = []
 

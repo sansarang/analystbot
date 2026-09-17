@@ -141,12 +141,22 @@ def build_input(blk: dict, *, with_schema: bool = False) -> str:
         bits = []
         out = f.get("out") or []
         bits.append("결장 " + ("·".join(out) if out else "없음"))
+        # 🔴 [ANL-5 2026-09-17] **수집한 사실을 버리지 않는다.** 실측: 추출이
+        #    notes="고종욱 1군 말소." 를 받아 놨는데 여기서 안 읽어서, 모델이
+        #    본 입력이 6줄뿐이었다. L1 반려 2/3 의 사유가 "결정축_근거가 입력
+        #    블록에 없는 사실이다" 였다 — 줄 재료를 안 줬으면서 반려한 것이다.
+        #    ⚠️ 칸 이름은 `scout_config.EXTRACT_SCHEMA` 의 키다.
+        #    ⚠️ 없으면 **안 쓴다.** "없음"을 쓰면 없는 사실이 있어 보인다.
+        if f.get("doubt"):
+            bits.append("출전의문 " + "·".join(f["doubt"]))
         if f.get("last3"):
             bits.append("최근3 " + ", ".join(f["last3"]))
         if f.get("xi_status"):
             bits.append(f"XI {f['xi_status']}")
         if f.get("midweek"):
             bits.append(str(f["midweek"]))
+        if f.get("notes"):
+            bits.append(str(f["notes"]))
         lines.append(f"[{label} 사실] " + " · ".join(bits))
     reg = b.get("regulars") or {}
     if reg:
@@ -164,6 +174,53 @@ def build_input(blk: dict, *, with_schema: bool = False) -> str:
 
 def _nouns(text: str) -> set[str]:
     return {w.lower() for w in _WORD.findall(str(text or ""))}
+
+
+#: 🔴 [ANL-6] 사실 낱말을 만들 때 **뺄 칸**. URL·날짜는 판단 재료가 아니다.
+_NOT_FACT = ("source", "published", "fetched_at")
+
+
+def fact_words(blk: dict) -> set[str]:
+    """입력 블록의 **값**에서만 낱말을 모은다(라벨은 뺀다).
+
+    🔴 [ANL-6] 종전에는 `build_input(blk)` **렌더 결과**로 만들었다. 거기엔
+       `[원정 사실]`·`[경기]` 같은 **라벨**이 섞여 있어, 부분일치를 켜면
+       "원정팀 감독이 …" 같은 없는 사실이 `원정` 에 걸려 통과한다.
+    🔴 칸 이름은 `EXTRACT_SCHEMA` 가 원본이다 — 여기서 손으로 적지 않는다.
+    """
+    from app.engine.scout_config import EXTRACT_SCHEMA
+
+    parts = [blk.get("home"), blk.get("away"), blk.get("league")]
+    for side in ("home_facts", "away_facts"):
+        f = (blk or {}).get(side) or {}
+        for key, kind in EXTRACT_SCHEMA.items():
+            if key in _NOT_FACT:
+                continue
+            v = f.get(key)
+            if not v:
+                continue
+            parts += [str(x) for x in v] if kind is list else [str(v)]
+    parts += list((blk.get("adj_pp") or {}).keys())
+    parts += list((blk.get("regulars") or {}).keys())
+    parts += [d.get("시장") for d in (blk.get("derived") or [])]
+    parts += list(blk.get("missing") or [])
+    return _nouns(" ".join(str(x) for x in parts if x))
+
+
+def cites(text, src: set[str]) -> bool:
+    """답의 낱말 하나라도 사실 낱말과 **걸치면** 인용으로 본다.
+
+    🔴 [ANL-6] 한국어는 조사가 붙는다 — `결장` 과 `결장으로` 는 같은 사실이다.
+       낱말을 통째로 맞추면 **구체적으로 쓸수록 반려당한다**(실측).
+    ⚠️ 부분일치는 느슨하다. 그래서 `src` 를 **값**으로 좁혔다(`fact_words`).
+    """
+    for w in _nouns(text):
+        if len(w) < 2:
+            continue
+        for f in src:
+            if len(f) >= 2 and (f in w or w in f):
+                return True
+    return False
 
 
 def l1(out: dict, blk: dict) -> tuple[bool, str]:
@@ -196,9 +253,15 @@ def l1(out: dict, blk: dict) -> tuple[bool, str]:
             return False, f"시장_판단_이유 에 {tok}이 있다"
         if bare not in blk_text.replace(" ", ""):
             return False, f"시장_판단_이유 에 입력에 없는 숫자가 있다: {tok}"
-    src = _nouns(blk_text)
-    words = {w for w in _nouns(out.get("결정축_근거")) if len(w) >= 3}
-    if words and not (words & src):
+    # 🔴 [ANL-6] 종전 세 가지가 동시에 틀렸다(실측 2026-09-17):
+    #    ① `if words and …` 라 **빈 근거가 통과**했다(운영: 결정축 '홈 사실'
+    #       이 L1·L2 를 다 통과) ② 낱말을 통째로 맞춰 조사 하나에 반려했다
+    #       ③ `src` 가 렌더된 글자라 **라벨**(원정·경기·사실)이 섞여 있었다.
+    #    → 구체적으로 쓸수록 반려당하고 비어 있을수록 통과했다.
+    reason = str(out.get("결정축_근거") or "").strip()
+    if len(reason) < 3:
+        return False, "결정축_근거가 비었다"
+    if not cites(reason, fact_words(blk)):
         return False, "결정축_근거가 입력 블록에 없는 사실이다"
     names = {str(d.get("시장") or "") for d in (blk or {}).get("derived") or []}
     for c in out.get("구조_후보") or []:
@@ -231,15 +294,22 @@ def gate_vs_llm(gate_label: str | None, market_view: str | None) -> str | None:
     return "same" if same.get(gate_label) == market_view else "diff"
 
 
-def check_row(ok1, why1, ok2, why2, banned, skipped) -> dict:
+def check_row(ok1, why1, ok2, why2, banned, skipped,
+              reason: str | None = None) -> dict:
     """[ANL-4] 원장에 남길 **검사 결과** 한 덩어리.
 
     🔴 재기만 하고 안 남기면 나중에 "이 결정축을 믿어도 되나"를 못 답한다.
+    🔴 [ANL-7] `reason` 은 **검사 대상**(`결정축_근거` 본문)이다. 사유만 있고
+       대상이 없으면 왜 반려됐는지 못 고친다 — 실측 2026-09-17: 원인을
+       찾으려는데 대상을 볼 수 없어 **결정축으로 대신 재야 했다**(다른 문장).
     ⚠️ 판정을 **바꾸지 않는다.** 반려해도 결정축은 남는다(ANL-2 에서 잠근 성질).
+    ⚠️ **새 칸을 만들지 않는다** — 여기 담는다. 자리표를 또 늘리면 PA-23 의
+       사고 자리가 하나 더 생긴다.
     """
     return {"l1": ok1, "l1_why": why1 or None,
             "l2": ok2, "l2_why": why2 or None,
-            "banned": list(banned or []), "skipped": skipped or None}
+            "banned": list(banned or []), "skipped": skipped or None,
+            "reason": (str(reason).strip() or None) if reason else None}
 
 
 def answered_model(configured: str | None) -> str | None:
@@ -395,7 +465,8 @@ async def run(jg: dict, blk: dict, *, gate_label: str | None,
     #    `out["analyze"]` 로 돌려주기만 했다 — 원장에는 결정축만 남아서
     #    **반려당한 값인지 아닌지를 원장만 보면 알 수 없었다.**
     #    로그에만 있으면 재배포 때 날아간다(오늘 실제로 겪었다).
-    led["analyze_check"] = check_row(ok1, why1, ok2, why2, bad, None)
+    led["analyze_check"] = check_row(ok1, why1, ok2, why2, bad, None,
+                                     reason=parsed.get("결정축_근거"))
     out["ledger"] = led
     logger.info("[analyze] game=%s L1=%s L2=%s 금지어=%s",
                 jg.get("game_id"), ok1, ok2, bad or "없음")
