@@ -136,6 +136,16 @@ def build_input(blk: dict, *, with_schema: bool = False) -> str:
         f"p_market(open) {_pct3(pm) if isinstance(pm, (tuple, list)) else pm} · "
         f"gap {b.get('gap_pp')} · 게이트 \"{b.get('gate')}\"",
     ]
+    # 🔴 [MKT-4 2026-09-17] **요구 확률**을 준다. 디빅 확률(p_market)은 "방향이
+    #    맞나"를, 요구 확률은 "값이 있나"를 답한다 — 목표 분석이 쓰는 두 번째
+    #    숫자다("KIA 1.49는 요구 확률 67.1%라 내 63%로는 값이 없고").
+    #    ⚠️ 배당이 없으면 줄을 안 쓴다.
+    be = b.get("break_even")
+    if be is not None:
+        pe = b.get("price_edge_pp")
+        lines.append(
+            f"[가격] 배당 {b.get('odds')} · 요구 확률 {be} · 가격 엣지 "
+            f"{pe}%p" + (" (음수면 값 없음)" if pe is not None else ""))
     adj = b.get("adj_pp") or {}
     if adj:
         lines.append("adj(코드): "

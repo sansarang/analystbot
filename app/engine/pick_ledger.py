@@ -1262,8 +1262,9 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
         # 🔴 [ANL-5] `p_prior` 를 함께 읽는다 — 아래 blk 에 하드코딩 None 을
         #    넣고 있었다. 원장에는 값이 있는데(실측 0.5487 / 0.68 / 0.574)
         #    분석은 "p_prior None" 을 보고 있었다.
+        # 🔴 [MKT-4] `odds` 를 함께 읽는다 — 요구 확률(1/배당)의 재료다.
         "SELECT hypothesis, p_code, adj_pp, p_market, predicted_side, "
-        "confidence, p_prior FROM pick_ledger "
+        "confidence, p_prior, odds FROM pick_ledger "
         "WHERE game_id = $1 AND is_final", game_id)
     if row is None:
         return None
@@ -1337,6 +1338,22 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
                            if ks is not None else None),
            "home_facts": collected.get("home") or {},
            "away_facts": collected.get("away") or {}}
+    # 🔴 [MKT-4 2026-09-17] **요구 확률을 붙인다.** 디빅 확률은 "방향이 맞나",
+    #    요구 확률은 "값이 있나" 를 답한다. 종전에는 뒤를 아무도 계산하지 않아
+    #    "방향은 맞지만 가격이 엣지를 다 먹었다"를 코드가 말할 수 없었다.
+    # ⚠️ 게이트·추천은 안 바꾼다 — 보여주는 숫자다.
+    try:
+        from app.engine import market_edge as ME
+
+        side = str(row["predicted_side"] or "").lower()
+        p_ours = (row["p_code"] if side == "home"
+                  else (1.0 - row["p_code"]) if side == "away" else None)
+        blk["odds"] = row["odds"]
+        blk["break_even"] = ME.break_even(row["odds"])
+        blk["price_edge_pp"] = ME.price_edge_pp(p_ours, row["odds"])
+    except Exception as exc:
+        logger.info("[analysis] game=%s 가격 재료 없음: %s", game_id, exc)
+
     # 🔴 [ANL-9] **선발을 붙인다.** `attach_starter_recent` 는 pipeline 이 쓰는
     #    그 함수다 — 다시 만들지 않는다(사본 금지). `conn` 은 `.fetch` 가 있어
     #    pool 자리에 그대로 맞는다.

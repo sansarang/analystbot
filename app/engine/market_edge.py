@@ -91,6 +91,36 @@ MARGIN_MIN_PCT, MARGIN_MAX_PCT = 100.5, 115.0
 DEVIG_TOL = 0.005
 
 
+def break_even(odds) -> float | None:
+    """[MKT-4 2026-09-17] **요구 확률** — 그 배당이 본전이 되는 확률(1/배당).
+
+    🔴 **디빅 확률과 다른 값이다.** 디빅은 마진을 **뺀** 시장의 진짜 생각이고,
+       요구 확률은 마진을 **포함한** 우리가 넘어야 할 선이다. 둘을 한 이름으로
+       부르면 다시는 못 가른다.
+       실측 예(목표 분석 2026-09-17): KIA 1.49 → 디빅 62.3% · 요구 **67.1%**.
+       우리 63% 는 방향은 맞지만(62.3 ≈ 63) **값은 없다**(63 < 67.1).
+    ⚠️ 1.0 이하·숫자 아님이면 **None** 이다. 그 규약의 원본은
+       `pick_ledger._implied_prob` 다 — 여기서 다시 적지 않는다(사본 금지).
+       ⚠️ 모듈 최상단에서 들이면 순환이다(`pick_ledger` 가 이 모듈을 쓴다).
+    """
+    from app.engine.pick_ledger import _implied_prob
+
+    p = _implied_prob(odds)
+    return None if p is None else round(p, 4)
+
+
+def price_edge_pp(p_ours: float | None, odds) -> float | None:
+    """[MKT-4] **가격 대비 엣지**(%p) = 우리 확률 − 요구 확률.
+
+    음수면 "방향은 맞아도 가격이 엣지를 다 먹었다"는 뜻이다.
+    🔴 게이트를 바꾸지 않는다 — 이 값은 **보여주는 숫자**다.
+    """
+    be = break_even(odds)
+    if be is None or p_ours is None:
+        return None
+    return round((float(p_ours) - be) * 100, 1)
+
+
 def margin_pct(odds: dict | None) -> float | None:
     """배당 원값의 내재확률 합(%). 못 재면 None — 0 으로 읽지 않는다."""
     raw = []
