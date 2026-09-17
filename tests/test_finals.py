@@ -14,7 +14,12 @@ def test_scheduler_jobs_registered():
     scheduler = build_scheduler()
     jobs = {j.id: j for j in scheduler.get_jobs()}
     assert set(jobs) == {"prefetch_evening", "prefetch_dawn", "prefetch_asia",
-                         "odds_snapshot_30m", "ingest_finals_13h",
+                         "odds_snapshot_30m",
+                         # [ODN-1 2026-09-17] KBO·NPB 총점 — **하루 2회**.
+                         #   🔴 위 30분 잡과 **별개**다. 그쪽은 무료·무제한이고
+                         #      CLV 스냅샷이 거기서 난다 — 안 건드린다.
+                         #   🔴 이쪽은 월 1,000 크레딧이라 30분이면 이틀에 끝난다.
+                         "oddsapinet_2x", "ingest_finals_13h",
                          "elo_refresh_weekly", "research_retry_45m",
                          "statcast_daily", "soccerdata_daily", "park_weekly",
                          "kbo_lineup_history", "npb_lineup_history",

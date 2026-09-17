@@ -294,6 +294,11 @@ class Settings(BaseSettings):
     #   ESPN 실패 시 자동으로 2순위가 붙는다.
     sharpapi_key: str = Field(default="", validation_alias=AliasChoices(
         "SHARPAPI_KEY", "sharpapi_key"))
+    #: [ODN-1 2026-09-17] odds-api.net — KBO·NPB 총점·핸디·팀토탈.
+    #  🔴 **`.env` 에만 둔다.** 코드·커밋·로그에 남기지 않는다.
+    #  ⚠️ 없으면 그 수집기는 조용히 비활성이다(절대 규칙 3).
+    oddsapinet_key: str = Field(default="", validation_alias=AliasChoices(
+        "ODDSAPINET_KEY", "oddsapinet_key"))
     #: 배당 소스. `free` = ESPN·SharpAPI·배트맨. `theodds` = 유료 복귀.
     #   ⚠️ The Odds API 코드는 지우지 않았다 — 값만 바꾸면 되돌아간다.
     odds_provider: str = Field(default="free", validation_alias=AliasChoices(

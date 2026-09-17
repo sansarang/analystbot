@@ -1358,6 +1358,69 @@ async def _espn_soccer_snapshot(pool, redis) -> int:
     return total
 
 
+async def oddsapinet_job() -> None:
+    """[ODN-1 2026-09-17] KBO·NPB **총점·핸디·팀토탈** — 하루 2회.
+
+    🔴 **기존 `odds_snapshot_30m` 을 건드리지 않는다.** 그쪽은 ESPN·oddsportal
+       무료·무제한이고 거기서 CLV(판정시각·마감)와 라인 이동 스냅샷이 나온다.
+       늦추면 그게 깨진다. 이 잡만 따로 돈다.
+    🔴 **예산이 먼저다.** 월 1,000 크레딧(sandbox)이라 80% 를 넘으면 멈춘다.
+       기존 30분 주기로 붙였으면 월 11,520콜이 필요해 이틀이면 끝났다.
+    ⚠️ 키가 없으면 조용히 비활성이다(절대 규칙 3).
+    """
+    from app.collectors import oddsapinet as ON
+    from app.collectors.odds_free import store_rows
+
+    if not ON._key():
+        logger.info("[oddsapinet] 키 없음 — 비활성")
+        return
+    if not await ON.budget_ok():
+        return
+    pool = await get_pool()
+    total = games = 0
+    for sport in ON.LEAGUES:
+        evs = await ON.fetch_events(sport)
+        if not evs:
+            logger.info("[oddsapinet] %s 대상 경기 0", sport)
+            continue
+        ids = await _match_oddsapinet(pool, sport, evs)
+        for ev, gid in ids:
+            rows = ON.to_rows(await ON.fetch_odds(ev["event_id"]),
+                              home=ev.get("home_team") or "",
+                              away=ev.get("away_team") or "")
+            if rows:
+                total += await store_rows(pool, gid, rows, ON.PROVIDER)
+                games += 1
+    logger.info("[oddsapinet] KBO·NPB — 경기 %d · 적재 %d행", games, total)
+
+
+async def _match_oddsapinet(pool, sport: str, evs: list) -> list:
+    """API 경기 → 우리 game_id. 🔴 못 맞추면 **버린다**(억지로 붙이지 않는다).
+
+    ⚠️ 팀 이름이 다르다(`Yokohama Dena Baystars`). 시작 시각(±3시간) + 팀 이름
+       부분일치로 맞춘다 — 새 별칭표를 만들지 않는다.
+    """
+    from datetime import datetime, timezone
+
+    out = []
+    for ev in evs:
+        ts = ev.get("start_time")
+        if not ts:
+            continue
+        when = datetime.fromtimestamp(int(ts), timezone.utc)
+        row = await pool.fetchrow(
+            """SELECT id, home, away FROM games
+                WHERE sport = $1 AND starts_at BETWEEN $2 - interval '3 hours'
+                                                   AND $2 + interval '3 hours'""",
+            sport, when)
+        if row is None:
+            logger.info("[oddsapinet] 못 맞춤 %s @ %s (%s)",
+                        ev.get("away_team"), ev.get("home_team"), when)
+            continue
+        out.append((ev, row["id"]))
+    return out
+
+
 async def odds_snapshot_job() -> None:
     """배당 스냅샷 — 크레딧 예산 관리:
 
@@ -2328,6 +2391,12 @@ def _job_specs() -> list[tuple]:
         ("triggers_1m", triggers_job, IntervalTrigger(minutes=1)),
         ("watchdog_5m", watchdog_job, IntervalTrigger(minutes=5)),
         ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
+        # 🔴 [ODN-1] KBO·NPB 총점 — **하루 2회**. 월 1,000 크레딧이라
+        #    30분 주기로는 이틀이면 끝난다(11,520콜 필요).
+        #    15:00 = 아시아 야구 T-3h · 17:30 = T-1h(라인업 뒤).
+        #    ⚠️ 위 30분 잡은 **안 건드린다** — 무료 소스이고 CLV 가 거기서 난다.
+        ("oddsapinet_2x", oddsapinet_job,
+         CronTrigger(hour="15,17", minute=30, timezone=KST)),
         # [SAT] 위성 수집 — 기본 꺼짐(satellite_enabled). 켜면 15분마다 DB에 없는
         #   경기 정보를 미리 긁어 캐시에 쌓는다. 판정 경로는 아직 안 읽는다(증분2 전).
         ("satellite_15m", satellite_job, IntervalTrigger(minutes=15)),
