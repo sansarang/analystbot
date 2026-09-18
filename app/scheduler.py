@@ -488,6 +488,19 @@ async def mlb_pregame_poll() -> None:
                 else:
                     errs.append({"what": "mlb 판정 캐시 없음",
                                  "detail": "슬레이트 파이프라인 구제 실패/이미 시도"})
+        # 🔴 [v1.4 STEP 13 2026-09-18] **새 파이프라인을 같은 슬레이트에 돌린다.**
+        #    `PIPELINE_V14` 가 꺼져 있으면 즉시 반환한다(배포해도 무해).
+        #    발송은 `PIPELINE_V14_SEND` 가 따로 가른다 — 섀도 관측이 기본이다.
+        #    ⚠️ 실패해도 기존 경로를 막지 않는다.
+        try:
+            from app.flow.bridge import run_slate
+
+            _flow = await run_slate(pool, redis, [dict(g) for g, _ in updated])
+            if _flow.get("games"):
+                logger.info("[scheduler] v1.4 섀도 %s", _flow)
+        except Exception as exc:
+            logger.warning("[scheduler] v1.4 섀도 실패 — 기존 경로는 계속: %s", exc)
+
         for game, res in updated:
             try:
                 ok = await rejudge_after_lineup(game, res)

@@ -417,7 +417,15 @@ async def test_보드면_보내지_않는다():
 
 
 @pytest.mark.asyncio
-async def test_한_번만_보낸다():
+async def test_한_번만_보낸다(monkeypatch):
+    """⚠️ [2026-09-18] 섀도 가드가 생겨 `PIPELINE_V14_SEND` 를 켜야 한다.
+    이 테스트가 재는 것은 **멱등성**이지 스위치가 아니다."""
+    from app import config as C
+
+    class _S:
+        pipeline_v14_send = True
+
+    monkeypatch.setattr(C, "get_settings", lambda: _S())
     sent = []
     st = _s(pick_side="away", n11_value={"pick_type": PICK_ML, "structure": None},
             n02_market={"odds": {"away": 1.35}},
@@ -497,3 +505,108 @@ def test_카드와_성능이_그_규칙을_쓴다():
 
     for mod in (C, PF):
         assert "away_prob" in inspect.getsource(mod), mod.__name__
+
+
+# ── [2026-09-18 페이블 검토] ② doubt 제거 · ③ 선발 배선 · ⑥ n01 격리
+
+def test_야구_need에_doubt가_없다():
+    """🔴 실측 확인 0/30 — 구조화된 소스가 없다(FORKS F-15).
+
+    ⚠️ **축구는 그대로다.** 그쪽은 개념도 소스도 있다 — 종목을 함께 지우면
+       안 되는 것까지 지운다.
+    """
+    from app.engine import hypothesis as HY
+    from app.flow import rules as R
+
+    # flow(v1.4): 야구에서 뺐다. 축구 표에는 지시문 §1.2 부터 `doubt` 가 없다
+    #   — 축구는 `xi_confirmed` 가 그 역할을 한다(확정 XI 대비 주전 결장).
+    assert "doubt" not in R.vars_for("baseball")
+    assert set(R.vars_for("soccer")) == {"xi_confirmed", "form_recent5",
+                                         "rotation_risk", "travel", "motivation"}
+    # 기존 경로: 야구만 뺐고 **축구는 그대로다** — 그쪽은 개념도 소스도 있다.
+    assert HY._BASEBALL_OUT == ("out",)
+    assert "doubt" in HY._SOCCER_OUT
+
+
+def test_야구_핵심변수에_선발이_있다():
+    """🔴 딥서치가 가장 강하게 지지한 축이다(FORKS F-16)."""
+    from app.flow import rules as R
+
+    assert "starter_recent3" in R.core_vars("baseball")
+
+
+@pytest.mark.asyncio
+async def test_선발_변경이_evidence로_들어온다():
+    st = _s(pick_side="away", n03_gate={"gate": AGREE})
+    st = await n04_hyp.run(st, Ctx())
+    ctx = Ctx(inject={"starter_notes": ["홈 선발 변경: 문동주 → 박준영"],
+                      "extract": {}, "absences": []})
+    st = await n05_evidence.run(st, ctx)
+    row = [e for e in st.n05_evidence if e["var"] == "starter_recent3"]
+    assert row, st.n05_evidence
+    assert row[0]["sides"] == {"home": 1}          # 홈 선발이 바뀌었다
+    st = await n06_verdict.run(st, Ctx())
+    assert st.n06_verdict["per_var"]["starter_recent3"] == "confirmed"
+
+
+@pytest.mark.asyncio
+async def test_상대_선발_변경은_우리에게_유리하다():
+    """🔴 부호는 `sides` 가 정한다 — 한쪽으로 고정하면 근거와 반대로 움직인다."""
+    st = _s(pick_side="away", n03_gate={"gate": AGREE})
+    st = await n04_hyp.run(st, Ctx())
+    ctx = Ctx(inject={"starter_notes": ["홈 선발 변경: 문동주 → 박준영"],
+                      "extract": {}, "absences": []})
+    st = await n05_evidence.run(st, ctx)
+    st = await n06_verdict.run(st, Ctx())
+    st = await n07_adjust.run(st, Ctx())
+    adj = [a for a in st.n07_adjust if a["var"] == "starter_recent3"]
+    assert adj and adj[0]["pp"] > 0, st.n07_adjust   # 픽(원정)에게 유리
+
+
+def test_선발변경_문장_형식이_원본과_묶여_있다():
+    """🔴 `starter_change_notes` 형식이 바뀌면 팀 분리가 조용히 깨진다.
+
+    그 함수의 **실제 출력**으로 결합을 고정한다.
+    """
+    from app.flow.nodes.n05_evidence import _SIDE_KR
+    from app.pipeline import starter_change_notes
+
+    notes = starter_change_notes(
+        {"home_pitcher": {"name": "박준영"}, "away_pitcher": {"name": "원태인"}},
+        {"home": "문동주", "away": "원태인"})
+    assert notes, notes
+    assert any(n.startswith(ko) for n in notes for ko in _SIDE_KR), notes
+
+
+def test_n01은_배당을_읽지_않는다():
+    """🔴 [⑥ 페이블 검토] 사전값이 시장을 보면 그건 앵커링이다.
+
+    CLAUDE.md "시장에 끌려가지 않는다" · FORKS F-17. 사전값이 배당을 보면
+    "우리가 시장과 다르다"를 잴 수 없고, CLV 채점(F-4)의 전제가 무너진다.
+    ⚠️ 주석이 아니라 **실행 줄**만 본다.
+    """
+    import ast
+    import inspect
+
+    tree = ast.parse(inspect.getsource(n01_prior))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            node.value = ""
+    code = ast.unparse(tree)
+    for banned in ("n02_market", "odds", "market", "devig", "required_prob",
+                   "odds_snapshots", "implied"):
+        assert banned not in code.lower(), f"n01 이 시장을 읽는다: {banned}"
+
+
+def test_n01은_자기_키만_쓴다():
+    """🔴 지시문 규율 8 — 다른 노드 키를 고치면 배선 오류다."""
+    import ast
+    import inspect
+
+    from app.flow.state import NODE_KEYS
+
+    tree = ast.parse(inspect.getsource(n01_prior))
+    writes = {t.attr for n in ast.walk(tree) if isinstance(n, ast.Assign)
+              for t in n.targets if isinstance(t, ast.Attribute)}
+    assert writes <= {"n01_prior", "pick_side"}, writes
+    assert all(k not in writes for k in NODE_KEYS if k != "n01_prior")

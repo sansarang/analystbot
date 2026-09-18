@@ -25,6 +25,13 @@ _MAX_EXCERPT = 300
 _FROM_EXTRACT = {"lineup_out": "out", "xi_confirmed": "out",
                  "form_recent5": "last3", "rotation_risk": "midweek"}
 
+#: 🔴 [2026-09-18 페이블 검토] 선발 변경 문장의 팀 접두사.
+#   원본은 `pipeline.starter_change_notes` 의 f-string 이다 —
+#   `f"{label} 선발 변경: {old} → {new}"`, label 은 "홈"|"원정".
+#   ⚠️ 그 형식이 바뀌면 여기가 조용히 깨진다. 계약 테스트가 **그 함수의 실제
+#      출력**으로 결합을 고정한다(WIR-1 의 `_describe` 와 같은 방식).
+_SIDE_KR = {"홈": "home", "원정": "away"}
+
 
 def _row(var: str, value, *, source: str, url: str = "", excerpt: str = "",
          sides: dict | None = None) -> dict:
@@ -130,6 +137,24 @@ async def run(state, ctx):
             logger.info("[flow:n05] game=%s 슬레이트 예산 소진 — 나머지는 미상",
                         state.game_id)
             break
+
+        # 🔴 [2026-09-18] **선발 축.** 딥서치가 야구에서 가장 큰 단일 변수라고
+        #    말한 자리다(선발 교체 = 머니라인 40~60센트 · FORKS F-16).
+        #    감지는 이미 있었고(`pipeline.starter_change_notes`) 가설·채점이
+        #    그것을 보지 않았다 — WIR-1 과 같은 "만들어 놓고 안 이음"이다.
+        if var == "starter_recent3":
+            notes = list((ctx.inject or {}).get("starter_notes") or [])
+            if notes:
+                sides: dict = {}
+                for n in notes:
+                    for ko, en in _SIDE_KR.items():
+                        if str(n).startswith(ko):
+                            sides[en] = sides.get(en, 0) + 1
+                            break
+                out.append(_row(var, notes, source="starter_change",
+                                excerpt=" · ".join(map(str, notes)),
+                                sides=sides))
+            continue
 
         field = _FROM_EXTRACT.get(var)
         if var in ("form_recent5",) or var == "last3":

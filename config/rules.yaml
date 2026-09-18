@@ -83,6 +83,11 @@ flow:
   # 조정 사전값 표 — 단위 %p, 우리 픽 후보 팀 기준(+는 유리)
   adjust_prior_pp:
     baseball:
+      # 🔴 [2026-09-18 페이블 검토] `doubt`(출전 불투명)를 **뺐다.**
+      #    실측 확인 0/30. 개념은 실재하지만(MLB Day-to-Day) statsapi 로스터에
+      #    코드가 없어(12종 전수 실측) 구조화된 소스가 없다 → FORKS F-15.
+      #    ⚠️ **되살릴 조건**: DTD 를 주는 2차 소스를 붙이는 날 여기 되돌린다.
+      #    ⚠️ 축구는 그대로다 — 그쪽은 개념도 소스도 있다.
       starter_recent3:   {max_abs: 3.0, core: true}
       bullpen_3d:        {max_abs: 2.0, core: true}
       lineup_out:        {max_abs: 2.5, core: true}

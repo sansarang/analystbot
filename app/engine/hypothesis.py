@@ -77,7 +77,14 @@ def _other(side: str | None) -> str | None:
 #  규칙은 같다. 종목으로 분기문을 늘리지 않는다.
 _SOCCER_OUT = ("out", "doubt", "bench_notable")
 _SOCCER_LOAD = ("midweek", "last3")
-_BASEBALL_OUT = ("out", "doubt")
+# 🔴 [2026-09-18 페이블 검토] `doubt` 를 **뺐다.** 실측 확인 0/30 —
+#    개념은 실재하지만(MLB Day-to-Day) statsapi 로스터에 코드가 없다
+#    (상태 12종 전수 실측: A·D7·D10·D15·D60·ILF·RM·RES·DEV·RST·DES·TI).
+#    DTD 는 IL 에 안 올리는 것이 정의라 로스터에 안 나타난다 → FORKS F-15.
+#    ⚠️ 못 찾는 칸을 분모에 두면 문턱(2)만 높아진다. 5칸 중 2칸이 구조적으로
+#       0 이면 가설이 성립할 수 없다.
+#    ⚠️ **되살릴 조건**: DTD 를 주는 2차 소스를 붙이는 날 되돌린다.
+_BASEBALL_OUT = ("out",)
 _BASEBALL_LOAD = ("last3",)
 
 

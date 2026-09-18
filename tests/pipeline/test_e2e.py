@@ -5,6 +5,13 @@
 🔴 6-2(축구)는 파생 모델(포아송 λ)이 아직 없으므로 **구조 후보가 0** 이다.
    추측 확률로 픽을 만들면 실패다(지시문 §6 원문).
 ⚠️ 바깥은 전부 `ctx.inject` 로 갈아끼운다 — 네트워크·DB·LLM 을 타지 않는다.
+
+🔴 **[2026-09-18 페이블 검토] §6-1 기대값이 개정됐다.**
+   초판은 `⑦ +2.0 → ⑧ 0.707 → ⑪ ml_edge −3.4` 였는데, §1.2 표
+   (`starter_recent3.max_abs = 3.0`)와 §8 규칙(`max_abs × strength(0.5|1.0)`)
+   으로는 **2.0 이 나올 수 없다**(1.5 또는 3.0). 지시문 내부가 어긋났다.
+   개정판(페이블 확인): `⑦ +3.0/+2.0 → Σ +5.0 → p_code 0.7375 → 확신 A → 보드`.
+   **코드를 유지하고 기대값을 고쳤다** — 숫자를 맞추려 규칙을 비틀지 않는다.
 """
 from __future__ import annotations
 
@@ -82,6 +89,13 @@ async def test_6_1_야구_대전은_보드로_끝난다():
     assert abs(s.n03_gate["gap_pp"]) < 4.0
     # ④ 가설 — 동의는 파생만
     assert s.n04_hyp[0]["id"] == "H_deriv"
+    # ⑦⑧⑨ — 개정된 §6-1 기대값을 **중간값까지** 고정한다.
+    #   상대(한화) 선발·불펜 악재이므로 픽(삼성)에게 **유리(+)** 다.
+    assert {a["var"]: a["pp"] for a in s.n07_adjust} == {
+        "starter_recent3": 3.0, "bullpen_3d": 2.0}, s.n07_adjust
+    assert s.n08_pcode["sum_adj_pp"] == 5.0
+    assert s.n08_pcode["p_code_pick"] == 0.7375
+    assert s.n09_conf["grade"] == "A", s.n09_conf
     # ⑪ 값 판정 — 파생 모델이 없으므로 구조 후보 0 → 보드
     assert s.n11_value["pick_type"] == PICK_BOARD, s.n11_value
     assert s.n11_value["n_candidates"] == 0

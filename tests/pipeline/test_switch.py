@@ -113,3 +113,121 @@ def test_배타_가드가_SPORTS_관문보다_앞에_있다():
     code = "\n".join(ln for ln in src.splitlines()
                      if ln.strip() and not ln.strip().startswith("#"))
     assert code.index("pipeline_v14") < code.index("sport not in SPORTS")
+
+
+# ── [2026-09-18 페이블 검토] ⑤ 섀도 스위치 · 스케줄러 다리
+
+def test_SEND_스위치도_기본_꺼짐이다():
+    from app.config import get_settings
+
+    assert get_settings().pipeline_v14_send is False
+
+
+@pytest.mark.asyncio
+async def test_섀도면_끝까지_가도_보내지_않는다(monkeypatch):
+    """🔴 24h 관측이 §7 의 전제인데 그때 카드가 나가면 관측이 아니다."""
+    from app import config as C
+    from app.flow.ctx import Ctx
+    from app.flow.nodes import n13_send
+    from app.flow.state import State
+
+    class _S:
+        pipeline_v14 = True
+        pipeline_v14_send = False
+
+    monkeypatch.setattr(C, "get_settings", lambda: _S())
+    sent: list = []
+    st = State.new({"game_id": "1", "sport": "baseball", "league": "KBO",
+                    "home": "한화", "away": "삼성"})
+    st.pick_side = "away"
+    st.n11_value = {"pick_type": "승패", "structure": None}
+    st.n02_market = {"odds": {"away": 1.35}}
+    st.n08_pcode = {"p_code_pick": 0.71}
+    st.n09_conf = {"grade": "B"}
+    st.n12_text = {"sentences": ["1", "2", "3", "4"]}
+    st.n05_evidence = []
+    st = await n13_send.run(st, Ctx(inject={"send": lambda t: sent.append(t) or True}))
+    assert sent == [], sent
+    assert st.n13_send == {"sent": False, "message_id": None, "why": "섀도"}
+
+
+@pytest.mark.asyncio
+async def test_SEND가_켜지면_보낸다(monkeypatch):
+    from app import config as C
+    from app.flow.ctx import Ctx
+    from app.flow.nodes import n13_send
+    from app.flow.state import State
+
+    class _S:
+        pipeline_v14 = True
+        pipeline_v14_send = True
+
+    monkeypatch.setattr(C, "get_settings", lambda: _S())
+    sent: list = []
+    st = State.new({"game_id": "1", "sport": "baseball", "league": "KBO",
+                    "home": "한화", "away": "삼성"})
+    st.pick_side = "away"
+    st.n11_value = {"pick_type": "승패", "structure": None}
+    st.n02_market = {"odds": {"away": 1.35}}
+    st.n08_pcode = {"p_code_pick": 0.71}
+    st.n09_conf = {"grade": "B"}
+    st.n12_text = {"sentences": ["1", "2", "3", "4"]}
+    st.n05_evidence = []
+    st = await n13_send.run(st, Ctx(inject={"send": lambda t: sent.append(t) or True}))
+    assert len(sent) == 1 and st.n13_send["sent"] is True
+
+
+@pytest.mark.asyncio
+async def test_스위치가_꺼지면_다리가_즉시_돌아온다(monkeypatch):
+    """🔴 배포해도 무해해야 한다 — 꺼진 상태에서 경기를 한 건도 돌리지 않는다."""
+    from app import config as C
+    from app.flow.bridge import run_slate
+
+    class _S:
+        pipeline_v14 = False
+
+    monkeypatch.setattr(C, "get_settings", lambda: _S())
+    got = await run_slate(None, None, [{"id": 1, "sport": "kbo"}])
+    assert got["games"] == 0 and got["why"] == "스위치 꺼짐"
+
+
+@pytest.mark.asyncio
+async def test_다리가_멈춤_사유를_사유별로_센다(monkeypatch):
+    """🔴 조용한 0 금지 — 24h 섀도 보고의 대상이 이 분포다."""
+    from app import config as C
+    from app.flow import bridge as B
+
+    class _S:
+        pipeline_v14 = True
+        pipeline_v14_send = False
+
+    class _St:
+        def __init__(self, reason):
+            self.stop_reason = reason
+            self.n13_send = None
+
+    calls = []
+
+    async def _run_game(game, ctx):
+        calls.append(game["game_id"])
+        return _St("n03_freeze" if game["game_id"] == 1 else None)
+
+    monkeypatch.setattr(C, "get_settings", lambda: _S())
+    monkeypatch.setattr("app.flow.run.run_game", _run_game)
+    got = await B.run_slate(None, None,
+                            [{"id": 1, "sport": "kbo", "starts_at": None},
+                             {"id": 2, "sport": "kbo", "starts_at": None}])
+    assert got["games"] == 2 and calls == [1, 2]
+    assert got["stopped"] == {"n03_freeze": 1, "완주": 1}, got
+
+
+def test_스케줄러가_다리를_부른다():
+    """🔴 STEP 13 을 처음 붙일 때 가드만 걸고 호출을 안 이었다 — 그러면
+    스위치가 "새 경로를 켠다"가 아니라 "카드를 끈다"가 된다."""
+    import pathlib
+
+    src = pathlib.Path("app/scheduler.py").read_text(encoding="utf-8")
+    code = "\n".join(ln for ln in src.splitlines()
+                     if ln.strip() and not ln.strip().startswith("#"))
+    assert "from app.flow.bridge import run_slate" in code
+    assert "await run_slate(" in code

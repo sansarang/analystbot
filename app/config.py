@@ -436,6 +436,16 @@ class Settings(BaseSettings):
     pipeline_v14: bool = Field(default=False, validation_alias=AliasChoices(
         "PIPELINE_V14", "pipeline_v14"))
 
+    #: 🔴 [2026-09-18 페이블 검토] **섀도 모드 스위치.** `PIPELINE_V14=true` 로
+    #   새 경로를 돌리되 **카드는 보내지 않는다**(기본 꺼짐).
+    #   ⚠️ 둘을 한 스위치로 묶으면 "관측"과 "발송"을 따로 못 켠다 — 24h 섀도
+    #      관측이 지시문 §7 의 전제인데 그때 카드가 나가면 관측이 아니다.
+    #   조합: V14=false            기존 경로 (종전 동작 100%)
+    #         V14=true  SEND=false 새 경로가 돌되 **발송 0** (섀도)
+    #         V14=true  SEND=true  새 경로가 보낸다
+    pipeline_v14_send: bool = Field(default=False, validation_alias=AliasChoices(
+        "PIPELINE_V14_SEND", "pipeline_v14_send"))
+
     #: [SRCH-2 2026-09-12 사용자 지시] **Anthropic 웹 검색.**
     #   "x seach 삭제....그자리에 안트로픽 서치로" · "퍼플릭스와 안트로픽"
     #   🔴 **기본 꺼짐.** 유료다 — 경기당 약 $0.102 (실측 2026-09-12:

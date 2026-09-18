@@ -52,6 +52,17 @@ async def _already_sent(state, ctx) -> bool:
 
 async def run(state, ctx):
     """⑬ 발송."""
+    # 🔴 [2026-09-18 페이블 검토] **섀도 모드.** `PIPELINE_V14_SEND` 가 꺼져
+    #    있으면 여기까지 와도 보내지 않는다. 24h 관측이 지시문 §7 의 전제인데
+    #    그때 카드가 나가면 그건 관측이 아니다.
+    #    ⚠️ **조용히 넘기지 않는다** — 사유를 남겨 `analysis_runs` 에서 보인다.
+    from app.config import get_settings as _cfg
+
+    if not getattr(_cfg(), "pipeline_v14_send", False):
+        state.n13_send = {"sent": False, "message_id": None, "why": "섀도"}
+        logger.info("[flow:n13] game=%s 섀도 — 발송하지 않는다", state.game_id)
+        return state
+
     val = state.n11_value or {}
     if val.get("pick_type") == PICK_BOARD:
         state.n13_send = {"sent": False, "message_id": None, "why": "보드"}
