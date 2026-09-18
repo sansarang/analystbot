@@ -732,18 +732,30 @@ def _tier_key(sport: str, league: str) -> str | None:
     return league_labels().get(league)
 
 
-async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
-    """[GATE-2] 티어 사전값과 `open` 시장을 대조해 게이트를 원장에 남긴다.
+async def gate_of(conn_or_pool, *, game_id: int) -> dict | None:
+    """[GAT-1 2026-09-18] 게이트·가설 **계산 전용.** 원장에 쓰지 않는다.
 
-    반환 `{"label", "gap_pp", "side", "p_prior", "prior_src"}` · 못 재면 None.
+    🔴 **왜 떼어냈나.** 종전에는 `record_prior` 가 계산과 원장 쓰기를 한 몸으로
+       하고 있었다. 원장 행은 판정이 끝나야 생기므로(`_row_from_game`:
+       "판정이 없으면 None"), **판정 전에는 라벨을 계산조차 할 수 없었다.**
+       그런데 위성은 그 라벨을 보고 추출 대상을 고른다(`_DUE_SQL` 이
+       `pick_ledger` 를 LEFT JOIN 한다) — 그래서 첫 판정 때는 언제나 추출이
+       없고, 가설을 세워 놓고도 아무것도 확인하지 못했다.
+       실측 2026-09-17 운영 로그: `§3 대상 선별 — 슬레이트 19 · 게이트 대상 0`.
+       원장 실측: need 133칸 중 확인 6칸(4.5%) · 미상 55칸(41.4%).
 
-    🔴 **판정은 이 값을 읽지 않는다.** 측정 전용이다(pick_ledger 머리말 규약).
-    🔴 기준선은 `open` 이다 — `odds_move.baseline` 이 그 규칙의 원본이고,
-       여기서 다시 고르지 않는다.
-    🔴 티어가 비면 `prior_src` 가 "tier:미기입" 으로 남는다(prior 모듈이 정한
-       규약). 조용히 중앙값으로 메우고 끝내지 않는다.
-    ⚠️ 올해 성적(승·무·패)은 아직 배선 전이라 티어만으로 계산한다.
-       `team_elo` 가 그것을 받게 돼 있으므로, 붙이는 자리는 여기 한 곳이다.
+    🔴 **라벨의 재료는 판정과 무관하다** — 티어 표(정적) · 올해 성적(`games`) ·
+       배당 스냅샷(`odds_snapshots`). 판정을 기다릴 이유가 없었다.
+
+    🔴 **계산은 여기 한 곳이다(사본 금지).** `record_prior` 도 이 함수를 부른다.
+       위성이 미리 본 라벨과 원장에 적히는 라벨은 **같은 코드·같은 입력**에서
+       나온다. 입력이 그 사이 변하면(배당 이동) 그건 사본이 아니라 시점 차이고,
+       원장에 남는 것은 종전대로 판정 시점 값이다.
+
+    반환 (못 재면 `None` — 티어 표가 없는 리그):
+        label · gap_pp · side · p_prior · prior_src · p_base
+        p_market · reason · hypothesis(JSON|None) · placeholder(bool)
+        board_only(bool) · home · away · sport
     """
     from contextlib import asynccontextmanager
 
@@ -783,51 +795,55 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
         th, sh = P.team_elo(tiers.get(g["home"]), w=hw, d=hd, lose=hl)
         ta, sa = P.team_elo(tiers.get(g["away"]), w=aw, d=ad, lose=al)
         gp_h, gp_a = hw + hd + hl, aw + ad + al
+
+        # 빅매치는 이미 로드한 티어로 판정한다 — 새로 부르지 않는다.
+        #    ⚠️ 순위를 모르면 `is_big_match` 가 0 으로 읽지 않는다(BIG-1).
+        from app.engine.bigmatch import is_big_match
+
+        tag = is_big_match(league=key or "", home=g["home"], away=g["away"],
+                           rank_home=tiers.get(g["home"]),
+                           rank_away=tiers.get(g["away"]))
+
+        def _hyp(label, side, gap_pp):
+            """[U5] **게이트 직후 가설을 세운다.** 검색 전에 무엇을 찾을지
+            정하는 자리다 — 실패해도 판정은 그대로 간다."""
+            from app.engine import hypothesis as HY
+
+            try:
+                h = HY.build(label, sport=sport, side=side,
+                             bigmatch=bool(getattr(tag, "big", False)),
+                             gap_pp=gap_pp)
+                logger.info("[hypothesis] game=%s %s → 방향 %s · need %d · 문턱 %d",
+                            game_id, label, h.direction, len(h.need),
+                            h.sufficient_count)
+                return json.dumps(h.as_dict(), ensure_ascii=False)
+            except Exception as exc:
+                logger.warning("[hypothesis] game=%s 실패 — 판정은 그대로 간다: %s",
+                               game_id, exc)
+                return None
+
+        base_out = {"home": g["home"], "away": g["away"], "sport": sport}
         # 🔴 [U3 2026-09-15 사용자 지시] **티어가 비면 사전값을 만들지 않는다.**
         #    종전에는 리그 중앙(3 → 1560)으로 메워 채운 팀과 안 채운 팀이
-        #    같은 근거를 가진 것처럼 보였다(리즈 사례). `team_elo` 가 None 을
-        #    주면 여기서 끝낸다 — `soccer_prior(None, …)` 은 TypeError 다.
+        #    같은 근거를 가진 것처럼 보였다(리즈 사례).
         #    ⚠️ 조용히 빠지지 않는다. p_prior=NULL · prior_src='none' 으로
         #       **기록하고** 그 사실이 게이트까지 간다(U4 가 보드고정으로 읽는다).
         if th is None or ta is None:
             miss = [n for n, v in ((g["home"], th), (g["away"], ta)) if v is None]
             logger.info("[gate] game=%s 티어 미기입 %s — 사전값 없음(none)",
                         game_id, miss)
+            # 🔴 [PA-6 2026-09-16] **여기서 끝내지 않는다.** 종전 `return None`
+            #    은 사전값만 적고 돌아갔고, 그러면 가설 생성(U5)도, 확인 판정
+            #    (U7)·분석(U12)도 통째로 건너뛰어졌다.
             # 🔴 [PA-13] 라벨을 **칸으로도** 남긴다. 텍스트는 사람이 읽고,
             #    칸은 코드가 읽는다. 여기 "보드고정"은 띄어쓰기가 없어
             #    `G.BOARD` 와 글자가 다르다 — 그래서 파싱을 못 쓴다.
-            await conn.execute(_PRIOR_SAVE, game_id, None, "none", None,
-                               f"보드고정 · 티어 미기입({' · '.join(miss)})",
-                               G.BOARD, None, None)
-            # 🔴 [PA-6 2026-09-16] **여기서 끝내지 않는다.** 종전 `return None`
-            #    은 사전값만 적고 돌아갔고, 그러면 아래 가설 생성(U5)도,
-            #    호출부의 확인 판정(U7)·분석(U12)도 통째로 건너뛰어졌다.
-            #    실측 2026-09-16 ACLE 2경기: v3 판정 2/2 · 위성 15건 · 딥서치
-            #    성공인데 가설·확인·가감·흐름·구조·결정축이 **전부 비었다.**
-            #    야구가 되고 축구가 안 되던 이유가 이것이다 — 야구는 티어가
-            #    채워져 있어 이 가드를 지나간다.
-            # 🔴 **사전값을 지어내지 않는다.** U3 규약(`p_prior=NULL`,
-            #    `prior_src='none'`)은 그대로다. 중앙값으로 메우면 U3 을 되돌린다.
-            # 🔴 **LLM 비용은 안 는다.** `analyze.run` 은 게이트가
-            #    `OVER|DOUBT` 가 아니면 스스로 건너뛴다. 보드 고정은 대상이 아니다.
-            board_hyp = None
-            try:
-                from app.engine import hypothesis as HY
-
-                h = HY.build(G.BOARD, sport=sport, side=None,
-                             bigmatch=False, gap_pp=None)
-                board_hyp = json.dumps(h.as_dict(), ensure_ascii=False)
-                logger.info("[hypothesis] game=%s %s → %s",
-                            game_id, G.BOARD, h.reason)
-            except Exception as exc:
-                logger.warning("[hypothesis] game=%s 보드 가설 실패 — "
-                               "판정은 그대로 간다: %s", game_id, exc)
-            if board_hyp is not None:
-                await conn.execute(
-                    "UPDATE pick_ledger SET hypothesis = $2::jsonb "
-                    "WHERE game_id = $1 AND is_final", game_id, board_hyp)
-            return {"label": G.BOARD, "gap_pp": None, "side": None,
-                    "p_prior": None, "prior_src": "none"}
+            return {**base_out, "board_only": True, "label": G.BOARD,
+                    "gap_pp": None, "side": None, "p_prior": None,
+                    "prior_src": "none", "p_base": None, "p_market": None,
+                    "placeholder": False,
+                    "reason": f"보드고정 · 티어 미기입({' · '.join(miss)})",
+                    "hypothesis": _hyp(G.BOARD, None, None)}
         src = "tier"
         if gp_h or gp_a:
             # ⚠️ 티어만 쓴 것과 성적이 섞인 것을 구분한다 — 나중에 "왜 이
@@ -852,11 +868,6 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
         base = M.baseline([v for k, v in snaps.items() if k[0] == prov]) if prov else None
         from app.engine.market_edge import implied_probs
 
-        # 🔴 [GATE-3 2026-09-14 사용자 지시] 기준선이 없어도 **사유를 남긴다.**
-        #    종전에는 조용히 빠져나가 원장이 비었고, 그러면 "게이트를 안 돌린
-        #    경기"와 "배당이 없어 못 돌린 경기"를 나중에 구분할 수 없다.
-        #    ⚠️ 시장 확률을 지어내지 않는다 — `gate.classify` 에 None 을 주면
-        #       그쪽이 **보드 고정**을 돌려준다. 판정 규칙은 원본이 정한다.
         # 🔴 [PA-22-b 2026-09-17 · 지시문 2단계] **위생 검사를 여기서 건다.**
         #    종전에는 마진이 이상한 배당도 그대로 게이트까지 갔다 — 실측
         #    재현: 마진 0(합 100.0%)짜리가 `시장 과대 · gap -22.46` 을 만들었다.
@@ -885,6 +896,8 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
         # 🔴 [PA-22-b] 같은 슬레이트의 다른 경기와 **소수점까지 같은** 시장
         #    확률이면 자리표를 의심한다(실사고 SEA@ATH 40.9/59.1 두 번).
         #    ⚠️ 폐기하지 않는다 — 표시만 하고 판단은 사람이 한다.
+        #    ⚠️ [GAT-1] 여기서 **쓰지 않는다.** 쓰기는 `record_prior` 몫이다.
+        placeholder = False
         if mp:
             try:
                 from app.engine.market_edge import placeholder_suspect
@@ -901,58 +914,83 @@ async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
                     logger.warning("[gate] game=%s 시장 확률이 다른 경기와 "
                                    "소수점까지 같다 — 자리표 의심 (%.4f)",
                                    game_id, mp.get("home"))
-                    await conn.execute(
-                        "UPDATE pick_ledger SET placeholder_suspect = TRUE "
-                        "WHERE game_id = $1 AND is_final", game_id)
+                    placeholder = True
             except Exception as exc:
                 logger.info("[gate] game=%s 자리표 검사 실패: %s", game_id, exc)
 
         v = G.classify(pri, mkt, sport)
-        # 🔴 [U5 2026-09-15] **게이트 직후 가설을 세운다.** 검색 전에 무엇을
-        #    찾을지 정하는 자리다 — 지금까지는 수집이 need 와 무관하게 전부
-        #    돌았고 그래서 S6·S9 가 고를 수 없었다.
-        #    ⚠️ 이 U 는 **만들어 기록만** 한다. 수집을 좁히는 것은 U6,
-        #       확인 판정은 U7 이다(한 U 한 변경).
-        hyp = None
-        try:
-            from app.engine import hypothesis as HY
-
-            # 빅매치는 이미 로드한 티어로 판정한다 — 새로 부르지 않는다.
-            #    ⚠️ 순위를 모르면 `is_big_match` 가 0 으로 읽지 않는다(BIG-1).
-            from app.engine.bigmatch import is_big_match
-
-            tag = is_big_match(league=key or "", home=g["home"], away=g["away"],
-                               rank_home=tiers.get(g["home"]),
-                               rank_away=tiers.get(g["away"]))
-            h = HY.build(v.label, sport=sport, side=v.side,
-                         bigmatch=bool(getattr(tag, "big", False)),
-                         gap_pp=v.gap_pp)
-            hyp = json.dumps(h.as_dict(), ensure_ascii=False)
-            logger.info("[hypothesis] game=%s %s → 방향 %s · need %d · 문턱 %d",
-                        game_id, v.label, h.direction, len(h.need),
-                        h.sufficient_count)
-        except Exception as exc:
-            logger.warning("[hypothesis] game=%s 실패 — 판정은 그대로 간다: %s",
-                           game_id, exc)
+        # 🔴 [GATE-3 2026-09-14 사용자 지시] 기준선이 없어도 **사유를 남긴다.**
+        #    종전에는 조용히 빠져나가 원장이 비었고, 그러면 "게이트를 안 돌린
+        #    경기"와 "배당이 없어 못 돌린 경기"를 나중에 구분할 수 없다.
         why = v.reason if mp else (
             f"{v.reason} (이름표 붙은 기준선 스냅샷 없음"
             + (f" · 소스 {prov}" if prov else " · 배당 0건") + ")")
-        await conn.execute(_PRIOR_SAVE, game_id, float(p_home), src,
-                           (mp or {}).get("home"), f"{v.label} · {why}",
-                           v.label,
-                           None if v.gap_pp is None else float(v.gap_pp),
-                           json.dumps(p_base, ensure_ascii=False))
-        if hyp is not None:
-            await conn.execute(
-                "UPDATE pick_ledger SET hypothesis = $2::jsonb "
-                "WHERE game_id = $1 AND is_final", game_id, hyp)
         mp = mp or {}
-    logger.info("[gate] game=%s %s vs %s — 사전값 %.3f(%s) · 시장 %.3f · "
-                "%s gap=%s side=%s", game_id, g["home"], g["away"],
-                float(p_home), src, float(mp.get("home") or 0), v.label,
-                v.gap_pp, v.side)
-    return {"label": v.label, "gap_pp": v.gap_pp, "side": v.side,
-            "p_prior": float(p_home), "prior_src": src, "p_base": p_base}
+        logger.info("[gate] game=%s %s vs %s — 사전값 %.3f(%s) · 시장 %.3f · "
+                    "%s gap=%s side=%s", game_id, g["home"], g["away"],
+                    float(p_home), src, float(mp.get("home") or 0), v.label,
+                    v.gap_pp, v.side)
+        return {**base_out, "board_only": False, "label": v.label,
+                "gap_pp": v.gap_pp, "side": v.side,
+                "p_prior": float(p_home), "prior_src": src, "p_base": p_base,
+                "p_market": mp.get("home"), "placeholder": placeholder,
+                "reason": f"{v.label} · {why}",
+                "hypothesis": _hyp(v.label, v.side, v.gap_pp)}
+
+
+async def record_prior(conn_or_pool, *, game_id: int) -> dict | None:
+    """[GATE-2] 티어 사전값과 `open` 시장을 대조해 게이트를 **원장에 남긴다.**
+
+    반환 `{"label", "gap_pp", "side", "p_prior", "prior_src", "p_base"}` ·
+    못 재면 None.
+
+    🔴 **판정은 이 값을 읽지 않는다.** 측정 전용이다(pick_ledger 머리말 규약).
+    🔴 기준선은 `open` 이다 — `odds_move.baseline` 이 그 규칙의 원본이다.
+    🔴 [GAT-1 2026-09-18] 계산은 `gate_of` 가 한다 — 여기는 **쓰기만** 한다.
+       계산을 두 곳에 두면 위성이 본 라벨과 원장 라벨이 갈린다(사본 금지).
+    """
+    from contextlib import asynccontextmanager
+
+    from app.engine import gate as G
+
+    @asynccontextmanager
+    async def _conn():
+        if hasattr(conn_or_pool, "acquire"):
+            async with conn_or_pool.acquire() as c:
+                yield c
+        else:
+            yield conn_or_pool
+
+    async with _conn() as conn:
+        res = await gate_of(conn, game_id=game_id)
+        if res is None:
+            return None
+
+        async def _save_hyp():
+            if res["hypothesis"] is not None:
+                await conn.execute(
+                    "UPDATE pick_ledger SET hypothesis = $2::jsonb "
+                    "WHERE game_id = $1 AND is_final", game_id, res["hypothesis"])
+
+        if res["board_only"]:
+            await conn.execute(_PRIOR_SAVE, game_id, None, "none", None,
+                               res["reason"], G.BOARD, None, None)
+            await _save_hyp()
+            return {"label": G.BOARD, "gap_pp": None, "side": None,
+                    "p_prior": None, "prior_src": "none"}
+        if res["placeholder"]:
+            await conn.execute(
+                "UPDATE pick_ledger SET placeholder_suspect = TRUE "
+                "WHERE game_id = $1 AND is_final", game_id)
+        await conn.execute(
+            _PRIOR_SAVE, game_id, float(res["p_prior"]), res["prior_src"],
+            res["p_market"], res["reason"], res["label"],
+            None if res["gap_pp"] is None else float(res["gap_pp"]),
+            json.dumps(res["p_base"], ensure_ascii=False))
+        await _save_hyp()
+    return {"label": res["label"], "gap_pp": res["gap_pp"], "side": res["side"],
+            "p_prior": float(res["p_prior"]), "prior_src": res["prior_src"],
+            "p_base": res["p_base"]}
 
 
 # ── [MOV-2 2026-09-14] 배당 이동 분류 배선 — **저장 전용.** 판정은 읽지 않는다.

@@ -134,10 +134,16 @@ def test_원장_칸이_있다():
 
 
 def test_배선돼_있다():
-    """🔴 만들고 안 부르면 원장은 영원히 NULL 이다."""
+    """🔴 만들고 안 부르면 원장은 영원히 NULL 이다.
+
+    🔴 [GAT-1 2026-09-18] 가설을 **세우는** 자리가 `gate_of` 로 옮겨갔다
+       (판정 전에 세우려면 원장 쓰기와 떨어져 있어야 한다). **기록**은
+       종전대로 `record_prior` 다. 두 자리를 각각 본다.
+    """
     from app.engine import pick_ledger as PL
 
-    src = inspect.getsource(PL.record_prior)
-    assert "hypothesis as HY" in src and "HY.build(" in src
-    assert "SET hypothesis" in src, "기록하지 않는다"
-    assert "is_big_match" in src, "빅매치를 안 본다(문턱이 늘 2가 된다)"
+    build = inspect.getsource(PL.gate_of)
+    assert "hypothesis as HY" in build and "HY.build(" in build
+    assert "is_big_match" in build, "빅매치를 안 본다(문턱이 늘 2가 된다)"
+    write = inspect.getsource(PL.record_prior)
+    assert "SET hypothesis" in write, "기록하지 않는다"

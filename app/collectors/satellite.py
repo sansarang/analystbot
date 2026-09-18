@@ -1398,6 +1398,44 @@ async def run_satellite(pool, redis, *, sports: list[str], now=None,
         logger.warning("[satellite] 대상 경기 조회 실패: %s", exc)
         return {"games": 0, "gathered": 0}
 
+    # 🔴 [GAT-1 2026-09-18] **라벨이 없으면 그 자리에서 계산한다.**
+    #    원장 행은 판정이 끝나야 생기고 라벨은 그 행에 붙는다 — 그래서 첫 판정
+    #    전에는 라벨이 없었고, 라벨이 없으면 아래 `gather` 가 추출을 생략했다
+    #    ("게이트 미판정 · 빅매치 아님 · LLM 추출 생략"). 가설을 세워 놓고도
+    #    수집이 그것을 본 적이 없다는 뜻이다.
+    #    실측 2026-09-17: `§3 대상 선별 — 슬레이트 19 · 게이트 대상 0 · 선별 0`.
+    #    ⚠️ **계산은 `pick_ledger.gate_of` 한 곳이다**(사본 금지). 원장에 적히는
+    #       라벨도 같은 함수에서 나온다 — 여기서 규칙을 다시 쓰지 않는다.
+    #    ⚠️ **읽기 전용이다.** 원장에 쓰지 않는다. 채운 값은 이 사이클의
+    #       메모리에만 산다.
+    #    ⚠️ LLM 콜은 늘지 않는다 — 같은 추출 1회를 **더 일찍** 할 뿐이고,
+    #       §3 예산 상한(최대 8)도 그대로다.
+    computed = 0
+    if pool is not None:
+        from app.engine.pick_ledger import gate_of
+
+        _fixed = []
+        for r in rows:
+            row = dict(r)
+            if not row.get("gate_label"):
+                try:
+                    got = await gate_of(pool, game_id=row["id"])
+                except Exception as exc:
+                    logger.warning("[satellite] 게이트 계산 실패 game=%s: %s",
+                                   row["id"], exc)
+                    got = None
+                if got:
+                    row["gate_label"] = got["label"]
+                    row["gate_gap_pp"] = got["gap_pp"]
+                    row["hypothesis"] = got["hypothesis"]
+                    computed += 1
+            _fixed.append(row)
+        rows = _fixed
+        # 🔴 조용한 0 금지 — "원장에서 왔다"와 "우리가 계산했다"를 구분하지
+        #    못하면 다음 사람이 §3 로그를 잘못 읽는다.
+        logger.info("[satellite] 판정 전 게이트 계산 %d건 / 슬레이트 %d",
+                    computed, len(rows))
+
     # 🔴 [PA-15 · §3] 예산을 **여기서** 건다. 선별된 경기만 게이트 대상으로
     #    표시하고, 나머지는 라벨을 지워 빅매치 판정으로 보낸다.
     #    ⚠️ 수집(기사 긁기) 자체는 막지 않는다 — §3 의 상한은 **검색·추출**

@@ -36,15 +36,22 @@ def test_미기입이어도_예외가_안_난다():
 
 
 def test_호출부가_먼저_막는다():
+    """🔴 [GAT-1 2026-09-18] 계산이 `record_prior` → `gate_of` 로 옮겨갔다.
+
+    규칙은 그대로다 — **티어가 비면 `soccer_prior` 를 부르기 전에 막는다.**
+    보는 자리만 옮긴다(계산이 있는 곳을 본다).
+    """
     from app.engine import pick_ledger as PL
 
-    src = inspect.getsource(PL.record_prior)
+    src = inspect.getsource(PL.gate_of)
     assert "if th is None or ta is None" in src, "None 을 그대로 넘긴다"
-    assert '"none"' in src and "_PRIOR_SAVE" in src, "조용히 빠진다"
     # 주석을 뺀 실행 줄만 본다 — 주석에는 soccer_prior 가 설명으로 나온다.
     code = "\n".join(ln for ln in src.splitlines() if not ln.strip().startswith("#"))
     i = code.index("if th is None or ta is None")
     assert "P.soccer_prior" not in code[:i], "막기 전에 이미 썼다"
+    # 🔴 조용히 빠지지 않는다 — 쓰는 쪽(`record_prior`)이 `none` 으로 남긴다.
+    wsrc = inspect.getsource(PL.record_prior)
+    assert '"none"' in wsrc and "_PRIOR_SAVE" in wsrc, "조용히 빠진다"
 
 
 def test_중앙값_대체_코드가_없다():
