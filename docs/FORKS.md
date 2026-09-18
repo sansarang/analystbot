@@ -392,6 +392,146 @@ WAR 는 "그 선수를 잃으면 시즌 순위가 몇 경기 떨어지나"다
    2. 종목별로 가른다 — 야구 1.0 · 축구 2.0
    3. 그대로 둔다 — 야구는 결장 2명 이상일 때만 센다
 
+## F-11 · `last3` 를 **어디서** 얻을 것인가 (2026-09-18 · 확인률 0/15)
+
+**갈림길** — 가설 need 의 `last3`(최근 3경기)를 **기사에서 LLM 으로 뽑을 것인가**,
+**우리 DB(`games`)에서 셀 것인가.**
+
+실측 2026-09-18 운영 원장(최근 5일):
+```
+last3   확인 0 · 반증 15 · 미상 11      ← 한 번도 채워진 적이 없다
+```
+기사 발췌에 "최근 3경기 전적"이 적혀 있을 이유가 없다. 그런데 **우리 DB 에는 있다**
+(`games` 표 · `status='final'` · MLB 511경기).
+
+**찾은 자료 — 최근 폼의 예측력은 0 에 가깝다.**
+
+- Razzball 이 타자 최근 3·5일 성적을 기준 투영과 비교했다: *"previous 3 and 5 day
+  performance provides **zero to negligible** (and likely not statistically
+  significant) improvement upon baseline player projections."*
+- FanGraphs·Grantland 는 모멘텀 효과가 있더라도 **최소**라고 본다. 야구 결과는
+  연쇄가 아니라 **독립 시행에 가깝게** 움직인다.
+- 평균 회귀가 더 강한 힘이다 — 긴 연승/연패는 통계적으로 불안정하다.
+
+**고른 것 — DB 에서 채우되, 승패 예측에 쓰지 않는다.**
+
+`last3` 는 지금도 **`동의` 라벨에서만** need 로 선다(`hypothesis.build`:
+`"득점 환경(U/O)"`). 즉 용도가 **승패가 아니라 파생(언더/오버)** 이고, 그 용도에는
+득점 환경 정보로서 값어치가 있다. DB 로 채우면 확인률 0% → 100% 가 되고 **LLM 콜은
+한 건도 안 는다.**
+
+**안 고른 쪽 — 기사 LLM 추출 유지.** 15번 시도해 0번 성공했다. 기사에 없는 것을
+계속 묻는 것은 토큰만 태운다.
+
+🔴 **함께 정정된 것 — `prior.form_pp` 는 배선하지 않는 것이 맞다.**
+2026-09-18 에 "최근 5경기 보정(±4%p)이 만들어만 놓고 안 불린다"고 결함으로 보고했다.
+위 자료가 그 반대를 가리킨다 — **최근 5경기로 확률을 ±4%p 움직일 근거가 없다.**
+미배선은 결함이 아니라 **맞는 상태**다. 배선하려면 자체 실측이 먼저다.
+
+---
+
+## F-12 · 야구 need 에 **무엇**이 들어가야 하나 (2026-09-18 · 확인 6/133)
+
+**갈림길** — 야구 need 는 `out`·`doubt`·`last3` 셋이다. 이대로 둘 것인가, 바꿀 것인가.
+
+실측 2026-09-18 운영 원장(최근 5일):
+```
+out      확인  5 · 반증 25 · 미상 22     9.6%
+doubt    확인  0 · 반증 30 · 미상 22     0.0%   ← 한 번도 없다
+last3    확인  0 · 반증 15 · 미상 11     0.0%   ← F-11
+```
+
+**찾은 자료 — 야구에서 움직이는 것은 *선발투수*다.**
+
+- *"In baseball, the single most impactful individual variable is the starting
+  pitcher. A pitching matchup can swing the line dramatically."*
+- 라인 이동도 같은 것을 말한다: *"in baseball, **pitching injuries drive odds
+  changes**"* · *"minor injuries or **the absence of role players may have little
+  effect** on betting markets."*
+- 반면 팀 단위 지표(ERA·득실차)가 개별 타자보다 예측력이 높다는 결과도 있다
+  (Wharton 논문 · TDS).
+
+**갈린다고 적고 멈춘다 — 두 갈래가 남는다.**
+
+1. **`doubt` 를 뺀다** — 자료가 지지한다. MLB 는 IL 등재/미등재로 이분되어
+   "출전 불투명"이라는 상태가 기사에 잘 안 나온다(실측 0/30). 축구는 그 개념이
+   실재하므로 **야구에서만** 뺀다(`_BASEBALL_OUT`).
+2. **선발투수 축을 넣는다** — 자료가 가장 강하게 지지하지만, 추출 스키마 8칸에
+   투수 칸이 **없다**(`hypothesis.FIELDS`). 칸을 늘리는 것은 수집·추출·채점 셋을
+   동시에 건드리는 일이라 **사용자 지시 없이 열지 않는다.**
+
+⚠️ 지금 `out` 은 **투수와 야수를 구분하지 않는다.** 자료가 말하는 "투수 부상이
+   라인을 움직인다"를 우리는 못 재고 있다 — 같은 `out` 한 칸에 섞여 있다.
+
+---
+
+## F-13 · 결장을 **기사 LLM 으로** 뽑을 것인가 **공식 API 로** 받을 것인가 (2026-09-18)
+
+**갈림길** — need `out` 을 채우는 경로.
+
+실측: 기사 LLM 추출 확인률 **9.6%** (5/52). 같은 날 위성은 기사를 **513건** 모았다.
+
+**찾은 자료 — 공식 API 가 더 신뢰할 수 있다.**
+
+- statsapi 는 IL 등재/해제를 **구조화된 transaction** 으로 준다. 10일·15일·60일 IL
+  구분과 사유 문자열이 포함된다.
+- *"Using the official StatsAPI or MLB.com's official channels would generally
+  provide **more reliable data than news scraping** or informal sources."*
+
+**🔴 그런데 우리는 이미 그걸 하고 있다.** `app/collectors/absences.py` 머리말:
+
+> *"[§2] 결장 정보 — statsapi(IL 명단 + 확정 라인업)로 **자체 산출**. 그동안 결장은
+> Perplexity 산문에서만 왔고… 라인업 확정: 최근 타석 상위 9명 중 오늘 타순에 없는
+> 선수가 곧 결장이다. IL이 아니어도(휴식·부진) 잡힌다."*
+
+`pipeline.py:1782` 가 `fetch_for_games` 를 부르고 `statcast.py:589` 가
+`merge_into_research` 로 **`research` 에 합친다.**
+
+**고른 것 — 채점이 그 값을 보게 한다.**
+
+`hypothesis.confirm` 은 위성 추출 상자(`read_extract` → `teams`)만 읽는다. **공식
+API 로 만든 결장은 `research` 에 있고 채점은 그것을 안 본다.** 두 경로가 따로 돈다.
+LLM 콜 0 · 새 수집 0 으로 확인률을 올릴 수 있는 가장 싼 길이다.
+
+**안 고른 쪽 — 기사 추출을 공식 API 로 대체.** 대체하지 않는다. KBO·NPB 는 공식
+피드가 약하고(KBO 는 말소 공시를 `_kbo_official` 로 이미 쓴다), 기사는 "휴식·부진"
+같은 IL 밖 결장을 잡는다. **얹는 것이 아니라 합치는 것**이고, 충돌 시 우선순위는
+F-2(MDM survivorship)가 이미 정했다 — **공식이 이긴다.**
+
+---
+
+## F-14 · 괴리 임계 **4%p** 가 맞나 (2026-09-18)
+
+**갈림길** — `gate.py` 의 `|gap| < 4 → 동의(조사 생략)`. 4%p 를 낮춰 조사 대상을
+늘릴 것인가.
+
+**찾은 자료 — 쿠션 없이 엣지를 다 먹으면 손실이다.**
+
+- 2024 MLB 플레이오프 실측: *"placing bets across all perceived edges resulted in
+  an **overall loss** without stricter thresholds, though with a **3% cushion
+  beyond the sportsbook margin**, it would have produced positive returns."*
+
+**고른 것 — 4%p 유지.** 자료의 3% 쿠션과 같은 자릿수이고, 우리 값이 약간 더 보수적이다.
+낮추면 조사 대상이 늘어 **비용이 늘고 엣지는 마진에 먹힌다.**
+
+⚠️ 이 자료는 **베팅 임계**에 관한 것이고 우리 4%p 는 **조사 배분 임계**다. 정확히
+   같은 것은 아니다 — 다만 "쿠션 없이 작은 괴리를 쫓으면 손해"라는 방향은 같다.
+
+---
+
+### 출처 (2026-09-18 추가)
+
+- [Razzball — Does a hitter's last 3–5 games matter?](https://razzball.com/hitter-streakiness/)
+- [FanGraphs — How to argue about momentum](https://blogs.fangraphs.com/how-to-argue-about-momentum/)
+- [Grantland — MLB playoff myths](https://grantland.com/the-triangle/mlb-playoff-myths-to-ignore/)
+- [Wharton — Forecasting MLB games using machine learning](https://fisher.wharton.upenn.edu/wp-content/uploads/2020/09/Thesis_Andrew-Cui.pdf)
+- [TDS — ML algorithm for predicting MLB outcomes](https://towardsdatascience.com/a-machine-learning-algorithm-for-predicting-outcomes-of-mlb-games-fa17710f3c04/)
+- [arXiv 2511.17733 — Complex matchup models and baseball win probability](https://arxiv.org/pdf/2511.17733)
+- [MyBookie — Betting impact of injured players](https://www.mybookie.ag/sports-betting-guide/determining-wagering-impact-of-injured-players/)
+- [MLB.com — Injury report](https://www.mlb.com/injury-report)
+- [Wikipedia — Injured list](https://en.wikipedia.org/wiki/Injured_list)
+- [Wikipedia — MLB transactions](https://en.wikipedia.org/wiki/Major_League_Baseball_transactions)
+
 ---
 
 ### 출처
