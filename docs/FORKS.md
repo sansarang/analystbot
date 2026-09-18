@@ -532,6 +532,118 @@ F-2(MDM survivorship)가 이미 정했다 — **공식이 이긴다.**
 - [Wikipedia — Injured list](https://en.wikipedia.org/wiki/Injured_list)
 - [Wikipedia — MLB transactions](https://en.wikipedia.org/wiki/Major_League_Baseball_transactions)
 
+## F-15 · 야구에 `doubt`(출전 불투명)가 실재하는가 (2026-09-18 · 확인 0/30)
+
+**갈림길** — `_BASEBALL_OUT` 에서 `doubt` 를 뺄 것인가.
+2026-09-18 에 나는 **"야구에는 그 개념이 없다(축구 개념이다)"** 고 말했다.
+
+🔴 **그 말이 틀렸다.** 딥서치가 반대를 가리킨다:
+
+> **Day-to-Day (DTD):** 아프거나 다쳤지만 한두 경기 이상 빠질 것으로 보지 않는 상태.
+> 최소 결장 일수도, 로스터 보호도, 연봉 처리도 없다.
+> *"IL 에 올리는 대신, 팀은 그를 로스터에 두고 **day-to-day** 로 알릴 수 있다 —
+> 의료진이 언제 복귀할지 판단하지 못한다는 뜻이다."* (Wikipedia · FantasyNewsAuthority)
+
+**즉 `doubt` 는 야구에도 실재한다.** 우리 확인률 0/30 은 개념이 없어서가 아니다.
+
+**그런데 구조화된 소스가 없다 — 실측으로 확인했다.**
+
+`statsapi.mlb.com/api/v1/teams/{id}/roster?rosterType=fullRoster` 를 3개 구단에 대해
+전수 조회한 결과, 상태 코드는 이것뿐이다:
+```
+A(Active) · D7 · D10 · D15 · D60 · ILF(Full Season)
+RM · RES · DEV · RST · DES · TI
+→ "Day To Day" 코드 없음
+```
+DTD 는 **로스터 상태가 아니다.** 그 선수는 `A(Active)` 로 남는다. 위 인용이 말한 그대로다 —
+IL 에 안 올리는 것이 DTD 의 정의이므로 **정의상 공식 로스터에 안 나타난다.**
+
+DTD 를 얻으려면 2차 소스(MLB.com 부상 리포트 · RotoWire · FanGraphs RosterResource)나
+기사가 필요하다. 그런데 기사 추출은 **0/30** 이다.
+
+**고른 것 — 야구 `doubt` 는 뺀다. 단, 이유를 바꿔 적는다.**
+
+빼는 결론은 같지만 **이유가 다르고, 그 차이가 중요하다**:
+- ❌ "야구에는 그 상태가 없다" → 틀렸다. 영영 안 되돌린다는 뜻이 되어 위험하다.
+- ✅ **"실재하지만 우리에게 구조화된 소스가 없다"** → 소스가 생기면 되살릴 축이다.
+
+⚠️ **되살릴 조건을 함께 적는다**: DTD 를 주는 2차 소스를 붙이는 날, `doubt` 를
+   `_BASEBALL_OUT` 에 되돌린다. 그때까지는 분모에 두면 문턱만 높인다(5칸 중 2칸이
+   구조적으로 0 이면 문턱 2 를 넘기가 거의 불가능하다).
+
+**안 고른 쪽 — 그대로 두기.** 30번 시도해 0번 성공한 칸을 분모에 남기는 것은
+채점을 못 하게 만드는 것과 같다.
+
+---
+
+## F-16 · 선발투수 축을 **새 칸으로** 만들 것인가 (2026-09-18)
+
+**갈림길** — 야구 need 에 선발투수가 없다. 추출 스키마에 칸을 늘릴 것인가.
+2026-09-18 에 나는 **"이름표가 세 곳에 있어 큰 작업"** 이라고 말했다.
+
+**찾은 자료 — 선발은 야구에서 가장 큰 단일 변수이고, 그 크기가 수치로 있다.**
+
+- *"야구에서 개별 변수 중 가장 영향이 큰 것은 **선발투수**다. 투수 매치업 하나가
+  라인을 크게 흔든다."*
+- 선발 교체(scratch)의 크기:
+  · 전면 선발이 빠지면 **머니라인 40~60센트** · 토탈은 **1점 이상**
+  · 에이스 → 하위 선발 교체는 **30~50센트**
+  · 중위 → 중위는 5~10센트
+- 빈도: *"리그 전체로 **주당 여러 번**"*
+- *"늦은 선발 교체는 주의 깊은 베터에게 **가장 값어치 있는 라인 이동 사건**이다.
+  시작 90분 안에 발표되고 대체 투수가 아직 없으면 북은 마켓을 내리거나 유금을 넓힌다."*
+
+머니라인 40~60센트는 우리 게이트 임계(4%p)의 **두세 배** 크기다.
+
+🔴 **그런데 우리는 이미 감지하고 있다 — 내 "세 곳" 발언이 틀렸다.**
+
+```
+app/pipeline.py:1246   starter_change_notes(research, before)
+                       → "홈 선발 변경: {old} → {new}"
+app/pipeline.py:1753   "starter_changed": lineup_status == "conflict"
+app/pipeline.py:3943   주석: "경기 직전 선발 교체는 시장이 늦게 반영하는
+                              몇 안 되는 신호다"
+app/scheduler.py:830   r["home_pitcher"] != game["home_pitcher"]
+app/research/deep.py:457  `starter_changed` → 리서치 강제 갱신 트리거
+```
+
+감지는 있고 **리서치 갱신까지** 간다. 가는 곳이 거기서 끝난다 — 가설(`hypothesis.FIELDS`)에
+투수 칸이 없고, 채점(`confirm`)은 위성 추출 상자만 본다.
+
+**즉 WIR-1 과 완전히 같은 패턴이다: 만들어 놓고 안 이었다.**
+
+그리고 WIR-1 로 붙인 공식 결장 문장에는 **역할 표시가 이미 있다**:
+```
+"Cincinnati Reds의 Hunter Greene(선발) Injured 60-Day로 결장"
+                              ^^^^^^ absences._describe 가 붙인다
+```
+
+**고른 것 — 스키마를 늘리기 전에 배선부터 본다.**
+
+두 경로가 이미 존재한다:
+1. **결장한 선발** — `absences` 문장의 `(선발)` 표시 (WIR-1 로 채점에 이미 들어간다)
+2. **교체된 선발(scratch)** — `starter_change_notes` (채점에 안 들어간다)
+
+칸을 늘리는 것은 **수집·저장·채점 셋이 동시에 움직이는 일**이고, 위 둘로 충분한지
+아직 안 쟀다. **재고 나서 정한다** — 그전에 스키마를 건드리지 않는다.
+
+⚠️ **갈린다고 적고 멈추는 자리다.** 자료는 "선발이 제일 중요하다"고 강하게 말하지만,
+   그것이 **"새 칸이 필요하다"로 곧장 이어지지 않는다.** 이미 있는 두 신호를 채점에
+   잇는 것이 더 싸고, 안 되면 그때 칸을 논한다.
+
+---
+
+### 출처 (2026-09-18 추가 · F-15·F-16)
+
+- [Wikipedia — Injured list (day-to-day)](https://en.wikipedia.org/wiki/Injured_list)
+- [FantasyNewsAuthority — Official MLB/NFL/NBA/NHL injury designations](https://fantasynewsauthority.com/understanding-official-injury-designations)
+- [FanGraphs RosterResource — 2026 Injury Report](https://www.fangraphs.com/roster-resource/injury-report)
+- [ActionNetwork — MLB betting rules for scratched pitchers](https://www.actionnetwork.com/mlb/mlb-betting-rules-for-scratched-pitchers-action-vs-listed)
+- [ParlayTools — MLB starting pitcher betting](https://parlaytools.com/articles/mlb-starting-pitcher-betting/)
+- [Sports Insights — Action vs. listed pitcher](https://www.sportsinsights.com/blog/mlb-betting-lines-action-vs-listed-pitcher/)
+- 실측: `statsapi.mlb.com/api/v1/teams/{113,119,111}/roster?rosterType=fullRoster`
+  (2026-09-18 · 상태 코드 12종 전수 · DTD 없음)
+
 ---
 
 ### 출처
