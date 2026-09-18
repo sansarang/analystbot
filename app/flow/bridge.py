@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,19 @@ def _sport_of(row: dict) -> str:
     """리그 코드 → `analysis_state.sport`(baseball|soccer) 규약."""
     sp = (row.get("sport") or "").lower()
     return "soccer" if sp == "soccer" else "baseball"
+
+
+#: 우리 득점 분포 확률. 🔴 **원본은 `scoring.game_distribution`** 이고
+#  `pipeline.py:4030` 이 원장에 싣는다 — 여기서는 **읽기만** 한다(재계산 금지).
+#  ⚠️ 실측 2026-09-19: 이 칸이 **전건 NULL** 이다. 판정이 실패하면 그 뒤의 λ
+#     산출 블록 자체가 안 돌기 때문이다(`lambda_missing` 도 None 이었다).
+#     즉 LLM 사슬이 살아야 이 값이 찬다 — 배선은 그때를 위해 먼저 해 둔다.
+_MODEL_SQL = """
+    SELECT game_id, model_probs
+      FROM pick_ledger
+     WHERE is_final AND model_probs IS NOT NULL
+       AND game_id = ANY($1::bigint[])
+"""
 
 
 #: 오늘 슬레이트. 🔴 **위성과 같은 조건**이다(`satellite._DUE_SQL`) — 그쪽이
@@ -72,12 +86,36 @@ async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
     ctx = Ctx(pool=pool, redis=redis, settings=s,
               budget={"searches": 0, "slate_cap": cap})
 
+    # 🔴 [2026-09-19] **파생 확률을 슬레이트 단위로 한 번 읽는다.**
+    #    없으면 ⑪의 구조 후보가 0 이고, `동의` 라벨이 만든 파생 가설이 쓰일
+    #    자리가 없다. 경기마다 조회하면 질의가 N배가 되므로 한 번에 읽는다.
+    model_by_game: dict = {}
+    if pool is not None:
+        try:
+            ids = [int(r["id"]) for r in rows if str(r.get("id") or "").isdigit()]
+            if ids:
+                for m in await pool.fetch(_MODEL_SQL, ids):
+                    raw = m["model_probs"]
+                    model_by_game[int(m["game_id"])] = (
+                        json.loads(raw) if isinstance(raw, str) else raw)
+        except Exception as exc:
+            logger.warning("[flow] 파생 확률 조회 실패: %s", exc)
+    if rows and not model_by_game:
+        # 🔴 조용한 0 금지 — "모델이 없다"와 "안 읽었다"는 다르다.
+        logger.info("[flow] 파생 확률 0건 — 구조 픽 후보가 서지 않는다 "
+                    "(판정이 실패하면 λ 산출 블록이 안 돈다)")
+
     out: dict = {"games": 0, "stopped": {}, "sent": 0}
     for r in rows:
         game = {"game_id": r.get("id") or r.get("game_id"),
                 "sport": _sport_of(r), "league": r.get("league") or "",
                 "home": r.get("home") or "", "away": r.get("away") or "",
                 "kickoff_utc": r.get("starts_at")}
+        # 🔴 경기마다 주입을 갈아끼운다. 예산(`ctx.budget`)은 **슬레이트 단위로
+        #    유지**된다 — 그래서 `inject` 만 바꾸고 ctx 를 새로 만들지 않는다.
+        gid = game["game_id"]
+        ctx.inject = {"model_probs": model_by_game.get(
+            int(gid) if str(gid).isdigit() else -1)}
         try:
             st = await run_game(game, ctx)
         except Exception as exc:

@@ -25,6 +25,21 @@ _MAX_EXCERPT = 300
 _FROM_EXTRACT = {"lineup_out": "out", "xi_confirmed": "out",
                  "form_recent5": "last3", "rotation_risk": "midweek"}
 
+#: 🔴 [2026-09-19] **불펜 최근 3일.** 원본은 `pitcher_appearances` 다 —
+#   이미 적재돼 있었다(실측: MLB 754행 · NPB 260행 · 최신 09-18).
+#   핵심 변수인데 소스가 없어 언제나 `unknown` 이었다.
+#   ⚠️ **선발은 제외한다**(`is_starter = false`) — 불펜 소모를 재는 값이다.
+_BULLPEN_SQL = """
+    SELECT pa.pitcher, pa.innings, (g.starts_at AT TIME ZONE 'Asia/Seoul')::date d
+      FROM pitcher_appearances pa
+      JOIN games g ON g.id = pa.game_id
+     WHERE pa.team = $1
+       AND pa.is_starter = false
+       AND g.starts_at <  $2::timestamptz
+       AND g.starts_at >= $2::timestamptz - interval '3 days'
+     ORDER BY g.starts_at DESC
+"""
+
 #: 🔴 [2026-09-18 페이블 검토] 선발 변경 문장의 팀 접두사.
 #   원본은 `pipeline.starter_change_notes` 의 f-string 이다 —
 #   `f"{label} 선발 변경: {old} → {new}"`, label 은 "홈"|"원정".
@@ -78,6 +93,23 @@ def _split(state, absences: list) -> tuple:
                                {"home": state.home, "away": state.away})
     except Exception:
         return [], []
+
+
+async def _bullpen3d(state, ctx, side: str) -> list:
+    """그 팀 불펜의 최근 3일 등판. 🔴 기사에 묻지 않는다 — DB 에 있다."""
+    if "bullpen" in (ctx.inject or {}):
+        return list((ctx.inject["bullpen"] or {}).get(side) or [])
+    if ctx.pool is None or not state.kickoff_utc:
+        return []
+    team = getattr(state, side, "")
+    try:
+        rows = await ctx.pool.fetch(_BULLPEN_SQL, team, state.kickoff_utc)
+    except Exception as exc:
+        logger.info("[flow:n05] 불펜 조회 실패 game=%s %s: %s",
+                    state.game_id, side, exc)
+        return []
+    return [f"{r['d']:%m-%d} {r['pitcher']} {float(r['innings'] or 0):.1f}이닝"
+            for r in rows]
 
 
 async def _last3(state, ctx, side: str) -> list:
@@ -154,6 +186,21 @@ async def run(state, ctx):
                 out.append(_row(var, notes, source="starter_change",
                                 excerpt=" · ".join(map(str, notes)),
                                 sides=sides))
+            continue
+
+        # 🔴 [2026-09-19] **불펜 축.** 핵심 변수인데 소스가 없어 언제나
+        #    `unknown` 이었다(실측 0건). `pitcher_appearances` 에 이미 있다.
+        if var == "bullpen_3d":
+            per_side = {}
+            for sd in ("home", "away"):
+                got = await _bullpen3d(state, ctx, sd)
+                if got:
+                    per_side[sd] = got
+            flat = [x for v in per_side.values() for x in v]
+            if flat:
+                out.append(_row(var, flat, source="db:pitcher_appearances",
+                                excerpt=" · ".join(flat[:12]),
+                                sides={k: len(v) for k, v in per_side.items()}))
             continue
 
         field = _FROM_EXTRACT.get(var)

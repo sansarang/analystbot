@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 
 from app.flow import rules as R
-from app.flow.labels import AGREE, BOARD, DOUBT, OVER
+from app.flow.labels import AGREE, BOARD, DOUBT, OVER, PRIOR_ONLY
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +27,24 @@ async def run(state, ctx):
     p_prior = prior.get(f"p_{side}") if side else None
     p_mkt = (market.get("p") or {}).get(side) if side else None
 
-    if market.get("market_missing") or p_prior is None or p_mkt is None:
-        why = ("시장 확률이 없다" if market.get("market_missing")
-               else "사전값이 없다" if p_prior is None else "픽 쪽 시장값이 없다")
+    # 🔴 [F-17 2026-09-19] **사전값이 없을 때만 보드 고정이다.**
+    #    사전값이 있는데 시장이 아직 없으면 — 그건 "찾을 것이 없다"가 아니라
+    #    "비교 대상이 아직 없다"이다. 우리 판단은 이미 있고, 그것을 깨는 근거를
+    #    찾는 것이 정직한 조사다.
+    #    ⚠️ 이것이 이 봇의 순서다(CLAUDE.md "페이블처럼 분석한다"):
+    #       판단을 먼저 적는다 → 무엇을 찾을지 먼저 정한다 → 시장은 검증한다.
+    if p_prior is None:
         state.n03_gate = {"gap_pp": None, "gate": BOARD, "stop": True,
-                          "reason": f"{why} — 보드 고정"}
-        logger.info("[flow:n03] game=%s %s", state.game_id, why)
+                          "reason": "사전값이 없다 — 보드 고정"}
+        logger.info("[flow:n03] game=%s 사전값 없음", state.game_id)
+        return state
+
+    if market.get("market_missing") or p_mkt is None:
+        state.n03_gate = {"gap_pp": None, "gate": PRIOR_ONLY, "stop": False,
+                          "reason": f"시장이 아직 없다 — 사전값 {p_prior:.1%} 을 "
+                                    "무너뜨릴 근거를 찾는다"}
+        logger.info("[flow:n03] game=%s 시장 없음 → 사전값 단독 (p=%.3f)",
+                    state.game_id, float(p_prior))
         return state
 
     gap = round((float(p_prior) - float(p_mkt)) * 100, 2)

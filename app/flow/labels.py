@@ -9,7 +9,14 @@ from __future__ import annotations
 
 # ③ 게이트
 OVER, DOUBT, AGREE, BOARD = "시장과대", "가치의심", "동의", "보드고정"
-GATES = (OVER, DOUBT, AGREE, BOARD)
+
+#: 🔴 [F-17 2026-09-19] **시장이 아직 없을 때.** 사전값만으로 가설을 세운다.
+#   "보드 고정"과 **다르다** — 보드는 "찾을 것이 없다"이고 이것은
+#   "비교 대상이 없으니 내 생각을 깨는 근거를 찾는다"이다.
+#   사용자 지시: "데이타가 싸여야 가설을 세우는게 아니다" ·
+#               "시장에 끌려가지 않고 우리 쪽 판단을 먼저 적는 게 중요함".
+PRIOR_ONLY = "사전값단독"
+GATES = (OVER, DOUBT, AGREE, BOARD, PRIOR_ONLY)
 
 # ⑥ 채점
 CONFIRMED, REFUTED, UNKNOWN = "confirmed", "refuted", "unknown"

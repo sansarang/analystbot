@@ -141,11 +141,18 @@ async def test_게이트_네갈래():
 
 
 @pytest.mark.asyncio
-async def test_시장이_없으면_보드고정이고_멈춘다():
+async def test_시장이_없어도_사전값이_있으면_멈추지_않는다():
+    """🔴 [F-17 2026-09-19 개정] 종전에는 시장이 없으면 보드 고정이었다.
+
+    이제는 **사전값이 없을 때만** 보드다 — 시장이 아직 안 온 것은
+    "찾을 것이 없다"가 아니라 "비교 대상이 아직 없다"이다.
+    """
+    from app.flow.labels import PRIOR_ONLY
+
     st = _s(pick_side="home", n01_prior={"p_home": 0.6},
             n02_market={"market_missing": True, "p": None})
     g = (await n03_gate.run(st, Ctx())).n03_gate
-    assert g["gate"] == BOARD and g["stop"] is True
+    assert g["gate"] == PRIOR_ONLY and g["stop"] is False
 
 
 @pytest.mark.asyncio
@@ -610,3 +617,93 @@ def test_n01은_자기_키만_쓴다():
               for t in n.targets if isinstance(t, ast.Attribute)}
     assert writes <= {"n01_prior", "pick_side"}, writes
     assert all(k not in writes for k in NODE_KEYS if k != "n01_prior")
+
+
+# ── [2026-09-19] A 파생 주입 · B 시장 없이 가설 · C 불펜 배선
+
+@pytest.mark.asyncio
+async def test_시장이_없어도_가설이_선다():
+    """🔴 [F-17] 데이터가 쌓여야 가설을 세우는 것이 아니다.
+
+    사용자 지시: "시장에 끌려가지 않고 우리 쪽 판단을 먼저 적는 게 중요함".
+    ⚠️ **사전값도 없으면** 그때는 보드 고정이다 — 찾을 것이 정말 없다.
+    """
+    from app.flow.labels import PRIOR_ONLY
+
+    st = _s(pick_side="away",
+            n01_prior={"p_away": 0.62, "p_home": 0.38},
+            n02_market={"market_missing": True, "p": None})
+    st = await n03_gate.run(st, Ctx())
+    assert st.n03_gate["gate"] == PRIOR_ONLY
+    assert st.n03_gate["stop"] is False, "시장이 없다고 멈추면 가설이 안 선다"
+
+    st = await n04_hyp.run(st, Ctx())
+    assert st.n04_hyp[0]["id"] == "H_break"
+    assert st.n04_hyp[0]["vars"], "need 가 비었다"
+
+
+@pytest.mark.asyncio
+async def test_사전값도_없으면_보드고정이다():
+    """🔴 반대 위험 — 없는 판단으로 조사를 시작하지 않는다."""
+    st = _s(pick_side=None, n01_prior={"p_home": None, "p_away": None},
+            n02_market={"market_missing": True, "p": None})
+    st = await n03_gate.run(st, Ctx())
+    assert st.n03_gate["gate"] == BOARD and st.n03_gate["stop"] is True
+
+
+@pytest.mark.asyncio
+async def test_시장이_오면_다시_분류된다():
+    """🔴 시장은 가설을 **가능하게** 하는 것이 아니라 **검증**하는 것이다.
+    방향이 뒤집히는 것은 결함이 아니라 검증이 작동한 것이다."""
+    from app.flow.labels import PRIOR_ONLY
+
+    st = _s(pick_side="away", n01_prior={"p_away": 0.62},
+            n02_market={"market_missing": True, "p": None})
+    assert (await n03_gate.run(st, Ctx())).n03_gate["gate"] == PRIOR_ONLY
+
+    st.n02_market = {"market_missing": False, "p": {"away": 0.72}}
+    g = (await n03_gate.run(st, Ctx())).n03_gate
+    assert g["gate"] == OVER, g          # 시장이 더 높게 본다 → 방향이 뒤집힌다
+    assert g["gap_pp"] == -10.0
+
+
+@pytest.mark.asyncio
+async def test_불펜_최근3일이_evidence로_들어온다():
+    """🔴 핵심 변수인데 소스가 없어 언제나 `unknown` 이었다(실측 0건).
+    `pitcher_appearances` 에 이미 있었다 — MLB 754행 · NPB 260행."""
+    st = _s(pick_side="away", n03_gate={"gate": AGREE})
+    st = await n04_hyp.run(st, Ctx())
+    ctx = Ctx(inject={"bullpen": {"home": ["09-17 A 1.0이닝", "09-18 B 0.7이닝"],
+                                  "away": ["09-18 C 2.0이닝"]},
+                      "extract": {}, "absences": []})
+    st = await n05_evidence.run(st, ctx)
+    row = [e for e in st.n05_evidence if e["var"] == "bullpen_3d"]
+    assert row, st.n05_evidence
+    assert row[0]["sides"] == {"home": 2, "away": 1}
+    assert row[0]["source"] == "db:pitcher_appearances"
+    st = await n06_verdict.run(st, Ctx())
+    assert st.n06_verdict["per_var"]["bullpen_3d"] == "confirmed"
+
+
+def test_불펜은_선발을_세지_않는다():
+    """🔴 불펜 소모를 재는 값이다 — 선발이 섞이면 숫자가 뒤집힌다."""
+    from app.flow.nodes.n05_evidence import _BULLPEN_SQL
+
+    assert "is_starter = false" in _BULLPEN_SQL
+    assert "interval '3 days'" in _BULLPEN_SQL
+
+
+def test_다리가_파생확률을_경기마다_주입한다():
+    """🔴 `_ours_markets` 를 만들어 놓고 **넣는 배선을 안 했다** — 그래서
+    구조 후보가 언제나 0 이었다. 슬레이트당 한 번 읽고 경기마다 갈아끼운다."""
+    import inspect
+
+    from app.flow import bridge as B
+
+    # ⚠️ 문서 문자열을 통째로 지우면 **dict 키까지** 사라진다(`"model_probs"`).
+    #    주석만 걷어내고 실행 줄을 본다.
+    code = "\n".join(ln for ln in inspect.getsource(B).splitlines()
+                     if ln.strip() and not ln.strip().startswith("#"))
+    assert 'ctx.inject = {"model_probs"' in code, "경기마다 주입하지 않는다"
+    # 🔴 경기마다 조회하면 질의가 N배다 — 슬레이트당 한 번이어야 한다.
+    assert code.count("await pool.fetch(_MODEL_SQL") == 1

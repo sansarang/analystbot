@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 
 from app.flow import rules as R
-from app.flow.labels import AGREE, BOARD, DOUBT, OVER
+from app.flow.labels import AGREE, BOARD, DOUBT, OVER, PRIOR_ONLY
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +48,14 @@ async def run(state, ctx):
         hyp = {"id": "H_fade",
                "text": f"시장 반대편({other})을 세울 근거",
                "vars": _vars_of(sport, allv)}
-    elif gate == DOUBT:
+    elif gate in (DOUBT, PRIOR_ONLY):
+        # 🔴 [F-17] 시장이 없을 때의 가설은 **한 종류뿐이다** — 비교 대상이
+        #    없으면 정직한 조사는 "내 생각을 깨는 것" 하나다.
+        #    ⚠️ 시장이 오면 ③이 다시 분류한다. 방향이 뒤집힐 수 있고
+        #       (시장 과대) 그건 결함이 아니라 **검증이 작동한 것**이다.
         hyp = {"id": "H_break",
-               "text": f"우리 픽({side})을 무너뜨릴 근거",
+               "text": f"우리 픽({side})을 무너뜨릴 근거"
+                       + (" — 시장 전" if gate == PRIOR_ONLY else ""),
                "vars": _vars_of(sport, allv)}
     elif gate == AGREE:
         hyp = {"id": "H_deriv",
