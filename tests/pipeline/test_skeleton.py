@@ -21,10 +21,14 @@ from app.flow.state import NODE_KEYS, State
 NODES_DIR = pathlib.Path(RUN.__file__).resolve().parent / "nodes"
 
 
-class _Ctx:
-    """스냅샷을 건너뛴다 — `pool` 이 None 이면 `run.py` 가 DB 를 안 부른다."""
+def _ctx():
+    """실행 맥락. 🔴 `Ctx` 가 원본이다 — 테스트가 가짜 맥락을 새로 짓지 않는다.
 
-    pool = None
+    `pool=None` 이면 `run.py` 가 스냅샷 DB 를 부르지 않는다.
+    """
+    from app.flow.ctx import Ctx
+
+    return Ctx()
 
 
 def _game():
@@ -42,7 +46,7 @@ def _stub(monkeypatch, **outs):
         mod = getattr(RUN, name)
 
         def _mk(key, value):
-            def _run(state, ctx):
+            async def _run(state, ctx):
                 setattr(state, key, value)
                 return state
             return _run
@@ -52,7 +56,7 @@ def _stub(monkeypatch, **outs):
 
 async def _go(monkeypatch, **outs):
     _stub(monkeypatch, **outs)
-    return await RUN.run_game(_game(), _Ctx())
+    return await RUN.run_game(_game(), _ctx())
 
 
 # ── 다섯 경로
@@ -147,25 +151,36 @@ async def test_서술이_지어내면_카드를_만들지_않는다(monkeypatch)
 # ── 배선 규율 (지시문 규율 7·8)
 
 def test_노드는_서로_부르지_않는다():
-    """🔴 노드 파일 안에서 다른 노드를 import 하면 배선 오류다."""
+    """🔴 노드 파일이 다른 노드를 **import 하거나 호출**하면 배선 오류다.
+
+    ⚠️ 상위 노드의 **상태 키를 읽는 것은 정상이다** — `n03_gate` 가
+       `state.n01_prior` 를 읽어야 게이트를 낼 수 있다. 금지하는 것은
+       모듈 의존이지 데이터 의존이 아니다.
+    """
     bad = []
     for f in sorted(NODES_DIR.glob("n*.py")):
-        src = f.read_text(encoding="utf-8")
-        code = "\n".join(ln for ln in src.splitlines()
+        code = "\n".join(ln for ln in f.read_text(encoding="utf-8").splitlines()
                          if ln.strip() and not ln.strip().startswith("#"))
-        body = code.split('"""', 2)[-1]          # 머리말(설명)은 제외
         for other in NODE_KEYS:
-            if other != f.stem and other in body:
-                bad.append(f"{f.name} → {other}")
+            if other == f.stem:
+                continue
+            for pat in (f"from app.flow.nodes.{other}",
+                        f"import app.flow.nodes.{other}",
+                        f"nodes import {other}", f"{other}.run("):
+                if pat in code:
+                    bad.append(f"{f.name} → {pat}")
     assert bad == [], bad
 
 
 def test_노드마다_run이_하나씩_있다():
+    """🔴 전부 `async def run(state, ctx)` 다 — ①②⑤⑫⑬ 이 I/O 를 한다."""
+    import inspect
+
     files = sorted(p.stem for p in NODES_DIR.glob("n*.py"))
     assert files == list(NODE_KEYS), files
     for f in NODES_DIR.glob("n*.py"):
         mod = __import__(f"app.flow.nodes.{f.stem}", fromlist=["run"])
-        assert callable(mod.run), f.stem
+        assert inspect.iscoroutinefunction(mod.run), f.stem
         assert mod.NODE == f.stem, (mod.NODE, f.stem)
 
 

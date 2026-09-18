@@ -51,7 +51,7 @@ def finish(state: State, stop_reason: str | None) -> State:
 async def rerun_5_to_9(state: State, ctx) -> State:
     """⑩ 이 부르는 재실행. **⑤~⑨ 만** 다시 돈다."""
     for node in RERUN_5_TO_9:
-        state = node.run(state, ctx)
+        state = await node.run(state, ctx)
         await snapshot(state, node.NODE + ":rerun", ctx)
     return state
 
@@ -60,19 +60,19 @@ async def run_game(game: dict, ctx) -> State:
     """경기 1건. 지시문 STEP 1 골격 — **이 순서를 바꾸지 않는다.**"""
     s = State.new(game)
     for node in (n01_prior, n02_market):
-        s = node.run(s, ctx)
+        s = await node.run(s, ctx)
         await snapshot(s, node.NODE, ctx)
 
-    s = n03_gate.run(s, ctx)
+    s = await n03_gate.run(s, ctx)
     await snapshot(s, n03_gate.NODE, ctx)
     if (s.n03_gate or {}).get("stop"):          # 보드 고정 → 수집도 하지 않는다
         return finish(s, "n03_freeze")
 
-    s = n04_hyp.run(s, ctx)
+    s = await n04_hyp.run(s, ctx)
     await snapshot(s, n04_hyp.NODE, ctx)
-    s = n05_evidence.run(s, ctx)
+    s = await n05_evidence.run(s, ctx)
     await snapshot(s, n05_evidence.NODE, ctx)
-    s = n06_verdict.run(s, ctx)
+    s = await n06_verdict.run(s, ctx)
     await snapshot(s, n06_verdict.NODE, ctx)
 
     verdict = (s.n06_verdict or {}).get("verdict")
@@ -82,26 +82,26 @@ async def run_game(game: dict, ctx) -> State:
         return finish(s, "n06_unknown")
 
     for node in (n07_adjust, n08_pcode, n09_conf):
-        s = node.run(s, ctx)
+        s = await node.run(s, ctx)
         await snapshot(s, node.NODE, ctx)
 
-    s = n10_rejudge.run(s, ctx)
+    s = await n10_rejudge.run(s, ctx)
     await snapshot(s, n10_rejudge.NODE, ctx)
     # 🔴 재판정은 **최대 1회**. 트리거가 있으면 ⑤~⑨ 를 다시 돌린다.
     if (s.n10_rejudge or {}).get("triggered"):
         s = await rerun_5_to_9(s, ctx)
 
-    s = n11_value.run(s, ctx)
+    s = await n11_value.run(s, ctx)
     await snapshot(s, n11_value.NODE, ctx)
     if (s.n11_value or {}).get("pick_type") == "보드":
         return finish(s, "n11_no_value")
 
-    s = n12_text.run(s, ctx)
+    s = await n12_text.run(s, ctx)
     await snapshot(s, n12_text.NODE, ctx)
     # 🔴 서술이 입력에 없는 사실을 지어내면 카드를 만들지 않는다(지시문 STEP 11).
     if (s.n12_text or {}).get("hallucination"):
         return finish(s, "n12_hallucination")
 
-    s = n13_send.run(s, ctx)
+    s = await n13_send.run(s, ctx)
     await snapshot(s, n13_send.NODE, ctx)
     return finish(s, None)

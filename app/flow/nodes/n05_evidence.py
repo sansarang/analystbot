@@ -1,15 +1,172 @@
-"""[v1.4] ⑤ 수집 — 가설이 정한 변수만 수집. 목록 밖 항목은 요청하지 않는다.
+"""[v1.4 STEP 6] ⑤ 수집 — **가설이 정한 변수만** 찾는다.
 
-🔴 **STEP 1 스켈레톤이다.** 지금은 상태를 그대로 돌려준다(패스스루).
-   실제 구현은 지시문의 해당 STEP 에서 붙인다 — 그 전에 채우지 않는다.
-🔴 다른 노드를 import 하거나 호출하지 않는다. 분기는 `run.py` 가 한다.
-🔴 자기 키(`n05_evidence`)만 쓴다.
+🔴 목록 밖 항목은 요청하지 않는다. 딥서치 요약이 배당·H2H 를 끼워 넣는 것이
+   이 저장소의 반복 결함이었다 — 화이트리스트로 막고, 밖의 키는 버린다.
+🔴 **새 수집기를 만들지 않는다.** 이미 있는 것을 부른다:
+     위성 추출  `satellite.read_extract`  (기사 → 8칸 JSON)
+     공식 결장  `research["absences"]`     (statsapi IL + 확정 라인업)
+     최근 3경기 `games` 표
+🔴 원문 없는 evidence 는 폐기한다 — "수집했다"와 "봤다"는 다르다.
+⚠️ 예산: 경기당·슬레이트 상한은 `flow.deepsearch_cap` 이 원본. 초과하면
+   그 변수는 `unknown` 으로 남기고 **조용히 넘기지 않는다**.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 NODE = "n05_evidence"
 
+_MAX_EXCERPT = 300
 
-def run(state, ctx):
-    """⑤ 수집. 지금은 패스스루."""
+#: 변수 → 어느 수집물에서 찾나. 🔴 이름은 `flow.adjust_prior_pp` 가 원본이고
+#  여기서는 **읽기만** 한다(키를 새로 짓지 않는다).
+_FROM_EXTRACT = {"lineup_out": "out", "xi_confirmed": "out",
+                 "form_recent5": "last3", "rotation_risk": "midweek"}
+
+
+def _row(var: str, value, *, source: str, url: str = "", excerpt: str = "",
+         sides: dict | None = None) -> dict:
+    """evidence 한 줄.
+
+    🔴 `sides` 는 **어느 팀 이야기인가**다. ⑦ 조정의 부호가 여기서 나온다 —
+       우리 픽 쪽 악재는 불리(−), 상대 쪽 악재는 유리(+)다. 이 칸이 없으면
+       부호를 한쪽으로 고정하게 되고, 그러면 근거와 반대로 확률이 움직인다.
+    """
+    return {"var": var, "value": value, "source": source, "source_url": url,
+            "raw_excerpt": str(excerpt or "")[:_MAX_EXCERPT],
+            "sides": sides or {}, "fetched_at": None}
+
+
+async def _extract_box(state, ctx) -> dict:
+    """위성 추출 `{side: {칸: 값}}`. 없으면 빈 dict."""
+    if "extract" in (ctx.inject or {}):
+        return dict(ctx.inject["extract"] or {})
+    if ctx.redis is None:
+        return {}
+    try:
+        from app.collectors.satellite import read_extract
+
+        got = await read_extract(ctx.redis, _sport_code(state), state.game_id)
+        return (got or {}).get("teams") or {}
+    except Exception as exc:
+        logger.info("[flow:n05] 위성 추출 없음 game=%s: %s", state.game_id, exc)
+        return {}
+
+
+def _sport_code(state) -> str:
+    return (state.league or state.sport or "").lower()
+
+
+def _split(state, absences: list) -> tuple:
+    """결장 문장을 홈/원정으로 가른다.
+
+    🔴 분리 규칙의 원본은 `performance._split_absences` 다 — 여기서 새로 짓지 않는다.
+    """
+    try:
+        from app.engine.performance import _split_absences
+
+        return _split_absences(list(absences),
+                               {"home": state.home, "away": state.away})
+    except Exception:
+        return [], []
+
+
+async def _last3(state, ctx, side: str) -> list:
+    """직전 3경기 결과. 🔴 기사에 묻지 않는다 — DB 에 있다(FORKS F-11)."""
+    if "last3" in (ctx.inject or {}):
+        return list((ctx.inject["last3"] or {}).get(side) or [])
+    if ctx.pool is None:
+        return []
+    team = getattr(state, side, "")
+    try:
+        from app.engine.pick_ledger import _LAST3_SQL, _last3_line
+
+        rows = await ctx.pool.fetch(_LAST3_SQL, _sport_code(state), team,
+                                    state.kickoff_utc or None)
+        return [_last3_line(r, team) for r in rows]
+    except Exception as exc:
+        logger.info("[flow:n05] 최근3 조회 실패 game=%s %s: %s",
+                    state.game_id, side, exc)
+        return []
+
+
+async def run(state, ctx):
+    """⑤ 수집."""
+    hyp = (state.n04_hyp or [{}])[0]
+    wanted = [v["var"] for v in (hyp.get("vars") or [])]
+    if not wanted:
+        state.n05_evidence = []
+        return state
+
+    # 🔴 드라이런·픽스처 주입구. 운영에서는 비어 있다 — 그때는 아래 수집이 돈다.
+    #    ⚠️ 주입값도 **화이트리스트를 통과해야** 한다(목록 밖은 버린다).
+    direct = (ctx.inject or {}).get("evidence")
+    if direct is not None:
+        rows = [dict(e) for e in direct if e.get("var") in wanted]
+        rows = [e for e in rows if e.get("raw_excerpt")]
+        state.n05_evidence = rows
+        logger.info("[flow:n05] game=%s 주입 evidence %d건", state.game_id, len(rows))
+        return state
+
+    box = await _extract_box(state, ctx)
+    absences = (ctx.inject or {}).get("absences") or []
+    out: list = []
+    per_game_cap = 0
+    try:
+        from app.flow import rules as R
+
+        per_game_cap = int(R.get("deepsearch_cap.per_game", 5) or 5)
+    except Exception:
+        per_game_cap = 5
+
+    for var in wanted:
+        if len(out) >= per_game_cap:
+            logger.info("[flow:n05] game=%s 경기당 상한 %d 도달 — 나머지는 미상",
+                        state.game_id, per_game_cap)
+            break
+        if not ctx.take_search(1):
+            logger.info("[flow:n05] game=%s 슬레이트 예산 소진 — 나머지는 미상",
+                        state.game_id)
+            break
+
+        field = _FROM_EXTRACT.get(var)
+        if var in ("form_recent5",) or var == "last3":
+            side = state.pick_side or "home"
+            vals = await _last3(state, ctx, side)
+            if vals:
+                out.append(_row(var, vals, source="db:games",
+                                excerpt=" · ".join(map(str, vals)),
+                                sides={side: len(vals)}))
+            continue
+
+        if field:
+            per_side: dict = {}
+            for side in ("home", "away"):
+                v = (box.get(side) or {}).get(field)
+                if v:
+                    per_side[side] = list(v) if isinstance(v, (list, tuple)) else [v]
+            # 🔴 공식 결장을 **합친다**(FORKS F-2: 충돌 시 공식이 이긴다).
+            if var in ("lineup_out", "xi_confirmed") and absences:
+                h_out, a_out = _split(state, absences)
+                for side, extra in (("home", h_out), ("away", a_out)):
+                    if extra:
+                        per_side[side] = list(dict.fromkeys(
+                            (per_side.get(side) or []) + extra))
+            got = [x for v in per_side.values() for x in v]
+            if got:
+                out.append(_row(var, got, source="satellite+official",
+                                excerpt=" · ".join(map(str, got)),
+                                sides={k: len(v) for k, v in per_side.items()}))
+            continue
+
+        # 그 밖의 변수는 아직 소스가 없다. **지어내지 않는다** — 없으면 없는 것이다.
+        logger.debug("[flow:n05] game=%s var=%s 소스 없음", state.game_id, var)
+
+    # 🔴 원문 없는 것은 버린다.
+    out = [e for e in out if e.get("raw_excerpt")]
+    state.n05_evidence = out
+    logger.info("[flow:n05] game=%s 요청 %d개 → evidence %d건",
+                state.game_id, len(wanted), len(out))
     return state

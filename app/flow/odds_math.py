@@ -1,0 +1,37 @@
+"""[v1.4 STEP 3] 배당 수학 — **마진 제거와 요구확률을 섞지 않는다.**
+
+🔴 둘은 다른 숫자다:
+     `devig_*`        마진을 뺀 **시장 확률**  → 우리 추정과 비교하는 값
+     `required_prob`  `1/배당` (마진 포함)     → 값 판정(edge)의 기준
+   지시문 STEP 3 의 "흔한 오류"가 바로 이 혼동이다 — `p_market` 자리에
+   `1/odds` 를 넣으면 edge 가 늘 마진만큼 양수로 나와 ⑪이 전부 거짓 픽이 된다.
+
+🔴 **`1 - p_home` 으로 원정 확률을 만들지 않는다**(축구). 무승부 질량이 있어
+   셋으로 갈라야 한다 — `devig_3way` 를 쓴다.
+⚠️ 순수 함수다. DB·HTTP·설정을 읽지 않는다.
+"""
+from __future__ import annotations
+
+
+def devig_2way(o_a: float, o_b: float) -> tuple[float, float]:
+    """야구 2-way. 반환 합은 1.0 이다."""
+    inv = [1.0 / float(o_a), 1.0 / float(o_b)]
+    s = sum(inv)
+    return inv[0] / s, inv[1] / s
+
+
+def devig_3way(o_h: float, o_d: float, o_a: float) -> tuple[float, float, float]:
+    """축구 3-way(승·무·패). 반환 합은 1.0 이다."""
+    inv = [1.0 / float(o_h), 1.0 / float(o_d), 1.0 / float(o_a)]
+    s = sum(inv)
+    return tuple(x / s for x in inv)
+
+
+def required_prob(odds: float) -> float:
+    """`1/배당`. **마진을 빼지 않는다** — 이것이 edge 의 기준선이다."""
+    return 1.0 / float(odds)
+
+
+def margin(*odds: float) -> float:
+    """북 마진(오버라운드 − 1). 위생 검사용."""
+    return sum(1.0 / float(o) for o in odds) - 1.0

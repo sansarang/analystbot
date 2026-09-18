@@ -684,6 +684,15 @@ async def send_game_prediction(redis, row, date_s: str, *, now=None) -> str:
         await ds.record(redis, sport, date_s, reason)
         return "skipped"
 
+    # 🔴 [v1.4 STEP 13 2026-09-18] **두 경로가 동시에 카드를 내지 않는다.**
+    #    `PIPELINE_V14=true` 면 발송은 `app/flow/nodes/n13_send` 의 몫이고
+    #    이 경로는 **조용히가 아니라 사유를 남기고** 비킨다(조용한 0 금지).
+    #    ⚠️ 되돌림은 스위치 하나다 — 이 줄을 지울 필요가 없다.
+    from app.config import get_settings as _cfg
+
+    if getattr(_cfg(), "pipeline_v14", False):
+        return await _skip("pipeline_v14")
+
     if sport not in SPORTS:
         return await _skip("not_supported")
     if not still_upcoming(starts_at, now):

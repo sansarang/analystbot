@@ -427,6 +427,15 @@ class Settings(BaseSettings):
     order_v3: bool = Field(default=False, validation_alias=AliasChoices(
         "ORDER_V3", "order_v3"))
 
+    #: 🔴 [v1.4 STEP 13 · 2026-09-18 사용자 지시] **파이프라인 ①~⑬ 스위치.**
+    #   `app/flow/run.run_game` 경로로 전환한다. **기본 꺼짐** — 켜기 전 24h
+    #   기존 동작을 관측한다(지시문 §7).
+    #   ⚠️ 켜면 기존 발송 경로는 **반드시 건너뛴다.** 두 경로가 동시에 카드를
+    #      내면 실패다(지시문 STEP 13). 계약 테스트가 그 배타성을 잠근다.
+    #   ⚠️ 되돌림은 이 값 하나다 — 코드를 되돌릴 필요가 없다.
+    pipeline_v14: bool = Field(default=False, validation_alias=AliasChoices(
+        "PIPELINE_V14", "pipeline_v14"))
+
     #: [SRCH-2 2026-09-12 사용자 지시] **Anthropic 웹 검색.**
     #   "x seach 삭제....그자리에 안트로픽 서치로" · "퍼플릭스와 안트로픽"
     #   🔴 **기본 꺼짐.** 유료다 — 경기당 약 $0.102 (실측 2026-09-12:
