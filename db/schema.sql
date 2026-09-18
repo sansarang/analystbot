@@ -921,3 +921,26 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS placeholder_suspect BOOLEAN;
 --      `adj_pp`(delta_pp) + 이 칸(나머지)으로 함께 만족한다.
 --   ⚠️ 10단계 변수별 채점이 "이 −2%p 가 어디서 왔나"를 여기서 읽는다.
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS adj_evidence JSONB;
+
+-- ════════════════════════════════════════════════════════════════════
+-- [v1.4 파이프라인 ①~⑬] 노드별 상태 스냅샷 (지시문 §2)
+--
+-- 🔴 **배선 오류 추적의 핵심이다.** 노드 1개가 돌 때마다 1행.
+--    "어느 노드까지 갔고 어디서 멈췄나"를 로그가 아니라 데이터로 답한다.
+-- ⚠️ 판정에 쓰지 않는다 — 진단 전용이다.
+-- ⚠️ `snapshot_json` 은 `app/flow/state.State.to_json()` 원문이다.
+--    모양의 원본은 그 dataclass 이고 여기 다시 적지 않는다.
+-- ════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS analysis_runs (
+    id             BIGSERIAL PRIMARY KEY,
+    run_id         UUID        NOT NULL,
+    game_id        TEXT        NOT NULL,
+    node           TEXT        NOT NULL,          -- 'n01_prior' … 'finish'
+    snapshot_json  JSONB       NOT NULL,
+    created_at_utc TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_analysis_runs_run
+    ON analysis_runs (run_id, created_at_utc);
+CREATE INDEX IF NOT EXISTS idx_analysis_runs_game
+    ON analysis_runs (game_id, created_at_utc DESC);

@@ -68,3 +68,45 @@ report:
   # 🔴 100 은 prob.py 결정 B(1차 결정 6)에 적힌 값이다 — 여기가 그 값의 원본이고
   #    prob.py 쪽은 산문이다. 두 곳에 숫자를 적지 않는다.
   var_min_n: 100
+
+# ════════════════════════════════════════════════════════════════════
+# [v1.4 파이프라인 ①~⑬] 지시문 §1.2 초기값 — `app/flow/` 가 읽는다.
+#
+# 🔴 **채점 20건이 쌓이기 전에는 바꾸지 않는다**(지시문 §1.2 원문).
+# 🔴 값 변경은 사용자가 한다. 코드가 이 숫자를 고치지 않는다.
+# ⚠️ 별도 `pipeline/rules.yaml` 을 만들지 않는다 — 문턱이 두 곳에 생기면
+#    그것이 사본이고, 사본은 원본이 바뀔 때 따라가지 않는다(사본 금지).
+# ⚠️ 위 `hypothesis`·`structure` 블록과 **이름이 겹치지 않게** `flow.` 아래
+#    모아 둔다. 기존 경로(U5~U13)는 그대로 자기 키를 본다.
+# ════════════════════════════════════════════════════════════════════
+flow:
+  # 조정 사전값 표 — 단위 %p, 우리 픽 후보 팀 기준(+는 유리)
+  adjust_prior_pp:
+    baseball:
+      starter_recent3:   {max_abs: 3.0, core: true}
+      bullpen_3d:        {max_abs: 2.0, core: true}
+      lineup_out:        {max_abs: 2.5, core: true}
+      travel_backtoback: {max_abs: 1.0, core: false}
+      park_factor:       {max_abs: 1.0, core: false}
+      weather:           {max_abs: 1.0, core: false}
+    soccer:
+      xi_confirmed:      {max_abs: 3.0, core: true}
+      form_recent5:      {max_abs: 2.0, core: false}
+      rotation_risk:     {max_abs: 2.0, core: false}
+      travel:            {max_abs: 1.0, core: false}
+      motivation:        {max_abs: 1.5, core: false}
+  gate_pp:
+    agree: 4.0        # |gap| < 4 → 동의
+    freeze: 12.0      # |gap| >= 12 → 보드고정 (데이터 오류 의심)
+  total_adjust_cap_pp: 6.0
+  edge_min_pp: 2.0
+  unknown_ratio_board: 0.5
+  deepsearch_cap:
+    slate_ratio: 0.30
+    per_game: 5
+  # ① 사전값 상수 — 지시문 STEP 2
+  hfa_elo:            # 홈 이점(ELO 점수)
+    kbo: 25
+    npb: 25
+    mlb: 24
+  draw_prior: 0.26    # 축구 3-way 무승부 사전 질량
