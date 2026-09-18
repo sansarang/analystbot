@@ -824,10 +824,18 @@ def verdict_block(jg: dict) -> list[str]:
 
     # ── 한 줄 판정. **한쪽만** 적는다 — 반대편은 같은 정보다.
     fav = m.get("우세")
+    # 🔴 [2026-09-18] **`1 - p` 는 축구에서 원정 확률이 아니다.** 무승부 질량이
+    #    있어 셋으로 갈라야 한다 — 규칙의 원본은 `prob.away_prob` 다.
+    #    ⚠️ 모르면 **원정 확률을 적지 않는다.** 틀린 숫자를 카드에 내는 것보다
+    #       홈 기준으로 말하는 편이 정직하다.
+    from app.engine.prob import away_prob as _away_p
+
+    p_away = _away_p(jg, p)
     if fav == "home":
         lead = f"{home} 우세 {p:.0%}"
     elif fav == "away":
-        lead = f"{away} 우세 {1 - p:.0%}"
+        lead = (f"{away} 우세 {p_away:.0%}" if p_away is not None
+                else f"{away} 우세 (홈 {p:.0%})")
     else:
         lead = f"박빙 (홈 {p:.0%})"
     bits = [lead]

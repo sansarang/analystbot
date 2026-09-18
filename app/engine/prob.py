@@ -76,6 +76,31 @@ def market_triple(probs: dict | None, home: str, away: str) -> tuple | None:
             round(float(probs[away]), 4))
 
 
+def away_prob(jg: dict, p_home: float | None) -> float | None:
+    """홈 확률 → **원정 확률.** 🔴 규칙의 원본은 여기 한 곳이다.
+
+    야구  무승부가 없다 → `1 - p_home`
+    축구  무승부 질량이 있다 → `1 - p_home - p_draw`. **`1 - p_home` 이 아니다.**
+
+    🔴 축구인데 무승부 질량을 모르면 **None** 이다. `1 - p_home` 으로 메우면
+       그 숫자는 원정 승률이 아니라 "안 지는 확률"이고, 카드에 그대로 나간다.
+       실사고 지점: `card.py` 한 줄 판정 · `performance.py` 최종 줄.
+    ⚠️ `pipeline._run_*` 의 `p_claude_away` 와 **같은 규칙**이다 — 두 곳에
+       적지 않으려고 이 함수를 만들었다(사본 금지).
+    """
+    if p_home is None:
+        return None
+    ph = float(p_home)
+    if (jg.get("sport") or "").lower() != "soccer":
+        return round(1.0 - ph, 4)
+    tri = market_triple(jg.get("market_probs"), jg.get("home") or "",
+                        jg.get("away") or "")
+    if tri is None:
+        return None                      # 모르면 만들지 않는다
+    _, draw, _ = tri
+    return round(max(0.0, min(1.0, 1.0 - ph - float(draw))), 4)
+
+
 def _count(jg: dict, key: str) -> float:
     v = jg.get(key)
     if v is True:

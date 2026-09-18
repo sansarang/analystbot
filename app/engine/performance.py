@@ -199,14 +199,20 @@ class WinProbAdjuster:
             p, capped = 1 - cap, True
 
         # [1] 홈/원정 혼동 방지 — 최종 줄에 양 팀 승률을 함께 적는다.
+        # 🔴 [2026-09-18] 축구는 `1 - p` 가 원정 승률이 아니다(무승부 질량).
+        #    규칙의 원본은 `prob.away_prob` — 모르면 원정 칸을 비운다.
+        from app.engine.prob import away_prob as _away_p
+
         away_kr = jg.get("away", "원정")
-        trace.append(f"최종 {home_kr} {p:.0%} / {away_kr} {1 - p:.0%}")
+        p_away = _away_p(jg, p)
+        trace.append(f"최종 {home_kr} {p:.0%} / {away_kr} "
+                     + (f"{p_away:.0%}" if p_away is not None else "미상"))
         unused = _unused_material(research, applied)
         return {
             "p": round(p, 4), "trace": trace, "applied": applied, "unused": unused,
             "basis": "home",                       # trace의 확률은 홈 기준이다
             "home": home_kr, "away": away_kr,
-            "p_home": round(p, 4), "p_away": round(1 - p, 4), "capped": capped,
+            "p_home": round(p, 4), "p_away": p_away, "capped": capped,
             "net_delta": round(p - base_p, 4),     # 조정 총량 (홈 기준)
         }
 

@@ -430,3 +430,70 @@ async def test_한_번만_보낸다():
     # 같은 상태로 다시 부르면 — Redis 표시가 없으므로 호출부(run.py)가 막는다.
     # 여기서는 **카드가 두 번 만들어지지 않는다**는 것만 잰다.
     assert sent[0].count("픽") == 1
+
+
+# ── [2026-09-18] ④ 파생 모델 배선 · 축구 2-way 정정
+
+def test_파생확률은_scoring_모양을_이름만_옮긴다():
+    """🔴 계산하지 않는다 — `scoring` 이 원본이고 여기서는 키만 맞춘다."""
+    from app.flow.nodes.n08_pcode import _ours_markets
+
+    mp = {"totals": {9.5: {"Over": 0.52, "Under": 0.48},
+                     "8.5": {"Over": 0.64}},           # JSON 왕복 문자열 키
+          "spreads": {1.5: {"home_minus": 0.38, "away_plus": 0.62}}}
+    got = _ours_markets(mp)
+    assert got["total_over"] == {9.5: 0.52, 8.5: 0.64}
+    assert got["total_under"] == {9.5: 0.48}
+    assert got["ah"] == {1.5: 0.38}
+    assert _ours_markets(None) == {}                    # 없으면 빈 dict
+
+
+@pytest.mark.asyncio
+async def test_파생확률이_있으면_구조픽이_선다():
+    """🔴 배선 전에는 후보가 언제나 0 이었다 — E2E 두 건이 그 상태였다."""
+    st = _s(pick_side="away", n03_gate={"gate": AGREE},
+            n02_market={"odds": {"away": 1.35},
+                        "derivatives": {"total": {"line": 9.5, "over": 1.90}}},
+            n07_adjust=[])
+    st = await n08_pcode.run(
+        _s(pick_side="away", n02_market={"p": {"away": 0.687}}, n07_adjust=[]),
+        Ctx(inject={"model_probs": {"totals": {9.5: {"Over": 0.62}}}}))
+    ours = st.n08_pcode["ours_markets"]
+    assert ours["total_over"][9.5] == 0.62
+
+    st2 = _s(pick_side="away", n03_gate={"gate": AGREE},
+             n02_market={"odds": {"away": 1.35},
+                         "derivatives": {"total": {"line": 9.5, "over": 1.90}}},
+             n08_pcode={"p_code_pick": 0.687, "ours_markets": ours})
+    v = (await n11_value.run(st2, Ctx())).n11_value
+    # 요구확률 1/1.90 = 0.5263 · 우리 0.62 → edge ≈ +9.4%p
+    assert v["pick_type"] == "구조", v
+    assert v["structure"]["market"] == "total_over"
+    assert v["structure"]["edge_pp"] > 2.0
+
+
+def test_원정확률_규칙은_한_곳이다():
+    """🔴 `1 - p_home` 은 축구에서 원정 확률이 아니다 — `prob.away_prob` 가 원본."""
+    from app.engine.prob import away_prob
+
+    assert away_prob({"sport": "kbo"}, 0.62) == 0.38
+    # 무승부 질량을 모르면 **만들지 않는다**
+    assert away_prob({"sport": "soccer"}, 0.62) is None
+    assert away_prob({"sport": "soccer", "home": "A", "away": "B",
+                      "market_probs": {"A": 0.62, "Draw": 0.24, "B": 0.14}},
+                     0.62) == 0.14
+
+
+def test_카드와_성능이_그_규칙을_쓴다():
+    """🔴 세 자리가 각자 `1 - p` 를 적으면 그게 사본이다.
+
+    실위험 지점(2026-09-18 전수 조사): `card.py` 한 줄 판정 · `performance.py`
+    최종 줄과 `p_away` 칸. 셋 다 `prob.away_prob` 를 지나야 한다.
+    """
+    import inspect
+
+    from app.engine import card as C
+    from app.engine import performance as PF
+
+    for mod in (C, PF):
+        assert "away_prob" in inspect.getsource(mod), mod.__name__
