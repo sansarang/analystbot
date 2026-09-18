@@ -1253,9 +1253,15 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
     """
     from app.engine import gate as G
 
+    # 🔴 [CNF-1 2026-09-18] **문을 함수 맨 위에 두지 않는다.** 이 함수는 둘을
+    #    한다 — S6 확인 판정은 **순수 함수·0원**이고, S11 분석만 LLM 을 쓴다.
+    #    문이 위에 있어서 공짜인 채점까지 같이 막혔다.
+    #    실측 2026-09-18 운영 원장(최근 5일): `동의` 가설 18건 중 **채점 0건**
+    #    (가치 의심 10/10 · 시장 과대 10/10 은 정상). `동의` 가설은 `last3` 두
+    #    칸을 세우는데(파생 U/O 재료), 찾으라 해놓고 찾았는지 세지 않았다 —
+    #    `hypothesis.py` 머리말이 경고한 "S9 가 무엇이 충족됐나로 고를 수 없다".
+    #    ⚠️ 비용 문은 **S11 앞으로 내렸다**(아래). LLM 호출은 한 건도 안 는다.
     label = (gate or {}).get("label")
-    if label not in (G.OVER, G.DOUBT):
-        return None
 
     g = await conn.fetchrow(
         # 🔴 [ANL-9] 예고 선발을 함께 읽는다 — 목표 분석이 "선발 축이 전부"라고
@@ -1328,6 +1334,17 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
         out["confirm"] = conf
     except Exception as exc:
         logger.warning("[analysis] game=%s 확인 판정 실패: %s", game_id, exc)
+
+    # 🔴 [CNF-1] **문은 채점 바로 뒤다.** 위(S6)만 공짜라서 풀었고, 아래는
+    #    종전 그대로 `OVER|DOUBT` 만 지나간다.
+    #    ⚠️ **일부러 여기까지만 연다.** 아래에는 구조 픽(`ST.candidates`)과
+    #       S7 재판정이 있고 그것들도 순수 함수지만, 지시받은 것은 "채점이
+    #       안 되는 것"이다. 범위를 넓히면 그건 고치는 것이 아니라 만드는 것이다.
+    #       (`동의` 에서 구조 픽이 필요하다는 것은 별개 건으로 남긴다 —
+    #        실측 2026-09-18: `structure_pick` 은 **모든 라벨에서 93건 전건
+    #        NULL** 이라 여기를 열어도 오늘은 아무것도 안 나온다.)
+    if label not in (G.OVER, G.DOUBT):
+        return out
 
     # ── 파생 디빅 부착 (U10)
     adj_raw = row["adj_pp"]

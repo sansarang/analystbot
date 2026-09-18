@@ -276,7 +276,12 @@ async def test_게이트_대상이_아니면_부르지_않는다(monkeypatch):
     conn = _StubConn()
     out = await PL.record_confirm_and_analysis(
         conn, game_id=1, gate={"label": "정합", "gap_pp": 1.0})
-    assert out is None and calls == [] and conn.saved == []
+    # 🔴 [CNF-1 2026-09-18] 단언을 **좁혔다.** 게이트 대상이 아닌 라벨도 S6
+    #    확인 판정까지는 지나간다(순수 함수·0원). 막는 것은 분석이다.
+    assert calls == [], "게이트 대상이 아닌데 분석이 호출됐다"
+    assert "analyze" not in (out or {}), out
+    # 분석 저장(`main_axis` …)은 한 건도 없어야 한다. 채점 저장은 있어도 된다.
+    assert not [s for s, _ in conn.saved if "main_axis" in s], conn.saved
 
 
 @pytest.mark.asyncio

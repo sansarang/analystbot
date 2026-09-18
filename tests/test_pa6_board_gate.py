@@ -108,7 +108,11 @@ async def test_보드고정은_analyze를_부르지_않는다(monkeypatch):
 
     out = await PL.record_confirm_and_analysis(
         _C(), game_id=1, gate={"label": G.BOARD, "gap_pp": None})
-    assert out is None and calls == []
+    # 🔴 [CNF-1 2026-09-18] 단언을 **좁혔다.** 보드 고정도 S6 채점까지는
+    #    지나간다(공짜). 이 테스트가 지키는 것은 **analyze 가 안 불린다**이고,
+    #    그건 그대로다 — `out is None` 은 그 규칙의 대리 측정이었을 뿐이다.
+    assert calls == [], "보드 고정에서 분석이 호출됐다 — 무료 한도가 터진다"
+    assert "analyze" not in (out or {}), out
 
 
 @pytest.mark.asyncio

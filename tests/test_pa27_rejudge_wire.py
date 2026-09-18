@@ -156,12 +156,20 @@ async def test_잡음_한_명은_안_쓴다(no_llm, extract):
 
 
 @pytest.mark.asyncio
-async def test_게이트_대상이_아니면_아무것도_안_한다(no_llm, extract):
+async def test_게이트_대상이_아니면_재판정하지_않는다(no_llm, extract):
+    """🔴 [CNF-1 2026-09-18] 단언을 **좁혔다.** 종전에는 "아무것도 안 한다"였다.
+
+    이제 `동의`·`보드 고정`도 **S6 확인 판정까지는** 지나간다(순수 함수·0원).
+    막는 것은 그 아래 — 재판정과 분석이다. 이 테스트가 지키는 것은 그쪽이다.
+    ⚠️ 종전 단언(`not conn.saved`)은 "재판정이 안 돈다"의 **대리 측정**이었다.
+       대리가 깨졌다고 규칙이 바뀐 것은 아니다 — 규칙을 직접 잰다.
+    """
     conn = _Conn()
     extract["teams"] = {"home": {"out": ["A", "B"]}}
     got = await PL.record_confirm_and_analysis(
         conn, game_id=1, gate={"label": G.AGREE}, redis=object())
-    assert got is None and not conn.saved
+    assert not conn.rejudge_saves(), "게이트 대상이 아닌데 재판정이 돌았다"
+    assert "rejudge" not in (got or {}), got
 
 
 @pytest.mark.asyncio
