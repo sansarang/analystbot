@@ -644,6 +644,99 @@ app/research/deep.py:457  `starter_changed` → 리서치 강제 갱신 트리�
 - 실측: `statsapi.mlb.com/api/v1/teams/{113,119,111}/roster?rosterType=fullRoster`
   (2026-09-18 · 상태 코드 12종 전수 · DTD 없음)
 
+## F-17 · 가설을 **시장 전에** 세울 것인가 (2026-09-18 · 사용자 지시)
+
+**사용자 지시 원문:** *"시장에 끌려가지 않고 우리 쪽 판단을 먼저 적는 게 중요함.
+페이블도 이렇게 '내 가설부터 세우고 검증'하는 스타일이야."*
+
+**갈림길** — 지금은 `gate.classify` 가 시장이 없으면 **보드 고정**을 돌려주고,
+`hypothesis.build(BOARD)` 는 `need = ()` 다. 즉 **배당이 안 오면 가설이 통째로 없다.**
+
+실측 2026-09-18 17:10:
+```
+09-19 mlb   15경기 · 배당 14 · 이름표 14      ← MLB 는 하루 전에 붙는다
+09-19 kbo    4경기 · 배당  0 · 이름표  0      🔴 가설 0
+09-20 kbo    5경기 · 배당  0 · 이름표  0      🔴 가설 0
+```
+팀도 알고 티어도 있고 올해 성적도 있는데, **시장이 안 왔다고 아무 가설도 안 선다.**
+
+---
+
+### 찾은 자료 ① — 시장을 먼저 보면 내 판단이 오염된다 (사용자 방향 지지)
+
+- NFL 베팅 시장에서 **앵커링 편향이 실증**됐다. 베터도 북메이커도 시즌 내내 프리시즌
+  우승 배당에 끌린다 (ScienceDirect 2025).
+- Pinnacle: *"북메이커가 공개한 가격이 **잠재의식적으로** 그 경기를 보는 눈을 바꾼다 —
+  가격을 보기 **전에** 경기를 연구했다면 다른 견해를 가졌을 수 있다."*
+- *"자기 확률을 직접 계산하는 도박꾼은 **극소수**이고, 대다수는 북이 매긴 가격을 먼저
+  본다 — 그래서 앵커링이 판단 과정에 들어간다."*
+- 슈퍼포캐스팅 방법론의 핵심은 **순서**다:
+  *"**The order matters. Sequence, not weighting.**"* — 기준율(외부 관점)로 먼저 닻을
+  내리고, **그 다음에야** 개별 사정(내부 관점)으로 조정한다.
+
+### 찾은 자료 ② — 그래도 시장이 최종적으로는 더 낫다 (반대편)
+
+- 종가(closing line)는 **가장 효율적인 가격**이고, CLV 가 장기 수익의 최고 예측자다.
+- *"종가는 경기 시점의 모든 알려진 정보를 반영한다 — 부상·날씨·라인업·샤프머니.
+  즉 **당신이 모델을 만들 때 없던 정보**가 들어 있다."*
+- 시장 효율성은 "모든 가격이 완벽하다"가 아니라 "명백한 오류는 빠르게 경쟁으로
+  사라진다"는 뜻이고, 그래서 엣지는 작고 빠르고 체계적이어야 한다.
+
+### 🔴 둘은 충돌하지 않는다 — 우리 구조가 이미 갈라 놓았다
+
+우리 봇에서 **확률과 조사 방향은 다른 물건**이다:
+
+```
+p_code   = 시장 뼈대 + 조정          ← 시장 효율성을 이미 존중한다
+p_prior  = 티어 + 올해 성적          ← "p_prior 는 p_code 에 더하지 않는다"(prior.py)
+           쓰이는 곳은 게이트와 카드 서술 둘뿐
+```
+
+그러니 **가설을 사전값 기준으로 먼저 세워도 확률은 한 글자도 안 바뀐다.**
+바뀌는 것은 "무엇을 조사할지"뿐이다.
+
+그리고 자료 ②가 오히려 자료 ①을 요구한다 — **CLV 로 채점하려면 독립적인 사전
+판단이 있어야 한다.** 라인을 보고 만든 견해로는 "내가 종가를 이겼다"가 성립하지
+않는다(그 견해가 이미 라인의 함수이므로). FORKS **F-4** 에서 우리는 이미 승률 대신
+CLV 를 고르기로 했다 — 그 선택이 사전 판단의 독립성을 **전제**한다.
+
+### 고른 것 — **가설은 사전값만으로 먼저 세운다. 시장은 검증·수정한다.**
+
+```
+종전   사전값 → [시장 대기] → 게이트 → 가설
+이후   사전값 → 가설 → (시장 도착) → 게이트가 다시 분류
+```
+
+- 시장이 없을 때의 가설은 **한 종류뿐이다** — "우리 사전값을 무너뜨릴 근거를 찾아라"
+  (지금 `가치 의심` 이 만드는 need 와 같다). 비교 대상이 없을 때 정직한 조사는 그것뿐이다.
+- 시장이 오면 게이트가 다시 분류한다. 방향이 **뒤집힐 수 있다**(시장 과대). 그건
+  결함이 아니라 검증이 작동한 것이고, 두 시점이 원장에 다 남아야 "가설이 맞았나"를 잰다.
+- ⚠️ `prior.py` 가 이미 같은 원칙을 뉴스에 대해 적어 두었다 —
+  *"사전값은 검색 전에 확정한다. 검색 후 적으면 뉴스 어조에 끌린다."*
+  **시장에 대해서만 그 규칙이 없었다.** 이 항목이 그 구멍을 메운다.
+
+### 안 고른 쪽 — 지금대로(시장 없으면 보드 고정)
+
+게이트의 원래 목적이 "딥서치를 **어디에 쓸지** 고른다"이므로, 시장이 없으면 값어치
+있는 자리를 모른다는 반론이 있다. **그 반론은 조사 배분에는 맞지만 가설 생성에는
+맞지 않는다** — 가설은 순수 함수라 비용이 0이고, 배분은 그 위의 §3 예산(30%·최대 8)이
+이미 막는다. 둘을 한 문에 묶어 둔 것이 문제였다.
+
+⚠️ **범위를 갈라 둔다.** 이 항목은 **가설 생성**만 연다. 시장 없는 가설을 §3 예산
+경쟁에 넣을지는 **별개 결정**이고 그건 LLM 콜을 늘린다 — 여기서 함께 열지 않는다.
+
+---
+
+### 출처 (2026-09-18 추가 · F-17)
+
+- [ScienceDirect — Anchoring bias in the NFL gambling market](https://www.sciencedirect.com/science/article/pii/S0165176525001259)
+- [Pinnacle — Anchoring bias and odds movement](https://www.pinnacle.com/betting-resources/en/educational/how-to-solve-a-problem-like-efficiency-part-two/ks5jtmy67w9xfggm)
+- [Cultivate Labs — Superforecasting: everything has a base rate](https://www.cultivatelabs.com/posts/superforecasting-everything-has-a-base-rate)
+- [WisdomFromExperts — How superforecasters use the inside/outside view](https://wisdomfromexperts.com/how-superforecasters-use-the-inside-outside-view/)
+- [Joe Saumarez — Market efficiency and the role of the closing line](https://joesaumarez.co.uk/sports-betting-market-efficiency-and-the-closing-line)
+- [Bet-Analytix — Closing odds as the ultimate indicator](https://www.bet-analytix.com/academy/closing-odds-ultimate-indicator)
+- [NYU Stern — Finding inefficiency in sports betting markets](https://www.stern.nyu.edu/sites/default/files/assets/documents/con_042958.pdf)
+
 ---
 
 ### 출처
