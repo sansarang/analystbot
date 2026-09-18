@@ -172,6 +172,13 @@ def _row_from_game(jg: dict, analysis: dict, picks_by_game: dict) -> dict | None
         return None                      # 판정 없음 — 레저는 판정의 원장이다
     pick = picks_by_game.get(gid)
     return {
+        # 🔴 [WIR-1 2026-09-18] **공식 결장을 채점까지 내려보낸다.** 밑줄 키는
+        #    원장 컬럼이 아니다 — `_record_side_effects` 가 받아 쓰고 끝난다.
+        #    (INSERT 는 컬럼을 명시 나열하고 `_same_judgement` 는 `_SIG_FIELDS`
+        #     만 훑으므로 이 키는 어디에도 새지 않는다. 확인하고 더했다.)
+        #    `research["absences"]` 는 `absences.py` 가 statsapi(IL 명단 +
+        #    확정 라인업)로 만든 값이다. 여기까지 와 있는데 채점이 못 봤다.
+        "_absences": (jg.get("research") or {}).get("absences"),
         "game_id": int(gid),
         "sport": analysis.get("sport") or jg.get("sport") or "",
         "league": jg.get("league"),
@@ -262,7 +269,8 @@ def _same_judgement(row: dict, existing) -> bool:
 
 
 async def _record_side_effects(conn, game_id: int, redis=None, *,
-                               clv_at: str | None = None) -> None:
+                               clv_at: str | None = None,
+                               absences: list | None = None) -> None:
     """[PA-19] 판정 뒤 **저장 전용** 기록을 한 자리에서 돌린다.
 
     🔴 **판정이 바뀌었든 아니든 돈다.** 이 값들은 판정이 같아도 시간이 지나면
@@ -294,7 +302,7 @@ async def _record_side_effects(conn, game_id: int, redis=None, *,
         logger.warning("[gate] game=%s 사전값 기록 실패: %s", game_id, exc)
     try:
         await record_confirm_and_analysis(conn, game_id=game_id, gate=gate,
-                                          redis=redis)
+                                          redis=redis, absences=absences)
     except Exception as exc:
         logger.warning("[analysis] game=%s 실패: %s", game_id, exc)
 
@@ -367,7 +375,9 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                         #    ⚠️ **이력 행은 늘리지 않는다**(시장과 같은 규약).
                         # ⚠️ redis 는 안 넘긴다 — `record_confirm_and_analysis` 가
                         #    필요할 때 스스로 연다(호출부에 핸들이 없다).
-                        await _record_side_effects(conn, row["game_id"])
+                        await _record_side_effects(
+                            conn, row["game_id"],
+                            absences=row.get("_absences"))
                         stats["unchanged"] += 1
                         continue
                     n = 0
@@ -415,7 +425,8 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
                     # [PA-19] 부수 기록은 **한 곳**이다 — unchanged 분기와
                     #   같은 함수를 부른다(두 곳에 적으면 한쪽만 늘어난다).
                     await _record_side_effects(conn, row["game_id"],
-                                               clv_at="verdict")
+                                               clv_at="verdict",
+                                               absences=row.get("_absences"))
         except Exception as exc:
             # 한 경기 실패가 나머지를 막지 않는다. 다만 **조용히 넘기지 않는다** —
             # 레저가 판정의 유일한 영구 기록이 된 이상, 기록 실패는 그 판정이
@@ -1278,9 +1289,38 @@ async def record_rejudge(conn_or_pool, *, game_id: int, rj: dict,
     return True
 
 
+#: [WIR-1 2026-09-18] 그 팀의 **직전 3경기 결과.** 채점의 `last3` 재료다.
+#  🔴 기사에서 뽑을 값이 아니다 — 우리 DB 에 있다. 실측: 기사 추출 확인률 0/15.
+#  ⚠️ 딥서치 근거(FORKS F-11): 최근 3~5경기는 **승패 예측력이 0 에 가깝다**
+#     (Razzball: "zero to negligible" · FanGraphs: 모멘텀 효과 최소).
+#     그래서 이 값은 `동의` 라벨의 **파생(U/O) 득점 환경 재료로만** 쓴다 —
+#     `hypothesis.build` 가 `동의` 에서만 `last3` need 를 세우는 것이 그 구현이다.
+#     확률을 여기서 움직이지 않는다.
+_LAST3_SQL = """
+    SELECT home, away, home_score, away_score, starts_at
+      FROM games
+     WHERE sport = $1 AND status = 'final'
+       AND home_score IS NOT NULL AND away_score IS NOT NULL
+       AND $2 IN (home, away)
+       AND ($3::timestamptz IS NULL OR starts_at < $3::timestamptz)
+     ORDER BY starts_at DESC
+     LIMIT 3
+"""
+
+
+def _last3_line(r, team: str) -> str:
+    """`"09-16 승 5-3"`. 🔴 점수 비교 한 줄이다 — 새 규칙을 만들지 않는다."""
+    hs, as_ = int(r["home_score"]), int(r["away_score"])
+    ours, theirs = (hs, as_) if r["home"] == team else (as_, hs)
+    mark = "승" if ours > theirs else ("패" if ours < theirs else "무")
+    when = r["starts_at"]
+    return f"{when:%m-%d} {mark} {ours}-{theirs}" if when else f"{mark} {ours}-{theirs}"
+
+
 async def record_confirm_and_analysis(conn, *, game_id: int,
                                       gate: dict | None,
-                                      redis=None) -> dict | None:
+                                      redis=None,
+                                      absences: list | None = None) -> dict | None:
     """[U12] S6 확인 판정 + S11 분석을 원장에 남긴다. **저장 전용.**
 
     ⚠️ 이름이 `record_analysis` 가 아니다 — 그건 이 파일 257행의 **원장 저장
@@ -1354,6 +1394,58 @@ async def record_confirm_and_analysis(conn, *, game_id: int,
                 await own_redis.aclose()
             except Exception:
                 pass
+
+    # 🔴 [WIR-1 2026-09-18] **이미 가진 사실을 채점 입력에 합친다.**
+    #    종전에는 위성 기사 추출만 봤다 — 실측 `out` 확인률 9.6% · `last3` 0%.
+    #    그런데 둘 다 우리가 이미 갖고 있다:
+    #      결장    `absences.py` 가 statsapi(IL 명단 + 확정 라인업)로 산출해
+    #              `research["absences"]` 에 넣는다 (실측 2026-09-18 운영 캐시:
+    #              "Cincinnati Reds의 Hunter Greene(선발) Injured 60-Day로 결장")
+    #      최근3   `games` 표에 끝난 경기가 있다
+    #    ⚠️ **덮지 않고 합친다.** 기사는 휴식·부진 같은 IL 밖 결장을 잡고
+    #       (absences.py 머리말), 공식은 IL 을 잡는다. 충돌 우선순위는
+    #       FORKS F-2(공식이 이긴다)가 이미 정했다 — 여기서 새 규칙을 만들지 않는다.
+    #    ⚠️ **LLM 콜 0.** 새 수집도 외부 호출도 없다.
+    merged_from = []
+    if absences:
+        try:
+            from app.engine.performance import _split_absences
+
+            h_out, a_out = _split_absences(list(absences),
+                                           {"home": g["home"], "away": g["away"]})
+            for side, got in (("home", h_out), ("away", a_out)):
+                if not got:
+                    continue
+                box = dict(collected.get(side) or {})
+                # 이름이 아니라 문장이다 — `confirm` 은 **비었나**만 본다.
+                box["out"] = list(dict.fromkeys(list(box.get("out") or []) + got))
+                collected[side] = box
+            if h_out or a_out:
+                merged_from.append(f"공식결장 {len(h_out)}/{len(a_out)}")
+        except Exception as exc:
+            logger.warning("[analysis] game=%s 공식 결장 합치기 실패: %s",
+                           game_id, exc)
+    try:
+        for side in ("home", "away"):
+            box = dict(collected.get(side) or {})
+            if box.get("last3"):
+                continue                      # 기사가 이미 채웠으면 그대로 둔다
+            rows3 = await conn.fetch(_LAST3_SQL, g["sport"], g[side],
+                                     g["starts_at"])
+            if not rows3:
+                continue
+            box["last3"] = [_last3_line(r, g[side]) for r in rows3]
+            collected[side] = box
+        if any((collected.get(s) or {}).get("last3") for s in ("home", "away")):
+            merged_from.append("DB최근3")
+    except Exception as exc:
+        logger.warning("[analysis] game=%s 최근 3경기 조회 실패: %s", game_id, exc)
+    # 🔴 조용한 0 금지 — "기사에서 왔다"와 "우리 것이 붙었다"를 구분 못 하면
+    #    다음 사람이 확인률을 잘못 읽는다.
+    if merged_from:
+        logger.info("[analysis] game=%s 채점 입력 보강 — %s",
+                    game_id, " · ".join(merged_from))
+
     try:
         from app.engine import hypothesis as HY
 
