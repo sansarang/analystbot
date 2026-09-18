@@ -308,6 +308,30 @@ async def statcast_refresh_job() -> None:
         await redis.aclose()
 
 
+async def flow_shadow_job() -> None:
+    """[v1.4 STEP 13] 새 파이프라인 섀도 실행 — **관측 전용.**
+
+    🔴 `PIPELINE_V14` 가 꺼져 있으면 즉시 반환한다(배포해도 무해).
+       발송은 `PIPELINE_V14_SEND` 가 따로 가른다.
+    🔴 **창에 매이지 않는다.** 실사고 2026-09-19: 폴링 창 안에 넣었더니 창이
+       닫힌 시간대에 한 번도 돌지 않았다. 관측은 창과 무관해야 한다.
+    ⚠️ 기존 경로를 건드리지 않는다 — 실패해도 로그 한 줄이다.
+    """
+    s = get_settings()
+    if not getattr(s, "pipeline_v14", False):
+        return
+    redis = aioredis.from_url(s.redis_url, decode_responses=True)
+    try:
+        from app.flow.bridge import run_today
+
+        out = await run_today(await get_pool(), redis)
+        logger.info("[scheduler] v1.4 섀도 %s", out)
+    except Exception as exc:
+        logger.warning("[scheduler] v1.4 섀도 실패: %s", exc)
+    finally:
+        await redis.aclose()
+
+
 async def satellite_job() -> None:
     """[SAT] 위성 수집 — DB에 없는 경기 정보를 미리 긁어 캐시에 쌓는다.
 
@@ -488,19 +512,6 @@ async def mlb_pregame_poll() -> None:
                 else:
                     errs.append({"what": "mlb 판정 캐시 없음",
                                  "detail": "슬레이트 파이프라인 구제 실패/이미 시도"})
-        # 🔴 [v1.4 STEP 13 2026-09-18] **새 파이프라인을 같은 슬레이트에 돌린다.**
-        #    `PIPELINE_V14` 가 꺼져 있으면 즉시 반환한다(배포해도 무해).
-        #    발송은 `PIPELINE_V14_SEND` 가 따로 가른다 — 섀도 관측이 기본이다.
-        #    ⚠️ 실패해도 기존 경로를 막지 않는다.
-        try:
-            from app.flow.bridge import run_slate
-
-            _flow = await run_slate(pool, redis, [dict(g) for g, _ in updated])
-            if _flow.get("games"):
-                logger.info("[scheduler] v1.4 섀도 %s", _flow)
-        except Exception as exc:
-            logger.warning("[scheduler] v1.4 섀도 실패 — 기존 경로는 계속: %s", exc)
-
         for game, res in updated:
             try:
                 ok = await rejudge_after_lineup(game, res)
@@ -2417,6 +2428,8 @@ def _job_specs() -> list[tuple]:
         # [SAT] 위성 수집 — 기본 꺼짐(satellite_enabled). 켜면 15분마다 DB에 없는
         #   경기 정보를 미리 긁어 캐시에 쌓는다. 판정 경로는 아직 안 읽는다(증분2 전).
         ("satellite_15m", satellite_job, IntervalTrigger(minutes=15)),
+        # [v1.4 STEP 13] 섀도 관측. `PIPELINE_V14` 가 꺼져 있으면 즉시 반환한다.
+        ("flow_shadow_15m", flow_shadow_job, IntervalTrigger(minutes=15)),
         ("ingest_finals_13h", finals_job, CronTrigger(hour=13, minute=0, timezone=KST)),
         # [축구 시범 운영] 10분마다 — T-3h 판정 · confirmed 재판정.
         #   유럽 경기는 KST 심야~새벽이라 창을 넓게 둔다.

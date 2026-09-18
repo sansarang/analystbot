@@ -34,7 +34,7 @@ def test_scheduler_jobs_registered():
                          #   사람이 먼저 발견하는 고장 0건이 목표다.
                          "watchdog_5m",
                          # [SAT] 위성 수집 — 기본 꺼짐(satellite_enabled).
-                         "satellite_15m",
+                         "satellite_15m", "flow_shadow_15m",
                          # [TRG-2] 시점 트리거 1분 루프 — 배당을 긁지 않고
                          #   이미 잡힌 스냅샷에 snap_tag 를 붙인다.
                          "triggers_1m",

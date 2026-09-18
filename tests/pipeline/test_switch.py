@@ -223,11 +223,127 @@ async def test_다리가_멈춤_사유를_사유별로_센다(monkeypatch):
 
 def test_스케줄러가_다리를_부른다():
     """🔴 STEP 13 을 처음 붙일 때 가드만 걸고 호출을 안 이었다 — 그러면
-    스위치가 "새 경로를 켠다"가 아니라 "카드를 끈다"가 된다."""
+    스위치가 "새 경로를 켠다"가 아니라 "카드를 끈다"가 된다.
+
+    🔴 [2026-09-19 실사고] 그다음엔 호출을 **폴링 창 안에** 넣었다. 창이
+       닫힌 시간대에는 그 함수가 조기 반환해 **12시간 동안 한 번도 안 돌았다**.
+       관측은 창과 무관해야 한다 — 전용 잡으로 옮겼다.
+    """
     import pathlib
 
     src = pathlib.Path("app/scheduler.py").read_text(encoding="utf-8")
     code = "\n".join(ln for ln in src.splitlines()
                      if ln.strip() and not ln.strip().startswith("#"))
-    assert "from app.flow.bridge import run_slate" in code
-    assert "await run_slate(" in code
+    assert "async def flow_shadow_job" in code
+    assert "from app.flow.bridge import run_today" in code
+    assert "await run_today(" in code
+    # 🔴 잡 목록에 등록돼 있어야 실제로 돈다 — 함수만 있으면 죽은 코드다.
+    assert '("flow_shadow_15m", flow_shadow_job' in code
+    # ⚠️ 창 안 호출은 **없어야** 한다(두 곳에서 돌면 예산이 두 배로 샌다).
+    assert "await run_slate(" not in code
+
+
+@pytest.mark.asyncio
+async def test_섀도잡은_스위치가_꺼지면_아무것도_안_한다(monkeypatch):
+    """🔴 배포해도 무해해야 한다 — 꺼진 상태에서 Redis 도 열지 않는다."""
+    import app.scheduler as S
+
+    opened = []
+
+    class _S:
+        pipeline_v14 = False
+        redis_url = "redis://x"
+
+    monkeypatch.setattr(S, "get_settings", lambda: _S())
+    monkeypatch.setattr(S.aioredis, "from_url",
+                        lambda *a, **k: opened.append(1))
+    await S.flow_shadow_job()
+    assert opened == [], "스위치가 꺼졌는데 Redis 를 열었다"
+
+
+@pytest.mark.asyncio
+async def test_run_today는_창에_매이지_않는다():
+    """🔴 실사고의 핵심 — 슬레이트를 **직접** 조회한다."""
+    import inspect
+
+    from app.flow import bridge as B
+
+    # ⚠️ **주석이 아니라 실행 줄만 본다.** 머리말에 "창(window)에 매이지
+    #    않는다"고 설명해 둔 것을 결함으로 세면 설명을 못 쓰게 된다.
+    import ast
+
+    tree = ast.parse(inspect.getsource(B.run_today))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            node.value = ""
+    code = ast.unparse(tree)
+    assert "_SLATE_SQL" in code
+    for banned in ("window", "poll", "updated"):
+        assert banned not in code, f"창 개념에 매여 있다: {banned}"
+
+
+# ── [2026-09-19 실사고] 카드의 목구멍에 걸어야 한다
+
+@pytest.mark.asyncio
+async def test_V14면_어떤_카드도_나가지_않는다(monkeypatch):
+    """🔴 실사고 2026-09-19: 섀도인데 **판정 불가 카드 7장이 나갔다**
+    (10085~10091). 가드를 `send_game_prediction` 에만 걸었는데 그 카드는
+    `send_unavailable_card` 라는 다른 경로였다.
+
+    관문을 함수 하나에 걸면 **다른 문으로 나간다.** 목구멍에 건다.
+    """
+    from app import notify as N
+    from app.config import get_settings
+    from app.engine import pregame_push as P
+
+    sent: list = []
+
+    async def _tg(text, **kw):
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr(N, "send_telegram", _tg)
+    monkeypatch.setattr(P, "_notify_mod", N)
+
+    class _S:
+        pipeline_v14 = True
+
+    monkeypatch.setattr("app.config.get_settings", lambda: _S())
+    assert await P._send_card("아무 카드") is False
+    assert sent == [], sent
+
+
+@pytest.mark.asyncio
+async def test_스위치가_꺼지면_카드는_나간다(monkeypatch):
+    """🔴 반대 위험 — 꺼진 상태에서 발송이 막히면 그게 더 큰 사고다."""
+    from app import notify as N
+    from app.engine import pregame_push as P
+
+    sent: list = []
+
+    async def _tg(text, **kw):
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr(N, "send_telegram", _tg)
+    monkeypatch.setattr(P, "_notify_mod", N)
+
+    class _S:
+        pipeline_v14 = False
+
+    monkeypatch.setattr("app.config.get_settings", lambda: _S())
+    assert await P._send_card("아무 카드") is True
+    assert len(sent) == 1
+
+
+def test_발송_경로가_전부_목구멍을_지난다():
+    """🔴 `_send_card` 를 우회해 `send_telegram` 을 직접 부르는 자리가 없어야 한다."""
+    import pathlib
+    import re
+
+    src = pathlib.Path("app/engine/pregame_push.py").read_text(encoding="utf-8")
+    code = "\n".join(ln for ln in src.splitlines()
+                     if ln.strip() and not ln.strip().startswith("#"))
+    # `_send_card` 본문 안의 두 호출만 허용한다.
+    calls = re.findall(r"_notify_mod\.send_telegram", code)
+    assert len(calls) == 2, f"목구멍 밖에서 텔레그램을 부른다: {len(calls)}곳"

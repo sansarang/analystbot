@@ -22,6 +22,34 @@ def _sport_of(row: dict) -> str:
     return "soccer" if sp == "soccer" else "baseball"
 
 
+#: 오늘 슬레이트. 🔴 **위성과 같은 조건**이다(`satellite._DUE_SQL`) — 그쪽이
+#  원본이고 여기서는 같은 규칙을 쓴다: 예정 · 앞으로 N시간 안에 시작.
+_SLATE_SQL = """
+    SELECT id, sport, league, home, away, starts_at
+      FROM games
+     WHERE status = 'scheduled'
+       AND starts_at BETWEEN now() AND now() + make_interval(hours => $1)
+     ORDER BY starts_at
+"""
+
+
+async def run_today(pool, redis, *, lookahead_h: int = 24, settings=None) -> dict:
+    """오늘 슬레이트 전체를 섀도로 돌린다.
+
+    🔴 **창(window)에 매이지 않는다.** 실사고 2026-09-19: `run_slate` 을
+       `mlb_pregame_poll` 안에 넣었더니 그 함수가 폴링 창 밖에서 조기 반환해
+       **한 번도 돌지 않았다**. 관측은 창과 무관해야 한다.
+    """
+    if pool is None:
+        return {"games": 0, "stopped": {}, "sent": 0, "why": "풀 없음"}
+    try:
+        rows = [dict(r) for r in await pool.fetch(_SLATE_SQL, int(lookahead_h))]
+    except Exception as exc:
+        logger.warning("[flow] 슬레이트 조회 실패: %s", exc)
+        return {"games": 0, "stopped": {}, "sent": 0, "why": "조회 실패"}
+    return await run_slate(pool, redis, rows, settings=settings)
+
+
 async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
     """슬레이트 1회. 반환 `{"games", "stopped": {사유: 수}, "sent"}`.
 

@@ -471,8 +471,21 @@ from app.engine.matchup import has_verdict as _judged  # noqa: E402
 
 
 async def _send_card(text: str) -> bool:
-    """봇 카드와 같은 2층 HTML. 실패하면 플레인으로 한 번 더."""
+    """봇 카드와 같은 2층 HTML. 실패하면 플레인으로 한 번 더.
+
+    🔴 [2026-09-19] **여기가 카드의 유일한 목구멍이다.** 스위치를 여기 건다.
+       실사고: `PIPELINE_V14=true`(섀도) 인데 **판정 불가 카드 7장이 나갔다**
+       (10085~10091, 09-18 22:14~23:14 UTC). 가드를 `send_game_prediction`
+       에만 걸었는데 그 카드는 `send_unavailable_card` 라는 **다른 경로**였다.
+       관문을 함수 하나에 걸면 다른 문으로 나간다 — 목구멍에 걸어야 한다.
+    ⚠️ 이 함수를 지나지 않는 발송 경로를 새로 만들지 마라. 만들면 같은 사고다.
+    """
     from app.bot.main import two_layer_html
+    from app.config import get_settings as _cfg
+
+    if getattr(_cfg(), "pipeline_v14", False):
+        logger.info("[pregame] v1.4 섀도 — 카드를 보내지 않는다 (%d자)", len(text))
+        return False
 
     html = two_layer_html(text)
     if html:
