@@ -175,6 +175,45 @@ _STARTER3_SQL = """
 """
 
 
+def era_of_rows(rows) -> float | None:
+    """등판 행 → 방어율. 🔴 이닝이 0이면 **None** (0.00 은 완봉을 뜻한다)."""
+    ip = sum(float(r.get("innings") or 0) for r in (rows or []))
+    if ip <= 0:
+        return None
+    er = sum(int(r.get("er") or 0) for r in (rows or []))
+    return round(9.0 * er / ip, 2)
+
+
+def starter_side_of(*, era3, league_era, opp: str) -> dict:
+    """상대 선발 최근 방어율 → **악재가 어느 쪽인가**.
+
+    🔴 `sides` 는 "이 사실이 누구 얘기인가"가 아니라 **"악재의 주체가 누구인가"**
+       다. ⑦(`n07._direction`)이 그 뜻으로 읽는다 — 상대 악재면 우리에게 유리.
+       ⚠️ 이것을 `{opp: n}` 으로 고정했더니 잘 던진 선발과 무너진 선발에 같은
+          `+3.0` 이 붙었다(실측 2026-09-20, 네 경기 전부).
+    🔴 못 구하면 **빈 dict** 다. `_direction` 이 보수적으로 불리하게 읽는다 —
+       유리하게 지어내지 않는다.
+    """
+    if era3 is None or league_era is None:
+        return {}
+    mine = "away" if opp == "home" else "home"
+    return {opp: 1} if float(era3) > float(league_era) else {mine: 1}
+
+
+def _league_era(state, ctx) -> float | None:
+    """리그 평균 방어율. 🔴 **새 상수를 만들지 않는다** — settings 가 원본이다."""
+    try:
+        from app.config import get_settings
+
+        s = ctx.settings or get_settings()
+    except Exception:
+        return None
+    code = _sport_code(state)
+    return {"kbo": getattr(s, "kbo_league_era", None),
+            "npb": getattr(s, "npb_league_era", None)}.get(
+        code, getattr(s, "league_era", None))
+
+
 def opp_starter_of(state, starters: dict | None) -> str | None:
     """**상대** 선발. 🔴 픽이 원정이면 홈 선발이 우리를 막는 쪽이다."""
     opp = "home" if (state.pick_side or "home") == "away" else "away"
@@ -193,29 +232,29 @@ async def _starter_recent3(state, ctx) -> tuple:
     starters = inj.get("starters")
     if starters is None:
         if ctx.pool is None:
-            return [], None
+            return [], None, None
         try:
             row = await ctx.pool.fetchrow(
                 "SELECT home_pitcher, away_pitcher FROM games WHERE id = $1",
                 int(state.game_id))
         except Exception as exc:
             logger.warning("[flow:n05] 선발 조회 실패 game=%s: %s", state.game_id, exc)
-            return [], None
+            return [], None, None
         starters = {"home": (row or {}).get("home_pitcher"),
                     "away": (row or {}).get("away_pitcher")}
     who = opp_starter_of(state, starters)
     ko = _kickoff_dt(state.kickoff_utc)
     if not who or ctx.pool is None or ko is None:
-        return [], who
+        return [], who, None
     try:
         rows = await ctx.pool.fetch(_STARTER3_SQL, who, ko)
     except Exception as exc:
         logger.warning("[flow:n05] 선발 최근3 조회 실패 game=%s %s: %s",
                        state.game_id, who, exc)
-        return [], who
+        return [], who, None
     return ([f"{r['d']:%m-%d} vs {r['opponent']} "
              f"{float(r['innings'] or 0):.1f}이닝 {r['er']}자책 {r['k']}K"
-             for r in rows], who)
+             for r in rows], who, era_of_rows(rows))
 
 
 def _kickoff_dt(raw):
@@ -324,12 +363,19 @@ async def run(state, ctx):
         if var == "starter_recent3":
             # 🔴 [STR-2] **상대 선발의 최근 3등판**이 이 변수의 본뜻이다.
             #    교체 메모는 다른 사실이라 둘 다 싣는다.
-            lines, who = await _starter_recent3(state, ctx)
+            lines, who, era3 = await _starter_recent3(state, ctx)
             if lines:
                 opp = "home" if (state.pick_side or "home") == "away" else "away"
+                # 🔴 [ADJ-1] `sides` 는 **악재의 주체**다. 상대 선발이 리그 평균
+                #    보다 나쁘면 상대 악재(우리 유리), 좋으면 우리 악재.
+                #    종전에 `{opp: n}` 으로 고정해 잘 던진 선발에도 +3.0 이
+                #    붙었다(실측 네 경기 전부).
                 out.append(_row(var, lines, source="db:pitcher_appearances",
-                                excerpt=f"{who} · " + " · ".join(lines),
-                                sides={opp: len(lines)}))
+                                excerpt=f"{who} · 최근3 방어율 {era3} · "
+                                        + " · ".join(lines),
+                                sides=starter_side_of(
+                                    era3=era3, league_era=_league_era(state, ctx),
+                                    opp=opp)))
             notes = await _cache_starter_notes(state, ctx)
             if notes:
                 sides: dict = {}
