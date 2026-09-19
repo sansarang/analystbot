@@ -103,6 +103,21 @@ flow:
   gate_pp:
     agree: 4.0        # |gap| < 4 → 동의
     freeze: 12.0      # |gap| >= 12 → 보드고정 (데이터 오류 의심)
+  # ── [FIX-1 2026-09-20] 증거 방향 문턱 (app/flow/direction.py 가 읽는다)
+  # 🔴 **전부 미검증 사전값이다.** 채점 30건이 쌓이기 전에는 고치지 않는다 —
+  #    고치면 그건 측정이 아니라 취향이다.
+  # ⚠️ 리그 평균 방어율은 여기 두지 않는다. `settings.league_era`(MLB 4.20) ·
+  #    `kbo_league_era` · `npb_league_era` 가 원본이고 `scoring._suppression`
+  #    이 같은 값을 쓴다 — 새 상수를 만들면 사본이 된다.
+  direction:
+    starter_dev_bad:   0.25   # (ERA3-기준)/기준 이 이 이상 → 그 팀 악재
+    starter_dev_good: -0.25   # 이 이하 → 그 팀 호재
+    starter_min_ip:    9.0    # 최근 3등판 이닝합이 이 미만이면 표본 부족(방향 0)
+    starter_short_ip:  5.0    # 이 미만 등판만 이어지면 basis 에 "짧은 등판"
+    bullpen_ip_heavy: 12.0    # 최근 3일 구원 이닝합이 이 이상 → 그 팀 악재
+    bullpen_b2b_heavy:   3    # 2연투 투수가 이만큼이면 → 그 팀 악재
+    lineup_out_heavy:    2    # 평소 주전이 이만큼 빠지면 → 그 팀 악재
+    dev_full:          0.5    # |dev| 가 이 값이면 strength 1.0
   total_adjust_cap_pp: 6.0
   edge_min_pp: 2.0
   unknown_ratio_board: 0.5

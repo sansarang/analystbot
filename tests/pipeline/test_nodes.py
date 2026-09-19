@@ -288,8 +288,25 @@ async def test_조정은_표_안에서만_그리고_합계_클램프():
 
 @pytest.mark.asyncio
 async def test_정성근거는_절반만_먹는다():
+    """🔴 [FIXDIR 2026-09-20] 규칙이 **둘** 바뀌었다.
+
+    ① 방향을 모르면 조정을 **만들지 않는다.** 종전에는 `_direction` 이
+       "모르면 −1(보수적으로 불리)"을 냈는데, 그러면 자료가 없을수록 확률이
+       내려간다 — 모름을 불리의 근거로 쓴 것이다. 아래 첫 단언이 그 폐기다.
+    ② 강도는 편차 크기다(`|dev| / dev_full`). 정성 근거는 `sides` 로 쪽이
+       지정됐을 때만 옛 규칙(0.5)이 호환 경로로 유지된다.
+    """
+    # ① 쪽 지정도 방향도 없으면 → 조정 0건
     st = _s(n06_verdict={"per_var": {"lineup_out": "confirmed"}},
             n05_evidence=[{"var": "lineup_out", "raw_excerpt": "결장자 있음"}])
+    st = await n07_adjust.run(st, Ctx())
+    assert st.n07_adjust == [], st.n07_adjust
+
+    # ② 쪽이 지정된 정성 근거는 종전처럼 절반만 먹는다
+    st = _s(pick_side="away",
+            n06_verdict={"per_var": {"lineup_out": "confirmed"}},
+            n05_evidence=[{"var": "lineup_out", "raw_excerpt": "결장자 있음",
+                           "sides": {"home": 1}}])
     st = await n07_adjust.run(st, Ctx())
     assert st.n07_adjust[0]["strength"] == 0.5
     assert abs(st.n07_adjust[0]["pp"]) == 1.25         # 2.5 × 0.5
@@ -308,9 +325,16 @@ async def test_pcode는_시장_뼈대에_조정을_얹는다():
 
 @pytest.mark.asyncio
 async def test_확신_등급():
+    # 🔴 [FIX-3 2026-09-20] A 의 |Σadj| 는 **방향이 판정된 조정**(n07_adjust)만
+    #    센다. 종전에는 `n08.sum_adj_pp`(캡·축소가 걸린 뒤 값)를 봤다.
     base = {"per_var": {"starter_recent3": "confirmed", "bullpen_3d": "confirmed"}}
-    a = await n09_conf.run(_s(n06_verdict=base, n08_pcode={"sum_adj_pp": -3.5}), Ctx())
+    a = await n09_conf.run(_s(n06_verdict=base, n08_pcode={"sum_adj_pp": -3.5},
+                              n07_adjust=[{"var": "starter_recent3", "pp": -3.5}]), Ctx())
     assert a.n09_conf["grade"] == GRADE_A
+    # 방향이 판정된 조정이 없으면 A 가 아니다 — 자료가 없는데 A 가 나오면 안 된다
+    a2 = await n09_conf.run(_s(n06_verdict=base, n08_pcode={"sum_adj_pp": -3.5},
+                               n07_adjust=[]), Ctx())
+    assert a2.n09_conf["grade"] == GRADE_B, a2.n09_conf
     b = await n09_conf.run(_s(n06_verdict={"per_var": {"lineup_out": "confirmed"}},
                               n08_pcode={"sum_adj_pp": -1.0}), Ctx())
     assert b.n09_conf["grade"] == GRADE_B
@@ -436,7 +460,9 @@ async def test_한_번만_보낸다(monkeypatch):
     sent = []
     st = _s(pick_side="away", n11_value={"pick_type": PICK_ML, "structure": None},
             n02_market={"odds": {"away": 1.35}},
-            n08_pcode={"p_code_pick": 0.707}, n09_conf={"grade": GRADE_B},
+            # ⚠️ [FIX-5 2026-09-20] 발송 조건에 등급이 생겼다(승패 = grade A).
+            #    이 테스트가 재는 것은 **멱등성**이므로 등급만 A 로 올린다.
+            n08_pcode={"p_code_pick": 0.707}, n09_conf={"grade": GRADE_A},
             n12_text={"sentences": ["1", "2", "3", "4"]},
             n05_evidence=[])
     ctx = Ctx(inject={"send": lambda t: sent.append(t) or True})
@@ -476,15 +502,71 @@ async def test_파생확률이_있으면_구조픽이_선다():
     ours = st.n08_pcode["ours_markets"]
     assert ours["total_over"][9.5] == 0.62
 
+    # 🔴 [FIX-4 2026-09-20] 구조 픽에 네 가지 조건이 더 붙었다. 의도(파생 확률이
+    #    ⑪까지 흐른다)는 그대로 두고 그 입력을 채운다.
+    #      a 가설이 마켓을 지정 · b 시장 동의(open 필요) · e 방향 증거 · d λ 절사 없음
+    der = {"total": {"line": 9.5, "over": 1.90, "under": 1.95,
+                     "open": {"over": 1.95, "under": 1.90}}}
+    ev = [{"var": "starter_recent3", "direction": {"home": -1, "away": 0, "dev": 0.4}},
+          {"var": "bullpen_3d", "direction": {"home": -1, "away": 0, "dev": 0.3}}]
     st2 = _s(pick_side="away", n03_gate={"gate": AGREE},
-             n02_market={"odds": {"away": 1.35},
-                         "derivatives": {"total": {"line": 9.5, "over": 1.90}}},
-             n08_pcode={"p_code_pick": 0.687, "ours_markets": ours})
+             n04_hyp=[{"id": "H_deriv", "market": "total", "vars": []}],
+             n05_evidence=ev,
+             n02_market={"odds": {"away": 1.35}, "derivatives": der},
+             n08_pcode={"p_code_pick": 0.687, "ours_markets": ours},
+             n09_conf={"grade": "B"})
     v = (await n11_value.run(st2, Ctx())).n11_value
     # 요구확률 1/1.90 = 0.5263 · 우리 0.62 → edge ≈ +9.4%p
     assert v["pick_type"] == "구조", v
     assert v["structure"]["market"] == "total_over"
     assert v["structure"]["edge_pp"] > 2.0
+    assert v["struct_grade"] == "A", v          # 찬 2 · 반 0
+
+
+@pytest.mark.asyncio
+async def test_구조픽_가드_넷이_각각_막는다():
+    """🔴 [FIX-4] 하나씩 빼면 각각 보드로 떨어져야 한다."""
+    ours = {"total_over": {9.5: 0.62}}
+    der = {"total": {"line": 9.5, "over": 1.90, "under": 1.95,
+                     "open": {"over": 1.95, "under": 1.90}}}
+    ev = [{"var": "starter_recent3", "direction": {"home": -1, "away": 0, "dev": 0.4}},
+          {"var": "bullpen_3d", "direction": {"home": -1, "away": 0, "dev": 0.3}}]
+
+    def base(**kw):
+        d = dict(pick_side="away", n03_gate={"gate": AGREE},
+                 n04_hyp=[{"id": "H_deriv", "market": "total", "vars": []}],
+                 n05_evidence=ev,
+                 n02_market={"odds": {"away": 1.35}, "derivatives": der},
+                 n08_pcode={"p_code_pick": 0.687, "ours_markets": ours},
+                 n09_conf={"grade": "B"})
+        d.update(kw)
+        return _s(**d)
+
+    # a. 가설이 마켓을 지정하지 않음
+    v = (await n11_value.run(base(n04_hyp=[{"id": "H_break", "vars": []}]), Ctx())).n11_value
+    assert v["pick_type"] == "보드" and "지정하지" in v["reject_reason"], v
+
+    # b. open 배당 없음 → fail closed
+    der2 = {"total": {"line": 9.5, "over": 1.90, "under": 1.95}}
+    v = (await n11_value.run(base(n02_market={"odds": {"away": 1.35},
+                                              "derivatives": der2}), Ctx())).n11_value
+    assert v["pick_type"] == "보드" and "시장 동의" in v["reject_reason"], v
+
+    # d. λ 절사
+    v = (await n11_value.run(base(n08_pcode={"p_code_pick": 0.687, "ours_markets": ours,
+                                             "model_probs": {"clipped": {"home": 7.1}}}),
+                             Ctx())).n11_value
+    assert v["pick_type"] == "보드" and "절사" in v["reject_reason"], v
+
+    # e. 방향 증거 없음
+    v = (await n11_value.run(base(n05_evidence=[]), Ctx())).n11_value
+    assert v["pick_type"] == "보드" and "방향" in v["reject_reason"], v
+
+    # c. edge 상한 — 우리 확률을 올려 edge 를 12%p 이상으로
+    v = (await n11_value.run(base(n08_pcode={"p_code_pick": 0.687,
+                                             "ours_markets": {"total_over": {9.5: 0.70}}}),
+                             Ctx())).n11_value
+    assert v["pick_type"] == "보드" and "오류의심" in v["reject_reason"], v
 
 
 def test_원정확률_규칙은_한_곳이다():

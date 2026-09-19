@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 
-from app.flow.labels import PICK_BOARD
+from app.flow.labels import PICK_BOARD, PICK_ML
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +66,19 @@ async def run(state, ctx):
     val = state.n11_value or {}
     if val.get("pick_type") == PICK_BOARD:
         state.n13_send = {"sent": False, "message_id": None, "why": "보드"}
+        return state
+    # 🔴 [FIX-5 2026-09-20] **등급 조건.** 승패는 `grade`, 구조는 `struct_grade` 다.
+    #    근거가 다른 둘을 한 등급으로 묶으면 구조 픽이 승패 등급을 물려받는다.
+    conf = state.n09_conf or {}
+    if val.get("pick_type") == PICK_ML:
+        have, need = conf.get("grade"), "A"
+    else:
+        have, need = (val.get("struct_grade") or conf.get("struct_grade")), "A"
+    if have != need:
+        state.n13_send = {"sent": False, "message_id": None, "why": "등급미달",
+                          "grade": have, "need": need}
+        logger.info("[flow:n13] game=%s 등급미달 — %s (필요 %s)",
+                    state.game_id, have, need)
         return state
     if not ((state.n12_text or {}).get("sentences")):
         state.n13_send = {"sent": False, "message_id": None, "why": "서술 없음"}

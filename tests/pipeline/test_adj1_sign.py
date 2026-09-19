@@ -76,5 +76,8 @@ async def test_잘_던진_상대_선발은_불리로_간다():
                                     "starters": {"home": "Ace", "away": "Joe"}})
     out = await N.run(st, ctx)
     row = [e for e in out.n05_evidence if e["var"] == "starter_recent3"][0]
-    # ERA 1.50 < 4.20 → 상대가 잘 던진다 → 우리(away) 악재
-    assert row["sides"] == {"away": 1}, row["sides"]
+    # 🔴 [FIXDIR 2026-09-20] 부호의 원본이 `sides` 에서 `direction` 으로 옮겼다.
+    #    ERA3 1.50 < 4.20 → 상대(home) **호재** → 우리(away) 픽에 불리.
+    d = row["direction"]
+    assert d["home"] == +1, d
+    assert d["dev"] < 0, d

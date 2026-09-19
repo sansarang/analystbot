@@ -74,6 +74,11 @@ class LambdaResult:
     away: float
     trace: list[str] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)   # 수집 실패로 건너뛴 보정
+    # 🔴 [FIX-4d 2026-09-20] λ 가 lam_min/lam_max 로 **잘렸는가.** 종전에도
+    #    사실은 `trace` 문자열에 남았지만(“λ 범위 절사”) 읽는 쪽이 파싱해야 해서
+    #    쓸 수 없었다 — 구조화 필드로 **승격**한다. 잘린 λ 위에 세운 파생 확률은
+    #    믿을 수 없으므로 ⑪이 이것을 보고 구조 후보를 0 으로 만든다.
+    clipped: dict = field(default_factory=dict)        # {"home": 원값, "away": 원값}
     usable: bool = True                                # 핵심 지표가 전무하면 False
 
 
@@ -199,6 +204,7 @@ def mlb_lambdas(jg: dict, research: dict, settings=None, sport: str = "mlb") -> 
     s = settings or get_settings()
     base = league_baseline_runs(sport, s)
     lam = {"home": base, "away": base}
+    clipped: dict = {}
     trace: list[str] = [f"기본 λ {base:.2f} (리그 평균 득점)"]
     missing: list[str] = []
     have_core = {"home": False, "away": False}
@@ -307,6 +313,7 @@ def mlb_lambdas(jg: dict, research: dict, settings=None, sport: str = "mlb") -> 
         lam[side] = max(s.lam_min, min(s.lam_max, raw))
         if abs(lam[side] - raw) > 1e-9:
             trace.append(f"{side} λ 범위 절사 ({raw:.2f} → {lam[side]:.2f})")
+            clipped[side] = round(raw, 4)
 
     trace.append(f"최종 λ — {jg.get('home', '홈')} {lam['home']:.2f} / "
                  f"{jg.get('away', '원정')} {lam['away']:.2f}")
@@ -315,7 +322,7 @@ def mlb_lambdas(jg: dict, research: dict, settings=None, sport: str = "mlb") -> 
         logger.warning("[scoring] 핵심 지표 부족으로 λ 산출 불가 game=%s missing=%s",
                        jg.get("game_id"), missing[:4])
     return LambdaResult(home=round(lam["home"], 3), away=round(lam["away"], 3),
-                        trace=trace, missing=missing, usable=usable)
+                        trace=trace, missing=missing, usable=usable, clipped=clipped)
 
 
 def _absence_factors(items: list[str], s, team: str = "") -> tuple[float, float, dict]:
@@ -539,8 +546,10 @@ def soccer_lambdas(jg: dict, research: dict, settings=None) -> LambdaResult:
     trace.append(f"홈 이점 → ×{1 + s.home_goal_edge:.3f}")
     trace.append(f"최종 λ — {jg.get('home', '홈')} {lam['home']:.2f} / "
                  f"{jg.get('away', '원정')} {lam['away']:.2f}")
+    # ⚠️ 위치 인자로 넘기지 않는다 — `clipped` 가 5번째로 끼어들면서 종전 코드의
+    #    5번째(`usable`)가 조용히 밀렸다. 축구 λ 는 절사하지 않으므로 clipped 없음.
     return LambdaResult(round(lam["home"], 3), round(lam["away"], 3), trace, missing,
-                        have["home"] and have["away"])
+                        usable=have["home"] and have["away"])
 
 
 def soccer_market_probs(lam_home: float, lam_away: float, lines: dict | None = None,

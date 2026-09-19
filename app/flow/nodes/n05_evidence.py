@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import logging
 
+from app.flow import direction as DIR
+
 logger = logging.getLogger(__name__)
 
 NODE = "n05_evidence"
@@ -49,16 +51,12 @@ _SIDE_KR = {"홈": "home", "원정": "away"}
 
 
 def _row(var: str, value, *, source: str, url: str = "", excerpt: str = "",
-         sides: dict | None = None) -> dict:
-    """evidence 한 줄.
-
-    🔴 `sides` 는 **어느 팀 이야기인가**다. ⑦ 조정의 부호가 여기서 나온다 —
-       우리 픽 쪽 악재는 불리(−), 상대 쪽 악재는 유리(+)다. 이 칸이 없으면
-       부호를 한쪽으로 고정하게 되고, 그러면 근거와 반대로 확률이 움직인다.
-    """
+         sides: dict | None = None, direction: dict | None = None) -> dict:
+    """증거 한 줄. 🔴 [FIX-1] `direction` 이 **부호의 원본**이다 —
+    `sides`(항목 수)는 표시용으로만 남는다(⑦이 더 이상 읽지 않는다)."""
     return {"var": var, "value": value, "source": source, "source_url": url,
-            "raw_excerpt": str(excerpt or "")[:_MAX_EXCERPT],
-            "sides": sides or {}, "fetched_at": None}
+            "raw_excerpt": excerpt, "sides": sides or {},
+            "direction": direction or {}, "fetched_at": None}
 
 
 async def _cache_doc(state, ctx) -> dict:
@@ -232,29 +230,29 @@ async def _starter_recent3(state, ctx) -> tuple:
     starters = inj.get("starters")
     if starters is None:
         if ctx.pool is None:
-            return [], None, None
+            return [], None, None, []
         try:
             row = await ctx.pool.fetchrow(
                 "SELECT home_pitcher, away_pitcher FROM games WHERE id = $1",
                 int(state.game_id))
         except Exception as exc:
             logger.warning("[flow:n05] 선발 조회 실패 game=%s: %s", state.game_id, exc)
-            return [], None, None
+            return [], None, None, []
         starters = {"home": (row or {}).get("home_pitcher"),
                     "away": (row or {}).get("away_pitcher")}
     who = opp_starter_of(state, starters)
     ko = _kickoff_dt(state.kickoff_utc)
     if not who or ctx.pool is None or ko is None:
-        return [], who, None
+        return [], who, None, []
     try:
         rows = await ctx.pool.fetch(_STARTER3_SQL, who, ko)
     except Exception as exc:
         logger.warning("[flow:n05] 선발 최근3 조회 실패 game=%s %s: %s",
                        state.game_id, who, exc)
-        return [], who, None
+        return [], who, None, []
     return ([f"{r['d']:%m-%d} vs {r['opponent']} "
              f"{float(r['innings'] or 0):.1f}이닝 {r['er']}자책 {r['k']}K"
-             for r in rows], who, era_of_rows(rows))
+             for r in rows], who, era_of_rows(rows), [dict(r) for r in rows])
 
 
 def _kickoff_dt(raw):
@@ -278,10 +276,11 @@ def _kickoff_dt(raw):
 async def _bullpen3d(state, ctx, side: str) -> list:
     """그 팀 불펜의 최근 3일 등판. 🔴 기사에 묻지 않는다 — DB 에 있다."""
     if "bullpen" in (ctx.inject or {}):
-        return list((ctx.inject["bullpen"] or {}).get(side) or [])
+        got = list((ctx.inject["bullpen"] or {}).get(side) or [])
+        return got, []
     ko = _kickoff_dt(state.kickoff_utc)
     if ctx.pool is None or ko is None:
-        return []          # 시각을 모르면 3일 창을 만들 수 없다 — 지어내지 않는다
+        return [], []      # 시각을 모르면 3일 창을 만들 수 없다 — 지어내지 않는다
     team = getattr(state, side, "")
     try:
         rows = await ctx.pool.fetch(_BULLPEN_SQL, team, ko)
@@ -290,9 +289,9 @@ async def _bullpen3d(state, ctx, side: str) -> list:
         #    "자료 없음"과 구분되지 않는다(실측: 그래서 몇 주를 몰랐다).
         logger.warning("[flow:n05] 불펜 조회 실패 game=%s %s: %s",
                        state.game_id, side, exc)
-        return []
-    return [f"{r['d']:%m-%d} {r['pitcher']} {float(r['innings'] or 0):.1f}이닝"
-            for r in rows]
+        return [], []
+    return ([f"{r['d']:%m-%d} {r['pitcher']} {float(r['innings'] or 0):.1f}이닝"
+             for r in rows], [dict(x) for x in rows])
 
 
 async def _last3(state, ctx, side: str) -> list:
@@ -363,9 +362,11 @@ async def run(state, ctx):
         if var == "starter_recent3":
             # 🔴 [STR-2] **상대 선발의 최근 3등판**이 이 변수의 본뜻이다.
             #    교체 메모는 다른 사실이라 둘 다 싣는다.
-            lines, who, era3 = await _starter_recent3(state, ctx)
+            lines, who, era3, raw_rows = await _starter_recent3(state, ctx)
             if lines:
                 opp = "home" if (state.pick_side or "home") == "away" else "away"
+                d = DIR.starter_direction(raw_rows, league_era=_league_era(state, ctx),
+                                          team=opp)
                 # 🔴 [ADJ-1] `sides` 는 **악재의 주체**다. 상대 선발이 리그 평균
                 #    보다 나쁘면 상대 악재(우리 유리), 좋으면 우리 악재.
                 #    종전에 `{opp: n}` 으로 고정해 잘 던진 선발에도 +3.0 이
@@ -373,9 +374,7 @@ async def run(state, ctx):
                 out.append(_row(var, lines, source="db:pitcher_appearances",
                                 excerpt=f"{who} · 최근3 방어율 {era3} · "
                                         + " · ".join(lines),
-                                sides=starter_side_of(
-                                    era3=era3, league_era=_league_era(state, ctx),
-                                    opp=opp)))
+                                sides={opp: len(lines)}, direction=d))
             notes = await _cache_starter_notes(state, ctx)
             if notes:
                 sides: dict = {}
@@ -392,16 +391,21 @@ async def run(state, ctx):
         # 🔴 [2026-09-19] **불펜 축.** 핵심 변수인데 소스가 없어 언제나
         #    `unknown` 이었다(실측 0건). `pitcher_appearances` 에 이미 있다.
         if var == "bullpen_3d":
-            per_side = {}
+            per_side, raw_side = {}, {}
             for sd in ("home", "away"):
-                got = await _bullpen3d(state, ctx, sd)
+                got, raw = await _bullpen3d(state, ctx, sd)
                 if got:
-                    per_side[sd] = got
+                    per_side[sd], raw_side[sd] = got, raw
             flat = [x for v in per_side.values() for x in v]
             if flat:
+                # 🔴 [FIX-1] 쪽별로 따로 판정한 뒤 합친다 — 한쪽만 과소모인
+                #    경우와 양쪽 다인 경우를 구분해야 부호가 맞는다.
+                d = DIR.merge(*[DIR.bullpen_direction(raw_side.get(sd) or [], team=sd)
+                                for sd in ("home", "away") if sd in raw_side])
                 out.append(_row(var, flat, source="db:pitcher_appearances",
                                 excerpt=" · ".join(flat[:12]),
-                                sides={k: len(v) for k, v in per_side.items()}))
+                                sides={k: len(v) for k, v in per_side.items()},
+                                direction=d))
             continue
 
         field = _FROM_EXTRACT.get(var)

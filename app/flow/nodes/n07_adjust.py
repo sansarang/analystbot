@@ -1,15 +1,18 @@
 """[v1.4 STEP 8] ⑦ 조정 — **확인된 변수만** %p 를 얻는다.
 
 🔴 크기는 `flow.adjust_prior_pp[sport][var].max_abs` 안에서만. 표 밖 변수는 0 이다.
-🔴 방향은 코드가 정한다. `strength` 는 근거의 성질이다 —
-     수치 근거가 있으면 1.0, 정성이면 0.5 (지시문 STEP 8).
+🔴 [FIX-1·2 2026-09-20] 방향과 강도는 **증거의 `direction`** 에서 온다.
+   종전에는 `sides` 의 **항목 수**로 부호를, `raw_excerpt` 에 숫자가 있는지로
+   강도를 정했다. 그래서 상대 선발이 6.0이닝 1자책인 경기와 4.0이닝 5자책인
+   경기에 똑같이 `+3.0 · strength 1.0` 이 붙었다(실측 MLB 4경기 전부).
+🔴 방향을 못 정하면 **0 이고 행을 만들지 않는다.** 종전 "모르면 −1" 은
+   폐기했다 — 그러면 자료가 없을수록 확률이 내려간다(모름을 근거로 쓴 것이다).
 🔴 합계는 `flow.total_adjust_cap_pp` 로 클램프한다.
 ⚠️ 단위: `pp` 접미사 필드만 %p 다. 확률(0~1)과 섞지 않는다.
 """
 from __future__ import annotations
 
 import logging
-import re
 
 from app.flow import rules as R
 from app.flow.labels import CONFIRMED
@@ -18,25 +21,46 @@ logger = logging.getLogger(__name__)
 
 NODE = "n07_adjust"
 
-#: 수치 근거인가 — 숫자가 들어 있으면 1.0, 아니면 0.5.
-_NUM = re.compile(r"\d")
+def _direction_of(direction: dict | None, pick_side: str | None) -> float:
+    """부호. 🔴 **(상대 악재 + 우리 호재) − (우리 악재 + 상대 호재)** 의 부호다.
 
-def _direction(sides: dict, pick_side: str | None) -> float:
-    """부호. 🔴 **어느 팀 악재인가**로 정한다.
-
-    우리 픽 쪽 악재 → 불리(−) · 상대 쪽 악재 → 유리(+) · 양쪽이면 0(상쇄).
-    ⚠️ 한쪽으로 고정하면 근거와 **반대로** 확률이 움직인다. 실제 픽스처가
-       그것을 잡았다 — "한화 선발 ERA 6.10"은 삼성(픽)에게 **유리**하다.
+    `direction` 은 팀별 호재 +1 / 악재 −1 / 모름 0 이다(`app/flow/direction.py`).
+    🔴 못 정하면 **0.0** — 종전의 "모르면 −1(보수적으로 불리)"은 폐기했다.
+       모름을 불리의 근거로 쓰면 자료가 적을수록 확률이 내려간다.
+    ⚠️ 상쇄 0 과 미상 0 은 값이 같다 — 구분은 `basis` 가 한다.
     """
-    if not sides or not pick_side:
-        return -1.0                       # 모르면 보수적으로 불리하게 읽는다
-    other = "away" if pick_side == "home" else "home"
-    mine, theirs = int(sides.get(pick_side, 0)), int(sides.get(other, 0))
-    if mine and theirs:
+    if not direction or not pick_side:
         return 0.0
-    if theirs:
-        return +1.0
-    return -1.0
+    other = "away" if pick_side == "home" else "home"
+    score = int(direction.get(pick_side, 0) or 0) - int(direction.get(other, 0) or 0)
+    return 1.0 if score > 0 else (-1.0 if score < 0 else 0.0)
+
+
+def _from_sides(sides: dict | None, excerpt: str, dev_full: float) -> dict:
+    """`sides` 만 있는 옛 증거를 방향으로 옮긴다 — **호환 경로**다.
+
+    🔴 `sides` 의 원래 뜻은 `_direction` 머리말이 적어 둔 **"악재의 주체"** 다
+       (`{팀: 항목 수}`). 그 뜻 그대로 `{팀: -1}` 로 읽는다.
+    ⚠️ 새 증거(`n05`)는 언제나 `direction` 을 싣는다. 이 경로는 픽스처·드라이런
+       처럼 주입된 행에만 쓰인다 — 거기서 종전 강도 규칙(수치 1.0 · 정성 0.5)을
+       유지하려고 dev 를 그 값이 나오도록 넣는다.
+    """
+    if not sides:
+        return {}
+    out = {"home": 0, "away": 0,
+           "dev": dev_full if any(ch.isdigit() for ch in (excerpt or "")) else dev_full / 2,
+           "basis": "옛 sides 에서 옮김"}
+    for side in ("home", "away"):
+        if int(sides.get(side, 0) or 0):
+            out[side] = -1
+    return out
+
+
+def _strength_of(dev, dev_full: float) -> float:
+    """강도 = `min(1.0, |dev| / dev_full)`. 🔴 편차를 모르면 **0.0**."""
+    if dev is None or not dev_full:
+        return 0.0
+    return round(min(1.0, abs(float(dev)) / float(dev_full)), 4)
 
 
 async def run(state, ctx):
@@ -55,12 +79,20 @@ async def run(state, ctx):
         if max_abs <= 0:                      # 표 밖 변수는 0 이다
             continue
         row = ev.get(var) or {}
-        strength = 1.0 if _NUM.search(row.get("raw_excerpt") or "") else 0.5
-        sign = _direction(row.get("sides") or {}, state.pick_side)
-        if sign == 0.0:                   # 양쪽 다 악재면 상쇄 — 0 을 적지 않는다
+        dev_full = float(R.get("direction.dev_full", 0.5))
+        d = row.get("direction") or _from_sides(
+            row.get("sides"), row.get("raw_excerpt") or "", dev_full)
+        sign = _direction_of(d, state.pick_side)
+        strength = _strength_of(d.get("dev"), dev_full)
+        if sign == 0.0 or strength <= 0.0:
+            # 🔴 방향이 없거나 편차가 0이면 **행을 만들지 않는다.**
+            #    상쇄인지 미상인지는 basis 가 말한다.
+            logger.info("[flow:n07] game=%s var=%s 조정 없음 — sign=%s · dev=%s · %s",
+                        state.game_id, var, sign, d.get("dev"), d.get("basis") or "방향 미상")
             continue
         out.append({"var": var, "pp": round(sign * max_abs * strength, 2),
-                    "strength": strength, "sign": sign})
+                    "strength": strength, "sign": sign,
+                    "dev": d.get("dev"), "basis": d.get("basis")})
 
     cap = float(R.get("total_adjust_cap_pp", 6.0))
     total = sum(a["pp"] for a in out)

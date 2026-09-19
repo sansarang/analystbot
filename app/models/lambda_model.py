@@ -288,6 +288,12 @@ def predict_game(jg: dict, research: dict, settings=None) -> dict | None:
     lam = {}
     for side, opp in (("home", "away"), ("away", "home")):
         feats = _live_features(jg, research, side, opp)
+        miss = feats.pop("_missing", [])
+        if miss:
+            # 🔴 결측을 0 으로 때우지 않는다 — 0 은 리그 평균이 아니다.
+            logger.info("[lambda_model] game=%s %s 피처 결측 %s — 예측 없음",
+                        jg.get("game_id"), side, miss)
+            return None
         z = b0 + sum(coef.get(k, 0.0) * v for k, v in feats.items())
         lam[side] = max(s.lam_min, min(s.lam_max, math.exp(z)))
     probs = mlb_market_probs(lam["home"], lam["away"], settings=s)
@@ -296,7 +302,14 @@ def predict_game(jg: dict, research: dict, settings=None) -> dict | None:
 
 
 def _live_features(jg: dict, research: dict, side: str, opp: str) -> dict:
-    """실전 리서치/Statcast 페이로드 → 학습 피처 이름으로 매핑 (있는 것만)."""
+    """실전 리서치/Statcast 페이로드 → 학습 피처 이름으로 매핑 (있는 것만).
+
+    🔴 [FIX-6] 없는 피처를 **0 으로 두지 않는다.** `z` 합산에서 빠진 항은 0 과
+       같은데, 0 은 리그 평균이 아니라 "그 지표가 0"이라는 뜻이다. 호출부가
+       결측을 보고 `None` 을 돌려줄 수 있도록 `_missing` 키에 이름을 담는다.
+    ⚠️ 학습 평균(스케일러)은 아직 아티팩트에 없다. 다음 정기 학습에서 추가하고,
+       지금은 재학습하지 않는다.
+    """
     off = research.get(f"{side}_offense") or {}
     sp = research.get(f"{opp}_pitcher") or {}
     bp = research.get(f"{opp}_bullpen") or {}
@@ -305,11 +318,17 @@ def _live_features(jg: dict, research: dict, side: str, opp: str) -> dict:
         ("off_xwoba", off, "xwoba_30d"), ("off_k_pct", off, "k_pct"),
         ("off_bb_pct", off, "bb_pct"),
         ("sp_xwoba_allowed", sp, "xwoba_allowed"), ("sp_velo", sp, "velo_window"),
-        ("bp_xwoba_allowed", bp, "xwoba_allowed"), ("bp_pitches_3d", bp, "ip_last3d"),
+        ("bp_xwoba_allowed", bp, "xwoba_allowed"),
+        # 🔴 [FIX-6 2026-09-20] 종전에는 이 자리에 `ip_last3d`(이닝)를 넣었다.
+        #    학습 피처는 **투구수 합**이다 — 단위가 다른 값을 같은 계수에 곱했다.
+        ("bp_pitches_3d", bp, "pitches_last3d"),
     ):
         val = src.get(name)
         if val is not None:
             out[key] = float(val)
     if research.get("park_factor") is not None:
         out["park_factor"] = float(research["park_factor"])
+    want = ("off_xwoba", "off_k_pct", "off_bb_pct", "sp_xwoba_allowed", "sp_velo",
+            "bp_xwoba_allowed", "bp_pitches_3d", "park_factor")
+    out["_missing"] = [k for k in want if k not in out]
     return out

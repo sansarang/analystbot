@@ -170,7 +170,9 @@ async def test_SEND가_켜지면_보낸다(monkeypatch):
     st.n11_value = {"pick_type": "승패", "structure": None}
     st.n02_market = {"odds": {"away": 1.35}}
     st.n08_pcode = {"p_code_pick": 0.71}
-    st.n09_conf = {"grade": "B"}
+    # ⚠️ [FIX-5 2026-09-20] 승패 픽 발송 조건 grade==A. 이 테스트가 재는 것은
+    #    **스위치**이므로 등급만 올린다.
+    st.n09_conf = {"grade": "A"}
     st.n12_text = {"sentences": ["1", "2", "3", "4"]}
     st.n05_evidence = []
     st = await n13_send.run(st, Ctx(inject={"send": lambda t: sent.append(t) or True}))

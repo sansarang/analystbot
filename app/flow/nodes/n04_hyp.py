@@ -58,12 +58,20 @@ async def run(state, ctx):
                        + (" — 시장 전" if gate == PRIOR_ONLY else ""),
                "vars": _vars_of(sport, allv)}
     elif gate == AGREE:
+        # 🔴 [FIX-4a 2026-09-20] **마켓을 여기서 지정한다.** ⑪이 종전에
+        #    총점·팀토탈·핸디 전체에서 max(edge) 를 골랐고, 그 결과 핸디
+        #    edge −46%p 가 best 로 뽑히는 경기까지 나왔다(실측).
+        #    가설이 "파생만 본다"고 말했으면 **어느 파생인지**까지 말해야 한다.
+        #    ⚠️ 쪽(오버/언더)은 여기서 정하지 않는다 — ⑪이 방향 증거로 정한다.
         hyp = {"id": "H_deriv",
                "text": "승패는 접고 파생만 본다",
+               "market": "total",
                "vars": _vars_of(sport, _DERIV_VARS.get(sport, ()))}
     else:                                   # BOARD 는 run.py 가 이미 멈춘다
         hyp = {"id": "H_none", "text": "찾을 것이 없다", "vars": []}
 
+    # 🔴 지정이 없으면 ⑪의 구조 후보는 0 이다(보드). 지어내지 않는다.
+    hyp.setdefault("market", None)
     state.n04_hyp = [hyp]
     logger.info("[flow:n04] game=%s %s → %s · 변수 %d개 (핵심 %d)",
                 state.game_id, gate, hyp["id"], len(hyp["vars"]),
