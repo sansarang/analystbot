@@ -782,7 +782,16 @@ async def sync_lineup_status(pool, jg: dict) -> bool:
         return False
     try:
         await pool.execute(
-            "UPDATE games SET lineup_status = 'confirmed', updated_at = now() "
+            # 🔴 [LIN-1 2026-09-19] **확정 시각도 적는다.** 종전에는 상태만
+            #    올려서 KBO·NPB 는 `lineup_confirmed_at` 이 7일간 0건이었다
+            #    (실측: npb 33경기·kbo 61경기 전부 null). MLB 경로
+            #    (`lineups.py:258`)는 적고 있었다 — 같은 사실을 두 곳이 쓰면서
+            #    한 곳이 빠진 자리다.
+            #    ⚠️ `COALESCE` 로 **첫 확정을 지킨다.** 재판정 때마다 갱신하면
+            #       T-N 이 0 에 수렴해 "경기 직전에 떴다"는 거짓이 된다.
+            "UPDATE games SET lineup_status = 'confirmed', "
+            "       lineup_confirmed_at = COALESCE(games.lineup_confirmed_at, now()), "
+            "       updated_at = now() "
             " WHERE id = $1 AND lineup_status <> 'confirmed'", int(gid))
         logger.info("[lineup-status] game=%s →confirmed at=db_sync", gid)
     except Exception as exc:
