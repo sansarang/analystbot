@@ -349,7 +349,9 @@ EXPORT_LEAD: dict = {"t3h": timedelta(hours=3), "lineup": timedelta(minutes=60)}
 EXPORT_MARK_TTL = 20 * 3600
 
 #: 오늘 KST 슬레이트에서 리그별 **가장 이른 미시작 경기**.
-_EXPORT_DUE_SQL = """
+#  🔴 내보내기 전용이 아니다 — ODN-3 도 같은 판단(첫 경기까지 남은 시간)을
+#     쓰므로 이름에서 `EXPORT` 를 뺐다. 같은 사실은 한 곳에서 읽는다.
+_SLATE_FIRST_SQL = """
     SELECT sport, league, min(starts_at) AS first_kickoff
       FROM games
      WHERE status = 'scheduled' AND starts_at > now()
@@ -381,7 +383,7 @@ async def _export_stage(stage: str) -> dict:
     out: dict = {}
     try:
         pool = await get_pool()
-        rows = [dict(r) for r in await pool.fetch(_EXPORT_DUE_SQL)]
+        rows = [dict(r) for r in await pool.fetch(_SLATE_FIRST_SQL)]
         now = datetime.now(UTC)
         lead = EXPORT_LEAD[stage]
         for r in rows:
@@ -410,6 +412,141 @@ async def _export_stage(stage: str) -> dict:
     finally:
         await redis.aclose()
     return out
+
+
+#: [ODN-3] 한 번에 긁는 MLB 경기 수. 🔴 **예산에서 나온 숫자다.**
+#   실측 2026-09-19: 109/1000 · 1.7일 → 하루 ~64콜. KBO·NPB 정기 잡만으로
+#   월 720콜이라 MLB 여유는 하루 5콜 안쪽이다(경기 1건 = 스냅샷 1콜).
+#   창 안 MLB 는 27경기 — 전수면 월 1,620콜이고 소스가 통째로 죽는다.
+MLB_DERIV_CAP = 4
+
+#: 게이트 대상을 고를 때 쓰는 스냅샷. 🔴 `analysis_runs` 가 원본이다 —
+#  라벨 목록을 손으로 적지 않고 `stop` 을 읽는다.
+_GATE_SQL = """
+    SELECT DISTINCT ON (a.game_id)
+           a.game_id,
+           a.snapshot_json->'n03_gate'->>'gate'   AS gate,
+           a.snapshot_json->'n03_gate'->>'stop'   AS stop,
+           a.snapshot_json->'n03_gate'->>'gap_pp' AS gap_pp
+      FROM analysis_runs a
+      JOIN games g ON g.id::text = a.game_id::text
+     WHERE a.node = 'n03_gate'
+       AND g.sport = 'mlb' AND g.status = 'scheduled'
+       AND g.starts_at > now()
+     ORDER BY a.game_id, a.created_at_utc DESC
+"""
+
+
+def pick_deriv_targets(rows: list[dict], *, cap: int) -> tuple[list, dict]:
+    """게이트 대상만, `|gap|` 큰 순으로 `cap` 개. 반환 `(고른 것, 버린 사유별 수)`.
+
+    🔴 **버린 수를 센다.** 조용히 자르면 "전부 훑었다"로 읽히고, 그 오해가
+       다음 사람의 판단을 바꾼다.
+    ⚠️ 괴리를 모르는 경기는 **뒤로** 보낸다 — 앞에 두면 상한이 그쪽에 다 쓰인다.
+    """
+    dropped: dict = {}
+    live = []
+    for r in rows or []:
+        stop = r.get("stop")
+        if stop is True or str(stop).lower() == "true":
+            k = str(r.get("gate") or "보드고정")
+            dropped[k] = dropped.get(k, 0) + 1
+            continue
+        live.append(r)
+
+    def _gap(r):
+        try:
+            return abs(float(r.get("gap_pp")))
+        except (TypeError, ValueError):
+            return None
+
+    live.sort(key=lambda r: (_gap(r) is None, -(_gap(r) or 0.0)))
+    if len(live) > cap:
+        dropped["상한초과"] = len(live) - cap
+        live = live[:cap]
+    return live, dropped
+
+
+async def odds_mlb_deriv_job() -> None:
+    """[ODN-3] MLB 팀토탈·F5 — **게이트 대상만, 하루 1회.**
+
+    🔴 정기 잡(`oddsapinet_2x`)에 얹지 않는다. 그쪽은 15:30·17:30 이라 MLB
+       슬레이트(KST 05~12)가 이미 끝나 있다.
+    🔴 예산 가드가 두 겹이다: `budget_ok()`(80% 문턱) + `MLB_DERIV_CAP`(건수).
+       앞의 것만 있으면 한 번에 27경기를 긁어 하루에 80% 를 넘길 수 있다.
+    ⚠️ 대상이 0이어도 **로그를 남긴다** — "긁을 게 없었다"와 "잡이 안 돌았다"는
+       다르다.
+    """
+    from app.collectors import oddsapinet as ON
+    from app.collectors.odds_free import store_rows
+
+    if not ON._key():
+        return
+    s = get_settings()
+    redis = aioredis.from_url(s.redis_url, decode_responses=True)
+    try:
+        pool = await get_pool()
+        rows = [dict(r) for r in await pool.fetch(_SLATE_FIRST_SQL)]
+        mlb = [r for r in rows if (r.get("sport") or "") == "mlb"]
+        if not mlb:
+            return
+        first = mlb[0]["first_kickoff"]
+        if first.tzinfo is None:
+            first = first.replace(tzinfo=UTC)
+        if first - datetime.now(UTC) > EXPORT_LEAD["t3h"]:
+            return                                   # 아직 이르다
+        date_kst = datetime.now(KST).date().isoformat()
+        if not await redis.set(f"odds_mlb_deriv:{date_kst}", "1",
+                               ex=EXPORT_MARK_TTL, nx=True):
+            return                                   # 오늘 이미 긁었다
+        if not await ON.budget_ok():
+            logger.info("[odds-mlb] 예산 문턱 — 건너뜀")
+            return
+
+        gates = [dict(r) for r in await pool.fetch(_GATE_SQL)]
+        targets, dropped = pick_deriv_targets(gates, cap=MLB_DERIV_CAP)
+        logger.info("[odds-mlb] 게이트 %d경기 중 %d경기 대상 · 버림 %s",
+                    len(gates), len(targets), dropped or "없음")
+        if not targets:
+            return
+
+        by_id = {str(r["id"]): r for r in await pool.fetch(
+            "SELECT id, home, away FROM games WHERE sport='mlb'"
+            " AND status='scheduled' AND starts_at > now()")}
+        evs = await ON.fetch_events("mlb")
+        total = 0
+        for t in targets:
+            g = by_id.get(str(t["game_id"]))
+            if not g:
+                continue
+            ev = _match_event(evs, g["home"], g["away"])
+            if ev is None:
+                logger.info("[odds-mlb] game=%s 소스에서 못 찾음 (%s @ %s)",
+                            t["game_id"], g["away"], g["home"])
+                continue
+            items = await ON.fetch_odds(ev.get("event_id") or ev.get("id"))
+            out = ON.to_rows(items, home=g["home"], away=g["away"])
+            if out:
+                await store_rows(pool, int(g["id"]), out, provider=ON.PROVIDER)
+                total += len(out)
+        logger.info("[odds-mlb] %d경기 · %d행 적재", len(targets), total)
+    except Exception as exc:
+        logger.warning("[odds-mlb] 실패: %s", exc)
+    finally:
+        await redis.aclose()
+
+
+def _match_event(evs: list, home: str, away: str):
+    """소스 이벤트 목록에서 우리 경기를 찾는다. 못 찾으면 None(지어내지 않는다)."""
+    def norm(x):
+        return "".join(ch for ch in str(x or "").lower() if ch.isalnum())
+
+    h, a = norm(home), norm(away)
+    for ev in evs or []:
+        eh, ea = norm(ev.get("home_team")), norm(ev.get("away_team"))
+        if (h and eh and (h in eh or eh in h)) and (a and ea and (a in ea or ea in a)):
+            return ev
+    return None
 
 
 async def export_t3h_job() -> None:
@@ -2531,6 +2668,8 @@ def _job_specs() -> list[tuple]:
         #   문턱 방식이라 주기는 "얼마나 정확히 T-3h 를 맞추나"만 정한다.
         ("export_t3h_10m", export_t3h_job, IntervalTrigger(minutes=10)),
         ("export_lineup_5m", export_lineup_job, IntervalTrigger(minutes=5)),
+        # [ODN-3] MLB 팀토탈·F5 — 게이트 대상만 하루 1회. 예산이 먼저다.
+        ("odds_mlb_deriv_10m", odds_mlb_deriv_job, IntervalTrigger(minutes=10)),
         ("ingest_finals_13h", finals_job, CronTrigger(hour=13, minute=0, timezone=KST)),
         # [축구 시범 운영] 10분마다 — T-3h 판정 · confirmed 재판정.
         #   유럽 경기는 KST 심야~새벽이라 창을 넓게 둔다.

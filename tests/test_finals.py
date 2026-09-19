@@ -41,6 +41,12 @@ def test_scheduler_jobs_registered():
                          #      맞추나만 정한다(창이면 한 틱 밀려 그날이 통째로
                          #      비는 실사고가 있었다).
                          "export_t3h_10m", "export_lineup_5m",
+                         # [ODN-3 2026-09-19] MLB 팀토탈·F5 — **게이트 대상만
+                         #   하루 1회.** 정기 잡(oddsapinet_2x)에 얹지 않는다:
+                         #   그쪽은 15:30·17:30 이라 MLB 슬레이트(KST 05~12)가
+                         #   이미 끝나 있다. 예산 가드가 두 겹이다
+                         #   (budget_ok 80% + MLB_DERIV_CAP 건수).
+                         "odds_mlb_deriv_10m",
                          # [TRG-2] 시점 트리거 1분 루프 — 배당을 긁지 않고
                          #   이미 잡힌 스냅샷에 snap_tag 를 붙인다.
                          "triggers_1m",
