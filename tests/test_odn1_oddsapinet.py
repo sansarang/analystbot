@@ -64,10 +64,25 @@ def test_라인이_숫자다():
 
 # ── 🔴 버리는 규칙이 본체다
 
-def test_정규이닝만_쓴다():
-    """🔴 5이닝 −0.5 와 정규 −1.5 는 **다른 시장**이다. 섞으면 라인이 어긋난다."""
-    five = [dict(ITEMS[0], period="5 innings")]
-    assert _rows(five) == []
+def test_5이닝은_같은_칸에_섞이지_않는다():
+    """🔴 5이닝 −0.5 와 정규 −1.5 는 **다른 시장**이다. 섞으면 라인이 어긋난다.
+
+    🔴 [ODN-2 2026-09-19] 규칙이 바뀌었다 — 종전엔 5이닝을 **버렸는데**, 이제는
+       `_f5` 라는 **다른 칸**으로 싣는다. 이 계약이 지키던 것(같은 칸에 섞이지
+       않는다)은 그대로다. 페이블이 F5 총점을 요구했고(지시문 2-1), 실측에서
+       odds-api.net 이 5이닝 총점 40행·승패 16행을 준다.
+    ⚠️ 5이닝 **핸디**는 여전히 버린다 — 읽는 쪽이 없고, 아는 칸만 싣는다.
+    """
+    five_total = [dict(ITEMS[0], bet_type="total", period="5 innings",
+                       line="over 4.5", side=None)]
+    got = _rows(five_total)
+    assert [r["market"] for r in got] == ["totals_f5"], got
+
+    five_handicap = [dict(ITEMS[0], bet_type="handicap", period="5 innings")]
+    assert _rows(five_handicap) == []
+
+    unknown_period = [dict(ITEMS[0], period="3 innings")]
+    assert _rows(unknown_period) == []
 
 
 def test_닫힌_배당은_버린다():
@@ -133,9 +148,27 @@ def test_키가_코드에_없다():
     assert "get_settings" in inspect.getsource(ON._key)
 
 
-def test_KBO_NPB만_받는다():
-    """🔴 MLB·축구는 ESPN 무료로 이미 된다 — 크레딧을 아낀다."""
-    assert set(ON.LEAGUES) == {"kbo", "npb"}
+def test_정기_잡은_KBO_NPB만_긁는다():
+    """🔴 이 계약이 지키는 것은 **크레딧**이다(월 1,000).
+
+    🔴 [ODN-2 2026-09-19] 종전 사유("MLB 는 ESPN 무료로 이미 된다")는 팀토탈·F5
+       에는 **틀렸다**. 실측: ESPN odds 항목 키가 moneyline·spread·overUnder
+       뿐이고 teamtotal·5 innings 문자열이 0건이다. 그래서 파서는 MLB 를 읽을
+       수 있게 됐다(`LEAGUES`).
+    🔴 그러나 **정기로 긁는 리그는 그대로 KBO·NPB 다**(`JOB_LEAGUES`).
+       잡이 `for sport in JOB_LEAGUES` 를 돌기 때문에, 여기에 MLB 를 넣으면
+       창 안 27경기 × 하루 2회 = **월 1,620콜**로 예산이 터지고 다음 달까지
+       KBO·NPB 까지 같이 죽는다. MLB 는 게이트 대상만 따로 긁는다(ODN-3).
+    """
+    import inspect
+
+    import app.scheduler as S
+
+    assert set(ON.JOB_LEAGUES) == {"kbo", "npb"}, ON.JOB_LEAGUES
+    assert "mlb" in ON.LEAGUES, "파서는 MLB 를 읽을 수 있어야 한다"
+    src = inspect.getsource(S.oddsapinet_job)
+    assert "ON.JOB_LEAGUES" in src, "잡이 아직 LEAGUES 를 그대로 돈다"
+    assert "for sport in ON.LEAGUES" not in src
 
 
 def test_적재는_기존_통로를_쓴다():

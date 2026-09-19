@@ -30,16 +30,39 @@ PROVIDER = "oddsapinet"
 BASE = "https://api.odds-api.net/v1"
 TIMEOUT = 30.0
 
-#: 🔴 이 리그만. MLB·축구는 ESPN 무료로 이미 된다 — 크레딧을 아낀다.
-LEAGUES = {"kbo": "Korean KBO", "npb": "Japan NPB"}
+#: 🔴 [ODN-2 2026-09-19] MLB 를 넣었다. 종전 주석은 "MLB 는 ESPN 무료로 이미
+#   된다"였는데 **팀토탈·F5 에는 그 전제가 틀렸다**(실측: ESPN odds 항목 키가
+#   moneyline·spread·overUnder 뿐이고 teamtotal·5 innings 문자열 0건).
+#   ⚠️ 목록에 있다고 저절로 불리지는 않는다 — 어느 리그를 도는지는 잡이 정한다.
+LEAGUES = {"kbo": "Korean KBO", "npb": "Japan NPB", "mlb": "MLB"}
 
-#: 🔴 **정규 이닝만.** 실측에서 첫 행이 `5 innings` 였다 — 섞으면 라인이
-#   통째로 어긋난다(5이닝 −0.5 와 정규 −1.5 는 다른 시장이다).
-PERIOD = "full time"
+#: 🔴 **정기 잡이 실제로 도는 리그.** `LEAGUES` 와 분리한 이유는 하나다 —
+#   `oddsapinet_job` 이 `for sport in LEAGUES` 를 돌기 때문에, 파서가 읽을 수
+#   있다는 뜻으로 넣은 리그가 곧 **요청 증가**가 된다.
+#   실측: MLB 는 창 안에 27경기다. × 하루 2회 = 월 1,620콜 → 월 1,000 크레딧이
+#   터지고 다음 달까지 이 소스가 통째로 죽는다.
+#   ⚠️ MLB 는 **게이트 대상 경기만** 따로 긁는다(ODN-3). 여기 넣지 마라.
+JOB_LEAGUES = ("kbo", "npb")
+
+#: 🔴 **아는 기간만 싣는다.** 실측에 `1st inning`·`3 innings`·`7 innings` 도
+#   오는데, 모르는 기간을 실으면 그게 어느 시장인지 읽는 쪽이 알 수 없다.
+#   🔴 5이닝은 **다른 시장이라 칸을 나눈다**(`_f5`). 같은 칸에 넣으면 5이닝
+#      총점 3.5 와 정규 총점 8.5 가 섞여 디빅이 서로 다른 사건의 확률을
+#      합쳐 1.0 으로 만든다.
+FULL = "full time"
+FIVE = "5 innings"
+PERIODS = (FULL, FIVE)
+
+#: 종전 이름. 지우지 않는다 — 밖에서 읽는 곳이 있을 수 있다.
+PERIOD = FULL
 
 #: 우리 스키마 이름으로. 🔴 `odds_snapshots.market` 값이 원본이다.
 MARKET_MAP = {"total": "totals", "handicap": "spreads",
               "team total": "team_totals"}
+
+#: 5이닝 칸. 🔴 정규 승패(`h2h`)는 oddsportal 이 채우므로 안 싣지만,
+#  **F5 승패는 아무도 안 채운다** — 그래서 여기만 승패를 싣는다.
+MARKET_MAP_F5 = {"total": "totals_f5", "moneyline": "h2h_f5"}
 
 #: 예산 가드. 이 비율을 넘으면 **멈춘다.** 조용히 초과하면 다음 달까지 죽는다.
 BUDGET_STOP_RATIO = 0.8
@@ -149,18 +172,33 @@ def to_rows(items: list[dict], *, home: str, away: str) -> list[dict]:
     for it in items or []:
         if not isinstance(it, dict) or it.get("is_available") is False:
             continue
-        if (it.get("period") or "") != PERIOD:
-            continue
-        market = MARKET_MAP.get(it.get("bet_type") or "")
+        period = it.get("period") or ""
+        if period not in PERIODS:
+            continue          # 1st·3·7 이닝 — 아는 칸이 아니다
+        bet = it.get("bet_type") or ""
+        market = (MARKET_MAP if period == FULL else MARKET_MAP_F5).get(bet)
         if not market:
             continue
         odds = _num(it.get("odds"))
         # 🔴 [ODN-1-b] 총점·팀토탈은 `line` 이 `"over 7.5"` 처럼 **방향+숫자**다.
         #    핸디는 `"-1.5"` 처럼 숫자뿐이다. 둘을 함께 읽는다.
         direction, line = _line_of(it.get("line"))
-        if odds is None or odds <= 1.0 or line is None:
+        if odds is None or odds <= 1.0:
+            continue
+        # 🔴 라인 없는 총점·핸디는 쓸 수 없다. 단 **승패는 라인이 없는 것이
+        #    정상**이라 여기서 거르지 않는다.
+        if line is None and market != "h2h_f5":
             continue
         side = str(it.get("side") or "").lower()
+        if market == "h2h_f5":
+            # 🔴 F5 승패는 라인이 없다 — 위 `line is None` 가드를 따로 넘겼다.
+            name = home if side == "home" else away if side == "away" else None
+            if not name:
+                continue
+            out.append({"book": str(it.get("bookmaker") or "").strip() or "?",
+                        "market": market, "side": name,
+                        "line": None, "odds": odds})
+            continue
         if market == "spreads":
             name = home if side == "home" else away if side == "away" else None
         else:
@@ -170,7 +208,8 @@ def to_rows(items: list[dict], *, home: str, away: str) -> list[dict]:
             #    핸디만 side·line 이 따로다 — 그래서 핸디만 통과했었다.
             if direction is None:
                 continue          # 홀짝(even/odd) — 총점이 아니다
-            if market == "totals":
+            if market in ("totals", "totals_f5"):
+                # ⚠️ F5 총점도 팀이 없다 — `side` 가 비어 있는 것이 정상이다.
                 name = direction
             else:                 # team_totals: 팀 + 방향이 둘 다 있어야 한다
                 team = home if side == "home" else away if side == "away" else None

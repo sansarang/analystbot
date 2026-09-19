@@ -1496,7 +1496,10 @@ async def oddsapinet_job() -> None:
         return
     pool = await get_pool()
     total = games = 0
-    for sport in ON.LEAGUES:
+    # 🔴 [ODN-2] `LEAGUES` 가 아니라 `JOB_LEAGUES` 다. 파서가 읽을 수 있는
+    #    리그와 **정기로 긁는 리그**는 다르다 — 섞으면 MLB 를 파서에 추가하는
+    #    순간 월 크레딧이 터진다(실측: MLB 27경기 × 2회 = 월 1,620콜).
+    for sport in ON.JOB_LEAGUES:
         evs = await ON.fetch_events(sport)
         if not evs:
             logger.info("[oddsapinet] %s 대상 경기 0", sport)
