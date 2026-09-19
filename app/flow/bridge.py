@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import UTC
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,39 @@ _SLATE_SQL = """
        AND starts_at BETWEEN now() AND now() + make_interval(hours => $1)
      ORDER BY starts_at
 """
+
+
+#: [ELO-1] 사전값 레이팅을 만들 수 있는 종목. 🔴 축구는 뺐다 —
+#  `team_elo.refresh` 는 `WHERE sport = $1` 로 긁는데 축구 캐시 키는 **리그
+#  코드**라 종목으로 긁으면 리그 간 비교가 된다. `team_elo` 머리말이 금지한
+#  것이다("리그 안에서만 의미가 있다"). 축구는 표본부터 재야 하고 별건이다.
+ELO_SPORTS = ("mlb", "kbo", "npb")
+
+
+async def ensure_elo(pool, redis, sport: str, date: str, *, refresh=None) -> bool:
+    """그 (종목, 날짜) 레이팅이 캐시에 있게 한다. 반환: 쓸 수 있나.
+
+    🔴 **슬레이트 앞에서 한 번** 부른다. 경기마다 부르면 재계산이 36배다.
+    🔴 `team_elo` 에는 전용 갱신 잡이 없다 — 쓰는 곳이 옛 파이프라인의 게으른
+       폴백 하나뿐인데(`app/pipeline.py:2915`) `PIPELINE_V14` 가 그 경로를
+       지나친다. 그래서 새 경로가 같은 일을 해야 한다.
+    ⚠️ `elo_refresh_weekly` 는 다른 물건이다 — 축구 `soccer_elo`(CSV 재피팅)다.
+    """
+    if redis is None:
+        return False
+    try:
+        from app.models import team_elo as TE
+
+        if await TE.load(redis, sport, date):
+            return True
+        if pool is None:
+            return False
+        fn = refresh or TE.refresh
+        got = await fn(pool, redis, sport, date)
+        return bool(got)
+    except Exception as exc:
+        logger.warning("[flow] elo 보장 실패 %s %s: %s", sport, date, exc)
+        return False
 
 
 async def run_today(pool, redis, *, lookahead_h: int = 24, settings=None) -> dict:
@@ -85,6 +119,20 @@ async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
     cap = max(per_game, int(round(len(rows) * ratio)) * per_game)
     ctx = Ctx(pool=pool, redis=redis, settings=s,
               budget={"searches": 0, "slate_cap": cap})
+
+    # 🔴 [ELO-1] **슬레이트 앞에서 사전값 재료를 보장한다.** 이게 없으면
+    #    ①이 `p_home=None` 을 내고 ③이 전건 보드고정으로 읽는다
+    #    (실측 2026-09-19: 36경기 전건).
+    #    ⚠️ 키는 **킥오프 UTC 날짜**다 — `n01_prior._load_elo` 와 같은 기준을
+    #       쓴다. 여기서 KST 를 쓰면 하루 어긋나 보장이 헛돈다.
+    want: set = set()
+    for r in rows:
+        sp = (r.get("sport") or "").lower()
+        if sp in ELO_SPORTS and r.get("starts_at") is not None:
+            want.add((sp, r["starts_at"].astimezone(UTC).date().isoformat()))
+    for sp, day in sorted(want):
+        ok = await ensure_elo(pool, redis, sp, day)
+        logger.info("[flow] elo 보장 %s %s — %s", sp, day, "있음" if ok else "없음")
 
     # 🔴 [2026-09-19] **파생 확률을 슬레이트 단위로 한 번 읽는다.**
     #    없으면 ⑪의 구조 후보가 0 이고, `동의` 라벨이 만든 파생 가설이 쓰일
