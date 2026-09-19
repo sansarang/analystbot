@@ -277,11 +277,15 @@ def merge_absences_from_diff(research: dict, team: str, changes: list[dict],
         typ = c.get("type")
         if typ == "regular_out":
             slot = slots.get(key)
+            # 🔴 [ABS-1] 표지를 손으로 적지 않는다 — `absences` 가 원본이다.
+            #    여기 문자열을 또 적으면 사본이고, 근거 분류가 조용히 틀어진다.
+            from app.collectors.absences import MARK_TODAY_OUT
+
             if slot is not None and slot <= TOP_ORDER:
                 line = (f"{team}의 {who} 중심 타선 결장 — "
-                        f"평소 {slot}번, 오늘 라인업에서 빠짐")
+                        f"평소 {slot}번, {MARK_TODAY_OUT}")
             else:
-                line = f"{team}의 {who} 주전 결장 — 오늘 라인업에서 빠짐"
+                line = f"{team}의 {who} 주전 결장 — {MARK_TODAY_OUT}"
         elif typ == "bullpen_out":
             line = f"{team}의 {who} 핵심 불펜 결장 — 1군 엔트리에 없음"
         else:

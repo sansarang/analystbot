@@ -21,6 +21,48 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# ══════════════════════════════════════════════════════════════════
+# [ABS-1] 결장 근거(basis) — **만든 쪽이 적는다.**
+#
+# 🔴 읽는 쪽이 문장을 정규식으로 되짚으면 그것이 사본이고, 사본은 원본이
+#    바뀔 때 따라가지 않는다(워치독 오탐 4건이 전부 그 실수였다).
+#    그래서 표지 문자열을 **여기 한 번** 적고 생산자들이 가져다 쓴다.
+# 🔴 표지를 바꾸면 문장이 바뀌고, 문장이 바뀌면 λ 계수가 바뀐다
+#    (`_describe` 머리말 · `scoring._absence_factors`). 표지는 건드리지 않는다.
+# ══════════════════════════════════════════════════════════════════
+
+BASIS_IL = "IL"                          # 부상자 명단
+BASIS_LINEUP = "lineup_excluded"         # 오늘 확정 라인업에서 빠짐
+BASIS_TRANSFERMARKT = "transfermarkt"    # 축구 — 이적/결장 정보
+BASIS_FOTMOB = "fotmob_unavailable"      # 축구 — FotMob `unavailable`
+
+BASES = (BASIS_IL, BASIS_LINEUP, BASIS_TRANSFERMARKT, BASIS_FOTMOB)
+
+#: 이 모듈이 쓰는 표지 — `_describe(..., reason="라인업 제외")`.
+MARK_LINEUP_EXCLUDED = "라인업 제외"
+#: `lineup_diff.merge_absences_from_diff` 가 쓰는 표지. 🔴 거기서 손으로 적지 않는다.
+MARK_TODAY_OUT = "오늘 라인업에서 빠짐"
+#: IL 문장의 표지. statsapi `status` 가 `Injured 10-Day` 꼴로 들어온다.
+MARK_INJURED = "Injured"
+#: IL 이 상태 문구를 못 준 경우의 기본값(`from_injured` 가 쓴다).
+MARK_IL_DEFAULT = "부상자 명단"
+
+
+def classify(sentence: str) -> str | None:
+    """결장 문장 → 근거. 🔴 **모르면 None** 이다 — 지어내지 않는다.
+
+    ⚠️ 순서가 있다. 라인업 표지가 IL 표지보다 먼저다 — IL 로 빠진 선수가
+       오늘 라인업에도 없는 것은 당연하므로, 두 표지가 같이 있으면
+       "오늘 빠졌다"가 더 구체적인 사실이다.
+    """
+    t = str(sentence or "")
+    if MARK_TODAY_OUT in t or MARK_LINEUP_EXCLUDED in t:
+        return BASIS_LINEUP
+    if MARK_INJURED in t or MARK_IL_DEFAULT in t:
+        return BASIS_IL
+    return None
+
+
 REGULAR_TOP_N = 9        # 최근 타석 상위 이만큼이면 주전으로 본다
 TOP_HITTER_N = 2         # 상위 이만큼이면 '주포' — λ 조정폭이 2배다
 
@@ -57,7 +99,8 @@ def from_lineup(team: str, batters: list[dict], order_ids: list[int],
         pid = int(b["id"])
         if pid in today:
             continue
-        out.append(_describe(team, names.get(pid, f"선수 #{pid}"), rank, "라인업 제외"))
+        out.append(_describe(team, names.get(pid, f"선수 #{pid}"), rank,
+                             MARK_LINEUP_EXCLUDED))
     return out
 
 
@@ -71,12 +114,12 @@ def from_injured(team: str, batters: list[dict], injured: list[dict]) -> list[st
         # 투수 결장은 선발 억제력·불펜에서 따로 다룬다 — 여기서는 타자만
         pos = str(p.get("position") or "").upper()
         if pos in ("P", "SP", "RP"):
-            out.append(f"{team}의 {p['name']}(불펜) {p.get('status') or '부상자 명단'}로 결장"
+            out.append(f"{team}의 {p['name']}(불펜) {p.get('status') or MARK_IL_DEFAULT}로 결장"
                        if pos == "RP" else
-                       f"{team}의 {p['name']}(선발) {p.get('status') or '부상자 명단'}로 결장")
+                       f"{team}의 {p['name']}(선발) {p.get('status') or MARK_IL_DEFAULT}로 결장")
             continue
         out.append(_describe(team, p.get("name") or "선수", rank,
-                             p.get("status") or "부상자 명단"))
+                             p.get("status") or MARK_IL_DEFAULT))
     return out
 
 

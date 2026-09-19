@@ -470,15 +470,29 @@ def _lineup_block(rows: list, side: str, absences: list | None) -> dict:
         out["status"] = "none"
         out["reason"] = "이 경기의 `lineups` 행이 없다"
     if absences:
-        out["out"] = absences
-        out["regulars_missing_count"] = len(absences)
+        # 🔴 [ABS-1] 근거는 **필드**다. 문장 안에만 두면 읽는 쪽이 정규식을 쓰고,
+        #    그 정규식은 문장이 바뀌는 날 조용히 틀린다. 분류의 원본은
+        #    `absences.classify` — 문장을 만든 쪽이다.
+        from app.collectors.absences import classify
+
+        rows, counts = [], {}
+        for line in absences:
+            b = classify(line)
+            rows.append({
+                "text": line, "basis": b,
+                "basis_reason": None if b else
+                "표지를 알아보지 못했다 — `absences.classify` 가 모르는 문장이다",
+            })
+            counts[b or "unknown"] = counts.get(b or "unknown", 0) + 1
+        out["out"] = rows
+        out["regulars_missing_count"] = counts
         out["out_source"] = "absences.py (statsapi IL 명단 + 확정 라인업)"
         out["reason"] = None
     elif absences is None:
         out["out_reason"] = "판정 캐시(`analysis:…`)가 없어 결장 목록을 못 읽었다"
     else:
         out["out"] = []
-        out["regulars_missing_count"] = 0
+        out["regulars_missing_count"] = {}
     return out
 
 
@@ -818,6 +832,25 @@ async def _elo(sport: str, date_kst: str | None) -> tuple:
 #    ⚠️ 경기당 10줄 상한.
 # ══════════════════════════════════════════════════════════════════
 
+#: 근거 라벨의 한글 표기. 🔴 값 자체는 `absences.BASES` 가 원본이다 —
+#  여기 있는 것은 **표시 문구**일 뿐이고, 모르는 값이 와도 그대로 찍는다.
+_BASIS_KR = {"IL": "IL", "lineup_excluded": "라인업제외",
+             "transfermarkt": "이적정보", "fotmob_unavailable": "FotMob",
+             "unknown": "미상"}
+
+
+def _absn(block: dict) -> str:
+    """`결장 6명(IL 4 · 라인업제외 2)` 꼴. 근거를 모르면 개수만 적는다."""
+    c = block.get("regulars_missing_count")
+    if isinstance(c, dict):
+        if not c:
+            return "0명"
+        tot = sum(c.values())
+        parts = " · ".join(f"{_BASIS_KR.get(k, k)} {v}" for k, v in sorted(c.items()))
+        return f"{tot}명({parts})"
+    return f"{c if c is not None else '—'}명"
+
+
 def to_md(doc: dict) -> str:
     m = doc["export_meta"]
     out = [f"# {m['date_kst']} {m['league'].upper()} 슬레이트 — 페이블용 요약",
@@ -864,8 +897,8 @@ def _md_game(g: dict) -> list:
         f"- 선발 원정 {_s(sa)} — {_l3(sa)}",
         f"- 불펜 3일 홈 {bh.get('ip_3d_total', '—')}이닝 / "
         f"원정 {ba.get('ip_3d_total', '—')}이닝",
-        f"- 결장 홈 {lh.get('regulars_missing_count', '—')}명({lh.get('status') or '—'})"
-        f" / 원정 {la.get('regulars_missing_count', '—')}명({la.get('status') or '—'})",
+        f"- 결장 홈 {_absn(lh)}({lh.get('status') or '—'})"
+        f" / 원정 {_absn(la)}({la.get('status') or '—'})",
         f"- 게이트 {v.get('n03_gate') or '—'} ({v.get('gap_pp')}%p)"
         f"  ·  채점 {v.get('n06_verdict') or '—'}",
         f"- p_code {v.get('n08_p_code')}  ·  픽 {v.get('n11_pick_type') or '—'}"
