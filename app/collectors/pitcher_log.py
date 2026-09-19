@@ -8,14 +8,15 @@ logger = logging.getLogger(__name__)
 _UPSERT = """
     INSERT INTO pitcher_appearances (
         game_id, sport, team, opponent, pitcher, is_starter,
-        innings, batters, hits, hr, k, bb, r, er, source, pitches)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        innings, batters, hits, hr, k, bb, r, er, source, pitches, app_order)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
     ON CONFLICT (game_id, team, pitcher) DO UPDATE SET
         is_starter = EXCLUDED.is_starter,
         innings = EXCLUDED.innings,
         -- 🔴 [PIT-1] 덮어쓰되 **있던 값을 null 로 지우지 않는다** — 소급이
         --    투구수 없는 소스로 돌 수 있다.
         pitches = COALESCE(EXCLUDED.pitches, pitcher_appearances.pitches),
+        app_order = COALESCE(EXCLUDED.app_order, pitcher_appearances.app_order),
         batters = EXCLUDED.batters,
         hits = EXCLUDED.hits,
         hr = EXCLUDED.hr,
@@ -46,7 +47,7 @@ async def record_appearances(pool, game_id, sport: str, home: str, away: str,
                     bool(p.get("is_starter", i == 0)),
                     p.get("innings"), p.get("batters"),
                     p.get("hits"), p.get("hr"), p.get("k"), p.get("bb"),
-                    p.get("r"), p.get("er"), source, p.get("pitches"))
+                    p.get("r"), p.get("er"), source, p.get("pitches"), i)
                 n += 1
             except Exception as exc:
                 logger.warning("[등판로그] 적재 실패 game=%s %s: %s",

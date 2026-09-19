@@ -223,6 +223,8 @@ def _empty_starter() -> dict:
 
 def _empty_bullpen() -> dict:
     return {"last3d": None, "ip_3d_total": None,
+            # [BUL-1] 마무리는 **규칙**으로 정한다 — `closer_rule` 이 그 규칙을 적는다.
+            "closer_rule": None, "closer_available": None,
             "closer": None, "closer_reason": NO_SOURCE["closer"],
             "era_14d": None, "era_14d_reason": NO_SOURCE["era_14d"],
             "reason": "아직 채우지 않음 (STEP 2)"}
@@ -444,9 +446,86 @@ def _starter_block(name: str | None, rows: list, change_notes,
     return out
 
 
-def _bullpen_block(rows: list) -> dict:
-    """불펜 최근 3일. 🔴 `is_starter = false` 만 — 선발이 섞이면 소모가 뒤집힌다."""
+#: 마무리 판정 창(일). 🔴 지시문 2-6 이 준 값이다.
+CLOSER_DAYS = 14
+
+#: 규칙 문구 — 읽는 쪽이 이 값이 **무엇인지** 알게 한다.
+CLOSER_RULE = (f"최근 {CLOSER_DAYS}일 경기마다 마지막에 나온 투수를 고르고 "
+               "그 횟수가 가장 많은 사람. 세이브 기록은 저장하지 않으므로 "
+               "'세이브 상황'이 아니라 '마지막 등판'으로 정의한다")
+
+
+def pick_closer(rows: list | None) -> str | None:
+    """마무리. 🔴 **이름표가 아니라 규칙이다**(09-14 "이름 매칭 금지").
+
+    경기(날짜)마다 `app_order` 가 가장 큰 투수를 고르고, 그 횟수가 많은 사람.
+    순서를 하나도 모르면 **None** — "마무리가 없다"가 아니라 "모른다"다.
+    """
+    last_by_day: dict = {}
+    for r in rows or []:
+        o = r.get("app_order")
+        if o is None:
+            continue
+        d = str(r.get("d"))
+        cur = last_by_day.get(d)
+        if cur is None or int(o) > int(cur[1]):
+            last_by_day[d] = (r.get("pitcher"), int(o))
+    if not last_by_day:
+        return None
+    tally: dict = {}
+    for who, _ in last_by_day.values():
+        if who:
+            tally[who] = tally.get(who, 0) + 1
+    if not tally:
+        return None
+    return max(sorted(tally), key=lambda k: tally[k])
+
+
+def closer_available(closer: str | None, rows: list | None, *,
+                     today: str | None) -> bool | None:
+    """어제·그제 **둘 다** 던졌으면 False. 🔴 마무리를 모르면 None."""
+    from datetime import date as _d
+    from datetime import timedelta as _td
+
+    if not closer or not today:
+        return None
+    try:
+        base = _d.fromisoformat(str(today)[:10])
+    except ValueError:
+        return None
+    days = {str(r.get("d")) for r in (rows or []) if r.get("pitcher") == closer}
+    y1 = (base - _td(days=1)).isoformat()
+    y2 = (base - _td(days=2)).isoformat()
+    return not (y1 in days and y2 in days)
+
+
+def era_14d(rows: list | None) -> float | None:
+    """자책 × 9 / 이닝. 🔴 이닝이 0이면 None — 0.00 은 완벽투구를 뜻한다."""
+    ip = sum(float(r.get("innings") or 0) for r in (rows or []))
+    if ip <= 0:
+        return None
+    er = sum(int(r.get("er") or 0) for r in (rows or []))
+    return round(9.0 * er / ip, 2)
+
+
+def _bullpen_block(rows: list, rows14: list | None = None,
+                   today_kst: str | None = None) -> dict:
+    """불펜. 🔴 `is_starter = false` 만 — 선발이 섞이면 소모가 뒤집힌다.
+
+    🔴 마무리·14일 방어율은 **계산되는 값**이다. 종전엔 "저장 없음"이라고
+       적고 비워 뒀는데, `pitcher_appearances` 에 재료가 다 있었다.
+    """
     out = _empty_bullpen()
+    if rows14:
+        out["era_14d"] = era_14d(rows14)
+        out["era_14d_reason"] = None if out["era_14d"] is not None else \
+            "최근 14일 불펜 이닝이 0이다"
+        who = pick_closer(rows14)
+        out["closer"] = who
+        out["closer_rule"] = CLOSER_RULE
+        out["closer_reason"] = None if who else \
+            "등판 순서(`app_order`)가 적재된 행이 없다 — 마무리가 없는 것이 아니라 모른다"
+        out["closer_available"] = closer_available(who, rows14, today=today_kst)
     if not rows:
         out["reason"] = "최근 3일 불펜 등판이 0행이다"
         return out
@@ -458,6 +537,19 @@ def _bullpen_block(rows: list) -> dict:
     out["reason"] = None
     return out
 
+
+#: [BUL-1] 14일 창 — 마무리 판정과 방어율. 🔴 3일 창과 **따로** 둔다:
+#  3일은 "소모", 14일은 "역할"이다. 한 질의로 합치면 둘이 섞인다.
+_BULLPEN14_SQL = """
+    SELECT pa.pitcher, pa.innings, pa.er, pa.app_order,
+           (g.starts_at AT TIME ZONE 'Asia/Seoul')::date d
+      FROM pitcher_appearances pa
+      JOIN games g ON g.id = pa.game_id
+     WHERE pa.team = $1 AND pa.is_starter = false
+       AND g.starts_at <  $2::timestamptz
+       AND g.starts_at >= $2::timestamptz - interval '14 days'
+     ORDER BY g.starts_at DESC
+"""
 
 _BULLPEN_SQL = """
     SELECT pa.pitcher, pa.innings,
@@ -780,7 +872,9 @@ async def _fill(pool, row: dict, sport: str, cache: dict, used: set) -> dict:
     # ③ bullpen
     for side, team in (("home", home), ("away", away)):
         brows = [dict(x) for x in await pool.fetch(_BULLPEN_SQL, team, ko)]
-        g["bullpen"][side] = _bullpen_block(brows)
+        b14 = [dict(x) for x in await pool.fetch(_BULLPEN14_SQL, team, ko)]
+        g["bullpen"][side] = _bullpen_block(
+            brows, b14, today_kst=(g.get("kickoff_kst") or "")[:10] or None)
         if brows:
             used.add("pitcher_appearances")
 

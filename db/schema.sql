@@ -988,3 +988,9 @@ CREATE INDEX IF NOT EXISTS idx_pick_ledger_judge
 --    새 요청 0.
 -- ════════════════════════════════════════════════════════════════════
 ALTER TABLE pitcher_appearances ADD COLUMN IF NOT EXISTS pitches INT;
+
+-- [BUL-1 2026-09-19] 등판 순서. 🔴 파서는 이미 안다 — `pitcher_log` 의
+--   `enumerate(...)` 가 그것이고 `is_starter = (i == 0)` 로 첫 번째만 쓰고
+--   버렸다. 마무리를 **이름표가 아니라 규칙으로** 정하려면 이 칸이 필요하다
+--   (최근 14일 경기마다 마지막 투수를 고르고 횟수가 많은 사람).
+ALTER TABLE pitcher_appearances ADD COLUMN IF NOT EXISTS app_order INT;
