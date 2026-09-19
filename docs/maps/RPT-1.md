@@ -1,63 +1,53 @@
-# RPT-1 — 원장에서 **표를 뽑을 방법이 없다**
+# RPT-1 영향 지도 — 원장 성적표
 
-## 왜
-
-`report.py` 의 다섯 함수는 전부 **순수 함수**다 — 행 목록을 받아 표를
-돌려준다. 그게 이 파일의 규약이고(테스트가 DB 없이 돈다), 그래서 **행을
-넣어주는 쪽이 따로 필요하다.** 그 쪽이 없다.
-
-실측 ①: `report` 를 import 하는 **운영·도구 파일 0건**(tests 뿐). U13 부터
-그랬고, 오늘 PA-28 로 `by_variable` 을 더해도 **볼 방법이 없다.**
-
-딥서치(→ `docs/FORKS.md` F-5): "대시보드 피로는 실재하고 BI 를 실제로 쓰는
-직원은 **약 30%** 뿐 — 대시보드는 **누가 열어주기를 기다린다**"(LogRocket).
-열어줄 사람이 없는 표는 없는 표다.
-
-## ① 이 함수/상태를 읽는 곳 **전부**
+## 1. 무엇이 틀렸나 (재현 원문)
 
 ```
-tools/report_vars.py      ← 새 도구 (얇은 어댑터. **계산은 안 한다**)
-app/engine/report.py      ← 계산 본체. **안 건드린다**
-app/db.get_pool/close_pool ← 기존 규약 (tools/calibration.py 와 같다)
-app/engine/gate.BOARD      ← 보드 라벨의 **원본**. 손으로 안 적는다
-pick_ledger 칼럼           ← 읽기만: adj_pp · adj_evidence · predicted_side ·
-                             clv · clv_line_shift · hit · p_home · p_code ·
-                             p_market · hypothesis · confirmed · analyze_failed ·
-                             watch_state · gate_label · gate_vs_llm ·
-                             main_axis · flow_class · cancel_virtual_clv
+$ ls -la tools/report.py
+ls: tools/report.py: No such file or directory
+
+$ rg -n "report\.py|tools\.report" --glob '!*.jsonl' .
+./FINDINGS.md:6661: ORP-1 [최상] `glass_report.py` 508줄 — **운영 호출부가 0건**이다
+(코드 호출 0건)
+
+$ PYTHONPATH=. uv run pytest tests/ledger/test_1_5_report.py -q -x    exit=1
 ```
 
-## ② 깨뜨릴 수 있는 기존 동작
+09-17 [149] "원장에서 행을 뽑아 넣는 도구가 없다"가 그대로다. 원장에 1,386행이
+쌓여 있는데 그것을 읽어 성적으로 바꾸는 경로가 없다.
 
-- 🔴 **읽기 전용이다.** INSERT·UPDATE 를 하지 않는다. 계약이 잰다.
-- 🔴 **도구가 계산을 다시 하지 않는다.** `tools/calibration.py` 의 규약을
-  그대로 따른다 — "도구와 운영이 다른 계산을 하면 **표를 믿을 수 없다**".
-  평균·브라이어·판정은 전부 `report.py` 가 한다. 계약이 잰다.
-- 🔴 **`p` 는 고른 쪽 확률이다.** `p_home` 은 홈 기준이고 `hit` 은 **우리 픽**
-  기준이다(원장 주석: "▲를 준 쪽이 이겼으면 hit"). 원정을 골랐으면
-  `1 − p_home` 을 넣어야 한다 — 안 돌리면 브라이어가 통째로 뒤집힌다.
-  PA-28 의 부호 문제와 **같은 종류**다.
-- 🔴 **보드 라벨을 손으로 안 적는다.** `gate.BOARD` 가 원본이다.
-- 🔴 **`source_score` 는 안 부른다.** 그 함수는 `{source, claimed, actual}`
-  모양을 받는데 원장에 그 대조 자료가 없다. 없는 것을 억지로 채우지 않고
-  **왜 비었는지 찍는다.**
-- 🔴 **스케줄러에 걸지 않는다.** 체크포인트 발송(B안)은 이 도구가 쓸 만한
-  표를 내는 것을 본 뒤다 — 지시받은 것은 A 뿐이다.
-- ⚠️ 로컬에서 `python tools/report_vars.py` 를 돌리면 **로컬 DB** 를 본다.
-  운영 원장은 `railway ssh` 로 봐야 한다(`railway run` 은 안 닿는다).
+## 2. 기존 것을 재사용하지 않는 이유 (한 줄)
 
-## ③ 되돌리기
+`app/engine/glass_report.build(jg, *, trace, ledger, audit, variables, market)`
+은 **경기 1건의 5절 설명 문서**를 만든다 — 원장 집계가 아니다. 같은 이름이라고
+같은 일이 아니다.
 
-파일 하나 삭제. 기존 코드를 안 건드렸으므로 그것으로 끝난다.
+## 3. 영향 지도 5문
 
-## ④ 측정
+**① 읽기만 하나.**
+그렇다. `SELECT` 뿐이다. 원장을 고치지 않고, 판정 경로를 부르지 않는다.
 
-①과 **같은 명령**이 통과한다. 그리고 실제 원장으로 한 번 돌려 표를 찍는다
-(⑨ 첫 사이클).
+**② 무엇을 세나 — 계수기 규율(09-08).**
+`hit` 은 **셋**이다: True · False · None(미채점). 여기에 `void`(우천취소 등)가
+따로 있다. 적중률의 분모는 `hit IS NOT NULL AND NOT void` 이고,
+**뺀 것(미채점·무효)을 같은 줄에 찍는다.** 찍지 않으면 그 숫자는 검증할 수 없다.
 
-## ⑤ 계약
+**③ 표본이 0이면.**
+비율을 지어내지 않는다 — `rate=None` 이고 출력에 **"표본 0"** 이라고 적는다.
+전체가 비어도 같다. 조용히 끝내면 "성적이 없다"와 "도구가 안 돌았다"가 구분되지
+않는다.
 
-12건 — report 함수를 부른다 · 계산을 직접 안 한다 · 쓰기 없음 · `p` 가 픽
-기준(홈/원정) · 보드 라벨 사본 금지 · source_score 를 안 부르고 사유를 찍음 ·
-행 변환이 빈 원장에서도 안 터짐 · 값 없는 칸이 0 으로 안 바뀜 · --json ·
---days/--sport 필터 · 스케줄러에 안 걸림.
+**④ `--by` 에 임의 문자열이 들어가면.**
+컬럼명이 SQL 에 들어가므로 **화이트리스트**로 막는다. 목록 밖이면 거부하고
+1로 나간다. 계약이 `"judge_by; DROP TABLE …"` 을 거부하는지 확인한다.
+
+**⑤ CLV 평균은 무엇의 평균인가.**
+`clv IS NOT NULL` 인 행만이고, **그 건수를 따로 찍는다**. 적중률 분모와 CLV 분모는
+다르다(채점됐어도 마감 배당이 없을 수 있다) — 한 줄에 두 분모를 섞으면 읽는
+사람이 같은 것으로 읽는다.
+
+## 4. 안 하는 것
+
+- 자동 실행을 만들지 않는다. 09-17 지시 그대로 **사람이 부른다.**
+- 성적을 판정에 되먹이지 않는다(`test_pick_ledger` 가 그 경로를 잠그고 있다).
+- 파생 마켓 채점을 여기서 하지 않는다 — 그건 `1-4-b` 이고 7-3 의 몫이다.
