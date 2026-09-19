@@ -61,6 +61,72 @@ def _row(var: str, value, *, source: str, url: str = "", excerpt: str = "",
             "sides": sides or {}, "fetched_at": None}
 
 
+async def _cache_doc(state, ctx) -> dict:
+    """판정 캐시의 이 경기 항목. 🔴 **새로 수집하지 않는다** — 파이프라인이
+    이미 만들어 둔 `analysis:{sport}:{date}` 를 읽는다(내보내기가 읽는 자리).
+
+    🔴 **MLB 는 캐시 키가 미 동부 날짜다.** 실측 2026-09-19:
+       `analysis:mlb:2026-09-19` 없음 · `analysis:mlb:2026-09-18` 있음.
+       KST 날짜로만 찾으면 MLB 는 언제나 빈손이다.
+       ⚠️ 규칙의 원본은 `pipeline.mlb_slate_date` 다 — 여기서 달력을 새로
+          만들지 않고 **양쪽 날짜를 다 본다.**
+    """
+    if ctx.redis is None:
+        return {}
+    import json
+    from datetime import date as _d
+    from datetime import timedelta as _td
+
+    sport = _sport_code(state)
+    base = (state.kickoff_utc or "")[:10]
+    days = [base]
+    try:
+        days.append((_d.fromisoformat(base) - _td(days=1)).isoformat())
+    except ValueError:
+        pass
+    for day in days:
+        try:
+            raw = await ctx.redis.get(f"analysis:{sport}:{day}")
+        except Exception as exc:
+            logger.info("[flow:n05] 캐시 못 읽음 %s %s: %s", sport, day, exc)
+            return {}
+        if not raw:
+            continue
+        try:
+            doc = json.loads(raw)
+        except ValueError:
+            continue
+        for g in doc.get("games") or []:
+            if str(g.get("game_id")) == str(state.game_id):
+                return g
+    return {}
+
+
+async def _cache_absences(state, ctx) -> list:
+    """결장 문장. 주입이 **먼저**다 — 픽스처·드라이런이 캐시에 덮이면 안 된다."""
+    inj = (ctx.inject or {})
+    if "absences" in inj:
+        return list(inj["absences"] or [])
+    g = await _cache_doc(state, ctx)
+    got = list(((g.get("research") or {}).get("absences")) or [])
+    logger.info("[flow:n05] game=%s 캐시 결장 %d건%s", state.game_id, len(got),
+                "" if g else " (판정 캐시 없음)")
+    return got
+
+
+async def _cache_starter_notes(state, ctx) -> list:
+    """선발 교체 메모. 감지는 이미 있었고(`pipeline.starter_change_notes`)
+    ⑤가 그것을 보지 않았다 — WIR-1 과 같은 "만들어 놓고 안 이음"이다."""
+    inj = (ctx.inject or {})
+    if "starter_notes" in inj:
+        return list(inj["starter_notes"] or [])
+    g = await _cache_doc(state, ctx)
+    notes = g.get("lineup_notes") or []
+    if isinstance(notes, str):
+        notes = [notes]
+    return [n for n in notes if n]
+
+
 async def _extract_box(state, ctx) -> dict:
     """위성 추출 `{side: {칸: 값}}`. 없으면 빈 dict."""
     if "extract" in (ctx.inject or {}):
@@ -150,7 +216,10 @@ async def run(state, ctx):
         return state
 
     box = await _extract_box(state, ctx)
-    absences = (ctx.inject or {}).get("absences") or []
+    # 🔴 [WIR-2] 주입에만 매달리지 않는다. 운영에서는 `bridge` 가 `model_probs`
+    #    하나만 주입해서 이 목록이 **영원히 비어 있었다**(실측: 게이트를 통과한
+    #    7경기 전부 evidence=[] · 여섯 변수 전건 unknown).
+    absences = await _cache_absences(state, ctx)
     out: list = []
     per_game_cap = 0
     try:
@@ -175,7 +244,7 @@ async def run(state, ctx):
         #    감지는 이미 있었고(`pipeline.starter_change_notes`) 가설·채점이
         #    그것을 보지 않았다 — WIR-1 과 같은 "만들어 놓고 안 이음"이다.
         if var == "starter_recent3":
-            notes = list((ctx.inject or {}).get("starter_notes") or [])
+            notes = await _cache_starter_notes(state, ctx)
             if notes:
                 sides: dict = {}
                 for n in notes:
