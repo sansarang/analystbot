@@ -29,6 +29,13 @@ import subprocess
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
+from app.engine.park import SCALE_NOTE, park_of
+
+#: 파크팩터 출처. 🔴 값이 아니라 **출처**를 산출물에 싣는다 — 읽는 쪽이
+#  무엇을 근거로 한 숫자인지 되짚을 수 있어야 한다.
+PARK_SOURCE = ("Baseball Savant 3년 롤링 지수 (2026-09-19 수신) · "
+               "지붕은 statsapi venues fieldInfo")
+
 logger = logging.getLogger(__name__)
 
 #: 🔴 시차를 **상수로 박지 않는다** — DST 가 있으면 반드시 틀린다.
@@ -163,8 +170,7 @@ def empty_game(row: dict) -> dict:
                  "elo": None, "elo_asof": None},
         "away": {"abbr": None, "name": row.get("away"), "record": None,
                  "elo": None, "elo_asof": None},
-        "venue": {"name": None, "roof": None, "park_factor_runs": None,
-                  "park_factor_source": None, "reason": NO_SOURCE["venue"]},
+        "venue": _empty_venue(),
         "weather": {"temp_c": None, "wind": None, "precip_pct": None,
                     "reason": "아직 채우지 않음 (STEP 2)"},
         "odds": {
@@ -219,6 +225,12 @@ def _empty_starter() -> dict:
         "confirmed_kst": None,
         "reason": "아직 채우지 않음 (STEP 2)",
     }
+
+
+def _empty_venue() -> dict:
+    return {"name": None, "roof": None, "park_factor_runs": None,
+            "park_factor_hr": None, "park_factor_scale": None,
+            "park_factor_source": None, "reason": NO_SOURCE["venue"]}
 
 
 def _empty_bullpen() -> dict:
@@ -572,7 +584,7 @@ _LINEUP_SQL = """
 
 #: 최근 5경기. 🔴 `_LAST3_SQL`(pick_ledger)과 같은 규칙이다 — 창만 다르다.
 _FORM_SQL = """
-    SELECT home, away, home_score, away_score,
+    SELECT home, away, home_score, away_score, venue_id, venue_name,
            (starts_at AT TIME ZONE 'Asia/Seoul')::date d
       FROM games
      WHERE sport = $1 AND status = 'final'
@@ -598,6 +610,28 @@ _RUNS_SQL = """
 """
 
 
+def _venue_block(row: dict | None) -> dict:
+    """구장. 🔴 파크팩터의 원본은 `config/park_factors.yaml` 이다 — 값을
+    여기 적지 않는다. 모르는 구장은 **null + 사유**다."""
+    out = _empty_venue()
+    if not row or row.get("venue_id") is None:
+        out["reason"] = "이 경기의 `games.venue_id` 가 비어 있다 (statsapi 일정 재적재 전)"
+        return out
+    out["name"] = row.get("venue_name")
+    pk = park_of(row.get("venue_id"))
+    if not pk:
+        out["reason"] = (f"구장 id={row.get('venue_id')} 가 park_factors.yaml 에 없다"
+                         " — 리그 평균으로 메우지 않는다")
+        return out
+    out["roof"] = pk.get("roof")
+    out["park_factor_runs"] = pk.get("runs")
+    out["park_factor_hr"] = pk.get("hr")
+    out["park_factor_scale"] = SCALE_NOTE
+    out["park_factor_source"] = PARK_SOURCE
+    out["reason"] = None
+    return out
+
+
 def _form_rows(rows: list, team: str) -> tuple:
     """최근 5경기 + 득실차. 🔴 상대전적(H2H)·BvP 를 넣지 않는다(v1.4 금지)."""
     out, diff = [], 0
@@ -609,7 +643,11 @@ def _form_rows(rows: list, team: str) -> tuple:
                     "opp": r["away"] if r["home"] == team else r["home"],
                     "ha": "H" if r["home"] == team else "A",
                     "score": f"{ours}-{theirs}",
-                    "result": "W" if ours > theirs else ("L" if ours < theirs else "D")})
+                    "result": "W" if ours > theirs else ("L" if ours < theirs else "D"),
+                    # 🔴 [VEN-1] 9·9점이 실력인지 구장인지 가르는 자리다.
+                    #    모르면 null — 리그 평균 100 으로 메우지 않는다.
+                    "venue": r.get("venue_name"),
+                    "venue_pf_runs": (park_of(r.get("venue_id")) or {}).get("runs")})
     return out or None, (diff if out else None)
 
 
@@ -714,7 +752,8 @@ def _deepsearch_block(articles: list | None) -> list:
 
 _SLATE_SQL = """
     SELECT id, sport, league, home, away, starts_at, status,
-           home_pitcher, away_pitcher, lineup_status
+           home_pitcher, away_pitcher, lineup_status,
+           venue_id, venue_name, venue_lat, venue_lon
       FROM games
      WHERE sport = $1
        AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $2
@@ -882,6 +921,7 @@ async def _fill(pool, row: dict, sport: str, cache: dict, used: set) -> dict:
     lrows = [dict(x) for x in await pool.fetch(_LINEUP_SQL, gid)]
     absences = (jg.get("research") or {}).get("absences") if jg else None
     h_out, a_out = _split_absences(absences, home, away)
+    g["venue"] = _venue_block(row)
     g["lineup"]["home"] = _lineup_block(lrows, "home", h_out)
     g["lineup"]["away"] = _lineup_block(lrows, "away", a_out)
     if lrows:

@@ -1,0 +1,192 @@
+# 구장 파크팩터 — MLB
+#
+# 🔴 **손으로 지어낸 값이 아니다.** MLB 자체 Baseball Savant 의 3년 롤링 지수를
+#    2026-09-19 에 1회 받아 굳혔다. 출처:
+#      https://baseballsavant.mlb.com/leaderboard/statcast-park-factors?type=year&year=2026&rolling=3
+#    지붕은 statsapi `/api/v1/venues?hydrate=fieldInfo` 의 `roofType` 이다.
+#
+# 🔴 키는 **statsapi venue id** 다 — 이름이 아니다(구장명은 바뀐다:
+#    Guaranteed Rate → Rate Field, Minute Maid → Daikin Park).
+# 🔴 100 이 리그 평균이다. runs 는 득점, hr 은 홈런 지수.
+# ⚠️ 이 값은 **표시·보정용**이다. v1.4 동결은 시즌 누적을 판정 입력에서
+#    금지하고, 파크팩터는 그 경계 밖이 아니다 — 새로 판정에 잇지 않는다.
+# ⚠️ 29구장이다. 2026 시즌 임시 구장(예: 탬파베이)은 표본이 없어 빠질 수 있고,
+#    없으면 **지어내지 않고 null 로 둔다**.
+#
+# 받은 날: 2026-09-19  ·  3년 롤링(2024~2026)
+
+parks:
+  19:
+    name: "Coors Field"
+    runs: 125
+    hr: 108
+    roof: "Open"
+    pa: 55419
+  3:
+    name: "Fenway Park"
+    runs: 106
+    hr: 88
+    roof: "Open"
+    pa: 55240
+  15:
+    name: "Chase Field"
+    runs: 106
+    hr: 93
+    roof: "Retractable"
+    pa: 54946
+  3309:
+    name: "Nationals Park"
+    runs: 104
+    hr: 104
+    roof: "Open"
+    pa: 54996
+  2681:
+    name: "Citizens Bank Park"
+    runs: 104
+    hr: 115
+    roof: "Open"
+    pa: 54386
+  2:
+    name: "Oriole Park at Camden Yards"
+    runs: 104
+    hr: 110
+    roof: "Open"
+    pa: 55511
+  3312:
+    name: "Target Field"
+    runs: 104
+    hr: 94
+    roof: "Open"
+    pa: 55292
+  14:
+    name: "Rogers Centre"
+    runs: 102
+    hr: 105
+    roof: "Retractable"
+    pa: 57053
+  7:
+    name: "Kauffman Stadium"
+    runs: 102
+    hr: 88
+    roof: "Open"
+    pa: 53435
+  22:
+    name: "UNIQLO Field at Dodger Stadium"
+    runs: 102
+    hr: 124
+    roof: "Open"
+    pa: 56785
+  31:
+    name: "PNC Park"
+    runs: 102
+    hr: 82
+    roof: "Open"
+    pa: 54878
+  3313:
+    name: "Yankee Stadium"
+    runs: 102
+    hr: 118
+    roof: "Open"
+    pa: 56916
+  2602:
+    name: "Great American Ball Park"
+    runs: 102
+    hr: 113
+    roof: "Open"
+    pa: 54398
+  4705:
+    name: "Truist Park"
+    runs: 100
+    hr: 100
+    roof: "Open"
+    pa: 54726
+  2392:
+    name: "Daikin Park"
+    runs: 100
+    hr: 112
+    roof: "Retractable"
+    pa: 54003
+  4169:
+    name: "loanDepot park"
+    runs: 100
+    hr: 86
+    roof: "Retractable"
+    pa: 55647
+  2394:
+    name: "Comerica Park"
+    runs: 100
+    hr: 101
+    roof: "Open"
+    pa: 53588
+  1:
+    name: "Angel Stadium"
+    runs: 98
+    hr: 101
+    roof: "Open"
+    pa: 54084
+  5:
+    name: "Progressive Field"
+    runs: 98
+    hr: 93
+    roof: "Open"
+    pa: 54499
+  4:
+    name: "Rate Field"
+    runs: 98
+    hr: 98
+    roof: "Open"
+    pa: 54642
+  17:
+    name: "Wrigley Field"
+    runs: 96
+    hr: 106
+    roof: "Open"
+    pa: 56015
+  32:
+    name: "American Family Field"
+    runs: 96
+    hr: 103
+    roof: "Retractable"
+    pa: 55859
+  3289:
+    name: "Citi Field"
+    runs: 96
+    hr: 101
+    roof: "Open"
+    pa: 57128
+  2889:
+    name: "Busch Stadium"
+    runs: 94
+    hr: 76
+    roof: "Open"
+    pa: 53794
+  12:
+    name: "Tropicana Field"
+    runs: 94
+    hr: 105
+    roof: "Dome"
+    pa: 35803
+  2395:
+    name: "Oracle Park"
+    runs: 94
+    hr: 79
+    roof: "Open"
+    pa: 54204
+  2680:
+    name: "Petco Park"
+    runs: 94
+    hr: 105
+    roof: "Open"
+    pa: 54557
+  5325:
+    name: "Globe Life Field"
+    runs: 88
+    hr: 94
+    roof: "Retractable"
+    pa: 53769
+  680:
+    name: "T-Mobile Park"
+    runs: 85
+    hr: 99
+    roof: "Retractable"
+    pa: 53200

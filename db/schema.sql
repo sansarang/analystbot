@@ -994,3 +994,12 @@ ALTER TABLE pitcher_appearances ADD COLUMN IF NOT EXISTS pitches INT;
 --   버렸다. 마무리를 **이름표가 아니라 규칙으로** 정하려면 이 칸이 필요하다
 --   (최근 14일 경기마다 마지막 투수를 고르고 횟수가 많은 사람).
 ALTER TABLE pitcher_appearances ADD COLUMN IF NOT EXISTS app_order INT;
+
+-- [VEN-1 2026-09-19] 구장. 🔴 statsapi 가 `hydrate=venue(location)` 로 **이미
+--   주고 있었다**(id·이름·좌표·고도). `_parse_games` 가 버리고 있었을 뿐이다.
+--   좌표를 함께 저장하는 이유는 날씨(2-8)가 lat/lon 을 요구하기 때문이다 —
+--   같은 응답에 있으므로 그때 새 요청이 0이다.
+ALTER TABLE games ADD COLUMN IF NOT EXISTS venue_id   INT;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS venue_name TEXT;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS venue_lat  DOUBLE PRECISION;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS venue_lon  DOUBLE PRECISION;

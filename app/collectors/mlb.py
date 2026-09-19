@@ -296,6 +296,14 @@ class MLBClient(BaseAPIClient):
             "/transactions", params={"startDate": start, "endDate": end})
 
 
+def _venue_of(g: dict) -> dict:
+    """구장 id·이름·좌표. 🔴 없으면 **None** — 0 이나 빈 문자열로 메우지 않는다."""
+    v = g.get("venue") or {}
+    loc = (v.get("location") or {}).get("defaultCoordinates") or {}
+    return {"venue_id": v.get("id"), "venue_name": v.get("name"),
+            "venue_lat": loc.get("latitude"), "venue_lon": loc.get("longitude")}
+
+
 def _parse_games(schedule: dict) -> list[dict]:
     out = []
     for day in schedule.get("dates", []):
@@ -313,6 +321,9 @@ def _parse_games(schedule: dict) -> list[dict]:
                 "home_score": home.get("score"),
                 "away_score": away.get("score"),
                 "official_date": g.get("officialDate") or day.get("date") or "",
+                # 🔴 [VEN-1] `hydrate=venue(location)` 가 **이미 주던 값**이다.
+                #    종전 주석이 "무시한다"고 적혀 있던 자리다.
+                **_venue_of(g),
             })
     return out
 
@@ -328,8 +339,9 @@ async def upsert_games(
         await pool.execute(
             """
             INSERT INTO games (sport, league, ext_id, starts_at, home, away,
-                               home_pitcher, away_pitcher, status, home_score, away_score)
-            VALUES ('mlb', 'MLB', $1, $2, $3, $4, $5, $6, $7, $8, $9)
+                               home_pitcher, away_pitcher, status, home_score, away_score,
+                               venue_id, venue_name, venue_lat, venue_lon)
+            VALUES ('mlb', 'MLB', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             ON CONFLICT (sport, ext_id) DO UPDATE SET
                 starts_at = EXCLUDED.starts_at,
                 home_pitcher = coalesce(EXCLUDED.home_pitcher, games.home_pitcher),
@@ -337,11 +349,19 @@ async def upsert_games(
                 status = EXCLUDED.status,
                 home_score = coalesce(EXCLUDED.home_score, games.home_score),
                 away_score = coalesce(EXCLUDED.away_score, games.away_score),
+                -- 🔴 [VEN-1] 있던 값을 null 로 지우지 않는다 — 구장 없는
+                --    응답(순연·미정)이 기존 값을 덮으면 안 된다.
+                venue_id   = coalesce(EXCLUDED.venue_id,   games.venue_id),
+                venue_name = coalesce(EXCLUDED.venue_name, games.venue_name),
+                venue_lat  = coalesce(EXCLUDED.venue_lat,  games.venue_lat),
+                venue_lon  = coalesce(EXCLUDED.venue_lon,  games.venue_lon),
                 updated_at = now()
             """,
             g["ext_id"], g["starts_at"], g["home"], g["away"],
             g["home_pitcher"], g["away_pitcher"], g["status"],
             g["home_score"], g["away_score"],
+            g.get("venue_id"), g.get("venue_name"),
+            g.get("venue_lat"), g.get("venue_lon"),
         )
     logger.info("[mlb] upserted %d games for %s", len(games), date)
     return len(games)
