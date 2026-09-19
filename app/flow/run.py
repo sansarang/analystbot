@@ -42,9 +42,17 @@ async def snapshot(state: State, node: str, ctx=None) -> None:
                        state.run_id, node, exc)
 
 
-def finish(state: State, stop_reason: str | None) -> State:
-    """멈춤 사유를 쓰고 끝낸다. 🔴 이 뒤로 노드를 부르지 않는다."""
+async def finish(state: State, stop_reason: str | None, ctx=None) -> State:
+    """멈춤 사유를 쓰고 끝낸다. 🔴 이 뒤로 노드를 부르지 않는다.
+
+    🔴 [2026-09-19] **여기서도 스냅샷을 남긴다.** 종전에는 안 남겨서
+       `stop_reason` 이 `analysis_runs` **어디에도 없었다** — 내보내기가
+       "어디서 멈췄나"를 답할 수 없었다(실측: n06 에서 멈춘 경기의
+       `stop_reason` 이 전부 null).
+    ⚠️ 그래서 행이 노드 수 +1 이다. 지시문 §6 이 기대한 12행이 이것이다.
+    """
     state.stop_reason = stop_reason
+    await snapshot(state, "finish", ctx)
     return state
 
 
@@ -66,7 +74,7 @@ async def run_game(game: dict, ctx) -> State:
     s = await n03_gate.run(s, ctx)
     await snapshot(s, n03_gate.NODE, ctx)
     if (s.n03_gate or {}).get("stop"):          # 보드 고정 → 수집도 하지 않는다
-        return finish(s, "n03_freeze")
+        return await finish(s, "n03_freeze", ctx)
 
     s = await n04_hyp.run(s, ctx)
     await snapshot(s, n04_hyp.NODE, ctx)
@@ -77,9 +85,9 @@ async def run_game(game: dict, ctx) -> State:
 
     verdict = (s.n06_verdict or {}).get("verdict")
     if verdict == "반박됨":                      # 픽 철회
-        return finish(s, "n06_refuted")
+        return await finish(s, "n06_refuted", ctx)
     if verdict == "모름과반":                    # 보드로 내린다
-        return finish(s, "n06_unknown")
+        return await finish(s, "n06_unknown", ctx)
 
     for node in (n07_adjust, n08_pcode, n09_conf):
         s = await node.run(s, ctx)
@@ -94,14 +102,14 @@ async def run_game(game: dict, ctx) -> State:
     s = await n11_value.run(s, ctx)
     await snapshot(s, n11_value.NODE, ctx)
     if (s.n11_value or {}).get("pick_type") == "보드":
-        return finish(s, "n11_no_value")
+        return await finish(s, "n11_no_value", ctx)
 
     s = await n12_text.run(s, ctx)
     await snapshot(s, n12_text.NODE, ctx)
     # 🔴 서술이 입력에 없는 사실을 지어내면 카드를 만들지 않는다(지시문 STEP 11).
     if (s.n12_text or {}).get("hallucination"):
-        return finish(s, "n12_hallucination")
+        return await finish(s, "n12_hallucination", ctx)
 
     s = await n13_send.run(s, ctx)
     await snapshot(s, n13_send.NODE, ctx)
-    return finish(s, None)
+    return await finish(s, None, ctx)

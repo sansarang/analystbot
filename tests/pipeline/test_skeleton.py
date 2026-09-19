@@ -69,7 +69,9 @@ async def test_정상경로는_13노드를_전부_지난다(monkeypatch):
                   n10_rejudge={"triggered": False},
                   n11_value={"pick_type": "승패"},
                   n12_text={"sentences": ["1", "2", "3", "4"]})
-    assert s.trace == list(NODE_KEYS), s.trace
+    # 🔴 [2026-09-19] `finish` 도 스냅샷을 남긴다 — 종전에는 안 남겨서
+    #    `stop_reason` 이 `analysis_runs` 어디에도 없었다.
+    assert s.trace == list(NODE_KEYS) + ["finish"], s.trace
     assert s.stop_reason is None
 
 
@@ -77,7 +79,7 @@ async def test_정상경로는_13노드를_전부_지난다(monkeypatch):
 async def test_보드고정은_수집을_하지_않는다(monkeypatch):
     """🔴 ③ stop → ④ 가설·⑤ 수집부터 **한 번도** 안 돈다."""
     s = await _go(monkeypatch, n03_gate={"stop": True, "gate": "보드고정"})
-    assert s.trace == ["n01_prior", "n02_market", "n03_gate"], s.trace
+    assert s.trace == ["n01_prior", "n02_market", "n03_gate", "finish"], s.trace
     assert s.stop_reason == "n03_freeze"
     for banned in ("n04_hyp", "n05_evidence", "n12_text", "n13_send"):
         assert banned not in s.trace
@@ -89,7 +91,7 @@ async def test_반박됨은_조정부터_안_돈다(monkeypatch):
                   n03_gate={"stop": False},
                   n06_verdict={"verdict": "반박됨"})
     assert s.trace == ["n01_prior", "n02_market", "n03_gate", "n04_hyp",
-                       "n05_evidence", "n06_verdict"], s.trace
+                       "n05_evidence", "n06_verdict", "finish"], s.trace
     assert s.stop_reason == "n06_refuted"
     assert "n07_adjust" not in s.trace
 
@@ -99,7 +101,7 @@ async def test_모름과반도_같은_자리에서_멈춘다(monkeypatch):
     s = await _go(monkeypatch,
                   n03_gate={"stop": False},
                   n06_verdict={"verdict": "모름과반"})
-    assert s.trace[-1] == "n06_verdict"
+    assert s.trace[-2:] == ["n06_verdict", "finish"], s.trace
     assert s.stop_reason == "n06_unknown"
     assert "n07_adjust" not in s.trace
 
@@ -112,7 +114,7 @@ async def test_값없음은_서술을_만들지_않는다(monkeypatch):
                   n06_verdict={"verdict": "확인됨"},
                   n10_rejudge={"triggered": False},
                   n11_value={"pick_type": "보드"})
-    assert s.trace[-1] == "n11_value"
+    assert s.trace[-2:] == ["n11_value", "finish"], s.trace
     assert s.stop_reason == "n11_no_value"
     assert "n12_text" not in s.trace and "n13_send" not in s.trace
 
@@ -239,3 +241,18 @@ def test_상태_왕복():
     back = State.from_json(s.to_json())
     assert back.game_id == s.game_id and back.sport == s.sport
     assert back.stop_reason is None
+
+
+def test_finish_스냅샷은_정확히_한_번이다():
+    """🔴 `stop_reason` 이 남는 유일한 행이다 — 빠지면 "어디서 멈췄나"를
+    `analysis_runs` 만 보고 답할 수 없다(실측 2026-09-19: n06 에서 멈춘
+    경기의 stop_reason 이 전부 null 이었다).
+    ⚠️ 두 번 남으면 행 수 계약이 깨진다."""
+    import inspect
+
+    code = "\n".join(ln for ln in inspect.getsource(RUN.run_game).splitlines()
+                     if ln.strip() and not ln.strip().startswith("#"))
+    assert code.count("await finish(") == 6, code.count("await finish(")
+    fin = "\n".join(ln for ln in inspect.getsource(RUN.finish).splitlines()
+                    if ln.strip() and not ln.strip().startswith("#"))
+    assert fin.count('snapshot(state, "finish"') == 1
