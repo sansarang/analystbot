@@ -36,7 +36,25 @@ logger = logging.getLogger(__name__)
 #   처음에 고정 오프셋으로 썼다가 그 계약에 걸렸다. 계약이 먼저 잡았다.
 KST = ZoneInfo("Asia/Seoul")
 
-OUT_DIR = pathlib.Path.home() / "Downloads" / "analystbot_export"
+#: 내보내기 단계. 🔴 **이 목록이 원본이다** — `main()` 의 choices 와 스케줄러
+#  잡이 여기서 이름을 가져간다. 손으로 두 번 적지 않는다.
+STAGES = ("t3h", "lineup")
+
+
+def resolve_out_dir() -> pathlib.Path:
+    """산출물을 둘 곳. 🔴 **볼륨이 있으면 볼륨이다.**
+
+    Railway 컨테이너의 기본 파일시스템은 재배포·재시작마다 초기화된다 —
+    볼륨 밖에 쓴 것은 백업이 아니라 사라질 파일이다(→ docs/FORKS.md F-18).
+    로컬에는 그 변수가 없으므로 종전 다운로드 폴더가 그대로 쓰인다.
+    """
+    vol = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH")
+    if vol:
+        return pathlib.Path(vol) / "export"
+    return pathlib.Path.home() / "Downloads" / "analystbot_export"
+
+
+OUT_DIR = resolve_out_dir()
 
 PIPELINE_VERSION = "v1.4"
 
@@ -110,10 +128,17 @@ def _utc(dt) -> str | None:
     return dt.astimezone(timezone.utc).isoformat()
 
 
-def out_path(date_kst: str, league: str, *, ext: str = "json") -> pathlib.Path:
-    """`{날짜}_{리그}_slate.{ext}`. 🔴 **덮어쓰지 않는다** — `_r2`·`_r3` 로 늘린다."""
+def out_path(date_kst: str, league: str, *, ext: str = "json",
+             stage: str = "t3h") -> pathlib.Path:
+    """`{날짜}_{리그}_slate[_lineup].{ext}`.
+
+    🔴 **덮어쓰지 않는다** — `_r2`·`_r3` 로 늘린다.
+    🔴 `lineup` 단계는 접미사를 붙여 T-3h 산출물과 **같은 이름을 쓰지 않는다** —
+       한 파일이면 늦은 쪽이 이른 쪽을 지우고, 그러면 "라인업 전에는 무엇을
+       알았나"를 되짚을 수 없다.
+    """
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    base = f"{date_kst}_{league}_slate"
+    base = f"{date_kst}_{league}_slate" + ("_lineup" if stage == "lineup" else "")
     p = OUT_DIR / f"{base}.{ext}"
     n = 1
     while p.exists():
@@ -849,10 +874,10 @@ def _md_game(g: dict) -> list:
     ]
 
 
-def write(doc: dict) -> tuple:
+def write(doc: dict, *, stage: str = "t3h") -> tuple:
     """JSON 먼저, MD 는 그 JSON 에서. 🔴 접미사를 **맞춰** 둔다."""
     meta = doc["export_meta"]
-    p = out_path(meta["date_kst"], meta["league"])
+    p = out_path(meta["date_kst"], meta["league"], stage=stage)
     p.write_text(json.dumps(doc, ensure_ascii=False, indent=2, default=str),
                  encoding="utf-8")
     md = p.with_suffix(".md")
@@ -865,10 +890,13 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="페이블 분석용 슬레이트 내보내기")
     ap.add_argument("--league", required=True, choices=sorted(LEAGUE_SPORT))
     ap.add_argument("--date", required=True, help="KST 날짜 YYYY-MM-DD")
+    ap.add_argument("--stage", default="t3h", choices=list(STAGES),
+                    help="t3h = 킥오프 3시간 전 · lineup = 라인업 확정 직후")
     a = ap.parse_args(argv)
 
     doc = asyncio.run(collect(a.league, a.date))
-    p, md = write(doc)
+    doc["export_meta"]["stage"] = a.stage
+    p, md = write(doc, stage=a.stage)
     n = len(doc["games"])
     logger.info("내보냄 %s · %d경기 · %d바이트", p, n, p.stat().st_size)
     logger.info("요약   %s · %d바이트", md, md.stat().st_size)

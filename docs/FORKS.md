@@ -780,3 +780,47 @@ CLV 를 고르기로 했다 — 그 선택이 사전 판단의 독립성을 **�
 - [Bet2Invest — CLV applied to sports betting](https://bet2invest.com/blog/Closing-Line-Value-(CLV)-Applied-to-Sports-Betting:-A-Key-Indicator-for-Bettors)
 - [ActionNetwork — Prop betting rules: if the player doesn't play](https://www.actionnetwork.com/education/prop-betting-rules-what-happens-if-player-doesnt-play)
 - [OddsIndex — How injuries impact betting lines](https://oddsindex.com/guides/injury-impact-betting-guide)
+
+## F-18 — T-3h·T-60 export 산출물을 어디에 두나 (2026-09-19)
+
+**무엇이 갈렸나.** 마스터 지시문 1-1 은 산출물이 `~/Downloads/analystbot_export/`(로컬)
+와 운영 컨테이너 `/data/export/`(백업) **둘 다**에 생기기를 요구한다. 그런데
+스케줄러는 Railway 컨테이너 안에서 돌기 때문에 사용자 맥에 직접 쓸 수 없고,
+`/data` 는 애초에 존재하지 않는다.
+
+```
+$ railway ssh ... "df -h; ls -la /data"
+overlay  2.9T ... /
+ls: cannot access '/data': No such file or directory
+```
+
+갈래는 둘이었다 — (a) Railway Volume 을 `/data` 에 붙인다 (b) 산출물을 Postgres 에
+넣고 파일은 임시로만 쓴다.
+
+**어떤 자료를 찾았나.**
+
+- Railway 기본 컨테이너 파일시스템은 **재배포·재시작마다 초기화**된다. 볼륨 밖에
+  쓴 것은 복구되지 않는다 — 공식 문서와 사용자 사고 보고가 같은 말을 한다.
+  → [Railway Services](https://docs.railway.com/reference/services) ·
+    [Critical Data Loss Issue — Ephemeral Storage](https://station.railway.com/questions/critical-data-loss-issue-ephemeral-sto-5f150da4)
+  `RAILWAY_VOLUME_MOUNT_PATH` 아래에 쓴 것만 남는다.
+- Postgres 쪽 반대 근거도 찾았다: 2KB 를 넘는 값은 TOAST 로 빠지고, 그 뒤로는
+  JSONB 접근 성능이 나빠질 수 있다.
+  → [PostgreSQL TOAST](https://www.postgresql.org/docs/current/storage-toast.html) ·
+    [pganalyze — JSONB TOAST 성능 절벽](https://pganalyze.com/blog/5mins-postgres-jsonb-toast)
+
+**무엇을 골랐나 — (a) 볼륨.**
+
+지시문이 경로를 `/data/export/` 로 **이름을 대어** 지정했고, 그 경로가 살아남는
+방법은 볼륨뿐이다. 볼륨 생성은 코드가 아니라 인프라 설정이라 1-1 의 수정 범위
+(인자·잡·파일명)를 넓히지 않는다. 산출물은 하루 몇 MB라 100GB 한도에 무관하다.
+
+**안 고른 쪽은 왜 안 골랐나.**
+
+(b) Postgres 는 내구성은 같지만 **새 테이블·마이그레이션·조회 도구**가 필요해
+수정 범위를 넘는다. 게다가 우리 산출물은 245KB 짜리 통짜 문서이고 안을 질의하지
+않는데, 굳이 TOAST 경계를 넘는 값을 DB 에 넣을 이유가 없다. 찾은 자료도 그 경계
+너머를 권하지 않았다.
+
+⚠️ **로컬 절반은 여전히 사람이 당긴다.** 서버가 주체이고(메모리 규칙) 맥이 켜져
+   있을 필요가 없어야 하므로, 컨테이너가 볼륨에 쓰고 로컬은 필요할 때 받아간다.

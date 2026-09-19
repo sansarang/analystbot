@@ -332,6 +332,100 @@ async def flow_shadow_job() -> None:
         await redis.aclose()
 
 
+# ══════════════════════════════════════════════════════════════════
+# [EXP-2] T-3h · T-60 자동 내보내기
+#
+# 🔴 **읽기 전용이다.** 발송 경로를 타지 않는다 — `n13_send` 도 `_send_card` 도
+#    부르지 않는다. 규율 9(발송 중단 유지)를 깨지 않는다.
+# 🔴 리그 목록을 **손으로 적지 않는다** — `for_fable.LEAGUE_SPORT` 가 원본이다.
+# ⚠️ 창(window)이 아니라 **문턱**으로 쏜다. 창으로 하면 한 틱만 밀려도 그날
+#    산출물이 통째로 없어진다(실사고 2026-09-19 `run_slate`).
+# ══════════════════════════════════════════════════════════════════
+
+#: 단계별 문턱 — 첫 경기 킥오프까지 남은 시간이 이보다 작아지면 쏜다.
+EXPORT_LEAD: dict = {"t3h": timedelta(hours=3), "lineup": timedelta(minutes=60)}
+
+#: 하루 1회 표시. 🔴 `SET NX` 로 잡는다 — 잡이 겹쳐 돌아도 두 번 쓰지 않는다.
+EXPORT_MARK_TTL = 20 * 3600
+
+#: 오늘 KST 슬레이트에서 리그별 **가장 이른 미시작 경기**.
+_EXPORT_DUE_SQL = """
+    SELECT sport, league, min(starts_at) AS first_kickoff
+      FROM games
+     WHERE status = 'scheduled' AND starts_at > now()
+       AND (starts_at AT TIME ZONE 'Asia/Seoul')::date
+           = (now() AT TIME ZONE 'Asia/Seoul')::date
+     GROUP BY sport, league
+"""
+
+
+def _export_league_code(sport: str, league: str) -> str | None:
+    """`games` 한 행 → 내보내기 `--league` 코드. 모르면 None(건너뛴다)."""
+    from app.export.for_fable import LEAGUE_SPORT, SOCCER_LABEL
+
+    sp = (sport or "").lower()
+    if sp in LEAGUE_SPORT and LEAGUE_SPORT[sp] == sp:
+        return sp                                  # mlb · kbo · npb
+    for code, label in SOCCER_LABEL.items():       # uel · ucl · kleague
+        if str(league or "").strip() == label:
+            return code
+    return None
+
+
+async def _export_stage(stage: str) -> dict:
+    """한 단계를 쏜다. 반환은 `{리그: 경로}` — **조용한 0 을 막는 기록**이다."""
+    from app.export.for_fable import collect, write
+
+    s = get_settings()
+    redis = aioredis.from_url(s.redis_url, decode_responses=True)
+    out: dict = {}
+    try:
+        pool = await get_pool()
+        rows = [dict(r) for r in await pool.fetch(_EXPORT_DUE_SQL)]
+        now = datetime.now(UTC)
+        lead = EXPORT_LEAD[stage]
+        for r in rows:
+            code = _export_league_code(r["sport"], r["league"])
+            if code is None:
+                continue
+            first = r["first_kickoff"]
+            if first.tzinfo is None:
+                first = first.replace(tzinfo=UTC)
+            if first - now > lead:
+                continue                            # 아직 이르다
+            date_kst = datetime.now(KST).date().isoformat()
+            mark = f"export:{code}:{date_kst}:{stage}"
+            if not await redis.set(mark, "1", ex=EXPORT_MARK_TTL, nx=True):
+                continue                            # 오늘 이미 썼다
+            try:
+                doc = await collect(code, date_kst)
+                doc["export_meta"]["stage"] = stage
+                p, md = write(doc, stage=stage)
+                out[code] = str(p)
+                logger.info("[export] %s %s — %d경기 · %s (%d바이트)",
+                            stage, code, len(doc["games"]), p, p.stat().st_size)
+            except Exception as exc:
+                await redis.delete(mark)            # 실패는 표시를 남기지 않는다
+                logger.warning("[export] %s %s 실패: %s", stage, code, exc)
+    finally:
+        await redis.aclose()
+    return out
+
+
+async def export_t3h_job() -> None:
+    """킥오프 3시간 전 내보내기. 🔴 리그별 **첫 경기** 기준이다."""
+    got = await _export_stage("t3h")
+    if got:
+        logger.info("[scheduler] export t3h %s", got)
+
+
+async def export_lineup_job() -> None:
+    """라인업 확정 시점(T-60) 재내보내기. 파일명에 `_lineup` 이 붙는다."""
+    got = await _export_stage("lineup")
+    if got:
+        logger.info("[scheduler] export lineup %s", got)
+
+
 async def satellite_job() -> None:
     """[SAT] 위성 수집 — DB에 없는 경기 정보를 미리 긁어 캐시에 쌓는다.
 
@@ -2430,6 +2524,10 @@ def _job_specs() -> list[tuple]:
         ("satellite_15m", satellite_job, IntervalTrigger(minutes=15)),
         # [v1.4 STEP 13] 섀도 관측. `PIPELINE_V14` 가 꺼져 있으면 즉시 반환한다.
         ("flow_shadow_15m", flow_shadow_job, IntervalTrigger(minutes=15)),
+        # [EXP-2] 자동 내보내기. 🔴 읽기 전용 — 발송 경로를 타지 않는다.
+        #   문턱 방식이라 주기는 "얼마나 정확히 T-3h 를 맞추나"만 정한다.
+        ("export_t3h_10m", export_t3h_job, IntervalTrigger(minutes=10)),
+        ("export_lineup_5m", export_lineup_job, IntervalTrigger(minutes=5)),
         ("ingest_finals_13h", finals_job, CronTrigger(hour=13, minute=0, timezone=KST)),
         # [축구 시범 운영] 10분마다 — T-3h 판정 · confirmed 재판정.
         #   유럽 경기는 KST 심야~새벽이라 창을 넓게 둔다.

@@ -35,6 +35,12 @@ def test_scheduler_jobs_registered():
                          "watchdog_5m",
                          # [SAT] 위성 수집 — 기본 꺼짐(satellite_enabled).
                          "satellite_15m", "flow_shadow_15m",
+                         # [EXP-2 2026-09-19] T-3h·T-60 자동 내보내기.
+                         #   🔴 **읽기 전용**이다 — 발송 경로를 타지 않는다.
+                         #      문턱 방식이라 주기는 T-3h 를 얼마나 촘촘히
+                         #      맞추나만 정한다(창이면 한 틱 밀려 그날이 통째로
+                         #      비는 실사고가 있었다).
+                         "export_t3h_10m", "export_lineup_5m",
                          # [TRG-2] 시점 트리거 1분 루프 — 배당을 긁지 않고
                          #   이미 잡힌 스냅샷에 snap_tag 를 붙인다.
                          "triggers_1m",
