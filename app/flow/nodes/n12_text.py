@@ -60,15 +60,35 @@ def _invented(text: str, allowed: set) -> list:
     return [n for n in _NUM.findall(text or "") if n not in allowed]
 
 
+def _text_of(res) -> str:
+    """`LLMResult` → 본문. 🔴 모양을 아는 자리를 **한 곳**에 둔다 — 바뀌면
+    여기서만 고친다."""
+    for attr in ("text", "content", "output"):
+        v = getattr(res, attr, None)
+        if isinstance(v, str) and v.strip():
+            return v
+    if isinstance(res, dict):
+        for k in ("text", "content", "output"):
+            if isinstance(res.get(k), str) and res[k].strip():
+                return res[k]
+    return str(res or "")
+
+
 async def _ask(payload: dict, ctx) -> str:
     if "narration" in (ctx.inject or {}):
         return str(ctx.inject["narration"] or "")
     try:
-        from app.llm.provider import complete_text
+        # 🔴 [NAR-2 2026-09-19] 종전에는 `complete_text` 를 불렀는데 **그런
+        #    함수가 없다**(실측: ImportError 2회 → 언제나 `hallucination=True`).
+        #    진짜 API 는 `complete(role, messages) -> LLMResult` 다.
+        #    ⚠️ 역할은 `narrator` 다 — 판정 역할을 쓰면 서술이 판정 예산을 먹는다.
+        from app.llm.provider import complete
 
         prompt = PROMPT_PATH.read_text(encoding="utf-8") + json.dumps(
             payload, ensure_ascii=False, default=str)
-        return await complete_text(prompt, role="narrator")
+        res = await complete("narrator", [{"role": "user", "content": prompt}],
+                             max_tokens=600, temperature=0.0)
+        return _text_of(res)
     except Exception as exc:
         logger.warning("[flow:n12] 서술 실패: %s", exc)
         return ""
