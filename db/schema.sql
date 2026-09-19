@@ -974,3 +974,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
 
 CREATE INDEX IF NOT EXISTS idx_pick_ledger_judge
     ON pick_ledger (judge_by, date);
+
+-- ════════════════════════════════════════════════════════════════════
+-- [PIT-1 2026-09-19] 투구수 — **파서는 이미 뽑고 있었다.**
+--
+-- 🔴 `mlb_boxscore.py:68` 이 `row["pitches"]` 를 넣고(numberOfPitches ·
+--    pitchesThrown 둘 다 본다), KBO 박스스코어에도 투구수 칸이 있고 NPB 야후
+--    파서도 넣는다. 그런데 이 표에 칸이 없어 적재에서 통째로 사라졌다.
+-- 🔴 투구수는 **한도 신호의 원천**이다(로커 65구). 없으면 `innings_cap_flag`
+--    를 지어낼 수밖에 없다.
+-- ⚠️ 소급은 이미 도는 잡이 한다 — `mlb_boxscore.backfill(21일)` ·
+--    `npb_boxscore.backfill(28일)` 이 `ON CONFLICT DO UPDATE` 로 갱신한다.
+--    새 요청 0.
+-- ════════════════════════════════════════════════════════════════════
+ALTER TABLE pitcher_appearances ADD COLUMN IF NOT EXISTS pitches INT;

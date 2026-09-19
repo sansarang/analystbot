@@ -335,6 +335,7 @@ _STARTER_SQL = """
     -- ⚠️ 컬럼명은 **운영 DB 가 원본**이다. 스키마 파일에는 `h` 로 적혀 있지만
     --    실제 컬럼은 `hits` 다(실측 information_schema). 사본을 믿지 않는다.
     SELECT pa.innings, pa.er, pa.k, pa.bb, pa.hr, pa.hits, pa.batters,
+           pa.pitches,
            (g.starts_at AT TIME ZONE 'Asia/Seoul')::date d,
            g.starts_at, pa.opponent
       FROM pitcher_appearances pa
@@ -345,8 +346,46 @@ _STARTER_SQL = """
 """
 
 
+#: 한도 판단 문턱. 🔴 **지시문 2-5 가 준 값이다** — 내가 정한 값이 아니므로
+#  바꾸려면 근거가 따로 있어야 한다. 최근 3등판 중 2회 이상 이 이하면 한도 신호.
+CAP_PITCHES = 75
+CAP_MIN_HITS = 2
+CAP_LOOKBACK = 3
+
+
+def days_rest(today_kst: str | None, last_kst: str | None) -> int | None:
+    """오늘 − 직전 등판. 🔴 모르면 None — 0 이 아니다(0 은 "오늘 던졌다"다)."""
+    from datetime import date as _d
+
+    if not today_kst or not last_kst:
+        return None
+    try:
+        return (_d.fromisoformat(str(today_kst)[:10])
+                - _d.fromisoformat(str(last_kst)[:10])).days
+    except ValueError:
+        return None
+
+
+def innings_cap_flag(last3: list | None, *, after_opener: int = 0) -> bool | None:
+    """이닝 한도 신호.
+
+    🔴 최근 3등판 중 **2회 이상** 투구수 ≤ 75, **또는** 오프너 뒤 등판 1회 이상.
+    🔴 투구수를 하나도 모르면 **`None`** 이다 — `False` 가 아니다.
+       "한도가 없다"와 "모른다"는 다르고, `False` 를 "한도 없음"으로 읽으면
+       그게 곧 틀린 확신이다.
+    """
+    if after_opener and after_opener >= 1:
+        return True
+    known = [int(r["pitches"]) for r in (last3 or [])[:CAP_LOOKBACK]
+             if isinstance(r, dict) and r.get("pitches") is not None]
+    if not known:
+        return None
+    return sum(1 for p in known if p <= CAP_PITCHES) >= CAP_MIN_HITS
+
+
 def _starter_block(name: str | None, rows: list, change_notes,
-                   season_official: dict | None = None) -> dict:
+                   season_official: dict | None = None,
+                   today_kst: str | None = None) -> dict:
     """선발.
 
     🔴 `recent6` 은 **우리 DB 의 선발 등판 집계**다(기사 수치가 아니다).
@@ -369,7 +408,9 @@ def _starter_block(name: str | None, rows: list, change_notes,
         {"date_kst": str(r["d"]), "opp": r["opponent"],
          "ip": float(r["innings"] or 0), "h": r["hits"], "er": r["er"],
          "bb": r["bb"], "k": r["k"],
-         "pitches": None, "pitches_reason": "투구수 저장 없음"}
+         "pitches": r.get("pitches"),
+         "pitches_reason": None if r.get("pitches") is not None
+         else "이 등판의 투구수가 적재돼 있지 않다 (소급은 일일 박스스코어 잡이 한다)"}
         for r in rows[:3]]
 
     ip = sum(float(r["innings"] or 0) for r in rows)
@@ -387,6 +428,11 @@ def _starter_block(name: str | None, rows: list, change_notes,
                                " 아니다. FIP 는 리그 상수가 없어 null.")
     if rows and rows[0]["starts_at"] is not None:
         out["days_rest_from"] = str(rows[0]["d"])
+        out["days_rest"] = days_rest(today_kst, out["days_rest_from"])
+    out["innings_cap_flag"] = innings_cap_flag(out["last3"])
+    if out["innings_cap_flag"] is not None:
+        out["cap_note"] = (f"최근 {CAP_LOOKBACK}등판 투구수 기준 "
+                           f"(≤{CAP_PITCHES} 가 {CAP_MIN_HITS}회 이상)")
     if season_official:
         out["season_official"] = {
             "gs": season_official.get("gs") or season_official.get("games_started"),
@@ -726,7 +772,8 @@ async def _fill(pool, row: dict, sport: str, cache: dict, used: set) -> dict:
                  if name else [])
         g["starters"][side] = _starter_block(
             name, srows, notes,
-            (jg.get("research") or {}).get(f"{side}_starter_season") if jg else None)
+            (jg.get("research") or {}).get(f"{side}_starter_season") if jg else None,
+            today_kst=(g.get("kickoff_kst") or "")[:10] or None)
         if srows:
             used.add("pitcher_appearances")
 
