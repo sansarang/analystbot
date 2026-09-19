@@ -171,8 +171,7 @@ def empty_game(row: dict) -> dict:
         "away": {"abbr": None, "name": row.get("away"), "record": None,
                  "elo": None, "elo_asof": None},
         "venue": _empty_venue(),
-        "weather": {"temp_c": None, "wind": None, "precip_pct": None,
-                    "reason": "아직 채우지 않음 (STEP 2)"},
+        "weather": _empty_weather(),
         "odds": {
             "snapshot_kst": None, "book": None,
             "ml": None, "ml_devig": None, "ml_required": None,
@@ -225,6 +224,39 @@ def _empty_starter() -> dict:
         "confirmed_kst": None,
         "reason": "아직 채우지 않음 (STEP 2)",
     }
+
+
+def _empty_weather() -> dict:
+    return {"temp_c": None, "wind_ms": None, "wind_from_deg": None,
+            "precip_pct": None, "units": None,
+            "reason": "판정 캐시에 `weather_card` 가 없다 (아직 안 받았다)"}
+
+
+def _weather_block(card: dict | None) -> dict:
+    """날씨. 🔴 **새로 받지 않는다** — 파이프라인이 이미 캐시에 넣은
+    `weather_card` 를 읽는다(`app/collectors/weather.py` 가 원본이다).
+
+    🔴 돔은 **값이 아니라 사유**다. 날씨가 경기에 닿지 않는데 숫자를 적으면
+       읽는 쪽이 그것을 변수로 오해한다.
+    🔴 `wind_ms` 는 m/s 다. km/h 와 섞이면 8 과 29 가 같은 값이 된다 —
+       키 이름과 `units` 둘 다에 단위를 남긴다.
+    ⚠️ `wind_from_deg` 는 **불어오는 방향**이고, 외야/홈 판단은 구장 방위각이
+       필요하다. 여기서는 **각도를 그대로 싣고 해석하지 않는다.**
+    """
+    out = _empty_weather()
+    if not card:
+        out["reason"] = "판정 캐시에 `weather_card` 가 없다 (아직 안 받았다)"
+        return out
+    if card.get("dome"):
+        out["reason"] = "돔·지붕 구장 — 날씨가 경기에 닿지 않는다"
+        return out
+    out["temp_c"] = card.get("temp_c")
+    out["wind_ms"] = card.get("wind_ms")
+    out["wind_from_deg"] = card.get("wind_from_deg")
+    out["precip_pct"] = card.get("precip_pct")
+    out["units"] = "temp_c=°C · wind_ms=m/s · wind_from_deg=불어오는 방향(°)"
+    out["reason"] = None
+    return out
 
 
 def _empty_venue() -> dict:
@@ -922,6 +954,7 @@ async def _fill(pool, row: dict, sport: str, cache: dict, used: set) -> dict:
     absences = (jg.get("research") or {}).get("absences") if jg else None
     h_out, a_out = _split_absences(absences, home, away)
     g["venue"] = _venue_block(row)
+    g["weather"] = _weather_block(jg.get("weather_card") if jg else None)
     g["lineup"]["home"] = _lineup_block(lrows, "home", h_out)
     g["lineup"]["away"] = _lineup_block(lrows, "away", a_out)
     if lrows:
