@@ -726,15 +726,84 @@ def _lineup_block(rows: list, side: str, absences: list | None) -> dict:
     return out
 
 
-def _context_block(standing: dict | None) -> dict:
-    """순위 맥락. 🔴 시즌 타율·ERA 순위표를 넣지 않는다(v1.4 금지 항목)."""
+#: 리그별 정규시즌 경기 수. 🔴 손으로 162 를 박지 않는다 — KBO 144 · NPB 143.
+#  모르는 리그는 진출/탈락을 **계산하지 않는다**.
+SEASON_GAMES = {"mlb": 162, "kbo": 144, "npb": 143}
+
+
+def division_status(*, w, l, games_behind, season_games) -> str | None:
+    """**디비전** 우승 가능성만. 🔴 포스트시즌 진출이 아니다.
+
+    잔여 = `season_games − (w + l)`. `games_behind > 잔여` 면 디비전 1위를
+    산술적으로 따라잡을 수 없다 → `division_eliminated`.
+
+    🔴 **이것을 `playoff_status` 로 쓰면 틀린다.** `games_behind` 는 디비전
+       게임차이고, 디비전에서 밀려도 와일드카드로 진출한다. 컷라인 아래
+       순위표가 없으면 진출/탈락은 **증명할 수 없다** — 그래서 내지 않는다.
+       (이 구분을 놓치면 85승 팀에 "탈락"을 적게 된다. 실제로 이 저장소의
+        캐시 표본이 그 경우였다: 85-68 · 디비전 10게임차 · 잔여 9)
+    ⚠️ 재료가 하나라도 없으면 None 이다.
+    """
+    if w is None or l is None or games_behind is None or not season_games:
+        return None
+    try:
+        left = int(season_games) - (int(w) + int(l))
+        return ("division_eliminated" if float(games_behind) > left
+                else "division_alive")
+    except (TypeError, ValueError):
+        return None
+
+
+def travel_of(today_venue, last5) -> str | None:
+    """직전 경기 구장과 비교. 🔴 구장을 모르면 None — "이동 없음"이 아니다."""
+    if not today_venue or not last5:
+        return None
+    prev = (last5[0] or {}).get("venue")
+    if not prev:
+        return None
+    if str(prev) == str(today_venue):
+        same = 1
+        for r in last5:
+            if (r or {}).get("venue") == today_venue:
+                same += 1
+            else:
+                break
+        return f"홈스탠드 {same}일차"
+    return f"{prev} → {today_venue} 이동"
+
+
+def _context_block(standing: dict | None, *, sport: str | None = None,
+                   today_venue: str | None = None, last5: list | None = None) -> dict:
+    """순위 맥락. 🔴 시즌 타율·ERA 순위표를 넣지 않는다(v1.4 금지 항목).
+
+    🔴 `record` 는 **승패에서 만든다** — 캐시에 `record` 키가 없어서 종전엔
+       언제나 null 이었다(실측: {"rank":5,"w":71,"l":82,...}).
+    """
     out = _empty_context()
     if not standing:
         out["reason"] = "판정 캐시에 순위 자료가 없다"
         return out
-    out["record"] = standing.get("record") or standing.get("전적")
+    w, l = standing.get("w"), standing.get("l")
+    out["record"] = (standing.get("record") or standing.get("전적")
+                     or (f"{w}-{l}" if w is not None and l is not None else None))
     out["gb"] = standing.get("games_behind", standing.get("게임차"))
     out["streak"] = standing.get("streak") or standing.get("연속")
+    if out["streak"] is None:
+        out["streak_reason"] = "판정 캐시에 연속 기록이 없다 — 새로 정의하지 않는다"
+    # 🔴 진출/탈락은 **내지 않는다.** 와일드카드 순위표가 없으면 증명 불가다.
+    #    우리가 증명할 수 있는 것은 디비전 우승 가능성뿐이고, 그것은 다른 칸이다.
+    out["playoff_status"] = None
+    out["playoff_reason"] = (
+        "와일드카드 순위표가 없어 진출/탈락을 증명할 수 없다 — "
+        "디비전 게임차만으로 '탈락'을 적으면 85승 팀에도 붙는다")
+    out["division_status"] = division_status(
+        w=w, l=l, games_behind=out["gb"],
+        season_games=SEASON_GAMES.get((sport or "").lower()))
+    out["division_status_basis"] = (
+        "디비전 게임차 vs 잔여경기 — 와일드카드는 보지 않는다")
+    tv = travel_of(today_venue, last5)
+    out["travel"] = tv
+    out["series_travel_reason"] = None if tv else "직전 경기 구장을 모른다"
     out["reason"] = None
     return out
 
@@ -974,8 +1043,13 @@ async def _fill(pool, row: dict, sport: str, cache: dict, used: set) -> dict:
 
     # ⑥ context
     res = jg.get("research") or {}
-    g["context"]["home"] = _context_block(res.get("home_standing"))
-    g["context"]["away"] = _context_block(res.get("away_standing"))
+    _tv = (g.get("venue") or {}).get("name")
+    g["context"]["home"] = _context_block(
+        res.get("home_standing"), sport=sport, today_venue=_tv,
+        last5=g["form"].get("home_last5"))
+    g["context"]["away"] = _context_block(
+        res.get("away_standing"), sport=sport, today_venue=_tv,
+        last5=g["form"].get("away_last5"))
 
     # ⑦ model_probs + elo
     led = await pool.fetchrow(_LEDGER_SQL, gid)
