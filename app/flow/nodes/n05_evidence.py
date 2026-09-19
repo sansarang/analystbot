@@ -161,18 +161,96 @@ def _split(state, absences: list) -> tuple:
         return [], []
 
 
+#: 선발 최근 등판 — 내보내기의 `_STARTER_SQL` 과 같은 표를 본다.
+#  ⚠️ 창이 다르다: 내보내기는 "우리가 본 등판 전부", 여기는 **최근 3등판**이다.
+_STARTER3_SQL = """
+    SELECT pa.innings, pa.er, pa.k, pa.bb, pa.opponent,
+           (g.starts_at AT TIME ZONE 'Asia/Seoul')::date d
+      FROM pitcher_appearances pa
+      JOIN games g ON g.id = pa.game_id
+     WHERE pa.pitcher = $1 AND pa.is_starter = true
+       AND g.starts_at < $2::timestamptz
+     ORDER BY g.starts_at DESC
+     LIMIT 3
+"""
+
+
+def opp_starter_of(state, starters: dict | None) -> str | None:
+    """**상대** 선발. 🔴 픽이 원정이면 홈 선발이 우리를 막는 쪽이다."""
+    opp = "home" if (state.pick_side or "home") == "away" else "away"
+    return (starters or {}).get(opp) or None
+
+
+async def _starter_recent3(state, ctx) -> tuple:
+    """상대 선발의 최근 3등판. 반환 `(줄 목록, 투수명)`.
+
+    🔴 **교체 메모와 다른 사실이다.** 선발이 안 바뀌어도 그 선발이 최근 어떻게
+       던졌는지는 우리 득점 전망을 바꾼다. 종전에는 교체가 없으면 증거가 0이라
+       이 변수가 늘 `unknown` 이었다.
+    ⚠️ 유불리는 여기서 정하지 않는다 — ⑦의 몫이다. 사실만 싣는다.
+    """
+    inj = (ctx.inject or {})
+    starters = inj.get("starters")
+    if starters is None:
+        if ctx.pool is None:
+            return [], None
+        try:
+            row = await ctx.pool.fetchrow(
+                "SELECT home_pitcher, away_pitcher FROM games WHERE id = $1",
+                int(state.game_id))
+        except Exception as exc:
+            logger.warning("[flow:n05] 선발 조회 실패 game=%s: %s", state.game_id, exc)
+            return [], None
+        starters = {"home": (row or {}).get("home_pitcher"),
+                    "away": (row or {}).get("away_pitcher")}
+    who = opp_starter_of(state, starters)
+    ko = _kickoff_dt(state.kickoff_utc)
+    if not who or ctx.pool is None or ko is None:
+        return [], who
+    try:
+        rows = await ctx.pool.fetch(_STARTER3_SQL, who, ko)
+    except Exception as exc:
+        logger.warning("[flow:n05] 선발 최근3 조회 실패 game=%s %s: %s",
+                       state.game_id, who, exc)
+        return [], who
+    return ([f"{r['d']:%m-%d} vs {r['opponent']} "
+             f"{float(r['innings'] or 0):.1f}이닝 {r['er']}자책 {r['k']}K"
+             for r in rows], who)
+
+
+def _kickoff_dt(raw):
+    """킥오프 → `datetime`. 🔴 못 읽으면 **None** 이다.
+
+    🔴 asyncpg 는 `::timestamptz` 캐스트가 SQL 안에 있어도 **바인딩 단계에서**
+       타입을 본다 — 문자열을 넘기면 `DataError` 다(실측 2026-09-20).
+       그 예외를 호출부가 삼키면 조회가 영원히 빈손이 되고, ⑥은 그것을
+       "자료 없음"으로 읽는다. 이 저장소는 같은 함정을 두 번째 겪었다.
+    """
+    from datetime import datetime
+
+    if raw is None or isinstance(raw, datetime):
+        return raw
+    try:
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
 async def _bullpen3d(state, ctx, side: str) -> list:
     """그 팀 불펜의 최근 3일 등판. 🔴 기사에 묻지 않는다 — DB 에 있다."""
     if "bullpen" in (ctx.inject or {}):
         return list((ctx.inject["bullpen"] or {}).get(side) or [])
-    if ctx.pool is None or not state.kickoff_utc:
-        return []
+    ko = _kickoff_dt(state.kickoff_utc)
+    if ctx.pool is None or ko is None:
+        return []          # 시각을 모르면 3일 창을 만들 수 없다 — 지어내지 않는다
     team = getattr(state, side, "")
     try:
-        rows = await ctx.pool.fetch(_BULLPEN_SQL, team, state.kickoff_utc)
+        rows = await ctx.pool.fetch(_BULLPEN_SQL, team, ko)
     except Exception as exc:
-        logger.info("[flow:n05] 불펜 조회 실패 game=%s %s: %s",
-                    state.game_id, side, exc)
+        # 🔴 warning 이다. info 로 두면 정상 로그에 묻히고, 빈 목록이
+        #    "자료 없음"과 구분되지 않는다(실측: 그래서 몇 주를 몰랐다).
+        logger.warning("[flow:n05] 불펜 조회 실패 game=%s %s: %s",
+                       state.game_id, side, exc)
         return []
     return [f"{r['d']:%m-%d} {r['pitcher']} {float(r['innings'] or 0):.1f}이닝"
             for r in rows]
@@ -189,11 +267,11 @@ async def _last3(state, ctx, side: str) -> list:
         from app.engine.pick_ledger import _LAST3_SQL, _last3_line
 
         rows = await ctx.pool.fetch(_LAST3_SQL, _sport_code(state), team,
-                                    state.kickoff_utc or None)
+                                    _kickoff_dt(state.kickoff_utc))
         return [_last3_line(r, team) for r in rows]
     except Exception as exc:
-        logger.info("[flow:n05] 최근3 조회 실패 game=%s %s: %s",
-                    state.game_id, side, exc)
+        logger.warning("[flow:n05] 최근3 조회 실패 game=%s %s: %s",
+                       state.game_id, side, exc)
         return []
 
 
@@ -244,6 +322,14 @@ async def run(state, ctx):
         #    감지는 이미 있었고(`pipeline.starter_change_notes`) 가설·채점이
         #    그것을 보지 않았다 — WIR-1 과 같은 "만들어 놓고 안 이음"이다.
         if var == "starter_recent3":
+            # 🔴 [STR-2] **상대 선발의 최근 3등판**이 이 변수의 본뜻이다.
+            #    교체 메모는 다른 사실이라 둘 다 싣는다.
+            lines, who = await _starter_recent3(state, ctx)
+            if lines:
+                opp = "home" if (state.pick_side or "home") == "away" else "away"
+                out.append(_row(var, lines, source="db:pitcher_appearances",
+                                excerpt=f"{who} · " + " · ".join(lines),
+                                sides={opp: len(lines)}))
             notes = await _cache_starter_notes(state, ctx)
             if notes:
                 sides: dict = {}
