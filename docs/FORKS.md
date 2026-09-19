@@ -824,3 +824,42 @@ ls: cannot access '/data': No such file or directory
 
 ⚠️ **로컬 절반은 여전히 사람이 당긴다.** 서버가 주체이고(메모리 규칙) 맥이 켜져
    있을 필요가 없어야 하므로, 컨테이너가 볼륨에 쓰고 로컬은 필요할 때 받아간다.
+
+## F-19 — 페이블 판정을 원장 어디에 넣나 (2026-09-19)
+
+**무엇이 갈렸나.** 사람이 건 픽(페이블 채팅 판정·승률 모드)을 봇 판정과 나란히
+기록해야 한다(지시문 1-4 · 7-2). 그런데 `pick_ledger` 에는 이 인덱스가 있다:
+
+```sql
+CREATE UNIQUE INDEX idx_pick_ledger_final ON pick_ledger (game_id) WHERE is_final;
+```
+
+한 경기에 `is_final` 행은 **하나뿐**이다. 갈래는 셋 —
+(a) 인덱스를 `(game_id, judge_by)` 로 넓힌다 (b) 사람 픽을 별도 표에 둔다
+(c) 사람 픽을 `is_final=false` 로 넣는다.
+
+**어떤 자료를 찾았나.**
+
+(a) 를 고르면 곧바로 함정이 하나 있다. 기존 1,382행의 `judge_by` 가 NULL 이면
+**유니크가 풀린다** — 같은 경기에 NULL 행이 여러 개 들어간다. Postgres 는
+유니크 인덱스에서 NULL 을 서로 다른 값으로 보기 때문이다(기본
+`NULLS DISTINCT`). PG15 부터 `NULLS NOT DISTINCT` 가 있지만 기본값은 여전히
+`DISTINCT` 다.
+→ [Unique Indexes](https://www.postgresql.org/docs/9.0/indexes-unique.html) ·
+  [Partial Indexes](https://www.postgresql.org/docs/9.6/indexes-partial.html) ·
+  [EDB — unique constraint with NULL](https://www.enterprisedb.com/postgres-tutorials/postgresql-unique-constraint-null-allowing-only-one-null)
+
+**무엇을 골랐나 — (a), 단 `judge_by` 를 `NOT NULL DEFAULT 'bot_v14'` 로.**
+
+기본값이 있으면 기존 행이 그 자리에서 `bot_v14` 로 채워지고(PG11+ 는 표를 다시
+쓰지도 않는다), NULL 이 없으니 유니크가 온전하다. 지시문의 "기존 행 이관은
+`judge_by=bot_v14`" 도 이 한 수로 끝난다.
+
+**안 고른 쪽은 왜 안 골랐나.**
+
+(b) 별도 표는 `report.py --by judge_by` 와 `--compare`(7-2)가 매번 UNION 을
+해야 하고, 채점·CLV 잡도 두 곳을 봐야 한다 — 같은 성질의 행을 두 곳에 두는 것은
+나중에 한쪽만 고치게 된다.
+(c) `is_final=false` 는 이 저장소에서 **"재판정으로 밀려난 옛 행"** 이라는 뜻이
+이미 정해져 있다(`merged_from` 주석). 사람 픽은 옛 행이 아니다. 뜻이 둘이 되면
+계수기가 틀린다(09-08 계수기 규율).

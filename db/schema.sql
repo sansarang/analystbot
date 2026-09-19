@@ -651,8 +651,10 @@ ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS promoted_at   TIMESTAMPTZ;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS finalized_at  TIMESTAMPTZ;
 ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS cancel_reason TEXT;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
-    ON pick_ledger (game_id) WHERE is_final;
+-- 🔴 [LDG-1 2026-09-19] 이 인덱스의 **정의는 파일 끝으로 옮겼다** —
+--    판정자(`judge_by`)까지 보도록 넓혔기 때문이다. 여기 옛 정의를 남겨 두면
+--    `IF NOT EXISTS` 때문에 뒤의 새 정의가 영영 적용되지 않는다.
+--    정의 한 곳: 이 파일 끝 `DROP INDEX … / CREATE UNIQUE INDEX …` 블록.
 
 CREATE INDEX IF NOT EXISTS idx_pick_ledger_grade
     ON pick_ledger (graded_at) WHERE graded_at IS NULL;
@@ -944,3 +946,31 @@ CREATE INDEX IF NOT EXISTS idx_analysis_runs_run
     ON analysis_runs (run_id, created_at_utc);
 CREATE INDEX IF NOT EXISTS idx_analysis_runs_game
     ON analysis_runs (game_id, created_at_utc DESC);
+
+-- ════════════════════════════════════════════════════════════════════
+-- [LDG-1 2026-09-19] 원장에 **누가 판정했는지**를 남긴다.
+--
+-- 🔴 사람이 건 픽(페이블 채팅 판정 · 승률 모드)을 봇 판정과 **같은 game_id 로
+--    나란히** 두어야 "봇 vs 페이블"을 숫자로 비교할 수 있다(지시문 7-2).
+-- 🔴 `judge_by` 는 **NOT NULL DEFAULT** 다. NULL 이면 아래 유니크가 풀린다 —
+--    Postgres 는 유니크 인덱스에서 NULL 을 서로 다른 값으로 보기 때문이다
+--    (기본 NULLS DISTINCT). 기본값이 있으면 기존 행도 그 자리에서 채워진다.
+--    근거와 안 고른 갈래 → docs/FORKS.md F-19
+-- ⚠️ `predicted_side`(home|away)의 뜻을 넓히지 않는다 — over/under 는
+--    `market_side` 가 받는다. 한 칸에 두 뜻을 담으면 계수기가 틀린다.
+-- ════════════════════════════════════════════════════════════════════
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS judge_by    TEXT NOT NULL DEFAULT 'bot_v14';
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS market      TEXT;   -- ml|ah|total|team_total[_home|_away]|f5
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS market_side TEXT;   -- over|under|home|away|draw
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS line        DOUBLE PRECISION;
+ALTER TABLE pick_ledger ADD COLUMN IF NOT EXISTS odds_taken  DOUBLE PRECISION;  -- 실제로 받은 배당
+
+-- 🔴 **DROP 이 먼저다.** `CREATE UNIQUE INDEX IF NOT EXISTS` 는 같은 이름이 이미
+--    있으면 아무 일도 하지 않는다 — 옛 정의(game_id 하나)가 그대로 남아 새
+--    정의가 영영 적용되지 않는다. 배포해도 무해한 것처럼 보이는 조용한 실패다.
+DROP INDEX IF EXISTS idx_pick_ledger_final;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pick_ledger_final
+    ON pick_ledger (game_id, judge_by) WHERE is_final;
+
+CREATE INDEX IF NOT EXISTS idx_pick_ledger_judge
+    ON pick_ledger (judge_by, date);

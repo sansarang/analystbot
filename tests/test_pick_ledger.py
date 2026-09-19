@@ -740,10 +740,22 @@ def test_final_lookup_is_keyed_on_game_only():
 
 
 def test_schema_unique_index_is_game_only():
-    """스키마도 같이 좁혀야 한다 — 코드만 고치면 과거 중복이 되살아난다."""
+    """스키마도 같이 좁혀야 한다 — 코드만 고치면 과거 중복이 되살아난다.
+
+    🔴 이 계약이 막는 것은 **날짜로 갈리는 것**이다. 종전에는 `(game_id, date)`
+       였고, 그래서 같은 경기가 날짜별로 여러 최종 행을 가졌다.
+
+    🔴 [LDG-1 2026-09-19] 인덱스가 `(game_id, judge_by)` 로 **넓어졌다.**
+       사람이 건 픽(`fable_chat`·`user_mode_b`)을 봇 판정과 같은 경기에 나란히
+       두어야 하기 때문이다(지시문 7-2 · docs/FORKS.md F-19). 날짜는 여전히
+       들어가지 않으므로 이 계약의 원래 취지는 그대로다.
+    """
     import pathlib
 
     sql = pathlib.Path("db/schema.sql").read_text()
-    i = sql.index("idx_pick_ledger_final")
-    body = sql[i:i + 200]
-    assert "(game_id)" in body, f"유니크 인덱스가 아직 날짜를 포함한다:\n{body[:160]}"
+    i = sql.index("DROP INDEX IF EXISTS idx_pick_ledger_final")
+    body = sql[i:i + 260]
+    assert "(game_id, judge_by)" in body, \
+        f"유니크 인덱스가 판정자를 보지 않는다:\n{body[:200]}"
+    assert " date" not in body.split("WHERE")[0], \
+        f"유니크 인덱스가 아직 날짜를 포함한다:\n{body[:200]}"
