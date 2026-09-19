@@ -21,6 +21,14 @@ NODE = "n12_text"
 PROMPT_PATH = (pathlib.Path(__file__).resolve().parents[3]
                / "prompts" / "narrate_v14.txt")
 
+#: 🔴 **추론 모델이라 여유가 필요하다.** 운영 사슬의 `openai/gpt-oss-120b` 는
+#   `reasoning_tokens` 를 먼저 쓰고, 한도가 작으면 본문이 **빈 채로** 끝난다.
+#   실측 2026-09-19 (같은 프롬프트·같은 모델):
+#       600  → reasoning 598 · content 0자     ← 서술이 통째로 실패
+#       2000 → 4문장 정상
+#   ⚠️ 이 값을 줄이면 서술이 조용히 0건이 된다. 바꾸려면 위 실측을 다시 하라.
+NARRATE_MAX_TOKENS = 2000
+
 #: 숫자 검출기. 🔴 입력에 없는 숫자가 문장에 나오면 지어낸 것이다.
 _NUM = re.compile(r"\d+(?:[.,]\d+)?")
 _SENT = re.compile(r"[.!?。]\s*")
@@ -61,8 +69,13 @@ def _invented(text: str, allowed: set) -> list:
 
 
 def _text_of(res) -> str:
-    """`LLMResult` → 본문. 🔴 모양을 아는 자리를 **한 곳**에 둔다 — 바뀌면
-    여기서만 고친다."""
+    """`LLMResult` → 본문. 🔴 모양을 아는 자리를 **한 곳**에 둔다.
+
+    🔴 못 찾으면 **빈 문자열**이다. 종전 초안은 `str(res)` 를 돌려줬는데
+       그러면 `LLMResult(text='', data=None, provider='groq', ...)` 라는
+       **객체 표현이 서술로 둔갑한다**(실측으로 잡았다). 빈손은 빈손이어야
+       ⑫가 `hallucination` 으로 정직하게 끝난다.
+    """
     for attr in ("text", "content", "output"):
         v = getattr(res, attr, None)
         if isinstance(v, str) and v.strip():
@@ -71,7 +84,7 @@ def _text_of(res) -> str:
         for k in ("text", "content", "output"):
             if isinstance(res.get(k), str) and res[k].strip():
                 return res[k]
-    return str(res or "")
+    return ""
 
 
 async def _ask(payload: dict, ctx) -> str:
@@ -87,7 +100,7 @@ async def _ask(payload: dict, ctx) -> str:
         prompt = PROMPT_PATH.read_text(encoding="utf-8") + json.dumps(
             payload, ensure_ascii=False, default=str)
         res = await complete("narrator", [{"role": "user", "content": prompt}],
-                             max_tokens=600, temperature=0.0)
+                             max_tokens=NARRATE_MAX_TOKENS, temperature=0.0)
         return _text_of(res)
     except Exception as exc:
         logger.warning("[flow:n12] 서술 실패: %s", exc)

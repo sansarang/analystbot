@@ -66,3 +66,33 @@ async def test_호출이_실패해도_예외를_올리지_않는다():
     out = await N.run(s, Ctx(inject={"narration": ""}))
     assert out.n12_text["hallucination"] is True
     assert out.n12_text["sentences"] == []
+
+
+# ── [NAR-2b] 추론 모델 토큰 여유 · 빈손 폴백
+
+def test_토큰_여유가_추론_모델_몫을_포함한다():
+    """🔴 실측: `openai/gpt-oss-120b` 는 추론 모델이다.
+         max_tokens=600  → reasoning 598 · content **0자**
+         max_tokens=2000 → 4문장 정상
+       줄이면 서술이 **조용히 0건**이 된다."""
+    from app.flow.nodes.n12_text import NARRATE_MAX_TOKENS
+
+    assert NARRATE_MAX_TOKENS >= 1500, NARRATE_MAX_TOKENS
+
+
+def test_빈손이면_객체표현을_서술로_쓰지_않는다():
+    """🔴 `str(res)` 를 돌려주면
+       "LLMResult(text='', data=None, provider='groq', ...)" 가 서술로 둔갑한다.
+       빈손은 빈손이어야 ⑫가 `hallucination` 으로 정직하게 끝난다."""
+    from dataclasses import dataclass
+
+    from app.flow.nodes.n12_text import _text_of
+
+    @dataclass
+    class _R:
+        text: str = ""
+        provider: str = "groq"
+
+    assert _text_of(_R()) == ""
+    assert _text_of(None) == ""
+    assert _text_of(_R(text="네 문장.")) == "네 문장."
