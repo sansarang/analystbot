@@ -81,6 +81,32 @@ async def ensure_elo(pool, redis, sport: str, date: str, *, refresh=None) -> boo
         return False
 
 
+#: 선발 교체 메모의 표지. 🔴 `lineups.py` 가 `f"{side} 선발 변경: A → B"` 로
+#  만든다 — 그 문구가 원본이고 여기서 새로 짓지 않는다.
+STARTER_CHANGE_MARK = "선발 변경"
+
+
+def rejudge_signals_of(cg: dict | None) -> dict:
+    """판정 캐시 한 경기 → ⑩이 읽는 신호.
+
+    🔴 `pipeline.starter_changed` 를 **쓰지 않는다.** 그 칸의 정의는
+       `lineup_status == "conflict"` 이고 그건 *소스 불일치*이지 선발 교체가
+       아니다. ⑩ 머리말은 트리거가 "`starter_change_notes` 가 낸 줄"이라고
+       적고 있으므로 그 줄을 본다.
+       ⚠️ 저 칸은 `deep.needs_refresh` 가 쓰고 있어 건드리지 않는다.
+    ⚠️ `lineup_just_confirmed` 는 `lineup_confirmed_at` 에 의존한다 —
+       LIN-1 전에는 KBO·NPB 가 그 칸을 안 적어 구조적으로 항상 False 였다.
+    """
+    cg = cg or {}
+    notes = cg.get("lineup_notes") or []
+    if isinstance(notes, str):
+        notes = [notes]
+    return {
+        "lineup_confirmed": bool(cg.get("lineup_just_confirmed")),
+        "starter_changed": any(STARTER_CHANGE_MARK in str(n) for n in notes),
+    }
+
+
 def model_probs_from_cache(jg: dict | None, *, lines: dict | None = None,
                            settings=None) -> dict | None:
     """판정 캐시의 `research` 로 λ 를 세우고 전 마켓 확률을 만든다.
@@ -225,8 +251,12 @@ async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
         # 🔴 경기마다 주입을 갈아끼운다. 예산(`ctx.budget`)은 **슬레이트 단위로
         #    유지**된다 — 그래서 `inject` 만 바꾸고 ctx 를 새로 만들지 않는다.
         gid = game["game_id"]
+        # 🔴 [REJ-1] ⑩ 재판정 신호도 함께 준다. 종전에는 `model_probs` 하나만
+        #    줘서 `rejudge_signals` 가 영원히 빈 dict 였고 `n10_rejudge` 행이
+        #    0건이었다(Phase 0 D-7).
         ctx.inject = {"model_probs": model_by_game.get(
-            int(gid) if str(gid).isdigit() else -1)}
+            int(gid) if str(gid).isdigit() else -1),
+            "rejudge_signals": rejudge_signals_of(cache_by_game.get(str(gid)))}
         try:
             st = await run_game(game, ctx)
         except Exception as exc:
