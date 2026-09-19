@@ -53,20 +53,35 @@ if [ "${#FILES[@]:-0}" -eq 0 ]; then
 fi
 
 mkdir -p "$LOCAL_DIR"
-got=0
+TMP=$(mktemp); trap 'rm -f "$TMP"' EXIT
+got=0; same=0; fail=0
+
 for f in "${FILES[@]}"; do
+  if ! rssh "cat $REMOTE_DIR/$f" > "$TMP" || [ ! -s "$TMP" ]; then
+    echo "  🔴 $f 회수 실패" >&2; fail=$((fail + 1)); continue
+  fi
+
+  # 🔴 **서버 이름을 그대로 쓴다.** 받는 쪽이 이름을 바꾸면 그 순간 대조할 수
+  #    없는 사본이 된다 — 로컬 `_r2`(두 번째 회수)와 서버 `_r2`(두 번째 실행)가
+  #    같은 이름으로 다른 내용을 가리켰다(실측 2026-09-19, docs/maps/EXP-4.md).
   dst="$LOCAL_DIR/$f"
-  if [ -e "$dst" ]; then                      # 덮지 않는다 — 번호를 올린다
-    base="${f%.*}"; ext="${f##*.}"; n=1
-    while [ -e "$dst" ]; do n=$((n + 1)); dst="$LOCAL_DIR/${base}_r${n}.${ext}"; done
+  if [ -e "$dst" ]; then
+    if cmp -s "$TMP" "$dst"; then             # 내용이 같으면 받지 않는다
+      printf '  = %-44s 동일 — 건너뜀\n' "$f"
+      same=$((same + 1)); continue
+    fi
+    # 다르면 **서버 파일의 수정 시각**으로 가른다. 번호와 달리 어느 실행에서
+    # 나온 것인지 되짚을 수 있다.
+    # 🔴 표기는 항상 KST 다(CLAUDE.md 규칙 5) — 파일명도 예외가 아니다.
+    ts=$(rssh "TZ=Asia/Seoul date -r $REMOTE_DIR/$f '+%m%d_%H%M'" | tr -d '\r' | head -1)
+    [ -n "$ts" ] || ts="unknown"
+    dst="$LOCAL_DIR/${f%.*}__${ts}.${f##*.}"
   fi
-  if rssh "cat $REMOTE_DIR/$f" > "$dst" && [ -s "$dst" ]; then
-    printf '  ↓ %-44s %8d바이트  →  %s\n' "$f" "$(wc -c < "$dst")" "$dst"
-    got=$((got + 1))
-  else
-    rm -f "$dst"
-    echo "  🔴 $f 회수 실패" >&2
-  fi
+
+  cp "$TMP" "$dst"
+  printf '  ↓ %-44s %8d바이트  →  %s\n' "$f" "$(wc -c < "$dst")" "$(basename "$dst")"
+  got=$((got + 1))
 done
-echo "받음 ${got}/${#FILES[@]}건 · $LOCAL_DIR"
-[ "$got" -gt 0 ]
+
+echo "받음 ${got}건 · 동일 ${same}건 · 실패 ${fail}건 / 목록 ${#FILES[@]}건 · $LOCAL_DIR"
+[ $((got + same)) -gt 0 ]
