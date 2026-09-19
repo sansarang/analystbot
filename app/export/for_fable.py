@@ -70,6 +70,9 @@ SOCCER_LABEL = {"uel": "UEL", "ucl": "UCL", "kleague": "K리그1"}
 # ── STEP 0 에서 "없음"으로 확인된 칸의 사유. 🔴 **손으로 지어내지 않는다** —
 #    각 문장은 그때 찾은 근거다. 소스가 생기면 이 표에서 지운다.
 NO_SOURCE = {
+    "season_official": ("공식 시즌 스탯이 판정 캐시에 없다 — "
+                        "`starter_season.attach` 를 부르는 곳이 0건이다"
+                        "(`rg starter_season app/pipeline.py`)"),
     "sr_id": "sportradar 연동 없음 (전수 검색 0건)",
     "sportradar_win": "sportradar 연동 없음 (전수 검색 0건)",
     "venue": "statsapi hydrate=venue(location) 를 받지만 _parse_games 가 무시한다 — 저장 테이블 없음",
@@ -198,12 +201,16 @@ def empty_game(row: dict) -> dict:
 def _empty_starter() -> dict:
     return {
         "name": None, "hand": None, "id": None,
-        # 🔴 [2026-09-19 사용자 결정] 시즌 라인을 **넣는다.** 내보내기는 판정이
-        #    아니다 — `starter_recent.py` 도 같은 이유로 "표본 보정용 시즌 라인"을
-        #    둔다(실사고 2026-09-01: 표본 1경기를 "안정적"으로 읽었다).
-        #    ⚠️ 이 값이 **판정 입력으로 새면** v1.4 금지 규칙 위반이다.
-        "season": {"gs": None, "ip": None, "era": None, "fip": None,
-                   "k9": None, "bb9": None, "hr9": None},
+        # 🔴 [STR-1 2026-09-19] 이름을 `season` → `recent6` 로 바꿨다.
+        #    종전 이름이 **거짓말이었다** — `gs` 가 1~6 인데 공식 시즌은 28선발이다.
+        #    주석으로는 사과하고 있었지만(`season_note`) 읽는 쪽은 이름을 믿는다.
+        #    페이블이 "시즈 7선발 2.70"을 공식 시즌으로 읽은 것이 그 증거다.
+        "recent6": {"gs": None, "ip": None, "era": None, "fip": None,
+                    "k9": None, "bb9": None, "hr9": None},
+        # 🔴 공식 시즌 누적. **표시용이다** — 이름의 `_official` 이 그것을 말한다
+        #    (CLAUDE.md §9). v1.4 동결이 시즌 누적을 판정 입력에서 금지한다.
+        "season_official": {"gs": None, "ip": None, "era": None,
+                            "reason": NO_SOURCE["season_official"]},
         "last3": None, "days_rest": None,
         "innings_cap_flag": None, "cap_note": NO_SOURCE["innings_cap"],
         "starter_change_notes": None,
@@ -338,8 +345,16 @@ _STARTER_SQL = """
 """
 
 
-def _starter_block(name: str | None, rows: list, change_notes) -> dict:
-    """선발. 🔴 `season` 은 **공식 등판 기록의 집계**다 — 기사 수치가 아니다."""
+def _starter_block(name: str | None, rows: list, change_notes,
+                   season_official: dict | None = None) -> dict:
+    """선발.
+
+    🔴 `recent6` 은 **우리 DB 의 선발 등판 집계**다(기사 수치가 아니다).
+       이름이 그것을 말한다 — 종전 `season` 은 `gs` 가 1~6 인데 공식 시즌은
+       28선발이라 이름이 거짓말이었다.
+    🔴 `season_official` 은 판정 캐시의 `research.{side}_starter_season` 이다.
+       **여기서 새로 부르지 않는다** — 내보내기는 읽기 전용이다.
+    """
     out = _empty_starter()
     out["starter_change_notes"] = change_notes
     if not name:
@@ -359,7 +374,7 @@ def _starter_block(name: str | None, rows: list, change_notes) -> dict:
 
     ip = sum(float(r["innings"] or 0) for r in rows)
     if ip > 0:
-        out["season"] = {
+        out["recent6"] = {
             "gs": len(rows), "ip": round(ip, 1),
             "era": round(9.0 * sum(int(r["er"] or 0) for r in rows) / ip, 2),
             # 🔴 FIP 는 리그 상수(cFIP)가 필요하다 — 저장돼 있지 않다.
@@ -368,10 +383,17 @@ def _starter_block(name: str | None, rows: list, change_notes) -> dict:
             "bb9": round(9.0 * sum(int(r["bb"] or 0) for r in rows) / ip, 2),
             "hr9": round(9.0 * sum(int(r["hr"] or 0) for r in rows) / ip, 2),
         }
-        out["season_note"] = ("우리 DB 의 선발 등판 집계다 — 공식 시즌 스탯 API "
-                              "값이 아니다. FIP 는 리그 상수가 없어 null.")
+        out["recent6_note"] = ("우리가 본 선발 등판 전부의 집계다 — 시즌 누적이"
+                               " 아니다. FIP 는 리그 상수가 없어 null.")
     if rows and rows[0]["starts_at"] is not None:
         out["days_rest_from"] = str(rows[0]["d"])
+    if season_official:
+        out["season_official"] = {
+            "gs": season_official.get("gs") or season_official.get("games_started"),
+            "ip": season_official.get("ip") or season_official.get("innings"),
+            "era": season_official.get("era"),
+            "reason": None,
+        }
     out["reason"] = None
     return out
 
@@ -702,7 +724,9 @@ async def _fill(pool, row: dict, sport: str, cache: dict, used: set) -> dict:
         name = row.get(f"{side}_pitcher")
         srows = ([dict(x) for x in await pool.fetch(_STARTER_SQL, name, ko)]
                  if name else [])
-        g["starters"][side] = _starter_block(name, srows, notes)
+        g["starters"][side] = _starter_block(
+            name, srows, notes,
+            (jg.get("research") or {}).get(f"{side}_starter_season") if jg else None)
         if srows:
             used.add("pitcher_appearances")
 
@@ -877,10 +901,18 @@ def _md_game(g: dict) -> list:
     v = g["v14_run"]
 
     def _s(s):
-        se = s.get("season") or {}
+        # 🔴 [STR-1] "시즌 6선발" 이라고 찍던 자리다. 그 문구가 페이블에게
+        #    공식 시즌으로 읽혔다 — 실제로는 **우리가 본 등판 전부**다.
+        #    공식 시즌값이 있으면 그것도 함께, 없으면 적지 않는다.
+        se = s.get("recent6") or {}
         era = se.get("era")
-        return (f"{s.get('name') or '미정'}"
-                + (f" (시즌 {se.get('gs')}선발 ERA {era})" if era is not None else ""))
+        txt = str(s.get("name") or "미정")
+        if era is not None:
+            txt += f" (최근 {se.get('gs')}선발 ERA {era})"
+        off = s.get("season_official") or {}
+        if off.get("era") is not None:
+            txt += f" · 공식시즌 {off.get('gs')}선발 ERA {off.get('era')}"
+        return txt
 
     def _l3(s):
         r = (s.get("last3") or [None])[0]
