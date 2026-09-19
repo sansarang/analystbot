@@ -51,6 +51,19 @@ def _ours_markets(model_probs: dict | None) -> dict:
             continue
         if d.get("home_minus") is not None:
             out.setdefault("ah", {})[line] = float(d["home_minus"])
+
+    # 🔴 [MOD-1 2026-09-19] 팀토탈. ⑪의 후보 이름은
+    #    `team_total_home_over` 꼴이다(`n11_value._structure_candidates`) —
+    #    그 이름을 여기서 **새로 짓지 않고** 그쪽 규칙에 맞춘다.
+    for side in ("home", "away"):
+        for k, d in ((mp.get("team_totals") or {}).get(side) or {}).items():
+            line = _line(k)
+            if line is None or not isinstance(d, dict):
+                continue
+            for way in ("Over", "Under"):
+                if d.get(way) is not None:
+                    key = f"team_total_{side}_{way.lower()}"
+                    out.setdefault(key, {})[line] = float(d[way])
     return out
 
 

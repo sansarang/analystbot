@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC
+from datetime import UTC, date
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,37 @@ async def ensure_elo(pool, redis, sport: str, date: str, *, refresh=None) -> boo
         return False
 
 
+def model_probs_from_cache(jg: dict | None, *, lines: dict | None = None,
+                           settings=None) -> dict | None:
+    """판정 캐시의 `research` 로 λ 를 세우고 전 마켓 확률을 만든다.
+
+    🔴 **왜 여기서 만드나.** 옛 파이프라인은 야구에서 λ 경로를 통째로 건너뛴다
+       (`pipeline.py:3763` · SEND-1 결정 B-1 2026-09-13). 그래서
+       `pick_ledger.model_probs` 가 1,382행 전건 NULL 이고 ⑪의 구조 후보가
+       0 이었다. **그 결정을 되돌리지 않는다** — 옛 발송 경로의 확률이 바뀐다.
+       v1.4 흐름은 별도 경로이므로 여기서 따로 계산한다.
+    🔴 계수를 만지지 않는다 — 30건 채점 전 동결(지시문 3-4 교정 원칙).
+    ⚠️ 재료가 없으면 **None** 이다. "모델이 없다"와 "안 불렀다"는 다르다.
+    """
+    if not jg:
+        return None
+    sport = (jg.get("sport") or "").lower()
+    if sport not in ("mlb", "kbo", "npb"):
+        return None
+    try:
+        from app.engine.scoring import mlb_lambdas, mlb_market_probs
+
+        lam = mlb_lambdas(jg, jg.get("research") or {}, settings, sport=sport)
+        if not lam.home or not lam.away:
+            logger.info("[flow] λ 못 세움 game=%s missing=%s",
+                        jg.get("game_id"), lam.missing)
+            return None
+        return mlb_market_probs(lam.home, lam.away, lines=lines, settings=settings)
+    except Exception as exc:
+        logger.warning("[flow] 파생 확률 계산 실패 game=%s: %s", jg.get("game_id"), exc)
+        return None
+
+
 async def run_today(pool, redis, *, lookahead_h: int = 24, settings=None) -> dict:
     """오늘 슬레이트 전체를 섀도로 돌린다.
 
@@ -134,6 +165,7 @@ async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
         ok = await ensure_elo(pool, redis, sp, day)
         logger.info("[flow] elo 보장 %s %s — %s", sp, day, "있음" if ok else "없음")
 
+
     # 🔴 [2026-09-19] **파생 확률을 슬레이트 단위로 한 번 읽는다.**
     #    없으면 ⑪의 구조 후보가 0 이고, `동의` 라벨이 만든 파생 가설이 쓰일
     #    자리가 없다. 경기마다 조회하면 질의가 N배가 되므로 한 번에 읽는다.
@@ -148,6 +180,37 @@ async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
                         json.loads(raw) if isinstance(raw, str) else raw)
         except Exception as exc:
             logger.warning("[flow] 파생 확률 조회 실패: %s", exc)
+    # 🔴 [MOD-1] 판정 캐시를 **슬레이트마다 한 번** 읽는다 — 경기마다 읽으면
+    #    같은 문서를 N번 파싱한다. 파생 확률의 재료(`research`)가 여기 있다.
+    cache_by_game: dict = {}
+    if redis is not None:
+        from datetime import timedelta as _td
+        for sp, day in sorted(want):
+            for d in (day, (date.fromisoformat(day) - _td(days=1)).isoformat()):
+                try:
+                    raw = await redis.get(f"analysis:{sp}:{d}")
+                except Exception:
+                    raw = None
+                if not raw:
+                    continue
+                try:
+                    doc = json.loads(raw)
+                except ValueError:
+                    continue
+                for cg in doc.get("games") or []:
+                    cache_by_game.setdefault(str(cg.get("game_id")), cg)
+                break
+        made = 0
+        for gid, cg in cache_by_game.items():
+            if gid in {str(k) for k in model_by_game}:
+                continue          # 원장에 있으면 그것이 먼저다
+            got = model_probs_from_cache(cg, settings=s)
+            if got:
+                model_by_game[int(gid)] = got
+                made += 1
+        logger.info("[flow] 파생 확률 — 원장 %d건 · 캐시에서 계산 %d건",
+                    len(model_by_game) - made, made)
+
     if rows and not model_by_game:
         # 🔴 조용한 0 금지 — "모델이 없다"와 "안 읽었다"는 다르다.
         logger.info("[flow] 파생 확률 0건 — 구조 픽 후보가 서지 않는다 "

@@ -475,6 +475,20 @@ def mlb_market_probs(lam_home: float, lam_away: float, lines: dict | None = None
                 t5 += j
     out["f5"] = {"home": round(w5, 4), "away": round(1 - w5 - t5, 4), "draw": round(t5, 4),
                  "lambda": {"home": round(f5_h, 3), "away": round(f5_a, 3)}}
+    # 🔴 [MOD-1 2026-09-19] **팀토탈.** 같은 분포의 꼬리 합일 뿐이다 —
+    #    새 계수도 새 가정도 없다. 종전에 이 칸이 없어서 ⑪의 구조 후보가
+    #    총점·핸디로만 좁혀졌고, 페이블이 실제로 건 `NYY 팀토탈 언더 3.5`
+    #    같은 자리를 우리는 평가할 수 없었다.
+    #    ⚠️ 라인은 **반 점만** 만든다 — 정수는 푸시가 생겨 합이 1이 아니다
+    #       (`_default_total_lines` 머리말과 같은 이유).
+    tt_lines = ((lines or {}).get("team_totals")
+                or _default_total_lines(lam_home)[:1] + _default_total_lines(lam_away)[:1])
+    out["team_totals"] = {"home": {}, "away": {}}
+    for side, pmf in (("home", ph), ("away", pa)):
+        for line in tt_lines:
+            over = sum(p for k, p in enumerate(pmf) if k > line)
+            out["team_totals"][side][line] = {
+                "Over": round(over, 4), "Under": round(1 - over, 4)}
     out["lambda"] = {"home": lam_home, "away": lam_away}
     return out
 
