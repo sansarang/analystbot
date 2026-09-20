@@ -351,11 +351,16 @@ async def run(state, ctx):
             logger.info("[flow:n05] game=%s 경기당 상한 %d 도달 — 나머지는 미상",
                         state.game_id, per_game_cap)
             break
-        if not ctx.take_search(1):
-            logger.info("[flow:n05] game=%s 슬레이트 예산 소진 — 나머지는 미상",
-                        state.game_id)
-            break
-
+        # 🔴 [BUD-1 / STEP 1-a 2026-09-20] **여기서 예산을 차감하지 않는다.**
+        #    종전에는 변수마다 `ctx.take_search(1)` 을 불렀는데, 이 노드에는
+        #    **기사 fetch 가 없다** — 바깥 호출이 Redis 읽기(판정 캐시·위성
+        #    추출)와 DB 조회뿐이고 httpx/aiohttp/requests 가 0건이다.
+        #    기사는 별도 잡 `satellite_15m` 이 긁고 ⑤는 읽기만 한다.
+        #    실측 2026-09-20 KBO: 앞 두 경기가 DB 조회로 예산 10 을 다 써서
+        #    두산@KT 가 **캐시 결장 3건을 손에 쥐고도** 한 변수도 못 열었다
+        #    ("여섯 변수 전부 미상"은 자료가 없어서가 아니라 예산이 없어서였다).
+        # ⚠️ `Ctx.take_search` 는 **남겨 둔다.** 기사 수집이 ⑤에 붙을 때
+        #    (STEP 7-4) 그 자리에서만 쓰고, 그때 경기별 예약도 함께 만든다.
         # 🔴 [2026-09-18] **선발 축.** 딥서치가 야구에서 가장 큰 단일 변수라고
         #    말한 자리다(선발 교체 = 머니라인 40~60센트 · FORKS F-16).
         #    감지는 이미 있었고(`pipeline.starter_change_notes`) 가설·채점이
