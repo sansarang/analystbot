@@ -238,3 +238,34 @@ async def test_타_팀_선수는_증거에서_빠진다():
     joined = " ".join(str(v) for v in vals)
     assert "고승민" in joined, f"같은 팀 선수가 사라졌다: {vals}"
     assert "양석환" not in joined, f"타 팀 선수가 증거로 들어갔다: {vals}"
+
+
+# ── ⑦ 매칭 미연결을 실제로 세는가 ─────────────────────────────────
+def test_match_unmapped를_세는_코드가_있다():
+    """🔴 `CODES` 에 이름만 있고 세는 코드가 없으면 그것은 '만들어 놓고 안 이음'이다."""
+    import inspect
+
+    from app.ops import selfcheck as SC
+
+    assert "match_unmapped" in SC.CODES
+    src = inspect.getsource(SC)
+    assert "_unmapped" in src, "이름표만 있고 세는 함수가 없다"
+    assert "_unmapped(pool)" in inspect.getsource(SC.run), "run() 이 부르지 않는다"
+
+
+def test_대기표의_확인된_이름은_추정이_아니다():
+    """🔴 `fotmob_id` 가 있는 행은 **실제로 읽은 값**이어야 한다.
+    추정으로 채우면 AC밀란 오매칭이 재발한다."""
+    import pathlib
+
+    import yaml
+
+    doc = yaml.safe_load(pathlib.Path(
+        "config/team_alias_pending.yaml").read_text(encoding="utf-8")) or {}
+    rows = doc.get("pending") or []
+    ids = {r["ours"]: r.get("fotmob_id") for r in rows}
+    # 09-20 하루치 목록에서 실제로 읽은 값들(실측).
+    assert ids.get("Brondby IF") == 8595
+    assert ids.get("SonderjyskE") == 8487, "확인한 id 를 적지 않았다"
+    # 🔴 확인했다고 자동 승격하지 않는다.
+    assert all(not r.get("approved") for r in rows), "사람 승인 없이 승격됐다"

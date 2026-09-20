@@ -53,8 +53,14 @@ pending:
     approved: false
 
   - ours: "SonderjyskE"
-    fotmob_name: null
-    fotmob_id: null
+    fotmob_name: "Sønderjyske"
+    fotmob_id: 8487
     league: "Superligaen"
-    reason: "🔴 오늘 경기가 없어 FotMob 이름을 **확인하지 못했다**. SønderjyskE 로 추정되나 미확인 — 확인 전에는 승인하지 않는다"
+    # 🔴 [W2 2026-09-21] **확인했다.** 09-20 하루치 목록에서 실제로 읽은 이름·id 다
+    #    (추정이 아니다). 표기는 'SønderjyskE' 가 아니라 **'Sønderjyske'** 였다.
+    # ⚠️ 그런데 **치환표로 이미 풀린다** — norm('SonderjyskE') == 'sonderjyske' 이고
+    #    norm('Sønderjyske') 도 'sonderjyske' 다(실측). 별칭이 필요 없다.
+    #    기록만 남기고 승인하지 않는다.
+    resolved_by: "name_map"
+    reason: "확인 완료 — 치환표(ø→o)로 매칭된다. 별칭 불필요"
     approved: false

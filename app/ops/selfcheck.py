@@ -433,7 +433,13 @@ async def run(pool, redis, *, now=None) -> list:
     rows = await _try("odds", pool.fetch(_ODDS_SQL))
     hits += check_odds_move([dict(r) for r in rows])
 
-    # ④ 추출 상자 — 결장·XI·출처
+    # ④ 매칭 — 외부 경기·팀을 우리 행에 못 붙였나
+    #    🔴 [W2 2026-09-21] `CODES` 에 이름만 있고 **세는 코드가 없었다** —
+    #       이 저장소의 "만들어 놓고 안 이음"이다. 여기서 잇는다.
+    #    ⚠️ 오늘 경기가 있는 리그만 본다. 경기가 없으면 "못 붙였다"가 아니다.
+    hits += await _try("match", _unmapped(pool))
+
+    # ⑤ 추출 상자 — 결장·XI·출처
     try:
         from app.collectors.satellite import EXTRACT_KEY
 
@@ -465,6 +471,52 @@ async def run(pool, redis, *, now=None) -> list:
     logger.info("[selfcheck] %s — 위반 %d건 (%s)", today, len(hits),
                 summarize(hits))
     return hits
+
+
+async def _unmapped(pool) -> list:
+    """오늘 우리 슬레이트의 팀 중 **FotMob 이름으로 못 찾는** 것.
+
+    🔴 실측 2026-09-21(09-20 하루치 목록 541경기 기준):
+         Brondby IF   → 'Brøndby IF'   치환표로 **풀렸다**
+         SonderjyskE  → 'Sønderjyske'  치환표로 **풀렸다**
+         FC Copenhagen · Jeju United FC · Club Atlético de Madrid ·
+         Bayer 04 Leverkusen · Real Madrid CF  → **못 찾는다**(별칭 승인 대기)
+    ⚠️ 못 찾는 것을 **자동으로 별칭에 올리지 않는다** — 사람이 승인한 행만
+       간다(`config/team_alias_pending.yaml` · AC밀란 오매칭 재발 방지).
+    ⚠️ FotMob 을 못 부르면(네트워크·차단) **위반이 아니다** — 못 쟀을 뿐이다.
+    """
+    out: list = []
+    try:
+        from datetime import datetime as _dt
+        from zoneinfo import ZoneInfo
+
+        from app.collectors.fotmob import norm, slate
+
+        rows = await pool.fetch(
+            "SELECT DISTINCT league, home, away FROM games "
+            "WHERE sport = 'soccer' AND starts_at BETWEEN now() - interval '1 day' "
+            "AND now() + interval '1 day'")
+        if not rows:
+            return out
+        day = _dt.now(ZoneInfo("Asia/Seoul")).strftime("%Y%m%d")
+        theirs = await slate(day)
+        if not theirs:
+            logger.info("[selfcheck] FotMob 목록이 비었다 — 매칭은 못 쟀다")
+            return out
+        known = set()
+        for r in theirs:
+            for side in ("home", "away"):
+                if r.get(side):
+                    known.add(norm(r[side]))
+        for r in rows:
+            for side in ("home", "away"):
+                name = str(r[side] or "")
+                if name and norm(name) not in known:
+                    out.append(_hit("match_unmapped", name,
+                                    f"{r['league']} — FotMob 이름으로 못 찾는다"))
+    except Exception as exc:
+        logger.info("[selfcheck] 매칭 조회 실패: %s", exc)
+    return out
 
 
 #: 🔴 조회는 **여기 세 문장뿐이다.** 다른 곳에서 같은 것을 또 묻지 않는다.
