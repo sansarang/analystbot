@@ -104,6 +104,25 @@ LEAGUES: dict[str, dict] = {
 #   그 계약은 **전 기능이 준비된 리그**를 뜻했다 — 그 뜻을 여기서 명시한다.
 FULL_FEATURES = ("results", "odds", "satellite", "router", "judge")
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴 [LGA-1b 2026-09-20] **리그를 여는 기준.** `results` 만 켠 리그를 언제
+#    `odds`·`satellite`·`router`·`judge` 로 넓히나.
+#
+#    셋이 **모두** 갖춰졌을 때만 넓히고 `aliases` 를 채운다:
+#      (a) 소급 적재 완결   — 팀당 경기 수가 리그 라운드 수와 맞는다(STEP 1-i-3)
+#      (b) 배당 스냅샷      — 그 리그 경기에 `open`/`open_proxy` 가 실제로 있다
+#      (c) 위성 URL 실측    — `config/sources.yaml` 의 그 리그 소스가 fetch 성공
+#
+# ⚠️ 그 전에는 **열지 않는다.** 라우터에 보이면 사용자가 부르고, 그때
+#    "자료 없음"이 아니라 **빈 카드**가 나간다.
+# ⚠️ 반대 방향도 잠겨 있다 — `judge`/`router` 를 켜려면 `results` 와 그
+#    적재 경로(`fd_names` 또는 `fotmob_id`)가 **먼저** 있어야 한다.
+#    그것이 없으면 판정만 쌓이고 영원히 채점되지 않는다(실측: ACL 8건).
+#    계약: `tests/test_lga1b_feature_lock.py::test_judge_requires_results`
+#
+# 대상(2026-09-20): ligue1 · eredivisie — 셋 다 미충족이라 `results` 만.
+# ══════════════════════════════════════════════════════════════════
+
 
 def features_of(key: str) -> tuple:
     """그 리그가 켜 둔 기능. 🔴 명시가 없으면 전부다(종전 동작 보존)."""
