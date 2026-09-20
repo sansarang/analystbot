@@ -79,9 +79,24 @@ UNSUPPORTED_LEAGUE_ALIASES = [
 ]
 
 
+#: 🔴 [EXT-2 2026-09-20] **야구 리그 키.** `LEAGUES` 는 축구 전용이라
+#   `league_labels().get("KBO")` 가 None 이었고, 호출부가 `or ""` 로 받아
+#   빈 키가 됐다. 그 키는 `scout_config.rank(url, league)` 가 소스 tier 를
+#   고르는 데 쓰므로 비면 **야구 기사 등급이 전부 미상**이 된다.
+#   ⚠️ `config/sources.yaml` 에는 `kbo`·`npb`·`mlb` 가 **이미 있다**
+#      (tier1·tier2). 표가 있는데 키가 안 닿았을 뿐이다 — 그 키와 같은 글자다.
+BASEBALL_LEAGUE_KEYS = {"KBO": "kbo", "NPB": "npb", "MLB": "mlb"}
+
+
 def league_labels() -> dict[str, str]:
-    """label → league_key 역매핑."""
-    return {v["label"]: k for k, v in LEAGUES.items()}
+    """label → league_key 역매핑. 🔴 야구도 포함한다(소스 tier 용).
+
+    ⚠️ 축구 `LEAGUES` 는 그대로다 — 야구를 그 표에 넣으면 `find_league`·
+       슬레이트 적재 같은 축구 전용 경로가 야구를 리그로 본다.
+    """
+    out = {v["label"]: k for k, v in LEAGUES.items()}
+    out.update(BASEBALL_LEAGUE_KEYS)
+    return out
 
 
 def find_league(text: str) -> str | None:

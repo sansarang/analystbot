@@ -78,8 +78,17 @@ def test_초기값_더비가_리그별로_있다():
 
 
 @pytest.mark.asyncio
-async def test_빅매치가_아니면_LLM_추출을_건너뛴다(monkeypatch):
-    """🔴 [BIG-2] 그 외 경기는 구조 JSON 만으로 간다."""
+async def test_빅매치가_아니어도_LLM_추출을_한다(monkeypatch):
+    """🔴 [EXT-2 / STEP 1-g 2026-09-20] **BIG-2 의 "빅매치에만" 은 폐기됐다.**
+
+    종전 계약: 빅매치가 아니면 구조 JSON 만으로 간다.
+    뒤집은 이유(사용자 결정 `two_gates_0920`): 그 조건이 **구경로 게이트**와
+    함께 추출을 갈랐고, 흐름의 가설이 수집에 닿지 못했다.
+    실측 2026-09-20 KBO 5경기 — 기사 6~14건을 모으고 `out` 이 찬 것은 한 경기뿐.
+
+    ⚠️ 무료 한도는 **다른 장치로** 막는다 — 경기당 기사 상한(depth)과
+       일일 LLM 상한. `test_ext2_extract_all_games.py` 가 그것을 잰다.
+    """
     calls = []
 
     async def _f(routes, prompt, max_tokens, role):
@@ -89,11 +98,11 @@ async def test_빅매치가_아니면_LLM_추출을_건너뛴다(monkeypatch):
     monkeypatch.setattr("app.engine.team_form._complete_free", _f)
     arts = [{"team": "US Lecce", "body": "본문", "url": "https://www.gazzetta.it/a"}]
 
-    out = await SAT.extract_game_facts(arts, home="US Lecce", away="AC Monza",
-                                       league="serie_a",
-                                       jg={"rank_home": 14, "rank_away": 19})
+    await SAT.extract_game_facts(arts, home="US Lecce", away="AC Monza",
+                                 league="serie_a",
+                                 jg={"rank_home": 14, "rank_away": 19})
 
-    assert out == {} and not calls, "빅매치가 아니면 LLM 을 부르지 않는다"
+    assert calls, "빅매치가 아니라고 추출을 건너뛰었다"
 
 
 @pytest.mark.asyncio

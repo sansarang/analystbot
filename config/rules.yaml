@@ -109,6 +109,16 @@ flow:
   # ⚠️ 리그 평균 방어율은 여기 두지 않는다. `settings.league_era`(MLB 4.20) ·
   #    `kbo_league_era` · `npb_league_era` 가 원본이고 `scoring._suppression`
   #    이 같은 값을 쓴다 — 새 상수를 만들면 사본이 된다.
+  # 🔴 [EXT-2 / STEP 1-g 2026-09-20] 추출을 게이트로 가르지 않는 대신
+  #    **깊이**로 묶는다. 값은 **미검증 사전값**이고 채점 30건 뒤 데이터로만
+  #    고친다. depth 를 정하는 것은 v2 STEP 6 `app/flow/select.py` 이고,
+  #    그 전까지는 아래 폴백을 쓴다.
+  depth_fallback: normal
+  depth_articles:
+    shallow: 0
+    normal:  2
+    deep:    5
+
   direction:
     starter_dev_bad:   0.25   # (ERA3-기준)/기준 이 이 이상 → 그 팀 악재
     starter_dev_good: -0.25   # 이 이하 → 그 팀 호재
@@ -130,3 +140,12 @@ flow:
     npb: 25
     mlb: 24
   draw_prior: 0.26    # 축구 3-way 무승부 사전 질량
+
+# 🔴 [EXT-2 / STEP 1-g 2026-09-20] LLM 일일 호출 상한. 추출 대상이 "게이트
+#    대상 최대 8경기" 에서 "기사가 있는 전 경기" 로 넓어졌으므로 **일일 상한**
+#    으로 묶는다. 도달하면 추출을 건너뛰고 reason="llm_cap" 을 남긴다 —
+#    예외를 던지지 않는다(파이프라인은 완주한다).
+#    ⚠️ **미검증 사전값**이다. 실측 2026-09-20: groq TPD 200k 가 하루에 한 번
+#       소진됐다. 그 실측이 쌓이면 이 값을 고친다.
+llm:
+  daily_call_cap: 200

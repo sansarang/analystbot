@@ -20,6 +20,7 @@ Phase1 은 **직접 경로만**이다 (AWS IP 로 도달되는 소스). MLB 는 
 from __future__ import annotations
 
 import json
+import pathlib
 import logging
 import re
 from datetime import datetime, timedelta, timezone
@@ -1000,6 +1001,98 @@ def _extract_cache_key(urls, home: str, away: str) -> str:
     return "scout:x:" + hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
 
 
+#: 🔴 [EXT-2] 키워드 사전 — `config/evidence_lexicon.yaml` 이 **원본**이다.
+#   v2 STEP 7-4 가 쓸 그 파일이고 여기서 낱말을 새로 짓지 않는다.
+_LEX: list | None = None
+
+
+def _lexicon() -> list:
+    global _LEX
+    if _LEX is None:
+        try:
+            import yaml
+
+            f = (pathlib.Path(__file__).resolve().parents[2]
+                 / "config" / "evidence_lexicon.yaml")
+            doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+            lex = doc.get("lexicon") or {}
+            _LEX = [w for words in lex.values() for w in (words or [])]
+        except Exception as exc:
+            logger.warning("[scout] 키워드 사전 로드 실패: %s", exc)
+            _LEX = []
+    return _LEX
+
+
+def _lexicon_hit(text: str) -> bool:
+    """제목·본문에 라인업/결장 계열 낱말이 있나. ⚠️ 부분 문자열이다."""
+    t = str(text or "")
+    return any(w in t for w in _lexicon())
+
+
+async def get_depth(redis, *, game_id) -> str:
+    """이 경기의 수집 깊이. 🔴 정하는 것은 v2 STEP 6 `app/flow/select.py` 다.
+
+    지금은 흐름 state 에 depth 칸이 없으므로 **폴백**(`flow.depth_fallback`)을
+    돌려준다. STEP 6 이 오면 **이 함수만** 실제 값을 돌려주게 바꾼다.
+    ⚠️ 폴백 값을 코드에 박지 않는다 — `config/rules.yaml` 이 원본이다.
+    """
+    from app.flow import rules as R
+
+    return str(R.get("depth_fallback", "normal") or "normal")
+
+
+async def _article_cap(redis, game_id) -> int:
+    """depth → 경기당 추출 기사 수. 🔴 숫자는 `rules.yaml` 이 원본이다."""
+    from app.flow import rules as R
+
+    depth = await get_depth(redis, game_id=game_id)
+    caps = R.get("depth_articles", {}) or {}
+    try:
+        return int(caps.get(depth, caps.get("normal", 2)))
+    except (TypeError, ValueError):
+        return 2
+
+
+#: LLM 일일 호출 계수기. 🔴 형식은 `espn_odds` 의 예산 기록과 같다
+#  (`api_calls:{날짜}` 해시). 새 방식을 만들지 않는다.
+_LLM_CALL_KEY = "api_calls:{date}"
+
+
+async def _llm_budget_ok(redis) -> bool:
+    """오늘 LLM 추출 호출이 상한 안인가. 🔴 넘으면 **건너뛴다**(예외 금지).
+
+    ⚠️ redis 가 없으면 셀 수 없다 — 그때는 막지 않는다(관측만).
+    """
+    from app.flow import rules as R
+
+    cap = int(R.get("llm.daily_call_cap", 200) or 200)
+    if redis is None or cap <= 0:
+        return True
+    try:
+        from datetime import UTC, datetime
+
+        key = _LLM_CALL_KEY.format(date=datetime.now(UTC).date().isoformat())
+        used = int(await redis.hget(key, "scout_extract") or 0)
+        return used < cap
+    except Exception as exc:
+        logger.debug("[scout] LLM 예산 조회 실패 — 막지 않는다: %s", exc)
+        return True
+
+
+async def _llm_budget_spend(redis, n: int = 1) -> None:
+    """실제로 부른 만큼 센다. ⚠️ 실패해도 추출을 되돌리지 않는다."""
+    if redis is None or n <= 0:
+        return
+    try:
+        from datetime import UTC, datetime
+
+        key = _LLM_CALL_KEY.format(date=datetime.now(UTC).date().isoformat())
+        await redis.hincrby(key, "scout_extract", int(n))
+        await redis.expire(key, 7 * 24 * 3600)
+    except Exception as exc:
+        logger.debug("[scout] LLM 예산 기록 실패: %s", exc)
+
+
 async def extract_game_facts(articles: list[dict], *, home: str, away: str,
                              league: str, redis=None, jg: dict | None = None,
                              need: list | None = None) -> dict:
@@ -1029,36 +1122,33 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
     if not have:
         logger.info("[scout] %s@%s — 본문 있는 기사가 없다", away, home)
         return {}
-    # 🔴 [BIG-2 사용자 지시] **LLM 추출은 빅매치에만.** 그 외 경기는 구조
-    #    JSON(FotMob)만으로 간다. 건너뛴 이유를 남긴다 — 조용한 0콜은
-    #    "모델이 죽었다"와 구분이 안 된다.
-    from app.engine.bigmatch import is_big_match
-
-    tag = is_big_match(league=league, home=home, away=away,
-                       rank_home=(jg or {}).get("rank_home"),
-                       rank_away=(jg or {}).get("rank_away"))
-    # 🔴 [PA-13 2026-09-16] 지시문 §3: **검색 대상 = 시장 과대·가치 의심
-    #    + 태그 빅매치.** "빅매치"는 더해진 조건이지 유일한 조건이 아니다.
-    #    종전 코드는 빅매치 하나만 봐서 게이트 대상인 평범한 경기가 전부
-    #    빠졌다 — 실측 2026-09-16 NPB 2경기 기사 7건씩에 추출 0건.
-    # 🔴 라벨은 `gate` 상수로 비교한다. `gate_reason` 텍스트는 읽지
-    #    않는다 — PA-6 이 쓴 "보드고정"과 `G.BOARD`("보드 고정")가 글자부터
-    #    다르다(파싱하면 조용히 어긋난다).
-    from app.engine import gate as _G
-
-    _label = (jg or {}).get("gate_label")
-    gate_target = _label in (_G.OVER, _G.DOUBT)
-    if not (gate_target or tag.big):
-        logger.info("[scout] %s@%s — 게이트 %s · 빅매치 아님(%s) · LLM 추출 생략",
-                    away, home, _label or "미판정", tag.reason)
+    # 🔴 [EXT-2 / STEP 1-g 2026-09-20 사용자 결정 `two_gates_0920`]
+    #    **게이트 라벨로 가르지 않는다.** 종전 조건(`gate_target or tag.big`)은
+    #    위성이 **구경로 게이트**(`pick_ledger.gate_of`, tier+form)를 보고
+    #    추출 여부를 정하게 했다. 흐름은 다른 사전값(team_elo)을 쓰므로 같은
+    #    경기에 게이트가 둘이었고, 흐름의 가설이 수집에 닿지 못했다.
+    #    실측 2026-09-20: KBO 5경기가 기사를 6~14건씩 모으고도 `out` 이 찬
+    #    것은 한 경기뿐. 두산@KT 는 기사 12건을 쥐고 여섯 변수 전건 미상.
+    #      [scout] Doosan Bears@KT Wiz — 게이트 동의 · 빅매치 아님 · LLM 추출 생략
+    #    → **기사가 1건 이상 모인 전 경기**가 대상이다.
+    # ⚠️ 그 대신 **두 겹으로 묶는다**: 경기당 기사 상한(depth)과 일일 LLM 상한.
+    #    종전에는 §3 예산이 최대 8경기로 묶고 있었다.
+    cap = await _article_cap(redis, (jg or {}).get("game_id"))
+    if cap <= 0:
+        logger.info("[scout] %s@%s — depth=shallow · 기사 추출 0건", away, home)
         return {}
-    if gate_target and not tag.big:
-        logger.info("[scout] %s@%s — 게이트 대상(%s) 으로 추출한다",
-                    away, home, _label)
-    # 등급 순으로 상위 몇 건만(SCT-10). 팀이 갈려 있어도 경기 단위로 모은다.
-    ranked = sorted(enumerate(have),
-                    key=lambda t: (min(rank(t[1].get("url") or "", league),
-                                       RANK_UNLISTED), t[0]))
+    if not await _llm_budget_ok(redis):
+        logger.info("[scout] %s@%s — llm_cap 도달 · 추출 건너뜀", away, home)
+        return {}
+    # 🔴 고르는 순서: **키워드 적중 우선**, 같으면 등급, 그다음 최신순.
+    #    키워드는 `config/evidence_lexicon.yaml` 이 원본이다(코드에 박지 않는다).
+    def _score(i_a):
+        i, a = i_a
+        text = f"{a.get('title') or ''} {a.get('body') or ''}"
+        hit = 0 if _lexicon_hit(text) else 1
+        return (hit, min(rank(a.get("url") or "", league), RANK_UNLISTED), i)
+
+    ranked = sorted(enumerate(have), key=_score)
     picked, seen_url = [], set()
     for _, a in ranked:
         u = a.get("url") or ""
@@ -1066,7 +1156,7 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
             continue
         seen_url.add(u)
         picked.append(a)
-        if len(picked) >= FETCH_PER_STAGE:
+        if len(picked) >= min(cap, FETCH_PER_STAGE):
             break
 
     key = _extract_cache_key([a.get("url") for a in picked], home, away)
@@ -1101,6 +1191,9 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
         if need:
             logger.info("[scout] %s@%s 가설 지휘 — 우선 찾을 것 %s",
                         away, home, need)
+        # 🔴 [EXT-2] **부른 만큼 센다.** 상한 검사는 위에서 이미 했고, 여기서는
+        #    실제 호출을 기록한다 — 검사만 하고 안 세면 상한이 영영 안 찬다.
+        await _llm_budget_spend(redis, 1)
         raw = await _complete_free(chain("form"),
                                    _extract_prompt(home, away, blocks, need),
                                    1536, "form")

@@ -61,20 +61,35 @@ async def test_빅매치는_종전대로_추출한다(probe):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("label", [G.BOARD, G.AGREE, None, "알 수 없음"])
-async def test_대상이_아니면_추출하지_않는다(probe, label):
-    """🔴 반대 위험 — 전건 추출은 무료 한도를 즉시 태운다.
+async def test_대상이_아니어도_추출한다(probe, label):
+    """🔴 [EXT-2 / STEP 1-g 2026-09-20] **PA-13 의 이 조건은 폐기됐다.**
 
-    §3: 동의 경기는 층1만 · 보드 고정은 찾을 것이 없다.
+    종전 계약: "대상이 아니면 추출하지 않는다"(§3 — 동의는 층1만).
+    뒤집은 이유(사용자 결정 `two_gates_0920`):
+      위성이 보는 게이트는 **구경로**(`pick_ledger.gate_of`, tier+form)이고
+      흐름은 다른 사전값(team_elo)을 쓴다. 같은 경기에 게이트가 둘이라
+      흐름의 가설이 수집에 닿지 못했다.
+      실측 2026-09-20: KBO 5경기가 기사 6~14건을 모으고도 `out` 이 찬 것은
+      한 경기뿐. 두산@KT 는 기사 12건을 쥐고 여섯 변수 전건 미상이었다.
+        [scout] Doosan Bears@KT Wiz — 게이트 동의 · 빅매치 아님 · LLM 추출 생략
+
+    ⚠️ **반대 위험(무료 한도)은 사라지지 않았다** — 조건을 없앤 대신
+       경기당 기사 상한(depth)과 **일일 LLM 상한**으로 묶는다.
+       그 둘은 `test_ext2_extract_all_games.py` 가 잰다.
     """
-    assert await probe(label, False) is False
+    assert await probe(label, False) is True
 
 
-def test_라벨을_손으로_적지_않았다():
-    """🔴 사본 금지 — `gate` 상수가 원본이다."""
+def test_게이트_라벨로_추출을_가르지_않는다():
+    """🔴 [EXT-2] 종전 `test_라벨을_손으로_적지_않았다` 를 대체한다.
+
+    그 테스트는 `gate_target = ...` 블록이 `gate` 상수를 쓰는지 봤다.
+    이제 그 블록 자체가 없어야 한다.
+    """
     src = pathlib.Path("app/collectors/satellite.py").read_text(encoding="utf-8")
-    blk = src.split("gate_target =")[1][:200]
-    assert "_G.OVER" in blk and "_G.DOUBT" in blk
-    assert '"시장 과대"' not in blk and '"가치 의심"' not in blk
+    body = "\n".join(ln for ln in src.splitlines()
+                     if ln.strip() and not ln.strip().startswith("#"))
+    assert "gate_target" not in body, "추출이 아직 게이트 라벨로 갈린다"
 
 
 def test_gate_reason_텍스트를_파싱하지_않는다():
