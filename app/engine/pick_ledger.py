@@ -270,7 +270,8 @@ def _same_judgement(row: dict, existing) -> bool:
 
 async def _record_side_effects(conn, game_id: int, redis=None, *,
                                clv_at: str | None = None,
-                               absences: list | None = None) -> None:
+                               absences: list | None = None,
+                               analysis: bool = True) -> None:
     """[PA-19] 판정 뒤 **저장 전용** 기록을 한 자리에서 돌린다.
 
     🔴 **판정이 바뀌었든 아니든 돈다.** 이 값들은 판정이 같아도 시간이 지나면
@@ -300,6 +301,15 @@ async def _record_side_effects(conn, game_id: int, redis=None, *,
         gate = await record_prior(conn, game_id=game_id)
     except Exception as exc:
         logger.warning("[gate] game=%s 사전값 기록 실패: %s", game_id, exc)
+    # 🔴 [LDG-2 2026-09-20] **여기만 LLM 을 쓴다**(U12 분석). 나머지 넷은
+    #    `odds_snapshots` 만 읽는 저장 전용이다.
+    #    ⚠️ 사람이 손으로 돌리는 도구(`tools/ledger_add.py`)가 이것까지 부르면
+    #       ⑫ 서술이 쓸 무료 한도를 태운다 — 실측 2026-09-20: 한 행에 gemini
+    #       402 + groq 429 로 사슬 2개를 소진했다. 그래서 끌 수 있게 한다.
+    #    ⚠️ 기본값은 **종전 그대로 True** 다 — 판정 경로의 동작을 바꾸지 않는다.
+    if not analysis:
+        logger.info("[analysis] game=%s 생략 — 저장 전용 호출(LLM 안 씀)", game_id)
+        return
     try:
         await record_confirm_and_analysis(conn, game_id=game_id, gate=gate,
                                           redis=redis, absences=absences)

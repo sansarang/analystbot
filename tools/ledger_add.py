@@ -105,7 +105,11 @@ async def _run(a) -> int:
             from app.engine.pick_ledger import _record_side_effects
 
             async with pool.acquire() as conn:
-                await _record_side_effects(conn, int(g["id"]), clv_at="verdict")
+                # 🔴 `analysis=False` — **LLM 을 부르지 않는다.** 이 도구는
+                #    사람이 손으로 돌리고, U12 분석을 켜면 ⑫ 서술이 쓸 무료
+                #    한도를 태운다(실측: 한 행에 사슬 2개 소진).
+                await _record_side_effects(conn, int(g["id"]),
+                                           clv_at="verdict", analysis=False)
             print("  ↳ 저장 전용 기록 완료 (판정시각 배당·이동 분류·북간·사전값)")
         except Exception as exc:
             # ⚠️ 행은 이미 들어갔다. 부가 기록 실패가 삽입을 되돌리지 않는다.

@@ -51,3 +51,20 @@ def test_승패가_아니면_CLV를_쓰지_않는다():
                    judge_by="fable_chat", market="ml", line=None,
                    side="home", odds=1.9, note=None)
     assert r2["predicted_side"] == "home"
+
+
+def test_ledger_add는_LLM을_부르지_않는다():
+    """🔴 사람이 손으로 돌리는 도구가 ⑫ 서술의 무료 한도를 태우면 안 된다.
+
+    실측 2026-09-20: `_record_side_effects` 를 그대로 부르자 한 행에서
+    gemini 402 + groq 429 로 **사슬 두 개를 소진**했다. U12 분석만 LLM 을
+    쓰므로 그 자리만 끈다.
+    """
+    import inspect
+
+    import tools.ledger_add as L
+    from app.engine.pick_ledger import _record_side_effects
+
+    assert "analysis=False" in inspect.getsource(L._run)
+    sig = inspect.signature(_record_side_effects)
+    assert sig.parameters["analysis"].default is True, "판정 경로 기본값이 바뀌면 안 된다"
