@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 
 from app.collectors import absences as _ABS
+from app.engine.performance import filter_by_roster
 from app.flow import direction as DIR
 
 logger = logging.getLogger(__name__)
@@ -219,6 +220,48 @@ def _split(state, absences: list) -> tuple:
         return [], []
 
 
+#: [W2] 로스터 — **이미 쌓인 출장 기록**에서 읽는다(새 수집기 0).
+#  ⚠️ 창을 넓게 잡지 않는다. 트레이드가 있으면 옛 소속이 섞이고, 그러면
+#     "두 팀"으로 보여 동명이인과 구분되지 않는다.
+_ROSTER_SQL = """
+    SELECT name, team FROM (
+        SELECT ba.batter AS name, ba.team AS team
+          FROM batter_appearances ba JOIN games g ON g.id = ba.game_id
+         WHERE g.league = $1 AND g.starts_at > now() - interval '30 days'
+        UNION
+        SELECT pa.pitcher AS name, pa.team AS team
+          FROM pitcher_appearances pa JOIN games g ON g.id = pa.game_id
+         WHERE g.league = $1 AND g.starts_at > now() - interval '30 days'
+    ) t
+"""
+
+
+async def _roster(state, ctx) -> dict:
+    """`{이름: {팀, …}}`. 못 읽으면 **빈 dict** — 그때는 아무것도 걸러지지 않는다.
+
+    🔴 [W2 2026-09-21] 이름이 두 팀으로 이어지면 그것은 **동명이인**이다
+       (실측: 박건우 NC 26회 · 롯데 9회 · g1723 에 양 팀 동시 출전).
+       거르는 판단은 `performance.filter_by_roster` 한 곳이 한다.
+    ⚠️ 축구는 출장 기록이 없어 빈 dict 이고, 그건 정상이다 — 없는 자료로
+       거르는 척하지 않는다.
+    """
+    if "roster" in (ctx.inject or {}):
+        return dict(ctx.inject["roster"] or {})
+    if ctx.pool is None:
+        return {}
+    try:
+        rows = await ctx.pool.fetch(_ROSTER_SQL, state.league)
+        out: dict = {}
+        for r in rows:
+            nm = str(r["name"] or "").strip()
+            if nm:
+                out.setdefault(nm, set()).add(str(r["team"] or "").strip())
+        return out
+    except Exception as exc:
+        logger.info("[flow:n05] 로스터 조회 실패 game=%s: %s", state.game_id, exc)
+        return {}
+
+
 #: 선발 최근 등판 — 내보내기의 `_STARTER_SQL` 과 같은 표를 본다.
 #  ⚠️ 창이 다르다: 내보내기는 "우리가 본 등판 전부", 여기는 **최근 3등판**이다.
 _STARTER3_SQL = """
@@ -396,6 +439,9 @@ async def run(state, ctx):
     #    하나만 주입해서 이 목록이 **영원히 비어 있었다**(실측: 게이트를 통과한
     #    7경기 전부 evidence=[] · 여섯 변수 전건 unknown).
     absences = await _cache_absences(state, ctx)
+    # 🔴 [W2] 로스터는 **한 번만** 읽는다 — 변수마다 다시 물으면 같은 질의가
+    #    경기당 여러 번 돈다. 축구는 출장 기록이 없어 빈 dict 이고 정상이다.
+    roster = await _roster(state, ctx) if absences else {}
     out: list = []
     per_game_cap = 0
     try:
@@ -511,10 +557,25 @@ async def run(state, ctx):
             #    그것이 더 큰 결함이다(반대 위험 · 계약 테스트가 잠근다).
             if var in ("lineup_out", "xi_confirmed") and absences:
                 h_out, a_out = _split(state, absences)
+                # 🔴 [W2 2026-09-21] **그 팀 선수가 아닌 이름은 뺀다.**
+                #    판정은 `performance.filter_by_roster` 한 곳이 한다 —
+                #    이름이 **정확히 한 팀**으로만 이어질 때만 거른다.
+                #    ⚠️ 동명이인(박건우 NC/롯데)은 건드리지 않는다. 이름으로
+                #       지우면 진짜 그 팀 선수가 사라진다.
+                #    ⚠️ 로스터가 비면(축구·자료 없음) 아무것도 걸러지지 않는다.
                 for side, extra in (("home", h_out), ("away", a_out)):
-                    if extra:
+                    if not extra:
+                        continue
+                    kept, cut = filter_by_roster(
+                        extra, team=getattr(state, side, ""), roster=roster)
+                    if cut:
+                        logger.info("[flow:n05] game=%s %s 결장 %d명 제외 — %s",
+                                    state.game_id, side, len(cut),
+                                    " · ".join(f"{c['name']}({c['owner']})"
+                                               for c in cut))
+                    if kept:
                         per_side[side] = list(dict.fromkeys(
-                            (per_side.get(side) or []) + extra))
+                            (per_side.get(side) or []) + kept))
             got = [x for v in per_side.values() for x in v]
             # 🔴 [HYC-1 2026-09-20] **검증 불가를 "없다"로 만들지 않는다.**
             #    믿을 수 있는 값이 하나도 없고 막힌 이유가 있으면 그 사유를

@@ -305,6 +305,53 @@ def _ip_avg(block: dict) -> float | None:
     return float(m.group(1)) if m else None
 
 
+def filter_by_roster(items, *, team: str, roster: dict) -> tuple:
+    """결장 문장에서 **그 팀 선수가 아닌 것**을 뺀다. `(남길 것, 뺀 것)`.
+
+    🔴 [W2 2026-09-21] **이름은 키가 아니다.** 실측:
+
+        박건우 · NC Dinos      26회 (타순 5~6번)
+        박건우 · Lotte Giants   9회 (타순 8번)
+        g1723(NC vs 롯데 09-08)에 **양 팀 모두** 등장 · 둘 다 boxscore
+
+       동명이인이 실재한다. 이름만 보고 지우면 **진짜 롯데 박건우가
+       사라진다** — 그것이 더 큰 결함이다.
+
+    🔴 그래서 규칙은 하나다: 이름이 **정확히 한 팀**으로만 이어질 때만,
+       그 팀이 이 팀이 아니면 뺀다.
+         · 두 팀 이상 → 동명이인이다. **건드리지 않는다.**
+         · 로스터에 없음 → 모른다. **건드리지 않는다**(신인·표기 차이).
+         · 로스터가 비었음 → 잴 수 없다. **전부 남긴다.**
+
+    ⚠️ `roster` 는 `{이름: {팀, …}}` 이고 원본은 `batter_appearances`·
+       `pitcher_appearances` 다(이미 쌓여 있는 것을 읽기만 한다).
+    ⚠️ 이것은 id 매칭이 **아니다.** 우리 DB 에 선수 id 가 없다 — 진짜 해법은
+       리그별 id 원본이고, 그건 지시를 받아야 한다(docs/maps/W2.md §2).
+    """
+    keep, dropped = [], []
+    if not roster:
+        return list(items or []), dropped
+    mine = " ".join(str(team or "").lower().split())
+    for raw in (items or []):
+        low = str(raw)
+        hit = None
+        for name, teams in roster.items():
+            if not name or str(name) not in low:
+                continue
+            if len(teams or set()) != 1:      # 동명이인 — 판정하지 않는다
+                hit = None
+                break
+            owner = next(iter(teams))
+            if " ".join(str(owner).lower().split()) != mine:
+                hit = {"name": str(name), "owner": str(owner)}
+            break
+        if hit:
+            dropped.append({**hit, "raw": low})
+        else:
+            keep.append(raw)
+    return keep, dropped
+
+
 def _split_absences(items: list[str], jg: dict) -> tuple[list[str], list[str]]:
     """결장 문장을 홈/원정으로 가른다. 팀명이 없으면 어느 쪽인지 몰라 버린다."""
     from app.collectors.football import similar_team

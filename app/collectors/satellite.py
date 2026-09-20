@@ -1215,9 +1215,18 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
     #       30쪽이 빈 칸). (b) 설령 동작해도 "첫 기사에서 나왔다"는 것은
     #       **우리가 모르는 사실**이다 — 항목별 출처는 HYC-1b 의 `article_idx` 다.
     fed = [u for u, _w in blocks if u]
+    # 🔴 [W2 2026-09-21] **한 행이 양쪽에 들어가지 않는다.** 종전에는 쪽마다
+    #    `_same_team` 으로 훑어서, 두 팀이 토큰을 공유하면(`madrid`) 같은 행이
+    #    양쪽에 뽑혔다 — 실측 `scout:soccer:11330` 이 그 모양이다.
+    #    ⚠️ 못 정한 행은 버리지 않고 `unknown` 으로 모은다(로그로 남긴다).
+    by_side = split_rows_by_side(rows, home=home, away=away)
+    if by_side.get("unknown"):
+        logger.info("[scout] %s@%s — 귀속 미상 %d행 (팀: %s)", away, home,
+                    len(by_side["unknown"]),
+                    " · ".join(str(r.get("team")) for r in by_side["unknown"]))
     out: dict = {}
     for side, name in (("home", home), ("away", away)):
-        mine = [r for r in rows if _same_team(r.get("team"), name)]
+        mine = [r for r in [by_side.get(side)] if r]
         # ⚠️ 개명은 `merge` **뒤**다 — merge 는 `source` 로 순위를 매긴다.
         got = merge(mine, league=league)
         if got:
@@ -1227,6 +1236,10 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
             got["llm_fetched_at"] = got.pop("fetched_at", "") or ""
             got["sources_fed"] = list(fed)
             out[side] = _json_wins(got, (jg or {}).get("fotmob"), side)
+    # 🔴 [W2 2026-09-21] 귀속이 **맞았는지**를 한 번 더 본다. 쪽은 갈렸는데
+    #    명단이 글자까지 같으면 LLM 이 한쪽 것을 양쪽에 적은 것이다
+    #    (실측 `scout:soccer:11334` — SonderjyskE / Randers FC).
+    out = resolve_attribution(out)
     for a in picked:
         u = a.get("url") or ""
         if rank(u, league) >= RANK_UNLISTED:
@@ -1349,12 +1362,111 @@ def apply_need(box: dict, side: str, need_keys: list | None) -> dict:
 
 
 def _same_team(a, b) -> bool:
-    """LLM 이 `team` 을 살짝 달리 쓸 수 있다. 토큰 하나만 겹쳐도 같은 팀이다."""
+    """LLM 이 `team` 을 살짝 달리 쓸 수 있다. 토큰 하나만 겹쳐도 같은 팀이다.
+
+    ⚠️ [W2 2026-09-21] **귀속에는 더 쓰지 않는다.** 이 함수는 "두 이름이
+       비슷한가"만 답하고, 한 경기의 **어느 쪽인가**는 `assign_side` 가 정한다.
+       종전에는 이것으로 쪽을 정했고, 그래서 공통 토큰 `madrid` 하나로
+       AT마드리드 카드가 레알에도 들어갔다(실측 `scout:soccer:11330`).
+    """
+    return bool(_tokens(a) & _tokens(b))
+
+
+def _tokens(name) -> set:
+    """이름 → 토큰 집합. 🔴 정규식을 두 곳에 적지 않는다."""
     import re as _re
 
-    ta = {t for t in _re.split(r"[^\w가-힣]+", str(a or "").lower()) if len(t) > 2}
-    tb = {t for t in _re.split(r"[^\w가-힣]+", str(b or "").lower()) if len(t) > 2}
-    return bool(ta & tb)
+    return {t for t in _re.split(r"[^\w가-힣]+", str(name or "").lower())
+            if len(t) > 2}
+
+
+def _generic_tokens() -> set:
+    """팀을 가리지 못하는 흔한 말. 🔴 원본은 `pipeline._GENERIC_TEAM_TOKENS`
+    다 — 여기서 목록을 손으로 적지 않는다(사본 금지).
+
+    ⚠️ 못 읽어도 죽지 않는다. 그때는 아래 "그 경기 두 팀의 공유 토큰" 규칙만
+       남고, `madrid` 류는 그것만으로도 걸러진다.
+    """
+    try:
+        from app.pipeline import _GENERIC_TEAM_TOKENS
+
+        return set(_GENERIC_TEAM_TOKENS)
+    except Exception:
+        return set()
+
+
+def assign_side(row_team, home: str, away: str) -> str | None:
+    """이 카드가 **어느 쪽인가.** 못 정하면 `None` — 찍지 않는다.
+
+    🔴 [W2 2026-09-21] 실측이 만든 규칙이다.
+
+        scout:soccer:11330 — 양쪽 카드의 `team` 이 **둘 다**
+        `Club Atlético de Madrid` 였다. 원인은 한 줄이다:
+            _same_team('Club Atlético de Madrid', 'Real Madrid CF') → True
+        공통 토큰 `madrid` 하나로 AT마드리드 명단이 레알에도 들어갔고,
+        ⑤의 방향이 양쪽 악재로 잡혀 **상쇄**됐다.
+
+    🔴 **두 팀이 공유하는 토큰은 식별자가 아니다.** 같은 규율이 이미 저장소에
+       있다 — `pipeline._shared_team_tokens` 의 머리말: "Boston Red Sox 속보가
+       Chicago White Sox 카드에 붙었다. 공유 토큰은 식별자가 될 수 없다."
+       여기서는 **그 경기 두 팀 사이**의 공유 토큰을 뺀다(별칭표가 없는
+       리그에서도 통한다).
+
+    ⚠️ 겹치는 토큰 수가 **같으면 못 정한 것**이다(`football.match_team_name`
+       과 같은 규약 — 동점이면 None). 한쪽으로 찍으면 그때부터 거짓 자료가 된다.
+    """
+    gen = _generic_tokens()
+    t = _tokens(row_team) - gen
+    th, ta = _tokens(home), _tokens(away)
+    shared = th & ta                       # 🔴 그 경기 두 팀의 공통 토큰
+    th, ta = (th - shared) - gen, (ta - shared) - gen
+    nh, na = len(t & th), len(t & ta)
+    if nh == na:
+        return None
+    return "home" if nh > na else "away"
+
+
+def split_rows_by_side(rows: list, *, home: str, away: str) -> dict:
+    """추출 행들 → `{side: 행}`. 🔴 **한 행이 양쪽에 들어가지 않는다.**
+
+    ⚠️ 어느 쪽인지 못 정한 행은 **버리지 않고** `unknown` 으로 모은다 —
+       버리면 "그런 자료가 없었다"와 구분되지 않는다.
+    """
+    out: dict = {"home": None, "away": None, "unknown": []}
+    for r in (rows or []):
+        if not isinstance(r, dict):
+            continue
+        side = assign_side(r.get("team"), home, away)
+        if side is None or out.get(side) is not None:
+            out["unknown"].append(r)
+            continue
+        out[side] = r
+    return out
+
+
+def resolve_attribution(box: dict) -> dict:
+    """양쪽 카드의 **명단이 같으면 둘 다 미상**으로 둔다.
+
+    🔴 실측 `scout:soccer:11334` — `team` 은 `SonderjyskE` / `Randers FC` 로
+       다른데 `out` 목록이 글자까지 같았다. 덴마크 부상표 한쪽을 LLM 이 양쪽에
+       적은 것이고, 어느 쪽이 진짜인지 **자료로는 알 수 없다.**
+    🔴 사용자 결정 2026-09-20: *"추출이 어느 팀인지 못 정하면 양쪽에 복사하지
+       말고 side=unknown 으로 두고 어느 쪽에도 세지 않는다."*
+    ⚠️ 지우기만 하지 않는다 — `out_unknown` 에 남긴다. 나중에 사람이 보고
+       판정할 수 있어야 하고, 지우면 그 사실조차 사라진다.
+    """
+    b = {k: dict(v) for k, v in (box or {}).items() if isinstance(v, dict)}
+    h, a = b.get("home") or {}, b.get("away") or {}
+    ho, ao = list(h.get("out") or []), list(a.get("out") or [])
+    if ho and ao and ho == ao:
+        for side, card in (("home", h), ("away", a)):
+            card["out_unknown"] = list(card.get("out") or [])
+            card["out"] = []
+            card["attribution"] = "unknown"
+            b[side] = card
+        logger.info("[scout] 결장 명단이 양쪽에 동일 %d명 — 어느 쪽에도 세지 "
+                    "않는다(귀속 미상)", len(ho))
+    return b
 
 
 def _domain_of(url: str) -> str:
