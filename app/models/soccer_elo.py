@@ -22,7 +22,21 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-DATA_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / "data" / "elo"
+#: 🔴 [SELO-1 2026-09-20] **볼륨에 둔다.** 이미지 안(`/app/data/elo`)에 두면
+#   배포할 때마다 날아간다 — 실측: SELO-1 배포 직후 `ratings.json 리그 0` 이라
+#   축구 ① 이 전건 `elo 미기입` 이었다. 볼륨 경로는 Railway 가 준다(F-18 이
+#   내보내기 산출물에 쓰기로 정한 그 볼륨이다).
+#   ⚠️ 로컬·테스트에는 볼륨이 없다 — 그때는 종전 경로 그대로다.
+def _data_dir() -> pathlib.Path:
+    import os
+
+    vol = os.getenv("RAILWAY_VOLUME_MOUNT_PATH")
+    if vol:
+        return pathlib.Path(vol) / "elo"
+    return pathlib.Path(__file__).resolve().parent.parent.parent / "data" / "elo"
+
+
+DATA_DIR = _data_dir()
 CSV_DIR = DATA_DIR / "csv"
 RATINGS_FILE = DATA_DIR / "ratings.json"
 PARAMS_FILE = DATA_DIR / "params.json"
@@ -313,6 +327,37 @@ def _load_ratings_file() -> dict:
         return {}
 
 
+#: 하루 한 번만 피팅한다. 🔴 CSV 를 매번 내려받으면 슬레이트가 그만큼 느려지고
+#  football-data.co.uk 에 부담이다. 주 1회 잡(`elo_refresh_weekly`)이 원래
+#  주인이고, 이것은 **배포로 아티팩트가 날아갔을 때의 복구**다.
+_FIT_MARK = "elo:soccer:fitted:{date}"
+
+
+async def ensure_ratings_file(redis, date: str) -> dict:
+    """`ratings.json` 이 없으면 **하루 1회** 피팅해서 만든다. 반환: ratings.
+
+    ⚠️ 실패해도 예외를 올리지 않는다 — 없으면 그 리그는 사전값없음 경로다.
+    """
+    got = _load_ratings_file()
+    if got:
+        return got
+    if redis is not None:
+        try:
+            if not await redis.set(_FIT_MARK.format(date=date), "1",
+                                   ex=26 * 3600, nx=True):
+                logger.info("[elo] 오늘 이미 피팅을 시도했다 — 건너뛴다")
+                return {}
+        except Exception as exc:
+            logger.debug("[elo] 피팅 마커 실패: %s", exc)
+    try:
+        logger.info("[elo] 축구 아티팩트 없음 — 지금 피팅한다 (%s)", DATA_DIR)
+        refresh()
+    except Exception as exc:
+        logger.warning("[elo] 축구 피팅 실패: %s", exc)
+        return {}
+    return _load_ratings_file()
+
+
 async def publish_ratings(redis, leagues, date: str, *, ratings=None) -> dict:
     """리그별 레이팅을 `elo:{리그}:{날짜}` 에 싣는다. 반환 `{리그: 팀 수}`.
 
@@ -321,7 +366,7 @@ async def publish_ratings(redis, leagues, date: str, *, ratings=None) -> dict:
     """
     from app.models.team_elo import CACHE_KEY, CACHE_TTL
 
-    src = ratings if ratings is not None else _load_ratings_file()
+    src = ratings if ratings is not None else await ensure_ratings_file(redis, date)
     out: dict = {}
     for lg in leagues or []:
         got = ratings_for_league(lg, src)

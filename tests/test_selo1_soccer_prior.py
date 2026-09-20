@@ -89,3 +89,51 @@ def test_대조표에_없는_팀은_지어내지_않는다():
 
     got = ratings_for_league("K리그1", {"E0": {"Arsenal": 1800}})
     assert got == {}, got
+
+
+def test_아티팩트는_볼륨에_둔다(monkeypatch):
+    """🔴 이미지 안에 두면 **배포할 때마다 날아간다.**
+
+    실측 2026-09-20: SELO-1 배포 직후 `ratings.json 리그 0` 이라 축구 ①이
+    전건 `elo 미기입` 이었다. 볼륨 경로는 Railway 가 env 로 준다.
+    """
+    import importlib
+
+    monkeypatch.setenv("RAILWAY_VOLUME_MOUNT_PATH", "/data")
+    from app.models import soccer_elo as SE
+
+    importlib.reload(SE)
+    assert str(SE.DATA_DIR) == "/data/elo", SE.DATA_DIR
+    monkeypatch.delenv("RAILWAY_VOLUME_MOUNT_PATH")
+    importlib.reload(SE)
+    assert str(SE.DATA_DIR).endswith("data/elo"), SE.DATA_DIR
+
+
+@pytest.mark.asyncio
+async def test_아티팩트가_없으면_하루_한_번만_피팅한다():
+    """⚠️ CSV 를 매번 내려받으면 슬레이트가 그만큼 느려진다."""
+    from app.models import soccer_elo as SE
+
+    calls = {"n": 0}
+
+    class _R:
+        def __init__(self):
+            self.mark = {}
+
+        async def set(self, k, v, ex=None, nx=False):
+            if nx and k in self.mark:
+                return False
+            self.mark[k] = v
+            return True
+
+    def _fake_refresh():
+        calls["n"] += 1
+
+    r = _R()
+    import unittest.mock as M
+
+    with M.patch.object(SE, "refresh", _fake_refresh), \
+         M.patch.object(SE, "_load_ratings_file", lambda: {}):
+        await SE.ensure_ratings_file(r, "2026-09-20")
+        await SE.ensure_ratings_file(r, "2026-09-20")
+    assert calls["n"] == 1, calls
