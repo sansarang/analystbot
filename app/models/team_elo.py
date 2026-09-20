@@ -24,6 +24,23 @@ logger = logging.getLogger(__name__)
 
 #: Redis 키. 슬레이트마다 새로 계산한다 — 어제 레이팅으로 오늘을 판정하지 않는다.
 CACHE_KEY = "elo:{sport}:{date}"
+
+#: 야구 리그 라벨 → 캐시 코드. 🔴 축구는 **리그 라벨 그대로**다(리그별 레이팅).
+_LEAGUE_CODE = {"KBO": "kbo", "NPB": "npb", "MLB": "mlb"}
+
+
+def code_for(league: str | None, sport: str | None = None) -> str:
+    """캐시 키에 쓸 코드. 🔴 **여기가 유일한 원본이다.**
+
+    ⚠️ 쓰는 쪽(`soccer_elo.publish_ratings`)과 읽는 쪽(`n01_prior`)이 규칙을
+       각자 갖고 있어 **대소문자가 어긋났다**(실측 2026-09-20: `elo:EPL:…` 로
+       쓰고 `elo:epl:…` 로 읽어 EPL·J1 이 전건 미기입. 한글 리그는 `.lower()`
+       가 무해해서 덴마크만 우연히 맞았다).
+    """
+    lg = str(league or "").strip()
+    if lg.upper() in _LEAGUE_CODE:
+        return _LEAGUE_CODE[lg.upper()]
+    return (lg or str(sport or "")).lower()
 CACHE_TTL = 26 * 3600
 
 #: 🔴 **표본 하한.** 이보다 적게 뛴 팀은 레이팅을 내보내지 않는다.

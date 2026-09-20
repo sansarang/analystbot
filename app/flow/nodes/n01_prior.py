@@ -18,14 +18,15 @@ logger = logging.getLogger(__name__)
 
 NODE = "n01_prior"
 
-#: elo 캐시 키의 종목 코드. 🔴 `state.sport`(baseball|soccer)가 아니라
-#  **리그 코드**다 — `app/models/team_elo.CACHE_KEY` 가 그렇게 쓴다.
-_LEAGUE_CODE = {"KBO": "kbo", "NPB": "npb", "MLB": "mlb"}
-
-
 def _code(state) -> str:
-    lg = (state.league or "").strip()
-    return _LEAGUE_CODE.get(lg.upper(), lg.lower())
+    """elo 캐시 키의 코드. 🔴 규칙의 원본은 `team_elo.code_for` **한 곳**이다.
+
+    ⚠️ 종전에는 이 파일이 규칙을 따로 갖고 있어 쓰는 쪽과 어긋났다
+       (`elo:EPL:…` 로 쓰고 `elo:epl:…` 로 읽었다 — SELO-1c).
+    """
+    from app.models.team_elo import code_for
+
+    return code_for(state.league, state.sport)
 
 
 def _elo_win(elo_home: float, elo_away: float, hfa: float) -> float:

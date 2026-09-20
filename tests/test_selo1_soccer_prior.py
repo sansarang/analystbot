@@ -137,3 +137,41 @@ async def test_아티팩트가_없으면_하루_한_번만_피팅한다():
         await SE.ensure_ratings_file(r, "2026-09-20")
         await SE.ensure_ratings_file(r, "2026-09-20")
     assert calls["n"] == 1, calls
+
+
+def test_캐시_코드_규칙은_한_곳이다():
+    """🔴 [SELO-1c] 쓰는 쪽과 읽는 쪽이 규칙을 따로 갖고 있어 어긋났다.
+
+    실측 2026-09-20: `elo:EPL:{날짜}` 로 쓰고 `elo:epl:{날짜}` 로 읽어
+    EPL·J1 이 전건 `elo 미기입` 이었다. 한글 리그는 `.lower()` 가 무해해
+    **덴마크만 우연히** 맞았다.
+    """
+    import inspect
+
+    from app.flow.nodes import n01_prior
+    from app.models import soccer_elo as SE
+    from app.models.team_elo import code_for
+
+    assert "code_for" in inspect.getsource(n01_prior._code)
+    assert "code_for" in inspect.getsource(SE.publish_ratings)
+    # 같은 입력 → 같은 코드
+    for lg in ("EPL", "J1 리그", "라리가", "세리에A", "덴마크 수페르리가"):
+        assert code_for(lg, "soccer") == lg.lower()
+    assert code_for("MLB", "mlb") == "mlb"
+
+
+def test_한글_리그_라벨이_CSV_코드로_풀린다():
+    """🔴 우리 `games.league` 는 한글이다. 영문 키만 있으면 전건 미기입이다."""
+    from app.models.soccer_elo import LABEL_TO_CODE
+
+    def code(lg):
+        low = lg.lower()
+        return next((c for k, c in LABEL_TO_CODE if k in low), None)
+
+    assert code("라리가") == "SP1"
+    assert code("세리에A") == "I1"
+    assert code("분데스리가") == "D1"
+    assert code("EPL") == "E0"
+    assert code("J1 리그") == "JPN"
+    assert code("덴마크 수페르리가") == "DNK"
+    assert code("K리그1") is None, "없는 리그를 억지로 매핑하면 안 된다"

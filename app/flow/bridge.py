@@ -105,7 +105,7 @@ async def ensure_soccer_elo(redis, league_days) -> dict:
 
         todo: dict = {}
         for lg, day in sorted(league_days or []):
-            if await TE.load(redis, lg, day):
+            if await TE.load(redis, TE.code_for(lg), day):
                 continue
             todo.setdefault(day, []).append(lg)
         for day, lgs in sorted(todo.items()):

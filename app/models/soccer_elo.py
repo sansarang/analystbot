@@ -53,6 +53,10 @@ LABEL_TO_CODE = [
     ("serie a", "I1"), ("ligue 1", "F1"), ("eredivisie", "N1"),
     ("primeira", "P1"), ("j1", "JPN"), ("j리그", "JPN"), ("japan", "JPN"),
     ("덴마크", "DNK"), ("superliga", "DNK"), ("denmark", "DNK"),
+    # 🔴 [SELO-1c] 우리 `games.league` 는 **한글 라벨**이다(라리가·세리에A·
+    #    분데스리가·리그앙·에레디비시). 영문 키만 있어 전건 미기입이었다.
+    ("라리가", "SP1"), ("세리에", "I1"), ("분데스", "D1"),
+    ("리그앙", "F1"), ("에레디비시", "N1"), ("챔피언십", "E1"),
 ]
 
 K_FACTOR = 20.0
@@ -364,7 +368,7 @@ async def publish_ratings(redis, leagues, date: str, *, ratings=None) -> dict:
     🔴 키·TTL 은 `team_elo` 가 원본이다 — 야구와 같은 자리에 같은 모양으로 둔다.
     ⚠️ 빈 리그는 **쓰지 않는다**(빈 키가 있으면 ①이 "있는데 팀이 없다"로 읽는다).
     """
-    from app.models.team_elo import CACHE_KEY, CACHE_TTL
+    from app.models.team_elo import CACHE_KEY, CACHE_TTL, code_for
 
     src = ratings if ratings is not None else await ensure_ratings_file(redis, date)
     out: dict = {}
@@ -374,7 +378,9 @@ async def publish_ratings(redis, leagues, date: str, *, ratings=None) -> dict:
             logger.info("[elo] %s — 대조 가능한 팀 0 (사전값없음 경로로 간다)", lg)
             continue
         if redis is not None:
-            await redis.set(CACHE_KEY.format(sport=lg, date=date),
+            # 🔴 코드 생성 규칙은 `team_elo.code_for` 하나다 — 읽는 쪽과
+            #    같은 함수를 쓴다(대소문자 어긋남이 SELO-1c 의 원인이었다).
+            await redis.set(CACHE_KEY.format(sport=code_for(lg), date=date),
                             json.dumps(got, ensure_ascii=False), ex=CACHE_TTL)
         out[lg] = len(got)
         logger.info("[elo] %s %s — 팀 %d개 실음", lg, date, len(got))
