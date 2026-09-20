@@ -27,8 +27,14 @@ class _Pool:
 
     def __init__(self):
         self.rows: list = []
+        self.updates: list = []
 
     async def execute(self, sql, *a):
+        # ⚠️ [STOP-1] **스냅샷은 INSERT 뿐이다.** `finish` 가 멈춤 칸을 쓰는
+        #    UPDATE 까지 행으로 세면 "노드당 1행"이 거짓으로 깨진다.
+        if not str(sql).lstrip().upper().startswith("INSERT"):
+            self.updates.append((sql, a))
+            return
         self.rows.append({"run_id": a[0], "game_id": a[1], "node": a[2]})
 
     async def fetch(self, sql, *a):
@@ -102,7 +108,12 @@ async def test_6_1_야구_대전은_보드로_끝난다():
     # ⑫⑬ 미호출 · 발송 0건
     assert s.stop_reason == "n11_no_value"
     assert "n12_text" not in s.trace and "n13_send" not in s.trace
-    assert s.n13_send is None
+    # 🔴 [STOP-1 / STEP 1-b 2026-09-20] ⑬ 에 **도달하지 못한 것도 적는다.**
+    #    종전에는 `n13_send is None` 이라 "안 보냈다"와 "거기까지 못 갔다"가
+    #    구분되지 않았다(실측: 32경기 ⑬ why 전건 null).
+    assert s.n13_send == {"sent": False, "message_id": None,
+                          "why": f"미도달:{s.stopped_at}"}, s.n13_send
+    assert s.stopped_at == s.trace[-2], (s.stopped_at, s.trace)
 
 
 @pytest.mark.asyncio
@@ -171,7 +182,9 @@ async def test_6_2_축구는_시장과대이고_보드로_끝난다():
     # ⑪ — 승패 금지(게이트 ≠ 동의) · 파생 모델 없음 → 보드
     assert s.n11_value["pick_type"] == PICK_BOARD, s.n11_value
     assert s.stop_reason == "n11_no_value"
-    assert s.n13_send is None
+    # 🔴 [STOP-1 / STEP 1-b] ⑬ 에 도달하지 못한 것도 적는다.
+    assert s.n13_send == {"sent": False, "message_id": None,
+                          "why": f"미도달:{s.stopped_at}"}, s.n13_send
 
 
 @pytest.mark.asyncio

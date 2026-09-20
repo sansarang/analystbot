@@ -942,6 +942,13 @@ CREATE TABLE IF NOT EXISTS analysis_runs (
     created_at_utc TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- 🔴 [STOP-1 / STEP 1-b 2026-09-20] **멈춤을 칸으로.** 종전에는 `stop_reason`
+--    이 `finish` 스냅샷의 JSON 안에만 있어 집계하려면 전 행을 파싱해야 했다.
+--    ⚠️ `stopped_at` 은 **마지막으로 지난 노드**다(`state.trace` 의 끝).
+--       `stop_reason` 코드에서 노드 이름을 파싱하면 그게 사본이다.
+ALTER TABLE analysis_runs ADD COLUMN IF NOT EXISTS stopped_at  TEXT;
+ALTER TABLE analysis_runs ADD COLUMN IF NOT EXISTS stop_reason TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_analysis_runs_run
     ON analysis_runs (run_id, created_at_utc);
 CREATE INDEX IF NOT EXISTS idx_analysis_runs_game

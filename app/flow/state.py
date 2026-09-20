@@ -56,6 +56,8 @@ class State:
 
     #: 🔴 진단 전용. 판정에 쓰지 않는다 — 어느 노드가 돌았는지만 센다.
     trace: list = field(default_factory=list)
+    #: [STOP-1] 마지막으로 지난 노드. 🔴 `stop_reason` 에서 파싱하지 않는다.
+    stopped_at: str | None = None
 
     @classmethod
     def new(cls, game: dict) -> State:

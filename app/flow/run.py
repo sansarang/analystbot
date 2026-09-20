@@ -52,7 +52,31 @@ async def finish(state: State, stop_reason: str | None, ctx=None) -> State:
     ⚠️ 그래서 행이 노드 수 +1 이다. 지시문 §6 이 기대한 12행이 이것이다.
     """
     state.stop_reason = stop_reason
+    # 🔴 [STOP-1 / STEP 1-b 2026-09-20] **어디서 멈췄는지**를 칸으로 남긴다.
+    #    `state.trace` 의 마지막 노드다 — `stop_reason` 코드("n03_freeze")에서
+    #    이름을 파싱하면 사본이고, 코드와 노드 이름이 어긋나는 날 조용히 깨진다.
+    state.stopped_at = next((t for t in reversed(state.trace or [])
+                             if t and t != "finish"), None)
+    # 🔴 ⑬ 에 **도달하지 못한** 경기도 사유를 남긴다. 종전에는 `n13_send` 행
+    #    자체가 없어 "안 보냈다"와 "거기까지 못 갔다"가 구분되지 않았다
+    #    (실측 2026-09-20: 32경기 ⑬ why 전건 null).
+    # ⚠️ ⑬ 가 **이미 적은 사유**(섀도·보드·등급미달·중복)는 덮지 않는다.
+    if not state.n13_send:
+        state.n13_send = {"sent": False, "message_id": None,
+                          "why": f"미도달:{state.stopped_at}"}
     await snapshot(state, "finish", ctx)
+    # 🔴 그 run 의 **행 전체**를 한 번 갱신한다 — 멈춤은 run 단위 사실이라
+    #    행마다 다를 수 없다.
+    # ⚠️ 기록 실패가 판정을 막지 않는다(`snapshot` 과 같은 규약).
+    pool = getattr(ctx, "pool", None) if ctx is not None else None
+    if pool is not None:
+        try:
+            await pool.execute(
+                "UPDATE analysis_runs SET stopped_at = $2, stop_reason = $3 "
+                "WHERE run_id = $1",
+                state.run_id, state.stopped_at, stop_reason)
+        except Exception as exc:
+            logger.warning("[flow] 멈춤 기록 실패 run=%s: %s", state.run_id, exc)
     return state
 
 
