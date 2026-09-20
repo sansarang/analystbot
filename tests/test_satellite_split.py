@@ -100,7 +100,11 @@ def test_별칭표가_그대로다():
 def test_리그_표가_그대로다():
     from app.leagues import LEAGUES
 
-    labels = {c["label"] for c in LEAGUES.values()}
+    # 🔴 [LGA-1 2026-09-20] 이 계약이 뜻한 것은 **전 기능이 준비된 리그**다.
+    #    결과만 쌓는 리그는 `features` 로 갈린다(계약 약화가 아니라 뜻의 명시).
+    from app.leagues import leagues_with
+
+    labels = {LEAGUES[k]["label"] for k in leagues_with("satellite")}
     assert labels - set(SOC._SOCCER_SOURCE) == set()
     assert SOC._SOCCER_SOURCE["J1 리그"] == "yahoo"
 

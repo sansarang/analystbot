@@ -66,7 +66,54 @@ LEAGUES: dict[str, dict] = {
         "aliases": ["acl", "acle", "챔스", "아챔", "챔피언스리그엘리트",
                     "afc챔피언스리그"],
     },
+    # 🔴 [LGA-1 / STEP 1-i-1 2026-09-20] **이미 오는 자료를 버리고 있었다.**
+    #    football-data 무료 전역 `/matches` 가 매일 이 둘을 돌려준다
+    #    (실측 2026-09-19: Ligue 1 6경기·Eredivisie 5경기, 전부 종료).
+    #    그런데 `collectors/football.py:123` 이 화이트리스트 밖이라며 전건
+    #    버렸다 — `9528ba5`(2026-08-23, 축구 7리그를 **처음 연** 커밋)의
+    #    "리그앙·브라질 등 제외" 주석은 정책이 아니라 **그때의 범위**였다.
+    #
+    # ⚠️ **결과 적재만 켠다.** 이 표는 칸 단위로 기능이 갈린다 —
+    #      odds_key  → 배당 수집(odds.py:25·48)
+    #      fd_names  → 결과 적재(football.py:112)        ← 이것만 채운다
+    #      tm_code   → 부상표(satellite_soccer.py:339)
+    #      elo       → 축구 사전값(pipeline.py:279)
+    #      aliases   → 라우터 노출(bot/main.py·find_league)
+    #    🔴 `aliases` 를 **비워 둔다.** 자료가 없는 리그가 라우터에 보이면
+    #       사용자가 부를 수 있고, 그때 "자료 없음"이 아니라 빈 카드가 나간다.
+    # ⚠️ `fd_names` 는 **실측한 응답 문자열 그대로**다. 추측한 철자를 쓰지 않는다.
+    "ligue1": {
+        "fd_code": "FL1", "odds_key": None, "label": "리그앙", "elo": None,
+        "fd_names": ["Ligue 1"],
+        "tm_code": None,
+        "aliases": [],
+        "features": ("results",),
+    },
+    "eredivisie": {
+        "fd_code": "DED", "odds_key": None, "label": "에레디비시", "elo": None,
+        "fd_names": ["Eredivisie"],
+        "tm_code": None,
+        "aliases": [],
+        "features": ("results",),
+    },
 }
+
+#: 🔴 [LGA-1 2026-09-20] **리그별 기능 플래그.** 없으면 `FULL`(종전 그대로)이다.
+#   결과만 쌓는 리그를 표에 넣을 때, 배당·위성·라우터가 **따라 켜지지 않게**
+#   한다. 계약 테스트가 "모든 축구 리그가 위성에 있다"를 잠그고 있었고,
+#   그 계약은 **전 기능이 준비된 리그**를 뜻했다 — 그 뜻을 여기서 명시한다.
+FULL_FEATURES = ("results", "odds", "satellite", "router", "judge")
+
+
+def features_of(key: str) -> tuple:
+    """그 리그가 켜 둔 기능. 🔴 명시가 없으면 전부다(종전 동작 보존)."""
+    return tuple((LEAGUES.get(key) or {}).get("features") or FULL_FEATURES)
+
+
+def leagues_with(feature: str) -> list:
+    """그 기능이 켜진 리그 키 목록. 🔴 소비처는 이것으로 고른다."""
+    return [k for k in LEAGUES if feature in features_of(k)]
+
 
 # 명시적으로 미지원임을 알려줄 리그 별칭 (지원 리그 오매칭 방지 — '세리에B' 등)
 UNSUPPORTED_LEAGUE_ALIASES = [

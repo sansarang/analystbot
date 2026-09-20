@@ -20,9 +20,13 @@ from app.collectors import oddsportal as OP
 
 def test_축구_7리그가_전부_있다():
     """🔴 목록을 손으로 적지 않는다 — `leagues.LEAGUES` 가 원본이다."""
-    from app.leagues import LEAGUES
+    from app.leagues import leagues_with
 
-    assert set(OP.SOCCER_URL) == set(LEAGUES), (set(OP.SOCCER_URL) ^ set(LEAGUES))
+    # 🔴 [LGA-1 2026-09-20] 이 계약이 뜻한 것은 **전 기능이 준비된 리그**다.
+    #    결과만 쌓는 리그(리그앙·에레디비시)는 `features` 로 갈린다 —
+    #    계약을 약화시키는 것이 아니라 그 뜻을 명시하는 것이다.
+    want = set(leagues_with("odds"))
+    assert set(OP.SOCCER_URL) == want, (set(OP.SOCCER_URL) ^ want)
 
 
 def test_야구_리그는_그대로다():

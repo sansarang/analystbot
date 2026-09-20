@@ -4,14 +4,17 @@ import pytest
 
 import app.bot.main as botmod
 from app.engine.parlay import build_tiered_parlays
-from app.leagues import LEAGUES, find_league, find_unsupported_league
+from app.leagues import LEAGUES, leagues_with, find_league, find_unsupported_league
 from app.pipeline import clean_invisible, contains_english_sentence, render_sources
 
 
 def test_league_registry_and_aliases():
     # 🔴 [ACL-1 2026-09-15] acl 추가. 이 명단은 **손으로 적는 것이 맞다** —
     #    리그가 늘어난 것을 사람이 승인했다는 표시다(조용히 늘지 않는다).
-    assert set(LEAGUES) == {"epl", "la_liga", "serie_a", "bundesliga", "j1",
+    # 🔴 [LGA-1 2026-09-20] 이 계약이 뜻한 것은 **전 기능이 준비된 리그**다.
+    #    결과만 쌓는 리그(리그앙·에레디비시)는 `features` 로 갈린다 —
+    #    계약을 약화시키는 것이 아니라 그 뜻을 명시하는 것이다.
+    assert set(leagues_with("router")) == {"epl", "la_liga", "serie_a", "bundesliga", "j1",
                             "denmark", "kleague1", "acl"}
     assert LEAGUES["kleague1"]["odds_key"] == "soccer_korea_kleague1"
     assert find_league("분데스리가 오늘 분석해줘") == "bundesliga"

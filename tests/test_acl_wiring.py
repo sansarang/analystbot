@@ -26,7 +26,11 @@ def test_acl이_리그로_있다():
 
 def test_SOCCER_URL_키가_LEAGUES_와_같다():
     """기존 계약 유지 — 리그가 늘면 배당 URL 도 같이 는다."""
-    assert set(OP.SOCCER_URL) == set(LEAGUES)
+    # 🔴 [LGA-1 2026-09-20] 이 계약이 뜻한 것은 **전 기능이 준비된 리그**다.
+    #    결과만 쌓는 리그는 `features` 로 갈린다(계약 약화가 아니라 뜻의 명시).
+    from app.leagues import leagues_with
+
+    assert set(OP.SOCCER_URL) == set(leagues_with("odds"))
     assert "afc-champions-league" in OP.SOCCER_URL["acl"]
 
 
