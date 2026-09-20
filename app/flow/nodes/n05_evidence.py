@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 
+from app.collectors import absences as _ABS
 from app.flow import direction as DIR
 
 logger = logging.getLogger(__name__)
@@ -433,9 +434,27 @@ async def run(state, ctx):
                             (per_side.get(side) or []) + extra))
             got = [x for v in per_side.values() for x in v]
             if got:
+                # 🔴 [FIX-1] `lineup_out` 의 방향은 **확정 타순에서 빠진 수**로
+                #    정한다. IL 목록 길이가 아니다 — 근거 표지의 원본은
+                #    `absences.classify` 이고 여기서 정규식을 새로 짓지 않는다.
+                # ⚠️ `confirmed` 를 **라인업 표지의 유무**로 대신한다. 타순 확정
+                #    여부를 그대로 담은 칸이 이 경로에 없기 때문이다. 확정인데
+                #    제외자가 0명이면 "미확정"으로 적히지만 **부호는 둘 다 0**
+                #    이라 판정은 같다 — 라벨만 보수적으로 나간다.
+                d = None
+                if var == "lineup_out":
+                    d = DIR.merge(*[
+                        DIR.lineup_direction(
+                            excluded=sum(1 for x in (per_side.get(sd) or [])
+                                         if _ABS.classify(str(x)) == _ABS.BASIS_LINEUP),
+                            confirmed=any(_ABS.classify(str(x)) == _ABS.BASIS_LINEUP
+                                          for x in (per_side.get(sd) or [])),
+                            team=sd)
+                        for sd in ("home", "away") if per_side.get(sd)])
                 out.append(_row(var, got, source="satellite+official",
                                 excerpt=" · ".join(map(str, got)),
-                                sides={k: len(v) for k, v in per_side.items()}))
+                                sides={k: len(v) for k, v in per_side.items()},
+                                direction=d))
             continue
 
         # 그 밖의 변수는 아직 소스가 없다. **지어내지 않는다** — 없으면 없는 것이다.

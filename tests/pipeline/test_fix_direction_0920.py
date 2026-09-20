@@ -213,3 +213,34 @@ async def test_승패도_불리한_방향_증거면_보드로_내린다():
     ]
     v = (await n11_value.run(st, Ctx())).n11_value
     assert v["pick_type"] == "보드" and "-2" in v["reject_reason"], v
+
+
+@pytest.mark.asyncio
+async def test_타순_제외도_방향을_싣는다():
+    """🔴 [FIX-1] `lineup_out` 만 옛 `sides` 경로로 돌고 있었다(실측 로그:
+    `lineup_out 조정 없음 — dev=0.5 · 옛 sides 에서 옮김`).
+
+    제외 수는 `absences.classify == BASIS_LINEUP` 로 센다 — IL 길이가 아니다.
+    """
+    from app.flow.ctx import Ctx
+    from app.flow.nodes import n05_evidence
+    from app.flow.state import State
+
+    st = State.new({"game_id": "g", "sport": "baseball", "league": "MLB",
+                    "home": "한화", "away": "삼성"})
+    st.pick_side = "away"
+    st.n03_gate = {"gate": "동의"}
+    st.n04_hyp = [{"id": "H_x", "vars": [{"var": "lineup_out"}]}]
+    # 한화 쪽 평소 주전 둘이 **오늘 라인업에서 빠짐** · 삼성은 IL 하나뿐
+    ctx = Ctx(inject={
+        "extract": {"home": {"out": ["한화 A 오늘 라인업에서 빠짐",
+                                     "한화 B 오늘 라인업에서 빠짐"]},
+                    "away": {"out": ["삼성 C Injured 10-Day"]}},
+        "absences": [],
+    })
+    st = await n05_evidence.run(st, ctx)
+    row = next(e for e in st.n05_evidence if e["var"] == "lineup_out")
+    d = row.get("direction") or {}
+    assert d.get("home") == -1, d          # 한화 악재
+    assert d.get("away") == 0, d           # IL 만으로는 방향 없음
+    assert "평소 주전 2명" in str(d.get("basis")), d
