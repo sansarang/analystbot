@@ -83,6 +83,44 @@ async def ensure_elo(pool, redis, sport: str, date: str, *, refresh=None) -> boo
         return False
 
 
+async def ensure_soccer_elo(redis, league_days) -> dict:
+    """[SELO-1] 축구 리그별 레이팅을 캐시에 있게 한다. 반환 `{리그: 팀 수}`.
+
+    🔴 **야구와 같은 자리**(`elo:{리그}:{날짜}`)에 싣는다 — `n01_prior` 가 이미
+       그 키를 읽고 축구 3-way 분기도 갖고 있다. 읽는 쪽을 고치지 않는다.
+    🔴 레이팅 원본은 `soccer_elo`(football-data.co.uk CSV 피팅)다.
+       ⚠️ ClubElo API 는 **죽어 있다**(전 엔드포인트 502 · Fixtures
+          deactivated · 실측 2026-09-20). 자체 Elo 는 표본이 팀당 2.5~5.1
+          경기라 진폭이 안 난다. 남은 하나가 이것이다 → FORKS F-21.
+    ⚠️ 이미 있는 (리그,날짜) 는 다시 만들지 않는다 — 주 1회 피팅이라 하루 안에
+       값이 바뀌지 않는다.
+    ⚠️ 실패해도 슬레이트를 멈추지 않는다. 없으면 그 리그는 사전값없음 경로다.
+    """
+    if redis is None:
+        return {}
+    out: dict = {}
+    try:
+        from app.models import soccer_elo as SE
+        from app.models import team_elo as TE
+
+        todo: dict = {}
+        for lg, day in sorted(league_days or []):
+            if await TE.load(redis, lg, day):
+                continue
+            todo.setdefault(day, []).append(lg)
+        for day, lgs in sorted(todo.items()):
+            got = await SE.publish_ratings(redis, lgs, day)
+            out.update(got)
+        if out:
+            logger.info("[flow] 축구 elo 보장 — %s", out)
+        elif todo:
+            logger.info("[flow] 축구 elo 보장 — 대조 가능한 리그 0 (%s)",
+                        sorted({lg for lgs in todo.values() for lg in lgs}))
+    except Exception as exc:
+        logger.warning("[flow] 축구 elo 보장 실패: %s", exc)
+    return out
+
+
 #: 선발 교체 메모의 표지. 🔴 `lineups.py` 가 `f"{side} 선발 변경: A → B"` 로
 #  만든다 — 그 문구가 원본이고 여기서 새로 짓지 않는다.
 STARTER_CHANGE_MARK = "선발 변경"
@@ -185,13 +223,23 @@ async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
     #    ⚠️ 키는 **킥오프 UTC 날짜**다 — `n01_prior._load_elo` 와 같은 기준을
     #       쓴다. 여기서 KST 를 쓰면 하루 어긋나 보장이 헛돈다.
     want: set = set()
+    soccer_want: set = set()
     for r in rows:
         sp = (r.get("sport") or "").lower()
-        if sp in ELO_SPORTS and r.get("starts_at") is not None:
-            want.add((sp, r["starts_at"].astimezone(UTC).date().isoformat()))
+        if r.get("starts_at") is None:
+            continue
+        day = r["starts_at"].astimezone(UTC).date().isoformat()
+        if sp in ELO_SPORTS:
+            want.add((sp, day))
+        elif sp == "soccer" and r.get("league"):
+            # 🔴 [SELO-1 2026-09-20] 축구는 **리그별**이다. 종목으로 긁으면
+            #    리그 간 비교가 되고, 그게 종전에 축구를 뺀 이유였다.
+            soccer_want.add((r["league"], day))
     for sp, day in sorted(want):
         ok = await ensure_elo(pool, redis, sp, day)
         logger.info("[flow] elo 보장 %s %s — %s", sp, day, "있음" if ok else "없음")
+    if soccer_want:
+        await ensure_soccer_elo(redis, soccer_want)
 
 
     # 🔴 [2026-09-19] **파생 확률을 슬레이트 단위로 한 번 읽는다.**

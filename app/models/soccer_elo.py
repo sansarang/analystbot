@@ -242,6 +242,100 @@ def refresh(download: bool = True) -> dict:
     return all_params
 
 
+# ══════════════════════════════════════════════════════════════════
+# [SELO-1 2026-09-20] 축구 ① 사전값 배선 — 레이팅을 **야구와 같은 자리**에 싣는다.
+#
+# 🔴 왜 — 실측 STEP 0-e: 축구 7리그 전부 `① 사전값 = null(elo 캐시 키 없음)` 이고
+#    오늘 슬레이트 `n03_freeze` 21건 중 18건이 축구였다. `bridge.ELO_SPORTS` 가
+#    축구를 빼 둔 탓이다.
+# 🔴 읽는 쪽을 고치지 않는다 — `n01_prior` 는 이미 `elo:{리그}:{날짜}` 를 읽고
+#    축구 3-way(`draw_prior`) 분기도 갖고 있다. 실을 자리만 없었다.
+# 🔴 **이름 대조는 `config/elo_names.yaml` 이 원본**이다. 여기서 규칙을 다시
+#    짓지 않는다(딥서치: football-data.co.uk 는 공식 대조표가 없다).
+# ⚠️ 표에 없는 팀은 **비운다.** 리그 평균으로 메우면 채운 팀과 안 채운 팀이
+#    같은 근거를 가진 것처럼 보여 ③ 게이트가 오분류한다.
+# ══════════════════════════════════════════════════════════════════
+
+_NAMES_DOC: dict | None = None
+
+
+def _elo_names() -> dict:
+    """`config/elo_names.yaml` 의 `elo_names`. 없으면 빈 dict(예외 금지)."""
+    global _NAMES_DOC
+    if _NAMES_DOC is None:
+        try:
+            import yaml
+
+            f = (pathlib.Path(__file__).resolve().parents[2]
+                 / "config" / "elo_names.yaml")
+            _NAMES_DOC = (yaml.safe_load(f.read_text(encoding="utf-8")) or {}) \
+                .get("elo_names") or {}
+        except Exception as exc:
+            logger.warning("[elo] 이름 대조표 로드 실패: %s", exc)
+            _NAMES_DOC = {}
+    return _NAMES_DOC
+
+
+def ratings_for_league(league: str, ratings: dict | None = None) -> dict:
+    """그 리그의 `{우리 팀 이름: 레이팅}`. 🔴 대조표에 없는 팀은 **넣지 않는다.**
+
+    `ratings` 는 `ratings.json` 모양(`{CSV코드: {elo이름: 레이팅}}`)이다.
+    """
+    box = (_elo_names() or {}).get(league) or {}
+    if not box:
+        return {}
+    src = ratings if ratings is not None else _load_ratings_file()
+    if not src:
+        return {}
+    # 🔴 리그 코드는 `LABEL_TO_CODE` 가 원본이다 — 여기서 새 표를 만들지 않는다.
+    code = None
+    low = str(league or "").lower()
+    for key, c in LABEL_TO_CODE:
+        if key in low:
+            code = c
+            break
+    pool = src.get(code) if code else None
+    if not isinstance(pool, dict):
+        # 리그 코드를 못 찾으면 **전 리그에서 찾지 않는다** — 리그 간 비교가 된다.
+        return {}
+    out: dict = {}
+    for ours, elo_name in box.items():
+        v = pool.get(elo_name)
+        if v is not None:
+            out[ours] = float(v)
+    return out
+
+
+def _load_ratings_file() -> dict:
+    try:
+        return json.loads(RATINGS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+async def publish_ratings(redis, leagues, date: str, *, ratings=None) -> dict:
+    """리그별 레이팅을 `elo:{리그}:{날짜}` 에 싣는다. 반환 `{리그: 팀 수}`.
+
+    🔴 키·TTL 은 `team_elo` 가 원본이다 — 야구와 같은 자리에 같은 모양으로 둔다.
+    ⚠️ 빈 리그는 **쓰지 않는다**(빈 키가 있으면 ①이 "있는데 팀이 없다"로 읽는다).
+    """
+    from app.models.team_elo import CACHE_KEY, CACHE_TTL
+
+    src = ratings if ratings is not None else _load_ratings_file()
+    out: dict = {}
+    for lg in leagues or []:
+        got = ratings_for_league(lg, src)
+        if not got:
+            logger.info("[elo] %s — 대조 가능한 팀 0 (사전값없음 경로로 간다)", lg)
+            continue
+        if redis is not None:
+            await redis.set(CACHE_KEY.format(sport=lg, date=date),
+                            json.dumps(got, ensure_ascii=False), ex=CACHE_TTL)
+        out[lg] = len(got)
+        logger.info("[elo] %s %s — 팀 %d개 실음", lg, date, len(got))
+    return out
+
+
 # ---------------------------------------------------------------- 추론용 로더
 
 class SoccerElo:

@@ -1,0 +1,140 @@
+# 축구 Elo 이름 대조표 — 우리 `games.home/away` → football-data.co.uk 이름
+# [SELO-1 2026-09-20]
+#
+# 🔴 **이 표는 숫자가 아니라 "이름 사실"이다.** 각 줄은 하나의 사실이고
+#    한 줄씩 눈으로 확인할 수 있다. 문턱·계수가 아니므로 `rules.yaml` 이 아니다.
+#
+# 🔴 왜 필요한가 — football-data.co.uk 는 클럽 이름을 **오타까지 그대로**
+#    복사한다(딥서치 2026-09-20). 공식 대조표가 존재하지 않는다.
+#    실측: 우리 144팀 중 elo 이름과 그대로 맞는 것은 **2개**였다.
+#
+# 만든 규칙 (퍼지 문자열 유사도 **아님** — 전부 검증 가능):
+#   R1 같은 리그 안에서만 짝짓는다.
+#   R2 토큰 완전 일치. 접두 축약은 **짧은 토큰이 5자 이하**일 때만
+#      (Man→Manchester · Ath→Athletic/Atletico · Nott→Nottingham).
+#   R3 상호 유일할 때만 확정. 모호하면 **비운다**.
+#   E  규칙으로 안 되는 것은 손으로 적는다(Ath Bilbao·M'gladbach·Nott'm Forest…).
+#
+# ⚠️ 접두를 느슨하게 뒀을 때 **오매칭이 났다**: `Rayo Vallecano` → `Valladolid`
+#    (공통 접두 `vall`). 5자 상한으로 조이고 Vallecano 는 손으로 적었다.
+#
+# ⚠️ **여기 없는 팀은 사전값이 없다.** 리그 평균으로 메우지 않는다 —
+#    채운 팀과 안 채운 팀이 같은 근거를 가진 것처럼 보이면 ③ 게이트가
+#    오분류한다(`n01_prior` 머리말의 U3 리즈 사례).
+#    K리그1·ACL엘리트는 football-data.co.uk 에 리그 자체가 없다 → 사전값없음 경로.
+#
+# ⚠️ 우리 표기가 중복인 팀이 있다(`Aston Villa` / `Aston Villa FC`).
+#    같은 팀이라 같은 elo 이름에 붙인다. 표기 중복 자체는 별건이다(SELO-1-b).
+elo_names:
+  EPL:
+    AFC Bournemouth: Bournemouth
+    Arsenal FC: Arsenal
+    Aston Villa: Aston Villa
+    Aston Villa FC: Aston Villa
+    Bournemouth: Bournemouth
+    Brentford FC: Brentford
+    Brighton & Hove Albion FC: Brighton
+    Brighton and Hove Albion: Brighton
+    Chelsea FC: Chelsea
+    Crystal Palace FC: Crystal Palace
+    Everton FC: Everton
+    Fulham FC: Fulham
+    Ipswich Town FC: Ipswich
+    Leeds United FC: Leeds
+    Liverpool FC: Liverpool
+    Manchester City: Man City
+    Manchester City FC: Man City
+    Manchester United FC: Man United
+    Newcastle United FC: Newcastle
+    Nottingham Forest FC: Nott'm Forest
+    Sunderland AFC: Sunderland
+    Tottenham Hotspur FC: Tottenham
+  J1 리그:
+    Avispa Fukuoka: Avispa Fukuoka
+    Cerezo Osaka: Cerezo Osaka
+    FC Machida Zelvia: Machida
+    FC Tokyo: FC Tokyo
+    Fagiano Okayama: Okayama
+    Gamba Osaka: Gamba Osaka
+    Hiroshima Sanfrecce FC: Sanfrecce Hiroshima
+    JEF United Chiba: Chiba
+    Kashima Antlers: Kashima Antlers
+    Kashiwa Reysol: Kashiwa Reysol
+    Kawasaki Frontale: Kawasaki Frontale
+    Kyoto Purple Sanga: Kyoto
+    Mito HollyHock: Mito
+    Nagoya Grampus: Nagoya Grampus
+    Shimizu S Pulse: Shimizu S-Pulse
+    Vissel Kobe: Vissel Kobe
+    Yokohama F Marinos: Yokohama F. Marinos
+  덴마크 수페르리가:
+    AC Horsens: Horsens
+    AGF Aarhus: Aarhus
+    Brondby IF: Brondby
+    FC Copenhagen: FC Copenhagen
+    FC Midtjylland: Midtjylland
+    FC Nordsjaelland: Nordsjaelland
+    Lyngby: Lyngby
+    OB Odense BK: Odense
+    Randers FC: Randers FC
+    Silkeborg IF: Silkeborg
+    SonderjyskE: Sonderjyske
+  라리가:
+    Alavés: Alaves
+    Athletic Club: Ath Bilbao
+    CA Osasuna: Osasuna
+    Club Atlético de Madrid: Ath Madrid
+    Deportivo Alavés: Alaves
+    Elche CF: Elche
+    Espanyol: Espanol
+    FC Barcelona: Barcelona
+    Getafe CF: Getafe
+    Levante UD: Levante
+    RC Celta de Vigo: Celta
+    RCD Espanyol de Barcelona: Espanol
+    Rayo Vallecano: Vallecano
+    Rayo Vallecano de Madrid: Vallecano
+    Real Betis Balompié: Betis
+    Real Madrid: Real Madrid
+    Real Madrid CF: Real Madrid
+    Real Sociedad de Fútbol: Sociedad
+    Sevilla FC: Sevilla
+    Valencia: Valencia
+    Valencia CF: Valencia
+    Villarreal CF: Villarreal
+  분데스리가:
+    1. FC Köln: FC Koln
+    1. FC Union Berlin: Union Berlin
+    1. FSV Mainz 05: Mainz
+    Bayer 04 Leverkusen: Leverkusen
+    Borussia Dortmund: Dortmund
+    Borussia Mönchengladbach: M'gladbach
+    Eintracht Frankfurt: Ein Frankfurt
+    FC Augsburg: Augsburg
+    FC Bayern München: Bayern Munich
+    FC Schalke 04: Schalke 04
+    RB Leipzig: RB Leipzig
+    SC Freiburg: Freiburg
+    SV Werder Bremen: Werder Bremen
+    TSG 1899 Hoffenheim: Hoffenheim
+    VfB Stuttgart: Stuttgart
+  세리에A:
+    AC Milan: Milan
+    AC Monza: Monza
+    ACF Fiorentina: Fiorentina
+    AS Roma: Roma
+    Atalanta BC: Atalanta
+    Bologna FC 1909: Bologna
+    Cagliari Calcio: Cagliari
+    Como 1907: Como
+    Frosinone Calcio: Frosinone
+    Genoa CFC: Genoa
+    Juventus FC: Juventus
+    Parma Calcio 1913: Parma
+    SS Lazio: Lazio
+    SSC Napoli: Napoli
+    Torino FC: Torino
+    US Lecce: Lecce
+    US Sassuolo Calcio: Sassuolo
+    Udinese Calcio: Udinese
+    Venezia FC: Venezia
