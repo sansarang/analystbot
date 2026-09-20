@@ -437,6 +437,78 @@ async def _market_probs(
     return probs, best_odds
 
 
+#: [FORM-1 가드 2] DB 가 낡았는지 본다 — 그 팀의 마지막 종료 경기 **뒤에**,
+#  이미 끝났어야 할(시작 +3h 지난) 경기가 종료 미기록으로 남아 있나.
+#  🔴 낡은 DB 와 대조하면 "직전 경기"가 실제 직전이 아니다 — 대조가 거짓이 된다.
+_FORM_DB_SQL = """
+    WITH last_final AS (
+      SELECT max(starts_at) ts FROM games
+       WHERE status = 'final' AND home_score IS NOT NULL
+         AND away_score IS NOT NULL AND $1 IN (home, away)
+    )
+    SELECT (SELECT count(*) FROM games WHERE $1 IN (home, away))            AS sched,
+           (SELECT ts FROM last_final)                                       AS last_ts,
+           (SELECT count(*) FROM games g, last_final f
+             WHERE $1 IN (g.home, g.away)
+               AND (f.ts IS NULL OR g.starts_at > f.ts)
+               AND g.starts_at < now() - interval '3 hours'
+               AND (g.status <> 'final' OR g.home_score IS NULL))            AS missing
+"""
+
+#: 그 팀의 최근 종료 경기 2건(최신부터). 🔴 뒤집기는 **2건 연속 일치**일 때만.
+_FORM_RECENT_SQL = """
+    SELECT home, away, home_score, away_score, starts_at
+      FROM games
+     WHERE status = 'final' AND home_score IS NOT NULL
+       AND away_score IS NOT NULL AND $1 IN (home, away)
+     ORDER BY starts_at DESC LIMIT 2
+"""
+
+
+async def _verify_form_orders(pool, g: dict, st: dict) -> dict:
+    """[FORM-1 / STEP 1-h 2026-09-20] **폼 문자열의 방향을 검증한다.**
+
+    🔴 두 생산자 모두 순서를 보증하지 않는다 — football-data.org 값은
+       `collectors/football.py:168` 이 **그대로** 싣고(가정 없음), 딥서치는
+       LLM 에게 "최신부터"를 **요구**할 뿐 돌아온 값을 확인하지 않는다.
+       뒤집혀 오면 "직전 승"이 "직전 패"로 읽혀 **정반대 판정**이 된다.
+    🔴 대조는 **우리 DB** 다 — 외부를 또 부르지 않는다.
+    ⚠️ 가드 셋(사용자 결정 2026-09-20):
+         1) 날짜가 붙은 항목은 **정렬로 확정**하고 DB 를 쓰지 않는다.
+         2) 대조 **전에 DB 신선도**를 본다. 낡았으면 대조하지 않는다.
+         3) **1경기로 뒤집지 않는다** — 2경기 연속 역순 일치일 때만.
+    ⚠️ 판정 규칙은 `engine/form_order.verify` **한 곳**이다.
+    """
+    from app.engine import form_order as FO
+
+    for key, side in (("home_season", "home"), ("away_season", "away")):
+        box = st.get(key)
+        if not isinstance(box, dict) or not box.get("form"):
+            continue
+        team = g.get(side)
+        recent, db_state = [], FO.DB_OK
+        if pool is not None and team:
+            try:
+                row = await pool.fetchrow(_FORM_DB_SQL, team)
+                if row is None or not row["sched"]:
+                    db_state = FO.DB_NONE
+                elif int(row["missing"] or 0) > 0:
+                    db_state = FO.DB_LAG
+                else:
+                    rows = [dict(r) for r in await pool.fetch(_FORM_RECENT_SQL, team)]
+                    recent = FO.recent_results_of(rows, team, limit=2)
+            except Exception as exc:
+                logger.warning("[form] %s DB 확인 실패: %s", team, exc)
+                db_state = FO.DB_NONE
+        got = await FO.verify(box.get("form"), recent=recent,
+                              dated_items=box.get("form_items"),
+                              db_state=db_state)
+        box["form"] = got["form"]
+        box["form_order"] = got["order"]
+        box["form_reason"] = got["reason"]
+    return st
+
+
 def _game_stats(stats: dict, research: dict | None, g: dict, sport: str) -> dict:
     """판정 입력 스탯 — [4a] fd 순위표 + 심층 리서치 최근 폼을 실데이터로 포함."""
     out = {
@@ -1772,7 +1844,8 @@ async def build_analysis(
                 {k: round(v, 4) for k, v in market_probs.items()} if market_probs else None
             ),
             "best_odds": best_odds,
-            "stats": _game_stats(stats, research_map.get(g["id"]), g, sport),
+            "stats": await _verify_form_orders(
+                pool, g, _game_stats(stats, research_map.get(g["id"]), g, sport)),
             "expert_picks": eps,
             "consensus": consensus_scores(
                 [(r["expert"], r["pick"]) for r in pick_rows], weights
