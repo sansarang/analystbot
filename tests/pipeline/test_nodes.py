@@ -238,8 +238,8 @@ async def test_원문이_없으면_폐기한다():
 
 # ── STEP 7 ⑥ 채점
 
-async def _verdict(per_evidence):
-    st = _s(pick_side="away", n03_gate={"gate": AGREE})
+async def _verdict(per_evidence, gate=AGREE):
+    st = _s(pick_side="away", n03_gate={"gate": gate})
     st = await n04_hyp.run(st, Ctx())
     st.n05_evidence = [{"var": k, "value": v, "raw_excerpt": "x"}
                        for k, v in per_evidence.items()]
@@ -248,10 +248,27 @@ async def _verdict(per_evidence):
 
 @pytest.mark.asyncio
 async def test_핵심_반증_하나면_반박됨():
+    """🔴 [CNF-2 2026-09-20] 반증이 **철회를 뜻하는 가설에서만** 반박됨이다.
+
+    종전에는 게이트와 무관하게 언제나 철회였다. 그러면 "우리 픽을 무너뜨릴
+    근거를 못 찾았다"도 철회가 되어, 결장 0명인 건강한 라인업이 전부
+    철회된다(근거 FORKS F-19).
+    """
+    from app.flow.labels import OVER
+
+    # 시장과대 → H_fade "시장 반대편을 세울 근거" → 없으면 시장이 맞다
     v = await _verdict({"starter_recent3": [], "bullpen_3d": ["a"],
-                        "lineup_out": ["b"]})
+                        "lineup_out": ["b"]}, gate=OVER)
     assert v["verdict"] == V_REFUTED
     assert v["core_refuted"] == ["starter_recent3"]
+    assert v["refuted_means"] == "철회"
+
+    # 동의 → H_deriv 파생 재료 → 승패 판정을 건드리지 않는다
+    v2 = await _verdict({"starter_recent3": [], "bullpen_3d": ["a"],
+                         "lineup_out": ["b"]}, gate=AGREE)
+    assert v2["core_refuted"] == ["starter_recent3"]
+    assert v2["verdict"] != V_REFUTED
+    assert v2["refuted_means"] == "중립"
 
 
 @pytest.mark.asyncio

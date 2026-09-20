@@ -1,7 +1,9 @@
 """[v1.4 STEP 7] ⑥ 채점 — **찾았는지 기계가 센다.**
 
 🔴 규칙은 코드다. LLM 을 부르지 않는다.
-🔴 핵심(is_core) 변수가 하나라도 `refuted` → **반박됨**(픽 철회).
+🔴 핵심(is_core) 변수가 `refuted` 일 때 무엇을 하는가는 **가설이 정한다**
+   (`refuted_means` · ④가 싣는다 · 근거 FORKS F-19). 종전에는 언제나
+   철회였는데, 그러면 "무너뜨릴 근거를 못 찾았다"도 철회가 된다.
    `unknown` 비율이 문턱을 넘으면 **모름과반**(보드). 그 외 **확인됨**.
 🔴 `unknown` 과 `refuted` 는 다르다 — "안 봤다"와 "봤는데 없다"를 섞으면
    채점이 거짓이 된다(CLAUDE.md 사본·조용한 0 금지와 같은 규율).
@@ -12,8 +14,8 @@ from __future__ import annotations
 import logging
 
 from app.flow import rules as R
-from app.flow.labels import (CONFIRMED, REFUTED, UNKNOWN, V_OK, V_REFUTED,
-                             V_UNKNOWN)
+from app.flow.labels import (CONFIRMED, R_RETRACT, REFUTED, REFUTED_MEANS,
+                             UNKNOWN, V_OK, V_REFUTED, V_UNKNOWN)
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +53,20 @@ async def run(state, ctx):
                     if v == REFUTED and wanted.get(k)]
 
     board_ratio = float(R.get("unknown_ratio_board", 0.5))
-    if core_refuted:
+    # 🔴 [CNF-2 2026-09-20] **반증의 뜻은 가설이 정한다**(④가 싣는다).
+    #    딥서치(FORKS F-19): absence of evidence 는 "그 주장이 참이었다면
+    #    근거가 나왔을 것"인 만큼만 evidence of absence 다.
+    #      철회 — 가설이 "픽을 세울 근거"였다. 없으면 픽이 선다는 말이 거짓이다.
+    #      강화 — 가설이 "픽을 무너뜨릴 근거"였다. 없으면 픽이 단단하다.
+    #      중립 — 파생 재료. 승패 판정을 건드리지 않는다.
+    #    ⚠️ 종전에는 이 구분 없이 언제나 철회였다. 그대로 반증을 켜면
+    #       결장 0명인 건강한 라인업이 **전부 철회**된다(반대 위험).
+    #    ⚠️ 표의 **원본은 `labels.REFUTED_MEANS`** 하나다. 여기서 다시 적지
+    #       않는다(노드끼리 import 하지 않는 계약 때문에 ④와 ⑥이 각자 읽는다).
+    #       옛 스냅샷·주입 상태처럼 `refuted_means` 가 없으면 가설 id 로 되짚는다.
+    means = str(hyp.get("refuted_means")
+                or REFUTED_MEANS.get(hyp.get("id"), R_RETRACT))
+    if core_refuted and means == R_RETRACT:
         verdict = V_REFUTED
     elif unknown_ratio > board_ratio:
         verdict = V_UNKNOWN
@@ -59,10 +74,11 @@ async def run(state, ctx):
         verdict = V_OK
 
     state.n06_verdict = {"per_var": per_var, "unknown_ratio": unknown_ratio,
-                         "verdict": verdict, "core_refuted": core_refuted}
-    logger.info("[flow:n06] game=%s 변수 %d → 확인 %d · 반증 %d · 미상 %d → %s",
+                         "verdict": verdict, "core_refuted": core_refuted,
+                         "refuted_means": means}
+    logger.info("[flow:n06] game=%s 변수 %d → 확인 %d · 반증 %d(뜻 %s) · 미상 %d → %s",
                 state.game_id, total,
                 sum(1 for v in per_var.values() if v == CONFIRMED),
                 sum(1 for v in per_var.values() if v == REFUTED),
-                n_unknown, verdict)
+                means, n_unknown, verdict)
     return state

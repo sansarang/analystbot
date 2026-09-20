@@ -433,6 +433,22 @@ async def run(state, ctx):
                         per_side[side] = list(dict.fromkeys(
                             (per_side.get(side) or []) + extra))
             got = [x for v in per_side.values() for x in v]
+            # 🔴 [CNF-2 2026-09-20] **"찾아봤는데 없다"를 남긴다.** 종전에는
+            #    값이 없으면 행 자체를 안 만들었고, 그래서 ⑥의 `refuted` 가
+            #    구조적으로 **불가능**했다(실측: 최근 2h 반증 0건 · 미상 496).
+            # ⚠️ 모름을 반증으로 둔갑시키지 않는다 — 결장 수집이 **아예 안
+            #    돌았으면**(absences 0건) 행을 만들지 않는다. 소스가 응답했고
+            #    (1건 이상) 이 경기 두 팀 몫이 0명일 때만 "확정적으로 0명"이다.
+            if not got and var == "lineup_out" and absences:
+                out.append(_row(var, [], source="satellite+official",
+                                excerpt=f"결장 수집 {len(absences)}건 조회 · "
+                                        "이 경기 두 팀 해당 0명",
+                                sides={},
+                                direction=DIR.merge(
+                                    *[DIR.lineup_direction(excluded=0, confirmed=True,
+                                                           team=sd)
+                                      for sd in ("home", "away")])))
+                continue
             if got:
                 # 🔴 [FIX-1] `lineup_out` 의 방향은 **확정 타순에서 빠진 수**로
                 #    정한다. IL 목록 길이가 아니다 — 근거 표지의 원본은

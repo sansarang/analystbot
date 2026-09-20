@@ -10,7 +10,8 @@ from __future__ import annotations
 import logging
 
 from app.flow import rules as R
-from app.flow.labels import AGREE, BOARD, DOUBT, OVER, PRIOR_ONLY
+from app.flow.labels import (AGREE, BOARD, DOUBT, OVER, PRIOR_ONLY,
+                            R_NEUTRAL, REFUTED_MEANS)
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,16 @@ async def run(state, ctx):
 
     # 🔴 지정이 없으면 ⑪의 구조 후보는 0 이다(보드). 지어내지 않는다.
     hyp.setdefault("market", None)
+    # 🔴 [CNF-2 2026-09-20] **반증이 무슨 뜻인지는 가설이 정한다.**
+    #    딥서치(FORKS F-19): absence of evidence 는 "그 주장이 참이었다면
+    #    근거가 나왔을 것"인 만큼만 evidence of absence 다. 그러면 뜻은
+    #    가설의 **주장**에 달린다 — 게이트가 주장을 정하므로 여기서 싣는다.
+    #      H_fade  "시장 반대편을 세울 근거" → 없으면 시장이 맞다  → 철회
+    #      H_break "우리 픽을 무너뜨릴 근거" → 없으면 픽이 단단하다 → 강화
+    #      H_deriv 파생 재료                                      → 중립
+    #    ⚠️ 종전 ⑥은 게이트와 무관하게 **철회 하나만** 적용했다. 그대로
+    #       반증을 켜면 결장 0명인 건강한 라인업이 전부 철회된다.
+    hyp.setdefault("refuted_means", REFUTED_MEANS.get(hyp["id"], R_NEUTRAL))
     state.n04_hyp = [hyp]
     logger.info("[flow:n04] game=%s %s → %s · 변수 %d개 (핵심 %d)",
                 state.game_id, gate, hyp["id"], len(hyp["vars"]),

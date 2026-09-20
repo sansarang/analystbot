@@ -23,6 +23,19 @@ CONFIRMED, REFUTED, UNKNOWN = "confirmed", "refuted", "unknown"
 V_OK, V_REFUTED, V_UNKNOWN = "확인됨", "반박됨", "모름과반"
 VERDICTS = (V_OK, V_REFUTED, V_UNKNOWN)
 
+#: 🔴 [CNF-2 2026-09-20] **반증의 뜻은 가설마다 다르다.**
+#   딥서치(FORKS F-19): absence of evidence 는 "그 주장이 참이었다면 근거가
+#   나왔을 것"인 만큼만 evidence of absence 다. 그러면 뜻은 가설의 **주장**에
+#   달린다 — 게이트가 주장을 정하므로 ④가 싣고 ⑥이 읽는다.
+#     H_fade  "시장 반대편을 세울 근거" → 없으면 시장이 맞다  → 철회
+#     H_break "우리 픽을 무너뜨릴 근거" → 없으면 픽이 단단하다 → 강화
+#     H_deriv 파생 재료                                      → 중립
+#   ⚠️ 여기가 **원본**이다. 노드는 서로 import 하지 않으므로(계약) 두 노드가
+#      이 표를 각자 읽는다 — 어느 노드에도 다시 적지 마라(사본 금지).
+R_RETRACT, R_STRENGTHEN, R_NEUTRAL = "철회", "강화", "중립"
+REFUTED_MEANS = {"H_fade": R_RETRACT, "H_break": R_STRENGTHEN,
+                 "H_deriv": R_NEUTRAL, "H_none": R_NEUTRAL}
+
 # ⑨ 확신
 GRADE_A, GRADE_B, GRADE_C = "A", "B", "C"
 

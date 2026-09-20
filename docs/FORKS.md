@@ -863,3 +863,60 @@ CREATE UNIQUE INDEX idx_pick_ledger_final ON pick_ledger (game_id) WHERE is_fina
 (c) `is_final=false` 는 이 저장소에서 **"재판정으로 밀려난 옛 행"** 이라는 뜻이
 이미 정해져 있다(`merged_from` 주석). 사람 픽은 옛 행이 아니다. 뜻이 둘이 되면
 계수기가 틀린다(09-08 계수기 규율).
+
+---
+
+## F-20 — ⑥의 **반증**은 픽을 철회하는가, 강화하는가 (2026-09-20 · CNF-2)
+
+**무엇이 갈렸나.**
+⑥의 반증(`refuted` = "찾아봤는데 없다")이 핵심 변수에서 나면 무엇을 해야 하나.
+저장소가 **두 갈래로** 말하고 있었다:
+
+```
+hypothesis.py:11-13   가치 의심 → 우리 쪽을 무너뜨릴 근거를 찾는다
+                      (못 찾으면 사전값이 틀린 것이다)            → 철회
+hypothesis.confirm    refuted 를 세기만 하고 철회하지 않는다       → 중립
+n06_verdict.py:5      핵심이 refuted → 반박됨(픽 철회)            → 철회
+```
+
+이것이 실제 문제가 된 이유: ⑥의 반증이 **구조적으로 불가능**했고(실측 최근
+2h `{'unknown': 496, 'confirmed': 137}` · 반증 0건), 그것을 고쳐 반증을 켜는
+순간 `lineup_out` 이 핵심 변수(`rules.yaml` `core: True`)이므로 **결장 0명인
+건강한 라인업 경기가 전부 철회**된다.
+
+**어떤 자료를 찾았나.**
+- *Rational Inferences From Absent Data* (Princeton CoCoSci) ·
+  *When does absence of evidence constitute evidence of absence?*
+  (Forensic Science International, Bayesian confirmation theory) ·
+  *Bayesian reanalysis of null results reported in medicine* (PMC5919013)
+- 공통 원리: **absence of evidence is evidence of absence to the degree that
+  evidence would have been expected had the claim been true.**
+  즉 관건은 **탐지 가능성**이다. 찾았으면 나왔을 상황에서 안 나온 것은 강한
+  증거이고, 애초에 안 찾았거나 소스가 없던 것은 증거가 아니다.
+
+**무엇을 골랐나.**
+🔴 **반증의 뜻은 가설의 주장에 달렸다.** 게이트가 주장을 정하므로 ④가 싣고
+⑥이 읽는다(표의 원본은 `app/flow/labels.REFUTED_MEANS` 하나다):
+
+| 가설 | 주장 | 반증 = 주장이 틀림 | 픽 |
+|---|---|---|---|
+| `H_fade` (시장과대) | 시장 반대편을 세울 근거가 있다 | 근거 없음 | **철회** |
+| `H_break` (가치의심·사전값단독) | 우리 픽을 무너뜨릴 근거가 있다 | 무너뜨릴 게 없음 | **강화** |
+| `H_deriv` (동의) | 파생 재료 | — | **중립** |
+
+그리고 **탐지 가능성을 코드로 가른다**: ⑤는 결장 수집이 **돌았을 때만**
+(`absences` 1건 이상) "두 팀 해당 0명" 행을 남긴다. 수집이 아예 안 돌았으면
+행을 만들지 않는다 — 그건 모름이고, **모름을 반증으로 둔갑시키는 것**이 이
+수정의 최대 위험이다.
+
+**안 고른 쪽은 왜 안 골랐나.**
+- **언제나 철회**(종전): 위 자료의 조건을 무시한다. "안 찾아서 없다"와 "찾았는데
+  없다"를 같게 보고, `H_break` 에서는 **좋은 소식을 나쁜 소식으로 읽는다.**
+- **언제나 중립**(`confirm` 의 현재 동작): `H_fade` 에서 "시장 반대편을 세울
+  근거가 전혀 없다"는 사실을 버린다. 그건 시장이 맞다는 가장 직접적인 신호다.
+
+**남은 것(등록만).**
+`scout_config.validate:427` 이 LLM 이 내지 않은 칸까지 `[]`/`""` 로 채운다.
+바로 위 `:416` 주석이 "빈 목록은 사실이다 · 결손과 구분해서 읽어야 한다"고
+적는데 그 줄이 구분을 없앤다. 상자 경로를 ⑥이 아직 쓰지 않아 이번 범위 밖이다
+(**4-8-c**).
