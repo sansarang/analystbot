@@ -15,10 +15,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-STATES = ("관측", "후보", "추천대기", "추천", "취소", "종료")
+#: 🔴 [OBS-2 2026-09-20] **사본 금지 — 목록을 여기서 다시 적지 않는다.**
+#   종전에는 `watch_state.py` 와 이 파일이 같은 6개를 각자 선언했고, 둘 다
+#   호출부가 0건이라 아무도 몰랐다. 상태·전이의 원본은 **전이 허용표를 가진**
+#   `watch_state` 하나다(`db/schema.sql:566` "코드만 전이한다").
+from app.engine.watch_state import CANCELLED, DONE  # noqa: E402
+from app.engine.watch_state import STATES  # noqa: E402
 
 #: 되돌아가지 않는 상태.
-TERMINAL = ("취소", "종료")
+TERMINAL = (CANCELLED, DONE)
 
 #: 상시 루프 주기(초). 지시문 7-3.
 TICK_SEC = 60        # due 트리거

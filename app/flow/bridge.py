@@ -15,6 +15,8 @@ import json
 import logging
 from datetime import UTC, date
 
+from app.flow import watch as WATCH
+
 logger = logging.getLogger(__name__)
 
 
@@ -268,7 +270,55 @@ async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
         out["stopped"][key] = out["stopped"].get(key, 0) + 1
         if (st.n13_send or {}).get("sent"):
             out["sent"] += 1
-    logger.info("[flow] 슬레이트 %d경기 · 멈춤 %s · 발송 %d (예산 %d/%d)",
+        # 🔴 [OBS-2 2026-09-20] **관측 상태를 남긴다.** 종전에는 상태기계가
+        #    두 모듈(`watch_state`·`observer`)에 있었는데 **둘 다 호출부가
+        #    0건**이었고 `pick_ledger` 1,393행이 전건 NULL 이었다.
+        #    ⚠️ 흐름이 아는 것만 올린다 — `추천대기` 는 조건 A 가 분석 LLM
+        #       판단(`market_view`)과 `swap_agree` 를 요구하고 v1.4 에 그 값이
+        #       없다. 없는 값을 지어내 상태를 올리지 않는다.
+        #    ⚠️ 전이는 반드시 허용표를 지난다 — 역방향이면 그대로 둔다.
+        try:
+            want = WATCH.state_of(gate=(st.n03_gate or {}).get("gate"),
+                                  sent=bool((st.n13_send or {}).get("sent")),
+                                  started=_already_started(game))
+            moved = await _write_watch(pool, game.get("game_id"), want)
+            out.setdefault("watch", {})
+            out["watch"][moved] = out["watch"].get(moved, 0) + 1
+        except Exception as exc:
+            logger.warning("[flow] game=%s 관측 상태 기록 실패: %s",
+                           game.get("game_id"), exc)
+    logger.info("[flow] 슬레이트 %d경기 · 멈춤 %s · 발송 %d · 관측 %s (예산 %d/%d)",
                 out["games"], out["stopped"], out["sent"],
-                ctx.budget["searches"], cap)
+                out.get("watch") or {}, ctx.budget["searches"], cap)
     return out
+
+
+def _already_started(game: dict) -> bool:
+    """킥오프가 지났나. ⚠️ `starts_at` 이 없으면 **모른다 → False** 다."""
+    ko = game.get("starts_at")
+    if ko is None:
+        return False
+    try:
+        from datetime import datetime as _dt
+
+        return ko.astimezone(UTC) <= _dt.now(UTC)
+    except Exception:
+        return False
+
+
+async def _write_watch(pool, game_id, want: str) -> str:
+    """`games.watch_state` 를 허용표를 지나 갱신한다. 반환: **실제 상태**.
+
+    🔴 거부된 전이는 현재 상태를 그대로 돌려준다 — 조용히 덮지 않는다.
+    """
+    if pool is None or game_id is None:
+        return want
+    gid = int(game_id) if str(game_id).isdigit() else None
+    if gid is None:
+        return want
+    row = await pool.fetchrow("SELECT watch_state FROM games WHERE id = $1", gid)
+    cur = (row or {}).get("watch_state") if row else None
+    nxt = WATCH.advance(cur, want)
+    if nxt != cur:
+        await pool.execute("UPDATE games SET watch_state = $2 WHERE id = $1", gid, nxt)
+    return nxt
