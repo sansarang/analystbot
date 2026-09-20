@@ -2270,6 +2270,25 @@ async def soccer_lineup_probe_job() -> None:
         logger.exception("[soccer-probe] 실패 — 스케줄러는 계속: %s", exc)
 
 
+async def selfcheck_job() -> None:
+    """[W1 / wiring_first §W1] 자가 점검 — **조회만 한다.**
+
+    🔴 결과는 Redis 한 칸과 /health 한 줄로만 간다. 판정·발송에 닿지 않는다.
+    ⚠️ 워치독과 같은 규약이다 — 예외를 밖으로 던지지 않는다. 점검이 스케줄러를
+       죽이면 점검이 아니라 고장이다.
+    """
+    from app.ops.selfcheck import run as run_selfcheck
+
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        pool = await get_pool()
+        await run_selfcheck(pool, redis)
+    except Exception as exc:
+        logger.warning("[selfcheck] 잡 실패 — 무시하고 계속: %s", exc)
+    finally:
+        await redis.aclose()
+
+
 async def watchdog_job() -> None:
     """[운영 안정화 2] 5분마다 고장 점검 — 사람이 먼저 발견하는 고장 0건이 목표.
 
@@ -2652,6 +2671,10 @@ def _job_specs() -> list[tuple]:
         # [TRG-2] 시점 트리거 — 1분. 배당을 긁지 않고 이름표만 붙인다.
         ("triggers_1m", triggers_job, IntervalTrigger(minutes=1)),
         ("watchdog_5m", watchdog_job, IntervalTrigger(minutes=5)),
+        # 🔴 [W1 / wiring_first 2026-09-21] 자가 점검. **조회 전용**이고
+        #    외부 API 를 부르지 않는다(DB SELECT 3개 + Redis 스캔).
+        #    ⚠️ 워치독보다 성기게 둔다 — 같은 자료를 5분마다 다시 셀 이유가 없다.
+        ("selfcheck_30m", selfcheck_job, IntervalTrigger(minutes=30)),
         ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
         # 🔴 [ODN-1] KBO·NPB 총점 — **하루 2회**. 월 1,000 크레딧이라
         #    30분 주기로는 이틀이면 끝난다(11,520콜 필요).

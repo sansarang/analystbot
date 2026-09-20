@@ -1,0 +1,11 @@
+{
+  "note": "soccer_export_0920 B 일정 — 직전 경기를 games(final) 에서 찾아 600h 로 나온다",
+  "rows": [
+    {"game_id": "11339", "team": "Pohang Steelers", "rest_hours": 597.4,
+     "basis": "games(final)", "last_match_kst": "2026-08-26 19:30"},
+    {"game_id": "11339", "team": "FC Seoul", "rest_hours": 621.1,
+     "basis": "games(final)", "last_match_kst": "2026-08-25 17:00"},
+    {"game_id": "11338", "team": "Incheon United", "rest_hours": 192.0,
+     "basis": "fotmob.last5", "last_match_kst": "2026-09-12 19:00"}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "note": "odds_snapshots 행 모양 실측 — open 과 now 가 같은 스냅샷 하나다",
+  "rows": [
+    {"game_id": 11339, "captured_at": "2026-09-19T20:00:25.948227+00:00",
+     "book": "oddsportal-avg", "market": "h2h", "side": "Pohang Steelers",
+     "line": null, "odds": 4.23, "provider": "oddsportal", "snap_tag": "open_proxy"},
+    {"game_id": 11339, "captured_at": "2026-09-19T20:00:25.953501+00:00",
+     "book": "oddsportal-avg", "market": "h2h", "side": "Draw",
+     "line": null, "odds": 3.47, "provider": "oddsportal", "snap_tag": "open_proxy"},
+    {"game_id": 11339, "captured_at": "2026-09-19T20:00:25.958582+00:00",
+     "book": "oddsportal-avg", "market": "h2h", "side": "FC Seoul",
+     "line": null, "odds": 1.83, "provider": "oddsportal", "snap_tag": "open_proxy"}
+  ]
+}

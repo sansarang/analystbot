@@ -912,8 +912,37 @@ async def collect(league: str, date_kst: str) -> dict:
             "sources_used": sorted(used),
             "step": "STEP 2 — 블록 채움",
         },
+        # 🔴 [W1 / wiring_first 2026-09-21] 자가 점검을 **함께 싣는다.**
+        #    읽는 쪽이 "이 자료를 믿어도 되나"를 같은 파일에서 판단할 수 있어야
+        #    한다 — 점검 결과가 다른 곳에만 있으면 아무도 안 본다.
+        #    ⚠️ 표시 전용이다. 이 칸이 판정·확률로 들어가는 경로는 없다.
+        #    ⚠️ 못 읽으면 `null + reason` 이다(빈 목록으로 적지 않는다 —
+        #       "위반 없음"과 "못 쟀다"는 다른 말이다).
+        "selfcheck": await _selfcheck_block(date_kst),
         "games": games,
     }
+
+
+async def _selfcheck_block(date_kst: str) -> dict:
+    """오늘 자가 점검 결과. 🔴 여기서 검사를 **다시 돌리지 않는다** — 스케줄러
+    잡이 남긴 것을 읽기만 한다(두 번 재면 두 값이 갈린다)."""
+    try:
+        import redis.asyncio as aioredis
+
+        from app.config import get_settings
+        from app.ops.selfcheck import key_of, summarize
+
+        r = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+        try:
+            raw = await r.get(key_of(date_kst))
+        finally:
+            await r.aclose()
+        if raw is None:
+            return _null("selfcheck_not_run")
+        hits = json.loads(raw) or []
+        return {"summary": summarize(hits), "n": len(hits), "items": hits}
+    except Exception as exc:
+        return {"value": None, "reason": f"selfcheck_read_failed: {exc}"[:200]}
 
 
 async def _read_cache(sport: str, date_kst: str) -> dict:

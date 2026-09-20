@@ -1,0 +1,17 @@
+{
+  "note": "soccer_export_0920 위성 추출 — 귀속을 못 정해 양쪽에 복사했다",
+  "games": [
+    {"game_id": "11201", "home": "Kashiwa Reysol", "away": "FC Machida Zelvia",
+     "teams": {
+       "home": {"team": "Kashiwa Reysol",
+                "out": ["Kohei Tezuka", "Yuto Yamada", "Tomoaki Okubo"]},
+       "away": {"team": "FC Machida Zelvia",
+                "out": ["Kohei Tezuka", "Yuto Yamada", "Tomoaki Okubo"]}}},
+    {"game_id": "11244", "home": "Real Madrid CF", "away": "Club Atlético de Madrid",
+     "teams": {
+       "home": {"team": "Real Madrid CF",
+                "out": ["Alexander Sørloth", "Pablo Barrios"]},
+       "away": {"team": "Club Atlético de Madrid",
+                "out": ["Alexander Sørloth", "Pablo Barrios"]}}}
+  ]
+}

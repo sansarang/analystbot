@@ -81,7 +81,16 @@ def test_파일이_없으면_기본값이고_경고가_남는다(monkeypatch, ca
     assert any("rules" in r.message.lower() or "rules" in str(r.msg).lower()
                for r in caplog.records), "경고 없이 기본값으로 돌았다"
     assert R.get("adjust.out_mult") == 1.5
-    R.load(force=True)          # 원복
+    # 🔴 [W1 2026-09-21] **원복 전에 monkeypatch 를 먼저 되돌린다.**
+    #    종전에는 여기서 바로 `R.load(force=True)` 를 불렀는데, 그 시점에는
+    #    `RULES_PATH` 가 아직 가짜 경로여서 캐시가 **`_FALLBACK` 인 채로
+    #    남았다**. 그 뒤에 도는 모든 테스트가 config 대신 내장 기본값을 읽었고,
+    #    `_FALLBACK` 에 없는 블록(`ops:` 등)은 `None` 으로 보였다.
+    #    ⚠️ 이것이 바로 CFG-1 이 경고하는 "조용히 기본값으로 도는" 상태다 —
+    #       그걸 검사하는 테스트가 그 상태를 남기고 있었다.
+    monkeypatch.undo()
+    R.load(force=True)          # 원복 — 진짜 config 로 되돌린다
+    assert R.from_file() is True, "원복 실패 — 뒤 테스트가 기본값을 읽는다"
 
 
 def test_없는_키는_기본값이다():

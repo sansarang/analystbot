@@ -1,0 +1,9 @@
+{
+  "note": "pitcher_appearances ⋈ games 집계 (2026-09-21 07:56 KST 실측)",
+  "as_of_kst": "2026-09-21",
+  "rows": [
+    {"league": "KBO", "last_d": "2026-09-12", "rows": 2367, "with_pitches": 0},
+    {"league": "MLB", "last_d": "2026-09-21", "rows": 4703, "with_pitches": 2511},
+    {"league": "NPB", "last_d": "2026-09-20", "rows": 1789, "with_pitches": 1041}
+  ]
+}

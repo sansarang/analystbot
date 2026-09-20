@@ -33,6 +33,10 @@ def test_scheduler_jobs_registered():
                          # [운영 안정화 2] 워치독 — 고장을 시스템이 먼저 알린다.
                          #   사람이 먼저 발견하는 고장 0건이 목표다.
                          "watchdog_5m",
+                         # [W1 / wiring_first 2026-09-21] 자가 점검 —
+                         #   **조회 전용**이고 외부 API 를 부르지 않는다
+                         #   (DB SELECT 3 + Redis 스캔). 판정·발송에 닿지 않는다.
+                         "selfcheck_30m",
                          # [SAT] 위성 수집 — 기본 꺼짐(satellite_enabled).
                          "satellite_15m", "flow_shadow_15m",
                          # [EXP-2 2026-09-19] T-3h·T-60 자동 내보내기.

@@ -1,0 +1,19 @@
+{
+  "note": "scout:soccer:11338 상자 — 결장 목록과 선발 XI 에 같은 선수가 있다",
+  "gathered_at": "2026-09-20T08:47:35.366067+00:00",
+  "game_id": "11338",
+  "teams": {
+    "home": {"team": "Incheon United",
+             "out": ["Stefan Mugosa", "Tae-heui Lee", "Won-jin Jung", "Seung-won Yeo"],
+             "xi": ["Dong-Heon Kim", "Myung-Soon Kim", "Yeon-Su Kim", "Juan Ibiza",
+                    "Ju-Yong Lee", "Gerso Fernandes", "Jae-Min Seo", "Myeong-Ju Lee",
+                    "Leandro", "Chung-Yong Lee", "Stefan Mugoša"],
+             "xi_status": "lastStarting11", "conflict": true, "out_src": "fotmob"},
+    "away": {"team": "Daejeon Citizen",
+             "out": ["Masatoshi Ishida", "Young-jae Seo", "Chang-rae Ha", "Won-sang Um"],
+             "xi": ["Chang-Geun Lee", "Yoon-Sung Kang", "Chang-Rae Ha", "Anton Krivotsyuk",
+                    "Myung-Jae Lee", "Soon-Min Lee", "Victor Bobsin", "Jae-Hee Jeong",
+                    "Masatoshi Ishida", "Gustav Ludwigson", "Min-Kyu Joo"],
+             "xi_status": "lastStarting11", "conflict": true, "out_src": "fotmob"}
+  }
+}

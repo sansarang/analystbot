@@ -245,7 +245,35 @@ async def build_health(pool, redis) -> str:
     except Exception as exc:
         L.append(f"⚪ 라인업 관측 확인 실패: {str(exc)[:60]}")
 
+    # 🔴 [W1 / wiring_first 2026-09-21] 자가 점검 **요약 한 줄.**
+    #    상세는 export 의 coverage 블록이다 — /health 를 길게 만들지 않는다.
+    #    ⚠️ 사용자 결정 2026-09-20: 지시문의 `/status` 는 전부 여기로 읽는다.
+    #       STEP 2 에서 `/status` 를 만들 때 이 줄들을 그리로 옮긴다.
+    L.append("")
+    L.append(await selfcheck_line(redis))
+
     return "\n".join(L)
+
+
+async def selfcheck_line(redis) -> str:
+    """자가 점검 한 줄. 🔴 **문구는 `selfcheck.summarize` 가 원본**이다 —
+    여기서 다시 만들지 않는다(사본 금지).
+
+    ⚠️ 읽기에 실패해도 /health 를 죽이지 않는다. 못 읽었으면 못 읽었다고 쓴다
+       — "위반 없음"으로 적으면 조용한 0 이 된다.
+    """
+    try:
+        import json
+
+        from app.ops.selfcheck import key_of, summarize
+
+        today = datetime.now(KST).strftime("%Y-%m-%d")
+        raw = await redis.get(key_of(today)) if redis else None
+        if raw is None:
+            return "⚪ 자가 점검 — 오늘 기록 없음(아직 안 돌았다)"
+        return summarize(json.loads(raw) or [])
+    except Exception as exc:
+        return f"⚪ 자가 점검 확인 실패: {str(exc)[:60]}"
 
 
 def _slate_date(sport: str) -> str:

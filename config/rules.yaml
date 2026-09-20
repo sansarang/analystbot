@@ -149,3 +149,16 @@ flow:
 #       소진됐다. 그 실측이 쌓이면 이 값을 고친다.
 llm:
   daily_call_cap: 200
+
+# 🔴 [W1 / wiring_first 2026-09-21] 자가 점검 문턱. **표시 전용**이다 —
+#    판정·확률·등급에 들어가지 않는다.
+#    ⚠️ 전부 **미검증 사전값**이다. 근거는 docs/maps/W1.md §2 에 적었다.
+#       실측이 쌓이면 고친다. 코드에 이 숫자를 다시 적지 마라(사본 금지).
+ops:
+  selfcheck:
+    rest_hours_max: 200        # 이보다 긴 휴식은 계산이 틀린 것이다(09-20 포항 597h)
+    ingest_stale_hours: 36     # 일일 적재 잡 기준 이틀치 여유
+    source_blank_ratio: 0.5    # 기사 카드 출처 공란 비율이 이 이상이면 경보
+    results_pending_hours: 6   # 끝났어야 할 경기가 이만큼 지나도 final 이 아니다
+    lineup_missing_min: 30     # T-30 까지 확정 라인업이 없으면 경보
+    starter_unknown_hours: 3   # T-3h 까지 예고 선발이 없으면 경보

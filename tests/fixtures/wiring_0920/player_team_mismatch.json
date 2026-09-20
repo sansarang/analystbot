@@ -1,0 +1,10 @@
+{
+  "note": "KBO 결장 추출 — 롯데 목록에 타 팀(NC) 선수가 섞였다",
+  "game_id": "10981",
+  "teams": {
+    "home": {"team": "Lotte Giants",
+             "out": ["박건우 결장", "전준우 결장"],
+             "roster_team_of": {"박건우": "NC Dinos", "전준우": "Lotte Giants"}},
+    "away": {"team": "NC Dinos", "out": []}
+  }
+}
