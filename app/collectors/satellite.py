@@ -1206,12 +1206,26 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
     if not rows:
         logger.info("[scout] %s@%s — 추출 0건(JSON 불량 또는 팀 칸 없음)", away, home)
         return {}
+    # 🔴 [HYC-1 2026-09-20 사용자 결정] **출처는 코드가 아는 것만 쓴다.**
+    #    `blocks` 는 이 호출의 프롬프트에 **실제로 들어간** 기사다 — 모델이
+    #    뭐라고 답하든 이 목록은 우리가 안다. ⑤의 신뢰 검사가 이것을 본다.
+    #    ⚠️ 종전 `got.setdefault("source", picked[0]...)` 를 **뺐다.** 두 가지
+    #       이유다: (a) `validate()` 가 이미 `source: ""` 키를 만들어 두므로
+    #       `setdefault` 는 **한 번도 동작한 적이 없다**(실측: 운영 상자 42쪽 중
+    #       30쪽이 빈 칸). (b) 설령 동작해도 "첫 기사에서 나왔다"는 것은
+    #       **우리가 모르는 사실**이다 — 항목별 출처는 HYC-1b 의 `article_idx` 다.
+    fed = [u for u, _w in blocks if u]
     out: dict = {}
     for side, name in (("home", home), ("away", away)):
         mine = [r for r in rows if _same_team(r.get("team"), name)]
+        # ⚠️ 개명은 `merge` **뒤**다 — merge 는 `source` 로 순위를 매긴다.
         got = merge(mine, league=league)
         if got:
-            got.setdefault("source", picked[0].get("url") or "")
+            # 🔴 LLM 이 쓴 출처·시각은 **버리지 않고 이름만 바꾼다.** 판정·검사에
+            #    쓰지 않되, 나중에 "지어낸 출처 비율"을 잴 자료로 남긴다.
+            got["llm_source"] = got.pop("source", "") or ""
+            got["llm_fetched_at"] = got.pop("fetched_at", "") or ""
+            got["sources_fed"] = list(fed)
             out[side] = _json_wins(got, (jg or {}).get("fotmob"), side)
     for a in picked:
         u = a.get("url") or ""

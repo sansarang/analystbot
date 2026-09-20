@@ -40,10 +40,17 @@ RANK_UNKNOWN = 9
 RANK_UNLISTED = 4
 
 #: 추출 스키마(지시문 4-4). 이 칸 **외에는 버린다**.
+#: 🔴 [HYC-1 2026-09-20] `fetched_at` 을 **뺐다.** 채우는 코드가 0건이었고
+#   (LLM 에게 기사에서 뽑으라고 맡겼다), 기사 본문에 "우리가 언제 수집했는지"가
+#   있을 리 없다 — 실측 운영 상자 42쪽 중 **42쪽이 빈 칸**이었다.
+#   수집 시각의 원본은 상자 최상위 `gathered_at` 이다(위성이 코드로 쓴다).
+#   ⚠️ `source` 는 남겨 둔다 — LLM 응답을 받되 **검사에 쓰지 않고**
+#      `llm_source` 로 개명해 보관한다(지어낸 출처 비율을 재는 자료).
+#      다음 커밋(HYC-1b)에서 `article_idx` 로 대체한다.
 EXTRACT_SCHEMA = {
     "team": str, "out": list, "doubt": list, "xi_status": str, "xi": list,
     "bench_notable": list, "last3": list, "midweek": str, "notes": str,
-    "source": str, "published": str, "fetched_at": str,
+    "source": str, "published": str,
 }
 
 _XI_STATUS = ("predicted", "official")

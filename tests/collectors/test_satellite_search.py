@@ -196,9 +196,16 @@ def test_폐기_사유를_센다():
 # ── 확장 추출 스키마
 
 def test_스키마가_지시문_4_4_그대로다():
+    """🔴 [HYC-1 2026-09-20 사용자 결정] `fetched_at` 을 **뺐다.**
+
+    채우는 코드가 0건인 칸이었다 — LLM 에게 기사에서 뽑으라고 맡겼는데 기사
+    본문에 "우리가 언제 수집했는지"가 있을 리 없다(실측: 운영 상자 42쪽 중
+    **42쪽 빈 칸**). 수집 시각의 원본은 상자 최상위 `gathered_at` 이다.
+    """
     assert set(SC.EXTRACT_SCHEMA) == {
         "team", "out", "doubt", "xi_status", "xi", "bench_notable",
-        "last3", "midweek", "notes", "source", "published", "fetched_at"}
+        "last3", "midweek", "notes", "source", "published"}
+    assert "fetched_at" not in SC.EXTRACT_SCHEMA
 
 
 def test_xi_status는_둘_중_하나거나_없음이다():

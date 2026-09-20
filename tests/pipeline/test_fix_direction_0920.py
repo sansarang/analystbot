@@ -232,10 +232,15 @@ async def test_타순_제외도_방향을_싣는다():
     st.n03_gate = {"gate": "동의"}
     st.n04_hyp = [{"id": "H_x", "vars": [{"var": "lineup_out"}]}]
     # 한화 쪽 평소 주전 둘이 **오늘 라인업에서 빠짐** · 삼성은 IL 하나뿐
+    # ⚠️ [HYC-1 2026-09-20] 상자 모양을 실제 위성 산출물과 같게 둔다 —
+    #    `gathered_at`·`sources_fed` 가 없으면 ⑤가 카드를 쓰지 않는다.
     ctx = Ctx(inject={
-        "extract": {"home": {"out": ["한화 A 오늘 라인업에서 빠짐",
-                                     "한화 B 오늘 라인업에서 빠짐"]},
-                    "away": {"out": ["삼성 C Injured 10-Day"]}},
+        "extract": {"gathered_at": "2026-09-20T08:47:35+00:00",
+                    "teams": {"home": {"out": ["한화 A 오늘 라인업에서 빠짐",
+                                               "한화 B 오늘 라인업에서 빠짐"],
+                                       "sources_fed": ["https://n.example/a"]},
+                              "away": {"out": ["삼성 C Injured 10-Day"],
+                                       "sources_fed": ["https://n.example/a"]}}},
         "absences": [],
     })
     st = await n05_evidence.run(st, ctx)

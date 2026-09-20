@@ -220,8 +220,15 @@ async def test_공식_결장을_합친다():
     """🔴 FORKS F-2 — 기사와 공식을 합치고, 충돌 시 공식이 이긴다."""
     st = _s(pick_side="away", n03_gate={"gate": AGREE})
     st = await n04_hyp.run(st, Ctx())
-    ctx = Ctx(inject={"extract": {"home": {"out": ["기사선수"]}, "away": {"out": []}},
-                      "absences": ["한화의 공식선수(선발) Injured 10-Day로 결장"]})
+    # ⚠️ [HYC-1 2026-09-20] 기사 카드는 **코드가 아는 출처**가 있어야 센다 —
+    #    상자 모양을 실제 위성 산출물과 같게 둔다(`gathered_at` + `sources_fed`).
+    #    출처 없는 카드가 버려지는 것은 `test_hyc1_card_trust.py` 가 따로 잠근다.
+    ctx = Ctx(inject={"extract": {
+        "gathered_at": "2026-09-20T08:47:35+00:00",
+        "teams": {"home": {"out": ["기사선수"],
+                           "sources_fed": ["https://n.example/a"]},
+                  "away": {"out": [], "sources_fed": ["https://n.example/a"]}}},
+        "absences": ["한화의 공식선수(선발) Injured 10-Day로 결장"]})
     st = await n05_evidence.run(st, ctx)
     row = [e for e in st.n05_evidence if e["var"] == "lineup_out"]
     assert row and "기사선수" in row[0]["value"]

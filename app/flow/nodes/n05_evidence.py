@@ -51,13 +51,58 @@ _BULLPEN_SQL = """
 _SIDE_KR = {"홈": "home", "원정": "away"}
 
 
+#: 🔴 [HYC-1 2026-09-20] `out_src` 가 이 값이면 **LLM 이 뽑은 것**이다.
+#   원본은 `satellite._json_wins` 가 쓰는 문자열이다 — 여기서 목록을 만들지
+#   않는다. 그 외 값(`fotmob` 등)은 **코드가 조회한 구조 소스**이고, 그때는
+#   기사 URL 이 아니라 소스명 + 상자 조회 시각이 출처다.
+_LLM_SRC = "llm"
+
+
+def card_trust(box: dict | None, side_card: dict | None) -> tuple:
+    """[HYC-1] 이 카드를 **증거로 쓸 수 있나.** `(가능?, 사유)`.
+
+    🔴 **검증 근거는 코드가 쓴 것만 쓴다**(사용자 결정 2026-09-20).
+         수집 시각 → 상자 최상위 `gathered_at` (위성이 코드로 쓴다)
+         출처      → `sources_fed` (그 LLM 호출에 **실제로 넣은** 기사 URL)
+         구조 소스 → `out_src != "llm"` 이면 소스명 + 조회 시각이 출처다
+       LLM 이 채운 `llm_source`·`llm_fetched_at` 은 **보지 않는다.**
+       모델이 만든 문자열이라 그것으로 검증하면 검증이 아니다.
+
+    🔴 실측 2026-09-20 (운영 상자 42쪽): `fetched_at` 42/42 빈 칸 ·
+       `source` 30/42 빈 칸 · `conflict` 17/42. 그런데 ⑤는 셋을 **하나도
+       보지 않고** 값이 있으면 증거로 실었다.
+
+    ⚠️ 충돌(`conflict`)은 다른 축이다 — 출처가 있어도 **두 소스가 다른 말**을
+       하면 어느 쪽이 맞는지 판정할 수 없다(오늘 인천: 무고사가 결장 목록과
+       선발 XI에 동시 존재).
+    ⚠️ 이 함수는 **상자 카드만** 본다. 공식 결장(`_cache_absences`)은 판정
+       캐시에서 오므로 여기 규칙과 무관하게 그대로 센다.
+    """
+    card = side_card or {}
+    if not card:
+        return False, "상자에 이 팀 카드가 없다"
+    if card.get("conflict"):
+        return False, "두 소스가 충돌한다 — 어느 쪽이 맞는지 판정 불가"
+    if not str((box or {}).get("gathered_at") or "").strip():
+        return False, "수집 시각(gathered_at)이 없다 — 언제 본 자료인지 모른다"
+    if str(card.get("out_src") or _LLM_SRC) != _LLM_SRC:
+        return True, ""                    # 구조 소스 — 코드가 조회했다
+    if not [u for u in (card.get("sources_fed") or []) if str(u).strip()]:
+        return False, "코드가 아는 출처(sources_fed)가 없다 — 검증 불가"
+    return True, ""
+
+
 def _row(var: str, value, *, source: str, url: str = "", excerpt: str = "",
-         sides: dict | None = None, direction: dict | None = None) -> dict:
+         sides: dict | None = None, direction: dict | None = None,
+         untrusted_reason: str = "") -> dict:
     """증거 한 줄. 🔴 [FIX-1] `direction` 이 **부호의 원본**이다 —
     `sides`(항목 수)는 표시용으로만 남는다(⑦이 더 이상 읽지 않는다)."""
     return {"var": var, "value": value, "source": source, "source_url": url,
             "raw_excerpt": excerpt, "sides": sides or {},
-            "direction": direction or {}, "fetched_at": None}
+            "direction": direction or {}, "fetched_at": None,
+            # 🔴 [HYC-1] 비어 있으면 믿을 수 있는 카드다. 차 있으면 **왜 못
+            #    믿는지**가 남는다 — 그래야 "안 찾았다"와 구분된다.
+            "untrusted_reason": untrusted_reason}
 
 
 async def _cache_doc(state, ctx) -> dict:
@@ -127,19 +172,33 @@ async def _cache_starter_notes(state, ctx) -> list:
 
 
 async def _extract_box(state, ctx) -> dict:
-    """위성 추출 `{side: {칸: 값}}`. 없으면 빈 dict."""
-    if "extract" in (ctx.inject or {}):
-        return dict(ctx.inject["extract"] or {})
-    if ctx.redis is None:
-        return {}
-    try:
-        from app.collectors.satellite import read_extract
+    """위성 추출 **상자 전체** `{gathered_at, sources_fed?, teams:{...}}`.
 
-        got = await read_extract(ctx.redis, _sport_code(state), state.game_id)
-        return (got or {}).get("teams") or {}
-    except Exception as exc:
-        logger.info("[flow:n05] 위성 추출 없음 game=%s: %s", state.game_id, exc)
+    🔴 [HYC-1 2026-09-20] 종전에는 `teams` 만 돌려줬다. 그러면 ⑤가 **수집
+       시각을 영영 볼 수 없다** — `gathered_at` 은 상자 최상위에 있고 그것이
+       코드가 쓴 유일한 시각이기 때문이다(쪽 카드의 `fetched_at` 은 LLM 칸이라
+       42/42 빈 칸이었다).
+    ⚠️ 옛 모양(teams 만)으로 주입하는 자리가 있다 — `teams` 키가 없으면
+       그것을 teams 로 읽고 메타는 없는 것으로 둔다(그때는 신뢰 검사가
+       "수집 시각 없음"으로 떨어진다. 지어내지 않는다).
+    """
+    raw = None
+    if "extract" in (ctx.inject or {}):
+        raw = dict(ctx.inject["extract"] or {})
+    elif ctx.redis is not None:
+        try:
+            from app.collectors.satellite import read_extract
+
+            raw = await read_extract(ctx.redis, _sport_code(state),
+                                     state.game_id)
+        except Exception as exc:
+            logger.info("[flow:n05] 위성 추출 없음 game=%s: %s",
+                        state.game_id, exc)
+    if not raw:
         return {}
+    if "teams" in raw:
+        return dict(raw)
+    return {"teams": dict(raw)}
 
 
 def _sport_code(state) -> str:
@@ -426,11 +485,30 @@ async def run(state, ctx):
 
         if field:
             per_side: dict = {}
+            teams = (box.get("teams") or {})
+            # 🔴 [HYC-1 2026-09-20] **못 믿을 카드는 값을 싣지 않는다.**
+            #    사유는 버리지 않는다 — 아래에서 `untrusted_reason` 으로 남겨
+            #    "안 찾았다"와 "찾았는데 검증할 수 없다"를 구분한다.
+            # ⚠️ **카드가 없는 것**과 **카드를 못 믿는 것**은 다르다. 없는 것은
+            #    종전 그대로 조용히 빈손이고(그래야 공식 0명 행 CNF-2 가 산다),
+            #    있는데 검증이 안 되는 것만 사유를 남긴다.
+            untrusted: dict = {}
             for side in ("home", "away"):
-                v = (box.get(side) or {}).get(field)
+                card = teams.get(side)
+                if not card:
+                    continue
+                ok, why = card_trust(box, card)
+                if not ok:
+                    if why:
+                        untrusted[side] = why
+                    continue
+                v = (teams.get(side) or {}).get(field)
                 if v:
                     per_side[side] = list(v) if isinstance(v, (list, tuple)) else [v]
             # 🔴 공식 결장을 **합친다**(FORKS F-2: 충돌 시 공식이 이긴다).
+            # ⚠️ [HYC-1] 공식 결장은 **판정 캐시**에서 온다 — 상자 카드가 못
+            #    믿을 것이어도 그대로 센다. 상자를 막느라 공식까지 버리면
+            #    그것이 더 큰 결함이다(반대 위험 · 계약 테스트가 잠근다).
             if var in ("lineup_out", "xi_confirmed") and absences:
                 h_out, a_out = _split(state, absences)
                 for side, extra in (("home", h_out), ("away", a_out)):
@@ -438,6 +516,22 @@ async def run(state, ctx):
                         per_side[side] = list(dict.fromkeys(
                             (per_side.get(side) or []) + extra))
             got = [x for v in per_side.values() for x in v]
+            # 🔴 [HYC-1 2026-09-20] **검증 불가를 "없다"로 만들지 않는다.**
+            #    믿을 수 있는 값이 하나도 없고 막힌 이유가 있으면 그 사유를
+            #    실은 행을 남긴다 — `value=None` 이므로 ⑥은 `_judge` 의 기존
+            #    규칙 그대로 `unknown` 으로 읽는다(채점 쪽에 조건을 다시 적지
+            #    않는다 · 사본 금지).
+            # ⚠️ 아래 CNF-2 의 "확정적으로 0명"보다 **먼저** 본다. 못 믿을
+            #    카드를 지나서 빈손이 된 것을 "없음이 확인됐다"로 적으면
+            #    검증 실패가 반증으로 둔갑한다.
+            if not got and untrusted:
+                why = " · ".join(f"{sd}: {msg}" for sd, msg in untrusted.items())
+                out.append(_row(var, None, source="satellite",
+                                excerpt=f"추출 카드를 쓰지 못했다 — {why}",
+                                untrusted_reason=why))
+                logger.info("[flow:n05] game=%s %s — 카드 신뢰 불가 (%s)",
+                            state.game_id, var, why)
+                continue
             # 🔴 [CNF-2 2026-09-20] **"찾아봤는데 없다"를 남긴다.** 종전에는
             #    값이 없으면 행 자체를 안 만들었고, 그래서 ⑥의 `refuted` 가
             #    구조적으로 **불가능**했다(실측: 최근 2h 반증 0건 · 미상 496).
