@@ -1,0 +1,60 @@
+# 승인 대기 팀 별칭 — [FMR-1 2026-09-20]
+#
+# 🔴 **자동 승격 금지.** 이름이 달라 못 찾은 팀을 기계가 짐작해 별칭으로
+#    올리면 그것이 AC밀란 오매칭이다. 사람이 `approved: true` 로 바꾼 행만
+#    별칭표로 옮긴다. 계약 테스트가 그것을 잠근다.
+# 🔴 `fotmob_id` 는 **FotMob 원본에서 실제로 읽은 값**이다. 추측한 id 를
+#    적지 않는다 — 못 읽었으면 `null` 이다.
+# ⚠️ 한 번 id 로 확정된 팀은 이후 **id 우선**으로 매칭한다(이름은 바뀐다).
+#
+# 실측 2026-09-20 16:45~17:05 · FotMob 하루치 목록(20260920)
+
+pending:
+  - ours: "Brondby IF"
+    fotmob_name: "Brøndby IF"
+    fotmob_id: 8595
+    league: "Superligaen"
+    reason: "발음부호 ø — norm 이 통째로 지운다. 치환표로 풀릴 것"
+    approved: false
+
+  - ours: "FC Copenhagen"
+    fotmob_name: "FC København"
+    fotmob_id: 8391
+    league: "Superligaen"
+    reason: "언어가 다르다(덴마크어 원표기) — 치환표로 안 풀린다"
+    approved: false
+
+  - ours: "Jeju United FC"
+    fotmob_name: "Jeju SK"
+    fotmob_id: 133898
+    league: "K-League 1"
+    reason: "구단 개명 — 치환표로 안 풀린다"
+    approved: false
+
+  - ours: "Club Atlético de Madrid"
+    fotmob_name: "Atlético Madrid"
+    fotmob_id: 9906
+    league: "LaLiga"
+    reason: "법인격(Club)+전치사(de) 차이"
+    approved: false
+
+  - ours: "Bayer 04 Leverkusen"
+    fotmob_name: "Bayer Leverkusen"
+    fotmob_id: 8178
+    league: "Bundesliga"
+    reason: "창단연도 04"
+    approved: false
+
+  - ours: "Real Madrid CF"
+    fotmob_name: "Real Madrid"
+    fotmob_id: 8633
+    league: "LaLiga"
+    reason: "법인격 CF"
+    approved: false
+
+  - ours: "SonderjyskE"
+    fotmob_name: null
+    fotmob_id: null
+    league: "Superligaen"
+    reason: "🔴 오늘 경기가 없어 FotMob 이름을 **확인하지 못했다**. SønderjyskE 로 추정되나 미확인 — 확인 전에는 승인하지 않는다"
+    approved: false

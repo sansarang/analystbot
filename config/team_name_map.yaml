@@ -1,0 +1,35 @@
+# 팀 이름 정규화 치환표 — `fotmob.norm()` 이 읽는다. [FMR-1 2026-09-20]
+#
+# 🔴 왜 — `norm` 은 `NFKD → ascii ignore` 다. `á`·`ö` 는 **분해되어** 기본
+#    문자가 남지만, `ø`·`æ`·`ß`·`ł`·`đ` 는 **분해되지 않는 독립 문자**라
+#    `ascii ignore` 가 **통째로 지운다**. 실측 2026-09-20:
+#        Brøndby IF   → 'brndby if'    (우리 'Brondby IF' → 'brondby if')
+#        SønderjyskE  → 'snderjyske'
+#        FC København → 'fc kbenhavn'
+#        Málaga CF    → 'malaga cf'    ← 이쪽은 정상
+#
+# 🔴 **퍼지 유사도가 아니다.** 글자 하나를 글자 하나로 바꾸는 결정적 치환이고,
+#    항목마다 근거가 하나다. 코드에 박지 않는 이유는 늘어날 것이기 때문이다.
+# ⚠️ 이름이 **다른 언어**이거나 **개명**이면 여기서 풀리지 않는다
+#    (FC København ↔ FC Copenhagen · Jeju SK ↔ Jeju United FC).
+#    그런 것은 `config/team_alias_pending.yaml` → 승인 → 별칭표로 간다.
+# ⚠️ 치환은 **소문자화 전에** 적용한다(대문자 Ø 도 잡아야 한다).
+
+replace:
+  "Ø": "O"
+  "ø": "o"
+  "Æ": "Ae"
+  "æ": "ae"
+  "Å": "A"
+  "å": "a"
+  "Ð": "D"
+  "ð": "d"
+  "Đ": "D"
+  "đ": "d"
+  "Ł": "L"
+  "ł": "l"
+  "ß": "ss"
+  "Þ": "Th"
+  "þ": "th"
+  "İ": "I"
+  "ı": "i"

@@ -19,6 +19,11 @@ class _Pool:
     def __init__(self):
         self.rows = []
 
+    async def fetchrow(self, sql, *a):
+        # ⚠️ [FMR-1] `upsert_slate` 이 점수 충돌 확인차 기존 행을 읽는다.
+        #    빈 DB 픽스처라 None(충돌 없음).
+        return None
+
     async def execute(self, sql, *a):
         self.rows.append(a)
 

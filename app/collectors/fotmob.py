@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import pathlib
 import unicodedata
 
 logger = logging.getLogger(__name__)
@@ -66,10 +67,105 @@ async def _get(path: str, params: dict) -> dict | None:
         return None
 
 
+#: [FMR-1 2026-09-20] 발음부호 치환표. 🔴 원본은 `config/team_name_map.yaml` 이다.
+_NAME_MAP: dict | None = None
+
+
+def _name_map() -> dict:
+    global _NAME_MAP
+    if _NAME_MAP is None:
+        try:
+            import yaml
+
+            f = (pathlib.Path(__file__).resolve().parents[2]
+                 / "config" / "team_name_map.yaml")
+            _NAME_MAP = (yaml.safe_load(f.read_text(encoding="utf-8")) or {}) \
+                .get("replace") or {}
+        except Exception as exc:
+            logger.warning("[fotmob] 이름 치환표 로드 실패: %s", exc)
+            _NAME_MAP = {}
+    return _NAME_MAP
+
+
 def norm(name: str) -> str:
-    """비교용 정규화. 🔴 퍼지 금지 — 악센트·기호만 지운다."""
-    s = unicodedata.normalize("NFKD", str(name or "")).encode("ascii", "ignore").decode()
+    """비교용 정규화. 🔴 퍼지 금지 — 악센트·기호만 지운다.
+
+    🔴 [FMR-1] **치환을 먼저 한다.** `NFKD → ascii ignore` 는 `á`·`ö` 는
+       분해해 기본 문자를 남기지만, `ø`·`æ`·`ß`·`ł`·`đ` 는 분해되지 않는
+       독립 문자라 **통째로 지운다**(실측: `Brøndby IF` → `brndby if`).
+       그래서 우리 `Brondby IF`(→`brondby if`)와 영영 안 맞았다.
+    ⚠️ 치환표는 `config/team_name_map.yaml` 이 원본이다 — 코드에 박지 않는다.
+    ⚠️ 언어가 다르거나(København↔Copenhagen) 개명(Jeju SK)인 것은 치환으로
+       풀리지 않는다 — `config/team_alias_pending.yaml` → 승인 → 별칭표다.
+    """
+    raw = str(name or "")
+    for a, b in _name_map().items():
+        raw = raw.replace(a, b)
+    s = unicodedata.normalize("NFKD", raw).encode("ascii", "ignore").decode()
     return " ".join(s.lower().replace("-", " ").split())
+
+
+#: [FMR-1] 상태 매핑. 🔴 `reason.short` 가 원본이다 — `statusId` 는 뜻이
+#  문서화돼 있지 않아 읽지 않는다(추측 금지).
+_FINAL_REASONS = ("FT", "AET", "Pen", "AP", "PEN")
+
+
+def status_of(st: dict | None) -> tuple:
+    """FotMob `status` → `(우리 status, result_basis)`.
+
+    🔴 `AET`·`Pen` 도 **종료는 종료**다 — 점수는 저장하고 채점만 따로 본다.
+    ⚠️ 연기·취소·중단은 **final 이 아니다.**
+    """
+    st = st or {}
+    short = str(((st.get("reason") or {}).get("short")) or "")
+    if st.get("cancelled"):
+        return "cancelled", None
+    if st.get("finished"):
+        if short in ("AET", "Pen", "AP", "PEN"):
+            return "final", short
+        if short == "FT" or not short:
+            return "final", "FT"
+        # 🔴 종료인데 모르는 표지 — final 로 올리지 않는다(추측 금지).
+        return "suspended", short
+    if short:
+        return "postponed", short
+    return "scheduled", None
+
+
+def score_at_90(events) -> tuple | None:
+    """득점 이벤트 → **90분 점수**. 없으면 `(0, 0)`.
+
+    🔴 실측(matchId 6144851): 후반 추가시간은 `time=90` + `overloadTime`,
+       연장 득점은 `time >= 91` 로 온다. 그래서 `time <= 90` 만 합산한다.
+    🔴 승부차기는 본선 `events` 에 `newScore=None` 으로만 있고 점수는
+       `penaltyShootoutEvents` 별도 배열이다 — **어디에도 합산하지 않는다.**
+    """
+    best = (0, 0)
+    for e in events or []:
+        if not isinstance(e, dict):
+            continue
+        sc = e.get("newScore")
+        if not (isinstance(sc, (list, tuple)) and len(sc) == 2):
+            continue
+        try:
+            t = int(e.get("time"))
+        except (TypeError, ValueError):
+            continue
+        if t > 90:
+            continue
+        best = (int(sc[0]), int(sc[1]))
+    return best
+
+
+def ninety_ok(score) -> bool:
+    """연장에 간 경기의 90분 점수가 **말이 되는가.**
+
+    🔴 동점이라야 연장에 간다. 아니면 계산이 틀린 것이고, 그때는
+       **수동 확인 목록**으로 보낸다 — 추측으로 채점하지 않는다.
+    """
+    if not (isinstance(score, (list, tuple)) and len(score) == 2):
+        return False
+    return score[0] == score[1]
 
 
 async def slate(date_yyyymmdd: str) -> list[dict]:
@@ -78,13 +174,27 @@ async def slate(date_yyyymmdd: str) -> list[dict]:
     out: list[dict] = []
     for lg in (d or {}).get("leagues") or []:
         for m in lg.get("matches") or []:
+            st = m.get("status") or {}
+            status, basis = status_of(st)
+            h, a = m.get("home") or {}, m.get("away") or {}
             out.append({
                 "id": m.get("id"),
                 "league": lg.get("name"),
+                "league_id": lg.get("id") or lg.get("primaryId"),
                 "ccode": lg.get("ccode"),
-                "home": ((m.get("home") or {}).get("name")),
-                "away": ((m.get("away") or {}).get("name")),
-                "utc": ((m.get("status") or {}).get("utcTime")),
+                "home": h.get("name"),
+                "away": a.get("name"),
+                # 🔴 [FMR-1] **점수를 버리지 않는다.** 종전에는 이름·시각만
+                #    뽑아서 J·K·UEL·ACL 결과가 전부 유실됐다(실측: 그 리그들의
+                #    `games.status` 가 전건 `scheduled`).
+                "home_id": h.get("id"), "away_id": a.get("id"),
+                "home_score": h.get("score"), "away_score": a.get("score"),
+                "home_pen": h.get("penScore"), "away_pen": a.get("penScore"),
+                "finished": bool(st.get("finished")),
+                "score_str": st.get("scoreStr"),
+                "reason": ((st.get("reason") or {}).get("short")),
+                "status": status, "result_basis": basis,
+                "utc": st.get("utcTime"),
             })
     logger.info("[fotmob] %s — %d경기", date_yyyymmdd, len(out))
     return out
@@ -514,14 +624,49 @@ async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str) -> dict:
             logger.warning("[fotmob] 적재 제외 %s @ %s — canonical/시각/id 결측",
                            r.get("away"), r.get("home"))
             continue
+        # 🔴 [FMR-1 2026-09-20] **점수·상태를 함께 쓴다.** 종전에는 항상
+        #    `'scheduled'` 로 넣어서, 이 경로로만 들어오는 리그(J·K·UEL·ACL)의
+        #    결과가 **영원히 안 채워졌다**(실측: 그 리그들 status 전건 scheduled ·
+        #    ACL 판정 8건이 채점 0).
+        # ⚠️ 멱등이다 — 같은 날 두 번 돌려도 같은 행을 갱신한다(ext_id 유니크).
+        # ⚠️ 점수는 **덮어쓰지 않고** coalesce 한다. 다른 소스(football-data)가
+        #    먼저 넣었으면 그 값이 남고, 차이는 아래 conflict 로그가 잡는다.
+        hs, as_ = r.get("home_score"), r.get("away_score")
+        st = r.get("status") or "scheduled"
+        basis = r.get("result_basis")
+        if st == "final" and basis in ("AET", "Pen", "AP", "PEN"):
+            # 🔴 연장·승부차기는 **90분 점수로 채점**해야 한다. 여기서는
+            #    저장만 하고 `result_basis` 를 남긴다 — 90분 점수 산출은
+            #    `score_at_90`(상세 호출)이고 FT 가 아닌 경기에만 부른다.
+            out.setdefault("needs_90", []).append(
+                {"ext_id": f"fotmob:{r['id']}", "match_id": r["id"],
+                 "basis": basis, "final_score": [hs, as_]})
+        prev = await pool.fetchrow(
+            "SELECT home_score, away_score FROM games "
+            "WHERE sport='soccer' AND ext_id=$1", f"fotmob:{r['id']}")
+        if (prev and prev["home_score"] is not None and hs is not None
+                and (prev["home_score"], prev["away_score"]) != (hs, as_)):
+            out.setdefault("conflict", []).append(
+                {"ext_id": f"fotmob:{r['id']}",
+                 "db": [prev["home_score"], prev["away_score"]],
+                 "fotmob": [hs, as_]})
+            logger.warning("[fotmob] 점수 충돌 %s — DB %s vs FotMob %s (덮지 않는다)",
+                           f"fotmob:{r['id']}",
+                           [prev["home_score"], prev["away_score"]], [hs, as_])
         await pool.execute(
             """
-            INSERT INTO games (sport, league, ext_id, starts_at, home, away, status)
-            VALUES ('soccer', $1, $2, $3, $4, $5, 'scheduled')
+            INSERT INTO games (sport, league, ext_id, starts_at, home, away,
+                               status, home_score, away_score)
+            VALUES ('soccer', $1, $2, $3, $4, $5, $6, $7, $8)
             ON CONFLICT (sport, ext_id) DO UPDATE SET
-                starts_at = EXCLUDED.starts_at, updated_at = now()
+                starts_at = EXCLUDED.starts_at,
+                status = EXCLUDED.status,
+                home_score = coalesce(games.home_score, EXCLUDED.home_score),
+                away_score = coalesce(games.away_score, EXCLUDED.away_score),
+                updated_at = now()
             """,
-            cfg.get("label") or league_key, f"fotmob:{r['id']}", ko, h, a)
+            cfg.get("label") or league_key, f"fotmob:{r['id']}", ko, h, a,
+            st, hs, as_)
         out["ext_ids"].append(f"fotmob:{r['id']}")
         out["saved"] += 1
     logger.info("[fotmob] %s 적재 — 슬레이트 %d · 해당 %d · 저장 %d · 제외 %d",
