@@ -92,6 +92,24 @@ async def _run(a) -> int:
               f"{row['judge_by']} · {row['market']} "
               f"{row['market_side']}{'' if row['line'] is None else ' ' + str(row['line'])}"
               f" @ {row['odds_taken']}")
+        # 🔴 [LDG-2 2026-09-20] **저장 전용 기록을 붙인다.** 종전에는 행만 넣고
+        #    끝나서 이 행의 `odds_at_verdict` 가 영영 비었고, `clv` 는 그 값이
+        #    있어야 계산되므로(`_CLV_SAVE["closing"]` 의 CASE) **CLV 가 영원히
+        #    NULL** 이었다(실측: 1,393행 중 clv 97건).
+        # ⚠️ 머리말의 "채점·CLV 는 여기서 안 채운다"는 **채점**과 **마감 배당**을
+        #    말한다. `odds_at_verdict` 는 판정 **시각**의 배당이고, 그 시각을
+        #    아는 것은 이 도구뿐이다 — 결과 잡은 복원할 수 없다.
+        # 🔴 새 함수를 만들지 않는다 — 구경로 판정이 쓰는 그 함수를 부른다.
+        #    판정(`predicted_side`·`p_code`)은 건드리지 않는다.
+        try:
+            from app.engine.pick_ledger import _record_side_effects
+
+            async with pool.acquire() as conn:
+                await _record_side_effects(conn, int(g["id"]), clv_at="verdict")
+            print("  ↳ 저장 전용 기록 완료 (판정시각 배당·이동 분류·북간·사전값)")
+        except Exception as exc:
+            # ⚠️ 행은 이미 들어갔다. 부가 기록 실패가 삽입을 되돌리지 않는다.
+            print(f"  ⚠️ 저장 전용 기록 실패 — 행은 남았다: {exc}", file=sys.stderr)
         return 0
     finally:
         await close_pool()
