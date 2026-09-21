@@ -75,7 +75,7 @@ async def test_재순위가_추출_입력을_줄인다(spy):
 
 
 @pytest.mark.asyncio
-async def test_증거가_0이면_종전_창_경로로_내려간다(spy):
+async def test_증거가_0이면_추출하지_않는다(spy):
     """🔴 **여기서 멈추지 않는다 — 그리고 그 이유를 적는다.**
 
     "증거 0 이면 묻지 않는다"(절대 규칙 6)가 더 정직하다. 그런데 그것은
@@ -92,9 +92,10 @@ async def test_증거가_0이면_종전_창_경로로_내려간다(spy):
 
     junk = [{"url": "https://x/1", "title": "아시안게임 트러블",
              "body": "선수들의 식사는 열악 태국 선수단 단장이 호소했다. " * 12}]
-    await extract_game_facts(junk, home="Chiba Lotte Marines",
-                             away="Saitama Seibu Lions", league="NPB")
-    assert spy, "증거 0 인데 종전 경로로도 안 내려갔다"
+    out = await extract_game_facts(junk, home="Chiba Lotte Marines",
+                                   away="Saitama Seibu Lions", league="NPB")
+    assert spy == [], "증거가 없는데 LLM 을 불렀다"
+    assert out.get("reason") == "no_relevant_paragraph", out
 
 
 @pytest.mark.asyncio

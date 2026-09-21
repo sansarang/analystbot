@@ -14,8 +14,14 @@ import pytest
 from app.collectors import satellite as SAT
 from app.engine import gate as G
 
-ARTS = [{"team": "A", "body": "x" * 600, "url": "http://a.example/1",
-         "published": "2026-09-16"}]
+# ⚠️ [DEC-3 2026-09-21 규칙 개정] 본문에 **증거 낱말과 팀 이름**을 넣는다.
+#    새 규칙이 "관련 문단 ≥1 일 때만 추출"이라, `"x"*600` 같은 증거 없는
+#    픽스처는 추출 자체가 일어나지 않아 이 시험의 대상에 닿지 못한다.
+#    ⚠️ 이 시험이 지키는 것(**게이트 라벨로 추출을 가르지 않는다**)은 그대로다.
+ARTS = [{"team": "Orix Buffaloes", "url": "http://a.example/1",
+         "published": "2026-09-16",
+         "body": "Orix Buffaloes 경기 프리뷰 — 오늘 선발 라인업이 발표됐고 "
+                 "Fukuoka SoftBank Hawks 를 상대로 결장 선수는 없다 " * 8}]
 
 
 @pytest.fixture

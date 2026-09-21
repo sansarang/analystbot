@@ -96,7 +96,12 @@ async def test_빅매치가_아니어도_LLM_추출을_한다(monkeypatch):
         return json.dumps({"teams": []}, ensure_ascii=False)
 
     monkeypatch.setattr("app.engine.team_form._complete_free", _f)
-    arts = [{"team": "US Lecce", "body": "본문", "url": "https://www.gazzetta.it/a"}]
+    # ⚠️ [DEC-3] 본문에 증거 낱말·팀 이름을 넣는다 — 새 규칙이 "관련 문단
+    #    ≥1 일 때만 추출"이라 증거 없는 픽스처는 이 시험의 대상에 닿지 못한다.
+    #    시험하는 것(빅매치가 아니어도 부르는가)은 **그대로다**.
+    arts = [{"team": "US Lecce", "url": "https://www.gazzetta.it/a",
+             "body": "US Lecce 경기 프리뷰 — 오늘 선발 라인업이 발표됐고 "
+                     "결장 선수는 없는 것으로 확인됐다 " * 3}]
 
     await SAT.extract_game_facts(arts, home="US Lecce", away="AC Monza",
                                  league="serie_a",
@@ -115,7 +120,9 @@ async def test_빅매치면_LLM_을_부른다(monkeypatch):
                           ensure_ascii=False)
 
     monkeypatch.setattr("app.engine.team_form._complete_free", _f)
-    arts = [{"team": "AS Roma", "body": "본문", "url": "https://www.gazzetta.it/a"}]
+    arts = [{"team": "AS Roma", "url": "https://www.gazzetta.it/a",
+             "body": "AS Roma 경기 프리뷰 — 오늘 선발 라인업이 발표됐고 "
+                     "결장 선수는 없는 것으로 확인됐다 " * 3}]
 
     await SAT.extract_game_facts(arts, home="AS Roma", away="SS Lazio",
                                  league="serie_a", jg={})

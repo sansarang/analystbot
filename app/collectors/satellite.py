@@ -1246,21 +1246,33 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
     #    ⚠️ 끄면 종전 `_windows` 경로다 — config 한 줄, 배포 없이 되돌린다.
     from app.deepsearch.runtime import load_config as _ds_cfg
 
-    blocks = []
+    # 🔴 [DEC-3 2026-09-21] `used` 를 **여기서** 초기화한다. 재순위 경로로 가면
+    #    아래 폴백 블록이 안 돌아 `used` 가 정의되지 않는데, 맨 끝 로그가 그것을
+    #    쓴다 — `UnboundLocalError` 다. 지금까지는 **항상 폴백을 거쳐서** 가려져
+    #    있었고(DS-5 의 폴백 설계), 규칙 개정으로 그 경로가 사라지자 드러났다.
+    blocks, used = [], 0
     if ((_ds_cfg().get("rerank") or {}).get("wire_extract")) is not False:
         blocks = _rerank_blocks(picked, home=home, away=away, league=league)
+        used = sum(len(t) for _, t in blocks)
         if not blocks:
-            # 🔴 **여기서 멈추지 않고 종전 경로로 내려간다.**
-            #    "증거 0 이면 묻지 않는다"(절대 규칙 6)가 더 정직하지만, 그것은
-            #    **"기사가 1건 이상이면 추출한다"(EXT-2·PA-13·빅매치 계약 16건)**
-            #    를 뒤집는 결정이다. 내 변경을 통과시키려고 기존 계약 16개를
-            #    고치는 것은 회귀를 숨기는 수다 — 사용자 결정 사항으로 남긴다.
-            #    ⚠️ 실측 2026-09-21: 운영 11경기 중 2건이 이 자리다(롯데vs세이부·
-            #       니혼햄vs오릭스). 둘 다 기사 6건에 그 경기 이야기가 없었다.
+            # 🔴 [DEC-3 2026-09-21 **사용자 결정 · 규칙 개정**]
+            #    "관련 문단 ≥1 일 때만 추출한다. 0 이면 미상이다."
+            #    ⚠️ DS-5 때 나는 같은 변경을 만들었다가 **되돌렸다** — 기존 계약
+            #       17건이 깨졌고 "내 변경을 통과시키려고 계약을 고치는 것은
+            #       회귀를 숨기는 수"라고 적었다. **지금은 사용자가 규칙을 바꿨다.**
+            #    실측 2026-09-21: 운영 11경기 중 2건이 이 자리다(롯데vs세이부 ·
+            #    니혼햄vs오릭스). 둘 다 기사 6건에 **그 경기 이야기가 없었다**
+            #    (아시안게임 식사 문제 · 다른 팀 투수). LLM 호출 11 → 9.
+            #    ⚠️ 되돌리려면 `rerank.require_relevant: false` 한 줄이다.
+            if ((_ds_cfg().get("rerank") or {}).get("require_relevant")) is not False:
+                logger.info("[scout] %s@%s — 증거 문단 0 · 추출 안 함 "
+                            "(기사 %d건 · reason=no_relevant_paragraph)",
+                            away, home, len(picked))
+                return {"reason": "no_relevant_paragraph",
+                        "articles": len(picked)}
             logger.info("[scout] %s@%s — 증거 문단 0 · 종전 창 경로로 내려간다 "
                         "(기사 %d건)", away, home, len(picked))
     if not blocks:
-        used = 0
         for a in picked:
             w = _windows(a.get("body") or "", (home, away))
             if not w:

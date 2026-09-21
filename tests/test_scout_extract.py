@@ -31,8 +31,15 @@ def _art(team, url, body=None):
     17건 중 15건이 같은 안내문이었다). 픽스처 편의가 새 규칙과 부딪힌 것이라
     픽스처를 실제에 맞춘다 — 검사를 느슨하게 하지 않는다.
     """
+    #  [DEC-3 2026-09-21 규칙 개정] 본문에 **증거 낱말과 팀 이름**을 넣는다.
+    #    새 규칙이 "관련 문단 ≥1 일 때만 추출"이라, 증거 없는 픽스처는
+    #    추출 자체가 일어나지 않아 이 시험의 대상에 닿지 못한다.
+    #    ⚠️ **검사를 느슨하게 한 것이 아니라 픽스처를 새 규칙에 맞춘 것**이다
+    #       — 이 시험이 지키던 것(호출 수·캐시·등급 순)은 그대로다.
     return {"team": team, "url": url,
-            "body": body if body is not None else f"본문 {next(_SEQ)}"}
+            "body": body if body is not None else
+            f"{team} 경기 프리뷰 — 오늘 선발 라인업이 발표됐으며 "
+            f"결장 선수는 없는 것으로 확인됐다(기사 {next(_SEQ)})"}
 
 
 def _fake(payload, calls=None):
@@ -70,9 +77,19 @@ async def test_경기당_한_번만_묻는다(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_기사_전문_대신_창만_넣는다(monkeypatch):
+async def test_기사_전문_대신_추린_것만_넣는다(monkeypatch):
+    """⚠️ [DEC-3 2026-09-21] 이름을 바꿨다 — 이제 "창"이 아니라 **재순위 문단**이다.
+    시험하는 것은 그대로다: **전문을 넣지 않고, 단서 주변은 남긴다.**
+    ⚠️ 본문에 팀 이름을 넣는다 — 새 규칙이 "관련 문단 ≥1" 이라 그래야 대상에 닿는다.
+    """
     calls: list[str] = []
-    body = "머리말 " * 400 + " Casadei out injury " + " 꼬리말 " * 400
+    # ⚠️ 문장 끝 기호를 넣는다 — 재순위는 **문단 단위**로 고르므로 기호가
+    #    없으면 본문 전체가 한 문단이 되어 "추렸다"를 시험할 수 없다.
+    body = ("".join(f"밀란 구단은 이번 주 훈련 일정을 공개했으며 팬들의 관심이 높다 {i}. "
+                    for i in range(40))
+            + "AC Milan 소식 — Casadei out injury lineup 결장이 확정됐다. "
+            + "".join(f"이탈리아 언론은 다음 경기 전망을 다양하게 내놓고 있다 {i}. "
+                      for i in range(40)))
     monkeypatch.setattr("app.engine.team_form._complete_free",
                         _fake(_two_teams(), calls))
 
@@ -82,7 +99,6 @@ async def test_기사_전문_대신_창만_넣는다(monkeypatch):
     sent = calls[0]
     assert "Casadei out injury" in sent, "단서 주변은 남긴다"
     assert len(sent) < len(body), "전문을 넣지 않는다"
-    assert SAT.WINDOW_SPAN == 300
 
 
 def test_단서가_없으면_머리만_준다():
