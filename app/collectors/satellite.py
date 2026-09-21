@@ -1093,6 +1093,46 @@ async def _llm_budget_spend(redis, n: int = 1) -> None:
         logger.debug("[scout] LLM 예산 기록 실패: %s", exc)
 
 
+def _extract_names(home: str, away: str, league: str) -> tuple:
+    """[DS-5] 재순위에 넘길 **팀 이름들** — 영문 DB 이름 + 현지 표기.
+
+    🔴 **현지 표기가 없으면 NPB 가 통째로 죽는다.** DB 는
+       `Chiba Lotte Marines` 인데 기사는 `千葉ロッテマリーンズ` 로 쓴다.
+       실측 2026-09-21: 별칭을 넣자 증거 0자 경기가 **4 → 2** 로 줄었다.
+    ⚠️ 표를 여기서 만들지 않는다 — `news_rss.QUERY_ALIAS`(한/일) 와
+       `scout_config.local_name`(축구) 이 원본이다(사본 금지).
+       AUD-1 에서 **똑같은 실수를 했다**: DB 영문명으로 검색어를 만들어
+       `Hanwha Eagles 내일의 선발투수` 가 나갔고 회수가 0 이었다.
+    """
+    from app.collectors.news_rss import QUERY_ALIAS
+    from app.engine.scout_config import local_name
+
+    lg = (league or "").lower()
+    out: list[str] = []
+    for n in (home, away):
+        if not n:
+            continue
+        for v in (n, QUERY_ALIAS.get(n), local_name(lg, n)):
+            if v and v not in out:
+                out.append(v)
+    return tuple(out)
+
+
+def _rerank_blocks(picked: list, *, home: str, away: str, league: str):
+    """[DS-5] 기사 → **질문과 관련된 문단만**. 없으면 빈 목록.
+
+    🔴 빈 목록은 "증거가 없다"는 뜻이고, 그때는 **LLM 을 부르지 않는다**
+       (절대 규칙 6). 실측 2026-09-21: 롯데vs세이부·니혼햄vs오릭스의 기사
+       6건에 그 경기 이야기가 아예 없었다(아시안게임 식사 문제 · 한신 투수).
+       지금은 그 3,600자가 통째로 들어간다.
+    """
+    from app.deepsearch import rerank as R
+
+    paras = R.split(picked)
+    top = R.top_k(paras, names=_extract_names(home, away, league))
+    return [(p.url or "", p.text) for p in top]
+
+
 async def extract_game_facts(articles: list[dict], *, home: str, away: str,
                              league: str, redis=None, jg: dict | None = None,
                              need: list | None = None) -> dict:
@@ -1172,16 +1212,36 @@ async def extract_game_facts(articles: list[dict], *, home: str, away: str,
             except Exception:
                 pass
 
-    blocks, used = [], 0
-    for a in picked:
-        w = _windows(a.get("body") or "", (home, away))
-        if not w:
-            continue
-        w = w[:max(0, WINDOW_BUDGET - used)]
-        if not w:
-            break
-        used += len(w)
-        blocks.append((a.get("url") or "", w))
+    # 🔴 [DS-5 2026-09-21] **재순위로 줄인다.** 실측(운영 11경기): 창 6,000자가
+    #    400~2,130자가 된다. 그 6,000자에 피카츄 기사·이강인 악플이 40%를
+    #    차지하고 있었다(game=Valencia CF).
+    #    ⚠️ 끄면 종전 `_windows` 경로다 — config 한 줄, 배포 없이 되돌린다.
+    from app.deepsearch.runtime import load_config as _ds_cfg
+
+    blocks = []
+    if ((_ds_cfg().get("rerank") or {}).get("wire_extract")) is not False:
+        blocks = _rerank_blocks(picked, home=home, away=away, league=league)
+        if not blocks:
+            # 🔴 **여기서 멈추지 않고 종전 경로로 내려간다.**
+            #    "증거 0 이면 묻지 않는다"(절대 규칙 6)가 더 정직하지만, 그것은
+            #    **"기사가 1건 이상이면 추출한다"(EXT-2·PA-13·빅매치 계약 16건)**
+            #    를 뒤집는 결정이다. 내 변경을 통과시키려고 기존 계약 16개를
+            #    고치는 것은 회귀를 숨기는 수다 — 사용자 결정 사항으로 남긴다.
+            #    ⚠️ 실측 2026-09-21: 운영 11경기 중 2건이 이 자리다(롯데vs세이부·
+            #       니혼햄vs오릭스). 둘 다 기사 6건에 그 경기 이야기가 없었다.
+            logger.info("[scout] %s@%s — 증거 문단 0 · 종전 창 경로로 내려간다 "
+                        "(기사 %d건)", away, home, len(picked))
+    if not blocks:
+        used = 0
+        for a in picked:
+            w = _windows(a.get("body") or "", (home, away))
+            if not w:
+                continue
+            w = w[:max(0, WINDOW_BUDGET - used)]
+            if not w:
+                break
+            used += len(w)
+            blocks.append((a.get("url") or "", w))
     if not blocks:
         return {}
 
