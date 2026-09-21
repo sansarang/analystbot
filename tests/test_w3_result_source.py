@@ -271,3 +271,61 @@ def test_ACL_은_동서_조를_함께_받는다():
 
     assert league_matches("AFC Champions League Elite East", "acl") is True
     assert league_matches("AFC Champions League Elite West", "acl") is True
+
+
+# ── ⑦ 나라를 안 보면 같은 이름 리그가 섞인다 (실측 2026-09-21) ────
+def test_같은_이름_리그가_나라로_갈린다():
+    """🔴 실측 — 캐시 45일치에서 같은 이름이 여러 나라에 있었다:
+
+        'Premier League'  WAL 71 · BLR 59 · RUS 56 · KAZ 50 · ENG 50 ·
+                          EGY 50 · UKR 48 · TAN 48
+        'Serie A'         ECU 56 · ITA 50 · BRA 20
+        'Bundesliga'      AUT 36 · GER 36
+        'Ligue 1'         FRA 45 · ALG 28
+
+    이름만 보고 적재했더니 EPL 에 **694경기**가 들어왔다(45일 상한은 ~70).
+    웨일스·벨라루스·러시아 리그가 EPL 로 둔갑한 것이다.
+    """
+    from app.collectors.fotmob import league_matches
+
+    for name, cc, key, ok in (
+            ("Premier League", "ENG", "epl", True),
+            ("Premier League", "WAL", "epl", False),
+            ("Premier League", "RUS", "epl", False),
+            ("Premier League", "EGY", "epl", False),
+            ("Serie A", "ITA", "serie_a", True),
+            ("Serie A", "ECU", "serie_a", False),
+            ("Serie A", "BRA", "serie_a", False),
+            ("Bundesliga", "GER", "bundesliga", True),
+            ("Bundesliga", "AUT", "bundesliga", False),
+            ("Ligue 1", "FRA", "ligue1", True),
+            ("Ligue 1", "ALG", "ligue1", False)):
+        assert league_matches(name, key, cc) is ok, f"{name} {cc} → {key}"
+
+
+def test_국제대회는_나라를_따지지_않는다():
+    """⚠️ ACL·UCL·UEL 은 ccode 가 INT 다 — 설정과 맞아야 한다."""
+    from app.collectors.fotmob import league_matches
+
+    assert league_matches("Champions League", "ucl", "INT") is True
+    assert league_matches("Europa League", "uel", "INT") is True
+    assert league_matches("AFC Champions League Elite East", "acl", "INT") is True
+
+
+def test_모든_국내리그에_나라코드가_있다():
+    """🔴 하나라도 빠지면 그 리그가 다시 오염된다."""
+    from app.leagues import LEAGUES
+
+    for key, cfg in LEAGUES.items():
+        if not cfg.get("fotmob_league"):
+            continue
+        assert cfg.get("fotmob_ccode"), f"{key}: 나라 코드가 없다"
+
+
+def test_적재가_나라코드를_넘긴다():
+    import inspect
+
+    from app.collectors import fotmob as F
+
+    src = inspect.getsource(F.upsert_slate)
+    assert 'r.get("ccode")' in src, "적재가 나라를 보지 않는다"

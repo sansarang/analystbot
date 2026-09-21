@@ -585,7 +585,7 @@ def canonical(name: str) -> str | None:
     return SLATE_CANONICAL.get(n, n)
 
 
-def league_matches(fotmob_league: str, league_key: str) -> bool:
+def league_matches(fotmob_league: str, league_key: str, ccode=None) -> bool:
     """FotMob 리그명이 **이 리그인가.** 🔴 고르는 규칙은 여기 한 곳이다.
 
     🔴 [W3-1 2026-09-21] `fotmob_league` 가 있으면 **정확 일치**다.
@@ -601,6 +601,20 @@ def league_matches(fotmob_league: str, league_key: str) -> bool:
 
     cfg = LEAGUES.get(league_key) or {}
     name = str(fotmob_league or "")
+    # 🔴 [W3-4c 2026-09-21] **나라를 먼저 본다.** 같은 이름의 리그가 여러
+    #    나라에 있다(실측 캐시 45일치):
+    #        'Premier League'  WAL 71 · BLR 59 · RUS 56 · KAZ 50 · ENG 50 ·
+    #                          EGY 50 · UKR 48 · TAN 48
+    #        'Serie A'         ECU 56 · ITA 50 · BRA 20
+    #        'Bundesliga'      AUT 36 · GER 36
+    #        'Ligue 1'         FRA 45 · ALG 28
+    #    이름만 보고 적재했더니 EPL 에 **694경기**가 들어왔다(45일 기준 상한은
+    #    ~70이다). 웨일스·벨라루스·러시아 리그가 EPL 로 둔갑한 것이다.
+    # ⚠️ `fotmob_ccode` 가 설정된 리그는 **나라가 다르면 무조건 아니다.**
+    #    설정이 없으면(ACL 처럼 국제대회) 종전대로 이름만 본다.
+    want_cc = cfg.get("fotmob_ccode")
+    if want_cc and ccode is not None and str(ccode).strip() != str(want_cc):
+        return False
     exact = cfg.get("fotmob_league")
     if exact:
         return name.strip() == str(exact).strip()
@@ -645,7 +659,8 @@ async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str,
         rows = await slate(date_yyyymmdd)
     out["fetched"] = len(rows)
     for r in rows:
-        if not league_matches(r.get("league") or "", league_key):
+        if not league_matches(r.get("league") or "", league_key,
+                              r.get("ccode")):
             continue
         out["matched"] += 1
         h, a = canonical(r.get("home")), canonical(r.get("away"))

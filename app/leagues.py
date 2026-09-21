@@ -16,6 +16,7 @@ LEAGUES: dict[str, dict] = {
         #    ⚠️ 하위·여자부가 전부 접두사 관계라 **정확 일치**여야 한다:
         #       Premier League 2 · LaLiga2 · Serie B · 2. Bundesliga ·
         #       Ligue 2 · Eredivisie Vrouwen · Frauen-Bundesliga
+        "fotmob_ccode": "ENG",
         "fotmob_league": "Premier League",
         "result_source": "fd",
         "aliases": ["epl", "프리미어리그", "프리미어", "영국", "잉글랜드"],
@@ -24,6 +25,7 @@ LEAGUES: dict[str, dict] = {
         "fd_code": "PD", "odds_key": "soccer_spain_la_liga", "label": "라리가", "elo": "SP1",
         "fd_names": ["Primera Division", "La Liga"],
         "tm_code": "ES1",
+        "fotmob_ccode": "ESP",
         "fotmob_league": "LaLiga",
         "result_source": "fd",
         "aliases": ["라리가", "스페인", "라 리가"],
@@ -32,6 +34,7 @@ LEAGUES: dict[str, dict] = {
         "fd_code": "SA", "odds_key": "soccer_italy_serie_a", "label": "세리에A", "elo": "I1",
         "fd_names": ["Serie A"],
         "tm_code": "IT1",
+        "fotmob_ccode": "ITA",
         "fotmob_league": "Serie A",
         "result_source": "fd",
         "aliases": ["세리에a", "세리에", "이탈리아"],
@@ -40,6 +43,7 @@ LEAGUES: dict[str, dict] = {
         "fd_code": "BL1", "odds_key": "soccer_germany_bundesliga", "label": "분데스리가", "elo": "D1",
         "fd_names": ["Bundesliga"],
         "tm_code": "L1",
+        "fotmob_ccode": "GER",
         "fotmob_league": "Bundesliga",
         "result_source": "fd",
         "aliases": ["분데스리가", "분데스", "독일"],
@@ -54,6 +58,7 @@ LEAGUES: dict[str, dict] = {
         #    ⚠️ 2부·3부가 'J. League 2'·'J. League 3' 라 **정확 일치**여야
         #       한다. 부분 문자열로 고르면 하루 17경기가 J1 으로 들어온다.
         "result_source": "fotmob",
+        "fotmob_ccode": "JPN",
         "fotmob_league": "J. League",
         "aliases": ["j리그", "제이리그", "j1", "일본"],
     },
@@ -64,6 +69,7 @@ LEAGUES: dict[str, dict] = {
         # 🔴 [W3-1 2026-09-21] 실측 이름. 하위 리그는 '1. Division' 등이라
         #    섞이지 않지만, 규칙은 J리그와 같이 **정확 일치**로 둔다.
         "result_source": "fotmob",
+        "fotmob_ccode": "DEN",
         "fotmob_league": "Superligaen",
         "aliases": ["덴마크", "수페르리가"],
     },
@@ -75,6 +81,7 @@ LEAGUES: dict[str, dict] = {
         #    **하이픈이 다르다** — 그래도 정확 일치로 둔다(표기가 바뀌면
         #    조용히 섞이는 것보다 안 들어오는 편이 낫다).
         "result_source": "fotmob",
+        "fotmob_ccode": "KOR",
         "fotmob_league": "K-League 1",
         "aliases": ["k리그", "케이리그", "k리그1", "한국"],
     },
@@ -127,6 +134,7 @@ LEAGUES: dict[str, dict] = {
         "fd_code": None, "odds_key": None, "label": "UCL", "elo": None,
         "fd_names": [], "tm_code": None,
         "result_source": "fotmob",
+        "fotmob_ccode": "INT",
         "fotmob_league": "Champions League",
         "features": ("results",),
         "aliases": [],
@@ -135,6 +143,7 @@ LEAGUES: dict[str, dict] = {
         "fd_code": None, "odds_key": None, "label": "UEL", "elo": None,
         "fd_names": [], "tm_code": None,
         "result_source": "fotmob",
+        "fotmob_ccode": "INT",
         "fotmob_league": "Europa League",
         "features": ("results",),
         "aliases": [],
@@ -144,6 +153,7 @@ LEAGUES: dict[str, dict] = {
         "fd_names": ["Ligue 1"],
         "tm_code": None,
         "aliases": [],
+        "fotmob_ccode": "FRA",
         "fotmob_league": "Ligue 1",
         "result_source": "fd",
         "features": ("results",),
@@ -153,6 +163,7 @@ LEAGUES: dict[str, dict] = {
         "fd_names": ["Eredivisie"],
         "tm_code": None,
         "aliases": [],
+        "fotmob_ccode": "NED",
         "fotmob_league": "Eredivisie",
         "result_source": "fd",
         "features": ("results",),
