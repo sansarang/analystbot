@@ -185,3 +185,89 @@ async def test_킥오프_시각_갱신은_유지된다():
 
     src = inspect.getsource(F.upsert_slate)
     assert "starts_at" in src, "킥오프 갱신이 통째로 사라졌다"
+
+
+# ── ⑤ 유럽 리그도 소급할 수 있어야 한다 (사용자 지시 2026-09-21) ──
+def test_유럽_리그도_fotmob_이름이_있다():
+    """🔴 소급 적재는 FotMob 하루치로 한다 — fd 가 주 소스여도 이름이 있어야
+    그 리그를 고를 수 있다. 실측 팀당 종료 경기:
+        리그앙 1.7 · 에레디비시 1.7 · 분데스 2.7 · EPL 3.2 · 세리에A 4.7 · 라리가 5.9
+    **최근 5경기 폼도 안 되는 리그가 넷**이다."""
+    from app.leagues import LEAGUES
+
+    want = {"epl": "Premier League", "la_liga": "LaLiga", "serie_a": "Serie A",
+            "bundesliga": "Bundesliga", "ligue1": "Ligue 1",
+            "eredivisie": "Eredivisie"}
+    for key, nm in want.items():
+        assert LEAGUES[key].get("fotmob_league") == nm, key
+
+
+def test_하위_여자부가_섞이지_않는다():
+    """🔴 전부 접두사 관계다 — 부분 문자열이면 통째로 섞인다.
+    `'Bundesliga' in '2. Bundesliga'` 는 **참**이다."""
+    from app.collectors.fotmob import league_matches
+
+    for name, key, ok in (
+            ("Premier League", "epl", True),
+            ("Premier League 2", "epl", False),
+            ("Premier League U18", "epl", False),
+            ("LaLiga", "la_liga", True), ("LaLiga2", "la_liga", False),
+            ("Serie A", "serie_a", True), ("Serie B", "serie_a", False),
+            ("Bundesliga", "bundesliga", True),
+            ("2. Bundesliga", "bundesliga", False),
+            ("Frauen-Bundesliga", "bundesliga", False),
+            ("Ligue 1", "ligue1", True), ("Ligue 2", "ligue1", False),
+            ("Eredivisie", "eredivisie", True),
+            ("Eredivisie Vrouwen", "eredivisie", False)):
+        assert league_matches(name, key) is ok, f"{name} → {key}"
+
+
+def test_주_소스는_그대로_fd_다():
+    """⚠️ 이름을 넣었다고 소스를 갈아타지 않는다 — 이미 오는 자료가 있다."""
+    from app.leagues import LEAGUES
+
+    for key in ("epl", "la_liga", "serie_a", "bundesliga", "ligue1", "eredivisie"):
+        assert LEAGUES[key].get("result_source") == "fd", key
+
+
+# ── ⑥ UEFA 본선 (사용자 지시 2026-09-21) ─────────────────────────
+def test_UEFA_본선이_있다():
+    from app.leagues import LEAGUES
+
+    assert LEAGUES["ucl"]["fotmob_league"] == "Champions League"
+    assert LEAGUES["uel"]["fotmob_league"] == "Europa League"
+
+
+def test_UEFA_는_결과만_켠다():
+    """⚠️ 자료가 없는 리그를 라우터·판정에 열면 **빈 카드**가 나간다
+    (LGA-1 이 리그앙·에레디비시에서 같은 판단을 했다)."""
+    from app.leagues import LEAGUES, features_of
+
+    for key in ("ucl", "uel"):
+        assert features_of(key) == ("results",), key
+        assert not LEAGUES[key]["aliases"], f"{key}: 라우터에 노출된다"
+
+
+def test_UEFA_예선과_여자부가_섞이지_않는다():
+    """🔴 전부 포함 관계다 — 부분 문자열이면 예선 37경기가 본선으로 들어온다."""
+    from app.collectors.fotmob import league_matches
+
+    for name, key, ok in (
+            ("Champions League", "ucl", True),
+            ("Champions League Qualification", "ucl", False),
+            ("Women's Champions League Qualification 3rd Round", "ucl", False),
+            ("CAF Champions League Qualification", "ucl", False),
+            ("AFC Champions League Elite East", "ucl", False),
+            ("Europa League", "uel", True),
+            ("Europa League Qualification", "uel", False),
+            ("UEFA Women's Europa Cup", "uel", False)):
+        assert league_matches(name, key) is ok, f"{name} → {key}"
+
+
+def test_ACL_은_동서_조를_함께_받는다():
+    """⚠️ ACL 은 `fotmob_contains` 로 남겨 뒀다 — East/West 로 나뉘어 오기
+    때문이고, 그것이 의도된 동작이다."""
+    from app.collectors.fotmob import league_matches
+
+    assert league_matches("AFC Champions League Elite East", "acl") is True
+    assert league_matches("AFC Champions League Elite West", "acl") is True

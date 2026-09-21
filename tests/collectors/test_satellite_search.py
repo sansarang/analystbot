@@ -63,9 +63,11 @@ def test_채울_수_없는_자리표시자는_그_줄을_뺀다():
 
 
 def test_우리_리그가_전부_있다():
-    from app.leagues import LEAGUES
+    """⚠️ [W3-4b 2026-09-21] **위성을 켠 리그**만이다. 기사를 긁지 않는
+    리그(결과만 켠 리그)에 검색어를 둘 이유가 없다 — LGA-1 과 같은 판단."""
+    from app.leagues import leagues_with
 
-    want = set(LEAGUES) | {"mlb", "kbo", "npb"}
+    want = set(leagues_with("satellite")) | {"mlb", "kbo", "npb"}
     assert want <= set(SC.SEARCH_TERMS), want - set(SC.SEARCH_TERMS)
 
 

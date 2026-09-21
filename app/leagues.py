@@ -10,6 +10,13 @@ LEAGUES: dict[str, dict] = {
         "fd_code": "PL", "odds_key": "soccer_epl", "label": "EPL", "elo": "E0",
         "fd_names": ["Premier League"],
         "tm_code": "GB1",
+        # 🔴 [W3-4b 2026-09-21] FotMob 리그명 — **캐시된 하루치 목록에서 읽은
+        #    실측값**이다(추측 아님). 주 소스는 여전히 football-data 이고,
+        #    이 칸은 **소급 적재**(tools/backfill_results)가 쓴다.
+        #    ⚠️ 하위·여자부가 전부 접두사 관계라 **정확 일치**여야 한다:
+        #       Premier League 2 · LaLiga2 · Serie B · 2. Bundesliga ·
+        #       Ligue 2 · Eredivisie Vrouwen · Frauen-Bundesliga
+        "fotmob_league": "Premier League",
         "result_source": "fd",
         "aliases": ["epl", "프리미어리그", "프리미어", "영국", "잉글랜드"],
     },
@@ -17,6 +24,7 @@ LEAGUES: dict[str, dict] = {
         "fd_code": "PD", "odds_key": "soccer_spain_la_liga", "label": "라리가", "elo": "SP1",
         "fd_names": ["Primera Division", "La Liga"],
         "tm_code": "ES1",
+        "fotmob_league": "LaLiga",
         "result_source": "fd",
         "aliases": ["라리가", "스페인", "라 리가"],
     },
@@ -24,6 +32,7 @@ LEAGUES: dict[str, dict] = {
         "fd_code": "SA", "odds_key": "soccer_italy_serie_a", "label": "세리에A", "elo": "I1",
         "fd_names": ["Serie A"],
         "tm_code": "IT1",
+        "fotmob_league": "Serie A",
         "result_source": "fd",
         "aliases": ["세리에a", "세리에", "이탈리아"],
     },
@@ -31,6 +40,7 @@ LEAGUES: dict[str, dict] = {
         "fd_code": "BL1", "odds_key": "soccer_germany_bundesliga", "label": "분데스리가", "elo": "D1",
         "fd_names": ["Bundesliga"],
         "tm_code": "L1",
+        "fotmob_league": "Bundesliga",
         "result_source": "fd",
         "aliases": ["분데스리가", "분데스", "독일"],
     },
@@ -103,11 +113,38 @@ LEAGUES: dict[str, dict] = {
     #    🔴 `aliases` 를 **비워 둔다.** 자료가 없는 리그가 라우터에 보이면
     #       사용자가 부를 수 있고, 그때 "자료 없음"이 아니라 빈 카드가 나간다.
     # ⚠️ `fd_names` 는 **실측한 응답 문자열 그대로**다. 추측한 철자를 쓰지 않는다.
+    # 🔴 [W3-4b 2026-09-21 사용자 지시 "지금 진행하는 uefa도 넣어줘"]
+    #    UEFA 본선 둘. **결과 적재만 켠다**(LGA-1 리그앙·에레디비시와 같은 길) —
+    #    배당·위성·라우터·판정은 자료가 갖춰진 뒤에 연다(FORKS F-23 개방 기준).
+    #    🔴 이름은 캐시된 하루치 목록에서 **읽은 값**이다(45일치 실측).
+    #    ⚠️ 예선·여자부·타 대륙이 전부 포함 관계라 **정확 일치**여야 한다:
+    #         Champions League Qualification · Women's Champions League … ·
+    #         CAF Champions League Qualification · AFC Champions League Elite … ·
+    #         Europa League Qualification · UEFA Women's Europa Cup
+    #    ⚠️ 컨퍼런스리그는 캐시에 **본선이 없어**(예선만 78경기) 넣지 않았다 —
+    #       이름을 확인하지 못한 것을 추측해 적지 않는다.
+    "ucl": {
+        "fd_code": None, "odds_key": None, "label": "UCL", "elo": None,
+        "fd_names": [], "tm_code": None,
+        "result_source": "fotmob",
+        "fotmob_league": "Champions League",
+        "features": ("results",),
+        "aliases": [],
+    },
+    "uel": {
+        "fd_code": None, "odds_key": None, "label": "UEL", "elo": None,
+        "fd_names": [], "tm_code": None,
+        "result_source": "fotmob",
+        "fotmob_league": "Europa League",
+        "features": ("results",),
+        "aliases": [],
+    },
     "ligue1": {
         "fd_code": "FL1", "odds_key": None, "label": "리그앙", "elo": None,
         "fd_names": ["Ligue 1"],
         "tm_code": None,
         "aliases": [],
+        "fotmob_league": "Ligue 1",
         "result_source": "fd",
         "features": ("results",),
     },
@@ -116,6 +153,7 @@ LEAGUES: dict[str, dict] = {
         "fd_names": ["Eredivisie"],
         "tm_code": None,
         "aliases": [],
+        "fotmob_league": "Eredivisie",
         "result_source": "fd",
         "features": ("results",),
     },

@@ -125,12 +125,19 @@ def test_원장에_두_칸이_있다():
 # ── 티어 파일
 
 def test_리그별_티어_파일이_전부_있다():
-    """🔴 목록을 손으로 적지 않는다 — `leagues.LEAGUES` + 야구 3종목."""
+    """🔴 목록을 손으로 적지 않는다 — **판정을 켠 리그** + 야구 3종목.
+
+    ⚠️ [W3-4b 2026-09-21] `set(LEAGUES)` 가 아니라 `leagues_with("judge")` 다.
+       티어는 **사전값(①)의 재료**이므로 판정을 켠 리그에만 필요하다.
+       결과만 켠 리그(리그앙·에레디비시·UCL·UEL)는 사전값을 만들지 않는다 —
+       LGA-1 이 같은 자리에서 내린 판단과 같다(계약을 약화한 것이 아니라
+       **뜻을 명시**한 것이다).
+    """
     from pathlib import Path
 
-    from app.leagues import LEAGUES
+    from app.leagues import leagues_with
 
-    want = set(LEAGUES) | {"mlb", "kbo", "npb"}
+    want = set(leagues_with("judge")) | {"mlb", "kbo", "npb"}
     have = {p.stem for p in Path("config/tiers").glob("*.yaml")}
     assert want <= have, want - have
 
