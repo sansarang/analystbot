@@ -458,6 +458,74 @@ def test_문단마다_출처가_붙는다():
         assert p.url is not None
 
 
+# ── T-ADD 10 (오디션 도구 · DS-3a 3) ─────────────────────────────
+def test_audition_outputs_table_without_paid_keys(tmp_path, monkeypatch):
+    """T-ADD 10 — **유료 키 없이도** rss 단독 표가 나온다."""
+    from tools import search_audition as A
+
+    for env in ("BRAVE_API_KEY", "FIRECRAWL_API_KEY", "PARALLEL_API_KEY",
+                "TAVILY_API_KEY"):
+        monkeypatch.delenv(env, raising=False)
+    rows = [A.Row(provider="bing_news_rss", league="kbo", market="ko-KR",
+                  query="한화 이글스 선발", got=12, fresh=8, verified=4,
+                  dropped={"post_match": 1, "out_of_window": 7},
+                  ms=2260, cost_usd=0.0, whitelisted=9)]
+    out = tmp_path / "t.md"
+    A.write_report(rows, out, date_kst="2026-09-21")
+    txt = out.read_text(encoding="utf-8")
+    assert "bing_news_rss" in txt and "한화 이글스 선발" in txt
+    assert "post_match" in txt, "폐기 사유 분포가 빠졌다"
+
+
+def test_audition_1순위_지표가_검증통과_사실수다():
+    """🔴 **지시문의 지표를 바꿨다 — 실측이 그렇게 하게 했다.**
+
+    지시문 DS-3a 4 는 "당일 기사 회수율"을 1순위로 둔다. 그런데 실측
+    2026-09-21 (Bing, 같은 시각):
+
+        川崎フロンターレ        11항목/8최근 → 최신 「감독 교체책 반성」(쓸모없음)
+        川崎フロンターレ スタメン  5항목/2최근 → 최신 「スタメン発表」(찾던 것)
+
+    좁히면 **수는 줄고 정확도는 오른다.** 회수율을 1순위로 두면 쓸모없는
+    기사를 많이 받는 쪽이 이긴다. 그래서 `verified` 를 1순위로 정렬한다.
+    ⚠️ 회수 수(`got`·`fresh`)는 **버리지 않고 함께 싣는다** — 지시문이
+       요구한 값이고, 둘을 나란히 봐야 이 뒤집힘이 보인다.
+    """
+    from tools import search_audition as A
+
+    assert A.PRIMARY_METRIC == "verified"
+    rows = [A.Row(provider="p_many", league="kbo", market="ko-KR", query="q",
+                  got=30, fresh=20, verified=1, dropped={}, ms=100,
+                  cost_usd=0.0, whitelisted=0),
+            A.Row(provider="p_good", league="kbo", market="ko-KR", query="q",
+                  got=5, fresh=2, verified=4, dropped={}, ms=100,
+                  cost_usd=0.0, whitelisted=0)]
+    assert A.rank_rows(rows)[0].provider == "p_good", "회수 수가 이기면 안 된다"
+
+
+def test_audition_은_자동_채택을_하지_않는다():
+    """🔴 지시문 DS-3a 3: "**자동 채택 금지**" — 사용자가 고른다."""
+    import inspect
+
+    from tools import search_audition as A
+
+    src = inspect.getsource(A)
+    for banned in ("rules.yaml", "deepsearch.yaml", "R.set", "chain =",
+                   "write_text(.*chain"):
+        assert banned not in src, f"오디션이 설정을 건드린다: {banned}"
+    assert "자동 채택" in src or "사용자가" in src
+
+
+def test_audition_은_경기_전_시점만_쓴다():
+    """🔴 지시문 DS-3a 3: 과거 경기로 돌리면 **경기 후 기사가 섞인다.**"""
+    import inspect
+
+    from tools import search_audition as A
+
+    src = inspect.getsource(A.run)
+    assert "starts_at" in src and "now" in src
+
+
 # ── 시험용 대역 ───────────────────────────────────────────────────
 class _FakeRT:
     def __init__(self, bodies, *, etag=None, then_304=False):
