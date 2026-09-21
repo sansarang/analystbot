@@ -1,0 +1,241 @@
+# 소스 지도 — [DS-0 / deepsearch_parallel_0921] **실측 초안**
+#
+# 🔴 **전부 실제로 호출해 채웠다**(2026-09-21 12:45~12:57 KST, 운영 컨테이너).
+#    status·bytes·ms 는 그때 받은 값이다. 추측으로 적은 행은 하나도 없다.
+# 🔴 **차단을 우회하지 않는다**(지시문 규율). robots 가 거부하면 `미시도` 이고,
+#    403 은 `불가` 다. UA 는 식별 가능한 것을 쓴다:
+#        AnalystBot/1.0 (+research; respects robots)
+# ⚠️ `robots 404` 는 **허용이 아니라 판단 불가**다. robots.txt 가 없으면
+#    관례상 크롤링이 막히지 않지만, 그 사실을 그대로 적는다.
+# ⚠️ 이 파일은 DS-0 산출물이다. 파서·폴링 일정은 DS-2 가 붙인다.
+
+meta:
+  probed_at_kst: "2026-09-21 12:57"
+  user_agent: "AnalystBot/1.0 (+research; respects robots)"
+  probe_note: "행마다 1회 호출 · 요청 간격 0.5~0.8초 · 재시도 없음"
+
+sources:
+
+  # ── NPB ────────────────────────────────────────────────────────
+  - sport: baseball
+    league: NPB
+    fact: 예고선발                     # D10 의 소스 후보
+    url: "https://npb.jp/announcement/starter/"
+    fetch: static
+    robots: "404(판단불가)"
+    status: 200
+    bytes: 32380
+    ms: 240
+    hints: ["予告先発", "出場選手登録", "中止"]
+    parser: none                        # DS-2 에서 붙인다
+    publish_time: "전날 저녁 ~ 당일 오전"
+    verified: "09-21 예고선발 10명이 우리 조회와 **전건 일치**했다"
+
+  - sport: baseball
+    league: NPB
+    fact: 등록말소                     # W5·W7 의 엔트리 칸 소스 후보
+    url: "https://npb.jp/announcement/roster/"
+    fetch: static
+    robots: "404(판단불가)"
+    status: 200
+    bytes: 144088
+    ms: 359
+    hints: ["出場選手登録", "予告先発", "中止"]
+    parser: none
+    publish_time: "당일 11:00 전후(매체 전재 11:06 실측)"
+    verified: "09-21 라쿠텐 前田健太·藤原聡大 등록 / 滝中瞭太·柴田大地 말소"
+
+  - sport: baseball
+    league: NPB
+    fact: 확정타순
+    url: "https://baseball.yahoo.co.jp/npb/game/{yahoo_id}/top"
+    fetch: js                           # 🔴 정적 HTML 에 타순이 **없다**
+    robots: "404(판단불가)"
+    status: 200
+    bytes: 160522
+    ms: 114
+    hints: ["スタメン", "先発", "予告", "中止"]     # 낱말은 있으나 값이 없다
+    parser: none
+    js_probe: |
+      __NEXT_DATA__ 없음 · window.__PRELOADED_STATE__ 없음 ·
+      <script type="application/json"> 없음 · 본문에 yahoo API URL 0건.
+      XHR 후보 6개 실측: /score 200(단서0) · /text 200(단서0) ·
+      /start 404 · /member 404 · /api/npb/game/{id} 404 ·
+      sp.baseball.findfriends.jp?pid=game_flash 200(단서0)
+      → **화면 뒤 JSON 주소를 못 찾았다.** 헤드리스가 필요할 수 있다(DS-4 3단).
+    key_link: |
+      🔴 우리 `games.ext_id` 가 `yahoo:2021039443` 형식이라 **경기 id 가 그대로
+         맞는다**. 매칭 비용 0 — 이름 대조가 필요 없다.
+
+  - sport: baseball
+    league: NPB
+    fact: 중지연기공지
+    url: "https://www.rakuteneagles.jp/news/announce/entry/"
+    fetch: static
+    robots: "404(판단불가)"
+    status: 200
+    bytes: 156501
+    ms: 142
+    hints: ["出場選手登録", "中止"]
+    parser: none
+    caution: |
+      ⚠️ **날짜를 반드시 본문에서 읽어야 한다.** 09-21 에 이 계열 페이지를
+         요약만 믿고 읽다가 `9/11(金)福岡ソフトバンク戦 中止のお知らせ` 를
+         **9/21 경기 중지로 오독**했다. DS-6 ①(날짜 일치)이 막는 바로 그 실패다.
+
+  - sport: baseball
+    league: NPB
+    fact: 중지연기공지
+    url: "https://www.marines.co.jp/news/"
+    fetch: static
+    robots: "404(판단불가)"
+    status: 200
+    bytes: 104227
+    ms: 135
+    parser: none
+    verified: "09-21 18:00 세이부전 중지(태풍) — 08:30 결정, 구단 공지에 존재"
+
+  - sport: baseball
+    league: NPB
+    fact: 순위
+    url: "https://npb.jp/bis/2026/standings/"
+    fetch: static
+    robots: "404(판단불가)"
+    status: 404                          # 🔴 경로가 틀렸다
+    bytes: 26895
+    ms: 117
+    parser: none
+    todo: "ps.html 도 404. 올바른 경로를 DS-2 착수 전에 다시 찾는다."
+
+  # ── KBO ── 🔴 **전 경로 robots 거부. 치지 않는다.** ──────────────
+  - sport: baseball
+    league: KBO
+    fact: 엔트리
+    url: "https://www.koreabaseball.com/Player/Register.aspx"
+    fetch: static
+    robots: "**거부**"
+    status: 미시도
+    blocked: true
+    reason: "robots.txt 가 이 경로를 거부한다 — 우회하지 않는다(지시문 규율)"
+
+  - sport: baseball
+    league: KBO
+    fact: 일정결과
+    url: "https://www.koreabaseball.com/Schedule/Schedule.aspx"
+    robots: "**거부**"
+    status: 미시도
+    blocked: true
+    reason: "robots 거부"
+
+  - sport: baseball
+    league: KBO
+    fact: 순위
+    url: "https://www.koreabaseball.com/Record/TeamRank/TeamRankDaily.aspx"
+    robots: "**거부**"
+    status: 미시도
+    blocked: true
+    reason: "robots 거부"
+
+  - sport: baseball
+    league: KBO
+    fact: 확정타순
+    url: "https://sports.news.naver.com/kbaseball/schedule/index"
+    fetch: js
+    robots: "**거부**"
+    status: 미시도
+    blocked: true
+    reason: "robots 거부 — 화면 뒤 JSON 도 같은 호스트라 치지 않는다"
+
+  # ── MLB ── statsapi 가 전부 준다 ───────────────────────────────
+  - sport: baseball
+    league: MLB
+    fact: 예고선발+확정타순
+    url: "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={YYYY-MM-DD}&hydrate=probablePitcher,lineups,team"
+    fetch: json
+    robots: "404(판단불가)"
+    status: 200
+    bytes: 9524
+    ms: 191
+    hints: ["probablePitcher", "lineups", "teams"]
+    parser: none
+    note: "🔴 D10(예고 선발 칸)의 답이 여기 있다. 이미 쓰는 소스다."
+
+  - sport: baseball
+    league: MLB
+    fact: 등록말소
+    url: "https://statsapi.mlb.com/api/v1/transactions?startDate={D}&endDate={D}"
+    fetch: json
+    robots: "404(판단불가)"
+    status: 200
+    bytes: 28697
+    ms: 68
+    parser: none
+
+  # ── 축구 ───────────────────────────────────────────────────────
+  - sport: soccer
+    league: 공통
+    fact: 경기·XI·결장
+    url: "https://www.fotmob.com/api/data/matches?date={YYYYMMDD}"
+    fetch: json
+    robots: "**허용**"                   # 명시적 허용 — 유일하다
+    status: 200
+    bytes: 39758
+    ms: 310
+    hints: ["matches"]
+    parser: "app/collectors/fotmob.py (있음)"
+    note: "이미 배선돼 있다. matchDetails 로 XI·결장·경기장까지."
+
+  - sport: soccer
+    league: J1
+    fact: 순위·일정
+    url: "https://www.jleague.jp/standings/j1/"
+    fetch: static
+    robots: "**허용**"
+    status: 200
+    bytes: 1103502
+    ms: 279
+    hints: ["スタメン", "勝点", "standings", "中止"]
+    parser: none
+    note: "KJ-1 에서 정적 200·<tr> 21 확인한 그 페이지다."
+
+  - sport: soccer
+    league: K1
+    fact: 순위
+    url: "https://www.kleague.com/record/teamRank"
+    fetch: static
+    robots: "404(판단불가)"
+    status: 404                          # 경로 틀림
+    bytes: 1439
+    ms: 344
+    parser: none
+    todo: "api/team/rank · record/teamRecord 도 404. 올바른 경로 재탐색 필요."
+
+  - sport: soccer
+    league: EPL
+    fact: 팀뉴스
+    url: "https://www.premierleague.com/news"
+    fetch: js
+    robots: "403(판단불가)"
+    status: 403
+    bytes: 919
+    ms: 3
+    blocked: true
+    reason: "403 — 우회하지 않는다"
+
+# ── 불가 목록 (사유와 함께) ─────────────────────────────────────
+blocked_summary:
+  - who: "KBO 공식(koreabaseball.com) 4경로"
+    why: "robots.txt 거부"
+    impact: "KBO 엔트리·타순·순위를 **공식에서 못 받는다**. 대안 필요(구단 공식·보도)."
+  - who: "네이버 스포츠(sports.news.naver.com)"
+    why: "robots.txt 거부"
+    impact: "KBO 확정 타순의 유력 경로가 막혔다."
+  - who: "premierleague.com"
+    why: "HTTP 403"
+    impact: "EPL 공식 팀뉴스 불가. FotMob·구단 공식으로 대체."
+  - who: "npb.jp/bis/.../standings, kleague.com/record/*"
+    why: "404 — 경로가 틀렸다(차단 아님)"
+    impact: "재탐색하면 열릴 수 있다. DS-2 착수 전에 찾는다."
+  - who: "スポーツナビ 경기 페이지의 타순"
+    why: "정적 HTML 에 값이 없고 화면 뒤 JSON 주소를 못 찾았다"
+    impact: "NPB 확정 타순은 헤드리스(DS-4 3단)가 필요할 수 있다."
