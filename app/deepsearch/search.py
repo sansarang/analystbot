@@ -27,7 +27,12 @@ import urllib.parse
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from app.deepsearch.runtime import Runtime, load_config
+from app.deepsearch import runtime as _rt
+from app.deepsearch.runtime import load_config
+
+# ⚠️ **모듈을 통해 부른다.** `from … import default_runtime` 로 이름을 묶으면
+#    주입 지점이 둘로 갈린다(여기 하나, `runtime` 에 하나) — 테스트가 한쪽만
+#    패치하고 통과했다고 믿게 된다. 실제로 그렇게 한 번 새어 나갔다.
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +68,7 @@ class BingNewsRSS:
     name = "bing_news_rss"
 
     def __init__(self, *, runtime=None):
-        self._rt = runtime or Runtime()
+        self._rt = runtime or _rt.default_runtime()
 
     @property
     def daily_query_cap(self):
@@ -87,7 +92,7 @@ class MediaRss:
     name = "media_rss"
 
     def __init__(self, *, runtime=None, feeds=None):
-        self._rt = runtime or Runtime()
+        self._rt = runtime or _rt.default_runtime()
         self._feeds = feeds if feeds is not None else (_p(self.name, "feeds") or [])
 
     @property

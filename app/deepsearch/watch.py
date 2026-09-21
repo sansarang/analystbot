@@ -302,9 +302,9 @@ async def run_watch(pool, redis, *, runtime=None, parse=None) -> dict:
     ⚠️ 변화는 `watch_events` 에 남긴다 — **언제 알았는지**가 없으면 인지 지연을
        못 잰다.
     """
-    from app.deepsearch.runtime import Runtime
+    from app.deepsearch.runtime import default_runtime
 
-    rt = runtime or Runtime()
+    rt = runtime or default_runtime()
     rows = watch_rows()
     if not rows:
         logger.info("[watch] 감시 대상 0건")

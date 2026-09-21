@@ -196,6 +196,33 @@ class _Domain:
     gate: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
+#: 🔴 **이벤트 루프별로 하나.** 호출마다 새로 만들면 도메인 상태(마지막 요청
+#  시각·일일 카운터·서킷·robots 캐시)가 매번 초기화되고, 그러면 이 모듈을
+#  만든 이유가 통째로 사라진다.
+#  실측 2026-09-21(같은 도메인 3회): 새 인스턴스마다 → 대기 **0회** ·
+#  robots 재조회 **6회** / 공유 → 대기 2회 · robots 재조회 4회.
+#  **요청이 2배가 된다** — robots 를 지키겠다고 만든 것이 남의 서버에 요청을
+#  늘리면 안 된다.
+#  ⚠️ 싱글턴 하나로 두지 않는 이유: `asyncio.Semaphore` 는 처음 쓸 때 실행
+#     중인 루프에 묶인다. 루프가 바뀌는 자리에서 터진다.
+_DEFAULTS: dict = {}
+
+
+def default_runtime() -> "Runtime":
+    """공유 런타임. 같은 루프에서는 **같은 것**을 돌려준다."""
+    try:
+        key = id(asyncio.get_running_loop())
+    except RuntimeError:
+        key = 0
+    rt = _DEFAULTS.get(key)
+    if rt is None:
+        rt = _DEFAULTS[key] = Runtime()
+        if len(_DEFAULTS) > 8:            # 테스트가 루프를 많이 갈아도 안 샌다
+            for k in list(_DEFAULTS)[:-4]:
+                _DEFAULTS.pop(k, None)
+    return rt
+
+
 class _Httpx:
     """기본 전송. 🔴 테스트는 이걸 갈아끼운다 — 진짜 요청을 내지 않기 위해."""
 

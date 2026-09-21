@@ -392,10 +392,12 @@ async def _fetch_article_body(url: str | None) -> str:
     """
     if not url:
         return ""
-    from app.deepsearch.runtime import Blocked, Runtime
+    from app.deepsearch.runtime import Blocked, default_runtime
 
     try:
-        got = await Runtime().fetch(url)
+        # 🔴 **공유 런타임**이다. 호출마다 새로 만들면 간격·상한·서킷이 사라지고
+        #    robots.txt 를 매 요청마다 다시 받는다(요청 2배) — 실측으로 확인했다.
+        got = await default_runtime().fetch(url)
         html = (got.body or b"").decode("utf-8", "replace")
     except Blocked as b:
         # 🔴 "막혀서 안 보냈다"와 "받았는데 비었다"는 다르다. 사유를 남긴다.

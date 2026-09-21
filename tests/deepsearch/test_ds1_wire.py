@@ -33,8 +33,10 @@ async def test_본문_열기가_런타임을_지난다(monkeypatch):
                            body=b"<html><body><p>" + b"\xea\xb8\xb0\xec\x82\xac" * 40
                                 + b"</p></body></html>")
 
-    monkeypatch.setattr("app.deepsearch.search.Runtime", lambda *a, **k: _RT())
-    monkeypatch.setattr("app.deepsearch.runtime.Runtime", lambda *a, **k: _RT())
+    monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
+                        lambda *a, **k: _RT())
+    monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
+                        lambda *a, **k: _RT())
     body = await SAT._fetch_article_body("https://www.osen.co.kr/article/G1")
     assert seen == ["https://www.osen.co.kr/article/G1"]
     assert body, "본문이 비었다"
@@ -52,7 +54,8 @@ async def test_robots_가_막으면_빈_문자열이다(monkeypatch):
 
             raise Blocked("robots", url)
 
-    monkeypatch.setattr("app.deepsearch.runtime.Runtime", lambda *a, **k: _RT())
+    monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
+                        lambda *a, **k: _RT())
     assert await SAT._fetch_article_body("https://news.google.com/x") == ""
 
 
@@ -64,7 +67,8 @@ async def test_실패해도_예외가_아니다(monkeypatch):
         async def fetch(self, url, **kw):
             raise RuntimeError("망")
 
-    monkeypatch.setattr("app.deepsearch.runtime.Runtime", lambda *a, **k: _RT())
+    monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
+                        lambda *a, **k: _RT())
     assert await SAT._fetch_article_body("https://x/1") == ""
     assert await SAT._fetch_article_body(None) == ""
 

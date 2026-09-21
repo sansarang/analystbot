@@ -82,7 +82,8 @@ async def test_rss_hits_가_거부_경로를_치지_않는다(monkeypatch):
             sent.append(url)
             return Fetched(url=url, status=200, body=BING_RSS.encode())
 
-    monkeypatch.setattr("app.deepsearch.search.Runtime", lambda *a, **k: _RT())
+    monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
+                        lambda *a, **k: _RT())
     out = await SAT.rss_hits("한화 이글스 선발", league="kbo")
     assert sent, "요청이 아예 안 나갔다"
     assert not [u for u in sent if "news.google.com" in u], sent
@@ -101,7 +102,8 @@ async def test_출력_모양을_바꾸지_않는다(monkeypatch):
 
             return Fetched(url=url, status=200, body=BING_RSS.encode())
 
-    monkeypatch.setattr("app.deepsearch.search.Runtime", lambda *a, **k: _RT())
+    monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
+                        lambda *a, **k: _RT())
     out = await SAT.rss_hits("한화 이글스 선발", league="kbo")
     h = out[0]
     assert set(h) >= {"url", "title", "snippet", "source", "source_url",
@@ -120,7 +122,8 @@ async def test_빈손이어도_예외가_아니다(monkeypatch):
         async def fetch(self, url, **kw):
             raise RuntimeError("망")
 
-    monkeypatch.setattr("app.deepsearch.search.Runtime", lambda *a, **k: _RT())
+    monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
+                        lambda *a, **k: _RT())
     assert await SAT.rss_hits("q", league="kbo") == []
 
 

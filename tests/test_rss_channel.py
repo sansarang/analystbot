@@ -43,7 +43,11 @@ FEED = """<rss version="2.0" xmlns:News="https://www.bing.com:443/news/search">
 
 
 def _client(sent):
-    """DS-1 런타임 대역. 🔴 **요청이 어디로 나갔는지** 센다."""
+    """DS-1 런타임 대역. 🔴 **요청이 어디로 나갔는지** 센다.
+
+    ⚠️ 패치 지점은 `runtime.default_runtime` 이다 — 클래스(`search.Runtime`)를
+       패치하면 안 걸린다. 공유 런타임을 쓰기 때문이다(DS-1S).
+    """
     class _RT:
         async def fetch(self, url, **kw):
             from app.deepsearch.runtime import Fetched
@@ -64,7 +68,8 @@ def test_로케일은_검색어표가_정한다():
 @pytest.mark.asyncio
 async def test_RSS_는_현지어_로케일로_부르고_매체_도메인을_싣는다(monkeypatch):
     sent: list = []
-    monkeypatch.setattr("app.deepsearch.search.Runtime", _client(sent))
+    monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
+                        _client(sent))
 
     hits = await SAT.rss_hits("Torino formazioni ufficiali", league="serie_a",
                               stage="lineup", now=NOW)
@@ -81,7 +86,8 @@ async def test_RSS_는_현지어_로케일로_부르고_매체_도메인을_싣�
 @pytest.mark.asyncio
 async def test_등급은_검색엔진_링크가_아니라_매체로_본다(monkeypatch):
     opened: list[str] = []
-    monkeypatch.setattr("app.deepsearch.search.Runtime", _client([]))
+    monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
+                        _client([]))
 
     async def _body(u):
         opened.append(u)
@@ -134,7 +140,8 @@ async def test_대진_기사는_양_팀_모두의_재료다(monkeypatch):
     """🔴 "Torino-Roma: le probabili formazioni" 는 두 팀 다 설명한다.
     본문은 한 번만 열고 행만 둘로 만든다 — 추출이 팀으로 기사를 고른다."""
     opened: list[str] = []
-    monkeypatch.setattr("app.deepsearch.search.Runtime", _client([]))
+    monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
+                        _client([]))
 
     async def _body(u):
         opened.append(u)
