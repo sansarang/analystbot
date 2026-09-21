@@ -217,3 +217,23 @@ tier0_primary         에 kbo 없음
    `fnnews.com` · `newspim.com` · `sportsworldi.com` · `ajunews.com` ·
    `msn.com`(래핑 4건).
 
+## D42 — 변화 감지에 **파서가 안 붙었다** (2026-09-21 · 등록만)
+
+DS-2(커밋 예정)가 `watch_job` 을 10분마다 돌린다. 운영 실측:
+```
+1회차  rows 9 · changed 9 (기준선)
+2회차  rows 9 · changed 0   ← 잡음이 오탐을 안 만든다
+watch_events 9행 기록됨 · 전부 parsed_ok = False
+```
+🔴 `parsed_ok=False` 는 **파서를 안 넘겼기 때문**이다(`run_watch(parse=None)`).
+   즉 **"바뀌었다"는 알지만 "무엇이 바뀌었는지"는 아직 못 읽는다.**
+
+지시문 DS-2a 3 의 나머지가 이것이다:
+```
+바뀌면 → 파서 → Fact(event_date·as_of 필수) → DS-6 검증 → 카드
+```
+⚠️ 파서는 페이지마다 다르다(npb.jp 공시 · 구단 공지 · 스포츠나비 경기 페이지).
+   **다섯 개를 한 커밋에 넣으면 무엇이 틀렸는지 못 가린다.** 별 단위로 남긴다.
+⚠️ 지금 상태의 값어치: 인지 **지연을 재기 시작한다**(`watch_events`). 그 표가
+   쌓여야 "공지 게시 → 봇 인지"가 몇 분인지 말할 수 있다.
+

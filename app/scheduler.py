@@ -2366,6 +2366,30 @@ async def soccer_lineup_probe_job() -> None:
         logger.exception("[soccer-probe] 실패 — 스케줄러는 계속: %s", exc)
 
 
+async def watch_job() -> None:
+    """[DS-2 / deepsearch_addendum DS-2a] 변화 감지 — **조회만 한다.**
+
+    🔴 09-21 에 늦게 안 셋이 전부 타이밍 실패였다: 08:30 중지 · 11:06 등록
+       공시 · 12:40경 우천 중지. 페이지는 그 자리에 있었고 그 순간에 안 봤다.
+    ⚠️ 워치독·자가점검과 같은 규약 — **예외를 밖으로 던지지 않는다.**
+       감시가 스케줄러를 죽이면 감시가 아니라 고장이다.
+    ⚠️ 판정·발송에 닿지 않는다. 결과는 `watch_events` 와 로그뿐이다.
+    """
+    from app.deepsearch.watch import run_watch
+
+    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        pool = await get_pool()
+        await run_watch(pool, redis)
+    except Exception as exc:
+        logger.warning("[watch] 잡 실패 — 무시하고 계속: %s", exc)
+    finally:
+        try:
+            await redis.aclose()
+        except Exception:
+            pass
+
+
 async def selfcheck_job() -> None:
     """[W1 / wiring_first §W1] 자가 점검 — **조회만 한다.**
 
@@ -2771,6 +2795,11 @@ def _job_specs() -> list[tuple]:
         #    외부 API 를 부르지 않는다(DB SELECT 3개 + Redis 스캔).
         #    ⚠️ 워치독보다 성기게 둔다 — 같은 자료를 5분마다 다시 셀 이유가 없다.
         ("selfcheck_30m", selfcheck_job, IntervalTrigger(minutes=30)),
+        # 🔴 [DS-2 2026-09-21] 변화 감지. **비용 0** — 해시가 바뀐 때만 파서를
+        #    돌린다. 주기의 원본은 `config/deepsearch.yaml` 의 `watch.intervals`
+        #    이고, 여기서는 **가장 촘촘한 주기**로 돈다(공지 10분).
+        #    ⚠️ 잡 자체는 조회 전용이다. 판정·발송에 닿지 않는다.
+        ("watch_10m", watch_job, IntervalTrigger(minutes=10)),
         ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
         # 🔴 [ODN-1] KBO·NPB 총점 — **하루 2회**. 월 1,000 크레딧이라
         #    30분 주기로는 이틀이면 끝난다(11,520콜 필요).

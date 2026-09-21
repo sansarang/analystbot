@@ -21,6 +21,9 @@ sources:
     league: NPB
     fact: 예고선발                     # D10 의 소스 후보
     url: "https://npb.jp/announcement/starter/"
+    watch: true
+    watch_kind: notice
+    ignore_selectors: ["script", "style", "noscript"]
     fetch: static
     robots: "404(판단불가)"
     status: 200
@@ -35,6 +38,9 @@ sources:
     league: NPB
     fact: 등록말소                     # W5·W7 의 엔트리 칸 소스 후보
     url: "https://npb.jp/announcement/roster/"
+    watch: true
+    watch_kind: notice
+    ignore_selectors: ["script", "style", "noscript"]
     fetch: static
     robots: "404(판단불가)"
     status: 200
@@ -49,6 +55,9 @@ sources:
     league: NPB
     fact: 예고선발+최근성적+순위      # 🔴 [정정] 정적으로 **값이 온다**
     url: "https://baseball.yahoo.co.jp/npb/game/{yahoo_id}/top"
+    watch: true
+    watch_kind: game
+    ignore_selectors: ["script", "style", "noscript", ".ad"]
     fetch: static                       # DS-0 의 `js` 분류는 **오분류였다**
     robots: "404(판단불가)"
     status: 200
@@ -83,6 +92,9 @@ sources:
     league: NPB
     fact: 중지연기공지
     url: "https://www.rakuteneagles.jp/news/announce/entry/"
+    watch: true
+    watch_kind: notice
+    ignore_selectors: ["script", "style", "noscript", ".ad", ".banner"]
     fetch: static
     robots: "404(판단불가)"
     status: 200
@@ -99,6 +111,9 @@ sources:
     league: NPB
     fact: 중지연기공지
     url: "https://www.marines.co.jp/news/"
+    watch: true
+    watch_kind: notice
+    ignore_selectors: ["script", "style", "noscript", ".ad", ".banner"]
     fetch: static
     robots: "404(판단불가)"
     status: 200
@@ -199,13 +214,23 @@ sources:
     fact: 경기·XI·결장
     url: "https://www.fotmob.com/api/data/matches?date={YYYYMMDD}"
     fetch: json
-    robots: "**허용**"                   # 명시적 허용 — 유일하다
+    # 🔴 [정정 2026-09-21] 종전 `robots: "**허용**"` 은 **틀린 값이었다.**
+    #    stdlib `urllib.robotparser` 가 `*` 를 해석하지 않아
+    #    `Disallow: /api/*` 를 문자 그대로 읽고 '허용'으로 답했다.
+    #    구글 규격으로 다시 계산하면 **거부**다([3] 감사 · 커밋 1303164).
+    robots: false
     status: 200
     bytes: 39758
     ms: 310
+    blocked: true
+    reason: |
+      robots.txt: `User-agent: * / Allow: / / Disallow: /api/*`
+      우리가 치는 `/api/data/matches`·`/api/matchDetails` 가 전부 그 안이다.
+      ⚠️ **아직 끄지 않았다** — 끄면 J1·K1·ACL·덴마크·UCL·UEL 결과가 0 이 되고
+         확정 XI·결장·경기장의 원본이 사라진다. 사용자 결정 대기
+         (영향표 → docs/ROBOTS_AUDIT_2026-09-21.md §3).
     hints: ["matches"]
     parser: "app/collectors/fotmob.py (있음)"
-    note: "이미 배선돼 있다. matchDetails 로 XI·결장·경기장까지."
 
   - sport: soccer
     league: J1

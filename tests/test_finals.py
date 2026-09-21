@@ -37,6 +37,11 @@ def test_scheduler_jobs_registered():
                          #   **조회 전용**이고 외부 API 를 부르지 않는다
                          #   (DB SELECT 3 + Redis 스캔). 판정·발송에 닿지 않는다.
                          "selfcheck_30m",
+                         # [DS-2 2026-09-21] 변화 감지 — 공시·중지 공지·경기
+                         #   페이지가 **바뀐 순간**을 잡는다. 09-21 에 늦게 안
+                         #   셋(08:30 중지 · 11:06 공시 · 12:40 우천)이 전부
+                         #   타이밍 실패였다. 조회 전용이고 판정·발송에 안 닿는다.
+                         "watch_10m",
                          # [SAT] 위성 수집 — 기본 꺼짐(satellite_enabled).
                          "satellite_15m", "flow_shadow_15m",
                          # [EXP-2 2026-09-19] T-3h·T-60 자동 내보내기.

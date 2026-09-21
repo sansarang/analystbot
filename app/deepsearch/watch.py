@@ -217,3 +217,118 @@ class Watcher:
                                   "parsed_ok": parsed is not None})
         return {"changed": changed, "hash": h, "first": first,
                 "parsed": parsed}
+
+
+# ── 대상 목록 · 잡 (DS-2) ─────────────────────────────────────────
+_MAP_PATH = (__import__("pathlib").Path(__file__).resolve().parents[2]
+             / "config" / "source_map.yaml")
+
+
+def watch_rows() -> list[dict]:
+    """감시 대상. 🔴 **원본은 `config/source_map.yaml`** 하나다(사본 금지).
+
+    🔴 `blocked` 이거나 `robots` 가 거짓인 행은 **뺀다** — 차단을 우회하지
+       않는다. 지금 빠지는 것: koreabaseball 4행 · 네이버 1행 · fotmob 1행.
+    """
+    try:
+        import yaml
+
+        doc = yaml.safe_load(_MAP_PATH.read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        logger.error("[watch] %s 를 못 읽었다 — 감시 0건: %s", _MAP_PATH, exc)
+        return []
+    out = []
+    for r in (doc.get("sources") or []):
+        if not r.get("watch"):
+            continue
+        if r.get("blocked") or r.get("robots") is False:
+            logger.warning("[watch] 차단된 행이 watch 로 표시돼 있다 — 뺀다: %s",
+                           r.get("url"))
+            continue
+        out.append({"url": str(r.get("url") or ""),
+                    "kind": str(r.get("watch_kind") or "notice"),
+                    "ignore_selectors": list(r.get("ignore_selectors") or []),
+                    "league": r.get("league"), "fact": r.get("fact")})
+    return out
+
+
+def fill_url(url: str, values: dict) -> str | None:
+    """`{yahoo_id}` 같은 자리를 채운다. **못 채우면 None** — 건너뛴다.
+
+    ⚠️ 빈 자리를 빈 문자열로 채우지 않는다. 그러면 엉뚱한 주소를 친다 —
+       `scout_config.queries` 가 같은 이유로 같은 규칙을 쓴다.
+    """
+    import re as _re
+
+    u = str(url or "")
+    need = _re.findall(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", u)
+    if not need:
+        return u
+    for k in need:
+        v = (values or {}).get(k)
+        if not v:
+            return None
+        u = u.replace("{" + k + "}", str(v))
+    return u
+
+
+async def run_watch(pool, redis, *, runtime=None, parse=None) -> dict:
+    """[DS-2] 감시 1회. 🔴 **조회만 한다** — 판정·발송에 닿지 않는다.
+
+    ⚠️ 경기 페이지 행은 오늘 경기의 `ext_id`(`yahoo:2021039443`)에서 id 를
+       꺼내 채운다. 못 채우면 건너뛴다.
+    ⚠️ 변화는 `watch_events` 에 남긴다 — **언제 알았는지**가 없으면 인지 지연을
+       못 잰다.
+    """
+    from app.deepsearch.runtime import Runtime
+
+    rt = runtime or Runtime()
+    rows = watch_rows()
+    if not rows:
+        logger.info("[watch] 감시 대상 0건")
+        return {"rows": 0, "changed": 0, "skipped": 0, "failed": 0}
+
+    ids: list[str] = []
+    if any("{" in r["url"] for r in rows) and pool is not None:
+        try:
+            got = await pool.fetch(
+                "SELECT ext_id FROM games WHERE sport='npb' "
+                "AND (starts_at AT TIME ZONE 'Asia/Seoul')::date "
+                "= (now() AT TIME ZONE 'Asia/Seoul')::date")
+            ids = [str(x["ext_id"]).split(":", 1)[-1] for x in got
+                   if str(x["ext_id"] or "").startswith("yahoo:")]
+        except Exception as exc:
+            logger.warning("[watch] 오늘 경기 조회 실패 — 경기 페이지는 건너뛴다: %s",
+                           exc)
+
+    async def _event(ev):
+        if pool is None:
+            return
+        try:
+            await pool.execute(
+                "INSERT INTO watch_events (url, changed_at, kind, parsed_ok) "
+                "VALUES ($1, now(), $2, $3)",
+                ev.get("url"), ev.get("kind"), bool(ev.get("parsed_ok")))
+        except Exception as exc:
+            logger.warning("[watch] 원장 적재 실패: %s", exc)
+
+    w = Watcher(runtime=rt, store=redis, parse=parse, on_event=_event)
+    out = {"rows": 0, "changed": 0, "skipped": 0, "failed": 0}
+    for r in rows:
+        targets = ([fill_url(r["url"], {"yahoo_id": i}) for i in ids]
+                   if "{" in r["url"] else [r["url"]])
+        for u in targets:
+            if not u:
+                out["skipped"] += 1
+                continue
+            out["rows"] += 1
+            try:
+                got = await w.check({**r, "url": u})
+            except Exception as exc:
+                out["failed"] += 1
+                logger.info("[watch] %s 실패 — 계속: %s", u[:60], exc)
+                continue
+            if got.get("changed"):
+                out["changed"] += 1
+    logger.info("[watch] %s", out)
+    return out
