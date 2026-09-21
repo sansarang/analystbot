@@ -64,3 +64,17 @@ pending:
     resolved_by: "name_map"
     reason: "확인 완료 — 치환표(ø→o)로 매칭된다. 별칭 불필요"
     approved: false
+
+  - ours: "RC Deportivo La Coruña"
+    fotmob_name: "Deportivo A Coruña"
+    fotmob_id: 9783
+    league: "LaLiga"
+    # 🔴 [W2 2026-09-21] selfcheck `match_unmapped` 가 실제로 잡은 **첫 진짜
+    #    불일치**다(오탐 셋을 걷어낸 뒤 남은 1건).
+    #      우리   'rc deportivo la coruna'   (스페인어 La Coruña)
+    #      FotMob 'deportivo a coruna'       (갈리시아어 A Coruña)
+    #    서로 포함 관계가 아니라 `find_match` 가 정확히 실패한다.
+    # ⚠️ 치환표로 풀 문제가 아니다 — 발음부호가 아니라 **언어가 다르다**.
+    reason: "갈리시아어 표기(A Coruña) vs 스페인어(La Coruña) — 별칭 필요"
+    approved: false
+
