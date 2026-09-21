@@ -87,3 +87,30 @@
 
 ⚠️ 단계마다 T1~T4 증빙과 COVERAGE 전/후를 낸다. 완료 조건 원문 없이 다음
 단계로 가지 않는다. 배포는 슬레이트 창(KST 17~22) 밖에서만 한다.
+
+## D34 — 운영 수집 경로가 **브라우저 UA 로 위장**한다 (2026-09-21 · 등록만)
+
+20개 수집기가 `User-Agent: Mozilla/5.0 …` 을 쓴다 — `fotmob`·`flashscore`·
+`yahoo_npb`·`satellite`·`news_rss`·`oddsportal`·`kbo_*`·`npb_stats`·
+`statcast_velo`·`espn_odds`·`lineup_season`·`starter_season`·`grounding`·
+`tor_search`·`deepsearch` 등.
+
+지시문 규율은 "봇 크롤러는 **식별 가능한** User-Agent 를 쓴다"이다. DS-0 프로브만
+`AnalystBot/1.0 (+research; respects robots)` 를 썼고 **운영 경로는 전부 위장**이다.
+
+⚠️ 고치면 403 이 늘 수 있다(식별되면 막는 사이트가 있다) — 그것이 이 규율의
+   대가이고, 대가를 치르는 것이 규율이다. **범위 밖이라 등록만 한다.**
+
+## D35 — KBO 박스스코어가 **게이트 이전부터** 끊겨 있었다 (2026-09-21 · 등록만)
+
+`batter_appearances`·`pitcher_appearances` 의 `source='boxscore'` 마지막 경기일이
+**2026-09-12** 다. SRC-OFF 게이트는 09-21 13:0x 에 켰다 — **9일 전부터** 안 들어왔다.
+D09a 와 같은 자리로 보인다. 원인은 경로를 치지 않고 확인해야 한다([2]c).
+
+## D36 — Go 크롤러가 `source_gate` 밖이다 (2026-09-21 · 등록만)
+
+`crawler/internal/source/source.go:137·159` 가 `api-gw.sports.naver.com` 을 10분마다
+친다. SRC-OFF 는 Python 진입점 5곳만 막았다.
+⚠️ **끄지 않았다** — 지금 KBO 라인업의 **유일한** 공급원이다
+(`lineup_events` `source='crawler'` 마지막 경기일 2026-09-20). 끄면 0 이 된다.
+사용자 지시를 기다린다.

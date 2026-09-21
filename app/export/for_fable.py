@@ -919,8 +919,25 @@ async def collect(league: str, date_kst: str) -> dict:
         #    ⚠️ 못 읽으면 `null + reason` 이다(빈 목록으로 적지 않는다 —
         #       "위반 없음"과 "못 쟀다"는 다른 말이다).
         "selfcheck": await _selfcheck_block(date_kst),
+        # 🔴 [SRCV-1 / [2]b 2026-09-21] 꺼진 소스. 이 리그가 **미상으로 멈추는
+        #    것이 의도한 동작**임을 사유와 함께 싣는다 — 안 실으면 읽는 쪽이
+        #    "자료가 없다"와 "소스를 껐다"를 구분할 수 없다(조용한 0).
+        #    ⚠️ 표시 전용이다. 판정·확률로 가는 경로는 없다.
+        "restrictions": restrictions_block(),
         "games": games,
     }
+
+
+def restrictions_block() -> dict:
+    """꺼진 소스. 🔴 **목록도 문구도 여기서 만들지 않는다** —
+    `source_gate` 가 원본이고, 그 원본은 `config/rules.yaml` 이다(사본 금지)."""
+    try:
+        from app.collectors.source_gate import restrictions
+
+        items = restrictions()
+        return {"n": len(items), "items": items}
+    except Exception as exc:
+        return {"value": None, "reason": f"restrictions_read_failed: {exc}"[:200]}
 
 
 async def _selfcheck_block(date_kst: str) -> dict:

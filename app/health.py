@@ -252,6 +252,20 @@ async def build_health(pool, redis) -> str:
     L.append("")
     L.append(await selfcheck_line(redis))
 
+    # 🔴 [SRCV-1 / [2]b 2026-09-21 사용자 지시] 꺼진 소스를 **사유와 함께** 찍는다.
+    #    "미상으로 멈춤"이 고장이 아니라 **의도한 동작**임을 여기서 말한다 —
+    #    말하지 않으면 다음 사람이 고장으로 읽고 그냥 켠다.
+    #    ⚠️ 문구의 원본은 `source_gate.restriction_lines()` 하나다(사본 금지).
+    try:
+        from app.collectors.source_gate import restriction_lines
+
+        _r = restriction_lines()
+        if _r:
+            L.append("")
+            L.extend(_r)
+    except Exception as exc:      # 관측 장치가 본체를 죽이면 안 된다
+        L.append(f"⚪ 소스 제한 확인 실패: {str(exc)[:60]}")
+
     return "\n".join(L)
 
 

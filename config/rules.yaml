@@ -167,8 +167,14 @@ ops:
 #    **코드를 지우지 않고 여기서 끈다** — 정식 접근이 허락되면 한 줄로 되돌린다.
 #    판단은 `app/collectors/source_gate.py` 한 곳이 한다(사본 금지).
 #    ⚠️ 여기 없는 소스는 **켜진 것**이다.
+#    ⚠️ `affects`·`defect` 는 **표시용 원본**이다 — /health·export 가 여기서
+#       리그와 결함 번호를 읽는다. 코드에 박지 않는다(사본 금지).
 sources:
   koreabaseball:
     enabled: false      # robots: User-agent:* / Disallow:/ + 자동수집 금지 고지
+    affects: ["KBO"]
+    defect: "D33"
   naver_apigw:
     enabled: false      # robots.txt 404(판단불가) · 같은 계열은 Disallow:/
+    affects: ["KBO"]
+    defect: "D33"

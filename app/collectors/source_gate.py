@@ -78,3 +78,73 @@ def require(name: str) -> None:
     if enabled(name):
         return
     raise SourceDisabled(f"{name}: {blocked_reason(name)}")
+
+
+def _all_names() -> list[str]:
+    """설정에 적힌 소스 이름 전부. 🔴 **원본은 `config/rules.yaml` 하나**다 —
+    여기에 목록을 적지 않는다(사본 금지)."""
+    try:
+        from app.engine import rules as R
+
+        block = R.get("sources") or {}
+    except Exception as exc:
+        logger.debug("[source_gate] 소스 목록 조회 실패: %s", exc)
+        return []
+    return sorted(str(k) for k in block) if isinstance(block, dict) else []
+
+
+def _cfg(name: str, key: str, default=None):
+    try:
+        from app.engine import rules as R
+
+        return R.get(f"sources.{name}.{key}", default)
+    except Exception:
+        return default
+
+
+def restrictions() -> list[dict]:
+    """꺼진 소스를 **리그별로 한 줄씩** 묶는다. 켜져 있으면 목록에서 빠진다.
+
+    🔴 리그(`affects`)·결함 번호(`defect`)의 원본은 `config/rules.yaml`,
+       사유 문구의 원본은 `REASONS` 다. 여기서 둘 다 **만들지 않는다.**
+    ⚠️ `affects` 가 없는 소스는 **어느 리그를 막는지 모른다**는 뜻이므로
+       목록에 넣지 않는다 — 모르는 것을 아는 척 적지 않는다.
+    """
+    by_league: dict = {}
+    for name in _all_names():
+        if enabled(name):
+            continue
+        for lg in (_cfg(name, "affects") or []):
+            key = str(lg).strip()
+            if not key:
+                continue
+            row = by_league.setdefault(
+                key, {"league": key, "sources": [], "defect": None, "reasons": []})
+            row["sources"].append(name)
+            row["defect"] = row["defect"] or _cfg(name, "defect")
+            why = blocked_reason(name)
+            if why:
+                row["reasons"].append(f"{name}: {why}")
+    out = []
+    for key in sorted(by_league):
+        row = by_league[key]
+        out.append({"league": row["league"], "sources": sorted(row["sources"]),
+                    "defect": row["defect"], "reason": " · ".join(row["reasons"])})
+    return out
+
+
+def restriction_lines() -> list[str]:
+    """`/health` 한 줄 + 사유. 🔴 **문구를 만드는 곳은 여기 하나**다 —
+    `/health` 도 export 도 이것을 부른다(사본 금지).
+
+    🔴 이 줄의 뜻은 "고장"이 아니라 **"미상으로 멈추는 것이 의도한 동작"**이다.
+       사유가 없으면 다음 사람이 고장으로 읽고 그냥 켠다.
+    """
+    lines: list[str] = []
+    for row in restrictions():
+        tag = f"({row['defect']})" if row.get("defect") else ""
+        lines.append(f"🔒 {row['league']} — 자료 제한: 소스 중단{tag} "
+                     f"· 이 리그는 **미상으로 멈추는 것이 의도한 동작**이다")
+        if row.get("reason"):
+            lines.append(f"   {row['reason'][:220]}")
+    return lines
