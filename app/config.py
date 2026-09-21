@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     #  ⚠️ `gemini_api_key` 는 아래 감시 절에 AliasChoices 와 함께 선언돼 있다.
     #     여기에 또 적으면 **뒤가 이겨** 앞은 죽은 줄이 된다(실측). 적지 않는다.
     groq_api_key: str | None = None
+    #: [SOLAR-1 2026-09-21 사용자 지시] Upstage Solar. **유료 키다.**
+    #  ⚠️ 없으면 그 후보만 빠진다 — 키 부재로 크래시하지 않는다(절대 규칙 3).
+    solar_api_key: str | None = None
+    solar_base_url: str | None = None
     deepseek_api_key: str | None = None
     apifootball_key: str | None = None
     football_data_key: str | None = None  # football-data.org (메이저 12개 대회 무료)

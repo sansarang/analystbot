@@ -508,6 +508,10 @@ _KIND_TO_CLASS = {
     "deepseek": OpenAICompatProvider,
     "ollama": OpenAICompatProvider,
     "xai": OpenAICompatProvider,
+    # 🔴 [SOLAR-1 2026-09-21 사용자 지시] Upstage Solar. **OpenAI 호환**이라
+    #    새 클래스를 만들지 않는다 — base_url 만 다르다.
+    #    ⚠️ 유료다. `FREE_PROVIDERS` 에 넣지 않는다(상한이 그대로 걸린다).
+    "solar": OpenAICompatProvider,
     "openai_compat": OpenAICompatProvider,
 }
 
@@ -517,6 +521,9 @@ _DEFAULT_BASE = {
     "deepseek": "https://api.deepseek.com/v1",
     "ollama": "http://localhost:11434/v1",
     "xai": "https://api.x.ai/v1",
+    # 🔴 실측 2026-09-21: `GET /v1/models` → 200, 목록에 `solar-pro4` 가 있다.
+    #    주소를 추측하지 않았다.
+    "solar": "https://api.upstage.ai/v1",
 }
 
 
@@ -533,6 +540,7 @@ def build_provider(kind: str, model: str, settings=None) -> Provider:
         "groq": getattr(s, "groq_api_key", None),
         "deepseek": getattr(s, "deepseek_api_key", None),
         "xai": s.xai_api_key, "ollama": None, "mock": None,
+        "solar": getattr(s, "solar_api_key", None),
     }.get(kind)
     base = getattr(s, f"{kind}_base_url", None) or _DEFAULT_BASE.get(kind)
     inst = cls(model=model, api_key=key, base_url=base)
@@ -563,6 +571,9 @@ _PROVIDER_DEFAULT_MODEL = {
     "deepseek": "deepseek-chat",
     "ollama": "llama3.1",
     "xai": "grok-4.3-latest",
+    # ⚠️ 모델명을 추측하지 마라(위 경고와 같은 규율). `/v1/models` 응답에서
+    #    읽은 이름이다 — 실호출은 `solar-pro4-260806` 으로 응답한다.
+    "solar": "solar-pro4",
     "mock": "none",
 }
 
