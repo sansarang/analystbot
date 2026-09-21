@@ -377,21 +377,30 @@ def extract_body(html: str, limit: int = 1200) -> str:
 
 
 async def _fetch_article_body(url: str | None) -> str:
-    """기사 본문 앞부분. 무료 HTTP. 실패하면 빈 문자열(제목만 쓴다).
+    """기사 본문 앞부분. 실패하면 빈 문자열(제목만 쓴다).
 
-    ⚠️ 딥서치 `_fetch_body` 와 목적이 같지만, 엔진→수집기 순환 의존을 피하려
-       여기 둔다. 본문 길이 상한은 딥서치와 같은 1200자.
+    🔴 [DS-1W 2026-09-21] **DS-1 런타임을 지난다.** 이 함수는 검색 결과에서 온
+       **임의 도메인**을 연다 — 우리가 도메인을 미리 모르는 유일한 자리다.
+       종전에는 robots 검사가 **0건**이었고 예절(도메인당 동시 1 · 간격 2초 ·
+       일일 상한)도 서킷 브레이커도 없었다.
+       DS-3 이 소스를 Bing 으로 바꾼 뒤 여기 들어오는 도메인이 늘었다:
+       osen.co.kr · yna.co.kr · mt.co.kr · fnnews.com · msn.com …(실측).
+
+    ⚠️ robots 가 거부하면 **빈 문자열**이다 — 차단을 우회하지 않는다.
+       호출부에게는 "본문 없음"이고, **사유는 로그에 남는다**(조용한 0 이 아니다).
+    ⚠️ 본문 길이 상한은 `extract_body` 가 원본이다 — 여기서 다시 자르지 않는다.
     """
     if not url:
         return ""
-    import httpx
+    from app.deepsearch.runtime import Blocked, Runtime
 
     try:
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True,
-                                     headers={"User-Agent": _UA}) as c:
-            r = await c.get(url)
-            r.raise_for_status()
-            html = r.text
+        got = await Runtime().fetch(url)
+        html = (got.body or b"").decode("utf-8", "replace")
+    except Blocked as b:
+        # 🔴 "막혀서 안 보냈다"와 "받았는데 비었다"는 다르다. 사유를 남긴다.
+        logger.info("[satellite] 본문 미수집(%s) %s", b.reason, str(url)[:60])
+        return ""
     except Exception as exc:
         logger.debug("[satellite] 본문 수집 실패 %s: %s", str(url)[:60], exc)
         return ""

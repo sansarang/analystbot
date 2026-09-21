@@ -237,3 +237,27 @@ watch_events 9행 기록됨 · 전부 parsed_ok = False
 ⚠️ 지금 상태의 값어치: 인지 **지연을 재기 시작한다**(`watch_events`). 그 표가
    쌓여야 "공지 게시 → 봇 인지"가 몇 분인지 말할 수 있다.
 
+## D43 — `msn.com` 래핑 기사는 본문이 **3자**다 (2026-09-21 · 등록만)
+
+DS-1W 실측(기사 URL 24건 · 도메인 15종, 본문을 실제로 열어 봄):
+```
+www.msn.com            본문 3자   × **6건**   ← 24건 중 25%
+www.mt.co.kr           본문 1,200자
+www.newspim.com        본문 1,200자
+www.sportsworldi.com   본문 1,200자
+www.starnewskorea.com  본문 1,200자
+www.fnnews.com         본문 803자 × 2
+www.osen.co.kr         본문 295자
+news.yahoo.co.jp       본문 578자 × 2
+…
+열림 23 · **robots 거부 0** · 실패 1 (chosun.com ReadTimeout)
+```
+
+🔴 Bing 결과의 1/4 이 MSN 으로 감싸여 오는데, MSN 페이지는 JS 렌더라
+   정적 HTML 에 본문이 없다. **제목만 남는다.**
+⚠️ `<News:Source>` 는 원 매체 이름을 준다(`노컷뉴스 on MSN`) — 그 이름으로
+   원문을 다시 찾을 수는 있으나 **요청이 한 번 더** 든다.
+⚠️ **고치지 않았다.** 선택지가 둘로 갈린다(같은 기사를 원 매체에서 다시 찾기 /
+   MSN 결과를 버리기), 둘 다 회수율을 건드린다. 오디션(DS-3a 3)이 답할 자리다.
+⚠️ 함께: `www.chosun.com` 이 ReadTimeout 이었다(1건). 반복되는지 봐야 한다.
+
