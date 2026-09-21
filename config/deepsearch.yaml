@@ -57,3 +57,22 @@ search:
   # 유료 공급자는 **키가 있을 때만** 살아난다. 채택은 사용자 승인 사항이다.
   # (지시문 DS-3a 1: brave · firecrawl · parallel · tavily)
   optional_providers: ["brave", "firecrawl", "parallel", "tavily"]
+
+# 변경 감지 — 지시문 DS-2a
+# 🔴 09-21 에 우리가 늦게 안 셋이 전부 **타이밍 실패**였다:
+#    중지 08:30 · 등록 공시 11:06 · 우천 중지 12:40경. 페이지는 그 자리에
+#    있었고 그 순간에 안 봤을 뿐이다. 검색 API 를 사도 이건 안 고쳐진다.
+watch:
+  noise_strikes: 5      # 잡음 제거 후에도 연속 이만큼 바뀌면 watch 에서 뺀다
+  status_stale_min: 30  # 상태 사실(개최·중지·지연)이 낡는 시간
+
+  intervals:
+    notice_min: 10      # 공시·중지 공지 (06:00~경기 시작)
+    default_min: 60
+    # 경기 페이지 — 킥오프까지 남은 분(gt_min)보다 크면 그 주기.
+    # ⚠️ 위에서 아래로 처음 맞는 것을 쓴다.
+    game_phases:
+      - {gt_min: 180, every_min: 30}   # T-180 이전
+      - {gt_min: 65,  every_min: 10}   # T-180 ~ T-65
+      - {gt_min: 20,  every_min: 5}    # T-65 ~ T-20
+      - {gt_min: 0,   every_min: 3}    # T-20 ~ 시작

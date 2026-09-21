@@ -1017,3 +1017,21 @@ ALTER TABLE games ADD COLUMN IF NOT EXISTS venue_lon  DOUBLE PRECISION;
 --      연장 3-2 를 정규시간 홈 승으로 읽으면 적중 판정이 통째로 거짓이 된다.
 --      제외 규칙의 원본은 `pick_ledger.gradeable_basis` 하나다.
 ALTER TABLE games ADD COLUMN IF NOT EXISTS result_basis TEXT;
+
+-- 🔴 [DS-2a / deepsearch_addendum_0921 2026-09-21] 변경 감지 이벤트.
+--   "공지 게시 → 봇 인지"까지의 **지연을 재기 위한** 표다. 재지 않으면
+--   "빨라졌다"가 느낌으로 남는다.
+--   ⚠️ `published_at` 은 **모를 수 있다**(페이지가 게시 시각을 안 준다).
+--      그때 0분으로 세면 지연이 작아 보이므로 NULL 로 두고 집계에서 뺀다 —
+--      `lag_minutes` 가 `unknown` 으로 따로 센다.
+CREATE TABLE IF NOT EXISTS watch_events (
+    id           BIGSERIAL PRIMARY KEY,
+    url          TEXT        NOT NULL,
+    changed_at   TIMESTAMPTZ NOT NULL,
+    published_at TIMESTAMPTZ,
+    kind         TEXT,
+    parsed_ok    BOOLEAN,
+    note         TEXT
+);
+CREATE INDEX IF NOT EXISTS watch_events_url_at ON watch_events (url, changed_at DESC);
+
