@@ -27,7 +27,8 @@
 | D06b | J1·K1·ACL·덴마크 결과 **0건** | 09-21 10:10 실측 — J1 **2/12** · K리그1 **4/16** · 덴마크 **4/12** (직전 전부 0). ACL 은 09-20~21 경기가 없어 0/10 → 소급 적재(W3-4) 대상 | **배포됨(부분)** | `905b194`·`7a4b9db` | W3-4 |
 | D30 | `upsert_slate` 이 **중복 행을 만들었다** | W3-1 배포 직후 같은 경기가 `odds:*`(scheduled)·`fotmob:*`(final) 두 행 — 판정이 붙은 행은 채점이 안 닫힌다. 중복 3그룹 → `apply_result` 로 고치고 병합해 **0** | **검증됨** | `7a4b9db` | W3 |
 | D07a | `games.status='scheduled'` 잔존 (종료 6h 초과) | 축구 61경기 · KBO 4경기 | **열림** | — | W3 |
-| D07b | 채점 미닫힘 — 결과는 있는데 `hit IS NULL` | soccer 5 · npb 3 · kbo 2 · mlb 1 | **열림** | — | W3 |
+| D07b | ~~채점 미닫힘~~ **오탐(내 오답)** | 갈라 보니 전부 정상 — 진짜 미채점(`graded_at IS NULL`) **0건** · 무승부(분모 제외) 9 · `predicted_side=None`(보드) 2. 규칙 그대로다(`hit = None if side is None or winner=='draw'`) | **정정·닫힘** | `9e3aefd` | — |
+| D31 | 종료 근거(`result_basis`)를 버리고 있었다 | FotMob 이 `FT`·`AET`·`Pen` 을 주는데 저장할 칸이 없어 연장 3-2 가 정규시간 홈 승으로 채점된다 | **검증됨** | `9e3aefd` | W3-2 |
 | D08a | 폼 문자열 방향 미검증 | `form_order.verify` 배선 완료 | **배포됨** | `983ec66` | W6 |
 | D08b | 폼에 대회가 혼재(리그·ACL·컵 구분 없음) | FotMob `teamForm` 에 대회 코드 없음 — 09-20 포항 `last5` 에 ACL 포함 | **열림** | — | W6 |
 | D09a | KBO 등판 적재가 09-12 에 중단 | `max(date)` KBO **2026-09-12** (MLB 09-21 · NPB 09-20 정상) | **열림** | — | W5 |
