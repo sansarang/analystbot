@@ -45,31 +45,40 @@ def test_게이트_함수가_한_곳이다():
 
 @pytest.mark.asyncio
 async def test_kbo_일정이_요청을_보내지_않는다():
-    """🔴 끈 소스는 **네트워크를 타지 않는다.**"""
-    from app.collectors import kbo
+    """🔴 끈 소스는 **네트워크를 타지 않는다.**
 
-    got = await kbo.fetch_month(2026, 9)
-    assert got == [], f"끈 소스가 자료를 돌려줬다: {len(got)}건"
+    ⚠️ 처음에 `fetch_month(...) == []` 로 썼다가 **거짓 통과**를 만들었다 —
+       목 모드(`freesource_mocked`)가 게이트에 닿기 전에 빈 목록을 돌려주므로,
+       게이트를 껐다 켰다 해도 그 단언은 늘 통과한다. 실제 클라이언트로
+       **게이트가 있는 자리**를 직접 친다.
+    """
+    from app.collectors.kbo import KBOClient
+    from app.collectors.source_gate import SourceDisabled
+
+    with pytest.raises(SourceDisabled):
+        await KBOClient().schedule_rows(2026, 9)
 
 
 @pytest.mark.asyncio
 async def test_kbo_엔트리가_요청을_보내지_않는다():
     from app.collectors import kbo_roster
 
-    c = kbo_roster.KBORosterClient()
-    with pytest.raises(Exception) as e:
-        await c.fetch()
-    assert "robots" in str(e.value) or "중단" in str(e.value), str(e.value)
+    from app.collectors.source_gate import SourceDisabled
+
+    with pytest.raises(SourceDisabled) as e:
+        await kbo_roster.KBORosterClient().fetch()
+    assert "robots" in str(e.value)
 
 
 @pytest.mark.asyncio
 async def test_naver_apigw_도_막힌다():
     from app.collectors import naver_kbo
 
-    c = naver_kbo.NaverKBOClient()
-    with pytest.raises(Exception) as e:
-        await c._get("/schedule/games")
-    assert "robots" in str(e.value) or "중단" in str(e.value), str(e.value)
+    from app.collectors.source_gate import SourceDisabled
+
+    with pytest.raises(SourceDisabled) as e:
+        await naver_kbo.NaverKBOClient()._get("/schedule/games")
+    assert "robots" in str(e.value)
 
 
 def test_끈_이유가_코드에_적혀_있다():
@@ -87,3 +96,18 @@ def test_흐름은_KBO_에서도_완주한다():
     assert enabled("koreabaseball") is False
     r = blocked_reason("koreabaseball")
     assert r and "robots" in r
+
+
+@pytest.mark.asyncio
+async def test_박스스코어도_막힌다():
+    """🔴 `/ws/GetBoxScoreScroll` 이 D09a 의 그 경로다."""
+    from app.collectors import kbo_boxscore as KB
+    from app.collectors.source_gate import SourceDisabled
+
+    fn = getattr(KB, "fetch_boxscore", None) or getattr(KB, "backfill", None)
+    assert fn is not None
+    import inspect
+
+    src = inspect.getsource(KB)
+    assert src.count('require("koreabaseball")') >= 2, \
+        "박스스코어 HTTP 진입점이 다 막히지 않았다"
