@@ -318,6 +318,15 @@ def _daum_age_h(url: str, now: datetime | None) -> float | None:
 
 
 async def _daum_fetch(query: str) -> str:
+    # 🔴 [DEC-2 2026-09-21] robots 거부 소스 — **요청을 보내지 않는다.**
+    #    판단은 `source_gate` 한 곳이 한다(사본 금지). Bing 이 대체한다(DS-3).
+    from app.collectors.source_gate import require
+
+    require("daum_search")
+    return await _daum_fetch_inner(query)
+
+
+async def _daum_fetch_inner(query: str) -> str:
     """다음 뉴스검색 HTML(최신순). 실패는 호출부가 처리."""
     import httpx
 

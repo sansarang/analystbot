@@ -179,6 +179,14 @@ sources:
   #    API 를 10분마다 치고 있었다(D36) — 파이썬만 껐던 것이라 **모순 상태**였다.
   #    robots.txt 는 404(판단 불가)지 거부가 아니다. 켜서 맞춘다.
   #    ⚠️ koreabaseball 은 **명시 거부**(Disallow:/ + 한국어 고지)라 그대로 끈다.
+  # 🔴 [DEC-2 2026-09-21 사용자 결정] 다음 검색을 **끈다.**
+  #    `search.daum.net/robots.txt` 가 `Disallow: /` 다([3] 감사 · 재감사 둘 다).
+  #    DS-3 이 `rss_hits` 를 Bing 으로 갈았으므로 **대체가 이미 있다.**
+  #    ⚠️ 코드를 지우지 않는다 — 이 한 줄로 되돌린다.
+  daum_search:
+    enabled: false
+    affects: ["KBO", "축구"]
+    defect: "D40"
   naver_apigw:
     enabled: true
     affects: ["KBO"]

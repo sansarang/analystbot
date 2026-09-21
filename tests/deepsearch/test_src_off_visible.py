@@ -22,10 +22,13 @@ def test_제한_목록은_꺼진_소스만_리그별로_묶는다():
     assert out, "꺼진 소스가 있는데 제한 목록이 비었다"
     kbo = [x for x in out if x["league"] == "KBO"]
     assert len(kbo) == 1, f"KBO 가 한 줄로 묶이지 않았다: {out}"
-    assert kbo[0]["defect"] == "D33"
+    # 🔴 **결함 번호를 하나만 보이면 거짓이 된다.** KBO 는 둘에 막혀 있다 —
+    #    koreabaseball(D33) · daum_search(D40). 처음엔 첫 번째만 썼다가
+    #    알파벳 순으로 D40 이 이겨 "KBO = D40" 으로 나왔다(실측).
+    assert kbo[0]["defects"] == ["D33", "D40"], kbo[0]
+    assert kbo[0]["defect"] == "D33·D40"
     # 🔴 naver 는 2026-09-21 에 다시 켰다(Go 크롤러와 맞춤) — 제한 목록에서 빠진다.
-    #    **켜진 소스가 제한 줄에 남아 있으면** 그게 거짓말이다.
-    assert set(kbo[0]["sources"]) == {"koreabaseball"}
+    assert set(kbo[0]["sources"]) == {"koreabaseball", "daum_search"}
     # 사유는 source_gate.REASONS 가 원본이다 — 여기서 문구를 다시 적지 않는다
     from app.collectors.source_gate import REASONS
     assert all(REASONS[s] in kbo[0]["reason"] for s in kbo[0]["sources"])
@@ -35,7 +38,10 @@ def test_제한_줄의_형식(monkeypatch):
     from app.collectors.source_gate import restriction_lines
 
     lines = restriction_lines()
-    assert any(ln.startswith("🔒 KBO — 자료 제한: 소스 중단(D33)") for ln in lines), lines
+    assert any(ln.startswith("🔒 KBO — 자료 제한: 소스 중단(D33·D40)")
+               for ln in lines), lines
+    # ⚠️ 축구도 daum 으로 막혔다 — 리그마다 한 줄이다
+    assert any(ln.startswith("🔒 축구 —") for ln in lines), lines
 
 
 def test_켜면_줄이_사라진다(monkeypatch):
@@ -58,7 +64,7 @@ async def test_health_에_제한_줄이_있다():
     from app.health import build_health
 
     body = await build_health(None, None)
-    assert "KBO — 자료 제한: 소스 중단(D33)" in body, body[-600:]
+    assert "KBO — 자료 제한: 소스 중단(D33·D40)" in body, body[-900:]
     assert "robots" in body, "사유가 안 실렸다"
 
 
@@ -66,7 +72,7 @@ def test_export_에_restrictions_블록이_있다():
     from app.export.for_fable import restrictions_block
 
     b = restrictions_block()
-    assert b["n"] == 1
-    assert b["items"][0]["league"] == "KBO"
-    assert b["items"][0]["defect"] == "D33"
-    assert "robots" in b["items"][0]["reason"]
+    assert b["n"] == 2, b            # KBO · 축구
+    kbo = [x for x in b["items"] if x["league"] == "KBO"][0]
+    assert kbo["defect"] == "D33·D40"
+    assert "robots" in kbo["reason"]

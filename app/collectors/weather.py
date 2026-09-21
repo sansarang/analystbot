@@ -390,18 +390,24 @@ async def hourly_rich(lat: float, lon: float, *, client=None) -> dict | None:
     """
     if client is not None:
         return await client(lat, lon)
-    import httpx
+    # 🔴 [DEC-2 2026-09-21] **DS-1 런타임을 지난다.** open-meteo 의 robots 는
+    #    `Disallow: /` 지만 **약관이 무료 API 한도를 명시**한다(10,000/일 ·
+    #    CC-BY 4.0). 그래서 `access_basis: api_terms` 로 등록했고 런타임이
+    #    그 호스트만 통과시킨다. 근거 URL 은 `config/deepsearch.yaml` 에 있다.
+    #    ⚠️ 무료 티어는 **비상업 전용**이다 — 해당 여부는 사용자 판단이다.
+    import json as _json
+    import urllib.parse as _up
 
+    from app.deepsearch.runtime import default_runtime
+
+    q = _up.urlencode({"latitude": lat, "longitude": lon,
+                       "hourly": "wind_speed_10m,wind_direction_10m,"
+                                 "temperature_2m,precipitation_probability",
+                       "wind_speed_unit": "mph", "forecast_days": 2})
     try:
-        async with httpx.AsyncClient(timeout=12.0) as c:
-            r = await c.get(
-                "https://api.open-meteo.com/v1/forecast",
-                params={"latitude": lat, "longitude": lon,
-                        "hourly": "wind_speed_10m,wind_direction_10m,"
-                                  "temperature_2m,precipitation_probability",
-                        "wind_speed_unit": "mph", "forecast_days": 2})
-            r.raise_for_status()
-            return r.json().get("hourly")
+        got = await default_runtime().fetch(
+            f"https://api.open-meteo.com/v1/forecast?{q}")
+        return _json.loads((got.body or b"{}").decode("utf-8", "replace")).get("hourly")
     except Exception as exc:
         logger.warning("[weather] rich 예보 실패 %s,%s: %s", lat, lon, exc)
         return None

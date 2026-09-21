@@ -104,3 +104,22 @@ rerank:
     #       이 저장소가 반복해 온 실수다.
     enabled: false
     name: ""
+
+# 🔴 [DEC-2 2026-09-21 사용자 결정] **접근 근거.**
+#    robots 가 거부해도 **그 API 자신의 약관**이 프로그램 접근을 정하고 있으면
+#    그 약관이 governing 이다. 여기 적힌 호스트만 robots 검사를 통과한다.
+#    ⚠️ **근거 URL 없이 적으면 그게 거짓이다** — 계약이 잠근다.
+#    ⚠️ 전역 스위치가 아니다. 호스트 하나씩, 근거 하나씩이다.
+access_basis:
+  api.open-meteo.com:
+    basis: api_terms
+    evidence_url: "https://open-meteo.com/en/terms"
+    daily_cap: 10000          # 5,000/시간 · 600/분
+    license: "CC-BY 4.0"
+    note: |
+      🔴 무료 티어는 **비상업 전용**이다 — 약관 원문은 "private websites
+         without ads/subscriptions · personal home automation · public
+         research · educational content" 를 예로 든다.
+      ⚠️ **이 봇이 거기 해당하는지는 사용자 판단**이다. 내가 정하지 않았다.
+      ⚠️ CC-BY 4.0 이라 **출처 표시가 필요하다** — 카드에 날씨를 쓰면 그렇다.
+         그 자리는 이 단위 밖이라 손대지 않았다.

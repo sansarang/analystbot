@@ -33,6 +33,10 @@ REASONS: dict = {
         "`User-agent: * / Disallow: /` 이고 "
         "'사전 승인 없이 자동 수집·크롤링·복제하는 행위를 금지합니다' 고지가 "
         "붙어 있다(실측 2026-09-21 · HTTP 200). 정식 접근 문의 중."),
+    "daum_search": (
+        "robots 거부 — search.daum.net/robots.txt 가 `Disallow: /` 다"
+        "([3] 감사 2026-09-21 · 재감사에서도 같음). "
+        "DS-3 이 기사 검색을 Bing 으로 갈았으므로 대체가 있다(사용자 결정 2)."),
     "naver_apigw": (
         "판단 불가로 중단 — api-gw.sports.naver.com 은 robots.txt 가 404 지만 "
         "같은 계열 sports.news.naver.com 이 `Disallow: /` 다. 판단이 설 때까지 "
@@ -119,9 +123,15 @@ def restrictions() -> list[dict]:
             if not key:
                 continue
             row = by_league.setdefault(
-                key, {"league": key, "sources": [], "defect": None, "reasons": []})
+                key, {"league": key, "sources": [], "defects": [], "reasons": []})
             row["sources"].append(name)
-            row["defect"] = row["defect"] or _cfg(name, "defect")
+            # 🔴 **번호를 하나만 보이면 거짓이 된다.** 실측 2026-09-21: KBO 가
+            #    koreabaseball(D33)·daum_search(D40) 둘에 막혀 있는데 첫 번째만
+            #    쓰자 알파벳 순으로 **D40** 이 이겨 "KBO = D40" 으로 나왔다.
+            #    KBO 의 주된 제한은 D33 이다. 전부 적는다.
+            d = _cfg(name, "defect")
+            if d and d not in row["defects"]:
+                row["defects"].append(d)
             why = blocked_reason(name)
             if why:
                 row["reasons"].append(f"{name}: {why}")
@@ -129,7 +139,9 @@ def restrictions() -> list[dict]:
     for key in sorted(by_league):
         row = by_league[key]
         out.append({"league": row["league"], "sources": sorted(row["sources"]),
-                    "defect": row["defect"], "reason": " · ".join(row["reasons"])})
+                    "defects": sorted(row["defects"]),
+                    "defect": "·".join(sorted(row["defects"])) or None,
+                    "reason": " · ".join(row["reasons"])})
     return out
 
 

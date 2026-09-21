@@ -56,6 +56,21 @@ def load_config(force: bool = False) -> dict:
     return _CFG_CACHE
 
 
+def access_basis(host: str) -> str | None:
+    """이 호스트에 **robots 밖의 접근 근거**가 있나. 없으면 None.
+
+    🔴 robots 가 거부해도 그 API 자신의 약관이 프로그램 접근을 정하고 있으면
+       그 약관이 governing 이다(DEC-2 사용자 결정). 원본은
+       `config/deepsearch.yaml` 의 `access_basis:` 하나다.
+    🔴 **근거 URL 이 없으면 근거가 아니다** — 그런 항목은 무시한다.
+    ⚠️ 전역 스위치가 아니다. **호스트 하나씩**이다.
+    """
+    row = ((load_config().get("access_basis") or {}).get(str(host or "")) or {})
+    if not str(row.get("evidence_url") or "").startswith("http"):
+        return None
+    return str(row.get("basis") or "") or None
+
+
 class Blocked(RuntimeError):
     """요청을 **보내지 않았다.** 🔴 조용히 빈손을 주지 않는다 — 부른 쪽이
     "자료가 없다"와 "막혀서 안 보냈다"를 구분할 수 있어야 한다."""
@@ -317,7 +332,12 @@ class Runtime:
             raise Blocked("daily_cap", f"{host} · {d.sent_today}/{cap}")
 
         async with d.gate:
-            await self._robots(u.scheme or "https", host, d)
+            # 🔴 [DEC-2] 약관이 governing 인 호스트는 robots 검사를 지난다.
+            #    ⚠️ 그 호스트 **하나만**이다. 전역 스위치가 아니다.
+            if access_basis(host):
+                d.robots_state = "overridden"
+            else:
+                await self._robots(u.scheme or "https", host, d)
             if d.robots_state == "ok" and not robots_allows(
                     d.robots_text or "", u.path or "/",
                     ua=self._r("user_agent")):
