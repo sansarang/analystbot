@@ -24,7 +24,8 @@
 | D05a | `DEEPSEARCH_SPORTS=soccer` — 야구 기사 수집 꺼짐 | 운영 env 실측 `DEEPSEARCH_SPORTS = soccer` | **열림** | — | W8 |
 | D05b | `league_labels()["KBO"]` 가 빈 문자열 | 실측 `{'KBO': 'kbo', 'NPB': 'npb', 'MLB': 'mlb', …}` 전 리그 non-empty | **검증됨** | `ddfc88d` | W8 |
 | D06a | 리그앙·에레디비시가 화이트리스트 밖이라 버려짐 | 최근 30일 리그앙 13/15 final · 에레디비시 11/15 final | **검증됨** | `ddfc88d` | W3 |
-| D06b | J1·K1·ACL·덴마크 결과 **0건** | J1 0/11 · K리그1 0/14 · ACL엘리트 0/10 · 덴마크 0/8 → 배포 후에도 `results_pending` **31건**(W3 에서 finals 잡 배선이 남았다) | **배포됨(미완)** | `2c6daf0` | W3 |
+| D06b | J1·K1·ACL·덴마크 결과 **0건** | 09-21 10:10 실측 — J1 **2/12** · K리그1 **4/16** · 덴마크 **4/12** (직전 전부 0). ACL 은 09-20~21 경기가 없어 0/10 → 소급 적재(W3-4) 대상 | **배포됨(부분)** | `905b194`·`7a4b9db` | W3-4 |
+| D30 | `upsert_slate` 이 **중복 행을 만들었다** | W3-1 배포 직후 같은 경기가 `odds:*`(scheduled)·`fotmob:*`(final) 두 행 — 판정이 붙은 행은 채점이 안 닫힌다. 중복 3그룹 → `apply_result` 로 고치고 병합해 **0** | **검증됨** | `7a4b9db` | W3 |
 | D07a | `games.status='scheduled'` 잔존 (종료 6h 초과) | 축구 61경기 · KBO 4경기 | **열림** | — | W3 |
 | D07b | 채점 미닫힘 — 결과는 있는데 `hit IS NULL` | soccer 5 · npb 3 · kbo 2 · mlb 1 | **열림** | — | W3 |
 | D08a | 폼 문자열 방향 미검증 | `form_order.verify` 배선 완료 | **배포됨** | `983ec66` | W6 |
