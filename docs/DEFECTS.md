@@ -73,6 +73,7 @@
 | D24 | `close` 태그는 있는데 `open` 이 없다 — 규칙이 한쪽만 있다 | 최근 7일 KBO `with_close` 23/23 · `with_open` **0/23** | **열림** | W4 |
 | D25 | 미배포 커밋이 쌓인다 | 로컬 `9b5f39c` vs 운영 `62c3da9` — 2커밋 차이 → **`5fbdf5c` 배포 완료 08:20 KST** (`boot_line` 실측) | **검증됨** | 닫힘 |
 | D29 | `match_unmapped` 점검이 **세 번 오탐을 냈다** | ±1일 창(25건) · 정규화 규칙 베끼기(20건) · KST 날짜 기준(10건). 셋 다 원본을 안 보고 다시 지은 것 — `bcf363b` 에서 원본(`starts_at`·`find_match`·UTC 색인)에 맞췄다 | **검증됨** | W2 |
+| D32 | 소급이 **타국 동명 리그**를 끌어왔다 | 이름만 보고 적재해 EPL 에 694경기(상한 ~70). `'Premier League'` 가 WAL·BLR·RUS·KAZ·EGY·UKR·TAN 에도 있다. `fotmob_ccode` 추가로 막고 오염 750행 삭제(백업 `/data/deleted_polluted_20260921.json`) | **검증됨** | `87ff421` | W3-4c |
 | D26 | `fotmob.norm()` 이 **한글을 통째로 지운다** | `norm('박건우')` → `''` (NFKD → ascii ignore). 이름 대조에 그대로 쓰면 한국 선수가 전부 일치한다 | **배포됨**(우회) `3bc759a` — 빈손이면 소문자 정리로 되돌린다. 진짜 해법은 player_id | W2→W5 |
 | D27 | `llm.daily_call_cap` 이 **config 에서 안 읽힌다** | `_llm_budget_ok` 가 `app.flow.rules` 를 쓴다 → 경로에 `flow.` 가 붙어 `flow.llm.daily_call_cap` 을 찾는데 실제 블록은 최상위 `llm:` 이다. 실측: `flow.rules → None` · `engine.rules → 200`. 지금은 폴백이 같은 값이라 증상이 없지만 **config 를 고쳐도 반영되지 않는다** | **열림** | W8 |
 | D28 | 선수 **id 원본이 없다** | `batter_appearances`·`pitcher_appearances` 에 이름만 있고 id 칸 없음 · `lineup_history` 는 id 칸이 있으나 ⋈ games **0행**. 동명이인(박건우 NC/롯데 · 김민석 두산/KT)이 실재해 이름으로는 귀속을 판정할 수 없다 | **열림**(지시 대기) | W5 |
