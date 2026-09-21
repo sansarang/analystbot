@@ -364,6 +364,100 @@ def test_모든_외부_요청이_런타임을_지난다():
     assert out == ["app/deepsearch/runtime.py"], f"런타임 밖 요청 경로: {out}"
 
 
+# ── T-ADD 15·16·17 (재순위 · DS-5a) ──────────────────────────────
+import json
+import pathlib
+
+_FIX = (pathlib.Path(__file__).resolve().parents[1]
+        / "fixtures" / "deepsearch" / "valencia_14.json")
+
+
+def _fixture():
+    """🔴 **운영에서 그대로 내려받은 것**이다(2026-09-21, game=Valencia CF).
+
+    지시문 픽스처는 "09-20 K리그 2경기(무고사 출전·대전 로테이션 문단)"인데
+    **그 경기들은 캐시에 기사가 0건**이었다(축구 12경기 중 기사가 있는 것은
+    이 한 경기뿐). 대신 지시문이 말한 바로 그 상황 — **기사 14건** — 이
+    여기 있어서 이것을 썼다. 바꿔 쓴 사실을 숨기지 않는다.
+    """
+    return json.loads(_FIX.read_text(encoding="utf-8"))
+
+
+def test_픽스처가_실제_운영_자료다():
+    d = _fixture()
+    from app.engine.scout_config import drop_boilerplate
+
+    have = [a for a in drop_boilerplate(d["articles"])
+            if (a.get("body") or "").strip()]
+    assert len(have) == 14, f"정제 후 {len(have)}건 (기대 14)"
+    # 🔴 이 경기와 **무관한** 기사가 실제로 섞여 있다 — 재순위가 겨냥하는 것
+    joined = " ".join(a.get("body") or "" for a in have)
+    assert "피카츄" in joined, "무관 기사가 사라졌다 — 픽스처가 바뀌었나"
+
+
+def test_rerank_works_without_model():
+    """T-ADD 15 — (c) 재순위 모델이 꺼진 상태에서 (a)(b)만으로 상위 k."""
+    from app.deepsearch import rerank as R
+
+    assert R.model_enabled() is False, "모델이 기본 켜짐이면 외부 의존이 생긴다"
+    d = _fixture()
+    paras = R.split(d["articles"])
+    assert paras and all(p.article_idx >= 0 and p.para_idx >= 0 for p in paras)
+    top = R.top_k(paras, names=(d["home"], d["away"]), k=6)
+    # 🔴 **k 를 채우지 않는다.** 실측: 99문단 중 이 경기 증거는 2개뿐이고,
+    #    채우면 나머지 4자리를 피카츄·이강인 기사가 가져간다.
+    assert 0 < len(top) <= 6
+    assert all(p.score > 0 for p in top)
+
+
+def test_rerank_reduces_tokens():
+    """T-ADD 16 — 입력이 줄고, **정답 문단이 상위 k 안에** 있다.
+
+    정답 = Transfermarkt 부상자 표(이 경기 두 팀). 오답 = 피카츄·이강인 기사.
+    """
+    from app.deepsearch import rerank as R
+    from app.collectors.satellite import WINDOW_BUDGET
+
+    d = _fixture()
+    paras = R.split(d["articles"])
+    top = R.top_k(paras, names=(d["home"], d["away"]), k=6)
+    after = sum(len(p.text) for p in top)
+    assert after < WINDOW_BUDGET, f"{after}자 — 지금 창 상한({WINDOW_BUDGET})보다 커졌다"
+
+    joined = " ".join(f"{p.title} {p.text}" for p in top)
+    # 🔴 정답은 Transfermarkt 부상자 표다. ⚠️ `부상자 N명` 은 **제목에만**
+    #    있고 본문은 선수 목록(`Muscle injury (복귀 예정 …)`)이다 — 실측.
+    assert "복귀 예정" in joined, "정답 문단(부상자 표)이 상위 k 에 없다"
+    assert "피카츄" not in joined, "무관 문단이 상위 k 에 남았다"
+    # 🔴 이 경기와 무관한 기사(이강인/PSG)가 자리를 채우면 안 된다.
+    #    `Valencia CF` 의 `cf` 가 잡토큰으로 걸려 실제로 그랬다(실측).
+    assert "이강인" not in joined, "잡토큰 때문에 무관 기사가 상위 k 에 들어왔다"
+
+
+def test_quote_maps_to_paragraph():
+    """T-ADD 17 — LLM 인용이 `article_idx·para_idx` 문단에 실제로 존재."""
+    from app.deepsearch import rerank as R
+
+    d = _fixture()
+    paras = R.split(d["articles"])
+    target = next(p for p in paras if "복귀 예정" in p.text)
+    quote = target.text[10:40]
+    got = R.locate_quote(quote, paras)
+    assert got is not None
+    assert (got.article_idx, got.para_idx) == (target.article_idx, target.para_idx)
+    # 🔴 지어낸 인용은 **어디에도 없어야 한다**
+    assert R.locate_quote("무고사 선발 출전이 확정됐다", paras) is None
+
+
+def test_문단마다_출처가_붙는다():
+    """🔴 인용 검증은 코드가 한다 — 문단이 어느 기사에서 왔는지 모르면 못 한다."""
+    from app.deepsearch import rerank as R
+
+    d = _fixture()
+    for p in R.split(d["articles"]):
+        assert p.url is not None
+
+
 # ── 시험용 대역 ───────────────────────────────────────────────────
 class _FakeRT:
     def __init__(self, bodies, *, etag=None, then_304=False):
