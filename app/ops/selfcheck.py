@@ -492,14 +492,20 @@ async def _unmapped(pool) -> list:
 
         from app.collectors.fotmob import norm, slate
 
+        # 🔴 [W2 2026-09-21] **같은 날짜끼리만 본다.** 첫 판에 ±1일 경기를
+        #    오늘 하루치 목록과 대조해서, **어제 경기한 팀이 전부** "못 찾는다"로
+        #    찍혔다(Kashiwa Reysol·Manchester City FC 까지 25건 오탐).
+        #    FotMob 목록은 **그 날짜에 경기하는 팀**만 담는다 — 목록에 없는 것이
+        #    이름이 안 맞는다는 뜻이 아니다.
+        kst = ZoneInfo("Asia/Seoul")
+        today = _dt.now(kst).date()
         rows = await pool.fetch(
             "SELECT DISTINCT league, home, away FROM games "
-            "WHERE sport = 'soccer' AND starts_at BETWEEN now() - interval '1 day' "
-            "AND now() + interval '1 day'")
+            "WHERE sport = 'soccer' "
+            "  AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $1", today)
         if not rows:
             return out
-        day = _dt.now(ZoneInfo("Asia/Seoul")).strftime("%Y%m%d")
-        theirs = await slate(day)
+        theirs = await slate(today.strftime("%Y%m%d"))
         if not theirs:
             logger.info("[selfcheck] FotMob 목록이 비었다 — 매칭은 못 쟀다")
             return out

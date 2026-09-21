@@ -269,3 +269,17 @@ def test_대기표의_확인된_이름은_추정이_아니다():
     assert ids.get("SonderjyskE") == 8487, "확인한 id 를 적지 않았다"
     # 🔴 확인했다고 자동 승격하지 않는다.
     assert all(not r.get("approved") for r in rows), "사람 승인 없이 승격됐다"
+
+
+@pytest.mark.asyncio
+async def test_어제_경기한_팀을_미연결로_세지_않는다():
+    """🔴 첫 구현의 오탐 재현 — ±1일 경기를 **오늘** 목록과 대조해서
+    Kashiwa Reysol·Manchester City FC 까지 25건이 찍혔다.
+    FotMob 목록은 그 날짜에 경기하는 팀만 담는다."""
+    import inspect
+
+    from app.ops import selfcheck as SC
+
+    src = inspect.getsource(SC._unmapped)
+    assert "interval '1 day'" not in src, "±1일 창을 그대로 쓴다(오탐)"
+    assert "::date = $1" in src, "같은 날짜끼리 대조하지 않는다"
