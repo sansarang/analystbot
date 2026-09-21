@@ -153,6 +153,167 @@ async def test_noisy_page_excluded():
     assert why and "매번" in why, why
 
 
+# ── T-ADD 7·8·9·11 (검색 공급자 · DS-3a) ─────────────────────────
+def test_provider_chain_from_config_only():
+    """T-ADD 7 — 공급자 이름을 코드에 박지 않는다."""
+    import subprocess
+
+    from app.deepsearch import search as S
+
+    out = subprocess.run(
+        ["rg", "-n", r'chain\s*=\s*\[|"bing_news_rss"|"media_rss"',
+         "app/deepsearch/search.py"], capture_output=True, text=True).stdout
+    # 등록표(REGISTRY) 의 **키**로 쓰는 것은 허용이다 — 순서를 박는 것이 금지다.
+    assert "chain = [" not in out, f"체인을 코드에 박았다: {out}"
+    assert S.chain_names() == ["bing_news_rss", "media_rss"], S.chain_names()
+
+
+def test_키가_없는_공급자는_비활성(monkeypatch):
+    """T-ADD 7 뒷부분 — 키 없는 유료 공급자는 체인에 안 들어간다."""
+    from app.deepsearch import search as S
+
+    monkeypatch.delenv("BRAVE_API_KEY", raising=False)
+    assert "brave" not in S.active_names()
+
+
+@pytest.mark.asyncio
+async def test_provider_cap_falls_through():
+    """T-ADD 8 — 일일 상한 도달 → 다음 공급자. **예외 없음.**"""
+    from app.deepsearch import search as S
+
+    calls = []
+
+    class P:
+        def __init__(self, name, cap, hits):
+            self.name, self.daily_query_cap, self._h = name, cap, hits
+            self.used = 0
+
+        async def search(self, **kw):
+            calls.append(self.name)
+            self.used += 1
+            return list(self._h)
+
+    a = P("a", 1, [S.Hit(url="u1", title="t1")])
+    b = P("b", 9, [S.Hit(url="u2", title="t2")])
+    got1 = await S.chain_search("q", providers=[a, b])
+    got2 = await S.chain_search("q", providers=[a, b])
+    assert [h.url for h in got1] == ["u1"]
+    assert [h.url for h in got2] == ["u2"], "상한 뒤 다음 공급자로 안 넘어갔다"
+    assert calls == ["a", "b"]
+
+
+@pytest.mark.asyncio
+async def test_전부_막혀도_예외가_아니라_빈손이다():
+    from app.deepsearch import search as S
+
+    class Dead:
+        name, daily_query_cap = "dead", 0
+
+        async def search(self, **kw):
+            raise AssertionError("상한 0 인데 불렸다")
+
+    assert await S.chain_search("q", providers=[Dead()]) == []
+
+
+def test_provider_content_still_verified():
+    """T-ADD 9 — 공급자가 준 본문에도 **같은 검증**이 걸린다.
+
+    🔴 검증 규칙을 새로 만들지 않는다 — `situation.is_recap`(경기 후 기사)과
+       `situation.published_before`(시점)가 원본이다(사본 금지).
+    ⚠️ 픽스처는 09-21 에 내가 실제로 저지른 오독이다: 9/11 자 중지 공지를
+       9/21 경기 중지로 읽었다.
+    """
+    import inspect
+    from datetime import datetime as _dt
+
+    from app.deepsearch import search as S
+
+    src = inspect.getsource(S.verify)
+    assert "is_recap" in src and "published_before" in src, \
+        "검증을 새로 지었다 — 원본을 불러야 한다"
+    # 🔴 원본은 **RFC 2822 문자열만** 파싱하고, 못 파싱하면 "모르면 통과"로
+    #    True 를 준다. datetime 을 그냥 넘기면 10일 전 기사가 통과한다
+    #    (실측 2026-09-21). 형식을 맞춰 넘기는지 잠근다.
+    assert "format_datetime" in src, "datetime 을 그대로 넘기면 창 검사가 무력화된다"
+
+    ko = _dt(2026, 9, 21, 18, 0, tzinfo=KST)
+    hits = [
+        S.Hit(url="https://a/1", title="한화 7연패 당해도 웃는다…김서현 슬럼프 탈출",
+              published_at=_dt(2026, 9, 21, 10, 0, tzinfo=KST)),
+        # 경기 후 기사 — 점수 표기
+        S.Hit(url="https://a/2", title="포항스틸러스, FC서울 2-1 격파…7위 도약",
+              published_at=_dt(2026, 9, 21, 9, 0, tzinfo=KST)),
+        # 9/11 자 공지 — 창 밖
+        S.Hit(url="https://a/3", title="9/11(金)福岡ソフトバンク戦 中止のお知らせ",
+              published_at=_dt(2026, 9, 11, 12, 0, tzinfo=KST)),
+    ]
+    ok, dropped = S.verify(hits, sport="kbo", starts_at=ko)
+    assert [h.url for h in ok] == ["https://a/1"], [h.url for h in ok]
+    why = {d["url"]: d["reason"] for d in dropped}
+    assert why["https://a/2"] == "post_match"
+    assert why["https://a/3"] == "out_of_window"
+
+
+def test_budget_zero_means_free_only():
+    """T-ADD 11 — `monthly_budget_usd: 0` 이면 과금 가능한 호출 0."""
+    from app.deepsearch import search as S
+
+    for name in S.active_names():
+        assert S.budget_usd(name) == 0, f"{name} 예산이 0 이 아니다"
+        assert S.is_free(name), f"{name} 이 과금 가능한데 체인에 있다"
+
+
+def test_공급자는_질의를_말없이_바꾸지_않는다():
+    """🔴 **기계적 절단 규칙을 넣지 않았다 — 실측이 그 규칙을 뒤집었다.**
+
+    처음엔 "검색어가 길수록 나쁘다"고 보고 시장별 단어 상한을 넣으려 했다.
+    2×2 절제(2026-09-21 Bing, 같은 시각)가 그 방향을 지지하는 듯했다:
+
+        한/일 긴→짧   한화 선발 1→8 · 中日 予告先発 2→5
+        영/스 긴→짧   EPL 확정XI 9→2 (긴 쪽 압승)
+
+    그런데 한 번 더 좁혀 재자 **반대가 나왔다**:
+
+        川崎フロンターレ        11항목/8최근 → 최신 「감독이 반성한 후반 23분 교체책」
+        川崎フロンターレ スタメン  5항목/2최근 → 최신 「【川崎vs鹿島】スタメン発表」
+
+    🔴 좁히면 **기사 수는 줄고 정확도는 오른다.** 즉 "당일 기사 회수 수"는
+       잘못된 지표다 — 그것만 보면 쓸모없는 기사를 많이 받는 쪽이 이긴다.
+       (지시문 DS-3a 4 가 회수율을 1순위로 두는데 실측이 반대를 가리킨다.)
+
+    그래서 규칙을 **짓지 않고** 오디션(DS-3a 3)에 넘긴다. 공급자는 받은
+    질의를 그대로 보낸다 — 질의의 원본은 `config/search_terms.yaml` 이다.
+    """
+    import inspect
+
+    from app.deepsearch import search as S
+
+    src = inspect.getsource(S)
+    for banned in ("max_query_words", "trim_query", "[:3]", "split()[:"):
+        assert banned not in src, f"질의를 말없이 자르는 코드가 있다: {banned}"
+
+
+@pytest.mark.asyncio
+async def test_보낸_질의가_받은_질의와_같다():
+    from app.deepsearch import search as S
+
+    sent = []
+
+    class RT:
+        async def fetch(self, url, **kw):
+            from app.deepsearch.runtime import Fetched
+
+            sent.append(url)
+            return Fetched(url=url, status=200, body=b"<rss></rss>")
+
+    p = S.BingNewsRSS(runtime=RT())
+    q = "川崎フロンターレ 予想スタメン 負傷 欠場"
+    await p.search(query=q, market="ja-JP")
+    import urllib.parse
+
+    assert urllib.parse.quote(q) in sent[0], sent[0]
+
+
 # ── T-ADD 12·13·14 (수집·브라우저) ────────────────────────────────
 def test_third_party_crawler_goes_through_runtime():
     """DS-4a 1 — 제3자 크롤러는 **어댑터를 거친다.** 아직 하나도 없다."""
