@@ -1,0 +1,107 @@
+# 매체 **유형** — [DEC-4 / 사용자 결정 2026-09-21]
+#
+# 🔴 **유형은 사실이고, 등급은 의견이다.** 종전 `config/sources.yaml` 의
+#    tier0~3 은 "얼마나 믿나"인데, KBO 는 tier1 에 한 곳뿐이고 tier2 는 빈
+#    목록이라 실제 매체가 전부 `RANK_UNKNOWN` 이었다(D41).
+#    등급을 내가 채우면 취향이다. **"구단 공식인가"는 근거 URL 로 확인된다.**
+#
+# 🔴 **등급은 `official` 만 상위(primary)** 다. 나머지는 전부 `unrated`(soft).
+#    승격은 `공식·라인업과의 일치율` 실측이 **n≥20** 일 때 **후보**가 되고,
+#    올리는 것은 **사용자**다. 코드가 스스로 올리지 않는다.
+#
+# ⚠️ **여기 있는 도메인은 전부 운영에서 실제로 본 것**이다(Redis 캐시 13종 +
+#    Bing 검색 결과 + 본문 열기 실측 + kbo_news 설정 피드 + source_map 공시면).
+#    지어낸 도메인은 없다.
+# ⚠️ `evidence_url` 은 **실제로 열어 확인했다**(2026-09-21). 24건 중 2건이
+#    실패해 루트로 대체하고 `note` 에 그 사실을 적었다.
+# ⚠️ `config/sources.yaml` 은 **건드리지 않았다.** 별개 축이다.
+
+types: ["official", "wire", "beat", "general", "aggregator"]
+
+#: 상위로 올리는 유형. 🔴 **하나뿐이다.**
+primary_types: ["official"]
+
+promotion:
+  # 승격 **후보** 조건 — 그 뒤에도 사용자 승인이 필요하다.
+  metric: "공식·라인업과의 일치율"
+  min_samples: 20
+  note: |
+    🔴 코드가 스스로 승격하지 않는다. `source_scorecard` 가 n≥20 을 채우면
+       **후보 목록**에 오를 뿐이다. 올리는 것은 사용자다.
+
+sources:
+  # ── 구단·리그 공식 ────────────────────────────────────────────
+  sp.baystars.co.jp:      {type: official, evidence_url: "https://www.baystars.co.jp/"}
+  www.marines.co.jp:      {type: official, evidence_url: "https://www.marines.co.jp/"}
+  www.rakuteneagles.jp:   {type: official, evidence_url: "https://www.rakuteneagles.jp/"}
+  npb.jp:                 {type: official, evidence_url: "https://npb.jp/"}
+  www.jleague.jp:         {type: official, evidence_url: "https://www.jleague.jp/"}
+  api.premierleague.com:
+    type: official
+    evidence_url: "https://www.premierleague.com/"
+    note: "EPL 공식 API. robots.txt 는 404 라 access_basis 는 판단불가다(1b-2)."
+  www.laliga.com:         {type: official, evidence_url: "https://www.laliga.com/"}
+
+  # ── 통신사 ───────────────────────────────────────────────────
+  www.yna.co.kr:
+    type: wire
+    evidence_url: "https://www.yna.co.kr/"
+    note: |
+      ⚠️ 소개 페이지를 못 찾았다 — `/about/index` 가 400, `/company/intro` 도
+         400 이었다(실측 2026-09-21). 루트로 대체한다. 없는 URL 을 근거로
+         적으면 그게 거짓이다.
+
+  # ── 스포츠 전문(beat) ────────────────────────────────────────
+  www.nikkansports.com:   {type: beat, evidence_url: "https://www.nikkansports.com/"}
+  www.sponichi.co.jp:     {type: beat, evidence_url: "https://www.sponichi.co.jp/"}
+  www.sanspo.com:         {type: beat, evidence_url: "https://www.sanspo.com/"}
+  www.baseballchannel.jp: {type: beat, evidence_url: "https://www.baseballchannel.jp/"}
+  www.osen.co.kr:         {type: beat, evidence_url: "https://www.osen.co.kr/"}
+  osen.mt.co.kr:          {type: beat, evidence_url: "https://www.osen.co.kr/"}
+  sports.chosun.com:      {type: beat, evidence_url: "https://sports.chosun.com/"}
+  www.spotvnews.co.kr:    {type: beat, evidence_url: "https://www.spotvnews.co.kr/"}
+  www.starnewskorea.com:  {type: beat, evidence_url: "https://www.starnewskorea.com/"}
+  www.sportsworldi.com:   {type: beat, evidence_url: "https://www.sportsworldi.com/"}
+  www.goal.com:           {type: beat, evidence_url: "https://www.goal.com/"}
+  www.sportingnews.com:   {type: beat, evidence_url: "https://www.sportingnews.com/"}
+  www.transfermarkt.com:
+    type: beat
+    evidence_url: "https://www.transfermarkt.com/"
+    note: |
+      ⚠️ 유형이 딱 맞지 않는다 — 기사 매체가 아니라 **이적·부상 데이터베이스**다.
+         다섯 유형에 그 칸이 없어 `beat` 로 뒀다. 억지로 맞춘 것을 숨기지 않는다.
+
+  # ── 종합·경제지 ───────────────────────────────────────────────
+  www.mt.co.kr:           {type: general, evidence_url: "https://www.mt.co.kr/"}
+  www.fnnews.com:         {type: general, evidence_url: "https://www.fnnews.com/"}
+  www.newspim.com:        {type: general, evidence_url: "https://www.newspim.com/"}
+  www.ajunews.com:        {type: general, evidence_url: "https://www.ajunews.com/"}
+  sports.khan.co.kr:      {type: general, evidence_url: "https://sports.khan.co.kr/"}
+  www.chosun.com:         {type: general, evidence_url: "https://www.chosun.com/"}
+  www.koreadaily.com:     {type: general, evidence_url: "https://www.koreadaily.com/"}
+  news.mynavi.jp:         {type: general, evidence_url: "https://news.mynavi.jp/"}
+  news.ntv.co.jp:         {type: general, evidence_url: "https://news.ntv.co.jp/"}
+  niwaka-yakyu.net:
+    type: general
+    evidence_url: "https://niwaka-yakyu.net/"
+    note: "⚠️ 개인 블로그로 보인다 — 유형을 확인하지 못했다. general 로 뒀다."
+  note.com:
+    type: general
+    evidence_url: "https://note.com/"
+    note: "⚠️ 개인 발행 플랫폼이다. 글쓴이에 따라 성격이 갈린다."
+
+  # ── 모음(aggregator) ─────────────────────────────────────────
+  news.yahoo.co.jp:
+    type: aggregator
+    evidence_url: "https://news.yahoo.co.jp/"
+    note: |
+      ⚠️ 소개 페이지를 못 찾았다 — `/info/` 가 404 였다(실측 2026-09-21).
+         루트로 대체한다.
+  v.daum.net:             {type: aggregator, evidence_url: "https://news.daum.net/"}
+  news.google.com:        {type: aggregator, evidence_url: "https://news.google.com/about/"}
+  www.msn.com:
+    type: aggregator
+    evidence_url: "https://www.msn.com/"
+    note: |
+      🔴 본문이 **3자**로 온다(D43 · 24건 중 6건). JS 렌더라 정적 HTML 에
+         값이 없다. 유형과 별개로 **쓸모가 없다.**
