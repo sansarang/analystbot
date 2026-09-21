@@ -608,7 +608,8 @@ def league_matches(fotmob_league: str, league_key: str) -> bool:
     return bool(needle) and needle in name
 
 
-async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str) -> dict:
+async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str,
+                       rows: list | None = None) -> dict:
     """[ACL-1] FotMob 슬레이트 → `games`. 반환 `{fetched, matched, saved, skipped}`.
 
     🔴 **The Odds API 에 없는 대회를 받는 유일한 길이다.** 종목 178개를 전수
@@ -635,7 +636,13 @@ async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str) -> dict:
     if not needle:
         logger.warning("[fotmob] %s 에 fotmob_contains 가 없다 — 적재 생략", league_key)
         return out
-    rows = await slate(date_yyyymmdd)
+    # 🔴 [W3-4 2026-09-21] 미리 받은 목록을 넘길 수 있다. FotMob 하루치는
+    #    **한 번 받으면 전 리그가 들어 있다**(541경기) — 리그마다 다시 받으면
+    #    요청이 4배가 되고, 그만큼 차단 위험이 는다.
+    #    ⚠️ `None` 과 빈 목록은 다르다. 빈 목록을 넘긴 것은 "그날 경기가
+    #       없다"이고, 그때 다시 받으면 넘긴 뜻이 사라진다.
+    if rows is None:
+        rows = await slate(date_yyyymmdd)
     out["fetched"] = len(rows)
     for r in rows:
         if not league_matches(r.get("league") or "", league_key):
