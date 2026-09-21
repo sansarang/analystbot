@@ -1010,3 +1010,10 @@ ALTER TABLE games ADD COLUMN IF NOT EXISTS venue_id   INT;
 ALTER TABLE games ADD COLUMN IF NOT EXISTS venue_name TEXT;
 ALTER TABLE games ADD COLUMN IF NOT EXISTS venue_lat  DOUBLE PRECISION;
 ALTER TABLE games ADD COLUMN IF NOT EXISTS venue_lon  DOUBLE PRECISION;
+
+-- 🔴 [W3-2 / wiring_first 2026-09-21] 종료 근거. FotMob `reason.short` 그대로:
+--   FT(정규) · AET(연장) · Pen(승부차기) · 그 외 표지.
+--   ⚠️ **점수는 그대로 저장하되**, 연장·승부차기는 1X2 자동 채점에서 뺀다 —
+--      연장 3-2 를 정규시간 홈 승으로 읽으면 적중 판정이 통째로 거짓이 된다.
+--      제외 규칙의 원본은 `pick_ledger.gradeable_basis` 하나다.
+ALTER TABLE games ADD COLUMN IF NOT EXISTS result_basis TEXT;

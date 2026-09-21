@@ -695,7 +695,10 @@ async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str) -> dict:
         mode = await apply_result(
             pool, sport="soccer", league=cfg.get("label") or league_key,
             ext_id=f"fotmob:{r['id']}", starts_at=ko, home=h, away=a,
-            status=st, home_score=hs, away_score=as_)
+            status=st, home_score=hs, away_score=as_,
+            # 🔴 [W3-2] 종료 근거를 **버리지 않는다.** `status_of` 가 이미
+            #    읽고 있었는데 저장할 자리가 없어 사라지고 있었다.
+            result_basis=basis)
         # ⚠️ **킥오프 갱신은 잃지 않는다.** `apply_result` 의 UPDATE 는
         #    status·점수만 쓴다. 종전 `ON CONFLICT` 는 `starts_at` 도 새로
         #    썼고, 일정이 옮겨지는 대회(ACL·컵)에서 그 값이 필요하다.

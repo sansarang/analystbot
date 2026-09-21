@@ -450,6 +450,26 @@ async def record_analysis(pool, analysis: dict, *, trial: bool = False) -> dict:
     return stats
 
 
+#: 🔴 [W3-2 / wiring_first 2026-09-21] **1X2 자동 채점을 해도 되는 종료 근거.**
+#   원본은 여기 하나다 — `fotmob._FINAL_REASONS` 는 "종료인가"를 답하고,
+#   이쪽은 "채점해도 되는가"를 답한다. 다른 질문이라 표를 나눈다.
+#   ⚠️ 옛 행·다른 소스는 전부 `None` 이다. **그것은 채점한다** — 막느라 정상
+#      채점까지 멈추면 고친 게 아니라 끈 것이다.
+_GRADEABLE_BASIS = (None, "", "FT")
+
+
+def gradeable_basis(basis) -> bool:
+    """이 종료 근거로 승패를 채점해도 되는가.
+
+    🔴 연장(`AET`)·승부차기(`Pen`)는 **안 된다.** 연장 3-2 를 정규시간 홈 승으로
+       읽으면 적중 판정이 통째로 거짓이 된다 — 90분에는 2-2 무승부였을 수 있다.
+    🔴 **모르는 표지도 안 된다.** 지어내지 않는다(`Awarded`·`WO` 등).
+    """
+    if basis is None:
+        return True
+    return str(basis).strip() in _GRADEABLE_BASIS
+
+
 async def grade_pending(pool, sport: str | None = None) -> dict:
     """미채점 행에 결과를 붙인다. 반환: {graded, void}.
 
@@ -490,12 +510,21 @@ async def grade_pending(pool, sport: str | None = None) -> dict:
     rows = await pool.fetch(
         f"""SELECT l.id, l.game_id, l.sport, l.favored, l.p_home,
                   l.predicted_side,
-                  g.status, g.home_score, g.away_score
+                  g.status, g.home_score, g.away_score, g.result_basis
               FROM pick_ledger l JOIN games g ON g.id = l.game_id
              WHERE l.graded_at IS NULL
                AND g.status IN ('final', 'cancelled', 'suspended', 'postponed')
                {where_sport}""", *args)
     for r in rows:
+        # 🔴 [W3-2] **연장·승부차기는 1X2 자동 채점에서 뺀다.**
+        #    점수는 이미 저장돼 있다 — 채점만 사람이 확인할 때까지 미룬다.
+        #    ⚠️ 조용히 사라지지 않는다: 건수를 세고 로그로 남긴다.
+        if r["status"] == "final" and not gradeable_basis(r["result_basis"]):
+            out["needs_90"] = out.get("needs_90", 0) + 1
+            logger.warning("[ledger] game=%s 종료 근거 %r — 1X2 자동 채점에서 "
+                           "제외한다(90분 점수 확인 필요)",
+                           r["game_id"], r["result_basis"])
+            continue
         # [CLV-1] 마감 배당을 남긴다 — `_CLV_SNAP` 이 **킥오프 이전** 마지막
         #   스냅샷만 고르므로 채점 시점에 불러도 값은 마감 배당이다.
         #   ⚠️ 저장 전용. 채점 결과(`hit`)에 이 값을 쓰지 않는다.

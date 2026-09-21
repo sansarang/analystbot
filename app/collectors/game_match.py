@@ -62,25 +62,29 @@ _UPDATE = """
     UPDATE games SET status = $2,
                      home_score = COALESCE($3, home_score),
                      away_score = COALESCE($4, away_score),
+                     -- 🔴 [W3-2] 종료 근거. 덮어쓰지 않는다 — 한 번 AET 로
+                     --    기록된 경기가 나중 목록에서 지워지면 안 된다.
+                     result_basis = COALESCE($5, result_basis),
                      updated_at = now()
     WHERE id = $1
 """
 
 _INSERT = """
     INSERT INTO games (sport, league, ext_id, starts_at, home, away,
-                       status, home_score, away_score)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                       status, home_score, away_score, result_basis)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     ON CONFLICT (sport, ext_id) DO UPDATE SET
         status = EXCLUDED.status,
         home_score = COALESCE(EXCLUDED.home_score, games.home_score),
         away_score = COALESCE(EXCLUDED.away_score, games.away_score),
+        result_basis = COALESCE(EXCLUDED.result_basis, games.result_basis),
         updated_at = now()
 """
 
 
 async def apply_result(pool, *, sport: str, league: str, ext_id: str,
                        starts_at: datetime, home: str, away: str, status: str,
-                       home_score, away_score) -> str:
+                       home_score, away_score, result_basis=None) -> str:
     """결과를 반영한다. 반환: "updated"(기존 경기 갱신) | "inserted"(신규).
 
     기존 행을 찾으면 **그 행을 갱신**한다 — 그래야 그 행에 붙은 예측이 채점된다.
@@ -88,10 +92,11 @@ async def apply_result(pool, *, sport: str, league: str, ext_id: str,
     gid = await pool.fetchval(_FIND, sport, home, away, starts_at,
                               MATCH_WINDOW_HOURS, ext_id)
     if gid is not None:
-        await pool.execute(_UPDATE, gid, status, home_score, away_score)
+        await pool.execute(_UPDATE, gid, status, home_score, away_score,
+                           result_basis)
         return "updated"
     await pool.execute(_INSERT, sport, league, ext_id, starts_at, home, away,
-                       status, home_score, away_score)
+                       status, home_score, away_score, result_basis)
     return "inserted"
 
 
@@ -322,12 +327,15 @@ async def merge_duplicate_games(pool, sport: str | None = None) -> dict:
             continue
         # 점수·상태를 살린다 (final 쪽 값이 있으면 그것으로)
         best = await pool.fetchrow(
-            "SELECT status, home_score, away_score FROM games "
+            # ⚠️ [W3-2] `result_basis` 도 함께 살린다 — 병합으로 종료 근거가
+            #    사라지면 연장 경기가 정규시간 승부로 둔갑한다.
+            "SELECT status, home_score, away_score, result_basis FROM games "
             "WHERE id = ANY($1::int[]) AND home_score IS NOT NULL "
             "ORDER BY (status = 'final') DESC LIMIT 1", ids)
         if best:
             await pool.execute(_UPDATE, keep, best["status"],
-                               best["home_score"], best["away_score"])
+                               best["home_score"], best["away_score"],
+                               best["result_basis"])
         out["moved_predictions"] += int(await pool.fetchval(
             "WITH m AS (UPDATE predictions SET game_id = $1 "
             "WHERE game_id = ANY($2::int[]) RETURNING 1) SELECT count(*) FROM m",
