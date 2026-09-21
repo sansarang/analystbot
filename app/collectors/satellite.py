@@ -575,51 +575,59 @@ def _title_hits(title: str, team: str) -> bool:
 
 async def rss_hits(query: str, *, league: str, stage: str = "pre",
                    now=None) -> list[dict]:
-    """[SCT-7] Google News RSS — **현지어 질의 1순위 통로.**
+    """[SCT-7 → DS-3] 현지어 질의 1순위 통로. **2026-09-21 에 공급자를 갈았다.**
 
-    반환은 `_tor_supplement` 가 쓰는 hit 모양이다:
+    🔴 종전은 Google News RSS 였고 그것은 **robots 거부**다 — `*` 에
+       `Disallow: /` 이고 `/rss/` 를 여는 Allow 줄이 없으며, `ClaudeBot`·
+       `anthropic-ai` 를 **이름으로 지목**해 막는다(원문 직접 수신 2026-09-21).
+       실측: 운영 캐시의 기사 URL **174건이 전부** 그 도메인이었다.
+    🔴 지금은 `deepsearch.search.chain_search` 를 쓴다 — 공급자·순서의 원본은
+       `config/deepsearch.yaml` 의 `search.chain` 하나다(사용자 결정: bing).
+       요청은 DS-1 런타임을 지나 robots·간격·상한·서킷이 걸린다.
+
+    반환 모양은 **그대로**다(바꾸면 `_tor_supplement`·`screen` 이 깨진다):
     `{url, title, snippet, source, source_url, published(datetime)}`.
 
-    🔴 **BASE·UA·파서를 새로 만들지 않는다** — `news_rss` 가 원본이다.
-    🔴 `source_url`(매체 도메인)을 함께 싣는다. `link` 는 news.google.com
-       리다이렉트라 그것으로 등급을 보면 전건이 '미상'이 된다.
+    🔴 `source_url` 은 **매체 도메인**이다. 검색엔진 리다이렉트로 등급을 보면
+       전건이 '미상'이 된다(SCT-9 에서 겪은 실패). Bing 은 apiclick 링크의
+       `url=` 에 원문을 그대로 담아 주므로 **추가 요청 0** 으로 푼다.
     ⚠️ `published` 를 **datetime 으로** 넘긴다 — `scout_config.screen` 이 그
        타입으로 "pubDate 를 아는 소스"(RSS)를 가른다(SCT-6).
+    ⚠️ 되돌릴 스위치를 두지 않았다 — 되돌릴 자리가 **robots 거부 경로**다.
     """
-    from email.utils import parsedate_to_datetime
-
-    import httpx
-
-    from app.collectors.news_rss import BASE, UA, TIMEOUT, parse_feed
+    from app.deepsearch.search import chain_search
     from app.engine.scout_config import MAX_AGE_H, locale
 
     loc = locale(league)
     if not loc or not query:
         return []
+    # 🔴 [DS-3 2026-09-21] **구글 RSS 를 끊었다.** `news.google.com` 은 robots
+    #    거부다 — `*` 에 `Disallow: /` 이고 `/rss/` 를 여는 Allow 줄이 없으며
+    #    `ClaudeBot`·`anthropic-ai` 를 **이름으로 지목**해 막는다(원문 수신).
+    #    실측: 운영 캐시의 기사 URL 174건이 **전부** 그 도메인이었다.
+    #    ⚠️ 되돌릴 스위치를 두지 않았다 — 되돌릴 자리가 거부 경로라서다.
+    mkt = f"{loc.get('hl') or 'ko'}-{loc.get('gl') or 'KR'}"
     try:
-        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True,
-                                     headers={"User-Agent": UA}) as c:
-            r = await c.get(BASE, params={"q": query, **loc})
-            r.raise_for_status()
-            items = parse_feed(r.text, now=now,
-                               max_age_hours=MAX_AGE_H.get(stage, 48))
+        hits = await chain_search(query, market=mkt)
     except Exception as exc:
         logger.warning("[rss] %s 조회 실패 %s: %s", league, query[:40], exc)
         return []
+    # ⚠️ 신선도 상한은 **종전 그대로** `scout_config.MAX_AGE_H` 다(사본 금지).
+    cur = now or datetime.now(timezone.utc)
+    cap = MAX_AGE_H.get(stage, 48)
     out: list[dict] = []
-    for it in items:
-        pub = None
-        if it.get("published"):
-            try:
-                pub = parsedate_to_datetime(it["published"])
-                if pub.tzinfo is None:
-                    pub = pub.replace(tzinfo=timezone.utc)
-            except (TypeError, ValueError):
-                pub = None
-        out.append({"url": it.get("url") or "", "title": it.get("title") or "",
-                    "snippet": it.get("source") or "",
-                    "source": it.get("source") or "",
-                    "source_url": it.get("source_url") or "",
+    for h in hits:
+        pub = h.published_at
+        if pub is not None and pub.tzinfo is None:
+            pub = pub.replace(tzinfo=timezone.utc)
+        if pub is not None and (cur - pub).total_seconds() > cap * 3600:
+            continue
+        out.append({"url": h.url, "title": h.title,
+                    "snippet": h.snippet or h.source,
+                    "source": h.source,
+                    # 🔴 등급·차단은 **매체 도메인**으로 본다. 검색엔진 주소로
+                    #    보면 전건이 '미상'이 된다(SCT-9 에서 겪은 실패).
+                    "source_url": h.url,
                     "published": pub})
     logger.info("[rss] %s %s — %d건", league, query[:40], len(out))
     return out

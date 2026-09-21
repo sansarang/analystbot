@@ -184,3 +184,36 @@ Detmers joins Ohtani in 200-K club as Angels walk off Twins
 ⚠️ 영향 범위: 둘 다 **MLB** 제목이다. KBO·NPB·축구에서는 이번 대조에서
    새는 것이 없었다.
 
+## D40 — `_daum_fetch` 가 아직 robots 거부 경로다 (2026-09-21 · 등록만)
+
+`app/collectors/satellite.py:320` `_DAUM_URL = "https://search.daum.net/search"`.
+`search.daum.net/robots.txt` 는 `Disallow: /` 다([3] 감사 · 커밋 `1303164`).
+
+부르는 곳 둘:
+```
+satellite.py:452          KBO 기사 검색
+satellite_soccer.py:538   축구 기사 검색 (parse_daum_news)
+```
+
+⚠️ **DS-3 에서 안 건드렸다.** `rss_hits`(구글 RSS)와 한 번에 바꾸면 무엇이
+   깨졌는지 못 가린다. 파서도 다르다(`parse_daum_news` vs RSS).
+⚠️ 영향: KBO·축구의 **층1 검색**이 아직 거부 경로로 나간다. DS-3 이 바꾼 것은
+   `rss_hits`(현지어 질의 통로)뿐이다.
+
+## D41 — KBO 소스 등급표가 사실상 비어 있다 (2026-09-21 · 등록만)
+
+`config/sources.yaml`:
+```
+tier1_club_local.kbo  = ['gukjenews.com']   ← 1개
+tier2_aggregator.kbo  = []                  ← 빈 목록
+tier0_primary         에 kbo 없음
+```
+그래서 `rank()` 가 `osen.co.kr`·`yna.co.kr`·`mt.co.kr`·`fnnews.com` 을 전부
+`RANK_UNKNOWN(9)` 로 본다. 오디션 표의 **"화이트리스트 0%"** 가 이것이었다.
+
+⚠️ **채우지 않았다** — 소스 등급은 "어느 매체를 믿나"라는 판단이고, 내가
+   고르면 취향이다. 사용자가 정할 표다.
+⚠️ 실측된 KBO 매체 도메인(Bing 12건): `osen.co.kr` · `yna.co.kr` · `mt.co.kr` ·
+   `fnnews.com` · `newspim.com` · `sportsworldi.com` · `ajunews.com` ·
+   `msn.com`(래핑 4건).
+

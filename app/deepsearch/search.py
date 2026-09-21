@@ -44,6 +44,7 @@ def _p(name, key, default=None):
 class Hit:
     url: str
     title: str = ""
+    source: str = ""
     snippet: str = ""
     published_at: datetime | None = None
     content: str | None = None
@@ -193,6 +194,29 @@ async def chain_search(query: str, *, market: str = "ko-KR",
 _ITEM = re.compile(r"<item>(.*?)</item>", re.S)
 _TAG = {k: re.compile(rf"<{k}>(.*?)</{k}>", re.S)
         for k in ("title", "link", "description", "pubDate")}
+#: Bing 이 매체 이름을 싣는 칸. MSN 래핑이면 `노컷뉴스 on MSN` 처럼 온다.
+_SRC = re.compile(r"<News:Source>(.*?)</News:Source>", re.S | re.I)
+
+
+def real_url(link: str) -> str:
+    """검색엔진 리다이렉트 → **원문 URL**. 🔴 추가 요청 0.
+
+    Bing 의 `news/apiclick.aspx?…&url=<원문>` 에 원문이 그대로 들어 있다
+    (실측 2026-09-21). 앞서 "1회 추가 요청이 든다"고 적었던 것은 **틀렸다**.
+
+    🔴 원문을 못 풀면 등급·차단 검사가 **검색엔진 도메인**을 보게 되고
+       전건이 '미상'이 된다 — 구글 RSS 에서 이미 겪은 실패다(SCT-9).
+    ⚠️ 감싸이지 않은 주소는 **그대로** 돌려준다.
+    """
+    u = (link or "").strip()
+    if not u or "apiclick" not in u:
+        return u
+    try:
+        q = urllib.parse.parse_qs(urllib.parse.urlsplit(u).query)
+    except Exception:
+        return u
+    inner = (q.get("url") or [""])[0]
+    return urllib.parse.unquote(inner) if inner else u
 
 
 def _unescape(s: str) -> str:
@@ -214,8 +238,11 @@ def parse_rss(text: str, *, provider: str = "", limit=None) -> list[Hit]:
             pub = parsedate_to_datetime(g("pubDate")) if g("pubDate") else None
         except Exception:
             pub = None
-        out.append(Hit(url=g("link"), title=g("title"), snippet=g("description"),
-                       published_at=pub, provider=provider))
+        m = _SRC.search(block)
+        out.append(Hit(url=real_url(g("link")), title=g("title"),
+                       snippet=g("description"), published_at=pub,
+                       source=_unescape(m.group(1)) if m else "",
+                       provider=provider))
         if limit and len(out) >= limit:
             break
     return out

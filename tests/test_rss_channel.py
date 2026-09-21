@@ -1,9 +1,17 @@
-"""SCT-7 — Google News RSS 가 축구 검색의 **1순위 통로**다.
+"""SCT-7 → **DS-3** — 현지어 RSS 가 축구 검색의 1순위 통로다.
 
 🔴 실측 2026-09-14: DDG(토르)는 경기당 2질의에도 403 을 줬다. RSS 는 무료·
-   pubDate 포함이라 날짜 문을 대신할 증거가 붙어 온다.
+   pubDate 포함이라 날짜 문을 대신할 증거가 붙어 온다. **그건 그대로다.**
 
-⚠️ BASE·UA·파서를 새로 만들지 않는다 — `news_rss` 가 원본이다.
+🔴 **2026-09-21: 공급자를 Google News RSS → Bing News RSS 로 갈았다.**
+   구글 쪽이 **robots 거부**이기 때문이다 — `*` 에 `Disallow: /` 이고 `/rss/`
+   를 여는 Allow 줄이 없으며 `ClaudeBot`·`anthropic-ai` 를 이름으로 지목해
+   막는다(원문 직접 수신). 실측: 운영 캐시의 기사 URL **174건 전부**가 그
+   도메인이었다. 사용자 결정 "체인은 bing으로".
+
+⚠️ 이 파일의 시험 대상은 **채널이 무엇이냐가 아니라** 그 채널이 지켜야 할
+   것들이다 — 현지어 로케일 · **매체 도메인으로 등급** · 값을 손으로 안 적음 ·
+   대진 기사는 두 팀의 재료. 그 넷은 그대로 두고 공급자만 바꿨다.
 """
 import inspect
 from datetime import UTC, datetime, timedelta
@@ -17,42 +25,33 @@ from app.engine import scout_config as SC
 NOW = datetime(2026, 9, 14, 9, 0, tzinfo=UTC)
 KICK = NOW + timedelta(hours=16)
 
-FEED = """<rss><channel>
+#: 🔴 Bing News RSS 의 실제 모양이다 — apiclick 링크의 `url=` 에 **원문 URL**
+#   이 들어 있고, `<News:Source>` 가 매체 이름을 준다(실측 2026-09-21).
+FEED = """<rss version="2.0" xmlns:News="https://www.bing.com:443/news/search">
+<channel>
 <item><title>Torino, formazioni ufficiali - Fantacalcio</title>
-<link>https://news.google.com/rss/articles/AAA</link>
-<pubDate>Mon, 14 Sep 2026 08:00:00 GMT</pubDate>
-<source url="https://www.fantacalcio.it">Fantacalcio</source></item>
+<link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=https%3a%2f%2fwww.fantacalcio.it%2fAAA&amp;c=1</link>
+<description>Le probabili formazioni</description>
+<News:Source>Fantacalcio</News:Source>
+<pubDate>Mon, 14 Sep 2026 08:00:00 GMT</pubDate></item>
 <item><title>Ricetta tiramisu - Cucina</title>
-<link>https://news.google.com/rss/articles/BBB</link>
-<pubDate>Mon, 14 Sep 2026 07:00:00 GMT</pubDate>
-<source url="https://www.cucina.it">Cucina</source></item>
+<link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=https%3a%2f%2fwww.cucina.it%2fBBB&amp;c=2</link>
+<description>Dolce</description>
+<News:Source>Cucina</News:Source>
+<pubDate>Mon, 14 Sep 2026 07:00:00 GMT</pubDate></item>
 </channel></rss>"""
 
 
-class _Resp:
-    status_code = 200
-    text = FEED
-
-    def raise_for_status(self):
-        pass
-
-
 def _client(sent):
-    class _C:
-        def __init__(self, *a, **k):
-            pass
+    """DS-1 런타임 대역. 🔴 **요청이 어디로 나갔는지** 센다."""
+    class _RT:
+        async def fetch(self, url, **kw):
+            from app.deepsearch.runtime import Fetched
 
-        async def __aenter__(self):
-            return self
+            sent.append(url)
+            return Fetched(url=url, status=200, body=FEED.encode())
 
-        async def __aexit__(self, *a):
-            return False
-
-        async def get(self, url, params=None, **k):
-            sent.append((url, params))
-            return _Resp()
-
-    return _C
+    return lambda *a, **k: _RT()
 
 
 def test_로케일은_검색어표가_정한다():
@@ -65,23 +64,24 @@ def test_로케일은_검색어표가_정한다():
 @pytest.mark.asyncio
 async def test_RSS_는_현지어_로케일로_부르고_매체_도메인을_싣는다(monkeypatch):
     sent: list = []
-    monkeypatch.setattr("httpx.AsyncClient", _client(sent))
+    monkeypatch.setattr("app.deepsearch.search.Runtime", _client(sent))
 
     hits = await SAT.rss_hits("Torino formazioni ufficiali", league="serie_a",
                               stage="lineup", now=NOW)
 
-    url, params = sent[0]
-    assert url.startswith("https://news.google.com/rss/search")
-    assert params["hl"] == "it" and params["gl"] == "IT" and params["ceid"] == "IT:it"
-    # 🔴 link 는 news.google.com 리다이렉트다. 등급은 매체 도메인으로 본다.
-    assert hits[0]["source_url"].endswith("fantacalcio.it")
+    # 🔴 **거부 경로로 나가지 않는다**
+    assert not [u for u in sent if "news.google.com" in u], sent
+    # 현지어 로케일은 `scout_config.locale` 이 원본이다 — it/IT
+    assert "setmkt=it-IT" in sent[0], sent[0]
+    # 🔴 link 는 검색엔진 리다이렉트다. 등급은 **매체 도메인**으로 본다.
+    assert hits[0]["source_url"].endswith("fantacalcio.it/AAA"), hits[0]
     assert isinstance(hits[0]["published"], datetime), "screen 이 RSS 를 가르는 근거"
 
 
 @pytest.mark.asyncio
-async def test_등급은_구글_링크가_아니라_매체로_본다(monkeypatch):
+async def test_등급은_검색엔진_링크가_아니라_매체로_본다(monkeypatch):
     opened: list[str] = []
-    monkeypatch.setattr("httpx.AsyncClient", _client([]))
+    monkeypatch.setattr("app.deepsearch.search.Runtime", _client([]))
 
     async def _body(u):
         opened.append(u)
@@ -94,7 +94,8 @@ async def test_등급은_구글_링크가_아니라_매체로_본다(monkeypatch
                                    stage="lineup", kickoff=KICK, now=NOW)
 
     # fantacalcio = tier2 → 열린다. cucina = 미상 + 팀 없음 → 안 열린다.
-    assert opened == ["https://news.google.com/rss/articles/AAA"]
+    # fantacalcio = tier2 → 열린다. cucina = 미상 + 팀 없음 → 안 열린다.
+    assert opened == ["https://www.fantacalcio.it/AAA"]
     assert len(out) == 1
 
 
@@ -107,19 +108,23 @@ def test_축구_수집이_RSS_를_먼저_부르고_토르는_폴백이다():
 
 
 def test_RSS_기본값을_손으로_적지_않는다():
-    """BASE·UA·파서는 news_rss 가 원본이다(사본 금지)."""
+    """🔴 주소·공급자·신선도 상한을 `rss_hits` 에 박지 않는다.
+
+    공급자와 순서의 원본은 `config/deepsearch.yaml` 의 `search.chain`,
+    신선도는 `scout_config.MAX_AGE_H` 다(사본 금지).
+    """
     import ast
 
     src = inspect.getsource(SAT.rss_hits)
     tree = ast.parse(src.lstrip())
-    # ⚠️ 주석은 세지 않는다 — **문자열 상수**에 URL 이 박혔는지만 본다.
-    lits = [n.value for n in ast.walk(tree)
+    # ⚠️ 주석·docstring 은 세지 않는다 — **코드의 문자열 상수**만 본다.
+    body = [n for n in ast.walk(tree)
             if isinstance(n, ast.Constant) and isinstance(n.value, str)]
-    assert not any("news.google.com/rss" in x for x in lits), "BASE 를 베끼지 않는다"
-    imported = {a.name for n in ast.walk(tree)
-                if isinstance(n, ast.ImportFrom) and n.module == "app.collectors.news_rss"
-                for a in n.names}
-    assert {"BASE", "UA", "parse_feed"} <= imported
+    lits = [n.value for n in body if len(n.value) < 200]
+    for bad in ("news.google.com", "bing.com", "http"):
+        assert not any(bad in x for x in lits), f"주소를 베꼈다: {bad}"
+    assert "MAX_AGE_H" in src, "신선도 상한을 원본에서 읽어야 한다"
+    assert "chain_search" in src, "공급자 체인을 거쳐야 한다"
 
 
 # ── SCT-8: 대진 질의 먼저, 팀 질의는 모자랄 때만
@@ -129,7 +134,7 @@ async def test_대진_기사는_양_팀_모두의_재료다(monkeypatch):
     """🔴 "Torino-Roma: le probabili formazioni" 는 두 팀 다 설명한다.
     본문은 한 번만 열고 행만 둘로 만든다 — 추출이 팀으로 기사를 고른다."""
     opened: list[str] = []
-    monkeypatch.setattr("httpx.AsyncClient", _client([]))
+    monkeypatch.setattr("app.deepsearch.search.Runtime", _client([]))
 
     async def _body(u):
         opened.append(u)
