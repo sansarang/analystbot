@@ -296,3 +296,18 @@ def test_매칭_규칙을_베끼지_않는다():
     src = inspect.getsource(SC._unmapped)
     assert "find_match" in src, "진짜 매처를 부르지 않는다"
     assert "norm(" not in src, "정규화 규칙을 여기서 다시 쓴다(사본)"
+
+
+def test_FotMob_날짜는_UTC_기준이다():
+    """🔴 세 번째 오탐 — KST 날짜로 찾으면 유럽 야간 경기가 전부 빠진다.
+    실측 2026-09-21:
+        13979 US Lecce@AC Milan  UTC 09-20 18:45 · KST 날짜 09-21
+          FotMob 20260920 → 찾음(5749680)  ·  20260921 → 없음
+    """
+    import inspect
+
+    from app.ops import selfcheck as SC
+
+    src = inspect.getsource(SC._unmapped)
+    assert "astimezone(timezone.utc)" in src, "FotMob 날짜를 UTC 로 잡지 않는다"
+    assert 'strftime("%Y%m%d")' in src
