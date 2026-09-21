@@ -432,3 +432,77 @@ async def load(redis, date: str) -> dict:
 
     raw = await redis.get(_key(date))
     return json.loads(raw) if raw else {}
+
+
+def _score(v):
+    """득점은 **정수**다. 🔴 `_num` 을 쓰면 안 된다 — 그것은 이닝(120.1=120⅓)과
+    방어율용 float 변환이라 4 를 `4.0` 으로 만든다. `games.home_score` 는
+    정수 컬럼이고, `4.0 == 4` 가 참이라 값만 보는 단언은 이 결함을 놓친다
+    (실측 2026-09-21: 내 계약이 실제로 놓쳤다).
+    """
+    if v is None or str(v).strip() == "":
+        return None
+    try:
+        return int(str(v).strip())
+    except ValueError:
+        return None
+
+
+#: 끝난 경기로 볼 상태 코드. 🔴 실측 응답에서 그대로 옮겼다(2026-09-21 14:10).
+_FINAL_CODES = ("RESULT",)
+#: 취소·연기. 점수를 **넣지 않는다.**
+_VOID_CODES = ("CANCEL", "POSTPONE", "RAINCANCEL")
+
+
+async def upsert_results(pool, date: str, *, client=None) -> dict:
+    """[RES-1] 그 날짜 KBO 결과를 `games` 에 반영한다.
+
+    🔴 **왜 여기인가.** 결과를 채우던 `kbo.upsert_games` 의 소스
+       (`koreabaseball.com`)가 robots 거부로 꺼졌다(D33). 같은 값을 이미 켜져
+       있는 네이버 일정 API 가 준다 — `homeTeamScore`·`awayTeamScore`·
+       `statusCode`·`cancel` (실측 2026-09-21 14:10).
+
+    🔴 **매칭도 팀명도 새로 만들지 않는다.** `game_match.apply_result` 와
+       `TEAM_TO_ODDS` 가 원본이다 — 같은 경기가 두 행으로 갈라지면 그 행에 붙은
+       예측이 영원히 미채점으로 남는다(실측 2026-08-27 KBO 5행).
+
+    ⚠️ 날짜는 **하이픈 형식**이다(`2026-09-20`). `20260920` 은 400 이다.
+    ⚠️ 매핑에 없는 팀 이름(올스타·시범 껍데기 `BMBC1` 등)은 건너뛴다 —
+       거르는 규칙을 새로 짓지 않고 **표에 없으면 모르는 것**으로 본다.
+    """
+    from datetime import UTC, datetime
+    from zoneinfo import ZoneInfo
+
+    from app.collectors.game_match import apply_result
+
+    kst = ZoneInfo("Asia/Seoul")
+    c = client or NaverKBOClient()
+    rows = await c.games(date)
+    out = {"seen": len(rows), "applied": 0, "skipped_unmapped": 0,
+           "skipped_not_done": 0}
+    for g in rows:
+        home = TEAM_TO_ODDS.get((g.get("homeTeamName") or "").strip())
+        away = TEAM_TO_ODDS.get((g.get("awayTeamName") or "").strip())
+        if not home or not away:
+            out["skipped_unmapped"] += 1
+            continue
+        code = str(g.get("statusCode") or "").upper()
+        void = bool(g.get("cancel")) or code in _VOID_CODES
+        if not void and code not in _FINAL_CODES:
+            out["skipped_not_done"] += 1
+            continue
+        try:
+            starts = datetime.fromisoformat(
+                str(g.get("gameDateTime"))).replace(tzinfo=kst)
+        except (TypeError, ValueError):
+            out["skipped_not_done"] += 1
+            continue
+        await apply_result(
+            pool, sport="kbo", league="KBO",
+            ext_id=f"naver:{g.get('gameId')}",
+            starts_at=starts.astimezone(UTC), home=home, away=away,
+            status="cancelled" if void else "final",
+            home_score=None if void else _score(g.get("homeTeamScore")),
+            away_score=None if void else _score(g.get("awayTeamScore")))
+        out["applied"] += 1
+    return out

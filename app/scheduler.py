@@ -1807,6 +1807,35 @@ async def ingest_fotmob_finals(pool=None, *, upsert=None, now=None) -> dict:
     return out
 
 
+async def ingest_kbo_finals(pool=None, *, upsert=None, now=None) -> dict:
+    """[RES-1] 어제·오늘 KBO 결과를 네이버 일정 API 에서 적재한다.
+
+    🔴 **어제와 오늘 둘 다** 본다 — 경기는 KST 저녁에 끝나고 이 잡은 새벽에
+       도는데, 늦게 끝난 경기나 서스펜디드가 다음 날 확정되기도 한다.
+    ⚠️ 날짜는 KST 기준이다(절대 규칙 5: KBO 표기는 KST).
+    """
+    from app.collectors.naver_kbo import upsert_results
+
+    fn = upsert or upsert_results
+    pool = pool or await get_pool()
+    base = (now or datetime.now(KST)).date()
+    out = {"days": 0, "applied": 0, "seen": 0, "failed": 0}
+    for delta in (1, 0):
+        d = (base - timedelta(days=delta)).strftime("%Y-%m-%d")
+        try:
+            r = await fn(pool, d)
+        except Exception as exc:
+            out["failed"] += 1
+            logger.warning("[scheduler] KBO 결과 %s 실패 — 다음 날짜 계속: %s",
+                           d, exc)
+            continue
+        out["days"] += 1
+        out["applied"] += int(r.get("applied") or 0)
+        out["seen"] += int(r.get("seen") or 0)
+    logger.info("[scheduler] KBO 결과 적재: %s", out)
+    return out
+
+
 async def finals_job() -> None:
     """전날 종료 점수 적재. **픽 채점은 하지 않는다** (2026-08-29 사용자 지시).
 
@@ -1860,6 +1889,15 @@ async def finals_job() -> None:
         done["fotmob"] = await ingest_fotmob_finals(pool)
     except Exception as exc:
         logger.exception("[scheduler] FotMob 결과 적재 실패 — 채점은 계속: %s", exc)
+
+    # 🔴 [RES-1 2026-09-21] **KBO 결과의 새 소스.** 종전 소스
+    #    (`koreabaseball.com` 일정 페이지)는 robots 거부로 꺼졌다(D33) —
+    #    그대로 두면 오늘 이후 KBO 결과가 안 들어오고 채점이 멈춘다.
+    #    ⚠️ `grade_pending` **앞**에 둔다: 결과가 들어와야 채점할 것이 생긴다.
+    try:
+        done["kbo_naver"] = await ingest_kbo_finals(pool)
+    except Exception as exc:
+        logger.exception("[scheduler] KBO 결과 적재 실패 — 채점은 계속: %s", exc)
 
     # [v1.1 0단계] 결과가 들어왔으니 미채점 픽을 채점한다.
     #   ⚠️ 채점은 **측정 전용**이다 — 판정 경로는 이 표를 읽지 않는다.

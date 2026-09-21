@@ -23,7 +23,9 @@ def test_제한_목록은_꺼진_소스만_리그별로_묶는다():
     kbo = [x for x in out if x["league"] == "KBO"]
     assert len(kbo) == 1, f"KBO 가 한 줄로 묶이지 않았다: {out}"
     assert kbo[0]["defect"] == "D33"
-    assert set(kbo[0]["sources"]) == {"koreabaseball", "naver_apigw"}
+    # 🔴 naver 는 2026-09-21 에 다시 켰다(Go 크롤러와 맞춤) — 제한 목록에서 빠진다.
+    #    **켜진 소스가 제한 줄에 남아 있으면** 그게 거짓말이다.
+    assert set(kbo[0]["sources"]) == {"koreabaseball"}
     # 사유는 source_gate.REASONS 가 원본이다 — 여기서 문구를 다시 적지 않는다
     from app.collectors.source_gate import REASONS
     assert all(REASONS[s] in kbo[0]["reason"] for s in kbo[0]["sources"])

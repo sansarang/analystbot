@@ -10,9 +10,10 @@
    지금도 치고 있었다(kbo.py:31·89 · kbo_stats.py:26·28·29 · kbo_roster.py:25 ·
    kbo_boxscore `/ws/GetBoxScoreScroll`).
 
-🔴 `api-gw.sports.naver.com` 은 robots.txt 가 **404** 라 판단 불가다.
-   같은 계열 `sports.news.naver.com` 은 `Disallow: /` 이므로, 판단이 설 때까지
-   함께 끈다(사용자 지시 [2]a).
+🔴 [2026-09-21 사용자 지시 "고 크롤러와 맞춰라"] `api-gw.sports.naver.com` 은
+   **다시 켰다.** robots.txt 가 404(판단 불가)지 거부가 아니고, 끈 동안에도
+   Go 크롤러가 같은 API 를 10분마다 치고 있어(D36) 모순 상태였다.
+   ⚠️ `koreabaseball` 은 **명시 거부**라 그대로 끈다 — 이 둘을 섞지 않는다.
 
 ⚠️ **코드를 지우지 않는다.** 기능 플래그로 끈다 — 정식 접근이 허락되면
    플래그 한 줄로 되돌린다.
@@ -29,14 +30,15 @@ def test_플래그가_config_에_있다():
     from app.engine import rules as R
 
     assert R.get("sources.koreabaseball.enabled") is False
-    assert R.get("sources.naver_apigw.enabled") is False
+    # 🔴 naver 는 켜져 있어야 한다 — Go 크롤러와 맞췄다(사용자 지시 2026-09-21)
+    assert R.get("sources.naver_apigw.enabled") is True
 
 
 def test_게이트_함수가_한_곳이다():
     from app.collectors.source_gate import enabled
 
     assert enabled("koreabaseball") is False
-    assert enabled("naver_apigw") is False
+    assert enabled("naver_apigw") is True
     # ⚠️ 모르는 이름은 **켜진 것**으로 본다 — 게이트가 기존 소스를 조용히
     #    끄면 그게 더 큰 사고다.
     assert enabled("fotmob") is True
@@ -70,15 +72,16 @@ async def test_kbo_엔트리가_요청을_보내지_않는다():
     assert "robots" in str(e.value)
 
 
-@pytest.mark.asyncio
-async def test_naver_apigw_도_막힌다():
-    from app.collectors import naver_kbo
+def test_naver_apigw_는_켜져_있다():
+    """🔴 Go 크롤러와 **맞춘다.** 한쪽만 끄면 모순이고, 모순은 다음 사람이
+    "왜 파이썬만 비지?"로 며칠을 태운다(D36).
 
-    from app.collectors.source_gate import SourceDisabled
+    ⚠️ 게이트 자체는 그대로 있다 — config 한 줄로 다시 끌 수 있다.
+    """
+    from app.collectors.source_gate import enabled, require
 
-    with pytest.raises(SourceDisabled) as e:
-        await naver_kbo.NaverKBOClient()._get("/schedule/games")
-    assert "robots" in str(e.value)
+    assert enabled("naver_apigw") is True
+    require("naver_apigw")          # 예외가 나지 않아야 한다
 
 
 def test_끈_이유가_코드에_적혀_있다():
