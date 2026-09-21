@@ -103,6 +103,12 @@ class KBORosterClient:
 
     async def fetch_html(self) -> str:
         """원문 HTML. **한 번만 받아 두 번 판다** — 요청을 늘리지 않는다."""
+        # 🔴 [SRC-OFF 2026-09-21] robots 거부 소스는 **요청을 보내지 않는다.**
+        #    판단은 `source_gate` 한 곳이 한다(사본 금지).
+        from app.collectors.source_gate import require
+
+        require("koreabaseball")
+
         import httpx
 
         async with httpx.AsyncClient(timeout=self.timeout,

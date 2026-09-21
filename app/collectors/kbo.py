@@ -85,6 +85,12 @@ class KBOClient(BaseAPIClient):
         """그 달의 일정·결과 행. 셀은 태그를 벗긴 문자열."""
         import httpx
 
+        # 🔴 [SRC-OFF 2026-09-21] robots 거부 소스는 **요청을 보내지 않는다.**
+        #    판단은 `source_gate` 한 곳이 한다(사본 금지).
+        from app.collectors.source_gate import require
+
+        require("koreabaseball")
+
         headers = {"User-Agent": "Mozilla/5.0",
                    "Referer": f"{BASE}/Schedule/Schedule.aspx",
                    "X-Requested-With": "XMLHttpRequest"}

@@ -162,3 +162,13 @@ ops:
     results_pending_hours: 6   # 끝났어야 할 경기가 이만큼 지나도 final 이 아니다
     lineup_missing_min: 30     # T-30 까지 확정 라인업이 없으면 경보
     starter_unknown_hours: 3   # T-3h 까지 예고 선발이 없으면 경보
+
+# 🔴 [SRC-OFF / deepsearch_parallel [2]a 2026-09-21 사용자 지시] 소스 스위치.
+#    **코드를 지우지 않고 여기서 끈다** — 정식 접근이 허락되면 한 줄로 되돌린다.
+#    판단은 `app/collectors/source_gate.py` 한 곳이 한다(사본 금지).
+#    ⚠️ 여기 없는 소스는 **켜진 것**이다.
+sources:
+  koreabaseball:
+    enabled: false      # robots: User-agent:* / Disallow:/ + 자동수집 금지 고지
+  naver_apigw:
+    enabled: false      # robots.txt 404(판단불가) · 같은 계열은 Disallow:/

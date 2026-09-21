@@ -345,6 +345,10 @@ def parse_official_pitchers(table_json: str | dict) -> list[dict]:
 
 async def fetch_box(game_id: str) -> dict:
     """GetBoxScoreScroll JSON 1회. 라인업·투수 등판이 같은 응답에 있다."""
+    # 🔴 [SRC-OFF 2026-09-21] robots 거부 소스 — 요청을 보내지 않는다.
+    from app.collectors.source_gate import require
+
+    require("koreabaseball")
     async with httpx.AsyncClient(timeout=25, follow_redirects=True) as c:
         await c.get(f"{BASE}/Schedule/Schedule.aspx", headers=_HEADERS)
         r = await c.post(BASE + BOX_PATH,
@@ -390,6 +394,10 @@ async def fetch_game_ids(season: int, month: int) -> list[dict]:
     """
     from app.collectors.kbo import parse_matchup
 
+    # 🔴 [SRC-OFF 2026-09-21] robots 거부 소스 — 요청을 보내지 않는다.
+    from app.collectors.source_gate import require
+
+    require("koreabaseball")
     async with httpx.AsyncClient(timeout=25, follow_redirects=True) as c:
         await c.get(f"{BASE}/Schedule/Schedule.aspx", headers=_HEADERS)
         r = await c.post(BASE + SCHED_PATH,

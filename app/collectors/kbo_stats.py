@@ -100,6 +100,12 @@ class KBOStatsClient:
     async def get(self, path: str) -> str:
         import httpx
 
+        # 🔴 [SRC-OFF 2026-09-21] robots 거부 소스는 **요청을 보내지 않는다.**
+        #    판단은 `source_gate` 한 곳이 한다(사본 금지).
+        from app.collectors.source_gate import require
+
+        require("koreabaseball")
+
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as c:
             r = await c.get(BASE + path, headers={"User-Agent": "Mozilla/5.0",
                                                   "Referer": BASE + path})
