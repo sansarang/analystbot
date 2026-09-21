@@ -157,3 +157,30 @@ published_before({'published': 'Fri, 11 Sep 2026 12:00:00 +0900'}, …)      →
 ⚠️ 다만 Bing 결과에서는 **실제로 터졌다**. 소스를 바꾸면 나타나는 위험이다 —
    DS-3 배선 전에 봐야 한다.
 
+## D39 — 상보 표지 목록에 `game summary`·`walk off` 가 없다 (2026-09-21 · 등록만)
+
+D38 을 고치면서 **우연히 가려져 있던 구멍**이 드러났다.
+
+운영 제목 137건 전후 대조(실측 2026-09-21):
+```
+분류 같음          132
+구=폐기 → 신=통과    5   ← 전부 `Twins` 안의 `wins ` 오탐이었다
+구=통과 → 신=폐기    0   ← 반대 위험 없음
+```
+
+되살아난 5건 중 **둘은 진짜 경기 후 기사**다:
+```
+Minnesota Twins at Los Angeles Angels - MLB Game Summary - September 20
+Detmers joins Ohtani in 200-K club as Angels walk off Twins
+```
+구 규칙이 이것들을 잡고 있던 이유는 `Game Summary`·`walk off` 때문이 아니라
+**`Twins` 안의 `wins `** 때문이었다. 즉 **맞는 결론을 틀린 이유로** 내고 있었다.
+
+⚠️ 표지 목록에 `walk-off`(하이픈)는 있으나 `walk off`(띄어쓰기)가 없고,
+   `recap`·`final score` 는 있으나 `game summary` 가 없다.
+⚠️ **고치지 않았다** — 표지 목록 변경은 지시받지 않은 파라미터 변경이고,
+   늘리면 반대 위험(예고 기사 폐기)이 다시 커진다. 늘릴 때는 137건으로
+   전후를 다시 재야 한다.
+⚠️ 영향 범위: 둘 다 **MLB** 제목이다. KBO·NPB·축구에서는 이번 대조에서
+   새는 것이 없었다.
+

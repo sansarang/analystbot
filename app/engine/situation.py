@@ -72,6 +72,58 @@ def match_types(text: str, axes: dict[str, tuple[str, ...]]) -> list[str]:
     return hit
 
 
+def _recap_hits(title: str, sport: str) -> list[str]:
+    """이 제목에서 **실제로** 걸린 상보 표지들. [D38 2026-09-21]
+
+    🔴 **부분 문자열로 보면 안 된다.** 실측:
+         `[AI프리뷰] … 황준서 선발 기회 살릴`  → `리뷰` 가 **`프리뷰`** 안에서
+         `…7月15日以来の勝利目指し先発`        → `勝利` 가 **`勝利目指し`** 안에서
+       둘 다 **예고 기사**다. 우리가 가장 원하는 것을 버리는 방향의 오탐이다.
+
+    경계 규칙은 언어마다 다르다:
+      한국어 — 앞 글자가 **한글이면** 표지가 아니다(`프리뷰` 의 `리뷰`)
+      영어   — 낱말 경계(`\b`). `beat`/`beats` 는 표지에 둘 다 있다
+      일본어 — 띄어쓰기가 없어 경계가 없다. **뒤에 붙는 말**로 가린다
+               (`目指し`·`に向け`… → `registry.RECAP_FUTURE_JA` 가 원본)
+
+    ⚠️ 낱말을 이 파일에 적지 않는다 — `registry` 가 원본이다(사본 금지).
+    ⚠️ 느슨하게 하면 **진짜 경기 후 기사가 샌다.** 그게 더 나쁘다.
+    """
+    import re as _re
+
+    from app.registry import recap_future_suffixes, recap_markers
+
+    t = _norm(title)
+    if not t:
+        return []
+    fut = tuple(_norm(x) for x in recap_future_suffixes(sport))
+    out: list[str] = []
+    for w in recap_markers(sport):
+        nw = _norm(w)
+        if not nw:
+            continue
+        for m in _re.finditer(_re.escape(nw), t):
+            i, j = m.start(), m.end()
+            before = t[i - 1] if i > 0 else ""
+            after = t[j:j + 8]
+            # 한국어: 앞 글자가 한글이면 다른 낱말의 일부다
+            if "\uac00" <= nw[0] <= "\ud7a3" and "\uac00" <= before <= "\ud7a3":
+                continue
+            # 영어: 낱말 경계
+            if nw[0].isascii() and nw[0].isalpha():
+                if before.isalnum():
+                    continue
+                nxt = t[j] if j < len(t) else ""
+                if nw[-1].isalnum() and nxt.isalnum():
+                    continue
+            # 일본어: 뒤에 미래형이 붙으면 아직 안 일어난 일이다
+            if fut and any(after.startswith(f) for f in fut):
+                continue
+            out.append(w)
+            break
+    return out
+
+
 def is_recap(title: str, sport: str) -> bool:
     """경기 **결과**를 말하는 기사인가.
 
@@ -90,7 +142,8 @@ def is_recap(title: str, sport: str) -> bool:
         return False
     if _re.search(SCORE_PATTERN, t):          # 점수 표기 = 가장 강한 표지
         return True
-    return any(_norm(w) in t for w in recap_markers(sport))
+    # 🔴 [D38] 부분 문자열이 아니라 **경계를 본다** — `_recap_hits` 가 원본이다.
+    return bool(_recap_hits(title, sport))
 
 
 #: 🔴 [2026-09-06 사용자 지시] 상황 기사의 **하한**. 경기 시작 기준 이만큼

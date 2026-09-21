@@ -404,6 +404,22 @@ RECAP_MARKERS: dict[str, tuple[str, ...]] = {
 SCORE_PATTERN = r"\d{1,2}\s*[-–:：対vsVS]\s*\d{1,2}"
 
 
+#: 🔴 [D38 2026-09-21] **일본어 미래형 꼬리말.** 띄어쓰기가 없어 낱말 경계가
+#   없으므로 **뒤에 붙는 말**로 가린다.
+#   실측: 「7月15日以来の**勝利目指し**先発」 이 표지 `勝利` 에 걸려 스타멘
+#   발표 기사가 경기 후 기사로 버려졌다. 아직 안 일어난 일이다.
+#   ⚠️ 여기가 원본이다 — `situation.py` 에 낱말을 적지 않는다(사본 금지).
+RECAP_FUTURE_JA: tuple[str, ...] = (
+    "目指し", "目指す", "めざし", "めざす", "を狙", "に向け", "へ向け",
+    "したい", "を期待", "予想", "見込み", "だろう", "か？",
+)
+
+
+def recap_future_suffixes(sport: str) -> tuple[str, ...]:
+    """그 종목 언어의 **미래형 꼬리말**. 표지 바로 뒤에 이게 오면 표지가 아니다."""
+    return RECAP_FUTURE_JA if (sport or "").lower() == "npb" else ()
+
+
 def recap_markers(sport: str) -> tuple[str, ...]:
     """그 종목의 상보 표지. 모르는 종목은 빈 튜플 — 거르지 않는다."""
     return RECAP_MARKERS.get((sport or "").lower(), ())
