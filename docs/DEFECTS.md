@@ -297,3 +297,16 @@ news.yahoo.co.jp       본문 578자 × 2
 ⚠️ 성급히 파서를 정본으로 삼으면 안 되는 이유: 파서는 NPB 한 리그뿐이고,
    `games.status` 는 채점·발송 게이트가 읽는다.
 
+## D45 — robots.txt 자리에 HTML 이 오면 "허용"으로 읽힌다 (2026-09-21 · 등록만)
+
+실측: `fsp-data-cards-service.uefa.com/robots.txt` 가 **HTML 을 200 으로**
+돌려줬다. 규칙 줄(`User-agent:`/`Disallow:`)이 하나도 없으므로
+`robots_allows` 가 "빈 robots = 전면 허용"으로 답했다.
+
+🔴 **그건 "파일 없음(판단 불가)"과 같게 봐야 한다.** 허용으로 적으면 거짓이다.
+
+⚠️ 고치는 법(제안): 200 이어도 본문에 `user-agent:` 가 없으면 `unknown` 으로
+   본다. `Content-Type` 이 `text/html` 인 경우도 같다.
+⚠️ **고치지 않았다** — 감사 표를 이미 낸 뒤라, 고치면 그 표를 다시 돌려야 한다.
+   재감사 42행 중 이런 행이 더 있는지 함께 확인할 때 고치는 것이 맞다.
+
