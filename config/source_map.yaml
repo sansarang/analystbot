@@ -47,16 +47,28 @@ sources:
 
   - sport: baseball
     league: NPB
-    fact: 확정타순
+    fact: 예고선발+최근성적+순위      # 🔴 [정정] 정적으로 **값이 온다**
     url: "https://baseball.yahoo.co.jp/npb/game/{yahoo_id}/top"
-    fetch: js                           # 🔴 정적 HTML 에 타순이 **없다**
+    fetch: static                       # DS-0 의 `js` 분류는 **오분류였다**
     robots: "404(판단불가)"
     status: 200
     bytes: 160522
     ms: 114
-    hints: ["スタメン", "先発", "予告", "中止"]     # 낱말은 있으나 값이 없다
+    hints: ["予告先発", "見どころ", "中止", "順位表"]
     parser: none
-    js_probe: |
+    static_verified: |
+      🔴 [2]e 실측 2026-09-21 13:00 — 정적 HTML 에 **값이 그대로 있다**:
+        予告先発  背番号19 右投 髙橋 宏斗 · 今季 2.87 / 17등판 3승7패 ·
+                  대상대 2.18 / 3등판
+                  最近の成績 9/13 vs.阪神 9이닝 142구 4피안타 12탈삼진 0실점
+                            9/4  vs.ヤクルト 6이닝 125구 …
+        順位表    セ·パ 양 리그 승·패·무·게임차·매직넘버(M11) · 09-20 22:05 갱신
+        試合中止  "楽天 - 試合中止 ソフトバンク" · "試合中止 降雨のため"
+      ⚠️ `スタメン`·`打順` 만 아직 없다 — **js 라서가 아니라 발표 전**일 수
+         있다. 경기 전 몇 분에 나타나는지는 DS-2 폴링에서 실측한다.
+      ⚠️ 이 페이지가 **중지 공지도** 준다 — 09-21 두 경기 중지를 여기서 읽었다.
+      ⚠️ npb.jp/bis 순위 404 의 **대안이 여기 있다**.
+    js_probe_old: |
       __NEXT_DATA__ 없음 · window.__PRELOADED_STATE__ 없음 ·
       <script type="application/json"> 없음 · 본문에 yahoo API URL 0건.
       XHR 후보 6개 실측: /score 200(단서0) · /text 200(단서0) ·
@@ -108,43 +120,53 @@ sources:
     todo: "ps.html 도 404. 올바른 경로를 DS-2 착수 전에 다시 찾는다."
 
   # ── KBO ── 🔴 **전 경로 robots 거부. 치지 않는다.** ──────────────
+  # 🔴 KBO robots.txt 원문 (EUC-KR · 실측 2026-09-21 13:04 · HTTP 200):
+  #   # 본 사이트의 데이터를 사전 승인 없이 자동 수집·크롤링·복제하는 행위를 금지합니다.
+  #   User-agent: Googlebot / Yeti / Daumoa / Bingbot →  Disallow: /ws/
+  #   User-agent: *                                  →  Disallow: /
+  #   can_fetch(우리 UA) 전 경로 **False**
+  # ⚠️ 한국어 고지까지 붙어 있다. 명시적 거부이므로 요청하지 않는다.
   - sport: baseball
     league: KBO
     fact: 엔트리
     url: "https://www.koreabaseball.com/Player/Register.aspx"
     fetch: static
-    robots: "**거부**"
-    status: 미시도
+    robots: false
+    status: "불가(robots)"
     blocked: true
-    reason: "robots.txt 가 이 경로를 거부한다 — 우회하지 않는다(지시문 규율)"
+    reason: "robots.txt `User-agent: * / Disallow: /` + 자동수집 금지 고지"
 
   - sport: baseball
     league: KBO
     fact: 일정결과
     url: "https://www.koreabaseball.com/Schedule/Schedule.aspx"
-    robots: "**거부**"
-    status: 미시도
+    robots: false
+    status: "불가(robots)"
     blocked: true
-    reason: "robots 거부"
+    reason: "robots.txt `User-agent: * / Disallow: /` + 자동수집 금지 고지"
 
   - sport: baseball
     league: KBO
     fact: 순위
     url: "https://www.koreabaseball.com/Record/TeamRank/TeamRankDaily.aspx"
-    robots: "**거부**"
-    status: 미시도
+    robots: false
+    status: "불가(robots)"
     blocked: true
-    reason: "robots 거부"
+    reason: "robots.txt `User-agent: * / Disallow: /` + 자동수집 금지 고지"
 
   - sport: baseball
     league: KBO
     fact: 확정타순
     url: "https://sports.news.naver.com/kbaseball/schedule/index"
     fetch: js
-    robots: "**거부**"
-    status: 미시도
+    robots: false
+    status: "불가(robots)"
     blocked: true
-    reason: "robots 거부 — 화면 뒤 JSON 도 같은 호스트라 치지 않는다"
+    reason: |
+      robots.txt 원문: `User-agent: * / Disallow: / / Allow: /$ / Allow: /index`
+      (`Yeti` 만 예외). 우리 UA 는 거부다.
+      ⚠️ **다른 호스트** `api-gw.sports.naver.com` 은 robots.txt 가 404 라
+         판단 불가다 — 아래 별도 행으로 적는다.
 
   # ── MLB ── statsapi 가 전부 준다 ───────────────────────────────
   - sport: baseball

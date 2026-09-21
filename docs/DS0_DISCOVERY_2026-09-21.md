@@ -131,3 +131,97 @@ XHR 후보 6개 직접 호출:
 - **DS-2 착수 전 숙제 셋**: NPB 순위 경로 · K리그 순위 경로 · NPB 확정 타순의
   정적 대안. 셋 다 404/미확인이라 파서를 붙일 수 없다.
 - **KBO 는 별도 결정이 필요하다** — 공식이 막혀 있다. 사용자 지시를 기다린다.
+
+---
+
+# [2] KBO robots 거부 — 후속 실측 (사용자 지시 2026-09-21 12:56)
+
+## a. robots 원문 (EUC-KR · HTTP 200 · 실측 13:04 KST)
+
+```
+# 본 사이트의 데이터를 사전 승인 없이 자동 수집·크롤링·복제하는 행위를 금지합니다.
+
+User-agent: Googlebot   Disallow: /ws/
+User-agent: Yeti        Disallow: /ws/
+User-agent: Daumoa      Disallow: /ws/
+User-agent: Bingbot     Disallow: /ws/
+User-agent: *           Disallow: /
+
+can_fetch(AnalystBot/1.0) → 전 경로 False
+```
+
+🔴 **명시적 전면 거부 + 한국어 고지**다. `source_map.yaml` 에 `robots: false` ·
+`status: "불가(robots)"` 로 적었다. 수집기는 그 행을 요청하지 않는다.
+
+네이버:
+```
+sports.news.naver.com/robots.txt   200
+  User-agent: *   Disallow: /   Allow: /$   Allow: /index
+  User-agent: Yeti  Allow: /  Disallow: /article/     ← 네이버 자체 봇만
+api-gw.sports.naver.com/robots.txt 404 (JSON 에러) → **판단 불가**(별도 호스트)
+```
+
+## b. 🔴 기존 수집 경로 감사 — **우리는 이미 거부 경로를 치고 있다**
+
+| 코드 위치 | 도메인 | 경로 | robots | 무엇 |
+|---|---|---|---|---|
+| `kbo.py:31` | koreabaseball.com | `/ws/Schedule.asmx/GetScheduleList` | 🔴 **거부** | 일정(JSON) |
+| `kbo.py:89` | koreabaseball.com | `/Schedule/Schedule.aspx` | 🔴 **거부** | 일정(HTML) |
+| `kbo_stats.py:26` | koreabaseball.com | `/Record/Team/Hitter/Basic1.aspx` | 🔴 **거부** | 팀 타격 |
+| `kbo_stats.py:28` | koreabaseball.com | `/Record/Team/Pitcher/Basic1.aspx` | 🔴 **거부** | 팀 투수 |
+| `kbo_stats.py:29` | koreabaseball.com | `/Record/Player/PitcherBasic/BasicOld.aspx` | 🔴 **거부** | 투수 개인 |
+| `kbo_roster.py:25` | koreabaseball.com | `/Player/RegisterAll.aspx` | 🔴 **거부** | 엔트리 |
+| `kbo_boxscore.py` | koreabaseball.com | `/ws/Schedule.asmx/GetBoxScoreScroll` | 🔴 **거부** | 박스스코어 |
+| `naver_kbo.py:22` | api-gw.sports.naver.com | `/schedule/games` | 판단불가(404) | 일정·프리뷰 |
+| `source.go:137` | api-gw.sports.naver.com | `/schedule/games?fields=…` | 판단불가(404) | 크롤러 일정 |
+| `source.go:159` | api-gw.sports.naver.com | `/schedule/games/{id}/preview` | 판단불가(404) | 크롤러 프리뷰 |
+
+**koreabaseball.com 7경로가 전부 robots 거부**이고, 우리는 지금도 그것을 친다.
+지시문대로 **멈추지 않고 사실만 보고한다.** 어떻게 할지는 지시를 기다린다.
+
+## b-2. 🔴 D09a(09-12 등판 중단)의 원인 — **차단이 아니다**
+
+```
+KBO pitcher_appearances  마지막 2026-09-12 (4경기 40행) · pitches 채움 0
+KBO batter_appearances   마지막 2026-09-12 (117행)       ← **같은 날 함께 멈췄다**
+두 표 모두 source = 'boxscore' 하나
+
+그 뒤 KBO 경기: 09-13 4 · 09-15 4 · 09-16 4 · 09-17 2 · 09-18 4 · 09-19 4 · 09-20 5
+                (전부 status='final' — 결과는 들어왔다)
+
+같은 시각 일정 수집은 정상:
+  [kbo] 2026-09 일정 108경기 (행 108 · 파싱실패 0)   ← 오늘 로그
+```
+
+→ **도메인이 막힌 것이 아니다.** 일정은 지금도 같은 도메인에서 들어온다.
+타격·투구 적재만 09-12 에 **동시에** 끊겼고, 둘 다 `boxscore` 한 소스다.
+원인 후보는 (i) 박스스코어 잡이 안 돌거나 (ii) `/ws/GetBoxScoreScroll` 응답
+구조가 바뀌었거나 (iii) 그 잡이 예외로 죽는 것이다. **아직 안 가렸다** —
+잡을 실제로 돌려 봐야 하는데, 그 경로가 robots 거부라 **지시 없이 치지 않는다.**
+
+⚠️ `pitches` 는 09-12 이전에도 **전건 0** 이다(D09b). 중단과 별개의 결함이다.
+
+## c·d. 대체 소스 — 아직 안 했다
+
+`koreabaseball.com` 이 막혔으므로 구단 공식 10곳·허용 포털·영어권 기록 사이트를
+실측해야 한다. **b 의 결과(이미 거부 경로를 치고 있음)를 먼저 보고하고 지시를
+기다리는 것이 순서**라고 판단해 c 를 시작하지 않았다.
+
+## e. 🔴 스포츠나비는 `js` 가 아니라 `static` 이었다 — 내 오분류
+
+지시대로 정적 HTML 을 다시 읽었더니 **값이 그대로 있었다**:
+
+```
+予告先発  背番号19 右投 髙橋 宏斗 · 今季 2.87 / 17등판 3승7패 · 대상대 2.18
+          最近の成績 9/13 vs.阪神 9이닝 142구 4피안타 12탈삼진 0실점
+                    9/4  vs.ヤクルト 6이닝 125구 6피안타 4탈삼진 1실점
+順位表    セ·パ 양 리그 승·패·무·게임차·매직넘버(M11) · 09-20 22:05 갱신
+試合中止  "楽天 - 試合中止 ソフトバンク" · "試合中止 降雨のため"
+```
+
+- `fetch: js` → **`fetch: static`** 으로 정정했다.
+- `スタメン`·`打順` 만 없는데, **js 라서가 아니라 발표 전**일 수 있다 —
+  경기 전 몇 분에 나타나는지는 DS-2 폴링에서 실측한다.
+- 🔴 **이 페이지가 중지 공지도 준다.** 09-21 라쿠텐-소프트뱅크(우천)·
+  롯데-세이부(태풍) 두 경기 중지를 여기서 읽었다.
+- 🔴 **npb.jp/bis 순위 404 의 대안이 여기 있다.**
