@@ -10,42 +10,62 @@ LEAGUES: dict[str, dict] = {
         "fd_code": "PL", "odds_key": "soccer_epl", "label": "EPL", "elo": "E0",
         "fd_names": ["Premier League"],
         "tm_code": "GB1",
+        "result_source": "fd",
         "aliases": ["epl", "프리미어리그", "프리미어", "영국", "잉글랜드"],
     },
     "la_liga": {
         "fd_code": "PD", "odds_key": "soccer_spain_la_liga", "label": "라리가", "elo": "SP1",
         "fd_names": ["Primera Division", "La Liga"],
         "tm_code": "ES1",
+        "result_source": "fd",
         "aliases": ["라리가", "스페인", "라 리가"],
     },
     "serie_a": {
         "fd_code": "SA", "odds_key": "soccer_italy_serie_a", "label": "세리에A", "elo": "I1",
         "fd_names": ["Serie A"],
         "tm_code": "IT1",
+        "result_source": "fd",
         "aliases": ["세리에a", "세리에", "이탈리아"],
     },
     "bundesliga": {
         "fd_code": "BL1", "odds_key": "soccer_germany_bundesliga", "label": "분데스리가", "elo": "D1",
         "fd_names": ["Bundesliga"],
         "tm_code": "L1",
+        "result_source": "fd",
         "aliases": ["분데스리가", "분데스", "독일"],
     },
     "j1": {
         "odds_key": "soccer_japan_j_league", "label": "J1 리그", "elo": "JPN",
         "fd_names": [],
         "tm_code": "JAP1",
+        # 🔴 [W3-1 2026-09-21] 결과 소스. football-data 무료에는 J리그가
+        #    없다(실측: /competitions/JJL/matches 전건 ApiAuthError).
+        #    FotMob 리그명은 **실측값**이다 — 하루치 목록 3일분에서 읽었다.
+        #    ⚠️ 2부·3부가 'J. League 2'·'J. League 3' 라 **정확 일치**여야
+        #       한다. 부분 문자열로 고르면 하루 17경기가 J1 으로 들어온다.
+        "result_source": "fotmob",
+        "fotmob_league": "J. League",
         "aliases": ["j리그", "제이리그", "j1", "일본"],
     },
     "denmark": {
         "odds_key": "soccer_denmark_superliga", "label": "덴마크 수페르리가", "elo": "DNK",
         "fd_names": [],
         "tm_code": "DK1",
+        # 🔴 [W3-1 2026-09-21] 실측 이름. 하위 리그는 '1. Division' 등이라
+        #    섞이지 않지만, 규칙은 J리그와 같이 **정확 일치**로 둔다.
+        "result_source": "fotmob",
+        "fotmob_league": "Superligaen",
         "aliases": ["덴마크", "수페르리가"],
     },
     "kleague1": {
         "odds_key": "soccer_korea_kleague1", "label": "K리그1", "elo": None,  # CSV 미제공 → 모델 무효
         "fd_names": [],
         "tm_code": "RSK1",
+        # 🔴 [W3-1 2026-09-21] 실측 이름. 2부는 'K League 2' 로
+        #    **하이픈이 다르다** — 그래도 정확 일치로 둔다(표기가 바뀌면
+        #    조용히 섞이는 것보다 안 들어오는 편이 낫다).
+        "result_source": "fotmob",
+        "fotmob_league": "K-League 1",
         "aliases": ["k리그", "케이리그", "k리그1", "한국"],
     },
     # 🔴 [ACL-1 2026-09-15 사용자 지시] AFC 챔피언스리그 엘리트.
@@ -62,6 +82,7 @@ LEAGUES: dict[str, dict] = {
         "fd_names": [],
         "tm_code": None,
         #: FotMob 리그명에 이 문자열이 들어가면 이 리그로 적재한다.
+        "result_source": "fotmob",
         "fotmob_contains": "AFC Champions League Elite",
         "aliases": ["acl", "acle", "챔스", "아챔", "챔피언스리그엘리트",
                     "afc챔피언스리그"],
@@ -87,6 +108,7 @@ LEAGUES: dict[str, dict] = {
         "fd_names": ["Ligue 1"],
         "tm_code": None,
         "aliases": [],
+        "result_source": "fd",
         "features": ("results",),
     },
     "eredivisie": {
@@ -94,6 +116,7 @@ LEAGUES: dict[str, dict] = {
         "fd_names": ["Eredivisie"],
         "tm_code": None,
         "aliases": [],
+        "result_source": "fd",
         "features": ("results",),
     },
 }

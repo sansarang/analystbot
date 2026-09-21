@@ -1758,6 +1758,55 @@ async def elo_refresh_job() -> None:
     logger.info("[scheduler] elo refreshed: %s", list(params))
 
 
+async def ingest_fotmob_finals(pool=None, *, upsert=None, now=None) -> dict:
+    """[W3-1] FotMob 이 주 소스인 리그의 **끝난 경기**를 적재한다.
+
+    🔴 `upsert_slate` 은 FMR-1 이후 점수·상태를 함께 쓴다. 없던 것은
+       **끝난 뒤 부르는 사람**이다 — 종전에는 일정 프리페치에서만 불렸고
+       (`pipeline.py:1457`) 그때는 경기가 안 끝나 점수가 없었다.
+       실측 2026-09-21: J1 0/11 · K리그1 0/14 · ACL 0/10 · 덴마크 0/8.
+
+    🔴 **날짜는 UTC 다.** FotMob 은 경기를 UTC 날짜로 색인한다(W2 실측:
+       US Lecce@AC Milan 이 UTC 09-20 · KST 09-21 이고 20260920 에만 있다).
+       KST 로 받으면 유럽·심야 경기가 통째로 빠진다.
+
+    ⚠️ **어제와 오늘 두 날**을 받는다(지시문 W3-3). 오늘만 받으면 자정을
+       넘겨 끝난 경기가 영영 안 들어온다.
+    ⚠️ 한 리그가 터져도 나머지는 돈다 — 실패는 **조용히 삼키지 않고**
+       반환값 `failed` 와 로그에 남긴다.
+    """
+    from datetime import timedelta, timezone
+
+    from app.leagues import LEAGUES
+
+    if upsert is None:
+        from app.collectors.fotmob import upsert_slate as upsert
+
+    now = now or datetime.now(timezone.utc)
+    days = [(now - timedelta(days=1)).strftime("%Y%m%d"), now.strftime("%Y%m%d")]
+    keys = [k for k, cfg in LEAGUES.items() if cfg.get("result_source") == "fotmob"]
+    out: dict = {"days": days, "leagues": keys, "saved": 0, "matched": 0,
+                 "failed": [], "conflict": [], "needs_90": []}
+    for key in keys:
+        for day in days:
+            try:
+                r = await upsert(pool, day, league_key=key) or {}
+            except Exception as exc:
+                out["failed"].append({"league": key, "day": day,
+                                      "error": f"{type(exc).__name__}: {exc}"[:200]})
+                logger.warning("[finals] FotMob 적재 실패 %s %s: %s", key, day, exc)
+                continue
+            out["saved"] += int(r.get("saved") or 0)
+            out["matched"] += int(r.get("matched") or 0)
+            out["conflict"] += list(r.get("conflict") or [])
+            out["needs_90"] += list(r.get("needs_90") or [])
+    logger.info("[finals] FotMob 결과 적재 — 리그 %d · 날짜 %s · 매칭 %d · 저장 %d"
+                " · 실패 %d · 충돌 %d · 90분확인 %d",
+                len(keys), days, out["matched"], out["saved"],
+                len(out["failed"]), len(out["conflict"]), len(out["needs_90"]))
+    return out
+
+
 async def finals_job() -> None:
     """전날 종료 점수 적재. **픽 채점은 하지 않는다** (2026-08-29 사용자 지시).
 
@@ -1803,6 +1852,15 @@ async def finals_job() -> None:
             await notify_api_error(exc)
         except Exception as exc:
             logger.exception("[scheduler] finals %s 실패 — 다음 종목 계속: %s", sport, exc)
+    # 🔴 [W3-1 2026-09-21] **FotMob 이 주 소스인 리그.** football-data 무료로는
+    #    J·K·ACL·덴마크 결과를 받을 수 없다(실측: 전건 ApiAuthError).
+    #    ⚠️ 채점보다 **먼저** 돈다 — 결과가 들어와야 그 아래 `grade_pending`
+    #       이 닫을 것이 생긴다.
+    try:
+        done["fotmob"] = await ingest_fotmob_finals(pool)
+    except Exception as exc:
+        logger.exception("[scheduler] FotMob 결과 적재 실패 — 채점은 계속: %s", exc)
+
     # [v1.1 0단계] 결과가 들어왔으니 미채점 픽을 채점한다.
     #   ⚠️ 채점은 **측정 전용**이다 — 판정 경로는 이 표를 읽지 않는다.
     #   적재 실패와 무관하게 돌린다: 어제 못 채점한 행이 남아 있을 수 있다.

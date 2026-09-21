@@ -585,6 +585,29 @@ def canonical(name: str) -> str | None:
     return SLATE_CANONICAL.get(n, n)
 
 
+def league_matches(fotmob_league: str, league_key: str) -> bool:
+    """FotMob 리그명이 **이 리그인가.** 🔴 고르는 규칙은 여기 한 곳이다.
+
+    🔴 [W3-1 2026-09-21] `fotmob_league` 가 있으면 **정확 일치**다.
+       종전 `fotmob_contains` 는 부분 문자열이라, J1 에 `'J. League'` 를
+       넣는 순간 `'J. League 2'`·`'J. League 3'` 가 전부 1부로 적재된다
+       (실측: 하루 9+8경기). 이름을 넣는 것만으로 결함이 되는 자리다.
+
+    ⚠️ 옛 키(`fotmob_contains`)는 **그대로 둔다** — ACL 은 종전 규칙으로 돈다.
+       바꾸지 않은 리그의 동작은 한 글자도 달라지지 않는다.
+    ⚠️ 둘 다 없으면 **False** 다. "설정이 없으면 전부"는 위험한 기본값이다.
+    """
+    from app.leagues import LEAGUES
+
+    cfg = LEAGUES.get(league_key) or {}
+    name = str(fotmob_league or "")
+    exact = cfg.get("fotmob_league")
+    if exact:
+        return name.strip() == str(exact).strip()
+    needle = cfg.get("fotmob_contains")
+    return bool(needle) and needle in name
+
+
 async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str) -> dict:
     """[ACL-1] FotMob 슬레이트 → `games`. 반환 `{fetched, matched, saved, skipped}`.
 
@@ -601,7 +624,9 @@ async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str) -> dict:
     from app.leagues import LEAGUES
 
     cfg = LEAGUES.get(league_key) or {}
-    needle = cfg.get("fotmob_contains")
+    # 🔴 [W3-1] 고르는 규칙은 `league_matches` 한 곳이다. 여기서 문자열을
+    #    다시 비교하지 않는다(사본 금지).
+    needle = cfg.get("fotmob_league") or cfg.get("fotmob_contains")
     # 🔴 [ACL-3 2026-09-15] `ext_ids` 를 **반드시** 돌려준다. 축구는 슬레이트를
     #    DB 에서 다시 읽지 않고 이 반환값을 그대로 쓴다(ext_id 재조회는 야구
     #    전용 분기다). 형제 함수(`upsert_games_from_football_data`·
@@ -613,7 +638,7 @@ async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str) -> dict:
     rows = await slate(date_yyyymmdd)
     out["fetched"] = len(rows)
     for r in rows:
-        if needle not in (r.get("league") or ""):
+        if not league_matches(r.get("league") or "", league_key):
             continue
         out["matched"] += 1
         h, a = canonical(r.get("home")), canonical(r.get("away"))
