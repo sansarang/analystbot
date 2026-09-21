@@ -139,6 +139,11 @@ async def test_fotmob_적재는_매핑_실패를_조용히_넘기지_않는다(m
             #    빈 DB 픽스처라 None(충돌 없음).
             return None
 
+        async def fetchval(self, sql, *a):
+            # ⚠️ [W3-1b] `apply_result` 가 기존 경기를 찾을 때 쓴다. 이 대역은
+            #    "기존 행 없음"(None)을 돌려준다 — 계약 내용은 그대로다.
+            return None
+
         async def execute(self, sql, *a):
             calls.append(a)
 
@@ -147,7 +152,10 @@ async def test_fotmob_적재는_매핑_실패를_조용히_넘기지_않는다(m
 
     assert out["fetched"] == 3 and out["matched"] == 2 and out["saved"] == 1
     assert out["skipped"] and "적재 제외" in caplog.text, "조용히 버렸다"
-    assert calls[0][1] == "fotmob:1", "키가 fotmob_id 가 아니다"
-    assert calls[0][0] == "ACL엘리트"
+    # ⚠️ [W3-1b] 인자 위치가 아니라 **값**으로 확인한다(`apply_result` 로
+    #    바뀌며 순서가 달라졌다). 계약의 뜻은 "키가 fotmob_id 다"이다.
+    assert any(str(x) == "fotmob:1" for x in calls[0]), "키가 fotmob_id 가 아니다"
+    assert any(str(x) == "ACL엘리트" for x in calls[0]), "리그 라벨이 안 들어갔다"
     from datetime import datetime
-    assert isinstance(calls[0][2], datetime), "킥오프가 문자열이다(ODP-2·LH-2 재발)"
+    assert any(isinstance(x, datetime) for x in calls[0]), \
+        "킥오프가 문자열이다(ODP-2·LH-2 재발)"

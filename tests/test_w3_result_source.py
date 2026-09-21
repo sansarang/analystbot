@@ -151,3 +151,37 @@ async def test_한_리그가_실패해도_나머지는_돈다():
     got = await S.ingest_fotmob_finals(pool=None, upsert=_fake)
     assert "j1" in calls and len(set(calls)) >= 2
     assert got.get("failed"), "실패를 조용히 삼켰다"
+
+
+# ── ④ 중복 행 금지 (지시문 W3-1b "같은 games 행에 upsert") ────────
+@pytest.mark.asyncio
+async def test_다른_소스의_같은_경기에_점수를_쓴다():
+    """🔴 W3-1 배포 직후 실측 — 같은 경기가 두 행이 됐다.
+
+        K리그1 Incheon United vs Daejeon Citizen  2026-09-20 10:00Z
+          odds:f882c79a…    status=scheduled  score=None   ← 판정·픽이 붙은 행
+          fotmob:5140040    status=final      score=1      ← 점수가 들어간 행
+
+    판정이 붙은 행은 여전히 `scheduled` 라 **채점이 안 닫힌다.** 점수를
+    엉뚱한 행에 쓴 것이다. 기존 매칭기(`game_match.apply_result`)가 바로
+    이 일을 한다 — "기존 행을 찾으면 그 행을 갱신한다".
+    """
+    import inspect
+
+    from app.collectors import fotmob as F
+
+    src = inspect.getsource(F.upsert_slate)
+    assert "apply_result" in src, "자기 ext_id 로만 upsert 한다(중복 행이 생긴다)"
+    assert "INSERT INTO games" not in src, "직접 INSERT 가 남아 있다(사본)"
+
+
+@pytest.mark.asyncio
+async def test_킥오프_시각_갱신은_유지된다():
+    """⚠️ 반대 위험 — 중복을 막느라 **일정 갱신**을 잃으면 안 된다.
+    종전 `ON CONFLICT` 는 `starts_at` 도 새로 썼다."""
+    import inspect
+
+    from app.collectors import fotmob as F
+
+    src = inspect.getsource(F.upsert_slate)
+    assert "starts_at" in src, "킥오프 갱신이 통째로 사라졌다"

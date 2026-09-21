@@ -24,6 +24,11 @@ class _Pool:
         #    빈 DB 픽스처라 None(충돌 없음).
         return None
 
+    async def fetchval(self, sql, *a):
+        # ⚠️ [W3-1b] `apply_result` 가 기존 경기를 찾을 때 쓴다. 이 대역은
+        #    "기존 행 없음"(None)을 돌려준다 — 계약 내용은 그대로다.
+        return None
+
     async def execute(self, sql, *a):
         self.rows.append(a)
 
@@ -47,7 +52,12 @@ async def test_upsert_slate가_실제_ext_id를_돌려준다(monkeypatch):
     p = _Pool()
     out = await FM.upsert_slate(p, "20260915", league_key="acl")
     assert out["ext_ids"] == ["fotmob:6049970", "fotmob:6049971"]
-    assert [a[1] for a in p.rows] == out["ext_ids"], "DB 에 넣은 값과 다르다"
+    # ⚠️ [W3-1b] 인자 **위치**로 읽지 않는다 — `apply_result` 를 쓰면서 순서가
+    #    바뀌었다. 계약의 뜻은 "DB 에 넣은 ext_id 와 반환값이 같다"이다.
+    def _ext(args):
+        return next((x for x in args if str(x).startswith("fotmob:")), None)
+
+    assert [_ext(a) for a in p.rows] == out["ext_ids"], "DB 에 넣은 값과 다르다"
 
 
 async def _ok(v):

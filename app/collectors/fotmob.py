@@ -678,20 +678,34 @@ async def upsert_slate(pool, date_yyyymmdd: str, *, league_key: str) -> dict:
             logger.warning("[fotmob] 점수 충돌 %s — DB %s vs FotMob %s (덮지 않는다)",
                            f"fotmob:{r['id']}",
                            [prev["home_score"], prev["away_score"]], [hs, as_])
-        await pool.execute(
-            """
-            INSERT INTO games (sport, league, ext_id, starts_at, home, away,
-                               status, home_score, away_score)
-            VALUES ('soccer', $1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT (sport, ext_id) DO UPDATE SET
-                starts_at = EXCLUDED.starts_at,
-                status = EXCLUDED.status,
-                home_score = coalesce(games.home_score, EXCLUDED.home_score),
-                away_score = coalesce(games.away_score, EXCLUDED.away_score),
-                updated_at = now()
-            """,
-            cfg.get("label") or league_key, f"fotmob:{r['id']}", ko, h, a,
-            st, hs, as_)
+        # 🔴 [W3-1b 2026-09-21] **다른 소스의 같은 경기를 찾아 그 행에 쓴다.**
+        #    종전에는 `ON CONFLICT (sport, ext_id)` 로 **자기 ext_id 만** 봤다.
+        #    그래서 W3-1 배포 직후 같은 경기가 두 행이 됐다(실측):
+        #        K리그1 Incheon United vs Daejeon Citizen  09-20 10:00Z
+        #          odds:f882c79a…  status=scheduled  score=None  ← 판정·픽이 붙은 행
+        #          fotmob:5140040  status=final      score=1     ← 점수가 들어간 행
+        #    판정이 붙은 행은 여전히 `scheduled` 라 **채점이 안 닫힌다** —
+        #    점수를 엉뚱한 행에 쓴 셈이다.
+        # 🔴 매칭 규칙을 여기서 새로 짓지 않는다. `game_match.apply_result` 가
+        #    이미 그 일을 한다("기존 행을 찾으면 그 행을 갱신한다 — 그래야 그
+        #    행에 붙은 예측이 채점된다"). 같은 소스의 다른 id 는 다른 경기로
+        #    가르는 규칙(GM-4)도 그쪽에 있다.
+        from app.collectors.game_match import apply_result
+
+        mode = await apply_result(
+            pool, sport="soccer", league=cfg.get("label") or league_key,
+            ext_id=f"fotmob:{r['id']}", starts_at=ko, home=h, away=a,
+            status=st, home_score=hs, away_score=as_)
+        # ⚠️ **킥오프 갱신은 잃지 않는다.** `apply_result` 의 UPDATE 는
+        #    status·점수만 쓴다. 종전 `ON CONFLICT` 는 `starts_at` 도 새로
+        #    썼고, 일정이 옮겨지는 대회(ACL·컵)에서 그 값이 필요하다.
+        #    ⚠️ **끝난 경기의 시각은 건드리지 않는다** — 이미 치른 경기의
+        #       시각을 나중 목록이 흔들면 그 자체가 오염이다.
+        if mode == "updated" and st != "final":
+            await pool.execute(
+                "UPDATE games SET starts_at = $2, updated_at = now() "
+                "WHERE sport = 'soccer' AND ext_id = $1 AND status <> 'final'",
+                f"fotmob:{r['id']}", ko)
         out["ext_ids"].append(f"fotmob:{r['id']}")
         out["saved"] += 1
     logger.info("[fotmob] %s 적재 — 슬레이트 %d · 해당 %d · 저장 %d · 제외 %d",
