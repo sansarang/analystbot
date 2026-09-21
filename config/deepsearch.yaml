@@ -1,0 +1,59 @@
+# 딥서치 값의 원본 — [DS-1 / deepsearch_parallel_0921 + addendum_0921]
+#
+# 🔴 **여기가 원본이다.** 코드에 숫자를 박지 않는다(사본 금지).
+#    계약 `test_값은_config_에서_온다` 가 이 방향을 잠근다.
+# ⚠️ 지시문이 밝힌 대로 **이 숫자들은 미검증 사전값**이다. 실측이 나오면
+#    여기를 고치고, 고친 근거를 커밋에 적는다.
+
+runtime:
+  # 예절 — 지시문 DS-2a 5 "도메인당 동시 1·최소 간격 2초·도메인 일일 상한"
+  per_domain_concurrency: 1
+  min_interval_sec: 2.0
+  daily_cap_per_domain: 500
+  timeout_sec: 20.0
+
+  # 🔴 식별 가능한 UA. "봇 크롤러는 식별 가능한 User-Agent 를 쓴다"(지시문 규율).
+  #    ⚠️ 기존 수집기의 `Mozilla/5.0` 은 **건드리지 않는다**
+  #       (사용자 지시 2026-09-21 "위장 거부 끄지 마라"). 이것은 이 런타임이
+  #       **자기 요청에** 쓰는 UA 다.
+  user_agent: "AnalystBot/1.0 (+research; respects robots)"
+
+  circuit:
+    fail_threshold: 5      # 연속 실패가 이만큼이면 그 도메인을 멈춘다
+    open_sec: 300          # 그 뒤 다시 열어본다
+
+  robots:
+    cache_ttl_sec: 86400
+    # ⚠️ robots.txt 가 404 면 **판단 불가**다. 막지는 않되 `unknown` 으로
+    #    기록한다 — "파일 없음"을 "허용"이라고 적으면 그게 거짓이다.
+    on_missing: allow
+
+# 검색 공급자 — 지시문 DS-3a
+# 🔴 [F-18 · 사용자 결정 2026-09-21 "체인은 bing으로"]
+#    지시문 본문은 "마지막은 rss_google" 이었으나, `news.google.com/rss/search`
+#    는 robots 거부다(실측: `*` 블록이 Disallow:/ 이고 `/rss/` 를 여는 Allow 줄이
+#    없다. 게다가 `ClaudeBot`·`anthropic-ai` 를 **이름으로 지목해** 거부한다).
+#    최후 폴백이 거부 경로면 체인이 성립하지 않으므로 사용자가 bing 으로 정했다.
+#    근거 → docs/SEARCH_PATH_2026-09-21.md · docs/FORKS.md F-18
+search:
+  chain: ["bing_news_rss", "media_rss"]
+
+  providers:
+    bing_news_rss:
+      # robots: bing.com 은 `/search`·`/Search` 를 막지만 `/news/…` 를 막는 줄이
+      # 없다(실측 2026-09-21 14:18). 런타임의 robots 검사가 매 요청 다시 확인한다.
+      base: "https://www.bing.com/news/search"
+      daily_query_cap: 400
+      monthly_budget_usd: 0        # 0 = 과금 가능한 호출 금지
+      # 🔴 실측 2026-09-21: **검색어가 길수록 회수가 급격히 나빠진다.**
+      #    "K리그 포항 스틸러스 선발 라인업" 3항목 · "K리그1" 8항목(최근3일 5).
+      #    오디션(DS-3a 3)에서 이 값을 다시 잰다.
+      max_query_words: 3
+      markets: {kbo: "ko-KR", npb: "ja-JP", mlb: "en-US"}
+    media_rss:
+      daily_query_cap: 200
+      monthly_budget_usd: 0
+
+  # 유료 공급자는 **키가 있을 때만** 살아난다. 채택은 사용자 승인 사항이다.
+  # (지시문 DS-3a 1: brave · firecrawl · parallel · tavily)
+  optional_providers: ["brave", "firecrawl", "parallel", "tavily"]
