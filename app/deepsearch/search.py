@@ -253,6 +253,53 @@ def parse_rss(text: str, *, provider: str = "", limit=None) -> list[Hit]:
     return out
 
 
+def _wrappers() -> tuple:
+    return tuple(_s("wrappers") or ())
+
+
+def _norm_title(t: str) -> str:
+    return re.sub(r"\s+", " ", str(t or "")).strip().lower()
+
+
+def drop_wrappers(hits) -> tuple:
+    """[ADD-2] **본문이 안 나오는 래핑 기사를 버린다.** 반환 `(통과, 버린 것)`.
+
+    🔴 실측(D43): 기사 24건 중 **6건이 msn.com** 이고 본문이 **3자**였다.
+       JS 렌더라 정적 HTML 에 값이 없다 — 제목만 남는다.
+
+    🔴 **같은 제목의 원 매체가 같은 응답 안에 있으면 그것만 쓴다**
+       (`wrapper_replaced`). 없으면 버린다(`wrapper_no_body`).
+
+    ⚠️ **추가 검색을 하지 않는다**(사용자 지시). 원 매체를 다시 찾으러 나가면
+       요청이 늘고 그건 지시가 막은 것이다. 이 함수는 **순수 함수**다 —
+       계약이 `await`·`fetch`·`httpx` 가 없음을 확인한다.
+    ⚠️ **제목이 같아야 바꾼다.** 아무 기사나 갖다 붙이면 안 된다.
+    ⚠️ 래핑 도메인 목록은 `config/deepsearch.yaml` 이 원본이다(사본 금지).
+    """
+    wraps = _wrappers()
+    if not wraps:
+        return list(hits or []), []
+
+    def _is_wrap(h):
+        host = urllib.parse.urlsplit(h.url or "").netloc.lower()
+        return any(w in host for w in wraps)
+
+    clean = [h for h in (hits or []) if not _is_wrap(h)]
+    by_title = {}
+    for h in clean:
+        by_title.setdefault(_norm_title(h.title), h)
+
+    ok, dropped = list(clean), []
+    for h in (hits or []):
+        if not _is_wrap(h):
+            continue
+        alt = by_title.get(_norm_title(h.title))
+        dropped.append({"url": h.url, "title": h.title,
+                        "reason": "wrapper_replaced" if alt else "wrapper_no_body",
+                        "replaced_by": alt.url if alt else None})
+    return ok, dropped
+
+
 def verify(hits, *, sport: str, starts_at) -> tuple:
     """공급자가 준 것에도 **같은 검증**을 건다. 반환 `(통과, 버린 것)`.
 
@@ -265,7 +312,9 @@ def verify(hits, *, sport: str, starts_at) -> tuple:
 
     from app.engine.situation import is_recap, published_before
 
-    ok, dropped = [], []
+    # 🔴 [ADD-2] **본문이 안 나오는 래핑부터 걷어낸다.** 추가 요청 0.
+    hits, dropped = drop_wrappers(hits)
+    ok = []
     for h in hits:
         if is_recap(h.title or "", sport):
             dropped.append({"url": h.url, "reason": "post_match",

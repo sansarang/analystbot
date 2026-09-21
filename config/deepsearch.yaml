@@ -38,6 +38,12 @@ runtime:
 search:
   chain: ["bing_news_rss", "media_rss"]
 
+  # 🔴 [ADD-2 2026-09-21 사용자 지시] **래핑 도메인** — 본문이 안 나온다.
+  #    실측(D43): 기사 24건 중 **6건이 msn.com** 이고 본문이 **3자**였다.
+  #    JS 렌더라 정적 HTML 에 값이 없다. 제목만 남는다.
+  #    ⚠️ 코드에 도메인을 박지 않는다 — 여기가 원본이다.
+  wrappers: ["msn.com"]
+
   providers:
     bing_news_rss:
       # robots: bing.com 은 `/search`·`/Search` 를 막지만 `/news/…` 를 막는 줄이
@@ -119,6 +125,19 @@ rerank:
 #    ⚠️ **근거 URL 없이 적으면 그게 거짓이다** — 계약이 잠근다.
 #    ⚠️ 전역 스위치가 아니다. 호스트 하나씩, 근거 하나씩이다.
 access_basis:
+  # 🔴 [ADD-2] Bing 뉴스 RSS. **`feed` 는 robots 를 덮지 않는다** —
+  #    `/news/…` 가 애초에 허용이라 덮을 이유가 없다. 등록하는 이유는
+  #    **간격·일일 상한·근거를 한 곳에 적기 위해서**다.
+  #    ⚠️ 덮는 것은 `api_terms` 뿐이다(`overrides_robots` 가 그 차이를 쥔다).
+  www.bing.com:
+    basis: feed
+    evidence_url: "https://www.bing.com/news/search?q=test&format=RSS"
+    terms_url: "https://www.bing.com/new/termsofuse"
+    daily_cap: 400
+    min_interval_sec: 2.0
+    note: |
+      ⚠️ **약관 본문은 아직 안 읽었다.** URL 이 200 인 것만 확인했다
+         (2026-09-21). 읽고 나면 여기를 고친다.
   api.open-meteo.com:
     basis: api_terms
     evidence_url: "https://open-meteo.com/en/terms"

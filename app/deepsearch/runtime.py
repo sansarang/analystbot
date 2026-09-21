@@ -71,6 +71,20 @@ def access_basis(host: str) -> str | None:
     return str(row.get("basis") or "") or None
 
 
+#: robots 를 **덮는** 근거. 🔴 `feed` 는 덮지 않는다 — 피드가 제공된다는 것과
+#  robots 가 허락한다는 것은 다른 말이다.
+_OVERRIDING = ("api_terms",)
+
+
+def overrides_robots(host: str) -> bool:
+    """이 호스트의 근거가 robots 를 **덮나**.
+
+    🔴 `api_terms` 만 덮는다. `feed` 는 간격·상한을 적으려고 등록할 뿐이고
+       robots 검사를 면제하지 않는다.
+    """
+    return access_basis(host) in _OVERRIDING
+
+
 class Blocked(RuntimeError):
     """요청을 **보내지 않았다.** 🔴 조용히 빈손을 주지 않는다 — 부른 쪽이
     "자료가 없다"와 "막혀서 안 보냈다"를 구분할 수 있어야 한다."""
@@ -334,7 +348,7 @@ class Runtime:
         async with d.gate:
             # 🔴 [DEC-2] 약관이 governing 인 호스트는 robots 검사를 지난다.
             #    ⚠️ 그 호스트 **하나만**이다. 전역 스위치가 아니다.
-            if access_basis(host):
+            if overrides_robots(host):
                 d.robots_state = "overridden"
             else:
                 await self._robots(u.scheme or "https", host, d)

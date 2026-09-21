@@ -356,10 +356,16 @@ def test_no_bypass_artifacts_in_deepsearch_path():
 
 
 def test_모든_외부_요청이_런타임을_지난다():
-    """🔴 `app/deepsearch/` 안에서 httpx 를 직접 부르는 곳은 런타임 하나뿐."""
+    """🔴 `app/deepsearch/` 안에서 httpx 를 직접 부르는 곳은 런타임 하나뿐.
+
+    ⚠️ **낱말이 아니라 실제 사용을 본다.** 처음엔 `rg httpx` 로 셌는데
+       docstring 에 그 낱말이 들어간 것만으로 실패했다(2026-09-21 · 오늘
+       같은 부류를 **세 번** 겪었다 → D46). 잠글 것은 **코드가 부르는 것**이다.
+    """
     import subprocess
 
-    out = subprocess.run(["rg", "-l", r"httpx|aiohttp|requests\.", "app/deepsearch/"],
+    pat = r"^\s*(import (httpx|aiohttp|requests)|from (httpx|aiohttp|requests)\b)|httpx\.[A-Za-z]"
+    out = subprocess.run(["rg", "-l", pat, "app/deepsearch/"],
                          capture_output=True, text=True).stdout.strip().splitlines()
     assert out == ["app/deepsearch/runtime.py"], f"런타임 밖 요청 경로: {out}"
 
