@@ -272,6 +272,28 @@ def fill_url(url: str, values: dict) -> str | None:
     return u
 
 
+#: 어느 주소를 어느 파서가 읽나. 🔴 **주소 조각으로 고른다** — 목록을 길게
+#  만들지 않는다. 없으면 `None` 이고, 그때 감시는 "바뀐 것만 세고" 끝난다.
+_PARSERS: tuple = (
+    ("npb.jp/announcement/", "parse_npb_scoreboard"),
+)
+
+
+def parser_for(row: dict):
+    """이 행을 읽을 파서. 없으면 None.
+
+    ⚠️ 파서가 없다고 감시를 멈추지 않는다 — 변화 이벤트만으로도
+       **인지 지연**은 잴 수 있다.
+    """
+    url = str((row or {}).get("url") or "")
+    for frag, name in _PARSERS:
+        if frag in url:
+            from app.deepsearch import parsers as P
+
+            return getattr(P, name, None)
+    return None
+
+
 async def run_watch(pool, redis, *, runtime=None, parse=None) -> dict:
     """[DS-2] 감시 1회. 🔴 **조회만 한다** — 판정·발송에 닿지 않는다.
 
@@ -312,7 +334,27 @@ async def run_watch(pool, redis, *, runtime=None, parse=None) -> dict:
         except Exception as exc:
             logger.warning("[watch] 원장 적재 실패: %s", exc)
 
-    w = Watcher(runtime=rt, store=redis, parse=parse, on_event=_event)
+    # 🔴 [DS-2P] **파서를 붙인다.** 없으면 변화만 센다(그것만으로도 인지
+    #    지연은 잴 수 있다).
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _Z
+
+    def _parse(html, row):
+        fn = parse or parser_for(row)
+        if fn is None:
+            return None
+        try:
+            got = fn(html, as_of=_dt.now(_Z("Asia/Seoul")),
+                     url=row.get("url") or "")
+        except Exception as exc:
+            logger.warning("[watch] 파서 실패 %s: %s",
+                           str(row.get("url"))[:60], exc)
+            return None
+        if got:
+            logger.info("[watch] %s — 사실 %d건", str(row.get("url"))[:50], len(got))
+        return got or None
+
+    w = Watcher(runtime=rt, store=redis, parse=_parse, on_event=_event)
     out = {"rows": 0, "changed": 0, "skipped": 0, "failed": 0}
     for r in rows:
         targets = ([fill_url(r["url"], {"yahoo_id": i}) for i in ids]
