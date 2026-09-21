@@ -1,0 +1,16 @@
+# 본 사이트의 데이터를 사전 승인 없이 자동 수집·크롤링·복제하는 행위를 금지합니다.
+
+User-agent: Googlebot
+Disallow: /ws/
+
+User-agent: Yeti
+Disallow: /ws/
+
+User-agent: Daumoa
+Disallow: /ws/
+
+User-agent: Bingbot
+Disallow: /ws/
+
+User-agent: *
+Disallow: /
