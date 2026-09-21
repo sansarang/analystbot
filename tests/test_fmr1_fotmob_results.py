@@ -102,7 +102,9 @@ def test_slate_가_점수와_상태를_함께_뽑는다():
 
     from app.collectors import fotmob as FM
 
-    src = inspect.getsource(FM.slate)
+    # ⚠️ [FOT-STOP 2026-09-21] `slate` 는 **캐시 껍데기**가 됐다. 실제로
+    #    뽑는 것은 `_slate_rows` 다 — 껍데기를 검사하면 늘 통과한다.
+    src = inspect.getsource(FM._slate_rows)
     for want in ("finished", "scoreStr", "reason", "score"):
         assert want in src, f"slate 가 {want} 를 안 뽑는다"
 

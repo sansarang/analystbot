@@ -168,8 +168,39 @@ def ninety_ok(score) -> bool:
     return score[0] == score[1]
 
 
+#: [FOT-STOP 2026-09-21] 같은 날짜 표의 **짧은 캐시**.
+#  🔴 하루 호출의 **48%(≈2,400회)가 이 중복**이었다. `attach` 가 경기마다
+#     `slate(날짜)` 를 새로 받는데 같은 사이클의 26경기가 **같은 날짜**다.
+#  ⚠️ 영원히 들고 있지 않는다 — 진행 중 경기의 상태가 바뀐다.
+SLATE_TTL_SEC = 180
+_SLATE: dict = {}
+
+
+def clear_slate_cache() -> None:
+    _SLATE.clear()
+
+
+async def _get_slate_uncached(date_yyyymmdd: str) -> list[dict]:
+    """실제 요청. 🔴 캐시는 `slate()` 가 건다 — 여기서 걸면 테스트가 못 뚫는다."""
+    return await _slate_rows(date_yyyymmdd)
+
+
 async def slate(date_yyyymmdd: str) -> list[dict]:
-    """그 날짜의 전 경기. `[{id, league, home, away, utc}]`. 실패면 빈 목록."""
+    """그 날짜의 전 경기. `[{id, league, home, away, utc}]`. 실패면 빈 목록.
+
+    ⚠️ `SLATE_TTL_SEC` 동안 **다시 받지 않는다**(FOT-STOP).
+    """
+    key = str(date_yyyymmdd)
+    hit = _SLATE.get(key)
+    if hit is not None and (time.monotonic() - hit[0]) < SLATE_TTL_SEC:
+        return hit[1]
+    rows = await _get_slate_uncached(key)
+    if rows:                       # 빈손은 캐시하지 않는다 — 실패를 굳히지 않는다
+        _SLATE[key] = (time.monotonic(), rows)
+    return rows
+
+
+async def _slate_rows(date_yyyymmdd: str) -> list[dict]:
     d = await _get("matches", {"date": date_yyyymmdd})
     out: list[dict] = []
     for lg in (d or {}).get("leagues") or []:
@@ -542,11 +573,23 @@ async def save_lineup_history(pool, lineup: dict, *, kickoff_utc=None,
     return n
 
 
-async def backfill(pool, dates: list[str], *, ccodes=BACKFILL_CCODES) -> dict:
+async def backfill(pool, dates: list[str], *, ccodes=BACKFILL_CCODES,
+                   bulk_allowed: bool = False) -> dict:
     """[FOT-5] 과거 날짜의 확정 XI 를 이력 표에 소급 적재한다.
 
     반환 `{리그: 적재 경기 수}`. 🔴 국가 코드로 거른다(이름 겹침 실측).
+
+    🔴 [FOT-STOP 2026-09-21 사용자 결정] **대량 루프는 관문을 지난다.**
+       날짜마다 `slate` + 경기마다 `matchDetails` 를 돈다 — 45일치면 수백
+       호출이다. 사용자 결정이 "FotMob 끄는 방향 · 즉시 대량 호출 중단"이므로
+       `bulk_allowed=True` 없이는 **요청을 0건** 보낸다.
+    ⚠️ 삭제가 아니라 관문이다 — 켜면 그대로 돈다.
     """
+    if not bulk_allowed:
+        logger.warning("[fotmob] 소급 루프 차단 — 날짜 %d개. 사용자 결정(FOT-STOP) "
+                       "으로 대량 호출을 멈췄다. 돌리려면 bulk_allowed=True",
+                       len(dates or []))
+        return {"blocked": "bulk_not_allowed", "dates": len(dates or [])}
     out: dict = {}
     for d in dates:
         rows = [r for r in await slate(d) if r.get("ccode") in ccodes]

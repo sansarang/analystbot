@@ -71,7 +71,10 @@ async def test_소급_적재는_국가_코드로_거른다(monkeypatch):
     monkeypatch.setattr(FM, "slate", _slate)
     monkeypatch.setattr(FM, "match_lineup", _lu)
 
-    out = await FM.backfill(_Pool(), ["20260906"])
+    # 🔴 [FOT-STOP 2026-09-21 사용자 결정] 소급 루프는 **관문**을 지난다.
+    #    이 시험의 대상은 **국가 코드 필터**이지 관문이 아니므로 열고 시험한다.
+    #    ⚠️ 관문 자체는 `tests/test_fot_stop.py` 가 따로 잠근다.
+    out = await FM.backfill(_Pool(), ["20260906"], bulk_allowed=True)
 
     assert seen == [1], "에콰도르 세리에A 를 열면 안 된다"
     assert out == {"ITA Serie A": 1}
