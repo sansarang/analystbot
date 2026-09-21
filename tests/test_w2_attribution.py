@@ -283,3 +283,16 @@ async def test_어제_경기한_팀을_미연결로_세지_않는다():
     src = inspect.getsource(SC._unmapped)
     assert "interval '1 day'" not in src, "±1일 창을 그대로 쓴다(오탐)"
     assert "::date = $1" in src, "같은 날짜끼리 대조하지 않는다"
+
+
+def test_매칭_규칙을_베끼지_않는다():
+    """🔴 두 번째 오탐 — "정규화 후 정확 일치"로 베껴 썼더니 AC Milan·
+    Juventus FC 까지 20건이 찍혔다. 운영이 쓰는 `find_match` 는 **포함 관계**를
+    허용한다(`Juventus` ⊂ `Juventus FC`). 사본은 원본을 따라가지 않는다."""
+    import inspect
+
+    from app.ops import selfcheck as SC
+
+    src = inspect.getsource(SC._unmapped)
+    assert "find_match" in src, "진짜 매처를 부르지 않는다"
+    assert "norm(" not in src, "정규화 규칙을 여기서 다시 쓴다(사본)"

@@ -490,17 +490,21 @@ async def _unmapped(pool) -> list:
         from datetime import datetime as _dt
         from zoneinfo import ZoneInfo
 
-        from app.collectors.fotmob import norm, slate
+        # 🔴 [W2 2026-09-21] **매칭 규칙을 여기서 다시 짓지 않는다.**
+        #    운영이 쓰는 것은 `fotmob.find_match` 이고, 그것은 정규화 후
+        #    **포함 관계**를 허용한다(`Juventus` ⊂ `Juventus FC`).
+        #    내가 처음에 "정규화 후 정확 일치"로 베껴 썼더니 AC Milan·
+        #    Juventus FC·Manchester United FC 까지 20건이 오탐으로 찍혔다.
+        #    사본은 원본이 바뀔 때 따라가지 않는다 — 원본을 부른다.
+        from app.collectors.fotmob import find_match, slate
 
-        # 🔴 [W2 2026-09-21] **같은 날짜끼리만 본다.** 첫 판에 ±1일 경기를
-        #    오늘 하루치 목록과 대조해서, **어제 경기한 팀이 전부** "못 찾는다"로
-        #    찍혔다(Kashiwa Reysol·Manchester City FC 까지 25건 오탐).
-        #    FotMob 목록은 **그 날짜에 경기하는 팀**만 담는다 — 목록에 없는 것이
-        #    이름이 안 맞는다는 뜻이 아니다.
+        # 🔴 **같은 날짜끼리만 본다.** 그 앞 판에서는 ±1일 경기를 오늘 하루치
+        #    목록과 대조해 **어제 경기한 팀이 전부** 찍혔다(25건 오탐).
+        #    FotMob 목록은 그 날짜에 경기하는 팀만 담는다.
         kst = ZoneInfo("Asia/Seoul")
         today = _dt.now(kst).date()
         rows = await pool.fetch(
-            "SELECT DISTINCT league, home, away FROM games "
+            "SELECT id, league, home, away FROM games "
             "WHERE sport = 'soccer' "
             "  AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $1", today)
         if not rows:
@@ -509,17 +513,13 @@ async def _unmapped(pool) -> list:
         if not theirs:
             logger.info("[selfcheck] FotMob 목록이 비었다 — 매칭은 못 쟀다")
             return out
-        known = set()
-        for r in theirs:
-            for side in ("home", "away"):
-                if r.get(side):
-                    known.add(norm(r[side]))
+        # ⚠️ 단위는 **팀이 아니라 경기**다 — `find_match` 가 양쪽 이름을 함께
+        #    보기 때문이고, 한쪽만 틀려도 그 경기가 통째로 빠진다(FMR-1 실측).
         for r in rows:
-            for side in ("home", "away"):
-                name = str(r[side] or "")
-                if name and norm(name) not in known:
-                    out.append(_hit("match_unmapped", name,
-                                    f"{r['league']} — FotMob 이름으로 못 찾는다"))
+            if find_match(theirs, home=r["home"], away=r["away"]) is None:
+                out.append(_hit("match_unmapped", r["id"],
+                                f"{r['league']} {r['away']} @ {r['home']} — "
+                                "FotMob 경기를 못 찾는다"))
     except Exception as exc:
         logger.info("[selfcheck] 매칭 조회 실패: %s", exc)
     return out
