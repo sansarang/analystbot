@@ -75,3 +75,22 @@ def test_키가_없으면_크래시하지_않는다():
 
     p = build_provider("solar", "solar-pro4", settings=_S())
     assert p is not None
+
+
+# ── 사슬 경로 (openai_compat) ─────────────────────────────────────
+def test_사슬_호출부에도_solar가_있다():
+    """🔴 공급자 표가 **두 곳**이다 — `provider._KIND_TO_CLASS` 와
+    `openai_compat.ENDPOINTS`. 무료 사슬(`_complete_free`)은 뒤쪽을 쓴다.
+    앞만 등록했더니 실제 추출에서 **0자 응답**이 나왔다(실측 2026-09-21)."""
+    from app.llm.openai_compat import ENDPOINTS
+
+    base, env = ENDPOINTS["solar"]
+    assert base == "https://api.upstage.ai/v1"
+    assert env == "SOLAR_API_KEY"
+
+
+def test_solar는_seed를_받는다():
+    """🔴 실호출 확인: `seed` 200 수용. `_NO_SEED` 에 넣지 않는다."""
+    from app.llm.openai_compat import _NO_SEED
+
+    assert "solar" not in _NO_SEED

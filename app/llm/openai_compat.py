@@ -28,6 +28,16 @@ ENDPOINTS: dict[str, tuple[str, str]] = {
     #    지식 금지)을 우회할 위험도 없다(퍼플렉시티는 그 위험이 있다).
     "xai": ("https://api.x.ai/v1", "XAI_API_KEY"),
     "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
+    # 🔴 [SOLAR-1 2026-09-21 사용자 지시] Upstage Solar. 무료 사슬이 제 역할을
+    #    못해서 들였다(gemini 402 · groq TPD 200k 소진 → 09-20 ⑫ 서술 전멸).
+    #    실호출로 확인한 것만 적는다(이 표의 규율):
+    #      GET /v1/models              200 · 'solar-pro4' 있음
+    #      seed                        200 수용
+    #      reasoning_effort "none"     200 · 본문 정상
+    #      reasoning_effort "low"      200 인데 **본문이 null** (사고가 예산을 먹는다)
+    #      response_format json_object 200 수용
+    #    추출 실측(한국어·일본어·영어·스페인어·이탈리아어) 전부 귀속 정확.
+    "solar": ("https://api.upstage.ai/v1", "SOLAR_API_KEY"),
     # 🔴 [P0 안정성 2026-09-05] Gemini 를 **사슬에 넣는다.** 종전에는 별도
     #    클라이언트(`app/llm/gemini.py`)만 있어 판정 사슬에서 쓸 수 없었다.
     #    Google 이 OpenAI 호환 엔드포인트를 제공하므로 구조를 그대로 쓴다.
@@ -57,6 +67,9 @@ MIN_INTERVAL_SEC: dict[str, float] = {
     # ⚠️ 무료 티어는 429 가 잦다(오디션에서 10회 중 2회 503/429). 유료 전환
     #    후에도 간격은 남긴다 — 없애는 것은 실측을 보고 결정한다.
     "gemini": 2.0,
+    # ⚠️ 유료 키라 무료 티어 429 를 안 타지만, 간격은 둔다 — 없애는 것은
+    #    실측을 보고 결정한다(위 gemini 주석과 같은 규율).
+    "solar": 1.0,
 }
 
 #: `seed` 를 받지 않는 provider. **실호출로 확인한 것만 넣는다.**
