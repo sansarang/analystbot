@@ -64,6 +64,19 @@ async def finish(state: State, stop_reason: str | None, ctx=None) -> State:
     if not state.n13_send:
         state.n13_send = {"sent": False, "message_id": None,
                           "why": f"미도달:{state.stopped_at}"}
+    # 🔴 [SWAP-1 2026-09-22] **흐름 판정을 결정 원장에 남긴다.**
+    #    사용자 지시("바꿔끼우기")의 첫 걸음이다 — 원장이 없으면 "흐름이
+    #    구경로보다 나은가"를 **잴 수가 없다.** 재지 않고 갈아끼우면 나빠져도
+    #    모른다.
+    #    🔴 `pick_ledger` 를 건드리지 않는다(구경로 소유). 흐름은
+    #       `decision_ledger` 에 `engine='flow_v14'` 로 남겨 **나란히** 비교된다.
+    #    ⚠️ 기록 실패가 흐름을 막지 않는다 — 관측이 판정을 죽이면 안 된다.
+    try:
+        from app.flow.record import record as _rec
+
+        await _rec(state, ctx)
+    except Exception as exc:
+        logger.warning("[flow] 원장 기록 건너뜀 run=%s: %s", state.run_id, exc)
     await snapshot(state, "finish", ctx)
     # 🔴 그 run 의 **행 전체**를 한 번 갱신한다 — 멈춤은 run 단위 사실이라
     #    행마다 다를 수 없다.
