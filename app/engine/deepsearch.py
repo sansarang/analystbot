@@ -43,6 +43,16 @@ T6_FIRST_LINEUP = "T6_라인업최초확정"
 #  ⚠️ 상한은 별개 축이다 — `deepsearch_daily_cap` 이 1.0(100%)이어야 실제로
 #     전 경기가 돈다. 둘 중 하나만 열면 여전히 일부가 빠진다.
 T0_ALL = "T0_전수"
+#: [MOV-T7 2026-09-22 사용자 지시] **가격이 움직이면 조사한다.**
+#   사용자 원문: "종가 시작가는 이상 흐름이어서 가격 변동이 있다.
+#   **이유를 찾으면 된다**."
+#
+#   🔴 종전에 이 방아쇠가 **없었다.** T2 는 "우리 확률 vs 시장"의 차이지
+#      **시간에 따른 이동**이 아니다. 그래서 실측 2026-09-22 에서 3%p 이상
+#      움직인 20경기가 **전부** "뉴스 근거 없음"으로 끝났다 —
+#      g1752 KT@한화 **16.62%p** 가 움직였는데 조사가 안 붙었다.
+#   ⚠️ 문턱을 여기 적지 않는다 — `odds_move.moved()`(MOVE_MIN_PP)가 원본이다.
+T7_PRICE_MOVE = "T7_가격이동"
 
 #: 조사 언어 — 원문 소스가 그 언어로 쓰여 있다. 영어로만 찾으면
 #: KBO 구단 공지·NPB 스포츠지가 통째로 빠진다.
@@ -65,6 +75,58 @@ def _gate_threshold(sport: str, favored: str | None, settings) -> float:
         base = float(settings.min_win_prob)
         return base + 0.05 if favored == "away" else base
     return 0.60 if favored == "away" else 0.55      # 축구 (수동 프로토콜과 동일)
+
+
+async def attach_move(jg: dict, pool=None) -> float | None:
+    """[MOV-T7] 지금까지의 가격 이동(%p)을 `jg["move_pp"]` 에 붙인다.
+
+    🔴 **트리거 판별 앞에서 불러야 한다.** 종전에는 이동이 `pick_ledger` 기록
+       시점에 계산돼 **조사보다 나중**이었다 — 그래서 16.62%p 가 움직여도
+       조사가 안 붙었다(실측 2026-09-22).
+
+    🔴 **규칙을 다시 짓지 않는다.** 스냅샷 선택·기준선·환산은
+       `pick_ledger` 의 `_MOVE_SNAP_SQL`·`_snap_probs`·`_best_provider` 와
+       `odds_move.baseline`·`move_pp` 가 원본이다. 여기서는 **읽기만** 한다
+       (`record_move` 는 원장에 쓰므로 조사 전에 부를 수 없다).
+
+    ⚠️ 못 재면 **None** 이고 `move_pp` 를 넣지 않는다. 0 으로 채우면
+       "안 움직였다"가 되어 트리거가 영영 안 걸린다.
+    ⚠️ 실패가 조사를 막지 않는다 — 예외를 삼키고 None 을 돌려준다.
+    """
+    gid = jg.get("game_id") or jg.get("id")
+    if gid is None:
+        return None
+    try:
+        from app.engine import odds_move as M
+        from app.engine.pick_ledger import (_MOVE_SNAP_SQL, _best_provider,
+                                            _snap_probs)
+
+        if pool is None:
+            from app.db import get_pool
+
+            pool = await get_pool()
+        rows = await pool.fetch(_MOVE_SNAP_SQL, int(gid))
+        snaps = _snap_probs(rows)
+        prov = _best_provider(snaps)
+        if not prov:
+            return None
+        mine = [v for k, v in snaps.items() if k[0] == prov]
+        base = M.baseline(mine)
+        order = list(M.BASELINE_ORDER)
+        later = [x for x in mine
+                 if order.index(x["snap_tag"]) > order.index(base["snap_tag"])]
+        if not later:
+            return None
+        now = max(later, key=lambda x: order.index(x["snap_tag"]))
+        pp = M.move_pp(now.get("p_home"), base.get("p_home"))
+    except Exception as exc:
+        logger.info("[deepsearch] 이동 측정 실패 game=%s — 트리거 없이 간다: %s",
+                    gid, exc)
+        return None
+    if pp is None:
+        return None
+    jg["move_pp"] = float(pp)
+    return float(pp)
 
 
 def triggers(jg: dict, settings, *, prev_lineup: dict | None = None) -> list[str]:
@@ -100,6 +162,16 @@ def triggers(jg: dict, settings, *, prev_lineup: dict | None = None) -> list[str
     if (jg.get("edge_status") == "candidate" or jg.get("market_divergence")
             or divergence_variable(jg) is not None):
         out.append(T2_MARKET)
+
+    # T7 — 가격이 움직였다 (MOV-T7)
+    #   🔴 **이동은 이미 관측된다.** 예측할 필요가 없다 — 움직였다는 사실이
+    #      "무언가 일어났다"는 신호이고, 우리 일은 그 **이유를 찾는 것**이다.
+    #   ⚠️ 못 재면 안 건다. 0 으로 채우지 않는다 — "안 움직였다"와 "모른다"는
+    #      다른 말이다(`pick_ledger.record_move` 와 같은 규약).
+    from app.engine.odds_move import moved as _moved
+
+    if _moved(jg.get("move_pp")):
+        out.append(T7_PRICE_MOVE)
 
     # T3 — 판정이 스스로 "이건 더 봐야 한다"고 말했다
     if [x for x in (m.get("추가확인") or []) if str(x).strip()]:
@@ -1630,6 +1702,9 @@ async def run_for_slate(games: list[dict], redis, date: str, *,
     out = {"candidates": [], "investigated": 0, "searches": 0, "skipped": 0,
            "cap": cap, "used_before": used0, "slate": len(games)}
     for jg in games:
+        # 🔴 [MOV-T7] **이동을 트리거 판별 앞에서 잰다.** 종전에는 이동이
+        #    `pick_ledger` 기록 시점에 계산돼 조사보다 나중이었다.
+        await attach_move(jg)
         trig = triggers(jg, s, prev_lineup=(prev_lineups or {}).get(jg.get("game_id")))
         if not trig:
             continue
@@ -1802,10 +1877,18 @@ async def run_for_rejudge(jg: dict, redis, date: str, *, lineup_sig: str,
     s = settings or get_settings()
     out = {"triggered": False, "triggers": [], "status": None,
            "searches": 0, "moved_pp": 0.0, "source": None}
+    # 🔴 [MOV-T7] 재판정 경로도 이동을 먼저 잰다.
+    await attach_move(jg)
     t4_hit, t4_src = t4_evidence(jg)
     t5_hit, t5_src = t5_evidence(jg, prev_lineup)
     t6_hit = first_lineup_evidence(jg, prev_lineup)
     trig, srcs = [], []
+    # 🔴 [MOV-T7] 가격이 움직였으면 그것도 방아쇠다 — 사실이지 모델 자백이 아니다.
+    from app.engine.odds_move import moved as _moved
+
+    if _moved(jg.get("move_pp")):
+        trig.append(T7_PRICE_MOVE)
+        srcs.append(SRC_FACT)
     if t6_hit:
         trig.append(T6_FIRST_LINEUP)
         srcs.append(SRC_FACT)        # 공시는 사실이다 — 모델 자백이 아니다
