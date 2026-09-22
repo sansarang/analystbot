@@ -1129,3 +1129,46 @@ SELECT o.id,
        (o.captured_at <= g.starts_at)                      AS is_pre_kickoff
   FROM odds_snapshots o
   JOIN games g ON g.id = o.game_id;
+
+-- 🔴 [LE-1b / learning_engine_0922 2026-09-22] 역사 배당·결과 — **격리된 표.**
+--
+--   🔴 **`odds_snapshots` 에 넣지 않는다.** 그 표는 `game_id REFERENCES games(id)`
+--      라서 역사 경기를 넣으려면 `games` 에 19,289행을 만들어야 한다. 그것이
+--      **D32 가 겪은 사고**다 — 소급이 타국 동명 리그를 끌어와 `games` 가
+--      750행 오염됐고, 백업을 뜨고 지웠다. 역사는 운영 표에 섞지 않는다.
+--
+--   출처: football-data.co.uk (무료 CSV · 키 불필요 · robots 허용 — [3] 감사
+--   2026-09-21). 이 저장소가 이미 받아 캐시한다(`app/models/soccer_elo.py`).
+--
+--   ⚠️ **이 표에는 마감 배당과 결과가 들어 있다 — 정답지다.**
+--      `phase='close'` 와 `ftr`·`fthg`·`ftag` 는 **학습 입력이 될 수 없다**.
+--      LE-2 의 누설 계약이 그것을 잠근다.
+CREATE TABLE IF NOT EXISTS history_matches (
+    id          BIGSERIAL PRIMARY KEY,
+    source      TEXT        NOT NULL,          -- 'football-data.co.uk'
+    div         TEXT        NOT NULL,          -- E0 · D1 · SP1 · DNK · JPN …
+    season      TEXT,                          -- '2425' · Extra 파일은 NULL
+    match_date  DATE        NOT NULL,
+    home        TEXT        NOT NULL,
+    away        TEXT        NOT NULL,
+    fthg        INTEGER,
+    ftag        INTEGER,
+    ftr         TEXT,                          -- H | D | A
+    UNIQUE (source, div, season, match_date, home, away)
+);
+CREATE INDEX IF NOT EXISTS history_matches_div_date
+    ON history_matches (div, match_date);
+
+CREATE TABLE IF NOT EXISTS history_prices (
+    id        BIGSERIAL PRIMARY KEY,
+    match_id  BIGINT  NOT NULL REFERENCES history_matches (id) ON DELETE CASCADE,
+    book      TEXT    NOT NULL,   -- B365 · BW · IW · PS(피나클) · WH · VC · Max · Avg
+    phase     TEXT    NOT NULL,   -- open | close   🔴 close 는 학습 입력 금지
+    market    TEXT    NOT NULL,   -- h2h | totals
+    line      NUMERIC,            -- totals 는 2.5 · h2h 는 NULL
+    side      TEXT    NOT NULL,   -- home | draw | away | over | under
+    odds      NUMERIC NOT NULL,
+    UNIQUE (match_id, book, phase, market, line, side)
+);
+CREATE INDEX IF NOT EXISTS history_prices_match
+    ON history_prices (match_id, market, phase);
