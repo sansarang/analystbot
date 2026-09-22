@@ -96,6 +96,14 @@ flow:
       weather:           {max_abs: 1.0, core: false}
     soccer:
       xi_confirmed:      {max_abs: 3.0, core: true}
+      # 🔴 [OUT-S 2026-09-23 사용자 승인] **결장자.** 자료는 이미 쌓여 있었다 —
+      #    transfermarkt 가 `lineups.scratches` 에 110행(7리그)을 넣는데
+      #    축구 변수표에 칸이 없어 아무도 읽지 않았다.
+      # ⚠️ `max_abs` 는 **미검증 사전값**이다. 야구 `lineup_out`(2.5)을 그대로
+      #    놓았다 — 채점이 쌓이기 전에 고치면 측정이 아니라 취향이다.
+      # ⚠️ `core: false` 다. transfermarkt 부상표는 "오늘 결장"이 아니라
+      #    "부상자 명단"이라 확정 결장과 같은 무게로 볼 수 없다.
+      lineup_out:        {max_abs: 2.5, core: false}
       form_recent5:      {max_abs: 2.0, core: false}
       rotation_risk:     {max_abs: 2.0, core: false}
       travel:            {max_abs: 1.0, core: false}

@@ -460,6 +460,37 @@ async def _xi_rows(state, ctx) -> list:
         return []
 
 
+def _as_list(raw) -> list:
+    """jsonb 칸을 목록으로. ⚠️ asyncpg 가 문자열로 줄 때가 있다."""
+    if isinstance(raw, str):
+        import json as _j
+
+        try:
+            raw = _j.loads(raw)
+        except ValueError:
+            return []
+    return list(raw or [])
+
+
+def _scratches_of(rows: list, side: str) -> list:
+    """[OUT-S] 우리 쪽 결장자. 🔴 **같은 조회**(`_XI_SQL`)를 쓴다 — 경기당
+    질의 하나다.
+
+    🔴 **빈 목록은 돌려주지 않는다.** ⑥ 규약상 빈 목록은 `refuted`("봤는데
+       없다")인데, transfermarkt 가 빈손인 것과 결장자가 정말 0명인 것을
+       우리는 구분할 수 없다. 구분 못 하면 미상이다.
+    ⚠️ 상대 쪽 행은 쓰지 않는다 — 상대 결장은 우리에게 **호재**이고, 우리 칸에
+       실으면 방향이 뒤집힌다.
+    """
+    for r in rows:
+        if str(r.get("side") or "") != side:
+            continue
+        names = _as_list(r.get("scratches"))
+        if names:
+            return names
+    return []
+
+
 def _confirmed_xi(rows: list, side: str) -> dict | None:
     """우리 쪽 **확정** XI 한 벌. 없으면 None.
 
@@ -614,6 +645,18 @@ async def run(state, ctx):
                                 sides={k: len(v) for k, v in per_side.items()},
                                 direction=d))
             continue
+
+        # 🔴 [OUT-S] 축구 결장자는 **표에서 읽는다**(transfermarkt →
+        #    `lineups.scratches`). 야구는 종전 경로(위성+공식)가 낸다 —
+        #    여기로 내려보내지 않는다.
+        if var == "lineup_out" and _sport_code(state) == "soccer":
+            side = state.pick_side or "home"
+            names = _scratches_of(await _xi_rows(state, ctx), side)
+            if names:
+                out.append(_row(var, names, source="db:lineups",
+                                excerpt=" · ".join(map(str, names[:3])),
+                                sides={side: len(names)}, direction=-1))
+                continue
 
         # 🔴 [XI-1] 확정 XI 는 **표에서 읽는다.** 기사·LLM 에 묻지 않는다.
         # ⚠️ 표에서 못 얻으면 `continue` 하지 **않는다** — 아래 추출 경로로

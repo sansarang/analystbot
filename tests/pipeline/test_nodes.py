@@ -650,8 +650,13 @@ def test_야구_need에_doubt가_없다():
     # flow(v1.4): 야구에서 뺐다. 축구 표에는 지시문 §1.2 부터 `doubt` 가 없다
     #   — 축구는 `xi_confirmed` 가 그 역할을 한다(확정 XI 대비 주전 결장).
     assert "doubt" not in R.vars_for("baseball")
-    assert set(R.vars_for("soccer")) == {"xi_confirmed", "form_recent5",
-                                         "rotation_risk", "travel", "motivation"}
+    # 🔴 [OUT-S 2026-09-23 사용자 승인] `lineup_out` 을 **더했다.**
+    #    transfermarkt 결장자 110행(7리그)이 `lineups.scratches` 에 쌓이는데
+    #    축구 변수표에 칸이 없어 아무도 읽지 않았다.
+    #    ⚠️ 집합을 느슨하게 하지 않았다 — 여전히 **정확한 목록**을 요구한다.
+    assert set(R.vars_for("soccer")) == {"xi_confirmed", "lineup_out",
+                                         "form_recent5", "rotation_risk",
+                                         "travel", "motivation"}
     # 기존 경로: 야구만 뺐고 **축구는 그대로다** — 그쪽은 개념도 소스도 있다.
     assert HY._BASEBALL_OUT == ("out",)
     assert "doubt" in HY._SOCCER_OUT
