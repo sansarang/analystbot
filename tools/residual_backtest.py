@@ -84,6 +84,34 @@ def _fmt(v, n=4):
     return DASH if v is None else f"{v:.{n}f}"
 
 
+def _cand_score(cands) -> str:
+    """🔴 **우리가 지목한 경기에서 시장이 틀렸나.**
+
+    사용자 2026-09-22: "시장을 이긴다는 해석이 다를 수 있다 — 시장이 틀렸는지
+    맞는지가 더 정확한 표현이다."
+
+    세 가지를 나란히 본다(같은 행에서):
+      · CLV   — 종가가 우리 쪽으로 왔나(= 시장이 우리 방향으로 움직였나)
+      · Brier — 그 경기들에서 우리 확률이 시장보다 나았나
+      · ROI   — 그 가격에 1단위씩 걸었으면
+    ⚠️ 표본이 하한 미만이면 숫자를 내지 않는다.
+    """
+    from app.learning import metrics as M
+
+    if not cands:
+        return "후보 0건 — 시장이 틀렸다고 지목한 경기가 없다"
+    eng = M.summarize(cands)
+    mkt = M.summarize([{**r, "p_model": r.get("p_market")} for r in cands])
+    if eng.get("insufficient"):
+        return f"n={eng['n']} 표본 부족(하한 {eng['min_samples']})"
+    moved = sum(1 for r in cands
+                if (M.clv(r) or 0) > 0) / max(len(cands), 1)
+    return (f"n={eng['n']:4d}  Brier 엔진 {_fmt(eng['brier'])} vs "
+            f"시장 {_fmt(mkt.get('brier'))}  "
+            f"CLV {_fmt(eng['clv_mean'])}  종가가 우리쪽 {moved:.1%}  "
+            f"ROI {_fmt(eng['roi_mean'])}")
+
+
 def _line(tag, s):
     if not s or s.get("insufficient"):
         return f"    {tag:16s} n={(s or {}).get('n', 0):5d}  표본 부족"
@@ -126,29 +154,58 @@ async def main() -> None:
             print(f"\n  {div}  n={len(sub)} - 표본 부족, 건너뜀")
             continue
         print(f"\n  ---- {div}  (경기 {len(sub)}) ----")
-        base = B.score(sub)
-        for n in base["_names"]:
-            print(_line(f"기준선:{n}", base[n]))
         for target, tag in ((E.TARGET_RESIDUAL, "엔진2:잔차"),
                             (E.TARGET_RESULT, "비교군:결과")):
             got = E.run(sub, target=target, train_weeks=a.train_weeks,
                         valid_weeks=a.valid_weeks)
             s = got["summary"]
+            # 🔴 [LE4-CMP 2026-09-22] **기준선을 엔진의 검증 창 행에서 잰다.**
+            #    종전에는 리그 전체(n≈1,134)에서 재고 엔진은 검증 창(n=420)에서
+            #    재서 **다른 표본을 비교**했다. 그래서 엔진이 종가보다 나아
+            #    보였다 — 종가를 맞히는 모델이 종가보다 나을 수는 없다.
+            #    실측: 개장→종가 개선은 전체 0.0012 뿐인데 엔진이 0.0054
+            #    나아졌다고 나왔다. 그게 표본이 다르다는 신호였다.
+            base = B.score(got["rows"])
+            if target == E.TARGET_RESIDUAL:
+                for n in base["_names"]:
+                    print(_line(f"기준선:{n}", base[n]))
+                # 🔴 종가 기준선 — **이것이 진짜 상대**다. 엔진의 목표가
+                #    `p_close − p_open` 이므로 천장이 종가다.
+                import app.learning.metrics as _M
+                cl = _M.summarize([{**r, "p_model": r.get("p_close")}
+                                   for r in got["rows"]])
+                print(_line("기준선:종가", cl))
             print(_line(tag, s))
             if target == E.TARGET_RESIDUAL:
                 cands = E.candidates(got["rows"])
                 win = B.beats_market(s, base)
                 mark = "OK" if win else ("NO" if win is False else "판단불가")
-                print(f"    {'후보':16s} {len(cands):5d}건  ·  기준선(i) 격파 {mark}")
-                overall[div] = (s, base, len(cands), win)
+                print(f"    {'후보':16s} {len(cands):5d}건  ·  전체 격파 {mark}")
+                # 🔴 [2026-09-22 사용자] "시장을 이긴다"보다 **"시장이 틀렸는지"**
+                #    가 정확한 표현이다. 평균으로 시장을 이길 필요가 없다 —
+                #    **우리가 지목한 경기에서** 시장이 틀렸으면 된다.
+                #    그래서 후보 부분집합에서만 다시 잰다.
+                cs = _cand_score(cands)
+                print(f"    {'└ 후보에서':16s} {cs}")
+                overall[div] = (s, base, len(cands), win, cl, cs)
 
     print(f"\n{'='*80}\n[결론]")
-    for div, (s, base, nc, win) in sorted(overall.items(),
-                                          key=lambda kv: str(kv[0])):
+    print(f"  {'리그':5s} {'n':>5s} {'엔진':>8s} {'개장가':>8s} {'종가':>8s} "
+          f"{'후보':>5s}  판정")
+    for div, (s, base, nc, win, cl, cs) in sorted(overall.items(),
+                                                  key=lambda kv: str(kv[0])):
         mk = base.get("market") or {}
-        verdict = "엔진2 활성" if win else "엔진2 비활성 - 기준선(i)을 못 이긴다"
-        print(f"  {str(div):5s}  엔진 Brier {_fmt(s.get('brier'))} vs "
-              f"시장 {_fmt(mk.get('brier'))}  후보 {nc:4d}  ->  {verdict}")
+        verdict = "전체 격파" if win else "전체 미격파"
+        print(f"  {str(div):5s} {s.get('n', 0):5d} {_fmt(s.get('brier')):>8s} "
+              f"{_fmt(mk.get('brier')):>8s} {_fmt(cl.get('brier')):>8s} "
+              f"{nc:5d}  {verdict}")
+    print("\n[🔴 시장이 틀렸는지 — 우리가 지목한 경기에서만]")
+    for div, (_s, _b, _n, _w, _c, cs) in sorted(overall.items(),
+                                                key=lambda kv: str(kv[0])):
+        print(f"  {str(div):5s}  {cs}")
+    print("\n🔴 **같은 표본에서 잰다.** 기준선도 엔진의 검증 창 행에서 잰다 —")
+    print("   리그 전체와 비교하면 엔진이 종가보다 나아 보이는 거짓이 나온다.")
+    print("🔴 엔진의 천장은 **종가**다(목표가 p_close − p_open 이므로).")
     print("\n⚠️ 검증 창 밖 성적은 없다. 좋아 보이는 설정을 찾아 헤매면 그건")
     print("   검증 창을 학습에 쓰는 것이다(지시문 §1).")
 
