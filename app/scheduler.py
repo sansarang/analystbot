@@ -1828,12 +1828,36 @@ async def ingest_kbo_finals(pool=None, *, upsert=None, now=None) -> dict:
        도는데, 늦게 끝난 경기나 서스펜디드가 다음 날 확정되기도 한다.
     ⚠️ 날짜는 KST 기준이다(절대 규칙 5: KBO 표기는 KST).
     """
-    from app.collectors.naver_kbo import upsert_results
+    from app.collectors.naver_kbo import upsert_probables, upsert_results
 
     fn = upsert or upsert_results
     pool = pool or await get_pool()
     base = (now or datetime.now(KST)).date()
     out = {"days": 0, "applied": 0, "seen": 0, "failed": 0}
+    # 🔴 [SP-1 2026-09-23] **예고선발·구장도 여기서 옮긴다.** 네이버 preview 가
+    #    이미 주는데(실측: 잭로그·박준영·로건) `games.home_pitcher` 가 예정
+    #    26경기 전건 비어 있었고, ⑤의 `starter_recent3` 가 그 칸을 읽는다.
+    #    ⚠️ 새 잡을 만들지 않는다 — 같은 네이버 소스를 두 잡이 치면 주기가
+    #       두 벌이 되고 한쪽만 도는 날이 생긴다.
+    #    ⚠️ **오늘·내일**을 본다(결과는 어제·오늘). 예고선발은 앞을 본다.
+    #    ⚠️ 실패해도 결과 적재를 막지 않는다.
+    redis_p = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        from app.collectors.naver_kbo import refresh as _nk_refresh
+
+        for ahead in (0, 1):
+            d = (base + timedelta(days=ahead)).strftime("%Y-%m-%d")
+            try:
+                await _nk_refresh(redis_p, d)
+                got = await upsert_probables(pool, d, redis=redis_p)
+                logger.info("[scheduler] KBO 예고선발 %s: %s", d, got)
+            except Exception as exc:
+                logger.warning("[scheduler] KBO 예고선발 %s 실패: %s", d, exc)
+    finally:
+        try:
+            await redis_p.aclose()
+        except Exception:
+            pass
     for delta in (1, 0):
         d = (base - timedelta(days=delta)).strftime("%Y-%m-%d")
         try:

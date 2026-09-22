@@ -454,6 +454,79 @@ _FINAL_CODES = ("RESULT",)
 _VOID_CODES = ("CANCEL", "POSTPONE", "RAINCANCEL")
 
 
+#: 🔴 [SP-1] 그 날짜·그 대진의 `games` 행. 키는 **Odds 표기**라 `games` 와
+#   같은 문자열이다(`load()` 가 "원정@홈" 으로 준다) — 새 대조표를 만들지
+#   않는다(`TEAM_TO_ODDS` 가 원본이고 `refresh` 가 이미 그것으로 키를 만든다).
+_FIND_GAME = """
+    SELECT id FROM games
+     WHERE sport = 'kbo' AND home = $1 AND away = $2
+       AND (starts_at AT TIME ZONE 'Asia/Seoul')::date = $3::date
+     LIMIT 1
+"""
+
+#: ⚠️ **COALESCE 다.** 예고 전에는 이름이 없고, 그 빈 값이 어제 채운 값을
+#   덮으면 안 된다. 늦게 오는 빈 값이 이긴 전례가 이 저장소에 있다.
+_SET_PROBABLE = """
+    UPDATE games
+       SET home_pitcher = COALESCE($2, home_pitcher),
+           away_pitcher = COALESCE($3, away_pitcher),
+           venue_name   = COALESCE($4, venue_name),
+           updated_at   = now()
+     WHERE id = $1
+"""
+
+
+def _pitcher_name(box) -> str | None:
+    """preview 의 선발 칸에서 이름만. 🔴 없으면 **None**(빈 문자열 아님)."""
+    if not isinstance(box, dict):
+        return None
+    name = str(box.get("name") or "").strip()
+    return name or None
+
+
+async def upsert_probables(pool, date: str, *, snap=None, redis=None) -> dict:
+    """[SP-1] 그 날짜 KBO **예고선발·구장**을 `games` 에 옮긴다.
+
+    🔴 **왜 필요한가.** 네이버 preview 는 예고선발을 주는데(실측 2026-09-23:
+       잭로그·박준영·로건) `games.home_pitcher` 는 **예정 26경기 전건 비어**
+       있었다. ⑤의 `starter_recent3` 가 그 칸을 읽으므로, 오늘 경기의 선발
+       축이 통째로 미상이었다 — 자료가 없어서가 아니라 옮기는 코드가 없어서다.
+
+    🔴 **이름은 이미 맞는다.** `games` 선발 52종이 `pitcher_appearances` 에
+       52종 전부 있다(실측). 옮기기만 하면 최근 3등판이 붙는다.
+
+    ⚠️ 한 경기가 실패해도 나머지는 간다. 조용한 0 을 만들지 않는다 —
+       실패 수를 세어 돌려준다.
+    """
+    if snap is None:
+        if redis is None:
+            return {"games": 0, "failed": 0, "why": "redis 도 snap 도 없다"}
+        snap = await load(redis, date)
+    out = {"games": 0, "failed": 0, "seen": 0}
+    for key, row in (snap or {}).items():
+        out["seen"] += 1
+        if not isinstance(row, dict) or "@" not in str(key):
+            continue
+        away, _, home = str(key).partition("@")
+        hp = _pitcher_name(row.get("home_pitcher"))
+        ap = _pitcher_name(row.get("away_pitcher"))
+        venue = str(row.get("stadium") or "").strip() or None
+        if not (hp or ap or venue):
+            continue                      # 예고 전 — 빈 값으로 덮지 않는다
+        try:
+            gid = await pool.fetchval(_FIND_GAME, home, away, date)
+            if gid is None:
+                logger.info("[naver_kbo] %s 경기 행을 못 찾았다 (%s)", key, date)
+                continue
+            await pool.execute(_SET_PROBABLE, gid, hp, ap, venue)
+            out["games"] += 1
+        except Exception as exc:
+            out["failed"] += 1
+            logger.warning("[naver_kbo] 예고선발 적재 실패 %s: %s", key, exc)
+    logger.info("[naver_kbo] 예고선발·구장 %s: %s", date, out)
+    return out
+
+
 async def upsert_results(pool, date: str, *, client=None) -> dict:
     """[RES-1] 그 날짜 KBO 결과를 `games` 에 반영한다.
 
