@@ -21,7 +21,14 @@
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
+
+#: 🔴 [D53 2026-09-22] **시각을 고정한다.** 아래 `BING_RSS` 의 pubDate 는
+#  2026-09-20 이고 `rss_hits` 는 `scout_config.MAX_AGE_H['pre']`(48h)를
+#  **지금 시각 기준**으로 건다. 그래서 이 계약은 09-22 02:03 UTC 에
+#  스스로 깨졌다 — 같은 코드로 10:49 KST 통과 · 11:20 KST 실패.
+#  ⚠️ 픽스처 날짜를 매일 옮기는 것은 사본이다. `now=` 를 박는다.
+NOW = datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc)
 
 import pytest
 
@@ -84,7 +91,7 @@ async def test_rss_hits_가_거부_경로를_치지_않는다(monkeypatch):
 
     monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
                         lambda *a, **k: _RT())
-    out = await SAT.rss_hits("한화 이글스 선발", league="kbo")
+    out = await SAT.rss_hits("한화 이글스 선발", league="kbo", now=NOW)
     assert sent, "요청이 아예 안 나갔다"
     assert not [u for u in sent if "news.google.com" in u], sent
     assert all("bing.com" in u for u in sent), sent
@@ -104,7 +111,7 @@ async def test_출력_모양을_바꾸지_않는다(monkeypatch):
 
     monkeypatch.setattr("app.deepsearch.runtime.default_runtime",
                         lambda *a, **k: _RT())
-    out = await SAT.rss_hits("한화 이글스 선발", league="kbo")
+    out = await SAT.rss_hits("한화 이글스 선발", league="kbo", now=NOW)
     h = out[0]
     assert set(h) >= {"url", "title", "snippet", "source", "source_url",
                       "published"}
