@@ -1035,3 +1035,97 @@ CREATE TABLE IF NOT EXISTS watch_events (
 );
 CREATE INDEX IF NOT EXISTS watch_events_url_at ON watch_events (url, changed_at DESC);
 
+
+-- ═══════════════════════════════════════════════════════════════════
+-- 🔴 [LE-1a / learning_engine_0922 2026-09-22] 결정 원장 — **봇의 기억**
+--
+--   지시문: 학습 대상을 "누가 이기나" → "시장이 어디서, 언제 틀리나".
+--   그러려면 **한 결정마다** (그때의 가격 · 그때의 시장 확률 · 종가 · 결과)가
+--   한 행에 남아야 한다. 그게 없으면 학습은 자기기만이다.
+--
+--   🔴 **`pick_ledger` 로는 담을 수 없다.** 그 표는 "한 행 = 한 경기 한 판정"
+--      이고, 여기는 "한 행 = 한 후보(엔진 · 마켓 · 라인 · 방향)"다. 한 경기에
+--      총점 후보와 핸디 후보가 같이 나오면 저쪽에는 자리가 없다.
+--
+--   🔴 **`market_ledger` 는 만들지 않았다.** `odds_snapshots`(180,152행)이 이미
+--      그 모양이다. 아래 `market_prices` 뷰가 감싼다(지시문이 허용한 경로).
+--
+--   ⚠️ `kelly_frac` 은 **기록 전용**이다. 금액·비중을 제안하지 않는다(R6).
+--   ⚠️ 확신 등급 칸을 두지 않는다 — 보정 곡선이 단조가 될 때까지 카드·원장에서
+--      뺀다(지시문 §1). 실측 2026-09-22: 상 68.1% · 하 57.7% · 중 53.2% 로
+--      **순서가 깨져 있다**.
+CREATE TABLE IF NOT EXISTS decision_ledger (
+    id                     BIGSERIAL PRIMARY KEY,
+    -- 어느 엔진이 냈나. `bot_v14`(기존 판정 소급) · `slow_book` · `residual` ·
+    -- `poisson` · `fable_chat`(사용자 채팅 판정도 같은 표에서 같은 지표로 잰다)
+    engine                 TEXT        NOT NULL,
+    game_id                BIGINT      NOT NULL REFERENCES games(id),
+    sport                  TEXT,
+    league                 TEXT,
+    market                 TEXT        NOT NULL,   -- h2h · totals · spreads · team_totals
+    line                   NUMERIC,                -- h2h 는 NULL
+    side                   TEXT        NOT NULL,   -- home|draw|away|over|under
+    book                   TEXT,                   -- 가격을 읽은 북. 미정이면 NULL
+    -- 🔴 **결정 시점**이 학습의 기준선이다. 이 시각 이후 정보는 입력 금지(LE-2).
+    ts_decided             TIMESTAMPTZ NOT NULL,
+    price_at_decision      NUMERIC,                -- 소수배당
+    p_model                NUMERIC,                -- 엔진 확률
+    p_market_at_decision   NUMERIC,                -- 그 시점 시장 디빅 확률
+    p_close                NUMERIC,                -- 종가 디빅 확률 (킥오프 직전 마지막)
+    price_close            NUMERIC,
+    result                 TEXT,                   -- win|loss|push|void|NULL(미정)
+    clv                    NUMERIC,                -- p_close - p_market_at_decision (우리 쪽 부호)
+    roi_unit               NUMERIC,                -- 단위 스테이크 손익
+    kelly_frac             NUMERIC,                -- 🔴 기록 전용 (R6)
+    status                 TEXT        NOT NULL DEFAULT 'candidate',
+                                                   -- candidate|withdrawn|settled
+    unexplained            BOOLEAN,                -- 엔진 1: 구조 근거를 못 붙였다
+    withdraw_reason        TEXT,
+    note                   TEXT,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    settled_at             TIMESTAMPTZ,
+    -- 🔴 멱등 적재의 열쇠. 같은 엔진·경기·마켓·라인·방향·결정시각은 한 행이다.
+    --    소급 적재를 두 번 돌려도 중복이 생기지 않아야 롤백이 안전하다(영향지도 ④).
+    UNIQUE (engine, game_id, market, line, side, ts_decided)
+);
+CREATE INDEX IF NOT EXISTS decision_ledger_engine_ts
+    ON decision_ledger (engine, ts_decided DESC);
+CREATE INDEX IF NOT EXISTS decision_ledger_game
+    ON decision_ledger (game_id);
+CREATE INDEX IF NOT EXISTS decision_ledger_status
+    ON decision_ledger (status) WHERE status <> 'settled';
+
+-- 🔴 [LE-1a] `market_prices` — `odds_snapshots` 를 학습이 읽기 쉽게 감싼 뷰.
+--
+--   🔴 **`side` 가 팀명이다.** 실측: `'Minnesota Twins'` · `'NC Dinos'` ·
+--      `'Draw'` 로 들어 있다(`'home'`/`'away'` 가 아니다). 뷰가 `games` 와
+--      맞춰 `side_norm` 을 만든다.
+--   ⚠️ **정확 일치만** 쓴다. 못 맞추면 `side_norm = NULL` 이다 — 추측으로
+--      채우지 않는다. 이름 대조는 D15 가 오탐을 세 번 낸 자리다.
+--   ⚠️ 뷰는 **사실만** 노출한다. "종가"를 뷰가 정하지 않는다 — 그 규칙의 원본은
+--      `pick_ledger._CLV_SNAP` 이고 `app/learning/prices.close_price` 가 같은
+--      규칙을 쓴다(계약이 두 곳의 일치를 잠근다).
+--   ⚠️ `implied_p` 를 뷰에 넣지 않는다. devig 구현이 다섯 벌이 된다 —
+--      원본은 `app/flow/odds_math.devig_2way`·`devig_3way` 다.
+CREATE OR REPLACE VIEW market_prices AS
+SELECT o.id,
+       o.game_id,
+       g.sport,
+       g.league,
+       g.starts_at,
+       o.captured_at,
+       o.book,
+       o.provider,
+       o.market,
+       o.line,
+       o.side                                             AS side_raw,
+       CASE WHEN o.side = g.home            THEN 'home'
+            WHEN o.side = g.away            THEN 'away'
+            WHEN lower(o.side) = 'draw'     THEN 'draw'
+            WHEN lower(o.side) IN ('over','under') THEN lower(o.side)
+            ELSE NULL END                                 AS side_norm,
+       o.odds,
+       o.snap_tag,
+       (o.captured_at <= g.starts_at)                      AS is_pre_kickoff
+  FROM odds_snapshots o
+  JOIN games g ON g.id = o.game_id;

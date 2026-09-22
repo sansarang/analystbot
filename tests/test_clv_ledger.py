@@ -35,18 +35,45 @@ def test_배당이_판정_비교에_들어가지_않는다():
         assert col not in src, col
 
 
+#: 🔴 [LE-1a 2026-09-22] **측정 경로**는 이 칸을 읽어도 된다.
+#
+#   종전 이 계약은 `pick_ledger.py` 외 **모든** 파일을 막았고, 근거로 §4-1
+#   "배당은 판정·폼·서술의 입력에 절대 넣지 않는다"를 들었다.
+#   그 규칙은 **폐기됐다** — CLAUDE.md:
+#     "🔴 배당은 판정의 입력에 넣는다 (2026-09-13 사용자 결정 — 종전 규칙 폐기)"
+#   그리고 폐기 전에도 이 계약의 머리말이 "여기서는 **저장만** 한다"고 적었듯,
+#   막으려던 것은 **판정에 먹이는 것**이지 사후 측정이 아니다.
+#
+#   `app/learning/` 은 지시문 `learning_engine_0922` 의 **원장·지표** 경로다.
+#   CLV(종가 대비 가격)를 재려면 마감 배당을 읽어야 한다 — 그게 그 단계의 전부다.
+#   ⚠️ 그래서 **판정·폼·서술 경로는 그대로 막아 둔다.** 아래 목록에 판정
+#      모듈을 추가하지 마라.
+_MEASURE_ONLY = ("pick_ledger.py",)
+_MEASURE_DIRS = ("app/learning/",)
+
+
 def test_판정_경로가_이_칸을_읽지_않는다():
-    """🔴 §4-1 — 배당은 판정·폼·서술의 입력에 절대 넣지 않는다."""
+    """🔴 판정·폼·서술은 이 칸을 읽지 않는다. **측정 경로만** 예외다."""
     import pathlib
 
     hits = []
     for p in pathlib.Path("app").rglob("*.py"):
-        if p.name == "pick_ledger.py":
+        if p.name in _MEASURE_ONLY:
+            continue
+        if any(str(p).startswith(d) for d in _MEASURE_DIRS):
             continue
         t = p.read_text(encoding="utf-8")
         if "odds_at_verdict" in t or "odds_closing" in t:
             hits.append(str(p))
     assert hits == [], hits
+
+
+def test_측정_예외가_판정_모듈로_새지_않는다():
+    """🔴 예외 목록이 판정·흐름 경로를 덮으면 이 계약은 무의미해진다."""
+    for d in _MEASURE_DIRS:
+        assert d.startswith("app/learning/"), d
+    for f in _MEASURE_ONLY:
+        assert f == "pick_ledger.py", f
 
 
 def test_확률_변환을_다시_만들지_않는다():
