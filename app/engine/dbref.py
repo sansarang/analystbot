@@ -161,6 +161,18 @@ async def recheck(jg: dict, tri: dict, v: dict, *,
         logger.info("[dbref] %s@%s 우리 기록이 통째로 비었다 — 참조 생략",
                     jg.get("away"), jg.get("home"))
         return out
+    # 🔴 [NOLLM 2026-09-22 사용자 지시] **판정은 코드가 낸다.**
+    #    `있음`·`없음`(위에서 채운 것)은 **DB 사실**이라 그대로 남기고,
+    #    그 뒤의 **LLM 재판정만** 건너뛴다. 어차피 이 승자는
+    #    `apply_code_verdict` 가 덮어쓴다(P0-1).
+    #    ⚠️ 스위치의 원본은 `matchup._llm_verdict_on` 하나다(사본 금지).
+    from app.engine.matchup import _llm_verdict_on
+
+    if not _llm_verdict_on():
+        out["판정"] = "생략(judge.llm_verdict=false)"
+        logger.info("[dbref] %s@%s LLM 재판정 생략 — 기록 %d건은 그대로 남긴다",
+                    jg.get("away"), jg.get("home"), len(b["있음"]))
+        return out
     s = get_settings()
     prompt = fill(DB_OPEN,
                   LEAGUE=jg.get("league") or (jg.get("sport") or "").upper(),

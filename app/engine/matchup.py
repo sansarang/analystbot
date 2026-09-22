@@ -625,6 +625,22 @@ def apply_winner(jg: dict, verdict: dict, *,
     return True
 
 
+def _llm_verdict_on() -> bool:
+    """[NOLLM] 판정을 LLM 에 물을 것인가. 🔴 **원본은 `config/rules.yaml` 의
+    `judge.llm_verdict` 하나**다(사본 금지).
+
+    ⚠️ 설정을 못 읽으면 **켜진 것**으로 본다 — 스위치 고장이 판정 경로를
+       조용히 바꾸면 그게 더 나쁘다(`source_gate.enabled` 와 같은 규약).
+    """
+    try:
+        from app.engine import rules as R
+
+        v = R.get("judge.llm_verdict")
+    except Exception:                                       # pragma: no cover
+        return True
+    return True if v is None else bool(v)
+
+
 def apply_code_verdict(jg: dict) -> bool:
     """[P0-1 2026-09-15 사용자 결정 B] **승자·확신을 코드 값으로 덮어쓴다.**
 
@@ -1171,9 +1187,21 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
         tri["채택"] = list(tri["채택"]) + db_rows + found["자료"]
 
     # ③ 판정 — 조사 + 검색 + DB 보충으로 승자 + 확신.
-    v = await verdict.decide(jg, brief, tri)
-    if v is None:
-        return await _drop("판정 실패")
+    # 🔴 [NOLLM 2026-09-22 사용자 지시] **판정은 코드가 낸다.**
+    #    스위치가 꺼져 있으면 LLM 에 승자를 묻지 않는다 — 어차피
+    #    `apply_code_verdict` 가 덮어쓰는 값이고(P0-1), 그 호출이 실패하면
+    #    경기가 통째로 탈락했다(2026-09-22 KBO 0/8 · NPB 0/5).
+    #    ⚠️ 승자는 **비운다.** 지어내지 않는다 — 파이프라인이 시장 뼈대를
+    #       붙인 뒤 코드 값으로 채운다.
+    #    ⚠️ 서술은 템플릿이 만든다(`narrate.story`) — 여기서는 비워 둔다.
+    if not _llm_verdict_on():
+        v = {"승자": None, "확신": None, "서술": "", "추가요청": []}
+        logger.info("[v3] %s@%s LLM 판정 생략(judge.llm_verdict=false) — "
+                    "승자는 코드가 정한다", jg.get("away"), jg.get("home"))
+    else:
+        v = await verdict.decide(jg, brief, tri)
+        if v is None:
+            return await _drop("판정 실패")
 
     # 🔴 [SRCH-7] **재요청 — 딱 한 번.** 사용자 지시: "제미니는 필요한 거를
     #    재요청할 수 있다". 무한 되묻기는 호출을 폭발시키므로 1회로 묶는다.
@@ -1204,6 +1232,8 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
     #       사용자 지시 "최종 판정 2단계는 삭제..1단계로 제미니 최종 판정으로 간다".
     #       ⚠️ 2차가 검색 요청자였다. 그 역할은 ②선별(`triage.없는것`)로 간다
     #          (SRCH-3). 그전까지 이 경로의 외부 유료 호출은 **0** 이다.
+    # 🔴 [NOLLM] DB 참조의 **사실 부분**(있음·없음)은 그대로 쓰고, 그 뒤의
+    #    **LLM 재판정만** 건너뛴다. `recheck` 가 스위치를 보고 갈라진다.
     ref = await dbref.recheck(jg, tri, v)
     # 🔴 [SRCH-6] **서술을 여기서 흘리지 않는다.** 실측 2026-09-12: 제미니가
     #    분석글을 썼는데 4/4 전부 0자로 카드에 닿았다 — `ref` 에는 서술이
@@ -1212,6 +1242,16 @@ async def _judge_v3(jg: dict, redis, date: str, *, final: bool,
     #       설명한 것이고, 남기면 카드가 앞뒤가 안 맞는다. 바뀐 이유는
     #       `DB사유` 가 이미 드러낸다(ORD-15).
     _story = "" if ref["승자변경"] else (v.get("서술") or "")
+    # 🔴 [NOLLM] 서술이 비면 **템플릿이 채운다.** LLM 글을 지우는 것이 아니라,
+    #    없을 때 빈 칸을 남기지 않는 것이다(있으면 그대로 쓴다).
+    if not _story:
+        try:
+            from app.engine.narrate import story as _tmpl
+
+            _story = _tmpl(jg)
+        except Exception as exc:
+            logger.info("[v3] 템플릿 서술 실패 game=%s: %s",
+                        jg.get("game_id"), exc)
     jg["order_v3"] = {
         "수집": col["출처"], "계측": tri["계측"],
         "갈림길목록": tri["갈림길"], "자료": tri["채택"],

@@ -15,6 +15,22 @@ import inspect
 import pytest
 
 
+# ── [NOLLM 2026-09-22] 이 파일은 **LLM 판정 경로**를 시험한다 ──────────────
+#
+# 🔴 사용자 지시로 `judge.llm_verdict` 기본값이 **false** 가 됐다("판정은 원래
+#    코드에서 낸다"). 그러면 이 파일의 시험 대상 경로가 아예 안 돈다.
+# 🔴 **그 경로를 지우지 않았다** — 스위치 한 줄로 되돌릴 수 있어야 하고,
+#    되돌렸을 때 종전대로 도는지는 **계약이 지켜야 한다.**
+#    그래서 여기서는 스위치를 **켜고** 시험한다.
+# ⚠️ 스위치가 꺼진 동작은 `tests/test_nollm.py` 가 따로 잠근다.
+import pytest as _pytest
+
+
+@_pytest.fixture(autouse=True)
+def _llm_verdict_on(monkeypatch):
+    monkeypatch.setattr("app.engine.matchup._llm_verdict_on", lambda: True)
+
+
 def test_원장에_두_칸이_있다():
     src = open("db/schema.sql", encoding="utf-8").read()
     for col in ("llm_winner", "llm_level"):
