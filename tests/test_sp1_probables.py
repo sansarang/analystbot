@@ -67,6 +67,39 @@ def test_함수가_있다():
 
 
 @pytest.mark.asyncio
+async def test_날짜를_date_객체로_넘긴다():
+    """🔴 [SP-2 2026-09-23] **거짓 통과를 고친 자리다.**
+
+    처음 계약은 가짜 풀이 인자를 받아만 두고 타입을 안 봤다. 그래서 초록이었는데
+    운영에서는 전건 실패했다:
+    ```
+    invalid input for query argument $3: '2026-09-23'
+        ('str' object has no attribute 'toordinal')
+    KBO 예정 26경기 · 홈선발 0 · 구장 0
+    ```
+    `$3::date` 가 붙으면 asyncpg 는 파라미터 타입을 `date` 로 추론한다 —
+    문자열을 주면 거기서 터진다. 이제 **타입을 본다.**
+    """
+    import datetime as _dt
+
+    pool = _Pool()
+    await N.upsert_probables(pool, "2026-09-23", snap=SNAP)
+    finds = [a for sql, a in pool.calls if "FROM games" in sql]
+    assert finds, "경기 조회가 없다"
+    assert isinstance(finds[0][2], _dt.date), \
+        f"날짜를 {type(finds[0][2]).__name__} 로 넘긴다"
+
+
+@pytest.mark.asyncio
+async def test_날짜가_이상하면_건너뛴다():
+    """⚠️ 못 읽는 날짜로 질의를 던지지 않는다."""
+    pool = _Pool()
+    out = await N.upsert_probables(pool, "엉터리", snap=SNAP)
+    assert out["games"] == 0
+    assert not [a for sql, a in pool.calls if "FROM games" in sql]
+
+
+@pytest.mark.asyncio
 async def test_선발을_games_에_쓴다():
     pool = _Pool()
     out = await N.upsert_probables(pool, "2026-09-23", snap=SNAP)

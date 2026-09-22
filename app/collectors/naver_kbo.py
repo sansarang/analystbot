@@ -502,6 +502,19 @@ async def upsert_probables(pool, date: str, *, snap=None, redis=None) -> dict:
         if redis is None:
             return {"games": 0, "failed": 0, "why": "redis 도 snap 도 없다"}
         snap = await load(redis, date)
+    # 🔴 [SP-2 2026-09-23] **`date` 객체로 넘긴다.** `$3::date` 가 붙으면
+    #    asyncpg 가 파라미터 타입을 `date` 로 추론하고, 문자열을 주면
+    #    `'str' object has no attribute 'toordinal'` 로 **전건 실패**한다
+    #    (실측: 오늘 3경기 · 내일 3경기 전부 failed).
+    #    ⚠️ 첫 계약이 이걸 못 잡았다 — 가짜 풀이 인자를 받아만 두고 타입을
+    #       안 봤다(거짓 통과). 지금은 계약이 타입을 본다.
+    from datetime import date as _date
+
+    try:
+        day = _date.fromisoformat(str(date))
+    except ValueError:
+        logger.warning("[naver_kbo] 날짜를 못 읽었다: %r", date)
+        return {"games": 0, "failed": 0, "seen": 0, "why": "날짜 형식"}
     out = {"games": 0, "failed": 0, "seen": 0}
     for key, row in (snap or {}).items():
         out["seen"] += 1
@@ -514,7 +527,7 @@ async def upsert_probables(pool, date: str, *, snap=None, redis=None) -> dict:
         if not (hp or ap or venue):
             continue                      # 예고 전 — 빈 값으로 덮지 않는다
         try:
-            gid = await pool.fetchval(_FIND_GAME, home, away, date)
+            gid = await pool.fetchval(_FIND_GAME, home, away, day)
             if gid is None:
                 logger.info("[naver_kbo] %s 경기 행을 못 찾았다 (%s)", key, date)
                 continue
