@@ -1144,9 +1144,18 @@ _LLM_CALL_KEY = "api_calls:{date}"
 async def _llm_budget_ok(redis) -> bool:
     """오늘 LLM 추출 호출이 상한 안인가. 🔴 넘으면 **건너뛴다**(예외 금지).
 
+    🔴 [D27 2026-09-22] **`app.engine.rules` 다.** 종전에는 `app.flow.rules` 를
+       썼는데 그 모듈은 경로에 `flow.` 접두사를 붙이므로
+       `flow.llm.daily_call_cap` 을 찾았고 그런 블록은 없다 — 값은 언제나
+       코드 폴백 200 이었다(실측 2026-09-22: flow→None · engine→200).
+       폴백이 config 값과 우연히 같아서 증상이 없었을 뿐, **설정을 고쳐도
+       반영되지 않았다.**
+    ⚠️ 바로 위 `get_depth`·`_article_cap` 은 `app.flow.rules` 가 **맞다** —
+       `depth_fallback`·`depth_articles` 는 실제로 `flow:` 블록 안에 있다.
+       같이 옮기면 그쪽이 None 이 되어 조용히 폴백으로 돈다. 계약이 잠근다.
     ⚠️ redis 가 없으면 셀 수 없다 — 그때는 막지 않는다(관측만).
     """
-    from app.flow import rules as R
+    from app.engine import rules as R
 
     cap = int(R.get("llm.daily_call_cap", 200) or 200)
     if redis is None or cap <= 0:
