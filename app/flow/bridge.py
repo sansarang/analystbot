@@ -83,7 +83,7 @@ async def ensure_elo(pool, redis, sport: str, date: str, *, refresh=None) -> boo
         return False
 
 
-async def ensure_soccer_elo(redis, league_days) -> dict:
+async def ensure_soccer_elo(redis, league_days, *, pool=None) -> dict:
     """[SELO-1] 축구 리그별 레이팅을 캐시에 있게 한다. 반환 `{리그: 팀 수}`.
 
     🔴 **야구와 같은 자리**(`elo:{리그}:{날짜}`)에 싣는다 — `n01_prior` 가 이미
@@ -109,7 +109,11 @@ async def ensure_soccer_elo(redis, league_days) -> dict:
                 continue
             todo.setdefault(day, []).append(lg)
         for day, lgs in sorted(todo.items()):
-            got = await SE.publish_ratings(redis, lgs, day)
+            # 🔴 [ELO-N 2026-09-22] **pool 을 넘긴다.** 그래야 대조표에 없는
+            #    팀을 DB 표기로 찾아 정규화 매칭을 할 수 있다 — 종전에는 그
+            #    팀들이 통째로 빠져 축구 45경기 중 33건이 "사전값이 없다 —
+            #    보드 고정"으로 멈췄다.
+            got = await SE.publish_ratings(redis, lgs, day, pool=pool)
             out.update(got)
         if out:
             logger.info("[flow] 축구 elo 보장 — %s", out)
@@ -239,7 +243,7 @@ async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
         ok = await ensure_elo(pool, redis, sp, day)
         logger.info("[flow] elo 보장 %s %s — %s", sp, day, "있음" if ok else "없음")
     if soccer_want:
-        await ensure_soccer_elo(redis, soccer_want)
+        await ensure_soccer_elo(redis, soccer_want, pool=pool)
 
 
     # 🔴 [2026-09-19] **파생 확률을 슬레이트 단위로 한 번 읽는다.**

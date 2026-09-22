@@ -324,6 +324,102 @@ def ratings_for_league(league: str, ratings: dict | None = None) -> dict:
     return out
 
 
+#: [ELO-N 2026-09-22] 법인격 토큰. 🔴 이름이 아니라 **형식**이다.
+#  ALI-1 이 같은 것을 겪었다 — "`Como 1907` 은 0건, `Como` 는 나온다."
+_LEGAL = frozenset((
+    "fc", "afc", "cfc", "cf", "sc", "as", "ac", "us", "ss", "ssc", "ca",
+    "sk", "bk", "if", "cd", "ud", "rc", "rcd", "sv", "tsv", "vfb", "vfl",
+    "bsc", "fsv", "sd", "cp", "aj", "sco", "ogc", "losc", "psg", "spa",
+    "club", "calcio", "1899", "1907", "1909", "1913", "1919", "1995",
+))
+
+
+def slim(name: str) -> str:
+    """비교용 **간추린 이름**. 법인격·창단연도를 뗀다.
+
+    🔴 악센트·치환은 `fotmob.norm` 이 원본이다(치환표 `team_name_map.yaml`).
+       여기서 다시 짓지 않는다 — `ø`·`æ`·`ß` 는 NFKD 로 안 풀린다(FMR-1).
+    🔴 **빈 문자열이면 안 맞춘다.** `norm` 은 한글을 통째로 지운다(D26:
+       `norm('박건우') → ''`). 빈 키로 맞추면 전부 서로 일치해 버린다.
+    ⚠️ 토큰이 전부 지워지면 **원래 정규화 이름**을 쓴다 — `AS`·`Inter` 처럼
+       법인격만으로 이루어진 이름을 빈 것으로 만들지 않는다.
+    """
+    from app.collectors.fotmob import norm
+
+    n = (norm(name) or "").strip()
+    if not n:
+        return ""
+    toks = [t for t in n.split()
+            if t not in _LEGAL and not t.isdigit()]
+    return " ".join(toks) if toks else n
+
+
+def _slim_index(names) -> dict:
+    """`{간추린 이름: 원래 이름}`. 🔴 **겹치면 둘 다 버린다.**
+
+    `Al Ahli` 는 사우디·카타르·UAE 에 실재한다. 조용히 하나를 고르면 그게
+    D15 가 오탐을 세 번 낸 자리다.
+    """
+    seen: dict = {}
+    dup: set = set()
+    for n in names:
+        k = slim(n)
+        if not k:
+            continue
+        if k in seen and seen[k] != n:
+            dup.add(k)
+        seen[k] = n
+    for k in dup:
+        seen.pop(k, None)
+    return seen
+
+
+def ratings_loose(league: str, teams, ratings: dict | None = None) -> dict:
+    """[ELO-N] 대조표로 못 찾은 팀을 **정규화로** 한 번 더 맞춘다.
+
+    🔴 **대조표가 먼저 이긴다** — 사람이 정한 것을 규칙이 덮지 않는다.
+    🔴 **리그 안에서만** 맞춘다(종전 규약) — 리그 간 비교가 되면 안 된다.
+    ⚠️ 못 맞춘 이름을 **로그로 센다**(조용한 0 금지).
+
+    반환은 `ratings_for_league` 와 같은 모양 `{우리 이름: 레이팅}`.
+    """
+    exact = ratings_for_league(league, ratings)
+    want = [t for t in (teams or []) if t and t not in exact]
+    if not want:
+        return exact
+
+    src = ratings if ratings is not None else _load_ratings_file()
+    code = None
+    low = str(league or "").lower()
+    for key, c in LABEL_TO_CODE:
+        if key in low:
+            code = c
+            break
+    pool = (src or {}).get(code) if code else None
+    if not isinstance(pool, dict) or not pool:
+        logger.info("[elo] %s 레이팅 풀 없음 — 느슨 매칭 생략 (%d팀 미기입)",
+                    league, len(want))
+        return exact
+
+    idx = _slim_index(pool.keys())
+    out = dict(exact)
+    hit, miss = [], []
+    for t in want:
+        k = slim(t)
+        elo_name = idx.get(k) if k else None
+        v = pool.get(elo_name) if elo_name else None
+        if v is None:
+            miss.append(t)
+            continue
+        out[t] = float(v)
+        hit.append(f"{t}→{elo_name}")
+    if hit:
+        logger.info("[elo] %s 느슨 매칭 %d건: %s", league, len(hit), hit[:6])
+    if miss:
+        logger.info("[elo] %s 못 맞춘 팀 %d: %s", league, len(miss), miss[:6])
+    return out
+
+
 def _load_ratings_file() -> dict:
     try:
         return json.loads(RATINGS_FILE.read_text(encoding="utf-8"))
@@ -362,7 +458,39 @@ async def ensure_ratings_file(redis, date: str) -> dict:
     return _load_ratings_file()
 
 
-async def publish_ratings(redis, leagues, date: str, *, ratings=None) -> dict:
+#: [ELO-N 2026-09-22] 캐시에 실을 팀 이름을 **DB 에서** 가져온다.
+#  🔴 대조표(`elo_names.yaml`)에 없는 팀은 종전에 통째로 빠졌다 — 그래서
+#     축구 45경기 중 33건이 "사전값이 없다 — 보드 고정"으로 멈췄다.
+#  ⚠️ 최근·예정 경기의 팀만 본다. 전 시즌을 긁으면 개명 전 이름까지 들어온다.
+_TEAMS_SQL = """
+    SELECT DISTINCT t FROM (
+      SELECT home AS t FROM games
+       WHERE sport='soccer' AND league=$1
+         AND starts_at BETWEEN now() - interval '30 days'
+                           AND now() + interval '7 days'
+      UNION
+      SELECT away AS t FROM games
+       WHERE sport='soccer' AND league=$1
+         AND starts_at BETWEEN now() - interval '30 days'
+                           AND now() + interval '7 days') x
+     WHERE t IS NOT NULL
+"""
+
+
+async def _league_teams(pool, league: str) -> list:
+    """그 리그의 우리 표기 팀 이름들. 못 읽으면 빈 목록(예외 금지)."""
+    if pool is None:
+        return []
+    try:
+        rows = await pool.fetch(_TEAMS_SQL, league)
+    except Exception as exc:
+        logger.info("[elo] %s 팀 목록 조회 실패 — 느슨 매칭 생략: %s", league, exc)
+        return []
+    return [r["t"] for r in rows if r["t"]]
+
+
+async def publish_ratings(redis, leagues, date: str, *, ratings=None,
+                          pool=None) -> dict:
     """리그별 레이팅을 `elo:{리그}:{날짜}` 에 싣는다. 반환 `{리그: 팀 수}`.
 
     🔴 키·TTL 은 `team_elo` 가 원본이다 — 야구와 같은 자리에 같은 모양으로 둔다.
@@ -373,7 +501,11 @@ async def publish_ratings(redis, leagues, date: str, *, ratings=None) -> dict:
     src = ratings if ratings is not None else await ensure_ratings_file(redis, date)
     out: dict = {}
     for lg in leagues or []:
-        got = ratings_for_league(lg, src)
+        # 🔴 [ELO-N] 대조표 정확 일치가 **먼저**, 못 찾은 것만 정규화로.
+        #    사람이 정한 것을 규칙이 덮지 않는다.
+        teams = await _league_teams(pool, lg)
+        got = (ratings_loose(lg, teams, src) if teams
+               else ratings_for_league(lg, src))
         if not got:
             logger.info("[elo] %s — 대조 가능한 팀 0 (사전값없음 경로로 간다)", lg)
             continue
