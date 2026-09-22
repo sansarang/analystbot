@@ -1738,11 +1738,16 @@ async def _write_cache(redis, sport: str, game_id, articles: list[dict]) -> None
 #   읽는 것은 **선별 신호**다. 확률·승자는 읽지 않는다(레저는 측정 전용).
 #   ⚠️ LEFT JOIN 이다 — 아직 판정 전인 경기는 라벨이 NULL 이고, 그때는
 #      종전대로 빅매치만 본다.
+# 🔴 [SWAP-2 2026-09-22 사용자 지시] **구경로 원장을 안 읽는다.**
+#    종전에는 `LEFT JOIN pick_ledger` 로 `gate_label`·`hypothesis` 를 받았다.
+#    그것이 CLAUDE.md 가 "순서가 끊겨 있다"고 적은 자리다 — 흐름이 세운 가설이
+#    수집에 닿지 못하고, 수집은 **다른 사전값으로 계산된 다른 게이트**를 봤다.
+#    지금은 `flow.adapt.latest_for` 가 흐름의 `n03_gate`·`n04_hyp` 를 읽어 온다.
 _DUE_SQL = """
     SELECT g.id, g.sport, g.league, g.home, g.away, g.starts_at,
-           l.gate_label, l.gate_gap_pp, l.hypothesis
+           NULL::text AS gate_label, NULL::numeric AS gate_gap_pp,
+           NULL::jsonb AS hypothesis
       FROM games g
-      LEFT JOIN pick_ledger l ON l.game_id = g.id AND l.is_final
      WHERE g.status = 'scheduled'
        AND g.sport = ANY($1::text[])
        AND g.starts_at BETWEEN now() AND now() + make_interval(hours => $2)
@@ -1811,29 +1816,35 @@ async def run_satellite(pool, redis, *, sports: list[str], now=None,
     #       §3 예산 상한(최대 8)도 그대로다.
     computed = 0
     if pool is not None:
-        from app.engine.pick_ledger import gate_of
+        # 🔴 [SWAP-2] **흐름의 게이트·가설을 읽는다.** 구경로 `gate_of` 를
+        #    부르지 않는다 — 두 게이트가 사전값이 달라 결론도 달랐다
+        #    (실측 g1766: 구경로 "동의"(tier+form) vs 흐름 "시장과대"(team_elo)).
+        #    ⚠️ 못 읽은 경기는 라벨 없음 → 종전대로 빅매치 판정으로 간다.
+        #       구경로로 **되돌아가지 않는다**(사용자 지시).
+        from app.flow.adapt import latest_for
 
+        try:
+            flow_rows = await latest_for(pool, [r["id"] for r in rows])
+        except Exception as exc:
+            logger.warning("[satellite] 흐름 산출 조회 실패 — 라벨 없이 간다: %s",
+                           exc)
+            flow_rows = {}
         _fixed = []
         for r in rows:
             row = dict(r)
-            if not row.get("gate_label"):
-                try:
-                    got = await gate_of(pool, game_id=row["id"])
-                except Exception as exc:
-                    logger.warning("[satellite] 게이트 계산 실패 game=%s: %s",
-                                   row["id"], exc)
-                    got = None
-                if got:
-                    row["gate_label"] = got["label"]
-                    row["gate_gap_pp"] = got["gap_pp"]
-                    row["hypothesis"] = got["hypothesis"]
-                    computed += 1
+            got = flow_rows.get(row["id"])
+            if got and got.get("gate_label"):
+                row["gate_label"] = got["gate_label"]
+                row["gate_gap_pp"] = got["gate_gap_pp"]
+                row["hypothesis"] = got["hypothesis"]
+                computed += 1
             _fixed.append(row)
         rows = _fixed
         # 🔴 조용한 0 금지 — "원장에서 왔다"와 "우리가 계산했다"를 구분하지
         #    못하면 다음 사람이 §3 로그를 잘못 읽는다.
-        logger.info("[satellite] 판정 전 게이트 계산 %d건 / 슬레이트 %d",
-                    computed, len(rows))
+        logger.info("[satellite] 흐름 게이트 적용 %d건 / 슬레이트 %d "
+                    "(라벨 없는 %d건은 빅매치 판정으로)",
+                    computed, len(rows), len(rows) - computed)
 
     # 🔴 [PA-15 · §3] 예산을 **여기서** 건다. 선별된 경기만 게이트 대상으로
     #    표시하고, 나머지는 라벨을 지워 빅매치 판정으로 보낸다.

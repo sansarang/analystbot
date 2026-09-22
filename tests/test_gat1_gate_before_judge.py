@@ -170,18 +170,60 @@ def sat(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_라벨이_없으면_위성이_계산한다(sat, monkeypatch):
-    calls = []
+async def test_라벨은_흐름에서_온다(sat, monkeypatch):
+    """🔴 [SWAP-2 2026-09-22 사용자 지시] **위성이 게이트를 계산하지 않는다.**
+
+    종전 이름은 `test_라벨이_없으면_위성이_계산한다` 였고 `pick_ledger.gate_of`
+    를 불렀다. 그것이 CLAUDE.md 가 "순서가 끊겨 있다"고 적은 자리다 —
+    흐름이 세운 가설이 수집에 닿지 못하고, 수집은 **다른 사전값으로 계산된
+    다른 게이트**를 봤다:
+    ```
+    g1766 두산@KT — 같은 경기, 같은 시각
+      구경로 gate_of  사전값 0.638(tier+form) gap +0.44  → 동의    → 추출 생략
+      흐름  n03_gate 사전값 0.5655(team_elo) gap −10.97 → 시장과대 → 증거 필요
+    ```
+    ⚠️ **계약을 통과시키려 고친 것이 아니다** — 사용자가 "바꿔끼우기 진행해라"
+       고 지시했고, 배선이 바뀌었으므로 계약이 새 배선을 지킨다.
+    """
+    asked = []
+
+    async def _latest(_pool, ids):
+        asked.append(list(ids))
+        return {1: {"gate_label": G.DOUBT, "gate_gap_pp": 9.9,
+                    "hypothesis": {"need": []}}}
+
+    import app.flow.adapt as _A
+
+    monkeypatch.setattr(_A, "latest_for", _latest)
+    await SAT.run_satellite(_Pool([_row(1)]), None, sports=["mlb"])
+    assert asked == [[1]], "흐름 산출을 안 읽었다"
+    assert sat and sat[0]["gate_label"] == G.DOUBT
+    assert sat[0]["hypothesis"] == {"need": []}
+
+
+@pytest.mark.asyncio
+async def test_흐름이_없으면_구경로로_안_돌아간다(sat, monkeypatch):
+    """🔴 사용자 지시 — "**옛 경로로 가서는 안 된다**".
+
+    흐름 산출이 없으면 라벨 없이 간다(그 경기는 빅매치 판정으로).
+    `gate_of` 를 **부르지 않는다.**
+    """
+    called = []
 
     async def _gate_of(_pool, *, game_id):
-        calls.append(game_id)
-        return {"label": G.DOUBT, "gap_pp": 9.9, "hypothesis": '{"need": []}'}
+        called.append(game_id)
+        return {"label": G.DOUBT, "gap_pp": 9.9, "hypothesis": None}
+
+    async def _latest(_pool, ids):
+        return {}
+
+    import app.flow.adapt as _A
 
     monkeypatch.setattr(PL, "gate_of", _gate_of)
+    monkeypatch.setattr(_A, "latest_for", _latest)
     await SAT.run_satellite(_Pool([_row(1)]), None, sports=["mlb"])
-    assert calls == [1], "라벨이 없는데 게이트를 계산하지 않았다"
-    assert sat and sat[0]["gate_label"] == G.DOUBT
-    assert sat[0]["hypothesis"] == '{"need": []}'
+    assert called == [], "흐름이 없다고 구경로 게이트로 돌아갔다"
+    assert sat and sat[0].get("gate_label") is None
 
 
 @pytest.mark.asyncio
@@ -242,7 +284,11 @@ def test_위성이_게이트_규칙을_다시_쓰지_않는다():
 
     code = "\n".join(ln for ln in inspect.getsource(SAT.run_satellite).splitlines()
                      if ln.strip() and not ln.strip().startswith("#"))
-    assert "gate_of" in code
+    # 🔴 [SWAP-2 2026-09-22] `gate_of` → `latest_for`. 계산하는 곳이 아니라
+    #    **읽는 곳**이 바뀌었다. 단언의 뜻은 그대로다 — 위성이 규칙을 다시
+    #    쓰지 않는다.
+    assert "latest_for" in code, "위성이 흐름 산출을 안 읽는다"
+    assert "gate_of" not in code, "아직 구경로 게이트를 계산한다"
     assert "classify(" not in code, "위성이 게이트 규칙을 다시 구현했다"
     assert "load_tiers" not in code, "위성이 티어를 직접 읽는다"
 
