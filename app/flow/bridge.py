@@ -151,6 +151,66 @@ def rejudge_signals_of(cg: dict | None) -> dict:
     }
 
 
+#: 🔴 [VAL-1 2026-09-23 사용자 지시 "11번 풀어라"] 한 슬레이트의 배당을
+#   **한 번에** 읽는다 — 경기마다 물으면 질의가 N배가 된다.
+_LINES_SQL = """
+    SELECT o.game_id, o.market, o.side, o.line, o.odds
+      FROM odds_snapshots o
+     WHERE o.game_id = ANY($1::bigint[])
+     ORDER BY o.captured_at DESC
+"""
+
+
+def book_lines(rows, *, home: str, away: str) -> dict:
+    """북이 실제로 건 **라인 숫자들** `{"totals": [...], "spreads": [...],
+    "team_totals": [...]}`. 없으면 빈 dict.
+
+    🔴 **가격을 넘기는 것이 아니다.** 넘기는 것은 "어느 라인에서 평가할지"
+       뿐이고 확률은 λ 포아송에서 나온다. `h2h`(승패)는 바뀌지 않는다 —
+       계약이 그것을 잠근다.
+    🔴 라인을 고르는 규칙은 `n02_market._derivatives` 가 **원본**이다.
+       여기서 market/side 문자열을 다시 해석하지 않는다(사본 금지).
+    ⚠️ 빈 dict 를 주면 `mlb_market_probs` 가 기본 라인으로 돌아간다 —
+       지어내지 않고 종전과 같아진다.
+    """
+    from app.flow.nodes.n02_market import _derivatives
+
+    der = _derivatives(rows or [], home or "", away or "")
+    out: dict = {}
+    tl = (der.get("total") or {}).get("line")
+    if tl is not None:
+        out["totals"] = [float(tl)]
+    sp = sorted({float(a["line"]) for a in (der.get("ah") or [])
+                 if a.get("line") is not None})
+    if sp:
+        out["spreads"] = sp
+    tt = sorted({float(v["line"]) for k in ("team_total_home", "team_total_away")
+                 for v in ((der.get(k) or {}),) if v.get("line") is not None})
+    if tt:
+        out["team_totals"] = tt
+    return out
+
+
+async def lines_by_game(pool, game_ids) -> dict:
+    """`{game_id(int): book_lines}`. 🔴 못 읽으면 **빈 dict** — 종전과 같다.
+
+    ⚠️ 팀 이름은 `_derivatives` 의 팀토탈 판정에만 쓰인다. 여기서는 모르므로
+       빈 문자열로 넘기고, 팀토탈 라인은 홈/원정 구분 없이 모은다.
+    """
+    ids = [int(g) for g in (game_ids or []) if str(g).isdigit()]
+    if not ids or pool is None:
+        return {}
+    try:
+        rows = [dict(r) for r in await pool.fetch(_LINES_SQL, ids)]
+    except Exception as exc:
+        logger.warning("[flow] 라인 조회 실패: %s", exc)
+        return {}
+    by: dict = {}
+    for r in rows:
+        by.setdefault(int(r["game_id"]), []).append(r)
+    return {gid: book_lines(rs, home="", away="") for gid, rs in by.items()}
+
+
 def model_probs_from_cache(jg: dict | None, *, lines: dict | None = None,
                            settings=None) -> dict | None:
     """판정 캐시의 `research` 로 λ 를 세우고 전 마켓 확률을 만든다.
@@ -281,10 +341,19 @@ async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
                     cache_by_game.setdefault(str(cg.get("game_id")), cg)
                 break
         made = 0
+        # 🔴 [VAL-1] **북이 건 라인에서 확률을 낸다.** 종전에는 `lines` 를 안
+        #    넘겨 λ 기준 기본 3개만 냈고, 북 라인과 3/8 만 맞았다. 안 맞으면
+        #    ⑪의 `_structure_candidates` 가 그 마켓을 건너뛰어 후보가 0 이
+        #    된다 — 실측 분포에서 `지정 마켓 total 후보 0` 이 8건이었다.
+        #    ⚠️ 가격이 아니라 **라인 숫자**만 넘긴다(`h2h` 는 안 바뀐다).
+        line_map = await lines_by_game(
+            pool, [int(g) for g in cache_by_game if str(g).isdigit()])
         for gid, cg in cache_by_game.items():
             if gid in {str(k) for k in model_by_game}:
                 continue          # 원장에 있으면 그것이 먼저다
-            got = model_probs_from_cache(cg, settings=s)
+            got = model_probs_from_cache(
+                cg, lines=line_map.get(int(gid)) if str(gid).isdigit() else None,
+                settings=s)
             if got:
                 model_by_game[int(gid)] = got
                 made += 1
