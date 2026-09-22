@@ -460,6 +460,53 @@ async def _xi_rows(state, ctx) -> list:
         return []
 
 
+#: 🔴 [ROT-1] 직전 경기. **일정 표에 이미 있다** — 기사에 묻지 않는다.
+#   ⚠️ `starts_at <` 로 **킥오프 이전**만 센다. 자기 자신을 세면 전건이
+#      confirmed 가 된다.
+#   ⚠️ 취소·연기는 뛴 경기가 아니다 — `status` 로 거른다.
+_RECENT_SQL = """
+    SELECT home, away, starts_at, league
+      FROM games
+     WHERE sport = $1
+       AND $2 IN (home, away)
+       AND starts_at < $3::timestamptz
+       AND starts_at >= $3::timestamptz - make_interval(hours => $4)
+       AND status NOT IN ('cancelled', 'postponed')
+     ORDER BY starts_at DESC
+"""
+
+
+async def _recent_match(state, ctx, side: str) -> list:
+    """창 안에 뛴 경기. 🔴 **없으면 빈 목록**(=봤는데 없다)이고, 못 보면 None."""
+    from app.flow import rules as R
+
+    if ctx.pool is None:
+        return None
+    kick = _kickoff_dt(state.kickoff_utc)
+    team = getattr(state, side, "")
+    if kick is None or not team:
+        return None
+    try:
+        hours = float(R.get("rotation_window_h", 96) or 96)
+    except (TypeError, ValueError):
+        hours = 96.0
+    try:
+        rows = await ctx.pool.fetch(_RECENT_SQL, _sport_code(state), team,
+                                    kick, hours)
+    except Exception as exc:
+        logger.warning("[flow:n05] 직전 경기 조회 실패 game=%s: %s",
+                       state.game_id, exc)
+        return None
+    out = []
+    for r in rows:
+        opp = r["away"] if r["home"] == team else r["home"]
+        when = r["starts_at"]
+        gap = (kick - when).total_seconds() / 3600.0 if when else None
+        out.append(f"{when:%m-%d} vs {opp}"
+                   + (f" ({gap:.0f}시간 전)" if gap is not None else ""))
+    return out
+
+
 def _as_list(raw) -> list:
     """jsonb 칸을 목록으로. ⚠️ asyncpg 가 문자열로 줄 때가 있다."""
     if isinstance(raw, str):
@@ -644,6 +691,23 @@ async def run(state, ctx):
                                 excerpt=" · ".join(flat[:12]),
                                 sides={k: len(v) for k, v in per_side.items()},
                                 direction=d))
+            continue
+
+        # 🔴 [ROT-1] 로테이션 위험은 **일정에서 센다.** 기사·LLM 0.
+        #    ⚠️ "쉬어서 유리하다"는 적지 않는다 — 미검증이다. 확인되는 것은
+        #       "직전에 뛰었다"(피로)뿐이고, 없으면 방향 없이 빈 목록이다.
+        if var == "rotation_risk":
+            side = state.pick_side or "home"
+            played = await _recent_match(state, ctx, side)
+            if played is not None:
+                if played:
+                    out.append(_row(var, played, source="db:games",
+                                    excerpt=" · ".join(played[:3]),
+                                    sides={side: len(played)}, direction=-1))
+                else:
+                    out.append(_row(var, [], source="db:games",
+                                    excerpt="창 안 직전 경기 없음",
+                                    sides={side: 0}))
             continue
 
         # 🔴 [OUT-S] 축구 결장자는 **표에서 읽는다**(transfermarkt →

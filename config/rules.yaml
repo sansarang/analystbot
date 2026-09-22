@@ -108,6 +108,11 @@ flow:
       rotation_risk:     {max_abs: 2.0, core: false}
       travel:            {max_abs: 1.0, core: false}
       motivation:        {max_abs: 1.5, core: false}
+  # 🔴 [ROT-1 2026-09-23 사용자 승인] 로테이션 창(시간). 킥오프 이 시간 안에
+  #    **직전 경기가 있었으면** 피로로 본다. 기사·LLM 없이 `games` 로 센다.
+  # ⚠️ **미검증 사전값이다.** 96h 는 2026-09-20 계획서에서 쓰던 값을 그대로
+  #    옮긴 것이고, 채점이 쌓이기 전에 고치면 측정이 아니라 취향이다.
+  rotation_window_h: 96
   gate_pp:
     agree: 4.0        # |gap| < 4 → 동의
     freeze: 12.0      # |gap| >= 12 → 보드고정 (데이터 오류 의심)
