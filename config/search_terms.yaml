@@ -55,8 +55,10 @@ terms:
       - "{home} vs {away} confirmed lineup AFC Champions League"
       - "{team} スタメン発表 ACL"
       - "{team} 선발 라인업 ACL"
-  # ⚠️ 아래 둘은 **우리 시스템에 리그가 없다**(app/leagues.py 가 원본).
-  #    사용자가 모양을 지정했으므로 적어 두되, 리그가 생기기 전에는 안 쓰인다.
+  # 🔴 [LOC-3 2026-09-22 정정] 종전 주석은 "아래 둘은 우리 시스템에 리그가
+  #    없다"였다. **틀렸다** — `league_labels()` 실측: `리그앙 → ligue1` ·
+  #    `에레디비시 → eredivisie` 가 실재하고 경기도 들어온다(최근 30일
+  #    리그앙 49 · 에레디비시 53). 로케일이 없어서 검색이 안 나갔을 뿐이다.
   ligue1:
     pre:    ["{home} {away} compos probables", "{team} blessés aujourd'hui"]
     lineup: ["{home} {away} compos officielles"]
@@ -111,8 +113,17 @@ today_words:
 # 🔴 새로 정하는 값이 아니다 — 위 `terms` 가 **이미 그 언어로** 쓰여 있고,
 #    여기는 같은 사실을 RSS 파라미터 모양으로 적을 뿐이다(세리에A = it/IT).
 # 🔴 `ceid` 는 적지 않는다 — `{gl}:{hl 앞 2자}` 로 코드가 만든다(사본 금지).
-# ⚠️ 덴마크는 `terms` 가 영어다(덴마크어를 지어내지 않았다). 로케일도 그에
-#    맞춰 en/DK 다. 사용자가 덴마크어 검색어를 주면 둘을 함께 바꾼다.
+# 🔴 [LOC-3 2026-09-22 정정] 덴마크 주석이 낡았다 — `terms` 는 이미
+#    **덴마크어**다(`forventet startopstilling skader`, "임시" 표시가 붙어
+#    있다). 로케일만 en 으로 남아 언어가 어긋나 있었다. da/DK 로 맞춘다.
+# 🔴 [LOC-3] `ligue1`·`eredivisie` 를 **추가**한다. 종전에는 로케일이 없어
+#    `scout_config.locale()` 이 None 을 주고, `rss_hits` 가 그 자리에서
+#    **빈손으로 즉시 반환**했다 — 두 리그는 기사 검색이 한 번도 안 나갔다.
+#      loc = locale(league)
+#      if not loc or not query:
+#          return []            ← 여기
+# ⚠️ `ucl`·`uel` 은 **여전히 없다.** 참가국이 섞여 어느 언어로 물을지가
+#    갈림길이다 — 지시 없이 정하지 않는다(D58 로 등록).
 locales:
   epl:        {hl: en, gl: GB}
   acl:        {hl: en, gl: SG}   # [ACL-1] 참가국이 섞인다 — 영어·싱가포르
@@ -121,7 +132,9 @@ locales:
   bundesliga: {hl: de, gl: DE}
   j1:         {hl: ja, gl: JP}
   kleague1:   {hl: ko, gl: KR}
-  denmark:    {hl: en, gl: DK}
+  denmark:    {hl: da, gl: DK}   # [LOC-3] terms 가 덴마크어다 — 맞췄다
+  ligue1:     {hl: fr, gl: FR}   # [LOC-3] terms 가 불어다(compos probables)
+  eredivisie: {hl: nl, gl: NL}   # [LOC-3] terms 가 네덜란드어다(opstelling)
   mlb:        {hl: en, gl: US}
   kbo:        {hl: ko, gl: KR}
   npb:        {hl: ja, gl: JP}
