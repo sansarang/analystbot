@@ -460,7 +460,18 @@ async def _fs_lineups(jg: dict, today: str, pool=None) -> list[dict]:
                           batting_order = EXCLUDED.batting_order,
                           captured_at = now()
                     """,
-                    jg.get("game_id"), side, "predicted", "flashscore",
+                    jg.get("game_id"), side,
+                    # 🔴 [XI-1 2026-09-23] 종전에는 `"predicted"` 를 **손으로
+                    #    박았다.** 실측 122행이 전부 킥오프 -48~-3분·11명이라
+                    #    그것은 예상이 아니라 **공식 발표 XI** 였고, 그래서
+                    #    `xi_confirmed` 가 305건 전건 미상이었다.
+                    #    ⚠️ 규칙의 원본은 `lineups.xi_status_of` 하나다 —
+                    #       ⑤도 같은 함수를 본다(사본 금지).
+                    _xi_status_of(source="flashscore",
+                                  n_players=len(t["선발"] or []),
+                                  captured_at=_now_utc(),
+                                  kickoff=_as_dt(jg.get("starts_at"))),
+                    "flashscore",
                     t["포메이션"],
                     _json.dumps([p["이름"] for p in t["선발"]], ensure_ascii=False),
                     _json.dumps([p["이름"] for p in t["교체"]], ensure_ascii=False))
@@ -471,6 +482,35 @@ async def _fs_lineups(jg: dict, today: str, pool=None) -> list[dict]:
         logger.info("[satellite] 축구 %s@%s — 라인업 아직 미발표(킥오프 1시간 전 제공)",
                     jg.get("away"), jg.get("home"))
     return out
+
+
+def _now_utc():
+    from datetime import UTC, datetime
+
+    return datetime.now(UTC)
+
+
+def _as_dt(raw):
+    """`starts_at` 을 aware datetime 으로. 🔴 못 읽으면 **None** —
+    그러면 `xi_status_of` 가 `predicted` 로 내린다(모르면 낮은 쪽)."""
+    from datetime import UTC, datetime
+
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        return raw if raw.tzinfo else raw.replace(tzinfo=UTC)
+    try:
+        d = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return d if d.tzinfo else d.replace(tzinfo=UTC)
+
+
+def _xi_status_of(**kw) -> str:
+    """🔴 원본은 `app.collectors.lineups.xi_status_of` 하나다(사본 금지)."""
+    from app.collectors.lineups import xi_status_of
+
+    return xi_status_of(**kw)
 
 
 def _tor_stage(jg: dict, now=None) -> str:

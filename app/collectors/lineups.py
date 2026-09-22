@@ -24,6 +24,44 @@ STATUS_NONE, STATUS_PREDICTED, STATUS_CONFIRMED, STATUS_CONFLICT = (
     "none", "predicted", "confirmed", "conflict")
 
 
+#: 🔴 [XI-1 2026-09-23] **축구 선발 XI 가 공식 발표분인가.**
+#
+#   실측 — flashscore 라인업 122행 전수:
+#     수집시각 − 킥오프   최소 -48분 · 중앙 -15분 · 최대 -3분
+#     킥오프 60분+ 전 0행 · 60~0분 전 122행 · 킥오프 후 0행
+#     명단 인원 11명 → 122행 (다른 값 없음)
+#   축구 공식 XI 는 킥오프 약 1시간 전에 발표된다. 우리 자료는 전건이 그 창
+#   안이고 인원도 정확히 11명이다 — **예상이 아니라 공식 발표분**이다.
+#
+#   종전에는 적재기가 `"predicted"` 를 **손으로 박고** 있었고, 그래서
+#   `xi_confirmed` 가 최근 3일 305건 전건 미상이었다(⑦은 confirmed 에만
+#   조정을 건다).
+#
+# 🔴 **적재기와 ⑤가 이 함수 하나를 본다.** 두 벌이면 어긋나고, 어긋나면
+#    "표에는 confirmed 인데 ⑤는 아니라고 한다"가 된다.
+# ⚠️ **모르면 낮은 쪽이다** — 킥오프·수집시각을 모르면 `predicted` 다.
+#    확정이라고 올려 부르면 확신이 부풀고, 그 방향이 더 위험하다.
+#    판정 규율 "예상을 확정으로 취급 금지"(CLAUDE.md)는 그대로다.
+def xi_status_of(*, source: str, n_players: int,
+                 captured_at, kickoff) -> str:
+    """축구 선발 명단 한 벌의 상태. `confirmed` | `predicted`."""
+    from app.engine import rules as R
+
+    try:
+        window = float(R.get("lineups.official_window_min", 60) or 60)
+    except Exception:
+        window = 60.0
+    if int(n_players or 0) != 11:
+        return STATUS_PREDICTED
+    if captured_at is None or kickoff is None:
+        return STATUS_PREDICTED
+    try:
+        mins = (captured_at - kickoff).total_seconds() / 60.0
+    except (TypeError, AttributeError):
+        return STATUS_PREDICTED
+    return STATUS_CONFIRMED if -window <= mins <= 0 else STATUS_PREDICTED
+
+
 class MLBLineupClient(BaseAPIClient):
     """statsapi boxscore — 확정 선발·타순·결장자."""
 

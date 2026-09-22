@@ -428,6 +428,71 @@ async def _bullpen3d(state, ctx, side: str) -> list:
              for r in rows], [dict(x) for x in rows])
 
 
+#: 🔴 [XI-1 2026-09-23] 축구 확정 선발 XI. **표에 이미 있다** — flashscore 가
+#   킥오프 1시간 안에 전 리그 11명을 넣고 `satellite_soccer` 가 `lineups` 에
+#   적는다(라리가·EPL·세리에A·분데스·J1·K리그1·덴마크·ACL 전부).
+#   그런데 ⑤는 그 표를 **한 번도 읽지 않았다** — 위성 추출 상자(`out`)만
+#   봤고, LLM 을 0 으로 만든 뒤로는 그 상자가 비어 영원히 미상이었다
+#   (실측: 최근 3일 `xi_confirmed` 305건 전건 unknown).
+# ⚠️ 최신 한 벌만 본다 — 같은 경기·같은 쪽에 예상/확정이 둘 다 있을 수 있다.
+_XI_SQL = """
+    SELECT l.side, l.status, l.source, l.starter, l.batting_order,
+           l.scratches, l.captured_at
+      FROM lineups l
+     WHERE l.game_id = $1
+     ORDER BY l.captured_at DESC
+"""
+
+
+async def _xi_rows(state, ctx) -> list:
+    """이 경기의 라인업 행. 🔴 못 읽으면 **빈 목록**(미상) — 지어내지 않는다."""
+    if ctx.pool is None:
+        return []
+    try:
+        gid = int(state.game_id)
+    except (TypeError, ValueError):
+        return []
+    try:
+        return [dict(r) for r in await ctx.pool.fetch(_XI_SQL, gid)]
+    except Exception as exc:
+        logger.warning("[flow:n05] 라인업 조회 실패 game=%s: %s",
+                       state.game_id, exc)
+        return []
+
+
+def _confirmed_xi(rows: list, side: str) -> dict | None:
+    """우리 쪽 **확정** XI 한 벌. 없으면 None.
+
+    🔴 **"예상을 확정으로 취급 금지"**(CLAUDE.md 발송 규율). 예상 명단은
+       싣지 않는다 — 실으면 ⑦이 `confirmed` 로 읽고 확률을 움직인다.
+    🔴 예상뿐일 때 `None`(=⑥에서 `unknown`)이지 **빈 목록이 아니다.**
+       빈 목록은 ⑥ 규약상 `refuted`("봤는데 없다")이고, 핵심 변수가 반증으로
+       잡히면 픽이 철회된다. 공식 XI 는 **아직 안 나왔을 뿐**이다.
+    ⚠️ 상태의 원본은 `lineups.xi_status_of` 가 적어 둔 `status` 열이다 —
+       여기서 다시 판정하지 않는다(사본 금지).
+    """
+    from app.collectors.lineups import STATUS_CONFIRMED
+
+    for r in rows:
+        if str(r.get("side") or "") != side:
+            continue
+        if str(r.get("status") or "") != STATUS_CONFIRMED:
+            continue
+        names = r.get("batting_order") or []
+        if isinstance(names, str):
+            import json as _j
+
+            try:
+                names = _j.loads(names)
+            except ValueError:
+                continue
+        if not names:
+            continue
+        return {"names": list(names), "formation": r.get("starter") or "",
+                "source": r.get("source") or "", "at": r.get("captured_at")}
+    return None
+
+
 async def _last3(state, ctx, side: str) -> list:
     """직전 3경기 결과. 🔴 기사에 묻지 않는다 — DB 에 있다(FORKS F-11)."""
     if "last3" in (ctx.inject or {}):
@@ -549,6 +614,22 @@ async def run(state, ctx):
                                 sides={k: len(v) for k, v in per_side.items()},
                                 direction=d))
             continue
+
+        # 🔴 [XI-1] 확정 XI 는 **표에서 읽는다.** 기사·LLM 에 묻지 않는다.
+        # ⚠️ 표에서 못 얻으면 `continue` 하지 **않는다** — 아래 추출 경로로
+        #    내려가야 HYC-1("못 믿을 카드는 값을 싣지 않고 사유를 남긴다")이
+        #    산다. 처음에 여기서 끊었다가 그 계약을 깼다.
+        if var == "xi_confirmed":
+            side = state.pick_side or "home"
+            got = _confirmed_xi(await _xi_rows(state, ctx), side)
+            if got:
+                names = got["names"]
+                head = " · ".join(map(str, names[:4]))
+                out.append(_row(var, names, source="db:lineups",
+                                excerpt=f"{got['formation']} {head} 외 "
+                                        f"{max(0, len(names) - 4)}명".strip(),
+                                sides={side: len(names)}))
+                continue
 
         field = _FROM_EXTRACT.get(var)
         if var in ("form_recent5",) or var == "last3":
