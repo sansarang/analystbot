@@ -491,7 +491,8 @@ async def gather_kbo(jg: dict, *, client=None, now: datetime | None = None) -> l
             if picked >= _KBO_TOP_N:
                 break
             for h in await rss_hits(f"{alias} {term}", league="kbo",
-                                    stage=stage, now=now):
+                                    stage=stage, now=now, sport="kbo",
+                                    kickoff=jg.get("starts_at")):
                 if picked >= _KBO_TOP_N:
                     break
                 u = h.get("url") or ""
@@ -649,7 +650,8 @@ def _title_hits(title: str, team: str) -> bool:
 
 
 async def rss_hits(query: str, *, league: str, stage: str = "pre",
-                   now=None) -> list[dict]:
+                   now=None, sport: str | None = None,
+                   kickoff=None) -> list[dict]:
     """[SCT-7 → DS-3] 현지어 질의 1순위 통로. **2026-09-21 에 공급자를 갈았다.**
 
     🔴 종전은 Google News RSS 였고 그것은 **robots 거부**다 — `*` 에
@@ -670,7 +672,7 @@ async def rss_hits(query: str, *, league: str, stage: str = "pre",
        타입으로 "pubDate 를 아는 소스"(RSS)를 가른다(SCT-6).
     ⚠️ 되돌릴 스위치를 두지 않았다 — 되돌릴 자리가 **robots 거부 경로**다.
     """
-    from app.deepsearch.search import chain_search
+    from app.deepsearch.search import chain_search, verify
     from app.engine.scout_config import MAX_AGE_H, locale
 
     loc = locale(league)
@@ -687,6 +689,18 @@ async def rss_hits(query: str, *, league: str, stage: str = "pre",
     except Exception as exc:
         logger.warning("[rss] %s 조회 실패 %s: %s", league, query[:40], exc)
         return []
+    # 🔴 [WIR-3 2026-09-22] **검증을 여기서 건다.** `verify` 는 ADD-2·D38 에서
+    #    만들어졌는데 부르는 곳이 오디션 도구 하나였다 — 운영 기사 경로는
+    #    지나지 않았다. 실측: KBO 12건 중 5건이 msn.com · 본문 3자(요청 5회 낭비).
+    #    ⚠️ **창(`window`)은 걸지 않는다** — `MAX_AGE_H` 와 두 벌이 되고, 실측
+    #       2026-09-22 에 24h 를 얹으면 18건 → 2건이 됐다(FORKS F-19 결정 대기).
+    #    ⚠️ `sport` 가 없으면 `recap_markers` 규약대로 리캡을 안 거른다.
+    hits, _bad = verify(hits, sport=sport or "", starts_at=kickoff, window=False)
+    if _bad:
+        _why: dict = {}
+        for d in _bad:
+            _why[d.get("reason")] = _why.get(d.get("reason"), 0) + 1
+        logger.info("[rss] %s 검증 폐기 %d건 %s", league, len(_bad), _why)
     # ⚠️ 신선도 상한은 **종전 그대로** `scout_config.MAX_AGE_H` 다(사본 금지).
     cur = now or datetime.now(timezone.utc)
     cap = MAX_AGE_H.get(stage, 48)
@@ -710,7 +724,8 @@ async def rss_hits(query: str, *, league: str, stage: str = "pre",
 
 async def rss_supplement(jg: dict, queries: list[tuple[str, str]], *,
                          league: str, stage: str = "pre", kickoff=None,
-                         now=None, stats: dict | None = None) -> list[dict]:
+                         now=None, stats: dict | None = None,
+                         sport: str | None = None) -> list[dict]:
     """[SCT-7] RSS 결과를 **같은 문**(rank_and_pick)에 태워 상위만 연다.
 
     🔴 선별 규칙을 여기 복사하지 않는다 — 토르 경로와 **같은 함수**를 쓴다.
@@ -727,7 +742,8 @@ async def rss_supplement(jg: dict, queries: list[tuple[str, str]], *,
     dropped = 0
     hits_total = 0
     for team, q in queries:
-        hits = await rss_hits(q, league=league, stage=stage, now=now)
+        hits = await rss_hits(q, league=league, stage=stage, now=now,
+                              sport=sport, kickoff=kickoff)
         hits_total += len(hits)
         if not hits:
             continue

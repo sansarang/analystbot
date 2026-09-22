@@ -300,11 +300,25 @@ def drop_wrappers(hits) -> tuple:
     return ok, dropped
 
 
-def verify(hits, *, sport: str, starts_at) -> tuple:
+def verify(hits, *, sport: str, starts_at, window: bool = True) -> tuple:
     """공급자가 준 것에도 **같은 검증**을 건다. 반환 `(통과, 버린 것)`.
 
     🔴 규칙을 여기서 만들지 않는다 — `situation.is_recap`(경기 후 기사)과
        `situation.published_before`(시점·창)가 원본이다(사본 금지).
+
+    🔴 [WIR-3 2026-09-22] `window=False` 면 **시점 창만** 건너뛴다(래핑·리캡은
+       그대로 건다). 창이 지금 **두 벌**이라서 둔 스위치다:
+
+         scout_config.MAX_AGE_H['pre']     48h · **지금 시각** 기준
+         situation.SITUATION_WINDOW_HOURS  24h · **킥오프** 기준 (MLB 36h)
+
+       절제 실험 2026-09-22 (KBO 2경기 18건):
+         종전 18 → 래핑 -6 = 12 → 리캡 -1 = 11 → **24h창 -9 = 2**
+       24h 를 얹으면 오늘 프리뷰(`KT 위즈, SSG 상대로 3연승 정조준`)와 선발
+       기사(`왕옌청 한국전 선발 불발…한화와 차출 조건 합의`)가 버려진다.
+       **어느 창이 추출 입력의 정본인지는 사용자 결정이다** → FORKS F-19.
+       ⚠️ 기본값은 `True` 다 — 종전 호출부(오디션 도구) 동작은 바뀌지 않는다.
+
     ⚠️ 버린 것을 **사유와 함께** 돌려준다. 몇 건을 왜 버렸는지 모르면
        회수율이 좋아 보이는 쪽을 고르게 된다 — 그게 오늘 실측이 경고한 것이다.
     """
@@ -328,7 +342,7 @@ def verify(hits, *, sport: str, starts_at) -> tuple:
         #       (실측: analysis:* 의 published 159건 전부 파싱됨). 잠재 함정이다 → D37.
         raw = (format_datetime(h.published_at)
                if isinstance(h.published_at, datetime) else h.published_at)
-        if not published_before({"published": raw}, starts_at, sport):
+        if window and not published_before({"published": raw}, starts_at, sport):
             dropped.append({"url": h.url, "reason": "out_of_window",
                             "title": h.title})
             continue

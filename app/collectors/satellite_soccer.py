@@ -607,11 +607,12 @@ async def gather_soccer(jg: dict, *, client=None, now: datetime | None = None,
             _rss += await rss_supplement(jg, [(None, q) for q in _pair_qs],
                                          league=lkey, stage=stage,
                                          kickoff=jg.get("starts_at"), now=now,
-                                         stats=_st)
+                                         stats=_st, sport="soccer")
         # ⚠️ 대진 질의가 충분하면 팀 질의는 생략한다(사용자 지시·예산).
         if _st.get("hits", 0) < SC.PAIR_HITS_ENOUGH:
             _rss += await rss_supplement(jg, _qs, league=lkey, stage=stage,
-                                         kickoff=jg.get("starts_at"), now=now)
+                                         kickoff=jg.get("starts_at"), now=now,
+                                         sport="soccer")
         else:
             logger.info("[rss] %s %s@%s — 대진 질의 %d건이라 팀 질의 생략",
                         league, jg.get("away"), jg.get("home"), _st["hits"])
