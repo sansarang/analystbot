@@ -289,7 +289,21 @@ async def park_refresh_job() -> None:
     redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
     try:
         result = await refresh(redis)
-        logger.info("[scheduler] 파크팩터 갱신: %s", result)
+        logger.info("[scheduler] 파크팩터 갱신(MLB): %s", result)
+        # 🔴 [VEN-1 2026-09-23] **KBO 도 같은 잡에서 돌린다.** 모듈은 멀쩡했고
+        #    (실측: stadiums 9 · games 782), 종전 0 은 `koreabaseball` 게이트
+        #    때문이었다(2026-09-23 KBO-ON 으로 켰다). 부르는 곳이 없어서
+        #    `park_factor` 가 야구 전 리그에서 언제나 미상이었다.
+        #    ⚠️ 새 잡을 만들지 않는다 — 주기가 두 벌이 되면 한쪽만 도는 날이
+        #       생긴다. 실패해도 MLB 결과를 버리지 않는다.
+        try:
+            from app.collectors.kbo_park import refresh as kbo_refresh
+
+            kbo = await kbo_refresh(redis)
+            logger.info("[scheduler] 파크팩터 갱신(KBO): %s", kbo)
+            result = {"mlb": result, "kbo": kbo}
+        except Exception as exc:
+            logger.warning("[scheduler] KBO 파크팩터 갱신 실패: %s", exc)
         return result
     finally:
         await redis.aclose()

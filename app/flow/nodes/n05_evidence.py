@@ -460,6 +460,40 @@ async def _xi_rows(state, ctx) -> list:
         return []
 
 
+async def _park_of(state, ctx) -> tuple:
+    """[VEN-1] 홈 구장 파크팩터 `(이름, 값, 출처)`. 모르면 `(None, None, "")`.
+
+    🔴 **모르는 것을 1.0 으로 채우지 않는다.** "측정했는데 중립"과 "못 쟀다"가
+       구분되지 않는다(`kbo_park.merge_into_research` 와 같은 규약).
+    ⚠️ NPB 는 산출 모듈이 **없다** — 미상이 정상이다.
+    ⚠️ 팀→구장 대조표를 여기서 만들지 않는다. `kbo_park.STADIUM_OF_TEAM` 이
+       원본이다(사본 금지).
+    """
+    if ctx.redis is None:
+        return (None, None, "")
+    code = _sport_code(state)
+    home = getattr(state, "home", "") or ""
+    try:
+        if code == "kbo":
+            from app.collectors.kbo_park import STADIUM_OF_TEAM, load
+
+            park = STADIUM_OF_TEAM.get(home)
+            table = await load(ctx.redis) or {}
+            row = table.get(park) if park else None
+            pf = (row or {}).get("pf") if isinstance(row, dict) else row
+            return (park, pf, "kbo_park") if (park and pf) else (None, None, "")
+        if code == "mlb":
+            from app.collectors.park import load
+
+            table = await load(ctx.redis) or {}
+            pf = table.get(home)
+            return (home, pf, "park") if pf else (None, None, "")
+    except Exception as exc:
+        logger.warning("[flow:n05] 파크팩터 조회 실패 game=%s: %s",
+                       state.game_id, exc)
+    return (None, None, "")
+
+
 #: 🔴 [ROT-1] 직전 경기. **일정 표에 이미 있다** — 기사에 묻지 않는다.
 #   ⚠️ `starts_at <` 로 **킥오프 이전**만 센다. 자기 자신을 세면 전건이
 #      confirmed 가 된다.
@@ -691,6 +725,18 @@ async def run(state, ctx):
                                 excerpt=" · ".join(flat[:12]),
                                 sides={k: len(v) for k, v in per_side.items()},
                                 direction=d))
+            continue
+
+        # 🔴 [VEN-1] 파크팩터는 **이미 산출돼 있다.** 방향은 붙이지 않는다 —
+        #    "타자 구장이 우리에게 유리"는 팀 성향에 달렸고 미검증이다.
+        #    ⑦은 방향이 없으면 행을 만들지 않으므로 조정은 0 이고, 바뀌는
+        #    것은 "쟀다/못 쟀다"뿐이다.
+        if var == "park_factor":
+            name, pf, src = await _park_of(state, ctx)
+            if name and pf:
+                out.append(_row(var, [f"{name} {float(pf):.3f}"],
+                                source=f"db:{src}",
+                                excerpt=f"{name} 파크팩터 {float(pf):.3f}"))
             continue
 
         # 🔴 [ROT-1] 로테이션 위험은 **일정에서 센다.** 기사·LLM 0.
