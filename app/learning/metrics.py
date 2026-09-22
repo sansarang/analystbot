@@ -162,22 +162,36 @@ def clv(row) -> float | None:
 def roi_unit(row) -> float | None:
     """단위 스테이크 손익. 이기면 `배당 − 1`, 지면 `−1`, push·void 는 `0`.
 
+    🔴 **배당이 없으면 승·패 둘 다 `None` 이다.** 종전에는 패배를 배당 없이도
+       `−1` 로 셌고 승리는 배당이 없으면 버렸다. 그러면 분모가 승·패에서 달라져
+       ROI 가 **반드시 음수로 치우친다.**
+
+       실측 2026-09-22 (소급 적재 378행) — 첫 표가 그렇게 거짓을 냈다:
+       ```
+       win  208행 중 배당 있는 것  69    ← 139건이 빠졌다
+       loss 158행 중 배당 있는 것  42    ← 그런데 158건 전부 −1 로 세어졌다
+       → ROI −0.4656 (n=229)
+       ```
+       틀린 방향이 더 나쁘다 — "엔진이 안 된다"는 결론을 만든다.
+
     🔴 **금액이 아니다.** 1단위를 걸었다면 얼마가 되는지이고, 금액·비중은
        제안하지 않는다(절대 규칙 R6 · 지시문 §1).
+    ⚠️ `push`·`void` 도 배당을 요구한다. 가격이 없던 결정은 분모에 아예 넣지
+       않는다 — 0 으로 세면 `n` 만 부풀고 평균이 0 쪽으로 끌린다.
     """
     res = (row or {}).get("result")
-    if res in (PUSH, VOID):
-        return 0.0
-    if res not in SCORED:
+    if res not in SCORED and res not in (PUSH, VOID):
         return None
-    if res == LOSS:
-        return -1.0
-    price = (row or {}).get("price_at_decision")
+    # 🔴 **가격이 먼저다.** 결과가 무엇이든 가격 없는 결정은 못 센다.
     try:
-        p = float(price)
+        p = float((row or {}).get("price_at_decision"))
     except (TypeError, ValueError):
         return None
-    return round(p - 1.0, 4) if p > 1.0 else None
+    if p <= 1.0:
+        return None
+    if res in (PUSH, VOID):
+        return 0.0
+    return -1.0 if res == LOSS else round(p - 1.0, 4)
 
 
 def summarize(rows, *, bins: int | None = None) -> dict:

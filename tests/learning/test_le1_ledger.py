@@ -81,8 +81,13 @@ def test_roi_는_단위_스테이크다():
     """⚠️ 금액이 아니다(R6). 이기면 배당−1 · 지면 −1 · push·void 는 0."""
     assert M.roi_unit({"result": "win", "price_at_decision": 1.80}) == 0.8
     assert M.roi_unit({"result": "loss", "price_at_decision": 1.80}) == -1.0
-    assert M.roi_unit({"result": "push"}) == 0.0
-    assert M.roi_unit({"result": "void"}) == 0.0
+    # 🔴 [LE1-ROI 2026-09-22] push·void 도 **배당을 요구한다.** 종전 이 줄은
+    #    `{"result": "push"} == 0.0` 이었다 — 가격 없는 결정을 분모에 넣어
+    #    평균을 0 쪽으로 끌었다. 같은 뿌리의 결함이 ROI 를 −0.4656 으로
+    #    보이게 만들었다(실측 2026-09-22).
+    assert M.roi_unit({"result": "push", "price_at_decision": 1.90}) == 0.0
+    assert M.roi_unit({"result": "void", "price_at_decision": 1.90}) == 0.0
+    assert M.roi_unit({"result": "push"}) is None
     assert M.roi_unit({"result": None}) is None
     # 배당이 1.0 이하면 계산하지 않는다 — 그런 배당은 없다
     assert M.roi_unit({"result": "win", "price_at_decision": 1.0}) is None
@@ -232,3 +237,54 @@ def test_상수의_원본이_learning_yaml_하나다():
     assert R.get("learning") is None, (
         "config/rules.yaml 에 learning 블록이 생겼다 — 두 벌은 어긋난다")
     assert cfg("learning.min_samples") == 30
+
+
+# ── [LE1-ROI] 내가 방금 만든 거짓 숫자 ────────────────────────────────
+
+def test_배당이_없으면_ROI_를_세지_않는다():
+    """🔴 **첫 표가 거짓 숫자를 냈다.** 실측 2026-09-22 (소급 적재 378행):
+
+    ```
+    result  행수   배당 있는 행
+    win      208       69        ← 139건이 ROI 에서 빠졌다
+    loss     158       42        ← 그런데 158건 **전부** −1 로 세어졌다
+    → ROI −0.4656 (n=229)  = 승리 69 + 패배 158 + void 2
+    ```
+
+    승리는 배당이 없으면 버리고 패배는 배당 없이도 −1 로 셌다. 분모가
+    승·패에서 다르면 ROI 는 **반드시 음수로 치우친다.** 숫자가 나빠 보이는
+    쪽으로 틀렸다는 게 더 나쁘다 — "엔진이 안 된다"는 결론을 만든다.
+    """
+    from app.learning import metrics as M
+
+    # 배당이 없으면 승·패 **둘 다** None 이어야 한다
+    assert M.roi_unit({"result": "loss"}) is None, "배당 없는 패배가 -1 로 샜다"
+    assert M.roi_unit({"result": "loss", "price_at_decision": None}) is None
+    assert M.roi_unit({"result": "win"}) is None
+    # 배당이 있으면 종전 그대로
+    assert M.roi_unit({"result": "win", "price_at_decision": 1.8}) == 0.8
+    assert M.roi_unit({"result": "loss", "price_at_decision": 1.8}) == -1.0
+
+
+def test_ROI_분모가_승패에서_같다():
+    """🔴 **반대 위험까지 잰다** — 한쪽만 고치면 이번엔 양수로 치우친다."""
+    from app.learning import metrics as M
+
+    rows = ([{"result": "win", "price_at_decision": 2.0}] * 3
+            + [{"result": "win"}] * 5              # 배당 없음
+            + [{"result": "loss", "price_at_decision": 2.0}] * 3
+            + [{"result": "loss"}] * 5)            # 배당 없음
+    vals = [M.roi_unit(r) for r in rows]
+    counted = [v for v in vals if v is not None]
+    assert len(counted) == 6, f"배당 있는 6건만 세야 한다: {counted}"
+    assert sum(counted) == 0.0, "3승 3패 · 배당 2.0 이면 정확히 0 이다"
+
+
+def test_push_와_void_도_배당을_요구한다():
+    """⚠️ 가격이 없던 결정은 ROI 분모에 **아예 들어가지 않는다.**
+    0 으로 세면 n 만 부풀고 평균이 0 쪽으로 끌린다."""
+    from app.learning import metrics as M
+
+    assert M.roi_unit({"result": "push"}) is None
+    assert M.roi_unit({"result": "push", "price_at_decision": 1.9}) == 0.0
+    assert M.roi_unit({"result": "void", "price_at_decision": 1.9}) == 0.0
