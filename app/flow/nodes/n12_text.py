@@ -109,6 +109,25 @@ async def _ask(payload: dict, ctx) -> str:
 
 async def run(state, ctx):
     """⑫ 서술."""
+    # 🔴 [SWAP-3T 2026-09-22 사용자 지시] **서술은 템플릿이다.**
+    #    사용자 원문: "서술도 템플릿으로 바꿔라" — 구경로(`narrate.story`)에만
+    #    붙여 두면 경로를 갈아끼울 때 다시 LLM 서술로 돌아간다.
+    #    스위치의 원본은 `config/rules.yaml` 의 `judge.llm_verdict` 하나다
+    #    (판정과 서술을 같은 스위치로 가른다 — 둘 다 "LLM 이 아니라 코드").
+    #    ⚠️ 코드를 지우지 않는다. 스위치를 켜면 종전 LLM 서술로 돌아간다.
+    #    ⚠️ 템플릿은 **지어낸 숫자가 구조적으로 불가능하다** — 상태에 있는 값만
+    #       옮긴다. 아래 `_invented` 검사가 필요 없어지는 이유다.
+    from app.engine.matchup import _llm_verdict_on
+
+    if not _llm_verdict_on():
+        from app.engine.narrate import story_flow
+
+        sents = story_flow(state)
+        state.n12_text = {"sentences": sents, "attempt": 0,
+                          "hallucination": False, "source": "template"}
+        logger.info("[flow:n12] game=%s 템플릿 %d문장", state.game_id, len(sents))
+        return state
+
     payload = _payload(state)
     allowed = _numbers(payload)
 

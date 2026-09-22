@@ -20,6 +20,22 @@ import inspect
 import pytest
 
 
+# ── [SWAP-3T 2026-09-22] 이 파일은 **LLM 서술 경로**를 시험한다 ────────────
+#
+# 🔴 사용자 지시로 서술이 **템플릿**이 됐다("서술도 템플릿으로 바꿔라").
+#    `judge.llm_verdict` 가 꺼져 있으면 ⑫가 LLM 을 아예 안 부르므로
+#    이 파일의 시험 대상 경로가 돌지 않는다.
+# 🔴 **그 경로를 지우지 않았다** — 스위치 한 줄로 되돌릴 수 있어야 하고,
+#    되돌렸을 때 종전대로 도는지는 **계약이 지켜야 한다.**
+# ⚠️ 템플릿 동작은 `tests/test_nollm.py` 가 따로 잠근다.
+import pytest as _pytest
+
+
+@_pytest.fixture(autouse=True)
+def _llm_verdict_on(monkeypatch):
+    monkeypatch.setattr("app.engine.matchup._llm_verdict_on", lambda: True)
+
+
 def _body(fn) -> str:
     """주석을 뺀 본문. 🔴 설명문에 적힌 이름이 계약을 통과/실패시키면 안 된다 —
     이 세션에서 같은 실수를 네 번 했다."""

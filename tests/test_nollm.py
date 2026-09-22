@@ -199,3 +199,87 @@ def test_matchup_이_템플릿을_쓴다():
     i_story = src.index("_story = ")
     i_tmpl = src.index("narrate import story")
     assert i_story < i_tmpl, "템플릿이 LLM 서술보다 먼저 덮어쓴다"
+
+
+# ── [SWAP-3T 2026-09-22] 흐름의 서술도 템플릿이다 ──────────────────────
+
+def _flow_state(**kw):
+    class S:
+        game_id = "7"
+        home = "Samsung Lions"
+        away = "NC Dinos"
+        pick_side = "home"
+        n04_hyp = [{"text": "우리 픽(home)을 무너뜨릴 근거"}]
+        n05_evidence = [{"var": "lineup_out", "value": "없음"}]
+        n06_verdict = {"per_var": {"lineup_out": "확인", "bullpen_3d": "모름"}}
+        n07_adjust = []
+        n08_pcode = {"p_code_pick": 0.6522}
+        n09_conf = {"grade": "B"}
+        n11_value = {}
+        n12_text = None
+
+    for k, v in kw.items():
+        setattr(S, k, v)
+    return S()
+
+
+def test_흐름_서술이_LLM_을_안_부른다():
+    """🔴 사용자 지시는 **흐름에도** 적용된다 — 구경로에만 붙여 두면
+    경로를 갈아끼울 때 다시 LLM 서술로 돌아간다."""
+    import asyncio
+
+    from app.flow.nodes import n12_text as N
+
+    s = asyncio.run(N.run(_flow_state(), None))
+    assert s.n12_text["source"] == "template"
+    assert s.n12_text["hallucination"] is False
+    assert len(s.n12_text["sentences"]) >= 3
+
+
+def test_흐름_서술이_지어낸_숫자를_못_만든다():
+    """🔴 템플릿은 상태에 있는 값만 옮긴다 — 지어내기가 **구조적으로 불가능**하다."""
+    from app.engine.narrate import story_flow
+
+    lines = story_flow(_flow_state())
+    joined = " ".join(lines)
+    # 상태에 있는 숫자만 나온다(0.6522 → 밴드 말로 바뀐다)
+    assert "Samsung Lions" in joined
+    assert "확인 1" in joined and "모름 1" in joined
+
+
+def test_흐름_서술이_미상을_숨기지_않는다():
+    """🔴 채점 결과를 그대로 적는다 — 미상이 이 봇의 값어치다."""
+    from app.engine.narrate import flow_verdict_line
+
+    v = flow_verdict_line(_flow_state())
+    assert v and "모름" in v
+
+
+def test_흐름_조정이_0이면_0이라고_적는다():
+    from app.engine.narrate import flow_adjust_line
+
+    assert "시장값 그대로" in flow_adjust_line(_flow_state())
+    s = _flow_state(n07_adjust=[{"var": "lineup_out", "pp": -1.5}])
+    assert "-1.5" in flow_adjust_line(s)
+
+
+def test_흐름_서술이_값_없으면_줄을_뺀다():
+    """🔴 절대 규칙 6 — 재료 없으면 분석 생성 금지."""
+    from app.engine.narrate import story_flow
+
+    class _Empty:
+        pass
+
+    assert story_flow(_Empty()) == []
+
+
+def test_흐름_서술도_같은_스위치를_본다():
+    """🔴 사본 금지 — 판정과 서술이 같은 스위치로 갈린다."""
+    import inspect
+
+    from app.flow.nodes import n12_text as N
+
+    src = inspect.getsource(N.run)
+    assert "_llm_verdict_on" in src
+    assert "judge.llm_verdict" not in src.replace("`judge.llm_verdict`", ""), \
+        "n12_text 가 설정을 직접 읽는다(두 벌)"

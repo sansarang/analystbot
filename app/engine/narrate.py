@@ -161,3 +161,109 @@ def story(jg: dict) -> str:
         if v:
             parts.append(v)
     return "\n".join(parts)
+
+
+# ═══════════ [SWAP-3T 2026-09-22] 흐름(v1.4) 상태용 템플릿 ═══════════
+#
+# 🔴 사용자 지시("서술도 템플릿으로 바꿔라")는 **흐름에도** 적용된다.
+#    구경로에만 붙여 두면 경로를 갈아끼울 때 다시 LLM 서술로 돌아간다.
+# ⚠️ 위 `story()` 는 구경로 `jg` 모양을, 아래 `story_flow()` 는 흐름 `state`
+#    모양을 읽는다. **규칙은 같다** — 있는 값만 옮기고 없으면 줄을 뺀다.
+
+
+def _flow_team(state, side: str) -> str:
+    return str(getattr(state, side, "") or "").strip()
+
+
+def flow_market_line(state) -> str | None:
+    """시장이 어느 쪽인지. 🔴 우리 판단이 아니라 **시장**이라고 적는다."""
+    p = (getattr(state, "n08_pcode", None) or {}).get("p_code_pick")
+    side = getattr(state, "pick_side", None)
+    if p is None or side not in ("home", "away"):
+        return None
+    try:
+        pf = float(p)
+    except (TypeError, ValueError):
+        return None
+    mine = pf if side == "home" else 1.0 - pf
+    name = _flow_team(state, side)
+    return f"시장은 {name} 쪽을 {_band(mine)} 봅니다." if name else None
+
+
+def flow_hypothesis_line(state) -> str | None:
+    """🔴 **갈림길** — 코드가 세운 가설이다(`n04_hyp`, LLM 0건)."""
+    hyp = getattr(state, "n04_hyp", None) or []
+    texts = [str(h.get("text") or "").strip()
+             for h in hyp if isinstance(h, dict)]
+    texts = [t for t in texts if t]
+    return ("찾으려 한 것: " + " · ".join(texts[:2]) + ".") if texts else None
+
+
+def flow_evidence_line(state) -> str | None:
+    """⑤가 실제로 찾은 것. ⚠️ **출처가 있는 것만** 센다."""
+    ev = getattr(state, "n05_evidence", None) or []
+    got = [str(e.get("var") or "") for e in ev
+           if isinstance(e, dict) and e.get("value") not in (None, "", [])]
+    if not got:
+        return None
+    return "찾은 것: " + " · ".join(sorted(set(got))[:5]) + "."
+
+
+def flow_verdict_line(state) -> str | None:
+    """확인/반증/모름. 🔴 **미상을 숨기지 않는다** — 그게 이 봇의 값어치다."""
+    v = getattr(state, "n06_verdict", None) or {}
+    per = v.get("per_var") or {}
+    if not per:
+        return None
+    from collections import Counter
+
+    c = Counter(per.values())
+    parts = [f"{k} {n}" for k, n in c.most_common()]
+    return "채점: " + " · ".join(parts) + "."
+
+
+def flow_adjust_line(state) -> str | None:
+    """조정. ⚠️ 0 이면 **0이라고 적는다** — 조용히 비우면 "분석했다"로 읽힌다.
+
+    🔴 **빈 목록과 없음은 다르다.** `[]` 는 "⑦이 돌았는데 붙일 게 없었다"이고
+       `None`(칸 자체가 없음)은 "⑦까지 못 갔다"이다. 후자에 "조정할 근거가
+       없었다"고 적으면 **돌지도 않은 단계를 돌았다고 말하는 것**이다.
+       이 저장소가 반복해 강조하는 구분이다(`_need_of`·`record_move` 규약).
+    """
+    adj = getattr(state, "n07_adjust", None)
+    if adj is None:
+        return None
+    parts = []
+    for a in adj:
+        if not isinstance(a, dict):
+            continue
+        try:
+            pp = float(a.get("pp") or 0)
+        except (TypeError, ValueError):
+            continue
+        if abs(pp) < 0.01:
+            continue
+        parts.append(f"{a.get('var') or '?'} {pp:+.1f}%p")
+    if not parts:
+        return "조정할 근거는 나오지 않았습니다 — 시장값 그대로입니다."
+    return "확률을 움직인 것: " + " · ".join(parts) + "."
+
+
+def story_flow(state) -> list:
+    """흐름 ⑫ 서술 — **문장 목록**. `n12_text` 가 기대하는 모양이다.
+
+    🔴 순서: 시장 → 무엇을 찾으려 했나(갈림길) → 찾았나 → 채점 → 조정.
+       **근거가 결론보다 앞**이다(SRCH-6 규약).
+    ⚠️ 값이 없으면 그 줄을 **뺀다**(절대 규칙 6). 전부 없으면 빈 목록이다.
+    """
+    out = []
+    for fn in (flow_market_line, flow_hypothesis_line, flow_evidence_line,
+               flow_verdict_line, flow_adjust_line):
+        try:
+            v = fn(state)
+        except Exception as exc:                            # pragma: no cover
+            logger.info("[narrate] 흐름 서술 줄 실패 %s: %s", fn.__name__, exc)
+            v = None
+        if v:
+            out.append(v)
+    return out
