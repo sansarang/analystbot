@@ -203,7 +203,38 @@ async def _extract_box(state, ctx) -> dict:
 
 
 def _sport_code(state) -> str:
-    return (state.league or state.sport or "").lower()
+    """`games.sport` 코드 — **`kbo` · `mlb` · `npb` · `soccer`**.
+
+    🔴 [STEP2-1 2026-09-23 사용자 지시] "모든 스포츠 적용이라는 것을 명심해라"
+
+    이 값을 쓰는 **네 곳이 전부 `games.sport` 코드**를 원한다. 실측으로 확인한
+    것만 적는다:
+```
+redis  analysis:kbo:2026-09-22 · analysis:mlb:2026-09-22   (구경로 캐시 실물)
+       read_extract(redis, sport, game_id)                  (위성이 jg["sport"])
+sql    _LAST3_SQL  WHERE sport = $1                         (games.sport)
+cfg    {"kbo": …, "npb": …}[code]                           (키가 종목코드다)
+```
+
+    🔴 **`state.sport` 를 그대로 쓰면 안 된다.** 운영 실측: 흐름 스냅샷의
+       `sport` 는 `"baseball"` 3,464건 · `"soccer"` 536건이다 — 정규화된
+       값이라 야구에서 `kbo`/`mlb`/`npb` 를 구분하지 못한다.
+    🔴 **리그를 그대로 써도 안 된다.** 종전 코드가 그랬고, 야구는 리그명이 곧
+       종목코드라(KBO→"kbo") 우연히 맞았지만 **축구가 통째로 어긋났다**
+       (EPL→"epl" ≠ "soccer"). 최근 3일 축구 `form_recent5` 112건이 **전건
+       미상**이었던 이유다 — 자료가 없어서가 아니라 질의가 안 맞아서다:
+```
+_LAST3_SQL sport='epl'    team='Fulham FC' → 0행
+_LAST3_SQL sport='soccer' team='Fulham FC' → 3행 ['09-20 무 1-1', …]
+```
+
+    ⚠️ 그래서 **축구만 종목을, 야구는 리그를** 쓴다. 특례가 아니라 `games`
+       열의 실제 값이 그렇게 생겼다(야구는 리그별로 sport 가 갈린다).
+    """
+    sport = (getattr(state, "sport", "") or "").lower()
+    if sport == "soccer":
+        return "soccer"
+    return (getattr(state, "league", "") or sport or "").lower()
 
 
 def _split(state, absences: list) -> tuple:
