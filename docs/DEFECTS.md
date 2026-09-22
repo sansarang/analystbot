@@ -492,3 +492,35 @@ gather_npb → 기사 9건 (Yahoo 경로라 무사)
 ⚠️ 지금 시각 10:29 · 오늘 KBO 첫 경기 **18:30**. 배포 금지 창은 17:00 부터다.
    (가)로 가려면 **17:00 전에** 고치고 배포해야 한다.
 
+### ✅ 처리 — (가) (사용자 결정 2026-09-22 · 수정 단위 `D52F`)
+
+🔴 **문구 정정(사용자 지시 — 삭제가 아니라 정정).** DEC-2(`804916a`) 와
+   `source_gate.REASONS["daum_search"]`(운영 로그로 나간다) 의
+
+> "DS-3 이 `rss_hits` 를 Bing 으로 갈았으므로 **대체가 이미 있다**"
+
+는 다음으로 정정한다:
+
+> **"대체 함수(`rss_hits`)는 있었으나 KBO 에 미연결이었다. 2026-09-22 연결."**
+
+⚠️ DEC-2 커밋 메시지 자체는 다시 쓰지 않는다(역사를 고치지 않는다) — 정정은
+   **읽히는 자리**에 둔다: 이 항목 · `config/rules.yaml` 주석 ·
+   `source_gate.REASONS` · `docs/maps/DEC-2.md` · `gather_kbo` 머리말.
+
+| 무엇 | 어디 |
+|---|---|
+| `gather_kbo` 가 `rss_hits`(Bing) 를 1순위로 부른다 | `app/collectors/satellite.py` |
+| 다음 검색은 **그 팀 RSS 가 0건일 때만** (지금은 게이트가 막는다) | 같음 |
+| 꺼진 소스의 대체를 **설정에 선언** (`fallback`·`fallback_consumers`) | `config/rules.yaml` |
+| 대체가 없는 소스는 `fallback: none` + 사유 (KBO 공식 = D33) | 같음 |
+
+⚠️ **KBO 하나만 고쳤다**(사용자 지시). NPB(`_yahoo_fetch`)·MLB(transactions+tor)
+   는 한 줄도 안 건드렸다. **MLB 의 `rss_hits` 미연결은 D48 로 남아 있고 별도
+   커밋(2026-09-23)이다.** MLB 경로의 tor 호출부는 지시대로 보고만 했다.
+
+계약 2건 — **차단과 대체를 따로 시험한다**(D52 의 교훈):
+`test_kbo_gather_uses_rss_when_daum_disabled`(가짜 RSS 서버) ·
+`test_disabled_source_has_wired_fallback`(소비처 → 대체 **호출 그래프** 검사).
+🔴 "함수가 존재한다"로는 D52 를 못 잡는다 — `rss_hits` 는 존재했고 축구에서
+   불리고 있었다. **막힌 소비처에서 닿는가**를 본다.
+

@@ -36,7 +36,15 @@ REASONS: dict = {
     "daum_search": (
         "robots 거부 — search.daum.net/robots.txt 가 `Disallow: /` 다"
         "([3] 감사 2026-09-21 · 재감사에서도 같음). "
-        "DS-3 이 기사 검색을 Bing 으로 갈았으므로 대체가 있다(사용자 결정 2)."),
+        # 🔴 [D52 정정 2026-09-22] 종전 문구는 "대체가 있다"였다. 그 문장이
+        #    **틀렸다** — `rss_hits`(Bing) 는 있었지만 부르는 곳이 축구뿐이고
+        #    `gather_kbo` 는 미연결이었다. 끈 순간 KBO 기사가 0 이 됐다
+        #    (실측 2026-09-22 10:29 KST · KT Wiz@SSG Landers). 이 문구는
+        #    **운영 로그로 나간다** — 틀린 문장이 로그에 남아 있었다.
+        "대체는 Bing RSS(rss_hits) 다 — 함수는 있었으나 KBO 에 "
+        "미연결이었고 2026-09-22 에 연결했다(D52). 대체의 배선은 "
+        "config/rules.yaml 의 sources.daum_search.fallback 에 선언되고 "
+        "계약이 호출 그래프로 검사한다(사용자 결정 2 · D52)."),
     "naver_apigw": (
         "판단 불가로 중단 — api-gw.sports.naver.com 은 robots.txt 가 404 지만 "
         "같은 계열 sports.news.naver.com 이 `Disallow: /` 다. 판단이 설 때까지 "

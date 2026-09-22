@@ -27,7 +27,15 @@ robots.txt        Disallow: /            ← 사이트 전체 기준
 ## ② daum — 끈다
 
 `search.daum.net` 은 `Disallow: /` 다. DS-3 이 `rss_hits` 를 Bing 으로
-갈았으므로 **대체가 이미 있다.** 남은 호출부 둘을 게이트로 막는다:
+갈았으므로 ~~**대체가 이미 있다.**~~
+
+> 🔴 **[D52 정정 2026-09-22] 이 문장이 틀렸다.** `rss_hits` 는 있었지만 부르는
+> 곳이 축구뿐이었고 `gather_kbo` 는 **미연결**이었다. 끈 순간 KBO 기사가 0 이
+> 됐다(실측 2026-09-22 10:29 KST · KT Wiz@SSG Landers · 8회 전건 차단).
+> 정정: **"대체 함수는 있었으나 KBO 에 미연결이었다. 2026-09-22 연결."**
+> → `docs/maps/D52F.md` · DEFECTS D52
+
+남은 호출부 둘을 게이트로 막는다:
 ```
 satellite.py:463         KBO 기사 검색
 satellite_soccer.py:538  축구 기사 검색

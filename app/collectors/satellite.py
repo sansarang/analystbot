@@ -449,22 +449,76 @@ def _mentions_team(title: str, team: str) -> bool:
 
 
 async def gather_kbo(jg: dict, *, client=None, now: datetime | None = None) -> list[dict]:
-    """KBO 경기 1건 — 다음 뉴스검색으로 팀별 최신 기사·본문을 news_rss 모양으로.
+    """KBO 경기 1건 — 팀별 최신 기사·본문을 news_rss 모양으로.
+
+    🔴 [D52 2026-09-22] **Bing RSS(`rss_hits`) 가 1순위다.** 어제(DEC-2)
+       `search.daum.net` 을 robots 거부로 끄면서 "대체가 이미 있다"고 적었지만
+       **KBO 에는 미연결이었다** — `rss_hits` 를 부르는 곳은 축구뿐이었다.
+       실측 2026-09-22 10:29 KST(KT Wiz@SSG Landers): `gather_kbo` 기사 **0건**
+       (다음 검색 8회 전부 SourceDisabled) · `gather_npb` 9건.
+       정정: "대체가 이미 있다" → **"대체 함수는 있었으나 미연결. 09-22 연결."**
 
     🔴 팀명은 news_rss.QUERY_ALIAS(한국어)를 재사용한다(사본 금지).
+    🔴 선별은 **`_mentions_team`(별칭표)** 이다 — `rss_supplement` 를 쓰지 않는
+       이유가 이것이다. 그쪽은 `scout_config.screen` → `_tokens(team)` 로
+       **DB 표기(영문)** 를 제목에서 찾는데 한국 매체 제목은 한국어다:
+       `_tokens("Doosan Bears")` → `["Doosan","Bears"]` vs 제목 "두산 베어스 …"
+       → 10팀 중 6팀이 전량 폐기된다. `screen` 을 한국어로 고치는 것은
+       축구·NPB 전부에 닿으므로 범위 밖이다(SAT-12 가 같은 이유로 있다).
+    ⚠️ 다음 검색은 **RSS 가 그 팀에서 0건일 때만** 부른다. 지금은 게이트가
+       막으므로 요청이 나가지 않는다 — 정식 접근이 허락되면 설정 한 줄로 살아난다.
     ⚠️ 실패해도 빈 리스트 — 다른 팀·다른 경기를 막지 않는다.
     """
     from app.collectors.news_rss import MAX_AGE_HOURS, QUERY_ALIAS
+    from app.engine.pregame_push import minutes_until_start
 
     now = now or datetime.now(timezone.utc)
+    # ⚠️ 신선도 단계는 **원본**(`minutes_until_start`)으로 잰다 — 여기서 다시
+    #    계산하면 시점 정의가 두 벌이 된다(축구 `_tor_stage` 와 같은 규약).
+    _left = minutes_until_start(jg.get("starts_at"), now)
+    stage = "lineup" if (_left is not None and 0 < _left <= 75) else "pre"
     out: list[dict] = []
     seen: set[str] = set()
+    n_rss = 0
     for side in ("home", "away"):
         team = jg.get(side) or ""
         if not team:
             continue
         alias = QUERY_ALIAS.get(team, team)
         picked = 0
+        # ── 1순위: Bing RSS(DS-3 체인). robots 허용 경로다.
+        for term in _KBO_TERMS_LIST:
+            if picked >= _KBO_TOP_N:
+                break
+            for h in await rss_hits(f"{alias} {term}", league="kbo",
+                                    stage=stage, now=now):
+                if picked >= _KBO_TOP_N:
+                    break
+                u = h.get("url") or ""
+                if not u or u in seen:
+                    continue
+                if not _mentions_team(h.get("title") or "", team):
+                    logger.debug("[satellite] KBO 딴 팀 기사 폐기 (%s): %.50s",
+                                 team, h.get("title") or "")
+                    continue
+                # ⚠️ 신선도는 `rss_hits` 가 이미 걸었다(scout_config.MAX_AGE_H).
+                #    여기서 다시 자르지 않는다 — 사본이 되고 두 벌이 어긋난다.
+                pub = h.get("published")
+                age = (round((now - pub).total_seconds() / 3600, 1)
+                       if isinstance(pub, datetime) else None)
+                seen.add(u)
+                picked += 1
+                n_rss += 1
+                body = await _fetch_article_body(u)
+                out.append(_article(title=h.get("title") or "", url=u,
+                                    source=h.get("source") or "Bing뉴스",
+                                    team=team,
+                                    body=body or h.get("title") or "",
+                                    age_h=age))
+        if picked:
+            continue
+        # ── 2순위: 다음 뉴스검색. **RSS 가 0건일 때만.**
+        #    ⚠️ 지금은 `source_gate` 가 막는다(robots 거부·D40). 코드는 남긴다.
         for term in _KBO_TERMS_LIST:
             if picked >= _KBO_TOP_N:
                 break
@@ -492,8 +546,9 @@ async def gather_kbo(jg: dict, *, client=None, now: datetime | None = None) -> l
                 body = await _fetch_article_body(u)
                 out.append(_article(title=it["title"], url=u, source="다음뉴스",
                                     team=team, body=body or it["title"], age_h=age))
-    logger.info("[satellite] KBO %s@%s 다음뉴스 기사 %d건",
-                jg.get("away"), jg.get("home"), len(out))
+    logger.info("[satellite] KBO %s@%s 기사 %d건 (RSS %d · 다음 %d)",
+                jg.get("away"), jg.get("home"), len(out), n_rss,
+                len(out) - n_rss)
     return out
 
 
