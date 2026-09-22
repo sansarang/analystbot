@@ -5275,10 +5275,39 @@ def _render_card_v3(analysis: dict, scheduled: list[dict],
     """
     # 🔴 [SOC-2] **무승부는 판정이다.** 축구 3-way 에서 무는 `winner` 가 없다 —
     #    그대로 두면 "판정 실패"로 나간다(SRCH-5 에서 고친 P0 와 같은 결함).
-    judged = [g for g in scheduled
-              if (g.get("winner") or (g.get("matchup") or {}).get("승자")
-                  or (g.get("matchup") or {}).get("결과"))]
-    missing = [g for g in scheduled if g not in judged]
+    # 🔴 [CARD-DUP 2026-09-22] **경기 식별자로 가른다.** 종전에는
+    #    `g not in judged` 로 **dict 값 비교**를 했다. 같은 경기가 두 벌
+    #    들어오면(칸이 조금 달라서) 값이 안 맞아 **판정된 경기가 미판정
+    #    목록에도** 실렸다.
+    #    실측 `card:kbo:2026-09-22`: 승자 3건을 내놓고 바로 아래에
+    #    "(5경기는 판정을 받지 못했습니다: 롯데@한화, KT@SSG, KT@SSG,
+    #     NC@삼성, 두산@키움)" — 셋이 위아래 양쪽에 있고 KT@SSG 는 두 번이다.
+    #    ⚠️ **중복 자체를 여기서 없애지 않는다.** 표시를 고치는 것이지
+    #       상류의 중복은 별개 결함이다(DEFECTS 에 등록).
+    def _gid(g):
+        v = (g or {}).get("game_id") or (g or {}).get("id")
+        if v is not None:
+            return ("id", v)
+        # id 가 없으면 대진+시각으로 센다 — 이름만으로 세면 **더블헤더가 합쳐진다**.
+        # ⚠️ 시각 칸이 둘이다(`starts_at` · `starts_at_kst`). 있는 쪽을 쓴다 —
+        #    하나만 보면 다른 경로에서 온 행이 전부 같은 키가 된다.
+        return ("key", (g or {}).get("away"), (g or {}).get("home"),
+                str((g or {}).get("starts_at")
+                    or (g or {}).get("starts_at_kst") or ""))
+
+    def _has_verdict(g):
+        m = (g or {}).get("matchup") or {}
+        # 🔴 [SOC-2] 무승부는 판정이다 — 축구 3-way 에서 `winner` 가 없다.
+        return bool((g or {}).get("winner") or m.get("승자") or m.get("결과"))
+
+    judged, missing, _seen = [], [], set()
+    _judged_ids = {_gid(g) for g in scheduled if _has_verdict(g)}
+    for g in scheduled:
+        k = _gid(g)
+        if k in _seen:
+            continue                      # 같은 경기를 두 번 찍지 않는다
+        _seen.add(k)
+        (judged if k in _judged_ids else missing).append(g)
 
     if not judged:
         # 🔴 게이트를 넓히다 **진짜 실패**를 못 보면 그게 더 나쁘다.

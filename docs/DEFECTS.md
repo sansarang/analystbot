@@ -682,3 +682,26 @@ p_home     n=156  AUC  0.5007  [0.410, 0.592]  브라이어 0.2497   ← 0.5 포
 ⚠️ 이 행은 **등록만 한다.** `calibration.py` 를 `p_code` 로 바꾸는 것과
    CLAUDE.md 의 목표치(54~56%)·"배당을 판정 입력에 넣는다" 결정을 다시 볼지는
    **사용자 결정**이다 — 그 결정들이 이 0.5122 라는 숫자 위에 서 있다.
+
+
+## D56 — 카드에 **같은 경기가 두 벌** 들어온다 (2026-09-22 · 등록만)
+
+`card:kbo:2026-09-22` 머리글이 **8경기**라고 적었는데 그날 KBO 는 DB 상
+**4경기**다(`games` where sport='kbo' and status='scheduled').
+
+```
+🏆 오늘의 예측 (승자 3건)
+  Doosan Bears @ Kiwoom Heroes · NC Dinos @ Samsung Lions · Lotte Giants @ Hanwha Eagles
+(5경기는 판정을 받지 못했습니다: Lotte Giants @ Hanwha Eagles,
+ **KT Wiz @ SSG Landers, KT Wiz @ SSG Landers**, NC Dinos @ Samsung Lions,
+ Doosan Bears @ Kiwoom Heroes)
+```
+
+🔴 **표시는 `CARD-DUP` 으로 고쳤다**(경기 식별자로 가르고 한 번만 찍는다).
+   그러나 **중복이 들어오는 것 자체는 안 고쳤다** — 그건 상류다.
+
+⚠️ 어디서 두 벌이 되는지 아직 안 쟀다. 후보:
+   · `pick_ledger` 의 잠정/확정 행이 둘 다 슬레이트로 올라온다
+     (실측 g15975 MIN@SF 는 `is_final` 1행 + 잠정 2행 = **3행**이었다)
+   · 네이버 경로와 크롤러 경로가 같은 경기를 다른 키로 넣는다(D30 전례)
+🔴 **세지 않고 고치지 않는다.** 원인을 재고서 고친다.
