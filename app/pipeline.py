@@ -3105,18 +3105,49 @@ async def _run_baseball_matchups(redis, date: str, games: list[dict], *,
             except Exception as exc:
                 logger.warning("[pipeline] 자료14 분기점 조사 실패 game=%s: %s",
                                jg.get("game_id"), exc)
-        if await judge_matchup(jg, redis, date, allow_final=allow_final,
-                               pool=pool):
-            n += 1
+        _llm_ok = await judge_matchup(jg, redis, date, allow_final=allow_final,
+                                      pool=pool)
+        # 🔴 [CODE-V 2026-09-22 사용자 지시] **LLM 판정이 실패해도 코드 판정까지는
+        #    간다.** 종전에는 이 두 줄이 `if _llm_ok:` 안에 있어서, LLM 이
+        #    빈손이면 **시장 뼈대도 안 붙고 `apply_code_verdict` 도 안 돌았다.**
+        #
+        #    실측 2026-09-22: 무료 사슬이 전부 소진돼(gemini 402 · groq 429 ·
+        #    anthropic 잔액 0) KBO·NPB **전 경기 판정 0건**이 됐다. 그런데
+        #    같은 시각 코드 경로만 따로 돌리자 **9경기 승자가 전부 나왔다** —
+        #    `p_code` 는 멀쩡히 계산됐는데 그 자리에 갈 기회가 없었던 것이다.
+        #
+        #    CLAUDE.md 가 적은 설계는 이것이다: "승자·확률·확신은 **코드**가
+        #    정한다(`matchup.apply_code_verdict`·`confidence.by_code`). LLM 이
+        #    하는 일은 **추출과 서술** 둘뿐이다." 배선이 그 말을 안 따르고 있었다.
+        #
+        #    ⚠️ **나머지 블록은 그대로 `_llm_ok` 안에 둔다** — 서술·감사·분기점
+        #       조사는 LLM 산출물을 전제로 한다. 여기서 푸는 것은 **승자**뿐이다.
+        #    ⚠️ `apply_code_verdict` 는 `p_code` 가 없으면 승자를 **지어내지
+        #       않는다**(승자 None · 보드). 그 규약은 건드리지 않는다.
+        _code_ok = False
+        if pool is not None:
             # [PROB-1] 판정 **뒤에** 시장 뼈대를 붙인다(LLM은 보지 않는다).
-            if pool is not None:
-                await _attach_market_spine(pool, jg)
-                # 🔴 [P0-1 2026-09-15] 뼈대가 붙은 **직후** 승자·확신을 코드
-                #    값으로 덮어쓴다. 카드 렌더는 한참 뒤(build_card)라 항상
-                #    덮어쓴 값을 읽는다. LLM 값은 jg["llm_verdict"] 에 남는다.
-                from app.engine.matchup import apply_code_verdict
+            await _attach_market_spine(pool, jg)
+            # 🔴 [P0-1 2026-09-15] 뼈대가 붙은 **직후** 승자·확신을 코드
+            #    값으로 덮어쓴다. 카드 렌더는 한참 뒤(build_card)라 항상
+            #    덮어쓴 값을 읽는다. LLM 값은 jg["llm_verdict"] 에 남는다.
+            from app.engine.matchup import apply_code_verdict
 
-                apply_code_verdict(jg)
+            # ⚠️ **LLM 도 실패하고 뼈대도 없으면 손대지 않는다.** 그때
+            #    `apply_code_verdict` 는 `board_only=True`·승자 None 을 써서
+            #    카드 렌더 경로를 바꾼다 — 종전에는 그 경기를 아예 안 건드렸다.
+            #    실측: `test_team_query_uses_slate_cache` 가 이 부작용을 잡았다
+            #    (상세 구획 `<<DETAIL>>` 이 사라져 봇 응답이 깨졌다).
+            #    고칠 것은 "뼈대가 있는데 버려지는 경기"뿐이다.
+            if _llm_ok or jg.get("p_code") is not None:
+                _code_ok = apply_code_verdict(jg)
+            if _code_ok and not _llm_ok:
+                logger.info("[pipeline] game=%s LLM 판정 실패 — **코드 판정으로 "
+                            "간다** (승자 %s · p_code %s)", jg.get("game_id"),
+                            jg.get("winner"), jg.get("p_code"))
+        if _llm_ok or _code_ok:
+            n += 1
+        if _llm_ok:
             # ── [BRR-3 2026-09-08] **이번 회차 분기점을 한 번 더 조사한다.**
             #   위 조사는 판정 **앞**이라 직전 회차 분기점을 푼다 — 그것이
             #   판정의 재료가 되는 것은 옳다(유료 호출을 늘리지 않는 2단 설계).

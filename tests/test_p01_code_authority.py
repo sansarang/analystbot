@@ -173,14 +173,21 @@ def test_card_reads_code_only():
     """렌더가 덮어쓰기보다 뒤에 있어야 한다 — 순서가 곧 계약이다."""
     from app import pipeline as PL
 
+    # 🔴 [CODE-V 2026-09-22] **주석을 떼고 본다.** 원문 `index()` 로 찾으면
+    #    "`apply_code_verdict` 도 안 돌았다" 같은 **주석**이 먼저 잡혀 거짓으로
+    #    실패한다. 이 저장소가 그 형태를 겪은 것이 여러 번이다(D46).
+    #    ⚠️ 단언은 그대로다 — 뼈대가 먼저고 덮어쓰기가 뒤다.
+    def _code_only(src: str) -> str:
+        return "\n".join(ln.split("#", 1)[0] for ln in src.splitlines())
+
     for fn in (PL._run_baseball_matchups, PL._run_soccer_matchups):
-        src = inspect.getsource(fn)
-        i = src.index("_attach_market_spine")
-        j = src.index("apply_code_verdict")
+        src = _code_only(inspect.getsource(fn))
+        i = src.index("_attach_market_spine(pool, jg)")
+        j = src.index("apply_code_verdict(jg)")
         assert i < j, f"{fn.__name__}: 뼈대보다 먼저 덮어쓴다 — p_code 가 없다"
 
-    whole = inspect.getsource(PL)
-    assert whole.index("apply_code_verdict") < whole.index("jg[\"card\"] = build_card"), \
+    whole = _code_only(inspect.getsource(PL))
+    assert whole.index("apply_code_verdict(jg)") < whole.index("jg[\"card\"] = build_card"), \
         "카드 렌더가 덮어쓰기보다 앞에 있다"
 
 
