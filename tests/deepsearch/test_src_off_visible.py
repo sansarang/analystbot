@@ -25,10 +25,14 @@ def test_제한_목록은_꺼진_소스만_리그별로_묶는다():
     # 🔴 **결함 번호를 하나만 보이면 거짓이 된다.** KBO 는 둘에 막혀 있다 —
     #    koreabaseball(D33) · daum_search(D40). 처음엔 첫 번째만 썼다가
     #    알파벳 순으로 D40 이 이겨 "KBO = D40" 으로 나왔다(실측).
-    assert kbo[0]["defects"] == ["D33", "D40"], kbo[0]
-    assert kbo[0]["defect"] == "D33·D40"
-    # 🔴 naver 는 2026-09-21 에 다시 켰다(Go 크롤러와 맞춤) — 제한 목록에서 빠진다.
-    assert set(kbo[0]["sources"]) == {"koreabaseball", "daum_search"}
+    # 🔴 [KBO-ON 2026-09-23 사용자 지시] `koreabaseball` 을 **켜서** KBO 의
+    #    제한이 하나 줄었다. 종전 기대값은 ["D33","D40"] 이었다.
+    #    ⚠️ 단언을 **느슨하게 하지 않았다** — 여전히 정확한 목록을 요구한다.
+    #       켜고 끈 것이 이 줄에 그대로 비치는 것이 이 계약의 값어치다.
+    assert kbo[0]["defects"] == ["D40"], kbo[0]
+    assert kbo[0]["defect"] == "D40"
+    # 🔴 naver 는 2026-09-21 에, koreabaseball 은 2026-09-23 에 켰다.
+    assert set(kbo[0]["sources"]) == {"daum_search"}
     # 사유는 source_gate.REASONS 가 원본이다 — 여기서 문구를 다시 적지 않는다
     from app.collectors.source_gate import REASONS
     assert all(REASONS[s] in kbo[0]["reason"] for s in kbo[0]["sources"])
@@ -38,7 +42,8 @@ def test_제한_줄의_형식(monkeypatch):
     from app.collectors.source_gate import restriction_lines
 
     lines = restriction_lines()
-    assert any(ln.startswith("🔒 KBO — 자료 제한: 소스 중단(D33·D40)")
+    # 🔴 [KBO-ON 2026-09-23] koreabaseball 을 켜서 D33 이 빠졌다.
+    assert any(ln.startswith("🔒 KBO — 자료 제한: 소스 중단(D40)")
                for ln in lines), lines
     # ⚠️ 축구도 daum 으로 막혔다 — 리그마다 한 줄이다
     assert any(ln.startswith("🔒 축구 —") for ln in lines), lines
@@ -64,7 +69,7 @@ async def test_health_에_제한_줄이_있다():
     from app.health import build_health
 
     body = await build_health(None, None)
-    assert "KBO — 자료 제한: 소스 중단(D33·D40)" in body, body[-900:]
+    assert "KBO — 자료 제한: 소스 중단(D40)" in body, body[-900:]
     assert "robots" in body, "사유가 안 실렸다"
 
 
@@ -74,5 +79,6 @@ def test_export_에_restrictions_블록이_있다():
     b = restrictions_block()
     assert b["n"] == 2, b            # KBO · 축구
     kbo = [x for x in b["items"] if x["league"] == "KBO"][0]
-    assert kbo["defect"] == "D33·D40"
+    # 🔴 [KBO-ON 2026-09-23] koreabaseball 을 켜서 D33 이 빠졌다.
+    assert kbo["defect"] == "D40"
     assert "robots" in kbo["reason"]

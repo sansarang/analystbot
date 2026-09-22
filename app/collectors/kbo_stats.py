@@ -20,6 +20,8 @@
 import logging
 import re
 
+from app.collectors.kbo import UA
+
 logger = logging.getLogger(__name__)
 
 BASE = "https://www.koreabaseball.com"
@@ -107,7 +109,7 @@ class KBOStatsClient:
         require("koreabaseball")
 
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as c:
-            r = await c.get(BASE + path, headers={"User-Agent": "Mozilla/5.0",
+            r = await c.get(BASE + path, headers={"User-Agent": UA,
                                                   "Referer": BASE + path})
         r.raise_for_status()
         return r.text

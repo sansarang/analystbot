@@ -28,6 +28,37 @@ from app.collectors.base import BaseAPIClient
 logger = logging.getLogger(__name__)
 
 BASE = "https://www.koreabaseball.com"
+
+#: 🔴 [KBO-ON 2026-09-23 사용자 지시] **"자동수집·크롤링·복제하는 행위를
+#   허용한다...kbo도 해야한다"** — 수집 자체는 사용자가 결정했다.
+#
+#   ⚠️ 그래도 **서버를 속이지는 않는다.** 종전 UA 는 `Mozilla/5.0` 이었고
+#      그것은 브라우저 위장이다. 봇이 봇임을 밝히는 것과 수집을 하느냐는
+#      다른 문제다 — 지시는 후자를 바꿨고 전자는 바꾸지 않았다.
+#   ⚠️ 개인정보를 UA 에 싣지 않는다(이메일·계정명 금지).
+#   🔴 **원본은 여기 하나다.** kbo_boxscore·kbo_stats·kbo_roster 가 이것을
+#      import 한다 — 네 곳에 손으로 적으면 하나가 뒤처진다(사본 금지).
+UA = "AnalystBot/1.0 (sports analysis bot)"
+
+#: 요청 사이 최소 간격(초). 원본은 `config/rules.yaml` 의
+#  `sources.koreabaseball.min_interval_sec` 다 — 여기에 숫자를 박지 않는다.
+_MIN_GAP_DEFAULT = 1.0
+
+
+async def polite_gap() -> None:
+    """같은 호스트로 연달아 치지 않는다. 🔴 지시가 바꾼 것은 "수집하느냐"이지
+    "얼마나 빨리 치느냐"가 아니다 — 상대 서버에 부담을 주지 않는다."""
+    import asyncio
+
+    from app.collectors.source_gate import _cfg
+
+    try:
+        gap = float(_cfg("koreabaseball", "min_interval_sec", _MIN_GAP_DEFAULT)
+                    or _MIN_GAP_DEFAULT)
+    except (TypeError, ValueError):
+        gap = _MIN_GAP_DEFAULT
+    if gap > 0:
+        await asyncio.sleep(gap)
 SCHEDULE_PATH = "/ws/Schedule.asmx/GetScheduleList"
 
 # KBO 공식 표기 → Odds API 표기. 이 사전이 배당과 결과를 잇는다.
@@ -91,7 +122,7 @@ class KBOClient(BaseAPIClient):
 
         require("koreabaseball")
 
-        headers = {"User-Agent": "Mozilla/5.0",
+        headers = {"User-Agent": UA,
                    "Referer": f"{BASE}/Schedule/Schedule.aspx",
                    "X-Requested-With": "XMLHttpRequest"}
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as c:

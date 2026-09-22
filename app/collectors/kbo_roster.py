@@ -19,13 +19,15 @@
 import logging
 import re
 
+from app.collectors.kbo import UA
+
 logger = logging.getLogger(__name__)
 
 BASE = "https://www.koreabaseball.com"
 REGISTER_ALL = "/Player/RegisterAll.aspx"
 CACHE_TTL = 6 * 3600      # 말소·등록은 경기 전 공시된다 — 하루 안에도 바뀐다
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+HEADERS = {"User-Agent": UA}
 
 # 표의 구단 표기는 "KT45명"처럼 인원이 붙는다. 숫자를 떼고 매핑한다.
 TEAM_TO_ODDS = {

@@ -23,13 +23,13 @@ import re
 
 import httpx
 
-from app.collectors.kbo import BASE, KBO_TEAMS
+from app.collectors.kbo import BASE, KBO_TEAMS, UA, polite_gap
 
 logger = logging.getLogger(__name__)
 
 BOX_PATH = "/ws/Schedule.asmx/GetBoxScoreScroll"
 SCHED_PATH = "/ws/Schedule.asmx/GetScheduleList"
-_HEADERS = {"User-Agent": "Mozilla/5.0",
+_HEADERS = {"User-Agent": UA,
             "Referer": f"{BASE}/Schedule/Schedule.aspx",
             "X-Requested-With": "XMLHttpRequest"}
 _GID = re.compile(r"(\d{8}[A-Z]{4}\d)")
@@ -349,6 +349,9 @@ async def fetch_box(game_id: str) -> dict:
     from app.collectors.source_gate import require
 
     require("koreabaseball")
+    # 🔴 [KBO-ON] 연속 요청 사이 간격. 지시가 바꾼 것은 "수집하느냐"이지
+    #    "얼마나 빨리 치느냐"가 아니다(원본: config sources.koreabaseball).
+    await polite_gap()
     async with httpx.AsyncClient(timeout=25, follow_redirects=True) as c:
         await c.get(f"{BASE}/Schedule/Schedule.aspx", headers=_HEADERS)
         r = await c.post(BASE + BOX_PATH,
@@ -398,6 +401,9 @@ async def fetch_game_ids(season: int, month: int) -> list[dict]:
     from app.collectors.source_gate import require
 
     require("koreabaseball")
+    # 🔴 [KBO-ON] 연속 요청 사이 간격. 지시가 바꾼 것은 "수집하느냐"이지
+    #    "얼마나 빨리 치느냐"가 아니다(원본: config sources.koreabaseball).
+    await polite_gap()
     async with httpx.AsyncClient(timeout=25, follow_redirects=True) as c:
         await c.get(f"{BASE}/Schedule/Schedule.aspx", headers=_HEADERS)
         r = await c.post(BASE + SCHED_PATH,
