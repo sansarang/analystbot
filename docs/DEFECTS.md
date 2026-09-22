@@ -545,3 +545,49 @@ gather_npb → 기사 9건 (Yahoo 경로라 무사)
 
 수정: 픽스처 날짜를 옮기지 않고(그건 사본이다) `now=NOW` 를 박았다.
 ⚠️ 같은 형태가 다른 계약에도 있는지는 **아직 안 쟀다.** 등록만 한다.
+
+
+## D11 정정 — **테이블을 잘못 봤다.** 야구 타순은 `lineup_events` 에 살아 있다
+
+원 서술: "`lineup_history` 야구 0행 — `lineup_history ⋈ games` 조인 결과
+0행(전 종목)".
+
+🔴 **두 가지가 틀렸다** (실측 2026-09-22 · 운영 DB).
+
+**① 조인 키가 `id` 가 아니다.** `lineup_history.game_id` 에는 **FotMob 경기
+   id** 가 들어 있다(`5911161`·`1000015892`). 우리 `games.id` 는 1~16,270 이다.
+
+```
+JOIN games g ON g.id = l.game_id                      →     0행   ← 원 측정
+JOIN games g ON g.ext_id = 'fotmob:'||l.game_id::text →  4,296행   ← 실제
+전체 18,507행 · distinct game_id 527개
+```
+
+   남은 77% 는 **우리가 안 보는 리그**다(Championship 960 · DFB Pokal 929 ·
+   EFL Cup 918 · League Two 863 · National League 839 · J.League 2 800 …).
+   `league IN (SELECT league FROM games)` 가 0 인 것은 리그 **표기**가 다를 뿐이다.
+
+**② `lineup_history` 는 축구 전용이다.** 야구 타순은 **`lineup_events`** 에 적재된다
+   (`kbo_lineup_history_job` 의 독스트링이 "`lineup_events` 에 적재"라고 적고 있다).
+   그 테이블은 **살아 있다**:
+
+```
+sport  source     행수    마지막 경기일
+kbo    crawler     148    2026-09-20      ← 살아 있다
+kbo    boxscore    380    2026-09-10      ← 멈췄다 (koreabaseball = robots 거부 · D33)
+npb    crawler     194    2026-09-21
+npb    boxscore    240    2026-09-12
+mlb    crawler     616    2026-09-22
+mlb    boxscore  1,113    2026-09-21
+
+최근 7일 타순 커버리지: KBO 23/53(43%) · NPB 30/39(77%) · MLB 87/87(100%)
+```
+
+🔴 **그래서 "야구 타순 적재가 안 붙어 있다"는 서술은 틀렸다.** 붙어 있고
+   돌고 있다. 진짜 결함은 **커버리지**(KBO 43%)와 `boxscore` 소스 중단이며,
+   후자의 원인은 이미 아는 것이다 — `koreabaseball` 을 robots 거부로 껐고
+   **대체가 없다**(`config/rules.yaml` 의 `fallback: none` 에 그렇게 적었다).
+
+⚠️ D49("09-21 타순이 DB 에 없어 diff 불가")도 **다시 봐야 한다** — MLB 는
+   crawler 가 09-22 까지 넣고 있다. 그 항목은 테이블이 아니라 **조회 경로**를
+   의심해야 한다. 재측정 전까지 D49 는 "원인 미확정"으로 둔다.
