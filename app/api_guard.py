@@ -58,6 +58,31 @@ def set_redis(client) -> None:
     _redis_override = client
 
 
+#: 🔴 [LLM0 2026-09-22 사용자 지시] **"llm 완전히 0으로 만들어라"**
+#
+#   실측이 근거다 — LLM 은 이미 거의 아무것도 못 채우고 있었다(팀 행 40개):
+#     out 10/40 · xi_status 11/40(전부 "predicted"=미상) · notes 15/40(판정 미사용)
+#     doubt · last3 · midweek · published · llm_fetched_at   전부 0/40
+#   살아 있던 자리는 둘이고 하나는 세지도 않았다:
+#     satellite.extract_game_facts  58콜/일 (api_calls 에 잡힘)
+#     team_form.analyze_team        26콜/일 (아무 카운터에도 안 잡힘)
+#
+# 🔴 **스위치는 여기 하나다.** 문마다 따로 끄면 한 문이 열린 채 남고, 그것이
+#    "0 이라고 말했는데 아니었다"가 되는 자리다. 문은 전부 이 함수를 본다.
+# 🔴 **끄는 것이지 지우는 것이 아니다** — `llm.enabled: true` 한 줄로 전부
+#    되돌아온다. 되돌릴 길을 막지 않는다(퍼플렉시티 차단과 같은 규약).
+# ⚠️ 설정을 못 읽으면 **끈 것으로 본다.** 모를 때 부르는 쪽이 위험하다 —
+#    지금 이 봇의 기본값은 "LLM 없이 돈다"이고, 조용히 켜지면 안 된다.
+def llm_enabled() -> bool:
+    """LLM 을 불러도 되는가. 원본은 `config/rules.yaml` 의 `llm.enabled`."""
+    try:
+        from app.engine import rules as _R
+
+        return bool(_R.get("llm.enabled", False))
+    except Exception:
+        return False
+
+
 def is_disabled(name: str) -> bool:
     return get_settings().is_disabled(canonical_provider(name))
 

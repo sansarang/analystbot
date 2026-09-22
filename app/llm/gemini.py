@@ -51,7 +51,15 @@ async def _throttle() -> None:
 
 
 async def generate(prompt: str, *, max_tokens: int = 2048) -> str | None:
-    """텍스트 1회 생성. 실패하면 None — 예외를 밖으로 던지지 않는다."""
+    """텍스트 1회 생성. 실패하면 None — 예외를 밖으로 던지지 않는다.
+
+    🔴 [LLM0 2026-09-22 사용자 지시] 스위치가 꺼져 있으면 **부르지 않는다.**
+       원본은 `api_guard.llm_enabled` 하나다(사본 금지).
+    """
+    from app.api_guard import llm_enabled
+
+    if not llm_enabled():
+        return None
     import asyncio
 
     import httpx

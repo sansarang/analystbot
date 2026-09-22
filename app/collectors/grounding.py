@@ -243,8 +243,12 @@ async def fetch_for_team(sport: str, team: str, date: str,
     """팀 1개의 상황 검색 결과. RSS 항목과 **같은 모양**으로 돌려준다.
 
     실패·캡 도달은 빈 목록이고, 그 사실이 로그에 남는다.
+
+    🔴 [LLM0 2026-09-22 사용자 지시] 스위치가 꺼져 있으면 **부르지 않는다.**
     """
-    if not _cfg().grounding_enabled:
+    from app.api_guard import llm_enabled
+
+    if not llm_enabled() or not _cfg().grounding_enabled:
         return []
     q = build_query(sport, team)
     if not q:
@@ -264,8 +268,13 @@ async def fetch_for_team(sport: str, team: str, date: str,
 
 
 async def fetch_for_game(jg: dict, date: str, redis=None) -> dict[str, list[dict]]:
-    """경기 1건 — **경기당 1회**. `{home:[…], away:[…]}`."""
-    if not _cfg().grounding_enabled:
+    """경기 1건 — **경기당 1회**. `{home:[…], away:[…]}`.
+
+    🔴 [LLM0 2026-09-22 사용자 지시] 스위치가 꺼져 있으면 **부르지 않는다.**
+    """
+    from app.api_guard import llm_enabled
+
+    if not llm_enabled() or not _cfg().grounding_enabled:
         return {}
     sport = (jg.get("sport") or "").lower()
     gid = jg.get("game_id")

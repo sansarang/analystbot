@@ -213,6 +213,14 @@ class Judge:
         return sorted(available)[0]
 
     async def _create(self, payload_json: str, *, force_tool: bool) -> anthropic.types.Message:
+        # 🔴 [LLM0 2026-09-22 사용자 지시] 스위치가 꺼져 있으면 **부르지 않는다.**
+        #    ⚠️ 여기는 예외를 올린다 — 이 메서드는 `Message` 를 돌려주기로
+        #       돼 있어 None 을 주면 호출부가 속성 접근에서 터진다. 호출부
+        #       (`judge`·`_judge_once`)는 예외를 이미 잡아 "판정 실패"로 다룬다.
+        from app.api_guard import llm_enabled
+
+        if not llm_enabled():
+            raise RuntimeError("llm_off — LLM 꺼짐(llm.enabled=false)")
         kwargs: dict = {
             "model": self._model,
             "max_tokens": JUDGE_MAX_TOKENS,

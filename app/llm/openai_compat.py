@@ -138,6 +138,16 @@ async def complete(provider: str, model: str, prompt: str, *,
 
     out = {"text": "", "ok": False, "status": None, "elapsed": 0.0,
            "retries": 0, "error": None, "usage": None}
+
+    # 🔴 [LLM0 2026-09-22 사용자 지시] **"llm 완전히 0으로 만들어라"**
+    #    스위치의 원본은 `api_guard.llm_enabled` 하나다(사본 금지).
+    #    ⚠️ 예외가 아니라 **실패 dict** 다 — 이 함수의 계약이 "예외를 던지지
+    #       않는다"이고, 호출부는 이미 `ok=False` 를 다룬다.
+    from app.api_guard import llm_enabled
+
+    if not llm_enabled():
+        out["error"] = "llm_off"
+        return out
     ep = ENDPOINTS.get(provider)
     if not ep:
         out["error"] = f"unknown provider {provider}"

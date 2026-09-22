@@ -222,6 +222,13 @@ async def ask_json(prompt: str, *, max_tokens: int = 900) -> dict | None:
 
     from app.config import get_settings
 
+    # 🔴 [LLM0 2026-09-22 사용자 지시] 퍼플렉시티는 이미 `disabled_providers`
+    #    로 꺼져 있지만, **스위치도 본다** — 문마다 규약이 다르면 다음 사람이
+    #    "여기는 어느 스위치였지"를 다시 조사해야 한다.
+    from app.api_guard import llm_enabled
+
+    if not llm_enabled():
+        return None
     s = get_settings()
     key = (s.pplx_api_key or os.environ.get("PPLX_API_KEY") or "").strip()
     if not key:

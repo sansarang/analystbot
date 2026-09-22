@@ -342,3 +342,31 @@ def _quota_isolated():
     quota.reset()
     yield
     quota.reset()
+
+
+@pytest.fixture(autouse=True)
+def _llm_on_for_plumbing_tests(request, monkeypatch):
+    """[LLM0] **LLM 배선 계약은 "켠 상태"에서 돌린다.**
+
+    사용자 2026-09-22: "llm 완전히 0으로 만들어라" → `llm.enabled: false`.
+    그러자 사슬 라우팅·재시도·추론 강등을 잠그던 계약 25건이 깨졌다.
+
+    🔴 **계약을 약화시키지 않는다.** 이 저장소의 규율이다 — "내 변경을
+       통과시키려고 계약을 고치는 것은 회귀를 숨기는 수"(DS-5 전례).
+       그 25건은 **되돌릴 경로**(`llm.enabled: true`)의 동작을 잠그고 있고,
+       그 경로는 지금도 살아 있어야 한다. 그래서 끄는 대신 **켜서 돌린다.**
+       계약이 계속 초록이라는 것 자체가 "되돌릴 길이 막히지 않았다"는 증거다.
+
+    ⚠️ **`tests/test_llm_zero.py` 만 예외다.** 거기는 운영 기본값이 정말
+       꺼짐인지를 보는 파일이라 이 기본값을 덮으면 의미가 사라진다.
+    """
+    if request.node.fspath.basename == "test_llm_zero.py":
+        yield
+        return
+    from app.engine import rules as _R
+
+    _orig = _R.get
+    monkeypatch.setattr(
+        _R, "get",
+        lambda k, d=None: True if k == "llm.enabled" else _orig(k, d))
+    yield

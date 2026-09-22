@@ -302,8 +302,14 @@ async def ask(jg: dict, questions: list[str], *, today: str | None = None,
        재료가 줄 뿐이다. "재료 없으면 분석 생성 금지"(절대 규칙 6)의 판단은
        부르는 쪽이 한다.
     """
+    # 🔴 [LLM0 2026-09-22 사용자 지시] 스위치가 꺼져 있으면 **부르지 않는다.**
+    #    ⚠️ 빈 목록이다 — 이 함수의 계약("실패해도 빈손")과 같은 모양이라
+    #       호출부를 한 줄도 안 고쳐도 된다.
+    from app.api_guard import llm_enabled
     from app.config import get_settings
 
+    if not llm_enabled():
+        return []
     s = settings or get_settings()
     qs = [str(q).strip() for q in (questions or []) if str(q).strip()][:MAX_ASKS]
     if not qs:

@@ -103,6 +103,18 @@ def chain(role: str) -> list[tuple[str, str]]:
 
     ⚠️ 모델은 config 가 원본 — 여기 이름을 적지 않는다.
     """
+
+    # 🔴 [LLM0 2026-09-22 사용자 지시] **"llm 완전히 0으로 만들어라"**
+    #    스위치의 원본은 `api_guard.llm_enabled` 하나다(사본 금지).
+    #    ⚠️ **빈 목록**으로 돌려준다 — 호출부가 이미 그 모양을 다룬다
+    #       ("후보가 하나도 없다 → 재료 없이 간다"). 새 실패 경로를 만들지
+    #       않는다. 예외를 던지면 슬레이트가 통째로 죽는다.
+    from app.api_guard import llm_enabled
+
+    if not llm_enabled():
+        logger.info("[judge-route] role=%s — LLM 꺼짐(llm.enabled=false) · "
+                    "사슬 없음. 코드가 낸다", role)
+        return []
     s = _cfg()
     prov = (s.judge_provider or "anthropic").lower()
     # 🔴 [2026-09-06 사용자 지시] **Anthropic 은 최종 판정에서만 쓴다.**
