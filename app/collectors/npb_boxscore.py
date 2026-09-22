@@ -112,8 +112,13 @@ async def backfill(pool, as_of: date | None = None, days: int = APPEARANCE_DAYS,
                 "SELECT id FROM games WHERE sport = $1 AND ext_id = $2",
                 "npb", f"yahoo:{gid}") if pool else None
             if gid_db is None and pool:
+                # 🔴 [FIND-6 2026-09-23] KBO 와 **같은 결함**이었다 —
+                #    인자 5개. 여기는 위의 `yahoo:{gid}` 조회가 먼저 맞아
+                #    대부분 가려져 있었다(NPB 적재는 09-21 까지 살아 있었다).
+                #    ⚠️ 접두사를 일정과 다르게 둔다(병합되게).
                 gid_db = await pool.fetchval(
-                    _FIND, "npb", g["home"], g["away"], starts, 20)
+                    _FIND, "npb", g["home"], g["away"], starts, 20,
+                    f"npbbox:{gid}")
             if gid_db is None:
                 stats["no_game"] += 1
                 continue

@@ -98,10 +98,17 @@ async def test_backfill_matches_by_teams_not_date_only(monkeypatch):
     await backfill(pool, as_of=date(2026, 8, 26), days=1,
                    limit_per_team=10, client=_Client())
     assert pool.find, "ext_id 미스 시 _FIND로 홈/원정 매칭해야 한다"
-    sport, home, away, _starts, window = pool.find[0]
+    # 🔴 [FIND-6 2026-09-23] `_FIND` 는 **여섯 번째 인자**로 출처 ext_id 를
+    #    받는다. 종전에는 다섯 개만 넘겨 실행 시점에 asyncpg InterfaceError 가
+    #    났고(KBO 는 그래서 09-12 에 적재가 끊겼다), 이 계약은 다섯 개를
+    #    풀면서 **그 사실을 못 봤다.** 이제 여섯 번째까지 본다.
+    sport, home, away, _starts, window, ext = pool.find[0]
     assert sport == "npb" and window == 20
     assert home == "Tokyo Yakult Swallows"
     assert away == "Yomiuri Giants"
+    # 🔴 접두사가 일정(`yahoo:`)과 달라야 기존 경기 행에 **병합**된다 —
+    #    같으면 `game_match` 규약상 "다른 경기"로 갈린다.
+    assert ext and ":" in ext and not ext.startswith("yahoo:"), ext
 
 
 async def test_appearances_continue_after_lineup_cap(monkeypatch):

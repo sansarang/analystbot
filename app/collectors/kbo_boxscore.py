@@ -479,8 +479,18 @@ async def backfill(pool, season: int, months: tuple[int, ...],
             continue
         starts = datetime.fromisoformat(f"{g['date']}T18:30:00").replace(
             tzinfo=ZoneInfo("Asia/Seoul")).astimezone(UTC)
-        gid_db = await pool.fetchval(_FIND, "kbo", g["home"], g["away"],
-                                     starts, 20) if pool else None
+        # 🔴 [FIND-6 2026-09-23] `_FIND` 는 **여섯 번째 인자**로 출처 ext_id 를
+        #    받는다. 종전에는 다섯 개만 넘겨 asyncpg 가 InterfaceError 를 냈고,
+        #    백필이 통째로 0 이 됐다 — KBO 적재가 09-12 에서 끊긴 진짜 원인이다
+        #    (robots 게이트는 09-21 이라 그보다 9일 뒤다).
+        #    ⚠️ 접두사를 `kbo:`(일정)와 **다르게** 둔다. `game_match` 머리말:
+        #       "가르는 기준은 ext_id 의 접두사다 — 같으면 다른 경기, 다르면
+        #       병합". 박스스코어는 다른 출처이므로 기존 행에 병합돼야 한다.
+        #    ⚠️ `None` 을 넘기면 안 된다 — split_part(NULL) 이 NULL 이라
+        #       NOT (…) 이 NULL 이 되고 ext_id 있는 행이 전부 탈락한다.
+        gid_db = await pool.fetchval(
+            _FIND, "kbo", g["home"], g["away"], starts, 20,
+            f"kbobox:{g['game_id']}") if pool else None
         if gid_db is None:
             stats["no_game"] += 1
             continue
