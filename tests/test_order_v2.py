@@ -561,10 +561,32 @@ def test_예측을_실제_승자_칸에_넣지_않는다():
 
 
 def test_채점이_저장된_방향을_읽는다():
+    """🔴 [D54 2026-09-22] **우선순위를 뒤집었다.** 이 계약의 종전 줄은
+       `predicted_side("home", None, "away") == "home"  # 우세가 우선`
+    이었다. 그 규칙이 **틀렸음이 측정됐다.**
+
+    ⚠️ 이것은 "내 변경을 통과시키려고 계약을 고친 것"이 아니다 —
+       **규칙 변경**이고 근거가 아래에 있다(사용자 승인 2026-09-22).
+
+    실측 · 채점 완료 · `p_code` 있는 251행:
+    ```
+    26행(10.4%)이 p_code 와 반대쪽으로 채점됐다
+      g1741 NC@Doosan   favored=away  p_code=0.5579(→home) winner=home hit=False
+      g1742 LG@Samsung  favored=home  p_code=0.4814(→away) winner=away hit=False
+    적중률   favored 우선 56.2%(σ+1.96)  vs  p_code 방향 57.8%(σ+2.46)
+    ```
+    어느 칸이 정본인지는 `_row_from_game` 이 말한다 —
+    `predicted_side ← matchup["승자"]`(코드가 정한 승자) ·
+    `favored ← matchup["우세"]`(레거시 라벨) · `p_home ← jg["p_claude"]`(은퇴).
+    → `docs/maps/D54F.md` · DEFECTS D54
+    """
     from app.engine.pick_ledger import predicted_side
 
     assert predicted_side(None, None, "away") == "away"
-    assert predicted_side("home", None, "away") == "home"   # 우세가 우선
+    # 🔴 뒤집힌 줄 — 카드가 낸 승자(stored)가 레거시 라벨(favored)을 이긴다
+    assert predicted_side("home", None, "away") == "away"
+    # ⚠️ stored 가 없으면 종전 그대로 favored → p_home (반대 위험 방지)
+    assert predicted_side("home", None, None) == "home"
     assert predicted_side(None, 0.61, None) == "home"       # 종전 규약 불변
 
 

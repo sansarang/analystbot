@@ -143,16 +143,39 @@ def predicted_side(favored: str | None, p_home: float | None,
                    stored: str | None = None) -> str | None:
     """채점에 쓸 예측 방향.
 
+    🔴 [D54 2026-09-22] **`stored` 가 먼저다.** 종전에는 `favored` 가 먼저였고,
+       그래서 채점이 **카드와 다른 쪽을 채점했다.** 실측(채점 완료 · p_code 있는
+       251행): 26행(10.4%)이 `p_code` 와 반대쪽으로 채점됐다.
+
+           g1741 NC@Doosan   favored=away  p_code=0.5579(→home) winner=home hit=False
+           g1742 LG@Samsung  favored=home  p_code=0.4814(→away) winner=away hit=False
+
+       어느 칸이 정본인지는 `_row_from_game` 이 말한다:
+           predicted_side ← `matchup["승자"]`  = **코드가 정한 승자**
+           favored        ← `matchup["우세"]`  = 레거시 라벨('박빙' 포함)
+           p_home         ← `jg["p_claude"]`   = **은퇴한 옛 Judge 확률**
+       CLAUDE.md 가 "승자·확률·확신은 코드가 정한다"고 적은 그 승자가 `stored` 다.
+
+       대가: 같은 251행에서 favored 우선 56.2%(σ+1.96) vs p_code 방향
+       57.8%(σ+2.46) — **1.6%p** 를 잘못된 칸을 우선해서 잃었다.
+
+    ⚠️ `stored` 가 없으면 **종전 그대로** `favored` → `p_home` 이다.
+       그 칸은 1,404행 중 242행에만 있다 — 없는 행을 분모에서 빼면 원장이
+       통째로 얇아진다(반대 위험). 계약이 이 방향을 잠근다.
+    ⚠️ 소급 재채점은 하지 않는다 — `grade_pending` 이 `graded_at IS NULL` 만
+       집으므로 이 수정은 **앞으로만** 적용된다. 이미 채점된 행을 고치면
+       "어느 규칙으로 채점된 행인지" 구분이 사라진다.
+
     `우세`가 home/away면 그대로 쓴다. '박빙'이면 방향 선언이 없으므로
     p_home으로 환산한다 — 캘리브레이션은 확률 구간별 적중률을 보는 것이라
     방향이 없으면 그 표본이 통째로 빠진다. 환산 기준을 코드에 박아 두어
     나중에 "박빙은 어떻게 셌나"를 다시 묻지 않게 한다.
     """
-    if favored in ("home", "away"):
-        return favored
-    # [ORD-3] 확률이 없는 판정은 `predicted_side` 칸에 방향이 그대로 적혀 있다.
+    # 🔴 [D54] 카드가 낸 승자가 먼저다. [ORD-3] 확률이 없는 판정은 이 칸에만 있다.
     if stored in ("home", "away"):
         return stored
+    if favored in ("home", "away"):
+        return favored
     if p_home is None:
         return None
     return "home" if p_home >= 0.5 else "away"
