@@ -1,7 +1,8 @@
 # AnalystBot — 스포츠 분석 텔레그램 챗봇
 
 **숫자는 API로**(statsapi.mlb.com, The Odds API, football-data.org),
-**의견은 딥서치로**(Perplexity, Grok), **판정은 LLM으로** 하는 스포츠 분석 봇.
+**의견은 딥서치로**(Bing 검색 체인 · Grok), **판정은 코드로** 하는 스포츠 분석 봇.
+🔴 **퍼플렉시티는 검색에 쓰지 않는다** (사용자 지시 2026-09-22) → §퍼플렉시티
 KBO·NPB·MLB 자동 발송. 축구는 요청 시에만.
 
 ## 이 문서의 규칙
@@ -305,6 +306,34 @@ tools/deploy.sh all          # 스케줄러 → 봇 → 크롤러
 5. **날짜 기준: MLB=미국 동부 오늘, 축구=KST 오늘. 표기는 항상 KST.**
 6. **재료 없으면 분석 생성 금지.** "수집 실패"로 정직하게 표시한다.
 
+## 🔴 퍼플렉시티는 **검색에 쓰지 않는다** (2026-09-22 사용자 지시)
+
+**사용자 지시 원문:** "퍼플릭스는 서치에 사용하지 않는다"
+
+검색은 **Bing 체인**(`config/deepsearch.yaml` 의 `search.chain`)이 한다.
+의견·소식통은 Grok 이다. 퍼플렉시티 자리는 **없다.**
+
+**스위치는 하나다 — `DISABLED_PROVIDERS` 에 `perplexity`.** 코드 기본값에도
+들어 있어(`app/config.py` `disabled_providers`) 환경변수를 안 줘도 꺼진다.
+⚠️ `config/rules.yaml` 에 두 번째 스위치를 만들지 마라 — 두 벌은 어긋난다.
+
+**막는 목은 `api_guard.raise_if_unusable` 다** — `BaseAPIClient._request` 가
+모든 요청 앞에서 부르고, `is_disabled` 면 `ProviderDisabledError` 를 올린다.
+실제 HTTP(`_send`) 앞에서 끊긴다. `ask_json` 은 httpx 직호출이라 자기 안에서
+같은 스위치를 본다.
+
+```
+실측 2026-09-22 운영
+  is_disabled(perplexity)   True      · DEEPSEARCH_PPLX_ENABLED  0
+  research_calls:2026-09-22  없음(0콜) · 상한 60
+  research_crosscheck 09-15·09-18·09-21  checked 0
+```
+
+⚠️ `PPLX_API_KEY` 는 아직 꽂혀 있다. **키를 지우는 것은 사용자 몫이다** —
+   코드가 키를 만지지 않는다. 키가 있어도 위 스위치 때문에 나가지 않는다.
+🔴 계약이 이것을 잠근다(`tests/test_pplx_off.py`) — 코드 기본값 · 요청 0 ·
+   목이 한 곳 · **켜면 다시 나간다**(되돌릴 길을 막지 않는다).
+
 ## 🔴 코드 추가는 사용자 승인 없이 하지 않는다 (2026-09-13 사용자 지시)
 
 **사용자 지시 원문:** "더이상 코드 추가는 사용자 결정을 승인을 받아야 하고...
@@ -474,8 +503,9 @@ python -c "from app.alerts import WATCHDOG_CODES as W; [print(k,'·',v) for k,v 
 - **LLM 응답은 200 OK 여도 데이터가 아닐 수 있다 — `validate.py` 통과 전 사용 금지.**
 - **새 리서치 필드를 추가할 때 `validate.py` 정책을 함께 정의한다** —
   문장 필터 대상인지 전량 폐기 대상인지.
-- ⚠️ **Perplexity Agent API 마이그레이션 기한: 2026-09-27.**
-  `PPLX_API_MODE=agent` 로 코드 수정 없이 전환한다.
+- 🔴 **[2026-09-22 사용자 지시] 퍼플렉시티 마이그레이션은 무효다.**
+  ~~Perplexity Agent API 마이그레이션 기한 2026-09-27~~ — **검색에 쓰지 않으므로
+  전환할 것이 없다.** 아래 §퍼플렉시티를 보라.
 
 > 실사고: **"200 OK 산문 응답"이 재료 0인 분석을 만들었다.** JSON 이 파싱된다고
 > 데이터인 것은 아니다.

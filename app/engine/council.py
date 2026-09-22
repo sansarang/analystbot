@@ -226,7 +226,11 @@ async def investigate(jg: dict) -> tuple[dict | None, str]:
         date=jg.get("starts_at_kst") or "",
         situation=_situation_text(jg), headlines=_headlines(jg))
 
-    # 주전 — 퍼플렉시티. 검색+읽기+종합이 한 콜이라 이 일에 가장 맞다.
+    # 🔴 [2026-09-22 사용자 지시] **퍼플렉시티는 검색에 쓰지 않는다.**
+    #    종전 주석은 "주전 — 퍼플렉시티" 였다. 지금은 `DISABLED_PROVIDERS`
+    #    에 들어 있어 `ask_json` 이 조용히 None 을 주고 **아래 무료 사슬이
+    #    주전**이다. 요청은 나가지 않는다(실측 2026-09-22: 오늘 0콜).
+    #    ⚠️ 코드를 지우지 않는다 — 스위치 한 줄로 되돌린다.
     try:
         from app.research.perplexity import ask_json
 
