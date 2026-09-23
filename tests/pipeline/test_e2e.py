@@ -82,6 +82,18 @@ async def test_6_1_야구_대전은_보드로_끝난다():
             #    빈 목록을 주면 `refuted` 이고, 핵심 변수의 반증은 규칙상
             #    **픽 철회**(⑥ 반박됨)라 ⑪까지 가지 않는다. 지시문 §6-1 은
             #    그 변수를 언급하지 않았으므로 "안 봤다"가 맞다.
+            # 🔴 [F-17 + HYC-3 2026-09-23] 질문이 사전값에서 나오면서 `동의`
+            #    도 전 변수를 묻는다. 운영에서는 ⑤가 소스 없는 변수에
+            #    **미실행** 행을 남기고 ⑥이 그것을 분모에서 뺀다 — 주입
+            #    경로는 그 자리를 지나지 않으므로 여기서 같은 모양을 준다.
+            #    ⚠️ 목록을 손으로 고른 것이 아니라 운영 실측 그대로다
+            #       (weather·travel_backtoback 은 ⑤에 분기가 없다).
+            {"var": "weather", "value": None, "status": "미실행",
+             "raw_excerpt": "이 변수는 아직 수집 경로가 없다 — 미실행"},
+            {"var": "travel_backtoback", "value": None, "status": "미실행",
+             "raw_excerpt": "이 변수는 아직 수집 경로가 없다 — 미실행"},
+            {"var": "park_factor", "value": ["대전 1.153"],
+             "raw_excerpt": "대전 파크팩터 1.153"},
         ],
         "absences": [],
         "rejudge_signals": {},
@@ -94,7 +106,12 @@ async def test_6_1_야구_대전은_보드로_끝난다():
     assert s.n03_gate["gate"] == AGREE, s.n03_gate
     assert abs(s.n03_gate["gap_pp"]) < 4.0
     # ④ 가설 — 동의는 파생만
-    assert s.n04_hyp[0]["id"] == "H_deriv"
+    # 🔴 [F-17 2026-09-23 사용자 지시] 질문이 게이트에서 안 나온다 —
+    #    게이트가 `동의` 여도 묻는 것은 "우리 사전 판단을 무너뜨릴 근거"다.
+    #    ⚠️ 게이트가 정하는 것은 **해석과 걸 대상**이다(사용자 결정 (가)).
+    assert s.n04_hyp[0]["id"] == "H_break"
+    assert s.n04_hyp[0]["refuted_means"] == "중립"
+    assert s.n04_hyp[0]["market"] == "total"
     # ⑦⑧⑨ — 개정된 §6-1 기대값을 **중간값까지** 고정한다.
     #   상대(한화) 선발·불펜 악재이므로 픽(삼성)에게 **유리(+)** 다.
     assert {a["var"]: a["pp"] for a in s.n07_adjust} == {
@@ -178,7 +195,10 @@ async def test_6_2_축구는_시장과대이고_보드로_끝난다():
     assert s.n03_gate["gate"] == OVER, s.n03_gate
     assert -12.0 < s.n03_gate["gap_pp"] <= -4.0
     # ④ 가설 — 시장 반대편을 세울 근거
-    assert s.n04_hyp[0]["id"] == "H_fade"
+    # 🔴 [F-17] `시장과대` 여도 질문은 같다. 다만 **해석은 철회**다 —
+    #    시장이 우리보다 훨씬 높게 보는데 반대 근거가 없으면 시장이 맞다.
+    assert s.n04_hyp[0]["id"] == "H_break"
+    assert s.n04_hyp[0]["refuted_means"] == "철회"
     # ⑪ — 승패 금지(게이트 ≠ 동의) · 파생 모델 없음 → 보드
     assert s.n11_value["pick_type"] == PICK_BOARD, s.n11_value
     assert s.stop_reason == "n11_no_value"

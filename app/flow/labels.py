@@ -53,6 +53,21 @@ R_RETRACT, R_STRENGTHEN, R_NEUTRAL = "철회", "강화", "중립"
 REFUTED_MEANS = {"H_fade": R_RETRACT, "H_break": R_STRENGTHEN,
                  "H_deriv": R_NEUTRAL, "H_none": R_NEUTRAL}
 
+#: 🔴 [F-17 2026-09-23 사용자 결정 (가)] **질문은 사전값이, 해석은 게이트가.**
+#   F-17 로 가설 id 가 `H_break` 하나가 되면서 위 표(가설 id → 뜻)로는 뜻을
+#   가를 수 없게 됐다. 뜻은 **시장과의 관계**가 정한다 — 사용자 결정:
+#     "질문만 사전값에서 뽑고, 그 결과를 어떻게 읽을지는 시장 비교가 정한다."
+#
+#     시장과대  우리가 시장보다 **낮게** 본다 → 반대 근거가 없으면 시장이 맞다 → 철회
+#     가치의심  우리가 시장보다 **높게** 본다 → 무너뜨릴 근거가 없으면 단단   → 강화
+#     사전값단독 시장이 없다                   → 비교 대상이 없으니 단단      → 강화
+#     동의      승패에 우위가 없다             → 파생만 본다                 → 중립
+#
+# ⚠️ 여기가 원본이다. 노드에 이 표를 다시 적지 마라(사본 금지).
+REFUTED_MEANS_BY_GATE = {OVER: R_RETRACT, DOUBT: R_STRENGTHEN,
+                         PRIOR_ONLY: R_STRENGTHEN, AGREE: R_NEUTRAL,
+                         BOARD: R_NEUTRAL}
+
 # ⑨ 확신
 GRADE_A, GRADE_B, GRADE_C = "A", "B", "C"
 

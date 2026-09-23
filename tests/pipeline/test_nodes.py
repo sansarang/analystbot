@@ -12,6 +12,7 @@ import pytest
 
 from app.flow.ctx import Ctx
 from app.flow.labels import (AGREE, BOARD, DOUBT, GRADE_A, GRADE_B, GRADE_C,
+                             PRIOR_ONLY,
                              OVER, PICK_BOARD, PICK_ML, V_OK, V_REFUTED,
                              V_UNKNOWN)
 from app.flow.nodes import (n01_prior, n02_market, n03_gate, n04_hyp,
@@ -184,20 +185,46 @@ async def test_gap은_픽_기준이다():
 # ── STEP 5 ④ 가설
 
 @pytest.mark.asyncio
-async def test_가설은_게이트마다_다르다():
-    for gate, hid in ((OVER, "H_fade"), (DOUBT, "H_break"), (AGREE, "H_deriv")):
+async def test_가설은_게이트와_무관하다():
+    """🔴 [F-17 2026-09-23 사용자 지시] **규칙이 바뀌었다.**
+
+    종전 이름은 `test_가설은_게이트마다_다르다` 였고 게이트별로 다른 가설 id
+    (`H_fade`/`H_break`/`H_deriv`)를 요구했다. 그것이 바로 CLAUDE.md 가 금한
+    자리였다 — **시장을 보기 전에는 무엇을 조사할지 몰랐다.**
+
+    실측 7일: 게이트 5종 · 가설 4종 · 조합 **7종**(= 가설이 게이트의 함수).
+    지금은 질문이 하나다 — "우리 사전 판단을 무너뜨릴 근거".
+
+    ⚠️ 단언을 약화시키지 않았다. 종전은 "게이트마다 다르다"를 요구했고
+       지금은 **"게이트가 달라도 같다"**를 요구한다 — 방향만 뒤집혔다.
+    """
+    seen = []
+    for gate in (OVER, DOUBT, AGREE, PRIOR_ONLY):
         st = _s(pick_side="away", n03_gate={"gate": gate})
         h = (await n04_hyp.run(st, Ctx())).n04_hyp[0]
-        assert h["id"] == hid, (gate, h)
+        assert h["id"] == "H_break", (gate, h)
         assert h["vars"], gate
+        seen.append(sorted(v["var"] for v in h["vars"]))
+    assert all(x == seen[0] for x in seen), seen
 
 
 @pytest.mark.asyncio
-async def test_동의는_파생만_본다():
-    st = _s(pick_side="away", n03_gate={"gate": AGREE})
-    h = (await n04_hyp.run(st, Ctx())).n04_hyp[0]
-    names = [v["var"] for v in h["vars"]]
-    assert names == ["starter_recent3", "bullpen_3d", "lineup_out"], names
+async def test_해석은_게이트가_정한다():
+    """🔴 [F-17 갈림길 (가) · 사용자 결정 2026-09-23] **질문은 사전값이,
+    해석은 게이트가.** 종전 `test_동의는_파생만_본다` 를 대신한다 —
+    "동의면 파생 3개만 본다"는 조사 범위를 시장이 정하던 자리였다.
+
+    ⚠️ 파생 **마켓 지정**은 그대로다. 그건 "걸 대상"이지 질문이 아니다.
+    """
+    from app.flow.labels import R_NEUTRAL, R_RETRACT, R_STRENGTHEN
+
+    want = {OVER: R_RETRACT, DOUBT: R_STRENGTHEN,
+            PRIOR_ONLY: R_STRENGTHEN, AGREE: R_NEUTRAL}
+    for gate, means in want.items():
+        st = _s(pick_side="away", n03_gate={"gate": gate})
+        h = (await n04_hyp.run(st, Ctx())).n04_hyp[0]
+        assert h["refuted_means"] == means, (gate, h)
+        assert h["market"] == ("total" if gate == AGREE else None), (gate, h)
 
 
 def test_가설은_LLM을_부르지_않는다():
@@ -256,7 +283,13 @@ async def test_원문이_없으면_폐기한다():
     st = _s(pick_side="away", n03_gate={"gate": AGREE})
     st = await n04_hyp.run(st, Ctx())
     st = await n05_evidence.run(st, Ctx(inject={"extract": {}, "absences": []}))
-    assert st.n05_evidence == []
+    # 🔴 [F-17 2026-09-23] `동의` 도 이제 전 변수를 묻는다(질문이 사전값에서
+    #    나온다). 그래서 소스 없는 변수의 **미실행 행**(HYC-3)이 남는다.
+    #    ⚠️ 이 시험의 뜻은 "빈 목록"이 아니라 **"원문 없는 행은 안 남는다"**다.
+    #       단언을 약화시키지 않고 그 뜻 그대로 본다.
+    assert all(e.get("raw_excerpt") for e in st.n05_evidence), st.n05_evidence
+    assert all(e.get("status") == "미실행" or e.get("value")
+               for e in st.n05_evidence), st.n05_evidence
 
 
 # ── STEP 7 ⑥ 채점
@@ -303,8 +336,12 @@ async def test_미상_과반이면_모름과반():
 
 @pytest.mark.asyncio
 async def test_전부_확인되면_확인됨():
-    v = await _verdict({"starter_recent3": ["a"], "bullpen_3d": ["b"],
-                        "lineup_out": ["c"]})
+    # 🔴 [F-17] `동의` 도 전 변수를 묻는다 — 가설이 실제로 묻는 목록에
+    #    전부 증거를 줘야 "전부 확인"이다. 종전 3개 고정은 옛 동작이다.
+    #    ⚠️ 목록을 손으로 적지 않는다 — config 가 원본이다.
+    from app.flow import rules as R
+
+    v = await _verdict({k: ["x"] for k in R.vars_for("baseball")})
     assert v["verdict"] == V_OK
     assert v["unknown_ratio"] == 0.0
 
