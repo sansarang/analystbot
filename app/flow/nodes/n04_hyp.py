@@ -157,7 +157,22 @@ async def run(state, ctx):
             hyp["move"] = move
             hyp["vars"] = _move_first(hyp["vars"])
             hyp["why"] += (f" · 시장이 {toward} 쪽으로 {abs(pp):.1f}%p "
-                           f"움직였다({move.get('n_snaps')}벌) — 그 이유도 찾는다")
+                           f"움직였다({move.get('n_snaps')}벌)")
+            # 🔴 [MOV-C 2026-09-23] **"이유 미상"을 쓰지 않는다**(사용자 지시).
+            #    ②가 시각을 맞춰 원인을 붙였으면 그것을 적고, 못 붙였으면
+            #    "자금"인지 "관측 없음"인지까지 구분해 적는다 — 찾아보지도
+            #    않고 자금이라 부르면 `none` 에 이름만 바꾼 것이다.
+            from app.flow import attribution as A
+
+            line = A.summary(move.get("causes") or {})
+            if line:
+                hyp["why"] += f" · {line}"
+                found = [c for m in (move["causes"]["moves"] or [])
+                         for c in (m.get("causes") or [])]
+                if found:
+                    hyp["why"] += " — " + " / ".join(found[:2])
+            else:
+                hyp["why"] += " — 그 이유도 찾는다"
 
     # 🔴 [FIX-4a] **파생 마켓은 "걸 대상"이지 질문이 아니다.** 게이트가
     #    `동의`(사전값과 시장이 맞다)일 때만 파생을 건다 — 승패에 우위가
