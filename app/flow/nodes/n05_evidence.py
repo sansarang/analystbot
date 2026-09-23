@@ -858,6 +858,19 @@ async def run(state, ctx):
                     if why:
                         untrusted[side] = why
                     continue
+                # 🔴 [HYC-2 2026-09-23] **예상 XI 를 확정으로 취급하지 않는다.**
+                #    상자의 `xi_status` 가 `predicted`·`lastStarting11` 이면
+                #    오늘 확정 XI 가 아니다 — 값을 싣지 않고 사유를 남긴다.
+                #    ⚠️ 확정 판정의 원본은 `scout_config.xi_is_confirmed` 다
+                #       (사본 금지). `lineups` 표 경로는 XI-1 이 이미 막는다.
+                if var == "xi_confirmed":
+                    from app.engine.scout_config import xi_is_confirmed
+
+                    st_xi = card.get("xi_status")
+                    if not xi_is_confirmed(st_xi):
+                        untrusted[side] = (f"확정 XI 가 아니다(xi_status="
+                                           f"{st_xi or '없음'})")
+                        continue
                 v = (teams.get(side) or {}).get(field)
                 if v:
                     per_side[side] = list(v) if isinstance(v, (list, tuple)) else [v]

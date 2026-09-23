@@ -53,7 +53,26 @@ EXTRACT_SCHEMA = {
     "source": str, "published": str,
 }
 
+#: 추출이 **아는** XI 상태값. 확정 여부와 다르다 — 아래를 보라.
 _XI_STATUS = ("predicted", "official")
+
+#: 🔴 [HYC-2 2026-09-23 사용자 지시 "hyc 전부 다 해라"] **확정으로 인정하는
+#   값.** 계획서 `hyp_conditions_0920` §1-b 그대로다.
+#
+#   왜 필요한가 (계획서 실측): 유일하게 confirmed 로 센 `xi_confirmed` 가
+#   믿을 수 없는 카드였다 — `conflict: true`(무고사·하창래가 결장 목록과 XI
+#   에 동시 존재) · `source: ""` · **`xi_status: "lastStarting11"`**
+#   (오늘 확정 XI 가 아니라 **지난 경기 선발**).
+#
+# 🔴 `predicted`·`lastStarting11`·`standard`·`None` 은 **전부 미상**이다.
+#    CLAUDE.md 발송 규율 "예상을 확정으로 취급 금지"와 같은 규약.
+# ⚠️ 여기가 원본이다 — 노드에 문자열을 적지 마라(사본 금지).
+XI_CONFIRMED = ("official",)
+
+
+def xi_is_confirmed(status) -> bool:
+    """이 XI 를 **확정**으로 볼 수 있나. 모르면 False(낮은 쪽)."""
+    return str(status or "") in XI_CONFIRMED
 _YEAR = re.compile(r"(19|20)\d{2}")
 
 
