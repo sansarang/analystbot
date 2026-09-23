@@ -57,27 +57,85 @@ _SLATE_SQL = """
 ELO_SPORTS = ("mlb", "kbo", "npb")
 
 
+#: [ELO-S] 캐시가 몇 경기로 만들어졌는지 대조할 DB 쪽 개수.
+#  🔴 **조건이 `team_elo.refresh` 의 조회와 같아야** 한다 — 한쪽만 바뀌면
+#     대조가 영원히 어긋나 매 슬레이트 재계산하거나(느슨) 낡은 값을 통과시킨다
+#     (빡빡). `team_elo` 는 SQL 을 함수 안에 인라인으로 갖고 있어 읽어올 상수가
+#     없다. 그래서 **사본이고**, 계약(`test_elos_freshness`)이 두 조건을 대조해
+#     잠근다 — 사본을 남기려면 그것을 지키는 계약이 함께 있어야 한다.
+_ELO_COUNT_SQL = """
+    SELECT count(*) AS n FROM games
+     WHERE sport = $1 AND status = 'final'
+       AND home_score IS NOT NULL AND away_score IS NOT NULL
+"""
+
+
+def _cached_matches(got) -> int:
+    """캐시된 레이팅이 **몇 경기**로 만들어졌나.
+
+    `경기수` 는 팀당 출전 수라 합의 절반이 경기 수다.
+    ⚠️ `MIN_GAMES` 미만으로 빠진 팀이 있으면 **작게** 나온다 — 시즌 초에는
+       매 슬레이트 재계산이 되는데, 재계산은 조회 1회 + 메모리 replay 라
+       그 편이 낡은 값을 쓰는 것보다 싸다.
+    """
+    n = 0
+    for v in (got or {}).values():
+        if isinstance(v, dict):
+            try:
+                n += int(v.get("경기수") or 0)
+            except (TypeError, ValueError):
+                continue
+    return n // 2
+
+
 async def ensure_elo(pool, redis, sport: str, date: str, *, refresh=None) -> bool:
-    """그 (종목, 날짜) 레이팅이 캐시에 있게 한다. 반환: 쓸 수 있나.
+    """그 (종목, 날짜) 레이팅이 **오늘 자료로** 캐시에 있게 한다.
 
     🔴 **슬레이트 앞에서 한 번** 부른다. 경기마다 부르면 재계산이 36배다.
     🔴 `team_elo` 에는 전용 갱신 잡이 없다 — 쓰는 곳이 옛 파이프라인의 게으른
        폴백 하나뿐인데(`app/pipeline.py:2915`) `PIPELINE_V14` 가 그 경로를
        지나친다. 그래서 새 경로가 같은 일을 해야 한다.
-    ⚠️ `elo_refresh_weekly` 는 다른 물건이다 — 축구 `soccer_elo`(CSV 재피팅)다.
+
+    🔴 [ELO-S 2026-09-23] **"있으면 쓴다"가 결함이었다.** 키가 `elo:{종목}:
+       {날짜}` 인데 프리페치가 **내일 날짜를 하루 먼저** 만든다(실측:
+       `elo:kbo:2026-09-24` 가 09-23 에 이미 있었다). 그러면 다음 날 이 함수가
+       그것을 찾아 통과시켜 **어제 자료로 만든 레이팅**을 판정에 쓴다.
+       ```
+       실측 2026-09-23  elo:kbo:2026-09-23  팀당 53~56경기  ← 판정이 쓴 것
+                        DB sport='kbo' 종료  팀당 93경기
+       ```
+       그래서 **캐시가 몇 경기로 만들어졌는지**를 DB 개수와 대조하고, 모자라면
+       다시 만든다. 같으면 종전처럼 재계산하지 않는다.
+
+    ⚠️ 풀이 없으면 대조할 수 없다 — 그때는 종전대로 "있으면 쓴다"다
+       (드라이런·테스트에 DB 가 없다).
+    ⚠️ 다시 만들다 실패해도 **있던 값을 버리지 않는다** — 낡아도 없느니 낫다.
     """
     if redis is None:
         return False
     try:
         from app.models import team_elo as TE
 
-        if await TE.load(redis, sport, date):
-            return True
+        got = await TE.load(redis, sport, date)
         if pool is None:
-            return False
+            return bool(got)
+        fresh = True
+        if got:
+            try:
+                row = await pool.fetchrow(_ELO_COUNT_SQL, sport)
+                have = int((row or {}).get("n") or 0)
+                fresh = _cached_matches(got) >= have
+                if not fresh:
+                    logger.info("[flow] elo 낡음 %s %s — 캐시 %d경기 < DB %d경기, 다시 만든다",
+                                sport, date, _cached_matches(got), have)
+            except Exception as exc:
+                logger.warning("[flow] elo 신선도 대조 실패 %s: %s", sport, exc)
+                fresh = True
+        if got and fresh:
+            return True
         fn = refresh or TE.refresh
-        got = await fn(pool, redis, sport, date)
-        return bool(got)
+        made = await fn(pool, redis, sport, date)
+        return bool(made) or bool(got)
     except Exception as exc:
         logger.warning("[flow] elo 보장 실패 %s %s: %s", sport, date, exc)
         return False
