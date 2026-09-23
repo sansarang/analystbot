@@ -211,7 +211,10 @@ def _flow_state(**kw):
         pick_side = "home"
         n04_hyp = [{"text": "우리 픽(home)을 무너뜨릴 근거"}]
         n05_evidence = [{"var": "lineup_out", "value": "없음"}]
-        n06_verdict = {"per_var": {"lineup_out": "확인", "bullpen_3d": "모름"}}
+        # ⚠️ [VIS-1] 실제 ⑥이 쓰는 값으로 맞췄다 — 종전 대역은 "확인"/"모름"
+        #    이라는 **없는 문자열**을 써서 서술이 그것을 읽지 못했다.
+        n06_verdict = {"per_var": {"lineup_out": "confirmed",
+                                   "bullpen_3d": "unknown"}}
         n07_adjust = []
         n08_pcode = {"p_code_pick": 0.6522}
         n09_conf = {"grade": "B"}
@@ -244,7 +247,12 @@ def test_흐름_서술이_지어낸_숫자를_못_만든다():
     joined = " ".join(lines)
     # 상태에 있는 숫자만 나온다(0.6522 → 밴드 말로 바뀐다)
     assert "Samsung Lions" in joined
-    assert "확인 1" in joined and "모름 1" in joined
+    # 🔴 [VIS-1 2026-09-23] 글의 **형식**이 바뀌었다(사용자 지시 "알기 쉽게").
+    #    이 시험의 뜻은 그대로다 — **상태에 있는 값만 나온다.**
+    #    종전에는 "확인 1 · 모름 1" 로 셌고, 지금은 사람 이름으로 적는다.
+    assert "결장" in joined, joined          # lineup_out 의 사람 이름
+    assert "불펜 3일 소모" in joined, joined   # bullpen_3d — 아직 못 본 것
+    assert "65.2%" in joined, "코드 확률이 사라졌다"
 
 
 def test_흐름_서술이_미상을_숨기지_않는다():
@@ -252,7 +260,11 @@ def test_흐름_서술이_미상을_숨기지_않는다():
     from app.engine.narrate import flow_verdict_line
 
     v = flow_verdict_line(_flow_state())
-    assert v and "모름" in v
+    # 🔴 [VIS-1] 뜻은 그대로다 — **미상을 숨기지 않는다.** 표현만 사람 말로
+    #    바뀌었다(종전 `채점: confirmed 1 · unknown 1.`).
+    assert v and "모름" in v, v
+    assert "불펜 3일 소모" in v, v          # bullpen_3d 가 아직 모름
+    assert "unknown" not in v and "confirmed" not in v, v
 
 
 def test_흐름_조정이_0이면_0이라고_적는다():

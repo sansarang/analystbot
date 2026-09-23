@@ -20,6 +20,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+#: 🔴 미실행 상태의 원본은 `flow.labels.UNRUN` 하나다(사본 금지).
+try:
+    from app.flow.labels import UNKNOWN as UNKNOWN_LABEL
+    from app.flow.labels import UNRUN as UNRUN_LABEL
+except Exception:                                    # pragma: no cover
+    UNRUN_LABEL, UNKNOWN_LABEL = "미실행", "unknown"
+
 #: 확률을 사람 말로. 🔴 숫자를 그대로 쓰지 않는다 — `p_code` 는 시장 뼈대라
 #  "우리가 계산했다"로 읽히면 안 된다(실측: p_code == p_market 이 80%).
 _BANDS = ((0.62, "뚜렷하게"), (0.56, "다소"), (0.0, "근소하게"))
@@ -215,11 +222,20 @@ def flow_verdict_line(state) -> str | None:
     per = v.get("per_var") or {}
     if not per:
         return None
-    from collections import Counter
-
-    c = Counter(per.values())
-    parts = [f"{k} {n}" for k, n in c.most_common()]
-    return "채점: " + " · ".join(parts) + "."
+    # 🔴 [VIS-1 2026-09-23] 종전에는 `채점: confirmed 1 · unknown 1.` 이었다 —
+    #    읽는 사람이 알 수 없다. 변수의 **사람 이름**으로 적는다.
+    #    ⚠️ 이름·상태의 원본은 config(`flow.var_names`)와 `labels` 다(사본 금지).
+    ok = [_var_ko(k) for k, v in per.items() if v == "confirmed"]
+    no = [_var_ko(k) for k, v in per.items() if v == UNKNOWN_LABEL]
+    un = [_var_ko(k) for k, v in per.items() if v == UNRUN_LABEL]
+    parts = []
+    if ok:
+        parts.append("확인 " + " · ".join(ok))
+    if no:
+        parts.append("아직 모름 " + " · ".join(no))
+    if un:
+        parts.append("잴 방법 없음 " + " · ".join(un))
+    return "채점: " + " / ".join(parts) + "." if parts else None
 
 
 def flow_adjust_line(state) -> str | None:
@@ -249,21 +265,131 @@ def flow_adjust_line(state) -> str | None:
     return "확률을 움직인 것: " + " · ".join(parts) + "."
 
 
-def story_flow(state) -> list:
-    """흐름 ⑫ 서술 — **문장 목록**. `n12_text` 가 기대하는 모양이다.
+def _var_ko(var: str) -> str:
+    """변수의 **사람 이름**. 🔴 원본은 `config/rules.yaml` 의 `flow.var_names`
+    하나다 — 여기에 표를 만들지 않는다(사본 금지)."""
+    try:
+        from app.flow import rules as R
 
-    🔴 순서: 시장 → 무엇을 찾으려 했나(갈림길) → 찾았나 → 채점 → 조정.
-       **근거가 결론보다 앞**이다(SRCH-6 규약).
+        return str((R.get("var_names") or {}).get(var) or var)
+    except Exception:
+        return var
+
+
+def _team_of(state, side: str) -> str:
+    return str(getattr(state, side, "") or side)
+
+
+def _pct(x) -> str:
+    try:
+        return f"{float(x) * 100:.1f}%"
+    except (TypeError, ValueError):
+        return "?"
+
+
+def story_flow(state) -> list:
+    """흐름 ⑫ 서술 — **사용자가 읽는 글**. `n12_text` 가 기대하는 문장 목록.
+
+    🔴 [VIS-1 2026-09-23 사용자 지시] **"코드로 예측결과를 내면 사용자가 알기
+       쉽게 표현되어야 한다"**. 종전 글은 내부 용어 그대로였다:
+```
+찾은 것: bullpen_3d · starter_recent3.
+채점: 미실행 3 · confirmed 2 · unknown 1.
+찾으려 한 것: 우리 픽(home)을 무너뜨릴 근거.
+```
+       읽는 사람이 `bullpen_3d`·`confirmed`·`home` 을 알 수 없다.
+
+    🔴 **고치는 것은 표현이지 판정이 아니다.** 확률·조정·등급은 코드가 낸 값
+       그대로 쓴다 — 숫자를 바꾸거나 없는 말을 붙이지 않는다(계약이 잠근다).
+
+    🔴 순서: **결론 → 시장과의 차이 → 무엇을 봤나 → 못 본 것 → 잴 수 없는 것
+       → 확률을 움직인 것 → 걸 만한가.** 결론을 앞에 두는 것은 사용자가 가장
+       먼저 알고 싶은 것이기 때문이고, 근거를 바로 뒤에 붙여 "결론만 있고
+       근거가 없다"가 되지 않게 한다.
     ⚠️ 값이 없으면 그 줄을 **뺀다**(절대 규칙 6). 전부 없으면 빈 목록이다.
     """
-    out = []
-    for fn in (flow_market_line, flow_hypothesis_line, flow_evidence_line,
-               flow_verdict_line, flow_adjust_line):
+    out: list = []
+    side = getattr(state, "pick_side", None) or "home"
+    us = _team_of(state, side)
+    p8 = getattr(state, "n08_pcode", None) or {}
+    p_pick = p8.get("p_code_pick")
+    if p_pick is not None and side == "away":
         try:
-            v = fn(state)
-        except Exception as exc:                            # pragma: no cover
-            logger.info("[narrate] 흐름 서술 줄 실패 %s: %s", fn.__name__, exc)
-            v = None
-        if v:
-            out.append(v)
+            p_pick = round(1.0 - float(p_pick), 4)
+        except (TypeError, ValueError):
+            p_pick = None
+    grade = (getattr(state, "n09_conf", None) or {}).get("grade")
+
+    # ① 결론
+    if p_pick is not None:
+        head = f"코드 판단: {us} {_pct(p_pick)}"
+        if grade:
+            head += f" · 확신 {grade}"
+        out.append(head)
+
+    # ② 시장과의 차이
+    mk = (getattr(state, "n02_market", None) or {}).get("p") or {}
+    pm = mk.get(side)
+    if pm is not None:
+        gap = None
+        if p_pick is not None:
+            gap = (float(p_pick) - float(pm)) * 100
+        line = f"시장은 같은 쪽을 {_pct(pm)} 로 봅니다"
+        if gap is not None:
+            line += (f" — 우리가 {abs(gap):.1f}%p "
+                     + ("높게" if gap > 0 else "낮게") + " 봅니다")
+        out.append(line + ".")
+
+    # ③ 무엇을 봤나 — 원문 그대로
+    ev = getattr(state, "n05_evidence", None) or []
+    seen = [e for e in ev if e.get("value") and not e.get("status")]
+    for e in seen[:3]:
+        # ⚠️ 원문이 없으면 값이라도 쓴다. **둘 다 없으면 줄을 뺀다** —
+        #    "결장 — " 처럼 뒤가 빈 줄이 나가던 자리다(계약이 잡았다).
+        body = str(e.get("raw_excerpt") or "").strip()
+        if not body:
+            v = e.get("value")
+            body = (" · ".join(map(str, v))[:90] if isinstance(v, (list, tuple))
+                    else str(v).strip())
+        if not body:
+            continue
+        out.append(f"· {_var_ko(e.get('var'))} — {body[:90]}")
+
+    # ④ 못 본 것 / ⑤ 잴 수 없는 것 — **둘을 가른다**(HYC-3)
+    per = (getattr(state, "n06_verdict", None) or {}).get("per_var") or {}
+    unknown = [_var_ko(k) for k, v in per.items() if v == UNKNOWN_LABEL]
+    unrun = [_var_ko(k) for k, v in per.items() if v == UNRUN_LABEL]
+    if unknown:
+        out.append("아직 못 본 것: " + " · ".join(unknown) + ".")
+    if unrun:
+        out.append("잴 방법이 없는 것: " + " · ".join(unrun)
+                   + " (수집 경로가 없습니다).")
+
+    # ⑥ 확률을 움직인 것
+    adj = getattr(state, "n07_adjust", None)
+    if adj is not None:
+        moved = []
+        for a in adj:
+            if not isinstance(a, dict):
+                continue
+            try:
+                pp = float(a.get("pp") or 0)
+            except (TypeError, ValueError):
+                continue
+            if abs(pp) < 0.01:
+                continue
+            moved.append(f"{_var_ko(a.get('var'))} {pp:+.1f}%p")
+        out.append("확률을 움직인 것: " + " · ".join(moved) + "."
+                   if moved else
+                   "확률을 움직일 근거는 나오지 않았습니다 — 시장값 그대로입니다.")
+
+    # ⑦ 걸 만한가
+    v11 = getattr(state, "n11_value", None) or {}
+    why = v11.get("reject_reason")
+    st = v11.get("structure") or {}
+    if why:
+        out.append(f"걸 만한가: 아니오 — {why}.")
+    elif st.get("market"):
+        out.append(f"걸 만한가: 예 — {st.get('market')} {st.get('line')} "
+                   f"@{st.get('odds')} (기대 이득 {st.get('edge_pp')}%p).")
     return out

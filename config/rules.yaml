@@ -113,6 +113,22 @@ flow:
   # ⚠️ **미검증 사전값이다.** 96h 는 2026-09-20 계획서에서 쓰던 값을 그대로
   #    옮긴 것이고, 채점이 쌓이기 전에 고치면 측정이 아니라 취향이다.
   rotation_window_h: 96
+  # 🔴 [VIS-1 2026-09-23 사용자 지시] **"코드로 예측결과를 내면 사용자가 알기
+  #    쉽게 표현되어야 한다"** — 변수의 **사람 이름**이다. 카드 글이 이것을 쓴다.
+  # ⚠️ 여기가 원본이다. 코드에 표를 만들면 아래 변수표에 변수가 추가될 때
+  #    따라가지 않는다 — 계약이 "모든 변수에 이름이 있다"를 잠근다.
+  var_names:
+    starter_recent3:   상대 선발 최근 3등판
+    bullpen_3d:        불펜 3일 소모
+    lineup_out:        결장
+    travel_backtoback: 연전 피로
+    park_factor:       구장 득점 환경
+    weather:           날씨
+    xi_confirmed:      확정 선발 XI
+    form_recent5:      최근 5경기 흐름
+    rotation_risk:     로테이션 위험
+    travel:            이동 부담
+    motivation:        동기
   gate_pp:
     agree: 4.0        # |gap| < 4 → 동의
     freeze: 12.0      # |gap| >= 12 → 보드고정 (데이터 오류 의심)
