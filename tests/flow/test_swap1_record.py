@@ -30,6 +30,10 @@ class _S:
     sport = "baseball"
     league = "KBO"
     stop_reason = None
+    # 🔴 [SIDE-1 2026-09-23] **대역에 `pick_side` 가 없었다.** 방향의 원본이
+    #    빠져 있으니 "홈 기준"과 "픽 기준" 두 해석이 구분되지 않았고, 원장
+    #    22.4% 가 반대 팀으로 적히는 동안 이 파일은 초록이었다.
+    pick_side = "home"
     # 🔴 [LED-1 2026-09-23] **이 대역이 틀려 있었다.** ②는 `p_market` 을
     #    만들지 않는다 — `p` 에 `{home, draw, away}` 로 쓴다. 대역이 없는
     #    모양을 쓰는 바람에 이 계약이 740행 전건 시장 확률 누락을 못 잡았다.
@@ -107,17 +111,22 @@ def test_확률이_없으면_남기지_않는다():
 
 
 def test_우리쪽_확률로_바꿔_넣는다():
-    """🔴 `p_code_pick` 은 **홈 기준**이다. 원정 픽에 그대로 쓰면 CLV 의
-    부호가 뒤집힌다(CLV-3 이 겪은 실패)."""
+    """🔴 [SIDE-1 2026-09-23 정정] `p_code_pick` 은 **픽 기준**이다 —
+    생산자가 `side = state.pick_side` 로 쓴다(`n08_pcode.run:72`).
+    종전 이 계약은 "홈 기준"이라 적고 확률에서 방향을 되짚었고, 그래서
+    **원정 픽이 홈으로** 기록됐다(실측 30일 13/58 = 22.4%).
+    시장만 홈 기준으로 들어오므로 시장만 돌린다."""
     s = _S()
     side, pm, pk = R.pick_of(s)
     assert side == "home" and pm == 0.6522 and pk == 0.64
 
+    s.pick_side = "away"
     s.n08_pcode = {"p_code_pick": 0.3294}
     s.n02_market = {"p": {"home": 0.34, "draw": None, "away": 0.66}}
     side, pm, pk = R.pick_of(s)
     assert side == "away"
-    assert pm == round(1 - 0.3294, 4) and pk == round(1 - 0.34, 4)
+    assert pm == 0.3294, "픽 기준 확률을 또 뒤집었다"
+    assert pk == round(1 - 0.34, 4)
 
 
 def test_변환_규약이_한_곳이다():

@@ -50,29 +50,52 @@ def pick_of(state) -> tuple:
 
     🔴 **지어내지 않는다.** ⑧이 확률을 못 냈으면 방향도 없다 —
        `apply_code_verdict` 와 같은 규약이다.
-    ⚠️ `p_code_pick` 은 **홈 기준**이다(`n08_pcode` 가 그렇게 쓴다).
+
+    🔴 [SIDE-1 2026-09-23] **여기가 뒤집혀 있었다.** 종전 주석은
+       "`p_code_pick` 은 홈 기준이다(`n08_pcode` 가 그렇게 쓴다)"였는데
+       생산자는 그렇게 쓰지 않는다:
+       ```
+       n08_pcode.run:72   side = state.pick_side
+                          p_code_pick = 시장[side] + 조정      ← **픽 기준**
+       ```
+       그래서 확률이 절반을 넘는지로 방향을 되짚으면 **원정 픽이 홈으로**
+       적힌다. 실측 2026-09-23 최근 30일 58경기 중 **13건(22.4%)** 이 반대
+       팀으로 기록됐다(원장 쏠림 home 525 : away 221 이 그 서명이다).
+       CLV·채점·ROI 가 전부 그 행을 본다.
+
+       ⚠️ `test_종목_분기가_한_곳에만_있다` 가 이미 이 짓을 금지하고 있었다.
+          종전 코드는 변수명이 `p_home` 이라 그 정규식을 **빠져나갔다** —
+          원문 대조 가드는 이름을 바꾸면 뚫린다.
+
+    🔴 **방향의 원본은 `state.pick_side`(①이 정한다) 하나다.** 확률에서
+       되짚지 않는다 — 되짚기는 ①과 시장이 갈릴 때 반드시 틀린다.
+    ⚠️ `pick_side` 가 없으면 **적지 않는다.** 추정하면 22.4% 가 다시 생긴다.
     """
     pc = (getattr(state, "n08_pcode", None) or {}).get("p_code_pick")
+    side = getattr(state, "pick_side", None)
     if pc is None:
         return None, None, None
+    if side not in ("home", "away"):
+        logger.warning("[flow:record] game=%s pick_side 가 없다 — 원장에 적지 않는다",
+                       getattr(state, "game_id", None))
+        return None, None, None
     try:
-        p_home = float(pc)
+        p_ours = float(pc)
     except (TypeError, ValueError):
         return None, None, None
-    side = "home" if p_home >= 0.5 else "away"
     # 🔴 [LED-1 2026-09-23] **키가 안 맞았다.** ②는 `p` 에 `{home,draw,away}`
     #    로 쓰는데 여기서 `p_market` 을 읽어 **740행 전건 시장 확률이 비었고**
     #    그래서 CLV 를 한 건도 못 쟀다(실측: decision_ledger clv 96/1118,
     #    flow_v14 는 0).
-    #    ⚠️ 우리 쪽 확률로 바꾸는 것은 아래 `_our_side_p` 가 한다 — 여기서는
-    #       **홈 기준**으로 꺼낸다.
+    #    ⚠️ 시장은 **홈 기준**으로 들어온다 — 그것만 `_our_side_p` 로 돌린다.
+    #       `p_ours` 는 이미 픽 기준이라 돌리지 않는다.
     _mp = (getattr(state, "n02_market", None) or {}).get("p") or {}
     mkt = _mp.get("home") if isinstance(_mp, dict) else None
     try:
         p_mkt = float(mkt) if mkt is not None else None
     except (TypeError, ValueError):
         p_mkt = None
-    return side, _our_side_p(p_home, side), _our_side_p(p_mkt, side)
+    return side, p_ours, _our_side_p(p_mkt, side)
 
 
 def price_of(state):

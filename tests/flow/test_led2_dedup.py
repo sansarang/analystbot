@@ -71,7 +71,9 @@ def test_가격을_싣는다():
 
 
 def test_원정_픽이면_원정_배당이다():
+    """🔴 [SIDE-1 2026-09-23] 방향은 `pick_side` 가 정한다 — 확률이 아니다."""
     s = _S()
+    s.pick_side = "away"
     s.n08_pcode = {"p_code_pick": 0.3294}
     assert R.price_of(s) == 2.20
 

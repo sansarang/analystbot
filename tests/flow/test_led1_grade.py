@@ -54,10 +54,16 @@ def test_시장_확률을_읽는다():
 
 
 def test_원정_픽이면_뒤집는다():
-    """⚠️ CLV 부호가 뒤집히는 자리다(CLV-3 전례)."""
+    """⚠️ CLV 부호가 뒤집히는 자리다(CLV-3 전례).
+
+    🔴 [SIDE-1 2026-09-23] 종전에는 `p_code_pick` 만 0.3294 로 바꾸고
+       방향이 따라 뒤집히기를 기대했다 — 그게 **확률로 방향을 되짚는**
+       버그를 계약으로 굳힌 자리다. 방향은 ①이 정한다.
+    """
     from app.flow import record as R
 
     s = _S()
+    s.pick_side = "away"
     s.n08_pcode = {"p_code_pick": 0.3294}
     side, p_model, p_mkt = R.pick_of(s)
     assert side == "away"
