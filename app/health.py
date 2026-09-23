@@ -252,6 +252,27 @@ async def build_health(pool, redis) -> str:
     L.append("")
     L.append(await selfcheck_line(redis))
 
+    # 🔴 [CLV-S 2026-09-23] **CLV 한 줄.** 결과를 기다리지 않는 성적이다.
+    #    ⚠️ 선택당 **첫 판단 하나**만 센다(딥서치 F-21: "받은 가격은 고정된
+    #       스냅샷이고 재평가하지 않는다"). CLV 0 은 "졌다"가 아니라 "시장이
+    #       안 움직였다"라 따로 적는다.
+    #    ⚠️ 표본이 200 미만이면 **결론을 붙이지 않는다**(딥서치 F-21).
+    try:
+        from app.learning.decisions import CLV_ENOUGH_N, clv_summary
+
+        _c = await clv_summary(pool, engine="flow_v14") if pool is not None else None
+        if _c and _c["n"]:
+            _mv = _c["moved"]
+            _pct = (f" · 움직인 {_mv}건 중 {_c['beat_of_moved']}건 우세"
+                    if _mv else "")
+            _tail = ("" if _c["enough"]
+                     else f" — 표본 {_c['n']}/{CLV_ENOUGH_N}, 아직 결론 금지")
+            L.append("")
+            L.append(f"📐 CLV {_c['avg']:+.5f} (선택 {_c['n']}건 · "
+                     f"안 움직임 {_c['flat']}){_pct}{_tail}")
+    except Exception as exc:
+        L.append(f"⚪ CLV 확인 실패: {str(exc)[:60]}")
+
     # 🔴 [HYC-6 2026-09-23] **잴 방법이 없는 칸**을 한 줄로 알린다.
     #    HYC-3 로 `미실행`(볼 방법이 없다)이 생겼는데 운영에서 볼 데가 없었다 —
     #    "왜 이 변수는 영원히 비어 있나"를 사람이 DB 를 파야 알았다.

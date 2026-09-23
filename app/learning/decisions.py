@@ -383,3 +383,67 @@ async def backfill_market(pool, *, limit: int = 5000) -> dict:
             logger.warning("[decisions] 소급 기록 실패 id=%s: %s", r["id"], exc)
     logger.info("[decisions] 시장 확률 소급: %s", out)
     return out
+
+#: 🔴 [CLV-S 2026-09-23] **한 선택당 한 번만 센다.**
+#
+#   딥서치 근거(→ docs/FORKS.md F-21): "베팅 시점에 받은 가격은 **고정된
+#   스냅샷**이고 **재평가하지 않는다**". CLV 는 선택당 한 번 재는 것이다.
+#
+#   실측: 흐름은 한 경기를 여러 번 판단한다(15분 잡). 킥오프 직전 재평가는
+#   **정의상 CLV≈0 또는 음수**다 — 그 가격이 이미 종가다:
+#     0~30분   33행 · CLV0 27 · 양수   0
+#     30~90분  68행 · CLV0 50 · 양수   0
+#     180분+  401행 · CLV0 89 · 양수 166 · 평균 +0.00273
+#   섞어 평균 내면 일찍 내린 판단의 값어치가 지워진다(실측 30.8%).
+#
+# ⚠️ 자료를 지우지 않는다 — 원장은 그대로 두고 **세는 법**을 고친다.
+#    `DISTINCT ON (game_id, side)` + `ts_decided` 오름차순 = **첫 판단**.
+_CLV_SUM_SQL = """
+    SELECT DISTINCT ON (game_id, side) clv
+      FROM decision_ledger
+     WHERE clv IS NOT NULL
+       AND ($1::text IS NULL OR engine = $1)
+     ORDER BY game_id, side, ts_decided
+"""
+
+#: 🔴 딥서치: CLV 도 **200~500건**은 있어야 "실력"이라 말할 수 있다.
+#   그 아래에서는 숫자를 내되 **결론을 붙이지 않는다.**
+CLV_ENOUGH_N = 200
+
+
+async def clv_summary(pool, *, engine: str | None = None) -> dict:
+    """[CLV-S] CLV 요약 — **선택당 첫 판단 하나**만 센다.
+
+    반환 `{n, avg, beat, flat, moved, beat_of_moved, enough}`.
+
+    🔴 `flat`(CLV 정확히 0)을 **따로 센다.** 0 은 "졌다"가 아니라 "시장이
+       안 움직였다"다. 섞으면 거짓 비관이 나온다(실측 30.8%).
+    ⚠️ 표본이 없으면 `avg` 는 **None** 이다 — 0 으로 적지 않는다.
+    """
+    out = {"n": 0, "avg": None, "beat": 0, "flat": 0, "moved": 0,
+           "beat_of_moved": 0, "enough": False}
+    if pool is None:
+        return out
+    try:
+        rows = await pool.fetch(_CLV_SUM_SQL, engine)
+    except Exception as exc:
+        logger.warning("[decisions] CLV 요약 실패: %s", exc)
+        return out
+    vals = []
+    for r in rows:
+        try:
+            vals.append(float(r["clv"]))
+        except (TypeError, ValueError):
+            continue
+    if not vals:
+        return out
+    eps = 1e-9
+    out["n"] = len(vals)
+    out["avg"] = round(sum(vals) / len(vals), 6)
+    out["beat"] = sum(1 for v in vals if v > eps)
+    out["flat"] = sum(1 for v in vals if abs(v) <= eps)
+    moved = [v for v in vals if abs(v) > eps]
+    out["moved"] = len(moved)
+    out["beat_of_moved"] = sum(1 for v in moved if v > 0)
+    out["enough"] = len(vals) >= CLV_ENOUGH_N
+    return out
