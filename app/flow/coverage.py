@@ -87,8 +87,12 @@ def line(verdicts) -> str | None:
     if not got["always_unrun"]:
         return None
     names = " · ".join(_var_ko(v) for v in got["always_unrun"])
+    # ⚠️ [HYC6c] 문구가 정의와 달랐다 — "전건 미실행"이라 적었는데 실제
+    #    정의는 "확인된 적이 없고 미실행 표시가 있는 칸"이다(HYC6b).
+    #    실측: weather 는 unknown 1,564 · 미실행 28 로 **전건이 아니다.**
     return (f"🔧 잴 방법이 없는 칸 {len(got['always_unrun'])}개 — {names} "
-            f"(최근 {got['games']}경기 전건 미실행 · 수집 경로가 없습니다)")
+            f"(최근 {got['games']}경기에서 **한 번도 확인된 적이 없습니다** · "
+            f"수집 경로가 없습니다)")
 
 
 def block(verdicts) -> dict:

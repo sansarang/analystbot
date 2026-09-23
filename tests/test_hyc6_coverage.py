@@ -115,6 +115,40 @@ def test_빈_입력이면_줄을_만들지_않는다():
     assert C.line([]) is None
 
 
+def test_문구가_정의와_맞는다():
+    """🔴 [HYC6c] 문구가 **거짓말을 하고 있었다.**
+
+    정의를 "확인된 적 없고 미실행 표시가 있는 칸"으로 고쳤는데(HYC6b) 문구는
+    여전히 "전건 미실행"이라고 적었다. 실측에서 `weather` 는 unknown 1,564 ·
+    미실행 28 이라 **전건이 아니다.**
+    """
+    from app.flow import coverage as C
+
+    line = C.line([{"per_var": {"weather": "unknown"}}] * 9
+                  + [{"per_var": {"weather": "미실행"}}])
+    assert line and "전건" not in line, line
+    assert "확인된 적이 없" in line or "한 번도" in line, line
+
+
+def test_최신부터_본다():
+    """🔴 [HYC6c] `/health` 가 **침묵했다** — 정렬 없이 `LIMIT 500` 을 집어
+    미실행 행이 표본에 안 들어왔다(실측: 500행 → `always_unrun` 빈 목록,
+    같은 창 1,730행 → 잡힘).
+
+    ⚠️ 잘라야 한다면 **최신부터** 잘라야 한다.
+    """
+    import inspect
+
+    import app.health as H
+
+    src = "\n".join(ln.split("#", 1)[0]
+                     for ln in inspect.getsource(H.build_health).splitlines())
+    i = src.find("n06_verdict")
+    assert i > 0
+    chunk = src[i:i + 400]
+    assert "ORDER BY" in chunk, "정렬 없이 자른다 — 표본이 무작위다"
+
+
 @pytest.mark.asyncio
 async def test_health_에_한_줄이_붙는다():
     """🔴 배선의 끝 — 운영에서 보인다."""

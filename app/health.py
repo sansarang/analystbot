@@ -263,10 +263,15 @@ async def build_health(pool, redis) -> str:
         from app.flow.coverage import line as _cov_line
 
         _rows = await pool.fetch(
+            # 🔴 [HYC6c 2026-09-23] **최신부터 자른다.** 종전에는 정렬 없이
+            #    `LIMIT 500` 을 집어 미실행 행이 표본에 안 들어왔고,
+            #    `/health` 가 통째로 침묵했다(실측: 같은 창에서 500행 →
+            #    빈 목록 · 1,730행 → 잡힘).
             """SELECT snapshot_json FROM analysis_runs
                 WHERE node = 'n06_verdict'
                   AND created_at_utc > now() - interval '2 days'
-                LIMIT 500""") if pool is not None else []
+                ORDER BY id DESC
+                LIMIT 3000""") if pool is not None else []
         _vs = []
         for _r in _rows:
             _sn = _r["snapshot_json"]

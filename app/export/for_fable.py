@@ -1152,9 +1152,11 @@ async def _coverage_block() -> dict:
 
         pool = await get_pool()
         rows = await pool.fetch(
+            # ⚠️ [HYC6c] 최신부터 자른다 — /health 와 같은 규약.
             """SELECT snapshot_json FROM analysis_runs
                 WHERE node = 'n06_verdict'
                   AND created_at_utc > now() - interval '7 days'
+                ORDER BY id DESC
                 LIMIT 3000""")
         vs = []
         for r in rows:
