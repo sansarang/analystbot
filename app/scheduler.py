@@ -2014,6 +2014,12 @@ async def finals_job() -> None:
 
         _dl = await _grade_dl(pool)
         logger.info("[scheduler] 결정 원장 채점: %s", _dl)
+        # 🔴 [CLV-F 2026-09-23] **결과를 기다리지 않는 채점.** 실측: 원장
+        #    23경기 중 종료는 2건인데 종가 스냅샷은 17건이다. CLV 는 결과보다
+        #    빠른 신호다(딥서치 → FORKS F-20).
+        from app.learning.decisions import fill_clv as _fill_clv
+
+        logger.info("[scheduler] 결정 원장 CLV: %s", await _fill_clv(pool))
     except Exception as exc:
         logger.exception("[scheduler] 결정 원장 채점 실패: %s", exc)
     logger.info("[scheduler] 종료 점수 적재: %s", sorted(done))

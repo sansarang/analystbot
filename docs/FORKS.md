@@ -1141,3 +1141,62 @@ MLB 기사 332건 창별 통과 태그: 12h=5 · 24h=32 · 36h=34 · 48h=34 · 7
 | (라) 추출 창을 따로 정한다(36h 등) | 목적별로 잰다 | 새 상수 하나 — **사용자 승인 필요** |
 
 ⚠️ 어느 쪽이든 **한 단어**(`window=`) 또는 상수 하나로 뒤집힌다.
+
+---
+
+## F-20 — 결과가 적을 때 무엇으로 채점하는가 (2026-09-23)
+
+**사용자 지시:** "딥서치해서 찾아서 수정해라" (문제 1 — 성적을 잴 수 없다)
+
+### 무엇이 갈렸나
+
+흐름 판정의 성적을 재야 하는데 **끝난 경기가 1건**이었다. 셋 중 하나를 골라야 했다.
+
+| 갈래 | 내용 | 대가 |
+|---|---|---|
+| (가) 결과(win/loss)를 기다린다 | 가장 정직 | 표본이 하루 몇 건씩만 는다 |
+| (나) **CLV(종가 대비)로 잰다** | 결과 없이 즉시 | CLV 자체도 200~500건은 필요 |
+| (다) 과거 경기에 흐름을 소급해 돌린다 | 표본을 즉시 확보 | **look-ahead 누설** 위험 |
+
+### 찾은 자료
+
+- **CLV 는 결과보다 빠른 신호다.** 적중률은 "결과 지표"이고 CLV 는 "과정
+  지표"다. 50건 표본의 60% 적중은 운으로도 나오지만 CLV 는 같은 표본에서
+  훨씬 덜 흔들린다. 양의 CLV 를 꾸준히 내는 쪽이 장기 수익을 내고, 음이면
+  못 낸다 — 적중률은 분산에 크게 흔들려 상관이 약하다.
+  → [Pikkit — What Is CLV](https://pikkit.com/blog/what-is-closing-line-value) ·
+    [VSiN — The Importance of CLV](https://vsin.com/how-to-bet/the-importance-of-closing-line-value/) ·
+    [Rob Brown — CLV Explained](https://robbrownbetting.com/closing-line-value-clv-explained/)
+- ⚠️ **CLV 도 만능은 아니다.** 200건 이상에서 60~65%가 종가를 이겨야 "값을
+  찾는다"고 말할 수 있고, 확신 있는 증거는 300~500건이다. 지금 목표는
+  **결론이 아니라 잴 수 있게 만드는 것**이다.
+- **소급(다)은 누설이 첫째 위험이다.** 결정 시점에 없던 정보를 쓰면 성적이
+  부풀고 실전에서 사라진다. 축구 예측 사례연구도 look-ahead 를 1순위 위협으로
+  다루며 같은 날 정보에 **시간 완충**을 둔다.
+  → [Purged cross-validation](https://en.wikipedia.org/wiki/Purged_cross-validation) ·
+    [LaLiga 누설 인지 워크플로](https://www.sciencedirect.com/science/article/pii/S2590005626003620) ·
+    [Look-ahead bias in backtests](https://www.marketcalls.in/machine-learning/understanding-look-ahead-bias-and-how-to-avoid-it-in-trading-strategies.html)
+
+### 무엇을 골랐나 — **(나) CLV**
+
+실측이 갈래를 갈랐다:
+
+```
+flow_v14 원장 경기 23
+  종료(결과로 채점 가능)      2건
+  종가 스냅샷 있음(CLV 가능)  17건    ← 8배
+```
+
+도구도 이미 있었다 — `learning.prices.close_p` · `learning.metrics.clv`.
+**부르는 곳만 없었다.**
+
+### 안 고른 쪽은 왜
+
+- **(가)** 를 버린 것이 아니다. `grade_pending` 은 그대로 돌고 결과가 들어오는
+  대로 채점한다. CLV 를 **먼저** 쓸 뿐이다.
+- **(다) 소급은 안 한다.** 흐름이 읽는 값 중 `games.home_pitcher` 와
+  `analysis:{sport}` 캐시는 **오늘 값**이라 과거 경기에 그대로 쓰면 누설이다.
+  등판·최근3 질의는 `starts_at < kickoff` 로 이미 시점 안전하지만, 안전한
+  칸과 아닌 칸이 섞여 있어 "일부만 안전한 소급"은 믿을 수 없다.
+  🔴 하려면 각 칸에 `available_at` 을 붙이는 일이 먼저다(LE-2 가 같은 말을
+  한다) — 별건이고 지시를 받아야 한다.

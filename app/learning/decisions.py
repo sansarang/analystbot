@@ -229,3 +229,85 @@ async def grade_pending(pool, *, limit: int = 2000) -> dict:
             logger.warning("[decisions] 채점 실패 id=%s: %s", r["id"], exc)
     logger.info("[decisions] 원장 채점: %s", out)
     return out
+
+#: 🔴 [CLV-F 2026-09-23 사용자 지시 "딥서치해서 찾아서 수정해라"] **CLV 대상.**
+#
+#   딥서치 근거(→ docs/FORKS.md F-20): CLV 는 **결과보다 빠른 신호**다 —
+#   적중률은 결과 지표라 50건의 60% 적중이 운으로도 나오지만, CLV 는 과정
+#   지표라 같은 표본에서 훨씬 덜 흔들린다. 양의 CLV 를 꾸준히 내는 쪽이
+#   장기 수익을 낸다.
+#
+#   실측 2026-09-23: flow_v14 원장 23경기 중 **종료는 2건**인데 **종가
+#   스냅샷은 17건**이다 — 결과를 기다리면 2건, CLV 로 재면 17건이다.
+#
+# 🔴 **킥오프가 지난 경기만** 고른다. 아직 안 끝난 경기의 "종가"는 종가가
+#    아니다. 누설(look-ahead)은 `prices.CLOSE_WHERE` 가 이미 막는다 —
+#    `captured_at <= LEAST(기준, starts_at)` 이라 킥오프 이후 스냅샷은
+#    애초에 안 들어온다.
+# ⚠️ 이미 채운 행은 다시 안 본다.
+_CLV_PENDING_SQL = """
+    SELECT d.id, d.game_id, d.side, d.market, d.line, d.p_market_at_decision
+      FROM decision_ledger d
+      JOIN games g ON g.id = d.game_id
+     WHERE d.p_close IS NULL
+       AND d.p_market_at_decision IS NOT NULL
+       AND g.starts_at < now()
+     ORDER BY d.id
+     LIMIT $1
+"""
+
+_CLV_SET_SQL = """
+    UPDATE decision_ledger SET p_close = $2, clv = $3 WHERE id = $1
+"""
+
+
+async def fill_clv(pool, *, limit: int = 2000) -> dict:
+    """[CLV-F] 종가로 CLV 를 채운다 — **결과를 기다리지 않는다.**
+
+    🔴 부호 규약의 원본은 `metrics.clv` 하나다(사본 금지): 종가가 **우리
+       쪽으로** 움직이면 양수다. 두 확률은 같은 쪽 기준이어야 하고, 그 변환은
+       적재할 때(`_our_side_p`) 이미 끝나 있다.
+    ⚠️ 한 행이 실패해도 나머지는 간다. 건너뛴 수를 센다(조용한 0 금지).
+    """
+    from app.learning import metrics as _M
+    from app.learning import prices as _P
+
+    out = {"seen": 0, "filled": 0, "skipped": 0, "failed": 0}
+    if pool is None:
+        return out
+    try:
+        rows = await pool.fetch(_CLV_PENDING_SQL, int(limit))
+    except Exception as exc:
+        logger.warning("[decisions] CLV 대상 조회 실패: %s", exc)
+        return out
+    for r in rows:
+        out["seen"] += 1
+        base = r["p_market_at_decision"]
+        if base is None:
+            out["skipped"] += 1
+            continue
+        try:
+            pc = await _P.close_p(pool, game_id=int(r["game_id"]),
+                                  side=str(r["side"]),
+                                  market=str(r["market"] or "h2h"),
+                                  line=r["line"])
+        except Exception as exc:
+            out["failed"] += 1
+            logger.warning("[decisions] 종가 조회 실패 id=%s: %s", r["id"], exc)
+            continue
+        if pc is None:
+            out["skipped"] += 1
+            continue
+        v = _M.clv({"p_market_at_decision": float(base), "p_close": float(pc)})
+        if v is None:
+            out["skipped"] += 1
+            continue
+        try:
+            await pool.execute(_CLV_SET_SQL, r["id"], round(float(pc), 6),
+                               round(float(v), 6))
+            out["filled"] += 1
+        except Exception as exc:
+            out["failed"] += 1
+            logger.warning("[decisions] CLV 기록 실패 id=%s: %s", r["id"], exc)
+    logger.info("[decisions] CLV 채움: %s", out)
+    return out
