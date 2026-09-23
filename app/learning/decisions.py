@@ -311,3 +311,75 @@ async def fill_clv(pool, *, limit: int = 2000) -> dict:
             logger.warning("[decisions] CLV 기록 실패 id=%s: %s", r["id"], exc)
     logger.info("[decisions] CLV 채움: %s", out)
     return out
+
+#: 🔴 [CLV-B 2026-09-23] **옛 원장의 시장 확률·가격을 소급 복원한다.**
+#
+#   실측: flow_v14 740행 전건 `p_market_at_decision` 이 NULL 이라 CLV 대상이
+#   0건이었다. LED-1 에서 키를 고쳤지만 그건 새 행부터고, 옛 행은 영원히
+#   빈칸이다. 결정 시각 **이전** h2h 스냅샷은 740/740 전건 있다.
+#
+# 🔴 **누설이 아니다.** `captured_at <= ts_decided` 만 쓴다 — 결정 시점에
+#    이미 있던 가격이다(딥서치 F-20 이 1순위 위협으로 꼽은 look-ahead 를
+#    이 조건이 막는다). 종가는 건드리지 않는다 — `fill_clv` 가 따로 한다.
+# ⚠️ **덮어쓰지 않는다.** 이미 값이 있으면 대상이 아니다 — 갈아치우면 그때
+#    무엇을 봤는지가 사라진다.
+_BF_PENDING_SQL = """
+    SELECT id, game_id, side, market, line, ts_decided
+      FROM decision_ledger
+     WHERE p_market_at_decision IS NULL
+     ORDER BY id
+     LIMIT $1
+"""
+
+_BF_SET_SQL = """
+    UPDATE decision_ledger
+       SET p_market_at_decision = $2,
+           price_at_decision = COALESCE(price_at_decision, $3)
+     WHERE id = $1
+"""
+
+
+async def backfill_market(pool, *, limit: int = 5000) -> dict:
+    """[CLV-B] 결정 시점 시장 확률·가격을 소급으로 채운다.
+
+    🔴 디빅 규약의 원본은 `prices.devig` 하나다(사본 금지).
+    ⚠️ 한 행이 실패해도 나머지는 간다. 건너뛴 수를 센다.
+    """
+    from app.learning import prices as _P
+
+    out = {"seen": 0, "filled": 0, "skipped": 0, "failed": 0}
+    if pool is None:
+        return out
+    try:
+        rows = await pool.fetch(_BF_PENDING_SQL, int(limit))
+    except Exception as exc:
+        logger.warning("[decisions] 소급 대상 조회 실패: %s", exc)
+        return out
+    for r in rows:
+        out["seen"] += 1
+        side = str(r["side"] or "")
+        try:
+            raw = await _P.last_prices(pool, game_id=int(r["game_id"]),
+                                       market=str(r["market"] or "h2h"),
+                                       at=r["ts_decided"], line=r["line"])
+        except Exception as exc:
+            out["failed"] += 1
+            logger.warning("[decisions] 소급 가격 조회 실패 id=%s: %s", r["id"], exc)
+            continue
+        if not raw or side not in raw:
+            out["skipped"] += 1
+            continue
+        pr = _P.devig(raw)
+        p = pr.get(side)
+        if p is None:
+            out["skipped"] += 1
+            continue
+        try:
+            await pool.execute(_BF_SET_SQL, r["id"], round(float(p), 6),
+                               float(raw[side]))
+            out["filled"] += 1
+        except Exception as exc:
+            out["failed"] += 1
+            logger.warning("[decisions] 소급 기록 실패 id=%s: %s", r["id"], exc)
+    logger.info("[decisions] 시장 확률 소급: %s", out)
+    return out

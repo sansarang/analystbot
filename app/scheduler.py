@@ -2017,8 +2017,12 @@ async def finals_job() -> None:
         # 🔴 [CLV-F 2026-09-23] **결과를 기다리지 않는 채점.** 실측: 원장
         #    23경기 중 종료는 2건인데 종가 스냅샷은 17건이다. CLV 는 결과보다
         #    빠른 신호다(딥서치 → FORKS F-20).
+        from app.learning.decisions import backfill_market as _bf
         from app.learning.decisions import fill_clv as _fill_clv
 
+        # 🔴 [CLV-B] 기준선(결정 시점 시장 확률)이 없으면 CLV 를 못 낸다 —
+        #    **CLV 보다 먼저** 채운다. 결정 시각 이전 스냅샷만 쓴다(누설 아님).
+        logger.info("[scheduler] 결정 원장 시장 소급: %s", await _bf(pool))
         logger.info("[scheduler] 결정 원장 CLV: %s", await _fill_clv(pool))
     except Exception as exc:
         logger.exception("[scheduler] 결정 원장 채점 실패: %s", exc)
