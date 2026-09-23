@@ -125,8 +125,43 @@ async def backfill_open_tags(pool, *, since_days: int = 400) -> dict:
     return out
 
 
+def screen_rows(rows):
+    """[ODD-S] 물리적으로 불가능한 **묶음**을 걸러낸다. 반환 `(남길 것, 버릴 것)`.
+
+    🔴 묶음은 **(북 · 마켓 · 라인)** 이다. 한 북이 깨졌다고 다른 북을 버리지
+       않고, 토탈 9.5 와 8.5 를 섞어 재지도 않는다.
+    🔴 판정은 `odds_math.impossible_set` 하나가 한다 — 여기서 다시 짜지 않는다.
+    ⚠️ 한쪽만 온 묶음은 **남긴다.** 완전한 집합이 아니면 판정할 수 없고,
+       모르는 것을 버리는 것은 조용한 폐기다(Go `gate` 패키지와 같은 규약:
+       "빈 값은 위반이 아니다. 값이 **있는데** 불가능할 때만 폐기한다").
+    """
+    from app.flow.odds_math import impossible_set
+
+    if not rows:
+        return [], []
+    groups: dict = {}
+    for r in rows:
+        groups.setdefault((r.get("book"), r.get("market"), r.get("line")),
+                          []).append(r)
+    keep, drop = [], []
+    for _k, g in groups.items():
+        (drop if impossible_set([x.get("odds") for x in g]) else keep).extend(g)
+    return keep, drop
+
+
 async def store_rows(pool, game_id: int, rows: list[dict], provider: str) -> int:
-    """행 목록을 `odds_snapshots` 에 적재. 반환 적재 건수."""
+    """행 목록을 `odds_snapshots` 에 적재. 반환 적재 건수.
+
+    🔴 [ODD-S 2026-09-23] **넣기 전에 거른다.** 불가능한 호가가 들어오면
+       배당 이동이 통째로 노이즈가 된다(kbo 증분 자기상관 ρ₁ −0.58).
+    """
+    rows, bad = screen_rows(rows)
+    if bad:
+        logger.warning("[odds_free] 불가능한 배당 %d행 폐기 game=%s — %s",
+                       len(bad), game_id,
+                       " · ".join(f"{b.get('book')}/{b.get('market')} "
+                                  f"{b.get('side')} {b.get('odds')}"
+                                  for b in bad[:4]))
     n = 0
     for r in rows:
         try:

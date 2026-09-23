@@ -160,9 +160,13 @@ async def test_행의_snap_tag가_저장까지_간다():
         async def fetchrow(self, sql, *a):
             return None          # tag_open 은 아무것도 안 한다
 
-    rows = [{"book": "dk", "market": "h2h", "side": "H", "odds": 2.0,
+    # 🔴 [ODD-S 2026-09-23] 종전 픽스처는 `2.0 / 3.0` 이었다 — 합 0.833 이라
+    #    2-way 에 **존재할 수 없는 호가**다(차익거래). 적재 게이트가 옳게
+    #    버리면서 이 계약이 깨졌다. 운영이 만들 수 있는 값으로 고친다
+    #    (LED-1 · SIDE-1 과 같은 부류의 거짓 픽스처였다).
+    rows = [{"book": "dk", "market": "h2h", "side": "H", "odds": 1.90,
              "snap_tag": "open"},
-            {"book": "dk", "market": "h2h", "side": "A", "odds": 3.0}]
+            {"book": "dk", "market": "h2h", "side": "A", "odds": 2.00}]
     await OF.store_rows(_Pool(), 1, rows, "espn")
     ins = [a for sql, a in seen if "INSERT INTO odds_snapshots" in sql]
     assert len(ins) == 2

@@ -143,6 +143,10 @@ def _match_game(rows: list, home: str, away: str, commence: datetime) -> int | N
     return None
 
 
+#: [ODD-S] 적재 게이트의 원본은 `odds_free.screen_rows` 하나다(사본 금지).
+from app.collectors.odds_free import screen_rows
+
+
 async def snapshot_odds(
     pool: asyncpg.Pool, sport: str = "mlb", client: OddsClient | None = None,
     only_keys: list[str] | None = None,
@@ -197,14 +201,27 @@ async def snapshot_odds(
                 # 야구는 토탈 라인만 적재한다. 목 파일이 h2h를 줘도 승부 배당은 안 넣는다.
                 if sport in BASEBALL_ODDS_SPORTS and market.get("key") != "totals":
                     continue
-                for outcome in market.get("outcomes", []):
+                # 🔴 [ODD-S 2026-09-23] **넣기 전에 거른다.** 적재 지점이
+                #    둘이라(`odds_free.store_rows` · 여기) 한 곳만 막으면
+                #    샌다. 판정·묶음 규칙은 `screen_rows` 하나가 갖는다.
+                #    ⚠️ 한 마켓의 outcome 전체가 한 묶음이다 — 축구 3-way 도
+                #       셋이 함께 와야 정상으로 읽힌다.
+                _cand = [{"book": bm["key"], "market": market["key"],
+                          "line": o.get("point"), "side": o["name"],
+                          "odds": o["price"]}
+                         for o in market.get("outcomes", [])]
+                _keep, _bad = screen_rows(_cand)
+                if _bad:
+                    logger.warning("[odds] 불가능한 배당 %d행 폐기 game=%s %s/%s",
+                                   len(_bad), game_id, bm["key"], market["key"])
+                for outcome in _keep:
                     await pool.execute(
                         """
                         INSERT INTO odds_snapshots (game_id, book, market, side, line, odds)
                         VALUES ($1, $2, $3, $4, $5, $6)
                         """,
-                        game_id, bm["key"], market["key"],
-                        outcome["name"], outcome.get("point"), outcome["price"],
+                        game_id, outcome["book"], outcome["market"],
+                        outcome["side"], outcome["line"], outcome["odds"],
                     )
                     inserted += 1
     logger.info(
