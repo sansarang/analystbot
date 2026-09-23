@@ -1669,31 +1669,66 @@ async def oddsapinet_job() -> None:
 async def _match_oddsapinet(pool, sport: str, evs: list) -> list:
     """API 경기 → 우리 game_id. 🔴 못 맞추면 **버린다**(억지로 붙이지 않는다).
 
-    ⚠️ 팀 이름이 다르다(`Yokohama Dena Baystars`). 시작 시각(±3시간) + 팀 이름
-       부분일치로 맞춘다 — 새 별칭표를 만들지 않는다.
+    🔴 [ODN-M 2026-09-23] **팀 이름을 실제로 본다.** 종전 질의에는 팀 조건이
+       없었고 `fetchrow` 가 창 안의 **아무 행이나** 돌려줬다. KBO 5경기가 전부
+       18:30 시작이라 실측에서 셋이 전부 한 id 로 갔다:
+```
+kbo: 이벤트 3 → 매칭 3
+  NC Dinos@KT Wiz · Kia Tigers@Doosan Bears · Lotte Giants@Hanwha Eagles
+  → 전부 game_id=1774      (kbo 1경기에 7,720행이 겹쳐 쌓였다)
+npb: 4경기 → 16962 · 2경기 → 16963
+```
+       다른 경기의 총점·핸디가 한 행에 섞이면 ⑪이 **남의 가격**으로 픽을 낸다.
+       바로 위 독스트링은 이미 "시작 시각(±3시간) + 팀 이름 부분일치"라고
+       적고 있었다 — 문서가 맞고 구현이 없었다.
+
+    🔴 **대조표를 새로 만들지 않는다.** `football.match_team_name`(토큰 교집합
+       최대 · 동점이면 None)이 원본이다.
+    ⚠️ `similar_team` 단독은 쓰지 않는다 — `similar_team("Kia Tigers",
+       "Hanshin Tigers")` 가 **True** 다(둘 다 Tigers). 홈·원정이 **같은 행에서
+       둘 다** 맞을 때만 인정한다.
+    ⚠️ 한 `game_id` 는 한 번만 쓴다 — 두 이벤트가 같은 경기에 붙으면 그것이
+       바로 위 오염이다.
     """
     from datetime import datetime, timezone
 
-    out = []
+    from app.collectors.football import match_team_name
+
+    out: list = []
+    used: set = set()
+    cache: dict = {}
     for ev in evs:
         ts = ev.get("start_time")
         if not ts:
             continue
         when = datetime.fromtimestamp(int(ts), timezone.utc)
-        row = await pool.fetchrow(
+        key = int(ts)
+        if key not in cache:
             # ⚠️ `$2` 에 **명시 캐스트**를 준다. 없으면 asyncpg 가 타입을
             #    추론하지 못해 `operator does not exist: timestamptz >= interval`
             #    로 터진다(⑨ 첫 사이클이 잡았다).
-            """SELECT id, home, away FROM games
-                WHERE sport = $1
-                  AND starts_at BETWEEN $2::timestamptz - interval '3 hours'
-                                    AND $2::timestamptz + interval '3 hours'""",
-            sport, when)
-        if row is None:
-            logger.info("[oddsapinet] 못 맞춤 %s @ %s (%s)",
-                        ev.get("away_team"), ev.get("home_team"), when)
+            cache[key] = [dict(r) for r in await pool.fetch(
+                """SELECT id, home, away FROM games
+                    WHERE sport = $1
+                      AND starts_at BETWEEN $2::timestamptz - interval '3 hours'
+                                        AND $2::timestamptz + interval '3 hours'""",
+                sport, when)]
+        rows = [r for r in cache[key] if r["id"] not in used]
+        e_home = str(ev.get("home_team") or "")
+        e_away = str(ev.get("away_team") or "")
+        hit = None
+        for r in rows:
+            h = match_team_name(e_home, [str(r["home"])])
+            a = match_team_name(e_away, [str(r["away"])])
+            if h and a:
+                hit = r
+                break
+        if hit is None:
+            logger.info("[oddsapinet] 못 맞춤 %s @ %s (%s) — 창 안 %d경기",
+                        e_away, e_home, when, len(rows))
             continue
-        out.append((ev, row["id"]))
+        used.add(hit["id"])
+        out.append((ev, hit["id"]))
     return out
 
 
