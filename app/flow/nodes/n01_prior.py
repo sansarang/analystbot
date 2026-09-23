@@ -89,7 +89,11 @@ def _rating(box) -> float | None:
 
 
 async def run(state, ctx):
-    """① 사전값. `p_home`·`p_draw`·`p_away` 와 `pick_side` 를 정한다."""
+    """① 사전값. `p_home`·`p_draw`·`p_away` 와 **조사 방향** `hyp_side`.
+
+    🔴 [SIDE-2] 종전에는 `pick_side`(누구를 고르나)까지 여기서 정했다.
+       그건 ⑧의 일이다 — 이 머리말의 첫 줄이 그 착각의 출처였다.
+    """
     elo, asof = await _load_elo(state, ctx)
     eh, ea = _rating(elo.get(state.home)), _rating(elo.get(state.away))
     if eh is None or ea is None:
@@ -116,7 +120,15 @@ async def run(state, ctx):
                        "p_away": round(pa, 4),
                        "source": "team_elo", "asof": asof,
                        "elo": {"home": eh, "away": ea}}
-    state.pick_side = "home" if ph >= (pa or 0) else "away"
-    logger.info("[flow:n01] game=%s elo %.1f/%.1f → p_home %.3f · pick %s",
-                state.game_id, eh, ea, ph, state.pick_side)
+    # 🔴 [SIDE-2 2026-09-23] ①이 정하는 것은 **조사 방향**이다.
+    #    ③④⑤가 이것을 읽는다 — 무엇을 무너뜨리려 애쓸지가 여기서 정해진다.
+    #    ⚠️ **누구를 고르나(`pick_side`)는 ⑧이 정한다.** 실측이 이유다:
+    #       사전값은 전 괴리 구간에서 시장보다 나쁘다(FORKS F-22).
+    #       ①이 픽까지 정하던 종전에는 산출의 29.3% 가 "고른 쪽 승률 50%
+    #       미만"이라는 모순이었다.
+    state.hyp_side = "home" if ph >= (pa or 0) else "away"
+    # ⚠️ 잠정값이다. ⑧이 시장으로 덮는다 — 시장이 없으면 이 값이 남는다.
+    state.pick_side = state.hyp_side
+    logger.info("[flow:n01] game=%s elo %.1f/%.1f → p_home %.3f · 조사방향 %s",
+                state.game_id, eh, ea, ph, state.hyp_side)
     return state

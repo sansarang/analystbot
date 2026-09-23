@@ -142,13 +142,31 @@ def test_가격이_픽_쪽_배당이다():
 
 def test_생산자가_픽_기준으로_쓴다():
     """🔴 **이 계약이 이번 사고의 핵심이다.** 두 모듈의 뜻을 여기서 대조한다.
-    생산자가 홈 기준으로 바뀌면 이 계약이 깨져서 소비자도 같이 고치게 된다."""
+
+    🔴 [SIDE-2 2026-09-23 개정] ⑧은 이제 `pick_side` 를 **읽지 않고 쓴다.**
+       확률을 홈 기준으로 내고 50% 를 넘는 쪽을 고른다. 그래서 대조할 것은
+       "⑧이 픽 기준으로 읽는가"가 아니라 **"⑧이 정한 방향과 `p_code_pick` 이
+       같은 쪽인가"** 다 — 그 둘이 어긋난 것이 이 사고였다.
+    """
+    import asyncio
+
     from app.flow.nodes import n08_pcode as N8
 
-    src = "\n".join(ln.split("#", 1)[0]
-                    for ln in inspect.getsource(N8.run).splitlines())
-    assert "side = state.pick_side" in src
-    assert 'get("p") or {}).get(side)' in src, "시장을 픽 기준으로 안 읽는다"
+    class _C:
+        inject = {}
+
+    for mkt_home, adj, want in [(0.48, 0.0, "away"), (0.48, 4.0, "home"),
+                                (0.64, 0.0, "home"), (0.64, -20.0, "away")]:
+        s = _S()
+        s.hyp_side = "home"
+        s.n02_market = {"p": {"home": mkt_home, "draw": None,
+                              "away": round(1 - mkt_home, 4)},
+                        "odds": {"home": 2.0, "away": 2.0}}
+        s.n07_adjust = [{"pp": adj}] if adj else []
+        asyncio.run(N8.run(s, _C()))
+        assert s.pick_side == want, (mkt_home, adj, s.n08_pcode)
+        side, ours, _m = R.pick_of(s)
+        assert side == want and ours >= 0.5, (side, ours)
 
 
 def test_대역이_운영_모양을_따른다():

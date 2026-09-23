@@ -22,7 +22,10 @@ async def run(state, ctx):
     """③ 게이트."""
     prior = state.n01_prior or {}
     market = state.n02_market or {}
-    side = state.pick_side
+    # 🔴 [SIDE-2] 괴리는 **우리 판단과 시장의 차이**다 — 우리 판단은 ①이
+    #    정한 조사 방향이다. `pick_side` 로 재면 ⑧이 시장에서 만든 값과
+    #    시장을 비교하게 되어 괴리가 정의상 0 에 붙는다.
+    side = state.hyp_side
 
     p_prior = prior.get(f"p_{side}") if side else None
     p_mkt = (market.get("p") or {}).get(side) if side else None

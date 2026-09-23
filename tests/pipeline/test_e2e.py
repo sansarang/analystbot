@@ -113,9 +113,14 @@ async def test_6_1_야구_대전은_보드로_끝난다():
     assert s.n04_hyp[0]["refuted_means"] == "중립"
     assert s.n04_hyp[0]["market"] == "total"
     # ⑦⑧⑨ — 개정된 §6-1 기대값을 **중간값까지** 고정한다.
-    #   상대(한화) 선발·불펜 악재이므로 픽(삼성)에게 **유리(+)** 다.
+    #   상대(한화=홈) 선발·불펜 악재이므로 픽(삼성=원정)에게 유리하다.
+    # 🔴 [SIDE-2 2026-09-23] ⑦은 이제 **홈 기준**으로 낸다 — 홈이 악재이므로
+    #    음수다. 뜻은 그대로고 표현만 표준화됐다. 픽 기준 합(`sum_adj_pp`)과
+    #    최종 확률은 **한 자리도 안 바뀐다** — 그것이 이 표준화의 전제다.
     assert {a["var"]: a["pp"] for a in s.n07_adjust} == {
-        "starter_recent3": 3.0, "bullpen_3d": 2.0}, s.n07_adjust
+        "starter_recent3": -3.0, "bullpen_3d": -2.0}, s.n07_adjust
+    assert s.pick_side == "away", "⑧이 픽을 못 정했다"
+    assert s.n08_pcode["p_home"] == 0.2625
     assert s.n08_pcode["sum_adj_pp"] == 5.0
     assert s.n08_pcode["p_code_pick"] == 0.7375
     assert s.n09_conf["grade"] == "A", s.n09_conf

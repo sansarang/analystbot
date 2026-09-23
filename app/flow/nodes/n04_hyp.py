@@ -45,7 +45,7 @@ def _prior_strength(state) -> tuple:
     ⚠️ 못 읽으면 `(None, 0.0)` — 지어내지 않는다.
     """
     prior = getattr(state, "n01_prior", None) or {}
-    side = getattr(state, "pick_side", None) or "home"
+    side = getattr(state, "hyp_side", None) or "home"   # [SIDE-2] 조사 방향
     p = prior.get(f"p_{side}")
     try:
         pf = float(p)
@@ -93,7 +93,9 @@ async def run(state, ctx):
     """
     sport = (state.sport or "").lower()
     gate = (state.n03_gate or {}).get("gate")
-    side = state.pick_side
+    # 🔴 [SIDE-2] 가설은 **사전값**을 무너뜨리는 것이다. 시장이 고른 쪽을
+    #    무너뜨리려 들면 그 순간 조사가 시장의 함수가 된다(앵커링).
+    side = state.hyp_side
     p_prior, strength = _prior_strength(state)
 
     if gate == BOARD:

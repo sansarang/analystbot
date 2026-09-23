@@ -49,7 +49,7 @@ async def _run(rows, *, sport="soccer", league="EPL", side="home"):
     st = State.new({"id": "1", "sport": sport, "league": league,
                     "home": "A", "away": "B", "starts_at": KICK.isoformat()})
     st.sport = sport
-    st.pick_side = side
+    st.hyp_side = st.pick_side = side   # [SIDE-2] ⑤는 조사 방향을 본다
     st.n04_hyp = [{"id": "H", "vars": [{"var": "rotation_risk"}]}]
     out = await N5.run(st, Ctx(pool=_pool(rows)))
     return [e for e in (out.n05_evidence or []) if e["var"] == "rotation_risk"]
@@ -95,7 +95,7 @@ async def test_우리쪽만_본다():
 
     st = State.new({"id": "1", "sport": "soccer", "league": "EPL",
                     "home": "A", "away": "B", "starts_at": KICK.isoformat()})
-    st.sport, st.pick_side = "soccer", "away"
+    st.sport, st.hyp_side, st.pick_side = "soccer", "away", "away"
     st.n04_hyp = [{"id": "H", "vars": [{"var": "rotation_risk"}]}]
     await N5.run(st, Ctx(pool=seen))
     args = [a for sql, a in seen.sql if "starts_at <" in sql and "lineups" not in sql]
@@ -111,7 +111,7 @@ async def test_그_경기_자신은_세지_않는다():
     seen = _pool([])
     st = State.new({"id": "1", "sport": "soccer", "league": "EPL",
                     "home": "A", "away": "B", "starts_at": KICK.isoformat()})
-    st.sport, st.pick_side = "soccer", "home"
+    st.sport, st.hyp_side, st.pick_side = "soccer", "home", "home"
     st.n04_hyp = [{"id": "H", "vars": [{"var": "rotation_risk"}]}]
     await N5.run(st, Ctx(pool=seen))
     sql = [s for s, _ in seen.sql if "starts_at <" in s and "lineups" not in s]
@@ -144,7 +144,7 @@ async def test_설정을_바꾸면_질의가_바뀐다(monkeypatch):
     seen = _pool([])
     st = State.new({"id": "1", "sport": "soccer", "league": "EPL",
                     "home": "A", "away": "B", "starts_at": KICK.isoformat()})
-    st.sport, st.pick_side = "soccer", "home"
+    st.sport, st.hyp_side, st.pick_side = "soccer", "home", "home"
     st.n04_hyp = [{"id": "H", "vars": [{"var": "rotation_risk"}]}]
     await N5.run(st, Ctx(pool=seen))
     args = [a for sql, a in seen.sql
@@ -161,7 +161,7 @@ async def test_킥오프를_모르면_묻지_않는다():
     seen = _pool([])
     st = State.new({"id": "1", "sport": "soccer", "league": "EPL",
                     "home": "A", "away": "B", "starts_at": None})
-    st.sport, st.pick_side = "soccer", "home"
+    st.sport, st.hyp_side, st.pick_side = "soccer", "home", "home"
     st.n04_hyp = [{"id": "H", "vars": [{"var": "rotation_risk"}]}]
     out = await N5.run(st, Ctx(pool=seen))
     assert [e for e in (out.n05_evidence or [])

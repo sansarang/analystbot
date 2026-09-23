@@ -22,7 +22,7 @@ from app.flow.state import State
 def _st(pick="away"):
     s = State(run_id="r", game_id="1", sport="baseball", league="MLB",
               home="HOME", away="AWAY", kickoff_utc="2026-09-20T01:00:00Z")
-    s.pick_side = pick
+    s.hyp_side = s.pick_side = pick   # [SIDE-2] ⑤는 조사 방향을 본다
     s.n04_hyp = [{"id": "H", "vars": [{"var": "starter_recent3", "is_core": True}]}]
     return s
 

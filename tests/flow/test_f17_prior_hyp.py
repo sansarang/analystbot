@@ -37,6 +37,7 @@ class _S:
     league = "KBO"
     home = "두산"
     away = "KIA"
+    hyp_side = "home"    # [SIDE-2] ④는 조사 방향을 본다
     pick_side = "home"
     game_id = "1"
 

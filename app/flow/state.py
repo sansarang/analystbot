@@ -36,7 +36,20 @@ class State:
     kickoff_utc: str                # ISO8601 UTC
     home: str
     away: str
-    pick_side: str | None = None    # "home" | "away" | None
+    # 🔴 [SIDE-2 2026-09-23] **한 칸이 두 일을 하고 있었다.** 나눈다.
+    #
+    #  `hyp_side`  — **무엇을 조사할까.** ①사전값이 정한다(`n01_prior`).
+    #                ③④⑤가 읽는다. 시장을 보고 정하면 앵커링이고, 그러면
+    #                "내가 종가를 이겼다"가 성립하지 않는다(CLAUDE.md
+    #                "시장에 끌려가지 않는다" · FORKS F-17).
+    #  `pick_side` — **누구를 고르나.** ⑧최종 확률이 정한다(`n08_pcode`).
+    #                ⑨⑪⑫⑬·`record`·`narrate` 가 읽는다.
+    #
+    #  종전에는 **둘 다 ①이 정했다.** 그런데 확률은 시장에서 나오므로
+    #  ①과 시장이 갈리면 **고른 쪽의 승률이 50% 미만**이 됐다 —
+    #  실측 30일 17/58 = **29.3%**. 근거·자료 → docs/FORKS.md F-22
+    hyp_side: str | None = None     # "home" | "away" | None  ← ①이 정한다
+    pick_side: str | None = None    # "home" | "away" | None  ← ⑧이 정한다
 
     n01_prior: dict | None = None
     n02_market: dict | None = None

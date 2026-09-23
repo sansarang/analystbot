@@ -351,8 +351,12 @@ def _league_era(state, ctx) -> float | None:
 
 
 def opp_starter_of(state, starters: dict | None) -> str | None:
-    """**상대** 선발. 🔴 픽이 원정이면 홈 선발이 우리를 막는 쪽이다."""
-    opp = "home" if (state.pick_side or "home") == "away" else "away"
+    """**상대** 선발. 🔴 조사 방향이 원정이면 홈 선발이 그것을 막는 쪽이다.
+
+    ⚠️ [SIDE-2] `hyp_side` 다 — ⑤는 "누구를 조사하나"이지 "누구를 고르나"가
+       아니다. 후자는 ⑧이 정한다.
+    """
+    opp = "home" if (state.hyp_side or "home") == "away" else "away"
     return (starters or {}).get(opp) or None
 
 
@@ -721,7 +725,7 @@ async def run(state, ctx):
                     for side, (_l, _w, _e, rows) in by_side.items()])
                 # ⚠️ 원문은 **상대 선발을 앞에** 둔다 — 우리 득점 전망의
                 #    주체라 서술에서 먼저 읽혀야 한다(종전 순서 유지).
-                opp = "home" if (state.pick_side or "home") == "away" else "away"
+                opp = "home" if (state.hyp_side or "home") == "away" else "away"
                 order = [opp] + [x for x in ("home", "away") if x != opp]
                 parts, lines = [], []
                 for side in order:
@@ -788,7 +792,7 @@ async def run(state, ctx):
         #    ⚠️ "쉬어서 유리하다"는 적지 않는다 — 미검증이다. 확인되는 것은
         #       "직전에 뛰었다"(피로)뿐이고, 없으면 방향 없이 빈 목록이다.
         if var == "rotation_risk":
-            side = state.pick_side or "home"
+            side = state.hyp_side or "home"
             played = await _recent_match(state, ctx, side)
             if played is not None:
                 if played:
@@ -805,7 +809,7 @@ async def run(state, ctx):
         #    `lineups.scratches`). 야구는 종전 경로(위성+공식)가 낸다 —
         #    여기로 내려보내지 않는다.
         if var == "lineup_out" and _sport_code(state) == "soccer":
-            side = state.pick_side or "home"
+            side = state.hyp_side or "home"
             names = _scratches_of(await _xi_rows(state, ctx), side)
             if names:
                 out.append(_row(var, names, source="db:lineups",
@@ -818,7 +822,7 @@ async def run(state, ctx):
         #    내려가야 HYC-1("못 믿을 카드는 값을 싣지 않고 사유를 남긴다")이
         #    산다. 처음에 여기서 끊었다가 그 계약을 깼다.
         if var == "xi_confirmed":
-            side = state.pick_side or "home"
+            side = state.hyp_side or "home"
             got = _confirmed_xi(await _xi_rows(state, ctx), side)
             if got:
                 names = got["names"]
@@ -831,7 +835,7 @@ async def run(state, ctx):
 
         field = _FROM_EXTRACT.get(var)
         if var in ("form_recent5",) or var == "last3":
-            side = state.pick_side or "home"
+            side = state.hyp_side or "home"
             vals = await _last3(state, ctx, side)
             if vals:
                 out.append(_row(var, vals, source="db:games",

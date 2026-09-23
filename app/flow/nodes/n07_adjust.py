@@ -82,7 +82,12 @@ async def run(state, ctx):
         dev_full = float(R.get("direction.dev_full", 0.5))
         d = row.get("direction") or _from_sides(
             row.get("sides"), row.get("raw_excerpt") or "", dev_full)
-        sign = _direction_of(d, state.pick_side)
+        # 🔴 [SIDE-2 2026-09-23] **홈 기준으로 표준화한다.** 종전에는
+        #    `state.pick_side` 기준이었는데, 그 값을 ①이 정하는 바람에
+        #    ⑧이 시장에서 만드는 확률과 기준이 어긋났다.
+        #    `_direction_of` 는 반대칭이라(`sign(d[side]−d[other])`) 홈 기준
+        #    부호만 알면 원정은 그 반대다 — ⑧이 뒤집어 쓴다.
+        sign = _direction_of(d, "home")
         strength = _strength_of(d.get("dev"), dev_full)
         if sign == 0.0 or strength <= 0.0:
             # 🔴 방향이 없거나 편차가 0이면 **행을 만들지 않는다.**

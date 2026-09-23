@@ -46,9 +46,18 @@ def _llm_verdict_on(monkeypatch):
 
 
 def _s(game=KBO, **kw):
+    """🔴 [SIDE-2 2026-09-23] `pick_side` 만 주면 `hyp_side` 도 같이 채운다.
+
+    이 파일의 계약들은 **한 칸이 두 일을 하던 시절**에 쓰였다. 그때는
+    "우리 픽"이 조사 방향이자 판정 방향이었으므로 둘이 같은 값인 것이
+    당시 의도 그대로다. 나뉜 뒤의 의미는 `tests/flow/test_side2_split.py`
+    가 따로 잠근다.
+    """
     st = State.new(game)
     for k, v in kw.items():
         setattr(st, k, v)
+    if "hyp_side" not in kw and "pick_side" in kw:
+        st.hyp_side = kw["pick_side"]
     return st
 
 
@@ -391,12 +400,20 @@ async def test_정성근거는_절반만_먹는다():
 
 @pytest.mark.asyncio
 async def test_pcode는_시장_뼈대에_조정을_얹는다():
+    """🔴 [SIDE-2 2026-09-23] 픽스처가 **운영이 안 만드는 모양**이었다 —
+    ②는 `p` 에 home·draw·away 를 다 채운다(`n02_market.run`). `away` 만 있는
+    상자는 LED-1 과 같은 부류의 거짓 통과다.
+
+    ⚠️ 조정 +2%p 는 이제 **홈 기준**이다. 원정 픽이 나오려면 홈에 −2%p 다.
+    """
     st = _s(pick_side="away",
-            n02_market={"p": {"away": 0.687}},
-            n07_adjust=[{"var": "x", "pp": 2.0}])
+            n02_market={"p": {"home": 0.313, "draw": None, "away": 0.687}},
+            n07_adjust=[{"var": "x", "pp": -2.0}])
     st = await n08_pcode.run(st, Ctx())
+    assert st.pick_side == "away", "⑧이 픽을 못 정했다"
     assert st.n08_pcode["p_code_pick"] == 0.707        # 지시문 STEP 8
-    assert st.n08_pcode["sum_adj_pp"] == 2.0
+    assert st.n08_pcode["p_home"] == 0.293
+    assert st.n08_pcode["sum_adj_pp"] == 2.0           # 픽(원정) 기준
     assert st.n08_pcode["model_w"] == 0.0
 
 
@@ -574,7 +591,9 @@ async def test_파생확률이_있으면_구조픽이_선다():
                         "derivatives": {"total": {"line": 9.5, "over": 1.90}}},
             n07_adjust=[])
     st = await n08_pcode.run(
-        _s(pick_side="away", n02_market={"p": {"away": 0.687}}, n07_adjust=[]),
+        _s(pick_side="away",
+           n02_market={"p": {"home": 0.313, "draw": None, "away": 0.687}},
+           n07_adjust=[]),
         Ctx(inject={"model_probs": {"totals": {9.5: {"Over": 0.62}}}}))
     ours = st.n08_pcode["ours_markets"]
     assert ours["total_over"][9.5] == 0.62
@@ -708,7 +727,11 @@ def test_야구_핵심변수에_선발이_있다():
 
 @pytest.mark.asyncio
 async def test_선발_변경이_evidence로_들어온다():
-    st = _s(pick_side="away", n03_gate={"gate": AGREE})
+    # ⚠️ [SIDE-2] ⑧까지 이어 보려면 ②가 있어야 한다 — 운영은 home·draw·away
+    #    를 다 채운다. 없으면 ⑧이 "시장 확률이 없다"로 빠져 조용히 0 이 된다.
+    st = _s(pick_side="away", n03_gate={"gate": AGREE},
+            n02_market={"p": {"home": 0.52, "draw": None, "away": 0.48},
+                        "market_missing": False})
     st = await n04_hyp.run(st, Ctx())
     ctx = Ctx(inject={"starter_notes": ["홈 선발 변경: 문동주 → 박준영"],
                       "extract": {}, "absences": []})
@@ -723,7 +746,11 @@ async def test_선발_변경이_evidence로_들어온다():
 @pytest.mark.asyncio
 async def test_상대_선발_변경은_우리에게_유리하다():
     """🔴 부호는 `sides` 가 정한다 — 한쪽으로 고정하면 근거와 반대로 움직인다."""
-    st = _s(pick_side="away", n03_gate={"gate": AGREE})
+    # ⚠️ [SIDE-2] ⑧까지 이어 보려면 ②가 있어야 한다 — 운영은 home·draw·away
+    #    를 다 채운다. 없으면 ⑧이 "시장 확률이 없다"로 빠져 조용히 0 이 된다.
+    st = _s(pick_side="away", n03_gate={"gate": AGREE},
+            n02_market={"p": {"home": 0.52, "draw": None, "away": 0.48},
+                        "market_missing": False})
     st = await n04_hyp.run(st, Ctx())
     ctx = Ctx(inject={"starter_notes": ["홈 선발 변경: 문동주 → 박준영"],
                       "extract": {}, "absences": []})
@@ -731,7 +758,16 @@ async def test_상대_선발_변경은_우리에게_유리하다():
     st = await n06_verdict.run(st, Ctx())
     st = await n07_adjust.run(st, Ctx())
     adj = [a for a in st.n07_adjust if a["var"] == "starter_recent3"]
-    assert adj and adj[0]["pp"] > 0, st.n07_adjust   # 픽(원정)에게 유리
+    # 🔴 [SIDE-2 2026-09-23] ⑦은 **홈 기준**으로 낸다 — 홈 선발이 나빠졌으니
+    #    홈에 음수다. 원정(조사 방향)에게 유리하다는 뜻은 그대로다.
+    #    ⑧이 픽 기준으로 돌려 싣는다(`sum_adj_pp`).
+    assert adj and adj[0]["pp"] < 0, st.n07_adjust
+    st = await n08_pcode.run(st, Ctx())
+    # 🔴 홈 악재는 **홈 확률을 낮춘다** — 픽이 뒤집히는지는 조정 크기에 달렸고
+    #    그건 이 계약의 주장이 아니다(여기서는 1.5%p 라 0.52 → 0.505).
+    assert st.n08_pcode["p_home"] < 0.52, st.n08_pcode
+    sign = 1 if st.pick_side == "home" else -1
+    assert sign * st.n08_pcode["sum_adj_pp"] < 0, "픽 기준으로 안 돌렸다"
 
 
 def test_선발변경_문장_형식이_원본과_묶여_있다():
@@ -779,7 +815,9 @@ def test_n01은_자기_키만_쓴다():
     tree = ast.parse(inspect.getsource(n01_prior))
     writes = {t.attr for n in ast.walk(tree) if isinstance(n, ast.Assign)
               for t in n.targets if isinstance(t, ast.Attribute)}
-    assert writes <= {"n01_prior", "pick_side"}, writes
+    # 🔴 [SIDE-2 2026-09-23] ①은 이제 **조사 방향**을 쓴다. `pick_side` 는
+    #    ⑧이 덮을 때까지의 잠정값이라 함께 둔다.
+    assert writes <= {"n01_prior", "hyp_side", "pick_side"}, writes
     assert all(k not in writes for k in NODE_KEYS if k != "n01_prior")
 
 
