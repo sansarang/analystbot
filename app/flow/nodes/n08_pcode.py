@@ -105,7 +105,7 @@ async def run(state, ctx):
     #    같다 — 종목 분기를 새로 만들지 않는다.
     p_away = max(P_MIN, min(P_MAX, float(p_away_mkt) - s_home / 100.0))
 
-    if str(R.get("flow.pick_from", "probability")) == "prior":
+    if str(R.get("pick_from", "probability")) == "prior":
         side = state.hyp_side or "home"
     else:
         side = "home" if p_home >= p_away else "away"

@@ -54,6 +54,41 @@ def _prior_strength(state) -> tuple:
     return (pf, round(abs(pf - 0.5), 4))
 
 
+def _move_of(state) -> dict | None:
+    """[MOV-H] 이 경기에 **접목할 만한** 이동인가. 아니면 None.
+
+    🔴 켜진 종목에서만 본다(`flow.move.sports`). 사용자 지시 순서가 MLB
+       부터이고, KBO·NPB 는 원자료가 노이즈라 ODD-S 배포 뒤에 켠다.
+    ⚠️ **못 잰 이동을 0 으로 읽지 않는다** — `move_pp` 가 None 이면 모름이다.
+    """
+    mv = (getattr(state, "n02_market", None) or {}).get("move") or {}
+    pp = mv.get("move_pp")
+    if pp is None:
+        return None
+    lg = str(getattr(state, "league", "") or "").lower()
+    sp = str(getattr(state, "sport", "") or "").lower()
+    on = {str(x).lower() for x in (R.get("move.sports") or [])}
+    if not ({lg, sp} & on):
+        return None
+    try:
+        if abs(float(pp)) < float(R.get("move.min_pp", 1.0)):
+            return None
+    except (TypeError, ValueError):
+        return None
+    return dict(mv)
+
+
+def _move_first(rows: list) -> list:
+    """이동을 설명할 수 있는 변수를 **앞으로** 옮긴다.
+
+    ⚠️ 목록은 `flow.move.explains` 가 원본이다 — 이름을 여기 적지 않는다.
+    ⚠️ 빼지 않고 **순서만** 바꾼다. 빼면 ⑥ 분모가 달라진다.
+    """
+    want = [str(x) for x in (R.get("move.explains") or [])]
+    rank = {n: i for i, n in enumerate(want)}
+    return sorted(rows, key=lambda v: rank.get(v.get("var"), len(rank)))
+
+
 def _ordered_vars(sport: str, strength: float) -> list:
     """[HYC-4] **경기별** 조사 목록. 목록은 config 가 주고 **순서**를 여기서 정한다.
 
@@ -98,6 +133,8 @@ async def run(state, ctx):
     side = state.hyp_side
     p_prior, strength = _prior_strength(state)
 
+    move = None if gate == BOARD else _move_of(state)
+
     if gate == BOARD:
         hyp = {"id": "H_none", "text": "찾을 것이 없다", "vars": []}
     else:
@@ -110,6 +147,17 @@ async def run(state, ctx):
                        f"그 판단을 깨뜨릴 근거부터 찾는다"
                        if p_prior is not None else
                        "사전값을 못 읽었다 — 목록 순서 그대로 찾는다")}
+        # 🔴 [MOV-H 2026-09-23] **가격이 움직였으면 그 이유도 같이 찾는다.**
+        #    사용자: "왜 이렇게 배당이 이동되었는지…**초기 가설과 접목**".
+        #    ⚠️ 가설을 하나 더 만들지 않는다 — ⑤⑥이 `n04_hyp[0]` 만 읽으므로
+        #       채점 분모가 조용히 달라진다. `H_break` 안에 싣는다.
+        if move:
+            pp = float(move["move_pp"])
+            toward = state.home if pp > 0 else state.away
+            hyp["move"] = move
+            hyp["vars"] = _move_first(hyp["vars"])
+            hyp["why"] += (f" · 시장이 {toward} 쪽으로 {abs(pp):.1f}%p "
+                           f"움직였다({move.get('n_snaps')}벌) — 그 이유도 찾는다")
 
     # 🔴 [FIX-4a] **파생 마켓은 "걸 대상"이지 질문이 아니다.** 게이트가
     #    `동의`(사전값과 시장이 맞다)일 때만 파생을 건다 — 승패에 우위가

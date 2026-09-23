@@ -269,8 +269,9 @@ async def test_한쪽만_있으면_지어내지_않는다():
 @pytest.mark.asyncio
 async def test_prior_로_되돌리면_종전_동작이다(monkeypatch):
     """🔴 나빠지면 한 줄로 되돌린다. 되돌릴 길을 막지 않는다."""
+    # ⚠️ [2026-09-23] 키에서 `flow.` 접두사를 뗐다 — `rules.get` 이 스스로 붙인다.
     monkeypatch.setattr(N8.R, "get",
-                        lambda k, d=None: "prior" if k == "flow.pick_from" else d)
+                        lambda k, d=None: "prior" if k == "pick_from" else d)
     s = _S()
     s.hyp_side = "home"
     s.n07_adjust = []
@@ -279,9 +280,23 @@ async def test_prior_로_되돌리면_종전_동작이다(monkeypatch):
     assert s.n08_pcode["p_code_pick"] == 0.48, "종전처럼 50% 미만이 나와야 한다"
 
 
-def test_기본값은_확률이다():
+def test_되돌릴_길이_실제로_설정에_있다():
+    """🔴 [2026-09-23 정정] 종전 계약은 `_R.get("flow.pick_from", ...)` 를
+    봤는데 `rules.get` 이 **스스로 `flow.` 를 붙인다**(`flow.flow.pick_from`).
+    그래서 설정에 무엇이 있든 **언제나 기본값**이 나왔고, 되돌릴 길이 막혀
+    있었는데 이 계약은 초록이었다 — 거짓 통과다.
+
+    ⚠️ 이제 **없는 키와 다른 값**을 함께 확인해 그 실수를 막는다.
+    """
     from app.flow import rules as _R
-    assert str(_R.get("flow.pick_from", "probability")) == "probability"
+
+    assert str(_R.get("pick_from", "MISSING")) == "probability", \
+        "설정의 pick_from 이 안 읽힌다 — 되돌릴 길이 막혔다"
+    assert _R.get("flow.pick_from", "MISSING") == "MISSING", \
+        "접두사를 두 번 붙였다"
+
+    src = inspect.getsource(N8.run)
+    assert '"flow.pick_from"' not in src, "접두사를 두 번 붙였다"
 
 
 # ── 원장까지 이어진다 ───────────────────────────────────────────────
