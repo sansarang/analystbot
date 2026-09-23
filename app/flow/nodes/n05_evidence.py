@@ -94,6 +94,14 @@ def card_trust(box: dict | None, side_card: dict | None) -> tuple:
     return True, ""
 
 
+def _B2B_HOURS() -> float:
+    """[LOAD-1] 야구 연전 창(시간). 🔴 축구 96h 와 **다른 값**이다 —
+    야구는 매일 경기라 96시간이면 전건이 연전으로 읽힌다."""
+    from app.flow import rules as R
+
+    return float(R.get("load.b2b_window_h", 26) or 26)
+
+
 def _DEV_FULL() -> float:
     """[NWS-D] ⑦의 강도 기준값. 🔴 원본은 `config/rules.yaml` 하나다."""
     from app.flow import rules as R
@@ -478,19 +486,57 @@ _XI_SQL = """
 
 
 async def _xi_rows(state, ctx) -> list:
-    """이 경기의 라인업 행. 🔴 못 읽으면 **빈 목록**(미상) — 지어내지 않는다."""
-    if ctx.pool is None:
-        return []
+    """이 경기의 라인업 행. 🔴 못 읽으면 **빈 목록**(미상) — 지어내지 않는다.
+
+    🔴 [LOAD-1 2026-09-23] **한 번만 조회한다.** 부르는 곳이 셋이 됐다
+       (확정 XI · 결장자 · 오늘 타순). 호출 수를 줄이는 대신 결과를 상태에
+       기억해 **경기당 1질의**를 지킨다 — 종전 계약의 취지 그대로다.
+    ⚠️ 빈 결과도 기억한다. 못 읽은 것을 매번 다시 때리면 실패가 3배가 된다.
+    """
+    memo = getattr(state, "_xi_memo", None)
+    if memo is not None:
+        return memo
+    rows: list = []
+    if ctx.pool is not None:
+        try:
+            gid = int(state.game_id)
+        except (TypeError, ValueError):
+            gid = None
+        if gid is not None:
+            try:
+                rows = [dict(r) for r in await ctx.pool.fetch(_XI_SQL, gid)]
+            except Exception as exc:
+                logger.warning("[flow:n05] 라인업 조회 실패 game=%s: %s",
+                               state.game_id, exc)
     try:
-        gid = int(state.game_id)
-    except (TypeError, ValueError):
-        return []
-    try:
-        return [dict(r) for r in await ctx.pool.fetch(_XI_SQL, gid)]
-    except Exception as exc:
-        logger.warning("[flow:n05] 라인업 조회 실패 game=%s: %s",
-                       state.game_id, exc)
-        return []
+        state._xi_memo = rows
+    except Exception:                      # 슬롯 있는 대역이면 못 붙는다
+        pass
+    return rows
+
+
+def _order_by_side(rows) -> dict:
+    """[LOAD-1] 쪽별 **오늘 타순 이름들**. 최신 한 벌만 본다.
+
+    🔴 확정이 없으면 그 쪽은 **빈 값**이다 — 예상 타순으로 단정하지 않는다
+       (`lineup_direction` 의 "미확정" 규약과 같다).
+    """
+    import json as _json
+
+    out: dict = {}
+    for r in rows or []:
+        sd = str(r.get("side") or "")
+        if sd not in ("home", "away") or sd in out:
+            continue          # DESC 정렬이라 첫 행이 최신이다
+        bo = r.get("batting_order")
+        if isinstance(bo, str):
+            try:
+                bo = _json.loads(bo)
+            except (TypeError, ValueError):
+                bo = None
+        if isinstance(bo, list) and bo:
+            out[sd] = [str(x) for x in bo if x]
+    return out
 
 
 async def _park_of(state, ctx) -> tuple:
@@ -546,7 +592,7 @@ _RECENT_SQL = """
 """
 
 
-async def _recent_match(state, ctx, side: str) -> list:
+async def _recent_match(state, ctx, side: str, *, hours: float | None = None) -> list:
     """창 안에 뛴 경기. 🔴 **없으면 빈 목록**(=봤는데 없다)이고, 못 보면 None."""
     from app.flow import rules as R
 
@@ -556,10 +602,14 @@ async def _recent_match(state, ctx, side: str) -> list:
     team = getattr(state, side, "")
     if kick is None or not team:
         return None
-    try:
-        hours = float(R.get("rotation_window_h", 96) or 96)
-    except (TypeError, ValueError):
-        hours = 96.0
+    # ⚠️ [LOAD-1] 창을 인자로 받을 수 있게 했다 — 야구 연전은 축구 96h 와
+    #    다른 값이다. **안 넘기면 종전 그대로**(축구 rotation_window_h).
+    if hours is None:
+        try:
+            hours = float(R.get("rotation_window_h", 96) or 96)
+        except (TypeError, ValueError):
+            hours = 96.0
+    hours = float(hours)
     try:
         rows = await ctx.pool.fetch(_RECENT_SQL, _sport_code(state), team,
                                     kick, hours)
@@ -793,6 +843,74 @@ async def run(state, ctx):
                 out.append(_row(var, [f"{name} {float(pf):.3f}"],
                                 source=f"db:{src}",
                                 excerpt=f"{name} 파크팩터 {float(pf):.3f}"))
+            continue
+
+        # 🔴 [LOAD-1 2026-09-23 사용자 지시] **일정 부하 — 연전.**
+        #    ⚠️ `_recent_match()` 는 이미 있었다. 축구 `rotation_risk` 가
+        #       쓰는데 야구 `travel_backtoback` 은 **한 번도 안 불렀다** —
+        #       그래서 "수집 경로가 없다 — 미실행"으로 나갔다. 경로는 있었다.
+        if var == "travel_backtoback":
+            got = (ctx.inject or {}).get("recent_match")
+            if got is None:
+                got = {}
+                for sd in ("home", "away"):
+                    got[sd] = await _recent_match(state, ctx, sd,
+                                                  hours=_B2B_HOURS())
+            if all(v is None for v in got.values()):
+                out.append(_row(var, [], source="", status=UNRUN,
+                                excerpt="일정을 못 읽었다 — 미실행"))
+                continue
+            d = {}
+            for sd in ("home", "away"):
+                v = got.get(sd)
+                d[sd] = -1 if v else 0
+            lines = [f"{sd}: {len(got.get(sd) or [])}경기" for sd in ("home", "away")]
+            out.append(_row(var, lines, source="db:games",
+                            excerpt=" · ".join(lines),
+                            direction={**d, "dev": _DEV_FULL(),
+                                       "basis": " · ".join(lines)}))
+            continue
+
+        # 🔴 [LOAD-1] **출전 부하 — 주전/후보로 무게를 나눈다.**
+        #    사용자: "후배선수인지 메인선수인지 확인해서 숫자를 바꿔야 한다"
+        #    ⚠️ 주전 판정은 `lineup_diff.usual_from` 이 원본이다(사본 금지).
+        if var == "play_load":
+            from app.flow import load as _LOAD
+
+            got = (ctx.inject or {}).get("play_load")
+            if not got:
+                out.append(_row(var, [], source="", status=UNRUN,
+                                excerpt="출전 기록이 없다 — 미실행"))
+                continue
+            kick = _kickoff_dt(state.kickoff_utc)
+            # 🔴 [2026-09-23 사용자 지시] **오늘 선발인 선수의 부하만 센다.**
+            #    많이 뛴 선수가 오늘 안 나오면 그 피로는 이 경기에 없다.
+            today = (ctx.inject or {}).get("today_order")
+            if today is None:
+                today = _order_by_side(await _xi_rows(state, ctx))
+            bag, d = {}, {}
+            for sd in ("home", "away"):
+                one = got.get(sd) or {}
+                bag[sd] = _LOAD.play_load(one.get("apps"), one.get("usual") or {},
+                                          today=(today or {}).get(sd), at=kick)
+            if all(v is None for v in bag.values()):
+                out.append(_row(var, [], source="", status=UNRUN,
+                                excerpt="출전 기록이 없다 — 미실행"))
+                continue
+            from app.flow import rules as _R
+
+            hi = max((v or {}).get("score", 0.0) for v in bag.values())
+            thr = float(_R.get("load.heavy_score", 3.0))
+            for sd in ("home", "away"):
+                v = bag[sd] or {}
+                d[sd] = -1 if (v.get("score", 0.0) >= thr
+                               and v.get("score", 0.0) >= hi) else 0
+            lines = [f"{sd}: 부하 {(bag[sd] or {}).get('score')}"
+                     f"({(bag[sd] or {}).get('n')}경기)" for sd in ("home", "away")]
+            out.append(_row(var, lines, source="db:batter_appearances",
+                            excerpt=" · ".join(lines),
+                            direction={**d, "dev": _DEV_FULL(),
+                                       "basis": " · ".join(lines)}))
             continue
 
         # 🔴 [NWS-D 2026-09-23 사용자 지시] **기사의 부상·복귀 소식.**

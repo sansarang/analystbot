@@ -53,9 +53,11 @@ def test_야구_변수표는_안_바뀌었다():
     #    "부상이나 다른 문제가 있으면 예측에 무조건 좌우되어야 한다".
     #    ⚠️ 집합을 느슨하게 하지 않았다 — 여전히 **정확한 목록**을 요구한다.
     #       변수를 몰래 늘리면 이 계약이 깨져야 한다.
+    # 🔴 [LOAD-1 2026-09-23 사용자 지시] `play_load`(출전 부하)를 더했다 —
+    #    "출전부하도 배선에 넣어라". ⚠️ 축구는 안 더했다(자료 없음).
     assert set(b) == {"starter_recent3", "bullpen_3d", "lineup_out",
                       "travel_backtoback", "park_factor", "weather",
-                      "news_injury"}, sorted(b)
+                      "news_injury", "play_load"}, sorted(b)
 
 
 def _pool(rows):
@@ -142,5 +144,22 @@ def test_읽기가_한_함수다():
     # XI 와 결장자가 **같은 조회**를 쓴다 — 두 분기가 같은 함수를 부른다.
     # ⚠️ `await` 를 붙여 **호출만** 센다 — 안 붙이면 `async def _xi_rows(...)`
     #    정의 줄까지 세어 3이 나온다(처음에 그래서 거짓 실패했다).
-    assert src.count("await _xi_rows(state, ctx)") == 2, "조회가 갈렸다"
+    # ⚠️ **주석과 독스트링을 뗀다.** `_XI_SQL` 을 설명하는 독스트링이 원문
+    #    grep 에 걸린다 — `#` 만 떼는 것으로는 부족하다(D46, 15회째).
+    #    `ast.unparse` 가 주석을 버리고, 아래가 독스트링을 버린다.
+    import ast as _ast
+
+    _tree = _ast.parse(src)
+    for _n in _ast.walk(_tree):
+        _b = getattr(_n, "body", None)
+        if _b and isinstance(_b, list):
+            _f = _b[0]
+            if (isinstance(_f, _ast.Expr) and isinstance(_f.value, _ast.Constant)
+                    and isinstance(_f.value.value, str)):
+                _b.pop(0)
+    code = _ast.unparse(_tree)
+    assert code.count("_XI_SQL") == 2, "라인업 SQL 이 두 곳 이상이다(사본)"
+    assert code.count("FROM lineups") == 1, "lineups 를 따로 조회하는 곳이 있다"
+    assert "_xi_memo" in code, "조회를 기억하지 않는다 — 경기당 1질의가 깨진다"
+    assert code.count("await _xi_rows(state, ctx)") >= 2, "접근자를 안 쓴다"
     assert "_scratches_of" in src

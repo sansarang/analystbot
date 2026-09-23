@@ -120,10 +120,18 @@ def test_분기_없는_변수를_다섯번노드가_표시한다():
 
 def test_목록을_어디에도_적지_않았다():
     """🔴 사본 금지 — 변수 이름을 열거한 집합이 있으면 `rules.yaml` 이 바뀔 때
-    따라가지 않는다."""
+    따라가지 않는다.
+
+    ⚠️ [LOAD-1 2026-09-23] `travel_backtoback` 을 이 목록에서 **뺐다.**
+       분기가 생겼기 때문이다 — `_recent_match()` 가 이미 있었는데 야구가
+       안 부르고 있었다. 분기가 있는 변수는 `rotation_risk`·`xi_confirmed`·
+       `news_injury` 처럼 이름이 코드에 나오는 것이 정상이다.
+       🔴 남은 둘(`weather`·`motivation`)은 **여전히 분기가 없다** — 그 둘에
+          대해서는 이 계약이 그대로 산다.
+    """
     for mod in (N5, N6):
         code = ast.unparse(ast.parse(inspect.getsource(mod)))
-        for name in ("weather", "travel_backtoback", "motivation"):
+        for name in ("weather", "motivation"):
             assert f'"{name}"' not in code and f"'{name}'" not in code, \
                 f"{mod.__name__} 에 {name} 를 손으로 적었다"
 

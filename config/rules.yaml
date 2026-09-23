@@ -137,6 +137,10 @@ flow:
       #     확률은 ⑦에서 움직인다. 근거가 쌓이면 한 줄로 true 가 된다.
       #  🔴 **되돌릴 길**: 이 줄을 지우면 ④⑤⑥⑦에서 통째로 사라진다.
       news_injury:       {max_abs: 1.5, core: false}
+      # 🔴 [LOAD-1] **출전 부하.** batter_appearances 19,025행이 쌓이는데
+      #    흐름이 한 번도 안 읽었다. ⚠️ 축구는 lineup_history.minutes 가
+      #    전건 0 이라 넣지 않았다.
+      play_load:         {max_abs: 1.0, core: false}
     soccer:
       xi_confirmed:      {max_abs: 3.0, core: true}
       # 🔴 [OUT-S 2026-09-23 사용자 승인] **결장자.** 자료는 이미 쌓여 있었다 —
@@ -174,6 +178,7 @@ flow:
     travel:            이동 부담
     motivation:        동기
     news_injury:       부상·복귀 소식   # [NWS-D]
+    play_load:         출전 부하        # [LOAD-1] 주전/후보 가중
   # 🔴 [VAL-B 2026-09-23] **⑪이 양쪽을 다 본다.**
   #  사용자: "엣지 −13.14%는 역배일 가능성도 있는거야?" — 있었다.
   #  실물 g16449: λ 는 언더 58.19%(+8.44%p)를 가리키는데, 증거 투표가
@@ -185,6 +190,19 @@ flow:
     allow_no_vote: true       # false → 투표가 없으면 종전대로 거절
     # ⚠️ **미검증 사전값이다.** 30건 쌓이면 투표 vs λ 적중률로 다시 정한다.
     vote_conflict_grade: "C"  # 투표와 반대편을 골랐을 때의 구조 픽 등급
+  # 🔴 [LOAD-1 2026-09-23 사용자 지시] **부하 — 주전/후보로 무게를 나눈다.**
+  #  "출전부하도 배선에 넣어라...후배선수인지 메인선수인지 확인해서 숫자를 바꿔야"
+  #  ⚠️ 전부 **미검증 사전값**이다. BT-9 백테스트가 이 값을 재는 것이 목적이다.
+  #  ⚠️ 주전 판정의 원본은 `lineup_diff.usual_from` 이다 — 여기서 다시 짓지 않는다.
+  load:
+    window_d: 7             # 출전 부하를 보는 창(일)
+    weight_regular: 1.0     # 평소 주전 한 경기
+    weight_sub: 0.4         # 후보 한 경기
+    slot_top_bonus: 0.5     # 1번이 9번보다 이만큼 더 무겁다(비율)
+    #  야구 연전 창. ⚠️ 축구 `rotation_window_h`(96h)를 그대로 쓰지 않는다 —
+    #  야구는 매일 경기라 96시간이면 전건이 연전으로 읽힌다.
+    b2b_window_h: 26
+    heavy_score: 3.0        # 이 이상이면 '무겁다'
   gate_pp:
     agree: 4.0        # |gap| < 4 → 동의
     freeze: 12.0      # |gap| >= 12 → 보드고정 (데이터 오류 의심)
