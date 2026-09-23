@@ -181,13 +181,22 @@ async def build_ctx(pool, game: dict):
 # ── 실행 ────────────────────────────────────────────────────────────
 
 async def run_one(pool, game: dict) -> dict:
-    """경기 1건 → 기록 한 줄. 🔴 흐름은 운영 그대로 돈다."""
+    """경기 1건 → 기록 한 줄. 🔴 흐름은 운영 그대로 돈다.
+
+    🔴 [2026-09-23 실측] **경기 dict 의 모양을 운영과 똑같이 만든다.**
+       처음에 `games.sport`("npb")를 그대로 넘겼더니 `rules.vars_for` 가
+       빈 표를 돌려줘 ④의 조사 변수가 **0개**가 됐고, 457경기가 전부
+       ⑥ `모름과반` 으로 멈췄다(⑧ 도달 0건).
+       운영은 `bridge._sport_of` 로 `baseball|soccer` 규약으로 바꾼다 —
+       그 함수를 **그대로 부른다**(사본 금지).
+    """
+    from app.flow.bridge import _sport_of
     from app.flow.run import run_game
 
     ctx, ro = await build_ctx(pool, game)
-    st = await run_game({"id": game["id"], "sport": game["sport"],
+    st = await run_game({"game_id": game["id"], "sport": _sport_of(game),
                          "league": game["league"], "home": game["home"],
-                         "away": game["away"], "starts_at": game["starts_at"]},
+                         "away": game["away"], "kickoff_utc": game["starts_at"]},
                         ctx)
     hs, aws = game["home_score"], game["away_score"]
     return {

@@ -148,3 +148,41 @@ def test_보고가_세_확률을_나란히_잰다():
     src = inspect.getsource(BT.summarize)
     for k in ("우리 ⑧", "시장 ②", "사전값 ①"):
         assert k in src
+
+
+def test_경기_dict_모양이_운영과_같다():
+    """🔴 **실측이 잡은 결함(2026-09-23).** 처음에 `games.sport`("npb")를
+    그대로 넘겼더니 `rules.vars_for` 가 빈 표를 줘서 ④의 조사 변수가 **0개**가
+    됐고, 457경기가 전부 ⑥ `모름과반` 으로 멈췄다(⑧ 도달 **0건**).
+
+    운영은 `bridge._sport_of` 로 `baseball|soccer` 규약으로 바꾼다.
+    🔴 변환을 여기서 다시 짓지 않는다 — 그 함수를 부른다(사본 금지).
+    """
+    # ⚠️ **독스트링을 뗀다** — 위 설명이 `"npb"`·`"baseball"` 을 그대로
+    #    담고 있어 원문 grep 이 거짓으로 실패한다(D46, 16회째).
+    tree = ast.parse(inspect.getsource(BT.run_one).strip())
+    for node in ast.walk(tree):
+        body = getattr(node, "body", None)
+        if body and isinstance(body, list):
+            first = body[0]
+            if (isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant)
+                    and isinstance(first.value.value, str)):
+                body.pop(0)
+    code = ast.unparse(tree)
+    assert "_sport_of(game)" in code, "리그 코드를 그대로 넘긴다"
+    assert "'npb'" not in code and "'baseball'" not in code, "변환을 다시 짰다"
+    # 키 이름도 운영과 같아야 한다 — State.new 가 이 이름들을 본다
+    assert "'game_id'" in code and "'kickoff_utc'" in code
+
+
+def test_sport_변환이_실제로_변수표를_연다():
+    """⚠️ 변환이 맞는지 **결과로** 확인한다 — 이름만 맞추면 또 속는다."""
+    from app.flow import rules as R
+    from app.flow.bridge import _sport_of
+
+    for code in ("kbo", "npb", "mlb"):
+        assert _sport_of({"sport": code}) == "baseball"
+        assert R.vars_for(_sport_of({"sport": code})), f"{code} 변수표가 비었다"
+    assert _sport_of({"sport": "soccer"}) == "soccer"
+    assert R.vars_for("soccer")
+    assert not R.vars_for("npb"), "리그 코드로는 변수표가 안 열린다(전제)"
