@@ -919,6 +919,11 @@ async def collect(league: str, date_kst: str) -> dict:
         #    ⚠️ 못 읽으면 `null + reason` 이다(빈 목록으로 적지 않는다 —
         #       "위반 없음"과 "못 쟀다"는 다른 말이다).
         "selfcheck": await _selfcheck_block(date_kst),
+        # 🔴 [HYC-6 2026-09-23] **잴 방법이 없는 칸**을 항상 전체 목록으로
+        #    싣는다(계획서 §4). `/health` 는 한 줄이고 상세가 여기다.
+        #    ⚠️ 표시 전용이다 — ⑦ 조정으로 되돌아가는 경로는 없다(계약이 잠근다).
+        #    ⚠️ 못 읽으면 `null + reason` 이다(selfcheck 와 같은 규약).
+        "coverage": await _coverage_block(),
         # 🔴 [SRCV-1 / [2]b 2026-09-21] 꺼진 소스. 이 리그가 **미상으로 멈추는
         #    것이 의도한 동작**임을 사유와 함께 싣는다 — 안 실으면 읽는 쪽이
         #    "자료가 없다"와 "소스를 껐다"를 구분할 수 없다(조용한 0).
@@ -1132,6 +1137,37 @@ async def _fill(pool, row: dict, sport: str, cache: dict, used: set) -> dict:
     except Exception as exc:
         g["v14_run"] = {"reason": f"analysis_runs 조회 실패: {exc}"}
     return g
+
+
+async def _coverage_block() -> dict:
+    """[HYC-6] 변수 적용범위. 🔴 못 읽으면 **null + 사유**(빈 dict 가 아니다).
+
+    ⚠️ 집계 규칙의 원본은 `app.flow.coverage` 다 — 여기서 다시 세지 않는다.
+    """
+    import json as _json
+
+    try:
+        from app.db import get_pool
+        from app.flow.coverage import block as _block
+
+        pool = await get_pool()
+        rows = await pool.fetch(
+            """SELECT snapshot_json FROM analysis_runs
+                WHERE node = 'n06_verdict'
+                  AND created_at_utc > now() - interval '7 days'
+                LIMIT 3000""")
+        vs = []
+        for r in rows:
+            sn = r["snapshot_json"]
+            if isinstance(sn, str):
+                sn = _json.loads(sn)
+            v = (sn or {}).get("n06_verdict")
+            if v:
+                vs.append(v)
+        return _block(vs)
+    except Exception as exc:
+        logger.info("[export] coverage 집계 실패: %s", exc)
+        return {"reason": f"집계 실패: {str(exc)[:80]}"}
 
 
 def date_of(ko) -> str | None:

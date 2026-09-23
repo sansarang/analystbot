@@ -252,6 +252,36 @@ async def build_health(pool, redis) -> str:
     L.append("")
     L.append(await selfcheck_line(redis))
 
+    # 🔴 [HYC-6 2026-09-23] **잴 방법이 없는 칸**을 한 줄로 알린다.
+    #    HYC-3 로 `미실행`(볼 방법이 없다)이 생겼는데 운영에서 볼 데가 없었다 —
+    #    "왜 이 변수는 영원히 비어 있나"를 사람이 DB 를 파야 알았다.
+    #    ⚠️ 한 줄이다. 상세는 export 의 `coverage` 블록이다(계획서 규율).
+    #    ⚠️ 관측이 본체를 죽이면 안 된다 — 실패는 한 줄로 삼킨다.
+    try:
+        import json as _json
+
+        from app.flow.coverage import line as _cov_line
+
+        _rows = await pool.fetch(
+            """SELECT snapshot_json FROM analysis_runs
+                WHERE node = 'n06_verdict'
+                  AND created_at_utc > now() - interval '2 days'
+                LIMIT 500""") if pool is not None else []
+        _vs = []
+        for _r in _rows:
+            _sn = _r["snapshot_json"]
+            if isinstance(_sn, str):
+                _sn = _json.loads(_sn)
+            _v = (_sn or {}).get("n06_verdict")
+            if _v:
+                _vs.append(_v)
+        _cl = _cov_line(_vs)
+        if _cl:
+            L.append("")
+            L.append(_cl)
+    except Exception as exc:
+        L.append(f"⚪ 변수 적용범위 확인 실패: {str(exc)[:60]}")
+
     # 🔴 [SRCV-1 / [2]b 2026-09-21 사용자 지시] 꺼진 소스를 **사유와 함께** 찍는다.
     #    "미상으로 멈춤"이 고장이 아니라 **의도한 동작**임을 여기서 말한다 —
     #    말하지 않으면 다음 사람이 고장으로 읽고 그냥 켠다.
