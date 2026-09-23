@@ -3071,6 +3071,18 @@ async def main() -> None:
     except Exception as exc:
         logger.error("[scheduler] 🔴 스키마 적용 실패 — 새 컬럼이 없으면 "
                      "예측 기록이 터진다: %s", exc)
+    # 🔴 [MOV-C 2026-09-23] **Go 가 읽을 뉴스 피드 설정을 싣는다.**
+    #   Go 모듈에 YAML 파서를 넣지 않으려고 파이썬이 풀어서 Redis 에 놓는다
+    #   (질의의 원본은 `config/search_terms.yaml` 한 곳 그대로다).
+    #   ⚠️ 실패해도 기동은 계속한다 — 뉴스는 부가 채널이고, 키가 없으면
+    #      Go 가 그 단계만 건너뛴다(라인업 크롤은 그대로 돈다).
+    try:
+        from app.collectors.crawler_feed import publish_news_feeds
+
+        await publish_news_feeds(
+            aioredis.from_url(get_settings().redis_url, decode_responses=True))
+    except Exception as exc:
+        logger.warning("[scheduler] 뉴스 피드 발행 실패 — Go 는 뉴스를 건너뛴다: %s", exc)
     # [감시 C2] L2·L3 의 가동 여부를 **기동 시점에** 말한다. 발송이 한 번
     #   돌아야 알 수 있으면, 저녁 내내 휴면인 줄 모르고 지나간다.
     try:

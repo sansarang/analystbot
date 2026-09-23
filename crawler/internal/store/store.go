@@ -14,6 +14,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"analystbot/crawler/internal/diff"
+	"analystbot/crawler/internal/source"
 )
 
 const snapshotTTL = 26 * time.Hour // 하루치 + 여유
@@ -29,6 +30,32 @@ func New(url string) (*Store, error) {
 }
 
 func (s *Store) Close() error { return s.rdb.Close() }
+
+// newsFeedsKey 는 파이썬이 실어 두는 뉴스 피드 설정 자리다.
+//
+// 🔴 [MOV-C 2026-09-23] **질의·언어의 원본은 `config/search_terms.yaml` 이다.**
+// Go 모듈에 YAML 파서를 넣지 않으려고 파이썬이 그것을 풀어 여기 싣는다
+// (`crawler_feed.publish_news_feeds`). 사본을 만들지 않는다.
+const newsFeedsKey = "crawl:news:feeds"
+
+// NewsFeeds 는 리그별 뉴스 질의를 읽는다.
+//
+// ⚠️ 키가 없으면 **빈 맵**이다 — 에러가 아니다. 뉴스는 부가 채널이고,
+// 없으면 크롤러는 그 단계만 건너뛴다(라인업 수집은 그대로 돈다).
+func (s *Store) NewsFeeds(ctx context.Context) (map[string]source.Feed, error) {
+	raw, err := s.rdb.Get(ctx, newsFeedsKey).Bytes()
+	if err == redis.Nil {
+		return map[string]source.Feed{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]source.Feed{}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
 
 func latestKey(sport, date string) string  { return fmt.Sprintf("crawl:%s:%s:latest", sport, date) }
 func stampKey(sport, date, hhmm string) string {

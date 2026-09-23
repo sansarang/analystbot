@@ -35,6 +35,10 @@ func main() {
 	// 가속 간격. 창 자체는 종목·경기 starts_at으로 정한다 — KBO 18:30과
 	// NPB 18:00을 한 시계로 묶지 않는다. NPB는 시작 15분 전(17:45)까지.
 	fastInterval := flag.Duration("fast-interval", 2*time.Minute, "가속 구간 간격")
+	// [MOV-C] 뉴스는 라인업보다 **드물게** 긁는다. 예산 계산(질의 상한 400/일):
+	//   리그 3 × (24h / 20m = 72) = 216/일 → 상한 안.
+	//   10분으로 하면 432/일이라 넘는다.
+	newsInterval := flag.Duration("news-interval", 20*time.Minute, "뉴스 피드 간격")
 	flag.Parse()
 
 	redisURL := os.Getenv("REDIS_URL")
@@ -68,6 +72,27 @@ func main() {
 		}
 		runSport(name, fn)
 	}
+
+	// [MOV-C] 오늘 남은 경기가 있을 때만 뉴스를 긁는다 — 경기가 없으면
+	// 이동을 설명할 일도 없고, 질의 예산만 태운다.
+	var lastNews time.Time
+	runNews := func() {
+		upcoming := false
+		for _, ts := range starts {
+			if len(ts) > 0 {
+				upcoming = true
+			}
+		}
+		if !upcoming {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		onceNews(ctx, st, *date)
+		lastNews = time.Now()
+	}
+	runNews()
+
 	if *interval <= 0 {
 		return
 	}
@@ -96,10 +121,60 @@ func main() {
 				sleep = remain
 			}
 		}
+		if !lastNews.IsZero() && time.Since(lastNews) >= *newsInterval {
+			runNews()
+		}
 		if sleep < time.Second {
 			sleep = time.Second
 		}
 		time.Sleep(sleep)
+	}
+}
+
+// onceNews 는 리그 뉴스 피드를 한 바퀴 긁는다.
+//
+// 🔴 [MOV-C 2026-09-23] **라인업 수집과 완전히 분리한다.** 별도 종목 키
+// (`news_<리그>`)에 저장하고, 실패는 그 리그만 건너뛴다. 검색이 막혀서
+// 라인업 크롤까지 죽으면 안 된다 — 그쪽이 본체다.
+//
+// ⚠️ 게이트 ①②를 태우지 않는다. 그건 투구수·타순 검사라 기사 제목에
+// 적용할 것이 없고, 태우면 정상 기사를 버릴 위험만 생긴다.
+func onceNews(ctx context.Context, st *store.Store, date string) {
+	feeds, err := st.NewsFeeds(ctx)
+	if err != nil {
+		log.Printf("[news] 피드 설정 조회 실패 — 이번 주기 생략: %v", err)
+		return
+	}
+	if len(feeds) == 0 {
+		return // 파이썬이 아직 안 실었다. 조용히 넘어간다(에러가 아니다).
+	}
+	kst := time.FixedZone("KST", 9*3600)
+	now := time.Now().In(kst)
+	for league, f := range feeds {
+		snap, skipped, err := source.FetchNews(ctx, league, f)
+		if err != nil {
+			// ⚠️ 429·차단을 무시하지 않는다 — 건너뛰고 남긴다.
+			log.Printf("[news:%s] 수집 실패 — 이번 주기 생략: %v", league, err)
+			continue
+		}
+		if len(snap) == 0 {
+			log.Printf("[news:%s] 기사 0건(버림 %d) — 질의나 구조 확인 필요",
+				league, skipped)
+			continue
+		}
+		key := source.NewsKey(league)
+		prev, err := st.Latest(ctx, key, date)
+		if err != nil {
+			log.Printf("[news:%s] 이전 스냅샷 조회 실패: %v", league, err)
+			continue
+		}
+		changes := diff.Compare(prev, snap)
+		if err := st.Save(ctx, key, date, snap, changes, now); err != nil {
+			log.Printf("[news:%s] 저장 실패: %v", league, err)
+			continue
+		}
+		log.Printf("[news:%s] %s — 기사 %d건(버림 %d), 새 기사 %d건",
+			league, date, countFields(snap), skipped, len(changes))
 	}
 }
 

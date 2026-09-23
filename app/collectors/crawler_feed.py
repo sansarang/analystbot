@@ -20,6 +20,12 @@ from datetime import UTC, datetime
 logger = logging.getLogger(__name__)
 
 HEARTBEAT_KEY = "crawl:heartbeat"
+#: [MOV-C] Go 가 읽는 뉴스 피드 설정. **파이썬이 YAML 을 풀어 여기 싣는다** —
+#  Go 모듈에 YAML 파서를 넣지 않으려는 것이고(의존성 0), 질의의 원본은
+#  `config/search_terms.yaml` 하나로 유지된다(사본 금지).
+#  ⚠️ 이 키가 없으면 Go 는 뉴스 수집을 **건너뛴다**(라인업 크롤은 그대로).
+NEWS_FEEDS_KEY = "crawl:news:feeds"
+NEWS_FEEDS_TTL_SEC = 26 * 3600
 STALE_MINUTES = 180     # 평시 60분 × 3 — 이보다 오래되면 죽은 것으로 본다
 SNAPSHOT_TTL_SEC = 6 * 3600
 
@@ -178,6 +184,41 @@ async def load_changes(redis, sport: str, date: str, limit: int = 50) -> list[di
         except (TypeError, ValueError):
             continue
     return out
+
+
+async def publish_news_feeds(redis) -> int:
+    """[MOV-C] 리그별 뉴스 피드 설정을 Go 가 읽을 자리에 싣는다. 반환 리그 수.
+
+    🔴 **질의·로케일을 여기서 짓지 않는다.** `scout_config` 가 읽은
+       `config/search_terms.yaml` 이 원본이다 — Go 도 파이썬도 그 한 곳을 본다.
+    ⚠️ 로케일이 없는 리그는 **싣지 않는다.** 언어 없이 던지면 엉뚱한 나라
+       기사가 온다(실측 2026-09-12: 맥도날드·연예 기사).
+    ⚠️ 실패해도 예외를 올리지 않는다 — 뉴스는 부가 채널이고, 없으면 Go 가
+       그 단계만 건너뛴다.
+    """
+    if redis is None:
+        return 0
+    try:
+        from app.engine.scout_config import LOCALES, NEWS_FEEDS
+
+        out = {}
+        for lg, q in (NEWS_FEEDS or {}).items():
+            loc = LOCALES.get(lg) or {}
+            hl, gl = loc.get("hl"), loc.get("gl")
+            if not (q and hl and gl):
+                logger.info("[crawler_feed] %s 피드 생략 — 질의/로케일 미비", lg)
+                continue
+            out[lg] = {"q": str(q), "hl": str(hl), "gl": str(gl)}
+        if not out:
+            return 0
+        await redis.set(NEWS_FEEDS_KEY, json.dumps(out, ensure_ascii=False),
+                        ex=NEWS_FEEDS_TTL_SEC)
+        logger.info("[crawler_feed] 뉴스 피드 %d개 발행 — %s",
+                    len(out), ", ".join(sorted(out)))
+        return len(out)
+    except Exception as exc:
+        logger.warning("[crawler_feed] 뉴스 피드 발행 실패: %s", exc)
+        return 0
 
 
 async def is_alive(redis) -> tuple[bool, str]:

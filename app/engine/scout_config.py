@@ -156,6 +156,13 @@ def local_name(league: str, team: str) -> str:
 
 LOCALES: dict[str, dict] = dict(_TERMS_DOC.get("locales") or {})
 
+#: [MOV-C 2026-09-23] **리그 단위 뉴스 피드 질의.** 배당 이동의 원인을 찾는
+#  재료다. 위 `SEARCH_TERMS` 는 경기·팀 단위라 자리표시자 치환이 필요하고
+#  10분 주기로 돌리면 상한(400/일)을 12배 넘는다 — 리그 하나에 피드 하나다.
+#  🔴 원본은 `config/search_terms.yaml` 의 `feed:` 한 곳이다.
+NEWS_FEEDS: dict[str, str] = {str(k): str(v)
+                              for k, v in (_TERMS_DOC.get("feed") or {}).items()}
+
 
 def locale(league: str) -> dict | None:
     """[SCT-7] 리그 → Google News RSS 로케일. 없으면 None(=RSS 안 쓴다).
