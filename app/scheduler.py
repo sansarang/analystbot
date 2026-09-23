@@ -2004,6 +2004,18 @@ async def finals_job() -> None:
                     graded["graded"], graded["void"])
     except Exception as exc:
         logger.exception("[scheduler] 픽 레저 채점 실패 — 적재는 성공: %s", exc)
+    # 🔴 [LED-1 2026-09-23] **결정 원장도 채점한다.** 실측: decision_ledger
+    #    1,118행 중 `flow_v14` 740행이 채점 0 이었다 — 흐름 판정이 맞았는지
+    #    셀 방법이 없었고, 그러면 ⑦ 조정도 ⑨ 확신도 고칠 근거가 없다.
+    #    ⚠️ 새 잡을 만들지 않는다 — 결과가 들어온 **바로 이 자리**가 맞다.
+    #    ⚠️ 구경로 채점(`pick_ledger`)을 대체하지 않는다. 둘은 다른 표다.
+    try:
+        from app.learning.decisions import grade_pending as _grade_dl
+
+        _dl = await _grade_dl(pool)
+        logger.info("[scheduler] 결정 원장 채점: %s", _dl)
+    except Exception as exc:
+        logger.exception("[scheduler] 결정 원장 채점 실패: %s", exc)
     logger.info("[scheduler] 종료 점수 적재: %s", sorted(done))
     return done
 

@@ -60,7 +60,14 @@ def pick_of(state) -> tuple:
     except (TypeError, ValueError):
         return None, None, None
     side = "home" if p_home >= 0.5 else "away"
-    mkt = (getattr(state, "n02_market", None) or {}).get("p_market")
+    # 🔴 [LED-1 2026-09-23] **키가 안 맞았다.** ②는 `p` 에 `{home,draw,away}`
+    #    로 쓰는데 여기서 `p_market` 을 읽어 **740행 전건 시장 확률이 비었고**
+    #    그래서 CLV 를 한 건도 못 쟀다(실측: decision_ledger clv 96/1118,
+    #    flow_v14 는 0).
+    #    ⚠️ 우리 쪽 확률로 바꾸는 것은 아래 `_our_side_p` 가 한다 — 여기서는
+    #       **홈 기준**으로 꺼낸다.
+    _mp = (getattr(state, "n02_market", None) or {}).get("p") or {}
+    mkt = _mp.get("home") if isinstance(_mp, dict) else None
     try:
         p_mkt = float(mkt) if mkt is not None else None
     except (TypeError, ValueError):

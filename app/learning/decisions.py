@@ -134,3 +134,98 @@ async def load(pool, *, engine: str | None = None,
     """지표 계산용 행 목록. ⚠️ 여기서 지표를 계산하지 않는다 —
     그건 `metrics.py`(순수 함수)의 일이다."""
     return [dict(r) for r in await pool.fetch(_LOAD, engine, sport)]
+
+#: 🔴 [LED-1 2026-09-23 사용자 지시 "전부다 순서대로 수정해라"] **채점 대상.**
+#   끝난 경기 · 아직 `result` 가 없는 행만. 점수가 없으면 고르지 않는다.
+#   ⚠️ `market='h2h'` 만이다 — 총점·핸디 채점 규칙은 아직 없고, 없는 규칙을
+#      지어내면 그게 거짓 성적이 된다.
+_PENDING_SQL = """
+    SELECT d.id, d.side, d.market, d.line, d.price_at_decision,
+           g.home_score, g.away_score
+      FROM decision_ledger d
+      JOIN games g ON g.id = d.game_id
+     WHERE d.result IS NULL
+       AND g.status = 'final'
+       AND g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+     ORDER BY d.id
+     LIMIT $1
+"""
+
+_GRADE_SQL = """
+    UPDATE decision_ledger
+       SET result = $2, roi_unit = $3, status = 'settled', settled_at = now()
+     WHERE id = $1
+"""
+
+
+def _h2h_result(side: str, hs, aws) -> str | None:
+    """승패 채점. 🔴 모르면 **None**(건너뛴다) — 지어내지 않는다."""
+    try:
+        h, a = int(hs), int(aws)
+    except (TypeError, ValueError):
+        return None
+    if h == a:
+        return "push"
+    won = "home" if h > a else "away"
+    if side not in ("home", "away"):
+        return None
+    return "win" if side == won else "loss"
+
+
+def _roi(result: str, price) -> float | None:
+    """단위 스테이크 손익. 🔴 **가격이 없으면 None** — 0 으로 채우지 않는다.
+
+    ⚠️ LE1-ROI 에서 겪은 실패다: 진 것만 −1 로 세고 이긴 것은 가격이 없다고
+       버려서 ROI 가 −0.4656 으로 나왔다(고친 뒤 +0.0837).
+    """
+    if result == "push":
+        return 0.0
+    try:
+        o = float(price)
+    except (TypeError, ValueError):
+        return None
+    if result == "win":
+        return round(o - 1.0, 4)
+    if result == "loss":
+        return -1.0
+    return None
+
+
+async def grade_pending(pool, *, limit: int = 2000) -> dict:
+    """[LED-1] 끝난 경기의 원장 행을 채점한다.
+
+    🔴 **왜 필요한가.** 실측 2026-09-23: `decision_ledger` 1,118행 중
+       `flow_v14` 740행이 **채점 0** 이었다 — 흐름 판정이 맞았는지 셀 방법이
+       없었고, 그러면 ⑦ 조정도 ⑨ 확신도 고칠 근거가 없다.
+
+    🔴 **끝나지 않은 경기는 건드리지 않는다.** 점수가 없으면 건너뛴다.
+    🔴 **모르는 마켓은 건너뛴다** — 총점·핸디 규칙이 아직 없고, 없는 규칙을
+       지어내면 거짓 성적이 된다. 건너뛴 수를 세어 돌려준다(조용한 0 금지).
+    ⚠️ 한 행이 실패해도 나머지는 간다.
+    """
+    out = {"seen": 0, "graded": 0, "skipped": 0, "failed": 0}
+    if pool is None:
+        return out
+    try:
+        rows = await pool.fetch(_PENDING_SQL, int(limit))
+    except Exception as exc:
+        logger.warning("[decisions] 채점 대상 조회 실패: %s", exc)
+        return out
+    for r in rows:
+        out["seen"] += 1
+        if str(r["market"] or "") != "h2h":
+            out["skipped"] += 1
+            continue
+        res = _h2h_result(r["side"], r["home_score"], r["away_score"])
+        if res is None:
+            out["skipped"] += 1
+            continue
+        try:
+            await pool.execute(_GRADE_SQL, r["id"], res,
+                               _roi(res, r["price_at_decision"]))
+            out["graded"] += 1
+        except Exception as exc:
+            out["failed"] += 1
+            logger.warning("[decisions] 채점 실패 id=%s: %s", r["id"], exc)
+    logger.info("[decisions] 원장 채점: %s", out)
+    return out
