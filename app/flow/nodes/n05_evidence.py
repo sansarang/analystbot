@@ -352,41 +352,59 @@ def opp_starter_of(state, starters: dict | None) -> str | None:
     return (starters or {}).get(opp) or None
 
 
-async def _starter_recent3(state, ctx) -> tuple:
-    """상대 선발의 최근 3등판. 반환 `(줄 목록, 투수명)`.
+async def _starter_recent3(state, ctx) -> dict:
+    """**양 팀 선발**의 최근 3등판. 반환 `{side: (줄목록, 투수명, era3, 원행)}`.
 
     🔴 **교체 메모와 다른 사실이다.** 선발이 안 바뀌어도 그 선발이 최근 어떻게
-       던졌는지는 우리 득점 전망을 바꾼다. 종전에는 교체가 없으면 증거가 0이라
-       이 변수가 늘 `unknown` 이었다.
-    ⚠️ 유불리는 여기서 정하지 않는다 — ⑦의 몫이다. 사실만 싣는다.
+       던졌는지는 득점 전망을 바꾼다.
+
+    🔴 [UND-1 2026-09-23 사용자 결정 (가)] **양쪽을 본다.** 종전에는
+       `opp_starter_of` 로 **상대 선발만** 봤고, 그래서 ⑪의 언더 조건
+       ("양 팀 선발 모두 호재")이 구조적으로 성립하지 못했다:
+```
+최근 14일  starter_recent3 양쪽 다 +  0건 · 한쪽만 +  329건
+           ⑤ 수집 쪽  sides=('away',) 758 · ('home',) 448 · 둘 다 0
+```
+       오버는 종전에도 동작했다(−1 403회) — 못 서던 것은 언더뿐이다.
+    ⚠️ 유불리는 여기서 정하지 않는다 — 방향은 `direction.starter_direction`
+       이 쪽별로 내고 `merge` 가 합친다(사본 금지).
+    ⚠️ 예고 전이면 한쪽만 안다. 없는 쪽은 **넣지 않는다**(지어내지 않는다).
     """
     inj = (ctx.inject or {})
     starters = inj.get("starters")
     if starters is None:
         if ctx.pool is None:
-            return [], None, None, []
+            return {}
         try:
             row = await ctx.pool.fetchrow(
                 "SELECT home_pitcher, away_pitcher FROM games WHERE id = $1",
                 int(state.game_id))
         except Exception as exc:
             logger.warning("[flow:n05] 선발 조회 실패 game=%s: %s", state.game_id, exc)
-            return [], None, None, []
+            return {}
         starters = {"home": (row or {}).get("home_pitcher"),
                     "away": (row or {}).get("away_pitcher")}
-    who = opp_starter_of(state, starters)
     ko = _kickoff_dt(state.kickoff_utc)
-    if not who or ctx.pool is None or ko is None:
-        return [], who, None, []
-    try:
-        rows = await ctx.pool.fetch(_STARTER3_SQL, who, ko)
-    except Exception as exc:
-        logger.warning("[flow:n05] 선발 최근3 조회 실패 game=%s %s: %s",
-                       state.game_id, who, exc)
-        return [], who, None, []
-    return ([f"{r['d']:%m-%d} vs {r['opponent']} "
-             f"{float(r['innings'] or 0):.1f}이닝 {r['er']}자책 {r['k']}K"
-             for r in rows], who, era_of_rows(rows), [dict(r) for r in rows])
+    if ctx.pool is None or ko is None:
+        return {}
+    out: dict = {}
+    for side in ("home", "away"):
+        who = (starters or {}).get(side)
+        if not who:
+            continue
+        try:
+            rows = await ctx.pool.fetch(_STARTER3_SQL, who, ko)
+        except Exception as exc:
+            logger.warning("[flow:n05] 선발 최근3 조회 실패 game=%s %s: %s",
+                           state.game_id, who, exc)
+            continue
+        if not rows:
+            continue
+        out[side] = ([f"{r['d']:%m-%d} vs {r['opponent']} "
+                      f"{float(r['innings'] or 0):.1f}이닝 {r['er']}자책 {r['k']}K"
+                      for r in rows], who, era_of_rows(rows),
+                     [dict(r) for r in rows])
+    return out
 
 
 def _kickoff_dt(raw):
@@ -681,19 +699,34 @@ async def run(state, ctx):
         if var == "starter_recent3":
             # 🔴 [STR-2] **상대 선발의 최근 3등판**이 이 변수의 본뜻이다.
             #    교체 메모는 다른 사실이라 둘 다 싣는다.
-            lines, who, era3, raw_rows = await _starter_recent3(state, ctx)
-            if lines:
-                opp = "home" if (state.pick_side or "home") == "away" else "away"
-                d = DIR.starter_direction(raw_rows, league_era=_league_era(state, ctx),
-                                          team=opp)
-                # 🔴 [ADJ-1] `sides` 는 **악재의 주체**다. 상대 선발이 리그 평균
-                #    보다 나쁘면 상대 악재(우리 유리), 좋으면 우리 악재.
+            # 🔴 [UND-1] **양 팀 선발**을 본다. 종전에는 상대만 봐서 ⑪의
+            #    언더 조건("양 팀 모두 호재")이 구조적으로 못 섰다(14일 0건).
+            by_side = await _starter_recent3(state, ctx)
+            if by_side:
+                lg = _league_era(state, ctx)
+                # 🔴 [ADJ-1] `sides` 는 **악재의 주체**다. 선발이 리그 평균보다
+                #    나쁘면 그 팀 악재, 좋으면 호재 — 쪽별로 따로 낸다.
                 #    종전에 `{opp: n}` 으로 고정해 잘 던진 선발에도 +3.0 이
                 #    붙었다(실측 네 경기 전부).
+                # ⚠️ 방향은 `direction.py` 가 원본이다 — 여기서 합치기만 한다.
+                d = DIR.merge(*[
+                    DIR.starter_direction(rows, league_era=lg, team=side)
+                    for side, (_l, _w, _e, rows) in by_side.items()])
+                # ⚠️ 원문은 **상대 선발을 앞에** 둔다 — 우리 득점 전망의
+                #    주체라 서술에서 먼저 읽혀야 한다(종전 순서 유지).
+                opp = "home" if (state.pick_side or "home") == "away" else "away"
+                order = [opp] + [x for x in ("home", "away") if x != opp]
+                parts, lines = [], []
+                for side in order:
+                    if side not in by_side:
+                        continue
+                    ls, who, era3, _ = by_side[side]
+                    lines.extend(ls)
+                    parts.append(f"{who} · 최근3 방어율 {era3} · " + " · ".join(ls))
                 out.append(_row(var, lines, source="db:pitcher_appearances",
-                                excerpt=f"{who} · 최근3 방어율 {era3} · "
-                                        + " · ".join(lines),
-                                sides={opp: len(lines)}, direction=d))
+                                excerpt=" || ".join(parts),
+                                sides={k: len(v[0]) for k, v in by_side.items()},
+                                direction=d))
             notes = await _cache_starter_notes(state, ctx)
             if notes:
                 sides: dict = {}
