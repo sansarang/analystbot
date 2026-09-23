@@ -58,6 +58,34 @@ def test_영원히_미실행인_칸을_따로_알려준다():
     assert got["always_unrun"] == ["weather"], got
 
 
+def test_옛_이력이_섞여도_잡는다():
+    """🔴 [HYC6b 2026-09-23] **배포 직후 실측으로 드러난 결함.**
+
+    `always_unrun` 을 "전건 미실행"으로 정의했더니 `/health` 줄이 **안 나왔다** —
+    HYC-3 이전 이력에서 그 칸은 `unknown` 으로 남아 있어 "전건"이 깨진다:
+```
+weather            unknown 1,567 · 미실행 28      → 전건 미실행 아님 → 누락
+travel_backtoback  unknown 1,565 · 미실행 30      → 누락
+always_unrun = []                                 ← /health 가 침묵
+```
+    뜻은 "**한 번도 확인된 적이 없고** 미실행으로 표시된 적이 있는 칸"이다.
+    """
+    from app.flow import coverage as C
+
+    got = C.summarize([{"per_var": {"weather": "unknown"}}] * 50
+                      + [{"per_var": {"weather": "미실행"}}] * 5)
+    assert got["always_unrun"] == ["weather"], got
+
+
+def test_미실행_표시가_없으면_안_센다():
+    """⚠️ 반대 위험 — 그냥 자료가 없어 미상인 칸까지 "잴 방법이 없다"고
+    적으면 거짓이다. 미실행 표시가 **한 번은** 있어야 한다."""
+    from app.flow import coverage as C
+
+    got = C.summarize([{"per_var": {"lineup_out": "unknown"}}] * 20)
+    assert got["always_unrun"] == [], got
+
+
 def test_한_번이라도_잰_칸은_빠진다():
     """⚠️ 반대 위험 — 가끔 되는 칸을 "영원히 안 됨"으로 적으면 거짓이다."""
     from app.flow import coverage as C

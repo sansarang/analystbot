@@ -48,8 +48,19 @@ def summarize(verdicts) -> dict:
 
     반환 `{"games": n, "vars": {var: {상태: 수}}, "always_unrun": [var, ...]}`.
 
-    🔴 `always_unrun` 은 **한 번도 잴 수 없었던** 칸이다 — 가끔 되는 칸을
-       "영원히 안 됨"으로 적으면 거짓이라, 등장했고 전건이 미실행인 것만 센다.
+    🔴 `always_unrun` 은 **한 번도 잴 수 없었던** 칸이다 —
+       "**확인된 적이 한 번도 없고**, 미실행으로 표시된 적이 있는" 칸.
+
+    ⚠️ [HYC6b 2026-09-23] 처음에는 "전건 미실행"으로 정의했다가 배포 직후
+       실측에서 `/health` 가 침묵했다 — HYC-3 **이전 이력**에서 같은 칸이
+       `unknown` 으로 남아 "전건"이 깨지기 때문이다:
+```
+weather            unknown 1,567 · 미실행 28   → 전건 미실행 아님 → 누락
+travel_backtoback  unknown 1,565 · 미실행 30   → 누락
+always_unrun = []                              ← /health 가 침묵
+```
+    ⚠️ 반대 위험도 막는다 — 미실행 표시가 **한 번도 없으면** 세지 않는다.
+       그냥 자료가 없어 미상인 칸까지 "잴 방법이 없다"고 적으면 거짓이다.
     """
     by: dict = defaultdict(Counter)
     games = 0
@@ -61,7 +72,7 @@ def summarize(verdicts) -> dict:
         for var, st in per.items():
             by[var][str(st)] += 1
     always = sorted(var for var, c in by.items()
-                    if c.get(UNRUN, 0) and c[UNRUN] == sum(c.values()))
+                    if c.get(UNRUN, 0) and not c.get(CONFIRMED, 0))
     return {"games": games,
             "vars": {var: dict(c) for var, c in by.items()},
             "always_unrun": always}
