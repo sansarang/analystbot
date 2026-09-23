@@ -77,6 +77,52 @@ def _when(c: dict):
     return _to_dt(c.get("at"))
 
 
+def _local_names() -> dict:
+    """현지 표기 → 영문 팀명. 🔴 **원본은 수집기의 대조표 둘이다**(사본 금지).
+
+    `naver_kbo.TEAM_TO_ODDS`(한글 10팀) · `yahoo_npb.TEAM_TO_ODDS`(일어 12팀).
+    Go `source.go` 도 같은 표를 쓴다(CRW-6 이 전수 대조해 차이 0 확인).
+    ⚠️ 읽기만 한다 — I/O 가 아니므로 순수 함수 규약을 깨지 않는다.
+    """
+    out: dict = {}
+    for mod, name in (("app.collectors.naver_kbo", "TEAM_TO_ODDS"),
+                      ("app.collectors.yahoo_npb", "TEAM_TO_ODDS")):
+        try:
+            m = __import__(mod, fromlist=[name])
+            out.update(getattr(m, name, {}) or {})
+        except Exception as exc:          # pragma: no cover - 표가 없으면 못 가린다
+            logger.debug("[attribution] 대조표 %s 없음: %s", mod, exc)
+    return out
+
+
+def _is_ours(c: dict, teams) -> bool:
+    """이 변화가 **이 경기의 것**인가.
+
+    🔴 [2026-09-23] 종전에는 안 가렸다. 그래서 같은 시각에 공시된 한 경기의
+       라인업이 **그 리그 전 경기**의 이동 원인으로 붙었다 — 실측: KBO 3경기가
+       전부 같은 원인(KIA 라인업)을 받았다. 거짓 귀인이다.
+
+    ⚠️ 라인업·선발 변화는 `game`("원정@홈#id")에 **영문 팀명**이 있어 그대로
+       대조한다. 뉴스는 제목이 현지 표기라 대조표로 옮겨 비교한다.
+    ⚠️ **어느 팀도 못 찾으면 이 경기의 원인이 아니다.** 리그 맥락 기사를
+       특정 경기의 이유로 쓰면 "이유 미상은 없다"가 거짓말이 된다.
+    """
+    want = {str(t) for t in (teams or []) if t}
+    if not want:
+        return True                        # 팀을 모르면 가리지 않는다(종전 동작)
+    g = str(c.get("game") or "")
+    if g:
+        return any(t in g for t in want)
+    to = str(c.get("to") or "")
+    title = to.split("|", 1)[1] if "|" in to else to
+    if not title:
+        return False
+    for local, eng in _local_names().items():
+        if local and str(local) in title and str(eng) in want:
+            return True
+    return False
+
+
 def _label(c: dict) -> str:
     """사람이 읽을 한 줄. 값이 길면 자른다."""
     field = str(c.get("field") or "?")
@@ -91,11 +137,12 @@ def _label(c: dict) -> str:
     return f"{field}: {to[:60]}"
 
 
-def explain(points, changes, *, window_min=None, min_pp=None) -> dict:
+def explain(points, changes, *, teams=None, window_min=None, min_pp=None) -> dict:
     """이동 구간마다 원인을 붙인다.
 
     `points`  `[(시각, 홈확률)]` — `n02_market._sets` 가 낸 것, 오래된 것부터
     `changes` `[{at, field, from, to, game}]` — `crawler_feed.load_changes`
+    `teams`   `(홈, 원정)` 영문 팀명 — **이 경기의 것만** 남긴다
 
     반환 `{"moves": [...], "observed": bool, "unexplained_pp": float}`.
     각 move 는 `{from_p, to_p, pp, at, kind, causes: [라벨]}`.
@@ -118,6 +165,8 @@ def explain(points, changes, *, window_min=None, min_pp=None) -> dict:
     cand = []
     for c in (changes or []):
         if not isinstance(c, dict) or _is_noise(c):
+            continue
+        if not _is_ours(c, teams):
             continue
         t = _when(c)
         if t is not None:

@@ -165,7 +165,11 @@ _ROWS = [_row(0, "HOME", 1.95), _row(0, "AWAY", 1.95),
 async def test_2가_원인을_싣는다():
     from app.flow.nodes import n02_market as N2
 
-    s = await N2.run(_S(), _Ctx(changes=[_chg(20)], rows=_ROWS))
+    # ⚠️ [2026-09-23] `game` 이 이 경기여야 한다 — ②가 `teams` 를 넘겨
+    #    남의 경기 변화를 거르기 때문이다. 종전 픽스처의 "A@B" 는 운영이
+    #    만들지 않는 모양이었다(크롤러는 "원정@홈#id" 로 쓴다).
+    chg = dict(_chg(20), game="AWAY@HOME#1")
+    s = await N2.run(_S(), _Ctx(changes=[chg], rows=_ROWS))
     mv = s.n02_market["move"]
     assert mv["causes"]["moves"][0]["kind"] == A.NEWS
 
@@ -308,3 +312,67 @@ def test_같은_값이_두_번_와도_모호가_아니다():
     rows = [r(0.1, "HOME", 1.95), r(0.2, "AWAY", 1.95),
             r(0.3, "HOME", 1.95), r(0.4, "AWAY", 1.95)]
     assert len(N2._sets(rows, "HOME", "AWAY")) == 1
+
+
+# ── 경기를 가린다 ───────────────────────────────────────────────────
+
+def test_남의_경기_변화를_원인으로_쓰지_않는다():
+    """🔴 **사용자 질문("llm이 0인데 서치는 어떻게 했니?")을 확인하다 찾았다.**
+
+    종전에는 경기를 안 가렸다. 같은 시각에 공시된 한 경기의 라인업이 그
+    리그 **전 경기**의 이동 원인으로 붙었다 — 실측: KBO 3경기가 전부 같은
+    원인(KIA 라인업)을 받았다. 고친 뒤에는 각자 자기 라인업을 받는다.
+    """
+    c = dict(_chg(20), game="Kia Tigers@Doosan Bears#20260923HT")
+    ours = A.explain(_PTS, [c], teams=("Doosan Bears", "Kia Tigers"))
+    theirs = A.explain(_PTS, [c], teams=("KT Wiz", "NC Dinos"))
+    assert ours["moves"][0]["kind"] == A.NEWS
+    assert theirs["moves"][0]["kind"] == A.UNOBSERVED, "남의 라인업을 썼다"
+
+
+def test_기사는_현지_표기를_대조표로_옮겨_본다():
+    """🔴 제목은 한글·일어다. 대조표의 원본은 수집기 둘이다(사본 금지)."""
+    pub = (T + dt.timedelta(minutes=20)).isoformat()
+    news = {"at": pub, "field": "abc", "from": "",
+            "to": f"{pub}|삼성 이게 무슨 일? 최형우가 사라졌다! 라인업 공개", "kind": "added"}
+    hit = A.explain(_PTS, [news], teams=("SSG Landers", "Samsung Lions"))
+    miss = A.explain(_PTS, [news], teams=("KT Wiz", "NC Dinos"))
+    assert hit["moves"][0]["kind"] == A.NEWS
+    assert miss["moves"][0]["kind"] == A.UNOBSERVED
+
+
+def test_팀을_못_찾은_기사는_이_경기의_원인이_아니다():
+    """⚠️ 리그 맥락 기사를 특정 경기의 이유로 쓰면 "이유 미상은 없다"가
+    거짓말이 된다. 실물 예: "'류지현호' 1번타자는 김도영…"(대표팀 기사)."""
+    pub = (T + dt.timedelta(minutes=20)).isoformat()
+    news = {"at": pub, "field": "abc", "from": "",
+            "to": f"{pub}|'류지현호' 1번타자는 김도영", "kind": "added"}
+    bag = A.explain(_PTS, [news], teams=("Doosan Bears", "Kia Tigers"))
+    assert bag["moves"][0]["kind"] == A.UNOBSERVED
+
+
+def test_팀을_안_넘기면_종전대로_가리지_않는다():
+    """⚠️ 되돌릴 길 — 팀을 모르는 호출부는 종전 동작 그대로다."""
+    c = dict(_chg(20), game="Kia Tigers@Doosan Bears#1")
+    assert A.explain(_PTS, [c])["moves"][0]["kind"] == A.NEWS
+    assert A.explain(_PTS, [c], teams=())["moves"][0]["kind"] == A.NEWS
+
+
+def test_대조표를_손으로_적지_않았다():
+    import inspect
+
+    src = inspect.getsource(A._local_names)
+    assert "naver_kbo" in src and "yahoo_npb" in src
+    for banned in ('"두산"', "'두산'", '"ヤクルト"'):
+        assert banned not in inspect.getsource(A), banned
+
+
+@pytest.mark.asyncio
+async def test_2가_팀을_넘긴다():
+    """🔴 배선의 끝 — 안 넘기면 가리기가 작동하지 않는다."""
+    import inspect
+
+    from app.flow.nodes import n02_market as N2
+
+    src = inspect.getsource(N2._with_causes)
+    assert "teams=(state.home, state.away)" in src

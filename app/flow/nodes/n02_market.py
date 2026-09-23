@@ -211,7 +211,8 @@ async def _with_causes(state, ctx, rows) -> dict:
         mv["causes"] = None
         return mv
     bag = A.explain(_sets(rows, state.home, state.away),
-                    await _changes(state, ctx))
+                    await _changes(state, ctx),
+                    teams=(state.home, state.away))
     mv["causes"] = bag
     if bag.get("moves"):
         logger.info("[flow:n02] game=%s %s", state.game_id, A.summary(bag))
