@@ -41,9 +41,18 @@ class _S:
 
 
 class _Pool:
-    def __init__(self, boom=False):
+    def __init__(self, boom=False, dup=None):
         self.calls = []
         self.boom = boom
+        self.dup = dup          # [LED-2] 같은 판단이 이미 있으면 여기에 행
+
+    async def fetchrow(self, sql, *args):
+        # 🔴 [LED-2 2026-09-23] 실제 풀에는 있는 메서드다. 대역에 없어서
+        #    중복 검사가 AttributeError 로 떨어졌다(대역이 운영과 달랐다).
+        if self.boom:
+            raise RuntimeError("DB 없음")
+        self.calls.append((sql, args))
+        return self.dup
 
     async def execute(self, sql, *args):
         if self.boom:
@@ -129,12 +138,15 @@ def test_시장이_없어도_판정은_남긴다():
 async def test_원장에_한_줄이_들어간다():
     pool = _Pool()
     assert await R.record(_S(), _Ctx(pool)) is True
-    assert len(pool.calls) == 1
-    sql, args = pool.calls[0]
+    # [LED-2] 중복 조회 1 + INSERT 1
+    assert len(pool.calls) == 2, pool.calls
+    sql, args = pool.calls[1]
     assert "INSERT INTO decision_ledger" in sql
     assert "ON CONFLICT" in sql and "DO NOTHING" in sql, "멱등이 아니다"
     assert args[0] == "flow_v14" and args[1] == 7
     assert args[4] == "home"
+    # 🔴 [LED-2] **가격이 실린다** — 없으면 ROI 를 영영 못 낸다.
+    assert args[5] is None or isinstance(args[5], float), args
 
 
 @pytest.mark.asyncio

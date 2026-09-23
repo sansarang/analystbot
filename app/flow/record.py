@@ -29,7 +29,7 @@ _INSERT = """
        price_at_decision, p_model, p_market_at_decision, p_close, price_close,
        result, clv, roi_unit, status, note)
     VALUES ($1,$2,$3,$4,'h2h',NULL,$5,NULL,now(),
-            NULL,$6,$7,NULL,NULL,NULL,NULL,NULL,'candidate',$8)
+            $6,$7,$8,NULL,NULL,NULL,NULL,NULL,'candidate',$9)
     ON CONFLICT (engine, game_id, market, line, side, ts_decided)
     DO NOTHING
 """
@@ -75,6 +75,38 @@ def pick_of(state) -> tuple:
     return side, _our_side_p(p_home, side), _our_side_p(p_mkt, side)
 
 
+def price_of(state):
+    """우리가 고른 쪽의 **소수배당**. 🔴 없으면 None — 지어내지 않는다.
+
+    🔴 [LED-2 2026-09-23] 종전 INSERT 는 이 자리에 NULL 을 박았다. 그래서
+       `roi_unit` 을 영영 못 냈다(실측: flow_v14 740행 전건 가격 없음).
+       ②가 배당을 갖고 있는데 안 실었을 뿐이다.
+    """
+    side, _p, _m = pick_of(state)
+    if side is None:
+        return None
+    odds = (getattr(state, "n02_market", None) or {}).get("odds") or {}
+    v = odds.get(side)
+    try:
+        return float(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+#: 🔴 [LED-2] **같은 판단의 되풀이를 막는다.** 충돌 키에 `ts_decided` 가 있어
+#   흐름이 15분마다 돌 때마다 새 행이 생겼다 — 실측 740행 / 23경기 = 경기당
+#   **32.2행**(구경로는 1.0행). 한 경기가 32번 세어지면 그 결과가 32배
+#   가중되어 성적 통계가 거짓이 된다.
+# ⚠️ **판단이 바뀐 기록은 남긴다**(라인 이동 학습의 재료다). 막는 것은
+#    같은 쪽·같은 확률의 되풀이뿐이라 `p_model` 까지 보고 판단한다.
+_SAME_SQL = """
+    SELECT id FROM decision_ledger
+     WHERE engine = $1 AND game_id = $2 AND market = 'h2h'
+       AND side = $3 AND p_model = $4
+     LIMIT 1
+"""
+
+
 def note_of(state) -> str:
     """무엇을 보고 그렇게 정했는지 한 줄. 🔴 조용한 기록을 만들지 않는다."""
     conf = (getattr(state, "n09_conf", None) or {}).get("grade")
@@ -109,11 +141,19 @@ async def record(state, ctx) -> bool:
         gid = int(gid)
     except (TypeError, ValueError):
         return False
+    # 🔴 [LED-2] 같은 쪽·같은 확률이 이미 있으면 **안 쓴다.**
+    try:
+        dup = await pool.fetchrow(_SAME_SQL, ENGINE, gid, side, p_model)
+    except Exception as exc:
+        logger.warning("[flow] 원장 중복 조회 실패 game=%s: %s", gid, exc)
+        return False
+    if dup:
+        return False
     try:
         await pool.execute(
             _INSERT, ENGINE, gid, getattr(state, "sport", None),
-            getattr(state, "league", None), side, p_model, p_mkt,
-            note_of(state))
+            getattr(state, "league", None), side, price_of(state),
+            p_model, p_mkt, note_of(state))
     except Exception as exc:
         logger.warning("[flow] 원장 기록 실패 game=%s: %s", gid, exc)
         return False
