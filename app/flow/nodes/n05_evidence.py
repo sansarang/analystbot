@@ -676,19 +676,19 @@ async def run(state, ctx):
     #    경기당 여러 번 돈다. 축구는 출장 기록이 없어 빈 dict 이고 정상이다.
     roster = await _roster(state, ctx) if absences else {}
     out: list = []
-    per_game_cap = 0
-    try:
-        from app.flow import rules as R
-
-        per_game_cap = int(R.get("deepsearch_cap.per_game", 5) or 5)
-    except Exception:
-        per_game_cap = 5
-
+    # 🔴 [CAP5 2026-09-23] **경기당 상한으로 조사를 끊지 않는다.**
+    #    종전에는 `deepsearch_cap.per_game`(5)로 `out` 길이를 세어 끊었는데,
+    #    F-17 로 야구가 6변수를 묻게 되자 **언제나 마지막 하나가 잘렸다**
+    #    (실측: 4경기 전부 정확히 5행 · 롯데@한화는 `weather` 가 잘림).
+    #    끊긴 자리는 `unknown` 이 되어 ⑥의 분모에 들어간다 — "안 봤다"가
+    #    아니라 **"못 보게 막았다"**이고, 그건 채점을 거짓으로 만든다.
+    #
+    #    🔴 바로 아래 BUD-1 주석이 이미 모순을 적고 있었다: "여기서 예산을
+    #       차감하지 않는다 — 이 노드에는 **기사 fetch 가 없다**". 예산을
+    #       안 쓰는 노드가 예산 상한으로 끊고 있었다.
+    #    ⚠️ `Ctx.take_search` 는 그대로 둔다 — 기사 수집이 ⑤에 붙는 날
+    #       (STEP 7-4) 그 자리에서 쓰고 경기별 예약도 그때 만든다.
     for var in wanted:
-        if len(out) >= per_game_cap:
-            logger.info("[flow:n05] game=%s 경기당 상한 %d 도달 — 나머지는 미상",
-                        state.game_id, per_game_cap)
-            break
         # 🔴 [BUD-1 / STEP 1-a 2026-09-20] **여기서 예산을 차감하지 않는다.**
         #    종전에는 변수마다 `ctx.take_search(1)` 을 불렀는데, 이 노드에는
         #    **기사 fetch 가 없다** — 바깥 호출이 Redis 읽기(판정 캐시·위성
