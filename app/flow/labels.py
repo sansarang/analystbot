@@ -20,6 +20,23 @@ GATES = (OVER, DOUBT, AGREE, BOARD, PRIOR_ONLY)
 
 # ⑥ 채점
 CONFIRMED, REFUTED, UNKNOWN = "confirmed", "refuted", "unknown"
+
+#: 🔴 [HYC-3 2026-09-23 사용자 지시 "가 해라"] **"안 봤다"와 "볼 방법이 없다"는
+#   다르다.** ⑤에 분기가 아예 없는 변수(weather·travel_backtoback 등)와 그
+#   종목에 모듈이 없는 변수(NPB 파크팩터)는 미상이 아니라 **미실행**이다.
+#
+#   실측 (오늘 9경기 · 전 기간):
+#     weather           확인 0 / 등장 2,129   ⑤에 분기 없음
+#     travel_backtoback 확인 0 / 등장 2,129   ⑤에 분기 없음
+#     park_factor(NPB)  확인 0 / 등장   452   모듈 없음
+#     요미우리@히로시마  미상 4/6 = 0.667 → 모름과반
+#                       미실행 3개를 빼면 1/3 = 0.333 → 확인됨
+#
+# ⚠️ **미상을 숨기는 것이 아니다.** `per_var` 에 이 상태로 그대로 남아
+#    export·서술에 보인다. 빠지는 것은 **분모**뿐이다.
+# 🔴 목록을 어디에도 적지 않는다 — 못 찾는 것을 아는 쪽은 ⑤이고, ⑤가 그
+#    자리에서 이 상태를 남긴다(계약이 잠근다).
+UNRUN = "미실행"
 V_OK, V_REFUTED, V_UNKNOWN = "확인됨", "반박됨", "모름과반"
 VERDICTS = (V_OK, V_REFUTED, V_UNKNOWN)
 

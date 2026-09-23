@@ -15,7 +15,7 @@ import logging
 
 from app.flow import rules as R
 from app.flow.labels import (CONFIRMED, R_RETRACT, REFUTED, REFUTED_MEANS,
-                             UNKNOWN, V_OK, V_REFUTED, V_UNKNOWN)
+                             UNKNOWN, UNRUN, V_OK, V_REFUTED, V_UNKNOWN)
 
 logger = logging.getLogger(__name__)
 
@@ -41,14 +41,27 @@ async def run(state, ctx):
     hyp = (state.n04_hyp or [{}])[0]
     wanted = {v["var"]: bool(v.get("is_core")) for v in (hyp.get("vars") or [])}
     found = {e["var"]: e.get("value") for e in (state.n05_evidence or [])}
+    # 🔴 [HYC-3 2026-09-23] **"안 봤다"와 "볼 방법이 없다"를 가른다.**
+    #    ⑤가 그 자리에서 표시한다 — 여기에 목록을 적지 않는다(사본 금지).
+    unrun = [e["var"] for e in (state.n05_evidence or [])
+             if e.get("status") == UNRUN]
 
     per_var: dict = {}
     for var in wanted:
-        per_var[var] = _judge(found.get(var)) if var in found else UNKNOWN
+        if var in unrun:
+            per_var[var] = UNRUN
+        else:
+            per_var[var] = _judge(found.get(var)) if var in found else UNKNOWN
 
-    total = len(per_var) or 1
-    n_unknown = sum(1 for v in per_var.values() if v == UNKNOWN)
-    unknown_ratio = round(n_unknown / total, 4)
+    # ⚠️ **미상을 숨기는 것이 아니다.** `per_var` 에는 그대로 남고 분모에서만
+    #    빠진다. 실측(오늘 요미우리@히로시마): 미상 4/6 = 0.667 → 모름과반이
+    #    미실행 3개를 빼면 1/3 = 0.333 → 확인됨.
+    scored = [v for v in per_var.values() if v != UNRUN]
+    # 🔴 **잴 것이 하나도 없으면 확인됨이 아니다.** 분모가 0 일 때 통과시키면
+    #    "아무것도 안 보고 확인"이 된다.
+    total = len(scored)
+    n_unknown = sum(1 for v in scored if v == UNKNOWN)
+    unknown_ratio = round(n_unknown / total, 4) if total else 1.0
     core_refuted = [k for k, v in per_var.items()
                     if v == REFUTED and wanted.get(k)]
 
@@ -75,6 +88,8 @@ async def run(state, ctx):
 
     state.n06_verdict = {"per_var": per_var, "unknown_ratio": unknown_ratio,
                          "verdict": verdict, "core_refuted": core_refuted,
+                         # 🔴 조용히 빼지 않는다 — 무엇을 분모에서 뺐는지 남긴다.
+                         "unrun": unrun, "scored": total,
                          "refuted_means": means}
     logger.info("[flow:n06] game=%s 변수 %d → 확인 %d · 반증 %d(뜻 %s) · 미상 %d → %s",
                 state.game_id, total,

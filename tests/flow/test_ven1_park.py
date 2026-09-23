@@ -95,11 +95,20 @@ async def test_모르는_구장은_지어내지_않는다(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_NPB_는_미상이다(monkeypatch):
-    """🔴 모듈이 없다 — 1.0 으로 채우면 "쟀는데 중립"으로 읽힌다."""
+async def test_NPB_는_미실행이다(monkeypatch):
+    """🔴 모듈이 없다 — 1.0 으로 채우면 "쟀는데 중립"으로 읽힌다.
+
+    🔴 [HYC-3 2026-09-23] 종전에는 **행 자체가 없었다**(조용한 부재). 이제는
+       `미실행` 행이 남는다 — "못 쟀다"가 아니라 "잴 수 없다"이고, ⑥이 그것을
+       분모에서 뺀다. 값을 지어내지 않는다는 뜻은 그대로다(value 는 None).
+    """
+    from app.flow.labels import UNRUN
+
     got = await _run(league="NPB", sport="baseball", redis=_R({}),
                      home="Hanshin Tigers")
-    assert got == []
+    assert len(got) == 1, got
+    assert got[0]["status"] == UNRUN, got[0]
+    assert got[0]["value"] is None, "없는 값을 지어냈다"
 
 
 @pytest.mark.asyncio

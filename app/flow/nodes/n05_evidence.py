@@ -17,6 +17,7 @@ import logging
 from app.collectors import absences as _ABS
 from app.engine.performance import filter_by_roster
 from app.flow import direction as DIR
+from app.flow.labels import UNRUN
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ def card_trust(box: dict | None, side_card: dict | None) -> tuple:
 
 def _row(var: str, value, *, source: str, url: str = "", excerpt: str = "",
          sides: dict | None = None, direction: dict | None = None,
-         untrusted_reason: str = "") -> dict:
+         untrusted_reason: str = "", status: str = "") -> dict:
     """증거 한 줄. 🔴 [FIX-1] `direction` 이 **부호의 원본**이다 —
     `sides`(항목 수)는 표시용으로만 남는다(⑦이 더 이상 읽지 않는다)."""
     return {"var": var, "value": value, "source": source, "source_url": url,
@@ -103,7 +104,10 @@ def _row(var: str, value, *, source: str, url: str = "", excerpt: str = "",
             "direction": direction or {}, "fetched_at": None,
             # 🔴 [HYC-1] 비어 있으면 믿을 수 있는 카드다. 차 있으면 **왜 못
             #    믿는지**가 남는다 — 그래야 "안 찾았다"와 구분된다.
-            "untrusted_reason": untrusted_reason}
+            "untrusted_reason": untrusted_reason,
+            # 🔴 [HYC-3] 비어 있으면 **잴 수 있었다**는 뜻이다. `미실행` 이면
+            #    ⑤에 그 변수를 찾을 길이 없었다는 뜻이고 ⑥이 분모에서 뺀다.
+            "status": status}
 
 
 async def _cache_doc(state, ctx) -> dict:
@@ -509,7 +513,10 @@ async def _park_of(state, ctx) -> tuple:
     except Exception as exc:
         logger.warning("[flow:n05] 파크팩터 조회 실패 game=%s: %s",
                        state.game_id, exc)
-    return (None, None, "")
+        return (None, None, "")
+    # 🔴 [HYC-3] 여기까지 오면 **그 종목에 산출 모듈이 없다**(NPB·축구).
+    #    "못 쟀다"가 아니라 "잴 수 없다" — ⑥이 분모에서 뺀다.
+    return (None, None, UNRUN)
 
 
 #: 🔴 [ROT-1] 직전 경기. **일정 표에 이미 있다** — 기사에 묻지 않는다.
@@ -766,6 +773,11 @@ async def run(state, ctx):
         #    것은 "쟀다/못 쟀다"뿐이다.
         if var == "park_factor":
             name, pf, src = await _park_of(state, ctx)
+            if src == UNRUN:
+                out.append(_row(var, None, source="",
+                                excerpt="이 종목은 파크팩터 산출 모듈이 없다 — 미실행",
+                                status=UNRUN))
+                continue
             if name and pf:
                 out.append(_row(var, [f"{name} {float(pf):.3f}"],
                                 source=f"db:{src}",
@@ -932,7 +944,14 @@ async def run(state, ctx):
             continue
 
         # 그 밖의 변수는 아직 소스가 없다. **지어내지 않는다** — 없으면 없는 것이다.
+        # 🔴 [HYC-3] 다만 **"안 봤다"와 "볼 방법이 없다"는 다르다.** 여기까지
+        #    내려온 변수는 ⑤에 분기가 **아예 없는** 것이라 미상이 아니라
+        #    미실행이다. ⑥이 이것을 분모에서 뺀다.
+        #    ⚠️ 목록을 어디에도 적지 않는다 — 못 찾는 것을 아는 쪽이 여기다.
         logger.debug("[flow:n05] game=%s var=%s 소스 없음", state.game_id, var)
+        out.append(_row(var, None, source="",
+                        excerpt="이 변수는 아직 수집 경로가 없다 — 미실행",
+                        status=UNRUN))
 
     # 🔴 원문 없는 것은 버린다.
     out = [e for e in out if e.get("raw_excerpt")]
