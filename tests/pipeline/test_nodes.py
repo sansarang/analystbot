@@ -654,9 +654,14 @@ async def test_구조픽_가드_넷이_각각_막는다():
                              Ctx())).n11_value
     assert v["pick_type"] == "보드" and "절사" in v["reject_reason"], v
 
-    # e. 방향 증거 없음
+    # e. 🔴 [VAL-B 2026-09-23 개정] **"방향 증거 없음"은 더 이상 관문이 아니다.**
+    #    종전에는 투표가 없으면 전건 거절이었다(실측 2026-09-23 KBO 3경기 중
+    #    1건이 그 사유). 이제 λ 로 평가하고 **확신도를 B 로 내린다** —
+    #    증거가 없다는 것은 "틀렸다"가 아니라 "덜 확실하다"다.
+    #    ⚠️ 되돌릴 길: `value.allow_no_vote: false`.
     v = (await n11_value.run(base(n05_evidence=[]), Ctx())).n11_value
-    assert v["pick_type"] == "보드" and "방향" in v["reject_reason"], v
+    assert v["pick_type"] == "구조", v
+    assert v["struct_grade"] == "B", v
 
     # c. edge 상한 — 우리 확률을 올려 edge 를 12%p 이상으로
     v = (await n11_value.run(base(n08_pcode={"p_code_pick": 0.687,

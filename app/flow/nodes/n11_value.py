@@ -95,6 +95,27 @@ def total_direction(state) -> dict:
     return {"side": None, "for": 0, "against": 0, "why": "방향 증거 없음"}
 
 
+def _side_of(market: str) -> str:
+    """`total_over` → `over`. 후보의 **자기 쪽**이다."""
+    return str(market or "").rsplit("_", 1)[-1]
+
+
+def _struct_grade(vote: dict, side: str) -> str:
+    """[VAL-B] 투표는 **버리는 장치가 아니라 확신도**다.
+
+    🔴 종전에는 투표가 한쪽 후보를 통째로 버렸다. 그래서 λ 가 가리키는
+       반대쪽(+8.44%p)을 아무도 못 봤다(실물 g16449).
+    ⚠️ 등급 문자열의 원본은 `config/rules.yaml` 이다 — 코드에 적지 않는다.
+    """
+    v = (vote or {}).get("side")
+    if v is None:
+        return str(R.get("value.no_vote_grade", "B"))
+    if v == side:
+        return "A" if (int(vote.get("for", 0)) >= 2
+                       and int(vote.get("against", 0)) == 0) else "B"
+    return str(R.get("value.vote_conflict_grade", "C"))
+
+
 def _market_agrees(state, cand: dict, side: str) -> bool:
     """디빅한 시장 쪽과 우리 쪽이 같고, open→현재 이동이 반대가 아닌가.
 
@@ -179,27 +200,41 @@ async def run(state, ctx):
     else:
         fam = [c for c in cands if str(c.get("market", "")).startswith(want)]
         vote = total_direction(state)
+        # 🔴 [VAL-B 2026-09-23] **양쪽을 다 본다.** 종전에는
+        #    `side_c = [c for c in fam if c["market"].endswith(vote["side"])]`
+        #    로 투표 반대쪽을 통째로 버렸다. 실물 g16449 에서 λ 가 가리킨
+        #    언더 **+8.44%p** 를 아무도 못 봤고, 버려진 오버 −13.14%p 만
+        #    남아 거절됐다.
+        #    ⚠️ 비그 때문에 "−13.14 의 반대 = +13.14" 가 아니다. 쪽마다
+        #       `p − 1/배당` 을 따로 계산한 것이 `_structure_candidates` 다.
+        if not str(R.get("value.both_sides", True)) or \
+                R.get("value.both_sides", True) is False:
+            fam = [c for c in fam
+                   if vote["side"] and _side_of(c["market"]) == vote["side"]]
+        no_vote_ok = bool(R.get("value.allow_no_vote", True))
         if not fam:
             reject = f"지정 마켓 `{want}` 후보 0"
-        elif vote["side"] is None:
+        elif vote["side"] is None and not no_vote_ok:
             reject = f"총점 방향 미정 — {vote['why']}"
         else:
-            side_c = [c for c in fam if c["market"].endswith(vote["side"])]
-            best = max(side_c, key=lambda c: c["edge_pp"]) if side_c else None
-            if best is None:
-                reject = f"방향({vote['side']}) 쪽 후보가 없다"
-            elif not _market_agrees(state, best, vote["side"]):
+            best = max(fam, key=lambda c: c["edge_pp"])
+            best_side = _side_of(best["market"])
+            if not _market_agrees(state, best, best_side):
                 reject = "시장 동의 실패(또는 open 없음 · 반대 이동)"
             elif best["edge_pp"] >= float(R.get("gate_pp.freeze", 12.0)):
                 reject = f"edge {best['edge_pp']:+.2f}%p — 오류의심"
             elif best["edge_pp"] < edge_min:
                 reject = f"edge {best['edge_pp']:+.2f}%p < {edge_min}"
             else:
-                sg = "A" if (vote["for"] >= 2 and vote["against"] == 0) else "B"
+                sg = _struct_grade(vote, best_side)
                 if state.n09_conf is not None:
                     state.n09_conf["struct_grade"] = sg
+                    # 🔴 갈린 사실을 **남긴다** — 30건 쌓이면 투표와 λ 중
+                    #    어느 쪽이 나은지 숫자로 나온다.
                     state.n09_conf["struct_reason"] = (
-                        f"방향 증거 찬 {vote['for']} · 반 {vote['against']}")
+                        f"방향 증거 찬 {vote['for']} · 반 {vote['against']}"
+                        + ("" if vote["side"] in (None, best_side)
+                           else f" · 투표({vote['side']})와 **반대**편 채택"))
                 state.n11_value = {"ml_edge_pp": ml_edge, "pick_type": PICK_STRUCT,
                                    "structure": best, "n_candidates": len(cands),
                                    "struct_grade": sg, "direction": vote}

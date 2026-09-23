@@ -184,7 +184,14 @@ async def test_f0920_edge_구조_edge_14_4pp_는_오류의심_보드():
 async def test_f0920_laa_언더_픽은_오버_증거로_철회된다():
     """픽스처 f0920_laa 후반 — 총점 **언더** 후보인데 증거는 오버를 가리킨다.
 
-    🔴 라인을 옮기지 않는다(언더를 오버로 바꾸지 않는다). **철회**다.
+    🔴 라인을 옮기지 않는다(언더를 오버로 바꾸지 않는다).
+
+    🔴 [VAL-B 2026-09-23 개정] **철회 사유가 바뀌었다.** 종전에는 증거 투표가
+       반대편이면 그 후보를 **통째로 버려서** "방향(over) 쪽 후보가 없다"로
+       거절했다. 그 규칙 때문에 λ 가 가리킨 값어치를 아무도 못 봤다
+       (실물 g16449: 언더 +8.44%p 가 버려졌다).
+       이제 언더도 **평가는 하고**, 남은 관문(시장 동의·문턱·오류의심)에서
+       걸린다. 라인을 옮기지 않는다는 규약은 그대로다 — 오버를 고르지 않는다.
     """
     from app.flow.nodes import n11_value
     from app.flow.ctx import Ctx
@@ -194,7 +201,10 @@ async def test_f0920_laa_언더_픽은_오버_증거로_철회된다():
     st.n08_pcode = {"p_code_pick": 0.52, "ours_markets": {"total_under": {11.5: 0.62}}}
     v = (await n11_value.run(st, Ctx())).n11_value
     assert v["pick_type"] == "보드", v
-    assert "방향(over)" in v["reject_reason"], v
+    # 🔴 여전히 **거절**된다 — 다만 사유가 "투표와 반대"가 아니라 시장 동의다.
+    assert "시장 동의" in v["reject_reason"], v
+    # ⚠️ 오버로 갈아타지 않았다(라인을 옮기지 않는다).
+    assert (v.get("structure") or {}).get("market") != "total_over", v
 
 
 @pytest.mark.asyncio
