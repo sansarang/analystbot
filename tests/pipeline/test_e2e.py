@@ -187,6 +187,13 @@ async def test_6_2_축구는_시장과대이고_보드로_끝난다():
              "raw_excerpt": "3일 내 리그 원정", "sides": {"home": 1}},
             {"var": "form_recent5", "value": ["W", "D", "L"],
              "raw_excerpt": "최근 W D L", "sides": {"home": 3}},
+            # 🔴 [NWS-D 2026-09-23] 주입 경로는 ⑤의 실제 분기를 **건너뛴다**.
+            #    운영에서는 기사 소스가 없으면 ⑤가 `미실행` 행을 내고 ⑥이
+            #    분모에서 뺀다(계약 `test_기사가_없으면_미실행이다`). 주입에
+            #    빼 두면 `미상` 으로 세어져 분모가 늘고 모름과반이 된다 —
+            #    운영이 만드는 모양을 그대로 준다.
+            {"var": "news_injury", "value": [], "status": "미실행",
+             "raw_excerpt": "기사 소스가 없다 — 미실행"},
         ],
         "absences": [],
         "rejudge_signals": {},

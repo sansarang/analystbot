@@ -163,6 +163,13 @@ LOCALES: dict[str, dict] = dict(_TERMS_DOC.get("locales") or {})
 NEWS_FEEDS: dict[str, str] = {str(k): str(v)
                               for k, v in (_TERMS_DOC.get("feed") or {}).items()}
 
+#: [NWS-D 2026-09-23] 기사 제목의 **호재·악재** 낱말. `{bad|good: {언어: [낱말]}}`.
+#  🔴 원본은 `config/evidence_lexicon.yaml` 의 `direction:` 한 곳이다.
+#  ⚠️ 위 `lexicon`(기사 고르기)과 **다른 용도**다 — 섞지 않는다.
+LEXICON_DIR: dict[str, dict] = {
+    k: {lang: [str(w) for w in (ws or [])] for lang, ws in (v or {}).items()}
+    for k, v in ((_load("evidence_lexicon.yaml").get("direction") or {}).items())}
+
 
 def locale(league: str) -> dict | None:
     """[SCT-7] 리그 → Google News RSS 로케일. 없으면 None(=RSS 안 쓴다).

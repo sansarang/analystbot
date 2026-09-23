@@ -710,9 +710,10 @@ def test_야구_need에_doubt가_없다():
     #    transfermarkt 결장자 110행(7리그)이 `lineups.scratches` 에 쌓이는데
     #    축구 변수표에 칸이 없어 아무도 읽지 않았다.
     #    ⚠️ 집합을 느슨하게 하지 않았다 — 여전히 **정확한 목록**을 요구한다.
+    # 🔴 [NWS-D 2026-09-23] `news_injury` 를 두 종목에 더했다.
     assert set(R.vars_for("soccer")) == {"xi_confirmed", "lineup_out",
                                          "form_recent5", "rotation_risk",
-                                         "travel", "motivation"}
+                                         "travel", "motivation", "news_injury"}
     # 기존 경로: 야구만 뺐고 **축구는 그대로다** — 그쪽은 개념도 소스도 있다.
     assert HY._BASEBALL_OUT == ("out",)
     assert "doubt" in HY._SOCCER_OUT

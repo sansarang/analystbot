@@ -94,6 +94,13 @@ def card_trust(box: dict | None, side_card: dict | None) -> tuple:
     return True, ""
 
 
+def _DEV_FULL() -> float:
+    """[NWS-D] ⑦의 강도 기준값. 🔴 원본은 `config/rules.yaml` 하나다."""
+    from app.flow import rules as R
+
+    return float(R.get("direction.dev_full", 0.5))
+
+
 def _row(var: str, value, *, source: str, url: str = "", excerpt: str = "",
          sides: dict | None = None, direction: dict | None = None,
          untrusted_reason: str = "", status: str = "") -> dict:
@@ -786,6 +793,32 @@ async def run(state, ctx):
                 out.append(_row(var, [f"{name} {float(pf):.3f}"],
                                 source=f"db:{src}",
                                 excerpt=f"{name} 파크팩터 {float(pf):.3f}"))
+            continue
+
+        # 🔴 [NWS-D 2026-09-23 사용자 지시] **기사의 부상·복귀 소식.**
+        #    "부상이나 다른 문제가 있으면 예측에 무조건 좌우되어야 한다"
+        #    ②가 제목에서 방향을 이미 정해 뒀다(`move["news_dir"]`) — 여기서는
+        #    증거 한 줄로 **옮기기만** 한다. 자료를 다시 긁지 않는다.
+        #    🔴 방향이 없으면 **행을 만들지 않는다**(⑥이 unknown 으로 센다).
+        #       기사 소스 자체가 없으면 `미실행` 이라 ⑥ 분모에서 빠진다 —
+        #       "안 찾았다"와 "찾았는데 없다"는 다른 말이다.
+        if var == "news_injury":
+            nd = ((state.n02_market or {}).get("move") or {}).get("news_dir")
+            if not nd:
+                out.append(_row(var, [], source="", status=UNRUN,
+                                excerpt="기사 소스가 없다 — 미실행"))
+                continue
+            if not (nd.get("home") or nd.get("away")):
+                continue          # 기사는 있었는데 방향이 없다 → 미상
+            out.append(_row(var, [nd.get("basis") or ""], source="news",
+                            excerpt=nd.get("basis") or "",
+                            direction={"home": int(nd.get("home") or 0),
+                                       "away": int(nd.get("away") or 0),
+                                       # ⚠️ 편차는 ⑦의 강도다. 제목만 보고
+                                       #    세기를 가늠할 수 없으니 표의
+                                       #    기준값을 그대로 쓴다.
+                                       "dev": _DEV_FULL(),
+                                       "basis": nd.get("basis") or ""}))
             continue
 
         # 🔴 [ROT-1] 로테이션 위험은 **일정에서 센다.** 기사·LLM 0.

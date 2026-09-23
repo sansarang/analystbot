@@ -207,11 +207,17 @@ async def _with_causes(state, ctx, rows) -> dict:
     else:
         mv["open_gap_pp"] = None
 
+    chgs = await _changes(state, ctx)
+    # 🔴 [NWS-D] **기사의 호재·악재를 여기서 정한다.** ②가 제목과 팀을 이미
+    #    갖고 있으므로 ⑤가 자료를 다시 긁을 필요가 없다. ⑤는 이것을 증거
+    #    한 줄로 옮기기만 한다.
+    #    ⚠️ 이동을 못 재도(`move_pp` None) 기사 방향은 낼 수 있다 — 배당이
+    #       안 움직였다고 부상이 없는 것은 아니다.
+    mv["news_dir"] = A.news_dir(chgs, (state.home, state.away))
     if mv.get("move_pp") is None:
         mv["causes"] = None
         return mv
-    bag = A.explain(_sets(rows, state.home, state.away),
-                    await _changes(state, ctx),
+    bag = A.explain(_sets(rows, state.home, state.away), chgs,
                     teams=(state.home, state.away))
     mv["causes"] = bag
     if bag.get("moves"):

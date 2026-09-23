@@ -137,6 +137,116 @@ def _label(c: dict) -> str:
     return f"{field}: {to[:60]}"
 
 
+def _title_of(c: dict) -> str:
+    """변화 한 건의 **기사 제목**. 기사가 아니면 빈 문자열."""
+    to = str((c or {}).get("to") or "")
+    return to.split("|", 1)[1].strip() if "|" in to else ""
+
+
+#: 팀명 바로 뒤에 오면 **상대 표기**라는 뜻 — 그 팀의 기사가 아니다.
+#  ⚠️ 실측 2026-09-23 라이브 RSS: "'SSG 대체 외인' 마드리스, 16일 **LG전**이
+#     마지막! 에레디아 21일 1군 복귀" 가 LG 호재로 붙었다. SSG 기사다.
+#  ⚠️ 낱말이 아니라 **문법**이라 사전(`evidence_lexicon.yaml`)이 아니라
+#     여기 둔다 — 그 파일은 "무엇이 악재인가"의 목록이고 이건 조사다.
+_OPPONENT_SUFFIX = ("전", "戦", "戦は")
+
+
+def _names_subject(title: str, local: str) -> bool:
+    """제목에서 그 팀이 **주체**인가. `LG전`(상대 표기)이면 아니다."""
+    i, n = 0, len(local)
+    while True:
+        i = title.find(local, i)
+        if i < 0:
+            return False
+        tail = title[i + n:]
+        if not any(tail.startswith(sfx) for sfx in _OPPONENT_SUFFIX):
+            return True
+        i += n
+
+
+def direction_of(title, teams):
+    """[NWS-D] 제목 → `{"team", "dir": -1|+1, "word"}`. 못 정하면 **None**.
+
+    사용자 2026-09-23: "기사가 악재인가 호재인가를 판단해서 부상이나 다른
+    문제가 있으면 **예측에 무조건 좌우되어야 한다**"
+
+    🔴 **지어내지 않는다.** 넷 중 하나라도 걸리면 None 이다:
+         악재·호재가 **둘 다** 걸린다 → "부상 딛고 복귀" 를 악재로 읽으면 정반대
+         낱말이 하나도 없다
+         제목에서 **이 경기의 팀**을 못 찾는다 → 리그 맥락 기사다
+         팀 대조표를 못 읽는다
+    🔴 낱말의 원본은 `config/evidence_lexicon.yaml` 의 `direction:` 하나다 —
+       코드에 적지 않는다(계약이 잠근다).
+    ⚠️ 제목만 본다. 본문은 안 읽는다(`llm.enabled: false`). 그래서 "누가
+       다쳤는지"가 아니라 **"이 팀에 부상 소식이 있다"** 까지다.
+    """
+    from app.engine.scout_config import LEXICON_DIR
+
+    t = str(title or "").strip()
+    if not t:
+        return None
+    low = t.lower()
+
+    def _hit(kind):
+        for _lang, words in (LEXICON_DIR.get(kind) or {}).items():
+            for w in words:
+                if w and (w in t or str(w).lower() in low):
+                    return str(w)
+        return None
+
+    bad, good = _hit("bad"), _hit("good")
+    if (bad and good) or not (bad or good):
+        return None
+
+    want = {str(x) for x in (teams or []) if x}
+    for local, eng in _local_names().items():
+        if local and str(eng) in want and _names_subject(t, str(local)):
+            return {"team": str(eng), "dir": (-1 if bad else 1),
+                    "word": bad or good}
+    return None
+
+
+def news_dir(changes, teams, *, at=None, window_min=None):
+    """[NWS-D] 창 안 기사들의 방향을 **팀별로 합산**한다.
+
+    반환 `{"home", "away", "basis"}` 또는 기사가 없으면 **None**.
+    ⚠️ 한 팀에 악재와 호재가 모두 오면 **0** 이다(상쇄). 억지로 하나를
+       고르지 않는다.
+    ⚠️ 창 폭은 `move.window_min` 을 **재사용**한다 — 사본을 만들지 않는다.
+    """
+    import datetime as _dt
+
+    if not changes:
+        return None
+    win = _dt.timedelta(minutes=float(
+        window_min if window_min is not None else R.get("move.window_min", 30)))
+    now = _to_dt(at) or _dt.datetime.now(_dt.UTC)
+    home, away = (list(teams) + [None, None])[:2]
+
+    score = {"home": 0, "away": 0}
+    why: list = []
+    seen = False
+    for c in changes:
+        if not isinstance(c, dict):
+            continue
+        t = _when(c)
+        if t is None or abs(t - now) > win:
+            continue
+        d = direction_of(_title_of(c), teams)
+        if not d:
+            continue
+        seen = True
+        key = "home" if d["team"] == home else "away" if d["team"] == away else None
+        if key is None:
+            continue
+        score[key] += d["dir"]
+        why.append(f"{d['word']} — {_title_of(c)[:40]}")
+    for k in score:
+        score[k] = 1 if score[k] > 0 else (-1 if score[k] < 0 else 0)
+    return {"home": score["home"], "away": score["away"],
+            "basis": " · ".join(why[:2]) if seen else ""}
+
+
 def explain(points, changes, *, teams=None, window_min=None, min_pp=None) -> dict:
     """이동 구간마다 원인을 붙인다.
 

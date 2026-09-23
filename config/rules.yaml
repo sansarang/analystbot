@@ -129,6 +129,14 @@ flow:
       travel_backtoback: {max_abs: 1.0, core: false}
       park_factor:       {max_abs: 1.0, core: false}
       weather:           {max_abs: 1.0, core: false}
+      # 🔴 [NWS-D 2026-09-23 사용자 지시] **기사의 부상·복귀 소식.**
+      #    "부상이나 다른 문제가 있으면 예측에 무조건 좌우되어야 한다"
+      #  ⚠️ `max_abs` 는 **미검증 사전값**이다(park_factor 1.0 과 lineup_out
+      #     2.5 사이). 채점이 쌓이기 전에 고치면 측정이 아니라 취향이다.
+      #  ⚠️ `core: false` — 기사 한 건으로 ⑥의 반증 판정을 뒤집지 않는다.
+      #     확률은 ⑦에서 움직인다. 근거가 쌓이면 한 줄로 true 가 된다.
+      #  🔴 **되돌릴 길**: 이 줄을 지우면 ④⑤⑥⑦에서 통째로 사라진다.
+      news_injury:       {max_abs: 1.5, core: false}
     soccer:
       xi_confirmed:      {max_abs: 3.0, core: true}
       # 🔴 [OUT-S 2026-09-23 사용자 승인] **결장자.** 자료는 이미 쌓여 있었다 —
@@ -143,6 +151,7 @@ flow:
       rotation_risk:     {max_abs: 2.0, core: false}
       travel:            {max_abs: 1.0, core: false}
       motivation:        {max_abs: 1.5, core: false}
+      news_injury:       {max_abs: 1.5, core: false}   # [NWS-D] 야구와 같은 규약
   # 🔴 [ROT-1 2026-09-23 사용자 승인] 로테이션 창(시간). 킥오프 이 시간 안에
   #    **직전 경기가 있었으면** 피로로 본다. 기사·LLM 없이 `games` 로 센다.
   # ⚠️ **미검증 사전값이다.** 96h 는 2026-09-20 계획서에서 쓰던 값을 그대로
@@ -164,6 +173,7 @@ flow:
     rotation_risk:     로테이션 위험
     travel:            이동 부담
     motivation:        동기
+    news_injury:       부상·복귀 소식   # [NWS-D]
   gate_pp:
     agree: 4.0        # |gap| < 4 → 동의
     freeze: 12.0      # |gap| >= 12 → 보드고정 (데이터 오류 의심)

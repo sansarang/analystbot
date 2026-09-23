@@ -49,8 +49,13 @@ def test_야구_변수표는_안_바뀌었다():
     from app.flow import rules as FR
 
     b = FR.vars_for("baseball")
+    # 🔴 [NWS-D 2026-09-23 사용자 지시] `news_injury` 를 **더했다** —
+    #    "부상이나 다른 문제가 있으면 예측에 무조건 좌우되어야 한다".
+    #    ⚠️ 집합을 느슨하게 하지 않았다 — 여전히 **정확한 목록**을 요구한다.
+    #       변수를 몰래 늘리면 이 계약이 깨져야 한다.
     assert set(b) == {"starter_recent3", "bullpen_3d", "lineup_out",
-                      "travel_backtoback", "park_factor", "weather"}, sorted(b)
+                      "travel_backtoback", "park_factor", "weather",
+                      "news_injury"}, sorted(b)
 
 
 def _pool(rows):
