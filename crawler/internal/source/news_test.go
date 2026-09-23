@@ -1,6 +1,7 @@
 package source
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -105,5 +106,34 @@ func TestBadXML(t *testing.T) {
 	}
 	if snap, _ := ParseNews("kbo", []byte(""), now()); snap != nil {
 		t.Fatal("빈 본문에 스냅샷을 만들었다")
+	}
+}
+
+// 🔴 [2026-09-23 배포 직후 실측] 날짜 보정이 `once()` 에만 있고 `onceNews()`
+// 에는 없어서 키가 `crawl:news_kbo::latest` 로 쌓였다 — 파이썬이 영영 못 읽는다.
+// 사용자 지시("배선은 어느 한곳 끊어져 있으면 안된다") 직후에 난 바로 그 사고다.
+//
+// ⚠️ 이 계약은 `cmd/crawler` 가 아니라 여기 있다 — 그 패키지는 main 이라
+// import 할 수 없다. 원문을 읽어 검사한다.
+func TestOnceNewsFillsDate(t *testing.T) {
+	src, err := os.ReadFile("../../cmd/crawler/main.go")
+	if err != nil {
+		t.Fatalf("main.go 를 못 읽는다: %v", err)
+	}
+	s := string(src)
+	i := strings.Index(s, "func onceNews(")
+	if i < 0 {
+		t.Fatal("onceNews 가 없다")
+	}
+	j := strings.Index(s[i:], "func once(")
+	if j < 0 {
+		t.Fatal("onceNews 의 끝을 못 찾는다")
+	}
+	seg := s[i : i+j]
+	if !strings.Contains(seg, `date = now.Format("2006-01-02")`) {
+		t.Fatal("onceNews 에 날짜 보정이 없다 — 키가 빈 날짜로 쌓인다")
+	}
+	if !strings.Contains(seg, `if date == ""`) {
+		t.Fatal("빈 날짜를 검사하지 않는다")
 	}
 }

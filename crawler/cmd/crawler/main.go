@@ -150,6 +150,14 @@ func onceNews(ctx context.Context, st *store.Store, date string) {
 	}
 	kst := time.FixedZone("KST", 9*3600)
 	now := time.Now().In(kst)
+	// 🔴 [2026-09-23 배포 직후 실측] **여기가 끊겨 있었다.** `once()` 에는
+	// 이 보정이 있는데 여기만 없어서 키가 `crawl:news_kbo::latest`(날짜 칸이
+	// 빈 문자열)로 쌓였다. 파이썬 `load_changes` 는
+	// `crawl:news_kbo:<날짜>:changes` 를 찾으므로 **영영 못 읽는다.**
+	// ⚠️ 조용한 0 이다 — 키는 생기고 로그도 정상이라 안 재면 모른다.
+	if date == "" {
+		date = now.Format("2006-01-02")
+	}
 	for league, f := range feeds {
 		snap, skipped, err := source.FetchNews(ctx, league, f)
 		if err != nil {
