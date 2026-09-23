@@ -206,6 +206,70 @@ def _same_person(a: str, b: str) -> bool:
     return na == nb or (len(na) > 4 and len(nb) > 4 and (na in nb or nb in na))
 
 
+#: 🔴 [SP-3 2026-09-23] 판정 캐시의 **예고선발**을 `games` 로. 모양은 종목
+#   공통이라(`games[].home_pitcher`) 한 함수가 kbo·npb·mlb 를 다 덮는다.
+# ⚠️ **COALESCE** 다. 예고 전에는 이름이 없고, 그 빈 값이 어제 채운 값을
+#    덮으면 안 된다(SP-1 과 같은 규약).
+_SET_STARTERS = """
+    UPDATE games
+       SET home_pitcher = COALESCE($2, home_pitcher),
+           away_pitcher = COALESCE($3, away_pitcher),
+           updated_at   = now()
+     WHERE id = $1
+"""
+
+
+async def upsert_probables_from_analysis(pool, redis, sport: str,
+                                         date: str) -> dict:
+    """[SP-3] `analysis:{sport}:{date}` 의 선발 이름을 `games` 에 옮긴다.
+
+    🔴 **왜 필요한가.** 흐름 ⑤의 `_starter_recent3` 는 `games.home_pitcher` 를
+       읽는다. 그 칸이 비면 선발 축이 통째로 미상이고, 핵심 변수 셋 중 둘이
+       미상이면 ⑥이 "모름과반"으로 멈춘다.
+       실측 2026-09-23: NPB 6경기가 전부 그 자리에서 멈췄는데, 같은 시각 캐시
+       에는 이름이 있었다(`away_pitcher "髙橋 遥人"` · `home_pitcher "奥川 恭伸"`).
+       `games.home_pitcher` 에 쓰는 코드가 저장소 전체에서 `naver_kbo` 하나
+       (KBO 전용)뿐이었다 — KBO 와 똑같은 "만들어 놓고 안 이음"이다.
+
+    🔴 **종목을 가리지 않는다**(CLAUDE.md "페이블식 흐름은 모든 스포츠에 적용").
+    ⚠️ 어제 캐시로 내려가지 않는다 — 오늘 선발을 어제 것으로 채우면 안 된다.
+    ⚠️ 한 경기가 실패해도 나머지는 간다. 조용한 0 을 만들지 않는다.
+    """
+    import json as _j
+
+    out = {"games": 0, "failed": 0, "seen": 0}
+    if pool is None or redis is None:
+        return out
+    try:
+        raw = await redis.get(f"analysis:{sport}:{date}")
+    except Exception as exc:
+        logger.info("[lineups] 판정 캐시 조회 실패 %s %s: %s", sport, date, exc)
+        return out
+    if not raw:
+        return out
+    try:
+        doc = _j.loads(raw)
+    except ValueError:
+        return out
+    for g in (doc.get("games") or []):
+        if not isinstance(g, dict):
+            continue
+        out["seen"] += 1
+        gid = g.get("game_id")
+        hp = str(g.get("home_pitcher") or "").strip() or None
+        ap = str(g.get("away_pitcher") or "").strip() or None
+        if gid is None or not (hp or ap):
+            continue                       # 예고 전 — 빈 값으로 덮지 않는다
+        try:
+            await pool.execute(_SET_STARTERS, int(gid), hp, ap)
+            out["games"] += 1
+        except Exception as exc:
+            out["failed"] += 1
+            logger.warning("[lineups] 선발 적재 실패 game=%s: %s", gid, exc)
+    logger.info("[lineups] 예고선발 %s %s: %s", sport, date, out)
+    return out
+
+
 async def save_lineup(pool: asyncpg.Pool, game_id: int, side: str, status: str,
                       source: str, parsed: dict, *, caller: str = "?") -> None:
     """[M-3 계측] 타순 길이가 9가 아니면 **누가 넣었는지** 남긴다.

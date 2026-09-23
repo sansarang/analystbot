@@ -278,8 +278,29 @@ async def prefetch_asia_job() -> None:
 
     라인업 폴링의 재판정은 `analysis:{sport}:{date}` 가 없으면 바로 끝난다.
     기존 21:00 프리페치 시점에는 아시아 경기가 이미 종료라 이 캐시가 안 생긴다.
+
+    🔴 [SP-3 2026-09-23] **캐시를 만든 뒤 선발을 `games` 로 옮긴다.** 흐름 ⑤는
+       `games.home_pitcher` 를 읽는데 그 칸에 쓰는 코드가 `naver_kbo`(KBO 전용)
+       하나뿐이라 NPB 는 늘 비어 있었고, 실측에서 NPB 6경기가 전부 ⑥
+       "모름과반"으로 멈췄다(같은 시각 캐시에는 이름이 있었다).
+    ⚠️ 옮기기가 실패해도 프리페치 결과를 버리지 않는다.
     """
-    await prefetch_job(sports=("kbo", "npb"))
+    sports = ("kbo", "npb")
+    await prefetch_job(sports=sports)
+    try:
+        from app.collectors.lineups import upsert_probables_from_analysis
+
+        redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
+        try:
+            day = datetime.now(KST).date().isoformat()
+            pool = await get_pool()
+            for sp in sports:
+                got = await upsert_probables_from_analysis(pool, redis, sp, day)
+                logger.info("[scheduler] %s 예고선발 → games: %s", sp, got)
+        finally:
+            await redis.aclose()
+    except Exception as exc:
+        logger.warning("[scheduler] 예고선발 적재 실패: %s", exc)
 
 
 async def park_refresh_job() -> None:
