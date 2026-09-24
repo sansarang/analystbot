@@ -535,7 +535,14 @@ async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
         #    ⚠️ 캐시에 있는 경기는 **건드리지 않는다** — 구경로가 만든 것이
         #       더 풍부하다(딥서치·스탯캐스트).
         for row in rows:
-            gid = str(row.get("game_id"))
+            # 🔴 [LAM-1 정정 2026-09-24] `_SLATE_SQL` 은 **`id`** 를 준다 —
+            #    `game_id` 가 아니다. 그걸 읽어 `"None"` 이 되면 아래에서
+            #    `int("None")` 으로 **슬레이트 전체가 죽는다.** 내가 넣은
+            #    결함이고, 계약이 `run_slate` 를 실제 행 모양으로 돌려보지
+            #    않아 초록이었다(거짓 통과).
+            gid = str(row.get("game_id") or row.get("id") or "")
+            if not gid.isdigit():
+                continue
             if gid in cache_by_game or gid in {str(k) for k in model_by_game}:
                 continue
             try:

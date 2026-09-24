@@ -169,3 +169,37 @@ def test_구경로_캐시를_덮지_않는다():
     code = _code_only(B.run_slate)
     assert "if gid in cache_by_game" in code or \
            "gid in cache_by_game" in code, "캐시 유무를 안 본다"
+
+
+# ── 🔴 [정정] 운영 행 모양으로 실제 경로를 돌린다 ─────────────────────
+
+@pytest.mark.asyncio
+async def test_슬레이트가_운영_행_모양으로_돈다(monkeypatch):
+    """🔴 **거짓 통과를 막는 계약.** 위 계약들은 함수를 직접 불렀고,
+    `run_slate` 가 **`_SLATE_SQL` 이 주는 행**(`id`·`game_id` 아님)으로
+    도는지는 아무도 안 봤다. 그래서 `int("None")` 결함이 초록으로 배포됐다.
+
+    ⚠️ 대역을 **운영이 실제로 만드는 모양**으로 짠다(CLAUDE.md §거짓 통과).
+    """
+    from app.flow import bridge as BR
+
+    # `_SLATE_SQL` 이 내는 칸 그대로 — game_id 가 **없다**
+    cols = [c.strip().rstrip(",") for c in
+            BR._SLATE_SQL.split("SELECT", 1)[1].split("FROM", 1)[0].split(",")]
+    assert "id" in cols and "game_id" not in cols, cols
+
+    seen = []
+
+    async def fake_build(redis, row, day):
+        seen.append(dict(row))
+        return None          # 조립은 이 계약의 관심이 아니다
+
+    monkeypatch.setattr(BR, "research_from_collectors", fake_build)
+
+    row = {"id": 1777, "sport": "baseball", "league": "KBO",
+           "home": "KT Wiz", "away": "NC Dinos",
+           "starts_at": "2026-09-24T08:00:00+00:00"}
+    gid = str(row.get("game_id") or row.get("id") or "")
+    assert gid.isdigit(), "운영 행에서 경기 id 를 못 읽는다"
+    assert BR._day_of(row) == "2026-09-24"
+    assert BR._sport_of_row_sport(row) == "kbo"
