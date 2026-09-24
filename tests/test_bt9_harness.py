@@ -28,15 +28,19 @@ KICK = dt.datetime(2026, 9, 23, 9, 30, tzinfo=dt.UTC)
 def test_모든_조회가_킥오프_이전만_본다():
     """🔴 **이 계약이 이 도구의 생명이다.** SQL 에 시점 조건이 없으면 미래가
     샌다 — 그러면 결과가 좋게 나오고 그 숫자가 거짓말이 된다."""
-    for name in ("_ODDS_SQL", "_APPS_SQL", "_USUAL_SQL"):
-        sql = getattr(BT, name)
+    from app.flow.nodes import n05_evidence as N5
+
+    # ⚠️ [LOAD-2 2026-09-24] 출전 질의는 ⑤로 **옮겼다**(운영도 부르게).
+    #    옮겼다고 이 계약을 느슨하게 하지 않는다 — 원본을 따라간다.
+    for owner, name in ((BT, "_ODDS_SQL"), (N5, "_APPS_SQL"), (N5, "_USUAL_SQL")):
+        sql = getattr(owner, name)
         assert "<" in sql and ("captured_at" in sql or "starts_at" in sql), \
             f"{name} 에 시점 조건이 없다"
     # 배당: 킥오프 이후 스냅샷을 못 본다
     assert "o.captured_at <= $2" in BT._ODDS_SQL
     # 출전·평소: 그 경기 **이전** 경기만 (등호 없음 — 그 경기 자신도 제외)
-    assert "g.starts_at < $3" in BT._APPS_SQL
-    assert "g.starts_at < $3" in BT._USUAL_SQL
+    assert "g.starts_at < $3" in N5._APPS_SQL
+    assert "g.starts_at < $3" in N5._USUAL_SQL
 
 
 def test_elo_를_그_경기_직전까지로_만든다():
@@ -50,9 +54,15 @@ def test_elo_를_그_경기_직전까지로_만든다():
 
 def test_주전_판정을_다시_짓지_않았다():
     """🔴 사본 금지 — `lineup_diff.usual_from` 이 원본이다."""
-    src = inspect.getsource(BT._usual_of)
+    from app.flow.nodes import n05_evidence as N5
+
+    src = inspect.getsource(N5.usual_of)       # [LOAD-2] 원본이 ⑤로 옮겼다
     assert "usual_from" in src
     assert "regulars" not in src, "주전 판정을 여기서 다시 짰다"
+    # 🔴 하네스가 그것을 **그대로 부른다** — 사본을 다시 만들지 않았다
+    bt = inspect.getsource(BT)
+    assert "from app.flow.nodes.n05_evidence import play_rows" in bt
+    assert "usual_from" not in bt
 
 
 def test_9월_뉴스는_지어내지_않는다():

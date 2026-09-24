@@ -554,6 +554,96 @@ async def _park_of(state, ctx) -> tuple:
 #   ⚠️ `starts_at <` 로 **킥오프 이전**만 센다. 자기 자신을 세면 전건이
 #      confirmed 가 된다.
 #   ⚠️ 취소·연기는 뛴 경기가 아니다 — `status` 로 거른다.
+# ── [LOAD-2 2026-09-24] 출전 부하 조회 — **원본은 여기 하나다** ─────────
+#
+# 🔴 종전에는 `tools/backtest_sep.py` 안에만 있었다. 그래서 `play_load` 가
+#    **백테스트에서만** 돌고 운영은 5/5 `미실행` 이었다(D61 §②). 자료는
+#    있었다 — `batter_appearances` mlb 9,747 · npb 5,292 · kbo 4,599.
+# ⚠️ `app/flow/load.py` 에 두지 않는다 — 그 모듈은 스스로 "순수 함수다,
+#    DB 0건"이라 적고 있다. 질의는 ⑤가 이미 넷을 갖고 있는 이 자리다.
+_APPS_SQL = """
+    SELECT b.batter, b.slot, b.team, g.starts_at
+      FROM batter_appearances b JOIN games g ON g.id = b.game_id
+     WHERE b.sport = $1 AND b.team = $2 AND g.starts_at < $3
+       AND g.starts_at >= $3 - ($4 || ' days')::interval
+     ORDER BY g.starts_at DESC
+"""
+
+_USUAL_SQL = """
+    SELECT b.batter, b.slot, g.starts_at
+      FROM batter_appearances b JOIN games g ON g.id = b.game_id
+     WHERE b.sport = $1 AND b.team = $2 AND g.starts_at < $3
+     ORDER BY g.starts_at DESC, b.slot
+     LIMIT 200
+"""
+
+
+async def usual_of(pool, sport: str, team: str, at) -> dict:
+    """그 경기 **이전** 기록으로 만든 '평소 모습'.
+
+    🔴 주전 판정은 `lineup_diff.usual_from` 이 한다 — 여기서 다시 짓지 않는다.
+    ⚠️ `at` 이전만 본다. 백테스트에서 미래를 보지 않기 위한 조건이고,
+       운영에서는 킥오프가 `at` 이라 사실상 전부다.
+    """
+    from app.engine.lineup_diff import usual_from
+
+    rows = [dict(r) for r in await pool.fetch(_USUAL_SQL, sport, team, at)]
+    by: dict = {}
+    for r in rows:
+        by.setdefault(r["starts_at"], []).append(r)
+    history = []
+    for _ts, group in sorted(by.items(), reverse=True):
+        order = [(str(x["batter"]), "") for x in
+                 sorted(group, key=lambda x: (x["slot"] or 99))]
+        if order:
+            history.append(order)
+    return usual_from(history)
+
+
+async def play_rows(pool, sport: str, team: str, at, *, days=None) -> dict:
+    """한 팀의 출전 기록 — `{"apps": [...], "usual": {...}}`.
+
+    ⚠️ 창은 `load.window_d` 가 원본이다(사본 금지).
+    """
+    from app.flow import rules as R
+
+    if days is None:
+        days = R.get("load.window_d", 7)
+    apps = [dict(r) for r in await pool.fetch(_APPS_SQL, sport, team, at,
+                                              str(int(days)))]
+    return {"apps": apps, "usual": await usual_of(pool, sport, team, at)}
+
+
+async def _play_load_of(state, ctx) -> dict | None:
+    """양 팀의 출전 기록. 🔴 **배선의 끝** — ⑤가 직접 DB 를 읽는다.
+
+    🔴 못 읽으면 `None` 이고 호출부가 `미실행` 으로 적는다. 0 으로 채우지
+       않는다 — "안 봤다"와 "봤는데 없다"는 다른 말이다.
+    """
+    if ctx.pool is None:
+        return None
+    sp = _sport_code(state)
+    # ⚠️ `batter_appearances` 는 야구뿐이다(축구는 `lineup_history.minutes` 가
+    #    전 리그 0건 — `app/flow/load.py` 머리말).
+    if sp not in ("mlb", "npb", "kbo"):
+        return None
+    kick = _kickoff_dt(state.kickoff_utc)
+    if kick is None:
+        return None
+    out: dict = {}
+    for sd in ("home", "away"):
+        team = getattr(state, sd, "")
+        if not team:
+            return None
+        try:
+            out[sd] = await play_rows(ctx.pool, sp, str(team), kick)
+        except Exception as exc:
+            logger.warning("[flow:n05] 출전 기록 조회 실패 game=%s: %s",
+                           state.game_id, exc)
+            return None
+    return out
+
+
 _RECENT_SQL = """
     SELECT home, away, starts_at, league
       FROM games
@@ -852,6 +942,11 @@ async def run(state, ctx):
             from app.flow import load as _LOAD
 
             got = (ctx.inject or {}).get("play_load")
+            # 🔴 [LOAD-2 2026-09-24] **주입이 없으면 직접 읽는다.** 종전에는
+            #    여기서 끝나 운영이 5/5 `미실행` 이었다 — 넣는 곳이
+            #    `tools/backtest_sep.py` 하나뿐이었다(D61 §②).
+            if not got:
+                got = await _play_load_of(state, ctx)
             if not got:
                 out.append(_row(var, [], source="", status=UNRUN,
                                 excerpt="출전 기록이 없다 — 미실행"))

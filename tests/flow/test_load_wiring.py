@@ -272,3 +272,97 @@ def test_오늘_타순_읽기가_최신_한벌만_본다():
     assert got["away"] == ["a1"], "JSON 문자열을 못 읽는다"
     assert N5._order_by_side([]) == {}
     assert N5._order_by_side([{"side": "home", "batting_order": None}]) == {}
+
+
+# ── [LOAD-2 2026-09-24] 운영이 직접 읽는다 ──────────────────────────
+
+def test_출전기록_질의가_한_곳이다():
+    """🔴 **사본 금지.** 종전에는 `tools/backtest_sep.py` 안에만 있어서
+    `play_load` 가 백테스트에서만 돌았다 — 운영 실측 5/5 `미실행`(D61 §②).
+    자료는 있었다: `batter_appearances` mlb 9,747 · npb 5,292 · kbo 4,599.
+    """
+    import pathlib
+
+    from app.flow.nodes import n05_evidence as N5
+
+    assert "batter_appearances" in N5._APPS_SQL
+    assert "batter_appearances" in N5._USUAL_SQL
+    bt = pathlib.Path("tools/backtest_sep.py").read_text(encoding="utf-8")
+    assert "_APPS_SQL" not in bt, "백테스트가 질의를 다시 지었다"
+    assert "_USUAL_SQL" not in bt, "백테스트가 질의를 다시 지었다"
+    assert "from app.flow.nodes.n05_evidence import play_rows" in bt
+    assert "await play_rows(pool, sport, team, at)" in bt
+
+
+def test_주입이_없으면_직접_읽는다():
+    """🔴 **배선의 끝** — 이 줄이 없어서 운영이 전건 미실행이었다."""
+    import ast
+    import inspect
+
+    from app.flow.nodes import n05_evidence as N5
+
+    tree = ast.parse(inspect.getsource(N5.run))
+    for node in ast.walk(tree):                    # 독스트링 제거(D46)
+        body = getattr(node, "body", None)
+        if not body or not isinstance(body, list):
+            continue
+        f = body[0]
+        if (isinstance(f, ast.Expr) and isinstance(f.value, ast.Constant)
+                and isinstance(f.value.value, str)):
+            body.pop(0)
+    code = ast.unparse(tree)
+    assert "_play_load_of(state, ctx)" in code, "주입 없으면 그냥 미실행이다"
+
+
+@pytest.mark.asyncio
+async def test_풀이_없으면_지어내지_않는다():
+    """🔴 못 읽은 것을 0 으로 채우지 않는다 — 호출부가 `미실행` 으로 적는다."""
+    from app.flow.nodes import n05_evidence as N5
+    from app.flow.state import State
+
+    st = State(run_id="r", game_id=1, sport="baseball", league="KBO",
+               home="Doosan Bears", away="KT Wiz",
+               kickoff_utc=dt.datetime(2026, 9, 24, 9, 30, tzinfo=dt.UTC))
+
+    class _C:
+        pool = None
+        redis = None
+        inject = None
+
+    assert await N5._play_load_of(st, _C()) is None
+
+
+@pytest.mark.asyncio
+async def test_야구만_읽는다():
+    """⚠️ `batter_appearances` 는 야구뿐이다 — 축구에 질의를 던지지 않는다."""
+    from app.flow.nodes import n05_evidence as N5
+    from app.flow.state import State
+
+    class _P:
+        def __init__(self): self.hit = 0
+        async def fetch(self, *a):
+            self.hit += 1
+            return []
+
+    class _C:
+        def __init__(self, p): self.pool = p; self.redis = None; self.inject = None
+
+    pool = _P()
+    st = State(run_id="r", game_id=1, sport="soccer", league="EPL",
+               home="Fulham FC", away="Arsenal FC",
+               kickoff_utc=dt.datetime(2026, 9, 24, 9, 30, tzinfo=dt.UTC))
+    assert await N5._play_load_of(st, _C(pool)) is None
+    assert pool.hit == 0, "축구인데 질의를 던졌다"
+
+
+def test_창은_설정이_원본이다():
+    """⚠️ 7 을 손으로 적지 않는다 — `load.window_d` 가 원본이다."""
+    import inspect
+
+    from app.flow import rules as R
+    from app.flow.nodes import n05_evidence as N5
+
+    src = inspect.getsource(N5.play_rows)
+    assert 'R.get("load.window_d"' in src
+    assert R.get("load.window_d", "MISSING") == 7
+    assert R.get("flow.load.window_d", "MISSING") == "MISSING"

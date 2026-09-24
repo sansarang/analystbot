@@ -78,45 +78,13 @@ _ODDS_SQL = """
      ORDER BY o.captured_at DESC
 """
 
-_APPS_SQL = """
-    SELECT b.batter, b.slot, b.team, g.starts_at
-      FROM batter_appearances b JOIN games g ON g.id = b.game_id
-     WHERE b.sport = $1 AND b.team = $2 AND g.starts_at < $3
-       AND g.starts_at >= $3 - ($4 || ' days')::interval
-     ORDER BY g.starts_at DESC
-"""
-
-_USUAL_SQL = """
-    SELECT b.batter, b.slot, g.starts_at
-      FROM batter_appearances b JOIN games g ON g.id = b.game_id
-     WHERE b.sport = $1 AND b.team = $2 AND g.starts_at < $3
-     ORDER BY g.starts_at DESC, b.slot
-     LIMIT 200
-"""
+# 🔴 [LOAD-2 2026-09-24] **출전 기록 질의를 여기서 다시 짓지 않는다.**
+#    종전에는 이 파일에만 있어서 `play_load` 가 백테스트에서만 돌고 운영은
+#    5/5 `미실행` 이었다(D61 §②). 원본은 ⑤로 옮겼고 둘이 같은 함수를 부른다.
 
 
 async def _odds_rows(pool, gid: int, at) -> list:
     return [dict(r) for r in await pool.fetch(_ODDS_SQL, gid, at)]
-
-
-async def _usual_of(pool, sport: str, team: str, at) -> dict:
-    """그 경기 **이전** 기록으로 만든 '평소 모습'.
-
-    🔴 판정은 `lineup_diff.usual_from` 이 한다 — 여기서 다시 짓지 않는다.
-    """
-    from app.engine.lineup_diff import usual_from
-
-    rows = [dict(r) for r in await pool.fetch(_USUAL_SQL, sport, team, at)]
-    by: dict = {}
-    for r in rows:
-        by.setdefault(r["starts_at"], []).append(r)
-    history = []
-    for _ts, group in sorted(by.items(), reverse=True):
-        order = [(str(x["batter"]), "") for x in
-                 sorted(group, key=lambda x: (x["slot"] or 99))]
-        if order:
-            history.append(order)
-    return usual_from(history)
 
 
 async def _elo_asof(pool, sport: str, at) -> dict:
@@ -149,6 +117,7 @@ async def _elo_asof(pool, sport: str, at) -> dict:
 async def build_ctx(pool, game: dict):
     """그 경기의 as-of 재료를 담은 Ctx. **DB 쓰기는 막는다.**"""
     from app.flow.ctx import Ctx
+    from app.flow.nodes.n05_evidence import play_rows
 
     at = game["starts_at"]
     gid = int(game["id"])
@@ -168,10 +137,8 @@ async def build_ctx(pool, game: dict):
         load: dict = {}
         for side in ("home", "away"):
             team = str(game[side])
-            load[side] = {
-                "apps": [dict(r) for r in await pool.fetch(
-                    _APPS_SQL, sport, team, at, "7")],
-                "usual": await _usual_of(pool, sport, team, at)}
+            # 🔴 운영 ⑤가 부르는 **그 함수**를 그대로 부른다(사본 금지).
+            load[side] = await play_rows(pool, sport, team, at)
         inject["play_load"] = load
     return Ctx(pool=ro, redis=None,
                now_kst=at.astimezone(dt.timezone(dt.timedelta(hours=9))),
