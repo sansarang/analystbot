@@ -613,10 +613,13 @@ async def _news_rss_dir(state, ctx) -> dict | None:
     from app.flow.attribution import news_dir_sided
 
     sport = _sport_code(state)
-    if sport not in NR.LOCALE:
+    league = str(getattr(state, "league", "") or "")
+    # 🔴 [NWS-A] 야구는 종목으로, 축구는 **리그로** 로케일이 정해진다.
+    #    종목 목록을 손으로 적지 않는다 — `news_rss.locale_for` 가 원본이다.
+    if NR.locale_for(sport, league) is None:
         return None
-    jg = {"sport": sport, "home": getattr(state, "home", ""),
-          "away": getattr(state, "away", "")}
+    jg = {"sport": sport, "league": league,
+          "home": getattr(state, "home", ""), "away": getattr(state, "away", "")}
     if not (jg["home"] and jg["away"]):
         return None
     try:
@@ -625,7 +628,59 @@ async def _news_rss_dir(state, ctx) -> dict | None:
         logger.warning("[flow:n05] 팀 뉴스 조회 실패 game=%s: %s",
                        state.game_id, exc)
         return None
-    return news_dir_sided(table)
+    rosters, starters = await _core_members(state, ctx)
+    return news_dir_sided(table, rosters=rosters, starters=starters)
+
+
+async def _core_members(state, ctx) -> tuple:
+    """[NWS-C] 쪽별 **핵심 인물** — `(평소 명단, 추가 이름)`.
+
+    사용자 2026-09-24: "무조건 부상이라고 -1을 하면 안된다…기사에 난 인물이
+    기존 라인업 **핵심 멤버**인지 확인해야 한다" ·
+    "모든 경기에 적용되어야 한다…꼭 야구만 하지 말고"
+
+    🔴 **종목마다 '명단'의 모양이 다르다.** 흐름 밖에서 종목을 거르지 않고
+       노드 **안에서** 갈린다(CLAUDE.md §모든 종목).
+         야구  평소 타순표(`usual_of`) + **오늘 예고 선발**(투수는 타순에 없다)
+         축구  확정 XI(`lineups.batting_order`) — 평소 타순이라는 것이 없다
+    🔴 **주전 판정을 여기서 짓지 않는다** — `load.player_weight` 와
+       `lineup_diff.usual_from` 이 원본이다(`attribution.core_name_in`).
+    ⚠️ 못 읽으면 **빈 것**을 준다. 그러면 뉴스가 확률을 안 움직인다 —
+       "모른다"를 "없다"로 바꾸지 않는다.
+    """
+    rosters: dict = {}
+    starters: dict = {}
+    if ctx.pool is None:
+        return rosters, starters
+    sport = _sport_code(state)
+    if sport == "soccer":
+        rows = await _xi_rows(state, ctx)
+        for sd in ("home", "away"):
+            names = (_order_by_side(rows) or {}).get(sd) or []
+            if names:
+                starters[sd] = [str(x) for x in names]
+        return rosters, starters
+    kick = _kickoff_dt(state.kickoff_utc)
+    for sd in ("home", "away"):
+        team = getattr(state, sd, "")
+        if not team or kick is None:
+            continue
+        try:
+            rosters[sd] = await usual_of(ctx.pool, sport, str(team), kick)
+        except Exception as exc:
+            logger.warning("[flow:n05] 평소 명단 조회 실패 game=%s %s: %s",
+                           state.game_id, sd, exc)
+    try:
+        row = await ctx.pool.fetchrow(
+            "SELECT home_pitcher, away_pitcher FROM games WHERE id = $1",
+            int(state.game_id))
+    except Exception:
+        row = None
+    for sd in ("home", "away"):
+        who = str((row or {}).get(f"{sd}_pitcher") or "").strip()
+        if who:
+            starters[sd] = [who]
+    return rosters, starters
 
 
 async def _play_load_of(state, ctx) -> dict | None:

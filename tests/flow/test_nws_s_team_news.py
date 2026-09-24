@@ -20,6 +20,13 @@ import pytest
 
 from app.flow import attribution as A
 
+# 🔴 [NWS-C 2026-09-24] 이 파일의 계약들은 **핵심 인물 검사가 붙기 전**의
+#    동작을 붙잡고 있었다. 지우지 않고 **새 뜻으로 고친다** — 기사가 있다고
+#    움직이는 것이 아니라 **핵심 인물의 기사일 때** 움직인다.
+_USUAL = {"slots": {"최원태": 1, "김성욱": 8}, "regulars": {"최원태"},
+          "display": {"최원태": "최원태", "김성욱": "김성욱"}, "games": 10}
+_ROSTERS = {"home": _USUAL, "away": _USUAL}
+
 
 # ── 낱말 판정을 꺼낸 것이 사본을 만들지 않았나 ──────────────────────
 
@@ -44,15 +51,17 @@ def test_쪽은_질의가_정한다():
     팀명이 없다. `by_side` 가 질의 팀명으로 이미 갈라 놨다."""
     got = A.news_dir_sided({
         "home": [{"title": "최원태, 하필 지금 부상 이탈", "age_h": 4.9}],
-        "away": [{"title": "라팍 53번째 만원 관중", "age_h": 5.6}]})
-    assert got == {"home": -1, "away": 0,
-                   "basis": "부상 — 최원태, 하필 지금 부상 이탈"}
+        "away": [{"title": "라팍 53번째 만원 관중", "age_h": 5.6}]},
+        rosters=_ROSTERS)
+    assert got["home"] == -1 and got["away"] == 0
+    assert got["basis"].startswith("최원태 부상 —")
 
 
 def test_한_팀에_둘_다_오면_상쇄다():
     """⚠️ `news_dir` 과 같은 규약 — 억지로 하나를 고르지 않는다."""
-    got = A.news_dir_sided({"home": [{"title": "에이스 부상 이탈", "age_h": 1},
-                                     {"title": "4번 타자 1군 등록", "age_h": 2}]})
+    got = A.news_dir_sided({"home": [{"title": "최원태 부상 이탈", "age_h": 1},
+                                     {"title": "최원태 1군 등록", "age_h": 2}]},
+                           rosters=_ROSTERS)
     assert got["home"] == 0
     assert got["basis"], "무엇을 봤는지는 남긴다"
 
@@ -65,9 +74,9 @@ def test_기사가_없으면_None():
 
 def test_창을_두_벌_만들지_않았다():
     """⚠️ F-19 가 지적한 자리 — 기본은 자르지 않는다(72h 는 `parse_feed`)."""
-    arts = {"home": [{"title": "에이스 부상 이탈", "age_h": 50}]}
-    assert A.news_dir_sided(arts)["home"] == -1
-    assert A.news_dir_sided(arts, max_age_h=24) is None
+    arts = {"home": [{"title": "최원태 부상 이탈", "age_h": 50}]}
+    assert A.news_dir_sided(arts, rosters=_ROSTERS)["home"] == -1
+    assert A.news_dir_sided(arts, max_age_h=24, rosters=_ROSTERS) is None
 
 
 # ── 배선의 끝 ──────────────────────────────────────────────────────
@@ -93,8 +102,9 @@ def test_다섯번_노드가_실제로_부른다():
     helper = _code_only(E._news_rss_dir)
     assert "news_rss" in helper and "by_side" in helper
     assert "news_dir_sided" in helper
-    # 🔴 종목 목록을 손으로 적지 않는다 — LOCALE 이 원본이다
-    assert "LOCALE" in helper
+    # 🔴 [NWS-A 2026-09-24] 종목 목록을 손으로 적지 않는다 —
+    #    `news_rss.locale_for` 가 원본이다(야구는 종목, 축구는 리그).
+    assert "locale_for" in helper
     assert '"kbo"' not in helper and "'kbo'" not in helper
 
 
@@ -118,8 +128,9 @@ async def test_시장_경로를_치우지_않았다(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_종목이_없으면_긁지_않는다(monkeypatch):
-    """⚠️ 축구는 `news_rss.LOCALE` 에 없다 — 헛질의를 보내지 않는다."""
+async def test_로케일_없는_리그는_긁지_않는다(monkeypatch):
+    """⚠️ [NWS-A 정정] 축구도 **이제 긁는다**(리그별 언어). 안 긁는 것은
+    로케일을 모르는 리그뿐이다 — 헛질의를 보내지 않는다."""
     from app.flow.nodes import n05_evidence as E
 
     hit = []
@@ -133,7 +144,7 @@ async def test_종목이_없으면_긁지_않는다(monkeypatch):
     class _S:
         game_id = "1"
         sport = "soccer"
-        league = "EPL"
+        league = "듣보리그"          # 로케일 표에 없다
         home = "Arsenal FC"
         away = "Chelsea FC"
 

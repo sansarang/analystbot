@@ -7,6 +7,7 @@ tm_code 는 Transfermarkt 대회 코드 — 부상표 URL 에 쓴다
 
 LEAGUES: dict[str, dict] = {
     "epl": {
+        "news_hl": "en-GB", "news_gl": "GB",
         "fd_code": "PL", "odds_key": "soccer_epl", "label": "EPL", "elo": "E0",
         "fd_names": ["Premier League"],
         "tm_code": "GB1",
@@ -22,6 +23,7 @@ LEAGUES: dict[str, dict] = {
         "aliases": ["epl", "프리미어리그", "프리미어", "영국", "잉글랜드"],
     },
     "la_liga": {
+        "news_hl": "es", "news_gl": "ES",
         "fd_code": "PD", "odds_key": "soccer_spain_la_liga", "label": "라리가", "elo": "SP1",
         "fd_names": ["Primera Division", "La Liga"],
         "tm_code": "ES1",
@@ -31,6 +33,7 @@ LEAGUES: dict[str, dict] = {
         "aliases": ["라리가", "스페인", "라 리가"],
     },
     "serie_a": {
+        "news_hl": "it", "news_gl": "IT",
         "fd_code": "SA", "odds_key": "soccer_italy_serie_a", "label": "세리에A", "elo": "I1",
         "fd_names": ["Serie A"],
         "tm_code": "IT1",
@@ -40,6 +43,7 @@ LEAGUES: dict[str, dict] = {
         "aliases": ["세리에a", "세리에", "이탈리아"],
     },
     "bundesliga": {
+        "news_hl": "de", "news_gl": "DE",
         "fd_code": "BL1", "odds_key": "soccer_germany_bundesliga", "label": "분데스리가", "elo": "D1",
         "fd_names": ["Bundesliga"],
         "tm_code": "L1",
@@ -49,6 +53,7 @@ LEAGUES: dict[str, dict] = {
         "aliases": ["분데스리가", "분데스", "독일"],
     },
     "j1": {
+        "news_hl": "ja", "news_gl": "JP",
         "odds_key": "soccer_japan_j_league", "label": "J1 리그", "elo": "JPN",
         "fd_names": [],
         "tm_code": "JAP1",
@@ -63,6 +68,7 @@ LEAGUES: dict[str, dict] = {
         "aliases": ["j리그", "제이리그", "j1", "일본"],
     },
     "denmark": {
+        "news_hl": "da", "news_gl": "DK",
         "odds_key": "soccer_denmark_superliga", "label": "덴마크 수페르리가", "elo": "DNK",
         "fd_names": [],
         "tm_code": "DK1",
@@ -74,6 +80,7 @@ LEAGUES: dict[str, dict] = {
         "aliases": ["덴마크", "수페르리가"],
     },
     "kleague1": {
+        "news_hl": "ko", "news_gl": "KR",
         "odds_key": "soccer_korea_kleague1", "label": "K리그1", "elo": None,  # CSV 미제공 → 모델 무효
         "fd_names": [],
         "tm_code": "RSK1",
@@ -95,6 +102,7 @@ LEAGUES: dict[str, dict] = {
     #    ⚠️ `tm_code` 없음 — Transfermarkt 는 대회별 부상표라 ACL 표가 없다.
     #       결장 정보는 FotMob `unavailable` 로만 온다.
     "acl": {
+        "news_hl": "en", "news_gl": "US",
         "fd_code": None, "odds_key": None, "label": "ACL엘리트", "elo": None,
         "fd_names": [],
         "tm_code": None,
@@ -131,6 +139,7 @@ LEAGUES: dict[str, dict] = {
     #    ⚠️ 컨퍼런스리그는 캐시에 **본선이 없어**(예선만 78경기) 넣지 않았다 —
     #       이름을 확인하지 못한 것을 추측해 적지 않는다.
     "ucl": {
+        "news_hl": "en", "news_gl": "US",
         "fd_code": None, "odds_key": None, "label": "UCL", "elo": None,
         "fd_names": [], "tm_code": None,
         "result_source": "fotmob",
@@ -140,6 +149,7 @@ LEAGUES: dict[str, dict] = {
         "aliases": [],
     },
     "uel": {
+        "news_hl": "en", "news_gl": "US",
         "fd_code": None, "odds_key": None, "label": "UEL", "elo": None,
         "fd_names": [], "tm_code": None,
         "result_source": "fotmob",
@@ -149,6 +159,7 @@ LEAGUES: dict[str, dict] = {
         "aliases": [],
     },
     "ligue1": {
+        "news_hl": "fr", "news_gl": "FR",
         "fd_code": "FL1", "odds_key": None, "label": "리그앙", "elo": None,
         "fd_names": ["Ligue 1"],
         "tm_code": None,
@@ -159,6 +170,7 @@ LEAGUES: dict[str, dict] = {
         "features": ("results",),
     },
     "eredivisie": {
+        "news_hl": "nl", "news_gl": "NL",
         "fd_code": "DED", "odds_key": None, "label": "에레디비시", "elo": None,
         "fd_names": ["Eredivisie"],
         "tm_code": None,
@@ -258,3 +270,29 @@ def find_unsupported_league(text: str) -> str | None:
 
 def supported_league_list() -> str:
     return ", ".join(v["label"] for v in LEAGUES.values())
+
+
+#: 🔴 [NWS-A 2026-09-24 사용자 지시] "모든 경기에 적용되어야 한다…꼭 야구만
+#   하지 말고" — 팀 뉴스를 축구에도 돌리려면 **리그마다 언어가 달라야** 한다.
+#   실측이 그 이유다(`news_rss` 머리말): "영문명으로 던지면 72시간 필터가
+#   전부 걸러낸다. 모국어로 던지면…". 영어 하나로 12리그를 덮으면 그것은
+#   고친 척일 뿐이다.
+#   ⚠️ 표는 여기 하나다 — `news_rss` 가 읽기만 한다(사본 금지).
+def news_locale(league_key: str) -> dict | None:
+    """리그 키 → 구글 뉴스 로케일. 모르면 **None**(그 리그는 안 긁는다)."""
+    row = LEAGUES.get((league_key or "").lower()) or {}
+    hl, gl = row.get("news_hl"), row.get("news_gl")
+    if not hl or not gl:
+        return None
+    return {"hl": hl, "gl": gl, "ceid": f"{gl}:{hl.split('-')[0]}"}
+
+
+def key_of_label(label: str) -> str | None:
+    """표기(`라리가`) → 리그 키(`la_liga`). 못 찾으면 None."""
+    want = str(label or "").strip()
+    if not want:
+        return None
+    for k, v in LEAGUES.items():
+        if str(v.get("label") or "") == want or k == want.lower():
+            return k
+    return None

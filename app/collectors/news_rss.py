@@ -242,7 +242,26 @@ async def fetch_team_situation(sport: str, team: str, *,
     return items[:limit]
 
 
-async def fetch_team(sport: str, team: str, *, limit: int = 20) -> list[dict]:
+def locale_for(sport: str, league: str = "") -> dict | None:
+    """[NWS-A] 종목·리그 → 구글 뉴스 로케일. 모르면 **None**.
+
+    🔴 사용자 2026-09-24: "모든 경기에 적용되어야 한다…꼭 야구만 하지 말고"
+    🔴 **야구는 종목 하나에 언어 하나**라 `LOCALE` 로 끝난다. 축구는 한
+       종목에 12리그·9언어라 리그가 정해야 한다 — 표의 원본은
+       `app.leagues.news_locale` 이다(사본 금지).
+    ⚠️ 영어 하나로 12리그를 덮지 않는다. 이 모듈 머리말이 이미 적고 있다 —
+       "영문명으로 던지면 72시간 필터가 전부 걸러낸다."
+    """
+    got = LOCALE.get((sport or "").lower())
+    if got:
+        return got
+    from app.leagues import key_of_label, news_locale
+
+    return news_locale(key_of_label(league) or "")
+
+
+async def fetch_team(sport: str, team: str, *, limit: int = 20,
+                     league: str = "") -> list[dict]:
     """팀 1개의 최근 기사. 실패하면 빈 목록 — 딥서치가 폴백을 결정한다.
 
     🔴 [상황 변수 2026-09-06] 일반 쿼리와 **상황 축 쿼리를 함께** 던진다.
@@ -255,7 +274,7 @@ async def fetch_team(sport: str, team: str, *, limit: int = 20) -> list[dict]:
 
     import httpx
 
-    loc = LOCALE.get(sport)
+    loc = locale_for(sport, league)
     if not loc or not team:
         return []
     q_main = qualified(sport, team)
@@ -298,7 +317,9 @@ async def for_game(jg: dict, redis=None, *, limit: int = 12) -> list[dict]:
     import json as _json
 
     sport = (jg.get("sport") or "").lower()
-    if sport not in LOCALE:
+    league = str(jg.get("league") or "")
+    # 🔴 [NWS-A] 야구는 종목으로, 축구는 **리그로** 로케일이 정해진다.
+    if locale_for(sport, league) is None:
         return []
     merged: list[dict] = []
     for side in ("home", "away"):
@@ -315,7 +336,7 @@ async def for_game(jg: dict, redis=None, *, limit: int = 12) -> list[dict]:
             except Exception as exc:
                 logger.debug("[news_rss] 캐시 읽기 실패 %s: %s", team, exc)
         if items is None:
-            items = await fetch_team(sport, team)
+            items = await fetch_team(sport, team, league=league)
             if items and redis is not None:
                 try:
                     await redis.set(key, _json.dumps(items, ensure_ascii=False),

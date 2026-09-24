@@ -213,7 +213,44 @@ def tone_of(title):
     return {"dir": -1 if bad else +1, "word": bad or good}
 
 
-def news_dir_sided(table, *, max_age_h=None) -> dict | None:
+def core_name_in(title, usual: dict | None, extra=()) -> str | None:
+    """[NWS-C] 제목이 **이 팀의 핵심 인물**을 말하는가. 아니면 `None`.
+
+    사용자 2026-09-24: "무조건 부상이라고 -1을 하면 안된다…기사에 난 인물이
+    기존 라인업 **핵심 멤버**인지 확인해야 한다"
+
+    🔴 **주전 판정을 여기서 짓지 않는다.** 무게는 `load.player_weight` 가
+       내고, 그 원본은 `lineup_diff.usual_from`(최근 10경기 중 절반 이상
+       출장 = `regulars`, 최빈 타순 = `slots`)이다. 사본 금지.
+    🔴 문턱은 `load.weight_regular` 를 **그대로** 쓴다 — 새 상수를 만들지
+       않는다. 타순 가중 때문에 주전은 항상 그 값 이상이고 후보는 미만이다.
+    ⚠️ **투수는 타순에 없다.** 오늘 예고 선발은 `extra` 로 따로 받는다
+       (실측: "최원태도 1군 말소"는 투수 기사라 타순 표로는 못 잡는다).
+    ⚠️ 표기가 둘이다 — 정규화 키(`박건우`)와 원문(`森下 暢仁`, 공백 있음).
+       둘 다 본다.
+    """
+    from app.flow.load import player_weight
+
+    t = str(title or "").strip()
+    if not t:
+        return None
+    for nm in (extra or ()):
+        if nm and str(nm) in t:
+            return str(nm)
+    if not isinstance(usual, dict) or not usual.get("slots"):
+        return None
+    bar = float(R.get("load.weight_regular", 1.0))
+    display = usual.get("display") or {}
+    for key in usual.get("slots") or {}:
+        shown = str(display.get(key) or key)
+        if key not in t and shown not in t:
+            continue
+        if player_weight(key, usual) >= bar:
+            return shown
+    return None
+
+
+def news_dir_sided(table, *, max_age_h=None, rosters=None, starters=None) -> dict | None:
     """[NWS-S] **쪽이 이미 정해진** 기사표 → `{"home","away","basis"}`.
 
     `table` 은 `news_rss.by_side` 가 내는 `{"home": [기사…], "away": [기사…]}` 다.
@@ -247,9 +284,19 @@ news_rss 팀별 구글 질의 **0.3h ~ 5.6h** · "최원태 … 하필 지금 �
             got = tone_of(a.get("title"))
             if not got:
                 continue
+            # 🔴 [NWS-C 2026-09-24 사용자 지시] **무조건 -1 하지 않는다.**
+            #    기사에 난 사람이 이 팀의 핵심(평소 주전 또는 오늘 선발)일
+            #    때만 센다. 후보 선수 한 명의 말소로 확률이 움직이면 그건
+            #    신호가 아니라 잡음이다.
+            #    ⚠️ 명단을 못 읽으면 **안 움직인다** — "모른다"를 "없다"로
+            #       바꾸지 않는다.
+            who = core_name_in(a.get("title"), (rosters or {}).get(side),
+                               (starters or {}).get(side) or ())
+            if not who:
+                continue
             seen = True
             score[side] += got["dir"]
-            why.append(f"{got['word']} — {str(a.get('title'))[:40]}")
+            why.append(f"{who} {got['word']} — {str(a.get('title'))[:34]}")
     for k in score:
         score[k] = 1 if score[k] > 0 else (-1 if score[k] < 0 else 0)
     if not seen:
