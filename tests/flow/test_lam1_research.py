@@ -203,3 +203,54 @@ async def test_슬레이트가_운영_행_모양으로_돈다(monkeypatch):
     assert gid.isdigit(), "운영 행에서 경기 id 를 못 읽는다"
     assert BR._day_of(row) == "2026-09-24"
     assert BR._sport_of_row_sport(row) == "kbo"
+
+
+# ── [LAM-2] 덜 이어진 두 자리 ──────────────────────────────────────
+
+def test_슬레이트가_선발_칸을_준다():
+    """🔴 실측 2026-09-24 — `research.home_pitcher = None` 이라 **억제력 항이
+    통째로 빠졌다.** λ 가 타선만으로 섰다. 그 칸은 D61-2 가 채운다."""
+    sel = B._SLATE_SQL.split("SELECT", 1)[1].split("FROM", 1)[0]
+    body = "\n".join(ln.split("--", 1)[0] for ln in sel.splitlines())
+    cols = {c.strip() for c in body.split(",") if c.strip()}
+    assert "home_pitcher" in cols and "away_pitcher" in cols, cols
+    assert "id" in cols and "game_id" not in cols
+
+
+@pytest.mark.asyncio
+async def test_내일_경기는_오늘_캐시를_쓴다(monkeypatch):
+    """🔴 실측 — 09-25 경기 3건이 전부 "핵심 지표 부족"이었다.
+    `kbo_stats:teams:2026-09-25` 가 아직 없기 때문이다. 팀 시즌 지표는
+    하루에 거의 안 움직인다.
+    ⚠️ 새 규약이 아니다 — 판정 캐시 조회가 이미 `(day, day-1)` 로 내려간다."""
+    tried = []
+
+    async def fake_load(redis, date):
+        tried.append(date)
+        return (_KBO_TEAMS, {}) if date == "2026-09-24" else ({}, {})
+
+    monkeypatch.setattr("app.collectors.kbo_stats.load", fake_load)
+    monkeypatch.setattr("app.collectors.weather.fetch_for_games", lambda *a, **k: _none())
+    monkeypatch.setattr("app.collectors.kbo_park.load", lambda *a, **k: _none())
+
+    got = await B.research_from_collectors(None, _ROW, "2026-09-25")
+    assert tried == ["2026-09-25", "2026-09-24"], tried
+    assert got["research"]["home_offense"]["obp_30d"] == 0.364
+
+
+@pytest.mark.asyncio
+async def test_전날까지만_내려간다(monkeypatch):
+    """⚠️ 반대 위험 — 한없이 내려가면 **낡은 시즌 값**이 조용히 쓰인다."""
+    tried = []
+
+    async def fake_load(redis, date):
+        tried.append(date)
+        return {}, {}
+
+    monkeypatch.setattr("app.collectors.kbo_stats.load", fake_load)
+    monkeypatch.setattr("app.collectors.weather.fetch_for_games", lambda *a, **k: _none())
+    monkeypatch.setattr("app.collectors.kbo_park.load", lambda *a, **k: _none())
+
+    row = {k: v for k, v in _ROW.items() if not k.endswith("_pitcher")}
+    assert await B.research_from_collectors(None, row, "2026-09-25") is None
+    assert len(tried) == 2, tried

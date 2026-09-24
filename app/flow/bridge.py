@@ -42,7 +42,11 @@ _MODEL_SQL = """
 #: 오늘 슬레이트. 🔴 **위성과 같은 조건**이다(`satellite._DUE_SQL`) — 그쪽이
 #  원본이고 여기서는 같은 규칙을 쓴다: 예정 · 앞으로 N시간 안에 시작.
 _SLATE_SQL = """
-    SELECT id, sport, league, home, away, starts_at
+    SELECT id, sport, league, home, away, starts_at,
+           -- 🔴 [LAM-2 2026-09-24] **선발 이름이 없으면 억제력 항이 통째로
+           --    빠진다.** 실측: research.home_pitcher = None → λ 가 타선만으로
+           --    선다. 이 칸은 D61-2 가 크롤러에서 채운다.
+           home_pitcher, away_pitcher
       FROM games
      WHERE status = 'scheduled'
        AND starts_at BETWEEN now() AND now() + make_interval(hours => $1)
@@ -335,21 +339,38 @@ npb_stats:teams:2026-09-24   12팀  DeNA obp 0.309 · slg 0.377 · ERA 3.26
         if who:
             research[f"{side}_pitcher"] = {"name": who}
 
+    # ⚠️ [LAM-2] **내일 경기는 오늘 캐시를 쓴다.** 팀 시즌 지표는 하루에
+    #    거의 안 움직이는데, 날짜가 정확히 맞는 캐시만 보면 내일 경기가
+    #    통째로 λ 없이 남는다(실측: g1778·1779·1780 전부 "핵심 지표 부족").
+    #    ⚠️ 새 규약이 아니다 — 바로 위 판정 캐시 조회가 이미 `(day, day-1)`
+    #       로 내려간다. 같은 규약을 쓴다.
+    days = [day]
+    try:
+        from datetime import date as _d
+        from datetime import timedelta as _td
+
+        days.append((_d.fromisoformat(day) - _td(days=1)).isoformat())
+    except ValueError:
+        pass
     try:
         if sport == "kbo":
             from app.collectors.kbo_stats import load as load_kbo
             from app.collectors.kbo_stats import merge_into_research as merge_kbo
 
-            teams, pitchers = await load_kbo(redis, day)
-            if teams:
-                merge_kbo(research, jg, teams, pitchers or {})
+            for d in days:
+                teams, pitchers = await load_kbo(redis, d)
+                if teams:
+                    merge_kbo(research, jg, teams, pitchers or {})
+                    break
         else:
             from app.collectors.npb_stats import load as load_npb
             from app.collectors.npb_stats import merge_into_research as merge_npb
 
-            teams = await load_npb(redis, day)
-            if teams:
-                merge_npb(research, jg, teams)
+            for d in days:
+                teams = await load_npb(redis, d)
+                if teams:
+                    merge_npb(research, jg, teams)
+                    break
     except Exception as exc:
         logger.warning("[flow] 팀 지표 조립 실패 game=%s: %s", jg["game_id"], exc)
 
