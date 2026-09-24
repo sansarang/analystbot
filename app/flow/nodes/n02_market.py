@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import logging
 
+from app.flow import rules as R
+
 from app.flow.odds_math import devig_2way, devig_3way
 
 logger = logging.getLogger(__name__)
@@ -63,22 +65,45 @@ async def _changes(state, ctx) -> list:
     try:
         from app.collectors.crawler_feed import load_changes
 
-        code = _league_code(state)
+        code = _news_code(state)
         day = str(state.kickoff_utc or "")[:10]
         out = []
         for key in (code, f"news_{code}"):
-            out.extend(await load_changes(redis, key, day) or [])
+            # 🔴 [KEY-1 2026-09-24] **상한을 올린다.** 기본 50 인데 뉴스는
+            #    하루 300건 넘게 쌓인다(실측 mlb 317 · npb 295 · kbo 274).
+            #    최근 50건만 보면 이 경기 기사가 그 안에 없어 **전건 0** 이
+            #    된다 — 실측으로 14경기 전부 "이 경기 0" 이었다.
+            #    ⚠️ 창(`move.window_min`)이 어차피 시각으로 거른다.
+            out.extend(await load_changes(
+                redis, key, day,
+                limit=int(R.get("move.changes_limit", 400))) or [])
         return out
     except Exception as exc:
         logger.warning("[flow:n02] 변화 조회 실패 game=%s: %s", state.game_id, exc)
         return []
 
 
-def _league_code(state) -> str:
-    """elo 캐시와 **같은 규칙**으로 리그 코드를 만든다 — 사본 금지."""
-    from app.models.team_elo import code_for
+def _news_code(state) -> str:
+    """Go 크롤러가 쌓는 키의 코드 — **`kbo`·`npb`·`mlb`·`soccer`**.
 
-    return code_for(getattr(state, "sport", None), getattr(state, "league", None))
+    🔴 [KEY-1 2026-09-24] **여기가 틀려서 기사 886건을 한 건도 못 읽었다.**
+    ```
+    Go 가 쌓은 것   crawl:news_mlb:2026-09-24:changes  317건
+    ②가 찾던 것     crawl:news_baseball:…              0건
+    ```
+    원인 둘 다 내 잘못이다:
+      ① `code_for(league, sport)` 인데 **인자를 바꿔** 불렀다
+         → `code_for('baseball','MLB')` = `'baseball'`
+      ② ⑤에 이미 `_sport_code` 가 있는데 여기 **새로 지었다**(사본)
+
+    🔴 그래서 짓지 않고 **⑤의 것을 그대로 쓴다.** 두 노드가 같은 답을
+       내야 하고, 계약이 그 일치를 잠근다.
+    ⚠️ 야구는 리그(`mlb`), 축구는 종목(`soccer`)이다 — 특례가 아니라
+       `games.sport` 열의 실제 값이 그렇게 생겼다.
+    """
+    from app.flow.labels import sport_code
+
+    return sport_code(state)
 
 
 async def _rows(state, ctx) -> list:

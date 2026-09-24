@@ -110,15 +110,34 @@ def _is_ours(c: dict, teams) -> bool:
     want = {str(t) for t in (teams or []) if t}
     if not want:
         return True                        # 팀을 모르면 가리지 않는다(종전 동작)
+    # 🔴 [KEY-1 2026-09-24] **`game` 이 있다고 경기 이름인 것은 아니다.**
+    #    Go 는 뉴스를 `NewsKey(리그)` = `"news_mlb"` 라는 **가짜 경기 키**에
+    #    담는다. 그걸 경기 이름으로 읽으면 어느 팀도 안 맞아 `False` 로
+    #    끝나고 **제목을 보지도 않는다** — 실측: 후보 28건 전부 걸렀다.
+    #    진짜 경기 키는 `"원정@홈#id"` 라 `@` 가 있다.
     g = str(c.get("game") or "")
-    if g:
+    if "@" in g:
         return any(t in g for t in want)
     to = str(c.get("to") or "")
     title = to.split("|", 1)[1] if "|" in to else to
     if not title:
         return False
+    # 🔴 [KEY-1 2026-09-24] **영문 리그는 대조표가 없다.** `_local_names` 는
+    #    KBO(한글)·NPB(일어) 22개뿐이다(실측). MLB 제목은 팀명이 영문 그대로
+    #    나오므로 **우리가 가진 팀 이름으로 직접 맞춘다**:
+    #      "Rangers Set Probable Pitchers … with Athletics"
+    #      "Astros vs Braves series preview …"
+    #    ⚠️ 전체 이름("Los Angeles Angels")은 제목에 잘 안 나오고 별명
+    #       ("Angels")으로 줄여 쓴다 — 마지막 낱말이 그것이다.
+    for full in want:
+        if _names_subject(title, full):
+            return True
+        nick = str(full).split()[-1] if str(full).split() else ""
+        # ⚠️ 짧은 별명은 우연히 걸린다("A's"·"Sox"). 4자 미만은 쓰지 않는다.
+        if len(nick) >= 4 and _names_subject(title, nick):
+            return True
     for local, eng in _local_names().items():
-        if local and str(local) in title and str(eng) in want:
+        if local and str(eng) in want and _names_subject(title, str(local)):
             return True
     return False
 

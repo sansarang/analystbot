@@ -74,3 +74,29 @@ GRADE_A, GRADE_B, GRADE_C = "A", "B", "C"
 # ⑪ 값 판정
 PICK_ML, PICK_STRUCT, PICK_BOARD = "승패", "구조", "보드"
 PICK_TYPES = (PICK_ML, PICK_STRUCT, PICK_BOARD)
+
+
+def sport_code(state) -> str:
+    """`games.sport` 코드 — **`kbo` · `mlb` · `npb` · `soccer`**.
+
+    🔴 [KEY-1 2026-09-24] **여기로 옮겼다.** ⑤에만 있던 것을 ②도 쓰게 되면서
+       ②가 사본을 지었고, 그 사본이 `code_for(league, sport)` 의 **인자를
+       바꿔** 불러 `'baseball'` 을 냈다. 그래서 Go 가 쌓은 기사 886건을
+       한 건도 못 읽었다:
+    ```
+    Go        crawl:news_mlb:2026-09-24:changes   317건
+    ②가 찾던 것 crawl:news_baseball:…              0건
+    ```
+       노드끼리 import 하지 않는 규약(`test_노드는_서로_부르지_않는다`)을
+       지키면서 사본도 없애려면 **공용 자리**가 맞다 — 이 파일의 목적이다.
+
+    🔴 **`state.sport` 를 그대로 쓰면 안 된다.** 흐름 스냅샷의 `sport` 는
+       `baseball|soccer` 규약인데, 이 값을 쓰는 곳들은 `games.sport`(리그별로
+       갈린다)를 원한다.
+    ⚠️ **축구만 종목을, 야구는 리그를** 쓴다. 특례가 아니라 `games` 열의
+       실제 값이 그렇게 생겼다.
+    """
+    sport = (getattr(state, "sport", "") or "").lower()
+    if sport == "soccer":
+        return "soccer"
+    return (getattr(state, "league", "") or sport or "").lower()
