@@ -269,6 +269,128 @@ async def lines_by_game(pool, game_ids) -> dict:
     return {gid: book_lines(rs, home="", away="") for gid, rs in by.items()}
 
 
+def _day_of(row: dict) -> str:
+    """행의 KST 날짜(YYYY-MM-DD). 캐시 키가 그 날짜로 쓰인다."""
+    from datetime import UTC, datetime
+
+    from app.pipeline import KST
+
+    v = row.get("kickoff_utc") or row.get("starts_at")
+    if isinstance(v, str):
+        try:
+            v = datetime.fromisoformat(v.replace("Z", "+00:00"))
+        except ValueError:
+            v = None
+    if v is None:
+        from app.pipeline import today_kst
+
+        return today_kst()
+    # ⚠️ 시차를 숫자로 적지 않는다 — `test_time_discipline` 이 잡는다.
+    #    표준 시간대는 `KST` 하나다(`pipeline.today_kst` 와 같은 규약).
+    if v.tzinfo is None:
+        v = v.replace(tzinfo=UTC)
+    return v.astimezone(KST).date().isoformat()
+
+
+async def research_from_collectors(redis, row: dict, day: str) -> dict | None:
+    """[LAM-1] 판정 캐시가 없는 야구 경기의 `research` 를 **이미 있는 수집기
+    캐시**로 만든다. 못 만들면 `None`.
+
+    사용자 2026-09-24: "1,2번 해라"
+
+    🔴 **왜 필요한가.** 흐름의 λ 는 구경로가 쓰는 슬레이트 캐시
+       (`analysis:{sport}:{date}`)에 매달려 있었다. 그런데 실측:
+```
+analysis:mlb:2026-09-23   경기 13 · weather 12 · park_factor 10   ← λ 돈다
+analysis:kbo:2026-09-24   **없음**      analysis:npb:2026-09-24  **없음**
+```
+       KBO·NPB 는 그 문서를 쓰는 쪽(구경로 파이프라인)이 저녁에야 돈다.
+       그래서 두 리그는 λ 가 통째로 없었다 — 파크팩터도 날씨도 안 닿았다.
+
+    🔴 **자료는 이미 있었다**(딥서치 2026-09-24, 운영 캐시 실측):
+```
+kbo_stats:teams:2026-09-24   10팀  KT  obp 0.364 · slg 0.405 · 득점/경기 5.649 · ERA 4.25
+npb_stats:teams:2026-09-24   12팀  DeNA obp 0.309 · slg 0.377 · ERA 3.26
+```
+       `_offense` 는 wOBA 가 없으면 **OBP+ISO** 로 간다. 리그 분모도
+       `kbo_stats.league_baselines` 가 팀 표에서 직접 만든다 — MLB 상수를
+       KBO 에 쓰던 사고(2026-08-26)를 그 함수가 이미 막고 있다.
+
+    🔴 **옮기는 규약을 다시 짓지 않는다(사본 금지).** 캐시→research 변환은
+       각 수집기의 `merge_into_research` 가 원본이고 여기서는 부르기만 한다.
+    ⚠️ 선발 **이름**은 `games.{side}_pitcher` 에서 심는다 — 공식 기록실에
+       '오늘 선발' 칸이 없어 `merge_into_research` 가 이름을 보고 찾는다.
+       그 칸은 D61-2 가 크롤러에서 채운다.
+    ⚠️ 한 조각이 실패해도 나머지는 얹는다. λ 는 있는 재료로 세운다.
+    """
+    sport = _sport_of_row_sport(row)
+    if sport not in ("kbo", "npb"):
+        return None
+    jg = {"sport": sport, "game_id": row.get("game_id") or row.get("id"),
+          "home": row.get("home"), "away": row.get("away"),
+          "starts_at": row.get("kickoff_utc") or row.get("starts_at")}
+    research: dict = {}
+    for side in ("home", "away"):
+        who = str(row.get(f"{side}_pitcher") or "").strip()
+        if who:
+            research[f"{side}_pitcher"] = {"name": who}
+
+    try:
+        if sport == "kbo":
+            from app.collectors.kbo_stats import load as load_kbo
+            from app.collectors.kbo_stats import merge_into_research as merge_kbo
+
+            teams, pitchers = await load_kbo(redis, day)
+            if teams:
+                merge_kbo(research, jg, teams, pitchers or {})
+        else:
+            from app.collectors.npb_stats import load as load_npb
+            from app.collectors.npb_stats import merge_into_research as merge_npb
+
+            teams = await load_npb(redis, day)
+            if teams:
+                merge_npb(research, jg, teams)
+    except Exception as exc:
+        logger.warning("[flow] 팀 지표 조립 실패 game=%s: %s", jg["game_id"], exc)
+
+    if sport == "kbo":
+        try:
+            from app.collectors.kbo_park import load as load_park
+            from app.collectors.kbo_park import merge_into_research as merge_park
+
+            table = await load_park(redis)
+            if table:
+                merge_park(research, jg, table)
+        except Exception as exc:
+            logger.warning("[flow] 파크팩터 조립 실패 game=%s: %s", jg["game_id"], exc)
+
+    try:
+        from app.collectors.weather import fetch_for_games
+        from app.collectors.weather import merge_into_research as merge_wx
+
+        wx = await fetch_for_games([jg])
+        if wx:
+            merge_wx(research, jg, wx)
+    except Exception as exc:
+        logger.warning("[flow] 날씨 조립 실패 game=%s: %s", jg["game_id"], exc)
+
+    if not research:
+        return None
+    return {**jg, "research": research}
+
+
+def _sport_of_row_sport(row: dict) -> str:
+    """행의 **리그 코드**(kbo·npb·mlb). 🔴 `_sport_of` 는 `baseball|soccer` 를
+    내므로 여기서 쓸 수 없다 — 두 가지를 섞지 않는다."""
+    from app.flow.labels import sport_code
+
+    class _S:
+        sport = (row.get("sport") or "")
+        league = (row.get("league") or "")
+
+    return sport_code(_S())
+
+
 def model_probs_from_cache(jg: dict | None, *, lines: dict | None = None,
                            settings=None) -> dict | None:
     """판정 캐시의 `research` 로 λ 를 세우고 전 마켓 확률을 만든다.
@@ -406,6 +528,24 @@ async def run_slate(pool, redis, rows: list, *, settings=None) -> dict:
         #    ⚠️ 가격이 아니라 **라인 숫자**만 넘긴다(`h2h` 는 안 바뀐다).
         line_map = await lines_by_game(
             pool, [int(g) for g in cache_by_game if str(g).isdigit()])
+        # 🔴 [LAM-1 2026-09-24] **캐시가 없는 야구 경기를 여기서 세운다.**
+        #    구경로 슬레이트 문서는 KBO·NPB 에서 저녁에야 생긴다(실측:
+        #    analysis:kbo:2026-09-24 없음). 그래서 두 리그는 λ 가 통째로
+        #    없었다 — 파크팩터도 날씨도 안 닿았다. 재료는 이미 캐시에 있다.
+        #    ⚠️ 캐시에 있는 경기는 **건드리지 않는다** — 구경로가 만든 것이
+        #       더 풍부하다(딥서치·스탯캐스트).
+        for row in rows:
+            gid = str(row.get("game_id"))
+            if gid in cache_by_game or gid in {str(k) for k in model_by_game}:
+                continue
+            try:
+                built = await research_from_collectors(
+                    redis, dict(row), _day_of(row))
+            except Exception as exc:
+                logger.warning("[flow] research 조립 실패 game=%s: %s", gid, exc)
+                built = None
+            if built:
+                cache_by_game[gid] = built
         for gid, cg in cache_by_game.items():
             if gid in {str(k) for k in model_by_game}:
                 continue          # 원장에 있으면 그것이 먼저다
