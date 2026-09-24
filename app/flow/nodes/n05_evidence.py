@@ -111,7 +111,8 @@ def _DEV_FULL() -> float:
 
 def _row(var: str, value, *, source: str, url: str = "", excerpt: str = "",
          sides: dict | None = None, direction: dict | None = None,
-         untrusted_reason: str = "", status: str = "") -> dict:
+         untrusted_reason: str = "", status: str = "",
+         pitcher_il: list | None = None) -> dict:
     """증거 한 줄. 🔴 [FIX-1] `direction` 이 **부호의 원본**이다 —
     `sides`(항목 수)는 표시용으로만 남는다(⑦이 더 이상 읽지 않는다)."""
     return {"var": var, "value": value, "source": source, "source_url": url,
@@ -122,7 +123,11 @@ def _row(var: str, value, *, source: str, url: str = "", excerpt: str = "",
             "untrusted_reason": untrusted_reason,
             # 🔴 [HYC-3] 비어 있으면 **잴 수 있었다**는 뜻이다. `미실행` 이면
             #    ⑤에 그 변수를 찾을 길이 없었다는 뜻이고 ⑥이 분모에서 뺀다.
-            "status": status}
+            "status": status,
+            # 🔴 [PIPE-5 2026-09-25] `lineup_out` 에서 뺀 **투수 결장**.
+            #    버리지 않고 여기 남긴다 — `starter_recent3`·`bullpen_3d`
+            #    의 참고 칸이고, 서술·내보내기가 "결장 N명"에 세지 않는다.
+            "pitcher_il": list(pitcher_il or [])}
 
 
 async def _cache_doc(state, ctx) -> dict:
@@ -1037,18 +1042,18 @@ async def run(state, ctx):
                 continue
             from app.flow import rules as _R
 
-            hi = max((v or {}).get("score", 0.0) for v in bag.values())
             thr = float(_R.get("load.heavy_score", 3.0))
-            for sd in ("home", "away"):
-                v = bag[sd] or {}
-                d[sd] = -1 if (v.get("score", 0.0) >= thr
-                               and v.get("score", 0.0) >= hi) else 0
+            # 🔴 [PIPE-4 2026-09-25] **방향 판정을 `direction` 으로 옮겼다.**
+            #    종전에는 "더 높은 쪽이 thr 이상이면 −1" 이라 47.3 vs 52.9 처럼
+            #    근소해도 ±1.0 만점이 들어갔고, `dev` 도 기준값을 그대로 실어
+            #    강도가 언제나 1.0 이었다. 판정 규칙의 원본은 한 곳이다(사본 금지).
+            d = DIR.load_direction(score_home=(bag["home"] or {}).get("score"),
+                                   score_away=(bag["away"] or {}).get("score"),
+                                   thr=thr)
             lines = [f"{sd}: 부하 {(bag[sd] or {}).get('score')}"
                      f"({(bag[sd] or {}).get('n')}경기)" for sd in ("home", "away")]
             out.append(_row(var, lines, source="db:batter_appearances",
-                            excerpt=" · ".join(lines),
-                            direction={**d, "dev": _DEV_FULL(),
-                                       "basis": " · ".join(lines)}))
+                            excerpt=" · ".join(lines), direction=d))
             continue
 
         # 🔴 [NWS-D 2026-09-23 사용자 지시] **기사의 부상·복귀 소식.**
@@ -1156,6 +1161,8 @@ async def run(state, ctx):
             #    종전 그대로 조용히 빈손이고(그래야 공식 0명 행 CNF-2 가 산다),
             #    있는데 검증이 안 되는 것만 사유를 남긴다.
             untrusted: dict = {}
+            _pit: list = []
+            _bat: list = list(absences or [])
             for side in ("home", "away"):
                 card = teams.get(side)
                 if not card:
@@ -1186,7 +1193,20 @@ async def run(state, ctx):
             #    믿을 것이어도 그대로 센다. 상자를 막느라 공식까지 버리면
             #    그것이 더 큰 결함이다(반대 위험 · 계약 테스트가 잠근다).
             if var in ("lineup_out", "xi_confirmed") and absences:
-                h_out, a_out = _split(state, absences)
+                # 🔴 [PIPE-5 2026-09-25] **투수 결장은 타순 결장이 아니다.**
+                #    `from_injured` 는 IL 투수도 결장 문장으로 만든다. 그것을
+                #    `lineup_out` 에 세면 "결장 18명"(실측 TB@NYY, 9건이 투수)
+                #    이 서술·내보내기로 나가고, ⑥이 목록 길이로 confirmed 를
+                #    만든다. 투수는 `starter_recent3`·`bullpen_3d` 가 본다.
+                #    ⚠️ 버리지 않는다 — `pitcher_il` 로 따로 남긴다.
+                #    ⚠️ 판정은 `absences.is_pitcher_line` 이 원본이다(사본 금지).
+                #    ⚠️ 바깥 `absences` 를 다시 묶지 않는다 — 다음 변수가 본다.
+                _pit = [x for x in absences if _ABS.is_pitcher_line(str(x))]
+                _bat = [x for x in absences if not _ABS.is_pitcher_line(str(x))]
+                if _pit:
+                    logger.info("[flow:n05] game=%s %s — 투수 결장 %d건을 "
+                                "lineup_out 에서 뺐다", state.game_id, var, len(_pit))
+                h_out, a_out = _split(state, _bat)
                 # 🔴 [W2 2026-09-21] **그 팀 선수가 아닌 이름은 뺀다.**
                 #    판정은 `performance.filter_by_roster` 한 곳이 한다 —
                 #    이름이 **정확히 한 팀**으로만 이어질 때만 거른다.
@@ -1231,7 +1251,8 @@ async def run(state, ctx):
             #    (1건 이상) 이 경기 두 팀 몫이 0명일 때만 "확정적으로 0명"이다.
             if not got and var == "lineup_out" and absences:
                 out.append(_row(var, [], source="satellite+official",
-                                excerpt=f"결장 수집 {len(absences)}건 조회 · "
+                                pitcher_il=_pit,
+                                excerpt=f"결장 수집 {len(_bat)}건 조회(투수 {len(_pit)}건 제외) · "
                                         "이 경기 두 팀 해당 0명",
                                 sides={},
                                 direction=DIR.merge(
@@ -1258,6 +1279,7 @@ async def run(state, ctx):
                             team=sd)
                         for sd in ("home", "away") if per_side.get(sd)])
                 out.append(_row(var, got, source="satellite+official",
+                                pitcher_il=_pit,
                                 excerpt=" · ".join(map(str, got)),
                                 sides={k: len(v) for k, v in per_side.items()},
                                 direction=d))

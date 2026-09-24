@@ -94,6 +94,33 @@ def lineup_direction(*, excluded: int, confirmed: bool, team: str) -> dict:
     return _d(team, 0, dev, f"평소 주전 {excluded}명 제외 — 문턱 미만")
 
 
+def load_direction(*, score_home, score_away, thr: float) -> dict:
+    """[PIPE-4 2026-09-25] 타자 출전 부하 → 양 쪽 방향.
+
+    🔴 **차이가 문턱을 넘을 때만 방향이 선다.** 종전 `n05_evidence` 는
+       "더 높은 쪽이 thr 이상이면 −1" 이라 47.3 vs 52.9 처럼 근소해도
+       ±1.0 만점이 들어갔다(실측 2026-09-25: 17경기 중 12경기, 부호는 양방향).
+       비핵심인데도 ⑨의 |Σadj| 문턱을 채우는 잡음이었다.
+    🔴 편차(`dev`)도 **실제 차이**로 낸다 — 종전에는 `direction.dev_full`
+       기본값을 그대로 실어 강도가 언제나 1.0 이었다.
+    ⚠️ 문턱은 `load.heavy_score` 가 원본이다 — 호출부가 넘긴다(사본 금지).
+    ⚠️ 한쪽이라도 모르면 **방향 없음**이다. 0 으로 채우지 않는다.
+    """
+    if score_home is None or score_away is None:
+        return {"home": 0, "away": 0, "dev": None, "basis": "부하 미상"}
+    gap = float(score_home) - float(score_away)
+    dev = round(abs(gap) / max(float(thr), 1e-9), 4)
+    basis = (f"부하 차 {abs(gap):.3f} (홈 {float(score_home):.3f} · "
+             f"원정 {float(score_away):.3f})")
+    if abs(gap) < float(thr):
+        return {"home": 0, "away": 0, "dev": dev,
+                "basis": f"{basis} — 문턱 {thr} 미만"}
+    # 🔴 많이 뛴 쪽이 악재다. 반대쪽은 **0** 이다 — 피로가 없다는 근거는 없다.
+    heavy = "home" if gap > 0 else "away"
+    other = "away" if heavy == "home" else "home"
+    return {heavy: -1, other: 0, "dev": dev, "basis": basis}
+
+
 def merge(*dirs) -> dict:
     """여러 방향을 쪽별로 합친다. 🔴 같은 팀에 호재·악재가 겹치면 0(상쇄)."""
     out = {"home": 0, "away": 0, "dev": None, "basis": []}

@@ -151,14 +151,32 @@ async def test_연전_자료를_못_보면_미실행이다():
 async def test_5가_출전부하를_싣는다():
     from app.flow.nodes import n05_evidence as N5
 
+    # 🔴 [PIPE-4 2026-09-25] **대역이 "한쪽 자료 없음"을 0 부하로 쓰고 있었다.**
+    #    종전 ⑤는 `v.get("score", 0.0)` 이라 결측을 0 으로 치고 반대쪽에 −1 을
+    #    줬다 — "모른다"를 "없다"로 바꾸는 자리다. 이제 양 쪽 값이 다 있어야
+    #    방향이 서고, 차이가 `load.heavy_score` 를 넘어야 한다.
+    usual = {"slots": {"a": 2}, "regulars": {"a"}, "games": 10}
+    s = await N5.run(_state(["play_load"]),
+                     _Ctx(play_load={"home": {"apps": [_app(i, "a", 2) for i in range(1, 6)],
+                                              "usual": usual},
+                                     "away": {"apps": [_app(1, "a", 2)], "usual": usual}}))
+    row = next(e for e in s.n05_evidence if e["var"] == "play_load")
+    assert row["status"] == "", row
+    assert row["direction"]["home"] == -1, row
+
+
+@pytest.mark.asyncio
+async def test_한쪽_부하를_모르면_방향이_서지_않는다():
+    """🔴 [PIPE-4] 결측을 0 으로 치면 상대에게 없는 악재가 생긴다."""
+    from app.flow.nodes import n05_evidence as N5
+
     usual = {"slots": {"a": 2}, "regulars": {"a"}, "games": 10}
     s = await N5.run(_state(["play_load"]),
                      _Ctx(play_load={"home": {"apps": [_app(i, "a", 2) for i in range(1, 6)],
                                               "usual": usual},
                                      "away": {"apps": [], "usual": usual}}))
     row = next(e for e in s.n05_evidence if e["var"] == "play_load")
-    assert row["status"] == "", row
-    assert row["direction"]["home"] == -1, row
+    assert row["direction"]["home"] == 0 and row["direction"]["away"] == 0, row
 
 
 @pytest.mark.asyncio

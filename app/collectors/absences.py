@@ -48,6 +48,33 @@ MARK_INJURED = "Injured"
 MARK_IL_DEFAULT = "부상자 명단"
 
 
+#: [PIPE-5 2026-09-25] **역할 표지.** `_describe`·`from_injured` 가 괄호 안에
+#  적는 말이다. 🔴 읽는 쪽이 정규식으로 되짚으면 사본이다 — 여기가 원본이다.
+ROLE_TOP = "주포"
+ROLE_REGULAR = "주전 타자"
+ROLE_PLAYER = "선수"
+ROLE_STARTER = "선발"
+ROLE_BULLPEN = "불펜"
+#: 투수 역할. 🔴 타순에 없는 사람들이다 — `lineup_out`(타순 결장)이 아니다.
+PITCHER_ROLES = (ROLE_STARTER, ROLE_BULLPEN)
+BATTER_ROLES = (ROLE_TOP, ROLE_REGULAR, ROLE_PLAYER)
+
+
+def is_pitcher_line(sentence: str) -> bool:
+    """[PIPE-5] 이 결장 문장이 **투수**의 것인가.
+
+    🔴 왜 가르는가. `from_injured` 는 투수도 결장 문장으로 만든다. 그런데
+       `lineup_out` 은 **타순에서 빠진 수**를 재는 변수다 — IL 에 오른 불펜
+       투수를 거기 세면 "결장 18명" 같은 숫자가 서술·내보내기로 나간다
+       (실측 2026-09-25 TB@NYY: 18건 중 9건이 투수).
+    🔴 투수 결장은 `starter_recent3`·`bullpen_3d` 가 따로 본다 — 버리는 것이
+       아니라 **다른 칸으로 보내는 것**이다.
+    ⚠️ 표지는 위 상수가 원본이다. 여기서 문자열을 다시 적지 않는다.
+    """
+    t = str(sentence or "")
+    return any(f"({r})" in t for r in PITCHER_ROLES)
+
+
 def classify(sentence: str) -> str | None:
     """결장 문장 → 근거. 🔴 **모르면 None** 이다 — 지어내지 않는다.
 
@@ -79,11 +106,11 @@ def _describe(team: str, name: str, rank: int | None, reason: str) -> str:
     문구가 곧 계수다 — '주포'는 -4%p, 그 외 타자는 -2%p로 매핑된다.
     """
     if rank is not None and rank < TOP_HITTER_N:
-        role = "주포"
+        role = ROLE_TOP
     elif rank is not None and rank < REGULAR_TOP_N:
-        role = "주전 타자"
+        role = ROLE_REGULAR
     else:
-        role = "선수"
+        role = ROLE_PLAYER
     return f"{team}의 {name}({role}) {reason}로 결장"
 
 
@@ -114,9 +141,9 @@ def from_injured(team: str, batters: list[dict], injured: list[dict]) -> list[st
         # 투수 결장은 선발 억제력·불펜에서 따로 다룬다 — 여기서는 타자만
         pos = str(p.get("position") or "").upper()
         if pos in ("P", "SP", "RP"):
-            out.append(f"{team}의 {p['name']}(불펜) {p.get('status') or MARK_IL_DEFAULT}로 결장"
+            out.append(f"{team}의 {p['name']}({ROLE_BULLPEN}) {p.get('status') or MARK_IL_DEFAULT}로 결장"
                        if pos == "RP" else
-                       f"{team}의 {p['name']}(선발) {p.get('status') or MARK_IL_DEFAULT}로 결장")
+                       f"{team}의 {p['name']}({ROLE_STARTER}) {p.get('status') or MARK_IL_DEFAULT}로 결장")
             continue
         out.append(_describe(team, p.get("name") or "선수", rank,
                              p.get("status") or MARK_IL_DEFAULT))

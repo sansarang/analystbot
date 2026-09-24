@@ -15,6 +15,7 @@ from app.flow.labels import (AGREE, BOARD, DOUBT, GRADE_A, GRADE_B, GRADE_C,
                              PRIOR_ONLY,
                              OVER, PICK_BOARD, PICK_ML, V_OK, V_REFUTED,
                              V_UNKNOWN)
+from app.collectors import absences as _ABS
 from app.flow.nodes import (n01_prior, n02_market, n03_gate, n04_hyp,
                             n05_evidence, n06_verdict, n07_adjust, n08_pcode,
                             n09_conf, n10_rejudge, n11_value, n12_text,
@@ -280,7 +281,11 @@ async def test_공식_결장을_합친다():
         "teams": {"home": {"out": ["기사선수"],
                            "sources_fed": ["https://n.example/a"]},
                   "away": {"out": [], "sources_fed": ["https://n.example/a"]}}},
-        "absences": ["한화의 공식선수(선발) Injured 10-Day로 결장"]})
+        # 🔴 [PIPE-5 2026-09-25] 대역이 `(선발)`(=투수 역할)을 쓰고 있었다.
+        #    이 단위가 재는 것은 **타순 결장**이라 타자 역할이 맞다.
+        #    ⚠️ 표지는 `absences` 상수가 원본이다(사본 금지).
+        "absences": [f"한화의 공식선수({_ABS.ROLE_REGULAR}) "
+                     "Injured 10-Day로 결장"]})
     st = await n05_evidence.run(st, ctx)
     row = [e for e in st.n05_evidence if e["var"] == "lineup_out"]
     assert row and "기사선수" in row[0]["value"]
@@ -421,10 +426,20 @@ async def test_pcode는_시장_뼈대에_조정을_얹는다():
 async def test_확신_등급():
     # 🔴 [FIX-3 2026-09-20] A 의 |Σadj| 는 **방향이 판정된 조정**(n07_adjust)만
     #    센다. 종전에는 `n08.sum_adj_pp`(캡·축소가 걸린 뒤 값)를 봤다.
+    # 🔴 [PIPE-3 2026-09-25] **핵심은 "⑦에 행이 있는" 핵심 변수만 센다.**
+    #    종전 대역은 `per_var` 에 핵심 둘을 적고 `n07_adjust` 에는 **하나만**
+    #    두고 A 를 기대했다 — 즉 "선발 하나로 A"를 계약이 고정하고 있었다.
+    #    ⑥의 `_judge` 는 값이 있으면 confirmed 라 방향을 안 보므로, 상쇄된
+    #    변수까지 세어 A 가 나왔다(실측 2026-09-25 MLB A 4건 전부).
     base = {"per_var": {"starter_recent3": "confirmed", "bullpen_3d": "confirmed"}}
     a = await n09_conf.run(_s(n06_verdict=base, n08_pcode={"sum_adj_pp": -3.5},
-                              n07_adjust=[{"var": "starter_recent3", "pp": -3.5}]), Ctx())
+                              n07_adjust=[{"var": "starter_recent3", "pp": -3.5},
+                                          {"var": "bullpen_3d", "pp": -1.0}]), Ctx())
     assert a.n09_conf["grade"] == GRADE_A
+    # 🔴 핵심이 **하나만** 방향을 세우면 A 가 아니다(그 자리가 종전 결함이다)
+    a1 = await n09_conf.run(_s(n06_verdict=base, n08_pcode={"sum_adj_pp": -3.5},
+                               n07_adjust=[{"var": "starter_recent3", "pp": -3.5}]), Ctx())
+    assert a1.n09_conf["grade"] == GRADE_B, a1.n09_conf
     # 방향이 판정된 조정이 없으면 A 가 아니다 — 자료가 없는데 A 가 나오면 안 된다
     a2 = await n09_conf.run(_s(n06_verdict=base, n08_pcode={"sum_adj_pp": -3.5},
                                n07_adjust=[]), Ctx())
