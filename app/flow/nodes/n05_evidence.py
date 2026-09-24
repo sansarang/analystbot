@@ -598,6 +598,36 @@ async def play_rows(pool, sport: str, team: str, at, *, days=None) -> dict:
     return {"apps": apps, "usual": await usual_of(pool, sport, team, at)}
 
 
+async def _news_rss_dir(state, ctx) -> dict | None:
+    """[NWS-S] **팀별 구글 뉴스**에서 호재·악재 방향을 받는다.
+
+    🔴 **새로 만들지 않는다.** 긁기는 `news_rss.by_side`(구경로가 쓰던 것),
+       방향은 `attribution.news_dir_sided` 가 한다. 여기는 잇기만 한다.
+    ⚠️ 리그 로케일이 없는 종목(축구 등)은 `news_rss.LOCALE` 이 거른다 —
+       여기서 종목 목록을 손으로 적지 않는다(사본 금지).
+    ⚠️ 실패·무응답은 `None` 이고 호출부가 종전대로 `미실행`/미상으로 적는다.
+    ⚠️ 캐시는 `news_rss` 안에 있다(팀별 TTL) — 슬레이트에서 같은 팀을
+       두 번 긁지 않는다.
+    """
+    from app.collectors import news_rss as NR
+    from app.flow.attribution import news_dir_sided
+
+    sport = _sport_code(state)
+    if sport not in NR.LOCALE:
+        return None
+    jg = {"sport": sport, "home": getattr(state, "home", ""),
+          "away": getattr(state, "away", "")}
+    if not (jg["home"] and jg["away"]):
+        return None
+    try:
+        table = await NR.by_side(jg, getattr(ctx, "redis", None))
+    except Exception as exc:
+        logger.warning("[flow:n05] 팀 뉴스 조회 실패 game=%s: %s",
+                       state.game_id, exc)
+        return None
+    return news_dir_sided(table)
+
+
 async def _play_load_of(state, ctx) -> dict | None:
     """양 팀의 출전 기록. 🔴 **배선의 끝** — ⑤가 직접 DB 를 읽는다.
 
@@ -975,13 +1005,27 @@ async def run(state, ctx):
         #       "안 찾았다"와 "찾았는데 없다"는 다른 말이다.
         if var == "news_injury":
             nd = ((state.n02_market or {}).get("move") or {}).get("news_dir")
+            src = "news"
+            # 🔴 [NWS-S 2026-09-24 사용자 지적] "기존에 rss로 모으는거 있지
+            #    않았니?" — 있었다. `news_rss` 가 **팀별 구글 뉴스**를 긁고
+            #    구경로(`pipeline`)만 쓰고 있었다. 흐름은 크롤러의 **리그
+            #    Bing 검색**만 봤고 그쪽은 기사가 6~9일 전이라 창과 겹치지
+            #    않았다(실측 news_dir 8/8 = 0).
+            #      크롤러 Bing 리그 검색   6~9일 전
+            #      news_rss 팀별 질의      **0.3h ~ 5.6h** (실측 KBO 3경기)
+            #    ⚠️ 먼저 ②를 쓰고, 방향이 없을 때만 내려간다 — 종전 경로를
+            #       치우지 않는다(배당 이동과 시각을 맞춘 것은 ②뿐이다).
+            if not nd or not (nd.get("home") or nd.get("away")):
+                got = await _news_rss_dir(state, ctx)
+                if got:
+                    nd, src = got, "news_rss"
             if not nd:
                 out.append(_row(var, [], source="", status=UNRUN,
                                 excerpt="기사 소스가 없다 — 미실행"))
                 continue
             if not (nd.get("home") or nd.get("away")):
                 continue          # 기사는 있었는데 방향이 없다 → 미상
-            out.append(_row(var, [nd.get("basis") or ""], source="news",
+            out.append(_row(var, [nd.get("basis") or ""], source=src,
                             excerpt=nd.get("basis") or "",
                             direction={"home": int(nd.get("home") or 0),
                                        "away": int(nd.get("away") or 0),

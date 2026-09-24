@@ -183,21 +183,15 @@ def _names_subject(title: str, local: str) -> bool:
         i += n
 
 
-def direction_of(title, teams):
-    """[NWS-D] 제목 → `{"team", "dir": -1|+1, "word"}`. 못 정하면 **None**.
+def tone_of(title):
+    """제목 → `{"dir": -1|+1, "word"}`. 못 정하면 **None**.
 
-    사용자 2026-09-23: "기사가 악재인가 호재인가를 판단해서 부상이나 다른
-    문제가 있으면 **예측에 무조건 좌우되어야 한다**"
-
-    🔴 **지어내지 않는다.** 넷 중 하나라도 걸리면 None 이다:
-         악재·호재가 **둘 다** 걸린다 → "부상 딛고 복귀" 를 악재로 읽으면 정반대
-         낱말이 하나도 없다
-         제목에서 **이 경기의 팀**을 못 찾는다 → 리그 맥락 기사다
-         팀 대조표를 못 읽는다
-    🔴 낱말의 원본은 `config/evidence_lexicon.yaml` 의 `direction:` 하나다 —
-       코드에 적지 않는다(계약이 잠근다).
-    ⚠️ 제목만 본다. 본문은 안 읽는다(`llm.enabled: false`). 그래서 "누가
-       다쳤는지"가 아니라 **"이 팀에 부상 소식이 있다"** 까지다.
+    🔴 [NWS-S 2026-09-24] `direction_of` 안에 묻혀 있던 **낱말 판정**을 꺼냈다.
+       팀을 이미 아는 자리(`news_dir_sided`)에서도 같은 규약을 써야 하는데,
+       꺼내지 않으면 사본이 생긴다.
+    🔴 낱말의 원본은 `config/evidence_lexicon.yaml` 의 `direction:` 하나다.
+    ⚠️ 악재·호재가 **둘 다** 걸리면 None 이다 — "부상 딛고 복귀"를 악재로
+       읽으면 정반대가 된다.
     """
     from app.engine.scout_config import LEXICON_DIR
 
@@ -216,6 +210,75 @@ def direction_of(title, teams):
     bad, good = _hit("bad"), _hit("good")
     if (bad and good) or not (bad or good):
         return None
+    return {"dir": -1 if bad else +1, "word": bad or good}
+
+
+def news_dir_sided(table, *, max_age_h=None) -> dict | None:
+    """[NWS-S] **쪽이 이미 정해진** 기사표 → `{"home","away","basis"}`.
+
+    `table` 은 `news_rss.by_side` 가 내는 `{"home": [기사…], "away": [기사…]}` 다.
+
+    🔴 **왜 따로 필요한가.** `news_dir` 은 크롤러 변화 목록을 받아 *제목에서*
+       팀을 찾는다. 여기서는 팀이 **질의로 이미 정해져** 있어 그 단계가
+       필요 없고, 오히려 해롭다 — 한국어 기사는 제목에 영문 팀명이 없다.
+    🔴 실측 2026-09-24 가 이 함수를 만든 이유:
+```
+크롤러 Bing 리그 검색   기사 6~9일 전 · ±30분 창과 겹치지 않음 → news_dir 8/8 = 0
+news_rss 팀별 구글 질의 **0.3h ~ 5.6h** · "최원태 … 하필 지금 부상 이탈"(4.9h)
+```
+       같은 "RSS" 라도 **질의가 팀별이면 신선하다.** (→ FORKS F-24 정정)
+    ⚠️ **창을 두 벌 만들지 않는다**(F-19 가 지적한 자리). 나이는
+       `news_rss.parse_feed` 가 이미 72시간으로 자른다 — `max_age_h` 는
+       호출부가 굳이 더 좁힐 때만 쓰고 기본은 **그대로 둔다**.
+    ⚠️ 한 팀에 악재와 호재가 모두 오면 **0**(상쇄) — `news_dir` 과 같은 규약.
+    """
+    if not table:
+        return None
+    score = {"home": 0, "away": 0}
+    why: list = []
+    seen = False
+    for side in ("home", "away"):
+        for a in (table.get(side) or []):
+            if not isinstance(a, dict):
+                continue
+            age = a.get("age_h")
+            if max_age_h is not None and age is not None and age > float(max_age_h):
+                continue
+            got = tone_of(a.get("title"))
+            if not got:
+                continue
+            seen = True
+            score[side] += got["dir"]
+            why.append(f"{got['word']} — {str(a.get('title'))[:40]}")
+    for k in score:
+        score[k] = 1 if score[k] > 0 else (-1 if score[k] < 0 else 0)
+    if not seen:
+        return None
+    return {"home": score["home"], "away": score["away"],
+            "basis": " · ".join(why[:2])}
+
+
+def direction_of(title, teams):
+    """[NWS-D] 제목 → `{"team", "dir": -1|+1, "word"}`. 못 정하면 **None**.
+
+    사용자 2026-09-23: "기사가 악재인가 호재인가를 판단해서 부상이나 다른
+    문제가 있으면 **예측에 무조건 좌우되어야 한다**"
+
+    🔴 **지어내지 않는다.** 넷 중 하나라도 걸리면 None 이다:
+         악재·호재가 **둘 다** 걸린다 → "부상 딛고 복귀" 를 악재로 읽으면 정반대
+         낱말이 하나도 없다
+         제목에서 **이 경기의 팀**을 못 찾는다 → 리그 맥락 기사다
+         팀 대조표를 못 읽는다
+    🔴 낱말의 원본은 `config/evidence_lexicon.yaml` 의 `direction:` 하나다 —
+       코드에 적지 않는다(계약이 잠근다).
+    ⚠️ 제목만 본다. 본문은 안 읽는다(`llm.enabled: false`). 그래서 "누가
+       다쳤는지"가 아니라 **"이 팀에 부상 소식이 있다"** 까지다.
+    """
+    got = tone_of(title)
+    if not got:
+        return None
+    bad, good = (got["word"], None) if got["dir"] < 0 else (None, got["word"])
+    t = str(title or "").strip()
 
     want = {str(x) for x in (teams or []) if x}
     for local, eng in _local_names().items():
