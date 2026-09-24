@@ -96,9 +96,6 @@ class State:
         known = {f for f in cls.__dataclass_fields__}
         return cls(**{k: v for k, v in d.items() if k in known})
 
-    def get_node(self, key: str) -> Any:
-        return getattr(self, key, None)
-
     def stopped(self) -> bool:
         return self.stop_reason is not None
 

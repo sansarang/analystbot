@@ -22,23 +22,11 @@ from __future__ import annotations
 import pytest
 
 
-def test_방어율로_방향을_가른다():
-    from app.flow.nodes.n05_evidence import starter_side_of
-
-    # 상대 선발이 리그 평균보다 나쁘다 → 상대 악재 → 우리에게 유리
-    assert starter_side_of(era3=6.5, league_era=4.20, opp="home") == {"home": 1}
-    # 상대 선발이 리그 평균보다 좋다 → 우리에게 불리
-    assert starter_side_of(era3=2.1, league_era=4.20, opp="home") == {"away": 1}
-
-
-def test_모르면_비운다():
-    """🔴 방어율을 못 구하면 `sides` 를 비운다 — `_direction` 이 보수적으로
-       불리하게 읽는다. 유리하게 지어내지 않는다."""
-    from app.flow.nodes.n05_evidence import starter_side_of
-
-    assert starter_side_of(era3=None, league_era=4.20, opp="home") == {}
-    assert starter_side_of(era3=4.0, league_era=None, opp="home") == {}
-
+# 🔴 [D61-3 2026-09-24] **여기 있던 두 계약을 지웠다.** `starter_side_of`
+#    가 `direction.starter_direction` 으로 대체됐는데 함수가 남아 있었고,
+#    이 계약이 초록이라 **살아 있는 것처럼 보였다** — 운영 호출은 0건이었다.
+#    같은 뜻을 `test_fix_direction_0920.py`·`test_und1_both_starters.py` 가
+#    12건으로 잠근다(사본 금지).
 
 def test_이닝이_0이면_방어율이_없다():
     from app.flow.nodes.n05_evidence import era_of_rows

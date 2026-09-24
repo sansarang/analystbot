@@ -96,35 +96,6 @@ async def tag_open(pool, game_id: int, provider: str) -> str | None:
     return tag
 
 
-async def backfill_open_tags(pool, *, since_days: int = 400) -> dict:
-    """[SNAP-1] 기존 행에 소급으로 `open`/`open_proxy` 를 붙인다.
-
-    🔴 **한 번만 의미가 있고 멱등이다.** 이미 open 계열이 있는 (경기·소스) 는
-       건드리지 않고, 트리거가 붙인 `pre`·`lineup` 등도 그대로 둔다.
-    ⚠️ 규칙은 사용자 지시 그대로: 킥오프 T-24h 이전 첫 값 = `open`,
-       그 이후 첫 값 = `open_proxy`.
-    """
-    pairs = await pool.fetch(
-        """SELECT o.game_id, o.provider
-             FROM odds_snapshots o JOIN games g ON g.id = o.game_id
-            WHERE g.starts_at > now() - ($1 || ' days')::interval
-            GROUP BY 1, 2
-           HAVING count(*) FILTER (
-                    WHERE o.snap_tag IN ('open', 'open_proxy')) = 0""",
-        str(int(since_days)))
-    out = {"pairs": len(pairs), "open": 0, "open_proxy": 0, "skip": 0}
-    for r in pairs:
-        tag = await tag_open(pool, r["game_id"], r["provider"])
-        if tag is None:
-            out["skip"] += 1
-        else:
-            out[tag] += 1
-    logger.info("[odds_free] snap_tag 소급 — 대상 %d쌍 · open %d · open_proxy %d "
-                "· 생략 %d", out["pairs"], out["open"], out["open_proxy"],
-                out["skip"])
-    return out
-
-
 def screen_rows(rows):
     """[ODD-S] 물리적으로 불가능한 **묶음**을 걸러낸다. 반환 `(남길 것, 버릴 것)`.
 

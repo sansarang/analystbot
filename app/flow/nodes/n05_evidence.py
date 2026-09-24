@@ -309,22 +309,6 @@ def era_of_rows(rows) -> float | None:
     return round(9.0 * er / ip, 2)
 
 
-def starter_side_of(*, era3, league_era, opp: str) -> dict:
-    """상대 선발 최근 방어율 → **악재가 어느 쪽인가**.
-
-    🔴 `sides` 는 "이 사실이 누구 얘기인가"가 아니라 **"악재의 주체가 누구인가"**
-       다. ⑦(`n07._direction`)이 그 뜻으로 읽는다 — 상대 악재면 우리에게 유리.
-       ⚠️ 이것을 `{opp: n}` 으로 고정했더니 잘 던진 선발과 무너진 선발에 같은
-          `+3.0` 이 붙었다(실측 2026-09-20, 네 경기 전부).
-    🔴 못 구하면 **빈 dict** 다. `_direction` 이 보수적으로 불리하게 읽는다 —
-       유리하게 지어내지 않는다.
-    """
-    if era3 is None or league_era is None:
-        return {}
-    mine = "away" if opp == "home" else "home"
-    return {opp: 1} if float(era3) > float(league_era) else {mine: 1}
-
-
 def _league_era(state, ctx) -> float | None:
     """리그 평균 방어율. 🔴 **새 상수를 만들지 않는다** — settings 가 원본이다."""
     try:
