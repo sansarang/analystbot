@@ -19,17 +19,22 @@ from __future__ import annotations
 
 import logging
 
+from app.flow.labels import PICK_STRUCT, sport_code
+
 logger = logging.getLogger(__name__)
 
 ENGINE = "flow_v14"
 
+#: 🔴 [PIPE-8 2026-09-25] **마켓·라인을 인자로 받는다.** 종전에는 `'h2h'`·
+#   `NULL` 이 SQL 에 박혀 있어 구조(파생) 픽이 원장에 **한 건도** 남지 않았다
+#   (실측 923행 전건 h2h). 그러면 "구조 픽이 승패보다 나은가"를 잴 수 없다.
 _INSERT = """
     INSERT INTO decision_ledger
       (engine, game_id, sport, league, market, line, side, book, ts_decided,
        price_at_decision, p_model, p_market_at_decision, p_close, price_close,
        result, clv, roi_unit, status, note)
-    VALUES ($1,$2,$3,$4,'h2h',NULL,$5,NULL,now(),
-            $6,$7,$8,NULL,NULL,NULL,NULL,NULL,'candidate',$9)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,NULL,now(),
+            $8,$9,$10,NULL,NULL,NULL,NULL,NULL,'candidate',$11)
     ON CONFLICT (engine, game_id, market, line, side, ts_decided)
     DO NOTHING
 """
@@ -124,7 +129,7 @@ def price_of(state):
 #    같은 쪽·같은 확률의 되풀이뿐이라 `p_model` 까지 보고 판단한다.
 _SAME_SQL = """
     SELECT id FROM decision_ledger
-     WHERE engine = $1 AND game_id = $2 AND market = 'h2h'
+     WHERE engine = $1 AND game_id = $2 AND market = $5
        AND side = $3 AND p_model = $4
      LIMIT 1
 """
@@ -134,7 +139,10 @@ def note_of(state) -> str:
     """무엇을 보고 그렇게 정했는지 한 줄. 🔴 조용한 기록을 만들지 않는다."""
     conf = (getattr(state, "n09_conf", None) or {}).get("grade")
     adj = getattr(state, "n07_adjust", None) or []
-    gate = (getattr(state, "n03_gate", None) or {}).get("label")
+    # 🔴 [PIPE-6 2026-09-25] ③이 쓰는 키는 `gate` 다 — `label` 은 **한 번도
+    #    존재한 적이 없다.** 그래서 원장 note 에 게이트가 전건 빠져 있었고,
+    #    "어느 게이트에서 난 판정인가"를 원장만으로 답할 수 없었다.
+    gate = (getattr(state, "n03_gate", None) or {}).get("gate")
     stop = getattr(state, "stop_reason", None)
     parts = [f"run={getattr(state, 'run_id', '')}"]
     if gate:
@@ -165,21 +173,60 @@ async def record(state, ctx) -> bool:
     except (TypeError, ValueError):
         return False
     # 🔴 [LED-2] 같은 쪽·같은 확률이 이미 있으면 **안 쓴다.**
+    # 🔴 [PIPE-8 2026-09-25] **`state.sport` 는 `baseball|soccer` 규약**이다
+    #    (`bridge._sport_of`). 그대로 적어 원장 923행이 전건 `baseball` 이었고
+    #    리그별 채점·CLV 비교가 불가능했다.
+    #    ⚠️ 코드를 여기서 다시 만들지 않는다 — `labels.sport_code` 가 원본이다.
+    sp = sport_code(state)
+    lg = getattr(state, "league", None)
+    note = note_of(state)
+
+    async def _put(market, line, sd, price, pm, pk) -> bool:
+        try:
+            dup = await pool.fetchrow(_SAME_SQL, ENGINE, gid, sd, pm, market)
+        except Exception as exc:
+            logger.warning("[flow] 원장 중복 조회 실패 game=%s: %s", gid, exc)
+            return False
+        if dup:
+            return False
+        try:
+            await pool.execute(_INSERT, ENGINE, gid, sp, lg, market, line, sd,
+                               price, pm, pk, note)
+        except Exception as exc:
+            logger.warning("[flow] 원장 기록 실패 game=%s %s: %s", gid, market, exc)
+            return False
+        logger.info("[flow] 원장 기록 game=%s %s/%s p_model=%s p_market=%s",
+                    gid, market, sd, pm, pk)
+        return True
+
+    ok = await _put("h2h", None, side, price_of(state), p_model, p_mkt)
+    # 🔴 [PIPE-8] 구조 픽은 **자기 마켓으로** 남긴다. h2h 행을 덮지 않는다 —
+    #    둘은 다른 판단이고 따로 채점돼야 한다.
+    ok = await _record_struct(pool, state, _put) or ok
+    return ok
+
+
+async def _record_struct(pool, state, put) -> bool:
+    """[PIPE-8] 구조(파생) 픽 한 건. 🔴 없으면 아무것도 하지 않는다.
+
+    ⚠️ `p_market_at_decision` 은 **비워 둔다.** 파생의 디빅 확률을 여기서
+       다시 계산하면 그것이 사본이고, ⑪은 `edge` 만 남기지 확률을 남기지
+       않는다. 지어내지 않는 쪽을 고른다.
+    """
+    val = getattr(state, "n11_value", None) or {}
+    if val.get("pick_type") != PICK_STRUCT:
+        return False
+    st = val.get("structure") or {}
+    market, line, odds = st.get("market"), st.get("line"), st.get("odds")
+    if not market or odds is None:
+        return False
+    ours = (getattr(state, "n08_pcode", None) or {}).get("ours_markets") or {}
+    p_ours = (ours.get(market) or {}).get(line)
+    if p_ours is None:
+        return False
     try:
-        dup = await pool.fetchrow(_SAME_SQL, ENGINE, gid, side, p_model)
-    except Exception as exc:
-        logger.warning("[flow] 원장 중복 조회 실패 game=%s: %s", gid, exc)
-        return False
-    if dup:
-        return False
-    try:
-        await pool.execute(
-            _INSERT, ENGINE, gid, getattr(state, "sport", None),
-            getattr(state, "league", None), side, price_of(state),
-            p_model, p_mkt, note_of(state))
-    except Exception as exc:
-        logger.warning("[flow] 원장 기록 실패 game=%s: %s", gid, exc)
-        return False
-    logger.info("[flow] 원장 기록 game=%s %s p_model=%s p_market=%s",
-                gid, side, p_model, p_mkt)
-    return True
+        line_f = float(line) if line is not None else None
+    except (TypeError, ValueError):
+        line_f = None
+    return await put(market, line_f, market.rsplit("_", 1)[-1],
+                     float(odds), float(p_ours), None)

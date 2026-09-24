@@ -19,6 +19,7 @@ import inspect
 
 import pytest
 
+from app.flow import labels as _L
 from app.flow import record as R
 
 
@@ -38,7 +39,12 @@ class _S:
     #    만들지 않는다 — `p` 에 `{home, draw, away}` 로 쓴다. 대역이 없는
     #    모양을 쓰는 바람에 이 계약이 740행 전건 시장 확률 누락을 못 잡았다.
     n02_market = {"p": {"home": 0.64, "draw": None, "away": 0.36}}
-    n03_gate = {"label": "동의"}
+    # 🔴 [PIPE-6 2026-09-25] **대역이 운영이 만들지 않는 칸을 쓰고 있었다.**
+    #    ③(`n03_gate.py:70`)이 쓰는 키는 `gate` 인데 여기서는 `label` 이었다.
+    #    그래서 `note_of` 가 `.get("label")` 로 읽는 결함이 이 계약을 통과했고,
+    #    운영 원장 note 에는 게이트가 **전건 빠져** 있었다(실측 923행).
+    #    ⚠️ 문자열도 손으로 적지 않는다 — `labels` 가 원본이다(사본 금지).
+    n03_gate = {"gate": _L.AGREE}
     n07_adjust = [{"pp": -1.2}]
     n08_pcode = {"p_code_pick": 0.6522}
     n09_conf = {"grade": "B"}
@@ -152,10 +158,17 @@ async def test_원장에_한_줄이_들어간다():
     sql, args = pool.calls[1]
     assert "INSERT INTO decision_ledger" in sql
     assert "ON CONFLICT" in sql and "DO NOTHING" in sql, "멱등이 아니다"
-    assert args[0] == "flow_v14" and args[1] == 7
-    assert args[4] == "home"
+    # 🔴 [PIPE-8 2026-09-25] **자리표가 바뀌었다.** 종전 SQL 은 `'h2h'`·NULL 을
+    #    박아 두어 구조 픽이 원장에 한 건도 안 남았다. 이제 market·line 이
+    #    인자다 — 자리 번호로 잠그면 다음에 또 깨지므로 이름을 붙여 읽는다.
+    eng, gid, sp, lg, market, line, sd, price, p_model, p_mkt, note = args
+    assert eng == "flow_v14" and gid == 7
+    assert market == "h2h" and line is None
+    assert sd == "home"
+    # 🔴 [PIPE-8] 종목은 `baseball` 이 아니라 리그 코드다
+    assert sp == "kbo", args
     # 🔴 [LED-2] **가격이 실린다** — 없으면 ROI 를 영영 못 낸다.
-    assert args[5] is None or isinstance(args[5], float), args
+    assert price is None or isinstance(price, float), args
 
 
 @pytest.mark.asyncio
