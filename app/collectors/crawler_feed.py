@@ -323,6 +323,82 @@ async def mark_cancelled_games(pool, rows, snap: dict) -> list[int]:
     return ids
 
 
+async def persist_game_facts(pool, row: dict, game: dict, *,
+                             source: str = "크롤러") -> dict:
+    """크롤러 스냅샷의 **사실**을 DB 로 옮긴다 — 예고 선발과 확정 타순.
+
+    🔴 [D61-2 2026-09-24] **다리가 없었다.** 크롤러는 둘 다 만들고 있는데
+       DB 에는 없었다(실측):
+```
+crawl:kbo:2026-09-24:latest  home_pitcher '대니엘' · away_pitcher '송명기'
+games.home_pitcher           8경기 전부 NULL      → ⑤ starter_recent3 6/6 미상
+crawl:kbo:2026-09-23:latest  lineup_home 정수빈(중견수)-안재석(3루수)-… 9명
+lineups 표 KBO               최근 14일 **0행**     → ⑤ lineup_out 6/6 미상
+                             (같은 기간 NPB 22행 · MLB 670행)
+```
+       `mark_cancelled_games` 와 같은 성격의 반영이다 — "크롤러는 Postgres 를
+       안 건드린다. 파이썬이 반영하지 않으면" 아무도 못 본다.
+
+    🔴 **판정하지 않는다.** 확정의 정의는 `pregame_push.lineup_confirmed`,
+       타순 파싱은 `lineup_diff.parse_order`, 쓰기는 `lineups.save_lineup`
+       하나씩이다 — 여기서 다시 짓지 않는다(사본 금지).
+    ⚠️ 빈 값으로 **덮지 않는다.** 크롤러가 아직 못 읽은 칸이 DB 의 값을
+       지우면 "있다가 사라지는" 자료가 된다.
+    ⚠️ 실패가 폴링을 막지 않는다 — 호출부가 계속 돈다.
+
+    반환 `{"starters": 갱신한 칸 수, "lineups": 기록한 행 수}`.
+    """
+    from app.collectors.lineups import save_lineup
+    from app.engine.lineup_diff import parse_order
+    from app.engine.pregame_push import lineup_confirmed
+
+    out = {"starters": 0, "lineups": 0}
+    if pool is None or not row or not game:
+        return out
+    try:
+        gid = int(row.get("id"))
+    except (TypeError, ValueError):
+        return out
+
+    # ── ① 예고 선발 ─────────────────────────────────────────────────
+    for side in ("home", "away"):
+        who = str(game.get(f"{side}_pitcher") or "").strip()
+        if not who or who == str(row.get(f"{side}_pitcher") or "").strip():
+            continue
+        try:
+            await pool.execute(
+                f"UPDATE games SET {side}_pitcher = $2, updated_at = now() "
+                "WHERE id = $1", gid, who)
+            out["starters"] += 1
+        except Exception as exc:
+            logger.warning("[crawler_feed] 선발 반영 실패 game=%s %s: %s",
+                           gid, side, exc)
+
+    # ── ② 확정 타순 ─────────────────────────────────────────────────
+    home_raw, away_raw = game.get("lineup_home"), game.get("lineup_away")
+    if not lineup_confirmed(home_raw, away_raw):
+        return out
+    for side, raw in (("home", home_raw), ("away", away_raw)):
+        order = [nm for nm, _pos in parse_order(raw)]
+        if len(order) != 9:
+            continue
+        try:
+            await save_lineup(
+                pool, gid, side, "confirmed", source,
+                {"starter": str(game.get(f"{side}_pitcher") or "").strip() or None,
+                 "batting_order": order,
+                 "scratches": game.get(f"scratches_{side}") or []},
+                caller="persist_game_facts")
+            out["lineups"] += 1
+        except Exception as exc:
+            logger.warning("[crawler_feed] 타순 반영 실패 game=%s %s: %s",
+                           gid, side, exc)
+    if out["starters"] or out["lineups"]:
+        logger.info("[crawler_feed] 사실 반영 game=%s 선발 %d · 타순 %d행",
+                    gid, out["starters"], out["lineups"])
+    return out
+
+
 def _hhmm(at: str) -> str:
     """RFC3339 → "HH:MM" (KST). 크롤러가 KST로 찍으므로 변환하지 않는다."""
     return (at or "")[11:16]

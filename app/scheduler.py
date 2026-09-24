@@ -1080,6 +1080,12 @@ async def crawler_lineup_poll(sports: tuple[str, ...] = ("npb", "kbo")) -> None:
             catchup: list = []
             for r in rows:
                 game = crawler_feed.snapshot_for_game(snap, dict(r))
+                # 🔴 [D61-2 2026-09-24] **스냅샷의 사실을 DB 로 옮긴다.**
+                #    여기가 스냅샷과 DB 행이 같이 있는 유일한 자리다. 옮기지
+                #    않으면 KBO 선발·타순이 Redis 에만 남아 ⑤가 영영 못 본다
+                #    (실측: games.home_pitcher 8/8 NULL · lineups KBO 0행).
+                #    ⚠️ 실패가 폴링을 막지 않는다 — 함수가 안에서 삼킨다.
+                await crawler_feed.persist_game_facts(pool, dict(r), game)
                 have = any((game.get(f"lineup_{sd}") or "").strip()
                            for sd in ("home", "away"))
                 if not have:
