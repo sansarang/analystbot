@@ -915,3 +915,37 @@ sport_code         games.sport = mlb·kbo·npb·soccer 와 일치 · KEY-1 이 �
 | 2 | `park_factor` 에 `direction` 을 실어 ⑦에 닿게 | ⑤ 한 줄 |
 | 3 | `news_dir` 창을 "지금 ±30분"에서 떼어낸다 | F-19 결정 필요 |
 | 4 | `weather` — 칸을 지울지 수집을 만들지 | 갈림길 |
+
+### 🔴 [정정 2026-09-24] D61 §⑤ `park_factor` 는 **결함이 아니었다**
+
+사용자 지시 "1,2번 먼저해라"로 2번(방향 싣기)에 착수했다가 **제 제안이
+틀렸다는 것**을 자료로 확인했다. 구현하지 않았다.
+
+**파크팩터는 득점 환경이지 승패 방향이 아니다.**
+> "park factors primarily affect totals betting rather than moneyline bets…
+> doesn't necessarily determine which team wins"
+> — [Sportsbetting Dime](https://www.sportsbettingdime.com/mlb/park-factors/)
+
+코드가 이미 그렇게 되어 있다 — **양 팀 λ 에 똑같이 곱한다**:
+```
+app/engine/scoring.py:259  park = _park_factor(research, s)
+                      264  for side in (...): lam[side] *= park
+app/flow/bridge.py:294     mlb_lambdas(jg, jg.get("research") or {}, ...)
+```
+홈/원정 방향을 붙였다면 **없는 신호를 지어내는 것**이 됐다.
+
+배선도 살아 있다 (실측 2026-09-24 · 최근 14시간):
+```
+판정 캐시 research.park_factor   mlb 2026-09-23 · 13경기 중 **10경기**에 값 있음
+⑪ 구조 후보                      total_under 7.0@2.01 · 8.5@1.917 · 8.0@1.893
+⑪ 반려 사유                      가설이 마켓 미지정 14 · 시장 동의 실패 4 ·
+                                 지정 마켓 후보 0  ← 파크팩터 때문이 아니다
+```
+
+🔴 **D61 §⑤ 의 "확률을 한 번도 안 움직인다"는 틀렸다.** ⑤ 증거 행에
+   방향이 없는 것은 맞지만, 값은 **λ 를 통해 총점 쪽으로** 이미 들어간다.
+   내가 ⑤의 `direction` 만 보고 전체 경로를 단정했다.
+
+⚠️ **확인 필요(단정 안 함)**: `analysis:kbo:*` · `analysis:npb:*` 캐시는
+   09-23·09-24 두 날짜에서 **비어 있었다**. KBO·NPB 에서 파크팩터가 λ 에
+   닿는지는 이번에 재지 않았다 — 별건이다.
