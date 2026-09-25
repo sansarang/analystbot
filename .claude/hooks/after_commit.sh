@@ -30,7 +30,13 @@ LOG=$(git log -1 --oneline 2>/dev/null)
 # 커밋이 없으면(=커밋이 실패했다) 재료를 남기지 않는다 — 거짓 재료가 더 나쁘다.
 [ -n "$LOG" ] || exit 0
 
-TESTS=$(cd "$REPO" && PYTHONPATH=. timeout 600 uv run pytest -q 2>&1 | tail -20)
+# ⚠️ macOS 에는 `timeout` 이 없다(coreutils 미설치) — 실측 2026-09-25: 훅이
+#    첫 실행에서 "timeout: command not found" 한 줄만 남겼다. 있으면 쓰고
+#    없으면 뺀다.
+TO=""
+command -v timeout  >/dev/null 2>&1 && TO="timeout 900"
+command -v gtimeout >/dev/null 2>&1 && TO="gtimeout 900"
+TESTS=$(cd "$REPO" && PYTHONPATH=. $TO uv run pytest -q 2>&1 | tail -20)
 STAMP=$(TZ=Asia/Seoul date '+%F %T KST')
 
 {
