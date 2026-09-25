@@ -31,6 +31,44 @@ print("\n".join(out))
 ' 2>/dev/null)
 [ -z "$SCAN" ] && SCAN="$CMD"
 
+# ── (c-0) [CC-2 2026-09-25] 발송 스위치 ──────────────────────────────
+# 🔴 **발송은 사용자만 켠다.** 지시문 cc_collab_0925: "발송은 사용자만".
+#    카드가 나가는 것은 되돌릴 수 없다 — 텔레그램에서 지워도 읽힌 뒤다.
+# ⚠️ 읽기는 막지 않는다. 막는 것은 **켜는 것**뿐이다:
+#      PIPELINE_V14_SEND=true|1|on  ·  railway variables --set 로 같은 값
+#    `grep pipeline_v14_send` 같은 조회는 통과한다.
+if printf '%s' "$SCAN" \
+   | grep -qiE '(PIPELINE_V14_SEND|pipeline_v14_send)[[:space:]]*[:=][[:space:]]*"?(true|1|on|yes)"?'; then
+  log_audit "DENY send-switch ${CMD:0:80}"
+  deny "🚫 발송 스위치 차단 — 발송은 사용자만 켠다.
+   카드는 나가면 되돌릴 수 없다. 켜야 한다면 사용자가 직접 켠다.
+   ⚠️ 조회(grep·list)는 막지 않는다 — 막힌 것은 **켜는 명령**이다."
+fi
+
+# ── (c-0b) [CC-2 2026-09-25] 컨테이너 직접 수정 ──────────────────────
+# 🔴 지시문: "컨테이너 직접 수정 금지". 컨테이너 안에서 바꾼 것은 다음 배포에
+#    사라지고, 저장소와 운영이 갈린다 — 그러면 `/health` 커밋 대조가 거짓말이
+#    된다.
+# ⚠️ **읽기는 막지 않는다.** CLAUDE.md §서버 접근이 `railway ssh` 를 유일한
+#    컨테이너 진입로로 지정하고 명령까지 적어 뒀다 — 통째로 막으면 운영 실측이
+#    전부 죽는다. 막는 것은 **상태를 바꾸는 것**이다:
+#      railway run / shell / variables --set / variable set
+#      ssh 로 들어가 pip install·파일 쓰기·서비스 재시작
+if printf '%s' "$SCAN" \
+   | grep -qE '(^|[;&|])[[:space:]]*railway[[:space:]]+(run|shell)\b|railway[[:space:]]+variables?[[:space:]]+(--set|set)\b'; then
+  log_audit "DENY container-write ${CMD:0:80}"
+  deny "🚫 컨테이너 직접 수정 차단 — 저장소와 운영이 갈린다.
+   ⚠️ railway run 은 '서버에서 돈다'가 아니다 — 운영 환경변수만 주입해
+      **로컬에서** 실행한다(CLAUDE.md §서버 접근).
+   읽기 프로브는 그대로 쓴다: railway ssh … \"python /tmp/probe.py\""
+fi
+if printf '%s' "$SCAN" \
+   | grep -qE 'railway[[:space:]]+ssh\b.*(pip[[:space:]]+install|>[[:space:]]*/app/|rm[[:space:]]|mv[[:space:]]+/app|systemctl|kill[[:space:]]+-9)'; then
+  log_audit "DENY container-mutate ${CMD:0:80}"
+  deny "🚫 컨테이너 안에서 상태를 바꾸려 한다 — 다음 배포에 사라진다.
+   고칠 것이 있으면 저장소를 고치고 배포한다."
+fi
+
 # ── (c) 위험 명령 ────────────────────────────────────────────────────
 # rm -rf 로 경로를 통째로 지우는 것. 스크래치패드·빌드 산출물은 예외다.
 if printf '%s' "$SCAN" | grep -qE '\brm\b[^|;]*-[a-zA-Z]*[rR][a-zA-Z]*f|\brm\b[^|;]*-[a-zA-Z]*f[a-zA-Z]*[rR]'; then
@@ -75,7 +113,9 @@ fi
 if printf '%s' "$SCAN" | grep -qE '(^|[;&|]|\bbash[[:space:]]+|\bsh[[:space:]]+)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(\./)?(tools/)?deploy\.sh\b|(^|[;&|])[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*railway[[:space:]]+(up|redeploy)\b'; then
 
   # (c-2) 슬레이트 성역 — KST 17:00~22:00 은 배포 금지 (ENGINEERING §5)
-  H=$(kst_hour)
+  # ⚠️ [CC-2 2026-09-25] 계약이 시각을 재현할 수 있어야 한다 —
+  #    없으면 훅 테스트가 "지금 몇 시냐"에 따라 초록·빨강이 바뀐다.
+  H=${FAKE_KST_HOUR:-$(kst_hour)}
   if [ "$H" -ge 17 ] && [ "$H" -lt 22 ]; then
     if [ -z "$SLATE_OVERRIDE" ] && ! printf '%s' "$SCAN" | grep -q 'SLATE_OVERRIDE='; then
       log_audit "DENY slate-window ${H}시 ${CMD:0:60}"
