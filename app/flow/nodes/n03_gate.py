@@ -11,7 +11,8 @@ from __future__ import annotations
 import logging
 
 from app.flow import rules as R
-from app.flow.labels import AGREE, BOARD, DOUBT, OVER, PRIOR_ONLY
+from app.flow.labels import (AGREE, BOARD, DOUBT, NO_PRIOR, OVER,
+                             PRIOR_ONLY)
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +37,41 @@ async def run(state, ctx):
     #    찾는 것이 정직한 조사다.
     #    ⚠️ 이것이 이 봇의 순서다(CLAUDE.md "페이블처럼 분석한다"):
     #       판단을 먼저 적는다 → 무엇을 찾을지 먼저 정한다 → 시장은 검증한다.
-    if p_prior is None:
+    # 🔴 [PIPE-2 정정 2026-09-25] **`side` 에 매이면 안 된다.** 사전값이 없으면
+    #    ①이 `hyp_side` 를 안 정하므로 `p_mkt`(쪽별 조회)가 None 이 되고, 그러면
+    #    시장이 멀쩡히 있는데도 "시장도 없다"로 읽힌다 — 재생 실측에서 축구
+    #    6경기(사전값 없음·시장 있음)가 그대로 얼었다.
+    #    ⚠️ 시장의 유무는 **표 자체**로 판단한다.
+    market_gone = bool(market.get("market_missing")) or not (market.get("p") or {})
+
+    # 🔴 [PIPE-2 2026-09-25] **둘 다 없으면 여기서 멈춘다.** 사전값도 시장도
+    #    없으면 비교할 것도 걸 가격도 없다 — 조사를 시작할 근거가 0 이다.
+    #    ⚠️ 이 경로만 `BOARD` 를 남긴다. 아래 두 갈래는 멈추지 않는다.
+    if p_prior is None and market_gone:
         state.n03_gate = {"gap_pp": None, "gate": BOARD, "stop": True,
-                          "reason": "사전값이 없다 — 보드 고정"}
-        logger.info("[flow:n03] game=%s 사전값 없음", state.game_id)
+                          "reason": "사전값도 시장도 없다 — 보드 고정",
+                          "prior_suspect": False}
+        logger.info("[flow:n03] game=%s 사전값·시장 둘 다 없음", state.game_id)
         return state
 
-    if market.get("market_missing") or p_mkt is None:
+    if p_prior is None:
+        # 🔴 [PIPE-2 2026-09-25] **멈추지 않는다.** 종전에는 보드 고정이라
+        #    ①에서 즉사했고 수집·⑥⑦·서술이 통째로 안 돌았다(실측 축구
+        #    23경기 중 10경기 — K리그1·에레디비시·리그앙은 elo 자체가 없다).
+        #    사전값 품질 문제로 판정 전부를 죽이는 구조였다(v2 STEP 1-e).
+        #    ⚠️ 승패 픽은 ⑪이 막는다 — 비교할 우리 판단이 없기 때문이다.
+        state.n03_gate = {"gap_pp": None, "gate": NO_PRIOR, "stop": False,
+                          "reason": "사전값이 없다 — 시장 단독 경로",
+                          "prior_suspect": False,
+                          "missing": (prior.get("missing") or [])}
+        logger.info("[flow:n03] game=%s 사전값 없음 → 시장 단독", state.game_id)
+        return state
+
+    # ⚠️ 시장 표는 있는데 **우리 쪽 값이 없으면** 비교할 수 없다 — 사전값 단독과
+    #    같은 자리다(지어낸 0 으로 gap 을 만들지 않는다).
+    if market_gone or p_mkt is None:
         state.n03_gate = {"gap_pp": None, "gate": PRIOR_ONLY, "stop": False,
+                          "prior_suspect": False,
                           "reason": f"시장이 아직 없다 — 사전값 {p_prior:.1%} 을 "
                                     "무너뜨릴 근거를 찾는다"}
         logger.info("[flow:n03] game=%s 시장 없음 → 사전값 단독 (p=%.3f)",
@@ -54,9 +82,18 @@ async def run(state, ctx):
     agree = float(R.get("gate_pp.agree", 4.0))
     freeze = float(R.get("gate_pp.freeze", 12.0))
 
+    prior_suspect = False
     if abs(gap) >= freeze:
-        gate, stop = BOARD, True
-        why = f"괴리 {gap:+.1f}%p — 데이터 오류 의심, 보드 고정"
+        # 🔴 [PIPE-2 2026-09-25] **괴리는 표시일 뿐 멈추지 않는다.**
+        #    사전값(`team_elo`)에는 **선발이 없다** — 그래서 에이스 등판일마다
+        #    |gap|≥12 가 나고 "데이터 오류"로 보드 고정됐다(실측 2026-09-25:
+        #    HOU@ATH +16.1 · 한신 −18.2 · SSG +21.4 · 맨시티 −15.9 · 리즈 +18.4).
+        #    ⚠️ 라벨은 부호대로 준다 — 방향을 잃으면 ④가 무엇을 찾을지 모른다.
+        #    ⚠️ 의심 표지는 **③의 자기 칸**에 남긴다. `state` 에 새 속성을
+        #       달면 `State` 가 dataclass 라 `asdict()` 에서 조용히 빠진다.
+        gate, stop = (OVER if gap < 0 else DOUBT), False
+        why = f"괴리 {gap:+.1f}%p — 사전값 의심(선발 미반영) · 진행"
+        prior_suspect = True
     elif gap <= -agree:
         gate, stop = OVER, False
         why = f"시장이 {side} 를 {abs(gap):.1f}%p 높게 본다"
@@ -67,6 +104,7 @@ async def run(state, ctx):
         gate, stop = AGREE, False
         why = f"사전값과 시장이 {abs(gap):.1f}%p 차이 — 승패는 접고 파생만"
 
-    state.n03_gate = {"gap_pp": gap, "gate": gate, "stop": stop, "reason": why}
+    state.n03_gate = {"gap_pp": gap, "gate": gate, "stop": stop, "reason": why,
+                      "prior_suspect": prior_suspect}
     logger.info("[flow:n03] game=%s gap %+.2f%%p → %s", state.game_id, gap, gate)
     return state

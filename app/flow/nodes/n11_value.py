@@ -20,7 +20,8 @@ from __future__ import annotations
 import logging
 
 from app.flow import rules as R
-from app.flow.labels import AGREE, PICK_BOARD, PICK_ML, PICK_STRUCT
+from app.flow.labels import (AGREE, BOARD, DOUBT, NO_PRIOR, OVER,
+                             PICK_BOARD, PICK_ML, PICK_STRUCT)
 from app.flow.odds_math import devig_2way, required_prob
 
 logger = logging.getLogger(__name__)
@@ -170,8 +171,20 @@ async def run(state, ctx):
     if p_code is not None and odds.get(side):
         ml_edge = round((float(p_code) - required_prob(odds[side])) * 100, 2)
 
-    # 🔴 승패는 `동의` 에서만. 다른 게이트에서는 만들지 않는다.
-    if gate == AGREE and ml_edge is not None and ml_edge >= edge_min:
+    # 🔴 [PIPE-1 2026-09-25] **승패 픽을 게이트로 막지 않는다.**
+    #    종전 `gate == AGREE` 는 R1(시장 역행 금지) 시절 조건이다. 그런데
+    #    `동의` 는 정의상 사전값≈시장이고 ⑧은 시장을 뼈대로 쓰므로 그 자리에서
+    #    edge 가 문턱을 넘기 어렵다 — 즉 **어느 게이트에서도 픽이 못 났다**
+    #    (실측 2026-09-25: 야구 17경기 전건 보드).
+    #    ⚠️ 보드고정은 그대로 막는다. 시장과 반대 방향이면 버리지 않고
+    #       `stance=contrarian` 으로 **표시**만 한다 — 나중에 두 자세의 성적을
+    #       따로 셀 수 있어야 한다.
+    # 🔴 [PIPE-2] `사전값없음` 에서도 승패를 만들지 않는다 — ⑧의 p_code 는
+    #    시장 + ⑦조정이라, 사전값이 없으면 "우리가 시장과 다르게 본다"는
+    #    근거가 조정뿐이다. 구조·관찰은 그대로 진행한다.
+    # ⚠️ 문턱(`edge_min_pp`)·방향 검사(`ml_direction_sum`)는 그대로다.
+    if gate not in (BOARD, NO_PRIOR) and ml_edge is not None and ml_edge >= edge_min:
+        stance = "contrarian" if gate in (OVER, DOUBT) else "agree"
         ml_dir, ml_why = ml_direction_sum(state, side)
         if ml_dir < 0:
             # 🔴 [FIX-4f] 픽에 불리한 방향 증거 — 라인을 옮기지 않고 철회한다.
@@ -182,9 +195,15 @@ async def run(state, ctx):
             logger.info("[flow:n11] game=%s 승패 철회 — 방향 합 %+d", state.game_id, ml_dir)
             return state
         state.n11_value = {"ml_edge_pp": ml_edge, "pick_type": PICK_ML,
-                           "structure": None, "direction_sum": ml_dir}
-        logger.info("[flow:n11] game=%s 승패 픽 · edge %+.2f%%p",
-                    state.game_id, ml_edge)
+                           "structure": None, "direction_sum": ml_dir,
+                           # 🔴 [PIPE-1] 시장과 같은 쪽인가 반대쪽인가.
+                           "stance": stance, "gate": gate,
+                           # 🔴 [PIPE-2] 사전값이 선발을 모른다는 표지.
+                           #    ③이 남긴 것을 **옮기기만** 한다(사본 금지).
+                           "prior_suspect": bool(
+                               (state.n03_gate or {}).get("prior_suspect"))}
+        logger.info("[flow:n11] game=%s 승패 픽 · edge %+.2f%%p · %s",
+                    state.game_id, ml_edge, stance)
         return state
 
     # ── [FIX-4] 구조 픽

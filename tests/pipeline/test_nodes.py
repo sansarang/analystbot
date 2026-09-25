@@ -164,7 +164,15 @@ async def test_게이트_네갈래():
     assert (await _gate(+0.3))["gate"] == AGREE
     assert (await _gate(-9.3))["gate"] == OVER
     assert (await _gate(+4.4))["gate"] == DOUBT
-    assert (await _gate(+13.0))["gate"] == BOARD
+    # 🔴 [PIPE-2 2026-09-25] 종전에는 |gap|≥12 가 `BOARD`(stop=True) 였다.
+    #    사전값(team_elo)에 **선발이 없어** 에이스 등판일마다 나는 괴리인데
+    #    그때마다 흐름 전체가 죽었다(실측 5경기). 이제 라벨은 부호대로 주고
+    #    `prior_suspect` 로 표시만 한다.
+    big = await _gate(+13.0)
+    assert big["gate"] == DOUBT and big["stop"] is False, big
+    assert big["prior_suspect"] is True, big
+    small = await _gate(+4.4)
+    assert small["prior_suspect"] is False, small
 
 
 @pytest.mark.asyncio
@@ -234,7 +242,12 @@ async def test_해석은_게이트가_정한다():
         st = _s(pick_side="away", n03_gate={"gate": gate})
         h = (await n04_hyp.run(st, Ctx())).n04_hyp[0]
         assert h["refuted_means"] == means, (gate, h)
-        assert h["market"] == ("total" if gate == AGREE else None), (gate, h)
+        # 🔴 [PIPE-1 2026-09-25] 종전 계약은 `동의에서만 total` 이었다 —
+        #    그 조건 때문에 시장과대·가치의심에서 구조 픽이 **정의상**
+        #    불가능했다(실측 17경기 전건 보드). 이제 걸 대상이 없는
+        #    게이트(보드고정·사전값단독)에서만 None 이다.
+        want_mk = None if gate in (BOARD, PRIOR_ONLY) else "total"
+        assert h["market"] == want_mk, (gate, h)
 
 
 def test_가설은_LLM을_부르지_않는다():
@@ -498,13 +511,41 @@ async def test_승패픽은_동의에서만_그리고_edge가_넘어야():
 
 
 @pytest.mark.asyncio
-async def test_시장과대에서는_승패픽을_만들지_않는다():
-    """🔴 v1.4 — 시장 동의 시에만 추천한다."""
+async def test_시장과대에서도_승패픽이_나되_역행으로_표시된다():
+    """🔴 [PIPE-1 2026-09-25 · 규칙 개정] 종전 이름은
+    `test_시장과대에서는_승패픽을_만들지_않는다` 였고 "시장 동의 시에만
+    추천한다"(R1)를 잠갔다. 09-20 사용자 결정으로 역행이 허용됐고, 그 조건이
+    남아 있는 동안 **어느 게이트에서도 픽이 나오지 않았다**(실측 17경기).
+
+    ⚠️ 단언을 약화시킨 것이 아니다 — "안 나온다"를 "나오되 자세가 적힌다"로
+       바꿨다. 자세가 빠지면 나중에 두 자세의 성적을 못 가른다.
+    """
     st = _s(pick_side="away", n03_gate={"gate": OVER},
             n02_market={"odds": {"away": 1.35}, "derivatives": {}},
             n08_pcode={"p_code_pick": 0.95})
     v = (await n11_value.run(st, Ctx())).n11_value
-    assert v["pick_type"] == PICK_BOARD
+    assert v["pick_type"] == PICK_ML, v
+    assert v["stance"] == "contrarian", v
+    assert v["gate"] == OVER, v
+
+
+@pytest.mark.asyncio
+async def test_동의에서_난_픽은_자세가_agree다():
+    st = _s(pick_side="away", n03_gate={"gate": AGREE},
+            n02_market={"odds": {"away": 1.35}, "derivatives": {}},
+            n08_pcode={"p_code_pick": 0.95})
+    v = (await n11_value.run(st, Ctx())).n11_value
+    assert v["pick_type"] == PICK_ML and v["stance"] == "agree", v
+
+
+@pytest.mark.asyncio
+async def test_보드고정에서는_여전히_승패픽이_없다():
+    """🔴 보드고정만 남은 금지다 — "찾을 것이 없다"는 판단이기 때문이다."""
+    st = _s(pick_side="away", n03_gate={"gate": BOARD},
+            n02_market={"odds": {"away": 1.35}, "derivatives": {}},
+            n08_pcode={"p_code_pick": 0.95})
+    v = (await n11_value.run(st, Ctx())).n11_value
+    assert v["pick_type"] == PICK_BOARD, v
 
 
 @pytest.mark.asyncio
@@ -866,12 +907,31 @@ async def test_시장이_없어도_가설이_선다():
 
 
 @pytest.mark.asyncio
-async def test_사전값도_없으면_보드고정이다():
-    """🔴 반대 위험 — 없는 판단으로 조사를 시작하지 않는다."""
+async def test_사전값도_시장도_없으면_보드고정이다():
+    """🔴 반대 위험 — 없는 판단으로 조사를 시작하지 않는다.
+
+    ⚠️ [PIPE-2 2026-09-25] 종전 이름은 `test_사전값도_없으면_보드고정이다` 였고
+       **사전값만** 없어도 멈췄다. 이제 멈추는 것은 **둘 다 없을 때**뿐이다 —
+       사전값만 없으면 `사전값없음`(시장 단독)으로 진행한다.
+    """
     st = _s(pick_side=None, n01_prior={"p_home": None, "p_away": None},
             n02_market={"market_missing": True, "p": None})
     st = await n03_gate.run(st, Ctx())
     assert st.n03_gate["gate"] == BOARD and st.n03_gate["stop"] is True
+
+
+@pytest.mark.asyncio
+async def test_사전값만_없으면_시장_단독으로_진행한다():
+    """🔴 [PIPE-2] 축구 23경기 중 10경기가 여기서 즉사하던 자리다."""
+    from app.flow.labels import NO_PRIOR
+
+    st = _s(pick_side="home",
+            n01_prior={"p_home": None, "p_away": None, "missing": ["A", "B"]},
+            n02_market={"market_missing": False, "p": {"home": 0.55}})
+    st = await n03_gate.run(st, Ctx())
+    assert st.n03_gate["gate"] == NO_PRIOR, st.n03_gate
+    assert st.n03_gate["stop"] is False, st.n03_gate
+    assert st.n03_gate["missing"] == ["A", "B"], st.n03_gate
 
 
 @pytest.mark.asyncio

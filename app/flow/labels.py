@@ -16,7 +16,16 @@ OVER, DOUBT, AGREE, BOARD = "시장과대", "가치의심", "동의", "보드고
 #   사용자 지시: "데이타가 싸여야 가설을 세우는게 아니다" ·
 #               "시장에 끌려가지 않고 우리 쪽 판단을 먼저 적는 게 중요함".
 PRIOR_ONLY = "사전값단독"
-GATES = (OVER, DOUBT, AGREE, BOARD, PRIOR_ONLY)
+
+#: 🔴 [PIPE-2 2026-09-25] **사전값이 없을 때.** `PRIOR_ONLY` 와 **반대**다 —
+#   저쪽은 "시장이 아직 없다"(사전값은 있다)이고 이쪽은 "사전값이 없다"
+#   (시장은 있다)다. 둘을 섞으면 승패 픽 허용 여부가 뒤집힌다.
+#   종전에는 이 경우가 `BOARD`(stop=True) 라 ①에서 즉사했다 — 실측
+#   2026-09-25 축구 23경기 중 10경기(K리그1·에레디비시·리그앙)가 여기서
+#   죽었고, 수집·⑥⑦·서술까지 통째로 돌지 않았다.
+#   ⚠️ 승패 픽은 ⑪이 막는다(비교할 우리 판단이 없다). 나머지는 진행한다.
+NO_PRIOR = "사전값없음"
+GATES = (OVER, DOUBT, AGREE, BOARD, PRIOR_ONLY, NO_PRIOR)
 
 # ⑥ 채점
 CONFIRMED, REFUTED, UNKNOWN = "confirmed", "refuted", "unknown"
