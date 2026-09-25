@@ -347,7 +347,9 @@ railway ssh -i ~/.ssh/id_ed25519_new --project d29edc63-4309-4656-a8af-543b8b773
 
 ## 배포 — 커밋은 배포가 아니다
 
-이 저장소에는 git remote 가 없다. `tools/deploy.sh` **수동 배포**다.
+🔴 **[2026-09-25 정정] remote 는 있다** — `origin github.com/sansarang/analystbot.git`.
+종전 문장("remote 가 없다")은 낡았다. 그래도 **배포는 push 가 아니다** —
+`tools/deploy.sh` 수동 배포이고, push 해도 운영은 안 바뀐다.
 게이트(미커밋 차단·빌드 검증·안정성 스모크·SUCCESS 확인)는 스크립트와 훅이
 자동으로 건다 — 사람이 기억할 것은 **스케줄러를 먼저 배포한다**는 것뿐이다
 (기동 시 DB 스키마를 적용하므로).
@@ -367,6 +369,27 @@ tools/deploy.sh all          # 스케줄러 → 봇 → 크롤러
 > → `/health` 로 커밋 해시를 대조하라.
 
 ---
+
+
+## 페이블 협업
+
+[CC-1~7 2026-09-25 지시문 `cc_collab_0925`] 폴더 규약·형식은
+→ [docs/fable/README.md](docs/fable/README.md) 가 원본이다(여기 베끼지 않는다).
+
+- **지시문은 `docs/fable/inbox/` 에서만 받는다.** 채팅 복붙 지시문도 먼저 그
+  폴더에 저장하고 `/fable-run` 으로 실행한다 — 맥락이 파일에 남아야 다음
+  세션이 읽는다.
+- **보고는 `docs/fable/reports/` 형식 하나**(다섯 절). 계약이 잠근다
+  (`tests/meta/test_fable_report_format.py`).
+- 🔴 **갈림길은 `questions/` 에 쓰고 멈춘다.** 추측으로 고르지 않는다.
+  세션이 끝날 때 `on_stop.sh` 가 그 질문을 파일로 떨군다.
+- 🔴 **커밋 전 `contract-reviewer` 에이전트 PASS 필수.** FAIL 이면 커밋하지 않는다.
+- 🔴 **훅을 우회하지 않는다.** 배포 창(KST 17~22)·발송 스위치·컨테이너 쓰기·
+  force push 는 `guard-bash.sh` 가 막는다. `--no-verify` 류로 돌아가지 않는다.
+  ⚠️ 막히는 것은 **쓰기**다 — `railway ssh` 읽기 프로브는 그대로 쓴다
+  (§서버 접근이 그것을 유일한 진입로로 지정한다).
+- ⚠️ 토큰·DB URL 을 파일에 적지 않는다. MCP 에 **쓰기 권한 DB 를 붙이지 않는다**
+  (`.mcp.json` 은 `${...}` 치환만 · 계약이 검사한다).
 
 ## 절대 규칙
 
