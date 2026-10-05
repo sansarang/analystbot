@@ -174,14 +174,25 @@ FORMATS: tuple[str, ...] = (
     "league", "group", "knockout_single", "knockout_two_leg_1st",
     "knockout_two_leg_2nd", "final_single", "friendly", "unknown")
 
-#: 🔴 **90분 무승부가 필수인 형식** — 지시서 §3-3 원문.
-#  > `final_single`·`knockout_single`·`knockout_two_leg_1st` 이면
-#  > 90분 무승부(`0-0`·`1-1`) 시나리오 **필수**.
-DRAW_FORMATS: tuple[str, ...] = (
-    "final_single", "knockout_single", "knockout_two_leg_1st")
 
-#: 🔴 90분 무승부로 세는 스코어.
-DRAW_SCORES: tuple[str, ...] = ("0-0", "1-1")
+def _draw_cfg() -> dict:
+    """🔴 90분 무승부 표 — `config/scenario_rules.yaml` `draw_90`.
+
+    ⚠️ **스코어를 코드에 박지 않는다**(계약이 그것을 센다) — 표가 원본이다.
+    """
+    return dict(rules.scenario_cfg("draw_90") or {}) if hasattr(
+        rules, "scenario_cfg") else dict(
+        (rules._load(rules.SCENARIO_RULES).get("draw_90") or {}))
+
+
+def draw_formats() -> tuple[str, ...]:
+    """🔴 **90분 무승부가 필수인 형식들** — 표가 든다."""
+    return tuple(str(x) for x in (_draw_cfg().get("formats") or ()))
+
+
+def draw_scores() -> tuple[str, ...]:
+    """🔴 90분 무승부로 세는 스코어 — 표가 든다."""
+    return tuple(str(x) for x in (_draw_cfg().get("scores") or ()))
 
 #: 🔴 무승부 필수 판정의 표식 — 자기 흔적을 걷는다(난타전과 같은 길).
 DRAW_MARK = "§3-3"
@@ -205,7 +216,7 @@ def regression_needed(raw: float, trimmed: float) -> tuple[bool, str]:
 def draw_needed(fmt: object) -> tuple[bool, str]:
     """🔴 그 형식이 **90분 무승부 시나리오를 요구하나** — 지시서 §3-3."""
     said = str(fmt or "unknown")
-    if said in DRAW_FORMATS:
+    if said in draw_formats():
         return True, (f"🔴 `{said}` 이다 — **90분 무승부**(0-0·1-1) 시나리오가 "
                       f"필수다. ⚠️ 그 전개 문장에 *연장·승부차기로 간다* 를 "
                       f"적고, 마켓 대입은 **90분 기준**임을 카드에 표시한다")
@@ -227,7 +238,7 @@ def require_draw(res, game, *, fmt: object) -> bool:
     if not need:
         return True
     have = [d.id for d in (res.drafts or [])
-            if any(str(sc) in DRAW_SCORES for sc in (d.scores or []))]
+            if any(str(sc) in draw_scores() for sc in (d.scores or []))]
     if have:
         res.notes.append(f"{DRAW_MARK} ✅ 90분 무승부 시나리오가 있다({have})")
         return True

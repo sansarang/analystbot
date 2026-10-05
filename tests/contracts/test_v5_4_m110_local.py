@@ -85,9 +85,14 @@ def test_M110_상한을_한_곳에서만_읽는다():
     bad: list[str] = []
     for f in sorted(pathlib.Path("app").rglob("*.py")):
         body = strip_docs(f.read_text(encoding="utf-8"))
-        if "per_day_usd" not in body:
+        # 🔴 **그 칸을 읽는 자리**(첨자·`get`)만 본다 — 주석의 글자는 아니다.
+        #    ⚠️ M110 돌연변이가 `DAY_CAP = 5.0  # per_day_usd` 로 통과했다:
+        #       `strip_docs` 는 **줄 끝 주석**을 안 걷는다(실측 2026-10-05).
+        import re as _re
+        hit = _re.search(r"""per_day_usd["']\s*\]|get\(\s*["']per_day_usd""",
+                         body)
+        if not hit:
             continue
-        # 🔴 그 칸을 읽는 파일은 **예산 모듈 하나**여야 한다
         if f.name not in ("solar.py", "rules.py"):
             bad.append(str(f))
     assert not bad, (
