@@ -62,7 +62,10 @@ def test_M60_리드_코드에_LLM_호출이_없다():
                 and isinstance(n.func, ast.Attribute)
                 and isinstance(n.func.value, ast.Name)
                 and n.func.value.id == "solar"}
-    assert on_solar <= {"budget_cfg"}, (
+    # 🔴 `solar_concurrency` 도 **예산 설정 읽기**다 — 429 를 받은 뒤의 동시
+    #    호출 수를 그 한 곳이 정한다(사용자 지시 2026-10-06 ④ · 사본 금지).
+    #    ⚠️ 목록을 늘릴 때는 **그것이 LLM 호출이 아님**을 확인하고 늘린다.
+    assert on_solar <= {"budget_cfg", "solar_concurrency"}, (
         f"🔴 리드가 `solar` 로 예산 설정 밖의 일을 한다{sorted(on_solar)}")
 
 

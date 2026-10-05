@@ -161,6 +161,15 @@ class Classified:
     #: 🔴 `published_at` 이 없을 때 **왜 없는지**(안 A — 스키마가 요구한다)
     dateless_reason: str = ""
     team: str | None = None
+    #: 🔴🔴 **표본이 부족하다는 표시** — 사용자 지시 2026-10-06 ⑦.
+    #
+    #  > 가설 근거 검사: **표본 부족**·검증 탈락으로 표시된 변수는 **가설 근거에
+    #  > 못 쓴다.**
+    #
+    #  ⚠️ `why` 글자에서 *"표본"* 을 찾아 가리지 않는다 — 그것은 D46 의 병이고,
+    #     문장이 바뀌면 조용히 안 걸린다. 🔴 `_hardness_cap` 이 표본 때문에
+    #     hardness 를 깎는 **그 한 곳**에서 이 칸을 세운다.
+    thin_sample: str = ""
 
     @property
     def weight(self) -> float:
@@ -1642,6 +1651,11 @@ def types_for(question_id: str) -> tuple[str, ...]:
     return TYPES_OF_QTYPE.get(qtype, ())
 
 
+#: 🔴 `_hardness_cap` 의 사유 중 **표본 때문**인 것의 표식(사용자 지시 ⑦).
+#   ⚠️ 글자를 찾는 것이 아니라 **만드는 쪽**이 붙인다 — 그래서 안 갈린다.
+THIN_MARK = "§7-R7-표본"
+
+
 def _hardness_cap(vtype: str, val: dict, hardness: str) -> tuple[str, str]:
     """표본 수로 hardness 를 깎는다. 🔴 **weight 가 아니라 hardness 다.**
 
@@ -1665,7 +1679,8 @@ def _hardness_cap(vtype: str, val: dict, hardness: str) -> tuple[str, str]:
         floor = {1.0: "hard", 0.7: "likely", 0.4: "soft"}.get(w, "soft")
         got = _cap(hardness, floor)
         if got != hardness:
-            return got, f"맞대결 표본 {n}경기 → hardness {hardness}→{got}(§4 sample_weight)"
+            return got, (f"{THIN_MARK} 맞대결 표본 {n}경기 → hardness "
+                         f"{hardness}→{got}(§4 sample_weight)")
         return got, ""
     if vtype == "recent_pattern":
         # ══════════════════════════════════════════════════════════
@@ -1712,7 +1727,7 @@ def _hardness_cap(vtype: str, val: dict, hardness: str) -> tuple[str, str]:
         n = len(last5_of(val)[0])
         if 0 < n < RECENT_SOFT_UNDER:
             got = _cap(hardness, "soft")
-            why = f"최근 {n}경기 → hardness {hardness}→{got}(§7 R7)"
+            why = f"{THIN_MARK} 최근 {n}경기 → hardness {hardness}→{got}(§7 R7)"
             # 🔴 **둘을 함께 적는다** — 표본이 작고 **또** 낡았을 수 있다
             return got, (f"{why} · {stale_note}" if stale_note else why)
         if stale_note:
@@ -1843,6 +1858,10 @@ def classify_fact(fact, game: Game) -> list[Classified]:
                           direction=direction, why=why, undecided=bad)
         if note:
             item.why = (item.why + " · " + note).strip(" ·")
+            # 🔴 **표본 때문이면 칸으로 표시한다**(사용자 지시 2026-10-06 ⑦) —
+            #    가설 근거가 이 칸을 보고 그 변수를 쓰지 않는다.
+            if THIN_MARK in note:
+                item.thin_sample = note
         out.append(item)
     return out
 
@@ -2334,6 +2353,9 @@ class Hypothesis:
     side: Direction                      # "home" | "away"
     supports: list[Classified] = field(default_factory=list)
     breaks: list[Classified] = field(default_factory=list)
+    #: 🔴 **표본 부족으로 근거에서 뺀 것들**(사용자 지시 2026-10-06 ⑦).
+    #   ⚠️ 조용히 지우지 않는다 — 카드가 *"무엇을 왜 안 썼나"* 를 적는다(#3).
+    thin_dropped: list[Classified] = field(default_factory=list)
     #: 🔴 §5-e — 문장은 **LLM L6** 이 쓴다. 코드가 지어내지 않는다
     claim: str = ""
     claim_by: str = "§5-e L6 미배선 — 빈칸으로 둔다"
@@ -2372,14 +2394,29 @@ def hypotheses(items: list[Classified], game: Game) -> list[Hypothesis]:
     for c in items:
         if c.is_variable and c.direction in by:
             by[c.direction].append(c)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **표본 부족 변수는 근거가 못 된다** — 사용자 지시 2026-10-06 ⑦
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 표본 부족·검증 탈락으로 표시된 변수는 **가설 근거에 못 쓴다.**
+    #
+    #  ⚠️ 실측 2026-10-06(북아일랜드–조지아) 카드: `R1 [h2h_pattern·home·soft]
+    #     … 맞대결 표본 1경기` 가 *"상대와의 맞대결 전적이 앞서 있어 경기 초반
+    #     기세를 먼저 잡는다"* 의 근거로 쓰였다 — **1경기**로 한 말이다.
+    #  🔴 **깨는 쪽에는 남긴다**: 얇은 표본으로 *"이긴다"* 라고 말하는 것과
+    #     *"이 조건이 어긋나면 흔들린다"* 는 주장의 세기가 다르다. 전자는
+    #     표본이 받쳐야 하고, 후자는 **의심**이므로 얇아도 적을 수 있다.
+    #  ⚠️ 검증 탈락 쪽은 이미 걸러진다 — `is_variable` 이 그것을 센다.
+    thin = {id(c) for c in items if getattr(c, "thin_sample", "")}
     out: list[Hypothesis] = []
     for side, team in (("home", game.home), ("away", game.away)):
         other = "away" if side == "home" else "home"
         out.append(Hypothesis(
             team=team, side=side,
-            supports=list(by[side]),
+            supports=[c for c in by[side] if id(c) not in thin],
             # 🔴 반대 방향 + 무승부가 이 가설을 깬다
-            breaks=list(by[other]) + list(by["draw"])))
+            breaks=list(by[other]) + list(by["draw"]),
+            thin_dropped=[c for c in by[side] if id(c) in thin]))
     if by["draw"]:
         logger.info("[classify] 무승부 방향 변수 %d건 — **양 팀** 무너지는 조건에 넣었다",
                     len(by["draw"]))

@@ -795,7 +795,7 @@ def test_사슬이_다섯_통로를_순서대로_쓴다():
         src.index("self.bing") < src.index("self.google")
 
 
-def test_키_없는_통로_셋을_병렬로_합친다():
+def test_키_없는_통로를_병렬로_합친다():
     """🔴🔴 사용자 기술 지시 2026-10-03:
 
     > 셋을 **병렬로 쳐서 합친다.** 차단된 곳을 우회하지 않는 원칙은 그대로다.
@@ -803,7 +803,11 @@ def test_키_없는_통로_셋을_병렬로_합친다():
     ⚠️ 종전은 **순차 대체**였다 — SearXNG 가 0건이 아니면 GDELT·Bing 을 아예 안
        물었다. 그래서 SearXNG 가 **관련 없는 20건**을 낼 때 현지어 기사가 손에 안
        들어왔다(실측 2026-10-03: 열기 예산을 그쪽에 태웠다).
-    🔴 셋은 **키가 없고 비용이 0** 이라 함께 쳐도 늘어나는 비용이 없다.
+
+    🔴🔴 **GDELT 는 그 묶음에서 빠졌다** — 사용자 지시 2026-10-06 ⑥:
+       > GDELT: 경기당 최대 4회, SearXNG 가 **5건 이상** 준 하위에서는 생략.
+    ⚠️ 실측 2026-10-06: 매 질의마다 함께 쳐서 `호출 상한에 걸려 876초 더 쉰다`
+       로 들어갔다 — 먼저 쓴 하위가 **나중 하위의 통로를 태웠다.**
     """
     whole = _code_only(S)
     i = whole.index("async def query(self, text: str")
@@ -812,8 +816,14 @@ def test_키_없는_통로_셋을_병렬로_합친다():
     # 🔴 **키 있는 통로는 병렬에 안 넣는다**(상한·비용이 다르다)
     j = src.index("free = [")
     block = src[j:src.index("]", j)]
-    assert "self.searx" in block and "self.gdelt" in block and "self.bing" in block
+    assert "self.searx" in block and "self.bing" in block
     assert "google" not in block, block
+    # 🔴 **GDELT 는 묶음에 없다** — 조건부로 뒤에 붙는다
+    assert "self.gdelt" not in block, (
+        "🔴 GDELT 가 병렬 묶음에 다시 들어왔다 — 사용자 지시 2026-10-06 ⑥ 은 "
+        "SearXNG 가 얇을 때만 쓰라고 했다")
+    assert "calls_left" in src, (
+        "🔴 경기당 횟수를 안 본다(사용자 지시 ⑥: 경기당 최대 4회)")
 
 
 def test_합치기가_중복을_지우고_날짜_있는_것을_앞에_둔다():
@@ -839,12 +849,15 @@ def test_합치기가_중복을_지우고_날짜_있는_것을_앞에_둔다():
     dup = S.Hit(title="같은 기사", url="https://x.example/1#frag", snippet="",
                 publisher="x", engine="two", published_at=None)
     chain = S.SearchChain()
-    got, why = asyncio.run(chain._gather(
+    got, why, counts = asyncio.run(chain._gather(
         [("하나", _Ch([a]), None), ("둘", _Ch([b, dup]), None)], "q", "en"))
     # 🔴 중복이 지워졌다(조각만 다른 같은 주소)
     assert [h.url for h in got] == ["https://y.example/2", "https://x.example/1"], \
         [h.url for h in got]
     assert any("하나:1건" in x for x in why) and any("둘:2건" in x for x in why)
+    # 🔴 **통로별 건수**(사용자 지시 2026-10-06 ⑥ 이 그 수로 GDELT 를 가른다)
+    #    ⚠️ 중복을 지우기 **전**의 수다 — 그 통로가 무엇을 줬나가 판단 기준이다
+    assert counts == {"하나": 1, "둘": 2}, counts
 
 
 def test_한_통로가_터져도_나머지가_돈다():
@@ -863,7 +876,8 @@ def test_한_통로가_터져도_나머지가_돈다():
                           publisher="ok", engine="ok", published_at=None)]
 
     chain = S.SearchChain()
-    got, why = asyncio.run(chain._gather(
+    got, why, counts = asyncio.run(chain._gather(
         [("터짐", _Boom(), None), ("정상", _Ok(), None)], "q", "en"))
     assert len(got) == 1 and got[0].url == "https://ok.example/1"
     assert any("터짐:" in x for x in why), why
+    assert counts == {"터짐": 0, "정상": 1}, counts

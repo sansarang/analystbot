@@ -463,7 +463,27 @@ def write_ledger(row: dict, *, now: datetime | None = None,
 
 
 class SolarUnavailable(RuntimeError):
-    """🔴 §2 — 타임아웃·재시도 소진·키 없음. 사유는 `llm_unavailable`."""
+    """🔴 §2 — 타임아웃·재시도 소진·키 없음. 사유는 `llm_unavailable`.
+
+    🔴 `status` 는 **마지막 HTTP 상태 코드**다(없으면 `None` — 전송 자체가
+       안 된 것). ⚠️ 그 수가 없으면 429 와 500 과 타임아웃이 한 글자가 된다.
+    """
+
+    def __init__(self, said: str, *, status: int | None = None) -> None:
+        super().__init__(said)
+        self.status = status
+
+
+class SolarBudgetCut(SolarUnavailable):
+    """🔴🔴 **예산이 막았다 — LLM 은 멀쩡하다**(사용자 지시 2026-10-06 ④).
+
+    ⚠️ 실측 2026-10-06(북아일랜드–조지아): 깔때기가 `llm_unavailable 14` 를
+       적었는데 **로그의 실제 전송 실패는 1건**(`RemoteDisconnected`)이었다.
+       🔴 `chat` 이 `budget.can_call()` 거부도 `SolarUnavailable` 로 던져
+       호출부가 전부 `llm_unavailable` 로 센 것이다 — §8-6 이 금지한 **거짓
+       사유**이고, CLAUDE.md #11(장애로 끊긴 실행은 재실행)을 **잘못 발동**시킨다.
+    🔴 하위 클래스로 둔다 — 종전 `except SolarUnavailable` 자리가 그대로 돈다.
+    """
 
 
 def chat(messages: list[dict], *, tools: list | None = None,
@@ -482,11 +502,12 @@ def chat(messages: list[dict], *, tools: list | None = None,
         raise SolarUnavailable(f"{LLM_UNAVAILABLE}: UPSTAGE_API_KEY 가 없다")
     ok, why = gate(now=now)
     if not ok:
-        raise SolarUnavailable(why)
+        # 🔴 하루·월 상한도 **예산**이다 — LLM 장애가 아니다
+        raise SolarBudgetCut(why)
     if budget is not None:
         ok, why = budget.can_call()
         if not ok:
-            raise SolarUnavailable(why)
+            raise SolarBudgetCut(why)
 
     c = cfg()
     m = dict(c.get("model") or {})
@@ -533,11 +554,78 @@ def chat(messages: list[dict], *, tools: list | None = None,
     return got
 
 
+#: 🔴🔴 **상태 코드별 전송 실패 집계** — 사용자 지시 2026-10-06 ④.
+#
+#  > `llm_unavailable` 건은 **HTTP 상태 코드별로 집계**해 보고. 429면 Solar
+#  > 동시 호출을 2로 낮추고 `Retry-After` 를 따르는 재시도.
+#
+#  ⚠️ 한 프로세스 안의 수다 — 원장이 아니다(원장은 성공한 호출만 적는다).
+#  🔴 **`None` 은 "응답조차 못 받았다"** 다(타임아웃·DNS·끊김) — `0` 으로
+#     적으면 그것이 상태 코드로 읽힌다(#3).
+HTTP_FAILS: dict[object, int] = {}
+
+#: 🔴 429 를 **한 번이라도** 받았나 — 받으면 동시 호출을 낮춘다(§2 M66).
+SAW_429 = False
+
+
+def http_fail_line() -> str:
+    """🔴 카드·보고에 적는 한 줄 — **상태 코드별**로(#3 조용한 0 금지)."""
+    if not HTTP_FAILS:
+        return "전송 실패 0건"
+    said = " · ".join(
+        f"{'응답없음' if k is None else k} {n}건"
+        for k, n in sorted(HTTP_FAILS.items(),
+                           key=lambda kv: -kv[1]))
+    return f"전송 실패 {sum(HTTP_FAILS.values())}건 — {said}"
+
+
+def solar_concurrency() -> int:
+    """🔴 Solar 동시 호출 수. ⚠️ **429 를 본 뒤에는 낮춘 수**다(§2 M66).
+
+    🔴 두 수 다 `config/llm.yaml` 의 `concurrency` 가 든다 — 코드에 안 박는다.
+    """
+    box = dict((budget_cfg().get("concurrency") or {}))
+    key = "solar_after_429" if SAW_429 else "solar"
+    return int(box.get(key) or box.get("solar") or 1)
+
+
+def _retry_after(exc, default: float) -> float:
+    """🔴 429 의 `Retry-After` 를 **따른다**(사용자 지시 2026-10-06 ④).
+
+    ⚠️ 그 머리글은 **초**이거나 **HTTP 날짜**다. 🔴 못 읽으면 지수 대기로
+       떨어진다 — 지어내지 않는다.
+    """
+    said = ""
+    head = getattr(exc, "headers", None)
+    if head is not None:
+        try:
+            said = str(head.get("Retry-After") or "")
+        except Exception:                                   # noqa: BLE001
+            said = ""
+    if said.strip().isdigit():
+        # ⚠️ 서버가 큰 수를 주면 그대로 자지 않는다 — 상한을 둔다
+        return min(float(said.strip()), 60.0)
+    if said.strip():
+        from email.utils import parsedate_to_datetime
+        try:
+            when = parsedate_to_datetime(said.strip())
+            left = (when - datetime.now(timezone.utc)).total_seconds()
+            return min(max(left, 0.0), 60.0)
+        except Exception:                                   # noqa: BLE001
+            pass
+    return default
+
+
 def _post(base_url: str, key: str, body: dict, timeout: int,
           retries: int) -> dict:
-    """🔴 §2 — 타임아웃 120초 · 재시도 2회(지수 대기). 그래도 실패면 사유."""
+    """🔴 §2 — 타임아웃 120초 · 재시도 2회(지수 대기). 그래도 실패면 사유.
+
+    🔴 **상태 코드를 남긴다**(사용자 지시 2026-10-06 ④) — 429 와 500 과
+       타임아웃은 **고칠 곳이 다르다**(속도 / 서버 / 망).
+    """
+    global SAW_429
     url = base_url.rstrip("/") + "/chat/completions"
-    last = ""
+    last, status = "", None
     for i in range(max(retries, 0) + 1):
         try:
             req = urllib.request.Request(
@@ -547,11 +635,25 @@ def _post(base_url: str, key: str, body: dict, timeout: int,
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return json.loads(r.read().decode("utf-8", "replace"))
         except Exception as exc:                            # noqa: BLE001
+            status = getattr(exc, "code", None)
             last = f"{type(exc).__name__}: {exc}"
-            logger.info("[solar] 호출 실패 %d/%d — %s", i + 1, retries + 1, last)
+            HTTP_FAILS[status] = HTTP_FAILS.get(status, 0) + 1
+            wait = float(2 ** i)
+            if status == 429:
+                # 🔴🔴 **동시 호출을 낮춘다**(§2 M66) — 이 프로세스 전체에
+                #    적용된다. ⚠️ 되돌리지 않는다: 한 번 막힌 속도는 같은
+                #    실행에서 다시 안전해지지 않는다.
+                SAW_429 = True
+                wait = _retry_after(exc, wait)
+                logger.info("[solar] 429 — 동시 호출을 %d 로 낮춘다 · "
+                            "Retry-After 를 따라 %.1f초 쉰다",
+                            solar_concurrency(), wait)
+            logger.info("[solar] 호출 실패 %d/%d (상태 %s) — %s",
+                        i + 1, retries + 1,
+                        "응답없음" if status is None else status, last)
             if i < retries:
-                time.sleep(2 ** i)
-    raise SolarUnavailable(f"{LLM_UNAVAILABLE}: {last}")
+                time.sleep(wait)
+    raise SolarUnavailable(f"{LLM_UNAVAILABLE}: {last}", status=status)
 
 
 #: 🔴 §2 — 보내지 않는 것. ⚠️ 절대규칙 6(배당 접근 0건)과 같은 결이다.

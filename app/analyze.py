@@ -370,6 +370,32 @@ def _run_hypo(card, game, items, st, sc):
             sc.notes.append(
                 f"⚠️ `{h.team}` 가설 {raw - len(wins) - len(breaks)}개가 "
                 f"**문장이 아니라 번호**였다 — 버렸다(지시 ②)")
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **근거가 0건이면 "이긴다면" 을 적지 않는다** — 사용자 지시 ⑦
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 한 팀 근거가 0건이면 **"이긴다면" 문장 대신** "근거 변수 없음 —
+        #  > 반대 팀 가설이 무너지는 조건만" 경로로 쓴다.
+        #
+        #  ⚠️ 실측 2026-10-06(북아일랜드–조지아) 카드:
+        #       `Georgia: 근거 0건 · 깨는 변수 4건`
+        #       `  이긴다면: 최근 5경기에 승리를 포함해 … 흐름이 있다(R4).`
+        #     🔴 R4 는 **홈 쪽** 변수다. 근거가 0건인데 세 문장이 섰다 — 그
+        #     문장들은 **받치는 변수가 없는 말**이고, 그것이 §1 이 금지한
+        #     *"변수 없는 주장"* 이다.
+        if not h.supports:
+            h.win_why, h.break_why = [], breaks[:4]
+            h.claim = ""
+            h.claim_by = ("근거 변수 없음 — 반대 팀 가설이 무너지는 조건만"
+                          + (f"(표본 부족으로 뺀 것 {len(h.thin_dropped)}개)"
+                             if h.thin_dropped else ""))
+            if wins:
+                # 🔴 **버린 사실을 적는다**(#3) — 모델은 문장을 냈고 우리가 뺐다
+                sc.notes.append(
+                    f"§7 `{h.team}` — 근거 변수가 **0개**라 DeepSeek 의 "
+                    f"*이긴다면* {len(wins)}문장을 **쓰지 않았다**"
+                    f"(사용자 지시 2026-10-06 ⑦)")
+            continue
         h.win_why, h.break_why = wins[:4], breaks[:4]
         if h.win_why or h.break_why:
             h.claim = h.win_why[0] if h.win_why else ""
@@ -579,6 +605,18 @@ async def gather(game: dict, *, net: Net | None = None,
     #  > 검색했는데 후보 0 이면 `empty`, 실패했으면 `not_tried` + 사유.
     #  🔴 `found` 배선이 이번 재구축에서 완성됐다 — 종전엔 `searched` 만 섰다.
     book = _ledgerbook.Book()
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **GDELT 경기당 횟수를 0 으로** — 사용자 지시 2026-10-06 ⑥
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > GDELT: **경기당 최대 4회**, SearXNG 가 5건 이상 준 하위에서는 생략.
+    #
+    #  ⚠️ `GdeltSearch._state` 는 **과정 전체** 칸이다(간격·벌점을 지키려고
+    #     그렇게 뒀다). 🔴 그래서 *"경기당"* 을 세려면 경기 경계를 **누군가
+    #     말해 줘야** 한다 — 그 자리가 여기다(한 경기의 입구).
+    #  ⚠️ 벌점(`rest_until`)은 **안 건드린다** — 그것은 GDELT 가 준 것이다.
+    from app.search import GdeltSearch as _Gdelt
+    _Gdelt.reset_match()
     for side in ("home", "away"):
         team, other = game[side], game["away" if side == "home" else "home"]
         # ══════════════════════════════════════════════════════════════
@@ -994,6 +1032,19 @@ async def gather(game: dict, *, net: Net | None = None,
     states[_FUNNEL_KEY] = fun
     # 🔴 **장부를 카드로 넘긴다**(#3) — 어느 유형군이 비었나가 보여야 한다
     states["장부"] = book.line() if hasattr(book, "line") else str(book.cells)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **전송 실패를 상태 코드별로 적는다** — 사용자 지시 2026-10-06 ④
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > `llm_unavailable` 건은 **HTTP 상태 코드별로 집계**해 보고.
+    #
+    #  ⚠️ 실측 2026-10-06: 깔때기가 `llm_unavailable 14` 를 적었는데 실제 전송
+    #     실패는 **1건**이었다(나머지는 예산). 🔴 이 줄이 그 둘을 가른다 —
+    #     429(속도)·5xx(서버)·응답없음(망)은 **고칠 곳이 다르다.**
+    from app import solar as _solar
+    states["전송"] = (_solar.http_fail_line()
+                    + f" · Solar 동시 호출 {_solar.solar_concurrency()}"
+                    + (" 🔴 **429 를 받아 낮췄다**" if _solar.SAW_429 else ""))
     return facts, states
 
 
@@ -2112,6 +2163,13 @@ def render(card: Card) -> str:
         #     *"이긴다면 왜"* 를 읽을 수가 없었다.
         #  🔴 문장은 **DeepSeek 가 쓴다**(v5-A §3) — 코드가 지어내지 않는다.
         #     비면 그 사실이 보인다(번호만 남는다).
+        # 🔴🔴 **근거가 0건이면 그 사실을 적는다** — 사용자 지시 2026-10-06 ⑦
+        if not h.supports:
+            out.append(f"      🔴 **근거 변수 없음** — 반대 팀 가설이 무너지는 "
+                       f"조건만 쓴다(사용자 규칙 2026-10-06)")
+            for c in (getattr(h, "thin_dropped", []) or [])[:3]:
+                out.append(f"        · 표본 부족으로 뺀 근거: "
+                           f"{_clip(str(c.thin_sample or c.type), 110)}")
         for word, rows in (("이긴다면", getattr(h, "win_why", []) or []),
                            ("무너지면", getattr(h, "break_why", []) or [])):
             for line in rows[:3]:

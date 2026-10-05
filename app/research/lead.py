@@ -35,7 +35,18 @@ def limits() -> dict[str, int]:
     box = dict(solar.budget_cfg().get("concurrency") or {})
     if not box:
         raise KeyError("🔴 `budget.concurrency` 가 `config/llm.yaml` 에 없다")
-    return {str(k): int(v) for k, v in box.items()}
+    out = {str(k): int(v) for k, v in box.items()}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **429 를 받았으면 Solar 동시 호출을 낮춘다** — 사용자 지시 2026-10-06 ④
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 429면 Solar 동시 호출을 **2로 낮추고** `Retry-After` 를 따르는 재시도.
+    #
+    #  ⚠️ `solar_after_429` 가 설정에 **이미 있었는데 아무도 읽지 않았다**
+    #     (#2 배선 — 안 이어진 코드는 없는 코드보다 나쁘다).
+    #  🔴 낮춘 수는 `solar.solar_concurrency()` **한 곳**이 정한다(사본 금지).
+    out["solar"] = solar.solar_concurrency()
+    return out
 
 
 def gate(name: str) -> asyncio.Semaphore:

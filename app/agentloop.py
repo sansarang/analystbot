@@ -1127,6 +1127,23 @@ def _calls_of(msg: dict) -> list:
     return out
 
 
+def _why_of(exc) -> Reason:
+    """🔴🔴 **예산이 막은 것을 `llm_unavailable` 로 세지 않는다**(사용자 지시 ④).
+
+    ⚠️ 실측 2026-10-06(북아일랜드–조지아): 깔때기가 `llm_unavailable 14` 를
+       적었는데 로그의 실제 전송 실패는 **1건**(`RemoteDisconnected`)이었다.
+       나머지는 전부 `budget_cut`(하위 출력 상한)이 `SolarUnavailable` 로
+       올라온 것이다 — §8-6 이 금지한 **거짓 사유**다.
+    🔴 그리고 그 거짓은 **일을 더 만든다**: CLAUDE.md #11 이 *"`llm_unavailable`
+       로 끊긴 실행은 오염된 것이므로 다시 돌린다"* 라고 적었다. 예산에 막힌
+       정상 종료를 그렇게 읽으면 **쓸데없이 재실행한다.**
+    """
+    from app import solar
+    if isinstance(exc, solar.SolarBudgetCut):
+        return Reason.BUDGET_CUT
+    return Reason.LLM_UNAVAILABLE
+
+
 def merge_bodies(ctx, tools) -> int:
     """🔴🔴 **에이전트가 연 본문을 검증층에 합친다.** 돌려주는 것은 합친 수.
 
@@ -1244,7 +1261,7 @@ def run(inp: AgentInput, ctx, *, funnel=None, net=None, seen=None,
                              match=inp.match_key, _net=net)
         except solar.SolarUnavailable as exc:
             if funnel is not None:
-                funnel.drop(Reason.LLM_UNAVAILABLE, "agent_vars")
+                funnel.drop(_why_of(exc), "agent_vars")
             return [], f"{exc} · 밟은 턴 {turn}"
         msg = _msg_of(got)
         calls = _calls_of(msg)
@@ -1333,7 +1350,7 @@ def run(inp: AgentInput, ctx, *, funnel=None, net=None, seen=None,
                              match=inp.match_key, _net=net)
         except solar.SolarUnavailable as exc:
             if funnel is not None:
-                funnel.drop(Reason.LLM_UNAVAILABLE, "agent_vars")
+                funnel.drop(_why_of(exc), "agent_vars")
             return [], f"{exc} · {stop}"
         draft = str(_msg_of(got).get("content") or "")
     if not cands:

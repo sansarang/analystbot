@@ -419,6 +419,20 @@ GDELT_COOLDOWN_SEC = 900.0
 #: 🔴 며칠을 보나. ⚠️ §12-c-1 신선도가 그 뒤를 다시 거른다 — 여기는 **색인 창**이다.
 GDELT_TIMESPAN = "7d"
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **GDELT 를 아껴 쓴다** — 사용자 지시 2026-10-06 ⑥
+# ══════════════════════════════════════════════════════════════════
+#
+# > GDELT: **경기당 최대 4회**, SearXNG 가 결과를 **5건 이상** 준 하위에서는
+# > **생략**.
+#
+# ⚠️ 실측 2026-10-06(북아일랜드–조지아): GDELT 가 매 질의마다 병렬로 돌아
+#    `호출 상한에 걸려 876초 더 쉰다` 로 들어갔다 — 그 뒤 하위들은 그 통로를
+#    아예 못 썼다. 🔴 **먼저 쓴 하위가 나중 하위의 통로를 태운** 꼴이다.
+# 🔴 그래서 **값이 있을 때만** 쓴다: SearXNG 가 빈손일 때.
+GDELT_MAX_PER_MATCH = 4
+GDELT_SKIP_IF_HITS = 5
+
 
 @dataclass
 class GdeltSearch:
@@ -442,7 +456,23 @@ class GdeltSearch:
     #       `GDELT → 2건` → `429 — 900초 쉰다` → `724초 더 쉰다`
     #  🔴 호스트 하나에 대한 예의는 **인스턴스가 아니라 과정**의 것이다 —
     #     그래서 클래스 칸에 둔다. ⚠️ 우회가 아니라 **더 세게 지키는** 것이다.
-    _state: ClassVar[dict[str, float]] = {"last": 0.0, "rest_until": 0.0}
+    #: 🔴 `calls` 는 **이 경기에서** 던진 횟수다(`reset_match` 가 0 으로 돌린다)
+    _state: ClassVar[dict[str, float]] = {"last": 0.0, "rest_until": 0.0,
+                                          "calls": 0.0}
+
+    @classmethod
+    def reset_match(cls) -> None:
+        """🔴🔴 **경기 하나의 경계** — 사용자 지시 2026-10-06 ⑥(경기당 최대 4회).
+
+        ⚠️ `last`·`rest_until` 은 **안 건드린다** — 그것은 GDELT 가 우리에게 준
+           벌점이고 경기가 바뀌어도 유효하다(§14-12: 우회하지 않는다).
+        """
+        cls._state["calls"] = 0.0
+
+    @classmethod
+    def calls_left(cls) -> int:
+        """🔴 이 경기에서 **몇 번 더** 던질 수 있나."""
+        return max(0, GDELT_MAX_PER_MATCH - int(cls._state.get("calls") or 0))
 
     def _mark_called(self, when: float) -> None:
         """🔴 마지막 호출 시각을 **과정 전체에** 적는다."""
@@ -478,6 +508,12 @@ class GdeltSearch:
                 raise SearchUnavailable(str(exc)) from exc
             self.alive = True
             return self._hits(data, q)
+        # 🔴🔴 **경기당 상한**(사용자 지시 2026-10-06 ⑥) — 벌점보다 먼저 본다.
+        #    ⚠️ 이것은 우리가 스스로 건 것이고, 사유를 이름으로 올린다(#3).
+        if self.calls_left() <= 0:
+            raise SearchUnavailable(
+                f"GDELT: **경기당 {GDELT_MAX_PER_MATCH}회**를 다 썼다 — "
+                f"다음 수단으로 간다(사용자 지시 2026-10-06 ⑥)")
         # 🔴 **벌점 중이면 아예 안 던진다** — 두드려도 안 열리고 예의도 아니다
         left = self._rest_left()
         if left > 0:
@@ -488,6 +524,9 @@ class GdeltSearch:
         if wait > 0:
             await asyncio.sleep(wait)
         self._mark_called(time.time())
+        # 🔴 **던지기로 정한 순간** 센다 — 실패해도 통신은 일어났다
+        GdeltSearch._state["calls"] = float(
+            int(GdeltSearch._state.get("calls") or 0) + 1)
         try:
             async with httpx.AsyncClient(timeout=self.timeout,
                                          headers={"User-Agent": UA}) as cli:
@@ -717,12 +756,39 @@ class SearchChain:
         #  🔴 **합치기는 주소로 중복을 지운다** — 같은 기사가 두 통로에서 와도 하나다.
         #  ⚠️ 우회가 아니다 — 막힌 곳을 다른 길로 뚫는 것이 아니라, **열려 있는 길
         #     셋을 함께 쓰는 것**이다(§19-b-4 의 "대체"를 동시에 하는 꼴).
-        free = [("SearXNG", self.searx, engines), ("GDELT", self.gdelt, None),
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **GDELT 는 병렬 묶음에서 빠졌다** — 사용자 지시 2026-10-06 ⑥
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > GDELT: 경기당 최대 4회, SearXNG 가 결과를 **5건 이상** 준 하위에서는
+        #  > **생략**.
+        #
+        #  ⚠️ 실측 2026-10-06: 매 질의마다 함께 쳐서 세 번째 하위쯤에
+        #     `호출 상한에 걸려 876초 더 쉰다` 로 들어갔다 — 🔴 **먼저 쓴 하위가
+        #     나중 하위의 통로를 태웠다.**
+        #  🔴 이제 SearXNG·Bing 을 먼저 병렬로 치고, **얇을 때만** GDELT 다.
+        free = [("SearXNG", self.searx, engines),
                 ("Bing뉴스", self.bing, None)]
         jobs = [(name, ch, eng) for name, ch, eng in free if ch]
+        searx_hits = 0
         if len(jobs) > 1:
-            got, why = await self._gather(jobs, text, lang)
+            got, why, counts = await self._gather(jobs, text, lang)
             self.tried += why
+            searx_hits = int(counts.get("SearXNG") or 0)
+            # 🔴 **얇으면 GDELT 로 보탠다** — 두텁면 거기서 끝이다
+            if got and searx_hits >= GDELT_SKIP_IF_HITS:
+                return got
+            if self.gdelt and self.gdelt.calls_left() > 0:
+                try:
+                    more = await self.gdelt.query(text, lang=lang)
+                    self.tried.append(f"GDELT:{len(more)}건(보탬)")
+                    seen = {h.url for h in got}
+                    got = list(got) + [h for h in more if h.url not in seen]
+                except SearchUnavailable as exc:
+                    self.tried.append(f"GDELT:{exc}")
+            elif self.gdelt:
+                self.tried.append(
+                    f"GDELT:경기당 {GDELT_MAX_PER_MATCH}회를 다 썼다 — 안 던졌다")
             if got:
                 return got
         if self.searx:
@@ -783,8 +849,12 @@ class SearchChain:
         raise SearchUnavailable(" · ".join(self.tried) or "검색 수단 없음")
 
     async def _gather(self, jobs: list, text: str,
-                      lang: str) -> tuple[list[Hit], list[str]]:
-        """🔴 통로 여럿을 **함께** 치고 합친다. `(결과, 사유들)`.
+                      lang: str) -> tuple[list[Hit], list[str], dict[str, int]]:
+        """🔴 통로 여럿을 **함께** 치고 합친다. `(결과, 사유들, 통로별 건수)`.
+
+        🔴 **통로별 건수를 함께** 돌려준다 — 사용자 지시 2026-10-06 ⑥ 이
+           *"SearXNG 가 5건 이상 준 하위에서는 GDELT 생략"* 을 요구하고, 그
+           판단에는 **합계가 아니라 그 통로의 수**가 필요하다.
 
         🔴 **주소로 중복을 지운다** — 같은 기사가 두 통로에서 와도 하나다.
         ⚠️ 순서는 **통로 순서**를 지킨다(앞 통로의 결과가 앞이다) — 열기 예산이
@@ -852,7 +922,12 @@ class SearchChain:
             dated = sum(1 for h in out if getattr(h, "published_at", None))
             logger.info("[search] 병렬 합계 %d건(날짜 있는 것 %d건) (%s)",
                         len(out), dated, " · ".join(why))
-        return out, why
+        # 🔴 **통로별 건수** — 이름이 `SearXNG(지정 없이 다시)` 인 것도 SearXNG 다
+        counts: dict[str, int] = {}
+        for name, hits, _r in done:
+            base = str(name).split("(")[0]
+            counts[base] = counts.get(base, 0) + len(hits)
+        return out, why, counts
 
 
 # ══════════════════════════════════════════════════════════════════
