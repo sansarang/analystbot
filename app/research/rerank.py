@@ -13,7 +13,10 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -39,22 +42,30 @@ LADDER: tuple[dict, ...] = (
 _MODEL: Any = None
 _WHY: str = ""
 
-#: 🔴🔴 **싱글턴 락** — 실사고 2026-10-05 (인도네시아–태국): 봇이 **죽었다.**
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **MPS 는 한 스레드가 소유한다** — 사용자 지시 2026-10-05
+# ══════════════════════════════════════════════════════════════════
 #
-#  하위 4개가 `asyncio.to_thread` 안에서 **동시에** `model()` 을 불러
-#  `_MODEL is None` 을 넷이 함께 봤고, 수 GB 모델이 **네 번** mps 에 올라가
-#  프로세스가 끝났다(`resource_tracker: There appear to be …`).
+#  > 락 추가로 **땜질하지 않는다.** PyTorch 이슈 #197805: MPS 는 2개 이상
+#  > 스레드가 동시 연산하면 **SIGSEGV/SIGABRT** 로 죽는다.
+#  > 모듈 전역 `ThreadPoolExecutor(max_workers=1, thread_name_prefix="rerank")`
+#  > 를 두고 **모델 로드·추론을 전부 그 안에서만** 한다.
 #
-#  ⚠️ `asyncio.Lock` 이 아니라 `threading.Lock` 이다 — 하위는 **스레드**에서
-#     돈다(`to_thread`). 🔴 LDR 의 속도 제한 모듈도 같은 꼴을 쓴다(메타 락으로
-#     게으른 생성을 감싼다 — 읽고 확증했다).
-_LOCK = threading.Lock()
+#  ⚠️ 실사고 2026-10-05(인도네시아–태국): 락을 넣었더니 로드가 **4→11회로
+#     늘고** 봇이 두 번 죽었다. 🔴 락은 *"같은 스레드"* 를 보장하지 않는다 —
+#     여러 스레드가 번갈아 모델을 쓰는 것을 막지 못한다. **소유**가 필요하다.
+#  🔴 `max_workers=1` 이므로 스레드 이름은 늘 `rerank_0` 이다 — 계약이 그
+#     이름으로 소유를 확인한다.
+RERANK_EXEC = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rerank")
 
-#: 🔴🔴 **추론 락** — 로드 락과 **따로** 둔다.
-#  ⚠️ 로드를 한 번으로 줄여도 하위 8개가 **동시에 mps 추론**을 하면 같은
-#     리소스를 다툰다. 🔴 지시서 §5 가 *"mps 에서 1초 안팎 · 경기 전체 30초
-#     이내"* 라 했으니 **직렬이어도 그 안**이다.
-_RUN = threading.Lock()
+#: 🔴 그 스레드가 들고 있는 모델. ⚠️ **다른 스레드는 읽지도 않는다** —
+#   읽기만 해도 지연 초기화가 섞이면 소유가 깨진다.
+_MODEL: Any = None
+_WHY: str = ""
+#: 🔴 **로드 횟수** — 사용자 지시 2: *"로드 횟수 카운터를 두고 계약: 경기 하나
+#   분석 동안 로드 1회."* ⚠️ 이 수가 1 보다 크면 이중 import 거나 예열 누락이다.
+_LOADS: int = 0
+
 
 #: 🔴 **느리다고 보는 초** — 지시서 §5: *"넘으면 batch 를 늘리지 말고 1단만
 #  유지하고 2단을 BM25 상위 8로 폴백(사유 `rerank_slow`)."*
@@ -71,18 +82,55 @@ def slow_note(secs: float) -> str:
             f"8**로 간다(§5)")
 
 
+def loads() -> int:
+    """🔴 모델을 **몇 번** 올렸나(지시 2)."""
+    return _LOADS
+
+
 def reset() -> None:
-    """🔴 싱글턴을 비운다 — 계약이 로드 횟수를 셀 때 쓴다."""
-    global _MODEL, _WHY
-    _MODEL, _WHY = None, ""
+    """🔴 싱글턴·횟수를 비운다 — 계약이 쓴다."""
+    global _MODEL, _WHY, _LOADS
+    _MODEL, _WHY, _LOADS = None, "", 0
 
 
-def _load_model() -> Any:
-    """🔴 ①단 → ②단 → ③단. **예외를 위로 던지지 않는다**(M62).
+def _load_in_thread(_load=None) -> Any:
+    """🔴🔴 **전용 스레드 안에서** 모델을 올린다 — 여기서만 올린다.
 
-    ⚠️ 모델이 수 GB 다 — 받을 수 없는 기계에서는 ③단으로 가고 **그 사실을
-       이름으로** 남긴다(#3). 🔴 거기서 멈추면 분석이 통째로 죽는다.
+    🔴 첫 줄에 `__name__` 과 `id(sys.modules[__name__])` 를 적는다(지시 2):
+       **두 이름이 나오면 이중 import** 이고, 그것이 로드가 늘어난 원인이다.
+    ⚠️ 예외를 위로 던지지 않는다(M62) — ③단으로 간다.
     """
+    global _MODEL, _WHY, _LOADS
+    _LOADS += 1
+    logger.info("[rerank] 로드 #%d — mod=%s id=%s pid=%s tid=%s(%s)",
+                _LOADS, __name__, id(sys.modules[__name__]), os.getpid(),
+                threading.get_ident(), threading.current_thread().name)
+    try:
+        _MODEL = (_load or _ladder)() or False
+    except Exception as exc:                                # noqa: BLE001
+        _MODEL = False
+        _WHY = (f"🔴 `rerank_unavailable` — 모델 로드가 터졌다"
+                f"({type(exc).__name__}: {str(exc)[:80]})")
+        logger.info("[rerank] %s", _WHY)
+    return _MODEL
+
+
+def _device() -> str:
+    """🔴 `mps` 가능하면 `mps`, 아니면 `cpu`(지시서 §5).
+
+    ⚠️ **전용 스레드 안에서만** 불린다 — MPS 소유가 그 스레드다.
+    """
+    try:
+        import torch
+        if torch.backends.mps.is_available():
+            return "mps"
+    except Exception:                                       # noqa: BLE001
+        pass
+    return "cpu"
+
+
+def _ladder() -> Any:
+    """🔴 사다리 ①→②→③. ⚠️ **전용 스레드 안에서만** 불린다."""
     global _WHY
     for step in LADDER:
         how = str(step["how"])
@@ -97,13 +145,7 @@ def _load_model() -> Any:
                 got = CrossEncoder(str(step["model"]), max_length=512,
                                    device=dev)
                 _WHY = f"✅ {step['name']} ({dev})"
-                # 🔴 **누가 로드했나를 적는다** — 실측 2026-10-05: 락을 넣었는데
-                #    로드가 4→11회로 **늘었다**. 추측하지 않고 잰다(#4):
-                #    같은 프로세스·같은 모듈이면 락이 걸려야 한다.
-                import os as _os
-                import threading as _th
-                logger.info("[rerank] %s · pid=%s tid=%s mod=%s", _WHY,
-                            _os.getpid(), _th.get_ident(), id(globals()))
+                logger.info("[rerank] %s", _WHY)
                 return got
             if how == "flashrank":
                 from flashrank import Ranker
@@ -119,39 +161,39 @@ def _load_model() -> Any:
     return False
 
 
-def _device() -> str:
-    """🔴 `mps` 가능하면 `mps`, 아니면 `cpu`(지시서 §5)."""
-    try:
-        import torch
-        if torch.backends.mps.is_available():
-            return "mps"
-    except Exception:                                       # noqa: BLE001
-        pass
-    return "cpu"
+def warm(_load=None) -> str:
+    """🔴🔴 **시작 시 1회 로드 + 예열**(지시 2) — 봇 진입점이 부른다.
 
+    > 봇 시작에서 **전용 스레드로** 모델 로드 + 더미 쌍 1개 `predict`.
+    > **지연 로드 함수 삭제.**
 
-def model(_load=None) -> Any:
-    """🔴 싱글턴을 돌려준다 — **한 번만** 로드한다(지시서 §5).
-
-    ⚠️ `_load` 는 계약용 주입구다(기계에 모델이 없어도 사다리를 시험한다).
+    ⚠️ 예열까지 하는 까닭: 첫 추론이 가중치를 mps 로 옮긴다 — 그것을 분석
+       중에 하면 그 경기만 느리고, **다른 스레드에서** 하면 소유가 깨진다.
+    🔴 두 번 불러도 **한 번만** 올린다(`loads()` 가 1 이다).
     """
-    global _MODEL, _WHY
-    # 🔴 **빠른 길** — 이미 받았으면 락을 잡지 않는다(하위 8개가 공유한다)
-    if _MODEL is not None:
-        return _MODEL
-    with _LOCK:
-        # 🔴 **락 안에서 다시 본다** — 기다리는 동안 다른 스레드가 받았을 수 있다
-        if _MODEL is not None:
-            return _MODEL
-        try:
-            _MODEL = (_load or _load_model)() or False
-        except Exception as exc:                            # noqa: BLE001
-            # 🔴 **위로 던지지 않는다**(M62) — 분석이 통째로 죽는다
-            _MODEL = False
-            _WHY = (f"🔴 `rerank_unavailable` — 모델 로드가 터졌다"
-                    f"({type(exc).__name__}: {str(exc)[:80]})")
-            logger.info("[rerank] %s", _WHY)
-    return _MODEL
+    def _job() -> str:
+        if _MODEL is None:
+            _load_in_thread(_load)
+        box = _MODEL
+        if box:
+            # 🔴 **더미 쌍 하나**로 예열한다(지시 2)
+            try:
+                _scored_here(box, [("예열", "warm up pair")])
+            except Exception as exc:                        # noqa: BLE001
+                logger.info("[rerank] 예열 실패(무해): %r", str(exc)[:80])
+        return _WHY or "🔴 `rerank_unavailable`"
+
+    return RERANK_EXEC.submit(_job).result()
+
+
+def _call(fn, *args) -> Any:
+    """🔴 **전용 스레드에서** 부른다 — 다른 길은 없다.
+
+    ⚠️ 이미 그 스레드면 바로 부른다(`submit` 하면 자기를 기다려 교착된다).
+    """
+    if threading.current_thread().name.startswith("rerank"):
+        return fn(*args)
+    return RERANK_EXEC.submit(fn, *args).result()
 
 
 def why() -> str:
@@ -162,16 +204,23 @@ def why() -> str:
 def _scored(got: Any, pairs: list) -> list[float] | None:
     """🔴 그 모델로 점수를 낸다. ⚠️ 못 내면 `None` — 호출부가 순서를 둔다.
 
-    🔴 **직렬이다**(`_RUN`) — 한 모델을 여러 스레드가 동시에 쓰면 리소스를
-       다툰다(실사고 2026-10-05: 프로세스가 죽었다).
+    🔴 **전용 스레드에서** 돈다(`_call`) — 락이 아니라 **소유**다.
+       MPS 는 두 스레드가 동시에 연산하면 SIGSEGV 로 죽는다(#197805).
+    """
+    return _call(_scored_here, got, pairs)
+
+
+def _scored_here(got: Any, pairs: list) -> list[float] | None:
+    """🔴 **전용 스레드 안**의 추론 본체. ⚠️ 직접 부르지 않는다(`_scored` 경유).
+
+    느리면 사유를 남긴다(`rerank_slow` · 지시서 §5).
     """
     import time as _t
-    with _RUN:
-        at = _t.monotonic()
-        out = _scored_inner(got, pairs)
-        said = slow_note(_t.monotonic() - at)
+    global _WHY
+    at = _t.monotonic()
+    out = _scored_inner(got, pairs)
+    said = slow_note(_t.monotonic() - at)
     if said:
-        global _WHY
         _WHY = f"{_WHY} · {said}"
         logger.info("[rerank] %s", said)
     return out
@@ -211,9 +260,12 @@ def order(query: str, rows: list, *, _load=None,
     if _force == "none":
         return got, ("🔴 `rerank_unavailable` — 호출부가 ③단을 지정했다"
                      "(순서 그대로)")
-    box = model(_load)
+    # 🔴 **지연 로드를 안 한다**(지시 2) — 시작 시 `warm()` 이 올린다.
+    #    ⚠️ 아직 안 올렸으면 ③단이다(사유가 그것을 말한다).
+    box = _MODEL
     if not box:
-        return got, why() or "🔴 `rerank_unavailable`"
+        return got, why() or ("🔴 `rerank_unavailable` — 아직 예열되지 "
+                              "않았다(`warm()` 을 안 불렀다)")
     pairs = [(str(query or ""),
               " ".join(str(r.get(k) or "") for k in ("title", "snippet",
                                                      "content")).strip())
@@ -281,9 +333,10 @@ def paragraphs(query: str, paras: list, *, _load=None,
                                    n=readtext.PROMPT_PARAS)
     if _force == "none":
         return fall, "🔴 `rerank_unavailable` — ③단 지정(BM25 상위 8로 간다)"
-    box = model(_load)
+    box = _MODEL
     if not box:
-        return fall, why() or "🔴 `rerank_unavailable`"
+        return fall, why() or ("🔴 `rerank_unavailable` — 아직 예열되지 "
+                               "않았다(`warm()` 을 안 불렀다)")
     scores = _scored(box, [(str(query or ""), p) for p in pool])
     if scores is None or len(scores) != len(pool):
         return fall, "🔴 `rerank_unavailable` — 점수를 못 냈다(BM25 상위 8)"

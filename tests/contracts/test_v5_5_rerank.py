@@ -56,23 +56,6 @@ def test_M62_모델이_없어도_순서가_그대로_나온다():
     assert "rerank_unavailable" in why, why
 
 
-def test_M62_로드_실패가_위로_안_던져진다():
-    """🔴 로드가 터져도 `order` 는 **값을 돌려준다**(예외 금지).
-
-    ⚠️ 싱글턴을 **비우고 시작한다** — 앞선 계약이 모델을 채워 두면 주입한
-       `boom` 이 **안 불린다**(순서 오염 · 실측 2026-10-05 전체 스위트).
-    """
-    from app.research import rerank
-    rerank.reset()
-
-    def boom(*_a, **_k):
-        raise RuntimeError("모델을 못 받았다")
-
-    got, why = rerank.order("x", _hits(3), _load=boom)
-    assert len(got) == 3, got
-    assert "rerank_unavailable" in why or "못 받" in why, why
-    rerank.reset()          # 🔴 뒤를 깨끗하게 — 다음 계약이 오염되지 않게
-
 
 def test_M62_재정렬이_fetch_수를_안_늘린다():
     """🔴 *"재정렬은 순서만 바꾼다"* — 받는 건수는 그대로다."""
@@ -124,7 +107,9 @@ def test_M65_동의어_문단이_상위에_든다():
     #    `rerank_unavailable` 이 있으면 건너뛰게 했더니 **R17**(2단 재정렬을
     #    끄는 돌연변이)이 그 길로 빠져나가 초록이 됐다 — skip 이 퇴로가 됐다.
     #    🔴 모델이 **있으면** 반드시 잡아야 한다.
-    have = bool(rerank.model())
+    # 🔴 **예열**이 모델을 올린다(지연 로드는 지웠다 · 지시 2)
+    rerank.warm()
+    have = bool(rerank.loads()) and "rerank_unavailable" not in rerank.why()
     got, why = rerank.paragraphs(box["query"], paras)
     assert len(got) <= 8, f"🔴 상위 8 을 넘겼다: {len(got)}"
     if not have:
@@ -147,105 +132,7 @@ def test_M65_유형군마다_재정렬_질의가_있다():
         "🔴 `A`(결장) 질의에 `feature` 가 없다 — `will not feature` 를 못 잡는다")
 
 
-def test_M65_모델을_한_번만_로드한다():
-    """🔴 **모듈 전역 싱글턴** — 하위 8개가 공유한다(지시서 §5)."""
-    from app.research import rerank
-    src = inspect.getsource(rerank)
-    assert "_MODEL" in src, "🔴 전역 싱글턴 칸이 없다"
-    calls = {"n": 0}
 
-    def count(*_a, **_k):
-        calls["n"] += 1
-        return None            # 🔴 로드 실패로 보고 ③단으로 간다
-
-    rerank.reset()
-    for _ in range(4):
-        rerank.order("x", _hits(2), _load=count)
-    assert calls["n"] == 1, (
-        f"🔴 모델을 {calls['n']}번 로드했다 — 하위 8개가 그만큼 받는다")
-    # 🔴 **뒤를 깨끗하게** — 가짜 로더의 `False` 를 남기면 다음 계약이 오염된다
-    rerank.reset()
-
-
-# ══════════════════════════════════════════════════════════════════
-# 🔴🔴 **동시에 불러도 한 번만 로드한다** — 실측 2026-10-05 (인도네시아–태국)
-# ══════════════════════════════════════════════════════════════════
-#
-#  ⚠️ 실사고: 봇이 **죽었다.** 로그 마지막이 이랬다:
-#
-#    ```
-#    [rerank] ✅ bge-reranker-v2-m3 (mps)      ← 네 번
-#    [rerank] ✅ bge-reranker-v2-m3 (mps)
-#    [rerank] ✅ bge-reranker-v2-m3 (mps)
-#    [rerank] ✅ bge-reranker-v2-m3 (mps)
-#    warnings.warn('resource_tracker: There appear to be %d '
-#    ```
-#
-#  🔴 하위 4개가 `asyncio.to_thread` 안에서 **동시에** `model()` 을 불러
-#     `_MODEL is None` 을 넷이 함께 봤다 — 수 GB 모델이 **네 번** mps 에
-#     올라가 프로세스가 죽었다.
-#  🔴 지시서 §5 는 *"**모듈 전역 싱글턴**으로 **한 번만** 로드한다(하위 8개가
-#     공유)"* 라고 **명시**했다. 종전 계약은 **순차** 호출만 봤다.
-def test_M62_동시에_불러도_한_번만_로드한다():
-    import threading
-
-    from app.research import rerank
-    calls = {"n": 0}
-    started = threading.Event()
-
-    def slow(*_a, **_k):
-        calls["n"] += 1
-        started.set()
-        # 🔴 로드가 **느린 것**이 요점이다 — 그 사이 다른 스레드가 들어온다
-        import time
-        time.sleep(0.15)
-        return False          # 로드 실패로 보고 ③단으로 (모델을 안 받는다)
-
-    rerank.reset()
-    threads = [threading.Thread(target=lambda: rerank.order(
-        "x", _hits(2), _load=slow)) for _ in range(6)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-    assert calls["n"] == 1, (
-        f"🔴 동시 호출에서 모델을 **{calls['n']}번** 로드했다 — 하위 8개가 "
-        f"수 GB 를 그만큼 올리면 프로세스가 죽는다(실측 2026-10-05)")
-    rerank.reset()
-
-
-def test_M62_추론은_직렬이다():
-    """🔴 한 모델을 여러 스레드가 **동시에** 쓰지 않는다.
-
-    ⚠️ 로드를 한 번으로 줄여도 하위 8개가 **동시에 mps 추론**을 하면 같은
-       리소스를 다툰다. 🔴 지시서 §5 는 *"mps 에서 1초 안팎 · 경기 전체 30초
-       이내"* 라 했다 — 직렬이어도 그 안이다.
-    """
-    import threading
-
-    from app.research import rerank
-    peak = {"now": 0, "max": 0}
-
-    class Fake:
-        def predict(self, pairs, batch_size=16):
-            peak["now"] += 1
-            peak["max"] = max(peak["max"], peak["now"])
-            import time
-            time.sleep(0.05)
-            peak["now"] -= 1
-            return [0.0] * len(pairs)
-
-    rerank.reset()
-    threads = [threading.Thread(target=lambda: rerank.order(
-        "x", _hits(3), _load=lambda: Fake())) for _ in range(5)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-    assert peak["max"] == 1, (
-        f"🔴 추론이 동시에 {peak['max']}개 돌았다 — 한 모델을 여러 스레드가 "
-        f"다툰다(실측 2026-10-05: 프로세스가 죽었다)")
-    rerank.reset()
 
 
 def test_M62_느리면_사유를_남긴다():
@@ -257,3 +144,23 @@ def test_M62_느리면_사유를_남긴다():
     said = rerank.slow_note(rerank.SLOW_AT + 1)
     assert "rerank_slow" in said, said
     assert not rerank.slow_note(0.1), "🔴 빠른데 느리다고 한다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **지운 계약 넷 — 승계 번호**(사용자 지시 2026-10-05)
+# ══════════════════════════════════════════════════════════════════
+#
+#  지운 것: `로드_실패가_위로_안_던져진다` · `모델을_한_번만_로드한다` ·
+#  `동시에_불러도_한_번만_로드한다` · `추론은_직렬이다`
+#
+#  **승계 사유**: 넷은 **싱글턴 + 락**을 전제로 썼다. 🔴 사용자 지시가
+#  *"락 추가로 땜질하지 않는다"* 로 그 전제를 걷고 **MPS 단일 스레드 소유**
+#  (전용 `ThreadPoolExecutor`)로 바꿨다 — PyTorch #197805.
+#  🔴 승계는 `tests/contracts/test_v5_5_mps_owner.py` 다:
+#    · `test_mps1_추론이_전용_스레드에서만_돈다`(직렬 → **소유**)
+#    · `test_mps2_로드는_한_번이고_횟수를_센다`(싱글턴 → **예열 1회 + 카운터**)
+#    · `test_mps1_로드도_전용_스레드에서_돈다`(락 → 소유)
+#    · `test_mps2_지연_로드가_없다`(위로 안 던진다 → **지연 로드 자체를 지웠다**)
+#
+#  ⚠️ 실사고가 그 전환을 요구했다: 락을 넣었더니 로드가 **4→11회로 늘고**
+#     봇이 두 번 죽었다. 락은 *"같은 스레드"* 를 보장하지 않는다.

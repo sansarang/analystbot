@@ -7,6 +7,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **MPS 를 흔드는 것을 진입점에서 끈다** — 사용자 지시 2026-10-05
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 환경변수 `TOKENIZERS_PARALLELISM=false` 를 봇 진입점에서 설정.
+#
+#  ⚠️ `tokenizers` 는 스레드를 띄워 토크나이즈를 나눈다. 🔴 재정렬 모델은
+#     **한 스레드가 소유**해야 하고(PyTorch #197805), 그 병렬이 그 전제를
+#     흔든다. ⚠️ **import 보다 먼저** 걸어야 한다 — 그 라이브러리가 import
+#     시점에 이 값을 읽는다.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher
@@ -14,6 +27,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from app import analyze as A
+from app.research import rerank as _rerank
 from app import slate as S
 from app.config import SLATE_DAYS, get_settings
 from app.db import get_pool
@@ -94,6 +108,17 @@ async def cmd_analyze(m: Message) -> None:
        막는 것은 **봇이 스스로 보내는** 카드다.
     """
     s = get_settings()
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **재정렬 모델을 여기서 올린다**(사용자 지시 2026-10-05 · 2번)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 봇 시작(`cmd_analyze` 진입 전 또는 프로세스 기동)에서 **전용 스레드로**
+    #  > 모델 로드 + 더미 쌍 1개 `predict`. **지연 로드 함수 삭제.**
+    #
+    #  ⚠️ 지연 로드를 지웠으므로 **여기서 안 올리면 영원히 ③단**이다.
+    #  🔴 두 번째 호출부터는 바로 돌아온다(`loads()` 가 1 이다).
+    _warm = _rerank.warm()
+    logger.info("[bot] 재정렬 예열 — %s (로드 %d회)", _warm, _rerank.loads())
     words = (m.text or "").split()[1:]
     arg = " ".join(words).strip()
     if not arg:
