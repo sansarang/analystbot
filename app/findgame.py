@@ -285,6 +285,11 @@ async def find_and_store(pool, *, team: str, opponent: str = "",
             r.get("home_score"), r.get("away_score"))
         if gid:
             got.ids.append(int(gid))
+    # 🔴 **중복을 지운다** — 실사고 2026-10-05: 같은 경기를 두 URL
+    #    (`1b-vs-indonesia`·`thailand-vs-indonesia`)로 찾아 `id [117, 117]` 로
+    #    적었다. DB 는 upsert 라 하나인데 **수가 거짓**이었다(#3).
+    #    ⚠️ 순서를 지킨다(`dict.fromkeys`) — 첫 것이 호출부의 기본 선택이다.
+    got.ids[:] = list(dict.fromkeys(got.ids))
     logger.info("[findgame] %d경기를 슬레이트에 적었다 — id %s",
                 len(got.ids), got.ids)
     return got

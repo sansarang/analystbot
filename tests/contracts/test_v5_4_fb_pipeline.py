@@ -606,3 +606,24 @@ def test_원장이_기계에서_떨어져_있다():
         f"🔴 원장 경로가 이 기계의 저장소를 가리킨다({said}) — 계약이 오늘 얼마를 "
         f"썼는지에 따라 색이 바뀐다(`tests/conftest.py` 의 `_unplug_ledger`)")
     assert "Desktop/analystbot/ledger" not in said, said
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 **같은 경기를 두 번 세지 않는다** — 실측 2026-10-05 (인도네시아–태국)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고: `[findgame] 2경기를 슬레이트에 적었다 — id [117, 117]`.
+#     같은 경기를 두 URL(`1b-vs-indonesia`·`thailand-vs-indonesia`)로 찾아
+#     둘 다 올렸다. DB 는 upsert 라 하나지만 **"2경기"가 거짓**이다.
+#  🔴 수를 거짓으로 적으면 깔때기도 거짓이 된다(#3).
+def test_슬레이트가_같은_경기를_두_번_세지_않는다():
+    from app import findgame
+    import inspect
+    src = inspect.getsource(findgame)
+    at = src.find("경기를 슬레이트에 적었다")
+    assert at > 0, "🔴 그 줄을 못 찾았다 — 이 계약을 고쳐라"
+    # 🔴 **중복을 지운 수**를 적어야 한다
+    seg = src[max(0, at - 700):at]
+    assert "dict.fromkeys" in seg or "set(" in seg or "중복" in seg, (
+        "🔴 `ids` 를 그대로 센다 — 같은 경기를 두 URL 로 찾으면 "
+        "`id [117, 117]` 처럼 두 번 센다")
