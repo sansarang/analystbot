@@ -16,6 +16,7 @@ import functools
 import inspect
 import logging
 import time
+from collections.abc import MutableMapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
@@ -372,6 +373,42 @@ class Budget:
 #     없는 URL 은 애초에 줄 것이 없다.
 #  🔴 그리고 §5-1(인용 대조)이 **그 본문으로** 돈다 — 받아 두지 않은 본문에 대고
 #     인용을 검증할 수는 없다(`verifylayer` 의 fail-closed).
+class _Field(MutableMapping):
+    """🔴 `Seen.docs` 의 **한 칸을 가리키는 살아 있는 사전**.
+
+    ⚠️ 사본을 돌려주면 `tools.bodies[url] = …` 이 **임시 사전에** 쓰이고 조용히
+       사라진다. 🔴 그래서 뷰다 — 읽기·쓰기가 전부 원본 한 곳으로 간다.
+    """
+
+    __slots__ = ("_docs", "_key")
+
+    def __init__(self, docs: dict, key: str) -> None:
+        self._docs, self._key = docs, key
+
+    def __getitem__(self, url):
+        box = self._docs[str(url)]
+        got = box.get(self._key)
+        if got in (None, ""):
+            raise KeyError(url)
+        return got
+
+    def __setitem__(self, url, value) -> None:
+        self._docs.setdefault(str(url), {})[self._key] = value
+
+    def __delitem__(self, url) -> None:
+        self._docs.get(str(url), {}).pop(self._key, None)
+
+    def __iter__(self):
+        return (u for u, box in self._docs.items()
+                if box.get(self._key) not in (None, ""))
+
+    def __len__(self) -> int:
+        return sum(1 for _ in iter(self))
+
+    def __repr__(self) -> str:
+        return f"{{{self._key}: {len(self)}건}}"
+
+
 @dataclass
 class Seen:
     """🔴 한 경기에서 **본 것**. ⚠️ 더하기만 한다(빼거나 고치지 않는다)."""
@@ -380,8 +417,55 @@ class Seen:
     urls: list = field(default_factory=list)
     #: `url → (제목, 스니펫, 그 URL 을 낸 검색어)`
     meta: dict = field(default_factory=dict)
-    #: `url → 본문`. ⚠️ **URL 은 봤는데 본문이 없는** 경우가 있다(열기 예산)
-    bodies: dict = field(default_factory=dict)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **받아 둔 문서 — 저장소는 하나다**(사용자 지시 2026-10-06)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 본문 캐시를 `url → {body, published_at, date_source}` 로 바꿔 **Seen
+    #  > 하나**에 담는다. `bodies` 와 `dates` 를 **따로 들고 다니는 경로를
+    #  > 없앤다.**
+    #
+    #  ⚠️ 실측 2026-10-06(북아일랜드–조지아): 본문은 `seen.bodies`(하위 과제를
+    #     가로질러 쌓인다)에서 오고 날짜는 `Tools.dates`(하위마다 새로 생긴다)에서
+    #     왔다. 🔴 그래서 **다른 하위가 받아 둔 본문을 인용한 변수**는 본문·인용은
+    #     통과하고 **날짜만 비어** `date_missing` 으로 죽었다 — 그 경기에서 6건.
+    #     ⚠️ 받은 문서 24건 **전부** 날짜가 있었다(`발행일 — 없다` 0건).
+    #  🔴 한 저장소면 그 병이 **구조적으로 불가능하다.**
+    docs: dict = field(default_factory=dict)
+
+    @property
+    def bodies(self) -> "_Field":
+        """🔴 `url → 본문` — **`docs` 를 가리키는 뷰다**(사본이 아니다)."""
+        return _Field(self.docs, "body")
+
+    @property
+    def dates(self) -> "_Field":
+        """🔴 `url → 발행 시각` — 같은 저장소다. ⚠️ 없는 URL 은 아예 안 보인다."""
+        return _Field(self.docs, "published_at")
+
+    @property
+    def date_sources(self) -> "_Field":
+        """🔴 그 날짜가 **어디서 왔나**(본문·검색·URL) — #3 조용한 0 금지."""
+        return _Field(self.docs, "date_source")
+
+    def add_doc(self, url: object, body: object = "", *,
+                published_at: object = None, date_source: str = "") -> None:
+        """🔴🔴 **받아 둔 문서 한 건** — 본문·발행일·출처를 **같이** 넣는다.
+
+        ⚠️ 셋을 따로 넣는 길을 두면 또 갈린다(그것이 이 결함이었다).
+        🔴 **빈 것은 안 넣는다**(없는 것을 있는 척하지 않는다) — 그리고 **이미
+           있는 값을 덮지 않는다**(먼저 연 쪽이 원본이다).
+        """
+        u = str(url or "").strip()
+        if not u:
+            return
+        box = self.docs.setdefault(u, {})
+        b = str(body or "")
+        if b.strip() and not str(box.get("body") or "").strip():
+            box["body"] = b
+        if published_at is not None and box.get("published_at") in (None, ""):
+            box["published_at"] = published_at
+            box["date_source"] = str(date_source or "")
 
     def add_hit(self, url: object, *, title: str = "", snippet: str = "",
                 query: str = "") -> None:
@@ -396,18 +480,24 @@ class Seen:
                                  "snippet": str(snippet or ""),
                                  "query": str(query or "")})
 
-    def add_body(self, url: object, body: object) -> None:
-        """🔴 받아 둔 본문. ⚠️ **빈 본문은 안 넣는다**(없는 것을 있는 척하지 않는다)."""
-        u = str(url or "").strip()
-        b = str(body or "")
-        if not u or not b.strip():
+    def add_body(self, url: object, body: object, *,
+                 published_at: object = None, date_source: str = "") -> None:
+        """🔴 받아 둔 본문. ⚠️ **빈 본문은 안 넣는다**(없는 것을 있는 척하지 않는다).
+
+        🔴 `add_doc` 의 얇은 겉면이다 — 저장소는 **하나**다(사용자 지시 2026-10-06).
+        """
+        if not str(body or "").strip():
             return
-        self.bodies[u] = b
+        self.add_doc(url, body, published_at=published_at,
+                     date_source=date_source)
 
     def line(self) -> str:
-        """🔴 카드에 적는 한 줄 — **수를 그대로**(#3)."""
+        """🔴 카드에 적는 한 줄 — **수를 그대로**(#3).
+
+        🔴 발행일 **채운 수도 함께** 적는다(§8 합격 기준이 `published_at 80%+`다).
+        """
         return (f"§3-2 — 본 URL {len(self.urls)}개 · 본문 받은 것 "
-                f"{len(self.bodies)}개")
+                f"{len(self.bodies)}개 · 발행일 있는 것 {len(self.dates)}개")
 
 
 @dataclass

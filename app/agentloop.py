@@ -369,16 +369,10 @@ class Tools:
     seen: object = None
     #: 🔴 §4-4 — **검색 결과에 있던 URL 만** `fetch` 가 받는다
     seen_urls: set = field(default_factory=set)
-    bodies: dict = field(default_factory=dict)
     #: 🔴🔴 **검색 스니펫** — ②층(fetch 전 거름)이 날짜를 찾는 글이다
     #   (사용자 지시 2026-10-05). ⚠️ 칸으로 든다 — `getattr` 기본값은 없는 칸을
     #   숨겨 그 층을 **조용히 끈다**(`Card.kickoff` 와 같은 함정).
     snippets: dict = field(default_factory=dict)
-    #: 🔴🔴 **받은 본문의 발행일** — ③층(`htmldate`)이 뽑은 값(지시서 M109).
-    #   ⚠️ 실사고 it5: `_open` 이 그 값을 `_when` 으로 **버려** 검증층이
-    #      `date_missing` 7건을 냈다 — `htmldate` 는 **돌았는데** 결과가
-    #      닿지 않았다(배선 끊김).
-    dates: dict = field(default_factory=dict)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **스스로 찾는 수단** — 결정 ③ (사용자 2026-10-04)
     # ══════════════════════════════════════════════════════════════════
@@ -409,6 +403,24 @@ class Tools:
         if self.querylog is None:
             from app.querygate import QueryLog
             self.querylog = QueryLog()
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **받아 둔 문서의 저장소는 `Seen` 하나다**(사용자 지시 2026-10-06)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 본문 캐시를 `url → {body, published_at, date_source}` 로 바꿔
+        #  > **Seen 하나**에 담는다. `bodies` 와 `dates` 를 따로 들고 다니는
+        #  > 경로를 없앤다.
+        #
+        #  ⚠️ 종전엔 `Tools.bodies`·`Tools.dates` 가 **칸으로** 따로 있었다.
+        #     본문은 `seen.bodies`(하위를 가로질러 쌓인다)에서도 오는데 날짜는
+        #     `Tools.dates`(하위마다 새로 생긴다)에만 쌓였다 — 🔴 그래서 **다른
+        #     하위가 받아 둔 본문을 인용한 변수**는 본문·인용은 통과하고
+        #     **날짜만 비어** `date_missing` 으로 죽었다(실측 2026-10-06: 6건,
+        #     받은 문서 24건 전부 날짜가 있었는데도).
+        #  🔴 `seen` 이 없으면 제 것을 하나 만든다 — **두 길을 두지 않는다.**
+        from app.cells import Seen as _Seen
+        if self.seen is None or not hasattr(self.seen, "docs"):
+            self.seen = _Seen()
 
     def search(self, query: str, lang: str = "en") -> dict:
         """🔴 §4 규칙을 전부 적용한다. ⚠️ 거부면 **사유를 돌려준다.**"""
@@ -780,14 +792,16 @@ class Tools:
             query=self._query_hint())
         body = text or (getattr(got, "text", "") or "")
         if body:
-            self.bodies[url] = body
             # 🔴 **발행일을 들고 있는다**(M109) — ③층이 원본이고 검색 날짜는
             #    보조다. ⚠️ 순위는 `net.pick_published` **한 곳**이 정한다(#1).
             from app import net as _N
             said, why_d = _N.pick_published(
                 when, (self.mine.get(url) or {}).get("published_at") or "")
-            if said:
-                self.dates[url] = said
+            # 🔴🔴 **본문·발행일·출처를 한 번에** 넣는다(사용자 지시 2026-10-06) —
+            #    셋을 따로 넣는 길이 있으면 또 갈린다(그것이 `date_missing` 6건의
+            #    까닭이었다).
+            self.store.add_doc(url, body, published_at=said,
+                               date_source=str(why_d or ""))
             logger.info("[agent] 발행일 — %s (%s) · %s",
                         said or "없다", why_d, url[:60])
             if self.funnel is not None:
@@ -800,6 +814,21 @@ class Tools:
         ⚠️ 없으면 빈 글이고, 그때 ②층은 *"힌트가 없다"* 로 **받는다**.
         """
         return str((self.snippets or {}).get(str(url)) or "")
+
+    @property
+    def store(self):
+        """🔴 받아 둔 문서의 **유일한 저장소**(`cells.Seen`)."""
+        return self.seen
+
+    @property
+    def bodies(self):
+        """🔴 `url → 본문`. **뷰다** — 쓰면 저장소에 들어간다(사본이 아니다)."""
+        return self.seen.bodies
+
+    @property
+    def dates(self):
+        """🔴 `url → 발행 시각`. 같은 저장소다 — 그래서 **하위를 가로질러** 보인다."""
+        return self.seen.dates
 
     def _query_hint(self) -> str:
         """🔴 본문을 고를 때 쓰는 **질의** — 이 경기의 두 팀과 대회다."""
