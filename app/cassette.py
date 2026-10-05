@@ -41,6 +41,28 @@ MODES = (OFF, RECORD, REPLAY)
 MODE_ENV = "CASSETTE_MODE"
 DAY_ENV = "CASSETTE_DAY"
 DIR_ENV = "CASSETTE_DIR"
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **실행 단위 카세트** — 지시서 2026-10-06 §5
+# ══════════════════════════════════════════════════════════════════
+#
+# > 저장 위치 `cassettes/{경기 id}/{실행 id}/`, 요청 해시 → 응답.
+# > 재생 — `--replay {실행 id}`. 요청 해시가 카세트에 있으면 응답을 그대로
+# > 돌려주고, **없으면 기본은 실패**(`replay_miss` 사유와 요청 내용을 출력).
+# > `--replay-fallthrough` 를 줄 때만 없는 요청을 라이브로 보내고 추가한다.
+#
+# 🔴 **왜** — 2026-10-06: 하루 예산 $5 중 **$4.88** 을 수정 확인용 재실행에
+#    썼다(한 번에 $0.34 · 26분). 같은 입력으로 공짜로 확인할 수 있는 수정을
+#    매번 라이브로 확인했다.
+# ⚠️ **종전 날짜 칸을 없애지 않는다** — 둘이 빠지면 녹음해 둔 고정물이 한꺼번에
+#    미스가 되고 그 녹음은 **다시 만들 수 없다**(CLAUDE.md 의 경고).
+#    🔴 `CASSETTE_RUN` 이 **있을 때만** 실행 칸을 쓴다.
+MATCH_ENV = "CASSETTE_MATCH"
+RUN_ENV = "CASSETTE_RUN"
+FALLTHROUGH_ENV = "CASSETTE_FALLTHROUGH"
+
+#: 🔴 사유 **이름**이다(§8-6: 사유를 지어 쓰지 않는다). 로그·예외에 이 글자가 든다.
+REPLAY_MISS = "replay_miss"
 #: 🔴 **측정용 시계.** 검증기가 "지금"으로 삼을 날짜를 **명시적으로** 못 박는다.
 #
 #  왜 필요한가(실측 2026-09-30, 단계 4): §9 는 *"**경기 전 시점** 웹에서 재현"* 을
@@ -129,6 +151,33 @@ def root() -> Path:
     return base if base.is_absolute() else ROOT / base
 
 
+def _slug(raw: object) -> str:
+    """🔴 경기 열쇠를 **폴더 이름으로** — `fotmob:5181806` → `fotmob_5181806`."""
+    said = "".join(c if (c.isalnum() or c in "-_.") else "_"
+                   for c in str(raw or "").strip())
+    return said.strip("_") or "nomatch"
+
+
+def run_id() -> str:
+    """🔴 이 실행의 이름. **비면 실행 칸을 쓰지 않는다**(종전 날짜 칸으로 간다)."""
+    return (os.getenv(RUN_ENV) or "").strip()
+
+
+def match_id() -> str:
+    """🔴 어느 경기의 카세트인가. ⚠️ 비어도 실행 칸은 쓴다(`nomatch`)."""
+    return (os.getenv(MATCH_ENV) or "").strip()
+
+
+def fallthrough() -> bool:
+    """🔴🔴 **없는 요청을 라이브로 보내도 되나** — 기본은 **안 된다**(M134).
+
+    ⚠️ 이 값이 참이어도 `load` 는 그대로 미스를 던진다 — 라이브로 갈 **결정은
+       호출부**가 한다. 🔴 그래야 통로마다 *"재생인데 나갔다"* 를 셀 수 있다.
+    """
+    got = (os.getenv(FALLTHROUGH_ENV) or "").strip().lower()
+    return got not in ("", "0", "false", "no", "off")
+
+
 def key(kind: str, url: str, query: str = "") -> str:
     """🔴 `sha(url+query)` — §9 원문 그대로. `kind` 로 열기와 검색을 가른다.
 
@@ -141,6 +190,16 @@ def key(kind: str, url: str, query: str = "") -> str:
 
 def path(kind: str, url: str, query: str = "", *, when: date | None = None
          ) -> Path:
+    """🔴 그 요청의 파일 자리.
+
+    🔴 `CASSETTE_RUN` 이 있으면 **`{경기}/{실행}/`** 이고, 없으면 종전처럼
+       **`{날짜}/`** 다(지시서 §5 · 사본 금지로 둘을 한 함수에 둔다).
+    ⚠️ 실행 칸에는 날짜를 넣지 않는다 — **실행 id 가 그 시각이다.**
+    """
+    run = run_id()
+    if run:
+        return root() / _slug(match_id()) / _slug(run) / \
+            f"{key(kind, url, query)}.json"
     return root() / str(when or day()) / f"{key(kind, url, query)}.json"
 
 
@@ -217,8 +276,11 @@ def load(kind: str, url: str, query: str = "", *, when: date | None = None
     """저장된 응답. 🔴 없으면 `CassetteMiss` — **네트워크로 가지 않는다.**"""
     p = path(kind, url, query, when=when)
     if not p.is_file():
+        # 🔴 **사유를 이름으로** 적고 **요청 내용을 출력한다**(§5 · #3) —
+        #    무엇이 없는지 모르면 고칠 수 없다.
         raise CassetteMiss(
-            f"카세트 없음 — {_short_path(p)} ({kind} {url} {query[:80]})")
+            f"{REPLAY_MISS}: 카세트 없음 — {_short_path(p)} "
+            f"({kind} {url} {query[:200]})")
     try:
         return json.loads(p.read_text(encoding="utf-8"))
     except ValueError as exc:

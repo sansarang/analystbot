@@ -52,6 +52,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app import cassette
+from app.secrets_mask import mask_secrets
+
 logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -631,15 +634,57 @@ def _retry_after(exc, default: float) -> float:
     return default
 
 
+def _cassette_query(body: dict) -> str:
+    """🔴 LLM 요청의 **열쇠 글자** — 같은 요청이면 같은 글자여야 한다.
+
+    ⚠️ 사전 순서가 흔들리면 같은 요청이 다른 열쇠가 된다 → `sort_keys`.
+    🔴 **비밀을 넣지 않는다** — 요청 본문에 키가 섞여 들어올 자리다.
+    """
+    return mask_secrets(json.dumps(body, ensure_ascii=False, sort_keys=True))
+
+
 def _post(base_url: str, key: str, body: dict, timeout: int,
           retries: int) -> dict:
     """🔴 §2 — 타임아웃 120초 · 재시도 2회(지수 대기). 그래도 실패면 사유.
 
     🔴 **상태 코드를 남긴다**(사용자 지시 2026-10-06 ④) — 429 와 500 과
        타임아웃은 **고칠 곳이 다르다**(속도 / 서버 / 망).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **LLM 도 녹화·재생한다** — 지시서 2026-10-06 §5
+    ══════════════════════════════════════════════════════════════════
+
+    > 녹화 … **Solar·DeepSeek 요청·응답**. 재생 — 요청 해시가 카세트에 있으면
+    > 응답을 그대로 돌려주고, 없으면 기본은 실패(`replay_miss`).
+
+    ⚠️ LLM 을 녹화하지 않으면 재생이 **공짜가 아니다** — 수정 확인 한 번에
+       $0.34 가 그대로 나간다(실측 2026-10-06: 하루 $5 중 $4.88).
     """
-    global SAW_429
     url = base_url.rstrip("/") + "/chat/completions"
+    qs = _cassette_query(body)
+    if cassette.mode() == cassette.REPLAY:
+        try:
+            got = cassette.load("llm", url, qs)
+        except cassette.CassetteMiss as exc:
+            # 🔴 **기본은 실패**다(M134) — `fallthrough` 를 줄 때만 라이브로
+            if not cassette.fallthrough():
+                raise SolarUnavailable(str(exc)) from exc
+            logger.info("[solar] %s — fallthrough 로 라이브로 간다",
+                        cassette.REPLAY_MISS)
+        else:
+            # ⚠️ 저장할 때 붙인 칸(`kind`·`url`·`query`·`recorded_at`)을 걷는다
+            return {k: v for k, v in got.items()
+                    if k not in ("kind", "url", "query", "recorded_at")}
+    got = _post_live(url, key, body, timeout, retries)
+    if cassette.mode() in (cassette.RECORD, cassette.REPLAY):
+        cassette.save("llm", url, qs, dict(got))
+    return got
+
+
+def _post_live(url: str, key: str, body: dict, timeout: int,
+               retries: int) -> dict:
+    """🔴 **실제로 망에 나가는 자리** — 재생이 이 함수를 건너뛴다."""
+    global SAW_429
     last, status = "", None
     for i in range(max(retries, 0) + 1):
         try:

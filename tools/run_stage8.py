@@ -6,11 +6,31 @@ CLAUDE.md #12: *"프로브 금지 … 임시 스크립트가 필요하면 **실�
 
 ```
 PYTHONPATH=. python tools/run_stage8.py "France vs Belgium" [--at 02:35]
+PYTHONPATH=. python tools/run_stage8.py "북아일랜드 vs 조지아" --record r1
+PYTHONPATH=. python tools/run_stage8.py "북아일랜드 vs 조지아" --replay r1
+PYTHONPATH=. python tools/run_stage8.py "북아일랜드 vs 조지아" --replay r1 \
+        --replay-fallthrough
 ```
 
 🔴 `--at HH:MM`(KST)을 주면 **그 시각까지 기다렸다가** 돈다(T-70분 실행용).
 🔴 비용·벽시계를 §8 상한(≤$0.5 · ≤6분)과 대조해 찍는다.
 ⚠️ 발송하지 않는다 — `cmd_analyze` 는 답을 **돌려주는** 경로다(§11-11 과 무관).
+
+══════════════════════════════════════════════════════════════════
+🔴🔴 **녹화·재생** — 지시서 2026-10-06 §5
+══════════════════════════════════════════════════════════════════
+
+> 라이브는 **검수에만**. 그 전 확인은 전부 재생·fallthrough 로.
+
+| 플래그 | 무엇 |
+|---|---|
+| `--record <실행 id>` | 외부 호출을 **전부** 녹화한다(검색·fetch·Solar·DeepSeek) |
+| `--replay <실행 id>` | 망에 **안 간다**. 없는 요청은 `replay_miss` 로 실패 |
+| `--replay-fallthrough` | 없는 요청만 라이브로 보내고 카세트에 **추가** |
+
+🔴 **왜** — 2026-10-06 에 하루 예산 $5 중 **$4.88** 을 수정 확인용 재실행에
+   썼다(한 번에 $0.34 · 26분). 이 문서의 수정 대부분은 같은 입력으로 **공짜로**
+   확인할 수 있다.
 """
 from __future__ import annotations
 
@@ -43,6 +63,23 @@ async def main(argv: list[str]) -> int:
     at = ""
     if "--at" in argv:
         at = argv[argv.index("--at") + 1]
+    # ══════════════════════════════════════════════════════════════
+    # 🔴 **녹화·재생**(지시서 §5) — `app.cassette` 의 환경변수로 켠다.
+    #    ⚠️ 새 통로를 만들지 않는다(사본 금지) — 카세트가 이미 그 칸을 읽는다.
+    # ══════════════════════════════════════════════════════════════
+    from app import cassette
+    import os as _os
+    for flag, mode in (("--record", cassette.RECORD),
+                       ("--replay", cassette.REPLAY)):
+        if flag in argv:
+            run = argv[argv.index(flag) + 1]
+            _os.environ[cassette.MODE_ENV] = mode
+            _os.environ[cassette.RUN_ENV] = run
+            print(f"[run_stage8] 카세트 {mode} · 실행 id `{run}`", flush=True)
+    if "--replay-fallthrough" in argv:
+        _os.environ[cassette.FALLTHROUGH_ENV] = "1"
+        print("[run_stage8] 🔴 fallthrough — 없는 요청만 라이브로 간다",
+              flush=True)
     if at:
         hh, mm = (int(x) for x in at.split(":"))
         now = datetime.now(KST)
@@ -68,6 +105,10 @@ async def main(argv: list[str]) -> int:
           f"게이트 {'열림' if ok else '닫힘: ' + why}", flush=True)
     if not ok:
         return 3
+    # 🔴 **경기 칸** — 입구가 열쇠를 정하기 전이라 질문 글자로 칸을 만든다.
+    #    ⚠️ 같은 질문이면 같은 칸이다(그래서 재생이 맞는다).
+    import os as _os2
+    _os2.environ.setdefault(cassette.MATCH_ENV, arg)
     t0 = time.monotonic()
     msg = _Msg(f"/analyze {arg}")
     await cmd_analyze(msg)                      # 🔴 **실제 핸들러**다

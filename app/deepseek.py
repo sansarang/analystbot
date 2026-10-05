@@ -172,9 +172,36 @@ def _post(base_url: str, key: str, body: dict, timeout: int,
     """🔴 v5-A §2 — 타임아웃 120초 · 재시도 2회(지수 대기).
 
     ⚠️ **OpenAI 호환**이다(`/chat/completions`) — 공식 문서의 `base_url` 그대로.
+
+    🔴🔴 **녹화·재생을 지난다**(지시서 2026-10-06 §5) — Solar 와 **같은 길**이다
+       (`solar._cassette_query` 가 열쇠 글자를 만든다 · 사본 금지).
     """
-    import httpx
+    from app import cassette
+    from app.solar import _cassette_query
     url = base_url.rstrip("/") + "/chat/completions"
+    qs = _cassette_query(body)
+    if cassette.mode() == cassette.REPLAY:
+        try:
+            got = cassette.load("llm", url, qs)
+        except cassette.CassetteMiss as exc:
+            # 🔴 기본은 **실패**다(M134) — `fallthrough` 를 줄 때만 라이브로
+            if not cassette.fallthrough():
+                raise RuntimeError(str(exc)) from exc
+            logger.info("[deepseek] %s — fallthrough 로 라이브로 간다",
+                        cassette.REPLAY_MISS)
+        else:
+            return {k: v for k, v in got.items()
+                    if k not in ("kind", "url", "query", "recorded_at")}
+    got = _post_live(url, key, body, timeout, retries)
+    if cassette.mode() in (cassette.RECORD, cassette.REPLAY):
+        cassette.save("llm", url, qs, dict(got))
+    return got
+
+
+def _post_live(url: str, key: str, body: dict, timeout: int,
+               retries: int) -> dict:
+    """🔴 **실제로 망에 나가는 자리** — 재생이 이 함수를 건너뛴다."""
+    import httpx
     last = ""
     for i in range(int(retries) + 1):
         try:
