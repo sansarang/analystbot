@@ -411,10 +411,39 @@ def test_v5_6_2_카드가_불완전을_생존에_넘긴다():
             f"불완전한 세트에서 등급이 공짜로 선다: {sorted(kw)}")
         found = True
     assert found, "🔴 `survive.run` 호출을 못 찾았다 — 이 계약을 고쳐라"
-    # 🔴 그 값이 `incomplete` 를 **실제로** 담는가
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **그 값이 `incomplete` 를 담는가** — 글자 검사로는 안 잡힌다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전 이 줄은 `"sc.incomplete" in src` 였다. 🔴 돌연변이 M125(사유에서
+    #     `incomplete` 를 빼기)가 **통과했다** — 그 낱말이 `build` 의 다른 자리
+    #     (`if sc.incomplete: fun.drop(…)`)에 남아 있기 때문이다.
+    #  🔴 그래서 **`thin_why` 로 흘러드는 이름을 따라간다**: 그 키워드 값이 어느
+    #     변수에서 오고, 그 변수를 만든 식이 `incomplete` 를 읽는지.
     src = textwrap.dedent(inspect.getsource(analyze.build))
-    assert "sc.incomplete" in src and "thin_why" in src, (
-        "🔴 §6-2 `incomplete` 가 등급 금지 사유로 안 들어간다")
+    tree2 = ast.parse(src)
+    feeds: set[str] = set()
+    for node in ast.walk(tree2):
+        if (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "run"
+                and getattr(node.func.value, "id", "") == "survive"):
+            for k in node.keywords:
+                if k.arg == "thin_why":
+                    feeds |= {n.id for n in ast.walk(k.value)
+                              if isinstance(n, ast.Name)}
+                    feeds |= {ast.unparse(k.value)}
+    said = " ".join(sorted(feeds))
+    if "incomplete" not in said:
+        # 🔴 이름을 거쳐 왔다 — 그 이름을 **만든 식**을 본다
+        srcs = [ast.unparse(n.value) for n in ast.walk(tree2)
+                if isinstance(n, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id in feeds
+                        for t in n.targets)]
+        said += " " + " ".join(srcs)
+    assert "incomplete" in said, (
+        f"🔴 §6-2 `incomplete` 가 **등급 금지 사유로 안 들어간다** — 불완전한 "
+        f"세트에서 생존 1.0 이 공짜로 등급이 된다(§6-7): {said[:200]}")
 
 
 def test_v5_6_2_보강은_무승부를_다시_넣지_못한다():
