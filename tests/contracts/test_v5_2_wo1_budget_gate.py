@@ -21,48 +21,66 @@ from __future__ import annotations
 
 
 # ══════════════════════════════════════════════════════════════════
-# §1-4 예산 — 팀별 25k · 합계 40k
+# §1-4 예산 — **쪽 상한 < 경기 합계** (수는 표가 든다)
 # ══════════════════════════════════════════════════════════════════
+#
+# ⚠️ 종전 이 계약들은 `25_000`·`40_000` 을 **손으로 박아** 뒀다. 🔴 사용자가
+#    상한을 올리자(2026-10-06 ③: 하위 8,000 · 경기당 64,000) 여섯 계약이
+#    한꺼번에 빨개졌다 — 사본의 병이다(#1).
+# 🔴 그래서 **수를 읽고 관계를 센다**: 쪽 몫은 합계보다 작아야 하고, 쪽 둘을
+#    더하면 합계를 넘어야 한다(그래야 "쉬는 쪽의 몫을 쓴다"가 성립한다).
 
-def test_wo1_4_팀별_상한이_25k_다():
-    """🔴 선언이 **설정에** 있어야 한다(코드에 박지 않는다)."""
+def _caps() -> dict:
     from app import rules
-    got = rules.llm_budget()["per_match"]
-    assert int(got["output_tokens"]) == 40_000, got
-    assert int(got["per_side_output_tokens"]) == 25_000, (
-        "🔴 팀별 출력 상한 25k 가 설정에 없다(지시서 §1-4)")
+    return rules.llm_budget()["per_match"]
 
 
-def test_wo1_4_팀별_몫이_25k_다():
+def test_wo1_4_쪽_상한이_선언돼_있다():
+    """🔴 선언이 **설정에** 있어야 한다(코드에 박지 않는다)."""
+    got = _caps()
+    tot, side = int(got["output_tokens"]), int(got["per_side_output_tokens"])
+    assert tot > 0 and side > 0, got
+    # 🔴 쪽은 합계보다 **작다** — 같거나 크면 합계가 벽이 아니다
+    assert side < tot, (side, tot)
+    # 🔴 쪽 둘을 더하면 합계를 **넘는다** — 쉬는 쪽의 몫을 쓸 여유가 그것이다
+    assert side * 2 > tot, (
+        f"🔴 쪽 {side} × 2 ≤ 합계 {tot} — 한 쪽이 쉬어도 그 몫을 못 쓴다"
+        f"(지시서 §1-4 가 막으려는 바로 그 일이다)")
+
+
+def test_wo1_4_쪽_몫을_코드가_쓴다():
     """🔴 `MatchBudget` 이 그 수를 **쓴다** — 선언만 있으면 없는 것이다(#2)."""
     from app import solar
     side = solar.MatchBudget(side=True)
-    assert side.max_out == 25_000, side.max_out
+    assert side.max_out == int(_caps()["per_side_output_tokens"]), side.max_out
 
 
-def test_wo1_4_합계_40k_가_벽이다():
-    """🔴🔴 *"합계 40k 초과 금지"* — 두 쪽이 **같은 지갑**을 함께 본다.
+def test_wo1_4_합계가_벽이다():
+    """🔴🔴 *"합계 초과 금지"* — 두 쪽이 **같은 지갑**을 함께 본다.
 
-    ⚠️ `25k × 2 = 50k` 다. 🔴 한 쪽이 25k 를 다 쓰면 다른 쪽은 **15k** 만
+    ⚠️ 쪽 × 2 > 합계다. 🔴 한 쪽이 제 몫을 다 쓰면 다른 쪽에는 **합계 − 쪽**만
        남아야 한다 — 그러려면 둘이 **경기 합계**를 공유해야 한다.
     """
     from app import solar
+    cap = _caps()
+    tot, per = int(cap["output_tokens"]), int(cap["per_side_output_tokens"])
     pot = solar.MatchPot()
     a = solar.MatchBudget(side=True, pot=pot)
     b = solar.MatchBudget(side=True, pot=pot)
-    # 🔴 a 가 자기 몫(25k)을 다 쓴다
-    a.output_tokens = 25_000
-    pot.output_tokens = 25_000
+    # 🔴 a 가 자기 몫을 다 쓴다
+    a.output_tokens = per
+    pot.output_tokens = per
     assert a.can_call()[0] is False, "🔴 자기 몫을 넘겼는데 계속 쓴다"
-    # ✅ b 는 **아직 쓸 수 있다**(합계 40k 중 15k 남았다)
+    # ✅ b 는 **아직 쓸 수 있다**(합계에서 `tot - per` 가 남았다)
     ok_b, why_b = b.can_call()
-    assert ok_b is True, f"🔴 다른 쪽이 막혔다 — 15k 가 남아 있다: {why_b}"
-    # 🔴 그런데 b 가 15k 를 쓰면 **합계 40k** 에서 멈춘다
-    b.output_tokens = 15_000
-    pot.output_tokens = 40_000
+    assert ok_b is True, (
+        f"🔴 다른 쪽이 막혔다 — {tot - per} 가 남아 있다: {why_b}")
+    # 🔴 그런데 b 가 그 나머지를 쓰면 **합계**에서 멈춘다
+    b.output_tokens = tot - per
+    pot.output_tokens = tot
     ok2, why2 = b.can_call()
     assert ok2 is False and "합계" in why2, (
-        f"🔴 **합계 40k 를 넘겼는데 계속 쓴다** — 지시서 §1-4: {why2}")
+        f"🔴 **합계 {tot} 를 넘겼는데 계속 쓴다** — 지시서 §1-4: {why2}")
 
 
 def test_wo1_4_에이전트가_쪽_예산을_받는다():

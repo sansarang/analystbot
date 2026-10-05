@@ -132,6 +132,14 @@ class MatchBudget:
     tool_calls: dict = field(default_factory=dict)
     usd: float = 0.0
     blocked: str = ""
+    #: 🔴🔴 **막힌 사실을 밖에서 읽는다** — 사용자 지시 2026-10-06 ③.
+    #
+    #  > 한 팀 하위 4개 중 **하나라도 `budget_cut`** 이면 2차 보충 대상.
+    #
+    #  ⚠️ 종전엔 `can_call`·`can_tool` 이 사유를 **돌려주기만** 했다 — 호출부가
+    #     그 자리에서 멈추고 나면 *"이 하위가 예산에 막혔다"* 는 사실이 어디에도
+    #     남지 않았다. 🔴 그래서 2차 보충이 그것을 고를 수 없었다(#3).
+    cut_why: str = ""
     #: 🔴 밟은 자취 — 몇 번 썼고 어디서 멈췄나(#3 조용한 0 금지)
     calls: int = 0
     # ══════════════════════════════════════════════════════════════════
@@ -212,23 +220,34 @@ class MatchBudget:
                     f"{self.pot.input_tokens}/{cap_in} 토큰(지시서 §1-4)")
         return ""
 
+    def _cut(self, why: str) -> tuple[bool, str]:
+        """🔴 거부를 **기록하고** 돌려준다 — 첫 사유를 덮지 않는다(그것이 원인이다)."""
+        if why and not self.cut_why:
+            self.cut_why = why
+        return False, why
+
     def can_call(self) -> tuple[bool, str]:
         """🔴 다음 호출을 해도 되나. `(가능, 사유)`."""
         if self.blocked:
-            return False, self.blocked
+            return self._cut(self.blocked)
         # 🔴 **합계 벽을 먼저** 본다(§1-4) — 쪽 몫이 남아도 경기 합계가 벽이다
         full = self._pot_full()
         if full:
-            return False, full
+            return self._cut(full)
         # 🔴 **내 몫**으로 센다 — 쪽을 나눴으면 그 반이다
         if self.input_tokens >= self.max_in > 0:
-            return False, (f"{BUDGET_CUT}: 경기당 입력 "
-                           f"{self.input_tokens}/{self.max_in} 토큰"
-                           + (f" (몫 {self.share:g})" if self.share != 1 else ""))
+            return self._cut(f"{BUDGET_CUT}: 경기당 입력 "
+                             f"{self.input_tokens}/{self.max_in} 토큰"
+                             + (f" (몫 {self.share:g})" if self.share != 1 else ""))
         if self.output_tokens >= self.max_out > 0:
-            return False, (f"{BUDGET_CUT}: 경기당 출력(추론 포함) "
-                           f"{self.output_tokens}/{self.max_out} 토큰"
-                           + (f" (몫 {self.share:g})" if self.share != 1 else ""))
+            # 🔴 **어느 벽인지 이름으로** 적는다 — 종전엔 하위 상한에 막혀도
+            #    *"경기당 출력"* 이라 적어 고칠 곳을 가렸다(실측 2026-10-06:
+            #    `6744/4000` 의 4000 은 **하위** 상한이다).
+            wall = ("하위" if self.subtask_out > 0
+                    else ("쪽" if self.side else "경기"))
+            return self._cut(f"{BUDGET_CUT}: {wall} 출력(추론 포함) "
+                             f"{self.output_tokens}/{self.max_out} 토큰"
+                             + (f" (몫 {self.share:g})" if self.share != 1 else ""))
         return True, ""
 
     def _sub_cap(self, name: str) -> int:

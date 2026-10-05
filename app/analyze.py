@@ -112,6 +112,24 @@ def _agent_note(game: dict, team: str, other: str, fun, seen=None) -> str:
     return ""
 
 
+def _book_parts(tasks: list, live: list) -> list[dict]:
+    """🔴 장부에 넣을 칸들 — **한 곳**에서 만든다(#1 사본 금지).
+
+    🔴🔴 `budget_cut` 을 **함께 싣는다**(사용자 지시 2026-10-06 ③):
+       > 한 팀 하위 4개 중 **하나라도 `budget_cut`** 이면 2차 보충 대상.
+    ⚠️ 변수를 몇 개 냈어도 막힌 것은 막힌 것이다 — 그 하위는 할 말을 다 못 했다.
+    """
+    out: list[dict] = []
+    for t, (got, _n) in zip(tasks, live, strict=False):
+        out.append({
+            "group": t.group, "team_key": t.team_key,
+            "searched": t.budget.search_used,
+            "variables": got or [], "verified": len(got or []),
+            # 🔴 예산에 막혔나 — `MatchBudget.cut_why` 가 그 사실을 들고 있다
+            "budget_cut": str(getattr(t.budget, "cut_why", "") or "")})
+    return out
+
+
 async def _run_agent(game: dict, side: str, fun, seen,
                      facts: list, kick, langs,
                      chain=None, net=None, pot=None,
@@ -836,6 +854,16 @@ async def gather(game: dict, *, net: Net | None = None,
         #  > 장부에서 `not_tried`·`empty` 인 유형군만 골라, **남은 예산**
         #  > (미사용 search/fetch/토큰) 안에서 해당 하위 과제를 **한 번** 다시
         #  > 돌린다(턴 6). 2차 뒤에도 비면 그대로 `gaps` 로 — **3차는 없다.**
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **1차 결과를 먼저 장부에 쓴다** — 실측 2026-10-06
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 종전엔 `second_round` 가 **장부를 읽은 뒤**에 1차 결과를 썼다.
+        #     🔴 그래서 2차 판정이 **빈 장부**를 보고 늘 네 칸 전부를 골랐다 —
+        #     `found` 배선(§3-2)이 2차에 **아무 영향도 못 줬다.**
+        #     (실측: `2차 보충 4칸 — A/… · B/… · C/… · D/…` — 한 팀 전부)
+        #  🔴 쓰고 나서 읽는다. 그래야 *"찾은 칸은 건너뛴다"* 가 실제로 돈다.
+        _lead.write_book(book, _book_parts(mine, live))
         keys = sorted({t.team_key for t in mine})
         again = _lead.second_round(book, [t.group for t in mine], keys)
         # 🔴 **쏠렸으면 그 도메인을 빼고 현지어로**(§4-2) — 2차 1회 안에서다.
@@ -862,11 +890,7 @@ async def gather(game: dict, *, net: Net | None = None,
                          f"search {left['search']}·출력 {left['out']}) → "
                          f"변수 {len(got2['variables'])}줄"
                          + (f" · 터진 것 {len(bad2)}" if bad2 else ""))
-            _lead.write_book(book, [
-                {"group": t.group, "team_key": t.team_key,
-                 "searched": t.budget.search_used, "variables": g or [],
-                 "verified": len(g or [])}
-                for t, (g, _n) in zip(back, live2, strict=False)])
+            _lead.write_book(book, _book_parts(back, live2))
         elif again:
             notes.append(f"⚠️ 2차 보충을 **못 돌렸다** — 빈 칸 {len(again)}개가 "
                          f"남았는데 예산이 없다(남은 search {left['search']})")
@@ -877,12 +901,8 @@ async def gather(game: dict, *, net: Net | None = None,
         for line in said_rows:
             logger.info("[analyze] 하위 %s", line.strip())
         agent_note = " | ".join(notes)
-        # 🔴 **장부 갱신**(§3-2) — 유형군 × 팀 칸에 `found` 가 선다
-        _lead.write_book(book, [
-            {"group": t.group, "team_key": t.team_key,
-             "searched": t.budget.search_used,
-             "variables": got or [], "verified": len(got or [])}
-            for t, (got, _n) in zip(mine, live, strict=False)])
+        # 🔴 장부는 **위에서 이미 썼다**(2차 판정 전) — 여기서 다시 쓰면 2차가
+        #    적은 `found` 를 1차 값으로 **되돌린다**.
         states.setdefault(f"에이전트:{team}", agent_note)
         if agent_vars:
             states.setdefault(_AGENT_KEY, [])

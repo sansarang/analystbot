@@ -36,7 +36,15 @@ from dataclasses import dataclass, field
 
 #: 🔴 **네 상태.** ⚠️ 순서가 뜻이다 — 뒤로 가지 않는다(찾은 것이 안 찾은 것이
 #   되지 않는다). `not_tried` → `searched` → `empty` → `found`.
-STATES: tuple[str, ...] = ("not_tried", "searched", "empty", "found")
+#  🔴🔴 **`budget_cut` 을 더했다** — 사용자 지시 2026-10-06 ③:
+#     > 한 팀 하위 4개 중 **하나라도 `budget_cut`** 이면 2차 보충 대상.
+#
+#  ⚠️ **사다리의 자리가 뜻이다** — `mark` 는 **앞으로만** 간다. `budget_cut` 을
+#     `not_tried` 바로 위에 둔 까닭: 2차 보충이 돌아 뭔가 찾으면(`found`) 또는
+#     돌았는데 비면(`empty`) 그 **더 나아간 사실이 덮어야** 한다. 🔴 `found`
+#     아래에 두지 않으면 막혔던 칸이 영원히 막힌 것으로 남는다.
+STATES: tuple[str, ...] = ("not_tried", "budget_cut", "searched", "empty",
+                           "found")
 
 #: 🔴 `done` 을 막는 **네 유형** — 사용자가 이름을 댔다(2026-10-05).
 #

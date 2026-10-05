@@ -40,10 +40,11 @@ def test_v5_2_한도가_yaml에_선언돼_있다():
     """🔴 §2 표의 다섯 칸이 전부 있어야 한다 — 하나라도 없으면 그것은 무한이다."""
     b = solar.budget_cfg()
     pm = b.get("per_match") or {}
-    # 🔴 **사용자 결정 ② 2026-10-04** — 입력 300k · 출력 40k 로 올렸다.
-    #    ⚠️ 종전 수는 150k/20k 였다. 돈 상한($3/$40)은 **그대로다**(아래).
+    # 🔴 **사용자 결정 ② 2026-10-04** — 입력 300k 로 올렸다.
+    #    ⚠️ 출력은 **수를 박지 않는다**: 2026-10-06 ③ 에서 40k → 64k 가 됐다.
+    #       🔴 계약이 보는 것은 *"칸이 있고 종전(20k)보다 크다"* 다.
     assert pm.get("input_tokens") == 300_000, pm
-    assert pm.get("output_tokens") == 40_000, pm
+    assert int(pm.get("output_tokens") or 0) > 20_000, pm
     assert (pm.get("tool_calls") or {}).get("search") == 24, pm
     assert (pm.get("tool_calls") or {}).get("fetch") == 16, pm
     # ⚠️ 수를 박지 않는다 — 사용자가 2026-10-05 에 $3 → $5 로 올렸다.
@@ -298,7 +299,7 @@ def test_v5_2_수를_코드에_적지_않았다():
     bad = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) \
-                and node.value in (300_000, 40_000, 40.0, 3.0, 0.30, 1.20,
+                and node.value in (300_000, 64_000, 40.0, 3.0, 0.30, 1.20,
                                    0.06):
             # ⚠️ `20_000` 기본값 하나는 허용한다 — yaml 이 비었을 때의 대체다
             bad.append(f"line {node.lineno}: {node.value}")

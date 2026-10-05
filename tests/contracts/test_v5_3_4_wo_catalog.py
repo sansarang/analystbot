@@ -123,8 +123,16 @@ def test_wo_cat_모르는_유형은_사유로_남는다():
 def test_wo_cat_장부가_네_상태를_든다():
     """🔴 *"유형 × 팀 칸마다 `searched / found / empty / not_tried`"*."""
     from app import ledgerbook
-    assert ledgerbook.STATES == ("not_tried", "searched", "empty", "found"), \
+    # 🔴 **네 상태는 그대로 있어야** 한다 — `budget_cut` 이 2026-10-06 에
+    #    더해졌다(사용자 지시 ③). ⚠️ 수를 박지 않고 **포함과 순서**를 센다.
+    assert set(ledgerbook.STATES) >= {"not_tried", "searched", "empty",
+                                      "found"}, ledgerbook.STATES
+    # 🔴 사다리 순서가 뜻이다 — `mark` 가 앞으로만 간다
+    idx = {s: i for i, s in enumerate(ledgerbook.STATES)}
+    assert idx["not_tried"] < idx["searched"] < idx["empty"] < idx["found"], \
         ledgerbook.STATES
+    # 🔴 막힌 칸은 **2차가 덮을 수 있어야** 한다(`found` 보다 아래다)
+    assert idx.get("budget_cut", 0) < idx["found"], ledgerbook.STATES
     book = ledgerbook.Book()
     # 🔴 **처음은 전부 `not_tried`** — 0 이 아니라 *"안 해봤다"* 다(#3)
     assert book.state("absence", "team:1") == "not_tried"

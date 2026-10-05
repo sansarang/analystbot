@@ -118,7 +118,14 @@ VarLike = Union[Mapping[str, object], object]
 SECOND_ROUNDS = 1
 
 #: 🔴 2차가 돌 **대상 상태** — 지시서 §3-3: *"`not_tried`·`empty` 인 유형군만"*.
-SECOND_STATES: tuple[str, ...] = ("not_tried", "empty")
+#
+#  🔴🔴 **`budget_cut` 을 더했다** — 사용자 지시 2026-10-06 ③:
+#     > 한 팀 하위 4개 중 **하나라도 `budget_cut`** 이면 2차 보충 대상.
+#  ⚠️ 까닭: 예산에 막힌 하위는 변수를 **냈을 수도** 있어 `searched` 로 적히고,
+#     그러면 2차가 그 칸을 건너뛴다. 🔴 실측 2026-10-06: 조지아 쪽 하위가
+#     `6744/4000` 으로 막혀 판정층 변수 **0개**였는데 2차 대상 판정은 그 사실을
+#     보지 못했다(상태만 보고 **왜** 비었는지는 안 봤다).
+SECOND_STATES: tuple[str, ...] = ("not_tried", "empty", "budget_cut")
 
 
 def merge(parts: Sequence[SubtaskOut]) -> dict[str, list[VarLike]]:
@@ -215,6 +222,18 @@ def write_book(book, parts: list) -> None:
             # 🔴 **사유를 함께 적는다**(#3) — 실패와 안 해본 것을 가른다
             book.mark(group, key, "not_tried")
             _why(book, group, key, f"하위 실패 — {fail}")
+            continue
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **예산에 막힌 하위는 2차 대상**(사용자 지시 2026-10-06 ③)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 변수를 **몇 개 냈어도** 막힌 것은 막힌 것이다 — 그 하위는 할 말을
+        #     다 못 했다. 🔴 `found` 보다 **먼저** 본다: 그러지 않으면 1개만 낸
+        #     하위가 `found` 로 닫히고 나머지를 영영 못 찾는다.
+        cut = str(box.get("budget_cut") or "")
+        if cut:
+            book.mark(group, key, "budget_cut")
+            _why(book, group, key, f"예산에 막혔다 — {cut}")
             continue
         if int(box.get("verified") or 0) > 0:
             book.mark(group, key, "found")          # 🔴 이번에 완성한 배선

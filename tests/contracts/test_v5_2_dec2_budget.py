@@ -22,11 +22,20 @@ from __future__ import annotations
 
 
 def test_dec2_경기당_예산이_올랐다():
-    """🔴 입력 300k · 출력 40k."""
+    """🔴 입력 300k · 출력은 **표가 든다**.
+
+    ⚠️ 종전엔 `40_000` 을 박아 뒀다. 🔴 사용자가 2026-10-06 ③ 에서 경기당
+       **64,000** 으로 올렸다 — 수를 계약에 박으면 올릴 때마다 빨개진다(#1).
+    🔴 계약이 보는 것은 *"종전(20k)보다 올랐고, 하위 8개 × 하위 상한과 맞는다"* 다.
+    """
     from app import rules
-    got = rules.llm_budget()["per_match"]
+    b = rules.llm_budget()
+    got, sub = b["per_match"], b["per_subtask"]
     assert int(got["input_tokens"]) == 300_000, got
-    assert int(got["output_tokens"]) == 40_000, got
+    tot = int(got["output_tokens"])
+    assert tot > 20_000, f"🔴 결정 ② 전(20k)으로 되돌아갔다: {tot}"
+    # 🔴 **하위 8개 × 하위 상한 = 경기 합계** — 수가 서로 맞아야 한다
+    assert tot == 8 * int(sub["output_tokens"]), (tot, sub["output_tokens"])
 
 
 def test_dec2_돈_상한은_그대로다():
