@@ -39,6 +39,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pyright>=1.1.414",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "python-lsp-server>=1.15.0",

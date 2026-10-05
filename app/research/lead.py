@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from collections.abc import Mapping, MutableMapping, Sequence
+from typing import Any, TypedDict, Union
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 #  ⚠️ LDR 의 속도 제한 모듈이 같은 결론을 적는다: *"에이전트가 호출마다 새
 #     인스턴스를 만들어 per-instance 간격이 안 걸렸다."* 🔴 이 저장소도 같은
 #     병을 GDELT 에서 겪었다(2026-10-05: 체인마다 벌점을 잊었다).
-_GATES: dict[str, asyncio.Semaphore] = {}
+_GATES: dict[tuple[str, int], asyncio.Semaphore] = {}
 
 
 def limits() -> dict[str, int]:
@@ -48,11 +49,15 @@ def gate(name: str) -> asyncio.Semaphore:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = None
-    got = _GATES.get(key)
-    if got is None or getattr(got, "_loop", loop) is not loop:
+    # 🔴 **루프별로** 든다 — `Semaphore` 는 만든 루프에 묶인다. ⚠️ 종전엔
+    #    세마포어에 `_loop` 를 **붙여** 그것을 쟀다(pyright 가 그 자리를
+    #    잡았다: `Cannot assign to attribute "_loop"`). 🔴 사전 열쇠에 루프를
+    #    넣으면 남의 객체를 건드리지 않는다.
+    box = (key, id(loop))
+    got = _GATES.get(box)
+    if got is None:
         got = asyncio.Semaphore(limits()[key])
-        got._loop = loop          # noqa: SLF001  (루프 바뀜을 우리가 센다)
-        _GATES[key] = got
+        _GATES[box] = got
     return got
 
 
@@ -79,6 +84,35 @@ async def run_all(jobs: list) -> tuple[list, list]:
     return live, bad
 
 
+class SubtaskOut(TypedDict, total=False):
+    """🔴🔴 **하위 에이전트 출력 꼴** — 사용자 지시 2026-10-05 (3번).
+
+    > `lead.merge` 입력 타입을 **하위 에이전트 출력 타입 하나로 고정.**
+    > **`dict(v)` 금지** — 필요하면 그 타입의 메서드로.
+
+    ⚠️ 두 크래시가 **꼴 불일치**였다: `done.variables` 가 문자열, `merge` 가
+       `Classified`. 🔴 `variables` 는 **판정층 변수 객체**(`Classified`)이거나
+       **에이전트 변수 사전** 둘 다 올 수 있다 — 그래서 그 사실을 **타입에**
+       적는다. 받는 쪽이 짐작하지 않는다.
+    """
+
+    name: str
+    group: str
+    kinds: tuple[str, ...]
+    team_key: str
+    searched: int
+    fetched: int
+    out: int
+    secs: float
+    verified: int
+    failed: str
+    variables: Sequence["VarLike"]
+
+
+#: 🔴 변수 한 줄의 꼴 — **객체**(판정층)이거나 **사전**(에이전트 원형).
+#  ⚠️ `Any` 가 아니다 — 둘뿐임을 적어 두면 세 번째가 들어올 때 타입이 막는다.
+VarLike = Union[Mapping[str, object], object]
+
 #: 🔴 2차 보충 횟수 — **한 번뿐**이다(M64). ⚠️ *"2차 뒤에도 비면 그대로
 #  `gaps` 로 보고한다 — **3차는 없다**."*
 SECOND_ROUNDS = 1
@@ -87,7 +121,7 @@ SECOND_ROUNDS = 1
 SECOND_STATES: tuple[str, ...] = ("not_tried", "empty")
 
 
-def merge(parts: list) -> dict:
+def merge(parts: Sequence[SubtaskOut]) -> dict[str, list[VarLike]]:
     """🔴🔴 **① 병합** — 하위 조각을 합친다(지시서 §3-1).
 
     > 같은 주장(MinHash 0.8, 기존 §5-7)은 한 묶음으로 세어 **독립 출처 수를
@@ -110,26 +144,30 @@ def merge(parts: list) -> dict:
     #     문자열)과 **같은 병**이다.
     #  🔴 **원본 객체를 바꾸지 않는다** — 검증층이 그 객체를 쓴다. dict 로
     #     바꿔 담으면 그 뒤가 전부 깨진다.
-    rows: list = []
+    rows: list[VarLike] = []
     for part in (parts or []):
-        for v in ((part or {}).get("variables") or []):
+        for v in (part.get("variables") or ()):
             if isinstance(v, dict):
-                got = dict(v)
-                got["from_subtask"] = str((part or {}).get("name") or "")
+                # 🔴 **그 타입의 메서드로** 담는다(`dict(v)` 금지 · 지시 3).
+                #    ⚠️ 사전은 호출부가 다시 쓸 수 있으니 얕게 복사한다 —
+                #       `copy()` 는 **`dict` 자신의** 메서드다(`MutableMapping`
+                #       추상 꼴에는 없다 — pyright 가 그것을 잡았다).
+                got: dict[str, object] = v.copy()
+                got["from_subtask"] = str(part.get("name") or "")
                 rows.append(got)
             else:
-                # 🔴 객체는 **그대로** 담는다(원본을 잃지 않는다)
+                # 🔴 객체는 **그대로** 담는다(원본을 잃지 않는다 — 검증층이 쓴다)
                 rows.append(v)
 
-    def _get(x: object, key: str) -> str:
-        """🔴 dict·객체 **둘 다**에서 칸을 읽는다(#1 — 읽는 자리를 하나로)."""
-        if isinstance(x, dict):
+    def _get(x: VarLike, key: str) -> str:
+        """🔴 사전·객체 **둘 다**에서 칸을 읽는다(#1 — 읽는 자리를 하나로)."""
+        if isinstance(x, Mapping):
             return str(x.get(key) or "")
         # ⚠️ 판정층 변수는 주장을 `text` 칸에 든다(`claim` 이 아니다)
         alt = "text" if key == "claim" else key
         return str(getattr(x, key, None) or getattr(x, alt, None) or "")
 
-    def _host(x: object) -> str:
+    def _host(x: VarLike) -> str:
         return (urlparse(_get(x, "source_url")).netloc
                 or "").lower().removeprefix("www.")
 
@@ -150,7 +188,7 @@ def merge(parts: list) -> dict:
         else:
             # ⚠️ dataclass 에 칸이 없으면 **더한다**(원본을 바꾸지 않는 선에서)
             try:
-                a.outlets = n
+                setattr(a, "outlets", n)      # noqa: B010
             except (AttributeError, TypeError):
                 pass
     said = [int(_get(r, "outlets") or 1) for r in rows]
@@ -214,7 +252,7 @@ def second_round(book, groups: list, keys: list) -> list[tuple[str, str]]:
     return out
 
 
-def second_budget(used: list) -> dict[str, int]:
+def second_budget(used: Sequence[Mapping[str, object]]) -> dict[str, int]:
     """🔴 **남은 예산**(지시서 §3-3: *"남은 예산(미사용 search/fetch/토큰) 안에서"*).
 
     ⚠️ 합계 상한은 기존 그대로다 — 2차가 상한을 넘지 않는다.
@@ -225,16 +263,26 @@ def second_budget(used: list) -> dict[str, int]:
     cap_s = int(box["search"]) * n
     cap_f = int(box["fetch"]) * n
     cap_o = int(box["output_tokens"]) * n
-    got_s = sum(int((u or {}).get("searched") or 0) for u in (used or []))
-    got_f = sum(int((u or {}).get("fetched") or 0) for u in (used or []))
-    got_o = sum(int((u or {}).get("out") or 0) for u in (used or []))
+    def _n(u: Mapping[str, object], key: str) -> int:
+        """🔴 사전에서 **정수**를 읽는다 — `object` 를 `int()` 에 넣지 않는다."""
+        said = u.get(key)
+        return int(said) if isinstance(said, (int, float, str)) else 0
+
+    got_s = sum(_n(u, "searched") for u in (used or ()))
+    got_f = sum(_n(u, "fetched") for u in (used or ()))
+    got_o = sum(_n(u, "out") for u in (used or ()))
     return {"search": max(0, cap_s - got_s), "fetch": max(0, cap_f - got_f),
             "out": max(0, cap_o - got_o)}
 
 
 def _k(n: object) -> str:
-    """🔴 토큰을 `4.1k` 꼴로 — 자리를 아낀다(지시서 §3-4 의 예시 그대로)."""
-    got = int(n or 0)
+    """🔴 토큰을 `4.1k` 꼴로 — 자리를 아낀다(지시서 §3-4 의 예시 그대로).
+
+    ⚠️ `object` 를 `int()` 에 바로 넣지 않는다 — pyright 가 그 자리를 잡았다.
+       🔴 수가 아닌 것이 오면 **0** 이고, 그것이 거짓이 되지 않게 호출부가
+       이름으로 적는다(#3).
+    """
+    got = int(n) if isinstance(n, (int, float, str)) and str(n).strip() else 0
     return f"{got / 1000:.1f}k" if got >= 1000 else str(got)
 
 
