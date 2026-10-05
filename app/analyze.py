@@ -1658,8 +1658,11 @@ def build(facts: list, game, *, board=None, states: dict | None = None,
     #  ⚠️ 장애·꺼짐이면 **템플릿으로 돈다**(M45) — 그 사실을 사유로 남긴다.
     card.ds = _run_hypo(card, game, items, st, sc)
     card.scenarios = sc
-    # 🔴 v5 §8-5 — `scenarios` 칸. ⚠️ 자료 부족이면 **0 을 센다**(안 잰 것이 아니다)
-    fun.set("scenarios", len(sc.drafts or []) if not sc.insufficient else 0)
+    # 🔴 v5 §8-5 — `scenarios` 칸.
+    #    ⚠️ 종전엔 `insufficient` 면 **0 을 적었다**. 🔴 이제 R5 는 등급 금지만
+    #       뜻하고 시나리오는 만들어진다(사용자 규칙 2026-10-06) — 만든 수를
+    #       그대로 적는다. 0 을 적으면 깔때기가 **거짓말**을 한다.
+    fun.set("scenarios", len(sc.drafts or []))
     if sc.insufficient:
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **§7-5 — R5 를 선언할 자격이 있나**
@@ -1678,9 +1681,11 @@ def build(facts: list, game, *, board=None, states: dict | None = None,
         from app import r5gate
         gate = r5gate.may_declare(fun)
         sc.notes.append(gate.line())
+        # 🔴 **떨어지는 칸이 바뀌었다** — 시나리오는 만들어졌고 **등급**이
+        #    없다(사용자 규칙 2026-10-06). ⚠️ `scenarios` 에 떨어뜨리면
+        #    깔때기가 *"시나리오를 못 만들었다"* 로 읽힌다.
         fun.drop(gate.reason if not gate.ok else Reason.INSUFFICIENT,
-                 "scenarios")
-        # ⚠️ 시나리오가 0 이면 마켓도 0 이다 — **그것도 센다**(안 잰 것과 다르다)
+                 "markets_graded")
         fun.set("markets_graded", 0)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **§6-2 — 불완전한 세트로는 등급을 매기지 않는다**
@@ -1696,8 +1701,12 @@ def build(facts: list, game, *, board=None, states: dict | None = None,
     if sc.incomplete:
         fun.drop(Reason.SCENARIO_INCOMPLETE, "markets_graded")
         fun.set("markets_graded", 0)
-    if not sc.insufficient and not sc.incomplete and sc.drafts:
+    # 🔴🔴 **얇아도 돈다** — 사용자 규칙 2026-10-06: *"시나리오·대입·방향
+    #    판정은 항상 낸다."* ⚠️ 등급은 `thin_why` 가 거둔다.
+    if not sc.incomplete and sc.drafts:
         card.survival = survive.run(sc.drafts, game, board=board,
+                                    # 🔴 얇으면 **등급만** 거둔다(대입은 낸다)
+                                    thin_why=str(sc.thin_why or ""),
                                     # 🔴 거짓 1.0 계약의 재료(사용자 수정 ⑤)
                                     variables=card.variables,
                                     fold=sc.fold_markets,
@@ -2091,7 +2100,15 @@ def render(card: Card) -> str:
     out.append("\n■ 6 시나리오")
     sc = card.scenarios
     if card.insufficient:
-        out.append("  🔴 자료 부족 — 시나리오를 만들지 않는다(§7 R5)")
+        # 🔴🔴 **등급만 없다** — 사용자 규칙 2026-10-06. ⚠️ 종전엔 여기서
+        #    `return` 해서 DeepSeek 시나리오 6개가 통째로 사라졌다(실측).
+        out.append(f"  🔴 **자료 얇음 — 등급 없음**"
+                   + (f"({sc.thin_why})" if sc is not None and sc.thin_why
+                      else "(§7 R5)")
+                   + " · 시나리오·대입·방향은 그대로 낸다")
+    if sc is None or not sc.drafts:
+        out.append("  ⚠️ 시나리오가 **하나도 없다** — 템플릿도 DeepSeek 도 "
+                   "아무것도 내지 못했다(그 사유는 블록 1 에 있다)")
         out += _dir_block(card)          # 🔴 방향은 그래도 낸다(§2-2)
         return "\n".join(out)
     if card.incomplete:

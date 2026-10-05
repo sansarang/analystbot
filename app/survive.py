@@ -687,7 +687,12 @@ def run(drafts: list, game, *, board: list[Market] | None = None,
         variables: list | None = None,
         # 🔴🔴 **킥오프가 지났으면 등급을 안 낸다** — 지시 ③ (2026-10-05).
         #    ⚠️ 안 주면 **막지 않는다**(모르는 것과 지난 것은 다르다).
-        kickoff=None, now=None) -> Result:
+        kickoff=None, now=None,
+        # 🔴🔴 **자료가 얇으면 등급만 거둔다** — 사용자 규칙 2026-10-06.
+        #    > §7 R5 자료 부족은 "등급 금지"로만 작동한다. 시나리오·대입·방향
+        #    > 판정은 항상 낸다.
+        #    ⚠️ 빈 문자열이면 막지 않는다(모르는 것과 얇은 것은 다르다).
+        thin_why: str = "") -> Result:
     """§6-a~§6-f 를 적용한다.
 
     `board` 가 비면 §6-c-3 **우리 기준선**으로 센다(그 사실을 기록에 남긴다).
@@ -764,6 +769,27 @@ def run(drafts: list, game, *, board: list[Market] | None = None,
             if row.get("verdict") in ("name", "small", "low"):
                 row["verdict"] = "none"
                 row["why"] = str(row.get("why") or "") + " · " + said
+        for mk in (res.markets or []):
+            if str(getattr(mk, "verdict", "")) in ("name", "small", "low"):
+                mk.verdict = "none"
+
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **자료 얇음 — 등급을 거둔다**(사용자 규칙 2026-10-06)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ `gone`(이미 시작한 경기)과 **같은 길**이다 — 대입은 그대로 보이고
+    #     `verdict` 만 `none` 이 된다. 🔴 그래야 *"무엇이 어느 시나리오에서
+    #     죽는지"* 는 읽히고 **등급만** 없다.
+    #  🔴 §6-7 이 막으려던 거짓 1.0 은 이것으로 막힌다: 얇은 세트에서 1.0 이
+    #     나와도 그것이 **등급이 되지 않는다.**
+    if str(thin_why or "").strip():
+        said_thin = (f"🔴 **자료 얇음 — 등급 없음**({thin_why}) · "
+                     f"대입·방향은 그대로 낸다(사용자 규칙 2026-10-06)")
+        res.notes.append(said_thin)
+        for row in res.rows:
+            if row.get("verdict") in ("name", "small", "low"):
+                row["verdict"] = "none"
+                row["why"] = str(row.get("why") or "") + " · " + said_thin
         for mk in (res.markets or []):
             if str(getattr(mk, "verdict", "")) in ("name", "small", "low"):
                 mk.verdict = "none"
