@@ -100,30 +100,62 @@ def merge(parts: list) -> dict:
     from urllib.parse import urlparse
 
     from app import verifylayer
-    rows: list[dict] = []
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **두 꼴을 다 받는다** — 실사고 2026-10-05 (인도네시아–태국)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 봇이 죽었다: `dict(v)` → `TypeError: 'Classified' object is not
+    #     iterable`. 🔴 `_run_agent` 는 **판정층 변수**(`classify.Classified`)
+    #     를 돌려주는데 여기서 dict 로 믿었다 — ①번(`done.variables` 가
+    #     문자열)과 **같은 병**이다.
+    #  🔴 **원본 객체를 바꾸지 않는다** — 검증층이 그 객체를 쓴다. dict 로
+    #     바꿔 담으면 그 뒤가 전부 깨진다.
+    rows: list = []
     for part in (parts or []):
         for v in ((part or {}).get("variables") or []):
-            got = dict(v)
-            got["from_subtask"] = str((part or {}).get("name") or "")
-            rows.append(got)
+            if isinstance(v, dict):
+                got = dict(v)
+                got["from_subtask"] = str((part or {}).get("name") or "")
+                rows.append(got)
+            else:
+                # 🔴 객체는 **그대로** 담는다(원본을 잃지 않는다)
+                rows.append(v)
+
+    def _get(x: object, key: str) -> str:
+        """🔴 dict·객체 **둘 다**에서 칸을 읽는다(#1 — 읽는 자리를 하나로)."""
+        if isinstance(x, dict):
+            return str(x.get(key) or "")
+        # ⚠️ 판정층 변수는 주장을 `text` 칸에 든다(`claim` 이 아니다)
+        alt = "text" if key == "claim" else key
+        return str(getattr(x, key, None) or getattr(x, alt, None) or "")
+
+    def _host(x: object) -> str:
+        return (urlparse(_get(x, "source_url")).netloc
+                or "").lower().removeprefix("www.")
+
     # 🔴 같은 주장끼리 묶어 **독립 출처 수**를 센다(유형·방향은 그대로).
     for i, a in enumerate(rows):
-        hosts = {(urlparse(str(a.get("source_url") or "")).netloc or "")
-                 .lower().removeprefix("www.")}
+        hosts = {_host(a)}
         for j, b in enumerate(rows):
             if i == j:
                 continue
-            sim = verifylayer.similarity(str(a.get("claim") or ""),
-                                         str(b.get("claim") or ""))
+            sim = verifylayer.similarity(_get(a, "claim"), _get(b, "claim"))
             if sim >= verifylayer.SIM_SAME:
-                host = (urlparse(str(b.get("source_url") or "")).netloc
-                        or "").lower().removeprefix("www.")
-                if host:
-                    hosts.add(host)
-        a["outlets"] = len([h for h in hosts if h])
+                got_h = _host(b)
+                if got_h:
+                    hosts.add(got_h)
+        n = len([h for h in hosts if h])
+        if isinstance(a, dict):
+            a["outlets"] = n
+        else:
+            # ⚠️ dataclass 에 칸이 없으면 **더한다**(원본을 바꾸지 않는 선에서)
+            try:
+                a.outlets = n
+            except (AttributeError, TypeError):
+                pass
+    said = [int(_get(r, "outlets") or 1) for r in rows]
     logger.info("[lead] 병합 — 하위 %d개 → 변수 %d줄(독립 출처 최대 %d곳)",
-                len(parts or []), len(rows),
-                max([int(r.get("outlets") or 1) for r in rows] or [0]))
+                len(parts or []), len(rows), max(said or [0]))
     return {"variables": rows}
 
 

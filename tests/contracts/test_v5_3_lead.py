@@ -209,3 +209,43 @@ def test_r3_하위별_표가_로그로_간다():
     assert logged, (
         "🔴 하위별 표를 **로그로 안 찍는다** — 카드는 자르고, 보고 도구는 "
         "읽을 것이 없다(§3-4)")
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **병합은 실제 꼴을 받는다** — 실사고 2026-10-05 (인도네시아–태국)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 봇이 **죽었다**: `lead.merge → dict(v) → TypeError: 'Classified' object
+#     is not iterable`. 🔴 `_run_agent` 는 **판정층 변수**(`classify.Classified`)
+#     를 돌려주는데 내 계약은 **dict 로만** 시험했다 — 실제 경로의 꼴을 안 봤다.
+#  🔴 ①번(`done.variables` 가 문자열)과 **같은 병**이다. 꼴을 **들어오는
+#     자리에서** 맞춘다(§8-3).
+def test_병합이_Classified_객체도_받는다():
+    from app import classify
+    from app.research import lead
+    rows = [classify.Classified(
+        type="absence", team="team:000081", direction="home",
+        hardness="soft", text="선수 하나가 결장한다",
+        source_url="https://a.com/1", why="규칙 사유")]
+    got = lead.merge([{"name": "A-홈", "variables": rows}])
+    assert len(got["variables"]) == 1, got
+    said = got["variables"][0]
+    # 🔴 **원본 객체를 잃지 않는다** — 검증층이 그 객체를 쓴다
+    assert said is rows[0] or getattr(said, "text", None) == rows[0].text, (
+        "🔴 `Classified` 를 dict 로 바꿔 **원본을 잃었다** — 검증층이 못 쓴다")
+    # 🔴 독립 출처 수는 **객체에도** 붙는다
+    assert getattr(said, "outlets", None) is not None or isinstance(said, dict)
+
+
+def test_병합이_두_꼴을_섞어_받는다():
+    """🔴 옛 경로(dict)와 새 경로(`Classified`)가 함께 올 수 있다."""
+    from app import classify
+    from app.research import lead
+    obj = classify.Classified(
+        type="absence", team="team:000081", direction="home", hardness="soft",
+        text="같은 주장이다", source_url="https://a.com/1", why="w")
+    got = lead.merge([{"name": "A-홈", "variables": [obj]},
+                      {"name": "A-원정",
+                       "variables": [_var("v2", claim="같은 주장이다",
+                                          url="https://b.com/2")]}])
+    assert len(got["variables"]) == 2, got

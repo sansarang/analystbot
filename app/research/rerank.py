@@ -97,7 +97,13 @@ def _load_model() -> Any:
                 got = CrossEncoder(str(step["model"]), max_length=512,
                                    device=dev)
                 _WHY = f"✅ {step['name']} ({dev})"
-                logger.info("[rerank] %s", _WHY)
+                # 🔴 **누가 로드했나를 적는다** — 실측 2026-10-05: 락을 넣었는데
+                #    로드가 4→11회로 **늘었다**. 추측하지 않고 잰다(#4):
+                #    같은 프로세스·같은 모듈이면 락이 걸려야 한다.
+                import os as _os
+                import threading as _th
+                logger.info("[rerank] %s · pid=%s tid=%s mod=%s", _WHY,
+                            _os.getpid(), _th.get_ident(), id(globals()))
                 return got
             if how == "flashrank":
                 from flashrank import Ranker
