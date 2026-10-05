@@ -374,6 +374,11 @@ class Tools:
     #   (사용자 지시 2026-10-05). ⚠️ 칸으로 든다 — `getattr` 기본값은 없는 칸을
     #   숨겨 그 층을 **조용히 끈다**(`Card.kickoff` 와 같은 함정).
     snippets: dict = field(default_factory=dict)
+    #: 🔴🔴 **받은 본문의 발행일** — ③층(`htmldate`)이 뽑은 값(지시서 M109).
+    #   ⚠️ 실사고 it5: `_open` 이 그 값을 `_when` 으로 **버려** 검증층이
+    #      `date_missing` 7건을 냈다 — `htmldate` 는 **돌았는데** 결과가
+    #      닿지 않았다(배선 끊김).
+    dates: dict = field(default_factory=dict)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **스스로 찾는 수단** — 결정 ③ (사용자 2026-10-04)
     # ══════════════════════════════════════════════════════════════════
@@ -770,12 +775,21 @@ class Tools:
             return ""
         if not getattr(got, "ok", False):
             return ""
-        text, _when, _why, _n = readtext.read(
+        text, when, _why, _n = readtext.read(
             getattr(got, "text", "") or "", url=url,
             query=self._query_hint())
         body = text or (getattr(got, "text", "") or "")
         if body:
             self.bodies[url] = body
+            # 🔴 **발행일을 들고 있는다**(M109) — ③층이 원본이고 검색 날짜는
+            #    보조다. ⚠️ 순위는 `net.pick_published` **한 곳**이 정한다(#1).
+            from app import net as _N
+            said, why_d = _N.pick_published(
+                when, (self.mine.get(url) or {}).get("published_at") or "")
+            if said:
+                self.dates[url] = said
+            logger.info("[agent] 발행일 — %s (%s) · %s",
+                        said or "없다", why_d, url[:60])
             if self.funnel is not None:
                 self.funnel.add("fetched", 1, sample=url)
         return body
@@ -813,8 +827,8 @@ def finish(vars_: list, *, funnel=None) -> tuple[list, str]:
     return list(vars_), f"변수 후보 {len(vars_)}개"
 
 
-def parse_args(box: object, *, inp: AgentInput | None = None
-               ) -> tuple[list, str]:
+def parse_args(box: object, *, inp: AgentInput | None = None,
+               dates: dict | None = None) -> tuple[list, str]:
     """🔴 `done` 이 준 **사전**을 `AgentVar` 들로. ⚠️ 글자로 다시 돌리지 않는다.
 
     🔴 실측 2026-10-04: 종전에는 `done(output="…")` 의 **문자열**을 JSON 으로
@@ -849,7 +863,7 @@ def parse_args(box: object, *, inp: AgentInput | None = None
             logger.info("[agent] 🔴 `%s` 를 **문자열로 받았다** — 목록 %d개로 "
                         "바꿨다(모델이 스키마를 안 지켰다)", key, len(back))
             box[key] = back
-    return _vars_from(box, inp=inp)
+    return _vars_from(box, inp=inp, dates=dates)
 
 
 def parse_output(text: str) -> tuple[list, str]:
@@ -937,8 +951,8 @@ def _json_in(text: object) -> tuple[dict | None, str]:
     return None, (last or "JSON 블록을 못 찾았다")
 
 
-def _vars_from(box: dict, *, inp: AgentInput | None = None
-               ) -> tuple[list, str]:
+def _vars_from(box: dict, *, inp: AgentInput | None = None,
+               dates: dict | None = None) -> tuple[list, str]:
     """🔴 사전 → `AgentVar` 들. ⚠️ 꼴이 틀린 줄은 **이름으로** 남긴다(#3).
 
     🔴 `inp` 를 주면 **팀 이름을 열쇠로 옮긴다**(§8-1: 해석은 한 곳에서만).
@@ -948,7 +962,12 @@ def _vars_from(box: dict, *, inp: AgentInput | None = None
     bad: list[str] = []
     for row in (box.get("variables") or []):
         try:
-            when = row.get("published_at")
+            # 🔴🔴 **③층 날짜가 원본이다**(지시서 M109) — 모델이 안 적어도
+            #    우리가 뽑은 발행일을 쓴다.
+            #    ⚠️ 실사고 it5: 모델이 적은 값만 봐서 `date_missing` 7건이
+            #       났다 — `htmldate` 는 돌았는데 그 결과가 안 쓰였다.
+            when = (dates or {}).get(str(row.get("url") or "")) \
+                or row.get("published_at")
             got = None
             if when:
                 from app import timefmt
@@ -1261,7 +1280,9 @@ def run(inp: AgentInput, ctx, *, funnel=None, net=None, seen=None,
     why = ""
     if done_args is not None:
         # 🔴 **정상 길** — `done` 의 인자를 그대로 읽는다(§3-2)
-        cands, why = parse_args(done_args, inp=inp)
+        # 🔴 **받은 본문의 발행일을 함께 넘긴다**(M109) — 모델이 안 적어도
+        #    ③층이 뽑은 날짜가 변수에 붙는다.
+        cands, why = parse_args(done_args, inp=inp, dates=tools.dates)
     first_why = why
     for attempt in range(SCHEMA_RETRIES + 1):
         if cands:
