@@ -163,6 +163,14 @@ class MatchBudget:
     #   ⚠️ `0` 이면 안 걸린다(옛 경로) — 하위 경로만 이 칸을 채운다.
     #   🔴 합계(`pot`)는 그대로 벽이다 — 하위 상한이 그것을 **대신하지 않는다**.
     subtask_out: int = 0
+    #: 🔴🔴 **하위 예산 객체** — 딥서치 재구축 §2 (M59 집행).
+    #   ⚠️ 실사고 2026-10-05(인도네시아–태국): 하위 상한(`search 3`·`fetch 2`)
+    #      을 만들어 뒀는데 **아무도 안 썼다** — 에이전트가 경기 합계(24/16)를
+    #      보아 fetch 가 **98회**, 턴이 **257회**, 벽시계가 **11분**이었다
+    #      (지시서 상한 6분). 🔴 하위 표도 전부 0 이었다(쓴 것을 안 적었다).
+    #   🔴 그래서 **그 객체를 든다**: 상한을 거기서 읽고 쓴 것을 거기에 적는다.
+    #      ⚠️ 합계(`pot`·`caps`)는 **그대로 벽**이다(§2: "합계는 기존 상한 그대로").
+    subtask: object = None
 
     @property
     def caps(self) -> dict:
@@ -223,18 +231,43 @@ class MatchBudget:
                            + (f" (몫 {self.share:g})" if self.share != 1 else ""))
         return True, ""
 
+    def _sub_cap(self, name: str) -> int:
+        """🔴 **하위 상한**(있으면). ⚠️ 없으면 `0` — 경기 합계로 간다."""
+        box = getattr(self.subtask, "budget", None)
+        if box is None:
+            return 0
+        return int(getattr(box, f"{name}_cap", 0) or 0)
+
     def can_tool(self, name: str) -> tuple[bool, str]:
-        """🔴 그 도구를 한 번 더 불러도 되나(§2 — search 24 · fetch 16)."""
+        """🔴 그 도구를 한 번 더 불러도 되나.
+
+        🔴 **하위 상한이 가장 좁다**(§2 — `search 3`·`fetch 2`) — 있으면 그것이
+           이긴다. ⚠️ 없으면 경기 합계(24/16)로 간다(옛 경로).
+        """
+        sub = self._sub_cap(name)
+        used = int(self.tool_calls.get(name) or 0)
+        if sub:
+            if used >= sub:
+                return False, (f"{BUDGET_CUT}: 도구 `{name}` {used}/{sub}회"
+                               f"(하위 상한)")
+            return True, ""
         # 🔴 도구 횟수도 **몫**으로 나눈다(한 쪽이 24회를 다 쓰면 같은 병이다)
         cap = int(int(((self.caps.get("tool_calls") or {}).get(name) or 0))
                   * self.share)
-        used = int(self.tool_calls.get(name) or 0)
         if cap and used >= cap:
             return False, f"{BUDGET_CUT}: 도구 `{name}` {used}/{cap}회"
         return True, ""
 
     def took_tool(self, name: str) -> None:
         self.tool_calls[name] = int(self.tool_calls.get(name) or 0) + 1
+        # 🔴 **하위 객체에도 적는다**(#3) — 안 적으면 하위 표가 영원히 0 이고
+        #    보고가 거짓이 된다(실측 2026-10-05: `q0 fetch0` 인데 98회 받았다).
+        box = getattr(self.subtask, "budget", None)
+        if box is None:
+            return
+        key = f"{name}_used"
+        if hasattr(box, key):
+            setattr(box, key, int(getattr(box, key) or 0) + 1)
 
     def took(self, usage: dict) -> float:
         """🔴 한 호출을 **쓴 뒤** 더한다. 반환은 그 호출의 비용.

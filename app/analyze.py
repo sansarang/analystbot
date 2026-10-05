@@ -186,6 +186,9 @@ async def _run_agent(game: dict, side: str, fun, seen,
             #    `pot` 이 그대로 막는다(§2: "합계는 기존 상한 그대로").
             budget=_solar.MatchBudget(
                 side=True, pot=pot,
+                # 🔴 **하위 객체를 든다**(M59 집행) — 상한을 거기서 읽고 쓴 것을
+                #    거기에 적는다. ⚠️ 합계(`pot`)는 그대로 벽이다.
+                subtask=subtask,
                 subtask_out=(subtask.budget.out_cap if subtask is not None
                              else 0)),
             # 🔴 결정 ③ — 세포가 안 찾으니 **에이전트가 찾고 연다**

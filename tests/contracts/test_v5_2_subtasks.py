@@ -257,3 +257,97 @@ def test_r2_운영_경기_dict_에서_열쇠를_읽는다():
             f"🔴 `{t.name}` 의 `team_key` 가 비었다({t.team_key!r}) — 운영 "
             f"dict 는 `home_id`/`away_id` 를 쓴다")
         assert t.opp_key.startswith("team:"), t.opp_key
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **하위 상한이 실제로 걸린다** — 실측 2026-10-05 (인도네시아–태국)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고: 하위 예산을 만들어 뒀는데 **아무도 안 썼다.**
+#
+#    ```
+#    fetch 98회(상한 16) · 에이전트 턴 257회 · 경기당 벽시계 11분(상한 6분)
+#    하위 표: | A-홈 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |   ← 전부 0
+#    ```
+#
+#  🔴 에이전트는 `MatchBudget`(경기 합계 24/16)을 보고 `Subtask.budget`
+#     (3/2)은 **센 적이 없다**. M59 계약은 *"독립 객체"* 만 봤고 **집행**을
+#     안 봤다 — 그것이 내 계약의 구멍이었다.
+def _tools(sub=None):
+    import datetime as dt
+
+    from app import agentloop, solar
+    inp = agentloop.AgentInput(
+        match_key="fotmob:1", home="team:000108", away="team:000111",
+        kickoff_utc=dt.datetime(2026, 10, 5, 13, 0, tzinfo=dt.timezone.utc),
+        home_names=("Indonesia",), away_names=("Thailand",),
+        competition="FIFA ASEAN Cup Premier Division", sport="soccer",
+        subtask=sub)
+    # 🔴 **실제 배선과 같게** 넘긴다 — `analyze` 가 `subtask=` 를 준다
+    return agentloop.Tools(inp, budget=solar.MatchBudget(
+        side=True, subtask=sub,
+        subtask_out=(sub.budget.out_cap if sub is not None else 0)))
+
+
+def test_M59_하위_도구_상한이_실제로_걸린다():
+    from app.research import subtasks
+    sub = subtasks.split({"home": "Indonesia", "away": "Thailand",
+                          "home_id": "team:000108", "away_id": "team:000111",
+                          "sport": "soccer", "league": "FIFA ASEAN Cup",
+                          "langs": ("en", "id")})[0]
+    tools = _tools(sub)
+    # 🔴 `search` 는 **3번**이다(하위 상한) — 경기 합계 24 가 아니다
+    for i in range(sub.budget.search_cap):
+        ok, why = tools.budget.can_tool("search")
+        assert ok, f"🔴 {i + 1}번째 search 가 막혔다: {why}"
+        tools.budget.took_tool("search")
+    ok, why = tools.budget.can_tool("search")
+    assert not ok, (
+        f"🔴 하위 상한 {sub.budget.search_cap}회를 넘겼는데 안 막는다 — "
+        f"실측 2026-10-05: fetch 가 98회였다(상한 16)")
+    assert str(sub.budget.search_cap) in why, why
+
+
+def test_M59_하위_fetch_상한도_걸린다():
+    from app.research import subtasks
+    sub = subtasks.split({"home": "Indonesia", "away": "Thailand",
+                          "home_id": "team:000108", "away_id": "team:000111",
+                          "sport": "soccer", "league": "FIFA ASEAN Cup",
+                          "langs": ("en",)})[0]
+    tools = _tools(sub)
+    for _ in range(sub.budget.fetch_cap):
+        assert tools.budget.can_tool("fetch")[0]
+        tools.budget.took_tool("fetch")
+    assert not tools.budget.can_tool("fetch")[0], (
+        f"🔴 하위 fetch 상한 {sub.budget.fetch_cap} 을 안 막는다")
+
+
+def test_M59_쓴_것이_하위_객체에_기록된다():
+    """🔴 하위 표가 **0 이 아니어야** 한다 — 안 적으면 보고가 거짓이다(#3)."""
+    from app.research import subtasks
+    sub = subtasks.split({"home": "Indonesia", "away": "Thailand",
+                          "home_id": "team:000108", "away_id": "team:000111",
+                          "sport": "soccer", "league": "FIFA ASEAN Cup",
+                          "langs": ("en",)})[0]
+    tools = _tools(sub)
+    tools.budget.took_tool("search")
+    tools.budget.took_tool("fetch")
+    assert sub.budget.search_used == 1, (
+        f"🔴 `Subtask.budget.search_used` 가 {sub.budget.search_used} 다 — "
+        f"하위 표가 영원히 0 이다(실측 2026-10-05)")
+    assert sub.budget.fetch_used == 1, sub.budget.fetch_used
+
+
+def test_M59_턴_상한도_하위_것이다():
+    """🔴 §2 표: *"턴 8 — 하위당 6(2차)"*. ⚠️ 턴 257회가 11분을 만들었다."""
+    from app import agentloop
+    import ast
+    import inspect
+    import textwrap
+    src = textwrap.dedent(inspect.getsource(agentloop.run))
+    tree = ast.parse(src)
+    # 🔴 `limit` 가 **하위 것**을 보는지 — `max_turns()` 만 보면 안 된다
+    said = ast.dump(tree)
+    assert "subtask" in said and "turns" in said, (
+        "🔴 턴 상한이 하위 예산(`subtask.budget.turns`)을 **안 본다** — "
+        "하위 8개가 각각 전체 턴 상한을 쓴다(실측: 턴 257회 · 11분)")

@@ -46,7 +46,10 @@ def test_v5_2_한도가_yaml에_선언돼_있다():
     assert pm.get("output_tokens") == 40_000, pm
     assert (pm.get("tool_calls") or {}).get("search") == 24, pm
     assert (pm.get("tool_calls") or {}).get("fetch") == 16, pm
-    assert b.get("per_day_usd") == 3.0, b
+    # ⚠️ 수를 박지 않는다 — 사용자가 2026-10-05 에 $3 → $5 로 올렸다.
+    #    🔴 계약이 보는 것은 *"그 칸이 있고 월 상한보다 작다"* 다.
+    assert float(b.get("per_day_usd") or 0) > 0, b
+    assert float(b["per_day_usd"]) < float(b["per_month_usd"]), b
     assert b.get("per_month_usd") == 40.0, b
 
 
@@ -168,9 +171,16 @@ def _spend(path_root, usd: float, day: str = "2026-10-04"):
 
 
 def test_v5_2_하루_상한을_넘으면_막는다(ledger):
+    """🔴 **수를 박지 않는다** — 상한에서 자라게 짠다.
+
+    ⚠️ 종전엔 `2.9 + 0.2` 로 $3 을 넘긴다고 썼다. 사용자가 2026-10-05 에
+       하루 상한을 **$5** 로 올리자 그 계약이 빨개졌다 — 설정이 바뀔 때
+       따라가지 않는 **사본**이었다(#1).
+    """
+    cap = float(solar.budget_cfg()["per_day_usd"])
     assert solar.gate(now=NOW)[0]
-    _spend(ledger, 2.9)
-    assert solar.gate(now=NOW)[0], "2.9 는 3.0 아래다"
+    _spend(ledger, cap - 0.1)
+    assert solar.gate(now=NOW)[0], f"상한 {cap} 의 0.1 아래다"
     _spend(ledger, 0.2)
     ok, why = solar.gate(now=NOW)
     assert not ok and why.startswith(solar.DAY_STOP), why
@@ -349,5 +359,5 @@ def test_v5_2_하루와_월_상한은_그대로다():
     """
     from app import rules
     b = rules.llm_budget()
-    assert float(b["per_day_usd"]) == 3.0
+    assert float(b["per_day_usd"]) > 0
     assert float(b["per_month_usd"]) == 40.0
