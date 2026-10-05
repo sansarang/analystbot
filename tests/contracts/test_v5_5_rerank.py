@@ -111,7 +111,9 @@ def test_M65_동의어_문단이_상위에_든다():
     #    끄는 돌연변이)이 그 길로 빠져나가 초록이 됐다 — skip 이 퇴로가 됐다.
     #    🔴 모델이 **있으면** 반드시 잡아야 한다.
     # 🔴 **예열**이 모델을 올린다(지연 로드는 지웠다 · 지시 2)
-    rerank.warm()
+    # 🔴 `slow` 계약은 **실모델**을 본다 — `ANALYSTBOT_TEST=1` 가드를
+    #    사다리를 직접 줘서 지난다(그 가드는 `_load is None` 일 때만 막는다).
+    rerank.warm(_load=rerank._ladder)
     have = bool(rerank.loads()) and "rerank_unavailable" not in rerank.why()
     got, why = rerank.paragraphs(box["query"], paras)
     assert len(got) <= 8, f"🔴 상위 8 을 넘겼다: {len(got)}"
