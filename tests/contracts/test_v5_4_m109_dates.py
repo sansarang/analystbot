@@ -153,3 +153,68 @@ def test_M109_날짜를_정하는_곳이_하나다():
     assert "pick_published" in called, (
         "🔴 에이전트 경로가 `pick_published` 를 안 부른다 — 어느 쪽이 원본인지 "
         "자리마다 달라진다")
+
+
+def test_M109_날짜를_어디서도_버리지_않는다():
+    """🔴🔴 **같은 병이 두 번 났다** — `readtext` 의 날짜를 `_` 로 버리는 자리.
+
+    | 언제 | 어디 | 결과 |
+    |---|---|---|
+    | 2026-10-05 | `agentloop.Tools._open` | `date_missing` 7건 (커밋 1370ead 가 고쳤다) |
+    | 2026-10-06 | `cells.Cell._keep_body` | 🔴 `date_missing` **6 → 20** |
+
+    ⚠️ 두 번째는 **첫 번째를 고친 뒤에** 드러났다 — 한 경로만 고치면 다른
+       경로의 몫이 커질 때 수가 **늘어난다.**
+    🔴 그래서 `app/` 전체에서 **AST 로** 그 꼴을 센다 — 글자가 아니라 구조다.
+    """
+    import ast
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2] / "app"
+    bad: list[str] = []
+    for path in sorted(root.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for n in ast.walk(tree):
+            if not (isinstance(n, ast.Assign) and isinstance(n.value, ast.Call)
+                    and isinstance(n.value.func, ast.Attribute)
+                    and n.value.func.attr in ("read", "extract")
+                    and isinstance(n.value.func.value, ast.Name)
+                    and n.value.func.value.id == "readtext"):
+                continue
+            # 🔴 `a, b = readtext.read(...)` 의 **둘째**가 날짜다
+            tgt = n.targets[0]
+            if not isinstance(tgt, ast.Tuple) or len(tgt.elts) < 2:
+                continue
+            second = tgt.elts[1]
+            if isinstance(second, ast.Name) and second.id.startswith("_"):
+                bad.append(f"{path.relative_to(root.parent)}:{n.lineno} "
+                           f"{ast.unparse(n)[:70]}")
+    assert not bad, (
+        "🔴 `readtext` 가 뽑은 **발행일을 버린다** — 그 본문을 인용한 변수는 "
+        "검증층에서 `date_missing` 으로 죽는다:\n  " + "\n  ".join(bad))
+
+
+def test_M109_세포_경로도_날짜를_싣는다():
+    """🔴 #2 배선 — **돌려서** 본다(글자 검사는 §9-5 가 무효로 본다)."""
+    from app import cells
+    seen = cells.Seen()
+    html = ('<html><head><meta property="article:published_time" '
+            'content="2026-10-04T12:00:00+00:00"></head><body>'
+            '<article><p>Bradley is unavailable for Northern Ireland because '
+            'of a hamstring injury picked up last week.</p></article>'
+            '</body></html>')
+
+    class _Got:
+        text = html
+        ok = True
+        url = "https://news.test/a"
+
+    cell = cells.Cell.__new__(cells.Cell)      # 🔴 입구를 안 지난다(이 함수만 본다)
+    cell.seen = seen
+    cells.Cell._remember_body(cell, "https://news.test/a", _Got())
+    assert seen.bodies.get("https://news.test/a"), seen.docs
+    when = seen.dates.get("https://news.test/a")
+    assert when is not None, (
+        f"🔴 세포가 받은 본문에 **발행일이 안 실렸다** — 실측 2026-10-06 에 "
+        f"그 때문에 `date_missing` 이 20건이었다: {seen.docs}")
+    assert seen.date_sources.get("https://news.test/a"), seen.docs

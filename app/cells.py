@@ -1391,8 +1391,23 @@ class Cell:
         if not html:
             return
         from app import readtext, searchcells
-        text, _when = readtext.extract(html, url=url)
-        self.seen.add_body(url, text or searchcells._strip_tags(html))
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **날짜를 버리지 않는다** — 실측 2026-10-06(재실행)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 종전 이 줄은 `text, _when = …` 이었다 — 발행일을 **`_when` 으로
+        #     버렸다.** 🔴 그 본문은 `seen` 에 날짜 없이 들어가고, 그것을 인용한
+        #     변수는 검증층에서 `date_missing` 으로 죽는다.
+        #  🔴 실측: 1차 재실행에서 `date_missing` 이 **6 → 20** 으로 **늘었다**.
+        #     `Tools._open`(에이전트 경로)만 고쳤고 **이 세포 경로**가 남아
+        #     있었기 때문이다 — 그 판에서 에이전트 fetch 가 32 → 9 로 줄어
+        #     날짜 없는 본문의 몫이 커졌다.
+        #  ⚠️ `extract` 는 `htmldate` 결과를 **이미 들고 있었다** — 또 "돌았는데
+        #     결과가 안 쓰인" 자리다(커밋 1370ead 와 같은 병).
+        text, when = readtext.extract(html, url=url)
+        self.seen.add_doc(url, text or searchcells._strip_tags(html),
+                          published_at=when,
+                          date_source="본문(세포 fetch · htmldate)")
 
     def _verified(self, src: Source, facts: list[Fact], *,
                   dateless: list[Fact] | None = None) -> list[Fact]:
