@@ -440,3 +440,30 @@ def test_wo3_장부를_2차_판정_전에_쓴다():
     assert at_write < at_second, (
         "🔴 `second_round` 가 **1차 장부를 쓰기 전에** 돈다 — 빈 장부를 보고 "
         "네 칸 전부를 2차로 돌린다(실측 2026-10-06)")
+
+
+def test_wo_하위_표의_출력_토큰이_0이_아니다():
+    """🔴🔴 **보고가 거짓이던 자리** — 실측 2026-10-06.
+
+    사용자 지시 2026-10-06 은 *"하위별 표(**출력 토큰**·budget_cut 여부)"* 를
+    요구했다. 🔴 그런데 여덟 하위 **전부 0** 이었다 — `SubBudget.spend_out` 이
+    **아무 데서도 안 불리는 죽은 코드**였다(#2 배선).
+
+    ⚠️ `took_tool` 은 하위 객체에 적는다(그래서 `search`·`fetch` 칸은 맞았다).
+       🔴 토큰만 빠져 있었고, 표는 그 빈칸을 **0 으로** 보여 줬다(#3).
+    """
+    from app import solar
+    from app.research import subtasks
+    one = subtasks.split(_ref())[0]
+    bud = solar.MatchBudget(subtask=one, subtask_out=one.budget.out_cap)
+    assert one.budget.out_used == 0
+    bud.took({"prompt_tokens": 100, "completion_tokens": 1234})
+    assert one.budget.out_used == 1234, (
+        f"🔴 하위 출력 토큰이 **안 쌓인다**({one.budget.out_used}) — 보고의 "
+        f"토큰 칸이 영원히 0 이다")
+    # 🔴 두 번 부르면 **더해진다**(덮지 않는다)
+    bud.took({"prompt_tokens": 1, "completion_tokens": 6})
+    assert one.budget.out_used == 1240, one.budget.out_used
+    # 🔴 도구 칸도 같은 길로 쌓인다(이쪽은 전부터 됐다 — 반대 증거)
+    bud.took_tool("search")
+    assert one.budget.search_used == 1, one.budget.search_used

@@ -313,7 +313,22 @@ class MatchBudget:
                      .get("cached_tokens") or 0)
         self.cached_tokens += cached
         self.input_tokens += max(0, int(u.get("prompt_tokens") or 0) - cached)
-        self.output_tokens += int(u.get("completion_tokens") or 0)
+        out_n = int(u.get("completion_tokens") or 0)
+        self.output_tokens += out_n
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **하위 객체에도 적는다** — 실측 2026-10-06
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ `took_tool` 은 이미 그렇게 한다(그래서 하위 표의 `search`·`fetch`
+        #     칸은 맞다). 🔴 **토큰은 안 적었다** — `SubBudget.spend_out` 이
+        #     **아무 데서도 안 불리는 죽은 코드**였다(#2 배선).
+        #  🔴 그래서 사용자가 요구한 *"하위별 표(출력 토큰·budget_cut 여부)"* 의
+        #     토큰 칸이 **여덟 하위 전부 0** 이었다 — 보고가 거짓이 됐다(#3).
+        #  ⚠️ 벽은 `self.output_tokens` 가 여전히 든다(`max_out` 이 하위 상한을
+        #     읽는다) — 이 줄은 **세는 것**이고 막는 것이 아니다.
+        box = getattr(self.subtask, "budget", None)
+        if box is not None and hasattr(box, "spend_out"):
+            box.spend_out(out_n)
         self.calls += 1
         got = cost_usd(u)
         self.usd = round(self.usd + got, 6)
