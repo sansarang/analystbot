@@ -123,3 +123,27 @@ def test_M104_시작한_경기도_방향_줄을_낸다():
               if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
     assert "direction_line" in called, (
         "🔴 카드가 `direction_line` 을 안 부른다 — 방향이 등급에 묶인다")
+
+
+def test_M104_시나리오가_0이어도_방향_줄이_있다():
+    """🔴 *"블록 9 는 **등급 유무와 무관하게** 매 경기 한 줄을 낸다"*.
+
+    ⚠️ 실사고 it6: 시나리오가 0개여서 **블록 9 자체가 없었다** — "방향 없음"
+       과 같은 병이다(판정이 못 섰다는 이유로 방향을 안 적는다).
+    🔴 **돌려서** 본다 — 카드를 만들어 블록 9 가 있는지 센다.
+    """
+    from app import analyze, classify
+    game = classify.Game(home="Indonesia", away="Thailand", sport="soccer",
+                         league="FIFA ASEAN Cup Premier Division")
+    card = analyze.Card(game=game)
+    card.scenarios = None          # 🔴 시나리오를 못 만든 경기
+    card.survival = None
+    said = analyze.render(card) if hasattr(analyze, "render") else ""
+    assert said, "🔴 카드 렌더러를 못 찾았다 — 이 계약을 고쳐라"
+    assert "■ 9" in said, (
+        "🔴 시나리오가 0 인데 **블록 9 가 없다** — 지시서 §2-2 는 매 경기 한 "
+        "줄을 요구한다")
+    at = said.find("■ 9")
+    seg = said[at:at + 300]
+    assert "방향" in seg, seg
+    assert "방향 없음" not in seg, seg

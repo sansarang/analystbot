@@ -1904,6 +1904,37 @@ def _limits(items: list, sc, sv, states: dict) -> list[str]:
 # ══════════════════════════════════════════════════════════════════
 
 
+def _dir_block(card, sv=None) -> list[str]:
+    """🔴🔴 **블록 9 는 매 경기 한 줄이다** — 지시서 §2-2 (2026-10-05).
+
+    > 카드 블록 9 는 **등급 유무와 무관하게** 매 경기 한 줄을 낸다.
+    > ⚠️ 시작한 경기(M97)도 방향 줄은 낸다 — **등급만** 거둔다.
+
+    ⚠️ 실사고 it6: 시나리오가 0개여서 렌더러가 **세 자리에서** 일찍 돌아갔고
+       블록 9 가 통째로 없었다(`insufficient`·`incomplete`·`sv is None`).
+    🔴 그래서 **한 함수**로 뺐다 — 세 자리가 같은 것을 쓴다(#1 사본 금지).
+    """
+    g = card.game
+    rows = list(getattr(sv, "rows", []) or []) if sv is not None else []
+    by = {r["market"].market_type: float(r["survival"] or 0)
+          for r in rows if r.get("market") is not None}
+    out = ["\n■ 9 방향 판정",
+           "  " + survive.direction_line(
+               by.get("home", 0.0), by.get("away", 0.0), by.get("draw", 0.0),
+               home=str(getattr(g, "home", "") or "홈"),
+               away=str(getattr(g, "away", "") or "원정"))]
+    if not rows:
+        out.append("     (⚠️ 시나리오·판정이 없어 **확률을 못 쟀다** — 방향 "
+                   "줄은 그래도 낸다 · §2-2)")
+    else:
+        wins = [r for r in rows
+                if r["market"].market_type in survive.WIN_MARKETS]
+        named = [r["name"] for r in wins if r["verdict"] != "none"]
+        out.append(f"     (승패 {len(wins)}줄 중 등급이 선 것 {len(named)}줄"
+                   + (f": {' · '.join(named)}" if named else "") + ")")
+    return out
+
+
 def render(card: Card) -> str:
     """블록 열 개를 **순서대로**. 🔴 순서가 규격이다(`docs/fable/output_spec.md`).
 
@@ -2002,6 +2033,7 @@ def render(card: Card) -> str:
     sc = card.scenarios
     if card.insufficient:
         out.append("  🔴 자료 부족 — 시나리오를 만들지 않는다(§7 R5)")
+        out += _dir_block(card)          # 🔴 방향은 그래도 낸다(§2-2)
         return "\n".join(out)
     if card.incomplete:
         # 🔴 §6-2 — **카드 금지**다. ⚠️ 그래도 **만든 시나리오는 보여 준다** —
@@ -2036,7 +2068,18 @@ def render(card: Card) -> str:
 
     sv = card.survival
     if sv is None:
-        out.append("\n■ 7~9 보드·결론·방향 — 못 셌다")
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **방향 줄은 여기서도 낸다** — 지시서 §2-2 (2026-10-05)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 카드 블록 9 는 **등급 유무와 무관하게** 매 경기 한 줄을 낸다.
+        #
+        #  ⚠️ 실사고 it6: 시나리오가 0개여서 여기서 돌아갔고 **블록 9 가
+        #     통째로 없었다** — *"방향 없음"* 과 같은 병이다(판정이 못 섰다는
+        #     이유로 방향을 안 적는다).
+        #  🔴 못 쟀으면 **못 쟀다고** 적는다(#3) — 줄을 없애지 않는다.
+        out.append("\n■ 7~8 보드·결론 — 못 셌다")
+        out += _dir_block(card)          # 🔴 방향은 그래도 낸다(§2-2)
         return "\n".join(out)
 
     ids = [d.id for d in sc.drafts]
@@ -2109,25 +2152,7 @@ def render(card: Card) -> str:
         out.append(f"  {word}: [{where}] {r['name']} (생존 {r['survival']}) — "
                    f"죽는 시나리오 {dead or '없다'}")
 
-    out.append("\n■ 9 방향 판정")
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **방향은 등급과 분리** — 지시서 §2-2 (2026-10-05)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 실사고 it4: `홈승 0.62 · 원정승 0.23` 인데 *"방향 없음 — 승패 5줄 중
-    #     이름 0줄"* 이었다. 🔴 등급 문턱(`verdict != none`)으로 방향을 쟀다.
-    #  🔴 사용자 규칙은 *"경기마다 누가 이길지 분명히"* 다 — 등급이 없어도
-    #     **방향은 낸다**. 시작한 경기도 같다(등급만 거둔다).
-    wins = [r for r in sv.rows if r["market"].market_type in survive.WIN_MARKETS]
-    by = {r["market"].market_type: float(r["survival"] or 0) for r in wins}
-    g = card.game
-    out.append("  " + survive.direction_line(
-        by.get("home", 0.0), by.get("away", 0.0), by.get("draw", 0.0),
-        home=str(getattr(g, "home", "") or "홈"),
-        away=str(getattr(g, "away", "") or "원정")))
-    named = [r["name"] for r in wins if r["verdict"] != "none"]
-    out.append(f"     (승패 {len(wins)}줄 중 등급이 선 것 {len(named)}줄"
-               + (f": {' · '.join(named)}" if named else "") + ")")
+    out += _dir_block(card, sv)
 
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **v5-A §4 — `■ 반증`**(그 부록의 출력 예 그대로)

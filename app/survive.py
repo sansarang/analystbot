@@ -381,6 +381,11 @@ def direction_line(home_p: float, away_p: float, draw_p: float, *,
     h, a, d = float(home_p or 0), float(away_p or 0), float(draw_p or 0)
     hn = str(home or "홈"), str(away or "원정")
     tail = f"홈승 {h:.2f} · 원정승 {a:.2f} · 무 {d:.2f}"
+    # 🔴 **전부 0 이면 못 쟀다** — 그것을 "반반"으로 적으면 거짓이다(#3).
+    #    ⚠️ 실사고 it6: 시나리오가 0개라 확률이 전부 0 이었다.
+    if h <= 0 and a <= 0 and d <= 0:
+        return (f"방향: **못 쟀다** — {tail}. 시나리오가 없어 승패 확률이 서지 "
+                f"않았다(⚠️ 반반이 아니다 — 모른다)")
     gap = abs(h - a)
     if gap >= DIR_GAP:
         who = hn[0] if h > a else hn[1]
