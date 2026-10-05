@@ -616,6 +616,92 @@ UNBEATEN_WORDS: tuple[str, ...] = (
     "won all", "무패", "전승", "지지 않", "패배 없")
 
 
+#: 🔴 **5백으로 보는 수** — 지시서 §3-1: *"5백 → `favors: goals_down`"*.
+BACK_MANY = 5
+
+#: 🔴 공격 쪽 포지션 글자 — `absence_att`·`absence_def` 를 가른다.
+#  ⚠️ 사전이다(사실이 아니다) — 늘릴 때도 실측으로.
+ATT_WORDS: tuple[str, ...] = ("fw", "st", "cf", "lw", "rw", "am", "공격", "윙")
+
+
+def back_line(formation: object, players: object) -> int | None:
+    """🔴 **수비 숫자** — 포메이션 첫 숫자(지시서 §3-1).
+
+    > 포메이션 문자열(`5-3-2`·`3-4-3` 등)의 **첫 숫자**, 없으면 XI 포지션 집계.
+
+    🔴 **못 읽으면 `None`** — 지어내지 않는다(#4). 그러면 그 각도만 건너뛴다.
+    """
+    import re as _re
+    said = str(formation or "").strip()
+    m = _re.match(r"^\s*(\d)\s*[-–]", said)
+    if m:
+        got = int(m.group(1))
+        return got if 2 <= got <= 6 else None
+    # ⚠️ 포메이션이 없으면 포지션 집계 — 자료가 없으면 `None` 이다
+    rows = [str(x).lower() for x in (players or [])]
+    backs = [x for x in rows if any(w in x for w in ("cb", "lb", "rb", "수비"))]
+    return len(backs) if backs else None
+
+
+def _att(name: object) -> bool:
+    """🔴 그 자리가 **공격 쪽**인가 — `absence_att`·`absence_def` 를 가른다."""
+    low = str(name or "").lower()
+    return any(w in low for w in ATT_WORDS)
+
+
+def xi_variables(*, team: str, formation: object, players: object,
+                 url: str, confirmed: bool,
+                 last_xi: object = (), bench: object = (),
+                 out_last: object = ()) -> list[dict]:
+    """🔴🔴 **XI 를 변수로 바꾼다** — 지시서 §3-1 (2026-10-05).
+
+    > 🔴 이 셋은 리드·에이전트가 아니라 **코드가 XI 사실에서 만든다**
+    > (재현 가능해야 함). 에이전트가 같은 사실을 따로 찾아오면 MinHash 병합으로
+    > **출처 수만** 늘린다.
+
+    셋을 만든다:
+      ① **수비 숫자** — 5백이면 `lineup_intent` · `favors: goals_down` · 주장
+         `"{팀} 5백 선발 — 내려앉는 운영"`
+      ② **주전 이탈** — 직전 XI 에 있었는데 지금 없는 선수. 벤치면 *"벤치"*,
+         명단에 없으면 *"결장"*. 🔴 그 팀의 **반대쪽**에 유리하다.
+      ③ **복귀** — 직전에 빠졌다 돌아온 선수 → **그 팀 쪽**.
+
+    ⚠️ `hardness` 는 **확정 XI 면 `hard`**, 예상이면 `soft`(지시서 원문).
+    🔴 사실 출처는 XI 를 준 **페이지 URL** 이다.
+    """
+    hard = "hard" if confirmed else "soft"
+    rows = [str(x) for x in (players or [])]
+    out: list[dict] = []
+    back = back_line(formation, rows)
+    if back is not None and back >= BACK_MANY:
+        out.append({
+            "type": "lineup_intent", "team": str(team), "subject": str(team),
+            "favors": "goals_down", "hardness": hard, "source_url": str(url),
+            "claim": (f"{team} {back}백 선발 — 내려앉는 운영"
+                      f"(포메이션 {formation})"),
+            "quote": str(formation or ""), "from_code": True})
+    # ② 주전 이탈 — 직전 XI 에 있었는데 지금 선발에 없다
+    now = set(rows)
+    benched = {str(x) for x in (bench or [])}
+    for who in [str(x) for x in (last_xi or []) if str(x) not in now]:
+        where = "벤치" if who in benched else "결장"
+        out.append({
+            "type": "absence_att" if _att(who) else "absence_def",
+            "team": str(team), "subject": str(team),
+            # 🔴 **그 팀의 반대쪽**에 유리하다(지시서 §3-1)
+            "favors": "opponent", "hardness": hard, "source_url": str(url),
+            "claim": f"{team} {who} 가 선발에서 빠졌다 — {where}",
+            "quote": who, "from_code": True})
+    # ③ 복귀 — 직전에 빠졌다 돌아왔다
+    for who in [str(x) for x in (out_last or []) if str(x) in now]:
+        out.append({
+            "type": "returning", "team": str(team), "subject": str(team),
+            "favors": "subject", "hardness": hard, "source_url": str(url),
+            "claim": f"{team} {who} 가 선발 복귀했다",
+            "quote": who, "from_code": True})
+    return out
+
+
 def clash_with_form(said: object, last5: object) -> str:
     """🔴🔴 **그 주장이 폼 기록과 어긋나나** — 지시 ⑨ (실측 2026-10-05).
 

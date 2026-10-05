@@ -165,6 +165,79 @@ def _sum_of(score: str) -> int:
 MARK = "§6-7"
 
 
+#: 🔴 보정이 원 평균보다 **이만큼 낮으면** 회귀형 필수(지시서 §3-2).
+REGRESSION_GAP = 1.0
+
+#: 🔴🔴 **경기 형식** — 지시서 §3-3 이 이름을 **그대로** 줬다.
+#  ⚠️ 모르면 `unknown` 이다(지어내지 않는다 · #4).
+FORMATS: tuple[str, ...] = (
+    "league", "group", "knockout_single", "knockout_two_leg_1st",
+    "knockout_two_leg_2nd", "final_single", "friendly", "unknown")
+
+#: 🔴 **90분 무승부가 필수인 형식** — 지시서 §3-3 원문.
+#  > `final_single`·`knockout_single`·`knockout_two_leg_1st` 이면
+#  > 90분 무승부(`0-0`·`1-1`) 시나리오 **필수**.
+DRAW_FORMATS: tuple[str, ...] = (
+    "final_single", "knockout_single", "knockout_two_leg_1st")
+
+#: 🔴 90분 무승부로 세는 스코어.
+DRAW_SCORES: tuple[str, ...] = ("0-0", "1-1")
+
+#: 🔴 무승부 필수 판정의 표식 — 자기 흔적을 걷는다(난타전과 같은 길).
+DRAW_MARK = "§3-3"
+
+
+def regression_needed(raw: float, trimmed: float) -> tuple[bool, str]:
+    """🔴 **회귀형(저득점) 시나리오가 필요한가** — 지시서 §3-2.
+
+    > 보정 평균이 원 평균보다 **1.0 이상 낮으면** 회귀형(저득점) 시나리오 필수.
+    """
+    a, b = float(raw or 0), float(trimmed or 0)
+    gap = a - b
+    if gap >= REGRESSION_GAP:
+        return True, (f"🔴 **회귀형이 필요하다** — 원 평균 {a:.2f} · 보정 "
+                      f"{b:.2f}(차이 {gap:.2f} ≥ {REGRESSION_GAP:g}). 한 경기가 "
+                      f"평균을 끌어올렸다(지시서 §3-2)")
+    return False, (f"보정 차이 {gap:.2f} < {REGRESSION_GAP:g} — 회귀형을 "
+                   f"강제하지 않는다")
+
+
+def draw_needed(fmt: object) -> tuple[bool, str]:
+    """🔴 그 형식이 **90분 무승부 시나리오를 요구하나** — 지시서 §3-3."""
+    said = str(fmt or "unknown")
+    if said in DRAW_FORMATS:
+        return True, (f"🔴 `{said}` 이다 — **90분 무승부**(0-0·1-1) 시나리오가 "
+                      f"필수다. ⚠️ 그 전개 문장에 *연장·승부차기로 간다* 를 "
+                      f"적고, 마켓 대입은 **90분 기준**임을 카드에 표시한다")
+    return False, f"`{said}` — 90분 무승부를 강제하지 않는다"
+
+
+def require_draw(res, game, *, fmt: object) -> bool:
+    """🔴🔴 **90분 무승부가 들어왔나** — 지시서 §3-3 (M108).
+
+    ⚠️ 난타전(`require_slugfest`)과 **같은 길**이다 — 자기 흔적을 걷고 다시
+       센다(시나리오를 갈아 치운 뒤에도 옳게 판정해야 한다).
+    """
+    res.notes[:] = [n for n in (res.notes or []) if DRAW_MARK not in str(n)]
+    res.incomplete_why[:] = [w for w in (res.incomplete_why or [])
+                             if DRAW_MARK not in str(w)]
+    res.incomplete = bool(res.incomplete_why)
+    need, why = draw_needed(fmt)
+    res.notes.append(f"{DRAW_MARK} 형식 검사 — {why}")
+    if not need:
+        return True
+    have = [d.id for d in (res.drafts or [])
+            if any(str(sc) in DRAW_SCORES for sc in (d.scores or []))]
+    if have:
+        res.notes.append(f"{DRAW_MARK} ✅ 90분 무승부 시나리오가 있다({have})")
+        return True
+    res.incomplete = True
+    res.incomplete_why.append(
+        f"{DRAW_MARK} 🔴 **90분 무승부 시나리오가 없다** — {why}. 들어온 "
+        f"스코어: {[sc for d in (res.drafts or []) for sc in d.scores][:8]}")
+    return False
+
+
 def require_slugfest(res, game, *, home_avg: float, away_avg: float) -> bool:
     """🔴🔴 **난타전이 없으면 `incomplete`** — 지시 ④. 돌려주는 것은 *"있다"*.
 

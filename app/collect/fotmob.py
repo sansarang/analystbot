@@ -639,6 +639,42 @@ def parse_form(j: dict, q: Question, *, url: str, when) -> list[Fact]:
     return out
 
 
+#: 🔴 **이상치로 보는 배수** — 지시서 §3-2: *"한 경기 득점이 나머지 평균의
+#  **2배 이상**이면 그 경기를 뺀 평균을 함께 계산한다."*
+OUTLIER_X = 2.0
+
+
+def trimmed_avg(goals: list) -> tuple[float, str]:
+    """🔴🔴 **이상치를 뺀 평균** — 지시서 §3-2 (2026-10-05). `(평균, 사유)`.
+
+    ⚠️ 실사고: 인도네시아 평균 **3.6골**이 `hard` 변수로 서서 득점형 시나리오에
+       쏠렸다. 🔴 그 수는 **방글라데시전 9-2** 한 경기가 끌어올린 것이다 —
+       보정하면 **1.75** 다. 그것이 "회귀"를 가리킨다.
+    🔴 사유를 **글로** 돌려준다(#3) — 카드가 *"평균 3.6골(9-2 제외 시 1.75)"*
+       처럼 적어야 독자가 그 수를 믿을지 판단할 수 있다.
+    ⚠️ 표본이 2개 미만이면 **안 깎는다** — 깎을 나머지가 없다.
+    """
+    rows = [float(x) for x in (goals or [])
+            if isinstance(x, (int, float))]
+    if not rows:
+        return 0.0, ""
+    base = sum(rows) / len(rows)
+    if len(rows) < 2:
+        return round(base, 3), ""
+    top = max(rows)
+    rest = [x for x in rows if x != top] or rows
+    # ⚠️ 같은 값이 여럿이면 **하나만** 뺀다
+    if len(rest) == len(rows):
+        rest = rows[:]
+        rest.remove(top)
+    rest_avg = (sum(rest) / len(rest)) if rest else base
+    if rest_avg <= 0 or top < rest_avg * OUTLIER_X:
+        return round(base, 3), ""
+    return round(rest_avg, 3), (
+        f"⚠️ **{top:g}골 경기 하나를 뺐다** — 나머지 평균({rest_avg:.2f})의 "
+        f"{OUTLIER_X:g}배 이상이다. 원 평균 {base:.2f} → 보정 {rest_avg:.2f}")
+
+
 def scored_avg(seq: list) -> float | None:
     """🔴🔴 **그 팀이 넣은 골의 평균** — 사용자 결정 2026-10-05 (난타전 지표).
 
