@@ -95,6 +95,12 @@ class Subtask:
     seed: str
     rerank_query: str
     langs: tuple[str, ...] = ()
+    #: 🔴🔴 **그 팀의 현지어** — 2차 질의가 쓴다(지시서 §4-2).
+    #   ⚠️ 두 팀이 **다른 언어**다(인도네시아 `id` · 태국 `th`) — 같은 목록을
+    #      주면 한쪽이 자기 매체를 못 본다.
+    local_lang: str = ""
+    #: 🔴 2차에서 **뺄 도메인** — 쏠린 곳을 또 보지 않는다(지시서 §4-2).
+    avoid_host: str = ""
     budget: Budget = field(default_factory=lambda: Budget(0, 0, 0, 0))
     #: 🔴 2차 보충인가 — 리드가 `not_tried`·`empty` 칸만 다시 돌린다
     second: bool = False
@@ -172,6 +178,8 @@ def split(ref: Any) -> list[Subtask]:
                 seed=_seed_of(row, sport=sport, team=team, opp=opp, comp=comp),
                 rerank_query=str(row.get("rerank_query") or ""),
                 langs=langs,
+                # 🔴 **자기 팀의 현지어**를 든다(§4-2)
+                local_lang=team_lang(team),
                 # 🔴 **하위마다 새 객체**(M59) — 공유하면 한쪽이 다 쓴다
                 budget=_budget()))
     logger.info("[subtasks] 하위 %d개 — %s", len(out),
@@ -201,6 +209,31 @@ _STOP: frozenset[str] = frozenset({
 #: 🔴 좁히기 질의에 **더할 낱말 수**. ⚠️ `querygate.MAX_WORDS` 를 넘지 않게
 #   호출부가 자른다 — 여기 수를 박지 않고 그 상한에서 계산한다.
 NARROW_WORDS = 3
+
+
+def team_lang(team: object) -> str:
+    """🔴🔴 **그 팀의 현지어** — 지시서 §4-2 (2026-10-05).
+
+    > 국가대표 경기의 현지어는 **양 팀 각각의 언어**다(인도네시아어 `id`,
+    > 태국어 `th`). Babel likely-subtag 로 구하고, 하위 과제 **2차 질의 언어를
+    > 팀별로 다르게** 쓴다.
+
+    ⚠️ 실사고 it4/it5: 두 팀에 **같은 언어 목록**(`en`·`id`)을 줘서 태국 쪽
+       하위가 태국어로 안 물었다. 🔴 인도네시아어 매체(detik·kompas·bola.com)가
+       XI·결장·감독 기자회견을 다 갖고 있었다(지시서 §4-2).
+    🔴 **못 구하면 빈 글**이다 — 지어내지 않는다(#4). 그러면 그 각도만 건너뛴다.
+    """
+    said = str(team or "").strip()
+    if not said:
+        return ""
+    # 🔴 **`resolve.nation_langs` 가 정본이다**(#1 사본 금지) — 그것이 이름표의
+    #    나라 코드(`iso:ID`)를 Babel CLDR likely-subtag 로 푼다.
+    #    ⚠️ 여기서 Babel 을 다시 부르면 두 벌이 되고 한쪽만 고쳐진다.
+    from app import resolve
+    got, _how = resolve.nation_langs(said)
+    # ⚠️ 끝의 `en` 은 그 함수가 **보탠 것**이다 — 현지어가 먼저다
+    local = [x for x in got if x and x != "en"]
+    return local[0] if local else ""
 
 
 def first_lang(*, league: str, langs: tuple | list = ()) -> str:

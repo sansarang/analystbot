@@ -806,6 +806,13 @@ async def gather(game: dict, *, net: Net | None = None,
         #  > 돌린다(턴 6). 2차 뒤에도 비면 그대로 `gaps` 로 — **3차는 없다.**
         keys = sorted({t.team_key for t in mine})
         again = _lead.second_round(book, [t.group for t in mine], keys)
+        # 🔴 **쏠렸으면 그 도메인을 빼고 현지어로**(§4-2) — 2차 1회 안에서다.
+        skew, skew_why = skewed_host(agent_vars)
+        if skew:
+            notes.append(skew_why)
+            for t in mine:
+                t.avoid_host = skew
+                t.second = True
         left = _lead.second_budget(rows)
         if again and (left["search"] > 0 or left["out"] > 0):
             back = [t for t in mine if (t.group, t.team_key) in set(again)]
@@ -1813,6 +1820,41 @@ def source_spread(rows: list) -> tuple[int, str]:
             if n * 2 >= sum(seen.values()) and len(seen) > 1 else "")
     return len(seen), (f"출처 {len(seen)}곳 — {tail}{mark} "
                        f"(가장 많은 곳 `{worst}` {n}건)")
+
+
+#: 🔴 **쏠림으로 보는 비율** — 지시서 §4-2: *"한 도메인이 검증 변수 근거의
+#  **50% 초과**면"*. ⚠️ 정확히 50% 는 아니다(초과여야 한다).
+SKEW_OVER = 0.5
+
+
+def skewed_host(rows: list) -> tuple[str | None, str]:
+    """🔴🔴 **한 도메인에 쏠렸나** — 지시서 §4-2 (2026-10-05).
+
+    `(쏠린 호스트 또는 None, 사유)`.
+
+    ⚠️ 실사고 it4/it5: `fotmob.com 22건` 이 검증 변수 근거의 대부분이었다.
+       🔴 그때 2차 보충을 **같은 곳**에 또 던지면 뜻이 없다 — 그 도메인을
+       빼고 **현지어로** 한 번 돌린다(2차 1회 안에서 · 횟수 추가 아님).
+    """
+    from urllib.parse import urlparse
+    tally: dict[str, int] = {}
+    for r in (rows or []):
+        url = str((r.get("source_url") if isinstance(r, dict)
+                   else getattr(r, "source_url", "")) or "")
+        host = (urlparse(url).netloc or "").lower().removeprefix("www.")
+        if host:
+            tally[host] = tally.get(host, 0) + 1
+    total = sum(tally.values())
+    if not total:
+        return None, "⚠️ **출처를 못 쟀다** — 변수에 URL 이 없다"
+    host, n = max(tally.items(), key=lambda kv: (kv[1], kv[0]))
+    pct = n / total
+    if pct <= SKEW_OVER or len(tally) < 2:
+        return None, (f"출처 {len(tally)}곳 — 가장 많은 곳 `{host}` "
+                      f"{n}/{total}({pct * 100:.0f}%) · 쏠리지 않았다")
+    return host, (f"🔴 **`{host}` 에 쏠렸다** — {n}/{total}"
+                  f"({pct * 100:.0f}% > {SKEW_OVER * 100:.0f}%). 2차 보충은 "
+                  f"그 도메인을 **빼고 현지어로** 돌린다(§4-2)")
 
 
 def _limits(items: list, sc, sv, states: dict) -> list[str]:
