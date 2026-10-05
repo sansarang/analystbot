@@ -337,6 +337,59 @@ def cap_for(state: str) -> float:
     return min(caps.values()) if caps else 0.8
 
 
+def dead_marks(marks: dict, ids: list) -> list[str]:
+    """🔴🔴 **죽는 시나리오 목록** — `✗` 와 `△` 를 **둘 다**(지시서 §2-1).
+
+    > *"죽는 시나리오" 목록에는 `✗` 와 `△` 를 둘 다 적는다 — **`△` 가 있는데
+    > "죽는 시나리오 없다"는 표기 금지.**
+
+    ⚠️ 실사고 2026-10-05(it4): 결론이 *"오버 1.5 (생존 0.8462) — **죽는
+       시나리오 없다**"* 였다. 🔴 그런데 블록 7 표는 `○ ○ ○ ○ △ △` 였다 —
+       `E(2-1·1-0)`·`F(1-1·0-1)` 에서 **`1-0`·`0-1` 이 오버 1.5 를 죽인다.**
+       생존 수(0.8462 = 11/13)는 그것을 반영했는데 **글이 안 했다.**
+    🔴 `△` 를 빼면 "소액"이 **안전해 보인다** — 그것이 돈 사고로 간다.
+    """
+    out: list[str] = []
+    for i in list(ids or []):
+        sym = (marks or {}).get(i)
+        if sym == FAIL:
+            out.append(f"{i}({FAIL})")
+        elif sym == PART:
+            out.append(f"{i}({PART})")
+    return out
+
+
+#: 🔴🔴 **방향을 가르는 차이** — 지시서 §2-2.
+#  > 홈승·원정승 확률 중 큰 쪽이 작은 쪽보다 **0.15 이상** 크면 그 팀 이름으로,
+#  > 미만이면 `반반` 과 함께 **기울기**를 한 단어로 적는다.
+DIR_GAP = 0.15
+
+
+def direction_line(home_p: float, away_p: float, draw_p: float, *,
+                   home: str = "", away: str = "") -> str:
+    """🔴🔴 **방향 한 줄** — 등급과 **무관하게** 매 경기 낸다(지시서 §2-2).
+
+    > 카드 블록 9 는 등급 유무와 무관하게 매 경기 한 줄을 낸다.
+    > 🔴 **"방향 없음" 문자열은 코드에서 제거한다.**
+    > ⚠️ 시작한 경기(M97)도 방향 줄은 낸다 — **등급만** 거둔다.
+
+    ⚠️ 실사고 2026-10-05(it4): `홈승 0.62 · 원정승 0.23` 인데 블록 9 가
+       *"방향 없음 — 승패 5줄 중 이름 0줄"* 이었다. 🔴 **등급 문턱과 방향
+       판정을 같은 문턱으로 묶었다** — 사용자 규칙은 *"경기마다 누가 이길지
+       분명히"* 다.
+    """
+    h, a, d = float(home_p or 0), float(away_p or 0), float(draw_p or 0)
+    hn = str(home or "홈"), str(away or "원정")
+    tail = f"홈승 {h:.2f} · 원정승 {a:.2f} · 무 {d:.2f}"
+    gap = abs(h - a)
+    if gap >= DIR_GAP:
+        who = hn[0] if h > a else hn[1]
+        return f"방향: {who} — {tail}"
+    # 🔴 **반반이어도 기울기는 적는다** — "모르겠다"로 끝내지 않는다
+    lean = hn[0] if h >= a else hn[1]
+    return f"방향: 반반 — {tail} · 기울기는 {lean}"
+
+
 def same_branch_note(rows: list) -> str:
     """🔴🔴 **추천이 전부 같은 갈래인가** — 지시 ⑮ (실측 2026-10-05).
 

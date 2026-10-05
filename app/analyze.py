@@ -2022,7 +2022,9 @@ def render(card: Card) -> str:
         #  🔴 `r["verdict"]` 가 **이미 그 판정**이다(`name`·`small`·`low`·`none`) —
         #     그것을 글자로 바꾸기만 한다. ⚠️ 생존 수로 다시 재지 않는다.
         word = survive.word_of(str(r.get("verdict") or ""))
-        dead = [i for i in ids if r["marks"][i] == survive.FAIL]
+        # 🔴 **`△` 도 죽는 목록이다**(지시서 §2-1) — `FAIL` 만 세면
+        #    *"죽는 시나리오 없다"* 가 거짓이 된다(실측 it4).
+        dead = survive.dead_marks(r["marks"], ids)
         # 🔴 **어느 마켓의 어느 쪽인가**를 함께 적는다 — 그것을 안 적으면 두 줄이
         #    같은 마켓인지 다른 마켓인지 사람이 알 수 없다(사용자 지적 2026-10-03).
         key = r["market_key"]
@@ -2033,10 +2035,24 @@ def render(card: Card) -> str:
                    f"죽는 시나리오 {dead or '없다'}")
 
     out.append("\n■ 9 방향 판정")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **방향은 등급과 분리** — 지시서 §2-2 (2026-10-05)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 it4: `홈승 0.62 · 원정승 0.23` 인데 *"방향 없음 — 승패 5줄 중
+    #     이름 0줄"* 이었다. 🔴 등급 문턱(`verdict != none`)으로 방향을 쟀다.
+    #  🔴 사용자 규칙은 *"경기마다 누가 이길지 분명히"* 다 — 등급이 없어도
+    #     **방향은 낸다**. 시작한 경기도 같다(등급만 거둔다).
     wins = [r for r in sv.rows if r["market"].market_type in survive.WIN_MARKETS]
-    alive = [r["name"] for r in wins if r["verdict"] != "none"]
-    out.append(f"  {'방향 ' + ' · '.join(alive) if alive else '방향 없음'} — "
-               f"승패 {len(wins)}줄 중 이름 {len(alive)}줄")
+    by = {r["market"].market_type: float(r["survival"] or 0) for r in wins}
+    g = card.game
+    out.append("  " + survive.direction_line(
+        by.get("home", 0.0), by.get("away", 0.0), by.get("draw", 0.0),
+        home=str(getattr(g, "home", "") or "홈"),
+        away=str(getattr(g, "away", "") or "원정")))
+    named = [r["name"] for r in wins if r["verdict"] != "none"]
+    out.append(f"     (승패 {len(wins)}줄 중 등급이 선 것 {len(named)}줄"
+               + (f": {' · '.join(named)}" if named else "") + ")")
 
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **v5-A §4 — `■ 반증`**(그 부록의 출력 예 그대로)
