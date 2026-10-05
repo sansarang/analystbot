@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import ast
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -131,8 +131,156 @@ def test_어댑터가_naive_를_안_내보낸다():
 
 
 def test_DB_가_tz_있는_칸을_쓴다():
-    """🔴 절대규칙 2 — 표가 `TIMESTAMP`(tz 없음)면 **거기서부터 샌다**."""
+    """🔴 절대규칙 2 — 표가 `TIMESTAMP`(tz 없음)면 **거기서부터 샌다**.
+
+    ⚠️ **주석을 뺀다**(D46). 금지어를 *설명하는* 줄과 칸을 *선언하는* 줄은
+       다르다 — 종전엔 스키마 주석에 `TIMESTAMP` 라고 적기만 해도 빨개졌다.
+    """
     sql = (ROOT / "db" / "schema.sql").read_text(encoding="utf-8")
-    bad = [ln.strip() for ln in sql.splitlines()
-           if re.search(r"\bTIMESTAMP\b(?!TZ)", ln, re.I)]
+    bad: list[str] = []
+    for ln in sql.splitlines():
+        code = ln.split("--", 1)[0]          # 🔴 SQL 주석을 걷는다
+        if re.search(r"\bTIMESTAMP\b(?!TZ)", code, re.I):
+            bad.append(ln.strip())
     assert not bad, f"🔴 tz 없는 칸이 있다: {bad[:4]}"
+    # 🔴 **원본이 비어 있지 않다** — 주석만 걷고 선언을 통째로 날리면
+    #    이 계약은 아무것도 막지 않는다(퇴로 막기)
+    assert re.search(r"\bTIMESTAMPTZ\b", sql), "🔴 시각 칸 선언이 사라졌다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **SQL 쪽의 같은 병** — `starts_kst` 를 KST 라고 **믿고** 자르지 않는다
+# ══════════════════════════════════════════════════════════════════
+#
+# 실측 2026-10-05(인계 ①-2). `games.starts_kst` 는 `TIMESTAMPTZ` — **순간**만
+# 담고 오프셋은 버린다. 라이브 52행 **전부** `starts_kst = starts_utc` 였다.
+# 🔴 그런데 질의 여섯 자리가 `starts_kst::date` 로 날짜를 뽑았고, 그 캐스트는
+#    **세션 시간대**(운영 `Etc/UTC`)로 돈다 — 52행 중 **16행**이 어긋났다:
+#
+#    France vs Belgium 2026-10-05 18:45Z → `::date` 10-05 / 🔴 KST 는 **10-06**
+#
+# 실측으로 센 손해: `sources.slate(2026-10-06)` 가 종전 꼴에서 **0건**,
+#                   고친 뒤 **1건**. `오늘 경기수` 가 **3 → 4**.
+#
+# ⚠️ 이 계약은 **AST 로** 문자열 상수를 꺼내 본다 — 파일을 글자로 훑으면
+#    독스트링·주석이 퇴로가 된다(D46 · 이 세션이 여섯 번 당한 자리다).
+
+
+def _sql_strings(path: Path) -> list[tuple[int, str]]:
+    """🔴 그 파일의 **문자열 상수**만. ⚠️ 독스트링은 뺀다(코드가 아니다 · D46).
+
+    f-string 은 `JoinedStr` 로 온다 — 🔴 그 안의 **글자 조각**을 이어 본다
+    (`f" WHERE {timefmt.sql_kst_day()} = $1"` 의 글자 부분).
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    docs: set[int] = set()
+    for n in ast.walk(tree):
+        if not isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,
+                              ast.ClassDef)):
+            continue
+        body = getattr(n, "body", None) or []
+        if body and isinstance(body[0], ast.Expr) and \
+                isinstance(body[0].value, ast.Constant) and \
+                isinstance(body[0].value.value, str):
+            docs.add(id(body[0].value))
+    out: list[tuple[int, str]] = []
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Constant) and isinstance(n.value, str) \
+                and id(n) not in docs:
+            out.append((n.lineno, n.value))
+        elif isinstance(n, ast.JoinedStr):
+            # 🔴 글자 조각 사이에 **자리표**를 넣는다 — 조각이 우연히 붙어
+            #    `starts_kst::date` 처럼 읽히는 것을 막는다
+            parts = [v.value if isinstance(v, ast.Constant)
+                     and isinstance(v.value, str) else "\x00"
+                     for v in n.values]
+            out.append((n.lineno, "".join(parts)))
+    return out
+
+
+#: 🔴 **금지하는 꼴** — `starts_kst` 를 날짜와 **바로** 비교하는 SQL.
+#   ⚠️ `AT TIME ZONE` 을 거친 꼴은 괄호 안에 들어 있어 `(…)::date` 가 되므로
+#      `starts_kst::date` 와 글자가 다르다.
+_BAD_SQL = re.compile(
+    r"(?:\w+\.)?starts_(?:kst|local)\s*(?:::\s*date|[<>]=?\s*\$?\d*\s*::\s*date)",
+    re.I)
+
+
+def test_KST_날짜를_세션_시간대로_뽑지_않는다():
+    """🔴🔴 **`starts_kst::date` 는 KST 날짜가 아니다** — 세션 시간대 날짜다."""
+    bad: list[str] = []
+    for p in sorted((ROOT / "app").rglob("*.py")):
+        for lineno, text in _sql_strings(p):
+            if "starts_kst" not in text and "starts_local" not in text:
+                continue
+            for m in _BAD_SQL.finditer(text):
+                bad.append(f"{p.relative_to(ROOT)}:{lineno} …{m.group(0)}…")
+    assert not bad, (
+        "🔴 `starts_kst` 를 날짜와 바로 비교한다 — **세션 시간대(UTC)** 로 "
+        "돈다. `timefmt.sql_kst_day()` 를 써라:\n  " + "\n  ".join(bad))
+
+
+def test_KST_날짜_조각이_한_곳에만_적혀_있다():
+    """🔴 #1 사본 금지 — `AT TIME ZONE 'Asia/Seoul'` 을 손으로 적지 않는다.
+
+    ⚠️ 실사고: `app/slate.py` 가 이 조각을 손으로 적고, 그 주석에 *"`main.py`·
+       `sources.py` 가 이미 그 꼴을 쓰고 있었다"* 라고 적어 뒀다. 🔴 **둘 다
+       안 쓰고 있었다** — 사본은 언제나 한 발 늦는다.
+    """
+    from app import timefmt
+    owners: list[str] = []
+    for p in sorted((ROOT / "app").rglob("*.py")):
+        for lineno, text in _sql_strings(p):
+            if "AT TIME ZONE" in text.upper():
+                owners.append(f"{p.relative_to(ROOT)}:{lineno}")
+    stray = [o for o in owners if not o.startswith("app/timefmt.py")]
+    assert not stray, (
+        "🔴 `AT TIME ZONE` 을 적은 자리가 `app/timefmt.py` 밖에 있다 — "
+        "`timefmt.sql_kst_day()`·`timefmt.SQL_TODAY_KST` 를 불러라:\n  "
+        + "\n  ".join(stray))
+    # 🔴 **원본이 비어 있지 않다** — 전부 지워도 초록이 되는 계약은 아무것도
+    #    막지 않는다(⚠️ 이 세션이 반복해 당한 퇴로다)
+    assert owners, "🔴 조각을 적은 자리가 **하나도 없다** — 원본이 사라졌다"
+    # 🔴 그 하나가 **옳은 글자**를 만드는지 — 이름이고(오프셋이 아니고), KST 다
+    assert timefmt.SQL_TZ == "Asia/Seoul"
+    assert timefmt.sql_kst_day() == "(starts_kst AT TIME ZONE 'Asia/Seoul')::date"
+    assert timefmt.sql_kst_day("g.starts_kst").startswith("(g.starts_kst AT TIME")
+
+
+def test_수집기가_KST_로_속이지_않는다():
+    """🔴🔴 **`.astimezone(KST)` 는 `timestamptz` 에서 아무 효과가 없다.**
+
+    ⚠️ 수집기 일곱 곳이 그것을 넣고 있었고, 읽는 쪽은 *"이 칸에 KST 가 들어
+       있다"* 고 믿었다. 🔴 그 믿음이 위 두 계약이 막는 병의 **뿌리**다.
+    🔴 그래서 입구는 `timefmt.db_instant` **하나**다 — UTC 를 돌려준다.
+    """
+    bad: list[str] = []
+    for p in sorted((ROOT / "app" / "collect").rglob("*.py")):
+        tree = ast.parse(p.read_text(encoding="utf-8"))
+        for n in ast.walk(tree):
+            if not isinstance(n, ast.Dict):
+                continue
+            for k, v in zip(n.keys, n.values):
+                if not (isinstance(k, ast.Constant)
+                        and k.value in ("starts_kst", "starts_local")):
+                    continue
+                said = ast.unparse(v)
+                if "astimezone" in said:
+                    bad.append(f"{p.relative_to(ROOT)}:{n.lineno} "
+                               f"{k.value} = {said[:60]}")
+    assert not bad, (
+        "🔴 `timestamptz` 칸에 `astimezone` 으로 **KST 를 넣는 척** 한다 — "
+        "`timefmt.db_instant()` 를 써라:\n  " + "\n  ".join(bad))
+
+
+def test_db_instant_가_UTC_를_돌려준다():
+    """🔴 그 입구가 실제로 UTC 인가 — 반대 증거까지 센다."""
+    from app import timefmt
+    when = datetime(2026, 10, 5, 13, tzinfo=timezone.utc)
+    got = timefmt.db_instant(when)
+    assert got == when and got.utcoffset() == timedelta(0), got
+    # 🔴 KST 로 들어온 값도 **같은 순간의 UTC** 로 나간다
+    assert timefmt.db_instant(when.astimezone(timefmt.KST)) == when
+    # 🔴 모르면 멈춘다 — naive 를 UTC 라고 가정하지 않는다
+    with pytest.raises(ValueError, match="시간대 없는"):
+        timefmt.db_instant(datetime(2026, 10, 5, 13))

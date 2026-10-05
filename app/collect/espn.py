@@ -51,7 +51,7 @@ import logging
 import re
 from datetime import date, timedelta, timezone
 
-from app import matchkey, verify, window
+from app import matchkey, timefmt, verify, window
 from app.blackboard import Fact
 from app.cells import Question, Source
 
@@ -183,7 +183,12 @@ def slate_row(got, *, day: date | None = None) -> dict | None:
         "home": home, "away": away,
         "venue": str(info.get("loc") or "").strip() or None,
         "starts_utc": when,
-        "starts_kst": when.astimezone(KST),
+        # 🔴 `timestamptz` 는 **순간**이다 — `.astimezone(KST)` 는 이 칸에
+        #    아무 효과가 없었다(실측 2026-10-05: 라이브 52행 전부
+        #    `starts_kst = starts_utc`). 🔴 그 거짓 믿음을 입구에서 끊는다 —
+        #    표시 KST 는 `timefmt.kst_label`, KST 날짜 질의는
+        #    `timefmt.sql_kst_day` **하나씩**이다.
+        "starts_kst": timefmt.db_instant(when),
         # 🔴 현지 시각대를 페이지가 안 준다 — 지어내지 않는다
         "starts_local": None,
         "status": state,

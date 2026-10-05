@@ -108,3 +108,64 @@ def before(a, b) -> bool:
                 f"🔴 시간대 없는 값을 비교에 넣었다({nm}): {x!r} — "
                 f"서버 시간대가 조용히 끼어든다(5단계 시간 계약)")
     return a < b
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **SQL 쪽의 같은 병** — `starts_kst` 는 KST 를 **담지 않는다**
+# ══════════════════════════════════════════════════════════════════
+#
+# 실측 2026-10-05(인계 ①-2). `games.starts_kst` 는 `TIMESTAMPTZ` 다 —
+# **순간**을 담는 칸이고, 포스트그레스는 그것을 늘 UTC 로 보관한다. 그래서
+# 수집기가 `when.astimezone(KST)` 를 넣어도 **아무 일도 일어나지 않는다**:
+#
+#   starts_utc: 2026-10-05 13:00+00   starts_kst: 2026-10-05 13:00+00  ← 같다
+#
+# 🔴 라이브 DB 52행 **전부** 그렇다(`starts_kst = starts_utc` 52/52).
+#    ⚠️ 그 자체가 틀린 것은 아니다 — 절대규칙 2 는 *"DB 는 UTC 저장"* 이다.
+#    🔴 해로운 것은 **이름이 만드는 거짓 믿음**이다: 칸 이름이 `_kst` 라서
+#       질의가 `starts_kst::date` 로 날짜를 뽑고, 그 캐스트는 **세션 시간대**
+#       (운영은 `Etc/UTC`)로 돈다. KST 날짜가 아니다.
+#
+# 🔴🔴 **손해를 세어 봤다** — 라이브 52행 중 **16행**이 UTC 날짜와 KST 날짜가
+#    갈린다. 유럽 저녁·북미 경기가 전부 그 안에 있다:
+#
+#   France vs Belgium   2026-10-05 18:45Z  → `::date` 10-05 / 🔴 KST 로는 **10-06**
+#   Portugal vs Norway  2026-10-04 18:45Z  → `::date` 10-04 / 🔴 KST 로는 **10-05**
+#
+#    ⚠️ `app/slate.py` 가 2026-10-01 에 이 병을 **한 자리에서** 고쳤고, 그
+#       주석에 *"`app/main.py`·`app/sources.py` 가 이미 그 꼴을 쓰고 있었다"*
+#       고 적어 뒀다. 🔴 **둘 다 안 쓰고 있었다** — 사본의 병이다(#1).
+#
+# 🔴 그래서 **KST 날짜를 만드는 SQL 은 여기 하나다.** 계약이 `app/` 의 모든
+#    문자열을 AST 로 훑어 이 꼴을 거치지 않는 `starts_kst` 날짜 비교를 잡는다.
+
+#: 🔴 포스트그레스가 아는 시간대 이름. ⚠️ `+09` 로 적지 않는다 — `AT TIME ZONE`
+#   은 이름을 받고, 이름이면 나중에 규정이 바뀌어도 DB 가 따라간다.
+SQL_TZ = "Asia/Seoul"
+
+#: 🔴 **오늘(KST)** — `now()` 는 순간이므로 이것도 변환을 거쳐야 한다.
+SQL_TODAY_KST = f"(now() AT TIME ZONE '{SQL_TZ}')::date"
+
+
+def sql_kst_day(col: str = "starts_kst") -> str:
+    """🔴 그 칸의 **KST 달력 날짜**를 만드는 SQL 조각.
+
+    ⚠️ `col` 에는 칸 이름(또는 `g.starts_kst` 처럼 별칭 붙은 것)만 넣는다 —
+       사용자 입력이 여기로 들어오면 그것은 SQL 주입이다(호출부가 전부
+       **상수**인지는 계약이 센다).
+    """
+    return f"({col} AT TIME ZONE '{SQL_TZ}')::date"
+
+
+def db_instant(when: datetime) -> datetime:
+    """🔴🔴 `games.starts_kst` 에 **넣을 값** — 이름이 거짓말하는 칸의 입구.
+
+    ⚠️ 수집기 여섯 곳이 `when.astimezone(KST)` 를 넣고 있었다. 🔴 그것은
+       `timestamptz` 에서 **아무 효과가 없다**(순간은 그대로다) — 그런데 읽는
+       쪽은 *"이 칸에는 KST 가 들어 있다"* 고 믿고 `::date` 를 걸었다.
+    🔴 그 믿음을 입구에서 끊는다: 이 함수는 **UTC 로** 돌려준다. 표시용 KST 는
+       `kst_label` 하나가 만들고, KST 날짜 질의는 `sql_kst_day` 하나가 만든다.
+    """
+    if when.tzinfo is None or when.tzinfo.utcoffset(when) is None:
+        raise ValueError(f"시간대 없는 값이다: {when!r}")
+    return when.astimezone(timezone.utc)

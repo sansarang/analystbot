@@ -27,6 +27,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from app import analyze as A
+from app import timefmt
 from app.research import rerank as _rerank
 from app import slate as S
 from app.config import SLATE_DAYS, get_settings
@@ -155,8 +156,11 @@ async def cmd_health(m: Message) -> None:
     from app.version import boot_info, staleness_line
     s = get_settings()
     pool = await get_pool(s.database_url)
+    # 🔴 **KST 날짜**다 — `today_kst()` 가 KST 날짜를 주므로 칸도 그렇게 잘라야
+    #    짝이 맞는다(종전 `starts_kst::date` 는 세션 시간대로 돌았다).
     n = await pool.fetchval(
-        "SELECT count(*) FROM games WHERE starts_kst::date = $1", today_kst())
+        f"SELECT count(*) FROM games WHERE {timefmt.sql_kst_day()} = $1",
+        today_kst())
     unk = await pool.fetchval(
         "SELECT COALESCE(sum(cardinality(unknowns)), 0) FROM runs "
         "WHERE slate_date = $1", today_kst()) or 0

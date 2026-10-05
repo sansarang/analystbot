@@ -59,14 +59,41 @@ def test_미래_경기를_순연이라고_말하지_않는다():
     assert "strPostponed" in src, "왜 안 읽는지 주석으로 남아 있어야 한다"
 
 
-def test_UTC_로_읽고_KST_를_만든다():
-    """🔴 절대규칙 2 — DB 는 UTC, 표시는 KST. ⚠️ `strTimeLocal` 은 **어긋나 있었다**."""
+def test_UTC_로_읽고_KST_로_보인다():
+    """🔴 절대규칙 2 — **DB 는 UTC, 표시만 KST.**
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **이 계약이 거짓을 못 박고 있었다** (실측 2026-10-05 · 인계 ①-2)
+    ══════════════════════════════════════════════════════════════════
+
+    종전: `assert row["starts_kst"].hour == 14`.
+
+    ⚠️ `games.starts_kst` 는 `TIMESTAMPTZ` 다 — **순간**만 담고 오프셋은
+       **버린다.** 그래서 저 `14` 는 DB 에 닿는 순간 사라지고, 라이브 52행
+       **전부** `starts_kst = starts_utc` 였다. 🔴 초록인데 틀린 계약이었다.
+    🔴 그 믿음 때문에 질의 여섯 자리가 `starts_kst::date` 로 날짜를 뽑았고,
+       그 캐스트는 **세션 시간대(UTC)** 로 돈다 — 52행 중 **16행**이 어긋났다.
+
+    🔴 그래서 **참인 둘**만 센다:
+      ① 저장하는 값은 `starts_utc` 와 **같은 순간**이다
+      ② 사람에게 보이는 `14:00` 은 `timefmt` 가 만든다
+    """
+    from app import timefmt
     row = kbo.slate_row(_EV)
     assert row["starts_utc"].tzinfo is not None
     assert row["starts_utc"].astimezone(timezone.utc).hour == 5
-    assert row["starts_kst"].hour == 14, row["starts_kst"]   # 05:00Z = 14:00 KST
-    # 🔴 §2 — 현지 시각도 저장한다(KBO 의 현지는 KST 다)
-    assert row["starts_local"] == row["starts_kst"]
+    # ① **같은 순간**이다 — 그리고 그 사실이 저장될 꼴(UTC)로 들어간다
+    assert row["starts_kst"] == row["starts_utc"], (
+        row["starts_kst"], row["starts_utc"])
+    assert row["starts_kst"].utcoffset() == timezone.utc.utcoffset(None), (
+        f"🔴 `timestamptz` 에 넣는 값은 UTC 여야 한다 — `_kst` 라는 이름이 "
+        f"거짓 믿음을 만든 자리다: {row['starts_kst']!r}")
+    # ② 🔴 **14:00 은 표시에서 생긴다**(05:00Z = 14:00 KST)
+    assert timefmt.kst(row["starts_kst"]).hour == 14
+    assert timefmt.kst_label(row["starts_kst"]).endswith("14:00 KST"), (
+        timefmt.kst_label(row["starts_kst"]))
+    # 🔴 §2 — 현지 시각도 저장한다(KBO 의 현지는 KST 다). ⚠️ 같은 순간이다.
+    assert row["starts_local"] == row["starts_utc"]
 
 
 def test_시각을_모르면_행을_만들지_않는다():

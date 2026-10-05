@@ -19,8 +19,25 @@ CREATE TABLE IF NOT EXISTS games (
     away        TEXT        NOT NULL,
     venue       TEXT,
     starts_utc  TIMESTAMPTZ NOT NULL,
-    starts_kst  TIMESTAMPTZ NOT NULL,              -- §2 현지·KST 둘 다 저장
-    starts_local TIMESTAMPTZ,
+    -- 🔴🔴 **이름이 거짓말하는 칸 둘** (실측 2026-10-05)
+    --
+    --  `TIMESTAMPTZ` 는 **순간**을 담는다 — 포스트그레스는 늘 UTC 로 보관하고
+    --  오프셋을 **버린다.** 그래서 수집기가 `.astimezone(KST)` 를 넣어도
+    --  아무 일도 일어나지 않는다: 라이브 52행 **전부** `starts_kst =
+    --  starts_utc` 였다. ⚠️ 종전 이 자리 주석이 *"§2 현지·KST 둘 다 저장"* 이라
+    --  적혀 있었고, 질의 여섯 자리가 그 말을 믿고 `starts_kst::date` 로 날짜를
+    --  뽑았다 — 그 캐스트는 **세션 시간대**(운영 `Etc/UTC`)로 돈다. 52행 중
+    --  **16행**이 어긋났다(유럽 저녁·북미 경기 전부).
+    --
+    --  🔴 지금은: 넣는 값은 `timefmt.db_instant`(UTC), 보이는 KST 는
+    --     `timefmt.kst_label`, KST 날짜 질의는 `timefmt.sql_kst_day` —
+    --     셋 다 **한 곳**이고 계약이 그것을 센다(`tests/test_time_contract.py`).
+    --  ⚠️ **절대규칙 2 의 "현지 시각도 저장한다" 는 아직 못 지킨다** — 벽시계를
+    --     담으려면 `TIMESTAMP`(naive) + 시간대 이름이어야 하고, 그것은 스키마
+    --     변경이라 사용자 결정이다
+    --     → `docs/fable/questions/2026-10-05_starts_kst_is_an_instant.md`
+    starts_kst  TIMESTAMPTZ NOT NULL,              -- = starts_utc 와 **같은 순간**
+    starts_local TIMESTAMPTZ,                      -- 같은 병(벽시계가 아니다)
     status      TEXT        NOT NULL DEFAULT 'scheduled',
         -- scheduled | delayed | postponed | inprogress | final
     round_note  TEXT,                              -- §2 순연 경기: 라운드·원래 날짜

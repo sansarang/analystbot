@@ -57,7 +57,7 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 
-from app import matchkey
+from app import matchkey, timefmt
 from app.blackboard import Fact
 from app.cells import Question, Source
 from app.net import Fetched
@@ -199,9 +199,16 @@ def slate_row(ev: dict) -> dict | None:
         "home": home, "away": away,
         "venue": str(ev.get("strVenue") or "") or None,
         "starts_utc": when,
-        "starts_kst": when.astimezone(KST),
+        # 🔴 `timestamptz` 는 **순간**이다 — `.astimezone(KST)` 는 이 칸에
+        #    아무 효과가 없었다(실측 2026-10-05: 라이브 52행 전부
+        #    `starts_kst = starts_utc`). 🔴 그 거짓 믿음을 입구에서 끊는다 —
+        #    표시 KST 는 `timefmt.kst_label`, KST 날짜 질의는
+        #    `timefmt.sql_kst_day` **하나씩**이다.
+        "starts_kst": timefmt.db_instant(when),
         # 🔴 §2 — 현지 시각도 저장한다. KBO 의 현지는 **KST 와 같다**(한국 리그다).
-        "starts_local": when.astimezone(KST),
+        #    ⚠️ 이 칸도 `timestamptz` 다 — 벽시계가 아니라 **순간**이 들어간다.
+        #       그래서 `.astimezone(KST)` 는 여기서도 아무 효과가 없었다.
+        "starts_local": timefmt.db_instant(when),
         "status": st,
         "home_score": _score(ev.get("intHomeScore")),
         "away_score": _score(ev.get("intAwayScore")),

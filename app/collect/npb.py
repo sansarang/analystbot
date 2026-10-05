@@ -19,7 +19,7 @@ import logging
 import re
 from datetime import date, datetime, timedelta, timezone
 
-from app import league, matchkey, rules, verify
+from app import league, matchkey, rules, timefmt, verify
 from app.blackboard import Fact
 from app.cells import Question, Source
 from app.net import Fetched
@@ -127,7 +127,12 @@ def parse_schedule(got: Fetched, day=None, *, year: int | None = None
             "venue": place.replace("　", "") if place else None,
             "starts_local": starts, "starts_utc": starts.astimezone(
                 timezone.utc) if starts else None,
-            "starts_kst": starts.astimezone(KST) if starts else None,
+            # 🔴 `timestamptz` 는 **순간**이다 — `.astimezone(KST)` 는 이 칸에
+            #    아무 효과가 없었다(실측 2026-10-05: 라이브 52행 전부
+            #    `starts_kst = starts_utc`). 🔴 그 거짓 믿음을 입구에서 끊는다 —
+            #    표시 KST 는 `timefmt.kst_label`, KST 날짜 질의는
+            #    `timefmt.sql_kst_day` **하나씩**이다.
+            "starts_kst": timefmt.db_instant(starts) if starts else None,
             "status": "postponed" if cancel else "scheduled",
             "round_note": cancel or None,
             "probable": {

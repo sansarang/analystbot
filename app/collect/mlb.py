@@ -13,7 +13,7 @@ import json
 import logging
 from datetime import date, datetime, timedelta, timezone
 
-from app import factspec, matchkey, verify
+from app import factspec, matchkey, timefmt, verify
 from app.blackboard import Fact
 from app.cells import Q_STANDINGS, Question, Source
 from app.net import Fetched
@@ -102,7 +102,12 @@ def parse_schedule(got: Fetched, q: Question | None = None) -> list[dict]:
                 "home_id": _team_id(g, "home"), "away_id": _team_id(g, "away"),
                 "venue": (g.get("venue") or {}).get("name"),
                 "starts_utc": starts,
-                "starts_kst": starts.astimezone(KST),
+                # 🔴 `timestamptz` 는 **순간**이다 — `.astimezone(KST)` 는 이 칸에
+                #    아무 효과가 없었다(실측 2026-10-05: 라이브 52행 전부
+                #    `starts_kst = starts_utc`). 🔴 그 거짓 믿음을 입구에서 끊는다 —
+                #    표시 KST 는 `timefmt.kst_label`, KST 날짜 질의는
+                #    `timefmt.sql_kst_day` **하나씩**이다.
+                "starts_kst": timefmt.db_instant(starts),
                 "status": status,
                 "home_score": (g["teams"]["home"] or {}).get("score"),
                 "away_score": (g["teams"]["away"] or {}).get("score"),
@@ -243,7 +248,6 @@ def _when(v):
     #     **경기를 잃었다**(`16:00Z` vs `01:00 KST`).
     #  🔴 `timefmt.aware` 가 tz 를 요구한다. 못 붙이면 **`None`** 이고 경고가 남는다 —
     #     조용히 UTC 로 가정하지 않는다.
-    from app import timefmt
     try:
         got = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
     except ValueError:

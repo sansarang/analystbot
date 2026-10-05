@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from app import cassette
+from app import cassette, timefmt
 from app.config import get_settings
 from app.db import get_pool
 from app.secrets_mask import mask_field
@@ -36,14 +36,17 @@ async def health() -> dict:
     try:
         pool = await get_pool(s.database_url)
         out["db"] = "ok" if await pool.fetchval("SELECT 1") == 1 else "bad"
+        # 🔴 **KST 날짜**로 센다 — 조각은 `timefmt` 하나다(사본 금지).
+        #    ⚠️ 종전 `starts_kst::date` 는 세션 시간대(UTC)로 돌아, 유럽 저녁
+        #       경기를 **어제 칸**에 넣었다(실측 2026-10-05: 52행 중 16행).
         out["slate_today"] = int(await pool.fetchval(
-            "SELECT count(*) FROM games "
-            "WHERE starts_kst::date = (now() AT TIME ZONE 'Asia/Seoul')::date")
+            f"SELECT count(*) FROM games "
+            f"WHERE {timefmt.sql_kst_day()} = {timefmt.SQL_TODAY_KST}")
             or 0)
         # 🔴 못 잰 칸을 드러낸다 — 조용한 0 을 밖에서 보이게 한다(§5)
         out["unknowns_today"] = int(await pool.fetchval(
             "SELECT COALESCE(sum(cardinality(unknowns)), 0) FROM runs "
-            "WHERE slate_date = (now() AT TIME ZONE 'Asia/Seoul')::date") or 0)
+            f"WHERE slate_date = {timefmt.SQL_TODAY_KST}") or 0)
     except Exception as exc:                      # noqa: BLE001
         out["db"] = f"error: {type(exc).__name__}"
     return out

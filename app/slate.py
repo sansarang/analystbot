@@ -19,6 +19,8 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
+from app import timefmt
+
 logger = logging.getLogger(__name__)
 KST = timezone(timedelta(hours=9))
 
@@ -48,8 +50,15 @@ class Found:
 #     **서버 시간대(UTC)** 로 비교된다. 이틀 창(10-01~10-02)을 물었는데
 #     `10-03 07:30 KST`(= 10-02 22:30 UTC) 경기가 들어왔다 — 질의는 UTC 로 자르고
 #     화면은 KST 로 그려서 **둘이 어긋났다.**
-#  🔴 `AT TIME ZONE 'Asia/Seoul'` 로 KST 날짜를 만들어 비교한다. `app/main.py`·
-#     `app/sources.py` 가 이미 그 꼴을 쓰고 있었다 — 여기만 빠져 있었다.
+#  🔴 조각은 `timefmt.sql_kst_day` **하나**다.
+#     ⚠️ 종전 이 자리 주석이 *"`app/main.py`·`app/sources.py` 가 이미 그 꼴을
+#        쓰고 있었다"* 고 적어 뒀다 — 🔴 **둘 다 안 쓰고 있었다**(실측
+#        2026-10-05). 손으로 적은 "이미 됐다"는 사본이고, 사본은 틀린다(#1).
+#        그래서 이제 그 조각을 **부른다** — 적지 않는다.
+_WHERE_DAYS = (f" WHERE {timefmt.sql_kst_day()} >= $1::date\n"
+               f"   AND {timefmt.sql_kst_day()}"
+               f"       < $1::date + ($2 || ' days')::interval\n")
+
 _BASE = """
 SELECT id, sport, league, home, away, venue, starts_kst, status,
        -- 🔴 `ext_id` 가 **공식 API 깊이의 열쇠다**(`sources_context`). 빠뜨리면
@@ -57,10 +66,7 @@ SELECT id, sport, league, home, away, venue, starts_kst, status,
        ext_id,
        home_score, away_score, round_note
   FROM games
- WHERE (starts_kst AT TIME ZONE 'Asia/Seoul')::date >= $1::date
-   AND (starts_kst AT TIME ZONE 'Asia/Seoul')::date
-       < $1::date + ($2 || ' days')::interval
-"""
+""" + _WHERE_DAYS
 
 
 async def window(pool, *, day: date | None = None, days: int = 2) -> Found:
@@ -97,11 +103,12 @@ async def by_key(pool, key: str) -> Found:
         got.reason = _R.NO_QUERY
         got.why = "열쇠가 비었다"
         return got
-    rows = await pool.fetch(_BASE.replace(
-        " WHERE (starts_kst AT TIME ZONE 'Asia/Seoul')::date >= $1::date\n"
-        "   AND (starts_kst AT TIME ZONE 'Asia/Seoul')::date\n"
-        "       < $1::date + ($2 || ' days')::interval",
-        " WHERE ext_id = $1") + " ORDER BY starts_utc", key)
+    # 🔴 **날짜 조건만 열쇠 조건으로 갈아 끼운다** — 🔴 갈아 끼울 글자를 손으로
+    #    적지 않는다(`_WHERE_DAYS` 가 그 글자의 원본이다). ⚠️ 적어 두면 조각이
+    #    바뀔 때 `replace` 가 **조용히 아무것도 안 바꾸고** 날짜 창이 살아남는다.
+    rows = await pool.fetch(
+        _BASE.replace(_WHERE_DAYS, " WHERE ext_id = $1\n")
+        + " ORDER BY starts_utc", key)
     got.games = [dict(r) for r in rows]
     if not got.games:
         from app.matchref import Reason as _R

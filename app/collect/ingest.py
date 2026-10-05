@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta, timezone
 
-from app import ids, queries, searchcells
+from app import ids, queries, searchcells, timefmt
 from app.blackboard import Blackboard
 from app.cells import (Q_ABSENCE, Q_COUNTER, Q_INTENT, Q_LINEUP, Q_LIVE,
                        Q_SLATE, Q_STANDINGS, Q_STARTER_RECENT, Cell, Question,
@@ -384,7 +384,8 @@ async def _live(pool, bb, net, scores, search, mod, league: str, day: date) -> i
         done = await pool.execute(
             "UPDATE games SET status=$1, home_score=$2, away_score=$3, "
             "updated_at=now() "
-            " WHERE league=$4 AND starts_kst::date=$5 AND home=$6 AND away=$7",
+            f" WHERE league=$4 AND {timefmt.sql_kst_day()}=$5 "
+            f"   AND home=$6 AND away=$7",
             v["status"], *_score(v.get("score")), league, day,
             v.get("home"), v.get("away"))
         if done and done.endswith("1"):
@@ -471,7 +472,7 @@ async def _line_of(pool, league: str, team: str | None, name: str,
         "SELECT 1 FROM starters s JOIN games g ON g.id = s.game_id "
         " WHERE g.league = $1 AND ($2::text IS NULL OR $2 IN (g.home, g.away)) "
         "   AND (s.player_id = $3 OR s.name = $4) "
-        "   AND g.starts_kst::date = (now() AT TIME ZONE 'Asia/Seoul')::date "
+        f"   AND {timefmt.sql_kst_day('g.starts_kst')} = {timefmt.SQL_TODAY_KST} "
         " LIMIT 1", league, team, player_id, name)
     return "starter" if row else None
 
@@ -579,8 +580,8 @@ async def _slate_rows(pool, bb, league: str, day: date) -> list[dict]:
         # 🔴 `sport` 를 함께 읽는다 — 종목에 **없는 질문**을 걸러야 한다
         #    (`queries.asks`). 블랙보드 경로는 어댑터가 이미 `sport` 를 싣는다.
         "SELECT id, sport, ext_id, home, away, venue, starts_utc FROM games "
-        " WHERE league = $1 AND starts_kst >= $2::date "
-        "   AND starts_kst < $2::date + INTERVAL '1 day' ORDER BY starts_utc",
+        f" WHERE league = $1 AND {timefmt.sql_kst_day()} = $2::date "
+        " ORDER BY starts_utc",
         league, day)
     return [{"game_id": int(r["id"]), "sport": r["sport"],
              # 🔴 깊이 소스가 `ext_id` 로 공식 API 를 부른다(`sources_context`)

@@ -15,7 +15,7 @@ import json
 import logging
 from datetime import date, datetime, timedelta, timezone
 
-from app import factspec, league, matchkey, rules, verify, window
+from app import factspec, league, matchkey, rules, timefmt, verify, window
 from app.blackboard import Fact
 from app.cells import Question, Source
 from app.net import Fetched
@@ -70,8 +70,11 @@ def parse_schedule(got: Fetched, day: date | None = None) -> list[dict]:
             # 🔴 **KST 날짜로 거른다 — API 의 날짜 버킷이 아니다.**
             #    NHL 의 버킷은 북미 현지 날짜다. 10-01 저녁(ET) 경기는 KST 로
             #    **10-02** 다 — 버킷으로 거르면 하루씩 어긋난 채 저장된다.
-            #    ⚠️ 우리 `games.starts_kst` 가 KST 이므로 거르는 기준도 KST 여야
-            #       한 곳만 보고도 슬레이트가 맞는다(§14-9).
+            #    ⚠️ 종전 이 자리에 *"우리 `games.starts_kst` 가 KST 이므로"* 라고
+            #       적어 뒀다 — 🔴 **거짓이다**(실측 2026-10-05). 그 칸은
+            #       `timestamptz` 라 **순간**만 담고, 라이브 52행 전부
+            #       `starts_kst = starts_utc` 다. KST 는 표시(`timefmt.kst_label`)와
+            #       질의(`timefmt.sql_kst_day`)에서만 생긴다.
                 # ══════════════════════════════════════════════════════════
             # 🔴🔴 **창으로 거른다** — 지금부터 36시간(UTC) · 지시 2026-10-04
                 # ══════════════════════════════════════════════════════════
@@ -116,7 +119,12 @@ def _row(g: dict) -> dict | None:
         "away_id": (g.get("awayTeam") or {}).get("id"),
         "venue": ((g.get("venue") or {}).get("default")),
         "starts_utc": start,
-        "starts_kst": start.astimezone(KST),
+        # 🔴 `timestamptz` 는 **순간**이다 — `.astimezone(KST)` 는 이 칸에
+        #    아무 효과가 없었다(실측 2026-10-05: 라이브 52행 전부
+        #    `starts_kst = starts_utc`). 🔴 그 거짓 믿음을 입구에서 끊는다 —
+        #    표시 KST 는 `timefmt.kst_label`, KST 날짜 질의는
+        #    `timefmt.sql_kst_day` **하나씩**이다.
+        "starts_kst": timefmt.db_instant(start),
         "starts_local": None,           # 🔴 현지 시각은 응답에 없다 — 지어내지 않는다
         "status": status,
         "round_note": None,
@@ -154,7 +162,6 @@ def _when(v):
     #     **경기를 잃었다**(`16:00Z` vs `01:00 KST`).
     #  🔴 `timefmt.aware` 가 tz 를 요구한다. 못 붙이면 **`None`** 이고 경고가 남는다 —
     #     조용히 UTC 로 가정하지 않는다.
-    from app import timefmt
     try:
         got = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
     except ValueError:

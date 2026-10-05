@@ -25,7 +25,7 @@ import json
 import logging
 from datetime import date, datetime, timedelta, timezone
 
-from app import matchkey, window
+from app import matchkey, timefmt, window
 from app.blackboard import Fact
 from app.cells import Question, Source
 from app.config import get_settings
@@ -129,7 +129,12 @@ def _row(m: dict) -> dict | None:
         "away_id": (m.get("awayTeam") or {}).get("id"),
         "venue": None,                  # 무료 티어는 구장을 안 준다 — 비운다
         "starts_utc": start,
-        "starts_kst": start.astimezone(KST),
+        # 🔴 `timestamptz` 는 **순간**이다 — `.astimezone(KST)` 는 이 칸에
+        #    아무 효과가 없었다(실측 2026-10-05: 라이브 52행 전부
+        #    `starts_kst = starts_utc`). 🔴 그 거짓 믿음을 입구에서 끊는다 —
+        #    표시 KST 는 `timefmt.kst_label`, KST 날짜 질의는
+        #    `timefmt.sql_kst_day` **하나씩**이다.
+        "starts_kst": timefmt.db_instant(start),
         "starts_local": None,
         "status": status,
         # 🔴 §4 `match_type` 의 재료다 — 라운드·단계를 그대로 싣는다
@@ -161,7 +166,6 @@ def _when(v):
     #     **경기를 잃었다**(`16:00Z` vs `01:00 KST`).
     #  🔴 `timefmt.aware` 가 tz 를 요구한다. 못 붙이면 **`None`** 이고 경고가 남는다 —
     #     조용히 UTC 로 가정하지 않는다.
-    from app import timefmt
     try:
         got = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
     except ValueError:

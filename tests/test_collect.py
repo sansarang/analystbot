@@ -50,12 +50,27 @@ def test_mlb_일정을_실물에서_읽는다():
     assert _mk.id_of(g["ext_id"]).isdigit()
 
 
-def test_mlb_현지와_KST를_둘_다_만든다():
-    """🔴 §2 · 절대 규칙 5 — MLB 토요일 야간은 KST 일요일 아침이다."""
+def test_mlb_토요일_야간이_KST_일요일_아침이다():
+    """🔴 §2 · 절대 규칙 2 — MLB 토요일 야간은 **KST 로 일요일 아침**이다.
+
+    ⚠️ 종전 이 계약은 `g["starts_kst"].utcoffset() == +9` 를 쟀다. 🔴 그 오프셋은
+       `timestamptz` 에 들어가면 **사라진다**(실측 2026-10-05: 라이브 52행 전부
+       `starts_kst = starts_utc`) — 초록인데 아무것도 지키지 않는 계약이었다.
+    🔴 지켜야 하는 것은 **날짜가 넘어간다**는 사실이다. 그것은 표시 변환
+       (`timefmt`)에서 생기고, 그래서 거기를 센다.
+    """
+    from app import timefmt
     g = mlb.parse_schedule(_fix("mlb_schedule.json"))[0]
     assert g["starts_utc"].tzinfo is not None
-    assert g["starts_kst"].utcoffset() == timedelta(hours=9)
-    assert g["starts_kst"] == g["starts_utc"].astimezone(KST)
+    # 🔴 **같은 순간**이다 — DB 칸이 순간만 담으므로 이것이 참인 전부다
+    assert g["starts_kst"] == g["starts_utc"]
+    # 🔴🔴 **그래서 날짜가 넘어가는가** — 이것이 §2 가 지키라는 사실이다
+    utc, kst = g["starts_utc"].astimezone(timezone.utc), timefmt.kst(g["starts_kst"])
+    assert kst.utcoffset() == timedelta(hours=9)
+    # 🔴 17:05Z → **다음 날** 02:05 KST. ⚠️ 날짜가 넘어가는 그 한 칸이 §2 다.
+    assert kst.date() == utc.date() + timedelta(days=1), (utc, kst)
+    assert timefmt.kst_label(g["starts_kst"]) == "09-28 02:05 KST", (
+        timefmt.kst_label(g["starts_kst"]))
 
 
 def test_mlb_예고_선발이_없으면_None이다():

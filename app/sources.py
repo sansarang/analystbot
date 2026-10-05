@@ -17,17 +17,24 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 
 from app import judge as J
+from app import timefmt
 from app.run import GameCtx, Sources
 
 logger = logging.getLogger(__name__)
 KST = timezone(timedelta(hours=9))
 
-_SLATE = """
+#: 🔴🔴 **KST 날짜로 자른다** — 조각은 `timefmt.sql_kst_day` **하나**다.
+#
+#  ⚠️ 종전: `starts_kst >= $1::date AND starts_kst < $1::date + INTERVAL '1 day'`.
+#     `starts_kst` 는 `timestamptz` 라 그 비교가 **세션 시간대(UTC)** 로 돌았다 —
+#     라이브 52행 중 **16행**이 UTC 날짜와 KST 날짜가 갈린다(실측 2026-10-05).
+#     🔴 `France vs Belgium 18:45Z` 는 KST 로 **다음 날 03:45** 다. "오늘"로 물으면
+#        그 경기가 하루 어긋난 칸에 들어갔다.
+_SLATE = f"""
 SELECT id, league, sport, home, away, venue, starts_kst, status,
        home_score, away_score, round_note
   FROM games
- WHERE starts_kst >= $1::date
-   AND starts_kst <  $1::date + INTERVAL '1 day'
+ WHERE {timefmt.sql_kst_day()} = $1::date
    AND ($2::text[] IS NULL OR league = ANY($2))
  ORDER BY starts_kst, id
 """
