@@ -84,6 +84,11 @@ def test_M104_방향은_항상_한_줄이다():
                                   away="Thailand")
     assert "인도네시아" in said or "Indonesia" in said, said
     assert "0.62" in said and "0.23" in said, said
+    # 🔴 **차이가 크면 "반반"이 아니다** — M104 가 그 길로 빠져나갔다:
+    #    `gap >= DIR_GAP` 을 죽여도 반반 경로가 팀 이름을 내서 초록이었다.
+    assert "반반" not in said, (
+        f"🔴 홈승 0.62 vs 원정승 0.23(차이 0.39)인데 **반반**이라고 한다 — "
+        f"문턱 {survive.DIR_GAP} 이 안 걸린다: {said}")
     # 🔴 차이가 0.15 미만이면 **반반** + 기울기
     near = survive.direction_line(0.40, 0.33, 0.27, home="Indonesia",
                                   away="Thailand")
