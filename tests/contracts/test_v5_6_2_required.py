@@ -346,34 +346,75 @@ def test_v5_6_2_양방향_변수는_반드시_둘에_붙는다():
         f"근거**가 된다(§6-2 ⑥). notes={res.notes}")
 
 
-def test_v5_6_2_불완전이면_생존을_돌리지_않는다():
-    """🔴🔴 **돌연변이 J 가 통과했다**(2026-10-04).
+def test_v5_6_2_불완전이면_등급이_한_줄도_안_선다():
+    """🔴🔴 **불완전한 세트로는 등급이 없다** — 그런데 **대입은 낸다.**
 
-    `and not sc.incomplete` 를 지워도 초록이었다 — 내 계약이 *"`incomplete` 라는
-    낱말이 파일에 있나"* 만 봤다(그 낱말은 `Card.incomplete` 정의에도 있다).
-    🔴 **AST 로 그 `if` 를 본다**: `survive.run` 을 감싼 조건이 `incomplete` 를
-       보는가. ⚠️ 불완전한 세트로 등급을 매기면 **공짜 1.0** 이 원장에 쌓인다.
+    ══════════════════════════════════════════════════════════════════
+    ⚠️ 종전 계약은 *"`survive.run` 을 `incomplete` 로 **감싸라**"* 였다 — 걷혔다
+    ══════════════════════════════════════════════════════════════════
+
+    > 사용자 규칙 2026-10-06: 시나리오·**대입**·방향 판정은 **항상** 낸다.
+
+    🔴 그리고 §6-2 의 주석이 스스로 이렇게 적어 뒀다: *"시나리오는 지우지
+       않는다 — 만든 것은 카드에 그대로 적고 **등급만** 막는다."* 그런데 코드는
+       `survive` 를 통째로 막아 **대입까지** 없앴다.
+    🔴 실측 2026-10-06(북아일랜드–조지아 재실행): 시나리오 **7개**가 섰는데
+       블록 7~8 이 *"못 셌다"* 이고 블록 9 가 *"시나리오가 없어 확률이 서지
+       않았다"* 라고 적었다 — **거짓 사유**다(§8-6).
+
+    ⚠️ 종전 계약의 **걱정은 맞다**: 불완전한 세트로 등급을 매기면 공짜 1.0 이
+       원장에 쌓인다(§6-7). 🔴 그래서 **그 걱정을 직접 센다** — 돌려서 등급이
+       한 줄도 없는지 본다(글자·구조가 아니라 **결과**다).
     """
+    from app import classify, scenarios, survive
+    game = _game()
+    # 🔴 세트가 불완전해지도록 **한 방향만** 준다(§5-c-6)
+    one = classify.Classified(
+        text="홈 우위", source_url="https://x.test/t", hardness="hard",
+        type="home_field", direction="home", why="§4 home_field")
+    sc = scenarios.generate([one, one, one], game)
+    assert sc.drafts, sc.notes
+    # ── ① 사유를 **안 넘기면** 등급이 선다(그래야 아래 비교가 뜻을 갖는다)
+    graded = survive.run(sc.drafts, game, board=None)
+    named = [r for r in graded.rows
+             if r.get("verdict") in ("name", "small", "low")]
+    assert named, f"전제가 깨졌다 — 등급이 애초에 0줄이다: {graded.rows[:2]}"
+    # ── ② `§6-2` 사유를 넘기면 **등급이 한 줄도 없다**
+    blocked = survive.run(sc.drafts, game, board=None,
+                          thin_why="§6-2 `scenario_incomplete` — 반대 방향 없음")
+    left = [r for r in blocked.rows
+            if r.get("verdict") in ("name", "small", "low")]
+    assert not left, f"🔴 불완전한데 등급이 남았다(§6-7 공짜 1.0): {left[:2]}"
+    # ── ③ 🔴 그런데 **대입 줄은 그대로 있다**(그것이 이번에 바뀐 것이다)
+    assert len(blocked.rows) == len(graded.rows), (
+        len(blocked.rows), len(graded.rows))
+
+
+def test_v5_6_2_카드가_불완전을_생존에_넘긴다():
+    """🔴 #2 배선 — 넘기지 않으면 ②의 보호가 **운영에서** 안 돈다."""
     import ast
     import inspect
     import textwrap
 
     from app import analyze
     tree = ast.parse(textwrap.dedent(inspect.getsource(analyze.build)))
-    guarded = False
+    found = False
     for node in ast.walk(tree):
-        if not isinstance(node, ast.If):
+        if not (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "run"
+                and getattr(node.func.value, "id", "") == "survive"):
             continue
-        has_run = any(
-            isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
-            and n.func.attr == "run"
-            and getattr(n.func.value, "id", "") == "survive"
-            for n in ast.walk(node))
-        if has_run and "incomplete" in ast.dump(node.test):
-            guarded = True
-    assert guarded, (
-        "🔴 `survive.run` 을 감싼 조건이 `incomplete` 를 **보지 않는다** — "
-        "불완전한 세트로 등급이 매겨지고 생존 1.0 이 공짜로 쌓인다(§6-7)")
+        kw = {k.arg for k in node.keywords}
+        assert "thin_why" in kw, (
+            f"🔴 `survive.run` 에 `thin_why` 를 **안 넘긴다** — 얇거나 "
+            f"불완전한 세트에서 등급이 공짜로 선다: {sorted(kw)}")
+        found = True
+    assert found, "🔴 `survive.run` 호출을 못 찾았다 — 이 계약을 고쳐라"
+    # 🔴 그 값이 `incomplete` 를 **실제로** 담는가
+    src = textwrap.dedent(inspect.getsource(analyze.build))
+    assert "sc.incomplete" in src and "thin_why" in src, (
+        "🔴 §6-2 `incomplete` 가 등급 금지 사유로 안 들어간다")
 
 
 def test_v5_6_2_보강은_무승부를_다시_넣지_못한다():

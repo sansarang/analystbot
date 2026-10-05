@@ -1772,12 +1772,28 @@ def build(facts: list, game, *, board=None, states: dict | None = None,
     if sc.incomplete:
         fun.drop(Reason.SCENARIO_INCOMPLETE, "markets_graded")
         fun.set("markets_graded", 0)
-    # 🔴🔴 **얇아도 돈다** — 사용자 규칙 2026-10-06: *"시나리오·대입·방향
-    #    판정은 항상 낸다."* ⚠️ 등급은 `thin_why` 가 거둔다.
-    if not sc.incomplete and sc.drafts:
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **시나리오가 있으면 돈다** — 사용자 규칙 2026-10-06
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 시나리오·**대입**·방향 판정은 **항상** 낸다.
+    #
+    #  ⚠️ 종전엔 `not sc.incomplete` 도 걸려 있었다. 🔴 그런데 §6-2 의 주석이
+    #     스스로 *"시나리오는 지우지 않는다 — 만든 것은 카드에 그대로 적고
+    #     **등급만** 막는다"* 라고 적어 뒀다 — 코드는 `survive` 를 통째로
+    #     막아 **대입까지** 없앴다.
+    #  🔴 실측 2026-10-06(재실행): 시나리오 **7개**가 섰는데 블록 7~8 이
+    #     *"못 셌다"* 이고 블록 9 가 *"시나리오가 없어 확률이 서지 않았다"* 라고
+    #     적었다 — **거짓 사유**다(§8-6).
+    #  🔴 그래서 둘 다 `thin_why` 로 넘긴다 — 거두는 것은 **등급**뿐이다.
+    _no_grade = " · ".join(x for x in (
+        str(sc.thin_why or ""),
+        ("§6-2 `scenario_incomplete` — " + "; ".join(sc.incomplete_why)[:160]
+         if sc.incomplete else "")) if x)
+    if sc.drafts:
         card.survival = survive.run(sc.drafts, game, board=board,
-                                    # 🔴 얇으면 **등급만** 거둔다(대입은 낸다)
-                                    thin_why=str(sc.thin_why or ""),
+                                    # 🔴 얇거나 세트가 모자라면 **등급만** 거둔다
+                                    thin_why=_no_grade,
                                     # 🔴 거짓 1.0 계약의 재료(사용자 수정 ⑤)
                                     variables=card.variables,
                                     fold=sc.fold_markets,
@@ -2063,8 +2079,15 @@ def _dir_block(card, sv=None) -> list[str]:
                home=str(getattr(g, "home", "") or "홈"),
                away=str(getattr(g, "away", "") or "원정"))]
     if not rows:
-        out.append("     (⚠️ 시나리오·판정이 없어 **확률을 못 쟀다** — 방향 "
-                   "줄은 그래도 낸다 · §2-2)")
+        # 🔴 **무엇이 없어서인지 가른다**(§8-6 거짓 사유 금지) — 실측
+        #    2026-10-06: 시나리오 7개가 있는데 *"시나리오가 없어"* 라고 적었다.
+        n = len(getattr(card.scenarios, "drafts", []) or []) \
+            if card.scenarios is not None else 0
+        out.append("     (⚠️ " + (
+            f"시나리오 {n}개는 있는데 **대입을 못 셌다** — 보드·격자가 없거나 "
+            f"생존이 안 돌았다" if n else
+            "시나리오가 **하나도 없어** 확률을 못 쟀다")
+            + " · 방향 줄은 그래도 낸다 · §2-2)")
     else:
         wins = [r for r in rows
                 if r["market"].market_type in survive.WIN_MARKETS]
