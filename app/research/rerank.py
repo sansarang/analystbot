@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,37 @@ LADDER: tuple[dict, ...] = (
 #      가르지 않으면 실패할 때마다 다시 받으려 한다.
 _MODEL: Any = None
 _WHY: str = ""
+
+#: 🔴🔴 **싱글턴 락** — 실사고 2026-10-05 (인도네시아–태국): 봇이 **죽었다.**
+#
+#  하위 4개가 `asyncio.to_thread` 안에서 **동시에** `model()` 을 불러
+#  `_MODEL is None` 을 넷이 함께 봤고, 수 GB 모델이 **네 번** mps 에 올라가
+#  프로세스가 끝났다(`resource_tracker: There appear to be …`).
+#
+#  ⚠️ `asyncio.Lock` 이 아니라 `threading.Lock` 이다 — 하위는 **스레드**에서
+#     돈다(`to_thread`). 🔴 LDR 의 속도 제한 모듈도 같은 꼴을 쓴다(메타 락으로
+#     게으른 생성을 감싼다 — 읽고 확증했다).
+_LOCK = threading.Lock()
+
+#: 🔴🔴 **추론 락** — 로드 락과 **따로** 둔다.
+#  ⚠️ 로드를 한 번으로 줄여도 하위 8개가 **동시에 mps 추론**을 하면 같은
+#     리소스를 다툰다. 🔴 지시서 §5 가 *"mps 에서 1초 안팎 · 경기 전체 30초
+#     이내"* 라 했으니 **직렬이어도 그 안**이다.
+_RUN = threading.Lock()
+
+#: 🔴 **느리다고 보는 초** — 지시서 §5: *"넘으면 batch 를 늘리지 말고 1단만
+#  유지하고 2단을 BM25 상위 8로 폴백(사유 `rerank_slow`)."*
+SLOW_AT = 3.0
+
+
+def slow_note(secs: float) -> str:
+    """🔴 그 추론이 **느렸나** — 느리면 사유를 글로 남긴다(#3)."""
+    got = float(secs or 0)
+    if got <= SLOW_AT:
+        return ""
+    return (f"⚠️ `rerank_slow` — 재정렬이 {got:.1f}초 걸렸다(상한 "
+            f"{SLOW_AT:g}초). 🔴 batch 를 늘리지 않는다 — 다음은 **BM25 상위 "
+            f"8**로 간다(§5)")
 
 
 def reset() -> None:
@@ -98,7 +130,13 @@ def model(_load=None) -> Any:
     ⚠️ `_load` 는 계약용 주입구다(기계에 모델이 없어도 사다리를 시험한다).
     """
     global _MODEL, _WHY
-    if _MODEL is None:
+    # 🔴 **빠른 길** — 이미 받았으면 락을 잡지 않는다(하위 8개가 공유한다)
+    if _MODEL is not None:
+        return _MODEL
+    with _LOCK:
+        # 🔴 **락 안에서 다시 본다** — 기다리는 동안 다른 스레드가 받았을 수 있다
+        if _MODEL is not None:
+            return _MODEL
         try:
             _MODEL = (_load or _load_model)() or False
         except Exception as exc:                            # noqa: BLE001
@@ -116,7 +154,24 @@ def why() -> str:
 
 
 def _scored(got: Any, pairs: list) -> list[float] | None:
-    """🔴 그 모델로 점수를 낸다. ⚠️ 못 내면 `None` — 호출부가 순서를 둔다."""
+    """🔴 그 모델로 점수를 낸다. ⚠️ 못 내면 `None` — 호출부가 순서를 둔다.
+
+    🔴 **직렬이다**(`_RUN`) — 한 모델을 여러 스레드가 동시에 쓰면 리소스를
+       다툰다(실사고 2026-10-05: 프로세스가 죽었다).
+    """
+    import time as _t
+    with _RUN:
+        at = _t.monotonic()
+        out = _scored_inner(got, pairs)
+        said = slow_note(_t.monotonic() - at)
+    if said:
+        global _WHY
+        _WHY = f"{_WHY} · {said}"
+        logger.info("[rerank] %s", said)
+    return out
+
+
+def _scored_inner(got: Any, pairs: list) -> list[float] | None:
     try:
         if hasattr(got, "predict"):
             return [float(x) for x in got.predict(pairs, batch_size=16)]

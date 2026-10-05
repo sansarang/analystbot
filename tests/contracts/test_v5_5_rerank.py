@@ -165,3 +165,95 @@ def test_M65_모델을_한_번만_로드한다():
         f"🔴 모델을 {calls['n']}번 로드했다 — 하위 8개가 그만큼 받는다")
     # 🔴 **뒤를 깨끗하게** — 가짜 로더의 `False` 를 남기면 다음 계약이 오염된다
     rerank.reset()
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **동시에 불러도 한 번만 로드한다** — 실측 2026-10-05 (인도네시아–태국)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고: 봇이 **죽었다.** 로그 마지막이 이랬다:
+#
+#    ```
+#    [rerank] ✅ bge-reranker-v2-m3 (mps)      ← 네 번
+#    [rerank] ✅ bge-reranker-v2-m3 (mps)
+#    [rerank] ✅ bge-reranker-v2-m3 (mps)
+#    [rerank] ✅ bge-reranker-v2-m3 (mps)
+#    warnings.warn('resource_tracker: There appear to be %d '
+#    ```
+#
+#  🔴 하위 4개가 `asyncio.to_thread` 안에서 **동시에** `model()` 을 불러
+#     `_MODEL is None` 을 넷이 함께 봤다 — 수 GB 모델이 **네 번** mps 에
+#     올라가 프로세스가 죽었다.
+#  🔴 지시서 §5 는 *"**모듈 전역 싱글턴**으로 **한 번만** 로드한다(하위 8개가
+#     공유)"* 라고 **명시**했다. 종전 계약은 **순차** 호출만 봤다.
+def test_M62_동시에_불러도_한_번만_로드한다():
+    import threading
+
+    from app.research import rerank
+    calls = {"n": 0}
+    started = threading.Event()
+
+    def slow(*_a, **_k):
+        calls["n"] += 1
+        started.set()
+        # 🔴 로드가 **느린 것**이 요점이다 — 그 사이 다른 스레드가 들어온다
+        import time
+        time.sleep(0.15)
+        return False          # 로드 실패로 보고 ③단으로 (모델을 안 받는다)
+
+    rerank.reset()
+    threads = [threading.Thread(target=lambda: rerank.order(
+        "x", _hits(2), _load=slow)) for _ in range(6)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert calls["n"] == 1, (
+        f"🔴 동시 호출에서 모델을 **{calls['n']}번** 로드했다 — 하위 8개가 "
+        f"수 GB 를 그만큼 올리면 프로세스가 죽는다(실측 2026-10-05)")
+    rerank.reset()
+
+
+def test_M62_추론은_직렬이다():
+    """🔴 한 모델을 여러 스레드가 **동시에** 쓰지 않는다.
+
+    ⚠️ 로드를 한 번으로 줄여도 하위 8개가 **동시에 mps 추론**을 하면 같은
+       리소스를 다툰다. 🔴 지시서 §5 는 *"mps 에서 1초 안팎 · 경기 전체 30초
+       이내"* 라 했다 — 직렬이어도 그 안이다.
+    """
+    import threading
+
+    from app.research import rerank
+    peak = {"now": 0, "max": 0}
+
+    class Fake:
+        def predict(self, pairs, batch_size=16):
+            peak["now"] += 1
+            peak["max"] = max(peak["max"], peak["now"])
+            import time
+            time.sleep(0.05)
+            peak["now"] -= 1
+            return [0.0] * len(pairs)
+
+    rerank.reset()
+    threads = [threading.Thread(target=lambda: rerank.order(
+        "x", _hits(3), _load=lambda: Fake())) for _ in range(5)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert peak["max"] == 1, (
+        f"🔴 추론이 동시에 {peak['max']}개 돌았다 — 한 모델을 여러 스레드가 "
+        f"다툰다(실측 2026-10-05: 프로세스가 죽었다)")
+    rerank.reset()
+
+
+def test_M62_느리면_사유를_남긴다():
+    """🔴 §5: *"넘으면 … 2단을 BM25 상위 8로 폴백(사유 `rerank_slow`)."*"""
+    from app.research import rerank
+    assert hasattr(rerank, "SLOW_AT"), (
+        "🔴 `rerank.SLOW_AT`(몇 초를 느리다고 보나)이 없다")
+    assert hasattr(rerank, "slow_note"), "🔴 `rerank.slow_note` 가 없다"
+    said = rerank.slow_note(rerank.SLOW_AT + 1)
+    assert "rerank_slow" in said, said
+    assert not rerank.slow_note(0.1), "🔴 빠른데 느리다고 한다"
