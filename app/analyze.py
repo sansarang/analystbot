@@ -350,6 +350,21 @@ def _run_hypo(card, game, items, st, sc):
         #  🔴 그러면 `total_probability` 가 `None` 이 되고 무게가 확률이 아니라
         #     **개수**로만 선다 — 지시 ③ 이 바란 것이 아니다.
         scenarios.attach_probability(sc, game, st)
+        # 🔴 **형식 필수형도 다시 센다**(M108) — 난타전과 같은 길이다.
+        scenarios.require_draw(
+            sc, game,
+            fmt=str((st or {}).get("match_format") or "unknown"))
+        # 🔴 **회귀형 필수**(M107) — 보정 평균이 1.0 이상 낮으면 저득점 갈래가
+        #    있어야 한다. ⚠️ 못 재면 강제하지 않는다(지어내지 않는다).
+        for _who, _raw in ((game.home, (card.form or {}).get(game.home)),
+                           (game.away, (card.form or {}).get(game.away))):
+            box = dict(_raw or {})
+            a, b = box.get("recent_scored_avg"), box.get("recent_trimmed_avg")
+            if a is None or b is None:
+                continue
+            need, why = scenarios.regression_needed(float(a), float(b))
+            if need:
+                sc.notes.append(f"§3-2 {_who} — {why}")
     return got
 
 
@@ -1541,6 +1556,24 @@ def build(facts: list, game, *, board=None, states: dict | None = None,
     card.undecided = [c for c in items if c.undecided]
     card.hypotheses = classify.hypotheses(items, game)
     card.xi = _xi(facts)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **XI 를 변수로 바꾼다** — 지시서 §3-1 (2026-10-05)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 it4: XI 를 **이름 목록으로만** 들고 있었다. 태국 5백·에이스
+    #     벤치가 변수로 서지 않아 *"버티기·역습 → 저득점"* 신호를 놓쳤다.
+    #  🔴 **코드가 만든다**(리드·에이전트 아님) — 재현 가능해야 한다.
+    for _team, _box in (card.xi or {}).items():
+        for _row in classify.xi_variables(
+                team=str(_team), formation=_box.get("formation"),
+                players=_box.get("players") or [],
+                url=str(_box.get("source_url") or _box.get("from_match") or ""),
+                confirmed=bool(_box.get("confirmed")),
+                last_xi=_box.get("last_xi") or (),
+                bench=_box.get("bench") or (),
+                out_last=_box.get("out_last") or ()):
+            states.setdefault(_AGENT_KEY, [])
+            states[_AGENT_KEY].append(_row)
     card.form = _form(facts, st)
     probs = grid(st, game)
     card.lam = dict(probs.get("lam") or {}) if probs else {}

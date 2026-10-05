@@ -590,6 +590,11 @@ def generate(items: list[classify.Classified], game: classify.Game, *,
     #     *"그 결과가 들어왔나"* 를 본다(사본 금지).
     #    ⚠️ 평균은 `standings`(= `analyze.context()` 결과)에 있다
     _slugfest_gate(res, game, standings)
+    # 🔴 **경기 형식 필수형**(지시서 §3-3 · M108) — 단판 결승이면 90분 무승부.
+    #    ⚠️ 형식은 구조 사실이 준다(`match_format`) — 없으면 `unknown` 이고
+    #       그때는 강제하지 않는다(지어내지 않는다).
+    require_draw(res, game,
+                 fmt=str((standings or {}).get("match_format") or "unknown"))
     # 🔴 보강으로 생긴 것에도 확률을 채운다 — 안 채우면 그 시나리오만 `None` 이고
     #    `total_probability` 가 통째로 `None` 이 된다(반쪽으로 세지 않는다).
     _fill_probability(res, probs)

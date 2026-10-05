@@ -175,3 +175,43 @@ def test_M108_무승부_시나리오가_없으면_incomplete():
     assert scenarios.require_draw(res, game, fmt="final_single"), (
         f"🔴 `1-1` 을 넣었는데 아직 막는다: {res.incomplete_why}")
     assert not res.incomplete_why, res.incomplete_why
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 **배선**(#2) — 안 이은 코드는 없는 코드보다 나쁘다
+# ══════════════════════════════════════════════════════════════════
+def test_배선_카드가_XI_변수를_만든다():
+    from app import analyze
+    tree = ast.parse(inspect.getsource(analyze))
+    called = {n.func.attr for n in ast.walk(tree)
+              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
+    assert "xi_variables" in called, (
+        "🔴 카드가 `classify.xi_variables` 를 **안 부른다** — XI 가 이름 목록으로 "
+        "남고 5백·주전이탈이 변수로 서지 않는다(지시서 §3-1)")
+
+
+def test_배선_폼이_보정_평균을_싣는다():
+    from app.collect import fotmob
+    src = inspect.getsource(fotmob)
+    assert '"recent_trimmed_avg"' in src, (
+        "🔴 폼 사실에 `recent_trimmed_avg` 칸이 없다 — 보정 평균이 판정에 "
+        "닿을 길이 없다(지시서 §3-2)")
+    assert "trimmed_why" in src, (
+        "🔴 보정 **사유**를 안 싣는다 — 카드가 *'9-2 제외 시'* 를 못 적는다(#3)")
+
+
+def test_배선_형식과_회귀가_필수형에_걸린다():
+    from app import scenarios
+    tree = ast.parse(inspect.getsource(scenarios))
+    called = {n.func.id for n in ast.walk(tree)
+              if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+    assert "draw_needed" in called or "require_draw" in called, (
+        "🔴 `generate` 가 형식 필수형을 **안 부른다**(M108)")
+    from app import analyze
+    tree2 = ast.parse(inspect.getsource(analyze))
+    called2 = {n.func.attr for n in ast.walk(tree2)
+               if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
+    assert "require_draw" in called2, (
+        "🔴 카드가 `require_draw` 를 안 부른다 — DeepSeek 교체 뒤 다시 세야 한다")
+    assert "regression_needed" in called2, (
+        "🔴 카드가 `regression_needed` 를 안 부른다 — 회귀형이 안 걸린다")

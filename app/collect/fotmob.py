@@ -623,6 +623,11 @@ def parse_form(j: dict, q: Question, *, url: str, when) -> list[Fact]:
                 # 🔴 **팀이 넣은 골** 평균 — 난타전 판정이 쓰는 수다(결정
                 #    2026-10-05). ⚠️ 위 칸은 **총득점**이라 이름이 다르다.
                 "recent_scored_avg": scored_avg(seq),
+                # 🔴🔴 **이상치를 뺀 보정 평균**(지시서 §3-2) — 한 경기 대승이
+                #    평균을 끌어올린 것을 가른다. ⚠️ 사유를 **함께** 싣는다 —
+                #    카드가 *"평균 3.6골(9-2 제외 시 1.75)"* 를 적어야 한다(#3).
+                "recent_trimmed_avg": _trim_of(seq)[0],
+                "trimmed_why": _trim_of(seq)[1],
                 "recent_scored_games": len(tots),
                 "last_match_utc": dates[-1].isoformat() if dates else None,
                 # ⚠️ 이름을 그대로 — 조용한 0 금지. 못 재면 `None` 이다
@@ -642,6 +647,16 @@ def parse_form(j: dict, q: Question, *, url: str, when) -> list[Fact]:
 #: 🔴 **이상치로 보는 배수** — 지시서 §3-2: *"한 경기 득점이 나머지 평균의
 #  **2배 이상**이면 그 경기를 뺀 평균을 함께 계산한다."*
 OUTLIER_X = 2.0
+
+
+def _trim_of(seq: list) -> tuple[float | None, str]:
+    """🔴 폼 수열 → `(보정 평균, 사유)`. ⚠️ 못 재면 `(None, "")`(#3)."""
+    got = [int(g["goals_for"]) for g in (seq or [])
+           if isinstance(g, dict) and str(g.get("goals_for")).isdigit()]
+    if not got:
+        return None, ""
+    avg, why = trimmed_avg(got)
+    return avg, why
 
 
 def trimmed_avg(goals: list) -> tuple[float, str]:
