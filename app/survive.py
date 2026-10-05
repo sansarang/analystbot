@@ -337,6 +337,28 @@ def cap_for(state: str) -> float:
     return min(caps.values()) if caps else 0.8
 
 
+def same_branch_note(rows: list) -> str:
+    """🔴🔴 **추천이 전부 같은 갈래인가** — 지시 ⑮ (실측 2026-10-05).
+
+    ⚠️ 실사고: `양팀득점 예` 0.87 · `오버 1.5` 0.93 · `오버 2.5` 0.93 셋이 추천
+       됐다. 3줄 상한(`max_same_direction`)은 통과하지만 **셋이 같은 쪽**이라
+       하나가 틀리면 셋 다 틀린다 — 분산이 없다.
+    🔴 **규칙은 바꾸지 않는다**(사용자 것이다) — 그 사실을 적는다(#3).
+    ⚠️ 판단 기준은 **죽는 시나리오 집합**이다: 그것이 같으면 같은 갈래다.
+    """
+    named = [r for r in (rows or [])
+             if str((r.get("verdict") if isinstance(r, dict) else "")) != "none"]
+    if len(named) < 2:
+        return ""
+    sets = {frozenset(str(x) for x in (r.get("dead") or [])) for r in named}
+    if len(sets) > 1:
+        return ""
+    who = ", ".join(str(r.get("market")) for r in named)
+    return (f"🔴 **추천 {len(named)}줄이 전부 같은 갈래다**({who}) — 죽는 "
+            f"시나리오가 같으니 하나가 틀리면 **셋 다 틀린다**. ⚠️ 규칙상 "
+            f"허용되는 줄 수지만 **분산은 없다**")
+
+
 def started(kickoff, now=None) -> tuple[bool, str]:
     """🔴 그 경기가 **이미 시작했나** — 지시 ③ (2026-10-05).
 
@@ -694,6 +716,11 @@ def run(drafts: list, game, *, board: list[Market] | None = None,
     #    하나만 남겨 ②가 할 일이 없어진다.
     _same_direction_cap(res)
     _pick_one(res)
+    # 🔴 **분산이 없으면 적는다**(⑮ · 실측 2026-10-05) — 규칙은 안 바꾼다.
+    #    ⚠️ `_pick_one` 뒤에 둔다: 남은 줄이 무엇인지 그때 정해진다.
+    said = same_branch_note(res.rows)
+    if said:
+        res.notes.append(said)
     _coverage_warning(res)
     # 🔴🔴 **거짓 1.0 계약** — 사용자 수정 ⑤ (2026-10-04).
     #    ⚠️ **맨 뒤다.** 앞의 상한·고르기가 끝난 뒤에 남은 1.0 을 본다 — 앞에 두면

@@ -225,7 +225,9 @@ def run(inp, scenarios: list, *, survivals: list, spent_in: int = 0,
                               if float(s) >= MIN_SURVIVAL]
     got = deepseek.ask([{"role": "system", "content": system_prompt()},
                         {"role": "user", "content": hypo._dump(payload)}],
-                       match=f"{inp.home}|{inp.away}", stage="stage4",
+                       match=(getattr(inp, "match_key", "")
+                              or f"{inp.home}|{inp.away}"),
+                       stage="stage4",
                        now=now, _net=_net)
     if not got.ok:
         return Result(reason=got.reason, why=got.why)

@@ -294,6 +294,26 @@ def test_남은_모듈에_고아_공개함수가_없다():
     #    호출만 돌았고 퍼지로 내려가면 ImportError 였다 — 아무도 안 불러서 아무도
     #    몰랐다. *"안 이어진 코드는 없는 코드보다 나쁘다"* 가 그 자리다.
     NOT_WIRED = {
+        # ══════════════════════════════════════════════════════════════
+        # 🔴 **딥서치 재구축 골격**(지시서 2026-10-05) — §6 이 잇는다
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ §1~§5 가 **만드는 단계**이고 §6 이 **잇는 단계**다(지시서 §9 의
+        #     적용 순서). 🔴 이으면 되감기 계약이 *"목록에서 빼라"* 고 빨개진다.
+        # ══════════════════════════════════════════════════════════════
+        # ✅ **딥서치 재구축 골격은 전부 이어졌다**(§6 · 2026-10-05)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 되감기 계약이 **스물한 줄 전부** *"이어졌으니 빼라"* 고 말했다 —
+        #     목록이 거짓이 되기 전에 기계가 먼저 알렸다. 이어진 자리:
+        #       `analyze` — `split`·`run_all`·`merge`·`write_book`·
+        #                   `second_round`·`second_budget`·`funnel_lines`
+        #       `agentloop` — `order`·`take`·`paragraphs`·`gate`·
+        #                     `prompt_tail`·`narrow_words`·`narrow_query`·
+        #                     `first_lang`
+        #  ⚠️ `rerank.reset` 은 **계약 전용**이다(싱글턴 비우기) — 운영 코드가
+        #     부르지 않으므로 아래 한 줄로 남는다.
+        "app.research.rerank.reset",            # → 계약 전용(싱글턴 비우기)
         # ── 단계 2 가 만든 것 (2026-09-30). 🔴 표는 만들었고 **읽는 곳은 뒤 단계다.**
         # ⚠️ `app.rules.premise_types` 는 **빠졌다** — 2026-10-02 에 이어졌다.
         #    `app/classify.Classified.to_variable` 이 `is_premise` 를 §4 전제
@@ -851,7 +871,15 @@ def test_의존이_코드와_맞는다():
                 tops.add(n.module.split(".")[0])
     used = {t for t in tops if t not in sys.stdlib_module_names and t != "app"}
     # 배포판 이름이 import 이름과 다른 것
-    alias = {"dotenv": "python-dotenv", "yaml": "pyyaml"}
+    alias = {"dotenv": "python-dotenv", "yaml": "pyyaml",
+             # 🔴 재정렬(딥서치 재구축 §5) — import 이름과 배포판 이름이 다르다
+             "sentence_transformers": "sentence-transformers",
+             # ⚠️ `torch` 는 `sentence-transformers` 가 **끌고 온다** — 우리가
+             #    따로 선언하지 않는다(그 쪽이 버전을 정한다).
+             "torch": "sentence-transformers",
+             # 🔴 `flashrank` 는 **폴백 ②단**이고 설치하지 않았다(선택) —
+             #    없으면 ③단으로 간다(M62). 그래서 선언하지 않는다.
+             "flashrank": "sentence-transformers"}
     used = {alias.get(t, t) for t in used}
     # 진입점으로만 쓰는 것(코드가 import 하지 않는다)
     runners = {"uvicorn"}

@@ -41,9 +41,14 @@ logger = logging.getLogger(__name__)
 #   ⚠️ 사용자 예시 코드가 `len(p) > 60` 이다 — 그것을 그대로 쓴다.
 MIN_PARA = 60
 
-#: 🔴 LLM 에 넘길 문단 수. ⚠️ 사용자 예시 코드가 `n=6` 이다.
-#   *"입력이 짧아야 8B 모델도 정확하다"* — 늘리면 그 전제가 깨진다.
-TOP_PARAS = 6
+#: 🔴🔴 **1단 재료 수** — BM25 가 뽑는 문단 수(§5 지시서 2026-10-05).
+#  > `trafilatura` 본문 → 문단 분할 → **BM25 상위 20** → reranker 로 재점수
+#  > → **상위 8 문단만** 하위 에이전트 프롬프트에 넣는다.
+#  ⚠️ 종전 `TOP_PARAS = 6` 은 **BM25 단독 선택**이었고 동의어 표현
+#     ("won't feature")을 놓쳤다 — 그래서 §5 하이브리드로 바꿨다.
+BM25_POOL = 20
+#: 🔴 재정렬 뒤 **프롬프트에 넣는** 문단 수(§5).
+PROMPT_PARAS = 8
 
 #: BM25 의 두 상수. 🔴 **정보검색 교과서 값이다** — 우리가 맞춘 모수가 아니다
 #  (Robertson 의 원 논문 이후 `k1∈[1.2,2.0]`·`b=0.75` 가 표준이다).
@@ -62,6 +67,42 @@ BM25_B = 0.75
 #  ⚠️ 2-그램은 잡음을 늘리지만 BM25 의 `idf` 가 흔한 조각의 무게를 낮춘다.
 _WORD = re.compile(r"[0-9A-Za-zÀ-ɏ]+|[가-힣]+")
 _NGRAM = re.compile(r"[぀-ヿ一-鿿가-힣]")
+
+
+def published_of(html: str, *, url: str = "") -> str:
+    """🔴🔴 **③층 — 발행일의 원본**(사용자 지시 2026-10-05).
+
+    > **fetch 후**: `htmldate` 로 발행일을 뽑는다(**메타·JSON-LD·time 태그**).
+    > 이 값이 `published_at` 의 **원본**이다. 검색 엔진이 준 날짜는 보조로만.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 이 층이 필요한가 — 실측 2026-10-05
+    ══════════════════════════════════════════════════════════════════
+
+    SearXNG 이 **발행 시각을 주지 않는다**(엔진 전부 `publishedDate` 0건).
+    그래서 날짜는 **본문에서** 와야 한다. ⚠️ `trafilatura` 의 `date` 도
+    `htmldate` 를 쓰지만 보수적이라 놓치는 자리가 있다 — 그래서 **직접** 부르고
+    `extensive_search` 로 `time` 태그·JSON-LD 까지 본다.
+
+    🔴 **못 찾으면 빈 문자열**이다 — 지어내지 않는다(#4). 그러면 기존 규칙대로
+       `date_missing` 으로 변수 근거에서 빠진다.
+    """
+    if not str(html or "").strip():
+        return ""
+    try:
+        from htmldate import find_date
+    except ImportError as exc:                              # pragma: no cover
+        logger.info("[readtext] htmldate 가 없다: %s", exc)
+        return ""
+    try:
+        got = find_date(html, url=url or None, extensive_search=True,
+                        outputformat="%Y-%m-%d",
+                        # 🔴 **원본 발행일**을 원한다 — 수정일이 아니다
+                        original_date=True)
+    except Exception as exc:                                # noqa: BLE001
+        logger.info("[readtext] 발행일 추출 실패(%s): %r", str(url)[:60], exc)
+        return ""
+    return str(got or "").strip()
 
 
 def extract(html: str, *, url: str = "") -> tuple[str, str]:
@@ -101,7 +142,10 @@ def extract(html: str, *, url: str = "") -> tuple[str, str]:
     except ValueError:
         return "", ""
     text = str(doc.get("text") or "").strip()
-    when = str(doc.get("date") or "").strip()
+    # 🔴 **③층이 원본이다**(지시 2026-10-05) — `htmldate` 를 직접 부른다.
+    #    ⚠️ trafilatura 의 `date` 는 보수적이라 `time` 태그·JSON-LD 를 놓친다.
+    #       그것은 **퇴로**로 둔다(둘 다 없으면 빈 글 → `date_missing`).
+    when = published_of(html, url=url) or str(doc.get("date") or "").strip()
     if text:
         logger.info("[readtext] 본문 %d자 · 발행 %s · %s", len(text),
                     when or "미상", url[:60])
@@ -127,7 +171,7 @@ def _terms(s: str) -> list[str]:
     return out
 
 
-def top_paragraphs(text: str, query: str, *, n: int = TOP_PARAS) -> list[str]:
+def top_paragraphs(text: str, query: str, *, n: int = BM25_POOL) -> list[str]:
     """🔴🔴 **질의와 가까운 문단만** 고른다(BM25).
 
     사용자 지시의 핵심이다 — *"팀·선수 이름이 나오는 문단만 골라 LLM 에 넘긴다.
@@ -176,7 +220,7 @@ def top_paragraphs(text: str, query: str, *, n: int = TOP_PARAS) -> list[str]:
 
 
 def read(html: str, *, url: str = "", query: str = "",
-         n: int = TOP_PARAS) -> tuple[str, str, str, int]:
+         n: int = BM25_POOL) -> tuple[str, str, str, int]:
     """🔴 한 번에: `(넘길 글, 발행일, 사유, 본문 전체 길이)`.
 
     `사유` 는 **무엇을 어떻게 줄였나**다 — 조용히 자르지 않는다(#3).

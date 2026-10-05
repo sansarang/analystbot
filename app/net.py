@@ -341,6 +341,25 @@ _TIME_TAG = re.compile(r"<time\b[^>]*\bdatetime\s*=\s*[\"']([^\"']+)", re.I)
 _URL_DATE = re.compile(r"/((?:19|20)\d\d)/(\d{1,2})/(\d{1,2})(?:/|$)")
 
 
+def pick_published(body_date: object, search_date: object) -> tuple[str, str]:
+    """🔴🔴 **본문 날짜가 원본이고 검색 날짜는 보조다**(지시 2026-10-05).
+
+    > 이 값이 `published_at` 의 **원본**이다. 검색 엔진이 준 날짜는 **보조로만**
+    > 쓴다. 둘 다 없으면 `date_missing` 으로 변수 근거에서 제외(기존 규칙).
+
+    ⚠️ 둘이 **다를 때 어느 쪽이 이기나**를 코드에 적어 둔다 — 그 선택이
+       안 적혀 있으면 호출부마다 달라진다(#1).
+    """
+    body = " ".join(str(body_date or "").split())
+    said = " ".join(str(search_date or "").split())
+    if body:
+        extra = f" (검색 날짜 {said} 는 보조)" if said and said != body else ""
+        return body, f"**본문**에서 왔다{extra}"
+    if said:
+        return said, "⚠️ 본문에 발행일이 없어 **검색 엔진 날짜를 보조로** 쓴다"
+    return "", "🔴 **발행일이 없다** — `date_missing` 으로 근거에서 뺀다"
+
+
 def published_at_from_url(url: str):
     """주소 경로에서 발행 날짜. 🔴 없으면 `None` — 지어내지 않는다."""
     m = _URL_DATE.search(url or "")

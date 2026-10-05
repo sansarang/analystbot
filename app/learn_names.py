@@ -35,6 +35,21 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+
+def why_not_learned(key_a: object, key_b: object) -> str:
+    """🔴 **왜 안 배웠나** — 두 경우를 가른다(⑯ · 실측 2026-10-05).
+
+    ⚠️ 종전엔 둘 다 *"짝이 하나로 안 정해진다"* 로 찍혔다. 🔴 그런데
+       **둘 다 아는 것**은 정상이고(배울 것이 없다) **둘 다 모르는 것**은
+       고칠 것이 있다(열쇠를 못 가렸다) — 고칠 곳이 다르면 글이 달라야 한다(#3).
+    """
+    a, b = str(key_a or "").strip(), str(key_b or "").strip()
+    if a and b:
+        return "두 이름을 **둘 다 이미 안다** — 배울 것이 없다(정상)"
+    if not a and not b:
+        return "🔴 두 이름의 **열쇠를 둘 다 못 가렸다** — 짝을 못 정한다"
+    return "⚠️ 한쪽 열쇠가 이 경기의 두 팀과 안 맞는다 — 짝을 못 정한다"
+
 ROOT = Path(__file__).resolve().parents[1]
 #: 🔴 배운 별칭이 사는 곳. ⚠️ `var/` 는 ignore 다 — **되짚어 지울 수 있게** 한 파일에.
 STORE = ROOT / "var" / "learned_aliases.json"
@@ -108,8 +123,11 @@ def learn(*, asked: tuple[str, str], page_names: list[str],
     if kO and not kT and t and kO in (kA, kB):
         pairs.append((t, kB if kO == kA else kA))
     if not pairs:
-        logger.info("[learn] 안 배운다 — 짝이 하나로 안 정해진다 "
-                    "(물은 것 %r/%r · 아는 열쇠 %r/%r)", t, o, kT, kO)
+        # 🔴 **두 경우를 가른다**(⑯ · 실측 2026-10-05) — 종전엔 한 글이었다.
+        #    ⚠️ *"둘 다 이미 안다"* 는 **정상**이고(배울 것이 없다),
+        #       *"둘 다 모른다"* 는 **고칠 것이 있다**(열쇠를 못 가렸다).
+        logger.info("[learn] 안 배운다 — %s (물은 것 %r/%r · 아는 열쇠 %r/%r)",
+                    why_not_learned(kT, kO), t, o, kT, kO)
         return []
     box = load()
     for name, key in pairs:

@@ -115,9 +115,17 @@ def _slugfest_gate(res, game, ctx) -> None:
     ⚠️ 못 쟀으면 **그렇게 적는다**(#3) — 조용히 통과시키지 않는다.
     """
     avg = dict((ctx or {}).get("avg_goals_by_team") or {})
+    # 🔴 **못 잰 팀을 이름으로** 적는다(#3) — 못 재면 난타전이 통째로 면제되고,
+    #    그 사실이 안 보이면 독자는 *"필요 없었다"* 로 읽는다.
+    #    ⚠️ 지표는 **팀 득점 평균**이다(`recent_scored_avg` · 결정 2026-10-05).
+    gone = [str(x) for x in ((ctx or {}).get("avg_goals_missing") or [])]
+    if gone:
+        res.notes.append(
+            f"{MARK} ⚠️ **팀 득점 평균을 못 잰 팀**: {', '.join(gone)} — "
+            f"그만큼 난타전 판정이 느슨해진다(`recent_scored_avg` 가 비었다)")
     if not avg:
         res.notes.append("§6-7 난타전 검사 — ⚠️ 최근 평균 득점을 **못 쟀다**"
-                         "(팀별 `recent_avg_goals` 가 없다)")
+                         "(팀별 `recent_scored_avg` 가 없다)")
         return
     keys = list(avg)
     home_avg = (avg.get(game.home) or avg.get(game.home_id)

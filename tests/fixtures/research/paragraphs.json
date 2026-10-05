@@ -1,0 +1,24 @@
+{
+ "_왜": "🔴 **실측으로 받은 한 기사의 문단 전부**다(지시서 §7: '실측으로 받아서 — 지어내지 않는다'). ⚠️ 세 기사를 합치지 않았다 — 운영은 `fetch` 한 기사마다 문단을 고르므로 지시서의 'BM25 상위 20'이 **한 기사 기준**이다. 🔴 `target` 은 BM25 상위 8 **밖**이고 pool(20) **안**이다 — 질의 낱말(absent·injured·suspended)이 없고 `sidelined` 동의어만 든다. BM25 단독이면 빠지고 의미 재정렬만 잡는다(M65).",
+ "받은_날": "2026-10-05",
+ "출처": "https://sports.yahoo.com/articles/france-vs-belgium-match-preview-062500566.html",
+ "query": "players absent injured suspended will not feature out ruled out",
+ "target": "Kylian Mbappé remains sidelined as he recovers from a left knee injury sustained earlier against Türkiye, leaving Ousmane Dembélé to wear the captain's armband once again.",
+ "paragraphs": [
+  "France will look to continue their unbeaten start to their UEFA Nations League campaign when they take on Belgium in their last match of this international break on Monday.",
+  "France will be heavily depleted for tonight's clash due to key absences. Central defender Dayot Upamecano is suspended following his late red card in the draw against Italy, forcing manager Zinedine Zidane to likely field Maxence Lacroix alongside Jérémy Jacquet.",
+  "Kylian Mbappé remains sidelined as he recovers from a left knee injury sustained earlier against Türkiye, leaving Ousmane Dembélé to wear the captain's armband once again.",
+  "With Zidane explicitly stating his intention to rotate the squad to manage player fatigue, significant tactical changes are expected.",
+  "Midfielders Eduardo Camavinga and Rayan Cherki are pushing hard for a spot in the starting eleven, while Michael Olise, who scored the lone goal against Italy, is set to act as the primary attacking focal point for Les Bleus as they look to secure a vital victory.",
+  "Belgium faces a massive tactical hurdle after being dealt a double blow in midfield. Critical core players Kevin De Bruyne and Youri Tielemans are both suspended for this fixture due to an accumulation of yellow cards, forcing manager Mark van Bommel into a complete tactical reshuffle.",
+  "In their absence, Chelsea's Roméo Lavia is slated to step up and anchor the midfield alongside Nicolas Raskin to handle the team's progressive transition work.",
+  "On a positive note, star striker Romelu Lukaku is fully available and expected to spearhead the Red Devils' frontline, providing a massive physical presence up front.",
+  "Supported by Charles De Ketelaere in an advanced playmaker role, Belgium's attacking unit is fully primed as they seek to avenge their narrow defeat to France from late September and claim three points on the road.",
+  "France sits at the top of UEFA Nations League Group A1 under new manager Zinedine Zidane. Les Bleus launched their campaign with consecutive 1-0 victories, defeating Türkiye on the road before overcoming Belgium in Brussels through a late Michael Olise solo effort. Most recently, France played out a tightly contested 1-1 draw against Italy at the Stade de France. This unbeaten start keeps them in excellent form following their semi-final run at the 2026 FIFA World Cup.",
+  "Belgium has enjoyed a strong start under manager Mark van Bommel, winning two of their three group matches. The Red Devils opened with an impressive 2-0 victory away to Italy before suffering a narrow 1-0 home loss to France. They quickly bounced back on Matchday 3, securing a commanding 3-0 win against Türkiye courtesy of a Kevin De Bruyne brace and a Romelu Lukaku strike. Currently second in Group A1, they remain highly competitive.",
+  "France: Maignan; Kalulu, Jacquet, Lacroix, Truffert; Cherki, Da Cunha, Camavinga; Olise, Dembele, Doue",
+  "Belgium: Lammens; Castagne, Ngoy, Mechele, De Cuyper; Lavia, Raskin; Lukebakio, Moreira, Lukaku; De Ketelaere",
+  "The game is available live through Amazon Prime Video's PPV service.",
+  "Read Also – Bundesliga Predictions Today – Expert Tips & Stats"
+ ]
+}

@@ -599,6 +599,53 @@ def _both_way_types() -> list[str]:
 #     와 **다른 질문**이다. 🔴 그래도 한 곳에만 둔다.
 #  🔴 실측 2026-10-05: *"Portugal has secured a spot in the quarterfinals"* 가
 #     **포르투갈 근거**로 들어갔다 — 8강을 확정한 팀은 **동기가 낮다.**
+#: 🔴🔴 **묶음으로 볼 길이** — 실측 2026-10-05 (프랑스–벨기에).
+#  ⚠️ 실사고: `R4` 의 글이 **+617자**였다 — 터키 원정 1-0, 벨기에전 1-0,
+#     이탈리아전 1-1, 경기장까지 **한 덩어리**. 변수 하나 = 사실 하나가 깨지면
+#     방향·hardness 가 **무엇에 붙은 것인지** 알 수 없다.
+#  🔴 버리지 않는다(쓸 사실이 들어 있다) — 카드가 **그 사실을 표시**한다.
+#  ⚠️ 수를 어떻게 골랐나: 카드 변수 줄의 표시 한도가 190자다(`var_line`).
+#     그 두 배를 넘으면 한 줄로 읽을 수 없는 묶음이다.
+LUMP_CHARS = 380
+
+
+#: 🔴 **무패를 뜻하는 낱말** — 기사가 쓰는 말이다(사전이지 사실이 아니다).
+#  ⚠️ 이 목록에 없는 표현은 **안 센다** — 늘릴 때도 실측으로 늘린다.
+UNBEATEN_WORDS: tuple[str, ...] = (
+    "unbeaten", "no defeat", "without defeat", "perfect record",
+    "won all", "무패", "전승", "지지 않", "패배 없")
+
+
+def clash_with_form(said: object, last5: object) -> str:
+    """🔴🔴 **그 주장이 폼 기록과 어긋나나** — 지시 ⑨ (실측 2026-10-05).
+
+    ⚠️ 실사고: 카드가 `France last5 ['L','L','W','W','D']` 를 적고, 같은 카드의
+       변수가 *"France have an **unbeaten** start"* 를 적었다. **둘 다 있고
+       어느 쪽도 그 어긋남을 말하지 않았다.**
+    🔴 **어느 쪽이 맞는지 고르지 않는다** — 정답은 경기 결과가 말한다
+       (사용자 지시 2026-10-02). 여기서는 *"어긋났다"* 만 적는다.
+    ⚠️ `last5` 가 없으면 **아무 말도 하지 않는다** — 지어내지 않는다(#4).
+    """
+    rows = [str(x).strip().upper() for x in (last5 or []) if str(x).strip()]
+    if not rows:
+        return ""
+    low = str(said or "").lower()
+    hit = [w for w in UNBEATEN_WORDS if w.lower() in low]
+    if not hit:
+        return ""
+    lost = [x for x in rows if x.startswith("L")]
+    if not lost:
+        return ""
+    return (f"🔴 **어긋난다** — 이 글은 `{hit[0]}`(무패)라고 하는데 최근 "
+            f"{len(rows)}경기에 패배가 {len(lost)}번 있다({'·'.join(rows)}). "
+            f"⚠️ 어느 쪽이 맞는지는 **고르지 않는다** — 대회만 센 것일 수 있다")
+
+
+def is_lump(said: object) -> bool:
+    """🔴 그 변수 글이 **여러 사실 묶음**인가 — 길이로 본다(실측 2026-10-05)."""
+    return len(" ".join(str(said or "").split())) > LUMP_CHARS
+
+
 SETTLED_WORDS: tuple[str, ...] = (
     "secured", "already qualified", "qualified for", "booked their",
     "clinched", "confirmed their place", "through to", "eliminated",

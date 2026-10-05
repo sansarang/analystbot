@@ -31,6 +31,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
+from app import ledgerbook as _ledgerbook
 from app import (classify, funnel as _funnel, league, rules, scenarios,
                  survive, timefmt, triggers)
 from app.blackboard import Blackboard
@@ -113,7 +114,8 @@ def _agent_note(game: dict, team: str, other: str, fun, seen=None) -> str:
 
 async def _run_agent(game: dict, side: str, fun, seen,
                      facts: list, kick, langs,
-                     chain=None, net=None, pot=None) -> tuple[list, str]:
+                     chain=None, net=None, pot=None,
+                     subtask=None) -> tuple[list, str]:
     """🔴🔴 **게이트 2 — §3 에이전트를 돌린다.** `(판정층 변수들, 한 줄)`.
 
     ══════════════════════════════════════════════════════════════════
@@ -146,7 +148,11 @@ async def _run_agent(game: dict, side: str, fun, seen,
             # 🔴🔴 **카탈로그를 넘긴다**(사용자 지시 2026-10-05). ⚠️ 이 칸이
             #    **비어 있었다** — `remind_line` 이 말할 준비가 돼 있었는데
             #    재료가 없었다(#2 배선). 🔴 목록은 설정이 원본이다.
-            checklist=tuple(sorted(rules.variable_types())),
+            # 🔴🔴 **하위 과제**(딥서치 재구축 §2) — 담당 유형군만 맡는다.
+            #    ⚠️ 하위가 없으면(옛 경로) 종전처럼 **카탈로그 전체**다.
+            subtask=subtask,
+            checklist=(tuple(subtask.kinds) if subtask is not None
+                       else tuple(sorted(rules.variable_types()))),
             # 🔴🔴 **빈 구조 칸**(지시서 §3-3) — 미등록 리그는 어댑터가 아무
             #    것도 안 준다. ⚠️ 그 사실을 **이름으로** 넘겨야 그가 찾는다.
             gaps=tuple(gaps_of(facts, sport=str(game.get("sport") or ""))),
@@ -176,12 +182,21 @@ async def _run_agent(game: dict, side: str, fun, seen,
             # 🔴 쪽 상한 25k + **경기 합계 40k**(지시서 §1-4 · 2026-10-05).
             #    ⚠️ 종전 `share=0.5`(20k 고정)는 상대가 쉬어도 그 몫을 못 쓰게
             #       했다 — 25k 는 그 여유이고, 합계는 `pot` 이 막는다.
-            budget=_solar.MatchBudget(side=True, pot=pot),
+            # 🔴 하위가 있으면 **하위 상한**(4,000)이 걸린다(M59) — 합계는
+            #    `pot` 이 그대로 막는다(§2: "합계는 기존 상한 그대로").
+            budget=_solar.MatchBudget(
+                side=True, pot=pot,
+                subtask_out=(subtask.budget.out_cap if subtask is not None
+                             else 0)),
             # 🔴 결정 ③ — 세포가 안 찾으니 **에이전트가 찾고 연다**
             #    ⚠️ `fetcher=` 다 — `net=` 은 `solar.chat` 의 시험용 대역이다
             chain=chain, fetcher=net)
     except Exception as exc:                            # noqa: BLE001
         logger.warning("[analyze] §3 에이전트 실패: %r", exc)
+        # 🔴 **깔때기에도 남긴다**(⑭ · 실측 2026-10-05) — 세포 장부에만 적히면
+        #    깔때기만 읽는 사람은 *"두 팀이 다 돌았다"* 로 읽는다.
+        if fun is not None:
+            fun.drop(Reason.AGENT_CRASHED, "agent_vars")
         return [], f"🔴 §3 에이전트가 **터졌다** — {exc!r}"
     # 🔴🔴 §5-4 — **방향은 코드가 다시 정한다**(모델 힌트를 쓰지 않는다)
     g = classify.Game(home=game.get("home") or "", away=game.get("away") or "",
@@ -258,6 +273,8 @@ def _run_hypo(card, game, items, st, sc):
     from app import hypo
     from app.reasons import Reason
     inp = hypo.HypoInput(
+        # 🔴 원장이 한 경기로 모이게 — solar 와 **같은 열쇠**다(⑫)
+        match_key=str(getattr(card, "match_key", "") or ""),
         home=str(getattr(game, "home_id", "") or ""),
         away=str(getattr(game, "away_id", "") or ""),
         sport=str(getattr(game, "sport", "") or ""),
@@ -358,6 +375,8 @@ def _run_redteam(card, game, sc, st, probs, board):
                 for m in (got.markets or [])}
 
     inp = hypo.HypoInput(
+        # 🔴 원장이 한 경기로 모이게 — solar 와 **같은 열쇠**다(⑫)
+        match_key=str(getattr(card, "match_key", "") or ""),
         home=str(getattr(game, "home_id", "") or ""),
         away=str(getattr(game, "away_id", "") or ""),
         sport=str(getattr(game, "sport", "") or ""),
@@ -487,6 +506,11 @@ async def gather(game: dict, *, net: Net | None = None,
     day = kick.date()
     facts: list = []
     states: dict[str, str] = {}
+    # 🔴🔴 **경기 하나의 장부**(딥서치 재구축 §3-2) — 유형군 × 팀 칸.
+    #  > 하위가 검색을 돌았으면 `searched`, **검증 통과 변수가 생기면 `found`**,
+    #  > 검색했는데 후보 0 이면 `empty`, 실패했으면 `not_tried` + 사유.
+    #  🔴 `found` 배선이 이번 재구축에서 완성됐다 — 종전엔 `searched` 만 섰다.
+    book = _ledgerbook.Book()
     for side in ("home", "away"):
         team, other = game[side], game["away" if side == "home" else "home"]
         # ══════════════════════════════════════════════════════════════
@@ -714,14 +738,94 @@ async def gather(game: dict, *, net: Net | None = None,
         #  🔴 한 팀에 한 번 돈다. ⚠️ 종전 주석은 *"두 팀이 **같은 지갑**을
         #     쓴다"* 였다 — 🔴 **결정 ② 가 그것을 바꿨다**: 쪽마다 **반**을
         #     준다(한쪽이 다 써서 다른쪽이 0개가 되는 것을 막는다).
-        agent_vars, agent_note = await _run_agent(
-            game, "home" if team == game.get("home") else "away",
-            fun, seen, facts, kick, tuple(game.get("langs") or ()),
-            # 🔴 결정 ③ — 세포가 안 찾으니 에이전트에게 수단을 들려 보낸다
-            chain=search, net=net,
-            # 🔴🔴 **경기 합계 지갑**(지시서 §1-4) — 팀별 25k · 합계 40k.
-            #    ⚠️ 두 쪽이 **같은 `MatchPot`** 을 봐야 합계가 벽이 된다.
-            pot=pot)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **딥서치 재구축 §2 — 하위 과제 병렬**(지시서 2026-10-05)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 경기 하나 = 하위 과제 **8개**(유형군 4 × 홈/원정). 한 에이전트가
+        #  > 경기 전체를 돌면 경기당 12분이고, 한쪽이 예산을 다 써서 다른 쪽이
+        #  > 0개가 된다(실측 2026-10-04~05).
+        #
+        #  ⚠️ 이 자리는 **팀마다** 돈다 — 그래서 여기서 그 팀의 하위 **4개**를
+        #     병렬로 돌린다(두 팀 합쳐 8개).
+        #  🔴 하위 하나가 터져도 나머지가 산다(M63) — `lead.run_all` 이 격리한다.
+        from app.research import lead as _lead
+        from app.research import subtasks as _subtasks
+        side = "home" if team == game.get("home") else "away"
+        mine = [t for t in _subtasks.split(game) if t.side == side]
+        jobs = [_run_agent(
+            game, side, fun, seen, facts, kick,
+            tuple(game.get("langs") or ()),
+            chain=search, net=net, pot=pot, subtask=t) for t in mine]
+        live, bad = await _lead.run_all(jobs)
+        # 🔴 **병합은 리드가 한다**(§3-1) — 같은 주장이면 독립 출처 수를 올린다
+        merged = _lead.merge([{"name": t.name, "group": t.group,
+                               "kinds": t.kinds,
+                               "variables": got or []}
+                              for t, (got, _n) in zip(mine, live,
+                                                      strict=False)])
+        agent_vars = merged["variables"]
+        notes = [n for _g, n in live]
+        if bad:
+            # 🔴 **터진 하위를 이름으로 남긴다**(#3) — 깔때기에도 간다
+            notes.append(f"🔴 하위 {len(bad)}개가 터졌다: "
+                         + " · ".join(f"{type(e).__name__}: {e}"[:70]
+                                      for e in bad))
+            fun.drop(Reason.AGENT_CRASHED, "agent_vars", n=len(bad))
+        # 🔴 **하위별 한 줄 + 합계**(§3-4) — 표 없이 "됐다"는 보고가 아니다
+        rows = [{"name": t.name, "searched": t.budget.search_used,
+                 "passed": t.budget.search_used,
+                 "rejected": 0, "fetched": t.budget.fetch_used,
+                 "cands": len(got or []), "verified": len(got or []),
+                 "out": t.budget.out_used, "secs": 0.0}
+                for t, (got, _n) in zip(mine, live, strict=False)]
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **2차 보충 — 최대 1회**(§3-3 · M64)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 장부에서 `not_tried`·`empty` 인 유형군만 골라, **남은 예산**
+        #  > (미사용 search/fetch/토큰) 안에서 해당 하위 과제를 **한 번** 다시
+        #  > 돌린다(턴 6). 2차 뒤에도 비면 그대로 `gaps` 로 — **3차는 없다.**
+        keys = sorted({t.team_key for t in mine})
+        again = _lead.second_round(book, [t.group for t in mine], keys)
+        left = _lead.second_budget(rows)
+        if again and (left["search"] > 0 or left["out"] > 0):
+            back = [t for t in mine if (t.group, t.team_key) in set(again)]
+            jobs2 = [_run_agent(
+                game, side, fun, seen, facts, kick,
+                tuple(game.get("langs") or ()),
+                chain=search, net=net, pot=pot, subtask=t) for t in back]
+            live2, bad2 = await _lead.run_all(jobs2)
+            got2 = _lead.merge([{"name": f"{t.name}(2차)", "group": t.group,
+                                 "variables": g or []}
+                                for t, (g, _n) in zip(back, live2,
+                                                      strict=False)])
+            agent_vars += got2["variables"]
+            notes.append(f"🔴 **2차 보충 {len(back)}칸**(남은 예산 "
+                         f"search {left['search']}·출력 {left['out']}) → "
+                         f"변수 {len(got2['variables'])}줄"
+                         + (f" · 터진 것 {len(bad2)}" if bad2 else ""))
+            _lead.write_book(book, [
+                {"group": t.group, "team_key": t.team_key,
+                 "searched": t.budget.search_used, "variables": g or [],
+                 "verified": len(g or [])}
+                for t, (g, _n) in zip(back, live2, strict=False)])
+        elif again:
+            notes.append(f"⚠️ 2차 보충을 **못 돌렸다** — 빈 칸 {len(again)}개가 "
+                         f"남았는데 예산이 없다(남은 search {left['search']})")
+        said_rows = _lead.funnel_lines(rows)
+        notes += said_rows
+        # 🔴 **로그에도 찍는다**(§3-4) — 카드는 긴 줄을 자르고,
+        #    `tools/research_report.py` 는 로그에서 표를 읽는다.
+        for line in said_rows:
+            logger.info("[analyze] 하위 %s", line.strip())
+        agent_note = " | ".join(notes)
+        # 🔴 **장부 갱신**(§3-2) — 유형군 × 팀 칸에 `found` 가 선다
+        _lead.write_book(book, [
+            {"group": t.group, "team_key": t.team_key,
+             "searched": t.budget.search_used,
+             "variables": got or [], "verified": len(got or [])}
+            for t, (got, _n) in zip(mine, live, strict=False)])
         states.setdefault(f"에이전트:{team}", agent_note)
         if agent_vars:
             states.setdefault(_AGENT_KEY, [])
@@ -811,6 +915,8 @@ async def gather(game: dict, *, net: Net | None = None,
     # 🔴 `states` 에 실어 보낸다 — `gather` 서명을 바꾸면 부르는 곳이 전부 따라야
     #    하고, 깔때기는 **보고용**이지 흐름의 입력이 아니다.
     states[_FUNNEL_KEY] = fun
+    # 🔴 **장부를 카드로 넘긴다**(#3) — 어느 유형군이 비었나가 보여야 한다
+    states["장부"] = book.line() if hasattr(book, "line") else str(book.cells)
     return facts, states
 
 
@@ -1060,10 +1166,17 @@ def context(facts: list) -> dict:
             #
             #  ⚠️ 최댓값만 담으면 **합을 못 센다**. 🔴 실측 pn7: 2.8 + 3.4 = 6.2
             #     였는데 난타전 시나리오가 없어 `언더 3.5` 가 1.0 이 됐다.
+            #  🔴🔴 **총득점이 아니라 팀 득점이다** — 결정 2026-10-05.
+            #     ⚠️ 실사고: 여기 `recent_avg_goals`(경기 총득점)를 담고
+            #        난타전이 **두 팀 것을 더해** 3.2+2.8=6.0 을 봤다 —
+            #        총득점을 두 번 세어 거의 모든 경기가 난타전 필수였다.
+            #     🔴 못 재면 **안 담는다**(#3) — 0 을 넣으면 면제된다.
             who = str(f.team or getattr(f, "team", "") or "")
-            if who:
-                out.setdefault("avg_goals_by_team", {})[who] = float(
-                    val["recent_avg_goals"])
+            scored = val.get("recent_scored_avg")
+            if who and scored is not None:
+                out.setdefault("avg_goals_by_team", {})[who] = float(scored)
+            elif who:
+                out.setdefault("avg_goals_missing", []).append(who)
     if parts:
         out.update(_merge_runs(parts))
     return out
@@ -1158,6 +1271,11 @@ class Card:
     #      *"이미 시작"* 을 찍는데 결론 줄은 `소액` 을 적었다 — 지시 ③ 이
     #      조용히 꺼져 있었다. 🔴 **칸으로 든다**(없는 칸은 숨는다).
     kickoff: object = None
+    #: 🔴🔴 **경기 열쇠**(`ext_id`) — 비용 원장이 한 경기로 모이게 한다
+    #   (⑫ · 2026-10-05). ⚠️ `Game`·`Card` 어디에도 없어서 단계 3·4 가
+    #   `f"{home}|{away}"` 를 적었고 둘이 비면 `'|'` 가 남았다 — 그 행은
+    #   **어느 경기인지 알 수 없다**. 🔴 `kickoff` 과 같은 길로 **칸에 든다**.
+    match_key: str = ""
     #: 🔴🔴 **깔때기** — 어느 칸에서 0 이 됐나(사용자 기술 지시 2026-10-03).
     #   ⚠️ 블록 1 **맨 위**에 적는다 — 스무 줄 사유 아래 묻히면 못 본다.
     funnel: object = None
@@ -1279,7 +1397,7 @@ def hypo_sentences(said: dict, *, side: str) -> tuple[list, list]:
             [str(x) for x in (box.get("breaks") or []) if is_sentence(x)])
 
 
-def var_line(c) -> str:
+def var_line(c, *, form: dict | None = None) -> str:
     """🔴🔴 **변수 한 줄** — 무슨 사실인가 + 인용 + 규칙이 본 것.
 
     ══════════════════════════════════════════════════════════════════
@@ -1301,20 +1419,34 @@ def var_line(c) -> str:
     """
     text = " ".join(str(getattr(c, "text", "") or "").split())
     why = " ".join(str(getattr(c, "why", "") or "").split())
+    # 🔴 **묶음이면 그렇다고 적는다** — 지시 ⑧ (실측 2026-10-05).
+    #    ⚠️ 한 변수가 여러 사실을 담으면 방향·hardness 가 무엇에 붙었는지
+    #       알 수 없다. 버리지 않고 **표시**한다(#3).
+    lump = " 🔴 **여러 사실 묶음**(한 변수 = 한 사실이 아니다)" \
+        if classify.is_lump(text) else ""
+    # 🔴 **폼 기록과 어긋나면 적는다**(지시 ⑨) — 어느 쪽이 맞는지는 고르지 않는다.
+    #    ⚠️ 폼은 **인자로** 받는다. `Classified` 에 `last5` 칸이 **없어서**
+    #       `getattr(c, "last5", [])` 는 늘 빈 목록이었다 — `Card.kickoff` 와
+    #       같은 함정이다(실측 2026-10-05).
+    box = dict((form or {}).get(str(getattr(c, "team", "") or "")) or {})
+    clash = classify.clash_with_form(text, box.get("last5") or [])
+    if clash:
+        lump += " · " + clash
     if text and why:
-        return f"{_clip(text, 190)} · {_clip(why, 110)}"
-    return _clip(text or why, 190)
+        return f"{_clip(text, 190)} · {_clip(why, 110)}{lump}"
+    return _clip(text or why, 190) + lump
 
 
 def build(facts: list, game, *, board=None, states: dict | None = None,
-          kickoff=None) -> Card:
+          kickoff=None, match_key: str = "") -> Card:
     """사실 → 카드. 🔴 **여기서 LLM 이 말하지 않는다**(§17-c).
 
     🔴 `kickoff` 은 **방아쇠의 "언제 보나"를 시계 시각으로** 적는 데 쓴다
        (분석 과정 10단계 *"확인 항목 첨부"* · 사용자 글 `KST 10:00 XI`).
        ⚠️ 없으면 상대 시각(`T-70분`)만 적는다 — 지어내지 않는다.
     """
-    card = Card(game=game, states=dict(states or {}), kickoff=kickoff)
+    card = Card(game=game, states=dict(states or {}), kickoff=kickoff,
+                match_key=str(match_key or ""))
     # 🔴 깔때기는 **사유가 아니다** — 사람이 읽는 줄과 섞이면 블록 1 이 깨진다
     fun = card.states.pop(_FUNNEL_KEY, None) or _funnel.Funnel()
     items = classify.classify_facts(facts, game)
@@ -1620,6 +1752,33 @@ def _tally(lines: list[str]) -> list[str]:
     return [f"{k} ×{n}" if n > 1 else k for k, n in seen.items()]
 
 
+def source_spread(rows: list) -> tuple[int, str]:
+    """🔴🔴 **변수가 몇 출처에서 왔나** — 지시 ⑦ (실측 2026-10-05).
+
+    ⚠️ 실사고: 검증 변수 5개 중 **3개가 같은 URL**(한 프리뷰 기사)에서 왔고
+       셋 다 `aggregator`(무게 0)였다. 🔴 카드만 보면 *"다섯 각도에서 봤다"* 로
+       읽힌다 — 실제로는 **한 기사**다.
+    🔴 상한을 걸지 않는다(변수가 더 줄어든다) — **사실을 적는다**(#3).
+    """
+    from urllib.parse import urlparse
+    seen: dict[str, int] = {}
+    for r in (rows or []):
+        url = str((r.get("source_url") if isinstance(r, dict)
+                   else getattr(r, "source_url", "")) or "")
+        host = (urlparse(url).netloc or "").lower().removeprefix("www.")
+        if host:
+            seen[host] = seen.get(host, 0) + 1
+    if not seen:
+        return 0, "⚠️ **출처 호스트를 못 쟀다** — 변수에 URL 이 없다"
+    top = sorted(seen.items(), key=lambda kv: (-kv[1], kv[0]))
+    worst, n = top[0]
+    tail = " · ".join(f"{h} {c}건" for h, c in top[:4])
+    mark = (" 🔴 **한 출처에 쏠렸다**"
+            if n * 2 >= sum(seen.values()) and len(seen) > 1 else "")
+    return len(seen), (f"출처 {len(seen)}곳 — {tail}{mark} "
+                       f"(가장 많은 곳 `{worst}` {n}건)")
+
+
 def _limits(items: list, sc, sv, states: dict) -> list[str]:
     """블록 1 **자료 한계 고백.** 🔴 이 블록이 비면 그것이 거짓이다.
 
@@ -1630,6 +1789,11 @@ def _limits(items: list, sc, sv, states: dict) -> list[str]:
        적는다. 전문은 로그와 `Cell.tried` 에 그대로 있다.
     """
     out: list[str] = []
+    # 🔴 **출처 쏠림**을 맨 앞에 적는다(지시 ⑦) — 변수 수가 각도 수가 아니다
+    said = [{"source_url": str(getattr(c, "source_url", "") or "")}
+            for c in items if getattr(c, "source_url", "")]
+    if said:
+        out.append(source_spread(said)[1])
     out += _tally([f"미결정: {_fold(c.undecided)}" for c in items if c.undecided])
     cells_: list[str] = []
     for key, why in sorted(states.items()):
@@ -1718,7 +1882,7 @@ def render(card: Card) -> str:
     for i, c in enumerate(card.variables):
         head = (f"  {triggers.label_of(i)} [{c.type}·{c.direction}·"
                 f"{c.hardness}] ")
-        out.append(head + var_line(c))
+        out.append(head + var_line(c, form=dict(card.form or {})))
         # 🔴 **출처를 한 줄 더** — 되짚을 수 있어야 한다(§12-c 감사)
         #    ⚠️ 주소는 **자르지 않는다** — 잘린 주소는 열리지 않으므로 되짚는다는
         #       이 줄의 목적 자체가 사라진다(종전 `src[:100]`).
@@ -2231,7 +2395,8 @@ async def answer(pool, *, team: str | None = None, league: str | None = None,
          "opponent_local": ref.away_local}, mode=mode)
     for k, v in pre_notes.items():
         states.setdefault(k, v)
-    card = build(facts, g, board=board, states=states, kickoff=kick)
+    card = build(facts, g, board=board, states=states, kickoff=kick,
+                 match_key=str(row.get("ext_id") or ""))
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **예측인가** — 킥오프가 지났으면 이것은 예측이 아니다(실측 2026-10-03)
     # ══════════════════════════════════════════════════════════════════

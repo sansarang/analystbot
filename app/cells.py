@@ -1154,10 +1154,22 @@ class Cell:
                 break
             # 🔴 `take()` 가 셌으므로 돌려준다 — `extract.run` 이 다시 센다
             self.llm_budget.used -= 1
-            # 🔴 **발행일** — 페이지가 안 주면 `trafilatura` 가 읽은 날짜를 쓴다.
-            #    ⚠️ §12-c-1 이 날짜 없는 자료를 fail-closed 로 떨어뜨린다 — 그 날짜가
-            #       있으면 멀쩡한 기사가 살아난다(실측: SearXNG 는 날짜를 0% 준다).
-            when = getattr(got, "published_at", None) or _parsed(when_s)
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **③층 — 본문 날짜가 원본이다**(사용자 지시 2026-10-05)
+            # ══════════════════════════════════════════════════════════
+            #
+            #  > `htmldate` 로 뽑은 이 값이 `published_at` 의 **원본**이다.
+            #  > 검색 엔진이 준 날짜는 **보조로만** 쓴다.
+            #
+            #  ⚠️ 실사고: 이 줄이 **거꾸로**였다 —
+            #     `getattr(got, "published_at") or _parsed(when_s)` 로 검색
+            #     날짜를 **먼저** 쓰고 본문을 퇴로로 썼다.
+            #  🔴 어느 쪽이 이기나는 `net.pick_published` **한 곳**이 정한다(#1).
+            from app import net as _N
+            said, why_date = _N.pick_published(
+                when_s, getattr(got, "published_at", "") or "")
+            when = _parsed(said) if said else None
+            logger.info("[cell] 발행일 — %s (%s)", said or "없다", why_date)
             facts, dropped = await extract.run(
                 task, title="", body=body, question_id=self.question.id,
                 source=url, published_at=when,

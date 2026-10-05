@@ -88,6 +88,16 @@ class Book:
     def state(self, kind: str, key: str) -> str:
         return self.cells.get((str(kind), str(key)), "not_tried")
 
+    def why(self, kind: str, key: str) -> str:
+        """🔴 그 칸의 **사유** — 실패와 *"안 해봤다"* 를 가른다(#3).
+
+        ⚠️ 딥서치 재구축 §3-2: *"하위가 실패(타임아웃·`llm_unavailable`)했으면
+           `not_tried` + **사유**."* 🔴 사유 없는 `not_tried` 는 고칠 곳을
+           말하지 않는다.
+        """
+        return str((getattr(self, "whys", None) or {}).get(
+            (str(kind), str(key))) or "")
+
     def not_tried(self, kinds, keys) -> list[str]:
         """🔴 그 유형들 중 **한 팀이라도 안 해본** 것들.
 

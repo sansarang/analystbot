@@ -620,6 +620,9 @@ def parse_form(j: dict, q: Question, *, url: str, when) -> list[Fact]:
                 "last5": [str(g.get("resultString") or "") for g in games],
                 "recent_avg_goals": (round(sum(tots) / len(tots), 3)
                                      if tots else None),
+                # 🔴 **팀이 넣은 골** 평균 — 난타전 판정이 쓰는 수다(결정
+                #    2026-10-05). ⚠️ 위 칸은 **총득점**이라 이름이 다르다.
+                "recent_scored_avg": scored_avg(seq),
                 "recent_scored_games": len(tots),
                 "last_match_utc": dates[-1].isoformat() if dates else None,
                 # ⚠️ 이름을 그대로 — 조용한 0 금지. 못 재면 `None` 이다
@@ -634,6 +637,25 @@ def parse_form(j: dict, q: Question, *, url: str, when) -> list[Fact]:
             tier=verify.TIER_PREVIEW,
             extracted_by="rule:fotmob_form", step=1, team=team))
     return out
+
+
+def scored_avg(seq: list) -> float | None:
+    """🔴🔴 **그 팀이 넣은 골의 평균** — 사용자 결정 2026-10-05 (난타전 지표).
+
+    ⚠️ 종전엔 난타전 판정이 `recent_avg_goals`(**경기 총득점** = 홈골+원정골)를
+       **두 팀 것 더해서** 썼다. 실측 프랑스–벨기에: `3.2 + 2.8 = 6.0 ≥ 4.0`
+       → 총득점을 **두 번 센다.** 🔴 그러면 양 팀이 각각 평균 2골 경기만 해도
+       합 4.0 이 되어 **거의 모든 축구 경기**가 난타전 필수가 됐다
+       (축구 경기 평균 총득점은 보통 2.5~3.0).
+    🔴 사용자 결정: *"팀 득점 평균으로 바꾼다(지시 원문대로)"* — 문턱 4.0·3.0 은
+       그대로. 그러면 합 4골 = **경기에 4골 기대**라는 뜻이 선다.
+
+    ⚠️ 새 자료는 필요 없다 — `_form_sequence` 가 `goals_for` 를 **이미** 든다.
+    🔴 **못 재면 `None`**(#3) — 0 으로 때우면 난타전이 통째로 면제된다.
+    """
+    got = [int(g["goals_for"]) for g in (seq or [])
+           if isinstance(g, dict) and str(g.get("goals_for")).isdigit()]
+    return round(sum(got) / len(got), 3) if got else None
 
 
 def _form_sequence(games: list, team: str, q: Question) -> list[dict]:
@@ -1211,7 +1233,19 @@ def league_table_url(j: dict) -> str | None:
        쓰지 않는다. `leagueId` 와 대회 이름으로 **www 주소**를 만든다.
     """
     tb = ((_page(j).get("content") or {}).get("table") or {})
-    lid = str(tb.get("leagueId") or tb.get("parentLeagueId") or "").strip()
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **부모 리그가 먼저다** — 실측 2026-10-05 (프랑스–벨기에)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고: `leagueId` 를 먼저 써서
+    #     `/leagues/920741/table/uefa-nations-league-a-grp-1` → **404**.
+    #     그 결과 포아송 격자가 전멸하고 생존 수가 확률이 아니라 **strength
+    #     개수**로만 섰다(*"확률 격자를 못 만들었다 ×2"*).
+    #  🔴 받아서 확인했다(2026-10-05): `920741`(조별 하위) 404 ·
+    #     `9806`(`parentLeagueId` = 대회) **200 이고 두 팀 이름이 있다.**
+    #  ⚠️ 부모가 **없는** 리그(프리미어리그 등)는 `leagueId` 가 곧 대회다 —
+    #     그때는 그것으로 간다.
+    lid = str(tb.get("parentLeagueId") or tb.get("leagueId") or "").strip()
     name = str(tb.get("tournamentNameForUrl") or "").strip()
     if not lid or not name:
         return None

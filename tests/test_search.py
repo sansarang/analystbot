@@ -732,7 +732,10 @@ def test_GDELT_는_키가_없고_상한을_더_세게_지킨다():
        지키는 것**이다(§14-12 가 금지한 것은 전자다).
     """
     src = _code_only(S)
-    assert "GDELT_COOLDOWN_SEC" in src and "_rest_until" in src
+    # ⚠️ 칸 이름이 바뀌었다(2026-10-05) — 간격·벌점은 **과정 전체**의 것이라
+    #    인스턴스 칸에서 클래스 칸(`_state`)으로 옮겼다. `build_chain()` 이 네
+    #    곳에서 따로 불려 새 인스턴스가 벌점을 **잊었기** 때문이다.
+    assert "GDELT_COOLDOWN_SEC" in src and "rest_until" in src
     assert S.GDELT_INTERVAL_SEC >= 5.0, S.GDELT_INTERVAL_SEC
     assert S.GDELT_COOLDOWN_SEC >= 60.0, S.GDELT_COOLDOWN_SEC
     # 🔴 키를 안 쓴다(무료·카드 없음)

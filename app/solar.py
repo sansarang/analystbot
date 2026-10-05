@@ -157,6 +157,12 @@ class MatchBudget:
     #  `pot`        → 두 쪽이 **함께 보는** 경기 합계(없으면 합계 벽이 없다).
     side: bool = False
     pot: "MatchPot | None" = None
+    #: 🔴🔴 **하위 과제 출력 상한** — 딥서치 재구축 §2 (2026-10-05).
+    #   > 하위 1개 출력 4,000 · 8개 합 32,000. 예산 카운터는 **하위마다 독립
+    #   > 객체**다(M59) — 공유 카운터 금지.
+    #   ⚠️ `0` 이면 안 걸린다(옛 경로) — 하위 경로만 이 칸을 채운다.
+    #   🔴 합계(`pot`)는 그대로 벽이다 — 하위 상한이 그것을 **대신하지 않는다**.
+    subtask_out: int = 0
 
     @property
     def caps(self) -> dict:
@@ -175,6 +181,9 @@ class MatchBudget:
     def max_out(self) -> int:
         """🔴 **내 몫**의 출력 상한(추론 포함)."""
         c = self.caps
+        # 🔴 **하위 상한이 가장 좁다**(§2) — 있으면 그것이 이긴다
+        if self.subtask_out > 0:
+            return int(self.subtask_out)
         if self.side:
             return int(c.get("per_side_output_tokens")
                        or int(c.get("output_tokens") or 0))
@@ -279,7 +288,16 @@ class MatchBudget:
 def _ledger_path(now: datetime | None = None) -> Path:
     when = now or datetime.now(timezone.utc)
     tpl = str(budget_cfg().get("ledger_path") or "ledger/cost_{YYYYMM}.jsonl")
-    return ROOT / tpl.replace("{YYYYMM}", when.strftime("%Y%m"))
+    name = tpl.replace("{YYYYMM}", when.strftime("%Y%m"))
+    # 🔴 원장 위치는 **`ROOT` 하나**가 정한다.
+    #  ⚠️ 왜 적어 두나 — 계약이 이 기계의 원장을 읽어, 하루 상한에 닿은 날 LLM
+    #     계약 **10건이 한꺼번에 빨개졌다**(`day_cap_stop: 오늘 $3.0074 / 상한
+    #     $3.00`). 그것은 봇 결함이 아니라 기계 상태다.
+    #  🔴 그래서 `tests/conftest.py` 가 **`ROOT` 를 임시 폴더로 돌린다**
+    #     (`_unplug_env` 가 `.env` 를 뗀 것과 같은 이유). ⚠️ 환경변수 통로를
+    #     따로 두지 않는다 — 예산 가드를 시험하는 계약이 이미 `ROOT` 를 돌리고,
+    #     두 통로가 있으면 **어느 쪽이 이기나**가 자리마다 달라진다(#1).
+    return ROOT / name
 
 
 def spent(*, now: datetime | None = None) -> tuple[float, float]:
@@ -349,6 +367,18 @@ LEDGER_REQUIRED: tuple[str, ...] = ("in", "cache", "out", "usd")
 #     적용되고, DeepSeek 는 추론 강도 손잡이가 없다(그 줄이 터진다).
 LEDGER_REQUIRED_SOLAR: tuple[str, ...] = ("reasoning_effort",)
 
+#: 🔴 경기 열쇠가 **비었을 때** 원장에 적는 글.
+#  ⚠️ 실측 2026-10-05: `match` 가 `'|'` 인 행이 있었다(팀 열쇠 둘이 다 빈 값).
+#     그 행은 **어느 경기인지 알 수 없다** — 비용을 경기에 못 붙인다.
+#  🔴 조용히 `''` 로 두지 않는다(#3) — 이름으로 남겨 찾을 수 있게 한다.
+MATCH_UNKNOWN = "🔴경기열쇠없음"
+
+
+def match_or_unknown(said: object) -> str:
+    """🔴 원장에 적을 경기 열쇠. **비면 이름으로** 남긴다(#3)."""
+    got = " ".join(str(said or "").split())
+    return got if got and got.strip("|") else MATCH_UNKNOWN
+
 
 def write_ledger(row: dict, *, now: datetime | None = None,
                  root: Path | None = None) -> Path:
@@ -357,6 +387,10 @@ def write_ledger(row: dict, *, now: datetime | None = None,
     🔴 **M49** — `in`·`cache`·`out`·`usd` 가 없거나 `None` 이면 **터진다.**
        ⚠️ 조용히 빈 줄을 쌓으면 그 원장으로는 아무것도 못 잰다(#3).
     """
+    # 🔴 **경기 열쇠를 정규화한다**(⑫⑬ · 실측 2026-10-05) — `'|'` 처럼 식별
+    #    불가한 행을 남기지 않는다. 적는 자리가 **하나**이므로 여기서 한다.
+    row = dict(row)
+    row["match"] = match_or_unknown(row.get("match"))
     need = list(LEDGER_REQUIRED)
     # 🔴 공급자마다 더 요구하는 칸이 있다(§1-4: Solar 는 추론 강도를 적는다)
     if str(row.get("provider") or "") == "solar":

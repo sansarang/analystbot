@@ -67,17 +67,6 @@ def remind_line(missing: list) -> str:
             f"더 찾을 것이 없으면 `done` 으로 마친다(§3-7).")
 
 
-#: 🔴🔴 **`done` 을 부를 출력 예비분** — 실측 2026-10-05.
-#
-#  원장 4,126건에서 Solar 호출 하나의 출력이 **최대 9,568** 토큰이었다(꼬리는
-#  4,200 쯤). 🔴 `done` 턴은 변수·가설·시나리오를 **한 번에** 내므로 그 꼬리에
-#  속한다 — 그만큼은 남겨 둬야 거부가 변수를 **0개로** 만들지 않는다.
-#
-#  ⚠️ 실측이 그 자리를 집었다(2026-10-05): `done` 을 거부하자 에이전트가 더
-#     찾았고 **쪽 상한 25k 를 태워** `budget_cut` 으로 끊겼다 — 양 팀 변수가
-#     0개가 됐다. 🔴 막은 쪽이 **더 나빠졌다.**
-#  🔴 손으로 고른 수가 아니다 — 원장 최대값(9,568) 위의 가장 가까운 천 단위다.
-DONE_RESERVE = 10_000
 
 
 def max_turns() -> int:
@@ -114,6 +103,10 @@ class AgentInput:
     board: tuple = ()
     structured_facts: tuple = ()
     #: §3-4 변수 카탈로그 전 유형
+    #: 🔴🔴 **하위 과제** — 딥서치 재구축 §2 (2026-10-05).
+    #   ⚠️ 칸으로 든다 — `getattr` 기본값은 없는 칸을 숨겨 분할을 **조용히**
+    #      끈다(`Card.kickoff` 와 같은 함정 · 실측 2026-10-05).
+    subtask: object = None
     checklist: tuple[str, ...] = ()
     #: 🔴 구조 사실로 못 채운 칸(예: 감독 이름 미상)
     gaps: tuple[str, ...] = ()
@@ -377,6 +370,10 @@ class Tools:
     #: 🔴 §4-4 — **검색 결과에 있던 URL 만** `fetch` 가 받는다
     seen_urls: set = field(default_factory=set)
     bodies: dict = field(default_factory=dict)
+    #: 🔴🔴 **검색 스니펫** — ②층(fetch 전 거름)이 날짜를 찾는 글이다
+    #   (사용자 지시 2026-10-05). ⚠️ 칸으로 든다 — `getattr` 기본값은 없는 칸을
+    #   숨겨 그 층을 **조용히 끈다**(`Card.kickoff` 와 같은 함정).
+    snippets: dict = field(default_factory=dict)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **스스로 찾는 수단** — 결정 ③ (사용자 2026-10-04)
     # ══════════════════════════════════════════════════════════════════
@@ -425,8 +422,19 @@ class Tools:
         #        선언하면 그것이 문지기를 속이는 것이다).
         # 🔴 유형은 **질의가 말한다**(`variable_types.yaml` 의 선언으로 가른다)
         from app import querygate as _QG
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **씨앗은 자동 통과**(딥서치 재구축 §4-3)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 1차(씨앗): §2 표의 템플릿 그대로 — 3~6단어. **씨앗 템플릿은 자동
+        #  > 통과.** 🔴 넓게 시작해 판을 본 뒤 좁힌다.
+        task = getattr(self.inp, "subtask", None)
+        is_seed = bool(task is not None
+                       and str(query or "").strip()
+                       == str(getattr(task, "seed", "")).strip())
         ok_q, reason, why = self.querylog.check(
-            query, parts=self._parts(query), kind=_QG.kind_of(query))
+            query, parts=self._parts(query), kind=_QG.kind_of(query),
+            seed=is_seed)
         if not ok_q:
             return {"ok": False, "reason": reason.value, "why": why}
         self.budget.took_tool("search")
@@ -463,8 +471,25 @@ class Tools:
                             "없다(`seen`·`chain` 미전달) — 줄 것이 없다")}
         said = ""
         if self.chain is not None:
-            got, said = self._hunt(query, lang)
+            # 🔴 **1차 언어**(§4-4) — 씨앗은 영어(한국 리그는 한국어)
+            use = str(lang or "en")
+            if is_seed and task is not None:
+                from app.research import subtasks as _st
+                use = _st.first_lang(league=str(self.inp.competition or ""),
+                                     langs=tuple(self.inp.langs or ()))
+            got, said = self._hunt(query, use)
             pool.update(got)
+            # 🔴 **좁히기 낱말을 알려 준다**(§4-2) — 2차를 지어내지 않게.
+            #    ⚠️ 모델이 아니라 **받은 글**에서 나온다(#4 추측 금지).
+            from app.research import subtasks as _st2
+            words = _st2.narrow_words(
+                [{"title": m.get("title") or "",
+                  "snippet": self.snippets.get(u) or ""}
+                 for u, m in got.items()])
+            if words and task is not None:
+                nxt = _st2.narrow_query(str(getattr(task, "seed", "")), words)
+                said += (f" · 🔴 **다음은 좁혀라**: `{nxt}` "
+                         f"(결과에서 본 낱말 {words[:5]})")
         hits = [{"url": u, **meta,
                  "has_body": (u in self.bodies) or (
                      self.seen is not None and u in self.seen.bodies)}
@@ -486,10 +511,45 @@ class Tools:
         import asyncio
 
         got: dict = {}
+        # 🔴 **동시성 가드**(M66) — 병렬 하위 8개가 SearXNG 를 동시에 때리면
+        #    429 가 난다. ⚠️ 상한은 `config/llm.yaml` 이 든다.
+        from app.research import lead as _lead
+
+        async def _ask():
+            async with _lead.gate("searx"):
+                return await self.chain.query(query, lang=lang)
+
         try:
-            hits = asyncio.run(self.chain.query(query, lang=lang))
+            hits = asyncio.run(_ask())
         except Exception as exc:                            # noqa: BLE001
             return got, f"🔴 직접 검색 실패: {exc!r}"
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **§5 1단 — 받기 전 재정렬**(딥서치 재구축 2026-10-05)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 입력: 질의당 결과 최대 30건의 `(질의문, 제목+스니펫)` 쌍.
+        #  > 🔴 재정렬은 **순서만** 바꾼다 — fetch 수를 늘리지 않고(M62),
+        #  >    필터를 통과 못 한 결과를 되살리지 않는다.
+        #
+        #  ⚠️ 질의문에 **유형 핵심어**를 붙인다(하위가 있을 때) — 그것이
+        #     동의어를 잡는 재료다. 🔴 모델이 없으면 순서가 그대로다.
+        from app.research import rerank as _rr
+        said = str(query or "")
+        task = getattr(self.inp, "subtask", None)
+        if task is not None and getattr(task, "rerank_query", ""):
+            said = f"{said} {task.rerank_query}"
+        rows = [{"url": str(getattr(h, "url", "") or ""),
+                 "title": str(getattr(h, "title", "") or ""),
+                 "snippet": str(getattr(h, "snippet", "") or ""),
+                 "_hit": h} for h in (hits or [])]
+        ranked, why_rr = _rr.order(said, [r for r in rows if r["url"]])
+        # 🔴 **fetch 상한까지만 앞에 둔다**(§5 1단) — 재정렬은 순서만 바꾸고
+        #    받는 건수를 늘리지 않는다(M62). ⚠️ 뒤쪽도 **버리지 않는다** —
+        #    모델에게는 다 보여 주고, 받는 것은 그가 고른다.
+        cap = int(getattr(getattr(task, "budget", None), "fetch_cap", 0) or 0)
+        head = _rr.take(ranked, cap=cap) if cap else ranked
+        rest = [r for r in ranked if r not in head]
+        hits = [r["_hit"] for r in [*head, *rest]]
         for h in (hits or []):
             url = str(getattr(h, "url", "") or (h.get("url") if
                                                 isinstance(h, dict) else ""))
@@ -499,6 +559,12 @@ class Tools:
                     "published_at": str(getattr(h, "published_at", "") or "")}
             got[url] = meta
             self.mine[url] = meta
+            # 🔴 ②층이 쓸 **스니펫을 싣는다**(지시 2026-10-05) — 제목도 날짜를
+            #    들고 있을 수 있어 함께 넘긴다.
+            self.snippets[url] = " ".join(
+                x for x in (str(getattr(h, "snippet", "") or ""),
+                            meta["title"]) if x)
+        self.last_rerank = why_rr
         if self.funnel is not None:
             self.funnel.add("hits", len(got), sample=query)
         return got, f"직접 검색 {len(got)}건"
@@ -571,62 +637,6 @@ class Tools:
                 self.book.searched(kind, str(self.inp.away))
         return hit
 
-    def done_ok(self) -> tuple[bool, str]:
-        """🔴🔴 **`done` 을 받아도 되나.** `(된다, 사유)` — 사용자 지시 2026-10-05.
-
-        > `done` 호출 시 **결장·로테이션·감독 발언·경기외** 네 유형이
-        > `not_tried` 면 **`done` 을 거부**하고 *"이 유형을 아직 안 찾았다"* 를
-        > 돌려준다(**예산이 남아 있을 때만**).
-
-        ⚠️ **예산이 없으면 막지 않는다** — 막아도 할 수 있는 일이 없고, 막으면
-           에이전트가 **갇힌다**(턴만 태우고 아무것도 기록되지 않는다).
-        🔴 *"찾아봤고 없었다"*(`empty`)는 **통과**다 — 장부가 그 둘을 가른다.
-        """
-        from app.ledgerbook import MUST_TRY
-        if self.book is None:
-            return True, "장부가 없다 — 막을 근거가 없다"
-        ok_b, why_b = self.budget.can_call()
-        if not ok_b:
-            # 🔴 예산이 끝났다 — **막지 않는다**(지시서의 조건이다)
-            return True, f"예산이 남지 않았다 — `done` 을 막지 않는다({why_b})"
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **거부한 뒤에도 `done` 을 부를 만큼 남아야** 한다
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  ⚠️ 실측 2026-10-05: 거부하자 에이전트가 더 찾았고 그 턴들이 **쪽
-        #     상한 25k 를 태워** `budget_cut` 으로 끊겼다 — `done` 을 **부를
-        #     기회가 없었고** 양 팀 변수가 **0개**가 됐다(막은 쪽이 더 나빠졌다).
-        #  🔴 지시서의 *"예산이 남아 있을 때만"* 의 뜻이 이것이다 —
-        #     `can_call()`(= 아직 0 이 아니다)로는 부족하다.
-        left = int(self.budget.max_out) - int(self.budget.output_tokens or 0)
-        if left < DONE_RESERVE:
-            return True, (f"출력 **예비분**이 모자라다({left} < "
-                          f"{DONE_RESERVE}) — `done` 을 막지 않는다"
-                          f"(막으면 변수가 0개가 된다 · 실측 2026-10-05)")
-        # ══════════════════════════════════════════════════════════════
-        # 🔴 **말하지 않은 것으로 막지 않는다**(실측 2026-10-05)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  ⚠️ `MUST_TRY` 로 무조건 막으니 **옛 루프 계약이 터졌다** — 그 고정물은
-        #     `checklist` 를 안 주고 루프 기계만 시험한다.
-        #  🔴 그리고 그것이 **옳다**: 에이전트에게 *"이 유형을 찾아라"* 라고
-        #     말하지 않았으면 안 찾은 것을 **벌할 수 없다.** §1 의 버그가 바로
-        #     그 꼴이었다(`checklist` 가 비어 있었다).
-        #  ⚠️ 운영 경로는 **늘 채운다** — `_run_agent` 가 카탈로그를 넘기고
-        #     계약(`test_wo_cat_checklist_가_채워진다`)이 그것을 잠근다.
-        told = set(self.inp.checklist or ())
-        need = [t for t in MUST_TRY if t in told] if told else []
-        if not need:
-            return True, ("체크리스트를 받지 않았다 — 막을 근거가 없다"
-                          f" · {self.book.line()}")
-        keys = [str(self.inp.home), str(self.inp.away)]
-        left = self.book.not_tried(need, keys)
-        if not left:
-            return True, f"네 유형을 다 찾아봤다 · {self.book.line()}"
-        return False, (
-            f"🔴 **이 유형을 아직 안 찾았다**: {', '.join(left)} — 찾아보고 "
-            f"다시 `done` 을 불러라('없음'도 답이지만 사다리 2단계는 돌린다). "
-            f"{self.book.line()}")
 
     def _parts(self, query: str) -> dict:
         """🔴 이 질의에 **실제로 든** 조각만 선언한다(§4-1).
@@ -635,15 +645,33 @@ class Tools:
            질의에 있는지 **확인한 것만** 넣는다.
         """
         low = " ".join(str(query or "").lower().split())
+        # ══════════════════════════════════════════════════════════════════
+        # 🔴🔴 **경기장 글자를 먼저 뺀다** — 실측 2026-10-05 (프랑스–벨기에)
+        # ══════════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실사고: 경기장이 `Stade de France` 라서 질의
+        #     `'Stade de France weather forecast October 5 2026'` 의 `France`
+        #     가 **팀 이름**으로 세어졌다. 결정 ⑥(*"경기장+날짜만 있는 질의는
+        #     여전히 bare"*)이 무력화되고, 그 질의는 **본 URL 0개 · 본문 0개**
+        #     를 냈다 — 결정 ⑥ 이 막으려던 바로 그 쓰레기다.
+        #  🔴 팀을 찾을 때는 **경기장을 지운 글**에서 찾는다. 경기장 자체는
+        #     아래에서 원래 글로 센다(지운 글로 세면 경기장이 사라진다).
+        ven_low = " ".join(str(getattr(self.inp, "venue", "") or "")
+                           .lower().split())
+        team_low = low.replace(ven_low, " ") if ven_low else low
         got: dict = {}
         for key, names in (("team", self.inp.home_names),
                            ("opponent", self.inp.away_names)):
             for n in names:
-                if str(n or "").strip() and str(n).lower() in low:
+                if str(n or "").strip() and str(n).lower() in team_low:
                     got[key] = str(n)
                     break
         comp = str(self.inp.competition or "")
-        if comp and comp.lower() in low:
+        # 🔴 판정은 `querygate.comp_in` **한 곳**이다(#1 사본 금지).
+        #    ⚠️ 종전엔 `comp.lower() in low` — 정식명 한 덩어리만 봐서
+        #       `… 2026 Nations League` 가 대회를 0개로 셌다(실측 2026-10-05).
+        from app import querygate as _QG2
+        if comp and _QG2.comp_in(comp, low):
             got["competition"] = comp
         # 🔴🔴 **경기장** — 결정 ⑥ (2026-10-04). ⚠️ 문지기가 `kind` 로 조건을
         #    건다(`venue_weather` 유형에서만 세고, 경기장+날짜만은 bare).
@@ -711,9 +739,32 @@ class Tools:
         """
         import asyncio
 
-        from app import readtext
+        from app import datehint, readtext
+        # ══════════════════════════════════════════════════════════════════
+        # 🔴🔴 **②층 — 받기 전에 거른다**(사용자 지시 2026-10-05)
+        # ══════════════════════════════════════════════════════════════════
+        #
+        #  > URL 날짜 패턴과 스니펫 날짜 표현을 파싱해 **7일 밖이 확실하면 받지
+        #  > 않는다. 날짜 힌트가 없으면 받는다.**
+        #
+        #  ⚠️ SearXNG 은 발행 시각을 **안 준다**(실측 2026-10-05: 엔진 전부
+        #     `publishedDate` 0건) — 그래서 종전엔 *"받아 본 뒤에"* 날짜를
+        #     알았고 7일 밖 문서에 예산을 썼다(`date_missing` 10건).
+        #  🔴 **fail-open 이다** — 힌트가 없으면 받는다.
+        skip, why = datehint.too_old(url, self._snippet_of(url))
+        if skip:
+            logger.info("[agent] ②층 — 받지 않는다: %s · %s", why, url[:70])
+            if self.funnel is not None:
+                self.funnel.drop(Reason.STALE_SAMPLE, "fetched")
+            return ""
+        from app.research import lead as _lead2
+
+        async def _grab():
+            async with _lead2.gate("fetch"):
+                return await self.net.get(url)
+
         try:
-            got = asyncio.run(self.net.get(url))
+            got = asyncio.run(_grab())
         except Exception as exc:                            # noqa: BLE001
             logger.info("[agent] 직접 열기 실패(%s): %r", url[:60], exc)
             return ""
@@ -728,6 +779,13 @@ class Tools:
             if self.funnel is not None:
                 self.funnel.add("fetched", 1, sample=url)
         return body
+
+    def _snippet_of(self, url: str) -> str:
+        """🔴 그 URL 의 **검색 스니펫** — ②층이 날짜를 찾는 글이다.
+
+        ⚠️ 없으면 빈 글이고, 그때 ②층은 *"힌트가 없다"* 로 **받는다**.
+        """
+        return str((self.snippets or {}).get(str(url)) or "")
 
     def _query_hint(self) -> str:
         """🔴 본문을 고를 때 쓰는 **질의** — 이 경기의 두 팀과 대회다."""
@@ -765,6 +823,32 @@ def parse_args(box: object, *, inp: AgentInput | None = None
     """
     if not isinstance(box, dict):
         return [], f"🔴 `done` 인자가 사전이 아니다: {type(box).__name__}"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **꼴을 들어오는 자리에서 맞춘다** — 실측 2026-10-05 (프랑스–벨기에)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고: 모델이 `variables` 를 **JSON 문자열**로 보냈다
+    #     (`'[{"id": "V1", …'`). 스키마는 `{"type":"array"}` 로 맞았지만 모델이
+    #     안 지켰고, 뒤에서 `row.get` 이 터졌다 — `'str' object has no
+    #     attribute 'get'`. 🔴 **15,455자(변수 전부)가 버려졌다.**
+    #  🔴 모델을 믿는 대신 **여기서 한 번** 바꾼다(§8-3). 뒤에서 `getattr`·
+    #     `isinstance` 로 더듬으면 그런 자리가 끝없이 늘어난다.
+    box = dict(box)
+    for key in ("variables", "scenarios", "gaps"):
+        said = box.get(key)
+        if not isinstance(said, str) or not said.strip():
+            continue
+        try:
+            back = json.loads(said)
+        except ValueError as exc:
+            # 🔴 **조용히 버리지 않는다**(#3) — 무엇이 왜 안 읽혔나
+            logger.info("[agent] ⚠️ `%s` 가 문자열인데 JSON 이 아니다(%d자): %r",
+                        key, len(said), str(exc)[:80])
+            continue
+        if isinstance(back, list):
+            logger.info("[agent] 🔴 `%s` 를 **문자열로 받았다** — 목록 %d개로 "
+                        "바꿨다(모델이 스키마를 안 지켰다)", key, len(back))
+            box[key] = back
     return _vars_from(box, inp=inp)
 
 
@@ -934,15 +1018,29 @@ def _narrow(body: object, query: str) -> tuple[str, str]:
     raw = str(body or "")
     if len(raw) <= AGENT_BODY_CHARS:
         return raw, ""
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§5 2단 하이브리드**(딥서치 재구축 2026-10-05)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > BM25 상위 20 → reranker 로 재점수 → **상위 8 문단만** 프롬프트에.
+    #  > 이게 BM25 가 놓치는 동의어(`"won't feature"`·`"이탈"`·`"欠場"`)를
+    #  > 잡는 자리다.
+    #
+    #  ⚠️ 모델이 없으면 `rerank` 가 **BM25 상위 8**로 폴백한다(M62) — 분석은
+    #     멈추지 않고, 어느 단으로 돌았는지 사유에 남는다(#3).
     from app import readtext
-    got = readtext.top_paragraphs(raw, query)
+    from app.research import rerank
+    paras = readtext.paragraphs(raw)
+    got, said = rerank.paragraphs(query, paras)
     out = "\n".join(got)
     if not out:
         out = raw[:AGENT_BODY_CHARS]
     elif len(out) > AGENT_BODY_CHARS:
         out = out[:AGENT_BODY_CHARS]
+    # 🔴 **어느 단으로 돌았나를 사유에 적는다**(#3) — 모델이 없으면 BM25
+    #    상위 8 로 돌았고, 그 사실이 안 보이면 카드가 거짓이 된다.
     return out, (f" · 🔴 본문 {len(raw)}자 → **{len(out)}자**로 좁혔다"
-                 f"(질의와 가까운 문단 · 예산 §2)")
+                 f"(§5 2단: {said})")
 
 
 def call_tool(tools, name: str, args: dict) -> dict:
@@ -1063,8 +1161,15 @@ def run(inp: AgentInput, ctx, *, funnel=None, net=None, seen=None,
                   #     `cell_search_off 52` 와 `verified_vars 5`(격자 잔재)만 남았다.
                   #  ⚠️ 이름이 겹친 것을 **몰랐다** — 쓰기 전에 `grep` 하지 않았다.
                   chain=chain, net=fetcher)
+    # 🔴🔴 **하위 프롬프트 꼬리**(딥서치 재구축 §2·§4) — 담당 유형과 검색어
+    #    규칙을 붙인다. ⚠️ 하위가 없으면(옛 경로) **아무것도 안 붙는다** —
+    #    그 사실이 사유로 남는다.
+    tail = ""
+    if inp.subtask is not None:
+        from app.research import subtasks as _st
+        tail = _st.prompt_tail(inp.subtask)
     msgs: list[dict] = [
-        {"role": "system", "content": system_prompt()},
+        {"role": "system", "content": system_prompt() + tail},
         {"role": "user", "content": json.dumps(
             {"match_key": inp.match_key, "home": inp.home,
              "away": inp.away, "home_names": list(inp.home_names),
@@ -1118,36 +1223,25 @@ def run(inp: AgentInput, ctx, *, funnel=None, net=None, seen=None,
                         str(args)[:80], "ok" if res.get("ok") else "거부",
                         str(res.get("why") or "")[:120])
             if name == "done":
-                # ══════════════════════════════════════════════════════
-                # 🔴🔴 **`done` 을 장부가 막는다** — 사용자 지시 2026-10-05
-                # ══════════════════════════════════════════════════════
-                #
-                #  > 네 유형이 `not_tried` 면 **`done` 을 거부**하고 *"이 유형을
-                #  > 아직 안 찾았다"* 를 돌려준다(**예산이 남아 있을 때만**).
-                #
-                #  ⚠️ 실측 2026-10-05: 결장·로테이션·감독 발언·경기외가
-                #     **0개**였다 — 세포가 끊겼고 에이전트는 카탈로그를 몰랐다.
-                #  🔴 막은 사실을 **도구 응답으로** 돌려준다 — 그러면 모델이
-                #     그 유형을 찾고 다시 `done` 을 부른다.
-                ok_d, why_d = tools.done_ok()
-                if not ok_d:
-                    logger.info("[agent] 🔴 `done` **거부** — %s", why_d[:160])
-                    res = {"ok": False,
-                           "reason": Reason.CHECKLIST_LEFT.value,
-                           "why": why_d}
-                    msgs.append({"role": "tool", "tool_call_id": cid,
-                                 "content": json.dumps(res,
-                                                       ensure_ascii=False)})
-                    continue
+                # 🔴 **`done` 거부 루프를 지웠다**(지시서 2026-10-05 §1).
+                #    ⚠️ 거부가 예산을 태웠다(실측: 출력 25k 소진 · 변수
+                #       18→0). 🔴 커버리지 보장은 **거부에서 분할로**
+                #       옮겼다(§2 하위 과제 8개) — 승계 계약은 M59 와
+                #       장부 `found` 배선이다.
                 # 🔴 **인자가 스키마다** — 글자로 다시 돌리지 않는다
                 done_args = dict(args)
                 done = True
                 # 🔴 **인자를 로그에 남긴다** — 변수 0개일 때 *무엇을 받았나*를
                 #    볼 수 있어야 한다(실측 2026-10-04: 두 번 그 자리에 왔다).
-                logger.info("[agent] 🔴 `done` 인자 칸=%s · 변수 %d줄 · 첫 줄=%s",
-                            sorted(done_args), len(done_args.get("variables")
-                                                   or []),
-                            str((done_args.get("variables") or [{}])[0])[:400])
+                # 🔴 **꼴을 함께 적는다** — 실측 2026-10-05: `변수 15455줄`
+                #    이라 적혀 있었고 그것은 **문자 수**였다(모델이 문자열을
+                #    보냈다). 터지기 전 유일한 단서가 거짓을 말했다.
+                _got = done_args.get("variables")
+                logger.info("[agent] 🔴 `done` 인자 칸=%s · 변수 %s %d · 머리=%s",
+                            sorted(done_args), type(_got).__name__,
+                            len(_got or []),
+                            (str(_got[0])[:400] if isinstance(_got, list)
+                             and _got else str(_got)[:120]))
             msgs.append({"role": "tool", "tool_call_id": cid,
                          "content": json.dumps(res, ensure_ascii=False)[:8000]})
         if done:

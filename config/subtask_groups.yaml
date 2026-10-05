@@ -1,0 +1,46 @@
+# 하위 과제 분할 표 — **딥서치 재구축 §2**(작업 지시서 2026-10-05)
+#
+# ══════════════════════════════════════════════════════════════════
+# 🔴 왜 이 파일이 생겼나
+# ══════════════════════════════════════════════════════════════════
+#
+# > 경기 하나 = **하위 과제 8개**(유형군 4 × 홈/원정). `subtasks.py` 가 이 표를
+# > **데이터로** 갖고, 경기 입력에서 하위 과제 목록을 만든다.
+#
+# ⚠️ 유형 이름·씨앗 질의를 **코드에 적지 않는다**(#1 사본 금지) — 표가 원본이고
+#    코드는 그것을 읽는다. 지시서 §2 의 표가 이 이름들을 **그대로 줬다**.
+# 🔴 `recent_pattern`·`h2h_pattern` 은 **여기 없다** — 구조 사실(어댑터)에서
+#    오므로 하위 과제에 넣지 않는다(지시서 §2 원문).
+
+groups:
+  - key: A
+    label: 결장·선발
+    kinds: [absence_def, absence_att, pitcher_state]
+    # 🔴 씨앗은 **3~6낱말**이다(§4) — 긴 질의가 결과를 죽였다(실측 10단어+ → 0건).
+    seed: "{team} {opp} injury news"
+    #: ⚠️ 야구는 선발 투수가 그 유형군의 핵이다(지시서 표가 괄호로 적었다)
+    seed_by_sport:
+      baseball: "{team} starting pitcher news"
+    #: 🔴 §5 2단이 쓰는 **유형 핵심어 문장** — BM25 가 놓치는 동의어를 잡는다
+    rerank_query: "players absent injured suspended will not feature out ruled out"
+
+  - key: B
+    label: 로테이션·감독
+    kinds: [lineup_rotation, coach_intent, coach_conflict, coach_change]
+    seed: "{team} lineup rotation"
+    #: 🔴 감독명을 확보하면 2차에서 이 꼴로 좁힌다(지시서 표의 화살표)
+    seed_with_coach: "{coach} press conference"
+    rerank_query: "manager coach said press conference rotation rest lineup changes"
+
+  - key: C
+    label: 동기·순위·흐름
+    kinds: [stakes, individual_title, regression, team_stats]
+    seed: "{team} {comp} standings stakes"
+    rerank_query: "qualification standings points race must win title motivation"
+
+  - key: D
+    label: 일정·경기외
+    kinds: [travel_schedule, venue_weather, event_match, match_type,
+            national_duty_return]
+    seed: "{team} schedule travel {comp}"
+    rerank_query: "travel schedule congestion weather forecast farewell retirement return"

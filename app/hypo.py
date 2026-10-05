@@ -115,6 +115,11 @@ class HypoInput:
     away: str
     sport: str
     competition: str
+    #: 🔴🔴 **경기 열쇠** — 비용 원장이 한 경기로 모이게 한다(⑫ · 2026-10-05).
+    #   ⚠️ 실사고: 단계 3·4 가 `f"{home}|{away}"` 를 적었고 둘이 비면 `'|'` 가
+    #      남았다 — 그 행은 어느 경기인지 알 수 없다. solar 는 `match_key` 를
+    #      적으므로 **같은 열쇠**여야 한 경기로 모인다.
+    match_key: str = ""
     variables: list = field(default_factory=list)
     facts: dict = field(default_factory=dict)
     board: list = field(default_factory=list)
@@ -331,7 +336,8 @@ def run(inp: HypoInput, *, now=None, _net=None) -> HypoResult:
     from app import deepseek
     got = deepseek.ask([{"role": "system", "content": system_prompt()},
                         {"role": "user", "content": _dump(to_payload(inp))}],
-                       match=f"{inp.home}|{inp.away}", stage="stage3",
+                       match=(inp.match_key or f"{inp.home}|{inp.away}"),
+                       stage="stage3",
                        now=now, _net=_net)
     if not got.ok:
         return HypoResult(reason=got.reason, why=got.why)

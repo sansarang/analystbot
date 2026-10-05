@@ -26,6 +26,39 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "asyncio: 비동기 계약")
     _drop_bytecode()
     _unplug_env()
+    _unplug_ledger()
+
+
+def _unplug_ledger() -> str:
+    """🔴🔴 **계약은 이 기계의 비용 원장을 읽지 않는다**(2026-10-05).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 이 자리가 생겼나 — 실사고 2026-10-05
+    ══════════════════════════════════════════════════════════════════
+
+    봇을 하루에 여러 번 돌려 **하루 상한에 닿자**(오늘 $3.0074 / 상한 $3.00)
+    LLM 을 부르는 계약 **10건이 한꺼번에 빨개졌다**:
+
+    ```
+    🔴 합산 예산 가드가 막았다: day_cap_stop: 오늘 $3.0074 / 상한 $3.00
+    ```
+
+    ⚠️ 그 10건은 **봇 결함이 아니다** — 기계 상태다. 🔴 `_unplug_env` 가 `.env`
+       를 떼어 낸 것과 **같은 이유**로 원장도 뗀다: 계약은 이 기계가 오늘 얼마를
+       썼는지에 따라 색이 바뀌면 안 된다.
+    ⚠️ 예산 가드 **자체를 시험하는 계약**은 자기 원장을 주입해서 본다
+       (`write_ledger(root=…)`) — 그 길은 막히지 않는다.
+    """
+    import tempfile
+
+    from app import solar
+
+    box = tempfile.mkdtemp(prefix="ledger-unplug-")
+    # 🔴 `solar.ROOT` 를 돌린다 — 원장 경로를 정하는 **하나뿐인 자리**다.
+    #    ⚠️ 예산 가드를 시험하는 계약은 `monkeypatch.setattr(solar, "ROOT", …)`
+    #       로 **자기 폴더**를 주입한다 — 같은 통로이므로 덮어쓰기가 깨끗하다.
+    solar.ROOT = pathlib.Path(box)
+    return box
 
 
 def _unplug_env() -> list[str]:

@@ -22,6 +22,7 @@ import os
 import re
 import time
 from dataclasses import dataclass, field
+from typing import ClassVar
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -130,8 +131,39 @@ class SearxSearch:
         self._dead[str(name)] = (time.monotonic(), reason or "사유 미기재")
 
     async def query(self, text: str, *, lang: str = "ko",
-                    engines: list[str] | None = None) -> list[Hit]:
+                    engines: list[str] | None = None,
+                    time_range: str | None = None) -> list[Hit]:
+        """🔴 ①층 — **`time_range=week` 를 기본으로 건다**(지시 2026-10-05).
+
+        ⚠️ `time_range=None` 은 *"기본을 쓴다"* 이고, `""` 은 *"창을 벗긴다"* 다
+           (0건 퇴로가 그것을 쓴다).
+        """
+        got = await self._one(text, lang=lang, engines=engines,
+                              time_range=(SEARX_TIME_RANGE
+                                          if time_range is None else time_range))
+        # 🔴 **2건 이하면 얄팍하다**(§6-1) — 0건만 보지 않는다
+        if len(got) > SEARX_THIN_AT or (time_range is not None
+                                        and not time_range):
+            return got
+        # ══════════════════════════════════════════════════════════════════
+        # 🔴🔴 **0건이면 창을 벗기고 다시** — 지정 엔진 대체(§19-b-4)와 같은 결
+        # ══════════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실측 2026-10-05: `week` 가 30건을 3건으로 좁힌다(ja) · 45→10(en).
+        #     🔴 좁히는 것이 목적이지만 **0건이면 그 질의가 통째로 죽는다.**
+        logger.info("[searx] 🔴 `time_range=%s` 로 %d건(≤%d) → **창을 벗기고 "
+                    "다시** 던진다(§6-1 퇴로)", SEARX_TIME_RANGE, len(got),
+                    SEARX_THIN_AT)
+        wide = await self._one(text, lang=lang, engines=engines, time_range="")
+        # ⚠️ 벗긴 쪽이 **더 많을 때만** 쓴다 — 적으면 창 안의 것이 낫다(신선도)
+        return wide if len(wide) > len(got) else got
+
+    async def _one(self, text: str, *, lang: str = "ko",
+                   engines: list[str] | None = None,
+                   time_range: str = "") -> list[Hit]:
         params = {"q": text, "format": "json", "language": _lang(lang)}
+        if time_range:
+            params["time_range"] = str(time_range)
         if engines:
             live = [e for e in engines if e not in self.dead_engines]
             if not live:
@@ -344,6 +376,30 @@ class GoogleSearch:
 # ⚠️ **분당 호출 상한이 있다** — 실측: 연달아 세 번 던지니 `HTTP 429` 였고 6초 쉬니
 #    `200` 이었다. `Net` 의 호스트별 간격(`MIN_INTERVAL_SEC = 2초`)보다 길게 둔다.
 # 🔴 우회하지 않는다 — 429 면 **그 사실을 사유로 올린다**(§19-b-4 대체로 간다).
+#: 🔴🔴 **①층 — SearXNG 신선도 창**(사용자 지시 2026-10-05).
+#
+#  > SearXNG 호출에 `time_range=week` 를 **기본**으로 건다.
+#
+#  ⚠️ CLAUDE.md 가 쓰지 말라고 적은 것은 **`day`** 다 — 실측 0건이었다.
+#     🔴 `week` 는 **실측으로 작동한다**(2026-10-05):
+#
+#       `ロッテ 西武 スタメン 2026`(ja)              30건 → **3건**
+#       `Chiba Lotte … lineup October 2026`(en)    45건 → **10건**
+#       `France Belgium … preview October 2026`    35건 → **15건**
+#
+#  ⚠️ 그런데 **`publishedDate` 는 모든 조합에서 0건**이다 — 창은 좁히지만
+#     날짜를 주지는 않는다. 그래서 ②층(fetch 전 거름)·③층(htmldate)이 있다.
+SEARX_TIME_RANGE = "week"
+
+#: 🔴🔴 **얄팍하다고 보는 건수** — 딥서치 재구축 §6-1 (2026-10-05).
+#
+#  > 결과가 **2건 이하면** 그 질의 한정으로 `time_range` 없이 **1회 재시도**
+#  > (fetch 전 ②③층이 거르니 안전).
+#
+#  ⚠️ 종전엔 **0건**일 때만 벗겼다 — 1~2건은 "있다"로 세어 그냥 넘어갔다.
+#     🔴 `week` 가 30→3건으로 좁히는 실측을 보면 1~2건은 **거의 빈손**이다.
+SEARX_THIN_AT = 2
+
 GDELT = "https://api.gdeltproject.org/api/v2/doc/doc"
 
 #: 🔴 GDELT 의 최소 간격. ⚠️ **응답 본문이 직접 말한다**(실측 2026-10-03):
@@ -374,9 +430,35 @@ class GdeltSearch:
 
     timeout: float = 20.0
     alive: bool | None = None
-    _last: float = 0.0
-    #: 🔴 `429` 를 받은 뒤 **쉬는 끝 시각**(위 `GDELT_COOLDOWN_SEC`)
-    _rest_until: float = 0.0
+
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **간격과 벌점은 과정 전체의 것이다** — 실측 2026-10-05
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고: `_last`·`_rest_until` 이 **인스턴스 칸**이었다. 그런데
+    #     `build_chain()` 은 **네 곳에서 따로** 불린다(findgame·analyze·
+    #     resolve·scheduler). 새 인스턴스는 둘 다 `0` 이라 **간격과 벌점을
+    #     통째로 잊는다.** 한 실행 로그가 그것을 그대로 보였다:
+    #       `GDELT → 2건` → `429 — 900초 쉰다` → `724초 더 쉰다`
+    #  🔴 호스트 하나에 대한 예의는 **인스턴스가 아니라 과정**의 것이다 —
+    #     그래서 클래스 칸에 둔다. ⚠️ 우회가 아니라 **더 세게 지키는** 것이다.
+    _state: ClassVar[dict[str, float]] = {"last": 0.0, "rest_until": 0.0}
+
+    def _mark_called(self, when: float) -> None:
+        """🔴 마지막 호출 시각을 **과정 전체에** 적는다."""
+        GdeltSearch._state["last"] = float(when)
+
+    def _mark_rest(self, until: float) -> None:
+        """🔴 벌점 끝 시각을 **과정 전체에** 적는다."""
+        GdeltSearch._state["rest_until"] = float(until)
+
+    def _wait_for(self) -> float:
+        """🔴 지금 던지기 전에 **얼마를 기다려야** 하나."""
+        return GDELT_INTERVAL_SEC - (time.time() - GdeltSearch._state["last"])
+
+    def _rest_left(self) -> float:
+        """🔴 벌점이 **얼마 남았나**(0 이하면 던질 수 있다)."""
+        return GdeltSearch._state["rest_until"] - time.time()
 
     async def query(self, text: str, *, lang: str = "ko",
                     qtype: str | None = None) -> list[Hit]:
@@ -397,14 +479,15 @@ class GdeltSearch:
             self.alive = True
             return self._hits(data, q)
         # 🔴 **벌점 중이면 아예 안 던진다** — 두드려도 안 열리고 예의도 아니다
-        left = self._rest_until - time.time()
+        left = self._rest_left()
         if left > 0:
             raise SearchUnavailable(
                 f"GDELT: 호출 상한에 걸려 {left:.0f}초 더 쉰다 — 다음 수단으로 간다")
         # 🔴 **상한을 지킨다** — 우회가 아니라 기다린다(본문이 5초라고 말한다)
-        wait = GDELT_INTERVAL_SEC - (time.time() - self._last)
+        wait = self._wait_for()
         if wait > 0:
             await asyncio.sleep(wait)
+        self._mark_called(time.time())
         try:
             async with httpx.AsyncClient(timeout=self.timeout,
                                          headers={"User-Agent": UA}) as cli:
@@ -413,10 +496,11 @@ class GdeltSearch:
             self.alive = False
             raise SearchUnavailable(f"GDELT 에 닿지 못했다: {exc}") from exc
         finally:
-            self._last = time.time()
+            # 🔴 성공·실패 **모두** 간격을 적는다(과정 전체 칸)
+            self._mark_called(time.time())
         if r.status_code == 429:
             # 🔴 **우회하지 않는다** — 더 세게 지키고 사유를 올린다
-            self._rest_until = time.time() + GDELT_COOLDOWN_SEC
+            self._mark_rest(time.time() + GDELT_COOLDOWN_SEC)
             logger.info("[gdelt] 429 — %s", (r.text or "")[:100])
             raise SearchUnavailable(
                 f"GDELT: 호출 상한(429) — {GDELT_COOLDOWN_SEC:.0f}초 쉰다. "

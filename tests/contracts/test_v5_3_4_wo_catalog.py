@@ -151,50 +151,8 @@ def test_wo_cat_장부가_빈_것과_안_해본_것을_가른다():
     assert book.not_tried(FOUR, ["team:1", "team:2"]) == []
 
 
-def test_wo_cat_done_을_거부한다():
-    """🔴🔴 *"네 유형이 `not_tried` 면 **`done` 을 거부**하고 돌려준다"*."""
-    from app import agentloop, ledgerbook
-    book = ledgerbook.Book()
-    tools = agentloop.Tools(inp=_inp(checklist=FOUR), book=book)
-    got = tools.done_ok()
-    assert got[0] is False, got
-    assert "아직 안 찾았다" in got[1], got[1]
-    for t in FOUR:
-        assert t in got[1], (t, got[1])
 
 
-def test_wo_cat_예산이_없으면_done_을_막지_않는다():
-    """🔴 *"**예산이 남아 있을 때만**"* — 막아도 할 수 있는 일이 없으면 뜻이 없다."""
-    from app import agentloop, ledgerbook, solar
-    bud = solar.MatchBudget(side=True)
-    bud.blocked = "budget_cut: 시험"
-    tools = agentloop.Tools(inp=_inp(checklist=FOUR), book=ledgerbook.Book(),
-                            budget=bud)
-    ok, why = tools.done_ok()
-    assert ok is True, (
-        f"🔴 예산이 끝났는데 `done` 을 막았다 — 에이전트가 **갇힌다**: {why}")
-
-
-def test_wo_cat_네_유형을_해봤으면_done_이_된다():
-    from app import agentloop, ledgerbook
-    book = ledgerbook.Book()
-    for t in FOUR:
-        for team in ("team:1", "team:2"):
-            book.empty(t, team)          # 🔴 찾아봤고 **없었다** — 그것은 통과다
-    tools = agentloop.Tools(inp=_inp(checklist=FOUR), book=book)
-    ok, why = tools.done_ok()
-    assert ok is True, why
-
-
-def test_wo_cat_done_거부가_실제_루프에서_돈다():
-    """🔴🔴 **배선**(#2) — `done_ok` 를 만들고 **루프가 안 보면** 없는 코드다."""
-    import inspect
-
-    from app import agentloop
-    from tests._helpers import strip_docs
-    body = strip_docs(inspect.getsource(agentloop.run))
-    assert "done_ok" in body, (
-        "🔴 도구 루프가 `done_ok` 를 **안 본다** — `done` 이 그냥 통과한다(#2)")
 
 
 @pytest.mark.parametrize("t", FOUR)
@@ -287,43 +245,7 @@ def test_wo_cat_C06_검색이_장부에_실제로_적힌다():
 #     아니다)로만 읽었다. 🔴 **거부한 뒤에도 `done` 을 부를 만큼** 남아야 한다.
 
 
-def test_wo_cat_거부는_예비분이_있을_때만():
-    """🔴🔴 **거부하면 `done` 을 부를 출력이 남아야** 한다.
 
-    ⚠️ 실측: Solar 호출 하나가 출력 **최대 9,568** 토큰을 썼다(원장 4,126건).
-       🔴 그래서 **그 꼬리만큼**은 남겨 둔다 — 안 그러면 거부가 변수를 0개로
-       만든다(막은 쪽이 더 나빠진다).
-    """
-    from app import agentloop, ledgerbook, solar
-    bud = solar.MatchBudget(side=True)
-    # 🔴 쪽 상한의 **거의 끝**이다 — 거부하면 `done` 을 못 부른다
-    bud.output_tokens = bud.max_out - 1_000
-    tools = agentloop.Tools(inp=_inp(checklist=FOUR), book=ledgerbook.Book(),
-                            budget=bud)
-    ok, why = tools.done_ok()
-    assert ok is True, (
-        f"🔴 출력이 {bud.output_tokens}/{bud.max_out} 인데 **거부했다** — "
-        f"그러면 `done` 을 못 부르고 변수가 0개가 된다(실측 2026-10-05): {why}")
-    assert "예비" in why or "남지" in why, why
-
-
-def test_wo_cat_예비분이_실측에서_온다():
-    """🔴 예비분을 **손으로 적지 않는다** — 원장이 그 수를 든다."""
-    from app import agentloop
-    assert agentloop.DONE_RESERVE >= 9_568, (
-        f"🔴 예비분 {agentloop.DONE_RESERVE} 이 실측 최대 출력(9,568)보다 "
-        f"작다 — `done` 턴이 그 안에 안 들어간다")
-
-
-def test_wo_cat_여유가_많으면_여전히_막는다():
-    """⚠️ 예비분을 두면서 **막는 일 자체를 없애지 않는다**(그러면 뜻이 없다)."""
-    from app import agentloop, ledgerbook, solar
-    bud = solar.MatchBudget(side=True)
-    bud.output_tokens = 0
-    tools = agentloop.Tools(inp=_inp(checklist=FOUR), book=ledgerbook.Book(),
-                            budget=bud)
-    ok, why = tools.done_ok()
-    assert ok is False, f"🔴 여유가 충분한데 안 막았다: {why}"
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -380,3 +302,24 @@ def test_wo_cat_예산이_끝나도_done_인자를_읽는다():
     got, why = agentloop.parse_args(args, inp=inp)
     assert got, (
         f"🔴 예산이 끝났다고 **받은 `done` 인자를 못 읽는다**: {why}")
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **지운 계약 일곱 — 승계 번호**(딥서치 재구축 §1·§7 · 2026-10-05)
+# ══════════════════════════════════════════════════════════════════
+#
+#  지운 것: `done_을_거부한다` · `예산이_없으면_done_을_막지_않는다` ·
+#  `네_유형을_해봤으면_done_이_된다` · `done_거부가_실제_루프에서_돈다` ·
+#  `거부는_예비분이_있을_때만` · `예비분이_실측에서_온다` ·
+#  `여유가_많으면_여전히_막는다`
+#
+#  **승계 사유**: 커버리지 보장이 **거부에서 분할로 이동했다**(이 재구축 §2 —
+#  경기 하나 = 하위 과제 8개, 유형군 4 × 홈/원정). 🔴 커버리지 계약은
+#  **M59**(하위 예산 독립)와 **장부 `found` 배선 계약**이 승계한다.
+#
+#  ⚠️ 왜 지웠나 — 거부가 **예산을 태웠다**: 실측 2026-10-05 에서 `done` 거부가
+#     에이전트를 더 찾게 만들어 출력 25k 를 소진하고 `budget_cut` 에 걸렸다.
+#     그래서 `done` 이 **한 번도 불리지 못해 변수가 18→0** 이 됐다.
+#  🔴 지시서 §1: *"분할 자체가 커버리지를 보장하므로 제거."*
+#
+#  ⚠️ **남긴 것 열하나**는 카탈로그 배선·장부 네 상태 계약이다 — 그것은
+#     분할 뒤에도 그대로 필요하다(§3 이 장부를 쓴다).

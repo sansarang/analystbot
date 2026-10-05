@@ -26,6 +26,15 @@ dependencies = [
     #       실측 2026-10-03: 주석 하나가 babel·trafilatura 를 선언에서 지웠다.
     "babel>=2.14",
     "trafilatura>=2.3.0",
+    # 🔴 발행일 추출 — 사용자 지시 2026-10-05 ③층: 메타·JSON-LD·time 태그.
+    #    ⚠️ trafilatura 가 이미 끌고 오지만 **직접 부른다**(extensive_search).
+    #       선언하지 않으면 계약이 빨개진다(실측: import 하는데 선언 없음).
+    "htmldate>=1.9",
+    # 🔴 재정렬 크로스인코더 — 딥서치 재구축 §5(M62). **로컬 실행**이라
+    #    지시서의 "새 유료 API" 금지에 해당하지 않는다(그 문서가 그렇게 적었다).
+    #    ⚠️ 무겁다(torch 포함 수 GB) — 그래서 **폴백 사다리**가 있다: 없으면
+    #       ③단(재정렬 없음)으로 가고 분석은 멈추지 않는다.
+    "sentence-transformers>=3.0",
 ]
 
 [dependency-groups]

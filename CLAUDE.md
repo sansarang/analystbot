@@ -69,8 +69,13 @@ PYTHONPATH=. uv run ruff check app/ tests/
 | 엔진 | 10-01 판정 | 10-02 판정 |
 |---|---|---|
 | `yahoo` | ✅ 7/7 로 가장 좋다 | 🔴 **질의를 무시한다** — `ロッテ スタメン` → 미 선거구·쇼핑몰. **껐다** |
-| `google news` | 8/10 | ✅ **유일하게 당일 기사를 낸다**(4개 질의 4/4) |
+| `google news` | 8/10 | ✅ 당일 기사를 냈다 → 🔴 **10-05 실측 0건 — 죽었다** |
+| `startpage`·`mojeek` | — | ✅ **10-05 각 30건** — ⚠️ 그런데 **발행 날짜를 안 준다** |
 | `brave`·`duckduckgo`·`google`·`google cse`·`qwant` | 때때로 산다 | 거의 늘 `Suspended` |
+
+🔴🔴 **실측 2026-10-05 — 당일성 통로가 둘로 줄었다.** `google news` 가 0건이 되자
+날짜 있는 결과를 주는 곳은 **Bing 뉴스 RSS · GDELT** 뿐이다(SearXNG 엔진은 전부
+발행 시각을 안 준다 — 실측 `날짜있음 0건`). 그래서 `date_missing` 탈락이 늘어난다.
 
 🔴 그래서 봇은 **질문마다 엔진을 지정한다** — 표는
 `config/search_routing.yaml` 이고 `rules.news_engines()` 가 읽는다. 지정이 0건이면

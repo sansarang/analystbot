@@ -103,6 +103,60 @@ def kind_of(query: str) -> str:
     return ""
 
 
+#: 🔴 대회명에서 **버리는 조각** — 조별 꼬리는 대회를 가리키지 않는다.
+#  ⚠️ `A`·`1` 은 한 글자라 어느 글에나 섞인다. `grp`·`group`·`round` 는 아무
+#     대회에나 붙어 **다른 대회를 같다고** 말한다.
+#  🔴 **`league`·`cup`·`series` 는 버리지 않는다** — 그것은 **대회 이름의
+#     일부**다(`Nations League`·`日本シリーズ`). ⚠️ 한 번 버려 봤더니
+#     `Nations League` 가 핵 낱말 하나(`nations`)로만 세어져 계약이 빨개졌다.
+#     흔한 낱말이 혼자 통과하는 것은 `COMP_MIN_WORDS` 가 막는다.
+COMP_DROP: frozenset[str] = frozenset({
+    "grp", "group", "grupo", "round", "phase", "stage", "season",
+    "div", "matchday"})
+
+#: 🔴 대회로 인정할 **최소 핵 낱말 수**. ⚠️ 하나로는 안 된다 — `league` 처럼
+#   흔한 낱말 하나가 `France league table shop` 을 대회로 만든다(실측 2026-10-05).
+COMP_MIN_WORDS = 2
+
+
+def comp_words(comp: str) -> list[str]:
+    """🔴 대회명 → **핵 낱말들**. ⚠️ 조각·흔한 낱말은 버린다(`COMP_DROP`).
+
+    `UEFA Nations League A Grp. 1` → `['uefa', 'nations']`
+    """
+    out: list[str] = []
+    for raw in _norm(comp).replace(".", " ").split():
+        w = raw.strip()
+        if len(w) < 3 or w in COMP_DROP or w.isdigit():
+            continue
+        if w not in out:
+            out.append(w)
+    return out
+
+
+def comp_in(comp: str, query: str) -> bool:
+    """🔴🔴 **그 질의가 이 대회를 가리키나** — 실측 2026-10-05 (프랑스–벨기에).
+
+    ⚠️ 실사고: 종전엔 호출부가 `comp.lower() in query.lower()` 로 **정식명 한
+       덩어리**를 봤다. 그래서 대회가 `UEFA Nations League A Grp. 1` 인 경기에서
+       질의 `… 2026 Nations League` 가 대회를 **0개**로 셌고, 에이전트 검색
+       22건 중 **15건이 거부**됐다(그중 10건이 `Nations League` 를 들고 있었다).
+       `Grp.` ↔ `Group` **한 글자** 차이로도 실패했다.
+    🔴 파라과이 별칭 `Albirroja`·`NLDS` 와 **같은 병**이다 — 정식명만 본다.
+
+    🔴 그래서 **핵 낱말로** 본다: `COMP_MIN_WORDS` 개 이상 겹치면 그 대회다.
+    ⚠️ 핵 낱말이 애초에 하나뿐인 대회(`MLB`·`KBO`)는 **그 하나**로 본다 —
+       없는 낱말을 요구하면 그 리그가 통째로 막힌다.
+    """
+    words = comp_words(comp)
+    if not words:
+        return False
+    low = _norm(query)
+    hit = [w for w in words if w in low]
+    need = min(COMP_MIN_WORDS, len(words))
+    return len(hit) >= need
+
+
 def count_parts(query: str, *, parts: dict | None = None,
                 kind: str = "") -> tuple[int, list[str]]:
     """🔴 그 질의에 **몇 요소**가 들어 있나. `(수, 이름들)`.
@@ -137,7 +191,17 @@ def count_parts(query: str, *, parts: dict | None = None,
         if "when" not in got:
             got.append("when")
         else:
-            got.append("competition")      # 🔴 핵심어가 또 있으면 한 요소 더로 센다
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **이름을 바로잡았다** — 실측 2026-10-05 (프랑스–벨기에)
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ 종전엔 이 한 요소를 `competition` 이라 불렀다. 🔴 그래서
+            #     대회가 **한 번도 안 세어진 경기**에서 카드·로그가
+            #     `['team','opponent','competition','when']` 이라 적었다 —
+            #     네 번 다 거짓이었고, *"왜 통과했나"* 를 되짚을 수 없었다.
+            #  🔴 수를 늘리는 판단은 그대로 둔다(핵심어가 둘이면 구체적이다).
+            #     **부르는 이름만** 사실에 맞춘다.
+            got.append("keyword")          # 🔴 핵심어가 또 있으면 한 요소 더
     from app import rules
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **라운드 이름은 대회다** — 결정 ⑤ (2026-10-04)
@@ -207,9 +271,30 @@ def count_parts(query: str, *, parts: dict | None = None,
     #    `team` 을 말하지 않아도 그것은 그대로 둔다(종전 동작이다).
     # ⚠️ `venue` 는 `PARTS` 에 없다(다섯을 안 늘렸다) — 뒤에 붙여 돌려준다
     names = [k for k in PARTS if k in got]
-    if "venue" in got:
-        names.append("venue")
+    # 🔴 `PARTS` 밖 이름도 **센다** — 수는 종전과 같고 이름만 정직해진다
+    for extra in ("keyword", "venue"):
+        if extra in got:
+            names.append(extra)
     return len(names), names
+
+
+#: 🔴🔴 **낱말 상한** — 딥서치 재구축 §4-3 (M61).
+#
+#  > 10단어 초과 → `query_too_long` 거부. 실측: **긴 문장 질의가 0건을 만들었다.**
+#
+#  ⚠️ `query_too_bare`(3요소 미만)와 **반대 방향**이다 — 하나는 너무 넓고
+#     하나는 너무 좁다. 🔴 둘을 한 사유로 묶으면 고칠 곳을 못 가린다.
+MAX_WORDS = 10
+
+
+def too_long(query: str) -> tuple[bool, str]:
+    """🔴 그 질의가 **너무 긴가**. `(길다, 사유)`."""
+    n = len(str(query or "").split())
+    if n <= MAX_WORDS:
+        return False, f"낱말 {n}개 — 상한 {MAX_WORDS} 안이다"
+    return True, (f"🔴 `{Reason.QUERY_TOO_LONG.value}` — 낱말이 **{n}개**다"
+                  f"(상한 {MAX_WORDS}). 긴 문장 질의는 결과를 0건으로 만든다"
+                  f"(실측 2026-10-05). ⚠️ 넓게 시작해 판을 본 뒤 좁혀라")
 
 
 def enough_parts(query: str, *, parts: dict | None = None,
@@ -228,9 +313,23 @@ def enough_parts(query: str, *, parts: dict | None = None,
         f"(실측 2026-10-04: 쓰레기 86%)")
 
 
-def gate(query: str, *, parts: dict | None = None,
-         kind: str = "") -> tuple[bool, Reason, str]:
-    """🔴 §4-1 문지기. `(통과, 사유 enum, 설명)`."""
+def gate(query: str, *, parts: dict | None = None, kind: str = "",
+         seed: bool = False) -> tuple[bool, Reason, str]:
+    """🔴 §4-1 문지기. `(통과, 사유 enum, 설명)`.
+
+    🔴 **길이를 먼저 본다**(M61) — 요소가 많아도 길면 0건이다. 그 순서가
+       사유를 정하고, 사유가 **고칠 곳**을 가리킨다.
+    ⚠️ `seed=True` 는 §2 표의 **씨앗 템플릿**이다 — 3~6낱말로 넓게 시작하는
+       것이 목적이므로 **요소 검사를 면제**한다(지시서 §4-3: *"씨앗 템플릿은
+       자동 통과"*). 🔴 길이 검사는 **면제되지 않는다**(씨앗은 애초에 짧다).
+    """
+    long_, why_long = too_long(query)
+    if long_:
+        return False, Reason.QUERY_TOO_LONG, why_long
+    if seed:
+        n = len(str(query or "").split())
+        return True, Reason.OK, (f"씨앗 템플릿({n}낱말) — §2 표 그대로이므로 "
+                                 f"요소 검사를 면제한다(§4-3)")
     ok, why = enough_parts(query, parts=parts, kind=kind)
     return (True, Reason.OK, why) if ok else (False, Reason.QUERY_TOO_BARE, why)
 
@@ -246,8 +345,13 @@ class QueryLog:
         self.seen: dict[str, int] = {}
 
     def check(self, query: str, *, parts: dict | None = None,
-              kind: str = "") -> tuple[bool, Reason, str]:
-        ok, reason, why = gate(query, parts=parts, kind=kind)
+              kind: str = "", seed: bool = False) -> tuple[bool, Reason, str]:
+        """🔴 `seed=True` 는 §2 표의 **씨앗 템플릿**이다(§4-3 자동 통과).
+
+        ⚠️ 중복 검사는 **면제되지 않는다** — 같은 씨앗을 두 번 던지면 그것은
+           각도를 안 바꾼 것이다.
+        """
+        ok, reason, why = gate(query, parts=parts, kind=kind, seed=seed)
         if not ok:
             return ok, reason, why
         key = _norm(query)

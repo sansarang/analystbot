@@ -178,7 +178,13 @@ def query_string(params: dict | None) -> str:
     #  ⚠️ 숨기는 것이 아니다: 엔진을 바꿨을 때 **라이브 결과는 당연히 달라지고**,
     #     그 차이는 라이브 실측으로만 잴 수 있다(그렇게 쟀다). 카세트는 파서·판정
     #     경로를 고정하는 도구이고 엔진 선택을 재는 도구가 아니다.
-    params = {k: v for k, v in params.items() if k != "engines"}
+    #  🔴🔴 **`time_range` 도 같은 이유로 뺀다**(2026-10-05). 사용자 지시 ①층이
+    #     `week` 를 기본으로 걸었고, 그 순간 **녹음해 둔 고정물이 한꺼번에
+    #     미스**가 됐다(실측: `test_replay는_검색에서도_네트워크에_가지_않는다`).
+    #     ⚠️ 신선도 창도 **라우팅**이다 — 웹이 준 것의 기록이 아니다. 그 효과는
+    #        라이브 실측으로 잰다(그렇게 쟀다: 30→3건 · 45→10건).
+    params = {k: v for k, v in params.items()
+              if k not in ("engines", "time_range")}
     if not params:
         return ""
     # 🔴 `urlencode` 를 쓰지 않는다 — 한글·일본어 질의를 퍼센트로 바꿔서 열쇠
