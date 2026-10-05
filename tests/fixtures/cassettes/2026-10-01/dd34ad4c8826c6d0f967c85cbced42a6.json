@@ -1,0 +1,571 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Las Vegas Lights 선발 라인업 1일",
+ "recorded_at": "2026-10-01T02:15:10.785865+00:00",
+ "results": [
+  {
+   "url": "https://www.zhihu.com/",
+   "title": "知乎 - 有问题，就会有答案",
+   "content": "知乎，中文互联网高质量的问答社区和创作者聚集的原创内容平台，于 2011 年 1 月正式上线，以「让人们更好的分享知识、经验和见 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC 대 Charleston Battery - 실시간 점수, 예상 스...",
+   "content": "Aug 30, 2026 · Sun, Aug 30, 2026, 02:30 UTC의 Las Vegas Lights FC 대 Charleston Battery. 실시간 결과, 상대 전적, 경기 통계, 선발 라인업, 선수 평가 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.fotmob.com/ko/matches/charleston-battery-vs-las-vegas-lights-fc/7ex94ws5",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/ko/matches/charleston-battery-vs-las-vegas-lights-fc/7ex94ws5",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/explore",
+   "title": "发现 - 知乎",
+   "content": "知乎，中文互联网高质量的问答社区和创作者聚集的原创内容平台，于 2011 年 1 月正式上线，以「让人们更好的分享知识、经验和见 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/explore",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Professional Soccer Born in Las Vegas - Las Vegas Lights FC",
+   "content": "Las Vegas Lights FC is a professional soccer team born in Las Vegas. Buy tickets, shop the team store, and read Lights news here.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/356146882",
+   "title": "已经知道案件号，在哪里去查询一下案件内容？ - 知乎",
+   "content": "1、当事人查案子，如果知道案件的承办人或者案号，可以直接与受案的法院诉讼服务中心联系，查承办人的电话；如果不知道受案法 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/356146882",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Roster Archive - Las Vegas Lights FC",
+   "content": "By clicking “submit”, you agree to the Terms of Use and USL Privacy Policy",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/roster/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/roster/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/2078700393534600566",
+   "title": "如何评价 Meta 刚发布的 Muse Spark 1.3？ - 知乎",
+   "content": "2026년 9월 2일 · 但 Muse Spark 1.3 一发布，昨晚刚发布的 Gemini 3.8 Flash 这边多少就有点尴尬了。 因为这次 Muse Spark 1.3 的 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/2078700393534600566",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Vegas 라인업 & 선발 명단 2025/26 | Cafescore",
+   "content": "Cafescore은 Vegas의 2025/26 시즌 라인업을 제공합니다. 선발 명단, 포메이션, 실시간 업데이트를 확인하세요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://cafescore.com/ko/team/vegas-68084/lineup",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "cafescore.com",
+    "/ko/team/vegas-68084/lineup",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/2080836699790251419",
+   "title": "如何看待openai宣布已解决NS问题? - 知乎",
+   "content": "2026년 9월 8일 · 海森堡 死后见到了上帝，他问上帝，什么是 湍流？ 上帝答道: “ Attention is all you need.”",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/2080836699790251419",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Vegas 라인업 & 선발 명단 | Cafescore",
+   "content": "Cafescore은 Vegas의 시즌 라인업을 제공합니다. 선발 명단, 포메이션, 실시간 업데이트를 확인하세요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://cafescore.com/ko/team/vegas-68083/lineup",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "cafescore.com",
+    "/ko/team/vegas-68083/lineup",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/selection/",
+   "title": "知乎",
+   "content": "知乎是一个中文互联网高质量问答社区和创作者聚集的原创内容平台，提供知识共享、互动交流和个人成长机会。",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/selection/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Rhode Island FC 대 Las Vegas Lights FC - 실시간 점수, 예상 스타팅...",
+   "content": "Oct 5, 2025 · Sun, Oct 5, 2025, 21:00 UTC의 Rhode Island FC 대 Las Vegas Lights FC. 실시간 결과, 상대 전적, 경기 통계, 선발 라인업, 선수 평가, 이해도 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.fotmob.com/ko/matches/las-vegas-lights-fc-vs-rhode-island-fc/14ail9v5k",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/ko/matches/las-vegas-lights-fc-vs-rhode-island-fc/14ail9v5k",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/topic/19804452/intro",
+   "title": "Naver Cafe - 知乎",
+   "content": "네이버 카페 – Naver Cafe on the App Store 查看全部内容",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/topic/19804452/intro",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "2026 Las Vegas Lights FC season - Wikipedia",
+   "content": "The 2026 Las Vegas Lights FC season is the club 's ninth season, and their ninth season in the United Soccer League Championship (USLC), the second division of American soccer. The Lights are playing their final season at Cashman Field, where they have played since their inaugural season in 2018, [1] due to the Las Vegas City Council, who owns the Cashman Complex, deciding to rezone the land ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/2026_Las_Vegas_Lights_FC_season",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/2026_Las_Vegas_Lights_FC_season",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/468658774",
+   "title": "word表格跑到下一页，老是空很多在上一页，怎么办? - 知乎",
+   "content": "以下回答 适用于 第二页的表头跑到第一页怎么办 鼠标点击表格任意位置，将光标定位到表格中，然后单击鼠标右键，在弹出的右键菜 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/468658774",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.zhihu.com/question/608757024",
+   "title": "电脑软件双击后无反应怎么办？ - 知乎",
+   "content": "2023년 6월 26일 · 电脑点击图标软件没反应，一般都是 explorer.exe 进程所致， 解决方法如下。 1、首先点击电脑的开始菜单，在搜 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/608757024",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.zhihu.com/question/564446606",
+   "title": "化学顶刊JACS、Angew和小NC，投稿难以程度排名和认可度排名是什 …",
+   "content": "目前总体来说NC和JACS差不多，都大于Angew。当然不排除个别特例。 其实目前来看，NC编辑权利很大，只要送审后，一般三个审 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/564446606",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "las vegas lights 선발 라인업 1일 left",
+  "las vegas lights 선발 라인업 1일 back",
+  "las vegas lights 선발 라인업 1일 home",
+  "las vegas lights 선발 라인업 1일 hotel",
+  "las vegas lights 선발 라인업 1일 sky",
+  "las vegas lights 선발 라인업 1일 small",
+  "las vegas lights 선발 라인업 1일 mean",
+  "las vegas lights 선발 라인업 1일 red"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.scorebase.kr/teams/615973",
+ "query": "",
+ "recorded_at": "2026-10-01T02:14:29.406492+00:00",
+ "ok": false,
+ "status": 429,
+ "text": "",
+ "reason": "HTTP 429"
+}

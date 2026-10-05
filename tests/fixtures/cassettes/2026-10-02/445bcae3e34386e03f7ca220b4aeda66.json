@@ -1,0 +1,466 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "福岡ソフトバンクホークス national team return Oct 2",
+ "recorded_at": "2026-10-02T08:07:51.425485+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 10 · vs. 日本ハム · 3-2 · 試合終了 · みずほPayPay · 勝：松本晴 · Ｓ：杉山, 金 : 11 · vs. ロッテ · 11-1 · 試合終了 · みずほPayPay · 勝：前田悠, 土 : 12 · vs. ロッテ · 5-4 · 試合終了 · みずほPayPay · 勝： · ラトリッジ · Ｓ：杉山, 日 : 13 · vs. ロッテ · 13:30 · 見どころ · みずほPayPay, 月 : 14 · 試合なし, 火 : 15 · vs. オリックス · 18:00 · 試合前 · 京セラ....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/12/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/12/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "YouTube",
+   "content": "AboutPressCopyrightContact usCreatorsAdvertiseDevelopersTermsPrivacyPolicy & SafetyHow YouTube worksTest new featuresNFL Sunday Ticket © 2026 Google LLC",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.youtube.com/feed/NAVER",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/feed/NAVER",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス 対戦成績 - プロ野球 - スポーツナビ",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/12/stats?team_vs=7",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/12/stats",
+    "",
+    "team_vs=7",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "dbxbqm - YouTube",
+   "content": "Dec 31, 2016 · Enjoy the videos and music you love, upload original content, and share it all with friends, family, and the world on YouTube.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=6sQO_0C2Ek8",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=6sQO_0C2Ek8",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "유튜브 뮤직 - YouTube Music",
+   "content": "Playlist • 을재 내 심장을 뛰게 만들었던 향수 Top3 (가성비 ver) #남자향수 #향수리뷰 #키엘향수",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://music.youtube.com/playlist?list=PLHBnXKOyZCFhXMt0xImIu90YxvjhJHbeA",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "music.youtube.com",
+    "/playlist",
+    "",
+    "list=PLHBnXKOyZCFhXMt0xImIu90YxvjhJHbeA",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "YouTube Music",
+   "content": "With the YouTube Music app, enjoy over 100 million songs at your fingertips, plus albums, playlists, remixes, music videos, live performances, covers, and hard-to-find music you can’t get anywhere else.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://music.youtube.com/)%EC%97%90",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "music.youtube.com",
+    "/)%EC%97%90",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "YouTube Kids",
+   "content": "YouTube Kids는 아동이 YouTube를 탐색하는 데 있어 보다 제한적인 환경을 제공하며, 보호자와 양육자가 아동의 YouTube 이용을 손쉽게 안내할 수 있도록 제작되었습니다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.youtubekids.com/?hl=ko",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.youtubekids.com",
+    "/",
+    "",
+    "hl=ko",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "YouTube",
+   "content": "Enjoy the videos and music you love, upload original content, and share it all with friends, family, and the world on YouTube.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.youtube.com/live/KR1",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/live/KR1",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "YouTube Korea - YouTube",
+   "content": "YouTube Korea 공식 채널에서는 다양한 종류의 콘텐츠를 소개하고 있습니다. 채널 구독을 통해 국내외에서 화제가 되고 있는 최신 동영상을 확인해보세요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.youtube.com/@youtubekorea",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/@youtubekorea",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2025年ドラフト会議",
+   "content": "2025.10.24.毎年、数々のドラマが生まれるドラフト会議。 今年も指名速報や担当スカウトインタビューをはじめ、 ドラフトをより楽しめる特集コンテンツをお届けします。2025.10.24.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.softbankhawks.co.jp%2Fmedia%2Fsites%2F7%2Fteam%2Fdraft%2F2025%2Fbnr_draft_quiz.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/team/draft/2025/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/team/draft/2025/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2024年ドラフト会議",
+   "content": "2024.12.17.特に1位の村上投手にどういったプレーを期待しているか ; 元々バランスよく質の良いボールを投げるピッチャーなので、高校生ですが比較的早く1軍の戦力になってくれそうなタイプの投手じゃないかという評価をしています。 タイプで言うと、オリックスで活躍して今ドジャースに居る山本由伸投手のようなタイプじゃないかと評価しています。チームの中心となるよ......2024.12.17.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.softbankhawks.co.jp%2Fmedia%2Fsites%2F7%2Fteam%2Fdraft%2F2024%2Fplayback.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/team/draft/2024/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/team/draft/2024/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "白人はなぜ白人か _ 白人が人間性を失っていった過程 中川隆",
+   "content": "1. 白人は何故あんなに美しくなったのか 白人が美しいというのは厳然たる事実 なにしろ白人は遊牧・牧畜民で遺伝子操作のプロですから． 劣った遺伝子はすべて淘汰する． これが白人の考え方． 白人が他民族を征服した場合はいい女だけ残して他は女と男は全員殺す． 魔女狩りでもいい女だけ残してブスは全員殺した． これを1万年の間 毎日毎日繰り返して やっと今.....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fclap.asyura2.com%2Fpeterimg%2F1012.gif&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.asyura2.com/09/reki02/msg/390.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.asyura2.com",
+    "/09/reki02/msg/390.html",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

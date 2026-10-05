@@ -1,0 +1,538 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "福岡ソフトバンクホークス 대표팀 이탈 Oct 2",
+ "recorded_at": "2026-10-02T08:07:30.717411+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "試合速報 - 福岡ソフトバンクホークス",
+   "content": "2023.11.21.more 試合速報 2026.09.19 SAT 前の試合 試合日程・結果 次の試合 試合トップ 試合速報 パーソル パ・リーグ ホーム 試合開始 14:00 ビジター 早川 前田悠 楽天モバイル 最強パーク 1 2 3 4 5 6 7 8 9 10 11 12 R H 0 0 0 02023.11.21.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/gamelive/result/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/gamelive/result/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "http://npb.jp/bis/teams/index_h.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/teams/index_h.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ａ．デスパイネ（福岡ソフトバンクホークス） | 個人年度別成績",
+   "content": "投打 : 右投右打, 身長／体重 : 175cm／95kg, 生年月日 : 1986年6月17日, 経歴 : マニュエルファハルドキューバ国立体育大 - キューバ・グランマ",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "http://npb.jp/bis/players/03505139.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/players/03505139.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 10 · vs. 日本ハム · 3-2 · 試合終了 · みずほPayPay · 勝：松本晴 · Ｓ：杉山, 金 : 11 · vs. ロッテ · 11-1 · 試合終了 · みずほPayPay · 勝：前田悠, 土 : 12 · vs. ロッテ · 5-4 · 試合終了 · みずほPayPay · 勝： · ラトリッジ · Ｓ：杉山, 日 : 13 · vs. ロッテ · 13:30 · 見どころ · みずほPayPay, 月 : 14 · 試合なし, 火 : 15 · vs. オリックス · 18:00 · 試合前 · 京セラ....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/12/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/12/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 水 : 23 · vs. 西武 · 10-3 · 試合終了 · みずほPayPay · 勝：上沢, 木 : 24 · 試合なし, 金 : 25 · vs. オリックス · 0-9 · 試合終了 · 京セラD大阪 · 勝：松本晴, 土 : 26 · vs. 楽天 · 18:00 · 見どころ · みずほPayPay, 日 : 27 · vs. オリックス · 14:00 · 試合前 · みずほPayPay, 月 : 28 · 試合なし, 火 : 29 · 試合なし",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/12/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/12/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】福岡ソフトバンクホークス VS 東京ヤクルトスワローズ(2026年6月12日)....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://pacificleague.com/game/35652",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pacificleague.com",
+    "/game/35652",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークスの先発ローテーション予想｜プロ野球2026 - スポー....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.sportingnews.com/jp/npb/news/hawks-rotation/91cc0fad205cee2882459835",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.sportingnews.com",
+    "/jp/npb/news/hawks-rotation/91cc0fad205cee2882459835",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2020年シーズン 福岡ソフトバンクホークス主催試合放送決定！ | お知らせ | JCOM....",
+   "content": "平素よりJ:COMサービスをご利用いただき、誠にありがとうございます。 2020年3月1日（日）より、新しいスポーツ専門チャンネル「スポーツライブ＋（プラス）」の放送をJ:COMの多チャンネルサービス「J:COM TV」で開始いたします。 「スポーツライブ＋」は、福岡ソフトバンクホークス主催試合の生中継を中心に、海外サッカーや国内サッカー、Bリーグなどのスポーツ中継......",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://notices.jcom.co.jp/notice/91175.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "notices.jcom.co.jp",
+    "/notice/91175.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス | 2024年 プロ野球ドラフト会議 supported by リポビタ....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://draft.npb.jp/draft/2024/draftlist_h.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "draft.npb.jp",
+    "/draft/2024/draftlist_h.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "開幕特設サイト - 福岡ソフトバンクホークス",
+   "content": "マイクロファイバータオルリップストップフラットポーチ【EC受注販売・ストア在庫販売】Tシャツ",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.softbankhawks.co.jp%2Fex%2Fopening%2Fogp.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/ex/opening/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/ex/opening/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス | LINE 공식 계정",
+   "content": "アカウント紹介 ; 福岡ソフトバンクホークスLINE公式アカウントです。試合だけでなく、楽しいイベントや豪華演出が盛りだくさん！ ぜひ一度、足を運んでみてくださいね♪ 野球を通じて人々に活力を。 福岡ソフトバンクホークスは常に熱く全力疾走中！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fprofile.line-scdn.net%2F0hdTCG9sQQO3t-PiRJSJRELEJ7NRYJED0zBg10T1w8MR9TWnQuEAx3Hgs9MUIECXUlRV59G1I6YhtR%2Fpreview&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://page.line.me/zkw1920n",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "page.line.me",
+    "/zkw1920n",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス公式 - 유튜브 채널",
+   "content": "00:13 · 言えるわけあるかぁ！ #柳田悠岐 #藤原大翔 #sbhawks #全新 · 154만 조회수04:25 · 【人見知り発動！？】山本祐大選手\"ドキドキ\"チーム合流【ようこそホークスへ】 · 85.9만 조회수00:15 · 【熱狂へ、一直線！】鷹祭 SUMMER BOOST 2026【CM公開】 · 63.2만 조회수 · 1개월 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fyt3.ggpht.com%2FE7rHizRKJFZovEe9OWL977fc7y1k3xJtBRn2NDNOlvvLKDJQtlOqCWG6vSZPQJdNVKMKpNme2Nk%3Ds800-c-k-c0x00ffffff-no-rj&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://ranktube.co.kr/channel/UCbDAmhyRx9bakv-0Gucglgg",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "ranktube.co.kr",
+    "/channel/UCbDAmhyRx9bakv-0Gucglgg",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス2023年ドラフト補強ポイント - スポーツのあなぐら",
+   "content": "2023.06.08.①三軍の「育成」から一軍へ到達する条件とは ②チームにとっての即戦力を見極められているのか ③一塁手の上位指名:× ただでさえ供給過多の「数年先」の一塁手 一般的にはこのどちらかで用いられ、 FAや新外国人選手、現役ドラフトの場合が前者。 新人選択のドラフトで使われる場合だと、 評論家が非常に高く評価しているアマチュア選手を 1年目から一軍で使わせ....2023.06.08.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.image.st-hatena.com%2Fimage%2Fscale%2Fa63ac241d75880f8213a481a47258dc8279af9bc%2Fbackend%3Dimagemagick%3Bversion%3D1%3Bwidth%3D1300%2Fhttps%253A%252F%252Fcdn-ak.f.st-hatena.com%252Fimages%252Ffotolife%252FL%252FLtfrankc%252F20230607%252F20230607232758.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.ltfrankc.net/entry/2023/06/08/210000",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ltfrankc.net",
+    "/entry/2023/06/08/210000",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス | 2023年 プロ野球ドラフト会議 supported by リポビタ....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://draft.npb.jp/draft/2023/draftlist_h.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "draft.npb.jp",
+    "/draft/2023/draftlist_h.html",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

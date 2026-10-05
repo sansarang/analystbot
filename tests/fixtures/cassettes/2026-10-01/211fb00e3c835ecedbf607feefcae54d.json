@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.sofascore.com/football/match/las-vegas-lights-sacramento-republic-fc/YulbsYMkc",
+ "query": "",
+ "recorded_at": "2026-10-01T02:17:10.017317+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

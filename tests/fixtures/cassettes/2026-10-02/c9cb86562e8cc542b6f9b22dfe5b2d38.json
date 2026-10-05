@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.sportskeeda.com/esports/all-south-korea-matches-league-legends-asian-games-2026-group-stage-schedule-watch",
+ "query": "",
+ "recorded_at": "2026-10-02T05:30:04.038784+00:00",
+ "ok": false,
+ "status": 405,
+ "text": "",
+ "reason": "HTTP 405"
+}

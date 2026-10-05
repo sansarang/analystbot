@@ -1,0 +1,394 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "読売ジャイアンツ 先発 登板 Oct 2",
+ "recorded_at": "2026-10-02T02:45:20.993198+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツ | 2022年 プロ野球ドラフト会議 supported by リポビタンＤ | NPB.j....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://draft.npb.jp/draft/2022/draftlist_g.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "draft.npb.jp",
+    "/draft/2022/draftlist_g.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NEXON - 가을 통합 이벤트",
+   "content": "Sep 10, 2026 · EA SPORTS FC ONLINE은 넥슨 코리아에서 제공하는 축구 게임입니다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://fconline.nexon.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "fconline.nexon.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツ | 2025年 プロ野球ドラフト会議 supported by リポビタンＤ | NPB.j....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://draft.npb.jp/draft/2025/draftlist_g.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "draft.npb.jp",
+    "/draft/2025/draftlist_g.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "EA SPORTS FC ONLINE | FC온라인 공식 홈페이지",
+   "content": "EA SPORTS FC ONLINE 공식 홈페이지. 최신 공지, 이벤트, 선수 데이터, 스쿼드 메이커를 만나보세요..",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://fconline.nexon.com/main/index",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "fconline.nexon.com",
+    "/main/index",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "EA SPORTS FC ONLINE",
+   "content": "EA SPORTS FC ONLINE - NEXON Korea EA SPORTS FC ONLINE 회사소개 채용안내 이용약관 게임이용등급안내 개인정보처리방침 청소년보호정책 넥슨PC방 운영정책 (주)넥슨코리아 대표이사 강대현·김정욱 경기도 성남시 분당구 판교로 256번길 7 전화 : 1588-7701 팩스 : 0502-258-8322 E-mail : contact-us@nexon.co.kr 사업자등록번호 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://shop.fconline.nexon.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "shop.fconline.nexon.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[EA SPORTS FC ONLINE]",
+   "content": "EA SPORTS FC ONLINE의 이벤트 캘린더를 확인하세요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://events.fconline.nexon.com/EventsCalendar/Calendar",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "events.fconline.nexon.com",
+    "/EventsCalendar/Calendar",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "피파 온라인4 인벤 - FC 온라인 인벤",
+   "content": "FC 온라인4의 뉴스, 스쿼드 시뮬레이터, 선수 정보, 팁과 노하우, 전술 상담, 개인기, 영상관 및 커뮤니티 제공.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://fifaonline4.inven.co.kr/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "fifaonline4.inven.co.kr",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[EA SPORTS FC ONLINE]",
+   "content": "EA SPORTS FC ONLINE - NEXON Korea 2025.4.24 (목) 점검 후 ~ 2025.4.30 (수) 23:59 / 서로 다른 확률로 1종 획득 가능합니다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://events.fconline.nexon.com/250424/both",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "events.fconline.nexon.com",
+    "/250424/both",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "EA SPORTS FC ONLINE",
+   "content": "EA SPORTS ™ FC ONLINE - NEXON Korea 이벤트 이벤트 업데이트 이벤트 이벤트 웹 상점 이벤트 이벤트 이벤트 업데이트 이벤트 이벤트 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://m.fconline.nexon.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "m.fconline.nexon.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ベイスターズ 1－8 タイガース 竹田3回途中3失点 得点は牧のソロHRのみ... : De速",
+   "content": "コミカルで熱いアニマルファンタジー筒香嘉智 復帰1年目 .188 7本 23打点 OPS....DeNA戸柱、古市＆松尾を両脇に抱えてハグ 試合後の一幕が話...DeNA度会隆輝、自身初のシーズン規定打席に到達！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Flivedoor.blogimg.jp%2Fbaynewsflash%2Fimgs%2Fe%2Fb%2Febe5c0c8.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "http://de-baystars.jp/archives/63494654.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "de-baystars.jp",
+    "/archives/63494654.html",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

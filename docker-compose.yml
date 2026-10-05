@@ -10,6 +10,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U analyst -d analystbot"]
       interval: 5s
@@ -23,11 +24,33 @@ services:
       - "6379:6379"
     volumes:
       - redisdata:/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 12
+
+  # ── SearXNG — 검색 수단 (§19-i 1순위). 🔴 **루프백에만 바인딩한다.**
+  #    인증이 없으므로 외부에 열면 남이 우리 이름으로 검색한다(§17-g-8).
+  searxng:
+    image: searxng/searxng:latest
+    container_name: analystbot-searxng
+    ports:
+      - "127.0.0.1:8888:8080"
+    volumes:
+      - ./config/searxng:/etc/searxng:ro
+    environment:
+      SEARXNG_BASE_URL: http://localhost:8888/
+    restart: unless-stopped
+    healthcheck:
+      # 🔴 JSON 출력이 실제로 켜졌는지까지 본다 — 컨테이너가 살아 있는 것과
+      #    우리가 쓸 수 있는 것은 다르다.
+      test: ["CMD-SHELL", "wget -qO- 'http://localhost:8080/search?q=test&format=json' | head -c 1 | grep -q '{'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
 volumes:
   pgdata:

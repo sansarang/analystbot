@@ -1,0 +1,571 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Las Vegas Lights 선발 등판 1일",
+ "recorded_at": "2026-10-01T02:15:29.569463+00:00",
+ "results": [
+  {
+   "url": "https://support.google.com/youtube/answer/2802027?hl=ko&co=GENIE.Platform%3DDesktop",
+   "title": "YouTube에서 부적절한 동영상, 채널 및 기타 콘텐츠 신고",
+   "content": "YouTube는 신고된 동영상을 연중무휴 24시간 검토합니다. YouTube에 업로드된 동영상은 언제든지 신고할 수 있습니다. 신고된 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.google.com",
+    "/youtube/answer/2802027",
+    "",
+    "hl=ko&co=GENIE.Platform%3DDesktop",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Schedule - Las Vegas Lights FC",
+   "content": "Las Vegas Lights FC full schedule for the 2026 season of the USL Championship. Dates, venues, and tickets can be found here!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/schedule/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/schedule/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.google.com/youtube/answer/6304325?hl=ko",
+   "title": "업로드한 동영상의 언어 변경 - YouTube 고객센터 - Google Help",
+   "content": "동영상 언어 설정은 YouTube와 재능기부자가 동영상의 원본 언어를 이해하는 데 도움이 되는 기능입니다. 이 기능은 YouTube …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.google.com",
+    "/youtube/answer/6304325",
+    "",
+    "hl=ko",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Professional Soccer Born in Las Vegas - Las Vegas Lights FC",
+   "content": "Las Vegas Lights FC is a professional soccer team born in Las Vegas. Buy tickets, shop the team store, and read Lights news here.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.google.com/youtube/?hl=ko",
+   "title": "YouTube 고객센터",
+   "content": "제품 사용에 대한 도움말과 자습서 및 기타 자주 묻는 질문 (FAQ)에 대한 답변이 있는 공식 YouTube 도움말 센터입니다.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.google.com",
+    "/youtube/",
+    "",
+    "hl=ko",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC - Wikipedia",
+   "content": "Las Vegas Lights Football Club is an American professional soccer team based in Las Vegas, Nevada, that plays in the USL Championship. The team made its debut in 2018 and plays its home games at Cashman Field.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Las_Vegas_Lights_FC",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Las_Vegas_Lights_FC",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.google.com/youtube/answer/174084?hl=ko&co=GENIE.Platform%3DDesktop",
+   "title": "YouTube에서 제한 모드 사용 또는 사용 중지 - 컴퓨터 - YouTube …",
+   "content": "제한 모드 사용 및 사용 중지 방법 YouTube와 관련된 최신 소식과 업데이트, 팁 등을 확인하려면 YouTube Viewers 채널 을 구독하세요.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.google.com",
+    "/youtube/answer/174084",
+    "",
+    "hl=ko&co=GENIE.Platform%3DDesktop",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC - Schedule 25/26 | Transfermarkt",
+   "content": "This page contains an complete overview of all already played and fixtured season games and the season tally of the club LV Lights in the season Overall statistics of current season.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.transfermarkt.us/las-vegas-lights-fc/spielplan/verein/62204",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.transfermarkt.us",
+    "/las-vegas-lights-fc/spielplan/verein/62204",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.google.com/youtubemusic/answer/9027741?hl=ko",
+   "title": "YouTube Music 문제 해결하기",
+   "content": "YouTube Music을 Chromecast에 연결하는 데 문제가 있는 경우 다음 단계를 시도해 보세요. 라우터와 Chromecast 기기를 모두 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.google.com",
+    "/youtubemusic/answer/9027741",
+    "",
+    "hl=ko",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC Scores, Stats and Highlights - ESPN",
+   "content": "Sep 6, 2010 · Visit ESPN for Las Vegas Lights FC live scores, video highlights, and latest news. Find standings and the full 2026 season schedule.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/team/_/id/18987/las-vegas-%20lights-fc",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/team/_/id/18987/las-vegas-%20lights-fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.google.com/youtube/answer/57404?hl=ko&co=GENIE.Platform%3DDesktop",
+   "title": "동영상 설정 수정 - 컴퓨터 - YouTube 고객센터 - Google Help",
+   "content": "동영상 세부정보 수정 YouTube 스튜디오 에 로그인합니다. 왼쪽 메뉴에서 콘텐츠 를 선택합니다. 동영상 제목 또는 썸네일을 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.google.com",
+    "/youtube/answer/57404",
+    "",
+    "hl=ko&co=GENIE.Platform%3DDesktop",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC (@lvlightsfc) / X",
+   "content": "Official account of Las Vegas Lights FC. Your home for professional soccer in downtown Las Vegas!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://x.com/lvlightsfc",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "x.com",
+    "/lvlightsfc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.google.com/youtube/answer/2474026?hl=ko",
+   "title": "라이브 스트리밍 시작하기 - YouTube 고객센터",
+   "content": "라이브 스트리밍을 사용하면 동영상 피드와 채팅 등을 통해 시청자와 실시간으로 소통할 수 있습니다. YouTube에서 실시간 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.google.com",
+    "/youtube/answer/2474026",
+    "",
+    "hl=ko",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights Football Club | Las Vegas NV - Facebook",
+   "content": "Las Vegas Lights Football Club, Las Vegas. 32,473 followers · 424 talking about this · 7,603 were here. Official Facebook account of Las Vegas Lights Football Club. Your home for professional soccer...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.facebook.com/LVLightsFC/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.facebook.com",
+    "/LVLightsFC/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.google.com/youtube/answer/95725?hl=ko&co=GENIE.Platform%3DDesktop",
+   "title": "시청 기록 보기, 삭제 또는 사용/사용 중지 - 컴퓨터 - YouTube 고객 ...",
+   "content": "YouTube 시청 기록을 사용하면 최근에 시청한 동영상을 쉽게 찾을 수 있으며, 사용 설정 시 관련된 맞춤 동영상이 표시됩니다. 시청 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.google.com",
+    "/youtube/answer/95725",
+    "",
+    "hl=ko&co=GENIE.Platform%3DDesktop",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://support.google.com/youtube/answer/6327615?hl=ko",
+   "title": "동영상 자동재생 - YouTube 고객센터",
+   "content": "YouTube와 관련된 최신 소식과 업데이트, 팁 등을 확인하려면 YouTube Viewers 채널 을 구독하세요. 주의사항: 만 13~17세 사용자의 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.google.com",
+    "/youtube/answer/6327615",
+    "",
+    "hl=ko",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://support.google.com/youtube/answer/3227660?hl=ko&co=GENIE.Platform%3DAndroid",
+   "title": "YouTube 모바일 앱 다운로드 - Android - YouTube 고객센터",
+   "content": "YouTube 앱을 다운로드하여 휴대기기에서 시청 환경을 더욱 다채롭게 즐기세요. 앱 다운로드 참고: 앱을 다운로드하려면 Android 9.0 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.google.com",
+    "/youtube/answer/3227660",
+    "",
+    "hl=ko&co=GENIE.Platform%3DAndroid",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "las vegas lights 선발 등판 1일 red",
+  "las vegas lights 선발 등판 1일 open",
+  "las vegas lights 선발 등판 1일 side",
+  "las vegas lights 선발 등판 1일 left",
+  "las vegas lights 선발 등판 1일 hotel",
+  "las vegas lights 선발 등판 1일 walk",
+  "las vegas lights 선발 등판 1일 back",
+  "las vegas lights 선발 등판 1일 show"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

@@ -1,0 +1,305 @@
+# 검색 라우팅 — **어느 엔진에 묻고, 어느 페이지를 먼저 여나**
+#
+# ══════════════════════════════════════════════════════════════════
+# 🔴 왜 이 파일이 생겼나 — 라이브가 요구했다 (실측 2026-10-02)
+# ══════════════════════════════════════════════════════════════════
+#
+# 소프트뱅크–치바롯데를 돌렸더니 봇이 **본문으로 연 페이지**가 이것이었다:
+#
+#     15회  marines.co.jp/              구단 홈 첫 화면
+#      6회  npb.jp/bis/teams/index_h.html
+#      4회  viagogo 티켓 판매
+#      3회  npb.jp/junior/2020/roster_h.html   ← 2020년 주니어 명단
+#      3회  keisei.co.jp/…/aimVbKAC.pdf        ← 케이세이 전철 PDF
+#      1회씩 temu · trulia(부동산) · monster(이력서) · pixiv · youtube
+#
+#   🔴 **기사 0건.** LLM 을 17번 불러 채택 0건이었다 — 전철 시간표에 타순은 없다.
+#
+# 원인 둘을 실측으로 갈랐다:
+#
+#   ① 🔴 **엔진을 지정하지 않았다.** `engines=google news` 로 지정하니 사람이 읽은
+#      기사가 그대로 나왔다(4개 질의 4/4):
+#        `ソフトバンク 小久保 ベストメンバー` → hochi·nishispo·news.yahoo
+#        `角中勝也 引退試合 ロッテ`          → news.yahoo·nikkansports·daily·DAZN
+#        `唐川侑己 引退登板`                → news.yahoo·sponichi·daily·jiji
+#        `ロッテ ソフトバンク スタメン`       → nikkansports …202610020000866(당일)
+#   ② 🔴 **`yahoo` 엔진이 질의를 무시한다**(bing 과 같은 병). 재현 둘:
+#        `ロッテ スタメン 発表`           → whatdistrictamiin·ballotpedia(미 선거구)
+#        `Chiba Lotte Marines lineup`  → economyoutlet.com 쇼핑몰 5연속
+#      살아 있는 엔진 중 결과를 가장 많이 내던 것이 이것이다 — 쓰레기의 출처였다.
+#      → `config/searxng/settings.yml` 에서 끈다(bing 과 같은 처분).
+#
+# ⚠️ `time_range: day` 는 **쓰지 않는다** — 실측 0건이다(google news 가 그 칸을
+#    안 받는다). 날짜는 질의 낱말(`10月2日`)과 §12-c 검증기가 본다.
+# ══════════════════════════════════════════════════════════════════
+
+# 🔴 **산문(기사) 질문은 뉴스 엔진으로 먼저 쏜다.**
+#    ⚠️ 0건이면 코드가 **엔진 지정 없이 한 번 더** 던진다(대체, 우회가 아니다).
+#       그래서 이 목록이 좁아도 검색 경로가 죽지 않는다.
+news_engines: [google news]
+
+# 🔴 **먼저 여는 호스트** — 예산이 2~3건이라 순서가 결과를 정한다.
+#    ⚠️ 여기 적는 기준: **그 호스트가 기사를 내는가.** 실측으로 본 것만 적는다.
+article_hosts:
+  # ── 일본 (실측 2026-10-02 · google news 가 전부 이 호스트를 냈다)
+  - news.yahoo.co.jp
+  - baseball.yahoo.co.jp
+  - nikkansports.com
+  - sponichi.co.jp
+  - hochi.news
+  - daily.co.jp
+  - nishispo.nishinippon.co.jp
+  - sanspo.com
+  - tokyo-sports.co.jp
+  - full-count.jp
+  - baseballchannel.jp
+  - number.bunshun.jp
+  - dazn.com
+  - jiji.com
+  - newsdig.tbs.co.jp
+  - pacificleague.com
+  - npb.jp
+  # ── 한국
+  - news.naver.com
+  - sports.news.naver.com
+  - m.sports.naver.com
+  - osen.mt.co.kr
+  - spotvnews.co.kr
+  - mksports.co.kr
+  - interfootball.co.kr
+  - sports.chosun.com
+  # ── 영어
+  - espn.com
+  - theathletic.com
+  - reuters.com
+  - apnews.com
+  - bbc.com
+  - skysports.com
+  - mlb.com
+  - nhl.com
+  - fotmob.com
+  - sofascore.com
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **출처 등급표** — 호스트로 층을 매긴다 (사용자 기술 지시 2026-10-03 · 기술 5)
+# ══════════════════════════════════════════════════════════════════
+#
+# > 출처 등급도 매긴다. **협회·구단 공식 > 전국지 > 현지지 > 통신 재전재 > 베팅 팁
+# > 사이트.** 오늘 엘살바도르 경기에서 인도네시아 예측 사이트가 "후안 페레스 5골"
+# > 같은 **존재하지 않는 선수**를 썼다. 나는 그걸 버렸다. 봇은 팁 사이트를 최하
+# > 등급으로 두고 **단독으로는 사실로 안 쓴다**.
+#
+# ⚠️ 층 상수(`verify.TIER_*`)는 **전부터 있었다** — 그런데 **소스가 선언한 층**을
+#    그대로 썼다. 즉 검색으로 나온 기사는 **전부 같은 층**이었고, 인도네시아 팁
+#    사이트와 전국지가 **구분되지 않았다**(실측 2026-10-03).
+# 🔴 그래서 **호스트로** 매긴다. 여기 없는 호스트는 **그 소스가 선언한 층**으로 간다
+#    (모르는 것을 최하로 떨어뜨리지 않는다 — 그러면 멀쩡한 현지지가 죽는다).
+#
+# 층 번호는 `app/verify.py` 가 원본이다(여기 숫자를 적지 않는다):
+#   1 OFFICIAL  협회·리그·구단 공식
+#   2 PRIMARY   1차 매체(전국지·통신·현지 스포츠지)
+#   3 PREVIEW   프리뷰·집계 사이트 — 라인업 확인용만
+#   4 FORECAST  예측·팁 사이트 — 🔴 **판정 입력 금지**
+source_tiers:
+  official:
+    - npb.jp
+    - mlb.com
+    - nhl.com
+    - fifa.com
+    - concacaf.com
+    - conmebol.com
+    - softbankhawks.co.jp
+    - marines.co.jp
+    - pacificleague.com
+  primary:
+    # ── 일본 (실측 2026-10-02~03)
+    - nikkansports.com
+    - sponichi.co.jp
+    - hochi.news
+    - daily.co.jp
+    - sanspo.com
+    - nishispo.nishinippon.co.jp
+    - jiji.com
+    - news.yahoo.co.jp
+    - baseball.yahoo.co.jp
+    # ── 파라과이 (실측 2026-10-03 · Bing 뉴스 RSS 가 냈다)
+    - abc.com.py
+    - latribuna.com.py
+    - vssports.com.py
+    # ── 자메이카 (사용자 지시 2026-10-03)
+    - jamaica-gleaner.com
+    - jamaicaobserver.com
+    - jamaica-star.com
+    # ── 영어권
+    - reuters.com
+    - apnews.com
+    - bbc.com
+    - theathletic.com
+    - espn.com
+    - skysports.com
+  preview:
+    - fotmob.com
+    - sofascore.com
+    - flashscore.com
+    - soccerway.com
+    - footballant.com
+    - baseball-data.com
+    - npb-depth.com
+  # 🔴🔴 **팁·예측 사이트** — 판정 입력 금지(단독으로는 사실로 안 쓴다)
+  #  ⚠️ 실측에서 봇이 실제로 연 자리들이다. 사용자가 버린 그 종류다.
+  forecast:
+    - forebet
+    - predictz
+    - betimate
+    - windrawwin
+    - sportytrader
+    - tips
+    - prediction
+    - pronostic
+    - vitibet
+    - zulubet
+    - soccervista
+    - 1x2
+    - bettingexpert
+    - oddspedia
+    - aiscore
+    - scorebat
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **아예 안 여는 호스트** — 절대규칙 6 (배당은 판정 경로에 0건)
+# ══════════════════════════════════════════════════════════════════
+#
+#  CLAUDE.md 절대규칙 6: *"배당은 `research` 스키마에만. **판정 경로·카드 렌더러
+#  접근 0건.**"*
+#
+#  ⚠️ 실측 2026-10-03(LG 트윈스 vs 기아 타이거즈): 봇이 `intent` 세포에서
+#     **`888starz.bet/…/lg-twins-kia-tigers`** 를 열었다. 북메이커 경기 페이지다.
+#  🔴 `late_hosts` 로는 못 막는다 — 그것은 *"마지막에 열라"* 이고, 예산이 남으면
+#     **결국 연다.** 배당은 뒤로 미룰 것이 아니라 **닿지 않아야** 한다.
+#  ⚠️ 그 페이지가 본문을 안 줘서 이번엔 사고가 안 났을 뿐이다. 상태값(빈 응답)은
+#     의도한 것이 동작한다는 증거가 아니다(CLAUDE.md #4).
+#
+#  🔴 조각 일치다 — `bet365.com` 과 `m.bet365.com` 을 둘 다 잡는다.
+#  ⚠️ **열지 않을 뿐 아니라 사유로 남긴다** — 조용히 지우면 "왜 안 열었나"를
+#     되짚을 수 없다(#3 조용한 0 금지).
+banned_hosts:
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 **fotmob API** — robots 가 막는다(사용자 결정 2026-10-04)
+  # ══════════════════════════════════════════════════════════════════
+  #
+  #   www.fotmob.com/robots.txt
+  #     User-agent: *      Allow: /      🔴 Disallow: /api/*
+  #     User-agent: Googlebot / Bingbot / Qwantbot   Allow: /api/*
+  #
+  # 🔴 뜻이 분명하다 — *"페이지는 읽어도 되고, API 는 검색엔진 아니면 치지 마라."*
+  # ⚠️ `apigw.fotmob.com` 은 robots 가 **404**(없음)다. 그래도 결론은 같다:
+  #    같은 서비스가 본 호스트에서 막아 놓은 API 를 **다른 호스트로 치는 것**은
+  #    §14-12(우회 금지)가 막는 바로 그것이다.
+  # ✅ **HTML 페이지는 그대로 쓴다**(`/matches/…`·`/teams/…`·`/leagues/…`) —
+  #    경기 id·양 팀 id·현지 표기가 거기 다 있다.
+  - apigw.fotmob.com
+  - fotmob.com/api/
+  - 888starz        # 실측 2026-10-03 에 실제로 열렸다
+  - bet365
+  - betway
+  - 1xbet
+  - pinnacle.
+  - williamhill
+  - unibet
+  - bwin
+  - dafabet
+  - sportsbook
+  - oddsportal
+  - oddschecker
+  - betexplorer
+  - vegasinsider
+  - covers.com
+  - .bet/
+  - /betting/
+
+# 🔴 **뒤로 미루는 호스트** — 열지 말라는 뜻이 아니라 **마지막에** 열라는 뜻이다.
+#    ⚠️ 실측에서 예산을 태운 바로 그 자리들이다.
+late_hosts:
+  - viagogo        # 티켓 재판매
+  - stubhub
+  - ticketmaster
+  - temu           # 쇼핑
+  - aliexpress
+  - amazon.
+  - trulia         # 부동산
+  - zillow
+  - monster.com    # 구인·이력서
+  - indeed.
+  - pixiv.net
+  - youtube.com
+  - tiktok.com
+  - instagram.com
+  - facebook.com
+  - keisei.co.jp   # 전철(구장 가는 길 PDF)
+  - jorudan
+  - navitime
+  - timetreeapp.com
+  - economyoutlet.com     # 실측 — yahoo 엔진이 내던 쓰레기
+  - ballotpedia.org
+  - gall.dcinside.com
+
+# 🔴 **경로로도 뒤로 미룬다** — 같은 호스트 안에서 갈린다.
+#    ⚠️ 실측: `npb.jp` 는 기사 호스트인데 `junior/2020/roster_h.html` 이 열렸다.
+late_paths:
+  - /junior/       # 주니어(유소년) — 1군 경기와 무관
+  - /teams/        # 팀 소개 페이지 — 실측에서 15회 열렸고 기사가 아니다
+  - /player/
+  - /history
+  - /ex/opening    # 개막전 특설
+  - /tickets
+  - /goods
+  - /shop
+  - /fanclub
+  - /recruit
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **스포츠가 아닌 호스트** — 사용자 수정 ③ (2026-10-04)
+# ══════════════════════════════════════════════════════════════════
+#
+# > 도메인 등급표: 스포츠 매체·협회·구단 공식만 본문을 받는다. rottentomatoes·
+# > tripadvisor·법률·SMS 류는 **거부 목록**.
+#
+# ⚠️ `late_hosts`(뒤로 미룸)로는 못 막는다 — 열기 예산이 20이면 **결국 연다.**
+#    실측 2026-10-04(북마케도니아 vs 스코틀랜드): 이 호스트들을 **76건** 열었고
+#    그것이 LLM 60초 예산을 다 먹어 진짜 프리뷰에 **0초**가 남았다.
+#
+# 🔴 **실제로 열린 것만 적는다**(그 로그가 근거다 · 추측으로 늘리지 않는다).
+not_sport_hosts:
+  - rottentomatoes.com   # 🔴 질의 `Scotland lineup` → 드라마 **출연진**(8건)
+  - imdb.com             #    같은 꼴 — `lineup`·`cast` 가 겹친다
+  - tripadvisor.com      # 스코페 호스텔 후기
+  - booking.com
+  - expedia.
+  - 5sim.net             # SMS 번호 판매 — `countries/northmacedonia`
+  - smsfast.com
+  - telfa.law            # 법률 사무소 — `juridictions/north-macedonia`
+  - aljazeera.com        # ⚠️ 뉴스지만 **나라 기사**다(스포츠 섹션이 아니다)
+  - reuters.com/world    # 나이트클럽 화재 기사가 왔다
+  - nytimes.com/travel
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **타종목 낱말** — 같은 나라가 여러 종목을 한다
+# ══════════════════════════════════════════════════════════════════
+#
+# > 스포츠 도메인이라도 종목이 다르면(rugby.com.au) 제목에 football/soccer 가
+# > 없으면 버린다.
+#
+# ⚠️ 실측: `Scotland lineup` 이 럭비를 **15건** 끌어왔다 —
+#      rugby.com.au/wallabies · florugby.com/…scotland-vs-england-lineups ·
+#      skysports.com/rugby-league/australia-vs-scotland ·
+#      bbc.com/sport/rugby-union/… · scottishrugby.org ·
+#      en.wikipedia.org/wiki/Scotland_national_rugby_union_team
+#
+# 🔴 **그 경기 종목이 아닌 낱말이 주소·제목에 있으면 버린다.** ⚠️ 그 경기 종목의
+#    낱말이 **함께** 있으면 버리지 않는다(`football` 과 `rugby` 를 같이 적은
+#    종합 매체 기사가 있다).
+# ⚠️ 종목을 **모르면 막지 않는다** — `queries.asks` 와 같은 처분이다.
+other_sport_words:
+  soccer:   [rugby, cricket, netball, "basketball", "ice-hockey", "/tv/", formula-1]
+  baseball: [rugby, cricket, soccer-, football/, basketball]
+  hockey:   [rugby, cricket, soccer-, baseball/]

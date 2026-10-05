@@ -1,0 +1,934 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "読売ジャイアンツ 監督 コメント 10月2日",
+ "recorded_at": "2026-10-02T02:45:14.125457+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Ｇ速@読売ジャイアンツまとめブログ",
+   "content": "読売ジャイアンツのまとめブログです",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://g-soku.blog.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "g-soku.blog.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jyothishya App - ජ්‍යෝතිෂ App - Apps on Google Play",
+   "content": "Safety starts with understanding how developers collect and share your data. Data privacy and security practices may vary based on your use, region, and age. The developer provided this information and may update it over time.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://play.google.com/store/apps/details?id=com.dsolutions.jyothishapp&hl=en-US",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "play.google.com",
+    "/store/apps/details",
+    "",
+    "id=com.dsolutions.jyothishapp&hl=en-US",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツ - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 17 · 試合なし, 金 : 18 · vs. 中日 · 2-0 · 試合終了 · 東京ドーム · 勝：マルティネス, 土 : 19 · vs. 中日 · 14-1 · 試合終了 · 東京ドーム · 勝：田中将, 日 : 20 · vs. ヤクルト · 14:00 · 見どころ · 東京ドーム, 月 : 21 · 試合なし, 火 : 22 · vs. 広島 · 15:00 · 試合前 · マツダスタジアム, 水 : 23 · vs. 広島 · 15:00 · 試合前 · マツダスタジアム",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/1/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/1/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jyothishya App - ජ්‍යෝතිෂ App for Android - Free App Download",
+   "content": "Sep 24, 2026 · Jyothishya App - ජ්‍යෝතිෂ App is a free lifestyle app developed by D Solutions that has 100,000+ downloads.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.appbrain.com/app/jyothishya-app-%E0%B6%A2%E0%B7%8A%E2%80%8D%E0%B6%BA%E0%B7%9D%E0%B6%AD%E0%B7%92%E0%B7%82-app/com.dsolutions.jyothishapp",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.appbrain.com",
+    "/app/jyothishya-app-%E0%B6%A2%E0%B7%8A%E2%80%8D%E0%B6%BA%E0%B7%9D%E0%B6%AD%E0%B7%92%E0%B7%82-app/com.dsolutions.jyothishapp",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "チーム八ちゃん | 力を尽くして狭き門より入れ！",
+   "content": "力を尽くして狭き門より入れ！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://teamhacchan.blog/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "teamhacchan.blog",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jothisha Movies | Jothisha: Height, Age, Husband, Boyfriend,...",
+   "content": "Jothisha's new and latest movies, along with her age, height, husband, boyfriend, family, and biography. Get all the latest updates about Jothisha only on FilmiBeat",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.filmibeat.com/celebs/jothisha.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.filmibeat.com",
+    "/celebs/jothisha.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jothisha Biography | Jothisha Boyfriend, Husband, Family & Net...",
+   "content": "Jothisha Biography: Get to know all about Jothisha, her personal life, love interests, husband, family, net worth, and career only on Filmibeat",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.filmibeat.com/celebs/jothisha/biography.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.filmibeat.com",
+    "/celebs/jothisha/biography.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "アニメ - NHK",
+   "content": "アニメ「パンどろぼう」10月よりEテレにて放送★ティザーPV第2弾公開★パンどろぼう役は朝井彩加・ED主題歌はきゃりーぱみゅぱみゅに決定",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.nhk.jp/g/anime/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nhk.jp",
+    "/g/anime/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jothisha - Movies, Biography, News, Age & Photos | BookMyShow",
+   "content": "Jothisha is an Indian actress primarily known for her work in the Tamil film industry. She has appeared in movies such as Nalamdhana (2010), Ambuli (2012), Vangakkarai (2014), Eganapuram (2016). In 2017, she appeared in the movie Maya Mohini directed by Raasavikram. Her 2018 release includes Vayakkattu Mappilai.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://in.bookmyshow.com/person/jothisha/IEIN015951",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "in.bookmyshow.com",
+    "/person/jothisha/IEIN015951",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "『SAO』×ジャイアンツのコラボビジュアル解禁！声優・松岡禎丞らによる試合....",
+   "content": "10月30日(土)に『劇場版 ソードアート・オンライン -プログレッシブ- 星なき夜のアリア』の劇場公開が控えている、『ソードアート・オンライン』（略称SAO）シリーズ。10月2日（土）東京ドームで開催となるDeNA戦で、『SAO』と読売ジャイアンツのコラボ試合を開催...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg2.animatetimes.com%2F2021%2F09%2F61555a16d6f25_fd7a17e08c73e59c2ca15f5fbab0a308.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.animatetimes.com/news/details.php?id=1632982293",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.animatetimes.com",
+    "/news/details.php",
+    "",
+    "id=1632982293",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "グループチケット - 2026年 読売ジャイアンツ",
+   "content": "＊ 東京ドームでの巨人軍主催試合（一部試合を除く）が対象となります 受付開始 2月2日(月) 11:00～ 4月1日(水) 11:00～ 6月1日(月) 11:00～ 対象試合 6月7日(日)まで 6月19日(金)～7月22日(水) 7月31日(金)以降 → 各試合のイベント情報はこちら → お申込みはこちら",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.giants.jp%2Fsp%2Fgroup%2Fog.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.giants.jp/sp/group/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.giants.jp",
+    "/sp/group/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】落合博満のオレ流チャンネル",
+   "content": "약 58.9만 명의 구독자를 보유한 【公式】落合博満のオレ流チャンネル의 유튜브. 약 650 개의 동영상이 있습니다. 落合博満の公式YouTubeチャンネル！ 野球解説者でもおなじみの落合が野球の技術論や球界にまつわる話、 現役・監督時代のエピソードなどを赤裸々に発信！ ここだけの本音トークを配信していきます！ ●X https://x.com/ochiaioreryu...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fyt3.ggpht.com%2FHjAotx-Kfx9QN2iiZiAFsJW9H0o1lCJO9iUmPwKzt8xbhQTI8qnuw7B83Ol4YUsSanlcrzhfpw%3Ds800-c-k-c0x00ffffff-no-rj&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.youtube.com/channel/UCP4ORJd6Knja3kAL40F6YXg",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/channel/UCP4ORJd6Knja3kAL40F6YXg",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "侍ジャパンU-23代表の監督・コーチが決定 | U-23 | ニュース | 野球日本代表 侍ジ....",
+   "content": "2016.09.26.10月28日（金）～11月6日（日）にメキシコで開催される「第1回 WBSC U-23ベースボールワールドカップ」に出場する侍ジャパンU-23代表の監督及びコーチが決定しました。監督には読売ジャイアンツ二軍監督を務める斎藤雅樹氏が就任。そしてコーチには安藤強氏、大塚晶文氏、三輪隆氏の就任が決定しました。 出場選手、試合日程などは決定次第お知らせいたします。試合の....2016.09.26.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.japan-baseball.jp%2Ffiles%2Fwhatsnew%2F1376%2Fimage01%2F600x400%2Fnews160926_2_thumbs.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.japan-baseball.jp/jp/news/press/20160926_2.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.japan-baseball.jp",
+    "/jp/news/press/20160926_2.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "コミックナタリー - マンガ・アニメの最新ニュースを毎日配信",
+   "content": "国内のマンガ・アニメに関する最新ニュースを毎日更新！毎日発売される単行本のリストや新刊情報、売上ランキング、マンガ家・声優・アニメ監督の話題まで、幅広い情報をお届けします。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fogre.natalie.mu%2Fmedia%2Fpp%2Fbalmy-comic-shikinagiakira%2Fbalmy-comic-shikinagiakira_thumb_X.jpg%3Fimwidth%3D400%26imdensity%3D1&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fogre.natalie.mu%2Fmedia%2Fpp%2Fjamijami-umedaabi-itagakiparu%2Fjamijami-umedaabi-itagakiparu_thumb_X_v2.jpg%3Fimwidth%3D400%26imdensity%3D1&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fogre.natalie.mu%2Fmedia%2Fpp%2Fcmoa-denshi-2018-2020%2Fcmoa-denshi-2018-2020_thumb_X.jpg%3Fimwidth%3D400%26imdensity%3D1&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fogre.natalie.mu%2Fmedia%2Fpp%2Ftaba2027-awapatricktohru-interview%2Ftaba2027-awapatricktohru-interview_X.jpg%3Fimwidth%3D400%26imdensity%3D1&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fogre.natalie.mu%2Fmedia%2Fpp%2Fcmoa-denshi-staff-interview%2Fcmoa-denshi-staff-interview_thumb_X.jpg%3Fimwidth%3D400%26imdensity%3D1&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fogre.natalie.mu%2Fmedia%2Fpp%2Fparadoxlive-hotpeppergourmet%2Fparadoxlive-hotpeppergourmet_thumb_3.jpg%3Fimwidth%3D400%26imdensity%3D1&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fogre.natalie.mu%2Fmedia%2Fpp%2Ffutsutsuka-milet-nakamurasatsuki%2Ffutsutsuka-milet-nakamurasatsuki_thumb_X_v3.jpg%3Fimwidth%3D400%26imdensity%3D1&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://natalie.mu/comic",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "natalie.mu",
+    "/comic",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "映画『ゴジラ-1.0』2. 6メートルの立像、東京ドームに来襲 読売ジャイアンツと....",
+   "content": "2023.08.18.1954年に初めて姿を現して以来、日本のみならず世界中を魅了し、衝撃を与え続けてきた怪獣「ゴジラ」。そのゴジラ70周年記念作品となる映画シリーズ最新作『ゴジラ-1.0』（読み:ゴジラマイナスワン／監督：山崎貴 ）の劇場公開（11月3日）を記念して、来年、日本のプロスポーツチームとして初めて創設90周年を迎えるプロ野球・読売ジャイアンツとのコラボレーション....2023.08.18.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcontents.oricon.co.jp%2Fupimg%2Fnews%2F2292000%2F2291398%2F20230818_170429_p_o_27578728.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.oricon.co.jp/news/2291398/full/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.oricon.co.jp",
+    "/news/2291398/full/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "侍ジャパン21U代表監督に平田勝男氏が就任、プロ、アマチュア混成チームを指....",
+   "content": "2014.06.30.野球日本代表「侍ジャパン 21U代表」は2014年11月7日（金）から台湾で開催される「第１回IBAF 21Uワールドカップ」に出場しますが、その監督として平田勝男氏が、投手コーチとして豊田清氏の就任がそれぞれ決定しました。 21Uワールドカップは、21歳（1993年以降に生まれた）以下の選手を対象とした、今年、新たに開催される世界大会で、プロ・アマチュア（大学・社会人....2014.06.30.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.japan-baseball.jp%2Fimg%2Fnews%2Fpress%2F20140630_1_1.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.japan-baseball.jp/jp/news/press/20140630_1.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.japan-baseball.jp",
+    "/jp/news/press/20140630_1.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "日テレ系 野球中継 DRAMATIC BASEBALL",
+   "content": "きょう12日(水)「巨人×阪神」は「キングダムナイター」として開催！こんや7時から、地上波日本テレビ系全国ネットで生中継！地上波副音声はタイガース応援席？阪神OB糸井嘉男＆ニッポンの社長が今季の「キング」を大予想！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.ntv.co.jp%2Fbaseball%2Fimages%2Fog_image2026.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.ntv.co.jp/baseball/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ntv.co.jp",
+    "/baseball/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "『劇場版 SAO -プログレッシ- 』水戸市＆読売ジャイアンツとコラボ決定",
+   "content": "『劇場版 ソードアート・オンライン -プログレッシブ- 星なき夜のアリア』水戸市＆読売ジャイアンツとのコラボ決定！ 声優・松岡禎丞さんがDeNA戦始球式に登場＆特別配信も決定！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg2.animatetimes.com%2F2021%2F09%2F614989a1cc39c_550f69ad6809e6c2482dd6808558cb51.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.animatetimes.com/news/details.php?id=1632208783",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.animatetimes.com",
+    "/news/details.php",
+    "",
+    "id=1632208783",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Download Jyothishya App - ජ්‍යෝතිෂ App 3.1.0 Android APK File",
+   "content": "Sep 1, 2025 · Download Jyothishya App - ජ්‍යෝතිෂ App Latest Version 3.1.0 APK for Android from APKPure. ඔබේ කේන්දරය නිවැරදිව සකසා ඒ අනුව සියලුම ජ්‍යෝතිෂ තොරතුරු ලබා ගත හැක.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://apkpure.com/jyothishya-app-%E0%B6%A2%E0%B7%8A%E2%80%8D%E0%B6%BA%E0%B7%9D%E0%B6%AD%E0%B7%92%E0%B7%82-app/com.dsolutions.jyothishapp/download",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "apkpure.com",
+    "/jyothishya-app-%E0%B6%A2%E0%B7%8A%E2%80%8D%E0%B6%BA%E0%B7%9D%E0%B6%AD%E0%B7%92%E0%B7%82-app/com.dsolutions.jyothishapp/download",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jothisha - Facebook",
+   "content": "Feb 13, 2026 · Jothisha. 36,508 likes · 5 talking about this. Education",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.facebook.com/missjothisha/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.facebook.com",
+    "/missjothisha/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jothisha - Discover Your Cosmic Blueprint",
+   "content": "Advanced Astrology readings tailored to your birth chart. Available in English, Sinhala, and Tamil.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.jothisha.lk/hub",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.jothisha.lk",
+    "/hub",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツとトレードが成立",
+   "content": "2022.12.10.本日6月26日(水)、北海道日本ハムファイターズ鍵谷陽平投手(28)藤岡貴裕投手(29)と、読売ジャイアンツ吉川光夫投手(31)宇佐見真吾捕手(26)のトレードが成立しましたので、お知らせいたします。 「ファイターズでの約6年半、たくさんの方々に応援していただき、本当に感謝しています。素晴らしい監督、コーチ、チームメート、スタッフ、そして関係者の方々と出会えた事....2022.12.10.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.fighters.co.jp/news/detail/00001949.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.fighters.co.jp",
+    "/news/detail/00001949.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jyothishya App - ජ්‍යෝතිෂ App APK for Android Download",
+   "content": "Sep 1, 2025 · Jyothishya App - ජ්‍යෝතිෂ App 3.1.0 APK download for Android. ඔබේ කේන්දරය නිවැරදිව සකසා ඒ අනුව සියලුම ජ්‍යෝතිෂ තොරතුරු ලබා ගත හැක.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://apkpure.com/jyothishya-app-%E0%B6%A2%E0%B7%8A%E2%80%8D%E0%B6%BA%E0%B7%9D%E0%B6%AD%E0%B7%92%E0%B7%82-app/com.dsolutions.jyothishapp",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "apkpure.com",
+    "/jyothishya-app-%E0%B6%A2%E0%B7%8A%E2%80%8D%E0%B6%BA%E0%B7%9D%E0%B6%AD%E0%B7%92%E0%B7%82-app/com.dsolutions.jyothishapp",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "僕の名前はルシアン 公式サイト",
+   "content": "9/29(金)ユーロスペースほか全国順次公開｜愛が欲しいなら・・・僕の部屋に来ませんか｜自殺願望を抱えた若者たちが同じ願望を共有するサイトで知り合うところから始まる物語を描く。愛を求める孤独な10代の少女が、インターネットで「ルシアン」と名乗る理想的な男と知り合う。同じころ、ある連続殺人犯を追っていた警察は、...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://mynameislucien.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "mynameislucien.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jothisha (@_jothisha._) • Instagram photos and videos",
+   "content": "3,613 Followers, 841 Following, 61 Posts - Jothisha (@_jothisha._) on Instagram: \"Nothing More♾️ @_s_anj_a_y_\"",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.instagram.com/_jothisha._/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.instagram.com",
+    "/_jothisha._/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

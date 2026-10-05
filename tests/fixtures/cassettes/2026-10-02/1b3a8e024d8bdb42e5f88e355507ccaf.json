@@ -1,0 +1,934 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "東京ヤクルトスワローズ 監督 コメント Oct 2",
+ "recorded_at": "2026-10-02T02:44:32.765413+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Ｄ．サンタナ（東京ヤクルトスワローズ） | 個人年度別成績",
+   "content": "25 · 東京ヤクルトスワローズ · Ｄ．サンタナ · ドミンゴ・サンタナ (DOMINGO SANTANA)",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://npb.jp/bis/players/53755153.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "npb.jp",
+    "/bis/players/53755153.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Merchant hub | Grubhub for Restaurants",
+   "content": "The Grubhub for Restaurants portal or merchant portal provides tools to manage every part of your Grubhub account, including ordering, promotions, menus and restaurant details like hours.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://get.grubhub.com/products/merchant-portal/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "get.grubhub.com",
+    "/products/merchant-portal/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズ 年度別成績 （1950-2026）",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "http://npb.jp/bis/teams/yearly_s.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/teams/yearly_s.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Grubhub for Restaurants",
+   "content": "© 2026 Grubhub Holdings Inc. All rights reserved. (877) 799-0790 Terms of use Privacy policy",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://restaurant.grubhub.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "restaurant.grubhub.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Get Grubhub | Grubhub for Restaurants",
+   "content": "Grubhub exists to serve you and help your restaurant achieve your business goals. When you partner with Grubhub, your restaurants can reach brand new customers who are hungry to order delivery and takeout from local restaurants through our online food ordering marketplace.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://go.grubhub.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "go.grubhub.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Configuring Merchant Accounts for Self Delivery | Grubhub",
+   "content": "Grubhub works with brands, point of sale companies, and online ordering providers to power an ordering experience in Grubhub Marketplace and within restaurant-branded web experiences. This documentation describes the normalized endpoints required for ingesting menu content and facilitating order transmission.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://developer.grubhub.com/docs/1xfoFbar4YVCgxbZulZNta/configuring-merchant-accounts",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "developer.grubhub.com",
+    "/docs/1xfoFbar4YVCgxbZulZNta/configuring-merchant-accounts",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京タワー オカンとボクと、時々、オトン(2007) - 作品情報・映画レビュー -KIN....",
+   "content": "平均評点 : 71.9点（494人）, 観たひと : 870, 観たいひと : 79, レビューの数 : 55, ジャンル : ドラマ, 製作国 : 日本, 製作年 : 2007, 公開年月日 : 2007/4/14, 監督 : 松岡錠司, 脚本 : 松尾スズキ, 原作 : リリー・フランキー, 撮影 : 笠松則通",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "http://www.kinenote.com/main/public/cinema/detail.aspx?cinema_id=38415",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "www.kinenote.com",
+    "/main/public/cinema/detail.aspx",
+    "",
+    "cinema_id=38415",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Getting Started on your Grubhub Account - Grubhub for Business",
+   "content": "The Admin Portal is where you manage all aspects of your Grubhub for Business account, from adding employees and creating meal credits to viewing invoices and order history.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://business.grubhub.com/learning-center/enterprise-accounts/getting-started/signing-in/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "business.grubhub.com",
+    "/learning-center/enterprise-accounts/getting-started/signing-in/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Grubhub Merchant Dashboard: A Practical Operator Guide",
+   "content": "Sep 14, 2026 · Learn how the Grubhub merchant dashboard works, what each panel does, and how operators can keep menus, orders, and analytics under control in 2026.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.orderout.co/blog/grubhub-merchant-dashboard/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.orderout.co",
+    "/blog/grubhub-merchant-dashboard/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "モイセエフ ニキータ | 選手・チーム | 東京ヤクルトスワローズ",
+   "content": "フリガナ : モイセエフ ニキータ, 背番号 : 31, ポジション : 外野手, 生年月日 : 2006年11月29日 (20歳), 身長/体重 : 182cm/87kg, 出身地 : 愛知, 投打 : 左投げ/左打ち, ドラフト年 (順位) : 2024年 (2位), プロ年数 : 2年, 経歴 : 豊川高（甲）－ヤクルト",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww-static.yakult-swallows.co.jp%2Fimg%2Fplayers%2F2026%2F2112585.jpg%3Fauto%3Davif%2Cwebp%26quality%3D90%26width%3D200&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.yakult-swallows.co.jp/players/detail/2112585",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.yakult-swallows.co.jp",
+    "/players/detail/2112585",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズへの通訳派遣のお知らせ – 【公式】茨城アストロプ....",
+   "content": "2021.09.26.プロ野球独立リーグ・ルートインBCリーグ（Baseball Challenge League）の茨城アストロプラネッツは、東京ヤクルトスワローズへ、ラファエル・フェルナンデス選手を通訳として派遣する事となりましたので下記の通りお知らせいたします。 《東京ヤクルトスワローズへ派遣》 派遣期間：２０２１年９月２６日（日）～２０２１年１１月３０日（火） 派遣選手：ラファエル・......2021.09.26.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.ibaraki-planets.jp%2Fblog%2Fwp-content%2Fuploads%2F2021%2F09%2Fb2b700398e09c626ad7d4d74359b2a08.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.ibaraki-planets.jp/blog/2021/09/26/haken0926/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ibaraki-planets.jp",
+    "/blog/2021/09/26/haken0926/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズの高津監督の戦い方は仕事にめちゃめちゃ使える - さ....",
+   "content": "2022.08.30.東京ヤクルトスワローズが復活したのは戦い方を変えたから ; 2021年、2年連続の最下位からのセ・リーグ優勝、クライマックスシリーズ優勝、日本シリーズ優勝を果たし、2022年シーズンもセ・リーグを独走、セパ交流戦も全カード勝ち越しという成績を残している東京ヤクルトスワローズ（以下スワローズ）。現在（8月15日時点）貯金17、2位とのゲーム差7。 2年前まで選......2022.08.30.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fsakumaga.sakura.ad.jp%2Fwp-content%2Fuploads%2F2024%2F05%2F20220818171739.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://sakumaga.sakura.ad.jp/entry/2022/08/30/120000",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sakumaga.sakura.ad.jp",
+    "/entry/2022/08/30/120000",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズ 対 読売ジャイアンツ 2026/8月開催≪車椅子席≫ Meiji Ji....",
+   "content": "SS Reserve · Behind Home Plate · Best price · ₩34,270A Reserve · ₩65,825Outfield C Reserve · Fan favorite · ₩41,867",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg.vggcdn.net%2Fimg%2Fvfsimage2%2F582482%2F3634_1287339%2F0.jpg%3Fim%3DResize%3D%28500%2C271%29%26v%3D8&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.viagogo.com/ww/Sports-Tickets/Other-Sports/Baseball/Nippon-Professional-Baseball/Tokyo-Yakult-Swallows-Tickets/E-161569213",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.viagogo.com",
+    "/ww/Sports-Tickets/Other-Sports/Baseball/Nippon-Professional-Baseball/Tokyo-Yakult-Swallows-Tickets/E-161569213",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【試合結果】ヤクルト2-5広島 引退の山崎2安打！吉村8回1失点も中継ぎ崩れ敗....",
+   "content": "2024.10.03.わいくん、篠木がハマのエースになる未来が見える · 星街すいせいさん、ZOZOマリンで始球式を行う · 角中さん、39歳になった今でも走塁技術は健在 · カープ緒方孝市×緒方佑奈『さんま御殿』で親子初共演ｗｗｗ · カープ野間、後逸＆悪送球で阪神サトテルに実質3点ランニングホームラン献上 · ベイスターズ 6－4 スワローズ エンカーナシオン先制タイムリー含む4安打....2024.10.03.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Flivedoor.blogimg.jp%2Ftsubame7%2Fimgs%2F0%2Fe%2F0e2c2d71-s.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://tsubamesoku.blog.jp/archives/1083760749.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "tsubamesoku.blog.jp",
+    "/archives/1083760749.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ディズニーリゾート、実質“千葉”のため緊急事態宣言による休園を華麗....",
+   "content": "2021.04.24.生成AI全力3階建て経営のソフトバンクグループ、孫正義さんが時価総額1000兆円の大風呂敷を広げる ; 通信品質2強のKDDI、不正アクセスによりISP事業者6社のメールアドレスとパスワード最大1422万件が漏洩したかもしれない件でお詫び 8年で社名ロンダリング2回のHODL1(旧クシム)、ヤフー掲示板の「粉飾決算の証拠」「虚偽記載が濃厚」「懲役と上場廃止」といった裁判上等......2021.04.24.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Flivedoor.blogimg.jp%2Fmasorira-kabu%2Fimgs%2Fb%2Ff%2Fbfd7a47b-s.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://kabumatome.doorblog.jp/archives/65979213.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "kabumatome.doorblog.jp",
+    "/archives/65979213.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【女版ジャニー喜多川】指原莉乃による未成年女性への性加害問題 性加害さ....",
+   "content": "2024.03.08.【女版ジャニー喜多川】指原莉乃による未成年女性への性加害問題 性加害されていた田中美久がブチギレて指原の顔にツバを吐いていた Tweet2024.03.08.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Flivedoor.blogimg.jp%2Fhamusoku%2Fimgs%2F8%2Fc%2F8ce0fdcd-s.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://hamusoku.com/archives/10742836.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "hamusoku.com",
+    "/archives/10742836.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "国立研究開発法人宇宙航空研究開発機構 2019 年度 業務実績等報告書",
+   "content": "396페이지26MB国立研究開発法人宇宙航空研究開発機構の 2019 年度業務実績と自己評価について ・・・・・・・・・・ 1 ２．2019... １ 衛星測位・・・・・・・・・・・・・・・・・・・・・・・・ ３．２ 衛星リモートセンシング... 環境試験技術等）・・・・・・・・・・ A-1 A-2 A-9 A-34 A-44 A-64 A-71 A-78 A-84 A-114 A-133 A-150 ４．...396페이지26MB",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=eee1de44_f6f8fe35&type=ofullfill176_176_white_trim2",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.jaxa.jp/about/finance/pdf/finance_report2019.pdf",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.jaxa.jp",
+    "/about/finance/pdf/finance_report2019.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "弁理士制度 120周年記念誌",
+   "content": "307페이지12MB弁理士制度120周年記念事業 実行委員会委員長 伊丹勝 〈2〉 発行のことば 令和元年7月1日で弁理士制度は120周年を迎えました。弁理士制度はその 前身である「特許代理業者登録規則」が明治32年（1899年）7月1日に施行さ れてから120年に亘り我国の知的財産制度を支え、我国の経済、産業の発展 に貢献してきました。 弁理士制度を取り巻くここ十年間は、...307페이지12MB",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=66ac11e7_08972304&type=ofullfill176_176_white_trim2",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.jpaa.or.jp/cms/wp-content/uploads/2020/03/120th-anniversary-magazine.pdf",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.jpaa.or.jp",
+    "/cms/wp-content/uploads/2020/03/120th-anniversary-magazine.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "AQ! Ishii",
+   "content": "石井へべ （へべのひとりごと) ; 「楽しいレストラン」 （フランス料理、イタリア料理、スペイン料理、欧州料理、中国料理、韓国料理、エスニック料理、洋食、蕎麦、天麩羅、京都、New、[i]） ; Mac & Wine 対応! 下手のワイン好き （～97、1998、1999、2000、2001、2002） ; はばかっぱてぃ？お茶の備忘録 ; 「メールでリレー小説」 2008 スタート! ; AQ! & へべ のトホホ文芸倶楽部 ......",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "http://aq.webtech.co.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "aq.webtech.co.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Learning Center | Grubhub for Business Help & Guides",
+   "content": "Step-by-step guides for enterprise admins, employees, and self-service accounts. Learn how to manage your Grubhub for Business account.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://business.grubhub.com/learning-center/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "business.grubhub.com",
+    "/learning-center/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "BBBB（ベーコンの暴飲暴食ブログ）",
+   "content": "Twitterでつぶやいてたことの一部（主に食べ物）の部分をこっちに移行することを目的として始めました。どうぞみなさんお腹を空かせてください。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://sosunser.hateblo.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sosunser.hateblo.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Grubhub for Restaurants",
+   "content": "Getting started with menu self-service Editing a menu grubhub",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://grubhub1455899326.zendesk.com/hc/en-us/categories/201439063-Grubhub-for-Restaurants",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "grubhub1455899326.zendesk.com",
+    "/hc/en-us/categories/201439063-Grubhub-for-Restaurants",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "FAQs & Best Practices | Grubhub",
+   "content": "Grubhub works with brands, point of sale companies, and online ordering providers to power an ordering experience in Grubhub Marketplace and within restaurant-branded web experiences. This documentation describes the normalized endpoints required for ingesting menu content and facilitating order transmission.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://developer.grubhub.com/docs/2PVzj0qUWAcMMsI84pYQlv/faqs-and-best-practices",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "developer.grubhub.com",
+    "/docs/2PVzj0qUWAcMMsI84pYQlv/faqs-and-best-practices",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Use Grubhub for online orders – Merchant Services",
+   "content": "Clover and Grubhub have partnered to integrate online orders with your Point of Sale (POS) device. No more need for tablets that clutter your countertops, or other ways to track your incoming orders. You can support in-store pickup, scheduled orders, and Grubhub delivery. If you’re a current Grubhub customer, your fees and pricing will remain the same. If you’re a new Grubhub customer, you ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://merchantservices.zendesk.com/hc/en-us/articles/31570217477524-Use-Grubhub-for-online-orders",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "merchantservices.zendesk.com",
+    "/hc/en-us/articles/31570217477524-Use-Grubhub-for-online-orders",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "日本の中枢は既に在日朝鮮人に乗っ取られている 中川隆",
+   "content": "投稿者 中川隆 日時 2018 年 7 月 25 日 10:31:43: 3bF/xW6Ehzs4I koaQ7Jey ; (回答先: 少子化問題を考える _ ここまでやらないと子供の数は増えない 投稿者 中川隆 日時 2018 年 7 月 25 日 07:12:07) 日本の皇室・政治家・官僚・マスコミ・新興宗教・芸能界・スポーツ界・ヤクザ・風俗・パチンコ・被差別同和部落の中枢は既に在日朝鮮人に乗っ取られている 岸和田春木？在日３世の告白？.....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fclap.asyura2.com%2Fpeterimg%2F1001.gif&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.asyura2.com/17/lunchbreak54/msg/232.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.asyura2.com",
+    "/17/lunchbreak54/msg/232.html",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

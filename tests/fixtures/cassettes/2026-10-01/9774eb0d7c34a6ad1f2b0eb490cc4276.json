@@ -1,0 +1,1847 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Sacramento Republic lineup Sep 30",
+ "recorded_at": "2026-10-01T02:52:20.536107+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "2026 Schedule - Sacramento Republic FC",
+   "content": "Wednesday September 30 7 PM Las Vegas Lights FC Presented by Sacramento State University at Heart Health Park Tune in FOX40+FOX40.com ESPN+ BUY TICKETS",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo",
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1,
+    1
+   ],
+   "score": 4.0,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/schedule/",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/schedule/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Forster Ajago",
+   "content": "Sacramento Republic … Sacramento Republic … Sacramento Republic … Sacramento Republic … Sacramento Republic … \"Striker Forster Ajago Joins Republic FC Ahead of 2026 Campaign\"",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Forster_Ajago",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Forster_Ajago",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC Live Score, 2026 Fixtures, Results",
+   "content": "Orange County SC ; Detroit City ; San Antonio ; New Mexico United",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.aiscore.com/team-sacramento-republic-fc/34kgmiyv22s8ko9",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.aiscore.com",
+    "/team-sacramento-republic-fc/34kgmiyv22s8ko9",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2026 Sacramento Republic FC season",
+   "content": "Sacramento Republic FC … Wilton Rancheria Head coach Neill Collins … Heart Health Park USL Championship … USLC Playoffs … Open Cup Round of 32 USL Cup … Home colors",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/2026_Sacramento_Republic_FC_season",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/2026_Sacramento_Republic_FC_season",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC Roster - USL Championship",
+   "content": "No. Name. Goalkeeper. 1, Daniel Vitiello, Vitiello, USA. 31, Jacob Randolph, Randolph, USA. 44, Brooks Doolittle, Doolittle, USA. Defender. 2, Jack Gurr ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.uslchampionship.com/sacramento-republic-fc-roster",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.uslchampionship.com",
+    "/sacramento-republic-fc-roster",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC - 가장 비싼 출발 | Transfermarkt",
+   "content": "i 선택한 클럽에서 가장 비싼 출발입니다. 계절별로 필터링하세요: 모든 시즌, position: 모든 포지션, 주요 위치: 모든 포지션, 이체 날짜: 중요하지 않음",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.transfermarkt.co.kr/sacramento-republic-fc/rekordabgaenge/verein/40835",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.transfermarkt.co.kr",
+    "/sacramento-republic-fc/rekordabgaenge/verein/40835",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento vs. Las Vegas (Sep 30, 2026) Live Score - ESPN",
+   "content": "Live coverage of the Sacramento Republic FC vs. Las Vegas Lights FC Usl Championship game on ESPN, including live score, highlights and updated stats.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/match/_/gameId/401842263/las-vegas-lights-fc-sacramento-republic-fc",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/match/_/gameId/401842263/las-vegas-lights-fc-sacramento-republic-fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Buy Sacramento Republic FC Tickets | 2026-2027 Event Dates ...",
+   "content": "Wednesday, September 30, 2026 at 7:00 PMWedSep 307:00 PM. Heart Health Park at Cal ExpoSacramento, CA. Sacramento Republic FC vs. Las Vegas Lights FC · Saturday ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver",
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10,
+    15
+   ],
+   "score": 0.33333333333333337,
+   "category": "general",
+   "url": "https://www.ticketmaster.com/sacramento-republic-fc-tickets/artist/1960021",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.ticketmaster.com",
+    "/sacramento-republic-fc-tickets/artist/1960021",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento 0-1 New Mexico (Jun 20, 2026) Final Score - ESPN",
+   "content": "Sacramento Republic FC vs. New Mexico United Usl Championship game, final score 0-1, from June 20, 2026 on ESPN. 1 USL Championship Sep 30: Sep. Formations & ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/match/_/gameId/401841940/new-mexico-united-sacramento-republic-fc",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/match/_/gameId/401841940/new-mexico-united-sacramento-republic-fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Republic FC Stadium",
+   "content": "Republic FC Stadium Artist's rendering; view from the northeast Interactive map of Republic FC Stadium … Sacramento Railyards … 38°35′25″N 121°29′27″W",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Republic_FC_Stadium",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Republic_FC_Stadium",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC - Spokane Velocity FC, 2026년 4월 26일 - USL Cup - 경기 내용 | Transfermark....",
+   "content": "USL Cup Sacramento Republic FC Group 1 | 일, 26. 4. 26. | {시간} 4:0 (2:0) Heart Health Park 주심: Carlos Rodriguez Spokane Velocity FC 0:3 1:2 1:2 0:1 1:2 4:2 3:1 3:0 7:6 펜에 3:4 2:0 0:1 3:4 펜에 3:1 2:1 4:0 5:4 펜에 1:2 0:1 3:5 펜에 i 아직 공식 매치 보고서가 없습니다. 매치 데이터를 추가하시겠습니까? 여기를 클릭하여 양식을 열어...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.transfermarkt.co.kr/spielbericht/index/spielbericht/4854394",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.transfermarkt.co.kr",
+    "/spielbericht/index/spielbericht/4854394",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Events from September 30 – October 24 › Sac Republic FC ...",
+   "content": "Sacramento Republic FC vs Las Vegas Lights FC September 30 Heart Health Park 1600 Exposition Blvd, Sacramento, CA, United States",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://calexpo.com/events/category/sac-republic-fc/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "calexpo.com",
+    "/events/category/sac-republic-fc/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Match Preview: Las Vegas Lights FC at Sacramento Republic FC",
+   "content": "24 hours ago · Wednesday, September 30, 7:00 p.m. Kickoff: 7:00 p.m. PT How to Watch: SSSEN, ESPN+. There are five matches remaining.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/news/2026/09/29/match-preview-las-vegas-lights-fc-at-sacramento-republic-fc-wednesday-september-30-700-p-m-pt/",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/news/2026/09/29/match-preview-las-vegas-lights-fc-at-sacramento-republic-fc-wednesday-september-30-700-p-m-pt/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Caesars Republic Lake Tahoe",
+   "content": "Caesars Republic Lake Tahoe Interactive map of Caesars Republic Lake Tahoe … Route 50 38°57′37″N 119°56′33″W … 38.9603°N 119.9424°W",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Caesars_Republic_Lake_Tahoe",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Caesars_Republic_Lake_Tahoe",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Orange County SC - USL Championship",
+   "content": "The latest updates from the Week 8 match between Sacramento Republic FC and Orange County SC on September 9, 2020, including lineups, recaps, stats and videos.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.uslchampionship.com/sacramentorepublicfc-orangecountysc-2092776",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.uslchampionship.com",
+    "/sacramentorepublicfc-orangecountysc-2092776",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC’s Stadium Preview Center Ribbon ...",
+   "content": "Sep 16, 2026 · SACRAMENTO, Calif. — As part of celebrating Sacramento’s 916 area code on 9/16, Republic FC announced that its stadium preview center will open in two weeks. The Club’s season ticket members and stadium depositors will have the first opportunity to schedule an appointment and get a first look at the new stadium features.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/news/2026/09/16/sacramento-republic-fcs-stadium-preview-center-ribbon-cutting-on-september-30-seat-deposits-for-new-home-9-16-for-9-16-day/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/news/2026/09/16/sacramento-republic-fcs-stadium-preview-center-ribbon-cutting-on-september-30-seat-deposits-for-new-home-9-16-for-9-16-day/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC (@SacRepublicFC) / X",
+   "content": "Republic FC faces off against Las Vegas Lights on Wednesday, September 30! Included in the package is a match ticket",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://x.com/SacRepublicFC/all",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "x.com",
+    "/SacRepublicFC/all",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC",
+   "content": "Sacramento Republic FC’s Stadium Preview Center Ribbon Cutting on September 30; … 2026 Sacramento Republic FC, Wilton Rancheria Select Food Frontier to Integrate Sacramento Cuisine and Traditions Into New Stadium Food Program Be first to experience the new 20K- …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.republicstadium.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.republicstadium.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Reno 1868 FC vs Sacramento Republic FC - USL Championship",
+   "content": "The latest updates from the Week 17 match between Reno 1868 FC and Sacramento Republic FC on June 29, 2019, including lineups, recaps, stats and videos.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.uslchampionship.com/reno1868fc-sacramentorepublicfc-1037261",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.uslchampionship.com",
+    "/reno1868fc-sacramentorepublicfc-1037261",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How to Watch: Las Vegas Lights FC at Sacramento Republic FC ...",
+   "content": "2 days ago · The Lights head to NorCal to face Sacramento Republic FC in a key match against a direct rival. Read on to discover how to watch our last midweek match of the season. Match: Las Vegas Lights FC (9-10-6, 11 th in Western Conference) at Sacramento Republic FC (10-5-10, 4 th in Western Conference) When: Wednesday, September 30 Where: Heart Health Park, Sacramento, California Kickoff: 7:00 p.m. PT ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/news/2026/09/29/how-to-watch-las-vegas-lights-fc-at-sacramento-republic-fc-wednesday-september-30-700-p-m-pt/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/news/2026/09/29/how-to-watch-las-vegas-lights-fc-at-sacramento-republic-fc-wednesday-september-30-700-p-m-pt/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "HIGHLIGHTS: Sacramento Republic vs. MNUFC | April 14, 2026",
+   "content": "Apr 14, 2026 · Sacramento Republic vs. MNUFC. The Loons secure a late U.S. Open Cup win after 12 rounds of PKs against Sacramento Republic.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.mnufc.com/video/highlights-sacramento-republic-vs-mnufc-april-14-2026",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.mnufc.com",
+    "/video/highlights-sacramento-republic-vs-mnufc-april-14-2026",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC Unified Team - Sacramento Republic FC",
+   "content": "Republic FC and Special Olympics Northern California have partnered to create Sacramento’s first-ever unified soccer team, uniting athletes with and without intellectual disabilities.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/unifiedteam/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/unifiedteam/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sactown Sports 1140 AM: Latest Updates & Expert Game Analysis",
+   "content": "Stay informed with the latest Sacramento sports news, in-depth game analysis, and expert opinions on the Sacramento Kings, Oakland A's, SF Giants, & 49ers.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://sactownsports.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sactownsports.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic vs Las Vegas Lights prediction – Odds ...",
+   "content": "Sacramento Republic vs Las Vegas Lights prediction with best odds, stats, highlights, H2H analysis, and lineups for this match on 30 September 2026 in USL, Championship.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.wincomparator.com/predictions/sacramento-republic-las-vegas-lights-8057548/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.wincomparator.com",
+    "/predictions/sacramento-republic-las-vegas-lights-8057548/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Match Recap: Republic FC 2 - 0 Phoenix Rising FC - Sacramento Republic FC",
+   "content": "Sacramento Republic FC 2 – 0 Phoenix Rising FC USL Championship Heart Health Park, Sacramento, California April 4, 2026 Scoring Summary: SAC …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/news/2026/04/04/match-recap-republic-fc-2-0-phoenix-rising-fc/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/news/2026/04/04/match-recap-republic-fc-2-0-phoenix-rising-fc/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC (@sacrepublicfc) - Instagram",
+   "content": "Republic FC faces off against Las Vegas Lights on Wednesday, September 30! Included in the package is a match ticket and an exclusive co-branded",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.instagram.com/sacrepublicfc/?hl=en",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.instagram.com",
+    "/sacrepublicfc/",
+    "",
+    "hl=en",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC 2026 Schedule - ESPN",
+   "content": "ESPN has the full 2026 Sacramento Republic FC schedule. Includes date, time and tv channel information for all Sacramento Republic FC games.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/team/fixtures/_/id/17828/sacramento-republic-fc",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/team/fixtures/_/id/17828/sacramento-republic-fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Monterey Bay FC vs Sacramento Republic FC",
+   "content": "Monterey Bay FC vs Sacramento Republic FC on Sun, Aug 30, 2026, 02:00 UTC. Check live results, H2H, match stats, lineups, player ratings, insights, team forms, shotmap, and highlights.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.fotmob.com%2Fmatch%2Fpreview%3FmatchId%3D5109918&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.fotmob.com/matches/sacramento-republic-fc-vs-monterey-bay-fc/d66yr3se",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/matches/sacramento-republic-fc-vs-monterey-bay-fc/d66yr3se",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic’s unlikely journey to US Open Cup glory | US Open Cup",
+   "content": "2022.09.07.That dynamic inevitably spills over to sports, where its soccer team, Sacramento Republic of the second-tier USL, was infamously spurned last year by Major League... There was no reason to pick them out of the lineup as some exemplary lower-tier side. But now, everyone around him is suddenly asking him for secrets of the trade....2022.09.07.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.guim.co.uk%2Fimg%2Fmedia%2Fb876d253f152ceea19b3c4847d49b17d54d677db%2F0_331_5000_3002%2Fmaster%2F5000.jpg%3Fwidth%3D1200%26height%3D630%26quality%3D85%26auto%3Dformat%26fit%3Dcrop%26precrop%3D40%3A21%2Coffset-x50%2Coffset-y0%26overlay-align%3Dbottom%252Cleft%26overlay-width%3D100p%26overlay-base64%3DL2ltZy9zdGF0aWMvb3ZlcmxheXMvdGctYWdlLTIwMjIucG5n%26enable%3Dupscale%26s%3Dd5f895b92c23901c9560b69738a597fc&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.theguardian.com/football/2022/sep/07/sacramento-republic-us-open-cup-final-orlando-city",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.theguardian.com",
+    "/football/2022/sep/07/sacramento-republic-us-open-cup-final-orlando-city",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic’s Run at U.S. Open Cup History Teems With Destiny",
+   "content": "2022.09.06.Its bid to join MLS deferred, delayed and dismantled, the USL Championship side is beating top-flight teams instead, and one more stands in the way of a legendary title.2022.09.06.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.si.com%2F.image%2Fc_fill%2Cw_1440%2Car_1440%3A810%2Cf_auto%2Cq_auto%2Cg_auto%2FMTkyMTMxNTkzNDIxMjY4MjI0%2Fsacramento-republic-goal-celebration.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.si.com/soccer/2022/09/06/sacramento-republic-us-open-cup-final-dunivant-orlando-city",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.si.com",
+    "/soccer/2022/09/06/sacramento-republic-us-open-cup-final-dunivant-orlando-city",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Match Recap: Republic FC 1 - 1 Monterey Bay FC - Sacramento Republic FC",
+   "content": "USL Championship Cardinale Stadium, Seaside, California August 29, 2026 Scoring Summary: SAC – Cal Jennings (Kyle Edwards) 84’ … Sacramento Republic FC …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/news/2026/08/29/match-recap-republic-fc-1-1-monterey-bay-fc-2/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/news/2026/08/29/match-recap-republic-fc-1-1-monterey-bay-fc-2/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Lexington SC - FotMob",
+   "content": "The lineups are: Sacramento Republic FC (4-2-3-1): Danny Vitiello - Jack Gurr, Jared Timmer, Lee Desmond, Tim Leibold - Pep Casas, Daniel Crisostomo - Blake ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.fotmob.com/matches/sacramento-republic-fc-vs-lexington-sc/oaoogotx",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/matches/sacramento-republic-fc-vs-lexington-sc/oaoogotx",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Republic FC Signs MLS Veteran Memo Rodriguez - Sacramento Republic FC",
+   "content": "Sacramento Republic FC announced that the club has signed midfielder Jose “Memo” Rodriguez. He will be added to the team’s roster pending league and federation approval.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/news/2026/02/21/republic-fc-signs-mls-veteran-memo-rodriguez/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/news/2026/02/21/republic-fc-signs-mls-veteran-memo-rodriguez/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC - Wikipedia",
+   "content": "Sacramento Republic FC is an American professional soccer team based in Sacramento, California, that competes in the Western Conference of the USL ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Sacramento_Republic_FC",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Sacramento_Republic_FC",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Match Recap: Republic FC 1 - 0 Lexington SC - Sacramento Republic FC",
+   "content": "SAC – Blake Willey (caution) 25’, Danny Crisostomo (caution) 39’, Pep Casas (caution) 88’; LEX – Phillip Goodrum (caution) 83’ … Sacramento Republic FC …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/news/2026/08/15/match-recap-republic-fc-1-0-lexington-sc/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/news/2026/08/15/match-recap-republic-fc-1-0-lexington-sc/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic | All the info, news and scores",
+   "content": "Orange County SC sign Brandon Cambridge from Sacramento Republic on a free transfer",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.besoccer.com/team/sacramento-republic",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.besoccer.com",
+    "/team/sacramento-republic",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Dominican Republic WBC roster has star-studded projected lineup, pitching rotation",
+   "content": "Houston Astros' Jose Altuve hits a sacrifice fly during the eighth inning of a baseball game against the Athletics Friday, … in West Sacramento …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://ca.sports.yahoo.com/news/dominican-republic-wbc-roster-star-165603650.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ca.sports.yahoo.com",
+    "/news/dominican-republic-wbc-roster-star-165603650.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Heart Health Park - Sacramento, CA | Tickets, 2026 Event Schedule, Seating Chart",
+   "content": "All DatesSacramento Republic FC vs. FC TulsaSacramento Republic FC vs. Monterey Bay FCSacramento Republic FC vs. El Paso Locomotive FC",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.ticketmaster.com/heart-health-park-tickets-sacramento/venue/229952",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ticketmaster.com",
+    "/heart-health-park-tickets-sacramento/venue/229952",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "MLS Preseason 2020: San Jose Earthquakes close preseason with 3-1 loss to Sacramento Republic | MLSSoccer.com",
+   "content": "The San Jose Earthquakes closed their preseason with a 3-1 defeat to USL Championship side Sacramento Republic on Friday in a closed-door exhibition at Avaya Stadium.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/competitions/mls-regular-season/news/mls-preseason-2020-san-jose-earthquakes-close-preseason-3-1-loss-sacramento-repu",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/competitions/mls-regular-season/news/mls-preseason-2020-san-jose-earthquakes-close-preseason-3-1-loss-sacramento-repu",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Orlando City SC vs Sacramento Republic: Analysis Guide",
+   "content": "Orlando City (Fact Index 0.00): Expected Win % is 30%, compared to a 37% actual win rate for identical index values. Sacramento Republic (Fact Index 0.00): Expected Win % is 35%, compared to a 30% actual win rate for identical index values.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://waveflowsportslab.com/football/guide.php?ref=CRM6b5oUyX6sgVc4WJUzCQ",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "waveflowsportslab.com",
+    "/football/guide.php",
+    "",
+    "ref=CRM6b5oUyX6sgVc4WJUzCQ",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC 2, Seattle Sounders 1 | US Open Cup 2018 | MLSSoccer.com",
+   "content": "Sacramento Republic FC defeated MLS opposition in the U.S.Open Cup fourth round for the second consecutive year, as they defeated the Seattle Sounders 2-1 in extra time at Papa Murphy's Park on Wednesday.The USL side …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/competitions/u-s-open-cup/news/sacramento-republic-fc-2-seattle-sounders-1-us-open-cup-2018-359655",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/competitions/u-s-open-cup/news/sacramento-republic-fc-2-seattle-sounders-1-us-open-cup-2018-359655",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC (SAD) - Rezultati, Statistika, Sastav, Utakmice",
+   "content": "Fudbalska Statistika od FootyStats › SAD › USL 1 › Sacramento Republic FC",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://footystats.org/rs/clubs/sacramento-republic-fc-8041",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "footystats.org",
+    "/rs/clubs/sacramento-republic-fc-8041",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "LA Galaxy 2, Sacramento Republic 0 | 2017 US Open Cup Match Recap | MLSSoccer.com",
+   "content": "#31 Clement Diop (GK), #19 Jaime Villarreal, #24 Emannuel Boateng, #32 Jack McBean, #33 Jose Villarreal, … 63 Tyler Turner Sacramento Republic FC lineup (4-4-2 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/competitions/u-s-open-cup/news/la-galaxy-2-sacramento-republic-0-2017-us-open-cup-match-recap-334312",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/competitions/u-s-open-cup/news/la-galaxy-2-sacramento-republic-0-2017-us-open-cup-match-recap-334312",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic live scores, results, fixtures, Oakland Roots - | Soccer, USA",
+   "content": "Scheduled ; Sacramento Republic (Usa) ; Mar 08 12:00 PM ; Mar 15 08:00 AM ; Mar 22 11:00 AM ; Mar 29 11:00 AM ; Apr 05 11:00 AM ; Las Vegas Lights ; Apr 22 08:00 AM ; Spokane Velocity ; Orange County SC",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.flashscoreusa.com/team/sacramento-republic/z3BFwb83/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.flashscoreusa.com",
+    "/team/sacramento-republic/z3BFwb83/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic vs. San Antonio FC - Live Score - September 20, 2026",
+   "content": "Sep 20 at 11:00 PM Sacramento Republic FC plays host to San Antonio FC, aiming to avoid series sweep Papa Murphy's Park, Sacramento, CA SOCCER Scores Sacramento Republic vs.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.foxsports.com/soccer/usl-championship-sacramento-republic-vs-san-antonio-fc-sep-20-2026-game-boxscore-650254",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foxsports.com",
+    "/soccer/usl-championship-sacramento-republic-vs-san-antonio-fc-sep-20-2026-game-boxscore-650254",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic vs. Minnesota United FC | 2026 Lamar Hunt U.S. Open Cup Game Highlights",
+   "content": "They're going to be led in English (auto-generated) … for settings 0:00 … Sacramento Republic vs. … Watch the Game Highlights from Sacramento Republic vs.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=ayWUcaDkrFI",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=ayWUcaDkrFI",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Match day: New Mexico United at Sacramento Republic FC",
+   "content": "Where: Heart Health Park, Sacramento, California TV/streaming: New Mexico 50/ESPN+ Records: … Sacramento Republic FC (4-3-4) The series: Republic FC leads 8-3-2.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://sports.yahoo.com/articles/match-day-mexico-united-sacramento-030400245.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "sports.yahoo.com",
+    "/articles/match-day-mexico-united-sacramento-030400245.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "The Indomitable Captain: Sacramento Republic legend ‘RoRo’ Lopez announces retirement",
+   "content": "Sacramento Republic is entering a new era of its own. “My heart is here in Sacramento with Republic, and I just wanted to end it where I’ve truly been loved …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.capradio.org/articles/2025/10/24/the-indomitable-captain-sacramento-republic-legend-roro-lopez-announces-retirement/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.capradio.org",
+    "/articles/2025/10/24/the-indomitable-captain-sacramento-republic-legend-roro-lopez-announces-retirement/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Forward Jamieson joins Ross County",
+   "content": "Newport County forward Lewis Jamieson has joined Scottish League One side Ross County for an undisclosed fee Jamieson, signed for The Exiles from United Soccer League Championship club Sacramento Republic in January.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://sports.yahoo.com/articles/forward-jamieson-joins-ross-county-080833919.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "sports.yahoo.com",
+    "/articles/forward-jamieson-joins-ross-county-080833919.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs. San Antonio FC - Cal Expo",
+   "content": "Sacramento Republic FC faces off against San Antonio FC.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://calexpo.com/event/sacramento-republic-fc-vs-san-antonio-fc/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "calexpo.com",
+    "/event/sacramento-republic-fc-vs-san-antonio-fc/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "sac republic stadium",
+  "sac republic academy tryouts 2026",
+  "sacramento republic fc tickets",
+  "sacramento republic fc",
+  "sacramento republic schedule",
+  "sacramento republic lineup sep 30 2023",
+  "sac republic roster 2026",
+  "sacramento republic lineup sep 30 24",
+  "sac republic game tonight",
+  "sacramento republic lineup sep 30 2024",
+  "sacramento republic lineup sep 30 2024 holiday",
+  "sac republic jersey"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

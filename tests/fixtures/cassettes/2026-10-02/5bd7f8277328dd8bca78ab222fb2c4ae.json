@@ -1,0 +1,79 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "福岡ソフトバンクホークス debut starting lineup",
+ "recorded_at": "2026-10-02T08:07:57.221447+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "アニバーサリーいつ来る2026",
+   "content": "4일 전28.5M件の投稿。アニバーサリーいつ来る2026関連の動画をTikTokで探そう。4일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.tiktok.com%2Fapi%2Fimg%2F%3FitemId%3D7678958608616262920%26location%3D0%26aid%3D1988&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.tiktok.com/discover/%E3%82%A2%E3%83%8B%E3%83%90%E3%83%BC%E3%82%B5%E3%83%AA%E3%83%BC%E3%81%84%E3%81%A4%E6%9D%A5%E3%82%8B2026",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.tiktok.com",
+    "/discover/%E3%82%A2%E3%83%8B%E3%83%90%E3%83%BC%E3%82%B5%E3%83%AA%E3%83%BC%E3%81%84%E3%81%A4%E6%9D%A5%E3%82%8B2026",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "福岡ソフトバンクホークス debut starting lineup card",
+  "福岡ソフトバンクホークス debut starting lineup youtube",
+  "福岡ソフトバンクホークス debut starting lineup list",
+  "福岡ソフトバンクホークス debut starting lineup today",
+  "starting lineup baseball",
+  "starting lineup app",
+  "starting lineup figures",
+  "starting lineup hasbro"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

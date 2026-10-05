@@ -1,0 +1,215 @@
+# v4 §9 **단계 4 필수 8건** — "변수 재현 개별 통과"
+#
+# 🔴 **정본은 v4 §9 의 그 한 문장이다.** 이 파일은 그것을 기계가 돌릴 수 있게 푼
+#    것이고, `tests/stage4/test_essential8.py` 가 **정본을 파싱해 여기가 빠뜨린
+#    항목을 찾아낸다.** 항목이 바뀌면 계약이 빨개져 "따라가라"고 말한다.
+#
+# 🔴 **`origin` 은 정본 문구 그대로다** — 계약이 글자까지 대조한다. 바꿔 적으면
+#    그것이 사본이고, 사본은 정본이 바뀔 때 따라가지 않는다.
+#
+# ⚠️ **날짜를 지어내지 않는다.** 정본이 경기 날짜를 대는 항목은 `day` 를 채웠고,
+#    안 대는 항목은 `day:` 를 **비웠다**. 비면 측정에서 "날짜 미상"으로 빠지고,
+#    그것이 보고에 이름으로 남는다(조용한 0 금지). 날짜는 사용자 확인 사항이다.
+#
+# 🔴 **`same_as` — 표기 대응.** 정본은 `스바나제`(한국어)라고 쓰고 자료는
+#    `Svanadze`(로마자)라고 쓴다. §10 게이트 계산법이 *"출처가 같은 원문 또는
+#    **동일 사실을 보도한 다른 매체**"* 를 인정하므로, **같은 사실의 다른 표기**는
+#    통과로 센다.
+#    ⚠️ 실측 2026-09-30: transfermarkt 가 `현재 감독 Ramaz Svanadze … 취임 일자:
+#       2026년 9월 26일` 을 준다(경기는 28일 → 이틀 만에 첫 경기, 정본이 말한 그
+#       사실이다). 그런데 한국어 `스바나제` 로만 채점하면 **완벽한 파서도 0점**이다.
+#    🔴 `same_as` 의 **키는 반드시 `origin_terms` 안에 있어야 한다** — 계약이
+#       그것을 잠근다. 아무 낱말이나 대응으로 붙이면 시험을 내가 고쳐 쓰는 것이다.
+#
+# ⚠️ **`targets` 는 정본이 이름으로 댄 낱말이다.** 로마자 표기는 내가 덧붙였다
+#    (비한국어 매체를 찾으려면 필요하다) — `origin_terms` 가 정본에서 온 것이고,
+#    `extra_terms` 가 내가 덧붙인 것이다. 계약이 `origin_terms` 를 정본과 대조한다.
+#
+# 🔴 **`reach` — "도달"의 뜻을 케이스마다 못 박는다.**
+#
+#    처음에는 낱말 하나가 검색 결과에 있으면 도달로 셌다. **거짓 양성이었다**
+#    (실측 2026-09-30):
+#      · ② 발베르데 → `발베르데·벤탄쿠르·누녜스가 한국 땅을 밟습니다` 가 잡혔다.
+#        그것은 **결장의 반대**다. M11(명단 없이 "완전체"로 씀)이 바로 그 오류다.
+#      · ⑧ 김상식 → 8월 기자회견 기사 열두 건이 잡혔다. 이름만 있고 **그 인용이
+#        없다.**
+#    → 🔴 도달은 **한 자료 안에 그 사실의 요소가 함께 있을 때**만 인정한다.
+#      `reach` 는 `[[대안,대안],[대안,대안]]` 꼴이고, **각 묶음에서 하나씩** 같은
+#      스니펫에 있어야 도달이다. 이 저장소가 반복해 다친 "문자열 검사"의 처방이다.
+
+items:
+  1:
+    origin: 조지아 사뇰 사임·스바나제 첫 경기(전날 기사)
+    var_type: coach_change            # §4 유형표
+    league: 국제대회
+    team: 조지아
+    opponent: 우크라이나
+    day: 2026-09-28                   # §10 (b) 표: "조지아–우크라이나 (09-28)"
+    # 🔴 감독 **교체** 세포다 — 감독 **의도**(인용)와 다른 질문이다(§19-a).
+    #    실측 2026-09-30: 한 세포에 넣었더니 인용 하나를 얻고 멈춰서 교체 자료
+    #    (transfermarkt)에 영영 못 갔다.
+    qtype: coach_change
+    origin_terms: [사뇰, 스바나제, 사임]
+    extra_terms: [Sagnol, Svanadze]
+    same_as:                          # 🔴 정본 낱말 ↔ 자료가 쓰는 표기
+      사뇰: [Sagnol]
+      스바나제: [Svanadze]
+      사임: [해임, 물러, stepped down, resigned, sacked]
+    reach:                            # 🔴 감독 이름 + 교체/취임 표식이 한 자료에
+      - [스바나제, Svanadze]
+      - [취임, 부임, 사임, 선임, 첫 경기, appointed]
+    why_hard: >
+      결장·라인업이 아니라 **감독 교체**다. 그리고 §9 가 "전날 기사"라고 못 박았다 —
+      경기 당일 기사에는 안 나올 수 있고, §19-b-5 의 "시점:전날" 축이 그것을 노린다.
+
+  2:
+    origin: 우루과이 발베르데 결장(일본전 XI에서 도출)
+    var_type: absence
+    league: 국제대회
+    team: 우루과이
+    opponent: 한국                     # §12 M4: "한국–우루과이(09-28)"
+    day: 2026-09-28
+    qtype: lineup                     # 🔴 결장 기사가 아니라 **라인업**에서 도출한다
+    origin_terms: [발베르데]
+    extra_terms: [Valverde]
+    same_as:
+      발베르데: [Valverde, Federico Valverde]
+    reach:                            # 🔴 이름 + **결장** 표식이 한 자료에.
+      #    ⚠️ `발베르데가 한국 땅을 밟습니다`(= 온다) 를 도달로 세면 M11 재발이다
+      - [발베르데, Valverde]
+      - [결장, 제외, 빠졌, 명단에 없, 결장자, out, absent, ruled out]
+    why_hard: >
+      🔴 **결장을 말하는 기사가 없다.** 일본전 선발 XI 에 이름이 없다는 것으로
+      도출해야 한다. v4 §7 R11 이 이것을 규칙으로 만들었다(명단 없이 "주전 출장"을
+      hard 로 쓰지 않는다). 단계 4 에서 재는 것은 **그 XI 를 찾아오나** 까지다 —
+      "XI 에 없으면 결장"이라는 추론은 STEP 2 이고 단계 5 다(§13-2).
+
+  3:
+    origin: 모리야스 "대폭 변경" 인용
+    var_type: lineup_intent
+    league: 국제대회
+    team: 일본
+    opponent:                         # ⚠️ 정본이 상대를 대지 않는다
+    day:                              # ⚠️ 정본이 날짜를 대지 않는다
+    qtype: intent
+    origin_terms: [모리야스, 대폭 변경]
+    extra_terms: [森保, Moriyasu]
+    same_as:
+      모리야스: [森保, Moriyasu, 森保一]
+    reach:
+      - [모리야스, 森保, Moriyasu]
+      - [대폭 변경, 대폭, 변경]
+    why_hard: >
+      인용이다 — §12-c-6 은 따옴표 안 문장이 **본문에 실재할 때만** hard 라고 한다.
+      스니펫만으로는 soft 이므로 §19-b-2 본문 열기가 필요하다.
+
+  4:
+    origin: 아르메니아 센터백 4명(sportaran)
+    var_type: absence
+    league: 국제대회
+    team: 아르메니아
+    opponent: 몬테네그로
+    day: 2026-09-28                   # §10 (b) 표: "아르메니아–몬테네그로"
+    qtype: lineup
+    origin_terms: [센터백, 아르메니아]
+    extra_terms: [sportaran, Armenia, defender]
+    same_as:
+      센터백: [센터 백, 수비수, centre-back, center back, defender, DF]
+      아르메니아: [Armenia, Armenian]
+    reach:                            # 🔴 팀 + 선발 라인업 표식이 한 자료에
+      - [아르메니아, Armenia]
+      - [선발 라인업, 선발, 라인업, lineup, starting]
+    why_hard: >
+      🔴 정본이 **팀 전담 매체 이름**(`sportaran`)을 댔다 — 즉 일반 검색으로는
+      안 나오고 그 매체를 찾아야 한다는 뜻이다. §13-b 에 아르메니아 행이 없으므로
+      §19-b-5 의 "매체명" 축이 쓸 이름이 없다. **여기서 무너질 가능성이 높다.**
+
+  5:
+    origin: 세이부 겐다 벤치(스타멘 표)
+    var_type: absence
+    league: NPB
+    team: 埼玉西武ライオンズ
+    local: 西武
+    opponent: オリックス・バファローズ
+    opponent_local: オリックス
+    day: 2026-09-29                   # §10 (b) 표: "세이부–오릭스" (09-29 묶음)
+    qtype: lineup
+    origin_terms: [겐다, 벤치]
+    extra_terms: [源田, 源田壮亮]
+    same_as:
+      겐다: [源田, 源田壮亮, Genda]
+    # 🔴 **이 건은 "부재"를 잰다.** `겐다 벤치` = 스타멘 표에 그가 **없다**는 사실.
+    #    이름이 검색 결과에 있는지로 채점하면 **정답이 미발견으로 찍힌다**
+    #    (실측 2026-09-30 — 내 첫 채점이 그랬다).
+    absent_from_lineup: [源田, 겐다]
+    min_slots: 5
+    why_hard: >
+      🔴 **"없다"를 찾는 일이다.** 스타멘 표에 겐다가 없다는 것이 사실이다 —
+      단계 3 의 압축 타순 파서가 9칸을 뽑아야 그 부재가 보인다.
+      ⚠️ §13-b 의 세이부 행은 "실측 후 1차 소스 확정"이고 매체 토큰이 `닛칸`(한국어
+      표기)이다 — 일본어 검색에 그 낱말을 넣으면 0건이다(단계 3 이 남긴 기존 결함).
+
+  6:
+    origin: 마리보르–고리차 친선전 판별
+    var_type: match_type
+    league: 국제대회
+    team: 마리보르
+    opponent: 고리차
+    day:                              # ⚠️ 정본이 날짜를 대지 않는다
+    qtype: intent
+    origin_terms: [마리보르, 고리차, 친선]
+    extra_terms: [Maribor, Gorica, friendly, prijateljska]
+    same_as:
+      마리보르: [Maribor]
+      고리차: [Gorica]
+      친선: [friendly, prijateljska, 친선경기]
+    reach:
+      - [마리보르, Maribor]
+      - [친선, friendly, prijateljska]
+    why_hard: >
+      🔴 **경기의 종류**를 판별하는 일이다(친선이냐 공식이냐). §4 `match_type` 은
+      **전제 유형**이라 틀리면 시나리오가 통째로 무효다(§19 premise). 슬로베니아어
+      매체를 봐야 할 수 있는데 `LANGS` 에 슬로베니아어가 없다 — 한국어·영어로 던진다.
+
+  7:
+    origin: 램버트 이틀 휴식(투구수 이력)
+    var_type: pitcher_state
+    league: MLB
+    team:                             # ⚠️ 정본이 소속 팀을 대지 않는다
+    opponent:
+    day:                              # ⚠️ 정본이 날짜를 대지 않는다
+    qtype: starter_recent
+    origin_terms: [램버트, 이틀 휴식]
+    extra_terms: [Lambert, Peter Lambert, rest]
+    same_as:
+      램버트: [Lambert, Peter Lambert]
+      이틀 휴식: [2일 휴식, two days rest, 2 days rest, rest_days=2]
+    reach:
+      - [램버트, Lambert]
+      - [휴식, rest, days rest, 등판]
+    why_hard: >
+      🔴 **투구수 이력에서 계산해야 한다** — "이틀 휴식"이라고 적은 기사가 아니라
+      최근 등판일에서 빼야 나온다. MLB statsapi 에 그 이력이 있으므로 검색이
+      아니라 **공식 API** 경로가 맞다. 단계 3 은 그 경로를 아직 세포로 안 묶었다.
+
+  8:
+    origin: 김상식 "전후반 두 플랜·호앙득 후반"(VFF 회견)
+    var_type: lineup_intent
+    league: 국제대회
+    team: 베트남
+    opponent: 태국
+    day: 2026-09-29                   # §10 (b) 표: "태국–베트남 (09-29)"
+    qtype: intent
+    origin_terms: [김상식, 전후반, 호앙득]
+    extra_terms: [Kim Sang-sik, VFF, Hoàng Đức, Hoang Duc]
+    same_as:
+      김상식: [Kim Sang-sik, Kim Sang Sik]
+      호앙득: ["Hoàng Đức", Hoang Duc, "Nguyễn Hoàng Đức"]
+    reach:                            # 🔴 감독 + **그 발언**이 한 자료에.
+      #    ⚠️ 이름만 있는 8월 회견 기사를 도달로 세면 아무 의미가 없다
+      - [김상식, Kim Sang-sik]
+      - [전후반, 두 플랜, 호앙득, Hoàng Đức, Hoang Duc]
+    why_hard: >
+      🔴 정본이 **출처를 VFF 회견**이라고 댔다 — 베트남축구협회 공식 회견이고
+      베트남어다. `LANGS` 에 베트남어가 없다. 그리고 인용이라 §12-c-6 본문 대조가
+      필요하다.

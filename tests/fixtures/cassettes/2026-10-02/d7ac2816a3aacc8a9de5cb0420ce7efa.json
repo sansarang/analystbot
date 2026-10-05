@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.aiscore.com/live/football-australia-u19-vs-china-u19",
+ "query": "",
+ "recorded_at": "2026-10-02T05:51:05.035258+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

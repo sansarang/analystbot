@@ -1,0 +1,460 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "베트남 감독 인터뷰 9월 29일",
+ "recorded_at": "2026-09-30T14:41:54.079138+00:00",
+ "results": [
+  {
+   "url": "https://www.vietnam.vn/ko/nhan-dinh-viet-nam-vs-thai-lan-19h30-ngay-29-9-day-la-dinh-cao-cua-bong-da-dong-nam-a",
+   "title": "베트남 대 태국 경기 프리뷰, 9월 29일 저녁 7시 30분: 동남아시아 축...",
+   "content": "2 days ago · 베트남 대 태국 경기 프리뷰, 9월 29일 저녁 7시 30분: 동남아시아 축구의 정점을 가리는 경기입니다. TPO - 김상식 감독이 이끄는 태국 대표팀은 2026 아세안컵 결승전에서 승리한 이후 다시 한번 태국과 맞붙게 됩니다. 하지만 이번에는 상황이 다릅니다. '전쟁 코끼리'라는 별명을 가진 태국 대표팀은 ...",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.vietnam.vn",
+    "/ko/nhan-dinh-viet-nam-vs-thai-lan-19h30-ngay-29-9-day-la-dinh-cao-cua-bong-da-dong-nam-a",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "yahoo"
+   ],
+   "positions": [
+    2,
+    1
+   ],
+   "score": 3.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.newsis.com/view/NISX20260828_0003766933",
+   "title": "베트남 축구'왕'이 된 김상식 감독 \"월드컵 진출 목표\" [인터뷰] :: ...",
+   "content": "Aug 28, 2026 · 베트남은 26일 베트남 하노이의 미딘 국립경기장에서 열린 태국과의 현대컵 결승 2차전에서 2-2로 비겨 합계 점수 4-2로 앞서 우승컵을 들어 올렸다.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.newsis.com",
+    "/view/NISX20260828_0003766933",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "yahoo"
+   ],
+   "positions": [
+    3,
+    5
+   ],
+   "score": 1.0666666666666667,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://chaovietnam.co.kr/189808/",
+   "title": "베트남, 태국에 0-2 완패… 김상식 감독 체제 첫 패배로 결승 진출 ...",
+   "content": "12시간 전 · 베트남 축구 대표팀이 9월 29일 FIFA 아세안컵 2026 B조 경기에서 태국에 0-2로 패배했다. 이는 김상식 감독이 베트남 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "chaovietnam.co.kr",
+    "/189808/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://sports.news.nate.com/view/20260828n20873",
+   "title": "'동남아 WC 2연패 신화' 김상식 베트남 감독 \"월드컵 본선 진출하고파...",
+   "content": "Aug 28, 2026 · 김 감독은 성인 대표팀을 지휘해 9월 인도네시아에서 열리는 FIFA 아세안컵 (파키스탄·태국·필리핀 조)에 나선다. 이어 1월 아시아축구연맹 (AFC) 아시안컵 본선에서는 조국 대한민국과 맞대결도 예정돼 있다.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "sports.news.nate.com",
+    "/view/20260828n20873",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "yahoo"
+   ],
+   "positions": [
+    9,
+    6
+   ],
+   "score": 0.5555555555555556,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "'동남아 WC 2연패 신화' 김상식 베트남 감독 \"월드컵 본선 진출하고파...",
+   "content": "Aug 28, 2026 · 김 감독은 성인 대표팀을 지휘해 9월 인도네시아에서 열리는 FIFA 아세안컵 (파키스탄·태국·필리핀 조)에 나선다. 이어 1월 아시아축구연맹 (AFC) 아시안컵 본선에서는 조국 대한민국과 맞대결도 예정돼 있다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.mt.co.kr/sports/2026/08/28/2026082813362464185",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.mt.co.kr",
+    "/sports/2026/08/28/2026082813362464185",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "태국 대 베트남 축구 경기 프리뷰 (9월 29일 오후 7시 30분): B조 1위...",
+   "content": "2 days ago · 베트남 축구 국가대표팀은 9월 29일 오후 7시 30분 인도네시아 반둥의 시 잘락 하루팟 스타디움에서 태국과 2026 FIFA 아세안컵 1부 리그 B조 두 번째 경기를 치릅니다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.vietnam.vn/ko/nhan-dinh-bong-da-thai-lan-vs-viet-nam-19h30-ngay-29-9-dai-chien-quyet-dinh-ngoi-dau-bang-b",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.vietnam.vn",
+    "/ko/nhan-dinh-bong-da-thai-lan-vs-viet-nam-19h30-ngay-29-9-dai-chien-quyet-dinh-ngoi-dau-bang-b",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://chaovietnam.co.kr/186721/",
+   "title": "\"월드컵 꿈부터 유머까지\"… 한국 언론, 김상식 감독 깊은 ...",
+   "content": "2026년 8월 31일 · 베트남 축구대표팀을 이끌고 2026 아세안축구연맹 (AFF) 컵 2연패를 달성한 김상식 감독의 언론 인터뷰가 한국 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "chaovietnam.co.kr",
+    "/186721/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "[GOAL 하노이] '국민 영웅'의 일거수일투족 놓치지 않으려는 베트남 ...",
+   "content": "Aug 26, 2026 · \"베트남 팬들로부터 받는 사랑과 축구에 대한 열기를 느끼러 왔다\"라는 기자의 말에 그는 \"매번 2차전이 원정 경기라서 저도 그 열기를 직접적으로 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.goal.com/kr/%EB%89%B4%EC%8A%A4/goal-%E1%84%92%E1%85%A1%E1%84%82%E1%85%A9%E1%84%8B%E1%85%B5--%E1%84%80%E1%85%AE%E1%86%A8%E1%84%86%E1%85%B5%E1%86%AB-%E1%84%8B%E1%85%A7%E1%86%BC%E1%84%8B%E1%85%AE%E1%86%BC-%E1%84%8B%E1%85%B4-%E1%84%8B%E1%85%B5%E1%86%AF%E1%84%80%E1%85%A5%E1%84%89%E1%85%AE%E1%84%8B%E1%85%B5%E1%86%AF%E1%84%90%E1%85%AE%E1%84%8C%E1%85%A9%E1%86%A8-%E1%84%82%E1%85%A9%E1%87%82%E1%84%8E%E1%85%B5%E1%84%8C%E1%85%B5-%E1%84%8B%E1%85%A1%E1%86%AD%E1%84%8B%E1%85%B3%E1%84%85%E1%85%A7%E1%84%82%E1%85%B3%E1%86%AB-%E1%84%87%E1%85%A6%E1%84%90%E1%85%B3%E1%84%82%E1%85%A1%E1%86%B7-%E1%84%8E%E1%85%B1%E1%84%8C%E1%85%A2%E1%84%8C%E1%85%B5%E1%86%AB--%E1%84%80%E1%85%B5%E1%86%B7%E1%84%89%E1%85%A1%E1%86%BC%E1%84%89%E1%85%B5%E1%86%A8-%E1%84%80%E1%85%A1%E1%86%B7%E1%84%83%E1%85%A9%E1%86%A8-%E1%84%8B%E1%85%A7%E1%86%A8%E1%84%89%E1%85%A1%E1%84%8B%E1%85%A6-%E1%84%92%E1%85%A1%E1%86%AB-%E1%84%92%E1%85%AC%E1%86%A8-%E1%84%80%E1%85%B3%E1%86%BA%E1%84%82%E1%85%B3%E1%86%AB%E1%84%83%E1%85%A1/blt26b2a46442241f3e",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/kr/%EB%89%B4%EC%8A%A4/goal-%E1%84%92%E1%85%A1%E1%84%82%E1%85%A9%E1%84%8B%E1%85%B5--%E1%84%80%E1%85%AE%E1%86%A8%E1%84%86%E1%85%B5%E1%86%AB-%E1%84%8B%E1%85%A7%E1%86%BC%E1%84%8B%E1%85%AE%E1%86%BC-%E1%84%8B%E1%85%B4-%E1%84%8B%E1%85%B5%E1%86%AF%E1%84%80%E1%85%A5%E1%84%89%E1%85%AE%E1%84%8B%E1%85%B5%E1%86%AF%E1%84%90%E1%85%AE%E1%84%8C%E1%85%A9%E1%86%A8-%E1%84%82%E1%85%A9%E1%87%82%E1%84%8E%E1%85%B5%E1%84%8C%E1%85%B5-%E1%84%8B%E1%85%A1%E1%86%AD%E1%84%8B%E1%85%B3%E1%84%85%E1%85%A7%E1%84%82%E1%85%B3%E1%86%AB-%E1%84%87%E1%85%A6%E1%84%90%E1%85%B3%E1%84%82%E1%85%A1%E1%86%B7-%E1%84%8E%E1%85%B1%E1%84%8C%E1%85%A2%E1%84%8C%E1%85%B5%E1%86%AB--%E1%84%80%E1%85%B5%E1%86%B7%E1%84%89%E1%85%A1%E1%86%BC%E1%84%89%E1%85%B5%E1%86%A8-%E1%84%80%E1%85%A1%E1%86%B7%E1%84%83%E1%85%A9%E1%86%A8-%E1%84%8B%E1%85%A7%E1%86%A8%E1%84%89%E1%85%A1%E1%84%8B%E1%85%A6-%E1%84%92%E1%85%A1%E1%86%AB-%E1%84%92%E1%85%AC%E1%86%A8-%E1%84%80%E1%85%B3%E1%86%BA%E1%84%82%E1%85%B3%E1%86%AB%E1%84%83%E1%85%A1/blt26b2a46442241f3e",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.newsis.com/view/NISX20260923_0003801469",
+   "title": "'우승 청부사' 베트남 김상식 감독, FIFA 아세안컵 초대 챔피언 ...",
+   "content": "2026년 9월 23일 · 베트남은 디비전1 B조에서 필리핀 (21일 오후 9시30분), 태국 (29일 오후 9시30분), 파키스탄 (일 오후 6시)을 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.newsis.com",
+    "/view/NISX20260923_0003801469",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.joongang.co.kr/article/25457095",
+   "title": "동남아 평정한 김상식 베트남 감독 “상식 축구의 다음 목표는 ...",
+   "content": "2026년 8월 28일 · 현대컵 우승 직후 베트남 선수들로부터 헹가래를 받는 김상식 베트남 축구대표팀 감독. 사진 디제이 매니지먼트 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.joongang.co.kr",
+    "/article/25457095",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://koreacoingod.tistory.com/entry/%EB%B2%A0%ED%8A%B8%EB%82%A8-%EC%B6%95%EA%B5%AC-%EA%B5%AD%EA%B0%80%EB%8C%80%ED%91%9C%ED%8C%80%EC%9D%80-%EC%B5%9C%EA%B0%95%EC%9D%98-%EC%84%A0%EC%88%98%EB%8B%A8%EC%9D%84-%EC%95%9E%EC%84%B8%EC%9B%8C-9%EC%9B%94-23%EC%9D%BC-%EC%9D%B8%EB%8F%84%EB%84%A4%EC%8B%9C%EC%95%84%EB%A1%9C-%EC%B6%9C%EA%B5%AD%ED%95%B4-FIFA-%EC%95%84%EC%84%B8%EC%95%88%EC%BB%B5-%EC%9A%B0%EC%8A%B9%EC%9D%84-%EB%86%93%EA%B3%A0-%EA%B2%BD%EC%9F%81%ED%95%A0-%EC%98%88%EC%A0%95%EC%9D%B4%EB%8B%A4",
+   "title": "베트남 축구 국가대표팀은 최강의 선수단을 앞세워 9월 23일 ...",
+   "content": "일정에 따르면 베트남 대표팀은 9월 21일에 집결하여 9월 23일 오전 8시 40분에 인도네시아로 출국합니다. 김상식 감독이 이끄는 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "koreacoingod.tistory.com",
+    "/entry/%EB%B2%A0%ED%8A%B8%EB%82%A8-%EC%B6%95%EA%B5%AC-%EA%B5%AD%EA%B0%80%EB%8C%80%ED%91%9C%ED%8C%80%EC%9D%80-%EC%B5%9C%EA%B0%95%EC%9D%98-%EC%84%A0%EC%88%98%EB%8B%A8%EC%9D%84-%EC%95%9E%EC%84%B8%EC%9B%8C-9%EC%9B%94-23%EC%9D%BC-%EC%9D%B8%EB%8F%84%EB%84%A4%EC%8B%9C%EC%95%84%EB%A1%9C-%EC%B6%9C%EA%B5%AD%ED%95%B4-FIFA-%EC%95%84%EC%84%B8%EC%95%88%EC%BB%B5-%EC%9A%B0%EC%8A%B9%EC%9D%84-%EB%86%93%EA%B3%A0-%EA%B2%BD%EC%9F%81%ED%95%A0-%EC%98%88%EC%A0%95%EC%9D%B4%EB%8B%A4",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "'베트남 축구 영웅' 김상식 감독 \"월드컵 출전 목표…세계적 감독들과 ...",
+   "content": "Aug 28, 2026 · 이로써 김 감독은 지난해 7월 아세안축구연맹 (AFF) 23세 이하 (U-23) 챔피언십, 12월 동남아시안 (SEA)게임에 이어 베트남 축구에 또 하나의 트로피를 안겼다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.chosun.com/sports/football/2026/08/28/GM4GIZBWGI2WMMTDGBSDIYRRGQ/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.chosun.com",
+    "/sports/football/2026/08/28/GM4GIZBWGI2WMMTDGBSDIYRRGQ/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://namu.wiki/w/%EB%B2%A0%ED%8A%B8%EB%82%A8%20%EC%B6%95%EA%B5%AC%20%EA%B5%AD%EA%B0%80%EB%8C%80%ED%91%9C%ED%8C%80%2F%EA%B9%80%EC%83%81%EC%8B%9D%ED%98%B8",
+   "title": "베트남 축구 국가대표팀/김상식호 - 나무위키",
+   "content": "2026년 9월 16일 · 2023년, 6년간 베트남 축구 국가대표팀 을 이끄며 베트남을 최전성기로 이끈 박항서 감독이 베트남을 떠나자 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EB%B2%A0%ED%8A%B8%EB%82%A8%20%EC%B6%95%EA%B5%AC%20%EA%B5%AD%EA%B0%80%EB%8C%80%ED%91%9C%ED%8C%80%2F%EA%B9%80%EC%83%81%EC%8B%9D%ED%98%B8",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://sports.news.nate.com/view/20260828n21448",
+   "title": "베트남 축구'왕'이 된 김상식 감독 \"월드컵 진출 목표\" [인터뷰 ...",
+   "content": "2026년 8월 28일 · 베트남 축구대표팀 사령탑으로는 최초로 '동남아 월드컵'으로 불리는 현대컵 2연패를 달성한 김상식 감독이 큰 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "sports.news.nate.com",
+    "/view/20260828n21448",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

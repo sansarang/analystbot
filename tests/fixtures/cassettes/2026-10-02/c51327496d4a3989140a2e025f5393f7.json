@@ -1,0 +1,574 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "福岡ソフトバンクホークス 先発 登板 Oct 1",
+ "recorded_at": "2026-10-02T08:07:29.691463+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "試合速報 - 福岡ソフトバンクホークス",
+   "content": "2023.11.21.more 試合速報 2026.09.19 SAT 前の試合 試合日程・結果 次の試合 試合トップ 試合速報 パーソル パ・リーグ ホーム 試合開始 14:00 ビジター 早川 前田悠 楽天モバイル 最強パーク 1 2 3 4 5 6 7 8 9 10 11 12 R H 0 0 0 02023.11.21.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/gamelive/result/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/gamelive/result/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 10 · vs. 日本ハム · 3-2 · 試合終了 · みずほPayPay · 勝：松本晴 · Ｓ：杉山, 金 : 11 · vs. ロッテ · 11-1 · 試合終了 · みずほPayPay · 勝：前田悠, 土 : 12 · vs. ロッテ · 5-4 · 試合終了 · みずほPayPay · 勝： · ラトリッジ · Ｓ：杉山, 日 : 13 · vs. ロッテ · 13:30 · 見どころ · みずほPayPay, 月 : 14 · 試合なし, 火 : 15 · vs. オリックス · 18:00 · 試合前 · 京セラ....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/12/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/12/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ｏ．コラス（福岡ソフトバンクホークス） | 個人年度別成績",
+   "content": "投打 : 左投左打, 身長／体重 : 186cm／95kg, 生年月日 : 1998年9月17日, 経歴 : エイデデサンティアゴデクーバ高 - キューバ・サンティアゴデクーバ",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "http://npb.jp/bis/players/83985134.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/players/83985134.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ａ．ウォーカー（福岡ソフトバンクホークス） | 個人年度別成績",
+   "content": "投打 : 右投右打, 身長／体重 : 196cm／104kg, 生年月日 : 1991年10月18日, 経歴 : ジャクソンビル大 - 米マイナー",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://npb.jp/bis/players/03705155.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "npb.jp",
+    "/bis/players/03705155.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークスの先発ローテーション予想｜プロ野球2026 - スポー....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.sportingnews.com/jp/npb/news/hawks-rotation/91cc0fad205cee2882459835",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.sportingnews.com",
+    "/jp/npb/news/hawks-rotation/91cc0fad205cee2882459835",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス 選手成績 プロ野球 - スポーツナビ",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/12/memberlist?kind=p",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/12/memberlist",
+    "",
+    "kind=p",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2020年シーズン 福岡ソフトバンクホークス主催試合放送決定！ | お知らせ | JCOM....",
+   "content": "平素よりJ:COMサービスをご利用いただき、誠にありがとうございます。 2020年3月1日（日）より、新しいスポーツ専門チャンネル「スポーツライブ＋（プラス）」の放送をJ:COMの多チャンネルサービス「J:COM TV」で開始いたします。 「スポーツライブ＋」は、福岡ソフトバンクホークス主催試合の生中継を中心に、海外サッカーや国内サッカー、Bリーグなどのスポーツ中継......",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://notices.jcom.co.jp/notice/91175.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "notices.jcom.co.jp",
+    "/notice/91175.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "スタジアム - 福岡ソフトバンクホークス",
+   "content": "2026.06.19.施設紹介2026.06.19.スタジアムマップ · グッズ・グルメ · 筑後ファンサービスプログラムタマスタ筑後 キャラクター・DJ · 施設内見学ツアー · タマスタ筑後 完成までのあゆみ",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.softbankhawks.co.jp%2Fmedia%2Fsites%2F7%2Ffarm%2Fimg_tamasta-map_kv-1024x576.webp&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/farm/stadium.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/farm/stadium.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ログイン・有料会員登録 - ログイン",
+   "content": "月額330円（税込）で選手直筆サイン入りグッズなどのプレゼント企画や、ホークスの裏側や選手たちの素顔に迫るコラムや動画などが盛りだくさん！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.softbankhawks.co.jp%2Fentame%2Fmobile%2Flp%2Fimg%2Fmobataka_kv.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://sp.softbankhawks.co.jp/dcms/signups/login/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sp.softbankhawks.co.jp",
+    "/dcms/signups/login/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス",
+   "content": "2021.09.16.ペナントレースを戦うチームの傍らで様々なファンサービスを生み出しているのは、ホークスで働く社員ひとりひとり。そんな私たち、ホークスを形作る中の人たちの考えていることや想いを発信していくため、 ホークス（鷹）社員に脈々と受け継がれる想い→TAKAism と題して、社員のインタビューをお届けします。フォロー2021.09.16.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.st-note.com%2Fproduction%2Fuploads%2Fimages%2F78390253%2Fe33ae9acf1343fffdf5365b49f730e0f.jpg%3Ffit%3Dbounds%26format%3Djpeg%26height%3D1024%26quality%3D85%26width%3D1024&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://note.com/softbankhawks",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "note.com",
+    "/softbankhawks",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス応援サイト｜KBC九州朝日放送",
+   "content": "【小久保監督がファンに誓う】「力を貸してください」CSへ向けた熱い決意！60年ぶりのリーグ3連覇達成セレモニー【スポーツキラリ★】 ; 【試験に出る】凄すぎるマサキングの進化！２８号弾は衝撃角度でレフトスタンドに突き刺さる！【ぎゅっスポ！ホークスこぼれ話】（2026年9月29日OA） ; ありがとう中村晃！愛され続けた男のラストゲーム、仲間たちが贈る最高の花....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fkbc.co.jp%2Fhawks%2Fimg%2Fsns2604.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://kbc.co.jp/hawks/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "kbc.co.jp",
+    "/hawks/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】福岡ソフトバンクホークス VS 千葉ロッテマリーンズ(2021年3月26日)｜....",
+   "content": "3주 전観客数/試合時間 ; 観客数 : 9,977人, 試合時間 : 2時間34分 ; 球審 : 白井 一行, 塁審 : 飯塚 富司（一）、丹波 幸一（二）、嶋田 哲也（三）3주 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg.youtube.com%2Fvi%2Frk9ScUAJ2Z0%2Fsddefault.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://pacificleague.com/game/25629",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pacificleague.com",
+    "/game/25629",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】福岡ソフトバンクホークス VS 千葉ロッテマリーンズ(2024年4月4日)｜試....",
+   "content": "2026.05.17.ホークス・大津亮介投手・澤柳亮太郎投手・岩井俊介投手ヒーローインタビュー 4月4日 福岡ソフトバンクホークス 対 千葉ロッテマリーンズ2026.05.17.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg.youtube.com%2Fvi%2FhtgI1fSSyRw%2Fsddefault.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://pacificleague.com/game/30949",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pacificleague.com",
+    "/game/30949",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス エムアイカードのご紹介｜百貨店のクレジットカ....",
+   "content": "HAWKS公式オンライン ストア クーポン ; 選手直筆サインボール （ケース付き） ; 特別コース",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww2.micard.co.jp%2Fcontent%2Fdam%2Fmicard%2Fimages%2Fcard%2Fogp%2Fhawks_ogp.jpg.transform%2Fthumbnail%2Fimg.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www2.micard.co.jp/card/hawks/web.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www2.micard.co.jp",
+    "/card/hawks/web.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス クラブホークス会報誌 2021シーズン終盤号 栗原陵....",
+   "content": "자동 번역 후쿠오카 소프트뱅크 호크스 클럽 호크스 회보지 2021 시즌 종반호 쿠리하라 료야 히가시하마 쿄 마사고 유스케 타니가와라 켄타",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fauctions.c.yimg.jp%2Fimages.auctions.yahoo.co.jp%2Fimage%2Fdr000%2Fauc0205%2Fuser%2F97d48f2148598ea53f78d54c1e4050112314a406b9e5a1387b65cdbdee970d1c%2Fi-img900x1200-17782886503092nekjb245435.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.fromjapan.co.jp/japan/ko/auction/yahoo/input/s1229285161/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.fromjapan.co.jp",
+    "/japan/ko/auction/yahoo/input/s1229285161/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

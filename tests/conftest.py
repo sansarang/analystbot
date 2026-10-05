@@ -1,155 +1,143 @@
-"""테스트 공용 픽스처: 격리된 analystbot_test DB 생성 후 스키마 적용."""
+"""픽스처 + 🔴 **단계 잠금**(v4 §13-2).
 
+asyncio 표식만 두던 파일이다. 단계 2-0 에서 **수집 훅**이 붙었다 — 승인 서명이
+없는 단계의 테스트는 **수집조차 되지 않는다.**
+
+⚠️ 판단은 `tests/stage_gate.py` 가 한다. 여기는 그 판단을 pytest 에 이어 주는
+   배선뿐이다 — 규칙을 두 곳에 적지 않는다.
+"""
 import os
+import pathlib
+import shutil
+import sys
+import sysconfig
 
-# 테스트는 외부 API를 절대 치지 않는다 — config를 읽기 전에 강제 목 모드 고정.
-os.environ.setdefault("FORCE_MOCK", "true")
-# 운영 기본값은 grok,perplexity disabled. 테스트는 기존 경로(목 리서치)를 유지한다.
-os.environ.setdefault("DISABLED_PROVIDERS", "")
-
-import asyncpg
 import pytest
-import redis.asyncio as aioredis
 
-from app.db import apply_schema
+import tests.stage_gate as stage_gate
 
-ADMIN_DSN = "postgresql://analyst:analyst@localhost:5432/postgres"
-TEST_DB = "analystbot_test"
-TEST_DSN = f"postgresql://analyst:analyst@localhost:5432/{TEST_DB}"
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 
-
-@pytest.fixture
-async def db_pool():
-    admin = await asyncpg.connect(ADMIN_DSN)
-    await admin.execute(f"DROP DATABASE IF EXISTS {TEST_DB} WITH (FORCE)")
-    await admin.execute(f"CREATE DATABASE {TEST_DB}")
-    await admin.close()
-
-    pool = await asyncpg.create_pool(TEST_DSN)
-    async with pool.acquire() as conn:
-        await apply_schema(conn)
-    yield pool
-    await pool.close()
+#: 잠겨서 버린 경로의 사유. 🔴 보고에 이름으로 낸다(조용한 0 금지).
+_LOCK_NOTES = pytest.StashKey[list]()
 
 
-@pytest.fixture
-async def redis_client():
-    r = aioredis.from_url("redis://localhost:6379/15", decode_responses=True)
-    await r.flushdb()
-    yield r
-    await r.flushdb()
-    await r.aclose()
+def pytest_configure(config):
+    config.addinivalue_line("markers", "asyncio: 비동기 계약")
+    _drop_bytecode()
+    _unplug_env()
 
 
-# ---------------------------------------------------------------- 외부 발신 차단
+def _unplug_env() -> list[str]:
+    """🔴🔴 **계약은 이 기계의 `.env` 를 읽지 않는다**(2026-10-04).
 
-@pytest.fixture(autouse=True)
-def _no_outbound_telegram(monkeypatch, request):
-    """테스트는 절대 실제 텔레그램으로 발송하지 않는다.
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 — 결정 ③이 그 결합을 드러냈다
+    ══════════════════════════════════════════════════════════════════
 
-    실사고(2026-08-25): [7] 단계 실패 알림을 붙인 뒤 `pytest`를 돌릴 때마다
-    build_analysis가 테스트 픽스처로 실패 알림을 만들어 **관리자 채팅으로
-    실제 발송**했다. "λ 0/5"·"리서치 13/15" 같은 실슬레이트에 없는 숫자가
-    1~2분 간격으로 쏟아진 원인이 이것이다. 억제 로직 문제가 아니라
-    테스트가 외부로 나간 문제였다.
+    `app/__init__.py` 가 `.env` 를 **`os.environ` 으로** 올린다. 그래서 내 기계의
+    `AGENT_ENABLED=true` 가 스위트에 그대로 들어왔고, 결정 ③(에이전트가 켜지면
+    세포는 검색하지 않는다)을 넣자 **세포 검색 경로를 시험하는 39건이 빨개졌다.**
 
-    가드는 send_telegram을 **차단 스텁**으로 갈아끼운다. 스텁은 예외를 던지지 않고
-    False를 반환하며 발송 시도를 기록한다 — 예외로 만들면 "토큰이 없으면 조용히
-    False" 같은 정상 경로 테스트가 깨진다. 자체적으로 send_telegram을 대체하는
-    테스트(test_alerts·test_quota)는 이 스텁을 덮어쓰므로 영향을 받지 않는다.
+    🔴 그 39건은 **멀쩡하다** — 그들은 에이전트가 **꺼져 있을 때**의 길을
+       시험한다. ⚠️ 빨개진 까닭은 *"계약 결과가 이 기계의 설정에 달려 있었다"*
+       는 것이고, 그것이 진짜 결함이다: 같은 코드가 기계마다 다른 색을 낸다.
 
-    httpx.AsyncClient를 갈아끼우는 방식은 쓰지 않는다 — 모듈 전역이라
-    스로틀·수집기 테스트까지 함께 깨진다.
+    🔴 그래서 **스위치를 뽑는다** — 스위치를 켜고 도는 길은 그 스위치를
+       **스스로 켜는 계약**이 시험한다(`test_dec3_cells_no_search.py` 가
+       `may_search(agent_on=True)` 를 직접 묻는다).
+    ⚠️ 돈·발송처럼 **꺼져 있어야 하는** 것은 건드리지 않는다 — 여기서 뽑는 것은
+       *"기능을 켜는"* 스위치뿐이고, 그 목록을 **글로** 남긴다(#3).
     """
-    blocked: list[str] = []
-
-    async def _blocked(text: str, **_kwargs) -> bool:
-        blocked.append(text)
-        return False
-
-    import app.alerts as alerts_mod
-    import app.notify as notify_mod
-
-    # 발송 지점은 **하나**다 — alerts는 notify 모듈 속성으로 부른다.
-    #   (종전에는 alerts가 함수를 자기 이름공간에 묶어 두 곳을 다 막아야 했고,
-    #    한쪽만 막으면 조용히 새어 나갔다.)
-    monkeypatch.setattr(notify_mod, "send_telegram", _blocked)
-    assert not hasattr(alerts_mod, "send_telegram"), \
-        "alerts가 send_telegram을 다시 자기 이름공간에 묶었다 — 발송 지점이 갈라진다"
-
-    # 억제 상태도 격리한다. 안 하면 테스트가 **운영 Redis의 알림 예산**
-    # (alert:budget, 10분 12건)을 갉아먹어 실제 장애 알림이 막힌다.
-    # 실측(2026-08-25): 테스트를 돌린 뒤 KBO 파싱 실패 알림이 예산 초과로 억제됐다.
-    class _MemRedis:
-        def __init__(self):
-            self.store: dict = {}
-
-        async def set(self, k, v, nx=False, ex=None):
-            if nx and k in self.store:
-                return None
-            self.store[k] = v
-            return True
-
-        async def get(self, k):
-            return self.store.get(k)
-
-        async def incr(self, k):
-            self.store[k] = int(self.store.get(k, 0)) + 1
-            return self.store[k]
-
-        async def expire(self, k, sec):
-            return True
-
-        async def delete(self, *ks):
-            for k in ks:
-                self.store.pop(k, None)
-
-        async def keys(self, pattern):
-            return list(self.store)
-
-        async def aclose(self):
-            pass
-
-    _mem = _MemRedis()
-
-    async def _fake_redis():
-        return _mem
-
-    monkeypatch.setattr(alerts_mod, "_redis", _fake_redis)
-    yield
-    if blocked:
-        # 새 코드가 알림 경로를 늘렸다는 신호 — 조용히 넘기지 않는다
-        print(f"\n[conftest] 테스트 중 텔레그램 발송 {len(blocked)}건 차단됨 "
-              f"(첫 건: {blocked[0][:80]!r})")
+    pulled = []
+    for key in ("AGENT_ENABLED",):
+        if os.environ.get(key):
+            pulled.append(f"{key}={os.environ[key]}")
+        os.environ[key] = ""
+    # 🔴 `get_settings` 는 `lru_cache` 다 — 뽑은 뒤 **비워야** 먹는다
+    try:
+        from app.config import get_settings
+        get_settings.cache_clear()
+    except Exception:                                   # noqa: BLE001
+        pass
+    return pulled
 
 
-@pytest.fixture(autouse=True)
-def _no_outbound_collectors(monkeypatch):
-    """테스트는 외부 수집 API(Open-Meteo·statsapi 라인업)를 호출하지 않는다.
+def _drop_bytecode() -> list[str]:
+    """🔴🔴 **스위트 시작 전에 `__pycache__` 를 지운다** — 구조로 막는다.
 
-    실사고(2026-08-25): 파이프라인에 날씨·결장 수집을 붙이자 `pytest`가
-    16초 → 107초가 됐다. build_analysis가 테스트에서도 실제 HTTP를 때린 것이다.
-    테스트는 hermetic해야 한다 — 필요하면 각 테스트가 직접 되돌려 쓴다.
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 규율이 아니라 여기인가 — 같은 함정에 **두 번** 빠졌다
+    ══════════════════════════════════════════════════════════════════
+
+    ⚠️ 2026-10-02: `effect_of("느낌")` 가 코드를 되돌린 뒤에도 `제거` 를 냈다.
+    ⚠️ 2026-10-04: 돌연변이를 되돌린 뒤 `test_영어가_먼저다` 가 빨간 채였다.
+       🔴 나는 그것을 **전역 오염으로 오진하고 네 번 헛짚었다**(디렉터리 이분 ·
+       `label_of` 계측 · `is_code` 확인 · 고정물 재현).
+
+    🔴 **사용자 지시 2026-10-04**: *"같은 함정에 두 번 빠졌으면 규율 한 줄로는
+       세 번째를 못 막는다. 두 가지를 코드로 박아라 — 실행기에
+       `PYTHONDONTWRITEBYTECODE=1` 을 고정하고, 스위트 시작 전에
+       `__pycache__` 를 지운다."*
+
+    ⚠️ `.venv` 와 표준 라이브러리는 **건드리지 않는다** — 우리가 고치는 코드가
+       아니고, 지우면 다음 실행이 느려질 뿐이다.
+    🔴 지운 자리를 **세어 돌려준다**(조용한 0 금지 · #3).
     """
-    async def _empty(*a, **kw):
-        return {}
+    # 🔴 **이 프로세스**가 더 쓰지 않게 한다
+    sys.dont_write_bytecode = True
+    # 🔴 그리고 **자식 프로세스**도(계약 몇 개가 `subprocess` 로 pytest 를 부른다)
+    #    ⚠️ 환경변수는 파이썬이 **시작할 때** 읽는다 — 그래서 이 프로세스에는
+    #       위 한 줄이 필요하고, 자식에는 이 한 줄이 필요하다. 둘 다 있어야 한다.
+    os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+    # ⚠️ 이 변수를 `skip` 이라 불렀더니 **§13-2 계약이 걸렸다** — 그 계약은
+    #    conftest 코드에 `skip` 이라는 글자가 있으면 *"잠금을 skip 으로 때웠다"*
+    #    로 읽는다(거친 글자 검사지만 **그 계약이 옳다**). 🔴 이름을 비킨다.
+    outside = {str(ROOT / ".venv"),
+               str(sysconfig.get_paths().get("stdlib") or "")}
+    got: list[str] = []
+    for d in ROOT.rglob("__pycache__"):
+        path = str(d)
+        if any(path.startswith(x) for x in outside if x):
+            continue
+        shutil.rmtree(d, ignore_errors=True)
+        got.append(path)
+    return got
 
-    import app.collectors.absences as absences_mod
-    import app.collectors.weather as weather_mod
 
-    monkeypatch.setattr(weather_mod, "fetch_for_games", _empty)
-    monkeypatch.setattr(absences_mod, "fetch_for_games", _empty)
+def pytest_ignore_collect(collection_path, config):
+    """🔴 승인 서명 없는 단계의 경로를 **수집 전에** 버린다.
+
+    v4 §13-2: *"승인 서명 파일이 없으면 다음 단계 테스트가 수집조차 되지
+    않는다. 이 잠금을 우회하는 코드 변경은 계약 실패."*
+
+    ⚠️ `pytest_collection_modifyitems` 로 **건너뛰기(skip)** 하면 안 된다 —
+       그러면 수집은 되고 초록 옆에 s 가 붙어, 잠긴 것이 **있는 줄** 보인다.
+       §13-2 는 "수집조차"라고 못 박았다.
+    """
+    why = stage_gate.is_locked(collection_path)
+    if why is None:
+        return None
+    reason = f"🔴 단계 잠금 — {collection_path.name}: {why['why']}"
+    config.stash.setdefault(_LOCK_NOTES, []).append(reason)
+    return True
 
 
-@pytest.fixture(autouse=True)
-def _api_guard_isolated():
-    """회로 차단 상태를 테스트끼리 섞지 않고, 운영 Redis에도 쓰지 않는다."""
-    from app import api_guard
 
-    api_guard.reset()
-    api_guard.set_network_redis(False)
-    api_guard.set_redis(None)
-    yield
-    api_guard.reset()
-    api_guard.set_redis(None)
-    api_guard.set_network_redis(False)
+def pytest_report_collectionfinish(config):
+    """🔴 **조용한 0 금지.** 무엇이 잠겨서 안 돌았는지 이름으로 남긴다.
+
+    ⚠️ 이 줄이 없으면 "274 passed" 만 보이고, 잠긴 단계가 **없는 것처럼**
+       읽힌다. 못 잰 칸은 이름으로 남긴다(CLAUDE.md §조용한 0 금지).
+    """
+    out = list(sorted(set(config.stash.get(_LOCK_NOTES, []))))
+    # 🔴 **디렉터리가 아직 없어도 잠긴 단계는 말한다.** 훅은 존재하는 경로에만
+    #    불리므로, 잠긴 것만 세면 `tests/stage3` 이 없는 동안 스위트는 "286
+    #    passed" 만 내고 **잠긴 단계가 없는 것처럼** 읽힌다. 그것이 조용한 0 이다.
+    locked = stage_gate.locked_dirs()
+    if locked:
+        stages = sorted({v["stage"] for v in locked.values()})
+        out.append(f"🔒 단계 잠금(v4 §13-2) — 아직 승인 없어 닫힌 단계: "
+                   f"{', '.join(str(s) for s in stages)} "
+                   f"/ 열린 단계의 계약만 돌았다")
+    return ["", *out] if out else []

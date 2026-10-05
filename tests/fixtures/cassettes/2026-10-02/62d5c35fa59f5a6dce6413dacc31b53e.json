@@ -1,0 +1,1555 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "New York Rangers manager said 2",
+ "recorded_at": "2026-10-02T02:57:06.168690+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Texas Rangers Name Herzog Manager",
+   "content": "See the article in its original context from November 3, 1972, Page 45",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.nytimes.com/1972/11/03/archives/texas-rangers-name-herzog-manager.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/1972/11/03/archives/texas-rangers-name-herzog-manager.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mike Sullivan Named Rangers Head Coach | New York Rangers",
+   "content": "New York Rangers President and General Manager Chris Drury announced today that the team has named Mike Sullivan the 38th Head Coach in franchise history.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.nhl.com/rangers/news/mike-sullivan-named-rangers-head-coach",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nhl.com",
+    "/rangers/news/mike-sullivan-named-rangers-head-coach",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "로켓배송으로 빠르게, 로켓와우 멤버십으로 할인과 무료 반품까지 | ...",
+   "content": "상호명 및 호스팅 서비스 제공 : 쿠팡 (주) 대표이사 : 로저스 해롤드 린 (Rogers Harold Lynn) (05050) 서울시 광진구 아차산로 412, 2층 사업자 등록번호 : 120-88-00767 통신판매업신고 : 2026-서울광진-1253 사업자정보 확인 >",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.coupang.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.coupang.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New York Rangers abruptly dump team president, GM",
+   "content": "The New York Rangers say president John Davidson and general manager Jeff Gorton are out.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://apnews.com/article/new-york-rangers-new-york-nhl-hockey-sports-fa1abfc184a4847a46e43fd47a058041",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/new-york-rangers-new-york-nhl-hockey-sports-fa1abfc184a4847a46e43fd47a058041",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "쿠팡",
+   "content": "[1일20박스한정] 초고당도 A급 딱딱이 복숭아, 1개, 1kg (특상품)",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.coupang.com/np/omp",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.coupang.com",
+    "/np/omp",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Bruce Bochy out as Rangers manager after 3-year stint and the team's only World Series title",
+   "content": "Bruce Bochy will not return as manager of the Texas Rangers after a three-year stint that began with the franchise’s first World Series championship in 2023 before missing the playoffs in both seasons since then.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://apnews.com/article/bruce-bochy-texas-rangers-24f3229d0a37f5b37209a501d7f71b71",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/bruce-bochy-texas-rangers-24f3229d0a37f5b37209a501d7f71b71",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "쿠팡",
+   "content": "Global Site Coupang Taiwan 酷澎台灣 상호명 및 호스팅 서비스 제공 : 쿠팡(주) 대표이사 : 로저스 해롤드 린(Rogers Harold Lynn) (05050) 서울시 광진구 아차산로 412, 2층 사업자 등록번호 : 120-88-00767 통신판매업신고 : 2026-서울광진-1253 사업자정보 확인 >",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.coupang.com/np/fbi?sourceType=home_section_fbi",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.coupang.com",
+    "/np/fbi",
+    "",
+    "sourceType=home_section_fbi",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Drury signs multiyear contract to remain general manager of Rangers | NHL.com",
+   "content": "Chris Drury signed a multiyear contract to remain general manager of the New York Rangers on Wednesday.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.nhl.com/news/new-york-rangers-general-manager-chris-drury-contract",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nhl.com",
+    "/news/new-york-rangers-general-manager-chris-drury-contract",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "쿠팡은 로켓배송 | 쿠팡 - 로켓배송",
+   "content": "오늘 주문하면 내일 도착하는 쿠팡의 로켓배송을 만나보세요. 쿠팡 와우회원은 무료배송과 반품도 가능해요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.coupang.com/np/campaigns/82",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.coupang.com",
+    "/np/campaigns/82",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New York Rangers roll to victory a day after letter to fans",
+   "content": "2026.01.17.A day after general manager Chris Drury outlined in a letter to fans that his last-place franchise will embark on a \"retool,\" Mika Zibanejad scored three goals and the New York Rangers cruised to a...2026.01.17.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fa1.espncdn.com%2Fcombiner%2Fi%3Fimg%3D%252Fphoto%252F2026%252F0117%252Fr1601955_1296x729_16-9.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.espn.com/nhl/story/_/id/47642927/new-york-rangers-roll-victory-day-letter-fans",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/nhl/story/_/id/47642927/new-york-rangers-roll-victory-day-letter-fans",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "3 questions facing New York Rangers",
+   "content": "2025.08.19.Today, three important questions facing the New York Rangers. Zibanejad will likely start training camp as a right wing playing on a line with J.T. Miller at center. Coach Mike Sullivan said Zibanejad told him during... general manager Chris Drury. The two have had extensive conversations about their thoughts and plans for the...2025.08.19.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fmedia.d3.nhle.com%2Fimage%2Fprivate%2Ft_ratio16_9-size50%2Fv1754840428%2Fprd%2Fjjpbf4vd9mbefkjvvojc.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.nhl.com/news/topic/32-in-32/new-york-rangers-three-questions-for-2025-26-season-32-in-32",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nhl.com",
+    "/news/topic/32-in-32/new-york-rangers-three-questions-for-2025-26-season-32-in-32",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Top prospects for New York Rangers",
+   "content": "2026.08.19.and New York's director of player development Tanner Glass said Smits \"seems like a guy who can do it all.\" The Rangers are leaving open the possibility that Smits can play in the NHL this season, but general manager... (6-2, 209) set career highs in goals (33), assists (55) and points (89). He was sixth in assists and tied for...2026.08.19.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fmedia.d3.nhle.com%2Fimage%2Fprivate%2Ft_ratio16_9-size50%2Fv1786993688%2Fprd%2Fhmqr9yszowyhetpkji9k.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.nhl.com/news/topic/32-in-32/new-york-rangers-top-prospects-for-2026-27-season-32-in-32",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nhl.com",
+    "/news/topic/32-in-32/new-york-rangers-top-prospects-for-2026-27-season-32-in-32",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Can the New York Rangers be saved? Maybe not this current version | New York Rangers",
+   "content": "2025.01.08.to New York City from their western road trip, there were rumblings of trouble, for at some point during that week, Rangers general manager Chris Drury had sent a memo to all NHL teams in which he said he was open to a... the New Jersey Devils. The Christmas break solved nothing. In their first game back, the Rangers lost 6-2...2025.01.08.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.guim.co.uk%2Fimg%2Fmedia%2F485508479feb43cbdb639ec5995e346fb41092ec%2F0_167_4689_2813%2Fmaster%2F4689.jpg%3Fwidth%3D1200%26height%3D630%26quality%3D85%26auto%3Dformat%26fit%3Dcrop%26precrop%3D40%3A21%2Coffset-x50%2Coffset-y0%26overlay-align%3Dbottom%252Cleft%26overlay-width%3D100p%26overlay-base64%3DL2ltZy9zdGF0aWMvb3ZlcmxheXMvdGctZGVmYXVsdC5wbmc%26enable%3Dupscale%26s%3D075443928156bdd7ab6fd2aa2984d144&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.theguardian.com/sport/2025/jan/08/new-york-rangers-slump-rebuild",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.theguardian.com",
+    "/sport/2025/jan/08/new-york-rangers-slump-rebuild",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New York Rangers promote Chris Drury to president and GM after firing John Davidson, Jeff Gorton",
+   "content": "2021.05.05.The New York Rangers have fired general manager Jeff Gorton and president John Davidson, and promoted Chris Drury to president and GM effective immediately, the team announced Wednesday.2021.05.05.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fa2.espncdn.com%2Fcombiner%2Fi%3Fimg%3D%252Fphoto%252F2021%252F0505%252Fr850043_1296x729_16-9.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.espn.com/nhl/story/_/id/31394724/new-york-rangers-fire-gm-jeff-gorton-president-john-davidson-source-says",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/nhl/story/_/id/31394724/new-york-rangers-fire-gm-jeff-gorton-president-john-davidson-source-says",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New York Rangers hire Mike Sullivan as coach days after he and the Pittsburgh Penguins parted ways",
+   "content": "2025.05.02.The New York Rangers have hired Mike Sullivan as coach, days after he and the Pittsburgh Penguins agreed to part ways. General manager Chris Drury announced the move Friday, bringing in the organization’s top... “Mike Sullivan has established himself as one of the premier head coaches in the NHL,” Drury said. “Mike...2025.05.02.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fdims.apnews.com%2Fdims4%2Fdefault%2Fa61c409%2F2147483647%2Fstrip%2Ftrue%2Fcrop%2F4211x2806%2B0%2B1%2Fresize%2F980x653%21%2Fquality%2F90%2F%3Furl%3Dhttps%253A%252F%252Fassets.apnews.com%252F40%252F52%252Fad4d57bc6b7d811051921dd1521e%252F231f0822b7e545ffae173376a288bf9b&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://apnews.com/article/rangers-mike-sullivan-coach-59072a516d1e45a85d0a64374b6e99a6",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/rangers-mike-sullivan-coach-59072a516d1e45a85d0a64374b6e99a6",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "James Dolan exit: Who is Quentin Dolan, the fresh face of New York Rangers leadership?",
+   "content": "2026.07.04.James Dolan exit: Who is Quentin Dolan, the fresh face of New York Rangers leadership? James Dolan is stepping back from daily Rangers duties, with son Quentin taking over key leadership responsibilities alongside Chris Drury.2026.07.04.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.hindustantimes.com%2Fht-img%2Fimg%2F2026%2F07%2F03%2F960x540%2FBASKETBALL-NBA-NYK-PARADE-6_1783102444712_1783102456165_f46adc51-437a-4b6d-a68b-f9d10afaf3df.JPG&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.hindustantimes.com/sports/us-sports/james-dolan-exit-who-is-quentin-dolan-the-fresh-face-of-new-york-rangers-leadership-101783102139514.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.hindustantimes.com",
+    "/sports/us-sports/james-dolan-exit-who-is-quentin-dolan-the-fresh-face-of-new-york-rangers-leadership-101783102139514.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New York Rangers fire president Davidson, general manager Gorton",
+   "content": "2021.05.06.The New York Rangers fired president John Davidson and general manager Jeff Gorton on Wednesday, the New York Post and Sportsnet reported, one day after the team made waves by releasing a statement...2021.05.06.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.cbc.ca%2Fais%2F1.6015123%2C1620246560000%2Ffull%2Fmax%2F0%2Fdefault.jpg%3Fim%3DCrop%252Crect%253D%25280%252C203%252C3000%252C1687%2529%253BResize%253D620&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.cbc.ca/sports/hockey/nhl/new-york-rangers-davidson-gorton-fired-nhl-1.6014971",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.cbc.ca",
+    "/sports/hockey/nhl/new-york-rangers-davidson-gorton-fired-nhl-1.6014971",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rangers GM Chris Drury shared letter with fans saying the franchise feels their disappointment",
+   "content": "2026.01.16.New York Rangers general manager Chris Drury shared a letter with fans, saying the franchise feels their disappointment.2026.01.16.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fdims.apnews.com%2Fdims4%2Fdefault%2Ffccaeb4%2F2147483647%2Fstrip%2Ftrue%2Fcrop%2F6195x3485%2B0%2B323%2Fresize%2F1440x810%21%2Fquality%2F90%2F%3Furl%3Dhttps%253A%252F%252Fassets.apnews.com%252F11%252Fbc%252Fd0a6101e6e384992182d81a7ba49%252Fcb6542bb9c114f73a5d2556b4ee562d2&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://apnews.com/article/new-york-rangers-drury-letter-e960b4990e1190f792241b4623db8687",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/new-york-rangers-drury-letter-e960b4990e1190f792241b4623db8687",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Yankees acquire Russell Wilson in trade with Rangers",
+   "content": "He has long expressed a desire to play for the Yankees, and Rangers general manager Jon Daniels and his New York counterpart, Brian Cashman …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.espn.com/mlb/story/_/id/22357092/new-york-yankees-acquire-russell-wilson-trade-texas-rangers",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/mlb/story/_/id/22357092/new-york-yankees-acquire-russell-wilson-trade-texas-rangers",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "| 쿠팡",
+   "content": "쿠팡에서 특가를 살펴보세요. 다양한 제품을 원하는 조건별로 확인할 수 있습니다. 로켓 와우회원은 무료 배송 혜택도 누릴 수 있어요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.coupang.com/np/categories/coupangglobal",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.coupang.com",
+    "/np/categories/coupangglobal",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New York Rangers",
+   "content": "New York Rangers 2026–27 New York Rangers season … New York Rangers … Home arena Madison Square Garden … New York City",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/New_York_Rangers",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/New_York_Rangers",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "쿠팡플레이",
+   "content": "쿠팡플레이 시작하기 시리즈 4.8 • 예능 • 30분 • 전체관람가 쿠팡플레이 시작하기 시리즈 4.4 • 다큐멘터리 • 32분 • 전체관람가 쿠팡플레이 시작하기",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.coupangplay.com/catalog",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.coupangplay.com",
+    "/catalog",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "MAZZILLI SENT TO RANGERS; YANKEES ACQUIRE RAWLEY",
+   "content": "New York Times subscribers* enjoy full access to TimesMachine—view over 150 years of New York Times journalism, as it originally appeared.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.nytimes.com/1982/04/02/sports/mazzilli-sent-to-rangers-yankees-acquire-rawley.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/1982/04/02/sports/mazzilli-sent-to-rangers-yankees-acquire-rawley.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rangers vs Aberdeen LIVE: Scottish Premiership radio, text, team news, report, reaction, stats",
+   "content": "A new manager is needed quickly to give this ailing side some structure and confidence, or Aberdeen's season will drift into mediocrity.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.bbc.com/sport/football/live/c79rnlgyzx5t",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bbc.com",
+    "/sport/football/live/c79rnlgyzx5t",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "쿠팡은 로켓배송 | 쿠팡 - 로켓직구",
+   "content": "해외의 여러 상품을 쿠팡 로켓배송으로 빠르게 만나보세요. 모든 로켓직구 상품은 관부가세 포함가로 추가 비용 없이 해외 배송을 즐길 수 있어요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.coupang.com/np/coupangglobal",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.coupang.com",
+    "/np/coupangglobal",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New York Yankees Rumors - MLB Trade Rumors",
+   "content": "MLBTR Podcast: Wild Card Rosters And What’s Next For The Rangers, Diamondbacks, and Pirates",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.mlbtraderumors.com/new-york-yankees",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.mlbtraderumors.com",
+    "/new-york-yankees",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "St Mirren vs Rangers: Scottish Premiership report, stats & reaction",
+   "content": "Philippe Clement said Rangers \"threw away 45 minutes\" at St Mirren as Caolan Boyd-Munce's stoppage-time stunner ensured the Ibrox side ended Boxing Day 12 points adrift of leaders Celtic.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.bbc.com/sport/football/live/cm2vl2d2m51t",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bbc.com",
+    "/sport/football/live/cm2vl2d2m51t",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "History of the New York Rangers",
+   "content": "New York Rangers The Rangers experienced early success, winning the assumed primary ownership and management responsibilities for the Rangers … New York Knicks New York Rangers.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/History_of_the_New_York_Rangers",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/History_of_the_New_York_Rangers",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Former Rangers assistant back in New York with PWHL Sirens",
+   "content": "“ … and the NHL with the New York Rangers reflects not only an exceptional level of experience, … Sirens general manager Pascal Daoust said in a statement.Midgely previously was a Rangers assistant under Gerard Gallant from 2021-23.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.foreverblueshirts.com/new-york-rangers-news/jim-midgely-former-assistant-back-new-york-pwhl-sirens",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foreverblueshirts.com",
+    "/new-york-rangers-news/jim-midgely-former-assistant-back-new-york-pwhl-sirens",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NEW YORK RANGERS RECALL G SPENCER MARTIN AND D SCOTT MORROW FROM HARTFORD WOLF PACK, ASSIGN F BRETT BERARD | Hartford Wolf Pack",
+   "content": "New York Rangers President and General Manager Chris Drury announced today that the club has recalled goaltender Spencer Martin and defenseman Scott Morrow from the AHL’s Ha",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.hartfordwolfpack.com/news/detail/new-york-rangers-recall-g-spencer-martin-and-f-brett-berard-from-hartford-wolf-pack",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.hartfordwolfpack.com",
+    "/news/detail/new-york-rangers-recall-g-spencer-martin-and-f-brett-berard-from-hartford-wolf-pack",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rangers big gamble on trading Chris Kreider continues to age like sour milk",
+   "content": "New York Rangers general manager Chris Drury's decision to trade Chris Kreider looks to be backfiring already, given the former forward's early success with the Anaheim Ducks.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://bluelinestation.com/rangers-big-gamble-on-trading-chris-kreider-continues-to-age-like-sour-milk-01k9ah7s49g6",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "bluelinestation.com",
+    "/rangers-big-gamble-on-trading-chris-kreider-continues-to-age-like-sour-milk-01k9ah7s49g6",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Vincent Iorio ‘has all the tools’ to seize opportunities with New York Rangers",
+   "content": "Then with the Washington Capitals, he was preparing for Game 1 of his team’s 2024 first-round series against the New York Rangers. New York isn’t a Presidents …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.nytimes.com/athletic/7071446/2026/02/26/vincent-iorio-rangers-defenseman-new-york/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/athletic/7071446/2026/02/26/vincent-iorio-rangers-defenseman-new-york/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "What big names could the Rangers target? Trade Alexis Lafrenière? Mailbag, Part 2",
+   "content": "Assuming that happens would be unwise for New York — Dallas general manager Jim Nill should have the cap space to make a deal work — but the Rangers could try to pounce if the Stars explore trading him.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.nytimes.com/athletic/6939917/2026/01/05/rangers-mailbag-rebuild-igor-shesterkin-trade/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/athletic/6939917/2026/01/05/rangers-mailbag-rebuild-igor-shesterkin-trade/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NEW YORK RANGERS RECALL BRETT BERARD AND BRENDAN BRISSON FROM WOLF PACK | Hartford Wolf Pack",
+   "content": "New York Rangers President and General Manager Chris Drury announced today that the club has recalled forwards Brett Berard and Brendan Brisson from the AHL’s Hartford Wolf",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.hartfordwolfpack.com/news/detail/new-york-rangers-recall-brett-berard-and-brendan-brisson-from-wolf-pack",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.hartfordwolfpack.com",
+    "/news/detail/new-york-rangers-recall-brett-berard-and-brendan-brisson-from-wolf-pack",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New York Rangers Daily: Don Maloney explains why brother Dave's TV gig is 'quite a coup for him'",
+   "content": "New York Rangers News As you’re very likely aware, … Dave Maloney is replacing the retired Joe Micheletti as the New York Rangers TV analyst on MSG Networks beginning this upcoming season.The move comes after Maloney served for 20 years as the team’s radio …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.foreverblueshirts.com/new-york-rangers-news/don-dave-maloney-brothers-tv-job",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foreverblueshirts.com",
+    "/new-york-rangers-news/don-dave-maloney-brothers-tv-job",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rangers' Vincent Trocheck market gets a boost, but at a cost",
+   "content": "The New York Rangers may get an assist on the Vincent Trocheck market from the New Jersey Devils in wake of the new Nico Hischier contract extension reporting.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://bluelinestation.com/rangers-vincent-trocheck-market-gets-a-boost-but-at-a-cost",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "bluelinestation.com",
+    "/rangers-vincent-trocheck-market-gets-a-boost-but-at-a-cost",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New York Mets News, Scores and Stats 2026",
+   "content": "Battle for AL West: Astros vs. Rangers ; 1:44 · Can Astros Catch Rangers in AL West Race? ; 1:01 · Astros Lose Lead in AL West, Tied With Rangers",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fsportshub.cbsistatic.com%2Fi%2Fr%2F2026%2F09%2F25%2Fc360cbb9-8b01-4e68-8f89-f10dc8b10b46%2Fthumbnail%2F320x180%2F1b884bc9bef93c7327db473d5d399e33%2Fastros.png&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fsportshub.cbsistatic.com%2Fi%2Fr%2F2026%2F09%2F21%2F0d58bf30-75a3-48b8-bdc8-5e37e2ee039a%2Fthumbnail%2F320x180%2F9dae16a0116ebb204f08bca023b86deb%2Fgetty-yordan-alvarez-astros.jpg&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fsportshub.cbsistatic.com%2Fi%2Fr%2F2026%2F09%2F16%2Ff4ec74bb-0d79-489e-af18-d295c218d28e%2Fthumbnail%2F320x180%2F17ec0ade949104b8db4de67151ec9442%2Fastros-getty.png&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fsportshub.cbsistatic.com%2Fi%2Fr%2F2026%2F09%2F16%2F806a5a21-da96-4ae5-a978-42381a963e67%2Fthumbnail%2F320x180%2F30888199653620a9956ce7825b34e78b%2Falonso.jpg&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fsportshub.cbsistatic.com%2Fi%2Fr%2F2026%2F09%2F08%2F68951034-1185-428c-8982-1eff8d309bcb%2Fthumbnail%2F320x180%2F2c6991666538ab9e0703bec2804323ab%2Fpic-00-00-02-01-still001.jpg&type=f250_208",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.cbssports.com/mlb/teams/NYM/new-york-mets/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.cbssports.com",
+    "/mlb/teams/NYM/new-york-mets/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "James Sands Signs For Rangers",
+   "content": "RANGERS are today delighted to announce the signing of United States international James Sands from New York City FC on an initial 18-month loan agreement subject to work permit and international clearance. Rangers hold an exclusive option to buy.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcontentfulproxy.stadion.io%2F39646iezddpk%2FleE66dWBA1oE1JsGYLMXn%2F0560ac6401b2ec4ca351c31079b24564%2F050122_James_Sands_Signs_at_Ibrox_01.JPG%3Ff%3D%26fit%3Dthumb%26q%3D80%26fl%3Dprogressive%26w%3D1200%26h%3D800&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.rangers.co.uk/Article/james-sands-signs-for-rangers/MN7cncAJZwt3TVcvZfCHJ",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.rangers.co.uk",
+    "/Article/james-sands-signs-for-rangers/MN7cncAJZwt3TVcvZfCHJ",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New York Rangers",
+   "content": "2022.04.22.via the NHL PR department, Patrick Kane had a second-period assist against longtime opponent Alex Ovechkin and the Capitals on Thursday to reach 1,375 career points and pass Mike Modano (1,374) for the most by a U.S.-born player in NHL history.2022.04.22.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fkuklaskorner.com%2Fassets%2Fsite%2F_1200x630_fit_center-center_82_none%2Fkkseo.png%3Fmtime%3D1685680673&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://kuklaskorner.com/categories/new-york-rangers",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "kuklaskorner.com",
+    "/categories/new-york-rangers",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chris Young says Rangers need to play with mindset of more toughness, grit. Can they do it?",
+   "content": "Manager Skip Schumaker is seated, left.The Rangers failed to make the playoffs. Texas Rangers Manager Skip Schumaker (seated …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.dallasnews.com/sports/rangers/article/rangers-chris-young-end-of-season-news-conference-22452605.php",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.dallasnews.com",
+    "/sports/rangers/article/rangers-chris-young-end-of-season-news-conference-22452605.php",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rangers transfer update as Derek McInnes reveals timeline for new additions after friendly draw",
+   "content": "Rangers manager Derek McInnes is hoping to make further new signings ahead of Wednesday’s friendly against St Etienne at Ibrox.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.scotsman.com/sport/football/rangers/latest-rangers-news/rangers-transfer-update-as-derek-mcinnes-reveals-timeline-for-further-new-additions-after-friendly-draw-8804029",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.scotsman.com",
+    "/sport/football/rangers/latest-rangers-news/rangers-transfer-update-as-derek-mcinnes-reveals-timeline-for-further-new-additions-after-friendly-draw-8804029",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "A Win At Ibrox! | Rangers 5-1 St Mirren | Stadium Atmosphere & Reaction",
+   "content": "Footy Adventures 91K 5y ago Atmosphere Highlights, … Rangers 0-0 Celtic (2-4) Celtic Fan Content 58K 5mo ago Gers Pen In The Dons | … Scottish Gas Scottish Cup Quarter-Final Scottish Gas Scottish Cup 750K 5mo ago York City get a point away against Rotherham in …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=QfpelnQI1ow",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=QfpelnQI1ow",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "new york rangers manager said 2 piece",
+  "rangers manager baseball",
+  "texas rangers manager",
+  "rangers fc manager",
+  "glasgow rangers manager",
+  "ron washington",
+  "new york rangers manager said 2 weeks",
+  "jeff banister"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

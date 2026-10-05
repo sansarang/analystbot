@@ -1,0 +1,835 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "千葉ロッテマリーンズ squad 2 NPB",
+ "recorded_at": "2026-10-02T08:05:27.925114+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ",
+   "content": "プロ野球・千葉ロッテマリーンズオフィシャルサイトです。試合や選手はもちろん、チケットやイベント、ファンクラブに至るまで球団オフィシャルならではの公式情報をファンのみなさまに提供します",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.marines.co.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "알버스 덤블도어 - 나무위키",
+   "content": "Sep 16, 2026 · 다만 약점이 되는 건 어둠의 마법에 대한 지식. 미네르바 맥고나걸 의 대화에서도 드러나듯 [29] 덤블도어는 소싯적의 경험 때문에 어둠의 마법과 관련된 지식을 사용하지 않는다. [30]",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://namu.wiki/w/%EC%95%8C%EB%B2%84%EC%8A%A4%20%EB%8D%A4%EB%B8%94%EB%8F%84%EC%96%B4",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EC%95%8C%EB%B2%84%EC%8A%A4%20%EB%8D%A4%EB%B8%94%EB%8F%84%EC%96%B4",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ｌ．マーティン（千葉ロッテマリーンズ） | 個人年度別成績",
+   "content": "投打 : 右投左打, 身長／体重 : 189cm／91kg, 生年月日 : 1988年3月6日, 経歴 : マニュエルファハルドキューバ国立体育大 - レンジャーズ - マリナーズ - カブス - タイガース - インディアンス",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "http://npb.jp/bis/players/23725138.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/players/23725138.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TikTok",
+   "content": "We would like to show you a description here but the site won’t allow us.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.tiktok.com/discover/%EB%A9%8B%EC%A7%84%EC%95%84%EC%A3%BC%EB%A8%B8%EB%8B%88",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.tiktok.com",
+    "/discover/%EB%A9%8B%EC%A7%84%EC%95%84%EC%A3%BC%EB%A8%B8%EB%8B%88",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ｎ．ソト（千葉ロッテマリーンズ） | 個人年度別成績",
+   "content": "99 · 千葉ロッテマリーンズ · Ｎ．ソト · ネフタリ・ソト (NEFTALI SOTO) ; ポジション : 内野手, 投打 : 右投右打, 身長／体重 : 185cm／97kg, 生年月日 : 1989年2月28日, 経歴 : マリスタデグアイナボ高 - レッズ",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "http://npb.jp/bis/players/03505136.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/players/03505136.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TikTok",
+   "content": "We would like to show you a description here but the site won’t allow us.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.tiktok.com/discover/%EC%8B%B1%EA%B8%80-%EC%95%84%EC%A4%8C%EB%A7%88-%EC%84%B1%EA%B3%B5-%EA%B2%BD%ED%97%98-%EA%B3%B5%EC%9C%A0",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.tiktok.com",
+    "/discover/%EC%8B%B1%EA%B8%80-%EC%95%84%EC%A4%8C%EB%A7%88-%EC%84%B1%EA%B3%B5-%EA%B2%BD%ED%97%98-%EA%B3%B5%EC%9C%A0",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "チームヒストリー[2020年～2023年] - 千葉ロッテマリーンズ",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.marines.co.jp/corp/history/2020.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/corp/history/2020.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "50대 초반의 주부..스와핑 경험담 - 네이버 블로그",
+   "content": "Mar 19, 2009 · 아내가 쓰는 일탈과 부부교환 경험 1. 프롤로그 남편과 나는 세상의 산전수전을 다 겪으며 아이 둘을 키워내고 흔히 말하는 중산층 가정을 이루고 사는 50대 초반의 부부라고 할 수 있지요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://m.blog.naver.com/0192031000/30117345862",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "m.blog.naver.com",
+    "/0192031000/30117345862",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 17 · vs. 楽天 · 1-5 · 試合終了 · ZOZOマリン · 敗：森, 金 : 18 · 試合なし, 土 : 19 · vs. 西武 · 2-4 · 試合終了 · ZOZOマリン · 敗：高野脩, 日 : 20 · vs. 西武 · 18:00 · 見どころ · ZOZOマリン, 月 : 21 · vs. 西武 · 18:00 · 試合前 · ZOZOマリン, 火 : 22 · vs. オリックス · 18:00 · 試合前 · ZOZOマリン, 水 : 23 · vs. オリックス · 17:00 · 試合前 · ZOZOマリン",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/9/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/9/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TikTok",
+   "content": "We would like to show you a description here but the site won’t allow us.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.tiktok.com/discover/50%EB%8C%80%EC%95%84%EC%A4%8C%EB%A7%88-%EB%B8%8C%EC%9D%B4%EB%A1%9C%EA%B7%B8",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.tiktok.com",
+    "/discover/50%EB%8C%80%EC%95%84%EC%A4%8C%EB%A7%88-%EB%B8%8C%EC%9D%B4%EB%A1%9C%EA%B7%B8",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ | 2025年 プロ野球ドラフト会議 supported by リポビタンＤ |....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://draft.npb.jp/draft/2025/draftlist_m.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "draft.npb.jp",
+    "/draft/2025/draftlist_m.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "황홀한 이혼녀 아줌마 -1부 내가 그녀의 집 마당으로 들어섰을 때 그...",
+   "content": "Nov 27, 2018 · 미분류 황홀한 이혼녀 아줌마 -1부 내가 그녀의 집 마당으로 들어섰을 때 그녀는 빨래는 널고 있었다.”상규씨~왔네..잠시만~”하고는 그녀는 빨래를 털어대고 있었다.오후 햇살에 비쳐진 그녀의 아름다운 몸매..치마 사이로 실루엣처럼 흐릿하게 보이는 그녀의 보지털..나는 숨이 막힐 지경이었다 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://httpkimhakgie44gmail.wordpress.com/2018/11/27/%ED%99%A9%ED%99%80%ED%95%9C-%EC%9D%B4%ED%98%BC%EB%85%80-%EC%95%84%EC%A4%8C%EB%A7%88-1%EB%B6%80-%EB%82%B4%EA%B0%80-%EA%B7%B8%EB%85%80%EC%9D%98-%EC%A7%91-%EB%A7%88%EB%8B%B9%EC%9C%BC%EB%A1%9C-%EB%93%A4/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "httpkimhakgie44gmail.wordpress.com",
+    "/2018/11/27/%ED%99%A9%ED%99%80%ED%95%9C-%EC%9D%B4%ED%98%BC%EB%85%80-%EC%95%84%EC%A4%8C%EB%A7%88-1%EB%B6%80-%EB%82%B4%EA%B0%80-%EA%B7%B8%EB%85%80%EC%9D%98-%EC%A7%91-%EB%A7%88%EB%8B%B9%EC%9C%BC%EB%A1%9C-%EB%93%A4/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[주부이야기] 솔직한 주부들의 성경험담 : 네이버 블로그",
+   "content": "Dec 20, 2001 · [주부이야기] 솔직한 주부들의 성경험담 결혼 3년차 제 나이 37,신랑은40, 자녀2명 성경험 성관계횟수 월5회 정도에요. 친구1은 결혼 5년차 여자나이 37,신랑은 43 아이는1명 성경험 성관계횟수 월3회 정도에요. 옆동에 동생은 결혼 2년차 여자나이33,신랑은 35 아이는 1명 성경험 성관계횟수 월12회 매주3회 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://m.blog.naver.com/dlftjr6650/60152708529",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "m.blog.naver.com",
+    "/dlftjr6650/60152708529",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "サッカー ユニフォーム – lepontrouge – カスタマイズされたユースサッカージ....",
+   "content": "エンディングにクレジットがあるのは初出の第30話のみだが、以降も複数話で劇中歌として使用されている。初出では第40話だが、以降も複数話で劇中歌として使用されている。第51話で挿入歌として使用された。報道によれば、共同オーナーの1人であるベッカム氏が直々に電話をかけて加入をオファー。同シーズン限りでトミー・スミスが退団した。一方、BSスポーツ専......",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://lepontrouge.net/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "lepontrouge.net",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NPB Baseball Teams, Tickets & Seating Guide – Game Day Tourist",
+   "content": "Choose a Team ; YG · Yomiuri Giants ; HT · Hanshin Tigers ; HC · Hiroshima Toyo Carp ; CD · Chunichi Dragons ; DB · Yokohama DeNA BayStars ; YS · Tokyo Yakult Swallows ; SH · Fukuoka SoftBank Hawks ; SL · Saitama Seibu Lions ; RE · Tohoku Rakuten Golden Eagles ; NF · Hokkaido Nippon-Ham Fighters ; LM · Chiba Lotte Marines ; OB · Orix Buffaloes",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://gamedaytourist.com/en/japan-en/baseball/npb/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "gamedaytourist.com",
+    "/en/japan-en/baseball/npb/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chiba Lotte Marines",
+   "content": "Clubs related to Chiba City ; relocationJapanese professional baseball teamPacific LeagueFounded in 1949Founded on September 21st",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.namu.wiki%2Fi%2F3usPu_4nuydLCmu5SNPHMWxhhVeZafi28NnwDwvYMfGymPbaEQI3-xvlw9Rc5tMHqEjMqU-dN40Kul16WBcJxw.svg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://en.namu.wiki/w/%EC%B9%98%EB%B0%94%20%EB%A1%AF%EB%8D%B0%20%EB%A7%88%EB%A6%B0%EC%A6%88",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "en.namu.wiki",
+    "/w/%EC%B9%98%EB%B0%94%20%EB%A1%AF%EB%8D%B0%20%EB%A7%88%EB%A6%B0%EC%A6%88",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "プロ野球スピリッツＡアプリ",
+   "content": "KONAMIの「プロ野球スピリッツＡ」をApp Storeでダウンロードしてください。スクリーンショット、評価とレビュー、ユーザのヒント、「プロ野球スピリッツＡ」に似たゲームを見ることなどができます。GameApplicationiOS 15.0以降が必要です。iPhone、iPad、およびiPod touchに対応。4.6/5140만 참여",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fis1-ssl.mzstatic.com%2Fimage%2Fthumb%2FPurpleSource221%2Fv4%2Fce%2Fc1%2F9f%2Fcec19fa3-e459-7848-fd53-43dc62e60de1%2FPlaceholder.mill%2F1200x630wa.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://apps.apple.com/jp/app/%E3%83%97%E3%83%AD%E9%87%8E%E7%90%83%E3%82%B9%E3%83%94%E3%83%AA%E3%83%83%E3%83%84%EF%BD%81/id940320341",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "apps.apple.com",
+    "/jp/app/%E3%83%97%E3%83%AD%E9%87%8E%E7%90%83%E3%82%B9%E3%83%94%E3%83%AA%E3%83%83%E3%83%84%EF%BD%81/id940320341",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "15 top-level Japanese baseball players will compete in ABL in 2023-24 | オーストラリア野球リー....",
+   "content": "15 top-level Japanese baseball players will compete in ABL in 2023-24 | オーストラリア野球リーグの日本",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.baseball.com.au%2Fuploads%2Fsites%2F14%2F2023%2F11%2FNews-Covers-94-1017x432.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://theabl.com.au/news/japan-in-abl/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "theabl.com.au",
+    "/news/japan-in-abl/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "更新情報ーオーストラリアでの日本人選手の活躍と視聴方法 | How Japanese players ....",
+   "content": "観る 早川隆久: Click here. 現在、千葉ロッテマリーンズ、DeNAベイスターズ、楽天イーグルス、オリックスバッファローズ、前NPB選手や前MLB選手を含め、日本から来た多くの選手がプレーしています。 主な選手の成績を下記にて紹介します。 試合はBaseball (www.theabl.com.au/japan) で観戦できます。ウェブサイトの視聴方法を参考に、お使いのスマホやPCにてぜひご覧ください。 ......",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.baseball.com.au%2Fuploads%2Fsites%2F14%2F2023%2F11%2FPlay.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://theabl.com.au/news/japan-update-r2/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "theabl.com.au",
+    "/news/japan-update-r2/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Giants add Phillies’ infield prospect Diego Gonzalez for remainder of ABL Season | Adelaide Giants Base....",
+   "content": "A new Philadelphia Phillies’ prospect is set to join the Adelaide Giants family. Diego Gonzalez, a 21-year-old Venezuelan infielder, will join the Giants for the remainder of the season. He hit .233 in the 2024 minor league season split across four levels – Triple-A, High-A, Class-A and Rookie Ball. Gonzalez signed as an international free-agent out of Venezuela win 2022. He is a switch-hitter. He has a career .258 average across 178 games in the minor leagues. Gonzalez helps fill a hole lef....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.baseball.com.au%2Fuploads%2Fsites%2F6%2F2024%2F12%2FNews-Cover-105.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://adelaidegiants.com.au/news/diego/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "adelaidegiants.com.au",
+    "/news/diego/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "FiveAA Preview | Giants on road for season defining series in Canberra + Jared Carr's impact | Adelaide G....",
+   "content": "It may sound silly but what happens this weekend in Canberra really does set the tone for the rest of the year. The Adelaide Giants are 16-12, in second place in the ABL and hold a 3.5 game advantage over Melbourne who are in fifth and outside of the playoffs. The Canberra Cavalry are 14-14. A win or a series split this weekend for the Giants would mean Adelaide is guaranteed to be at least 18-14 and have a season series win over the Cavalry in the event of a tiebreaker. A series loss? And the G....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.baseball.com.au%2Fuploads%2Fsites%2F6%2F2025%2F01%2FNews-Cover-116.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://adelaidegiants.com.au/news/fiveeaa-round8/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "adelaidegiants.com.au",
+    "/news/fiveeaa-round8/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Graveyard Baseball: 2020 NPB fan guide Part II: Pacific League",
+   "content": "The Central League has the history and popularity, but the Pacific League has owned the 21st Century. As you probably read the Central League portion, the Pacific League has its own contrast. Once again, here are the guidelines for each team getting their own section: Ownership: Every NPB team's corporate owner and each company is known for something. 2020 Payroll rank: Because people are curious who can spend money and who can't. Remember, there are 12 teams. Location/Stadium: Each team has its....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fblogger.googleusercontent.com%2Fimg%2Fb%2FR29vZ2xl%2FAVvXsEhMg-Dx3xFGZsxjI1dSxIDOBqFKyffV22PvbjszRRoz7fGacSEToFxta1tA9MWX8T_9A1v9WT3ZTHXDv4c4MlkK4oASi0YoWad61gUlZfnfZQ8S1qWFwl2qNhXpmdQPsC53RXbf_TCEOCg%2Fw1200-h630-p-k-no-nu%2Fphoto3.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://graveyardbaseball.blogspot.com/2020/06/2020-npb-fan-guide-part-ii-pacific.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "graveyardbaseball.blogspot.com",
+    "/2020/06/2020-npb-fan-guide-part-ii-pacific.html",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "千葉ロッテマリーンズ squad 2 npb 4",
+  "千葉ロッテマリーンズ squad 2 npb 3",
+  "千葉ロッテマリーンズ squad 2 npb 1",
+  "千葉ロッテマリーンズ squad 2 npb 0",
+  "千葉ロッテマリーンズ squad 2 npb v",
+  "千葉ロッテマリーンズ squad 2 npb x",
+  "千葉ロッテマリーンズ squad 2 npb 6",
+  "千葉ロッテマリーンズ squad 2 npb download"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

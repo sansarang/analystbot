@@ -1,0 +1,1919 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Las Vegas Lights lineup Oct 1",
+ "recorded_at": "2026-10-01T02:52:54.774512+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Las Vegas Sports Bar with Award Winning Food",
+   "content": "Enjoy award-winning food, craft cocktails, brunch, and game-day action at Flanker Las Vegas near Allegiant Stadium.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://flankerlv.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "flankerlv.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC Fixtures - ESPN",
+   "content": "ESPN has the full 2026 Las Vegas Lights FC schedule. Sat, Oct 10 PHX v LVL 7:00 PM USL Championship Sat, Oct 17 LVL v LEX 7:30 PM. Oct 24 MTB v LVL 7:00 PM",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/team/fixtures/_/id/18987/las_vegas_lights_fc",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/team/fixtures/_/id/18987/las_vegas_lights_fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Las Vegas Lights FC lineups — starting XI & team news",
+   "content": "Confirmed starting lineups, formations and team news for Sacramento Republic FC vs Las Vegas Lights FC (USL Championship), kickoff Thu, Oct 1, 2026, 02:00 UTC.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.sportsbencher.com/lineups/sacramento-republic-fc-vs-las-vegas-lights-fc",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportsbencher.com",
+    "/lineups/sacramento-republic-fc-vs-las-vegas-lights-fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Schedule - Las Vegas Lights FC",
+   "content": "Las Vegas Lights FC full schedule for the 2026 season of the USL Championship. Dates, venues, and tickets can be found here!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/schedule/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/schedule/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "The Vanderpump Las Vegas Hotel - A Caesars Rewards Destination",
+   "content": "Whether you’re feeling naughty or just knackered, each of the 188 rooms at the boutique Vanderpump Hotel have been meticulously designed by Lisa to create a calming escape from the chaos of the Las Vegas strip. And should your mood demand something more fabulous, our 21 lavish Suites await.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "http://www.thecromwell.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "www.thecromwell.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC: Professional Soccer Born in Las Vegas",
+   "content": "Las Vegas Lights FC is a professional soccer team born in Las Vegas. Buy tickets, shop the team store, and read Lights news here.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Big Black Comedy Show | V Theater at Planet Hollywood Inside the Miracle Mile Mall | Thu, Oct 1, 2026",
+   "content": "Catch Big Black Comedy Show live at V Theater at Planet Hollywood Inside the Miracle Mile Mall on Thu, Oct 1, 2026. Tickets, lineup and showtimes on FUNNY.CEO.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://epk.lol/shows/big-black-comedy-show-v-theater-at-planet-hollywood-inside-2026-10-01-tm-17AYv0G6GKlP1Ty",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "epk.lol",
+    "/shows/big-black-comedy-show-v-theater-at-planet-hollywood-inside-2026-10-01-tm-17AYv0G6GKlP1Ty",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "What to do in Las Vegas this week: October 1-7",
+   "content": "1 day ago · Jack White at BleauLive Theater, Wu-Tang Clan at T-Mobile Arena, NASCAR weekend at Las Vegas Motor Speedway, Wiz Khalifa at Hakkasan, Brandon Flowers at Encore Theater and more.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://lasvegasweekly.com/ae/2026/sep/30/what-to-do-in-las-vegas-this-week-october-1-7/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "lasvegasweekly.com",
+    "/ae/2026/sep/30/what-to-do-in-las-vegas-this-week-october-1-7/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "WPPI 2027 Photography Expo",
+   "content": "Keep the momentum going for WPPI 2027! Learn, connect, and celebrate with photographers shaping the future of the industry.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://wppiexpo.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "wppiexpo.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights live score, schedule & player stats | Sofascore",
+   "content": "Las Vegas Lights will play the next match against Sacramento Republic FC on Oct 1, 2026, 2:00:00 AM UTC in USL Championship.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.sofascore.com/football/team/las-vegas-lights/276898",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.sofascore.com",
+    "/football/team/las-vegas-lights/276898",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rich Little at Laugh Factory Comedy Club | Laugh Factory at Horseshoe Las Vegas | Thu, Oct 1, 2026",
+   "content": "Catch Rich Little at Laugh Factory Comedy Club live at Laugh Factory at Horseshoe Las Vegas on Thu, Oct 1, 2026. Tickets, lineup and showtimes on FUNNY.CEO.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://epk.lol/shows/rich-little-laugh-factory-at-horseshoe-las-vegas-2026-10-01-tm-17C8v0G6uQ4Q-5U",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "epk.lol",
+    "/shows/rich-little-laugh-factory-at-horseshoe-las-vegas-2026-10-01-tm-17C8v0G6uQ4Q-5U",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas October 1–4 Weekend 2026 — Cassian, Tiësto, Steve ...",
+   "content": "2 hours ago · Las Vegas Oct 1–4, 2026: Cassian at LIV Thursday, Tiësto at OMNIA Friday, Steve Aoki at OMNIA Saturday, Metro Boomin at LIV Saturday, Alesso at Palm Tree Beach Club. NASCAR week. Free guest list.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://nocovervegas.com/events/las-vegas-oct-1-4-weekend-2026",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "nocovervegas.com",
+    "/events/las-vegas-oct-1-4-weekend-2026",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Wynn Social: Elite Las Vegas Nightlife & Events",
+   "content": "Step into Wynn Social and experience the pinnacle of Las Vegas nightlife with world-class entertainment and exclusive events.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.wynnsocial.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.wynnsocial.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "El Paso Locomotive FC vs Las Vegas Lights FC",
+   "content": "The latest updates from the match, including scores, streams, lineups, recaps, stats and videos.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.uslchampionship.com/elpasolocomotivefc-lasvegaslightsfc-2494313",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.uslchampionship.com",
+    "/elpasolocomotivefc-lasvegaslightsfc-2494313",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Panama vs New Zealand lineups — starting XI & team news",
+   "content": "Confirmed starting lineups, formations and team news for Panama vs New Zealand (International Friendly), kickoff Thu, Oct 1, 2026, 18:00 UTC.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.sportsbencher.com/lineups/panama-vs-new-zealand",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportsbencher.com",
+    "/lineups/panama-vs-new-zealand",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Printable Schedules - Las Vegas Lights FC",
+   "content": "The 2025 Las Vegas Lights season schedule has arrived. Download, sync, and print your schedule here. Never miss a match!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/printable-schedules/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/printable-schedules/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC (@lvlightsfc) / X",
+   "content": "The October schedule is set, including our final TWO matches at the place we've called home ⚡️. Edison Azcona is getting called up! Vincent and the Grenadines! ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://x.com/lvlightsfc?lang=en",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "x.com",
+    "/lvlightsfc",
+    "",
+    "lang=en",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New Jersey Devils vs Philadelphia Flyers lineups — starting six & team news",
+   "content": "Confirmed starting lineups, … Oct 1, … 00 UTC.Predict the XI before the teamsheet drops and compare it with the official lineup the moment it is announced.Match facts Competition: … Oct 1 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.sportsbencher.com/lineups/new-jersey-devils-vs-philadelphia-flyers",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportsbencher.com",
+    "/lineups/new-jersey-devils-vs-philadelphia-flyers",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC vs Colorado Springs Switchbacks FC",
+   "content": "Las Vegas Lights FC vs Colorado Springs Switchbacks FC on Sun, May 24, 2026, 02:30 UTC. Check live results, H2H, match stats, lineups, player ratings, insights, team forms, shotmap, and highlights.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.fotmob.com%2Fmatch%2Fpreview%3FmatchId%3D5109762%26stage%3Dfinished&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.fotmob.com/en-GB/matches/colorado-springs-switchbacks-fc-vs-las-vegas-lights-fc/exsf4vpo",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/en-GB/matches/colorado-springs-switchbacks-fc-vs-las-vegas-lights-fc/exsf4vpo",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Phoenix Rising FC vs Las Vegas Lights FC",
+   "content": "Phoenix Rising FC vs Las Vegas Lights FC on Sun, Oct 11, 2026, 02:00 UTC. Check live results, H2H, match stats, lineups, player ratings, insights, team forms, shotmap, and highlights.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.fotmob.com%2Fmatch%2Fpreview%3FmatchId%3D5109998&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.fotmob.com/matches/phoenix-rising-fc-vs-las-vegas-lights-fc/bghpbdpo",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/matches/phoenix-rising-fc-vs-las-vegas-lights-fc/bghpbdpo",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights - Phoenix Rising (2-3), USL Championship 2023, USA",
+   "content": "후반 · 1-3 ; Manuel Arteaga ; Azriel González ; Emmanuel Ledesma ; Mohamed Traore ; Emil Cuello ; 2-3 Panos Armenakas ; 2-2 Danny Trejo ; Andrés Jiménez ; Gabi Torres ; Timothie Zali",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fforzafootball.com%2Fapi%2Fsocial%2F1213681361%2Fmatch&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://forzafootball.com/ko/match/las-vegas-lights-phoenix-rising-1213681361",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "forzafootball.com",
+    "/ko/match/las-vegas-lights-phoenix-rising-1213681361",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Headliners in October 2026",
+   "content": "2 hours ago · Las Vegas Headliners October 2026 Check out the schedule of all Headliners this month in Las Vegas, NV. Las Vegas is home to top concerts and shows from all sides of the entertainment industry. Every year, top artists perform throughout Las Vegas – some take up residency and stay a while, while others are here for a limited time.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://headliners.vegas/october/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "headliners.vegas",
+    "/october/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Beer Park Las Vegas | Eat, Drink & Watch on the Strip",
+   "content": "Welcome to Beer Park at Paris Las Vegas. Rooftop bar and grill with 60 screens, 100 beers, outdoor games and iconic views of the Strip and Bellagio fountains.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.beerpark.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.beerpark.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Buy Las Vegas Lights Tickets | 2026-2027 Event Dates ...",
+   "content": "Buy Soccer Las Vegas Lights event tickets at Ticketmaster.com. Get sport event schedules and promotions.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.ticketmaster.com/las-vegas-lights-tickets/artist/2458223",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.ticketmaster.com",
+    "/las-vegas-lights-tickets/artist/2458223",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colorado Avalanche vs Los Angeles Kings lineups — starting six & team news",
+   "content": "Confirmed starting lineups, … Oct 1, … 00 UTC.Predict the XI before the teamsheet drops and compare it with the official lineup the moment it is announced.Match facts Competition: … Oct 1 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.sportsbencher.com/lineups/colorado-avalanche-vs-los-angeles-kings",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportsbencher.com",
+    "/lineups/colorado-avalanche-vs-los-angeles-kings",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Live Music, Rooftop Bar, & Line Dancing - Category 10 Las Vegas",
+   "content": "WELCOME TO CATEGORY 10 LAS VEGAS Opening October 2026 Inspired by Luke Combs’ smash-hit “Hurricane,” Category 10 is where Sin City gets country. Located at The Flamingo on the Strip, it’s three stories of live music, Carolina eats, line dancing, rooftop views, and fan-first fun—the kind of honky-tonk Vegas didn’t see coming.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.category10.com/lasvegas/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.category10.com",
+    "/lasvegas/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lexington vs Las Vegas Lights Stats, H2H, xG",
+   "content": "33%Over 1.5 1 / 3 matches 33%Over 2.5 1 / 3 matches 0% Over 3.5 0 / 3 matches 33%BTTS 1 / 3 matches 33%Clean Sheets Lexington 67% Clean Sheets Las Vegas Lights Lexington v Las Vegas Lights Past H2H Results & Fixtures May 3, 2026 Las Vegas Lights 2 Lexington 1 Aug 31, 2025 Las Vegas Lights 1 Lexington 0 Apr 13, 2025 Lexington 0...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://footystats.org/usa/las-vegas-lights-fc-vs-lexington-sc-h2h-stats",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "footystats.org",
+    "/usa/las-vegas-lights-fc-vs-lexington-sc-h2h-stats",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2026 Las Vegas Lights FC season - Wikipedia",
+   "content": "The 2026 Las Vegas Lights FC season is the club's ninth season, and their ninth season in the United Soccer League Championship (USLC), the second division ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/2026_Las_Vegas_Lights_FC_season",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/2026_Las_Vegas_Lights_FC_season",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "MxM News: Lake Mead hotspot will reopen Oct. 15, officials announce",
+   "content": "Other Recent Articles about 1 hour ago Las Vegas, … money laundering released without bail 0 Comments 0 0 about 1 hour ago Las Vegas, … officials say 0 Comments 0 0 about 1 hour ago Las Vegas …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://mxmnews.com/article/e4cb9a6e-9f65-4de4-a13c-072c6d977c61",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "mxmnews.com",
+    "/article/e4cb9a6e-9f65-4de4-a13c-072c6d977c61",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Vegas Golden Knights Line Combinations - Daily Faceoff",
+   "content": "14 hours ago · Check out the latest Vegas Golden Knights lines for tonight. Complete Golden Knights line combination, game stats, and season stats updated daily.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.dailyfaceoff.com/teams/vegas-golden-knights/line-combinations",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.dailyfaceoff.com",
+    "/teams/vegas-golden-knights/line-combinations",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "DEF CON® Hacking Conference Home",
+   "content": "The largest hacking and security conference with presentations, workshops, contests, villages and the premier Capture The Flag Contest.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://defcon.org/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "defcon.org",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Las Vegas Lights FC - FotMob",
+   "content": "Sacramento Republic FC vs Las Vegas Lights FC on Thu, Oct 1, 2026, 02:00 UTC. Check live results, H2H, match stats, lineups, player ratings, insights, ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.fotmob.com/matches/sacramento-republic-fc-vs-las-vegas-lights-fc/d66zlwfw",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/matches/sacramento-republic-fc-vs-las-vegas-lights-fc/d66zlwfw",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "FC Tulsa vs New Mexico United lineups — starting XI & team news",
+   "content": "Confirmed starting lineups, … Oct 1, … FC Tulsa 1–0 New Mexico United.Predict the XI before the teamsheet drops and compare it with the official lineup the moment it is announced.Match facts Competition: … Oct 1 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.sportsbencher.com/lineups/fc-tulsa-vs-new-mexico-united",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportsbencher.com",
+    "/lineups/fc-tulsa-vs-new-mexico-united",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC vs. San Antonio FC - CBS Sports",
+   "content": "5 hours ago · Watch Live: USL Championship match Las Vegas Lights FC vs. San Antonio FC on October 3, 2026.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.cbssports.com/watch/usl/LET-211534555",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.cbssports.com",
+    "/watch/usl/LET-211534555",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "YHWH Nailgun, with Samba Jean-Baptise — Oct 22, 2026 | Ckord",
+   "content": "Starts: Thu, Oct 22, 8:00 PM Ends: Thu, Oct 22, 10:00 PM Where: 300 East Main Street, Carrboro, North Carolina 27510, … $27.76 Lineup YHWH Nailgun Venue:",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://app.ckord.com/performances/12270ca8-0142-4a26-b9e6-ee224718b86e",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "app.ckord.com",
+    "/performances/12270ca8-0142-4a26-b9e6-ee224718b86e",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC Tickets",
+   "content": "Get Las Vegas Lights FC tickets. View Las Vegas Lights FC 2026 Schedule. Secure Seats for Las Vegas Lights FC home games, away games and playoff games.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.eventticketscenter.com/las-vegas-lights-fc-tickets/581735/e",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.eventticketscenter.com",
+    "/las-vegas-lights-fc-tickets/581735/e",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Brotherkenzie, Dirt Buyer — Oct 15, 2026 | Ckord",
+   "content": "Starts: Thu, Oct 15, 7:00 PM Ends: Thu, Oct 15, 9:00 PM Where: 101 Avenue A, New York, … $24.13 Lineup Brotherkenzie Dirt Buyer Venue: … Oct 1, … Oct 1 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://app.ckord.com/performances/9336c8e0-af0e-4898-92de-4b2da9a90b1a",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "app.ckord.com",
+    "/performances/9336c8e0-af0e-4898-92de-4b2da9a90b1a",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "John Legend",
+   "content": "Official site of John Legend, Grammy-winning singer, songwriter, producer, and philanthropist. Explore his music, events and more here.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://johnlegend.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "johnlegend.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hayden Everett, Kate Stephenson, Jackson Lundy — Oct 25, 2026 | Ckord",
+   "content": "Hayden Everett, Kate Stephenson and 1 more live at Gold Diggers Bar, Los Angeles on Sun, Oct 25, 2:00 PM. … Lineup, start time and tickets on Ckord.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://app.ckord.com/performances/9b6a4958-497c-4bf4-94fb-e516688ecb8e",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "app.ckord.com",
+    "/performances/9b6a4958-497c-4bf4-94fb-e516688ecb8e",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC vs Phoenix Rising FC - USL Championship",
+   "content": "The latest updates from the Week 9 match between Las Vegas Lights FC and Phoenix Rising FC on August 22, 2020, including lineups, recaps, stats and videos.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.uslchampionship.com/lasvegaslightsfc-phoenixrisingfc-2092845",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.uslchampionship.com",
+    "/lasvegaslightsfc-phoenixrisingfc-2092845",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Trip: Traumer, Arapu, Cesar Vinzent b2b Isbel — Oct 24, 2026 | Ckord",
+   "content": "Defected: Hannah Wants, Low Steppa, Monki, Sam Divine, Andrea Lane — Oct 1, 2026 Echoes of Tomorrow: … Oct 2, … Oct 3, … Oct 4, … Oct 5, … Oct 6, … Oct 7, … Oct 8 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://app.ckord.com/performances/b0d154b9-f917-4a4b-822d-f96f21c920fe",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "app.ckord.com",
+    "/performances/b0d154b9-f917-4a4b-822d-f96f21c920fe",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "00 Pie & Pub | Pizzeria and Bar in Las Vegas, NV",
+   "content": "Looking for award-winning pizza near you in Las Vegas? Double Zero Pie & Pub serves Neo-Neapolitan pizza, craft beer, and Italian favorites in a lively neighborhood setting.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.doublezeropie.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.doublezeropie.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "France vs Italy Prediction, Betting Tips, Lineups & Odds | 02 Oct 2026",
+   "content": "See our Editorial Policy Pick odds and lines reflect the price available at the time of publication (Oct 1, … 01 October 2026 Correct Score Prediction France are available to back at 8.00 to secure a 2-1 victory.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.sportsgambler.com/betting-tips/football/france-vs-italy-prediction-lineups-odds-2026-10-02/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportsgambler.com",
+    "/betting-tips/football/france-vs-italy-prediction-lineups-odds-2026-10-02/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Poland vs Romania Prediction, Betting Tips, Lineups & Odds | 02 Oct 2026",
+   "content": "See our Editorial Policy Pick odds and lines reflect the price available at the time of publication (Oct 1, … 01 October 2026 Correct Score Prediction There’s plenty of juice to be found by backing the two teams to draw 1-1.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.sportsgambler.com/betting-tips/football/poland-vs-romania-prediction-lineups-odds-2026-10-02/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportsgambler.com",
+    "/betting-tips/football/poland-vs-romania-prediction-lineups-odds-2026-10-02/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Official Brad Paisley Website",
+   "content": "Brad Paisley news, official fan club, merchandise, advance tickets, meet & greets and more.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.bradpaisley.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.bradpaisley.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Nik West — Oct 1, 2026 | Ckord",
+   "content": "Doors open at 21:00, thirty minutes before the event starts Starts: … Oct 1, … Oct 1, … $0.0 Lineup Nik West Venue: … Oct 1, … Oct 2, … Oct 2, … Oct 3, … Oct 3, … Oct 4 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://app.ckord.com/performances/44027233-5e67-438b-afe7-5c2094fb5287",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "app.ckord.com",
+    "/performances/44027233-5e67-438b-afe7-5c2094fb5287",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hungary vs Georgia Prediction, Betting Tips, Lineups & Odds | 02 Oct 2026",
+   "content": "See our Editorial Policy Pick odds and lines reflect the price available at the time of publication (Oct 1, … 01 October 2026 Correct Score Prediction We’ve got a correct score prediction which involves Hungary winning 2-1.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.sportsgambler.com/betting-tips/football/hungary-vs-georgia-prediction-lineups-odds-2026-10-02/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportsgambler.com",
+    "/betting-tips/football/hungary-vs-georgia-prediction-lineups-odds-2026-10-02/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Belgium vs Turkey Prediction, Betting Tips, Lineups & Odds | 02 Oct 2026",
+   "content": "See our Editorial Policy Pick odds and lines reflect the price available at the time of publication (Oct 1, … 01 October 2026 Correct Score Prediction We think there’s a chance of a 1-1 draw and this can be backed at odds of 8.00.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.sportsgambler.com/betting-tips/football/belgium-vs-turkey-prediction-lineups-odds-2026-10-02/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportsgambler.com",
+    "/betting-tips/football/belgium-vs-turkey-prediction-lineups-odds-2026-10-02/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights vs San Antonio FC live score, H2H and lineups | Sofascore",
+   "content": "Las Vegas Lights San Antonio FC live score starts on 4 Oct 2026 at 02:30 UTC time at Cashman Field stadium, Las Vegas city, USA in USL Championship, USA.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg.sofascore.com%2Fapi%2Fv1%2Funique-tournament%2F13363%2Fimage&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.sofascore.com/football/match/las-vegas-lights-san-antonio-fc/JRLbsYMkc",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.sofascore.com",
+    "/football/match/las-vegas-lights-san-antonio-fc/JRLbsYMkc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Bosnia-Herzegovina vs Sweden Prediction, Betting Tips, Lineups & Odds | 02 Oct 2026",
+   "content": "See our Editorial Policy Pick odds and lines reflect the price available at the time of publication (Oct 1, … 01 October 2026 Correct Score Prediction We’ve picked out a correct score of 2-1 being landed by Sweden.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.sportsgambler.com/betting-tips/football/bosnia-herzegovina-vs-sweden-prediction-lineups-odds-2026-10-02/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportsgambler.com",
+    "/betting-tips/football/bosnia-herzegovina-vs-sweden-prediction-lineups-odds-2026-10-02/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Borgata Comedy Club | Music Box at the Borgata | Fri, Oct 2, 2026",
+   "content": "Catch Borgata Comedy Club live at Music Box at the Borgata on Fri, Oct 2, 2026. Tickets, lineup and showtimes on FUNNY.CEO.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://epk.lol/shows/borgata-comedy-club-music-box-at-the-atlantic-city-2026-10-02-tm-vv1FFZ_KFKPyZd57u",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "epk.lol",
+    "/shows/borgata-comedy-club-music-box-at-the-atlantic-city-2026-10-02-tm-vv1FFZ_KFKPyZd57u",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Brandy Clark Nashville Tickets - 3rd and Lindsley | Oct 18, 2026",
+   "content": "Nov 29 · … TN Ruston Kelly Oct 9 · … TN You May Also Like Caylee Hammack 1 concert Ashley McBryde 22 concerts Margo Price 1 concert Maggie Rose 15 concerts Cam 3 concerts Tenille Townes 12 concerts Morgan Wade 3 concerts Ashley Monroe 5 concerts Jack Ingram 1 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://concerts50.com/show/brandy-clark-in-nashville-tickets-oct-18-2026",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "concerts50.com",
+    "/show/brandy-clark-in-nashville-tickets-oct-18-2026",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "las vegas lights soccer",
+  "las vegas lights players",
+  "las vegas lights schedule 2026",
+  "las vegas lights lineup oct 1 2019",
+  "las vegas lights lineup oct 1 2",
+  "las vegas soccer game today",
+  "las vegas lights lineup oct 1 2022",
+  "las vegas lights lineup oct 1 2024",
+  "las vegas lights lineup oct 1 2025",
+  "las vegas lights game",
+  "las vegas lights schedule",
+  "las vegas lights lineup oct 1 2023",
+  "las vegas lights lineup oct 1 2021",
+  "las vegas lights lineup oct 1 2020",
+  "las vegas lights jersey 2026",
+  "las vegas lights fc"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

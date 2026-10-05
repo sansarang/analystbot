@@ -1,0 +1,138 @@
+# SearXNG — 로컬 자체 호스팅 (§19-i 1순위)
+#
+# 🔴 루프백에만 바인딩한다 — 인증 없이 외부에 노출하지 않는다(§17-g-8).
+#    compose 의 포트 매핑이 127.0.0.1 로 묶여 있고, 이 파일은 그 안에서 돈다.
+# 🔴 JSON 출력을 켠다 — 봇이 HTML 을 긁지 않게 한다(긁기는 §19-i 제외 항목).
+# 🔴 비용 0 · 키 없음 · 쿼리 상한 없음. 업스트림 엔진이 막히면 그 엔진만 dead.
+
+use_default_settings: true
+
+general:
+  instance_name: "analystbot-local"
+  donation_url: false
+  contact_url: false
+  enable_metrics: false
+
+server:
+  secret_key: "8c1c7f61e120799b9b5f5c2568830a25ae04bda840ad01a68b7db1d1826d0e56"
+  limiter: false          # 로컬 단독 사용 — 우리 자신을 막을 이유가 없다
+  public_instance: false
+  image_proxy: false
+  method: "GET"
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: ""
+  # 🔴 json 을 켜는 것이 이 파일의 핵심이다. 없으면 봇이 HTML 을 파싱해야 한다.
+  formats:
+    - html
+    - json
+
+ui:
+  static_use_hash: true
+
+outgoing:
+  request_timeout: 6.0
+  max_request_timeout: 12.0
+  pool_connections: 20
+  pool_maxsize: 10
+  enable_http2: true
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 일반 웹 검색 엔진 보강 (2026-09-30 · 단계 4 실측)
+# ══════════════════════════════════════════════════════════════════
+#
+# 🔴 **왜 늘리나 — 실측이 요구했다.**
+#    단계 4 필수 8건 측정이 **전 질의 0건**을 냈다. 원인은 봇이 아니라 이것이었다:
+#    켜진 엔진 81개 중 **실제 웹 검색을 하는 것이 셋뿐**(`duckduckgo`·`brave`·
+#    `google cse`)이고, 나머지는 위키·사전·번역기라 스포츠 기사를 못 찾는다.
+#    그 셋이 요청 과다로 동시에 정지하자 검색이 **통째로** 멈췄다.
+#    → v4 §9 단계 4 는 게이트 미달의 처방을 *"소스 지도·세포 예산으로 돌아가서
+#      다시 잰다"* 로 못 박았다. 이것이 그 "소스 지도 보강"이다.
+#
+# 🔴 **전부 키 없음·카드 없음·무료다**(§19-i-1 의 "유료 API 0건" 정의 안).
+#    SearXNG 가 우리 대신 공개 검색 결과를 가져오고, 우리는 로컬 JSON 만 읽는다.
+# 🔴 §19-i-2 가 이미 이 상황을 전제했다: *"업스트림 엔진이 막으면 그 엔진만 dead
+#    처리."* 엔진이 여럿이어야 그 문장이 뜻을 가진다 — 셋이면 셋이 같이 막힌다.
+#
+# ⚠️ SearXNG 엔진 목록의 `google cse` 는 **SearXNG 자체의 구글 엔진**이고
+#    우리 `GOOGLE_CSE_KEY`(§19-i-3, 지금 잠김)와 **무관하다.** 이름이 닮아
+#    혼동하기 쉬우므로 적어 둔다.
+# ══════════════════════════════════════════════════════════════════
+# 🔴 엔진 실측 2026-10-01 — **개수가 아니라 질로 가렸다**
+# ══════════════════════════════════════════════════════════════════
+#
+# 재는 법: 엔진마다 따로 질의하고, **결과 항목의 `engines` 귀속**으로 센다.
+#   ⚠️ 전체 개수는 못 믿는다 — 정지된 엔진을 지목해도 다른 엔진 결과가 섞여 온다.
+# 그리고 **우리 경기 자료인가**를 본다(제목·본문에 팀명·리그명).
+#
+# | 엔진 | 귀속 결과 | 질 | 판정 |
+# |---|---|---|---|
+# | `bing` | 10 | 🔴 **관련 0/10** | **끈다** (아래) |
+# | `yahoo` | 7 | ✅ **7/7** — fotmob·sofascore·uslchampionship·livescore | 켠다 |
+# | `google` | 10 | ✅ **10/10** — 🔴 *"Starting XI is in #SACvLV"* 를 찾았다 | **켠다** |
+# | `google news` | 10 | ✅ 8/10 — sacrepublicfc·uslchampionship 공식 | **켠다** |
+# | `naver` | 15 | ✅ 13/15 — uslchampionship·aiscore·flashscore | **켠다** |
+# | `yep` | 20 | 🟡 20/20 이나 위키·선수 페이지 — 경기별 자료는 아니다 | 켠다(폼·개인 기록에 쓴다) |
+# | `mwmbl` | 1 | ❌ 2018 시즌 페이지 하나 | 켜지 않는다 |
+# | `startpage`·`mojeek`·`wikipedia`·`marginalia`·`presearch`·`stract`·`reddit` | **0** | — | 그대로 둔다(되살아날 수 있고 비용 0) |
+#
+# 🔴🔴 **`bing` 은 깨져 있다 — 다른 질의의 결과를 낸다.** 질의 다섯으로 재현했다:
+#
+#     "Sacramento Republic vs Las Vegas Lights starting lineup"
+#        → Natural Language Processing · IBM Research · 知乎(중국어 NLP)
+#     "New York Yankees probable pitcher"
+#        → It's NEW · Daum · Newgrounds        ← `new` 한 낱말에만 걸렸다
+#     "Borussia Dortmund injury news"
+#        → Backend Development · GeeksforGeeks
+#
+#   ⚠️ **1차 녹음의 zhihu 홍수가 이것이었다.** 나는 그것을 *"한국어로 검색해서"*
+#      라고 적었다 — 언어도 문제였지만 **더 큰 원인은 bing 이 질의를 무시한 것**이다.
+#      🔴 원인을 하나로 단정했던 것을 고친다(§11-3 추측 금지).
+#   🔴 켜 두면 **열기 예산을 무관한 페이지에 태운다** — 실측 1차에서 20/20 을 그렇게
+#      썼다. 끄는 것이 소스 지도 보강이다(§9 단계 4 의 처방).
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **`yahoo` 도 끈다 — bing 과 같은 병이다** (실측 2026-10-02)
+# ══════════════════════════════════════════════════════════════════
+#
+# 2026-10-01 측정에서 `yahoo` 는 7/7 로 가장 좋았다. **그 평가는 틀렸다** —
+# 오늘 다시 재니 질의를 무시한다. 재현 둘:
+#
+#     "ロッテ スタメン 発表"          → whatdistrictamiin.com · ballotpedia (미 선거구)
+#     "Chiba Lotte Marines lineup"  → economyoutlet.com 쇼핑몰 5연속
+#
+# 🔴 그런데 brave·duckduckgo·google·google cse·qwant 가 전부 `Suspended` 인
+#    상태라, **살아 있는 엔진 중 결과를 가장 많이 내는 것이 이것이었다.**
+#    그래서 라이브 실측(소프트뱅크–치바롯데)에서 열기 예산 전부가
+#    `viagogo 티켓`·`케이세이 전철 PDF`·`temu`·`monster 이력서`로 갔다.
+# ⚠️ 엔진 품질은 **고정이 아니다** — 하루 만에 뒤집혔다. 그래서 봇은 엔진을
+#    **질문마다 지정**하고(`config/search_routing.yaml`), 지정이 0건이면
+#    지정 없이 한 번 더 던진다(§19-b-4 대체).
+# ══════════════════════════════════════════════════════════════════
+engines:
+  # 🔴 **끈다** — 질의를 무시하고 무관한 결과를 낸다(위 실측)
+  - name: bing
+    disabled: true
+  - name: yahoo
+    disabled: true
+  # ── 실측으로 **우리 자료를 내는** 엔진들
+  - name: google
+    disabled: false
+  - name: google news
+    disabled: false
+  - name: naver
+    disabled: false
+  - name: yep
+    disabled: false
+  # ── 지금은 0건이나 비용이 없다 — 되살아나면 쓴다
+  - name: startpage
+    disabled: false
+  - name: mojeek
+    disabled: false
+  - name: qwant
+    disabled: false
+  - name: wikipedia
+    disabled: false
+  # ⚠️ `duckduckgo`·`brave` 는 기본으로 켜져 있다 — 여기 다시 적지 않는다.
+  #    정지되는 것은 설정 문제가 아니라 그쪽 정책이므로 고칠 수 없다.

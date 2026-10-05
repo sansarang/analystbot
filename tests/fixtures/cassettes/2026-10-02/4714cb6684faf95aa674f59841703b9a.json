@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://worldcuppass.com/south-korea-world-cup-squad-2026/",
+ "query": "",
+ "recorded_at": "2026-10-02T05:30:13.328060+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

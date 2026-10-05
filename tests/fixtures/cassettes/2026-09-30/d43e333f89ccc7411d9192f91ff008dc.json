@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://lions-matome.com/archives/jikkyo20260929.html",
+ "query": "",
+ "recorded_at": "2026-09-30T14:40:45.933665+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

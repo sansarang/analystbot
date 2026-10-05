@@ -1,0 +1,757 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Sacramento Republic 선발 라인업 Oct 1",
+ "recorded_at": "2026-10-01T02:14:54.133943+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Homepage - Sacramento Republic FC",
+   "content": "Subscribe to our newsletter Republic FC news, events, and promotions straight to your inbox.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1,
+    1
+   ],
+   "score": 4.0,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2026 Schedule - Sacramento Republic FC",
+   "content": "Schedule for Sacramento Republic FC home and away matches",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2,
+    2
+   ],
+   "score": 2.0,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/schedule/",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/schedule/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Orange County SC 대 Sacramento Republic FC - 실시간 점수, 예상 스타팅 라인업 및 H2H 통계",
+   "content": "Sep 6, 2026 · Sun, Sep 6, 2026, 02:00 UTC의 Orange County SC 대 Sacramento Republic FC. 실시간 결과, 상대 전적, 경기 통계, 선발 라인업, 선수 평가 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4,
+    3
+   ],
+   "score": 1.1666666666666665,
+   "category": "general",
+   "url": "https://www.fotmob.com/ko/matches/orange-county-sc-vs-sacramento-republic-fc/3yxb20f9",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/ko/matches/orange-county-sc-vs-sacramento-republic-fc/3yxb20f9",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://research.ibm.com/topics/natural-language-processing",
+   "title": "Natural Language Processing - IBM Research",
+   "content": "May 11, 2026 · Natural Language Processing Much of the information that can help transform enterprises is locked away in text, like …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "research.ibm.com",
+    "/topics/natural-language-processing",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC - Detailed squad 2026 | Transfermarkt",
+   "content": "Squad Sacramento Republic FC This page displays a detailed overview of the club's current squad. It shows all personal information about the players, including age, nationality, contract duration and market value. It also contains a table with average age, cumulative market value and average market value for each player position and overall.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6,
+    4
+   ],
+   "score": 0.8333333333333333,
+   "category": "general",
+   "url": "https://www.transfermarkt.com/sacramento-republic-fc/kader/verein/40835",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.transfermarkt.com",
+    "/sacramento-republic-fc/kader/verein/40835",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic squad - Football, USA - Flashscore.com",
+   "content": "Explore the Sacramento Republic squad page on Flashscore.com for a comprehensive overview of the team's lineup, featuring detailed statistics and performance insights.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7,
+    6
+   ],
+   "score": 0.6190476190476191,
+   "category": "general",
+   "url": "https://www.flashscore.com/team/sacramento-republic/z3BFwb83/squad/",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.flashscore.com",
+    "/team/sacramento-republic/z3BFwb83/squad/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://research.ibm.com/people/gakuto-kurata",
+   "title": "Gakuto Kurata - IBM Research",
+   "content": "He is an IBM Master Inventor and a member of IBM Academy of Technology. He served as an elected member of the IEEE SLTC …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "research.ibm.com",
+    "/people/gakuto-kurata",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.zhihu.com/topic/19560026/intro",
+   "title": "自然语言处理 - 知乎",
+   "content": "Apr 24, 2020 · 自然语言处理，英文Natural Language Processing，简写NLP。NLP这个概念本身过于庞大，可以把它分成“自然语言” …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/topic/19560026/intro",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC 2025 Squad - ESPN",
+   "content": "Explore the 2025 Sacramento Republic FC roster on ESPN. Includes full details on appearances, minutes played, goals and assists.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/team/squad/_/id/17828/season/2025",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/team/squad/_/id/17828/season/2025",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/281608085",
+   "title": "NLP、自然语言、神经网络和深度学习四者的联系和区别？ - 知乎",
+   "content": "NLP (Natural Language Processing，自然语言处理)，被视为人工智能领域皇冠上的明珠。 可见其重要性，也可以见其难度。 作为刚 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/281608085",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://research.ibm.com/publications/sentiment-analysis-capturing-favorability-using-natural-language-processing",
+   "title": "Sentiment analysis: Capturing favorability using natural language …",
+   "content": "Oct 23, 2003 · Sentiment analysis: Capturing favorability using natural language processing for K-CAP 2003 by Tetsuya Nasukawa …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "research.ibm.com",
+    "/publications/sentiment-analysis-capturing-favorability-using-natural-language-processing",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Hartford Athletic 대 Sacramento Republic FC - 실시간 점수, 예상 스타팅 라인업 및 H2H 통계",
+   "content": "Sat, Oct 11, 2025, 23:00 UTC의 Hartford Athletic 대 Sacramento Republic FC. 실시간 결과, 상대 전적, 경기 통계, 선발 라인업, 선수 평가 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.fotmob.com/ko/matches/sacramento-republic-fc-vs-hartford-athletic/etmw7n2f",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/ko/matches/sacramento-republic-fc-vs-hartford-athletic/etmw7n2f",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC Standings - USL Championship",
+   "content": "View the Sacramento Republic FC Standings on the official website of the USL Championship.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.uslchampionship.com/sacramento-republic-fc-standings",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.uslchampionship.com",
+    "/sacramento-republic-fc-standings",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://research.ibm.com/publications/language-as-a-biomarker-for-psychosis-a-natural-language-processing-approach",
+   "title": "Language as a biomarker for psychosis: A natural language …",
+   "content": "Dec 1, 2020 · The potential value of linguistic biomarkers has been significantly magnified, however, by recent advances in natural …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "research.ibm.com",
+    "/publications/language-as-a-biomarker-for-psychosis-a-natural-language-processing-approach",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://research.ibm.com/publications/natural-language-modelling-for-process-optimization",
+   "title": "Natural Language Modelling For Process Optimization",
+   "content": "Sep 7, 2020 · Using Natural Language Processing techniques, we model each wafer as a vector of weighted terms in the processing …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "research.ibm.com",
+    "/publications/natural-language-modelling-for-process-optimization",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC live score, schedule & player stats ...",
+   "content": "Sacramento Republic FC next match Sacramento Republic FC will play the next match against Las Vegas Lights on Oct 1, 2026, 2:00:00 AM UTC in USL Championship. When the match starts, you will be able to follow Sacramento Republic FC vs Las Vegas Lights live score, standings, minute by minute updated live results and match statistics.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.sofascore.com/football/team/sacramento-republic-fc/153498",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sofascore.com",
+    "/football/team/sacramento-republic-fc/153498",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/380703337",
+   "title": "NLP领域有哪些必读的经典论文？ - 知乎",
+   "content": "edit based generation: 列出一些通用的NLP知识点，如果更早的话直接看书比较全：Speech and Language Processing：An …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/380703337",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC - Sofascore",
+   "content": "Sacramento Republic FC is going head to head with Miami FC starting on 26 Oct 2025 at 02:00 UTC at Papa Murphy's Park stadium, Sacramento city, USA. The match is a part of the USL Championship. Sacramento Republic FC played against Miami FC in 1 matches this season. Currently, Sacramento Republic FC rank 2nd, while Miami FC hold 11th position. Looking to compare the best-rated player on both ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.sofascore.com/football/match/miami-fc-sacramento-republic-fc/YulbsgmMb",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.sofascore.com",
+    "/football/match/miami-fc-sacramento-republic-fc/YulbsgmMb",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/304163704",
+   "title": "什么是「自然语言处理」？ - 知乎",
+   "content": "自然语言处理 （Natural Language Processing，NLP）是AI的一个领域，旨在让计算机理解和使用人类语言，从而执行有用的任务。 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/304163704",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC - MLSSoccer.com",
+   "content": "All the latest MLS club news, scores, stats, standings and highlights.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/clubs/sacramento-republic/roster/",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/clubs/sacramento-republic/roster/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://research.ibm.com/publications/a-tree-based-statistical-language-model-for-natural-language-speech-recognition",
+   "title": "A Tree-Based Statistical Language Model for Natural Language …",
+   "content": "A Tree-Based Statistical Language Model for Natural Language Speech Recognition for IEEE Transactions on Acoustics, Speech, …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "research.ibm.com",
+    "/publications/a-tree-based-statistical-language-model-for-natural-language-speech-recognition",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "2025 Sacramento Republic FC Roster - uslchampionship.com",
+   "content": "View the 2025 Sacramento Republic FC Roster on the official website of the USL Championship.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.uslchampionship.com/sacramento-republic-fc-roster-2025",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.uslchampionship.com",
+    "/sacramento-republic-fc-roster-2025",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "sacramento republic 선발 라인업 oct 1 in red",
+  "sacramento republic 선발 라인업 oct 1 2024",
+  "sacramento republic 선발 라인업 oct 1 mean",
+  "sacramento republic 선발 라인업 oct 1 in back",
+  "sacramento republic 선발 라인업 oct 1 2",
+  "sacramento republic 선발 라인업 oct 1 china",
+  "sacramento republic 선발 라인업 oct 1 7",
+  "sacramento republic 선발 라인업 oct 1 meme"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

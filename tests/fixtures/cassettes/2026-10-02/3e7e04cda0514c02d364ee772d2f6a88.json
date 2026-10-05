@@ -1,0 +1,587 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "福岡ソフトバンクホークス injury news 10月2日",
+ "recorded_at": "2026-10-02T08:07:40.366850+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "http://npb.jp/bis/teams/index_h.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/teams/index_h.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2023年コーチングスタッフについて（2022年10月31日現在）",
+   "content": "2022.12.14.2022年10月31日 福岡ソフトバンクホークス株式会社 2023年コーチングスタッフについて（2022年10月31日現在） 下記のとおり、お知らせいたします。2022.12.14.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/news/detail/00006025.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/news/detail/00006025.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "試合速報 - 福岡ソフトバンクホークス",
+   "content": "2023.11.21.more 試合速報 2026.09.19 SAT 前の試合 試合日程・結果 次の試合 試合トップ 試合速報 パーソル パ・リーグ ホーム 試合開始 14:00 ビジター 早川 前田悠 楽天モバイル 最強パーク 1 2 3 4 5 6 7 8 9 10 11 12 R H 0 0 0 02023.11.21.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/gamelive/result/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/gamelive/result/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 10 · vs. 日本ハム · 3-2 · 試合終了 · みずほPayPay · 勝：松本晴 · Ｓ：杉山, 金 : 11 · vs. ロッテ · 11-1 · 試合終了 · みずほPayPay · 勝：前田悠, 土 : 12 · vs. ロッテ · 5-4 · 試合終了 · みずほPayPay · 勝： · ラトリッジ · Ｓ：杉山, 日 : 13 · vs. ロッテ · 13:30 · 見どころ · みずほPayPay, 月 : 14 · 試合なし, 火 : 15 · vs. オリックス · 18:00 · 試合前 · 京セラ....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/12/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/12/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ａ．ウォーカー（福岡ソフトバンクホークス） | 個人年度別成績",
+   "content": "投打 : 右投右打, 身長／体重 : 196cm／104kg, 生年月日 : 1991年10月18日, 経歴 : ジャクソンビル大 - 米マイナー",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://npb.jp/bis/players/03705155.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "npb.jp",
+    "/bis/players/03705155.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 水 : 23 · vs. 西武 · 10-3 · 試合終了 · みずほPayPay · 勝：上沢, 木 : 24 · 試合なし, 金 : 25 · vs. オリックス · 0-9 · 試合終了 · 京セラD大阪 · 勝：松本晴, 土 : 26 · vs. 楽天 · 18:00 · 見どころ · みずほPayPay, 日 : 27 · vs. オリックス · 14:00 · 試合前 · みずほPayPay, 月 : 28 · 試合なし, 火 : 29 · 試合なし",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/12/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/12/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】福岡ソフトバンクホークス VS オリックス・バファローズ(2026年8月22日....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://pacificleague.com/game/36312",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pacificleague.com",
+    "/game/36312",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2020年シーズン 福岡ソフトバンクホークス主催試合放送決定！ | お知らせ | JCOM....",
+   "content": "平素よりJ:COMサービスをご利用いただき、誠にありがとうございます。 2020年3月1日（日）より、新しいスポーツ専門チャンネル「スポーツライブ＋（プラス）」の放送をJ:COMの多チャンネルサービス「J:COM TV」で開始いたします。 「スポーツライブ＋」は、福岡ソフトバンクホークス主催試合の生中継を中心に、海外サッカーや国内サッカー、Bリーグなどのスポーツ中継......",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://notices.jcom.co.jp/notice/91175.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "notices.jcom.co.jp",
+    "/notice/91175.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス | 2024年 プロ野球ドラフト会議 supported by リポビタ....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://draft.npb.jp/draft/2024/draftlist_h.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "draft.npb.jp",
+    "/draft/2024/draftlist_h.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】福岡ソフトバンクホークス VS 千葉ロッテマリーンズ(2024年10月4日)｜....",
+   "content": "2026.07.09.【ホークス本拠地最終戦セレモニー】ホークス・小久保裕紀監督よりファンの皆さんへ挨拶 2024年10月4日 福岡ソフトバンクホークス 対 千葉ロッテマリーンズ2026.07.09.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg.youtube.com%2Fvi%2FZDCn_D1BgAU%2Fsddefault.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://pacificleague.com/game/32609",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pacificleague.com",
+    "/game/32609",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス応援サイト｜KBC九州朝日放送",
+   "content": "【小久保監督がファンに誓う】「力を貸してください」CSへ向けた熱い決意！60年ぶりのリーグ3連覇達成セレモニー【スポーツキラリ★】 ; 【試験に出る】凄すぎるマサキングの進化！２８号弾は衝撃角度でレフトスタンドに突き刺さる！【ぎゅっスポ！ホークスこぼれ話】（2026年9月29日OA） ; ありがとう中村晃！愛され続けた男のラストゲーム、仲間たちが贈る最高の花....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fkbc.co.jp%2Fhawks%2Fimg%2Fsns2604.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://kbc.co.jp/hawks/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "kbc.co.jp",
+    "/hawks/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス2023年ドラフト補強ポイント - スポーツのあなぐら",
+   "content": "2023.06.08.①三軍の「育成」から一軍へ到達する条件とは ②チームにとっての即戦力を見極められているのか ③一塁手の上位指名:× ただでさえ供給過多の「数年先」の一塁手 一般的にはこのどちらかで用いられ、 FAや新外国人選手、現役ドラフトの場合が前者。 新人選択のドラフトで使われる場合だと、 評論家が非常に高く評価しているアマチュア選手を 1年目から一軍で使わせ....2023.06.08.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.image.st-hatena.com%2Fimage%2Fscale%2Fa63ac241d75880f8213a481a47258dc8279af9bc%2Fbackend%3Dimagemagick%3Bversion%3D1%3Bwidth%3D1300%2Fhttps%253A%252F%252Fcdn-ak.f.st-hatena.com%252Fimages%252Ffotolife%252FL%252FLtfrankc%252F20230607%252F20230607232758.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.ltfrankc.net/entry/2023/06/08/210000",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ltfrankc.net",
+    "/entry/2023/06/08/210000",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Fukuoka SoftBank Hawks",
+   "content": "\"Kinki Nippon\" redirects here. For region of Japan, see Kinki region. The Fukuoka SoftBank Hawks (福岡ソフトバンクホークス, Fukuoka Sofutobanku Hōkusu) are a Japanese professional baseball team based in Fukuoka, Fukuoka Prefecture. They compete in Nippon Professional Baseball (NPB) as a member of the Pacific League. Founded on February 22, 1938, as the Nankai Club, being the first Kansai team to play in Osaka proper, the team went through a few name changes before settling on Nankai....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fen%2F2%2F2f%2FSoBa_Hawks_Uniforms.PNG&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://wikimili.com/en/Fukuoka_SoftBank_Hawks",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "wikimili.com",
+    "/en/Fukuoka_SoftBank_Hawks",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "安いサッカーユニフォーム - ardf2010.com",
+   "content": "レプリカ フットボール ジャージ... 当店では、男性、女性、子供用のレプリカ サッカー ジャージを格安で提供しています。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://ardf2010.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "ardf2010.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "指導現場における客観的な投球動作評価のための観察的評価基準の作成：日本....",
+   "content": "原著論文 指導現場における客観的な投球動作評価のための観察的評価基準の作成：日本人メジャーリーグおよび日本プロ野球投手における矢状面上の動作に着目して",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.jstage.jst.go.jp/article/jpess/30/2/30_113/_article/-char/ja",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.jstage.jst.go.jp",
+    "/article/jpess/30/2/30_113/_article/-char/ja",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "福岡ソフトバンクホークス injury news 10月2日 1",
+  "premiership injury news",
+  "福岡ソフトバンクホークス injury news 10月2日 9",
+  "nfl injury news",
+  "福岡ソフトバンクホークス injury news 10月2日 6",
+  "福岡ソフトバンクホークス injury news 10月2日 7",
+  "physioroom epl injury news",
+  "福岡ソフトバンクホークス injury news 10月2日 5"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ],
+  [
+   "wikidata",
+   "Suspended: timeout"
+  ]
+ ]
+}

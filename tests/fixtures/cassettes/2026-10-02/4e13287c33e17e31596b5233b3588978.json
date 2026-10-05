@@ -1,0 +1,943 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "福岡ソフトバンクホークス squad 2 NPB",
+ "recorded_at": "2026-10-02T08:07:58.207263+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "http://npb.jp/bis/teams/index_h.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/teams/index_h.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "6000 Digits of π | Pi Calculator - ClickCalculators.com",
+   "content": "Calculate the first 6000 Pi Digits 6000 π digits. Use our pi calculator to get the value of pi with with any number of digits or decimal places until one hundred thousand.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://clickcalculators.com/pi-calculator/6000",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "clickcalculators.com",
+    "/pi-calculator/6000",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークスジュニアチーム | 出場チーム | NPB12球団ジュニアト....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://npb.jp/junior/2020/roster_h.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "npb.jp",
+    "/junior/2020/roster_h.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "First 6000 Digits of Pi | PILookup",
+   "content": "This page provides viewing and downloading the first 6000 digits of pi (up to the first six thousand digits of pi). You can copy the pi text or download pi via a file.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://pilookup.com/pi/6000-digits/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "pilookup.com",
+    "/pi/6000-digits/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "試合速報 - 福岡ソフトバンクホークス",
+   "content": "2023.11.21.more 試合速報 2026.09.19 SAT 前の試合 試合日程・結果 次の試合 試合トップ 試合速報 パーソル パ・リーグ ホーム 試合開始 14:00 ビジター 早川 前田悠 楽天モバイル 最強パーク 1 2 3 4 5 6 7 8 9 10 11 12 R H 0 0 0 02023.11.21.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/gamelive/result/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/gamelive/result/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "List of first 600 digits of Pi - Calculatio",
+   "content": "The first 10 digits of Pi after the decimal point are 1415926535, making Pi ≈ 3.1415926535.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://calculat.io/en/number/first-digits-of-pi/600",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "calculat.io",
+    "/en/number/first-digits-of-pi/600",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "First n Digits of Pi - Free Digit Search & Visualization",
+   "content": "Dec 27, 2025 · First n Digits of Pi - Generate and analyze the first n digits (up to 10,000) of Pi (π) with comprehensive digit frequency analysis, pattern exploration, interactive visualizations, and unique Pi-themed insights.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://miniwebtool.com/first-n-digits-of-pi/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "miniwebtool.com",
+    "/first-n-digits-of-pi/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 10 · vs. 日本ハム · 3-2 · 試合終了 · みずほPayPay · 勝：松本晴 · Ｓ：杉山, 金 : 11 · vs. ロッテ · 11-1 · 試合終了 · みずほPayPay · 勝：前田悠, 土 : 12 · vs. ロッテ · 5-4 · 試合終了 · みずほPayPay · 勝： · ラトリッジ · Ｓ：杉山, 日 : 13 · vs. ロッテ · 13:30 · 見どころ · みずほPayPay, 月 : 14 · 試合なし, 火 : 15 · vs. オリックス · 18:00 · 試合前 · 京セラ....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/12/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/12/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "First N Digits of Pi Calculator – Free, Runs in Your Browser",
+   "content": "Compute the first n digits of pi (π) — up to 1000 digits — with a per-digit frequency breakdown across the generated digits.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://iotools.cloud/tool/first-n-digits-of-pi-calculator/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "iotools.cloud",
+    "/tool/first-n-digits-of-pi-calculator/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NPB eSPORTS SERIES SPLATOON2 福岡ソフトバンクホークス特設サイト",
+   "content": "意気込み ; スプラトゥーン甲子園2連覇の実力を、「NPB eスポーツシリーズ スプラトゥーン2」大会でも発揮できればと思っています！応援よろしくお願いします。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.softbankhawks.co.jp%2Fex%2Fesports%2Fsplatoon2%2Fpl_img%2Fimg_ogp.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/ex/esports/splatoon2/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/ex/esports/splatoon2/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Fukuoka Softbank Hawks",
+   "content": "Fukuoka City-related clubs ; relocationJapanese professional baseball teamPacific LeagueFounded in 1938Founded on February 22nd",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.namu.wiki%2Fi%2F7ErKCwa9chVNupxAuPzBcf-8hBP_EB7F5PvDEZGgY4yYqSd5ZVpDzhfVucAQ44I1xEVMN1g0Jm6JEFJ3l8BAwA.webp&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://en.namu.wiki/w/%ED%9B%84%EC%BF%A0%EC%98%A4%EC%B9%B4%20%EC%86%8C%ED%94%84%ED%8A%B8%EB%B1%85%ED%81%AC%20%ED%98%B8%ED%81%AC%EC%8A%A4",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "en.namu.wiki",
+    "/w/%ED%9B%84%EC%BF%A0%EC%98%A4%EC%B9%B4%20%EC%86%8C%ED%94%84%ED%8A%B8%EB%B1%85%ED%81%AC%20%ED%98%B8%ED%81%AC%EC%8A%A4",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Fukuoka SoftBank Hawks",
+   "content": "\"Kinki Nippon\" redirects here. For region of Japan, see Kinki region. The Fukuoka SoftBank Hawks (福岡ソフトバンクホークス, Fukuoka Sofutobanku Hōkusu) are a Japanese professional baseball team based in Fukuoka, Fukuoka Prefecture. They compete in Nippon Professional Baseball (NPB) as a member of the Pacific League. Founded on February 22, 1938, as the Nankai Club, being the first Kansai team to play in Osaka proper, the team went through a few name changes before settling on Nankai....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fen%2F2%2F2f%2FSoBa_Hawks_Uniforms.PNG&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://wikimili.com/en/Fukuoka_SoftBank_Hawks",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "wikimili.com",
+    "/en/Fukuoka_SoftBank_Hawks",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス2023年ドラフト補強ポイント - スポーツのあなぐら",
+   "content": "2023.06.08.①三軍の「育成」から一軍へ到達する条件とは ②チームにとっての即戦力を見極められているのか ③一塁手の上位指名:× ただでさえ供給過多の「数年先」の一塁手 一般的にはこのどちらかで用いられ、 FAや新外国人選手、現役ドラフトの場合が前者。 新人選択のドラフトで使われる場合だと、 評論家が非常に高く評価しているアマチュア選手を 1年目から一軍で使わせ....2023.06.08.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.image.st-hatena.com%2Fimage%2Fscale%2Fa63ac241d75880f8213a481a47258dc8279af9bc%2Fbackend%3Dimagemagick%3Bversion%3D1%3Bwidth%3D1300%2Fhttps%253A%252F%252Fcdn-ak.f.st-hatena.com%252Fimages%252Ffotolife%252FL%252FLtfrankc%252F20230607%252F20230607232758.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.ltfrankc.net/entry/2023/06/08/210000",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ltfrankc.net",
+    "/entry/2023/06/08/210000",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 水 : 23 · vs. 西武 · 10-3 · 試合終了 · みずほPayPay · 勝：上沢, 木 : 24 · 試合なし, 金 : 25 · vs. オリックス · 0-9 · 試合終了 · 京セラD大阪 · 勝：松本晴, 土 : 26 · vs. 楽天 · 18:00 · 見どころ · みずほPayPay, 日 : 27 · vs. オリックス · 14:00 · 試合前 · みずほPayPay, 月 : 28 · 試合なし, 火 : 29 · 試合なし",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/12/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/12/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Digits of Pi (1 Hundred to 1 Million) - Math is Fun",
+   "content": "Want some digits of Pi? Choose how many digits and press Get: We don't need very many for real-world calculations:",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.mathsisfun.com/numbers/pi-digits.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.mathsisfun.com",
+    "/numbers/pi-digits.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス | 2019年 プロ野球ドラフト会議 supported by リポビタ....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://draft.npb.jp/draft/2019/draftlist_h.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "draft.npb.jp",
+    "/draft/2019/draftlist_h.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Digits of Pi, Pi to N Decimal Places (Copy the First 1000 Digits...",
+   "content": "See the digits of pi to any number of decimal places, up to 1000. Pick how many places you want, read the exact value of pi, and copy the full pi digits list.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://toolnimba.com/math/pi-digits/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "toolnimba.com",
+    "/math/pi-digits/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス | 2024年 プロ野球ドラフト会議 supported by リポビタ....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://draft.npb.jp/draft/2024/draftlist_h.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "draft.npb.jp",
+    "/draft/2024/draftlist_h.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pi Digits Generator | First n digits with Chudnovsky | CalcBE",
+   "content": "Generate the first n digits of pi with a Chudnovsky-based browser tool. Choose a fixed digit count or a time challenge, then copy text, download TXT, and share the URL.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://calcbe.com/en/calculators/pi-digits/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "calcbe.com",
+    "/en/calculators/pi-digits/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】福岡ソフトバンクホークス VS 東京ヤクルトスワローズ(2026年6月12日)....",
+   "content": "3주 전2026年6月12日 福岡ソフトバンクホークス VS 東京ヤクルトスワローズのライブ配信・無料動画・試合速報・結果です。プレー動画とともに、パ・リーグ6球団(北海道日本ハム,東北楽天,埼玉西武,千葉ロッテ,オリックス,福岡ソフトバンク)の試合情報をお楽しみいただけます。3주 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://pacificleague.com/game/35652",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pacificleague.com",
+    "/game/35652",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[FREE] List the first 6,000 digits of pi. - brainly.com",
+   "content": "Feb 1, 2022 · The first 6,000 digits of pi is a long sequence of numbers that begins with 3.14159 and goes on. However, due to the limitations in the answering platform, it's not feasible to put all 6,000 digits here.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://brainly.com/question/26441937",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "brainly.com",
+    "/question/26441937",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2020年シーズン 福岡ソフトバンクホークス主催試合放送決定！ | お知らせ | JCOM....",
+   "content": "2020年シーズン 福岡ソフトバンクホークス主催試合放送決定！をご紹介いたします。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://notices.jcom.co.jp/notice/91175.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "notices.jcom.co.jp",
+    "/notice/91175.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "1,000 digits of pi - Math Tools",
+   "content": "Pi (π) is the ratio of a circle's circumference to its diameter — approximately 3.14159. It's irrational, so its decimal expansion never ends and never repeats; below are the first 1,000 digits, computed from the same 1,000,000-digit dataset this site's full Pi page uses.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://math.tools/numbers/pi/1000",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "math.tools",
+    "/numbers/pi/1000",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "오타케 코타로 - 요다위키",
+   "content": "^ \"Nikkan Sports baseball news (Japanese) 早大勢が６人受賞／東京６大学野球ベストナイン\" . Nikkan Sports (in Japanese). May 31, 2019. Retrieved October 7, 2019.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://yoda.wiki/wiki/Kotaro_Otake",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "yoda.wiki",
+    "/wiki/Kotaro_Otake",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "サッカー ユニフォーム – lepontrouge – カスタマイズされたユースサッカージ....",
+   "content": "エンディングにクレジットがあるのは初出の第30話のみだが、以降も複数話で劇中歌として使用されている。初出では第40話だが、以降も複数話で劇中歌として使用されている。第51話で挿入歌として使用された。報道によれば、共同オーナーの1人であるベッカム氏が直々に電話をかけて加入をオファー。同シーズン限りでトミー・スミスが退団した。一方、BSスポーツ専......",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://lepontrouge.net/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "lepontrouge.net",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "福岡ソフトバンクホークス squad 2 npb 3",
+  "福岡ソフトバンクホークス squad 2 npb 4",
+  "福岡ソフトバンクホークス squad 2 npb 0",
+  "福岡ソフトバンクホークス squad 2 npb 1",
+  "福岡ソフトバンクホークス squad 2 npb download",
+  "福岡ソフトバンクホークス squad 2 npb 5",
+  "福岡ソフトバンクホークス squad 2 npb 6",
+  "福岡ソフトバンクホークス squad 2 npb game"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

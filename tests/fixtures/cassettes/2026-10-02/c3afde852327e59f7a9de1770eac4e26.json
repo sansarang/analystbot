@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.britannica.com/place/China",
+ "query": "",
+ "recorded_at": "2026-10-02T06:03:37.329361+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

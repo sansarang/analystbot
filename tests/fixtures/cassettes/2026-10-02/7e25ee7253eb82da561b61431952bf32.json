@@ -1,0 +1,934 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "読売ジャイアンツ 監督 コメント 10月1日",
+ "recorded_at": "2026-10-02T02:45:17.405128+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツ - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 17 · 試合なし, 金 : 18 · vs. 中日 · 2-0 · 試合終了 · 東京ドーム · 勝：マルティネス, 土 : 19 · vs. 中日 · 14-1 · 試合終了 · 東京ドーム · 勝：田中将, 日 : 20 · vs. ヤクルト · 14:00 · 見どころ · 東京ドーム, 月 : 21 · 試合なし, 火 : 22 · vs. 広島 · 15:00 · 試合前 · マツダスタジアム, 水 : 23 · vs. 広島 · 15:00 · 試合前 · マツダスタジアム",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/1/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/1/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Magento 2 Multistore Setup: Configure Multiple Stores - Servebolt",
+   "content": "Learn how to set up multiple stores on a single Magento 2 site with separate domains and store views for each shop.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://servebolt.com/help/magento/how-to-set-up-multi-store-magento-2/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "servebolt.com",
+    "/help/magento/how-to-set-up-multi-store-magento-2/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ｇ速@読売ジャイアンツまとめブログ",
+   "content": "読売ジャイアンツのまとめブログです",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://g-soku.blog.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "g-soku.blog.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Magento 2 Multiple Websites, Different Domains (nginx)",
+   "content": "May 23, 2026 · Run multiple websites on different domains from one Magento 2 install: scope hierarchy, base URLs, nginx MAGE_RUN_CODE routing, and the 404 pitfalls.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://kishansavaliya.com/blog/magento-2-multi-store-multi-website-setup",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "kishansavaliya.com",
+    "/blog/magento-2-multi-store-multi-website-setup",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "チーム八ちゃん | 力を尽くして狭き門より入れ！",
+   "content": "力を尽くして狭き門より入れ！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://teamhacchan.blog/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "teamhacchan.blog",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Magento 2 Multistore Configuration: Easy Step By Step Guide",
+   "content": "Oct 27, 2023 · Magento 2 multistore creation in a few easy steps. Follow this simple step by step guide and create your multi store website on Magento 2.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.cloudways.com/blog/magento-2-multistore-configuration/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.cloudways.com",
+    "/blog/magento-2-multistore-configuration/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How to Manage Multiple Stores - Magento 2 Merchant Documentation",
+   "content": "Operate multiple brands, regions, or catalogs from one Magento 2 installation to reduce operating cost, improve customer experience per market, and scale faster with consistent governance. Magento's multi-store architecture allows you to manage different websites, stores, and store views from a single admin panel.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://docs.magento-opensource.com/merchant/support-and-resources/howto-how-to-manage-multiple-stores",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "docs.magento-opensource.com",
+    "/merchant/support-and-resources/howto-how-to-manage-multiple-stores",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How to Set Up Magento 2 With Multiple Stores & Domains",
+   "content": "Set up Magento multi-store functionality to manage multiple storefronts from a single installation and scale your ecommerce business efficiently.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.liquidweb.com/magento/development/multi-store/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.liquidweb.com",
+    "/magento/development/multi-store/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Magento 2 Multi-Store Configuration Guide 2026 | Production Setup",
+   "content": "Aug 13, 2026 · By Kokil Thapa | Last reviewed: August 2026 Setting up multiple storefronts on a single Magento 2 installation reduces operational overhead but introduces complexity that breaks sites when misconfigured. This Magento 2 multi-store configuration guide covers the exact hierarchy, server configuration, and admin settings required to run distinct brands, regions, or languages from one codebase. If ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://kokil.com.np/blog/magento-2-multi-store-configuration-guide",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "kokil.com.np",
+    "/blog/magento-2-multi-store-configuration-guide",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "映画『ゴジラ-1.0』2. 6メートルの立像、東京ドームに来襲 読売ジャイアンツと....",
+   "content": "2023.08.18.1954年に初めて姿を現して以来、日本のみならず世界中を魅了し、衝撃を与え続けてきた怪獣「ゴジラ」。そのゴジラ70周年記念作品となる映画シリーズ最新作『ゴジラ-1.0』（読み:ゴジラマイナスワン／監督：山崎貴 ）の劇場公開（11月3日）を記念して、来年、日本のプロスポーツチームとして初めて創設90周年を迎えるプロ野球・読売ジャイアンツとのコラボレーション....2023.08.18.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcontents.oricon.co.jp%2Fupimg%2Fnews%2F2292000%2F2291398%2F20230818_170429_p_o_27578728.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.oricon.co.jp/news/2291398/full/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.oricon.co.jp",
+    "/news/2291398/full/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】落合博満のオレ流チャンネル",
+   "content": "약 58.9만 명의 구독자를 보유한 【公式】落合博満のオレ流チャンネル의 유튜브. 약 650 개의 동영상이 있습니다. 落合博満の公式YouTubeチャンネル！ 野球解説者でもおなじみの落合が野球の技術論や球界にまつわる話、 現役・監督時代のエピソードなどを赤裸々に発信！ ここだけの本音トークを配信していきます！ ●X https://x.com/ochiaioreryu...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fyt3.ggpht.com%2FHjAotx-Kfx9QN2iiZiAFsJW9H0o1lCJO9iUmPwKzt8xbhQTI8qnuw7B83Ol4YUsSanlcrzhfpw%3Ds800-c-k-c0x00ffffff-no-rj&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.youtube.com/channel/UCP4ORJd6Knja3kAL40F6YXg",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/channel/UCP4ORJd6Knja3kAL40F6YXg",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツが4年ぶり39度目のセ・リーグ優勝",
+   "content": "2024.09.28.セントラル・リーグは28日、優勝へのマジックナンバーを「1」としていた読売ジャイアンツが、MAZDA Zoom-Zoom スタジアム広島で行われた対広島東洋カープ25回戦に8－1で勝ち、4年ぶり39度目のセ・リーグ優勝が決まりました。（他に一リーグ時代に9度優勝） これで読売は、10月16日（水）から始まる「2024 JERA クライマックスシリーズ セ」ファイナルステージからの出場が決.....2024.09.28.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fp.npb.jp%2Fimg%2Fogp%2Fcentral.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://npb.jp/news/detail/20240928_02.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "npb.jp",
+    "/news/detail/20240928_02.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツ、「接触冷感マスク」発売。マスクデザインの公募も開始。....",
+   "content": "「GIANTS アジャスター付き 接触冷感マスク（GIANTSロゴ）」「GIANTS アジャスター付き 接触冷感マスク（ジャビット）」",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Ftravel.watch.impress.co.jp%2Fimg%2Ftrw%2Flist%2F1274%2F195%2F00.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://travel.watch.impress.co.jp/docs/news/1274195.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "travel.watch.impress.co.jp",
+    "/docs/news/1274195.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "侍ジャパンU-23代表の監督・コーチが決定 | U-23 | ニュース | 野球日本代表 侍ジ....",
+   "content": "2016.09.26.10月28日（金）～11月6日（日）にメキシコで開催される「第1回 WBSC U-23ベースボールワールドカップ」に出場する侍ジャパンU-23代表の監督及びコーチが決定しました。監督には読売ジャイアンツ二軍監督を務める斎藤雅樹氏が就任。そしてコーチには安藤強氏、大塚晶文氏、三輪隆氏の就任が決定しました。 出場選手、試合日程などは決定次第お知らせいたします。試合の....2016.09.26.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.japan-baseball.jp%2Ffiles%2Fwhatsnew%2F1376%2Fimage01%2F600x400%2Fnews160926_2_thumbs.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.japan-baseball.jp/jp/news/press/20160926_2.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.japan-baseball.jp",
+    "/jp/news/press/20160926_2.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "グループチケット - 2026年 読売ジャイアンツ",
+   "content": "＊ 東京ドームでの巨人軍主催試合（一部試合を除く）が対象となります 受付開始 2月2日(月) 11:00～ 4月1日(水) 11:00～ 6月1日(月) 11:00～ 対象試合 6月7日(日)まで 6月19日(金)～7月22日(水) 7月31日(金)以降 → 各試合のイベント情報はこちら → お申込みはこちら",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.giants.jp%2Fsp%2Fgroup%2Fog.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.giants.jp/sp/group/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.giants.jp",
+    "/sp/group/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "日テレ系 野球中継 DRAMATIC BASEBALL",
+   "content": "きょう12日(水)「巨人×阪神」は「キングダムナイター」として開催！こんや7時から、地上波日本テレビ系全国ネットで生中継！地上波副音声はタイガース応援席？阪神OB糸井嘉男＆ニッポンの社長が今季の「キング」を大予想！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.ntv.co.jp%2Fbaseball%2Fimages%2Fog_image2026.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.ntv.co.jp/baseball/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ntv.co.jp",
+    "/baseball/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "『劇場版 SAO -プログレッシ- 』水戸市＆読売ジャイアンツとコラボ決定",
+   "content": "『劇場版 ソードアート・オンライン -プログレッシブ- 星なき夜のアリア』水戸市＆読売ジャイアンツとのコラボ決定！ 声優・松岡禎丞さんがDeNA戦始球式に登場＆特別配信も決定！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg2.animatetimes.com%2F2021%2F09%2F614989a1cc39c_550f69ad6809e6c2482dd6808558cb51.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.animatetimes.com/news/details.php?id=1632208783",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.animatetimes.com",
+    "/news/details.php",
+    "",
+    "id=1632208783",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How to Set Up Multi-Store and Multi-Website in Magento 2",
+   "content": "Guide to configuring multi-store and multi-website setups in Magento 2: website/store/view hierarchy, hreflang for CMS pages, cookie domains, and shared filesystem tips.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://mirasvit.com/knowledge-base/how-to-setup-multi-store-magento-2.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "mirasvit.com",
+    "/knowledge-base/how-to-setup-multi-store-magento-2.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Multi-Store Configuration Mastery — Magento 2 Developer...",
+   "content": "Multi-Store Configuration Mastery Overview Magento's multi-store architecture enables running multiple brands, locales, or customer segments from a single installation. Understanding the website/store/store view hierarchy and scope-aware configuration is essential for enterprise deployments.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://docs.magento-opensource.com/developer/guide-howto-multi-store-setup.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "docs.magento-opensource.com",
+    "/developer/guide-howto-multi-store-setup.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツとトレードが成立",
+   "content": "2022.12.10.本日6月26日(水)、北海道日本ハムファイターズ鍵谷陽平投手(28)藤岡貴裕投手(29)と、読売ジャイアンツ吉川光夫投手(31)宇佐見真吾捕手(26)のトレードが成立しましたので、お知らせいたします。 「ファイターズでの約6年半、たくさんの方々に応援していただき、本当に感謝しています。素晴らしい監督、コーチ、チームメート、スタッフ、そして関係者の方々と出会えた事....2022.12.10.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.fighters.co.jp/news/detail/00001949.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.fighters.co.jp",
+    "/news/detail/00001949.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Setting up a Magento site for Multiple Stores and Subdomains",
+   "content": "3. Mapping the domain on .htaccess Now that we have added new Subdomains on the server and created new Stores inside Magento, it’s time to bring them together and map the correct Store to each Subdomain. Open the .htaccess file located on the root folder of your server (/public_html/) where Magento is installed.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.wptaskforce.com/setting-magento-site-multiple-stores-subdomains/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.wptaskforce.com",
+    "/setting-magento-site-multiple-stores-subdomains/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "4 Steps to Configure Magento 2 NGINX Multi Website",
+   "content": "Feb 25, 2026 · Configure Magento 2 NGINX multi website from one installation. Covers virtual hosts, env.php config, SSL for multiple domains, and Varnish fixes.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.mgt-commerce.com/blog/magento-2-nginx-multi-website/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.mgt-commerce.com",
+    "/blog/magento-2-nginx-multi-website/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "僕の名前はルシアン 公式サイト",
+   "content": "9/29(金)ユーロスペースほか全国順次公開｜愛が欲しいなら・・・僕の部屋に来ませんか｜自殺願望を抱えた若者たちが同じ願望を共有するサイトで知り合うところから始まる物語を描く。愛を求める孤独な10代の少女が、インターネットで「ルシアン」と名乗る理想的な男と知り合う。同じころ、ある連続殺人犯を追っていた警察は、...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://mynameislucien.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "mynameislucien.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "산케이스포츠",
+   "content": "일본 스포츠, 연예, 사회, 날씨 정보 뉴스 수록.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.sanspo.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.sanspo.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ＳＴＶ札幌テレビ 放送（北海道）",
+   "content": "札幌テレビ放送の公式サイトです。番組情報、ニュース、天気、ライブカメラなどＳＴＶに関する情報をお届けします。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.stv.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.stv.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

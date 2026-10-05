@@ -19,6 +19,75 @@ TEAM_ALIASES: dict[str, tuple[str, str]] = {
     "레즈": ("mlb", "Cincinnati Reds"), "디백스": ("mlb", "Arizona Diamondbacks"),
     "다이아몬드백스": ("mlb", "Arizona Diamondbacks"), "로키스": ("mlb", "Colorado Rockies"),
     "자이언츠": ("mlb", "San Francisco Giants"), "파드리스": ("mlb", "San Diego Padres"),
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **KBO 10팀** — 없어서 봇이 **조용히 틀린 경기를 잡았다**(실측 2026-10-03)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  사용자가 *"KBO · LG 트윈스 · 기아 타이거즈"* 를 물었을 때 봇이 이렇게 답했다:
+    #
+    #      LG 트윈스      → ('mlb', 'Minnesota Twins')      🔴
+    #      롯데 자이언츠   → ('mlb', 'San Francisco Giants') 🔴
+    #      기아 타이거즈   → None
+    #
+    #  ⚠️ `트윈스`·`자이언츠` 같은 **조각이 MLB 별칭과 겹쳐** 잡혔다. 그러면 봇이
+    #     미네소타–디트로이트를 분석하고 **그럴듯한 카드**를 낸다 — 틀렸다는 말도
+    #     없이. 🔴 조용한 오답이 0건보다 나쁘다.
+    #
+    #  🔴 `find_team` 은 **가장 긴 별칭**이 이긴다. 그래서 `lg 트윈스`(6)가
+    #     `트윈스`(3)를, `롯데 자이언츠`(7)가 `자이언츠`(4)를 이긴다.
+    #  ⚠️ 겹치는 짧은 조각(`트윈스`·`자이언츠`·`타이거스`)은 **건드리지 않는다** —
+    #     MLB 질문이 그대로 돌아야 한다. 가르는 것은 **길이**다.
+    #  ⚠️ `롯데` 하나만 오면 KBO(자이언츠)·NPB(마린스)가 갈린다 — 그래서 **맨이름
+    #     `롯데` 는 넣지 않는다.** 사용자가 어느 쪽인지 말해야 한다.
+    "lg 트윈스": ("kbo", "LG Twins"), "엘지 트윈스": ("kbo", "LG Twins"),
+    "기아 타이거즈": ("kbo", "Kia Tigers"), "kia 타이거즈": ("kbo", "Kia Tigers"),
+    "기아 타이거스": ("kbo", "Kia Tigers"), "해태": ("kbo", "Kia Tigers"),
+    "두산 베어스": ("kbo", "Doosan Bears"), "두산": ("kbo", "Doosan Bears"),
+    "kt 위즈": ("kbo", "KT Wiz"), "케이티 위즈": ("kbo", "KT Wiz"),
+    "ssg 랜더스": ("kbo", "SSG Landers"), "ssg": ("kbo", "SSG Landers"),
+    "랜더스": ("kbo", "SSG Landers"),
+    "nc 다이노스": ("kbo", "NC Dinos"), "다이노스": ("kbo", "NC Dinos"),
+    "키움 히어로즈": ("kbo", "Kiwoom Heroes"), "키움": ("kbo", "Kiwoom Heroes"),
+    "히어로즈": ("kbo", "Kiwoom Heroes"),
+    "한화 이글스": ("kbo", "Hanwha Eagles"), "한화": ("kbo", "Hanwha Eagles"),
+    "이글스": ("kbo", "Hanwha Eagles"),
+    "삼성 라이온즈": ("kbo", "Samsung Lions"), "라이온즈": ("kbo", "Samsung Lions"),
+    "롯데 자이언츠": ("kbo", "Lotte Giants"),
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **J리그** — 봇이 **맞는 경기를 손에 쥐고 버렸다**(실측 2026-10-03)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  사용자가 *"가시와 vs 감바"* 를 물었다. 봇은 경기 페이지를 **찾았는데**
+    #  이렇게 버렸다:
+    #
+    #    fotmob.com/matches/gamba-osaka-vs-kashiwa-reysol/1xisxw
+    #      건너뜀 — 우리 팀(가시와 레이솔)이 이 경기에 없다
+    #               — ['Kashiwa Reysol', 'Gamba Osaka']
+    #
+    #  🔴 `가시와 레이솔` 을 `Kashiwa Reysol` 로 **못 바꿔서** 자기가 찾은 경기를
+    #     버린 것이다. `감바` 는 표에 있었고 `가시와` 는 없었다.
+    #
+    #  🔴 영문·일본어 표기는 **받아서** 확인했다(TheSportsDB `search_all_teams`,
+    #     실조회 2026-10-03) — 손으로 적지 않았다.
+    #  ⚠️ 한국어 별칭은 **사용자가 쓴 것**과 **이미 표에 있던 것**만 적는다.
+    #     나머지를 음차로 지어내면 그것이 추측이다(CLAUDE.md #4).
+    "가시와 레이솔": ("soccer", "Kashiwa Reysol"),
+    "가시와": ("soccer", "Kashiwa Reysol"),
+    "柏レイソル": ("soccer", "Kashiwa Reysol"),
+    "ガンバ大阪": ("soccer", "Gamba Osaka"),
+    "セレッソ大阪": ("soccer", "Cerezo Osaka"),
+    "鹿島アントラーズ": ("soccer", "Kashima Antlers"),
+    "川崎フロンターレ": ("soccer", "Kawasaki Frontale"),
+    "FC東京": ("soccer", "FC Tokyo"),
+    "アビスパ福岡": ("soccer", "Avispa Fukuoka"),
+    "ファジアーノ岡山": ("soccer", "Fagiano Okayama"),
+    "京都サンガ": ("soccer", "Kyoto Sanga"),
+    "ジェフユナイテッド千葉": ("soccer", "JEF United Chiba"),
+    "アルビレックス新潟": ("soccer", "Albirex Niigata"),
+    "ジュビロ磐田": ("soccer", "Júbilo Iwata"),
+    "北海道コンサドーレ札幌": ("soccer", "Hokkaido Consadole Sapporo"),
+    "モンテディオ山形": ("soccer", "Montedio Yamagata"),
+    "大分トリニータ": ("soccer", "Oita Trinita"),
     # ---- EPL ----
     "맨시티": ("soccer", "Manchester City"), "맨체스터 시티": ("soccer", "Manchester City"),
     "아스날": ("soccer", "Arsenal"), "아스널": ("soccer", "Arsenal"),
@@ -238,11 +307,32 @@ KR_TEAM_NAMES.update({
 })
 
 
+#: 🔴 팀명 → 낱말 집합. **삭제된 모듈에 기대고 있었다**(실측 2026-10-02).
+#
+#  ⚠️ `kr_team` 의 퍼지 경로가 `from app.collectors.football import team_tokens` 를
+#     불렀는데 `app/collectors/` 는 **없다** — 정확 일치로 끝나는 호출만 돌았고,
+#     퍼지로 내려가면 `ImportError` 로 터졌다.
+#  🔴 **안 이어진 코드가 없는 코드보다 나쁘다**는 그 자리다(CLAUDE.md §배선):
+#     아무도 안 불러서 아무도 몰랐다.
+_DROP = {"fc", "cf", "sc", "ac", "afc", "cfc", "club", "the", "united", "city"}
+
+
+def team_tokens(name: str) -> frozenset[str]:
+    """팀명의 **뜻 있는 낱말**. 🔴 `FC`·`United` 같은 흔한 꼬리는 뺀다.
+
+    ⚠️ 그것을 안 빼면 `Manchester United` 와 `Newcastle United` 가 한 낱말을 공유해
+       퍼지 매칭이 엉뚱한 팀을 고른다.
+    """
+    import re as _re
+    words = {w for w in _re.split(r"[^0-9A-Za-z가-힣]+", str(name or "").lower())
+             if w}
+    return frozenset(words - _DROP) or frozenset(words)
+
+
 def kr_team(name: str) -> str:
     """영문 팀명 → 한국어 표기. 정확 일치 → 퍼지 → 원문 유지(로그)."""
     if name in KR_TEAM_NAMES:
         return KR_TEAM_NAMES[name]
-    from app.collectors.football import team_tokens
 
     target = team_tokens(name)
     best, best_score = None, 0

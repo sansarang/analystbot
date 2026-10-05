@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.today-predictions.com/fixture/sacramento-republic-vs-las-vegas-lights-1-october-2026-1493720",
+ "query": "",
+ "recorded_at": "2026-10-01T02:17:13.021811+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

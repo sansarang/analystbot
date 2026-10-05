@@ -1,799 +1,592 @@
-"""APScheduler 잡 — 04:00 KST 프리페치, 30분마다 배당 스냅샷, 13:00 KST 전날 채점.
+"""스케줄러 — 운영의 주체.
 
-실행: python -m app.scheduler
+🔴 **v4 단계 1**: 판정·발송·채점 주기를 걷어냈다. 지금 도는 것은 **수집**뿐이다.
+   STEP 5~8(시나리오·생존·카드·채점)은 단계 6~8 에서 붙는다.
+
+🔴 기동 시 **DB 스키마를 적용**한다(그래서 배포는 스케줄러가 먼저다).
+🔴 슬레이트를 돌려 카드를 내고, 결과가 들어오면 채점한다.
+🔴 **발송 스위치는 사용자만 켠다** — 꺼져 있으면 카드를 만들고 보내지 않는다.
 """
+from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import replace
-from datetime import UTC, datetime, timedelta
-from zoneinfo import ZoneInfo
+from datetime import date, datetime, timedelta, timezone
 
-import redis.asyncio as aioredis
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.interval import IntervalTrigger
-
-from app.collectors.base import (
-    ApiAuthError, ApiQuotaError, ApiRateLimitError,
-    ProviderBlockedError, ProviderDisabledError,
-)
-from app.collectors.odds import snapshot_odds
-from app.config import get_settings
+from app import secrets_mask, tg, version
+from app.cells import DEEP, WAKE, SourceScores
+from app.cells import Q_LINEUP
+from app.collect.ingest import ADAPTERS, collect, roster
+from app.config import SLATE_DAYS, get_settings
 from app.db import get_pool
-from app.grader import grade_date
-from app.notify import notify_api_error
-from app.pipeline import mlb_slate_date, run_pipeline, today_kst
+from app.net import Net
+from app.search import build_chain
+from app.run import collect_slate
+from app.sources import DbSources, persist
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s")
+# 🔴 **로그 필터를 로깅 설정 바로 뒤에 건다**(§SEC). 이 줄이 없으면 그때까지의
+#    모든 로그에 API 키가 평문으로 남는다 — 실사고 2026-09-07 이 그것이었다.
+#    ⚠️ 단계 3 은 **라이브 검색을 처음 돌리는** 단계다. 안 걸려 있으면 그때 샌다
+#       (사용자 결정 2026-09-30: 안전장치 4건을 단계 3 에서 잇는다).
+secrets_mask.install_log_filter()
+logger = logging.getLogger("scheduler")
 
-KST = ZoneInfo("Asia/Seoul")
+KST = timezone(timedelta(hours=9))
 
-_SPORT_KR = {"mlb": "MLB", "soccer": "축구", "kbo": "KBO", "npb": "NPB"}
+#: 슬레이트를 도는 주기. 🔴 원본은 여기 하나다 — 문서에 베끼지 않는다.
+SLATE_INTERVAL_SEC = 15 * 60
+COLLECT_INTERVAL_SEC = 20 * 60
+#: 🔴 1b 로스터는 **아침 1회**다(§19-d 는 명단을 아침 1회로 둔다). 등번호가
+#  들어와야 동명이인이 갈리고(§7-3), 그래야 결장이 상대 팀에 안 붙는다.
+ROSTER_INTERVAL_SEC = 12 * 60 * 60
+#: 🔴 **라인업 주기는 §19-d 가 정한다** — *"T-70분부터 5분 간격, T-10분까지."*
+#  사본 금지: 숫자를 여기 적지 않고 `cells.WAKE` 에서 읽는다. 표를 고치면
+#  스케줄러가 따라온다.
+#  ⚠️ 20분(`COLLECT_INTERVAL_SEC`)으로는 60분 창에서 3번밖에 못 두드린다. 그
+#     사이 라인업이 바뀌면 못 잡는다 — 그래서 **따로** 돈다.
+LINEUP_INTERVAL_SEC = (WAKE[Q_LINEUP][1] or 5) * 60
+
+#: 🔴🔴 **v5 §7-1 — T-60 재실행 주기.**
+#
+#  ⚠️ 창이 60분(야구 70분)이므로 그보다 촘촘해야 **창을 건너뛰지 않는다.**
+#     🔴 라인업 주기와 같은 간격으로 둔다 — 그 세포가 이미 그 창에서 돌고 있고,
+#        재실행은 그 결과를 **읽어 판정만** 한다(새로 긁지 않는다).
+RERUN_INTERVAL_SEC = LINEUP_INTERVAL_SEC
+
+#: 🔴 수집기 상태가 하루를 산다 — §19-e 점수표가 쌓여야 소스 순서가 고쳐진다.
+_NET = Net()
+_SCORES = SourceScores()
+#: 🔴 사슬도 하루를 산다 — Google 일일 상한(100)을 세는 주체가 이것이다.
+_SEARCH = build_chain()
 
 
-def _pct(v: float | None) -> str:
-    return "—" if v is None else f"{v:.0%}"
+def today_kst() -> date:
+    return datetime.now(KST).date()
 
 
-def yesterday_kst() -> str:
-    return (datetime.now(KST) - timedelta(days=1)).strftime("%Y-%m-%d")
+async def run_once(pool, day: date | None = None,
+                   leagues: list[str] | None = None) -> dict:
+    """슬레이트 한 번. 반환은 발송 결과 요약이다.
 
-
-async def prefetch_job(sports: tuple[str, ...] = ("mlb", "soccer")) -> None:
-    """[1] 프리페치 = 심층 리서치 파이프라인.
-
-    전 경기 심층 리서치(경기당 Perplexity 1콜) + 2단 판정(잠정 결론 → 반박 검증)까지
-    실행해 캐시. 실패 경기는 '리서치 미완' 마킹 — 첫 요청 시 신선도 게이트가 온디맨드 보완.
-
-    레이트리밋 방어(실사고: MLB 10경기 + 축구 17경기 동시 리서치 → 429 폭주):
-    종목(리그) 단위로 순차 실행하고, 종목 안에서도 경기 단위 순차 처리한다.
-    마지막에 429로 실패해 큐에 쌓인 경기를 한 번 더 순차 재시도한다.
-
-    sports: 기본 MLB·축구(21:00·04:30). KBO·NPB는 `prefetch_asia_job`(14:00).
+    🔴 **미발송은 전건에 사유가 붙는다**(조용한 0 금지).
     """
-    import time
-
-    from app.pipeline import default_date
-    from app.research.crosscheck import crosscheck_report
-    from app.research.deep import (
-        drain_retry_queue,
-        fill_report,
-        log_cost_summary,
-        research_calls_today,
-        research_failure_report,
-    )
-
-    from app.alerts import (
-        StageResult,
-        crashed,
-        overall_verdict,
-        prefetch_report,
-    )
-
-    pool = await get_pool()
-    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
-    t0 = time.monotonic()
-    all_stages: list[StageResult] = []
-    try:
-        for sport in sports:
-            sport_kr = _SPORT_KR.get(sport, sport)
-            stages: list[StageResult] = []
-            try:
-                report = await run_pipeline(
-                    pool, redis, sport=sport, date=default_date(sport),
-                    force_refresh=True, sequential_research=True,
-                    stages_out=stages,
-                )
-                logger.info("[scheduler] prefetched %s report (%d chars)", sport, len(report))
-            except ApiRateLimitError as exc:   # 알림 대상 아님 — 큐 재시도로 흡수
-                logger.warning("[scheduler] prefetch %s 레이트리밋 — 큐 재시도 예정: %s", sport, exc)
-                stages.append(StageResult(name=f"{sport_kr} 파이프라인", ok=0, total=1,
-                                          cause="rate_limit", detail=str(exc)[:150],
-                                          impact="45분 뒤 재시도 큐가 보완합니다"))
-            except (ApiQuotaError, ApiAuthError) as exc:
-                logger.error("[scheduler] prefetch %s halted (%s): %s",
-                             sport, type(exc).__name__, exc)
-                await notify_api_error(exc)
-                stages.append(StageResult(
-                    name=f"{sport_kr} 파이프라인", ok=0, total=1,
-                    cause="credit" if isinstance(exc, ApiQuotaError) else "auth",
-                    detail=str(exc)[:150], impact=f"오늘 {sport_kr} 리포트가 없습니다"))
-            except Exception as exc:
-                # 한 종목의 예상 못 한 실패가 다른 종목까지 죽이면 안 된다.
-                # (실사고: Anthropic 크레딧 소진이 400으로 와 분류를 빠져나가
-                #  축구 judge에서 prefetch_job 전체가 크래시했다)
-                logger.exception("[scheduler] prefetch %s 예기치 못한 실패 — 다음 종목 계속: %s",
-                                 sport, exc)
-                # [7-3] 크래시는 억제 없이 즉시 발송 (스택 트레이스 포함)
-                await crashed(f"프리페치 {sport_kr}", exc, next_retry="내일 04:00 KST")
-                from app.alerts import classify_exception, our_frames
-
-                stages.append(StageResult(
-                    name=f"{sport_kr} 파이프라인", ok=0, total=1,
-                    cause=classify_exception(exc),
-                    detail=f"{type(exc).__name__}: {exc}"[:150],
-                    frames=our_frames(exc),
-                    impact=f"오늘 {sport_kr} 리포트가 없습니다"))
-            all_stages += [replace(st, name=f"[{sport_kr}] {st.name}")
-                           for st in stages]
-        recovered = await drain_retry_queue(redis)
-        calls = await research_calls_today(redis)
-        fails = await research_failure_report(redis, today_kst())
-        logger.info("[scheduler] prefetch 총 소요 %.1fs · 금일 리서치 %d콜 (상한 60) · "
-                    "큐 복구 %d경기 · 실패 %s",
-                    time.monotonic() - t0, calls, recovered, fails or "없음")
-        # [감시] 채움률·무효율 — 금지문 과잉(채움률 급락)·지어내기(교차검증 불일치) 신호
-        today = today_kst()
-        fill = await fill_report(redis, today)
-        cross = await crosscheck_report(redis, today)
-        logger.info(
-            "[scheduler] 리서치 품질 · 경기 %s건 무효율 %s · 채움률 form %s / absences %s / "
-            "splits %s / bullpen %s / form_reversal %s · 교차검증 %s항목 불일치 %s",
-            fill["games"], _pct(fill["invalid_rate"]), _pct(fill["form_rate"]),
-            _pct(fill["absences_rate"]), _pct(fill["splits_rate"]),
-            _pct(fill["bullpen_rate"]), _pct(fill["form_reversal_rate"]),
-            cross["checked"], cross["mismatch"])
-        if fill["invalid_rate"] is not None and fill["invalid_rate"] > 0.30:
-            logger.warning("[scheduler] ⚠️ 무효율 %s > 30%% — 무효 키워드 과잉 의심 "
-                           "(docs/RESEARCH_VALIDATION.md 튜닝 기준)", _pct(fill["invalid_rate"]))
-        if cross["mismatch"]:
-            logger.warning("[scheduler] ⚠️ 교차검증 불일치 %d건 — 지어내기 의심, "
-                           "반복되면 프롬프트 금지문 롤백 검토", cross["mismatch"])
-        await log_cost_summary(redis)
-    finally:
-        # [7-1] 성공·실패 무관하게 **항상** 실행 리포트를 보낸다.
-        #       조용한 실패 금지 — 이 발송이 실패해도 잡은 끝나야 한다.
-        try:
-            await prefetch_report(all_stages, time.monotonic() - t0,
-                                  overall_verdict(all_stages))
-        except Exception as exc:
-            logger.warning("[scheduler] 프리페치 리포트 발송 실패: %s", exc)
-        await redis.aclose()
-
-
-async def prefetch_asia_job() -> None:
-    """KBO·NPB 당일 슬레이트 — 18:30 킥오프의 3~7시간 전(14:00 KST).
-
-    라인업 폴링의 재판정은 `analysis:{sport}:{date}` 가 없으면 바로 끝난다.
-    기존 21:00 프리페치 시점에는 아시아 경기가 이미 종료라 이 캐시가 안 생긴다.
-    """
-    await prefetch_job(sports=("kbo", "npb"))
-
-
-async def park_refresh_job() -> None:
-    """[§2] 파크팩터 주 1회 갱신 — statsapi 날짜범위 1콜. 구장 득점환경은 천천히 변한다."""
-    from app.collectors.park import refresh
-
-    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
-    try:
-        result = await refresh(redis)
-        logger.info("[scheduler] 파크팩터 갱신: %s", result)
-        return result
-    finally:
-        await redis.aclose()
-
-
-async def statcast_refresh_job() -> None:
-    """[2-1] Statcast 일 1회 갱신 — 조회가 무거워 프리페치 직전에만 돌린다."""
-    from app.collectors.statcast import refresh
-    from app.pipeline import mlb_slate_date
-
-    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
-    try:
-        result = await refresh(redis, mlb_slate_date())
-        logger.info("[scheduler] statcast 갱신: %s", result)
-    finally:
-        await redis.aclose()
-
-
-async def soccer_stats_refresh_job() -> None:
-    """[§2-3] Understat xG + Club Elo 일 1회 갱신. 스크래핑이라 느려 새벽에만 돈다."""
-    from app.collectors.soccer_stats import UNSUPPORTED, refresh_elo, refresh_league
-    from app.pipeline import today_kst
-
-    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
-    date = today_kst()
-    try:
-        pool = await get_pool()
-        labels = [r["league"] for r in await pool.fetch(
-            "SELECT DISTINCT league FROM games WHERE sport = 'soccer' "
-            "AND starts_at > now() - interval '1 day'")]
-        results = {}
-        for label in labels:
-            results[label] = await refresh_league(redis, label, date)
-        results["elo"] = await refresh_elo(redis, date)
-        skipped = [l for l in labels if l in UNSUPPORTED]
-        logger.info("[scheduler] soccerdata 갱신: %s%s", results,
-                    f" · 미지원(Perplexity 유지) {skipped}" if skipped else "")
-    finally:
-        await redis.aclose()
-
-
-async def research_retry_job() -> None:
-    """[6] 레이트리밋으로 밀린 리서치·2단 판정을 다음 사이클에 순차 재시도."""
-    from app.engine.cell_grade import drain_retry_queue as drain_cells
-    from app.research.deep import drain_retry_queue
-
-    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
-    try:
-        recovered = await drain_retry_queue(redis)
-        if recovered:
-            logger.info("[scheduler] research retry: %d경기 복구", recovered)
-        # [#73] 전 provider 전멸로 판정 0건이던 경기 — 캐시를 무효화해
-        #   다음 요청이 2단을 다시 태우게 한다. **여기서 직접 LLM을 부르지
-        #   않는다** — 요청 경로와 프리페치 경로가 이미 2단을 돌린다. 같은 일을
-        #   세 곳에서 하면 어느 것이 쓰였는지 알 수 없게 된다.
-        pending = await drain_cells(redis)
-        if pending:
-            for item in pending:
-                key = f"analysis:{item.get('sport')}:{item.get('date')}"
-                try:
-                    await redis.delete(key, key.replace("analysis:", "card:"))
-                except Exception:
-                    pass
-            logger.info("[scheduler] 2단 재시도: %d경기 캐시 무효화", len(pending))
-    finally:
-        await redis.aclose()
-
-
-async def lineup_poll_job() -> None:
-    """[2-2] 확정 라인업 폴링 — MLB statsapi + KBO·NPB 크롤러.
-
-    확정을 수신하면 그 경기만 재판정해 예비 픽을 최종 픽으로 갱신한다.
-    """
-    await mlb_pregame_poll()
-    await crawler_lineup_poll()
-
-
-async def mlb_pregame_poll() -> None:
-    """MLB 아침 창 — statsapi 라인업 + 캐시 발송. Go 크롤러 없음.
-
-    KBO `crawler_lineup_poll`과 대칭. 사이트만 statsapi.mlb.com.
-    """
-    from app.collectors.lineups import STATUS_CONFIRMED, MLBLineupClient, refresh_mlb_lineup
-    from app.engine.pregame_push import send_game_prediction, still_upcoming
-    from app.pipeline import rejudge_after_lineup
-
     s = get_settings()
-    pool = await get_pool()
-    redis = aioredis.from_url(s.redis_url, decode_responses=True)
-    date = mlb_slate_date()
-    now = datetime.now(UTC)
-    try:
-        rows = await pool.fetch(
-            """
-            SELECT id, ext_id, sport, home, away, home_pitcher, away_pitcher,
-                   lineup_status, starts_at, league
-            FROM games
-            WHERE sport = 'mlb' AND status = 'scheduled'
-              AND starts_at > now()
-              AND starts_at < now() + interval '4 hours'
-            ORDER BY starts_at
-            """
-        )
-        pending = [r for r in rows
-                   if (r["lineup_status"] or "") != "confirmed"]
-        client = MLBLineupClient()
-        updated = []
-        for r in pending:
-            res = await refresh_mlb_lineup(
-                pool, dict(r), client, redis=redis, date=date)
-            if res["changed"]:
-                updated.append((dict(r), res))
-        if pending:
-            logger.info("[scheduler] MLB 라인업 폴링 %d경기 확인 · 변경 %d건",
-                        len(pending), len(updated))
-        rejudged = {g["id"] for g, _ in updated}
-        for game, res in updated:
-            try:
-                ok = await rejudge_after_lineup(game, res)
-                if ok:
-                    sent = await send_game_prediction(redis, game, date, now=now)
-                    if sent in ("sent", "revised"):
-                        logger.info("[scheduler] mlb 예측 카드 %s game=%s",
-                                    sent, game["id"])
-                if res["status"] == STATUS_CONFIRMED:
-                    logger.info("[scheduler] MLB 라인업 확정 — 최종 픽 game=%s ok=%s",
-                                game["id"], ok)
-            except Exception as exc:
-                logger.warning("[scheduler] MLB 라인업 재판정 실패 game=%s: %s",
-                               game["id"], exc)
-        for r in rows:
-            if r["id"] in rejudged or not still_upcoming(r["starts_at"], now):
-                continue
-            try:
-                sent = await send_game_prediction(redis, dict(r), date, now=now)
-                if sent in ("sent", "revised"):
-                    logger.info("[scheduler] mlb 예측 카드 %s game=%s",
-                                sent, r["id"])
-            except Exception as exc:
-                logger.warning("[scheduler] mlb 발송 실패 game=%s: %s",
-                               r["id"], exc)
-    finally:
-        await redis.aclose()
+    day = day or today_kst()
+    leagues = leagues or list(s.slate_leagues)
+    src = DbSources(pool)
+    results: dict = {}
+
+    # ── 수집 먼저. 🔴 DB 가 비면 판정이 전부 "미확인"이 된다(§5).
+    #
+    # 🔴 **당일과 그다음 날을 함께 쌓는다**(사용자 지시 2026-10-01).
+    #    *"당일 날짜 및 그다음 날짜 터울은 하루 … 저장이 되어 있어야 한다"* —
+    #    그래야 사용자가 물었을 때 **바로** 답하고, 미리 분석해 둘 수 있다.
+    #    ⚠️ 내일 것은 **수집만** 한다 — 분석·발송은 그날 한다(§11-11 발송 off).
+    got = await collect(pool, day, leagues, net=_NET, scores=_SCORES,
+                        search=_SEARCH)
+    results["collect"] = got["leagues"]
+    for ahead in range(1, SLATE_DAYS):
+        nxt = day + timedelta(days=ahead)
+        try:
+            more = await collect(pool, nxt, leagues, net=_NET, scores=_SCORES,
+                                 search=_SEARCH)
+            results[f"collect+{ahead}d"] = more["leagues"]
+        except Exception as exc:                  # noqa: BLE001
+            # 🔴 내일 수집이 실패해도 오늘을 멈추지 않는다 — 사유는 남긴다
+            logger.exception("[run] %s 수집 실패: %s", nxt, exc)
+            results[f"collect+{ahead}d"] = f"실패: {type(exc).__name__}"
+    results["collect_unknowns"] = len(got["unknowns"])
+    results["collect_notes"] = len(got.get("notes") or [])
+    results["search"] = got.get("search")
+    if got["unknowns"]:
+        logger.info("[run] 수집 미확인 %d칸: %s", len(got["unknowns"]),
+                    got["unknowns"][:5])
+    # 🔴 답을 찾았지만 **버린 것**도 로그에 남긴다(리뷰 B3) — 조용한 0 금지
+    if got.get("notes"):
+        logger.info("[run] 찾았지만 버린 것 %d건: %s", len(got["notes"]),
+                    got["notes"][:5])
+
+    body, games = await collect_slate(day, leagues, src)
+    for g in games:
+        try:
+            await persist(pool, g)
+        except Exception as exc:                  # noqa: BLE001
+            logger.exception("[run] game=%s 적재 실패: %s", g.game_id, exc)
+
+    # 🔴 **발송하지 않는다.** v4 STEP 7 카드는 단계 8 이고, 발송 스위치는
+    #    단계 9 전까지 off 다(§11-11). 지금 나가는 것은 수집 나열뿐이므로
+    #    보내면 근거 없는 카드가 된다.
+    results["slate"] = ("collected" if games else "skipped:오늘 슬레이트가 0경기다")
+
+    unknown_total = sum(len(g.unknowns) for g in games)
+    logger.info("[run] %s %s → %d경기 · 못 잰 칸 %d · %s",
+                day, leagues, len(games), unknown_total, results["slate"])
+    return {"day": str(day), "games": len(games), "unknowns": unknown_total,
+            # 🔴 어떤 코드가 이 사이클을 돌렸나 — 26커밋 뒤처진 채로 돈 적이 있다
+            "uptime": version.uptime_text(), **results}
 
 
-async def crawler_lineup_poll() -> None:
-    """[배선] KBO·NPB 라인업을 크롤러 스냅샷에서 확인하고, 새로 뜨면 재판정한다.
+async def roster_once(pool, leagues: list[str] | None = None) -> dict:
+    """1b 로스터 — 🔴 **등번호가 들어오는 유일한 길이다.**
 
-    NPB는 시작 15분 전(18:00 → 17:45)까지 크롤·분석을 끝낸다. 그 시각 이후
-    재판정하지 않는다. 타순이 바뀐 경기는 종목 안에서 병렬로 돌리고, 끝나는
-    즉시 보낸다. 슬레이트 파이프라인(`ensure_analysis_cache`)은 저녁에 돌리지 않는다.
-    ⚠️ MLB 경로(`refresh_mlb_lineup`)는 statsapi 전용이라 이 두 종목에 쓸 수 없다.
-    ⚠️ 한 경기 실패가 나머지를 막지 않는다.
+    §7-3: *"동명이인은 팀+등번호로 갈린다."* 이것이 안 돌면 `resolve_by_name` 이
+    늘 `미상` 을 내고(등번호 없이는 동명이인을 못 가른다), 결장이 어느 팀에도
+    안 붙는다.
+
+    ⚠️ **어느 팀 로스터를 아직 못 읽었는지 이름으로 돌려준다**(조용한 0 금지).
     """
-    import redis.asyncio as aioredis
-
-    from app.collectors import crawler_feed
-    from app.engine.pregame_push import (
-        analysis_open, roster_signature, send_game_prediction, still_upcoming,
-    )
-    from app.pipeline import (
-        analysis_cache_ready, is_final_window,
-        rejudge_after_lineup, today_kst,
-    )
-
     s = get_settings()
-    pool = await get_pool()
-    redis = aioredis.from_url(s.redis_url, decode_responses=True)
-    now = datetime.now(UTC)
-    try:
-        # NPB를 먼저 — 17:45 종료선을 KBO 슬레이트에 밀리지 않게.
-        for sport in ("npb", "kbo"):
-            date = today_kst()
-            snap = await crawler_feed.load_snapshot(redis, sport, date)
-            if not snap:
-                continue
-            rows = await pool.fetch(
-                """SELECT id, ext_id, sport, home, away, starts_at, lineup_status,
-                          home_pitcher, away_pitcher
-                   FROM games WHERE sport = $1 AND status = 'scheduled'
-                     AND starts_at BETWEEN now() - interval '30 minutes'
-                                       AND now() + interval '4 hours'""", sport)
-            cancelled = await crawler_feed.mark_cancelled_games(pool, rows, snap)
-            if cancelled:
-                rows = [r for r in rows if r["id"] not in set(cancelled)]
-            jobs: list[tuple] = []
-            catchup: list = []
-            for r in rows:
-                key = f"{r['away']}@{r['home']}"
-                game = snap.get(key) or {}
-                have = any((game.get(f"lineup_{sd}") or "").strip()
-                           for sd in ("home", "away"))
-                if not have:
-                    continue
-                final = is_final_window(r["starts_at"], now, sport=sport)
-                status = "confirmed" if final else "predicted"
-                roster = roster_signature(
-                    game.get("home_pitcher"), game.get("away_pitcher"),
-                    game.get("lineup_home"), game.get("lineup_away"))
-                sig_key = f"lineup_sig:{r['id']}"
-                roster_changed = await redis.get(sig_key) != roster
-                notes = []
-                if (r["home_pitcher"] and game.get("home_pitcher")
-                        and r["home_pitcher"] != game["home_pitcher"]):
-                    notes.append(
-                        f"홈 선발 변경: {r['home_pitcher']} → {game['home_pitcher']}")
-                if (r["away_pitcher"] and game.get("away_pitcher")
-                        and r["away_pitcher"] != game["away_pitcher"]):
-                    notes.append(
-                        f"원정 선발 변경: {r['away_pitcher']} → {game['away_pitcher']}")
-                if roster_changed:
-                    await pool.execute(
-                        "UPDATE games SET lineup_status = $2, "
-                        "home_pitcher = COALESCE($3, home_pitcher), "
-                        "away_pitcher = COALESCE($4, away_pitcher), "
-                        "updated_at = now() WHERE id = $1",
-                        r["id"], status,
-                        game.get("home_pitcher") or None,
-                        game.get("away_pitcher") or None)
-                if roster_changed and analysis_open(sport, r["starts_at"], now):
-                    jobs.append((dict(r), status, notes, roster, sig_key, game))
-                else:
-                    if roster_changed:
-                        await redis.set(sig_key, roster, ex=86400)
-                        if sport == "npb" and still_upcoming(r["starts_at"], now):
-                            logger.warning(
-                                "[scheduler] NPB T-15 이후 라인업 변동 — 재판정 안 함 game=%s",
-                                r["id"])
-                    catchup.append(dict(r))
-
-            async def _rejudge_and_send(item, *, _sport=sport, _date=date):
-                row, status, notes, roster, sig_key, game = item
-                raw = await redis.get(f"analysis:{_sport}:{_date}")
-                if not analysis_cache_ready(raw, _date):
-                    logger.warning(
-                        "[scheduler] %s 캐시 없음 — 슬레이트 파이프라인 생략 game=%s",
-                        _sport, row["id"])
-                    return
-                try:
-                    ok = await rejudge_after_lineup(
-                        row, {"status": status, "notes": notes,
-                              "starters": {"home": game.get("home_pitcher") or None,
-                                           "away": game.get("away_pitcher") or None},
-                              "injuries": {}})
-                    if ok:
-                        await redis.set(sig_key, roster, ex=86400)
-                        sent = await send_game_prediction(redis, row, _date, now=now)
-                        if sent in ("sent", "revised"):
-                            logger.info("[scheduler] %s 예측 카드 %s game=%s",
-                                        _sport, sent, row["id"])
-                    logger.info("[scheduler] %s 라인업 %s — 재판정 game=%s ok=%s",
-                                _sport, status, row["id"], ok)
-                except Exception as exc:
-                    logger.warning("[scheduler] %s 재판정 실패 game=%s: %s",
-                                   _sport, row["id"], exc)
-
-            if jobs:
-                await asyncio.gather(
-                    *[_rejudge_and_send(item) for item in jobs],
-                    return_exceptions=True)
-            for row in catchup:
-                try:
-                    sent = await send_game_prediction(redis, row, date, now=now)
-                    if sent in ("sent", "revised"):
-                        logger.info("[scheduler] %s 예측 카드 %s game=%s",
-                                    sport, sent, row["id"])
-                except Exception as exc:
-                    logger.warning("[scheduler] %s 발송 실패 game=%s: %s",
-                                   sport, row["id"], exc)
-    finally:
-        await redis.aclose()
-
-
-async def kbo_lineup_history_job() -> None:
-    """KBO 평소 라인업 이력 — 공식 박스스코어 선발 9명을 lineup_events에 적재.
-
-    평소 비교에 최소 5경기가 필요하다. 네이버 preview는 과거 타순을 보관하지
-    않는다. `source='boxscore'`로 남겨 발표 라인업(crawler)과 구분한다.
-    """
-    from app.collectors.kbo import fetch_month, upsert_games
-    from app.collectors.kbo_boxscore import backfill
-
-    now = datetime.now(KST)
-    months = [now.month]
-    if now.month > 1:
-        months.insert(0, now.month - 1)
-    pool = await get_pool()
-    games: list[dict] = []
-    for mo in months:
-        try:
-            games.extend(await fetch_month(now.year, mo))
-        except Exception as exc:
-            logger.warning("[scheduler] KBO 일정 %d-%02d 조회 실패: %s",
-                           now.year, mo, exc)
-    try:
-        n = await upsert_games(pool, games) if games else 0
-    except Exception as exc:
-        logger.warning("[scheduler] KBO 일정 적재 실패: %s", exc)
-        n = 0
-    try:
-        stats = await backfill(pool, now.year, tuple(months), limit_per_team=10)
-    except Exception as exc:
-        logger.warning("[scheduler] KBO 라인업 백필 실패: %s", exc)
-        stats = {}
-    logger.info("[scheduler] KBO 라인업 이력 upsert %d · 백필 %s", n, stats)
-
-
-async def npb_lineup_history_job() -> None:
-    """NPB 평소 라인업 이력 — Yahoo 종료 경기 打順 9명을 lineup_events에 적재.
-
-    타순은 경기 시작 약 30분 전에야 뜨므로(スポナビ 도움말) 당일 오전 백필은
-    어제 이전 종료 분만 쌓인다. `source='boxscore'`로 발표 라인업과 구분한다.
-    일정 upsert 창은 백필과 같은 14일 — 3일만 넣으면 나머지 경기는 no_game.
-    """
-    from app.collectors.npb_boxscore import backfill
-    from app.collectors.yahoo_npb import upsert_schedule
-
-    now = datetime.now(KST)
-    pool = await get_pool()
-    n = 0
-    days = 14
-    for back in range(days):
-        day = (now.date() - timedelta(days=back)).isoformat()
-        try:
-            counts = await upsert_schedule(pool, day)
-            n += counts.get("total") or 0
-        except Exception as exc:
-            logger.warning("[scheduler] NPB 일정 %s 적재 실패: %s", day, exc)
-    try:
-        stats = await backfill(pool, as_of=now.date(), days=days, limit_per_team=10)
-    except Exception as exc:
-        logger.warning("[scheduler] NPB 라인업 백필 실패: %s", exc)
-        stats = {}
-    logger.info("[scheduler] NPB 라인업 이력 upsert %d · 백필 %s", n, stats)
-
-
-async def mlb_lineup_history_job() -> None:
-    """MLB 평소 라인업 이력 — statsapi 종료 경기 타순 9명을 lineup_events에 적재.
-
-    KBO·NPB 백필과 같다. 사이트만 statsapi. `source='boxscore'`.
-    """
-    from app.collectors.mlb_boxscore import ET, backfill
-
-    now = datetime.now(ET)
-    pool = await get_pool()
-    try:
-        stats = await backfill(pool, as_of=now.date(), days=14, limit_per_team=10)
-    except Exception as exc:
-        logger.warning("[scheduler] MLB 라인업 백필 실패: %s", exc)
-        stats = {}
-    logger.info("[scheduler] MLB 라인업 이력 백필 %s", stats)
-
-
-async def odds_snapshot_job() -> None:
-    """배당 스냅샷 — 크레딧 예산 관리:
-
-    경기가 있는 리그만 조회. 킥오프 3시간 전부터는 30분 간격(매 실행),
-    그 외 시간대는 리그당 3시간 간격. 사용량·잔여량은 snapshot 시 로그·Redis 기록.
-    """
-    import redis.asyncio as aioredis
-
-    from app.api_guard import is_blocked, is_disabled
-    from app.collectors.odds import SPORT_KEYS
-    from app.leagues import LEAGUES
-
-    if is_disabled("odds") or await is_blocked("odds"):
-        logger.info("[scheduler] odds snapshot skipped — %s",
-                    "disabled" if is_disabled("odds") else "차단 중 (호출 없음)")
-        return
-
-    pool = await get_pool()
-    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
-    try:
-        rows = await pool.fetch(
-            "SELECT sport, league, min(starts_at) AS next_kick FROM games "
-            "WHERE status = 'scheduled' AND starts_at > now() - interval '1 hour' "
-            "GROUP BY sport, league"
-        )
-        label_to_key = {c["label"]: c["odds_key"] for c in LEAGUES.values()}
-        due: dict[str, list[str]] = {}
-        now = datetime.now(KST)
-        for r in rows:
-            if r["sport"] in ("mlb", "kbo", "npb"):
-                # 야구는 totals 라인만. 승부 배당 키는 넣지 않는다.
-                keys_for = SPORT_KEYS.get(r["sport"]) or []
-                key = keys_for[0] if keys_for else None
+    leagues = leagues or list(s.slate_leagues)
+    year = today_kst().year
+    out: dict = {}
+    for league in leagues:
+        mod = ADAPTERS.get(league)
+        if mod is None or not hasattr(mod, "ROSTER_CODE"):
+            out[league] = {"skipped": f"{league} 로스터 소스 미구현(§13)"}
+            continue
+        done, failed = 0, {}
+        for team in sorted(mod.ROSTER_CODE):
+            got = await roster(pool, league, team, year, net=_NET)
+            if got.get("players"):
+                done += 1
             else:
-                key = label_to_key.get(r["league"])
-            if key is None:
-                continue
-            within_3h = (r["next_kick"].astimezone(KST) - now) <= timedelta(hours=3)
-            last = await redis.get(f"oddsnap:{key}")
-            stale = last is None or (now.timestamp() - float(last)) >= 3 * 3600
-            if within_3h or stale:
-                due.setdefault(r["sport"], []).append(key)
-        total = 0
-        for sport, keys in due.items():
-            if not keys:
-                continue
-            total += await snapshot_odds(pool, sport, only_keys=sorted(set(keys)))
-            for key in keys:
-                await redis.set(f"oddsnap:{key}", str(now.timestamp()), ex=86400)
-        logger.info("[scheduler] odds snapshot: %d rows (keys=%s)",
-                    total, {s: sorted(set(k)) for s, k in due.items() if k})
-    except (ProviderDisabledError, ProviderBlockedError):
-        logger.info("[scheduler] odds snapshot skipped — disabled/blocked")
-    except (ApiQuotaError, ApiAuthError) as exc:
-        logger.error("[scheduler] odds snapshot halted (%s): %s", type(exc).__name__, exc)
-        await notify_api_error(exc)
-    finally:
-        await redis.aclose()
+                failed[team] = got.get("failed") or got.get("skipped") or "0명"
+        out[league] = {"teams": done, "failed": failed}
+    logger.info("[roster] %s", out)
+    return out
 
 
-async def elo_refresh_job() -> None:
-    """주 1회 축구 Elo 데이터 갱신 (football-data.co.uk CSV + 재피팅). 리포트 발송 없음."""
-    from app.models.soccer_elo import refresh
-
-    params = await asyncio.to_thread(refresh)
-    logger.info("[scheduler] elo refreshed: %s", list(params))
-
-
-async def grading_job() -> None:
-    """전날 결과 채점 — expert_ledger는 뷰라 자동 갱신.
-
-    **야구·축구 둘 다 채점한다.** 이전에는 "mlb" 고정이라 축구 픽이
-    영원히 미채점으로 남았다(2026-08-25 발견: 축구 픽 result 전부 NULL).
-    한 종목이 실패해도 다른 종목은 계속 채점한다.
-    """
-    from app.grader import reconcile_stale_games
-
-    pool = await get_pool()
-    # 상태가 밀린 경기를 먼저 정합한다 — 채점은 status='final'만 보기 때문에
-    # 이걸 건너뛰면 밀린 날짜의 픽이 영원히 미채점으로 남는다.
-    try:
-        await reconcile_stale_games(pool)
-    except Exception as exc:
-        logger.warning("[scheduler] stale 정합 실패 — 채점은 계속: %s", exc)
-    # [§8-37] 중복 경기 행 자가 복구. **한 번 고쳐두면 끝나는 문제가 아니다** —
-    #   소스가 늘어날 때마다 같은 경기가 다른 ext_id로 다시 갈라질 수 있고,
-    #   그러면 예측이 붙은 행과 결과가 들어온 행이 또 남남이 돼 채점이 조용히
-    #   멈춘다(실측 2026-08-27: KBO 5 · MLB 10 · NPB 6 중복).
-    #   매일 채점 직전에 합쳐서 그 상태가 하루 이상 지속되지 않게 한다.
-    try:
-        from app.collectors.game_match import merge_duplicate_games
-
-        merged = await merge_duplicate_games(pool)
-        if merged.get("merged"):
-            logger.warning("[scheduler] 중복 경기 %d행 재발 — 병합함 (예측 %d건 이관)",
-                           merged["merged"], merged.get("moved_predictions", 0))
-    except Exception as exc:
-        logger.warning("[scheduler] 중복 병합 실패 — 채점은 계속: %s", exc)
-    totals: dict[str, dict] = {}
-    for sport in ("mlb", "soccer", "kbo", "npb"):
+async def _loop(name: str, interval: int, fn) -> None:
+    while True:
         try:
-            totals[sport] = await grade_date(pool, yesterday_kst(), sport)
-        except (ApiQuotaError, ApiAuthError) as exc:
-            logger.error("[scheduler] grading %s halted (%s): %s",
-                         sport, type(exc).__name__, exc)
-            await notify_api_error(exc)
-        except Exception as exc:
-            logger.exception("[scheduler] grading %s 실패 — 다음 종목 계속: %s", sport, exc)
-    logger.info("[scheduler] graded yesterday: %s", totals)
-    return totals
+            await fn()
+        except Exception:                          # noqa: BLE001
+            logger.exception("[%s] 주기 실패", name)
+        await asyncio.sleep(interval)
 
 
-async def heartbeat_job() -> None:
-    """[7-5] 스케줄러가 살아있음을 Redis에 남긴다 — /health가 이걸 본다.
+async def rerun_once(pool, *, now=None, leagues: list[str] | None = None,
+                     day: date | None = None) -> dict:
+    """🔴🔴 **§7-1 T-60 재실행** — 창에 든 경기마다 확정 XI 를 보고 판정한다.
 
-    실사고(2026-08-25): 스케줄러가 꺼져 있었는데 알 방법이 없었다.
+    ══════════════════════════════════════════════════════════════════
+    🔴 이 함수가 하는 것 · **안 하는 것**
+    ══════════════════════════════════════════════════════════════════
+
+    한다:
+      · 창(킥오프 -60분 · 야구 -70분)에 든 경기를 고른다
+      · 라인업 세포가 이미 받아 둔 XI 를 **읽는다**
+      · 낡은 XI 를 거른다(§7-1 · 크로아티아 카드)
+      · 상한을 정한다(받았으면 §6-5 칸 · 못 받았으면 **0.85 강제**)
+      · **1회만** 표시하고 그 기억을 DB 에 적는다(R10)
+
+    🔴 **안 한다**: 새로 긁지 않는다. 라인업 세포가 그 창에서 이미 돌고 있고
+       (`LINEUP_INTERVAL_SEC`), 재실행이 또 긁으면 **같은 페이지를 두 배로**
+       두드린다. ⚠️ 그래서 `ORDER` 의 세 통로는 **그 세포가** 쓰고 여기는
+       무엇으로 받았는지만 적는다(`rerun_via`).
+
+    반환은 경기마다 `{상태, 상한, 사유}`. 🔴 **건너뛴 경기도 들어간다**(#3).
     """
-    from app.health import touch_heartbeat
-
-    redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
-    try:
-        await touch_heartbeat(redis)
-    finally:
-        await redis.aclose()
-
-
-def _instrument(job_id: str, fn):
-    """잡 실행 결과를 기록하고, 실패하면 [7-3] 알림까지 보낸다."""
-    import functools
-
-    @functools.wraps(fn)
-    async def wrapper():
-        from app.alerts import job_failed
-        from app.health import record_job_run
-
-        redis = aioredis.from_url(get_settings().redis_url, decode_responses=True)
-        note, ok = "", True
-        try:
-            result = await fn()
-            note = str(result)[:200] if result is not None else ""
-            return result
-        except Exception as exc:
-            ok = False
-            note = f"{type(exc).__name__}: {exc}"[:200]
-            logger.exception("[scheduler] 잡 %s 실패: %s", job_id, exc)
-            nxt = ""
-            try:
-                from datetime import datetime as _dt
-
-                trig = _JOB_TRIGGERS.get(job_id)
-                if trig is not None:
-                    t = trig.get_next_fire_time(None, _dt.now(KST))
-                    nxt = f"{t:%m-%d %H:%M} KST" if t else ""
-            except Exception:
-                nxt = ""
-            await job_failed(job_id, exc, nxt)
-            raise
-        finally:
-            try:
-                await record_job_run(redis, job_id, ok, note)
-            except Exception as rec_exc:
-                logger.warning("[scheduler] 잡 기록 실패 %s: %s", job_id, rec_exc)
-            await redis.aclose()
-
-    return wrapper
-
-
-_JOB_TRIGGERS: dict = {}
-
-# 실사고(2026-08-26): 04:00 프리페치가 `was missed by 0:09:58`로 **건너뛰어졌다**.
-# APScheduler 기본 misfire_grace_time은 1초라, 노트북 절전·부하로 조금만 늦어도
-# 그날 잡이 통째로 사라진다. 하루 1회짜리 잡에는 치명적이다.
-# 6시간이면 새벽 프리페치가 아침까지 늦게라도 돌고, coalesce로 밀린 실행은 1회만 한다.
-MISFIRE_GRACE_SEC = 6 * 3600
-
-
-# (잡 id, 함수, 트리거) — 실행 기록·실패 알림 래퍼를 일괄로 씌운다.
-def _job_specs() -> list[tuple]:
-    return [
-        # [프리페치 2회] 실측 킥오프 분포(KST)에 맞춘다:
-        #   유럽 축구 20~04시(22시 최다 19건) · MLB 05~10시(08시 최다 11건)
-        #   · 아시아(J1·KBO·K리그1) 18~19시
-        # 신선도 게이트가 "캐시 6h 이내 & 킥오프 3h 이상"일 때만 즉답하므로
-        # 각 덩어리의 3~7시간 전에 돌아야 캐시가 실제로 쓰인다.
+    from app import rerun, slate
+    at = now or datetime.now(timezone.utc)
+    day = day or today_kst()
+    got = await slate.window(pool, day=day, days=2)
+    out: dict = {"now": at.isoformat(), "games": {}, "due": 0, "skipped": 0}
+    if not got.games:
+        out["why"] = got.why
+        return out
+    for row in got.games:
+        key = f"{row['away']} @ {row['home']}"
+        if leagues and row.get("league") not in leagues:
+            continue
+        kick, sport = row["starts_kst"], str(row.get("sport") or "")
+        if not rerun.due(kick, now=at, sport=sport):
+            mins = (kick - at).total_seconds() / 60.0
+            out["games"][key] = {
+                "state": "skipped",
+                "why": (f"창 밖이다({mins:.0f}분 뒤 · 창 "
+                        f"{rerun.window_min(sport)}분)")}
+            out["skipped"] += 1
+            continue
+        out["due"] += 1
+        # 🔴 **이미 갱신했나** — 기억은 DB 에 있다(프로세스가 죽어도 남는다)
+        done = await pool.fetchval(
+            "SELECT rerun_at FROM sufficiency WHERE game_id = $1", row["id"])
+        ok, why = rerun.may_update(done_at=done)
+        if not ok:
+            out["games"][key] = {"state": "done", "why": why}
+            continue
+        # 🔴 라인업 세포가 받아 둔 XI 를 **읽는다**(새로 긁지 않는다)
+        xi = await _stored_xi(pool, row["id"])
+        if not xi:
+            no = rerun.without_xi()
+            out["games"][key] = {"state": "no_xi", "cap": no.cap,
+                                 "why": no.line(), "via": "none"}
+            await _mark_rerun(pool, row["id"], via="none")
+            continue
+        fresh, fwhy = rerun.fresh_xi(xi, kickoff=kick)
+        if not fresh:
+            no = rerun.without_xi()
+            out["games"][key] = {"state": "stale_xi", "cap": no.cap,
+                                 "why": f"{fwhy} → {no.line()}", "via": "none"}
+            await _mark_rerun(pool, row["id"], via="none")
+            continue
+        state = rerun.with_xi(both=bool(xi.get("both")),
+                              verified=bool(xi.get("verified")))
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **§7-1 — §5~§6 을 재실행한다.** 상한만 바꾸는 것이 아니다.
+        # ══════════════════════════════════════════════════════════════
         #
-        # 3회 이상으로 늘리면 Perplexity 일 상한 60콜을 넘긴다(실측: 1회 37콜).
-        # 아시아 리그는 21:00 시점에 이미 종료돼 다음 회차 대상이 된다.
-        ("prefetch_evening", prefetch_job,
-         CronTrigger(hour=21, minute=0, timezone=KST)),   # 유럽 축구 (20~04시 킥오프)
-        ("prefetch_dawn", prefetch_job,
-         CronTrigger(hour=4, minute=30, timezone=KST)),   # MLB (05~10시 킥오프)
-        # 아시아 야구 18:30 — 라인업 폴링이 쓰는 analysis 캐시를 여기서 만든다.
-        # 21:00 슬롯에 넣으면 당일 경기는 이미 끝나 있다.
-        ("prefetch_asia", prefetch_asia_job,
-         CronTrigger(hour=14, minute=0, timezone=KST)),
-        ("odds_snapshot_30m", odds_snapshot_job, IntervalTrigger(minutes=30)),
-        ("grade_yesterday", grading_job, CronTrigger(hour=13, minute=0, timezone=KST)),
-        ("research_retry_45m", research_retry_job, IntervalTrigger(minutes=45)),
-        ("lineup_poll_30m", lineup_poll_job, IntervalTrigger(minutes=30)),
-        # NPB 18:00 → 17:45까지 크롤·분석 종료. KBO는 시작 직전까지 5분마다.
-        ("asia_pregame_5m", crawler_lineup_poll,
-         CronTrigger(hour="17,18", minute="0,5,10,15,20,25,30,35,40,45,50,55",
-                     timezone=KST)),
-        # MLB 아침 슬레이트 (05~11 KST). 사이트는 statsapi. 캐시만 보낸다.
-        ("mlb_pregame_5m", mlb_pregame_poll,
-         CronTrigger(hour="5-11", minute="0,5,10,15,20,25,30,35,40,45,50,55",
-                     timezone=KST)),
-        ("statcast_daily", statcast_refresh_job,
-         CronTrigger(hour=3, minute=30, timezone=KST)),
-        # 파크팩터는 시즌 누적이라 천천히 변한다 — 주 1회면 충분하고 statsapi 1콜이다
-        ("park_weekly", park_refresh_job,
-         CronTrigger(day_of_week="mon", hour=3, minute=20, timezone=KST)),
-        ("soccerdata_daily", soccer_stats_refresh_job,
-         CronTrigger(hour=3, minute=40, timezone=KST)),
-        ("elo_refresh_weekly", elo_refresh_job,
-         CronTrigger(day_of_week="mon", hour=5, minute=0, timezone=KST)),
-        # 평소 라인업 비교에 최소 5경기가 필요한데, 네이버는 과거 타순을 안 남긴다.
-        # 박스스코어 선발 9명을 하루 1회 적재한다 (30분 폴링에 넣으면 HTTP가 폭주한다).
-        ("kbo_lineup_history", kbo_lineup_history_job,
-         CronTrigger(hour=5, minute=20, timezone=KST)),
-        # NPB는 Yahoo `/top` 종료 경기 打順. 오전엔 오늘 타순이 없다(시작 ~30분 전).
-        ("npb_lineup_history", npb_lineup_history_job,
-         CronTrigger(hour=5, minute=25, timezone=KST)),
-        ("mlb_lineup_history", mlb_lineup_history_job,
-         CronTrigger(hour=5, minute=15, timezone=KST)),
-    ]
+        #  > 가져오면 `lineup_state` 를 `confirmed` 로 올리고 **§5~§6 을 재실행**,
+        #  > 카드 1회 갱신(R10).
+        #
+        #  ⚠️ 확정 XI 는 **변수를 바꾼다**(로테이션·결장이 사라지거나 생긴다).
+        #     상한만 풀고 변수를 그대로 두면 카드가 **옛 변수에 새 상한**을 쓴다.
+        #  🔴 그리고 **M2** 가 여기서 물린다 — 재실행에서 시나리오가 줄면 실패다.
+        before_n = await pool.fetchval(
+            "SELECT count(*) FROM scenarios WHERE game_id = $1", row["id"]) or 0
+        again = await _rerun_card(pool, row, states_note=state.line())
+        after_n = int(again.get("scenarios") or 0)
+        ok2, why2 = rerun.check_scenarios(before=int(before_n), after=after_n)
+        out["games"][key] = {"state": state.state, "cap": state.cap,
+                             "why": state.line(),
+                             "via": str(xi.get("via") or "adapter"),
+                             "scenarios": f"{before_n} → {after_n}",
+                             "m2": ok2, "m2_why": why2,
+                             "card": again}
+        if not ok2:
+            # 🔴 **M2 실패** — 카드를 갱신하지 않는다. 사유가 남는다.
+            logger.warning("[rerun] %s — %s", key, why2)
+            continue
+        await _mark_rerun(pool, row["id"], via=str(xi.get("via") or "adapter"))
+    return out
 
 
-def build_scheduler() -> AsyncIOScheduler:
-    scheduler = AsyncIOScheduler(timezone=KST)
-    for job_id, fn, trigger in _job_specs():
-        _JOB_TRIGGERS[job_id] = trigger
-        if job_id in ("asia_pregame_5m", "mlb_pregame_5m"):
-            grace = 4 * 60
-        else:
-            grace = MISFIRE_GRACE_SEC
-        scheduler.add_job(_instrument(job_id, fn), trigger, id=job_id,
-                          misfire_grace_time=grace, coalesce=True,
-                          max_instances=1)
-    # [7-5] 하트비트 — 이게 살아 있어야 /health가 "스케줄러 실행 중"이라고 말한다
-    scheduler.add_job(heartbeat_job, IntervalTrigger(minutes=2), id="heartbeat_2m",
-                      misfire_grace_time=60, coalesce=True, max_instances=1)
-    return scheduler
+async def _rerun_card(pool, row, *, states_note: str = "") -> dict:
+    """🔴 그 경기의 **카드를 다시 만든다**(§5~§6 재실행).
+
+    ⚠️ 새로 긁지 않는다 — `analyze.gather` 가 세포를 돌리지만 그 세포들이
+       **카세트·블랙보드**를 공유하므로 창 안에서 두 번 긁지 않는다.
+    🔴 **적재는 M2 를 통과한 뒤**다 — 호출부가 센다. 여기서는 만들어만 준다.
+    """
+    from app import analyze
+    game = {"id": row["id"], "game_id": row["id"], "home": row["home"],
+            "away": row["away"], "sport": row.get("sport"),
+            "league": row.get("league"), "venue": row.get("venue"),
+            "ext_id": row.get("ext_id"), "starts_kst": row["starts_kst"]}
+    try:
+        facts, states = await analyze.gather(game)
+    except Exception as exc:                            # noqa: BLE001
+        return {"error": repr(exc), "scenarios": 0}
+    if states_note:
+        states["§7-1 재실행"] = states_note
+    card = analyze.build(facts, game, board=None, states=states)
+    return {"facts": len(facts),
+            "scenarios": len(card.scenarios.drafts) if card.scenarios else 0,
+            "insufficient": card.insufficient,
+            "incomplete": card.incomplete}
+
+
+async def _stored_xi(pool, game_id: int) -> dict | None:
+    """🔴 라인업 세포가 적어 둔 XI. ⚠️ 없으면 `None`(지어내지 않는다).
+
+    🔴 `lineup` 종류의 사실을 읽는다 — 새 표를 만들지 않는다.
+    """
+    rows = await pool.fetch(
+        "SELECT value FROM background WHERE game_id = $1 "
+        "AND qtype = 'lineup' ORDER BY created_at DESC LIMIT 4", game_id)
+    teams: dict[str, dict] = {}
+    via = ""
+    for r in rows:
+        v = r["value"]
+        if isinstance(v, str):
+            import json
+            try:
+                v = json.loads(v)
+            except ValueError:
+                continue
+        if not isinstance(v, dict) or not v.get("players"):
+            continue
+        teams[str(v.get("team") or "")] = v
+        via = via or str(v.get("via") or "")
+    if not teams:
+        return None
+    first = next(iter(teams.values()))
+    return {"players": first.get("players"),
+            "match_date": first.get("match_date"),
+            "both": len(teams) >= 2,
+            "verified": all(bool(t.get("verified")) for t in teams.values()),
+            "via": via or "adapter"}
+
+
+async def _mark_rerun(pool, game_id: int, *, via: str) -> None:
+    """🔴 **1회 갱신을 기억한다**(R10). ⚠️ 줄이 없으면 만들지 않는다 —
+    `sufficiency` 는 카드가 적는 표이고, 카드가 없으면 갱신할 것도 없다."""
+    await pool.execute(
+        "UPDATE sufficiency SET rerun_at = now(), rerun_via = $2 "
+        "WHERE game_id = $1 AND rerun_at IS NULL", game_id, via)
 
 
 async def main() -> None:
-    logging.basicConfig(level=logging.INFO)
-    from app.version import boot_line
+    s = get_settings()
+    pool = await get_pool(s.database_url)
 
-    logger.info(boot_line("scheduler"))
-    get_settings().log_mock_status()
-    # [§8-39] **기동 시 스키마를 적용한다.**
-    #   실사고(2026-08-27): `apply_schema`는 있었지만 수동(`python -m app.db init`)
-    #   전용이라 아무도 부르지 않았다. 그 결과 로컬에만 컬럼이 생기고 서버에는
-    #   없어서, 새 코드를 배포하면 `lam_total` INSERT가 곧바로 터지는 상태였다.
-    #   schema.sql은 전부 IF NOT EXISTS·DROP NOT NULL이라 **멱등**이다
-    #   (2회 연속 적용 실증). 스케줄러는 단일 인스턴스라 여기가 적용 지점이다.
-    #   ⚠️ 실패해도 기동은 계속한다 — 마이그레이션 실패로 봇 전체가 죽으면
-    #      더 나쁘다. 대신 크게 로그를 남긴다.
+    # 🔴 스키마 적용은 기동 때 한 번. 배포 순서가 이것 때문에 스케줄러 먼저다.
+    async with pool.acquire() as conn:
+        from app.db import apply_schema
+        await apply_schema(conn)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **v5 §8-1 — 쌓인 경기 열쇠 이관**(`849825` → `statsapi:849825`)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 어댑터는 이미 표준 꼴을 쓴다. 쌓인 행은 **그 전에** 들어왔다 —
+    #     실측 2026-10-04 에 `games` 46행이 **46/46 비표준**이었고, 그래서
+    #     카드가 *"출처를 못 읽어 깊이 소스를 고를 수 없다"* 를 적었다.
+    #  🔴 멱등이다 — 이미 표준인 행은 건드리지 않는다(기동마다 안전하다).
+    from app import keymigrate
+    _mig = await keymigrate.run(pool)
+    logger.info("[boot] 열쇠 이관 — %s", _mig.line())
+    # 🔴 어떤 코드가 도는지 **기동 로그 첫 줄에** 남긴다(실사고 2026-08-25:
+    #    봇이 26커밋 뒤처진 코드로 하루 넘게 돌았고 아무도 알 수 없었다).
+    logger.info("%s", version.boot_line("scheduler"))
+    if (stale := version.staleness_line()):
+        logger.warning("%s", stale)
+    logger.info("[boot] 스키마 적용 완료 · send_enabled=%s", s.send_enabled)
+    # 🔴 §10-4 — **어느 게이트가 열려 있나**를 기동 첫 줄 근처에 남긴다.
+    #    ⚠️ 안 적으면 *"무엇이 남았나"* 를 로그만 보고는 알 수 없다(#3).
+    from app import rules as _rules
+    for _n, _g in sorted(_rules.stage_gates().items()):
+        logger.info("[boot] §10-4 게이트 %d %s — %s", _n, _g.get("state"),
+                    _g.get("what"))
+
+    await asyncio.gather(
+        _loop("slate", SLATE_INTERVAL_SEC, lambda: run_once(pool)),
+        # 🔴 1b 로스터 — 등번호 없이는 동명이인이 안 갈린다(§7-3)
+        _loop("roster", ROSTER_INTERVAL_SEC, lambda: roster_once(pool)),
+        # 🔴🔴 **§7-1 T-60 재실행** — 확정 XI 를 받아 카드를 **1회** 갱신한다.
+        #    ⚠️ 이 주기가 없으면 확정 XI 를 영원히 안 받고 **모든 카드가 상한
+        #       0.85 에 머문다**(§6-5·§7-1).
+        _loop("rerun", RERUN_INTERVAL_SEC, lambda: rerun_once(pool)),
+        # 🔴 §19-d — 라인업만 5분 간격. 🔴 **경기별 세포만** 돈다(`only=`) —
+        #    공식 일정·순위 페이지를 5분마다 두드리지 않는다.
+        _loop("lineup", LINEUP_INTERVAL_SEC,
+              lambda: collect(pool, today_kst(), list(s.slate_leagues),
+                              net=_NET, scores=_SCORES, search=_SEARCH,
+                              only=(Q_LINEUP,))),
+        # 🔴 §19-d — 라인업은 T-70분부터 5분 간격이다. 슬레이트 주기(15분)로는
+        #    못 잡으므로 수집만 따로 돌린다.
+        _loop("collect", COLLECT_INTERVAL_SEC,
+              lambda: collect(pool, today_kst(), list(s.slate_leagues),
+                              net=_NET, scores=_SCORES, search=_SEARCH)),
+    )
+
+
+async def _cli(argv: list[str]) -> int:
+    """🔴 **1회성 태스크 입구.** 기억 *"서버가 주체 — 로컬 맥 의존 금지"* 대로
+    저장소 스크립트가 아니라 **스케줄러 자신**이 부를 수 있어야 한다.
+
+    ```
+    python -m app.scheduler            상시 루프(배포가 부르는 것)
+    python -m app.scheduler prekick    킥오프 전 녹음 1회
+    python -m app.scheduler score      끝난 경기를 **실제 결과로** 채점 1회
+    python -m app.scheduler card <팀>  카드 1장 — 🔴 발송은 스위치가 켜져야 나간다
+    python -m app.scheduler roster     로스터 1회
+    python -m app.scheduler forget <이름>
+                                       🔴 **배운 별칭 하나를 지운다**(③ 자가 성장)
+    ```
+    ⚠️ `prekick` 을 **상시 루프에 붙이지 않았다** — 같은 경기를 주기마다 다시 녹음해
+       디스크가 찬다(실측: 라이브 4회에 59MB). 중복 방지가 생기면 그때 붙인다.
+    """
+    s = get_settings()
+    pool = await get_pool(s.database_url)
+    cmd = (argv[1] if len(argv) > 1 else "").strip()
+    if cmd == "forget":
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **배운 것을 되짚어 지운다**(③ 조건 셋 중 하나)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 출처(경기 ID)를 남겨서 **되짚어 지울 수 있게** 한다.
+        #
+        #  ⚠️ 자가 성장은 **오염이 조용히 쌓이는 자리**다. 지우는 길이 없으면
+        #     틀린 별칭 하나가 영원히 남고, 그 팀 질문이 계속 엉뚱한 데로 간다.
+        #  🔴 사람이 이 한 줄로 뺀다 — 코드를 고칠 일이 아니다.
+        from app import learn_names
+        name = (argv[2] if len(argv) > 2 else "").strip()
+        if not name:
+            print("지울 이름을 적어라: python -m app.scheduler forget <이름>")
+            for k, row in learn_names.load().items():
+                print(f"  {row.get('name')!r} → {row.get('key')} "
+                      f"(경기 {row.get('from_match')})")
+            return 1
+        ok = learn_names.forget(name)
+        print(f"{'지웠다' if ok else '그 이름은 배운 적이 없다'}: {name!r}")
+        return 0 if ok else 1
+    if cmd == "prekick":
+        import json
+        got = await record_prekickoff_once(pool)
+        # 🔴 결과는 **로그와 표준출력 둘 다** — 1회성 태스크는 로그만 남는다
+        print(json.dumps(got, ensure_ascii=False, indent=1, default=str))
+        logger.info("[prekick] 끝 — 녹음 %d · 건너뜀 %d",
+                    got["recorded"], got["skipped"])
+        return 0
+    if cmd == "score":
+        # 🔴 **실제 결과로 채점한다** — 정답지가 아니라 경기가 기준이다
+        #    (사용자 지시 2026-10-02: *"스포츠는 정답이 없는거다"*)
+        import json
+
+        from app import analyze
+        got = await analyze.score_finished(pool)
+        print(json.dumps(got, ensure_ascii=False, indent=1, default=str))
+        logger.info("[score] 채점 %d · 건너뜀 %s", got["graded"], got["skipped"])
+        return 0
+    if cmd == "card":
+        # 🔴 카드 한 장을 만들고 **보낸다** — 스위치가 꺼져 있으면 만들고 멈춘다
+        #    (§11-11). ⚠️ 주기가 아니라 **1회성**이다.
+        import json
+        want = argv[2] if len(argv) > 2 else ""
+        if not want:
+            print("`python -m app.scheduler card <팀>` — 어느 경기인지 적어라")
+            return 2
+        from app import analyze
+        got = await analyze.deliver(pool, team=want)
+        print(json.dumps(got, ensure_ascii=False))
+        logger.info("[card] 보냄=%s · %s", got["sent"], got["why"])
+        return 0
+    if cmd == "roster":
+        print(await roster_once(pool))
+        return 0
+    if cmd:
+        print(f"모르는 명령: {cmd!r} — prekick · score · card · roster 중 하나다")
+        return 2
+    await main()
+    return 0
+
+
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 킥오프 **전** 녹음 — 단계 4 게이트를 정직하게 재려면 이것이 필요하다
+# ══════════════════════════════════════════════════════════════════
+#
+# 사용자 지시 2026-10-02: *"게이트가 아직 빨갛다 … 구현해라"*
+#
+# ## 왜 필요한가 — 측정이 **구조적으로** 못 넘는 자리였다
+#
+# §9 단계 4 는 *"**경기 전 시점** 웹(카세트)에서 재현"* 을 요구한다. 그런데 우리가
+# 가진 카세트는 **경기 뒤에** 녹음한 것이다. 순위·폼이 경기 결과를 이미 담고 있어서
+#   · 그 값을 쓰면 **경기 후 자료**이고(§12-c-2 가 이제 거부한다)
+#   · 거부하면 그 변수는 **못 찾은 것**이 된다
+# 어느 쪽이든 재현율이 진짜가 아니다. 실측 2026-10-02: 29% → **14%**(값 다름 0).
+#
+# 🔴 **고치는 길은 하나다 — 킥오프 전에 녹음해 두는 것.** 그 뒤에는 같은 카세트로
+#    몇 번이고 정직하게 잴 수 있다.
+#
+# ⚠️ **로컬 맥에 기대지 않는다**(기억: *"서버가 주체"*). 이것은 스케줄러 **1회성
+#    태스크**이고 결과는 **로그로** 남는다.
+
+#: 🔴 킥오프 **몇 분 전**까지 녹음을 받아들이나. v4 §19-d 가 라인업을 `T-70분` 부터
+#   보라고 하므로 그보다 넉넉히 둔다 — 그 전이면 확정 XI 가 아직 없다.
+PREKICK_WINDOW_MIN = 180
+
+
+async def record_prekickoff_once(pool, *, within_min: int = PREKICK_WINDOW_MIN,
+                                 day: date | None = None,
+                                 leagues: list[str] | None = None) -> dict:
+    """킥오프 전 경기를 **녹음**한다. 🔴 시작한 경기는 **건너뛴다** — 사유와 함께.
+
+    반환은 경기마다 `{상태, 사실 수, 사유}`. 🔴 조용한 0 금지 — 건너뛴 경기도 들어간다.
+    """
+    import os
+
+    from app import analyze, cassette, classify, slate
+    now = datetime.now(timezone.utc)
+    day = day or today_kst()
+    got = await slate.window(pool, day=day, days=2)
+    out: dict = {"now": now.isoformat(), "games": {}, "recorded": 0,
+                 "skipped": 0}
+    if not got.games:
+        out["why"] = got.why
+        return out
+
+    # 🔴 **녹음 모드를 여기서만 켠다.** 끝나면 돌려놓는다 — 운영이 녹음 모드로
+    #    남으면 디스크가 찬다(실측: 라이브 4회에 카세트가 59MB 가 됐다).
+    before = {k: os.environ.get(k) for k in (cassette.MODE_ENV, cassette.DAY_ENV)}
+    os.environ[cassette.MODE_ENV] = cassette.RECORD
+    os.environ[cassette.DAY_ENV] = str(day)
     try:
-        from app.db import apply_schema, get_pool
+        for row in got.games:
+            key = f"{row['away']} @ {row['home']}"
+            kick = row["starts_kst"]
+            if leagues and row.get("league") not in leagues:
+                continue
+            mins = (kick - now).total_seconds() / 60.0
+            if mins <= 0:
+                # 🔴 **이미 시작했다 — 녹음해도 경기 후 자료다.** 건너뛴 이유를 남긴다
+                out["games"][key] = {"state": "skipped",
+                                     "why": f"이미 시작했다({-mins:.0f}분 지남)"}
+                out["skipped"] += 1
+                continue
+            if mins > within_min:
+                out["games"][key] = {"state": "skipped",
+                                     "why": f"아직 멀다({mins:.0f}분 뒤 · 창 "
+                                            f"{within_min}분)"}
+                out["skipped"] += 1
+                continue
+            try:
+                facts, states = await analyze.gather(
+                    {"home": row["home"], "away": row["away"],
+                     "league": row.get("league") or "",
+                     "sport": row.get("sport") or "",
+                     "game_id": row.get("id"), "kickoff": kick,
+                     "ext_id": row.get("ext_id"), "venue": row.get("venue")},
+                    mode=DEEP)
+            except Exception as exc:                        # noqa: BLE001
+                # 🔴 한 경기가 터져도 나머지를 녹음한다 — 사유를 남긴다
+                out["games"][key] = {"state": "error", "why": repr(exc)}
+                logger.warning("[prekick] %s 녹음 실패: %r", key, exc)
+                continue
+            # 🔴🔴 **카드를 저장한다** — 안 하면 쌓이는 것이 없다.
+            #    전 판은 사실만 모으고 끝났다 → 경기가 끝난 뒤 채점이
+            #    *"카드를 저장한 적이 없다"* 로 건너뛴다. 그러면 원장이 영원히 빈다.
+            #    (사용자 지시 2026-10-02 *"뭘쌓는데???"* 가 가리킨 바로 그 자리다)
+            game = classify.Game(home=row["home"], away=row["away"],
+                                 sport=row.get("sport") or "",
+                                 league=row.get("league") or "")
+            card = analyze.build(facts, game, board=None, states=states)
+            saved = None
+            try:
+                saved = await analyze.persist(pool, int(row["id"]), card)
+            except Exception as exc:                        # noqa: BLE001
+                # 🔴 적재가 실패해도 녹음은 남는다 — 사유를 적는다
+                logger.warning("[prekick] %s 카드 적재 실패: %r", key, exc)
+            out["games"][key] = {"state": "recorded", "facts": len(facts),
+                                 "minutes_before": round(mins, 1),
+                                 "cells": len(states),
+                                 "insufficient": card.insufficient,
+                                 "scenarios": len(card.scenarios.drafts)
+                                 if card.scenarios else 0,
+                                 "saved": saved}
+            out["recorded"] += 1
+            logger.info("[prekick] %s — 킥오프 %.0f분 전 · 사실 %d건",
+                        key, mins, len(facts))
+    finally:
+        for k, v in before.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    # 🔴 **어디에 녹음됐는지 로그에 남긴다** — 측정이 그 날짜를 지목해야 한다
+    out["cassette_day"] = str(day)
+    logger.info("[prekick] 녹음 %d · 건너뜀 %d · 카세트 날짜 %s (%s)",
+                out["recorded"], out["skipped"], day, cassette.root())
+    return out
 
-        await apply_schema(await get_pool())
-        logger.info("[scheduler] 스키마 적용 완료")
-    except Exception as exc:
-        logger.error("[scheduler] 🔴 스키마 적용 실패 — 새 컬럼이 없으면 "
-                     "예측 기록이 터진다: %s", exc)
-    scheduler = build_scheduler()
-    scheduler.start()
-    logger.info("scheduler started: %s", [j.id for j in scheduler.get_jobs()])
-    await asyncio.Event().wait()  # 종료 시그널까지 대기
 
-
+# 🔴 **진입 블록은 파일 끝이다.** 중간에 두면 그 아래 정의가 아직 안 읽혀
+#    `NameError` 가 난다(실측 2026-10-02: `prekick` 이 그렇게 터졌다).
 if __name__ == "__main__":
-    asyncio.run(main())
+    import sys
+    raise SystemExit(asyncio.run(_cli(sys.argv)))

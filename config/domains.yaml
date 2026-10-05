@@ -1,0 +1,173 @@
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **도메인 등급표** — v5 §4-3 [#4]
+# ══════════════════════════════════════════════════════════════════
+#
+# > 등급표는 `config/domains.yaml`, 미등록 도메인은 **`local` 취급**하되 종목
+# > 낱말이 제목에 없으면 버린다(럭비·드라마 차단).
+#
+# | 등급 | 예 | 처리 |
+# |---|---|---|
+# | official   | 협회·구단·리그 공식, statsapi, jleague.jp, npb.jp | 본문 받음 · hardness 2 |
+# | national   | BBC·Guardian·Athletic·스포니치·닛칸·스포티비·연합·AS·Marca | 받음 · 2매체 일치면 2, 단일 1 |
+# | local      | 현지 지역지(Gleaner, 데일리 포스트) | 받음 · hardness 1 |
+# | aggregator | goal·sportsmole·fotmob HTML·flashscore | 받음 · 1 · 결장 명단은 2매체 필요 |
+# | tip        | 베팅 팁·예측 사이트 | 🔴 **본문 안 받음** · 변수 근거 금지 |
+# | deny       | rottentomatoes·tripadvisor·법률·SMS·전자상거래·위키 Economy_of 등 | 검색 결과에서 **제거** |
+# | wiki       | /wiki/<team>·<coach>·<competition> | 받되 5만 자 절단 · hardness 0(배경) |
+#
+# 🔴 **실측으로 적은 것만**이다(2026-10-04 로그에 **실제로 나온** 호스트).
+# ⚠️ 추측으로 늘리지 않는다 — 늘리려면 그 호스트가 로그에 나와야 한다.
+
+official:
+  - statsapi.mlb.com
+  - api-web.nhle.com
+  - api.football-data.org
+  - npb.jp
+  - jleague.jp
+  - kleague.com
+  - scottishfa.co.uk
+  - uefa.com
+  - fifa.com
+  - koreabaseball.com      # ⚠️ robots 전면 금지다 — 등급은 공식이지만 못 읽는다
+  - mlb.com
+  - nhl.com
+  - lgtwins.com
+  - tigers.co.kr
+  - marines.co.jp
+
+national:
+  - bbc.com
+  - bbc.co.uk
+  - theguardian.com
+  - nytimes.com
+  - apnews.com
+  - reuters.com
+  - skysports.com
+  - tntsports.co.uk
+  - sportingnews.com
+  - dailyrecord.co.uk
+  - scotsman.com
+  - thenational.scot
+  - mirror.co.uk
+  - nikkansports.com
+  - sponichi.co.jp
+  - hochi.news
+  - daily.co.jp
+  - sanspo.com
+  - tokyo-sports.co.jp
+  - yna.co.kr
+  - spotvnews.co.kr
+  - xportsnews.com
+  - osen.co.kr
+  - sports.donga.com
+  - news.kbs.co.kr
+  - mt.co.kr
+  - sportschosun.com
+  - as.com
+  - marca.com
+  - aa.com.tr
+
+local:
+  - jamaica-gleaner.com
+  - jamaicaobserver.com
+  - ohridnews.com
+  - sportstation.mk
+  - sportmanija.mk
+  - gol.mk
+  - tvarenasport.mk
+  - tv21.tv
+  - edinburghnews.scotsman.com
+  - nutmegfc.co.uk
+  - mydaily.co.kr
+  - sportalkorea.com
+  - interfootball.co.kr
+  - baseballchannel.jp
+  - full-count.jp
+
+aggregator:
+  - goal.com
+  - sportsmole.co.uk
+  - fotmob.com
+  - flashscore.com
+  - sofascore.com
+  - espn.com
+  - msn.com
+  - sports.yahoo.com
+  - soccerway.com
+  - 365scores.com
+  - tribuna.com
+  - xscores.com
+  - starting11.com
+  - inkl.com
+  - transfermarkt.com
+  - transfermarkt.world
+  - thesportsdb.com
+
+# 🔴 §4-3 — **본문 안 받음.** 변수 근거 금지, 라인업 예상만 참고 표시
+tip:
+  - sportsgambler.com
+  - telecomasia.net
+  - stats888.com
+  - 888starz
+  - bet365
+  - 1xbet
+  - betway
+  - oddschecker
+  - forebet
+  - predictz
+
+# 🔴 §4-3 — **검색 결과에서 제거.** ⚠️ 실측 2026-10-04 에 **실제로 열린** 것만
+deny:
+  - rottentomatoes.com
+  - imdb.com
+  - tripadvisor.com
+  - booking.com
+  - expedia.
+  - 5sim.net
+  - smsfast.com
+  - telfa.law
+  - aljazeera.com
+  - timeanddate.com
+  - macedonia-timeless.com
+  - coupang.com
+  - temu
+  - aliexpress
+  - viagogo
+  - stubhub
+  - ticketmaster
+  - monster.com
+  - indeed.
+  - zillow
+  - trulia
+
+# 🔴 §4-3 — 받되 **5만 자 절단 · hardness 0(배경)**
+wiki:
+  - wikipedia.org
+  - wikimedia.org
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 등급 → 처리
+# ══════════════════════════════════════════════════════════════════
+#
+# ⚠️ `national` 의 hardness 는 **2매체 일치면 2, 단일이면 1** 이다(§4-3 표).
+#    🔴 그 판단은 **몇 매체가 같은 말을 하나**이고 등급 하나로는 못 정한다 —
+#       그래서 여기 적는 것은 **단일 기준**이고 §5-5 가 2매체를 올린다.
+handling:
+  official:   {fetch: true,  hardness: 2}
+  national:   {fetch: true,  hardness: 1}
+  local:      {fetch: true,  hardness: 1}
+  aggregator: {fetch: true,  hardness: 1}
+  # 🔴🔴 **v5 §4-5 가 이 수를 바꿨다**(2026-10-04): *"본문 50,000자 초과 → 앞
+  #    50,000자만. **위키·순위표는 25,000자.**"*
+  #    ⚠️ 종전은 50000 이었다(v4 의 *"5만 자 절단"*). v5 가 위키를 따로 떼어
+  #       절반으로 줄였다 — 위키는 **배경**이고 그 긴 글이 LLM 입력을 채운다.
+  wiki:       {fetch: true,  hardness: 0, max_chars: 25000}
+  tip:        {fetch: false, hardness: 0}
+  deny:       {fetch: false, hardness: 0}
+
+# 🔴 §4-3 — *"**미등록 도메인은 `local` 취급**하되 종목 낱말이 제목에 없으면 버린다."*
+unknown_tier: local
+unknown_note: |
+  ⚠️ 미등록을 `deny` 로 두면 **새 매체를 영영 못 읽는다**(현지 지역지가 늘 새롭다).
+  🔴 그래서 `local` 로 받되 **종목 낱말 검사**가 럭비·드라마를 막는다
+  (`rules.other_sport` · `rules.not_sport_host`).

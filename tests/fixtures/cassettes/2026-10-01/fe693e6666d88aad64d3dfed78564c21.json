@@ -1,0 +1,1815 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Sacramento Republic lineup Oct 1",
+ "recorded_at": "2026-10-01T02:51:38.404909+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "2026 Schedule - Sacramento Republic FC",
+   "content": "Schedule for Sacramento Republic FC home. October 17 6 PM. Saturday October 24 7 PM Oakland Roots SC Breast Health Awareness Night",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo",
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1,
+    1
+   ],
+   "score": 4.0,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/schedule/",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/schedule/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC 2026 Schedule - ESPN",
+   "content": "ESPN has the full 2026 Sacramento Republic FC schedule. Includes date, time and tv channel information for all Sacramento Republic FC games.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo",
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2,
+    7
+   ],
+   "score": 1.2857142857142856,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/team/fixtures/_/id/17828/sacramento-republic-fc",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/team/fixtures/_/id/17828/sacramento-republic-fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC - 다음 시즌 선수단 | Transfermarkt",
+   "content": "i 다음 시즌 예상 스쿼드입니다. 이 목록은 현재 신규 영입 또는 복귀가 확정된 모든 선수를 고려합니다. 계약이 만료되지만 아직 후속 계약이 체결되지 않은 모든 선수를 표시하도록 선택할 수 있습니다. 협상 중인 선수를 잠재적인 신규 영입 선수로 표시하도록 선택할 수도 있습니다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.transfermarkt.co.kr/sacramento-republic-fc/kadernaechstesaison/verein/40835",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.transfermarkt.co.kr",
+    "/sacramento-republic-fc/kadernaechstesaison/verein/40835",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Las Vegas Lights FC lineups — starting XI & team news",
+   "content": "Confirmed starting lineups, formations and team news for Sacramento Republic FC vs Las Vegas Lights FC (USL Championship), … Oct 1, … Oct 1, … Sacramento Republic FC vs Las Vegas Lights FC Sacramento Republic FC predicted XI Official Sacramento Republic FC are …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.sportsbencher.com/lineups/sacramento-republic-fc-vs-las-vegas-lights-fc",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportsbencher.com",
+    "/lineups/sacramento-republic-fc-vs-las-vegas-lights-fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC - 가장 비싼 출발 | Transfermarkt",
+   "content": "i 선택한 클럽에서 가장 비싼 출발입니다. 계절별로 필터링하세요: 모든 시즌, position: 모든 포지션, 주요 위치: 모든 포지션, 이체 날짜: 중요하지 않음",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.transfermarkt.co.kr/sacramento-republic-fc/rekordabgaenge/verein/40835",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.transfermarkt.co.kr",
+    "/sacramento-republic-fc/rekordabgaenge/verein/40835",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic vs Las Vegas Lights football predictions and stats - 01 Oct 2026",
+   "content": "Prediction and stats for Sacramento Republic vs Las Vegas Lights in the USA USL Championship 1x2, Correct Score, Both Teams to Score, Over Under …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://footballpredictions.ai/football-predictions/sacramento-republic-vs-las-vegas-lights-predictions-tips-01-oct-2026/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "footballpredictions.ai",
+    "/football-predictions/sacramento-republic-vs-las-vegas-lights-predictions-tips-01-oct-2026/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "FC Tulsa vs New Mexico United football predictions and stats - 01 Oct 2026",
+   "content": "Brooklyn 25 4 6 15 25: … 69 L L L W L 14 USA USL Championship Overall Standings USA USL Championship Name P W D L Goals Last 5 Pts 1 El Paso Locomotive 26 14 5 7 45: … 30 L D D D W 43 3 Sacramento Republic 25 10 10 5 33 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://footballpredictions.ai/football-predictions/fc-tulsa-vs-new-mexico-united-predictions-tips-01-oct-2026/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "footballpredictions.ai",
+    "/football-predictions/fc-tulsa-vs-new-mexico-united-predictions-tips-01-oct-2026/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC - Wikipedia",
+   "content": "Sacramento Republic FC is an American professional soccer team based in Sacramento, California, that competes in the Western Conference of the USL Championship ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Sacramento_Republic_FC",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Sacramento_Republic_FC",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Homepage - Sacramento Republic FC",
+   "content": "Subscribe to our newsletter Republic FC news, events, and promotions straight to your inbox.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Las Vegas Lights live score, H2H and lineups | Sofascore",
+   "content": "Sacramento Republic FC Las Vegas Lights live score starts on 1 Oct 2026 at 02:00 UTC time at Papa Murphy's Park stadium, Sacramento city, USA in USL Championship, USA.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg.sofascore.com%2Fapi%2Fv1%2Fevent%2F15285877%2Fshare-image%2F16x9&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo",
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13,
+    2
+   ],
+   "score": 1.1538461538461537,
+   "category": "general",
+   "url": "https://www.sofascore.com/football/match/las-vegas-lights-sacramento-republic-fc/YulbsYMkc",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.sofascore.com",
+    "/football/match/las-vegas-lights-sacramento-republic-fc/YulbsYMkc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Orange County SC vs Sacramento Republic FC",
+   "content": "Orange County SC vs Sacramento Republic FC on Sun, Sep 6, 2026, 01:00 UTC. Check live results, H2H, match stats, lineups, player ratings, insights, team forms, shotmap, and highlights.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.fotmob.com%2Fmatch%2Fpreview%3FmatchId%3D5109930%26stage%3Dfinished&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.fotmob.com/en-GB/matches/orange-county-sc-vs-sacramento-republic-fc/3yxb20f9",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/en-GB/matches/orange-county-sc-vs-sacramento-republic-fc/3yxb20f9",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Tacoma unbeaten in three straight, knocks off Sacramento 1-0 | Tacoma Defiance",
+   "content": "2020.10.01.TACOMA, WASH. – Tacoma Defiance (4-2-9, 14 points) defeated Sacramento Republic FC (7-6-2, 27 points) Wednesday evening at Cheney Stadium. Alec Díaz came off the bench in the 59th minute and scored the sole goal of the game in the 71st , his team-leading sixth goal of the season, set up wonderfully by fellow sub Danny Reynolds. Defiance finishes the 2020 USL Championship regular season against Reno 1868 on Saturday, October 3 at Cheney Stadium in Tacoma (7:00 p.m. PT / ESPN ). Defiance ended ....2020.10.01.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimages.mlssoccer.com%2Fimage%2Fprivate%2Ft_editorial_landscape_3_4_desktop%2Fmls-sea-prd%2Fof6zwadezn7nowzxtxdm.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.soundersfc.com/tacoma-defiance/news/tacoma-unbeaten-three-straight-knocks-sacramento-1-0",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.soundersfc.com",
+    "/tacoma-defiance/news/tacoma-unbeaten-three-straight-knocks-sacramento-1-0",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Inside Sacramento Republic’s historic signing of 13-year-old Da’vian Kimbrough",
+   "content": "2023.08.17.Inside Sacramento Republic’s historic signing of 13-year-old Da’vian Kimbrough2023.08.17.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fstatic01.nyt.com%2Fathletic%2Fuploads%2Fwp%2F2023%2F08%2F17021121%2FKimbrough-Signing-3.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.nytimes.com/athletic/4783390/2023/08/17/davion-kimbrough-sacramento-republic/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/athletic/4783390/2023/08/17/davion-kimbrough-sacramento-republic/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Oakland Roots SC live score, H2H and lineups | Sofascore",
+   "content": "Sacramento Republic FC Oakland Roots SC live score starts on 25 Oct 2026 at 02:00 UTC time at Papa Murphy's Park stadium, Sacramento city, USA in USL Championship, USA.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg.sofascore.com%2Fapi%2Fv1%2Fevent%2F15285923%2Fshare-image%2F16x9&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.sofascore.com/football/match/oakland-roots-sc-sacramento-republic-fc/YulbshcFc",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.sofascore.com",
+    "/football/match/oakland-roots-sc-sacramento-republic-fc/YulbshcFc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Phoenix Rising FC - USL Championship",
+   "content": "The latest updates from the Week 8 match between Sacramento Republic FC and Phoenix Rising FC on April 27, 2019, including lineups, recaps, stats and videos.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.uslchampionship.com/sacramentorepublicfc-phoenixrisingfc-1037098",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.uslchampionship.com",
+    "/sacramentorepublicfc-phoenixrisingfc-1037098",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Brooklyn vs Detroit City football predictions and stats - 01 Oct 2026",
+   "content": "0.2 1X2 2 WIN 2 DRAW 1 LOSS BTTS 2 YES 3 NO CLEAN SHEETS 2 YES 3 NO SCORED A GOAL 3 YES 2 NO OVER 1.5 GOALS 2 YES 3 NO OVER 2.5 GOALS 2 YES 3 NO OVER 3.5 GOALS 1 YES 4 NO GAMES AWAY 13.09.26 Sacramento Republic vs Detroit City USL Championship 1 - 0 30.08.26 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://footballpredictions.ai/football-predictions/brooklyn-vs-detroit-city-predictions-tips-01-oct-2026/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "footballpredictions.ai",
+    "/football-predictions/brooklyn-vs-detroit-city-predictions-tips-01-oct-2026/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC Standings - USL Championship",
+   "content": "View the Sacramento Republic FC Standings on the official website of the USL Championship.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.uslchampionship.com/sacramento-republic-fc-standings",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.uslchampionship.com",
+    "/sacramento-republic-fc-standings",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Las Vegas Lights FC - live score ...",
+   "content": "2 hours ago · Sacramento Republic FC vs Las Vegas Lights FC on Thu, Oct 1, 2026, 02:00 UTC. Check live results, H2H, match stats, lineups, player ratings, insights, team forms, shotmap, and highlights.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.fotmob.com/matches/sacramento-republic-fc-vs-las-vegas-lights-fc/d66zlwfw",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/matches/sacramento-republic-fc-vs-las-vegas-lights-fc/d66zlwfw",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Orange County SC - USL Championship",
+   "content": "The latest updates from the Week 8 match between Sacramento Republic FC and Orange County SC on September 9, 2020, including lineups, recaps, stats and videos.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.uslchampionship.com/sacramentorepublicfc-orangecountysc-2092776",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.uslchampionship.com",
+    "/sacramentorepublicfc-orangecountysc-2092776",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rhode Island vs Indy Eleven football predictions and stats - 01 Oct 2026",
+   "content": "L 14 USA USL Championship Overall Standings USA USL Championship Name P W D L Goals Last 5 Pts 1 El Paso Locomotive 26 14 5 7 45: … 30 L D D D W 43 3 Sacramento Republic 25 10 10 5 33 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://footballpredictions.ai/football-predictions/rhode-island-vs-indy-eleven-predictions-tips-01-oct-2026/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "footballpredictions.ai",
+    "/football-predictions/rhode-island-vs-indy-eleven-predictions-tips-01-oct-2026/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "October 1st, Match #25 - Orange County SC @ Sacramento ...",
+   "content": "Oct 1, 2025 · Nathan Wander October 1st, Match #25 - Orange County SC @ Sacramento Republic FC October 1, 2025. When - October 1st, 7:30 PM PST. All-Time ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://orangeandblacksoccercast.com/news-1/2025/10/1/match-25-oc-republic",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "orangeandblacksoccercast.com",
+    "/news-1/2025/10/1/match-25-oc-republic",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Las Vegas Lights FC - live score ...",
+   "content": "Sacramento Republic FC vs Las Vegas Lights FC on Thu, Oct 1, 2026, 02:00 UTC. Check live results, H2H, match stats, lineups, player ratings, insights, team forms ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.fotmob.com/en-GB/matches/sacramento-republic-fc-vs-las-vegas-lights-fc/d66zlwfw",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/en-GB/matches/sacramento-republic-fc-vs-las-vegas-lights-fc/d66zlwfw",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic 팀에 대한 정보 - 개요",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://uniscore.com/football/competitor/sacramento-republic/b1ta1ll1florbib",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "uniscore.com",
+    "/football/competitor/sacramento-republic/b1ta1ll1florbib",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Miami FC vs Sporting JAX football predictions and stats - 01 Oct 2026",
+   "content": "18 31:69 L L L W L 14 USA USL Championship Overall Standings USA USL Championship Name P W D L Goals Last 5 Pts 1 El Paso Locomotive 26 14 5 7 45: … 30 L D D D W 43 3 Sacramento Republic 25 10 10 5 33 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://footballpredictions.ai/football-predictions/miami-fc-vs-sporting-jax-predictions-tips-01-oct-2026/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "footballpredictions.ai",
+    "/football-predictions/miami-fc-vs-sporting-jax-predictions-tips-01-oct-2026/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Detroit City FC starting XI vs Sacramento on September 12",
+   "content": "Sep 12, 2026 · Sacramento Republic FC. Frei; Baker, Nathan, Ragen, Nouhou; Atencio, Vargas; C. Roldan, Rusnák, Chú; Morris. match on October 1 at 7:15pm … ⏰ 7 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.facebook.com/detroitcityfc/posts/the-xi-taking-on-sacramento%EF%B8%8Fstarting-xi-presented-by-detroit-medical-center/1626513422818717/",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.facebook.com",
+    "/detroitcityfc/posts/the-xi-taking-on-sacramento%EF%B8%8Fstarting-xi-presented-by-detroit-medical-center/1626513422818717/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic vs Las Vegas Lights — 01 Oct 2026 | H2H ...",
+   "content": "2 hours ago · Sacramento Republic vs Las Vegas Lights on 01 Oct 2026: kickoff, live score, team form, H2H statistics, lineups, league context, match events and analysis when available.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.today-predictions.com/fixture/sacramento-republic-vs-las-vegas-lights-1-october-2026-1493720",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.today-predictions.com",
+    "/fixture/sacramento-republic-vs-las-vegas-lights-1-october-2026-1493720",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC vs Oakland Roots SC",
+   "content": "Sacramento Republic FC vs Oakland Roots SC on Sun, Oct 25, 2026, 02:00 UTC. Check live results, H2H, match stats, lineups, player ratings, insights, team forms, shotmap, and highlights.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.fotmob.com/en-GB/matches/sacramento-republic-fc-vs-oakland-roots-sc/hefaimxd",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/en-GB/matches/sacramento-republic-fc-vs-oakland-roots-sc/hefaimxd",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Concerts - Deadikace",
+   "content": "Find your next night out Explore upcoming shows by city or country. You can search without an account. Oct 1, 2026 Show details Oct 1, 2026 Three Dog Night",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://deadikace.com/concerts/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "deadikace.com",
+    "/concerts/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC Tickets",
+   "content": "The Sacramento Republic FC schedule is a calendar of nights when California's capital turns Old Glory Red and Iron Gray. Republic FC competes in the USL ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.eventticketscenter.com/sacramento-republic-fc-tickets/581751/e",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.eventticketscenter.com",
+    "/sacramento-republic-fc-tickets/581751/e",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Marcos Sacramento and Zé Paulo Becker — Oct 18, Paris 18th",
+   "content": "Back Photo : Le 360 Paris Oct 18 Marcos Sacramento and Zé Paulo Becker + Le Ballet des Fous Rio de Janeiro settles into the 18th arrondissement for a night defined by smooth samba …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://parissi.app/en/poi/124950",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "parissi.app",
+    "/en/poi/124950",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC live score, schedule & player stats",
+   "content": "Sacramento Republic FC next match. Sacramento Republic FC will play the next match against Las Vegas Lights on Oct 1, 2026, 2:00:00 AM UTC in USL Championship.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.sofascore.com/football/team/sacramento-republic-fc/153498",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.sofascore.com",
+    "/football/team/sacramento-republic-fc/153498",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Home in Sacramento · ★New · 2 bedrooms · 2 beds · 2 baths",
+   "content": "Oct 1, 2026 · Entire home · Welcome to the heart of Midtown. This stylish, inviting downstairs flat is light, bright with gracious outdoor space …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.airbnb.ca/rooms/1758463873006774167",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.airbnb.ca",
+    "/rooms/1758463873006774167",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic Schedule & Scores - Soccer | FOX Sports",
+   "content": "Get schedule information and scores for the Sacramento Republic soccer team on FOX Sports. Plus, livestream upcoming games online, on FOXSports.com!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.foxsports.com/soccer/sacramento-republic-team-schedule",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.foxsports.com",
+    "/soccer/sacramento-republic-team-schedule",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Home in Sacramento · ★New · 1 bedroom · 1 bed · No bathroom",
+   "content": "Oct 1, 2026 · Private room in home · My house is close to Downtown Sacramento and the Sacramento River.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.airbnb.ca/rooms/1760389819458085926",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.airbnb.ca",
+    "/rooms/1760389819458085926",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC (@sacrepublicfc) - Instagram",
+   "content": "Team of the week x2 Memo Rodriguez, and Coach Neil Collins have been named to the @uslchampionship Week 30 TOTW after Saturday night's strong performance!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "google"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.instagram.com/sacrepublicfc/?hl=en",
+   "engine": "google",
+   "parsed_url": [
+    "https",
+    "www.instagram.com",
+    "/sacrepublicfc/",
+    "",
+    "hl=en",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "FC Tulsa vs Sacramento Republic Prediction, Pro Soccer Tips",
+   "content": "FC Tulsa vs Sacramento Republic Prediction, Football tips for the USA USL Championship match 04 Oct 2026: 1x2, BTTS, Over/Under Goals, Handicap, Correct Score.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.bettingalliance.com/events/1493724-FC-Tulsa-vs-Sacramento-Republic-prediction/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bettingalliance.com",
+    "/events/1493724-FC-Tulsa-vs-Sacramento-Republic-prediction/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic | All the info, news and scores",
+   "content": "Orange County SC sign Brandon Cambridge from Sacramento Republic on a free transfer",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.besoccer.com/team/sacramento-republic",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.besoccer.com",
+    "/team/sacramento-republic",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rental unit in Sacramento · ★New · 1 bedroom · 1 bed · 1 bath",
+   "content": "Oct 1, 2026 · Entire rental unit · Clean Brand new Studio perfect Place to Spend Night to get to where you are going. This is a studio apartment attached to a main dwelling.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.airbnb.ca/rooms/1714307098372654638",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.airbnb.ca",
+    "/rooms/1714307098372654638",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rental unit in Sacramento · ★4.67 · 1 bedroom · 1 bed · 1 bath",
+   "content": "Oct 1, 2026 · Entire rental unit · Modern industrial loft in the heart of Downtown Sacramento. Perfect for professionals on extended stays. 🏢 Fitness center …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.airbnb.gy/rooms/1182125645369818850",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.airbnb.gy",
+    "/rooms/1182125645369818850",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Phoenix 1-0 Sacramento (Oct 10, 2020) Final Score",
+   "content": "Game summary of the Phoenix Rising FC vs. Sacramento Republic FC Usl Championship game, final score 1-0, from October 10, 2020 on ESPN.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/match/_/gameId/586008/sacramento-republic-fc-phoenix-rising-fc",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/match/_/gameId/586008/sacramento-republic-fc-phoenix-rising-fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Home in Colonia del Sacramento · ★4.71 · 3 bedrooms · 4 beds · 3 bathrooms",
+   "content": "1 Oct 2026 · Entire home · Spacious and bright 200 m² house on two floors, with 3 bedrooms and 3 bathrooms, ideal for families or groups. It offers a garage …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.airbnb.co.uk/rooms/1614690518391039415",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.airbnb.co.uk",
+    "/rooms/1614690518391039415",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento 1-0 Miami FC (Oct 14, 2023) Final Score",
+   "content": "Game summary of the Sacramento Republic FC vs. Miami FC Usl Championship game, final score 1-0, from October 14, 2023 on ESPN.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fs.secure.espncdn.com%2Fstitcher%2Fsports%2Fsoccer%2Fusa.usl.1%2Fevents%2F661974.png%3FtemplateId%3Despn.com.share.1&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/match/_/gameId/661974/miami-fc-sacramento-republic-fc",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/match/_/gameId/661974/miami-fc-sacramento-republic-fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic’s Run at U.S. Open Cup History Teems With Destiny",
+   "content": "2022.09.06.Its bid to join MLS deferred, delayed and dismantled, the USL Championship side is beating top-flight teams instead, and one more stands in the way of a legendary title.2022.09.06.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.si.com%2F.image%2Fc_fill%2Cw_1440%2Car_1440%3A810%2Cf_auto%2Cq_auto%2Cg_auto%2FMTkyMTMxNTkzNDIxMjY4MjI0%2Fsacramento-republic-goal-celebration.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.si.com/soccer/2022/09/06/sacramento-republic-us-open-cup-final-dunivant-orlando-city",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.si.com",
+    "/soccer/2022/09/06/sacramento-republic-us-open-cup-final-dunivant-orlando-city",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Shaboozey Channel 24 Tickets Oct 24 2026 08:00 PM Tickets",
+   "content": "Get Cheap Channel 24 Tickets & Events Before They're Gone - Limited Time Offer! 15% OFF Use Code NOFEES15 - 100% Guaranteed Tickets with No Fees and Free Shipping",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://impact.ticketclub.com/tickets/shaboozey-channel-24-sacramento-ca-sat-oct-24-7916350",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "impact.ticketclub.com",
+    "/tickets/shaboozey-channel-24-sacramento-ca-sat-oct-24-7916350",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Home in Sacramento · ★5.0 · 3 bedrooms · 4 beds · 2 baths",
+   "content": "Oct 1, 2026 · Entire home · Inspired by the luxury and elegance of a high-end boutique hotel, this fully renovated Sacramento home blends modern design with effortless comfort …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.airbnb.ae/rooms/1753677877569835828",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.airbnb.ae",
+    "/rooms/1753677877569835828",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Home in Sacramento · 1 bedroom · 1 bed · 1.5 shared baths",
+   "content": "Oct 1, 2026 · Private room in home · Welcome to this Historical Victorian home thoughtfully curated, mid-term private suite built for traveling nurses …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.airbnb.ae/rooms/1709746386053454771",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.airbnb.ae",
+    "/rooms/1709746386053454771",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hotel in Colonia del Sacramento · 1 bedroom · 1 bed · 1 private bathroom",
+   "content": "1 Oct 2026 · Room in hotel · Just one street from the picturesque historic district of Colonia, the Posada del Ángel offers a pool next to the garden …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.airbnb.co.uk/rooms/1700893316381822927",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.airbnb.co.uk",
+    "/rooms/1700893316381822927",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Tiny home in Sacramento · ★4.51 · 2 bedrooms · 2 beds · 1 bath",
+   "content": "Oct 1, 2026 · Tiny home · Tall travelers, duck! BEWARE—low ceilings ahead! Quirky & full of charm, this vintage lower-level unit was built back in 1900s when most people wer …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.airbnb.gy/rooms/643426643065293989",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.airbnb.gy",
+    "/rooms/643426643065293989",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Home in Sacramento · ★4.5 · 4 bedrooms · 4 beds · 3 bathrooms",
+   "content": "1 Oct 2026 · Entire home · Enjoy a clean, comfortable, and spacious private home in a quiet Sacramento neighborhood. This place is perfect for families …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.airbnb.co.uk/rooms/1605213628465688493",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.airbnb.co.uk",
+    "/rooms/1605213628465688493",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "sac republic stadium",
+  "sacramento republic lineup oct 1 2024",
+  "sacramento republic lineup oct 1 2025",
+  "sac republic academy tryouts 2026",
+  "sacramento republic lineup oct 1 2021",
+  "sacramento republic lineup oct 1 2023",
+  "sacramento republic lineup oct 1 2022",
+  "sac republic mls next schedule",
+  "sacramento republic fc",
+  "sacramento republic schedule",
+  "sacramento republic lineup oct 1 game",
+  "sac republic game tonight",
+  "sac republic schedule 2026",
+  "sac republic home schedule"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

@@ -1,0 +1,1704 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "China manager said 2",
+ "recorded_at": "2026-10-02T05:30:54.843777+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "China manager creates 22 fake employees with perfect attendance ...",
+   "content": "Mar 12, 2025 · A human resources manager in China created 22 fake employees to embezzle 16 million yuan (US$2.2 million) in salary and severance payments from the company.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1,
+    1
+   ],
+   "score": 4.0,
+   "category": "general",
+   "url": "https://www.scmp.com/news/people-culture/trending-china/article/3301277/china-manager-creates-22-fake-employees-perfect-attendance-embezzles-us22-million",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.scmp.com",
+    "/news/people-culture/trending-china/article/3301277/china-manager-creates-22-fake-employees-perfect-attendance-embezzles-us22-million",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China taps countryman Shao as men's national football coach",
+   "content": "Nov 6, 2025 · China named former midfielder Shao Jiayi as the new manager of its men's national football team on Wednesday, months after another failed World Cup campaign.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2,
+    2
+   ],
+   "score": 2.0,
+   "category": "general",
+   "url": "https://citizen.digital/article/china-taps-countryman-shao-as-mens-national-football-coach-n372547",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "citizen.digital",
+    "/article/china-taps-countryman-shao-as-mens-national-football-coach-n372547",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Super Micro employees charged with smuggling Nvidia chips to China - CNBC",
+   "content": "Mar 19, 2026 · Super Micro said that while the company isn't named as a defendant, Liaw works as senior vice president of business development, Chang is a sales manager in Taiwan, and Sun is a contractor.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3,
+    3
+   ],
+   "score": 1.3333333333333333,
+   "category": "general",
+   "url": "https://www.cnbc.com/2026/03/19/us-tech-execs-smuggled-nvidia-chips-to-china-prosecutors-say.html",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.cnbc.com",
+    "/2026/03/19/us-tech-execs-smuggled-nvidia-chips-to-china-prosecutors-say.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mass surveillance in China",
+   "content": "In 2019, Comparitech reported that 8 out of 10 of the most monitored cities in the world are in China.1 Mass surveillance in the People's Republic of China (PRC) is the network of monitoring systems used by the Chinese Communist Party (CCP) and government to …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Mass_surveillance_in_China",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Mass_surveillance_in_China",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Former Everton star Li Tie jailed for 20 YEARS in China after accepting ...",
+   "content": "Dec 13, 2024 · The court said that between 2015 and 2021 when his stint as China manager ended, Li had accepted bribes worth in excess of $16million (£12.7m).",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4,
+    4
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.dailymail.com/sport/football/article-14189223/Former-Everton-star-jailed-20-YEARS-home-country-accepting-12MILLION-bribes.html",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.dailymail.com",
+    "/sport/football/article-14189223/Former-Everton-star-jailed-20-YEARS-home-country-accepting-12MILLION-bribes.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Taiwan indicts ex-TSMC manager for allegedly stealing chip secrets for ...",
+   "content": "Prosecutors say the case grew out of a probe into an alleged Chinese military-linked espionage network.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6,
+    6
+   ],
+   "score": 0.6666666666666666,
+   "category": "general",
+   "url": "https://www.tomshardware.com/tech-industry/taiwan-inducts-ex-tsmc-manager-for-allegedly-stealing-chip-secrets-for-china",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.tomshardware.com",
+    "/tech-industry/taiwan-inducts-ex-tsmc-manager-for-allegedly-stealing-chip-secrets-for-china",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "U.S.-China Board of Trade - The White House",
+   "content": "5 days ago · U.S.-China Board of Trade “30-FOR-30” Lists of Products Recommended for Reduced Tariff Treatment The United States and China will consider the following list of U.S. products for import into ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7,
+    7
+   ],
+   "score": 0.5714285714285714,
+   "category": "general",
+   "url": "https://www.whitehouse.gov/releases/2026/09/u-s-china-board-of-trade/",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.whitehouse.gov",
+    "/releases/2026/09/u-s-china-board-of-trade/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "The Edge Singapore | News, Business Insights, Investment Strategies",
+   "content": "Stay informed with the latest news and expert business insights from The Edge Singapore. Our in-depth coverage includes stock analysis, corporate movements, and interviews with key executives to shape your investment strategies.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.theedgesingapore.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.theedgesingapore.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China Railway",
+   "content": "This article is about the company. For railway system and network in China, see Rail transport in China … China State Railway … of China Railway … China Ra",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/China_Railway",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/China_Railway",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pension funds recoiling from China, says Dutch asset manager",
+   "content": "2023.06.05.APG sees big rethink on investment in the country as geopolitical risks increase2023.06.05.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimages.ft.com%2Fv3%2Fimage%2Fraw%2Fhttps%253A%252F%252Fd1e00ek4ebabms.cloudfront.net%252Fproduction%252F1c9f803b-e7bd-40b0-b14b-7652d91a182a.jpg%3Fsource%3Dnext-article%26fit%3Dscale-down%26quality%3Dhighest%26width%3D700%26dpr%3D1&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.ft.com/content/2bbb09be-9d72-4169-b0f8-cb7cc17938a1?syn-25a6b1a6=1",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ft.com",
+    "/content/2bbb09be-9d72-4169-b0f8-cb7cc17938a1",
+    "",
+    "syn-25a6b1a6=1",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pop singer Yao Beina dies at 33 - China.org.cn",
+   "content": "2015.01.16.Chinese pop singer Yao Beina died today in Shenzhen after a long battle with breast cancer, her manager Bo Ning confirmed. She was 33. She was in critical condition due to the worsening of the cancer, her management team said earlier today. Yao was rushed to the intensive care unit at a local hospital in Shenzhen on Thursday, Yuan Tao – the general manager of her label, Huayi Brothers Music – said on Friday afternoon. Some online posts said that Yao was already \"dead\" on Wednesday. Yuan deni....2015.01.16.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=http%3A%2F%2Fimages.china.cn%2Fattachement%2Fjpg%2Fsite1007%2F20150116%2F001372a9ae27162316a628.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "http://www.china.org.cn/arts/2015-01/16/content_34580238.htm",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "www.china.org.cn",
+    "/arts/2015-01/16/content_34580238.htm",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chinese stock recovery faces US Fed and oil pressures in September, says top fund manager",
+   "content": "3주 전Chinese stock recovery faces US Fed and oil pressures in September, says top fund manager Strong corporate earnings may cushion stocks, though US rate and oil risks threaten to weigh on sentiment, according to a leading asset manager3주 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.i-scmp.com%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fog_image_scmp_generic%2Fpublic%2Fd8%2Fimages%2Fcanvas%2F2026%2F09%2F09%2F8c1d6389-21be-4af6-83a4-ab5e6136520a_d08e6dfe.jpg%3Fitok%3Dx_UXdO3R%26v%3D1788935326&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.scmp.com/business/china-business/article/3366885/chinese-stock-recovery-faces-us-fed-and-oil-pressures-september-says-top-fund-manager",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.scmp.com",
+    "/business/china-business/article/3366885/chinese-stock-recovery-faces-us-fed-and-oil-pressures-september-says-top-fund-manager",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China Vanke says top managers have no plans to sell shares as it fights for survival",
+   "content": "2025.12.19.China Vanke says top managers have no plans to sell shares as it fights for survival Vanke, responding to queries from investors, says top managers have not notified it about their intentions so far2025.12.19.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.i-scmp.com%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fog_image_scmp_generic%2Fpublic%2Fd8%2Fimages%2Fcanvas%2F2025%2F12%2F19%2F58b19a74-b331-491f-8b49-fc90f1a31c02_00b495ad.jpg%3Fitok%3DCKzftsTf%26v%3D1766137354&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.scmp.com/business/china-business/article/3337081/china-vanke-says-top-managers-have-no-plans-sell-shares-it-fights-survival",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.scmp.com",
+    "/business/china-business/article/3337081/china-vanke-says-top-managers-have-no-plans-sell-shares-it-fights-survival",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "US Leading Indicators",
+   "content": "1일 전The Conference Board publishes leading, coincident, and lagging indexes designed to signal peaks and troughs in the business cycle for major economies around the world. The Conference Board Leading Economic Index® (LEI) for the US Edged Down in August Updated: Friday, September 18, 2026 Using the Composite Indexes: The Leading Economic Index (LEI) provides an early indication of significant turning points in the business cycle and where the economy is heading in the near term. The Coincident Ec....1일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimagedelivery.net%2Fpukq0g0_VsMKYEo9VgplUA%2F128e0355-0a70-46cf-0c0a-8e1f8a834b00%2FSocial1200x627&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.conference-board.org/topics/us-leading-indicators",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.conference-board.org",
+    "/topics/us-leading-indicators",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China says H&M changed online map after criticism",
+   "content": "2021.04.02.FILE - In this March 26, 2021, file photo, a man carrying an umbrella walks past an H&M clothing store at a shopping mall in Beijing. Chinese regulators on Friday, April 2, 2021, said H&M has agreed to change a “problem map” online following government criticism, adding to pressure on the Swedish retailer amid a conflict with Western governments over Chinese policies in its Xinjiang region. (AP Photo/Mark Schiefelbein, File)2021.04.02.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fs.yimg.com%2Fny%2Fapi%2Fres%2F1.2%2FVafVZ9OF7WCQheDZz7jO1w--%2FYXBwaWQ9aGlnaGxhbmRlcjt3PTEyMDA7aD04MDA7Y2Y9d2VicA--%2Fhttps%3A%2F%2Fmedia.zenfs.com%2Fen%2Fap.org%2Fe21086b7175a41c2baf57c8d5172bd99&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.yahoo.com/news/china-says-h-m-changed-132245258.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.yahoo.com",
+    "/news/china-says-h-m-changed-132245258.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Manufacturing: The China Inc. model",
+   "content": "2021.02.02.Why is it sometimes cheaper for U.S. consumers to buy goods from China than from local vendors?2021.02.02.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg.apmcdn.org%2F5ddfd9cafb9eca5a66db3f8b2b3e49378507ec82%2Funcropped%2Fc92a43-2021-01-li-xiaolin-longho-worker-by-charles-zhang-6-e1612302256387-webp2000.webp&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.marketplace.org/story/2021/02/02/manufacturing-the-china-inc-model",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marketplace.org",
+    "/story/2021/02/02/manufacturing-the-china-inc-model",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ex-Bank of China Manager Jailed for Life Over $322 Million Fraud",
+   "content": "2023.12.14.China handed a life sentence to a former Bank of China Ltd. manager who was repatriated from the US two years ago over one of the Asian nation’s biggest bank frauds. Xu Guojun, a former local branch head at Bank of China, was sentenced on Wednesday in a court in the southern province of Guangdong, according to an official notice. He was convicted of embezzlement and misappropriation of over 2.3 billion yuan ($322 million) in funds more than 20 years ago with accomplices. Xu and two other forme....2023.12.14.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.bwbx.io%2Fimages%2Fusers%2FiqjWHBFdfxIU%2FiQtES4b1p23g%2Fv0%2F1200x899.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.bloomberg.com/news/articles/2023-12-14/ex-bank-of-china-manager-jailed-for-life-over-322-million-fraud",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.bloomberg.com",
+    "/news/articles/2023-12-14/ex-bank-of-china-manager-jailed-for-life-over-322-million-fraud",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China Blast Kills 2 Students, 9 Others",
+   "content": "2005.03.03.BEIJING — A cache of explosives at the home of a coal mine manager blew up in a town in northern China, killing him and at least 10 other people, including two students at a nearby grade school, news reports and police said today. Police denied reports that as many as 20 children were killed when the school collapsed after the blast Wednesday in Kecheng, a town in Shanxi province. The official New China News Agency put the death toll at 11 and said it included two students and a teacher at the....2005.03.03.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fca-times.brightspotcdn.com%2Fdims4%2Fdefault%2F61b13ad%2F2147483647%2Fstrip%2Ftrue%2Fcrop%2F837x560%2B1%2B0%2Fresize%2F1024x685%21%2Fformat%2Fwebp%2Fquality%2F75%2F%3Furl%3Dhttps%253A%252F%252Fcalifornia-times-brightspot.s3.amazonaws.com%252F59%252Fbd%252Fbdee92ed4c6283d3b6217f6237a6%252Fla26-bm0011-hot-840x560-fnl.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.latimes.com/archives/la-xpm-2005-mar-03-fg-mine3-story.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.latimes.com",
+    "/archives/la-xpm-2005-mar-03-fg-mine3-story.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "'This money's not for you to return': restaurant cleaner in China fired ...",
+   "content": "Mar 3, 2023 · A restaurant cleaner in China fired for handing 20,000 yuan (US$2,880) left by a customer to police because her manager claimed the money now belonged to the eatery, has gone viral on social media.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8,
+    8
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.scmp.com/news/people-culture/trending-china/article/3211858/moneys-not-you-return-restaurant-cleaner-china-fired-handing-us2880-she-found-work-police-after",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.scmp.com",
+    "/news/people-culture/trending-china/article/3211858/moneys-not-you-return-restaurant-cleaner-china-fired-handing-us2880-she-found-work-police-after",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China taps countryman Shao as men's national football coach",
+   "content": "Nov 5, 2025 · Shao Jiayi also coached China's U19 and U20 sides and served as assistant manager for the men's national team.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9,
+    9
+   ],
+   "score": 0.4444444444444444,
+   "category": "general",
+   "url": "https://www.freemalaysiatoday.com/category/sports/2025/11/05/china-taps-countryman-shao-as-mens-national-football-coach",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.freemalaysiatoday.com",
+    "/category/sports/2025/11/05/china-taps-countryman-shao-as-mens-national-football-coach",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Office of Public Affairs | Three Charged with Conspiring to Unlawfully ...",
+   "content": "Mar 19, 2026 · Chang is a general manager in the U.S. Manufacturer’s Taiwan office. Sun is a third-party broker and “fixer” who has worked with Liaw, Chang, and others to divert U.S.-export controlled technology to China.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10,
+    10
+   ],
+   "score": 0.4,
+   "category": "general",
+   "url": "https://www.justice.gov/opa/pr/three-charged-conspiring-unlawfully-divert-cutting-edge-us-artificial-intelligence",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.justice.gov",
+    "/opa/pr/three-charged-conspiring-unlawfully-divert-cutting-edge-us-artificial-intelligence",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China Merchants Port",
+   "content": "China Merchants Port Holdings Co. … Native name 招商局控股港口有限公司 … State-owned enterprise … Red chip … Public company Traded as … 28 May 1991",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/China_Merchants_Port",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/China_Merchants_Port",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Internet censorship in China",
+   "content": "This article is about Internet censorship in the People's Republic of China. For Internet censorship in the Republic of China, see Censorship in Taiwan §",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Internet_censorship_in_China",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Internet_censorship_in_China",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China–United States relations",
+   "content": "474 In July 2019, Vice President Mike Pence accused China of persecuting Christians Muslims and Buddhists 476 On 4 October 2019, the Houston Rockets ' general manager …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/China%E2%80%93United_States_relations",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/China%E2%80%93United_States_relations",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Oil jumps 4% on reports China halts fuel exports, US troops head to ...",
+   "content": "NEW YORK, Oct 1 (Reuters) - Oil prices jumped on Thursday and settled up more than $4 a barrel, after a report said the US was sending more troops and carriers to the Middle East and China ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://finance.yahoo.com/energy/articles/oil-dips-recovering-gulf-exports-044504275.html",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "finance.yahoo.com",
+    "/energy/articles/oil-dips-recovering-gulf-exports-044504275.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Oil jumps 4% on reports China halts fuel exports, US troops head...",
+   "content": "9 hours ago · NEW YORK, Oct 1 (Reuters) - Oil prices jumped on Thursday and settled up more than $4 a barrel, after a report said the US was sending more troops and carriers to the Middle East and China ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://finance.yahoo.com/energy/articles/oil-dips-recovering-gulf-exports-044504275.html?fr=sycsrp_catchall",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "finance.yahoo.com",
+    "/energy/articles/oil-dips-recovering-gulf-exports-044504275.html",
+    "",
+    "fr=sycsrp_catchall",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China Business | South China Morning Post",
+   "content": "The latest news and analysis on companies doing business in China, and China’s fast-growing corporate sector",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.scmp.com/business/china-business",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.scmp.com",
+    "/business/china-business",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "'Not Happy? Have a Day Off,' Says Boss in China",
+   "content": "설명 A businessman in China has announced that his workers can take days off if they're not in a good mood. It has been called \"unhappiness leave.\" And Yu Donglai, who is the founder of a supermarket chain called Pang Dong Lai, said his employees can use 10 days of this leave each year. \"I want every staff member to have freedom. Everyone has times when they're not happy, so if you're not happy, do not come to work,\" Yu said earlier this year. He added that shop managers cannot deny workers th....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.italki.com/ko/podcast/episode/oeplg37xdgnm10ps73wbdt",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.italki.com",
+    "/ko/podcast/episode/oeplg37xdgnm10ps73wbdt",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2025–2026 China–Japan diplomatic crisis",
+   "content": "2025–2026 China–Japan diplomatic crisis Part of China–Japan relations … (10 … months, 3 … weeks and 4 … days) … Caused by Political status of",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/2025%E2%80%932026_China%E2%80%93Japan_diplomatic_crisis",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/2025%E2%80%932026_China%E2%80%93Japan_diplomatic_crisis",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China national football team",
+   "content": "China then beat Thailand 2– … Fabio Cannavaro was appointed as the new manager whilst maintaining his role at Guangzhou Evergrande but he stepped down after only two matches …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/China_national_football_team",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/China_national_football_team",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China–Hong Kong football rivalry",
+   "content": "despite its new status as a Special Administrative Region of China under the One Country, … when China and Hong Kong were drawn together during the AFC 2006 FIFA World Cup qualification , former China national football team manager …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/China%E2%80%93Hong_Kong_football_rivalry",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/China%E2%80%93Hong_Kong_football_rivalry",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Marcello Lippi",
+   "content": "Marcello Lippi Lippi as China manager in 2019 Personal information Full name Marcello Romeo Lippi 1 Date of birth 12 April 1948 (age 78) Place of birth Viareggio …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Marcello_Lippi",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Marcello_Lippi",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Wham! in China: Foreign Skies",
+   "content": "Andy Stephens, manager for Michael, said that Anderson's version was simply not good enough to be shown in public: \"It's a dreadful film It's 20 years old and it's rubbish.Why on earth should we allow it to be shown …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Wham!_in_China:_Foreign_Skies",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Wham!_in_China:_Foreign_Skies",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Vision China Times",
+   "content": "Vision China Times General manager Maree Ma … Vision China Times Australia is a Chinese language newspaper owned by the Vision Times Media (Australia)",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Vision_China_Times",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Vision_China_Times",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China furious at Japan NHK manager's Nanjing denial",
+   "content": "2014.02.06.China reacted furiously on Wednesday to the denial of the Nanjing massacre by a senior manager at Japan's national broadcaster, calling his remarks \"a barefaced challenge to international justice\". Naoki Hyakuta dismissed as \"propaganda\" the accounts of the 1937-8 orgy of murder and rape by Japanese troops as they rampaged through China, in comments made during a stump speech for a right-wing candidate in Sunday's election for Tokyo governor. In a stinging response Wednesday, Foreign Ministry sp....2014.02.06.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.koreaherald.com/article/3647029",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.koreaherald.com",
+    "/article/3647029",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "GSK China scandal",
+   "content": "), former manager of GSK China, said to Xinhua that transfer pricing was a common strategy of multinationals, where a product was first sold to a middle country at a high price …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/GSK_China_scandal",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/GSK_China_scandal",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "APS Asset Management Said China Suspending the Circuit Breaker Was a Mistake",
+   "content": "A fund manager that made 42% betting on China said suspending the circuit breaker was a mistake",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.insider.com%2F55ddae26dd08953a078b459b%3Fwidth%3D1200%26format%3Djpeg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.businessinsider.com/aps-asset-management-said-china-suspending-the-circuit-breaker-was-a-mistake-2016-1",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.businessinsider.com",
+    "/aps-asset-management-said-china-suspending-the-circuit-breaker-was-a-mistake-2016-1",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hong Kong beat China at football for first time in 29 years | Hong Kong",
+   "content": "2024.01.02.‘I don’t have to motivate the team against China,’ says manager after 2-1 win in friendly played behind closed doors2024.01.02.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.guim.co.uk%2Fimg%2Fmedia%2Fbc5630928cc0da0fa22d49091b1a03a17cc78e2c%2F0_77_1151_691%2Fmaster%2F1151.jpg%3Fwidth%3D1200%26height%3D630%26quality%3D85%26auto%3Dformat%26fit%3Dcrop%26precrop%3D40%3A21%2Coffset-x50%2Coffset-y0%26overlay-align%3Dbottom%252Cleft%26overlay-width%3D100p%26overlay-base64%3DL2ltZy9zdGF0aWMvb3ZlcmxheXMvdGctYWdlLTIwMjQucG5n%26enable%3Dupscale%26s%3Df9b0d4e699c17e6731fbacf41a519b6f&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.theguardian.com/world/2024/jan/02/hong-kong-beat-china-at-football-for-first-time-in-29-years",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.theguardian.com",
+    "/world/2024/jan/02/hong-kong-beat-china-at-football-for-first-time-in-29-years",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "'Time Is Running Out' for China to Hit Growth Targets, Economist Says",
+   "content": "'Time is running out' for China to hit its growth targets, economist says",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.insider.com%2F66e82ccfd17aa3c7b2b2d8ee%3Fwidth%3D1200%26format%3Djpeg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.businessinsider.com/china-growth-targets-axa-investment-property-sector-industrial-production-2024-9",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.businessinsider.com",
+    "/china-growth-targets-axa-investment-property-sector-industrial-production-2024-9",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Wham! 10 Days in China",
+   "content": "10 Days in China Cinema release poster Directed by Mike Christie Produced by Alice Popplewell Starring George Michael Andrew Ridgeley Edited by Xanna Ward-Dixon Music by Dru Masters Production companies Supercollider Sony Music Vision 1 Distributed by date …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Wham!_10_Days_in_China",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Wham!_10_Days_in_China",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Protein adulteration in China",
+   "content": "Said Ji Denghui, general manager of the Fujian Sanming Dinghui Chemical Company: “Many companies buy melamine scrap to make animal feed, such as fish feed.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Protein_adulteration_in_China",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Protein_adulteration_in_China",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "1972 visit by Richard Nixon to China",
+   "content": "6 Richard Nixon earned a reputation as a strong anti-communist in the late 1940s and as vice-president to Dwight Eisenhower , … 8 and President Herbert Hoover lived in China as a mining manager from 1899 to 1901 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/1972_visit_by_Richard_Nixon_to_China",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/1972_visit_by_Richard_Nixon_to_China",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rail transport in China",
+   "content": "China Clockwise from top left … The last railway minister, Sheng Guangzu , became the general manager of the China Railway Corp.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Rail_transport_in_China",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Rail_transport_in_China",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Four big families of the Republic of China",
+   "content": "Chiang Kai Shek … Republic of China … in Mainland China … had two sons and two daughters, among them Kung Ling-chun was the first manager of … in China.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Four_big_families_of_the_Republic_of_China",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Four_big_families_of_the_Republic_of_China",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Nixon in China",
+   "content": "28 Peter Gelb , the Met's general manager, had approached Adams in 2005 about staging his operas there.Gelb intended that Nixon in China",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Nixon_in_China",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Nixon_in_China",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Great Wall of China hoax",
+   "content": "Great Wall of China hoax Great Wall of China Wilber, who composed the music for \" … was the first manager of the Fox Fullerton Theater (Fullerton …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Great_Wall_of_China_hoax",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Great_Wall_of_China_hoax",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

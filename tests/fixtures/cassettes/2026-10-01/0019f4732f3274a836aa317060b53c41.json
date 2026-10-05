@@ -1,0 +1,816 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Sacramento Republic 선발 라인업 10월 1일",
+ "recorded_at": "2026-10-01T02:14:28.974727+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Orange County SC 대 Sacramento Republic FC - FotMob",
+   "content": "Sep 6, 2026 · Sun, Sep 6, 2026, 02:00 UTC의 Orange County SC 대 Sacramento Republic FC. 실시간 결과, 상대 전적, 경기 통계, 선발 라인업, 선수 평가 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1,
+    3
+   ],
+   "score": 2.6666666666666665,
+   "category": "general",
+   "url": "https://www.fotmob.com/ko/matches/orange-county-sc-vs-sacramento-republic-fc/3yxb20f9",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/ko/matches/orange-county-sc-vs-sacramento-republic-fc/3yxb20f9",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Homepage - Sacramento Republic FC",
+   "content": "Subscribe to our newsletter Republic FC news, events, and promotions straight to your inbox.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4,
+    1
+   ],
+   "score": 2.5,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2026 Schedule - Sacramento Republic FC",
+   "content": "Schedule for Sacramento Republic FC home and away matches",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2,
+    2
+   ],
+   "score": 2.0,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/schedule/",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/schedule/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.youtube.com/feed/ko",
+   "title": "YouTube",
+   "content": "AboutPressCopyrightContact usCreatorsAdvertiseDevelopersTermsPrivacyPolicy & SafetyHow YouTube worksTest new …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/feed/ko",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.youtube.com/youtube",
+   "title": "YouTube",
+   "content": "YouTube's official YouTube channel GAY, ARTISTIC, DIVA ENERGY – either you’re in for the best weekend ever or you’re watching …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/youtube",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://play.google.com/store/apps/details?id=com.google.android.youtube&hl=en-US",
+   "title": "YouTube - Apps on Google Play",
+   "content": "Enjoy your favorite videos and channels with the official YouTube app.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "play.google.com",
+    "/store/apps/details",
+    "",
+    "id=com.google.android.youtube&hl=en-US",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "불가리아 U21 축구 팀 순위·경기 일정·이적·라인업 — 다음 경기 ...",
+   "content": "불가리아 U21(Bulgaria U21) 다음 경기 10/1 Czechia Republic U21전. 최근 5경기 3승 1무 1패. UEFA_U21_Q 축구 팀 순위·경기 일정·이적·라인업과 AI 승부예측을 실시간 데이터로 한 페이지에 모았습니다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.scorebase.kr/teams/615973",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.scorebase.kr",
+    "/teams/615973",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://music.youtube.com/",
+   "title": "YouTube Music",
+   "content": "With the YouTube Music app, enjoy over 100 million songs at your fingertips, plus albums, playlists, remixes, music videos, live …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "music.youtube.com",
+    "/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC - Detailed squad 2026 | Transfermarkt",
+   "content": "Squad Sacramento Republic FC This page displays a detailed overview of the club's current squad. It shows all personal information about the players, including age, nationality, contract duration and market value. It also contains a table with average age, cumulative market value and average market value for each player position and overall.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.transfermarkt.com/sacramento-republic-fc/kader/verein/40835",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.transfermarkt.com",
+    "/sacramento-republic-fc/kader/verein/40835",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.youtube.com/shorts",
+   "title": "- YouTube",
+   "content": "Enjoy the videos and music you love, upload original content, and share it all with friends, family, and the world on YouTube.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/shorts",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "강팀엔 버거운 4-4-2 모레노는 빠른 손절? | Sports Kyunghyang | PressReade­r",
+   "content": "내년아시안컵은1월7­일부터2월 5일까지사우디아라비­아에서열린다. 11월A매치를끝낸뒤­에는물리적으로모레노­감독으로계속갈수밖에­없는상황이다.지금처럼공채로대표팀­감독을뽑는다면최소한­달이상은무조건소요되­기 때문이다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.pressreader.com/korea-republic/sports-kyunghyang/20261001/281646787071582",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.pressreader.com",
+    "/korea-republic/sports-kyunghyang/20261001/281646787071582",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic squad - Football, USA - Flashscore.com",
+   "content": "Explore the Sacramento Republic squad page on Flashscore.com for a comprehensive overview of the team's lineup, featuring detailed statistics and performance insights.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.flashscore.com/team/sacramento-republic/z3BFwb83/squad/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.flashscore.com",
+    "/team/sacramento-republic/z3BFwb83/squad/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.youtube.com/@Youtube_Official_KR",
+   "title": "유튜브코리아 - YouTube",
+   "content": "유튜브 코리아 공식 계정입니다.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/@Youtube_Official_KR",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "2026 Kbo 일정 · 경기 분석 · 순위 | Aspa 스포츠 분석",
+   "content": "KBO(KBO League) 야구 전 경기 일정과 데이터 분석. 라인업, 부상 선수, 최근 폼, 상대 전적, 배당 정보를 한국어로 정리. 오늘 KBO 경기 확인.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://aspa.live/league/kbo",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "aspa.live",
+    "/league/kbo",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[GOAL 상암] ‘韓축구 삼대장’ 김민재·손흥민·이강인 선발…한국, 우루...",
+   "content": "3 days ago · 김민재 (바이에른 뮌헨)와 손흥민 (LAFC), 이강인 (아틀레티코 마드리드)으로 이어지는, 이른바 ‘한국축구 삼대장’이 선발 출격한다. 로베르트 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.goal.com/kr/%EB%89%B4%EC%8A%A4/goal-%E1%84%89%E1%85%A1%E1%86%BC%E1%84%8B%E1%85%A1%E1%86%B7--%E9%9F%93%E1%84%8E%E1%85%AE%E1%86%A8%E1%84%80%E1%85%AE-%E1%84%89%E1%85%A1%E1%86%B7%E1%84%83%E1%85%A2%E1%84%8C%E1%85%A1%E1%86%BC-%E1%84%80%E1%85%B5%E1%86%B7%E1%84%86%E1%85%B5%E1%86%AB%E1%84%8C%E1%85%A2-%E1%84%89%E1%85%A9%E1%86%AB%E1%84%92%E1%85%B3%E1%86%BC%E1%84%86%E1%85%B5%E1%86%AB-%E1%84%8B%E1%85%B5%E1%84%80%E1%85%A1%E1%86%BC%E1%84%8B%E1%85%B5%E1%86%AB-%E1%84%89%E1%85%A5%E1%86%AB%E1%84%87%E1%85%A1%E1%86%AF--%E1%84%92%E1%85%A1%E1%86%AB%E1%84%80%E1%85%AE%E1%86%A8-%E1%84%8B%E1%85%AE%E1%84%85%E1%85%AE%E1%84%80%E1%85%AA%E1%84%8B%E1%85%B5%E1%84%8C%E1%85%A5%E1%86%AB-%E1%84%89%E1%85%B3%E1%84%90%E1%85%A1%E1%84%90%E1%85%B5%E1%86%BC-%E1%84%85%E1%85%A1%E1%84%8B%E1%85%B5%E1%86%AB%E1%84%8B%E1%85%A5%E1%86%B8-%E1%84%80%E1%85%A9%E1%86%BC%E1%84%89%E1%85%B5%E1%86%A8%E1%84%87%E1%85%A1%E1%86%AF%E1%84%91%E1%85%AD/bltbd4864b8cebd6540",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/kr/%EB%89%B4%EC%8A%A4/goal-%E1%84%89%E1%85%A1%E1%86%BC%E1%84%8B%E1%85%A1%E1%86%B7--%E9%9F%93%E1%84%8E%E1%85%AE%E1%86%A8%E1%84%80%E1%85%AE-%E1%84%89%E1%85%A1%E1%86%B7%E1%84%83%E1%85%A2%E1%84%8C%E1%85%A1%E1%86%BC-%E1%84%80%E1%85%B5%E1%86%B7%E1%84%86%E1%85%B5%E1%86%AB%E1%84%8C%E1%85%A2-%E1%84%89%E1%85%A9%E1%86%AB%E1%84%92%E1%85%B3%E1%86%BC%E1%84%86%E1%85%B5%E1%86%AB-%E1%84%8B%E1%85%B5%E1%84%80%E1%85%A1%E1%86%BC%E1%84%8B%E1%85%B5%E1%86%AB-%E1%84%89%E1%85%A5%E1%86%AB%E1%84%87%E1%85%A1%E1%86%AF--%E1%84%92%E1%85%A1%E1%86%AB%E1%84%80%E1%85%AE%E1%86%A8-%E1%84%8B%E1%85%AE%E1%84%85%E1%85%AE%E1%84%80%E1%85%AA%E1%84%8B%E1%85%B5%E1%84%8C%E1%85%A5%E1%86%AB-%E1%84%89%E1%85%B3%E1%84%90%E1%85%A1%E1%84%90%E1%85%B5%E1%86%BC-%E1%84%85%E1%85%A1%E1%84%8B%E1%85%B5%E1%86%AB%E1%84%8B%E1%85%A5%E1%86%B8-%E1%84%80%E1%85%A9%E1%86%BC%E1%84%89%E1%85%B5%E1%86%A8%E1%84%87%E1%85%A1%E1%86%AF%E1%84%91%E1%85%AD/bltbd4864b8cebd6540",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.youtube.com/@youtube__kr",
+   "title": "유튜브 코리아 - YouTube",
+   "content": "Share your videos with friends, family, and the world",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/@youtube__kr",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "삼성 라이온즈/2026년/9~10월 - 나무위키",
+   "content": "경기 전 예상 삼성의 선발 투수 보스 는 5전 1승 3패 ERA 6.26으로, 8월 25일 고척 키움전에 선발 등판해 6이닝 7피안타 (1피홈런) 8탈삼진 2실점 ERA 3.00으로 ND를 기록했다. 이번 시즌 롯데 상대로는 1경기 등판하여 3이닝 7실점 (6자책) ERA 18.00으로 패전 투수가 되었다. 롯데의 선발 투수 로드리게스 는 23전 7 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://namu.wiki/w/%EC%82%BC%EC%84%B1%20%EB%9D%BC%EC%9D%B4%EC%98%A8%EC%A6%88/2026%EB%85%84/9~10%EC%9B%94",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EC%82%BC%EC%84%B1%20%EB%9D%BC%EC%9D%B4%EC%98%A8%EC%A6%88/2026%EB%85%84/9~10%EC%9B%94",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC 2026 Squad - ESPN",
+   "content": "Explore the 2026 Sacramento Republic FC roster on ESPN. Includes full details on appearances, minutes played, goals and assists.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/team/squad/_/id/17828/ctz",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/team/squad/_/id/17828/ctz",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.youtube.com/@KoreaYoutube/search",
+   "title": "한국유튜브 - YouTube",
+   "content": "Share your videos with friends, family, and the world",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/@KoreaYoutube/search",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC 2026 Schedule - ESPN",
+   "content": "ESPN has the full 2026 Sacramento Republic FC schedule. Includes date, time and tv channel information for all Sacramento Republic FC games.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/team/fixtures/_/id/17828",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/team/fixtures/_/id/17828",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.youtube.com/@youtubekorea",
+   "title": "YouTube Korea - YouTube",
+   "content": "YouTube Korea 공식 채널에서는 다양한 종류의 콘텐츠를 소개하고 있습니다. 채널 구독을 통해 국내외에서 화제가 되고 있는 최신 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/@youtubekorea",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "'오원석-김건희 배터리, 이재현 선발출전' 류지현호 대표팀 ...",
+   "content": "[뉴스엔 안형준 기자] 태국전 선발 라인업이 공개됐다. 또 한 번 라인업의 수정이 있었다. 류지현 감독이 이끄는 대한민국 야구대표팀은 9월 23일 일본 아이치의 오카자키 시민구장에서 '2026 아이치-나고야 아시안게임' B조 조별라운드 최종전 태국과 경기를 갖는다. 대만과 홍콩을 차례로 완파한 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://v.daum.net/v/20260923113043642",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "v.daum.net",
+    "/v/20260923113043642",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.youtube.com/premium_benefits",
+   "title": "YouTube",
+   "content": "Sign in to check your eligibility for benefits and offers",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/premium_benefits",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "2026 신한 Sol Kbo 올스타전 - 나무위키",
+   "content": "2026년 7월 11일에 LG 트윈스 와 두산 베어스 의 홈구장인 서울종합운동장 야구장 에서 개최된 역대 44번째 KBO 올스타전. 2026년을 끝으로 서울종합운동장 야구장이 잠실 돔구장 신축을 위해 철거됨에 따라 서울종합운동장 야구장 에서 치르는 마지막 올스타전이 됐다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://namu.wiki/w/2026%20%EC%8B%A0%ED%95%9C%20SOL%20KBO%20%EC%98%AC%EC%8A%A4%ED%83%80%EC%A0%84",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/2026%20%EC%8B%A0%ED%95%9C%20SOL%20KBO%20%EC%98%AC%EC%8A%A4%ED%83%80%EC%A0%84",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

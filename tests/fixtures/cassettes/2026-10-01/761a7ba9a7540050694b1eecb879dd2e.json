@@ -1,0 +1,562 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Las Vegas Lights lineup Sep 30",
+ "recorded_at": "2026-10-01T02:32:51.187216+00:00",
+ "results": [
+  {
+   "url": "https://www.zhihu.com/question/24790852",
+   "title": "Wikipedia 和 Wikia 哪个是维基百科；它们和维基解密有什么联系 ...",
+   "content": "Aug 9, 2014 · Wikipedia（维基百科），是由 维基媒体基金会 运营的非盈利在线百科全书计划，采用 wiki 软件架构（mediawiki），由 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/24790852",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "How to Watch: Las Vegas Lights FC at Sacramento Republic FC ...",
+   "content": "2 days ago · The Lights head to NorCal to face Sacramento Republic FC in a key match against a direct rival. Read on to discover how to watch our last midweek match of the season. Match: Las Vegas Lights FC (9-10-6, 11 th in Western Conference) at Sacramento Republic FC (10-5-10, 4 th in Western Conference) When: Wednesday, September 30 Where: Heart Health Park, Sacramento, California Kickoff: 7:00 p.m. PT ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/news/2026/09/29/how-to-watch-las-vegas-lights-fc-at-sacramento-republic-fc-wednesday-september-30-700-p-m-pt/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/news/2026/09/29/how-to-watch-las-vegas-lights-fc-at-sacramento-republic-fc-wednesday-september-30-700-p-m-pt/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/347202458",
+   "title": "有什么值得推荐的英文维基镜像网站? - 知乎",
+   "content": "这个不用多说吧， 程序员必备。 里面还有很多其他镜像，但是目前我使用最多的就是这些，其他的自行探索，那网站地址已经放到了 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/347202458",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Schedule - Las Vegas Lights FC",
+   "content": "Las Vegas Lights FC full schedule for the 2026 season of the USL Championship. Dates, venues, and tickets can be found here!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/2025-schedule/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/2025-schedule/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://zhidao.baidu.com/question/1830391065414523220.html",
+   "title": "bigbang一天一天的歌词、要原版歌词和中文版翻译的如题 谢谢了",
+   "content": "Aug 15, 2014 · BigBang 《一天一天》歌词 一天一天 离开吧 Ye the finally I realize that I'm nothing without you I was so wrong forgive …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "zhidao.baidu.com",
+    "/question/1830391065414523220.html",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Lineup | Las Vegas Soul Fest | Las Vegas, NV",
+   "content": "SEPTEMBER 26-27, 2026 PREVIOUS PERFORMERS FOLLOW US STAY UP TO DATE ⤵ Instagram Facebook Tiktok X-twitter Youtube TICKETS ON SALE, LINEUP, AND MORE... ↑",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://lasvegassoulfest.com/lineup/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "lasvegassoulfest.com",
+    "/lineup/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://zhidao.baidu.com/question/94366850.html",
+   "title": "法语的几个特殊的字母，列出来一下 - 百度知道",
+   "content": "大写：À、Â、È、É、Ê、Ë、 Î 、Ï 、Ô 、Ö、 Ù、 Û 、Ç 、Œ 、Æ、 €。 小写：à、â、è、é、ê、 î 、ï、 ô、 ö、 ù、 û 、ü、 ç、 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "zhidao.baidu.com",
+    "/question/94366850.html",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Soul Fest | Las Vegas, NV",
+   "content": "The Soul of Las Vegas, Brought to You by 35 Years of Festival Legacy. From the producers of the iconic City of Lights Las Vegas Jazz Festival comes a new celebration of timeless music and soulful energy. The City of Lights Las Vegas Soul Festival brings the same signature experience: world-class R&B and soul artists, picnic-style seating on soft grass, free parking just minutes from the venue ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://lasvegassoulfest.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "lasvegassoulfest.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/28220417",
+   "title": "不同语言的维基百科的条目内容一样吗？ 中文的内容与外国一样 ...",
+   "content": "Feb 16, 2015 · 找到以前收藏的网址，发现是en开头，打开 en.wikipedia.org，搜索，词条立马就显示，一万个草泥玛。 词条显示有8 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/28220417",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC 2026 Schedule - ESPN",
+   "content": "ESPN has the full 2026 Las Vegas Lights FC schedule. Includes date, time and tv channel information for all Las Vegas Lights FC games.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/team/fixtures/_/id/18987/las_vegas_lights_fc",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/team/fixtures/_/id/18987/las_vegas_lights_fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/19581089",
+   "title": "为什么这么多人把「Wikipedia」称作「wiki」？ - 知乎",
+   "content": "Mar 25, 2011 · 我一直很难理解这个问题，为什么这么多人喜欢把专有名词和通用概念混在一起。是不是因为他们除了 Wikipe…",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/19581089",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC 2026 USL Championship Schedule - ESPN",
+   "content": "ESPN has the full 2026 Las Vegas Lights FC USL Championship schedule. Includes date, time and tv channel information for all Las Vegas Lights FC games.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/team/fixtures/_/id/18987/league/USA.USL.1",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/team/fixtures/_/id/18987/league/USA.USL.1",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/347202458/answers/updated",
+   "title": "有什么值得推荐的英文维基镜像网站? - 知乎",
+   "content": "这个不用多说吧， 程序员必备。 里面还有很多其他镜像，但是目前我使用最多的就是这些，其他的自行探索，那网站地址已经放到了 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/347202458/answers/updated",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC Schedule & Tickets 2026–2027",
+   "content": "1 day ago · Check Out The Official Schedule Of All Las Vegas Lights FC Games This Season. Buy verified Las Vegas Lights FC tickets today and save!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://schedule.soccer/tickets/las-vegas-lights-fc/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "schedule.soccer",
+    "/tickets/las-vegas-lights-fc/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/359009187",
+   "title": "维基百科（ Wikipedia） 为什么现在需要人捐钱 ？ - 知乎",
+   "content": "来自维基百科创办者Jimmy Wales的个人呼吁 维基百科是全球第五大网站，每月为4.5亿用户提供服务，页面浏览数以十亿计。 商业本 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/359009187",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.zhihu.com/question/21425170",
+   "title": "如何将整个wikipedia导出成一个纯文本文件?",
+   "content": "jwpl - Java-based Wikipedia Library -- An application programming interface for Wikipedia ，提供了API，可以直接由给定的词条名导 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/21425170",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.zhihu.com/question/479609668",
+   "title": "有哪些可以替代“Wikipedia（维基百科）”查询的百科工具？",
+   "content": "有哪些可以替代“Wikipedia（维基百科）”查询的百科工具？ 因为不能用了，所以有了这个问题！ 对百度百科总体体验不也太好用，不 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/479609668",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

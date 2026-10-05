@@ -1,0 +1,571 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Las Vegas Lights lineup 1",
+ "recorded_at": "2026-10-01T02:32:45.410746+00:00",
+ "results": [
+  {
+   "url": "https://www.wikipedia.org/",
+   "title": "Wikipedia",
+   "content": "3 days ago · Wikipedia is a free online encyclopedia, created and edited by volunteers around the world and hosted by the …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.wikipedia.org",
+    "/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Schedule - Las Vegas Lights FC",
+   "content": "Las Vegas Lights FC full schedule for the 2026 season of the USL Championship. Dates, venues, and tickets can be found here!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/2025-schedule/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/2025-schedule/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://en.wikipedia.org/wiki/Main_Page",
+   "title": "Wikipedia, the free encyclopedia",
+   "content": "1 day ago · Wikipedia is written by volunteer editors and hosted by the Wikimedia Foundation, a non-profit organization that also …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Main_Page",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Professional Soccer Born in Las Vegas - Las Vegas Lights FC",
+   "content": "Las Vegas Lights FC is a professional soccer team born in Las Vegas. Buy tickets, shop the team store, and read Lights news here.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.lasvegaslightsfc.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.lasvegaslightsfc.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://en.wikipedia.org/wiki/Wikipedia",
+   "title": "Wikipedia - Wikipedia",
+   "content": "2 days ago · Founded by Jimmy Wales and Larry Sanger in 2001, Wikipedia has been hosted since 2003 by the Wikimedia …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Wikipedia",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC - Detailed squad 2026 | Transfermarkt",
+   "content": "Squad Las Vegas Lights FC This page displays a detailed overview of the club's current squad. It shows all personal information about the players, including age, nationality, contract duration and market value. It also contains a table with average age, cumulative market value and average market value for each player position and overall.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.transfermarkt.us/las-vegas-lights-fc/kader/verein/62204",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.transfermarkt.us",
+    "/las-vegas-lights-fc/kader/verein/62204",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://ko.wikipedia.org/wiki/%EC%9C%84%ED%82%A4%EB%B0%B1%EA%B3%BC:%EB%8C%80%EB%AC%B8",
+   "title": "위키백과, 우리 모두의 백과사전",
+   "content": "3 days ago · 위키백과 는 위키 를 이용하여 전 세계 사람들이 함께 만들어가는 웹 기반 의 다언어 백과사전 입니다. 위키백과는 중립적 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/%EC%9C%84%ED%82%A4%EB%B0%B1%EA%B3%BC:%EB%8C%80%EB%AC%B8",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Lineup | Las Vegas Soul Fest | Las Vegas, NV",
+   "content": "FOLLOW US STAY UP TO DATE ⤵ TICKETS ON SALE, LINEUP, AND MORE... 2026 PERFORMERS ERIC BENÉT EL DeBARGE",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://lasvegassoulfest.com/lineup/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "lasvegassoulfest.com",
+    "/lineup/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://ko.wikipedia.org/wiki/%EC%9C%84%ED%82%A4%EB%B0%B1%EA%B3%BC",
+   "title": "위키백과 - 위키백과, 우리 모두의 백과사전",
+   "content": "1 day ago · “ Ukraine-Krieg: Russische Medienaufsicht droht mit Wikipedia-Sperre - Die Online-Enzyklopädie informiert ausführlich …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/%EC%9C%84%ED%82%A4%EB%B0%B1%EA%B3%BC",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Soul Fest | Las Vegas, NV",
+   "content": "The Soul of Las Vegas, Brought to You by 35 Years of Festival Legacy. From the producers of the iconic City of Lights Las Vegas Jazz Festival comes a new celebration of timeless music and soulful energy. The City of Lights Las Vegas Soul Festival brings the same signature experience: world-class R&B and soul artists, picnic-style seating on soft grass, free parking just minutes from the venue ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://lasvegassoulfest.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "lasvegassoulfest.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://gpe.wikipedia.org/wiki/Wikipedia",
+   "title": "Wikipedia - Wikipedia",
+   "content": "Sep 20, 2026 · Ebe founded by Jimmy Wales den Larry Sanger on January 15, 2001, na de Wikimedia Foundation an American …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "gpe.wikipedia.org",
+    "/wiki/Wikipedia",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Las Vegas Lights FC - Wikipedia",
+   "content": "Las Vegas Lights Football Club is an American professional soccer team based in Las Vegas, Nevada, that plays in the USL Championship. The team made its debut in 2018 and plays its home games at Cashman Field.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Las_Vegas_Lights_FC",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Las_Vegas_Lights_FC",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://fr.wikipedia.org/wiki/Wikip%C3%A9dia:Accueil_principal",
+   "title": "Wikipédia, l'encyclopédie libre",
+   "content": "1 day ago · Wikipédia L'encyclopédie libre que vous pouvez améliorer Accueil de la communauté Comment contribuer ? Portails …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "fr.wikipedia.org",
+    "/wiki/Wikip%C3%A9dia:Accueil_principal",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Lineup | Las Vegas City of Lights Jazz and R&B Festival | Las ...",
+   "content": "Discover the lineup for the Las Vegas City of Lights Jazz and R&B Festival, featuring intimate performances and a unique picnic-style experience.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://cityoflightsmusicfestival.com/lineup/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "cityoflightsmusicfestival.com",
+    "/lineup/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://es.wikipedia.org/wiki/Wikipedia:Portada",
+   "title": "Wikipedia, la enciclopedia libre",
+   "content": "2 days ago · Wikipedia es uno de los proyectos Wikimedia, de contenido libre y administrados técnicamente por la Fundación …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Wikipedia:Portada",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://en.wikipedia.org/wiki/English_Wikipedia",
+   "title": "English Wikipedia - Wikipedia",
+   "content": "2 days ago · English Wikipedia, often as a stand-in for Wikipedia overall, has been praised for its enablement of the democratization …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/English_Wikipedia",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://en.wikipedia.org/wiki/%2F%2F",
+   "title": "Wikipedia",
+   "content": "2 days ago · The prefix for a line comment in C-family computer languages The root directory in the Domain/OS Shell — see Path …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/%2F%2F",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "las vegas lights at night",
+  "pictures of las vegas lights",
+  "las vegas lights lineup 1 hour",
+  "las vegas lights lineup 1 20",
+  "las vegas lights lineup 1 24",
+  "las vegas lights lineup 1 day",
+  "las vegas lights jersey",
+  "las vegas lights downtown"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

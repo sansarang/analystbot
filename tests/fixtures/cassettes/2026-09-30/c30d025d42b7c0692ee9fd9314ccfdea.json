@@ -1,0 +1,408 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "西武 スタメン 29日",
+ "recorded_at": "2026-09-30T14:40:51.794151+00:00",
+ "results": [
+  {
+   "url": "https://lions-matome.com/archives/jikkyo20260929.html",
+   "title": "【試合実況】西武スタメン 先発:平良海馬（2026.9.29）",
+   "content": "1 day ago · 【試合実況】西武スタメン 先発:平良海馬（2026.9.29） 2026.09.29 2026.09.30 試合実況スレは こちら 2026年9月29日 西武VSオリックス 一軍公式戦 2026年9月29日 埼玉西武対オリックス 試合ハイライト - YouTube",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "lions-matome.com",
+    "/archives/jikkyo20260929.html",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "yahoo",
+    "duckduckgo"
+   ],
+   "positions": [
+    1,
+    1,
+    3
+   ],
+   "score": 7.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://baseball-data.com/lineup/l.html",
+   "title": "埼玉西武ライオンズのスタメン一覧（打順） - プロ野球データFreak",
+   "content": "プロ野球のデータが満載！ チーム・選手の成績やセイバーメトリクスに使われる指標、他のサイトでは見られないユニークなデータを掲載しています 埼玉西武ライオンズ スタメン一覧（打順） 打順 | ポジション",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "baseball-data.com",
+    "/lineup/l.html",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "yahoo",
+    "duckduckgo"
+   ],
+   "positions": [
+    2,
+    3,
+    1
+   ],
+   "score": 5.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://news.yahoo.co.jp/articles/0d72df7ada3372720aa9beca9c6a3e12060e1de9",
+   "title": "【西武】平良海馬が最優秀防御率のタイトル当確へ先発 規定投球回まで...",
+   "content": "1 day ago · 平良海馬（報知新聞社） パ・リーグ 西武― オリックス （29日・ベルーナドーム） 西武は29日、本拠地・ベルーナドームでのレギュラーシーズン ...",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "news.yahoo.co.jp",
+    "/articles/0d72df7ada3372720aa9beca9c6a3e12060e1de9",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "yahoo",
+    "duckduckgo"
+   ],
+   "positions": [
+    4,
+    7,
+    2
+   ],
+   "score": 2.678571428571429,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://sp.baseball.findfriends.jp/?pid=game_flash_info&game_id=2026092904",
+   "title": "西武×オリックス 2026/9/29(火) の試合速報・結果 - 週刊ベースボール...",
+   "content": "週刊ベースボールが徹底取材!試合前情報･速報･日程･結果･順位から予告先発･スタメン発表･スコア速報はもちろん打席結果･打率･本塁打･打点､投手成績･防御率･三振数･投球数､個人成績から交代情報まで最新情報を速報でお届け!オープン戦･公式戦 (巨人､ヤクルト､広島 ...",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "sp.baseball.findfriends.jp",
+    "/",
+    "",
+    "pid=game_flash_info&game_id=2026092904",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "yahoo",
+    "duckduckgo"
+   ],
+   "positions": [
+    7,
+    2,
+    7
+   ],
+   "score": 2.357142857142857,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.seibulions.jp/game/calendar/",
+   "title": "試合日程・結果 | 埼玉西武ライオンズ",
+   "content": "埼玉西武ライオンズ | プロ野球・埼玉西武ライオンズオフィシャルサイトです。試合や選手はもちろん、チケットやイベント、ファンクラブに至るまで球団オフィシャルならではの公式情報をファンのみなさまに提供します。",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.seibulions.jp",
+    "/game/calendar/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "duckduckgo"
+   ],
+   "positions": [
+    3,
+    6
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "【29日のプロ野球見どころ】西武・平良 防御率“隠れ1位”から浮上し勝...",
+   "content": "1 day ago · 西武は平良が先発。28日現在の防御率は1・36ながら、投球回が139。チームが140試合目を消化したことから、規定投球回に1イニング不足となり ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo",
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4,
+    4
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.sponichi.co.jp/baseball/news/2026/09/29/kiji/20260928s00001173424000c.html",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.sponichi.co.jp",
+    "/baseball/news/2026/09/29/kiji/20260928s00001173424000c.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://yamisokulions.com/archives/17374747.html",
+   "title": "【試合実況】西武スタメン 先発:平良海馬（2026.9.29）",
+   "content": "9/29 (火)のパ・リーグ公示 【出場選手登録】 片山楽生 (B) 田中千晴 (E) 黒田将矢 (L)平良海馬 (L) 吉川悠斗 (M) 【出場選手登録抹消】 椋木蓮 (B)石川亮 (B) 岸孝之 (E)九谷瑠 (E) 中村祐太 (L) A．ジャクソン (M) 松岡洸希 (F) 【注】埼玉西武ライオンズの平良海馬選手は、NPB感染症特例により、登録抹消後 ...",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "yamisokulions.com",
+    "/archives/17374747.html",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "duckduckgo"
+   ],
+   "positions": [
+    5,
+    5
+   ],
+   "score": 0.8,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.excite.co.jp/news/article/SportsHochi_20260929_OHT1T51241/",
+   "title": "【西武】平良海馬が最優秀防御率のタイトル当確へ先発 規定 ...",
+   "content": "パ・リーグ 西武―オリックス（29日・ベルーナドーム） 西武は29日、本拠地・ベルーナドームでのレギュラーシーズン最終戦となるオリックス戦 ...",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.excite.co.jp",
+    "/news/article/SportsHochi_20260929_OHT1T51241/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "duckduckgo"
+   ],
+   "positions": [
+    6,
+    8
+   ],
+   "score": 0.5833333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.seibulions.jp/gamelive/result/",
+   "title": "スコアボード | 埼玉西武ライオンズ",
+   "content": "埼玉西武ライオンズ | プロ野球・埼玉西武ライオンズオフィシャルサイトです。 試合や選手はもちろん、チケットやイベント、ファンクラブに至るまで球団オフィシャルならではの公式情報をファンのみなさまに提供します。",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.seibulions.jp",
+    "/gamelive/result/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "yahoo"
+   ],
+   "positions": [
+    10,
+    6
+   ],
+   "score": 0.5333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://nishispo.nishinippon.co.jp/article/1044953",
+   "title": "西武・平良海馬が中13日で先発 ソフトバンクと13ゲーム差の ...",
+   "content": "西武―オリックス（29日、ベルーナドーム） 首位ソフトバンクとゲーム差13に広がった2位西武。負けるか引き分けでもゲーム差10以上が確定し、クライマックスシリーズ（CS）でのソフトバンクのア...",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "nishispo.nishinippon.co.jp",
+    "/article/1044953",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "duckduckgo"
+   ],
+   "positions": [
+    8,
+    9
+   ],
+   "score": 0.4722222222222222,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://news.infoseek.co.jp/article/hochi_20260929-OHT1T51241/",
+   "title": "【西武】平良海馬が最優秀防御率のタイトル当確へ先発 規定 ...",
+   "content": "パ・リーグ 西武―オリックス（29日・ベルーナドーム） 西武は29日、本拠地・ベルーナドームでのレギュラーシーズン最終戦となるオリックス戦 ...",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "news.infoseek.co.jp",
+    "/article/hochi_20260929-OHT1T51241/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "duckduckgo"
+   ],
+   "positions": [
+    9,
+    10
+   ],
+   "score": 0.4222222222222222,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "【負ければ12球団最速70敗＆西武戦7連敗】イーグルス試合前スタメン発...",
+   "content": "Aug 29, 2026 · 2026年8月29日埼玉西武ライオンズ vs 東北楽天ゴールデンイーグルスベルーナドームライオンズ スターティングメンバー先発 隅田 知一郎1（右 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=KupzqkFn0hk",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=KupzqkFn0hk",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

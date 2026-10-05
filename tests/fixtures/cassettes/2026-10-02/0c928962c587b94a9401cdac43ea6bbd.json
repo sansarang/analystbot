@@ -1,0 +1,1510 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "読売ジャイアンツ 先発 登板 2日",
+ "recorded_at": "2026-10-02T02:45:22.145520+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "泉 圭輔（読売ジャイアンツ） | 個人年度別成績",
+   "content": "ポジション : 投手, 投打 : 右投右打, 身長／体重 : 188cm／87kg, 生年月日 : 1997年3月2日, 経歴 : 金沢西高 - 金沢星稜大, ドラフト : 2018年ドラフト6位",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "http://npb.jp/bis/players/01105138.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/players/01105138.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツのチーム構成・世代表",
+   "content": "読 売ジャイアンツ公式ページ読 売ジャイアンツドラフト掲示板読 売ジャイアンツ世代表読 売ジャイアンツ過去のド",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.draft-kaigi.jp/npb-draft/giants/team/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.draft-kaigi.jp",
+    "/npb-draft/giants/team/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Google Maps",
+   "content": "Explore and navigate the world with Google Maps, offering detailed maps and directions for your journeys.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://maps.google.co.kr/mapfiles/home3.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "maps.google.co.kr",
+    "/mapfiles/home3.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "GIANTS TV",
+   "content": "巨人軍公式動画配信サービス。試合のライブ配信からオリジナルコンテンツまで、ジャイアンツのすべてがここに！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://tv.giants.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "tv.giants.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "北海道日本ハム対読 売",
+   "content": "▼ menu … 検索 選手の検索ができます 通算 通算成績のランキング 成績 年度ごとの成績ランキング 試合 試合結果の一覧と詳細 順位 順位表と対戦成績 球場 球場ごとの集計(2016～) 記録 色んな個人成績ランキング 審判 審判員の記録 辞書 Android Gboard用の選手名辞書 北海道日本ハム … 読 売 対 東京ヤクルト",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://mattz.sakura.ne.jp/public/versus/%E5%8C%97%E6%B5%B7%E9%81%93%E6%97%A5%E6%9C%AC%E3%83%8F%E3%83%A0/%E8%AA%AD%20%E5%A3%B2/2022",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "mattz.sakura.ne.jp",
+    "/public/versus/%E5%8C%97%E6%B5%B7%E9%81%93%E6%97%A5%E6%9C%AC%E3%83%8F%E3%83%A0/%E8%AA%AD%20%E5%A3%B2/2022",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Transit – Google Maps",
+   "content": "If you provide a transportation service that is open to the public, and operates with fixed schedules and routes, we welcome your participation - it is simple and free.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://maps.google.co.kr/intl/ko/landing/transit/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "maps.google.co.kr",
+    "/intl/ko/landing/transit/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "田中 将大（読売ジャイアンツ） | 個人年度別成績",
+   "content": "ポジション : 投手, 投打 : 右投右打, 身長／体重 : 188cm／102kg, 生年月日 : 1988年11月1日, 経歴 : 駒大苫小牧高, ドラフト : 2006年高校生ドラフト1巡目",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "http://npb.jp/bis/players/11215114.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/players/11215114.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "フェニックスリーグ最終戦 読売 － IL選抜 試合結果",
+   "content": "NEWS RELEASE 四国アイランドリーグplus運営事務局 2016年10月24日 四国アイランドリーグplus 事務局長 坂口裕昭 みやざきフェニックス・リーグに参戦しているＩＬ選抜は、 １０月２４日（月）宮崎市のひむかスタジアムで読 売ジャイアンツと対戦しました。 試合は1回裏に先発の間曽 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.iblj.co.jp/assets2021/uploads/2016/10/20161024_01.pdf",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.iblj.co.jp",
+    "/assets2021/uploads/2016/10/20161024_01.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Google 지도/Google 어스 및 Google 지도/Google 어스 API 법적 고지 ...",
+   "content": "Legal Notices for Google Maps/Google Earth and Google Maps/Google Earth APIs Last Modified: February 1, 2021 Google is providing the following notices under ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://maps.google.co.kr/help/legalnotices_maps/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "maps.google.co.kr",
+    "/help/legalnotices_maps/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ｇ速@読売ジャイアンツまとめブログ",
+   "content": "読売ジャイアンツのまとめブログです",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://g-soku.blog.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "g-soku.blog.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "昨日マチアプで会った女に当日お礼のLINE送ってもいまだに既読すら付かない | LogPo!2ch(ログポ2ちゃん)",
+   "content": "1：以下、？ ちゃんねるからVIPがお送りします ： 2025/11/28(金)15:37:10.018 ID： TWZZeMqa0.net 次会う約束もしてたのにどうなってんだ？ 2：以下、？ ちゃんねるからVIPがお送りします ： 2025/11/28(金)15:37:34.296 ID …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://2ch.logpo.jp/article/852639",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "2ch.logpo.jp",
+    "/article/852639",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "스트리트 뷰 여행: 이집트 – 정보 – Google 지도",
+   "content": "Google 지도를 이용하여 세계를 탐험할 수 있습니다. 스트리트 뷰, 3D 지도, 단계별 길찾기, 실내 지도 등 다양한 기능을 어느 기기에서나 이용해 보세요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://maps.google.co.kr/intl/ko/maps/about/behind-the-scenes/streetview/treks/pyramids-of-giza/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "maps.google.co.kr",
+    "/intl/ko/maps/about/behind-the-scenes/streetview/treks/pyramids-of-giza/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "も 5失点 、1 年 刊) ペー 参 照",
+   "content": "公益 財団 法人 野球 博物 館 特別 連載 vol58 Np マで ヽ お NNN 右 下 の 記念 大 な 優 勝 族 を 写真後列で、 き 持つ 一 に 導い たの だっ た 青年 がいる 。 沢 村 栄 治 だ 沢村 が 掲げ る 大 優勝 旗 、 読 売 新聞 が 製作. この 撮影 場所 で ある 洲崎 球場 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://baseball-museum.or.jp/wp-content/uploads/2026/05/7ce75fddd620c1ddd58802f5185f55ce.pdf",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "baseball-museum.or.jp",
+    "/wp-content/uploads/2026/05/7ce75fddd620c1ddd58802f5185f55ce.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Google 지도/Google 어스 및 Google 지도/Google 어스 API 법적 고지 ...",
+   "content": "다음은 법률 또는 계약에 따라 Google에서 제공하는 법적 고지 (이하 '법적 고지')입니다. 법적 고지는 Google 서비스 약관 에 참조 문서로 통합되어 있습니다. Google 제품이나 서비스를 사용함으로써 귀하는 이러한 법적 고지의 적용을 받는 것에 동의하는 것으로 간주됩니다. 이러한 제품이나 서비스 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://maps.google.co.kr/help/attribution_maps/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "maps.google.co.kr",
+    "/help/attribution_maps/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツ - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 17 · 試合なし, 金 : 18 · vs. 中日 · 2-0 · 試合終了 · 東京ドーム · 勝：マルティネス, 土 : 19 · vs. 中日 · 14-1 · 試合終了 · 東京ドーム · 勝：田中将, 日 : 20 · vs. ヤクルト · 14:00 · 見どころ · 東京ドーム, 月 : 21 · 試合なし, 火 : 22 · vs. 広島 · 15:00 · 試合前 · マツダスタジアム, 水 : 23 · vs. 広島 · 15:00 · 試合前 · マツダスタジアム",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/1/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/1/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "☆まぁさんのなんでも日記☆ | グライ撃沈！",
+   "content": "[画像] … 読売１−３阪神 … 阪 神 ００００１２０００＝３ 読 売 ０００００００１０＝１ … 対読売２回戦（阪神２勝０敗０分） … 【投手】 読売＝●グライシンガー（０勝１敗）−山口−西村 阪神＝○岩田（２勝０敗）−Ｓ藤川（０勝０敗５Ｓ） … 【本塁打】 読売＝ 阪神 虎虎虎 2008/04/05 8:40 PM",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://mar.tblog.jp/?eid=179531",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "mar.tblog.jp",
+    "/",
+    "",
+    "eid=179531",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Transit – Google Maps",
+   "content": "Home Cities Covered Cities Covered",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://maps.google.co.kr/landing/transit/cities/index.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "maps.google.co.kr",
+    "/landing/transit/cities/index.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツ - アンサイクロペディア",
+   "content": "2013年 オープン戦開幕前から、ダントツのセリーグ優勝が当確していかが、いざ、リーグが始まると2位の座に阪神が居座り首位攻防戦を繰り広げるハメになった。2位以下のチームは、雑魚らしく10ゲーム差以上つけられ逆に最下位攻防戦をしている。しかし9月になると2013年版Vやねん！である と対戦。当たり前のように3連勝し、日本シリーズに進出。しかし、肝心の日本....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://ansaikuropedia.org/wiki/%E8%AA%AD%E5%A3%B2%E3%82%B8%E3%83%A3%E3%82%A4%E3%82%A2%E3%83%B3%E3%83%84",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "ansaikuropedia.org",
+    "/wiki/%E8%AA%AD%E5%A3%B2%E3%82%B8%E3%83%A3%E3%82%A4%E3%82%A2%E3%83%B3%E3%83%84",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "グループチケット - 2026年 読売ジャイアンツ",
+   "content": "＊ 東京ドームでの巨人軍主催試合（一部試合を除く）が対象となります 受付開始 2月2日(月) 11:00～ 4月1日(水) 11:00～ 6月1日(月) 11:00～ 対象試合 6月7日(日)まで 6月19日(金)～7月22日(水) 7月31日(金)以降 → 各試合のイベント情報はこちら → お申込みはこちら",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.giants.jp%2Fsp%2Fgroup%2Fog.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.giants.jp/sp/group/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.giants.jp",
+    "/sp/group/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "元読売ジャイアンツ2018年ドラフト1位 髙橋 優貴選手 ミキハウス硬式野球部で....",
+   "content": "2024.12.02.このたび読売ジャイアンツ （巨人軍）で活躍した髙橋優貴選手が、 2025年1月1日よりミキハウス硬式野球部にて、現役続行することが決まりました。 ミキハウス硬式野球部は、今年入社した、同じく元読売ジャイアンツの桜井俊貴選手に加え、新戦力として髙橋選手を迎えることで、都市対抗野球大会、社会人野球日本選手権大会での日本一を目指して活動してまいりま......2024.12.02.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.mikihouse.co.jp%2Fcdn%2Fshop%2Farticles%2F2024-12-02_163933.jpg%3Fv%3D1733126921%26width%3D1100&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.mikihouse.co.jp/ko/blogs/news/20241202_1",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.mikihouse.co.jp",
+    "/ko/blogs/news/20241202_1",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【読売ジャイアンツ × 東京ドームホテル】コラボレーションルーム宿泊プラ....",
+   "content": "東京ドームホテルでは読売ジャイアンツのホームスタジアムである「東京ドーム」を眼下に眺める立地と親和性の高さを活かし、読売ジャイアンツとのコラボレーションルームをご用意いたしました。「ジャイアンツ愛」をコンセプトにインパクトのある世界観を表現。設えの異なる2タイプのジャイアンツルームをそれぞれ1日1室限定でご用意し、長きに渡るジャイアン......",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.tokyodome-hotels.co.jp%2Fstay%2Fplan%2Fmv_giantsroom2608_01.webp&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.tokyodome-hotels.co.jp/stay/plan/plan-giantsroom/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.tokyodome-hotels.co.jp",
+    "/stay/plan/plan-giantsroom/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "泉圭輔（読売ジャイアンツ） | 野球選手データ - 週刊ベースボールONLINE",
+   "content": "泉圭輔 プロフィール ; 生年月日 : 1997年3月2日(29歳), 身長 : 188cm, 体重 : 87kg, 血液型 : A型, 出身地 : 石川県, 経歴 : 三馬小(三馬クラブ) - 清泉中 - 金沢西高 - 金沢星稜大 - ソフトバンク19年～23年 - 巨人24年～, ドラフト : 2018年6位ソフトバンク, 今季年俸 : 3500万円, 選手紹介 : 泉圭輔(いずみ・けいすけ)は、三馬小3年時に三馬クラブで軟式野球を始め、清泉中では軟式野球部に......",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fsp.baseball.findfriends.jp%2Fplayer_image.php%3Fplayer_id%3D19970081&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://sp.baseball.findfriends.jp/player/19970081/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sp.baseball.findfriends.jp",
+    "/player/19970081/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "巨人 - ベースボールチャンネル",
+   "content": "読売ジャイアンツのフリアン・ティマは4日、山梨県富士北麓公園野球場で行われたハヤテベンチャーズ静岡との試合に「5番・指名打者」で先発出場。初回に、追加点となる2点本塁打を放った。... 続きを見る",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.baseballchannel.jp%2Fwp-content%2Fuploads%2F2026%2F07%2Fhashigamihideki-1024x576.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.baseballchannel.jp/npb/giants/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.baseballchannel.jp",
+    "/npb/giants/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "赤星 優志 - 読売ジャイアンツ - プロ野球 - スポーツナビ",
+   "content": "31 · 投手 ; 出身地 : 東京, 生年月日（満年齢） : 1999年7月2日（26歳）, 身長 : 175cm, 体重 : 82kg, 血液型 : B, 投打 : 右投右打, ドラフト年（順位） : 2021年（3位）, プロ通算年 : 5年, 経歴 : 日大鶴ケ丘高－日本大－巨人",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fsports-baseball.west.edge.storage-yahoo.jp%2Fnpb%2Fimages%2Fplayer%2Fportrait%2F1%2F2103689.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/player/2103689/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/player/2103689/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "山田龍聖（読売ジャイアンツ） | 野球選手データ",
+   "content": "山田龍聖 プロフィール ; 生年月日 : 2000年9月7日(25歳), 身長 : 184cm, 体重 : 82kg, 血液型 : B型, 出身地 : 富山県, 経歴 : 窪小 - 西條中 - [甲]高岡商高 - JR東日本 - 巨人22年～24年、25年(育成→支配下), ドラフト : 2021年2位巨人, 今季年俸 : 950万円, 選手紹介 : 山田龍聖(やまだ・りゅうせい)は、高岡商高で3年夏の甲子園3回戦に先発し、大阪桐蔭高から11奪三振。卒業後はJR東日本を経....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fsp.baseball.findfriends.jp%2Fplayer_image.php%3Fplayer_id%3D20000038&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://sp.baseball.findfriends.jp/player/20000038/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sp.baseball.findfriends.jp",
+    "/player/20000038/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ENEOS 侍ジャパン強化試合 「侍ジャパン vs 読売ジャイアンツ」 | トップチーム ....",
+   "content": "2021.07.25.バッテリー ; 侍ジャパン : 田中 将大、 伊藤 大海、 大野 雄大、 岩崎 優、 平良 海馬、 栗林 良吏 ‐ 梅野 隆太郎、 甲斐 拓也, 読売 : 直江 大輔、 平内 龍太、 田中 豊樹、 今村 信貴、 古川 侑利、 桜井 俊貴 ‐ 小林 誠司、 岸田 行倫2021.07.25.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.japan-baseball.jp%2Ffiles%2Fwhatsnew%2F2873%2Fimage01%2F240x160%2F20210725_1_1-2.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.japan-baseball.jp/jp/team/topteam/score/20210725_1/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.japan-baseball.jp",
+    "/jp/team/topteam/score/20210725_1/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツ（巨人）のニュース・速報 | フルカウント ― 野球の総合メ....",
+   "content": "読売ジャイアンツ（巨人）に関する野球ニュース・速報・コラムやインタビューの記事一覧。Full-Count(フルカウント)は野球専門の総合メディアです。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Ffull-count.jp%2Fwp-content%2Fuploads%2F2026%2F02%2F16091115%2F20260216_ishiduka_aramaki_yd.jpg&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Ffull-count.jp%2Fwp-content%2Fuploads%2F2026%2F07%2F02151115%2F20260802_izuguchi_kyu-560x373.jpg&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Ffull-count.jp%2Fwp-content%2Fuploads%2F2026%2F08%2F01170645%2F20260731_sakamoto_ig-560x373.jpg&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Ffull-count.jp%2Fwp-content%2Fuploads%2F2026%2F08%2F01083651%2F20260801_urata_ig-560x373.jpg&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Ffull-count.jp%2Fwp-content%2Fuploads%2F2026%2F07%2F31225008%2FDSC07991-560x373.jpeg&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Ffull-count.jp%2Fwp-content%2Fuploads%2F2026%2F07%2F29163727%2F20260729_hashigami_kyu-560x373.jpg&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Ffull-count.jp%2Fwp-content%2Fuploads%2F2026%2F07%2F26095603%2F20260726_Dalbec_kri-560x373.jpg&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Ffull-count.jp%2Fwp-content%2Fuploads%2F2026%2F07%2F26083403%2F20260726_sasaki_kri-560x373.jpg&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Ffull-count.jp%2Fwp-content%2Fuploads%2F2026%2F07%2F25125128%2F20260725_kohama_kri-560x373.jpg&type=fff208_208_arhttps%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Ffull-count.jp%2Fwp-content%2Fuploads%2F2026%2F07%2F25095136%2F20260725_Dalbec_kri-560x373.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://full-count.jp/category/npb/central-league/kyojin/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "full-count.jp",
+    "/category/npb/central-league/kyojin/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "『連勝ストップにより本日は調整試合』",
+   "content": "神宮球場 読 売 ４０３ ０００ ００１ ８ 東京ヤクルト ０００ ０００ ００２ ２ ウォルターズの乱調が全てだったと言えば全てだったが、責任の大半はスタメンマスクの中村にある。 明らかに変化球の制球が定まらないのに、打者が真っすぐを待っているだろうと、その変化球を要求しカウントをどんどん悪くして投手を追い込んでいく。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://ameblo.jp/with1103tsubame/entry-12963322947.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ameblo.jp",
+    "/with1103tsubame/entry-12963322947.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読 売対埼玉西武",
+   "content": "▼ menu … 検索 選手の検索ができます 通算 通算成績のランキング 成績 年度ごとの成績ランキング 試合 試合結果の一覧と詳細 順位 順位表と対戦成績 球場 球場ごとの集計(2016～) 記録 色んな個人成績ランキング 審判 審判員の記録 辞書 Android Gboard用の選手名辞書 読 売 … 埼玉西武 対 広島東洋",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://mattz.sakura.ne.jp/versus/%E8%AA%AD%20%E5%A3%B2/%E5%9F%BC%E7%8E%89%E8%A5%BF%E6%AD%A6/2017",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "mattz.sakura.ne.jp",
+    "/versus/%E8%AA%AD%20%E5%A3%B2/%E5%9F%BC%E7%8E%89%E8%A5%BF%E6%AD%A6/2017",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "デビューの日",
+   "content": "全ての記事 和敬会 私たちの日常 検索 デビューの日 … 2023年4月4日 読了時間: 1分 1958年（昭和33年）のこの日、読 売巨人軍・長嶋茂雄（ながしま し げお）が開幕戦に３番サードで先発 出場し、プロ野球デビューした。 長嶋のデビューは、国鉄のエース・ 金田正一（かねだ まさいち）投手を 相手に4打席4連続三振であった。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.wakeikai-office-chikusei.com/post/%E3%83%87%E3%83%93%E3%83%A5%E3%83%BC%E3%81%AE%E6%97%A5",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.wakeikai-office-chikusei.com",
+    "/post/%E3%83%87%E3%83%93%E3%83%A5%E3%83%BC%E3%81%AE%E6%97%A5",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "『高梨、増居、キハダで完封リレー』",
+   "content": "東京ドーム 東京ヤクルト ００１ ０１０ ０００ ２ 読 売 ０００ ０００ ０００ ０ 色々な意味でハラハラドキドキしたが、終わってみれば完封リレーでカード勝ち越しを決めた。 ポイントとして挙げたいのが、七回一死から高梨が初めての走者を許した後の三遊間の緩いゴロ。 これを長岡が素早い送球で一塁走者を二塁で殺した。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://ameblo.jp/with1103tsubame/entry-12962782355.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ameblo.jp",
+    "/with1103tsubame/entry-12962782355.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "4/17 vs 読売５回戦　　５回まで神茶谷だったのが６回に豹変してしまう怪現象",
+   "content": "ここ数日、筆が遅くなっていることをお許しください。 今までのベイスターズ生活でメンタルは鍛えられたつもりでしたが、まだまだだったようです。 ということで、いつものコーナーからスタートです。 今日の五・七・五・七・七 上茶谷 ５回までは 神茶谷 あの一球で 頭真っ白 試合結果 読 売 １００ ００６ ０００｜７ Ｈ８ Ｅ０",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://yokohamavictory.jp/?p=3862",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "yokohamavictory.jp",
+    "/",
+    "",
+    "p=3862",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "家族LINEで子供の写真や成長送っても義母しか返信なし→義父と義兄弟は既読スルーなのに会えば話題にしてくるとか、自分の都合だけで反応するのがモヤモヤするんだが… | LogPo!2ch(ログポ2ちゃん)",
+   "content": "649: 2018/03/16(金) 09:03:30.43 ID:IbnMW2xR ラインで義父、義母、義兄弟、夫、わたしでグループを作って、写真や成長を共有してるのだけどいつも義母しか返事をくれない 返事しなくて良し […]",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://2ch.logpo.jp/article/1624089",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "2ch.logpo.jp",
+    "/article/1624089",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2020.12.05 【斜読:FA行使選手の気になる動向】 - あの日のご拝聴Podcast",
+   "content": "localStorage.setItem('reviewDraft_content_01h1e5eynfejh2tchy9yhtv3xs', value)); this.$watch('quoteText', value => localStorage.setItem('reviewDraft_quoteText_01h1e5eynfejh2tchy9yhtv3xs' …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://listen.style/p/zabo5/hcckmfng",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "listen.style",
+    "/p/zabo5/hcckmfng",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "田中将大・7日のヤクルト戦で3ヵ月ぶり先発へ",
+   "content": "田中将大・7日のヤクルト戦で3ヵ月ぶり先発へ (一軍) 田中将大投手が7日一軍で先発へ — 読 売 ジ ャ イ ア ン ツ 情 報 部 (@Giants___info) August 1, 2025 2025/08/03(日) 18:42:53.52 ID:2rRbRSWN9 【巨人 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://trivia.awe.jp/post-1197722/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "trivia.awe.jp",
+    "/post-1197722/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "スライド 1",
+   "content": "NEWS RELEASE 四国アイランドリーグplus運営事務局 2020年10月29日 四国アイランドリーグplus 代表 馬郡 健 9・10月度 読売新聞月間MVP受賞選手の発表 四国アイランドリーグplus(以下、四国IL)は、2018シーズンより、オフィシャルメディアパートナーである読 売新聞大阪本社(以下 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.iblj.co.jp/assets2021/uploads/2020/10/ca39f1ac078069345b9da623f1749a1d.pdf",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.iblj.co.jp",
+    "/assets2021/uploads/2020/10/ca39f1ac078069345b9da623f1749a1d.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "_ ブブカs_よ",
+   "content": "この 子 は 医 薬品 安心 使用 対策 の … し て 皆 様 の 意見 を 参考 に 、 … (後発 医薬 品 ) を 正しく 理解 し 目的 と し て 作成 た も の で す … 併せ 医 薬品 の て、 正しい 使い 方・保 管 方 法 ど に つい て も 記載 し て いま 読 ください。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.pref.okayama.jp/uploaded/life/869116_8260842_misc.pdf",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.pref.okayama.jp",
+    "/uploaded/life/869116_8260842_misc.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東北楽天対読 売",
+   "content": "▼ menu … 検索 選手の検索ができます 通算 通算成績のランキング 成績 年度ごとの成績ランキング 試合 試合結果の一覧と詳細 順位 順位表と対戦成績 球場 球場ごとの集計(2016～) 記録 色んな個人成績ランキング 審判 審判員の記録 辞書 Android Gboard用の選手名辞書 東北楽天 … 読 売 対 読 売 対 横浜DeNA",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://mattz.sakura.ne.jp/versus/%E6%9D%B1%E5%8C%97%E6%A5%BD%E5%A4%A9/%E8%AA%AD%20%E5%A3%B2/2019",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "mattz.sakura.ne.jp",
+    "/versus/%E6%9D%B1%E5%8C%97%E6%A5%BD%E5%A4%A9/%E8%AA%AD%20%E5%A3%B2/2019",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読 売対オリックス",
+   "content": "▼ menu … 検索 選手の検索ができます 通算 通算成績のランキング 成績 年度ごとの成績ランキング 試合 試合結果の一覧と詳細 順位 順位表と対戦成績 球場 球場ごとの集計(2016～) 記録 色んな個人成績ランキング 審判 審判員の記録 辞書 Android Gboard用の選手名辞書 読 売 … 対 阪 神 対 広島東洋",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://mattz.sakura.ne.jp/versus/%E8%AA%AD%20%E5%A3%B2/%E3%82%AA%E3%83%AA%E3%83%83%E3%82%AF%E3%82%B9/2023",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "mattz.sakura.ne.jp",
+    "/versus/%E8%AA%AD%20%E5%A3%B2/%E3%82%AA%E3%83%AA%E3%83%83%E3%82%AF%E3%82%B9/2023",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東北楽天対読 売",
+   "content": "▼ menu … 検索 選手の検索ができます 通算 通算成績のランキング 成績 年度ごとの成績ランキング 試合 試合結果の一覧と詳細 順位 順位表と対戦成績 球場 球場ごとの集計(2016～) 記録 色んな個人成績ランキング 審判 審判員の記録 辞書 Android Gboard用の選手名辞書 東北楽天 … 読 売 対 東京ヤクルト",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.mattz.sakura.ne.jp/versus/%E6%9D%B1%E5%8C%97%E6%A5%BD%E5%A4%A9/%E8%AA%AD%20%E5%A3%B2/2022",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mattz.sakura.ne.jp",
+    "/versus/%E6%9D%B1%E5%8C%97%E6%A5%BD%E5%A4%A9/%E8%AA%AD%20%E5%A3%B2/2022",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "『キハダ開幕から８試合連続セーブの日本記録で増居にプロ入り初勝利をプレゼント』",
+   "content": "神宮球場 読 売 ０００ １００ ０００ １ 東京ヤクルト ０００ ３００ ００Ⅹ ３ プロ入り初先発の増居が五回１失点の好投を見せた。 結果、恐らくは池山監督の想い描いていた通りの継投策を取る事が出来た。 最後はキハダが制球に苦しみながらも開幕からの８試合連続セーブの日本記録を達成。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://ameblo.jp/with1103tsubame/entry-12963529743.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ameblo.jp",
+    "/with1103tsubame/entry-12963529743.html",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

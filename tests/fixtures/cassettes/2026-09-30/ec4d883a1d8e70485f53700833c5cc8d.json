@@ -1,0 +1,562 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "西武 スタメン 9月29日",
+ "recorded_at": "2026-09-30T14:40:50.205014+00:00",
+ "results": [
+  {
+   "url": "https://tt.tanaka.jp/qa/faq.html?key=%E8%B3%BC%E5%85%A5%E6%8E%A7%E3%81%88+%E5%86%8D%E7%99%BA%E8%A1%8C&pagenum=1&search_mode=nature",
+   "title": "購入控え 再発行 | よくあるご質問 | 田中貴金属 総合口座",
+   "content": "「地金・コイン購入」をするにはどうしたらいいですか？ 現在、積立購入を休止していますが、途中で積立を再開した場合は、口 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "tt.tanaka.jp",
+    "/qa/faq.html",
+    "",
+    "key=%E8%B3%BC%E5%85%A5%E6%8E%A7%E3%81%88+%E5%86%8D%E7%99%BA%E8%A1%8C&pagenum=1&search_mode=nature",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "【試合実況】西武スタメン 先発:平良海馬（2026.9.29）",
+   "content": "1 day ago · 🔥 Kindle本まとめ買い｜最大12％ポイント還元・10/9まで 栗山巧「獅子貫徹」9月26日発売！ 野球太郎No.060｜2026ドラフト直前大特集号 9月29日発売！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://lions-matome.com/archives/jikkyo20260929.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "lions-matome.com",
+    "/archives/jikkyo20260929.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://tt.tanaka.jp/qa/faq.html?key=%E8%B3%BC%E5%85%A5%E6%8E%A7%E3%81%88+%E5%86%8D%E7%99%BA%E8%A1%8C&pagenum=0&search_mode=nature",
+   "title": "購入控え 再発行 | よくあるご質問 | 田中貴金属 総合口座",
+   "content": "「田中貴金属 総合口座」よくあるご質問について。 購入控え 再発行.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "tt.tanaka.jp",
+    "/qa/faq.html",
+    "",
+    "key=%E8%B3%BC%E5%85%A5%E6%8E%A7%E3%81%88+%E5%86%8D%E7%99%BA%E8%A1%8C&pagenum=0&search_mode=nature",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "埼玉西武ライオンズのスタメン一覧（打順） - プロ野球データFreak",
+   "content": "プロ野球のデータが満載！ チーム・選手の成績やセイバーメトリクスに使われる指標、他のサイトでは見られないユニークなデータを掲載しています 埼玉西武ライオンズ スタメン一覧（打順） 打順 | ポジション",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://baseball-data.com/lineup/l.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "baseball-data.com",
+    "/lineup/l.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://gold.tanaka.co.jp/./index.php",
+   "title": "田中貴金属 資産用公式サイト - TANAKA",
+   "content": "最新の貴金属価格情報や地金・コイン・純金積立など田中貴金属の商品・サービスをご案内します。",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "gold.tanaka.co.jp",
+    "/./index.php",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "埼玉西武ライオンズ 2-1 オリックス・バファローズ｜2026年9月29日 試...",
+   "content": "1 day ago · 2026年9月29日のプロ野球 埼玉西武ライオンズ 対 オリックス・バファローズ の試合結果。最終スコア2-1、イニングスコア・本塁打・試合時間・観客数を掲載。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://battingleadoff.com/ja/results/2026-09-29-orix-seibu/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "battingleadoff.com",
+    "/ja/results/2026-09-29-orix-seibu/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://gold.tanaka.co.jp/index.php",
+   "title": "TANAKA - 田中貴金属 資産用公式サイト",
+   "content": "最新の貴金属価格情報や地金・コイン・純金積立など田中貴金属の商品・サービスをご案内します。",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "gold.tanaka.co.jp",
+    "/index.php",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "埼玉西武ライオンズ",
+   "content": "プロ野球・埼玉西武ライオンズオフィシャルサイトです。 試合や選手はもちろん、チケットやイベント、ファンクラブに至るまで球団オフィシャルならではの公式情報をファンのみなさまに提供します。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.seibulions.jp/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.seibulions.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://kids.yahoo.co.jp/search?p=%E7%94%B0%E4%B8%AD%E8%B2%B4%E9%87%91%E5%B1%9E+%E8%B3%BC%E5%85%A5%E6%8E%A7%E3%81%88+%E5%86%8D%E7%99%BA%E8%A1%8C",
+   "title": "田中貴金属 購入控え 再発行の検索結果 - Yahoo!きっず検索",
+   "content": "田中貴金属 工業株式会社｜店頭での本人確認について 田中貴金属 直営店および 田中貴金属 特約店では、すべてのお取引において …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "kids.yahoo.co.jp",
+    "/search",
+    "",
+    "p=%E7%94%B0%E4%B8%AD%E8%B2%B4%E9%87%91%E5%B1%9E+%E8%B3%BC%E5%85%A5%E6%8E%A7%E3%81%88+%E5%86%8D%E7%99%BA%E8%A1%8C",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "2026年9月29日 埼玉西武ライオンズvs.オリックス・バファローズ - プ...",
+   "content": "1 day ago · 3:58 9月29日 埼玉西武ライオンズ 対 オリックス・バファローズ ハイライト パーソル パ・リーグTV 6:57 ライオンズ・平良海馬投手・長谷川信哉選手ヒーローインタビュー 9月29日 埼玉西武ライオンズ 対 オリックス・バファローズ パーソル パ・リーグTV",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/game/2021039471/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/game/2021039471/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://nanboya.com/gold-kaitori/post/lostgold-purchase-certificate/",
+   "title": "金購入証明書なしでも売れる？【2026年最新版】インゴット売却 ...",
+   "content": "2026年8月12日 · 証明書を紛失している場合、取得価額を証明しづらくなり、税務上の計算で不利になる可能性があります。 購入 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "nanboya.com",
+    "/gold-kaitori/post/lostgold-purchase-certificate/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "西武 vs オリックス 2026年9月29日のプロ野球速報 | マイナビニュース",
+   "content": "1 day ago · 西武 vs オリックス 2026年9月29日のプロ野球速報 掲載日 2026/09/29 17:30 URLをコピー 「手動で更新」を押すと最新の試合速報が表示されます 手動で更新",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://news.mynavi.jp/article/20260929-4883873/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "news.mynavi.jp",
+    "/article/20260929-4883873/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://nakaoka-inc.com/staffblog/gold-buy-receipt",
+   "title": "金購入時の計算書が無い場合、領収書は代替資料となるのか ...",
+   "content": "2025年10月10日 · 発行しておりません。 また、田中貴金属直営店や 特約店が発行している計算書は 領収書を発行しなくても同書 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "nakaoka-inc.com",
+    "/staffblog/gold-buy-receipt",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "スコアボード | 埼玉西武ライオンズ",
+   "content": "埼玉西武ライオンズ | プロ野球・埼玉西武ライオンズオフィシャルサイトです。 試合や選手はもちろん、チケットやイベント、ファンクラブに至るまで球団オフィシャルならではの公式情報をファンのみなさまに提供します。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.seibulions.jp/gamelive/result/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.seibulions.jp",
+    "/gamelive/result/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.tanaka.co.jp/",
+   "title": "TANAKA - 田中貴金属 コーポレートサイト",
+   "content": "田中貴金属は、サーキュラーエコノミーの実現に取り組んでいます。",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.tanaka.co.jp",
+    "/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.tanaka.co.jp/support/req/",
+   "title": "お問い合わせ | 田中貴金属 - TANAKA",
+   "content": "田中貴金属へのお問い合せに対する対応窓口をご案内します。",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.tanaka.co.jp",
+    "/support/req/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.kaitori-daikichi.jp/column/gold-platinum/post-5049247/",
+   "title": "金の購入証明書なしでも売却できる？ 紛失時の対応や必要書類 ...",
+   "content": "2025年5月1日 · 金を売却したいのに購入証明書をなくしてしまった、そんなときでも取引は可能なのでしょうか。 不安を抱える方 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.kaitori-daikichi.jp",
+    "/column/gold-platinum/post-5049247/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.sofascore.com/football/match/ganzhou-ruishi-fc-beijing-institute-of-technology/HFqsbmee",
+ "query": "",
+ "recorded_at": "2026-10-02T06:03:48.574392+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

@@ -1,0 +1,85 @@
+# 🔴🔴 **측정 명세** — v5-A §6 표를 **그대로** 든다(코드에 박지 않는다)
+#
+# ══════════════════════════════════════════════════════════════════
+# 왜 yaml 인가
+# ══════════════════════════════════════════════════════════════════
+#
+# v5-A §6 이 일곱 지표와 **좋아지는 방향**을 적었다. 🔴 방향을 파이썬에 박으면
+# 지시문이 바뀔 때 **사본**이 된다(CLAUDE.md #1). 그래서 표가 원본이고
+# `metrics/compare.py` 가 읽는다.
+#
+# ⚠️ `direction` 셋의 뜻:
+#     down   낮을수록 좋다
+#     up     높을수록 좋다
+#     watch  🔴 **방향이 없다** — 너무 줄면 경고다(마켓이 사라지면 쓸모가 없다)
+
+metrics:
+  required_missing_rate:
+    direction: down
+    means: >-
+      필수형 누락률 — §6-2 가 요구한 유형(`scenario_required.yaml`)이
+      시나리오 세트에 **안 들어간** 비율.
+    unit: ratio
+
+  outcome_hit_rate:
+    direction: up
+    means: >-
+      🔴 **결과 갈래 포함률** — 실제 스코어를 만든 갈래가 세트에 있었나.
+      ⚠️ *"맞혔나"가 아니다* — 세트가 그 결과를 **그렸나**다(정답은 없다).
+    unit: ratio
+
+  false_confidence:
+    direction: down
+    means: >-
+      거짓 확신 수 — `verdict` 가 이름(`명백`·`유력`)인데 `hit = false` 인 수.
+      🔴 **단계 4(반증)를 켜는 유일한 기준**이다(v5-A §6).
+    unit: count
+
+  wrong_repro:
+    direction: down
+    means: >-
+      오답 재현 수 — `test_v5A_5_golden_repro.py` 가 빨간 경기 수.
+      🔴 **0 이 목표다**(v5-A §5: 통과 못 하면 켜지 않는다).
+    unit: count
+
+  graded_markets:
+    direction: watch
+    means: >-
+      등급 마켓 수 — 카드가 등급을 매긴 마켓. ⚠️ **너무 줄면 경고**다 —
+      반증이 다 깎아 내면 "안전한 빈 카드"가 된다(기준선의 70% 아래 금지).
+    unit: count
+    warn_below_ratio: 0.70
+
+  usd_per_match:
+    direction: down
+    means: >-
+      경기당 비용 — Solar + DeepSeek USD. 🔴 상한은 §2 예산이 든다
+      (`config/llm.yaml` `budget.per_day_usd`) — 여기 수를 **베끼지 않는다**.
+    unit: usd
+
+  drop_rate:
+    direction: down
+    means: >-
+      폐기율 — M41(형식·범위·금지 필드) 로 버려진 제안 비율.
+      ⚠️ **20% 넘으면 프롬프트를 재조정**한다(모델이 규격을 못 읽는 것이다).
+    unit: ratio
+    warn_above: 0.20
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 켜는 기준 — v5-A §6 마지막 문단
+# ══════════════════════════════════════════════════════════════════
+#
+# > **결과 갈래 포함률이 오르고**, **오답 재현 수가 줄거나 같고**, **등급 마켓
+# > 수가 기준선의 70% 이상**이면 단계 3 을 운영에 켠다. 단계 4 는 **거짓 확신
+# > 수가 줄 때만** 켠다.
+#
+# ⚠️ *"감으로 켜지 않는다"* — 그래서 이 셋이 **수로** 적혀 있다.
+# 🔴 그래도 **켜는 것은 사용자다**(지시 2026-09-30). 이 표가 답하는 것은
+#    *"켤 수 있나"* 이고, *"켜라"* 는 아니다.
+gates:
+  stage3:
+    outcome_hit_rate: up
+    wrong_repro: same_or_down
+    graded_markets_min_ratio: 0.70
+  stage4:
+    false_confidence: down

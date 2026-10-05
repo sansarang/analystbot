@@ -1,0 +1,943 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "China manager said 2日",
+ "recorded_at": "2026-10-02T05:47:42.629565+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Coronavirus Disease 2019 (COVID-19) | Covid | CDC",
+   "content": "2025.12.30.Find links to guidance and information on all topics related to COVID-19, including the COVID-19 vac2025.12.30.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.cdc.gov%2Fcovid%2Fmedia%2Fimages%2F2025%2F01%2Folder-friends-playing-cards-1200-675.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.cdc.gov/covid/index.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.cdc.gov",
+    "/covid/index.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Blogs - NASA",
+   "content": "SpaceX Crew-13 Approaching Station Aboard Dragon ; NASA’s SpaceX Crew-13 Reaches Orbit, News Conference at 1:10 p.m. EDT ; Liftoff! NASA’s SpaceX Crew-13 Begins Journey to International Space Station",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.nasa.gov%2Fwp-content%2Fuploads%2F2026%2F10%2F55562034352-6b0ee56e9f-o.jpg%3Fw%3D900&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fwww.nasa.gov%2Fwp-content%2Fuploads%2F2026%2F10%2Fcrew-13-launch-1.png%3Fw%3D900&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fwww.nasa.gov%2Fwp-content%2Fuploads%2F2026%2F10%2Fscreenshot-2026-10-01-10-40-04.png%3Fw%3D900&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fwww.nasa.gov%2Fwp-content%2Fuploads%2F2026%2F10%2Fscreenshot-2026-10-01-10-39-04.png%3Fw%3D900&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fwww.nasa.gov%2Fwp-content%2Fuploads%2F2026%2F10%2Fscreenshot-2026-10-01-08-06-03.png%3Fw%3D900&type=f250_208",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.nasa.gov/blogs/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nasa.gov",
+    "/blogs/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China’s 10-year bond yield falls to 13-month low",
+   "content": "2026.08.18.Yields on China’s 10-year government bonds slipped 0.01 percentage point on Tuesday to 1.67% © Bloomberg2026.08.18.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimages.ft.com%2Fv3%2Fimage%2Fraw%2Fhttps%253A%252F%252Fd1e00ek4ebabms.cloudfront.net%252Fproduction%252F0f7e515a-dabf-4297-b815-abfc90637e7d.jpg%3Fsource%3Dnext-article%26fit%3Dscale-down%26quality%3Dhighest%26width%3D700%26dpr%3D1&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.ft.com/content/c3223b7c-6683-42df-9e60-9dbd2dbdfe07?syn-25a6b1a6=1",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ft.com",
+    "/content/c3223b7c-6683-42df-9e60-9dbd2dbdfe07",
+    "",
+    "syn-25a6b1a6=1",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Is China Stealing Jobs? It May Be Losing Them, Instead",
+   "content": "2016.07.23.A Foxconn employee in China in 2012. Foxconn, the Taiwanese manufacturer best known for making Apple iPhones in Chinese factories, is planning to build as many as 12 new assembly plants in India.2016.07.23.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fstatic01.nyt.com%2Fimages%2F2016%2F07%2F22%2Fbusiness%2F22CHINAJOBsub%2F22CHINAJOBsub-facebookJumbo.jpg%3Fyear%3D2016%26h%3D550%26w%3D1050%26s%3Dfbf4e32833d3aacbb6fa3e546ef3995f722f14951d35ee3d3e4bd3b9b8a3c7ef%26k%3DZQJBKqZ0VN&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.nytimes.com/2016/07/23/business/international/china-jobs-donald-trump.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/2016/07/23/business/international/china-jobs-donald-trump.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China no longer viable as world’s factory, says Kyocera",
+   "content": "2023.02.21.It also transferred the production of in-vehicle cameras for the US from China to Thailand. Tanimoto said it would now be nearly impossible to produce hardware in China without access to the chips technology affected by the tightened regulations, although the country may still have a competitive edge in software and artificial...2023.02.21.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimages.ft.com%2Fv3%2Fimage%2Fraw%2Fhttps%253A%252F%252Fd1e00ek4ebabms.cloudfront.net%252Fproduction%252F8dbb1586-7f5c-4eda-9461-53d779e1c8c2.jpg%3Fsource%3Dnext-article%26fit%3Dscale-down%26quality%3Dhighest%26width%3D700%26dpr%3D1&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.ft.com/content/e21b6f97-3bbb-4223-9916-9f4ac5024953",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ft.com",
+    "/content/e21b6f97-3bbb-4223-9916-9f4ac5024953",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China fund managers stick with AI, chips in August despite July sell-off, survey finds",
+   "content": "2026.08.19.China fund managers stick with AI, chips in August despite July sell-off, survey finds Investor interest in defensive shares also surges across Asia as more try to hedge against the downside risks of AI investments2026.08.19.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.i-scmp.com%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fog_image_scmp_generic%2Fpublic%2Fd8%2Fimages%2Fcanvas%2F2026%2F08%2F19%2F98c06554-80fb-4fa2-aaf0-0945e44c9773_7176b2a6.jpg%3Fitok%3DeO_jfU3M%26v%3D1787127234&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.scmp.com/business/markets/article/3364550/china-fund-managers-stick-ai-chips-august-despite-july-sell-survey-finds",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.scmp.com",
+    "/business/markets/article/3364550/china-fund-managers-stick-ai-chips-august-despite-july-sell-survey-finds",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lee says Korea should balance ties with China and Japan, echoes Confucius",
+   "content": "2026.01.07./Courtesy of Yonhap News President Lee Jae-myung said on the 7th, \"Our government considers relations with Japan to be as important as those with China.\" At 1 p.m. (Korea time) that day, the president said this at a press briefing with the traveling press corps at the Shanghai Press Center in China. Regarding Chinese President...2026.01.07.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fbiz.chosun.com%2Fresizer%2Fv2%2FDHMTKRKGTBPBBAPVP2CZXJWNIE.jpg%3Fauth%3Dbfeefde85517dfff908ed30c932dff9dcc22e14385a46fb98c2e2128357f6cdf%26width%3D1200%26height%3D630%26smart%3Dtrue&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://biz.chosun.com/en/en-policy/2026/01/07/2RRQUTE3QNCAFKQTBQXSAOUK5E/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "biz.chosun.com",
+    "/en/en-policy/2026/01/07/2RRQUTE3QNCAFKQTBQXSAOUK5E/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Yum China rolls out AI agent, to help, not replace store managers",
+   "content": "2025.06.22.Yum China rolls out AI agent, to help, not replace store managers Aiming to help frontline managers with tasks such as scheduling and inventory management, system aligns with industry’s wider AI push2025.06.22.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.i-scmp.com%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fog_image_scmp_generic%2Fpublic%2Fd8%2Fimages%2Fcanvas%2F2025%2F06%2F22%2F3af4e36c-3f61-4378-981f-1758da35357a_33687cd5.jpg%3Fitok%3Dx-ZXfdX5%26v%3D1750575970&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.scmp.com/tech/tech-trends/article/3315379/yum-china-rolls-out-ai-agent-help-not-replace-store-managers",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.scmp.com",
+    "/tech/tech-trends/article/3315379/yum-china-rolls-out-ai-agent-help-not-replace-store-managers",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Nvidia says China’s BYD and Geely will use its robotaxi platform",
+   "content": "2026.03.17./ The chipmaker has been at the center of simmering trade tensions between the US and China.2026.03.17.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fplatform.theverge.com%2Fwp-content%2Fuploads%2Fsites%2F2%2F2026%2F03%2FDRIVE-Hyperion-L4-Image.jpg%3Fquality%3D90%26strip%3Dall%26crop%3D0%252C0.72374499538035%252C100%252C98.552510009239%26w%3D1200&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.theverge.com/tech/895301/nvidia-robotaxi-byd-geely-hyperion-lyft-halos",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.theverge.com",
+    "/tech/895301/nvidia-robotaxi-byd-geely-hyperion-lyft-halos",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China - Wikipedia",
+   "content": "China, [f] officially the People's Republic of China (PRC), [g] is a country in East Asia. It is divided into 33 province-level divisions, including two special administrative regions. [h] Beijing is the capital, while Shanghai is the most populous city by urban area. Its geography features the Central Plain, major rivers such as the Yangtze and Yellow River, deserts, subtropical and temperate ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/China",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/China",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "LastPass",
+   "content": "암호 관리자 프로그램, 1,200개 이상의 애플리케이션과 통합되는 SSO(Single Sign On) 및 적응형 MFA 솔루션 제공.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.lastpass.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.lastpass.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China | Events, People, Dates, Flag, Map, & Facts | Britannica",
+   "content": "7 hours ago · China is a country of East Asia. It is the largest of all Asian countries and has one of the largest populations of any country in the world. Occupying nearly the entire East Asian landmass, it covers approximately one-fourteenth of the land area of Earth. Learn more about China, including its history and culture.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.britannica.com/place/China",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/place/China",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Caixin Global - Latest Business and Financial News on China, U.S. Trade War and Negotiations, Breaking Ne....",
+   "content": "Caixin Global provides the latest China news headlines on politics, economy, business and finance with insight and in-depth analysis.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.caixinglobal.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.caixinglobal.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China News | Today's Breaking Stories | Reuters",
+   "content": "5 hours ago · Reuters.com is your online source for the latest China news stories and current events, ensuring our readers up to date with any breaking news developments",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.reuters.com/world/china/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.reuters.com",
+    "/world/china/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China Maps & Facts - World Atlas",
+   "content": "Feb 25, 2021 · Physical map of China showing major cities, terrain, national parks, rivers, and surrounding countries with international borders and outline maps. Key facts about China.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.worldatlas.com/maps/china",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.worldatlas.com",
+    "/maps/china",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China – Country Profile: Population, Area, Currency & Key Facts",
+   "content": "Oct 2, 2026 · Get complete China country profile covering total population, population rank in the world and in Asia, land and water area (km² & mi²), capital city Beijing, official language, national currency (CNY), live local date and time, sunrise and sunset times, GPS coordinates, dialing code, internet domain, ISO country codes, political status and nearest neighboring country. Up-to-date, reliable ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.geocountries.com/china",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.geocountries.com",
+    "/china",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China Breaking News & Headlines | South China Morning Post",
+   "content": "Latest China news, opinions and analysis, covering Xi Jinping, Beijing's relations with Taiwan and China's tensions with the US.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.scmp.com/news/china",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.scmp.com",
+    "/news/china",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "中國 - 维基百科，自由的百科全书",
+   "content": "康樂競技 吐鲁番发现的1400年纸牌，外觀與後世香港的「東莞牌」類似，圖片出自Joseph Needham所著《Science and Civilization in China: Volume 5, Part 1, Paper and Printing》，1986年台北敦煌書局出版 中國有不少傳統遊戲，可分為棋类、牌类、猜射等類型。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9C%8B",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "zh.wikipedia.org",
+    "/wiki/%E4%B8%AD%E5%9C%8B",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "National Health Commission of the PRC",
+   "content": "NHC vice-minister meets with vice-president of University of Hong Kong",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://en.nhc.gov.cn/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "en.nhc.gov.cn",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China - Wikiwand",
+   "content": "May 9, 2015 · China, officially the People's Republic of China (PRC), is a country in East Asia. It is divided into 33 province-level divisions, including two special administrative regions. Beijing is the capital, while Shanghai is the most populous city by urban area. Its geography features the Central Plain, major rivers such as the Yangtze and Yellow River, deserts, subtropical and temperate forests ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.wikiwand.com/en/China",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.wikiwand.com",
+    "/en/China",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "PMI, Purchasing Managers’ Index – Manufacturing, Services",
+   "content": "S&P Global PMI data are closely-watched market-moving economic indicators, covering more than 30 advanced and emerging economies worldwide",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.pmi.spglobal.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.pmi.spglobal.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China news - breaking news, video, headlines and opinion | CNN",
+   "content": "View the latest China news and videos, including politics, travel and business headlines.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.cnn.com/world/china",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.cnn.com",
+    "/world/china",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "The State Council of the People's Republic of China",
+   "content": "Get quick, easy access to all services, policies, news and information about the Chinese government and Chinese leaders",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://english.www.gov.cn/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "english.www.gov.cn",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "'폭풍전야' 美·中 끌어당기는 日…정상외교 스톱된 韓",
+   "content": "2025.01.20.President Donald Trump meets with China's President Xi Jinping at the start of their bilateral meeting at the G20 leaders summit in Osaka, Japan, June 29, 2019. REUTERS/Kevin Lamarque/File Photo 〈저작권자(c) 연합뉴스, 무단 전재-재배포, AI 학습 및 활용 금지〉 그간 한국 국내 정세와 관련해 아무런 언급을 않던 트럼프가 비공개로 한국 국내 정세를 의식한 뼈아픈 농담을 했다는 보도도 나왔다. 미국...2025.01.20.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fpds.joongang.co.kr%2Fnews%2Fcomponent%2Fhtmlphoto_mmdata%2F202501%2F20%2F27e16427-4552-4d44-8f14-f4d090d8dfa5.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.joongang.co.kr/article/25308792",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.joongang.co.kr",
+    "/article/25308792",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lee says respect one China, vows to elevate South Korea-China ties",
+   "content": "2026.01.02.\" On the Anmi-gyeongjung (security with the United States, economy with China) line, Lee said, \"The Republic of Korea's strategic autonomy is very important,\" adding, \"We must act in line with the national interest.\" President Lee Jae-myung delivers New Year's remarks at the 2026 New Year's reception at the Blue House State...2026.01.02.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fbiz.chosun.com%2Fresizer%2Fv2%2FMQ2DQMBUMYYTQOJUMVQTSZJXHE.jpg%3Fauth%3D44bda87961e16d5c1fda6c3a1b50429264d1e8e30efdfc2c8b18f9e391375e66%26width%3D1200%26height%3D630%26smart%3Dtrue&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://biz.chosun.com/en/en-policy/2026/01/02/CSGMGOJ32ZHM3LRNN4H3BZF2YU/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "biz.chosun.com",
+    "/en/en-policy/2026/01/02/CSGMGOJ32ZHM3LRNN4H3BZF2YU/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "china manager said 2日 1",
+  "china manager said 2日 left",
+  "china manager said 2日 3",
+  "china manager said 2日 time",
+  "china manager said 2日 today",
+  "china manager said 2日 5",
+  "china manager said 2日 yesterday",
+  "china manager said 2日 after war"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

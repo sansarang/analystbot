@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://fomelabo.com/en/worldcup/south-korea",
+ "query": "",
+ "recorded_at": "2026-10-02T05:29:52.479935+00:00",
+ "ok": false,
+ "status": 429,
+ "text": "",
+ "reason": "HTTP 429"
+}

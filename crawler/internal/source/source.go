@@ -39,6 +39,14 @@ func get(ctx context.Context, url, referer string) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 }
 
+// snapshotKey 는 더블헤더가 같은 카드여도 경기를 갈라 둔다.
+func snapshotKey(away, home, gameID string) string {
+	if gameID != "" {
+		return away + "@" + home + "#" + gameID
+	}
+	return away + "@" + home
+}
+
 var (
 	tagRe = regexp.MustCompile(`<[^>]+>`)
 	wsRe  = regexp.MustCompile(`\s+`)
@@ -159,14 +167,19 @@ func FetchKBO(ctx context.Context, date string) (diff.Snapshot, []time.Time, err
 		}
 		d := p.Result.PreviewData
 		// ⚠️ 라인업은 **홈·원정을 분리해서** 넣는다.
-		out[away+"@"+home] = map[string]string{
+		fields := map[string]string{
 			"home_pitcher": d.HomeStarter.PlayerInfo.Name,
 			"away_pitcher": d.AwayStarter.PlayerInfo.Name,
 			"lineup_home":  lineupText(d.HomeLineUp.Full),
 			"lineup_away":  lineupText(d.AwayLineUp.Full),
 			"stadium":      d.GameInfo.Stadium,
 			"status":       g.StatusInfo,
+			"game_id":      g.GameID,
 		}
+		if t, ok := parseNaverStart(g.GameDateTime, kst); ok {
+			fields["starts_at"] = t.Format(time.RFC3339)
+		}
+		out[snapshotKey(away, home, g.GameID)] = fields
 	}
 	return out, starts, nil
 }
@@ -251,11 +264,15 @@ func FetchNPB(ctx context.Context, date string) (diff.Snapshot, []time.Time, err
 		}
 		fields := map[string]string{
 			"home_pitcher": hp, "away_pitcher": ap, "starter_status": status,
+			"game_id": gid,
+		}
+		if t, ok := parseYahooClock(inner, date, kst); ok {
+			fields["starts_at"] = t.Format(time.RFC3339)
 		}
 		if lh, la := parseNPBLineups(string(page)); lh != "" && la != "" {
 			fields["lineup_home"], fields["lineup_away"] = lh, la
 		}
-		out[away+"@"+home] = fields
+		out[snapshotKey(away, home, gid)] = fields
 	}
 	return out, starts, nil
 }

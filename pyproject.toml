@@ -4,18 +4,28 @@ version = "0.1.0"
 description = "AnalystBot - sports analysis Telegram chatbot"
 requires-python = ">=3.12"
 dependencies = [
+    # 🔴 **코드가 실제로 import 하는 것만 있다.** 지워진 코드의 의존을 남기면
+    #    설치가 무거워지고, 무엇이 살아 있는지 알 수 없다.
+    #    실측 2026-09-27: `anthropic`·`pybaseball`·`soccerdata`·`scikit-learn`·
+    #    `socksio` 가 남아 있었고 그 코드는 전부 지워진 상태였다.
+    #    ⚠️ `socksio` 는 **SOCKS 프록시 전송**이다 — §14-12(우회 금지)가 막는
+    #       것을 설치만 해 두고 있었다.
     "fastapi>=0.115",
-    "uvicorn>=0.30",
+    "uvicorn>=0.30",        # app/main.py 를 띄운다
     "aiogram>=3.13",
     "httpx>=0.27",
-    "pydantic-settings>=2.5",
     "asyncpg>=0.29",
-    "redis>=5.0",
-    "apscheduler>=3.10",
-    "anthropic>=0.40",
-    "pybaseball>=2.2.7",
-    "soccerdata>=1.9.1",
-    "scikit-learn>=1.9.0",
+    "python-dotenv>=1.0",   # .env 를 읽는다 — 없으면 설정이 조용히 기본값이 된다
+    "pydantic>=2.9",
+    "pyyaml>=6.0",
+    # 🔴 CLDR 국가명(유니코드 컨소시엄 자료 내장) — 사용자 지시 2026-10-03:
+    #    국가대표 이름표는 손으로 만들지 말고 CLDR 에서 꺼낸다.
+    #    네트워크·robots·키가 전부 필요 없다. app/teamref.py 가 쓴다.
+    #    ⚠️ 이 블록 주석에 대괄호·따옴표를 쓰지 않는다 — 계약이 여는 줄부터
+    #       첫 닫는 대괄호까지를 목록으로 읽고, 따옴표 안을 이름으로 센다.
+    #       실측 2026-10-03: 주석 하나가 babel·trafilatura 를 선언에서 지웠다.
+    "babel>=2.14",
+    "trafilatura>=2.3.0",
 ]
 
 [dependency-groups]
@@ -23,6 +33,7 @@ dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "python-lsp-server>=1.15.0",
+    "ruff>=0.16.7",
 ]
 
 [tool.uv]
@@ -31,3 +42,50 @@ package = false
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+# ═══════════════ [PYC-1 2026-10-04] 🔴 바이트코드를 남기지 않는다
+#
+# 🔴 사용자 지시 2026-10-04: *"같은 함정에 두 번 빠졌으면 규율 한 줄로는 세
+#    번째를 못 막는다. 실행기에 `PYTHONDONTWRITEBYTECODE=1` 을 고정하라."*
+#
+# ⚠️ 두 번 다쳤다 — 코드를 되돌렸는데 **묵은 `.pyc`** 가 살아, 2026-10-02 에는
+#    `effect_of("느낌")` 가 `제거` 를 냈고 2026-10-04 에는 되돌린 돌연변이가
+#    빨간 채로 남아 **전역 오염으로 오진**했다(네 번 헛짚었다).
+# 🔴 두 자리에 박았다 — **`tests/conftest.py` 의 `_drop_bytecode()`** 다:
+#      ① `sys.dont_write_bytecode = True`          이 프로세스가 안 쓴다
+#      ② `os.environ["PYTHONDONTWRITEBYTECODE"]`   **자식 프로세스**가 안 쓴다
+#      ③ `__pycache__` 를 스위트 **시작 전에** 지운다
+#
+# ⚠️ 여기에 `env = [...]` 로 적으려 했으나 그것은 **`pytest-env` 플러그인**이
+#    필요하다(`Unknown config option: env`). 🔴 의존성을 하나 들이는 대신
+#    conftest 에서 같은 일을 한다 — 이 저장소는 `rank_bm25` 도 안 들였다.
+# 🔴 둘 다 계약이 검사한다(`tests/test_pyc_guard.py`).
+
+# ═══════════════ [LINT-1 2026-09-16] 린터
+#
+# 🔴 **버그 급만 막는다.** 스타일은 게이트가 아니다 — 스타일로 커밋을 막으면
+#    사람이 게이트를 통째로 끄게 된다.
+# 🔴 F811(중복 정의)이 이 단위를 만든 이유다. 2026-09-15, 같은 파일에 이미
+#    있는 `record_analysis` 를 뒤에 다시 정의해 **원장 저장 본체가 통째로
+#    죽을 뻔했다.** 스위트 4,395건이 그걸 못 잡았다 — 덮인 함수를 부르는
+#    테스트가 그 경로까지 안 갔기 때문이다. ruff 는 1초 만에 잡는다.
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = ["mock_data", ".venv", "crawler"]
+
+[tool.ruff.lint]
+#: 게이트가 보는 규칙. 전부 **실행 중에 터지는 것들**이다.
+#   F811 중복 정의 · F821 없는 이름 · F822 __all__ 의 없는 이름
+#   F823 선언 전 사용. (문법 오류는 ruff 0.16 에서 규칙이 아니라 **항상**
+#   검사한다 — E999 는 선택할 수 없다.)
+# ⚠️ F401(안 쓰는 import)·F841(안 쓰는 변수)은 **일부러 뺐다.** 착수 시점
+#    실측 97건·18건인데, 그걸 지금 고치면 수십 파일이 한 커밋에 섞인다.
+#    보고는 `ruff check --select F` 로 따로 낸다(LINT-1-c).
+select = ["F811", "F821", "F822", "F823"]
+
+[tool.ruff.lint.per-file-ignores]
+# 🔴 **숨기는 것이 아니라 표시해 두는 것이다.** 아래 둘은 착수 시점에
+#    이미 있던 F821 이고, 각각 LINT-1-b 로 등록했다. 새 F821 은 그대로 막힌다.
+"app/research/deep.py" = ["F821"]      # normalize_response 미정의 — 실제 결함
+"tests/test_kbo_usage.py" = ["F821"]   # `if False else` 죽은 가지

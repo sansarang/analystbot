@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.viagogo.de/Sport-Tickets/Baseball/Nippon-Professional-Baseball/Chiba-Lotte-Marines-Karten/E-161885546",
+ "query": "",
+ "recorded_at": "2026-10-02T08:18:15.693241+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

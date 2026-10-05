@@ -1,0 +1,695 @@
+"""§6 생존 계산 계약 — **수동 12단계 ⑪** (사용자 지시 2026-10-02 *"11부터 가라"*).
+
+🔴 **문턱·기준선·기호를 여기 적지 않는다.** `app/types.py`(NAME_AT·SMALL_AT)와
+   `config/scenario_rules.yaml` 이 원본이고 계약은 **읽어서 대조**한다.
+⚠️ 단계 7 자리이나 `tests/stage7/` 은 서명이 없어 수집되지 않는다 — 돌아가는 자리에 둔다.
+"""
+from __future__ import annotations
+
+import glob
+import importlib.util
+import json
+from pathlib import Path
+
+import pytest
+
+from app import classify, league, rules, scenarios, survive
+from app.types import (BTTS_SIDES, NAME_AT, SMALL_AT, TOTAL_SIDES, Market,
+                       MarketSurvival,
+                       Scenario)
+
+ROOT = Path(__file__).resolve().parents[2]
+HOME, AWAY = "Sacramento Republic FC", "Las Vegas Lights FC"
+
+
+class _G:
+    """경기 — `classify.Game` 의 최소 대역."""
+
+    def __init__(self, sport="soccer", league="USL Championship"):
+        self.home, self.away, self.sport = HOME, AWAY, sport
+        # 🔴 §5-a C 가 **리그 규정**(무승부 가능 여부)을 읽는다 — 대역도 들고 있어야 한다
+        self.league = league
+
+
+class _D:
+    """시나리오 초안 대역. 🔴 무게 둘을 **따로** 들고 있어야 한다."""
+
+    def __init__(self, sid, scores, strength=1.0, probability=None):
+        self.id, self.scores = sid, scores
+        self.strength, self.probability = strength, probability
+
+
+def _golden():
+    """정답지 경기를 카세트로 끝까지 돌린다(§5 → §6)."""
+    spec = importlib.util.spec_from_file_location(
+        "t_sc", ROOT / "tests/stage4/test_scenarios.py")
+    t = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(t)
+    facts, st = t._collect()
+    if st is None:
+        pytest.skip("순위표 카세트가 없다")
+    game = t._game()
+    sc = scenarios.generate(classify.classify_facts(facts, game), game,
+                            standings=st)
+    hr = scenarios._venue_row(st, "home", game.home)
+    ar = scenarios._venue_row(st, "away", game.away)
+    exp = league.expected_goals(hr, ar, st["venue_averages"])
+    probs = league.score_probabilities(exp["home"], exp["away"])
+    return sc, game, st, probs
+
+
+# ══════════════════════════════════════════════════════════════════
+# §6-a 대입 — ○ / △ / ✗
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_집합이_전부_통과면_동그라미_섞이면_삼각():
+    """🔴 §6-a — *"전부 통과면 ○, 전부 실패면 ✗, 섞이면 △(통과 비율만큼)"*."""
+    m = Market(market_type="home")
+    assert survive.apply(m, ["2-1", "1-0"], home=HOME, away=AWAY)[0] == survive.PASS
+    assert survive.apply(m, ["0-1", "1-2"], home=HOME, away=AWAY)[0] == survive.FAIL
+    sym, ratio, _ = survive.apply(m, ["2-1", "0-1"], home=HOME, away=AWAY)
+    assert (sym, ratio) == (survive.PART, 0.5)
+
+
+def test_무패는_승_더하기_무승부다():
+    """§6-a — *"무패(dc)는 승+무"*."""
+    assert survive.passes(Market(market_type="home_dc"), "1-1")
+    assert survive.passes(Market(market_type="home_dc"), "2-1")
+    assert not survive.passes(Market(market_type="home_dc"), "0-1")
+
+
+def test_핸디는_더하는_꼴로_센다():
+    """🔴 **내가 전에 틀린 자리다.** `a - h < 2` 로 적었더니 `+1.5` 가 `2-0` 을 통과시켰다.
+
+    기준선은 그 팀 점수에 **더하는** 값이다: `(내 점수 + line) > 상대 점수`.
+    """
+    plus = Market(market_type="handicap", team=AWAY, line=1.5)
+    assert survive.passes(plus, "1-0", home=HOME, away=AWAY) is True   # 1골 차 패
+    assert survive.passes(plus, "2-0", home=HOME, away=AWAY) is False  # 2골 차 패
+    minus = Market(market_type="handicap", team=HOME, line=-1.5)
+    assert survive.passes(minus, "2-0", home=HOME, away=AWAY) is True
+    assert survive.passes(minus, "1-0", home=HOME, away=AWAY) is False
+    # 🔴 ±0.5 는 승/무패와 같다(§6-a)
+    half = Market(market_type="handicap", team=HOME, line=-0.5)
+    for sc in ("1-0", "2-1", "1-1", "0-1"):
+        assert survive.passes(half, sc, home=HOME, away=AWAY) == \
+            survive.passes(Market(market_type="home"), sc)
+    # 🔴 **어느 팀인지 모르면 `None`** — 0 으로 때우지 않는다
+    assert survive.passes(Market(market_type="handicap", team="없는팀", line=1.5),
+                          "1-0", home=HOME, away=AWAY) is None
+
+
+def test_총점은_방향이_있어야_하고_밀어내기는_실패다():
+    """🔴 §1 *"total(over/under, 기준선)"*. 방향이 없으면 **스키마가 막는다**."""
+    for side in TOTAL_SIDES:
+        Market(market_type="total", team=side, line=2.5)
+    over = Market(market_type="total", team="over", line=2.5)
+    under = Market(market_type="total", team="under", line=2.5)
+    assert survive.passes(over, "2-1") is True and survive.passes(over, "1-0") is False
+    assert survive.passes(under, "1-0") is True and survive.passes(under, "2-1") is False
+    # ⚠️ 정수 기준선의 밀어내기는 **이기는 것이 아니다** → ✗
+    push = Market(market_type="total", team="over", line=3.0)
+    assert survive.passes(push, "2-1") is False
+
+
+def test_야구_동점은_승패_마켓에서_보수적으로_실패다():
+    """§6-a — *"연장 규정 있는 리그의 n-n 은 승패 마켓에서 ✗(북 규정 미확인 시)"*."""
+    for mt in survive.WIN_MARKETS:
+        assert survive.passes(Market(market_type=mt), "3-3",
+                              sport="baseball") is False
+    # 🔴 축구는 그대로 — 무승부가 있는 종목이다
+    assert survive.passes(Market(market_type="draw"), "3-3", sport="soccer") is True
+
+
+def test_못_읽은_스코어는_분모에서_뺀다():
+    """🔴 **못 읽은 것과 틀린 것은 다르다.** `False` 로 세면 생존이 거짓으로 내려간다."""
+    m = Market(market_type="home")
+    assert survive.passes(m, "엉망") is None
+    sym, ratio, bad = survive.apply(m, ["2-1", "엉망"], home=HOME, away=AWAY)
+    assert (sym, ratio, bad) == (survive.PASS, 1.0, 1)
+    # 통째로 못 읽으면 기호가 `?` 다 — △ 0.0 으로 **보이지 않게** 한다
+    assert survive.apply(m, ["엉망"], home=HOME, away=AWAY)[0] == "?"
+
+
+# ══════════════════════════════════════════════════════════════════
+# §6-b 등급 — 🔴 수가 정한다
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_등급은_수가_정한다():
+    """🔴 §6-b — 고르는 사람도 LLM 도 없다. 문턱은 `types` 가 원본이다."""
+    assert survive._verdict(NAME_AT) == "name"
+    assert survive._verdict(SMALL_AT) == "small"
+    assert survive._verdict(round(SMALL_AT - 0.01, 4)) == "none"
+    assert survive._verdict(NAME_AT - 0.0001) == "small"
+    # 🔴 스키마가 어긋난 짝을 거부한다(두 겹)
+    with pytest.raises(ValueError):
+        MarketSurvival(market_type="home", survival=0.5, verdict="name")
+
+
+def test_생존을_확률_대신_변수_합으로_센다():
+    """🔴🔴 **뒤집힌 계약** — 사용자 결정 2026-10-04 (②).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 종전 계약 — *"무게는 확률이 1순위다"*
+    ══════════════════════════════════════════════════════════════════
+
+    봇이 스스로 카드에 적은 줄:
+
+    > 🔴🔴 변수 3개가 **근거는 바꾸는데 등급은 하나도 안 바꾼다** — 무게가 확률
+    > (포아송 격자)이고 그 격자는 **순위표에서 나와 변수와 무관**하기 때문이다.
+    > v4 §0 은 '변수 개수·정확도 = 시나리오 품질' 을 전제하는데 지금 구조에서는
+    > 변수가 생존에 닿지 않는다 — 사용자 결정이 필요하다
+
+    사용자 답:
+
+    > 그 지적이 맞고, 이건 **결정이 아니라 v4대로 돌리는 문제**다. v4 §5-a 는
+    > **시나리오 strength = 변수 weight 합**이라고 적혀 있다. 포아송 격자는
+    > **v4 에 없는 봇의 추가물**이다 … 변수 → strength, **이게 생존율을 정한다.**
+    > 격자 → 시나리오 안의 **스코어 집합을 고르는 도구로만.**
+    > **지금은 변수가 장식이다.**
+
+    🔴 격자는 **지우지 않았다** — `p_market`(실제로 맞을 확률)·스코어 고르기·
+       커버리지 경고로 계속 쓴다. 생존의 분자·분모만 아니다.
+    """
+    ds = [_D("A", ["2-1"], 9.0, 0.2), _D("B", ["0-1"], 1.0, 0.8)]
+    w, mode = survive.weights(ds)
+    # 🔴 확률을 **줬는데도** 변수 합으로 센다
+    assert mode.startswith("strength"), mode
+    assert "§5-a" in mode, mode
+    assert w == {"A": 9.0, "B": 1.0}, w
+    r = survive.run(ds, _G(), board=[Market(market_type="home")])
+    # 🔴 확률로 셌으면 0.2 다. 변수 합으로 세면 **0.9** 다
+    assert r.rows[0]["survival"] == 0.9, r.rows[0]
+    # 🔴 확률을 **아예 안 줘도** 같다 — 되돌림 자리가 하나다
+    ds[1].probability = None
+    w2, mode2 = survive.weights(ds)
+    assert mode2 == mode and w2 == w, (mode2, w2)
+    # ⚠️ 선언이 그 사실을 적어 두나 — **되돌린 것을 숨기지 않는다**
+    cfg = rules.scenario_weight()
+    assert "변수 weight 합" in cfg["weight"], cfg
+    assert "자료 부족" in cfg["fallback"], cfg
+    assert cfg.get("was_until_2026_10_04"), cfg
+    assert cfg.get("grid_role"), cfg
+
+
+# ══════════════════════════════════════════════════════════════════
+# §6-c 보드
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_보드가_있으면_보드_줄만_센다():
+    """🔴 §6-c-1 · §7 R2 — 09-29 태국–베트남에서 보드에 없는 언더 4.5 를 적었다."""
+    ds = [_D("A", ["2-1"], 1.0, 0.5), _D("B", ["0-1"], 1.0, 0.5)]
+    board = [Market(market_type="home")]
+    r = survive.run(ds, _G(), board=board)
+    assert [x["market"].market_type for x in r.rows] == ["home"]
+    assert r.to_survival(1).off_board(board) == []
+
+
+def test_보드가_없으면_우리_기준선이고_그렇게_적는다():
+    """🔴 §6-c-3 — 총점 기준선은 **리그 평균**이다.
+
+    ⚠️ yaml 이 *"시나리오 스코어 최대합 + 0.5"* 를 **금지**로 못 박았다 — 그러면
+       언더가 늘 1.00 이 되어 자기 자신을 증명한다(순환).
+    🔴 핸디 기준선은 **0.5 · 1.5 둘** — 다른 기준선을 지어내지 않는다.
+
+    ⚠️ 그리고 **줄 하나 = 마켓 하나**다(사용자 결정 2026-10-03 보기 A). 마이너스는
+       시나리오 무게가 큰 쪽이 받는다 — 무게를 안 주면 **핸디 줄이 아예 없다**.
+    """
+    cfg = rules.total_baseline_cfg()
+    assert "최대합" in str(cfg["forbidden"])
+    ds = [_D("A", ["2-1"], 1.0, 0.5), _D("B", ["0-1"], 1.0, 0.5)]
+    # 🔴 무게 없이 부르면 **핸디를 만들지 않는다** — 동전 던지기로 정하지 않는다
+    bare_h, bare_n = survive.our_board(_G(), {"total_baseline": 2.5})
+    assert not [m for m in bare_h if m.market_type == "handicap"]
+    assert any("못 쟀다" in n for n in bare_n), bare_n
+    got, notes = survive.our_board(
+        _G(), {"total_baseline": 2.5}, drafts=ds, w={"A": 1.0, "B": 0.4})
+    lines = {abs(m.line) for m in got if m.market_type == "handicap"}
+    assert lines == {0.5, 1.5}, lines
+    # 🔴 기준선마다 **두 쪽**이고, 마이너스는 무게가 큰 쪽(= 홈, A 가 2-1)이다
+    hs = [m for m in got if m.market_type == "handicap"]
+    assert len(hs) == 4, hs
+    minus = {m.team for m in hs if m.line < 0}
+    assert minus == {HOME}, minus
+    assert {m.team for m in hs if m.line > 0} == {AWAY}
+    assert any("순환이다" in n for n in notes), "순환임을 카드가 밝혀야 한다"
+    tot = [m for m in got if m.market_type == "total"]
+    assert {m.team for m in tot} == set(TOTAL_SIDES)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **기준선이 여러 줄이다**(사용자 지적 2026-10-03)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 사용자는 **언더 2.5 와 언더 3.5 를 둘 다** 대입했다.
+    #
+    #  종전 계약은 `all(m.line == 2.5)` — **한 줄만** 못 박고 있었다. 보드는 그렇게
+    #  생기지 않았다(북메이커는 사다리로 여러 줄을 낸다).
+    #  🔴 몇 줄인지는 **yaml 이 정한다** — 계약이 그 선언을 읽어 대조한다(사본 금지).
+    want = set(rules.total_lines(2.5))
+    assert {m.line for m in tot} == want, ({m.line for m in tot}, want)
+    assert 2.5 in want and len(want) > 1, want
+    # 🔴 줄마다 **두 쪽**이다(오버·언더)
+    assert len(tot) == len(want) * 2, len(tot)
+    # 🔴 **양팀득점** 마켓이 있다 — 기준선이 없으므로 늘 낼 수 있다
+    btts = [m for m in got if m.market_type == "btts"]
+    assert {m.team for m in btts} == set(BTTS_SIDES), btts
+    assert any("보드 없음" in n for n in notes), notes
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **분석 과정 9단계** — *"보드 줄만, 없으면 일반 마켓"*(지시 2026-10-03)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전 계약은 *"리그 평균을 못 구하면 총점 마켓을 **만들지 않는다**"* 였다.
+    #     실측 2026-10-03(엘살바도르 vs 자메이카 · 네이션스리그): 순위표 어댑터가
+    #     없어 총점 줄이 **0개**였는데, 사용자 분석의 결론은 **통째로 언더**였다.
+    #  🔴 그래서 관례 줄(`common_lines`)로 간다. 그 줄도 없는 종목에서만 0개다.
+    bare, notes2 = survive.our_board(_G(), {})
+    common = rules.common_total_lines("soccer")
+    assert common, "축구 일반 마켓 줄이 선언에 없다"
+    assert {m.line for m in bare if m.market_type == "total"} == set(common)
+    # 🔴 **관례임을 적는다** — 리그 평균 줄과 뜻이 다르다
+    assert any("일반 마켓 줄" in n and "관례" in n for n in notes2), notes2
+    # 🔴 선언이 없는 종목은 **만들지 않는다** — 지어내지 않는다
+    none_, notes3 = survive.our_board(_G(sport="hockey"), {})
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **v5 §6-4 가 §6-c-3 을 폐지했다**(2026-10-04) [#25]
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > **야구·하키도 총점 마켓을 만든다**(§6-c-3 폐지).
+    #
+    #  ⚠️ 종전엔 리그 평균이 없으면 총점이 **0줄**이었다 — 실측 2026-10-04 에
+    #     야구 카드에 총점이 한 줄도 없었다. 🔴 뿌리는 `common_lines` 에
+    #     **축구만** 있던 것이고, §6-3 이 종목별 후보를 이름 댔다.
+    #  🔴 그래서 지금은 **관례 줄로 생긴다** — 그 사실이 사유에 적힌다.
+    tot = [m for m in none_ if m.market_type == "total"]
+    assert tot, "🔴 §6-4 — 총점 마켓이 생겨야 한다"
+    assert {abs(m.line) for m in tot} == set(
+        rules.common_total_lines("hockey")), {m.line for m in tot}
+    assert any("보드 오면 무효" in n for n in notes3), notes3
+    # ⚠️ 종전 사유(*"기준선을 못 구했다"*)는 **더 이상 안 나온다** — §6-4 가
+    #    총점을 만들라고 했으므로 관례 줄로 간다는 사유가 그 자리를 대신한다.
+    assert not any(cfg["no_league_avg"] in n for n in notes3), notes3
+    # 🔴 리그 평균이 없어도 **양팀득점은 낸다**(기준선이 없는 마켓이다)
+    assert [m for m in bare if m.market_type == "btts"]
+    r = survive.run(ds, _G(), standings={"total_baseline": 2.5})
+    assert any("우리 기준선" in n for n in r.notes), r.notes
+
+
+def test_총점은_기준선별_생존을_함께_낸다():
+    """§6-f — *"언더 X.5 (기준선 Y.5면 △, Z.5면 ✗)"* — 다른 북을 봐도 대입하게."""
+    ds = [_D("A", ["2-1"], 1.0, 0.5), _D("B", ["1-0"], 1.0, 0.5)]
+    r = survive.run(ds, _G(),
+                    board=[Market(market_type="total", team="under", line=2.5)])
+    assert r.by_line, r.notes
+    lines = [x["line"] for x in r.by_line[0]["lines"]]
+    assert 2.5 in lines and len(lines) >= 2
+    # 🔴 기준선이 올라가면 언더 생존은 **줄지 않는다**(단조)
+    svs = [x["survival"] for x in sorted(r.by_line[0]["lines"],
+                                         key=lambda x: x["line"])]
+    assert svs == sorted(svs), svs
+
+
+def test_배당은_들어올_칸이_없다():
+    """🔴 §6-c-5 · §7 R8 — 보드는 *"마켓 종류 + 기준선"* 만 읽는다."""
+    bad = {"price", "odds", "decimal", "배당"}
+    assert not (bad & set(Market.model_fields)), Market.model_fields
+    assert not (bad & set(MarketSurvival.model_fields))
+    # 🔴 이름에도 가격이 없다 — 카드가 이 이름을 그대로 쓴다
+    name = survive.name_of(Market(market_type="total", team="over", line=2.5))
+    assert "2.5" in name and "오버" in name
+
+
+# ══════════════════════════════════════════════════════════════════
+# §7 R6 — 깨질 자리가 없는 1.0 은 1.0 이 아니다
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_R6_2골차_시나리오가_없으면_등급을_안_매긴다():
+    """🔴 §7 R6 — *"+1.5 마켓 계산 시 0-2 스코어 시나리오 없으면 실패"*.
+
+    09-29 돗토리·후쿠시마가 그것을 빠뜨렸다가 1.0 → 0.85 로 내려갔다.
+    ⚠️ **사용자 지시 ⑪ 이 이 결함을 반대 방향에서 또 찾았다** — `2-0` 만 만들고
+       `0-2` 를 안 만들어서 홈 +1.5 가 깨질 자리 없이 1.0 을 받고 있었다.
+    """
+    ds = [_D("A", ["2-1"], 1.0, 0.5), _D("B", ["1-0"], 1.0, 0.5)]
+    m = Market(market_type="handicap", team=HOME, line=1.5)
+    r = survive.run(ds, _G(), board=[m])
+    assert r.rows[0]["survival"] == 1.0
+    assert r.rows[0]["verdict"] == "none", "깨질 자리가 없는데 이름을 적었다"
+    assert any("R6" in n for n in r.notes), r.notes
+    # 🔴 0-2 를 넣으면 등급이 선다
+    ds.append(_D("C", ["0-2"], 0.3, 0.1))
+    r2 = survive.run(ds, _G(), board=[m])
+    assert r2.rows[0]["verdict"] in ("name", "small"), r2.notes
+
+
+def test_5c_5_가_방향마다_따로_본다():
+    """🔴 전 판은 *"2골 차 스코어가 하나라도 있으면 건너뛴다"* 였다.
+
+    그러면 `3-0` 이 있을 때 `0-2` 를 **영영 안 만든다** → 홈 +1.5 가 깨질 자리 없이
+    생존 1.0 을 받는다. 방향마다 본다.
+    """
+    cfg = rules.cross_rule("5c-5")
+    sides = cfg["two_goal_scores"]
+    assert set(sides) == {"home", "away"}, sides
+    assert scenarios._wins_by(sides["home"][0], "home", 2)
+    assert scenarios._wins_by(sides["away"][0], "away", 2)
+    assert not scenarios._wins_by(sides["home"][0], "away", 2)
+    # 🔴 `3-0` 은 홈 2골 차 승이지 **원정** 2골 차 승이 아니다
+    assert scenarios._wins_by("3-0", "home", 2)
+    assert not scenarios._wins_by("3-0", "away", 2)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 두 수를 나란히 — survival 과 격자 전체 확률
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_격자_전체_확률을_함께_낸다():
+    """🔴 `survival` 은 *"내가 세운 이야기들 중"*, `p_market` 은 *"실제로"* 다.
+
+    ⚠️ 내가 전 판에 *"안 덮인 결과는 살지 않는다고 보자"* 고 말했다 — **틀렸다.**
+       `3-0` 은 어느 시나리오에도 없지만 총점 2.5 오버인지는 **정확히 안다.**
+    """
+    probs = league.score_probabilities(1.9, 0.9)
+    ds = [_D("A", ["2-1"], 1.0, 0.5), _D("B", ["1-0"], 1.0, 0.5)]
+    r = survive.run(ds, _G(),
+                    board=[Market(market_type="total", team="over", line=2.5)],
+                    probs=probs)
+    p = r.rows[0]["p_market"]
+    assert p is not None and 0.0 < p < 1.0
+    # 🔴 격자가 없으면 **`None`** — 0 으로 때우지 않는다
+    r2 = survive.run(ds, _G(), board=[Market(market_type="home")])
+    assert r2.rows[0]["p_market"] is None
+
+
+def test_덮은_확률이_1보다_작으면_말한다():
+    """🔴 `survival 1.0` 이 **덮은 67% 안의 1.0** 이라는 사실을 숨기면 과신이다."""
+    sc, game, st, probs = _golden()
+    r = survive.run(sc.drafts, game, standings=st, probs=probs)
+    # ⚠️ ②(2026-10-04) 뒤 무게는 **늘 변수 합**이다 — 그래도 격자가 있으면
+    #    **덮은 확률**을 함께 적는다(격자의 남은 역할 셋 중 하나).
+    assert r.weight_mode.startswith("strength"), r.weight_mode
+    assert r.coverage and r.coverage < 1.0
+    assert any("덮은 확률" in n for n in r.notes), r.notes
+
+
+def test_두_수가_등급_밴드가_다르면_경고한다():
+    """🔴 **놓친 call 도 틀린 call 과 똑같이 손해다.**
+
+    ⚠️ 전 판은 문턱 `0.15` 로 물었고 **그것은 지어낸 값이었다**(그렇게 적어 뒀다).
+       이제 **§6-b 의 밴드**로 묻는다 — 숫자가 하나도 없고 이미 정한 선을 쓴다.
+    """
+    sc, game, st, probs = _golden()
+    board = [Market(market_type="total", team="over", line=2.5),
+             Market(market_type="handicap", team=AWAY, line=1.5)]
+    r = survive.run(sc.drafts, game, board=board, standings=st, probs=probs)
+    diff = [n for n in r.notes if "등급 밴드가 다르다" in n]
+    assert diff, r.notes
+    # 🔴 문턱 상수가 **사라졌나** — 지어낸 값을 남겨 두면 다시 쓰인다
+    assert not hasattr(survive, "DIVERGE_AT")
+    # 🔴 밴드 비교는 §6-b 가 정한 선을 그대로 쓴다
+    assert survive._verdict(NAME_AT) != survive._verdict(SMALL_AT - 0.01)
+
+
+def test_손익분기_아래면_이름을_적지_않는다():
+    """🔴 §0 — *"전부 살아남는 마켓만 낸다"*. 맞을 확률보다 틀릴 확률이 큰 자리에
+    이름을 적는 것은 그 문장과 정면으로 어긋난다.
+
+    ⚠️ `0.5` 는 **지어낸 값이 아니다** — 두 쪽 마켓의 손익분기점이다.
+    실측(정답지): `Las Vegas +1.5` survival 0.8503(소액) ↔ 격자 확률 0.6146 →
+    veto 가 **안 걸린다**(0.6146 > 0.5). 걸리는 자리는 그보다 낮은 쪽이다.
+    """
+    assert survive.BREAK_EVEN == 0.5
+    # ⚠️ ②(2026-10-04) 뒤 생존은 **변수 합**으로 센다 — 무게를 `strength` 로 준다
+    #    (종전엔 `probability` 0.9/0.1 로 줬다). 이 시험의 요점은 **손익분기 veto** 다.
+    ds = [_D("A", ["2-1"], 0.9, 0.9), _D("B", ["0-1"], 0.1, 0.1)]
+    probs = league.score_probabilities(0.4, 2.4)   # 🔴 원정이 훨씬 세다
+    m = Market(market_type="home")
+    r = survive.run(ds, _G(), board=[m], probs=probs)
+    row = r.rows[0]
+    assert row["survival"] >= SMALL_AT, row
+    assert row["p_market"] < survive.BREAK_EVEN, row
+    assert row["verdict"] == "none", "손익분기 아래인데 이름을 적었다"
+    assert any("손익분기 veto" in n for n in r.notes), r.notes
+    # 🔴 격자가 없으면 veto 를 **물을 수 없다** — 그때는 걸지 않는다
+    r2 = survive.run(ds, _G(), board=[m])
+    assert r2.rows[0]["verdict"] != "none"
+
+
+def test_기준선을_가로지르는_시나리오를_이름으로_남긴다():
+    """🔴 §5-b 템플릿이 한 집합에 오버·언더 스코어를 **같이** 담으면 그 마켓은
+    **1.0 에 닿을 수 없다** — 자동화가 수동 결론을 못 따라가는 까닭이다.
+
+    실측: `soccer_home_normal`(2-1·1-0)·`soccer_away_normal`(0-1·1-2) 둘 다 2.5 를
+    가로지른다 → 총점 2.5 는 영영 △ 둘을 안고 간다.
+    """
+    sc, game, st, probs = _golden()
+    r = survive.run(sc.drafts, game, standings=st, probs=probs,
+                    board=[Market(market_type="total", team="over", line=2.5)])
+    assert any("가로지른다" in n for n in r.notes), r.notes
+    # 🔴 그 사실이 실제로 참인가 — 템플릿을 열어 숫자로 확인한다
+    for name in ("soccer_home_normal", "soccer_away_normal"):
+        tot = [sum(int(x) for x in s.split("-"))
+               for s in rules.templates()[name]["scores"]]
+        assert min(tot) < 2.5 < max(tot), (name, tot)
+
+
+# ══════════════════════════════════════════════════════════════════
+# §3 스키마까지 선다
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_정답지_경기가_끝까지_돈다():
+    """🔴 §5 → §6 → §3 `Survival` 이 한 줄로 선다."""
+    sc, game, st, probs = _golden()
+    r = survive.run(sc.drafts, game, standings=st, probs=probs)
+    sv = r.to_survival(1)
+    assert len(sv.markets) == len(r.rows) > 5
+    # 🔴 시나리오도 §3 으로 선다 — 두 산출이 같은 스키마 밑에 있다
+    for d in sc.drafts:
+        assert isinstance(d.to_scenario(), Scenario)
+    # 🔴 **이름을 적은 마켓은 보드 밖일 수 없다**(보드를 준 경우)
+    board = [Market(market_type="home_dc")]
+    r2 = survive.run(sc.drafts, game, board=board, standings=st, probs=probs)
+    assert r2.to_survival(1).off_board(board) == []
+
+
+def test_시나리오가_없으면_생존을_세지_않는다():
+    """🔴 §7 R5 — 자료 부족이면 셀 것이 없다. **0 을 내지 않는다.**"""
+    r = survive.run([], _G())
+    assert not r.markets and not r.rows
+    assert any("자료 부족" in n for n in r.notes), r.notes
+
+
+def test_5c_5_는_3_0_이_있어도_0_2_를_만든다():
+    """🔴 **돌연변이가 통과해 버려서 더한 계약이다.**
+
+    전 판 조건(*"2골 차 스코어가 하나라도 있으면 건너뛴다"*)으로 되돌려도 계약이
+    초록이었다 — 정답지 경기에는 2골 차 스코어가 없어서 **갈림이 드러나지 않았다.**
+    그 갈림이 실제로 나는 자리는 **홈이 2골 차로 이기는 스코어가 이미 있을 때**다.
+    """
+    res = scenarios.Result()
+    res.drafts.append(scenarios.Draft(
+        id="A", scores=["3-0"], strength=1.0, template_id="x", why="",
+        probability=0.5))
+    free = iter(["B", "C"])
+
+    def claim(_hint):
+        return next(free, None)
+
+    scenarios._c5_two_goal(res, None, claim)
+    made = {s for d in res.drafts[1:] for s in d.scores}
+    sides = rules.cross_rule("5c-5")["two_goal_scores"]
+    # 🔴 홈은 이미 있으니 건너뛰고, **원정은 만든다**
+    assert set(sides["away"]) <= made, (made, res.notes)
+    assert not (set(sides["home"]) & made), f"홈은 이미 있는데 또 만들었다 {made}"
+    assert any("5c-5(home)" in n and "이미" in n for n in res.notes), res.notes
+
+
+def test_통과_비율을_개수가_아니라_확률로_센다():
+    """🔴🔴 **돌연변이가 통과해서 더한 계약이다.**
+
+    §6-a 원문은 *"통과 비율만큼 strength 를 부분 인정"* 이다. 전 판은 그 비율을
+    **스코어 개수**로 셌다 — `2-1` 과 `1-0` 을 똑같이 반반으로 봤다.
+    🔴 그 둘은 똑같이 그럴듯하지 않다. 격자는 이미 있었고 **안 쓰고 있었다.**
+    """
+    probs = league.score_probabilities(1.9, 0.9)
+    over = Market(market_type="total", team="over", line=2.5)
+    # `2-1`(3골·통과) + `1-0`(1골·실패) — 개수로는 정확히 0.5 다
+    sym, ratio, _ = survive.apply(over, ["2-1", "1-0"], home=HOME, away=AWAY,
+                                  probs=probs)
+    assert sym == survive.PART
+    assert ratio != 0.5, "개수로 셌다 — 두 스코어의 확률이 다른데 반반이다"
+    grid = probs["scores"]
+    want = round(grid["2-1"] / (grid["2-1"] + grid["1-0"]), 4)
+    assert abs(ratio - want) < 1e-4, (ratio, want)
+    # 🔴 격자가 없으면 **개수로 돌아간다**(그 사실이 기록에 남는다)
+    assert survive.apply(over, ["2-1", "1-0"], home=HOME, away=AWAY)[1] == 0.5
+    # 🔴 **기호는 개수로 정한다** — 확률 가중이 ○/✗ 를 흐리면 안 된다
+    assert survive.apply(over, ["2-1", "3-1"], home=HOME, away=AWAY,
+                         probs=probs)[0] == survive.PASS
+    assert survive.apply(over, ["1-0", "0-0"], home=HOME, away=AWAY,
+                         probs=probs)[0] == survive.FAIL
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 채점 — **실제 결과가 기준이다** (사용자 지시 2026-10-02)
+# ══════════════════════════════════════════════════════════════════
+#
+# > 정답지는 없다... 정답은 없는거다... 명심해라... 정답지는 지운다...
+# > 데이타가 쌓이고 그럼 그거가지고 분석을 하고... 스포츠는 정답이 없는거다...
+
+
+class _MS:
+    def __init__(self, mt, verdict, survival=1.0, team=None, line=None):
+        self.market_type, self.verdict = mt, verdict
+        self.survival, self.team, self.line = survival, team, line
+
+
+def test_실제_결과로_채점한다():
+    """🔴 묻는 것은 하나다 — **이름을 적은 마켓이 맞았나.**
+
+    ⚠️ *"페이블의 분석과 같은가"* 는 묻지 않는다. 그 기준은 지웠다.
+    """
+    ds = [_D("A", ["2-1"], 1.0, 0.4), _D("D", ["3-2"], 0.4, 0.1)]
+    mk = [_MS("home", "name"), _MS("away", "none"),
+          _MS("total", "small", 0.85, team="over", line=2.5)]
+    got = survive.grade(mk, ds, 3, 2, game=_G())
+    assert got["result"] == "3-2"
+    # 🔴 실제 스코어를 담은 시나리오를 찾는다
+    assert got["realized"] == "D", got
+    # 🔴 이름 적은 둘(홈 승·오버 2.5) 다 맞았다
+    assert got["named"] == 2 and got["hit"] == 2, got
+    rows = {v["market"]: v["hit"] for v in got["verdicts"]}
+    assert rows["홈 승"] is True and rows["원정 승"] is False
+    assert rows["오버 2.5"] is True
+
+
+def test_어느_시나리오에도_없던_결과를_기록한다():
+    """🔴🔴 **이 줄이 가장 값지다** — 우리가 그 결과를 아예 그리지 않았다는 기록이다.
+
+    ⚠️ 실측 2026-10-02: 축구 카드의 덮이지 않은 확률이 0.33~0.39 였다. 그 구간이
+       실제로 나면 **맞고 틀린 문제가 아니라 안 그린 문제**다 — 그 둘을 섞지 않는다.
+    """
+    ds = [_D("A", ["2-1"], 1.0, 0.5), _D("B", ["0-1"], 1.0, 0.5)]
+    got = survive.grade([_MS("home", "name")], ds, 4, 0, game=_G())
+    assert got["realized"] is None
+    assert any("어느 시나리오에도 없었다" in n for n in got["notes"]), got["notes"]
+    # 🔴 그래도 마켓 채점은 된다 — 4-0 은 홈 승이다
+    assert got["hit"] == 1
+
+
+def test_그때_그_결과에_얼마를_줬는지_남긴다():
+    """🔴 교정(calibration)의 재료다 — 쌓이면 *"0.1 이라고 한 것이 몇 번 났나"* 를 센다.
+
+    ⚠️ 그것이 λ 보정 계수를 **측정**하는 길이다(발표된 계수는 없다).
+    """
+    probs = league.score_probabilities(1.9, 0.9)
+    ds = [_D("A", ["2-1"], 1.0, 0.5)]
+    got = survive.grade([_MS("home", "name")], ds, 2, 1, game=_G(), probs=probs)
+    assert got["result_probability"] == probs["scores"]["2-1"]
+    # 🔴 격자가 없으면 그 칸이 **없다** — 0 으로 때우지 않는다
+    assert "result_probability" not in survive.grade(
+        [_MS("home", "name")], ds, 2, 1, game=_G())
+
+
+def test_채점이_예측을_고치지_않는다():
+    """🔴 §3 — *"결과 후 survival.json 수정 금지(불변)."*
+
+    그때 무엇을 냈는가와 그것이 맞았나가 서로를 바꾸면 기록이 거짓이 된다.
+    """
+    import inspect
+
+    from app import analyze
+    src = inspect.getsource(analyze.score_finished)
+    # 🔴 원장에만 쓴다 — 예측 표를 건드리지 않는다
+    assert "INSERT INTO ledger" in src
+    for table in ("survival", "scenarios", "variables", "board"):
+        assert f"UPDATE {table}" not in src, f"{table} 을 고친다"
+        assert f"INSERT INTO {table}" not in src, f"{table} 에 다시 쓴다"
+    # 🔴 **예측이 없는 경기와 틀린 경기를 가른다**(조용한 0 금지)
+    assert "카드를 저장한 적이 없다" in src
+
+
+def test_원장이_되물을_수_있을_만큼_쌓는다():
+    """🔴🔴 **사용자 지시 2026-10-02 *"뭘쌓는데???"* 가 이 구멍을 찾았다.**
+
+    전 판 원장은 `{market, hit}` 만 쌓았다. 그러면 쌓아 봐야 **아무것도 못 묻는다**:
+      · 결과 스코어가 없다 → 무엇이 났는지 원장만 보고는 모른다
+      · 등급·생존이 없다 → *"'낸다' 가 '소액' 보다 더 맞았나"* 를 못 센다
+      · 그 결과의 확률이 없다 → `grade` 가 계산해 놓고 **버렸다**
+
+    🔴 쌓인 것으로 **무엇을 물을 수 있는지**가 이 계약의 내용이다.
+    """
+    import inspect
+
+    from app import analyze
+    src = inspect.getsource(analyze.score_finished)
+    # ① 결과 자체
+    assert "result_score" in src and "covered" in src
+    # ② 등급·생존까지 — 밴드별 성적을 세려면 필요하다
+    assert '"verdict": v["verdict"]' in src and '"survival": v["survival"]' in src
+    # ③ 그때 그 결과의 확률 — 교정의 재료
+    assert "result_probability" in src
+    # 🔴 ④ **격자를 λ 로 되살린다** — 64칸을 저장하지 않는다
+    assert "score_probabilities" in src and "lam_home" in src
+    # 🔴 λ 는 카드 저장 때 적혔나
+    assert "lam_home" in inspect.getsource(analyze.persist)
+    # 🔴 시나리오의 확률과 근거는 **다른 칸**이다 — 한 칸에 담으면 둘 다 잃는다
+    assert "probability = EXCLUDED.probability" in inspect.getsource(analyze.persist)
+
+
+def test_격자를_람다로_되살릴_수_있다():
+    """🔴 격자 64칸을 저장하지 않는 대신 `λ` 두 수를 적는다 — 그것으로 **같은** 격자가
+    나와야 한다. 안 나오면 쌓인 확률이 그때의 확률이 아니다."""
+    g1 = league.score_probabilities(2.14, 1.079)
+    assert g1 and g1["lam"] == {"home": 2.14, "away": 1.079}
+    g2 = league.score_probabilities(g1["lam"]["home"], g1["lam"]["away"])
+    assert g2["scores"] == g1["scores"], "λ 로 되살린 격자가 다르다"
+
+
+def test_채점이_그때의_확률을_실제로_적는다():
+    """🔴🔴 **돌연변이가 통과해서 더한 계약이다.** 소스를 grep 하는 것으로는 부족했다 —
+    확률을 되살리는 가지를 꺼도 초록이었다. **적힌 값**을 본다."""
+    import asyncio
+
+    from app import analyze
+
+    class _Pool:
+        def __init__(self):
+            self.wrote: list = []
+
+        async def fetch(self, sql, *a):
+            if "FROM games" in sql:
+                return [{"id": 7, "home": HOME, "away": AWAY, "sport": "soccer",
+                         "league": "USL Championship", "home_score": 3,
+                         "away_score": 2}]
+            if "FROM survival" in sql:
+                return [{"market_type": "home", "team": None, "line": None,
+                         "survival": 1.0, "verdict": "name"}]
+            if "FROM scenarios" in sql:
+                return [{"scenario_id": "D", "scores": ["3-2"],
+                         "probability": 0.11}]
+            return []
+
+        async def fetchrow(self, sql, *a):
+            # 🔴 λ 두 수 — 격자를 되살릴 열쇠
+            return {"lam_home": 2.14, "lam_away": 1.079}
+
+        async def execute(self, sql, *a):
+            self.wrote.append((sql, a))
+
+    pool = _Pool()
+    got = asyncio.run(analyze.score_finished(pool))
+    assert got["graded"] == 1, got
+    ins = [a for sql, a in pool.wrote if "INSERT INTO ledger" in sql]
+    assert ins, pool.wrote
+    args = ins[0]
+    assert "3-2" in args, args
+    # 🔴 **확률이 실제로 적혔나** — λ 로 되살린 그 격자의 값이어야 한다
+    want = league.score_probabilities(2.14, 1.079)["scores"]["3-2"]
+    assert any(isinstance(x, float) and abs(x - want) < 1e-9 for x in args), \
+        f"그때의 확률({want})이 안 적혔다 — {args}"
+    assert True in args, "covered 가 안 적혔다"

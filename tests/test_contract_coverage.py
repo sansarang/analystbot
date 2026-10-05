@@ -1,0 +1,184 @@
+"""🔴🔴 **v5 §9-3 — 계약 커버리지.** 조항 번호가 적힌 시험이 **없는 조항**을 잡는다.
+
+§9-3 원문:
+
+> **문서에만 있던 계약을 코드로** — M18 이 코드에 없었다. 이 문서의 모든 계약은
+> `tests/contracts/` 에 하나씩 파일로 존재해야 하고, **문서 조항 번호를 테스트
+> 이름에 적는다**(`test_M18_pitcher_state_guard`). 조항 번호가 적힌 테스트가
+> 없는 조항은 `tests/test_contract_coverage.py` 가 **목록으로 뽑아 실패시킨다.** [#24]
+
+══════════════════════════════════════════════════════════════════
+🔴 왜 — **M18 이 문서에만 있었다**
+══════════════════════════════════════════════════════════════════
+
+v4 §15 M18 의 네 번째 칸이 *"계약: pitcher_state 없는 야구 경기에
+total/handicap verdict name 이면 실패"* 였다. 🔴 그 글자가 **문서 한 줄**에만
+있고 `app/`·`tests/` 에는 **한 글자도 없었다**(실측 2026-10-04 전수 검색).
+
+⚠️ 그래서 봇은 야구 카드에 핸디 생존율을 계산해서 냈고, 아무도 빨개지지 않았다.
+🔴 이 파일이 **그 꼴을 막는다** — 조항이 늘면 커버리지가 먼저 빨개진다.
+
+══════════════════════════════════════════════════════════════════
+⚠️ **한 번에 다 못 쓴다 — 그래서 목록을 보이고 수를 잠근다**
+══════════════════════════════════════════════════════════════════
+
+v5 는 조항이 백 개가 넘는다(§0~§11 + R1~R12 + M1~M40). 🔴 지금 덮은 것만
+초록으로 두고 **덮이지 않은 것을 이름으로** 보인다 — 수가 **줄 때만** 통과한다.
+⚠️ 그것이 *"게이트 앞 단계가 매번 다시 열린다"*(§10-4)를 막는 길이다.
+"""
+from __future__ import annotations
+
+import pathlib
+import re
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+V5 = ROOT / "docs" / "fable" / "inbox" / "2026-10-04_v5_solar.md"
+CONTRACTS = ROOT / "tests"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 문서에서 **조항 번호를 긁는다** — 손 목록은 한 발 늦는다
+# ══════════════════════════════════════════════════════════════════
+
+#: 🔴 §n-m 꼴. ⚠️ `§6-c-3` 처럼 세 단도 있다(v4 조항을 v5 가 인용한다).
+_SEC = re.compile(r"§?\b(\d{1,2})-(\d{1,2})\b")
+#: 🔴 M1~M40 · R1~R12
+_MR = re.compile(r"\b([MR])(\d{1,2})\b")
+
+
+def declared_sections() -> set[str]:
+    """🔴 v5 가 **제목으로 선언한** 조항들(§n-m). ⚠️ 본문 인용은 안 센다."""
+    out: set[str] = set()
+    for line in V5.read_text(encoding="utf-8").splitlines():
+        t = line.strip()
+        # 🔴 조항은 줄머리에 `8-3 …` 꼴로 온다(PDF 추출 결과)
+        m = re.match(r"^(\d{1,2})-(\d{1,2})\s+\S", t)
+        if m:
+            out.add(f"{m.group(1)}-{m.group(2)}")
+    return out
+
+
+def declared_mr() -> set[str]:
+    """🔴 v5 §9 가 이름 댄 `M…`·`R…` 계약들."""
+    text = V5.read_text(encoding="utf-8")
+    out: set[str] = set()
+    for kind, num in _MR.findall(text):
+        n = int(num)
+        if kind == "M" and 1 <= n <= 40:
+            out.add(f"M{n}")
+        elif kind == "R" and 1 <= n <= 12:
+            out.add(f"R{n}")
+    return out
+
+
+def covered() -> set[str]:
+    """🔴 **시험 이름**에 조항 번호가 적힌 것들.
+
+    ⚠️ 독스트링이 아니라 **이름**이다(§9-3: *"테스트 이름에 적는다"*) — 설명에
+       번호를 적는 것과 그 번호를 **지키는 것**은 다르다(D46 과 같은 결).
+    """
+    out: set[str] = set()
+    for p in sorted(CONTRACTS.rglob("test_*.py")):
+        for name in re.findall(r"^def (test_\w+)", p.read_text(encoding="utf-8"),
+                               re.M):
+            for a, b in re.findall(r"v5_(\d{1,2})_(\d{1,2})", name):
+                out.add(f"{a}-{b}")
+            # ══════════════════════════════════════════════════════════
+            # 🔴 **뒤 밑줄을 삼키지 않는다**(실측 2026-10-04)
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ 종전 `(?:_|$)` 는 그 밑줄을 **먹었다**. 그래서 한 시험이 번호를
+            #     **둘 이상** 들 때(`…_R7_M3`) 뒤 번호를 **못 봤다** —
+            #     `_R7_` 를 먹고 남은 `M3` 에는 앞 밑줄이 없다.
+            #  🔴 §9-2 가 `M3 = R7` 처럼 **짝**을 적었으므로 한 시험이 둘을 드는
+            #     것이 정상이다. 🔴 그래서 **들여다보기**(lookahead)로 바꿨다.
+            for kind, num in re.findall(r"_([MR])(\d{1,2})(?=_|$)", name):
+                out.add(f"{kind}{int(num)}")
+    return out
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 계약
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_v5_9_3_문서를_읽을_수_있다():
+    """🔴 이 계약이 기댈 원본이 사라지면 **여기서** 멈춘다."""
+    assert V5.is_file(), f"🔴 v5 문서가 없다: {V5}"
+    got = declared_sections()
+    assert len(got) >= 30, sorted(got)
+    for must in ("8-3", "8-6", "5-1", "6-7", "9-3", "10-2"):
+        assert must in got, (must, sorted(got))
+
+
+def test_v5_9_3_덮인_조항이_줄지_않는다():
+    """🔴🔴 §9-3 — 조항 번호가 **시험 이름에** 적힌 것을 센다.
+
+    ⚠️ 늘리는 것은 좋고 **줄면 빨개진다** — 계약을 지우면 그 조항이 다시 문서에만
+       남는다(M18 이 그 꼴이었다).
+    """
+    got = covered()
+    #: 🔴 **2026-10-04 실측.** ⚠️ 줄면 안 된다. 늘면 이 수를 올려 적는다.
+    BASELINE = 22
+    assert len(got) >= BASELINE, (
+        f"🔴 덮인 조항이 **줄었다** {len(got)} < {BASELINE}(§9-3) — "
+        f"지금 덮은 것: {sorted(got)}")
+
+
+def test_v5_9_3_덮이지_않은_조항을_이름으로_보인다():
+    """🔴🔴 §9-3 의 알맹이 — *"목록으로 뽑아 실패시킨다."*
+
+    ══════════════════════════════════════════════════════════════════
+    ⚠️ **한 번에 다 쓸 수 없다 — 그래서 수를 잠근다**
+    ══════════════════════════════════════════════════════════════════
+
+    v5 의 조항은 쉰 개가 넘는다. 🔴 지금 안 덮인 것을 **이름으로** 보이고 그
+    **수가 줄 때만** 통과하게 둔다. ⚠️ 늘면(= 조항이 늘었는데 계약을 안 썼으면)
+    빨개진다. 그것이 *"게이트 앞 단계가 매번 다시 열린다"* 를 막는 길이다.
+    """
+    missing = sorted(declared_sections() - covered())
+    #: 🔴 **2026-10-04 실측 수.** ⚠️ 줄이면 이 수를 내려 적는다.
+    BASELINE = 7
+    assert len(missing) <= BASELINE, (
+        f"🔴 계약 없는 조항이 **늘었다** {len(missing)} > {BASELINE}(§9-3):\n  "
+        + "\n  ".join(missing))
+    if len(missing) < BASELINE:
+        raise AssertionError(
+            f"✅ {BASELINE} → {len(missing)} 로 **줄었다** — `BASELINE` 을 "
+            f"{len(missing)} 로 내려 적어라(목록이 거짓이 되기 전에)")
+
+
+def test_v5_9_3_M_R_계약도_센다():
+    """🔴 §9-2·§9-4 — `R1~R12`·`M1~M40`. ⚠️ M18 이 그중 하나였다."""
+    missing = sorted(declared_mr() - covered())
+    #: 🔴 2026-10-04 실측. ⚠️ 줄이면 내려 적는다
+    BASELINE = 0
+    assert len(missing) <= BASELINE, (
+        f"🔴 계약 없는 M·R 이 **늘었다** {len(missing)} > {BASELINE}:\n  "
+        + "\n  ".join(missing))
+    if len(missing) < BASELINE:
+        raise AssertionError(
+            f"✅ {BASELINE} → {len(missing)} 로 줄었다 — `BASELINE` 을 내려 적어라")
+
+
+def test_v5_9_3_M18은_반드시_덮여_있다():
+    """🔴🔴 §9-3 이 **이름을 댄** 그 조항이다 — 여기만은 비울 수 없다."""
+    assert "M18" in covered(), (
+        "🔴 M18 계약이 사라졌다 — §9-3 이 바로 그것을 이름 대고 있다")
+    #: ⚠️ 시험 **파일**도 있어야 한다(`tests/contracts/`)
+    hits = [p.name for p in (ROOT / "tests" / "contracts").glob("*.py")
+            if "m18" in p.name.lower()]
+    assert hits, "🔴 `tests/contracts/` 에 M18 파일이 없다"
+
+
+def test_v5_9_3_계약은_contracts_폴더에_있다():
+    """🔴 §9-3 — *"`tests/contracts/` 에 **하나씩 파일로** 존재해야 한다."*"""
+    d = ROOT / "tests" / "contracts"
+    assert d.is_dir(), "🔴 `tests/contracts/` 가 없다"
+    files = sorted(p.name for p in d.glob("test_*.py"))
+    assert len(files) >= 6, files
+    # 🔴 파일 이름에 조항 번호가 보여야 한다(찾기 쉬우려고)
+    # ⚠️ `test_v5A_…` 는 **부록**(v5-A) 계약이다 — 그것도 번호다.
+    bad = [f for f in files
+           if not re.search(r"v5_\d|v5a_|_m\d|solar", f, re.I)]
+    assert not bad, f"🔴 조항 번호가 이름에 없는 계약 파일: {bad}"

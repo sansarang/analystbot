@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.aiscore.com/live/football-south-korea-vs-united-arab-emirates",
+ "query": "",
+ "recorded_at": "2026-10-02T06:03:02.636540+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

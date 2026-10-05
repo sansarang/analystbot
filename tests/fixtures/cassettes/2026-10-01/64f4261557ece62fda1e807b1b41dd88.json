@@ -1,0 +1,571 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Sacramento Republic 감독 인터뷰 Oct 1",
+ "recorded_at": "2026-10-01T02:15:00.316146+00:00",
+ "results": [
+  {
+   "url": "https://www.zhihu.com/question/24790852",
+   "title": "Wikipedia 和 Wikia 哪个是维基百科；它们和维基解密有什么联系 ...",
+   "content": "Aug 9, 2014 · Wikipedia（维基百科），是由 维基媒体基金会 运营的非盈利在线百科全书计划，采用 wiki 软件架构（mediawiki），由 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/24790852",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "News Archive - Sacramento Republic FC",
+   "content": "By clicking subscribe, you are agreeing to the USL privacy policy and agree to receive emails from USL. Indomitable Partners",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/news/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/news/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/347202458",
+   "title": "有什么值得推荐的英文维基镜像网站? - 知乎",
+   "content": "这个不用多说吧， 程序员必备。 里面还有很多其他镜像，但是目前我使用最多的就是这些，其他的自行探索，那网站地址已经放到了 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/347202458",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "[Full Interview] What Manager Moreno said in front of Son ...",
+   "content": "Sep 23, 2026 · 축구국가대표팀 친선경기#우루과이 09.28(월) 20:00 장소 : 서울월드컵경기장, 대한민국중계 : TV조선, 쿠팡플레이, tvN#손흥민 #모레노 #에콰도르 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=KCFv0pE_1Xo",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=KCFv0pE_1Xo",
+    ""
+   ]
+  },
+  {
+   "url": "https://zhidao.baidu.com/question/1830391065414523220.html",
+   "title": "bigbang一天一天的歌词、要原版歌词和中文版翻译的如题 谢谢了",
+   "content": "Aug 15, 2014 · BigBang 《一天一天》歌词 一天一天 离开吧 Ye the finally I realize that I'm nothing without you I was so wrong forgive …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "zhidao.baidu.com",
+    "/question/1830391065414523220.html",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Front Office & Technical Staff - Sacramento Republic FC",
+   "content": "Front Office & Technical Staff More than just a team of players on the pitch, Sacramento Republic FC is an organization of passionate individuals who work tirelessly to cultivate an indomitable city and create raving fans.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/front-office-staff/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/front-office-staff/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://zhidao.baidu.com/question/2215483994157458188.html",
+   "title": "6个简单步骤注册Wikipedia账号 - 百度知道",
+   "content": "Feb 13, 2025 · 6个简单步骤注册Wikipedia账号步骤如下:1.在网页浏览器中访问维基百科的账户创建页面。您可以使用台式机或移动浏 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "zhidao.baidu.com",
+    "/question/2215483994157458188.html",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "www.koreatimes.com",
+   "content": "1 day ago · We would like to show you a description here but the site won’t allow us.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "http://www.koreatimes.com/article/20260930/1631960",
+   "engine": "yahoo",
+   "parsed_url": [
+    "http",
+    "www.koreatimes.com",
+    "/article/20260930/1631960",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/19581089",
+   "title": "为什么这么多人把「Wikipedia」称作「wiki」？ - 知乎",
+   "content": "Mar 25, 2011 · 我一直很难理解这个问题，为什么这么多人喜欢把专有名词和通用概念混在一起。是不是因为他们除了 Wikipe…",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/19581089",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "[On-Site Interview] Moreno Arrives: \"South Korea Manager ...",
+   "content": "Sep 13, 2026 · ※ 뽈리TV 멤버십 가입 감사합니다!https://www.youtube.com/channel/UCmKTwXS5wC4Ww4X6PyXjMYg/join#모레노 #모레노감독 #대한민국축구대표팀 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=ZrMfMlPXw5A",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=ZrMfMlPXw5A",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/347202458/answers/updated",
+   "title": "有什么值得推荐的英文维基镜像网站? - 知乎",
+   "content": "这个不用多说吧， 程序员必备。 里面还有很多其他镜像，但是目前我使用最多的就是这些，其他的自行探索，那网站地址已经放到了 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/347202458/answers/updated",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "아! 한일전 '1점 차' 통한의 역전패 끝내 '눈물' 왈칵, 12년 만의 펜...",
+   "content": "5 days ago · 한국 펜싱 여자 플뢰레 대표팀(세계 랭킹 8위)이 한일전에서 1점 차 통한의 역전패를 당하며 금메달 획득에 실패했다. 한국은 경기 막판까지 리드를 잡으며 금메달을 손에 쥐는 듯했지만, 마지막 9라운드에서 뼈아픈 역전을 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://v.daum.net/v/20260926191537737",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "v.daum.net",
+    "/v/20260926191537737",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/359009187",
+   "title": "维基百科（ Wikipedia） 为什么现在需要人捐钱 ？ - 知乎",
+   "content": "来自维基百科创办者Jimmy Wales的个人呼吁 维基百科是全球第五大网站，每月为4.5亿用户提供服务，页面浏览数以十亿计。 商业本 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/359009187",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC (@SacRepublicFC) / X",
+   "content": "1 3 497 Sacramento Republic FC @SacRepublicFC 6h Team of the week x2 🔥 Memo Rodriguez, and Coach Neil Collins have been named to the @ USLChampionship Week 30 TOTW after Saturday night's strong performance! 🙌 📝 Full Release- pulse.ly/i9qzsrmspj",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://x.com/SacRepublicFC",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "x.com",
+    "/SacRepublicFC",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/21425170",
+   "title": "如何将整个wikipedia导出成一个纯文本文件?",
+   "content": "jwpl - Java-based Wikipedia Library -- An application programming interface for Wikipedia ，提供了API，可以直接由给定的词条名导 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/21425170",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.zhihu.com/question/479609668/answers/updated",
+   "title": "有哪些可以替代“Wikipedia（维基百科）”查询的百科工具？",
+   "content": "有哪些可以替代“Wikipedia（维基百科）”查询的百科工具？ 因为不能用了，所以有了这个问题！ 对百度百科总体体验不也太好用，不 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/479609668/answers/updated",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.zhihu.com/question/27264726",
+   "title": "如果 Wikipedia 是一本书，它该有多厚？ - 知乎",
+   "content": "把 Wikipedia 打印出来的想法，在八九年前其实挺常见的。那时候的 Wikipedia 已经在世界范围内享有一定程度的知名度和认可度，限 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/27264726",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "sacramento republic 감독 인터뷰 oct 1 2024",
+  "sacramento republic 감독 인터뷰 oct 1 in back",
+  "sacramento republic 감독 인터뷰 oct 1 2",
+  "sacramento republic 감독 인터뷰 oct 1 4",
+  "sacramento republic 감독 인터뷰 oct 1 5",
+  "sacramento republic 감독 인터뷰 oct 1 7",
+  "sacramento republic 감독 인터뷰 oct 1 mean",
+  "sacramento republic 감독 인터뷰 oct 1 meme"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

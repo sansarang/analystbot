@@ -1,0 +1,571 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "埼玉西武ライオンズ スタメン Sep 29",
+ "recorded_at": "2026-09-30T14:40:50.955879+00:00",
+ "results": [
+  {
+   "url": "https://support.microsoft.com/en-us/windows/experience/fileexplorer/file-explorer-in-windows",
+   "title": "File Explorer in Windows | Microsoft Support",
+   "content": "Find and open File Explorer in Windows, and customize Quick access by pinning and removing files and folders.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.microsoft.com",
+    "/en-us/windows/experience/fileexplorer/file-explorer-in-windows",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "埼玉西武ライオンズ",
+   "content": "プロ野球・埼玉西武ライオンズオフィシャルサイトです。 試合や選手はもちろん、チケットやイベント、ファンクラブに至るまで球団オフィシャルならではの公式情報をファンのみなさまに提供します。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.seibulions.jp/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.seibulions.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.microsoft.com/fr-fr/windows/experience/fileexplorer/file-explorer-in-windows",
+   "title": "Explorateur de fichiers dans Windows | Microsoft Support",
+   "content": "Accès rapide À compter de Windows 11, version 22H2, les dossiers Windows connus (Bureau, Documents, Téléchargements, …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.microsoft.com",
+    "/fr-fr/windows/experience/fileexplorer/file-explorer-in-windows",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "試合日程・結果 | 埼玉西武ライオンズ",
+   "content": "埼玉西武ライオンズ | プロ野球・埼玉西武ライオンズオフィシャルサイトです。 試合や選手はもちろん、チケットやイベント、ファンクラブに至るまで球団オフィシャルならではの公式情報をファンのみなさまに提供します。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.seibulions.jp/game/calendar/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.seibulions.jp",
+    "/game/calendar/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.elevenforum.com/t/open-file-explorer-in-windows-11.20591/",
+   "title": "Open File Explorer in Windows 11",
+   "content": "Dec 11, 2023 · This tutorial will show you different ways to open File Explorer in Windows 11. File Explorer …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.elevenforum.com",
+    "/t/open-file-explorer-in-windows-11.20591/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "【試合実況】西武スタメン 先発:平良海馬（2026.9.29）",
+   "content": "1 day ago · 9/29 (火)のパ・リーグ公示 【出場選手登録】 片山楽生 (B) 田中千晴 (E) 黒田将矢 (L)平良海馬 (L) 吉川悠斗 (M) 【出場選手登録抹消】 椋木蓮 (B)石川亮 (B) 岸孝之 (E)九谷瑠 (E) 中村祐太 (L) A．ジャクソン (M) 松岡洸希 (F) 【注】埼玉西武ライオンズの平良海馬選手は、NPB感染症特例により、登録抹消後 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://yamisokulions.com/archives/17374747.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "yamisokulions.com",
+    "/archives/17374747.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.elevenforum.com/t/search-in-windows-11-file-explorer.21789/",
+   "title": "Search in Windows 11 File Explorer",
+   "content": "Jan 21, 2024 · This tutorial will show you how to use advanced search options and filters while searching for files in Windows 11 File …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.elevenforum.com",
+    "/t/search-in-windows-11-file-explorer.21789/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "埼玉西武ライオンズのスタメン一覧（打順） - プロ野球データFreak",
+   "content": "埼玉西武ライオンズのスタメン一覧（打順）。他では見られないプロ野球の詳しいデータを掲載。チーム成績、選手成績。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://baseball-data.com/lineup/l.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "baseball-data.com",
+    "/lineup/l.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.microsoft.com/de-de/windows/experience/fileexplorer/file-explorer-in-windows",
+   "title": "Explorer in Windows | Microsoft Support",
+   "content": "Windows 11 Windows 10 Um Explorer in Windows 11 zu öffnen, wählen Sie ihn in der Taskleiste oder im Startmenü aus, oder …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.microsoft.com",
+    "/de-de/windows/experience/fileexplorer/file-explorer-in-windows",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "球歴.com | 埼玉西武ライオンズ スタメン 2026-09-29 vsオリックス・...",
+   "content": "37 likes, 0 comments - kyureki_com on September 29, 2026: \" 埼玉西武ライオンズ スタメン 2026-09-29 vsオリックス・バファローズ 右 カナリオ 26歳 PIT 捕 小島大河 23歳 明治大 三 渡部聖弥 24歳 大阪商業大 一 ネビン 29歳 OAK DH 石井一成 32歳 日ハム 左 平沢大河 29歳 ロッテ 中 長谷川信哉 24歳 敦賀気比 二 滝澤夏央 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.instagram.com/p/Dd3uGoUASvi/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.instagram.com",
+    "/p/Dd3uGoUASvi/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.microsoft.com/en-us/windows/experience/storage-filemanagement/free-up-drive-space-in-windows",
+   "title": "Free up drive space in Windows | Microsoft Support",
+   "content": "Windows 11 Windows 10 To check the total disk space left on your Windows 11 device, select File Explorer from the taskbar, and …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.microsoft.com",
+    "/en-us/windows/experience/storage-filemanagement/free-up-drive-space-in-windows",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "埼玉西武ライオンズ - プロ野球 : 日刊スポーツ",
+   "content": "プロ野球 【西武】主催試合での観客動員数が184万3507… [9月29日 20:58] プロ野球 【西武】2位確定へのマジック1 長谷川信哉V弾、… [9月29日 20:17]",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.nikkansports.com/baseball/professional/team/lions/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.nikkansports.com",
+    "/baseball/professional/team/lions/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.microsoft.com/es-es/windows/experience/fileexplorer/file-explorer-in-windows",
+   "title": "Explorador de archivos en Windows | Microsoft Support",
+   "content": "Acceso rápido A partir de Windows 11, versión 22H2, las carpetas conocidas de Windows (Escritorio, Documentos, Descargas, …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.microsoft.com",
+    "/es-es/windows/experience/fileexplorer/file-explorer-in-windows",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "埼玉西武ライオンズ 2026年度 試合結果 【9月】 | NPB.jp 日本野球機...",
+   "content": "1 day ago · 日本野球機構（NPB）オフィシャルサイト。プロ野球12球団の試合日程・結果や予告先発、ドラフト会議をはじめ、事業・振興に関する情報を掲載。また、オールスター･ゲームや日本シリーズなど主催試合のチケット情報もご覧いただけます。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://npb.jp/bis/teams/results_l_index.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "npb.jp",
+    "/bis/teams/results_l_index.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://support.microsoft.com/en-us/servicing/os/windows-11/2026/09/kb5129195-windows-11-24h2-25h2-security-update",
+   "title": "September 14, 2026—KB5129195 (OS Builds 26200.9457 and …",
+   "content": "Jun 15, 2024 · This out-of-band (OOB) update for Windows 11, version 25H2 and Windows 11, version 24H2 (KB5129195) is …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.microsoft.com",
+    "/en-us/servicing/os/windows-11/2026/09/kb5129195-windows-11-24h2-25h2-security-update",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://support.microsoft.com/en-us/onedrive/sync-your-computer-s-files-and-folders-with-onedrive",
+   "title": "Sync your computer's files and folders with OneDrive",
+   "content": "If you add, change, or delete a file or folder in your OneDrive folder, the file or folder is added, changed, or deleted on the OneDrive …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.microsoft.com",
+    "/en-us/onedrive/sync-your-computer-s-files-and-folders-with-onedrive",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://support.microsoft.com/en-us/windows/experience/automatic-file-download-notifications-in-windows",
+   "title": "Automatic file download notifications in Windows",
+   "content": "Learn how to manage automatic file downloads from your Windows apps when you use an online storage provider, such as …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "support.microsoft.com",
+    "/en-us/windows/experience/automatic-file-download-notifications-in-windows",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "埼玉西武ライオンズ スタメン sep 29 2024",
+  "埼玉西武ライオンズ スタメン sep 29 84",
+  "埼玉西武ライオンズ スタメン sep 29 7",
+  "埼玉西武ライオンズ スタメン sep 29 v",
+  "埼玉西武ライオンズ スタメン sep 29 19",
+  "埼玉西武ライオンズ スタメン sep 29 18",
+  "埼玉西武ライオンズ スタメン sep 29 12",
+  "埼玉西武ライオンズ スタメン sep 29 93"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

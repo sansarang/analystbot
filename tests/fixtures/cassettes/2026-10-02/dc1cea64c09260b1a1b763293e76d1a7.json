@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://liquipedia.net/starcraft2/China_Team_Championship/2019/2",
+ "query": "",
+ "recorded_at": "2026-10-02T05:30:26.583230+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

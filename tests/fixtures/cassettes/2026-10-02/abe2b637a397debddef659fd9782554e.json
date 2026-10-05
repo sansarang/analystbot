@@ -1,0 +1,934 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "千葉ロッテマリーンズ 監督 コメント 2日",
+ "recorded_at": "2026-10-02T08:17:48.943272+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Lemino(レミノ) - 映画・ドラマ・アニメや音楽・ライブが見放題",
+   "content": "新しい映像配信サービスLemino！映画やドラマ、アニメ、ライブ映像など多彩なジャンルが楽しめる！／オリジナル作品も見放題／初回初月無料／マルチデバイス対応／ダウンロード視聴可能／好きな作品と出会える機能がたくさん。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://lemino.docomo.ne.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "lemino.docomo.ne.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Azure OpenAI Service - Pricing | Microsoft Azure",
+   "content": "Azure OpenAI Service pricing information. Try popular services with a free Azure account, and pay as you go with no upfront costs.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://azure.microsoft.com/en-us/pricing/details/azure-openai/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "azure.microsoft.com",
+    "/en-us/pricing/details/azure-openai/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Azure OpenAI in Foundry Models",
+   "content": "Access and fine-tune the latest AI reasoning and multimodal models, integrate AI agents, and deploy secure, enterprise-ready generative AI solutions.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://azure.microsoft.com/products/ai-foundry/models/openai",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "azure.microsoft.com",
+    "/products/ai-foundry/models/openai",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Azure OpenAI Studio - Microsoft Azure",
+   "content": "Explore and manage Azure OpenAI resources, services, and tools through the Azure OpenAI Studio platform.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://aoai.azure.us/portal",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "aoai.azure.us",
+    "/portal",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Microsoft | Coding with AI | Azure OpenAI",
+   "content": "Azure OpenAI Azure OpenAI offers developers a powerful platform for creating intelligent applications with advanced language models like GPT-3 and GPT-4. It provides a secure, compliant environment with features like real-time inferencing, fine-tuning of models, and a web studio for interactive experimentation.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.microsoft.com/en-us/thesource-developer/Category/37/azure-openai",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.microsoft.com",
+    "/en-us/thesource-developer/Category/37/azure-openai",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Get started with Azure OpenAI and the Responses API",
+   "content": "May 27, 2026 · Use the Azure OpenAI Starter Kit to deploy GPT-5-mini and run a hello world app with Microsoft Entra ID authentication.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://learn.microsoft.com/en-us/azure/developer/ai/get-started-azure-openai-starter-kit",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "learn.microsoft.com",
+    "/en-us/azure/developer/ai/get-started-azure-openai-starter-kit",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ ジュニアチーム | 出場チーム",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "http://npb.jp/junior/2005/roster_m.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/junior/2005/roster_m.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sign in to Azure OpenAI Service Studio",
+   "content": "Explore Azure AI Foundry and OpenAI Service Studio for innovative solutions in artificial intelligence and machine learning.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "http://oai.azure.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "http",
+    "oai.azure.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Azure OpenAI frequently asked questions | Microsoft Learn",
+   "content": "Sep 11, 2026 · Azure OpenAI gives customers advanced language AI with the latest OpenAI models with the security and enterprise promise of Azure. Azure OpenAI codevelops the APIs with OpenAI, ensuring compatibility and a smooth transition from one to the other.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://learn.microsoft.com/en-us/azure/foundry-classic/openai/faq",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "learn.microsoft.com",
+    "/en-us/azure/foundry-classic/openai/faq",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "アニメ『パンどろぼう』公式サイト",
+   "content": "シリーズ累計600万部を突破の大人気絵本『パンどろぼう』がアニメ化決定！2026年10月2日よりNHK Eテレにて毎週金曜午後6時40分放送開始予定",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fpandorobo-anime.com%2Fassets%2Fimg%2Ftop%2Ftopics%2Ftopics_aj_faf2026.jpg&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fpandorobo-anime.com%2Fassets%2Fimg%2Ftop%2Ftopics%2Ftopics_shibata.jpg&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fpandorobo-anime.com%2Fassets%2Fimg%2Ftop%2Ftopics%2Ftopics_tanezaki.jpg&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fpandorobo-anime.com%2Fassets%2Fimg%2Ftop%2Ftopics%2Ftopics_hanazawa.jpg&type=f250_208https%3A%2F%2Fsearch.pstatic.net%2Fsunny%3Fsrc%3Dhttps%3A%2F%2Fpandorobo-anime.com%2Fassets%2Fimg%2Ftop%2Ftopics%2Ftopics_suwabe.jpg&type=f250_208",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://pandorobo-anime.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pandorobo-anime.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2026年チームスローガン決定 - 千葉ロッテマリーンズ",
+   "content": "2026.01.14.このシーズンオフ、私たちは世代を問わず高い競争力を備えたチームづくりを目指し、勝負にこだわる強度の高いトレーニングを積み重ねてきました。 それに加え、球団理念の価値観(VALUES)の一つである「常に楽しむ(HAVE FUN)」を重視し、日本一を知るサブロー監督のもと、 若手選手と共に明るく活気あるチーム作りを推進しています。 2026年はサブロー監督が目指すベー.....2026.01.14.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.marines.co.jp%2Fmedia%2Fsites%2F5%2Fnews%2F202601%2Fph_202600760512_slogan01.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.marines.co.jp/news/detail/202600760512.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/news/detail/202600760512.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "10/2(金)～4(日)70周年チャンピオンシリーズ イベント情報!!",
+   "content": "2022.12.12.10月2日(金)～4日(日)埼玉西武戦では、日本一となった2005年に焦点を当てた70周年チャンピオンシリーズを開催!!当日に実施するイベント情報をお知らせします。 期間中は各日先着8,000名様に2005年誠ユニホームをプレゼント!!3日(土)にはマリーンズOBの初芝清氏、小林宏之氏(現アカデミーコーチ)が試合前セレモニーに登場!!4日(日)にはおなじくマリーンズOB里崎智也氏(現球団.....2022.12.12.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.marines.co.jp%2Fmedia%2Fsites%2F5%2Fasset%2Fcmn%2Fimages%2Fnews%2F20%2F09%2F25%2Fph_70th01.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.marines.co.jp/news/detail/00005834.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/news/detail/00005834.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "オリックス3連覇に芸能界も喜び モモコ、東野、滝音・秋定がコメント",
+   "content": "2023.09.20.20日、京セラドームでオリックス・バファローズ対千葉ロッテマリーンズ戦が行われ、オリックスがロッテを6対2で下し、リーグ3連覇を果たした。ビハインドで迎えた7回に一挙6点で形勢を逆転。本拠地での優勝は、1996年のグリーンスタジアム神戸以来、27年ぶりとなった。ハイヒール・モモコ、東野幸治、滝音 ・秋定ら芸能界からも喜びの声が寄せられている。 モモコ......2023.09.20.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcontents.oricon.co.jp%2Fupimg%2Fnews%2F2296000%2F2295641%2F20230920_215022_p_o_28127775.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.oricon.co.jp/news/2295641/full/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.oricon.co.jp",
+    "/news/2295641/full/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ロッテ吉井監督の「個人の色を出す」組織論 選手、コーチとも対等に [ロッテ....",
+   "content": "2023.04.11.インタビューの冒頭で、突然、取材対象者が歌い出した。2月上旬、沖縄・石垣島。千葉ロッテマリーンズの春季キャンプ中のある日のことだ。 「かあさんが夜なべをして～」 そう口ずさんだのは吉井理人新監督。初…2023.04.11.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimgopt.asahi.com%2Fogp%2FAS20230411000051_comm.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.asahi.com/articles/ASR4C02VGR4BUTQP01F.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.asahi.com",
+    "/articles/ASR4C02VGR4BUTQP01F.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【ロッテ】鳥越裕介２軍監督、木村龍治投手コーチらが今季限り退団 井口監....",
+   "content": "2022.10.05.ロッテは5日、鳥越裕介2軍監督（51）からの退団申し出を受理したと発表した。 また木村龍治1軍投手コーチ（52）河野亮1軍打撃コーチ（51）清水将海1軍バッテリーコーチ（47）的場直樹1軍戦略コーチ兼バッテリーコーチ補佐（45）が契約満了で退団すると発表した。 シーズン5位に終わったロッテは2日の全日程終了後、就任5年目を終えた井口資仁監督（47）の電撃辞任が発....2022.10.05.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.nikkansports.com%2Fbaseball%2Fnews%2Fimg%2F202210050000847-w500_0.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.nikkansports.com/baseball/news/202210050000847.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nikkansports.com",
+    "/baseball/news/202210050000847.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】千葉ロッテマリーンズ VS オリックス・バファローズ(2025年4月2日)｜試....",
+   "content": "2026.05.13.2025年4月2日 千葉ロッテマリーンズ VS オリックス・バファローズのライブ配信・無料動画・試合速報・結果です。プレー動画とともに、パ・リーグ6球団(北海道日本ハム,東北楽天,埼玉西武,千葉ロッテ,オリックス,福岡ソフトバンク)の試合情報をお楽しみいただけます。2026.05.13.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcontents.official-pacificleague.com%2Fmovies%2F1992001%2F2025%2F2025040209-M-B-1%2F2025040209_0_P%2Fthumb%2F2025040209_0.11144.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://pacificleague.com/game/32930",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pacificleague.com",
+    "/game/32930",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ ＶＳ オリックス・バファローズ 「第２３回 京成グル....",
+   "content": "4페이지605KB２０２４年７月１３日（土）にＺＯＺＯマリンスタジアム（千葉市美浜区）で行われる千葉 ロッテマリーンズ ＶＳ... 千葉ロッテマリーンズ球団公式サイト （https://www.marines.co.jp/event/daily/20240713.html）をご参照ください。 （２）場 所... ●花束贈呈 事前応募により当選された小学生のお子様が千葉ロッテマリーンズ吉井監督に 花束を贈呈します。 ●STARTING KIDS...4페이지605KB",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=3172ae5e_ab21842c&type=ofullfill176_176_white_trim2",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.keisei.co.jp/cms/files/keisei/MASTER/0110/aimVbKAC.pdf",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.keisei.co.jp",
+    "/cms/files/keisei/MASTER/0110/aimVbKAC.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "8月11日（金） 大滝麻未さん 千葉ロッテマリーンズvs埼玉西武ライオンズ戦 始....",
+   "content": "ジェフユナイテッド市原・千葉レディースでは、レディーススポンサーである小久保製氷冷蔵株式会社さまのご協力のもと、昨シーズンまでジェフユナイテッド市原・千葉レディースに所属しておりました大滝麻未さんが、8月11日（金）ZOZOマリンスタジアムで開催される千葉ロッテマリーンズの試合にて始球式を行うこととなりましたので、お知らせいたします。 この機....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fjefunited.co.jp%2Fasset%2Fimages%2Fnews%2Fmv.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://jefunited.co.jp/news/detail/1860",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "jefunited.co.jp",
+    "/news/detail/1860",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Model Publishers | Microsoft Foundry - ai.azure.com",
+   "content": "Why OpenAI on Azure All OpenAI endpoints inherit enterprise‑grade Content Safety, flexible serverless or provisioned‑throughput deployments, Azure billing, and private‑network inference so you can move from prototype to production in days, not months.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://ai.azure.com/catalog/publishers/openai",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "ai.azure.com",
+    "/catalog/publishers/openai",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Catalog | Microsoft Foundry - ai.azure.com",
+   "content": "Build, test, and deploy AI systems with the models, tools, and workflows your team needs. Scale on one platform. Sign in to start building.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://ai.azure.com/catalog",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "ai.azure.com",
+    "/catalog",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Azure OpenAI | Microsoft Marketplace",
+   "content": "Run OpenAI models on Azure. Upgrade to Microsoft Foundry for agents, tools, and the full model catalog.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://marketplace.microsoft.com/en-us/product/azure-services/microsoft.cognitiveservicesopenai?tab=overview",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "marketplace.microsoft.com",
+    "/en-us/product/azure-services/microsoft.cognitiveservicesopenai",
+    "",
+    "tab=overview",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "チバテレ｜千葉テレビ放送株式会社",
+   "content": "千葉テレビ放送（チバテレ）公式ホームページ。番組情報、最新ニュース、千葉県内の市町村情報、チュバチュバワンダーランド、マリーンズナイター等に関する様々な情報をお届けします。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.chiba-tv.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.chiba-tv.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "マリーンズちゃんねる",
+   "content": "千葉ロッテマリーンズ",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://marinesch.blog.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "marinesch.blog.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ロッテ・種市の目が潤む 3年ぶりの白星のあと、ファンの声に [ロッテ（千葉....",
+   "content": "2023.04.10.先発し力投するロッテ種市篤暉=日刊スポーツ （9日、千葉ロッテマリーンズ10―1東北楽天ゴールデンイーグルス）... 当時投手コーチだった吉井理人監督は責任を感じていた。「そもそも種市のけがの原因は、... 「（広報が自分を）SNSに上げたらすごくコメントが来ているよ、と。頑張らないといけないという思いが強くなった」 この日もマウンドに上がるたび、...2023.04.10.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimgopt.asahi.com%2Fogp%2FAS20230409004172_comm.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.asahi.com/articles/ASR497G5CR49UTQP00P.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.asahi.com",
+    "/articles/ASR497G5CR49UTQP00P.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ ヒットテーマ2 (キラメキラリ)",
+   "content": "2010.03.03.この動画の親作品・子作品 ; 親作品 : この動画の元になった作品, 子作品 : この動画から生まれた作品2010.03.03.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg.cdn.nimg.jp%2Fs%2Fnicovideo%2Fthumbnails%2F9900855%2F9900855.original%2Fr1280x720l%3Fkey%3D5c849d86ee25732b9be10132c5b2467eeef83ca6922b7f6de43d20f2147d2c9f&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.nicovideo.jp/watch/sm9900855",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nicovideo.jp",
+    "/watch/sm9900855",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "Suspended: timeout"
+  ]
+ ]
+}

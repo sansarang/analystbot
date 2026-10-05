@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://apnews.com/article/world-cup-sports-soccer-international-middle-east-d32f69a516e466135ecb012cc2009ed7",
+ "query": "",
+ "recorded_at": "2026-10-02T05:50:30.325925+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

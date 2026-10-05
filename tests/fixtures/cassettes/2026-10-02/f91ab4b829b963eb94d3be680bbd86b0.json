@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.aiscore.com/match-china-women-south-korea-women/j374oi48w3rfgqo/lineups",
+ "query": "",
+ "recorded_at": "2026-10-02T05:47:00.682703+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

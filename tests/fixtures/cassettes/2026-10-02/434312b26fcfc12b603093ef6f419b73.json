@@ -1,0 +1,295 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "千葉ロッテマリーンズ national team return Oct 2",
+ "recorded_at": "2026-10-02T08:05:20.679882+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ",
+   "content": "プロ野球・千葉ロッテマリーンズオフィシャルサイトです。試合や選手はもちろん、チケットやイベント、ファンクラブに至るまで球団オフィシャルならではの公式情報をファンのみなさまに提供します",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.marines.co.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 17 · vs. 楽天 · 1-5 · 試合終了 · ZOZOマリン · 敗：森, 金 : 18 · 試合なし, 土 : 19 · vs. 西武 · 2-4 · 試合終了 · ZOZOマリン · 敗：高野脩, 日 : 20 · vs. 西武 · 18:00 · 見どころ · ZOZOマリン, 月 : 21 · vs. 西武 · 18:00 · 試合前 · ZOZOマリン, 火 : 22 · vs. オリックス · 18:00 · 試合前 · ZOZOマリン, 水 : 23 · vs. オリックス · 17:00 · 試合前 · ZOZOマリン",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/9/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/9/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "チームヒストリー[2020年～2023年] - 千葉ロッテマリーンズ",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.marines.co.jp/corp/history/2020.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/corp/history/2020.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ対オリックス・バファローズ 公式戦 ZOZO Marine Stadium Chiba....",
+   "content": "Outfield Reserved Seating (Home) · 최저가 · ₩86,051Infield Reserved Seating B · ₩89,944섹션 Infield Reserved Seating C (3rd Base Side) · 베스트 딜 · 팬 최애 · ₩86,829",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.viagogo.de/Sport-Tickets/Baseball/Nippon-Professional-Baseball/Chiba-Lotte-Marines-Karten/E-161885546",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.viagogo.de",
+    "/Sport-Tickets/Baseball/Nippon-Professional-Baseball/Chiba-Lotte-Marines-Karten/E-161885546",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "15 top-level Japanese baseball players will compete in ABL in 2023-24 | オーストラリア野球リー....",
+   "content": "15 top-level Japanese baseball players will compete in ABL in 2023-24 | オーストラリア野球リーグの日本",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.baseball.com.au%2Fuploads%2Fsites%2F14%2F2023%2F11%2FNews-Covers-94-1017x432.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://theabl.com.au/news/japan-in-abl/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "theabl.com.au",
+    "/news/japan-in-abl/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Australian Baseball to be broadcast on Baseball+ | A new app available for download now | theABL.com.au",
+   "content": "Australian Baseball to be broadcast on Baseball | A new app available for download now",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.baseball.com.au%2Fuploads%2Fsites%2F14%2F2023%2F11%2FGettyImages-1739779408-1024x683.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://theabl.com.au/news/baseballplus",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "theabl.com.au",
+    "/news/baseballplus",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TOYO UNIVERSITY",
+   "content": "16페이지8MBFeature #2 TOYO UNIVERSITY NEWS Mar. 2020 NO.257 Topic LINK UP TOYO, a website that shares information to enrich your life 「L INK UP TOYO」は 東洋大学と読者の... ～東洋から世界に挑む選手たち～ Koki Ikeda won a gold medal in the IAAF World Race Walking Team Championships in 2018, and achieved victory in the Universiade in 2019. He is now ranked...16페이지8MB",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=c5f16c66_6196e9eb&type=ofullfill176_176_white_trim2",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.toyo.ac.jp/assets/about/No257_all.pdf",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.toyo.ac.jp",
+    "/assets/about/No257_all.pdf",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "千葉ロッテマリーンズ national team return oct 2 2023",
+  "千葉ロッテマリーンズ national team return oct 2 day",
+  "千葉ロッテマリーンズ national team return oct 2 2024",
+  "千葉ロッテマリーンズ national team return oct 2 2025",
+  "千葉ロッテマリーンズ national team return oct 2 5",
+  "千葉ロッテマリーンズ national team return oct 2 football",
+  "千葉ロッテマリーンズ national team return oct 2 4",
+  "千葉ロッテマリーンズ national team return oct 2 2000"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

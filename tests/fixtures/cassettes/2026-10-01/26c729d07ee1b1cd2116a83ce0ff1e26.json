@@ -1,0 +1,528 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Sacramento Republic 감독 인터뷰 10월 1일",
+ "recorded_at": "2026-10-01T02:14:58.684481+00:00",
+ "results": [
+  {
+   "url": "https://www.donga.com/news/Inter/article/all/20261001/134765238/1",
+   "title": "동아일보",
+   "content": "2시간 전 · 동아일보",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.donga.com",
+    "/news/Inter/article/all/20261001/134765238/1",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "'손흥민 주장 체제' 유지한 모레노 감독 \"기존 방식 존중\" | 연합뉴스",
+   "content": "Sep 23, 2026 · (천안=연합뉴스) 안홍석 기자 = 로베르트 모레노 (49) 한국 축구 대표팀 임시 감독은 '손흥민 (LAFC) 주장 체제'를 유지한 이유에 대해 \"기존에 해오던 방식을 존중했다\"고 설명했다. 모레노 감독은 에콰도르와의 평가전을 하루 앞둔 23일 천안 코리아풋볼파크에서 훈련을 소화하기에 앞서 기자들과 만나 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.yna.co.kr/view/AKR20260923176100007",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.yna.co.kr",
+    "/view/AKR20260923176100007",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://namu.wiki/w/%EB%AF%B8%EC%BC%88%20%EC%95%84%EB%A5%B4%ED%85%8C%ED%83%80",
+   "title": "미켈 아르테타 - 나무위키",
+   "content": "2026년 9월 5일 · 스페인 의 축구 선수 출신 감독 . 現 아스날 FC 감독. 선수 시절 포지션은 미드필더 . 선수 경력 플",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EB%AF%B8%EC%BC%88%20%EC%95%84%EB%A5%B4%ED%85%8C%ED%83%80",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "yahoo"
+   ],
+   "positions": [
+    6,
+    7
+   ],
+   "score": 0.6190476190476191,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.youtube.com/watch?v=jkibeULIpJE",
+   "title": "'평가전 D-1' 축구 A대표팀, 손흥민·모레노 감독 스탠딩 인터뷰 ...",
+   "content": "2026년 9월 23일 · '평가전 D-1' 축구 A대표팀, 손흥민·모레노 감독 스탠딩 인터뷰 - [끝까지LIVE] MBC 중계방송 2026년 09월 23일 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=jkibeULIpJE",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "'에콰도르전 D-1' 모레노호 출격! 모레노·손흥민 인터뷰 현장 - [MBIC...",
+   "content": "#남자축구 #모레노감독 #손흥민 '에콰도르전 D-1' 모레노호 출격! 모레노·손흥민 인터뷰 현장 - [MBIC LIVE] MBC 중계방송 2026년 09월 23일",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=Xpr5mMw4dQM",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=Xpr5mMw4dQM",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.fotmob.com/ko/teams/521004/overview/sacramento-republic-fc",
+   "title": "Sacramento Republic FC - 일정, 팀 정보 및 최고의 선수들",
+   "content": "2021년 4월 25일 · Sacramento Republic FC의 최신 결과, 예정 경기, 리그 순위표, 주요 선수 스탯과 팀 소식을 확인하세요. 시즌 내내 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/ko/teams/521004/overview/sacramento-republic-fc",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "What is Coach Moreno's first word? “Hello, South Korea ...",
+   "content": "Sep 12, 2026 · Check out Manager Moreno's first official interview in South Korea right now. 🇰🇷 Hana Bank Invitational National Football Team Friendly Match Schedule 🇰🇷v🇪🇨 Ecuador 9/24 (Thu) 20 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=u8HiGPaGPiw",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=u8HiGPaGPiw",
+    ""
+   ]
+  },
+  {
+   "url": "https://sbspr.sbs.co.kr/press/press_middle_content.jsp?press_no=1591",
+   "title": "SBS",
+   "content": "1. 일시 : 2026년 10월 7일 (수) 오후 2시 2. 장소 : SBS 13층 SBS홀 (서울특별시 양천구 목동서로 161 SBS 방송센터) 3. 참석 : 이정림 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "sbspr.sbs.co.kr",
+    "/press/press_middle_content.jsp",
+    "",
+    "press_no=1591",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "모레노 축구대표팀 감독, 13일 입국해 첫 공식 행보…14일 명단 발표 -...",
+   "content": "Sep 9, 2026 · 지난 1일 축구대표팀 임시 사령탑으로 선임된 모레노 감독은 입국 직후 진행되는 인터뷰를 통해 대표팀 감독으로서 첫 공식 일정을 소화한다. 그는 14일 천안의 코리아풋볼파크에서 9월 대표팀 소집 명단을 발표하고 기자회견을 진행할 예정이다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.news1.kr/sports/soccer/6284725",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.news1.kr",
+    "/sports/soccer/6284725",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.youtube.com/watch?v=pPNYyzE4hao",
+   "title": "10월 16일(수) 이충희 감독 인터뷰 - YouTube",
+   "content": "AboutPressCopyrightContact usCreatorsAdvertiseDevelopersTermsPrivacyPolicy & SafetyHow YouTube worksTest new …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=pPNYyzE4hao",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "차기 감독 공석인데... 축구대표팀 9, 10월 A매치 상대 확정-스포츠ㅣ...",
+   "content": "Aug 5, 2026 · 대한축구협회는 5일 \"국가대표팀이 9월 국내에서 개최되는 친선경기에서 에콰도르, 우루과이를 상대한다\"며 \"9, 10월 A매치 4경기 개최 장소와 킥오프 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.hankookilbo.com/news/article/A2026080511260001491",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.hankookilbo.com",
+    "/news/article/A2026080511260001491",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[현장인터뷰]\"韓 이런 '경우의 수' 없었다!\" 홍명보 감독 \"2~3자리 변...",
+   "content": "현장인터뷰韓 이런 경우의 수 없었다 홍명보 감독 2~3자리 변화포기하지 않고 끝까지 꼭 승리한다는 마음일문일답 몬테레이멕시코=스포츠조선 김가을 기자홍명보 대한민국 월드컵대표팀 감독이 조별리그 마지막 결전을 앞두고 굳은 각오를 다졌다. 대한민국은 25일 오전 10시이하",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.chosun.com/sports/football/2026/06/24/GU2GCYLBGIZTCODGHE4DQM3FGE/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.chosun.com",
+    "/sports/football/2026/06/24/GU2GCYLBGIZTCODGHE4DQM3FGE/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.fotmob.com/ko/teams/521004/squad/sacramento-republic-fc",
+   "title": "Sacramento Republic FC - 팀, 감독, 부상, 포지션 - FotMob",
+   "content": "현재 Sacramento Republic FC 스쿼드 Sacramento Republic FCSacramento Republic FC미국 캘린더 동기화 경기 스쿼드 통계 ‌ 경기 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/ko/teams/521004/squad/sacramento-republic-fc",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://v.daum.net/v/20260926191537737",
+   "title": "아! 한일전 '1점 차' 통한의 역전패 끝내 '눈물' 왈칵, 12년 만의 ...",
+   "content": "5일 전 · [스타뉴스 | 김우종 기자] 26일 일본 아이치현 도코나메 아이치 스카이 엑스포에서 열린 2026 아이치·나고야 아시안게임 펜싱 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "v.daum.net",
+    "/v/20260926191537737",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.transfermarkt.co.kr/monterey-bay-fc_sacramento-republic-fc/index/spielbericht/4824407",
+   "title": "Monterey Bay FC - Sacramento Republic FC, 2026년 8월 30일 - USL …",
+   "content": "2026년 8월 30일 · 전체 균형 USL Championship 상위 플레이어 Monterey Bay FC 3 추첨 2 상위 플레이어 Sacramento Republic FC …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.transfermarkt.co.kr",
+    "/monterey-bay-fc_sacramento-republic-fc/index/spielbericht/4824407",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://sports.news.nate.com/view/20260913n08076",
+   "title": "[ST포토] 모레노 감독, 한국서 첫 인터뷰 - 네이트 스포츠",
+   "content": "2026년 9월 13일 · 한눈에 보는 오늘 : 축구 - 뉴스 : [인천공항=스포츠투데이 팽현준 기자] 로베르토 모레노 한국축구대표팀 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "sports.news.nate.com",
+    "/view/20260913n08076",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

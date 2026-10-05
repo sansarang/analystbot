@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://detroitsportsnation.com/",
+ "query": "",
+ "recorded_at": "2026-10-02T02:47:25.178647+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

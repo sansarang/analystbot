@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.aiscore.com/match-south-korea-venezuela/o17pjiowwy6sy7j/h2h",
+ "query": "",
+ "recorded_at": "2026-10-02T06:03:08.477158+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

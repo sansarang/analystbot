@@ -1,0 +1,579 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "千葉ロッテマリーンズ injury news Oct 2",
+ "recorded_at": "2026-10-02T08:18:17.560002+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 17 · vs. 楽天 · 1-5 · 試合終了 · ZOZOマリン · 敗：森, 金 : 18 · 試合なし, 土 : 19 · vs. 西武 · 2-4 · 試合終了 · ZOZOマリン · 敗：高野脩, 日 : 20 · vs. 西武 · 18:00 · 見どころ · ZOZOマリン, 月 : 21 · vs. 西武 · 18:00 · 試合前 · ZOZOマリン, 火 : 22 · vs. オリックス · 18:00 · 試合前 · ZOZOマリン, 水 : 23 · vs. オリックス · 17:00 · 試合前 · ZOZOマリン",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/9/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/9/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ",
+   "content": "プロ野球・千葉ロッテマリーンズオフィシャルサイトです。試合や選手はもちろん、チケットやイベント、ファンクラブに至るまで球団オフィシャルならではの公式情報をファンのみなさまに提供します",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.marines.co.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "チームヒストリー[2020年～2023年] - 千葉ロッテマリーンズ",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.marines.co.jp/corp/history/2020.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/corp/history/2020.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ対オリックス・バファローズ 公式戦 ZOZO Marine Stadium Chiba....",
+   "content": "Outfield Reserved Seating (Home) · 최저가 · ₩86,051Infield Reserved Seating B · ₩89,944섹션 Infield Reserved Seating C (3rd Base Side) · 베스트 딜 · 팬 최애 · ₩86,829",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.viagogo.de/Sport-Tickets/Baseball/Nippon-Professional-Baseball/Chiba-Lotte-Marines-Karten/E-161885546",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.viagogo.de",
+    "/Sport-Tickets/Baseball/Nippon-Professional-Baseball/Chiba-Lotte-Marines-Karten/E-161885546",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】オリックス・バファローズ VS 千葉ロッテマリーンズ(2021年11月12日)｜....",
+   "content": "2026.05.21.【2021 パーソル CS パ 優勝】日本シリーズ進出を全員野球で掴んだ選手たちの熱き戦いをVTRで振り返る!! 2021年11月12日 オリックス・バファローズ2026.05.21.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://pacificleague.com/game/27158",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pacificleague.com",
+    "/game/27158",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2019年 千葉ロッテマリーンズ - スタメンデータベース",
+   "content": "2019年 千葉ロッテマリーンズ 4位・69勝70敗4分 .496 監督・井口資仁 ; 2019/3/29 · 8藤原 · 9加藤 · 4中村奨 · 3井上 · 7角中 · 5レアード · Dバルガス · 2田村 · 6藤岡 · P石川 · E岸",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://sta-men.jp/2019marines.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sta-men.jp",
+    "/2019marines.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】千葉ロッテマリーンズ VS オリックス・バファローズ(2021年8月14日)｜....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://pacificleague.com/game/26631",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pacificleague.com",
+    "/game/26631",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ ＶＳ オリックス・バファローズ 「第２３回 京成グル....",
+   "content": "4페이지605KB1 Ｎｅｗｓ Ｒｅｌｅａｓｅ ２０２４年 ６月１３日 京成グループ 千葉ロッテマリーンズ ＶＳ オリックス... ２０２４年７月１３日（土）にＺＯＺＯマリンスタジアム（千葉市美浜区）で行われる千葉 ロッテマリーンズ ＶＳ オリックス... 千葉ロッテマリーンズ球団公式サイト （https://www.marines.co.jp/event/daily/20240713.html）をご参照ください。 （２）場 所...4페이지605KB",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=3172ae5e_ab21842c&type=ofullfill176_176_white_trim2",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.keisei.co.jp/cms/files/keisei/MASTER/0110/aimVbKAC.pdf",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.keisei.co.jp",
+    "/cms/files/keisei/MASTER/0110/aimVbKAC.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "マリーンズナイター｜千葉テレビ放送（チバテレ）",
+   "content": "サブロー新監督が掲げる『PLAY FREE. WIN HARD.』のスローガンのもと、チーム一丸となって頂点を目指す千葉ロッテマリーンズの白熱の40試合を生中継でお伝えします！メインチャンネル放送開始時間前と放送終了時間後はチバテレミライチャンネルで放送！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.chiba-tv.com%2Fsaved%2Fimages%2Fprogram_page%2F25%2F91%2F11b4f6073ca2ed656111eaaa64f3dc20cb592591.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.chiba-tv.com/program/detail/1017",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.chiba-tv.com",
+    "/program/detail/1017",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ザ・サンデー千葉市｜千葉テレビ放送（チバテレ）",
+   "content": "千葉市の最新情報をお届け！ ; 観光スポットやグルメ情報など、千葉市の魅力をたっぷりとお伝えします。 未来都市を思わせる街や、懐かしい田園風景が広がる千葉市。そんな懐の深い千葉市の楽しい散策スポットを紹介していきます。これを観ればお出かけ情報もバッチリ!! 素敵なプレゼントのお知らせもあります♪ 放送は、毎月第1日曜日 朝9時から!!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.chiba-tv.com%2Fsaved%2Fimages%2Fprogram_page%2F2d%2Fad%2Fff08126bc84d490609b6b6d727604c96e6da2dad.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.chiba-tv.com/program/detail/1003",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.chiba-tv.com",
+    "/program/detail/1003",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズカレンダー",
+   "content": "10/2の試合日程をもちまして、千葉ロッテマリーンズカレンダーの試合日程カレンダーの更新は終了します。今後新たに予定が追加されることはありません。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fattachments.timetreeapp.com%2Fpublic_calendar%2Ff5fc%2F2022-02-04%2F64195-1643961650076.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://timetreeapp.com/public_calendars/marines_tte",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "timetreeapp.com",
+    "/public_calendars/marines_tte",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ 88 フリース オンラインストア限定】2/18(金)オーセンテ....",
+   "content": "千葉ロッテマリーンズ 88 フリース オンラインストア限定】2/18(金)オーセンティックアパレル受注販売4.4/53,914 참여",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fshop.marines.co.jp%2Fassets%2Ffront%2Fimg%2Flp%2Fmarines_apparel_active2026%2Fcoordinate_main_05.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://cuie.info95.co.kr/?shop/items/O84072225710/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "cuie.info95.co.kr",
+    "/",
+    "",
+    "shop/items/O84072225710/",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズの公式キャラクター「謎の魚」が最終形態に進化！！あ....",
+   "content": "2021.04.08.・ロッテ公式キャラクター「謎の魚」が最終形態に進化 ・謎の魚は可変キャラクターとして１７年に ・登場５月２６日に第一形態が登場し、同２８日に第二形態。６月１１日に第三形態となった。翌１８年６月１２日に第四形態。同２６日に第五形態へ進化した ・これまでの形態で顔が最も小さいサイズに。より人間に近づいた「謎の魚」は、球場に響く音楽に乗り軽......2021.04.08.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Flivedoor.blogimg.jp%2Fhatima%2Fimgs%2F6%2Fb%2F6bd16064-s.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "http://blog.esuteru.com/archives/9677601.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "blog.esuteru.com",
+    "/archives/9677601.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "15 top-level Japanese baseball players will compete in ABL in 2023-24 | オーストラリア野球リー....",
+   "content": "15 top-level Japanese baseball players will compete in ABL in 2023-24 | オーストラリア野球リーグの日本",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.baseball.com.au%2Fuploads%2Fsites%2F14%2F2023%2F11%2FNews-Covers-94-1017x432.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://theabl.com.au/news/japan-in-abl/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "theabl.com.au",
+    "/news/japan-in-abl/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Australian Baseball to be broadcast on Baseball+ | A new app available for download now | theABL.com.au",
+   "content": "Australian Baseball to be broadcast on Baseball | A new app available for download now",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.baseball.com.au%2Fuploads%2Fsites%2F14%2F2023%2F11%2FGettyImages-1739779408-1024x683.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://theabl.com.au/news/baseballplus",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "theabl.com.au",
+    "/news/baseballplus",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "千葉ロッテマリーンズ injury news oct 2 2025",
+  "physioroom epl injury news",
+  "nfl injury news",
+  "premiership injury news"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "Suspended: timeout"
+  ]
+ ]
+}

@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.baseball-reference.com/boxes/NYN/NYN202207020.shtml",
+ "query": "",
+ "recorded_at": "2026-10-02T02:48:12.087859+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

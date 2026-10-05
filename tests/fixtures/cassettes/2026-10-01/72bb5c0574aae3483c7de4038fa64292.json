@@ -1,0 +1,528 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Sacramento Republic 선발 등판 9월 30일",
+ "recorded_at": "2026-10-01T02:15:09.113883+00:00",
+ "results": [
+  {
+   "url": "https://www.sacrepublicfc.com/schedule/",
+   "title": "2026 Schedule - Sacramento Republic FC",
+   "content": "Schedule for Sacramento Republic FC home and away matches",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/schedule/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing",
+    "yahoo"
+   ],
+   "positions": [
+    5,
+    2
+   ],
+   "score": 1.4,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.yagoonara.com/schedule/rotation",
+   "title": "KBO 선발 로테이션 — 팀별 예상 선발투수 (향후 5경기)·최근 5 ...",
+   "content": "KBO 10개 구단의 최근 5경기 선발투수와 향후 5경기 예상 선발. KBO 선발 예고는 확정, 그 뒤는 최근 등판 순서와 휴식일로 추정하며 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.yagoonara.com",
+    "/schedule/rotation",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Homepage - Sacramento Republic FC",
+   "content": "Subscribe to our newsletter Republic FC news, events, and promotions straight to your inbox.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://mlbpark.donga.com/mp/b.php?b=kbotown&id=202609270118978257&m=view",
+   "title": "오늘 아겜 금메달 결정전 일본 선발투수 등판 일지 ㄷㄷ : MLBPARK",
+   "content": "4일 전 · ‌ 일본 선발투수 히구치 신 아겜 등판 일지 9월 21일 선발 등판 중국전 6이닝 10탈삼진 1실점 86구 3일 휴식 9월 25일 선발 등판 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "mlbpark.donga.com",
+    "/mp/b.php",
+    "",
+    "b=kbotown&id=202609270118978257&m=view",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.sacrepublicfc.com/news/2026/09/16/sacramento-republic-fcs-stadium-preview-center-ribbon-cutting-on-september-30-seat-deposits-for-new-home-9-16-for-9-16-day/",
+   "title": "Sacramento Republic FC’s Stadium Preview Center Ribbon Cutting …",
+   "content": "2026년 9월 16일 · SACRAMENTO, Calif. — As part of celebrating Sacramento’s 916 area code on 9/16, Republic FC announced …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/news/2026/09/16/sacramento-republic-fcs-stadium-preview-center-ribbon-cutting-on-september-30-seat-deposits-for-new-home-9-16-for-9-16-day/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC to open preview center for new ...",
+   "content": "Sep 16, 2026 · Sacramento Republic FC on Wednesday announced the opening a preview center for their new stadium in the Downtown Railyards where fans can choose their seats and get a look at the venue's features.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://sports.yahoo.com/articles/sacramento-republic-fc-open-preview-220000537.html?fr=sycsrp_catchall",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "sports.yahoo.com",
+    "/articles/sacramento-republic-fc-open-preview-220000537.html",
+    "",
+    "fr=sycsrp_catchall",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.koreadaily.com/article/20260830141244385",
+   "title": "팔꿈치 수술→1년 재활→신인왕 2위, 418일 만에 선발 등판 우천 ...",
+   "content": "2026년 8월 30일 · 프로야구 KIA 타이거즈 좌완 투수 윤영철이 팔꿈치 수술 재활을 마치고 1년 만에 공식 경기 등판이 우천 취소로 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.koreadaily.com",
+    "/article/20260830141244385",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC | Sacramento CA - Facebook",
+   "content": "Sacramento Republic FC, Sacramento. 105,789 followers · 1,873 talking about this. Welcome to the Official Facebook page for Sacramento Republic FC! Visit us at www.sacrepublicfc.com",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.facebook.com/SacRepublicFC/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.facebook.com",
+    "/SacRepublicFC/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC (@sacrepublicfc) - Instagram",
+   "content": "89K Followers, 1,099 Following, 9,502 Posts - Sacramento Republic FC (@SacRepublicFC) on Instagram: \"Indomitable City. Indomitable Club.\"",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.instagram.com/SacRepublicFC/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.instagram.com",
+    "/SacRepublicFC/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.spotvnews.co.kr/news/articleView.html?idxno=1008860",
+   "title": "곽빈 다음은 최민석이다! 홍콩전 선발 등판 확정…선발투수일까 ...",
+   "content": "2026년 9월 21일 · 홍콩전 선발 등판 확정…선발투수일까 첫 번째 투수일까, '꾀돌이'의 전략은 작성일: 2026.09.22 00:30 신원철 기자 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.spotvnews.co.kr",
+    "/news/articleView.html",
+    "",
+    "idxno=1008860",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "2026 Sacramento Republic Roster Details - FBref.com",
+   "content": "Check out 's latest scores, goals, shooting, passing, defense, possession stats and more for the 2026 Sacramento Republic.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://fbref.com/en/squads/d1903ffe/2026/roster/Sacramento-Republic-Roster-Details",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "fbref.com",
+    "/en/squads/d1903ffe/2026/roster/Sacramento-Republic-Roster-Details",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://v.daum.net/v/20260917164528487",
+   "title": "'무슨일일까' 선발투수 마무리 등판 \"정말 기분좋습니다\" MLB 데뷔 ...",
+   "content": "2026년 9월 17일 · MLB 마이애미에서 선발투수로 나오고 있는 샌디 알칸타라가 17일 (한국시각) 열린 애리조나와 원정 경기 9회말 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "v.daum.net",
+    "/v/20260917164528487",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC 2026 Results - ESPN",
+   "content": "Get all the Sacramento Republic FC results for the 2026 season on ESPN. Includes all the Sacramento Republic FC results from all national and international games.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/team/results/_/id/17828/sacramento-republic-fc",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/team/results/_/id/17828/sacramento-republic-fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.chosun.com/sports/baseball/2026/09/27/MU3WKZLGGQYGGZLGMNSGCZJZMY/",
+   "title": "‘이런 만화 같은 일이 있나’ 한국 막았던 日 사회인 투수, 86구 ...",
+   "content": "4일 전 · 히구치는 한국전에서 92구를 던져 이번 대회 등판은 끝난 것으로 보였다. 그런데 지난 26일 일본이 대만을 7-3으로 꺾고 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.chosun.com",
+    "/sports/baseball/2026/09/27/MU3WKZLGGQYGGZLGMNSGCZJZMY/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.newspim.com/news/view/20260906000112",
+   "title": "[핌in잠실] '5이닝 무실점' 달라진 삼성 좌완 이승현, 9월 말 다시 ...",
+   "content": "2026년 9월 7일 · 삼성 이승현이 5일 LG전서 5이닝 무실점했다. 투구폼 수정으로 제구를 되찾으며 재기했다. 삼성은 이승현의 시즌 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.newspim.com",
+    "/news/view/20260906000112",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://theqoo.net/kbaseball/4357558359",
+   "title": "더쿠 - \"곽빈과 최민석의 선발 등판 일정은 귀국 후 컨디션을 ...",
+   "content": "4일 전 · 잡담 두산) \"곽빈과 최민석의 선발 등판 일정은 귀국 후 컨디션을 확인해야 한다\"라면서도 \"최민석은 목요일 (10월 1일 잠실 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "theqoo.net",
+    "/kbaseball/4357558359",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

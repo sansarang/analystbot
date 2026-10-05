@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://api-web.nhle.com/v1/gamecenter/2026020017/boxscore",
+ "query": "",
+ "recorded_at": "2026-10-02T02:56:55.087931+00:00",
+ "ok": true,
+ "status": 200,
+ "text": "{\"id\":2026020017,\"season\":20262027,\"gameType\":2,\"limitedScoring\":false,\"gameDate\":\"2026-10-02\",\"venue\":{\"default\":\"Little Caesars Arena\"},\"venueLocation\":{\"default\":\"Detroit\"},\"startTimeUTC\":\"2026-10-02T22:30:00Z\",\"easternUTCOffset\":\"-04:00\",\"venueUTCOffset\":\"-04:00\",\"tvBroadcasts\":[{\"id\":385,\"market\":\"N\",\"countryCode\":\"US\",\"network\":\"TNT\",\"sequenceNumber\":11},{\"id\":501,\"market\":\"N\",\"countryCode\":\"US\",\"network\":\"truTV\",\"sequenceNumber\":14},{\"id\":578,\"market\":\"N\",\"countryCode\":\"US\",\"network\":\"HBO MAX\",\"sequenceNumber\":19},{\"id\":284,\"market\":\"N\",\"countryCode\":\"CA\",\"network\":\"SN1\",\"sequenceNumber\":113}],\"gameState\":\"FUT\",\"gameScheduleState\":\"OK\",\"regPeriods\":3,\"awayTeam\":{\"id\":3,\"commonName\":{\"default\":\"Rangers\"},\"abbrev\":\"NYR\",\"logo\":\"https://assets.nhle.com/logos/nhl/svg/NYR_light.svg\",\"darkLogo\":\"https://assets.nhle.com/logos/nhl/svg/NYR_dark.svg\",\"placeName\":{\"default\":\"New York\"},\"placeNameWithPreposition\":{\"default\":\"New York\",\"fr\":\"de New York\"}},\"homeTeam\":{\"id\":17,\"commonName\":{\"default\":\"Red Wings\"},\"abbrev\":\"DET\",\"logo\":\"https://assets.nhle.com/logos/nhl/svg/DET_light.svg\",\"darkLogo\":\"https://assets.nhle.com/logos/nhl/svg/DET_dark.svg\",\"placeName\":{\"default\":\"Detroit\"},\"placeNameWithPreposition\":{\"default\":\"Detroit\",\"fr\":\"de Detroit\"}}}",
+ "reason": ""
+}

@@ -1,0 +1,754 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "千葉ロッテマリーンズ 자선 경기 Oct 2",
+ "recorded_at": "2026-10-02T08:05:17.272865+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ",
+   "content": "プロ野球・千葉ロッテマリーンズオフィシャルサイトです。試合や選手はもちろん、チケットやイベント、ファンクラブに至るまで球団オフィシャルならではの公式情報をファンのみなさまに提供します",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.marines.co.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How Was Pensacola Better Prepared for a Data Breach Than New ...",
+   "content": "Jan 20, 2020 · Learn how Pensacola’s ransomware response differed from New Orleans and what businesses can learn about cybersecurity preparedness and breach response.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.libertycenterone.com/blog/learn-from-the-new-orleans-ransomware-attack/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.libertycenterone.com",
+    "/blog/learn-from-the-new-orleans-ransomware-attack/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 17 · vs. 楽天 · 1-5 · 試合終了 · ZOZOマリン · 敗：森, 金 : 18 · 試合なし, 土 : 19 · vs. 西武 · 2-4 · 試合終了 · ZOZOマリン · 敗：高野脩, 日 : 20 · vs. 西武 · 18:00 · 見どころ · ZOZOマリン, 月 : 21 · vs. 西武 · 18:00 · 試合前 · ZOZOマリン, 火 : 22 · vs. オリックス · 18:00 · 試合前 · ZOZOマリン, 水 : 23 · vs. オリックス · 17:00 · 試合前 · ZOZOマリン",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/9/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/9/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pensacola Vs New Orleans Cybersecurity Preparedness Data Breach...",
+   "content": "Filters 21 results Search for: pensacola, vs, new, orleans, cybersecurity, preparedness, data, breach, comparison Exercises Clear all 21 results Filters Search for ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.education.com/resources/exercises/?q=pensacola+vs+new+orleans+cybersecurity+preparedness+data+breach+comparison",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.education.com",
+    "/resources/exercises/",
+    "",
+    "q=pensacola+vs+new+orleans+cybersecurity+preparedness+data+breach+comparison",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ対オリックス・バファローズ 公式戦 ZOZO Marine Stadium Chiba....",
+   "content": "Outfield Reserved Seating (Home) · 최저가 · ₩86,051Infield Reserved Seating B · ₩89,944섹션 Infield Reserved Seating C (3rd Base Side) · 베스트 딜 · 팬 최애 · ₩86,829",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.viagogo.de/Sport-Tickets/Baseball/Nippon-Professional-Baseball/Chiba-Lotte-Marines-Karten/E-161885546",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.viagogo.de",
+    "/Sport-Tickets/Baseball/Nippon-Professional-Baseball/Chiba-Lotte-Marines-Karten/E-161885546",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pensacola Vs New Orleans Cybersecurity Preparedness Data Breach...",
+   "content": "View 2,052 results Showing Results for pensacola vs new orleans cybersecurity preparedness data breach comparison Filters 2,052 results Search for: pensacola, vs, new, orleans, cybersecurity, preparedness, data, breach, comparison Worksheets Clear all 2,052 results History of New Orleans Worksheet History of New Orleans Third Grade Geography",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.education.com/resources/worksheets/?q=pensacola+vs+new+orleans+cybersecurity+preparedness+data+breach+comparison",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.education.com",
+    "/resources/worksheets/",
+    "",
+    "q=pensacola+vs+new+orleans+cybersecurity+preparedness+data+breach+comparison",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "チームヒストリー[2020年～2023年] - 千葉ロッテマリーンズ",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.marines.co.jp/corp/history/2020.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/corp/history/2020.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "1 1. How was Pensacola better prepared for a data breach than New...",
+   "content": "Analyze the preparedness of Pensacola Pensacola had implemented robust data backup protocols and maintained an incident response plan that was regularly tested.These measures allowed the city to restore critical systems more efficiently compared to New Orleans, which faced significant delays due to less resilient infrastructure.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.gauthmath.com/solution/1987629683048708/1-1-How-was-Pensacola-better-prepared-for-a-data-breach-than-New-Orleans-2-3-4-5",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.gauthmath.com",
+    "/solution/1987629683048708/1-1-How-was-Pensacola-better-prepared-for-a-data-breach-than-New-Orleans-2-3-4-5",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How was Pensacola better prepared for a data breach than New ...",
+   "content": "Apr 9, 2026 · Pensacola was better prepared for a data breach than New Orleans because: Pensacola had a robust backup system: They maintained regular backups of their data, which allowed them to restore systems quickly after the breach.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://askfilo.com/user-question-answers-smart-solutions/1-how-was-pensacola-better-prepared-for-a-data-breach-than-3439313335313239",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "askfilo.com",
+    "/user-question-answers-smart-solutions/1-how-was-pensacola-better-prepared-for-a-data-breach-than-3439313335313239",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズの共産",
+   "content": "「A BATHING APE®\"(이하,BAPE®)와 패션 EC 「ZOZOTOWN」을 운영하는 주식회사 ZOZO(본사：지바현 지바시 대표 이사 사장 겸 CEO：사와다 히로타로)는, ZOZOTOWN의 20주년의 기념으로서 8월 24일(일)에 관협찬 시합을 개최합니다. 경기 당일은, 마린즈의 선수들이, ZOZO와 콜라보레이션한 특별 디자인의 유니폼을 착용해 시합에 임하는 것 외에, 양자의 20년의 행보를 되돌아 보는 에모셔널인 VTR의 ....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.shgcdn.com%2F5dc3d69a-8286-416f-a513-26287f3778ef%2F-%2Fformat%2Fauto%2F-%2Fquality%2Fnormal%2F&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://ko.jp.bape.com/pages/%E5%85%B1%E7%94%A3",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "ko.jp.bape.com",
+    "/pages/%E5%85%B1%E7%94%A3",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ ＶＳ オリックス・バファローズ 「第２３回 京成グル....",
+   "content": "4페이지605KB２０２４年７月１３日（土）にＺＯＺＯマリンスタジアム（千葉市美浜区）で行われる千葉 ロッテマリーンズ ＶＳ オリックス・バファローズの試合に協賛し、｢第２３回... （２）外周ステージイベント（１６：００～１６：３０前後） 京成パンダと千葉ロッテマリーンズマスコット マーくんと一緒に記念撮影会 ※参加人数により、...4페이지605KB",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=3172ae5e_ab21842c&type=ofullfill176_176_white_trim2",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.keisei.co.jp/cms/files/keisei/MASTER/0110/aimVbKAC.pdf",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.keisei.co.jp",
+    "/cms/files/keisei/MASTER/0110/aimVbKAC.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "지바 롯데마린스전에 관관협찬 배우기를 살린 이벤트 개최 - 城西国際大学",
+   "content": "본학은 9월 28일에 개최되는 프로야구 지바 마린스 대일본 햄 파이터즈전에 관 협찬합니다.경기의 명칭은 「성서 조사이국제대학 DAY」로 하고, 회장이 되는 ZOZO 마린 스타디움에서는, 야구 팬이나 지역 주민 여러분과 교류를 깊게 하기 위해, 다양한 행사를 준비하고 있습니다. 「城西国際大学DAY」は本学として初めての試みで、学生たちの学びを生かしたイベントを多数開催し....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.jiu.ac.jp%2Ffiles%2Fuser%2Fevent%2Fimage%2F0928.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.jiu.ac.jp/kor/events/detail/id=19366",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.jiu.ac.jp",
+    "/kor/events/detail/id=19366",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズカレンダー",
+   "content": "10/2の試合日程をもちまして、千葉ロッテマリーンズカレンダーの試合日程カレンダーの更新は終了します。今後新たに予定が追加されることはありません。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fattachments.timetreeapp.com%2Fpublic_calendar%2Ff5fc%2F2022-02-04%2F64195-1643961650076.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://timetreeapp.com/public_calendars/marines_tte",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "timetreeapp.com",
+    "/public_calendars/marines_tte",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How was Pensacola better prepared for a data breach than New ...",
+   "content": "Mar 12, 2024 · Pensacola's better preparation for data breaches than New Orleans likely includes enhanced cybersecurity measures, regular data security audits, and a robust breach response plan, aligning with the multi-faceted approach recommended by 2022 data trends.Therefore, the correct option in the final answer would be D) All of the above .",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://brainly.com/question/49181408",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "brainly.com",
+    "/question/49181408",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】オリックス・バファローズ VS 千葉ロッテマリーンズ(2021年11月12日)｜....",
+   "content": "2026.05.21.【2021 パーソル CS パ 優勝】日本シリーズ進出を全員野球で掴んだ選手たちの熱き戦いをVTRで振り返る!! 2021年11月12日 オリックス・バファローズ2026.05.21.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://pacificleague.com/game/27158",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pacificleague.com",
+    "/game/27158",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How was Pensacola better prepared for a data breach than New ...",
+   "content": "Jan 8, 2024 · Explanation Pensacola was better prepared for a data breach than New Orleans due to a combination of stronger cybersecurity protocols, more advanced encryption techniques, and regular data security audits.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://brainly.com/question/45709286",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "brainly.com",
+    "/question/45709286",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Answers to: 1. How was Pensacola better prepared for a data ...",
+   "content": "Answers 1. Pensacola was better prepared for a data breach than New Orleans because they had a cybersecurity insurance policy in place, had regular cybersecurity training for employees, and had a comprehensive disaster recovery plan. 2.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.classace.io/answers/1-how-was-pensacola-better-prepared-for-a-data-breach-than-new-orleans-2-why-do-you-suppose-city-services-are-finding-themselves-targets-of-ransomware-attacks-3-what-was-the-most-surprising-aspect-fro",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.classace.io",
+    "/answers/1-how-was-pensacola-better-prepared-for-a-data-breach-than-new-orleans-2-why-do-you-suppose-city-services-are-finding-themselves-targets-of-ransomware-attacks-3-what-was-the-most-surprising-aspect-fro",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【公式】千葉ロッテマリーンズ VS 東北楽天ゴールデンイーグルス(2021年9月11日....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://pacificleague.com/game/26851",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pacificleague.com",
+    "/game/26851",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "City-of-new-orleans vs City-of-pensacola-government - Cyber Risk ...",
+   "content": "Jan 4, 2026 · Compare cybersecurity ratings for City-of-new-orleans and City-of-pensacola-government. Side-by-side analysis of attack surface, vulnerabilities, incidents, and compliance. Powered by Rankiteo AI.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.rankiteo.com/company/city-of-new-orleans/compare/city-of-pensacola-government",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.rankiteo.com",
+    "/company/city-of-new-orleans/compare/city-of-pensacola-government",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "1 1. How was Pensacola better prepared for a data breach than New...",
+   "content": "Pensacola was better prepared for a data breach than New Orleans primarily due to its proactive measures in cybersecurity. The city invested in robust security protocols, including regular system updates, employee training on phishing attacks, and the implementation of advanced firewalls.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.gauthmath.com/solution/1808470663134213/1-1-How-was-Pensacola-better-prepared-for-a-data-breach-than-New-Orleans-2-3-4-5",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.gauthmath.com",
+    "/solution/1808470663134213/1-1-How-was-Pensacola-better-prepared-for-a-data-breach-than-New-Orleans-2-3-4-5",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

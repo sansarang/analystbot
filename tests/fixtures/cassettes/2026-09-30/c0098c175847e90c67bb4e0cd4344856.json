@@ -1,0 +1,562 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "베트남 감독 인터뷰 29일",
+ "recorded_at": "2026-09-30T14:41:56.076952+00:00",
+ "results": [
+  {
+   "url": "https://namu.wiki/w/%EB%B2%A0%ED%8A%B8%EB%82%A8",
+   "title": "베트남 - 나무위키",
+   "content": "1. 개요 [편집] 베트남 사회주의 공화국 (Cộng hòa Xã hội chủ nghĩa Việt Nam, 共和社會主義越南, Socialist Republic of Vietnam)은 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EB%B2%A0%ED%8A%B8%EB%82%A8",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "'베트남 축구 영웅' 김상식 감독 \"월드컵 출전 목표…세계적 감독들과 ...",
+   "content": "Aug 28, 2026 · 김상식 베트남 축구 대표팀 감독이 현대컵 2연패를 달성하며 지도력을 입증함. 김 감독은 월드컵 본선 진출을 장기적인 목표로 설정했으며, 향후 아시안컵 조별리그에서 대한민국과 맞붙게 됨. 베트남은 현재 A매치 26경기 무패 행진을 기록 중임.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.chosun.com/sports/football/2026/08/28/GM4GIZBWGI2WMMTDGBSDIYRRGQ/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.chosun.com",
+    "/sports/football/2026/08/28/GM4GIZBWGI2WMMTDGBSDIYRRGQ/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://ko.wikipedia.org/wiki/%EB%B2%A0%ED%8A%B8%EB%82%A8",
+   "title": "베트남 - 위키백과, 우리 모두의 백과사전",
+   "content": "2026년 9월 21일 · 베트남은 얼마 지나지 않아 응오딘지엠 의 쿠데타 로 무너지고 베트남 공화국 을 세워 남북 대결을 시작하였다. …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/%EB%B2%A0%ED%8A%B8%EB%82%A8",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "베트남 대 태국 경기 프리뷰, 9월 29일 저녁 7시 30분: 동남아시아 축...",
+   "content": "2 days ago · 베트남 대 태국 경기 프리뷰, 9월 29일 저녁 7시 30분: 동남아시아 축구의 정점을 가리는 경기입니다. TPO - 김상식 감독이 이끄는 태국 대표팀은 2026 아세안컵 결승전에서 승리한 이후 다시 한번 태국과 맞붙게 됩니다. 하지만 이번에는 상황이 다릅니다. '전쟁 코끼리'라는 별명을 가진 태국 대표팀은 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.vietnam.vn/ko/nhan-dinh-viet-nam-vs-thai-lan-19h30-ngay-29-9-day-la-dinh-cao-cua-bong-da-dong-nam-a",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.vietnam.vn",
+    "/ko/nhan-dinh-viet-nam-vs-thai-lan-19h30-ngay-29-9-day-la-dinh-cao-cua-bong-da-dong-nam-a",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://en.wikipedia.org/wiki/Vietnam",
+   "title": "Vietnam - Wikipedia",
+   "content": "1일 전 · Vietnam, [c] officially the Socialist Republic of Viet Nam (SRV), [d] is a country at the eastern edge of Mainland Southeast …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Vietnam",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "베트남 축구'왕'이 된 김상식 감독 \"월드컵 진출 목표\" [인터뷰]",
+   "content": "Aug 28, 2026 · 베트남은 26일 베트남 하노이의 미딘 국립경기장에서 열린 태국과의 현대컵 결승 2차전에서 2-2로 비겨 합계 점수 4-2로 앞서 우승컵을 들어 올렸다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.newsis.com/view/NISX20260828_0003766933",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.newsis.com",
+    "/view/NISX20260828_0003766933",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://m.blog.naver.com/foresten/221819871092",
+   "title": "직접 가본 베트남 여행지 순위 BEST 7 (푸꾸옥, 달랏, 사파, 무이네 ...",
+   "content": "2020년 2월 22일 · 취향 별로 추천하는 베트남 여행지 순위 BEST 7 - 푸꾸옥, 달랏, 사파, 무이네, 나트랑, 다낭, 하노이 - 지금까지 제가 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "m.blog.naver.com",
+    "/foresten/221819871092",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "[인터뷰] '현대컵 2연패' 김상식 감독 \"하루만 왕의 남자, 여전히 도...",
+   "content": "Aug 28, 2026 · 한눈에 보는 오늘 : 축구 - 뉴스 : (엑스포츠뉴스 김환 기자) 베트남 축구 국가대표팀을 이끌고 2026 아세안축구연맹 (AFF) 현대컵 우승을 차지하며 대회 사상 첫 2연패의 위업을 달성한 김상식 감독이 베트남과 함께 월드컵에 출전하는 게 최종 목표라고 밝혔다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://sports.news.nate.com/view/20260828n19480",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "sports.news.nate.com",
+    "/view/20260828n19480",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://vietnamguide.co.kr/%eb%b2%a0%ed%8a%b8%eb%82%a8-%ec%97%ac%ed%96%89/",
+   "title": "베트남 여행, 이 글 하나로 끝: 비용부터 주의사항까지 24가지 ...",
+   "content": "2026년 1월 3일 · 베트남 여행, 아직도 블로그만 뒤지고 계신가요? 전문가가 알려주는 환전 꿀팁부터 바가지 피하는 법, 치안 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "vietnamguide.co.kr",
+    "/%eb%b2%a0%ed%8a%b8%eb%82%a8-%ec%97%ac%ed%96%89/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "'동남아 WC 2연패 신화' 김상식 베트남 감독 \"월드컵 본선 진출하고파...",
+   "content": "Aug 28, 2026 · [스타뉴스 | 박건도 기자] 국내 취재진과 화상 인터뷰 중인 김상식 베트남 축구 국가대표팀 감독. /사진=디제이매니지먼트 제공 베트남 축구대표팀을 이끌고 사상 첫 '동남아시아 월드컵 2연패'라는 새 역사를 쓴 김상식 (49) 감독이 원대한 포부를 밝혔다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://sports.news.nate.com/view/20260828n20873",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "sports.news.nate.com",
+    "/view/20260828n20873",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://namu.wiki/w/%EB%B2%A0%ED%8A%B8%EB%82%A8/%EA%B4%80%EA%B4%91",
+   "title": "베트남/관광 - 나무위키",
+   "content": "2026년 8월 26일 · 1. 개요 [편집] 베트남 관광청 영어 홈페이지 베트남 에 대한 관광/여행 정보를 다루는 문서. 코로나 사태 이전까지 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EB%B2%A0%ED%8A%B8%EB%82%A8/%EA%B4%80%EA%B4%91",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "베트남 '박항서·김상식 매직' 비결 뭐냐?…태국 매체들 조명 | 연합뉴...",
+   "content": "Jan 29, 2026 · 2018년 박 감독이 이끌던 베트남 U-23 대표팀은 이 대회에서 준우승했으며, 인도네시아도 2024년 신태용 감독 체제에서 4강에 진출했다. 이 두 나라 대표팀의 공통점은 한국 감독들이 지도했다는 것으로, 이는 단순한 우연이 아니라고 이 매체는 지적했다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.yna.co.kr/view/AKR20260129156000084",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.yna.co.kr",
+    "/view/AKR20260129156000084",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://m.blog.naver.com/smart-days/223887696975",
+   "title": "베트남 여행지 BEST 7 - 베트남 가볼 만한 곳 추천 (여행 코스 짜기)",
+   "content": "2025년 6월 23일 · 이번 포스팅에서는 제가 여행을 준비하면서 알게 된 베트남 추천 여행지 BEST 10을 정리해 보려고 해요. 베트남 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "m.blog.naver.com",
+    "/smart-days/223887696975",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "[인터뷰] '현대컵 2연패' 김상식 감독 \"하루만 왕의 남자, 여전히 도...",
+   "content": "Aug 28, 2026 · (엑스포츠뉴스 김환 기자) 베트남 축구 국가대표팀을 이끌고 2026 아세안축구연맹(AFF) 현대컵 우승을 차지하며 대회 사상 첫 2연패의 위업을 달성한 김상식 감독이 베트남과 함께 월드컵에 출전하는 게 최종 목표라고 밝혔다.김 감독은 28일 진행된 온라인 기자회견을 통해 베트남을 월드컵에 출전하는 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.xportsnews.com/article/2189207",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.xportsnews.com",
+    "/article/2189207",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://kr-vn.tistory.com/entry/%EB%B2%A0%ED%8A%B8%EB%82%A8Vietnam-%EC%9D%98-%EA%B8%B0%EB%B3%B8-%EC%86%8C%EA%B0%9C",
+   "title": "베트남(Vietnam) 의 기본 소개",
+   "content": "2025년 3월 14일 · 이러한 팁들은 베트남 여행을 더욱 풍성하게 만들어 줄 것입니다. 베트남은 다양한 매력을 가진 나라로, …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "kr-vn.tistory.com",
+    "/entry/%EB%B2%A0%ED%8A%B8%EB%82%A8Vietnam-%EC%9D%98-%EA%B8%B0%EB%B3%B8-%EC%86%8C%EA%B0%9C",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://breezevietnam.com/ko/",
+   "title": "브리즈베트남: 다낭·베트남 여행 가이드 — 숙소·맛집·즐길거리",
+   "content": "12월 베트남 여행 총정리: 지역별 날씨와 여행지 추천, 크리스마스·새해 보낼 곳, 옷차림까지 12월에는 푸꾸옥·무이네·호치민 같은 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "breezevietnam.com",
+    "/ko/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://chaovietnam.co.kr/",
+   "title": "씬짜오베트남 - 베트남 한인 뉴스·교민 매거진 | Xin Chao Vietnam",
+   "content": "25년 역사의 베트남 한인 교민 매거진. 베트남 뉴스, 교민 소식, 비즈니스 정보, 생활·여행·맛집 가이드. 호치민·하노이 한인 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "chaovietnam.co.kr",
+    "/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

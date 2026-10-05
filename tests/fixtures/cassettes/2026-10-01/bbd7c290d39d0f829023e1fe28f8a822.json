@@ -1,0 +1,53 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Las Vegas Lights manager said 1",
+ "recorded_at": "2026-10-01T03:08:11.102227+00:00",
+ "results": [],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: timeout"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: timeout"
+  ],
+  [
+   "qwant",
+   "Suspended: timeout"
+  ],
+  [
+   "wikidata",
+   "Suspended: timeout"
+  ],
+  [
+   "wikipedia",
+   "Suspended: timeout"
+  ],
+  [
+   "yahoo",
+   "Suspended: timeout"
+  ],
+  [
+   "yep",
+   "Suspended: timeout"
+  ]
+ ]
+}

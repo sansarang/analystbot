@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://liveesportss.com/lol/game/chinese-taipei-south-korea-2026-10-02",
+ "query": "",
+ "recorded_at": "2026-10-02T05:29:56.683936+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

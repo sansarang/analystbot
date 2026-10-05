@@ -1,0 +1,152 @@
+# 현지 낱말표 — **사다리의 `{local_word_*}` 자리**(사용자 기술 지시 2026-10-03)
+#
+# ══════════════════════════════════════════════════════════════════
+# 🔴 왜 이 파일이 생겼나
+# ══════════════════════════════════════════════════════════════════
+#
+# 사용자가 준 검색 사다리:
+#
+# ```
+# LADDER = ["{team} vs {opp} preview team news",        # ① 일반
+#           "{alias_local} {opp} {local_word_xi}",      # ② 현지어+별칭
+#           "{coach} {opp} {local_word_presser}",       # ③ 감독 회견
+#           "{alias} {local_word_injury} site:{outlet}"]# ④ 현지 매체 지정
+# ```
+#
+# ⚠️ 별칭만 넣어서는 안 된다 — 실측 2026-10-03: 파라과이 별칭 `Albirroja` 를 `es` 로
+#    선언했는데 **`es` 템플릿이 하나도 없어** 그 별칭이 한 번도 안 던져졌다.
+# 🔴 유형마다 언어마다 템플릿을 적으면 **곱셈으로 늘어난다**(유형 19 × 언어 4). 그래서
+#    *개념*(결장·선발·회견 …)을 한 번 적고, 유형이 그 개념을 **가리킨다**
+#    (`variable_types.yaml` 의 `word:`). 사본이 안 생긴다.
+#
+# ══════════════════════════════════════════════════════════════════
+# 🔴 여기 적는 것은 **낱말 번역**이다 — 사실이 아니다
+# ══════════════════════════════════════════════════════════════════
+#
+# ⚠️ 팀 별칭·감독 이름은 **사실**이라 지어내면 안 되지만(그래서 `entities.yaml` 은
+#    사용자가 준 것만 담는다), *"결장"* 의 스페인어가 `lesión` 인 것은 **사전**이다.
+# 🔴 그래도 **검색으로 듣는지는 실측으로 고친다** — 여기 적은 것이 0건을 내면 그
+#    낱말을 바꾼다. 그 사실이 사유에 남는다(각도마다 결과 수를 적는다).
+
+words:
+  # 선발 라인업 — ② `{local_word_xi}`
+  xi:
+    en: [starting lineup, team news, predicted lineup]
+    es: [alineación, once inicial, alineaciones probables]
+    ja: [スタメン, 先発メンバー, 予想スタメン]
+    ko: [선발 라인업, 선발 명단, 예상 라인업]
+    zh: [首发阵容, 先發名單]
+
+  # 감독 회견 — ③ `{local_word_presser}`
+  presser:
+    en: [press conference, said, pre-match]
+    es: [rueda de prensa, conferencia de prensa, declaraciones]
+    ja: [会見, 監督 コメント, 試合前 会見]
+    ko: [기자회견, 감독 인터뷰, 경기 전 발언]
+    zh: [新闻发布会, 赛前 发布会]
+
+  # 결장·부상 — ④ `{local_word_injury}`
+  injury:
+    en: [injury news, out injured, unavailable]
+    es: [lesión, baja, lesionado, bajas confirmadas]
+    ja: [欠場, 故障者, 離脱, 登録抹消]
+    ko: [결장, 부상, 명단 제외]
+    zh: [缺陣, 傷兵, 傷停]
+
+  # 로테이션·교체
+  rotation:
+    en: [rotation, squad rotation, changes to lineup]
+    es: [rotación, rotaciones, cambios en el once]
+    ja: [ローテーション, スタメン 変更, 休養]
+    ko: [로테이션, 선발 변경, 휴식]
+    zh: [輪換, 陣容 調整]
+
+  # 은퇴·행사 경기
+  farewell:
+    en: [retirement ceremony, farewell match, testimonial]
+    es: [despedida, retiro, partido homenaje]
+    ja: [引退試合, 引退登板, 引退セレモニー]
+    ko: [은퇴 경기, 은퇴식]
+    zh: [引退 比賽, 退役 儀式]
+
+  # 대표팀 차출·복귀
+  national:
+    en: [called up, national team return, international duty]
+    es: [convocatoria, convocado, regreso a la selección]
+    ja: [代表 招集, 代表 復帰, 日本代表 合流]
+    ko: [대표팀 차출, 대표팀 복귀, 소집]
+    zh: [國家隊 徵召, 歸隊]
+
+  # 갈등·이탈
+  conflict:
+    en: [leaves camp, row with coach, dropped]
+    es: [abandona la concentración, enfrentamiento con el técnico]
+    ja: [退団, 不仲, 離脱]
+    ko: [갈등, 캠프 이탈, 결별]
+    zh: [矛盾, 離隊]
+
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 **라운드 이름** — 사용자 결정 ⑤ (2026-10-04)
+  # ══════════════════════════════════════════════════════════════════
+  #
+  # > 라운드 이름(`NLDS`·`ALDS`·`Wild Card`·`CS`·`日本シリーズ`·`準決勝`·
+  # > `결승`·`Final`)을 **대회 별칭 표에 데이터로** 넣는다. **코드 분기가
+  # > 아니라 설정 한 칸이다.** — 사용자 결정 ⑤
+  #
+  # ⚠️ 왜 — 게이트2 2판에서 거부된 질의 셋이 **전부 `NLDS` 를 들고 있었다**:
+  #
+  #     🔴 2 ['team','when']  Brewers NLDS Game 1 win Oct 3 2026 …
+  #     🔴 2 ['team','when']  Milwaukee Brewers NLDS Game 2 2026 preview …
+  #     🔴 2 ['team','when']  Milwaukee Brewers Game 2 NLDS starting pitcher …
+  #
+  #   §4-1 의 **대회 축**이 `game["league"]`(= `MLB`) **한 글자**만 비교해서
+  #   `NLDS` 를 못 셌다. 🔴 라운드는 대회를 **좁히는** 말이므로 대회로 센다.
+  #
+  # 🔴 **사용자가 이름을 댄 것만** 적는다(내가 고른 것이 아니다 · 지시 2026-09-30).
+  #    ⚠️ 여기 없는 라운드(`ALCS`·`한국시리즈`…)는 **안 센다** — 늘릴 때도
+  #       사용자가 정한다. 그것이 *"설정 한 칸"* 의 뜻이다.
+  round:
+    en: [NLDS, ALDS, Wild Card, CS, Final]
+    ja: [日本シリーズ, 準決勝]
+    ko: [결승]
+
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 **종목 낱말** — 사용자 수정 ① (2026-10-04)
+  # ══════════════════════════════════════════════════════════════════
+  #
+  # > 검색어 구성 규칙: `{팀} {상대} {대회명} {종목 낱말} {날짜}` — **나라 이름
+  # > 하나짜리 검색어는 계약으로 금지.** 종목 낱말은 어댑터 `SPORT` 에서.
+  #
+  # ⚠️ 왜 필요한가 — 클럽은 이름 자체가 종목을 뜻하지만(`Kashiwa Reysol`)
+  #    **대표팀은 나라 이름**이다. 실측 2026-10-04:
+  #
+  #      `Scotland lineup Oct 3`  → rottentomatoes **드라마 출연진** · rugby.com.au
+  #      `North Macedonia lineup` → 위키 경제·국기·SMS 판매·법률 사무소
+  #
+  # 🔴 실측으로 고른 낱말이다(2026-10-04 · 영어 48~53건 중 스포츠 매체 비율):
+  #
+  #      팀+what+날짜              ✅ 20/48
+  #      +상대                     ✅ 25/51   (+25%)
+  #      +상대+종목 `football`      ✅ 31/52   🔴 **가장 좋다**
+  #      +상대+종목+대회+날짜(9낱말) ✅ 19/51   ⚠️ **나빠진다**(§12-b 6낱말 상한이 맞다)
+  #
+  # ⚠️ `soccer` 가 아니라 `football` 이다 — 영국·유럽 매체가 그 글자를 쓴다.
+  #    🔴 미국 매체는 `soccer` 를 쓰므로 **둘 다 적는다**(호출부가 첫 것을 쓴다).
+  sport:
+    soccer:
+      en: [football, soccer]
+      es: [fútbol]
+      ja: [サッカー]
+      ko: [축구]
+      zh: [足球]
+      mk: [фудбал]
+      hr: [nogomet]
+      sr: [фудбал]
+    baseball:
+      en: [baseball]
+      ja: [野球]
+      ko: [야구]
+      zh: [棒球]
+    hockey:
+      en: [hockey, NHL]
+      ko: [아이스하키]

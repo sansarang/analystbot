@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "http://yomi.tokyo/agate/ai2chsc/base/1433582615/728/dtna",
+ "query": "",
+ "recorded_at": "2026-10-02T02:44:03.842892+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

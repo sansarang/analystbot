@@ -1,0 +1,897 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "東京ヤクルトスワローズ スタメン Oct 2",
+ "recorded_at": "2026-10-02T02:44:24.214711+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "ファーム試合情報 | 試合情報 | 東京ヤクルトスワローズ",
+   "content": "1 · 4-3 · 戸田 ; 2 · 9-10 · 戸田 ; ヤクルト · 勝 · 木澤 尚文 ; ロッテ · 負 · 東妻 勇輔",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.yakult-swallows.co.jp/farm/game",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.yakult-swallows.co.jp",
+    "/farm/game",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズ公式サイト Tokyo Yakult Swallows",
+   "content": "9月26日 東京ヤクルトスワローズvs中日ドラゴンズ（神宮球場） 【ヒーローインタビュー】山田哲人選手、代打サヨナラ2ランHR! ! 9月26日 東京ヤクルトスワローズvs中日ドラゴンズ（神宮球場）",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.yakult-swallows.co.jp/",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.yakult-swallows.co.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "SOFT & BITE SIZED - iddsi.org",
+   "content": "Soft & Bite-Sized foods need a moderate amount of chewing, for the tongue to ‘collect’ the food into a ball and bring it to the back of the mouth for swallowing. The pieces are ‘bite-sized’ to reduce choking risk.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.iddsi.org/images/Publications-Resources/PatientHandouts/English/Adults/6_soft_bite_sized_adult_consumer_handout_30jan2019.pdf",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.iddsi.org",
+    "/images/Publications-Resources/PatientHandouts/English/Adults/6_soft_bite_sized_adult_consumer_handout_30jan2019.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズ スタメン一覧 2026年 | 2軍成績.com",
+   "content": "東京ヤクルトスワローズの2軍（ファーム）スタメン一覧。打順・守備位置を試合ごとに毎日更新。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.farm-stats.com/team/3/lineup",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.farm-stats.com",
+    "/team/3/lineup",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "IDDSI Level 6 Diet: Soft and Bite-Sized Guide",
+   "content": "Jun 11, 2026 · Dysphagia Resources The IDDSI Level 6 Diet: Soft and Bite-Sized — Complete Guide & a 7 Day Meal Plan What to eat at IDDSI Level 6 — complete food list, the 15mm rule explained, fork pressure test, and a 7-day family-friendly meal plan.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.dysphagialiving.com/iddsi-level-6-diet-guide/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.dysphagialiving.com",
+    "/iddsi-level-6-diet-guide/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "公示情報 | 選手・チーム | 東京ヤクルトスワローズ",
+   "content": "東京ヤクルトスワローズ公式サイトの選手・チーム（公示情報）です。公式サイトでは試合速報やスケジュール、チケット、イベント、ファンクラブ、グッズなどチームや選手の最新情報を掲載しています。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.yakult-swallows.co.jp/players/announce",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.yakult-swallows.co.jp",
+    "/players/announce",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lemon Bread - Soft and Bite-Sized (Level 6) Recipe | General...",
+   "content": "Lemon Bread - Soft and Bite-Sized (Level 6) Ingredients:7 Servings:48 Calories per serving:210",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.generalmillsfoodservice.com/recipes/lemon-bread-soft-and-bite-sized-level-6/0cb348de-a4ff-4545-8a12-0aec72280d8b",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.generalmillsfoodservice.com",
+    "/recipes/lemon-bread-soft-and-bite-sized-level-6/0cb348de-a4ff-4545-8a12-0aec72280d8b",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "試合情報 | 東京ヤクルトスワローズ",
+   "content": "東京ヤクルトスワローズ公式サイトの試合情報です。公式サイトでは試合速報やスケジュール、チケット、イベント、ファンクラブ、グッズなどチームや選手の最新情報を掲載しています。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.yakult-swallows.co.jp/game",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.yakult-swallows.co.jp",
+    "/game",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "IDDSI Level 6 Soft & Bite-Sized: A Complete Clinical and...",
+   "content": "IDDSI Level 6 (Soft & Bite-Sized) is one of the most commonly prescribed dysphagia diet levels worldwide. This guide explains what Level 6 means, how it differs from Level 5 and Level 7, how to prepare and test foods, sample menus, safety considerations, and common pitfalls.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://softmeal.org/en/iddsi/iddsi-level-6-soft-and-bite-sized-complete-guide/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "softmeal.org",
+    "/en/iddsi/iddsi-level-6-soft-and-bite-sized-complete-guide/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズとオトメイトのコラボタイトル「My9Swallows TOPSTARS LEAGUE....",
+   "content": "2023.12.22.東京ヤクルトスワローズとオトメイトのコラボタイトル「My9Swallows TOPSTARS LEAGUE」，公式サイトをオープン アイディアファクトリーの女性向けゲームブランド「オトメイト」は本日（2023年12月22日），Nintendo Switch用ゲームソフト 本作は，プロ野球球団・東京ヤクルトスワローズとオトメイトがコラボレーションした，“野球とエンタメの新感覚アドベンチャーゲーム だ。野....2023.12.22.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.4gamer.net%2Fgames%2F650%2FG065068%2F20231222010%2FSS%2F001.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.4gamer.net/games/650/G065068/20231222010/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.4gamer.net",
+    "/games/650/G065068/20231222010/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【試合結果】ヤクルト2-5広島 引退の山崎2安打！吉村8回1失点も中継ぎ崩れ敗....",
+   "content": "2024.10.03.わいくん、篠木がハマのエースになる未来が見える · 星街すいせいさん、ZOZOマリンで始球式を行う · 角中さん、39歳になった今でも走塁技術は健在 · カープ緒方孝市×緒方佑奈『さんま御殿』で親子初共演ｗｗｗ · カープ野間、後逸＆悪送球で阪神サトテルに実質3点ランニングホームラン献上 · ベイスターズ 6－4 スワローズ エンカーナシオン先制タイムリー含む4安打....2024.10.03.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Flivedoor.blogimg.jp%2Ftsubame7%2Fimgs%2F0%2Fe%2F0e2c2d71-s.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://tsubamesoku.blog.jp/archives/1083760749.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "tsubamesoku.blog.jp",
+    "/archives/1083760749.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ベイスターズ 1－8 タイガース 竹田3回途中3失点 得点は牧のソロHRのみ... : De速",
+   "content": "コミカルで熱いアニマルファンタジー筒香嘉智 復帰1年目 .188 7本 23打点 OPS....DeNA戸柱、古市＆松尾を両脇に抱えてハグ 試合後の一幕が話...DeNA度会隆輝、自身初のシーズン規定打席に到達！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Flivedoor.blogimg.jp%2Fbaynewsflash%2Fimgs%2Fe%2Fb%2Febe5c0c8.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "http://de-baystars.jp/archives/63494654.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "de-baystars.jp",
+    "/archives/63494654.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズのスタメン一覧（ポジション） - プロ野球データFreak",
+   "content": "東京ヤクルトスワローズのスタメン一覧（ポジション）。他では見られないプロ野球の詳しいデータを掲載。チーム成績 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://baseball-data.com/lineup/s-pos.html",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "baseball-data.com",
+    "/lineup/s-pos.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USIRG's Frequently Asked Questions (FAQs) - iddsi.org",
+   "content": "• Soft & Bite-Size, Level 6 and Minced & Moist, Level 5 do not include regular dry bread, sandwiches, or toast of any kind, even if they are cut-up to the appropriate size indicated for each diet level. Use pre-gelled ‘soaked’ breads that are very moist and gelled through the entire product.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.iddsi.org/images/AroundTheWorld/UnitedStates/faq/USIRGFAQExceptionsBreadsMixedConsistencyJan2025.pdf",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.iddsi.org",
+    "/images/AroundTheWorld/UnitedStates/faq/USIRGFAQExceptionsBreadsMixedConsistencyJan2025.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2025年 東京ヤクルトスワローズ - スタメンデータベース",
+   "content": "2025年 セ／ 優勝 阪神 ／ 2位 横浜DeNA ／ 3位 讀賣 ／ 4位 中日 ／ 5位 広島東洋 ／ 6位 東京ヤクルト ／ パ／ 優勝 福岡ソフトバンク ／ 2位 北海道日本ハム ／ 3位 オリックス ／ 4位 東北楽天 ／ 5位 埼玉西武 ／ 6位 千葉ロッテ ／ スタメンデータベースTOP",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://sta-men.jp/2025swallows.html",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "sta-men.jp",
+    "/2025swallows.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How To Follow a Level 6 Soft and Bite-Sized Diet",
+   "content": "How To Follow a Level 6 Soft and Bite-Sized Diet This information explains what a level 6 soft and bite-sized diet is and how to follow it. It explains how to test your food’s size and thickness. It also lists foods to include and avoid while following this diet.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.mskcc.org/pdf/cancer-care/patient-education/how-to-follow-level-6-soft-and-bite-sized-diet",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.mskcc.org",
+    "/pdf/cancer-care/patient-education/how-to-follow-level-6-soft-and-bite-sized-diet",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズ 2軍 チーム総合成績 2026年 | 2軍成績.com",
+   "content": "東京ヤクルトスワローズの2軍（ファーム）成績。チーム打撃・投手成績とスタメン一覧を毎日更新。若手・育成選手の成績 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.farm-stats.com/team/3",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.farm-stats.com",
+    "/team/3",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Dysphagia Diet Level 6: Soft and Bite-Sized Foods",
+   "content": "How to prepare soft and bite-sized foods: Foods in this diet are prepared or cooked so they easily mash with pressure from a fork or spoon. All food must be cut into pieces that are no larger than 1⁄2 inch.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.centracare.com/app/files/public/238590aa-0a99-43b6-b61c-2217364d639d/level-6-soft-and-bite-sized-with-liquids-separated.pdf",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.centracare.com",
+    "/app/files/public/238590aa-0a99-43b6-b61c-2217364d639d/level-6-soft-and-bite-sized-with-liquids-separated.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2026年 東京ヤクルトスワローズ - スタメンデータベース",
+   "content": "2026年 セ／ 阪神 ／ 横浜DeNA ／ 讀賣 ／ 中日 ／ 広島東洋 ／ 東京ヤクルト ／ パ／ 福岡ソフトバンク ／ 北海道日本ハム ／ オリックス ／ 東北楽天 ／ 埼玉西武 ／ 千葉ロッテ ／ スタメンデータベースTOP",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://sta-men.jp/2026swallows.html",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "sta-men.jp",
+    "/2026swallows.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Soft & Bite-Sized Recipes (Diet Level 6) | SLP Clinical Tools",
+   "content": "Soft and bite-sized (IDDSI Level 6) recipes with the piece-size limits and the Fork Pressure Test to use before serving.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://slpclinicaltools.com/iddsi/recipes/soft-bite-sized",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "slpclinicaltools.com",
+    "/iddsi/recipes/soft-bite-sized",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズ公式 (@swallowspr) / X",
+   "content": "東京ヤクルトスワローズ公式 @swallowspr 14h 9月30日 (水) vs.阪神タイガース 東京ヤクルトスワローズ 本日のスタメン #swallows #燕心全開 49 418 2.6K",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://x.com/swallowspr",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "x.com",
+    "/swallowspr",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How To Follow a Level 6 Soft and Bite-Sized Diet",
+   "content": "This information explains what a level 6 soft and bite-sized diet is and how to follow it. It explains how to test your food’s size and thickness. It also lists foods to include and avoid while following this diet.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.mskcc.org/cancer-care/patient-education/how-to-follow-level-6-soft-and-bite-sized-diet",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.mskcc.org",
+    "/cancer-care/patient-education/how-to-follow-level-6-soft-and-bite-sized-diet",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズ - プロ野球 : 日刊スポーツ",
+   "content": "東京ヤクルトスワローズ RSS トップ ニュース 写真 選手情報 日程・結果 ファーム日程・結果 つば九郎 チア 日刊スポーツをGoogleでお気に入りに追加",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.nikkansports.com/baseball/professional/team/swallows/index.html",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.nikkansports.com",
+    "/baseball/professional/team/swallows/index.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How to Pregel Bread | IDDSI Soft & Safe Food Techniques",
+   "content": "Pregelling transforms bread into a softer, safer base that is suggested for multiple different diet texture levels, from pureed meals to soft and bite sized textures. With a few simple steps, you can turn a slice of bread into something moist and cohesive while still tasting familiar and delicious.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://samemenu.com/pregelled-breads-dysphagia/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "samemenu.com",
+    "/pregelled-breads-dysphagia/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "oct 2 holiday",
+  "oct 2 birthdays"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

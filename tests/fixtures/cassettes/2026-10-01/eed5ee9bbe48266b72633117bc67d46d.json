@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.sofascore.com/football/team/sacramento-republic-fc/153498",
+ "query": "",
+ "recorded_at": "2026-10-01T02:51:52.917927+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

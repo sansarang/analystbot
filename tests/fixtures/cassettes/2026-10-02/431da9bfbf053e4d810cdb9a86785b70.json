@@ -1,0 +1,182 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "千葉ロッテマリーンズ friendly charity day",
+ "recorded_at": "2026-10-02T08:05:14.746895+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "KOREAN NIGHT",
+   "content": "2025.06.29.韓国のグルメやカルチャーに注目した3日間。球場外周に韓国の市場を再現したグルメエリアが登場するほか、韓国にゆかりのあるゲストが来場し、球場を盛り上げます。 ポップで異国ムードがあふれるスタジアムをお楽しみください！ 꼭 야구장에 와 주세요！(ぜひ野球場に来てください！)2025.06.29.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.marines.co.jp%2Fmedia%2Fsites%2F5%2Fnews%2F202506%2Fph_202500668824_01.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.marines.co.jp/event/2025/koreannight/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/event/2025/koreannight/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ",
+   "content": "プロ野球・千葉ロッテマリーンズオフィシャルサイトです。試合や選手はもちろん、チケットやイベント、ファンクラブに至るまで球団オフィシャルならではの公式情報をファンのみなさまに提供します",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.marines.co.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.marines.co.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "千葉ロッテマリーンズ対オリックス・バファローズ 公式戦 ZOZO Marine Stadium Chiba....",
+   "content": "Outfield Reserved Seating (Home) · 최저가 · ₩86,051Infield Reserved Seating B · ₩89,944섹션 Infield Reserved Seating C (3rd Base Side) · 베스트 딜 · 팬 최애 · ₩86,829",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.viagogo.de/Sport-Tickets/Baseball/Nippon-Professional-Baseball/Chiba-Lotte-Marines-Karten/E-161885546",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.viagogo.de",
+    "/Sport-Tickets/Baseball/Nippon-Professional-Baseball/Chiba-Lotte-Marines-Karten/E-161885546",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "チーム八ちゃん | 力を尽くして狭き門より入れ！",
+   "content": "力を尽くして狭き門より入れ！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://teamhacchan.blog/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "teamhacchan.blog",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "千葉ロッテマリーンズ friendly charity day care",
+  "千葉ロッテマリーンズ friendly charity day sale",
+  "千葉ロッテマリーンズ friendly charity day images"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

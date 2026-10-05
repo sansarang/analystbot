@@ -1,0 +1,562 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Sacramento Republic 선발 등판 1일",
+ "recorded_at": "2026-10-01T02:15:07.391932+00:00",
+ "results": [
+  {
+   "url": "https://www.google.co.kr/index.html",
+   "title": "Google",
+   "content": "Search the world's information, including webpages, images, videos and more. Google has many special features to help you find …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.google.co.kr",
+    "/index.html",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Homepage - Sacramento Republic FC",
+   "content": "Subscribe to our newsletter Republic FC news, events, and promotions straight to your inbox.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.google.com/?hl=ko",
+   "title": "Google",
+   "content": "Google 지원 언어: English 광고 Google 정보 Google.com in English",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.google.com",
+    "/",
+    "",
+    "hl=ko",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "KBO 투수 등판 트래커 — 혹사지수, 연투, 불펜 현황",
+   "content": "2026 KBO 투수 등판 현황과 혹사지수를 날짜별로 확인하세요. 불펜 연투, 2연투, 3연투, 누적 이닝, 투구수를 한눈에 파악할 수 있습니다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://kbotracker.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "kbotracker.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://translate.google.co.kr/",
+   "title": "Google 번역",
+   "content": "무료로 제공되는 Google의 서비스는 영어와 100가지 이상의 다른 언어로 단어, 구문, 웹페이지를 즉시 번역합니다.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "translate.google.co.kr",
+    "/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "1일 두산전 등판 예정…LG 카라스코 “타자들 보며 공부하는 거 즐겨, ...",
+   "content": "Jul 28, 2026 · LG 카를로스 카라스코가 28일 잠실 키움전을 앞두고 팀에 합류해 선수단과 첫 인사를 나눴다. 카라스코는 1일 잠실 두산전에 선발등판할 예정이다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://sports.donga.com/sports/article/all/20260728/134381372/1",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "sports.donga.com",
+    "/sports/article/all/20260728/134381372/1",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://images.google.com/?hl=ko",
+   "title": "Google 이미지",
+   "content": "Google 이미지 - 가장 광범위한 이미지 검색",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "images.google.com",
+    "/",
+    "",
+    "hl=ko",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "선발 투수 - 나무위키",
+   "content": "Sep 17, 2026 · 이는 일주일에 6일 이상, 연간 100경기 이상 경기하는 일반적인 프로야구 리그의 원칙이다. 프로 팀에서는 1선발부터 하위 선발까지 미리 정해놓고 차례대로 4~6게임 동안 순서대로 등판하도록 하는 것이 일반적이다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://namu.wiki/w/%EC%84%A0%EB%B0%9C%20%ED%88%AC%EC%88%98",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EC%84%A0%EB%B0%9C%20%ED%88%AC%EC%88%98",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://accounts.google.com/login?hl=ko",
+   "title": "로그인 - Google 계정",
+   "content": "내 컴퓨터가 아닌가요? 시크릿 브라우징 창을 사용하여 로그인하세요. 게스트 모드 사용 방법 자세히 알아보기 다음 계정 ...",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "accounts.google.com",
+    "/login",
+    "",
+    "hl=ko",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "1군 복귀 시동 건 후라도, 퓨처스 첫 등판 10개 던지고 불펜 피칭 10...",
+   "content": "Aug 14, 2026 · 후라도는 14일 경산 볼파크에서 열린 한화 이글스와의 홈경기에 선발 등판, 1이닝을 소화하며 삼진 2개를 곁들이는 등 무실점으로 잘 던졌다. 총 투구수는 10개였고 최고 구속 143km까지 나왔다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.koreadaily.com/article/20260814005720110",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.koreadaily.com",
+    "/article/20260814005720110",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://drive.google.com/?hl=ko",
+   "title": "Google Drive: 로그인",
+   "content": "Google 계정 (개인용) 또는 Google Workspace 계정 (업무용)을 사용해 Google Drive에 액세스하세요.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "drive.google.com",
+    "/",
+    "",
+    "hl=ko",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "'KT 청천벽력' 韓 슈퍼에이스 삼성전 등판 아직 모른다?…김원형 감독 ...",
+   "content": "2 days ago · 현재 1위 KT 위즈와 2위 삼성은 한국시리즈 직행을 놓고 치열한 경쟁을 벌이고 있다. 곽빈이 워낙 강력한 선발 카드인 만큼, 만약 곽빈의 삼성전 선발 등판이 이뤄지지 않는다면 삼성에게는 호재, KT에는 아쉬운 소식이 될 수밖에 없다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.koreadaily.com/article/20260929014204948",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.koreadaily.com",
+    "/article/20260929014204948",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://ko.wikipedia.org/wiki/%EA%B5%AC%EA%B8%80",
+   "title": "구글 - 위키백과, 우리 모두의 백과사전",
+   "content": "2일 전 · 구글 (영어: Google LLC)은 구글 검색을 중심으로 스마트폰 운영체제인 안드로이드와 유튜브 사업, 클라우드 사업을 하는 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/%EA%B5%AC%EA%B8%80",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "노예 (야구) - 나무위키",
+   "content": "May 26, 2026 · 선발이 5이닝을 막았다 → 구대성 등판, 선발이 조기에 무너졌다 → 구대성 등판, 선발 뛸 사람이 없다 → 구대성 선발 등판. 1996년에는 중무리로 뛰며 다승왕과 구원왕, 평균 자책점왕을 석권했고 1999년 한국시리즈에서는 7회부터 마무리로 나오며 전경기를 소화 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://namu.wiki/w/%EB%85%B8%EC%98%88(%EC%95%BC%EA%B5%AC)",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EB%85%B8%EC%98%88(%EC%95%BC%EA%B5%AC)",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://eziro.com/info/%EA%B5%AC%EA%B8%80-%ED%99%88%ED%8E%98%EC%9D%B4%EC%A7%80-%EB%B0%94%EB%A1%9C%EA%B0%80%EA%B8%B0",
+   "title": "구글 홈페이지 바로가기 (https://www.google.com)",
+   "content": "2025년 9월 19일 · 구글 홈페이지 바로가기 구글 홈페이지는 각 나라별로 도메인이 있으며 대표 홈페이지는 google.com 입니다. 아래 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "eziro.com",
+    "/info/%EA%B5%AC%EA%B8%80-%ED%99%88%ED%8E%98%EC%9D%B4%EC%A7%80-%EB%B0%94%EB%A1%9C%EA%B0%80%EA%B8%B0",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://accounts.google.com/",
+   "title": "Sign in - Google Accounts",
+   "content": "Not your computer? Use a private browsing window to sign in. Learn more about using Guest mode Next Create account",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "accounts.google.com",
+    "/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.google.co.kr/imghp",
+   "title": "Google Images",
+   "content": "Google Images. The most comprehensive image search on the web.",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.google.co.kr",
+    "/imghp",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

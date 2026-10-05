@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.nytimes.com/athletic/7426137/2026/07/07/new-york-rangers-lineup-roster-nhl-offseason/",
+ "query": "",
+ "recorded_at": "2026-10-02T02:48:02.718322+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

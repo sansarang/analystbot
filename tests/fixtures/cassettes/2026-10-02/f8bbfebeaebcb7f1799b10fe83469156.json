@@ -1,0 +1,718 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "読売ジャイアンツ 監督 コメント Oct 2",
+ "recorded_at": "2026-10-02T02:45:15.419392+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツ - プロ野球 - スポーツナビ",
+   "content": "週間スケジュール ; 木 : 17 · 試合なし, 金 : 18 · vs. 中日 · 2-0 · 試合終了 · 東京ドーム · 勝：マルティネス, 土 : 19 · vs. 中日 · 14-1 · 試合終了 · 東京ドーム · 勝：田中将, 日 : 20 · vs. ヤクルト · 14:00 · 見どころ · 東京ドーム, 月 : 21 · 試合なし, 火 : 22 · vs. 広島 · 15:00 · 試合前 · マツダスタジアム, 水 : 23 · vs. 広島 · 15:00 · 試合前 · マツダスタジアム",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://baseball.yahoo.co.jp/npb/teams/1/top",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseball.yahoo.co.jp",
+    "/npb/teams/1/top",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Trackinfo - Race track information, entries, results",
+   "content": "Welcome to TrackInfo.com, your one stop source for greyhound racing, harness racing, and thoroughbred racing including entries, results, statistics, etc. Find everything you need to know about greyhound & horse racing at TrackInfo.com",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://ace.trackinfo.com/tracksinfo.jsp?raceid13=GWD%24",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "ace.trackinfo.com",
+    "/tracksinfo.jsp",
+    "",
+    "raceid13=GWD%24",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "산케이스포츠",
+   "content": "일본 스포츠, 연예, 사회, 날씨 정보 뉴스 수록.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.sanspo.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.sanspo.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Wheeling Downs Mat Race Results | OFF TRACK BETTING",
+   "content": "Sep 9, 2026 · Instant access for today's Wheeling Downs Mat Race Results, Entries, Post Positions, Payouts, Jockeys, Scratches, Conditions & Purses.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.offtrackbetting.com/results/200/wheeling-downs-mat.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.offtrackbetting.com",
+    "/results/200/wheeling-downs-mat.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Trackinfo - Entries",
+   "content": "Welcome to TrackInfo.com, your one stop source for greyhound racing, harness racing, and thoroughbred racing including entries, results, statistics, etc. Find everything you need to know about greyhound & horse racing at TrackInfo.com",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://ace.trackinfo.com/tracks-breed-state-entries-2.jsp?breed=g",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "ace.trackinfo.com",
+    "/tracks-breed-state-entries-2.jsp",
+    "",
+    "breed=g",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Trackinfo Mobile. Racing Information for Greyhounds",
+   "content": "Access racing information, entries, and results for greyhound races on Trackinfo Mobile.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://m.trackinfo.com/index.jsp?next=entries&raceid=GWD%24",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "m.trackinfo.com",
+    "/index.jsp",
+    "",
+    "next=entries&raceid=GWD%24",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "BBBB（ベーコンの暴飲暴食ブログ）",
+   "content": "Twitterでつぶやいてたことの一部（主に食べ物）の部分をこっちに移行することを目的として始めました。どうぞみなさんお腹を空かせてください。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://sosunser.hateblo.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sosunser.hateblo.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Trackinfo Mobile. Racing Information for Greyhounds",
+   "content": "Today's Races MultiTote Future Races All Tracks Results and Video Replays Search Greyhounds Virtual Kennel Bet Tournament",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://m.trackinfo.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "m.trackinfo.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TrackInfo: Programs, Replays, Results | National Greyhound",
+   "content": "PO Box 543 Abilene, KS 67410 (785) 263-4660 ©2025 by National Greyhound Association",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.ngagreyhounds.com/trackinfo-programs-replays-results",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.ngagreyhounds.com",
+    "/trackinfo-programs-replays-results",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "読売ジャイアンツ女子チームが市民球場でキャンプを実施しました 東京都府....",
+   "content": "市は、都内で初めて女子野球タウンに認定され、女子野球を通した地域活性化を推進しています。 これに関連して、女子野球普及と地域活性化に関する覚書を締結している読売ジャイアンツ女子チームが、府中市民球場でキャンプを実施しました。 令和5年3月21日（祝日・火曜日）にキャンプインし、歓迎セレモニー、折尾愛真高等学校（福岡県）女子硬式野球部・府中......",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=http%3A%2F%2Fwww.city.fuchu.tokyo.jp%2Fbunka%2Fsport%2Fwomensbaseballtown%2F20230321giantswomanscamp.images%2Faisatsu.JPG&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "http://www.city.fuchu.tokyo.jp/bunka/sport/womensbaseballtown/20230321giantswomanscamp.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "www.city.fuchu.tokyo.jp",
+    "/bunka/sport/womensbaseballtown/20230321giantswomanscamp.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TVアニメ『ゴールデンカムイ』樺太を進む杉元らが描かれたキービジュ公開！....",
+   "content": "2020.06.19.2020年10月より第3期の放送がスタートするTVアニメ『ゴールデンカムイ』より、キービジュアル第1弾が公開！ キービジュアルには新たな舞台「樺太」を進むアシ(リ)パら4人と、杉元佐一ら追う4人が描かれました。 また杉元佐一役・小林親弘さん、アシ(リ)パ役・白石晴香さんといったメインキャスト8名によるコメントも到着しています。 本作は明治後期の北海道を舞台に....2020.06.19.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fnijimen.kusuguru.co.jp%2Fwp-content%2Fuploads%2F2020%2F06%2Fsamune-141.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://nijimen.kusuguru.co.jp/topics/91214",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "nijimen.kusuguru.co.jp",
+    "/topics/91214",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【カープ】現役引退・退団選手の進路（2021年オフ） | 安芸の者がゆく＠カー....",
+   "content": "予想スタメン · 今後の予想ローテ · 負傷者リスト · カープ関連グッズ・書籍等の発売予定一覧 · プロ野球OB・解説者の今季予想カープ順位 · 「ドラフト2026」指名候補の一覧",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fblog-imgs-144.fc2.com%2Fa%2Fk%2Fi%2Fakinomono2010%2F21964_7753.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://akinomono.jp/blog-entry-21264.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "akinomono.jp",
+    "/blog-entry-21264.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "日本の中枢は既に在日朝鮮人に乗っ取られている 中川隆",
+   "content": "投稿者 中川隆 日時 2018 年 7 月 25 日 10:31:43: 3bF/xW6Ehzs4I koaQ7Jey ; (回答先: 少子化問題を考える _ ここまでやらないと子供の数は増えない 投稿者 中川隆 日時 2018 年 7 月 25 日 07:12:07) 日本の皇室・政治家・官僚・マスコミ・新興宗教・芸能界・スポーツ界・ヤクザ・風俗・パチンコ・被差別同和部落の中枢は既に在日朝鮮人に乗っ取られている 岸和田春木？在日３世の告白？.....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fclap.asyura2.com%2Fpeterimg%2F1001.gif&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.asyura2.com/17/lunchbreak54/msg/232.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.asyura2.com",
+    "/17/lunchbreak54/msg/232.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "被差別部落出身の有名人は？・yomi.mobi(部落出身者は、大和民族の誇りを思い....",
+   "content": "http://yomi.mobi/read.cgi/human7/human7_ms_1188395468 ; 【同和】被差別部落出身の有名人は？ 1 名前：可愛い奥様 [2007/08/29(水) 22:51:08 ID:nDjKL5710] 教えて下さい。 2 名前：可愛い奥様 [2007/08/29(水) 23:08:55 ID:nDjKL5710] 加藤あいちゃんがそうなんだよね。 3 名前：可愛い奥様 mailto:sage [2007/08/29(水) 23:09:28 ID:2vGeNI3s0] 人権板へ 4 名前：可愛い奥様 [2007/08/29(水) 23:10:52 ID:x7fxqKPT0] 部落ってのは芸能人.....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fclap.asyura2.com%2Fpeterimg%2F1020.gif&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.asyura2.com/11/lunchbreak45/msg/860.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.asyura2.com",
+    "/11/lunchbreak45/msg/860.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ベイスターズ 1－8 タイガース 竹田3回途中3失点 得点は牧のソロHRのみ... : De速",
+   "content": "コミカルで熱いアニマルファンタジー筒香嘉智 復帰1年目 .188 7本 23打点 OPS....DeNA戸柱、古市＆松尾を両脇に抱えてハグ 試合後の一幕が話...DeNA度会隆輝、自身初のシーズン規定打席に到達！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Flivedoor.blogimg.jp%2Fbaynewsflash%2Fimgs%2Fe%2Fb%2Febe5c0c8.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "http://de-baystars.jp/archives/63494654.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "de-baystars.jp",
+    "/archives/63494654.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Live Racing - Greyhound Racing at Wheeling Island Casino",
+   "content": "Learn how to view live greyhound racing from anywhere by streaming races on your phone or computer.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.wheelingisland.com/greyhound-racing/live-racing/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.wheelingisland.com",
+    "/greyhound-racing/live-racing/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Results - Greyhound Racing at Wheeling Island",
+   "content": "View live greyhound racing results from around the country and from Wheeling Island racetrack.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.wheelingisland.com/greyhound-racing/results/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.wheelingisland.com",
+    "/greyhound-racing/results/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Race Programs/Results - Greyhound Channel",
+   "content": "Race Programs/Results - Greyhound Channel.com © Copyright 2024-25 USOT. Licensed and Regulated by the State of North Dakota Wager Responsibly",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.greyhoundchannel.com/Programs.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.greyhoundchannel.com",
+    "/Programs.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Apache Greyhound Park | Live & Simulcast Racing Programs &...",
+   "content": "View the greyhound racing programs and results from Apache Greyhound Park's 11 different locations.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.americangreyhoundracing.com/otb-locations/programs-and-results",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.americangreyhoundracing.com",
+    "/otb-locations/programs-and-results",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

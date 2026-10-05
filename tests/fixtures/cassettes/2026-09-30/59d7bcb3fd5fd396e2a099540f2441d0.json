@@ -1,0 +1,562 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "아르메니아 선발 라인업 9월 27일",
+ "recorded_at": "2026-09-30T14:40:20.702733+00:00",
+ "results": [
+  {
+   "url": "https://namu.wiki/w/%EC%95%84%EB%A5%B4%EB%A9%94%EB%8B%88%EC%95%84",
+   "title": "아르메니아 - 나무위키",
+   "content": "아르메니아어는 아르메니아 공화국 전역과 해외의 아르메니아인 디아스포라 (러시아, 튀르키예, 미국, 캐나다, 이란, 레바논, 프랑스 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EC%95%84%EB%A5%B4%EB%A9%94%EB%8B%88%EC%95%84",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "[공홈] 아르메니아, 9-10월 네이션스리그 엔트리 발표 - 축구 소식통 ...",
+   "content": "Sep 18, 2026 · 아르투르 세로뱐 (아라라트-아르메니아), 에드가르 세비키안 (세우타, 스페인), 나레크 그리고리안 (파룰, 루마니아), 지라이르 샤고얀 (아라라트-아르메니아), 나레크 호브한니샨 (레히아 그단스크, 폴란드), 아르투르 미라냔 (이로니 티베리아스, 이스라엘), 아르 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.fmkorea.com/10349720099",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.fmkorea.com",
+    "/10349720099",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://ko.wikipedia.org/wiki/%EC%95%84%EB%A5%B4%EB%A9%94%EB%8B%88%EC%95%84",
+   "title": "아르메니아 - 위키백과, 우리 모두의 백과사전",
+   "content": "2026년 9월 20일 · 아르메니아 공화국 (아르메니아어: Հայաստանի Հանրապետություն 하야스타니 한라페투튠), 약칭 아르메니아 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/%EC%95%84%EB%A5%B4%EB%A9%94%EB%8B%88%EC%95%84",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Armenia 대 Montenegro: 경기 라인업 - footboom1.com",
+   "content": "2 days ago · 오늘 9월 28에 예정된 Armenia와 Montenegro 간의 UEFA Nations League 경기의 선발 라인업이 발표되었습니다. 경기는 16:00에 시작됩니다. Armenia : Ognjen Cancarevic, Erik Piloyan, Argishti Petrosyan, Georgiy Harutyunyan, Nair Tiknizyan, Artem Bandikyan, Ugoch",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.footboom1.com/ko/news/football/1763247650-armenia-vs-montenegro-lineups-for-the-match",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.footboom1.com",
+    "/ko/news/football/1763247650-armenia-vs-montenegro-lineups-for-the-match",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://rank.intoday.kr/179",
+   "title": "아르메니아 국민소득, 군사력, 인구수, 위치, 순위, 여행 (1인당 ...",
+   "content": "2024년 10월 27일 · 1. 아르메니아 개요 아르메니아는 남캅카스 지역에 위치한 국가로, 인구는 약 300만 명이며, 수도는 예레반입니다. …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "rank.intoday.kr",
+    "/179",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "아르메니아 대 라트비아 - 실시간 점수, 예상 스타팅 라인업 및 H2H ...",
+   "content": "Fri, Sep 25, 2026, 16:00 UTC의 아르메니아 대 라트비아. 실시간 결과, 상대 전적, 경기 통계, 선발 라인업, 선수 평가, 인사이트, 팀 폼, 슛맵, 하이라이트를 확인하세요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.fotmob.com/ko/matches/latvia-vs-armenia/19m8ja",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/ko/matches/latvia-vs-armenia/19m8ja",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://namu.wiki/w/%EC%95%84%EB%A5%B4%EB%A9%94%EB%8B%88%EC%95%84/%EC%97%AD%EC%82%AC",
+   "title": "아르메니아/역사 - 나무위키",
+   "content": "2026년 4월 8일 · 아르메니아 본토는 13세기 몽골 의 대공세 이후 몽골 제국의 분파인 일 칸국 의 통치 아래 들어왔다. 일 칸국의 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EC%95%84%EB%A5%B4%EB%A9%94%EB%8B%88%EC%95%84/%EC%97%AD%EC%82%AC",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "아르메니아 몬테네그로 경기 분석 9월 29일｜스페르치안 vs 크르스토...",
+   "content": "Aug 23, 2026 · 9월 29일 UEFA 네이션스리그에서는 아르메니아와 몬테네그로가 맞붙는다. 이번 경기는 2026-27 UEFA 네이션스리그 리그C 그룹2 2차전이다. 경기는 아르메니아 예레반에서 열린다. 경기 시작은 한국시간 9월 29일 오전 1시 다. C2조에는 아르메니아 몬테네그로 키프로스 라트비아 가 포함됐다. 1차전에서는 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://blog.naver.com/hyun241012/224423642521",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "blog.naver.com",
+    "/hyun241012/224423642521",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://en.wikipedia.org/wiki/Armenia",
+   "title": "Armenia - Wikipedia",
+   "content": "2일 전 · Armenia - Wikipedia",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Armenia",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "아르메니아 실시간 스코어, 결과, 일정, 키프로스 vs 아르메니아 live...",
+   "content": "27 6 510 0 1 0 0 13 호브하니샨 Kamo 33 6 527 0 0 1 0 미드필더 # 이름 나이 MIN 2 Bandikyan Artem 21 1 8 0 0 0 0 6 Iwu Ugochukwu 26 4 345 0 0 0 0 15 Nalbandyan 카렌 24 1 13 0 0 0 0 10 Spertsyan 에두아르드 26 6 540 2 0 0 0 19 무라댠 Karen 33 3 190 0 0 0 0 공격수 # 이름 나이 MIN 22 Grigoryan Narek 25 1 20 0 0 0 0 9 Serobyan 아르투 23 4 101 0 0 0 0 7 Sevikyan 에드가 대표팀 발탁 25 3 151 0 0 0 0 11",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.flashscore.co.kr/team/armenia/2TEHMnnn/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.flashscore.co.kr",
+    "/team/armenia/2TEHMnnn/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.tripzaza.com/ko/destinations/armenia-ui-gwangwang-myeongso",
+   "title": "2026년 아르메니아의 관광 명소 (사진 다수)",
+   "content": "아르메니아 영토 전역에 흩어져있는 수많은 박물관은이 나라의 역사에 익숙하지 않은 관광객에게 완전히 새로운면을 보여줍니다. 예 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.tripzaza.com",
+    "/ko/destinations/armenia-ui-gwangwang-myeongso",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "2026년 9월 29일 아르메니아 vs 몬테네그로 UEFA 네이션스리그 분석 |...",
+   "content": "3 days ago · 아르메니아와 몬테네그로는 네이션스리그 첫 경기를 모두 승리했지만 최근 공식 A매치 평균 실점은 나란히 2.6점입니다. 평균 득점에서는 몬테네그로가 1.2점으로 앞섭니다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://matchfd.com/football-analysis-nations-league-2026-09-29-armenia-vs-montenegro/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "matchfd.com",
+    "/football-analysis-nations-league-2026-09-29-armenia-vs-montenegro/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://encykorea.aks.ac.kr/Article/E0034270",
+   "title": "아르메니아 - 한국민족문화대백과사전",
+   "content": "정식 명칭은 아르메니아공화국 (Republic of Armenia)으로, 독립국가연합 (CIS)을 구성한 공화국의 하나이다. 면적은 2만 9743㎢, …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "encykorea.aks.ac.kr",
+    "/Article/E0034270",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "아라라트-아르메니아 vs 스파르타 프라하 경기 분석｜유로파리그 승부...",
+   "content": "Aug 23, 2026 · 아라라트-아르메니아 vs 스파르타 프라하 경기 분석｜유로파리그 승부예측·예상 스코어·선발 라인업 (9월 17일) Sports Analysis Hyun ・ 2026. 9. 14. 22:43",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://blog.naver.com/hyun241012/224411765183",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "blog.naver.com",
+    "/hyun241012/224411765183",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://gladness.tistory.com/328",
+   "title": "아르메니아 수도 지도 위치와 1인당 국민소득",
+   "content": "2024년 9월 23일 · \"아르메이나\"는 아시아 서남부에 위치하고 있는 국가로 공식 국명은 아르메니아공화국\"Republic of …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "gladness.tistory.com",
+    "/328",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://blog.naver.com/su198964/224087050861",
+   "title": "아르메니아 자유여행 완전 가이드 + 필수 정보 총정리 (한국인 ...",
+   "content": "URL 복사 이웃추가 아르메니아 자유여행 완전 가이드 + 필수 정보 총정리 (한국인 최신 버전) 아르메니아 자유여행 · 아르메니아 치안 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "blog.naver.com",
+    "/su198964/224087050861",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://esaneda.tistory.com/entry/%EC%84%B8%EA%B3%84-%EC%B5%9C%EC%B4%88%EC%9D%98-%EA%B8%B0%EB%8F%85%EA%B5%90-%EA%B5%AD%EA%B0%80-%EC%95%84%EB%A5%B4%EB%A9%94%EB%8B%88%EC%95%84-%EC%97%AC%ED%96%89-%EC%98%88%EB%A0%88%EB%B0%98%EC%97%90%EC%84%9C-%ED%83%80%ED%85%8C%EB%B8%8C-%EC%88%98%EB%8F%84%EC%9B%90%EA%B9%8C%EC%A7%80%EC%9D%98-%EC%8B%9C%EA%B0%84-%EC%97%AC%ED%96%89",
+   "title": "세계 최초의 기독교 국가, 아르메니아 여행: 예레반에서 타테브 ...",
+   "content": "2026년 2월 25일 · 거대한 아라랏 산의 그림자 아래, 인류 역사상 가장 먼저 기독교를 국교로 받아들인 이 나라는 발길 닿는 곳마다 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "esaneda.tistory.com",
+    "/entry/%EC%84%B8%EA%B3%84-%EC%B5%9C%EC%B4%88%EC%9D%98-%EA%B8%B0%EB%8F%85%EA%B5%90-%EA%B5%AD%EA%B0%80-%EC%95%84%EB%A5%B4%EB%A9%94%EB%8B%88%EC%95%84-%EC%97%AC%ED%96%89-%EC%98%88%EB%A0%88%EB%B0%98%EC%97%90%EC%84%9C-%ED%83%80%ED%85%8C%EB%B8%8C-%EC%88%98%EB%8F%84%EC%9B%90%EA%B9%8C%EC%A7%80%EC%9D%98-%EC%8B%9C%EA%B0%84-%EC%97%AC%ED%96%89",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

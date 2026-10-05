@@ -1,0 +1,19 @@
+{
+  "_출처": "https://statsapi.mlb.com/api/v1/teams?sportId=1",
+  "_받은날": "2026-10-04",
+  "_왜": "🔴 받아서 확인한 응답 모양이다 — 지어낸 것이 아니다. 네 팀만 남겼다(모양을 보는 데 30팀이 필요하지 않다).",
+  "teams": [
+    {"id": 133, "name": "Athletics", "teamName": "Athletics",
+     "shortName": "Athletics", "clubName": "Athletics",
+     "abbreviation": "ATH", "franchiseName": "Athletics", "teamCode": "ath"},
+    {"id": 134, "name": "Pittsburgh Pirates", "teamName": "Pirates",
+     "shortName": "Pittsburgh", "clubName": "Pirates",
+     "abbreviation": "PIT", "franchiseName": "Pittsburgh", "teamCode": "pit"},
+    {"id": 135, "name": "San Diego Padres", "teamName": "Padres",
+     "shortName": "San Diego", "clubName": "Padres",
+     "abbreviation": "SD", "franchiseName": "San Diego", "teamCode": "sdn"},
+    {"id": 158, "name": "Milwaukee Brewers", "teamName": "Brewers",
+     "shortName": "Milwaukee", "clubName": "Brewers",
+     "abbreviation": "MIL", "franchiseName": "Milwaukee", "teamCode": "mil"}
+  ]
+}

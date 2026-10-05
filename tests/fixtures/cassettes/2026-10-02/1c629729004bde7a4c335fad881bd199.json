@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.nytimes.com/athletic/7626394/2026/09/25/new-york-rangers-roster-projection-opening-night/",
+ "query": "",
+ "recorded_at": "2026-10-02T02:47:47.841898+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

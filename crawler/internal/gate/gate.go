@@ -105,10 +105,28 @@ var rules = map[string]rule{
 
 const maxNameRunes = 20
 
+// nameOnly — 괄호 안 포지션 표기를 떼고 이름 부분만 남긴다.
+//
+// 🔴 KBO 타순은 "나승엽(1루수)" 꼴이다. 1루수·2루수·3루수에 숫자가 들어 있어
+//    checkName 의 숫자 검사가 **정상 타순을 100% 폐기**했다.
+//    실측 2026-08-30 17:09 운영 로그: 키움@두산·LG@롯데 4건 전부
+//    "이름에 숫자가 섞임 — 컬럼 밀림"으로 폐기, 변화 0건 →
+//    스케줄러 crawler_lineup_poll 이 타순을 못 봐 저녁 재판정이 트리거되지 않았다.
+//    NPB는 포지션이 中堅手 처럼 숫자가 없어 이 사고를 겪지 않았다.
+//
+// 가드를 푸는 것이 아니다 — 검사 대상을 **원래 의도했던 이름 칸**으로
+// 되돌리는 것이다. 컬럼이 밀려 이름 자리에 숫자가 오면 여전히 잡힌다.
+func nameOnly(v string) string {
+	if i := strings.IndexRune(v, '('); i >= 0 {
+		return strings.TrimSpace(v[:i])
+	}
+	return v
+}
+
 // checkName — 사람 이름이 될 수 있는 문자열인가.
 // 숫자가 섞였다면 표 컬럼이 밀린 것이다(조용한 오염의 전형).
 func checkName(v string) string {
-	r := []rune(v)
+	r := []rune(nameOnly(v))
 	if len(r) > maxNameRunes {
 		return fmt.Sprintf("이름이 %d자 — 표 파싱이 밀렸을 가능성", len(r))
 	}

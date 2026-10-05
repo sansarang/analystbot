@@ -1,0 +1,1663 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "China manager said Oct 2",
+ "recorded_at": "2026-10-02T05:47:39.161091+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "2 China Dissidents Granted Asylum, Fly to Vancouver",
+   "content": "1992.09.17.HONG KONG — Two Chinese women fighting a legal battle against the Hong Kong government’s plans to send them back to China have been granted asylum by Canada, the Canadian Commission in Hong Kong said Wednesday. The two dissidents, 29-year-old journalist Liu Yijun and 25-year-old computer programmer Lin Lin, left Hong Kong on Wednesday afternoon aboard a Canadian Airlines plane bound for Vancouver, ending nine months in the British colony’s Victoria Prison on charges of illegal immigration.....1992.09.17.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.latimes.com/archives/la-xpm-1992-09-17-mn-783-story.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.latimes.com",
+    "/archives/la-xpm-1992-09-17-mn-783-story.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China has potential to dominate world of cricket, says CKC official",
+   "content": "Shahidul Alam Ratan, the international development manager of UK's Capital Kids Cricket, said on Thursday in London that China would dominate the world of cricket in a way they dominate the table tennis.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.globaltimes.cn/content/748814.shtml",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.globaltimes.cn",
+    "/content/748814.shtml",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Oil jumps 4% on reports China halts fuel exports, US troops head...",
+   "content": "10 hours ago · NEW YORK, Oct 1 (Reuters) - Oil prices jumped on Thursday and settled up more than $4 a barrel, after a report said the US was sending more troops and carriers to the Middle East and China ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://finance.yahoo.com/energy/articles/oil-dips-recovering-gulf-exports-044504275.html?fr=sycsrp_catchall",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "finance.yahoo.com",
+    "/energy/articles/oil-dips-recovering-gulf-exports-044504275.html",
+    "",
+    "fr=sycsrp_catchall",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Caixin Global - Latest Business and Financial News on China, U.S. Trade War and Negotiations, Breaking Ne....",
+   "content": "Caixin Global provides the latest China news headlines on politics, economy, business and finance with insight and in-depth analysis.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.caixinglobal.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.caixinglobal.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chinese firm to deliver Nigeria's metro by December",
+   "content": "Phase one of a rail transit project in Nigeria's Abuja will be commissioned by December, China Civil Engineering Construction Corporation (CCECC) said Tuesday.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://news.cgtn.com/news/7863444f30557a6333566d54/index.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "news.cgtn.com",
+    "/news/7863444f30557a6333566d54/index.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China's top leaders set to hold October meeting on internal...",
+   "content": "Jul 30, 2026 · BEIJING: China's ruling Communist Party will hold the fifth plenary session of its Central Committee in Beijing in October, state-run Xinhua news agency said on Thursday (Jul 30), citing a ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.channelnewsasia.com/east-asia/china-october-plenum-internal-governance-economy-measures-6288006",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.channelnewsasia.com",
+    "/east-asia/china-october-plenum-internal-governance-economy-measures-6288006",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Trade & Investment with China | The China-Britain Business Council | CBBC",
+   "content": "Helping our members grow trade and investment between the UK and China. We can provide you and your business with many valuable opportunities",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.cbbc.org/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.cbbc.org",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Global Times: China advances global AI governance on all fronts, turning principles into deeper, more concrete action-JI Hotel (Hangzhou Tongluzhan)-Tourism News",
+   "content": "SCG International General Manager Jirapat Janjerdsak said, \"China's AI technology has shown us the possibility of achieving a mine with 'zero casualty …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://jihangzhoutongluzhan.ji-hotel.cn/newsdetail-829878.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "jihangzhoutongluzhan.ji-hotel.cn",
+    "/newsdetail-829878.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NBA vs China: A timeline of the Hong Kong tweet controversy - CNN",
+   "content": "Oct 9, 2019 · Houston Rockets General Manager Daryl Morey caused substantial damage with the NBA’s growing relationship with China after he voiced his support for Hong Kong’s pro-democracy protestors.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.cnn.com/2019/10/09/business/nba-china-hong-kong-explainer",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.cnn.com",
+    "/2019/10/09/business/nba-china-hong-kong-explainer",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China Says ‘Arrogant’ Mike Pence Should Focus on America’s Problems After VP Attacks NBA, Nike for ....",
+   "content": "2019.10.25.China Says ‘Arrogant’ Mike Pence Should Focus on America’s Problems After VP Attacks NBA, Nike for ‘Kowtowing’ to Beijing2019.10.25.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.newsweek.com%2Fwp-content%2Fuploads%2F2025%2F08%2F1539818-mike-pence-china-nba-nike-human-rights.jpg%3Fw%3D1200%26crop%3D1&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.newsweek.com/china-arrogant-mike-pence-focus-america-problems-attacks-nba-nike-kowtowing-beijing-1467729",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.newsweek.com",
+    "/china-arrogant-mike-pence-focus-america-problems-attacks-nba-nike-kowtowing-beijing-1467729",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China allegedly tried to influence this politician. She says she's not going anywhere",
+   "content": "2025.05.02.pro-China policies. After being sworn in as second-in-command of the Arcadia City Council, Eileen Wang... James Su, president of EDI Media in West Covina, donated $500 to Wang’s campaign on Oct. 10, 2022. Su’s... Lina Li, an office manager for EDI who said she was responding on Su’s behalf, wrote in an email that the $500...2025.05.02.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fca-times.brightspotcdn.com%2Fdims4%2Fdefault%2F1c08f75%2F2147483647%2Fstrip%2Ftrue%2Fcrop%2F4000x2100%2B0%2B493%2Fresize%2F1200x630%21%2Fquality%2F75%2F%3Furl%3Dhttps%253A%252F%252Fcalifornia-times-brightspot.s3.amazonaws.com%252F6a%252F73%252F01f63dd04a7ea0e86c0b36654007%252F1484176-me-1120-wang-rcg-109a.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.latimes.com/california/story/2025-05-02/china-allegedly-tried-to-influence-this-politician-she-says-shes-not-going-anywhere",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.latimes.com",
+    "/california/story/2025-05-02/china-allegedly-tried-to-influence-this-politician-she-says-shes-not-going-anywhere",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "N.B.A. Head Criticizes Chinese Party Paper Over LeBron James ‘Op-Ed’",
+   "content": "2025.10.11.Did LeBron James Write for a Communist Paper? No, but China Said He Did. The People’s Daily newspaper put the star player’s name on an opinion article, an example of the political perils the N.B.A. could face in China.2025.10.11.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fstatic01.nyt.com%2Fimages%2F2025%2F10%2F09%2Fmultimedia%2F00int-china-nba-risks-02-kgqj%2F00int-china-nba-risks-02-kgqj-facebookJumbo.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.nytimes.com/2025/10/11/world/asia/china-nba-lebron.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/2025/10/11/world/asia/china-nba-lebron.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Court allows anti-China slogans at rally, but says 'not condoning hate speech'",
+   "content": "2025.10.02.Court allows anti-China slogans at rally, but says 'not condoning hate speech'2025.10.02.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimage.koreajoongangdaily.com%2F12016947.jpg%3FimageId%3D12016947%26panox%3D0%26panoy%3D0%26panow%3D0%26panoh%3D0%26width%3D1200%26height%3D683&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.koreajoongangdaily.com/korea/court-allows-anti-china-slogans-at-rally-but-says-not-condoning-hate-speech/12016903",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.koreajoongangdaily.com",
+    "/korea/court-allows-anti-china-slogans-at-rally-but-says-not-condoning-hate-speech/12016903",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Security squeeze in China's capital ahead of communist anniversary celebration",
+   "content": "2019.09.06.Security squeeze in China's capital ahead of communist anniversary celebration2019.09.06.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fstatic1.straitstimes.com.sg%2Fs3fs-public%2Farticles%2F2019%2F09%2F06%2Fnz_china_060953.jpg%3FVersionId%3DMk4QX.p5j2bBzBlgqaKdDjNVWquzOAlM&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.straitstimes.com/asia/east-asia/security-squeeze-in-chinas-capital-ahead-of-communist-celebration",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.straitstimes.com",
+    "/asia/east-asia/security-squeeze-in-chinas-capital-ahead-of-communist-celebration",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lee says respect one China, vows to elevate South Korea-China ties",
+   "content": "2026.01.02.\" On the Anmi-gyeongjung (security with the United States, economy with China) line, Lee said, \"The Republic of Korea's strategic autonomy is very important,\" adding, \"We must act in line with the national interest.\" President Lee Jae-myung delivers New Year's remarks at the 2026 New Year's reception at the Blue House State...2026.01.02.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fbiz.chosun.com%2Fresizer%2Fv2%2FMQ2DQMBUMYYTQOJUMVQTSZJXHE.jpg%3Fauth%3D44bda87961e16d5c1fda6c3a1b50429264d1e8e30efdfc2c8b18f9e391375e66%26width%3D1200%26height%3D630%26smart%3Dtrue&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://biz.chosun.com/en/en-policy/2026/01/02/CSGMGOJ32ZHM3LRNN4H3BZF2YU/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "biz.chosun.com",
+    "/en/en-policy/2026/01/02/CSGMGOJ32ZHM3LRNN4H3BZF2YU/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NBA says Chinese wanted Morey's firing; China denies claim",
+   "content": "2019.10.18.and China appeared to widen again Friday, as the fallout over Houston Rockets general manager Daryl Morey’s... Silver said Chinese officials wanted Morey fired, a spokesman for China’s foreign ministry told reporters that no such demand was made by the government there. That becomes the latest chapter in the now 2-week-old...2019.10.18.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fdims.apnews.com%2Fdims4%2Fdefault%2F8dfe66f%2F2147483647%2Fstrip%2Ftrue%2Fcrop%2F3000x1999%2B0%2B1%2Fresize%2F980x653%21%2Fquality%2F90%2F%3Furl%3Dhttps%253A%252F%252Fstorage.googleapis.com%252Fafs-prod%252Fmedia%252F4a67b35f0d664a2286bdc15b0ed42caf%252F3000.jpeg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://apnews.com/article/f721ead046f742dba80b7b5a9cff0876",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/f721ead046f742dba80b7b5a9cff0876",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China’s Li Keqiang acknowledges slowing economic growth, but says Beijing has the ‘tools’ to cope w....",
+   "content": "2021.10.14.China’s Li Keqiang acknowledges slowing economic growth, but says Beijing has the ‘tools’ to cope with headwinds2021.10.14.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.i-scmp.com%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fog_image_scmp_generic%2Fpublic%2Fd8%2Fimages%2Fmethode%2F2021%2F10%2F15%2F75adf506-2ce4-11ec-9021-f4cecde6cb15_image_hires_083547.jpeg%3Fitok%3D8vXTauxl%26v%3D1634258155&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.scmp.com/economy/china-economy/article/3152370/chinas-li-keqiang-acknowledges-slowing-economic-growth-says",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.scmp.com",
+    "/economy/china-economy/article/3152370/chinas-li-keqiang-acknowledges-slowing-economic-growth-says",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Starting 5, Oct. 10: China Games LIVE on NBA TV",
+   "content": "2025.10.10.The Suns and Nets tipped off the NBA China Games 2025 in Macao. Plus, Cason Wallace's behind-the-backboard brilliance.2025.10.10.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.nba.com%2Fmanage%2F2025%2F10%2FGettyImages-2239682233-Cropped.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.nba.com/news/starting-5-oct-10-china-games-live-on-nba-tv",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nba.com",
+    "/news/starting-5-oct-10-china-games-live-on-nba-tv",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Meeting with President Tsai not meant to escalate tensions with China, McCarthy says|English News | 僑新聞OCAC NEWS",
+   "content": "\" … I'm not the general manager of the Houston Rockets, … McCarthy said, in an apparent reference to Beijing's sanctioning of the Rockets after the team's general manager expressed support for protestors in Hong Kong.McCarthy noted …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://ocacnews.net/article/336866",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ocacnews.net",
+    "/article/336866",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China News | Today's Breaking Stories | Reuters",
+   "content": "5 hours ago · Reuters.com is your online source for the latest China news stories and current events, ensuring our readers up to date with any breaking news developments",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.reuters.com/world/china/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.reuters.com",
+    "/world/china/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Boost from China’s Golden Week",
+   "content": "Trip.com Malaysia general manager Stephane Thong said Malaysia was also among the top three destinations in South-East Asia, alongside Thailand and Singapore.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.thestar.com.my/news/nation/2026/10/02/boost-from-chinas-golden-week",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.thestar.com.my",
+    "/news/nation/2026/10/02/boost-from-chinas-golden-week",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China’s October plenum plan reveals focus on party discipline...",
+   "content": "Jul 30, 2026 · China’s top leadership has made party governance the focus of a coming key conclave, signalling the significance of a clean record in the selection process ahead of next year’s national congress.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.scmp.com/news/china/politics/article/3362363/china-says-key-plenum-will-be-held-october",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.scmp.com",
+    "/news/china/politics/article/3362363/china-says-key-plenum-will-be-held-october",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "The US China trade war is entering a new phase",
+   "content": "Chinese memory chip makers stand to suffer most in the short term because they rely on American equipment.Chris Chen, manager of Risk Services for Atradius in China …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://atradius.com.mx/publicaciones/noticias/the-us-china-trade-war-is-entering-a-new-phase-",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "atradius.com.mx",
+    "/publicaciones/noticias/the-us-china-trade-war-is-entering-a-new-phase-",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China expels No. 2 general and 8 others from the Communist Party...",
+   "content": "China’s No. 2 general and eight other senior officials have been expelled from the ruling Communist Party and the military on suspicion of serious official misconduct linked to corruption.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://apnews.com/article/military-officials-expelled-china-corruption-76d038816f5f5f9df4df05fa87e2e7e5",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/military-officials-expelled-china-corruption-76d038816f5f5f9df4df05fa87e2e7e5",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Djokovic wowed by China Open crowds",
+   "content": "\"I think this is only the beginning of what we hope will be another successful year in the tournament's history, … general manager of China Open Promotion Ltd, told China Central Television.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "http://www.chinadailyglobal.com/a/202610/02/WS6abef0f1e4b06d4aa05612bd.html",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "www.chinadailyglobal.com",
+    "/a/202610/02/WS6abef0f1e4b06d4aa05612bd.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "U.S. Says It’s Fed Up With China’s Overcapacity—and More...",
+   "content": "Sep 2, 2026 · A G-20 statement implicitly criticizing Beijing for its overreliance on exports for growth marks a new stage in international pressure.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.wsj.com/world/china/u-s-says-its-fed-up-with-chinas-overcapacityand-more-countries-agree-ec6cc8e5",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.wsj.com",
+    "/world/china/u-s-says-its-fed-up-with-chinas-overcapacityand-more-countries-agree-ec6cc8e5",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "The First GEnx-Powered B787 Delivered to China Southern | GE Aerospace News",
+   "content": "\"Today is a great day of celebration for the delivery of the GEnx-powered Boeing 787 Dreamliner to China Southern, which marks the first B787 delivered to China …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.geaerospace.com/news/press-releases/commercial-engines/first-genx-powered-b787-delivered-china-southern",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.geaerospace.com",
+    "/news/press-releases/commercial-engines/first-genx-powered-b787-delivered-china-southern",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China says AI CEOs' call for a slowdown is 'fear mongering'",
+   "content": "Sep 14, 2026 · Chinese state media's reports of the daily press conference also noted that all groups should work together for AI openness and inclusivity.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.cnbc.com/2026/09/14/china-ai-slowdown-us-tech-ceos.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.cnbc.com",
+    "/2026/09/14/china-ai-slowdown-us-tech-ceos.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Find Chloe Mao's email & phone number - AP Manager at Deckers Brands, Huangpu District | SignalHire",
+   "content": "View Chloe Mao's email address: c*******o@deckers.com & phone: +86-***-***-3444's profile as AP Manager at Deckers Brands, located in Huangpu District, … China.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.signalhire.com/profiles/chloe-mao%27s-email/140624638",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.signalhire.com",
+    "/profiles/chloe-mao%27s-email/140624638",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "CHAIRMAN’S STATEMENT OF THE 28TH ASEAN-CHINA SUMMIT",
+   "content": "CHAIRMAN’S STATEMENT OF THE 28TH ASEAN-CHINA SUMMIT KUALA LUMPUR, MALAYSIA, 28 OCTOBER 2025 1. The 28th ASEAN-China Summit was held in Kuala Lumpur, Malaysia on 28 October 2025. The Summit was chaired by the Honourable Dato' Seri Anwar Ibrahim, Prime Minister of Malaysia and the Chair of ASEAN. The Summit was attended by ASEAN Member States and H.E. Li Qiang, Premier of the State Council of ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://asean.org/wp-content/uploads/2025/11/CHAIRMANS-STATEMENT-28TH-ASEAN-CHINA-SUMMIT.pdf",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "asean.org",
+    "/wp-content/uploads/2025/11/CHAIRMANS-STATEMENT-28TH-ASEAN-CHINA-SUMMIT.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China gives bigger role to former national players in soccer management",
+   "content": "\"As the first former national player for this job, I could feel the pressure.On the other hand, I was captain of the (Chinese) national team for six years and captain of Liaoning for 16 years and I also worked as a manager.All these will … said Zhao to Xinhua …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://news.cgtn.com/news/3d3d674e7a41544e7a457a6333566d54/index.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "news.cgtn.com",
+    "/news/3d3d674e7a41544e7a457a6333566d54/index.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Details on U.S.-China trade negotiations coming Monday, USTR ......",
+   "content": "6 days ago · Top White House trade official Jamieson Greer said the two days of talks between President Trump and Chinese leader Xi brought some trade matter agreements.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.cnbc.com/2026/09/25/trump-xi-china-trade-greer.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.cnbc.com",
+    "/2026/09/25/trump-xi-china-trade-greer.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Surviving 996 Work Culture in China: Expat Guide 2026",
+   "content": "How foreign employees can handle 996 in China: what's legal, your rights under the 2025 reforms, red flags, and practical survival tactics.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://migaku.com/es/blog/language-fun/surviving-996-work-culture-in-china-as-a-foreign-employee",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "migaku.com",
+    "/es/blog/language-fun/surviving-996-work-culture-in-china-as-a-foreign-employee",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "GE Aviation to Deploy RNP Paths at Jiuzhai Huanglong Airport | GE Aerospace News",
+   "content": "\"This joint undertaking marks a significant milestone in airspace modernization efforts in China,\" said Giovanni Spitale, general manager for GE's PBN Services.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.geaerospace.com/news/press-releases/systems/ge-aviation-deploy-rnp-paths-jiuzhai-huanglong-airport",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.geaerospace.com",
+    "/news/press-releases/systems/ge-aviation-deploy-rnp-paths-jiuzhai-huanglong-airport",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Travel Daily | CZ celebrates new jets to Perth",
+   "content": "CZ regional general manager Australia/NZ Henry He said the new aircraft would make the only service between Perth and the Chinese mainland even more comfortable and enjoyable.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://traveldaily.com.au/news/cz-celebrates-new-jets-to-perth/156799",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "traveldaily.com.au",
+    "/news/cz-celebrates-new-jets-to-perth/156799",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Duolingo Expands in China with New Features, Eyes Next Wave of Growth | TMTPOST",
+   "content": "Yuan Yue, Head of Commercial Growth for DET in China, noted that the test is actively supporting the internationalization strategies of Chinese educational institutions.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://en.tmtpost.com/post/7707729",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.tmtpost.com",
+    "/post/7707729",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "China's Xi Calls For Troops To Boost War Preparedness",
+   "content": "2024.10.19.Add us on Google Choose Barron's as a preferred source of financial news2024.10.19.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimages.barrons.com%2Fim-81235358%3Fwidth%3D330%26height%3D185&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.barrons.com/news/china-s-xi-calls-for-troops-to-boost-war-preparedness-c0d8fda8",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.barrons.com",
+    "/news/china-s-xi-calls-for-troops-to-boost-war-preparedness-c0d8fda8",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NBA-China Feud: Timeline of Actions Over Daryl Morey Tweet",
+   "content": "China and the NBA are coming to blows over a pro-Hong Kong tweet. Here's why.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.insider.com%2F5d9fd5b8cc4a0a561c16fd02%3Fwidth%3D1024%26format%3Djpeg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.businessinsider.com/nba-china-feud-timeline-daryl-morey-tweet-hong-kong-protests-2019-10",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.businessinsider.com",
+    "/nba-china-feud-timeline-daryl-morey-tweet-hong-kong-protests-2019-10",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Some companies change tack in China with no recovery in sight",
+   "content": "2024.10.28.The city skyline is reflected in a pool left on the dry riverbed of the receding Jialing river, China, August 20, 2022. REUTERS/Thomas Peter/File Photo Purchase Licensing Rights2024.10.28.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.reuters.com%2Fresizer%2Fv2%2FWTAMC2457FJ4BMZO76GJPCJUGU.jpg%3Fauth%3D1329a3e5d53db5df4ba8da72297b05d5ff111ae880127eb5da6fbc4f5c8f7512%26height%3D1005%26width%3D1920%26quality%3D80%26smart%3Dtrue&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.reuters.com/business/some-companies-change-tack-china-with-no-recovery-sight-2024-10-28/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.reuters.com",
+    "/business/some-companies-change-tack-china-with-no-recovery-sight-2024-10-28/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "SILVER BRIDGE SHIPPING CO-HKG — Ship Manager | TrustedDocks",
+   "content": "SILVER BRIDGE SHIPPING CO-HKG (China): manages 0 vessels. View fleet list, performance data & management profile.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.trusteddocks.com/ship-manager/70377-silver-bridge-shipping-co-hkg",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.trusteddocks.com",
+    "/ship-manager/70377-silver-bridge-shipping-co-hkg",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "MIB Daily: Brent Tops $102 on China’s Fuel-Export Halt and the 10-Year Hits 5.34%, Long Yields Tighten for the Fed as Banks and Junk Credit Strain, and a $2 Trillion Anthropic IPO Tests AI Leadership …",
+   "content": "MARKET INTELLIGENCE BRIEF (MIB) Thursday, October 1, 2026 Brent jumped 4.3 … The 10-year yield touched 5.34% intraday, its highest since 2",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://recessionalert.com/mib-daily-brent-tops-102-on-chinas-fuel-export-halt-and-the-10-year-hits-5-34-long-yields-tighten-for-the-fed-as-banks-and-junk-credit-strain-and-a-2-trillion-anthropic-ipo-tests-ai-leadership/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "recessionalert.com",
+    "/mib-daily-brent-tops-102-on-chinas-fuel-export-halt-and-the-10-year-hits-5-34-long-yields-tighten-for-the-fed-as-banks-and-junk-credit-strain-and-a-2-trillion-anthropic-ipo-tests-ai-leadership/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "*The Power of Two* Makes an Entrance in China. | Boon Edam",
+   "content": "Edam, the Netherlands, November 2019 – earlier this year Boon Edam announced the launch of a seamless and secure entrance product which truly combined advanced transit intelligence, … Ltd) is one of the first joint-stock commercial banks based in China.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.boonedam.com/fr-fr/news/power-of-two-makes-entrance-in-china",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.boonedam.com",
+    "/fr-fr/news/power-of-two-makes-entrance-in-china",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "CHINA LNG SHIPMANAGEMENT BEIJING - CHINA — Ship Manager | TrustedDocks",
+   "content": "CHINA LNG SHIPMANAGEMENT BEIJING - CHINA (Netherlands): manages 0 vessels. View fleet list, performance data & management profile.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.trusteddocks.com/ship-manager/76046-china-lng-shipmanagement-beijing---china",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.trusteddocks.com",
+    "/ship-manager/76046-china-lng-shipmanagement-beijing---china",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Travel Daily | CZ’s Sydney Festival launch",
+   "content": "CZ manager for Australasia, Henry He, said the airline’s focus on Guangzhou and Southern China meant it was “ideally placed to become the key transportation link between",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://traveldaily.com.au/news/cz%E2%80%99s-sydney-festival-launch/76951",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "traveldaily.com.au",
+    "/news/cz%E2%80%99s-sydney-festival-launch/76951",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Product Development Manager (Lingerie & Swimwear) - China job in China | DSJ Global",
+   "content": "View details and apply for this Product Development Manager (Lingerie & Swimwear) - China job in China on DSJ Global.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.dsjglobal.com/en-au/job/product-development-manager-lingerie-swimwear-china-pr595262_1780480140",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.dsjglobal.com",
+    "/en-au/job/product-development-manager-lingerie-swimwear-china-pr595262_1780480140",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [
+  "china manager said oct 2 2025",
+  "china manager said oct 2 2024",
+  "china manager said oct 2 2021",
+  "china manager said oct 2 2020",
+  "china manager said oct 2 2023",
+  "china manager said oct 2 2022",
+  "china manager said oct 2 2016",
+  "china manager said oct 2 2019"
+ ],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

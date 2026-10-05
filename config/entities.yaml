@@ -1,0 +1,163 @@
+# 별칭 사전 — **현지 매체가 부르는 이름 · 감독 · 핵심 선수 · 현지 매체**
+#
+# ══════════════════════════════════════════════════════════════════
+# 🔴 왜 이 파일이 생겼나 — 사용자 기술 지시 2026-10-03 (기술 1)
+# ══════════════════════════════════════════════════════════════════
+#
+# > 내가 잘 찾는 이유의 절반은 팀을 **공식명이 아니라 현지 매체가 부르는 이름**으로
+# > 치기 때문이다. 엘살바도르는 `Selecta`, 자메이카는 `Reggae Boyz`, 파라과이는
+# > `Albirroja`, 소프트뱅크는 `ホークス` 로 쳐야 현지 기사가 나온다. **감독·주장·핵심
+# > 선수 이름도 검색어가 된다.** 오늘 자메이카 이탈자 5명은 `Speid` 로 찾았다.
+#
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **지어내지 않는다** — 이 파일에 적을 수 있는 것은 둘뿐이다
+# ══════════════════════════════════════════════════════════════════
+#
+#   ① 사용자가 **직접 준** 이름 (출처: 사용자 지시 2026-10-03)
+#   ② 이 저장소가 **실측으로 확인한** 것 (출처: 그 실측 날짜)
+#
+# ⚠️ 내가 "아는 것 같은" 별칭·감독은 적지 않는다. 감독은 바뀌고 별칭은 틀리면 검색이
+#    통째로 엉뚱한 데로 간다 — 그것이 0건보다 나쁘다(거짓 변수를 만든다).
+# 🔴 **선언한 팀만** 이긴다. 없는 팀은 종전 경로(공식명 + `search_langs.yaml` 언어)로
+#    가고, 그 사실이 사유로 남는다.
+#
+# ⚠️ 감독 이름은 **자료가 이기게** 두었다 — fotmob 라인업이 `coach` 를 주면 그것을
+#    먼저 쓰고(더 신선하다), 없을 때만 이 파일을 본다(`app/entities.py`).
+
+teams:
+  # ── 🔴 사용자가 직접 준 것 (지시 2026-10-03)
+  Jamaica:
+    aliases:
+      en: [Reggae Boyz]
+    coach: Rudolph Speid
+    outlets: [jamaica-gleaner.com, jamaicaobserver.com]
+    source: 사용자 지시 2026-10-03 — "자메이카 이탈자 5명은 Speid 로 찾았다"
+
+  El Salvador:
+    aliases:
+      es: [Selecta, La Azul y Blanco]
+    coach: Bolillo Gómez
+    # ⚠️ 현지 매체를 사용자가 안 줬다 — **비워 둔다**(지어내지 않는다)
+    outlets: []
+    source: 사용자 지시 2026-10-03
+
+  Paraguay:
+    aliases:
+      es: [Albirroja, La Albirroja]
+    # 🔴 사용자 분석 2026-10-03 이 적은 이름이다("파라과이 알파로")
+    coach: Gustavo Alfaro
+    outlets: []
+    source: 사용자 분석 2026-10-03 (콜롬비아 vs 파라과이)
+
+  Colombia:
+    aliases:
+      es: [Tricolor, La Tricolor, Cafeteros, Los Cafeteros]
+    # 🔴 사용자 분석 2026-10-03 이 적은 이름이다("콜롬비아 로렌소")
+    coach: Néstor Lorenzo
+    outlets: []
+    # ⚠️ 핵심 선수는 **그 경기 자료에서** 온다(기준 XI·득점자) — 여기 박지 않는다.
+    #    🔴 사용자 분석이 적은 이름들(하메스·킨테로·디아스)은 **빠진 선수**이고
+    #       검색어로 쓰면 지난 기사를 끌어온다. 그래서 적지 않는다.
+    source: 사용자 분석 2026-10-03 (콜롬비아 vs 파라과이)
+
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 **KBO 10팀** (사용자 지시 2026-10-03 · 실측 2026-10-03)
+  # ══════════════════════════════════════════════════════════════════
+  #
+  #  ⚠️ 왜 필요했나 — 실측(LG 트윈스 vs 기아 타이거즈): 어댑터 표기가 **영문**
+  #     (`LG Twins`·`Kia Tigers`)이라 검색이 통째로 엉뚱한 데로 갔다:
+  #
+  #       www.kia.com (자동차) 12회 · www.lg.com·lgcorp·solutions.lg.com 12회
+  #       en.wikipedia.org/wiki/LG_Electronics · nba.com · golf.com
+  #       kare11.com "Gardenhire out as **Twins** manager" (미네소타 트윈스)
+  #
+  #  🔴 한국어 별칭을 선언하면 ① 검색어가 한국어가 되고 ② 귀속 검사가 한국어
+  #     기사를 우리 팀 것으로 인정하고 ③ 그 팀 매체를 먼저 연다.
+  #  ⚠️ 별칭이 선언된 언어는 **검색 언어에 자동으로** 들어간다(`entities.langs_of`).
+  #
+  #  🔴 `outlets` 는 **실측한 것만**이다 — 위 질의 넷을 실제로 던져 **돌아온 호스트**
+  #     중 스포츠 기사를 낸 곳이다. ⚠️ `m.sports.naver.com` 은 robots 가 `Disallow: /`
+  #     라 **넣지 않는다**(절대규칙 3). 구단 공식 사이트는 1층이라 맨 앞에 둔다.
+  LG Twins:
+    aliases:
+      ko: [LG 트윈스, 엘지 트윈스, 엘지]
+    outlets: [lgtwins.com, xportsnews.com, spotvnews.co.kr, sports.donga.com,
+              news.kbs.co.kr, mt.co.kr]
+    source: 사용자 지시 2026-10-03 + 실측 2026-10-03 (검색 질의 4건이 낸 호스트)
+
+  Kia Tigers:
+    aliases:
+      ko: [기아 타이거즈, KIA 타이거즈, 기아 타이거스, 해태 타이거즈]
+    outlets: [tigers.co.kr, xportsnews.com, spotvnews.co.kr, sports.donga.com,
+              news.kbs.co.kr, mt.co.kr]
+    source: 사용자 지시 2026-10-03 + 실측 2026-10-03
+
+  # ⚠️ 나머지 여덟 팀은 **별칭만** 적는다 — 매체는 아직 **안 재 봤다.**
+  #    🔴 위 둘의 매체를 베껴 넣지 않는다(그것이 추측이다 · CLAUDE.md #4).
+  #       그 팀을 실제로 물어 본 날 그때 적는다.
+  Doosan Bears:
+    aliases: {ko: [두산 베어스, 두산]}
+    outlets: []
+    source: 사용자 지시 2026-10-03 (KBO 10팀) — 매체는 아직 안 쟀다
+  Samsung Lions:
+    aliases: {ko: [삼성 라이온즈, 삼성 라이온스]}
+    outlets: []
+    source: 사용자 지시 2026-10-03 (KBO 10팀) — 매체는 아직 안 쟀다
+  Hanwha Eagles:
+    aliases: {ko: [한화 이글스, 한화]}
+    outlets: []
+    source: 사용자 지시 2026-10-03 (KBO 10팀) — 매체는 아직 안 쟀다
+  Lotte Giants:
+    aliases: {ko: [롯데 자이언츠]}
+    outlets: []
+    # ⚠️ **맨이름 `롯데` 는 넣지 않는다** — NPB 지바 롯데와 갈린다(그 사실은
+    #    `app/bot/aliases.py` 머리글에도 적혀 있다).
+    source: 사용자 지시 2026-10-03 (KBO 10팀) — 매체는 아직 안 쟀다
+  KT Wiz:
+    aliases: {ko: [KT 위즈, 케이티 위즈]}
+    outlets: []
+    source: 사용자 지시 2026-10-03 (KBO 10팀) — 매체는 아직 안 쟀다
+  SSG Landers:
+    aliases: {ko: [SSG 랜더스, SSG]}
+    outlets: []
+    source: 사용자 지시 2026-10-03 (KBO 10팀) — 매체는 아직 안 쟀다
+  NC Dinos:
+    aliases: {ko: [NC 다이노스]}
+    outlets: []
+    source: 사용자 지시 2026-10-03 (KBO 10팀) — 매체는 아직 안 쟀다
+  Kiwoom Heroes:
+    aliases: {ko: [키움 히어로즈, 키움]}
+    outlets: []
+    source: 사용자 지시 2026-10-03 (KBO 10팀) — 매체는 아직 안 쟀다
+
+  # ── 🔴 실측으로 확인한 것 (NPB · 2026-10-02~03)
+  福岡ソフトバンクホークス:
+    aliases:
+      ja: [ホークス, ソフトバンク]
+    # ⚠️ 감독 이름은 npb.jp 명단 페이지가 준다(실측: `小久保裕紀`) — 자료가 이기게
+    #    두었으므로 여기 박지 않는다.
+    outlets: [nishispo.nishinippon.co.jp, nikkansports.com, sponichi.co.jp,
+              hochi.news, daily.co.jp, baseball.yahoo.co.jp]
+    source: 실측 2026-10-02 (google news 가 이 호스트들을 냈다)
+
+  千葉ロッテマリーンズ:
+    aliases:
+      ja: [マリーンズ, ロッテ]
+    outlets: [nikkansports.com, sponichi.co.jp, daily.co.jp,
+              baseball.yahoo.co.jp, baseballchannel.jp]
+    source: 실측 2026-10-02~03 (google news 가 이 호스트들을 냈다)
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 별칭을 **어디에 쓰나** (세 자리 · `app/entities.py` 가 읽는다)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ① **검색어** — 공식명 대신(또는 더해) 별칭으로 던진다(기술 1·2)
+#  ② **귀속 검사** — 기사가 우리 팀을 말하나(`verify.mentions_team`)를 별칭으로도 본다
+#  ③ **열기 순서** — 그 팀의 현지 매체를 먼저 연다(`rules.host_rank` 보다 앞)
+#
+# ⚠️ ①에서 별칭을 **공식명과 함께** 쓰지 않는다 — `Colombia Tricolor` 는 아무 데도
+#    없는 문자열이다. **한 질의에 하나**다(별칭 질의와 공식명 질의를 따로 던진다).
+usage:
+  search: true
+  attribution: true
+  open_order: true

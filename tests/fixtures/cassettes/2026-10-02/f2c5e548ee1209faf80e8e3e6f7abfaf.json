@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://unisquads.io/w/en/Alpha%20Drive%20One",
+ "query": "",
+ "recorded_at": "2026-10-02T06:03:20.747777+00:00",
+ "ok": false,
+ "status": 429,
+ "text": "",
+ "reason": "HTTP 429"
+}

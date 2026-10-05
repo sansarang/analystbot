@@ -1,0 +1,934 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "東京ヤクルトスワローズ 監督 コメント 10月2日",
+ "recorded_at": "2026-10-02T02:44:31.514606+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "ヤクドウファン@東京ヤクルトスワローズまとめ",
+   "content": "東京ヤクルトスワローズまとめサイト",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "http://yakudoufan.blog.fc2.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "yakudoufan.blog.fc2.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TGV 8707 : Paris Montparnasse–Quimper en 3h56",
+   "content": "Horaires du TGV 8707 Paris Montparnasse–Quimper : départ 08:43, arrivée 12:39 (3h56). Arrêts, calendrier de circulation et disponibilité TGVmax.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://maxrail.app/train/8707",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "maxrail.app",
+    "/train/8707",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "映画『ザ・スーパーマリオギャラクシー・ムービー』公式サイト",
+   "content": "大ヒット上映中。スーパーマリオブラザーズの世界観を基にしたアニメーション映画で、2023年に公開され全世界で13億ドル以上の興行収入を記録した『ザ・スーパーマリオブラザーズ・ムービー』に続く作品。前作に引き続きイルミネーションのクリス・メレダンドリと任天堂の宮本茂が共同で製作し、アーロン・ホーヴァスとマイケル・ジェレニックが監督、...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://mario-movie.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "mario-movie.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Train timetables Paris-Rennes - SNCF Connect",
+   "content": "Check all the train timetables between Paris and Rennes, with all the stops and changes needed for your route !",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.sncf-connect.com/en-en/train/timetables/paris/rennes",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sncf-connect.com",
+    "/en-en/train/timetables/paris/rennes",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TGV INOUI 8707 Horaires train Paris Montparnasse-Vannes",
+   "content": "Mar 27, 2025 · Trouvez l’horaire du train TGV INOUI 8707 entre Paris Montparnasse et Vannes, incluant les correspondances, la durée (≈2 heures 43 minutes) et les horaires. Privilégiez la ponctualité SNCF et achetez vos billets en ligne en quelques clics.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://fr.trip.com/guide/train-horaire/tgv-inoui-8707-paris-montparnasse-vannes.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "fr.trip.com",
+    "/guide/train-horaire/tgv-inoui-8707-paris-montparnasse-vannes.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "試合見聞LOG -東京ヤクルトスワローズ応援ブログ-",
+   "content": "東京ヤクルトスワローズの試合結果に対する率直な感想を中心に，プロ野球・高校野球の話題＋αを混ぜながら記事を書いています日本の野球が大好き！",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "http://blog.masak20.net/",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "blog.masak20.net",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TGV INOUI: book your ticket on SNCF Connect",
+   "content": "Discover the new TGV experience on SNCF Connect: a comfortable train, connected with a team that takes care of you, ... Book your INOUI TGV ticket!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.sncf-connect.com/en-en/tgv-inoui",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sncf-connect.com",
+    "/en-en/tgv-inoui",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La France et l'Europe à portée de train - TGV INOUI",
+   "content": "Découvrez l'offre premium de TGV INOUI associant flexibilité, confort et accompagnement continu : des billets échangeables et remboursables sans frais même après départ du train, et sur train complet également, un espace calme et premium à bord, une pause boisson offerte au Bistro TGV INOUI et un service client réactif.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.tgvinoui.sncf/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.tgvinoui.sncf",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Timetables and routes | SNCF Voyageurs",
+   "content": "Book your train journeys and tickets at the best price on the TGV INOUI, OUIGO, Eurostar, TER and INTERCITÉS for your journeys in France and Europe.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.sncf-voyageurs.com/en/travel-with-us/timetables-and-routes/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sncf-voyageurs.com",
+    "/en/travel-with-us/timetables-and-routes/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "竹山日向（東京ヤクルトスワローズ） | 野球選手データ",
+   "content": "竹山日向 プロフィール ; 生年月日 : 2003年11月2日(22歳), 身長 : 182cm, 体重 : 86kg, 血液型 : B型, 出身地 : 愛知県, 経歴 : 西城小(ビスタベースボールクラブ) - 守山中(愛知中央クラブ) - 享栄高 - ヤクルト22年～25年、26年(育成)～, ドラフト : 2021年5位ヤクルト, 今季年俸 : 400万円, 選手紹介 : 竹山日向(たけやま・ひゅうが)は、享栄高でエースとして3年夏に愛知県大会準優勝。2021年....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fsp.baseball.findfriends.jp%2Fplayer_image.php%3Fplayer_id%3D20030051&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://sp.baseball.findfriends.jp/player/%E7%AB%B9%E5%B1%B1%E6%97%A5%E5%90%91/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sp.baseball.findfriends.jp",
+    "/player/%E7%AB%B9%E5%B1%B1%E6%97%A5%E5%90%91/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ショウアップナイター解説陣のコメントで振り返るヤクルト・村上宗隆の1年....",
+   "content": "2022.10.08.ニッポン放送ショウアップナイターアンバサダーのヤクルト・村上宗隆が、打率.318、56本塁打、134打点の成績を残し、2004年の松中信彦氏以来18年ぶり令和では初の三冠王を達成。本塁打も、日本人シーズン新記録となる56本を放った。ニッポン放送ショウアップナイター解説陣のコメントをもとに今季の村上を振り返る。今回は9.10月編。 8月終了時点で49本塁打を放ってい.....2022.10.08.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fbaseballking.jp%2Fwp-content%2Fuploads%2F2022%2F10%2F2022100313197.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://baseballking.jp/ns/342765/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "baseballking.jp",
+    "/ns/342765/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ヤクルトの速報、結果、ニュース、コラム",
+   "content": "【2026仮想ドラフト】注目の2巡目指名／赤星憲広「全部目の前で獲られる」ウェーバー順の妙／即戦力＆将来性豊かな逸材がズラリ／番付で挙がらなかった甲子園優勝投手も【赤星・西尾ドラフト対談2026＃3】",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fs.yimg.jp%2Fimages%2Fsports%2Fall_device%2Fcommon%2Fogp%2Fnpb.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://sports.yahoo.co.jp/contents/6095",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sports.yahoo.co.jp",
+    "/contents/6095",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【ヤクルト】青木宣親、引退試合でマルチ安打 左へ右へ鮮やか快打連発で“....",
+   "content": "2024.10.02.【動画】センターへ弾き返す！引退発表後初打席で青木宣親が安打を放つ ; 選手全員が青木の背番号「23」をつけてプレーし、「青木一色」で始まった一戦。試合前は登場曲にも使用しているロックバンド「GLAY」のギタリストで、青木と親交のあるTAKUROが国歌演奏を行った。さらに始球式は青木の長男が務め、涙を浮かべる場面もあった。 緑の応援ボードを持ったファン.....2024.10.02.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcocokara-next.com%2Fwp-content%2Fuploads%2F2024%2F10%2F17135_01.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://cocokara-next.com/athlete_celeb/norichikaaoki-retirement-game-02/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "cocokara-next.com",
+    "/athlete_celeb/norichikaaoki-retirement-game-02/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ペンギン - 新・なんJ用語集 Wiki*",
+   "content": "概要 ; つば九郎の名前の由来は、つばめの別称がツバクロであることから。しかし外見からはペンギンと誤解されやすく、公式も「ペンギンに間違えられると減俸」などネタにしている。 セリフは筆談（全て平仮名）で、スワローズのホーム試合開始前にスケッチブックをフリップ代わりに色々な事を呟いている。 とてもマスコットとは思えない自由奔放な振る舞いを多....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Ficon.wikiwiki.jp%2Fsymbolicon%2Flivejupiter%2FogImage%2F47625ca81e6f.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://wikiwiki.jp/livejupiter/%E3%83%9A%E3%83%B3%E3%82%AE%E3%83%B3",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "wikiwiki.jp",
+    "/livejupiter/%E3%83%9A%E3%83%B3%E3%82%AE%E3%83%B3",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NEWS | TVアニメ『盾の勇者の成り上がり Season 4』",
+   "content": "ティザーPV内にてSeason 5のメインスタッフを公開！ Season 3、Season 4に引き続いてSeason 5の監督を務める垪和等さんよりコメントが到着した。 監督・垪和 等 この度、五期でも監督を務めさせていただくことになりました。ありがとうございます。 尚文一行は、迫り来る鳳凰との戦いを見据え、他の三勇者や新たな仲間たちと共に着実に準備を進めてきました。 私たちスタッ.....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fshieldhero-anime.jp%2Fassets%2Fimg%2F4th%2Fogp_001_ja.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://shieldhero-anime.jp/news/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "shieldhero-anime.jp",
+    "/news/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2025年プロ野球ドラフト会議 | 選手・チーム | 東京ヤクルトスワローズ",
+   "content": "2025年10月23日（木）、都内ホテルでプロ野球ドラフト会議が行われ、スワローズは1位指名の松下選手（法政大学・内野手）を含む新人選手8名の指名を行いました。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.yakult-swallows.co.jp%2Fplayers%2Fdraft2025%2Fasset%2Fimages%2Fogp.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.yakult-swallows.co.jp/players/draft2025",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.yakult-swallows.co.jp",
+    "/players/draft2025",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【ヤクルト】石川雅規「一番思いが強い勝利」史上初！大卒投手20年連続勝利....",
+   "content": "2021.06.05.＜6月4日 東京ヤクルトスワローズ 10-1 埼玉西武ライオンズ ＠神宮球場＞ 連敗中のヤクルトは若き4番が球場を沸かせる。3回2死一塁に村上宗隆内野手（21）がリーグ単独トップに躍り出る16号2ランを放ち、西武から大量リードを奪う。 投げては41歳の石川雅規投手（41）が5回3安打1失点で今季初勝利。通算174勝目を挙げ、プロ野球史上初の大卒選手での20年連続勝利を達成。....2021.06.05.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.ytimg.com%2Fvi%2FCTTk8usHyfU%2Fmaxresdefault.jpg&type=f368_208",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.tv-tokyo.co.jp/sports/articles/2021/06/018868.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.tv-tokyo.co.jp",
+    "/sports/articles/2021/06/018868.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "雑談野球！",
+   "content": "カープ勝田〝値千金〟サヨナラ犠飛！サトケイ先制打！...スバルーナらぶらぶキャッスル謹勺(・o・)カープ小園矢野前川の来季の契約はどうなる？禊のトレ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://zatsudanbaseball.blog.jp/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "zatsudanbaseball.blog.jp",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "INOUI 8707 Horaires train Paris Montparnasse-Rennes - Trip.com",
+   "content": "Feb 27, 2025 · Accédez aux horaires du INOUI 8707 de Paris Montparnasse vers Rennes : durée du voyage (≈1 heure 42 minutes), départs directs et plannings. Optez pour la fiabilité SNCF et réservez vos billets en ligne en toute simplicité.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://fr.trip.com/guide/train-horaire/inoui-8707-paris-montparnasse-rennes.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "fr.trip.com",
+    "/guide/train-horaire/inoui-8707-paris-montparnasse-rennes.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "新外国人選手獲得のお知らせ | ニュース | 東京ヤクルトスワローズ",
+   "content": "2021.12.20.20日（月）、2022年シーズンの新戦力として、アンドリュー・スアレス投手（LGツインズ）と契約を締結したことをお知らせいたします。背番号は「50」です。 アンドリュー・スアレス投手コメント 東京ヤクルトスワローズの一員となれた事に胸が高鳴っています。また、この機会を頂けた、衣笠社長、小川GM、高津監督に非常に感謝しております。一日も早くコーチ、チー....2021.12.20.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.yakult-swallows.co.jp/news/detail/26640",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.yakult-swallows.co.jp",
+    "/news/detail/26640",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Train search - SNCF Voyageurs",
+   "content": "Jan 10, 2026 · Before departure, find out the conditions of your journey by entering your train number. Compulsory booking or free seating, individual or shared power sockets or even WiFi access: anticipate the teams and services you need on board.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.sncf-voyageurs.com/en/travel-with-us/booking-and-itinerary/search-by-train-number/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sncf-voyageurs.com",
+    "/en/travel-with-us/booking-and-itinerary/search-by-train-number/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Voyager - TGV INOUI",
+   "content": "Voyager avec TGV INOUI : confort, services et expérience à bord Voyager avec TGV INOUI Préparer votre voyage Informations pratiques",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.tgvinoui.sncf/voyager",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.tgvinoui.sncf",
+    "/voyager",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Horaires du train 8707 - signal.eu.org",
+   "content": "Horaires du train 8707 8707 [carte] Circule tous les jours sauf samedi, dimanche du 20260603 au 20261130 Sauf 20260701 20260703 20260706 20260707 20260708 20260709 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://signal.eu.org/rail/train/8707",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "signal.eu.org",
+    "/rail/train/8707",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "リポビタン真中 - 新・なんJ用語集 Wiki*",
+   "content": "経緯 ; 2015年10月22日のドラフト会議で、ヤクルトと阪神は高山俊（明治大学）を1位指名して競合。 抽選が行われ、くじを先に開いた真中は渾身のガッツポーズ。はしゃぐ真中を見た阪神・金本知憲監督（当時）は、自分のくじを確認せず席に戻った。 そのまま会場ではインタビューが始まり、真中は「ドキドキしました。一番初めに（くじを）開いてやろうと思ってたの....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://wikiwiki.jp/livejupiter/%E3%83%AA%E3%83%9D%E3%83%93%E3%82%BF%E3%83%B3%E7%9C%9F%E4%B8%AD",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "wikiwiki.jp",
+    "/livejupiter/%E3%83%AA%E3%83%9D%E3%83%93%E3%82%BF%E3%83%B3%E7%9C%9F%E4%B8%AD",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "東京ヤクルトスワローズとトレードが成立",
+   "content": "2022.12.10.本日12月11日(火)、北海道日本ハムファイターズ高梨裕稔投手(27)太田賢吾内野手(21)と、東京ヤクルトスワローズ秋吉亮投手(29)谷内亮太内野手(27)のトレードが成立しましたので、お知らせいたします。 「北海道のファンの方々にたくさん応援していただき、また温かい声援を受けてファイターズでプレーできました。感謝しています。2016年は、そのお陰で日本一になるこ......2022.12.10.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.fighters.co.jp/news/detail/00001539.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.fighters.co.jp",
+    "/news/detail/00001539.html",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

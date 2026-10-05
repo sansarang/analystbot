@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.nytimes.com/athletic/7458831/2026/08/18/detroit-red-wings-nhl-prospects-rankings-pipeline-2026/",
+ "query": "",
+ "recorded_at": "2026-10-02T02:47:32.810657+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

@@ -1,0 +1,562 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Sacramento Republic 선발 등판 10월 1일",
+ "recorded_at": "2026-10-01T02:15:04.692740+00:00",
+ "results": [
+  {
+   "url": "https://www.zhihu.com/topic/19566912/intro",
+   "title": "naver - 知乎",
+   "content": "NAVER（네이버）是韩国著名门户/搜索引擎网站，其Logo为一顶草帽，于1999年6月正式投入使用。 使用独有的搜索引擎，并且在 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/topic/19566912/intro",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Homepage - Sacramento Republic FC",
+   "content": "Subscribe to our newsletter Republic FC news, events, and promotions straight to your inbox.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/20634843",
+   "title": "国外有类似国内『起点』网络小说网站吗？ - 知乎",
+   "content": "韩国比较著名的网络文学网站是NAVER웹소설。 （네이버 웹소설） 11区 素以动漫闻名，但是网络小说在青少年中还是很有市场的。 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/20634843",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "2026 Schedule - Sacramento Republic FC",
+   "content": "Schedule for Sacramento Republic FC home and away matches",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.sacrepublicfc.com/schedule/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.sacrepublicfc.com",
+    "/schedule/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/50559070",
+   "title": "电影《釜山行》中的丧尸病毒是怎么来的？ - 知乎",
+   "content": "2016년 9월 14일 · 看到问题我去韩国的门户网站네이버搜索了一下부산행 좀비 원인（釜山行出现僵尸的原因），找了一篇赞同较高的 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/50559070",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC opens new preview center ahead of 2028 ...",
+   "content": "7 hours ago · Sacramento Republic FC opened its new Preview Center in downtown Sacramento, giving fans a look at the club’s planned 20,000-seat Railyards stadium.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.abc10.com/video/sports/soccer/sacramento-republic-fc-opens-new-preview-center-ahead-of-2028-stadium/103-50710ffa-db8f-47f6-a2ed-e493b380f159",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.abc10.com",
+    "/video/sports/soccer/sacramento-republic-fc-opens-new-preview-center-ahead-of-2028-stadium/103-50710ffa-db8f-47f6-a2ed-e493b380f159",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/tardis/bd/ans/2798147623",
+   "title": "naver怎么设置语言为中文呀？",
+   "content": "韩国naver电商平台是现在热门的蓝海电商平台之一，小编也是看到有不少卖家朋友在关注naver平台。 naver现在也是支持中国卖家入 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/tardis/bd/ans/2798147623",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Republic FC Stadium - Wikipedia",
+   "content": "Republic FC Stadium at The Railyards, [1][2] also known as simply Republic FC Stadium, is a 20,000-seat soccer-specific stadium currently under construction in Sacramento, California.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Republic_FC_Stadium",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Republic_FC_Stadium",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/325787437",
+   "title": "Naver账号如何解封？ - 知乎",
+   "content": "如题 1.naver平台一般会给你三个解封的方式让你选择（你账号已经绑定手机and邮箱的情况下）（啰嗦一句，naver账号申请后一定要 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/325787437",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC to open preview center for new ...",
+   "content": "Sep 16, 2026 · Sacramento Republic FC on Wednesday announced the opening a preview center for their new stadium in the Downtown Railyards where fans can choose their seats and get a look at the venue's features.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://sports.yahoo.com/articles/sacramento-republic-fc-open-preview-220000537.html?fr=sycsrp_catchall",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "sports.yahoo.com",
+    "/articles/sacramento-republic-fc-open-preview-220000537.html",
+    "",
+    "fr=sycsrp_catchall",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/question/602588067",
+   "title": "请问韩国네이버为什么不能用了，手机电脑上所有 네이버 网址及 ...",
+   "content": "2023년 5월 23일 · 搜索刘亚仁的结果 网页的样式是由 CSS文件 来实现的，如果CSS文件加载失败，就会像这样：网页只能显示最基 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/602588067",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC 2026 Schedule - ESPN",
+   "content": "ESPN has the full 2026 Sacramento Republic FC schedule. Includes date, time and tv channel information for all Sacramento Republic FC games.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/team/fixtures/_/id/17828/sacramento_republic_fc",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/team/fixtures/_/id/17828/sacramento_republic_fc",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/topic/19804452/intro",
+   "title": "Naver Cafe - 知乎",
+   "content": "네이버 카페 – Naver Cafe on the App Store 查看全部内容",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/topic/19804452/intro",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "template": "default.html",
+   "title": "Sacramento Republic FC (@SacRepublicFC) / X",
+   "content": "1 3 497 Sacramento Republic FC @SacRepublicFC 6h Team of the week x2 🔥 Memo Rodriguez, and Coach Neil Collins have been named to the @ USLChampionship Week 30 TOTW after Saturday night's strong performance! 🙌 📝 Full Release- pulse.ly/i9qzsrmspj",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://x.com/SacRepublicFC",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "x.com",
+    "/SacRepublicFC",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "url": "https://www.zhihu.com/selection/",
+   "title": "知乎 - 知乎",
+   "content": "知乎是一个中文互联网高质量问答社区和创作者聚集的原创内容平台，提供知识共享、互动交流和个人成长机会。",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/selection/",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.zhihu.com/question/404728796",
+   "title": "拔智齿后大概多久能恢复？ - 知乎",
+   "content": "就在今天，迎来了第二次拔智齿，简直痛不欲生，实在比较出名的一个牙科诊所看的，连锁的，就不说哪个了，医生看到我的牙就一 …",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/question/404728796",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  },
+  {
+   "url": "https://www.zhihu.com/tardis/jm/art/2040750737806844251",
+   "title": "知乎",
+   "content": "",
+   "engine": "bing",
+   "template": "default.html",
+   "parsed_url": [
+    "https",
+    "www.zhihu.com",
+    "/tardis/jm/art/2040750737806844251",
+    "",
+    "",
+    ""
+   ],
+   "img_src": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "bing"
+   ],
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

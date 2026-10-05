@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.sofascore.com/football/team/las-vegas-lights/276898",
+ "query": "",
+ "recorded_at": "2026-10-01T02:52:58.611794+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

@@ -1,0 +1,934 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "福岡ソフトバンクホークス 監督 コメント Oct 1",
+ "recorded_at": "2026-10-02T08:07:23.245657+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス 年度別成績 （1938-2026）",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "http://npb.jp/bis/teams/yearly_h.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/teams/yearly_h.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Weather Forecast for Nebraska this Sunday, March 15 with Light...",
+   "content": "Mar 14, 2026 · This Sunday, March 15, Nebraska is in for a wintry day with light snow showers and a very cold atmosphere. The National Oceanic and Atmospheric Administration reports a current temperature of 32°F, affecting visibility.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.heraldousa.com/trending/2026/3/15/weather-forecast-for-nebraska-this-sunday-march-15-with-light-snow-showers-18582.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.heraldousa.com",
+    "/trending/2026/3/15/weather-forecast-for-nebraska-this-sunday-march-15-with-light-snow-showers-18582.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Weather in Omaha, March 15",
+   "content": "Mar 15, 2026 · World United States Nebraska Weather in Omaha Weather in Omaha, March 15 Weather Forecast for March 15 in Omaha, Nebraska - temperature, wind, atmospheric pressure, humidity and precipitations. Detailed hourly weather chart.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://world-weather.info/forecast/usa/omaha/15-march/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "world-weather.info",
+    "/forecast/usa/omaha/15-march/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ａ．デスパイネ（福岡ソフトバンクホークス） | 個人年度別成績",
+   "content": "投打 : 右投右打, 身長／体重 : 175cm／95kg, 生年月日 : 1986年6月17日, 経歴 : マニュエルファハルドキューバ国立体育大 - キューバ・グランマ",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "http://npb.jp/bis/players/03505139.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "npb.jp",
+    "/bis/players/03505139.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "OAX March 1st and 31st Climate - National Weather Service",
+   "content": "2 days ago · OAX March 1st and 31st Climate Weather.gov > Omaha/Valley, NE > OAX March 1st and 31st Climate Current Hazards Current Conditions Radar",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.weather.gov/oax/march",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.weather.gov",
+    "/oax/march",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "National Weather Service",
+   "content": "Provides historical weather observations and data for Omaha, Nebraska.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://forecast.weather.gov/data/obhistory/KOMA.html",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "forecast.weather.gov",
+    "/data/obhistory/KOMA.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Nebraska State Weather Graphics",
+   "content": "2 days ago · Nebraska State Weather Graphics These images are updated once an hour. View neighboring state forecast data from Kansas and Iowa, view local data for eastern NE and western IA, or view other forecast data at our National Digital Forecast Viewer.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.weather.gov/oax/NEgraphics",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.weather.gov",
+    "/oax/NEgraphics",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Monthly Weather Forecast for Omaha, Nebraska 68152 - weather.com",
+   "content": "Weather.com brings you the most accurate monthly weather forecast for Omaha, Nebraska 68152 with average/record and high/low temperatures, precipitation and more.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://weather.com/weather/monthly/l/Omaha+Nebraska+68152?canonicalCityId=267314212f3383bc2fa113fc9793dbcc",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "weather.com",
+    "/weather/monthly/l/Omaha+Nebraska+68152",
+    "",
+    "canonicalCityId=267314212f3383bc2fa113fc9793dbcc",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Omaha, NE Monthly Weather | AccuWeather",
+   "content": "Get the monthly weather forecast for Omaha, NE, including daily high/low, historical averages, to help you plan ahead.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.accuweather.com/en/us/omaha/68102/march-weather/349291",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.accuweather.com",
+    "/en/us/omaha/68102/march-weather/349291",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2025年ドラフト会議",
+   "content": "2025.10.24.毎年、数々のドラマが生まれるドラフト会議。 今年も指名速報や担当スカウトインタビューをはじめ、 ドラフトをより楽しめる特集コンテンツをお届けします。2025.10.24.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.softbankhawks.co.jp%2Fmedia%2Fsites%2F7%2Fteam%2Fdraft%2F2025%2Fbnr_draft_quiz.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/team/draft/2025/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/team/draft/2025/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス 日本一キャンペーン実施中！ | スマートフォン・....",
+   "content": "※ PayPayポイントコードで付与。 ※ PayPayポイントに交換することで利用可能。 ※ PayPayポイントは出金・譲渡不可。 ※ PayPay公式ストア・PayPayカード公式ストアでも利用可能。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.softbank.jp%2Fmobile%2Fset%2Fdata%2Fspecial%2Fhawks-nipponchampions2025%2Fimg%2Fshared%2Fogp.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.softbank.jp/mobile/special/hawks-nipponchampions2025/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbank.jp",
+    "/mobile/special/hawks-nipponchampions2025/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "開幕特設サイト - 福岡ソフトバンクホークス",
+   "content": "マイクロファイバータオルリップストップフラットポーチ【EC受注販売・ストア在庫販売】Tシャツ",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.softbankhawks.co.jp%2Fex%2Fopening%2Fogp.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.softbankhawks.co.jp/ex/opening/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbankhawks.co.jp",
+    "/ex/opening/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークスエポスカード｜クレジットカードはエポスカード",
+   "content": "選択した新規入会特典でお申し込みお申し込み後、約1～2週間でカード本体をご自宅へお届けします。デザインによってカードのお届けが遅れる場合がございます。カードデザインはこの後のステップでお選びいただけます。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.eposcard.co.jp%2Fcollabo%2Fsbh%2Fimg-files%2Findex_im15.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.eposcard.co.jp/collabo/sbh/index.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.eposcard.co.jp",
+    "/collabo/sbh/index.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークスキャンペーン連動企画 ホームランくじ - Yahoo!ズバ....",
+   "content": "▼PayPayポイント賞 ; 1等：PayPayポイント10万円相当 1本 2等：PayPayポイント1,000円相当 100本 3等：PayPayポイント1円相当 80万本",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fs.yimg.jp%2Fimages%2Fpoints%2Ftoku_campaign%2Fcamp2022%2Fshphawks202209%2Fogp.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://toku.yahoo.co.jp/shphawks202209/lot/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "toku.yahoo.co.jp",
+    "/shphawks202209/lot/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークスvsオリックスバファローズの観戦ライブ!!※中継映....",
+   "content": "2026.04.29.총 조회수 : 5.9만, 좋아요 : 264, 댓글 : 44 ; [プロ野球]〇〇に入るのは何!?[ホークス編]#プロ野球 #野球#パリーグ #ホークス #ソフトバンクホークス292.6만 조회수2026.04.29.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.ytimg.com%2Fvi%2FluPF0JkFKWI%2Fhqdefault.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://ranktube.co.kr/video/luPF0JkFKWI",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "ranktube.co.kr",
+    "/video/luPF0JkFKWI",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2019シーズンの福岡ソフトバンクホークスはここがすごい！ ホークスを知り尽....",
+   "content": "2019.03.28.いよいよプロ野球2019シーズン開幕！ 感動と興奮の毎日が今年もやって来ました。 去年日本一に輝いた福岡ソフトバンクホークスが今シーズン掲げるスローガンは「奪Sh！（ダッシュ）」。 パ・リーグ優勝の奪回、そして球団史上初 3年連続日本一を目標にペナントレースに挑みます。 そんなホークスの試合をより深く楽しむために押さえておきたい選りすぐりの見どこ......2019.03.28.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.image.st-hatena.com%2Fimage%2Fscale%2Fd17c85dd98f6cfa78b2475354e6fa3dff9f0ecaa%2Fbackend%3Dimagemagick%3Bversion%3D1%3Bwidth%3D1300%2Fhttps%253A%252F%252Fcdn-ak.f.st-hatena.com%252Fimages%252Ffotolife%252Fs%252Fsbn_13%252F20190327%252F20190327203715.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.softbank.jp/sbnews/entry/20190328_01",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.softbank.jp",
+    "/sbnews/entry/20190328_01",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "「デレマス」×「福岡ソフトバンクホークス」コラボを発表",
+   "content": "2022.07.27.福岡ソフトバンクホークスとバンダイナムコエンターテインメントのコラボレーション企画!! 第6弾は“アイドルマスター シンデレラガールズ” この度、スポーツ関 連グッズやイベント・アーティストグッズの 制 作を手 掛ける株 式会 社 スペース エイジ（本社：広島県広島市、代 表取 締役：吉岡憲治）は、ファナティクスジャパン合同会社と共同 で福岡ソフトバンク....2022.07.27.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.4gamer.net%2Fgames%2F148%2FG014887%2F20220727042%2FSS%2F001.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.4gamer.net/games/148/G014887/20220727042/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.4gamer.net",
+    "/games/148/G014887/20220727042/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークスカレンダー",
+   "content": "10/1の試合日程をもちまして、福岡ソフトバンクホークスカレンダーの更新を終了します。今後新たに予定が追加されることはありません。",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fattachments.timetreeapp.com%2Fpublic_calendar%2F02f7%2F2022-02-04%2F64194-1643961843865.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://timetreeapp.com/public_calendars/softbankhawks_tte",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "timetreeapp.com",
+    "/public_calendars/softbankhawks_tte",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "National Weather Service",
+   "content": "Climatological Report (Daily) Issued by NWS Omaha/Valley, NE Home | Current Version | Previous Version | Text Only | Print | Product List | Glossary On Versions: 1 2 ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://forecast.weather.gov/product.php?site=OAX&product=CLI&issuedby=OAX",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "forecast.weather.gov",
+    "/product.php",
+    "",
+    "site=OAX&product=CLI&issuedby=OAX",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Local Current Weather | AccuWeather",
+   "content": "Get the Nebraska weather forecast. Access hourly, 10 day and 15 day forecasts along with up to the minute reports and videos from AccuWeather.com",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.accuweather.com/en/us/ne/nebraska-weather",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "www.accuweather.com",
+    "/en/us/ne/nebraska-weather",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Nebraska Forecast | National Weather Service",
+   "content": "View local weather forecasts and observations for Nebraska from the National Weather Service.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yahoo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://beta.weather.gov/forecast/state/NE/",
+   "engine": "yahoo",
+   "parsed_url": [
+    "https",
+    "beta.weather.gov",
+    "/forecast/state/NE/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス対広島東洋カープ ファーム公式戦 Tama Home Stadium Chik....",
+   "content": "Infield Reserved Seating B · ₩34,956 ; Infield Reserved Seat S · ₩48,064 ; Infield Reserved Seat A · ₩43,694",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.viagogo.com/ww/Sports-Tickets/Other-Sports/Baseball/Nippon-Professional-Baseball/Fukuoka-SoftBank-Hawks-Tickets/E-161625696",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.viagogo.com",
+    "/ww/Sports-Tickets/Other-Sports/Baseball/Nippon-Professional-Baseball/Fukuoka-SoftBank-Hawks-Tickets/E-161625696",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "【画像・小ネタ】声優・橘田いずみさん、完全に「餃子評論家」が本職にｗｗ....",
+   "content": "2014.10.30.『フレームアームズ・ガール』第2話感想・・・キスしたり電源プラグ抜き差しで喘いだり、やっぱりエロ人形じゃないですかああああ ; 春の新アニメ『ゼロから始める魔法の書』第１話感想・・・ケモケモした傭兵とチートのぜかましちゃんの物語！ 思ったよりちゃんとファンタジーしてるな 『リトルウィッチアカデミア』第14話感想・・・新ＯＰ＆ＥＤに変更！！ ク......2014.10.30.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "http://yaraon.blog109.fc2.com/blog-entry-27897.html",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "yaraon.blog109.fc2.com",
+    "/blog-entry-27897.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "福岡ソフトバンクホークス2023年ドラフト補強ポイント - スポーツのあなぐら",
+   "content": "2023.06.08.①三軍の「育成」から一軍へ到達する条件とは ②チームにとっての即戦力を見極められているのか ③一塁手の上位指名:× ただでさえ供給過多の「数年先」の一塁手 一般的にはこのどちらかで用いられ、 FAや新外国人選手、現役ドラフトの場合が前者。 新人選択のドラフトで使われる場合だと、 評論家が非常に高く評価しているアマチュア選手を 1年目から一軍で使わせ....2023.06.08.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdn.image.st-hatena.com%2Fimage%2Fscale%2Fa63ac241d75880f8213a481a47258dc8279af9bc%2Fbackend%3Dimagemagick%3Bversion%3D1%3Bwidth%3D1300%2Fhttps%253A%252F%252Fcdn-ak.f.st-hatena.com%252Fimages%252Ffotolife%252FL%252FLtfrankc%252F20230607%252F20230607232758.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.ltfrankc.net/entry/2023/06/08/210000",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ltfrankc.net",
+    "/entry/2023/06/08/210000",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "弁理士制度 120周年記念誌",
+   "content": "307페이지12MB弁理士制度 120周年記念誌 日本弁理士会 〈1〉 発行にあたって 弁理士制度120周年記念事業の一環として、ここに弁理士制度120周年記 念誌を発行いたします。 110周年から120周年に至る平成最後の10年間は、リーマンショックの後 遺症や円高による経済の低迷、東日本大震災を始めとした多くの自然災害な ど、日本にとって多難な時代であったといえます。...307페이지12MB",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=66ac11e7_08972304&type=ofullfill176_176_white_trim2",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.jpaa.or.jp/cms/wp-content/uploads/2020/03/120th-anniversary-magazine.pdf",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.jpaa.or.jp",
+    "/cms/wp-content/uploads/2020/03/120th-anniversary-magazine.pdf",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

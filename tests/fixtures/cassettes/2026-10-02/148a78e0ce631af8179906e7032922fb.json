@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.sofascore.com/football/match/iran-south-korea/KUbsqVb",
+ "query": "",
+ "recorded_at": "2026-10-02T06:02:59.801502+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

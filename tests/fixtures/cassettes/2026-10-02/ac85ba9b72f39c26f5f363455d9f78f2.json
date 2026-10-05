@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://api-web.nhle.com/v1/club-stats/DET/now",
+ "query": "",
+ "recorded_at": "2026-10-02T02:56:50.161308+00:00",
+ "ok": true,
+ "status": 200,
+ "text": "{\"season\":\"20262027\",\"gameType\":2,\"skaters\":[],\"goalies\":[]}",
+ "reason": ""
+}
