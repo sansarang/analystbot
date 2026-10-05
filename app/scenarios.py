@@ -175,6 +175,53 @@ FORMATS: tuple[str, ...] = (
     "knockout_two_leg_2nd", "final_single", "friendly", "unknown")
 
 
+def _fmt_cfg() -> dict:
+    """🔴 경기 형식 표 — `config/scenario_rules.yaml` `match_format`."""
+    return dict((rules._load(rules.SCENARIO_RULES).get("match_format") or {}))
+
+
+def match_format(*, round_note: object, competition: object = "") -> tuple[str, str]:
+    """🔴🔴 **경기 형식**(지시서 §3-3) — 라운드 표기·대회명에서 **표로** 고른다.
+
+    > `league | group | knockout_single | knockout_two_leg_1st |
+    > knockout_two_leg_2nd | final_single | friendly` … 🔴 모르면 `unknown`
+    > (지어내지 않는다).
+
+    ⚠️ 재료는 `games.round_note` 다 — fotmob 경기 페이지의 `roundName`
+       (`app.collect.fotmob.round_note`). 실측 2026-10-05: 인도네시아–태국
+       `6232991` → `"final"` → `final_single`.
+    🔴 **조용한 unknown 을 만들지 않는다** — 둘째 값이 *왜* 그 형식인지(혹은 왜
+       모르는지)를 사람 말로 적는다(#3).
+    """
+    cfg = _fmt_cfg()
+    rn = str(round_note or "").strip()
+    comp = str(competition or "").strip()
+    for key, text, what in (("from_round", rn, "라운드 표기"),
+                            ("from_competition", comp, "대회명")):
+        if not text:
+            continue
+        low = text.lower()
+        for row in (cfg.get(key) or ()):
+            row = dict(row or {})
+            hits = [w for w in (row.get("any") or ()) if str(w).lower() in low]
+            if not hits:
+                continue
+            blocked = [w for w in (row.get("not") or ()) if str(w).lower() in low]
+            if blocked:
+                continue
+            got = str(row.get("format") or "unknown")
+            if got not in FORMATS:
+                # 🔴 표에 FORMATS 밖의 이름이 있으면 **그 사실을 말한다**
+                return "unknown", (f"⚠️ 표가 형식 `{got}` 를 댔는데 §3-3 목록에 "
+                                   f"없다 — `unknown` 으로 둔다")
+            return got, (f"{what} `{text}` → `{got}`(§3-3 표의 "
+                         f"`{hits[0]}` 에 걸렸다)")
+    said = " · ".join(x for x in (f"라운드 `{rn}`" if rn else "",
+                                  f"대회 `{comp}`" if comp else "") if x)
+    return "unknown", (f"🔴 **형식을 모른다** — {said or '라운드 표기도 대회명도 없다'} "
+                       f"가 §3-3 표의 어느 줄에도 안 걸렸다. 지어내지 않는다")
+
+
 def _draw_cfg() -> dict:
     """🔴 90분 무승부 표 — `config/scenario_rules.yaml` `draw_90`.
 
@@ -241,6 +288,27 @@ def require_draw(res, game, *, fmt: object) -> bool:
             if any(str(sc) in draw_scores() for sc in (d.scores or []))]
     if have:
         res.notes.append(f"{DRAW_MARK} ✅ 90분 무승부 시나리오가 있다({have})")
+        return True
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **없으면 코드가 넣는다** — §3-3 이 §6-2 **자동 보강**이라고 했다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 이 필수형은 v5 §6-2 **자동 보강 목록에 추가**하고, DeepSeek 단계 3 의
+    #  > `required_types` 입력에도 넣는다. (지시서 §3-3)
+    #
+    #  ⚠️ 종전엔 **막기만** 했다. 그러면 DeepSeek 교체(`from_deepseek`)가
+    #     `added_by="template"` 인 C 초안을 **버리므로** 단판 결승마다 카드가
+    #     `scenario_incomplete` 로 막힌다 — 읽지 않던 형식을 읽기 시작하면
+    #     그 자리가 바로 터진다(실측으로 확인한 경로다).
+    #  🔴 보강은 `_add` 를 지난다 — 무승부가 **없는 리그**면 그 관문이 스코어를
+    #     걷어 내고 넣지 않는다(NHL·야구). 그때만 `incomplete` 다.
+    if _add(res, claim=_claimer(res), hint="90분 무승부(단판)",
+            scores=list(draw_scores()), game=game,
+            why=(f"{why} 🔴 **마켓 대입은 90분 기준**이다 — 연장·승부차기로 "
+                 f"가면 그 득점은 90분 마켓에 들어가지 않는다"),
+            variables=["match_format"], template_id="soccer_lock"):
+        res.notes.append(
+            f"{DRAW_MARK} ✅ 90분 무승부를 **코드가 보강했다**({draw_scores()})")
         return True
     res.incomplete = True
     res.incomplete_why.append(

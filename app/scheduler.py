@@ -276,7 +276,9 @@ async def _rerun_card(pool, row, *, states_note: str = "") -> dict:
     game = {"id": row["id"], "game_id": row["id"], "home": row["home"],
             "away": row["away"], "sport": row.get("sport"),
             "league": row.get("league"), "venue": row.get("venue"),
-            "ext_id": row.get("ext_id"), "starts_kst": row["starts_kst"]}
+            "ext_id": row.get("ext_id"), "starts_kst": row["starts_kst"],
+            # 🔴 §3-3 형식의 재료 — `slate.window` 가 이 칸을 이미 읽어 온다
+            "round_note": row.get("round_note")}
     try:
         facts, states = await analyze.gather(game)
     except Exception as exc:                            # noqa: BLE001
@@ -554,7 +556,9 @@ async def record_prekickoff_once(pool, *, within_min: int = PREKICK_WINDOW_MIN,
             #    (사용자 지시 2026-10-02 *"뭘쌓는데???"* 가 가리킨 바로 그 자리다)
             game = classify.Game(home=row["home"], away=row["away"],
                                  sport=row.get("sport") or "",
-                                 league=row.get("league") or "")
+                                 league=row.get("league") or "",
+                                 # 🔴 §3-3 — 형식(`match_format`)의 재료
+                                 round_note=str(row.get("round_note") or ""))
             card = analyze.build(facts, game, board=None, states=states)
             saved = None
             try:

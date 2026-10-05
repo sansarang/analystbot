@@ -66,6 +66,10 @@ class Game:
     league: str = ""
     #: §4 `match_type` — 친선·단판 여부. 모르면 빈 문자열(지어내지 않는다)
     match_type: str = ""
+    #: 🔴 §3-3 **라운드 표기**(`games.round_note`) — 형식(`match_format`)의 재료.
+    #   ⚠️ 형식을 여기 담지 않는다 — 번호→형식 변환은 `scenarios.match_format`
+    #      **하나**가 한다(#1 사본 금지).
+    round_note: str = ""
     #: 🔴🔴 **팀 열쇠**(3단계 · `teamref`). 이름이 아니라 **이것**이 신원이다.
     #
     #  ⚠️ 비어 있으면 종전처럼 이름으로 가린다 — 그 사실이 사유에 남는다.

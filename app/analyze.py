@@ -261,6 +261,37 @@ def _names_of_key(key: object) -> list[str]:
     return out
 
 
+def _required_forms_for(st: dict | None) -> list[str]:
+    """🔴🔴 **DeepSeek 에 내릴 필수형 이름들** — 지시서 §3-3.
+
+    > 이 필수형은 v5 §6-2 자동 보강 목록에 추가하고, DeepSeek 단계 3 의
+    > `required_types` 입력에도 넣는다.
+
+    ⚠️ 그런데 §6-2 표의 줄은 **대부분 무조건**이고 90분 무승부형만 **조건부**다
+       (단판일 때만). 🔴 리그 경기에 *"90분 무승부를 반드시 넣어라"* 를 내리면
+       그것은 **거짓 필수형**이고, 모델이 없는 갈래를 지어낸다.
+    🔴 조건은 `when_formats` 가 **가리키는 표**가 든다(`scenario_rules.draw_90`)
+       — 형식 목록을 여기 베끼지 않는다(#1 사본 금지).
+    """
+    fmt = str((st or {}).get("match_format") or "unknown")
+    out: list[str] = []
+    for name, row in rules.required_forms().items():
+        points_at = str((row or {}).get("when_formats") or "").strip()
+        if points_at and fmt not in _formats_of(points_at):
+            continue
+        out.append(str(name))
+    return sorted(out)
+
+
+def _formats_of(table: str) -> tuple[str, ...]:
+    """🔴 `when_formats` 가 가리키는 표의 형식 목록. ⚠️ 모르는 표 이름이면 빈 것."""
+    if table == "draw_90":
+        return scenarios.draw_formats()
+    logger.warning("[analyze] `when_formats: %s` 가 가리키는 표를 모른다 — "
+                   "그 필수형을 내리지 않는다", table)
+    return ()
+
+
 def _run_hypo(card, game, items, st, sc):
     """🔴🔴 **단계 3 — DeepSeek 가설·시나리오**(v5-A §3). 지시 ②③ 2026-10-05.
 
@@ -290,7 +321,8 @@ def _run_hypo(card, game, items, st, sc):
         facts=dict(card.form or {}),
         # ⚠️ `Result` 에 `required_types` 칸이 **없다**(재서 고쳤다) —
         #    필수형 목록은 `rules.required_forms()` 가 든다(사본 금지).
-        required_types=sorted(rules.required_forms()),
+        # 🔴 §3-3 — **조건부 필수형**은 그 조건이 맞을 때만 내린다
+        required_types=_required_forms_for(st),
         lineup_state=dict(getattr(card, "xi", {}) or {}))
     got = hypo.run(inp)
     card.ds_why = got.why
@@ -1462,6 +1494,17 @@ def var_line(c, *, form: dict | None = None) -> str:
     return _clip(text or why, 190) + lump
 
 
+def _of(game, field: str) -> str:
+    """🔴 `game` 이 **dict 로도 온다**(`scheduler._rerun_card`) — 둘 다 읽는다.
+
+    ⚠️ `getattr` 만 쓰면 dict 경로에서 **조용히 빈칸**이 되고, 그러면 형식이
+       `unknown` 으로 떨어진 까닭이 *"자료가 없다"* 로 잘못 읽힌다(#3).
+    """
+    if isinstance(game, dict):
+        return str(game.get(field) or "")
+    return str(getattr(game, field, "") or "")
+
+
 def build(facts: list, game, *, board=None, states: dict | None = None,
           kickoff=None, match_key: str = "") -> Card:
     """사실 → 카드. 🔴 **여기서 LLM 이 말하지 않는다**(§17-c).
@@ -1558,6 +1601,22 @@ def build(facts: list, game, *, board=None, states: dict | None = None,
     fun.log("build")
     card.funnel = fun
     st = context(facts)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **경기 형식을 구조 사실에 넣는다** — 지시서 §3-3 (2026-10-05)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 it7(인도네시아–태국 **결승**): `games.round_note` 가 `None` 이라
+    #     형식이 `unknown` 이었고, 90분 무승부 필수형(`require_draw`)이 *"강제하지
+    #     않는다"* 로 지나갔다. 🔴 그런데 경기 페이지는 `"roundName":"final"` 을
+    #     **명시**하고 있었다 — 읽지 않은 것이다(실측으로 받아 확인했다).
+    #  🔴 사실이 형식을 주면 **그쪽이 이긴다**(`standings.match_format`) —
+    #     라운드 표기는 그것이 없을 때의 재료다.
+    #  🔴 **조용한 unknown 을 만들지 않는다**(#3) — 왜 그 형식인지 사유로 남긴다.
+    if not st.get("match_format"):
+        _fmt, _fmt_why = scenarios.match_format(
+            round_note=_of(game, "round_note"), competition=_of(game, "league"))
+        st["match_format"] = _fmt
+        card.states.setdefault("§3-3 형식", _fmt_why)
     card.variables = [c for c in items if c.is_variable]
     card.background = [c for c in items if not c.is_variable and not c.undecided]
     card.undecided = [c for c in items if c.undecided]
@@ -2458,7 +2517,9 @@ async def answer(pool, *, team: str | None = None, league: str | None = None,
     ref = look.ref
     row = {"id": ref.game_id, "home": ref.home, "away": ref.away,
            "sport": ref.sport, "league": ref.competition, "venue": ref.venue,
-           "ext_id": ref.key, "starts_kst": ref.kickoff_utc}
+           "ext_id": ref.key, "starts_kst": ref.kickoff_utc,
+           # 🔴 §3-3 형식의 재료 — 입구(`matchref`)가 읽어 온 라운드 표기
+           "round_note": ref.round_note}
     # ══════════════════════════════════════════════════════════════════
     # 🔴 **v5 §8-1 — 열쇠가 출처를 말하나**(이관 진척을 숫자로 본다)
     # ══════════════════════════════════════════════════════════════════
@@ -2477,7 +2538,9 @@ async def answer(pool, *, team: str | None = None, league: str | None = None,
     # 🔴 **팀 열쇠를 넘긴다**(3단계) — `side_of` 가 글자가 아니라 이것으로 가린다
     g = classify.Game(home=ref.home, away=ref.away,
                       sport=ref.sport, league=ref.competition,
-                      home_id=ref.home_id, away_id=ref.away_id)
+                      home_id=ref.home_id, away_id=ref.away_id,
+                      # 🔴 §3-3 — 이 칸이 `match_format` 을 만든다
+                      round_note=ref.round_note)
     kick = ref.kickoff_utc
     # 🔴 **사람이 기다리는 질문은 `ASK` 예산이다**(§12-d · `cells.SECONDS_OF`).
     #    ⚠️ `DEEP`(300초 · 20회)으로 물으면 세포 하나가 몇 분을 쓴다 — 실측

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+from datetime import datetime, timezone
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -160,7 +161,15 @@ def test_M108_형식이_필수형을_정한다():
         assert not scenarios.draw_needed(fmt)[0], fmt
 
 
-def test_M108_무승부_시나리오가_없으면_incomplete():
+def test_M108_무승부가_없으면_코드가_보강한다():
+    """🔴🔴 §3-3 은 **자동 보강**이다(`on_missing: 추가`) — 막기만 하지 않는다.
+
+    ⚠️ 종전 계약이 *"없으면 `incomplete`"* 를 못 박고 있었다. 그러면 단판
+       결승마다 카드가 막힌다 — `from_deepseek` 가 `added_by="template"` 인 C
+       초안을 **버리기** 때문이다(실측으로 확인한 경로다).
+    🔴 보강된 초안은 `added_by="required"` 여야 한다 — 그래야 교체를 **살아
+       남는다**. 그 칸을 안 보면 이 계약은 아무것도 막지 않는다.
+    """
     from app import classify, scenarios
     game = classify.Game(home="Indonesia", away="Thailand", sport="soccer",
                          league="FIFA ASEAN Cup")
@@ -168,13 +177,97 @@ def test_M108_무승부_시나리오가_없으면_incomplete():
     res.drafts = [scenarios.Draft(id="A", scores=["3-1"], strength=2.0,
                                   template_id="t", why="w")]
     ok = scenarios.require_draw(res, game, fmt="final_single")
-    assert not ok, "🔴 90분 무승부가 없는데 통과했다"
-    assert res.incomplete and res.incomplete_why
-    res.drafts.append(scenarios.Draft(id="B", scores=["1-1"], strength=1.0,
-                                      template_id="t", why="w"))
-    assert scenarios.require_draw(res, game, fmt="final_single"), (
-        f"🔴 `1-1` 을 넣었는데 아직 막는다: {res.incomplete_why}")
+    assert ok, f"🔴 보강했어야 한다: {res.incomplete_why} · {res.notes}"
+    added = [d for d in res.drafts
+             if any(sc in scenarios.draw_scores() for sc in d.scores)]
+    assert added, (f"🔴 90분 무승부 초안이 **안 들어갔다**: "
+                   f"{[d.scores for d in res.drafts]}")
+    assert added[0].added_by == "required", (
+        f"🔴 `added_by={added[0].added_by!r}` — `required` 가 아니면 DeepSeek "
+        f"교체가 이 초안을 **버린다**(그러면 보강이 헛일이다)")
     assert not res.incomplete_why, res.incomplete_why
+    # 🔴 스코어는 **표가 든다** — 코드에 박힌 것이 아님을 확인한다(#1)
+    assert set(added[0].scores) <= set(scenarios.draw_scores()), added[0].scores
+    # 🔴 **두 번 불러도 하나다** — `generate` 와 DeepSeek 교체 뒤 두 번 돈다
+    before = len(res.drafts)
+    assert scenarios.require_draw(res, game, fmt="final_single")
+    assert len(res.drafts) == before, (
+        f"🔴 다시 세면서 **또 넣었다**({before} → {len(res.drafts)})")
+
+
+def test_M108_보강이_불가능하면_막는다():
+    """🔴 무승부가 **일어날 수 없는 리그**면 보강이 아니라 `incomplete` 다.
+
+    ⚠️ 이 반대 증거가 없으면 위 계약이 *"언제나 통과"* 를 허락한다.
+    """
+    from app import classify, rules, scenarios
+    assert rules.draw_possible("NHL")[0] is False, "🔴 전제가 바뀌었다"
+    game = classify.Game(home="A", away="B", sport="hockey", league="NHL")
+    res = scenarios.Result()
+    res.drafts = [scenarios.Draft(id="A", scores=["3-1"], strength=2.0,
+                                  template_id="t", why="w")]
+    ok = scenarios.require_draw(res, game, fmt="final_single")
+    assert not ok, f"🔴 무승부가 없는 리그인데 보강했다: {res.drafts}"
+    assert res.incomplete and res.incomplete_why
+    assert not [d for d in res.drafts
+                if any(sc in scenarios.draw_scores() for sc in d.scores)], (
+        "🔴 NHL 초안에 무승부 스코어가 들어갔다")
+
+
+def test_M108_형식을_경기_페이지에서_읽는다():
+    """🔴🔴 **①-1 실사고** — 재료가 있는데 안 읽었다(실측 2026-10-05).
+
+    fotmob `6232991`(인도네시아–태국 결승) 페이지가 `"roundName":"final"` 을
+    **명시**하는데 `games.round_note` 가 `None` 이었다. 🔴 그래서 형식이
+    `unknown` 이고 90분 무승부 필수형이 **한 번도 발동하지 못했다.**
+    """
+    from app import scenarios
+    from app.collect import fotmob
+    # ① 수집기가 그 칸을 읽는가 — **페이지 꼴 그대로** 돌려서 본다
+    page = {"props": {"pageProps": {"content": {"matchFacts": {"infoBox": {
+        "Tournament": {"leagueName": "FIFA ASEAN Cup Premier Division",
+                       "roundName": "final", "round": "final"}}}}}}}
+    assert fotmob.round_note(page) == "final", fotmob.round_note(page)
+    assert fotmob.round_note({}) == "", "🔴 못 읽으면 빈 문자열이어야 한다"
+    # ② 그 글자가 형식이 되는가
+    got, why = scenarios.match_format(
+        round_note="final", competition="FIFA ASEAN Cup Premier Division")
+    assert got == "final_single", (got, why)
+    assert scenarios.draw_needed(got)[0], "🔴 그 형식이 필수형을 안 켠다"
+    # ③ **지어내지 않는다** — 리그 라운드 번호는 형식이 아니다
+    num, why2 = scenarios.match_format(round_note="1",
+                                       competition="USL Championship")
+    assert num == "unknown", (num, why2)
+    assert "모른다" in why2, why2
+    # ④ `semi-final` 이 `final` 로 새지 않는다(글자 포함 함정)
+    semi, _ = scenarios.match_format(round_note="Semi-final", competition="x")
+    assert semi == "knockout_single", semi
+
+
+def test_배선_round_note_가_형식까지_이어진다():
+    """🔴 #2 배선 — **끊긴 한 칸**이 이 결함의 전부였다. 사슬을 다 센다."""
+    from app import analyze, classify, matchref
+    row = {"id": 1, "ext_id": "fotmob:6232991", "home": "Indonesia",
+           "away": "Thailand", "league": "FIFA ASEAN Cup Premier Division",
+           "sport": "soccer", "round_note": "final",
+           "starts_kst": datetime(2026, 10, 5, 13, tzinfo=timezone.utc)}
+    ref = matchref.ref_from_row(row)
+    assert ref.round_note == "final", "🔴 `MatchRef` 가 그 칸을 안 싣는다"
+    game = classify.Game(home=ref.home, away=ref.away, sport=ref.sport,
+                         league=ref.competition, round_note=ref.round_note)
+    assert analyze._of(game, "round_note") == "final"
+    # 🔴 dict 로 와도 읽는다(`scheduler._rerun_card` 가 dict 를 넘긴다)
+    assert analyze._of(row, "round_note") == "final"
+    # 🔴 카드가 그 칸을 **구조 사실로** 올리는가
+    src = inspect.getsource(analyze.build)
+    assert "match_format" in src, (
+        "🔴 `build` 가 `match_format` 을 구조 사실에 안 넣는다 — 형식이 영영 "
+        "`unknown` 이다")
+    # 🔴 조건부 필수형이 DeepSeek 입력에서 **형식으로 갈리는가**(§3-3)
+    assert "90분_무승부형" in analyze._required_forms_for(
+        {"match_format": "final_single"})
+    assert "90분_무승부형" not in analyze._required_forms_for(
+        {"match_format": "league"})
 
 
 # ══════════════════════════════════════════════════════════════════

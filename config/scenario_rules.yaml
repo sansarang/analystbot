@@ -811,3 +811,53 @@ live_rules:
     *"따라가기"* 가 된다. 🔴 §3 불변: *"맞았나를 예측이 끝난 뒤에 고치지
     않는다."* 라이브가 할 수 있는 일은 **죽은 시나리오를 죽었다고 적는 것**뿐이다.
   source: v5 지시문 §7-3 (사용자 문서 2026-10-04 · PDF 12쪽)
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **경기 형식 표** — 인도네시아–태국 지시서 §3-3 (2026-10-05)
+# ══════════════════════════════════════════════════════════════════
+#
+# > 구조 사실에 `match_format` 을 추가: `league | group | knockout_single |
+# > knockout_two_leg_1st | knockout_two_leg_2nd | final_single | friendly`.
+# > 출처는 대회 공식·위키 대회 문서·**경기 페이지**. 🔴 모르면 `unknown`
+# > (지어내지 않는다).
+#
+# ⚠️ 실측 2026-10-05: fotmob 경기 페이지가 `roundName` 을 **명시한다** —
+#    `6232991`(인도네시아–태국 결승) → `"final"` · `FIFA ASEAN Cup Premier
+#    Division`. 그런데 수집기가 그 칸에 `None` 을 박아 두고 *"못 읽는다"* 고
+#    적어 뒤서, 90분 무승부 필수형이 **발동할 재료가 있는데도** 없었다.
+#
+# 🔴 **순서가 규칙이다** — 위에서 아래로 처음 맞는 줄이 이긴다. `semi-final` 이
+#    `final` 을 포함하므로 `final_single` 줄에 `not` 이 붙는다.
+# 🔴 글자는 **소문자로 눌러** 맞춘다. 못 맞추면 `unknown` 이고, 그 사실을
+#    사유로 남긴다(#3 조용한 0 금지).
+match_format:
+  #: 🔴 `games.round_note`(= 경기 페이지의 라운드 표기)로 맞춘다
+  from_round:
+    - format: knockout_two_leg_1st
+      any: ["1st leg", "first leg", "1차전", "leg 1"]
+    - format: knockout_two_leg_2nd
+      any: ["2nd leg", "second leg", "2차전", "leg 2"]
+    # 🔴 `final` 은 **단판 결승**이다 — ⚠️ `semi-`·`quarter-` 를 먼저 뺀다
+    - format: final_single
+      any: ["final", "결승", "finale", "finalissima"]
+      not: ["semi", "quarter", "준결승", "8강", "1/2", "1/4", "leg"]
+    - format: knockout_single
+      any: ["semi-final", "semi final", "semifinal", "준결승",
+            "quarter-final", "quarter final", "quarterfinal", "8강",
+            "round of 16", "round of 32", "16강", "play-off", "playoff",
+            "3rd place", "third place", "3·4위", "knockout"]
+    - format: group
+      any: ["group", "grp", "조별", "그룹"]
+  #: 🔴 라운드 표기로 못 맞췄을 때 **대회명**(= `games.league`)으로 한 번 더
+  from_competition:
+    - format: friendly
+      any: ["friendl", "친선", "amistoso", "freundschaft", "club friendl"]
+    - format: group
+      any: ["grp.", "group stage", "조별리그"]
+  why: |
+    🔴 형식은 **90분 무승부 필수형**(`draw_90`)의 방아쇠다. 단판 결승·단판
+    토너먼트·2차전의 1차전은 90분 무승부가 **갈래**이므로(연장·승부차기로
+    간다) 그 갈래가 없으면 `언더`·`무승부` 마켓이 공짜로 산다.
+    ⚠️ 리그 경기의 `roundName` 은 **라운드 번호**다(`"2"`) — 번호는 형식을
+    말하지 않으므로 여기서 `unknown` 으로 떨어지는 것이 맞다.
+  source: 인도네시아–태국 지시서 §3-3 (docs/fable/inbox/2026-10-05_workorder_idn_tha_fixes.md)

@@ -103,6 +103,13 @@ class MatchRef:
     #: 그 리그 언어의 현지 표기(`柏レイソル`) — 검색어가 여기서 나온다
     home_local: str = ""
     away_local: str = ""
+    #: 🔴🔴 **라운드 표기**(`games.round_note`) — §3-3 `match_format` 의 재료다.
+    #
+    #  ⚠️ 실측 2026-10-05: fotmob `6232991` 페이지가 `"roundName":"final"` 을
+    #     **명시**하는데 이 칸이 `None` 이었다 — 90분 무승부 필수형이 발동할
+    #     재료가 **있는데도** 형식이 `unknown` 이었다.
+    #  🔴 번호를 형식으로 바꾸는 것은 `scenarios.match_format` 이다(표가 원본).
+    round_note: str = ""
 
 
 @dataclass
@@ -161,4 +168,5 @@ def ref_from_row(row: dict, *, league: str = "", home_local: str = "",
         sport=str(row.get("sport") or ""),
         venue=str(row.get("venue") or ""),
         status=str(row.get("status") or ""),
+        round_note=str(row.get("round_note") or ""),
         home_local=home_local, away_local=away_local)

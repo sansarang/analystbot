@@ -242,10 +242,41 @@ def slate_row(got, *, day: date | None = None) -> dict | None:
         "starts_local": None,       # 🔴 현지 시각대를 페이지가 안 준다 — 지어내지 않는다
         "status": "final" if _started(j) and g.get("finished") else (
             "inprogress" if _started(j) else "scheduled"),
-        "round_note": None,         # 🔴 라운드 표기를 못 읽는다 — 지어내지 않는다
+        # 🔴🔴 **라운드 표기를 읽는다** — 실측 2026-10-05: 종전에 `None` 을
+        #    박아 두고 *"못 읽는다"* 고 적어 뒀는데, 페이지는 `roundName` 을
+        #    **명시한다**(인도네시아–태국 `6232991` → `"final"`). 그 한 칸이
+        #    §3-3 `match_format` 의 재료다 — 안 읽어서 90분 무승부 필수형이
+        #    발동할 재료가 **있는데도** 없었다.
+        "round_note": round_note(j) or None,
         "home_score": None, "away_score": None,
         "probable": {},
     }
+
+
+def round_note(j: dict) -> str:
+    """🔴 그 경기의 **라운드 표기** — `games.round_note` 에 그대로 들어간다.
+
+    자리는 `content.matchFacts.infoBox.Tournament` 다(실측 2026-10-05):
+
+    ```
+    "Tournament":{… ,"leagueName":"FIFA ASEAN Cup …","roundName":"final","round":"final"}
+    ```
+
+    ⚠️ 리그 경기는 `roundName` 이 **라운드 번호**다(`"2"`) — 그것도 사실이므로
+       그대로 싣는다. 번호를 형식으로 바꾸는 것은 `scenarios.match_format` 이고,
+       그 표가 못 맞추면 `unknown` 이다(지어내지 않는다 · §3-3).
+    🔴 못 읽으면 **빈 문자열** — `null` 을 `"None"` 이라는 글자로 만들지 않는다.
+    """
+    t = ((_box(j).get("infoBox") or {}).get("Tournament") or {})
+    if not isinstance(t, dict):
+        return ""
+    for k in ("roundName", "round"):
+        got = t.get(k)
+        if isinstance(got, str) and got.strip():
+            return got.strip()
+        if isinstance(got, int):
+            return str(got)
+    return ""
 
 
 def _name_of(v) -> str:
