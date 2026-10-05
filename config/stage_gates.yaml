@@ -80,7 +80,10 @@ gates:
       days: 7
       violations_max: 0
       insufficient_max_pct: 30
-      usd_per_day_max: 3
+      # 🔴 사용자 결정 2026-10-05: 하루 상한 **$3 → $5**(월 $40 은 그대로).
+      #    ⚠️ 이 칸은 `config/llm.yaml` 의 `per_day_usd` 와 **같은 수**여야
+      #       한다 — 계약(M110)이 둘을 대조한다. 사본이 드러난 자리다.
+      usd_per_day_max: 5
     why: |
       🔴 아직 **배포하지 않았다**(사용자 지시 없이 배포하지 않는다 ·
       CLAUDE.md). ⚠️ 그리고 `SEND_ENABLED` 는 꺼짐이다(§11-11).

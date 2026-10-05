@@ -18,9 +18,18 @@ import inspect
 import json
 import subprocess
 
+import pytest
 
+
+@pytest.mark.slow
 def test_t3_research_는_pyright_에러_0이다():
-    """🔴 `app/research/*` 는 **strict** 이고 에러 0 이어야 한다."""
+    """🔴 `app/research/*` 는 **strict** 이고 에러 0 이어야 한다.
+
+    ⚠️ **`slow` 다**(사용자 지시 2026-10-05 4번): *"pyright 는 pytest 밖으로 —
+       별도 명령(`make typecheck`)으로, 커밋 전 한 번만."* 🔴 pyright 가
+       매번 10초를 먹어 스위트를 늦췄다. `make typecheck` 가 원본이고 이
+       계약은 **마감 직전 한 번** 돈다.
+    """
     got = subprocess.run(["uv", "run", "pyright", "--outputjson"],
                          capture_output=True, text=True, check=False)
     box = json.loads(got.stdout or "{}")

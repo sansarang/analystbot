@@ -27,6 +27,22 @@ def pytest_configure(config):
     _drop_bytecode()
     _unplug_env()
     _unplug_ledger()
+    _unplug_model()
+
+
+def _unplug_model() -> str:
+    """🔴🔴 **테스트는 실모델을 올리지 않는다** — 사용자 지시 2026-10-05.
+
+    > 테스트 중 모델 예열 **금지**: 진입점 예열은 `ANALYSTBOT_TEST=1`
+    > (conftest 에서 설정)이면 건너뛴다. 재정렬이 필요한 계약은 **가짜
+    > 재정렬기**(고정 점수 반환)를 주입한다. 실모델 계약은
+    > `@pytest.mark.slow` 로 따로 분리.
+
+    ⚠️ 왜 — 스위트가 **11분+** 이었다. 🔴 재정렬 계약 파일 하나가 13초였고,
+       그 대부분이 `bge-reranker-v2-m3`(수 GB)를 mps 에 올리는 시간이다.
+    """
+    os.environ["ANALYSTBOT_TEST"] = "1"
+    return "1"
 
 
 def _unplug_ledger() -> str:
@@ -174,3 +190,36 @@ def pytest_report_collectionfinish(config):
                    f"{', '.join(str(s) for s in stages)} "
                    f"/ 열린 단계의 계약만 돌았다")
     return ["", *out] if out else []
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 **가짜 재정렬기** — 사용자 지시 2026-10-05 (2번)
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 재정렬이 필요한 계약은 **가짜 재정렬기**(고정 점수 반환)를 주입한다.
+#
+#  ⚠️ 고정 점수다 — **결정적**이어야 계약이 선다(지시서 §5 "결정성").
+class FakeReranker:
+    """🔴 고정 점수 재정렬기. ⚠️ 질의 낱말이 든 문서를 **앞으로** 보낸다.
+
+    실모델의 *의미* 재정렬을 흉내내지 않는다 — 계약이 보는 것은
+    **순서가 바뀌는가**와 **건수가 그대로인가**다.
+    """
+
+    def predict(self, pairs, batch_size: int = 16):
+        out = []
+        for q, doc in pairs:
+            words = {w for w in str(q).lower().split() if len(w) > 2}
+            low = str(doc).lower()
+            out.append(float(sum(1 for w in words if w in low)))
+        return out
+
+
+@pytest.fixture
+def fake_rerank(monkeypatch):
+    """🔴 실모델 대신 **가짜**를 끼운다 — 계약이 13초를 안 쓴다."""
+    from app.research import rerank
+    rerank.reset()
+    rerank.warm(_load=lambda: FakeReranker())
+    yield rerank
+    rerank.reset()

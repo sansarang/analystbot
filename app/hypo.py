@@ -333,7 +333,23 @@ def run(inp: HypoInput, *, now=None, _net=None) -> HypoResult:
 
     ⚠️ 꺼져 있거나 장애면 **빈 세트와 사유**를 낸다(M45) — v5 원래 경로가 돈다.
     """
+
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **테스트는 실제 DeepSeek 을 부르지 않는다** — 지시 2026-10-05
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측: 카드 계약 하나가 **157초**였고 대부분이 이 왕복이었다
+    #     (`test_카드가_블록_열_개를_순서대로_낸다`). 🔴 스위트 목표는 2분이다.
+    #  🔴 `_net` 을 **준** 계약은 통과시킨다 — 그것이 대역을 끼운 것이다.
     from app import deepseek
+    # 🔴🔴 **테스트는 실제 DeepSeek 을 부르지 않는다**(지시 2026-10-05).
+    #    ⚠️ 실측: 카드 계약 하나가 **157초**였고 대부분이 이 왕복이었다.
+    #    🔴 **스위치 판정(`ask` 안)이 먼저 돌아야** 한다 — 그래서 여기서
+    #       막지 않고 **빈 응답 대역**을 끼운다. 꺼져 있으면 `ask` 가
+    #       그 사유를 내고, 켜져 있으면 이 대역이 네트워크를 대신한다.
+    import os as _os
+    if _net is None and _os.environ.get("ANALYSTBOT_TEST"):
+        _net = _test_net
     got = deepseek.ask([{"role": "system", "content": system_prompt()},
                         {"role": "user", "content": _dump(to_payload(inp))}],
                        match=(inp.match_key or f"{inp.home}|{inp.away}"),
@@ -392,3 +408,12 @@ def system_prompt() -> str:
         '"scenarios":[{"id":"A","driver_vars":[],"mechanism":"",'
         '"outcomes":[[1,2]],"type":"normal","weak":false}]}\n'
     )
+
+
+def _test_net(*_a: object, **_k: object) -> dict:
+    """🔴 계약용 **빈 응답** — 네트워크를 타지 않는다(`ANALYSTBOT_TEST=1`).
+
+    ⚠️ 스위치가 꺼져 있으면 `deepseek.ask` 가 **그 사유로** 먼저 돌아간다 —
+       이 대역은 *켜져 있는데 테스트일 때*만 쓰인다.
+    """
+    raise RuntimeError("ANALYSTBOT_TEST=1 — 실제 DeepSeek 을 부르지 않는다")

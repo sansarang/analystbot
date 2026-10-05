@@ -33,7 +33,9 @@ def test_dec2_돈_상한은_그대로다():
     """🔴 *"하루 \\$3·월 \\$40은 **그대로**"* — 돈은 사용자가 정한 것이다."""
     from app import rules
     got = rules.llm_budget()
-    assert float(got["per_day_usd"]) == 3.0
+    # ⚠️ 하루 상한은 **사용자가 바꾼다**(2026-10-05: $3 → $5) — 수를 박으면
+    #    그 결정이 계약을 빨갛게 만든다. 🔴 월 상한과의 관계만 본다.
+    assert 0 < float(got["per_day_usd"]) < float(got["per_month_usd"])
     assert float(got["per_month_usd"]) == 40.0
 
 

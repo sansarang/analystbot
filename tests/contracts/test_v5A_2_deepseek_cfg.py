@@ -110,7 +110,9 @@ def test_v5A_2_예산이_부록_표_그대로다():
     assert _cfg()["budget"]["shared_with_solar"] is True
     from app import rules
     assert "per_day_usd" not in _cfg()["budget"]
-    assert float(rules.llm_budget()["per_day_usd"]) == 3.0
+    # ⚠️ 수를 박지 않는다 — 사용자가 2026-10-05 에 하루 상한을 바꿨다.
+    #    🔴 계약이 보는 것은 *"그 칸이 있고 월 상한보다 작다"* 다(M110).
+    assert float(rules.llm_budget()["per_day_usd"]) > 0
 
 
 def test_v5A_2_키는_로컬_env_에만_있다():

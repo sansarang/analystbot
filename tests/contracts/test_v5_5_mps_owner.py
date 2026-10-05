@@ -23,6 +23,8 @@ from __future__ import annotations
 import ast
 import inspect
 
+import pytest
+
 
 def test_mps1_전용_실행기가_하나다():
     from app.research import rerank

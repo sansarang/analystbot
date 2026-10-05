@@ -162,8 +162,12 @@ def test_v5A_6_비용은_하루_상한과_같은_수다():
     #     같은 아무 수에나 걸린다(실측: 되돌린 뒤에도 빨갰다). 🔴 그래서
     #     **수 하나를 통째로**(낱말 경계) 본다.
     import re
+    #  ⚠️ **조항 번호를 수로 세지 않는다**(실측 2026-10-05): 상한이 `$5` 가
+    #     되자 `§5 순서로 재야` 의 `5` 가 걸려 거짓 양성이 났다. 🔴 `§`·`#`
+    #     뒤의 수는 조항·번호다 — 그 자리는 뺀다.
+    body = re.sub(r"[§#]\s*\d+(?:[-.]\d+)*", " ", body)
     for lit in {f"{cap:g}", f"{cap}"}:
-        hit = re.search(rf"(?<![\w.]){re.escape(lit)}(?![\w.])", body)
+        hit = re.search(rf"(?<![\w.§#]){re.escape(lit)}(?![\w.])", body)
         assert hit is None, (
             f"🔴 `metrics/compare.py` 코드에 하루 상한 `{lit}` 이 **수로** "
             f"박혀 있다(…{body[max(0, hit.start() - 40):hit.end() + 20]}…) — "

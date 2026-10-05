@@ -143,7 +143,10 @@ def test_v5_10_4_6번_칸의_수가_적혀_있다():
     assert int(nums.get("days")) == 7, nums
     assert int(nums.get("violations_max")) == 0, nums
     assert float(nums.get("insufficient_max_pct")) == 30, nums
-    assert float(nums.get("usd_per_day_max")) == 3, nums
+    # 🔴 게이트 표의 수는 **설정에서 자란다**(M110) — 한 곳에서만 읽는다
+    from app import rules as _R
+    assert float(nums.get("usd_per_day_max")) == float(
+        _R.llm_budget()["per_day_usd"]), nums
     # 🔴 **비용 상한은 `config/llm.yaml` 과 같은 수여야 한다**(두 곳이 갈리면
     #    하나가 거짓이다)
     from app import rules

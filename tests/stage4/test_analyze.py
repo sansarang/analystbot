@@ -340,10 +340,20 @@ def test_스위치가_꺼져_있으면_안_보낸다():
             return True
 
         tg.send = _spy                              # type: ignore[assignment]
+        # 🔴 **네트워크를 타지 않는다**(지시 2026-10-05 3번) — 이 계약이 보는
+        #    것은 *"스위치가 꺼졌으면 안 보낸다"* 이고, 팀을 **찾는** 일은
+        #    그것과 무관하다. ⚠️ 종전엔 `team="없는팀"` 으로 실제 검색을 돌려
+        #    **38초**를 썼다(실측 2026-10-05).
+        from app import findgame
+        async def _none(*a, **k):                   # noqa: ANN001
+            return findgame.Found(ids=[], why="⚠️ 계약 대역 — 찾지 않는다")
+        monkeypatch_target = findgame.find
+        findgame.find = _none                       # type: ignore[assignment]
         try:
             return await analyze.deliver(_Pool(), team="없는팀")
         finally:
             tg.send = orig                          # type: ignore[assignment]
+            findgame.find = monkeypatch_target      # type: ignore[assignment]
 
     got = asyncio.run(_go())
     assert got["sent"] is False, got

@@ -90,19 +90,28 @@ def test_wo3_2_실측_결과가_questions_에_있다():
         assert want in said, f"🔴 실측 기록에 `{want}` 가 없다"
 
 
+#: 🔴 선언된 리그 수 — **불변**이다(지시서 금지 1번).
+#  ⚠️ 늘리려면 **사용자 결정**이 먼저다(`config/leagues.yaml` 은 사용자 영역).
+LEAGUE_COUNT = 7
+
+
 def test_wo3_2_슬러그_표는_리그_선언이_아니다():
     """🔴 *"이 표에 리그를 넣는 것은 **데이터 추가이지 리그 선언이 아니다**"*.
 
     ⚠️ `leagues.yaml` 은 **불변**이다 — 그것을 건드려 인수 테스트를 우회하는
        것이 지시서 **금지 1번**이다.
     """
-    import subprocess
-    got = subprocess.run(
-        ["git", "diff", "--name-only", "HEAD~12", "--", "config/leagues.yaml"],
-        cwd=ROOT, capture_output=True, text=True, check=False)
-    assert not (got.stdout or "").strip(), (
-        "🔴 `config/leagues.yaml` 을 **건드렸다** — 지시서 금지 1번"
-        "(리그를 넣어 인수 테스트를 우회하는 것)")
+    # 🔴 **금지의 뜻으로 본다** — *"리그를 넣어 인수 테스트를 우회"* 다.
+    #    ⚠️ 종전엔 `git diff HEAD~12` 를 봤다. 커밋이 쌓이자 그 고정 창이
+    #       **옛 변경**을 잡아 거짓 양성이 났다(실측 2026-10-05) — 창이 커밋
+    #       수에 따라 뜻이 변하는 **사본**이었다(#1).
+    #    🔴 그래서 **리그 수**를 본다: 그것이 늘지 않았으면 우회가 없다.
+    from app import league_index
+    said = league_index.leagues()
+    assert len(said) == LEAGUE_COUNT, (
+        f"🔴 선언된 리그가 **{len(said)}개**다(기준 {LEAGUE_COUNT}) — 리그를 "
+        f"넣어 인수 테스트를 우회하는 것이 지시서 금지 1번이다. 늘리려면 "
+        f"사용자 결정이 먼저다")
 
 
 def test_wo3_2_슬러그_표가_있으면_모양이_맞다():

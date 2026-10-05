@@ -172,6 +172,13 @@ def warm(_load=None) -> str:
     🔴 두 번 불러도 **한 번만** 올린다(`loads()` 가 1 이다).
     """
     def _job() -> str:
+        # 🔴 **테스트는 실모델을 올리지 않는다**(사용자 지시 2026-10-05).
+        #    ⚠️ `_load` 를 **준** 계약은 통과시킨다 — 가짜 재정렬기다.
+        if _load is None and os.environ.get("ANALYSTBOT_TEST"):
+            global _WHY
+            _WHY = ("🔴 `rerank_unavailable` — `ANALYSTBOT_TEST=1` 이라 "
+                    "실모델을 올리지 않았다(가짜 재정렬기를 주입하라)")
+            return _WHY
         if _MODEL is None:
             _load_in_thread(_load)
         box = _MODEL
