@@ -26,7 +26,7 @@ import pytest
 
 from app import cassette
 from app.core import pipeline, render
-from app.core.schema import Card, MatchRef
+from app.core.schema import Ambiguous, Card, MatchRef
 from app.core.state import RunState
 
 RUN_ID = "kor_uzb_v8"
@@ -395,3 +395,39 @@ def test_불변식15_재분석_카드에_바뀐_것_블록이_있다(card: Card)
     said = {ast.unparse(n.func) for n in ast.walk(tree)
             if isinstance(n, ast.Call)}
     assert not {x for x in said if "s3_docs" in x or "s4_extract" in x}, said
+
+
+def test_불변식16_사실이_그대로면_등급도_그대로다(card: Card):
+    """🔴🔴 **사용자 지시 2026-10-06(3차) ④** — 재분석이 수를 흔들지 않는다.
+
+    > 재분석: 변수 목록이 바뀌지 않았으면 DeepSeek 를 다시 부르지 않고 이전 시나리오를
+    > 그대로 쓴다 … *"사실 그대로 → 등급 그대로"* 를 **E2E 불변식으로.**
+
+    🔴 재생본으로 **재분석을 한 번 더** 돌려 센다: 같은 사실(같은 녹화본)이면 시나리오·
+       등급이 **글자까지 같아야** 한다. ⚠️ s6 를 다시 부르면 모델이 흔들려 다르다 —
+       그래서 이 불변식이 그 호출을 막는 증거가 된다.
+    """
+    import asyncio
+
+    from app.core import pipeline
+    from app.core.state import RunState
+
+    # 🔴 이 고정물의 카드를 **마지막 실행**으로 심고 재분석을 돌린다
+    pipeline._LAST[card.match.id] = {
+        "at": NOW, "ref": card.match, "docs": [], "cands": [],
+        "card": card, "board_text": ""}
+    st = RunState(match_key=card.match.id)
+    got = asyncio.run(pipeline.reanalyze(
+        f"{card.match.home_name} vs {card.match.away_name}",
+        pool=None, net=None, chain=None, state=st, now=NOW))
+    assert not isinstance(got, Ambiguous), got
+    # ⚠️ s1 이 DB 없이 돌 수 없으면 전체를 새로 도는 길로 간다 — 그때는 센지 않는다
+    if any("전체를 새로 돈다" in n for n in st.notes):
+        pytest.skip("재분석이 전체 경로로 갔다(입구가 DB 를 못 봤다) — 이 불변식은 "
+                    "그때 아무것도 세지 않는다")
+    assert got.hypo is not None and card.hypo is not None
+    assert [s.id for s in got.hypo.scenarios] == \
+           [s.id for s in card.hypo.scenarios]
+    assert [(e.line.market, e.line.side, e.grade) for e in got.evals] == \
+           [(e.line.market, e.line.side, e.grade) for e in card.evals], \
+        "🔴 사실이 그대로인데 등급이 바뀌었다(④)"

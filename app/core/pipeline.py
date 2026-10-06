@@ -111,7 +111,26 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
     st.set("docs", len(docs))
     st.set("candidates", len(cands))
     variables = s5_verify.run(ref, facts, docs, cands, state=st)
-    hypo = s6_hypo.run(ref, facts, variables, state=st)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **변수가 그대로면 DeepSeek 를 다시 부르지 않는다**(사용자 지시 ④)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 재분석: 변수 목록이 **바뀌지 않았으면** DeepSeek 를 다시 부르지 않고 **이전
+    #  > 시나리오를 그대로** 쓴다. 변수가 바뀐 경우에만 s6 재실행.
+    #  > *"사실 그대로 → 등급 그대로"* 를 E2E 불변식으로.
+    #
+    #  ⚠️ 실측 2026-10-06: 사실이 하나도 안 바뀐 재분석에서 가설·시나리오가 새로
+    #     나와 **등급이 흔들렸다**(`무패 원정 소액하단 → 없음`). 그것은 분석이 바뀐
+    #     것이 아니라 **모델이 흔들린 것**이다 — 사용자가 보는 수가 그래서 변하면
+    #     되돌아볼 수가 없다.
+    same = _same_vars(before.variables, variables)
+    if same and before.hypo is not None:
+        hypo = before.hypo
+        st.note(f"재분석 — 변수 {len(variables)}개가 **그대로다** → DeepSeek 를 "
+                f"부르지 않고 이전 시나리오 {len(hypo.scenarios)}개를 그대로 쓴다")
+        st.set("scenarios", len(hypo.scenarios))
+    else:
+        hypo = s6_hypo.run(ref, facts, variables, state=st)
     got_board, extra, bad = None, list(before.board_extra), list(before.board_bad)
     if last.get("board_text"):
         from app.core import board as _board
@@ -192,3 +211,16 @@ def _question(raw: str, *, now: datetime | None = None) -> Question:
             team, opp = words[0], words[1]
     return Question(raw=said, team=team, opponent=opp,
                     asked_at=(now or datetime.now(timezone.utc)))
+
+def _same_vars(before: list[Variable], now: list[Variable]) -> bool:
+    """🔴 변수 목록이 **그대로인가** — 번호·유형·주체·방향·대상·근거 여부로 센다.
+
+    ⚠️ `claim` 글자는 보지 않는다 — 같은 사실을 다른 문장으로 적는 것은 **같은 변수**다
+       (그 흔들림이 재분석마다 등급을 바꾸는 것이 ④가 막으려는 것이다).
+    🔴 무게(`weight`)와 `hardness` 는 **본다** — 그것이 바뀌면 생존 수가 바뀐다.
+    """
+    def key(v: Variable) -> tuple:
+        return (v.id, v.type, v.subject, v.favors, v.goals, v.target,
+                v.hardness, round(float(v.weight), 4), v.usable_as_basis)
+
+    return sorted(key(v) for v in before) == sorted(key(v) for v in now)

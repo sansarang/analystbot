@@ -192,6 +192,24 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
             if got:
                 state.drop(f"s5/h2h/R{i}", DropReason.CONFLICT, got)
                 continue
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **기사 결장 ↔ XI 대조**(사용자 지시 2026-10-06(3차) ⑤)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 검증된 `absence` 변수의 `target` 이 예상/확정 XI 에 있으면 **충돌로
+        #  > 표시하고 그 변수를 soft 로 내린다.**
+        #
+        #  ⚠️ 거꾸로(예상 명단에 결장자가 있으면 그 선수를 빼는 것)는 s2 가 한다 —
+        #     여기는 **기사가 결장이라 했는데 명단에 있는** 경우다. 🔴 어느 쪽도
+        #     지우지 않는다: 둘 다 적고 **등급만 내린다**(무엇이 맞는지는 킥오프가 말한다).
+        clash = ""
+        if row["type"] in ABSENCE_KINDS and row.get("target"):
+            clash = _xi_clash(str(row["target"]), row["subject"], facts)
+        if clash:
+            level = min(level, 1)
+            name = _LEVEL_NAME.get(level, "soft")
+            state.drop(f"s5/xi/{row['target'][:20]}", DropReason.CONFLICT,
+                       clash)
         out.append(Variable(
             id=f"R{i}", type=row["type"], subject=row["subject"],
             favors=row["favors"], goals=row.get("goals", "none"),
@@ -267,6 +285,21 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
         if not ok_s:
             state.drop(what, DropReason.STAKES_VAGUE, said_s[:110])
             return None
+    elif kind == "individual_title":
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **기록 도전은 수치가 있으면 통과**(사용자 지시 2026-10-06(3차) ③)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > `individual_title`(기록 도전)은 `stakes_vague` 검사에서 **제외** —
+        #  > **구체적 수치가 있으면** 통과.
+        #
+        #  ⚠️ 실측: *"10월 홈 친선 일정"* 이 `individual_title` 로 들어와 `득점↑` 를
+        #     받았다(일정 안내는 기록 도전이 아니다). 🔴 그래서 **수치**를 요구한다 —
+        #     `58골`·`11승 4무 1패`·`기록 경신` 처럼 셀 수 있는 것이 있어야 한다.
+        if not re.search(r"\d", str(c.claim)):
+            state.drop(what, DropReason.STAKES_VAGUE,
+                       f"🔴 기록 도전인데 **수치가 없다** — {str(c.claim)[:60]}")
+            return None
     fav = favors_of(kind, c.subject, c.claim, ref)
     if fav not in _FAVORS:
         # 🔴 **방향 규칙이 없는 유형**이다 — 한쪽으로 밀지 않는다(지어내지 않는다)
@@ -318,6 +351,16 @@ def _mentions(subject: str, doc: Doc, ref: MatchRef) -> bool:
 ABSENCE_KINDS = ("absence", "absence_att", "def_absence", "fatigue", "injury",
                  "suspension")
 
+#: 🔴🔴 **감독 계열도 묶는다**(사용자 지시 2026-10-06(3차) ⑥)
+#
+#  > 병합 열쇠를 결장 계열 **밖으로 확장**: `coach_conflict`·`coach_intent` 도
+#  > `subject+target`(선수·포지션)로 묶는다.
+#
+#  ⚠️ 실측(콜롬비아–페루): `Kevin Mier` 하나를 두고 `coach_intent` 둘·
+#     `coach_conflict` 하나가 따로 섰고, `Aldair Quintana`·`Álvaro Montero` 도
+#     갈렸다. 🔴 한 선수의 **같은 이야기**다.
+COACH_KINDS = ("coach_conflict", "coach_intent")
+
 
 def merge_key(subject: str, kind: str, target: str) -> tuple[str, str, str]:
     """🔴🔴 **사실 하나의 열쇠** — `(주체, 유형군, 핵심 대상)`.
@@ -328,7 +371,11 @@ def merge_key(subject: str, kind: str, target: str) -> tuple[str, str, str]:
        갈리면 열쇠가 쪼개진다(정규화는 이 파일의 `norm` 하나다).
     """
     said = str(kind)
-    group = "absence*" if said in ABSENCE_KINDS else said
+    group = said
+    if said in ABSENCE_KINDS:
+        group = "absence*"
+    elif said in COACH_KINDS:
+        group = "coach*"
     return (str(subject), group, norm(str(target)))
 
 
@@ -433,6 +480,17 @@ def _merge(rows: list[dict], *, state: RunState,
     box = facts if facts is not None else Facts()
     for row in out:
         kinds = [str(k) for k in (row.get("kinds") or [row["type"]])]
+        if any(k in COACH_KINDS for k in kinds) and len(set(kinds)) > 1:
+            # 🔴 감독 계열은 **다수결**이다 — 포지션은 뜻이 없다(사람 결정이다)
+            tally: dict[str, int] = {}
+            for k in kinds:
+                tally[k] = tally.get(k, 0) + 1
+            best = sorted(tally.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+            state.note(f"s5 감독 계열 유형을 `{best}` 로 정했다 — 다수결 {tally}")
+            row["type"] = best
+            row["favors"] = _side_for(best, row, box)
+            row["goals"] = goals_of(best)
+            continue
         if not any(k in ABSENCE_KINDS for k in kinds):
             continue
         got, why = kind_after_merge(kinds, str(row.get("target") or ""), box)
@@ -603,22 +661,48 @@ def _ir_h2h(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
 
 def _ir_home(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
              state: RunState) -> list[Variable]:
-    """IR03 — 홈 이점. ⚠️ **중립 구장이면 만들지 않는다**(거짓 변수가 된다)."""
+    """S03 — 홈 이점. ⚠️ **중립 구장이면 만들지 않는다**(거짓 변수가 된다).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **표본이 없으면 버리지 않는다 — 기본값으로 soft**(사용자 지시 ①)
+    ══════════════════════════════════════════════════════════════════
+
+    > 홈 이점: 표본이 없으면 버리지 말고 **기본값(국가대표/리그 홈 승률)** 으로 soft
+    > 변수. `home_field` 가 **근거 불가로 빠지면 E2E 실패.**
+
+    🔴 기본값과 그 근거는 `config/interpret_rules.yaml` 의 `S03.default` 가 든다
+       (MLS 실측 +16.8%p · 사용자 지시 2026-10-02). ⚠️ 쪼갠 표가 생기면 그 수가
+       이것을 **덮는다** — 그때는 `claim` 에 잰 수가 들어간다.
+    """
     from app import rules
     neutral, why = rules.neutral_venue(ref.competition)
     if neutral:
         state.note(f"s5 {rid} — 중립 구장이다({why}) · 변수 안 만든다")
         return []
-    claim = f"{ref.home_name} 홈 경기 — 홈 이점"
+    box = dict(facts.standings or {})
+    ha = dict(box.get("home_advantage") or {})
+    got = ha.get("win_pct_delta")
+    if got is not None:
+        claim = (f"{ref.home_name} 홈 경기 — 홈 승률 +{got}%p"
+                 f"({ha.get('home_games', '?')}경기 · 쪼갠 표)")
+    else:
+        row_def = dict(row.get("default") or {})
+        said = row_def.get("win_pct_delta")
+        if said is None:
+            state.note(f"s5 {rid} — 기본값 선언이 표에 없다 · 변수 안 만든다")
+            return []
+        claim = (f"{ref.home_name} 홈 경기 — 홈 이점 **기본값** +{said}%p"
+                 f"({row_def.get('basis', '근거 미상')})")
+        state.note(f"s5 {rid} — 쪼갠 표가 없어 **기본값**을 썼다(+{said}%p)")
     return [Variable(
         id=f"{rid}", type="home_field", subject=ref.home,
         favors=favors_of("home_field", ref.home, claim, ref),  # type: ignore[arg-type]
         goals=goals_of("home_field"),                         # type: ignore[arg-type]
         target="home_field", hardness="soft",
-        weight=_sample_weight(1)[1], claim=claim, quote=claim, doc_ids=[],
+        weight=_sample_weight(3)[1], claim=claim, quote=claim, doc_ids=[],
         from_rule=rid,
-        # ⚠️ 장소별 표본을 **안 쟀다** — 그래서 근거로는 쓰지 않는다(맥락 전용)
-        usable_as_basis=False)]
+        # 🔴 **근거로 쓴다**(사용자 지시 ①) — 기본값이라도 홈 이점은 **아는 사실**이다
+        usable_as_basis=True)]
 
 # ══════════════════════════════════════════════════════════════════
 # 🔴🔴 **`app/verifylayer.py` 에서 옮겨 왔다** — 사용자 지시 2026-10-06 ⑧
@@ -885,15 +969,19 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
                        f"({[v.formation for v in facts.xi.values()]})")
     elif rid in ("IR02", "IR03"):           # 주전 이탈 · 복귀
         out += _ir_rotation(rid, kind, row, ref, facts, state=state)
-    elif rid == "IR04":                     # 이상치 보정
+    elif rid == "IR04":                     # 이상치 보정 — **상대가 하위권일 때만**
         for key, raw in facts.recent.items():
             box = dict(raw) if isinstance(raw, dict) else {}
             avg, trim = box.get("recent_scored_avg"), box.get("recent_trimmed_avg")
             if avg is None or trim is None or float(avg) == float(trim):
                 continue
+            low, said = _outlier_weak(box, row, state=state)
+            if not low:
+                state.note(f"s5 {rid} `{key}` 건너뜀 — {said}")
+                continue
             out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
                                f"{_name(ref, key)} 득점 평균 {avg} → 보정 {trim}"
-                               f"(이상치 한 경기를 뺐다)", ref))
+                               f"(이상치 한 경기를 뺐다 · {said})", ref))
     elif rid == "IR05":                     # 확정 비대칭(동기)
         out += _ir_stakes(rid, kind, row, ref, facts, state=state)
     elif rid == "IR06":                     # 로테이션 패배 할인
@@ -979,3 +1067,51 @@ def _ir_stakes(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
     if not out:
         state.note(f"s5 {rid} — 순위표에서 두 팀을 못 찾았다")
     return out
+
+def _outlier_weak(box: dict, row: dict, *, state: RunState) -> tuple[bool, str]:
+    """🔴🔴 **그 이상치 경기 상대가 하위권인가**(사용자 지시 2026-10-06(3차) ②).
+
+    > IR04 조건에 *"그 이상치 경기 상대가 하위권(랭킹·순위 하위 25%)"* 을 추가.
+    > **상대 정보가 없으면 발동하지 않는다.**
+
+    🔴 `(참/거짓, 사유)`. ⚠️ 상대 순위를 **모르면 거짓**이다 — 그것이 지시의 뜻이다
+       (모르는 것을 하위권으로 보면 모든 이상치가 회귀가 된다).
+    🔴 이상치 경기는 `trimmed_why` 가 말한다(*"3골 경기 하나를 뺐다"*) — 그 경기를
+       `sequence` 에서 **득점이 가장 많은 한 경기**로 찾는다(그 함수가 그렇게 뺀다).
+    """
+    pct = float(row.get("bottom_pct") or 0)
+    seq = [x for x in (box.get("sequence") or []) if isinstance(x, dict)]
+    if not seq:
+        return False, "최근 경기 목록이 없다(상대를 모른다)"
+    best = max(seq, key=lambda x: int(x.get("goals_for") or 0))
+    rank = best.get("opponent_rank")
+    total = best.get("opponent_rank_total") or box.get("league_teams")
+    who = str(best.get("opponent") or "?")
+    if rank is None or not total:
+        return False, (f"이상치 경기 상대 `{who}` 의 순위를 모른다 — "
+                       f"발동하지 않는다(지시 ②)")
+    cut = float(total) * (1 - pct / 100.0)
+    if float(rank) >= cut:
+        return True, f"이상치 상대 `{who}` {rank}/{total}위 — 하위 {pct:.0f}%"
+    return False, (f"이상치 상대 `{who}` {rank}/{total}위 — 하위 {pct:.0f}% 가 아니다")
+
+def _xi_clash(target: str, subject: str, facts: Facts) -> str:
+    """🔴 그 선수가 **XI 에 들어 있나** — 들어 있으면 충돌 사유 글자(아니면 빈 글자).
+
+    ⚠️ 비교는 정규화해서 한다(`Kim Min-jae` ↔ `김민재` 는 못 맞춘다 — 그때는 빈 글자다).
+    """
+    xi = facts.xi.get(subject)
+    if xi is None or xi.state == "none":
+        return ""
+    said = norm(target)
+    if not said:
+        return ""
+    for name in [*xi.players, *[p.name for p in xi.lineup]]:
+        got = norm(name)
+        if not got:
+            continue
+        if said in got or got in said:
+            return (f"충돌: 기사가 **결장**이라 한 `{target}` 가 "
+                    f"{xi.state} XI 에 **있다** → 그 변수를 soft 로 내린다"
+                    f"(무엇이 맞는지는 킥오프가 말한다)")
+    return ""

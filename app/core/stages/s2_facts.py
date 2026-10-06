@@ -25,7 +25,7 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     sources: list[str] = []
     raw_xi: dict[str, dict] = {}
     try:
-        got = await _depth(ref, net=net, search=search)
+        got = await _depth(ref, net=net, search=search, state=state)
     except Exception as exc:                                # noqa: BLE001
         state.drop("s2", DropReason.NO_DOC, f"깊이 소스가 터졌다: {exc!r}")
         got = []
@@ -57,6 +57,17 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
                 state.note(f"s2 폼 — `{team}` 을 열쇠로 못 바꿨다(그 칸을 버린다)")
         elif tail == "h2h":
             box.setdefault("h2h", {}).update(val)
+        elif tail == "baseline" and val.get("team"):
+            # 🔴 **직전 경기 선발**(⑦) — IR02·IR06 이 이것을 본다
+            key = _key_of(ref, str(val.get("team")))
+            if key:
+                box.setdefault("last_xi", {})[key] = adapt.xi_of(
+                    key, {**val, "lineup_state": "none"}, source_url=url)
+                # 🔴 **일정**(IR11) — 직전 경기 날짜·상대를 적는다
+                box.setdefault("schedule", {})[key] = {
+                    "last_match": val.get("from_date"),
+                    "last_opponent": val.get("from_match"),
+                    "source_url": url}
         elif tail in ("lineup", "xi") and val.get("team"):
             key = _key_of(ref, str(val.get("team")))
             if key:
@@ -147,7 +158,8 @@ def _format_of(ref: MatchRef) -> tuple[str, str]:
     return str(got), str(why)
 
 
-async def _depth(ref: MatchRef, *, net: Any, search: Any) -> list:
+async def _depth(ref: MatchRef, *, net: Any, search: Any,
+                 state: RunState) -> list:
     """🔴🔴 **공식 깊이 소스** — 어느 어댑터가 아나는 `ingest.context_of` 가 정한다.
 
     ⚠️ 주소를 여기 적지 않는다(§2 · 사본 금지) — 종목마다 다른 경로를 손으로 적으면
@@ -180,6 +192,8 @@ async def _depth(ref: MatchRef, *, net: Any, search: Any) -> list:
         got = await net.get(url)
         if not getattr(got, "ok", False):
             continue
+        follow = getattr(src, "follow", None)
+        parse_follow = getattr(src, "parse_follow", None)
         for name in (ref.home_name, ref.away_name):
             # 🔴 `cells` 를 보는 곳은 `adapt` 하나다(⑤ 정적 검사)
             q = adapt.lineup_question(ref, name)
@@ -189,4 +203,58 @@ async def _depth(ref: MatchRef, *, net: Any, search: Any) -> list:
                 continue
             if isinstance(said, (list, tuple)):
                 out += list(said)
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **직전 경기를 한 번 따라간다**(사용자 지시 2026-10-06(3차) ⑦)
+            # ══════════════════════════════════════════════════════════
+            #
+            #  > 경기 페이지의 직전 경기 링크를 **한 번 따라가** `last_xi`·`schedule`
+            #  > 칸을 채운다(IR02·IR06·IR11용).
+            #
+            #  ⚠️ 파서는 동기 함수라 망에 못 간다 — 그래서 **여기서** 열고 그쪽 파서
+            #     (`parse_follow`)에 넘긴다(옛 세포가 하던 일이다 · §6 부품 재사용).
+            #  🔴 **한 팀에 하나, 한 번만** 연다 — 열기 예산은 비싸다(§4-6).
+            out += await _follow_once(src, got, q, name, net=net, state=state,
+                                      follow=follow,
+                                      parse_follow=parse_follow)
     return out
+
+
+async def _follow_once(src: Any, got: Any, q: Any, team: str, *, net: Any,
+                       state: RunState, follow: Any,
+                       parse_follow: Any) -> list:
+    """🔴 그 팀의 **직전 경기 하나**를 따라가 기준 XI·일정을 받는다(⑦).
+
+    ⚠️ 못 열거나 파서가 없으면 **빈 목록 + 사유**다 — 조용히 0 을 내지 않는다(#3).
+    """
+    if not (callable(follow) and callable(parse_follow)):
+        state.note(f"s2 ⑦ `{team}` 직전 경기 — 어댑터가 따라가기를 안 준다")
+        return []
+    try:
+        # 🔴 그 부품이 무엇을 돌려줄지 **타입으로 모른다** — 목록인지 보고 센다
+        raw = follow(got, q)
+        urls = ([str(u) for u in raw if str(u).strip()]
+                if isinstance(raw, (list, tuple)) else [])
+    except Exception as exc:                                # noqa: BLE001
+        state.note(f"s2 ⑦ `{team}` 링크 뽑기 실패 — {exc!r}")
+        return []
+    if not urls:
+        state.note(f"s2 ⑦ `{team}` 직전 경기 링크가 페이지에 없다")
+        return []
+    url = str(urls[0])
+    try:
+        page = await net.get(url)
+    except Exception as exc:                                # noqa: BLE001
+        state.note(f"s2 ⑦ `{team}` 직전 경기 열기 실패 — {exc!r}")
+        return []
+    if not getattr(page, "ok", False):
+        state.note(f"s2 ⑦ `{team}` 직전 경기 열기 실패 — 상태 "
+                   f"{getattr(page, 'status', '?')}")
+        return []
+    try:
+        said = parse_follow(page, q)
+    except Exception as exc:                                # noqa: BLE001
+        state.note(f"s2 ⑦ `{team}` 직전 경기 파싱 실패 — {exc!r}")
+        return []
+    rows: list = list(said) if isinstance(said, (list, tuple)) else []
+    state.note(f"s2 ⑦ `{team}` 직전 경기({url[:50]}) → 사실 {len(rows)}건")
+    return rows
