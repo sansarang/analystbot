@@ -413,49 +413,6 @@ REPAIR_MIN_CHARS = 20
 REPAIR_MIN_RATIO = 0.4
 
 
-def grounded_span(quote: str, body: str) -> tuple[str, str]:
-    """🔴 모델 인용과 본문이 공유하는 **가장 긴 연속 조각**. `(조각, 사유)`.
-
-    못 찾으면 `("", 사유)` 다. 돌려주는 조각은 **본문의 글자 그대로**다.
-    """
-    q = _WS.sub("", _QUOTE_TRIM.sub("", quote or ""))
-    if not q:
-        return "", "인용이 비어 있다"
-    if not body:
-        return "", "본문이 없어 대조할 수 없다"
-    # 🔴 정규화한 본문과 **원문 위치 표**를 함께 만든다 — 돌려줄 때 원문을 쓴다
-    keep, where = [], []
-    for i, ch in enumerate(body):
-        if _WS.sub("", _QUOTE_TRIM.sub("", ch)):
-            keep.append(ch)
-            where.append(i)
-    nb = "".join(keep)
-    best, at = "", -1
-    for i in range(len(q)):
-        if len(q) - i <= len(best):
-            break                   # 남은 길이가 이미 찾은 것보다 짧다
-        j = i + len(best) + 1
-        while j <= len(q):
-            got = nb.find(q[i:j])
-            if got < 0:
-                break
-            best, at = q[i:j], got
-            j += 1
-    if len(best) < REPAIR_MIN_CHARS:
-        return "", (f"본문과 겹치는 가장 긴 조각이 {len(best)}자 — "
-                    f"최소 {REPAIR_MIN_CHARS}자에 못 미친다")
-    ratio = len(best) / len(q)
-    if ratio < REPAIR_MIN_RATIO:
-        return "", (f"본문과 겹치는 조각이 인용의 {ratio:.0%} — "
-                    f"최소 {REPAIR_MIN_RATIO:.0%}에 못 미친다")
-    start, end = where[at], where[at + len(best) - 1]
-    # 🔴 **조각이 아니라 그 조각이 든 문장**을 돌려준다. §17-g-2 가 요구하는 단위가
-    #    문장이고, 조각만 남기면 **주어가 잘린다** — 위 실측에서 가장 긴 조각은
-    #    `戦（ZOZOマリンスタジアム…試合後に` 였고 *누가 무엇을* 이 다 빠졌다.
-    #  ⚠️ 늘리는 것은 **본문 안에서만**이다 — 글자를 보태지 않는다.
-    lo, hi = _sentence_bounds(body, start, end)
-    return body[lo:hi].strip(), (f"모델 인용이 본문과 {ratio:.0%} 일치 — "
-                                 f"본문의 실제 문장으로 되돌렸다")
 
 
 #: 문장이 끝나는 글자. 🔴 일본어·한국어·영어를 함께 본다(매체마다 다르다).

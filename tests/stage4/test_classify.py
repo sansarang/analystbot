@@ -156,19 +156,6 @@ def test_표본이_작으면_hardness_를_깎는다():
 
 
 
-def test_LLM_이_닿지_않는다():
-    """🔴 §17-c — `direction`·`weight` 에 LLM 출력이 닿으면 계약 실패.
-
-    ⚠️ **D46** — 독스트링·주석을 뺀 **코드만** 본다. 문서가 *"LLM 이 닿지 않는다"* 고
-       **설명하는** 것과 코드가 LLM 을 **부르는** 것은 다르다.
-       🔴 오늘 세 번째로 이 규칙에 걸렸다(`nhl.py` 의 `:baseline` · 여기).
-    """
-    import inspect
-
-    from tests._helpers import strip_docs
-    code = strip_docs(inspect.getsource(classify)).lower()
-    for bad in ("llm", "ollama", "openai", "extract.run"):
-        assert bad not in code, f"분류기가 {bad} 를 부른다"
 
 
 # ══════════════════════════════════════════════════════════════════

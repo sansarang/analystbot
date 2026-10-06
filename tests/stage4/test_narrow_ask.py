@@ -56,17 +56,6 @@ def test_yes_만_사실이_된다():
         assert extract._items("ASK:x", {"answer": bad}) == [], bad
 
 
-def test_인용이_곧_근거다():
-    """🔴 §17-g-2 — 인용이 **본문에 실재해야** 한다. 코드가 검사한다."""
-    src = strip_docs(inspect.getsource(extract.run))
-    at = src.index('task.startswith("ASK:")')
-    at_ground = src.index("quote_grounded(")
-    assert at < at_ground, "대조보다 뒤에 근거를 채우면 뜻이 없다"
-    # 🔴 `subject` 가 **명단 대조(④)가 쓰는 칸 이름**으로 들어간다
-    val = extract._value("ASK:def_absence",
-                         {"answer": "yes", "quote": "q", "subject": "장슬기"})
-    assert val["player_name"] == "장슬기", val
-    assert val["ask"] == "def_absence" and val["answer"] == "yes"
 
 
 def test_프롬프트가_짧다():

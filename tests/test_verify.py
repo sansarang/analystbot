@@ -196,31 +196,10 @@ _TYPO = ("ロッテ・唐川侑己投手引退セレモニーを10月3日のソ�
          "（ZOZOマリンスタジアム、18時00分試合開始）の試合後に")
 
 
-def test_오타_인용은_본문_문장으로_되돌린다():
-    """🔴 검증을 **느슨하게 하지 않는다** — 본문의 실제 문장으로 바꿔 넣는다."""
-    assert not V.quote_grounded(_TYPO, _BODY).ok      # 엄격 대조는 그대로 거부
-    span, why = V.grounded_span(_TYPO, _BODY)
-    # 🔴 돌려준 글자는 **본문에 실재한다**(§17-g-2 가 지켜진다)
-    assert span and span in _BODY
-    # 🔴 **문장이다** — 조각만 주면 주어가 잘린다(가장 긴 조각은 주어가 없었다)
-    assert span.startswith("千葉ロッテマリーンズは") and span.endswith("。")
-    assert "되돌" in why
-    assert V.quote_grounded(span, _BODY).ok
 
 
-def test_환각은_되돌리지_못한다():
-    """🔴 이것이 되돌림의 방어선이다 — 겹치는 글자가 없으면 **버린다**."""
-    span, why = V.grounded_span("감독은 총력전을 선언했다고 밝혔다", _BODY)
-    assert span == ""
-    assert str(V.REPAIR_MIN_CHARS) in why
 
 
-def test_짧은_우연_일치로는_되돌리지_못한다():
-    """🔴 긴 환각에 짧은 진짜 조각을 얹는 것을 막는다(`REPAIR_MIN_RATIO`)."""
-    long_lie = "ソフトバンク戦" + "で監督は主力を全員休ませると語り試合を捨てる方針を明言した"
-    span, why = V.grounded_span(long_lie, _BODY)
-    assert span == "", span
-    assert "최소" in why
 
 
 # ══════════════════════════════════════════════════════════════════
