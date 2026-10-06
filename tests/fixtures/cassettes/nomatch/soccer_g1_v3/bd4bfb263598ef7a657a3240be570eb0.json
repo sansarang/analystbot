@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T08:34:59.753315+00:00",
+ "order": [
+  "South Korea's national soccer team, led by interim coach Robert Moreno, will finish a harsh match against South American powerhouses and finish the final of the A-match warm-up match in October against Uzbekistan, an emerging Asian powerhouse. The match is drawing attention from soccer fans around the world as it checks the tactical completeness of the national team and whether \"captain\" Son Heung-min will achieve the highest goal record in Korean soccer history.",
+  "① Ecuador (3-0 win): Perfect coordination of offense and defense, explosive firepower",
+  "◆ Son Heung-min, who scored his 59th goal, surpassing Cha Bum-keun to rank No. 1 in the most A-match in Korea",
+  "The Korean national team, which started under the interim coach Moreno, is the last stage of the four-game series against Uzbekistan. The national team made a fresh start with a 3-0 victory in its first match against Ecuador, thanks to consecutive goals from Oh Hyun-kyu, Son Heung-min and Lee Dong-kyung.",
+  "④ Uzbekistan (10/6): Final tactics completion test for Asian team",
+  "▲ Participating game: 118th round of proto-match (winner loss, handicap, under-over, SUM), 28th round of soccer Toto match",
+  "Moreno, who has one win, one draw and one loss in the previous three games, has a task to prove a \"complete tactic\" to find a balance between offense and defense in the match against Uzbekistan.",
+  "Moreno's offensive tactics to shoot loopholes in the opponent's defense line and Cannavaro's defensive strategy confrontation, the world's best defender, are major variables that will determine the pattern of the game."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

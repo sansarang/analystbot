@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T08:37:53.639148+00:00",
+ "order": [
+  "코파 아메리카 2024 패치 세트 배지 아르헨티나 브라질 멕시코 미국 우루과이 콜.... 2026.08.11.COPA AMERICA 2024 PATCH SET BADGE ARGENTINA BRAZIL MEXICO USA URUGUAY COLOMBIAKRW12,306.002026.08.11.",
+  "Hora y donde ver el partido amistoso de la Selección Colombia ante Perú La Selección Colombia tendrá este martes 6 de octubre su último partido de preparación de la fecha FIFA, cuando enfrente a Perú en Estados Unidos.",
+  "¿El partido de despedida de Colombia ya no será en Bogotá? Esto es lo que se sabe Despedida de la selección de Colombia en el estadio Nemesio Camacho El Campín antes de la Copa Mundial de la FIFA Brasil 2014.",
+  "Colombia vs. Perú: hora, día y dónde ver el último partido de la Selección en la fecha FIFA La Selección Colombia tendrá este martes una última oportunidad para cerrar con una sonrisa la fecha FIFA de octubre. La Tricolor enfrentará a Perú en Miami, desde las 6:45 de la tarde, en un partido ...",
+  "Mundial 2026, Mundial en vivo, Fixture del Mundial, Liga1, Selección peruana, Eliminatorias 2026, Univer.... Noticias, resultados en vivo, minuto a minuto, estadísticas de las principales ligas del mundo y el torneo nacional",
+  "Colombia se despide ante Costa Rica: Sigue EN VIVO el partido en Bogotá La selección Colombia está lista para su duelo de despedida en Bogotá, ante Costa Rica, previo a su viaje a México, para el Mundial.",
+  "Colombia vs. Perú: día, hora y canal para ver el juego amistoso que se disputará en Miami La gira de la Selección Colombia por Estados Unidos se cerrará ante el combinado de Perú, en un juego en el que el técnico Néstor Lorenzo buscará enderezar el camino con sus jugadores más ...",
+  "Sigue EN VIVO y GRATIS el partido de la Selección Colombia y Perú Selección Colombia en concentración previa al partido frente a Perú. Instagram Selección Colombia El combinado nacional no celebra una victoria desde el recordado 3-1 ante Chile en el mes de septiembre del 2021."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

@@ -14,7 +14,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.core.schema import (Ambiguous, Board, Card, Doc, Facts, Funnel,
-                             HypoSet, Judgement, MatchRef, Question, Variable)
+                             HypoSet, Judgement, MarketEval, MatchRef,
+                             Question, Variable)
 from app.core.state import RunState
 
 
@@ -162,12 +163,22 @@ def _diff(before: Card, facts: Facts, variables: list[Variable],
         out.append(f"변수 **생김** `{vid}` — {new_ids[vid].claim[:60]}")
     for vid in sorted(set(old_ids) - set(new_ids)):
         out.append(f"변수 **사라짐** `{vid}` — {old_ids[vid].claim[:60]}")
-    was_grade = {f"{e.line.market}/{e.line.side}": e.grade for e in before.evals}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **열쇠에 기준선을 넣는다** — 실측 2026-10-06(콜롬비아–페루 재분석)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ `handicap/Peru` 한 열쇠에 **두 줄**(`+0.5` 없음 · `+1.5` 소액)이 들어가
+    #     사전이 뒤 줄로 덮였고, 그래서 *"소액 → 없음"* 이라는 **거짓 변화**를 적었다.
+    #     🔴 보드 두 줄은 다른 마켓이다 — 기준선이 열쇠의 일부다.
+    def _k(e: MarketEval) -> str:
+        point = "" if e.line.point is None else f" {e.line.point}"
+        return f"{e.line.market}/{e.line.side}{point}"
+
+    was_grade = {_k(e): e.grade for e in before.evals}
     for e in said.evals:
-        key = f"{e.line.market}/{e.line.side}"
-        old_g = was_grade.get(key)
+        old_g = was_grade.get(_k(e))
         if old_g is not None and old_g != e.grade:
-            out.append(f"등급 `{key}` — {old_g} → **{e.grade}**")
+            out.append(f"등급 `{_k(e)}` — {old_g} → **{e.grade}**")
     if not out:
         out.append("바뀐 것 **없다**(XI 상태·변수·등급 모두 같다)")
     return out

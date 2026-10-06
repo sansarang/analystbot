@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T08:37:50.706352+00:00",
+ "order": [
+  "Rafael Marquez in search of first win as Mexico national team face Chile 22시간 전Mexico’s tour across America began with 1-1 draws against Colombia in Baltimore (Sept. 26) and Peru in New Jersey (Sept. 29), which all led to Saturday’s 3-0... to record a win in his first three games since Manuel Lapuente in 1997. Marquez replaced Javier Aguirre after Mexico’s Round of 16 exit at the 2026 FIFA World...22시간 전",
+  "Jacob Shaffelburg brace lifts Canada over Peru 2일 전The Canadian men's national team continued a strong start to the September-October international window on Saturday, taking a 2-0 victory over Peru at CF Montréal's Stade Saputo. MAN OF THE MATCH: Jacob Shaffelburg is the easy choice. The LAFC man scored both of Canada's goals, finding the back of the net twice in a 16-minute span to give Les Rouges a comfortable first-half advantage they never relinquished.2일 전",
+  "América del Sur Densidad 24,2 hab. km² Países Argentina Bolivia Brasil Chile Colombia Ecuador Guyana Paraguay Perú Surinam Trinidad y Tobago 3 Uruguay Venezuela Regiones de ultramar Guayana Francesa departamento de Francia notas 1 Dependencias Islas Malvinas notas 2 Islas …",
+  "Sigue EN VIVO y GRATIS el partido de la Selección Colombia y Perú Selección Colombia en concentración previa al partido frente a Perú. Instagram Selección Colombia El combinado nacional no celebra una victoria desde el recordado 3-1 ante Chile en el mes de septiembre del 2021.",
+  "Peru - United States Department of State 6일 전EXECUTIVE SUMMARY ; Peru’s long-standing commitment to conservative fiscal management and market-oriented policies has supported decades of economic expansion and helped the country remain resilient amid regional volatility. Although political instability and external shocks have weighed on growth and investor confidence in recent years, Peru’s solid macroeconomic framework has underpinned a gradual recovery. The economy expanded by 3.44 percent in 2025, up from 3.3 percent in 2024. Inflatio....6일 전",
+  "Colombia vs Peru Prediction and Odds, 6 October 2026 - Betimate 2일 전Colombia vs Peru prediction, October 6, 2026 (International Match): 1X2 pick, expected score and over/under goals from Betimate's statistical model, with current odds. Estimates, not guarantees.2일 전",
+  "Noticias de deportes de hoy del canal líder en Perú | DEPOR Noticias deportivas del 05 de octubre Perú y el mundo | Fútbol | Selección Peruana | Fichajes | Universitario de Deportes | Alianza Lima | Sporting Cristal | Liga 1 | FC Barcelona | Real Madrid | Cristiano Ronaldo | Lionel Messi | Fútbol en vivo | DEPOR",
+  "Gestión | El diario de Economía, Finanzas y Negocios | GESTIÓN Manténgase informado con el contenido más completo sobre economía y finanzas, así como las últimas noticias del plano empresarial del Perú y el Mundo."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

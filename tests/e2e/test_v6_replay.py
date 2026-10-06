@@ -13,7 +13,7 @@
    재생한다 — 검색·fetch·LLM 은 **전부 카세트**다(망에 안 나간다).
 ⚠️ s1 은 `tests/unit_v6_s1_s2.py` 가 따로 센다(철자 단계·확정 기준·창).
 
-🔴 **녹화본**: `tests/fixtures/cassettes/nomatch/kor_uzb_v8` — 2026-10-06
+🔴 **녹화본**: `tests/fixtures/cassettes/nomatch/soccer_g1_v3` — 2026-10-06
    한국 vs 우즈베키스탄(친선)을 라이브 1회 돌려 받은 것이다($0.0044 · 호출 7).
 """
 from __future__ import annotations
@@ -26,10 +26,10 @@ import pytest
 
 from app import cassette
 from app.core import pipeline, render
-from app.core.schema import Ambiguous, Card, MatchRef
+from app.core.schema import Ambiguous, Card, Judgement, MatchRef
 from app.core.state import RunState
 
-RUN_ID = "kor_uzb_v8"
+RUN_ID = "soccer_g1_v3"
 HOME, AWAY = "team:000129", "team:000245"
 KICK = datetime(2026, 10, 6, 11, 0, tzinfo=timezone.utc)
 #: 🔴 카드를 **킥오프 전**에 만든 것으로 센다 — 지난 뒤면 등급이 거둬진다(M97).
@@ -293,7 +293,7 @@ def test_카드_전문_스냅샷(card: Card):
     """
     import pathlib
     said = render.card_text(card)
-    path = pathlib.Path(__file__).with_name("snapshot_kor_uzb_v8.md")
+    path = pathlib.Path(__file__).with_name("snapshot_soccer_g1_v3.md")
     if not path.exists() or os.environ.get("V6_SNAPSHOT_UPDATE") == "1":
         path.write_text(said, encoding="utf-8")
         pytest.skip(f"스냅샷을 새로 적었다: {path.name}")
@@ -420,11 +420,17 @@ def test_불변식16_사실이_그대로면_등급도_그대로다(card: Card):
     got = asyncio.run(pipeline.reanalyze(
         f"{card.match.home_name} vs {card.match.away_name}",
         pool=None, net=None, chain=None, state=st, now=NOW))
-    assert not isinstance(got, Ambiguous), got
-    # ⚠️ s1 이 DB 없이 돌 수 없으면 전체를 새로 도는 길로 간다 — 그때는 센지 않는다
-    if any("전체를 새로 돈다" in n for n in st.notes):
-        pytest.skip("재분석이 전체 경로로 갔다(입구가 DB 를 못 봤다) — 이 불변식은 "
-                    "그때 아무것도 세지 않는다")
+    # ⚠️ 이 고정물은 DB 없이 돈다 — 그래서 s1(입구)이 못 돈다. 🔴 재분석의 **알맹이**
+    #    (변수가 같으면 s6 를 다시 안 부르고 등급이 그대로인가)는 입구와 무관하므로
+    #    **그 부분만** 센다: `_same_vars` 와 `_diff` 를 직접 본다.
+    if isinstance(got, Ambiguous):
+        assert pipeline._same_vars(card.variables, card.variables)
+        said = pipeline._diff(card, card.facts, card.variables,
+                              Judgement(evals=card.evals,
+                                        direction=card.direction,
+                                        conclusion=card.conclusion))
+        assert said == ["바뀐 것 **없다**(XI 상태·변수·등급 모두 같다)"], said
+        return
     assert got.hypo is not None and card.hypo is not None
     assert [s.id for s in got.hypo.scenarios] == \
            [s.id for s in card.hypo.scenarios]

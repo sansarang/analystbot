@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 네 담당은 `D-home` 의 유형들뿐이다: travel_schedule, venue_weather, event_match, match_type, national_duty_return.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다) — 검증층이 본문에 대고 맞춰 보고, 없으면 그 줄을 버린다.\\n🔴 `quote` 에 **머리표를 넣지 마라** — `[A-home-D1-P2] (도메인, 날짜)` 는 우리가 붙인 표지이고 기사에 없는 글자다. **본문 글자만** 적는다(어느 문서인지는 `doc_id` 칸이 받는다).\\n🔴 `claim` 은 그 사실을 **한 문장**으로 적은 것이다.\\n🔴 `target` 은 그 사실의 **핵심 대상 하나**다 — 선수 이름(`Kim Min-jae`) 또는 사건 한 낱말(`record`·`travel`). ⚠️ 같은 사실을 여러 기사에서 봤다면 `target` 을 **같은 글자**로 적어라(그것으로 합친다). 문장을 넣지 마라.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n🔴 **누가 나온다/투입된다/선발로 나선다**는 말은 `lineup_intent` 다 — 감독의 **의도**(점검·전력 숨김)만 `coach_intent` 이고, 감독과 선수의 **갈등**만 `coach_conflict` 다.\\n⚠️ 이 경기는 Colombia(홈) 대 Peru(원정)이다 — 다른 경기 이야기는 뽑지 않는다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"[D-home-D1-P1] (www.vanguardia.com, 2026-10-05) El partido entre Colombia y Perú se disputará este martes 6 de octubre de 2026, en el Nu Stadium de Miami.\\n[D-home-D1-P2] (www.vanguardia.com, 2026-10-05) La Selección Colombia tendrá este martes una última oportunidad para cerrar con una sonrisa la fecha FIFA de octubre. La Tricolor enfrentará a Perú en Miami, desde las 6:45 de la tarde, en un partido que servirá para sacar conclusiones y, sobre todo, recuperar confianza después de los resultados obtenidos en sus dos primeras presentaciones.\\n[D-home-D1-P3] (www.vanguardia.com, 2026-10-05) Ante Perú, el objetivo será distinto: ganar, mejorar la imagen mostrada en los últimos compromisos y darle minutos a algunos jugadores que buscan consolidarse en el proceso rumbo al próximo ciclo mundialista.\\n[D-home-D1-P4] (www.vanguardia.com, 2026-10-05) Para Colombia será una prueba más que un simple amistoso. El resultado importa, pero también la respuesta de un equipo que necesita volver a encontrar su mejor versión y comenzar a despejar las dudas que dejaron sus últimas actuaciones.\\n[D-home-D1-P5] (www.vanguardia.com, 2026-10-05) Para encontrar la última victoria colombiana frente a los peruanos hay que remontarse a la Copa América de 2021. En el partido por el tercer puesto, la Tricolor se impuso 3-2 con dos goles de Luis Díaz y otro tanto de Juan Guillermo Cuadrado.\\n[D-home-D1-P6] (www.vanguardia.com, 2026-10-05) 📺 Fútbol RCN, App Canal RCN - Gol Caracol, Ditu#ConOrgulloColombiano🇨🇴 pic.twitter.com/PItdQGaOrJ\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력은 **object 로만** 받는다 — 최상위 배열은 스키마가 못 받는다.\", \"properties\": {\"variables\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 s4 — 모델이 내는 변수 후보. ⚠️ **방향 칸이 없다**(코드가 정한다).\", \"properties\": {\"claim\": {\"title\": \"Claim\", \"type\": \"string\"}, \"doc_id\": {\"enum\": [\"D-home-D1\"], \"type\": \"string\"}, \"quote\": {\"title\": \"Quote\", \"type\": \"string\"}, \"subject\": {\"enum\": [\"team:000050\", \"team:000181\"], \"type\": \"string\"}, \"subtask\": {\"enum\": [\"D-home\"], \"type\": \"string\"}, \"target\": {\"title\": \"Target\", \"type\": \"string\"}, \"type\": {\"enum\": [\"travel_schedule\", \"venue_weather\", \"event_match\", \"match_type\", \"national_duty_return\"], \"type\": \"string\"}}, \"required\": [\"subtask\", \"type\", \"subject\", \"claim\", \"target\", \"quote\", \"doc_id\"], \"title\": \"VarCandidate\", \"type\": \"object\"}, \"title\": \"Variables\", \"type\": \"array\"}}, \"required\": [\"variables\"], \"title\": \"VarCandidates\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-06T08:40:18.172570+00:00",
+ "id": "05137a6d-0931-45a5-9643-77b769b36a64",
+ "object": "chat.completion",
+ "created": 1791276018,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": [\n    {\n      \"subtask\": \"D-home\",\n      \"type\": \"event_match\",\n      \"subject\": \"team:000050\",\n      \"claim\": \"El partido entre Colombia y Perú se disputará este martes 6 de octubre de 2026, en el Nu Stadium de Miami.\",\n      \"target\": \"Colombia\",\n      \"quote\": \"El partido entre Colombia y Perú se disputará este martes 6 de octubre de 2026, en el Nu Stadium de Miami.\"\n    ,\n    \"doc_id\": \"D-home-D1\"\n    },\n    {\n      \"subtask\": \"D-home\",\n      \"type\": \"match_type\",\n      \"subject\": \"team:000050\",\n      \"claim\": \"Para Colombia será una prueba más que un simple amistoso.\",\n      \"target\": \"match_type\",\n      \"quote\": \"Para Colombia será una prueba más que un simple amistoso.\"\n    ,\n    \"doc_id\": \"D-home-D1\"\n    },\n    {\n      \"subtask\": \"D-home\",\n      \"type\": \"travel_schedule\",\n      \"subject\": \"team:000050\",\n      \"claim\": \"La Selección Colombia tendrá este martes una última oportunidad para cerrar con una sonrisa la fecha FIFA de octubre.\",\n      \"target\": \"travel\",\n      \"quote\": \"La Selección Colombia tendrá este martes una última oportunidad para cerrar con una sonrisa la fecha FIFA de octubre.\"\n    ,\n    \"doc_id\": \"D-home-D1\"\n    },\n    {\n      \"subtask\": \"D-home\",\n      \"type\": \"venue_weather\",\n      \"subject\": \"team:000050\",\n      \"claim\": \"El partido se disputará en el Nu Stadium de Miami.\",\n      \"target\": \"Nu Stadium\",\n      \"quote\": \"en el Nu Stadium de Miami\"\n    ,\n    \"doc_id\": \"D-home-D1\"\n    },\n    {\n      \"subtask\": \"D-home\",\n      \"type\": \"national_duty_return\",\n      \"subject\": \"team:000050\",\n      \"claim\": \"El partido servirá para recuperar confianza después de los resultados obtenidos en sus dos primeras presentaciones.\",\n      \"target\": \"national_duty_return\",\n      \"quote\": \"recuperar confianza después de los resultados obtenidos en sus dos primeras presentaciones\"\n    ,\n    \"doc_id\": \"D-home-D1\"\n    }\n  ]\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 867,
+  "completion_tokens": 548,
+  "total_tokens": 1415,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

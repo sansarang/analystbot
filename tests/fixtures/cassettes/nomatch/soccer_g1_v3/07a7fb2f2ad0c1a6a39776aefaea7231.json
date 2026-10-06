@@ -1,0 +1,38 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 1000, \"messages\": [{\"content\": \"너는 스포츠 팀 이름의 **철자 후보**만 낸다. 경기를 고르지 않는다.\\n사용자 문장에서 두 팀을 찾아 JSON 만 낸다:\\n{\\\"teams\\\":[{\\\"ko\\\":\\\"<사용자가 쓴 이름>\\\",\\\"latin_candidates\\\":[\\\"<라틴 표기1>\\\",\\\"<표기2>\\\"],\\\"country_guess\\\":\\\"<ISO 2글자 또는 \\\\\\\"\\\\\\\">\\\"}],\\\"date_hint\\\":\\\"\\\",\\\"competition_hint\\\":\\\"\\\"}\\n🔴 경기 URL·ID·킥오프를 **넣지 마라** — 코드가 공개 페이지로 확인한다.\\n🔴 모르면 빈 문자열로 둬라. 지어내지 마라.\", \"role\": \"system\"}, {\"content\": \"한국 vs Uzbekistan\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"low\"}",
+ "recorded_at": "2026-10-06T08:36:14.857088+00:00",
+ "id": "693724f7-1a51-4dd8-9bb8-c04f16c1b10f",
+ "object": "chat.completion",
+ "created": 1791275774,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "```json\n{\n  \"teams\": [\n    {\n      \"ko\": \"한국\",\n      \"latin_candidates\": [\"South Korea\", \"Republic of Korea\", \"Korea\"],\n      \"country_guess\": \"KR\"\n    },\n    {\n      \"ko\": \"Uzbekistan\",\n      \"latin_candidates\": [\"Uzbekistan\"],\n      \"country_guess\": \"UZ\"\n    }\n  ],\n  \"date_hint\": \"\",\n  \"competition_hint\": \"\"\n}\n```",
+    "reasoning": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - User input: \"한국 vs Uzbekistan\"\n   - Task: Extract two team names from the input, provide Korean name as written by the user, provide Latin script candidate names, and guess the country (ISO 2-letter code) for each team.\n   - Output format: JSON only, with specific structure.\n   - Constraints: Do NOT include match URL, ID, kickoff, or competition details. If unknown, use empty strings. Do not guess beyond the given info.\n\n2.  **Identify Teams:**\n   - Team 1: \"한국\" (Korea)\n   - Team 2: \"Uzbekistan\"\n\n3.  **Determine Fields for Each Team:**\n   - `ko`: \"한국\"\n   - `latin_candidates`: What are the standard Latin names for \"한국\" in sports contexts? Usually \"South Korea\" or \"Republic of Korea\" or just \"Korea\". I'll list common variants: [\"South Korea\", \"Republic of Korea\", \"Korea\"]\n   - `country_guess`: ISO 2-letter code for South Korea is \"KR\".\n   - For \"Uzbekistan\":\n     - `ko`: \"Uzbekistan\" (or should I translate to Korean? The prompt says `ko` is \"<사용자가 쓴 이름>\", so I'll keep it as \"Uzbekistan\" or \"우즈베키스탄\"? The prompt says `ko` is what the user wrote. User wrote \"Uzbekistan\", so I'll use \"Uzbekistan\".)\n     - `latin_candidates`: [\"Uzbekistan\"] (maybe also \"Uzbek Republic\" but standard is Uzbekistan)\n     - `country_guess`: \"UZ\"\n\n4.  **Construct JSON:**\n   ```json\n   {\n     \"teams\": [\n       {\n         \"ko\": \"한국\",\n         \"latin_candidates\": [\"South Korea\", \"Republic of Korea\", \"Korea\"],\n         \"country_guess\": \"KR\"\n       },\n       {\n         \"ko\": \"Uzbekistan\",\n         \"latin_candidates\": [\"Uzbekistan\"],\n         \"country_guess\": \"UZ\"\n       }\n     ],\n     \"date_hint\": \"\",\n     \"competition_hint\": \"\"\n   }\n   ```\n\n5.  **Check Constraints:**\n   - Output JSON only? Yes.\n   - Structure matches? Yes.\n   - No match URL/ID/kickoff? Yes.\n   - Unknown fields empty? Yes.\n   - Language: Korean/English as appropriate.\n\n   All good. I will output exactly this JSON.✅"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 165,
+  "completion_tokens": 612,
+  "total_tokens": 777,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 518,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

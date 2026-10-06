@@ -54,12 +54,53 @@ async def _spell(name: str, *, state: RunState) -> list[str]:
     #     **이름표가 아는 `대한민국` 이 잘려 나갔고** 그 경기를 못 찾았다
     #     (같은 경기를 전에는 찾았다 — 모델이 순서를 바꾼 것뿐이다).
     #  🔴 그러니 **이름표가 아는 것만** 남기고 그 다음에 자른다.
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **후보를 이름표 꼴로 다듬는다** — 같은 꼴의 실패가 **두 번** 났다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  실측 2026-10-06(두 회차):
+    #    ① `['한국','Korea','한국 국가대표팀','대한민국',…]` → 자르기가 `대한민국` 을 잘랐다
+    #    ② `['대한민국 대표팀','한국 대표팀','South Korea national team','KOR','한국']`
+    #       → **하나도** 이름표에 없다(이름표는 `대한민국`·`South Korea` 를 안다)
+    #
+    #  🔴 어느 원칙으로 막혔어야 했나 — **"한 가지 일은 한 곳"**(v6 원칙 3). 이름
+    #     해석이 두 곳에서 서로를 모른 채 돈다: 이름표 사다리는 별칭표를 보고, 철자
+    #     단계는 모델에게 묻는다. 🔴 그래서 모델이 **이름표에 없는 꼴**(`대한민국
+    #     대표팀`)을 내면 그 후보는 쓸 수 없는데 모델은 그것을 알 길이 없다.
+    #  ⚠️ 별칭표에 글자를 넣는 것은 §9 의 *"데이터로 우회"* 다 — 하지 않는다.
+    #     🔴 대신 **꼬리말을 떼어** 이름표에 다시 묻는다(이름 다듬기는 해석이 아니다).
     from app import teamref
-    known = [c for c in got if teamref.key_of(c)[0]]
-    if known:
-        state.note(f"s1 ⑥-1 이름표가 아는 후보 — {known[:SPELL_TRIES]}")
-        return known[:SPELL_TRIES]
+    out: list[str] = []
+    for cand in got:
+        for said in (cand, *_trimmed(cand)):
+            if teamref.key_of(said)[0] and said not in out:
+                out.append(said)
+                break
+    if out:
+        state.note(f"s1 ⑥-1 이름표가 아는 꼴로 다듬었다 — {out[:SPELL_TRIES]}")
+        return out[:SPELL_TRIES]
+    state.note(f"s1 ⑥-1 🔴 후보 {len(got)}개 **전부** 이름표가 모른다 — "
+               f"그대로 돌려본다({got[:SPELL_TRIES]})")
     return got[:SPELL_TRIES]
+
+
+#: 🔴 팀 이름 **꼬리말** — 이름표는 팀 이름만 안다(`대한민국`·`South Korea`).
+#  ⚠️ 글자를 **더하지 않는다** — 떼는 것뿐이다(별칭을 짓는 것이 아니다).
+_TAILS = ("국가대표팀", "대표팀", "국대", "national team", "national football team",
+          "men's national team", "nt", "xi")
+
+
+def _trimmed(name: str) -> list[str]:
+    """🔴 꼬리말을 뗀 꼴들. ⚠️ 뗄 것이 없으면 빈 목록(같은 글자를 또 안 넣는다)."""
+    said = " ".join(str(name or "").split())
+    out: list[str] = []
+    low = said.lower()
+    for tail in _TAILS:
+        if low.endswith(tail):
+            got = said[: len(said) - len(tail)].strip(" ·-")
+            if got and got != said:
+                out.append(got)
+    return out
 
 
 async def _respell(pool: Any, q: Question, *, state: RunState,
