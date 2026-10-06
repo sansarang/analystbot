@@ -314,7 +314,9 @@ def _mentions(subject: str, doc: Doc, ref: MatchRef) -> bool:
 #
 #  ⚠️ 실측 2026-10-06 재녹화: 같은 김민재 결장이 `fatigue`·`absence_att`·`def_absence`
 #     **세 변수**로 남았다(유형이 열쇠에 있어서). 🔴 한 사실은 한 변수다.
-ABSENCE_KINDS = ("absence", "absence_att", "def_absence", "fatigue", "injury")
+#  🔴 축구 완성 지시서 §1-1 이 **`suspension` 을 이름으로 더했다**(결장 계열 다섯).
+ABSENCE_KINDS = ("absence", "absence_att", "def_absence", "fatigue", "injury",
+                 "suspension")
 
 
 def merge_key(subject: str, kind: str, target: str) -> tuple[str, str, str]:
@@ -493,8 +495,14 @@ def _from_facts(ref: MatchRef, facts: Facts, *, state: RunState
     out: list[Variable] = []
     for row in interpret_rules():
         rid, kind = str(row.get("id") or ""), str(row.get("type") or "")
-        if row.get("off"):
-            state.note(f"s5 {rid}({kind}) **끈 규칙** — {row['off']}")
+        # 🔴 열쇠는 `disabled` 다 — ⚠️ `off` 는 **YAML 이 불리언으로 읽는다**(실측)
+        if row.get("disabled"):
+            state.note(f"s5 {rid}({kind}) **끈 규칙** — {row['disabled']}")
+            continue
+        # 🔴 **종목으로 가른다**(축구 완성 지시서 §3: IR08~IR10 은 축구에서 끈다)
+        sports = [str(x) for x in (row.get("sports") or [])]
+        if sports and ref.sport not in sports:
+            state.note(f"s5 {rid}({kind}) — `{ref.sport}` 규칙이 아니다({sports})")
             continue
         if kind == "recent_pattern":
             out += _ir_recent(rid, row, ref, facts, state=state)
@@ -502,8 +510,10 @@ def _from_facts(ref: MatchRef, facts: Facts, *, state: RunState
             out += _ir_h2h(rid, row, ref, facts, state=state)
         elif kind == "home_field":
             out += _ir_home(rid, row, ref, facts, state=state)
-        elif kind == "match_type":
+        elif kind == "match_type" and rid.startswith("S"):
             out += _ir_match_type(rid, row, ref, facts, state=state)
+        elif rid.startswith("IR"):
+            out += _ir_soccer(rid, row, ref, facts, state=state)
         else:
             state.note(f"s5 {rid}({kind}) — **그 유형을 읽는 코드가 없다**"
                        f"(규칙이 표에만 있다 · #2 배선)")
@@ -792,3 +802,176 @@ def _ir_match_type(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         from_rule=rid,
         # 🔴 **근거로 쓴다** — 이것은 표본이 아니라 **형식**이다(확실히 안다)
         usable_as_basis=True)]
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **축구 해석 규칙 IR01~IR12** — 축구 완성 지시서 §3
+# ══════════════════════════════════════════════════════════════════
+#
+# > 각 규칙은 **§2 의 사실 칸이 있을 때만** 돈다.
+#
+# 🔴 그래서 규칙마다 `needs` 를 보고, 없으면 **건너뛰고 사유를 남긴다**(#3) —
+#    *"규칙이 있는데 안 걸린다"* 를 숨기지 않는다.
+
+
+def _have(need: str, facts: Facts, ref: MatchRef) -> bool:
+    """🔴 그 사실 칸이 **있나**. `recent.streak_unbeaten` 처럼 점으로 들어간다."""
+    head, _, tail = str(need).partition(".")
+    box = getattr(facts, head, None)
+    if not box:
+        return False
+    if not tail:
+        return True
+    if head == "xi":
+        return any(getattr(v, tail, None) for v in facts.xi.values())
+    if isinstance(box, dict):
+        for v in box.values():
+            row = dict(v) if isinstance(v, dict) else {}
+            if row.get(tail) is not None:
+                return True
+    return False
+
+
+def _rid_for(rid: str, key: str, ref: MatchRef) -> str:
+    """🔴 팀마다 만드는 규칙의 번호 — `IR04-home` 꼴. ⚠️ 같은 id 둘이면 가설이 어느
+    쪽을 가리키는지 알 수 없다(불변식 5 가 번호로 센다)."""
+    return f"{rid}-{'home' if key == ref.home else 'away'}"
+
+
+def _ir_var(rid: str, kind: str, row: dict, key: str, claim: str, ref: MatchRef,
+            *, usable: bool = True, goals: str = "") -> Variable:
+    """🔴 규칙이 만든 변수 한 개 — 방향은 **표의 칸**이 정한다(§3)."""
+    fav = str(row.get("favors") or "both")
+    side = {"subject": ("home" if key == ref.home else "away"),
+            "opponent": ("away" if key == ref.home else "home")}.get(fav, fav)
+    got_goals = goals or str(row.get("goals") or "none")
+    return Variable(
+        id=rid, type=kind, subject=key,
+        favors=(side if side in ("home", "away", "both") else "both"),  # type: ignore[arg-type]
+        goals=(got_goals if got_goals in ("up", "down", "none") else "none"),  # type: ignore[arg-type]
+        target=f"{kind}:{rid}", hardness="soft",
+        weight=_sample_weight(5)[1], claim=claim, quote=claim, doc_ids=[],
+        from_rule=rid, usable_as_basis=usable)
+
+
+#: 🔴 5백 포메이션 — ⚠️ 글자로 센다(`5-3-2`·`5-4-1`·`3-5-2` 의 수비 5)
+def _is_five_back(formation: object) -> bool:
+    said = str(formation or "").strip()
+    return said.startswith("5-") or said in ("3-5-2",)
+
+
+def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
+               state: RunState) -> list[Variable]:
+    """🔴🔴 축구 해석 규칙 한 줄 — **사실이 있으면 변수, 없으면 사유**(§3)."""
+    kind = str(row.get("type") or "")
+    needs = [str(x) for x in (row.get("needs") or [])]
+    gone = [n for n in needs if not _have(n, facts, ref)]
+    if gone:
+        state.note(f"s5 {rid}({kind}) **건너뜀** — 사실 칸이 없다: {gone}")
+        return []
+    out: list[Variable] = []
+    if rid == "IR01":                       # 5백
+        for key, xi in facts.xi.items():
+            if not _is_five_back(xi.formation):
+                continue
+            out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
+                               f"{_name(ref, key)} {xi.formation} — "
+                               f"5백으로 내려앉는 운영", ref, goals="down"))
+        if not out:
+            state.note(f"s5 {rid} — 5백이 아니다"
+                       f"({[v.formation for v in facts.xi.values()]})")
+    elif rid in ("IR02", "IR03"):           # 주전 이탈 · 복귀
+        out += _ir_rotation(rid, kind, row, ref, facts, state=state)
+    elif rid == "IR04":                     # 이상치 보정
+        for key, raw in facts.recent.items():
+            box = dict(raw) if isinstance(raw, dict) else {}
+            avg, trim = box.get("recent_scored_avg"), box.get("recent_trimmed_avg")
+            if avg is None or trim is None or float(avg) == float(trim):
+                continue
+            out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
+                               f"{_name(ref, key)} 득점 평균 {avg} → 보정 {trim}"
+                               f"(이상치 한 경기를 뺐다)", ref))
+    elif rid == "IR05":                     # 확정 비대칭(동기)
+        out += _ir_stakes(rid, kind, row, ref, facts, state=state)
+    elif rid == "IR06":                     # 로테이션 패배 할인
+        state.note(f"s5 {rid} — 직전 경기 선발을 받아야 돈다(§2 `last_xi`)")
+    elif rid == "IR07":                     # 단판·1차전
+        from app import scenarios
+        if facts.match_format in scenarios.draw_formats():
+            out.append(_ir_var(rid, kind, row, ref.home,
+                               f"형식 {facts.match_format} — 90분 무승부가 갈래다",
+                               ref))
+        else:
+            state.note(f"s5 {rid} — 형식이 `{facts.match_format}` 다"
+                       f"(단판·1차전 아님)")
+    elif rid == "IR11":                     # 8일 3경기·시차
+        state.note(f"s5 {rid} — 일정 칸(`schedule`)을 받아야 돈다")
+    elif rid == "IR12":                     # 연승·연패
+        for key, raw in facts.recent.items():
+            box = dict(raw) if isinstance(raw, dict) else {}
+            said = ""
+            if int(box.get("streak_unbeaten") or 0) >= 3:
+                said = f"무패 {box['streak_unbeaten']}경기"
+            elif int(box.get("streak_winless") or 0) >= 3:
+                said = f"무승 {box['streak_winless']}경기"
+            if said:
+                out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
+                                   f"{_name(ref, key)} {said}", ref))
+        if not out:
+            state.note(f"s5 {rid} — 3경기 이상 연속이 없다")
+    return out
+
+
+def _name(ref: MatchRef, key: str) -> str:
+    """🔴 카드에 **보일 이름** — 열쇠는 사람이 못 읽는다(§8-1 의 표시 예외)."""
+    return ref.home_name if key == ref.home else ref.away_name
+
+
+def _ir_rotation(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
+                 state: RunState) -> list[Variable]:
+    """IR02·IR03 — **직전 선발 ↔ 오늘 명단**을 견준다(§2 `last_xi` 가 재료다)."""
+    out: list[Variable] = []
+    for key, last in facts.last_xi.items():
+        now = facts.xi.get(key)
+        if now is None or not last.players:
+            continue
+        gone = [n for n in last.players if n not in now.players]
+        back = [m.name for m in facts.missing.get(key, [])
+                if m.name in now.players]
+        if rid == "IR02" and gone:
+            out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
+                               f"{_name(ref, key)} 직전 선발 "
+                               f"{', '.join(gone[:3])} 가 오늘 명단에 없다", ref))
+        if rid == "IR03" and back:
+            out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
+                               f"{_name(ref, key)} {', '.join(back[:3])} 복귀",
+                               ref))
+    if not out:
+        state.note(f"s5 {rid} — 직전 선발과 오늘 명단을 견줄 자료가 없다")
+    return out
+
+
+def _ir_stakes(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
+               state: RunState) -> list[Variable]:
+    """IR05 — **동기 비대칭**. 🔴 순위표에서 **읽을 수 있는 것만** 적는다."""
+    box = dict(facts.standings or {})
+    rows = box.get("table") if isinstance(box.get("table"), list) else None
+    if not rows:
+        state.note(f"s5 {rid} — 순위표에 표(`table`)가 없다(동기를 못 센다)")
+        return []
+    out: list[Variable] = []
+    for key in (ref.home, ref.away):
+        name = _name(ref, key)
+        mine = next((r for r in rows
+                     if isinstance(r, dict)
+                     and norm(str(r.get("name") or "")) == norm(name)), None)
+        if not mine:
+            continue
+        rank, pts = mine.get("idx") or mine.get("rank"), mine.get("pts")
+        if rank is None:
+            continue
+        out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
+                           f"{name} 순위 {rank}위"
+                           + (f" · 승점 {pts}" if pts is not None else ""), ref))
+    if not out:
+        state.note(f"s5 {rid} — 순위표에서 두 팀을 못 찾았다")
+    return out

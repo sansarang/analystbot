@@ -21,7 +21,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from app.core.schema import XI, Doc, Facts, MatchRef
+from app.core.schema import (XI, Coach, Doc, Facts, MatchRef, Missing,
+                             Player)
 
 
 def _utc(v: object) -> datetime | None:
@@ -90,22 +91,106 @@ def names_of(raw: object) -> list[str]:
     return [got] if got else []
 
 
-def xi_of(team_key: str, raw: object, *, source_url: str = "") -> XI:
-    """🔴 어댑터의 XI 모양 → `schema.XI`. ⚠️ 모르면 `state="none"`(지어내지 않는다)."""
+def xi_of(team_key: str, raw: object, *, source_url: str = "",
+          missing: list[Missing] | None = None) -> XI:
+    """🔴 어댑터의 XI 모양 → `schema.XI`. ⚠️ 모르면 `state="none"`(지어내지 않는다).
+
+    🔴 축구 완성 지시서 §2:
+      · `players` 는 **이름+포지션+등번호**(`lineup` 칸)
+      · `confirmed` 는 **경기 페이지의 확정 표식**만(`lineup_state`)
+      · 예상 명단에 **결장 명단 선수가 있으면 그 선수를 빼고** `conflict` 사유를 남긴다
+        (⚠️ 실측 온두라스–자메이카: 결장자가 든 예상 명단이 돌았다)
+    """
     box = dict(raw or {}) if isinstance(raw, dict) else {}
+    rows = [dict(x) for x in (box.get("lineup") or []) if isinstance(x, dict)]
     players = names_of(box.get("players") or box.get("starters"))
-    confirmed = bool(box.get("confirmed"))
-    state = "confirmed" if confirmed else ("predicted" if players else "none")
-    return XI(team=team_key, state=state,
+    if rows and not players:
+        players = [str(r.get("name") or "") for r in rows if r.get("name")]
+    said = str(box.get("lineup_state") or "").strip().lower()
+    if said in ("confirmed", "predicted", "none"):
+        state = said
+    elif box.get("confirmed"):
+        # 🔴 **옛 어댑터 꼴**(`confirmed: True`) — 그것도 **경기 페이지**가 준 표식이다
+        #    (NPB·KBO·ESPN 파서가 그 칸을 쓴다). ⚠️ 기사에서 온 것은 이 칸을 쓰지
+        #    않는다 — §2 가 *"확정은 경기 페이지의 확정 표식만"* 이라 못 박았다.
+        state = "confirmed"
+    else:
+        # ⚠️ 표식이 없으면 **확정이라고 적지 않는다**(fail-closed · §2 금지 항목)
+        state = "predicted" if players else "none"
+    # 🔴 **결장자가 예상 명단에 있으면 뺀다** — 그 사실을 사유로 남긴다
+    gone = {str(m.name).strip().lower() for m in (missing or [])}
+    conflicts: list[str] = []
+    if gone and state != "confirmed":
+        keep_rows, keep_names = [], []
+        for name in players:
+            if str(name).strip().lower() in gone:
+                conflicts.append(f"⚠️ 제외: {name}(결장 명단)")
+                continue
+            keep_names.append(name)
+        for r in rows:
+            if str(r.get("name") or "").strip().lower() in gone:
+                continue
+            keep_rows.append(r)
+        players, rows = keep_names, keep_rows
+    return XI(team=team_key, state=state,                 # type: ignore[arg-type]
               formation=(_text(box.get("formation")) or None),
-              players=players, bench=names_of(box.get("bench") or box.get("subs")),
-              source_url=str(source_url or box.get("source_url") or ""))
+              players=players,
+              bench=names_of(box.get("bench") or box.get("subs")),
+              lineup=[Player(name=str(r.get("name") or ""),
+                             pos=str(r.get("pos") or ""),
+                             number=(int(r["number"])
+                                     if isinstance(r.get("number"), int)
+                                     else None))
+                      for r in rows if r.get("name")],
+              source_url=str(source_url or box.get("source_url") or ""),
+              fetched_at=_utc(box.get("fetched_at")),
+              conflicts=conflicts)
+
+
+def missing_of(raw: object, *, source_url: str = "",
+               source: str = "page") -> list[Missing]:
+    """🔴 어댑터의 결장 명단 → `schema.Missing` 목록(§2).
+
+    ⚠️ 기사에서 온 것은 `source="article"` 이다 — s5 가 그때 **등급을 한 단계 낮춘다**.
+    """
+    allowed = set(Missing.model_fields["reason"].annotation.__args__)  # type: ignore[union-attr]
+    out: list[Missing] = []
+    for row in (raw or []) if isinstance(raw, (list, tuple)) else ():
+        box = dict(row) if isinstance(row, dict) else {}
+        name = _text(box.get("name"))
+        if not name:
+            continue
+        said = str(box.get("reason") or "other")
+        out.append(Missing(
+            name=name, pos=str(box.get("pos") or ""),
+            reason=(said if said in allowed else "other"),  # type: ignore[arg-type]
+            returns=str(box.get("returns") or ""),
+            source_url=str(source_url or ""),
+            source=("article" if source == "article" else "page")))
+    return out
+
+
+def coach_of(raw: object) -> Coach | None:
+    """🔴 감독(§2). ⚠️ 이름이 없으면 `None` — 빈 감독을 만들지 않는다."""
+    if isinstance(raw, dict):
+        name = _text(raw.get("name"))
+        return Coach(name=name, since=str(raw.get("since") or ""),
+                     interim=bool(raw.get("interim"))) if name else None
+    name = _text(raw)
+    return Coach(name=name) if name else None
 
 
 def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
              match_format: str = "unknown",
-             sources: list[str] | None = None) -> Facts:
-    """🔴 구조 사실 묶음 → `schema.Facts`. ⚠️ 없는 칸은 **빈 것**으로 둔다."""
+             sources: list[str] | None = None,
+             missing: dict[str, list[Missing]] | None = None,
+             coach: dict[str, Coach] | None = None,
+             player_pos: dict[str, str] | None = None,
+             gaps: list[str] | None = None) -> Facts:
+    """🔴 구조 사실 묶음 → `schema.Facts`. ⚠️ 없는 칸은 **빈 것**으로 둔다.
+
+    🔴 축구 완성 지시서 §2 의 칸을 **더해서** 받는다(이름 바꾸기·빼기 금지).
+    """
     box = dict(raw or {})
     fmt = str(match_format or "unknown")
     allowed = set(Facts.model_fields["match_format"].annotation.__args__)  # type: ignore[union-attr]
@@ -114,9 +199,17 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
         recent=dict(box.get("recent") or {}),
         h2h=dict(box.get("h2h") or {}),
         xi=dict(xi or {}),
+        missing=dict(missing or {}),
+        coach=dict(coach or {}),
+        last_xi=dict(box.get("last_xi") or {}),
+        schedule=dict(box.get("schedule") or {}),
+        player_pos=dict(player_pos or {}),
         match_format=(fmt if fmt in allowed else "unknown"),  # type: ignore[arg-type]
         extra_time=box.get("extra_time"),
-        sources=[str(x) for x in (sources or box.get("sources") or [])])
+        leg=box.get("leg"),
+        sources=[str(x) for x in (sources or box.get("sources") or [])],
+        # 🔴 **못 받은 칸을 이름으로**(§2) — 블록 1 이 칸별로 적는다
+        gaps=[str(x) for x in (gaps or [])])
 
 
 def doc_of(*, doc_id: str, url: str, body: str, subtask: str,

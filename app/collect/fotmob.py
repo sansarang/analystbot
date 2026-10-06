@@ -349,6 +349,92 @@ def _names(team: dict) -> list[str]:
     return out
 
 
+def players_of(team: dict) -> list[dict]:
+    """🔴🔴 **선발 11명을 이름+포지션+등번호로**(축구 완성 지시서 §2).
+
+    ⚠️ 기존 `_names` 는 **이름만** 냈다 — 그래서 결장 유형(수비/공격)을 포지션으로
+       정할 수 없었고, 카드 블록 2 도 포지션 약자를 못 찍었다.
+    🔴 fotmob 이 쓰는 칸 이름이 판마다 다르다(`role`·`positionId`·`position`·
+       `shirtNumber`·`shirt`). **있는 것을 쓰고 없으면 빈칸**이다(지어내지 않는다).
+    """
+    out: list[dict] = []
+    for p in team.get("starters") or []:
+        if not isinstance(p, dict):
+            continue
+        name = str(p.get("name") or "").strip()
+        if not name:
+            continue
+        pos = ""
+        for key in ("role", "position", "positionStringShort", "positionString"):
+            got = p.get(key)
+            if isinstance(got, str) and got.strip():
+                pos = got.strip()
+                break
+        num = p.get("shirtNumber", p.get("shirt"))
+        try:
+            number = int(num) if num is not None else None
+        except (TypeError, ValueError):
+            number = None
+        out.append({"name": name, "pos": pos, "number": number})
+    return out
+
+
+#: 🔴 fotmob `unavailability.type` → 우리 사유 열거값(§2). ⚠️ 모르면 `other`
+_MISS_REASON = {"injury": "injury", "suspension": "suspension",
+                "suspended": "suspension", "doubtful": "doubtful",
+                "international": "international_duty",
+                "international_duty": "international_duty"}
+
+
+def missing_of(team: dict) -> list[dict]:
+    """🔴🔴 **결장 명단**(§2) — `lineup.{home,away}Team.unavailable` 이 원본이다.
+
+    🔴 실측 2026-10-06(한국–우즈베키스탄 경기 페이지):
+
+    ```
+    unavailable[0] = {'name': 'Jens Castrop', 'age': 23,
+                      'unavailability': {'injuryId': 32, 'type': 'injury',
+                                         'expectedReturn': 'Mid October 2026'}}
+    ```
+
+    ⚠️ **파서가 이 칸을 버리고 있었다** — 그래서 결장이 기사에서만 왔고, 같은 사실이
+       기사마다 다른 유형으로 셌다. 🔴 구조 사실로 받으면 그 병이 사라진다.
+    ⚠️ 포지션 칸은 이 꼴에 **없다**(실측) — 빈칸으로 두고 `player_pos` 가 채운다.
+    """
+    out: list[dict] = []
+    for p in team.get("unavailable") or []:
+        if not isinstance(p, dict):
+            continue
+        name = str(p.get("name") or "").strip()
+        if not name:
+            continue
+        box = dict(p.get("unavailability") or {})
+        said = str(box.get("type") or "").strip().lower()
+        out.append({"name": name,
+                    "pos": str(p.get("role") or p.get("position") or "").strip(),
+                    "reason": _MISS_REASON.get(said, "other"),
+                    "returns": str(box.get("expectedReturn") or "").strip()})
+    return out
+
+
+def lineup_kind_of(j: dict) -> str:
+    """🔴🔴 **확정이냐 예상이냐 — 경기 페이지의 표식만 본다**(§2 · 금지 항목).
+
+    > 확정은 **경기 페이지의 확정 표식만**(기사로 XI 를 확정 상태로 표시 금지).
+
+    🔴 실측 2026-10-06: 라인업이 아직 없으면 `lineupType: "unavailable"` 이다.
+       발표되면 fotmob 이 `lineupType` 을 바꾼다(`confirmed`·`lineup`).
+    ⚠️ 모르면 `predicted` 다 — **확정이라고 적지 않는다**(fail-closed).
+    """
+    lu = ((_page(j).get("content") or {}).get("lineup") or {})
+    said = str(lu.get("lineupType") or "").strip().lower()
+    if said in ("unavailable", ""):
+        return "none"
+    if "confirm" in said or said in ("lineup", "official", "starting"):
+        return "confirmed"
+    return "predicted"
+
+
 def squad_names(team: dict) -> list[str]:
     """🔴🔴 **그 경기의 스쿼드 전원**(선발 + 교체). 명단 대조의 재료다.
 
@@ -456,11 +542,28 @@ def parse_match(got, q: Question, *, day: date | None = None) -> list[Fact]:
         if team and not verify.mentions_team(name, team, q.local):
             continue
         names = _names(side)
-        if len(names) != XI:
-            # 🔴 §13-c ② — 11명이 아니면 올리지 않는다. **사유를 남긴다.**
-            logger.info("[fotmob] %s 선발 %d명(11 아님) — 올리지 않는다",
-                        name, len(names))
+        gone = missing_of(side)
+        coach_name = _coach(side)
+        if len(names) != XI and not (gone or coach_name):
+            # 🔴 §13-c ② — 11명도 아니고 **결장·감독도 없다** → 올릴 것이 없다
+            logger.info("[fotmob] %s 선발 %d명(11 아님) · 결장 0 · 감독 없음 — "
+                        "올리지 않는다", name, len(names))
             continue
+        if len(names) != XI:
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **XI 가 없어도 결장·감독은 올린다** — 축구 완성 지시서 §2
+            # ══════════════════════════════════════════════════════════
+            #
+            #  > 결장 · 징계 명단이 **구조 사실로** 들어온다(기사에서만 건지지 않는다)
+            #
+            #  ⚠️ 실측 2026-10-06: 이 자리에서 `continue` 해서 **결장 명단
+            #     (`unavailable`)과 감독을 통째로 버렸다** — 라인업이 아직 안 나온
+            #     경기(킥오프 4시간 전)에서는 그것이 **전부**였다.
+            #  🔴 XI 는 빈 목록으로 두고(그 사실이 `lineup_state` 에 남는다) 나머지를
+            #     올린다. §2: *"어느 칸이든 못 받으면 None 과 사유."*
+            logger.info("[fotmob] %s 선발 %d명 — XI 는 비우고 결장 %d·감독 %s 올린다",
+                        name, len(names), len(gone), bool(coach_name))
+            names = []
         # 🔴 **확정이냐 기준이냐.** 경기 전 fotmob 은 예상을 보여 준다 —
         #    그것을 확정이라고 적으면 거짓이다(사용자 글 첫 문장이 이 구분이다).
         started = _started(j)
@@ -468,7 +571,11 @@ def parse_match(got, q: Question, *, day: date | None = None) -> list[Fact]:
         out.append(Fact(
             question_id=q.id,
             value={"team": name, "formation": side.get("formation"),
-                   "players": names, "coach": _coach(side),
+                   "players": names, "coach": coach_name,
+                   # 🔴 축구 완성 지시서 §2 — 포지션·등번호·결장 명단을 **함께** 싣는다
+                   "lineup": players_of(side),
+                   "missing": gone,
+                   "lineup_state": lineup_kind_of(j),
                    "subs": len(side.get("subs") or []),
                    # 🔴 카드가 **이 칸을 그대로 적는다**(결정 C)
                    "lineup_kind": kind,
@@ -953,6 +1060,51 @@ def _not_our_match(j: dict, q: Question) -> str:
     return ""
 
 
+def parse_lineup(j: dict, q: Question, *, url: str, when) -> list[Fact]:
+    """🔴🔴 **같은 페이지의 라인업 블록**(축구 완성 지시서 §2) — XI·결장·감독.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 이 함수가 생겼나 — 실측 2026-10-06
+    ══════════════════════════════════════════════════════════════════
+
+    s2 가 부르는 것은 `parse_context` 다(`sources_context` 가 그것을 가리킨다).
+    ⚠️ 그런데 그 함수는 **맞대결·폼·통계·정보·선수**만 읽고 **라인업 블록을 건너뛰었다**
+       — `parse_match` 가 그 일을 하지만 **아무도 부르지 않았다**(CLAUDE.md #2 배선).
+    🔴 그래서 한국–우즈베키스탄 카드가 *"XI 0팀"* 이었고 **결장 명단이 통째로 없었다**
+       (그 페이지 JSON 에 `unavailable` 이 들어 있었는데도).
+
+    🔴 **두 팀을 다 낸다** — s2 가 `team` 으로 열쇠를 가린다(`parse_match` 는 세포용이라
+       질문한 팀만 냈다). ⚠️ 귀속은 `Fact.team` 에 적힌 이름으로 한다.
+    """
+    out: list[Fact] = []
+    state = lineup_kind_of(j)
+    for which in ("homeTeam", "awayTeam"):
+        side = _side(j, which)
+        name = str(side.get("name") or "").strip()
+        if not name:
+            continue
+        names = _names(side)
+        gone = missing_of(side)
+        coach_name = _coach(side)
+        if not (names or gone or coach_name):
+            continue
+        out.append(Fact(
+            question_id=f"{q.id}:lineup",
+            value={"team": name, "formation": side.get("formation"),
+                   "players": names, "lineup": players_of(side),
+                   "missing": gone, "coach": coach_name,
+                   "lineup_state": state,
+                   "squad": squad_names(side),
+                   "subs": len(side.get("subs") or [])},
+            # 🔴 확정이면 `hard` — 예상은 바뀔 수 있다(방아쇠가 그것을 본다)
+            hardness=("hard" if state == "confirmed" else "soft"),
+            source=url, publisher="fotmob", published_at=when,
+            article_title=f"{name} XI ({state})",
+            tier=verify.TIER_PREVIEW,
+            extracted_by="rule:fotmob_lineup", step=1, team=name))
+    return out
+
+
 def parse_context(got, q: Question, *, day=None) -> list[Fact]:
     """🔴 **한 번 열고 다 읽는다.** 열기 예산은 이미 썼으므로 읽는 것은 공짜다."""
     url = getattr(got, "url", "") or ""
@@ -985,7 +1137,7 @@ def parse_context(got, q: Question, *, day=None) -> list[Fact]:
         logger.info("[fotmob] §13-c ② 거부 — %s (%s)", bad, url)
         return []
     out: list[Fact] = []
-    for fn in (parse_h2h, parse_form, parse_stats, parse_info,
+    for fn in (parse_h2h, parse_form, parse_stats, parse_info, parse_lineup,
                lambda jj, qq, *, url, when: parse_players(jj, qq, url=url,
                                                           when=when)):
         try:

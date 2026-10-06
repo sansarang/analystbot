@@ -70,7 +70,10 @@ rules:
     when: 양 팀 rest_days 를 둘 다 알고 차이가 rest_gap_days 이상
     #: ⚠️ 이 수는 **선언이 없다** — 그래서 이 규칙은 **돌지 않는다**(아래 `off`).
     #   🔴 문턱을 지어내지 않는다(#4). 접목 문서나 사용자 지시가 오면 켠다.
-    off: 휴식 차 문턱이 어느 표에도 없다 — 지어내지 않는다
+    # ⚠️ 열쇠 이름이 `off` 가 아니라 `disabled` 다 — 🔴 **YAML 1.1 이 `off` 를
+    #    불리언 `False` 로 읽는다**(실측 2026-10-06: 열쇠가 `False` 가 돼 규칙이
+    #    꺼지지 않았다). 그 함정은 이름을 바꾸는 것으로만 막는다.
+    disabled: 휴식 차 문턱이 어느 표에도 없다 — 지어내지 않는다
     claim: "{team} 휴식 {days}일 (상대 {other}일)"
     source: 없음 — 문턱 미정
 
@@ -98,4 +101,110 @@ rules:
 # 🔴 그래서 **지어내지 않는다**(#4). 표를 받으면 아래 `ir_table` 에 그대로 넣으면
 #    `s5._from_facts` 가 읽는다 — 코드는 그대로다(`type`·`when`·`claim`·`favors`·
 #    `goals`·`min_games` 칸을 S 규칙과 **같은 꼴**로 읽는다).
-ir_table: []
+# 🔴 축구 완성 지시서 §3 이 **이름과 방아쇠로** 열두 줄을 적었다 — 그것을 옮긴다:
+#
+#   > 축구에서 켜는 해석 규칙 — IR01(5백), IR02(주전 이탈), IR03(복귀), IR04(이상치
+#   > 보정), IR05(확정 비대칭), IR06(로테이션 패배 할인), IR07(단판·1차전), IR11(8일
+#   > 3경기·시차), IR12(연승·연패). 각 규칙은 **§2 의 사실 칸이 있을 때만** 돈다.
+#   > IR08~IR10 은 축구 경로에서 끈다.
+#
+# ⚠️ 각 줄의 `needs` 가 그 **사실 칸**이다 — 비면 `s5._from_facts` 가 건너뛰고 사유를
+#    남긴다(#3 조용한 0 금지). 🔴 `sports` 가 종목을 가른다(축구만 켠다).
+ir_table:
+  - id: IR01
+    type: lineup_intent
+    sports: [soccer]
+    when: 포메이션이 5백(5-3-2·5-4-1·3-5-2 의 수비 5)일 때
+    needs: [xi.formation]
+    claim: "{team} {formation} — 5백으로 내려앉는 운영"
+    favors: subject
+    goals: down
+
+  - id: IR02
+    type: def_absence
+    sports: [soccer]
+    when: 직전 경기 선발이 오늘 XI·명단에 없을 때(주전 이탈)
+    needs: [last_xi, xi]
+    claim: "{team} 직전 선발 {who} 가 오늘 명단에 없다"
+    favors: opponent
+    goals: none
+
+  - id: IR03
+    type: returning
+    sports: [soccer]
+    when: 결장이던 선수가 오늘 XI·명단에 있을 때(복귀)
+    needs: [last_xi, xi]
+    claim: "{team} {who} 복귀"
+    favors: subject
+    goals: none
+
+  - id: IR04
+    type: regression
+    sports: [soccer]
+    when: 보정 평균이 원 평균과 다를 때(이상치 한 경기를 뺐다)
+    needs: [recent.recent_trimmed_avg]
+    claim: "{team} 득점 평균 {avg} → 보정 {trimmed}(이상치 한 경기를 뺐다)"
+    favors: both
+    goals: none
+
+  - id: IR05
+    type: stakes
+    sports: [soccer]
+    when: 순위·잔여에서 진출·탈락이 확정됐거나 경우의 수가 갈릴 때(동기 비대칭)
+    needs: [standings]
+    claim: "{team} 동기 — {why}"
+    favors: subject
+    goals: none
+
+  - id: IR06
+    type: squad_rotation
+    sports: [soccer]
+    when: 직전 경기가 로테이션 선발이었으면 그 패배를 할인한다
+    needs: [last_xi, recent]
+    claim: "{team} 직전 패배는 로테이션 선발이었다 — 그 표본을 할인한다"
+    favors: both
+    goals: none
+
+  - id: IR07
+    type: match_type
+    sports: [soccer]
+    when: 형식이 단판·1차전일 때(90분 무승부가 갈래다)
+    needs: [match_format]
+    claim: "{team} 형식 {format} — 90분 무승부가 갈래다"
+    favors: both
+    goals: none
+
+  # 🔴 IR08~IR10 은 **축구에서 끈다**(§3 마지막 줄) — 야구 규칙이다
+  - id: IR08
+    sports: [baseball]
+    disabled: 축구 경로에서 끈다(§3) — 선발 상대전 규칙은 야구다
+    type: pitcher_state
+    needs: []
+  - id: IR09
+    sports: [baseball]
+    disabled: 축구 경로에서 끈다(§3) — 불펜 규칙은 야구다
+    type: pitcher_state
+    needs: []
+  - id: IR10
+    sports: [baseball]
+    disabled: 축구 경로에서 끈다(§3)
+    type: pitcher_state
+    needs: []
+
+  - id: IR11
+    type: fatigue
+    sports: [soccer]
+    when: 8일에 3경기 또는 시차 이동이 있을 때
+    needs: [schedule]
+    claim: "{team} 일정 과부하 — {why}"
+    favors: opponent
+    goals: none
+
+  - id: IR12
+    type: team_stats
+    sports: [soccer]
+    when: 연승·연패가 이어질 때
+    needs: [recent.streak_unbeaten, recent.streak_winless]
+    claim: "{team} {streak}"
+    favors: subject
+    goals: none

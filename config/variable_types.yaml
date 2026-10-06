@@ -161,6 +161,17 @@ added_by_user_instruction:
     doc: docs/fable/decisions/2026-10-06_user_decisions.md
     why: 피로·체력 저하. 🔴 **상대에게 유리하다**(favors=opponent). ⚠️ 종전엔 야구 유형 `pitcher_state`(favors=subject)가 이 자리를 먹어 방향이 뒤집혔다.
 
+  - type: suspension
+    date: 2026-10-06
+    instruction: 축구 완성 지시서 §3 카탈로그 표(결장 계열에 징계를 더한다)
+    doc: docs/fable/inbox/2026-10-06_v6_soccer_final.md
+    why: 징계 결장. 🔴 `absence` 계열과 **같은 병합 열쇠**를 쓴다(§1-1) — 사유만 다르다(구조 사실 `Missing.reason=suspension`).
+  - type: returning
+    date: 2026-10-06
+    instruction: 축구 완성 지시서 §3 카탈로그 표(복귀 유형)
+    doc: docs/fable/inbox/2026-10-06_v6_soccer_final.md
+    why: 복귀. 🔴 결장의 **거울**이다 — `favors=자기`, 득점 방향은 포지션에 따라 반대(수비 복귀 → 득점↓).
+
 #: §4 전제 변수 표시 — 이 셋이 틀리면 시나리오가 통째로 무효다(STEP 2 재검증 대상)
 premise_types: [match_type, lineup_intent, travel_schedule]
 
@@ -271,7 +282,9 @@ types:
     direction_rule: 발언 내용대로
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `발언 내용대로` — 말한 팀 쪽(코드가 못 가리면 both)
     favors: subject
-    goals: none
+    # 🔴 **5백이면 득점이 내려간다**(축구 완성 지시서 §3 표: `down(5백)`)
+    #    ⚠️ 포메이션을 모르면 그 변수는 `none` 이다 — IR01 이 포메이션을 보고 정한다.
+    goals: down
     # ══════════════════════════════════════════════════════════════
     # 🔴🔴 **구현했다** — "내용대로"를 **두 갈래로만** 읽는다
     # ══════════════════════════════════════════════════════════════
@@ -1156,5 +1169,34 @@ types:
     #    `_dir_` 함수가 없다) — 그래서 `false` 다. ⚠️ v6 는 이 유형을 뽑고 방향을
     #    정할 수 있다(enum + 위 `favors`/`goals`) — 그 차이를 `classify.NOT_CLASSIFIED`
     #    가 이름으로 든다(§8 5단계가 옛 경로를 지우면 이 칸의 뜻도 걷힌다).
+    implemented: false
+
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴 축구 완성 지시서 §3 카탈로그 표 — 결장 계열 둘을 더한다
+  # ══════════════════════════════════════════════════════════════════
+  suspension:
+    refines: absence
+    match:
+      - '(징계|경고 ?누적|퇴장)[^.]{0,20}(결장|출전 ?정지)'
+      - '\b(suspend|suspension|banned|red card)\b'
+    watch: absence
+    word: injury
+    sports: [soccer, baseball, hockey, basketball, volleyball]
+    cell_question: 징계·출전 정지로 빠지는 선수
+    direction_rule: 결장 팀 반대 방향 — 포지션에 따라 득점 방향이 갈린다(§1-1)
+    favors: opponent
+    goals: none
+    implemented: false
+  returning:
+    match:
+      - '(복귀|복귀전|돌아)[^.]{0,16}(합류|선발|출전)'
+      - '\b(returns?|back from|available again|fit again)\b'
+    watch: absence
+    word: injury
+    sports: [soccer, baseball, hockey, basketball, volleyball]
+    cell_question: 결장했던 선수가 돌아오는가
+    direction_rule: 복귀 팀 쪽 — 🔴 득점 방향은 결장의 **반대**다(수비 복귀 → 득점↓)
+    favors: subject
+    goals: none
     implemented: false
 

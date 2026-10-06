@@ -20,7 +20,10 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     """🔴 그 경기의 구조 사실. ⚠️ 실패해도 **빈 `Facts`** 를 돌려준다(§5)."""
     box: dict[str, Any] = {}
     xi: dict[str, XI] = {}
+    missing: dict[str, list] = {}
+    coach: dict[str, Any] = {}
     sources: list[str] = []
+    raw_xi: dict[str, dict] = {}
     try:
         got = await _depth(ref, net=net, search=search)
     except Exception as exc:                                # noqa: BLE001
@@ -39,19 +42,87 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
             box.setdefault("standings", {}).update(val)
         elif tail == "form":
             team = str(getattr(fact, "team", "") or "")
-            if team:
-                box.setdefault("recent", {})[team] = dict(val)
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **폼도 열쇠로 넣는다** — 실측 2026-10-06
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ 종전엔 **이름**(`"South Korea"`)으로 넣었다. 그래서 해석 규칙이
+            #     `facts.recent.get(ref.home)`(열쇠)로 찾다가 **한 번도 못 찾았다** —
+            #     S01(폼)·IR04(이상치)·IR12(연속)가 통째로 0건이었다.
+            #  🔴 `Facts` 의 팀 칸은 **전부 `TeamKey`** 다(§3) — 이름은 렌더할 때만.
+            key = _key_of(ref, team) if team else ""
+            if key:
+                box.setdefault("recent", {})[key] = dict(val)
+            elif team:
+                state.note(f"s2 폼 — `{team}` 을 열쇠로 못 바꿨다(그 칸을 버린다)")
         elif tail == "h2h":
             box.setdefault("h2h", {}).update(val)
         elif tail in ("lineup", "xi") and val.get("team"):
             key = _key_of(ref, str(val.get("team")))
             if key:
-                xi[key] = adapt.xi_of(key, val, source_url=url)
+                # 🔴 **결장 명단·감독을 같은 사실에서 받는다**(축구 §2)
+                raw_xi[key] = {**val, "source_url": url}
+                mine = adapt.missing_of(val.get("missing"), source_url=url)
+                if mine:
+                    missing[key] = mine
+                got_coach = adapt.coach_of(val.get("coach"))
+                if got_coach is not None:
+                    coach[key] = got_coach
+    # 🔴 XI 는 **결장 명단을 보고** 만든다(예상 명단에 결장자가 있으면 뺀다 · §2)
+    for key, val in raw_xi.items():
+        xi[key] = adapt.xi_of(key, val, source_url=str(val.get("source_url") or ""),
+                              missing=missing.get(key))
+        if xi[key].conflicts:
+            state.note(f"s2 예상 명단 충돌 — {', '.join(xi[key].conflicts)}")
+    # 🔴 **선수 → 포지션 표**(경기 단위 · §2) — §1-1 결장 유형과 IR01·IR02 가 쓴다
+    pos: dict[str, str] = {}
+    for key, box_xi in xi.items():
+        for p in box_xi.lineup:
+            if p.pos:
+                pos[p.name] = p.pos
+    for rows in missing.values():
+        for m in rows:
+            if m.pos and m.name not in pos:
+                pos[m.name] = m.pos
     # 🔴 **형식은 표가 정한다**(대회명·라운드) — 모르면 `unknown`(지어내지 않는다)
     fmt, why = _format_of(ref)
     state.note(f"s2 형식 — {why}")
+    gaps = _gaps(xi=xi, missing=missing, coach=coach, box=box, pos=pos)
+    if gaps:
+        state.note("s2 못 받은 칸 — " + " · ".join(gaps))
     return adapt.facts_of(box, xi=xi, match_format=fmt,
-                          sources=sorted(set(sources)))
+                          sources=sorted(set(sources)), missing=missing,
+                          coach=coach, player_pos=pos, gaps=gaps)
+
+
+def _gaps(*, xi: dict, missing: dict, coach: dict, box: dict,
+          pos: dict) -> list[str]:
+    """🔴🔴 **못 받은 칸을 이름으로**(축구 §2 마지막 줄 · #3 조용한 0 금지).
+
+    > 어느 칸이든 못 받으면 `None` 과 사유. 블록 1 *"자료 한계"* 에 **칸별로** 적는다.
+    """
+    out: list[str] = []
+    if not xi:
+        out.append("XI 없음(경기 페이지에 라인업이 아직 없다)")
+    elif all(v.state != "confirmed" for v in xi.values()):
+        out.append("확정 XI 아직 없음(예상만)")
+    if not missing:
+        out.append("결장 명단 미확보")
+    if not coach:
+        out.append("감독 미확보")
+    if not box.get("standings"):
+        out.append("순위표 없음")
+    if not box.get("recent"):
+        out.append("폼 없음")
+    if not box.get("h2h"):
+        out.append("맞대결 없음")
+    if not pos:
+        out.append("선수 포지션 표 비었음(결장 유형은 다수결로 간다)")
+    if not box.get("last_xi"):
+        out.append("직전 경기 XI 없음(IR02·IR06 이 못 돈다)")
+    if not box.get("schedule"):
+        out.append("일정 없음(IR11 이 못 돈다)")
+    return out
 
 
 def _key_of(ref: MatchRef, name: str) -> str:

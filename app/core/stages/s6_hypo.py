@@ -305,10 +305,9 @@ def _required(ref: MatchRef, facts: Facts, scen: list[Scenario],
                        f"**{need}점 차**로 이기는 것이다. 없으면 `+{ln}` 가 죽을 "
                        f"자리가 없어 1.0 을 받는다")))
         state.note(f"s6 필수형 보강 — 핸디 ±{ln} 대응({need}점 차)")
-    # ── ③ 회귀 반전형 — 🔴 `regression` 유형이 §4 표에 **없다**(실측)
-    if any("regression" in str(k) for k in rules.unmapped_types()):
-        state.note("s6 필수형 회귀_반전형 — 🔴 `regression` 유형이 §4 표에 **없다**"
-                   "(`trigger_conditions.unmapped`) → 이 줄은 발동하지 않는다")
+    # ── 🔴🔴 **축구 필수형 넷**(축구 완성 지시서 §3) — 문턱은 yaml 이 든다
+    if ref.sport == "soccer":
+        out = _soccer_forms(ref, facts, out, variables, state=state)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **① 우세팀 실점 동반형은 맨 끝이다** — 실측 2026-10-06
     # ══════════════════════════════════════════════════════════════════
@@ -509,3 +508,94 @@ def _redteam(ref: MatchRef, scen: list[Scenario], basis: list[Variable], *,
                    f"{len(said.lines) - len(out)}개를 뺐다")
     state.note(f"s6 반증 {len(out)}줄(추가만 — 생존율에 닿지 않는다)")
     return out
+
+def _soccer_forms(ref: MatchRef, facts: Facts, scen: list[Scenario],
+                  variables: list[Variable], *, state: RunState
+                  ) -> list[Scenario]:
+    """🔴🔴 **축구 필수형**(축구 완성 지시서 §3) — 대량득점·난타전·저득점·회귀반전.
+
+    > 대량득점(양 팀 보정 평균 합 3+ 또는 한쪽 결장 hard 3+) · 난타전(보정 평균 합 4+)
+    > · 저득점·0-0(IR01·IR04·IR07 발동 또는 친선 아님 & 한쪽이 비기면 충분한 동기)
+    > · 회귀반전(IR06·IR12)
+
+    🔴 문턱·스코어는 `config/scenario_required.yaml` 의 `soccer_forms` 가 든다 —
+       여기 숫자를 적지 않는다(#1). ⚠️ 못 잰 조건은 **이름으로** 남긴다(#3).
+    """
+    from app import rules
+    box = dict((rules._load("config/scenario_required.yaml")
+                .get("soccer_forms") or {}))
+    out = list(scen)
+    trimmed = _trimmed_sum(facts)
+    fired = {str(v.from_rule) for v in variables if v.from_rule}
+    hard_miss = max(
+        [sum(1 for v in variables
+             if v.hardness == "hard" and v.subject == key
+             and v.type in ("absence", "absence_att", "def_absence",
+                            "suspension"))
+         for key in (ref.home, ref.away)] or [0])
+
+    def _add(name: str, scores: list[tuple[int, int]], why: str,
+             kind: str) -> None:
+        have = _all_scores(out)
+        want = [p for p in scores if p not in have]
+        if not want:
+            state.note(f"s6 축구 필수형 `{name}` — 이미 그 갈래가 있다")
+            return
+        out.append(Scenario(id=_next_id(out), outcomes=want[:2],
+                            driver_vars=[], type=kind,  # type: ignore[arg-type]
+                            added_by="code",
+                            mechanism=f"🔴 축구 필수형({name}) — {why}"))
+        state.note(f"s6 축구 필수형 보강 — {name}({why})")
+
+    # ── 대량득점
+    row = dict(box.get("대량득점형") or {})
+    at = float(row.get("trimmed_sum_at") or 0)
+    need = int(row.get("absence_hard_at") or 0)
+    if trimmed is None:
+        state.note("s6 축구 필수형 대량득점 — 보정 평균을 **못 쟀다**(폼 없음)")
+    elif (at and trimmed >= at) or (need and hard_miss >= need):
+        _add("대량득점", [(3, 1), (1, 3)],
+             f"보정 평균 합 {trimmed} · 결장 hard {hard_miss}개", "blowout")
+    else:
+        state.note(f"s6 축구 필수형 대량득점 — 조건 미달(합 {trimmed} < {at} · "
+                   f"결장 hard {hard_miss} < {need})")
+    # ── 난타전
+    row = dict(box.get("난타전") or {})
+    at = float(row.get("trimmed_sum_at") or 0)
+    if trimmed is not None and at and trimmed >= at:
+        _add("난타전", [_pair(x) or (0, 0) for x in (row.get("scores") or [])],
+             f"보정 평균 합 {trimmed} ≥ {at}", "open")
+    # ── 저득점·0-0
+    row = dict(box.get("저득점") or {})
+    want_rules = {str(x) for x in (row.get("when_rules") or [])}
+    hit = sorted({r.split("-")[0] for r in fired} & want_rules)
+    if hit:
+        _add("저득점", [p for p in (_pair(x) for x in (row.get("scores") or []))
+                      if p is not None],
+             f"{', '.join(hit)} 발동", "lock")
+    else:
+        state.note(f"s6 축구 필수형 저득점 — 걸린 규칙이 없다(필요 {sorted(want_rules)})")
+    # ── 회귀반전
+    row = dict(box.get("회귀반전") or {})
+    want_rules = {str(x) for x in (row.get("when_rules") or [])}
+    hit = sorted({r.split("-")[0] for r in fired} & want_rules)
+    if hit:
+        _add("회귀반전", [p for p in (_pair(x) for x in (row.get("scores") or []))
+                        if p is not None],
+             f"{', '.join(hit)} 발동 — 방향을 고르지 않는다(양쪽)", "regression")
+    else:
+        state.note(f"s6 축구 필수형 회귀반전 — 걸린 규칙이 없다"
+                   f"(필요 {sorted(want_rules)})")
+    return out
+
+
+def _trimmed_sum(facts: Facts) -> float | None:
+    """🔴 양 팀 **보정 평균 합**. ⚠️ 한쪽이라도 없으면 `None`(0 으로 때우지 않는다)."""
+    got: list[float] = []
+    for raw in facts.recent.values():
+        box = dict(raw) if isinstance(raw, dict) else {}
+        val = box.get("recent_trimmed_avg", box.get("recent_scored_avg"))
+        if val is None:
+            return None
+        got.append(float(val))
+    return round(sum(got), 2) if len(got) >= 2 else None

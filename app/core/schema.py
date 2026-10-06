@@ -191,28 +191,98 @@ class Ambiguous(Frozen):
     candidates: list[str] = Field(default_factory=list)
 
 
+#: 🔴 결장 사유 — 축구 지시서 §2 표가 이름으로 댔다(자유 문자열 금지)
+MissReason = Literal["injury", "suspension", "doubtful", "international_duty",
+                     "other"]
+
+
+class Player(Frozen):
+    """🔴 선수 한 명 — **이름·포지션·등번호**(축구 완성 지시서 §2).
+
+    ⚠️ 포지션을 못 읽으면 `pos=""` 다 — 지어내지 않는다(§1-1 의 결장 유형 결정이
+       이 칸을 보고, 없으면 다수결로 간다).
+    """
+
+    name: str
+    pos: str = ""
+    number: int | None = None
+
+
+class Missing(Frozen):
+    """🔴🔴 **결장 명단 한 줄**(§2) — 기사에서만 건지지 않는다.
+
+    🔴 실측 2026-10-06: fotmob 경기 페이지 `lineup.{home,away}Team.unavailable` 에
+       이름·사유(`unavailability.type`)·복귀 예상(`expectedReturn`)이 **이미 있었다** —
+       파서가 그것을 버리고 있었다(그래서 결장이 기사에서만 왔다).
+    """
+
+    name: str
+    pos: str = ""
+    reason: MissReason = "other"
+    returns: str = ""
+    source_url: str = ""
+    #: 🔴 기사에서 온 것인가 — `article` 이면 등급을 **한 단계 낮춘다**(§2)
+    source: Literal["page", "article"] = "page"
+
+
+class Coach(Frozen):
+    """🔴 감독(§2) — 이름·부임일·임시 여부."""
+
+    name: str
+    since: str = ""
+    interim: bool = False
+
+
 class XI(Frozen):
-    """🔴 그 팀의 XI — 어댑터별 모양 차이는 `adapt.py` 가 흡수한다."""
+    """🔴 그 팀의 XI — 어댑터별 모양 차이는 `adapt.py` 가 흡수한다.
+
+    🔴 축구 완성 지시서 §2: `players` 는 **이름+포지션+등번호**이고, `confirmed` 는
+       **경기 페이지가 확정 표식을 줄 때만**이다(기사의 *"예상 선발"* 은 `predicted`).
+    """
 
     team: TeamKey
     state: XIState
     formation: str | None = None
+    #: ⚠️ 글자 목록은 **남겨 둔다** — 옛 호출부와 카드가 이름만 쓸 때가 있다
     players: list[str] = Field(default_factory=list)
     bench: list[str] = Field(default_factory=list)
+    #: 🔴 포지션·등번호가 있는 꼴(§2) — 비면 이름만 받은 것이다
+    lineup: list[Player] = Field(default_factory=list)
     source_url: str = ""
+    fetched_at: datetime | None = None
+    #: 🔴 예상 명단에서 **결장자를 뺀 사실**을 적는다(§2 충돌)
+    conflicts: list[str] = Field(default_factory=list)
 
 
 class Facts(Frozen):
-    """🔴 s2 산출 — 구조 사실. ⚠️ **없으면 `None`**(지어내지 않는다 · §3)."""
+    """🔴 s2 산출 — 구조 사실. ⚠️ **없으면 `None`**(지어내지 않는다 · §3).
+
+    🔴 축구 완성 지시서 §2 가 칸을 더했다 — **이름 바꾸기·빼기는 금지**이고 더하기만
+       한다(그 문서가 그렇게 못 박았다).
+    """
 
     standings: dict = Field(default_factory=dict)
     #: 🔴 팀별 최근 N경기 스코어 목록
     recent: dict = Field(default_factory=dict)
     h2h: dict = Field(default_factory=dict)
     xi: dict[str, XI] = Field(default_factory=dict)
+    #: 🔴🔴 **결장 명단**(§2) — 기사에서만 건지지 않는다
+    missing: dict[str, list[Missing]] = Field(default_factory=dict)
+    #: 🔴 감독(§2) — 이름·부임일·임시 여부
+    coach: dict[str, Coach] = Field(default_factory=dict)
+    #: 🔴 직전 경기 선발(IR02·IR06 용) — 로테이션·주전 이탈을 보려면 이것이 필요하다
+    last_xi: dict[str, XI] = Field(default_factory=dict)
+    #: 🔴 일정(IR11 용) — 직전 경기 날짜·장소, 다음 경기 날짜
+    schedule: dict = Field(default_factory=dict)
+    #: 🔴🔴 **선수 → 포지션 표**(경기 단위 · §2) — §1-1 결장 유형과 IR01·IR02 가 쓴다
+    player_pos: dict[str, str] = Field(default_factory=dict)
     match_format: MatchFormat = "unknown"
     extra_time: bool | None = None
+    #: 🔴 1차전/2차전(§3 IR07) — 모르면 `None`
+    leg: int | None = None
     sources: list[str] = Field(default_factory=list)
+    #: 🔴 **못 받은 칸을 이름으로**(§2) — 블록 1 이 칸별로 적는다(#3 조용한 0 금지)
+    gaps: list[str] = Field(default_factory=list)
 
 
 class Doc(Frozen):
