@@ -28,10 +28,28 @@ def _utc(v: object) -> datetime | None:
     """🔴 tz 있는 UTC 만 — 없으면 `None`(절대규칙 2 · §8-7).
 
     ⚠️ naive 를 조용히 UTC 로 가정하면 그 가정이 틀려도 아무 데도 안 적힌다.
+    🔴 **글자도 받는다** — `readtext.extract` 는 발행일을 **문자열**로 돌려준다
+       (`"2026-10-05"`·`"2026-10-05T09:00:00+00:00"`). ⚠️ 그것을 `datetime` 만
+       받게 두면 날짜가 **조용히 사라진다**(실측: 이 변환 하나로 `Doc` 전부가
+       `date_source="none"` 이 됐다).
+    🔴 **날짜만 있으면 그 날 00:00 UTC** 로 본다 — 그 가정을 여기 적어 둔다
+       (기사 발행일은 날짜까지만 아는 것이 흔하고, §5-3 창은 일 단위다).
     """
     from app import timefmt
-    got = timefmt.aware(v) if isinstance(v, datetime) else None
-    return got.astimezone(timezone.utc) if got is not None else None
+    if isinstance(v, datetime):
+        got = timefmt.aware(v)
+        return got.astimezone(timezone.utc) if got is not None else None
+    said = str(v or "").strip()
+    if not said:
+        return None
+    try:
+        parsed = datetime.fromisoformat(said.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        # 🔴 날짜만 온 것이다 — UTC 자정으로 못 박고 그 사실을 여기 적는다
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _text(v: object) -> str:
