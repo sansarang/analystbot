@@ -351,3 +351,73 @@ deepseek:
     # 🔴 하루·월은 **Solar 와 합산**이다(v5-A §2: *"v5 §2의 하루 $3·월 $40에
     #    Solar와 합산"*) — 그래서 여기 다시 적지 않는다(사본 금지).
     shared_with_solar: true
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **v6** — 지시서 2026-10-06(`docs/fable/inbox/2026-10-06_v6_rebuild.md`)
+# ══════════════════════════════════════════════════════════════════
+#
+# §0 원칙 5: *"숫자는 실측만 — 상한·추론 강도·문턱은 녹화본이나 실측으로 정한다.
+# 이 문서의 숫자 중 실측이 아닌 것은 **초기값**으로 표시돼 있고 §8 의 실측으로
+# 덮어쓴다."*
+v6:
+  #: 🔴 그 경기 하나에 쓸 수 있는 돈. ⚠️ **초기값** — §8 3단계 실측으로 덮는다.
+  #   근거: 10-06 실측 경기당 $0.06~0.24(라이브 7회) → 그 최대의 2배를 벽으로.
+  per_match_usd: 0.5
+
+  providers:
+    solar:
+      model: solar-pro4
+      base_url: https://api.upstage.ai/v1
+      timeout_sec: 120
+      # 🔴 **실측 2026-10-04**: `response_format=json_schema(strict)` 가 듣는다
+      #    (한국어 기사 → `{"absent": ["오지환"]}` 정확).
+      structured: json_schema
+      # 🔴 단가는 공식 콘솔에서 온 수다(§2) — `solar.price()` 와 같은 값이어야
+      #    한다. ⚠️ 두 곳에 적힌 것은 사본이다 → §8 5단계에서 한쪽을 지운다.
+      price_usd_per_1m: {input: 0.30, cached_input: 0.06, output: 1.20}
+    deepseek:
+      model: deepseek-flash
+      base_url: https://api.deepseek.com
+      timeout_sec: 120
+      # ⚠️ **실측 2026-10-04 기준 `json_object` 만 확인됐다**(`app/deepseek.py`
+      #    가 그 모드를 쓴다). 🔴 JSON 스키마 강제를 확인하면 `json_schema` 로
+      #    바꾸고 그 날짜를 여기 적는다 — 그때까지는 스키마를 프롬프트에 붙이고
+      #    `model_validate_json` 이 검증한다(§4 가 허용한 길이다).
+      structured: json_object
+      price_usd_per_1m: {input: 0.028, cached_input: 0.0028, output: 0.042}
+
+  #: 🔴 **용도별 수** — 표에 없는 용도는 터진다(수를 같이 적게 만든다 · §9).
+  purposes:
+    extract:
+      # ══════════════════════════════════════════════════════════════
+      # 🔴🔴 **추출은 `minimal`** — 실측 2026-10-06
+      # ══════════════════════════════════════════════════════════════
+      #
+      # 같은 입력(문단 4,510자)으로 돌려 본 수:
+      #
+      #   reasoning_effort  finish   out    reasoning  content
+      #   low               length   4000   3999       🔴 **0**
+      #   minimal           stop     1068   0          3519
+      #   none              stop     1105   0          3175
+      #
+      # 🔴 `low` 는 상한을 **전부 추론에 쓰고** JSON 을 한 글자도 안 냈다.
+      # ⚠️ 상한을 올려서 해결하는 것은 §9 금지다 — 추론 강도가 고칠 곳이다.
+      reasoning_effort: minimal
+      #: ⚠️ **초기값** — 실측 최대(1,068) × 1.5 를 넘겨 잡았다. §8 3단계에서 덮는다.
+      max_tokens: 4000
+      retries: 1
+    spell:
+      #: 🔴 오픈월드 ⑥-1 철자 후보 — 짧은 답이다
+      reasoning_effort: minimal
+      max_tokens: 500
+      retries: 1
+    hypo:
+      #: ⚠️ **초기값** — DeepSeek 는 기본이 thinking 이라 추론 강도를 안 보낸다.
+      #   §8 3단계 원장으로 실측해 덮는다.
+      reasoning_effort: ""
+      max_tokens: 8000
+      retries: 1
+    redteam:
+      reasoning_effort: ""
+      max_tokens: 4000
+      retries: 1

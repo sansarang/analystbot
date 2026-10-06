@@ -1,13 +1,30 @@
 {
   "//": "🔴🔴 타입 경계 — 사용자 지시 2026-10-05 (3번). app/research/* strict, 나머지 basic.",
   "//2": "⚠️ 왜 — 두 크래시가 **꼴 불일치**였다: done.variables 가 문자열, lead.merge 가 Classified. 둘 다 '받는 쪽이 꼴을 믿었다'.",
-  "include": ["app", "tools"],
-  "exclude": ["**/__pycache__", ".venv"],
+  "include": [
+    "app",
+    "tools"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    ".venv"
+  ],
   "typeCheckingMode": "basic",
   "pythonVersion": "3.12",
   "reportMissingImports": "warning",
   "executionEnvironments": [
-    { "root": "app/research", "typeCheckingMode": "strict" },
-    { "root": ".", "typeCheckingMode": "basic" }
-  ]
+    {
+      "root": "app/core",
+      "typeCheckingMode": "strict"
+    },
+    {
+      "root": "app/research",
+      "typeCheckingMode": "strict"
+    },
+    {
+      "root": ".",
+      "typeCheckingMode": "basic"
+    }
+  ],
+  "//3": "🔴🔴 v6: app/core 전체 strict — 지시서 2026-10-06 §7 정적 검사 ('pyright strict: app/core/ 전체 에러 0'). ⚠️ 단계 경계 타입이 한 곳에 없어서 카드가 죽은 것이 v6 를 짓는 까닭이다."
 }
