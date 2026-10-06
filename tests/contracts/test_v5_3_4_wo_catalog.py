@@ -50,57 +50,16 @@ UTC = dt.timezone.utc
 FOUR = ("absence", "squad_rotation", "coach_conflict", "event_match")
 
 
-def _inp(**kw):
-    from app import agentloop
-    base = {"match_key": "fotmob:1", "home": "team:1", "away": "team:2",
-            "home_names": ("Portugal",), "away_names": ("Norway",),
-            "competition": "UEFA Nations League", "sport": "soccer",
-            "kickoff_utc": dt.datetime(2026, 10, 4, 18, 45, tzinfo=UTC),
-            "venue": "Estádio da Luz", "langs": ("en",)}
-    base.update(kw)
-    return agentloop.AgentInput(**base)
 
 
 # ══════════════════════════════════════════════════════════════════
 # ② 카탈로그를 에이전트에 잇는다
 # ══════════════════════════════════════════════════════════════════
 
-def test_wo_cat_시스템_프롬프트에_카탈로그_전_유형이_있다():
-    """🔴🔴 *"시스템 프롬프트에 v5 §3-4 카탈로그 **전 유형**을 체크리스트로"*."""
-    from app import agentloop, rules
-    said = agentloop.system_prompt()
-    missing = [t for t in rules.variable_types() if t not in said]
-    assert not missing, (
-        f"🔴 카탈로그 {len(missing)}종이 프롬프트에 **없다** — 에이전트가 "
-        f"자기가 지은 이름을 쓴다(실측: 겹침 0개): {missing}")
 
 
-def test_wo_cat_checklist_가_채워진다():
-    """🔴 `AgentInput.checklist` 가 **비어 있었다** — 채우는 곳이 없었다(#2).
-
-    ⚠️ `remind_line` 은 그것을 말할 준비가 돼 있었다 — **재료만 없었다.**
-    """
-    import inspect
-
-    from app import analyze
-    from tests._helpers import strip_docs
-    body = strip_docs(inspect.getsource(analyze._run_agent))
-    assert "checklist=" in body, (
-        "🔴 `_run_agent` 가 `checklist` 를 **안 채운다** — 카탈로그가 "
-        "에이전트에 안 닿는다(#2 배선)")
 
 
-def test_wo_cat_카탈로그_이름을_코드에_안_적는다():
-    """🔴 20종을 손으로 적지 않는다 — `variable_types.yaml` 이 원본이다."""
-    import inspect
-
-    from app import agentloop
-    from tests._helpers import strip_docs
-    body = strip_docs(inspect.getsource(agentloop.system_prompt))
-    for name in ("absence", "squad_rotation", "venue_weather"):
-        assert name not in body, (
-            f"🔴 카탈로그 이름 `{name}` 을 **코드에 박았다** — 설정에서 "
-            f"읽어라(사본 금지)")
 
 
 def test_wo_cat_모르는_유형은_사유로_남는다():
@@ -182,60 +141,8 @@ def test_wo_cat_네_유형이_카탈로그에_있다(t):
 # 🔴 둘 다 *"소스에 그 낱말이 있나"* 만 봤다 — §9-5 가 무효로 보는 꼴이다.
 
 
-def test_wo_cat_C02_실제로_카탈로그가_에이전트에_닿는다():
-    """🔴🔴 **C02** — `checklist` 를 비워도 빨개져야 한다.
-
-    ⚠️ `_run_agent` 를 직접 돌릴 수는 없다(네트워크·DB). 🔴 그래서 그 함수가
-       만드는 `AgentInput` 을 **같은 방법으로** 만들어 칸을 확인한다.
-    """
-    import ast
-    import inspect
-
-    from app import agentloop, analyze, rules
-    src = inspect.getsource(analyze._run_agent)
-    tree = ast.parse(src.lstrip())
-    # 🔴 `AgentInput(...)` 호출의 `checklist=` 인자를 **찾아 평가한다**
-    found = None
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        fn = node.func
-        name = getattr(fn, "attr", None) or getattr(fn, "id", None)
-        if name != "AgentInput":
-            continue
-        for kw in node.keywords:
-            if kw.arg == "checklist":
-                found = ast.unparse(kw.value)
-    assert found, "🔴 `AgentInput(checklist=…)` 가 **없다**(#2 배선)"
-    # 🔴 **빈 것이면 안 된다** — 그것이 §1 의 버그였다
-    assert found not in ("()", "tuple()", "[]"), (
-        f"🔴 `checklist` 를 **비워서** 넘긴다 — 에이전트가 카탈로그를 모른다"
-        f"(실측 2026-10-05: 겹침 0개): {found}")
-    # ✅ 그리고 그 글이 **카탈로그를 읽는다**
-    assert "variable_types" in found, found
-    # 🔴 마지막으로 **그 값이 전 유형을 담나** — 눈으로가 아니라 수로 본다
-    got = tuple(sorted(rules.variable_types()))
-    assert len(got) >= 20, len(got)
-    assert set(agentloop._catalog()) == set(got)
 
 
-def test_wo_cat_C06_검색이_장부에_실제로_적힌다():
-    """🔴🔴 **C06** — `_book_search` 를 꺼도 빨개져야 한다.
-
-    ⚠️ 종전 계약은 `done_ok` 만 시험했고 **장부를 손으로 채웠다** — 그래서
-       *"검색이 장부에 적나"* 는 아무도 안 봤다.
-    """
-    from app import agentloop, ledgerbook
-    book = ledgerbook.Book()
-    tools = agentloop.Tools(inp=_inp(checklist=FOUR), book=book, seen=None)
-    # 🔴 결장 질의를 던진다 — `absence` 칸이 `searched` 가 돼야 한다
-    tools.search("Portugal Norway Nations League injury news October 4", "en")
-    said = [k for (k, _), v in book.cells.items() if v != "not_tried"]
-    assert said, (
-        "🔴 검색을 던졌는데 **장부가 비었다** — `done` 막기가 뜻을 잃는다"
-        "(안 해본 칸을 영영 못 지운다)")
-    # ⚠️ 어느 유형이 적혔는지도 본다(결장 낱말이 들어간 질의였다)
-    assert "absence" in said or "def_absence" in said, said
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -272,44 +179,8 @@ def test_wo_cat_C06_검색이_장부에_실제로_적힌다():
 #  ⚠️ 그 턴은 **필요 없었다** — `done_args` 가 이미 스키마 그 자체다(§3-2).
 
 
-def test_wo_cat_done_인자가_있으면_스키마_턴을_안_부른다():
-    """🔴🔴 **받은 것을 예산 때문에 버리지 않는다.**
-
-    ⚠️ `done` 의 인자가 **곧 스키마**다(§3-2: *"`done` 의 파라미터를 스키마로
-       둔다"*). 🔴 그것을 받은 뒤 다시 묻는 것은 돈만 쓰고, 예산이 끝나 있으면
-       **받은 변수를 통째로 버린다**(실측: 16줄 → 0개).
-    """
-    import inspect
-
-    from app import agentloop
-    from tests._helpers import strip_docs
-    body = strip_docs(inspect.getsource(agentloop.run))
-    i = body.index("if done_args is not None:")
-    seg = body[i:i + 1200]
-    # 🔴 `cands` 가 찼으면 **재시도 루프에 안 들어가야** 한다
-    assert "if cands" in seg, seg[:300]
-    # 🔴 그리고 예산으로 터지는 자리가 **그 뒤**여야 한다
-    assert seg.index("if cands") < seg.index("solar.chat"), (
-        "🔴 `done` 인자를 읽기 **전에** 다시 묻는다 — 예산이 끝나면 받은 "
-        "변수를 통째로 버린다(실측 2026-10-05: 16줄 → 0개)")
 
 
-def test_wo_cat_예산이_끝나도_done_인자를_읽는다():
-    """🔴🔴 **행동으로** 잰다 — 예산을 막아 두고 `done` 인자를 읽히게 한다."""
-    from app import agentloop, solar
-
-    bud = solar.MatchBudget(side=True)
-    bud.blocked = "budget_cut: 시험 — 출력 31833/25000"
-    inp = _inp(checklist=FOUR)
-    args = {"variables": [{
-        "id": "v1", "type": "absence", "team": str(inp.home),
-        "direction_hint": "home", "claim": "호날두가 빠진다",
-        "quote": "Ronaldo excluded", "url": "https://x/a",
-        "published_at": "2026-10-04T06:00:00Z", "tier": "local"}],
-        "hypotheses": [], "scenarios": [], "gaps": [], "notes": []}
-    got, why = agentloop.parse_args(args, inp=inp)
-    assert got, (
-        f"🔴 예산이 끝났다고 **받은 `done` 인자를 못 읽는다**: {why}")
 
 # ══════════════════════════════════════════════════════════════════
 # 🔴🔴 **지운 계약 일곱 — 승계 번호**(딥서치 재구축 §1·§7 · 2026-10-05)

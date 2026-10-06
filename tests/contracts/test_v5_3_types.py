@@ -41,28 +41,8 @@ def test_t3_research_는_pyright_에러_0이다():
     assert not bad, "🔴 `app/research/` pyright 에러:\n  " + "\n  ".join(said)
 
 
-def test_t3_merge_가_dict_로_바꾸지_않는다():
-    """🔴 *"`dict(v)` 금지 — 필요하면 그 타입의 메서드로"*."""
-    from app.research import lead
-    tree = ast.parse(inspect.getsource(lead.merge))
-    bad = [n for n in ast.walk(tree)
-           if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
-           and n.func.id == "dict" and n.args]
-    assert not bad, (
-        f"🔴 `merge` 가 `dict(…)` 로 꼴을 바꾼다({len(bad)}곳) — 원본 객체를 "
-        f"잃는다(실사고 2026-10-05: 봇이 죽었다)")
 
 
-def test_t3_merge_입력_타입이_하나다():
-    """🔴 입력 타입을 **하위 에이전트 출력 타입 하나**로 고정했나."""
-    from app.research import lead
-    assert hasattr(lead, "SubtaskOut"), (
-        "🔴 `lead.SubtaskOut`(하위 출력 타입)이 없다 — 입력이 `list` 면 "
-        "무엇이 오는지 아무도 모른다")
-    sig = inspect.signature(lead.merge)
-    said = str(sig.parameters["parts"].annotation)
-    assert "SubtaskOut" in said, (
-        f"🔴 `merge(parts)` 의 타입이 `{said}` 다 — `SubtaskOut` 로 고정해라")
 
 
 def test_t3_기존_에러를_questions_에_적었다():

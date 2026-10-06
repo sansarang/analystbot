@@ -137,22 +137,6 @@ def test_깊이가_없는_종목은_있는_척하지_않는다():
             f"{league}: 깊이가 생겼으면 `WITH_DEPTH` 로 옮기고 계약을 늘려라")
 
 
-def test_운영_경로가_깊이를_부른다():
-    """★ 🔴 **안 이어진 깊이는 없는 깊이다.** `ingest` 가 어댑터마다 부르는지 본다.
-
-    ⚠️ 실측 2026-10-01: `getattr(…, "sources_context")` 는 **문자열 호출**이라
-       고아 계약이 못 봤다 — 그 구멍을 메우고 나서야 배선이 확인됐다.
-    """
-    from app.collect import ingest
-    src = inspect.getsource(ingest._game_cells)
-    assert "sources_context" in src, "`ingest` 가 깊이를 안 부른다"
-    assert "extra" in src, "깊이 소스를 세포에 안 넘긴다"
-    # 🔴 라인업 질문에만 얹는다 — 다른 질문에 붙이면 예산을 겹쳐 쓴다
-    assert "Q_LINEUP" in src
-    # 🔴 세포가 그것을 **먼저** 시도해야 한다(공식이 1층이다)
-    lin = inspect.getsource(__import__("app.searchcells", fromlist=["x"]).lineup_cell)
-    assert "list(extra or []) + srcs" in lin, "공식 소스를 검색보다 뒤에 둔다"
-    assert Q_LINEUP == "lineup"
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -178,19 +162,6 @@ def test_따라가기_몫을_소스가_선언한다():
                     f"선언하지 않았다 — 예산이 조용히 샌다")
 
 
-def test_예산이_따라가기_몫을_센다():
-    """🔴 예산 = Σ(1 + 그 소스의 몫) + 1. ⚠️ 몫이 0 이면 종전 수와 같다."""
-    from app.analyze import _depth_fetches
-    from app.collect import mlb, nhl
-    d = mlb.sources_context("849848")
-    assert _depth_fetches(d) == sum(1 + s.follow_max for s in d) + 1
-    # 🔴 MLB 는 **박스스코어(1+3) + 예고 선발(1+2) + 1 = 8**
-    assert _depth_fetches(d) == 8, [(s.name, s.follow_max) for s in d]
-    # ⚠️ 종전 공식으로는 3 이었다 — 그래서 둘째 소스가 못 돌았다
-    assert _depth_fetches(d) > len(d) + 1
-    # 🔴 몫을 안 적은 소스만 있으면 **종전과 같다**
-    n = nhl.sources_context("nhl-2026020021")
-    assert _depth_fetches(n) == sum(1 + s.follow_max for s in n) + 1
 
 
 def test_따라가기가_제_몫보다_많이_안_연다():

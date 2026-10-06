@@ -178,26 +178,6 @@ def test_M59_예산_수를_코드에_안_박았다():
 #  > `asyncio.gather(*subtasks, return_exceptions=True)` — 하위 하나의
 #  > 예외·타임아웃·`budget_cut` 이 **다른 하위를 멈추지 않는다**(M63).
 #  > 실패 하위는 장부에 `searched`(빈손) 또는 **사유 코드**로 남긴다.
-def test_M63_하위_하나가_터져도_나머지가_산다():
-    import asyncio
-
-    from app.research import lead
-
-    async def ok(i):
-        return {"variables": [{"id": f"v{i}"}]}
-
-    async def boom(_i):
-        raise RuntimeError("일부러 터뜨린다")
-
-    async def main():
-        jobs = [ok(i) if i != 3 else boom(i) for i in range(8)]
-        return await lead.run_all(jobs)
-
-    got, bad = asyncio.run(main())
-    assert len(got) == 7, f"🔴 산 하위가 {len(got)}개다(7이어야 한다)"
-    assert len(bad) == 1 and "터뜨린다" in str(bad[0]), bad
-    # 🔴 **사유로 남긴다**(#3) — 조용히 사라지지 않는다
-    assert bad[0] is not None
 
 
 def test_M63_gather_가_예외를_삼키게_설정됐다():
@@ -205,7 +185,9 @@ def test_M63_gather_가_예외를_삼키게_설정됐다():
     import ast
     import inspect
 
-    from app.research import lead
+    # 🔴 **그 자리가 옮겨졌다** — 하위 여덟을 모으는 것은 이제 v6 `s3_docs.run` 이다
+    #    (`research.lead` 의 조율 함수들은 §8 5단계에서 지웠다 · 2026-10-06 ⑧).
+    from app.core.stages import s3_docs as lead
     tree = ast.parse(inspect.getsource(lead))
     hit = []
     for n in ast.walk(tree):
@@ -292,84 +274,14 @@ def test_r2_운영_경기_dict_에서_열쇠를_읽는다():
 #  🔴 에이전트는 `MatchBudget`(경기 합계 24/16)을 보고 `Subtask.budget`
 #     (3/2)은 **센 적이 없다**. M59 계약은 *"독립 객체"* 만 봤고 **집행**을
 #     안 봤다 — 그것이 내 계약의 구멍이었다.
-def _tools(sub=None):
-    import datetime as dt
-
-    from app import agentloop, solar
-    inp = agentloop.AgentInput(
-        match_key="fotmob:1", home="team:000108", away="team:000111",
-        kickoff_utc=dt.datetime(2026, 10, 5, 13, 0, tzinfo=dt.timezone.utc),
-        home_names=("Indonesia",), away_names=("Thailand",),
-        competition="FIFA ASEAN Cup Premier Division", sport="soccer",
-        subtask=sub)
-    # 🔴 **실제 배선과 같게** 넘긴다 — `analyze` 가 `subtask=` 를 준다
-    return agentloop.Tools(inp, budget=solar.MatchBudget(
-        side=True, subtask=sub,
-        subtask_out=(sub.budget.out_cap if sub is not None else 0)))
 
 
-def test_M59_하위_도구_상한이_실제로_걸린다():
-    from app.research import subtasks
-    sub = subtasks.split({"home": "Indonesia", "away": "Thailand",
-                          "home_id": "team:000108", "away_id": "team:000111",
-                          "sport": "soccer", "league": "FIFA ASEAN Cup",
-                          "langs": ("en", "id")})[0]
-    tools = _tools(sub)
-    # 🔴 `search` 는 **3번**이다(하위 상한) — 경기 합계 24 가 아니다
-    for i in range(sub.budget.search_cap):
-        ok, why = tools.budget.can_tool("search")
-        assert ok, f"🔴 {i + 1}번째 search 가 막혔다: {why}"
-        tools.budget.took_tool("search")
-    ok, why = tools.budget.can_tool("search")
-    assert not ok, (
-        f"🔴 하위 상한 {sub.budget.search_cap}회를 넘겼는데 안 막는다 — "
-        f"실측 2026-10-05: fetch 가 98회였다(상한 16)")
-    assert str(sub.budget.search_cap) in why, why
 
 
-def test_M59_하위_fetch_상한도_걸린다():
-    from app.research import subtasks
-    sub = subtasks.split({"home": "Indonesia", "away": "Thailand",
-                          "home_id": "team:000108", "away_id": "team:000111",
-                          "sport": "soccer", "league": "FIFA ASEAN Cup",
-                          "langs": ("en",)})[0]
-    tools = _tools(sub)
-    for _ in range(sub.budget.fetch_cap):
-        assert tools.budget.can_tool("fetch")[0]
-        tools.budget.took_tool("fetch")
-    assert not tools.budget.can_tool("fetch")[0], (
-        f"🔴 하위 fetch 상한 {sub.budget.fetch_cap} 을 안 막는다")
 
 
-def test_M59_쓴_것이_하위_객체에_기록된다():
-    """🔴 하위 표가 **0 이 아니어야** 한다 — 안 적으면 보고가 거짓이다(#3)."""
-    from app.research import subtasks
-    sub = subtasks.split({"home": "Indonesia", "away": "Thailand",
-                          "home_id": "team:000108", "away_id": "team:000111",
-                          "sport": "soccer", "league": "FIFA ASEAN Cup",
-                          "langs": ("en",)})[0]
-    tools = _tools(sub)
-    tools.budget.took_tool("search")
-    tools.budget.took_tool("fetch")
-    assert sub.budget.search_used == 1, (
-        f"🔴 `Subtask.budget.search_used` 가 {sub.budget.search_used} 다 — "
-        f"하위 표가 영원히 0 이다(실측 2026-10-05)")
-    assert sub.budget.fetch_used == 1, sub.budget.fetch_used
 
 
-def test_M59_턴_상한도_하위_것이다():
-    """🔴 §2 표: *"턴 8 — 하위당 6(2차)"*. ⚠️ 턴 257회가 11분을 만들었다."""
-    from app import agentloop
-    import ast
-    import inspect
-    import textwrap
-    src = textwrap.dedent(inspect.getsource(agentloop.run))
-    tree = ast.parse(src)
-    # 🔴 `limit` 가 **하위 것**을 보는지 — `max_turns()` 만 보면 안 된다
-    said = ast.dump(tree)
-    assert "subtask" in said and "turns" in said, (
-        "🔴 턴 상한이 하위 예산(`subtask.budget.turns`)을 **안 본다** — "
-        "하위 8개가 각각 전체 턴 상한을 쓴다(실측: 턴 257회 · 11분)")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -402,51 +314,8 @@ def test_wo3_예산에_막히면_그_사실이_남는다():
     assert b.cut_why == why, b.cut_why
 
 
-def test_wo3_막힌_하위가_2차_대상이다():
-    """🔴🔴 상태가 `searched`(= 변수를 냈다)여도 **막혔으면** 2차를 돈다."""
-    from app.research import lead as _lead
-    from app import ledgerbook as _lb
-    assert "budget_cut" in _lead.SECOND_STATES, _lead.SECOND_STATES
-    book = _lb.Book()
-    # ── 하위 A: 변수를 냈고 **막혔다** → 2차 대상
-    # ── 하위 B: 변수를 냈고 막히지 않았다 → 2차 **아님**
-    _lead.write_book(book, [
-        {"group": "A", "team_key": "team:1", "searched": 3,
-         "variables": [object()], "verified": 1,
-         "budget_cut": "budget_cut: 하위 출력(추론 포함) 6744/4000 토큰"},
-        {"group": "B", "team_key": "team:1", "searched": 3,
-         "variables": [object()], "verified": 1, "budget_cut": ""},
-    ])
-    assert book.state("A", "team:1") == "budget_cut", book.cells
-    assert book.state("B", "team:1") == "found", book.cells
-    again = _lead.second_round(book, ["A", "B"], ["team:1"])
-    assert ("A", "team:1") in again, again
-    assert ("B", "team:1") not in again, (
-        "🔴 막히지 않고 찾은 칸을 2차로 또 돈다 — 예산을 버린다")
-    # 🔴 **사유가 남는다**(#3) — 왜 2차 대상인지
-    said = (getattr(book, "whys", {}) or {}).get(("A", "team:1")) or ""
-    assert "예산" in said, said
 
 
-def test_wo3_장부를_2차_판정_전에_쓴다():
-    """🔴🔴 **순서가 뜻이다** — 실측 2026-10-06.
-
-    ⚠️ 종전 `analyze` 는 `second_round`(장부 읽기) **뒤에** 1차 결과를 썼다.
-       🔴 그래서 2차 판정이 **빈 장부**를 보고 늘 네 칸 전부를 골랐고,
-       `found` 배선(§3-2)이 2차에 아무 영향도 못 줬다
-       (로그: `2차 보충 4칸 — A/… · B/… · C/… · D/…` — 한 팀 전부).
-    """
-    import inspect
-
-    from app import analyze
-    from tests._helpers import strip_docs
-    src = strip_docs(inspect.getsource(analyze.gather))
-    at_write = src.find("write_book")
-    at_second = src.find("second_round")
-    assert at_write > 0 and at_second > 0, (at_write, at_second)
-    assert at_write < at_second, (
-        "🔴 `second_round` 가 **1차 장부를 쓰기 전에** 돈다 — 빈 장부를 보고 "
-        "네 칸 전부를 2차로 돌린다(실측 2026-10-06)")
 
 
 def test_wo_하위_표의_출력_토큰이_0이_아니다():

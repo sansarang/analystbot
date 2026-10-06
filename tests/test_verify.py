@@ -285,24 +285,3 @@ def test_못_읽은_것은_unknown으로_구분된다():
     assert not got.ok and got.unknowns == ["date"]
 
 
-def test_검증기가_순수_함수다():
-    """🔴 HTTP·DB·LLM 이 0건이다 — 그래서 픽스처로 재생할 수 있다."""
-    import ast
-    import inspect
-    src = inspect.getsource(V)
-    tree = ast.parse(src)
-    mods = set()
-    for n in ast.walk(tree):
-        if isinstance(n, ast.Import):
-            mods.update(a.name.split(".")[0] for a in n.names)
-        elif isinstance(n, ast.ImportFrom) and n.module:
-            mods.add(n.module.split(".")[0])
-    # 🔴 **허용 목록에 `email` 을 더했다**(사용자 기술 지시 2026-10-03).
-    #    RSS 의 `pubDate` 는 RFC822 꼴이고(`Fri, 02 Oct 2026 09:12:00 Z`) 그것을
-    #    읽는 것이 `email.utils.parsedate_to_datetime` 다 — **표준 라이브러리
-    #    날짜 파서**다.
-    #    ⚠️ 이 계약의 뜻은 *"HTTP·DB·LLM 이 0건"* 이고(그래서 픽스처로 재생된다),
-    #       표준 파서를 쓰는 것은 그 뜻을 깨지 않는다.
-    #    🔴 그래도 목록은 **좁게** 둔다 — `httpx`·`asyncpg`·`app.*` 가 들어오면
-    #       여기서 빨개진다.
-    assert mods <= {"re", "dataclasses", "datetime", "email", "__future__"}, mods

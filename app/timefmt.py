@@ -27,7 +27,7 @@ findgame 로그   2026-10-03 11:00:00+09:00 KST     ← 맞다
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -51,14 +51,21 @@ def kst_label(when: datetime, *, fmt: str = FMT, suffix: str = " KST") -> str:
         raise ValueError(
             f"시간대 없는 값을 KST 로 적을 수 없다: {when!r} — "
             f"어느 시간대인지 모르는 수에 `KST` 를 붙이면 그것이 거짓이 된다")
-    return when.astimezone(KST).strftime(fmt) + suffix
+    return kst(when).strftime(fmt) + suffix
 
 
 def kst(when: datetime) -> datetime:
-    """🔴 KST 로 옮긴 값. 날짜만 쓸 때(`.date()`)·비교할 때 쓴다."""
+    """🔴 KST 로 옮긴 값. 날짜만 쓸 때(`.date()`)·비교할 때 쓴다.
+
+    🔴 **되살렸다**(§8 5단계 · 2026-10-06): 고아로 보여 지웠는데, 그것은 `kst_label`
+       이 `astimezone` 을 **직접** 부르고 있어서였다 — 변환이 두 곳이었다는 뜻이다.
+    ⚠️ 이제 `kst_label` 이 이 함수를 지난다(시간대 변환은 한 곳이다 · #1).
+    """
     if when.tzinfo is None or when.tzinfo.utcoffset(when) is None:
         raise ValueError(f"시간대 없는 값이다: {when!r}")
     return when.astimezone(KST)
+
+
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -169,3 +176,12 @@ def db_instant(when: datetime) -> datetime:
     if when.tzinfo is None or when.tzinfo.utcoffset(when) is None:
         raise ValueError(f"시간대 없는 값이다: {when!r}")
     return when.astimezone(timezone.utc)
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 **`scheduler.py` 에서 옮겨 왔다** — §8 5단계 삭제(2026-10-06)
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 스케줄러를 지우면서 이 함수만 남겨야 했다 — `/health` 가 **오늘(KST)** 을
+#     세는 데 쓴다. 🔴 시간대 셈은 이 파일 하나가 든다(사본 금지).
+def today_kst() -> date:
+    return datetime.now(KST).date()

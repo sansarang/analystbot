@@ -126,29 +126,6 @@ def test_wo5_M134_통로마다_fallthrough_를_본다(monkeypatch, tmp_path):
 # ③ LLM 요청·응답도 녹화한다 — 그것이 없으면 재생이 공짜가 아니다
 # ══════════════════════════════════════════════════════════════════
 
-def test_wo5_Solar_요청_응답을_녹화하고_재생한다(monkeypatch, tmp_path):
-    from app import cassette, solar
-    _env(monkeypatch, tmp_path, MODE_ENV="record", MATCH_ENV="m1", RUN_ENV="r1")
-    body = {"model": "solar-pro4", "messages": [{"role": "user", "content": "x"}],
-            "max_tokens": 10}
-    calls = {"n": 0}
-
-    def _live(*_a, **_k):
-        calls["n"] += 1
-        return {"id": "live", "usage": {"completion_tokens": 3}}
-
-    monkeypatch.setattr(solar, "_post_live", _live, raising=False)
-    got = solar._post("https://api.x", "k", body, 5, 0)
-    assert got["id"] == "live" and calls["n"] == 1
-    # 🔴 **재생에서는 망에 안 간다** — 같은 요청이면 같은 응답
-    _env(monkeypatch, tmp_path, MODE_ENV="replay", MATCH_ENV="m1", RUN_ENV="r1")
-    again = solar._post("https://api.x", "k", body, 5, 0)
-    assert again["id"] == "live", again
-    assert calls["n"] == 1, "🔴 재생인데 라이브를 또 때렸다"
-    # 🔴 다른 요청이면 **replay_miss** 다
-    with pytest.raises(solar.SolarUnavailable) as miss:
-        solar._post("https://api.x", "k", {**body, "max_tokens": 11}, 5, 0)
-    assert cassette.REPLAY_MISS in str(miss.value), miss.value
 
 
 def test_wo5_녹화에_비밀이_안_들어간다(monkeypatch, tmp_path):

@@ -164,8 +164,12 @@ def langs_for(country: str) -> list[str]:
 
 
 def _hit(name: str, cands: list[str]) -> bool:
-    """🔴 페이지의 팀명이 후보와 **같은가**. ⚠️ 정규화는 `verifylayer` 것을 쓴다."""
-    from app.verifylayer import _norm
+    """🔴 페이지의 팀명이 후보와 **같은가**. ⚠️ 정규화는 **s5** 것을 쓴다(사본 금지).
+
+    🔴 `verifylayer` 를 지웠다(사용자 지시 2026-10-06 ⑧) — 그 내용은
+       `app/core/stages/s5_verify.py` 가 들고 있다.
+    """
+    from app.core.stages.s5_verify import norm as _norm
     got = _norm(name)
     if not got:
         return False

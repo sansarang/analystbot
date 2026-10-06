@@ -69,19 +69,6 @@ def test_v5_6_5_한_단계_아래가_사다리로_정해진다():
     assert survive.step_down(0.95) == 0.9
 
 
-def test_v5_6_5_미검증은_미공개와_다른_글자다():
-    """🔴 *"'미공개'가 아니라 '미검증'으로 적고"* — 글자가 달라야 한다.
-
-    ⚠️ 둘을 같은 말로 적으면 **고칠 곳이 섞인다**: 미공개는 *기다리면 온다*,
-       미검증은 *우리가 대조를 못 했다*(§8-6 이 막는 거짓 사유다).
-    """
-    from app import analyze
-    got = analyze.xi_state(
-        {"A": {"players": [1], "confirmed": True, "verified": False},
-         "B": {"players": [1], "confirmed": True, "verified": False}},
-        _game())
-    assert "미검증" in got, got
-    assert "미공개" not in got
 
 
 def _game(sport: str = "soccer"):
@@ -89,20 +76,6 @@ def _game(sport: str = "soccer"):
     return classify.Game(home="A", away="B", sport=sport, league="L")
 
 
-def test_v5_6_5_양쪽_한쪽을_가린다():
-    """🔴 **한쪽만 확정**이 종전에 `예상` 으로 떨어졌다 — 이제 자기 칸이 있다."""
-    from app import analyze
-    g = _game()
-    both = {"A": {"players": [1], "confirmed": True, "verified": True},
-            "B": {"players": [1], "confirmed": True, "verified": True}}
-    assert analyze.xi_state(both, g) == "양쪽확정"
-    one = dict(both, B={"players": [1], "confirmed": False})
-    assert analyze.xi_state(one, g) == "한쪽확정"
-    none_ = {"A": {"players": [1], "confirmed": False},
-             "B": {"players": [1], "confirmed": False}}
-    assert analyze.xi_state(none_, g) == "양쪽예상"
-    assert analyze.xi_state({"A": {"players": [1]}}, g) == "없음"
-    assert analyze.xi_state({}, g) == "없음"
 
 
 def test_v5_6_5_미검증은_한_단계_아래를_받는다():

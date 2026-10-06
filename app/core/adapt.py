@@ -213,3 +213,48 @@ def catalog_type(kind: str) -> str:
         if _parts(name) == want:
             return name
     return ""
+
+
+def names_of_key(key: object) -> list[str]:
+    """🔴 그 팀을 가리키는 **모든 이름**(공식명·별칭) — 열쇠를 받는다.
+
+    🔴 **`app/analyze.py` 에서 옮겨 왔다**(§8 5단계 삭제 · 2026-10-06). 변환은
+       `adapt` 한 곳이라는 §2 규칙에 맞는 자리다 — 열쇠 → 이름은 변환이다.
+    ⚠️ §8-1 — 인자는 **열쇠**다(이름이 아니다). 이름을 인자로 받으면 그 함수가 또
+       하나의 해석 지점이 된다.
+    """
+    from app import entities, teamref
+    k = str(key or "")
+    if not k:
+        return []
+    # 🔴 **영어 대표명이 맨 앞**이다 — 검색 순서가 그 순서다(§4-2).
+    got = [teamref.label_of(k, lang) for lang in ("en", "ko", "ja", "es")]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **이름표가 든 것을 전부 꺼낸다**(실측 2026-10-04)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전은 `label_of(k, lang)` **넷**뿐이었다 — 그것은 언어마다 **대표
+    #     이름 하나**다. 🔴 이름표는 `names['en']` 에 여럿을 든다:
+    #
+    #       reg.teams["team:000338"].all_names()
+    #         → ['Milwaukee Brewers', 'mlb:158', 'Brewers', '브루어스', …]
+    #       _names_of_key(…)  →  ['Milwaukee Brewers', '밀워키 브루어스']
+    #                             🔴 **'Brewers' 를 흘렸다**
+    #
+    #  🔴 그래서 공식 API 의 짧은 이름을 받게 고쳐도 **효과가 0 이었다** —
+    #     에이전트 질의 7건이 그대로 `query_too_bare` 로 거부됐다.
+    #     ⚠️ 판정 함수를 고치고 **쓰는 곳을 안 고친** 그 병이다(CLAUDE.md #2).
+    ref = teamref.registry().teams.get(k)
+    if ref is not None:
+        got += ref.all_names()
+    # 🔴 별칭은 `entities` 가 든다(현지 매체가 부르는 이름 · 사본 금지)
+    got += list(entities.names_of(got[0] if got else ""))
+    out: list[str] = []
+    for n in got:
+        # 🔴 **외부 id 는 이름이 아니다**(`mlb:158`·`fdorg:103`) — 이름표가
+        #    별칭으로 들고 있지만 검색어로 쓰면 아무 데도 없는 글자다.
+        if not n or ":" in n or teamref.is_code(n):
+            continue
+        if n not in out:
+            out.append(n)
+    return out

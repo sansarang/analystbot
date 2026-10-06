@@ -113,25 +113,6 @@ def local_words(concept: str, lang: str) -> list[str]:
     return [str(x) for x in (box.get(str(lang or "")) or []) if str(x).strip()]
 
 
-def round_words() -> list[str]:
-    """🔴🔴 **라운드 이름들** — 결정 ⑤ (2026-10-04). `config/search_words.yaml`.
-
-    > 라운드 이름을 **대회 별칭 표에 데이터로** 넣는다. **코드 분기가 아니라
-    > 설정 한 칸이다.** — 사용자 결정 ⑤
-
-    ⚠️ 언어를 가리지 않고 **전부** 돌려준다 — 질의가 어느 언어든 그 글자가
-       들어 있으면 대회를 좁힌 것이다(`日本シリーズ` 를 영어 질의에 쓸 일은
-       없지만, 그 반대는 흔하다: 일본어 기사 제목에 `CS` 가 섞인다).
-    🔴 **코드에 목록을 적지 않는다** — 늘리는 것도 사용자가 설정에서 한다.
-    """
-    box = ((_load(SEARCH_WORDS).get("words") or {}).get("round") or {})
-    out: list[str] = []
-    for vals in box.values():
-        for x in (vals or []):
-            w = str(x).strip()
-            if w and w not in out:
-                out.append(w)
-    return out
 
 
 def sport_word(sport: str, lang: str) -> str:
@@ -368,17 +349,6 @@ def required_forms() -> dict[str, dict]:
     return {str(k): dict(v or {}) for k, v in got.items()}
 
 
-def deepseek_cfg() -> dict:
-    """🔴 v5-A §2 — DeepSeek 설정. 🔴 수는 `config/llm.yaml` 하나다.
-
-    ⚠️ 단가는 **공식 문서**에서 왔다(`price_usd_per_1m.source`) — 매체 수치가
-       아니다(v5-A §2 가 그것을 금지했다).
-    """
-    from app import solar
-    got = dict(solar.cfg().get("deepseek") or {})
-    if not got:
-        raise KeyError("`llm.yaml` 의 `deepseek:` 칸이 없다(v5-A §2)")
-    return got
 
 
 def llm_budget() -> dict:
@@ -394,32 +364,10 @@ def llm_budget() -> dict:
     return got
 
 
-def stage_gates() -> dict[int, dict]:
-    """🔴🔴 **§10-4 단계 게이트 일곱 칸.** 🔴 상태는 `보류`·`통과`·`실패`·`기준상실`.
-
-    ⚠️ `통과` 는 **사용자 서명**이 있어야 적을 수 있다(`signed` → `stages/`).
-    🔴 내가 통과를 선언하지 않는다(사용자 지시 2026-09-30).
-    """
-    got = _load(STAGE_GATES).get("gates")
-    if not got:
-        raise KeyError("`stage_gates.gates` 가 없다 — §10-4 가 원본이다")
-    return {int(k): dict(v or {}) for k, v in got.items()}
 
 
-def live_rules() -> dict:
-    """🔴 §7-3 — 라이브 재판정 규칙(간격·효과·지표 조건·승격 금지)."""
-    got = dict(_load(SCENARIO_RULES).get("live_rules") or {})
-    if not got.get("interval_min"):
-        raise KeyError("`live_rules.interval_min` 가 없다 — §7-3 이 원본이다")
-    return got
 
 
-def rerun_window() -> dict:
-    """🔴 §7-1 — **T-60 재실행 창**(종목마다)과 못 가져왔을 때의 강제 상한."""
-    got = dict(_load(SCENARIO_RULES).get("rerun_window") or {})
-    if not got.get("minutes"):
-        raise KeyError("`rerun_window.minutes` 가 없다 — §7-1 이 원본이다")
-    return got
 
 
 def trigger_checks() -> dict[str, str]:
@@ -453,9 +401,6 @@ def unmapped_types() -> dict[str, str]:
             (_load(TRIGGER_CONDITIONS).get("unmapped") or {}).items()}
 
 
-def trigger_defaults() -> dict:
-    """§7-2 조건의 **빈 자리 기본값**(`{n}` 등)."""
-    return dict(_load(TRIGGER_CONDITIONS).get("defaults") or {})
 
 
 def required_min() -> int:

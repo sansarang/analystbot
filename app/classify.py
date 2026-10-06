@@ -637,23 +637,6 @@ BACK_MANY = 5
 ATT_WORDS: tuple[str, ...] = ("fw", "st", "cf", "lw", "rw", "am", "공격", "윙")
 
 
-def back_line(formation: object, players: object) -> int | None:
-    """🔴 **수비 숫자** — 포메이션 첫 숫자(지시서 §3-1).
-
-    > 포메이션 문자열(`5-3-2`·`3-4-3` 등)의 **첫 숫자**, 없으면 XI 포지션 집계.
-
-    🔴 **못 읽으면 `None`** — 지어내지 않는다(#4). 그러면 그 각도만 건너뛴다.
-    """
-    import re as _re
-    said = str(formation or "").strip()
-    m = _re.match(r"^\s*(\d)\s*[-–]", said)
-    if m:
-        got = int(m.group(1))
-        return got if 2 <= got <= 6 else None
-    # ⚠️ 포메이션이 없으면 포지션 집계 — 자료가 없으면 `None` 이다
-    rows = [str(x).lower() for x in (players or [])]
-    backs = [x for x in rows if any(w in x for w in ("cb", "lb", "rb", "수비"))]
-    return len(backs) if backs else None
 
 
 def _att(name: object) -> bool:
@@ -662,87 +645,10 @@ def _att(name: object) -> bool:
     return any(w in low for w in ATT_WORDS)
 
 
-def xi_variables(*, team: str, formation: object, players: object,
-                 url: str, confirmed: bool,
-                 last_xi: object = (), bench: object = (),
-                 out_last: object = ()) -> list[dict]:
-    """🔴🔴 **XI 를 변수로 바꾼다** — 지시서 §3-1 (2026-10-05).
-
-    > 🔴 이 셋은 리드·에이전트가 아니라 **코드가 XI 사실에서 만든다**
-    > (재현 가능해야 함). 에이전트가 같은 사실을 따로 찾아오면 MinHash 병합으로
-    > **출처 수만** 늘린다.
-
-    셋을 만든다:
-      ① **수비 숫자** — 5백이면 `lineup_intent` · `favors: goals_down` · 주장
-         `"{팀} 5백 선발 — 내려앉는 운영"`
-      ② **주전 이탈** — 직전 XI 에 있었는데 지금 없는 선수. 벤치면 *"벤치"*,
-         명단에 없으면 *"결장"*. 🔴 그 팀의 **반대쪽**에 유리하다.
-      ③ **복귀** — 직전에 빠졌다 돌아온 선수 → **그 팀 쪽**.
-
-    ⚠️ `hardness` 는 **확정 XI 면 `hard`**, 예상이면 `soft`(지시서 원문).
-    🔴 사실 출처는 XI 를 준 **페이지 URL** 이다.
-    """
-    hard = "hard" if confirmed else "soft"
-    rows = [str(x) for x in (players or [])]
-    out: list[dict] = []
-    back = back_line(formation, rows)
-    if back is not None and back >= BACK_MANY:
-        out.append({
-            "type": "lineup_intent", "team": str(team), "subject": str(team),
-            "favors": "goals_down", "hardness": hard, "source_url": str(url),
-            "claim": (f"{team} {back}백 선발 — 내려앉는 운영"
-                      f"(포메이션 {formation})"),
-            "quote": str(formation or ""), "from_code": True})
-    # ② 주전 이탈 — 직전 XI 에 있었는데 지금 선발에 없다
-    now = set(rows)
-    benched = {str(x) for x in (bench or [])}
-    for who in [str(x) for x in (last_xi or []) if str(x) not in now]:
-        where = "벤치" if who in benched else "결장"
-        out.append({
-            "type": "absence_att" if _att(who) else "absence_def",
-            "team": str(team), "subject": str(team),
-            # 🔴 **그 팀의 반대쪽**에 유리하다(지시서 §3-1)
-            "favors": "opponent", "hardness": hard, "source_url": str(url),
-            "claim": f"{team} {who} 가 선발에서 빠졌다 — {where}",
-            "quote": who, "from_code": True})
-    # ③ 복귀 — 직전에 빠졌다 돌아왔다
-    for who in [str(x) for x in (out_last or []) if str(x) in now]:
-        out.append({
-            "type": "returning", "team": str(team), "subject": str(team),
-            "favors": "subject", "hardness": hard, "source_url": str(url),
-            "claim": f"{team} {who} 가 선발 복귀했다",
-            "quote": who, "from_code": True})
-    return out
 
 
-def clash_with_form(said: object, last5: object) -> str:
-    """🔴🔴 **그 주장이 폼 기록과 어긋나나** — 지시 ⑨ (실측 2026-10-05).
-
-    ⚠️ 실사고: 카드가 `France last5 ['L','L','W','W','D']` 를 적고, 같은 카드의
-       변수가 *"France have an **unbeaten** start"* 를 적었다. **둘 다 있고
-       어느 쪽도 그 어긋남을 말하지 않았다.**
-    🔴 **어느 쪽이 맞는지 고르지 않는다** — 정답은 경기 결과가 말한다
-       (사용자 지시 2026-10-02). 여기서는 *"어긋났다"* 만 적는다.
-    ⚠️ `last5` 가 없으면 **아무 말도 하지 않는다** — 지어내지 않는다(#4).
-    """
-    rows = [str(x).strip().upper() for x in (last5 or []) if str(x).strip()]
-    if not rows:
-        return ""
-    low = str(said or "").lower()
-    hit = [w for w in UNBEATEN_WORDS if w.lower() in low]
-    if not hit:
-        return ""
-    lost = [x for x in rows if x.startswith("L")]
-    if not lost:
-        return ""
-    return (f"🔴 **어긋난다** — 이 글은 `{hit[0]}`(무패)라고 하는데 최근 "
-            f"{len(rows)}경기에 패배가 {len(lost)}번 있다({'·'.join(rows)}). "
-            f"⚠️ 어느 쪽이 맞는지는 **고르지 않는다** — 대회만 센 것일 수 있다")
 
 
-def is_lump(said: object) -> bool:
-    """🔴 그 변수 글이 **여러 사실 묶음**인가 — 길이로 본다(실측 2026-10-05)."""
-    return len(" ".join(str(said or "").split())) > LUMP_CHARS
 
 
 SETTLED_WORDS: tuple[str, ...] = (
@@ -792,127 +698,8 @@ def favors_of(kind: str, *, subject: str, game: "Game", text: str = "") -> str:
     return "both"
 
 
-def from_agent_var(var, g: Game) -> Classified:
-    """🔴🔴 **§5-4** — 에이전트 변수 하나를 판정층 꼴로. 🔴 방향은 **코드가** 정한다.
-
-    ⚠️ `direction_hint` 를 **쓰지 않는다** — 그 변수가 적은 **팀 열쇠**가 쪽을
-       정한다. 모델이 `away` 라고 적어도 그 팀이 홈이면 **홈**이다. 🔴 힌트를
-       그대로 쓰면 그것이 `side_mismatch` 의 입구다(M36).
-    🔴 이 경기 팀이 **아닌** 열쇠면 변수가 못 된다 — `undecided` 가 그 사실을
-       말한다(조용히 버리지 않는다 · #3).
-    """
-    from app import domains, verifylayer
-    key = str(getattr(var, "team", "") or "")
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **누구에 관한** ≠ **누구에게 유리** — 지시 2026-10-05
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 종전엔 `team` 열쇠를 **그대로 방향**으로 썼다. 🔴 그래서 실측 pn7 에서
-    #     *"호날두가 포르투갈에서 이탈"* 이 **포르투갈 근거**가 되고
-    #     *"포르투갈 8강 확정"* 도 **포르투갈 근거**가 됐다 — **둘 다 거꾸로**다.
-    #  🔴 `subject`(관한) 를 받아 `favors_of`(유리)를 **카탈로그 규칙으로** 계산한다.
-    subject = str(getattr(var, "subject", "") or key)
-    said = " ".join(str(getattr(var, "claim", "") or "").split()) + " " + \
-        " ".join(str(getattr(var, "quote", "") or "").split())
-    favors = favors_of(str(getattr(var, "type", "") or ""),
-                       subject=subject, game=g, text=said)
-    # 🔴 `side` 는 **유리한 쪽**이다. ⚠️ `both`·`""` 는 아래가 따로 다룬다.
-    side = favors if favors in ("home", "away") else ""
-    if not subject or g.side_of(subject) is None:
-        # 🔴 M36 — 어느 팀 사실인지 모르면 **변수가 아니다**(아래가 적는다)
-        side = ""
-    url = str(getattr(var, "url", "") or "")
-    tier = domains.tier_of(url)
-    # 🔴 §5-5 — 무게는 **등급**이 준다(모델이 아니다). ⚠️ 미재검증은 한 단계 아래.
-    n = verifylayer.hardness_for(
-        tier, conflict=bool(getattr(var, "conflict", False)),
-        reverified=bool(getattr(var, "reverified", True)))
-    hard = "hard" if n >= 2 else "soft"
-    text = " ".join(str(getattr(var, "claim", "") or "").split())
-    quote = " ".join(str(getattr(var, "quote", "") or "").split())
-    out = Classified(
-        text=f"{text} — 인용 「{quote}」" if quote else text,
-        source_url=url, hardness=hard,
-        type=str(getattr(var, "type", "") or ""),
-        direction=side or "home",
-        favors=favors,
-        published_at=getattr(var, "published_at", None),
-        team=(g.home if side == "home" else g.away if side == "away" else ""),
-        why=(f"§3 에이전트 + §5 검증층 통과 · 등급 `{tier}`(무게 {n}) · "
-             f"힌트 `{getattr(var, 'direction_hint', '')}` → **코드가 정한 쪽** "
-             f"`{side or '없음'}`(§5-4)"))
-    if not side and favors == "both" and g.side_of(subject) is not None:
-        # 🔴🔴 **`both` 는 미결정이 아니다** — 지시 2026-10-05 ⑤.
-        #    ⚠️ 종전엔 `side` 가 비면 `side_mismatch` 로 찍었다 — 그래서
-        #       `coach_conflict`(both)가 **복제되기 전에 버려졌다.**
-        #    🔴 `from_agent_vars` 가 **두 항목으로 나눈다** — 여기서는 `home` 을
-        #       임시로 두고 그 함수가 양쪽을 만든다(그 사실을 사유에 적는다).
-        out.direction = "home"
-        out.why += " · 🔴 `favors: both` — **양쪽에 붙인다**(§5-4)"
-    elif not side:
-        # 🔴 M36 — 이 경기 팀이 아니다. **변수가 아니라고** 적는다.
-        out.undecided = (
-            f"🔴 `side_mismatch` — 변수가 적은 팀 `{key or '없음'}` 이 이 경기 "
-            f"팀이 아니다(홈 `{g.home_id}` · 원정 `{g.away_id}`) · §5-4 · M36")
-    return out
 
 
-def from_agent_vars(vars_: list, g: Game) -> list[Classified]:
-    """🔴 §5-4 — 여러 개. **양방향 유형은 두 항목으로 나눈다.**
-
-    ⚠️ 한 쪽에만 붙이면 그 변수가 **한 방향 근거**가 된다 — 양방향은 어느 쪽으로
-       갈지 **모르는** 변수다(§6-2 ⑥ 과 같은 까닭).
-    🔴 **같은 사실**이 두 쪽에 선다(지어낸 것이 아니다) — `text` 가 같다.
-    """
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **양방향 복제는 `favors: both` 유형에만** — 지시 2026-10-05 ⑤
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 종전엔 `required_forms.양방향_변수` 라는 **별도 선언**을 봤다.
-    #     🔴 이제 카탈로그의 `favors: both` 가 **원본**이다 — 두 곳에 적으면
-    #     한쪽이 늘 한 발 늦는다(사본 금지 · #1).
-    #  🔴 `absence` 가 복제되면 **결장이 양쪽 근거**가 된다 — 그것이 지시 ⑤ 가
-    #     막는 것이다.
-    from app import rules
-    both = {t for t, b in (rules.variable_types() or {}).items()
-            if str((b or {}).get("favors") or "") == "both"}
-    out: list[Classified] = []
-    for v in (vars_ or []):
-        got = from_agent_var(v, g)
-        if str(getattr(v, "type", "")) not in both or got.undecided:
-            out.append(got)
-            continue
-        import dataclasses
-        for side in ("home", "away"):
-            out.append(dataclasses.replace(
-                got, direction=side,
-                team=(g.home if side == "home" else g.away),
-                why=got.why + f" · §5-4 **양방향 → 두 항목**({side})"))
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **두 매체가 같은 사실을 말하면 `hard`** — 지시 2026-10-05 ⑤
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 같은 URL 두 매체 이상이면 hardness 올림(**R4 가 hard 여야 한다**).
-    #
-    #  ⚠️ 실측 pn7: 호날두 이탈을 **여러 매체**가 말했는데 전부 `soft` 였다.
-    #  🔴 §5-7 이 *"독립 출처"* 를 세는 바로 그 생각이다 — 두 **호스트**가 같은
-    #     유형·같은 쪽을 말하면 그것은 단단한 사실이다.
-    #  ⚠️ **같은 호스트 두 기사는 한 매체**다(`urlparse().netloc` 으로 센다).
-    from urllib.parse import urlparse
-    seen: dict = {}
-    for c in out:
-        host = urlparse(str(c.source_url or "")).netloc.lower()
-        if host:
-            seen.setdefault((c.type, c.direction), set()).add(host)
-    import dataclasses as _dc
-    for i, c in enumerate(out):
-        hosts = seen.get((c.type, c.direction)) or set()
-        if len(hosts) >= 2 and c.hardness != "hard":
-            out[i] = _dc.replace(
-                c, hardness="hard",
-                why=c.why + f" · 🔴 **매체 {len(hosts)}곳**이 같은 말을 한다 → "
-                            f"hardness soft→**hard**(§5-7 · 지시 ⑤)")
-    return out
 
 
 def _h2h_tail(val: dict) -> str:
@@ -1751,135 +1538,8 @@ def _hardness_cap(vtype: str, val: dict, hardness: str) -> tuple[str, str]:
     return hardness, ""
 
 
-def types_from_text(text: str) -> tuple[tuple[str, ...], str]:
-    """🔴🔴 **산문 → §4 유형들**(사용자 기술 지시 2026-10-03 · ② 유형 판정).
-
-    > 사건 단어 → 변수 유형. **LLM이 아니라 표로 정한다.**
-
-    돌려주는 것: `((유형, …), 사유)`. 못 정하면 `((), 사유)`.
-
-    ══════════════════════════════════════════════════════════════════
-    🔴 왜 **여럿**을 돌려주나 — 회귀 시험이 가르쳐 줬다
-    ══════════════════════════════════════════════════════════════════
-
-    처음엔 *"둘 이상 맞으면 모호하니 안 고른다"* 로 짰다. 🔴 그런데 사용자 분석
-    자신이 한 문장에서 **둘을 꺼낸다**:
-
-    ```
-    이기는 이유: 고영표 다승 동기(individual), **매직+4연승(stakes·recent_pattern)**
-    ```
-    ⚠️ `KT 매직 넘버 2 … 4연승` 은 모호한 것이 아니라 **사실이 둘**이다. 하나를
-       고르는 것이 추측이고, **버리는 것은 더 나쁘다**(그 글이 말한 것을 지운다).
-
-    🔴 그리고 **좁은 유형이 넓은 유형을 이긴다**(`refines:`). 실측 2026-10-03:
-       `Jamaica defender ruled out with injury` 가 `absence`·`def_absence` 둘 다에
-       맞았다 — 그 둘은 모순이 아니라 **포함 관계**다. 좁은 쪽만 남긴다.
-       ⚠️ 그 관계는 **yaml 이 선언한다** — 코드가 유형 이름 쌍을 외우지 않는다.
-    """
-    body = " ".join(str(text or "").split())
-    if not body:
-        return (), "글이 비어 유형을 못 정한다"
-    hit = [name for name, pats in rules.type_patterns()
-           if any(p.search(body) for p in pats)]
-    if not hit:
-        return (), "유형 규칙표의 어느 낱말도 안 맞았다"
-    # 🔴 좁은 유형이 있으면 그것이 가리키는 **넓은 유형을 걷는다**
-    narrowed = {str((rules.variable_types().get(n) or {}).get("refines") or "")
-                for n in hit}
-    kept = tuple(n for n in hit if n not in narrowed)
-    why = f"§4 유형 규칙표 — 사건 낱말이 `{'`, `'.join(kept)}` 에 맞았다"
-    if len(hit) != len(kept):
-        why += f" (넓은 유형 {sorted(narrowed & set(hit))} 는 좁은 쪽이 대신한다)"
-    return kept, why
 
 
-def classify_fact(fact, game: Game) -> list[Classified]:
-    """사실 하나 → §4 적용 결과들. 🔴 **못 정한 것도 사유와 함께 돌려준다.**
-
-    ⚠️ 빈 목록을 돌려주지 않는다 — 그러면 "자료가 없었다"와 "분류를 못 했다"가
-       구분되지 않는다(조용한 0 금지).
-    """
-    val = fact.value if isinstance(fact.value, dict) else {}
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **인용이 `Fact.quote` 에 있는데 `value` 가 문자열이면 잃어버린다**
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  실측 2026-10-03(KBO): 카드가 *"감독 발언 원문이 없다 — 낱말을 대조할 수
-    #  없다"* 를 **일곱 번** 적었다. 🔴 그런데 인용은 **있었다**:
-    #
-    #    [bb] intent:KBO:LG Twins ← We can't avoid getting hit. So we have to
-    #                               take control and attack first.
-    #
-    #  ⚠️ `parse_intent_body` 가 `Fact(value=<인용 문자열>, quote=<인용>)` 로 넣는데
-    #     여기서는 `value` 가 dict 가 아니면 **빈 dict** 로 두었다. 그래서 방향
-    #     규칙이 `val["quote"]` 를 못 찾았다 — 자료가 아니라 **그릇이 문제였다.**
-    #  🔴 `Fact` 가 들고 있는 칸으로 **채워 준다**. 지어내는 것이 아니다 — 같은
-    #     사실의 다른 주머니에서 꺼내는 것이다.
-    if not val:
-        got = {k: v for k, v in (
-            ("quote", getattr(fact, "quote", None)),
-            ("team", getattr(fact, "team", None)),
-            ("player_name", getattr(fact, "player_name", None))) if v}
-        if got:
-            val = got
-    base = dict(text=str(val.get("text") or _summary(fact, val)),
-                source_url=str(getattr(fact, "source", "") or ""),
-                hardness=str(getattr(fact, "hardness", "soft")),
-                published_at=getattr(fact, "published_at", None),
-                team=val.get("team") or getattr(fact, "team", None))
-    cands = types_for(getattr(fact, "question_id", ""))
-    if not cands:
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **질문이 유형을 못 주면 산문을 본다**(사용자 기술 지시 2026-10-03)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  ⚠️ 질문 경로가 **먼저**다 — 그 세포는 자기가 뭘 묻는지 안다. 이 표는
-        #     그쪽이 비었을 때의 **대체**다(§19-b-4 와 같은 결).
-        #  🔴 못 정하면 **그대로 배경**이고, **왜 못 정했는지**가 사유에 남는다 —
-        #     "규칙표에 낱말이 없다"와 "두 유형에 걸렸다"는 처방이 다르다.
-        guess, why_t = types_from_text(base["text"])
-        if guess:
-            # 🔴 **여럿이면 여럿 그대로** 넘긴다 — 한 문장이 사실 둘을 말할 수 있다
-            #    (사용자 분석: *"매직+4연승(stakes·recent_pattern)"*)
-            cands = tuple(guess)
-        else:
-            return [Classified(**base, undecided="",
-                               why=f"§4 유형이 없는 자료 — 배경으로 둔다 "
-                                   f"({getattr(fact, 'question_id', '?')} · {why_t})")]
-    out: list[Classified] = []
-    for vtype in cands:
-        if vtype in NOT_CLASSIFIED:
-            out.append(Classified(**base, type=vtype,
-                                  undecided=NOT_CLASSIFIED[vtype]))
-            continue
-        fn = DIRECTION_OF.get(vtype)
-        if fn is None:
-            out.append(Classified(**base, type=vtype,
-                                  undecided=f"{vtype} 방향 규칙이 구현되지 않았다"))
-            continue
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **발견이 팀을 잃고 있었다** (실측 2026-10-02)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  좁은 질문(③)의 값에는 `team` 칸이 **없다** — `{ask, answer, quote,
-        #  player_name}` 뿐이다. 팀은 **사실(`Fact.team`)** 에 실려 온다.
-        #  🔴 그런데 방향 규칙은 `val["team"]` 을 봤다. 그래서 봇이 스스로 찾아낸
-        #     `唐川侑己 은퇴 세레머니` 가 *"어느 팀 이야기인지 모른다"* 로 떨어졌다 —
-        #     세포는 그 팀을 알고 있었다(`Question.team`).
-        #  ⚠️ `val` 을 **덮지 않는다** — 사본을 만들어 넘긴다(사실은 그대로 둔다).
-        val_for_rule = val if val.get("team") else {**val, "team": base["team"]}
-        direction, why, bad = fn(val_for_rule, game)
-        hardness, note = _hardness_cap(vtype, val, base["hardness"])
-        item = Classified(**{**base, "hardness": hardness}, type=vtype,
-                          direction=direction, why=why, undecided=bad)
-        if note:
-            item.why = (item.why + " · " + note).strip(" ·")
-            # 🔴 **표본 때문이면 칸으로 표시한다**(사용자 지시 2026-10-06 ⑦) —
-            #    가설 근거가 이 칸을 보고 그 변수를 쓰지 않는다.
-            if THIN_MARK in note:
-                item.thin_sample = note
-        out.append(item)
-    return out
 
 
 def _summary(fact, val: dict) -> str:
@@ -1893,29 +1553,6 @@ def _summary(fact, val: dict) -> str:
     return f"{qid} — " + (" · ".join(bits) if bits else "(칸 없음)")
 
 
-def split_draw(items: list[Classified]) -> list[Classified]:
-    """§4 `splits_direction` — **두 방향을 밀면 두 항목으로 나눈다.**
-
-    🔴 지금 그 유형은 `coach_change` 다(*"새 감독 팀 쪽 **+ 무승부**"*).
-    ⚠️ `stakes` 도 `splits_direction` 이지만 나누는 자리가 다르다 — **팀마다 사실이
-       하나씩** 오므로(순위표를 팀별로 읽는다) 자연히 두 항목이 된다. 사용자 지시
-       2026-10-02 의 `splits_only_when`(양쪽이 서로 다른 것을 걸고 있다)이 그 뜻이다.
-    """
-    types = rules.variable_types()
-    out = list(items)
-    for it in items:
-        if not (it.type and it.direction and it.direction != "draw"):
-            continue
-        cfg = types.get(it.type) or {}
-        if not cfg.get("splits_direction"):
-            continue
-        if "무승부" not in str(cfg.get("direction_rule") or ""):
-            continue      # 🔴 `stakes` 처럼 무승부를 안 미는 유형은 안 나눈다
-        out.append(Classified(
-            text=it.text, source_url=it.source_url, hardness=it.hardness,
-            type=it.type, direction="draw", published_at=it.published_at,
-            why=it.why + " · §4 splits_direction(무승부 쪽)", team=it.team))
-    return out
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -1923,64 +1560,6 @@ def split_draw(items: list[Classified]) -> list[Classified]:
 # ══════════════════════════════════════════════════════════════════
 
 
-def classify_facts(facts: list, game: Game) -> list[Classified]:
-    """사실 묶음 → §4 적용. 🔴 **묶음을 봐야 정해지는 것이 둘 있다.**
-
-    | 무엇 | 왜 묶음이어야 하나 |
-    |---|---|
-    | `individual` 의 **팀 최다 득점자** | 한 선수만 보면 '최다'인지 알 수 없다 |
-    | `travel_schedule` 의 **양 팀 휴식일** | 한 팀 것만으론 누가 피로한지 모른다 |
-
-    그리고 §12-c-4 — *"같은 보도자료 8건은 원문 1건이다."* 🔴 같은 사실이 여러 번
-    오면 **방향 묶음의 strength 가 부풀어** 단계 6 이 속는다. 여기서 지운다.
-    """
-    seen: set[tuple] = set()
-    uniq = []
-    for f in facts:
-        # 🔴 **내용으로 지운다 — 출처를 열쇠에 넣지 않는다.**
-        #    §12-c-4: *"같은 보도자료 8건은 원문 1건이다."* 출처를 열쇠에 넣으면
-        #    같은 자료가 주소만 달라도 두 번 센다.
-        #    ⚠️ 실측 2026-10-02: fotmob 이 같은 경기를 `/matches/…` 와
-        #       `/en-GB/matches/…` 로 준다. 그 둘을 못 지워 모든 변수가 **두 번**
-        #       세어졌고, 그 탓에 `individual` 의 **팀 최다 득점자 판정까지 깨졌다**
-        #       (같은 이름이 둘이라 '동률'로 읽혔다).
-        key = (str(getattr(f, "question_id", "")), str(f.value)[:400])
-        if key in seen:
-            continue
-        seen.add(key)
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **표기만 달라도 같은 보도다**(사용자 기술 지시 2026-10-03 · 기술 6)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  > 같은 보도자료가 8개 매체에 복사되면 출처 **8개가 아니라 1개**다.
-        #  > **문장 유사도**로 묶은 뒤 센다.
-        #
-        #  ⚠️ 위 열쇠는 **완전 일치**다 — 구두점 하나만 달라도 별건이 되어 같은
-        #     보도가 변수 여럿으로 세어졌고 방향 묶음 strength 가 부풀었다.
-        #  🔴 같은 질문 안에서 **유사도로** 한 번 더 지운다(묶는 규칙은
-        #     `blackboard.similar` 가 원본이다 — 여기서 다시 쓰지 않는다).
-        if _same_report(f, uniq):
-            continue
-        uniq.append(f)
-    dropped = len(facts) - len(uniq)
-    if dropped:
-        logger.info("[classify] §12-c-4 중복 %d건 지웠다(원문 %d건)",
-                    dropped, len(facts))
-
-    _mark_top_scorer(uniq, game)
-    _fill_rest_days(uniq, game)
-    _fill_pitchers(uniq, game)
-    _fill_lineup_value(uniq, game)
-    _fill_squad_change(uniq, game)
-    _fill_half_time(uniq, game)
-
-    out: list[Classified] = []
-    for f in uniq:
-        out += split_draw(classify_fact(f, game))
-    out = _dedupe_variables(out)
-    # 🔴🔴 §4 `attaches_to: invalidate_recent_form` — **여기서 읽는다**
-    _invalidate_recent(out)
-    return out
 
 
 #: §4 `attaches_to` 의 작동 이름. 🔴 원본은 yaml 이다 — 유형 이름을 손으로 안 적는다.
@@ -2399,41 +1978,3 @@ class Hypothesis:
         return out
 
 
-def hypotheses(items: list[Classified], game: Game) -> list[Hypothesis]:
-    """§5-a 묶음 → 팀별 가설 + 무너지는 조건.
-
-    🔴 **판단을 더하지 않는다.** 묶음을 두 팀 시선으로 다시 보여 줄 뿐이다.
-    ⚠️ `draw` 는 **양쪽 '무너지는 조건'** 에 들어간다 — 무승부는 두 승리 가설을
-       다 깬다. 어느 한쪽 가설에 넣으면 거짓이다.
-    """
-    by: dict[str, list[Classified]] = {"home": [], "away": [], "draw": []}
-    for c in items:
-        if c.is_variable and c.direction in by:
-            by[c.direction].append(c)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **표본 부족 변수는 근거가 못 된다** — 사용자 지시 2026-10-06 ⑦
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  > 표본 부족·검증 탈락으로 표시된 변수는 **가설 근거에 못 쓴다.**
-    #
-    #  ⚠️ 실측 2026-10-06(북아일랜드–조지아) 카드: `R1 [h2h_pattern·home·soft]
-    #     … 맞대결 표본 1경기` 가 *"상대와의 맞대결 전적이 앞서 있어 경기 초반
-    #     기세를 먼저 잡는다"* 의 근거로 쓰였다 — **1경기**로 한 말이다.
-    #  🔴 **깨는 쪽에는 남긴다**: 얇은 표본으로 *"이긴다"* 라고 말하는 것과
-    #     *"이 조건이 어긋나면 흔들린다"* 는 주장의 세기가 다르다. 전자는
-    #     표본이 받쳐야 하고, 후자는 **의심**이므로 얇아도 적을 수 있다.
-    #  ⚠️ 검증 탈락 쪽은 이미 걸러진다 — `is_variable` 이 그것을 센다.
-    thin = {id(c) for c in items if getattr(c, "thin_sample", "")}
-    out: list[Hypothesis] = []
-    for side, team in (("home", game.home), ("away", game.away)):
-        other = "away" if side == "home" else "home"
-        out.append(Hypothesis(
-            team=team, side=side,
-            supports=[c for c in by[side] if id(c) not in thin],
-            # 🔴 반대 방향 + 무승부가 이 가설을 깬다
-            breaks=list(by[other]) + list(by["draw"]),
-            thin_dropped=[c for c in by[side] if id(c) in thin]))
-    if by["draw"]:
-        logger.info("[classify] 무승부 방향 변수 %d건 — **양 팀** 무너지는 조건에 넣었다",
-                    len(by["draw"]))
-    return out

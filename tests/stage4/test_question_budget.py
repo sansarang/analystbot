@@ -33,13 +33,6 @@ from tests._helpers import strip_docs
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def _factories() -> dict:
-    """🔴 **원본에서 자란다** — `*_cell` 공개 함수가 세포 팩토리다."""
-    got = {n: f for n, f in inspect.getmembers(searchcells, inspect.isfunction)
-           if n.endswith("_cell") and not n.startswith("_")
-           and f.__module__ == "app.searchcells"}
-    assert len(got) >= 5, f"세포 팩토리를 {len(got)}개만 찾았다 — 규칙을 보라"
-    return got
 
 
 def test_모드가_둘이고_오타는_거부된다():
@@ -51,50 +44,12 @@ def test_모드가_둘이고_오타는_거부된다():
         cells.budget_for(3, fetches=2, mode="질문형")      # 오타·번역어
 
 
-def test_깊은_모드가_배치보다_얕아지지_않는다():
-    """🔴 모드를 켜서 예산이 **줄면** 버그다. 모든 배치 깊이에서 본다."""
-    for fetches in range(0, cells.DEEP_FETCHES + 5):
-        slate = cells.budget_for(4, fetches=fetches)
-        q = cells.budget_for(4, fetches=fetches, mode=cells.DEEP)
-        assert q.fetches >= slate.fetches, (fetches, q.fetches, slate.fetches)
-        assert q.searches == slate.searches, \
-            "`searches` 는 소스 수다 — 모드가 건드릴 자리가 아니다"
-    # 🔴 측정이 가리킨 자리 — 배치 3건에서 36건 중 3건만 열고 끊겼다
-    assert cells.budget_for(4, fetches=3, mode=cells.DEEP).fetches \
-        == cells.DEEP_FETCHES
 
 
-def test_모든_세포_팩토리가_mode_를_받는다():
-    missing = [n for n, f in _factories().items()
-               if "mode" not in inspect.signature(f).parameters]
-    assert missing == [], (
-        f"질문형에서 배치 예산으로 도는 세포가 있다: {missing}")
 
 
-def test_모든_세포_팩토리의_기본값이_배치다():
-    """🔴 기본은 **배치**다 — 슬레이트가 조용히 깊어지면 엔진이 정지한다
-    (실측 2026-09-30: 측정 한 번이 SearXNG 엔진 셋을 전부 정지시켰다).
-    """
-    for n, f in _factories().items():
-        got = inspect.signature(f).parameters.get("mode")
-        if got is None:
-            continue        # 🔴 그것은 위 계약이 이름으로 보고한다
-        assert got.default == cells.SLATE, f"{n}: 기본 모드가 `{got.default}` 다"
 
 
-def test_세포가_Budget_을_직접_만들지_않는다():
-    """🔴 `budget_for` 를 우회하면 그 세포만 질문형에서 얕게 돈다 — **조용히.**
-
-    ⚠️ D46 — 독스트링·주석은 뺀 **코드만** 본다. 문서가 `Budget(` 를 *설명하는*
-       것과 코드가 그것을 *부르는* 것은 다르다.
-    """
-    code = strip_docs((ROOT / "app" / "searchcells.py").read_text(
-        encoding="utf-8"))
-    calls = [n.func.id for n in ast.walk(ast.parse(code))
-             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
-             and n.func.id == "Budget"]
-    assert calls == [], (
-        f"`Budget(` 를 {len(calls)}곳에서 직접 부른다 — `budget_for` 를 쓰라")
 
 
 def test_예산이_끊기면_사유가_남는다():

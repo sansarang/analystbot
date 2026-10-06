@@ -26,11 +26,11 @@ from app.core import adapt
 from app.core.schema import Doc, DropReason, Facts, MatchRef
 from app.core.state import RunState
 
-#: 🔴 발행일 창 — 킥오프 **7일 전**까지. ⚠️ 수는 `verifylayer.DATE_WINDOW_DAYS` 가
+#: 🔴 발행일 창 — 킥오프 **7일 전**까지. ⚠️ 수는 `s5_verify.DATE_WINDOW_DAYS` 가
 #   원본이다(사본 금지) — 여기서 다시 정하지 않는다.
 def _window_days() -> int:
-    from app import verifylayer
-    return int(verifylayer.DATE_WINDOW_DAYS)
+    from app.core.stages import s5_verify
+    return int(s5_verify.DATE_WINDOW_DAYS)
 
 
 #: 🔴 그 실행의 **칸별 계수기**. ⚠️ 모듈 전역이지만 `run` 이 **끝에서 비운다** —
@@ -91,9 +91,8 @@ def names_of(ref: MatchRef) -> tuple[list[str], list[str]]:
 
     ⚠️ 인자는 **열쇠**다(§8-1) — 이름을 받으면 또 하나의 해석 지점이 된다.
     """
-    from app import analyze
-    home = [n for n in analyze._names_of_key(ref.home) if n] or [ref.home_name]
-    away = [n for n in analyze._names_of_key(ref.away) if n] or [ref.away_name]
+    home = [n for n in adapt.names_of_key(ref.home) if n] or [ref.home_name]
+    away = [n for n in adapt.names_of_key(ref.away) if n] or [ref.away_name]
     return home, away
 
 

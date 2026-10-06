@@ -434,15 +434,6 @@ def store_doc(seen: object, url: object, body: object = "", *,
     box(url, body, published_at=published_at, date_source=date_source)
 
 
-def doc_date(seen: object, url: object):
-    """🔴 그 URL 의 **발행 시각** — 신규·재사용을 **가리지 않는다**(지시서 §3).
-
-    ⚠️ 없으면 `None` 이다 — 그것이 *"그 페이지에 날짜가 없다"* 와 같은 뜻이다.
-    """
-    got = getattr(seen, "dates", None)
-    if got is None:
-        return None
-    return got.get(str(url or ""))
 
 
 @dataclass

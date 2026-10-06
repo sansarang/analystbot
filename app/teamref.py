@@ -937,27 +937,3 @@ def _cldr_label(ref: "TeamRef", lang: str) -> str:
 # ══════════════════════════════════════════════════════════════════
 
 
-def suggest(text: str, *, n: int = 3) -> list[str]:
-    """🔴 못 푼 이름의 **가장 가까운 후보**들. ⚠️ **고르지 않는다.**
-
-    > ④ 후보 제시는 마지막. *"맨시티를 못 찾았다. Manchester City FC?"* 까지만
-    > 하고 **절대 자동으로 고르지 않는다.** 콜롬비아/크로아티아에서 당한
-    > *"거짓 사유"* 의 반대 방향 실수가 **"그럴듯한 후보 자동 채택"** 이다.
-
-    🔴 돌려주는 것은 **사람이 읽을 이름들**이다 — 열쇠가 아니다. 열쇠를 돌려주면
-       부르는 쪽이 그것을 그냥 쓰고 싶어진다(그 유혹 자체를 없앤다).
-    ⚠️ 코드(`iso:`·`team:`)는 후보가 아니다 — 사람이 그 글자로 못 고른다.
-    """
-    import difflib
-    want = bare(text) or norm(text)
-    if not want:
-        return []
-    reg = registry()
-    pool = {nm for ref in reg.teams.values() for lang in ref.names
-            for nm in ref.names[lang] if not is_code(nm)}
-    # 🔴 **걷은 꼴로** 견준다 — `맨시티` 와 `Manchester City FC` 는 글자가 안 겹친다.
-    #    ⚠️ 그래서 한국어 질의에는 거의 안 걸린다. 그 한계를 숨기지 않는다 —
-    #       한국어로 못 찾는 이름은 ③(자가 성장)이 배워야 풀린다.
-    by_bare = {bare(nm): nm for nm in pool}
-    got = difflib.get_close_matches(want, list(by_bare), n=n, cutoff=0.6)
-    return [by_bare[g] for g in got]

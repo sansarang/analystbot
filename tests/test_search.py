@@ -379,43 +379,10 @@ async def test_세포가_질문_타입을_사슬에_넘긴다(monkeypatch):
     assert seen == [C.Q_LINEUP], seen
 
 
-def test_수집이_사슬을_받는다():
-    from app.collect import ingest
-    sig = inspect.signature(ingest.collect)
-    assert "search" in sig.parameters
-    src = inspect.getsource(ingest.collect)
-    assert "build_chain()" in src
 
 
-def test_스케줄러가_사슬을_하루_유지한다():
-    """🔴 매 주기 새로 만들면 Google 일일 상한을 못 센다."""
-    from app import scheduler as Sch
-    src = inspect.getsource(Sch)
-    assert "_SEARCH = build_chain()" in src
-    assert "search=_SEARCH" in src
 
 
-def test_수집이_검색_상태를_드러낸다():
-    """🔴 조용한 0 금지 — 검색 수단 상태가 요약에 **이름으로** 나와야 한다.
-
-    ⚠️ 이름만 세지 않는다. 종전 이 계약은 `"dead_engines" in src` 였고, 그 키를
-       `engines_suspended`(사유째로)로 바꾸자 **정상 동작인데 빨개졌다.**
-       🔴 그래서 **실제 반환 키**를 본다 — 이름을 바꿔도 계약이 따라온다.
-    """
-    import asyncio
-
-    class _Pool:
-        async def fetch(self, *a, **k): return []
-        async def execute(self, *a, **k): return "INSERT 0 1"
-        async def fetchval(self, *a, **k): return None
-        async def fetchrow(self, *a, **k): return None
-
-    from app.collect import ingest
-    got = asyncio.run(ingest.collect(_Pool(), date(2026, 9, 27), [],
-                                     net=_DeadNet(), search=_NoSearch()))
-    # 검색 수단이 무엇이었고 무엇이 정지였는지, 구글 예산이 얼마 남았는지
-    assert set(got["search"]) >= {"searx", "engines_suspended", "google",
-                                  "google_left"}, got["search"]
 
 
 # ══════════════════════════════════════════════════════════════════

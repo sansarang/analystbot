@@ -117,26 +117,3 @@ def test_wo2_M129_기동이_그_검사를_부른다():
 # ④ 그 두 질의가 **실제로** 사라졌나
 # ══════════════════════════════════════════════════════════════════
 
-def test_wo2_실측_위반_질의가_안_나온다():
-    """🔴 카드 원문에 찍힌 그 두 꼴을 **같은 입력으로** 다시 만들어 본다."""
-    from app import llm, queries, querygate
-    out: list[str] = []
-    for vtype in ("squad_rotation", "national_duty_return"):
-        for v in queries.catalog_variants(
-                vtype, team="Georgia", opponent="Northern Ireland",
-                league="UEFA Nations League B Grp. 2", langs=("en", "ka")):
-            said = str(v.text or "").strip()
-            if said:
-                out.append(said)
-    assert out, "전제가 깨졌다 — 질의가 하나도 안 나왔다"
-    for said in out:
-        # 🔴🔴 **카탈로그를 실제로 거르는 문지기는 `llm.query_ok`** 다(1~6낱말).
-        #    ⚠️ 나는 처음에 `querygate.gate`(10낱말)로 쟀고, 그래서 9낱말 질의가
-        #       계약을 통과했다 — 문지기를 잘못 짚으면 계약이 거짓말을 한다.
-        assert llm.query_ok(said), (
-            f"🔴 §12-b(`llm.query_ok`) 에 걸리는 질의가 아직 나온다: {said!r} "
-            f"(낱말 {len(said.split())}개 · 상한 6)")
-        ok, _reason, why = querygate.gate(said, seed=True)
-        assert ok, f"🔴 `querygate` 에 걸린다: {said!r} — {why}"
-        # 🔴 대회 전체명·조 번호가 남아 있으면 안 된다
-        assert "Grp." not in said, said

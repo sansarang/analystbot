@@ -62,16 +62,6 @@ def test_v5_6_7_거짓_1_0_의_다섯_조건이_있다_M9():
 # ── 대역 ──────────────────────────────────────────────────────────
 
 
-def _inp():
-    from datetime import datetime, timedelta, timezone
-
-    from app import agentloop
-    return agentloop.AgentInput(
-        match_key="statsapi:849825", home="team:000338", away="team:000325",
-        home_names=("Milwaukee Brewers",), away_names=("San Diego Padres",),
-        competition="MLB", sport="baseball",
-        kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2),
-        venue="", langs=("en",))
 
 
 def _draft(sid: str, strength: float):
@@ -81,21 +71,5 @@ def _draft(sid: str, strength: float):
                            added_by="template")
 
 
-def _naive_var(when):
-    from app import agentschema
-    return agentschema.AgentVar(
-        id="A1", type="pitcher_state", team="team:000338",
-        direction_hint="home", claim="c", quote="Henderson will start",
-        url="https://www.mlb.com/x", published_at=when, lang="en")
 
 
-def _naive_ctx():
-    from datetime import datetime, timedelta, timezone
-
-    from app import verifylayer
-    return verifylayer.Context(
-        home="team:000338", away="team:000325",
-        home_names=["Milwaukee Brewers"], away_names=["San Diego Padres"],
-        competition="MLB", roster=["Logan Henderson"],
-        kickoff=datetime.now(timezone.utc) + timedelta(hours=2),
-        bodies={"https://www.mlb.com/x": "Henderson will start on Saturday"})

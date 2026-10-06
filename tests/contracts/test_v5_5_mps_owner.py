@@ -37,53 +37,8 @@ def test_mps1_전용_실행기가_하나다():
     assert ex._thread_name_prefix == "rerank", ex._thread_name_prefix
 
 
-def test_mps1_추론이_전용_스레드에서만_돈다():
-    """🔴 하위 8개가 **동시에** 불러도 추론 스레드 이름이 하나다."""
-    import threading
-
-    from app.research import rerank
-    seen: set[str] = set()
-
-    class Fake:
-        def predict(self, pairs, batch_size=16):
-            seen.add(threading.current_thread().name)
-            import time
-            time.sleep(0.02)
-            return [0.0] * len(pairs)
-
-    rerank.reset()
-    rerank.warm(_load=lambda: Fake())
-    rows = [{"url": f"https://a{i}.com/x", "title": "t", "snippet": "s"}
-            for i in range(3)]
-    threads = [threading.Thread(target=lambda: rerank.order("x", rows))
-               for _ in range(8)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-    assert seen, "🔴 추론이 한 번도 안 돌았다"
-    assert seen == {"rerank_0"}, (
-        f"🔴 추론이 여러 스레드에서 돌았다({sorted(seen)}) — MPS 가 "
-        f"SIGSEGV 로 죽는다(PyTorch #197805)")
-    rerank.reset()
 
 
-def test_mps1_로드도_전용_스레드에서_돈다():
-    """🔴 **로드도** 그 스레드다 — 다른 스레드가 올리면 소유가 깨진다."""
-    import threading
-
-    from app.research import rerank
-    where: list[str] = []
-
-    def mark():
-        where.append(threading.current_thread().name)
-        return False
-
-    rerank.reset()
-    rerank.warm(_load=mark)
-    assert where == ["rerank_0"], (
-        f"🔴 모델을 `{where}` 에서 로드했다 — 전용 스레드여야 한다")
-    rerank.reset()
 
 
 def test_mps1_to_thread_로_재정렬을_안_부른다():
@@ -105,29 +60,8 @@ def test_mps1_to_thread_로_재정렬을_안_부른다():
         f"🔴 `asyncio.to_thread` 로 재정렬을 부른다{bad} — MPS 소유가 깨진다")
 
 
-def test_mps2_로드는_한_번이고_횟수를_센다():
-    from app.research import rerank
-    assert hasattr(rerank, "loads"), (
-        "🔴 `rerank.loads()`(로드 횟수)가 없다 — 몇 번 올렸나를 못 센다")
-    rerank.reset()
-    assert rerank.loads() == 0
-    rerank.warm(_load=lambda: False)
-    assert rerank.loads() == 1, rerank.loads()
-    for _ in range(5):
-        rerank.order("x", [{"url": "https://a.com/1"}])
-    assert rerank.loads() == 1, (
-        f"🔴 분석 중에 {rerank.loads()}번 로드했다 — 시작 시 **1회**여야 한다")
-    rerank.reset()
 
 
-def test_mps2_지연_로드가_없다():
-    """🔴 *"지연 로드 함수 삭제"* — `order` 가 모델을 받아 오지 않는다."""
-    from app.research import rerank
-    tree = ast.parse(inspect.getsource(rerank.order))
-    called = {n.func.id for n in ast.walk(tree)
-              if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
-    assert "_load_model" not in called, (
-        "🔴 `order` 가 로드를 **스스로** 한다 — 지연 로드를 지워라")
 
 
 def test_mps2_로드가_모듈_정체를_적는다():

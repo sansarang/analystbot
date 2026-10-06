@@ -48,28 +48,3 @@ def test_wo5_템플릿이_있는_유형은_영어를_가진다():
     assert sum(1 for tp in _typed().values() if tp) >= 5, _typed()
 
 
-def test_wo5_언어로_건너뛰는_경로가_없다():
-    """🔴🔴 **그 분기가 돌아오면 빨개진다** — 글자가 아니라 **동작**으로 본다."""
-    # ── ① 코드에 그 분기가 없다(AST — 독스트링·주석은 뺀다 · D46)
-    src = inspect.getsource(queries.catalog_variants)
-    tree = ast.parse(src.lstrip())
-    for n in ast.walk(tree):
-        if not isinstance(n, ast.Compare):
-            continue
-        said = ast.unparse(n)
-        assert not ("tlang" in said and "langs" in said and "not in" in said), (
-            f"🔴 `{said}` — 언어로 건너뛰는 분기가 돌아왔다(사용자 지시 ⑤)")
-    # ── ② **돌려서** 본다: 경기 언어에 없는 언어의 템플릿도 질의가 된다
-    vtype = next(t for t, tp in _typed().items()
-                 if any(lang == "ko" for _q, lang in tp))
-    got = queries.catalog_variants(
-        vtype, team="Georgia", opponent="Northern Ireland",
-        league="UEFA Nations League B Grp. 2", langs=("en", "ka"))
-    skipped = [v for v in got if "건너뜀" in str(v.axis)
-               and "언어" in str(v.source)]
-    assert not skipped, (
-        f"🔴 언어 때문에 건너뛴 질의가 {len(skipped)}건 있다: "
-        f"{[v.source for v in skipped][:2]}")
-    # 🔴 그리고 `ko` 질의가 **실제로 나왔다**(빈 목록으로 통과하지 않는다)
-    ko = [v for v in got if v.lang == "ko" and str(v.text or "").strip()]
-    assert ko, f"🔴 `ko` 템플릿이 질의가 되지 않았다: {[(v.lang, v.text) for v in got][:4]}"

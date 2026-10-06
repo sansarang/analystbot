@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T05:18:55.347157+00:00",
+ "order": [
+  "According to Yonhap News Agency, a team official said, “Kim Min-jae underwent separate recovery training for two consecutive days. It is not a major injury serious enough for him to be released from the squad, but he appears to have accumulated fatigue after playing many matches.”",
+  "Kim Min-jae (FC Bayern Munich), a central defender for the South Korea national football team, has missed team training for two consecutive days. He is therefore unlikely to play against Uzbekistan, the final match in the four-game series since the Moreno-led team was launched.",
+  "During the match against Venezuela, he was substituted in the 35th minute of the second half. He was later seen speaking with Moreno with a frustrated expression and throwing off his cleats while sitting on the bench, drawing attention.",
+  "Kim Min-jae skipped the national team's official training session at Korea Football Park in Cheonan, South Chungcheong Province, on the 5th, a day before the friendly against Uzbekistan. Instead, he conducted individual training indoors.",
+  "It will be the final match in the national team's four-game series of international A matches in September and October under interim manager Robert Moreno of Spain.",
+  "In a post-match interview, Kim Min-jae said, “The entire team has to fight, compete and defend together. Today, I felt sorry for the defenders.”",
+  "Kim Min-jae started all three matches as a central defender, from the Moreno-led team's first game against Ecuador on the 24th, which South Korea won 3-0, through the match against Uruguay on the 28th, which South Korea lost 1-4, and the game against Venezuela.",
+  "He added, “Overall, it didn’t feel like we were all fighting together. Even if we had won 7-0 or 9-0 today, I wouldn’t have felt good,” in pointed remarks."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 9문단 → 재정렬 상위 8"
+}

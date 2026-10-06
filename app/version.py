@@ -121,8 +121,3 @@ def uptime_text() -> str:
     return f"{hours}시간 {mins}분" if hours else f"{mins}분"
 
 
-def boot_line(process: str) -> str:
-    """기동 로그 한 줄 — 어떤 코드가 도는지 즉시 보이게 한다."""
-    info = boot_info()
-    return (f"[version] {process} 기동 — 커밋 {info.short} "
-            f"({info.committed_at[:16]}) {info.subject[:60]}")

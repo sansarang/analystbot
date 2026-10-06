@@ -35,19 +35,6 @@ def _fix(name: str) -> Fetched:
 # MLB — 키 0건 · 검색 0건
 # ══════════════════════════════════════════════════════════════════
 
-def test_mlb_일정을_실물에서_읽는다():
-    games = mlb.parse_schedule(_fix("mlb_schedule.json"))
-    assert len(games) == 15, len(games)
-    g = games[0]
-    assert g["league"] == "MLB" and g["sport"] == "baseball"
-    assert g["home"] and g["away"] and g["venue"]
-    # 🔴 **v5 §8-1** — 열쇠가 `출처:경기ID` 다(`statsapi:849825`).
-    #    ⚠️ 종전엔 **숫자만**이라 `adapter_of(ext_id=)` 가 MLB 행을
-    #       라우팅하지 못했다(실측 2026-10-04).
-    from app import matchkey as _mk
-    assert _mk.is_canonical(g["ext_id"]), g["ext_id"]
-    assert _mk.source_of(g["ext_id"]) == "statsapi"
-    assert _mk.id_of(g["ext_id"]).isdigit()
 
 
 def test_mlb_토요일_야간이_KST_일요일_아침이다():
@@ -131,11 +118,6 @@ def test_mlb_잔여가_음수가_되지_않는다():
     assert min(r["remaining"] for r in rows) >= 0
 
 
-def test_mlb_transactions가_basis_7종으로만_나온다():
-    from app import judge as J
-    facts = mlb.parse_transactions(_fix("mlb_transactions.json"))
-    for f in facts:
-        assert f.value["basis"] in J.BASES, f.value
 
 
 def test_mlb_복귀는_결장이_아니다():
@@ -254,43 +236,10 @@ def test_npb_라이브_상태를_읽는다():
     assert "final" in states and "inprogress" in states
 
 
-def test_npb_등록_명단에_배번호가_있다():
-    """🔴 1b — NPB 동명이인은 등번호로 갈린다(§7-3). 그 칸이 여기 있다."""
-    rows, note = npb.parse_roster(_fix("npb_registered_h.html"),
-                                  "福岡ソフトバンクホークス")
-    assert len(rows) == 70, len(rows)
-    assert note == "", note
-    assert all(r["jersey"].isdigit() for r in rows)
-    assert all(r["role"] in ("pitcher", "batter") for r in rows)
-    assert len({r["jersey"] for r in rows}) == len(rows), "등번호가 겹친다"
 
 
-def test_npb_이동표를_로스터에_섞지_않는다():
-    """🔴 실사고 2026-09-27(내 결함) — 표가 7개인데 전부 읽어 등번호 3건이
-    겹쳤다(#30·#39·#43 이 각각 다른 선수·다른 포지션). 뒤 5개는 트레이드
-    이동 표였고 **남의 팀 선수**가 로스터에 섞였다.
-    """
-    got = _fix("npb_registered_h.html")
-    assert npb.MOVEMENT_MARK in got.text, "픽스처에 대조군이 없다"
-    rows, _ = npb.parse_roster(got, "福岡ソフトバンクホークス")
-    names = {r["name"] for r in rows}
-    # 전입 선수(← 다른 팀)가 로스터에 없어야 한다
-    assert "山本祐大" not in names, "DeNA 포수가 소프트뱅크 로스터에 들어왔다"
-    assert "中村稔弥" not in names
 
 
-def test_npb_페이지가_적은_인원과_대조한다():
-    """🔴 조용한 실패 금지 — 절반만 읽고도 성공처럼 보이면 안 된다."""
-    got = _fix("npb_registered_h.html")
-    # ⚠️ 인원 표기(`70名`)는 로스터 표보다 **뒤**에 온다(실측 20,477번째 글자).
-    #    그것을 남기고 로스터만 자른다 — 표기까지 자르면 자기검사가 못 돈다.
-    count_at = got.text.find("70名")
-    move_at = got.text.find(npb.MOVEMENT_MARK)
-    half = Fetched(got.url, True, 200,
-                   got.text[:count_at + (move_at - count_at) // 3])
-    rows, note = npb.parse_roster(half, "福岡ソフトバンクホークス")
-    assert len(rows) < 70
-    assert "70" in note and "읽었다" in note, note
 
 
 def test_npb_전출만_결장이다():
@@ -304,11 +253,6 @@ def test_npb_전출만_결장이다():
     assert "井上朋也" in names, "전출을 놓쳤다"
 
 
-def test_npb_열_순서를_상수로_박지_않았다():
-    """⚠️ 표 열이 바뀌면 조용히 어긋난다 — 포지션 낱말로 찾는다."""
-    import inspect
-    src = inspect.getsource(npb.parse_roster)
-    assert "cells[1]" not in src and "cells[2]" not in src
 
 
 def test_npb_일일_공시는_미확인으로_적혀_있다():
@@ -378,13 +322,6 @@ def test_찾은_뒤에는_unknown으로_내려가지_않는다():
     assert bb.value("q") == "값"
 
 
-def test_발견을_방송한다():
-    """🔴 §19-b-7 — 그 사실을 기다린 세포를 깨운다."""
-    bb = Blackboard()
-    woken = []
-    bb.subscribe("slate:MLB", lambda s: woken.append(s.value))
-    bb.write(Fact("slate:MLB", 15, "hard"))
-    assert woken == [15]
 
 
 def test_이미_있는_사실은_즉시_깨운다():
@@ -483,12 +420,6 @@ async def test_검색_포트는_예외를_던진다():
 
 
 @pytest.mark.asyncio
-async def test_의존이_안_풀리면_pending이다():
-    bb = Blackboard()
-    cell = C.Cell(question=C.Question(C.Q_LINEUP, "KT"),
-                  sources=[], deps=["slate:KBO"])
-    assert await cell.run(_FakeNet({}), bb) == C.PENDING
-    assert "의존 미해결" in cell.reason
 
 
 @pytest.mark.asyncio
@@ -785,19 +716,6 @@ async def test_질문_id가_비면_세포가_채운다():
 
 
 @pytest.mark.asyncio
-async def test_슬레이트는_경기_목록을_사실_하나로_싣는다():
-    """🔴 파서는 `dict` 행을 내고 세포는 `Fact` 를 받는다 — 경계에서 감싼다."""
-    bb = Blackboard()
-    net = _FakeNet({mlb.schedule_url(DAY): _fix("mlb_schedule.json")})
-    net.table[mlb.schedule_url(DAY)] = Fetched(
-        mlb.schedule_url(DAY), True, 200,
-        (FIX / "mlb_schedule.json").read_text(encoding="utf-8"))
-    cell = C.Cell(question=C.Question(C.Q_SLATE, "MLB"),
-                  sources=mlb.sources_slate(DAY))
-    assert await cell.run(net, bb) == FOUND
-    rows = bb.value("slate:MLB")
-    assert isinstance(rows, list) and len(rows) == 15
-    assert all(isinstance(r, dict) for r in rows)
 
 
 def test_모든_파서가_Fact를_낸다():

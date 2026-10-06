@@ -48,81 +48,16 @@ def test_M62_사다리가_셋이고_순서가_적혀_있다():
     assert "MiniLM" not in said, "🔴 영어 전용 모델이 사다리에 있다"
 
 
-def test_M62_모델이_없어도_순서가_그대로_나온다():
-    """🔴 ③단(재정렬 없음) — **분석이 멈추지 않는다.**"""
-    from app.research import rerank
-    rows = _hits(5)
-    got, why = rerank.order("injury absence", rows, _force="none")
-    assert [r["url"] for r in got] == [r["url"] for r in rows], (
-        "🔴 ③단인데 순서가 바뀌었다")
-    assert "rerank_unavailable" in why, why
 
 
 
-def test_M62_재정렬이_fetch_수를_안_늘린다():
-    """🔴 *"재정렬은 순서만 바꾼다"* — 받는 건수는 그대로다."""
-    from app.research import rerank
-    rows = _hits(30)
-    got, _ = rerank.order("x", rows, _force="none")
-    assert len(got) == len(rows), (
-        f"🔴 재정렬이 건수를 바꿨다({len(rows)} → {len(got)})")
-    picked = rerank.take(got, cap=2)
-    assert len(picked) == 2, f"🔴 fetch 상한을 안 지킨다: {len(picked)}"
 
 
-def test_M62_필터_통과_못한_것을_되살리지_않는다():
-    """🔴 1단은 **생존자만** 재정렬한다 — 되살리는 자리가 없어야 한다."""
-    from app.research import rerank
-    src = inspect.getsource(rerank)
-    tree = ast.parse(src)
-    # 🔴 `order` 는 **받은 목록 밖에서** 행을 가져오지 않는다
-    fn = [n for n in ast.walk(tree)
-          if isinstance(n, ast.FunctionDef) and n.name == "order"]
-    assert fn, "🔴 `order` 를 못 찾았다"
-    called = {n.func.attr for n in ast.walk(fn[0])
-              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
-    assert not (called & {"query", "get", "search", "fetch"} - {"get"}), (
-        f"🔴 `order` 가 밖에서 자료를 가져온다{sorted(called)}")
 
 
 # ══════════════════════════════════════════════════════════════════
 # M65 — 문단 하이브리드: BM25 가 놓치는 **동의어**를 잡는다
 # ══════════════════════════════════════════════════════════════════
-@pytest.mark.slow
-def test_M65_동의어_문단이_상위에_든다():
-    """🔴 `"will not feature"` 만 있는 문단이 `absence` 질의에서 상위 8 에 든다.
-
-    ⚠️ BM25 단독이면 빠진다 — 질의 낱말(`absent`·`injured`)이 그 문단에 없다.
-    🔴 고정물로 본다(라이브 웹 금지).
-    """
-    import json
-    import pathlib
-    from app.research import rerank
-    # 🔴 **싱글턴을 비우고 시작한다** — 다른 계약이 가짜 로더를 주입해
-    #    `_MODEL = False` 를 남기면 이 계약이 늘 skip 된다(순서 오염).
-    rerank.reset()
-    box = json.loads(pathlib.Path(
-        "tests/fixtures/research/paragraphs.json").read_text(encoding="utf-8"))
-    paras = [str(x) for x in box["paragraphs"]]
-    target = str(box["target"])
-    assert target in paras, "🔴 고정물에 목표 문단이 없다"
-    # 🔴 **모델이 정말 없을 때만** 건너뛴다. ⚠️ 실사고 2026-10-05: 사유에
-    #    `rerank_unavailable` 이 있으면 건너뛰게 했더니 **R17**(2단 재정렬을
-    #    끄는 돌연변이)이 그 길로 빠져나가 초록이 됐다 — skip 이 퇴로가 됐다.
-    #    🔴 모델이 **있으면** 반드시 잡아야 한다.
-    # 🔴 **예열**이 모델을 올린다(지연 로드는 지웠다 · 지시 2)
-    # 🔴 `slow` 계약은 **실모델**을 본다 — `ANALYSTBOT_TEST=1` 가드를
-    #    사다리를 직접 줘서 지난다(그 가드는 `_load is None` 일 때만 막는다).
-    rerank.warm(_load=rerank._ladder)
-    have = bool(rerank.loads()) and "rerank_unavailable" not in rerank.why()
-    got, why = rerank.paragraphs(box["query"], paras)
-    assert len(got) <= 8, f"🔴 상위 8 을 넘겼다: {len(got)}"
-    if not have:
-        import pytest
-        pytest.skip(f"재정렬 모델이 이 기계에 **없다** — ③단으로 돌았다: {why}")
-    assert target in got, (
-        f"🔴 모델이 있는데 동의어 문단이 상위 8 에 **없다** — BM25 단독과 "
-        f"같다(2단이 꺼졌나): {why}")
 
 
 def test_M65_유형군마다_재정렬_질의가_있다():

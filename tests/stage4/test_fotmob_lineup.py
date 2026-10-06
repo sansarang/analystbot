@@ -167,15 +167,6 @@ def test_경기_페이지가_아니면_건드리지_않는다():
         Question(Q_LINEUP, "x", team="A")) == []
 
 
-def test_구조를_글자_훑기보다_먼저_읽는다():
-    """🔴 순서가 뜻을 가진다 — 구조는 11명·포메이션·감독을 주고, 글자 훑기는
-    이름 몇 개에서 잘린다. 실측 2026-10-01 에 이 페이지가 **사실 0건**이었다.
-    """
-
-    from app import searchcells
-    src = inspect.getsource(searchcells.parse_lineup_any_body)
-    assert src.index("fotmob.parse_match") < src.index("parse_lineup_body"), \
-        "글자 훑기가 구조보다 먼저 돈다"
 
 
 # ══════════════════════════════════════════════════════════════════

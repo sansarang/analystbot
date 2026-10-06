@@ -30,12 +30,3 @@ def test_방향_줄이_모르는_까닭을_적지_않는다():
         f"🔴 인자가 늘었다 — 시나리오 수를 받게 됐다면 까닭을 적어도 된다: {pos}")
 
 
-def test_카드가_그_수를_옆줄에_적는다():
-    """🔴 #3 — *"시나리오 n개는 있는데 대입을 못 셌다"* 와 *"하나도 없다"* 를 가른다."""
-    from app import analyze
-    from tests._helpers import strip_docs
-    src = strip_docs(inspect.getsource(analyze._dir_block))
-    assert "drafts" in src, (
-        "🔴 `_dir_block` 이 시나리오 수를 **안 본다** — 그러면 '왜 못 쟀나' 를 "
-        "가를 수 없다(실측 2026-10-06: 7개가 있는데 '없다'고 적었다)")
-    assert "하나도 없어" in src and "대입을 못 셌다" in src, src[:200]

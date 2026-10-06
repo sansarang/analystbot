@@ -1028,7 +1028,6 @@ def template_precheck(extra: object = None) -> list[str]:
     ⚠️ 자리표가 허용 목록 밖이면 그것도 걸린 것이다(날짜·숫자 금지).
     """
     from app import llm as _llm
-    from app import querygate
     from app import rules as _R
     rows: list[tuple[str, str, str]] = []
     for vtype in sorted(_R.variable_types()):
@@ -1052,21 +1051,20 @@ def template_precheck(extra: object = None) -> list[str]:
                 said = said.replace("{" + k + "}", slot_value(v))
             said = " ".join(said.split())
             # ══════════════════════════════════════════════════════
-            # 🔴🔴 **문지기가 둘이다** — 둘 다 본다(실측 2026-10-06)
+            # 🔴🔴 **문지기는 하나다** — 사용자 지시 2026-10-06 ⑧
             # ══════════════════════════════════════════════════════
             #
-            #  ⚠️ 나는 처음에 `querygate.gate`(상한 **10**낱말)만 봤다. 🔴 카탈로그
-            #     질의를 실제로 거르는 것은 `llm.query_ok`(§12-b · **1~6**낱말)다
-            #     — 그래서 9낱말 질의가 내 검사를 통과하고 운영에서 떨어졌다.
-            #  🔴 둘 다 넣는다. 사유에 **어느 문지기**인지 적는다(#3).
+            #  > 삭제 후 `app/` 전체 정적 검사(**문지기 하나** · `llm.py` 밖 HTTP 금지) 켜기
+            #
+            #  ⚠️ 종전엔 둘을 **둘 다** 봤다(`querygate.gate` 10낱말 · `llm.query_ok`
+            #     1~6낱말). 🔴 실제로 거르는 것은 **`llm.query_ok`** 이고(v6 §6 이
+            #     *"남길 쪽 기준: 오픈월드 ⑥-2 와 s3 질의 모두 통과시키는 쪽"* 이라
+            #     적었다), s3 의 `gate_ok` 도 그 하나를 지난다.
+            #  🔴 그래서 `querygate` 를 지웠다 — 두 번째 문지기는 없다.
             n = len(said.split())
             if not _llm.query_ok(said):
                 bad.append(f"{vtype}: {said!r} — 🔴 §12-b(`llm.query_ok`) 가 "
                            f"막는다(낱말 {n}개 · 1~6 · 연도·연산자 금지)")
-                continue
-            ok, _why_n, why = querygate.gate(said, seed=True)
-            if not ok:
-                bad.append(f"{vtype}: {said!r} — 🔴 `querygate` 가 막는다: {why}")
     return bad
 
 
@@ -1079,88 +1077,6 @@ def assert_templates_ok(extra: object = None) -> None:
             "않는다:\n  " + "\n  ".join(bad))
 
 
-def catalog_variants(vtype: str, *, team: str, league: str = "", day=None,
-                     opponent: str = "", coach: str = "", star: str = "",
-                     local: str = "",
-                     # 🔴 사다리가 정한 언어(대표팀은 Babel 이 준다 · 2026-10-04)
-                     langs: tuple[str, ...] = ()) -> list[Variant]:
-    """§4 유형의 **템플릿 → 검색어**. 순서가 곧 **각도 순서**다.
-
-    🔴 자리표를 못 채우면 **그 템플릿을 건너뛴다** — `{coach}` 를 빈칸으로 두면
-       `" rotation 두산"` 같은 반쪽 질의가 나가고 그것은 0건을 부른다.
-    🔴 언어는 `langs_for` 가 정한다 — **영어가 먼저, 그다음 현지어**(사용자 지시).
-    """
-    from app import rules
-    tpls = rules.type_templates_tagged(vtype)
-    if not tpls:
-        return []
-    # 🔴 호출부가 주면 그것이 이긴다 — 대표팀은 리그가 없어 `langs_for` 가
-    #    `('en',)` 로 떨어지고, 그래서 현지어 템플릿 6종이 전부 건너뛰었다.
-    if not langs:
-        langs, _why = langs_for(league, team, opponent)
-    # 🔴🔴 **자리표 이름은 `TEMPLATE_SLOTS` 하나다**(지시서 §2) — `league` 가
-    #    아니라 `comp` 이고, 그 값은 **짧은 이름**이다. ⚠️ 전체명을 넣으면
-    #    낱말이 상한을 넘어 §12-b 가 막는다(실측 2026-10-06).
-    #  🔴 `date` 는 **없다** — `time_range=week` 가 날짜를 대신한다.
-    # 🔴 **값을 질의에 쓸 수 있는 글자로**(`slot_value`) — 어깻점이 든 감독
-    #    이름이 §12-b 에 걸려 그 유형이 구조적으로 0건이었다(실측 2026-10-06).
-    slots = {k: slot_value(v) for k, v in (
-        ("team", team), ("opp", opponent),
-        ("comp", competition_short(league)),
-        ("coach", coach), ("player", star))}
-    out: list[Variant] = []
-    seen: set[str] = set()
-    for i, (tpl, tlang) in enumerate(tpls):
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **언어로 건너뛰지 않는다** — 사용자 지시 2026-10-06 ⑤
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  > 카탈로그 템플릿: 모든 유형에 **영어 템플릿 필수**, 현지어는
-        #  > **추가분**. **경기 언어에 없다고 건너뛰는 경로 제거.**
-        #
-        #  ⚠️ 종전엔 `tlang not in langs` 면 건너뛰었다. 🔴 실측 2026-10-06
-        #     (북아일랜드–조지아): 경기 언어가 `['en','ka']` 라 `ko`·`ja`·`zh`
-        #     템플릿이 **전부** `건너뜀` 으로 찍혀 카드 블록 1 이 그 줄로 덮였고,
-        #     *"카탈로그가 통째로 안 돌았다"* 로 읽혔다.
-        #  🔴 꼬리표는 **그 질의를 어느 언어로 던지나**만 정한다 — 던질지 말지는
-        #     정하지 않는다. 영어가 필수이므로 유형이 언어 때문에 0 이 될 수
-        #     없고(계약이 그것을 센다), 현지어는 **덧붙는 각도**다.
-        #  ⚠️ 2026-10-02 의 걱정(`福岡… 자선 경기` 처럼 팀명과 낱말의 언어가
-        #     갈리는 질의)은 남는다 — 그 질의는 0건이 되고 **검색 한 칸을
-        #     쓴다.** 🔴 그 비용은 하위 상한(`search 3`)이 막는다.
-        use = (tlang,) if tlang else langs
-        need = {m.strip("{}") for m in re.findall(r"\{[a-z_]+\}", tpl)}
-        missing = [k for k in need if k != "date" and not slots.get(k)]
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **별칭으로도 던진다** (사용자 기술 지시 2026-10-03 · 기술 1)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  > 엘살바도르는 `Selecta`, 자메이카는 `Reggae Boyz`, 소프트뱅크는
-        #  > `ホークス` 로 쳐야 **현지 기사가 나온다.**
-        #
-        #  ⚠️ **공식명과 함께 쓰지 않는다** — `Colombia Tricolor` 는 아무 데도 없는
-        #     문자열이다. 공식명 질의와 **따로** 던진다(아래 `_alias_rows`).
-        #  🔴 선언이 없으면 아무 일도 안 한다(종전 경로 그대로).
-        if missing:
-            # 🔴 **반쪽 질의를 던지지 않는다** — 못 채운 자리표를 이름으로 남긴다
-            out.append(Variant(text="", lang=use[0],
-                               axis=f"카탈로그:{vtype}:{i}:건너뜀",
-                               source=f"자리표 {missing} 를 못 채웠다"))
-            continue
-        for lang in use:
-            body = tpl
-            for k, v in slots.items():
-                body = body.replace("{" + k + "}", str(v))
-            if "{date}" in body:
-                body = body.replace("{date}", month_day(day, lang) if day else "")
-            text = " ".join(body.split())
-            if not text or _norm(text) in seen:
-                continue
-            seen.add(_norm(text))
-            out.append(Variant(text=text, lang=lang,
-                               axis=f"카탈로그:{vtype}:{i}", source="catalog"))
-    out += _alias_rows(vtype, tpls, slots, langs, day)
-    return out
 
 
 def _alias_rows(vtype: str, tpls: list, slots: dict, langs, day) -> list[Variant]:

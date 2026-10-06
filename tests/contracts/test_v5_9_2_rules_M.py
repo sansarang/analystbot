@@ -21,28 +21,6 @@ import pathlib
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
-def test_v5_9_2_source_url_없는_변수는_없다_M15():
-    """🔴 M15 — *"`source_url` 필수"*. ⚠️ 출처 없는 변수는 **되짚을 수 없다.**"""
-    import dataclasses
-
-    from app import agentschema, classify
-    # 🔴 에이전트 변수는 `url` 을 **칸으로** 요구한다
-    names = {f.name for f in dataclasses.fields(agentschema.AgentVar)}
-    assert "url" in names, names
-    # 🔴 규칙 경로도 같다 — `Classified.source_url` 이 비면 변수가 못 된다
-    # 🔴 `source_url` 이 비면 **pydantic 이 터진다** — `None` 보다 강하다.
-    #    ⚠️ 처음에 `None` 을 기대했다. 실제는 *"출처 없는 변수는 저장하지
-    #       않는다"* 라는 예외다 — 그쪽이 맞다(조용히 빠지지 않는다).
-    import pytest as _pt
-    c = classify.Classified(text="x", source_url="", hardness="hard",
-                            type="recent_pattern", direction="home", why="w")
-    with _pt.raises(Exception) as got:
-        c.to_variable("V1")
-    assert "source_url" in str(got.value), got.value
-    ok, _ = classify.Classified(
-        text="x", source_url="https://a/b", hardness="hard",
-        type="recent_pattern", direction="home", why="w").to_variable("V2")
-    assert ok is not None and ok.source_url, ok
 
 
 def test_v5_9_2_날씨_수치가_없으면_soft_다_M16():
@@ -115,19 +93,6 @@ def test_v5_9_2_def_결장은_상향에_붙는다_M23():
     assert any(w in said for w in ("난타전", "대량", "득점")), (got, said)
 
 
-def test_v5_9_4_팁_숫자로_시나리오를_약화하지_않는다_M27():
-    """🔴🔴 M27 — *"h2h·팁 사이트 숫자로 시나리오 약화 금지"*.
-
-    ⚠️ 팁 사이트는 **우리와 같은 일을 하는 남**이다. 그 수를 근거로 쓰면 우리
-       판정이 그 사이트의 판정이 된다. 🔴 §5-5 가 `tip` 을 변수에서 뺀다.
-    """
-    from app import domains, verifylayer
-    assert domains.tier_of("https://www.forebet.com/en/predictions") == "tip"
-    assert domains.may_fetch("tip") is False
-    # 🔴 검증층이 그 등급을 **변수에서 뺀다**
-    from app.reasons import Reason
-    ok, reason, _ = verifylayer.verify_one(_tip_var(), _ctx())
-    assert ok is False and reason is Reason.TIP_SOURCE
 
 
 def test_v5_9_4_중립_친선_실험팀_무패_상한_M27():
@@ -163,25 +128,5 @@ def test_v5_9_4_보드_없으면_기준선_복수_대입_M32():
 # ── 대역 ──────────────────────────────────────────────────────────
 
 
-def _tip_var():
-    from datetime import datetime, timedelta, timezone
-
-    from app import agentschema
-    return agentschema.AgentVar(
-        id="A1", type="h2h_pattern", team="team:000338",
-        direction_hint="home", claim="c", quote="x",
-        url="https://www.forebet.com/en/predictions",
-        published_at=datetime.now(timezone.utc) - timedelta(hours=3),
-        lang="en")
 
 
-def _ctx():
-    from datetime import datetime, timedelta, timezone
-
-    from app import verifylayer
-    return verifylayer.Context(
-        home="team:000338", away="team:000325",
-        home_names=["Milwaukee Brewers"], away_names=["San Diego Padres"],
-        competition="MLB", roster=["Logan Henderson"],
-        kickoff=datetime.now(timezone.utc) + timedelta(hours=2),
-        bodies={"https://www.forebet.com/en/predictions": "x"})

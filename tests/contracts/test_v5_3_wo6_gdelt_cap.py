@@ -106,13 +106,3 @@ def test_wo6_상한이_4이고_경기_경계가_있다():
     S.GdeltSearch._state["rest_until"] = 0.0
 
 
-def test_wo6_경기_입구가_그_경계를_부른다():
-    """🔴 #2 배선 — 경계를 아무도 안 부르면 "경기당"이 "과정당"이 된다."""
-    import inspect
-
-    from app import analyze
-    from tests._helpers import strip_docs
-    src = strip_docs(inspect.getsource(analyze.gather))
-    assert "reset_match" in src, (
-        "🔴 `analyze.gather` 가 `GdeltSearch.reset_match()` 를 **안 부른다** — "
-        "그러면 경기당 4회가 프로세스당 4회가 된다")

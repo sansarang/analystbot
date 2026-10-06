@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T05:18:55.177612+00:00",
+ "order": [
+  "The official stated, \"Kim has undergone separate recovery training for two consecutive days,\" adding, \"It is not a severe injury that would warrant his release from the squad, but rather fatigue accumulated from playing numerous matches recently.\"",
+  "South Korean national football team's key central defender Kim Min-jae (Bayern Munich) has missed team training for two consecutive days, making it likely that he will sit out the upcoming match against Uzbekistan, the final game of the four-match series since the launch of the \"Moreno\" regime.",
+  "※ Please note: This article was translated by AI and may contain errors.",
+  "Kim did not participate in the national team's official training session held at the Korea Football Park in Cheonan, South Chungcheong Province, on October 5, the day before the friendly against Uzbekistan, instead carrying out individual training indoors.",
+  "According to a national team official, Kim also worked out separately when the team reconvened on October 4 following an overnight break and day off after the match against Venezuela on October 2, which ended in a 0-0 draw.",
+  "During the Venezuela match, after being substituted in the 35th minute of the second half, he was spotted talking to coach Moreno with a frustrated expression and was later seen taking off his football boots while sitting on the bench.",
+  "Regarding the players' reactions and fans' criticisms following the Venezuela match, he said, \"From my perspective as well, it didn't feel very well-organized, but the coach came in on an interim basis and it is difficult to build chemistry in a short time,\" and added, \"Since Min-jae is a key player who leads the team well, I think he must have felt very frustrated. The players need to unite again and strive to show the fans what they want to see.\"",
+  "In a post-match interview, Kim expressed his frustrations candidly, saying, \"The entire team needs to fight, compete, and defend together. Today, the defensive players felt pitiful,\" and adding, \"Overall, it didn't feel like everyone was fighting together. Even if we had won 7-0 or 9-0 today, I wouldn't have felt good about it.\""
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 16문단 → 재정렬 상위 8"
+}

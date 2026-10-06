@@ -46,9 +46,6 @@ LIMIT = 4
 _RANK = {"name": 2, "small": 1, "none": 0}
 
 
-def label_of(i: int) -> str:
-    """변수 번호. 🔴 사용자 판의 `R1…Rn` 과 같은 꼴이다."""
-    return f"R{i + 1}"
 
 
 def when_of(vtype: str, kickoff=None) -> str:
@@ -199,102 +196,6 @@ def _grades(items: list, game, *, board, standings, probs):
     return got, [d.id for d in sc.drafts], stren, False
 
 
-def run(items: list, game, *, board=None, standings: dict | None = None,
-        probs: dict | None = None, limit: int = LIMIT, kickoff=None,
-        stars: dict | None = None, shapes: dict | None = None) -> Result:
-    """§7 방아쇠 — 변수마다 **빼고 다시 계산**해서 상한을 얻는다.
-
-    🔴 `board` 는 `types.Market` 목록이다. 없으면 §6-c-3 우리 기준선으로 센다.
-    ⚠️ 변수를 빼면 §7 R5(변수 3개·방향 2종)를 못 채울 수 있다 — 그러면 **자료
-       부족**이고 그 방아쇠는 *"전부 철회"* 를 뜻한다. 그 사실을 그대로 적는다.
-    🔴 `kickoff` 을 주면 *"언제 보나"* 를 **시계 시각**으로도 적는다(10단계).
-    """
-    res = Result()
-    varis = [c for c in items if c.is_variable]
-    if not varis:
-        res.notes.append("변수가 없다 — 방아쇠를 만들 것이 없다(§7 R5)")
-        return res
-
-    base, base_ids, base_str, bad = _grades(items, game, board=board,
-                                            standings=standings, probs=probs)
-    if bad:
-        res.notes.append("기준 상태가 자료 부족이다 — 상한을 비교할 바탕이 없다")
-        return res
-
-    made: list[Trigger] = []
-    for i, v in enumerate(varis):
-        # 🔴 **그 변수만 뺀다.** 같은 객체를 지우므로 다른 변수는 그대로다
-        alt = [c for c in items if c is not v]
-        got, ids, stren, short = _grades(alt, game, board=board,
-                                         standings=standings, probs=probs)
-        caps = []
-        if short:
-            # 🔴 자료 부족이면 **이름을 적던 모든 마켓이 철회**된다
-            for name, (sv0, vd0) in base.items():
-                if _RANK[vd0] > 0:
-                    caps.append(Cap(name, sv0, 0.0, vd0, "none"))
-        else:
-            for name, (sv0, vd0) in base.items():
-                sv1, vd1 = got.get(name, (0.0, "none"))
-                if sv1 != sv0 or vd1 != vd0:
-                    caps.append(Cap(name, sv0, sv1, vd0, vd1))
-        # 🔴 **근거 변화도 센다** — 등급이 안 움직여도 strength 는 움직인다
-        moved = {k: (base_str[k], stren.get(k, 0.0)) for k in base_str
-                 if round(base_str[k], 4) != round(stren.get(k, 0.0), 4)}
-        if not caps and not short and not moved:
-            # ⚠️ 등급도 근거도 안 바뀌는 변수는 방아쇠가 아니다. **그래도 센다**
-            continue
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **§7-2 — 기계 조건을 붙인다**
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  > 카드마다 명단에서 확인할 항목을 **1개 이상 기계 조건**으로 적는다.
-        #
-        #  🔴 빈 자리는 **이 경기 자료**가 채운다 — `stars`(팀 최다 득점자)와
-        #     `shapes`(포메이션). ⚠️ 채울 값이 없으면 **만들지 않는다**
-        #     (`player: in XI` 같은 평가 불가 글자를 조건이라 적지 않는다).
-        team = str(getattr(v, "team", "") or "")
-        chk, chk_why = trigcond.check_for(
-            v.type, star=str((stars or {}).get(team) or ""),
-            shape=str((shapes or {}).get(team) or ""))
-        made.append(Trigger(
-            id="", label=label_of(i),
-            watch=_watch_text(v),
-            when=when_of(v.type, kickoff),
-            changed_scenarios=sorted(set(base_ids) ^ set(ids)),
-            caps=caps, insufficient=short, moved_strength=moved,
-            check=chk, check_why=chk_why))
-
-    # 🔴 등급이 내려가는 것부터. 같으면 움직임이 큰 것부터
-    made.sort(key=lambda t: t.impact, reverse=True)
-    for n, t in enumerate(made[:limit]):
-        t.id = "①②③④⑤⑥⑦⑧⑨⑩"[n] if n < 10 else str(n + 1)
-    res.triggers = made[:limit]
-    if len(made) > limit:
-        res.dropped = [f"{t.label}({t.watch[:28]})" for t in made[limit:]]
-        res.notes.append(
-            f"🔴 방아쇠 {len(made)}개 중 {limit}개만 적었다 — 잘린 것: "
-            f"{', '.join(res.dropped)}")
-    # 🔴🔴 **이 경고가 이 파일에서 가장 중요한 줄이다.**
-    #
-    #  무게가 확률(포아송 격자)이면 그 격자는 **순위표**에서 나오고 변수와 무관하다.
-    #  그러면 변수를 빼도 생존이 **한 치도** 안 움직인다 — 즉 §4 변수 수집(딥서치
-    #  150건)이 **등급에 아무 영향이 없다.** v4 §0 은 그 반대를 전제한다:
-    #  *"변수 개수·정확도 = 시나리오 품질"*.
-    #  실측 2026-10-02(실측 경기(새크라멘토 vs 라스베이거스)): 변수 11개를 전부 빼 봐도 등급 변화 0건이었다.
-    mute = [t.label for t in made if t.grade_unchanged]
-    if mute and len(mute) == len(made):
-        res.notes.append(
-            f"🔴🔴 변수 {len(mute)}개가 **근거는 바꾸는데 등급은 하나도 안 바꾼다** — "
-            f"무게가 확률(포아송 격자)이고 그 격자는 순위표에서 나와 변수와 무관하기 "
-            f"때문이다. v4 §0 은 *'변수 개수·정확도 = 시나리오 품질'* 을 전제하는데 "
-            f"지금 구조에서는 변수가 생존에 닿지 않는다 — 사용자 결정이 필요하다")
-    flat = len(varis) - len(made)
-    if flat:
-        res.notes.append(
-            f"변수 {flat}개는 빼도 어느 마켓의 등급·생존이 **안 변한다** — "
-            f"방아쇠가 아니다(그 사실도 센다)")
-    return res
 
 
 def _watch_text(v) -> str:
@@ -307,36 +208,3 @@ def _watch_text(v) -> str:
     return f"{txt}  [{v.type}·{side}] 이 **거짓으로 드러나면**"
 
 
-def render(res: Result) -> str:
-    """사람이 읽는 방아쇠 블록(사용자 출력 블록 10).
-
-    🔴 **가격 숫자를 쓰지 않는다**(§7 R8). 상한은 `survival` 이다.
-    """
-    if not res.triggers:
-        out = ["방아쇠 — 없다"]
-        out += [f"  · {n}" for n in res.notes]
-        return "\n".join(out)
-    out = ["방아쇠"]
-    for t in res.triggers:
-        head = f"{t.id} {t.label} — {t.watch}"
-        out.append(head)
-        out.append(f"     언제: {t.when}")
-        # 🔴 §7-2 — **기계 조건**. ⚠️ 못 만들었으면 그 까닭을 적는다(#3)
-        out.append(f"     확인(기계): `{t.check}`" if t.check
-                   else f"     ⚠️ 기계 조건 없음 — {t.check_why}")
-        if t.insufficient:
-            out.append("     🔴 빠지면 **자료 부족**이 된다(§7 R5) — 전부 철회")
-        if t.changed_scenarios:
-            out.append(f"     시나리오 변화: {', '.join(t.changed_scenarios)}")
-        if t.moved_strength:
-            bits = " · ".join(f"{k} {b}→{a}"
-                              for k, (b, a) in sorted(t.moved_strength.items()))
-            out.append(f"     근거(§5-d): {bits}")
-        if t.grade_unchanged:
-            out.append("     🔴 **등급은 안 바뀐다** — 무게가 확률이라 변수가 "
-                       "생존에 닿지 않는다")
-        for c in t.caps:
-            out.append(f"     → {c.line()}")
-    for n in res.notes:
-        out.append(f"  · {n}")
-    return "\n".join(out)

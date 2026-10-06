@@ -681,11 +681,11 @@ async def match_of(pool, *, team: str, opponent: str = "", day=None,
 
     # ④ 어댑터로 일정 받기
     if not found.games and look_up and key_lg:
-        from app import analyze
+        from app.collect import ingest
         want = LI.adapter_of(key_lg)
-        if want and want in analyze._adapters():
+        if want and want in ingest.ADAPTERS:
             try:
-                why = await analyze._fill_slate(pool, want,
+                why = await ingest.fill_slate(pool, want,
                                                 day or date.today())
                 got.steps.append(f"④ {why}")
             except Exception as exc:                        # noqa: BLE001

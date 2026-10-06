@@ -98,50 +98,5 @@ def test_v5_6_8_원장_재보정_약속이_글자로_남아_있다():
         "쓴다(계수를 맞추지 않는다)")
 
 
-def test_v5_6_8_어휘를_코드에_박지_않는다():
-    """🔴🔴 **사본 금지** — `analyze` 가 어휘를 다시 적으면 한 발 늦는다.
-
-    ⚠️ D46 — 독스트링·주석을 뺀 **코드만** 본다(이 파일이 그 글자를 *설명*하는
-       것과 코드가 그것을 *짓는* 것은 다르다).
-    """
-    import pathlib
-
-    from tests._helpers import strip_docs
-    for path in ("app/analyze.py", "app/card.py"):
-        body = strip_docs(pathlib.Path(path).read_text())
-        assert '"소액"' not in body and "'소액'" not in body, (
-            f"🔴 {path} 가 등급 어휘를 **글자로** 적는다 — "
-            f"`survive.verdict_word` 가 한 표다(§6-8)")
 
 
-def test_v5_6_8_결론_줄이_하단을_가린다():
-    """🔴 **끝까지 잇는다** — 어휘가 실제로 카드 글에 다르게 나오나.
-
-    ⚠️ 함수만 맞고 부르는 곳이 옛 삼항식이면 카드는 그대로다(#2 배선).
-    """
-    from app import survive
-    rows = [{"verdict": "small", "survival": 0.8, "market": None},
-            {"verdict": "small", "survival": 0.9, "market": None}]
-    words = [survive.verdict_word(float(r["survival"])) for r in rows]
-    assert words == ["소액 하단", "소액"], words
-    # 🔴 `analyze` 의 결론 줄이 그 함수를 **부르는가**
-    import ast
-    import inspect
-    import textwrap
-
-    from app import analyze
-    src = textwrap.dedent(inspect.getsource(analyze))
-    # ══════════════════════════════════════════════════════════════
-    # 🔴 **`word_of` 도 그 자리다** — 지시 ② (2026-10-05)
-    # ══════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 종전엔 결론 줄이 `verdict_word(survival)` 로 **다시 계산**했고, 그래서
-    #     상한이 내린 등급이 **되올라갔다**(pn8 모순: *"낸다 … 죽는 시나리오 G"*).
-    #  🔴 이제 결론 줄은 `word_of(verdict)` 를 쓴다 — **판정은 한 번만** 한다.
-    #     ⚠️ 묻는 것은 그대로다: *"어휘를 카드가 **한 곳에서** 받나."*
-    calls = [n for n in ast.walk(ast.parse(src))
-             if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
-             and n.func.attr in ("verdict_word", "word_of")]
-    assert calls, (
-        "🔴 어휘 함수를 만들어 두고 **카드가 안 부른다** — 안 이어진 코드는 "
-        "없는 코드보다 나쁘다(CLAUDE.md #2)")

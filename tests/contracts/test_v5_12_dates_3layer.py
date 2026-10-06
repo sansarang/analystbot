@@ -120,15 +120,6 @@ def test_d2_7일_밖이_확실하면_안_받는다():
     assert "힌트" in why3 or "없" in why3, why3
 
 
-def test_d2_수집이_그_거름을_쓴다():
-    """🔴 **배선**(#2) — 본문을 받기 **전에** 부른다."""
-    from app import agentloop
-    tree = ast.parse(inspect.getsource(agentloop))
-    called = {n.func.attr for n in ast.walk(tree)
-              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
-    assert "too_old" in called, (
-        "🔴 에이전트가 `datehint.too_old` 를 **안 부른다** — 7일 밖 문서를 "
-        "그대로 받는다")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -185,17 +176,6 @@ def test_d4_날짜_통로_둘이_살아_있다():
         "🔴 Bing 뉴스 RSS 발행 시각을 안 읽는다")
 
 
-def test_d2_스니펫_칸이_있고_검색이_채운다():
-    """🔴 `getattr` 기본값이 ②층을 **조용히 끄는** 것을 막는다."""
-    from app import agentloop
-    assert "snippets" in agentloop.Tools.__dataclass_fields__, (
-        "🔴 `Tools` 에 `snippets` 칸이 없다 — ②층이 늘 빈 글을 보고 모두 받는다")
-    tree = ast.parse(inspect.getsource(agentloop))
-    stores = [n for n in ast.walk(tree)
-              if isinstance(n, ast.Subscript) and isinstance(n.value,
-                                                            ast.Attribute)
-              and n.value.attr == "snippets"]
-    assert stores, "🔴 아무도 `snippets` 를 **채우지 않는다**(#2 배선)"
 
 
 def test_d3_세포가_본문_날짜를_먼저_쓴다():

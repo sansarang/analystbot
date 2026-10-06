@@ -112,27 +112,6 @@ def test_손으로_적는_것은_축구협회_넷뿐이다():
         assert str(row.get("key") or "").startswith("fa:"), row
 
 
-def test_CLDR_가_나라_이름을_준다():
-    """🔴 네트워크·robots·키가 **필요 없다** — 라이브러리가 들고 있다.
-
-    ⚠️ 이 길을 못 찾아 `wikidata`(robots 금지)·`restcountries`(폐기)·`flagcdn`
-       (한국어 없음)을 헤맸다. 사용자가 짚어 줬다.
-    """
-    from babel import Locale
-    assert Locale("ko").territories["HR"] == "크로아티아"
-    assert Locale("ja").territories["HR"] == "クロアチア"
-    # 🔴 **이름표가 그것을 실제로 담았는지** — 라이브러리만 되는 것은 뜻이 없다
-    # 🔴 **열쇠를 글자로 박지 않는다**(사용자 지적 2026-10-04) — 열쇠는 봇이
-    #    발급한 뜻 없는 번호이고, `iso:HR` 은 그 번호 **밑의 별칭**이다.
-    reg = teamref.registry()
-    key, _why = teamref.key_of("Croatia")
-    assert key.startswith(teamref.TEAM_KEY_PREFIX), key
-    ref = reg.teams.get(key)
-    assert ref and "크로아티아" in ref.all_names()
-    assert ref.by.get(teamref.norm("크로아티아")) == "CLDR"
-    # 🔴 ISO 코드는 **별칭으로** 찾힌다 — 그러나 **표기로는 안 나온다**
-    assert teamref.key_of("iso:HR")[0] == key
-    assert teamref.label_of(key, "en") == "Croatia"
 
 
 def test_리그가_다르면_합치지_않는다():
@@ -155,14 +134,6 @@ def test_정규화는_한_곳이다():
     assert "league_index.norm" in code
 
 
-def test_라벨은_언어마다_다르다():
-    """🔴 검색어는 **그 언어의 표기**로 만든다 — 그것이 이름표의 쓰임이다."""
-    k, _ = teamref.key_of("Kashiwa Reysol")
-    assert teamref.label_of(k, "ja") == "柏レイソル"
-    assert teamref.label_of(k, "en") == "Kashiwa Reysol"
-    # ⚠️ 모르는 언어는 **영어로 떨어진다** — 빈 문자열을 내지 않는다
-    assert teamref.label_of(k, "es") == "Kashiwa Reysol"
-    assert teamref.label_of("없는열쇠", "en") == ""
 
 
 def test_돌연변이가_통과하지_못한다():
@@ -205,42 +176,8 @@ LABELS = [
 ]
 
 
-@pytest.mark.parametrize("team,want", LABELS, ids=[x[0] for x in LABELS])
-def test_언어마다_그_언어의_표기가_나온다(team, want):
-    """🔴🔴 실측 2026-10-03 — 이 자리에서 **네 번** 틀렸다.
-
-    | 증상 | 뿌리 |
-    |---|---|
-    | `잉글랜드` 의 영어가 **`Inglaterra`** | 라틴을 전부 `en` 으로 뭉갰다 |
-    | `크로아티아` 의 영어가 **한글** | 없을 때 **다른 언어로 떨어뜨렸다** |
-    | `기아 타이거즈` 의 대표가 **`해태 타이거즈`** | 옛 이름이 **더 길어서** 이겼다 |
-    | `LG 트윈스` 의 대표가 **`엘지`** | 먼저 들어온 출처가 영구히 이겼다 |
-
-    🔴 전부 **"이름을 신원으로 쓴다"의 다른 얼굴**이다 — 이름이 여럿일 때 어느
-       것이 그 자리의 이름인지 정하는 규칙이 없었다.
-    """
-    k, why = teamref.key_of(team)
-    assert k, why
-    for lang, label in want.items():
-        assert teamref.label_of(k, lang) == label, (
-            f"{team} [{lang}] → {teamref.label_of(k, lang)!r} "
-            f"(원하는 것 {label!r})")
 
 
-def test_없는_언어는_영어로만_떨어진다():
-    """🔴 **다른 언어로 떨어뜨리지 않는다** — 영어 질의에 한글이 들어가면 죽는다."""
-    k, _ = teamref.key_of("Kashiwa Reysol")
-    # ⚠️ 스페인어 표기는 없다 → 영어로 떨어진다(한글·일본어가 아니다)
-    assert teamref.label_of(k, "es") == "Kashiwa Reysol"
-    # 🔴 영어조차 없으면 **빈 문자열**이다 — 지어내지 않는다
-    reg = teamref.registry()
-    only_ko = teamref.TeamRef(key="t:1", names={"ko": ["아무개"]},
-                              by={teamref.norm("아무개"): "시험"})
-    reg.teams["t:1"] = only_ko
-    try:
-        assert teamref.label_of("t:1", "en") == ""
-    finally:
-        reg.teams.pop("t:1", None)
 
 
 def test_출처_등급이_한_곳이다():

@@ -76,18 +76,6 @@ def _save(box: dict[str, dict]) -> None:
         logger.info("[learn] 못 적었다: %s", exc)
 
 
-def forget(name: str) -> bool:
-    """🔴 **되짚어 지운다.** 틀린 것이 들어오면 이 한 줄로 뺀다."""
-    from app import teamref
-    box = load()
-    k = teamref.norm(name)
-    if k not in box:
-        return False
-    got = box.pop(k)
-    _save(box)
-    logger.info("[learn] 지웠다 — %r (경기 %s)", got.get("name"),
-                got.get("from_match"))
-    return True
 
 
 def learn(*, asked: tuple[str, str], page_names: list[str],

@@ -84,20 +84,6 @@ def test_v5_8_2_감독_미상이_탈락_사유가_아니다():
     assert "모른다" in why or "없다" in why, why
 
 
-def test_v5_8_2_감독을_몰라도_다른_각도가_돈다():
-    """🔴 사다리 ③만 건너뛰고 ①②④는 돌아야 한다(§4-1)."""
-    from datetime import date
-
-    from app import queries
-    got = queries.catalog_variants(
-        "coach_intent" if "coach_intent" in _types() else "coach_conflict",
-        team="없는팀 FC", league="KBO", day=date(2026, 10, 4),
-        opponent="상대팀", coach="")           # 🔴 감독을 모른다
-    # ⚠️ 감독 자리표를 쓰는 템플릿은 건너뛰고(그 사실은 사유로) **나머지는 남는다**
-    assert isinstance(got, list)
-    kept = [v for v in got if v.text]
-    assert kept or all(v.source for v in got), [
-        (v.axis, v.source) for v in got]
 
 
 def _types() -> set[str]:
@@ -105,25 +91,8 @@ def _types() -> set[str]:
     return set(rules.variable_types())
 
 
-def test_v5_8_2_학습한_감독은_어디서_왔는지_적는다():
-    """🔴 §8-2 — *"에이전트가 첫 검색에서 채워 `learned_from:<경기ID>` 로 적는다."*
-
-    ⚠️ 출처 없이 채우면 그 이름이 **지어낸 것과 구분되지 않는다**(CLAUDE.md #4).
-    """
-    from app.entities import LEARNED_KEY, learn_coach
-    got = learn_coach("테스트팀", "홍길동", match_key="fotmob:1")
-    assert got["name"] == "홍길동"
-    assert got[LEARNED_KEY] == "fotmob:1", got
-    assert got["source"].startswith("학습"), got
 
 
-def test_v5_8_2_출처_없는_학습은_거부한다():
-    """🔴 되짚어 지울 수 없는 것은 **안 적는다**(③ 자가 성장과 같은 규율)."""
-    import pytest
-
-    from app.entities import learn_coach
-    with pytest.raises(ValueError, match="경기"):
-        learn_coach("테스트팀", "홍길동", match_key="")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -177,13 +146,6 @@ def test_v5_8_2_모르는_칸은_None이고_까닭이_남는다():
     assert "클럽" in got["_why"]["country"], got["_why"]["country"]
 
 
-def test_v5_8_2_모르는_칸_이름은_거부한다():
-    """🔴 오타로 새 칸이 생기면 그 선언이 **조용히 안 읽힌다.**"""
-    import pytest
-
-    from app.entities import field_of
-    with pytest.raises(ValueError, match="이름 대지 않은"):
-        field_of("Jamaica", "coahc")
 
 
 def test_v5_8_2_학습이_선언을_못_덮는다(monkeypatch):

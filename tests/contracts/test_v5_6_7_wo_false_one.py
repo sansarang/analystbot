@@ -97,20 +97,6 @@ def test_one_모든_마켓에_그_불변이_선다():
 # ② 확정 XI 가 아니면 **"낸다" 금지**
 # ══════════════════════════════════════════════════════════════════
 
-@pytest.mark.parametrize("state", ["", "baseline", "predicted", "unknown"])
-def test_one_확정_XI_가_아니면_낸다_금지(state):
-    """🔴 *"`lineup_state` 가 `confirmed` 가 아니면 **"낸다"(1.0) 금지**"*."""
-    from app import survive
-    got = survive.cap_for(state)
-    # 🔴 **수를 여기 적지 않는다** — 지시 ②가 말한 것은 *"확정이 아니면 `낸다`
-    #    (1.0) 금지"* 다. 칸마다의 수는 `scenario_rules.yaml` 이 든다(§6-5).
-    #    ⚠️ 실사고 2026-10-05: 여기 `0.8` 을 박아 두어, 표가 `양쪽예상: 0.85`
-    #       라고 적은 칸에서 계약이 **표를 틀렸다고** 말했다(사본 금지 #1).
-    assert got < 1.0, (
-        f"🔴 `lineup_state={state!r}` 인데 상한이 {got} 다 — 확정이 아니면 "
-        f"1.0 이 될 수 없다")
-    assert survive.word_of(survive.verdict_word(got)) != survive.verdict_words()[0], (
-        f"🔴 상한 {got} 인데 등급 어휘가 **최상**이다 — `낸다` 금지(지시 ②)")
 
 
 def test_one_확정이면_상한이_없다():
@@ -174,34 +160,8 @@ def test_one_시작_전이면_등급을_낸다():
 #     1.0 으로 **다시 계산해 `낸다`** 를 적었다.
 
 
-def test_one_O02_결론_줄이_상한을_따른다():
-    """🔴🔴 **카드 글**을 본다 — 상한이 내린 등급이 결론 줄에 그대로 와야 한다."""
-    from app import survive
-    # 🔴 `verdict` 가 `small` 인데 생존은 1.0 인 줄(pn8 의 그 꼴)
-    assert survive.word_of("small") == survive.verdict_words()[1], \
-        survive.word_of("small")
-    assert survive.word_of("name") == survive.verdict_words()[0]
-    # ⚠️ 그리고 **생존 수로 다시 재면** 다른 글자가 된다 — 그 둘이 달라야 이
-    #    계약이 뜻을 갖는다(같으면 돌연변이를 못 잡는다)
-    assert survive.verdict_word(1.0) != survive.word_of("small"), (
-        "🔴 `verdict_word(1.0)` 과 `word_of('small')` 이 같다 — 이 계약이 "
-        "O02 를 못 잡는다")
 
 
-def test_one_O02_카드가_판정_코드를_쓴다():
-    """🔴 **배선**(#2) — 결론 줄이 `word_of` 를 쓰고 `verdict_word` 를 안 쓴다."""
-    import inspect
-
-    from app import analyze
-    from tests._helpers import strip_docs
-    body = strip_docs(inspect.getsource(analyze.render))
-    i = body.index("■ 8 결론")
-    seg = body[i:i + 1400]
-    assert "word_of(" in seg, (
-        "🔴 결론 줄이 `survive.word_of(verdict)` 를 **안 쓴다** — 상한을 "
-        "무시하고 생존으로 다시 계산한다(pn8 모순)")
-    assert "verdict_word(" not in seg, (
-        "🔴 결론 줄이 **생존으로 다시 계산한다** — 상한이 내린 등급을 되올린다")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -212,44 +172,8 @@ def test_one_O02_카드가_판정_코드를_쓴다():
 #     `Card` 에 그 칸이 **없어서** 늘 `None` 이었다 — 지시 ③(시작한 경기는 등급
 #     없음)이 **조용히 꺼져** 있었다. 카드 머리글은 *"이미 시작"* 을 찍으면서
 #     결론 줄은 `소액` 을 적었다. 🔴 `getattr` 기본값은 **없는 칸을 숨긴다.**
-def test_카드가_킥오프를_칸으로_든다():
-    from app import analyze
-    assert "kickoff" in analyze.Card.__dataclass_fields__, (
-        "🔴 `Card` 에 `kickoff` 칸이 없다 — `getattr(card,'kickoff',None)` 이 "
-        "늘 `None` 이라 지시 ③ 이 조용히 꺼진다")
 
 
-def test_시작한_경기는_결론_줄에_등급이_없다():
-    """🔴 **끝까지** 본다 — 생존 1.0 이어도 시작했으면 등급은 `없음`."""
-    import datetime as _dt
-
-    from app import analyze, survive
-    kick = _dt.datetime(2026, 10, 5, 3, 45, tzinfo=_dt.timezone.utc)
-    now = kick + _dt.timedelta(hours=10)
-    gone, said = survive.started(kick, now)
-    assert gone and said, "🔴 10시간 지난 경기를 '안 시작했다'고 한다"
-    # 🔴 그리고 **`survive.run` 이 그 칸을 받는다**(#2 배선).
-    #    ⚠️ 문자열로 보지 않는다 — M97(`getattr(card,"kick2",None)` 로 바꾸기)이
-    #       **통과했다**: `body.find("kickoff=")` 가 엉뚱한 첫 자리를 집었다(D46).
-    #    🔴 **AST 로** 본다: 그 인자가 `card.kickoff` **칸 읽기**여야 한다.
-    import ast
-    import inspect
-    found = []
-    for node in ast.walk(ast.parse(inspect.getsource(analyze))):
-        if not isinstance(node, ast.Call):
-            continue
-        f = node.func
-        if not (isinstance(f, ast.Attribute) and f.attr == "run"
-                and isinstance(f.value, ast.Name) and f.value.id == "survive"):
-            continue
-        for kw in node.keywords:
-            if kw.arg == "kickoff":
-                found.append(kw.value)
-    assert found, "🔴 `survive.run(kickoff=…)` 을 안 넘긴다 — 지시 ③ 이 꺼진다"
-    for val in found:
-        assert isinstance(val, ast.Attribute) and val.attr == "kickoff", (
-            f"🔴 킥오프를 **칸으로** 안 넘긴다({ast.dump(val)[:80]}) — "
-            f"`getattr` 기본값은 없는 칸을 숨긴다(실측 pn12)")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -259,34 +183,3 @@ def test_시작한_경기는_결론_줄에_등급이_없다():
 #  ⚠️ 실사고: 지시 ③ 이 등급을 전부 거두자 깔때기가 `markets_graded:0` 을 적고
 #     **탈락 사유 칸이 비었다** — 독자가 *"시나리오가 모자랐나, 시작했나"* 를
 #     구별할 수 없다(#3 조용한 0 금지).
-def test_시작해서_등급을_거둔_것이_깔때기에_남는다():
-    import datetime as _dt
-
-    from app import funnel as _f
-    from app.reasons import Reason
-    assert hasattr(Reason, "KICKOFF_PASSED"), (
-        "🔴 `kickoff_passed` 사유가 없다 — 시작해서 거둔 것과 시나리오 부족을 "
-        "구별할 수 없다")
-    fun = _f.Funnel()
-    fun.set("markets_graded", 0)
-    fun.drop(Reason.KICKOFF_PASSED, "markets_graded")
-    said = fun.drop_line()
-    assert "kickoff_passed" in said, said
-    # 🔴 **배선**(#2) — 카드가 그 사유를 실제로 붙인다
-    import ast
-    import inspect
-
-    from app import analyze
-    tree = ast.parse(inspect.getsource(analyze))
-    hit = [n for n in ast.walk(tree)
-           if isinstance(n, ast.Attribute) and n.attr == "KICKOFF_PASSED"]
-    assert hit, (
-        "🔴 카드가 `KICKOFF_PASSED` 를 **안 쓴다** — 사유가 깔때기에 안 남는다")
-    # 🔴 그리고 그 판단은 `survive.started` 가 남긴 글로 한다(사본 금지)
-    import datetime as _dt2
-
-    from app import survive
-    _, said2 = survive.started(
-        _dt.datetime(2026, 10, 5, 3, 45, tzinfo=_dt2.timezone.utc),
-        _dt.datetime(2026, 10, 5, 13, 45, tzinfo=_dt2.timezone.utc))
-    assert "지시 ③" in said2, said2

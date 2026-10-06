@@ -36,21 +36,6 @@ def _var(direction: str, *, thin: str = "", vtype: str = "recent_pattern"):
         type=vtype, direction=direction, why="§4", thin_sample=thin)
 
 
-def test_wo7_표본_부족_변수는_근거가_못_된다():
-    """🔴 근거에서는 빠지고 **깨는 쪽에는 남는다**(주장의 세기가 다르다)."""
-    thin = _var("home", thin=f"{classify.THIN_MARK} 맞대결 표본 1경기",
-                vtype="h2h_pattern")
-    solid = _var("home")
-    away = _var("away")
-    got = {h.side: h for h in classify.hypotheses([thin, solid, away], _game())}
-    home = got["home"]
-    assert solid in home.supports, "🔴 멀쩡한 변수가 근거에서 빠졌다"
-    assert thin not in home.supports, (
-        "🔴 **표본 1경기** 변수가 근거로 쓰였다(사용자 지시 2026-10-06 ⑦)")
-    # 🔴 **버린 것을 이름으로 남긴다**(#3 조용한 0 금지)
-    assert thin in home.thin_dropped, home.thin_dropped
-    # 🔴 상대 가설의 **깨는 쪽**에는 그대로 있다
-    assert thin in got["away"].breaks, got["away"].breaks
 
 
 def test_wo7_표시는_글자_찾기가_아니라_칸이다():
@@ -68,27 +53,5 @@ def test_wo7_표시는_글자_찾기가_아니라_칸이다():
     assert classify.THIN_MARK not in note2, note2
 
 
-def test_wo7_근거_0건이면_이긴다면을_안_쓴다():
-    """🔴🔴 **배선**(#2) — `_run_hypo` 가 `supports` 를 보고 끊어야 한다."""
-    from app import analyze
-    from tests._helpers import strip_docs
-    src = strip_docs(inspect.getsource(analyze._run_hypo))
-    assert "h.supports" in src, (
-        "🔴 `_run_hypo` 가 `supports` 를 **안 본다** — 근거 0건인 팀에도 "
-        "*이긴다면* 문장이 선다(실측 2026-10-06)")
-    # 🔴 그리고 그때 `win_why` 를 **비운다**
-    at = src.find("h.supports")
-    seg = src[at:at + 400]
-    assert "win_why" in seg and "[]" in seg, seg[:200]
 
 
-def test_wo7_카드가_그_사실을_적는다():
-    """🔴 #3 — 조용히 비우면 *"모델이 문장을 못 냈다"* 로 읽힌다."""
-    from app import analyze
-    from tests._helpers import strip_docs
-    src = strip_docs(inspect.getsource(analyze))
-    assert "근거 변수 없음" in src, (
-        "🔴 카드가 *'근거 변수 없음 — 반대 팀 가설이 무너지는 조건만'* 을 "
-        "안 적는다(사용자 지시 2026-10-06 ⑦)")
-    assert "표본 부족으로 뺀 근거" in src, (
-        "🔴 표본 부족으로 **무엇을 뺐는지** 안 적는다(#3)")

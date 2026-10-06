@@ -25,51 +25,12 @@ import inspect
 # ══════════════════════════════════════════════════════════════════
 # M61 — 10단어 초과는 `query_too_long`
 # ══════════════════════════════════════════════════════════════════
-def test_M61_열_낱말_초과는_거부된다():
-    from app import querygate
-    from app.reasons import Reason
-    assert hasattr(Reason, "QUERY_TOO_LONG"), (
-        "🔴 `query_too_long` 사유가 없다 — 긴 질의가 0건을 만들었다(실측)")
-    assert hasattr(querygate, "MAX_WORDS") and querygate.MAX_WORDS == 10, (
-        "🔴 `querygate.MAX_WORDS = 10` 이 이름으로 없다")
-    long_q = ("France Belgium UEFA Nations League October 2026 preview "
-              "lineups prediction team news injury")
-    ok, reason, why = querygate.gate(long_q, parts={"team": "France"})
-    assert not ok and reason is Reason.QUERY_TOO_LONG, (ok, reason, why)
-    assert "10" in why and "낱말" in why, why
 
 
-def test_M61_씨앗_템플릿은_자동_통과한다():
-    """🔴 3~6낱말 씨앗은 요소가 2개여도 통과한다(지시서 §4-3)."""
-    from app.research import subtasks
-    from app import querygate
-    ref = {"home": "France", "away": "Belgium", "home_key": "team:000081",
-           "away_key": "team:000021", "sport": "soccer",
-           "league": "UEFA Nations League A Grp. 1", "langs": ("en", "fr")}
-    for s in subtasks.split(ref):
-        ok, reason, why = querygate.gate(s.seed, parts={"team": s.team},
-                                         seed=True)
-        assert ok, f"🔴 씨앗 `{s.seed}` 가 거부됐다: {why}"
 
 
-def test_M61_씨앗이_아니면_세_요소를_요구한다():
-    """🔴 기존 `query_too_bare` 는 **그대로 산다** — 씨앗만 면제다."""
-    from app import querygate
-    from app.reasons import Reason
-    ok, reason, _ = querygate.gate("France news", parts={"team": "France"})
-    assert not ok and reason is Reason.QUERY_TOO_BARE, (ok, reason)
 
 
-def test_M61_길이_검사가_요소_검사보다_먼저다():
-    """🔴 긴 질의는 요소가 많아도 **길이로** 떨어진다(사유가 고칠 곳을 가린다)."""
-    from app import querygate
-    from app.reasons import Reason
-    q = ("France Belgium UEFA Nations League standings stakes preview "
-         "October 5 2026 Stade de France weather")
-    ok, reason, _ = querygate.gate(
-        q, parts={"team": "France", "opponent": "Belgium",
-                  "competition": "UEFA Nations League A Grp. 1"})
-    assert not ok and reason is Reason.QUERY_TOO_LONG, (ok, reason)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -122,16 +83,3 @@ def test_r4_네_번째_검색은_없다():
     assert not s.budget.may_search(), "🔴 네 번째 검색이 허용된다"
 
 
-def test_r4_프롬프트가_첫_검색_꼴을_박는다():
-    """🔴 **배선**(#2) — 하위 프롬프트가 씨앗 꼴을 요구한다."""
-    from app.research import subtasks
-    assert hasattr(subtasks, "prompt_tail"), (
-        "🔴 `subtasks.prompt_tail(하위)` 가 없다 — 담당·검색어 규칙을 전할 곳")
-    ref = {"home": "France", "away": "Belgium", "home_key": "team:000081",
-           "away_key": "team:000021", "sport": "soccer",
-           "league": "UEFA Nations League A Grp. 1", "langs": ("en", "fr")}
-    s = subtasks.split(ref)[0]
-    said = subtasks.prompt_tail(s)
-    assert s.seed in said, "🔴 씨앗 질의가 프롬프트에 없다"
-    assert "담당" in said and s.kinds[0] in said, said
-    assert "10" in said, "🔴 낱말 상한을 안 알려 준다"

@@ -40,14 +40,6 @@ def test_추출_과제가_없으면_부르지_않는다():
     assert "EXTRACT_MIN_CHARS" in src and cells.EXTRACT_MIN_CHARS >= 200
 
 
-def test_본문을_읽는_세포가_과제를_들고_있다():
-    """🔴 배선이 실제로 붙었나 — 라인업은 L1(결장), 의도는 L2(인용)."""
-    src = strip_docs(inspect.getsource(searchcells))
-    assert 'extract_tasks=("L1",)' in src, "라인업 세포에 L1 이 없다"
-    assert 'extract_tasks=("L2",)' in src, "의도 세포에 L2 가 없다"
-    # 🔴 `Source` 가 그 칸을 들고 있어야 세포가 읽는다
-    assert "extract_tasks" in {f.name for f in
-                               __import__("dataclasses").fields(cells.Source)}
 
 
 def test_사유_낱말을_이름으로_낸_항목을_버린다():

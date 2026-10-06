@@ -93,55 +93,10 @@ def test_dec8_세_표기가_한_열쇠에_묶인다():
         f"🔴 한자/로마자 표기가 **다른 열쇠**를 가리킨다: {keys}")
 
 
-def test_dec8_부분일치는_두_조건을_같이_요구한다():
-    """🔴🔴 *"2자 이상이고 **명단 선수 1명 이상이 같이 나올 때만**"*.
-
-    ⚠️ `広島` 가 다른 낱말 안에 섞여 통과하는 것을 막는 조건이다.
-    """
-    from app import verify
-    assert hasattr(verify, "mentions_team_cjk"), (
-        "🔴 CJK 부분일치 문이 없다 — `verify.mentions_team_cjk()`")
-    key = "team:000293"
-    names = ["広島東洋カープ", "広島", "Hiroshima Toyo Carp"]
-    roster = ["森下暢仁", "小園海斗"]
-
-    # ✅ 부분일치(`広島`) + **명단 선수 동반** → 인정
-    ok, why = verify.mentions_team_cjk(
-        "広島は森下暢仁を立てる", key=key, names=names, roster=roster)
-    assert ok is True, why
-
-    # 🔴 부분일치뿐 — **명단 선수가 없다** → 거부
-    ok2, why2 = verify.mentions_team_cjk(
-        "広島県の天気は晴れ", key=key, names=names, roster=roster)
-    assert ok2 is False, why2
-    assert "명단" in why2, why2
-
-    # ✅ **온전한 이름**이면 명단 없이도 인정(부분일치가 아니다)
-    ok3, _ = verify.mentions_team_cjk(
-        "広島東洋カープが勝った", key=key, names=names, roster=roster)
-    assert ok3 is True
 
 
-def test_dec8_한_글자_일치는_안_된다():
-    """🔴 *"부분 문자열 일치는 **2자 이상**"*."""
-    from app import verify
-    ok, why = verify.mentions_team_cjk(
-        "広がる景色と森下暢仁", key="team:000293",
-        names=["広島東洋カープ", "広"], roster=["森下暢仁"])
-    assert ok is False, why
 
 
-def test_dec8_명단이_없으면_부분일치를_안_쓴다():
-    """🔴 명단을 **못 받은** 경기에서 부분일치를 인정하면 거짓 귀속이 된다.
-
-    ⚠️ 그 사실을 **사유로** 남긴다(#3) — 조용히 거부하지 않는다.
-    """
-    from app import verify
-    ok, why = verify.mentions_team_cjk(
-        "広島は勝った", key="team:000293",
-        names=["広島東洋カープ", "広島"], roster=[])
-    assert ok is False
-    assert "명단" in why, why
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -186,17 +141,3 @@ def test_dec7_M83_보강_경로가_야구_셋을_부른다():
         [d.template_id for d in res.drafts]
 
 
-def test_dec8_M85_한_글자는_온전한_이름으로도_안_쓴다():
-    """🔴🔴 **M85** — 한 글자 걸러내기를 끄면 빨개져야 한다.
-
-    ⚠️ 종전 계약은 `names=["広島東洋カープ", "広"]` 로 쟀고, `広` 가 **다른
-       이름에 들어 있어** 약칭으로 분류돼 명단 조건에 걸렸다. 🔴 그래서 한 글자
-       검사를 꺼도 통과했다. ⚠️ 이번엔 **한 글자만** 준다(약칭 분류가 안 걸린다).
-    """
-    from app import verify
-    ok, why = verify.mentions_team_cjk(
-        "広がる景色と森下暢仁", key="team:000293",
-        names=["広"], roster=["森下暢仁"])
-    assert ok is False, (
-        f"🔴 **한 글자 이름 `広`** 이 글에 있다고 통과했다 — 아무 낱말 안에나 "
-        f"걸린다(결정 ⑧: 2자 이상): {why}")

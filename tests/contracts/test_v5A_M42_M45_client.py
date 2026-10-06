@@ -41,82 +41,15 @@ class _Net:
         return self.reply
 
 
-def test_v5A_2_도구를_넘기지_않는다_M42():
-    """🔴🔴 **M42** — `tools` 가 몸통에 **없어야** 한다."""
-    from app import deepseek
-    net = _Net()
-    # ⚠️ `_force` 로 **스위치를 건너뛴다** — 이 계약이 보는 것은 *"몸통에 도구가
-    #    실리나"* 이고, 스위치는 다른 계약이 본다(아래
-    #    `test_v5A_2_꺼져_있으면_안_부른다`).
-    deepseek.ask([{"role": "user", "content": "x"}], match="statsapi:1",
-                 _net=net, _force=True)
-    assert net.sent, "🔴 한 번도 안 불렀다"
-    body = net.sent[0]
-    assert "tools" not in body, body.keys()
-    assert "tool_choice" not in body, body.keys()
-    # 🔴 **JSON 출력 모드**는 강제한다(v5-A §2)
-    assert body.get("response_format", {}).get("type") == "json_object", body
 
 
-def test_v5A_2_도구를_넘길_길이_없다_M42():
-    """🔴 `ask()` 에 `tools` 인자가 **아예 없어야** 한다 — 있으면 누가 쓴다."""
-    import inspect
-
-    from app import deepseek
-    sig = inspect.signature(deepseek.ask)
-    assert "tools" not in sig.parameters, sorted(sig.parameters)
 
 
-def test_v5A_2_장애를_삼키고_사유를_낸다_M45():
-    """🔴🔴 **M45** — *"장애 시 예외를 **삼키고** `deepseek_unavailable` 반환"*.
-
-    ⚠️ 그래야 v5 원래 경로(Solar 초안 + 코드 필수형 보강)로 판정이 **끝까지
-       돈다.** 🔴 DeepSeek 장애가 **경기 분석을 막지 않는다**(v5-A §2).
-    """
-    from app import deepseek
-    from app.reasons import Reason
-    got = deepseek.ask([{"role": "user", "content": "x"}], match="m1",
-                       _net=_Net(boom=RuntimeError("타임아웃")), _force=True)
-    assert got.ok is False
-    assert got.reason is Reason.DEEPSEEK_UNAVAILABLE
-    assert "타임아웃" in got.why, got.why
     # 🔴 **예외가 위로 올라오지 않는다**(돌연변이: 던지게 하면 빨개진다)
 
 
-def test_v5A_2_꺼져_있으면_안_부른다():
-    """🔴 `deepseek.enabled` 가 꺼짐이면 **통로를 열지 않는다**."""
-    from app import deepseek
-    from app.reasons import Reason
-    net = _Net()
-    got = deepseek.ask([{"role": "user", "content": "x"}], match="m1",
-                       _net=net)
-    # ⚠️ 지금 설정은 **꺼짐**이다(작업지시 §4) — 그래서 안 나간다
-    assert net.sent == [] or got.ok, (net.sent, got)
-    if not net.sent:
-        assert got.reason is Reason.DEEPSEEK_UNAVAILABLE
-        assert "enabled" in got.why or "꺼" in got.why, got.why
 
 
-def test_v5A_2_원장에_provider_를_적는다_M49():
-    """🔴 *"`usage` 를 Solar 와 같은 원장에 `provider:deepseek` 로 적는다"*.
-
-    ⚠️ 그래야 하루 $3 가드가 **두 API 를 합산**한다(v5-A §2).
-    """
-    import pathlib
-    import tempfile
-
-    from app import deepseek
-    with tempfile.TemporaryDirectory() as d:
-        root = pathlib.Path(d)
-        deepseek.ask([{"role": "user", "content": "x"}], match="m1",
-                     _net=_Net(), _ledger_root=root, _force=True)
-        rows = [json.loads(x) for x in
-                (root / "cost_202610.jsonl").read_text(
-                    encoding="utf-8").splitlines()] if list(root.glob("*.jsonl")) else []
-    assert rows, list(root.glob("*")) if root.exists() else "없다"
-    assert rows[0]["provider"] == "deepseek", rows[0]
-    for need in ("in", "cache", "out", "usd"):
-        assert rows[0].get(need) is not None, (need, rows[0])
 
 
 def test_v5A_8_6_사유_여섯이_있다():

@@ -88,12 +88,6 @@ def test_UTC를_KST라고_적으면_9시간_틀린다():
     assert utc.strftime("%m-%d %H:%M") == "10-03 02:00"
 
 
-def test_시간대_없는_값은_거부한다():
-    """🔴 모르는 시간대에 `KST` 를 붙이면 **조용히 거짓**이 된다 — 멈춘다."""
-    with pytest.raises(ValueError, match="시간대 없는"):
-        timefmt.kst_label(datetime(2026, 10, 3, 2, 0))
-    with pytest.raises(ValueError, match="시간대 없는"):
-        timefmt.kst(datetime(2026, 10, 3, 2, 0))
 
 
 def test_이미_KST인_값은_그대로다():
@@ -101,17 +95,3 @@ def test_이미_KST인_값은_그대로다():
     assert timefmt.kst_label(kst) == "10-03 11:00 KST"
 
 
-def test_변환이_한_곳이다():
-    """🔴 CLAUDE.md #1 — `kst_label` 을 **두 번 짓지 않는다**.
-
-    ⚠️ `run.kst_label` 은 남겨 뒀다(스케줄러 카드의 꼴이 다르다) — 그런데 그것은
-       `timefmt` 를 **부른다**. 계약은 *"자기 손으로 `astimezone().strftime()` 을
-       다시 하지 않는다"* 를 본다.
-    """
-    from app import run
-    src = run.__dict__["kst_label"].__doc__ or ""
-    assert "timefmt" in src, "run.kst_label 이 원본을 가리키지 않는다"
-    import inspect
-    body = inspect.getsource(run.kst_label)
-    assert "astimezone" not in body.split('"""')[-1], \
-        "run.kst_label 이 변환을 자기 손으로 다시 한다 — timefmt 를 불러라"

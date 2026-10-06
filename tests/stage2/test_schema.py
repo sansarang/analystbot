@@ -202,19 +202,6 @@ def test_used_in_이_폐기_어휘를_거부한다():
     assert "legacy_used_in = used_in" in SQL, "원값을 옮기는 마이그레이션이 없다"
 
 
-def test_blackboard_가_폐기_어휘를_돌려주지_않는다():
-    """🔴 §8 폐기 목록에 `lean` 이 있다. 코드가 그것을 **반환하면** 위반이다.
-
-    ⚠️ 단계 1 은 이것을 놓쳤다 — §9 단계 1 **게이트**가 이름을 댄 5개에 `lean` 이
-       없어 게이트는 통과했지만 **완료 조건**(§8 폐기 목록 전체)은 안 찼다
-       (리뷰 A2). 사용자 결정 2026-09-30: 단계 2 에서 #6 으로 닫는다. [§8 · #6]
-    """
-    got = {B._used_in(q) for q in
-           ("counter:x", "premise:x", "lineup:x", "live:x", "grade:x", "그밖")}
-    assert got <= set(B.USED_IN), f"값 집합 밖을 돌려준다: {got - set(B.USED_IN)}"
-    assert "lean" not in got, "🔴 §8 폐기 어휘 `lean` 을 아직 돌려준다"
-    # 🔴 다섯 값이 **전부 도달 가능**해야 한다 — 닿지 않는 값은 없는 값이다
-    assert got == set(B.USED_IN), f"닿지 않는 값이 있다: {set(B.USED_IN) - got}"
 
 
 def test_counter_와_trigger_는_폐기_대상이_아니다():

@@ -66,58 +66,7 @@ def test_dec4_npb_가_players_를_목록으로_낸다():
                 f"`list[str]` 이어야 한다")
 
 
-def test_dec4_roster_of_는_list_만_받는다():
-    """🔴🔴 **계약으로 잠근다** — dict 가 들어오면 **사유와 함께 거부**한다.
-
-    ⚠️ 조용히 통과시키면(키만 꺼내 쓰면) 어댑터가 모양을 흘린 사실이 **아무
-       데도 안 남는다**(#3). 🔴 터지지도, 조용하지도 않아야 한다.
-    """
-    from app.analyze import roster_of
-
-    class _F:
-        team = "T"
-
-        def __init__(self, value):
-            self.value = value
-
-    # ✅ 목록은 지난다
-    got = roster_of([_F({"squad": ["A", "B"], "players": ["C"]})], "T")
-    assert set(got) == {"A", "B", "C"}, got
-
-    # 🔴 dict 가 오면 **터지지 않는다** — 거부하고 사유를 남긴다
-    bad = _F({"players": {"デュプランティエ": "https://x/1.html"}})
-    out = roster_of([bad], "T")
-    assert isinstance(out, tuple), out
-    # ⚠️ 이름을 **주워 쓰지 않는다** — 그 칸은 계약 위반이므로 버린다
-    assert "デュプランティエ" not in out, (
-        "🔴 dict 에서 이름을 **주워 썼다** — 그러면 어댑터가 모양을 흘린 사실이 "
-        "아무 데도 안 남는다(#3). 버리고 사유를 남겨라")
 
 
-def test_dec4_흘린_모양이_사유로_남는다():
-    """🔴 **조용한 0 금지**(#3) — 거부한 칸을 셀 수 있어야 한다."""
-    from app import analyze
-    from tests._helpers import strip_docs
-    import inspect
-    body = strip_docs(inspect.getsource(analyze.roster_of))
-    assert "SHAPE" in body or "list" in body, body[:200]
-    # 🔴 그 사실을 **세는 자리**가 있어야 한다
-    assert hasattr(analyze, "ROSTER_SHAPE_DROPPED"), (
-        "🔴 어댑터가 흘린 모양을 **세지 않는다** — `analyze.ROSTER_SHAPE_DROPPED` "
-        "같은 자리에 쌓고 사유로 내라(#3)")
 
 
-@pytest.mark.parametrize("val", [
-    {"squad": ["A"], "players": ["B"]},         # ✅ 둘 다 목록
-    {"squad": ["A"]},                            # ✅ 하나만
-    {"players": []},                             # ✅ 빈 목록
-    {},                                          # ✅ 아무것도 없다
-])
-def test_dec4_정상_모양은_그대로_돈다(val):
-    """⚠️ 고치면서 **멀쩡한 길을 막지 않는다**."""
-    from app.analyze import roster_of
-
-    class _F:
-        team = "T"
-        value = val
-    assert isinstance(roster_of([_F()], "T"), tuple)

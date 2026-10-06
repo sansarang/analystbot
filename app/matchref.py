@@ -50,29 +50,9 @@ logger = logging.getLogger(__name__)
 #     두 표가 같은 사유를 다른 말로 하면 그것이 또 거짓 사유다.
 from app.reasons import SAY, Reason
 
-__all__ = ["SAY", "Lookup", "MatchRef", "Reason", "ref_from_row", "say"]
+__all__ = ["SAY", "Lookup", "MatchRef", "Reason", "ref_from_row"]
 
 
-def say(reason: Reason, *, asked: str = "") -> str:
-    """🔴 그 사유를 사용자 말로. ⚠️ **여기 없는 사유는 조용히 넘기지 않는다.**
-
-    🔴 `asked` 를 주면 **후보를 얹는다**(④) — *"맨시티를 못 찾았다.
-       `Manchester City FC`?"* ⚠️ **고르지는 않는다.** 그럴듯한 후보를 자동으로
-       채택하는 것이 *"거짓 사유"* 의 반대 방향 실수다(사용자 지적 2026-10-04).
-    ⚠️ 문장 자체는 `reasons.SAY` 가 든다 — 여기서 짓지 않는다(§8-6).
-    """
-    got = SAY.get(reason)
-    if got is None:
-        logger.warning("[matchref] 사용자 문장이 없는 사유: %r", reason)
-        return f"🔴 못 했다 — `{getattr(reason, 'value', reason)}`"
-    if reason is Reason.NAME_UNRESOLVED and asked:
-        from app import teamref
-        near = teamref.suggest(asked)
-        if near:
-            got += ("\n   혹시 이것인가 — "
-                    + " · ".join(f"`{x}`" for x in near)
-                    + " ⚠️ **고르지 않았다**. 맞으면 그 이름으로 다시 물어라")
-    return got
 
 
 @dataclass(frozen=True)

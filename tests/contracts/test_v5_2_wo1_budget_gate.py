@@ -83,16 +83,6 @@ def test_wo1_4_합계가_벽이다():
         f"🔴 **합계 {tot} 를 넘겼는데 계속 쓴다** — 지시서 §1-4: {why2}")
 
 
-def test_wo1_4_에이전트가_쪽_예산을_받는다():
-    """🔴 **배선**(#2) — `_run_agent` 가 쪽 예산과 **같은 지갑**을 넘겨야 한다."""
-    import inspect
-
-    from app import analyze
-    from tests._helpers import strip_docs
-    body = strip_docs(inspect.getsource(analyze.gather))
-    assert "MatchPot" in body, (
-        "🔴 경기 **합계 지갑**(`MatchPot`)을 만들지 않는다 — 두 쪽이 각자 25k 를 "
-        "다 쓰면 합계 50k 가 된다(지시서 §1-4 위반)")
 
 
 def test_wo1_4_추론_강도를_원장에_적는다():

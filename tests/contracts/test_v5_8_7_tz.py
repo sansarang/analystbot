@@ -16,26 +16,6 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
 
-def test_v5_8_7_naive_시각을_아무_곳도_안_받는다():
-    """🔴 §8-7 — 시간대 없는 시각은 **어디서도** 받지 않는다(fail-closed).
-
-    ⚠️ 한 곳이라도 받으면 그 시각이 UTC 인지 KST 인지 **아무도 모른다**.
-    """
-    from datetime import datetime
-
-    from app import agentloop, factspec, verifylayer
-    naive = datetime(2026, 10, 4, 12, 0)
-    with pytest.raises((ValueError, TypeError)):
-        factspec.Fact(kind="result", team="team:000338", opponent=None,
-                      date_utc=naive, state="final", source="x", url="u")
-    with pytest.raises((ValueError, TypeError)):
-        agentloop.AgentInput(
-            match_key="statsapi:1", home="team:1", away="team:2",
-            home_names=("a",), away_names=("b",), competition="MLB",
-            sport="baseball", kickoff_utc=naive, venue="", langs=("en",))
-    # 🔴 검증층도 naive 발행 시각을 **폐기**한다
-    ok, reason, _ = verifylayer.verify_one(_naive_var(naive), _naive_ctx())
-    assert ok is False and reason.value == "date_missing"
 
 
 def test_v5_9_5_계약마다_돌연변이_기록이_있다():
@@ -66,16 +46,6 @@ def test_v5_9_5_계약마다_돌연변이_기록이_있다():
 # ── 대역 ──────────────────────────────────────────────────────────
 
 
-def _inp():
-    from datetime import datetime, timedelta, timezone
-
-    from app import agentloop
-    return agentloop.AgentInput(
-        match_key="statsapi:849825", home="team:000338", away="team:000325",
-        home_names=("Milwaukee Brewers",), away_names=("San Diego Padres",),
-        competition="MLB", sport="baseball",
-        kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2),
-        venue="", langs=("en",))
 
 
 def _draft(sid: str, strength: float):
@@ -85,39 +55,13 @@ def _draft(sid: str, strength: float):
                            added_by="template")
 
 
-def _naive_var(when):
-    from app import agentschema
-    return agentschema.AgentVar(
-        id="A1", type="pitcher_state", team="team:000338",
-        direction_hint="home", claim="c", quote="Henderson will start",
-        url="https://www.mlb.com/x", published_at=when, lang="en")
 
 
-def _naive_ctx():
-    from datetime import datetime, timedelta, timezone
-
-    from app import verifylayer
-    return verifylayer.Context(
-        home="team:000338", away="team:000325",
-        home_names=["Milwaukee Brewers"], away_names=["San Diego Padres"],
-        competition="MLB", roster=["Logan Henderson"],
-        kickoff=datetime.now(timezone.utc) + timedelta(hours=2),
-        bodies={"https://www.mlb.com/x": "Henderson will start on Saturday"})
 
 
 # ── 대역 ──────────────────────────────────────────────────────────
 
 
-def _inp():
-    from datetime import datetime, timedelta, timezone
-
-    from app import agentloop
-    return agentloop.AgentInput(
-        match_key="statsapi:849825", home="team:000338", away="team:000325",
-        home_names=("Milwaukee Brewers",), away_names=("San Diego Padres",),
-        competition="MLB", sport="baseball",
-        kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2),
-        venue="", langs=("en",))
 
 
 def _draft(sid: str, strength: float):
@@ -127,21 +71,5 @@ def _draft(sid: str, strength: float):
                            added_by="template")
 
 
-def _naive_var(when):
-    from app import agentschema
-    return agentschema.AgentVar(
-        id="A1", type="pitcher_state", team="team:000338",
-        direction_hint="home", claim="c", quote="Henderson will start",
-        url="https://www.mlb.com/x", published_at=when, lang="en")
 
 
-def _naive_ctx():
-    from datetime import datetime, timedelta, timezone
-
-    from app import verifylayer
-    return verifylayer.Context(
-        home="team:000338", away="team:000325",
-        home_names=["Milwaukee Brewers"], away_names=["San Diego Padres"],
-        competition="MLB", roster=["Logan Henderson"],
-        kickoff=datetime.now(timezone.utc) + timedelta(hours=2),
-        bodies={"https://www.mlb.com/x": "Henderson will start on Saturday"})

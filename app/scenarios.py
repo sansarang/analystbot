@@ -245,19 +245,6 @@ def draw_scores() -> tuple[str, ...]:
 DRAW_MARK = "§3-3"
 
 
-def regression_needed(raw: float, trimmed: float) -> tuple[bool, str]:
-    """🔴 **회귀형(저득점) 시나리오가 필요한가** — 지시서 §3-2.
-
-    > 보정 평균이 원 평균보다 **1.0 이상 낮으면** 회귀형(저득점) 시나리오 필수.
-    """
-    a, b = float(raw or 0), float(trimmed or 0)
-    gap = a - b
-    if gap >= REGRESSION_GAP:
-        return True, (f"🔴 **회귀형이 필요하다** — 원 평균 {a:.2f} · 보정 "
-                      f"{b:.2f}(차이 {gap:.2f} ≥ {REGRESSION_GAP:g}). 한 경기가 "
-                      f"평균을 끌어올렸다(지시서 §3-2)")
-    return False, (f"보정 차이 {gap:.2f} < {REGRESSION_GAP:g} — 회귀형을 "
-                   f"강제하지 않는다")
 
 
 def draw_needed(fmt: object) -> tuple[bool, str]:
@@ -360,56 +347,6 @@ def require_slugfest(res, game, *, home_avg: float, away_avg: float) -> bool:
     return False
 
 
-def from_deepseek(rows: list, game, *, keep: list | None = None) -> list:
-    """🔴🔴 **DeepSeek 시나리오 → `Draft` 들** — 지시 ③ (2026-10-05).
-
-    > 카드 시나리오 = **DeepSeek 시나리오**. 각 시나리오에 `driver_vars` 번호와
-    > `mechanism` **문장**을 출력. 템플릿 시나리오는 **코드 필수형 보강일 때만**,
-    > `added_by:code` 표시와 함께.
-
-    ⚠️ `keep` 은 **코드 필수형 보강**이다(§6-2) — 그것은 남긴다.
-    🔴 글자는 **다시 매긴다**(`A`~`H`) — DeepSeek 가 준 id 를 믿지 않는다
-       (중복·빈 값이 오면 pydantic 이 터진다).
-    🔴 스코어는 **`outcomes`**(`[[2,1],[1,0]]`)에서 만든다 — 지어내지 않는다.
-    """
-    out: list[Draft] = []
-    for row in (rows or []):
-        box = row if isinstance(row, dict) else {}
-        scores = []
-        for pair in (box.get("outcomes") or []):
-            try:
-                a, b = int(pair[0]), int(pair[1])
-            except (TypeError, ValueError, IndexError):
-                continue
-            sc = f"{a}-{b}"
-            if sc not in scores:
-                scores.append(sc)
-        if not scores:
-            continue
-        drivers = [str(x) for x in (box.get("driver_vars") or [])]
-        out.append(Draft(
-            id="A", scores=scores,
-            # 🔴 세기는 **변수 hardness 합**이다(§5-a) — 모델이 안 정한다.
-            #    ⚠️ 여기서는 변수 번호만 아므로 **개수**로 둔다(0 이면 바닥이
-            #       걸린다 · `survive.WEIGHT_FLOOR`).
-            strength=float(len(drivers)),
-            template_id="deepseek",
-            # 🔴 **전개 문장이 먼저**다 — 독자가 읽는 것이고, 지시 ③ 이
-            #    *"`mechanism` 문장을 출력"* 이라고 적은 그 문장이다.
-            #    ⚠️ 실측 pn10: 여기에 번호만 적어 카드에 **전개가 없었다**.
-            why=((" ".join(str(box.get("mechanism") or "").split())
-                  or "⚠️ DeepSeek 가 `mechanism` 을 안 줬다")
-                 + f" · 근거 변수 {drivers or '없다'}"),
-            variables=drivers, added_by="deepseek",
-            mechanism=" ".join(str(box.get("mechanism") or "").split()),
-            driver_vars=drivers))
-    out += list(keep or [])
-    if not out:
-        return []
-    # 🔴 글자를 다시 매긴다 — 상한 안에서(`place_required` 와 같은 규칙)
-    return place_required(
-        [d for d in out if d.added_by != "required"],
-        [d for d in out if d.added_by == "required"], cap=MAX_SCENARIOS)
 
 
 def _evict_for_required(res, hint: str) -> str | None:
@@ -1193,20 +1130,6 @@ def _grid(res: Result, game: classify.Game, standings: dict | None) -> dict | No
     return got
 
 
-def attach_probability(res: Result, game, ctx) -> None:
-    """🔴 **격자를 (다시) 붙인다** — 시나리오를 갈아 치운 뒤에 쓴다.
-
-    ⚠️ `_grid` 는 `res.notes` 에 격자 사유를 적는다 — 두 번 적히지 않게
-       **그 사이에 새로 붙은 줄을 걷는다**(첫 판의 사유가 이미 있다).
-    🔴 못 만들면 **아무것도 안 붙인다** — 0 으로 때우지 않는다(#3).
-    """
-    before = len(res.notes or [])
-    probs = _grid(res, game, ctx)
-    if probs is None:
-        # ⚠️ 격자가 없으면 `_grid` 가 그 까닭을 적었다 — 그대로 둔다
-        return
-    del res.notes[before:]      # 🔴 같은 사유를 두 번 적지 않는다
-    _fill_probability(res, probs)
 
 
 def _fill_probability(res: Result, probs: dict | None) -> None:

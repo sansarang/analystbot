@@ -24,16 +24,16 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any
 
 from app.core.schema import (Doc, DropReason, Facts, Favors, MatchRef,
                              VarCandidate, Variable)
 from app.core.state import RunState
 
-#: 🔴 같은 주장으로 볼 유사도 — 수는 `verifylayer.SIM_SAME` 하나가 든다(#1).
+#: 🔴 같은 주장으로 볼 유사도 — 수는 `SIM_SAME` 하나가 든다(#1).
 def _sim_same() -> float:
-    from app import verifylayer
-    return float(verifylayer.SIM_SAME)
+    return float(SIM_SAME)
 
 
 #: 🔴 등급 수(0·1·2) → 옛 이름. ⚠️ 무게는 `types.WEIGHT_OF` 가 원본이다.
@@ -83,7 +83,6 @@ def goals_of(kind: str) -> str:
 def run(ref: MatchRef, facts: Facts, docs: list[Doc],
         cands: list[VarCandidate], *, state: RunState) -> list[Variable]:
     """🔴 후보를 검증해 변수로. ⚠️ 버린 것은 **사유와 함께** 남는다(#3)."""
-    from app import verifylayer
     by_id = {d.id: d for d in docs}
     rows: list[dict] = []
     for i, c in enumerate(cands):
@@ -103,12 +102,24 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
         #     말한 것도 `hard` 가 되지 못했다(실측: 2곳인데 soft).
         #  🔴 그 함수가 세는 것은 *"서로 다른 글인가"* 다 — `복사된 보도자료
         #     여덟은 하나다`. 그러니 **기사 본문**을 넘겨야 뜻이 맞는다.
-        n_src, _groups = verifylayer.independent_sources(
+        n_src, _groups = independent_sources(
             [(d.url, d.body[:2000]) for d in mine])
         tier = min((d.tier for d in mine),
                    key=lambda t: _TIER_ORDER.index(t)
                    if t in _TIER_ORDER else 9, default="aggregator")
-        level = int(verifylayer.hardness_for(str(tier), sources=n_src))
+        level = int(hardness_for(str(tier), sources=n_src))
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **출처 2곳 이상이면 `hard`** — 사용자 지시 2026-10-06 ①
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 같은 subject + 같은 type + 같은 핵심 대상이면 하나의 Variable 로 합치고
+        #  > `doc_ids` 를 모은다(**출처 2곳 이상이면 `hard`**).
+        #
+        #  ⚠️ §5-5 표는 `national` **2매체**만 2 로 올렸다 — 그래서 실측 2026-10-06 의
+        #     R1(세 매체가 말한 김민재 결장)이 `local` 등급 때문에 `soft(0.7)` 였다.
+        #  🔴 사용자 규칙이 그보다 **위**다(CLAUDE.md): 독립 출처가 둘이면 `hard`.
+        if n_src >= 2:
+            level = max(level, 2)
         name = _LEVEL_NAME.get(level, "soft")
         from app.types import WEIGHT_OF
         out.append(Variable(
@@ -150,7 +161,7 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
         # 🔴 **우리가 붙인 표지는 우리가 떼어 낸다**(#3: 그 사실을 적는다)
         state.note(f"s5 {what} 인용에서 **머리표를 떼어 냈다** — 모델이 붙인 "
                    f"`{c.quote[:28]}…` 는 우리가 넣은 표지다")
-    ok, why = verifylayer.quote_ok(quote, doc.body)
+    ok, why = quote_ok(quote, doc.body)
     if not ok:
         state.drop(what, (DropReason.BODY_MISSING if "본문을 못" in why
                           else DropReason.QUOTE_NOT_FOUND), why[:110])
@@ -216,8 +227,7 @@ def merge_key(subject: str, kind: str, target: str) -> tuple[str, str, str]:
     🔴 대상 글자는 **정규화**해서 비교한다 — `Kim Min-jae`·`김민재`·`KIM MIN-JAE` 가
        갈리면 열쇠가 쪼개진다. ⚠️ 정규화는 `verifylayer._norm` 하나다(사본 금지).
     """
-    from app import verifylayer
-    return (str(subject), str(kind), verifylayer._norm(str(target)))
+    return (str(subject), str(kind), norm(str(target)))
 
 
 def _merge(rows: list[dict], *, state: RunState) -> list[dict]:
@@ -403,3 +413,146 @@ def _ir_home(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         from_rule=rid,
         # ⚠️ 장소별 표본을 **안 쟀다** — 그래서 근거로는 쓰지 않는다(맥락 전용)
         usable_as_basis=False)]
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **`app/verifylayer.py` 에서 옮겨 왔다** — 사용자 지시 2026-10-06 ⑧
+# ══════════════════════════════════════════════════════════════════
+#
+# > `verifylayer` 내용을 s5 로 옮기고 삭제.
+#
+# 🔴 옮긴 것은 **검증의 알맹이**다: 인용 정규화(NFKC·합자·따옴표·발음기호),
+#    인용 대조, 자카드 유사도, 독립 출처 세기, 등급→무게. ⚠️ 그 함수들의 **실측
+#    근거 주석을 그대로** 가져왔다(근거를 잃으면 수를 다시 지어내게 된다).
+# ⚠️ 옛 파일의 `Context`·`verify_one`·`verify_all`(옛 dict 경로)은 **안 가져왔다** —
+#    v6 는 `_one`·`run` 이 그 일을 `Doc`·`VarCandidate` 타입으로 한다.
+#: 🔴 §5-3 — 기사는 **킥오프 7일 전 ~ 킥오프** 사이다.
+DATE_WINDOW_DAYS = 7
+
+
+#: 🔴 §5-7 — *"MinHash 유사도 **0.8 이상**을 한 묶음."*
+SIM_SAME = 0.8
+
+
+#: 🔴🔴 **NFD 로 안 벗겨지는 글자들** — 실측 2026-10-05.
+#
+#  ⚠️ `teamref._plain` 은 NFD 로 분해해 결합 문자를 버린다. 🔴 그런데 **합자·
+#     획이 그어진 글자**는 애초에 분해되지 않는다:
+#
+#       Ø ø Æ æ ß đ ł Ð þ Þ   → NFD 가 **그대로** 돌려준다(실측)
+#       Å å                   → ✅ 분해된다(A + 고리)
+#
+#  🔴 그래서 매체가 `Odegaard`(ASCII)로 쓰고 인용이 `Ødegaard` 로 오면 **대조가
+#     실패한다** — 북유럽·아이슬란드·폴란드·독일 이름이 전부 이 꼴이다.
+#  ⚠️ **음차가 아니다** — `Ø`→`O` 는 그 매체들이 ASCII 로 쓸 때 실제로 쓰는
+#     글자다(실측: 같은 espn 기사가 `Odegaard`·`Moller` 로 썼다).
+_LIGATURES = str.maketrans({
+    "Ø": "O", "ø": "o", "Æ": "AE", "æ": "ae", "Œ": "OE", "œ": "oe",
+    "ß": "ss", "Đ": "D", "đ": "d", "Ð": "D", "ð": "d",
+    "Ł": "L", "ł": "l", "Þ": "TH", "þ": "th", "Ħ": "H", "ħ": "h",
+    "Ŀ": "L", "ŀ": "l", "İ": "I", "ı": "i",
+})
+
+
+def norm(text: str) -> str:
+    """🔴 §5-1 — *"공백·따옴표 정규화."* ⚠️ 한글을 분해하지 않는다(NFC).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **넓혔다** — 지시서(오픈월드) §1-1 (2026-10-05)
+    ══════════════════════════════════════════════════════════════════
+
+    > 인용 검증(§5-1)이 **정규화 차이**(따옴표·공백·NBSP·대소문자·발음 기호)로
+    > 진짜 인용을 떨어뜨리는지 … 정규화 문제면 정규화를 넓히고(NFKC·따옴표
+    > 통일·공백 접기)
+
+    ⚠️ 이미 하던 것: NFC · 따옴표 통일 · 공백 접기(`split()` 이 NBSP·전각 공백도
+       나눈다) · 소문자.
+    🔴 **더한 것: 발음 기호**(`Ødegaard` ↔ `Odegaard`). 매체가 북유럽·포르투갈
+       이름을 **양쪽으로** 쓴다(실측: 같은 기사 안에서도 갈린다).
+       ⚠️ 벗기는 자리는 `teamref._plain` **하나**다(사본 금지) — 한글·가나·한자는
+          그대로 두고 라틴 발음부호만 벗긴다.
+    🔴 대시·생략표도 통일한다 — `–`·`—` 와 `…` 는 매체마다 다르게 쓴다.
+    """
+    from app.teamref import _plain
+    raw = unicodedata.normalize("NFC", str(text or ""))
+    raw = re.sub(r"[“”„‟＂\"]", '"', raw)
+    raw = re.sub(r"[‘’‚‛＇']", "'", raw)
+    raw = re.sub(r"[–—―‒]", "-", raw)
+    raw = raw.replace("…", "...")
+    # 🔴 발음 기호를 벗긴다 — **라틴만**(한글·가나·한자는 `_plain` 이 지킨다)
+    raw = raw.translate(_LIGATURES)
+    raw = _plain(raw)
+    return " ".join(raw.split()).lower()
+
+
+def quote_ok(quote: str, body: str) -> tuple[bool, str]:
+    """🔴🔴 **그 인용이 본문에 있나.** `(있다, 사유)` — §5-1.
+
+    ⚠️ 이 판단이 **인라인으로** 숨어 있었다(지시서 §1-1 이 양방향 고정물을
+       요구하는데 **부를 함수가 없었다**). 🔴 한 함수로 뽑는다 — 판정은 한 곳이다.
+
+    🔴 **세 사유를 가른다**(§8-6: 거짓 사유 금지):
+         인용이 없다        → `QUOTE_NOT_FOUND`(에이전트)
+         본문을 못 받았다    → `BODY_MISSING`(수집/배선)  ⚠️ **다른 고칠 곳**이다
+         본문에 없다        → `QUOTE_NOT_FOUND`(에이전트가 지어냈다)
+    """
+    q = norm(quote)
+    if not q:
+        return False, "🔴 인용이 **없다**(§5-1)"
+    b = norm(body)
+    if not b:
+        return False, "🔴 **본문을 못 받았다** — 대조할 수 없다(fail-closed)"
+    return (True, f"인용이 본문에 있다({len(q)}자)") if q.strip('"') in b else (
+        False, f"🔴 인용이 **본문에 없다** — 지어낸 것이다(§5-1): `{q[:50]}`")
+
+
+def hardness_for(tier: str, *, conflict: bool = False,
+                 reverified: bool = True, sources: int = 1) -> int:
+    """🔴 §5-5 — 등급 → 무게. ⚠️ 충돌·미재검증이 **내린다**.
+
+    > hardness = 2(official 또는 **national 2매체 일치**) / 1(national·local
+    > 단일, aggregator 2매체) / 0(배경·단일 aggregator).
+    > §5-7: 충돌이면 두 변수 모두 보존하되 **hardness 0**.
+    > §5-8·M31: `reverified:false` → **한 단계 내린다**.
+    """
+    from app import domains
+    base = domains.hardness_of(tier)
+    # 🔴 §5-5 — `national` 2매체 일치는 **2** 다
+    if tier == "national" and sources >= 2:
+        base = 2
+    # ⚠️ 단일 `aggregator` 는 **0**(배경)이다 — 2매체면 1
+    if tier == "aggregator" and sources < 2:
+        base = 0
+    if conflict:
+        return 0                      # 🔴 §5-7
+    if not reverified:
+        base = max(base - 1, 0)       # 🔴 §5-8 · M31
+    return base
+
+
+def _shingles(text: str, k: int = 5) -> set[str]:
+    t = norm(text)
+    return {t[i:i + k] for i in range(max(len(t) - k + 1, 1))}
+
+
+def similarity(a: str, b: str) -> float:
+    """🔴 자카드 유사도. ⚠️ MinHash 의 추정 대상이 이것이다 — 건수가 적어서
+    **정확히** 센다(해시 근사가 필요한 규모가 아니다)."""
+    sa, sb = _shingles(a), _shingles(b)
+    if not sa or not sb:
+        return 0.0
+    return len(sa & sb) / len(sa | sb)
+
+
+def independent_sources(rows: list[tuple[str, str]]) -> tuple[int, list[list[str]]]:
+    """🔴 §5-7 — `(독립 출처 수, 묶음들)`. ⚠️ `rows` 는 `(url, 주장)`."""
+    groups: list[list[str]] = []
+    texts: list[str] = []
+    for url, claim in rows:
+        for i, seen in enumerate(texts):
+            if similarity(claim, seen) >= SIM_SAME:
+                groups[i].append(url)
+                break
+        else:
+            groups.append([url])
+            texts.append(claim)
+    return len(groups), groups

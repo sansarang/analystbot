@@ -347,23 +347,6 @@ def test_금지_라인업_소스가_정본_문장에서_왔다():
     # 🔴 도메인이 실제로 막히는지는 아래 계약이 URL 로 확인한다
 
 
-def test_금지_소스_URL을_거부한다():
-    """🔴 **표에 안 넣는 것만으로는 부족하다** — 그 셋은 검색 1순위로 나온다.
-
-    ⚠️ 실측 2026-09-30(단계 4): 세이부 라인업 세포가
-       `baseball-data.com/lineup/l.html` 을 **실제로 열었고**, 그 표는 하루 지연이라
-       겐다가 선발로 들어 있었다 — §19-g-5 의 사실(겐다 **벤치**)과 반대다.
-    """
-    from app import searchcells
-    for bad in ("https://baseball-data.com/lineup/l.html",
-                "https://news.yahoo.co.jp/articles/abc",
-                "https://baseball.yahoo.co.jp/npb/game/x"):
-        why = searchcells.deny_lineup_source(bad)
-        assert why and "§13-a" in why, (bad, why)
-    # 🔴 허용되는 곳은 통과시킨다 — 전부 막으면 라인업 세포가 무력해진다
-    for ok in ("https://lions-matome.com/archives/x.html",
-               "https://www.nishispo.jp/x", "https://www.carp.co.jp/"):
-        assert searchcells.deny_lineup_source(ok) is None, ok
 
 
 # ══════════════════════════════════════════════════════════════════

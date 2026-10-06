@@ -288,26 +288,6 @@ def narrow_query(seed: str, words: list) -> str:
     return " ".join([*add, *base]) if add else " ".join(base)
 
 
-def prompt_tail(task: Subtask) -> str:
-    """🔴🔴 **하위 프롬프트 꼬리**(§2·§4) — 담당과 검색어 규칙을 전한다.
-
-    > 하위 프롬프트 = 기존 시스템 프롬프트(규칙·`done` 스키마·인용 의무) +
-    > *"네 담당은 위 유형들뿐이다. 다른 유형의 사실을 보면 적어도 되지만
-    > **담당 유형을 먼저 끝내라**"* + §4 검색어 규칙.
-    """
-    from app import querygate
-    kinds = ", ".join(task.kinds)
-    return (
-        f"\n\n🔴 **네 담당은 `{task.label}` 유형들뿐이다**: {kinds}\n"
-        f"다른 유형의 사실을 보면 적어도 되지만 **담당 유형을 먼저 끝내라.**\n"
-        f"\n🔴 **첫 검색은 반드시 이 꼴이다**: `{task.seed}`\n"
-        f"넓게 시작해 판을 본 뒤 좁힌다 — 1차 결과의 제목·스니펫에서 본 "
-        f"구체 낱말(선수명·감독명·현지어 표기·부상 부위)로 2차를 좁혀라.\n"
-        f"⚠️ 검색어는 **{querygate.MAX_WORDS}낱말을 넘기지 마라** — 긴 문장 "
-        f"질의는 결과를 0건으로 만든다(실측).\n"
-        f"🔴 검색은 **{task.budget.search_cap}번**뿐이다: 씨앗 1 + 좁히기 1 + "
-        f"(현지어 또는 각도 전환) 1. 네 번째는 없다.\n"
-        f"⚠️ 네가 맡은 쪽은 **{task.team}**(상대 {task.opp})이다.\n")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -333,304 +313,24 @@ def prompt_tail(task: Subtask) -> str:
 #    ⚠️ 하위 과제 경로에서는 **부르지 않는다**(M128).
 
 
-def extract_prompt(task: Any, kinds: list, *, game: dict | None = None) -> str:
-    """🔴 추출 한 번에 보내는 **규칙 글**(지시서 §1-5).
-
-    > "아래 문단에서 담당 유형(`{유형 목록}`)의 변수만 JSON 으로 뽑아라.
-    > `quote` 는 문단의 글자 그대로, `source` 는 머리표로"
-    """
-    return (
-        "너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\n"
-        "\n"
-        f"🔴 담당 유형: {', '.join(str(k) for k in kinds)} — **그 유형만** 뽑는다.\n"
-        "🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다). "
-        "지어낸 인용은 검증층이 잡아 버린다.\n"
-        "🔴 `source` 는 문단 머리표(`[D1-P3]`)를 그대로 적는다 — 그것으로 "
-        "URL·발행일을 되찾는다.\n"
-        "⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 "
-        "둔다 — 빈 것이 지어낸 것보다 낫다.\n"
-        "🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\n"
-        # ══════════════════════════════════════════════════════════
-        # 🔴🔴 **`team` 은 열쇠다** — §8-1 · M48 (실측 2026-10-06)
-        # ══════════════════════════════════════════════════════════
-        #
-        #  ⚠️ 모델이 `team: "Jamaica"` 라고 적어 `name_not_key` 로 **폐기**됐다.
-        #     M48 이 그것을 **옮기지 않고 버리는** 까닭은 *"옮기면 모델의 그
-        #     버릇이 숨는다"* 다 — 그러니 고칠 곳은 **알려 주는 것**이다.
-        #  🔴 열쇠를 **글자로** 준다. 이름을 적으면 그 줄은 버려진다고도 적는다.
-        + _keys_line(game))
 
 
-def _keys_line(game: dict | None) -> str:
-    """🔴 `team` 칸에 쓸 **열쇠 두 개**를 글자로 알려 준다(§8-1 · M48)."""
-    box = dict(game or {})
-    home_k, away_k = str(box.get("home_id") or ""), str(box.get("away_id") or "")
-    if not (home_k and away_k):
-        return ("🔴 `team` 은 **열쇠**여야 한다(이름을 적으면 그 줄은 버려진다).\n")
-    return (f"🔴 `team` 칸에는 **이 두 열쇠 중 하나만** 적는다 — "
-            f"{box.get('home')} = `{home_k}` · {box.get('away')} = `{away_k}`. "
-            f"⚠️ 팀 **이름**을 적으면 그 줄은 **버려진다**(§8-1 · M48).\n")
 
 
-def _seeds(task: Any, game: dict) -> list[tuple[str, str]]:
-    """🔴 ① 씨앗 질의 **2개** — `(질의, 언어)`(지시서 §1-1).
-
-    > 씨앗 질의 2개(영어 1 + 팀 현지어 1). KBO·K리그·한국 대표팀은 한국어 2개.
-    """
-    from app import queries
-    team = str(game.get("home") or "")
-    opp = str(game.get("away") or "")
-    if str(task.team_key or "") == str(game.get("away_id") or ""):
-        team, opp = opp, team
-    comp = queries.competition_short(game.get("league"))
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **핵심어는 표가 든다** — 실측 2026-10-06
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 나는 처음에 **유형 이름**(`absence_def`·`def_absence`)을 질의에 넣었다.
-    #     🔴 그것은 **우리 내부 이름**이고 기사에 없는 글자다 — 받은 문단이
-    #     *"Overdrive 라디오 프로그램"*·*"Bournemouth 2024/25"* 였다(실측).
-    #  🔴 `rules.word_concept(유형)` → `rules.local_words(개념, 언어)` 가 그
-    #     언어의 실제 낱말을 든다(`injury`·`부상`·`欠場`…). 사본을 만들지 않는다.
-    from app import rules
-    def _word(lang: str) -> str:
-        for kind in (getattr(task, "kinds", None) or ()):
-            concept = rules.word_concept(str(kind))
-            if not concept:
-                continue
-            got = rules.local_words(concept, lang)
-            if got:
-                return str(got[0])
-        return ""
-    comp_w = comp
-    out: list[tuple[str, str]] = []
-    # ── 영어 1개
-    en = " ".join(x for x in (team, comp_w, _word("en")) if x)
-    out.append((en, "en"))
-    # ── 팀 현지어 1개(없으면 상대를 넣은 영어로)
-    lang = team_lang(team) or first_lang(league=str(game.get("league") or ""),
-                                        langs=tuple(game.get("langs") or ()))
-    if lang and lang != "en" and _word(lang):
-        out.append((" ".join(x for x in (team, _word(lang)) if x), lang))
-    else:
-        out.append((" ".join(x for x in (team, opp, _word("en")) if x), "en"))
-    return [(queries.slot_value(q), lg) for q, lg in out if str(q).strip()]
 
 
-async def _find(task: Any, game: dict, *, chain, seen, net, seeds=None
-                ) -> tuple[list[dict], list[str]]:
-    """🔴 ②③④ — 검색·거르기·본문 문단. `(문단 묶음, 사유들)`.
-
-    ⚠️ 여기에 **LLM 이 없다** — 그것이 §1 의 요지다.
-    """
-    from app import cells, datehint, domains, readtext
-    from app.research import lead, rerank
-    cfg = dict(_sub_cfg())
-    why: list[str] = []
-    hits: list = []
-    for q, lang in (seeds if seeds is not None else _seeds(task, game)):
-        if not task.budget.may_search():
-            why.append(f"검색 상한({task.budget.search_cap})에 닿았다")
-            break
-        task.budget.search_used += 1
-        try:
-            async with lead.gate("searx"):
-                got = await chain.query(q, lang=lang)
-        except Exception as exc:                            # noqa: BLE001
-            why.append(f"검색 실패 {q!r}: {exc}")
-            continue
-        why.append(f"질의 {q!r}({lang}) → {len(got)}건")
-        hits += list(got or [])
-    # ── ③ 거르기: 도메인 등급 → 날짜 힌트
-    kept: list = []
-    for h in hits:
-        url = str(getattr(h, "url", "") or "")
-        if not url or any(url == str(getattr(k, "url", "")) for k in kept):
-            continue
-        ok_d, _tier, said = domains.verdict(url, sport=str(game.get("sport") or ""))
-        if not ok_d:
-            why.append(f"도메인 거부 {url[:50]} — {said[:40]}")
-            continue
-        old, said_old = datehint.too_old(url, str(getattr(h, "snippet", "") or ""))
-        if old:
-            why.append(f"②층 — 받지 않는다: {said_old[:40]}")
-            continue
-        kept.append(h)
-    # ── ③ 재정렬 1단 → 상위 N 건
-    top = int(cfg.get("fetch_top") or 3)
-    if kept:
-        pairs = [f"{getattr(h, 'title', '')} {getattr(h, 'snippet', '')}"
-                 for h in kept]
-        order, said_r = rerank.paragraphs(
-            " ".join(str(k) for k in (getattr(task, "kinds", None) or ())), pairs)
-        why.append(f"재정렬 — {said_r}")
-        rank = {t: i for i, t in enumerate(order)}
-        kept.sort(key=lambda h: rank.get(
-            f"{getattr(h, 'title', '')} {getattr(h, 'snippet', '')}", 999))
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **실패는 다음 후보로 대체한다** — 실측 2026-10-06(재생으로 잡았다)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 종전엔 `kept[:top]` 만 돌았다. 🔴 상위 3건이 **전부 못 열리면**
-    #     (`msn.com`·`goal.com` 거부 · trafilatura 폐기) 받은 문서가 **0건**이
-    #     되고 그 하위는 변수 0개로 끝났다 — 실측에서 8/8 이 그랬다.
-    #  🔴 예산은 그대로다(`fetch_cap` 만큼만 **부른다**) — 다만 그 호출을
-    #     **다른 후보에** 쓴다. ⚠️ 상한을 올리는 것은 §8 금지다.
-    docs: list[dict] = []
-    for i, h in enumerate(kept, 1):
-        if len(docs) >= top:
-            break
-        if not task.budget.may_fetch():
-            why.append(f"열기 상한({task.budget.fetch_cap})에 닿았다 — "
-                       f"받은 문서 {len(docs)}건")
-            break
-        task.budget.fetch_used += 1
-        url = str(getattr(h, "url", "") or "")
-        body = (seen.bodies.get(url) if seen is not None else "") or ""
-        when = cells.doc_date(seen, url) if seen is not None else None
-        if not body.strip():
-            try:
-                async with lead.gate("fetch"):
-                    got = await net.get(url)
-            except Exception as exc:                        # noqa: BLE001
-                why.append(f"열기 실패 {url[:50]}: {exc}")
-                continue
-            if not getattr(got, "ok", False):
-                why.append(f"열기 실패 {url[:50]}: ok=False")
-                continue
-            body, when = readtext.extract(getattr(got, "text", "") or "",
-                                          url=url)
-            # 🔴 저장은 **한 함수**다(§3) — 본문과 날짜를 같이 넣는다
-            cells.store_doc(seen, url, body, published_at=when,
-                            date_source="본문(하위 fetch · htmldate)")
-        if not str(body).strip():
-            why.append(f"본문을 못 얻었다 {url[:50]}")
-            continue
-        docs.append({"tag": f"D{len(docs) + 1}", "url": url, "body": str(body),
-                     "published_at": when,
-                     "publisher": str(getattr(h, "publisher", "") or "")})
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **받은 뒤 날짜로 다시 거른다** — 실측 2026-10-06
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ ②층(`datehint`)은 **URL·스니펫**만 본다 — 날짜 힌트가 없으면 받는다
-    #     (fail-open). 🔴 그래서 받아 보니 `2004-09-24`(위키 연혁)·
-    #     `2017-07-13`(옛 기사) 문단이 추출에 들어갔고, 모델이 그 사실로 변수를
-    #     만들었다(실측: `2022 FIFA World Cup qualification` · 2017년 감독 발언).
-    #  🔴 **받은 뒤에는 진짜 날짜를 안다** — 그때 거르는 것이 맞다.
-    #  ⚠️ 날짜를 **모르는 문서는 남긴다** — 검증층이 그 뒤를 본다(§12-c-1 이
-    #     `soft` 로만 남긴다). 모르는 것과 낡은 것은 다르다(#3).
-    kick = game.get("kickoff")
-    if kick is not None:
-        from datetime import timedelta
-        from app import timefmt, verifylayer
-        floor = timefmt.aware(kick)
-        if floor is not None:
-            floor = floor - timedelta(days=verifylayer.DATE_WINDOW_DAYS)
-            fresh = []
-            for d in docs:
-                got = timefmt.aware(d.get("published_at"))
-                if got is not None and got < floor:
-                    why.append(f"낡은 문서 버렸다 — {got:%Y-%m-%d} "
-                               f"(창 {verifylayer.DATE_WINDOW_DAYS}일) "
-                               f"{str(d.get('url'))[:50]}")
-                    continue
-                fresh.append(d)
-            # 🔴 **번호를 다시 매긴다** — 머리표가 문단과 어긋나면 안 된다
-            for j, d in enumerate(fresh, 1):
-                d["tag"] = f"D{j}"
-            docs = fresh
-    return docs, why
 
 
-def paragraph_block(docs: list, kinds: list, *, cap: int = 0) -> tuple[str, dict]:
-    """🔴 ④ 문단 묶음 + **머리표 → 출처** 표(지시서 §1-4).
-
-    > 문서마다 BM25 상위 20 → 재정렬 상위 6 → 하위당 최대 18문단. 문단마다
-    > `[D1-P3] (도메인, 발행일)` 머리표를 붙인다.
-    """
-    from app import readtext
-    from app.research import rerank
-    cap = cap or int(_sub_cfg().get("paras_max") or 18)
-    want = " ".join(str(k) for k in (kinds or ()))
-    lines: list[str] = []
-    where: dict[str, dict] = {}
-    for d in (docs or []):
-        paras = readtext.paragraphs(str(d.get("body") or ""))
-        got, _said = rerank.paragraphs(want, paras)
-        for j, para in enumerate(got[:6], 1):
-            if len(lines) >= cap:
-                break
-            tag = f"[{d['tag']}-P{j}]"
-            host = str(d.get("publisher") or "").strip() or _host(d.get("url"))
-            when = d.get("published_at")
-            lines.append(f"{tag} ({host}, {when or '발행일 없음'}) {para}")
-            # 🔴 **문단 글자도 담는다** — 인용을 되맞춰 머리표를 찾는다
-            where[tag] = {"url": d.get("url"), "published_at": when,
-                          "text": para}
-    return "\n".join(lines), where
 
 
-def _aware(when: object):
-    """🔴 tz 있는 값만 돌려준다 — 없으면 `None`(§8-7)."""
-    from app import timefmt
-    return timefmt.aware(when)
 
 
-def _agent_inp(game: dict):
-    """🔴 이름→열쇠 변환에 필요한 **최소 입력** — `_vars_from` 이 그것을 쓴다.
-
-    ⚠️ 하위 경로는 에이전트 루프를 안 돌지만, **이름 해석 규칙**은 같아야 한다
-       (§8-1: 해석은 한 곳에서만).
-    """
-    from app.agentloop import AgentInput
-    return AgentInput(
-        match_key=str(game.get("ext_id") or ""),
-        home=str(game.get("home_id") or ""), away=str(game.get("away_id") or ""),
-        home_names=(str(game.get("home") or ""),),
-        away_names=(str(game.get("away") or ""),),
-        competition=str(game.get("league") or ""),
-        sport=str(game.get("sport") or ""),
-        # 🔴 tz 없는 값은 **안 넣는다** — `AgentInput` 이 그것을 거부한다(§8-7).
-        #    ⚠️ 없으면 `_vars_from` 의 이름 해석만 쓰므로 킥오프가 필요 없다.
-        kickoff_utc=(_aware(game.get("kickoff"))
-                     or _dt.datetime.now(_dt.timezone.utc)),
-        venue=str(game.get("venue") or ""),
-        langs=tuple(game.get("langs") or ("en",)))
 
 
-def _where_of(row: dict, where: dict) -> dict | None:
-    """🔴🔴 그 변수의 **인용이 어느 문단에 있나** — 머리표·URL·발행일을 돌려준다.
-
-    ⚠️ 모델이 적은 `source`·`url` 을 **먼저 믿지 않는다**(실측 2026-10-06: 도메인을
-       적었다). 🔴 인용으로 찾으면 §5-1(인용이 본문에 있나)이 **여기서** 같이
-       통과하고, 그 뒤 검증층이 다시 본다(두 번 보는 것이 맞다).
-    ⚠️ 못 찾으면 `None` — 문단에 없는 인용은 **지어낸 것**이다.
-    """
-    said = _norm_q(row.get("quote"))
-    if said:
-        for tag, box in where.items():
-            if said in _norm_q(box.get("text")):
-                return {**box, "tag": tag}
-    # 🔴 **대체**: 모델이 머리표를 바르게 적었으면 그것도 받는다
-    tag = str(row.get("source") or "").strip()
-    for key in (tag, f"[{tag}]"):
-        if key in where:
-            return {**where[key], "tag": key}
-    return None
 
 
-def _norm_q(text: object) -> str:
-    """🔴 인용 대조용 정규화 — 공백·따옴표만 걷는다(글자는 안 바꾼다)."""
-    said = str(text or "")
-    for ch in '"\u201c\u201d\u2018\u2019\'':
-        said = said.replace(ch, "")
-    return " ".join(said.split()).lower()
 
 
-def _host(url: object) -> str:
-    said = str(url or "")
-    return said.split("/")[2] if said.count("/") >= 2 else said
 
 
 def _sub_cfg() -> dict:
@@ -638,128 +338,15 @@ def _sub_cfg() -> dict:
     return dict((rules.llm_budget().get("per_subtask") or {}))
 
 
-async def run_subtask(task: Any, *, seen, chain, net, game: dict,
-                      match_key: str = "", budget: Any = None,
-                      funnel: Any = None) -> tuple[list, str]:
-    """🔴🔴 **하위 과제 하나** — 지시서 2026-10-06 §1. `(변수들, 사유)`.
-
-    🔴 **LLM 은 ⑤ 추출 한 번**(조건부 ⑥ 에서 한 번 더) — 루프가 없다.
-    ⚠️ `agentloop.run` 을 **부르지 않는다**(M128) — 그 코드는 오픈월드 ⑥단
-       (경기 찾기)에만 남는다.
-    """
-    from app import agentloop, solar
-    from app.reasons import Reason
-    cfg = dict(_sub_cfg())
-    kinds = [str(k) for k in (getattr(task, "kinds", None) or ())]
-    notes: list[str] = []
-
-    docs, why = await _find(task, game, chain=chain, seen=seen, net=net)
-    notes += why
-    if not docs:
-        return [], f"{task.name}: 받은 문서 0건 · " + " | ".join(notes[-4:])
-
-    block, where = paragraph_block(docs, kinds)
-    if not block.strip():
-        return [], f"{task.name}: 문단 0개(본문은 받았다) · " + " | ".join(notes[-3:])
-    notes.append(f"문단 {len(block.splitlines())}개 · 문서 {len(docs)}건")
-
-    # ── ⑤ 추출 — **LLM 한 번**. 🔴 도구 없음 · 스키마 강제.
-    got, said = await _extract(task, kinds, block, where, game=game,
-                              match_key=match_key, budget=budget, seen=seen)
-    notes.append(said)
-
-    # ── ⑥ 좁히기 2차(조건부 · 최대 1회) — 🔴 LLM 이 질의를 만들지 않는다
-    if not got and task.budget.may_search():
-        words = narrow_words([{"title": d.get("publisher"),
-                               "snippet": d.get("body", "")[:200]}
-                              for d in docs])
-        if words:
-            team = str(game.get("home") or "")
-            if str(task.team_key or "") == str(game.get("away_id") or ""):
-                team = str(game.get("away") or "")
-            seeds = [(narrow_query(team, words), "en")]
-            notes.append(f"⑥ 좁히기 2차 — 고유명사 {words[:2]} 로 한 번 더")
-            more, why2 = await _find(task, game, chain=chain, seen=seen,
-                                     net=net, seeds=seeds)
-            notes += why2
-            if more:
-                blk2, where2 = paragraph_block(more, kinds)
-                if blk2.strip():
-                    got, said2 = await _extract(
-                        task, kinds, blk2, where2, game=game,
-                        match_key=match_key, budget=budget, seen=seen)
-                    notes.append(f"2차 {said2}")
-    if funnel is not None and not got:
-        funnel.drop(Reason.AGENT_ZERO, "agent_vars")
-    return got, f"{task.name}: " + " | ".join(notes[-6:])
 
 
-async def _extract(task: Any, kinds: list, block: str, where: dict, *,
-                   game: dict, match_key: str, budget: Any, seen
-                   ) -> tuple[list, str]:
-    """🔴 ⑤ 추출 **한 번** — 지시서 §1-5. `(변수들, 사유)`.
 
-    > 출력은 `done` 스키마의 `variables` 배열과 같은 꼴(M47). **도구 없음.**
-    > `max_tokens` 4,000 · `reasoning_effort=low` · 타임아웃 120초 · 재시도 1회.
-    """
-    import asyncio
-
-    from app import agentloop, cells, solar
-    cfg = dict(_sub_cfg())
-    msgs = [{"role": "system",
-             "content": extract_prompt(task, kinds, game=game)},
-            {"role": "user", "content": block}]
-    try:
-        got = await asyncio.to_thread(
-            solar.chat, msgs, schema=agentloop.output_schema(),
-            budget=budget, match=match_key,
-            max_tokens=int(cfg.get("extract_max_tokens") or 4_000),
-            # 🔴🔴 **추론을 끈다** — 실측 2026-10-06: `low` 는 상한 4,000 을
-            #    전부 추론에 쓰고 `content` 를 **0자** 냈다(하위 7/8 이 그래서
-            #    빈 글이었다). ⚠️ 상한을 올리는 것은 §8 금지다.
-            reasoning_effort=str(cfg.get("extract_reasoning_effort")
-                                 or "minimal"),
-            timeout=int(cfg.get("extract_timeout_sec") or 120),
-            retries=int(cfg.get("extract_retries") or 1))
-    except solar.SolarUnavailable as exc:
-        return [], f"추출 실패 — {exc}"
-    text = str(((got.get("choices") or [{}])[0].get("message") or {})
-               .get("content") or "")
-    box, said = agentloop._json_in(text)
-    if box is None:
-        return [], f"추출 JSON 을 못 읽었다 — {said}"
-    # 🔴 **머리표로 URL·발행일을 되찾는다**(지시서 §1-4) — 모델이 URL 을 적지
-    #    않으므로 `source` 가 그 길이다. ⚠️ 모르는 머리표는 **버린다**.
-    rows, dropped = [], []
-    for raw in (box.get("variables") or []):
-        row = dict(raw or {})
-        # ══════════════════════════════════════════════════════════
-        # 🔴🔴 **머리표를 인용으로 되찾는다** — 실측 2026-10-06
-        # ══════════════════════════════════════════════════════════
-        #
-        #  ⚠️ 모델이 `url` 칸에 **도메인**을 적었다(`en.wikipedia.org`) —
-        #     머리표가 아니다. 🔴 그래서 후보 8개가 전부 버려졌다.
-        #  🔴 **글자를 믿지 않는다**: 그 인용이 **어느 문단에 있나**를 코드가
-        #     찾는다. 그러면 머리표·URL·발행일이 한꺼번에 정해지고, §5-1
-        #     (인용이 본문에 있나)이 **그 자리에서** 같이 통과한다.
-        #  ⚠️ 못 찾으면 **버린다** — 문단에 없는 인용은 지어낸 것이다.
-        hit = _where_of(row, where)
-        if hit is None:
-            dropped.append(str(row.get("id") or "?"))
-            continue
-        row["url"] = hit.get("url")
-        row["source"] = hit.get("tag")
-        rows.append(row)
-    dates = {str(v.get("url")): v.get("published_at")
-             for v in where.values() if v.get("url")}
-    # 🔴🔴 **팀 이름을 열쇠로 옮긴다** — 실측 2026-10-06.
-    #    ⚠️ 모델은 열쇠(`team:000268`)를 모르고 **이름**을 적는다. M48 이 이름을
-    #       버리므로(`name_not_key`) `inp` 를 안 넘기면 쓸 만한 후보도 전부
-    #       떨어진다(실측: `team: "Jamaica"` 한 건이 그렇게 사라졌다).
-    #    🔴 해석은 **한 곳**이다(§8-1) — `_vars_from(inp=...)` 가 그 일을 한다.
-    out, why = agentloop._vars_from({"variables": rows}, inp=_agent_inp(game),
-                                    dates=dates)
-    said_all = (f"추출 — 후보 {len(out)}개"
-                + (f" · 🔴 인용을 문단에서 못 찾아 {len(dropped)}개 버렸다"
-                   f"({dropped[:3]})" if dropped else ""))
-    return out, f"{said_all} · {why}" if why else said_all
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **옛 하위 과제 경로를 지웠다** — 사용자 지시 2026-10-06 ⑧
+# ══════════════════════════════════════════════════════════════════
+#
+# 지운 것: `run_subtask`(에이전트 루프 호출)·`_find`·`_seeds`·`paragraph_block`·
+# `extract_prompt`·`prompt_tail`·`_agent_inp`·`_where_of`.
+# 🔴 그 일을 v6 가 한다: 찾기 `s3_docs`, 문단·추출 `s4_extract`(루프 없음).
+# ⚠️ **남긴 것**은 v6 가 부르는 부품뿐이다: `groups`·`split`·`Subtask`·`Budget`·
+#    `comp_short`·`team_lang`·`first_lang`·`narrow_words`·`narrow_query`.

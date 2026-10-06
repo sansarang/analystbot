@@ -72,27 +72,6 @@ def gate(name: str) -> asyncio.Semaphore:
     return got
 
 
-async def run_all(jobs: list) -> tuple[list, list]:
-    """🔴🔴 **병렬 격리**(M63) — `(산 결과들, 터진 것들)`.
-
-    > 하위 하나의 예외·타임아웃·`budget_cut` 이 **다른 하위를 멈추지 않는다.**
-    > 실패 하위는 장부에 `searched`(빈손) 또는 **사유 코드**로 남긴다.
-
-    ⚠️ 실측 2026-10-05(프랑스–벨기에): 한 팀 에이전트가 `'str' object has no
-       attribute 'get'` 으로 터졌고 **그 팀 변수가 통째로 없었다**. 🔴 분할
-       뒤에는 그 하나가 나머지 일곱을 끌고 내려가면 안 된다.
-    🔴 **터진 것을 조용히 버리지 않는다**(#3) — 돌려주고 호출부가 적는다.
-    """
-    got = await asyncio.gather(*jobs, return_exceptions=True)
-    live: list[Any] = []
-    bad: list[BaseException] = []
-    for x in got:
-        (bad if isinstance(x, BaseException) else live).append(x)
-    if bad:
-        logger.info("[lead] 🔴 하위 %d개가 터졌다 — 나머지 %d개로 간다: %s",
-                    len(bad), len(live),
-                    " · ".join(f"{type(e).__name__}: {e}"[:80] for e in bad))
-    return live, bad
 
 
 class SubtaskOut(TypedDict, total=False):
@@ -139,119 +118,8 @@ SECOND_ROUNDS = 1
 SECOND_STATES: tuple[str, ...] = ("not_tried", "empty", "budget_cut")
 
 
-def merge(parts: Sequence[SubtaskOut]) -> dict[str, list[VarLike]]:
-    """🔴🔴 **① 병합** — 하위 조각을 합친다(지시서 §3-1).
-
-    > 같은 주장(MinHash 0.8, 기존 §5-7)은 한 묶음으로 세어 **독립 출처 수를
-    > 올리고**, 유형·방향은 건드리지 않는다(방향은 검증층이 재계산). 하위가
-    > 담당 밖 유형을 적어 왔으면 **그대로 받는다** — 폐기는 검증층 몫이다.
-
-    🔴 **버리지 않는다**(M60) — 리드가 버리면 그 사실이 사유 없이 사라진다.
-    ⚠️ 유사도 판정은 `verifylayer.similarity`·`SIM_SAME` **한 곳**이다(#1).
-    """
-    from urllib.parse import urlparse
-
-    from app import verifylayer
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **두 꼴을 다 받는다** — 실사고 2026-10-05 (인도네시아–태국)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 봇이 죽었다: `dict(v)` → `TypeError: 'Classified' object is not
-    #     iterable`. 🔴 `_run_agent` 는 **판정층 변수**(`classify.Classified`)
-    #     를 돌려주는데 여기서 dict 로 믿었다 — ①번(`done.variables` 가
-    #     문자열)과 **같은 병**이다.
-    #  🔴 **원본 객체를 바꾸지 않는다** — 검증층이 그 객체를 쓴다. dict 로
-    #     바꿔 담으면 그 뒤가 전부 깨진다.
-    rows: list[VarLike] = []
-    for part in (parts or []):
-        for v in (part.get("variables") or ()):
-            if isinstance(v, dict):
-                # 🔴 **그 타입의 메서드로** 담는다(`dict(v)` 금지 · 지시 3).
-                #    ⚠️ 사전은 호출부가 다시 쓸 수 있으니 얕게 복사한다 —
-                #       `copy()` 는 **`dict` 자신의** 메서드다(`MutableMapping`
-                #       추상 꼴에는 없다 — pyright 가 그것을 잡았다).
-                got: dict[str, object] = v.copy()
-                got["from_subtask"] = str(part.get("name") or "")
-                rows.append(got)
-            else:
-                # 🔴 객체는 **그대로** 담는다(원본을 잃지 않는다 — 검증층이 쓴다)
-                rows.append(v)
-
-    def _get(x: VarLike, key: str) -> str:
-        """🔴 사전·객체 **둘 다**에서 칸을 읽는다(#1 — 읽는 자리를 하나로)."""
-        if isinstance(x, Mapping):
-            return str(x.get(key) or "")
-        # ⚠️ 판정층 변수는 주장을 `text` 칸에 든다(`claim` 이 아니다)
-        alt = "text" if key == "claim" else key
-        return str(getattr(x, key, None) or getattr(x, alt, None) or "")
-
-    def _host(x: VarLike) -> str:
-        return (urlparse(_get(x, "source_url")).netloc
-                or "").lower().removeprefix("www.")
-
-    # 🔴 같은 주장끼리 묶어 **독립 출처 수**를 센다(유형·방향은 그대로).
-    for i, a in enumerate(rows):
-        hosts = {_host(a)}
-        for j, b in enumerate(rows):
-            if i == j:
-                continue
-            sim = verifylayer.similarity(_get(a, "claim"), _get(b, "claim"))
-            if sim >= verifylayer.SIM_SAME:
-                got_h = _host(b)
-                if got_h:
-                    hosts.add(got_h)
-        n = len([h for h in hosts if h])
-        if isinstance(a, dict):
-            a["outlets"] = n
-        else:
-            # ⚠️ dataclass 에 칸이 없으면 **더한다**(원본을 바꾸지 않는 선에서)
-            try:
-                setattr(a, "outlets", n)      # noqa: B010
-            except (AttributeError, TypeError):
-                pass
-    said = [int(_get(r, "outlets") or 1) for r in rows]
-    logger.info("[lead] 병합 — 하위 %d개 → 변수 %d줄(독립 출처 최대 %d곳)",
-                len(parts or []), len(rows), max(said or [0]))
-    return {"variables": rows}
 
 
-def write_book(book, parts: list) -> None:
-    """🔴🔴 **② 장부 갱신** — 유형군 × 팀 칸(지시서 §3-2).
-
-    > 하위가 검색을 돌았으면 `searched`, **검증 통과 변수가 생기면 `found`**,
-    > 검색했는데 후보 0 이면 `empty`, 하위가 실패했으면 `not_tried` + 사유.
-    > 🔴 **`found` 배선이 이번에 완성돼야 한다** — 지금은 `searched` 만 적힌다.
-    """
-    for part in (parts or []):
-        box = dict(part or {})
-        group = str(box.get("group") or "")
-        key = str(box.get("team_key") or "")
-        if not group or not key:
-            continue
-        fail = str(box.get("failed") or "")
-        if fail:
-            # 🔴 **사유를 함께 적는다**(#3) — 실패와 안 해본 것을 가른다
-            book.mark(group, key, "not_tried")
-            _why(book, group, key, f"하위 실패 — {fail}")
-            continue
-        # ══════════════════════════════════════════════════════════════
-        # 🔴🔴 **예산에 막힌 하위는 2차 대상**(사용자 지시 2026-10-06 ③)
-        # ══════════════════════════════════════════════════════════════
-        #
-        #  ⚠️ 변수를 **몇 개 냈어도** 막힌 것은 막힌 것이다 — 그 하위는 할 말을
-        #     다 못 했다. 🔴 `found` 보다 **먼저** 본다: 그러지 않으면 1개만 낸
-        #     하위가 `found` 로 닫히고 나머지를 영영 못 찾는다.
-        cut = str(box.get("budget_cut") or "")
-        if cut:
-            book.mark(group, key, "budget_cut")
-            _why(book, group, key, f"예산에 막혔다 — {cut}")
-            continue
-        if int(box.get("verified") or 0) > 0:
-            book.mark(group, key, "found")          # 🔴 이번에 완성한 배선
-        elif not (box.get("variables") or []):
-            book.mark(group, key, "empty")
-        else:
-            book.mark(group, key, "searched")
 
 
 def _why(book, group: str, key: str, said: str) -> None:
@@ -263,46 +131,8 @@ def _why(book, group: str, key: str, said: str) -> None:
     box[(str(group), str(key))] = str(said)
 
 
-def second_round(book, groups: list, keys: list) -> list[tuple[str, str]]:
-    """🔴🔴 **③ 2차 보충 — 최대 1회**(M64 · 지시서 §3-3).
-
-    > 장부에서 `not_tried`·`empty` 인 유형군만 골라, 남은 예산 안에서 해당
-    > 하위 과제를 **한 번** 다시 돌린다(턴 6). 2차 뒤에도 비면 그대로 `gaps`
-    > 로 보고한다 — **3차는 없다.**
-
-    돌려주는 것은 다시 돌 `(유형군, 팀 열쇠)` 들이다.
-    """
-    out: list[tuple[str, str]] = []
-    for g in (groups or []):
-        for k in (keys or []):
-            if book.state(str(g), str(k)) in SECOND_STATES:
-                out.append((str(g), str(k)))
-    logger.info("[lead] 2차 보충 %d칸 — %s", len(out),
-                " · ".join(f"{g}/{k}" for g, k in out[:8]) or "없다")
-    return out
 
 
-def second_budget(used: Sequence[Mapping[str, object]]) -> dict[str, int]:
-    """🔴 **남은 예산**(지시서 §3-3: *"남은 예산(미사용 search/fetch/토큰) 안에서"*).
-
-    ⚠️ 합계 상한은 기존 그대로다 — 2차가 상한을 넘지 않는다.
-    """
-    from app import solar
-    box = dict(solar.budget_cfg().get("per_subtask") or {})
-    n = len(used or []) or 1
-    cap_s = int(box["search"]) * n
-    cap_f = int(box["fetch"]) * n
-    cap_o = int(box["output_tokens"]) * n
-    def _n(u: Mapping[str, object], key: str) -> int:
-        """🔴 사전에서 **정수**를 읽는다 — `object` 를 `int()` 에 넣지 않는다."""
-        said = u.get(key)
-        return int(said) if isinstance(said, (int, float, str)) else 0
-
-    got_s = sum(_n(u, "searched") for u in (used or ()))
-    got_f = sum(_n(u, "fetched") for u in (used or ()))
-    got_o = sum(_n(u, "out") for u in (used or ()))
-    return {"search": max(0, cap_s - got_s), "fetch": max(0, cap_f - got_f),
-            "out": max(0, cap_o - got_o)}
 
 
 def _k(n: object) -> str:
@@ -316,31 +146,3 @@ def _k(n: object) -> str:
     return f"{got / 1000:.1f}k" if got >= 1000 else str(got)
 
 
-def funnel_lines(parts: list) -> list[str]:
-    """🔴🔴 **④ 깔때기 집계**(지시서 §3-4).
-
-    > 하위별 한 줄(`A-홈: q3 통과2 거부1 fetch2 후보4 검증3 4.1k tok 38s`)과
-    > **합계**를 기존 깔때기 로그에 쓴다.
-    """
-    out: list[str] = []
-    tot = dict.fromkeys(("searched", "passed", "rejected", "fetched",
-                         "cands", "verified", "out"), 0)
-    secs = 0.0
-    for p in (parts or []):
-        box = dict(p or {})
-        for k in tot:
-            tot[k] += int(box.get(k) or 0)
-        secs = max(secs, float(box.get("secs") or 0))
-        out.append(
-            f"  {box.get('name') or '?'}: q{int(box.get('searched') or 0)} "
-            f"통과{int(box.get('passed') or 0)} "
-            f"거부{int(box.get('rejected') or 0)} "
-            f"fetch{int(box.get('fetched') or 0)} "
-            f"후보{int(box.get('cands') or 0)} "
-            f"검증{int(box.get('verified') or 0)} "
-            f"{_k(box.get('out'))} tok {float(box.get('secs') or 0):.0f}s")
-    out.append(
-        f"  합계: q{tot['searched']} 통과{tot['passed']} 거부{tot['rejected']} "
-        f"fetch{tot['fetched']} 후보{tot['cands']} 검증{tot['verified']} "
-        f"{_k(tot['out'])} tok · 벽시계 {secs:.0f}s(병렬 최댓값)")
-    return out

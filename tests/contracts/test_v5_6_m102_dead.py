@@ -62,15 +62,6 @@ def test_M103_죽는_목록에_부분도_들어간다():
     assert survive.dead_marks(allok, list("ABCDEF")) == []
 
 
-def test_M103_카드가_그_목록을_쓴다():
-    """🔴 **배선**(#2) — 결론 줄이 `dead_marks` 를 부른다."""
-    from app import analyze
-    tree = ast.parse(inspect.getsource(analyze))
-    called = {n.func.attr for n in ast.walk(tree)
-              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
-    assert "dead_marks" in called, (
-        "🔴 카드가 `FAIL` 만 세어 `△` 를 빠뜨린다 — 실측 it4: "
-        "`오버 1.5 (생존 0.8462) — 죽는 시나리오 없다` 인데 `△` 가 둘이었다")
 
 
 def test_M104_방향은_항상_한_줄이다():
@@ -97,53 +88,8 @@ def test_M104_방향은_항상_한_줄이다():
         f"🔴 반반인데 **기울기**를 안 적었다: {near}")
 
 
-def test_M104_방향_없음_이_블록9_에_없다():
-    """🔴 *"'방향 없음' 문자열은 코드에서 제거한다"* — **블록 9 의 것**이다.
-
-    ⚠️ `classify` 의 *"방향 없음"* 은 **뜻이 다르다** — 그 변수가 승패 방향을
-       안 가리킨다는 §4 규칙 사유다(`event_match`·`national_duty_return`).
-       🔴 지시서가 제거를 요구한 것은 **블록 9 가 찍는 글**이다.
-    """
-    from app import analyze
-    from tests._helpers import strip_docs
-    src = strip_docs(inspect.getsource(analyze))
-    at = src.find("■ 9 방향 판정")
-    assert at > 0, "🔴 블록 9 를 못 찾았다 — 이 계약을 고쳐라"
-    seg = src[at:at + 1200]
-    assert "방향 없음" not in seg, (
-        "🔴 블록 9 가 아직 그 글을 찍는다 — 등급이 없어도 방향은 낸다(§2-2)")
 
 
 
-def test_M104_시작한_경기도_방향_줄을_낸다():
-    """🔴 *"시작한 경기(M97)도 방향 줄은 낸다 — 등급만 거둔다"*."""
-    from app import analyze
-    tree = ast.parse(inspect.getsource(analyze))
-    called = {n.func.attr for n in ast.walk(tree)
-              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
-    assert "direction_line" in called, (
-        "🔴 카드가 `direction_line` 을 안 부른다 — 방향이 등급에 묶인다")
 
 
-def test_M104_시나리오가_0이어도_방향_줄이_있다():
-    """🔴 *"블록 9 는 **등급 유무와 무관하게** 매 경기 한 줄을 낸다"*.
-
-    ⚠️ 실사고 it6: 시나리오가 0개여서 **블록 9 자체가 없었다** — "방향 없음"
-       과 같은 병이다(판정이 못 섰다는 이유로 방향을 안 적는다).
-    🔴 **돌려서** 본다 — 카드를 만들어 블록 9 가 있는지 센다.
-    """
-    from app import analyze, classify
-    game = classify.Game(home="Indonesia", away="Thailand", sport="soccer",
-                         league="FIFA ASEAN Cup Premier Division")
-    card = analyze.Card(game=game)
-    card.scenarios = None          # 🔴 시나리오를 못 만든 경기
-    card.survival = None
-    said = analyze.render(card) if hasattr(analyze, "render") else ""
-    assert said, "🔴 카드 렌더러를 못 찾았다 — 이 계약을 고쳐라"
-    assert "■ 9" in said, (
-        "🔴 시나리오가 0 인데 **블록 9 가 없다** — 지시서 §2-2 는 매 경기 한 "
-        "줄을 요구한다")
-    at = said.find("■ 9")
-    seg = said[at:at + 300]
-    assert "방향" in seg, seg
-    assert "방향 없음" not in seg, seg

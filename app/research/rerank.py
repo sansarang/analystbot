@@ -87,10 +87,6 @@ def loads() -> int:
     return _LOADS
 
 
-def reset() -> None:
-    """🔴 싱글턴·횟수를 비운다 — 계약이 쓴다."""
-    global _MODEL, _WHY, _LOADS
-    _MODEL, _WHY, _LOADS = None, "", 0
 
 
 def _load_in_thread(_load=None) -> Any:
@@ -252,45 +248,8 @@ def _scored_inner(got: Any, pairs: list) -> list[float] | None:
     return None
 
 
-def order(query: str, rows: list, *, _load=None,
-          _force: str = "") -> tuple[list, str]:
-    """🔴🔴 **1단 — 받기 전 재정렬**(지시서 §5).
-
-    > 입력: 질의당 결과 **최대 30건**의 `(질의문, 제목+스니펫)` 쌍.
-    > 🔴 재정렬은 **순서만** 바꾼다 — fetch 수를 늘리지 않고(M62), 필터를
-    > 통과 못 한 결과를 **되살리지 않는다.**
-
-    돌려주는 것은 `(정렬된 행들, 어느 단으로 돌았나)`.
-    ⚠️ 행 수는 **절대 안 바뀐다** — 그것이 M62 의 절반이다.
-    """
-    got = list(rows or [])
-    if _force == "none":
-        return got, ("🔴 `rerank_unavailable` — 호출부가 ③단을 지정했다"
-                     "(순서 그대로)")
-    # 🔴 **지연 로드를 안 한다**(지시 2) — 시작 시 `warm()` 이 올린다.
-    #    ⚠️ 아직 안 올렸으면 ③단이다(사유가 그것을 말한다).
-    box = _MODEL
-    if not box:
-        return got, why() or ("🔴 `rerank_unavailable` — 아직 예열되지 "
-                              "않았다(`warm()` 을 안 불렀다)")
-    pairs = [(str(query or ""),
-              " ".join(str(r.get(k) or "") for k in ("title", "snippet",
-                                                     "content")).strip())
-             for r in got]
-    scores = _scored(box, pairs)
-    if scores is None or len(scores) != len(got):
-        return got, "🔴 `rerank_unavailable` — 점수를 못 냈다(순서 그대로)"
-    ranked = [r for _s, r in sorted(zip(scores, got, strict=False),
-                                    key=lambda sr: -sr[0])]
-    return ranked, f"{why()} · {len(ranked)}건 재정렬(순서만)"
 
 
-def take(rows: list, *, cap: int) -> list:
-    """🔴 상위에서 **fetch 상한까지**만(지시서 §5: *"하위당 2"*).
-
-    ⚠️ 재정렬이 fetch 수를 늘리지 않는다는 말의 **집행 자리**다(M62).
-    """
-    return list(rows or [])[:max(0, int(cap))]
 
 
 def _pool(rows: list, query: str) -> list[str]:

@@ -294,18 +294,6 @@ def verdict_words() -> tuple[str, ...]:
     return (WORD_NAME, WORD_SMALL, WORD_SMALL_LOW, WORD_NONE, WORD_NOT_ENOUGH)
 
 
-def word_of(verdict: str) -> str:
-    """🔴🔴 **판정 코드 → 어휘.** 지시 ② (2026-10-05).
-
-    ⚠️ 실측 pn8: 카드가 `verdict_word(survival)` 로 **다시 계산**해서 상한이
-       내린 등급을 **되올렸다**(`small` → `낸다`). 🔴 그래서 *"낸다 … 죽는
-       시나리오 G"* 라는 **모순**이 카드에 나갔다.
-    🔴 판정은 `_one` 이 **이미** 했다 — 여기서는 **글자만** 바꾼다.
-    """
-    said = str(verdict or "").strip()
-    words = verdict_words()
-    return {"name": words[0], "small": words[1], "low": words[2],
-            "none": words[3]}.get(said, words[-1])
 
 
 def cap_for(state: str) -> float:

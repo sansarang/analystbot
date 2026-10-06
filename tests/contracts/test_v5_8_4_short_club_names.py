@@ -130,22 +130,6 @@ def test_v5_8_4_같은_팀의_표기들이_한_팀으로_묶인다():
         assert ids == {f"mlb:{row['id']}"}, ids
 
 
-def test_v5_8_4_짧은_이름이_있어야_그_질의가_선다():
-    """🔴🔴 **이 계약이 노린 바로 그 효과**를 문지기로 잰다(§4-1).
-
-    ⚠️ 함수를 고쳐도 **쓰는 곳에서 효과가 없으면** 고친 것이 아니다 — 22건이
-       그 병으로 통과했다. 그래서 질의를 **실제 문지기에** 넣어 본다.
-    """
-    from app import querygate
-    q = "Brewers Padres NLDS Game 1 2026 MLB.com recap"
-    # 🔴 **짧은 이름이 없을 때** — 요소 1개(실측 2026-10-04 · 게이트 2)
-    assert querygate.count_parts(q)[0] < querygate.MIN_PARTS
-    # ✅ **짧은 이름이 이름표에 있으면** 세 요소가 선다
-    n, got = querygate.count_parts(
-        q, parts={"team": "Brewers", "opponent": "Padres",
-                  "competition": "MLB"})
-    assert n >= querygate.MIN_PARTS, (n, got)
-    assert {"team", "opponent", "competition"} <= set(got), got
 
 
 def test_v5_8_4_부딪치는_짧은_이름은_버리고_사유를_남긴다():

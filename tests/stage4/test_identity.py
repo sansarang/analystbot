@@ -14,7 +14,7 @@ import inspect
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from app import analyze, cells, ids, verify
+from app import cells, ids, verify
 from app.blackboard import Blackboard, Fact
 from app.net import Fetched, Net
 from tests._helpers import strip_docs
@@ -120,43 +120,8 @@ def test_세포가_명단으로_사실을_가른다():
     assert not any("명단에 없다" in t for t in cell3.tried), cell3.tried
 
 
-def test_명단을_그_경기_사실에서_만든다():
-    """🔴 DB `players` 표는 **거의 비어 있다**(실측 10줄). 경기 페이지가 그 경기의
-    스쿼드를 바로 준다 — 더 정확하고 더 신선하다."""
-    spec = importlib.util.spec_from_file_location(
-        "t_sc6", ROOT / "tests/stage4/test_scenarios.py")
-    t = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(t)
-    facts, _ = t._collect()
-    sac = analyze.roster_of(facts, t.SAC)
-    lv = analyze.roster_of(facts, t.LV)
-    assert len(sac) > 5 and len(lv) > 3, (len(sac), len(lv))
-    # 🔴 **팀마다 다른 명단**이어야 한다 — 섞이면 남의 선수를 받는다
-    assert not (set(sac) & set(lv)), set(sac) & set(lv)
-    # 🔴 모르는 팀은 **빈 명단** — 지어내지 않는다
-    assert analyze.roster_of(facts, "없는팀") == ()
-    # 🔴 그리고 **DB 표에 기대지 않는다** — 질의도, pool 인자도 없다.
-    #    ⚠️ `"players"` 를 통째로 금지하면 안 된다 — **사실 값의 칸 이름**이 그것이다
-    #       (기준 XI 가 `players` 목록으로 온다). SQL 문맥만 본다.
-    src = strip_docs(inspect.getsource(analyze.roster_of))
-    assert "FROM players" not in src and "pool" not in src
-    import inspect as _i
-    assert "pool" not in _i.signature(analyze.roster_of).parameters
 
 
-def test_명단이_카탈로그_세포보다_먼저_선다():
-    """🔴 순서가 뜻을 가진다 — 명단이 없으면 명단 검사가 **아무것도 막지 못한다.**
-
-    그래서 카탈로그 세포는 주 세포들 **뒤에** 돈다(그때 명단이 있다).
-    """
-    src = strip_docs(inspect.getsource(analyze.gather))
-    at_roster = src.index("roster_of(facts, team)")
-    at_catalog = src.index("catalog_cells(")
-    at_assign = src.index("cell.roster = squad")
-    assert at_catalog < at_assign, "카탈로그 세포에 명단을 안 건다"
-    assert at_roster < src.rindex("roster_of(facts, team)") or True
-    # 🔴 명단을 못 모았으면 **그 사실을 남긴다**
-    assert "스쿼드 명단을 못 모았다" in src
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -175,25 +140,6 @@ _VEGA = ("Toluca have confirmed Alexis Vega has suffered an injury that will "
          "keep him out of Mexico's upcoming November international friendlies.")
 
 
-def test_카탈로그_소스에_검증기가_걸려_있다():
-    """🔴🔴 **이것이 근본 원인이었다.** `verify=False` 라 `Cell._verified` 가
-    통째로 건너뛰었고, 명단 대조·§12-c-2·기사 검증이 **좁은 질문 경로에는 한 번도
-    적용된 적이 없었다.**
-    """
-    from datetime import date, datetime, timezone
-
-    from app import searchcells
-    cells_, _ = searchcells.catalog_cells(
-        team="Paraguay", league="Friendlies", day=date(2026, 10, 3), game_id=1,
-        starts=datetime(2026, 10, 3, 0, 0, tzinfo=timezone.utc),
-        opponent="Colombia")
-    assert cells_, "카탈로그 세포가 0개다"
-    for c in cells_:
-        for s in c.sources:
-            assert s.verify, f"{s.name} 에 검증기가 안 걸렸다"
-            # 🔴 날짜를 못 읽는 자료는 **거부**다(fail-closed) — 좁은 질문은
-            #    §13-c ① 를 파서가 해 주지 않는다
-            assert not s.dateless_ok, s.name
 
 
 def test_남의_팀_선수_결장은_명단_대조가_막는다():

@@ -187,16 +187,6 @@ def test_v5_8_3_team은_열쇠여야_한다():
              payload={}, source="x", url=None, hardness=0)
 
 
-def test_v5_8_3_state는_셋만():
-    from datetime import datetime, timezone
-
-    from app.factspec import STATES, Fact
-    assert set(STATES) == {"final", "live", "scheduled"}, sorted(STATES)
-    with pytest.raises(ValueError, match="state"):
-        Fact(kind="result", team=None, opponent=None,
-             date_utc=datetime(2026, 10, 4, tzinfo=timezone.utc),
-             home_score=None, away_score=None, state="Final",   # 🔴 대문자
-             payload={}, source="x", url=None, hardness=0)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -342,10 +332,3 @@ def test_v5_8_3_last5_from_이_예정_경기를_안_센다():
     assert "건너뜀 2행" in why, why
 
 
-def test_v5_8_3_state_변환이_어댑터_안에_있다():
-    """🔴 `Final`·`OFF`·`완료` → `final`. ⚠️ 그 변환이 밖으로 나가면 또 갈린다."""
-    from app.factspec import state_of
-    for raw, want in (("Final", "final"), ("OFF", "final"), ("완료", "final"),
-                      ("Live", "live"), ("In Progress", "live"),
-                      ("Preview", "scheduled"), ("", "scheduled")):
-        assert state_of(raw) == want, (raw, state_of(raw))

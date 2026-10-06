@@ -23,20 +23,6 @@ import pathlib
 # ══════════════════════════════════════════════════════════════════
 # §4-2 — 쏠림이면 그 도메인을 빼고 현지어로
 # ══════════════════════════════════════════════════════════════════
-def test_r42_쏠린_도메인을_찾는다():
-    from app import analyze
-    assert hasattr(analyze, "skewed_host"), (
-        "🔴 `analyze.skewed_host(변수들)` 이 없다 — 50% 초과를 셀 곳")
-    rows = [{"source_url": "https://fotmob.com/1"},
-            {"source_url": "https://fotmob.com/2"},
-            {"source_url": "https://fotmob.com/3"},
-            {"source_url": "https://a.com/1"}]
-    got, said = analyze.skewed_host(rows)
-    assert got == "fotmob.com", (got, said)
-    assert "75" in said or "3/4" in said, said
-    # 🔴 정확히 50% 면 **아니다**(초과여야 한다)
-    half = [{"source_url": "https://a.com/1"}, {"source_url": "https://b.com/1"}]
-    assert analyze.skewed_host(half)[0] is None
 
 
 def test_r42_팀별_현지어가_다르다():
@@ -62,13 +48,6 @@ def test_r42_하위가_자기_팀_언어를_든다():
     assert all(t.local_lang == "th" for t in aways), [t.local_lang for t in aways]
 
 
-def test_r42_2차가_쏠린_도메인을_뺀다():
-    from app import analyze
-    tree = ast.parse(inspect.getsource(analyze))
-    called = {n.func.id for n in ast.walk(tree)
-              if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
-    assert "skewed_host" in called, (
-        "🔴 카드가 `skewed_host` 를 **안 부른다** — 쏠려도 2차가 같은 곳을 본다")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -100,21 +79,6 @@ def test_M110_상한을_한_곳에서만_읽는다():
         f"읽어라(M110). 다른 코드는 `solar.budget_cfg()` 를 거쳐라")
 
 
-def test_M110_설정_두_곳이_같은_수다():
-    """🔴 `stage_gates.yaml` 의 칸이 `llm.yaml` 과 **같아야** 한다."""
-    from app import rules
-    import yaml
-    cap = float(rules.llm_budget()["per_day_usd"])
-    box = yaml.safe_load(
-        pathlib.Path("config/stage_gates.yaml").read_text(encoding="utf-8"))
-    said = None
-    for _k, v in (box.get("gates") or box).items():
-        if isinstance(v, dict) and isinstance(v.get("numbers"), dict):
-            if "usd_per_day_max" in v["numbers"]:
-                said = float(v["numbers"]["usd_per_day_max"])
-    assert said is not None, "🔴 `usd_per_day_max` 를 못 찾았다"
-    assert said == cap, (
-        f"🔴 게이트 표는 ${said:g}, 예산은 ${cap:g} — **두 곳이 갈렸다**(M110)")
 
 
 def test_M110_상한_변경이_기록되어_있다():

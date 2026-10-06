@@ -39,23 +39,6 @@ class _D:
         self.strength, self.probability = strength, probability
 
 
-def _golden():
-    """정답지 경기를 카세트로 끝까지 돌린다(§5 → §6)."""
-    spec = importlib.util.spec_from_file_location(
-        "t_sc", ROOT / "tests/stage4/test_scenarios.py")
-    t = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(t)
-    facts, st = t._collect()
-    if st is None:
-        pytest.skip("순위표 카세트가 없다")
-    game = t._game()
-    sc = scenarios.generate(classify.classify_facts(facts, game), game,
-                            standings=st)
-    hr = scenarios._venue_row(st, "home", game.home)
-    ar = scenarios._venue_row(st, "away", game.away)
-    exp = league.expected_goals(hr, ar, st["venue_averages"])
-    probs = league.score_probabilities(exp["home"], exp["away"])
-    return sc, game, st, probs
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -384,33 +367,8 @@ def test_격자_전체_확률을_함께_낸다():
     assert r2.rows[0]["p_market"] is None
 
 
-def test_덮은_확률이_1보다_작으면_말한다():
-    """🔴 `survival 1.0` 이 **덮은 67% 안의 1.0** 이라는 사실을 숨기면 과신이다."""
-    sc, game, st, probs = _golden()
-    r = survive.run(sc.drafts, game, standings=st, probs=probs)
-    # ⚠️ ②(2026-10-04) 뒤 무게는 **늘 변수 합**이다 — 그래도 격자가 있으면
-    #    **덮은 확률**을 함께 적는다(격자의 남은 역할 셋 중 하나).
-    assert r.weight_mode.startswith("strength"), r.weight_mode
-    assert r.coverage and r.coverage < 1.0
-    assert any("덮은 확률" in n for n in r.notes), r.notes
 
 
-def test_두_수가_등급_밴드가_다르면_경고한다():
-    """🔴 **놓친 call 도 틀린 call 과 똑같이 손해다.**
-
-    ⚠️ 전 판은 문턱 `0.15` 로 물었고 **그것은 지어낸 값이었다**(그렇게 적어 뒀다).
-       이제 **§6-b 의 밴드**로 묻는다 — 숫자가 하나도 없고 이미 정한 선을 쓴다.
-    """
-    sc, game, st, probs = _golden()
-    board = [Market(market_type="total", team="over", line=2.5),
-             Market(market_type="handicap", team=AWAY, line=1.5)]
-    r = survive.run(sc.drafts, game, board=board, standings=st, probs=probs)
-    diff = [n for n in r.notes if "등급 밴드가 다르다" in n]
-    assert diff, r.notes
-    # 🔴 문턱 상수가 **사라졌나** — 지어낸 값을 남겨 두면 다시 쓰인다
-    assert not hasattr(survive, "DIVERGE_AT")
-    # 🔴 밴드 비교는 §6-b 가 정한 선을 그대로 쓴다
-    assert survive._verdict(NAME_AT) != survive._verdict(SMALL_AT - 0.01)
 
 
 def test_손익분기_아래면_이름을_적지_않는다():
@@ -438,22 +396,6 @@ def test_손익분기_아래면_이름을_적지_않는다():
     assert r2.rows[0]["verdict"] != "none"
 
 
-def test_기준선을_가로지르는_시나리오를_이름으로_남긴다():
-    """🔴 §5-b 템플릿이 한 집합에 오버·언더 스코어를 **같이** 담으면 그 마켓은
-    **1.0 에 닿을 수 없다** — 자동화가 수동 결론을 못 따라가는 까닭이다.
-
-    실측: `soccer_home_normal`(2-1·1-0)·`soccer_away_normal`(0-1·1-2) 둘 다 2.5 를
-    가로지른다 → 총점 2.5 는 영영 △ 둘을 안고 간다.
-    """
-    sc, game, st, probs = _golden()
-    r = survive.run(sc.drafts, game, standings=st, probs=probs,
-                    board=[Market(market_type="total", team="over", line=2.5)])
-    assert any("가로지른다" in n for n in r.notes), r.notes
-    # 🔴 그 사실이 실제로 참인가 — 템플릿을 열어 숫자로 확인한다
-    for name in ("soccer_home_normal", "soccer_away_normal"):
-        tot = [sum(int(x) for x in s.split("-"))
-               for s in rules.templates()[name]["scores"]]
-        assert min(tot) < 2.5 < max(tot), (name, tot)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -461,19 +403,6 @@ def test_기준선을_가로지르는_시나리오를_이름으로_남긴다():
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_정답지_경기가_끝까지_돈다():
-    """🔴 §5 → §6 → §3 `Survival` 이 한 줄로 선다."""
-    sc, game, st, probs = _golden()
-    r = survive.run(sc.drafts, game, standings=st, probs=probs)
-    sv = r.to_survival(1)
-    assert len(sv.markets) == len(r.rows) > 5
-    # 🔴 시나리오도 §3 으로 선다 — 두 산출이 같은 스키마 밑에 있다
-    for d in sc.drafts:
-        assert isinstance(d.to_scenario(), Scenario)
-    # 🔴 **이름을 적은 마켓은 보드 밖일 수 없다**(보드를 준 경우)
-    board = [Market(market_type="home_dc")]
-    r2 = survive.run(sc.drafts, game, board=board, standings=st, probs=probs)
-    assert r2.to_survival(1).off_board(board) == []
 
 
 def test_시나리오가_없으면_생존을_세지_않는다():
@@ -595,50 +524,8 @@ def test_그때_그_결과에_얼마를_줬는지_남긴다():
         [_MS("home", "name")], ds, 2, 1, game=_G())
 
 
-def test_채점이_예측을_고치지_않는다():
-    """🔴 §3 — *"결과 후 survival.json 수정 금지(불변)."*
-
-    그때 무엇을 냈는가와 그것이 맞았나가 서로를 바꾸면 기록이 거짓이 된다.
-    """
-    import inspect
-
-    from app import analyze
-    src = inspect.getsource(analyze.score_finished)
-    # 🔴 원장에만 쓴다 — 예측 표를 건드리지 않는다
-    assert "INSERT INTO ledger" in src
-    for table in ("survival", "scenarios", "variables", "board"):
-        assert f"UPDATE {table}" not in src, f"{table} 을 고친다"
-        assert f"INSERT INTO {table}" not in src, f"{table} 에 다시 쓴다"
-    # 🔴 **예측이 없는 경기와 틀린 경기를 가른다**(조용한 0 금지)
-    assert "카드를 저장한 적이 없다" in src
 
 
-def test_원장이_되물을_수_있을_만큼_쌓는다():
-    """🔴🔴 **사용자 지시 2026-10-02 *"뭘쌓는데???"* 가 이 구멍을 찾았다.**
-
-    전 판 원장은 `{market, hit}` 만 쌓았다. 그러면 쌓아 봐야 **아무것도 못 묻는다**:
-      · 결과 스코어가 없다 → 무엇이 났는지 원장만 보고는 모른다
-      · 등급·생존이 없다 → *"'낸다' 가 '소액' 보다 더 맞았나"* 를 못 센다
-      · 그 결과의 확률이 없다 → `grade` 가 계산해 놓고 **버렸다**
-
-    🔴 쌓인 것으로 **무엇을 물을 수 있는지**가 이 계약의 내용이다.
-    """
-    import inspect
-
-    from app import analyze
-    src = inspect.getsource(analyze.score_finished)
-    # ① 결과 자체
-    assert "result_score" in src and "covered" in src
-    # ② 등급·생존까지 — 밴드별 성적을 세려면 필요하다
-    assert '"verdict": v["verdict"]' in src and '"survival": v["survival"]' in src
-    # ③ 그때 그 결과의 확률 — 교정의 재료
-    assert "result_probability" in src
-    # 🔴 ④ **격자를 λ 로 되살린다** — 64칸을 저장하지 않는다
-    assert "score_probabilities" in src and "lam_home" in src
-    # 🔴 λ 는 카드 저장 때 적혔나
-    assert "lam_home" in inspect.getsource(analyze.persist)
-    # 🔴 시나리오의 확률과 근거는 **다른 칸**이다 — 한 칸에 담으면 둘 다 잃는다
-    assert "probability = EXCLUDED.probability" in inspect.getsource(analyze.persist)
 
 
 def test_격자를_람다로_되살릴_수_있다():
@@ -650,46 +537,3 @@ def test_격자를_람다로_되살릴_수_있다():
     assert g2["scores"] == g1["scores"], "λ 로 되살린 격자가 다르다"
 
 
-def test_채점이_그때의_확률을_실제로_적는다():
-    """🔴🔴 **돌연변이가 통과해서 더한 계약이다.** 소스를 grep 하는 것으로는 부족했다 —
-    확률을 되살리는 가지를 꺼도 초록이었다. **적힌 값**을 본다."""
-    import asyncio
-
-    from app import analyze
-
-    class _Pool:
-        def __init__(self):
-            self.wrote: list = []
-
-        async def fetch(self, sql, *a):
-            if "FROM games" in sql:
-                return [{"id": 7, "home": HOME, "away": AWAY, "sport": "soccer",
-                         "league": "USL Championship", "home_score": 3,
-                         "away_score": 2}]
-            if "FROM survival" in sql:
-                return [{"market_type": "home", "team": None, "line": None,
-                         "survival": 1.0, "verdict": "name"}]
-            if "FROM scenarios" in sql:
-                return [{"scenario_id": "D", "scores": ["3-2"],
-                         "probability": 0.11}]
-            return []
-
-        async def fetchrow(self, sql, *a):
-            # 🔴 λ 두 수 — 격자를 되살릴 열쇠
-            return {"lam_home": 2.14, "lam_away": 1.079}
-
-        async def execute(self, sql, *a):
-            self.wrote.append((sql, a))
-
-    pool = _Pool()
-    got = asyncio.run(analyze.score_finished(pool))
-    assert got["graded"] == 1, got
-    ins = [a for sql, a in pool.wrote if "INSERT INTO ledger" in sql]
-    assert ins, pool.wrote
-    args = ins[0]
-    assert "3-2" in args, args
-    # 🔴 **확률이 실제로 적혔나** — λ 로 되살린 그 격자의 값이어야 한다
-    want = league.score_probabilities(2.14, 1.079)["scores"]["3-2"]
-    assert any(isinstance(x, float) and abs(x - want) < 1e-9 for x in args), \
-        f"그때의 확률({want})이 안 적혔다 — {args}"
-    assert True in args, "covered 가 안 적혔다"

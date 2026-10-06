@@ -190,43 +190,8 @@ def _learned_coach(team: str) -> dict:
     return dict(got) if isinstance(got, dict) else {}
 
 
-def learn_coach(team: str, name: str, *, match_key: str) -> dict:
-    """🔴 에이전트가 첫 검색에서 채운 감독을 적는다(§8-2).
-
-    🔴 **출처(경기 ID)가 없으면 거부한다** — 되짚어 지울 수 없는 것은 안 적는다
-       (③ 자가 성장과 같은 규율). ⚠️ 지어낸 이름이 조용히 쌓이는 자리다.
-    """
-    import json
-    from pathlib import Path
-    who = " ".join(str(name or "").split())
-    key = str(match_key or "").strip()
-    if not who:
-        raise ValueError("🔴 감독 이름이 비었다")
-    if not key:
-        raise ValueError(
-            "🔴 **경기 ID 가 없다** — 출처 없이 적으면 지어낸 것과 구분되지 "
-            "않는다(§8-2 `learned_from`)")
-    row = {"name": who, "since": None,
-           "source": f"학습 — {key}", LEARNED_KEY: key}
-    p = Path(__file__).resolve().parent.parent / LEARNED_COACHES
-    p.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        box = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
-    except (OSError, ValueError):
-        box = {}
-    box[str(team or "").strip()] = row
-    p.write_text(json.dumps(box, ensure_ascii=False, indent=2) + "\n",
-                 encoding="utf-8")
-    logger.info("[entities] 감독 학습 — %s = %s (%s)", team, who, key)
-    return row
 
 
-def field_of(team: str, name: str) -> object:
-    """🔴 §8-2 의 그 칸. ⚠️ 선언에 없으면 `None` — 지어내지 않는다."""
-    if name not in FIELDS:
-        raise ValueError(f"🔴 §8-2 가 이름 대지 않은 칸이다: {name!r} — "
-                         f"있는 것은 {list(FIELDS)}")
-    return _row(team).get(name)
 
 # ══════════════════════════════════════════════════════════════════
 # 🔴🔴 **세 칸은 손으로 적지 않는다** — 시스템이 이미 안다

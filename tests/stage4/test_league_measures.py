@@ -569,16 +569,6 @@ def test_선발이_λ를_움직인다():
     assert got2["away"] < base["away"] and got2["home"] == base["home"]
 
 
-def test_선발_보정이_두_길에_같이_걸렸다():
-    """🔴 카드의 λ 와 시나리오의 λ 가 **갈리면 안 된다**(사본 금지).
-
-    ⚠️ D46 — 독스트링·주석을 뺀 **코드만** 본다.
-    """
-    from app import analyze, scenarios
-    from tests._helpers import strip_docs
-    for fn in (analyze.grid, scenarios._grid):
-        src = strip_docs(inspect.getsource(fn))
-        assert "starters=" in src and "starters_for(" in src, fn.__name__
 
 
 def test_선발_보정에_지어낸_계수가_없다():
@@ -693,49 +683,8 @@ def test_가치_합은_인원이_다_읽혀야_쓴다():
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_전반_스코어를_골_분에서_유도한다():
-    """🔴 페이로드에 전반 칸이 **없다** — 과거 경기의 골 분(`≤45`)에서 유도한다.
-
-    ⚠️ 무료 CSV(`football-data.co.uk`)에는 `HTHG/HTAG` 가 있으나 **클럽 리그만**이고
-       대표팀 친선이 없다. 그래서 외부 소스를 들이지 않았다.
-    """
-    from app.collect import fotmob
-    j = {"props": {"pageProps": {"content": {"matchFacts": {"events": {
-        "events": [
-            {"type": "Goal", "time": 16, "isHome": False},
-            {"type": "Goal", "time": 44, "isHome": True},
-            {"type": "Goal", "time": 45, "isHome": True},   # 전반 추가시간
-            {"type": "Goal", "time": 70, "isHome": True},   # 후반 — 안 센다
-            {"type": "Card", "time": 20, "isHome": True},   # 골이 아니다
-        ]}}}}}}
-    assert fotmob.half_time_score(j) == (2, 1)
-    # 🔴 자기 골은 **상대 득점**이다
-    j2 = {"props": {"pageProps": {"content": {"matchFacts": {"events": {
-        "events": [{"type": "Goal", "time": 10, "isHome": True,
-                    "ownGoal": True}]}}}}}}
-    assert fotmob.half_time_score(j2) == (0, 1)
-    # 🔴 **골 이벤트가 없으면 `None`** — 0-0 경기와 "못 읽었다"를 섞지 않는다
-    j3 = {"props": {"pageProps": {"content": {"matchFacts": {"events": {
-        "events": [{"type": "Card", "time": 5, "isHome": True}]}}}}}}
-    assert fotmob.half_time_score(j3) is None
-    assert fotmob.half_time_score({}) is None
 
 
-def test_맞대결_주소는_조각_번호로_연다():
-    """🔴 fotmob 맞대결 목록의 슬러그는 **지금 경기** 것이다 — 과거 경기는 `#` 뒤
-    번호다. `#` 앞만 쓰면 열 때마다 **같은 경기**가 열린다(실측: 2차 소스 1개)."""
-    from app.blackboard import Fact
-    from app.collect import fotmob
-    f = Fact(question_id="lineup:x:h2h", value={"matches": [
-        {"matchUrl": "/matches/paraguay-vs-colombia/1utthz#4196575"},
-        {"matchUrl": "/matches/paraguay-vs-colombia/1utthz#4377210"},
-        {"matchUrl": "/matches/paraguay-vs-colombia/1utthz"},   # 조각 없음 → 건너뛴다
-    ]}, hardness="hard")
-    got = fotmob.sources_followup([f], "fotmob-6299693")
-    assert [s.url for s in got] == [fotmob.match_url("4196575"),
-                                    fotmob.match_url("4377210")], got
-    # 🔴 접두가 아니면 안 돈다
-    assert fotmob.sources_followup([f], "npb-20261003-m-h") == []
 
 
 def test_연속_전반_리드를_묶음이_센다():

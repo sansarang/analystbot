@@ -261,49 +261,6 @@ _MOVE_IN = re.compile(r"(投\s*手|捕\s*手|内野手|外野手)\s*</[^>]*>\s*(
                       r"([^<]+?)\s*</[^>]*>\s*(?:<[^>]*>\s*)*(←|→)")
 
 
-def parse_roster(got: Fetched, team_full: str) -> tuple[list[dict], str]:
-    """등록 명단 → `(players 행, 사유)`.
-
-    🔴 **背番号가 있다** — 그래서 NPB 동명이인은 등번호로 갈린다(1b §7-3).
-    🔴 **`MOVEMENT_MARK` 뒤는 읽지 않는다.** 그 뒤는 트레이드 이동 표이고,
-       함께 읽으면 남의 팀 선수가 로스터에 섞인다(실측 3건).
-    ⚠️ 표는 `[등록일, 포지션, 背番号, 이름]` 이다. 열 순서를 상수로 박지 않고
-       **포지션 낱말로** 찾는다 — 순서가 바뀌면 조용히 어긋난다.
-    ⚠️ 반환의 둘째 값은 **자기검사 결과**다. 페이지가 적은 인원과 다르면 그것을
-       적어 돌려준다 — 조용히 넘기면 절반만 읽고도 성공처럼 보인다.
-    """
-    if not got.ok:
-        return [], "열지 못했다"
-    body = got.text.split(MOVEMENT_MARK)[0]
-    out: list[dict] = []
-    seen: set[str] = set()
-    for tr in _TR.findall(body):
-        cells = [_clean(c) for c in _TD.findall(tr)]
-        if len(cells) < 2:
-            continue
-        pos = next((c for c in cells if c in ROLE), None)
-        if not pos:
-            continue
-        i = cells.index(pos)
-        if i + 2 >= len(cells):
-            continue
-        jersey, name = cells[i + 1], cells[i + 2]
-        if not name or not re.fullmatch(r"\d{1,3}", jersey):
-            continue
-        if jersey in seen:
-            continue                 # 같은 페이지에 같은 번호가 두 번 나오면 뒤를 버린다
-        seen.add(jersey)
-        out.append({"league": "NPB", "team": team_full, "jersey": jersey,
-                    "name": name, "role": ROLE[pos]})
-
-    said = _COUNT.search(got.text)
-    note = ""
-    if said and int(said.group(1)) != len(out):
-        note = f"페이지는 {said.group(1)}명이라 적었는데 {len(out)}명을 읽었다"
-        logger.warning("[npb] %s %s", team_full, note)
-    logger.info("[npb] %s 등록 %d명%s", team_full, len(out),
-                f" ⚠️ {note}" if note else "")
-    return out, note
 
 
 def parse_movement(got: Fetched, team_full: str) -> list[Fact]:
@@ -871,89 +828,6 @@ def parse_roster_ids(got, q: Question) -> list[Fact]:
                  step=1)]
 
 
-def parse_player_pitching(got, q: Question) -> list[Fact]:
-    """선수 페이지 → **그 해의 투수 성적**(ERA·등판·이닝).
-
-    ══════════════════════════════════════════════════════════════════
-    🔴 이 표는 **칸이 머리글보다 하나 많다**(실측 2026-10-03)
-    ══════════════════════════════════════════════════════════════════
-
-    npb.jp 는 `投球回` 를 **두 칸**으로 그린다 — 정수와 분수(⅓·⅔)를 따로 둔다.
-
-    ```
-    머리글 24칸 … 打者 投球回 安打 … 自責点 防御率
-    몸통  26칸 … 21   5  ''  5    …  4     7.20   ''
-                        └┬┘
-                      두 칸이다
-    ```
-
-    🔴 그래서 **머리글 자리로 바로 읽으면 한 칸씩 밀린다** — 전 판이 그래서
-       `防御率` 자리에서 **자책점 `4`** 를 읽었다(그리고 `_float` 가 4.0 을 냈다).
-    ⚠️ `_rows_of` 도 쓸 수 없다 — 이 페이지에서는 한 논리 줄을 **두 `<tr>`** 로
-       쪼개 돌려준다(15칸 + 나머지). 그래서 **평평한 칸 목록**으로 읽는다.
-    """
-    if not getattr(got, "ok", False):
-        return []
-    url = getattr(got, "url", "") or ""
-    if "/bis/players/" not in url:
-        return []
-    html = getattr(got, "text", "") or ""
-    cells = [" ".join(re.sub(r"<[^>]+>", " ", c).split())
-             for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", html, re.S)]
-    # 🔴 머리글을 **이름으로** 찾는다 — 자리를 세어 박지 않는다
-    want_head = ("年度", "登板", "投球回", "防御率")
-    start = None
-    for i in range(len(cells)):
-        if cells[i] == "年度" and all(
-                w in cells[i:i + 30] for w in want_head):
-            start = i
-            break
-    if start is None:
-        return []
-    head: list[str] = []
-    for c in cells[start:]:
-        if head and c == "年度":
-            break
-        head.append(c)
-        if c == "防御率":
-            break
-    if "防御率" not in head:
-        return []
-    k = head.index("投球回")
-    season = str((q.deadline or datetime.now(JST)).astimezone(JST).year)
-    body = cells[start + len(head):]
-    at = next((i for i, c in enumerate(body) if c == season), None)
-    if at is None:
-        return []
-    # 🔴 **칸이 하나 더 많다** — `投球回` 가 두 칸이므로 그 뒤를 한 칸 밀어 읽는다
-    row = body[at:at + len(head) + 1]
-    if len(row) < len(head):
-        return []
-
-    def _at(name: str) -> str:
-        j = head.index(name)
-        return row[j + 1] if j > k else row[j]
-
-    era = _float(_at("防御率"))
-    games = _int(_at("登板"))
-    # 🔴 이닝은 **두 칸을 합친다**(정수 + 분수). 분수 칸이 비면 0이다.
-    #  ⚠️ 분수 칸이 `.1` 꼴로 **점을 달고** 온다(실측 2026-10-03: 松本晴 `117` + `.1`).
-    #     그대로 이으면 `117..1` 이 되어 이닝이 통째로 `None` 이 된다.
-    whole = re.sub(r"\s+", "", row[k])
-    frac = re.sub(r"[^0-9]", "", row[k + 1] if len(row) > k + 1 else "")
-    ip = _ip(f"{whole}.{frac}" if frac else whole)
-    if era is None:
-        return []
-    name = _player_name(html)
-    return [Fact(question_id=f"{q.id}:starter_stats",
-                 value={"player": name, "era": era, "games": games,
-                        "innings": ip, "season": season,
-                        "innings_per_game": round(ip / games, 2)
-                        if (ip is not None and games) else None},
-                 hardness="hard", source=url, publisher="npb.jp",
-                 published_at=None, article_title=f"{name} 성적",
-                 tier=verify.TIER_OFFICIAL,
-                 extracted_by="rule:npb_player_pitching", step=1)]
 
 
 def _player_name(html: str) -> str:
@@ -969,64 +843,6 @@ def _player_name(html: str) -> str:
     return "".join(_clean(m.group(1)).split())
 
 
-def sources_followup(facts: list, ext_id: str) -> list[Source]:
-    """🔴🔴 **한 바퀴 더** — 이미 모은 사실이 **다음 주소를 가리킨다**(§19-c).
-
-    ══════════════════════════════════════════════════════════════════
-    🔴 왜 두 바퀴인가 (실측 2026-10-03)
-    ══════════════════════════════════════════════════════════════════
-
-    선발 보정(딥서치 · A)은 **선발의 ERA** 를 요구한다. 그런데:
-
-    - 리더보드(`pit_*`)에는 **규정 투구 투수만** 있다 → 唐川·松本晴 둘 다 없었다.
-    - 선수 페이지에는 있다(唐川 2026 ERA **7.20**).
-    - 🔴 그 페이지 **주소**는 등록 명단에 있고, **누가 선발인지**는 일정 페이지에 있다.
-
-    즉 주소를 알려면 **두 사실을 먼저** 가져야 한다. `Source.follow` 는 자기가 연
-    페이지만 보므로(그리고 §19-c 는 2단을 금지한다) 이 자리가 필요하다.
-
-    ⚠️ **한 바퀴뿐이다** — 이 함수의 결과에 다시 `sources_followup` 을 걸지 않는다.
-    🔴 선발을 못 찾으면 **빈 목록**이고, 그러면 보정이 안 걸리고 사유가 카드에 남는다.
-    """
-    # 🔴 §8-1 — `matchkey.mine` 이 *"내 것이냐"* 를 답한다(`npb:…` 도 읽는다)
-    if not matchkey.mine(ext_id, "npb"):
-        return []
-    ids: dict[str, str] = {}
-    want: list[str] = []
-    for f in facts:
-        v = f.value if isinstance(f.value, dict) else {}
-        qid = str(getattr(f, "question_id", ""))
-        if qid.endswith(":roster_ids"):
-            # 🔴 주소 표는 이제 `player_pages` 다(`players` 는 이름 목록)
-            ids.update(v.get("player_pages") or {})
-        elif qid.endswith(":starter"):
-            for key in ("player", "opponent_player"):
-                nm = " ".join(str(v.get(key) or "").split())
-                if nm and nm not in want:
-                    want.append(nm)
-    if not (ids and want):
-        return []
-    out: list[Source] = []
-    seen: set[str] = set()
-    for nm in want:
-        # 🔴 **성만 아는 판이 있다**(`先発：田中`). 명단에는 성명이 있다 —
-        #    성으로 시작하는 이름이 **하나일 때만** 쓴다(여럿이면 누구인지 모른다).
-        hit = ids.get(nm)
-        if hit is None:
-            cand = [u for k, u in ids.items()
-                    if k.replace(" ", "").startswith(nm.replace(" ", ""))]
-            if len(cand) != 1:
-                logger.info("[npb] 선발 `%s` 를 명단에서 못 특정했다 — 후보 %d명",
-                            nm, len(cand))
-                continue
-            hit = cand[0]
-        if hit in seen:
-            continue
-        seen.add(hit)
-        out.append(Source(f"npb.jp 선발 성적({nm})", "url", url=hit,
-                          tier=verify.TIER_OFFICIAL,
-                          parse=parse_player_pitching))
-    return out
 
 
 def parse_game_context(got, q: Question) -> list[Fact]:

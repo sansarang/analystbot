@@ -166,25 +166,6 @@ def test_난타전이_그려져_있으면_막지_않는다():
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_analyze_가_변수를_넘긴다():
-    """🔴 안 넘기면 가드가 **조용히 안 돈다** — 만든 것은 부르는 곳이 있어야 한다.
-
-    ⚠️ 이 계약이 없으면 `variables=` 를 지워도 시험 다섯이 **전부 초록**이다
-       (그 시험들은 `survive.run` 을 직접 부른다). 그것이 돌연변이가 통과하는 길이다.
-    """
-    tree = ast.parse((ROOT / "app" / "analyze.py").read_text(encoding="utf-8"))
-    found = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        if ast.unparse(node.func) != "survive.run":
-            continue
-        found.append({k.arg for k in node.keywords})
-    assert found, "🔴 `survive.run` 을 부르는 곳이 없다"
-    for kws in found:
-        assert "variables" in kws, (
-            "🔴 `survive.run(variables=...)` 가 빠졌다 — 거짓 1.0 계약이 "
-            "조용히 안 돈다(사용자 수정 ⑤ 2026-10-04)")
 
 
 def test_두_가드가_run_안에서_불린다():

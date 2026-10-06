@@ -132,65 +132,11 @@ def test_wo3_2_슬러그_표가_있으면_모양이_맞다():
 # 3-3 — `gaps` 구조 칸 **우선** 프롬프트
 # ══════════════════════════════════════════════════════════════════
 
-def test_wo3_3_프롬프트가_gaps_를_먼저_찾으라고_한다():
-    """🔴 *"시스템 프롬프트에 **'gaps 의 구조 칸은 카탈로그 유형보다 먼저
-    찾아라'** 를 둔다"*."""
-    from app import agentloop
-    said = agentloop.system_prompt()
-    assert "gaps" in said and "먼저" in said, (
-        "🔴 프롬프트가 `gaps` 우선을 **안 말한다**(지시서 §3-3)")
 
 
-def test_wo3_3_구조_칸이_비면_gaps_에_들어간다():
-    """🔴🔴 **배선**(#2) — `gaps` 를 채우는 곳이 있어야 한다.
-
-    ⚠️ 미등록 리그는 어댑터가 순위·최근 결과·상대전·XI 를 **안 준다**. 🔴 그
-       사실을 에이전트에게 **이름으로** 넘겨야 그가 찾는다.
-    """
-    from app import analyze
-    assert hasattr(analyze, "gaps_of"), (
-        "🔴 구조 칸의 빈 자리를 세는 곳이 없다 — `analyze.gaps_of`")
-    # 🔴 아무 사실도 없으면 **다섯 칸이 다 비어야** 한다
-    got = analyze.gaps_of([], sport="soccer")
-    for want in ("standings", "last5", "h2h", "xi"):
-        assert want in got, (want, got)
 
 
-def test_wo3_3_구조_칸이_있으면_gaps_에_안_들어간다():
-    """⚠️ 있는 것을 **빈 것으로 적지 않는다**(#3 의 반대쪽)."""
-    from app import analyze
-
-    class _F:
-        question_id = "x:standings"
-        value = {"rank": 2}
-        team = "team:1"
-    got = analyze.gaps_of([_F()], sport="soccer")
-    assert "standings" not in got, got
 
 
-def test_wo3_3_에이전트가_gaps_를_받는다():
-    """🔴 **배선** — `AgentInput.gaps` 를 채우는 곳이 있어야 한다."""
-    import ast
-    import inspect
-
-    from app import analyze
-    tree = ast.parse(inspect.getsource(analyze._run_agent).lstrip())
-    found = None
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and (
-                getattr(node.func, "attr", None)
-                or getattr(node.func, "id", None)) == "AgentInput":
-            for kw in node.keywords:
-                if kw.arg == "gaps":
-                    found = ast.unparse(kw.value)
-    assert found and found not in ("()", "[]"), (
-        f"🔴 `AgentInput(gaps=…)` 를 **안 채운다**(#2 배선): {found}")
 
 
-@pytest.mark.parametrize("sport", ["soccer", "baseball"])
-def test_wo3_3_종목마다_구조_칸이_다르다(sport):
-    """🔴 야구에 `xi` 를 묻지 않는다 — 종목이 칸을 정한다."""
-    from app import analyze
-    got = analyze.gaps_of([], sport=sport)
-    if sport == "baseball":
-        assert "starter" in got or "pitcher" in str(got), got

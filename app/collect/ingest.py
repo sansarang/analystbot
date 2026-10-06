@@ -116,103 +116,8 @@ def context_of(league: str = "", ext_id: str = ""):
     return getattr(adapter_of(league, ext_id), "sources_context", None)
 
 
-def followup_of(league: str = "", ext_id: str = ""):
-    """🔴 그 어댑터의 **한 바퀴 더** 함수(없으면 `None`).
-
-    ⚠️ 가진 어댑터만 있다 — 없는 종목에 있는 척하지 않는다(지금은 `npb` 뿐).
-    """
-    return getattr(adapter_of(league, ext_id), "sources_followup", None)
 
 
-async def collect(pool, day: date, leagues: list[str], *,
-                  net: Net | None = None, scores: SourceScores | None = None,
-                  search: SearchChain | None = None,
-                  now: datetime | None = None,
-                  only: tuple[str, ...] | None = None) -> dict:
-    """하루 한 리그씩 수집해 DB 에 적는다. 반환은 **못 잰 칸까지 포함한** 요약.
-
-    🔴 조용한 0 금지 — 어느 질문이 왜 unknown 인지 그대로 돌려준다.
-
-    🔴 `only` 는 **§19-d 시간축 때문에 있다.** 라인업은 *"T-70분부터 5분 간격"*
-       인데(§19-d) 전체 수집을 5분마다 돌리면 공식 일정·순위 페이지를 하루 288번
-       두드린다 — 그 페이지들은 아침 1회면 된다. 그래서 라인업 주기는
-       `only=(Q_LINEUP,)` 로 **경기별 세포만** 돈다.
-       ⚠️ 그때 슬레이트는 블랙보드에 없으므로 **DB 에서 읽는다**(`_slate_rows`).
-    """
-    net = net or Net()
-    scores = scores or SourceScores()
-    now = now or datetime.now(timezone.utc)
-    # 🔴 §19-e — 점수표·죽은 호스트를 **DB 에서 되살린다.** 안 되살리면 학습이
-    #    프로세스마다 0 으로 돌아가고, "쌓이면 순서가 고쳐진다"가 거짓이 된다.
-    try:
-        await scores.load(pool)
-        await net.load_state(pool)
-    except Exception as exc:                        # noqa: BLE001
-        logger.warning("[ingest] 소스 상태 되살리기 실패: %s", exc)
-    # 🔴 §19-i — 1순위 SearXNG, 2순위 Google CSE(배정 안에서만).
-    #    수단이 없으면 세포가 unknown + 사유를 남긴다(§19-b-6).
-    search = search or build_chain()
-    bb = Blackboard()
-    out: dict = {"day": str(day), "leagues": {}, "unknowns": []}
-
-    for league in leagues:
-        mod = ADAPTERS.get(league)
-        if mod is None:
-            out["leagues"][league] = {"skipped": "어댑터 없음 — §13 소스 미구현"}
-            out["unknowns"].append((f"slate:{league}", "어댑터 없음"))
-            continue
-
-        if only:
-            # 🔴 라인업 주기 — 경기별 세포만. 슬레이트는 DB 에서 읽는다
-            per_game = await _game_cells(pool, bb, net, scores, search, league,
-                                         day, now=now, only=only)
-            out["leagues"][league] = {"only": list(only), **per_game}
-            continue
-        n_games = await _slate(pool, bb, net, scores, search, mod, league, day)
-        n_stand = await _standings(pool, bb, net, scores, search, mod, league, day)
-        n_live = await _live(pool, bb, net, scores, search, mod, league, day)
-        n_abs = await _absences(pool, bb, net, scores, search, mod, league, day)
-        # 🔴 §19-d 시간축 — 경기별 세포는 **깨어 있을 때만** 돈다.
-        per_game = await _game_cells(pool, bb, net, scores, search, league,
-                                     day, now=now)
-        # 🔴 §19-g-5 — unknown 이 **반증 세포를 낳는다**(사실이 사실을 낳는다)
-        n_counter = await _counters(pool, bb, net, scores, search, league, day)
-        out["leagues"][league] = {"games": n_games, "standings": n_stand,
-                                  "live": n_live, "absences": n_abs,
-                                  "counters": n_counter, **per_game}
-
-    out["unknowns"] = bb.unknowns()
-    # 🔴 **답을 찾았지만 일부를 버린 칸**도 낸다(리뷰 B3). `unknowns` 만 보면
-    #    "근거 1건"이 왜 1건인지 영영 모른다 — 치운 것이 여기 이름으로 남는다.
-    out["notes"] = bb.notes()
-    out["contradictions"] = bb.contradictions()
-    out["scores"] = scores.report()
-    # 🔴 검색 수단 상태를 드러낸다 — 조용히 0 이 되지 않게(§19-b-6).
-    out["search"] = {
-        "searx": getattr(getattr(search, "searx", None), "alive", None),
-        # 🔴 **사유째로** 낸다 — "brave 가 죽었다"와 "요청 과다로 5분 정지"는
-        #    다음 조치가 다르다(전자는 소스 교체, 후자는 간격 조절).
-        "engines_suspended": (getattr(getattr(search, "searx", None),
-                                      "engine_reasons", dict)() or "없음"),
-        "google": bool(getattr(search, "google", None)),
-        "google_left": getattr(getattr(search, "google", None), "cap",
-                               None) and search.google.cap.left,
-    }
-    try:
-        out["evidence"] = await bb.flush(pool, None)
-    except Exception as exc:                        # noqa: BLE001
-        logger.warning("[ingest] evidence 적재 실패: %s", exc)
-        out["evidence"] = f"실패: {type(exc).__name__}"
-    # 🔴 §19-e — 배운 것을 남긴다. 남기지 않으면 다음 사이클이 처음부터 시작한다.
-    try:
-        out["source_score_rows"] = await scores.flush(pool)
-        out["source_state_rows"] = await net.flush_state(pool)
-    except Exception as exc:                        # noqa: BLE001
-        logger.warning("[ingest] 소스 상태 적재 실패: %s", exc)
-        out["source_score_rows"] = f"실패: {type(exc).__name__}"
-    logger.info("[ingest] %s %s → %s · 미확인 %d", day, leagues,
-                out["leagues"], len(out["unknowns"]))
-    return out
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -409,29 +314,6 @@ def _score(s: str | None) -> tuple[int | None, int | None]:
 # ══════════════════════════════════════════════════════════════════
 
 
-async def roster(pool, league: str, team: str, year: int, *,
-                 net: Net | None = None) -> dict:
-    """등록 명단 → `players`. 🔴 자기검사 결과를 그대로 돌려준다."""
-    mod = ADAPTERS.get(league)
-    if mod is None or not hasattr(mod, "roster_url"):
-        return {"skipped": f"{league} 로스터 소스 미구현"}
-    url = mod.roster_url(year, team)
-    if not url:
-        return {"skipped": f"{team} 로스터 URL 없음"}
-    got = await (net or Net()).get(url)
-    if got.dead:
-        return {"failed": got.reason}
-    rows, note = mod.parse_roster(got, team)
-    n = 0
-    for r in rows:
-        await ids.upsert_player(pool, league=r["league"], team=r["team"],
-                                name=r["name"], jersey=r["jersey"],
-                                role=r["role"])
-        n += 1
-    out = {"team": team, "players": n}
-    if note:
-        out["warning"] = note        # 🔴 조용히 넘기지 않는다
-    return out
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -719,3 +601,46 @@ async def _counters(pool, bb, net, scores, search, league: str,
         await cell.run(net, bb, search=search, scores=scores)
         n += 1
     return n
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **`analyze.py` 에서 옮겨 왔다** — §8 5단계 삭제(2026-10-06)
+# ══════════════════════════════════════════════════════════════════
+#
+#  이름표 사다리 ⑤단(*"봇이 직접 찾았다"*)이 이 함수를 쓴다(`app/resolve.py`).
+#  🔴 적는 SQL 이 **이 파일**에 있으므로 여기가 제자리다 — 옛 조율자가 들고 있던
+#     것이 사본이었다.
+async def fill_slate(pool, league: str, day) -> str:
+    """🔴 그 리그의 **일정을 받아 표에 적는다**(옛 `analyze._fill_slate`). 돌려주는 것은 사람이 읽을 사유.
+
+    ⚠️ 수집 전체(`ingest.collect`)를 부르지 않는다 — 그것은 순위·명단·라인업까지
+       도는 **아침 작업**이고, 질문 하나가 그것을 끌고 오면 사람이 기다린다.
+       🔴 필요한 것은 **슬레이트 한 조각**이다. 적는 SQL 은 `ingest` 것을 쓴다.
+    """
+    from app.cells import Q_SLATE, Cell, Question
+    mod = ADAPTERS[league]
+    bb = Blackboard()
+    # 🔴 어댑터가 *"전부 모아라"* 라고 선언하면 그대로 한다(`kbo.SLATE_COLLECT_ALL`)
+    cell = Cell(Question(Q_SLATE, league, league=league), mod.sources_slate(day),
+                collect_all=bool(getattr(mod, "SLATE_COLLECT_ALL", False)))
+    why = await cell.run(Net(), bb, search=None)
+    # 🔴 사실을 전부 펼쳐 모은다 — `bb.value()` 는 `collect_all` 에서 비어 온다
+    #    (그 까닭은 `ingest.slate_rows` 독스트링에 있다)
+    rows = slate_rows(bb, league)
+    n = 0
+    for r in rows:
+        if not r.get("starts_utc"):
+            continue            # 🔴 시각을 모르면 표에 넣지 않는다(`ingest` 와 같다)
+        await pool.fetchval(
+            _UPSERT_GAME, r["sport"], r["league"], r["ext_id"], r["home"],
+            r["away"], r.get("venue"), r["starts_utc"], r["starts_kst"],
+            r.get("starts_local"), r["status"], r.get("round_note"),
+            r.get("home_score"), r.get("away_score"))
+        n += 1
+    return f"`{league}` 어댑터로 {n}경기를 표에 적었다" + (f" — {why}" if not n else "")
+
+
+#: 🔴 `games.status` 중 **예정이 아닌 것**. 원본은 `db/schema.sql` 의 주석이다
+#   (`scheduled | delayed | postponed | inprogress | final`).
+#   ⚠️ `delayed`·`postponed` 는 **시작 안 한 것**이다 — 예측이 아직 뜻이 있다.
+PLAYED_STATUS = ("inprogress", "final")

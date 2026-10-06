@@ -206,30 +206,10 @@ def _form_fact(rest_days, n: int = 3):
                 publisher="MLB statsapi", tier=1, extracted_by="t", step=1)
 
 
-def _recent(rest_days, n: int = 3):
-    from app import classify
-    g = classify.Game(home="Milwaukee Brewers", away="San Diego Padres",
-                      sport="baseball", league="MLB")
-    got = [c for c in classify.classify_facts([_form_fact(rest_days, n)], g)
-           if c.type == "recent_pattern"]
-    assert got, "recent_pattern 유형이 안 붙었다 — 대역이 틀렸다"
-    return got[0]
 
 
-def test_문턱_안이면_hard_그대로():
-    c = _recent(4)
-    assert c.hardness == "hard" and c.weight == 1.0, (c.hardness, c.why)
-    assert "낡았다" not in c.why, c.why
 
 
-@pytest.mark.parametrize("rest", [7, 8, 21])
-def test_칠일_이상이면_weight_0점4(rest):
-    """🔴 사용자가 지정한 수 — **7일 이상 · 0.4**."""
-    c = _recent(rest)
-    assert c.weight == 0.4, (rest, c.hardness, c.weight, c.why)
-    assert f"{rest}일 전" in c.why, c.why
-    # 🔴 **변수이기는 하다** — 약해지는 것이고 사라지는 것이 아니다
-    assert c.is_variable, c.why
 
 
 def test_문턱과_등급은_yaml_이_정한다():
@@ -246,18 +226,6 @@ def test_문턱과_등급은_yaml_이_정한다():
     assert " 7)" not in seg and "= 7" not in seg, "🔴 문턱을 코드에 박았다"
 
 
-def test_날짜를_모르면_안_깎고_그_사실을_적는다():
-    """🔴 모르는 것과 낡은 것은 **다르다** — 고칠 곳이 규칙 vs 수집이다.
-
-    ⚠️ 첫 판은 `hardness == "hard"` 만 봤다. 그러면 돌연변이(`days is not None`
-       검사 삭제)가 **통과한다** — `int(None)` 이 `try/except` 에 걸려 조용히
-       `False` 가 되므로 겉보기 결과가 같다(실측 2026-10-04).
-    🔴 **사유를 남기게** 하면 관측된다(#3 조용한 0 금지).
-    """
-    c = _recent(None)
-    assert c.hardness == "hard", (c.hardness, c.why)
-    assert "못 쟀다" in c.why, c.why
-    assert "rest_days=None" in c.why, c.why
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -291,39 +259,10 @@ def _h2h_fact(n: int = 9, *, key: str = "score"):
                 publisher="MLB statsapi", tier=1, extracted_by="t", step=1)
 
 
-def _h2h(n: int = 9, *, key: str = "score"):
-    from app import classify
-    g = classify.Game(home="Milwaukee Brewers", away="San Diego Padres",
-                      sport="baseball", league="MLB")
-    got = [c for c in classify.classify_facts([_h2h_fact(n, key=key)], g)
-           if c.type == "h2h_pattern"]
-    assert got, "h2h_pattern 유형이 안 붙었다"
-    return got[0]
 
 
-def test_맞대결이_정본_칸으로_읽힌다():
-    """🔴🔴 **v5 §8-3 으로 바뀠다**(2026-10-04).
-
-    ⚠️ 종전 이 시험은 `home_score`·`home_goals` **둘 다** 읽히는지를 봤다 —
-       읽는 쪽에 `or` 분기가 있었기 때문이다. 🔴 §11-1 이 금지한 **증상 수정**이
-       그것이고, §8-3 이 *"어댑터 안에서 변환하고 밖으로 나오지 않는다"* 로 닫았다.
-    🔴 그래서 지금은 **정본 하나**(`home_score`)만 읽는다. fotmob 이 어댑터
-       안에서 바꿔 내고, 그 사실은 `tests/contracts/test_v5_8_3_fact_schema.py` 가
-       지킨다.
-    """
-    c = _h2h(9, key="score")
-    assert c.is_variable, (c.why, c.undecided)
-    assert c.direction == "home", (c.direction, c.why)
-    assert "9경기 홈 6승 원정 3승" in c.why, c.why
 
 
-def test_맞대결_표본_수도_matches_를_센다():
-    """🔴 `count`·`matches` 를 안 보면 표본이 **0경기**가 되고 soft 로 깎인다."""
-    c = _h2h(9)
-    assert "표본 9경기" in c.why, c.why
-    assert "표본 0경기" not in c.why, c.why
-    # ⚠️ 9경기는 `h2h_min_games`(8) 위다 — 그래도 hard 는 아니다(§4 sample_weight)
-    assert c.hardness in ("hard", "likely"), (c.hardness, c.why)
 
 
 def test_score_of_가_한_곳이다():

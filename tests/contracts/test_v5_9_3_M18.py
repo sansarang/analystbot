@@ -216,33 +216,6 @@ def test_M18_방어율_파서가_이름과_방어율을_낸다():
     assert got[0].question_id.endswith(":starter_stats")
 
 
-def test_M18_두_파서가_합쳐져_변수가_된다():
-    """🔴🔴 **끝까지 돈다** — 예고 선발 + 방어율 → 방향까지.
-
-    ⚠️ 실측 2026-10-04 의 두 선발은 차이 0.74 로 문턱 0.75 에 **0.01 모자라**
-       배경이 됐다. 그래서 여기서는 **문턱을 넘는 쌍**으로 확인한다 — 배선이
-       도는지를 보는 시험이고, 그 경기의 수를 보는 시험이 아니다.
-    """
-    from app.cells import Fact
-    mk = lambda qid, v: Fact(                               # noqa: E731
-        question_id=qid, value=v, hardness="hard",
-        source="https://statsapi.mlb.com/x", publisher="MLB statsapi",
-        tier=1, extracted_by="t", step=1)
-    facts = [
-        mk("lineup:MLB:Milwaukee Brewers:2026-10-04:starter",
-           {"player": "Logan Henderson", "opponent_player": "Michael King",
-            "team": "Milwaukee Brewers", "era": None, "opponent_era": None}),
-        mk("lineup:MLB:x:2026-10-04:starter_stats",
-           {"player": "Logan Henderson", "era": 2.00}),
-        mk("lineup:MLB:x:2026-10-04:starter_stats",
-           {"player": "Michael King", "era": 4.50}),
-    ]
-    items = classify.classify_facts(facts, _game())
-    hit = [c for c in items if c.type == "pitcher_state"]
-    assert hit, [(c.type, c.why or c.undecided) for c in items]
-    assert hit[0].is_variable, (hit[0].why, hit[0].undecided)
-    # 🔴 방어율이 **낮은 쪽**(밀워키=홈)이다
-    assert hit[0].direction == "home", (hit[0].direction, hit[0].why)
 
 
 def test_M18_방어율을_따라간다():

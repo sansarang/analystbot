@@ -25,34 +25,8 @@ from app import solar
 from app.reasons import Reason
 
 
-def _inp():
-    import datetime as dt
-
-    from app import agentloop
-    return agentloop.AgentInput(
-        match_key="fotmob:1", home="team:1", away="team:2",
-        home_names=("A",), away_names=("B",), competition="L",
-        sport="soccer",
-        kickoff_utc=dt.datetime(2026, 10, 5, 18, 45, tzinfo=dt.timezone.utc),
-        venue="V", langs=("en",))
 
 
-def test_wo4_예산_거부는_llm_장애가_아니다():
-    """🔴🔴 **사유가 갈린다** — 그러지 않으면 거짓 사유다(§8-6)."""
-    from app import agentloop
-    # 🔴 하위 클래스여야 한다 — 종전 `except SolarUnavailable` 자리가 그대로 돈다
-    assert issubclass(solar.SolarBudgetCut, solar.SolarUnavailable)
-    assert agentloop._why_of(solar.SolarBudgetCut("budget_cut: …")) \
-        is Reason.BUDGET_CUT
-    # 🔴🔴 **지시서 2026-10-06 §3(M136)이 이것을 더 갈랐다** — 상태 코드별로
-    #    `llm_timeout`·`llm_http_5xx`·`llm_429` 다. ⚠️ 상태를 모르면(= 응답조차
-    #    못 받았다) `llm_timeout` 이다 — 그것이 **망**을 가리킨다.
-    assert agentloop._why_of(solar.SolarUnavailable("llm_unavailable: …")) \
-        is Reason.LLM_TIMEOUT
-    assert agentloop._why_of(
-        solar.SolarUnavailable("x", status=503)) is Reason.LLM_HTTP_5XX
-    assert agentloop._why_of(
-        solar.SolarUnavailable("x", status=429)) is Reason.LLM_429
 
 
 def test_wo4_예산이_막으면_budget_cut_으로_던진다():
@@ -67,57 +41,6 @@ def test_wo4_예산이_막으면_budget_cut_으로_던진다():
     assert "llm_unavailable" not in str(got.value)
 
 
-def test_wo4_상태_코드별로_센다(monkeypatch):
-    """🔴🔴 429·5xx·응답없음을 **가른다** — 고칠 곳이 다르다(속도/서버/망).
-
-    ⚠️ 망에 안 나간다 — `urlopen` 을 대역으로 바꾼다.
-    """
-    solar.HTTP_FAILS.clear()
-    saw = solar.SAW_429
-    slept: list[float] = []
-    try:
-        solar.SAW_429 = False
-        assert solar.http_fail_line() == "전송 실패 0건", solar.http_fail_line()
-        monkeypatch.setattr(solar.time, "sleep", lambda x: slept.append(x))
-
-        # ── ① 503 두 번(재시도 1회) → 상태 503 이 2 건
-        def _503(*_a, **_k):
-            raise urllib.error.HTTPError("u", 503, "nope", {}, None)  # type: ignore[arg-type]
-        monkeypatch.setattr(solar.urllib.request, "urlopen", _503)
-        with pytest.raises(solar.SolarUnavailable) as got:
-            solar._post("https://x", "k", {}, 1, 1)
-        assert got.value.status == 503, got.value.status
-        assert solar.HTTP_FAILS.get(503) == 2, solar.HTTP_FAILS
-        assert solar.SAW_429 is False, "🔴 503 인데 429 로 봤다"
-
-        # ── ② 응답조차 못 받은 것은 **`None`** 이다(0 이 아니다 · #3)
-        def _dead(*_a, **_k):
-            raise urllib.error.URLError("nodename nor servname provided")
-        monkeypatch.setattr(solar.urllib.request, "urlopen", _dead)
-        with pytest.raises(solar.SolarUnavailable) as got2:
-            solar._post("https://x", "k", {}, 1, 0)
-        assert got2.value.status is None, got2.value.status
-        assert solar.HTTP_FAILS.get(None) == 1, solar.HTTP_FAILS
-
-        # ── ③ 429 → `SAW_429` 가 서고 `Retry-After` 만큼 쉰다
-        def _429(*_a, **_k):
-            raise urllib.error.HTTPError(
-                "u", 429, "slow", {"Retry-After": "5"}, None)  # type: ignore[arg-type]
-        monkeypatch.setattr(solar.urllib.request, "urlopen", _429)
-        slept.clear()
-        with pytest.raises(solar.SolarUnavailable):
-            solar._post("https://x", "k", {}, 1, 1)
-        assert solar.SAW_429 is True, "🔴 429 를 받고도 깃발이 안 섰다"
-        assert slept == [5.0], f"🔴 `Retry-After` 를 안 따랐다: {slept}"
-
-        # ── ④ 한 줄 보고가 **셋을 다 이름으로** 적는다(#3 조용한 0 금지)
-        said = solar.http_fail_line()
-        for word in ("503", "429", "응답없음"):
-            assert word in said, (word, said)
-        assert said.startswith("전송 실패 5건"), said
-    finally:
-        solar.SAW_429 = saw
-        solar.HTTP_FAILS.clear()
 
 
 def test_wo4_429를_받으면_동시_호출을_낮춘다():
@@ -155,12 +78,3 @@ def test_wo4_Retry_After_를_따른다():
     assert solar._retry_after(_None(), 3.0) == 3.0        # 🔴 없으면 지수 대기
 
 
-def test_wo4_보고에_그_줄이_있다():
-    """🔴 #2 배선 — 집계만 만들고 **적지 않으면** 없는 것이다."""
-    import inspect
-
-    from app import analyze
-    from tests._helpers import strip_docs
-    src = strip_docs(inspect.getsource(analyze.gather))
-    assert "http_fail_line" in src, (
-        "🔴 카드가 전송 실패 집계를 **안 적는다** — 사용자 ④ 가 요구한 보고다")

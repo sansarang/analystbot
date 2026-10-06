@@ -1,30 +1,26 @@
-"""저장된 슬레이트 조회 — **질문이 오면 DB 에서 바로 답한다.**
+"""🔴🔴 **쌓아 둔 경기에서 찾기** — 이름표 사다리 ②단이 쓴다(`app/resolve.py`).
 
-사용자 지시 2026-10-01:
+══════════════════════════════════════════════════════════════════
+🔴 **슬레이트 명령·렌더러는 지웠다** — 사용자 지시 2026-10-06 ⑧
+══════════════════════════════════════════════════════════════════
 
-> 서버에서 당일 날짜 및 그다음 날짜 터울은 하루, 어떤 경기가 있는지 저장이 되어
-> 있어야 한다 … 그러면 사용자가 경기에 대해 질문을 했을 때 **바로 답할 수 있고**
+> 삭제: 스케줄러·채점·슬레이트 코드 삭제 → `analyze.py` 삭제.
 
-🔴 **이 파일은 웹에 나가지 않는다.** 스케줄러가 미리 쌓아 둔 `games` 표만 읽는다 —
-   질문할 때마다 검색하면 느리고, 무엇보다 **엔진 정지를 부른다**(실측 2026-09-30:
-   측정이 SearXNG 엔진 셋을 전부 정지시켰다).
-
-⚠️ **없는 것을 있는 척하지 않는다.** 그 경기가 표에 없으면 *"아직 안 쌓였다"* 와
-   *"그런 경기가 없다"* 를 구분해 적는다 — 어느 쪽인지 모르면 사용자가 다시 물을지
-   기다릴지 판단할 수 없다(CLAUDE.md §조용한 0 금지).
+⚠️ 그런데 이 파일에는 **두 가지**가 섞여 있었다: ① `/slate` 명령이 쓰던 렌더러
+   (`render`·`SPORT_KO`)와 ② **경기 조회**(`find`·`by_key`·`window`). 🔴 ②는
+   v6 의 입구(s1 → `resolve.match_of`)가 쓴다 — 지우면 *"쌓인 경기에 있나"* 단이
+   사라진다. 그래서 **①만 지우고 ②를 남겼다.**
+🔴 남은 것은 **DB 조회**뿐이고 사람이 읽는 꼴을 만들지 않는다(그것은 `render.py`).
 """
 from __future__ import annotations
-
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
-
 from app import timefmt
-
 logger = logging.getLogger(__name__)
 KST = timezone(timedelta(hours=9))
-
-#: 🔴 종목 표기. 원본은 어댑터의 `SPORT` 상수다 — 여기는 **사람에게 보일 이름**뿐.
+#: 🔴 사유 문장이 쓰는 종목 이름 — ⚠️ 이것은 **렌더러가 아니다**(사유를 사람이 읽게
+#   적는 자리다 · 조용한 0 금지). `/slate` 명령의 꼴은 지웠다.
 SPORT_KO = {"baseball": "야구", "soccer": "축구", "hockey": "하키",
             "basketball": "농구", "volleyball": "배구"}
 
@@ -42,23 +38,9 @@ class Found:
     #: 🔴 어느 날짜·종목까지 **쌓여 있나**(창 밖 질문을 구분하려면 이것이 필요하다)
     stored_days: list[str] = field(default_factory=list)
     stored_sports: list[str] = field(default_factory=list)
-
-
-#: 🔴 **KST 날짜로 자른다 — timestamptz 를 날짜와 바로 비교하지 않는다.**
-#
-#  ⚠️ 실측 2026-10-01: `starts_kst >= $1::date` 는 `starts_kst` 가 timestamptz 라
-#     **서버 시간대(UTC)** 로 비교된다. 이틀 창(10-01~10-02)을 물었는데
-#     `10-03 07:30 KST`(= 10-02 22:30 UTC) 경기가 들어왔다 — 질의는 UTC 로 자르고
-#     화면은 KST 로 그려서 **둘이 어긋났다.**
-#  🔴 조각은 `timefmt.sql_kst_day` **하나**다.
-#     ⚠️ 종전 이 자리 주석이 *"`app/main.py`·`app/sources.py` 가 이미 그 꼴을
-#        쓰고 있었다"* 고 적어 뒀다 — 🔴 **둘 다 안 쓰고 있었다**(실측
-#        2026-10-05). 손으로 적은 "이미 됐다"는 사본이고, 사본은 틀린다(#1).
-#        그래서 이제 그 조각을 **부른다** — 적지 않는다.
 _WHERE_DAYS = (f" WHERE {timefmt.sql_kst_day()} >= $1::date\n"
                f"   AND {timefmt.sql_kst_day()}"
                f"       < $1::date + ($2 || ' days')::interval\n")
-
 _BASE = """
 SELECT id, sport, league, home, away, venue, starts_kst, status,
        -- 🔴 `ext_id` 가 **공식 API 깊이의 열쇠다**(`sources_context`). 빠뜨리면
@@ -67,8 +49,6 @@ SELECT id, sport, league, home, away, venue, starts_kst, status,
        home_score, away_score, round_note
   FROM games
 """ + _WHERE_DAYS
-
-
 async def window(pool, *, day: date | None = None, days: int = 2) -> Found:
     """쌓인 창 전체. 🔴 **무엇이 쌓였는지**를 먼저 답한다."""
     day = day or datetime.now(KST).date()
@@ -84,8 +64,6 @@ async def window(pool, *, day: date | None = None, days: int = 2) -> Found:
         got.why = (f"{day} 부터 {days}일치가 **아직 안 쌓였다** — 스케줄러가 한 "
                    f"번도 안 돌았거나 수집이 실패했다")
     return got
-
-
 async def by_key(pool, key: str) -> Found:
     """🔴🔴 **열쇠로 바로 찾는다**(3단계 · 사용자 설계 2026-10-03).
 
@@ -115,8 +93,6 @@ async def by_key(pool, key: str) -> Found:
         got.reason = _R.MATCH_NOT_FOUND
         got.why = f"`{key}` 로 적힌 경기가 표에 없다"
     return got
-
-
 async def find(pool, *, team: str | None = None, sport: str | None = None,
                league: str | None = None, day: date | None = None,
                days: int = 2, opponent: str | None = None) -> Found:
@@ -185,43 +161,3 @@ async def find(pool, *, team: str | None = None, sport: str | None = None,
                f"{' · '.join(bits) or '조건'}에 맞는 것이 없다 "
                f"(쌓인 종목: {', '.join(SPORT_KO.get(s, s) for s in whole.stored_sports)})")
     return got
-
-
-# ══════════════════════════════════════════════════════════════════
-# 사람이 읽을 줄
-# ══════════════════════════════════════════════════════════════════
-
-
-def render(found: Found, *, title: str = "") -> str:
-    """🔴 **찾은 것과 못 찾은 이유를 같은 글에** 담는다.
-
-    ⚠️ 비었을 때 빈 줄을 내면 사용자가 "경기가 없다"로 읽는다 — 아직 안 쌓인 것과
-       진짜 없는 것은 다르다.
-    """
-    head = title or "저장된 슬레이트"
-    if not found.games:
-        return (f"{head}\n\n"
-                f"🔴 찾은 경기 0건\n"
-                f"이유: {found.why or '알 수 없다'}")
-
-    by_day: dict[str, list[dict]] = {}
-    for g in found.games:
-        by_day.setdefault(str(g["starts_kst"].astimezone(KST).date()),
-                          []).append(g)
-
-    out = [f"{head} — {len(found.games)}경기"]
-    for d in sorted(by_day):
-        out.append(f"\n■ {d}")
-        for g in by_day[d]:
-            when = g["starts_kst"].astimezone(KST).strftime("%H:%M")
-            sp = SPORT_KO.get(g["sport"], g["sport"])
-            score = ""
-            if g.get("home_score") is not None and g.get("away_score") is not None:
-                score = f"  {g['away_score']}-{g['home_score']}"
-            note = f"  ({g['round_note']})" if g.get("round_note") else ""
-            # 🔴 예정이 아닌 것은 **상태를 적는다** — 끝난 경기를 예정으로 보이면
-            #    사용자가 그것을 분석 대상으로 여긴다(§2)
-            st = "" if g["status"] == "scheduled" else f"  [{g['status']}]"
-            out.append(f"  {when} KST · {sp} {g['league']}\n"
-                       f"      {g['away']} @ {g['home']}{score}{note}{st}")
-    return "\n".join(out)

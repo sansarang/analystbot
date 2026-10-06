@@ -317,33 +317,5 @@ KR_TEAM_NAMES.update({
 _DROP = {"fc", "cf", "sc", "ac", "afc", "cfc", "club", "the", "united", "city"}
 
 
-def team_tokens(name: str) -> frozenset[str]:
-    """팀명의 **뜻 있는 낱말**. 🔴 `FC`·`United` 같은 흔한 꼬리는 뺀다.
-
-    ⚠️ 그것을 안 빼면 `Manchester United` 와 `Newcastle United` 가 한 낱말을 공유해
-       퍼지 매칭이 엉뚱한 팀을 고른다.
-    """
-    import re as _re
-    words = {w for w in _re.split(r"[^0-9A-Za-z가-힣]+", str(name or "").lower())
-             if w}
-    return frozenset(words - _DROP) or frozenset(words)
 
 
-def kr_team(name: str) -> str:
-    """영문 팀명 → 한국어 표기. 정확 일치 → 퍼지 → 원문 유지(로그)."""
-    if name in KR_TEAM_NAMES:
-        return KR_TEAM_NAMES[name]
-
-    target = team_tokens(name)
-    best, best_score = None, 0
-    for en, kr in KR_TEAM_NAMES.items():
-        entry = team_tokens(en)
-        score = len(target & entry)
-        # 작은 쪽 토큰 집합이 완전히 겹칠 때만 매칭 (부분 일치 오인 방지)
-        if score == 0 or score < min(len(target) or 1, len(entry) or 1):
-            continue
-        if score > best_score:
-            best, best_score = kr, score
-        elif score == best_score and best != kr:
-            best = None  # 동점 모호 → 원문 유지
-    return best or name

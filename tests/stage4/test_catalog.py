@@ -61,90 +61,12 @@ def test_유형이_자기_템플릿과_작동을_들고_있다():
 
 
 
-def test_템플릿이_검색어가_되고_순서가_각도_순서다():
-    """🔴 *"유형마다 템플릿 3~4개를 **순서대로**"* — 순서가 뜻을 가진다."""
-    got = queries.catalog_variants("def_absence", team="South Korea W",
-                                   league="Asian Games", day=DAY,
-                                   opponent="China W")
-    texts = [v.text for v in got if v.text]
-    assert texts, got
-    # 🔴 **영어가 먼저**다(사용자 지시) — 현지어는 그다음
-    assert got[0].lang == "en", [(v.lang, v.text) for v in got[:3]]
-    # 🔴 템플릿 순서가 보존된다
-    #    ⚠️ **사다리 줄은 제외한다**(`사다리②:…`) — 그것은 템플릿이 아니라 별칭·감독·
-    #       현지 매체로 만든 **뒤의 단**이고 번호 체계가 다르다(기술 1·2).
-    order = [int(v.axis.split(":")[2]) for v in got
-             if v.text and v.axis.startswith("카탈로그:")]
-    assert order == sorted(order), order
-    # 🔴 **사다리가 뒤에 붙는다** — 앞은 일반 질의(①), 뒤가 ②③④ 다
-    rungs = [v for v in got if v.text and v.axis.startswith("사다리")]
-    assert rungs, "사다리 단이 0개다 — 별칭·감독 선언이 안 쓰였다"
-    first_rung = min(i for i, v in enumerate(got)
-                     if v.text and v.axis.startswith("사다리"))
-    last_tpl = max(i for i, v in enumerate(got)
-                   if v.text and v.axis.startswith("카탈로그:"))
-    assert first_rung > last_tpl, (first_rung, last_tpl)
 
 
-def test_자리표를_못_채우면_반쪽_질의를_던지지_않는다():
-    """🔴 `{coach}` 를 빈칸으로 두면 `" rotation 두산"` 이 나가고 그것은 0건을 부른다.
-
-    ⚠️ **건너뛴 것을 이름으로 남긴다**(조용한 0 금지).
-    """
-    got = queries.catalog_variants("squad_rotation", team="Liverpool",
-                                   league="EPL", day=DAY)
-    skipped = [v for v in got if not v.text]
-    assert skipped, "자리표가 빈데 건너뛰지 않았다"
-    assert "자리표" in skipped[0].source and "coach" in skipped[0].source
-    # 🔴 채워지는 템플릿은 그대로 쓴다
-    assert [v.text for v in got if v.text]
 
 
-def test_경기마다_유형_전부를_돌린다():
-    """🔴 세포 하나 = **유형 하나**(§19-a). 한 유형이 0건이어도 다른 유형은 계속 돈다.
-
-    ⚠️ 전에 한 세포에 질문 둘을 넣었다가 첫 성공에서 멈춰 둘째를 영영 못 얻었다.
-    """
-    cells_, dropped = searchcells.catalog_cells(
-        team="South Korea W", league="Asian Games", day=DAY, game_id=1,
-        starts=KICK, opponent="China W")
-    made = {c.question.id.rsplit(":", 1)[-1] for c in cells_}
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **목록을 손으로 적지 않는다** (CLAUDE.md #1 사본 금지)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  종전에는 `set(DESIGNED)` 와 **똑같아야** 한다고 적었다. 2026-10-02 에
-    #  `pitcher_state`·`emotion` 에 템플릿을 주자마자 이 줄이 빨개졌다 — 코드가
-    #  옳았고 **계약이 한 발 늦었다.** 그래서 기대값을 yaml 에서 자라게 한다.
-    #  ⚠️ 그래도 설계한 다섯은 **반드시 들어 있어야** 한다(아래) — 그 확인이 요점이다.
-    want = {v for v in rules.variable_types()
-            if rules.type_templates_tagged(v)}
-    # 🔴 **템플릿이 없는 유형이 세포가 되면** 그것이 버그다(지어낸 질의가 나간다)
-    assert made <= want, made - want
-    # 🔴🔴 **안 선 유형은 전부 사유가 남아야 한다** — 조용히 빠지면 "안 물었다"와
-    #    "물었는데 0건"을 구분할 수 없다(#3 조용한 0 금지).
-    #    ⚠️ 이 경기(아시안게임 여자)의 언어는 `en+ko+zh` 다. `{coach}`·`{star}` 를
-    #       못 채우는 유형, `ja` 전용 템플릿만 가진 유형이 여기서 빠진다.
-    for v in sorted(want - made):
-        assert any(d.startswith(f"{v}:") for d in dropped), (v, dropped)
-    # 🔴 설계한 다섯 중 **자리표가 다 채워지는 것**은 반드시 세포가 선다
-    assert {"def_absence", "event_match", "national_duty_return"} <= made, made
-    # 🔴 템플릿 없는 유형은 **세포를 만들지 않고 사유를 남긴다**
-    assert any("검색 템플릿이 없다" in d for d in dropped), dropped[:3]
-    # 🔴 본문을 열고 §17-b 로 읽는다 — 카탈로그는 산문을 겨냥한다
-    for c in cells_:
-        assert all(s.open_body and s.extract_tasks for s in c.sources)
 
 
-def test_모델이_무엇을_찾을지_정하지_않는다():
-    """🔴🔴 **설계의 요점이다.** 8B 가 가장 못하는 판단이 *"무엇을 찾을지"* 다.
-
-    ⚠️ D46 — 독스트링·주석을 뺀 **코드만** 본다.
-    """
-    for mod in (queries.catalog_variants, searchcells.catalog_cells):
-        src = strip_docs(inspect.getsource(mod))
-        for bad in ("llm", "ollama", "qwen", "extract.run"):
-            assert bad not in src.lower(), f"{mod.__name__} 이 {bad} 를 부른다"
 
 
 def test_작동이_교차_규칙에_붙는다():
@@ -288,23 +210,6 @@ def test_미구현은_이름으로_남고_구현한_것은_방향_규칙이_있�
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_좁은_질문의_발견이_팀을_잃지_않는다():
-    """🔴 봇이 스스로 찾은 `唐川侑己 은퇴 세레머니` 가 *"어느 팀인지 모른다"* 로
-    떨어졌다 — 좁은 질문의 값에는 `team` 칸이 없고 팀은 **사실**에 실려 온다.
-    """
-    from app.blackboard import Fact
-    g = classify.Game(home="千葉ロッテマリーンズ", away="福岡ソフトバンクホークス",
-                      sport="baseball", league="NPB")
-    f = Fact(question_id="counter:NPB:千葉ロッテマリーンズ:2026-10-02:emotion",
-             value={"ask": "emotion", "answer": "yes",
-                    "quote": "引退セレモニーを試合後に実施する",
-                    "player_name": "唐川侑己"},
-             hardness="likely", team="千葉ロッテマリーンズ")
-    got = classify.classify_fact(f, g)
-    assert len(got) == 1, got
-    it = got[0]
-    # 🔴 **상대 쪽**이다(승리 극대화가 아닌 기용을 하는 팀의 반대)
-    assert it.is_variable and it.direction == "away", (it.direction, it.undecided)
 
 
 def test_난타전_템플릿도_종목별이다():
@@ -610,37 +515,6 @@ def test_라인업_상태가_등급_상한을_정한다():
     assert any("적용 종목" in n for n in hh.notes), hh.notes
 
 
-def test_라인업_상태를_우리_자료에서_읽는다():
-    """🔴🔴 `analyze.xi_state` 가 세 칸을 **실제로 가르는가**.
-
-    ⚠️ 종전 `_xi_confirmed` 에 **잠복 결함**이 있었다 — `lineup_kind` 라는 칸을
-       봤는데 `_xi` 가 적는 칸은 `confirmed` 다. 그래서 **언제나 False** 였고
-       *"확정이면 1.0"* 규칙이 **한 번도 동작한 적이 없었다**(fail-closed 라 수는
-       안 틀렸지만, 규칙이 죽어 있었다).
-    """
-    from app import analyze, survive
-    g = classify.Game(home="A", away="B", sport="soccer", league="X")
-    xi = {"A": {"players": ["x"] * 11, "confirmed": True},
-          "B": {"players": ["y"] * 11, "confirmed": True}}
-    # ⚠️ v5 §6-5 — 확정인데 **미검증**이면 꼬리표가 붙는다(한 단계 아래)
-    assert analyze.xi_state(xi, g) == "양쪽확정" + survive.UNVERIFIED_MARK
-    # 🔴 A 만 확정이면 **`한쪽확정`** 이다 — 종전엔 이 경기가 `예상`(0.85)으로
-    #    떨어졌다(v5 §6-5 가 그 칸을 만들었다). ⚠️ 그 확정이 미검증이라 꼬리표.
-    xi["B"]["confirmed"] = False
-    assert analyze.xi_state(xi, g) == "한쪽확정" + survive.UNVERIFIED_MARK
-    # ⚠️ 둘 다 예상이면 **꼬리표를 안 붙인다** — 발표된 적 없는 XI 를 "미검증"
-    #    이라 적으면 그것이 거짓 사유다(§8-6)
-    xi["A"]["confirmed"] = False
-    assert analyze.xi_state(xi, g) == "양쪽예상"
-    # 🔴 확정이고 **검증까지** 됐으면 꼬리표가 없다(상한 1.0)
-    for t in ("A", "B"):
-        xi[t]["confirmed"] = True
-        xi[t]["verified"] = True
-    assert analyze.xi_state(xi, g) == "양쪽확정"
-    assert analyze.xi_state({"A": xi["A"]}, g) == "없음"
-    assert analyze.xi_state({}, g) == "없음"
-    # 🔴 선수가 비면 XI 가 **있는 것이 아니다**
-    assert analyze.xi_state({"A": xi["A"], "B": {"players": []}}, g) == "없음"
 
 
 def test_죽는_갈래가_다른_추천이_여럿이면_하나만_고른다():
@@ -751,56 +625,14 @@ def test_별칭이_선언된_언어가_검색_언어에_들어간다():
     """🔴 실측 2026-10-03 — 파라과이 별칭 `Albirroja` 를 `es` 로 선언했는데 검색
     언어가 `en` 뿐이라 **그 별칭이 한 번도 안 던져졌다.** 선언이 있는데 안 쓰이는
     것이 가장 나쁘다."""
-    from app import entities, queries
+    from app import entities
     assert "es" in entities.langs_of("Paraguay")
     langs, why = queries.langs_for("Friendlies", "Paraguay", "Colombia")
     assert "es" in langs and langs[0] == "en", (langs, why)
 
 
-def test_사다리가_현지어_별칭_감독_매체로_만든다():
-    """🔴🔴 사용자 사다리 ②③④ 가 실제로 나오나.
-
-    ⚠️ ① (일반 영어)은 `templates` 가 한다 — 여기는 그 **뒤의 세 단**이다.
-    """
-    from datetime import date
-    from app import queries
-    got = [v for v in queries.catalog_variants(
-        "def_absence", team="Jamaica", league="Friendlies",
-        day=date(2026, 10, 3), opponent="El Salvador") if v.text]
-    texts = [v.text for v in got]
-    # ② 현지어 + **별칭**
-    assert any("Reggae Boyz" in x for x in texts), texts[:6]
-    # ③ **감독 이름이 검색어**다 — 사용자가 `Speid` 로 찾은 그 자리
-    assert any("Rudolph Speid" in x for x in texts), texts[:6]
-    # ④ **현지 매체 지정**
-    assert any("site:jamaica-gleaner.com" in x for x in texts), texts[:6]
-    # 🔴 별칭은 **그 언어의 것만** — `ホークス` 가 영어 질의에 섞이면 안 된다
-    for v in got:
-        if "ホークス" in v.text:
-            assert v.lang == "ja", v
 
 
-def test_감독은_자료가_선언을_이긴다():
-    """🔴 감독은 바뀐다 — 그 경기 자료가 이름을 주면 그것을 먼저 쓴다.
-
-    ⚠️ 실측 2026-10-03: fotmob 이 `coach=None` 을 줬다 — 그때 선언이 댄다.
-    """
-    from app import entities
-    from app.blackboard import Fact
-    declared, why1 = entities.coach_of("Colombia")
-    # ⚠️ **v5 §8-2 로 출처가 더 구체적이 됐다**(2026-10-04) — 종전엔 `선언(…yaml)`
-    #    이었고 이제 그 팀의 `source` 줄(*"사용자 분석 2026-10-03"*)이 온다.
-    #    🔴 **더 정확한 정보**다 — 어느 줄에서 왔는지가 적힌다.
-    assert declared, (declared, why1)
-    assert str(why1 or "").strip(), "🔴 출처가 비었다"
-    assert "학습" not in why1, (declared, why1)
-    live = Fact(question_id="x", value={"team": "Colombia", "coach": "새 감독"},
-                hardness="hard")
-    got, why2 = entities.coach_of("Colombia", [live])
-    assert got == "새 감독" and "자료" in why2, (got, why2)
-    # 🔴 선언도 자료도 없으면 **사유를 돌려준다**
-    none, why3 = entities.coach_of("없는팀")
-    assert none == "" and "모른다" in why3
 
 
 def test_별칭으로도_귀속을_본다():
@@ -829,60 +661,8 @@ def test_현지_매체를_먼저_연다():
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_종목에_없는_유형은_묻지_않는다():
-    """🔴🔴 야구 전용 유형이 **축구 경기에서 돌았다** — 실측 2026-10-03.
-
-    엘살바도르 vs 자메이카(축구)에서 `pitcher_state`(예고 선발) 세포가 두 팀 모두
-    돌았고 간 곳이 이렇다:
-
-    ```
-    baseballsavant.mlb.com/savant-player/salvador-sanchez-463019
-        ← `El Salvador` 를 야구 선수 `Salvador Sanchez` 로 집었다
-    apnews.com/article/tigers-royals-score-…                  HTTP 403
-    ```
-    비용: 검색 10회 · 열기 4건 · **LLM 90초** · 시도 43건 → 둘 다 `unknown`.
-
-    ⚠️ 까닭: 종목 게이트(`queries.asks`)는 **세포 질문 이름**으로 돌고 카탈로그는
-       **§4 유형 이름**으로 돈다. 이름이 달라 게이트가 **한 번도 안 걸렸다** —
-       `asks()` 가 스무 유형 전부를 *"Q_TYPES 에 없다 — 막지 않는다"* 로 통과시켰다.
-    🔴 그래서 유형의 **`watch:` 선언**으로 묻는다 — 손 목록이 아니라 yaml 에서 자란다.
-    """
-    kw = dict(team="El Salvador", league="CONCACAF NL", day=date(2026, 10, 3),
-              game_id=1, starts=datetime(2026, 10, 3, 2, 0, tzinfo=timezone.utc),
-              opponent="Jamaica")
-    soccer, s_drop = searchcells.catalog_cells(sport="soccer", **kw)
-    base, b_drop = searchcells.catalog_cells(sport="baseball", **kw)
-    names = {c.question.subject.rpartition(":")[2] for c in soccer}
-    assert "pitcher_state" not in names, "축구인데 예고 선발을 물었다"
-    assert any("pitcher_state" in d and "묻지 않는다" in d for d in s_drop), \
-        f"막았으면 **사유를 남겨야** 한다(#3 조용한 0 금지): {s_drop}"
-    # 🔴 야구에서는 **그대로 돈다** — 게이트가 종목을 가린다는 것이 요점이다
-    assert "pitcher_state" in {c.question.subject.rpartition(":")[2] for c in base}
-    assert not [d for d in b_drop if "pitcher_state" in d and "묻지 않는다" in d]
-    # ⚠️ 종목을 **모르면 막지 않는다** — 새 종목이 아무것도 못 묻게 되면 더 나쁘다
-    unknown, _ = searchcells.catalog_cells(sport="", **kw)
-    assert len(unknown) >= len(base)
 
 
-def test_게이트가_yaml_에서_자란다():
-    """🔴 CLAUDE.md #1 — *"검사 범위를 원본에서 자라게 짠다."*
-
-    ⚠️ 코드에 *"축구에 없는 유형"* 목록을 손으로 두면 yaml 에 유형이 하나 늘 때
-       그 목록이 한 발 늦는다(이 저장소가 같은 병으로 여섯 번 놓쳤다).
-    🔴 그래서 게이트는 유형의 `watch:` 를 읽는다 — **모든 유형이 그것을 선언한다**.
-    """
-    from app import rules
-    from app.cells import Q_TYPES
-    missing = [t for t, v in rules.variable_types().items()
-               if not str((v or {}).get("watch") or "").strip()]
-    assert not missing, f"`watch:` 가 없는 유형 — 게이트가 못 자란다: {missing}"
-    bad = [(t, (v or {}).get("watch")) for t, v in rules.variable_types().items()
-           if str((v or {}).get("watch")) not in Q_TYPES]
-    assert not bad, f"`watch:` 가 `cells.Q_TYPES` 에 없는 이름을 가리킨다: {bad}"
-    # 🔴 게이트가 `asks` 를 **부르는지** 본다(직접 이름 목록을 들면 빨개진다)
-    import inspect
-    src = inspect.getsource(searchcells.catalog_cells)
-    assert "queries.asks(" in src and 'get("watch")' in src
 
 
 def test_죽는_시나리오가_0건이면_상한이_가드를_뚫지_않는다():

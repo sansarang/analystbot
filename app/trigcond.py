@@ -79,21 +79,6 @@ def parse(expr: object) -> Cond | None:
     return None
 
 
-def template_kind(expr: object) -> str | None:
-    """🔴 **꼴만** 본다 — `{player}` 같은 자리가 채워지기 전의 템플릿도 읽는다.
-
-    ⚠️ yaml 의 조건 줄은 `player:{star} in XI` 처럼 **빈 자리**를 갖는다. 그 줄이
-       읽히는 꼴인지 검사하려면 자리를 **아무 값**으로 채워 보면 된다.
-    🔴 값을 지어내 쓰는 것이 아니라 **문법 검사**다(그 값은 버린다).
-    """
-    s = str(expr or "")
-    if not s.strip():
-        return None
-    # ⚠️ **숫자로** 채운다 — `changes_from_last >= X` 는 문법에 안 맞다
-    #    (그 꼴은 수를 요구한다). 🔴 `1` 은 세 꼴 전부에서 읽힌다.
-    filled = re.sub(r"\{[a-z_]+\}", "1", s)
-    got = parse(filled)
-    return got.kind if got else None
 
 
 def evaluate(expr: object, xi: dict | None) -> tuple[bool | None, str]:
@@ -186,55 +171,5 @@ def resolve(exprs: list, xi: dict | None) -> Resolution:
     return out
 
 
-def rerun_ok(*, before: int, after: int) -> tuple[bool, str]:
-    """🔴 **M2 — 재실행에서 시나리오 수가 줄면 실패.**
-
-    ⚠️ 재실행은 **더 아는 상태**다(확정 XI 를 받았다). 아는 것이 늘었는데 그릴 수
-       있는 시나리오가 줄면 그것은 우리 규칙이 **좁아진** 것이고 자료 탓이 아니다.
-    🔴 늘어나는 것은 괜찮다 — 더 알게 되면 갈래가 늘 수 있다.
-    """
-    if int(after) >= int(before):
-        return True, f"재실행 시나리오 {before} → {after}"
-    return False, (f"🔴 **M2 실패** — 재실행에서 시나리오가 {before} → {after} 로 "
-                   f"**줄었다**. 더 아는 상태인데 갈래가 줄면 규칙이 좁아진 것이다")
 
 
-def check_for(vtype: str, *, star: str = "", shape: str = "") -> tuple[str, str]:
-    """🔴🔴 **그 유형의 기계 조건** — 빈 자리를 이 경기 자료로 채운다.
-
-    돌려주는 것은 `(조건, 사유)` 다. 🔴 못 만들면 `("", 까닭)` — **지어내지
-    않는다.**
-
-    ⚠️ 빈 자리를 **채울 값이 없으면 만들지 않는다**: `player:{star} in XI` 에서
-       `star` 가 없으면 `player: in XI` 라는 **평가할 수 없는 글자**가 된다.
-       🔴 그것을 조건이라고 적으면 §7-2 의 *"1개 이상"* 을 **거짓으로** 채운다.
-    """
-    from app import rules
-    table = rules.trigger_checks()
-    ours = rules.v5_names().get(str(vtype), str(vtype))
-    tpl = table.get(str(vtype)) or table.get(ours)
-    if not tpl:
-        if str(vtype) in rules.unmapped_types():
-            return "", (f"§7-2 — `{vtype}` 은 **우리 §4 에 없는 유형**이다"
-                        f"(지시문 이름). 조건을 만들지 않는다")
-        return "", f"§7-2 — `{vtype}` 에 선언된 기계 조건이 없다"
-    # 🔴 **선언된 꼴 자체가 읽히나** — yaml 오타를 빈 자리 채우기 **전에** 가린다.
-    #    ⚠️ 안 가리면 채운 뒤 `parse` 가 실패하고 사유가 *"만든 조건을 못 읽는다"*
-    #       가 된다 — **선언이 틀린 것**과 **채운 값이 틀린 것**은 고칠 곳이
-    #       다르다(§8-6).
-    if template_kind(tpl) is None:
-        return "", (f"§7-2 — `{vtype}` 의 **선언된 조건 꼴**을 읽을 수 없다"
-                    f"(`config/trigger_conditions.yaml` 오타다): {tpl!r}")
-    vals = {"n": rules.trigger_defaults().get("changes_n"),
-            "star": star, "shape": shape}
-    need = re.findall(r"\{([a-z_]+)\}", tpl)
-    missing = [k for k in need if not str(vals.get(k) or "").strip()]
-    if missing:
-        return "", (f"§7-2 — `{vtype}` 조건의 빈 자리 {missing} 를 **채울 값이 "
-                    f"없다**. 🔴 빈 채로 적으면 평가할 수 없는 글자가 된다")
-    got = tpl
-    for k in need:
-        got = got.replace("{" + k + "}", str(vals[k]))
-    if parse(got) is None:
-        return "", f"§7-2 — 만든 조건을 **읽을 수 없다**: {got!r}"
-    return got, f"§7-2 — `{vtype}` → `{got}`"

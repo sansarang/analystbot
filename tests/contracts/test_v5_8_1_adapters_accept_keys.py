@@ -129,43 +129,5 @@ def test_v5_8_1_열쇠를_받는_함수는_id_of_를_지난다():
         f"{bad}. 이관 뒤 그 어댑터의 깊이가 **조용히 0** 이 된다")
 
 
-def test_v5_8_1_깊이_사유를_한_줄로_박지_않는다():
-    """🔴🔴 *"어댑터에 `sources_context` 가 없다"* 는 **거짓이었다.**
-
-    ⚠️ MLB 어댑터에는 **있다.** 이관 뒤 `pk.isdigit()` 이 실패해 **빈 목록**을
-       냈을 뿐이다. 그 카드를 읽은 사람은 **엉뚱한 곳을 고친다**(§8-6).
-
-    🔴 그래서 그 자리는 **고정 문장**이 아니라 `depth_why(game)` 이어야 한다 —
-       세 경우(어댑터 없음 · 열쇠 없음 · 빈 목록)가 **다른 글자**를 받는다.
-    ⚠️ 글자 비교가 아니라 AST 다(`depth_why` 안에서는 그 글자를 **써야** 한다).
-    """
-    import ast
-    import inspect
-    import textwrap
-
-    from app import analyze
-    # ⚠️ 그 자리는 `gather` 다(`build` 가 아니다) — 깊이 세포는 수집 쪽이다.
-    tree = ast.parse(textwrap.dedent(inspect.getsource(analyze.gather)))
-    calls = [n for n in ast.walk(tree)
-             if isinstance(n, ast.Call)
-             and getattr(n.func, "id", getattr(n.func, "attr", "")) == "depth_why"]
-    assert calls, (
-        "🔴 `analyze.build` 가 깊이 사유를 **고정 문장**으로 적는다 — 세 경우를 "
-        "가려 적어라(`depth_why`)")
-    # 🔴 그리고 그 고정 문장이 `build` 안에 **남아 있지 않아야** 한다
-    lits = [n.value for n in ast.walk(tree)
-            if isinstance(n, ast.Constant) and isinstance(n.value, str)
-            and "sources_context" in n.value]
-    assert not lits, (
-        f"🔴 `build` 에 옛 고정 사유가 남아 있다: {lits}")
 
 
-def test_v5_8_1_두_경우를_가려_적는다():
-    """🔴 **둘을 가리는 함수가 있나** — 글자가 달라야 한다."""
-    from app import analyze
-    # ⚠️ 어댑터가 **없는** 리그
-    none_ = analyze.depth_why({"league": "없는리그", "ext_id": ""})
-    # 🔴 어댑터는 있는데 **열쇠로 못 만든** 경우
-    empty = analyze.depth_why({"league": "MLB", "ext_id": "쓰레기"})
-    assert "없다" in none_ and none_ != empty, (none_, empty)
-    assert "빈 목록" in empty or "못 만들었다" in empty, empty

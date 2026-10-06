@@ -171,32 +171,6 @@ def test_캐시_조회는_통신하지_않는다():
         assert bad not in src, bad
 
 
-def test_언어를_한_곳에서만_정한다():
-    """🔴🔴 **같은 경로에서 언어를 두 번 따로 계산했다**(실측 2026-10-03).
-
-    `search_sources` 는 `LANGS.get(league)`, `queries.variants` 는
-    `langs_for(league, team)` 를 썼다. 그래서 이런 질의가 나갔다:
-
-    ```
-    [ja] Kashiwa Reysol **lineup** 10月3日
-         ^^^^^^^^^^^^^^^^^^^^^^^^ 날짜는 일본어인데 핵심어는 영어
-    ```
-    ⚠️ `LANGS` 에 `League Cup` 이 없어 핵심어 표가 `{'en': 'lineup'}` 하나만
-       만들어졌다 — `variants` 가 `ja` 를 얻어도 **일본어 핵심어가 없었다.**
-    🔴 원본은 `langs_for` 하나다 — 팀 선언·리그 명부·팀 되묻기를 전부 그것이 본다.
-    """
-    import ast
-    import inspect
-    import textwrap
-
-    from app import searchcells
-    raw = textwrap.dedent(inspect.getsource(searchcells.search_sources))
-    # 🔴 D46 — **독스트링·주석을 뺀 코드만** 본다. 주석이 그 결함을 *설명하는* 것과
-    #    코드가 그것을 *부르는* 것은 다르다.
-    tree = ast.parse(raw)
-    code = ast.unparse(tree)
-    assert "queries.langs_for(" in code
-    assert "LANGS.get(" not in code, "언어를 여기서 또 계산한다"
 
 
 def test_색인이_현지_표기를_짝지어_둔다():
@@ -216,23 +190,6 @@ def test_색인이_현지_표기를_짝지어_둔다():
     assert LI.local_of_team("Nowhere United") == ""
 
 
-def test_현지_표기가_질의에_들어간다():
-    """🔴 ④단이 `strTeamAlternate` 로 `柏レイソル` 을 받는다 — **받아 놓고 안 쓰면**
-    질의가 `Kashiwa Reysol スタメン` 이 된다. 일본 매체는 그 글자를 안 쓴다."""
-    from datetime import date
-
-    from app import searchcells
-    from app.cells import Q_LINEUP
-    srcs, _ = searchcells.search_sources(
-        Q_LINEUP, team="Kashiwa Reysol", league="League Cup",
-        day=date(2026, 10, 3), local="柏レイソル")
-    ja = [s for s in srcs if s.lang == "ja"]
-    assert ja, srcs
-    assert all("柏レイソル" in (s.query or "") for s in ja), [s.query for s in ja]
-    assert all("スタメン" in (s.query or "") for s in ja), [s.query for s in ja]
-    # 🔴 영어 변형에는 **정식명**이 남는다(영어 매체가 쓰는 이름이다)
-    en = [s for s in srcs if s.lang == "en"]
-    assert any("Kashiwa Reysol" in (s.query or "") for s in en), [s.query for s in en]
 
 
 #: 🔴 같은 팀의 여러 언어 표기 — **같은 리그·같은 현지 표기**로 풀려야 한다.

@@ -21,7 +21,7 @@ import ast
 import inspect
 from pathlib import Path
 
-from app import analyze, funnel
+from app import funnel
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -104,25 +104,8 @@ def test_모르는_칸은_조용히_사라지지_않는다():
 # ══════════════════════════════════════════════════════════════════
 
 
-def test_파이프라인이_일곱_칸을_전부_센다():
-    """🔴 칸 하나라도 안 세면 그 자리의 진단이 **영원히 0** 으로 보인다."""
-    src = (ROOT / "app" / "cells.py").read_text(encoding="utf-8")
-    src += (ROOT / "app" / "analyze.py").read_text(encoding="utf-8")
-    for stage in funnel.STAGES:
-        assert f'"{stage}"' in src, f"`{stage}` 를 세는 코드가 없다"
 
 
-def test_세포가_같은_그릇을_쓴다():
-    """🔴 세포마다 따로 만들면 **합치기를 빠뜨린 세포가 조용히 빠진다**.
-
-    ⚠️ 같은 그릇을 넘기면 빠질 수가 없다 — 그것이 이 설계의 요점이다.
-    """
-    src = inspect.getsource(analyze.gather)
-    assert "fun = _funnel.Funnel()" in src
-    # 🔴 `Cell` 을 만드는 **모든** 자리가 그 그릇을 받는다 — 세어 본다
-    made = src.count("Cell(")
-    wired = src.count("funnel=fun") + src.count("cell.funnel = fun")
-    assert wired >= made, f"세포 {made}곳 중 깔때기를 받은 곳이 {wired}곳이다"
 
 
 def test_종목_분기가_없다():
@@ -139,9 +122,3 @@ def test_종목_분기가_없다():
         assert bad not in code, f"깔때기에 종목·리그 이름이 있다: {bad}"
 
 
-def test_카드_블록1_맨_위에_적는다():
-    """🔴 스무 줄 사유 **아래**에 묻히면 못 본다 — 진단이 먼저다."""
-    src = inspect.getsource(analyze.render)
-    i = src.index("■ 1 자료 한계")
-    j = src.index("card.limits")
-    assert src.index("card.funnel", i) < j, "깔때기가 사유 줄 아래에 있다"

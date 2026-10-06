@@ -67,11 +67,6 @@ def parse(key: object) -> tuple[str, str]:
     return "", raw
 
 
-def is_canonical(key: object) -> bool:
-    """🔴 **새 꼴인가.** ⚠️ 이관이 끝났는지를 이 수로 본다."""
-    raw = str(key or "").strip()
-    m = _CANON.match(raw)
-    return bool(m and m.group(1) in SOURCES)
 
 
 def source_of(key: object) -> str:
@@ -79,9 +74,6 @@ def source_of(key: object) -> str:
     return parse(key)[0]
 
 
-def id_of(key: object) -> str:
-    """⚠️ 경기 ID 만. 🔴 출처를 못 알면 **열쇠 전체**를 돌려준다(숫자만인 꼴)."""
-    return parse(key)[1]
 
 
 def mine(key: object, source: str, *, bare_ok: bool = False) -> str:

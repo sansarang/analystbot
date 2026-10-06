@@ -94,33 +94,8 @@ def test_실패한_조건이_사유를_정한다():
         assert f"Reason.{r}" in code, r
 
 
-def test_이름_해석은_입구_하나다():
-    """🔴🔴 **구조 계약** — 사용자 설계 2026-10-03:
-
-    > `resolve.py` 밖에서 팀 이름 문자열끼리 `==`·`in` 으로 비교하는 코드가 있으면
-    > 실패(AST 검사, grep 보다 정확).
-
-    ⚠️ 다만 **신원**과 **귀속**을 가른다. 기사 본문에는 ID 가 없다 — 그 글이 우리
-       팀 얘기인가는 **이름으로만** 볼 수 있다(`verify.mentions_team`).
-    🔴 그래서 금지하는 것은 *"경기를 고를 때 이름을 비교하는 것"* 이다.
-    """
-    code = _code(resolve.match_of) + _code(resolve.canon)
-    assert "teamref.key_of" in code
-    # 🔴 `answer` 는 **이름을 풀지 않는다** — 입구가 준 것을 쓴다
-    from app import analyze
-    out = _code(analyze.answer)
-    assert "aliases.find_team" not in out, "입구 밖에서 또 이름을 푼다"
-    assert "resolve.match_of" in out or "match_of(" in out
 
 
-def test_입구가_표준_표기로_찾는다():
-    """🔴🔴 실측 2026-10-03 — 봇이 `Croatia` 로 **적어 놓고** `크로아티아` 로 되찾았다.
-
-    ⚠️ 저장과 조회가 **다른 언어**면 자기가 적은 것을 못 찾는다.
-    """
-    code = _code(resolve.match_of)
-    i, j = code.index("canon("), code.index("slate.find")
-    assert i < j, "표준화보다 조회가 먼저다"
 
 
 @pytest.mark.asyncio

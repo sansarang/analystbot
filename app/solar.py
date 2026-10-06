@@ -595,15 +595,6 @@ HTTP_FAILS: dict[object, int] = {}
 SAW_429 = False
 
 
-def http_fail_line() -> str:
-    """🔴 카드·보고에 적는 한 줄 — **상태 코드별**로(#3 조용한 0 금지)."""
-    if not HTTP_FAILS:
-        return "전송 실패 0건"
-    said = " · ".join(
-        f"{'응답없음' if k is None else k} {n}건"
-        for k, n in sorted(HTTP_FAILS.items(),
-                           key=lambda kv: -kv[1]))
-    return f"전송 실패 {sum(HTTP_FAILS.values())}건 — {said}"
 
 
 def solar_concurrency() -> int:
@@ -729,6 +720,3 @@ def _post_live(url: str, key: str, body: dict, timeout: int,
 NEVER_SEND = tuple(cfg().get("never_send") or ())
 
 
-def env_key_present() -> bool:
-    """⚠️ 시험이 키 유무로 건너뛸 때 쓴다 — 키를 로그에 찍지 않는다."""
-    return bool((os.getenv("UPSTAGE_API_KEY") or "").strip())

@@ -31,20 +31,6 @@ def test_r1_골격_파일_넷이_있다():
         "🔴 `tools/research_report.py` 가 없다")
 
 
-def test_r1_done_거부_루프가_없다():
-    """🔴 거부가 예산을 태웠다 — 분할이 커버리지를 보장하므로 **지운다**."""
-    from app import agentloop
-    assert not hasattr(agentloop, "DONE_RESERVE"), (
-        "🔴 `DONE_RESERVE` 가 남아 있다 — `done` 거부 루프의 예비분이다")
-    tools = getattr(agentloop, "Tools", None)
-    assert tools is not None
-    assert not hasattr(tools, "done_ok"), (
-        "🔴 `Tools.done_ok` 이 남아 있다 — `done` 을 거부하는 자리다")
-    src = inspect.getsource(agentloop)
-    tree = ast.parse(src)
-    called = {n.func.attr for n in ast.walk(tree)
-              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
-    assert "done_ok" not in called, "🔴 아직 `done_ok` 을 부른다"
 
 
 def test_r1_거부_사유도_걷혔다():

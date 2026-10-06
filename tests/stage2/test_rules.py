@@ -278,50 +278,6 @@ def test_narrative_는_새_사실을_더할_수_없다():
 # 배선 — 🔴 만든 것은 부르는 곳이 있어야 한다
 # ══════════════════════════════════════════════════════════════════
 
-def test_단계2_산출_모듈이_아직_배선되지_않았음을_이름으로_남긴다():
-    """🔴 **`app/types.py` 는 고아 검사에 걸리지 않는다** — 클래스만 있고 모듈
-    수준 함수가 없어서, `test_남은_모듈에_고아_공개함수가_없다` 의 `inspect.
-    isfunction` 필터를 통째로 빠져나간다. 즉 **아무도 안 부르는데 조용하다.**
-
-    그래서 여기 적는다. 배선은 단계 3(세포망) · 단계 5~7(STEP 1~6)이다.
-
-    ⚠️ **이으면 이 계약이 빨개진다** — 그때 이 목록에서 빼라는 뜻이다.
-       `NOT_WIRED` 와 같은 규율이고, 다른 것은 대상이 **함수가 아니라 모듈**이라는
-       점뿐이다. [infra]
-    """
-    import ast
-
-    #: (모듈, 이어질 단계) — 🔴 목록이 비는 것이 목표다
-    #: ⚠️ `app.rules` 는 **빠졌다** — `app/types.py` 의 `Variable` 검증기가
-    #:    `rules.variable_types()` 를 부른다(리뷰 B2 를 고치며 이어졌다).
-    #:    🔴 이 계약이 그 자리에서 *"이어졌으니 빼라"* 고 말해 줬다 — 목록이
-    #:    거짓이 되기 전에 기계가 먼저 알린 것이고, 그게 이 계약의 값이다.
-    #: 🔴 **`app.types` 가 빠졌다 — 2026-10-02 에 이어졌다.**
-    #:    `app/classify.py`(§4 적용, 사용자 지시 ⑧)가 `Variable`·`Background`·
-    #:    `WEIGHT_OF` 를 부른다. 그러면서 스키마가 실물과 맞는지 **처음으로** 드러났고
-    #:    두 가지가 걸렸다:
-    #:      ① `weight == WEIGHT_OF[hardness]` 강제 → 표본 패널티를 **hardness 로** 깎는다
-    #:      ② `published_at` 필수 → 순위표(발행 시각 없음)는 §3 구조로 **못 들어간다**
-    #:    🔴 ② 는 아직 답이 없다 — `questions/2026-10-02_stage5_partial.md`
-    #: ⚠️ 목록이 **비었다.** 비는 것이 목표였다 — 비었다고 계약을 지우지 않는다.
-    #:    다음에 단계 2 산출 모듈이 늘면 여기 적고, 이으면 다시 빨개진다.
-    NOT_WIRED_MODULES: dict[str, str] = {}
-    importers: dict[str, set[str]] = {}
-    for path in (ROOT / "app").rglob("*.py"):
-        me = ".".join(path.relative_to(ROOT).with_suffix("").parts)
-        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
-            if isinstance(node, ast.ImportFrom) and node.module:
-                names = {f"{node.module}.{a.name}" for a in node.names}
-                names.add(node.module)
-            elif isinstance(node, ast.Import):
-                names = {a.name for a in node.names}
-            else:
-                continue
-            for n in names & set(NOT_WIRED_MODULES):
-                if me != n:
-                    importers.setdefault(n, set()).add(me)
-    wired = {m: sorted(v) for m, v in importers.items()}
-    assert wired == {}, f"이어졌으니 목록에서 빼라: {wired}"
 
 
 def test_단계2_계약마다_v4_조항이_적혀_있다():

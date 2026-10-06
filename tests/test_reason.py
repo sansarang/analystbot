@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 from app import matchref
-from app.matchref import SAY, Reason, say
+from app.matchref import SAY, Reason
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -73,43 +73,10 @@ def test_문장과_분류가_어긋나지_않는다():
             assert "다시 물어도 같다" in text, f"{r}: 안 풀린다고 안 적었다"
 
 
-def test_실패_조건이_enum_을_넣는다():
-    """🔴 조회·탐색이 **실패할 때마다** 그 조건이 enum 을 넣어야 한다.
-
-    ⚠️ 빠뜨리면 그 실패만 `None` 으로 남고, 부르는 쪽이 *"모르겠다"* 를 아무
-       문장으로나 메우게 된다.
-    """
-    from app import findgame, slate
-    for fn in (slate.find, slate.by_key, findgame.find):
-        code = ast.unparse(ast.parse(textwrap.dedent(inspect.getsource(fn))))
-        assert ".reason = " in code, fn.__qualname__
-        # 🔴 `why` 만 적고 `reason` 을 안 넣는 자리가 없나 — 수로 본다
-        assert code.count(".why = ") <= code.count(".reason = "), \
-            f"{fn.__qualname__}: 사유 문장만 적고 분류를 안 넣는 자리가 있다"
 
 
-def test_사용자_문장을_손으로_쓰지_않는다():
-    """🔴🔴 **구조 계약** — `answer` 가 사유 문장을 짓는 순간 표가 뜻을 잃는다.
-
-    ⚠️ 종전엔 `answer` 안에 `{Reason.X: "…"}` 표를 **또** 들고 있었다(사본).
-       한쪽만 고치면 사용자에게 보이는 말과 분류가 갈린다.
-    """
-    from app import analyze
-    code = ast.unparse(ast.parse(textwrap.dedent(
-        inspect.getsource(analyze.answer))))
-    assert "say(look.reason" in code
-    # 🔴 **표를 두 번 짓지 않는다**
-    for word in ("Reason.OUT_OF_WINDOW:", "Reason.AMBIGUOUS:"):
-        assert word not in code, f"`answer` 가 사유 표를 또 들고 있다: {word}"
 
 
-def test_모르는_사유를_조용히_넘기지_않는다():
-    """🔴 #3 조용한 0 금지 — 표에 없는 사유가 와도 **빈 문자열을 내지 않는다**."""
-    class _Fake:
-        value = "새로운사유"
-
-    got = say(_Fake())            # type: ignore[arg-type]
-    assert "새로운사유" in got and got.strip()
 
 
 def test_사유를_쓰는_곳이_한_모듈이다():
@@ -126,14 +93,3 @@ def test_사유를_쓰는_곳이_한_모듈이다():
     assert matchref.Reason is Reason
 
 
-@pytest.mark.asyncio
-async def test_빈_열쇠와_없는_열쇠를_가른다():
-    """🔴 *"무엇을 물었는지 모르겠다"* 와 *"그것이 표에 없다"* 는 처방이 다르다."""
-    from app import slate
-
-    class _Pool:
-        async def fetch(self, *a, **k):
-            return []
-
-    assert (await slate.by_key(_Pool(), "")).reason is Reason.NO_QUERY
-    assert (await slate.by_key(_Pool(), "x-1")).reason is Reason.MATCH_NOT_FOUND

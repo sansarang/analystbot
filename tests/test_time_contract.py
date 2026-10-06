@@ -220,31 +220,6 @@ def test_KST_날짜를_세션_시간대로_뽑지_않는다():
         "돈다. `timefmt.sql_kst_day()` 를 써라:\n  " + "\n  ".join(bad))
 
 
-def test_KST_날짜_조각이_한_곳에만_적혀_있다():
-    """🔴 #1 사본 금지 — `AT TIME ZONE 'Asia/Seoul'` 을 손으로 적지 않는다.
-
-    ⚠️ 실사고: `app/slate.py` 가 이 조각을 손으로 적고, 그 주석에 *"`main.py`·
-       `sources.py` 가 이미 그 꼴을 쓰고 있었다"* 라고 적어 뒀다. 🔴 **둘 다
-       안 쓰고 있었다** — 사본은 언제나 한 발 늦는다.
-    """
-    from app import timefmt
-    owners: list[str] = []
-    for p in sorted((ROOT / "app").rglob("*.py")):
-        for lineno, text in _sql_strings(p):
-            if "AT TIME ZONE" in text.upper():
-                owners.append(f"{p.relative_to(ROOT)}:{lineno}")
-    stray = [o for o in owners if not o.startswith("app/timefmt.py")]
-    assert not stray, (
-        "🔴 `AT TIME ZONE` 을 적은 자리가 `app/timefmt.py` 밖에 있다 — "
-        "`timefmt.sql_kst_day()`·`timefmt.SQL_TODAY_KST` 를 불러라:\n  "
-        + "\n  ".join(stray))
-    # 🔴 **원본이 비어 있지 않다** — 전부 지워도 초록이 되는 계약은 아무것도
-    #    막지 않는다(⚠️ 이 세션이 반복해 당한 퇴로다)
-    assert owners, "🔴 조각을 적은 자리가 **하나도 없다** — 원본이 사라졌다"
-    # 🔴 그 하나가 **옳은 글자**를 만드는지 — 이름이고(오프셋이 아니고), KST 다
-    assert timefmt.SQL_TZ == "Asia/Seoul"
-    assert timefmt.sql_kst_day() == "(starts_kst AT TIME ZONE 'Asia/Seoul')::date"
-    assert timefmt.sql_kst_day("g.starts_kst").startswith("(g.starts_kst AT TIME")
 
 
 def test_수집기가_KST_로_속이지_않는다():

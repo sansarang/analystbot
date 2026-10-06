@@ -26,73 +26,23 @@ from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from app import timefmt
+from app import secrets_mask, timefmt
 from app.research import rerank as _rerank
-from app import slate as S
 from app.config import SLATE_DAYS, get_settings
 from app.db import get_pool
-from app.run import collect_slate
-from app.scheduler import today_kst
-from app.sources import DbSources
 
 logger = logging.getLogger("bot")
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **로그에서 비밀을 가린다** — 옛 진입점(`app/run.py`)이 부르던 자리다
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ §8 5단계에서 그 진입점을 지웠다(사용자 지시 2026-10-06 ⑧). 🔴 그러면서 이
+#     호출이 **아무 데서도 안 불리게** 됐다 — 배선 계약이 그것을 이름으로 잡았다
+#     (`app.secrets_mask.install_log_filter`). 그래서 **여기** 로 옮긴다:
+#     봇이 유일한 진입점이므로 제자리다.
+secrets_mask.install_log_filter()
 dp = Dispatcher()
-
-
-@dp.message(Command("slate"))
-async def cmd_slate(m: Message) -> None:
-    """`/slate [리그] [YYYY-MM-DD]` — 🔴 **요청받은 날짜·리그만**(§14-9)."""
-    s = get_settings()
-    parts = (m.text or "").split()[1:]
-    day = today_kst()
-    leagues: list[str] = []
-    for p in parts:
-        try:
-            day = datetime.strptime(p, "%Y-%m-%d").date()
-        except ValueError:
-            leagues.append(p.upper() if p.isascii() else p)
-    pool = await get_pool(s.database_url)
-    body, games = await collect_slate(day, leagues or list(s.slate_leagues),
-                                     DbSources(pool))
-    if not games:
-        await m.answer(f"{day} 슬레이트가 0경기다. "
-                       f"(리그: {', '.join(leagues or s.slate_leagues)})")
-        return
-    for chunk in _split(body):
-        await m.answer(chunk)
-
-
-@dp.message(Command("games"))
-async def cmd_games(m: Message) -> None:
-    """`/games [팀|종목|리그]` — 🔴 **쌓아 둔 것에서 바로 답한다.**
-
-    사용자 지시 2026-10-01: *"사용자가 경기에 대해 질문을 했을 때 바로 답할 수 있고"*
-
-    🔴 **웹에 나가지 않는다.** 스케줄러가 미리 쌓은 `games` 표만 읽는다 — 물을
-       때마다 검색하면 느리고, 무엇보다 검색 엔진 정지를 부른다(실측 2026-09-30).
-    ⚠️ 못 찾으면 **왜 못 찾았는지** 답한다 — "아직 안 쌓였다"와 "그런 경기가 없다"는
-       다르다(조용한 0 금지).
-    """
-    s = get_settings()
-    arg = " ".join((m.text or "").split()[1:]).strip()
-    pool = await get_pool(s.database_url)
-
-    sport = next((k for k, ko in S.SPORT_KO.items() if arg and arg == ko), None)
-    if not arg:
-        found = await S.window(pool, days=SLATE_DAYS)
-        title = f"오늘·내일 슬레이트"
-    elif sport:
-        found = await S.find(pool, sport=sport, days=SLATE_DAYS)
-        title = f"{arg} — 오늘·내일"
-    else:
-        # 🔴 팀인지 리그인지 **모른다.** 둘 다로 찾고, 맞는 것을 전부 낸다 —
-        #    하나를 골라 주면 남의 경기를 답할 수 있다(§17-g-3 · M14).
-        found = await S.find(pool, team=arg, days=SLATE_DAYS)
-        if not found.games:
-            found = await S.find(pool, league=arg, days=SLATE_DAYS)
-        title = f"`{arg}` — 오늘·내일"
-    for chunk in _split(S.render(found, title=title)):
-        await m.answer(chunk)
 
 
 @dp.message(Command("analyze"))
@@ -197,10 +147,10 @@ async def cmd_health(m: Message) -> None:
     #    짝이 맞는다(종전 `starts_kst::date` 는 세션 시간대로 돌았다).
     n = await pool.fetchval(
         f"SELECT count(*) FROM games WHERE {timefmt.sql_kst_day()} = $1",
-        today_kst())
+        timefmt.today_kst())
     unk = await pool.fetchval(
         "SELECT COALESCE(sum(cardinality(unknowns)), 0) FROM runs "
-        "WHERE slate_date = $1", today_kst()) or 0
+        "WHERE slate_date = $1", timefmt.today_kst()) or 0
     stale = staleness_line()
     await m.answer(
         f"commit {boot_info().short}\n"

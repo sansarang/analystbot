@@ -86,19 +86,6 @@ def test_프롬프트가_짧다():
     assert extract.ASK_BODY_CHARS < extract.BODY_CHARS
 
 
-def test_카탈로그_세포가_좁은_질문을_쓴다():
-    """🔴 넓은 질문(L1)에서 좁은 질문으로 바꿨나 — 바꾸지 않으면 ③ 이 안 돈 것이다."""
-    from datetime import date, datetime, timezone
-
-    cells_, _ = searchcells.catalog_cells(
-        team="South Korea W", league="Asian Games", day=date(2026, 10, 2),
-        game_id=1, starts=datetime(2026, 10, 2, 6, tzinfo=timezone.utc),
-        opponent="China W")
-    assert cells_
-    for c in cells_:
-        vtype = c.question.id.rsplit(":", 1)[-1]
-        for s in c.sources:
-            assert s.extract_tasks == (f"ASK:{vtype}",), (vtype, s.extract_tasks)
 
 
 def test_판정은_코드가_한다():
