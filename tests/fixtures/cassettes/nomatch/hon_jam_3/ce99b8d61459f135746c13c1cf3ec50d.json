@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Honduras Association Federación Honduras",
+ "recorded_at": "2026-10-06T01:42:21.789136+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Football in Honduras",
+   "content": "Football in Honduras Olimpia versus Platense … Governing body Football Federation of Honduras National teams Men's national team … Women's national team",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Football_in_Honduras",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Football_in_Honduras",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "History of Honduras (1932–1982)",
+   "content": "Republic of Honduras 1932–1982 Top: Flag (1932–1949) Bottom: Flag (1949–1982) Coat of arms … 'Libre, Soberana e Independiente' … 'Free, Sovereign and Independent'",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/History_of_Honduras_(1932%E2%80%931982)",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/History_of_Honduras_(1932%E2%80%931982)",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Federal Republic of Central America",
+   "content": "Federal Republic of Central America República Federal de Centro América 1823–1839/1841 … Coat of arms … Dios, Unión, Libertad \"God, Union, Liberty\" … La Granadera",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Federal_Republic_of_Central_America",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Federal_Republic_of_Central_America",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras national football team",
+   "content": "Nickname(s) Los Catrachos (The Catrachos) La Bicolor (The Bicolor) La H (The H) … Federación de Fútbol de Honduras (FFH) … (North America) Sub-confederation",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Honduras_national_football_team",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Honduras_national_football_team",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "in Honduras",
+   "content": "Country Report … Human Rights … of States … December 2015 Original: Spanish ON HUMAN Rights OAS Cataloging-in-Publication Data Inter-American Commission on human in Honduras.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.oas.org/en/iachr/reports/pdfs/Honduras-en-2015.pdf",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.oas.org",
+    "/en/iachr/reports/pdfs/Honduras-en-2015.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras national baseball team",
+   "content": "Honduras national baseball team … Federación Hondureña de Béisbol … WBSC ranking … 2 (31 December 2025) … Honduras national ba",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Honduras_national_baseball_team",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Honduras_national_baseball_team",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Federación de Fútbol de Honduras Official Kits | JOMA",
+   "content": "Discover the latest in Federación de Fútbol de Honduras at the best price in the official JOMA shop. Visit us!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.joma-sport.com/en_LV/official-equipment/soccer/federacion-de-futbol-de-honduras/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.joma-sport.com",
+    "/en_LV/official-equipment/soccer/federacion-de-futbol-de-honduras/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Valladares & Honduras U17s succeed together",
+   "content": "Through the combination of its own 2-1 win over Guatemala and Jamaica’s 1-0 triumph over the United States, Honduras clinched the Group A title in the CONCACAF Under-17 Championship (CU17) on Wednesday …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.concacaf.com/under-17s-men/article/valladares-honduras-u17s-succeed-together/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.concacaf.com",
+    "/under-17s-men/article/valladares-honduras-u17s-succeed-together/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "When Cocaine Comes to Paradise",
+   "content": "In Honduras' Moskitia region, cocaine lost by traffickers can bring locals wealth they've never dreamed of. But it also brings destruction.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://insightcrime.org/investigations/when-cocaine-comes-paradise-moskitia-honduras/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "insightcrime.org",
+    "/investigations/when-cocaine-comes-paradise-moskitia-honduras/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pinto appointed Honduras head coach | Concacaf",
+   "content": "Jorge Luis Pinto (pictured) was named head coach of Honduras on December 6, 2014. … TEGUCIGALPA, Honduras – Former Costa Rica head coach Jorge Luis Pinto will take up the same position",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.concacaf.com/competitions/gold-cup/news/pinto-appointed-honduras-head-coach",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.concacaf.com",
+    "/competitions/gold-cup/news/pinto-appointed-honduras-head-coach",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sport in Honduras",
+   "content": "association football … The governing body of football in Honduras is the Federación Nacional Autónoma de Fútbol de Honduras … Honduras has taken part in the",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Sport_in_Honduras",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Sport_in_Honduras",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras national futsal team",
+   "content": "Nickname(s) Los Catrachos La Bicolor La H La Garra Catracha … Federación de Fútbol de Honduras … FIFA code … FIFA ranking … (24 September 2026)",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Honduras_national_futsal_team",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Honduras_national_futsal_team",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Economy of Honduras",
+   "content": "Economy of … San Pedro Sula , industrial center of Honduras … Honduran Lempira (HNL, L) Fiscal year Calendar year Trade organizations DR-CAFTA … Country group",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Economy_of_Honduras",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Economy_of_Honduras",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras women's national football team",
+   "content": "Nickname(s) Las Catrachas La H Femenina … Federación de Fútbol de Honduras … North America … Head coach Mario Abadía FIFA code",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Honduras_women%27s_national_football_team",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Honduras_women%27s_national_football_team",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras national football team - Simple English Wikipedia, the free encyclopedia",
+   "content": "From Simple English Wikipedia, the free encyclopedia This article needs to be … Please help update this article to reflect recent events or newly available information.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://simple.wikipedia.org/wiki/Honduras_national_football_team",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "simple.wikipedia.org",
+    "/wiki/Honduras_national_football_team",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras at the 2011 World Championships in Athletics",
+   "content": "Honduras at the 2011 World Championships in Athletics … National federation Federación Nacional Hondureña de Atletismo … World Ch",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Honduras_at_the_2011_World_Championships_in_Athletics",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Honduras_at_the_2011_World_Championships_in_Athletics",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras at the 2011 World Aquatics Championships",
+   "content": "Honduras at the 2011 World Aquatics Championships Flag of Honduras FINA code … National federation Federación Hondureña de Natación … 4 in 1 sport",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Honduras_at_the_2011_World_Aquatics_Championships",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Honduras_at_the_2011_World_Aquatics_Championships",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras Davis Cup team",
+   "content": "Honduras Davis Cup team … Angel Calix ITF ranking … First year … Years played … Ties played (W–L) 50 (29-21) Davis Cup titles … Runners-up … Most total wins Carlos Caceres (35-26)",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Honduras_Davis_Cup_team",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Honduras_Davis_Cup_team",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sandinista National Liberation Front",
+   "content": "Sandinista National Liberation Front Frente Sandinista de Liberación Nacional … Secretary-General Daniel Ortega … Gustavo Porras … Carlos Fonseca Silvio Mayorga [",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Sandinista_National_Liberation_Front",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Sandinista_National_Liberation_Front",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Dominican Republic",
+   "content": "Not to be confused with … Dominican Republic República Dominicana … Coat of arms … Dios, Patria, Libertad \"God, Homeland, Freedom\" … Quisqueyanos valientes",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Dominican_Republic",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Dominican_Republic",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

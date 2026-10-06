@@ -454,6 +454,37 @@ async def _find(task: Any, game: dict, *, chain, seen, net, seeds=None
         docs.append({"tag": f"D{i}", "url": url, "body": str(body),
                      "published_at": when,
                      "publisher": str(getattr(h, "publisher", "") or "")})
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **받은 뒤 날짜로 다시 거른다** — 실측 2026-10-06
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ ②층(`datehint`)은 **URL·스니펫**만 본다 — 날짜 힌트가 없으면 받는다
+    #     (fail-open). 🔴 그래서 받아 보니 `2004-09-24`(위키 연혁)·
+    #     `2017-07-13`(옛 기사) 문단이 추출에 들어갔고, 모델이 그 사실로 변수를
+    #     만들었다(실측: `2022 FIFA World Cup qualification` · 2017년 감독 발언).
+    #  🔴 **받은 뒤에는 진짜 날짜를 안다** — 그때 거르는 것이 맞다.
+    #  ⚠️ 날짜를 **모르는 문서는 남긴다** — 검증층이 그 뒤를 본다(§12-c-1 이
+    #     `soft` 로만 남긴다). 모르는 것과 낡은 것은 다르다(#3).
+    kick = game.get("kickoff")
+    if kick is not None:
+        from datetime import timedelta
+        from app import timefmt, verifylayer
+        floor = timefmt.aware(kick)
+        if floor is not None:
+            floor = floor - timedelta(days=verifylayer.DATE_WINDOW_DAYS)
+            fresh = []
+            for d in docs:
+                got = timefmt.aware(d.get("published_at"))
+                if got is not None and got < floor:
+                    why.append(f"낡은 문서 버렸다 — {got:%Y-%m-%d} "
+                               f"(창 {verifylayer.DATE_WINDOW_DAYS}일) "
+                               f"{str(d.get('url'))[:50]}")
+                    continue
+                fresh.append(d)
+            # 🔴 **번호를 다시 매긴다** — 머리표가 문단과 어긋나면 안 된다
+            for j, d in enumerate(fresh, 1):
+                d["tag"] = f"D{j}"
+            docs = fresh
     return docs, why
 
 
@@ -479,8 +510,39 @@ def paragraph_block(docs: list, kinds: list, *, cap: int = 0) -> tuple[str, dict
             host = str(d.get("publisher") or "").strip() or _host(d.get("url"))
             when = d.get("published_at")
             lines.append(f"{tag} ({host}, {when or '발행일 없음'}) {para}")
-            where[tag] = {"url": d.get("url"), "published_at": when}
+            # 🔴 **문단 글자도 담는다** — 인용을 되맞춰 머리표를 찾는다
+            where[tag] = {"url": d.get("url"), "published_at": when,
+                          "text": para}
     return "\n".join(lines), where
+
+
+def _where_of(row: dict, where: dict) -> dict | None:
+    """🔴🔴 그 변수의 **인용이 어느 문단에 있나** — 머리표·URL·발행일을 돌려준다.
+
+    ⚠️ 모델이 적은 `source`·`url` 을 **먼저 믿지 않는다**(실측 2026-10-06: 도메인을
+       적었다). 🔴 인용으로 찾으면 §5-1(인용이 본문에 있나)이 **여기서** 같이
+       통과하고, 그 뒤 검증층이 다시 본다(두 번 보는 것이 맞다).
+    ⚠️ 못 찾으면 `None` — 문단에 없는 인용은 **지어낸 것**이다.
+    """
+    said = _norm_q(row.get("quote"))
+    if said:
+        for tag, box in where.items():
+            if said in _norm_q(box.get("text")):
+                return {**box, "tag": tag}
+    # 🔴 **대체**: 모델이 머리표를 바르게 적었으면 그것도 받는다
+    tag = str(row.get("source") or "").strip()
+    for key in (tag, f"[{tag}]"):
+        if key in where:
+            return {**where[key], "tag": key}
+    return None
+
+
+def _norm_q(text: object) -> str:
+    """🔴 인용 대조용 정규화 — 공백·따옴표만 걷는다(글자는 안 바꾼다)."""
+    said = str(text or "")
+    for ch in '"\u201c\u201d\u2018\u2019\'':
+        said = said.replace(ch, "")
+    return " ".join(said.split()).lower()
 
 
 def _host(url: object) -> str:
@@ -587,16 +649,27 @@ async def _extract(task: Any, kinds: list, block: str, where: dict, *,
     rows, dropped = [], []
     for raw in (box.get("variables") or []):
         row = dict(raw or {})
-        tag = str(row.get("source") or row.get("url") or "").strip()
-        hit = where.get(tag) or where.get(f"[{tag}]")
+        # ══════════════════════════════════════════════════════════
+        # 🔴🔴 **머리표를 인용으로 되찾는다** — 실측 2026-10-06
+        # ══════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 모델이 `url` 칸에 **도메인**을 적었다(`en.wikipedia.org`) —
+        #     머리표가 아니다. 🔴 그래서 후보 8개가 전부 버려졌다.
+        #  🔴 **글자를 믿지 않는다**: 그 인용이 **어느 문단에 있나**를 코드가
+        #     찾는다. 그러면 머리표·URL·발행일이 한꺼번에 정해지고, §5-1
+        #     (인용이 본문에 있나)이 **그 자리에서** 같이 통과한다.
+        #  ⚠️ 못 찾으면 **버린다** — 문단에 없는 인용은 지어낸 것이다.
+        hit = _where_of(row, where)
         if hit is None:
-            dropped.append(tag or "(빈 머리표)")
+            dropped.append(str(row.get("id") or "?"))
             continue
         row["url"] = hit.get("url")
+        row["source"] = hit.get("tag")
         rows.append(row)
     dates = {str(v.get("url")): v.get("published_at")
              for v in where.values() if v.get("url")}
     out, why = agentloop._vars_from({"variables": rows}, dates=dates)
     said_all = (f"추출 — 후보 {len(out)}개"
-                + (f" · 🔴 모르는 머리표 {dropped[:3]} 버렸다" if dropped else ""))
+                + (f" · 🔴 인용을 문단에서 못 찾아 {len(dropped)}개 버렸다"
+                   f"({dropped[:3]})" if dropped else ""))
     return out, f"{said_all} · {why}" if why else said_all

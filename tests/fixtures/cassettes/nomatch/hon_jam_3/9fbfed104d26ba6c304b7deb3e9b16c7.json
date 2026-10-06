@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 담당 유형: lineup_rotation, coach_intent, coach_conflict, coach_change — **그 유형만** 뽑는다.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다). 지어낸 인용은 검증층이 잡아 버린다.\\n🔴 `source` 는 문단 머리표(`[D1-P3]`)를 그대로 적는다 — 그것으로 URL·발행일을 되찾는다.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\\n\", \"role\": \"system\"}, {\"content\": \"[D2-P1] (www.latamlineup.com, 2026-03-20) Administración, instalación y soporte avanzado de redes Juniper, Cisco, Huawei, Mikrotik, OLT, PBX, Ubiquiti, entre otros\\n[D2-P2] (www.latamlineup.com, 2026-03-20) Análisis de desempeño de vendedores: Evalúa el rendimiento individual y grupal para mejorar la eficacia de tus equipos de ventas.\\n[D2-P3] (www.latamlineup.com, 2026-03-20) Optimiza la gestión de clientes, automatiza procesos, incrementa la productividad, facilita la toma de decisiones y ten la posibilidad de sistematizar procesos manuales con nuestro equipo de desarrollo en la misma plataforma.\\n[D2-P4] (www.latamlineup.com, 2026-03-20) Albergamos su información de forma segura en nuestros servidores en la nube o instalamos de acuerdo a sus necesidades localmente.\\n[D2-P5] (www.latamlineup.com, 2026-03-20) Nuestras soluciones son aplicadas en cualquier región o país, mantenemos presencia en Honduras, Nicaragua, Costa Rica y Panamá, ofreciendo sistemas multi lenguaje que se acopla a las necesidades especificas de cada cliente.\\n[D2-P6] (www.latamlineup.com, 2026-03-20) Da vida a tu visión digital con nuestro servicio de creación de aplicaciones, diseñado para conectar tu negocio o proyecto con clientes de todo el mundo. En la era digital actual, una aplicación móvil efectiva es esencial para alcanzar audiencias globales y destacar en el mercado altamente competitivo. ¡No dejes que tu idea quede en el olvido! Contáctanos hoy mismo para discutir cómo podemos convertir tu visión en una poderosa aplicación móvil que impacte a audiencias de todo el mundo y te ayude a alcanzar el éxito global que mereces.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"analyst_output\", \"schema\": {\"additionalProperties\": false, \"properties\": {\"gaps\": {\"items\": {\"type\": \"string\"}, \"type\": \"array\"}, \"hypotheses\": {\"type\": \"string\"}, \"notes\": {\"type\": \"string\"}, \"scenarios\": {\"items\": {\"additionalProperties\": false, \"properties\": {\"driver_vars\": {\"items\": {\"type\": \"string\"}, \"type\": \"array\"}, \"id\": {\"type\": \"string\"}, \"mechanism\": {\"type\": \"string\"}, \"outcomes\": {\"items\": {\"items\": {\"type\": \"integer\"}, \"type\": \"array\"}, \"type\": \"array\"}, \"required_type\": {\"type\": \"string\"}, \"weak\": {\"type\": \"boolean\"}}, \"required\": [\"id\", \"driver_vars\", \"mechanism\", \"outcomes\", \"required_type\", \"weak\"], \"type\": \"object\"}, \"type\": \"array\"}, \"variables\": {\"items\": {\"additionalProperties\": false, \"properties\": {\"claim\": {\"type\": \"string\"}, \"conflict\": {\"type\": \"boolean\"}, \"direction_hint\": {\"enum\": [\"home\", \"away\", \"both\", \"goals_up\", \"goals_down\", \"opp_goals_up\", \"opp_goals_down\"], \"type\": \"string\"}, \"id\": {\"type\": \"string\"}, \"lang\": {\"type\": \"string\"}, \"published_at\": {\"type\": \"string\"}, \"quote\": {\"type\": \"string\"}, \"reverified\": {\"type\": \"boolean\"}, \"subject\": {\"type\": \"string\"}, \"team\": {\"type\": \"string\"}, \"type\": {\"enum\": [\"absence\", \"coach_change\", \"coach_conflict\", \"def_absence\", \"emotion\", \"event_match\", \"h2h_pattern\", \"home_field\", \"individual\", \"lineup_intent\", \"lineup_value\", \"match_type\", \"national_duty_return\", \"pitcher_state\", \"recent_pattern\", \"squad_rotation\", \"stakes\", \"strength_gap\", \"travel_schedule\", \"venue_weather\"], \"type\": \"string\"}, \"url\": {\"type\": \"string\"}}, \"required\": [\"id\", \"type\", \"team\", \"subject\", \"direction_hint\", \"claim\", \"quote\", \"url\", \"published_at\", \"lang\", \"conflict\", \"reverified\"], \"type\": \"object\"}, \"type\": \"array\"}}, \"required\": [\"variables\", \"hypotheses\", \"scenarios\", \"gaps\", \"notes\"], \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}}",
+ "recorded_at": "2026-10-06T01:41:49.546806+00:00",
+ "id": "3be58cad-ebdd-47ac-bfe0-396edcbcf445",
+ "object": "chat.completion",
+ "created": 1791250909,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": []\n, \"hypotheses\": \"\"\n, \"scenarios\": []\n, \"gaps\": []\n, \"notes\": \"제공된 문단에는 경기 관련 변수(lineup_rotation, coach_intent, coach_conflict, coach_change)가 포함되어 있지 않습니다.\"\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 693,
+  "completion_tokens": 61,
+  "total_tokens": 754,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}
