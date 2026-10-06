@@ -111,6 +111,22 @@ async def main(argv: list[str]) -> int:
     #  ⚠️ 여기서 단계를 다시 이으면 그것은 **프로브**다 — 실제 경로가 아니라
     #     이 파일의 순서를 검사하게 된다. 🔴 `pipeline.analyze` 가 입구다.
     from app.core import pipeline, render
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴 **재분석 경로**(축구 완성 지시서 §4) — `--again` 이면 s3·s4 를 안 돈다
+    # ══════════════════════════════════════════════════════════════════
+    if "--again" in argv:
+        print("[v6] 🔁 재분석 — s2 만 다시 돌고 s6·s7 을 다시 센다", flush=True)
+        got2 = await pipeline.reanalyze(arg, pool=pool, net=net, chain=chain,
+                                        state=state)
+        if isinstance(got2, Ambiguous):
+            print("🔴 재분석 — 경기를 확정하지 못했다:", got2.why)
+            return 1
+        _funnel(state)
+        print("\n" + "=" * 70 + "\n[재분석 카드]\n" + "=" * 70)
+        print(render.card_text(got2))
+        for n in state.notes[-12:]:
+            print("  ·", n[:160])
+        return 0
     cands = await s4_extract.run(ref, docs, state=state, chain=chain, net=net,
                                  cache=cache)
     print(f"\n[s4] 후보 {len(cands)}개", flush=True)
