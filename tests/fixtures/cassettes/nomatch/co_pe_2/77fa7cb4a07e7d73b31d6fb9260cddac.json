@@ -1,0 +1,16 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T13:27:22.684765+00:00",
+ "order": [
+  "Ante esta ausencia, el comando técnico de la selección peruana cuenta con Marco Huamán y César Inga como las principales alternativas para ocupar el puesto de lateral derecho en el encuentro ante Colombia.",
+  "“La Federación Peruana de Fútbol informa que, tras una evaluación médica y en coordinación permanente y cordial con el Burnley Football Club, el jugador Oliver Sonne ha sido desafectado de la presente convocatoria para el partido ante Colombia y retornará a Inglaterra. La FPF le desea a Oliver Sonne una pronta recuperación”, señaló la ‘Bicolor’.",
+  "Sonne había sido considerado por Mano Menezes para esta fecha internacional, pero la lesión le impedirá sumar minutos frente al combinado cafetero. El defensor retornará a Inglaterra para continuar con su proceso de recuperación bajo la supervisión de su club.",
+  "La selección peruana sufrió una baja de última hora para su próximo compromiso internacional. La Federación Peruana de Fútbol (FPF) anunció la desconvocatoria de Oliver Sonne debido a una lesión, por lo que el lateral no estará disponible para el duelo ante Colombia de este martes.",
+  "A través de un comunicado, la FPF informó que la decisión se tomó luego de una evaluación médica y en coordinación con Burnley Football Club, club donde milita actualmente el futbolista peruano.",
+  "Oliver Sonne fue desconvocado de Perú por lesión y no jugará ante Colombia",
+  "Perú enfrentará a los colombianos este martes 6 de octubre desde las 6:00 p. m. (hora peruana) en el Nu Stadium de Miami, en un nuevo desafío para el equipo dirigido por Mano Menezes."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 7문단 → 재정렬 상위 8"
+}

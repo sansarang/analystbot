@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T13:25:51.327027+00:00",
+ "order": [
+  "Guerra colombo-peruana Guerra colombo-peruana Conflicto limítrofe entre el Perú y Colombia Territorio entre los ríos … que para algunos sectores peruanos se había cedido a … Ejército de Colombia",
+  "Conflicto limítrofe entre Colombia y Perú de 2024-2025 ministerio de relaciones exteriores de Colombia , … el régimen de la isla Santa Rosa no está definido entre los gobiernos de Colombia y Perú.",
+  "Selección de fútbol de Colombia Selección de fútbol de Colombia Datos generales … Código FIFA … Federación Colombiana de Fútbol … Seudónimo(s) La Tricolor … Los Cafeteros … La Fi",
+  "Ecuador revive el sueño de organizar un Mundial junto a Colombia y Perú en 2038 Ecuador podría tener una minima oportunidad de organizar el mundial de 2038 junto a Colombia y Perú, por el esquema de rotación ...",
+  "Alineaciones Colombia vs Perú: probables formaciones para el partido amistoso La Selección Colombia se mide ante su similar de Perú en un nuevo encuentro amistoso internacional correspondiente a la fecha FIFA de octubre. Ambos directores técnicos buscan ajustar piezas y dar ...",
+  "Selección de Colombia 2.0: llegan los primeros convocados para la triple fecha FIFA Richard Ríos, Royer Caicedo y Óscar Perea llegan a la concentración de la selección de Colombia en Estados Unidos. T Bank Stadium de Baltimore) Colombia vs.Paraguay …",
+  "Penny pide a Córdova como arquero de Perú ante Colombia: \"Es buen momento\" Diego Penny pidió a Mano Menezes alinear a Matías Córdova, exarquero de Sporting Cristal, como titular de la selección peruana ante Colombia por fecha FIFA.",
+  "Esta sería la alineación titular de la selección Colombia contra Perú en el último partido amistoso de la fecha FIFA La Tricolor acumula un empate ante México y una derrota ante Paraguay en la gira por Estados Unidos, que marcó el inicio de la segunda era de Néstor Lorenzo ..."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

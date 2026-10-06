@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Colombia Peru rotación",
+ "recorded_at": "2026-10-06T13:25:53.222548+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "La rotación de personal, un desafío que impacta a las empresas colombianas - Voces de la academia",
+   "content": "En el 2023 la rotación de personal en el país se mantuvo en unos niveles del 10 % … según estudio de remuneración en Colombia realizado por la Consultora Page Group.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://blogs.eltiempo.com/vocesdelaacademiapoli/2024/03/06/la-rotacion-de-personal-un-desafio-que-impacta-a-las-empresas-colombianas/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "blogs.eltiempo.com",
+    "/vocesdelaacademiapoli/2024/03/06/la-rotacion-de-personal-un-desafio-que-impacta-a-las-empresas-colombianas/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Medellín mantiene la actual rotación del pico y placa: así operará la restricción este viernes 17 de julio",
+   "content": "Foto: … 30 Este viernes 17 de julio de 2026 continúa la rotación del pico y placa en Medellín y los municipios del área metropolitana del Valle de Aburrá La medida busca mejorar la movilidad y reducir la congestión vehicular en los principales corredores viales …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.eltiempo.com/colombia/medellin/medellin-mantiene-la-actual-rotacion-del-pico-y-placa-asi-operara-la-restriccion-este-viernes-17-de-julio-3571737",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/colombia/medellin/medellin-mantiene-la-actual-rotacion-del-pico-y-placa-asi-operara-la-restriccion-este-viernes-17-de-julio-3571737",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia Travel: guía oficial para descubrir los mejores destinos turísticos",
+   "content": "En Colombia llevamos el ritmo en la sangre. ¿Qué hay para hacer en Colombia? A través de las regiones de Colombia —Caribe, Pacífica, Andina, Orinoquía …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://colombia.travel/es",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.travel",
+    "/es",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Medellín mantiene la actual rotación del pico y placa: así operará la restricción este martes 21 de julio",
+   "content": "Pico y placa Medellín Foto: … 30 Este martes 21 de julio de 2026 continuará vigente la actual rotación del pico y placa en Medellín y los municipios del Valle de Aburrá La medida busca mejorar la movilidad y reducir la congestión vehicular en los principales cor",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.eltiempo.com/colombia/medellin/medellin-mantiene-la-actual-rotacion-del-pico-y-placa-asi-operara-la-restriccion-este-martes-21-de-julio-3572458",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/colombia/medellin/medellin-mantiene-la-actual-rotacion-del-pico-y-placa-asi-operara-la-restriccion-este-martes-21-de-julio-3572458",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rotación de pico y placa en Medellín: qué vehículos pueden transitar hoy",
+   "content": "Evita sanciones: conoce la rotación de pico y placa en Medellín para hoy. La rotación para este viernes, 18 de septiembre, será la siguiente …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.colombia.com/actualidad/nacionales/rotacion-de-pico-y-placa-en-medellin-este-viernes-18-de-septiembre-601073",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/actualidad/nacionales/rotacion-de-pico-y-placa-en-medellin-este-viernes-18-de-septiembre-601073",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Medellín mantiene la actual rotación del pico y placa: así operará la restricción este jueves 23 de julio",
+   "content": "PERIODISTA 23.07.2026 02: … 30 Este jueves 23 de julio de 2026 continuará vigente la actual rotación del pico y placa en Medellín y los municipios del Valle de Aburrá.La medida busca mejorar la movilidad y reducir la congestión vehicular en los principales de …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.eltiempo.com/colombia/medellin/medellin-mantiene-la-actual-rotacion-del-pico-y-placa-asi-operara-la-restriccion-este-jueves-23-de-julio-3573110",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/colombia/medellin/medellin-mantiene-la-actual-rotacion-del-pico-y-placa-asi-operara-la-restriccion-este-jueves-23-de-julio-3573110",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de Colombia 2.0: llegan los primeros convocados para la triple fecha FIFA",
+   "content": "Richard Ríos, Royer Caicedo y Óscar Perea llegan a la concentración de la selección de Colombia en Estados Unidos. T Bank Stadium de Baltimore) Colombia vs.Paraguay …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.elespectador.com/deportes/seleccion-colombia/seleccion-de-colombia-2-0-llegan-los-primeros-convocados-para-la-triple-fecha-fifa/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elespectador.com",
+    "/deportes/seleccion-colombia/seleccion-de-colombia-2-0-llegan-los-primeros-convocados-para-la-triple-fecha-fifa/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rotación de pico y placa en Medellín: qué vehículos pueden transitar hoy",
+   "content": "Evita sanciones: conoce la rotación de pico y placa en Medellín para hoy. La rotación para este jueves, 17 de septiembre, será la siguiente …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.colombia.com/actualidad/nacionales/rotacion-de-pico-y-placa-en-medellin-este-jueves-17-de-septiembre-600898",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/actualidad/nacionales/rotacion-de-pico-y-placa-en-medellin-este-jueves-17-de-septiembre-600898",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Estalla una guerra de palabras entre Colombia y Perú por una isla amazónica",
+   "content": "sobre la isla a principios de este mes: “El gobierno del Perú ha copado un territorio que es de Colombia”. … que define la frontera entre Colombia y Perú se firmó hace un siglo.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.nytimes.com/es/2025/08/08/espanol/america-latina/peru-colombia-santa-rosa-yavari.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/es/2025/08/08/espanol/america-latina/peru-colombia-santa-rosa-yavari.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Partidos Hoy: Horarios y canales del Fútbol por TV en Colombia",
+   "content": "Toda la programación actualizada de los partidos de fútbol que pasarán en vivo por televisión en Colombia. Horarios de partidos del fútbol colombiano y mundial",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.colombia.com/futbol/partidos-hoy/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/futbol/partidos-hoy/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rotación de pico y placa en Bogotá: qué vehículos pueden transitar hoy",
+   "content": "Rotación de pico y placa en Bogotá para el lunes 24 de agosto de 2026. con los cambios en la rotación de las placas que pueden circular de lunes a viernes …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.colombia.com/actualidad/nacionales/rotacion-del-pico-y-placa-en-bogota-este-lunes-24-de-agosto-597341",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/actualidad/nacionales/rotacion-del-pico-y-placa-en-bogota-este-lunes-24-de-agosto-597341",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Conflicto limítrofe entre Colombia y Perú de 2024-2025",
+   "content": "ministerio de relaciones exteriores de Colombia , … el régimen de la isla Santa Rosa no está definido entre los gobiernos de Colombia y Perú.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Conflicto_lim%C3%ADtrofe_entre_Colombia_y_Per%C3%BA_de_2024-2025",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Conflicto_lim%C3%ADtrofe_entre_Colombia_y_Per%C3%BA_de_2024-2025",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Guerra colombo-peruana",
+   "content": "Guerra colombo-peruana Conflicto limítrofe entre el Perú y Colombia Territorio entre los ríos … que para algunos sectores peruanos se había cedido a … Ejército de Colombia",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Guerra_colombo-peruana",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Guerra_colombo-peruana",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rotación de pico y placa en Bogotá: qué vehículos pueden transitar hoy",
+   "content": "Este viernes, 28 de agosto, continúa la rotación del pico y placa en Bogotá. Conoce qué vehículos pueden transitar hoy.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.colombia.com/actualidad/nacionales/rotacion-de-pico-y-placa-en-bogota-este-viernes-28-de-agosto-597943",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/actualidad/nacionales/rotacion-de-pico-y-placa-en-bogota-este-viernes-28-de-agosto-597943",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pico y placa en Cali este lunes 24 de agosto de 2026: vuelve la rotación habitual tras finalizar la medida extraordinaria por el terremoto",
+   "content": "La medida extraordinaria implementada durante la emergencia provocada por el terremoto estuvo vigente hasta el sábado 22 de agosto, por lo que desde este lunes vuelve a aplicarse la rotación habitual establecida para los vehículos particulares en la ciudad.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.eltiempo.com/colombia/cali/pico-y-placa-en-cali-este-lunes-24-de-agosto-de-2026-vuelve-la-rotacion-habitual-tras-finalizar-la-medida-extraordinaria-por-el-terremoto-3580080",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/colombia/cali/pico-y-placa-en-cali-este-lunes-24-de-agosto-de-2026-vuelve-la-rotacion-habitual-tras-finalizar-la-medida-extraordinaria-por-el-terremoto-3580080",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¿Cuándo se conocerá la convocatoria de la selección de Colombia para la próxima fecha FIFA?",
+   "content": "La convocatoria de la selección de Colombia para la próxima fecha FIFA se dará a conocer el jueves 17 de septiembre.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.elespectador.com/deportes/seleccion-colombia/cuando-se-conocera-la-convocatoria-de-la-seleccion-de-colombia-para-la-proxima-fecha-fifa/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elespectador.com",
+    "/deportes/seleccion-colombia/cuando-se-conocera-la-convocatoria-de-la-seleccion-de-colombia-para-la-proxima-fecha-fifa/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Terremoto de Perú se debió a una deformación interna de la placa de Nazca",
+   "content": "Por lo general, causan menos daño en la superficie del suelo por encima de sus focos que en el caso de los terremotos de foco superficial de magnitud similar, … que fue sentido en los países vecinos como Colombia y Ecuador.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.eluniverso.com/noticias/internacional/terremoto-de-peru-se-debio-a-una-deformacion-interna-de-la-placa-de-nazca-nota/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eluniverso.com",
+    "/noticias/internacional/terremoto-de-peru-se-debio-a-una-deformacion-interna-de-la-placa-de-nazca-nota/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Venezuela, Colombia y Perú: las magnitudes de sus últimos terremotos",
+   "content": "Publicidad El terremoto en Perú ocurre poco más de una semana después de otro potente sismo en la región.El pasado 10 de agosto, Colombia fue sacudida por un terremoto de magnitud 7,4 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.eluniverso.com/noticias/internacional/venezuela-colombia-y-peru-las-magnitudes-de-sus-ultimos-terremotos-nota/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eluniverso.com",
+    "/noticias/internacional/venezuela-colombia-y-peru-las-magnitudes-de-sus-ultimos-terremotos-nota/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¡Atención, conductores! Pico y placa en Cali para el miércoles 1 de julio de 2026: así comienza la rotación del segundo semestre",
+   "content": "La medida entró en una nueva fase con cambios en la rotación. La restricción para vehículos particulares rige entre las 6 a. m. y las 7 p. m.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.eltiempo.com/colombia/cali/atencion-conductores-pico-y-placa-en-cali-para-el-miercoles-1-de-julio-de-2026-asi-comienza-la-rotacion-del-segundo-semestre-3568007",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/colombia/cali/atencion-conductores-pico-y-placa-en-cali-para-el-miercoles-1-de-julio-de-2026-asi-comienza-la-rotacion-del-segundo-semestre-3568007",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Una Ruta con Sabor a Café",
+   "content": "Visita el Parque del Café en Colombia y disfruta de una combinación de naturaleza y diversión mientras aprendes más sobre sobre la cultura y proceso del café",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://colombia.travel/es/blog/el-parque-del-cafe-en-colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.travel",
+    "/es/blog/el-parque-del-cafe-en-colombia",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

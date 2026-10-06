@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T13:27:52.682715+00:00",
+ "order": [
+  "La rotación responde a que Colombia utilizó dos equipos distintos ante México y Paraguay. Todavía quedan cinco jugadores sin minutos: el arquero Kevin Mier, el defensor Royer Caicedo y los atacantes Juan Manuel Rengifo, Daniel Arcila y Oscar Perea.",
+  "Mier ocuparía el arco tras su actuación ante Venezuela en la última fecha de las Eliminatorias. Solís reemplazaría a Richard Ríos y Rengifo podría actuar como extremo o mediapunta. La posible formación sería: Mier; Daniel Muñoz, Dávinson Sánchez, Jhon Lucumí, Álvaro Angulo; Puerta, Solís, Rengifo, Yaser Asprilla, Jhon Arias; Luis Suárez, según Espn que acompaña a la Tricolor en su gira de partidos amistosos en Estados Unidos.",
+  "El técnico Néstor Lorenzo explicó que el equipo necesita mejorar su acompañamiento ofensivo y la generación de oportunidades. “John Arias lo ha hecho muy bien, jugó mejor cuando lo hizo de volante y no como media punta. No llegamos a generar muchas situaciones de gol, había que haber acompañado un poco más a Luis Suárez, tener más profundidad con los laterales, no acompañamos el ataque en la medida que pretendíamos”, dijo.",
+  "El mediocampista Jhon Solís sería titular con Colombia ante Perú en el último amistoso de la fecha FIFA, con la posibilidad de ocupar el lugar de Richard Ríos en una zona donde el equipo busca respuestas tras sus recientes ensayos. La alternativa surge después de su debut de siete minutos en la derrota frente a Paraguay.",
+  "Rengifo y Perea tienen 21 años y son opciones para la renovación ofensiva. El jugador de Atlético Nacional puede ocupar los espacios que dejen Juan Fernando Quintero y James Rodríguez tras su retiro, mientras que el extremo del Club América puede reemplazar por las bandas a Luis Díaz o Jhon Arias.",
+  "El arquero Kevin Mier, el defensor Royer Caicedo, los mediocampistas Juan Manuel Rengifo y Daniel Arcila, y el extremo Óscar Perea son los cinco convocados que no participaron en los dos primeros amistosos. Mier es el único del grupo con experiencia en la selección absoluta; los otros cuatro aguardan su estreno.",
+  "Mier fue llamado para las Eliminatorias Sudamericanas rumbo al Mundial de 2026 y debutó el 6 de junio en el estadio Metropolitano de Barranquilla, durante el empate 0-0 frente a Perú.",
+  "Ante Perú, Solís podría formar junto a Gustavo Puerta, quien fue uno de los jugadores destacados frente a México y Paraguay. El mediocampista afirmó que espera su oportunidad: “Como desde el primer día, trabajando para cuando llegue la oportunidad de estar preparado y esperar a Perú”."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 16문단 → 재정렬 상위 8"
+}

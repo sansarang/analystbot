@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Colombia Peru lesión",
+ "recorded_at": "2026-10-06T13:25:49.834877+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Se prendieron las alarmas en la selección Colombia: se lesionó uno de sus defensores y es duda para los amistosos",
+   "content": "La selección Colombia volverá a jugar en septiembre, cuando se realicen los amistosos de preparación tras el Mundial 2026 - crédito Albert Gea/REUTERS",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.infobae.com/colombia/deportes/2026/08/13/se-prendieron-las-alarmas-en-la-seleccion-colombia-se-lesiono-uno-de-sus-defensores-y-es-duda-para-los-amistosos/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.infobae.com",
+    "/colombia/deportes/2026/08/13/se-prendieron-las-alarmas-en-la-seleccion-colombia-se-lesiono-uno-de-sus-defensores-y-es-duda-para-los-amistosos/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hinchas peruanos no se olvidaron de Mina tras eliminación de Colombia del Mundial",
+   "content": "Uno de los grandes damnificados que a pesar que no fue convocado por el entrenador colombiano, debido a una lesión, … Yerry Mina fue duramente criticado por los internautas que no se olvidaron de sus declaraciones previas al partido en enero cuando la Selección …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.colombia.com/futbol/eliminatorias/yerry-mina-seleccion-colombia-redes-eliminacion-colombia-mundial-345376",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/futbol/eliminatorias/yerry-mina-seleccion-colombia-redes-eliminacion-colombia-mundial-345376",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¿Perú podría sufrir una nueva baja para los amistosos?",
+   "content": "Perú se enfrentará a Estados Unidos, México, Canadá y Colombia, por lo que el cuerpo técnico espera contar con la totalidad de los futbolistas convocados para continuar evaluando alternativas de cara al próximo proceso.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.futbolperuano.com/seleccion/noticias/seleccion-peruana-andre-carrillo-enciende-las-alarmas-antes-de-la-fecha-fifa-601517",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.futbolperuano.com",
+    "/seleccion/noticias/seleccion-peruana-andre-carrillo-enciende-las-alarmas-antes-de-la-fecha-fifa-601517",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La Selección Colombia sufre la lesión de un delantero: será baja contra Perú y Argentina",
+   "content": "Por ello, … Delantero se lesionó y será baja contra Perú y Argentina Rafael Santos Borré sufrió una lesión muscular en su pierna izquierda y por ello -de manera extraoficial- no estará en los próximos partidos de la Selección Colombia …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.deportesrcn.com/futbol/seleccion-colombia-sufre-lesion-de-delantero-baja-vs-peru-y-argentina-111770",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.deportesrcn.com",
+    "/futbol/seleccion-colombia-sufre-lesion-de-delantero-baja-vs-peru-y-argentina-111770",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia le sacó un empate a Chile en una cancha que estuvo imposible",
+   "content": "Colombia contra Chile, en Santiago. … Colombia cerró la primera ventana de las eliminatorias al Mundial de 2026 con cuatro puntos. … Colombia y Chile siguen 0-0 en Santiago.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.elespectador.com/deportes/seleccion-colombia/chile-vs-colombia-siga-en-vivo-el-minuto-a-minuto-de-la-seleccion-en-eliminatorias/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elespectador.com",
+    "/deportes/seleccion-colombia/chile-vs-colombia-siga-en-vivo-el-minuto-a-minuto-de-la-seleccion-en-eliminatorias/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Noticias de Fútbol Peruano | DEPOR",
+   "content": "Selección Peruana Oliver Sonne fue desconvocado de Perú: Mano Menezes aclaró si tiene una lesión y explicó la decisión Mano Menezes, explicó por qué Oliver Sonne fue desafectado de la convocatoria para el amistoso ante Colombia en el último partido de la FIF …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://depor.com/futbol-peruano/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "depor.com",
+    "/futbol-peruano/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Duda de Lorenzo en nueva etapa en Colombia: mundialista se lesionó",
+   "content": "La Selección Colombia tendrá dos fechas FIFA, en septiembre y noviembre de 2026. |Selección Colombia | futbolred.com",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.futbolred.com/seleccion-colombia/confirmado-willer-ditta-tendria-lesion-de-rodilla-se-perderia-convocatoria-de-seleccion-colombia-271249",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.futbolred.com",
+    "/seleccion-colombia/confirmado-willer-ditta-tendria-lesion-de-rodilla-se-perderia-convocatoria-de-seleccion-colombia-271249",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Diagnóstico confirmado: así se produjo y así se recupera la lesión de Santiago Arias",
+   "content": "Ya se ha confirmado un parte médico oficial para el futbolista Santiago Arias luego de la lesión que lo sacó del partido al minuto 12 del primer tiempo en el partido entre Colombia y Venezuela …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.infobae.com/america/colombia/2020/10/11/diagnostico-confirmado-asi-se-produjo-y-asi-se-recupera-la-lesion-de-santiago-arias/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.infobae.com",
+    "/america/colombia/2020/10/11/diagnostico-confirmado-asi-se-produjo-y-asi-se-recupera-la-lesion-de-santiago-arias/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Preocupación en la selección de Colombia por la lesión de Jefferson Lerma con Crystal Palace",
+   "content": "Hay preocupación en la selección de Colombia debido a la lesión de Jefferson Lerma; el jugador no fue convocado por Crystal Palace.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.elespectador.com/deportes/seleccion-colombia/preocupacion-en-la-seleccion-de-colombia-por-la-lesion-de-jefferson-lerma-con-crystal-palace/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elespectador.com",
+    "/deportes/seleccion-colombia/preocupacion-en-la-seleccion-de-colombia-por-la-lesion-de-jefferson-lerma-con-crystal-palace/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de fútbol de Colombia",
+   "content": "Selección de fútbol de Colombia Datos generales … Código FIFA … Federación Colombiana de Fútbol … Seudónimo(s) La Tricolor … Los Cafeteros … La Fi",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección Colombia y la mala racha con las lesiones: otra baja confirmada para juegos contra Perú y Argentina",
+   "content": "Selección Colombia … por lesión, para los juegos de la … Colombia alista sus dos partidos próximos contra Perú y Argentina, pero el DT ha tenido serios inconvenientes.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.eltiempo.com/deportes/futbol-internacional/seleccion-colombia-y-la-mala-racha-con-las-lesiones-otra-baja-confirmada-para-juegos-contra-peru-y-argentina-3459591",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/deportes/futbol-internacional/seleccion-colombia-y-la-mala-racha-con-las-lesiones-otra-baja-confirmada-para-juegos-contra-peru-y-argentina-3459591",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mayra Ramírez, baja sensible para Chelsea y Colombia tras complicada lesión",
+   "content": "El fútbol de Colombia recibió un golpe inesperado este miércoles con la confirmación de la lesión de la delantera Mayra Ramírez, pieza clave del Chelsea y figura de la selección nacional que viene de quedar subcampeona de la Copa América Femenina.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.elespectador.com/deportes/futbol-mundial/mayra-ramirez-baja-sensible-para-chelsea-y-colombia-tras-complicada-lesion-futbol-femenino/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elespectador.com",
+    "/deportes/futbol-mundial/mayra-ramirez-baja-sensible-para-chelsea-y-colombia-tras-complicada-lesion-futbol-femenino/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mayra Ramírez",
+   "content": "CHELSEAMayra Ramírez se vuelve a lesionarChristian Ricardo González Villate05/02/202612: … 45ELIMINATORIAS BRASIL 2027Convocatoria de Colombia para Perú y EcuadorChristian Ricardo González Villate18/10/202512 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://colombia.as.com/noticias/mayra-ramirez-ramirez/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.as.com",
+    "/noticias/mayra-ramirez-ramirez/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Complicado presente de futbolistas colombianos, luego del Mundial 2026",
+   "content": "¿Qué pasa con futbolistas de Selección Colombia luego del Mundial 2026? Difícil momento: lesiones, rebelión, críticas y conflictos con sus clubes |Selección Colombia …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.futbolred.com/seleccion-colombia/mundialistas-de-colombia-viven-dificil-arranque-de-semestre-lesiones-criticas-y-conflictos-271165",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.futbolred.com",
+    "/seleccion-colombia/mundialistas-de-colombia-viven-dificil-arranque-de-semestre-lesiones-criticas-y-conflictos-271165",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección Colombia: James Rodríguez y la vez que su lesión alegró a Perú",
+   "content": "En el partido que ganaba Colombia 1-0 a Perú, James Rodríguez se lesionó y esto fue motivo de alegría para los peruanos.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.colombia.com/futbol/copa-america/centenario/noticias/sdi/138446/seleccion-colombia-james-rodriguez-y-la-vez-que-su-lesion-alegro-a-peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/futbol/copa-america/centenario/noticias/sdi/138446/seleccion-colombia-james-rodriguez-y-la-vez-que-su-lesion-alegro-a-peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jugador de la selección de Colombia sufrió una grave lesión en su rodilla",
+   "content": "El jugador colombiano, convocado en varias oportunidades por Néstor Lorenzo para jugar con la selección de Colombia, se perderá el resto de la temporada.La lesión se dio en el partido por los cuartos de final del torneo Clausura 2026 de la Liga MX entre y …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.elespectador.com/deportes/seleccion-colombia/jugador-de-la-seleccion-de-colombia-sufrio-una-grave-lesion-en-su-rodilla-mundial-2026/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elespectador.com",
+    "/deportes/seleccion-colombia/jugador-de-la-seleccion-de-colombia-sufrio-una-grave-lesion-en-su-rodilla-mundial-2026/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Noticias sobre Luis Abram | DEPOR",
+   "content": "Dudas en Sporting Cristal: Paulo Autuori y las variantes que maneja para rearmar su alineación Ante la lesión de Luis Abram y su posible ausencia frente a Alianza Lima …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://depor.com/noticias/luis-abram/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "depor.com",
+    "/noticias/luis-abram/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Yerson Mosquera sufre lesión de ligamentos en el tobillo y se perderá los próximos partidos de la Selección Colombia",
+   "content": "La situación clínica del futbolista compromete su participación con la Selección Colombia de cara a los partidos amistosos programados por el director técnico Néstor Lorenzo para los meses de septiembre y octubre.Yerson Mosquera (der …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.eltiempo.com/deportes/futbol-internacional/yerson-mosquera-sufre-lesion-de-ligamentos-en-el-tobillo-y-se-perdera-los-proximos-partidos-de-la-seleccion-colombia-3579733",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/deportes/futbol-internacional/yerson-mosquera-sufre-lesion-de-ligamentos-en-el-tobillo-y-se-perdera-los-proximos-partidos-de-la-seleccion-colombia-3579733",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¡Una nueva baja! Rafael Santos Borré podría perderse las Eliminatorias",
+   "content": "Colombia se enfrentará a Perú y Argentina el 6 y 10 de septiembre respectivamente, y Lorenzo deberá seguir de cerca esta lesión si quiere contar con su goleador.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.winsports.co/seleccion-colombia/noticias/una-nueva-baja-rafael-santos-borre-podria-perderse-las-eliminatorias-103413",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.winsports.co",
+    "/seleccion-colombia/noticias/una-nueva-baja-rafael-santos-borre-podria-perderse-las-eliminatorias-103413",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¡Malas noticias para James! No estará con Colombia frente a Perú por lesión",
+   "content": "Malas noticias dio el volante colombiano James David Rodríguez Rubio previo al partido que protagonizará la Selección Colombia contra Perú en el Hard Rock Stadium de Miami este viernes 15 de noviembre desde las 8 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.deportesrcn.com/futbol/james-se-lesiono-y-no-estara-con-colombia-frente-a-peru-21181",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.deportesrcn.com",
+    "/futbol/james-se-lesiono-y-no-estara-con-colombia-frente-a-peru-21181",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

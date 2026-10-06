@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T13:25:55.637557+00:00",
+ "order": [
+  "Colombia Travel: official guide to discover the best tourist destinations in Colombia Travel to Colombia, a unique destination full of culture, diversity, and friendly people. Discover top tourist spots and plan your dream vacation.",
+  "Colombia Retirement Visa (M-11) — Attorney-Filed | Colombian Visa Services Colombia is one of the most popular retirement destinations in Latin America — with year-round spring weather, … and a straightforward retirement visa.",
+  "Colombia Retirement Visa (M-11) — Attorney-Filed | Colombian Visa Services Colombia is one of the most popular retirement destinations in Latin America — with year-round spring weather, … and a straightforward retirement visa.",
+  "Colombia Republic of Colombia República de Colombia … Coat of arms … Libertad y Orden \"Freedom and Order\" … Himno Nacional de la República de Colombia \"National Anthem of the Re",
+  "Colombia Republic of Colombia República de Colombia … Coat of arms … Libertad y Orden \"Freedom and Order\" … Himno Nacional de la República de Colombia \"National Anthem of the Re",
+  "Peru Machu Picchu , … and the source of the Amazon River are all found in Peru.Peru is bordered to the north by Ecuador and Colombia , … and to the southeast by Bolivia Peru is a representative democratic republic divided into 25 regions and over 33 million people in …",
+  "Official Tourism Website of Peru | Peru Travel Peru, country of traditions, modern country, unique country. Come and have some unique experiences!",
+  "Peru | History, Culture, Geography, Economy, Politics, Languages, People, Flag, & Map | Britannica Peru is a country in western South America. It is bordered by Ecuador and Colombia to the north, Brazil and Bolivia to the east, Chile to the south …"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

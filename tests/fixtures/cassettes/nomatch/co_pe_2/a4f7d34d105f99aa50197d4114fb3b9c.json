@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T13:24:05.954615+00:00",
+ "order": [
+  "Galaxy forward Joseph Paintsil returns in friendly loss against Cruz Azul 1일 전Chucky Lozano is headed back to the Galaxy after suffering a hamstring injury on international duty with the Mexican national team. Lozano started and played 64 minutes in Mexico’s game against Colombia on Sept. 26. He didn’t make an appearance in the Sept. 29 game against Peru. “I think he comes back tonight and he’ll...1일 전",
+  "Gilberto Mora in Doubt for USA Clash: Huge Blow After His Goal Against ... Gilberto Mora, Mexico's new #10, is nursing an ankle injury after the Peru match and might miss the big game against the USA—just after scoring his first goal against Colombia.",
+  "The Tricolor shakes for Gilberto Mora's injury prior to the shock ... The juvenile midfielder did not see action in the bitter draw against Peru because they were taking care of him after his superb performance against Colombia, where he dispatched with a goal in Baltimore, but a painful discomfort in the ankle forced him to be sent directly to a magnetic resonance to know the gravity of the matter.",
+  "USA vs. Mexico, Canada vs. Peru Set for Saturday Friendlies 2일 전Two marquee friendlies headline Saturday's international window. Canada hosts Peru at Stade Saputo in Montreal at 2 p.m. ET, and the United States faces Mexico at State Farm Stadium in Glendale at 10 p.m. ET. Both matches fall under the expanded September/October window built to give national teams more prep time ahead of the next World Cup cycle. Canada comes in off a 1-0 win over Chile, its first match since reaching the Round of 16 at the 2026 World Cup. Jonathan David scored the winner in th....2일 전",
+  "Baja de última hora por lesión: Selección Peruana pierde ... - Bolavip La Selección Peruana sufre una baja de última hora, por lesión. No estará este titular de Mano Menezes, en el partido amistoso ante Colombia.",
+  "Mexico Player Ratings and Takeaways From Underwhelming Draw With Peru 6일 전Mexico Player Ratings and Takeaways From Underwhelming Draw With Peru Rafa Márquez’s decision to field a completely different starting XI backfired with a poor showing against a weaker rival.6일 전",
+  "Mano Menezes matiza el comunicado oficial de la FPF acerca de la desconvocatoria de Oliver Sonne previo a Perú vs Colombia: “No está lesionado” A puertas del último partido de fogueo de la lastimera gira norteamericana, el entrenador de la selección nacional ha encendido el debate al esclarecer los motivos que llevaron a dejar a un lado al ‘V ...",
+  "Perú se quedó sin uno de sus titulares para enfrentar a la Selección Colombia La Federación Peruana de Fútbol confirmó que el jugador fue desafectado. El entrenador Mano Menezes lo pierde ante Colombia."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

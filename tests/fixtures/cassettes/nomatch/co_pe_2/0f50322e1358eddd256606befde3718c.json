@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T13:25:53.209709+00:00",
+ "order": [
+  "Peru national football team 147 Colombia defeated Peru 2– … in a match that included an own goal from Peru's Marcial Salazar 146 Olympic Games Peru playing against Austria in the 1936 Olympic football tournament",
+  "Peru national football team 147 Colombia defeated Peru 2– … in a match that included an own goal from Peru's Marcial Salazar 146 Olympic Games Peru playing against Austria in the 1936 Olympic football tournament",
+  "Colombia national football team in Argentina, Colombia won Group A ahead of the hosts with seven points and without conceding, … 0 by Peru in the quarter-finals at Córdoba after extra time.José Pékerman …",
+  "Colombia national football team in Argentina, Colombia won Group A ahead of the hosts with seven points and without conceding, … 0 by Peru in the quarter-finals at Córdoba after extra time.José Pékerman …",
+  "Colombia vs Peru: CONMEBOL World Cup Qualifiers stats & head-to-head Follow live text commentary, score updates and match stats from Colombia vs Peru in the CONMEBOL World Cup Qualifiers",
+  "Peru national football team: record v Colombia Peru national football team record against Colombia including all match details.",
+  "Paraguay national football team: record v Peru Paraguay national football team record against Peru including all match details.",
+  "Peru at the Copa América This is a record of … results at the Copa América … , Peru has had good showings. It is often remembered by fans that Peru was the fourth team (after"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

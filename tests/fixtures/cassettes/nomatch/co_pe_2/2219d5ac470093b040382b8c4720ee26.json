@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T13:25:55.170428+00:00",
+ "order": [
+  "Peru national football team 147 Colombia defeated Peru 2– … in a match that included an own goal from Peru's Marcial Salazar 146 Olympic Games Peru playing against Austria in the 1936 Olympic football tournament",
+  "Peru national football team 147 Colombia defeated Peru 2– … in a match that included an own goal from Peru's Marcial Salazar 146 Olympic Games Peru playing against Austria in the 1936 Olympic football tournament",
+  "Colombia national football team records and statistics Colombia - Record International Players\" RSSSF 1 2 \"Australia gets President's blessing to join AFC in 2006\" ABC News Australian Broadcasting Corporation …",
+  "Colombia national football team records and statistics Colombia - Record International Players\" RSSSF 1 2 \"Australia gets President's blessing to join AFC in 2006\" ABC News Australian Broadcasting Corporation …",
+  "Colombia football team 'A' international match record Colombia national football team complete match record including all 'A' international and world cup matches",
+  "Colombia vs Peru: CONMEBOL World Cup Qualifiers stats & head-to-head Follow live text commentary, score updates and match stats from Colombia vs Peru in the CONMEBOL World Cup Qualifiers",
+  "Peru national football team: record v Colombia Peru national football team record against Colombia including all match details.",
+  "Paraguay national football team: record v Peru Paraguay national football team record against Peru including all match details."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

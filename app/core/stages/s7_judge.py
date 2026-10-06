@@ -95,7 +95,7 @@ def _lines(ref: MatchRef, facts: Facts, scen: list[Scenario],
         notes.append(f"보드 {len(board.lines)}줄을 받았다 — **보드 줄만** 센다")
         out: list[tuple[Any, BoardLine]] = []
         for line in board.lines:
-            old = _old_of(line)
+            old = _old_of(line, ref)
             if old is None:
                 # 🔴 못 옮긴 줄은 **이름으로 남긴다**(#3 조용한 0 금지)
                 notes.append(f"🔴 보드 줄 `{line.market}/{line.side}` 를 대입 꼴로 "
@@ -133,8 +133,19 @@ def _new_of(m: Any) -> BoardLine | None:
     return None
 
 
-def _old_of(line: BoardLine) -> Any:
-    """🔴 `BoardLine` → 옛 `Market`(대입 산수가 그 타입을 받는다)."""
+def _old_of(line: BoardLine, ref: MatchRef | None = None) -> Any:
+    """🔴 `BoardLine` → 옛 `Market`(대입 산수가 그 타입을 받는다).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **핸디·팀총점의 `team` 은 팀 이름이어야 한다**(실측 2026-10-06)
+    ══════════════════════════════════════════════════════════════════
+
+    ⚠️ 보드 파서는 쪽을 `home`·`away` 로 적는데 `survive.apply` 는 **팀 이름**으로
+       센다 — `team="home"` 이면 `'?'` 가 돌아와 그 줄이 **카드에서 사라졌다**
+       (사용자 보드의 `핸디 -0.5` 가 대입 표에 안 보였다 · 9차 ③ 점검표).
+    🔴 그래서 `ref` 로 **이름으로 바꿔** 넘긴다. ⚠️ `ref` 가 없으면 옛 꼴 그대로다
+       (그때는 그 줄이 사라지고, 사유가 남는다).
+    """
     from app.types import Market as OldMarket
     back = {("win", "home"): "home", ("win", "away"): "away",
             # 🔴🔴 **피드가 무승부를 `win/draw` 로 준다**(네 층 §2-5) — 보드 파서는
@@ -149,8 +160,10 @@ def _old_of(line: BoardLine) -> Any:
     if line.market == "win":
         # 🔴 모르는 쪽 이름이 온 `win` 줄은 **버린다** — 옛 타입에 `win` 이 없다
         return None
-    return OldMarket(market_type=line.market, team=line.side,
-                     line=line.point)
+    team = str(line.side)
+    if ref is not None and team in ("home", "away"):
+        team = ref.home_name if team == "home" else ref.away_name
+    return OldMarket(market_type=line.market, team=team, line=line.point)
 
 
 # ══════════════════════════════════════════════════════════════════

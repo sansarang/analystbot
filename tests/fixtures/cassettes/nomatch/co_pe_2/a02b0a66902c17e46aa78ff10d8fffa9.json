@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Peru Colombia retirement ceremony",
+ "recorded_at": "2026-10-06T13:25:49.049567+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "5 Latin American Countries Where $2,000 Monthly Makes Retirement Comfortable",
+   "content": "Ecuador has health care scores that beat Spain and Norway, while Colombia and Peru offer visa programs that let Americans live comfortably for a fraction of U.S …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.investopedia.com/5-latin-american-countries-where-usd2-000-monthly-makes-retirement-comfortable-11951209",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.investopedia.com",
+    "/5-latin-american-countries-where-usd2-000-monthly-makes-retirement-comfortable-11951209",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Fiestas Patrias (Peru)",
+   "content": "Independence Day (Peru) … and the National Police of Peru … During the ceremony representatives of the three branches as well as the National Police as well as other invitees for a parade.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Fiestas_Patrias_(Peru)",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Fiestas_Patrias_(Peru)",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia–Peru War",
+   "content": "Colombia–Peru War Part of the Colombian–Peruvian territorial dispute Colombian Army on manoeuvres during the conflict. … 1 September 1932 – 24 May 1933",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Colombia%E2%80%93Peru_War",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Colombia%E2%80%93Peru_War",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia Retirement Visa (M-11) — Attorney-Filed | Colombian Visa Services",
+   "content": "Colombia is one of the most popular retirement destinations in Latin America — with year-round spring weather, … and a straightforward retirement visa.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.colombianvisaservices.com/retirement-visa",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombianvisaservices.com",
+    "/retirement-visa",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru",
+   "content": "From 2016, the flow of Venezuelans to Peru increased, … being the most important migratory wave of the 21st century in the country.Peru is home to the second largest number of Venezuelan immigrants after Colombia …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Everything You Need To Know About Retiring in Colombia For 2025",
+   "content": "In recent years, this Colombia has emerged as an attractive retirement haven, offering a plethora of Colombia retirement benefits for those seeking a fresh start.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.colombianvisaservices.com/es/blog/colombia-retirement",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombianvisaservices.com",
+    "/es/blog/colombia-retirement",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia",
+   "content": "Republic of Colombia República de Colombia … Coat of arms … Libertad y Orden \"Freedom and Order\" … Himno Nacional de la República de Colombia \"National Anthem of the Re",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Alberto Fujimori",
+   "content": "\"Despite Insurgency: Reducing Military Prerogatives in Colombia and Peru\". 158 178 179 Former president of Colombia Álvaro Uribe Vélez expressed his condolences and praised his administration …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Alberto_Fujimori",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Alberto_Fujimori",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru",
+   "content": "Machu Picchu , … and the source of the Amazon River are all found in Peru.Peru is bordered to the north by Ecuador and Colombia , … and to the southeast by Bolivia Peru is a representative democratic republic divided into 25 regions and over 33 million people in …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://simple.wikipedia.org/wiki/Peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "simple.wikipedia.org",
+    "/wiki/Peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia | History, Map, Flag, Capital, Population, Currency, & Facts | Britannica",
+   "content": "Geographical and historical treatment of Colombia, a country of northwestern South America. Its 1,000 miles of coast to the north are bathed by the Caribbean Sea …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.britannica.com/place/Colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/place/Colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "History of Colombia | Independence, Government, & Facts | Britannica",
+   "content": "History of Colombia, a survey of the important events and people in the history of Colombia from the time of European settlement.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.britannica.com/topic/history-of-Colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/topic/history-of-Colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru | History, Culture, Geography, Economy, Politics, Languages, People, Flag, & Map | Britannica",
+   "content": "Peru is a country in western South America. It is bordered by Ecuador and Colombia to the north, Brazil and Bolivia to the east, Chile to the south …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.britannica.com/place/Peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/place/Peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Visit San Agustín, the Archaeological Capital of Colombia",
+   "content": "The statues here represent religious figures with anthropomorphic and zoomorphic masks, combining the mouth of a feline with fish-like attributes.Tributes were made around these statues to ensure fertility and good harvests.Discover the wonders hidden in the …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://colombia.travel/en/visit-san-agustin-archaeological-capital-colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.travel",
+    "/en/visit-san-agustin-archaeological-capital-colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Top 5 Countries to Retire With Easy Citizenship",
+   "content": "Here are five destinations that make it easy to gain dual citizenship and enjoy a flexible, fresh start in retirement.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.investopedia.com/top-countries-to-retire-with-easy-citizenship-8714599",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.investopedia.com",
+    "/top-countries-to-retire-with-easy-citizenship-8714599",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Official Tourism Website of Peru | Peru Travel",
+   "content": "Peru, country of traditions, modern country, unique country. Come and have some unique experiences!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.peru.travel/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.peru.travel",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru | World Bank Group",
+   "content": "Country Leadership Ariel Yepez Regional Director for Bolivia, … Colombia, … Peru and Venezuela Oliver Braedt Operations Manager for Bolivia, … Ecuador and Peru",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.worldbank.org/ext/en/country/peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.worldbank.org",
+    "/ext/en/country/peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "List of cities and towns in Colombia | Britannica",
+   "content": "This is a list of cities and towns in Colombia ordered alphabetically by departamento (department). (See also city; urban",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.britannica.com/topic/list-of-cities-and-towns-in-Colombia-2059454",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/topic/list-of-cities-and-towns-in-Colombia-2059454",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia Travel: official guide to discover the best tourist destinations in Colombia",
+   "content": "Travel to Colombia, a unique destination full of culture, diversity, and friendly people. Discover top tourist spots and plan your dream vacation.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://colombia.travel/en",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.travel",
+    "/en",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "THE 15 BEST Things to Do in Peru (2026) - Must-See Attractions",
+   "content": "Things to Do in Peru, South America: See Tripadvisor's 2,680,675 traveler reviews and photos of Peru tourist attractions. … We have reviews of the best places to see in Peru.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.tripadvisor.com/Attractions-g294311-Activities-Peru.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tripadvisor.com",
+    "/Attractions-g294311-Activities-Peru.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "General Information | Cancillería",
+   "content": "Welcome to Colombia, a tropical country of extraordinary diversity and charm. … Colombia is also the land of the legend of El Dorado and the magical universe of Macondo.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.cancilleria.gov.co/en/general-information",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.cancilleria.gov.co",
+    "/en/general-information",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

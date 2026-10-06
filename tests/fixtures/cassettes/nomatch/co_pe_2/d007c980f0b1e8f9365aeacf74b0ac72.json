@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T13:25:50.856589+00:00",
+ "order": [
+  "Wilder Cartagena Injury: Called up by Peru Cartagena has been called up by Peru for four international matches between Sept. 26 and Oct. 6 and will miss the Sept. 26 MLS match against Philadelphia Union. Cartagena will be unavailable against ...",
+  "La Selección Colombia sufre la lesión de un delantero: será baja contra Perú y Argentina Por ello, … Delantero se lesionó y será baja contra Perú y Argentina Rafael Santos Borré sufrió una lesión muscular en su pierna izquierda y por ello -de manera extraoficial- no estará en los próximos partidos de la Selección Colombia …",
+  "Perú se quedó sin su Oliver para enfrentar a la Selección Colombia: ya fue descartado La Federación Peruana de Fútbol confirmó este lunes que su Oliver, Sonne, fue desafectado de la convocatoria y no estará disponible para el amistoso contra la Selección Colombia, que se disputará este ...",
+  "Noticias de Fútbol Peruano | DEPOR Selección Peruana Oliver Sonne fue desconvocado de Perú: Mano Menezes aclaró si tiene una lesión y explicó la decisión Mano Menezes, explicó por qué Oliver Sonne fue desafectado de la convocatoria para el amistoso ante Colombia en el último partido de la FIF …",
+  "Baja de última hora por lesión: Selección Peruana pierde titular para el duelo frente a Colombia La Selección Peruana sufre una baja de última hora, por lesión. No estará este titular de Mano Menezes, en el partido amistoso ante Colombia.",
+  "Selección de fútbol de Colombia Selección de fútbol de Colombia Datos generales … Código FIFA … Federación Colombiana de Fútbol … Seudónimo(s) La Tricolor … Los Cafeteros … La Fi",
+  "Mano Menezes matiza el comunicado oficial de la FPF acerca de la desconvocatoria de Oliver Sonne previo a Perú vs Colombia: “No está lesionado” A puertas del último partido de fogueo de la lastimera gira norteamericana, el entrenador de la selección nacional ha encendido el debate al esclarecer los motivos que llevaron a dejar a un lado al ‘V ...",
+  "Oliver Sonne fue desconvocado de Perú por lesión y no jugará ante Colombia La selección peruana sufrió una baja de última hora para su próximo compromiso internacional. La Federación Peruana de Fútbol (FPF) anunció la desconvocatoria de Oliver Sonne debido a una lesión, por ..."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

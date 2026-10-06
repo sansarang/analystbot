@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T13:27:53.171670+00:00",
+ "order": [
+  "\"Puede ser que cambie el arquero. Quiero ver a los tres, si es posible, así que es muy probable que sea uno de los cambios más seguros\", reveló Néstor Lorenzo en conversación con los medios.",
+  "El propio Lorenzo ratificó su plan de dar minutos a todos sus goleros durante la conferencia de prensa previa a la gira, argumentando que su planificación contemplaba esa rotación.",
+  "El entrenador de Colombia, Néstor Lorenzo, adelantó que planea modificaciones en su esquema, con especial atención al arco. Álvaro Montero y Aldair Quintana atajaron ante México y Paraguay, respectivamente, por lo que la presencia de Kevin Mier, arquero que destaca en Cruz Azul de la Liga MX, estaría casi confirmada para enfrentar a Perú.",
+  "En el caso peruano, Pedro Gallese estuvo presente en los duelos ante Estados Unidos y México, mientras que Diego Romero atajó ante Canadá en Montreal. De mantenerse la rotación, Matías Córdova podría sumar minutos frente a Colombia, con lo que los tres guardametas convocados gozarían de actividad en esta gira norteamericana.",
+  "Ambos equipos buscan su primera victoria en esta fecha FIFA y afinar detalles antes del arranque de las Eliminatorias Sudamericanas. El duelo en Miami representa el último examen de evaluación para las dos escuadras en su objetivo de consolidar variantes y definir alternativas en el plantel.",
+  "La selección peruana atraviesa un proceso de reconstrucción bajo la dirección de Mano Menezes. En esta gira, la Bicolor cayó 4-1 frente a Estados Unidos, rescató un empate 1-1 ante México y volvió a perder 2-0 contra Canadá, resultados que dejaron señales poco favorables de cara a los próximos compromisos oficiales.",
+  "Colombia, por su parte, tampoco llega en un panorama positivo. Los cafeteros igualaron 1-1 con México y cayeron por la mínima ante Paraguay. El equipo dirigido por Néstor Lorenzo ya no cuenta con referentes como James Rodríguez y Juan Fernando Quintero, quienes dejaron la selección, y su principal figura en estos amistosos ha sido Luis Javier Suárez.",
+  "El partido está programado para las 6.45 p. m. (hora peruana). En Colombia y Ecuador también arrancará a las 6.45 p. m.; en Chile, Bolivia y Venezuela a las 7.45 p. m.; en Argentina, Brasil, Paraguay y Uruguay a las 8.45 p. m.; en México y Centroamérica a las 5.45 p. m.; y en España a la 1.45 a. m. del miércoles 7 de octubre."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

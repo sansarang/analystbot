@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T13:24:21.478023+00:00",
+ "order": [
+  "¿El partido de despedida de Colombia ya no será en Bogotá? Esto es lo que se sabe Despedida de la selección de Colombia en el estadio Nemesio Camacho El Campín antes de la Copa Mundial de la FIFA Brasil 2014.",
+  "Colombia se despide ante Costa Rica: Sigue EN VIVO el partido en Bogotá La selección Colombia está lista para su duelo de despedida en Bogotá, ante Costa Rica, previo a su viaje a México, para el Mundial.",
+  "Sigue EN VIVO y GRATIS el partido de la Selección Colombia y Perú Selección Colombia en concentración previa al partido frente a Perú. Instagram Selección Colombia El combinado nacional no celebra una victoria desde el recordado 3-1 ante Chile en el mes de septiembre del 2021.",
+  "Colombia vs Perú: Empate a cero goles con una actuación para el olvido de la 'tricolor' (Le puede interesar: Selección Colombia: esta sería la titular para el partido contra Perú en el juego crucial de las eliminatorias). Partido Colombia vs.",
+  "Morat encabezará la despedida de la Selección Colombia en El Campín: así será el evento Para consultar contenido premium o profundizar sobre sus temas de interés de Medellín, … Colombia y el Mundo, regístrese aquí Para el ingreso a la despedida de la tricolor …",
+  "Morat encabezará la despedida de la Selección Colombia en El Campín: así será el evento Para consultar contenido premium o profundizar sobre sus temas de interés de Medellín, … Colombia y el Mundo, regístrese aquí Para el ingreso a la despedida de la tricolor …",
+  "La Selección Colombia, lista para su fiesta de despedida en casa: El Campín la espera para jugar contra Costa Rica Colombia cumple casi siete años sin jugar un partido oficial en El Campín, … cuando venció a Panamá 3-0 en la despedida del equipo antes de la Copa América de Brasil …",
+  "Resumen: Colombia (0) vs. Perú (0) | Eliminatorias 2026 La Selección Colombia no consiguió sacarse diferencias ante el combinado de Perú y la ‘Tricolor’ perdió una valiosa oportunidad de cara a la clasificación mu..."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

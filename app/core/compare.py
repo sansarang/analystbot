@@ -85,21 +85,6 @@ def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
     shift = {"home": 0.0, "draw": 0.0, "away": 0.0}
     used: list[str] = []
     MOVES.clear()
-    for v in (variables or []):
-        if v.type in skip or v.type not in movers:
-            continue
-        step = float(v.weight or 0.0) * k
-        if step <= 0:
-            continue
-        side = {"home": "home", "away": "away", "both": "draw"}.get(v.favors)
-        if side is None:
-            continue
-        shift[side] += step
-        used.append(f"{v.id}({v.type}·{v.favors}·{step:+.3f})")
-        # 🔴 카드 7b 의 *"③ 이 움직인 양"* 줄이 이 목록을 그대로 적는다(지시 ③)
-        MOVES.append({"id": v.id, "type": v.type, "favors": v.favors,
-                      "side": side, "weight": float(v.weight or 0.0),
-                      "logodds": round(step, 4)})
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **경우의 수 상태별 이동**(7차 §4) — 동기는 변수가 아니라 **표**에서 온다
     # ══════════════════════════════════════════════════════════════════
@@ -107,6 +92,9 @@ def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
     #  🔴 `draw_enough` 팀은 무승부 쪽으로 +k(5백이면 한 번 더). `must_win`·
     #     `margin_needed` 는 **1X2 를 안 움직인다**(총점 쪽이고 s6·s7 이 쓴다).
     #     `nothing` 은 **아무것도 안 움직인다**(상대에게 +k 를 주지 않는다).
+    #  ⚠️ **변수 이동보다 먼저** 돈다 — 5백(IR01)을 여기서 한 번 셌으면 그 변수는
+    #     다시 세지 않는다(9차 ③ 점검표: *"이중 계산 없음"*).
+    low_used: set[str] = set()
     for team, said in ((outlook or {}).get("states") or {}).items():
         rule = dict((box.get("outlook_moves") or {}).get(str(said.get("state")))
                     or {})
@@ -114,21 +102,78 @@ def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
         if not side:
             continue
         times = int(rule.get("steps") or 1)
-        if _low_block(team, variables or []) and rule.get("with_low_block"):
+        if _low_block(team, variables or [], ref=ref) \
+                and rule.get("with_low_block"):
             times = int(rule["with_low_block"])
+            low_used.add(norm_name(team))
         step = k * times
         shift[str(side)] += step
         used.append(f"{team}:{said.get('state')}(×{times}·{step:+.3f})")
         MOVES.append({"id": f"경우의수:{team}", "type": str(said.get("state")),
                       "favors": "both", "side": str(side), "weight": float(times),
                       "logodds": round(step, 4)})
-    # 🔴 **상한**(±0.5 로그 오즈) — 한 결과가 통째로 뒤집히지 않게
-    capped = {k2: max(-cap, min(cap, val)) for k2, val in shift.items()}
-    hit = [k2 for k2, val in shift.items() if abs(val) > cap]
+    for v in (variables or []):
+        if v.type in skip or v.type not in movers:
+            continue
+        # 🔴🔴 **근거 불가 변수는 확률을 못 움직인다**(사용자 지시 2026-10-06(9차) ③)
+        #    ⚠️ 실측 카자흐–페로: `R2`(출처 1곳 · 근거 불가)가 ③ 이동 +0.060 을 받았다.
+        #    🔴 근거로 못 쓰는 사실이 수를 움직이면 그 수의 근거가 없어진다 — s6 도
+        #       그 변수를 `context_only` 로만 보낸다(§4-1). 같은 규율을 ③ 에도 쓴다.
+        if not v.usable_as_basis:
+            continue
+        step = float(v.weight or 0.0) * k
+        if step <= 0:
+            continue
+        side = {"home": "home", "away": "away", "both": "draw"}.get(v.favors)
+        if side is None:
+            continue
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **5백(IR01)은 무승부 쪽이고, 두 번 세지 않는다**(9차 ③ 점검표)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > `lineup_intent`(페로 5백): **무승부 쪽 이동만**, away 이동 **없음**,
+        #  > **이중 계산 없음**.
+        #
+        #  🔴 5백은 *"그 팀이 이긴다"* 가 아니라 *"경기를 잠근다"* 는 말이다 —
+        #     그래서 그 팀 쪽이 아니라 **무승부 쪽**이다.
+        #  ⚠️ `draw_enough` ×2 로 이미 센 팀이면 **아무 이동도 안 한다**(같은 사실이다).
+        if _is_low_block_var(v):
+            who = norm_name(_team_in(v, ref))
+            if who and who in low_used:
+                used.append(f"{v.id}(5백 — 경우의 수에서 이미 셌다 · 이동 0)")
+                continue
+            side = "draw"
+        shift[side] += step
+        used.append(f"{v.id}({v.type}·{v.favors}·{step:+.3f})")
+        # 🔴 카드 7b 의 *"③ 이 움직인 양"* 줄이 이 목록을 그대로 적는다(지시 ③)
+        MOVES.append({"id": v.id, "type": v.type, "favors": v.favors,
+                      "side": side, "weight": float(v.weight or 0.0),
+                      "logodds": round(step, 4)})
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **상한은 경기당 합계다**(사용자 지시 2026-10-06(9차) ①)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > ③ 이동 상한: **경기당 합계 ±0.5 로그 오즈**를 넘지 못하게 **자른다**
+    # > (지금 +0.585).
+    #
+    # ⚠️ 종전 상한은 **결과(홈·무·원정)마다** 걸렸다 — 그래서 무승부에 0.3, 홈에 0.165,
+    #    원정에 0.12 처럼 나뉘면 **합 0.585** 가 통과했다(실측 카자흐–페로).
+    # 🔴 지금은 **합**을 보고, 넘으면 **비율대로 줄인다**(어느 하나를 지우지 않는다 —
+    #    그러면 그 근거만 사라져 설명이 어긋난다). `MOVES` 도 같은 비율로 줄여 적어
+    #    카드의 이동량 합이 실제와 **같게** 만든다.
+    total = sum(abs(v) for v in shift.values())
+    scale = 1.0
+    if total > cap and total > 0:
+        scale = cap / total
+        for m in MOVES:
+            m["logodds"] = round(float(m["logodds"]) * scale, 4)
+            m["scaled"] = round(scale, 4)
+    capped = {k2: val * scale for k2, val in shift.items()}
     got = _apply(start, capped)
     why = (f"기준({start.home:.0%}/{start.draw:.0%}/{start.away:.0%})에서 출발 · "
-           f"이동 {len(used)}개(k={k})"
-           + (f" · 🔴 상한 ±{cap} 에 닿은 결과 {hit}" if hit else "")
+           f"이동 {len(used)}개(k={k}) · 합 {total:.3f}"
+           + (f" → 🔴 **상한 {cap} 로 잘랐다**(×{scale:.3f})" if scale < 1.0
+              else f"(상한 {cap} 안)")
            + (f" · {' '.join(used[:4])}" if used else " · **움직인 변수 없음**"))
     return got, why
 
@@ -462,17 +507,45 @@ def _market_triple(market: MarketProb) -> ProbTriple | None:
     return ProbTriple(home=home, draw=draw, away=round(1.0 - home - draw, 6))
 
 
-def _low_block(team: str, variables: list[Variable]) -> bool:
+def _low_block(team: str, variables: list[Variable], *,
+               ref: MatchRef | None = None) -> bool:
     """🔴 그 팀이 **5백·3센터백**으로 나오나(IR01) — 7차 §4 의 "한 번 더" 조건.
 
-    🔴 IR01 이 만든 `lineup_intent` 변수(또는 `formation` 이 5백인 사실)가 근거다.
-    ⚠️ 이름이 아니라 **열쇠**로 비교해야 할 자리인데, `outlook` 은 **이름**을 쓴다
-       (순위표가 이름으로 온다) — 그래서 변수의 `claim` 에 그 팀 이름이 있는지 본다.
+    🔴 **열쇠로 센다**(이름이 claim 에 있는지 보지 않는다) — 경우의 수는 팀 **이름**을
+       쓰고 변수는 **열쇠**를 쓰므로 `ref` 로 옮겨 맞춘다.
+    ⚠️ 실측 2026-10-06: claim 글자에 팀 이름이 없으면 ×2 가 **조용히 빠졌다**.
+       🔴 `ref` 가 없을 때만 옛 길(글자 비교)로 떨어진다.
     """
-    low = str(team).strip().lower()
+    want = norm_name(team)
     for v in variables:
-        if v.type != "lineup_intent" or str(v.from_rule or "")[:4] != "IR01":
+        if not _is_low_block_var(v):
             continue
-        if low in (v.claim or "").lower() or low in (v.quote or "").lower():
+        if ref is not None:
+            if norm_name(_team_in(v, ref)) == want:
+                return True
+            continue
+        if want and (want in norm_name(v.claim) or want in norm_name(v.quote)):
             return True
     return False
+
+
+def norm_name(said: str) -> str:
+    """🔴 팀 이름 비교용 — 경우의 수는 **이름**으로, 변수는 **열쇠**로 온다."""
+    from app.core.stages.s5_verify import norm
+    return norm(str(said or ""))
+
+
+def _is_low_block_var(v: Variable) -> bool:
+    """🔴 그 변수가 **5백 선언**(IR01)인가 — 규칙 id 로 센다(글자 추측 없이)."""
+    return v.type == "lineup_intent" and str(v.from_rule or "").startswith("IR01")
+
+
+def _team_in(v: Variable, ref: MatchRef | None) -> str:
+    """🔴 그 변수가 말하는 팀의 **이름** — 열쇠를 이름으로 바꾼다(경우의 수와 맞춘다)."""
+    if ref is None:
+        return ""
+    if str(v.subject) == str(ref.home):
+        return ref.home_name
+    if str(v.subject) == str(ref.away):
+        return ref.away_name
+    return ""

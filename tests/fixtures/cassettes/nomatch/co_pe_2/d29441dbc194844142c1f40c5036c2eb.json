@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Colombia Peru record",
+ "recorded_at": "2026-10-06T13:25:48.761972+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Peru national football team: record v Colombia",
+   "content": "Peru national football team record against Colombia including all match details.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.11v11.com/teams/peru/tab/opposingTeams/opposition/Colombia/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.11v11.com",
+    "/teams/peru/tab/opposingTeams/opposition/Colombia/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru at the FIFA World Cup",
+   "content": "Peru participated in the World Cup during the first World Cup in 1930 and has participated in … since 1958. Peru were invited to the first FIFA World Cup",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Peru_at_the_FIFA_World_Cup",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Peru_at_the_FIFA_World_Cup",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru national football team",
+   "content": "147 Colombia defeated Peru 2– … in a match that included an own goal from Peru's Marcial Salazar 146 Olympic Games Peru playing against Austria in the 1936 Olympic football tournament",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Peru_national_football_team",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Peru_national_football_team",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia vs. Peru - Final Score - June 06, 2025",
+   "content": "Live coverage of Colombia vs. Peru game on FOX Sports including live score, highlights, updated stats, odds and more - played on June 06, 2025.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.foxsports.com/soccer/wcq-conmebol-colombia-vs-peru-jun-06-2025-game-boxscore-624512",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foxsports.com",
+    "/soccer/wcq-conmebol-colombia-vs-peru-jun-06-2025-game-boxscore-624512",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru at the Copa América",
+   "content": "This is a record of … results at the Copa América … , Peru has had good showings. It is often remembered by fans that Peru was the fourth team (after",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Peru_at_the_Copa_Am%C3%A9rica",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Peru_at_the_Copa_Am%C3%A9rica",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Tourism in Peru",
+   "content": "Map showing the 15 most visited tourist destinations in Peru Since the 2000s, Tourism in Peru has made up the nation's third largest industry …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Tourism_in_Peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Tourism_in_Peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia vs Peru: CONMEBOL World Cup Qualifiers stats & head-to-head",
+   "content": "Follow live text commentary, score updates and match stats from Colombia vs Peru in the CONMEBOL World Cup Qualifiers",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.bbc.com/sport/football/live/c3d4z0egk21t",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bbc.com",
+    "/sport/football/live/c3d4z0egk21t",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia national football team records and statistics",
+   "content": "Colombia - Record International Players\" RSSSF 1 2 \"Australia gets President's blessing to join AFC in 2006\" ABC News Australian Broadcasting Corporation …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Colombia_national_football_team_records_and_statistics",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Colombia_national_football_team_records_and_statistics",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Paraguay national football team: record v Peru",
+   "content": "Paraguay national football team record against Peru including all match details.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.11v11.com/teams/paraguay/tab/opposingTeams/opposition/Peru/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.11v11.com",
+    "/teams/paraguay/tab/opposingTeams/opposition/Peru/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru | World Bank Group",
+   "content": "Country Leadership Ariel Yepez Regional Director for Bolivia, … Colombia, … Peru and Venezuela Oliver Braedt Operations Manager for Bolivia, … Ecuador and Peru",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.worldbank.org/ext/en/country/peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.worldbank.org",
+    "/ext/en/country/peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "History of Peru | Flag, Map, Independence, & Summary | Britannica",
+   "content": "History of Peru, a survey of the important events and people in the history of Peru from the time of the Inca empire. Peru is essentially a tropical country …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.britannica.com/topic/history-of-Peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/topic/history-of-Peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru",
+   "content": "Machu Picchu , … and the source of the Amazon River are all found in Peru.Peru is bordered to the north by Ecuador and Colombia , … and to the southeast by Bolivia Peru is a representative democratic republic divided into 25 regions and over 33 million people in …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://simple.wikipedia.org/wiki/Peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "simple.wikipedia.org",
+    "/wiki/Peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia: Development news, research, data | World Bank",
+   "content": "BY THE NUMBERS : COLOMBIA OVERVIEW … Country Leadership Ariel Yepez Regional Director for Bolivia, Chile, Colombia, Ecuador, Peru and Venezuela",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.worldbank.org/ext/en/country/colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.worldbank.org",
+    "/ext/en/country/colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Conservative candidate Keiko Fujimori wins Peru’s presidential election in a runoff",
+   "content": "Fujimori’s victory, along with that of Abelardo de la Espriella in Colombia and José Antonio Kast in Chile, confirms a regional shift toward the conservative wing …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://apnews.com/article/peru-election-keiko-fujimori-presidential-runoff-b86901d627e3305da6da68d61468f1e8",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/peru-election-keiko-fujimori-presidential-runoff-b86901d627e3305da6da68d61468f1e8",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru vs Colombia? - Peru Forum - Tripadvisor",
+   "content": "Peru vs Colombia? Re: Peru vs Colombia? Re: Peru vs Colombia? While there are beaches in the north, most people go to Peru for the Inca sites, ruins …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.tripadvisor.com/ShowTopic-g294311-i818-k13089986-Peru_vs_Colombia-Peru.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tripadvisor.com",
+    "/ShowTopic-g294311-i818-k13089986-Peru_vs_Colombia-Peru.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia football team 'A' international match record",
+   "content": "Colombia national football team complete match record including all 'A' international and world cup matches",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.11v11.com/teams/colombia/tab/matches/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.11v11.com",
+    "/teams/colombia/tab/matches/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Where to watch Peru vs. Colombia live stream, TV channel, start time, lineups, prediction for World Cup qualifying match | Sporting News",
+   "content": "Peru vs. Colombia kickoff time: Here’s how to watch the World Cup qualifier match on TV and live stream in US as well as the latest team news.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.sportingnews.com/us/soccer/news/watch-peru-colombia-live-stream-tv-channel-time-world-cup-qualifier-us/07647c0f7dec43ff879abcbe",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportingnews.com",
+    "/us/soccer/news/watch-peru-colombia-live-stream-tv-channel-time-world-cup-qualifier-us/07647c0f7dec43ff879abcbe",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Argentina vs. Colombia: Time, lineups, TV, streams, odds, prediction for Copa America semifinal | Sporting News",
+   "content": "Borg: Will Messi, Argentina make the final?",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.sportingnews.com/us/soccer/news/argentina-colombia-lineups-tv-stream-odds-copa-america-semi/1p0l7vno5vpjn1q8et32k8h5kb",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportingnews.com",
+    "/us/soccer/news/argentina-colombia-lineups-tv-stream-odds-copa-america-semi/1p0l7vno5vpjn1q8et32k8h5kb",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rivers in Peru: Scenic and Rugged Waterways | Explorandes",
+   "content": "Major Rivers in Peru … It begins in southwestern Colombia, continues along the Colombia-Ecuador border, and then follows the Peru-Colombia border to Brazil.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.explorandes.com/blog/rivers-in-peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.explorandes.com",
+    "/blog/rivers-in-peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "History of Colombia | Independence, Government, & Facts | Britannica",
+   "content": "History of Colombia, a survey of the important events and people in the history of Colombia from the time of European settlement.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.britannica.com/topic/history-of-Colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/topic/history-of-Colombia",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

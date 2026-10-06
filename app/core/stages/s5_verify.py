@@ -134,6 +134,22 @@ _STAKE_WORDS = ("진출", "탈락", "우승", "기록", "거취", "순위", "승
                 "draw will do", "goal difference", "goals clear", "survive")
 
 
+def has_info(claim: str) -> tuple[bool, str]:
+    """🔴🔴 그 claim 이 **사실을 말하나** — *"정보가 없다"* 면 거짓이다(9차 ③).
+
+    🔴 낱말표는 `config/variable_types.yaml` 의 `no_info_words` 다(사본 금지).
+    ⚠️ *"부상이 없다"* 와 *"부상 정보가 없다"* 는 다르다 — 전자는 사실이고 후자는
+       **못 알아낸 것**이다. 🔴 표의 낱말은 뒤쪽만 담는다.
+    """
+    from app import rules
+    low = norm(claim)
+    for w in (rules._load(rules.VARIABLE_TYPES).get("no_info_words") or []):
+        if norm(str(w)) in low:
+            return False, (f"🔴 *\"{w}\"* — **없음의 보고**는 사실이 아니다"
+                           f"(방향을 붙일 근거가 없다) · {str(claim)[:60]}")
+    return True, ""
+
+
 def stakes_ok(claim: str) -> tuple[bool, str]:
     """🔴 그 claim 이 **동기**를 말하나. ⚠️ 일정 안내는 동기가 아니다."""
     low = norm(claim)
@@ -300,6 +316,16 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
                    f"(맞대결 전적 {rec[0]}승 {rec[1]}무 {rec[2]}패)")
         kind, target = "h2h_pattern", "h2h"
     # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **"정보가 없다"는 사실이 아니다**(사용자 지시 2026-10-06(9차) ③)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 카자흐–페로: *"확인된 부상 또는 출전 정지 정보는 **없다**"* 가
+    #     `absence_att` 변수로 섰다(`R1`). 🔴 없음의 보고로는 방향·득점을 못 정한다.
+    ok_i, said_i = has_info(c.claim)
+    if not ok_i:
+        state.drop(what, DropReason.NO_INFO, said_i[:120])
+        return None
+    # ══════════════════════════════════════════════════════════════════
     # 🔴 ③ **`stakes` 는 구체적 동기가 있을 때만**(사용자 지시 ③)
     # ══════════════════════════════════════════════════════════════════
     if kind == "stakes":
@@ -382,24 +408,50 @@ ABSENCE_KINDS = ("absence", "absence_att", "def_absence", "fatigue", "injury",
 #  ⚠️ 실측(콜롬비아–페루): `Kevin Mier` 하나를 두고 `coach_intent` 둘·
 #     `coach_conflict` 하나가 따로 섰고, `Aldair Quintana`·`Álvaro Montero` 도
 #     갈렸다. 🔴 한 선수의 **같은 이야기**다.
-COACH_KINDS = ("coach_conflict", "coach_intent")
+# 🔴🔴 **`squad_rotation` 까지 한 묶음**(사용자 지시 2026-10-06(9차) ②) — 같은 팀의
+#    같은 주제(로테이션/선수 기용/전술 변경)면 **하나**다.
+COACH_KINDS = ("coach_conflict", "coach_intent", "squad_rotation")
 
 
-def merge_key(subject: str, kind: str, target: str) -> tuple[str, str, str]:
+def coach_topic(claim: str, quote: str = "") -> str:
+    """🔴 그 문장이 **어느 주제**인가 — `rotation`·`tactic`·`selection`. 모르면 `""`.
+
+    🔴 낱말표는 `config/variable_types.yaml` 의 `coach_topics` 다(사본 금지).
+    ⚠️ 못 가리면 빈 글자이고, 그때 열쇠는 **대상 글자**로 간다(종전과 같다).
+    """
+    from app import rules
+    low = norm(f"{claim} {quote}")
+    box = dict((rules._load(rules.VARIABLE_TYPES).get("coach_topics") or {}))
+    for topic, said in box.items():
+        for w in (dict(said).get("words") or []):
+            if norm(str(w)) in low:
+                return str(topic)
+    return ""
+
+
+def merge_key(subject: str, kind: str, target: str, *, claim: str = "",
+              quote: str = "") -> tuple[str, str, str]:
     """🔴🔴 **사실 하나의 열쇠** — `(주체, 유형군, 핵심 대상)`.
 
     🔴 결장 계열은 **유형 자리에 `absence*` 한 글자**가 들어간다 — 그래서 모델이
        피로/수비 결장/공격 결장으로 갈라 적어도 **한 사실**로 묶인다.
+    🔴 감독·로테이션 계열(`coach*`)은 **주제**가 대상 자리에 들어간다(9차 ②) — 실측
+       2026-10-06: 로테이션 이야기 하나가 `coach_intent` **다섯 줄**로 서서 ③ 이동을
+       다섯 번 받았다. ⚠️ 주제를 못 가리면 대상 글자로 간다.
     🔴 대상 글자는 **정규화**해서 비교한다 — `Kim Min-jae`·`김민재`·`KIM MIN-JAE` 가
        갈리면 열쇠가 쪼개진다(정규화는 이 파일의 `norm` 하나다).
     """
     said = str(kind)
     group = said
+    spot = norm(str(target))
     if said in ABSENCE_KINDS:
         group = "absence*"
     elif said in COACH_KINDS:
         group = "coach*"
-    return (str(subject), group, norm(str(target)))
+        topic = coach_topic(claim, quote)
+        if topic:
+            spot = f"주제:{topic}"
+    return (str(subject), group, spot)
 
 
 #: 🔴 포지션 낱말 → 결장 유형. ⚠️ **자료가 있을 때만** 쓴다(없으면 다수결로 간다).
@@ -484,7 +536,10 @@ def _merge(rows: list[dict], *, state: RunState,
                        f"(모델이 `target` 을 안 적었다)")
             out.append(row)
             continue
-        key = merge_key(row["subject"], row["type"], target)
+        # 🔴 9차 ② — 감독·로테이션은 **주제**로 묶는다(claim·quote 를 넘겨야 센다)
+        key = merge_key(row["subject"], row["type"], target,
+                        claim=str(row.get("claim") or ""),
+                        quote=str(row.get("quote") or ""))
         keep = seen.get(key)
         if keep is None:
             row["kinds"] = [row["type"]]

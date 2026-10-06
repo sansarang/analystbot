@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T13:25:56.121290+00:00",
+ "order": [
+  "Colombia, an amazing country Welcome to Colombia, a tropical country of incredible diversity and charm. A story full of mystery and adventure, its people and its cultures",
+  "Colombia Travel: official guide to discover the best tourist destinations in Colombia Travel to Colombia, a unique destination full of culture, diversity, and friendly people. Discover top tourist spots and plan your dream vacation.",
+  "Colombia Stay informed and read the latest breaking news and updates on Colombia from AP News, the definitive source for independent journalism.",
+  "Peru Machu Picchu , … and the source of the Amazon River are all found in Peru.Peru is bordered to the north by Ecuador and Colombia , … and to the southeast by Bolivia Peru is a representative democratic republic divided into 25 regions and over 33 million people in …",
+  "Bogotá | Colombia, Elevation, Population, History, & Map | Britannica Bogotá is the capital of Colombia. The city lies in central Colombia in a fertile upland basin 8,660 feet (2,640 meters) above sea level.",
+  "Peru | History, Culture, Geography, Economy, Politics, Languages, People, Flag, & Map | Britannica Peru is a country in western South America. It is bordered by Ecuador and Colombia to the north, Brazil and Bolivia to the east, Chile to the south …",
+  "Colombia vs. Perú: hora, día y dónde ver el último partido de la Selección en la fecha FIFA La Selección Colombia tendrá este martes una última oportunidad para cerrar con una sonrisa la fecha FIFA de octubre. La Tricolor enfrentará a Perú en Miami, desde las 6:45 de la tarde, en un partido ...",
+  "Colombia–Peru War Colombia–Peru War Part of the Colombian–Peruvian territorial dispute Colombian Army on manoeuvres during the conflict. … 1 September 1932 – 24 May 1933"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

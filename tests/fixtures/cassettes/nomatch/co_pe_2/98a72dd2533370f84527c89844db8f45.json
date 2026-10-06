@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T13:24:15.728891+00:00",
+ "order": [
+  "Selección Colombia disputará partido de despedida en Bogotá La Selección Colombia disputará un amistoso de despedida en el estadio Nemesio Camacho El Campín de Bogotá antes de la Copa del Mundo.",
+  "¿El partido de despedida de Colombia ya no será en Bogotá? Esto es lo que se sabe Despedida de la selección de Colombia en el estadio Nemesio Camacho El Campín antes de la Copa Mundial de la FIFA Brasil 2014.",
+  "Colombia vs. Perú: hora, día y dónde ver el último partido de la Selección en la fecha FIFA La Selección Colombia tendrá este martes una última oportunidad para cerrar con una sonrisa la fecha FIFA de octubre. La Tricolor enfrentará a Perú en Miami, desde las 6:45 de la tarde, en un partido ...",
+  "Colombia se despide ante Costa Rica: Sigue EN VIVO el partido en Bogotá La selección Colombia está lista para su duelo de despedida en Bogotá, ante Costa Rica, previo a su viaje a México, para el Mundial.",
+  "El partido de despedida de la Selección Colombia en Bogotá, antes del Mundial 2026, cambia de fecha: las razones Noticia Selección Colombia Foto: … 14 La Federación Colombiana de Fútbol anunció este miércoles que el partido de despedida del equipo de Néstor Lorenzo ya no se jugará el viernes 29 de mayo …",
+  "Colombia vs. Perú: día, hora y canal para ver el juego amistoso que se disputará en Miami La gira de la Selección Colombia por Estados Unidos se cerrará ante el combinado de Perú, en un juego en el que el técnico Néstor Lorenzo buscará enderezar el camino con sus jugadores más ...",
+  "Sigue EN VIVO y GRATIS el partido de la Selección Colombia y Perú Selección Colombia en concentración previa al partido frente a Perú. Instagram Selección Colombia El combinado nacional no celebra una victoria desde el recordado 3-1 ante Chile en el mes de septiembre del 2021.",
+  "Colombia vs Perú: Empate a cero goles con una actuación para el olvido de la 'tricolor' (Le puede interesar: Selección Colombia: esta sería la titular para el partido contra Perú en el juego crucial de las eliminatorias). Partido Colombia vs."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

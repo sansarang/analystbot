@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Colombia Peru retirement ceremony",
+ "recorded_at": "2026-10-06T13:25:47.712194+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Religion in Colombia",
+   "content": "Colombia has been re-consecrated to the Sacred Heart of Jesus and consecrated to the Immaculate Heart of Mary in 2008, in a country-wide ceremony celebrated by the main bishops and with the presence of the Colombian president (also a Catholic).",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Religion_in_Colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Religion_in_Colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Fiestas Patrias (Peru)",
+   "content": "Independence Day (Peru) … and the National Police of Peru … During the ceremony representatives of the three branches as well as the National Police as well as other invitees for a parade.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Fiestas_Patrias_(Peru)",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Fiestas_Patrias_(Peru)",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia–Peru War",
+   "content": "Colombia–Peru War Part of the Colombian–Peruvian territorial dispute Colombian Army on manoeuvres during the conflict. … 1 September 1932 – 24 May 1933",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Colombia%E2%80%93Peru_War",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Colombia%E2%80%93Peru_War",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia’s new president takes office in ceremony in Cali highlighting hard line on armed groups",
+   "content": "Abelardo de la Espriella was sworn in as Colombia’s president Friday in Cali, breaking tradition by not holding the ceremony in Bogota.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://apnews.com/article/colombia-inauguration-de-la-espriella-president-cali-bogota-petro-6a062df06d20e440ba0e4f7ee7587af6",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/colombia-inauguration-de-la-espriella-president-cali-bogota-petro-6a062df06d20e440ba0e4f7ee7587af6",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Residents of a remote island disputed by Colombia hope their Peruvian government won't forget them",
+   "content": "The remote Amazon island of Santa Rosa is at the center of a territorial dispute between Peru and Colombia.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://apnews.com/article/peru-santa-rosa-island-colombia-boluarte-petro-amazon-f3017802d9833d21b73b049f6955ea80",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/peru-santa-rosa-island-colombia-boluarte-petro-amazon-f3017802d9833d21b73b049f6955ea80",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Retirement age",
+   "content": "This article needs to be … Please help update this article to reflect recent events or newly available information. … Average effective age of retirement for men, 1970 to 2018 (",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Retirement_age",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Retirement_age",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Álvaro Uribe",
+   "content": "Álvaro Uribe … Uribe in 2006 … President of Colombia In office 7 August 2002 … 7 August 2010 Vice President Francisco Santos Calderón Preceded by Andrés Pastrana Arango",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/%C3%81lvaro_Uribe",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/%C3%81lvaro_Uribe",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru",
+   "content": "Machu Picchu , … and the source of the Amazon River are all found in Peru.Peru is bordered to the north by Ecuador and Colombia , … and to the southeast by Bolivia Peru is a representative democratic republic divided into 25 regions and over 33 million people in …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://simple.wikipedia.org/wiki/Peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "simple.wikipedia.org",
+    "/wiki/Peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia | History, Map, Flag, Capital, Population, Currency, & Facts | Britannica",
+   "content": "Geographical and historical treatment of Colombia, a country of northwestern South America. Its 1,000 miles of coast to the north are bathed by the Caribbean Sea …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.britannica.com/place/Colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/place/Colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Bogotá | Colombia, Elevation, Population, History, & Map | Britannica",
+   "content": "Bogotá is the capital of Colombia. The city lies in central Colombia in a fertile upland basin 8,660 feet (2,640 meters) above sea level.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.britannica.com/place/Bogota",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/place/Bogota",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Conservative candidate Keiko Fujimori wins Peru’s presidential election in a runoff",
+   "content": "Fujimori’s victory, along with that of Abelardo de la Espriella in Colombia and José Antonio Kast in Chile, confirms a regional shift toward the conservative wing …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://apnews.com/article/peru-election-keiko-fujimori-presidential-runoff-b86901d627e3305da6da68d61468f1e8",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/peru-election-keiko-fujimori-presidential-runoff-b86901d627e3305da6da68d61468f1e8",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Flag of Colombia | Colors, Meaning & Facts | Britannica",
+   "content": "Gran Colombia had a brief, virile existence during the war.Subsequent civilian and military rivalry for public office and regional jealousies led in 1826 to a rebellion in Venezuela led by Gen.José Antonio Páez Bolívar returned from Peru to restore unity but …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.britannica.com/topic/flag-of-Colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/topic/flag-of-Colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Peru | History, Culture, Geography, Economy, Politics, Languages, People, Flag, & Map | Britannica",
+   "content": "Peru is a country in western South America. It is bordered by Ecuador and Colombia to the north, Brazil and Bolivia to the east, Chile to the south …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.britannica.com/place/Peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/place/Peru",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia",
+   "content": "Stay informed and read the latest breaking news and updates on Colombia from AP News, the definitive source for independent journalism.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://apnews.com/hub/colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/hub/colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "History of Colombia | Independence, Government, & Facts | Britannica",
+   "content": "History of Colombia, a survey of the important events and people in the history of Colombia from the time of European settlement.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.britannica.com/topic/history-of-Colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/topic/history-of-Colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia Travel: official guide to discover the best tourist destinations in Colombia",
+   "content": "Travel to Colombia, a unique destination full of culture, diversity, and friendly people. Discover top tourist spots and plan your dream vacation.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://colombia.travel/en",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.travel",
+    "/en",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia, an amazing country",
+   "content": "Welcome to Colombia, a tropical country of incredible diversity and charm. A story full of mystery and adventure, its people and its cultures",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://colombia.travel/en/blog/colombia-amazing-country",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.travel",
+    "/en/blog/colombia-amazing-country",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Flag Retirement",
+   "content": "For example, while the blue star field on the American flag should remain intact when cutting it for retirement, the maple leaf or other symbols on the Canadian flag should be cut so they are no longer recognizable.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://flagsusa.com/pages/flag-retirement",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "flagsusa.com",
+    "/pages/flag-retirement",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chocó",
+   "content": "If you enjoy the untouched purity and beauty of the natural world, Chocó is, without a doubt, the right destination for you.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://colombia.travel/en/choco",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.travel",
+    "/en/choco",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Gustavo Petro",
+   "content": "Stay up to date on the latest Gustavo Petro news coverage from AP News.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://apnews.com/hub/gustavo-petro",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/hub/gustavo-petro",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

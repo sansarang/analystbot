@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T13:24:07.828489+00:00",
+ "order": [
+  "La Selección Colombia hará rotaciones en su alineación con Kevin Mier ... La Selección Colombia, con la mente enfocada en su siguiente desafío, se prepara para enfrentar a Perú este martes 6 de octubre, en un partido amistoso que se llevará a cabo en Estados Unidos. El equipo dirigido por Néstor Lorenzo busca redimirse tras un empate ante México y una derrota frente a Paraguay en esta fecha FIFA.",
+  "Primer cambio de Colombia contra Perú: Lorenzo lo tiene confirmado. El técnico argentino ya planea el tercer amistoso de la fecha FIFA. Este sería el movimiento. La Selección Colombia se prepara para cerrar su fecha FIFA de octubre con un tercer amistoso, esta vez frente a Perú, después de un empate contra México y una derrota ante Paraguay. El partido será este martes 6 de octubre, desde las 6:45 de la noche, hora colombiana, y Néstor Lorenzo ya tiene ...",
+  "¿Néstor Lorenzo rotará vs. Perú? Los que faltan por jugar con Colombia R ecta final para la Selección Colombia, en lo que corresponde a la fecha FIFA de septiembre y octubre. Néstor Lorenzo y sus dirigidos ya tuvieron acción en los compromisos vs. México y Paraguay. Las críticas y comentarios no se han hecho, esperar. Ahora, el ideal es cerrar el calendario internacional con tres puntos ante Perú.",
+  "Colombia vs Peru: Néstor Lorenzo's Lineup Changes and Players Seeking ... Kevin Mier and Four Newcomers Await Their Chance as Colombia Closes Out US Tour Against Peru As the Colombia national team prepares to close out its October international window against Peru in Miami, five members of Néstor Lorenzo's 26-man squad have yet to log a single minute on the pitch. The upcoming fixture at the Inter Miami Stadium offers a final chance for evaluation following a 1 ...",
+  "Ecuador revive el sueño de organizar un Mundial junto a Colombia y Perú en 2038 Ecuador podría tener una minima oportunidad de organizar el mundial de 2038 junto a Colombia y Perú, por el esquema de rotación ...",
+  "Alineación Perú vs Colombia: formación titular de Mano ... - Depor Repasa la posible alineación de Perú vs. Colombia, en un nuevo amistoso internacional en el NU Stadium de Miami.",
+  "Alineaciones Colombia vs Perú: probables formaciones para el partido amistoso La Selección Colombia se mide ante su similar de Perú en un nuevo encuentro amistoso internacional correspondiente a la fecha FIFA de octubre. Ambos directores técnicos buscan ajustar piezas y dar ...",
+  "Alineación de Perú hoy vs Colombia por amistoso: formación de la ... Revisa la alineación de la selección peruana para enfrentar a Colombia por el partido amistoso de fecha FIFA en el NU Stadium de Miami, Estados Unidos."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

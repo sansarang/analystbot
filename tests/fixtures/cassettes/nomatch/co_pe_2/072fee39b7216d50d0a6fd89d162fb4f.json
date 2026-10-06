@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Colombia Peru despedida",
+ "recorded_at": "2026-10-06T13:25:55.173617+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "La solitaria despedida de Gustavo Petro: así fueron las últimas horas del primer presidente de izquierda de Colombia",
+   "content": "La despedida de Gustavo Petro y su gabinete en la Plaza de Armas, en Bogotá. … Sofía Petro dejó contundente mensaje para el 7 de agosto: … La despedida",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.semana.com/politica/articulo/la-solitaria-despedida-de-gustavo-petro-asi-fueron-las-ultimas-horas-del-primer-presidente-de-izquierda-de-colombia/202602/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.semana.com",
+    "/politica/articulo/la-solitaria-despedida-de-gustavo-petro-asi-fueron-las-ultimas-horas-del-primer-presidente-de-izquierda-de-colombia/202602/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Conflicto limítrofe entre el Perú y Colombia",
+   "content": "Para remediar la crisis, el Perú envió a Colombia como ministro plenipotenciario a José Villa.Bolívar se negó a recibirlo y, … pidió explicaciones al Perú sobre la despedida de tropas colombianas …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Conflicto_lim%C3%ADtrofe_entre_el_Per%C3%BA_y_Colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Conflicto_lim%C3%ADtrofe_entre_el_Per%C3%BA_y_Colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Resumen: Colombia (0) vs. Perú (0) | Eliminatorias 2026",
+   "content": "La Selección Colombia no consiguió sacarse diferencias ante el combinado de Perú y la ‘Tricolor’ perdió una valiosa oportunidad de cara a la clasificación mu...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=FWW3lwEBBAg",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=FWW3lwEBBAg",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia se despide ante Costa Rica: Sigue EN VIVO el partido en Bogotá",
+   "content": "La selección Colombia está lista para su duelo de despedida en Bogotá, ante Costa Rica, previo a su viaje a México, para el Mundial.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.colombia.com/futbol/seleccion-colombia/la-seleccion-colombia-se-despide-sigue-en-vivo-todos-los-detalles-del-juego-ante-costa-rica-586065",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/futbol/seleccion-colombia/la-seleccion-colombia-se-despide-sigue-en-vivo-todos-los-detalles-del-juego-ante-costa-rica-586065",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Morat encabezará la despedida de la Selección Colombia en El Campín: así será el evento",
+   "content": "Para consultar contenido premium o profundizar sobre sus temas de interés de Medellín, … Colombia y el Mundo, regístrese aquí Para el ingreso a la despedida de la tricolor …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.elcolombiano.com/cultura/musica/morat-despedida-seleccion-colombia-el-campin-PN37091187",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elcolombiano.com",
+    "/cultura/musica/morat-despedida-seleccion-colombia-el-campin-PN37091187",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¿El partido de despedida de Colombia ya no será en Bogotá? Esto es lo que se sabe",
+   "content": "Despedida de la selección de Colombia en el estadio Nemesio Camacho El Campín antes de la Copa Mundial de la FIFA Brasil 2014.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.elespectador.com/deportes/seleccion-colombia/el-partido-de-despedida-de-colombia-ya-no-sera-en-bogota-esto-es-lo-que-se-sabe-mundial-2026/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elespectador.com",
+    "/deportes/seleccion-colombia/el-partido-de-despedida-de-colombia-ya-no-sera-en-bogota-esto-es-lo-que-se-sabe-mundial-2026/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sigue EN VIVO y GRATIS el partido de la Selección Colombia y Perú",
+   "content": "Selección Colombia en concentración previa al partido frente a Perú. Instagram Selección Colombia El combinado nacional no celebra una victoria desde el recordado 3-1 ante Chile en el mes de septiembre del 2021.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.colombia.com/futbol/eliminatorias/seleccion-colombia-en-vivo-partido-colombia-peru-eliminatorias-335954",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/futbol/eliminatorias/seleccion-colombia-en-vivo-partido-colombia-peru-eliminatorias-335954",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia vs Perú: Empate a cero goles con una actuación para el olvido de la 'tricolor'",
+   "content": "(Le puede interesar: Selección Colombia: esta sería la titular para el partido contra Perú en el juego crucial de las eliminatorias). Partido Colombia vs.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.eltiempo.com/deportes/futbol-internacional/colombia-vs-peru-en-vivo-minuto-a-minuto-del-partido-por-las-eliminatorias-sudamericanas-hoy-goles-y-el-resumen-3460983",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/deportes/futbol-internacional/colombia-vs-peru-en-vivo-minuto-a-minuto-del-partido-por-las-eliminatorias-sudamericanas-hoy-goles-y-el-resumen-3460983",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "“Gracias por no hacerme un artista, sino un hermano de Colombia”: Daddy Yankee",
+   "content": "El puertoriqueño dio su primer show de despedida en Bogotá tras más de 30 años de carrera artística.El reguetonero puertoriqueño tendrá siete fechas en Colombia Foto …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.eltiempo.com/cultura/musica-y-libros/daddy-yankee-en-bogota-asi-fue-el-concierto-del-reguetonero-puertoriqueno-708447",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/cultura/musica-y-libros/daddy-yankee-en-bogota-asi-fue-el-concierto-del-reguetonero-puertoriqueno-708447",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Epa Colombia organizó despedida para sus empleados, pese a estar en prisión: “Gracias por no hundir el barco”",
+   "content": "Epa Colombia agradeció la lealtad de sus trabajadores con una lujosa cena como parte de la despedida de fin de año - crédito @karolsamantaoficiall/ Instagram",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.infobae.com/colombia/2025/12/24/epa-colombia-celebro-despedida-para-empleados-de-sus-tiendas-con-lujosa-cena-pese-a-estar-en-prision-gracias-por-no-hundir-el-barco/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.infobae.com",
+    "/colombia/2025/12/24/epa-colombia-celebro-despedida-para-empleados-de-sus-tiendas-con-lujosa-cena-pese-a-estar-en-prision-gracias-por-no-hundir-el-barco/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia 0-0 Perú: Resultado, resumen y estadísticas",
+   "content": "Final de Colombia 0-0 Perú: Jornada 15 de la Elimonatoria Sudamericana Marcador del partido en el Metropolitano Colombia empata sin goles con Perú en la jornada 15 de las Eliminatorias Sudamericanas.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://colombia.as.com/futbol/colombia-peru-en-vivo-online-eliminatoria-sudamericana-en-directo-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.as.com",
+    "/futbol/colombia-peru-en-vivo-online-eliminatoria-sudamericana-en-directo-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La Selección Colombia, lista para su fiesta de despedida en casa: El Campín la espera para jugar contra Costa Rica",
+   "content": "Colombia cumple casi siete años sin jugar un partido oficial en El Campín, … cuando venció a Panamá 3-0 en la despedida del equipo antes de la Copa América de Brasil …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.eltiempo.com/deportes/futbol-internacional/la-seleccion-colombia-lista-para-su-fiesta-de-despedida-en-casa-el-campin-la-espera-para-jugar-contra-costa-rica-3560948",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/deportes/futbol-internacional/la-seleccion-colombia-lista-para-su-fiesta-de-despedida-en-casa-el-campin-la-espera-para-jugar-contra-costa-rica-3560948",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Darío Gómez, los dolores de su vida y la desgarradora despedida de Colombia al Rey del Despecho",
+   "content": "Multitudinaria despedida para el rey del despecho, Darío Gómez",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.semana.com/especiales-editoriales/articulo/dario-gomez-los-dolores-de-su-vida-y-la-desgarradora-despedida-de-colombia-al-rey-del-despecho/202221/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.semana.com",
+    "/especiales-editoriales/articulo/dario-gomez-los-dolores-de-su-vida-y-la-desgarradora-despedida-de-colombia-al-rey-del-despecho/202221/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "El partido de despedida de la Selección Colombia en Bogotá, antes del Mundial 2026, cambia de fecha: las razones",
+   "content": "Noticia Selección Colombia Foto: … 14 La Federación Colombiana de Fútbol anunció este miércoles que el partido de despedida del equipo de Néstor Lorenzo ya no se jugará el viernes 29 de mayo …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.eltiempo.com/deportes/futbol-internacional/el-partido-de-despedida-de-la-seleccion-colombia-en-bogota-antes-del-mundial-2026-cambia-de-fecha-las-razones-3555573",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/deportes/futbol-internacional/el-partido-de-despedida-de-la-seleccion-colombia-en-bogota-antes-del-mundial-2026-cambia-de-fecha-las-razones-3555573",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Levy Rincón arremetió contra Abelardo: “Frentón corroncho, estafador y narcotraficante”",
+   "content": "Levy Rincón arremetió contra Abelardo de la Espriella tras la despedida de Petro.Foto: … ABDELAESPRIELLA La despedida de Gustavo Petro de su último 20 de julio como presidente de Colombia estuvo acompañada por una fuerte conversación en redes sociales.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.colombia.com/entretenimiento/noticias/levy-rincon-le-envio-fuerte-mensaje-a-abelardo-de-la-espriella-tras-despedida-de-petro-592912",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/entretenimiento/noticias/levy-rincon-le-envio-fuerte-mensaje-a-abelardo-de-la-espriella-tras-despedida-de-petro-592912",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección Colombia disputará partido de despedida en Bogotá",
+   "content": "La Selección Colombia disputará un amistoso de despedida en el estadio Nemesio Camacho El Campín de Bogotá antes de la Copa del Mundo.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://colombia.as.com/futbol/mundial/seleccion-colombia-disputara-partido-de-despedida-en-bogota-f202603-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.as.com",
+    "/futbol/mundial/seleccion-colombia-disputara-partido-de-despedida-en-bogota-f202603-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Messi brilla en su despedida de Argentina con la selección",
+   "content": "En la noche del martes, además, sellaron sus boletos otras tres selecciones: Colombia, que goleó 3-0 a Bolivia; Uruguay, que derrotó también 3-0 a Perú …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://elpais.com/argentina/2025-09-05/messi-brilla-en-su-despedida-de-argentina-con-la-seleccion.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "elpais.com",
+    "/argentina/2025-09-05/messi-brilla-en-su-despedida-de-argentina-con-la-seleccion.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "En imágenes: el triunfo de Colombia en el partido de despedida antes del Mundial 2026",
+   "content": "James Rodríguez, capitán de la selección de Colombia, … se funden en un abrazo después de la victoria contra Costa Rica en el partido de despedida antes de Norteamérica 2026.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.elespectador.com/deportes/seleccion-colombia/en-imagenes-el-triunfo-de-colombia-en-el-partido-de-despedida-antes-del-mundial-2026-luis-diaz/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elespectador.com",
+    "/deportes/seleccion-colombia/en-imagenes-el-triunfo-de-colombia-en-el-partido-de-despedida-antes-del-mundial-2026-luis-diaz/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Despedida de soltero en Colombia: Foro de Bogotá en Tripadvisor",
+   "content": "Con el gusto de saludarlos y aprovecho para ver si me pueden ayudar con un pequeño itinerario para mi despedida de soltero en Colombia. vamos alrededor de 10 hombres …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.tripadvisor.co/ShowTopic-g294074-i3499-k9695012-Despedida_de_soltero_en_Colombia-Bogota.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tripadvisor.co",
+    "/ShowTopic-g294074-i3499-k9695012-Despedida_de_soltero_en_Colombia-Bogota.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Paraguay venció 1-0 a Perú en Lima en la despedida de las Eliminatorias",
+   "content": "Albirroja anotó por medio de Matías Galarza Fonda y por primera vez le ganó a la Bicolor de visitante. El equipo de Gustavo Alfaro ya se había clasificado a un Mundial tras 16 años",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.infobae.com/deportes/2025/09/09/paraguay-se-enfrentara-a-peru-en-la-despedida-de-las-eliminatorias-hora-tv-y-formaciones/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.infobae.com",
+    "/deportes/2025/09/09/paraguay-se-enfrentara-a-peru-en-la-despedida-de-las-eliminatorias-hora-tv-y-formaciones/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

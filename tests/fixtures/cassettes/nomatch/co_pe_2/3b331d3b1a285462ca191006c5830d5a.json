@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Colombia Peru récord",
+ "recorded_at": "2026-10-06T13:25:54.751775+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Sigue EN VIVO y GRATIS el partido de la Selección Colombia y Perú",
+   "content": "Selección Colombia en concentración previa al partido frente a Perú. Instagram Selección Colombia El combinado nacional no celebra una victoria desde el recordado 3-1 ante Chile en el mes de septiembre del 2021.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.colombia.com/futbol/eliminatorias/seleccion-colombia-en-vivo-partido-colombia-peru-eliminatorias-335954",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/futbol/eliminatorias/seleccion-colombia-en-vivo-partido-colombia-peru-eliminatorias-335954",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia es uno de los países de Sudamérica sin tanques de guerra: cuántos tiene Perú y qué puesto ocupa en el ranking global",
+   "content": "Foto: Agencia Andina) En el otro extremo del listado regional, Colombia y Paraguay comparten el último lugar, al no registrar ningún tanque de guerra activo en su inventario …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.infobae.com/peru/2025/08/08/colombia-es-uno-de-los-paises-de-sudamerica-sin-tanques-de-guerra-cuantos-tiene-peru-y-que-puesto-en-el-ranking-global/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.infobae.com",
+    "/peru/2025/08/08/colombia-es-uno-de-los-paises-de-sudamerica-sin-tanques-de-guerra-cuantos-tiene-peru-y-que-puesto-en-el-ranking-global/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Terremoto en Ayacucho, y el de Chocó: ¿están conectados los sismos de Perú y Colombia?",
+   "content": "Noticia Los dos países comparten el Cinturón de Fuego del Pacífico, … diez días después de que un terremoto de 7,4 golpeara al occidente de Colombia.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.eltiempo.com/vida/medio-ambiente/terremoto-en-ayacucho-y-el-de-choco-estan-conectados-los-sismos-de-peru-y-colombia-3579797",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/vida/medio-ambiente/terremoto-en-ayacucho-y-el-de-choco-estan-conectados-los-sismos-de-peru-y-colombia-3579797",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "América del Sur",
+   "content": "Densidad 24,2 hab. km² Países Argentina Bolivia Brasil Chile Colombia Ecuador Guyana Paraguay Perú Surinam Trinidad y Tobago 3 Uruguay Venezuela Regiones de ultramar Guayana Francesa departamento de Francia notas 1 Dependencias Islas Malvinas notas 2 Islas …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Am%C3%A9rica_del_Sur",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Am%C3%A9rica_del_Sur",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sigue en vivo y gratis el partido entre Colombia y Perú",
+   "content": "Sigue en vivo, gratis, online y con la mejor narración, el partido entre Colombia y Perú por la Copa América.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.colombia.com/futbol/copa-america/seleccion-colombia-vs-peru-en-vivo-gratis-online-copa-america-310810",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/futbol/copa-america/seleccion-colombia-vs-peru-en-vivo-gratis-online-copa-america-310810",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Esta es la titular de la Selección Colombia ante Perú",
+   "content": "Esta es la nómina titular de la Selección Colombia para el partido ante Perú Reinaldo Rueda dio a conocer los 11 inicialistas para el partido ante Perú por las eliminatorias sudamericanas al Mundial Qatar 2022.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.colombia.com/futbol/seleccion-colombia/nomina-titular-seleccion-colombia-partido-peru-eliminatorias-qatar-2022-tabla-de-posiciones-309273",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/futbol/seleccion-colombia/nomina-titular-seleccion-colombia-partido-peru-eliminatorias-qatar-2022-tabla-de-posiciones-309273",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Perú y Colombia confirman reunión en Lima para revisar frontera en medio de tensiones por la soberanía de Santa Rosa",
+   "content": "(Canal N) Tras semanas de tensiones, los cancilleres de Perú y Colombia confirmaron un próximo encuentro en Lima con el objetivo de revisar …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.infobae.com/peru/2025/08/21/peru-y-colombia-confirman-reunion-en-lima-para-revisar-frontera-en-medio-de-tensiones-por-la-soberania-de-santa-rosa/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.infobae.com",
+    "/peru/2025/08/21/peru-y-colombia-confirman-reunion-en-lima-para-revisar-frontera-en-medio-de-tensiones-por-la-soberania-de-santa-rosa/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Perú vs. Colombia (0-0): minuto a minuto y resumen del partido por las Eliminatorias 2026",
+   "content": "Perú y Colombia igualaron sin goles en Barranquilla, por la fecha 15 de las Eliminatorias 2026. Un punto que sirve poco para la ‘Bicolor’.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://depor.com/futbol-peruano/seleccion-peruana/ver-peru-vs-colombia-en-vivo-hoy-minuto-a-minuto-por-america-tv-canal-4-atv-canal-9-futbol-libre-tv-movistar-deportes-gol-caracol-tv-rcn-radio-online-en-directo-por-internet-eliminatorias-noticia/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "depor.com",
+    "/futbol-peruano/seleccion-peruana/ver-peru-vs-colombia-en-vivo-hoy-minuto-a-minuto-por-america-tv-canal-4-atv-canal-9-futbol-libre-tv-movistar-deportes-gol-caracol-tv-rcn-radio-online-en-directo-por-internet-eliminatorias-noticia/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Historia de la selección de fútbol del Perú - Wikipedia, la enciclopedia libre",
+   "content": "Posteriormente obtuvo una victoria de 2:1 frente a Colombia, empató 2:2 con Ecuador y en el último partido venció por 1:0 a Venezuela.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Historia_de_la_selecci%C3%B3n_de_f%C3%BAtbol_del_Per%C3%BA",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Historia_de_la_selecci%C3%B3n_de_f%C3%BAtbol_del_Per%C3%BA",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Temblor en Perú | Reportan sismo de magnitud 5,2 en Condorcanqui, Amazonas, durante la madrugada del sábado 19 de septiembre; profundidad y detalles",
+   "content": "De acuerdo con el SGC, el evento sísmico tuvo como epicentro la provincia de Condorcanqui … ¿Cómo activar la alerta sísmica de Google en Colombia?",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.eltiempo.com/mundo/latinoamerica/temblor-en-peru-reportan-sismo-de-magnitud-5-2-en-condorcanqui-amazonas-durante-la-madrugada-del-sabado-19-de-septiembre-profundidad-y-detalles-3587261",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eltiempo.com",
+    "/mundo/latinoamerica/temblor-en-peru-reportan-sismo-de-magnitud-5-2-en-condorcanqui-amazonas-durante-la-madrugada-del-sabado-19-de-septiembre-profundidad-y-detalles-3587261",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lima",
+   "content": "Para 1827, cuando los ejércitos de la Gran Colombia abandonaron el Perú , estas proporciones se habían modificado debido a la movilización militar y al éxodo de civiles durante el Segundo sitio del Callao Con el inicio de la República …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Lima",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Lima",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Relaciones Colombia-Perú",
+   "content": "Relaciones Colombia-Perú … Embajada de Colombia en Lima … relaciones Colombia-Perú … República de Colombia … «Comisión de Vecindad Colombia-Perú»",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Relaciones_Colombia-Per%C3%BA",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Relaciones_Colombia-Per%C3%BA",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Turismo en el Perú",
+   "content": "Los 15 destinos más visitados en Perú. Plaza de San Martín, en La Alpaca. Bosque de Piedras de Huayllay Turismo en el Perú se constituye en la tercera industria más grande de la nación …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Turismo_en_el_Per%C3%BA",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Turismo_en_el_Per%C3%BA",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Perú vs Colombia 0-0: resumen del luchado empate en Barranquilla por fecha 15 de las Eliminatorias 2026",
+   "content": "Perú igualó 0-0 con Colombia en el Estadio Metropolitano Roberto Meléndez de Barranquilla por la fecha 15 de las Eliminatorias 2026.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.infobae.com/peru/deportes/2025/06/06/peru-vs-colombia-en-vivo-hoy-america-tv-atv-movistar-deportes-barranquilla-fecha-15-eliminatorias-2026-goles-resumen-resultado/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.infobae.com",
+    "/peru/deportes/2025/06/06/peru-vs-colombia-en-vivo-hoy-america-tv-atv-movistar-deportes-barranquilla-fecha-15-eliminatorias-2026-goles-resumen-resultado/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Noticias de Selección Peruana | DEPOR",
+   "content": "Selección Peruana Las novedades de Mano Menezes en la Selección Peruana: la explicación de por qué los llamó y cuál es su plan Mano Menezes convocó a 26 jugadores para los amistosos frente a Estados Unidos, … Canadá y Colombia …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://depor.com/futbol-peruano/seleccion-peruana/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "depor.com",
+    "/futbol-peruano/seleccion-peruana/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Gloria es multada con US$2,2 millones en Colombia por usar aditivo prohibido en la leche y en Perú lleva su leche en polvo al TC",
+   "content": "El Grupo Gloria , … se encuentra en el centro de una controversia en Colombia tras ser sancionado con US$2,2 millones por la Superintendencia de Industria y Comercio (SIC) Según informó la SIC …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.infobae.com/peru/2025/02/13/gloria-es-multada-con-us22-millones-en-colombia-por-usar-aditivo-prohibido-en-la-leche-y-en-peru-lleva-su-leche-en-polvo-al-tc/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.infobae.com",
+    "/peru/2025/02/13/gloria-es-multada-con-us22-millones-en-colombia-por-usar-aditivo-prohibido-en-la-leche-y-en-peru-lleva-su-leche-en-polvo-al-tc/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Perú Info | Portal oficial de la Marca Perú",
+   "content": "Últimas noticias e información oficial de Perú como MARCA PAÍS. Conoce más sobre: Turismo, Gastronomía, Comercio Exterior, Inversiones y Talento del Perú.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://peru.info/es-pe/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "peru.info",
+    "/es-pe/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección peruana fútbol en EL PAÍS",
+   "content": "ELIMINATORIAS CONMEBOL Colombia se desploma y Perú ya aspira a repetir otro MundialEl equipo de Reinaldo Rueda cae en casa y sale de la zona de clasificación mientras los incas se aferran al cuarto lugar de la tablaEliminatorias Qatar 2022El capitán Di María …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://elpais.com/noticias/seleccion-futbol-peru/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "elpais.com",
+    "/noticias/seleccion-futbol-peru/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia no pasa del 0-0 contra Perú y pierde oportunidad de acercarse a clasificación al Mundial",
+   "content": "Colombia sumó su quinto partido consecutivo sin victoria, al igualar el viernes 0-0 ante Perú, con lo que dilapidó la oportunidad de colocarse en el umbral de la próxima Copa del Mundo.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://apnews.com/article/mundial-eliminatorias-colombia-peru-2026-cc51e1711ac5c1d8a2ca5bd9d2873637",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/mundial-eliminatorias-colombia-peru-2026-cc51e1711ac5c1d8a2ca5bd9d2873637",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Frontera Terrestre Colombia - Perú | Cancillería",
+   "content": "La frontera entre las Repúblicas Colombia y Perú tiene una longitud aproximada de 1.626 kilómetros. además de fijar el límite entre Colombia y Perú …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.cancilleria.gov.co/politica/peru",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.cancilleria.gov.co",
+    "/politica/peru",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

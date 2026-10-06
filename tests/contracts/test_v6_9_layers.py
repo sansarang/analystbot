@@ -988,3 +988,129 @@ def test_역습_갈래가_필수형으로_들어온다():
     calls = {c.func.id for c in _ast.walk(fn)
              if isinstance(c, _ast.Call) and isinstance(c.func, _ast.Name)}
     assert "_counter" in calls, "🔴 `_soccer_forms` 가 역습형을 안 부른다(배선 끊김)"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 지시 2026-10-06(9차)** — 합계 상한 · 감독 묶음 · 근거 불가 · 없음 보고
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_이동은_경기당_합계_상한을_넘지_못한다():
+    """🔴 ① — **경기당 합계** ±0.5 로그 오즈. 돌연변이: 결과마다만 자르기.
+
+    ⚠️ 실측 카자흐–페로: 무 0.300 + 홈 0.165 + 원정 0.105 = **0.570** 이 통과했다.
+    🔴 지금은 합을 보고 **비율대로 줄인다** — `MOVES` 도 같은 비율로 적는다(카드의
+       이동량 합이 실제와 같아야 한다).
+    """
+    from app.core import compare
+    from app.core.schema import ProbTriple
+    start = ProbTriple(home=0.48, draw=0.33, away=0.19)
+    many = _vars(("coach_intent", "both", 0.7), ("fatigue", "home", 0.7),
+                 ("lineup_intent", "away", 0.7), ("stakes", "home", 0.7))
+    got, why = compare.our_prob(None, start=start, variables=many,
+                                outlook={"states": {"X": {"state": "draw_enough"}}})
+    assert got is not None and "상한" in why, why
+    said = sum(abs(float(m["logodds"])) for m in compare.MOVES)
+    assert said <= float(compare.move_rules()["cap_logodds"]) + 1e-9, said
+    # 🔴 상한 안이면 **줄이지 않는다**
+    few = _vars(("stakes", "home", 0.7))
+    compare.our_prob(None, start=start, variables=few, outlook=None)
+    assert abs(sum(abs(float(m["logodds"])) for m in compare.MOVES) - 0.105) < 1e-9
+
+
+def test_감독_로테이션은_같은_주제면_하나다():
+    """🔴 ② — `coach_intent`·`coach_conflict`·`squad_rotation` 이 같은 팀 + 같은 주제면
+    **한 변수**다(출처 수만 올라간다). 돌연변이: 유형별로 따로 두기.
+    """
+    from app.core.stages.s5_verify import COACH_KINDS, coach_topic, merge_key
+    assert set(COACH_KINDS) == {"coach_intent", "coach_conflict", "squad_rotation"}
+    assert coach_topic("Karpin is expected to rotate his squad") == "rotation"
+    assert coach_topic("선발 명단을 다시 바꾼다") == "rotation"
+    assert coach_topic("5백으로 내려선다") == "tactic"
+    assert coach_topic("Ajasa 를 선발로 기용한다") == "selection"
+    a = merge_key("team:000132", "coach_intent", "Karpin",
+                  claim="Karpin is expected to rotate his squad")
+    b = merge_key("team:000132", "squad_rotation", "starting XI",
+                  claim="Russia are expected to make changes to his starting XI")
+    c = merge_key("team:000132", "coach_conflict", "tactics",
+                  claim="전술 준비가 문제다")
+    assert a == b, (a, b)          # 🔴 같은 주제 → 한 열쇠
+    assert a != c, (a, c)          # ⚠️ 다른 주제는 따로다
+    # 🔴 주제를 못 가리면 **대상 글자**로 간다(지어내지 않는다)
+    d = merge_key("team:1", "coach_intent", "Mier", claim="알 수 없는 말")
+    assert d[2] == "mier", d
+
+
+def test_근거_불가_변수는_확률을_못_움직인다():
+    """🔴 ③ 점검표 — `usable_as_basis=False` 는 ③ 이동에서 빠진다.
+
+    ⚠️ 실측: `R2`(출처 1곳 · 근거 불가)가 +0.060 을 받았다. 돌연변이: 검사 제거.
+    """
+    from app.core import compare
+    from app.core.schema import ProbTriple, Variable
+    start = ProbTriple(home=0.5, draw=0.3, away=0.2)
+    weak = [Variable(id="R2", type="fatigue", subject="team:000132",
+                     favors="home", goals="none", target="result",
+                     hardness="soft", weight=0.7, claim="c", quote="q",
+                     usable_as_basis=False)]
+    got, why = compare.our_prob(None, start=start, variables=weak, outlook=None)
+    assert got is not None and abs(got.home - 0.5) < 0.005, (got, why)
+    assert not compare.MOVES, compare.MOVES
+    # 🔴 근거 가능하면 움직인다
+    ok = [weak[0].model_copy(update={"usable_as_basis": True})]
+    said, _ = compare.our_prob(None, start=start, variables=ok, outlook=None)
+    assert said is not None and said.home > 0.5
+
+
+def test_정보가_없다는_변수로_만들지_않는다():
+    """🔴 ③ 점검표 — *"확인된 부상 정보는 없다"* 는 사실이 아니다. 돌연변이: 검사 제거."""
+    from app.core.stages.s5_verify import has_info
+    for said in ("이 경기 전에 홈 팀의 확인된 부상 또는 출전 정지 정보는 없다",
+                 "No confirmed injuries have been reported",
+                 "결장 명단은 아직 발표되지 않았다"):
+        ok, why = has_info(said)
+        assert not ok and "없음의 보고" in why, (said, why)
+    # ⚠️ **사실**은 통과한다(없다는 말이 들어 있어도 선수를 가리키면 사실이다)
+    for said in ("김민재가 부상으로 결장한다", "Ndidi 가 이 경기에서 이탈했다"):
+        ok, _ = has_info(said)
+        assert ok, said
+    # 🔴🔴 **배선까지 센다** — `_one`(검증 한 줄)이 `has_info` 를 부르는지 AST 로 본다.
+    #    ⚠️ 함수만 검사하면 그 호출을 지워도 초록이다(같은 병을 8차에서 겪었다).
+    import ast as _ast
+    tree = _ast.parse((ROOT / "app/core/stages/s5_verify.py")
+                      .read_text(encoding="utf-8"))
+    fn = next(n for n in _ast.walk(tree)
+              if isinstance(n, _ast.FunctionDef) and n.name == "_one")
+    calls = {c.func.id for c in _ast.walk(fn)
+             if isinstance(c, _ast.Call) and isinstance(c.func, _ast.Name)}
+    assert "has_info" in calls, "🔴 `_one` 이 `has_info` 를 안 부른다(배선 끊김)"
+
+
+def test_오백은_무승부_쪽이고_두_번_세지_않는다():
+    """🔴 9차 ③ 점검표 — `lineup_intent`(5백): **무승부 쪽만** · away 이동 **없음** ·
+    `draw_enough` ×2 로 이미 셌으면 **이동 0**(이중 계산 없음).
+
+    돌연변이: 5백을 `favors`(away) 쪽으로 움직이기 / ×2 와 변수 이동을 둘 다 주기.
+    """
+    import importlib
+    from app.core import compare
+    from app.core.schema import ProbTriple, Variable
+    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
+    start = ProbTriple(home=0.48, draw=0.33, away=0.19)
+    five = Variable(id="IR01-away", type="lineup_intent", subject=ref.away,
+                    favors="away", goals="down", target="formation",
+                    hardness="soft", weight=0.7, claim="5백으로 내려앉는다",
+                    quote="q", from_rule="IR01-away")
+    # ① 경우의 수가 없을 때 — **무승부 쪽**으로만 움직인다(away 아님)
+    compare.our_prob(None, start=start, variables=[five], ref=ref, outlook=None)
+    assert [(m["id"], m["side"]) for m in compare.MOVES] == \
+           [("IR01-away", "draw")], compare.MOVES
+    # ② `draw_enough` ×2 가 돌면 그 변수는 **이동 0**(같은 사실이다)
+    look = {"states": {ref.away_name: {"state": "draw_enough"}}}
+    compare.our_prob(None, start=start, variables=[five], ref=ref, outlook=look)
+    ids = [m["id"] for m in compare.MOVES]
+    assert ids == [f"경우의수:{ref.away_name}"], ids
+    assert compare.MOVES[0]["logodds"] == 0.3, compare.MOVES
+    # 🔴 5백 판정은 **열쇠**로 센다 — claim 글자에 팀 이름이 없어도 ×2 가 돈다
+    assert compare._low_block(ref.away_name, [five], ref=ref)
+    assert not compare._low_block(ref.home_name, [five], ref=ref)

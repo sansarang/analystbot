@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T13:27:04.761975+00:00",
+ "order": [
+  "Alejado para la finalización de la gira, el entrenador Mano Menezes deberá ascender al titularato a un Marco Huamán que ha exhibido un mejor papel cuando se le dio la oportunidad de conformar el bloque defensivo en el ensayo frente a México (1-1).",
+  "A primera hora del lunes (05.10.2026) se conoció, a través de un comunicado de la Federación Peruana de Fútbol, la desconvocatoria del seleccionado nacional por razones médicas. En tal sentido, se anunció su liberación de la concentración para que enrumbara con destino a Burnley.",
+  "“No tiene lesión, si tuviese lesión, no estaría acá”, dijo de una manera muy categórica Mano, que luego detalló por qué desafectó al lateral derecho: “Habíamos planeado utilizar a Sonne en dos partidos para intercalar e hiciese una recuperación adecuada y no corriese riesgo”.",
+  "“Nosotros tenemos por comportamiento conversar directamente con los jugadores cuando los convocamos para saber cómo están o si tienen algún problema […]. Conversamos con Sonne, se sintió bien para estar aquí, por eso está”, añadió.",
+  "Al momento que apareció Menezes en la sala de prensa, para dar inicio a su comparecencia en la antesala del último fogueo de los suyos, se le preguntó acerca del desmarque del ‘Vikingo’ —presuntamente afectado por una dolencia en la rodilla— y la respuesta trajo más dudas que certezas.",
+  "En dos de los cuatro goles del aplastante triunfo de los estadounidenses (4-1) Sonne fue responsable al no ajustarse bien defensivamente dentro del área. A ello también conviene adjuntar que su función ofensiva se vio demasiado disminuida.",
+  "Perú se prepara para cerrar la gira de amistosos en Norteamérica. El partido que abrochará la ronda será contra Colombia. Sin embargo, el tema que ha monopolizado la conferencia de prensa de Mano Menezes ha sido el sorprendente alejamiento de Oliver Sonne.",
+  "Estando en pleno crecimiento en Alianza Lima, Huamán se postula como el próximo marcador de punta derecho de la selección peruana. Frente a Colombia tendrá su examinatorio más arduo y de como salga se verá si se asoma a ser el nuevo dueño de aquel flanco para las Eliminatorias 2030."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 12문단 → 재정렬 상위 8"
+}
