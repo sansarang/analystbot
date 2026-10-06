@@ -152,6 +152,13 @@ def test_v5_8_6_enum_밖_사유가_없다_M38():
         # 🔴 딥서치 재구축 §4-3(M61) — *"10단어 초과 → `query_too_long` 거부.
         #    실측: 긴 문장 질의가 0건을 만들었다."* ⚠️ 그 문서가 **이름까지** 줬다.
         "query_too_long": "§4-3 — 10낱말 초과(딥서치 재구축 M61 · 2026-10-05)",
+        # 🔴🔴 **전송 사유 셋** — 북아일랜드–조지아 지시서 §3 (2026-10-06 · M136).
+        #    ⚠️ 그 문서가 **이름까지** 줬다: *"사유 분리 유지:
+        #       `llm_timeout`·`llm_http_5xx`·`llm_429`·`budget_cut` 은 서로 다른
+        #       사유다."*
+        "llm_timeout": "§3 — 전송 실패 사유 분리(2026-10-06 · M136)",
+        "llm_http_5xx": "§3 — 전송 실패 사유 분리(2026-10-06 · M136)",
+        "llm_429": "§3 — 전송 실패 사유 분리(2026-10-06 · M136)",
     }
     # 🔴 그 조항이 **v5 본문 또는 작업 지시서**에 있어야 한다. ⚠️ §3-8 은
     #    작업 지시서 §1 이 **신설**한 절이다(v5 본문에는 없다).
@@ -159,7 +166,9 @@ def test_v5_8_6_enum_밖_사유가_없다_M38():
     base = _pl.Path(__file__).resolve().parents[2] / "docs" / "fable" / "inbox"
     doc = _doc()
     for extra in ("2026-10-04_workorder_gate2_deepseek.md",
-                  "2026-10-04_v5A_deepseek.md"):
+                  "2026-10-04_v5A_deepseek.md",
+                  # 🔴 북아일랜드–조지아 결함 전체 수정(§0: 이 문서가 이긴다)
+                  "2026-10-06_workorder_nir_geo_fixes.md"):
         doc += (base / extra).read_text(encoding="utf-8")
     # 🔴 **사용자 결정도 원본이다** — 대화로만 아는 지시는 인용하지 않는다(§11-1)
     dec = base.parent / "decisions"
@@ -209,9 +218,11 @@ def test_v5_8_6_사유는_고칠_곳을_가리킨다():
     """
     from app.reasons import Reason
     for r in Reason:
-        assert r.fix_where in ("수집", "이름표", "검색", "읽기", "검증",
-                               "규칙", "판정", "예산", "에이전트", "없음"), \
-            (r.value, r.fix_where)
+        # 🔴🔴 **어휘는 `reasons.WHERE` 하나다**(#1 사본 금지).
+        #    ⚠️ 종전엔 여기 손으로 베껴 뒀다 — 지시서 2026-10-06 §3 가 `망`·
+        #       `서버`·`속도` 를 더하자 이 계약이 **한 발 늦었다.**
+        from app.reasons import WHERE
+        assert r.fix_where in WHERE, (r.value, r.fix_where, WHERE)
     # 🔴 그 실사고의 두 사유가 **다른 곳**을 가리켜야 한다
     assert Reason.OUT_OF_WINDOW.fix_where != Reason.NAME_UNRESOLVED.fix_where
 

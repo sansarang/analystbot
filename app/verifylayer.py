@@ -141,6 +141,9 @@ class Context:
     kickoff: datetime | None = None
     #: 🔴 §5-1 — **fetch 로 받아 둔 본문**. ⚠️ 없으면 인용을 대조할 수 없다
     bodies: dict = field(default_factory=dict)
+    #: 🔴🔴 **받아 둔 문서 저장소**(`cells.Seen`) — 지시서 §3: 날짜 조회가
+    #   `doc_date(url)` 하나를 지난다. ⚠️ `None` 이면 변수에 붙은 값만 본다.
+    seen: object = None
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -246,7 +249,18 @@ def verify_one(var, ctx: Context) -> tuple[bool, Reason, str]:
     body = _norm(raw_body)
 
     # ── §5-3 날짜
+    # 🔴🔴 **저장소에서도 본다** — 지시서 2026-10-06 §3:
+    #    *"검증층의 날짜 조회도 한 함수: `doc_date(url)`. 재사용이든 신규든 같은
+    #    저장소에서 읽는다."*
+    #  ⚠️ 변수에 붙은 값이 먼저다(모델·조립이 이미 정한 것) — 없을 때 저장소다.
+    #  🔴 그래야 *"받아 두긴 했는데 변수에 안 붙은"* 경우가 `date_missing` 이
+    #     되지 않는다(실측 2026-10-06: 그 때문에 20건이 죽었다).
     when = getattr(var, "published_at", None)
+    if not isinstance(when, datetime):
+        from app.cells import doc_date
+        said = doc_date(getattr(ctx, "seen", None), url)
+        if isinstance(said, datetime):
+            when = said
     if not isinstance(when, datetime):
         return False, Reason.DATE_MISSING, "🔴 발행 시각이 **없다**(§5-3)"
     if when.tzinfo is None or when.tzinfo.utcoffset(when) is None:

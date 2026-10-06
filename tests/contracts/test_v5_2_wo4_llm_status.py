@@ -44,8 +44,15 @@ def test_wo4_예산_거부는_llm_장애가_아니다():
     assert issubclass(solar.SolarBudgetCut, solar.SolarUnavailable)
     assert agentloop._why_of(solar.SolarBudgetCut("budget_cut: …")) \
         is Reason.BUDGET_CUT
+    # 🔴🔴 **지시서 2026-10-06 §3(M136)이 이것을 더 갈랐다** — 상태 코드별로
+    #    `llm_timeout`·`llm_http_5xx`·`llm_429` 다. ⚠️ 상태를 모르면(= 응답조차
+    #    못 받았다) `llm_timeout` 이다 — 그것이 **망**을 가리킨다.
     assert agentloop._why_of(solar.SolarUnavailable("llm_unavailable: …")) \
-        is Reason.LLM_UNAVAILABLE
+        is Reason.LLM_TIMEOUT
+    assert agentloop._why_of(
+        solar.SolarUnavailable("x", status=503)) is Reason.LLM_HTTP_5XX
+    assert agentloop._why_of(
+        solar.SolarUnavailable("x", status=429)) is Reason.LLM_429
 
 
 def test_wo4_예산이_막으면_budget_cut_으로_던진다():

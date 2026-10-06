@@ -182,7 +182,9 @@ async def _run_agent(game: dict, side: str, fun, seen,
         home=inp.home, away=inp.away,
         home_names=list(inp.home_names), away_names=list(inp.away_names),
         competition=inp.competition, roster=list(roster_of(facts, team)),
-        kickoff=kick, bodies=dict(getattr(seen, "bodies", {}) or {}))
+        kickoff=kick, bodies=dict(getattr(seen, "bodies", {}) or {}),
+        # 🔴 **저장소를 넘긴다**(지시서 §3) — 날짜를 `doc_date` 로 읽는다
+        seen=seen)
     import asyncio as _aio
     try:
         # ══════════════════════════════════════════════════════════════

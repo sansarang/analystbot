@@ -409,6 +409,42 @@ class _Field(MutableMapping):
         return f"{{{self._key}: {len(self)}건}}"
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **본문 저장·날짜 조회는 각각 한 함수다** — 지시서 2026-10-06 §3
+# ══════════════════════════════════════════════════════════════════
+#
+# > 날짜 — 경로를 **하나로** 만든다. 이번 주에 날짜가 끊긴 경로가 **셋**이었다
+# > (fetch 신규 · 본문 재사용 · 세포 `_remember_body`). 경로마다 고치는 방식은
+# > **네 번째를 또 만든다.**
+#
+# 🔴 그래서 **이름이 둘**이다: 넣는 곳 `store_doc`, 읽는 곳 `doc_date`.
+#    ⚠️ 계약 M130 이 `app/` 어디서든 `…bodies[x] = y` 를 AST 로 잡는다.
+
+
+def store_doc(seen: object, url: object, body: object = "", *,
+              published_at: object = None, date_source: str = "") -> None:
+    """🔴🔴 **본문을 저장하는 유일한 자리**(지시서 §3).
+
+    🔴 본문과 발행일을 **같이** 넣는다 — 따로 넣는 길을 두면 또 갈린다.
+    ⚠️ `seen` 이 `None` 이면 아무것도 안 한다(호출부가 그것을 묻지 않아도 되게).
+    """
+    box = getattr(seen, "add_doc", None)
+    if box is None:
+        return
+    box(url, body, published_at=published_at, date_source=date_source)
+
+
+def doc_date(seen: object, url: object):
+    """🔴 그 URL 의 **발행 시각** — 신규·재사용을 **가리지 않는다**(지시서 §3).
+
+    ⚠️ 없으면 `None` 이다 — 그것이 *"그 페이지에 날짜가 없다"* 와 같은 뜻이다.
+    """
+    got = getattr(seen, "dates", None)
+    if got is None:
+        return None
+    return got.get(str(url or ""))
+
+
 @dataclass
 class Seen:
     """🔴 한 경기에서 **본 것**. ⚠️ 더하기만 한다(빼거나 고치지 않는다)."""
@@ -1405,9 +1441,9 @@ class Cell:
         #  ⚠️ `extract` 는 `htmldate` 결과를 **이미 들고 있었다** — 또 "돌았는데
         #     결과가 안 쓰인" 자리다(커밋 1370ead 와 같은 병).
         text, when = readtext.extract(html, url=url)
-        self.seen.add_doc(url, text or searchcells._strip_tags(html),
-                          published_at=when,
-                          date_source="본문(세포 fetch · htmldate)")
+        store_doc(self.seen, url, text or searchcells._strip_tags(html),
+                  published_at=when,
+                  date_source="본문(세포 fetch · htmldate)")
 
     def _verified(self, src: Source, facts: list[Fact], *,
                   dateless: list[Fact] | None = None) -> list[Fact]:

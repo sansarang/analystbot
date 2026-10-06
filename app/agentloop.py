@@ -800,8 +800,9 @@ class Tools:
             # 🔴🔴 **본문·발행일·출처를 한 번에** 넣는다(사용자 지시 2026-10-06) —
             #    셋을 따로 넣는 길이 있으면 또 갈린다(그것이 `date_missing` 6건의
             #    까닭이었다).
-            self.store.add_doc(url, body, published_at=said,
-                               date_source=str(why_d or ""))
+            from app.cells import store_doc
+            store_doc(self.store, url, body, published_at=said,
+                      date_source=str(why_d or ""))
             logger.info("[agent] 발행일 — %s (%s) · %s",
                         said or "없다", why_d, url[:60])
             if self.funnel is not None:
@@ -1141,6 +1142,22 @@ def _why_of(exc) -> Reason:
     from app import solar
     if isinstance(exc, solar.SolarBudgetCut):
         return Reason.BUDGET_CUT
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **상태 코드가 사유를 정한다** — 지시서 2026-10-06 §3 (M136)
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  > `llm_timeout`·`llm_http_5xx`·`llm_429`·`budget_cut` 은 서로 다른 사유다.
+    #
+    #  🔴 고칠 곳이 다르다: 응답없음은 **망/응답 길이**, 5xx 는 **서버**,
+    #     429 는 **속도**. ⚠️ 섞으면 어디를 고칠지 못 고른다.
+    status = getattr(exc, "status", None)
+    if status == 429:
+        return Reason.LLM_429
+    if isinstance(status, int) and 500 <= status < 600:
+        return Reason.LLM_HTTP_5XX
+    if status is None:
+        # 🔴 **응답조차 못 받았다** — 타임아웃·끊김·DNS
+        return Reason.LLM_TIMEOUT
     return Reason.LLM_UNAVAILABLE
 
 
