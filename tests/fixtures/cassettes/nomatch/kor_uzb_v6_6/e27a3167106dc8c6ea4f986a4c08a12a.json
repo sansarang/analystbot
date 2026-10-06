@@ -1,0 +1,13 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes",
+ "recorded_at": "2026-10-06T04:27:11.972266+00:00",
+ "order": [
+  "South Korea 2 , Uzbekistan 1 on the 15th of November 2016South KoreaUzbekistan15th of November 2016",
+  "Please note: All times are UK. Some content is provided by third parties, is subject to change, and is unverified.",
+  "Uzbekistan 0 , South Korea 4 on the 20th of November 2018UzbekistanSouth Korea20th of November 2018",
+  "Uzbekistan 0 , South Korea 0 on the 5th of September 2017UzbekistanSouth Korea5th of September 2017"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 4문단 → 재정렬 상위 8"
+}

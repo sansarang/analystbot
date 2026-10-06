@@ -1,0 +1,38 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 1000, \"messages\": [{\"content\": \"너는 스포츠 팀 이름의 **철자 후보**만 낸다. 경기를 고르지 않는다.\\n사용자 문장에서 두 팀을 찾아 JSON 만 낸다:\\n{\\\"teams\\\":[{\\\"ko\\\":\\\"<사용자가 쓴 이름>\\\",\\\"latin_candidates\\\":[\\\"<라틴 표기1>\\\",\\\"<표기2>\\\"],\\\"country_guess\\\":\\\"<ISO 2글자 또는 \\\\\\\"\\\\\\\">\\\"}],\\\"date_hint\\\":\\\"\\\",\\\"competition_hint\\\":\\\"\\\"}\\n🔴 경기 URL·ID·킥오프를 **넣지 마라** — 코드가 공개 페이지로 확인한다.\\n🔴 모르면 빈 문자열로 둬라. 지어내지 마라.\", \"role\": \"system\"}, {\"content\": \"한국 vs Uzbekistan\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"low\"}",
+ "recorded_at": "2026-10-06T04:25:21.002276+00:00",
+ "id": "8d0d50be-2abc-47c8-8918-ea3ed724b7b0",
+ "object": "chat.completion",
+ "created": 1791260720,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": null,
+    "reasoning": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Input: \"한국 vs Uzbekistan\" (Korea vs Uzbekistan)\n    *   Task: Identify the two team names from the user's sentence and provide JSON output.\n    *   Output Format: JSON `{\"teams\":[{\"ko\":\"<user_input>\",\"latin_candidates\":[\"<latin1>\",\"<latin2>\"],\"country_guess\":\"<ISO2 or \\\"\\\">\"}], \"date_hint\":\"\", \"competition_hint\":\"\"}`\n    *   Constraints:\n        *   Only spell out candidate names (Latin transliterations/variants).\n        *   Do NOT select matches (no URLs, IDs, kickoffs).\n        *   Do NOT fabricate information (use empty strings if unknown).\n        *   Language: Korean (as per system instruction \"너는 Solar Pro4...\").\n        *   Knowledge Cutoff: 2026-02.\n\n2.  **Extract Teams:**\n    *   Team 1: \"한국\" (Korea)\n    *   Team 2: \"Uzbekistan\" (Uzbekistan)\n\n3.  **Generate Latin Candidates:**\n    *   For \"한국\":\n        *   South Korea is the most likely context.\n        *   Candidates: \"Korea\", \"South Korea\", \"Republic of Korea\", \"KOR\".\n        *   Common football naming: \"Korea\", \"South Korea\".\n    *   For \"Uzbekistan\":\n        *   Candidates: \"Uzbekistan\", \"Uzbek\".\n\n4.  **Determine Country Guess (ISO 2-letter):**\n    *   \"한국\": \"KR\"\n    *   \"Uzbekistan\": \"UZ\"\n\n5.  **Determine Date/Competition Hints:**\n    *   The user didn't specify a date or competition.\n    *   So, `date_hint`: \"\" and `competition_hint`: \"\".\n\n6.  **Construct JSON:**\n    *   `teams`: Array of objects.\n    *   Object 1: `ko`: \"한국\", `latin_candidates`: [\"Korea\", \"South Korea\"], `country_guess`: \"KR\"\n    *   Object 2: `ko`: \"Uzbekistan\", `latin_candidates`: [\"Uzbekistan\", \"Uzbek\"], `country_guess`: \"UZ\"\n    *   `date_hint`: \"\"\n    *   `competition_hint`: \"\"\n\n7.  **Format Check:**\n    *   Must be valid JSON.\n    *   Must NOT include match URLs/IDs.\n\n8.  **Draft:**\n    ```json\n    {\n      \"teams\": [\n        {\n          \"ko\": \"한국\",\n          \"latin_candidates\": [\n            \"South Korea\",\n            \"Korea\",\n            \"Republic of Korea\"\n          ],\n          \"country_guess\": \"KR\"\n        },\n        {\n          \"ko\": \"Uzbekistan\",\n          \"latin_candidates\": [\n            \"Uzbekistan\",\n            \"Uzbek\"\n          ],\n          \"country_guess\": \"UZ\"\n        }\n      ],\n      \"date_hint\": \"\",\n      \"competition_hint\": \"\"\n    }\n    ```\n\n9.  **Final Review:**\n    *   Does it match the requested format? Yes.\n    *   Did I avoid picking a specific match? Yes.\n    *   Is it concise? Yes.\n\n10. **Output Generation.** (Wait, the instruction says \"JSON 만 낸다\" - output *only* JSON? Usually, these prompts want raw JSON. But system instructions are often strict. \"JSON 만 낸다\" implies no markdown fences or explanatory text outside the JSON if possible, but often markdown fences are accepted or expected for clarity in these tests. However, strict JSON output is safer. Let's provide raw text or standard JSON block. I will provide standard JSON format.)\n\n    Actually, \"🔴 경기 URL·ID·킥오프를 **넣지 마라** — 코드가 공개 페이지로 확인한다.\" implies this is an API agent context. I should output valid JSON only.\n\n    Let's refine `latin_candidates`. \"Korea\" can be ambiguous (North Korea exists), but \"South Korea\" is the standard shorthand for \"한국\" in sports. \"Korea Republic\" is also used by FIFA. Let's stick to common ones.\n\n    Team 1: \"한국\" -> [\"South Korea\", \"Korea Republic\", \"Korea\"]\n    Team 2: \"Uzbekistan\" -> [\"Uzbekistan\", \"Uzbek\"]\n\n    ISO codes: KR, UZ.\n\n    Constructing final JSON string.\n\n    ```json\n    {\"teams\":[{\"ko\":\"한국\",\"latin_candidates\":[\"South Korea\",\"Korea Republic\",\"Korea\"],\"country_guess\":\"KR\"},{\"ko\":\"Uzbekistan\",\"latin_candidates\":[\"Uzbekistan\",\"Uzbek\"],\"country_guess\":\"UZ\"}],\"date_hint\":\"\",\"competition_hint\":\"\"}\n    ```\n    (Minified is usually safer for API parsers, but readable is fine too. I'll use compact JSON.)\n\n    Wait, the prompt"
+   },
+   "logprobs": null,
+   "finish_reason": "length"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 165,
+  "completion_tokens": 1000,
+  "total_tokens": 1165,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 1000,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

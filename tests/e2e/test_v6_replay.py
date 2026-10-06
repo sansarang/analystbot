@@ -13,7 +13,7 @@
    재생한다 — 검색·fetch·LLM 은 **전부 카세트**다(망에 안 나간다).
 ⚠️ s1 은 `tests/unit_v6_s1_s2.py` 가 따로 센다(철자 단계·확정 기준·창).
 
-🔴 **녹화본**: `tests/fixtures/cassettes/nomatch/kor_uzb_v6_4` — 2026-10-06
+🔴 **녹화본**: `tests/fixtures/cassettes/nomatch/kor_uzb_v6_6` — 2026-10-06
    한국 vs 우즈베키스탄(친선)을 라이브 1회 돌려 받은 것이다($0.0044 · 호출 7).
 """
 from __future__ import annotations
@@ -29,7 +29,7 @@ from app.core import pipeline, render
 from app.core.schema import Card, MatchRef
 from app.core.state import RunState
 
-RUN_ID = "kor_uzb_v6_4"
+RUN_ID = "kor_uzb_v6_6"
 HOME, AWAY = "team:000129", "team:000245"
 KICK = datetime(2026, 10, 6, 11, 0, tzinfo=timezone.utc)
 #: 🔴 카드를 **킥오프 전**에 만든 것으로 센다 — 지난 뒤면 등급이 거둬진다(M97).
@@ -49,16 +49,36 @@ def _ref() -> MatchRef:
 
 
 @pytest.fixture(scope="module")
-def card() -> Card:
+def replaying():
+    """🔴🔴 **재생 환경을 이 파일 안에서만** 켠다 — 끝나면 되돌린다.
+
+    ⚠️ 실사고 2026-10-06: `os.environ` 에 그냥 심었더니 **같은 워커의 다른 계약**이
+       재생 모드로 끌려가 `tests/test_search.py` 네 건이 `SearchUnavailable` 로
+       빨개졌다(혼자 돌리면 통과했다 — 그래서 더 위험하다).
+    🔴 모듈 상태를 테스트가 **남기지 않는다**(v6 §2 가 같은 말을 한다).
+    """
+    old = {k: os.environ.get(k)
+           for k in (cassette.MODE_ENV, cassette.RUN_ENV,
+                     cassette.FALLTHROUGH_ENV)}
+    os.environ[cassette.MODE_ENV] = cassette.REPLAY
+    os.environ[cassette.RUN_ENV] = RUN_ID
+    # 🔴 **빗나가면 실패다** — 몰래 망으로 넘어가지 않는다(§5 `replay_miss`)
+    os.environ.pop(cassette.FALLTHROUGH_ENV, None)
+    yield
+    for k, v in old.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+
+
+@pytest.fixture(scope="module")
+def card(replaying) -> Card:
     """🔴 재생으로 만든 카드 **하나** — 모든 불변식이 이것을 본다."""
     from app import net as _net_mod
     from app import search as _search
     from app.core.stages import (s2_facts, s3_docs, s4_extract, s5_verify,
                                  s6_hypo, s7_judge)
-    os.environ[cassette.MODE_ENV] = cassette.REPLAY
-    os.environ[cassette.RUN_ENV] = RUN_ID
-    # 🔴 **빗나가면 실패다** — 몰래 망으로 넘어가지 않는다(§5 `replay_miss`)
-    os.environ.pop(cassette.FALLTHROUGH_ENV, None)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **재정렬을 예열한다** — 실측 2026-10-06
     # ══════════════════════════════════════════════════════════════════
@@ -68,8 +88,6 @@ def card() -> Card:
     #     추출 요청도 달라져 LLM 카세트가 **전부 빗나간다**(변수 0개).
     #  🔴 라이브 실행기(`tools/v6_run.py`)도 입구에서 예열한다 — **같은 경로**여야
     #     재생이 재생이다.
-    from app.research import rerank
-    rerank.warm()
     ref, state = _ref(), RunState(match_key="fotmob:6368651")
 
     async def _go() -> Card:
@@ -94,15 +112,11 @@ def card() -> Card:
 
 
 @pytest.fixture(scope="module")
-def docs_by_id(card: Card) -> dict:
+def docs_by_id(card: Card, replaying) -> dict:
     """🔴 변수의 `doc_ids` 로 본문을 되찾는 표 — 불변식 2·9 가 쓴다."""
     from app import net as _net_mod
     from app import search as _search
     from app.core.stages import s2_facts, s3_docs
-    os.environ[cassette.MODE_ENV] = cassette.REPLAY
-    os.environ[cassette.RUN_ENV] = RUN_ID
-    from app.research import rerank
-    rerank.warm()
     ref, state = _ref(), RunState()
 
     async def _go() -> dict:
@@ -251,7 +265,7 @@ def test_카드_전문_스냅샷(card: Card):
     """
     import pathlib
     said = render.card_text(card)
-    path = pathlib.Path(__file__).with_name("snapshot_kor_uzb_v6_4.md")
+    path = pathlib.Path(__file__).with_name("snapshot_kor_uzb_v6_6.md")
     if not path.exists() or os.environ.get("V6_SNAPSHOT_UPDATE") == "1":
         path.write_text(said, encoding="utf-8")
         pytest.skip(f"스냅샷을 새로 적었다: {path.name}")

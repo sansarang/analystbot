@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes",
+ "recorded_at": "2026-10-06T04:27:12.252531+00:00",
+ "order": [
+  "However, Kim Min-jong (Yangpyeong County Office), competing in the men's over-90kg division, fell behind 2-3 after suffering an ippon defeat via a counter-attack against Muzaffarbek Turoboyev, who won the individual men's heavyweight title.",
+  "Lee Eun-gyeol, competing as the first runner in the men's 73kg division, fell behind 0-1 after conceding a waza-ari-equivalent score via a counter-attack to Shahram Ahadov with 22 seconds left in the match.",
+  "South Korea pulled one point back in the third match of the men's 90kg division, where Kim Jong-hoon defeated Arslonbek Tojiev with a half-point (waza-ari) using a foot sweep (sasae-tsurikomi-ashi).",
+  "Then, in the fourth match of the women's over-70kg division, Lee Hyun-ji (Yongin University) leveled the score at 2-2 by subduing Irishon Kurbanbaeva with a half-point hip throw (koshi-guruma) and a half-point hold-down (kesa-gatame).",
+  "In the sixth match, South Korea deployed Heo Mi-mi (Gyeongbuk Sports Council), the South Korean delegation's sole gold medalist, in the women's 57kg division to eye a comeback, but conceded a waza-ari in extra time to Shukurjon Aminova, bringing the match to an end.",
+  "On the final day of the sport today (the 3rd), the national team lost 2-4 to Uzbekistan in the mixed team bronze medal match held at the Aichi International Arena in Nagoya, Japan.",
+  "Earlier in the day, South Korea defeated China 4-1 in the quarterfinals, but dropped to the bronze medal match after losing 3-4 to Kazakhstan in the semifinals, ultimately falling short in the medal playoff as well.",
+  "In the second match of the women's 70kg division, Kim Hye-mi picked up three shido penalties and suffered a defeat by hansoku-make (disqualification) against Shirinjon Yuldosheva."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 15문단 → 재정렬 상위 8"
+}

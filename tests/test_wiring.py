@@ -442,7 +442,6 @@ def test_남은_모듈에_고아_공개함수가_없다():
         #    🔴 되감기 계약이 **그 자리에서** "빼라"고 말했다.
         "app.deepseek.now_utc",             # → 같다(시각 주입 자리)
         "app.agentloop.stop_note",          # → §3-7 중단 때
-        "app.verifylayer.independent_sources",  # → §5-7 독립 출처 세기
         # ✅ `app.solar.chat` 은 **빠졌다** — 2026-10-04 에 `agentloop.run` 이
         #    이었다. 🔴 되감기 계약이 그 자리에서 *"목록에서 빼라"* 고 말했다 —
         #    목록이 거짓이 되기 전에 기계가 먼저 알렸다.

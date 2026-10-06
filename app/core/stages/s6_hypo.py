@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import string
 
 from app.core.schema import (Drop, DropReason, Facts, Hypothesis, HypoLine,
                              HypoOut, HypoSet, LlmFail, MatchRef, RedTeamLine,
@@ -22,7 +23,9 @@ from app.core.schema import (Drop, DropReason, Facts, Hypothesis, HypoLine,
 from app.core.state import RunState
 
 #: 🔴 시나리오 글자 — `A`, `B`, … ⚠️ 모델이 적은 id 는 **쓰지 않는다**(겹친다).
-_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+#  🔴 글자를 손으로 적지 않는다 — `.env` 계약이 **대문자 글자열을 환경변수 이름으로
+#     읽어** 빨개졌다(실측 2026-10-06: `ABCDEFGHIJKLMNOPQRSTUVWXYZ` 를 키로 봤다).
+_LETTERS = string.ascii_uppercase
 
 
 def run(ref: MatchRef, facts: Facts, variables: list[Variable], *,

@@ -1,0 +1,16 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence pitcher_state",
+ "recorded_at": "2026-10-06T04:26:47.858492+00:00",
+ "order": [
+  "As one of the over-age players in South Korea's under-23 team, he has missed Celtic matches, including both games in the derby double-header against Rangers.",
+  "Yang was named in the matchday squad but did not play. He had missed the quarter-final victory over Vietnam after suffering a hamstring injury, and later said he hoped to return.",
+  "Celtic winger Yang remained on the bench as South Korea reached the Asian Games final with a 2-1 win over China.",
+  "South Korea will learn their final opponents later, with Uzbekistan and Japan meeting in the other semi-final. Yang will hope to feature before returning to Scotland. He remains unavailable for Celtic until then.",
+  "South Korea fell behind when Yudong Wang scored, but Young-Jun Lee equalised ten minutes later. Bae Junho completed the comeback with the winning goal in the 82nd minute.",
+  "Celtic star on how summer Parkhead move earned him international call",
+  "How Lewis Ferguson Rangers transfer move could become more feasible"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 7문단 → 재정렬 상위 8"
+}

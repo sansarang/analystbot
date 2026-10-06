@@ -180,5 +180,8 @@ def test_v5_9_3_계약은_contracts_폴더에_있다():
     # 🔴 파일 이름에 조항 번호가 보여야 한다(찾기 쉬우려고)
     # ⚠️ `test_v5A_…` 는 **부록**(v5-A) 계약이다 — 그것도 번호다.
     bad = [f for f in files
-           if not re.search(r"v5_\d|v5a_|_m\d|solar", f, re.I)]
+           # 🔴 v6 지시서(2026-10-06)가 v5 를 **대체했다** — 그 조항 번호도 받는다
+           #    (`test_v6_7_static.py` = v6 §7 정적 검사). ⚠️ 이름에 번호가 없는
+           #    파일은 그대로 막는다 — 찾기 쉬우려고 만든 규칙이다.
+           if not re.search(r"v5_\d|v5a_|v6_\d|_m\d|solar", f, re.I)]
     assert not bad, f"🔴 조항 번호가 이름에 없는 계약 파일: {bad}"
