@@ -470,17 +470,26 @@ def _redteam(ref: MatchRef, scen: list[Scenario], basis: list[Variable], *,
         state.note(f"s6 반증 — 부르지 않았다(시나리오 {len(scen)}개 · 근거 변수 "
                    f"{len(basis)}개)")
         return []
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **얇게 보낸다** — 실측 2026-10-06(원장)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #   입력 1,135 → 출력 3,967(추론 2,645) · `stop`
+    #   입력 2,027 → 출력 4,000이 **전부 추론** · 🔴 `length`(반증 0줄)
+    #
+    # 🔴 DeepSeek 은 추론 강도를 무시한다(위 `hypo` 의 실측) — 지렛대는 입력뿐이다.
+    #    ⚠️ 그래서 메커니즘·주장을 **잘라** 보내고, 줄 수도 **상한을 적어** 묻는다.
     box = {"match": {"home": ref.home_name, "away": ref.away_name},
            "scenarios": [{"id": s.id, "outcomes": s.outcomes,
-                          "mechanism": s.mechanism,
-                          "driver_vars": s.driver_vars} for s in scen],
-           "variables": [{"id": v.id, "claim": v.claim} for v in basis]}
+                          "mechanism": s.mechanism[:160]} for s in scen],
+           "variables": [{"id": v.id, "claim": v.claim[:110]}
+                         for v in basis[:10]]}
     said = llm.ask(
         provider="deepseek", purpose="redteam", out=RedTeamOut, state=state,
         messages=[
             llm.Message(role="system", content=(
                 "너는 위 분석의 **반대편**을 쓴다. 각 줄은 어떤 마켓이 왜 위험한지 "
-                "한 문장이다.\n"
+                "한 문장이다. 🔴 **여덟 줄을 넘기지 마라.**\n"
                 "🔴 시나리오를 **지우거나 고치지 않는다** — 네 말은 **추가**된다.\n"
                 "🔴 등급·확률·추천 단어를 쓰지 않는다. 사실을 만들지 않는다.\n"
                 "⚠️ `scenario_id` 는 위 목록의 글자이고, 해당 없으면 `null` 이다.")),

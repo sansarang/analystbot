@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T04:21:37.928607+00:00",
+ "order": [
+  "칠리마운틴 Winter Cup South Korea 이 토너먼트는 이틀동안 진행되며 한국시간 오후 10시에 시작합니다. … %F0%9F%8F%86-cm-winter-cup-south-korea/5fa96e23cb05f12afea7acbb/info? … 진행 라운드 -매 경기 후에 \"승리/패배\" 스크린샷은 찍혀 있어야 합니다.",
+  "칠리마운틴 Winter Cup South Korea 이 토너먼트는 이틀동안 진행되며 한국시간 오후 10시에 시작합니다. … %F0%9F%8F%86-cm-winter-cup-south-korea/5fa96e23cb05f12afea7acbb/info? … 진행 라운드 -매 경기 후에 \"승리/패배\" 스크린샷은 찍혀 있어야 합니다.",
+  "한일전 (축구) 한일전 (축구) … 경쟁 팀 … 첫 경기 … 3월 7일 경기 수 … 최다 승리 대한민국 (43) 최다 득점자 … (6골) 최근 경기 대한민국 2 … : 1 일본 (2023 항저우아시안게임) 역대 전적 43승 23무 16패 … (韓日戰, … South Korea–Japan Football",
+  "한일전 (축구) 한일전 (축구) … 경쟁 팀 … 첫 경기 … 3월 7일 경기 수 … 최다 승리 대한민국 (43) 최다 득점자 … (6골) 최근 경기 대한민국 2 … : 1 일본 (2023 항저우아시안게임) 역대 전적 43승 23무 16패 … (韓日戰, … South Korea–Japan Football",
+  "한국 대 앙골라전 경기 영상 - 해외축구 갤러리 si=x3LqFXu_gH7r99JB 한국 v 앙골라 - 2006 친선경기 (South Korea v Angola - 2006 Friendly Match) (",
+  "제14회 로보컵 코리아 오픈, 7일 평창 알펜시아서 개막 | 연합뉴스 (춘천=연합뉴스) 이재현 기자 = 제14회 한국 로보컵 오픈(RoboCup South Korea Open 2026) 개막식이 오는 7일 평창 알...",
+  "파일:Flag of South Korea (1949–1984).svg - 위키백과, 우리 모두의 백과사전 안컵 AFC 아시안컵 FISU 세계 대학 경기 대회 ISSF 세계 사격 선수권 대회 UTC+08:30 강병철 (야구인) 걸프 전쟁 구포역 열차 전복 사고 김덕현 (육상 선수) 김두한 김성근 (야구인) 김시진 김영덕 (야구인) 김응용 대한민국 야구 국가대표팀 대한민국 제10대 국회의원 선거 대한민국 제10대 대통령 선",
+  "'안세영 완벽 부활!'세계선수권 前챔피언 야마구치 완파, 정상 탈환…이소희-백하나는 31년 만에 여복 우승 쾌거 South Korea? South Korea's An Se Young reacts after her win against Japan's Akane Yamaguchi in the women's singles final match of the Badminton World Championships in New Delhi … South Korea?"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

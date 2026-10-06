@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T04:21:37.313110+00:00",
+ "order": [
+  "9 Medals, 5 Golds: Indian Archers Deliver Historic Asian Games Masterclass | Asian Games News 2일 전Kumkum defeated South Korea's reigning world champion and Olympic medallist Kang Chaeyoung 6-3 in the quarter... rotation with an eight, Neeraj responded with a 10 and carried a one-point advantage into the final arrow. Dhiraj finished with a 10, but Neeraj matched it to secure bronze. Dhiraj had earlier defeated Uzbekistan's...2일 전",
+  "Asian Games 2026 archery: Kumkum Mohod’s historic feat secures Olympic quota for India 3일 전Kumkum had beaten South Korea’s reigning world champion and Olympic medallist Kang Chaeyoung 6-3 in the... rotation with an eight, Neeraj responded with a 10 and maintained his one-point advantage heading into the final arrow. Dhiraj finished with a 10, but Neeraj matched it to seal the bronze. Dhiraj had beaten Uzbekistan...3일 전",
+  "An Unforgettable Journey | Giant Bicycles South Korea 대한민국 Bahati 재단, Jesse Reese재단, 그리고 Augies Quest의 모금을 위해 아메리카 전역으로 라이딩하다 … 로테이션 계획은 이렇습니다: 4명의 라이더 중 3명의 라이더는 30분 인터벌로 로테이션을 하고, 네 번째 라이더는 6시간 동안 휴식을 취합니다.",
+  "한국 V 우즈베키스탄 - 2012 친선경기 (South Korea V Uzbekistan - 2012 Friendly Match) Visit Your Url 감독 - 바딤 아브라모프 한국 V 우즈베키스탄 - 2012 친선경기 (South Korea V Uzbekistan - 2012 Friendly Match) For Country: United States City: Concord, Las Vegas, Los Angeles …",
+  "Iraq U19 vs South Korea U19: 실시간 점수, 실시간 방송 + 예측 | RedScores Iraq U19 vs South Korea U19 실시간 방송을 18/10/2020에서 16:00에서 시청하세요. Iraq U19 - South Korea U19 예측, 실시간 점수 및 시작 11명과 팀 소식. 상호 통계.",
+  "Syria U23 vs South Korea U23: 실시간 점수, 실시간 방송 + 예측 | RedScores Syria U23 vs South Korea U23 실시간 방송을 14/01/2018에서 12:30에서 시청하세요. Syria U23 - South Korea U23 예측, 실시간 점수 및 시작 11명과 팀 소식. 상호 통계.",
+  "India at Asian Games 2026, Day 11: Compound swept, world record matched and Olympic quota secured - as it.... 6일 전And the women’s hockey team kept its gold-medal dream alive after beating South Korea 2-0 to reach the final. The finish line is now getting closer in Aichi... India’s Sumit Nagal defeated Uzbekistan’s Sergey Fomin 6-3, 6-2 in the third round of the men’s singles to reach the quarter-finals. Nagal is now one win away...6일 전",
+  "List of South Korean films of 1994 Asia Central Kazakhstan Kyrgyzstan Tajikistan Turkmenistan Uzbekistan Eastern China Hong Kong Macau Japan Korea North Korea South Korea Mongolia Taiwan Southern Afghanistan Bangladesh Bhutan India Assamese Bengali"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}
