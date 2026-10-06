@@ -21,6 +21,8 @@
 """
 from __future__ import annotations
 
+import datetime as _dt
+
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -331,7 +333,7 @@ def prompt_tail(task: Subtask) -> str:
 #    ⚠️ 하위 과제 경로에서는 **부르지 않는다**(M128).
 
 
-def extract_prompt(task: Any, kinds: list) -> str:
+def extract_prompt(task: Any, kinds: list, *, game: dict | None = None) -> str:
     """🔴 추출 한 번에 보내는 **규칙 글**(지시서 §1-5).
 
     > "아래 문단에서 담당 유형(`{유형 목록}`)의 변수만 JSON 으로 뽑아라.
@@ -347,7 +349,27 @@ def extract_prompt(task: Any, kinds: list) -> str:
         "URL·발행일을 되찾는다.\n"
         "⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 "
         "둔다 — 빈 것이 지어낸 것보다 낫다.\n"
-        "🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\n")
+        "🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\n"
+        # ══════════════════════════════════════════════════════════
+        # 🔴🔴 **`team` 은 열쇠다** — §8-1 · M48 (실측 2026-10-06)
+        # ══════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 모델이 `team: "Jamaica"` 라고 적어 `name_not_key` 로 **폐기**됐다.
+        #     M48 이 그것을 **옮기지 않고 버리는** 까닭은 *"옮기면 모델의 그
+        #     버릇이 숨는다"* 다 — 그러니 고칠 곳은 **알려 주는 것**이다.
+        #  🔴 열쇠를 **글자로** 준다. 이름을 적으면 그 줄은 버려진다고도 적는다.
+        + _keys_line(game))
+
+
+def _keys_line(game: dict | None) -> str:
+    """🔴 `team` 칸에 쓸 **열쇠 두 개**를 글자로 알려 준다(§8-1 · M48)."""
+    box = dict(game or {})
+    home_k, away_k = str(box.get("home_id") or ""), str(box.get("away_id") or "")
+    if not (home_k and away_k):
+        return ("🔴 `team` 은 **열쇠**여야 한다(이름을 적으면 그 줄은 버려진다).\n")
+    return (f"🔴 `team` 칸에는 **이 두 열쇠 중 하나만** 적는다 — "
+            f"{box.get('home')} = `{home_k}` · {box.get('away')} = `{away_k}`. "
+            f"⚠️ 팀 **이름**을 적으면 그 줄은 **버려진다**(§8-1 · M48).\n")
 
 
 def _seeds(task: Any, game: dict) -> list[tuple[str, str]]:
@@ -537,6 +559,12 @@ def paragraph_block(docs: list, kinds: list, *, cap: int = 0) -> tuple[str, dict
     return "\n".join(lines), where
 
 
+def _aware(when: object):
+    """🔴 tz 있는 값만 돌려준다 — 없으면 `None`(§8-7)."""
+    from app import timefmt
+    return timefmt.aware(when)
+
+
 def _agent_inp(game: dict):
     """🔴 이름→열쇠 변환에 필요한 **최소 입력** — `_vars_from` 이 그것을 쓴다.
 
@@ -551,7 +579,11 @@ def _agent_inp(game: dict):
         away_names=(str(game.get("away") or ""),),
         competition=str(game.get("league") or ""),
         sport=str(game.get("sport") or ""),
-        kickoff_utc=game.get("kickoff"), venue=str(game.get("venue") or ""),
+        # 🔴 tz 없는 값은 **안 넣는다** — `AgentInput` 이 그것을 거부한다(§8-7).
+        #    ⚠️ 없으면 `_vars_from` 의 이름 해석만 쓰므로 킥오프가 필요 없다.
+        kickoff_utc=(_aware(game.get("kickoff"))
+                     or _dt.datetime.now(_dt.timezone.utc)),
+        venue=str(game.get("venue") or ""),
         langs=tuple(game.get("langs") or ("en",)))
 
 
@@ -662,7 +694,8 @@ async def _extract(task: Any, kinds: list, block: str, where: dict, *,
 
     from app import agentloop, cells, solar
     cfg = dict(_sub_cfg())
-    msgs = [{"role": "system", "content": extract_prompt(task, kinds)},
+    msgs = [{"role": "system",
+             "content": extract_prompt(task, kinds, game=game)},
             {"role": "user", "content": block}]
     try:
         got = await asyncio.to_thread(

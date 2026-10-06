@@ -1,0 +1,793 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Jamaica Honduras",
+ "recorded_at": "2026-10-06T01:50:38.274801+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Honduras Vs Jamaica | Men's Under 20 | Concacaf",
+   "content": "Full match details for Honduras Vs Jamaica in the Men's Under 20 — lineups, score and match updates on Concacaf.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.concacaf.com/competitions/under-20-championship/matches/777caa6c44ca449eba878a96d6561876/honduras-vs-jamaica",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.concacaf.com",
+    "/competitions/under-20-championship/matches/777caa6c44ca449eba878a96d6561876/honduras-vs-jamaica",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras vs Jamaica | Highlights | Concacaf",
+   "content": "Men’s National Competitions Women’s National Competitions Club Competitions … Costa Rica … Antigua and Barbuda … El Salvador … United Stat",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.concacaf.com/competitions/under-20-championship/videos/honduras-vs-jamaica-highlights-x0159",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.concacaf.com",
+    "/competitions/under-20-championship/videos/honduras-vs-jamaica-highlights-x0159",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras U20 Vs Jamaica U20 | Men's Under 20 | Concacaf",
+   "content": "Full match details for Honduras U20 Vs Jamaica U20 in the Men's Under 20 — lineups, score and match updates on Concacaf.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.concacaf.com/competitions/under-20-championship/matches/777caa6c44ca449eba878a96d6561876/honduras-u20-vs-jamaica-u20",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.concacaf.com",
+    "/competitions/under-20-championship/matches/777caa6c44ca449eba878a96d6561876/honduras-u20-vs-jamaica-u20",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica vs. Honduras | 2019 Concacaf Gold Cup Preview | MLSSoccer.com",
+   "content": "Dylan Butler 2019 Concacaf Gold Cup — Group Stage Jamaica vs.Honduras National Stadium — … Jamaica June 17 — … taking on Honduras at The Office in both team's Group C opener Monday night.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/jamaica-vs-honduras-2019-concacaf-gold-cup-preview",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/jamaica-vs-honduras-2019-concacaf-gold-cup-preview",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras U20 Vs Jamaica | Men's Under 20 | Concacaf",
+   "content": "Full match details for Honduras U20 Vs Jamaica in the Men's Under 20 — lineups, score and match updates on Concacaf.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.concacaf.com/competitions/under-20-championship/matches/777caa6c44ca449eba878a96d6561876/honduras-u20-vs-jamaica",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.concacaf.com",
+    "/competitions/under-20-championship/matches/777caa6c44ca449eba878a96d6561876/honduras-u20-vs-jamaica",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras national football team: record v Jamaica",
+   "content": "Honduras national football team record against Jamaica including all match details.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.11v11.com/teams/honduras/tab/opposingTeams/opposition/Jamaica/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.11v11.com",
+    "/teams/honduras/tab/opposingTeams/opposition/Jamaica/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "‘Left Eye’ died where she felt peace - Jamaica Observer",
+   "content": "TEGUCIGALPA, Honduras (AP) -- Lisa \"Left Eye\" Lopes died in a place that she loved. the 30 year-old singer of the Grammy-winning trio TLC would escape to her condo on Honduras' northern co …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2002/04/26/left-eye-died-where-she-felt-peace/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2002/04/26/left-eye-died-where-she-felt-peace/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Reggae Boyz host Guatemala to kick off Nations League - Jamaica Observer",
+   "content": "KINGSTON, … Jamaica are set to host Central American teams Guatemala and Honduras in their first two games in their Group B Concacaf Nations League first round in the September FIFA window …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2026/07/24/reggae-boyz-host-guatemala-kick-off-nations-league/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2026/07/24/reggae-boyz-host-guatemala-kick-off-nations-league/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras beats Nicaragua 2-0 to lead Group C in Central American World Cup qualifying",
+   "content": "Updated [hour]: … Honduras (AP) — Rommel Quioto and Alexy Vega scored second-half goals and Honduras beat Nicaragua 2-0 Tuesday to take the group lead in the CONCACAF World Cup qualifying final round after the first two matches.Quioto scored in the 47th minute …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://apnews.com/article/honduras-nicaragua-jamaica-world-cup-2026-concacaf-cb0c9f69c79a0982e76aa7ae1c786ee5",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/honduras-nicaragua-jamaica-world-cup-2026-concacaf-cb0c9f69c79a0982e76aa7ae1c786ee5",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras, Jamaica square off in Group C | Concacaf",
+   "content": "Honduras, Jamaica square off",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.concacaf.com/competitions/under-20-championship/news/honduras-jamaica-square-off-in-group-c",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.concacaf.com",
+    "/competitions/under-20-championship/news/honduras-jamaica-square-off-in-group-c",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Concacaf World Cup qualifying 2022 schedule for Octagonal final round | MLSSoccer.com",
+   "content": "Jamaica Honduras vs. Jamaica Matchday 5 - Sunday, October 10 Jamaica vs.Canada Mexico vs.Honduras Costa Rica vs.El Salvador Panama vs.United States Matchday 6 - Wednesday …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/concacaf-world-cup-qualifying-2022-schedule-for-octagonal-final-round",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/concacaf-world-cup-qualifying-2022-schedule-for-octagonal-final-round",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica 3, Honduras 2 | 2019 Concacaf Gold Cup Match Recap | MLSSoccer.com",
+   "content": "Dylan Butler All eyes were on Leon Bailey for his much-anticipated Jamaica debut, but it was veteran Dever Orgill who stole the show.The 31-year-old forward struck for a pair of first-half goals to pace the Reggae Boyz to a 3-2 win over Honduras in both teams …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/jamaica-3-honduras-2-2019-concacaf-gold-cup-match-recap",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/jamaica-3-honduras-2-2019-concacaf-gold-cup-match-recap",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Cheap flights from Honduras to Jamaica with the best fare",
+   "content": "Find Copa Airlines flights from Honduras to Jamaica from USD 646* … Conditions Home Flights To Jamaica Honduras to Jamaica From To Budget USD Sort sort keyboard_arrow_down Comayagua …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.copaair.com/en/flights-from-honduras-to-jamaica",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.copaair.com",
+    "/en/flights-from-honduras-to-jamaica",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica v Honduras, 17 June 2019",
+   "content": "11v11.com match report - Jamaica v Honduras, CONCACAF Gold Cup 2019 Group C, 17 June 2019",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.11v11.com/matches/jamaica-v-honduras-17-june-2019-362315/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.11v11.com",
+    "/matches/jamaica-v-honduras-17-june-2019-362315/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica v Honduras, 08 September 2023",
+   "content": "11v11.com match report - Jamaica v Honduras, CONCACAF Nations League 2024 League A Group B, 08 September 2023",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.11v11.com/matches/jamaica-v-honduras-08-september-2023-380690/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.11v11.com",
+    "/matches/jamaica-v-honduras-08-september-2023-380690/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica v Honduras, 30 March 2022",
+   "content": "11v11.com match report - Jamaica v Honduras, FIFA World Cup 2022 CONCACAF 3rd round, 30 March 2022",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.11v11.com/matches/jamaica-v-honduras-30-march-2022-374881/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.11v11.com",
+    "/matches/jamaica-v-honduras-30-march-2022-374881/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2019 CONCACAF Gold Cup Group C",
+   "content": "1 The group consisted of Curaçao El Salvador Honduras , … advanced to the knockout stage Teams Draw position Team Zone Method of qualification Date of qualification Finals appearance Last appearance Previous best performance CONCACAF Rankings FIFA Rankings June …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/2019_CONCACAF_Gold_Cup_Group_C",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/2019_CONCACAF_Gold_Cup_Group_C",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Reggae Boyz drawn in Group B of Concacaf Nations League - Jamaica Observer",
+   "content": "KINGSTON, Jamaica—Jamaica’s Reggae Boyz have been drawn in Group B in League A of the 2026/2027 edition of the CONCACAF Nations League alongside Honduras …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2026/07/23/reggae-boyz-drawn-group-b-concacaf-nations-league/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2026/07/23/reggae-boyz-drawn-group-b-concacaf-nations-league/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica v Honduras, 23 July 2000",
+   "content": "11v11.com match report - Jamaica v Honduras, FIFA World Cup 2002 CONCACAF semi-final group D, 23 July 2000",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.11v11.com/matches/jamaica-v-honduras-23-july-2000-269091/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.11v11.com",
+    "/matches/jamaica-v-honduras-23-july-2000-269091/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico and Jamaica come from behind late to qualify for 2024 Copa América",
+   "content": "Edson Álvarez saved Mexico from defeat with a goal in the 11th minute of second-half stoppage time and El Tri beat Honduras 4-2 on penalty kicks to qualify for next year’s Copa América along with Jamaica …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://apnews.com/article/mexico-jamaica-qualify-copa-america-2b964ab5eabe0f5472fc530cbbfb472c",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/mexico-jamaica-qualify-copa-america-2b964ab5eabe0f5472fc530cbbfb472c",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [
+  {
+   "infobox": "Honduras–Jamaica border",
+   "id": "https://www.wikidata.org/entity/Q17351769",
+   "content": "international maritime border",
+   "img_src": null,
+   "urls": [
+    {
+     "title": "Wikidata",
+     "url": "http://www.wikidata.org/entity/Q17351769"
+    }
+   ],
+   "attributes": [
+    {
+     "label": "Country",
+     "value": "Jamaica, Honduras",
+     "entity": "P17"
+    }
+   ],
+   "engine": "wikidata",
+   "url": null,
+   "template": "default.html",
+   "parsed_url": null,
+   "title": "",
+   "thumbnail": "",
+   "priority": "",
+   "engines": [
+    "wikidata"
+   ],
+   "positions": "",
+   "score": 0,
+   "category": "",
+   "publishedDate": null,
+   "iframe_src": null
+  }
+ ],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

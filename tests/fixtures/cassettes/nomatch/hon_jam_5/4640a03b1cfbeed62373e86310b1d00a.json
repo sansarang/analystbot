@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Jamaica CONCACAF Nations League leaves camp",
+ "recorded_at": "2026-10-06T01:50:37.256960+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "BAILEY’S OUT! - Jamaica Observer",
+   "content": "Reggae Boyz winger to miss Concacaf Nations League group stage",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2026/09/22/baileys-out/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2026/09/22/baileys-out/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Haji Wright scores twice in extra time, US beats Jamaica 3-1 to reach CONCACAF Nations League final",
+   "content": "The United States escaped defeat with an own goal in the sixth minute of second-half stoppage time, Haji Wright scored twice in extra time and the Americans rallied past Jamaica 3-1 to reach the CONCACAF Nations League final against Mexico on Sunday.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://apnews.com/article/united-states-jamaica-score-6b06947d119914b4587c75c8a5342ee2",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/united-states-jamaica-score-6b06947d119914b4587c75c8a5342ee2",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica vs Curaçao: Concacaf World Cup Qualifiers stats & head-to-head",
+   "content": "Follow live text commentary, score updates and match stats from Jamaica vs Curaçao in the Concacaf World Cup Qualifiers",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.bbc.com/sport/football/live/cq50x8jnyw4t",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bbc.com",
+    "/sport/football/live/cq50x8jnyw4t",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "CONCACAF Nations League",
+   "content": "CONCACAF Nations League Organiser(s) … years ago … North America Central America … Qualifier for Gold Cup Copa América Current champions … (1st t",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/CONCACAF_Nations_League",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/CONCACAF_Nations_League",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Reggae Boyz host Guatemala to kick off Nations League - Jamaica Observer",
+   "content": "KINGSTON, … Jamaica are set to host Central American teams Guatemala and Honduras in their first two games in their Group B Concacaf Nations League first round in the September FIFA window …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2026/07/24/reggae-boyz-host-guatemala-kick-off-nations-league/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2026/07/24/reggae-boyz-host-guatemala-kick-off-nations-league/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USA 4-2 Jamaica: Mauricio Pochettino's side advance to Concacaf Nations League semi-finals",
+   "content": "The United States beat Jamaica for the second time in four days with a 4-2 victory to advance to the semi-finals of the Concacaf Nations League.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.bbc.com/sport/football/live/cy7dm7x8zx8t",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bbc.com",
+    "/sport/football/live/cy7dm7x8zx8t",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "'My mentality never wavered' - USMNT star Tyler Adams on injury recovery, becoming a father and his long-awaited return for the CONCACAF Nations League | Goal.com US",
+   "content": "That time away lead to surgery, rehab and work, … Adams is back with the USMNT for the upcoming CONCACAF Nations League semifinal against Jamaica.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.goal.com/en-us/lists/tyler-adams-usmnt-concacaf-nations-league/bltf733b7808641f741",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/en-us/lists/tyler-adams-usmnt-concacaf-nations-league/bltf733b7808641f741",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica national team TV schedule",
+   "content": "CONCACAF Nations League, as of 2023, can be found on Paramount+. Starting at $10.99/mo 175+ Exclusive EPL matches per season CONCACAF Jamaica TV Schedule EDITORS …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://worldsoccertalk.com/nations/jamaica-national-team-tv-schedule/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "worldsoccertalk.com",
+    "/nations/jamaica-national-team-tv-schedule/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Preview of October Concacaf qualifiers",
+   "content": "Jamaica wrap up the window at home against Bermuda, … while Dick Advocaat's men get a second straight home date with Trinidad and Tobago going to Willemstad.The last time these two sides met in Curaçao in a 2023 Nations League tilt …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/concacaf-qualifiers-october-preview",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.fifa.com",
+    "/en/tournaments/mens/worldcup/canadamexicousa2026/articles/concacaf-qualifiers-october-preview",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "What is the Concacaf Nations League, and how does it work? | MLSSoccer.com",
+   "content": "What is Concacaf Nations League? How does it work?",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/what-concacaf-nations-league-and-how-does-it-work",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/what-concacaf-nations-league-and-how-does-it-work",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USMNT 4-2 Jamaica: summary, score, goals, highlights CONCACAF Nations League",
+   "content": "A 4-2 win over Jamaica , securing their place in the semi-finals of the CONCACAF Nations League with a 5-2 aggregate victory A brace from Christian Pulisic got the ball rolling …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://en.as.com/soccer/usmnt-jamaica-live-online-score-stats-and-updates-concacaf-nations-league-n-2/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/soccer/usmnt-jamaica-live-online-score-stats-and-updates-concacaf-nations-league-n-2/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USMNT barely survives Jamaica to advance to Nations League final vs. Mexico",
+   "content": "A third straight Concacaf Nations League title is still in play for the U.S. … which trailed Jamaica for more than 90 minutes in Thursday's semifinal before scoring three times to win 3-1 in extra time.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.foxsports.com/stories/soccer/usmnt-survives-jamaica-barely-to-advance-to-nations-league-final",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foxsports.com",
+    "/stories/soccer/usmnt-survives-jamaica-barely-to-advance-to-nations-league-final",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico at the CONCACAF Nations League",
+   "content": "CONCACAF Nations League … 2022–23 CONCACAF Nations League … \"2021 Concacaf Nations League Finals provisional rosters and kick off times confirmed\"",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Mexico_at_the_CONCACAF_Nations_League",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Mexico_at_the_CONCACAF_Nations_League",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica Concacaf Nations League Standings",
+   "content": "Jamaica Concacaf Nations League standings, conference rankings, updated Jamaica records and playoff standings.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.foxsports.com/soccer/jamaica-men-team-standings?type=concacaf+nations+league",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foxsports.com",
+    "/soccer/jamaica-men-team-standings",
+    "",
+    "type=concacaf+nations+league",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Reggae Boys beat Guatemala in Concacaf Nations League A opener – IRIE FM",
+   "content": "Jamaica’s Reggae Boyz … Jamaica will tackle Honduras on Monday in their next CONCACAF Nations League assignment at the National Stadium.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://iriefm.net/reggae-boys-beat-guatemala-in-concacaf-nations-league-a-opener/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "iriefm.net",
+    "/reggae-boys-beat-guatemala-in-concacaf-nations-league-a-opener/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "What is CONCACAF Nations League? Format, schedule, rules, and all-time winners for soccer tournament | Sporting News",
+   "content": "The CONCACAF Nations League, a continental tournament featuring the top teams in North and Central America, is nearing its conclusion.The USA, … and Jamaica.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.sportingnews.com/us/soccer/news/what-is-concacaf-nations-league-schedule-rules-winners-soccer/y39hq6cvll1glkfpwaxqldby",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportingnews.com",
+    "/us/soccer/news/what-is-concacaf-nations-league-schedule-rules-winners-soccer/y39hq6cvll1glkfpwaxqldby",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica 0-1 USMNT summary, score, goals, highlights CONCACAF Nations League",
+   "content": "Mauricio Pochettino’s side take a 1-0 aggregate lead into the second leg of their Nations League quarter-final.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://en.as.com/soccer/jamaica-usmnt-live-online-score-stats-and-updates-concacaf-nations-league-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/soccer/jamaica-usmnt-live-online-score-stats-and-updates-concacaf-nations-league-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica Tables & Standings - 2026 | Goal.com US",
+   "content": "Latest Jamaica table and standing positions for CONCACAF Nations League, … CONCACAF Gold Cup, CONCACAF Gold Cup Qualification, … CONCACAF Nations League Qualification",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.goal.com/en-us/team/jamaica/table/8yhjl13p7luh3v905btbvz42t",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/en-us/team/jamaica/table/8yhjl13p7luh3v905btbvz42t",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Reggae Boys sufferes first loss in their Concacaf Nations league campaign – IRIE FM",
+   "content": "The Reggae Boys suffered their first loss in their 2026/2027 Concacaf Nations league campaign after going down 1-nil to ten man Honduras la",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://iriefm.net/reggae-boys-sufferes-first-loss-in-their-concacaf-nations-league-campaign/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "iriefm.net",
+    "/reggae-boys-sufferes-first-loss-in-their-concacaf-nations-league-campaign/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USA vs. Jamaica LIVE: Full highlights of CONCACAF Gold Cup opener | Marca",
+   "content": "USA 1-1 Jamaica, … Soldier Field in Chicago USMNT goalkeeper Matt Turner is just one of five players who participated in the Nations League final last week.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.marca.com/en/football/concacaf-gold-cup/estados-unidos-jamaica/2023/06/25/01_0186_20230625_596_1723-live.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.marca.com",
+    "/en/football/concacaf-gold-cup/estados-unidos-jamaica/2023/06/25/01_0186_20230625_596_1723-live.html",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

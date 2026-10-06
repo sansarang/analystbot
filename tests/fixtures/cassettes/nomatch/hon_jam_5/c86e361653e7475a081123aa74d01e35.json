@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Gabriel Garcia Updates Jamaica",
+ "recorded_at": "2026-10-06T01:50:55.796489+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "FIFA confirm Garcia World Cup corruption appeal - Jamaica Observer",
+   "content": "PARIS, … 2014 (AFP) - FIFA on Friday confirmed that investigator Michael Garcia has lodged an appeal after complaining his report into alleged World Cup corruption was misrepresented.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2014/11/13/fifa-confirm-garcia-world-cup-corruption-appeal/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2014/11/13/fifa-confirm-garcia-world-cup-corruption-appeal/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia and the surrealism of solitude - Jamaica Observer",
+   "content": "Readers of One Hundred Years of Solitude by Gabriel García Márquez will recall the surrealistic, magical realism that permeates his account of the tortured history of Colombia.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2010/05/11/colombia-and-the-surrealism-of-solitude/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2010/05/11/colombia-and-the-surrealism-of-solitude/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica Gleaner News - García can govern despite Fujimori - Wednesday | September 26, 2007",
+   "content": "( L - R ) Garcia, FujimoriLIMA (Reuters):Peruvian President Alan García said yesterday his legislative agenda will not be derailed by a dispute with the political party of disgraced former President Alberto Fujimori …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "http://old.jamaica-gleaner.com/gleaner/20070926/int/int1.html",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "old.jamaica-gleaner.com",
+    "/gleaner/20070926/int/int1.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "No pressure for Roma - Garcia - Sport - Jamaica Star - September 30, 2014",
+   "content": "Roma coach Rudi Garcia says his team will be playing without pressure when they face Manchester City in the Champions League today.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "http://old.jamaica-star.com/thestar/20140930/sports/sports11.html",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "old.jamaica-star.com",
+    "/thestar/20140930/sports/sports11.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica Gleaner News - Garcia takes two-stroke lead - Friday | July 20, 2007",
+   "content": "CARNOUSTIE, Scotland (AP): IT WASN'T 'Car-Nasty' this time around - especially for Sergio Garcia. Garcia took advantage of charitable conditions at Carnoustie to shoot a six-under-par 65 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "http://old.jamaica-gleaner.com/gleaner/20070720/sports/sports7.html",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "old.jamaica-gleaner.com",
+    "/gleaner/20070720/sports/sports7.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Gothic Historical Fiction (303 books)",
+   "content": "303 books based on 162 votes: Mexican Gothic by Silvia Moreno-Garcia, The Woman in Black by Susan Hill, Jamaica Inn by Daphne du Maurier, The Little Stra...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.goodreads.com/list/show/123999.Gothic_Historical_Fiction",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goodreads.com",
+    "/list/show/123999.Gothic_Historical_Fiction",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Iana Tickle Garcia",
+   "content": "Iana Tickle Garcia … Iana Olivia Tickle Garcia … \"Iana Tickle Garcia is Miss Universe Jamaica 2019\" … \"Iana Tickle Garcia to rep Jamaica at 2019 Miss Universe pageant\"",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Iana_Tickle_Garcia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Iana_Tickle_Garcia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Inter Miami academy coach impressed with local youth talent",
+   "content": "Inter Miami Academy coach Diego Garcia was pleased with the performances of several of Jamaica’s young players during their Royal Caribbean International Youth Clinic hosted with Ballaz Academy yesterday at Liberty Park.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://jamaica-star.com/article/sports/20250314/inter-miami-academy-coach-impressed-local-youth-talent",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "jamaica-star.com",
+    "/article/sports/20250314/inter-miami-academy-coach-impressed-local-youth-talent",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Yorke puts faith in teen sensations as Soca Warriors prepare for Jamaica tests By Ben McLeod",
+   "content": "\"These two players remind me of when I started playing football for the national team. When you look at Derrel Garcia...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.caribbeannationalweekly.com/posts/yorke-puts-faith-in-teen-sensations-as-soca-warriors-prepare-for-jamaica-tests-by-ben-mcleod",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.caribbeannationalweekly.com",
+    "/posts/yorke-puts-faith-in-teen-sensations-as-soca-warriors-prepare-for-jamaica-tests-by-ben-mcleod",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Quotes - Gabby (Kingston, 08, Jamaica) Showing 1-10 of 10",
+   "content": "Gabby has 10 quotes liked quotes by C.S. Lewis, Jane Austen, Stephanie Garber, Frank Zappa, Dr. … Lewis, Silvia Moreno-Garcia, Rebecca Roanhors...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.goodreads.com/quotes/list/61583303-gabby",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goodreads.com",
+    "/quotes/list/61583303-gabby",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Two Suspects To Appear In Court On Friday On Charges Related To Jobs Scam",
+   "content": "Two persons, including an inmate at one of Jamaica’s correctional facilities, are to appear in the Kingston & St. … Inmate Garcia Perez, who a",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://radiojamaicanewsonline.com/local/two-suspects-to-appear-in-court-on-friday-on-charges-related-to-jobs-scam",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "radiojamaicanewsonline.com",
+    "/local/two-suspects-to-appear-in-court-on-friday-on-charges-related-to-jobs-scam",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "The Rolling Stones Unveil New Rum Brand, Inspired by One of Their Most Iconic Songs",
+   "content": "Inspired by lyrics from \"Jumpin’ Jack Flash,\" the spirit is a blend of rums from Jamaica, Barbados and Dominican Republic, aged in charred oak barrels",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.rollingstone.com/product-recommendations/lifestyle/rolling-stones-crossfire-hurricane-rum-brand-buy-online-1234879475/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.rollingstone.com",
+    "/product-recommendations/lifestyle/rolling-stones-crossfire-hurricane-rum-brand-buy-online-1234879475/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Garcia denies false statements on non-payment of scholars’ tuition",
+   "content": "The Ministry of Education (MoE) is seeking to add further clarification to the issue of ‘Government’s non-payment of full tuition and other fees for additional scholars studying in Jamaica …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.loopnews.com/content/garcia-denies-false-statements-on-non-payment-of-scholars-tuition/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.loopnews.com",
+    "/content/garcia-denies-false-statements-on-non-payment-of-scholars-tuition/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Broadbell Crashes Out of Sprint Hurdles - But Many Caribbean Athletes Make Progress at World Champs",
+   "content": "Photo by CNW Women's | … Forbes (Jamaica 🇯🇲) Ahye, … Garcia (Cuba 🇨🇺) It was business as usual for Jamaica’s four women who all made progress to Monday’s semi-finals of the 100m.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.caribbeannationalweekly.com/posts/broadbell-crashes-out-of-sprint-hurdles-but-many-caribbean-athletes-make-progress-at-world-champs",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.caribbeannationalweekly.com",
+    "/posts/broadbell-crashes-out-of-sprint-hurdles-but-many-caribbean-athletes-make-progress-at-world-champs",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "RIU Celebrates Hotel Reopening and Commitment to Jamaican Employees - Nationwide 90FM",
+   "content": "L-R: Frank Sondern, regional director of operations for RIU Hotels Jamaica; Niurka Garcia Linton, director of sales at RIU Resorts Jamaica; Luis Suarez …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://nationwideradiojm.com/riu-celebrates-hotel-reopening-and-commitment-to-jamaican-employees/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "nationwideradiojm.com",
+    "/riu-celebrates-hotel-reopening-and-commitment-to-jamaican-employees/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "PLUS: SOCCER; Mexico Reaches Gold Cup Semifinals (Published 2003)",
+   "content": "Omar Bravo scored in the 37th minute as Mexico beat Jamaica, 5-0, in Mexico City yesterday to advance to the semifinals of the Concacaf Gold Cup.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.nytimes.com/2003/07/21/sports/plus-soccer-mexico-reaches-gold-cup-semifinals.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/2003/07/21/sports/plus-soccer-mexico-reaches-gold-cup-semifinals.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Destra’ s new musical flavors – Caribbean Life",
+   "content": "Destra Garcia promises fans attending the 2012 Jamaica Jazz and Blues Festival - The Art of Music from Jan. 26 - 28 at the Trelawny Multipurpose Stadium some",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.caribbeanlife.com/destra-s-new-musical-flavors/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.caribbeanlife.com",
+    "/destra-s-new-musical-flavors/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Soca Artistes We Love: Destra Garcia",
+   "content": "Destra Garcia, known as the Queen of Bacchanal, Destra Garcia has built a large Caribbean following for her energetic performances and catchy songs.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.loopnews.com/content/soca-artistes-we-love-destra-garcia/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.loopnews.com",
+    "/content/soca-artistes-we-love-destra-garcia/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Shepherd Slams Annie Palmer Costume Choice As A National Embarrassment",
+   "content": "The Miss Universe Jamaica Organisation is again defending its decision to have Miss Universe Jamaica, Iana Tickle Garcia, wear an Annie Palmer inspired national costume at the recently concluded Miss",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://nationwideradiojm.com/sheperd-slams-annie-palmer-costume-choice-as-a-national-embarrasment/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "nationwideradiojm.com",
+    "/sheperd-slams-annie-palmer-costume-choice-as-a-national-embarrasment/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica denies support for US attacks against Cuba",
+   "content": "Rather, Foreign Minister Kamina Johnson-Smith said that the five-day call on the northern Caribbean island has more to do with a goodwill visit underlining strong bilateral relations between the US and Jamaica.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.caribbeanlife.com/denies-support-us-attacks-against-cuba/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.caribbeanlife.com",
+    "/denies-support-us-attacks-against-cuba/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}
