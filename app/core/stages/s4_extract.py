@@ -64,8 +64,8 @@ def unmapped_of(sid: str) -> list[str]:
     return [k for k in group_kinds(sid) if not adapt.catalog_type(k)]
 
 
-def paragraphs_of(docs: list[Doc], kinds: list[str], *, cap: int = 0
-                  ) -> tuple[str, dict[str, str]]:
+def paragraphs_of(docs: list[Doc], kinds: list[str], *, cap: int = 0,
+                  note: Any = None) -> tuple[str, dict[str, str]]:
     """🔴 ④ 문단 묶음 + **머리표 → 문서 id** 표. `(글, 표)`.
 
     문단마다 `[D1-P3] (도메인, 발행일)` 머리표를 붙인다 — 모델은 `doc_id` 만
@@ -74,8 +74,8 @@ def paragraphs_of(docs: list[Doc], kinds: list[str], *, cap: int = 0
        칸에 적어 전부 폐기됐다(그래서 enum 으로 막았고, 머리표도 id 로 적는다).
     """
     from app import readtext
+    from app.core import rank
     from app.core.llm import cfg
-    from app.research import rerank
     cap = cap or int((((cfg().get("budget") or {}).get("per_subtask") or {})
                       .get("paras_max")) or 18)
     want = " ".join(str(k) for k in (kinds or ()))
@@ -83,7 +83,14 @@ def paragraphs_of(docs: list[Doc], kinds: list[str], *, cap: int = 0
     where: dict[str, str] = {}
     for d in docs:
         paras = readtext.paragraphs(d.body)
-        got, _said = rerank.paragraphs(want, paras)
+        # 🔴 **녹음·재생을 거친다**(`rank`) — 재생에서 순서가 갈리면 추출 요청이
+        #    갈리고 LLM 카세트가 전부 빗나간다(실측 2026-10-06).
+        got, said = rank.paragraphs(want, paras)
+        if not got:
+            got = paras                    # ⚠️ 못 받았으면 **원래 순서**다
+            if note is not None:
+                note(f"s4 재정렬을 못 받았다({d.id}) — 원래 순서로 간다: "
+                     f"{said[:90]}")
         for j, para in enumerate(got[:6], 1):
             if len(lines) >= cap:
                 break
@@ -152,7 +159,7 @@ def _ask(sid: str, mine: list[Doc], ref: MatchRef, *, state: RunState,
         state.drop(tag, DropReason.TYPE_OFF_CATALOG,
                    f"`{sid}` 담당 유형을 표에서 못 찾았다")
         return []
-    block, _where = paragraphs_of(mine, kinds)
+    block, _where = paragraphs_of(mine, kinds, note=state.note)
     if not block.strip():
         state.drop(tag, DropReason.BODY_MISSING,
                    f"문서 {len(mine)}건에서 문단을 못 뽑았다")

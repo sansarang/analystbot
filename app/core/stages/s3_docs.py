@@ -219,7 +219,8 @@ async def _candidates(sub: Any, ref: MatchRef, *, state: RunState,
        한다(위 `run` 의 까닭). 🔴 `queries` 를 주면 그 질의로 돈다(좁히기 2차).
     """
     from app import datehint, domains
-    from app.research import lead, rerank
+    from app.core import rank
+    from app.research import lead
     name = (tag or str(getattr(sub, "name", "?")))
     hits: list[Any] = []
     for q, lang in (queries if queries is not None else queries_for(sub, ref)):
@@ -269,18 +270,14 @@ async def _candidates(sub: Any, ref: MatchRef, *, state: RunState,
             continue
         _count("kept_date")
         kept.append((h, str(tier)))
-    # ── ③ 재정렬 1단
+    # ── ③ 재정렬 1단. 🔴 **녹음·재생을 거친다**(`rank`) — 재생에 모델이 없다
     if kept:
         want = " ".join(adapt.catalog_type(str(k)) or str(k)
                         for k in (getattr(sub, "kinds", None) or ()))
-        pairs = [f"{getattr(h, 'title', '')} {getattr(h, 'snippet', '')}"
-                 for h, _t in kept]
-        order, said_r = rerank.paragraphs(want, pairs)
+        kept, said_r = rank.order_of(
+            kept, lambda row: f"{getattr(row[0], 'title', '')} "
+                              f"{getattr(row[0], 'snippet', '')}", want)
         state.note(f"s3/{name} 재정렬 — {said_r}")
-        rank = {t: i for i, t in enumerate(order)}
-        kept.sort(key=lambda row: rank.get(
-            f"{getattr(row[0], 'title', '')} {getattr(row[0], 'snippet', '')}",
-            999))
     return kept
 
 

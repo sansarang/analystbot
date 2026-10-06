@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 네 담당은 `C-home` 의 유형들뿐이다: stakes.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다) — 검증층이 본문에 대고 맞춰 보고, 없으면 그 줄을 버린다.\\n🔴 `claim` 은 그 사실을 **한 문장**으로 적은 것이다.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n⚠️ 이 경기는 South Korea(홈) 대 Uzbekistan(원정)이다 — 다른 경기 이야기는 뽑지 않는다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"[C-home-D1-P1] (biz.heraldcorp.com, 2026-10-01) The first opponent, Venezuela, ranked 48th by FIFA, will be facing Korea for the first time since 2014 — a gap of 12 years. In that lone previous meeting, Korea won 3-1. Against Uzbekistan, ranked 60th, Korea hold an all-time record of 11 wins, four draws and one loss. The two matches also offer a chance to assess a regional rival ahead of next year's Asian Cup.\\n[C-home-D1-P2] (biz.heraldcorp.com, 2026-10-01) South Korea, under interim head coach Roberto Moreno, will play two October friendlies against Venezuela and Uzbekistan, with captain Son Heung-min of LAFC chasing the all-time men's international scoring record.\\n[C-home-D1-P3] (biz.heraldcorp.com, 2026-10-01) Coupang Play will broadcast both matches live. Announcer Yang Dong-seok and analyst Lee Geun-ho will call the Venezuela match, while announcer Yun Jang-hyeon and analyst Im Hyeong-cheol will handle the Uzbekistan fixture.\\n[C-home-D1-P4] (biz.heraldcorp.com, 2026-10-01) The national team went 1-1 in Moreno's first two matches in September. Korea cruised past Ecuador 3-0 on consecutive goals from Oh Hyeon-gyu of Besiktas, Son and Lee Dong-gyeong of Ulsan HD, but then suffered a heavy 1-4 defeat to Uruguay. Both matches were played in a 4-4-2 formation, and attention will be on what changes Moreno makes across these two fixtures.\\n[C-home-D1-P5] (biz.heraldcorp.com, 2026-10-01) Coupang Play analyst Lee Geun-ho said the September double-header produced contrasting results despite the same 4-4-2 setup. \\\"It will be worth watching whether the coaching staff opts to change the tactics, the personnel, or both,\\\" he said.\\n[C-home-D1-P6] (biz.heraldcorp.com, 2026-10-01) Son's tally rose to 58 international goals after a touch from Lee Kang-in's (Atletico Madrid) cross in the Uruguay match was credited as a goal. That figure draws him level with former head coach Cha Bum-kun at the top of the all-time men's scoring chart, and a single goal in either upcoming match would give Son the record outright.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력은 **object 로만** 받는다 — 최상위 배열은 스키마가 못 받는다.\", \"properties\": {\"variables\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 s4 — 모델이 내는 변수 후보. ⚠️ **방향 칸이 없다**(코드가 정한다).\", \"properties\": {\"claim\": {\"title\": \"Claim\", \"type\": \"string\"}, \"doc_id\": {\"enum\": [\"C-home-D1\"], \"type\": \"string\"}, \"quote\": {\"title\": \"Quote\", \"type\": \"string\"}, \"subject\": {\"enum\": [\"team:000129\", \"team:000245\"], \"type\": \"string\"}, \"subtask\": {\"enum\": [\"C-home\"], \"type\": \"string\"}, \"type\": {\"enum\": [\"stakes\"], \"type\": \"string\"}}, \"required\": [\"subtask\", \"type\", \"subject\", \"claim\", \"quote\", \"doc_id\"], \"title\": \"VarCandidate\", \"type\": \"object\"}, \"title\": \"Variables\", \"type\": \"array\"}}, \"required\": [\"variables\"], \"title\": \"VarCandidates\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}}",
+ "recorded_at": "2026-10-06T04:11:54.863575+00:00",
+ "id": "413353e3-0db2-4dff-a1c5-a1c6b0a09614",
+ "object": "chat.completion",
+ "created": 1791259914,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": [\n    {\n      \"subtask\": \"C-home\",\n      \"type\": \"stakes\",\n      \"subject\": \"team:000129\",\n      \"claim\": \"South Korea는 Roberto Moreno 감독 체제 하에 10월에 우즈베키스탄과 친선 경기를 치른다.\",\n      \"quote\": \"South Korea, under interim head coach Roberto Moreno, will play two October friendlies against Venezuela and Uzbekistan, with captain Son Heung-min of LAFC chasing the all-time men's international scoring record.\",\n      \"doc_id\": \"C-home-D1\"\n    },\n    {\n      \"subtask\": \"C-home\",\n      \"type\": \"stakes\",\n      \"subject\": \"team:000129\",\n      \"claim\": \"한국은 우즈베키스탄과의 역대 전적에서 11승 4무 1패를 기록하고 있다.\",\n      \"quote\": \"Against Uzbekistan, ranked 60th, Korea hold an all-time record of 11 wins, four draws and one loss.\",\n      \"doc_id\": \"C-home-D1\"\n    },\n    {\n      \"subtask\": \"C-home\",\n      \"type\": \"stakes\",\n      \"subject\": \"team:000129\",\n      \"claim\": \"차기 아시안컵을 앞두고 우즈베키스탄과의 경기는 지역 라이벌을 평가할 기회가 된다.\",\n      \"quote\": \"The two matches also offer a chance to assess a regional rival ahead of next year's Asian Cup.\",\n      \"doc_id\": \"C-home-D1\"\n    },\n    {\n      \"subtask\": \"C-home\",\n      \"type\": \"stakes\",\n      \"subject\": \"team:000129\",\n      \"claim\": \"쿠팡플레이가 이 경기를 생중계하며, 아나운서 윤장현과 해설위원 임형철이 우즈베키스탄 경기를 맡는다.\",\n      \"quote\": \"Announcer Yang Dong-seok and analyst Lee Geun-ho will call the Venezuela match, while announcer Yun Jang-hyeon and analyst Im Hyeong-cheol will handle the Uzbekistan fixture.\",\n      \"doc_id\": \"C-home-D1\"\n    },\n    {\n      \"subtask\": \"C-home\",\n      \"type\": \"stakes\",\n      \"subject\": \"team:000129\",\n      \"claim\": \"9월 두 경기에서 한국은 1무 1패를 기록했고, 두 경기 모두 4-4-2 포메이션으로 치러져 이번 우즈베키스탄 경기에서 Moreno의 변화 여부가 주목된다.\",\n      \"quote\": \"The national team went 1-1 in Moreno's first two matches in September. ... Both matches were played in a 4-4-2 formation, and attention will be on what changes Moreno makes across these two fixtures.\",\n      \"doc_id\": \"C-home-D1\"\n    },\n    {\n      \"subtask\": \"C-home\",\n      \"type\": \"stakes\",\n      \"subject\": \"team:000129\",\n      \"claim\": \"손흥민이 이번 우즈베키스탄 전에서 득점할 경우, 역대 남자 선수 국제 득점 단독 1위가 될 수 있다.\",\n      \"quote\": \"That figure draws him level with former head coach Cha Bum-kun at the top of the all-time men's scoring chart, and a single goal in either upcoming match would give Son the record outright.\",\n      \"doc_id\": \"C-home-D1\"\n    }\n  ]\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 775,
+  "completion_tokens": 711,
+  "total_tokens": 1486,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

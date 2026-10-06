@@ -43,7 +43,7 @@ async def main(argv: list[str]) -> int:
                                  s5_verify, s6_hypo, s7_judge)
     from app.core.state import RunState
     from app.db import get_pool
-    from app.research import rerank
+    from app.core import rank
 
     team, opp = arg, ""
     low = arg.lower()
@@ -53,7 +53,7 @@ async def main(argv: list[str]) -> int:
             team, opp = arg[:i].strip(), arg[i + len(sep):].strip()
             break
     # 🔴 재정렬은 **전용 스레드가 소유한다** — 입구에서 올린다(§6 부품)
-    print(f"[v6] 재정렬 예열 — {rerank.warm()}", flush=True)
+    print(f"[v6] 재정렬 예열 — {rank.warm()}", flush=True)
     pool = await get_pool(get_settings().database_url)
     state = RunState()
     q = Question(raw=arg, team=team, opponent=opp,
