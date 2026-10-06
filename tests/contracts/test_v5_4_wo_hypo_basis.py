@@ -59,12 +59,21 @@ def test_M132_프롬프트가_그_금지를_적는다():
     from app import hypo
     inp = _inp(variables=[{"id": "R2", "type": "recent_pattern"}],
                context_only=[{"id": "R1", "type": "h2h_pattern"}])
-    # 🔴 **실제로 보내는 메시지**를 본다 — `run` 이 부르는 그 함수다(고아 금지).
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **규칙 글과 자료 글을 가른다** — 실측 2026-10-06
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 처음엔 **보내는 글 전체**에서 `context_only` 를 찾았다. 🔴 그 글자는
+    #     자료(JSON)의 **열쇠 이름**으로도 들어 있어, 금지 문구를 지워도
+    #     계약이 통과했다(돌연변이 M132b).
+    #  🔴 금지는 **규칙 글**(`system_prompt`)에 있어야 한다 — 자료에 있는 것은
+    #     금지가 아니라 그냥 칸 이름이다.
+    rule = hypo.system_prompt()
+    assert "context_only" in rule, "🔴 규칙 글에 그 칸 이름이 없다"
+    assert "근거로 쓰지" in rule and "인용하지" in rule, rule[-500:]
+    # 🔴 그리고 **그 번호가 자료로 실제로 간다**(모델이 무엇을 피할지 알게)
     said = "\n".join(str(m.get("content") or "")
                      for m in hypo.messages_of(inp))
-    assert "context_only" in said, "🔴 프롬프트에 그 칸 이름이 없다"
-    assert "근거로 쓰지" in said or "인용하지" in said, said[-400:]
-    # 🔴 **그 번호가 실제로 보인다**(모델이 무엇을 피해야 하는지 알아야 한다)
     assert "R1" in said, said[-400:]
 
 
@@ -120,3 +129,109 @@ def test_M133_문장이_다_버려지면_근거_없음_경로다():
                      "breaks": []}}
     kept, _dropped = hypo.drop_cited(said, excluded={"R1"})
     assert not ((kept.get("home") or {}).get("reasons") or []), kept
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **행동 검사** — `_run_hypo` 를 **돌려서** 본다
+# ══════════════════════════════════════════════════════════════════
+#
+# ⚠️ 위 계약들은 조각(`split_basis`·`drop_cited`·`strip_cited`)만 봤다 — 그래서
+#    돌연변이 셋이 통과했다(§9-5: 안 물리는 계약은 없는 계약이다):
+#      · `variables` 에 제외 변수를 다시 넣기
+#      · 프롬프트에서 금지 문구 빼기
+#      · 출력 거르기 자체를 끄기
+# 🔴 그래서 **DeepSeek 를 대역으로 두고 `_run_hypo` 를 실제로 돌린다.**
+
+
+def _card_with_thin():
+    from app import analyze, classify
+    thin = classify.Classified(
+        text="맞대결 1경기", source_url="https://x/1", hardness="soft",
+        type="h2h_pattern", direction="home", why="§4",
+        thin_sample=f"{classify.THIN_MARK} 맞대결 표본 1경기")
+    solid = classify.Classified(
+        text="최근 5경기", source_url="https://x/2", hardness="hard",
+        type="recent_pattern", direction="home", why="§4")
+    away = classify.Classified(
+        text="원정 폼", source_url="https://x/3", hardness="hard",
+        type="recent_pattern", direction="away", why="§4")
+    game = classify.Game(home="Northern Ireland", away="Georgia",
+                         sport="soccer", league="Nations League",
+                         home_id="team:1", away_id="team:2")
+    card = analyze.Card(game=game)
+    card.variables = [thin, solid, away]      # 🔴 `R1` 이 표본 부족이다
+    card.hypotheses = classify.hypotheses(card.variables, game)
+    card.form = {}
+    return card, game
+
+
+def _run(monkeypatch, *, answer):
+    """🔴 `_run_hypo` 를 돌린다 — DeepSeek 는 대역이고 **보낸 글을 붙잡는다**."""
+    from app import analyze, hypo, scenarios
+    seen: dict = {}
+
+    def _fake(inp, *, now=None, _net=None):
+        seen["sent"] = hypo.to_payload(inp)
+        seen["prompt"] = "\n".join(str(m.get("content") or "")
+                                   for m in hypo.messages_of(inp))
+        from app.reasons import Reason
+        return hypo.HypoResult(
+            hypotheses=answer["hypotheses"], scenarios=answer["scenarios"],
+            form={}, drops=[], missed=[], reason=Reason.OK, usd=0.0,
+            why="대역")
+
+    monkeypatch.setattr(hypo, "run", _fake)
+    card, game = _card_with_thin()
+    sc = scenarios.Result()
+    got = analyze._run_hypo(card, game, [], {}, sc)
+    return seen, got, sc, card
+
+
+def test_M132_행동_제외_변수가_입력에_안_들어간다(monkeypatch):
+    seen, _got, sc, _card = _run(monkeypatch, answer={
+        "hypotheses": {"home": {"reasons": ["폼이 좋다(R2)."], "breaks": []}},
+        "scenarios": []})
+    ids = {r["id"] for r in (seen["sent"].get("variables") or [])}
+    ctx = {r["id"] for r in (seen["sent"].get("context_only") or [])}
+    assert "R1" not in ids, (
+        f"🔴 표본 부족 변수 `R1` 이 **근거 목록**에 들어갔다: {ids}")
+    assert "R1" in ctx, f"🔴 `context_only` 로도 안 갔다: {ctx}"
+    assert {"R2", "R3"} <= ids, ids
+    # 🔴 **그 사실을 사유로 남긴다**(#3)
+    assert any("context_only" in str(n) for n in sc.notes), sc.notes
+
+
+def test_M132_행동_프롬프트가_금지를_말한다(monkeypatch):
+    seen, _got, _sc, _card = _run(monkeypatch, answer={
+        "hypotheses": {}, "scenarios": []})
+    from app import hypo
+    rule = hypo.system_prompt()
+    # 🔴 금지는 **규칙 글**에 있어야 한다(자료의 칸 이름이 아니다)
+    assert "context_only" in rule and "근거로 쓰지" in rule \
+        and "인용하지" in rule, rule[-500:]
+    assert "R1" in seen["prompt"], (
+        "🔴 그 번호가 보내는 글에 안 보인다 — 모델이 뭘 피할지 모른다")
+
+
+def test_M133_행동_제외_번호_문장이_카드에_안_남는다(monkeypatch):
+    seen, got, sc, card = _run(monkeypatch, answer={
+        "hypotheses": {"home": {
+            "reasons": ["폼이 좋다(R2).",
+                        "h2h 가 count=1이지만 살아난다(R1)."],
+            "breaks": []}},
+        "scenarios": [{"id": "A", "driver_vars": ["R1"], "mechanism": "m",
+                       "outcomes": ["1-0"]},
+                      {"id": "B", "driver_vars": ["R1", "R2"],
+                       "mechanism": "m", "outcomes": ["2-1"]}]})
+    rows = (got.hypotheses.get("home") or {}).get("reasons") or []
+    assert not any("R1" in r for r in rows), (
+        f"🔴 제외 번호를 인용한 문장이 **살아남았다**: {rows}")
+    assert any("cited_excluded:R1" in str(n) for n in sc.notes), sc.notes
+    # 🔴 시나리오 — `A` 는 버려지고 `B` 는 번호만 빠진다
+    by = {r["id"]: r for r in (got.scenarios or [])}
+    assert "A" not in by, f"🔴 근거가 0개가 된 시나리오가 남았다: {by}"
+    assert by.get("B", {}).get("driver_vars") == ["R2"], by.get("B")
+    # 🔴 카드 문장에도 그 번호가 없다
+    for h in (card.hypotheses or []):
+        for line in (getattr(h, "win_why", []) or []):
+            assert "R1" not in str(line), line
