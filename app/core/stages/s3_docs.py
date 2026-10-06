@@ -53,7 +53,12 @@ def queries_for(sub: Any, ref: MatchRef) -> list[tuple[str, str]]:
                    else (ref.away_name, ref.home_name))
 
     def word(lang: str) -> str:
-        for kind in (getattr(sub, "kinds", None) or ()):
+        # 🔴🔴 **카탈로그 이름으로 묻는다** — 실측 2026-10-06: 유형군 이름
+        #    (`absence_def`)은 카탈로그에 없어서 개념 낱말이 **빈 글자**였고,
+        #    그래서 A 군의 영어 질의가 야구 유형(`pitcher_state` → `xi`)의 낱말을
+        #    집었다(축구 경기인데). 옮기면 `injury` 가 나온다.
+        for raw in (getattr(sub, "kinds", None) or ()):
+            kind = adapt.catalog_type(str(raw)) or str(raw)
             concept = rules.word_concept(str(kind))
             if not concept:
                 continue
@@ -171,17 +176,23 @@ class _RefShim:
 
 async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
                net: Any, cache: dict[str, Doc],
-               claimed: set[str] | None = None) -> list[Doc]:
-    """🔴 하위 하나 — 검색 → 거르기 → 재정렬 → 상위 N건 fetch → `Doc`."""
+               claimed: set[str] | None = None,
+               queries: list[tuple[str, str]] | None = None,
+               tag: str = "") -> list[Doc]:
+    """🔴 하위 하나 — 검색 → 거르기 → 재정렬 → 상위 N건 fetch → `Doc`.
+
+    🔴 `queries` 를 주면 **그 질의로** 돈다(좁히기 2차 · §5 s4). ⚠️ 거르기·재정렬·
+       받기는 **같은 코드**다 — 2차용 사본을 만들지 않는다(#1).
+    """
     from app import datehint, domains, readtext
     from app.research import lead, rerank
-    sid, name = _sid(sub), str(getattr(sub, "name", "?"))
+    sid, name = _sid(sub), (tag or str(getattr(sub, "name", "?")))
     # 🔴 **자리를 잡은 URL** — 캐시와 따로 든다(캐시는 `Doc` 을, 이쪽은 **의도**를)
     claimed = claimed if claimed is not None else set(cache)
     cfg = _sub_cfg()
     top = int(cfg.get("fetch_top") or 3)
     hits: list[Any] = []
-    for q, lang in queries_for(sub, ref):
+    for q, lang in (queries if queries is not None else queries_for(sub, ref)):
         if not sub.budget.may_search():
             state.note(f"s3/{name} 검색 상한({sub.budget.search_cap})에 닿았다")
             break
@@ -227,7 +238,8 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
         kept.append((h, str(tier)))
     # ── ③ 재정렬 1단
     if kept:
-        want = " ".join(str(k) for k in (getattr(sub, "kinds", None) or ()))
+        want = " ".join(adapt.catalog_type(str(k)) or str(k)
+                        for k in (getattr(sub, "kinds", None) or ()))
         pairs = [f"{getattr(h, 'title', '')} {getattr(h, 'snippet', '')}"
                  for h, _t in kept]
         order, said_r = rerank.paragraphs(want, pairs)
@@ -290,7 +302,10 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
                        "본문을 못 뽑았다")
             continue
         src = "htmldate" if when else "none"
-        doc = adapt.doc_of(doc_id=f"D{len(out) + 1}", url=url, body=str(body),
+        # 🔴 **문서 id 는 경기 안에서 하나다** — 하위마다 `D1` 로 겹치면
+        #    `doc_ids` 로 본문을 되찾을 수 없다(불변식 2가 그것을 센다).
+        doc = adapt.doc_of(doc_id=f"{sid}-D{len(out) + 1}", url=url,
+                           body=str(body),
                            subtask=sid,
                            title=str(getattr(h, "title", "") or ""),
                            lang=str(getattr(h, "lang", "") or "en"),
@@ -304,3 +319,29 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
         cache[url] = doc
         out.append(doc)
     return out
+
+
+async def regather(ref: MatchRef, sid: str, words: list[str], *,
+                   state: RunState, chain: Any, net: Any,
+                   cache: dict[str, Doc] | None = None) -> list[Doc]:
+    """🔴🔴 **좁힌 질의로 ①~③ 을 한 번 더**(§5 s4). ⚠️ 한 번뿐이다.
+
+    🔴 낱말은 **s4 가 1차 제목에서 뽑아** 넘긴다(지어내지 않는다 · #4).
+    ⚠️ 질의 상한(`querygate.MAX_WORDS`)은 `subtasks.narrow_query` 가 지킨다 —
+       여기서 다시 세지 않는다(#1 사본 금지).
+    """
+    from app.research import subtasks as _st
+    cache = cache if cache is not None else {}
+    for sub in _st.split(_RefShim(ref)):
+        if _sid(sub) != str(sid):
+            continue
+        if not sub.budget.may_search():
+            state.note(f"s3/{sid} 2차 — 검색 상한에 닿아 돌리지 않았다")
+            return []
+        qs = [(_st.narrow_query(q, words), lang)
+              for q, lang in queries_for(sub, ref)]
+        return await _one(sub, ref, state=state, chain=chain, net=net,
+                          cache=cache, claimed=set(cache), queries=qs,
+                          tag=f"{sub.name}(2차)")
+    state.note(f"s3 2차 — `{sid}` 하위를 못 찾았다")
+    return []

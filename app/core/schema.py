@@ -60,7 +60,12 @@ Market = Literal["win", "draw", "unbeaten", "handicap", "total", "btts"]
 
 Mark = Literal["○", "△", "✗"]
 
-Grade = Literal["낸다", "소액", "소액하단", "없음"]
+#: 🔴 등급 — ⚠️ **`자료부족` 은 "없음" 과 다르다**(§8-6 이 막는 섞임이다).
+#
+#  `없음`      재 봤는데 **안 섰다**(수가 문턱 아래다)
+#  `자료부족`  **애초에 등급을 매길 수 없었다**(변수가 모자라다 · §7 R5)
+#  ⚠️ 둘을 한 글자로 적으면 *"우리가 안 했다"* 와 *"해 봤는데 없다"* 가 같아진다.
+Grade = Literal["낸다", "소액", "소액하단", "없음", "자료부족"]
 
 AddedBy = Literal["deepseek", "code", "redteam"]
 
@@ -366,6 +371,25 @@ class MarketEval(Frozen):
     grade: Grade
     #: 🔴 **죽은 시나리오들** — `✗` 와 `△` 를 **둘 다** 담는다(§3)
     dead: list[str] = Field(default_factory=list)
+
+
+class Judgement(Frozen):
+    """🔴🔴 **s7 산출** — 마켓 대입·방향·결론·방아쇠가 **한 타입**이다(§3).
+
+    ⚠️ 단계 함수가 `tuple` 을 돌려주면 받는 쪽이 꼴을 **외워야** 한다 — 그것이
+       결함 ①의 뿌리였다(§7 정적 검사가 그 서명을 막는다).
+    """
+
+    evals: list[MarketEval] = Field(default_factory=list)
+    #: 🔴 블록 9 — **등급과 무관하게 매 경기 한 줄**(지시서 §2-2)
+    direction: str = ""
+    conclusion: str = ""
+    triggers: list[str] = Field(default_factory=list)
+    #: 🔴 이미 시작한 경기면 등급이 없다(M97) — 그 사유가 여기 든다
+    started: bool = False
+    started_why: str = ""
+    #: 🔴 **왜 그 상한인가** — 사람이 되짚을 수 있게 수와 사유를 함께 든다
+    notes: list[str] = Field(default_factory=list)
 
 
 class Funnel(Frozen):

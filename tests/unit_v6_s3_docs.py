@@ -211,7 +211,10 @@ def test_상위_세건까지만_받는다():
     chain = _Chain([_Hit(f"https://bbc.com/{i}") for i in range(9)])
     docs, _st, _sub = _run_one(chain, _Net())
     assert len(docs) == 3, len(docs)
-    assert [d.id for d in docs] == ["D1", "D2", "D3"], [d.id for d in docs]
+    # 🔴 문서 id 에 **하위 이름이 앞에 붙는다** — 하위마다 `D1` 로 겹치면
+    #    변수의 `doc_ids` 로 본문을 되찾을 수 없다(불변식 2).
+    assert [d.id for d in docs] == ["A-home-D1", "A-home-D2", "A-home-D3"], \
+        [d.id for d in docs]
 
 
 def test_킥오프_7일_밖이면_Doc_을_안_만든다():

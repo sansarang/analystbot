@@ -167,3 +167,49 @@ def ref_of(raw: Any, *, competition_short: str, openworld: bool = False
         kickoff_utc=kick, venue=str(getattr(raw, "venue", "") or ""),
         langs=[str(x) for x in (getattr(raw, "langs", None) or ())],
         openworld=bool(openworld))
+
+
+def _parts(name: str) -> frozenset[str]:
+    """🔴 `absence_def` 와 `def_absence` 를 같은 것으로 보는 **이름 꼴** 비교."""
+    return frozenset(x for x in str(name).split("_") if x)
+
+
+def catalog_type(kind: str) -> str:
+    """🔴🔴 **유형군 이름 → 카탈로그 유형 이름.** 못 옮기면 **빈 글자**다.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 실측 2026-10-06 — **이름이 두 표에서 갈려 있었다**
+    ══════════════════════════════════════════════════════════════════
+
+    `subtask_groups.yaml` 의 `kinds` 20개 중 **7개가 카탈로그에 없다**:
+
+        absence_def · absence_att · lineup_rotation · coach_intent ·
+        individual_title · regression · team_stats
+
+    ⚠️ 그런데 **방향·무게·검색 낱말을 아는 쪽은 카탈로그**(`variable_types.yaml`)다.
+       🔴 그래서 카탈로그에 없는 이름을 `type` enum 으로 모델에 주면, 돌아온 변수는
+          방향 규칙을 못 찾아 **전부 `both`**(방향 없음)가 된다 — 실측으로 그랬다.
+
+    옮기는 길은 **둘뿐이고 둘 다 이미 있는 표다**(지어내지 않는다 · #4):
+      ① `rules.v5_names()` — 지시문 이름 → §4 이름(`lineup_rotation` →
+         `squad_rotation`)
+      ② **이름 꼴**이 같은 것(`absence_def` ↔ `def_absence`) — 낱말 집합이 **똑같을
+         때만** 잇는다. 뜻으로 추측하지 않는다.
+    🔴 그 둘로도 못 옮기는 이름은 **버리고 이름으로 남긴다**(#3 조용한 0 금지) —
+       `absence_att`·`coach_intent`·`individual_title`·`team_stats`·`regression`.
+       ⚠️ 어디에 붙일지는 **사용자가 정한다**(카탈로그에 유형을 더할지, 유형군의
+          이름을 고칠지) — 내가 고르면 그것은 지어낸 규칙이다.
+    """
+    from app import rules
+    cat = rules.variable_types()
+    said = str(kind)
+    if said in cat:
+        return said
+    moved = rules.v5_names().get(said, "")
+    if moved and moved in cat:
+        return moved
+    want = _parts(said)
+    for name in sorted(cat):
+        if _parts(name) == want:
+            return name
+    return ""

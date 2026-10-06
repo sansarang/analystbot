@@ -16,14 +16,15 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
+from typing import Any
 
 
 async def main(argv: list[str]) -> int:
     if len(argv) < 2:
-        print('쓰는 법: tools/v6_run.py "<팀> vs <상대>" [--to s3] [--record id]')
+        print('쓰는 법: tools/v6_run.py "<팀> vs <상대>" [--to s1|s2|s3|card] [--record id]')
         return 2
     arg = argv[1]
-    to = argv[argv.index("--to") + 1] if "--to" in argv else "s3"
+    to = argv[argv.index("--to") + 1] if "--to" in argv else "card"
     from app import cassette
     for flag, mode in (("--record", cassette.RECORD), ("--replay", cassette.REPLAY)):
         if flag in argv:
@@ -38,7 +39,8 @@ async def main(argv: list[str]) -> int:
     from app import search as _search
     from app.config import get_settings
     from app.core.schema import Ambiguous, Question
-    from app.core.stages import s1_resolve, s2_facts, s3_docs
+    from app.core.stages import (s1_resolve, s2_facts, s3_docs, s4_extract,
+                                 s5_verify, s6_hypo, s7_judge)
     from app.core.state import RunState
     from app.db import get_pool
     from app.research import rerank
@@ -81,8 +83,10 @@ async def main(argv: list[str]) -> int:
     if to == "s2":
         return 0
 
-    docs = await s3_docs.run(ref, facts, state=state,
-                             chain=_search.build_chain(), net=net)
+    cache: dict = {}
+    chain = _search.build_chain()
+    docs = await s3_docs.run(ref, facts, state=state, chain=chain, net=net,
+                             cache=cache)
     print(f"\n[s3] 문서 {len(docs)}건 · 장부 {state.book}")
     dated = sum(1 for d in docs if d.published_at is not None)
     print(f"     발행일 있는 것 {dated}/{len(docs)}"
@@ -96,13 +100,55 @@ async def main(argv: list[str]) -> int:
         print(f"  {d.id} [{d.subtask}] {d.tier:10} "
               f"{str(d.published_at)[:10] or '발행일 없음':10} "
               f"{d.date_source:9} {d.url[:70]}")
+    _funnel(state)
+    if to == "s3":
+        return 0
+
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴 s4~s7 · 카드 — **파이프라인 함수를 부른다**(프로브 금지 · CLAUDE.md #12)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 여기서 단계를 다시 이으면 그것은 **프로브**다 — 실제 경로가 아니라
+    #     이 파일의 순서를 검사하게 된다. 🔴 `pipeline.analyze` 가 입구다.
+    from app.core import pipeline, render
+    cands = await s4_extract.run(ref, docs, state=state, chain=chain, net=net,
+                                 cache=cache)
+    print(f"\n[s4] 후보 {len(cands)}개", flush=True)
+    for c in cands:
+        print(f"  [{c.subtask}] {c.type:18} {c.subject} ← {c.doc_id} "
+              f"· {c.claim[:60]}")
+    docs = list(cache.values()) or docs
+    variables = s5_verify.run(ref, facts, docs, cands, state=state)
+    print(f"\n[s5] 변수 {len(variables)}개 "
+          f"(근거 가능 {sum(1 for v in variables if v.usable_as_basis)})")
+    for v in variables:
+        print(f"  {v.id} [{v.type:18}] {v.favors:10} {v.hardness:5} "
+              f"{v.weight} · {v.claim[:60]}")
+    hypo = s6_hypo.run(ref, facts, variables, state=state)
+    print(f"\n[s6] 가설 {len(hypo.hypotheses)}팀 · 시나리오 "
+          f"{len(hypo.scenarios)}개 · 반증 {len(hypo.redteam)}줄 · "
+          f"버린 줄 {len(hypo.drops)}개")
+    said = s7_judge.run(ref, facts, variables, hypo, state=state)
+    print(f"[s7] 마켓 {len(said.evals)}줄 · 등급 낸 줄 "
+          f"{sum(1 for e in said.evals if e.grade != '자료부족')}")
+    card = pipeline.card_of(ref, facts, variables, hypo, said, state=state)
+    _funnel(state)
+    print("\n" + "=" * 70 + "\n[카드]\n" + "=" * 70)
+    print(render.card_text(card))
+    print("\n[밟은 자취]")
+    for n in state.notes:
+        print("  ·", n[:160])
+    return 0
+
+
+def _funnel(state: Any) -> None:
+    """🔴 깔때기·버린 것·비용 — **안 잰 칸은 `null`** 로 보인다(#3)."""
     print(f"\n[깔때기] {json.dumps(state.counted(), ensure_ascii=False)}")
     by: dict[str, int] = {}
     for drop in state.drops:
         by[drop.reason.value] = by.get(drop.reason.value, 0) + 1
     print(f"[버린 것] {json.dumps(by, ensure_ascii=False)}")
     print(f"[비용] ${state.wallet.usd:.6f} · 호출 {state.wallet.calls}")
-    return 0
 
 
 if __name__ == "__main__":
