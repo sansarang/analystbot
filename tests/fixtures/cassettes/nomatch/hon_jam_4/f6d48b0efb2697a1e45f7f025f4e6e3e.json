@@ -1,0 +1,290 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Australia Featuring Overdrive Honduras",
+ "recorded_at": "2026-10-06T01:46:16.215995+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Press Releases: TVS Motor Company partners with Motomundo SA for Honduras - Overdrive",
+   "content": "TVS Motor Company, a reputed manufacturer of two-wheelers and three-wheelers in the world, … respected business groups in Honduras. - Overdrive",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.overdrive.in/news-cars-auto/pressreleases/tvs-motor-company-partners-with-motomundo-sa-for-honduras/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.overdrive.in",
+    "/news-cars-auto/pressreleases/tvs-motor-company-partners-with-motomundo-sa-for-honduras/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hero MotoCorp expands presence in Central America, appoints new distributors in Nicaragua and Honduras - Overdrive",
+   "content": "Will also offer a 4-year warranty on all products and will also ensure parts/service available for all products. - Overdrive",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.overdrive.in/news-cars-auto/hero-motocorp-expands-presence-in-central-america-appoints-new-distributors-in-nicaragua-and-honduras/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.overdrive.in",
+    "/news-cars-auto/hero-motocorp-expands-presence-in-central-america-appoints-new-distributors-in-nicaragua-and-honduras/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "In Honduras, rival gangs keep a death grip on San Pedro Sula",
+   "content": "The Honduras neighborhood of Chamelecon is a network of gang turfs where residents' survival depends on playing by gang rules.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.latimes.com/world/la-fg-c1-honduras-violence-20131216-dto-htmlstory.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latimes.com",
+    "/world/la-fg-c1-honduras-violence-20131216-dto-htmlstory.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Scientists successfully crossbreed coral from Florida and Honduras to plant on Miami reef to help protect the coast from storms | Latest Weather Clips | FOX Weather",
+   "content": "Keri O'Neil, a part of the Florida Aquarium, joins FOX Weather to share details about how the historic crossbreeding is done in an effort to protect Florida's",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.foxweather.com/watch/fmc-qdbapgi21lljl2s9",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foxweather.com",
+    "/watch/fmc-qdbapgi21lljl2s9",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "News Archives",
+   "content": "Explore the News Articles featuring Technology, Business, Entertainment, and Science & Health topics. Access reports, insights, and stories.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.findarticles.com/news/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.findarticles.com",
+    "/news/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "The Listening Post | Video | Al Jazeera",
+   "content": "A weekly programme that examines and dissects the world’s media, how they operate and the stories they cover.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.aljazeera.com/video/the-listening-post/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.aljazeera.com",
+    "/video/the-listening-post/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "UFC Tickets - Ultimate Fighting Championship Tickets",
+   "content": "A Licensed Ticket Broker That Sells Tickets To Concert,Sports,And Theatre Events",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.findticketsfast.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.findticketsfast.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

@@ -361,16 +361,37 @@ def _seeds(task: Any, game: dict) -> list[tuple[str, str]]:
     if str(task.team_key or "") == str(game.get("away_id") or ""):
         team, opp = opp, team
     comp = queries.competition_short(game.get("league"))
-    words = [str(w) for w in (getattr(task, "kinds", None) or ())][:1]
-    word = words[0] if words else ""
-    base = f"{team} {comp}".strip()
-    out: list[tuple[str, str]] = [(f"{base} {word}".strip(), "en")]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **핵심어는 표가 든다** — 실측 2026-10-06
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 나는 처음에 **유형 이름**(`absence_def`·`def_absence`)을 질의에 넣었다.
+    #     🔴 그것은 **우리 내부 이름**이고 기사에 없는 글자다 — 받은 문단이
+    #     *"Overdrive 라디오 프로그램"*·*"Bournemouth 2024/25"* 였다(실측).
+    #  🔴 `rules.word_concept(유형)` → `rules.local_words(개념, 언어)` 가 그
+    #     언어의 실제 낱말을 든다(`injury`·`부상`·`欠場`…). 사본을 만들지 않는다.
+    from app import rules
+    def _word(lang: str) -> str:
+        for kind in (getattr(task, "kinds", None) or ()):
+            concept = rules.word_concept(str(kind))
+            if not concept:
+                continue
+            got = rules.local_words(concept, lang)
+            if got:
+                return str(got[0])
+        return ""
+    comp_w = comp
+    out: list[tuple[str, str]] = []
+    # ── 영어 1개
+    en = " ".join(x for x in (team, comp_w, _word("en")) if x)
+    out.append((en, "en"))
+    # ── 팀 현지어 1개(없으면 상대를 넣은 영어로)
     lang = team_lang(team) or first_lang(league=str(game.get("league") or ""),
                                         langs=tuple(game.get("langs") or ()))
-    if lang and lang != "en":
-        out.append((f"{team} {word}".strip(), lang))
+    if lang and lang != "en" and _word(lang):
+        out.append((" ".join(x for x in (team, _word(lang)) if x), lang))
     else:
-        out.append((f"{team} {opp} {word}".strip(), "en"))
+        out.append((" ".join(x for x in (team, opp, _word("en")) if x), "en"))
     return [(queries.slot_value(q), lg) for q, lg in out if str(q).strip()]
 
 
@@ -514,6 +535,24 @@ def paragraph_block(docs: list, kinds: list, *, cap: int = 0) -> tuple[str, dict
             where[tag] = {"url": d.get("url"), "published_at": when,
                           "text": para}
     return "\n".join(lines), where
+
+
+def _agent_inp(game: dict):
+    """🔴 이름→열쇠 변환에 필요한 **최소 입력** — `_vars_from` 이 그것을 쓴다.
+
+    ⚠️ 하위 경로는 에이전트 루프를 안 돌지만, **이름 해석 규칙**은 같아야 한다
+       (§8-1: 해석은 한 곳에서만).
+    """
+    from app.agentloop import AgentInput
+    return AgentInput(
+        match_key=str(game.get("ext_id") or ""),
+        home=str(game.get("home_id") or ""), away=str(game.get("away_id") or ""),
+        home_names=(str(game.get("home") or ""),),
+        away_names=(str(game.get("away") or ""),),
+        competition=str(game.get("league") or ""),
+        sport=str(game.get("sport") or ""),
+        kickoff_utc=game.get("kickoff"), venue=str(game.get("venue") or ""),
+        langs=tuple(game.get("langs") or ("en",)))
 
 
 def _where_of(row: dict, where: dict) -> dict | None:
@@ -668,7 +707,13 @@ async def _extract(task: Any, kinds: list, block: str, where: dict, *,
         rows.append(row)
     dates = {str(v.get("url")): v.get("published_at")
              for v in where.values() if v.get("url")}
-    out, why = agentloop._vars_from({"variables": rows}, dates=dates)
+    # 🔴🔴 **팀 이름을 열쇠로 옮긴다** — 실측 2026-10-06.
+    #    ⚠️ 모델은 열쇠(`team:000268`)를 모르고 **이름**을 적는다. M48 이 이름을
+    #       버리므로(`name_not_key`) `inp` 를 안 넘기면 쓸 만한 후보도 전부
+    #       떨어진다(실측: `team: "Jamaica"` 한 건이 그렇게 사라졌다).
+    #    🔴 해석은 **한 곳**이다(§8-1) — `_vars_from(inp=...)` 가 그 일을 한다.
+    out, why = agentloop._vars_from({"variables": rows}, inp=_agent_inp(game),
+                                    dates=dates)
     said_all = (f"추출 — 후보 {len(out)}개"
                 + (f" · 🔴 인용을 문단에서 못 찾아 {len(dropped)}개 버렸다"
                    f"({dropped[:3]})" if dropped else ""))

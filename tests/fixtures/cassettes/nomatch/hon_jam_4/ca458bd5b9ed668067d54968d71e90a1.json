@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "States United Azteca Jamaica",
+ "recorded_at": "2026-10-06T01:47:21.026296+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "USA score historic win in the Azteca - Jamaica Observer",
+   "content": "MEXICO CITY, … Second-half substitute Michael Orozco Fiscal scored in the 80th minute to give the United States their first-ever win at Mexico with a 1-0 victory in a friendly Wednesday …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2012/08/17/usa-score-historic-win-in-the-azteca/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2012/08/17/usa-score-historic-win-in-the-azteca/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "U-20s to draw inspiration from senior Boyz’ Azteca feat - Jamaica Observer",
+   "content": "PUEBLA, Mexico — The Jamaican camp is left with a lot of introspection and soul searching following their demoralising 0-4 defeat to Panama on Saturday …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2013/02/24/u-20s-to-draw-inspiration-from-senior-boyz-azteca-feat/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2013/02/24/u-20s-to-draw-inspiration-from-senior-boyz-azteca-feat/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico 2-1 Jamaica: summary, score, goal, highlights, CONCACAF 2022 World Cup Qualifiers",
+   "content": "Henry Martín came in the second half to score the winning goal for the Mexico national team againist Jamaica at the Azteca Stadium on Thursday night.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://en.as.com/en/2021/09/03/soccer/1630628559_362723.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/en/2021/09/03/soccer/1630628559_362723.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ASN: Jamaica Stands Tall in Azteca Against Mexico",
+   "content": "Jon Arnold takes us on his weekly flight through CONCACAF, stopping in Mexico City for a surprising result, a wild one in Costa Rica, and all the other excellent action.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "http://americansoccernow.com/articles/jamaica-stands-tall-in-azteca-against-mexico",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "americansoccernow.com",
+    "/articles/jamaica-stands-tall-in-azteca-against-mexico",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "MISSION AZTECA - Jamaica Observer",
+   "content": "CATHERINE HALL, … Jamaica's midfielder Daniel Johnson thinks this group of Reggae Boyz players could be the one to break the jinx of never winning at the Estadio Azteca in Mexico City …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2023/03/24/mission-azteca/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2023/03/24/mission-azteca/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "No easy game! JFF boss accepts Azteca baptism in WCQ - Jamaica Observer",
+   "content": "JFF boss accepts Azteca baptism in WCQ THE Reggae Boyz will face a baptism of fire when they kick-off their CONCACAF final round of Brazil 2014 World Cup qualifiers against Mexico in an away fixtur …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2012/11/08/no-easy-game-jff-boss-accepts-azteca-baptism-in-wcq/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2012/11/08/no-easy-game-jff-boss-accepts-azteca-baptism-in-wcq/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Young Boyz get taste of the Azteca - Jamaica Observer",
+   "content": "MEXICO City, … Jamaica's National Under-20 footballers paid a visit to the famed Estadio Azteca on Tuesday night to watch their senior Reggae Boyz counterparts put the final touches to their p …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2013/02/06/young-boyz-get-taste-of-the-azteca/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2013/02/06/young-boyz-get-taste-of-the-azteca/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hurricane Gustav forces Mexico-Jamaica qualifier to Azteca - x",
+   "content": "The upcoming CONCACAF World Cup qualifier between Mexico and Jamaica set for Saturday in Kingston has been moved to Mexico City after Hurricane Gustav struck",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://sbisoccer.com/2008/09/hurricane-gusta",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "sbisoccer.com",
+    "/2008/09/hurricane-gusta",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico vs Jamaica: times, how to watch on TV and online | CONCACAF Nations League",
+   "content": "Mexico and Jamaica face off at the Estadio Azteca on Sunday, with a place in the CONCACAF Nations League finals up for grabs.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://en.as.com/soccer/mexico-vs-jamaica-times-how-to-watch-on-tv-and-online-concacaf-nations-league-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/soccer/mexico-vs-jamaica-times-how-to-watch-on-tv-and-online-concacaf-nations-league-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "What did Mexico coach Cocca say about Jamaica draw, Azteca boos?",
+   "content": "Mexico’s supporters booed their players during Sunday’s 2-2 CONCACAF Nations League draw, but Cocca found positives in El Tri’s performance.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://en.as.com/soccer/what-did-mexico-coach-cocca-say-about-jamaica-draw-azteca-boos-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/soccer/what-did-mexico-coach-cocca-say-about-jamaica-draw-azteca-boos-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Canada look to create Concacaf Octagonal distance in WCQ at Jamaica | MLSSoccer.com",
+   "content": "Riding high after a historic result at Estadio Azteca, the Canadian men’s national team have a golden opportunity, one that could mark the beginning of their road to Qatar 2022.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/canada-look-to-create-concacaf-octagonal-distance-in-wcq-at-jamaica",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/canada-look-to-create-concacaf-octagonal-distance-in-wcq-at-jamaica",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "CONCACAF Rewind: Mexico goalless again in draw with Costa Rica; Honduras bounces back with win over Jamaica - x",
+   "content": "Mexico's offensive woes continued on Tuesday evening as El Tri played out a scoreless draw with Costa Rica at the Azteca.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://sbisoccer.com/2013/06/concacaf-goalless-honduras",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "sbisoccer.com",
+    "/2013/06/concacaf-goalless-honduras",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Panama vs Jamaica: times, TV and how to watch online",
+   "content": "All the info you need on how and where to watch Panama face Jamaica at the Estadio Olímpico Rommel Fernández Gutiérrez, in CONCACAF World Cup 2022 qualifying.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://en.as.com/en/2022/01/29/soccer/1643485924_291084.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/en/2022/01/29/soccer/1643485924_291084.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Reggae Boyz secure Gold Cup place",
+   "content": "Jamaica’s Reggae Boyz will appear in the Concacaf Gold Cup set for June 24 after a hard-fought 2-2 draw against Mexico inside the Estadio Azteca in Mexico City last night.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://jamaica-star.com/article/sports/20230327/reggae-boyz-secure-gold-cup-place",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "jamaica-star.com",
+    "/article/sports/20230327/reggae-boyz-secure-gold-cup-place",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Nicholson confident ahead of Mexico",
+   "content": "Having netted a hat-trick in his last competitive match for his Belgian club, … national striker Shamar Nicholson is confident of taking his form into Jamaica’s World Cup qualifying game against hosts Mexico at the Azteca Stadium at 9 p.m …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://past.jamaica-gleaner.com/article/sports/20210902/nicholson-confident-ahead-mexico",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "past.jamaica-gleaner.com",
+    "/article/sports/20210902/nicholson-confident-ahead-mexico",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Thursday Kickoff: Jamaica ties Mexico, Blanc linked to Roma job, and more - x",
+   "content": "Mexico stumbled in its opening match of the HEX, settling for a tie against Jamaica at Estadio Azteca.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://sbisoccer.com/2013/02/thursday-kickoff-jamaica-ties-mexico-blanc-linked-to-roma-job-and-more",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "sbisoccer.com",
+    "/2013/02/thursday-kickoff-jamaica-ties-mexico-blanc-linked-to-roma-job-and-more",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica Gleaner News- Sport - Sunday | September 7, 2008",
+   "content": "More misery in Mexico MEXICO CITY, Mexico: DIFFERENT DAY, same losing result for Jamaica's Reggae Boyz against the hosts here yesterday in the Azteca Stadium.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "http://old.jamaica-gleaner.com/gleaner/20080907/sports/index.html",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "old.jamaica-gleaner.com",
+    "/gleaner/20080907/sports/index.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Never doubted Tappa - Sport - Jamaica Star - February 9, 2013",
+   "content": "Western Bureau: So the Reggae Boyz have done it, they went to the much-feared Azteca Stadium in Mexico, and not only ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "http://old.jamaica-star.com/thestar/20130209/sports/sports8.html",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "old.jamaica-star.com",
+    "/thestar/20130209/sports/sports8.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hugo Broos left unimpressed as Bafana Bafana stumble to Jamaica stalemate ahead of FIFA World Cup opener - 'I thought we were close, but it was a disappointing game' | Goal.com South Africa",
+   "content": "The Belgian mentor held nothing back after his side’s lacklustre draw against Jamaica, with the 74-year-old tactician admitting the performance fell well short of the standards he expected.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.goal.com/en-za/lists/hugo-broos-left-unimpressed-as-bafana-bafana-stumble-to-jamaica-stalemate-ahead-of-fifa-world-cup-opener-i-thought-we-were-close-but-it-was-a-disappointing-game/bltc2544d812cad5d2b",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/en-za/lists/hugo-broos-left-unimpressed-as-bafana-bafana-stumble-to-jamaica-stalemate-ahead-of-fifa-world-cup-opener-i-thought-we-were-close-but-it-was-a-disappointing-game/bltc2544d812cad5d2b",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica Gleaner News - More misery in Mexico - Sunday | September 7, 2008",
+   "content": "MEXICO CITY, Mexico: DIFFERENT DAY, same losing result for Jamaica's Reggae Boyz against the hosts here yesterday in the Azteca Stadium.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "http://old.jamaica-gleaner.com/gleaner/20080907/sports/sports1.html",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "old.jamaica-gleaner.com",
+    "/gleaner/20080907/sports/sports1.html",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}
