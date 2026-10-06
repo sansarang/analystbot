@@ -277,7 +277,14 @@ def _b3(card: Card) -> str:
                        f"{'홈' if x.get('side') == 'home' else '원정'} "
                        f"{x.get('opponent')}{tail} {x.get('score')}")
     if f.standings:
-        out.append(f"- 순위 — {_short(f.standings)}")
+        # 🔴🔴 **조 순위표는 블록 3b 가 그린다** — 여기서 그 dict 를 찍지 않는다.
+        #    ⚠️ 실측 2026-10-07(MLS): `standings["group"]` 이 들어오자 이 줄이
+        #       **85,682자**를 쏟아 카드가 읽을 수 없게 됐다(`_short` 가 줄여도
+        #       한 줄에 수백 자다). 🔴 블록 3 은 **쪼갠 표·홈 이점**만 적는다.
+        said = {k: v for k, v in dict(f.standings).items()
+                if k not in ("group", "outlook_states")}
+        if said:
+            out.append(f"- 순위 — {_short(said)}")
     if f.h2h:
         h = dict(f.h2h)
         got = h.get("summary")
