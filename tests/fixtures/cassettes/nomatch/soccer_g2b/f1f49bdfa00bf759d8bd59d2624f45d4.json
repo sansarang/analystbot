@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.ebay.com/itm/175838403689",
+ "query": "",
+ "recorded_at": "2026-10-06T07:56:35.299032+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

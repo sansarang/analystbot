@@ -349,6 +349,36 @@ def _names(team: dict) -> list[str]:
     return out
 
 
+#: 🔴🔴 **포지션 묶음** — 실측 2026-10-06(콜롬비아 3-4-3 라인업 JSON):
+#
+#   x=0.1   usual=0  Aldair Quintana      → GK
+#   x=0.357 usual=1  Andrade·Sánchez·Lucumí → DF 셋
+#   x=0.613 usual=2  Ocampo·Ríos·Puerta·Angulo → MF 넷
+#   x=0.87  usual=3  Asprilla·Suárez       → FW
+#
+# 🔴 `usualPlayingPositionId` 가 **0/1/2/3** 으로 갈린다(포메이션 3-4-3 과 맞는다).
+# ⚠️ 그 칸이 없으면 `horizontalLayout.x`(그라운드 가로 위치)로 떨어진다 — 그 문턱도
+#    위 실측에서 왔다(0.2 / 0.5 / 0.75). 🔴 둘 다 없으면 **빈칸**이다(지어내지 않는다).
+_POS_BY_ID = {0: "GK", 1: "DF", 2: "MF", 3: "FW"}
+
+
+def _pos_of(p: dict) -> str:
+    """🔴 그 선수의 포지션 묶음(`GK`·`DF`·`MF`·`FW`). ⚠️ 모르면 빈칸."""
+    got = p.get("usualPlayingPositionId")
+    if isinstance(got, int) and got in _POS_BY_ID:
+        return _POS_BY_ID[got]
+    for key in ("role", "position", "positionStringShort", "positionString"):
+        said = p.get(key)
+        if isinstance(said, str) and said.strip():
+            return said.strip()
+    box = p.get("horizontalLayout") or {}
+    x = box.get("x")
+    if isinstance(x, (int, float)):
+        return ("GK" if x < 0.2 else "DF" if x < 0.5
+                else "MF" if x < 0.75 else "FW")
+    return ""
+
+
 def players_of(team: dict) -> list[dict]:
     """🔴🔴 **선발 11명을 이름+포지션+등번호로**(축구 완성 지시서 §2).
 
@@ -364,12 +394,7 @@ def players_of(team: dict) -> list[dict]:
         name = str(p.get("name") or "").strip()
         if not name:
             continue
-        pos = ""
-        for key in ("role", "position", "positionStringShort", "positionString"):
-            got = p.get(key)
-            if isinstance(got, str) and got.strip():
-                pos = got.strip()
-                break
+        pos = _pos_of(p)
         num = p.get("shirtNumber", p.get("shirt"))
         try:
             number = int(num) if num is not None else None
@@ -411,7 +436,8 @@ def missing_of(team: dict) -> list[dict]:
         box = dict(p.get("unavailability") or {})
         said = str(box.get("type") or "").strip().lower()
         out.append({"name": name,
-                    "pos": str(p.get("role") or p.get("position") or "").strip(),
+                    # 🔴 결장 명단에도 같은 함수를 쓴다(있으면 받는다)
+                    "pos": _pos_of(p),
                     "reason": _MISS_REASON.get(said, "other"),
                     "returns": str(box.get("expectedReturn") or "").strip()})
     return out

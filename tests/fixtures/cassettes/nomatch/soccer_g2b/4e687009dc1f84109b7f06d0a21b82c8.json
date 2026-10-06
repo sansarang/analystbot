@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T07:56:36.312375+00:00",
+ "order": [
+  "La ausencia de Sonne representa una baja para Mano Menezes, quien deberá definir al encargado de ocupar el sector derecho ante el combinado colombiano. Todo apunta a que Marco Huamán será elegido por el técnico brasileño para asumir esa posición en el último compromiso de la gira.",
+  "Mientras el equipo se prepara para el compromiso, Oliver Sonne emprenderá el regreso a Inglaterra tras quedar desafectado de la convocatoria. La FPF, por su parte, informó que mantiene coordinación con el Burnley y le deseó al jugador una pronta recuperación.",
+  "Oliver Sonne quedó fuera de la convocatoria de la selección peruana para el partido ante Colombia, correspondiente al último compromiso de la ‘bicolor’ en su gira por Norteamérica. La Federación Peruana de Fútbol (FPF) comunicó este lunes 5 de octubre, a un día del encuentro, que el lateral fue sometido a una evaluación médica y, tras coordinar con su club, Burnley FC, se determinó que retornará a Inglaterra.",
+  "Por ello, cualquier detalle adicional sobre la lesión o el tiempo que podría permanecer fuera de las canchas dependerá de las evaluaciones que se realicen en Inglaterra con su club.",
+  "En total, el defensor estuvo presente en las tres primeras presentaciones de la ‘bicolor’, pero finalmente no podrá completar la serie de cuatro compromisos programados durante esta fecha FIFA.",
+  "“La Federación Peruana de Fútbol informa que, tras una evaluación médica y en coordinación permanente y cordial con el Burnley Football Club, el jugador Oliver Sonne ha sido desafectado de la presente convocatoria para el partido ante Colombia y retornará a Inglaterra”, señaló el organismo.",
+  "La decisión significa que el futbolista no podrá participar en el cierre de la fecha FIFA con el combinado nacional. Sonne había formado parte de los planes de Mano Menezes durante los tres primeros encuentros de esta serie de amistosos, pero ahora deberá dejar la concentración peruana y volver a Europa para continuar con el proceso correspondiente junto a su equipo.",
+  "Su último encuentro fue precisamente ante el combinado canadiense. El futbolista estuvo desde el arranque, pero no completó el compromiso y fue sustituido a los 66 minutos, cuando Marco Huamán ingresó para ocupar su lugar."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 14문단 → 재정렬 상위 8"
+}

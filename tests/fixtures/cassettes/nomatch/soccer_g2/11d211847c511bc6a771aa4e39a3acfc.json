@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T07:52:19.254866+00:00",
+ "order": [
+  "In the current four-game international window, El Tri, under new coach Rafael Marquez, is winless through three games.",
+  "“It’s a process,” Marquez said Saturday after Mexico lost to the United States, 3-0. “I think there are positives to take away, but obviously, we need to be self-critical, understand what happened, and bounce back as quickly as possible because we have another match coming up.”",
+  "Ochoa is the all-time MexTour leader among goalkeepers with 38 appearances since the tour first began in 2003. He earned 154 caps for Mexico all-time and became the first goalkeeper to appear in a record six World Cups.",
+  "Chile finished last in South American World Cup qualifying and has dropped its first two exhibition matches of the window, 1-0 against Canada (Sept. 26) and 4-2 against the U.S. (Sept. 29).",
+  "According to ESPN, Marquez is the first Mexico coach to fail to record a win in his first three games since Manuel Lapuente in 1997. Marquez replaced Javier Aguirre after Mexico’s Round of 16 exit at the World Cup this summer. He was a five-time World Cup participant with El Tri and began his coaching career at Barcelona Atletic, the reserve team of FC Barcelona.",
+  "During pregame festivities, legendary Mexico goalkeeper Memo Ochoa will be honored. Ochoa retired from soccer after the team was eliminated from the World Cup. He made 154 appearances for the Mexican national team and is the first and only goalkeeper to appear in six World Cup tournaments.",
+  "“It’s simple. In football, you win, draw and lose, you have to be prepared for that,” Márquez said Saturday. “The most important thing is knowing how to bounce back, engaging in self-criticism to understand what we did right and what we did wrong, and then continuing to work.”",
+  "Mexico’s tour across the U.S. began with 1-1 draws against Colombia in Baltimore (Sept. 26) and Peru in New Jersey (Sept. 29), which all led to Saturday’s 3-0 drubbing at the hands of the Americans."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 12문단 → 재정렬 상위 8"
+}

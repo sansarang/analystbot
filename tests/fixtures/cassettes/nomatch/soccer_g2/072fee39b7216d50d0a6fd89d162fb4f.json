@@ -1,0 +1,1294 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Colombia Peru despedida",
+ "recorded_at": "2026-10-06T07:50:35.861977+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "@CNCOMUSIC - Instagram",
+   "content": "@CNCOMUSIC의 최신 포스트를 확인하세요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.instagram.com/CNCOMUSIC/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.instagram.com",
+    "/CNCOMUSIC/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Conflicto limítrofe entre el Perú y Colombia",
+   "content": "Para remediar la crisis, el Perú envió a Colombia como ministro plenipotenciario a José Villa.Bolívar se negó a recibirlo y, … pidió explicaciones al Perú sobre la despedida de tropas colombianas …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Conflicto_lim%C3%ADtrofe_entre_el_Per%C3%BA_y_Colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Conflicto_lim%C3%ADtrofe_entre_el_Per%C3%BA_y_Colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Vive Peru",
+   "content": "No solo te llevamos de viaje, te convertimos en un super viajero. Somos viajeros, de alma inquieta que abrazan la aventura y buscan tesoros en experiencias inolvidables. Únete a nuestra travesía y transforma tu forma de viajar.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://viveperu.supertramphostel.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "viveperu.supertramphostel.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "⚽ COLOMBIA vs. PERÚ HOY: a qué HORA juegan, dónde VER y análisis | #LR",
+   "content": "colombia vs peru … peru colombia colombia peru … colombia vs peru hoy colombia vs peru hoy en vivo colombia vs peru VER colombia vs peru EN VIVO colombia vs peru HOY EN VIVO",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=OO0ByTVw1lU",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=OO0ByTVw1lU",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Inicio | El Bocón",
+   "content": "Últimas noticias deportivas del Perú y el mundo.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://elbocon.pe/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "elbocon.pe",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sigue EN VIVO y GRATIS el partido de la Selección Colombia y Perú",
+   "content": "Selección Colombia en concentración previa al partido frente a Perú. Instagram Selección Colombia El combinado nacional no celebra una victoria desde el recordado 3-1 ante Chile en el mes de septiembre del 2021.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.colombia.com/futbol/eliminatorias/seleccion-colombia-en-vivo-partido-colombia-peru-eliminatorias-335954",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.colombia.com",
+    "/futbol/eliminatorias/seleccion-colombia-en-vivo-partido-colombia-peru-eliminatorias-335954",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Noticias de deportes de hoy del canal líder en Perú | DEPOR",
+   "content": "Noticias deportivas del 05 de octubre Perú y el mundo | Fútbol | Selección Peruana | Fichajes | Universitario de Deportes | Alianza Lima | Sporting Cristal | Liga 1 | FC Barcelona | Real Madrid | Cristiano Ronaldo | Lionel Messi | Fútbol en vivo | DEPOR",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://depor.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "depor.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia 0-0 Perú: Resultado, resumen y estadísticas",
+   "content": "Final de Colombia 0-0 Perú: Jornada 15 de la Elimonatoria Sudamericana Marcador del partido en el Metropolitano Colombia empata sin goles con Perú en la jornada 15 de las Eliminatorias Sudamericanas.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://colombia.as.com/futbol/colombia-peru-en-vivo-online-eliminatoria-sudamericana-en-directo-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.as.com",
+    "/futbol/colombia-peru-en-vivo-online-eliminatoria-sudamericana-en-directo-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "브라질축구협회",
+   "content": "협회소개, 월드컵 참가기록, 경기일정, 언론기사, 사진갤러리, 선수정보 등 수록.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.cbf.com.br/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.cbf.com.br",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Petro acusa a Perú de \"copar territorio de Colombia\" y crece la tensión. ¿De dónde viene este conflicto? | CNN",
+   "content": "El gobierno de Perú expresó “su más firme y enérgica protesta” tras el pronunciamiento hecho este martes por el presidente de Colombia, Gustavo Petro …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://cnnespanol.cnn.com/2025/08/05/latinoamerica/petro-acusa-peru-copar-territorio-colombia-orix",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "cnnespanol.cnn.com",
+    "/2025/08/05/latinoamerica/petro-acusa-peru-copar-territorio-colombia-orix",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Relaciones Colombia-Perú",
+   "content": "Relaciones Colombia-Perú … Embajada de Colombia en Lima … relaciones Colombia-Perú … República de Colombia … «Comisión de Vecindad Colombia-Perú»",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Relaciones_Colombia-Per%C3%BA",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Relaciones_Colombia-Per%C3%BA",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia empató con Perú, se fue silbado y llega mal con Argentina: reviví lo mejor - TyC Sports",
+   "content": "Colombia mostró una pálida imagen y igualó 0-0 con Perú … El cabezazo al palo de Suárez para Colombia ante Perú ⏱️ 32' 2T: Córner para Colombia",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.tycsports.com/eliminatorias-conmebol/colombia-vs-peru-en-vivo-hora-donde-ver-y-formaciones-id665726.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tycsports.com",
+    "/eliminatorias-conmebol/colombia-vs-peru-en-vivo-hora-donde-ver-y-formaciones-id665726.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección Peruana: hace 80 años ganó el primer título de su historia [INFOGRAFÍA] | FUTBOL-PERUANO |....",
+   "content": "2018.08.17.Selección Peruana: hace 80 años ganó el primer título de su historia [INFOGRAFÍA] Un 17 de agosto de 1938, la Selección Peruana gritó “¡Campeón!” por primera vez al ganar los Juegos Bolivarianos 1938. La campaña de la bicolor fue perfecta.2018.08.17.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://depor.com/futbol-peruano/seleccion-peruana/seleccion-peruana-80-anos-gano-primer-titulo-historia-infografia-84771/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "depor.com",
+    "/futbol-peruano/seleccion-peruana/seleccion-peruana-80-anos-gano-primer-titulo-historia-infografia-84771/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Guerra colombo-peruana",
+   "content": "Guerra colombo-peruana Conflicto limítrofe entre el Perú y Colombia Territorio entre los ríos … que para algunos sectores peruanos se había cedido a … Ejército de Colombia",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Guerra_colombo-peruana",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Guerra_colombo-peruana",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia 4 – 1 Perú: Resultado, resumen y goles",
+   "content": "Colombia debuta en la Liga de Naciones Bienvenidos a la transmisión en vivo de Colombia – Perú, jornada 1 de la Liga de Naciones Femenina …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://colombia.as.com/futbol/colombia-peru-en-vivo-online-liga-de-nacionaes-en-directo-f202510-d/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.as.com",
+    "/futbol/colombia-peru-en-vivo-online-liga-de-nacionaes-en-directo-f202510-d/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "@ElDefensores - X",
+   "content": "@ElDefensores의 최신 포스트를 확인하세요.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://twitter.com/ElDefensores",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "twitter.com",
+    "/ElDefensores",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Colombia no pasa del 0-0 contra Perú y pierde oportunidad de acercarse a clasificación al Mundial",
+   "content": "Colombia sumó su quinto partido consecutivo sin victoria, al igualar el viernes 0-0 ante Perú, con lo que dilapidó la oportunidad de colocarse en el umbral de la próxima Copa del Mundo.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://apnews.com/article/mundial-eliminatorias-colombia-peru-2026-cc51e1711ac5c1d8a2ca5bd9d2873637",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/mundial-eliminatorias-colombia-peru-2026-cc51e1711ac5c1d8a2ca5bd9d2873637",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "FPF",
+   "content": "La Federación Peruana de Fútbol (FPF) cumple con informar que a partir de la fecha suspende sus actividades presenciales en el local de la Videna FPF (Avenida Aviación 2085, San Luis) por lo que el acceso no será posible. Agradecemos la compresión de toda la comunidad y para todo trámite y comunicación necesaria se atenderá a través de la mesa de partes virtual: Click aquí",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://fpf.org.pe/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "fpf.org.pe",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Carlos Ferrero Costa, expresidente del Congreso, falleció a los 83 años - Infobae",
+   "content": "2025.02.02.Falleció Carlos Ferrero Costa, excongresista y expresidente del Consejo de Ministros en el Gobierno de Alejandro Toledo El político murió a los 83 años la noche del viernes 31 de enero. El velatorio se realizará solo con la compañía de familiares y amigos2025.02.02.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.infobae.com%2Fresizer%2Fv2%2FAU6TZ6R6R5HJXFYWCDBOH2WJAY.jpg%3Fauth%3D79473336adefa3383a63acf235b333892a558e45979201914336ca77c06b0f1b%26smart%3Dtrue%26width%3D1200%26height%3D630%26quality%3D85&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.infobae.com/peru/2025/02/01/fallecio-carlos-ferrero-costa-excongresista-y-expresidente-del-consejo-de-ministros-en-el-gobierno-de-alejandro-toledo/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.infobae.com",
+    "/peru/2025/02/01/fallecio-carlos-ferrero-costa-excongresista-y-expresidente-del-consejo-de-ministros-en-el-gobierno-de-alejandro-toledo/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Leicy Santos, la futbolista latinoamericana más valiosa de la temporada 2019/20 - Infobae",
+   "content": "2020.12.11.Leicy Santos, la futbolista latinoamericana más valiosa de la temporada 2019/20 La centrocampista colombiana lleva un año jugando con el Atlético de Madrid, que se ha posicionado como una de las mejores, fue galardonada por la agencia EFE.2020.12.11.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.infobae.com%2Fresizer%2Fv2%2FEZQDOJN2KFBXTL5YSUH6Z7DNYM.jpg%3Fauth%3D19d4330104ccdb48282e8b2e1c88c8e991e1bd9dcb804fae39521dc09346842d%26smart%3Dtrue%26width%3D1200%26height%3D630%26quality%3D85&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.infobae.com/america/colombia/2020/12/11/leicy-santos-la-futbolista-latinoamericana-mas-valiosa-de-la-temporada-201920/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.infobae.com",
+    "/america/colombia/2020/12/11/leicy-santos-la-futbolista-latinoamericana-mas-valiosa-de-la-temporada-201920/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mundial 2026, Mundial en vivo, Fixture del Mundial, Liga1, Selección peruana, Eliminatorias 2026, Univer....",
+   "content": "Noticias, resultados en vivo, minuto a minuto, estadísticas de las principales ligas del mundo y el torneo nacional",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fe-ad.americatv.com.pe%2Fseleccion-peru-vs-colombia-fpf-confirmo-baja-lesion-titular-amistoso-oliver-sonne-n456597-641x362-1040514.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.americatv.com.pe/deportes",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.americatv.com.pe",
+    "/deportes",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Noticias de Colombia hoy: política, elecciones, economía y más | CNN",
+   "content": "No es un objetivo sencillo Video Gobierno de EE.UU. … Colombia, … 12 Video México y Colombia empatan 1-1, … 01 Colombia rompe relaciones diplomáticas con Irán …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://cnnespanol.cnn.com/colombia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "cnnespanol.cnn.com",
+    "/colombia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "PressReader.com | Argentina convoca a Messi para partido de despedida el 6 de octubre ante Benín en Buen....",
+   "content": "Fue convocado para los amistosos, pero solo estará presente ante Benín el 6 de octubre. El último tango de Lionel Messi con la selección argentina ya tiene fecha definida. Ayer fue convocado para el amistoso entre la albiceleste y Benín el próximo 6 de octubre en el Monumental de Buenos Aires.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.pressreader.com/peru/diario-el-comercio/20260916/281513643052008",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.pressreader.com",
+    "/peru/diario-el-comercio/20260916/281513643052008",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Perú 1 - 1 Colombia: Resultado, resumen y goles",
+   "content": "as.com Publicado a las: 22:44 -05 06/09/2024 La Selección Colombia empató con Perú en Lima. Uruguay y Colombia en los primeros lugares.PT PJ PG PE PP 1 ARG 18 7 6 0 1 2",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://colombia.as.com/futbol/peru-colombia-vivo-online-eliminatorias-sudamericanas-en-directo-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.as.com",
+    "/futbol/peru-colombia-vivo-online-eliminatorias-sudamericanas-en-directo-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Parque del Recuerdo | Primer parque cementerio en Chile",
+   "content": "Un lugar único para el descanso de tus seres queridos. Contrata online: sepulturas, cremaciones, servicios funerarios y más. Atención 24/7",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://parquedelrecuerdo.cl/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "parquedelrecuerdo.cl",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Perú en la Copa América 2024",
+   "content": "tanda de penales , … en la ronda de semifinales perdió ante Brasil por la mínima diferencia fue 0-1 y culminó su participación al caer derrotado en el partido por el tercer puesto jugado frente a Colombia por 2-3 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Per%C3%BA_en_la_Copa_Am%C3%A9rica_2024",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Per%C3%BA_en_la_Copa_Am%C3%A9rica_2024",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Fiesta Taurina en el Peru",
+   "content": "Noticias taurinas ferias y carteles de toros plaza de Acho lima peru",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "http://toroperu.blogspot.com/",
+   "engine": "naver",
+   "parsed_url": [
+    "http",
+    "toroperu.blogspot.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Perú vs. Colombia: estadísticas e historial del partido de las eliminatorias sudamericanas",
+   "content": "Selección Colombia sería vacunada contra el coronavirus Por la clasificación al Mundial, ambas selecciones se han medido en 20 ocasiones, de las cuales 11 fueron victoria para Colombia …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.semana.com/deportes/articulo/peru-vs-colombia-estadisticas-e-historial-del-partido-de-las-eliminatorias-sudamericanas/202134/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.semana.com",
+    "/deportes/articulo/peru-vs-colombia-estadisticas-e-historial-del-partido-de-las-eliminatorias-sudamericanas/202134/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "América TV: noticias, deportes, espectáculos, entretenimiento",
+   "content": "América TV tiene lo último en política, actualidad, espectáculos, Al Fondo Hay Sitio, Esto es Guerra, Liga 1, deportes y más.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.americatv.com.pe/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.americatv.com.pe",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Perú dice que avión militar de Colombia entró en espacio aéreo peruano en torno a la isla de Santa Rosa | CNN",
+   "content": "Un avión militar de Colombia ingresó el jueves en espacio aéreo de Perú cercano a la isla de Santa Rosa sin tener permiso para ello, dijeron este viernes altos funcionarios del Gobierno peruano.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://cnnespanol.cnn.com/2025/08/08/latinoamerica/peru-avion-militar-colombia-espacio-aereo-santa-rosa-orix",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "cnnespanol.cnn.com",
+    "/2025/08/08/latinoamerica/peru-avion-militar-colombia-espacio-aereo-santa-rosa-orix",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Perú vs. Colombia, por las Eliminatorias: resultado, resumen, goles, polémicas y más - TyC Sports",
+   "content": "Deberá reponer desde la esquina Colombia. … 16' 2T: Córner para Colombia",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.tycsports.com/eliminatorias/peru-vs-colombia-en-vivo-hora-donde-ver-y-formaciones-id606235.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tycsports.com",
+    "/eliminatorias/peru-vs-colombia-en-vivo-hora-donde-ver-y-formaciones-id606235.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¿A qué hora juega Colombia vs. Perú hoy y dónde ver el partido en vivo?",
+   "content": "Foto: … Colombia buscará este viernes ahuyentar fantasmas en el camino al Mundial de 2026 ante un Perú que le dejó una cicatriz profunda al dejarlo fuera de la última cita mundialista.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.elespectador.com/deportes/seleccion-colombia/colombia-vs-peru-hora-y-donde-ver-el-partido-de-las-eliminatorias-al-mundial-nestor-lorenzo-james-rodriguez-noticias-hoy/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elespectador.com",
+    "/deportes/seleccion-colombia/colombia-vs-peru-hora-y-donde-ver-el-partido-de-las-eliminatorias-al-mundial-nestor-lorenzo-james-rodriguez-noticias-hoy/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección peruana fútbol en EL PAÍS",
+   "content": "ELIMINATORIAS CONMEBOL Colombia se desploma y Perú ya aspira a repetir otro MundialEl equipo de Reinaldo Rueda cae en casa y sale de la zona de clasificación mientras los incas se aferran al cuarto lugar de la tablaEliminatorias Qatar 2022El capitán Di María …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://elpais.com/noticias/seleccion-futbol-peru/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "elpais.com",
+    "/noticias/seleccion-futbol-peru/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¡Goleada tricolor! Colombia venció 4-1 a Perú en el inicio del camino al Mundial",
+   "content": "Colombia debutó con autoridad en la Liga de Naciones Femenina de la Conmebol al vencer 4-1 a la selección peruana en Medellín. … selección de Colombia femenina",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.elespectador.com/deportes/seleccion-colombia/colombia-vs-peru-en-eliminatorias-femeninas-la-posible-titular-tv-y-como-ver-en-vivo-la-liga-de-naciones-femenina-2/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elespectador.com",
+    "/deportes/seleccion-colombia/colombia-vs-peru-en-eliminatorias-femeninas-la-posible-titular-tv-y-como-ver-en-vivo-la-liga-de-naciones-femenina-2/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Millonarios deja mala imagen en Perú: Cae ante Universitario",
+   "content": "Millonarios FC perdió 2-0 con Universitario de Deportes de Perú en su primer partido amistoso del segundo semestre de 2026.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://colombia.as.com/futbol/millonarios-deja-mala-imagen-en-peru-cae-ante-universitario-f202607-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "colombia.as.com",
+    "/futbol/millonarios-deja-mala-imagen-en-peru-cae-ante-universitario-f202607-n/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: timeout"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "Suspended: access denied"
+  ]
+ ]
+}

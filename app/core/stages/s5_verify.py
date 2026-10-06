@@ -333,11 +333,14 @@ def merge_key(subject: str, kind: str, target: str) -> tuple[str, str, str]:
 
 
 #: 🔴 포지션 낱말 → 결장 유형. ⚠️ **자료가 있을 때만** 쓴다(없으면 다수결로 간다).
-_DEF_WORDS = ("수비", "센터백", "골키퍼", "키퍼", "포수", "유격수",
+#  🔴 실측 2026-10-06: fotmob 는 포지션을 **묶음 글자**로 준다(`GK`·`DF`·`MF`·`FW` —
+#     `usualPlayingPositionId` 0/1/2/3 에서 왔다). ⚠️ `MF` 는 **어느 쪽도 아니다** —
+#     미드필더 결장을 수비/공격 결장으로 적으면 방향이 거짓이 된다.
+_DEF_WORDS = ("gk", "df", "수비", "센터백", "골키퍼", "키퍼", "포수", "유격수",
               "defender", "centre-back", "center-back", "goalkeeper", "keeper",
-              "back", "cb", "gk", "df")
-_ATT_WORDS = ("공격", "윙어", "스트라이커", "포워드", "forward", "striker",
-              "winger", "attacker", "fw", "mf")
+              "back", "cb")
+_ATT_WORDS = ("fw", "공격", "윙어", "스트라이커", "포워드", "forward", "striker",
+              "winger", "attacker")
 
 
 def position_of(target: str, facts: Facts) -> str:
@@ -349,16 +352,17 @@ def position_of(target: str, facts: Facts) -> str:
     said = norm(target)
     if not said:
         return ""
-    for xi in facts.xi.values():
-        for name in [*xi.players, *xi.bench]:
-            got = str(name)
-            if said not in norm(got):
-                continue
-            low = norm(got)
-            if any(w in low for w in _DEF_WORDS):
-                return "def"
-            if any(w in low for w in _ATT_WORDS):
-                return "att"
+    # 🔴 **경기 단위 포지션 표**가 원본이다(§2 `player_pos`) — s2 가 XI·결장에서 만든다
+    for name, pos in (facts.player_pos or {}).items():
+        if said not in norm(name) and norm(name) not in said:
+            continue
+        low = norm(pos)
+        if any(low == w or low.startswith(w) for w in _DEF_WORDS):
+            return "def"
+        if any(low == w or low.startswith(w) for w in _ATT_WORDS):
+            return "att"
+        # ⚠️ `MF` 는 어느 쪽도 아니다 — 모른다고 답한다(지어내지 않는다)
+        return ""
     return ""
 
 

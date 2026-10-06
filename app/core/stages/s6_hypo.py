@@ -27,6 +27,13 @@ from app.core.state import RunState
 #     읽어** 빨개졌다(실측 2026-10-06: `ABCDEFGHIJKLMNOPQRSTUVWXYZ` 를 키로 봤다).
 _LETTERS = string.ascii_uppercase
 
+#: 🔴 가설에 보낼 **근거 변수 상한** — 실측 2026-10-06: 32개를 보내면 잘린다
+#   (입력 3,548 → 출력 8,000이 전부 추론 · `length`). 16개면 돈다(그 회차 실측).
+#   ⚠️ 이 수는 **실측으로 정했다** — 늘리려면 다시 재야 한다(§9).
+BASIS_CAP = 16
+#: 🔴 맥락 변수 상한 — 근거가 아니므로 더 짧게
+CTX_CAP = 6
+
 
 def run(ref: MatchRef, facts: Facts, variables: list[Variable], *,
         state: RunState) -> HypoSet:
@@ -123,13 +130,25 @@ def _payload(ref: MatchRef, facts: Facts, basis: list[Variable],
         box = dict(raw) if isinstance(raw, dict) else {}
         return {k: box[k] for k in _FORM_KEYS if k in box}
 
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **보낼 변수 수를 묶는다** — 실측 2026-10-06(콜롬비아–페루)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  변수 32개를 보냈더니 입력 3,548 + 캐시 384 에 **출력 8,000이 전부 추론**이 되어
+    #  `length` 로 잘렸다(가설 0팀). ⚠️ 상한을 올리는 것은 §9 금지다 — DeepSeek 은
+    #  추론 강도도 무시한다(앞 실측). 🔴 남은 지렛대는 **입력 크기**다.
+    #
+    #  🔴 **무게가 큰 것부터** 자른다(hard → soft). ⚠️ 자른 수를 사유로 남긴다 —
+    #     조용히 버리면 카드가 *"그 변수를 안 봤다"* 를 숨긴다(#3).
+    keep_basis = sorted(basis, key=lambda v: (-float(v.weight), v.id))[:BASIS_CAP]
+    keep_ctx = ctx[:CTX_CAP]
     box = {
         "match": {"home": ref.home_name, "away": ref.away_name,
                   "home_key": ref.home, "away_key": ref.away,
                   "competition": ref.competition_short,
                   "match_format": facts.match_format, "sport": ref.sport},
-        "variables": [row(v) for v in basis],
-        "context_only": [row(v) for v in ctx],
+        "variables": [row(v) for v in keep_basis],
+        "context_only": [row(v) for v in keep_ctx],
         "facts": {"standings": facts.standings,
                   "recent": {k: form(v) for k, v in facts.recent.items()},
                   "h2h": {k: v for k, v in facts.h2h.items()
@@ -146,6 +165,10 @@ def _ask(ref: MatchRef, facts: Facts, basis: list[Variable],
         state.note("s6 근거 변수 0개 — DeepSeek 를 부르지 않았다(필수형 보강만 "
                    "돈다 · 지어낸 가설보다 **없는 것**이 낫다)")
         return None
+    if len(basis) > BASIS_CAP or len(ctx) > CTX_CAP:
+        state.note(f"s6 입력을 묶었다 — 근거 {len(basis)}→{min(len(basis), BASIS_CAP)}개"
+                   f"(무게 큰 것부터) · 맥락 {len(ctx)}→{min(len(ctx), CTX_CAP)}개 "
+                   f"(실측 2026-10-06: 32개를 보내면 잘린다)")
     said = llm.ask(provider="deepseek", purpose="hypo", out=HypoOut,
                    state=state,
                    messages=[llm.Message(role="system",

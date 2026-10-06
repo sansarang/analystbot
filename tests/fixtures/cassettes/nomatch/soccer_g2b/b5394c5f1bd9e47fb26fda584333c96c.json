@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T07:55:37.080120+00:00",
+ "order": [
+  "Wilder Cartagena Injury: Called up by Peru Cartagena has been called up by Peru for four international matches between Sept. 26 and Oct. 6 and will miss the Sept. 26 MLS match against Philadelphia Union. Cartagena will be unavailable against ...",
+  "Galaxy forward Joseph Paintsil returns in friendly loss against Cruz Azul 1일 전of injuries. “It’s good to get him going today (Sunday). It’s good for his confidence to hit the back... injury on international duty with the Mexican national team. Lozano started and played 64 minutes in Mexico’s game against Colombia on Sept. 26. He didn’t make an appearance in the Sept. 29 game against Peru. “I...1일 전",
+  "Colombia no pasa del 0-0 contra Perú y pierde oportunidad de acercarse a clasificación al Mundial 2025.06.06.Tampoco estuvieron por lesión los atacantes Jhon Córdoba ni Rafael Santos Borré. El ariete Jhon Jáder Durán fue la opción que eligió el seleccionador argentino de Colombia Néstor Lorenzo, pero estuvo impreciso y fue sustituido en el entretiempo. “Nos faltaron dos cosas fundamentales, intensidad y precisión en los...2025.06.06.",
+  "Oliver Sonne fue desconvocado de la Selección Peruana y no jugará ante Colombia Oliver Sonne fue desconvocado de la Selección Peruana por lesión y no jugará ante Colombia este martes 6 de octubre en Miami. Regresará a Inglaterra con Burnley ...",
+  "Oliver Sonne sale sorpresivamente de la convocatoria de Perú: no jugará el último partido ante Colombia La Federación Peruana de Fútbol (FPF) informó que el lateral quedó desafectado y no estará disponible para el último compromiso de la ‘bicolor’ en su gira por Norteamérica ...",
+  "Perú se quedó sin su Oliver para enfrentar a la Selección Colombia: ya fue descartado La Federación Peruana de Fútbol confirmó este lunes que su Oliver, Sonne, fue desafectado de la convocatoria y no estará disponible para el amistoso contra la Selección Colombia, que se disputará este ...",
+  "Baja de última hora por lesión: Selección Peruana pierde titular para el duelo frente a Colombia La Selección Peruana sufre una baja de última hora, por lesión. No estará este titular de Mano Menezes, en el partido amistoso ante Colombia.",
+  "USA vs. Mexico, Canada vs. Peru Set for Saturday Friendlies 2일 전Two marquee friendlies headline Saturday's international window. Canada hosts Peru at Stade Saputo in Montreal at 2 p.m. ET, and the United States faces Mexico at State Farm Stadium in Glendale at 10 p.m. ET. Both matches fall under the expanded September/October window built to give national teams more prep time ahead of the next World Cup cycle. Canada comes in off a 1-0 win over Chile, its first match since reaching the Round of 16 at the 2026 World Cup. Jonathan David scored the winner in th....2일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

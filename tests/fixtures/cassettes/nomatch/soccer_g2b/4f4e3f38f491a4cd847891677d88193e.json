@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T07:56:45.915562+00:00",
+ "order": [
+  "El carácter amistoso del encuentro y la política de rotaciones implementada por el entrenador Néstor Lorenzo abren la opción para que Kevin Mier tenga minutos frente al conjunto peruano. El propio arquero ha manifestado estar listo para asumir el reto y el cuerpo técnico valora su participación para el cierre de esta fase de preparación.",
+  "La Selección Colombia de fútbol se prepara para afrontar el último reto de su gira internacional, con la portería como uno de los focos principales de análisis por parte del cuerpo técnico. Bajo la dirección de Néstor Lorenzo, el equipo se prepara para enfrentar a Perú el martes 6 de octubre, en el NU Stadium de Miami, en medio de una evaluación profunda de los arqueros disponibles en esta etapa posmundialista. Esta revisión toma especial relevancia después de un empate 1-1 ante México y una reciente derrota 0-1 frente a Paraguay, resultados que han puesto bajo la lupa el rendimiento de quienes custodian el arco colombiano.",
+  "De acuerdo con la información, tanto Álvaro Montero como Aldair Quintana han tenido oportunidades en la portería, destacando Montero por su efectividad y precisión en el empate ante México, mientras Quintana enfrentó dificultades y errores puntuales en la derrota frente a Paraguay, lo que complica la decisión del cuerpo técnico para el cierre de la gira.",
+  "Aprovechando el carácter amistoso de la gira y la posibilidad de experimentar con variantes, la puerta se abre también para Kevin Mier, otro arquero citado que podría tener minutos frente al equipo peruano. Mier aseguró: \"He trabajado para eso y ahora toca aprovechar la oportunidad en este juego que se viene (…) Veremos videos para analizar lo que ha hecho Perú en sus juegos de preparación\". El equipo dirigido por Mano Menezes llega a este compromiso tras perder 2-0 frente a Canadá, lo que añade un ingrediente extra al cierre de la fecha FIFA para Colombia, quien busca ajustar el cierre de su gira internacional.",
+  "En el primer partido de la gira, llevado a cabo en Baltimore, Álvaro Montero, portero oriundo de El Molino, Guajira, fue el elegido por Lorenzo para custodiar la portería. Su presentación dejó buenas sensaciones gracias a su solvencia y capacidad para responder en momentos críticos. Según los datos citados, Montero intervino con tres paradas determinantes, dos de ellas dentro del área chica, y alcanzó una precisión del 69 % al completar 22 de 32 pases intentados, destacándose por su temple ante la presión ejercida por el equipo mexicano durante los 90 minutos de juego.",
+  "Por otro lado, en el duelo ante Paraguay en New Jersey, Aldair Quintana, arquero tolimense, asumió el liderato en la portería pero enfrentó dificultades desde el inicio, pues un fuerte golpe lo obligó a jugar todo el partido con un vendaje en la cabeza. Sus estadísticas reflejan un partido complejo: solo logró una atajada y completó 15 de 19 pases. Además, un rebote concedido en el área chica resultó en el único gol paraguayo, situación que dejó varias dudas para el análisis técnico, según lo reflejado en el balance compartido por el cuerpo técnico de la Selección Colombia.",
+  "* Este artículo fue curado con apoyo de inteligencia artificial.",
+  "Este artículo fue curado con apoyo de inteligencia artificial."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 11문단 → 재정렬 상위 8"
+}

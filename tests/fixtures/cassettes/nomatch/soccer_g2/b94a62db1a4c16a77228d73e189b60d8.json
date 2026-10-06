@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T07:51:29.932419+00:00",
+ "order": [
+  "Sonne ya había llegado a la concentración con una molestia física. Según el material de contexto, el lateral se incorporó a los entrenamientos en Orlando a mediados de septiembre, tras cumplir con sus compromisos con Burnley, y en un inicio realizó trabajos diferenciados mientras era evaluado por el cuerpo médico de la Bicolor.",
+  "La Federación Peruana de Fútbol (FPF) informó la mañana de este lunes 5 de octubre que el lateral Oliver Sonne quedó desconvocado de la Selección Peruana y no estará disponible para el amistoso ante Colombia, correspondiente a la fecha FIFA. Según el comunicado del ente rector, el jugador de 25 años pasó por una evaluación médica en la concentración y, en coordinación con el cuerpo médico del Burnley FC, se acordó que retorne a Inglaterra.",
+  "Pese a esa situación, el jugador logró recuperarse y fue considerado por el seleccionador Mano Menezes. Fue titular ante Estados Unidos, partido en el que permaneció 83 minutos en cancha, y también arrancó desde el inicio frente a Canadá, donde disputó 66 minutos. En ese último amistoso, Perú cayó 2-0 y Sonne salió al minuto 65 sin mostrar signos de golpe.",
+  "\"La Federación Peruana de Fútbol informa que, tras una evaluación médica y en coordinación permanente y cordial con el Burnley Football Club, el jugador Oliver Sonne ha sido desafectado de la presente convocatoria para el partido ante Colombia y retornará a Inglaterra\".",
+  "La FPF no precisó el tipo de lesión ni su gravedad. El texto oficial señala que la desafectación se dio \"tras una evaluación médica y en coordinación permanente y cordial con el Burnley Football Club\" y que el futbolista \"retornará a Inglaterra\". El organismo le deseó una pronta recuperación.",
+  "Respecto a quién ocupará el puesto de Sonne por la banda derecha, el material de contexto apunta a que Marco Huamán sería el reemplazante, considerando las últimas alineaciones de Menezes. El lateral de Alianza Lima tendría una nueva oportunidad para sumar minutos con la Bicolor.",
+  "El estado de la lesión de Sonne y el tiempo de recuperación no fueron precisados por la FPF. El futbolista retornará a Inglaterra para continuar su proceso con el Burnley, mientras la Selección Peruana cierra su gira ante Colombia.",
+  "El director general de Fútbol de la FPF, Ferrari, se había referido a la situación días atrás, durante el microciclo. \"Vamos a esperar la información del doctor, no podemos adelantar opinión porque no sabemos exactamente lo que va a salir o arrojará la resonancia\", señaló entonces."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 10문단 → 재정렬 상위 8"
+}

@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T07:50:20.012118+00:00",
+ "order": [
+  "Lorenzo confirma rotación en el arco de Colombia para el amistoso frente a Paraguay Néstor Lorenzo evaluará a Kevin Mier y Aldair Quintana en los próximos compromisos internacionales de la Selección Colombia.",
+  "¿Néstor Lorenzo rotará vs. Perú? Los que faltan por jugar con Colombia Recta final para la Selección Colombia, en lo que corresponde a la fecha FIFA de septiembre y octubre. Néstor Lorenzo y sus dirigidos ya tuvieron acción en los compromisos vs. México y Paraguay. Las c ...",
+  "Selección Colombia define su portería ante Perú en Miami tras análisis a Montero, Quintana y Mier La Selección Colombia evalúa a sus arqueros antes de enfrentar a Perú, destacando el análisis y rotación en la portería rumbo a nuevos desafíos.",
+  "Ecuador revive el sueño de organizar un Mundial junto a Colombia y Perú en 2038 Ecuador podría tener una minima oportunidad de organizar el mundial de 2038 junto a Colombia y Perú, por el esquema de rotación ...",
+  "Penny pide a Córdova como arquero de Perú ante Colombia: \"Es buen momento\" Diego Penny pidió a Mano Menezes alinear a Matías Córdova, exarquero de Sporting Cristal, como titular de la selección peruana ante Colombia por fecha FIFA.",
+  "Esta sería la alineación titular de la selección Colombia contra Perú en el último partido amistoso de la fecha FIFA La Tricolor acumula un empate ante México y una derrota ante Paraguay en la gira por Estados Unidos, que marcó el inicio de la segunda era de Néstor Lorenzo ...",
+  "¿Quién será el arquero de Colombia para enfrentar a Perú? Néstor Lorenzo cambiaría al arquero titular de la selección de Colombia para enfrentar a Perú en el cierre de la triple fecha FIFA.",
+  "La nómina que proyecta la selección Colombia para su amistoso contra Perú La selección Colombia se prepara para su amistoso frente a Perú. El director técnico Néstor Lorenzo presentará una nómina con caras nuevas."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

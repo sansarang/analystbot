@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://www.recruit.net/job/[cls]-automation-maintenance-specialist-[l-jobs/BDD432BA7F274A06",
+ "query": "",
+ "recorded_at": "2026-10-06T07:46:29.749774+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

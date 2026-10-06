@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T07:57:48.939331+00:00",
+ "order": [
+  "El club blanquiazul anunció que afrontará un amistoso ante Talleres de Córdoba en Matute",
+  "Lunes de mucho fútbol internacional. Revisa la programación completa de todos los partidos de hoy",
+  "Jacob Shaffelburg anotó el primero a los 19 minutos del partido amistoso que se juega en Montreal",
+  "Mano Menezes definió su once para buscar el triunfo de Perú vs Canadá por amistoso internacional",
+  "A través de un comunicado oficial, la 'Bicolor' anunció que el jugador regresará a su club para iniciar su proceso de recuperación",
+  "El extremo peruano tuvo minutos en un amistoso del club checo ante el Jihlava y fue fundamental para el segundo gol de su equipo",
+  "El volante peruano deberá recibir un pago por parte del club turco, que puede apelar ante el Tribunal de Arbitraje Deportivo",
+  "De acuerdo a Transfermarkt, Fabio Gruber destaca entre los peruanos mejor cotizados"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 14문단 → 재정렬 상위 8"
+}

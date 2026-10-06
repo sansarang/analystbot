@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T07:46:57.035229+00:00",
+ "order": [
+  "There is no particular injury. An official warned against overinterpretation, saying, \"Kim Min-jae is not injured. He is fatigued.\"",
+  "Coincidentally, in the final training held at Cheonan Korea Football Park on the afternoon of the 5th ahead of the Uzbekistan match, only Kim Min-jae was absent. The other 27 players trained on the ground.",
+  "A team official said, \"Only Kim Min-jae is doing indoor weight training for recovery. He is not doing on-field training. This was decided after a meeting with the medical team. Kim Min-jae did not do on-field training yesterday either.\"",
+  "It is not good news for the national team that Kim Min-jae, who made the resolute remarks, is not in normal condition. There is concern about whether the defensive linchpin Kim Min-jae can start normally against Uzbekistan.",
+  "Kim Min-jae continued, \"I feel sorry only for the defenders. They have to put their heads down and run,\" urging his teammates to step up. He criticized that the forwards' and midfielders' pressing was insufficient, leaving defenders to shoulder that burden.",
+  "The team atmosphere is not good either. After the Venezuela match, Kim Min-jae said, \"It's not about the back four; everyone has to fight together. It's not working. The game did not feel like everyone was fighting together. In such a game, whether it's a 7-0 win or a 9-0 win, I wouldn't be happy,\" he scolded.",
+  "\"The author of the 'resolute remarks,' Kim Min-jae (30, Bayern Munich), alone skipped the on-field training. \"",
+  "Robert Moreno's South Korea national soccer team faces Uzbekistan in a friendly at 8 p.m. on the 6th at Yongin Mir Stadium. Korea drew 0-0 in a poor performance against Venezuela on the 2nd in Ulsan. Since Moreno's appointment, the team beat Ecuador 3-0, lost to Uruguay 1-4, and drew with Venezuela, leaving its form poor."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 8문단 → 재정렬 상위 8"
+}

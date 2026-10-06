@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T07:52:33.968492+00:00",
+ "order": [
+  "El partido entre Colombia y Perú se disputará este martes 6 de octubre de 2026, en el Nu Stadium de Miami.",
+  "La Selección Colombia tendrá este martes una última oportunidad para cerrar con una sonrisa la fecha FIFA de octubre. La Tricolor enfrentará a Perú en Miami, desde las 6:45 de la tarde, en un partido que servirá para sacar conclusiones y, sobre todo, recuperar confianza después de los resultados obtenidos en sus dos primeras presentaciones.",
+  "Ante Perú, el objetivo será distinto: ganar, mejorar la imagen mostrada en los últimos compromisos y darle minutos a algunos jugadores que buscan consolidarse en el proceso rumbo al próximo ciclo mundialista.",
+  "Para Colombia será una prueba más que un simple amistoso. El resultado importa, pero también la respuesta de un equipo que necesita volver a encontrar su mejor versión y comenzar a despejar las dudas que dejaron sus últimas actuaciones.",
+  "Para encontrar la última victoria colombiana frente a los peruanos hay que remontarse a la Copa América de 2021. En el partido por el tercer puesto, la Tricolor se impuso 3-2 con dos goles de Luis Díaz y otro tanto de Juan Guillermo Cuadrado.",
+  "📺 Fútbol RCN, App Canal RCN - Gol Caracol, Ditu#ConOrgulloColombiano🇨🇴 pic.twitter.com/PItdQGaOrJ",
+  "La posible formación de la Tricolor estaría integrada por Kevin Mier; Daniel Muñoz, Davinson Sánchez, Jhon Lucumí y Álvaro Angulo; Gustavo Puerta y Richard Ríos; Yaser Asprilla, Jhon Arias y Carlos Andrés Gómez; Kevin Viveros.",
+  "Una de las novedades que tendría Colombia está en el arco. Kevin Mier aparece como candidato para comenzar el encuentro ante Perú, en una oportunidad importante para el guardameta colombiano dentro del proceso de Lorenzo."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 18문단 → 재정렬 상위 8"
+}

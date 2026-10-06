@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 네 담당은 `A-home` 의 유형들뿐이다: def_absence, absence_att, fatigue.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다) — 검증층이 본문에 대고 맞춰 보고, 없으면 그 줄을 버린다.\\n🔴 `quote` 에 **머리표를 넣지 마라** — `[A-home-D1-P2] (도메인, 날짜)` 는 우리가 붙인 표지이고 기사에 없는 글자다. **본문 글자만** 적는다(어느 문서인지는 `doc_id` 칸이 받는다).\\n🔴 `claim` 은 그 사실을 **한 문장**으로 적은 것이다.\\n🔴 `target` 은 그 사실의 **핵심 대상 하나**다 — 선수 이름(`Kim Min-jae`) 또는 사건 한 낱말(`record`·`travel`). ⚠️ 같은 사실을 여러 기사에서 봤다면 `target` 을 **같은 글자**로 적어라(그것으로 합친다). 문장을 넣지 마라.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n⚠️ 이 경기는 Colombia(홈) 대 Peru(원정)이다 — 다른 경기 이야기는 뽑지 않는다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"[A-home-D1-P1] (www.infobae.com, 2026-10-05) La ausencia de Sonne representa una baja para Mano Menezes, quien deberá definir al encargado de ocupar el sector derecho ante el combinado colombiano. Todo apunta a que Marco Huamán será elegido por el técnico brasileño para asumir esa posición en el último compromiso de la gira.\\n[A-home-D1-P2] (www.infobae.com, 2026-10-05) Mientras el equipo se prepara para el compromiso, Oliver Sonne emprenderá el regreso a Inglaterra tras quedar desafectado de la convocatoria. La FPF, por su parte, informó que mantiene coordinación con el Burnley y le deseó al jugador una pronta recuperación.\\n[A-home-D1-P3] (www.infobae.com, 2026-10-05) Oliver Sonne quedó fuera de la convocatoria de la selección peruana para el partido ante Colombia, correspondiente al último compromiso de la ‘bicolor’ en su gira por Norteamérica. La Federación Peruana de Fútbol (FPF) comunicó este lunes 5 de octubre, a un día del encuentro, que el lateral fue sometido a una evaluación médica y, tras coordinar con su club, Burnley FC, se determinó que retornará a Inglaterra.\\n[A-home-D1-P4] (www.infobae.com, 2026-10-05) Por ello, cualquier detalle adicional sobre la lesión o el tiempo que podría permanecer fuera de las canchas dependerá de las evaluaciones que se realicen en Inglaterra con su club.\\n[A-home-D1-P5] (www.infobae.com, 2026-10-05) En total, el defensor estuvo presente en las tres primeras presentaciones de la ‘bicolor’, pero finalmente no podrá completar la serie de cuatro compromisos programados durante esta fecha FIFA.\\n[A-home-D1-P6] (www.infobae.com, 2026-10-05) “La Federación Peruana de Fútbol informa que, tras una evaluación médica y en coordinación permanente y cordial con el Burnley Football Club, el jugador Oliver Sonne ha sido desafectado de la presente convocatoria para el partido ante Colombia y retornará a Inglaterra”, señaló el organismo.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력은 **object 로만** 받는다 — 최상위 배열은 스키마가 못 받는다.\", \"properties\": {\"variables\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 s4 — 모델이 내는 변수 후보. ⚠️ **방향 칸이 없다**(코드가 정한다).\", \"properties\": {\"claim\": {\"title\": \"Claim\", \"type\": \"string\"}, \"doc_id\": {\"enum\": [\"A-home-D1\"], \"type\": \"string\"}, \"quote\": {\"title\": \"Quote\", \"type\": \"string\"}, \"subject\": {\"enum\": [\"team:000050\", \"team:000181\"], \"type\": \"string\"}, \"subtask\": {\"enum\": [\"A-home\"], \"type\": \"string\"}, \"target\": {\"title\": \"Target\", \"type\": \"string\"}, \"type\": {\"enum\": [\"def_absence\", \"absence_att\", \"fatigue\"], \"type\": \"string\"}}, \"required\": [\"subtask\", \"type\", \"subject\", \"claim\", \"target\", \"quote\", \"doc_id\"], \"title\": \"VarCandidate\", \"type\": \"object\"}, \"title\": \"Variables\", \"type\": \"array\"}}, \"required\": [\"variables\"], \"title\": \"VarCandidates\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-06T07:56:41.389800+00:00",
+ "id": "d05fc13a-eac4-49d3-b6d5-6d21d1039462",
+ "object": "chat.completion",
+ "created": 1791273401,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": [\n    {\n      \"subtask\": \"A-home\",\n      \"type\": \"def_absence\",\n      \"subject\": \"team:000050\",\n      \"claim\": \"Oliver Sonne quedó fuera de la convocatoria de la selección peruana para el partido ante Colombia.\",\n      \"target\": \"Oliver Sonne\",\n      \"quote\": \"Oliver Sonne quedó fuera de la convocatoria de la selección peruana para el partido ante Colombia, correspondiente al último compromiso de la ‘bicolor’ en su gira por Norteamérica.\",\n      \"doc_id\": \"A-home-D1\"\n    },\n    {\n      \"subtask\": \"A-home\",\n      \"type\": \"absence_att\",\n      \"subject\": \"team:000050\",\n      \"claim\": \"Marco Huamán será elegido por el técnico brasileño para asumir la posición derecha en el partido ante Colombia.\",\n      \"target\": \"Marco Huamán\",\n      \"quote\": \"Todo apunta a que Marco Huamán será elegido por el técnico brasileño para asumir esa posición en el último compromiso de la gira.\",\n      \"doc_id\": \"A-home-D1\"\n    },\n    {\n      \"subtask\": \"A-home\",\n      \"type\": \"fatigue\",\n      \"subject\": \"team:000050\",\n      \"claim\": \"Oliver Sonne emprenderá el regreso a Inglaterra tras quedar desafectado de la convocatoria.\",\n      \"target\": \"Oliver Sonne\",\n      \"quote\": \"Mientras el equipo se prepara para el compromiso, Oliver Sonne emprenderá el regreso a Inglaterra tras quedar desafectado de la convocatoria.\",\n      \"doc_id\": \"A-home-D1\"\n    }\n  ]\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 892,
+  "completion_tokens": 404,
+  "total_tokens": 1296,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

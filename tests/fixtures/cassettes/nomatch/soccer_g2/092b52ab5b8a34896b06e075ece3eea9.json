@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T07:50:36.518891+00:00",
+ "order": [
+  "Hora y donde ver el partido amistoso de la Selección Colombia ante Perú La Selección Colombia tendrá este martes 6 de octubre su último partido de preparación de la fecha FIFA, cuando enfrente a Perú en Estados Unidos.",
+  "⚽ COLOMBIA vs. PERÚ HOY: a qué HORA juegan, dónde VER y análisis | #LR colombia vs peru … peru colombia colombia peru … colombia vs peru hoy colombia vs peru hoy en vivo colombia vs peru VER colombia vs peru EN VIVO colombia vs peru HOY EN VIVO",
+  "Colombia vs. Perú: hora, día y dónde ver el último partido de la Selección en la fecha FIFA La Selección Colombia tendrá este martes una última oportunidad para cerrar con una sonrisa la fecha FIFA de octubre. La Tricolor enfrentará a Perú en Miami, desde las 6:45 de la tarde, en un partido ...",
+  "Mundial 2026, Mundial en vivo, Fixture del Mundial, Liga1, Selección peruana, Eliminatorias 2026, Univer.... Noticias, resultados en vivo, minuto a minuto, estadísticas de las principales ligas del mundo y el torneo nacional",
+  "Selección Peruana: hace 80 años ganó el primer título de su historia [INFOGRAFÍA] | FUTBOL-PERUANO |.... 2018.08.17.Selección Peruana: hace 80 años ganó el primer título de su historia [INFOGRAFÍA] Un 17 de agosto de 1938, la Selección Peruana gritó “¡Campeón!” por primera vez al ganar los Juegos Bolivarianos 1938. La campaña de la bicolor fue perfecta.2018.08.17.",
+  "Sigue EN VIVO y GRATIS el partido de la Selección Colombia y Perú Selección Colombia en concentración previa al partido frente a Perú. Instagram Selección Colombia El combinado nacional no celebra una victoria desde el recordado 3-1 ante Chile en el mes de septiembre del 2021.",
+  "Vive Peru No solo te llevamos de viaje, te convertimos en un super viajero. Somos viajeros, de alma inquieta que abrazan la aventura y buscan tesoros en experiencias inolvidables. Únete a nuestra travesía y transforma tu forma de viajar.",
+  "Noticias de deportes de hoy del canal líder en Perú | DEPOR Noticias deportivas del 05 de octubre Perú y el mundo | Fútbol | Selección Peruana | Fichajes | Universitario de Deportes | Alianza Lima | Sporting Cristal | Liga 1 | FC Barcelona | Real Madrid | Cristiano Ronaldo | Lionel Messi | Fútbol en vivo | DEPOR"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

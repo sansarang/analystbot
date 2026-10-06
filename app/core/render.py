@@ -73,10 +73,16 @@ def _b1(card: Card) -> str:
     out.append(f"문서 {docs_n if docs_n is not None else '못 쟀다'}건 · 변수 "
                f"{len(card.variables)}개 · 시나리오 "
                f"{len(card.hypo.scenarios) if card.hypo else 0}개")
-    if not card.facts.xi:
+    # 🔴🔴 **못 받은 칸을 칸별로**(축구 완성 지시서 §2 마지막 줄) — s2 가 센 것을 그대로
+    #    ⚠️ 이 줄이 비면 *"다 받았다"* 는 거짓이 된다(#3 조용한 0 금지).
+    if card.facts.gaps:
+        out.append("못 받은 칸 — " + " · ".join(card.facts.gaps))
+    elif not card.facts.xi:
         out.append("⚠️ **확정 XI 를 못 잡았다** — 상한이 그만큼 내려간다")
-    if not card.facts.standings:
-        out.append("⚠️ 순위표가 없다(친선·네이션스리그는 애초에 없다)")
+    # 🔴 충돌은 **채택/버림**을 한 줄로(§1-2)
+    for d in card.drops:
+        if d.reason.value == "conflict":
+            out.append(f"🔴 {d.detail}")
     return "\n".join(f"- {x}" for x in out)
 
 

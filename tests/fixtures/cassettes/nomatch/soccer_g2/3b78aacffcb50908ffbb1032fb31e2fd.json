@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T07:51:30.141876+00:00",
+ "order": [
+  "“Tras una evaluación médica y en coordinación permanente y cordial con el Burnley Football Club, el jugador Oliver Sonne ha sido desafectado de la presente convocatoria para el partido ante Colombia y retornará a Inglaterra”, informó la FPF en un comunicado.",
+  "La Federación Peruana de Fútbol confirmó este lunes que su Oliver, Sonne, fue desafectado de la convocatoria y no estará disponible para el amistoso contra la Selección Colombia, que se disputará este martes 6 de octubre.",
+  "La decisión se tomó después de una evaluación médica y en coordinación con el Burnley Football Club, equipo inglés en el que milita el futbolista.",
+  "La federación peruana no entregó mayores detalles sobre la lesión o molestia que presenta el jugador, pero sí le deseó una pronta recuperación.",
+  "El partido se disputará este martes 6 de octubre y será el último encuentro de la Selección Colombia en esta fecha FIFA.",
+  "La Tricolor empató 1-1 contra México en su primer amistoso después del Mundial y posteriormente cayó 1-0 frente a Paraguay, resultado que volvió a poner sobre la mesa las dudas acerca de la renovación del equipo dirigido por Néstor Lorenzo.",
+  "Así, Perú pierde a uno de sus jugadores para el último compromiso de esta fecha FIFA, mientras Colombia buscará cerrar con una victoria una gira que hasta ahora no ha dejado las mejores sensaciones.",
+  "Si usted creció viendo Supercampeones, probablemente el nombre Oliver le despierte inmediatamente un recuerdo: Oliver Atóm, el protagonista de la famosa serie japonesa de fútbol. Pues bien, Perú se quedó sin su propio Oliver —aunque este juega de verdad y se apellida Sonne— para enfrentar a Colombia."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 11문단 → 재정렬 상위 8"
+}

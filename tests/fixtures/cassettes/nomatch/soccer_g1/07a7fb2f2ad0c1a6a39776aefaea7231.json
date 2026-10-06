@@ -1,0 +1,38 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 1000, \"messages\": [{\"content\": \"너는 스포츠 팀 이름의 **철자 후보**만 낸다. 경기를 고르지 않는다.\\n사용자 문장에서 두 팀을 찾아 JSON 만 낸다:\\n{\\\"teams\\\":[{\\\"ko\\\":\\\"<사용자가 쓴 이름>\\\",\\\"latin_candidates\\\":[\\\"<라틴 표기1>\\\",\\\"<표기2>\\\"],\\\"country_guess\\\":\\\"<ISO 2글자 또는 \\\\\\\"\\\\\\\">\\\"}],\\\"date_hint\\\":\\\"\\\",\\\"competition_hint\\\":\\\"\\\"}\\n🔴 경기 URL·ID·킥오프를 **넣지 마라** — 코드가 공개 페이지로 확인한다.\\n🔴 모르면 빈 문자열로 둬라. 지어내지 마라.\", \"role\": \"system\"}, {\"content\": \"한국 vs Uzbekistan\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"low\"}",
+ "recorded_at": "2026-10-06T07:48:37.281907+00:00",
+ "id": "3285a9c8-9a6c-4c9a-ab20-49ce6700310e",
+ "object": "chat.completion",
+ "created": 1791272917,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"teams\":[{\"ko\":\"한국\",\"latin_candidates\":[\"South Korea\",\"Korea Republic\",\"Korea\"],\"country_guess\":\"KR\"},{\"ko\":\"Uzbekistan\",\"latin_candidates\":[\"Uzbekistan\"],\"country_guess\":\"UZ\"}],\"date_hint\":\"\",\"competition_hint\":\"\"}",
+    "reasoning": "The user wants me to identify two teams from the text \"한국 vs Uzbekistan\" and provide JSON output with team information. Let me analyze:\n\n1. \"한국\" - This is Korean for South Korea (Republic of Korea)\n2. \"Uzbekistan\" - This is Uzbekistan\n\nFor the JSON output:\n- \"한국\" -> latin_candidates could be \"South Korea\", \"Korea Republic\", \"Korea\"\n- country_guess for 한국: \"KR\" (South Korea)\n- \"Uzbekistan\" -> latin_candidates could be \"Uzbekistan\"\n- country_guess for Uzbekistan: \"UZ\"\n\nThe date_hint and competition_hint should be empty strings since we don't have context about when or where this match would take place."
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 165,
+  "completion_tokens": 204,
+  "total_tokens": 369,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 148,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

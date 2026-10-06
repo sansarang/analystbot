@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T07:57:58.944432+00:00",
+ "order": [
+  "¡#ARGENTINA BICAMPEÓN EN EL ALARGUE CON UN GOL DE #LAUTARO! | Argentina 1 – 0 Colombia | Resumen New Most IMPOSSIBLE Goalkeeper Saves EverNinety1.2M views1 month agoARGENTINA 4-1 BRASIL | ELIMINATORIAS MUNDIAL 2026 | RESUMEN |MBH592K views11 months agoBAYERN MUNICH se quedó con un TRIUNFAZO en partido de infarto ante BORUSSIA DORTMUND …",
+  "FCF confirmó nueva fecha para el partido de despedida de Colombia Suscríbete aquí a Win Play La selección Colombia tendrá un cambio en su agenda antes de viajar a la Copa Mundial de la FIFA 2026™ La Federación Colombiana de Fútbol informó que el partido de despedida del equipo nacional …",
+  "Eliminatorias Sudamericanas – CONMEBOL Argentina, Bolivia, Brasil, Chile, Colombia, Ecuador, Paraguay, Perú, Uruguay y Venezuela buscan en las Eliminatorias Sudamericanas sus pasajes para la Copa Mundial de la FIFA 2026, que se disputar...",
+  "Selección Colombia disputará partido de despedida en Bogotá La Selección Colombia disputará un amistoso de despedida en el estadio Nemesio Camacho El Campín de Bogotá antes de la Copa del Mundo.",
+  "¿El partido de despedida de Colombia ya no será en Bogotá? Esto es lo que se sabe Despedida de la selección de Colombia en el estadio Nemesio Camacho El Campín antes de la Copa Mundial de la FIFA Brasil 2014.",
+  "Colombia vs. Perú: hora, día y dónde ver el último partido de la Selección en la fecha FIFA La Selección Colombia tendrá este martes una última oportunidad para cerrar con una sonrisa la fecha FIFA de octubre. La Tricolor enfrentará a Perú en Miami, desde las 6:45 de la tarde, en un partido ...",
+  "Mundial 2026, Mundial en vivo, Fixture del Mundial, Liga1, Selección peruana, Eliminatorias 2026, Univer.... Noticias, resultados en vivo, minuto a minuto, estadísticas de las principales ligas del mundo y el torneo nacional",
+  "Eliminatorias Selección Colombia ETAPAS DE VENTA: PREVENTA TARJETAS BANCOLOMBIA (etapa 1) (FINALIZADA) ; Pagando con las tarjetas de crédito de Bancolombia y débito Mastercard - Bancolombia que permita realizar transacciones no presentes. (CVC) ; PÚBLICO GENERAL"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

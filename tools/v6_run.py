@@ -148,12 +148,38 @@ async def main(argv: list[str]) -> int:
     print(f"[s7] 마켓 {len(said.evals)}줄 · 등급 낸 줄 "
           f"{sum(1 for e in said.evals if e.grade != '자료부족')}")
     card = pipeline.card_of(ref, facts, variables, hypo, said, state=state)
+    # 🔴 **마지막 실행을 기억한다**(§4-1) — 재분석이 s3·s4 를 다시 돌지 않게.
+    #    ⚠️ 이 실행기는 단계를 손으로 이어 돌리므로 `analyze` 를 지나지 않는다 —
+    #       그래서 기억을 **여기서** 심는다(운영 봇은 `analyze` 가 심는다).
+    pipeline._LAST[ref.id] = {"at": datetime.now(timezone.utc), "ref": ref,
+                              "docs": docs, "cands": cands, "card": card,
+                              "board_text": ""}
     _funnel(state)
     print("\n" + "=" * 70 + "\n[카드]\n" + "=" * 70)
     print(render.card_text(card))
     print("\n[밟은 자취]")
     for n in state.notes:
         print("  ·", n[:160])
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴 **2회차**(축구 완성 지시서 §6: 경기마다 두 번) — `--twice` 면 이어서 재분석
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 재분석은 **같은 프로세스의 기억**을 쓴다(§4-1) — 그래서 한 프로세스에서
+    #     이어 돌린다. 🔴 운영 봇은 프로세스가 길게 살아서 저절로 그렇다.
+    if "--twice" in argv:
+        from app.core.state import RunState as _RS
+        st2 = _RS(match_key=ref.id)
+        print("\n" + "=" * 70 + "\n[2회차 · 재분석]\n" + "=" * 70, flush=True)
+        got2 = await pipeline.reanalyze(arg, pool=pool, net=net, chain=chain,
+                                        state=st2)
+        if isinstance(got2, Ambiguous):
+            print("🔴 재분석 — 경기를 확정하지 못했다:", got2.why)
+            return 1
+        _funnel(st2)
+        print(render.card_text(got2))
+        print("\n[2회차 자취]")
+        for n in st2.notes[-14:]:
+            print("  ·", n[:160])
     return 0
 
 

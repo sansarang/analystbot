@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 네 담당은 `B-away` 의 유형들뿐이다: squad_rotation, coach_intent, coach_conflict, coach_change.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다) — 검증층이 본문에 대고 맞춰 보고, 없으면 그 줄을 버린다.\\n🔴 `quote` 에 **머리표를 넣지 마라** — `[A-home-D1-P2] (도메인, 날짜)` 는 우리가 붙인 표지이고 기사에 없는 글자다. **본문 글자만** 적는다(어느 문서인지는 `doc_id` 칸이 받는다).\\n🔴 `claim` 은 그 사실을 **한 문장**으로 적은 것이다.\\n🔴 `target` 은 그 사실의 **핵심 대상 하나**다 — 선수 이름(`Kim Min-jae`) 또는 사건 한 낱말(`record`·`travel`). ⚠️ 같은 사실을 여러 기사에서 봤다면 `target` 을 **같은 글자**로 적어라(그것으로 합친다). 문장을 넣지 마라.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n⚠️ 이 경기는 Colombia(홈) 대 Peru(원정)이다 — 다른 경기 이야기는 뽑지 않는다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"[B-away-D1-P1] (www.elfutbolero.com.ec, 2026-10-02) Ecuador podría volver a plantearse el sueño de integrar una candidatura conjunta con Colombia y Perú para organizar una Copa del Mundo, esta vez pensando en 2038, aunque actualmente existe un obstáculo reglamentario importante. Con el esquema de rotación utilizado por FIFA para definir las sedes de 2030 y 2034, Sudamérica no aparece inicialmente como una región habilitada para organizar aquella edición, debido a que Argentina, Paraguay y Uruguay recibirán partidos en 2030. Bajo ese escenario, Concacaf y Oceanía quedarían mejor posicionadas para presentar proyectos, aunque FIFA todavía no ha abierto oficialmente el proceso de elección del Mundial 2038.\\n[B-away-D1-P2] (www.elfutbolero.com.ec, 2026-10-02) Ecuador organizó por última vez la Copa América en 1993, torneo que terminó con Argentina como campeón después de derrotar a México en la final. La Selección ecuatoriana también consiguió una actuación destacada como anfitriona y finalizó en el cuarto lugar, después de avanzar hasta las instancias decisivas de la competición. Aquella edición permanece como el antecedente más reciente de Ecuador recibiendo íntegramente el principal campeonato continental de selecciones absolutas de la Conmebol, por lo que una eventual participación en la organización de un Mundial representaría un desafío de una dimensión considerablemente superior.\\n[B-away-D1-P3] (www.elfutbolero.com.ec, 2026-10-02) Entre los escenarios que podrían partir con mayores posibilidades por capacidad, infraestructura e historia aparecen el Monumental de Barcelona SC, con más de 57.000 espectadores; el Rodrigo Paz Delgado de Liga de Quito, con cerca de 45.000; y el George Capwell de Emelec, con alrededor de 40.000. Estos estadios se encuentran entre los principales escenarios futbolísticos de Ecuador, aunque una hipotética candidatura mundialista requeriría evaluar individualmente si cumplen todas las exigencias que FIFA establezca para 2038. Tener una capacidad elevada no garantiza automáticamente la aprobación para recibir encuentros de una Copa del Mundo.\\n[B-away-D1-P4] (www.elfutbolero.com.ec, 2026-10-02) ¿Cuándo fue la última vez que Ecuador organizó un torneo continental de selecciones?\\n[B-away-D1-P5] (www.elfutbolero.com.ec, 2026-10-02) La posibilidad tampoco parte completamente desde cero. En 2019, el entonces presidente Lenín Moreno propuso que Ecuador, Colombia y Perú trabajaran juntos para intentar organizar el Mundial 2030, mientras Francisco Egas confirmó posteriormente conversaciones entre las federaciones para desarrollar aquel proyecto andino. Pensar nuevamente en una candidatura para 2038 sería técnicamente imaginable, pero primero tendría que ajustarse a los criterios que establezca FIFA. Ecuador también necesitaría realizar una inversión considerable para modernizar estadios, transporte, centros de entrenamiento y otros componentes logísticos necesarios para recibir un torneo de esta magnitud.\\n[B-away-D1-P6] (www.elfutbolero.com.ec, 2026-10-02) Desde aquella Copa América de 1993, las exigencias para organizar grandes competiciones internacionales han evolucionado de manera significativa. Un Mundial moderno necesita estadios adaptados a requerimientos tecnológicos, espacios para prensa y transmisiones internacionales, campos de entrenamiento, movilidad eficiente y capacidad hotelera, además de múltiples servicios alrededor de las ciudades anfitrionas. Por eso, una candidatura compartida con Colombia y Perú permitiría distribuir partidos, inversiones y responsabilidades entre tres países. Aun así, Ecuador necesitaría demostrar que dispone de escenarios adecuados o presentar proyectos sólidos de remodelación y modernización.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력은 **object 로만** 받는다 — 최상위 배열은 스키마가 못 받는다.\", \"properties\": {\"variables\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 s4 — 모델이 내는 변수 후보. ⚠️ **방향 칸이 없다**(코드가 정한다).\", \"properties\": {\"claim\": {\"title\": \"Claim\", \"type\": \"string\"}, \"doc_id\": {\"enum\": [\"B-away-D1\"], \"type\": \"string\"}, \"quote\": {\"title\": \"Quote\", \"type\": \"string\"}, \"subject\": {\"enum\": [\"team:000050\", \"team:000181\"], \"type\": \"string\"}, \"subtask\": {\"enum\": [\"B-away\"], \"type\": \"string\"}, \"target\": {\"title\": \"Target\", \"type\": \"string\"}, \"type\": {\"enum\": [\"squad_rotation\", \"coach_intent\", \"coach_conflict\", \"coach_change\"], \"type\": \"string\"}}, \"required\": [\"subtask\", \"type\", \"subject\", \"claim\", \"target\", \"quote\", \"doc_id\"], \"title\": \"VarCandidate\", \"type\": \"object\"}, \"title\": \"Variables\", \"type\": \"array\"}}, \"required\": [\"variables\"], \"title\": \"VarCandidates\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-06T07:51:59.874514+00:00",
+ "id": "47682346-72ea-41ee-9e4d-f84529f4ab0f",
+ "object": "chat.completion",
+ "created": 1791273119,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": []\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1341,
+  "completion_tokens": 8,
+  "total_tokens": 1349,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}
