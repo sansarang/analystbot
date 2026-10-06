@@ -467,10 +467,22 @@ async def _find(task: Any, game: dict, *, chain, seen, net, seeds=None
         rank = {t: i for i, t in enumerate(order)}
         kept.sort(key=lambda h: rank.get(
             f"{getattr(h, 'title', '')} {getattr(h, 'snippet', '')}", 999))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **실패는 다음 후보로 대체한다** — 실측 2026-10-06(재생으로 잡았다)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전엔 `kept[:top]` 만 돌았다. 🔴 상위 3건이 **전부 못 열리면**
+    #     (`msn.com`·`goal.com` 거부 · trafilatura 폐기) 받은 문서가 **0건**이
+    #     되고 그 하위는 변수 0개로 끝났다 — 실측에서 8/8 이 그랬다.
+    #  🔴 예산은 그대로다(`fetch_cap` 만큼만 **부른다**) — 다만 그 호출을
+    #     **다른 후보에** 쓴다. ⚠️ 상한을 올리는 것은 §8 금지다.
     docs: list[dict] = []
-    for i, h in enumerate(kept[:top], 1):
+    for i, h in enumerate(kept, 1):
+        if len(docs) >= top:
+            break
         if not task.budget.may_fetch():
-            why.append(f"열기 상한({task.budget.fetch_cap})에 닿았다")
+            why.append(f"열기 상한({task.budget.fetch_cap})에 닿았다 — "
+                       f"받은 문서 {len(docs)}건")
             break
         task.budget.fetch_used += 1
         url = str(getattr(h, "url", "") or "")
@@ -494,7 +506,7 @@ async def _find(task: Any, game: dict, *, chain, seen, net, seeds=None
         if not str(body).strip():
             why.append(f"본문을 못 얻었다 {url[:50]}")
             continue
-        docs.append({"tag": f"D{i}", "url": url, "body": str(body),
+        docs.append({"tag": f"D{len(docs) + 1}", "url": url, "body": str(body),
                      "published_at": when,
                      "publisher": str(getattr(h, "publisher", "") or "")})
     # ══════════════════════════════════════════════════════════════════
