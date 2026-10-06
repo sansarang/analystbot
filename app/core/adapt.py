@@ -187,6 +187,7 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
              coach: dict[str, Coach] | None = None,
              player_pos: dict[str, str] | None = None,
              squad: dict[str, list[str]] | None = None,
+             player_value: dict[str, float] | None = None,
              gaps: list[str] | None = None) -> Facts:
     """🔴 구조 사실 묶음 → `schema.Facts`. ⚠️ 없는 칸은 **빈 것**으로 둔다.
 
@@ -205,6 +206,8 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
         last_xi=dict(box.get("last_xi") or {}),
         schedule=dict(box.get("schedule") or {}),
         player_pos=dict(player_pos or {}),
+        player_value={str(k): float(v) for k, v in (player_value or {}).items()
+                      if v and float(v) > 0},
         squad={k: [str(x) for x in v] for k, v in (squad or {}).items()},
         match_format=(fmt if fmt in allowed else "unknown"),  # type: ignore[arg-type]
         extra_time=box.get("extra_time"),
@@ -369,3 +372,28 @@ def lineup_question(ref: MatchRef, team_name: str) -> Any:
     from app import cells
     return cells.Question(cells.Q_LINEUP, ref.id, team=team_name,
                           league=ref.competition, deadline=ref.kickoff_utc)
+
+
+def values_of(raw: object) -> dict[str, float]:
+    """🔴🔴 **선수 → 시장가치**(네 층 지시서 §4-3) — 어댑터 꼴에서 모은다.
+
+    🔴 `lineup`·`bench_rows`·`squad_rows` 어디에 있어도 모은다(판마다 칸이 다르다).
+    ⚠️ 값이 없는 선수는 **넣지 않는다** — ② 가 "값 없는 선수"로 세고 바닥값을 채운다.
+    """
+    box = dict(raw or {}) if isinstance(raw, dict) else {}
+    out: dict[str, float] = {}
+    for key in ("lineup", "bench_rows", "squad_rows", "players_rows"):
+        for row in (box.get(key) or []):
+            if not isinstance(row, dict):
+                continue
+            name = str(row.get("name") or "").strip()
+            got = row.get("value")
+            if not name or got is None:
+                continue
+            try:
+                said = float(got)
+            except (TypeError, ValueError):
+                continue
+            if said > 0:
+                out[name] = said
+    return out

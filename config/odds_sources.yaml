@@ -1,0 +1,102 @@
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **배당 피드 표** — 네 층 지시서 §2-1 · 단계 1
+# ══════════════════════════════════════════════════════════════════
+#
+# > 피드별 허용 여부·키 필요·월 한도·대회 범위·마켓·확인일.
+# > 카드 등록이 필요한 피드는 **등록하지 않는다**(Brave 때와 같은 기준).
+#
+# 🔴 **여기 적힌 것은 전부 2026-10-06 에 받아 본 것**이다. ⚠️ 받아 보지 못한
+#    칸은 `미확인` 이라고 적는다 — 추측으로 채우지 않는다(#4).
+# 🔴 키는 `.env` 에 이름으로만 둔다(`.env.example` 에 이름). **가입은 사용자가**
+#    한다(지시서 §10-1: *"키 발급이 필요하면 사용자에게 키 발급만 요청"*).
+# ⚠️ 코드는 이 파일을 `rules.odds_sources()` 로 읽는다 — 피드 이름을 코드에
+#    박지 않는다.
+
+#: 🔴 분석 1회당 피드 요청 상한 · 재분석 상한 · 이벤트 목록 캐시(§2-2)
+budget:
+  per_analyze: 2            # 이벤트 목록 1 + 그 경기 배당 1
+  per_reanalyze: 1
+  events_cache_hours: 6
+  warn_at_pct: 80           # 월 한도의 80% → 카드에 경고
+  stop_at_pct: 100          # 100% → 피드 호출 중단, §2-6 보조 입력으로
+
+#: 🔴 경기 매칭 창(§2-3) — 킥오프 ±8시간
+#  ⚠️ 열쇠 이름이 `window` 가 **아니다** — 그 낱말은 어댑터 고유 칸(§8-3) 이름과
+#     겹쳐 계약이 *"어댑터 칸이 밖으로 나왔다"* 로 읽는다(실측 2026-10-06).
+match_window:
+  same_match_hours: 8
+
+#: 🔴 기준 업체(§2-4) — 이 이름이 오면 그것을 기준으로 쓴다
+reference_bookmaker: pinnacle
+
+feeds:
+  - name: the_odds_api
+    base_url: https://api.the-odds-api.com
+    key_env: ODDS_API_KEY
+    allowed: true            # 🔴 쓸 수 있다 — ⚠️ **키가 있을 때만** 돈다
+    needs_key: true
+    card_required: 미확인     # ⚠️ 가입 화면을 열어 보지 못했다 — 사용자가 확인한다
+    monthly_limit: 500       # 실측 2026-10-06: 요금 페이지 "500 credits per month"
+    quota_header: x-requests-remaining   # 실측: 응답 헤더로 남은 수를 준다
+    quota_used_header: x-requests-used
+    endpoints:
+      sports: /v4/sports/
+      events: /v4/sports/{sport}/events/
+      event_odds: /v4/sports/{sport}/events/{event_id}/odds/
+    key_in: query            # `?apiKey=…`
+    markets: [h2h, spreads, totals]
+    scope: 미확인             # ⚠️ 국가대표 친선·AFC·K리그 포함 여부 — 키 없이는 못 본다
+    cost_note: |
+      실측 2026-10-06: 요청 1건당 크레딧 = (지역 수 × 마켓 수). 과거 배당은 10배.
+      🔴 그래서 **지역 1개·마켓 1묶음**으로만 부른다.
+    checked_at: 2026-10-06
+    probe: |
+      실측 — `GET /v4/sports/?apiKey=` → 401 `{"error_code":"MISSING_KEY"}`.
+      즉 **피드는 살아 있고 키만 없다.**
+
+  - name: oddspapi
+    base_url: https://api.oddspapi.io
+    key_env: ODDSPAPI_KEY
+    allowed: true
+    needs_key: true
+    card_required: 선언상 불필요   # ⚠️ **그들의 블로그 선언**이다(자기 피드 홍보 글)
+    monthly_limit: 250            # 같은 출처(선언)
+    quota_header: ""              # 실측 문서: 헤더 없음 — `/v4/account` 를 불러 센다
+    quota_endpoint: /v4/account
+    endpoints:
+      tournaments: /v4/tournaments
+      odds_by_tournament: /v4/odds-by-tournaments
+      historical: /v4/historical-odds       # 문서: 과금 안 됨
+    key_in: query
+    markets: [1x2, asian_handicap, totals, btts]   # 선언 — 마켓 번호표는 미확인
+    scope: 미확인
+    checked_at: 2026-10-06
+    probe: |
+      실측 — `GET /v4/tournaments?sportId=1` → 401 `MISSING_API_KEY`.
+      robots: `api.oddspapi.io/robots.txt` 200 이지만 **규칙 줄이 하나도 없다**
+      (content-signal 설명 주석뿐) → 금지 없음.
+    warn: |
+      ⚠️ 한도·카드 여부가 **그들 자신의 글**에서 왔다 — 사용자가 가입 화면에서
+      확인하면 이 칸을 실측으로 바꾼다.
+
+  - name: odds_api_net
+    base_url: https://api.odds-api.net
+    key_env: ODDS_API_NET_KEY
+    allowed: false
+    why: |
+      🔴 `.env` 주석(2026-09-17)에 *"sandbox 월 1,000"* 로 적혀 있었지만 키가 없고,
+      축구 대회 범위를 확인한 적이 없다. ⚠️ **확인 전에는 안 쓴다.**
+    checked_at: 2026-10-06
+
+  - name: pinnacle_direct
+    allowed: false
+    why: |
+      🔴 피나클은 공개 API 를 닫았다(지시서 §2-1). 제3자 피드로만 받는다 —
+      그래서 `reference_bookmaker` 로만 쓰고 직접 부르지 않는다.
+    checked_at: 2026-10-06
+
+#: 🔴 사용자에게 부탁할 것(가입은 사용자가 · §10-1)
+asks:
+  - "the_odds_api — 가입에 카드가 필요한지 보고, 필요 없으면 키를 `.env` 의 ODDS_API_KEY 에"
+  - "oddspapi — 같은 확인 후 `.env` 의 ODDSPAPI_KEY 에"
+  - "둘 다 카드가 필요하면 그 피드는 등록하지 않는다 — 그때는 사용자 보드(§2-6)만으로 간다"

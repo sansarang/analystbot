@@ -15,14 +15,16 @@ from app.core.schema import Card, Variable
 
 #: 🔴 블록 제목 — 규격의 열 블록. ⚠️ 번호를 건너뛰지 않는다(불변식 1).
 TITLES: tuple[str, ...] = (
-    "자료 한계 고백", "기준 XI", "결장", "폼", "경우의 수", "뒤집는 변수",
-    "팀별 가설 + 무너지는 조건", "시나리오", "보드 대입", "결론", "방향 판정",
-    "방아쇠")
+    "자료 한계 고백", "기준 XI", "결장", "폼", "기준 전력 (데이터)", "경우의 수",
+    "뒤집는 변수", "팀별 가설 + 무너지는 조건", "시나리오", "확률 세 열",
+    "보드 대입", "결론", "방향 판정", "방아쇠")
 
 #: 🔴 규격 번호 — 축구 완성 지시서 §5 가 **2b·3b** 를 새 블록으로 더했다.
 #   ⚠️ 번호를 다시 매기지 않는다(사용자가 블록 번호로 말한다) — `2b`·`3b` 로 적는다.
-NUMBERS: tuple[str, ...] = ("1", "2", "2b", "3", "3b", "4", "5", "6", "7", "8",
-                            "9", "10")
+#   🔴 네 층 지시서 §8 이 **3c(기준 전력)**·**7b(확률 세 열)** 를 더했다 —
+#      블록 순서는 그대로 두고 **두 블록만** 끼운다(그 문서가 그렇게 못 박았다).
+NUMBERS: tuple[str, ...] = ("1", "2", "2b", "3", "3c", "3b", "4", "5", "6",
+                            "7b", "7", "8", "9", "10")
 
 
 def card_text(card: Card) -> str:
@@ -31,9 +33,9 @@ def card_text(card: Card) -> str:
     🔴 축구 완성 지시서 §5 가 블록 **2b(결장)**·**3b(경우의 수)** 를 더했다.
     """
     out: list[str] = [_head(card)]
-    bodies = (_b1(card), _b2(card), _b2b(card), _b3(card), _b3b(card),
-              _b4(card), _b5(card), _b6(card), _b7(card), _b8(card),
-              _b9(card), _b10(card))
+    bodies = (_b1(card), _b2(card), _b2b(card), _b3(card), _b3c(card),
+              _b3b(card), _b4(card), _b5(card), _b6(card), _b7b(card),
+              _b7(card), _b8(card), _b9(card), _b10(card))
     for num, title, body in zip(NUMBERS, TITLES, bodies, strict=True):
         out.append(f"\n**{num}. {title}**\n{body}")
     return "\n".join(out)
@@ -332,3 +334,107 @@ def _b10(card: Card) -> str:
     if not card.triggers:
         return "- ⬜ 방아쇠가 없다 — 조건 표에 걸린 변수 유형이 없었다"
     return "\n".join(f"- {x}" for x in card.triggers)
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **블록 3c·7b** — 네 층 지시서 §8
+# ══════════════════════════════════════════════════════════════════
+
+
+def _b3c(card: Card) -> str:
+    """🔴 3c 기준 전력 — ① Elo·② 라인업 보정. ⚠️ 없으면 **"없음 — 사유"** 다(§1)."""
+    b, a = card.base_prob, card.adj_prob
+    out: list[str] = []
+    if b.probs is not None:
+        out.append(f"- Elo: {card.match.home_name} **{b.home_elo:.0f}** · "
+                   f"{card.match.away_name} **{b.away_elo:.0f}** · 차 {b.dr:+.0f} "
+                   f"→ 승 {b.probs.home:.0%} · 무 {b.probs.draw:.0%} · "
+                   f"패 {b.probs.away:.0%}")
+        out.append(f"    출처 {b.source}({b.data_date}) · {b.why}")
+    else:
+        out.append(f"- ⬜ **기준 없음** — {b.why}")
+        if b.we is not None:
+            # 🔴 §3-3 — 무승부를 못 나누면 **We 만** 보인다(지어내지 않는다)
+            out.append(f"    Elo 기대 득점률 `We` **{b.we:.3f}**"
+                       f"(홈 {b.home_elo:.0f} · 원정 {b.away_elo:.0f})")
+    if a.strength_pct:
+        got = " · ".join(f"{k} {v:+.1f}%" for k, v in a.strength_pct.items())
+        out.append(f"- 라인업 보정: 평소 대비 {got}"
+                   + ("" if a.moved else " — ⚠️ 확률은 **안 움직였다**(환산 계수 없음)"))
+        for d in a.deltas[:5]:
+            said = (f"{d.out_name} → {d.in_name}" if d.in_name
+                    else f"{d.out_name} 빠짐")
+            out.append(f"    {said}: ΔS {d.delta_s:+.2f}"
+                       + (f" → 홈 승 {d.delta_home_pct:+.0f}%p"
+                          if d.delta_home_pct is not None else "")
+                       + (" (추정값)" if d.estimated else ""))
+    else:
+        out.append(f"- ⬜ **라인업 보정 없음** — {a.why}")
+    return "\n".join(out)
+
+
+def _b7b(card: Card) -> str:
+    """🔴 7b 확률 세 열 — 기준·우리·시장(+사용자 보드). **한 숫자로 합치지 않는다**.
+
+    🔴 배당 원숫자는 시장·사용자 보드 열에 **괄호로** 보인다(§8 · 사용자 결정).
+    🔴 기대값·금액은 **어디에도 없다**(§0 금지).
+    """
+    from app.core.odds import key_of
+    mk, user = card.market, card.user_market
+    head = f"시장 = {mk.basis or '없음'}"
+    if mk.captured_at is not None:
+        from app import timefmt
+        head += f"(받은 때 {timefmt.kst_label(mk.captured_at)})"
+    vig = (mk.vig or {}).get("win")
+    if vig is not None:
+        head += f" · 업체 몫 {vig:.1%}"
+    if mk.used is not None:
+        head += f" · 월 사용 {mk.used}/{mk.limit or '?'}"
+    # 🔴 §2-6 — 사용자 보드가 **그대로 시장 열**인 경우(피드 없음)에는 열을 **겹쳐
+    #    적지 않는다**. ⚠️ 겹쳐 적으면 같은 배당이 두 열에 보여 *"피드도 있다"* 로 읽힌다.
+    same_col = bool(user.probs) and mk.basis == user.basis
+    cols = ["| | 기준 | 우리 | 시장 |", "|---|---|---|---|"] if same_col else \
+           ["| | 기준 | 우리 | 시장 | 사용자 보드 |", "|---|---|---|---|---|"]
+    rows = [f"- {head}", ""] + cols
+    names = ((f"{card.match.home_name} 승", "home"), ("무", "draw"),
+             (f"{card.match.away_name} 승", "away"))
+    for label, key in names:
+        cells = [label]
+        cells.append(f"{getattr(card.base_prob.probs, key):.0%}"
+                     if card.base_prob.probs is not None else "—")
+        cells.append(f"{getattr(card.our_prob, key):.0%}"
+                     if card.our_prob is not None else "—")
+        for box in ((mk,) if same_col else (mk, user)):
+            p = (box.probs or {}).get(key_of("win", key))
+            price = _price_of(box, key)
+            cells.append("—" if p is None else
+                         (f"{p:.0%}" + (f" ({price:g})" if price else "")))
+        rows.append("| " + " | ".join(cells) + " |")
+    shin = mk.shin or {}
+    if shin:
+        said = " · ".join(
+            f"{nm} {shin.get(key_of('win', k), 0):.0%}"
+            for nm, k in (("홈", "home"), ("무", "draw"), ("원정", "away")))
+        rows.append(f"- Shin 방식(괄호 비교용): {said}")
+    if card.compare:
+        rows.append(f"- 판정: **{card.compare}**")
+    for line in card.compare_lines:
+        if line:
+            rows.append(f"    {line}")
+    for line in card.tilt:
+        rows.append(f"- → {line}")
+    for line in card.market_why:
+        rows.append(f"- → {line}")
+    if card.ocr_text:
+        rows.append("- 캡처 인식 원문(그대로):")
+        rows += [f"    {x}" for x in card.ocr_text.splitlines() if x.strip()]
+    if not mk.probs and not user.probs:
+        rows.append(f"- ⬜ **시장 없음** — {mk.why or '피드·사용자 보드 모두 없다'}")
+    return "\n".join(rows)
+
+
+def _price_of(box, side: str) -> float | None:
+    """🔴 그 쪽의 **원배당** — 괄호로 보이는 숫자다. ⚠️ 없으면 `None`."""
+    for q in (box.quotes or []):
+        if q.market == "win" and q.side == side:
+            return q.price
+    return None

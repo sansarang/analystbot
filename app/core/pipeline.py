@@ -13,9 +13,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from app.core.schema import (Ambiguous, Board, Card, Doc, Facts, Funnel,
-                             HypoSet, Judgement, MarketEval, MatchRef,
-                             Question, Variable)
+from app.core.schema import (AdjProb, Ambiguous, BaseProb, Board, Card, Doc,
+                             Facts, Funnel, HypoSet, Judgement, MarketEval,
+                             MarketProb, MatchRef, ProbTriple, Question,
+                             Variable)
 from app.core.state import RunState
 
 
@@ -31,22 +32,36 @@ LAST_TTL_HOURS = 24
 
 async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                   state: RunState | None = None, board: Board | None = None,
-                  board_text: str = "",
+                  board_text: str = "", board_image: str = "",
                   now: datetime | None = None) -> Card | Ambiguous:
     """🔴 질문 하나 → 카드 하나. ⚠️ 경기를 **못 고르면** `Ambiguous`(묻는다).
 
     🔴 `board_text` 를 주면 **코드가 파싱한다**(축구 §4 · `app/core/board.py`) —
        LLM 이 보드를 읽지 않는다.
+    🔴 `board_image` 를 주면 **로컬 OCR** 로 글을 뽑아 같은 파서로 보낸다(네 층 §2-6).
+       ⚠️ 외부 OCR API 를 부르지 않는다 — `app/core/ocr.py` 가 실행 파일을 직접 쓴다.
     """
-    from app.core.stages import (s1_resolve, s2_facts, s3_docs, s4_extract,
-                                 s5_verify, s6_hypo, s7_judge)
+    import asyncio
+
+    from app.core.stages import (s1_resolve, s2_facts, s2b_base, s2c_market,
+                                 s3_docs, s4_extract, s5_verify, s6_hypo,
+                                 s7_judge)
     st = state if state is not None else RunState()
     q = _question(raw, now=now)
     ref = await s1_resolve.run(q, pool=pool, state=st, net=net)
     if isinstance(ref, Ambiguous):
         return ref
     st.match_key = ref.id
-    facts = await s2_facts.run(ref, state=st, net=net)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **네 층**(네 층 지시서 §1) — ①② 는 s2b, ④ 는 s2c(s2 와 병렬)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 한 층이 실패해도 다른 층을 막지 않는다(§1 마지막 줄) — 그래서 `gather` 로
+    #     나란히 돌리고 **사유를 들고 빈 층**이 지나간다.
+    facts, (feed_mk, user_mk) = await asyncio.gather(
+        s2_facts.run(ref, state=st, net=net),
+        s2c_market.run(ref, pool=pool, net=net, state=st, board=board))
+    base_p, adj_p = await s2b_base.run(ref, facts, state=st, net=net)
     cache: dict[str, Doc] = {}
     docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
                              cache=cache)
@@ -57,15 +72,34 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     variables = s5_verify.run(ref, facts, docs, cands, state=st)
     hypo = s6_hypo.run(ref, facts, variables, state=st)
     got_board, extra, bad = board, [], []
+    ocr_text = ""
+    if board_image.strip() and not board_text.strip():
+        from app.core import ocr as _ocr
+        got_board, extra, bad, ocr_text = _ocr.board_of(board_image.strip())
+        st.note(f"보드 캡처 — 로컬 OCR {len(ocr_text)}자 · "
+                f"{len(getattr(got_board, 'lines', []) or [])}줄 · 못 읽음 {len(bad)}")
     if board_text.strip():
         from app.core import board as _board
         got_board, extra, bad = _board.parse(board_text)
         st.note(f"보드 {len(got_board.lines)}줄 · 추가 {len(extra)} · "
                 f"못 읽음 {len(bad)}")
+    if ocr_text and got_board is not None:
+        from app.core import odds as _odds
+        user_mk = _odds.from_board(got_board, source="user_board(ocr)")
+    # 🔴 §2-6 — 사용자 보드가 없으면 **피드가 준 마켓**이 평가 줄이 된다
+    if got_board is None and feed_mk.probs:
+        from app.core import odds as _odds
+        from app.core.schema import Board as _Board
+        got_board = _Board(lines=_odds.lines_from(feed_mk))
+        st.note(f"보드 없음 → **피드 마켓 {len(got_board.lines)}줄**로 평가한다(§2-6)")
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
                         now=now)
+    layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
+                     user_mk, state=st)
+    layers["ocr_text"] = ocr_text
+    said = _direction(_lower(said, layers, state=st), layers, ref)
     card = card_of(ref, facts, variables, hypo, said, state=st,
-                   board_extra=extra, board_bad=bad)
+                   board_extra=extra, board_bad=bad, layers=layers)
     # 🔴 **마지막 실행을 기억한다** — 재분석이 s3·s4 를 다시 돌지 않게(§4-1)
     _LAST[ref.id] = {"at": (now or datetime.now(timezone.utc)), "ref": ref,
                      "docs": docs, "cands": cands, "card": card,
@@ -85,8 +119,8 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
     > 4. 카드 맨 위에 `재분석 — 바뀐 것:` 한 블록.
     > 5. 마지막 실행이 24시간 넘었거나 없으면 **전체를 새로** 돈다.
     """
-    from app.core.stages import (s1_resolve, s2_facts, s5_verify, s6_hypo,
-                                 s7_judge)
+    from app.core.stages import (s1_resolve, s2_facts, s2b_base, s2c_market,
+                                 s5_verify, s6_hypo, s7_judge)
     st = state if state is not None else RunState()
     q = _question(raw, now=now)
     ref = await s1_resolve.run(q, pool=pool, state=st, net=net)
@@ -136,11 +170,30 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
     if last.get("board_text"):
         from app.core import board as _board
         got_board, extra, bad = _board.parse(str(last["board_text"]))
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **재분석의 네 층**(네 층 지시서 §4 재분석 · §6 배당 움직임)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > XI 상태가 바뀌면 **② 만** 다시 계산(s3·s4 재실행 없음).
+    #  > 피드 배당이 첫 실행보다 **5%p 이상** 움직였으면 *"시장 이동"* 을 적는다.
+    #  🔴 피드 요청은 **1회**다(§2-2) — `reanalyze=True` 가 그 예산을 든다.
+    base_p, adj_p = await s2b_base.run(ref, facts, state=st, net=net)
+    feed_mk, user_mk = await s2c_market.run(ref, pool=pool, net=net, state=st,
+                                            board=got_board, reanalyze=True)
+    if got_board is None and feed_mk.probs:
+        from app.core import odds as _odds
+        from app.core.schema import Board as _Board
+        got_board = _Board(lines=_odds.lines_from(feed_mk))
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
                         now=now)
+    layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
+                     user_mk, state=st)
+    said = _direction(_lower(said, layers, state=st), layers, ref)
+    changed = _diff(before, facts, variables, said)
+    changed += _market_moved(before, layers, state=st)
     card = card_of(ref, facts, variables, hypo, said, state=st,
-                   board_extra=extra, board_bad=bad,
-                   changed=_diff(before, facts, variables, said))
+                   board_extra=extra, board_bad=bad, layers=layers,
+                   changed=changed)
     _LAST[ref.id] = {**last, "at": when, "card": card}
     return card
 
@@ -188,12 +241,28 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
             hypo: HypoSet, said: Judgement, *, state: RunState,
             board_extra: list[str] | None = None,
             board_bad: list[str] | None = None,
-            changed: list[str] | None = None) -> Card:
-    """🔴 카드 하나로 모은다 — 렌더러가 보는 것은 **이 타입 하나**다(§3)."""
+            changed: list[str] | None = None,
+            layers: dict | None = None) -> Card:
+    """🔴 카드 하나로 모은다 — 렌더러가 보는 것은 **이 타입 하나**다(§3).
+
+    🔴 `layers` 는 네 층(①②③④)과 §6 비교 결과다 — 없으면 **빈 층**이고 카드의 그
+       열은 `—` 다(네 층 지시서 §1 마지막 줄).
+    """
+    box = dict(layers or {})
     return Card(
         board_extra=[str(x) for x in (board_extra or [])],
         board_bad=[str(x) for x in (board_bad or [])],
         changed=[str(x) for x in (changed or [])],
+        base_prob=box.get("base") or BaseProb(why="① 을 안 돌렸다"),
+        adj_prob=box.get("adj") or AdjProb(why="② 를 안 돌렸다"),
+        market=box.get("market") or MarketProb(why="④ 를 안 돌렸다"),
+        user_market=box.get("user_market") or MarketProb(),
+        our_prob=box.get("ours"),
+        compare=str(box.get("compare") or ""),
+        compare_lines=[str(x) for x in (box.get("compare_lines") or [])],
+        tilt=[str(x) for x in (box.get("tilt") or [])],
+        market_why=[str(x) for x in (box.get("market_why") or [])],
+        ocr_text=str(box.get("ocr_text") or ""),
         match=ref, facts=facts, variables=variables,
         drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,
         direction=said.direction, conclusion=said.conclusion,
@@ -235,3 +304,96 @@ def _same_vars(before: list[Variable], now: list[Variable]) -> bool:
                 v.hardness, round(float(v.weight), 4), v.usable_as_basis)
 
     return sorted(key(v) for v in before) == sorted(key(v) for v in now)
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **네 층 비교와 등급 내림**(네 층 지시서 §5·§6·§7)
+# ══════════════════════════════════════════════════════════════════
+
+
+def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
+            hypo: HypoSet, base_p: BaseProb, adj_p: AdjProb,
+            feed_mk: MarketProb, user_mk: MarketProb, *,
+            state: RunState) -> dict:
+    """🔴 ③ 우리 확률 + §6 세 열 비교를 만든다. ⚠️ 못 만든 열은 **사유만** 남는다."""
+    from app.core import compare
+    from app.core.stages import s2c_market
+    ours, why = compare.our_prob(hypo)
+    market, label = s2c_market.column(feed_mk, user_mk)
+    verdict, lines = compare.verdict_of(base_p, ours, market)
+    tilt = compare.tilt_reasons(ours, base_p, hypo, variables,
+                                measured=adj_p.measured)
+    reasons = compare.market_reasons(base_p, adj_p, market, variables, ref)
+    # 🔴 §5 중복 금지 — ② 가 돌았으면 결장 계열 무게 0 · 전력/폼 절반
+    _, notes = compare.weight_rules(variables, measured=adj_p.measured)
+    for line in notes:
+        state.note(f"§5 중복 금지 — {line}")
+    state.note(f"§6 세 열 판정 — **{verdict}**"
+               + (f"(우리 {why})" if ours is not None else f"({why})"))
+    return {"base": base_p, "adj": adj_p, "market": market,
+            "user_market": user_mk, "ours": ours, "compare": verdict,
+            "compare_lines": [*lines, (f"시장 열 — {label}" if label else "")],
+            "tilt": tilt, "market_why": reasons}
+
+
+def _direction(said: Judgement, layers: dict, ref: MatchRef) -> Judgement:
+    """🔴 §7 방향 판정 — **세 열의 홈승·원정승을 다 적는다**(블록 9).
+
+    ⚠️ 종전 방향 줄은 우리 확률만 적었다 — 세 열이 있으면 그 셋을 나란히 적고, 둘
+       이상이 한 팀을 0.15 이상 앞세울 때만 그 팀을 적는다(§7 마지막 줄).
+    🔴 열이 **우리뿐이면 종전 줄을 그대로 둔다**(없는 열을 지어내지 않는다).
+    """
+    from app.core import compare
+    base_p, market = layers.get("base"), layers.get("market")
+    if base_p is None or market is None:
+        return said
+    if base_p.probs is None and not (market.probs or {}):
+        return said
+    return said.model_copy(update={
+        "direction": compare.direction_line(base_p, layers.get("ours"),
+                                            market, ref)})
+
+
+def _lower(said: Judgement, layers: dict, *, state: RunState,
+           found_new: bool = False) -> Judgement:
+    """🔴🔴 §7 — 세 열 규칙은 **등급을 내리기만** 한다. 올리는 길이 없다.
+
+    🔴 `grade_step` 이 내릴 칸 수를 주고(99 면 `없음`), 여기서 **사다리를 내려간다**.
+    ⚠️ 시장 확률이 등급 **계산에** 들어가는 것이 아니다 — 계산은 이미 끝났고 그
+       결과를 내리기만 한다(§7 금지 첫 줄).
+    """
+    from app.core import compare
+    step, why = compare.grade_step(str(layers.get("compare") or ""),
+                                   found_new=found_new)
+    if step <= 0:
+        if why:
+            state.note(f"§7 등급 유지 — {why}")
+        return said
+    ladder: list[str] = ["낸다", "소액", "소액하단", "없음"]
+    out: list[MarketEval] = []
+    for ev in said.evals:
+        grade = ev.grade
+        if grade in ladder:
+            i = min(len(ladder) - 1, ladder.index(grade) + step)
+            grade = ladder[i]                              # type: ignore[assignment]
+        out.append(ev.model_copy(update={"grade": grade,
+                                         "why": f"{ev.why} · {why}".strip(" ·")}))
+    state.note(f"§7 등급 **내림** {step}칸 — {why}")
+    return said.model_copy(update={"evals": out,
+                                   "conclusion": f"{said.conclusion} · {why}"})
+
+
+def _market_moved(before: Card, layers: dict, *, state: RunState) -> list[str]:
+    """🔴 §6 — 배당이 **5%p 이상** 움직였나. 움직였으면 *"시장 이동"* 줄들.
+
+    > 배당이 크게 움직였다는 건 **시장이 새 정보를 받았다**는 신호다.
+    ⚠️ 그래도 **우리 확률을 시장 쪽으로 옮기지 않는다**(§6 금지) — 새 사실이 변수로
+       들어와서 바뀌는 것만 허용한다. 🔴 이 함수는 **적기만** 한다.
+    """
+    from app.core import compare
+    now = layers.get("market")
+    if now is None or not (now.probs or {}):
+        return []
+    said = compare.moved(before.market, now)
+    for line in said:
+        state.note(f"§6 {line} — 새 기사를 다시 찾아볼 신호다")
+    return said

@@ -1,7 +1,14 @@
 """🔴🔴 **보드 파서** — 사용자가 붙여 넣은 글 → `Board`(축구 완성 지시서 §4).
 
-> 사용자가 보드를 텍스트로 붙여 넣는다. **배당 숫자는 받지 않고, 있으면 버린다**
-> (사용자 규칙: 시장 배제).
+> 사용자가 보드를 텍스트로 붙여 넣는다.
+
+🔴🔴 **배당을 버리지 않는다 — 네 층 지시서 §2-6**(사용자 결정 2026-10-06)
+
+> 보드 파서가 마켓과 배당을 읽는다(파서는 배당을 **버리지 않고** `BoardLine.price`
+> 에 담는다).
+
+⚠️ 종전 이 파일은 *"배당 숫자는 받지 않고, 있으면 버린다"* 였다 — 그 규칙은 **걷혔다.**
+🔴 쓰임은 **확률**까지다: 기대값·금액은 어디에도 만들지 않는다(§0 금지).
 >
 > 파서는 **코드**(정규식 + 사전)로: 마켓 이름 사전을 `config/board_words.yaml` 에.
 > 못 읽은 줄은 카드에 *"보드 줄 못 읽음: …"* 으로 그대로 보여 준다(조용히 버리지 않는다).
@@ -87,58 +94,102 @@ def _one(said: str, box: dict) -> tuple[list[BoardLine], str]:
     for w in half.get("words") or []:
         if str(w).lower() in low:
             return [], str(half.get("why") or "반 단위 마켓")
-    point = _point_of(low, box)
     for row in box.get("markets") or []:
         if not any(str(w).lower() in low for w in (row.get("words") or [])):
             continue
         market = str(row.get("market"))
         side_team = str(row.get("side_team") or "")
+        # 🔴🔴 **기준선을 쓰는 마켓만** 첫 숫자를 기준선으로 본다(§2-6).
+        #    ⚠️ 실측 2026-10-06: 그 구분이 없어 `승무패 1.66 3.79 4.55` 의 **1.66 을
+        #       기준선으로** 읽고 배당 셋을 잃었다. 승무패·더블찬스·양팀득점에는
+        #       기준선이 없다 — 그 줄의 숫자는 **전부 배당**이다.
+        has_point = not row.get("expand")
+        point = _point_of(low, box) if has_point else None
+        price = _price_of(low, box, point=point)
+        prices = _prices_of(low, box, point=point)
         if row.get("expand"):
-            return _expand([str(x) for x in row["expand"]], point), ""
+            return _expand([str(x) for x in row["expand"]], point,
+                           price=price, prices=prices), ""
         if market == "handicap":
             # 🔴 핸디는 **줄 하나에 두 쪽**이다(§6-c-3) — 기준선 부호가 쪽을 말한다
             if point is None:
                 return [], "핸디 기준선을 못 읽었다"
-            return ([BoardLine(market="handicap", side="home", point=point),
+            # ⚠️ 배당 하나는 **그 줄이 적은 쪽**의 것이다 — 반대쪽에 복사하지 않는다
+            return ([BoardLine(market="handicap", side="home", point=point,
+                               price=price),
                      BoardLine(market="handicap", side="away", point=-point)],
                     "")
         if market == "total":
             if point is None:
                 return [], "총점 기준선을 못 읽었다"
             side = f"{side_team}_" if side_team else ""
-            return ([BoardLine(market="total", side=f"{side}over", point=point),
+            return ([BoardLine(market="total", side=f"{side}over", point=point,
+                               price=price),
                      BoardLine(market="total", side=f"{side}under", point=point)],
                     "")
-        return [BoardLine(market=market, side="")], ""   # type: ignore[arg-type]
+        return [BoardLine(market=market, side="",                 # type: ignore[arg-type]
+                          price=price)], ""
     return [], "마켓 이름을 사전에서 못 찾았다"
 
 
-def _expand(names: list[str], point: float | None) -> list[BoardLine]:
+def _expand(names: list[str], point: float | None, *,
+            price: float | None = None,
+            prices: list[float] | None = None) -> list[BoardLine]:
     """🔴 `승무패` 처럼 **여러 줄로 펼치는** 마켓."""
     table = {"win_home": ("win", "home"), "win_away": ("win", "away"),
              "draw": ("draw", ""), "unbeaten_home": ("unbeaten", "home"),
              "unbeaten_away": ("unbeaten", "away"),
              "btts_yes": ("btts", "yes"), "btts_no": ("btts", "no")}
     out: list[BoardLine] = []
-    for name in names:
+    # 🔴🔴 §2-6 — `승무패 1.66 3.79 4.55` 처럼 **줄 수만큼** 배당이 오면 순서대로 붙인다.
+    #    ⚠️ 수가 안 맞으면 **아무 쪽에도 안 붙인다** — 어느 쪽 배당인지 모르기 때문이다
+    #       (실측 설계: 둘만 온 승무패 줄에 홈/무를 찍어 주면 확률이 거짓이 된다).
+    many = list(prices or [])
+    ordered = many if len(many) == len(names) else []
+    for i, name in enumerate(names):
         got = table.get(name)
         if got is None:
             continue
-        out.append(BoardLine(market=got[0], side=got[1]))  # type: ignore[arg-type]
+        mine = ordered[i] if ordered else (price if len(names) == 1 else None)
+        out.append(BoardLine(market=got[0], side=got[1],        # type: ignore[arg-type]
+                             price=mine))
     return out
 
 
 def _point_of(low: str, box: dict) -> float | None:
-    """🔴 기준선 하나 — ⚠️ **배당 숫자는 받지 않는다**(§4 금지).
+    """🔴 기준선 — **첫 숫자**다(`언더오버 2.5 1.85` 의 2.5).
 
-    🔴 그래서 **첫 숫자 하나만** 쓴다: 보드 줄의 꼴은 `언더오버 2.5` 이고 배당은
-       그 뒤에 붙는다(`2.5 1.85`). ⚠️ 두 번째 숫자는 **버린다** — 그 사실이 이
-       독스트링이다(조용한 처리가 아니다).
+    ⚠️ 두 번째 숫자는 기준선이 아니다 — **배당**이고 `_price_of` 가 가져간다(§2-6).
     """
-    got = re.findall(str(box.get("point") or r"[-+]?\d+(?:\.\d+)?"), low)
-    if not got:
-        return None
-    try:
-        return float(got[0])
-    except ValueError:
-        return None
+    got = _numbers(low, box)
+    return got[0] if got else None
+
+
+def _prices_of(low: str, box: dict, *, point: float | None) -> list[float]:
+    """🔴 그 줄의 배당 **전부**(순서대로). ⚠️ `승무패 1.66 3.79 4.55` 처럼 셋이 올 수 있다."""
+    got = _numbers(low, box)
+    said = got[1:] if point is not None and got else got
+    return [v for v in said if v >= 1.01]
+
+
+def _price_of(low: str, box: dict, *, point: float | None) -> float | None:
+    """🔴🔴 §2-6 — **배당**을 읽는다. ⚠️ 없으면 `None`(0 이 아니다).
+
+    🔴 어느 숫자가 배당인가 — 규칙 하나로 가른다:
+         기준선이 있는 줄(`언더오버 2.5 1.85`) → **두 번째** 숫자
+         기준선이 없는 줄(`승 1.66`)          → **첫** 숫자
+    ⚠️ 소수 배당은 **1.01 이상**이다 — 그보다 작으면 배당이 아니므로 안 담는다
+       (실측: `핸디 -0.5 1.95` 에서 `-0.5` 를 배당으로 읽으면 확률이 거짓이 된다).
+    """
+    got = _prices_of(low, box, point=point)
+    return got[0] if got else None
+
+
+def _numbers(low: str, box: dict) -> list[float]:
+    out: list[float] = []
+    for raw in re.findall(str(box.get("point") or r"[-+]?\d+(?:\.\d+)?"), low):
+        try:
+            out.append(float(raw))
+        except ValueError:
+            continue
+    return out

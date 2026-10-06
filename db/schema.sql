@@ -570,3 +570,22 @@ ALTER TABLE ledger ADD CONSTRAINT ledger_failure_kind_ck CHECK (
     OR failure_kind IN ('uncovered', 'underweighted', 'unknown'));
 -- 🔴 비용(USD). ⚠️ `NULL` 은 **안 쟀다**이고 `0` 은 **공짜로 했다**다 — 다르다.
 ALTER TABLE ledger ADD COLUMN IF NOT EXISTS cost_usd NUMERIC;
+
+-- ══════════════════════════════════════════════════════════════════
+-- 🔴🔴 **네 층 지시서 §2-2 — 배당 피드 월 사용량**
+-- ══════════════════════════════════════════════════════════════════
+--
+-- > 월 사용량을 **원장에 적고** 한도의 80% 를 넘으면 카드에 경고, 100% 면 피드
+-- > 호출 중단 후 §2-6(사용자 보드)으로.
+--
+-- 🔴 무료 한도가 작다(500·250/월) — 세지 않으면 **달 중간에 조용히 끊긴다.**
+-- ⚠️ `month` 는 **UTC 달**이다(절대규칙 2: DB 는 UTC). 표시만 KST.
+CREATE TABLE IF NOT EXISTS odds_usage (
+    feed        TEXT NOT NULL,
+    month       DATE NOT NULL,                      -- 그 달 1일(UTC)
+    calls       INT  NOT NULL DEFAULT 0,
+    limit_said  INT,                                -- 🔴 피드가 말한 한도(헤더) · 모르면 NULL
+    remaining   INT,                                -- 🔴 피드가 말한 남은 수 · 모르면 NULL
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (feed, month)
+);

@@ -24,6 +24,8 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     coach: dict[str, Any] = {}
     sources: list[str] = []
     raw_xi: dict[str, dict] = {}
+    #: 🔴 선수 **가치**를 담은 사실들(오늘 XI · 직전 경기) — ② 가 쓴다
+    raw_value: list[dict] = []
     try:
         got = await _depth(ref, net=net, search=search, state=state)
     except Exception as exc:                                # noqa: BLE001
@@ -63,6 +65,9 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
             if key:
                 box.setdefault("last_xi", {})[key] = adapt.xi_of(
                     key, {**val, "lineup_state": "none"}, source_url=url)
+                # 🔴 **직전 경기 페이지도 가치 출처다**(② · 네 층 §4-3) — 오늘 XI 가
+                #    없어도 평소 XI 의 가치는 거기서 온다
+                raw_value.append(dict(val))
                 # 🔴 **일정**(IR11) — 직전 경기 날짜·상대를 적는다
                 box.setdefault("schedule", {})[key] = {
                     "last_match": val.get("from_date"),
@@ -91,6 +96,15 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
         got = adapt.names_of(val.get("squad"))
         if got:
             squad[key] = got
+    # 🔴🔴 **선수 → 시장가치 표**(② 라인업 전력 · 네 층 지시서 §4-3)
+    #
+    #  🔴 경기 페이지가 이미 들고 온다 — 새 출처를 붙이지 않는다(실측 2026-10-06:
+    #     `marketValue` 가 선발·교체 칸에 있다 · `config/rating_sources.yaml`).
+    values: dict[str, float] = {}
+    for val in (*raw_xi.values(), *raw_value):
+        values.update(adapt.values_of(val))
+    if values:
+        state.note(f"s2 선수 가치 {len(values)}명 ← 경기 페이지(②가 쓴다)")
     # 🔴 **선수 → 포지션 표**(경기 단위 · §2) — §1-1 결장 유형과 IR01·IR02 가 쓴다
     pos: dict[str, str] = {}
     for key, box_xi in xi.items():
@@ -109,7 +123,8 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
         state.note("s2 못 받은 칸 — " + " · ".join(gaps))
     return adapt.facts_of(box, xi=xi, match_format=fmt,
                           sources=sorted(set(sources)), missing=missing,
-                          coach=coach, player_pos=pos, gaps=gaps, squad=squad)
+                          coach=coach, player_pos=pos, gaps=gaps, squad=squad,
+                          player_value=values)
 
 
 def _gaps(*, xi: dict, missing: dict, coach: dict, box: dict,

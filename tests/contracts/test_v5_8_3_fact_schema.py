@@ -116,6 +116,12 @@ def test_v5_8_3_어댑터가_정본_이름으로_낸다():
         code = _code_only(p)
         if "home_score" not in code and "home_goals" not in code:
             continue
+        # 🔴 **`Fact` 를 내보내는 파일만** 본다(2026-10-06 좁혔다). ⚠️ `collect/elo.py`
+        #    는 사실을 안 만든다 — 적합용 줄(`NamedTuple`)만 돌려주고 그 칸 이름이
+        #    이미 정본(`home_score`)이다. 사실을 안 내보내는 파일에 "정본 글자를
+        #    따옴표로 써라"를 요구하면 계약이 **뜻 없는 글자 검사**가 된다(D46).
+        if "Fact(" not in code:
+            continue
         assert '"home_score"' in code or "'home_score'" in code, (
             f"🔴 {p.name} 이 점수를 내는데 정본 `home_score` 가 없다")
     assert "home_score" in CANON

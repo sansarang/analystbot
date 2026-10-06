@@ -3,6 +3,8 @@
 | 무엇 | 어디 | 언제부터 |
 |---|---|---|
 | **v6 재구축 지시서 (지금의 정본)** | [docs/fable/inbox/2026-10-06_v6_rebuild.md](docs/fable/inbox/2026-10-06_v6_rebuild.md) | 2026-10-06 — *"이 문서는 이전 지시서 **전부**를 대체한다"* |
+| **네 층 확률 + 시장 비교**(위 둘에 **얹는다**) | [docs/fable/inbox/2026-10-06_v6_soccer_4layer.md](docs/fable/inbox/2026-10-06_v6_soccer_4layer.md) | 2026-10-06 — *"충돌하면 이 문서가 이긴다"* · 범위 **축구만** |
+| 축구 완성 지시서 | [docs/fable/inbox/2026-10-06_v6_soccer_final.md](docs/fable/inbox/2026-10-06_v6_soccer_final.md) | 2026-10-06 |
 | v4 — v6 가 **말하지 않는 것**만 | [docs/fable/inbox/2026-09-29_v4.md](docs/fable/inbox/2026-09-29_v4.md) (**rev 15**) | 절대규칙 §14 · 변수 유형표 §4 · 마켓 §1 |
 | v5 본문·부록·작업 지시서 다섯 | `docs/fable/archive/` | 🔴 **v6 가 대체했다**(2026-10-06 이관) |
 
@@ -263,4 +265,10 @@ PYTHONPATH=. uv run ruff check app/ tests/
    Gemini·`:cloud` 모델은 **읽지도 부르지도 않는다**(계약이 잠근다).
 5. **LLM 은 로컬 `qwen3:8b` 뿐.** JSON 스키마 강제. `direction`·`weight`·
    `strength`·`survival`·`verdict` 필드에 LLM 출력이 닿으면 계약 실패.
-6. **배당은 `research` 스키마에만.** 판정 경로·카드 렌더러 접근 0건.
+6. ~~**배당은 `research` 스키마에만.** 판정 경로·카드 렌더러 접근 0건.~~
+   🔴🔴 **걷혔다 — 네 층 지시서(2026-10-06 재작성) §2-6·§8**(사용자 결정):
+   *"배당은 **정보로 쓴다**… 봇이 스스로 가져온다"* · *"파서는 배당을 버리지 않고
+   `BoardLine.price` 에 담는다"* · *"배당 원숫자는 시장·사용자 보드 열에 괄호로"*.
+   🔴 **대신 잠그는 것이 바뀌었다** — 금지는 이제 **기대값·손익분기·켈리·금액**이고
+   (`tests/contracts/test_v6_9_layers.py`), 시장 확률이 **등급 계산에 직접 들어가는
+   것**도 금지다(§7 — 세 열 규칙은 등급을 **내리기만** 한다).

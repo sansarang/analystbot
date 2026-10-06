@@ -37,6 +37,11 @@ SCENARIO_REQUIRED = "config/scenario_required.yaml"
 TRIGGER_CONDITIONS = "config/trigger_conditions.yaml"
 #: 🔴🔴 **v5 §10-4 — 단계 게이트.** 🔴 서명은 사용자다(내가 통과를 안 적는다).
 STAGE_GATES = "config/stage_gates.yaml"
+#: 🔴 네 층 지시서 §2-1·§3 — 피드·전력 출처 표(단계 1·4 실측 결과)
+ODDS_SOURCES = "config/odds_sources.yaml"
+RATING_SOURCES = "config/rating_sources.yaml"
+#: 🔴 §3-2 순서형 로짓 계수 — **봇은 읽기만 한다**(실행 중 적합 금지)
+BASE_MODEL = "config/base_model.yaml"
 
 
 @functools.lru_cache(maxsize=None)
@@ -749,3 +754,54 @@ def all_one_direction(score_sets: list[list[str]]) -> bool:
     if not dirs or None in dirs:
         return False
     return len(set(dirs)) == 1
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **네 층 확률**(지시서 2026-10-06 재작성) — 표를 읽는 창구
+# ══════════════════════════════════════════════════════════════════
+#
+# ⚠️ 피드 이름·한도·계수를 **코드에 박지 않는다**(#1 사본 금지). 이 셋이 유일한 길이다.
+
+
+def odds_sources() -> dict:
+    """🔴 §2-1 배당 피드 표 — `config/odds_sources.yaml` 그대로."""
+    return _load(ODDS_SOURCES)
+
+
+def odds_feeds(*, allowed_only: bool = True) -> list[dict]:
+    """🔴 피드 목록. ⚠️ `allowed: false` 는 **기본으로 빠진다**(§2-1 금지 기준)."""
+    rows = odds_sources().get("feeds") or []
+    out = [dict(r) for r in rows if isinstance(r, dict)]
+    return [r for r in out if r.get("allowed")] if allowed_only else out
+
+
+def odds_budget() -> dict:
+    """🔴 §2-2 요청 예산 — 분석 2회·재분석 1회·캐시 6시간·경고 80%·중단 100%."""
+    return dict(odds_sources().get("budget") or {})
+
+
+def rating_sources(*, allowed_only: bool = False) -> list[dict]:
+    """🔴 §3 전력 자료 출처 표 — 실측한 것만 `allowed: true` 다."""
+    rows = _load(RATING_SOURCES).get("sources") or []
+    out = [dict(r) for r in rows if isinstance(r, dict)]
+    return [r for r in out if r.get("allowed")] if allowed_only else out
+
+
+def rating_source(name: str) -> dict:
+    """🔴 출처 하나. ⚠️ 없으면 **빈 표**다 — 호출부가 "출처 없음"으로 적는다."""
+    for row in rating_sources():
+        if str(row.get("name")) == str(name):
+            return row
+    return {}
+
+
+def base_model(kind: str) -> dict:
+    """🔴🔴 §3-2 순서형 로짓 **계수** — 대회 유형(`kind`)별로만 꺼낸다.
+
+    > 계수·홈 보정은 **같은 대회 유형**에서 적합한 것만 쓴다. 없으면 "기준 없음".
+
+    ⚠️ 빈 표를 돌려주면 ① 은 숫자를 못 낸다 — 그것이 맞는 결과다(지어내지 않는다).
+    """
+    box = _load(BASE_MODEL).get("models") or {}
+    got = box.get(str(kind))
+    return dict(got) if isinstance(got, dict) else {}

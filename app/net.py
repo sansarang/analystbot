@@ -171,7 +171,15 @@ class Net:
         #    "네트워크 없이 재현"이 거짓이 된다 — §19-g 가 요구하는 바로 그것).
         q = cassette.query_string(params)
         if cassette.mode() == cassette.REPLAY:
-            return self._from_cassette(url, q)
+            got = self._from_cassette(url, q)
+            # 🔴🔴 **`--replay-fallthrough` 면 없는 요청만 라이브로**(M134 · 카세트
+            #    머리말). ⚠️ 기본은 **안 나간다** — 그 기본이 "네트워크 없이 재현"을
+            #    지킨다. 🔴 나간 요청은 **저장한다**(다음 재생에 붙는다).
+            if got.ok or cassette.REPLAY_MISS not in str(got.reason or ""):
+                return got
+            if not cassette.fallthrough():
+                return got
+            logger.info("[net] 재생 미스 → **라이브로 한 번** %s", url)
         # 🔴 분석 1회 캐시(위 주석). ⚠️ 카세트 **뒤에** 둔다 — 재생 경로를 가리면
         #    "네트워크 없이 재현"이 캐시 상태에 따라 달라진다.
         ckey = (url, q, tuple(sorted((headers or {}).items())))
@@ -209,7 +217,7 @@ class Net:
         else:
             out = Fetched(url, True, r.status_code, r.text, elapsed_ms=ms,
                           published_at=published_at_of(r.text, url))
-        if cassette.mode() == cassette.RECORD:
+        if cassette.mode() in (cassette.RECORD, cassette.REPLAY):
             # ⚠️ **실패도 저장한다.** 404·robots 거부가 재현되지 않으면 §19-b-4
             #    ("막히면 대체")를 카세트로 시험할 수 없다.
             cassette.save("fetch", url, q,

@@ -400,8 +400,25 @@ def players_of(team: dict) -> list[dict]:
             number = int(num) if num is not None else None
         except (TypeError, ValueError):
             number = None
-        out.append({"name": name, "pos": pos, "number": number})
+        out.append({"name": name, "pos": pos, "number": number,
+                    "value": _value_of(p)})
     return out
+
+
+def _value_of(p: dict) -> float | None:
+    """🔴🔴 **선수 시장가치**(네 층 지시서 §4-3) — `marketValue` 를 그대로.
+
+    실측 2026-10-06(녹화본 `soccer_g1_v3`): `"marketValue":4235314`(Shomurodov) ·
+    `1527402`(Urunov) · `347162`(Ashurmatov).
+    ⚠️ **단위 표기가 응답에 없다** — 그래서 비율(로그 비율)로만 쓴다. 🔴 없으면
+       `None` 이고 ② 가 *"값 없는 선수"* 로 센다(0 으로 때우지 않는다).
+    """
+    got = p.get("marketValue", p.get("value"))
+    try:
+        said = float(got)                                   # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return said if said > 0 else None
 
 
 #: 🔴 fotmob `unavailability.type` → 우리 사유 열거값(§2). ⚠️ 모르면 `other`
@@ -1268,6 +1285,9 @@ def parse_prev(got, q: Question) -> list[Fact]:
                 "team": name, "formation": side.get("formation"),
                 "players": names, "coach": _coach(side),
                 "lineup_kind": "baseline",
+                # 🔴🔴 **선수별 가치까지** 싣는다(네 층 지시서 §4-3) — 팀 합계만으로는
+                #    *"누가 빠져 얼마가 줄었나"* 를 못 센다(② 의 기여표가 그것이다)
+                "lineup": players_of(side),
                 # 🔴 **그 경기의 스쿼드 전원** — 명단 대조의 재료다
                 "squad": squad_names(side),
                 # 🔴 **기준 라인업의 시장가치 합** — 오늘과 비교할 분모다

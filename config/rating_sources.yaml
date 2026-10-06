@@ -1,0 +1,90 @@
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **전력 자료 출처 표** — 네 층 지시서 §3·§10-4 · 단계 4
+# ══════════════════════════════════════════════════════════════════
+#
+# > 출처별 허용/금지·확인일·칸. 쓸 수 있는 출처가 없으면 ① 은 "기준 없음".
+#
+# 🔴 전부 2026-10-06 에 **받아 본 것**이다(робots·형식·값까지). ⚠️ 못 받은 것은
+#    `allowed: false` 와 **그 응답**을 적는다 — "아마 된다"를 적지 않는다.
+
+sources:
+  - name: eloratings_net
+    what: 국가대표 Elo + 과거 경기 결과(적합용)
+    base_url: https://www.eloratings.net
+    allowed: true
+    robots: |
+      실측 — `/robots.txt` → **404**. §4-7 에 따라 404 는 `allow` 다(우리 net 이
+      그렇게 읽는다). ⚠️ UA 는 봇이라고 밝힌다(절대규칙 3).
+    files:
+      ratings: /World.tsv          # 현재 등급 — 31열, 3열 ISO2 코드, 4열 등급
+      teams: /en.teams.tsv         # ISO2 → 이름(별칭 여러 개)
+      tournaments: /en.tournaments.tsv
+      results: /{year}_results.tsv  # 🔴 **과거 경기** — 16열(아래 열 표)
+    columns_results:
+      1: year
+      2: month
+      3: day
+      4: home_code      # ISO2
+      5: away_code
+      6: home_score
+      7: away_score
+      8: tournament     # 🔴 `F` = 친선 · `FFS` = 친선 대회 · 그 밖은 공식전
+      9: host_code      # 🔴 **비면 홈 개최** · 차면 그 나라에서 열렸다(중립 판정)
+      11: home_elo_pre  # 🔴 경기 **전** 등급 — 적합의 입력이다
+      12: away_elo_pre
+      13: home_elo_delta
+      14: away_elo_delta
+      15: home_rank
+      16: away_rank
+    measured_2026_10_06:
+      KR: 1722
+      UZ: 1653
+      CN: 1367
+      TJ: 1267
+      ES: 2282          # 1위 — 값의 자리수를 확인한 표본
+      rows_2026_results: 16열 · `2026_results.tsv` 40,993 바이트
+    home_adv_elo: null
+    home_adv_why: |
+      🔴 **안 적는다.** 이 출처의 방법 문서를 열어 보려 했으나 `/about` 은 자바스크립트로
+      본문을 그리고 `scripts/ratings.js` 에 홈 보정 값이 없었다(실측: `home` 2회,
+      보정 문맥 0건). ⚠️ 흔히 인용되는 **100점**을 여기 적으면 그것은 추측이다.
+      🔴 그래서 홈 보정은 **적합으로 잰다** — `{year}_results.tsv` 의 9열(개최국)이
+      홈/중립을 가르므로 순서형 로짓이 홈 항을 직접 추정한다(§3-2·단계 5).
+    cache_hours: 24
+    checked_at: 2026-10-06
+
+  - name: clubelo
+    what: 클럽 Elo
+    allowed: false
+    why: |
+      🔴 **실측으로 죽어 있다**(2026-10-06):
+        `http://api.clubelo.com/Fixtures` → 200 본문 **"Fixtures API deactivated"**
+        `http://api.clubelo.com/2026-10-06` → **502**
+        `http://api.clubelo.com/Barcelona` → **502**
+        `https://api.clubelo.com/...` → 연결 실패(curl 000)
+      ⚠️ 그래서 **리그 경기의 ① 은 "기준 없음"** 이다. 지어내지 않는다.
+    checked_at: 2026-10-06
+
+  - name: fotmob_market_value
+    what: 선수 시장가치(② 라인업 전력)
+    allowed: true
+    where: |
+      🔴 **이미 받고 있는 경기 페이지 안에 있다** — `lineup.{home,away}Team` 의 선수
+      칸에 `marketValue` 가 들어온다(실측 2026-10-06, 녹화본 `soccer_g1_v3`):
+        Shomurodov 4,235,314 · Urunov 1,527,402 · Ashurmatov 347,162
+      ⚠️ 단위 표기가 응답에 없다 — **비율로만 쓴다**(로그 비율·ΔS). 카드에 통화
+         기호를 붙이지 않는다.
+    forbidden_paths: |
+      🔴 `/api/*`·apigw 는 금지다(CLAUDE.md) — 쓰는 것은 경기 페이지 JSON 뿐이다.
+    checked_at: 2026-10-06
+
+  - name: transfermarkt
+    what: 선수단 가치
+    allowed: false
+    why: |
+      🔴 **수집하지 않는다.** `robots.txt` 는 `User-agent: *` / `Allow: /` 지만
+      (실측 2026-10-06) 이 사이트 약관은 자동 수집을 막는다 — 지시서 §3 은
+      *"약관·robots 가 자동 수집을 막으면 쓰지 않는다"* 라고 적었다. ⚠️ 약관 쪽이
+      막는 것을 robots 가 허용한다고 덮어쓰지 않는다.
+      🔴 그리고 **필요가 없다** — 가치는 fotmob 에서 이미 온다.
+    checked_at: 2026-10-06

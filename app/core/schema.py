@@ -287,6 +287,12 @@ class Facts(Frozen):
     #
     #  🔴 *"명단에 없음 = 결장, XI 에 없음 = 벤치"* — 그 둘을 가르는 자리다.
     squad: dict[str, list[str]] = Field(default_factory=dict)
+    #: 🔴🔴 **선수 시장가치**(② 라인업 전력 · 네 층 지시서 §4-3)
+    #
+    #  🔴 출처는 **경기 페이지 안의 `marketValue`** 다(실측 2026-10-06 ·
+    #     `config/rating_sources.yaml: fotmob_market_value`). ⚠️ 통화 표기가 응답에
+    #     없어 **비율로만** 쓴다 — 카드에 통화 기호를 붙이지 않는다.
+    player_value: dict[str, float] = Field(default_factory=dict)
     match_format: MatchFormat = "unknown"
     extra_time: bool | None = None
     #: 🔴 1차전/2차전(§3 IR07) — 모르면 `None`
@@ -482,11 +488,151 @@ class HypoSet(Frozen):
 
 
 class BoardLine(Frozen):
-    """🔴 보드 한 줄 — **배당 칸이 없다**(절대규칙 6)."""
+    """🔴 보드 한 줄.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **배당 칸이 생겼다** — 네 층 지시서 §2-6(사용자 결정 2026-10-06)
+    ══════════════════════════════════════════════════════════════════
+
+    > 보드 파서는 배당을 **버리지 않고** `BoardLine.price` 에 담는다.
+    > 배당 원숫자는 시장·사용자 보드 열에 **괄호로** 보인다.
+
+    ⚠️ 이것은 CLAUDE.md 절대규칙 6(*"배당은 `research` 스키마에만"*)과 충돌한다 —
+       🔴 **직접 지시가 이긴다.** 다만 쓰임은 **정보**로만이다:
+         · `price` 로 **확률**을 만들어 카드에 나란히 보인다(§7 세 열)
+         · 🔴 **기대값·손익분기·켈리·금액은 어디에도 없다**(§0 금지 · 계약이 잠근다)
+         · 🔴 등급 계산에 `price` 가 직접 들어가지 않는다(§7 금지)
+    """
 
     market: Market
     side: str
     point: float | None = None
+    #: 🔴 소수 배당(1.01 이상). ⚠️ `None` 은 *"배당을 못 읽었다"* 다 — 0 이 아니다
+    price: float | None = Field(default=None, ge=1.01)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **네 층 확률**(네 층 지시서 §1) — ①②③④ 가 전부 이 타입을 낸다
+# ══════════════════════════════════════════════════════════════════
+
+
+class ProbTriple(Frozen):
+    """🔴 승·무·패 확률 — **합이 1.0** 이다(§1 공통 타입 · 불변식).
+
+    ⚠️ 세 값을 따로 들고 다니다 합이 1 이 아닌 표를 카드에 실은 적이 있다(실측
+       2026-10-06 이전 경로). 🔴 타입이 그것을 불가능하게 한다.
+    """
+
+    home: float = Field(ge=0.0, le=1.0)
+    draw: float = Field(ge=0.0, le=1.0)
+    away: float = Field(ge=0.0, le=1.0)
+
+    @field_validator("away")
+    @classmethod
+    def _sums(cls, v: float, info) -> float:
+        box = info.data
+        got = float(box.get("home", 0.0)) + float(box.get("draw", 0.0)) + v
+        if abs(got - 1.0) > 0.001:
+            raise ValueError(f"합이 1.0 이 아니다({got:.4f}) — 세 열 불변식")
+        return v
+
+
+class ProbPair(Frozen):
+    """🔴 두 갈래 마켓(핸디·총점·양팀득점) 확률 — **합이 1.0**."""
+
+    side_a: float = Field(ge=0.0, le=1.0)
+    side_b: float = Field(ge=0.0, le=1.0)
+
+    @field_validator("side_b")
+    @classmethod
+    def _sums(cls, v: float, info) -> float:
+        got = float(info.data.get("side_a", 0.0)) + v
+        if abs(got - 1.0) > 0.001:
+            raise ValueError(f"합이 1.0 이 아니다({got:.4f})")
+        return v
+
+
+class BaseProb(Frozen):
+    """🔴 ① 기준 확률 — 두 팀 **기본 전력 차**만 본 승·무·패(§3).
+
+    ⚠️ `probs` 가 `None` 이면 *"기준 없음"* 이고 카드의 그 열은 `—` 다. 🔴 사유를
+       `why` 에 **이름으로** 적는다(조용한 0 금지).
+    """
+
+    probs: ProbTriple | None = None
+    why: str = ""
+    home_elo: float | None = None
+    away_elo: float | None = None
+    dr: float | None = None
+    #: 🔴 어느 대회 유형 계수를 썼나 — 다른 유형을 빌려 쓰면 카드가 거짓말을 한다
+    comp_kind: str = ""
+    source: str = ""
+    data_date: str = ""
+    #: 🔴 `We`(Elo 기대 득점률) — 무승부를 못 나눌 때 **이것만** 보인다(§3-3)
+    we: float | None = None
+
+
+class LineupDelta(Frozen):
+    """🔴 ② 선수별 기여 한 줄 — *"김민재 → 김태현: ΔS −0.31 → 한국 승 −4%p"*."""
+
+    team: TeamKey
+    out_name: str = ""
+    in_name: str = ""
+    delta_s: float = 0.0
+    delta_home_pct: float | None = None
+    estimated: bool = False
+
+
+class AdjProb(Frozen):
+    """🔴 ② 라인업 보정 — 오늘 XI 가 **평소 XI 보다** 얼마나 약/강한가(§4).
+
+    ⚠️ `probs` 가 비면 보정을 **안 했다**는 뜻이고, 그래도 `why` 는 적는다.
+    🔴 `moved` 가 False 면 환산 계수를 못 재서 **확률을 움직이지 않았다**(§4-5).
+    """
+
+    probs: ProbTriple | None = None
+    why: str = ""
+    deltas: list[LineupDelta] = Field(default_factory=list)
+    #: 🔴 팀별 `ΔS`(로그 가치 합 차) · 평소 대비 전력 변화율
+    delta_s: dict[str, float] = Field(default_factory=dict)
+    strength_pct: dict[str, float] = Field(default_factory=dict)
+    moved: bool = False
+    #: 🔴 ② 가 돌았나 — 돌았으면 결장 계열 변수 무게가 0 이다(§4 마지막)
+    measured: bool = False
+    estimated_players: int = 0
+
+
+class MarketQuote(Frozen):
+    """🔴 ④ 한 마켓의 **업체 배당 한 묶음** — 디빅 전 원숫자다."""
+
+    market: Market
+    side: str
+    point: float | None = None
+    price: float = Field(ge=1.01)
+    bookmaker: str = ""
+
+
+class MarketProb(Frozen):
+    """🔴 ④ 시장 확률 — 봇이 받은 배당을 **공정 확률**로(§2-5).
+
+    ⚠️ 같은 마켓의 결과 배당이 **하나라도 빠지면** 그 마켓은 확률이 없다(§2-5).
+    🔴 `vig` 는 업체 몫(역수 합 − 1)이고 마켓마다 적는다.
+    """
+
+    #: `(마켓, 쪽, 점)` → 공정 확률
+    probs: dict[str, float] = Field(default_factory=dict)
+    #: 🔴 승무패는 Shin 방식도 함께 보인다(§2-5)
+    shin: dict[str, float] = Field(default_factory=dict)
+    vig: dict[str, float] = Field(default_factory=dict)
+    quotes: list[MarketQuote] = Field(default_factory=list)
+    #: 🔴 "피나클" · "n개 업체 중앙값" · "단일 업체" · "사용자 보드"
+    basis: str = ""
+    source: str = ""
+    captured_at: datetime | None = None
+    why: str = ""
+    #: 🔴 피드 사용량 — 카드 블록 1 이 적는다(§2-2)
+    used: int | None = None
+    limit: int | None = None
 
 
 class Board(Frozen):
@@ -506,6 +652,8 @@ class MarketEval(Frozen):
     grade: Grade
     #: 🔴 **죽은 시나리오들** — `✗` 와 `△` 를 **둘 다** 담는다(§3)
     dead: list[str] = Field(default_factory=list)
+    #: 🔴 등급이 **왜 그런가** — §7 세 열 규칙이 내렸으면 그 사유가 여기 붙는다
+    why: str = ""
 
 
 class Judgement(Frozen):
@@ -569,6 +717,25 @@ class Card(Frozen):
     #: 🔴 보드에서 **추가 옵션**으로 들어온 줄(§4) · 못 읽은 줄
     board_extra: list[str] = Field(default_factory=list)
     board_bad: list[str] = Field(default_factory=list)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **네 층 확률**(네 층 지시서 §8) — 블록 3c·7b 가 이것을 그린다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 세 열을 **한 숫자로 합치지 않는다**(§1) — 나란히 둔다.
+    base_prob: BaseProb = Field(default_factory=BaseProb)
+    adj_prob: AdjProb = Field(default_factory=AdjProb)
+    #: 🔴 피드에서 받은 시장 · 🔴 사용자 보드 시장 — **섞지 않는다**(§2-6 불변식)
+    market: MarketProb = Field(default_factory=MarketProb)
+    user_market: MarketProb = Field(default_factory=MarketProb)
+    #: 🔴 ③ 우리 확률(시나리오 무게 비율) — 블록 9 방향 판정과 **같은 숫자**다
+    our_prob: ProbTriple | None = None
+    #: 🔴 §6 판정 글자(`세 열 일치`·`우리만 튄다`·…)와 그 설명 줄들
+    compare: str = ""
+    compare_lines: list[str] = Field(default_factory=list)
+    tilt: list[str] = Field(default_factory=list)
+    market_why: list[str] = Field(default_factory=list)
+    #: 🔴 OCR 로 읽은 보드 **원문**(§2-6: 원문 그대로 보여 준다)
+    ocr_text: str = ""
 
 
 class LlmFail(Frozen):
