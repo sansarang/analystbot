@@ -125,3 +125,53 @@ def test_v6_경계_타입은_얼려_있고_모르는_칸을_거부한다(name: s
     cfg = getattr(schema, name).model_config
     assert cfg.get("frozen") is True, name
     assert cfg.get("extra") == "forbid", name
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 지시 2026-10-06(2차) ⑤** — 경계를 정적으로 묶는다
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_v6_7_core_에서_cells_를_보는_곳은_adapt_하나다():
+    """🔴 ⑤ — *"`app/core/` 에서는 **`adapt.py` 만** `cells` 를 import 할 수 있게."*
+
+    ⚠️ `cells` 는 수집층의 **질문·사실 타입**이다(어댑터 8개가 그 꼴로 돈다) — 지금은
+       지우지 않는다. 🔴 대신 단계(`s1`~`s7`)가 그 꼴을 **모르게** 묶는다: 변환은
+       `adapt` 한 곳이라는 §2 규칙과 같은 선이다.
+    """
+    bad: list[str] = []
+    for p in sorted(CORE.rglob("*.py")):
+        if p.name == "adapt.py":
+            continue
+        for node in ast.walk(_tree(p)):
+            if isinstance(node, ast.ImportFrom) and "cells" in str(node.module or ""):
+                bad.append(f"{p.relative_to(ROOT)}: from {node.module}")
+            if isinstance(node, ast.Import):
+                for a in node.names:
+                    if a.name.endswith("cells"):
+                        bad.append(f"{p.relative_to(ROOT)}: import {a.name}")
+            # 🔴 `from app import cells` 꼴도 본다
+            if isinstance(node, ast.ImportFrom) and str(node.module) == "app":
+                for a in node.names:
+                    if a.name == "cells":
+                        bad.append(f"{p.relative_to(ROOT)}: from app import cells")
+    assert not bad, ("🔴 `app/core/` 가 `adapt` 밖에서 `cells` 를 본다(⑤):\n  "
+                     + "\n  ".join(bad))
+
+
+def test_v6_7_core_의_LLM_호출은_llm_py_하나다():
+    """🔴 §4 — 앱 어디서든 LLM 은 `ask` 로만 부른다. **`app/core/` 범위**에서 센다.
+
+    ⚠️ `app/` 전체로 넓히는 것은 옛 LLM 경로(`openworld.read_names` 의 `solar.chat`·
+       Ollama `llm.call`)를 지운 뒤다 — 그 둘은 `cells` 경로가 쓰고, `cells` 는 아직
+       있다(⑤: *"지금 삭제하지 않는다"*). 🔴 그 사실을 여기 적어 둔다.
+    """
+    bad: list[str] = []
+    for p in sorted(CORE.rglob("*.py")):
+        for node in ast.walk(_tree(p)):
+            if not isinstance(node, ast.Call):
+                continue
+            said = ast.unparse(node.func)
+            if said.endswith(("solar.chat", "llm.call", "deepseek.ask")):
+                bad.append(f"{p.relative_to(ROOT)}: {said}")
+    assert not bad, ("🔴 `app/core/` 가 옛 LLM 경로를 부른다:\n  " + "\n  ".join(bad))

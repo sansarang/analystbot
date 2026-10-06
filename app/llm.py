@@ -17,7 +17,6 @@ import os
 import re
 from dataclasses import dataclass, field
 
-import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -62,45 +61,19 @@ def _check_model(model: str) -> None:
         raise LLMUnavailable(f"`:cloud` 모델은 호출 0건이다(§17-a): {model}")
 
 
-async def call(prompt: str, schema: dict, *, model: str = MODEL,
-               system: str = PREAMBLE, budget: Budget | None = None,
-               timeout: float = 120.0, retry: int = 1) -> dict:
-    """Ollama 한 번. 🔴 `format` 에 **JSON Schema 를 넘긴다.**
-
-    §17-d: 출력은 스키마로 파싱하고 **실패 시 1회 재시도 후 폐기**한다.
-    추측 보정은 하지 않는다 — 못 읽으면 예외다.
-    """
-    _check_model(model)
-    if budget is not None and not budget.take():
-        raise LLMUnavailable(f"호출 예산 {budget.limit} 초과 — unknown 으로 둔다")
-
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "system": system,
-        "stream": False,
-        "format": schema,                  # 🔴 디코드 시점 강제
-        "options": {"temperature": 0, "seed": SEED,
-                    # ⚠️ thinking 함정 — qwen3 는 reasoning 에 토큰을 다 쓰고
-                    #    content 를 0자로 낼 수 있다. JSON 모드에서는 끈다.
-                    "num_predict": 2048},
-        "think": False,
-    }
-    last: Exception | None = None
-    for attempt in range(retry + 1):
-        try:
-            async with httpx.AsyncClient(timeout=timeout) as cli:
-                r = await cli.post(f"{BASE_URL}/api/generate", json=payload)
-                r.raise_for_status()
-                raw = (r.json() or {}).get("response") or ""
-            logger.info("[llm] model=%s attempt=%d bytes=%d", model, attempt,
-                        len(raw))
-            return json.loads(_strip_fence(raw))
-        except Exception as exc:              # noqa: BLE001 — 폐기 전 1회 재시도
-            last = exc
-            logger.warning("[llm] model=%s attempt=%d 실패: %s", model,
-                           attempt, exc)
-    raise LLMUnavailable(f"{model}: {last}")
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **Ollama 호출을 지웠다** — 사용자 지시 2026-10-06(2차) ⑤
+# ══════════════════════════════════════════════════════════════════
+#
+# > v6 가 안 쓰는 옛 LLM 경로(`openworld.read_names` 의 `solar.chat`, Ollama 경로)는
+# > **v6 가 안 부르는 게 확인되면 삭제.**
+#
+# 🔴 실측 2026-10-06: s1~s7 전 단계에 염탐을 걸어 재생으로 돌렸다 —
+#    `app.llm.call` 호출 **0건**(옛 세포 경로만 불렀다). 그래서 지웠다.
+# ⚠️ `solar.chat` 은 **지우지 않았다** — 같은 실측에서 s1 이 `openworld.read_names`
+#    를 통해 **부른다**(이름표가 `한국` 을 못 풀 때 ⑥-1 로 간다).
+# 🔴 이 파일에 남은 것은 **문지기 하나**(`query_ok`)와 스키마 선언이다 — 그 둘은
+#    망에 나가지 않는다.
 
 
 _FENCE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$")

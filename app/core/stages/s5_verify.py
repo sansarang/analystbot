@@ -80,6 +80,56 @@ def goals_of(kind: str) -> str:
     return said if said in ("up", "down", "none") else "none"
 
 
+#: 🔴🔴 **맞대결 기록 꼴** — 사용자 지시 2026-10-06(2차) ②
+#
+#  > 추출된 맞대결 기록은 **유형과 상관없이** `h2h_pattern` 으로 바꾸고, 같은 표본
+#  > 규칙(근거 불가)을 적용한다.
+#
+#  ⚠️ 실측 2026-10-06 재녹화: *"역대 11승 4무 1패"* 가 `team_stats`(한 번은
+#     `individual_title`)로 들어왔다 — 그러면 표본 규칙이 **안 걸린다**(맞대결 1경기
+#     표본으로 언더에 0.9 를 걸어 낙첨한 적이 있다 · `league.h2h_weight` 독스트링).
+_H2H_PATS = (
+    re.compile(r"(\d+)\s*승\s*(\d+)\s*무\s*(\d+)\s*패"),
+    re.compile(r"(\d+)\s+wins?[^.\d]{0,12}(\d+|one|two|three|four|five)\s+draws?"
+               r"[^.\d]{0,14}(\d+|one|two|three|four|five)\s+(?:loss|losses|defeat)",
+               re.I),
+)
+_WORD_N = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
+
+
+def h2h_record(said: str) -> tuple[int, int, int] | None:
+    """🔴 그 글이 **맞대결 전적**을 말하나 — `(승, 무, 패)` 또는 `None`."""
+    for pat in _H2H_PATS:
+        m = pat.search(str(said or ""))
+        if not m:
+            continue
+        got = []
+        for raw in m.groups():
+            x = str(raw).strip().lower()
+            got.append(int(x) if x.isdigit() else _WORD_N.get(x, -1))
+        if all(n >= 0 for n in got) and len(got) == 3:
+            return (got[0], got[1], got[2])
+    return None
+
+
+#: 🔴 `stakes` 가 되려면 claim 에 **구체적 동기**가 있어야 한다(사용자 지시 ③)
+#
+#  > 진출·탈락·우승·기록·감독 거취·순위
+_STAKE_WORDS = ("진출", "탈락", "우승", "기록", "거취", "순위", "승점", "플레이오프",
+                "강등", "qualif", "eliminat", "title", "record", "standings",
+                "relegat", "playoff", "sack", "contract", "points")
+
+
+def stakes_ok(claim: str) -> tuple[bool, str]:
+    """🔴 그 claim 이 **동기**를 말하나. ⚠️ 일정 안내는 동기가 아니다."""
+    low = norm(claim)
+    hit = [w for w in _STAKE_WORDS if w in low]
+    if hit:
+        return True, f"동기 낱말 {hit[:3]}"
+    return False, (f"🔴 구체적 동기가 없다(진출·탈락·우승·기록·감독 거취·순위) — "
+                   f"{str(claim)[:60]}")
+
+
 def run(ref: MatchRef, facts: Facts, docs: list[Doc],
         cands: list[VarCandidate], *, state: RunState) -> list[Variable]:
     """🔴 후보를 검증해 변수로. ⚠️ 버린 것은 **사유와 함께** 남는다(#3)."""
@@ -89,7 +139,7 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
         got = _one(c, ref, by_id, state=state, n=i)
         if got is not None:
             rows.append(got)
-    merged = _merge(rows, state=state)
+    merged = _merge(rows, state=state, facts=facts)
     out: list[Variable] = []
     for i, row in enumerate(merged, 1):
         mine = [by_id[d] for d in row["doc_ids"] if d in by_id]
@@ -122,6 +172,26 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
             level = max(level, 2)
         name = _LEVEL_NAME.get(level, "soft")
         from app.types import WEIGHT_OF
+        usable = level >= 1
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **맞대결은 표본 규칙을 지난다**(사용자 지시 2026-10-06(2차) ②)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 추출된 맞대결 기록은 유형과 상관없이 `h2h_pattern` 으로 바꾸고,
+        #  > **같은 표본 규칙(근거 불가)** 을 적용한다.
+        if row["type"] == "h2h_pattern":
+            rec = h2h_record(row["claim"])
+            n_games = sum(rec) if rec else 0
+            hard_name, weight = _sample_weight(n_games)
+            name, level = hard_name, (2 if hard_name == "hard" else 1)
+            usable = hard_name == "hard"
+            state.note(f"s5 맞대결 표본 {n_games}경기 → 무게 {weight} · "
+                       f"근거 {'가능' if usable else '불가'}(표본 규칙)")
+            # 🔴 **구조 사실과 숫자가 다르면 충돌**이다 — 공식이 이긴다
+            got = _h2h_clash(rec, facts)
+            if got:
+                state.drop(f"s5/h2h/R{i}", DropReason.CONFLICT, got)
+                continue
         out.append(Variable(
             id=f"R{i}", type=row["type"], subject=row["subject"],
             favors=row["favors"], goals=row.get("goals", "none"),
@@ -132,7 +202,7 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
             # 🔴🔴 **근거로 쓸 수 있나** — 등급 0(단일 aggregator·충돌)은 못 쓴다.
             #    ⚠️ 옛 경로가 `hardness == "none"` 으로 가른 그 선이다
             #       (`analyze.split_basis`) — 뜻을 옮겨 적었다.
-            usable_as_basis=(level >= 1)))
+            usable_as_basis=usable))
         if level < 1:
             state.note(f"s5 R{i} 는 **근거로 못 쓴다**(등급 {level} · 출처 "
                        f"{n_src}곳 · {tier}) — 맥락으로만 보낸다")
@@ -180,15 +250,34 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
         state.drop(what, DropReason.IDENTITY_MISMATCH,
                    f"{doc.id} 본문이 `{c.subject}` 를 말하지 않는다")
         return None
-    fav = favors_of(c.type, c.subject, c.claim, ref)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴 ② **맞대결 기록은 유형과 상관없이 `h2h_pattern`**(사용자 지시 ②)
+    # ══════════════════════════════════════════════════════════════════
+    kind, target = c.type, str(c.target or "")
+    rec = h2h_record(c.claim)
+    if rec is not None and kind != "h2h_pattern":
+        state.note(f"s5 {what} `{kind}` → **h2h_pattern** 으로 바꿨다"
+                   f"(맞대결 전적 {rec[0]}승 {rec[1]}무 {rec[2]}패)")
+        kind, target = "h2h_pattern", "h2h"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴 ③ **`stakes` 는 구체적 동기가 있을 때만**(사용자 지시 ③)
+    # ══════════════════════════════════════════════════════════════════
+    if kind == "stakes":
+        ok_s, said_s = stakes_ok(c.claim)
+        if not ok_s:
+            state.drop(what, DropReason.STAKES_VAGUE, said_s[:110])
+            return None
+    fav = favors_of(kind, c.subject, c.claim, ref)
     if fav not in _FAVORS:
         # 🔴 **방향 규칙이 없는 유형**이다 — 한쪽으로 밀지 않는다(지어내지 않는다)
         state.drop(what, DropReason.TYPE_OFF_CATALOG,
-                   f"`{c.type}` 방향 규칙이 없다(받은 값 {fav!r})")
+                   f"`{kind}` 방향 규칙이 없다(받은 값 {fav!r})")
         return None
-    return {"type": c.type, "subject": c.subject, "favors": fav,
-            "goals": goals_of(c.type), "target": str(c.target or ""),
-            "claim": c.claim, "quote": quote, "doc_ids": [doc.id]}
+    return {"type": kind, "subject": c.subject, "favors": fav,
+            "goals": goals_of(kind), "target": target,
+            "claim": c.claim, "quote": quote, "doc_ids": [doc.id],
+            # 🔴 유형이 바뀌면 방향을 다시 세야 한다 — 그 경기 맥락을 함께 든다
+            "_ref": ref}
 
 
 _FAVORS = set(Favors.__args__)                        # type: ignore[attr-defined]
@@ -218,19 +307,89 @@ def _mentions(subject: str, doc: Doc, ref: MatchRef) -> bool:
     return any(len(str(x)) >= 3 and str(x).lower() in said for x in names)
 
 
+#: 🔴🔴 **결장 계열** — 유형을 **열쇠에서 뺀다**(사용자 지시 2026-10-06(2차) ①)
+#
+#  > 병합 열쇠에서 `type` 을 뺀다: 결장 계열(`absence_att`·`def_absence`·`fatigue`·
+#  > `injury`)은 `subject`+`target` 만으로 묶는다.
+#
+#  ⚠️ 실측 2026-10-06 재녹화: 같은 김민재 결장이 `fatigue`·`absence_att`·`def_absence`
+#     **세 변수**로 남았다(유형이 열쇠에 있어서). 🔴 한 사실은 한 변수다.
+ABSENCE_KINDS = ("absence", "absence_att", "def_absence", "fatigue", "injury")
+
+
 def merge_key(subject: str, kind: str, target: str) -> tuple[str, str, str]:
-    """🔴🔴 **사실 하나의 열쇠** — `(주체, 유형, 핵심 대상)`(사용자 지시 2026-10-06 ①).
+    """🔴🔴 **사실 하나의 열쇠** — `(주체, 유형군, 핵심 대상)`.
 
-    > 같은 subject + 같은 type + 같은 핵심 대상(선수명·사건)이면 하나의 Variable 로
-    > 합치고 `doc_ids` 를 모은다 … **문장 유사도(MinHash)가 아니라** "누가·무엇" 열쇠로.
-
+    🔴 결장 계열은 **유형 자리에 `absence*` 한 글자**가 들어간다 — 그래서 모델이
+       피로/수비 결장/공격 결장으로 갈라 적어도 **한 사실**로 묶인다.
     🔴 대상 글자는 **정규화**해서 비교한다 — `Kim Min-jae`·`김민재`·`KIM MIN-JAE` 가
-       갈리면 열쇠가 쪼개진다. ⚠️ 정규화는 이 파일의 `norm` 하나다(사본 금지 · 옛 `verifylayer._norm`).
+       갈리면 열쇠가 쪼개진다(정규화는 이 파일의 `norm` 하나다).
     """
-    return (str(subject), str(kind), norm(str(target)))
+    said = str(kind)
+    group = "absence*" if said in ABSENCE_KINDS else said
+    return (str(subject), group, norm(str(target)))
 
 
-def _merge(rows: list[dict], *, state: RunState) -> list[dict]:
+#: 🔴 포지션 낱말 → 결장 유형. ⚠️ **자료가 있을 때만** 쓴다(없으면 다수결로 간다).
+_DEF_WORDS = ("수비", "센터백", "골키퍼", "키퍼", "포수", "유격수",
+              "defender", "centre-back", "center-back", "goalkeeper", "keeper",
+              "back", "cb", "gk", "df")
+_ATT_WORDS = ("공격", "윙어", "스트라이커", "포워드", "forward", "striker",
+              "winger", "attacker", "fw", "mf")
+
+
+def position_of(target: str, facts: Facts) -> str:
+    """🔴 그 선수의 포지션 — **XI·명단·어댑터 사실에 있으면**(사용자 지시 ①).
+
+    돌려주는 것은 `"def"`·`"att"`·`""`(모른다). ⚠️ 이름만 있는 명단에서는 **모른다**가
+    정직한 답이다 — 포지션을 지어내면 그 변수의 방향이 거짓이 된다.
+    """
+    said = norm(target)
+    if not said:
+        return ""
+    for xi in facts.xi.values():
+        for name in [*xi.players, *xi.bench]:
+            got = str(name)
+            if said not in norm(got):
+                continue
+            low = norm(got)
+            if any(w in low for w in _DEF_WORDS):
+                return "def"
+            if any(w in low for w in _ATT_WORDS):
+                return "att"
+    return ""
+
+
+def kind_after_merge(kinds: list[str], target: str, facts: Facts
+                     ) -> tuple[str, str]:
+    """🔴🔴 **묶인 결장 변수의 유형** — `(유형, 사유)`(사용자 지시 2026-10-06(2차) ①).
+
+    > 묶인 변수의 유형은 **그 선수의 포지션**으로 정한다(XI·명단·어댑터 사실에
+    > 있으면). 포지션을 모르면 모델이 단 유형 중 **다수결**, 동률이면
+    > `def_absence`/`absence_att` 를 **버리고** `absence`.
+    """
+    got = [k for k in kinds if k]
+    pos = position_of(target, facts)
+    if pos == "def":
+        return "def_absence", f"포지션 자료가 **수비**라고 말한다({target})"
+    if pos == "att":
+        return "absence_att", f"포지션 자료가 **공격**이라고 말한다({target})"
+    tally: dict[str, int] = {}
+    for k in got:
+        tally[k] = tally.get(k, 0) + 1
+    if tally:
+        top = max(tally.values())
+        best = sorted(k for k, n in tally.items() if n == top)
+        if len(best) == 1:
+            return best[0], (f"포지션 자료가 없다 → 다수결 {tally}")
+        # 🔴 **동률이면 방향을 고르지 않는다** — 수비/공격 결장을 버리고 일반 결장으로
+        return "absence", (f"포지션 자료가 없고 **동률**이다({tally}) → "
+                           f"`def_absence`/`absence_att` 를 버리고 `absence`")
+    return "absence", "유형이 없다 → `absence`"
+
+
+def _merge(rows: list[dict], *, state: RunState,
+           facts: Facts | None = None) -> list[dict]:
     """🔴 **사실 단위로 묶는다** — 같은 열쇠면 한 변수이고 `doc_ids` 가 쌓인다.
 
     ⚠️ 실측 2026-10-06: 김민재 결장이라는 **한 사실**이 변수 11개로 셌다(문장이
@@ -252,23 +411,54 @@ def _merge(rows: list[dict], *, state: RunState) -> list[dict]:
         key = merge_key(row["subject"], row["type"], target)
         keep = seen.get(key)
         if keep is None:
+            row["kinds"] = [row["type"]]
             seen[key] = row
             out.append(row)
             continue
         for d in row["doc_ids"]:
             if d not in keep["doc_ids"]:
                 keep["doc_ids"].append(d)
+        # 🔴 **모델이 단 유형을 모아 둔다** — 묶인 뒤 포지션·다수결로 하나를 고른다
+        keep.setdefault("kinds", [keep["type"]]).append(row["type"])
         state.drop(f"s5/{row['type']}/{target[:24]}", DropReason.DUPLICATE,
                    f"같은 사실로 묶었다(열쇠 {key[1]}·{key[2][:20]}) → 출처 "
                    f"{len(keep['doc_ids'])}곳")
+    # ── 🔴 결장 계열의 **유형을 다시 정한다**(사용자 지시 2026-10-06(2차) ①)
+    box = facts if facts is not None else Facts()
+    for row in out:
+        kinds = [str(k) for k in (row.get("kinds") or [row["type"]])]
+        if not any(k in ABSENCE_KINDS for k in kinds):
+            continue
+        got, why = kind_after_merge(kinds, str(row.get("target") or ""), box)
+        if got != row["type"] or len(set(kinds)) > 1:
+            state.note(f"s5 결장 유형을 `{got}` 로 정했다 — {why} "
+                       f"(모델이 적은 것: {sorted(set(kinds))})")
+        row["type"] = got
+        row["favors"] = _side_for(got, row, box)
+        row["goals"] = goals_of(got)
     return out
 
 
+def _side_for(kind: str, row: dict, facts: Facts) -> str:
+    """🔴 유형이 바뀌면 **방향도 다시 센다** — 방향은 카탈로그가 정한다(§3)."""
+    ref = row.get("_ref")
+    if ref is None:
+        return str(row.get("favors") or "both")
+    return favors_of(kind, str(row["subject"]), str(row.get("claim") or ""), ref)
+
+
 def interpret_rules() -> list[dict]:
-    """🔴 해석 규칙 표 — `config/interpret_rules.yaml` 하나가 원본이다(사본 금지)."""
+    """🔴 해석 규칙 표 — `config/interpret_rules.yaml` 하나가 원본이다(사본 금지).
+
+    🔴 두 묶음을 **이어서** 돌려준다(사용자 지시 2026-10-06(2차) ④):
+       `rules`(S01~) 구조 사실 규칙 · `ir_table`(IR01~) 접목 지시서의 해석 규칙.
+    ⚠️ `ir_table` 은 **지금 비어 있다** — 그 표가 이 기계에 오지 않았다(파일 머리에
+       적었다). 표가 오면 이 함수가 **그대로 읽는다**(코드를 고칠 일이 없다).
+    """
     from app import rules
     box = rules._load("config/interpret_rules.yaml")
-    return [dict(r) for r in (box.get("rules") or [])]
+    return [dict(r) for r in (box.get("rules") or [])] + \
+           [dict(r) for r in (box.get("ir_table") or [])]
 
 
 def _sample_weight(n: int) -> tuple[str, float]:
@@ -312,6 +502,8 @@ def _from_facts(ref: MatchRef, facts: Facts, *, state: RunState
             out += _ir_h2h(rid, row, ref, facts, state=state)
         elif kind == "home_field":
             out += _ir_home(rid, row, ref, facts, state=state)
+        elif kind == "match_type":
+            out += _ir_match_type(rid, row, ref, facts, state=state)
         else:
             state.note(f"s5 {rid}({kind}) — **그 유형을 읽는 코드가 없다**"
                        f"(규칙이 표에만 있다 · #2 배선)")
@@ -556,3 +748,47 @@ def independent_sources(rows: list[tuple[str, str]]) -> tuple[int, list[list[str
             groups.append([url])
             texts.append(claim)
     return len(groups), groups
+
+def _h2h_clash(rec: tuple[int, int, int] | None, facts: Facts) -> str:
+    """🔴🔴 **구조 사실과 기사 맞대결이 다르면 충돌**(사용자 지시 2026-10-06(2차) ②).
+
+    > 구조 사실의 h2h 와 숫자가 다르면 **충돌로 처리(공식 > 출처 수 > 등급)**,
+    > 카드 블록 1 에 *"충돌: 채택/버림"* 한 줄.
+
+    돌려주는 것은 **버릴 사유 글자**(버리지 않으면 빈 글자). 🔴 순서가 규칙이다:
+    어댑터 사실은 **공식**이므로 기사 수치를 버린다 — 기사 쪽이 더 많은 매체가
+    말했더라도(출처 수) 공식이 먼저다.
+    """
+    box = dict(facts.h2h or {})
+    got = box.get("summary")
+    if rec is None or not (isinstance(got, (list, tuple)) and len(got) == 3):
+        return ""
+    mine = tuple(int(x) for x in got)
+    if mine == rec:
+        return ""
+    return (f"충돌: **채택 구조 사실**(공식 어댑터 {mine[0]}승 {mine[1]}무 "
+            f"{mine[2]}패 · 표본 {box.get('count')}경기) / **버림 기사**"
+            f"({rec[0]}승 {rec[1]}무 {rec[2]}패) — 공식 > 출처 수 > 등급")
+
+def _ir_match_type(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
+                   state: RunState) -> list[Variable]:
+    """S04 — **친선 경기면 코드가 변수 하나를 만든다**(사용자 지시 2026-10-06(2차) ③).
+
+    > 친선 경기(`match_format=friendly`)는 코드가 `match_type` 변수 하나를 만든다:
+    > *"친선 — 실험 라인업·교체 다수 가능"*, `favors both`, `goals none`, `soft`.
+
+    ⚠️ 그 경기의 `stakes` 가 거의 전부 버려지는 까닭이 이것이다 — 친선에는 진출·탈락이
+       없다. 🔴 그래서 **그 사실 자체**를 변수로 적는다(없는 동기를 지어내지 않는다).
+    """
+    if facts.match_format != "friendly":
+        state.note(f"s5 {rid} — 형식이 `{facts.match_format}` 다(친선 아님) · "
+                   f"변수 안 만든다")
+        return []
+    claim = str(row.get("claim") or "친선 — 실험 라인업·교체 다수 가능")
+    return [Variable(
+        id=f"{rid}", type="match_type", subject=ref.home,
+        favors="both", goals="none", target="match_type", hardness="soft",
+        weight=_sample_weight(1)[1], claim=claim, quote=claim, doc_ids=[],
+        from_rule=rid,
+        # 🔴 **근거로 쓴다** — 이것은 표본이 아니라 **형식**이다(확실히 안다)
+        usable_as_basis=True)]

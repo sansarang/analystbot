@@ -263,7 +263,10 @@ def test_불변식9_발행일_없는_문서를_근거로_한_변수가_없다(ca
         if v.from_rule is None:
             continue
         assert v.doc_ids == [], (v.id, v.doc_ids)
-        assert v.from_rule.startswith("IR"), v.from_rule
+        # 🔴 번호 앞머리 둘 — `S`(구조 사실 규칙)·`IR`(접목 지시서 해석 규칙).
+        #    ⚠️ 사용자 지시 2026-10-06(2차) ④ 로 S01~S04 로 바꿨고, IR 표는 아직
+        #       비어 있다(`config/interpret_rules.yaml` 의 `ir_table`).
+        assert v.from_rule[:1] in ("S", "I"), v.from_rule
 
 
 def test_불변식10_깔때기_합계가_맞는다(card: Card):
@@ -295,3 +298,35 @@ def test_카드_전문_스냅샷(card: Card):
     assert said == path.read_text(encoding="utf-8"), (
         "🔴 카드 전문이 스냅샷과 다르다 — 의도한 변화면 "
         "`V6_SNAPSHOT_UPDATE=1` 로 갱신하고 **사유를 커밋에 적는다**")
+
+
+def test_불변식11_공격_결장_유형이_수비수에게_붙지_않는다(card: Card):
+    """🔴🔴 **사용자 지시 2026-10-06(2차) ①** — 그 반대도 센다.
+
+    > 공격수 결장 유형이 수비수에게 붙으면 **실패**하는 E2E 불변식 추가.
+
+    🔴 포지션을 아는 자료가 있을 때만 셀 수 있다 — `position_of` 가 그 자료를 든다.
+    ⚠️ 자료가 없으면 이 불변식은 **아무것도 세지 않는다**. 그래서 그 사실을 함께
+       적는다(#3 조용한 0 금지): 몇 개를 셌는지 센다.
+    """
+    from app.core.stages.s5_verify import position_of
+    seen = 0
+    for v in card.variables:
+        pos = position_of(v.target, card.facts)
+        if not pos:
+            continue
+        seen += 1
+        if pos == "def":
+            assert v.type != "absence_att", (v.id, v.target, v.type)
+        if pos == "att":
+            assert v.type != "def_absence", (v.id, v.target, v.type)
+    # 🔴 **한 사실은 한 변수다**(①) — 같은 주체·대상의 결장 변수가 둘이면 실패
+    from app.core.stages.s5_verify import ABSENCE_KINDS, norm
+    keys: dict[tuple[str, str], list[str]] = {}
+    for v in card.variables:
+        if v.type not in ABSENCE_KINDS or not v.target:
+            continue
+        keys.setdefault((v.subject, norm(v.target)), []).append(v.id)
+    doubled = {k: ids for k, ids in keys.items() if len(ids) > 1}
+    assert not doubled, f"🔴 같은 결장 사실이 여러 변수다: {doubled}"
+    print(f"[불변식11] 포지션을 아는 변수 {seen}개 · 결장 열쇠 {len(keys)}개")

@@ -108,164 +108,19 @@ async def run(task: str, *, title: str, body: str, question_id: str,
               budget: llm.Budget | None = None, pool=None,
               step: int = 1, timeout: float | None = None,
               retry: int | None = None) -> tuple[list[Fact], list[str]]:
-    """§17-b 한 과제를 돌린다. 반환은 `(사실들, 버린 사유들)`.
+    """🔴🔴 **Ollama 추출을 지웠다** — 사용자 지시 2026-10-06(2차) ⑤.
 
-    🔴 **버린 것을 돌려준다.** 개수만 세면 프롬프트를 못 고친다(§19-b-6 과 같은 규약).
-    🔴 **본문에 없는 문장을 든 항목은 버린다**(§17-g-2) — LLM 은 그럴듯한 인용을
-       만들어낸다. 본문 대조가 유일한 방어다(§12-c-6 이 같은 이유로 있다).
+    > v6 가 안 쓰는 옛 LLM 경로(… Ollama 경로)는 **v6 가 안 부르는 게 확인되면 삭제.**
+
+    🔴 실측 2026-10-06: s1~s7 에 염탐을 걸어 재생으로 돌렸더니 `app.llm.call` 호출이
+       **0건**이었다. 그래서 그 호출 함수를 지웠고, 이 함수는 **사유를 남기고 빈손**
+       으로 돌아간다(#3 조용한 0 금지 — 조용히 `[]` 를 내지 않는다).
+    ⚠️ 추출은 이제 v6 `app/core/stages/s4_extract.py` 가 한다(Solar 구조화 출력 1회).
     """
-    # 🔴🔴 **좁은 질문**(사용자 설계 2026-10-02 ③): `ASK:<유형>` 꼴이다.
-    #    ⚠️ §17-b 가 허용한 자리는 L1~L6 이다. 좁은 질문은 **L1~L3 의 변형**으로 둔다 —
-    #       질문을 좁히는 것은 *프롬프트 모양*이고 새 권한이 아니다(괜히 v4 를 넓히지
-    #       않는다 · `questions/2026-10-02_catalog.md`).
-    ask_type = ""
-    if task.startswith("ASK:"):
-        ask_type = task.split(":", 1)[1].strip()
-        if not _ask_question(ask_type):
-            return [], [f"{task}: §4 유형 `{ask_type}` 에 판정 기준(`decides`)이 없다"]
-        label, schema = f"좁은 질문({ask_type})", llm.ASK_TYPE
-    elif task not in TASKS:
-        return [], [f"§17-b 에 없는 과제: {task}"]
-    else:
-        label, schema, _ = TASKS[task]
-    if not (body or "").strip():
-        return [], [f"{task}({label}): 본문이 비었다 — 부르지 않았다"]
-
-    # 🔴 좁은 질문은 **본문도 짧게** 준다. 실측 2026-10-02: 긴 본문이 긴 인용을
-    #    부르고, 긴 인용에서 JSON 이 끊겼다. ⚠️ 자른 사실은 아래에서 사유로 남는다.
-    cap = ASK_BODY_CHARS if ask_type else BODY_CHARS
-    trimmed = body[:cap]
-    prompt = _ASK.format(
-        what=_ask_prompt(ask_type) if ask_type else _WHAT[task],
-        title=title or "(제목 없음)", body=trimmed)
-    dropped: list[str] = []
-    if len(body) > cap:
-        # 🔴 자른 것을 조용히 넘기지 않는다
-        dropped.append(f"{task}: 본문 {len(body)}자 중 {cap}자만 넘겼다")
-
-    try:
-        # 🔴 **한 번 부르는 시간·되시도를 호출부가 정한다**(사용자 지시 2026-10-02).
-        #    ⚠️ 기본값을 그대로 쓰면 `timeout=120·retry=1` → 한 건 최악 240초다.
-        kw = {}
-        if timeout is not None:
-            kw["timeout"] = float(timeout)
-        if retry is not None:
-            kw["retry"] = int(retry)
-        got = await llm.call(prompt, schema, budget=budget, **kw)
-    except llm.LLMUnavailable as exc:
-        await _reject(pool, task, "폐기", f"호출 실패: {exc}", None, source)
-        return [], [*dropped, f"{task}({label}) 호출 실패: {exc}"]
-
-    items = _items(task, got)
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **모델이 "아니다"라고 한 것도 기록이다**(실측 2026-10-03)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  라이브에서 LLM 을 **18번 불렀는데 기록이 0줄**이었다. `answer != "yes"` 면
-    #  `items` 가 비고 `dropped` 도 비어서 로그 줄이 아예 안 났다 — 그리고 본문
-    #  자르기 사유도 없어졌다(좁힌 글이 상한 아래라서).
-    #  🔴 그러면 *"묻지 않았다"* 와 *"물었는데 아니라고 했다"* 가 구분되지 않는다
-    #     (#3 조용한 0 금지). 그 둘의 처방은 정반대다.
-    if ask_type and not items:
-        ans = str((got or {}).get("answer") or "").strip() or "빈 답"
-        dropped.append(
-            f"{task}: 모델이 `{ans}` 라고 했다 — 그 기사에 그 사실이 없다"
-            + (f" (주체 `{got.get('subject')}`)" if (got or {}).get("subject")
-               else ""))
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **`yes` 인데 인용이 없으면 — 한 번만 되묻는다** (실측 2026-10-02)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  라이브에서 `ASK:emotion` 이 `{"answer": "yes"}` 를 내고 `quote` 를 비웠다.
-    #  §17-g-2 는 원문 문장이 없는 항목을 버리라고 하므로 **맞게 버렸다** — 그러나
-    #  그렇게 끝내면 *찾은 것*을 통째로 잃는다(그 기사에 정말 그 이야기가 있었다).
-    #
-    #  🔴 **느슨하게 하지 않는다.** 되묻고, 그래도 인용이 없으면 그대로 버린다.
-    #     즉 규칙은 그대로고 **기회를 한 번 더** 주는 것이다(§19-b-5 *"바꿔서 다시"*).
-    #  ⚠️ 한 번뿐이다 — 예산(`llm.Budget`)이 막으면 되묻지 않고 사유가 남는다.
-    if ask_type and items and not str(items[0].get("quote") or "").strip():
-        dropped.append(f"{task}: `yes` 인데 인용이 비었다 — 한 번 되묻는다")
-        try:
-            again = await llm.call(
-                prompt + "\n\n🔴 앞선 답은 yes 였다. 그 판단의 근거가 된 **본문의 "
-                         "한 문장만** `quote` 에 그대로 옮겨라. 못 찾으면 answer 를 "
-                         "unknown 으로 적어라.",
-                schema, budget=budget, **kw)
-        except llm.LLMUnavailable as exc:
-            dropped.append(f"{task}: 되묻기 실패 — {exc}")
-        else:
-            retried = _items(task, again)
-            if retried and str(retried[0].get("quote") or "").strip():
-                items = retried
-            else:
-                dropped.append(f"{task}: 되물어도 인용이 없다 — 버린다")
-                items = []
-    out: list[Fact] = []
-    for item in items:
-        # 🔴 **프롬프트의 낱말을 이름으로 낸 항목은 버린다**(실측 2026-10-02).
-        #    ⚠️ 프롬프트로 부탁하는 것만으로는 안 됐다 — 코드가 집행한다.
-        echoed = _echoed(task, item)
-        if echoed:
-            dropped.append(f"{task}: 사유 낱말을 이름 칸에 넣었다 — {echoed!r}")
-            await _reject(pool, task, "규칙위반", f"사유 낱말 반복: {echoed}",
-                          item, source)
-            continue
-        sent = str((item or {}).get("evidence_sentence") or "").strip()
-        # 🔴 **L2 는 인용이 곧 근거다.** 실측 2026-10-02: 모델이 `quote` 는 맞게
-        #    뽑고 `evidence_sentence` 를 비워서 **맞는 발언이 버려졌다**.
-        #    ⚠️ §17-g-2 를 느슨하게 하는 것이 아니다 — 아래 본문 대조는 그대로
-        #       돌고, §12-c-6(*"감독 발언은 본문에 그 문장이 있을 때만"*)이 바로
-        #       그 인용을 대조하라는 규칙이다.
-        if not sent and (task == "L2" or task.startswith("ASK:")):
-            sent = str((item or {}).get("quote") or "").strip()
-            if sent:
-                dropped.append(f"{task}: `evidence_sentence` 가 비어 `quote` 로 "
-                               f"대조한다 — {sent[:40]}")
-        # 🔴 §17-g-2 — **원문 문장이 본문에 실재해야 한다.**
-        if not sent:
-            dropped.append(f"{task}: 원문 문장이 없다 — {str(item)[:80]}")
-            await _reject(pool, task, "규칙위반", "원문 문장 없음", item, source)
-            continue
-        grounded = verify.quote_grounded(sent, trimmed)
-        if not grounded.ok:
-            # ══════════════════════════════════════════════════════════
-            # 🔴🔴 **한 글자 오타로 진짜 발견을 버리지 않는다**(실측 2026-10-02)
-            # ══════════════════════════════════════════════════════════
-            #
-            #  라이브에서 모델이 `ソフトバンク` 의 `ク` 를 떨어뜨렸고, 그 탓에
-            #  **唐川 은퇴 세레머니(10/3)** 라는 진짜 사실이 통째로 사라졌다 —
-            #  사람이 손으로 쓴 분석의 변수 R7 이 바로 그것이다.
-            #  🔴 검증을 느슨하게 하지 않는다. **본문의 실제 문장으로 되돌린다** —
-            #     저장되는 글자는 늘 본문에 실재하므로 §17-g-2 는 그대로 지켜진다.
-            #  ⚠️ 층은 한 칸 내린다(`likely`) — 모델이 정확히 옮기지 못한 것은 사실이다.
-            fixed, why = verify.grounded_span(sent, trimmed)
-            if not fixed:
-                dropped.append(f"{task}: 본문에 없는 문장 — {sent[:60]} ({why})")
-                await _reject(pool, task, "환각",
-                              f"본문에 없는 문장: {sent[:120]}", item, source)
-                continue
-            dropped.append(f"{task}: 인용을 본문 문장으로 되돌렸다 — {why}")
-            sent = fixed
-            grounded = verify.quote_grounded(sent, trimmed)
-            if not grounded.ok:
-                # 🔴 되돌린 문장이 본문에 없으면 그것은 **우리 버그다** — 그대로 버린다
-                dropped.append(f"{task}: 되돌린 문장도 본문에 없다(버그) — {sent[:60]}")
-                continue
-            grounded = verify.Verdict(True, why, hardness="likely")
-        out.append(Fact(
-            question_id=question_id, value=_value(task, item),
-            # 🔴 인용이 본문에 실재하므로 `quote_grounded` 가 정한 층을 쓴다.
-            #    ⚠️ 그래도 **hard 를 스스로 올리지 않는다** — 층은 검증기가 정한다.
-            hardness=grounded.hardness,
-            source=source, published_at=published_at,
-            quote=sent[:400], article_title=title or "",
-            article_body=trimmed,
-            # 🔴 §17-e — **무엇이 뽑았는지 남긴다.** 모델이 바뀌면 그것이 보인다
-            extracted_by=f"{task}:{llm.MODEL}", step=step, team=team))
-    if out or dropped:
-        logger.info("[%s] %d건 채택 · %d건 버림 (%s)", task, len(out),
-                    len(dropped), source[:60])
-    return out, dropped
+    said = ("🔴 옛 Ollama 추출 경로를 지웠다(2026-10-06 ⑤) — "
+            "추출은 v6 `s4_extract` 가 한다")
+    logger.info("[extract] %s · task=%s", said, task)
+    return [], [said]
 
 
 def _echoed(task: str, item: dict) -> str:

@@ -42,40 +42,8 @@ def test_추출_과제가_없으면_부르지_않는다():
 
 
 
-def test_사유_낱말을_이름으로_낸_항목을_버린다():
-    """🔴🔴 **실측 2026-10-02 가 만든 계약이다.**
-
-    qwen3:8b 가 `player_name` 에 **프롬프트의 낱말**을 넣었다 — `결장`·`징계`·`차출`.
-    진짜 답(`장슬기`)은 놓쳤다. 7B 급은 열거를 보기로 읽는다.
-    ⚠️ 프롬프트로 부탁하는 것만으로는 안 됐다 — **코드가 집행한다.**
-    """
-    for word in ("결장", "징계", "차출", "부상"):
-        assert extract._echoed("L1", {"player_name": word}) == word, word
-    # 🔴 사람 이름은 통과한다
-    assert extract._echoed("L1", {"player_name": "장슬기"}) == ""
-    # ⚠️ 다른 과제에는 걸지 않는다 — `player_name` 칸이 없다
-    assert extract._echoed("L2", {"player_name": "결장"}) == ""
-    # 🔴 막는 낱말이 **프롬프트의 열거와 같은 곳에서** 온다(사본 금지)
-    assert "결장" in extract.CAUSE_WORDS and "징계" in extract.CAUSE_WORDS
-    src = strip_docs(inspect.getsource(extract.run))
-    assert "_echoed(" in src, "집행이 호출부에 없다"
 
 
-def test_L2_는_인용이_곧_근거다():
-    """🔴 실측: 모델이 `quote` 는 맞게 뽑고 `evidence_sentence` 를 비워서
-    **맞는 발언이 버려졌다.**
-
-    ⚠️ §17-g-2 를 느슨하게 한 것이 아니다 — 본문 대조는 그대로 돌고, §12-c-6 이
-       *"감독 발언은 본문에 그 문장이 있을 때만"* 이라고 바로 그 인용을 지목한다.
-    """
-    src = strip_docs(inspect.getsource(extract.run))
-    # ⚠️ ③ 좁은 질문을 더하면서 이 줄이 `task == "L2" or task.startswith("ASK:")` 로
-    #    바뀌었다. 묻는 것은 그대로다 — **대조보다 먼저 근거를 채우나.**
-    at = src.index('if not sent and (task == "L2"')
-    at_ground = src.index("quote_grounded(")
-    assert at < at_ground, "대조보다 뒤에 채우면 뜻이 없다"
-    # 🔴 **대조를 건너뛰지 않는다**
-    assert "grounded.ok" in src
 
 
 def test_LLM_이_판정_칸에_닿지_않는다():

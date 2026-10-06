@@ -258,3 +258,19 @@ def names_of_key(key: object) -> list[str]:
         if n not in out:
             out.append(n)
     return out
+
+def lineup_question(ref: MatchRef, team_name: str) -> Any:
+    """🔴🔴 **어댑터에 넘길 질문 꼴** — `cells` 를 보는 곳은 **이 파일 하나**다.
+
+    사용자 지시 2026-10-06(2차) ⑤:
+
+    > `cells`: 지금 삭제하지 않는다. 대신 `app/core/` 에서는 **`adapt.py` 만 `cells`
+    > 를 import 할 수 있게** 정적 검사를 건다.
+
+    ⚠️ 어댑터(`collect/*`)는 `cells.Question` 꼴로 묻는다 — 그 타입을 지우려면 수집층
+       전부를 다시 써야 한다(계약 34개). 🔴 그래서 **경계를 여기 하나로 좁힌다**:
+       단계(`s2`)는 이 함수만 부르고 `cells` 를 모른다.
+    """
+    from app import cells
+    return cells.Question(cells.Q_LINEUP, ref.id, team=team_name,
+                          league=ref.competition, deadline=ref.kickoff_utc)

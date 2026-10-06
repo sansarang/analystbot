@@ -439,7 +439,7 @@ ALTER TABLE variables DROP CONSTRAINT IF EXISTS variables_type_ck;
 --    `absence_att`·`coach_intent`·`individual_title`·`team_stats`·`regression`·`fatigue`.
 --    ⚠️ 여기 안 더하면 적재가 CheckViolation 으로 터진다(`home_field` 때 실측했다).
 ALTER TABLE variables ADD CONSTRAINT variables_type_ck CHECK (
-    type IN ('absence','absence_att','coach_change','coach_conflict','coach_intent','def_absence','emotion','event_match','fatigue','h2h_pattern','home_field','individual','individual_title','lineup_intent','lineup_value','match_type','national_duty_return','pitcher_state','recent_pattern','regression','squad_rotation','stakes','strength_gap','team_stats','travel_schedule','venue_weather')))
+    type IN ('absence','absence_att','coach_change','coach_conflict','coach_intent','def_absence','emotion','event_match','fatigue','h2h_pattern','home_field','individual','individual_title','lineup_intent','lineup_value','match_type','national_duty_return','pitcher_state','recent_pattern','regression','squad_rotation','stakes','strength_gap','team_stats','travel_schedule','venue_weather'));
 -- ── §19-a 세포 질문 타입 enum (수정 2026-09-30) ──
 -- 🔴 **단계 2 가 여기에 §4 변수 유형 13종을 걸었다. 그것은 틀렸다.**
 --    `source_score.question_type` 은 §19-e 원문의 세 번째 열이고, §19-a 가 정의한

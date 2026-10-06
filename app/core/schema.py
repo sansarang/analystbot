@@ -101,6 +101,10 @@ class DropReason(str, Enum):
     STALE = "stale"
     POST_MATCH = "post_match"
     IDENTITY_MISMATCH = "identity_mismatch"
+    #: 🔴 `stakes` 인데 **구체적 동기가 없다**(사용자 지시 2026-10-06(2차) ③)
+    #  ⚠️ *"10월에 친선 둘을 치른다"* 는 동기가 아니다 — 진출·탈락·우승·기록·감독
+    #     거취·순위 중 하나가 claim 에 있어야 그 유형이다.
+    STAKES_VAGUE = "stakes_vague"
     #: 🔴 그 종목 낱말이 본문에 없다 — 남의 종목 기사다(사용자 지시 2026-10-06 ②)
     #  ⚠️ 실측: 권순우 **테니스** 기사가 축구 결장 변수로 들어왔다(두 나라 이름이
     #     둘 다 있어서 신원 선필터를 통과했다).

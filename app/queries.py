@@ -840,36 +840,16 @@ _L5_PROMPT = """반증 조건을 웹 검색어로 바꾼다.
 async def from_llm(condition: str, *, league: str = "", pool=None,
                    budget: llm.Budget | None = None, n: int = 4
                    ) -> tuple[list[Variant], list[str]]:
-    """L5 — 반증 조건 → 검색어(§17-b L5). 반환은 `(쓸 것, 버린 사유)`.
+    """🔴🔴 **L5 변형(Ollama)을 지웠다** — 사용자 지시 2026-10-06(2차) ⑤.
 
-    🔴 **버린 것을 돌려준다.** 개수만 세면 프롬프트를 못 고친다 — 그래서
-       `extraction_rejected` 에도 적고(§17-g-4) 사유도 올려 보낸다.
-    🔴 LLM 이 닿는 것은 **검색어 문자열**뿐이다(§17-c).
+    🔴 실측 2026-10-06: v6 가 이 경로를 **한 번도 부르지 않는다**(질의는
+       `s3_docs.queries_for` 가 코드로 만든다 · 문지기는 `llm.query_ok` 하나다).
+    ⚠️ 사유를 남기고 빈손으로 돌아간다 — 조용히 `[]` 를 내지 않는다(#3).
     """
-    langs = LANGS.get(league, DEFAULT_LANGS)
-    prompt = _L5_PROMPT.format(condition=condition, langs=", ".join(langs))
-    try:
-        got = await llm.call(prompt, llm.L5_QUERIES, budget=budget)
-    except llm.LLMUnavailable as exc:
-        logger.info("[L5] 못 불렀다 — %s", exc)
-        await _reject(pool, "폐기", f"호출 실패: {exc}", None)
-        return [], [f"L5 호출 실패: {exc}"]
-
-    out: list[Variant] = []
-    dropped: list[str] = []
-    for item in (got.get("queries") or [])[:n * 3]:
-        text = str((item or {}).get("text") or "")
-        lang = str((item or {}).get("lang") or langs[0])
-        # 🔴 §12-b 규칙 정규식으로 **걸러서** 쓴다(§19-b-5 원문)
-        if not llm.query_ok(text):
-            dropped.append(f"§12-b 위반: {text!r}")
-            await _reject(pool, "규칙위반", f"§12-b 위반: {text!r}", item)
-            continue
-        out.append(Variant(" ".join(text.split()), lang, "L5", source="L5"))
-        if len(out) >= n:
-            break
-    logger.info("[L5] %d건 채택 · %d건 버림", len(out), len(dropped))
-    return out, dropped
+    said = ("🔴 옛 L5 변형(Ollama) 경로를 지웠다(2026-10-06 ⑤) — "
+            "질의는 v6 `s3_docs.queries_for` 가 코드로 만든다")
+    logger.info("[L5] %s · condition=%s", said, condition)
+    return [], [said]
 
 
 async def _reject(pool, stage: str, reason: str, raw) -> None:

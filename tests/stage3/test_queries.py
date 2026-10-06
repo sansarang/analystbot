@@ -269,63 +269,8 @@ def test_못_채운_자리표를_그대로_던지지_않는다():
         assert "{" not in v.text and "}" not in v.text, v.text
 
 
-def test_L5_변형은_query_ok를_통과한_것만_쓴다():
-    """🔴 §19-b-5 — *"변형 생성은 L5(LLM)이 하되 §12-b 규칙 정규식으로 걸러서."*
-
-    ⚠️ 실측 2026-09-30: qwen3:8b 가 `ohito runners`·`阪神タイガース ランナップ`
-       같은 **엉망 검색어**를 냈다. §12-b 는 문법만 보므로 이런 것은 통과한다 —
-       그래서 0건이 나고, 그 0건이 사유와 함께 남는 것이 지금 할 수 있는 최선이다.
-       🔴 문법 위반(연도·따옴표·site:)은 **반드시** 걸러져야 한다.
-    """
-    import asyncio
-
-    calls: list[dict] = []
-
-    async def _fake_call(prompt, schema, **k):
-        return {"queries": [
-            {"lang": "en", "text": "astros starting pitcher"},   # 통과
-            {"lang": "en", "text": "astros 2026 pitcher"},       # 연도 → 버림
-            {"lang": "en", "text": 'site:mlb.com astros'},       # site: → 버림
-            {"lang": "en", "text": '"astros" pitcher'},          # 따옴표 → 버림
-            {"lang": "en", "text": "a b c d e f g"},             # 7낱말 → 버림
-        ]}
-
-    class _Pool:
-        async def execute(self, *a, **k):
-            calls.append({"sql": a[0], "args": a[1:]})
-
-    import app.queries as Q
-    orig = Q.llm.call
-    Q.llm.call = _fake_call
-    try:
-        kept, dropped = asyncio.run(
-            Q.from_llm("휴스턴 선발 확정?", league="MLB", pool=_Pool()))
-    finally:
-        Q.llm.call = orig
-
-    assert [v.text for v in kept] == ["astros starting pitcher"]
-    assert len(dropped) == 4, dropped
-    # 🔴 §17-g-4 — 버린 것을 `extraction_rejected` 에 남긴다
-    assert len(calls) == 4, "버린 L5 출력이 기록되지 않았다"
-    assert all("extraction_rejected" in c["sql"] for c in calls)
 
 
-def test_L5가_없어도_수집이_멈추지_않는다():
-    """🔴 Ollama 가 없으면 `unknown` + 사유다 — 예외로 사이클을 죽이지 않는다."""
-    import asyncio
-
-    async def _boom(*a, **k):
-        raise llm.LLMUnavailable("Ollama 에 닿지 못했다")
-
-    import app.queries as Q
-    orig = Q.llm.call
-    Q.llm.call = _boom
-    try:
-        kept, dropped = asyncio.run(Q.from_llm("x", league="MLB"))
-    finally:
-        Q.llm.call = orig
-    assert kept == []
-    assert dropped and "L5 호출 실패" in dropped[0]
 
 
 def test_금지_라인업_소스가_정본_문장에서_왔다():

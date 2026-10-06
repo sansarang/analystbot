@@ -86,7 +86,6 @@ async def _depth(ref: MatchRef, *, net: Any, search: Any) -> list:
        목록이다 — 그 API 가 예고 선발·라인업을 안 준다). 그때는 빈 목록이 **정직한
        상태**다(있는 척하는 함수를 두지 않는다 · CLAUDE.md #2).
     """
-    from app import cells
     from app.collect import ingest
     if net is None:
         return []
@@ -111,9 +110,8 @@ async def _depth(ref: MatchRef, *, net: Any, search: Any) -> list:
         if not getattr(got, "ok", False):
             continue
         for name in (ref.home_name, ref.away_name):
-            q = cells.Question(cells.Q_LINEUP, ref.id, team=name,
-                               league=ref.competition,
-                               deadline=ref.kickoff_utc)
+            # 🔴 `cells` 를 보는 곳은 `adapt` 하나다(⑤ 정적 검사)
+            q = adapt.lineup_question(ref, name)
             try:
                 said = parse(got, q)
             except Exception:                               # noqa: BLE001
