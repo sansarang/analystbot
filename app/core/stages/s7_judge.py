@@ -27,6 +27,10 @@ from app.core.state import RunState
 #: 🔴 방아쇠 번호 — 규격이 `①~④` 라고 적었다(변수 번호와 섞이지 않게)
 _CIRCLED = ("①", "②", "③", "④")
 
+#: 🔴 결장 계열 — 그 선수가 **나오면** 변수가 사라진다(반대는 복귀 유형이다)
+_ABSENT = ("absence", "absence_att", "def_absence", "fatigue", "suspension",
+           "injury")
+
 _MAP: dict[str, tuple[str, str]] = {
     "home": ("win", "home"), "away": ("win", "away"),
     "draw": ("draw", ""), "home_dc": ("unbeaten", "home"),
@@ -350,9 +354,19 @@ def _triggers(variables: list[Variable], ref: MatchRef) -> list[str]:
         # 🔴 **번호는 ①~④ 다**(규격 블록 10). ⚠️ `triggers.label_of` 는 `R1` 꼴을
         #    돌려주는데 그것은 **변수 번호**와 같은 글자다 — 실측 2026-10-06 카드가
         #    `R3 … → R4` 로 찍혀 어느 것이 변수인지 안 보였다.
-        out.append(f"{_CIRCLED[len(out)]} {said} → `{v.id}`"
-                   f"({v.type} · {v.claim[:40]}) 가 바뀌면 다시 센다 · "
-                   f"{triggers.when_of(v.type, ref.kickoff_utc)}")
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **사람이 읽는 문장**(축구 완성 지시서 §5 블록 10)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > "확정 XI 에 김민재가 있으면 R1 이 사라져 → 다시 센다(T-60, 19:00 KST)".
+        #  > `player:{star} in XI` 같은 **내부 표기를 그대로 찍지 않는다.**
+        #
+        #  ⚠️ 실측 2026-10-06 카드가 그 내부 표기를 그대로 찍었다.
+        who = str(v.target or "그 선수")
+        when = triggers.when_of(v.type, ref.kickoff_utc)
+        out.append(f"{_CIRCLED[len(out)]} 확정 XI 에 **{who}** 가 "
+                   f"{'있으면' if v.type in _ABSENT else '없으면'} `{v.id}` 가 "
+                   f"사라져 → 다시 센다 · {when}")
         if len(out) >= 4:
             break
     return out

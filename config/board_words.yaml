@@ -1,0 +1,56 @@
+# 보드 낱말표 — 사용자가 붙여 넣는 보드를 **코드**가 읽는다(축구 완성 지시서 §4)
+#
+# ══════════════════════════════════════════════════════════════════
+# 🔴 왜 표인가
+# ══════════════════════════════════════════════════════════════════
+#
+# > 파서는 코드(정규식 + 사전)로: 마켓 이름 사전(승무패·핸디·언더오버·더블찬스·
+# > 양팀득점·홈팀/원정팀 언더오버·전반/후반 표시)을 `config/board_words.yaml` 에.
+#
+# ⚠️ LLM 에게 보드를 읽히지 않는다 — 배당·마켓을 모델이 만들면 그것이 거짓 보드가
+#    된다(절대규칙 6: 배당은 판정 경로에 닿지 않는다).
+# 🔴 **못 읽은 줄은 버리지 않는다** — 카드에 `보드 줄 못 읽음: …` 으로 그대로 보인다.
+
+#: 🔴 머리말 — `보드:` 는 기본 줄, `추가:` 는 *"추가 옵션에 있으면"* 묶음이다(§4)
+heads:
+  base: ["보드", "board"]
+  extra: ["추가", "extra", "옵션"]
+
+#: 🔴 마켓 이름 → 우리 `BoardLine.market`. ⚠️ 긴 이름을 **먼저** 본다(겹침 방지)
+markets:
+  - words: ["승무패", "승패", "1x2", "match result"]
+    market: win
+    #: 🔴 세 줄로 펼친다 — 홈·무·원정
+    expand: [win_home, draw, win_away]
+  - words: ["더블찬스", "double chance", "dc"]
+    market: unbeaten
+    expand: [unbeaten_home, unbeaten_away]
+  - words: ["양팀득점", "양팀 득점", "btts", "both teams to score"]
+    market: btts
+    expand: [btts_yes, btts_no]
+  - words: ["핸디캡", "핸디", "handicap", "ah"]
+    market: handicap
+  - words: ["홈팀 언더오버", "홈 언더오버", "home total", "home over/under"]
+    market: total
+    side_team: home
+  - words: ["원정팀 언더오버", "원정 언더오버", "away total", "away over/under"]
+    market: total
+    side_team: away
+  - words: ["언더오버", "오버언더", "총점", "over/under", "총 득점", "ou"]
+    market: total
+
+#: 🔴 **반 단위 마켓** — 시나리오는 90분 스코어다. 대입하지 않고 사유를 적는다(§4)
+halves:
+  words: ["전반", "후반", "1st half", "2nd half", "ht"]
+  why: 대입 안 함 — 반 단위 근거 없음(시나리오는 90분 스코어다)
+
+#: 🔴 양쪽 이름 — `over`·`under`·`yes`·`no` 를 사람 말에서 찾는다
+sides:
+  over: ["오버", "over", "o"]
+  under: ["언더", "under", "u"]
+  yes: ["예", "yes", "y"]
+  no: ["아니오", "아니요", "no", "n"]
+
+#: 🔴 기준선 꼴 — `2.5`·`-0.5`·`+1.5`. ⚠️ **배당 숫자는 받지 않는다**(§4 금지)
+#   그래서 `1.85` 같은 소수도 **기준선 자리에만** 쓰이고, 그 밖의 숫자는 버린다.
+point: '[-+]?\d+(?:\.\d+)?'

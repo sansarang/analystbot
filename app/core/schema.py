@@ -533,6 +533,14 @@ class Card(Frozen):
     cost: Cost = Field(default_factory=Cost)
     #: 🔴 **이미 시작한 경기인가** — 그러면 등급이 없다(M97)
     started: bool = False
+    #: 🔴🔴 **재분석에서 바뀐 것**(축구 완성 지시서 §4-4) — 비면 첫 분석이다
+    #
+    #  > 카드 맨 위에 `재분석 — 바뀐 것:` 한 블록: XI 상태(예상→확정), 새로 생긴·
+    #  > 사라진 변수, 등급 변화, 방아쇠 중 걸린 것.
+    changed: list[str] = Field(default_factory=list)
+    #: 🔴 보드에서 **추가 옵션**으로 들어온 줄(§4) · 못 읽은 줄
+    board_extra: list[str] = Field(default_factory=list)
+    board_bad: list[str] = Field(default_factory=list)
 
 
 class LlmFail(Frozen):

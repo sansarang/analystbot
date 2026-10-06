@@ -18,10 +18,25 @@ from app.core.schema import (Ambiguous, Board, Card, Doc, Facts, Funnel,
 from app.core.state import RunState
 
 
+#: 🔴 그 경기의 **마지막 실행**을 들고 있는 자리(재분석이 그것을 불러온다 · §4-1)
+#
+#  ⚠️ 모듈 전역이지만 **실행 상태가 아니다** — 재분석이 *"지난번 무엇을 봤나"* 를
+#     알아야 하고, 그것은 프로세스가 사는 동안의 기억이다(봇이 한 프로세스다).
+#  🔴 24시간이 지나면 **버린다**(§4-5: 그때는 전체를 새로 돈다).
+_LAST: dict[str, dict] = {}
+#: 🔴 그 기억을 몇 시간까지 쓰나 — §4-5 가 **24시간**이라 적었다
+LAST_TTL_HOURS = 24
+
+
 async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                   state: RunState | None = None, board: Board | None = None,
+                  board_text: str = "",
                   now: datetime | None = None) -> Card | Ambiguous:
-    """🔴 질문 하나 → 카드 하나. ⚠️ 경기를 **못 고르면** `Ambiguous`(묻는다)."""
+    """🔴 질문 하나 → 카드 하나. ⚠️ 경기를 **못 고르면** `Ambiguous`(묻는다).
+
+    🔴 `board_text` 를 주면 **코드가 파싱한다**(축구 §4 · `app/core/board.py`) —
+       LLM 이 보드를 읽지 않는다.
+    """
     from app.core.stages import (s1_resolve, s2_facts, s3_docs, s4_extract,
                                  s5_verify, s6_hypo, s7_judge)
     st = state if state is not None else RunState()
@@ -40,15 +55,115 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     docs = list(cache.values()) or docs
     variables = s5_verify.run(ref, facts, docs, cands, state=st)
     hypo = s6_hypo.run(ref, facts, variables, state=st)
-    said = s7_judge.run(ref, facts, variables, hypo, state=st, board=board,
+    got_board, extra, bad = board, [], []
+    if board_text.strip():
+        from app.core import board as _board
+        got_board, extra, bad = _board.parse(board_text)
+        st.note(f"보드 {len(got_board.lines)}줄 · 추가 {len(extra)} · "
+                f"못 읽음 {len(bad)}")
+    said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
                         now=now)
-    return card_of(ref, facts, variables, hypo, said, state=st)
+    card = card_of(ref, facts, variables, hypo, said, state=st,
+                   board_extra=extra, board_bad=bad)
+    # 🔴 **마지막 실행을 기억한다** — 재분석이 s3·s4 를 다시 돌지 않게(§4-1)
+    _LAST[ref.id] = {"at": (now or datetime.now(timezone.utc)), "ref": ref,
+                     "docs": docs, "cands": cands, "card": card,
+                     "board_text": board_text}
+    return card
+
+
+async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
+                    state: RunState | None = None,
+                    now: datetime | None = None) -> Card | Ambiguous:
+    """🔴🔴 **재분석**(축구 완성 지시서 §4) — s2 만 다시 돌고 s3·s4 는 **안 돈다**.
+
+    > 1. 그 경기의 마지막 실행(RunState·Doc 캐시)을 불러온다. 기사 검색(s3)·추출(s4)은
+    >    **다시 하지 않는다** — 비용·시간을 아끼고 변수가 회차마다 흔들리지 않게.
+    > 2. s2 만 다시 돈다: XI(확정 여부), 결장 명단, 같은 조 먼저 끝난 경기 결과.
+    > 3. 바뀐 사실로 IR01~IR03·IR05 변수를 다시 만들고, s6·s7 을 다시 돈다.
+    > 4. 카드 맨 위에 `재분석 — 바뀐 것:` 한 블록.
+    > 5. 마지막 실행이 24시간 넘었거나 없으면 **전체를 새로** 돈다.
+    """
+    from app.core.stages import (s1_resolve, s2_facts, s5_verify, s6_hypo,
+                                 s7_judge)
+    st = state if state is not None else RunState()
+    q = _question(raw, now=now)
+    ref = await s1_resolve.run(q, pool=pool, state=st, net=net)
+    if isinstance(ref, Ambiguous):
+        return ref
+    st.match_key = ref.id
+    last = _LAST.get(ref.id)
+    when = now or datetime.now(timezone.utc)
+    if last is None:
+        st.note("재분석 — 🔴 마지막 실행이 **없다** → 전체를 새로 돈다(§4-5)")
+        return await analyze(raw, pool=pool, net=net, chain=chain, state=st,
+                             now=now)
+    old = last["at"]
+    if (when - old).total_seconds() > LAST_TTL_HOURS * 3600:
+        st.note(f"재분석 — 마지막 실행이 {LAST_TTL_HOURS}시간을 넘었다"
+                f"({old:%m-%d %H:%M}Z) → 전체를 새로 돈다(§4-5)")
+        return await analyze(raw, pool=pool, net=net, chain=chain, state=st,
+                             now=now)
+    before: Card = last["card"]
+    # ── ② s2 만 다시 돈다(기사·추출은 그대로 쓴다)
+    facts = await s2_facts.run(ref, state=st, net=net)
+    docs, cands = list(last["docs"]), list(last["cands"])
+    st.set("docs", len(docs))
+    st.set("candidates", len(cands))
+    variables = s5_verify.run(ref, facts, docs, cands, state=st)
+    hypo = s6_hypo.run(ref, facts, variables, state=st)
+    got_board, extra, bad = None, list(before.board_extra), list(before.board_bad)
+    if last.get("board_text"):
+        from app.core import board as _board
+        got_board, extra, bad = _board.parse(str(last["board_text"]))
+    said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
+                        now=now)
+    card = card_of(ref, facts, variables, hypo, said, state=st,
+                   board_extra=extra, board_bad=bad,
+                   changed=_diff(before, facts, variables, said))
+    _LAST[ref.id] = {**last, "at": when, "card": card}
+    return card
+
+
+def _diff(before: Card, facts: Facts, variables: list[Variable],
+          said: Judgement) -> list[str]:
+    """🔴 **바뀐 것**(§4-4) — XI 상태·변수·등급·걸린 방아쇠.
+
+    ⚠️ *"바뀐 게 없다"* 도 적는다 — 빈 블록은 *"안 봤다"* 와 구분이 안 된다(#3).
+    """
+    out: list[str] = []
+    for key, now_xi in facts.xi.items():
+        was = before.facts.xi.get(key)
+        old_state = was.state if was is not None else "없음"
+        if old_state != now_xi.state:
+            out.append(f"XI {key} — {old_state} → **{now_xi.state}**")
+    old_ids = {v.id: v for v in before.variables}
+    new_ids = {v.id: v for v in variables}
+    for vid in sorted(set(new_ids) - set(old_ids)):
+        out.append(f"변수 **생김** `{vid}` — {new_ids[vid].claim[:60]}")
+    for vid in sorted(set(old_ids) - set(new_ids)):
+        out.append(f"변수 **사라짐** `{vid}` — {old_ids[vid].claim[:60]}")
+    was_grade = {f"{e.line.market}/{e.line.side}": e.grade for e in before.evals}
+    for e in said.evals:
+        key = f"{e.line.market}/{e.line.side}"
+        old_g = was_grade.get(key)
+        if old_g is not None and old_g != e.grade:
+            out.append(f"등급 `{key}` — {old_g} → **{e.grade}**")
+    if not out:
+        out.append("바뀐 것 **없다**(XI 상태·변수·등급 모두 같다)")
+    return out
 
 
 def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
-            hypo: HypoSet, said: Judgement, *, state: RunState) -> Card:
+            hypo: HypoSet, said: Judgement, *, state: RunState,
+            board_extra: list[str] | None = None,
+            board_bad: list[str] | None = None,
+            changed: list[str] | None = None) -> Card:
     """🔴 카드 하나로 모은다 — 렌더러가 보는 것은 **이 타입 하나**다(§3)."""
     return Card(
+        board_extra=[str(x) for x in (board_extra or [])],
+        board_bad=[str(x) for x in (board_bad or [])],
+        changed=[str(x) for x in (changed or [])],
         match=ref, facts=facts, variables=variables,
         drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,
         direction=said.direction, conclusion=said.conclusion,

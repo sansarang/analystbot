@@ -101,12 +101,41 @@ async def cmd_analyze(m: Message) -> None:
         if len(words) == 2:
             team, opponent = words[0], words[1]
     pool = await get_pool(s.database_url)
-    body = await _v6_card(pool, team=team, opponent=opponent)
+    # 🔴 **보드 글**(§4) — 질문 아래 줄에 `보드:`·`추가:` 가 오면 그 글을 넘긴다.
+    #    ⚠️ 배당 숫자는 파서가 **받지 않는다**(`app/core/board.py`).
+    lines = (m.text or "").splitlines()
+    board_text = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
+    body = await _v6_card(pool, team=team, opponent=opponent,
+                          board_text=board_text)
     for chunk in _split(body):
         await m.answer(chunk)
 
 
-async def _v6_card(pool, *, team: str, opponent: str) -> str:
+@dp.message(Command("reanalyze", "재분석"))
+async def cmd_reanalyze(m: Message) -> None:
+    """`/재분석 <팀> vs <상대>` — 🔴🔴 **확정 XI 로 다시 낸다**(축구 §4).
+
+    > 기사 검색(s3)·추출(s4)은 **다시 하지 않는다** — 비용·시간을 아끼고 변수가
+    > 회차마다 흔들리지 않게. s2 만 다시 돌고 s6·s7 을 다시 돈다.
+
+    ⚠️ 마지막 실행이 없거나 24시간을 넘었으면 **전체를 새로** 돈다(§4-5).
+    """
+    s = get_settings()
+    from app.bot_boot import boot_checks
+    boot_checks()
+    from app.core import rank as _rank
+    logger.info("[bot] 재정렬 예열 — %s", _rank.warm())
+    arg = " ".join((m.text or "").split()[1:]).strip()
+    if not arg:
+        await m.answer("`/재분석 <팀> vs <상대>` — 어느 경기인지 적어라")
+        return
+    pool = await get_pool(s.database_url)
+    for chunk in _split(await _v6_card(pool, said=arg, again=True)):
+        await m.answer(chunk)
+
+
+async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
+                   again: bool = False, board_text: str = "") -> str:
     """🔴🔴 **v6 경로** — `pipeline.analyze` → `render.card_text`(§8 4단계).
 
     ══════════════════════════════════════════════════════════════════
@@ -127,9 +156,12 @@ async def _v6_card(pool, *, team: str, opponent: str) -> str:
     from app import search as _search
     from app.core import pipeline, render
     from app.core.schema import Ambiguous
-    said = f"{team} vs {opponent}".strip() if opponent else team
-    got = await pipeline.analyze(said, pool=pool, net=_net_mod.Net(),
-                                 chain=_search.build_chain())
+    asked = said or (f"{team} vs {opponent}".strip() if opponent else team)
+    # 🔴 **재분석은 다른 입구다**(§4) — s3·s4 를 다시 돌지 않는다
+    fn = pipeline.reanalyze if again else pipeline.analyze
+    got = await fn(asked, pool=pool, net=_net_mod.Net(),
+                   chain=_search.build_chain(),
+                   **({} if again else {"board_text": board_text}))
     if isinstance(got, Ambiguous):
         # 🔴 **고르지 않는다** — 사용자가 지목한다(§17-g-3 · M14)
         lines = [f"🔴 경기를 확정하지 못했다 — {got.why}"]

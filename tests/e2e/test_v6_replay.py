@@ -142,8 +142,10 @@ def docs_by_id(card: Card, replaying) -> dict:
 def test_불변식1_카드가_나오고_블록_열_개가_있다(card: Card):
     """1. 카드가 나온다(예외 없음), 블록 1~9 전부 존재, 방향 문장이 팀 이름 또는 `반반`."""
     said = render.card_text(card)
-    for i, title in enumerate(render.TITLES, 1):
-        assert f"**{i}. {title}**" in said, (i, title)
+    # 🔴 축구 완성 지시서 §5 가 블록 **2b(결장)**·**3b(경우의 수)** 를 더했다 —
+    #    번호는 `render.NUMBERS` 가 든다(손으로 세지 않는다 · #1).
+    for num, title in zip(render.NUMBERS, render.TITLES, strict=True):
+        assert f"**{num}. {title}**" in said, (num, title)
     assert card.direction
     assert (card.match.home_name in card.direction
             or card.match.away_name in card.direction
@@ -300,7 +302,7 @@ def test_카드_전문_스냅샷(card: Card):
         "`V6_SNAPSHOT_UPDATE=1` 로 갱신하고 **사유를 커밋에 적는다**")
 
 
-def test_불변식11_공격_결장_유형이_수비수에게_붙지_않는다(card: Card):
+def test_불변식12_공격_결장_유형이_수비수에게_붙지_않는다(card: Card):
     """🔴🔴 **사용자 지시 2026-10-06(2차) ①** — 그 반대도 센다.
 
     > 공격수 결장 유형이 수비수에게 붙으면 **실패**하는 E2E 불변식 추가.
@@ -330,3 +332,66 @@ def test_불변식11_공격_결장_유형이_수비수에게_붙지_않는다(ca
     doubled = {k: ids for k, ids in keys.items() if len(ids) > 1}
     assert not doubled, f"🔴 같은 결장 사실이 여러 변수다: {doubled}"
     print(f"[불변식11] 포지션을 아는 변수 {seen}개 · 결장 열쇠 {len(keys)}개")
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **축구 완성 지시서 §6 — 새 불변식 11~15**
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_불변식11_카드의_변수_유형이_전부_축구_enum_안이다(card: Card):
+    """11. 축구 카드의 변수 유형이 **전부 축구 enum 안**(§6).
+
+    🔴 야구·농구 전용 유형(`pitcher_state` 등)이 축구 요청 enum 에 들어가면 **실패**다
+       (실측 2026-10-06: 그 유형이 축구 카드의 변수 다섯을 먹고 방향을 뒤집었다).
+    """
+    from app import rules
+    ok = set(rules.types_for_sport(card.match.sport))
+    bad = [(v.id, v.type) for v in card.variables if v.type not in ok]
+    assert not bad, f"🔴 축구 enum 밖 유형: {bad}"
+
+
+def test_불변식13_예상_XI_에_결장자가_없다(card: Card):
+    """13. XI 예상 명단에 결장 명단 선수가 **없다**(있으면 `conflict` 로 빠져 있다)."""
+    for key, xi in card.facts.xi.items():
+        gone = {m.name.strip().lower() for m in card.facts.missing.get(key, [])}
+        if not gone:
+            continue
+        left = [n for n in xi.players if n.strip().lower() in gone]
+        assert not left, (key, left, xi.conflicts)
+
+
+def test_불변식14_추가_옵션_묶음과_배당_숫자(card: Card):
+    """14. 보드 `추가:` 줄 마켓은 **추가 옵션 묶음에만**, 배당 숫자가 **어디에도 없다**.
+
+    🔴 배당은 `BoardLine` 에 **칸이 없다**(절대규칙 6) — 그래서 카드에 나올 길이 없다.
+       ⚠️ 그 사실을 **센다**(칸이 생기면 이 계약이 빨개진다).
+    """
+    from app.core.schema import BoardLine
+    assert "odds" not in BoardLine.model_fields
+    assert "price" not in BoardLine.model_fields
+    said = render.card_text(card)
+    if card.board_extra:
+        # 🔴 추가 줄은 **그 묶음 아래**에만 나온다
+        head = said.index("추가 옵션에 있으면")
+        for row in card.board_extra:
+            market = row.split()[0]
+            assert said.rindex(market) > head or said.count(market) > 1, row
+
+
+def test_불변식15_재분석_카드에_바뀐_것_블록이_있다(card: Card):
+    """15. 재분석 카드에 *"바뀐 것"* 블록이 있고 **s3·s4 LLM 호출이 0회**.
+
+    ⚠️ 이 고정물은 **첫 분석**이다(재분석이 아니다) — 그래서 여기서는 `changed` 가
+       **비어 있어야** 한다. 🔴 재분석 쪽은 `pipeline.reanalyze` 가 `_diff` 로 그
+       블록을 채우고, s3·s4 를 **아예 부르지 않는다**(그 사실을 코드로 센다).
+    """
+    import ast
+    import inspect
+
+    from app.core import pipeline
+    assert card.changed == [], card.changed
+    tree = ast.parse(inspect.getsource(pipeline.reanalyze))
+    said = {ast.unparse(n.func) for n in ast.walk(tree)
+            if isinstance(n, ast.Call)}
+    assert not {x for x in said if "s3_docs" in x or "s4_extract" in x}, said

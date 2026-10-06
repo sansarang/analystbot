@@ -15,17 +15,27 @@ from app.core.schema import Card, Variable
 
 #: 🔴 블록 제목 — 규격의 열 블록. ⚠️ 번호를 건너뛰지 않는다(불변식 1).
 TITLES: tuple[str, ...] = (
-    "자료 한계 고백", "기준 XI", "폼", "뒤집는 변수", "팀별 가설 + 무너지는 조건",
-    "시나리오", "보드 대입", "결론", "방향 판정", "방아쇠")
+    "자료 한계 고백", "기준 XI", "결장", "폼", "경우의 수", "뒤집는 변수",
+    "팀별 가설 + 무너지는 조건", "시나리오", "보드 대입", "결론", "방향 판정",
+    "방아쇠")
+
+#: 🔴 규격 번호 — 축구 완성 지시서 §5 가 **2b·3b** 를 새 블록으로 더했다.
+#   ⚠️ 번호를 다시 매기지 않는다(사용자가 블록 번호로 말한다) — `2b`·`3b` 로 적는다.
+NUMBERS: tuple[str, ...] = ("1", "2", "2b", "3", "3b", "4", "5", "6", "7", "8",
+                            "9", "10")
 
 
 def card_text(card: Card) -> str:
-    """🔴 카드 전문. ⚠️ 블록 **열 개가 늘 있다** — 비면 사유가 들어간다."""
+    """🔴 카드 전문. ⚠️ 블록이 **늘 전부 있다** — 비면 사유가 들어간다.
+
+    🔴 축구 완성 지시서 §5 가 블록 **2b(결장)**·**3b(경우의 수)** 를 더했다.
+    """
     out: list[str] = [_head(card)]
-    for i, body in enumerate((
-            _b1(card), _b2(card), _b3(card), _b4(card), _b5(card), _b6(card),
-            _b7(card), _b8(card), _b9(card), _b10(card)), 1):
-        out.append(f"\n**{i}. {TITLES[i - 1]}**\n{body}")
+    bodies = (_b1(card), _b2(card), _b2b(card), _b3(card), _b3b(card),
+              _b4(card), _b5(card), _b6(card), _b7(card), _b8(card),
+              _b9(card), _b10(card))
+    for num, title, body in zip(NUMBERS, TITLES, bodies, strict=True):
+        out.append(f"\n**{num}. {title}**\n{body}")
     return "\n".join(out)
 
 
@@ -41,6 +51,10 @@ def _head(card: Card) -> str:
     c = card.cost
     head += (f"\n💵 ${c.usd:.4f} · 호출 {c.calls}회 · 출력 {c.out_tokens} "
              f"(추론 {c.reasoning_tokens})")
+    if card.changed:
+        # 🔴 **재분석 — 바뀐 것**(축구 완성 지시서 §4-4): 카드 **맨 위**다
+        head += "\n\n🔁 **재분석 — 바뀐 것**\n" + "\n".join(
+            f"- {x}" for x in card.changed)
     return head
 
 
@@ -66,16 +80,85 @@ def _b1(card: Card) -> str:
     return "\n".join(f"- {x}" for x in out)
 
 
+#: 🔴 상태 글자 — 사람이 읽는 꼴(§5 블록 2)
+_XI_KO = {"confirmed": "확정", "predicted": "예상", "none": "없음"}
+
+
 def _b2(card: Card) -> str:
+    """블록 2 XI — `{팀} {포메이션} [확정|예상|없음] 감독 {이름}` + 선수 11명(§5)."""
     if not card.facts.xi:
         return "- ⬜ 없다 — 어느 쪽 XI 도 못 받았다(사유는 블록 1)"
-    out = []
+    out: list[str] = []
     for key, xi in card.facts.xi.items():
-        who = (card.match.home_name if key == card.match.home
-               else card.match.away_name)
-        out.append(f"- **{who}** {xi.state} · {xi.formation or '포메이션 미상'} · "
-                   f"{', '.join(xi.players[:11]) or '명단 없음'}")
+        who = _who(card, key)
+        coach = card.facts.coach.get(key)
+        head = (f"- **{who}** {xi.formation or '포메이션 미상'} "
+                f"[{_XI_KO.get(xi.state, xi.state)}]")
+        if coach is not None:
+            head += f" 감독 {coach.name}" + (" (임시)" if coach.interim else "")
+        out.append(head)
+        if xi.lineup:
+            # 🔴 포지션 약자를 함께 적는다(§5) — 등번호가 있으면 그것도
+            said = " · ".join(
+                f"{p.name}({p.pos or '?'}" + (f",{p.number}" if p.number else "")
+                + ")" for p in xi.lineup[:11])
+            out.append(f"    {said}")
+        elif xi.players:
+            out.append(f"    {' · '.join(xi.players[:11])}")
+        else:
+            out.append("    ⬜ 선발 명단 없음")
+        for said in xi.conflicts:
+            # 🔴 결장 충돌로 뺀 선수는 **그 사실을 적는다**(§2·§5)
+            out.append(f"    {said}")
     return "\n".join(out)
+
+
+def _b2b(card: Card) -> str:
+    """블록 2b 결장(새 블록 · §5) — `이름(포지션) — 사유 · 출처 도메인`."""
+    if not card.facts.missing:
+        return "- ⬜ **결장 명단 미확보**"
+    ko = {"injury": "부상", "suspension": "징계", "doubtful": "출전 불확실",
+          "international_duty": "대표팀 차출", "other": "사유 미상"}
+    out: list[str] = []
+    for key, rows in card.facts.missing.items():
+        out.append(f"- **{_who(card, key)}**")
+        for m in rows:
+            dom = (m.source_url.split("/")[2] if m.source_url.count("/") >= 2
+                   else "")
+            tail = f" · 복귀 {m.returns}" if m.returns else ""
+            mark = " ⚠️ 기사" if m.source == "article" else ""
+            out.append(f"    {m.name}({m.pos or '?'}) — {ko.get(m.reason, m.reason)}"
+                       f"{tail} · {dom}{mark}")
+    return "\n".join(out)
+
+
+def _b3b(card: Card) -> str:
+    """블록 3b 경우의 수 — **조별 리그에서만**(§3·§5).
+
+    ⚠️ 순위표·잔여 경기가 없으면 **그 사실을 적는다**(#3) — 빈 블록은 거짓이다.
+    """
+    box = dict(card.facts.standings or {})
+    rows = box.get("table") if isinstance(box.get("table"), list) else None
+    if not rows:
+        return ("- ⬜ 경우의 수를 못 센다 — 순위표·잔여 경기가 없다"
+                f"(형식 `{card.facts.match_format}`)")
+    out = ["| 팀 | 순위 | 승점 | 잔여 |", "|---|---|---|---|"]
+    for r in rows[:8]:
+        row = dict(r) if isinstance(r, dict) else {}
+        out.append(f"| {row.get('name', '?')} | {row.get('idx', row.get('rank', '?'))}"
+                   f" | {row.get('pts', '?')} | {row.get('played', '?')} |")
+    out.append("⚠️ 동률 규칙을 모르면 **승점 → 득실 → 다득점**으로 센다(그 가정을 "
+               "여기 적는다 · §3)")
+    return "\n".join(out)
+
+
+def _who(card: Card, key: str) -> str:
+    """🔴 열쇠 → **보일 이름**(열쇠는 사람이 못 읽는다)."""
+    if key == card.match.home:
+        return card.match.home_name
+    if key == card.match.away:
+        return card.match.away_name
+    return key
 
 
 def _b3(card: Card) -> str:
@@ -99,7 +182,7 @@ def _b3(card: Card) -> str:
         got = box.get("recent_scored_avg")
         trim = box.get("recent_trimmed_avg")
         rest = box.get("rest_days")
-        bits = [f"최근5 **{last5}**"]
+        bits = [f"최근5 **{last5}**"]  # 🔴 §5: 아래에 경기별 한 줄을 적는다
         bits.append(f"득점 평균 {got}" if got is not None else "득점 평균 못 쟀다")
         if trim is not None and got is not None and float(trim) != float(got):
             # 🔴 **보정했으면 그 사실을 적는다** — 조용히 다른 수를 쓰지 않는다
@@ -111,11 +194,13 @@ def _b3(card: Card) -> str:
                 bits.append(f"{label} {box[name]}")
         out.append(f"- **{who}** — " + " · ".join(bits))
         seq = [x for x in (box.get("sequence") or []) if isinstance(x, dict)]
-        if seq:
-            said = " / ".join(
-                f"{x.get('date')} {'홈' if x.get('side') == 'home' else '원정'} "
-                f"{x.get('opponent')} {x.get('score')}" for x in seq[:5])
-            out.append(f"    {said}")
+        for x in seq[:5]:
+            # 🔴 §5 블록 3 — **경기별 한 줄**이다(한 줄에 몰아 적지 않는다)
+            rank = x.get("opponent_rank")
+            tail = f"({rank}위)" if rank else ""
+            out.append(f"    {x.get('date')} "
+                       f"{'홈' if x.get('side') == 'home' else '원정'} "
+                       f"{x.get('opponent')}{tail} {x.get('score')}")
     if f.standings:
         out.append(f"- 순위 — {_short(f.standings)}")
     if f.h2h:
@@ -141,10 +226,18 @@ def _short(box: object, cap: int = 160) -> str:
 
 
 def _b4(card: Card) -> str:
+    """블록 4 변수 — 🔴 **근거 불가 변수는 맨 아래 따로 묶는다**(§5)."""
     if not card.variables:
         return ("- ⬜ 변수 0개 — 🔴 **\"자료가 안 왔다\"와 \"왔는데 못 뽑았다\"는 "
                 "다르다**(블록 1 의 사유를 본다)")
-    return "\n".join(_var_line(v) for v in card.variables)
+    good = [v for v in card.variables if v.usable_as_basis]
+    weak = [v for v in card.variables if not v.usable_as_basis]
+    out = [_var_line(v) for v in good]
+    if weak:
+        out.append("")
+        out.append("**(근거 불가)** — 맥락으로만 쓴다")
+        out += [_var_line(v) for v in weak]
+    return "\n".join(out)
 
 
 def _var_line(v: Variable) -> str:
@@ -152,12 +245,12 @@ def _var_line(v: Variable) -> str:
 
     ⚠️ 종전엔 `goals_up` 이 승패 칸에 있어 *"어느 팀 쪽인가"* 가 안 보였다.
     """
-    tail = "" if v.usable_as_basis else " · ⚠️ **근거로는 못 쓴다**(맥락 전용)"
-    rule = f" · {v.from_rule}" if v.from_rule else ""
-    goals = {"up": " · 득점↑", "down": " · 득점↓"}.get(v.goals, "")
+    rule = f" · [규칙 {v.from_rule}]" if v.from_rule else ""
+    goals = {"up": "↑", "down": "↓"}.get(v.goals, "-")
+    src = (f"출처 {len(v.doc_ids)}곳" if v.doc_ids else "출처 구조 사실")
     who = f" · 대상 `{v.target}`" if v.target else ""
-    return (f"- `{v.id}` [{v.type}] {v.claim} — 승패 **{v.favors}**{goals}{who} · "
-            f"{v.hardness}({v.weight}) · 출처 {', '.join(v.doc_ids)}{rule}{tail}")
+    return (f"- `{v.id}` [{v.type}] {v.claim} — 승패 **{v.favors}** · "
+            f"득점 {goals} · {v.hardness} · {src}{who}{rule}")
 
 
 def _b5(card: Card) -> str:
@@ -185,9 +278,9 @@ def _b6(card: Card) -> str:
     out = []
     for s in card.hypo.scenarios:
         scores = " · ".join(f"{h}-{a}" for h, a in s.outcomes)
-        out.append(f"- **{s.id}** ({scores}) [{s.type} · {s.added_by} · "
-                   f"strength {s.strength}] {s.mechanism} "
-                   f"← {', '.join(s.driver_vars) or '근거 없음(코드 보강)'}")
+        mark = " [보강]" if s.added_by == "code" else ""
+        out.append(f"- **{s.id}** ({scores}) {s.type} · 무게 {s.strength}{mark} — "
+                   f"{s.mechanism} ← {', '.join(s.driver_vars) or '근거 없음'}")
     return "\n".join(out)
 
 
@@ -198,11 +291,24 @@ def _b7(card: Card) -> str:
     head = "| 마켓 | " + " | ".join(ids) + " | 생존 | 상한 | 등급 |"
     bar = "|---" * (len(ids) + 4) + "|"
     rows = [head, bar]
+    extra = set(card.board_extra)
+    tail: list[str] = []
     for e in card.evals:
         point = f" {e.line.point}" if e.line.point is not None else ""
+        said = (f"{e.line.market} {e.line.side}"
+                f"{(' ' + str(e.line.point)) if e.line.point is not None else ''}")
         cells = " | ".join(e.marks.get(i, "?") for i in ids)
-        rows.append(f"| {e.line.market} {e.line.side}{point} | {cells} | "
-                    f"{e.survival} | {e.cap} | {e.grade} |")
+        line = (f"| {e.line.market} {e.line.side}{point} | {cells} | "
+                f"{e.survival} | {e.cap} | {e.grade} |")
+        # 🔴 `추가:` 줄은 **아래 묶음**으로(§4 · 사용자 규칙)
+        (tail if said in extra else rows).append(line)
+    if tail:
+        rows.append("")
+        rows.append("**추가 옵션에 있으면**")
+        rows += tail
+    for said in card.board_bad:
+        # 🔴 **못 읽은 줄은 그대로 보인다**(조용히 버리지 않는다 · §4)
+        rows.append(f"- 🔴 보드 줄 못 읽음: {said}")
     return "\n".join(rows)
 
 
@@ -216,6 +322,7 @@ def _b9(card: Card) -> str:
 
 
 def _b10(card: Card) -> str:
+    """블록 10 방아쇠 — 🔴 **사람이 읽는 문장**이다(§5: 내부 표기 금지)."""
     if not card.triggers:
         return "- ⬜ 방아쇠가 없다 — 조건 표에 걸린 변수 유형이 없었다"
     return "\n".join(f"- {x}" for x in card.triggers)
