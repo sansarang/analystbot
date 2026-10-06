@@ -35,7 +35,7 @@ def test_v5_3_3_열_단계가_전부_들어_있다():
     import re
 
     from app import agentloop
-    text = (ROOT / "docs" / "fable" / "inbox"
+    text = (ROOT / "docs" / "fable" / "archive"
             / "2026-10-04_v5_solar.md").read_text(encoding="utf-8")
     i = text.index("3-3 프롬프트  요지")
     # 🔴 **그 뒤에서** 찾는다 — `index` 는 앞쪽(쪽 머리글·요약)을 먼저 잡는다

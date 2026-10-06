@@ -62,7 +62,7 @@ def test_v5_10_4_문서에서_자란다():
 
     ⚠️ 손으로 적은 표는 지시문이 바뀔 때 한 발 늦는다.
     """
-    text = (ROOT / "docs" / "fable" / "inbox"
+    text = (ROOT / "docs" / "fable" / "archive"
             / "2026-10-04_v5_solar.md").read_text(encoding="utf-8")
     # 🔴 §10-4 아래의 **번호 목록**이 일곱 줄인지 센다
     i = text.index("10-4 단계  게이트와  배포")

@@ -1,6 +1,6 @@
 """🔴🔴 **M105~M108 — XI 변수·평균 보정·경기 형식**.
 
-지시서 `docs/fable/inbox/2026-10-05_workorder_idn_tha_fixes.md` §3.
+지시서 `docs/fable/archive/2026-10-05_workorder_idn_tha_fixes.md` §3.
 
 > **3-1 확정 XI 를 변수로**(`lineup_intent` 유형, **코드가 생성**)
 >  · **수비 숫자**: 포메이션 첫 숫자(`5-3-2`·`3-4-3`), 없으면 XI 포지션 집계.

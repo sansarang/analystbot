@@ -1,6 +1,6 @@
 """🔴🔴 **M102~M104 — 다중 스코어 대입·죽는 목록·방향 판정**.
 
-지시서 `docs/fable/inbox/2026-10-05_workorder_idn_tha_fixes.md` §2.
+지시서 `docs/fable/archive/2026-10-05_workorder_idn_tha_fixes.md` §2.
 
 > **2-1 다중 스코어 대입** — 시나리오의 `outcomes` 가 둘 이상이면 **모든
 > 마켓**에서 스코어 전부를 대입한다. 판정: 전부 승 `○` · 전부 패 `✗` ·

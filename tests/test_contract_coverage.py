@@ -32,7 +32,7 @@ import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-V5 = ROOT / "docs" / "fable" / "inbox" / "2026-10-04_v5_solar.md"
+V5 = ROOT / "docs" / "fable" / "archive" / "2026-10-04_v5_solar.md"
 CONTRACTS = ROOT / "tests"
 
 

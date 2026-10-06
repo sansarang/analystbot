@@ -1,6 +1,6 @@
 """🔴🔴 **M109 — `date_missing` 전에 htmldate 가 반드시 돈다**.
 
-지시서 `docs/fable/inbox/2026-10-05_workorder_idn_tha_fixes.md` §4-1·M109.
+지시서 `docs/fable/archive/2026-10-05_workorder_idn_tha_fixes.md` §4-1·M109.
 
 > `date_missing` 판정 전에 `htmldate` 가 **반드시 호출된다**(호출 기록 없이
 > `date_missing` 이 찍히면 실패).

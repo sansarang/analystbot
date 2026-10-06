@@ -24,7 +24,7 @@ def test_v5_9_1_열두_규칙이_문서에_있다_R2_M8_M19():
        먼저 빨개진다.
     """
     import re
-    text = (ROOT / "docs" / "fable" / "inbox"
+    text = (ROOT / "docs" / "fable" / "archive"
             / "2026-10-04_v5_solar.md").read_text(encoding="utf-8")
     i = text.index("9-1 R1~R12")
     seg = text[i:text.index("9-2 M1~M25", i)]

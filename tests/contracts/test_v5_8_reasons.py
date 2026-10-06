@@ -12,7 +12,7 @@
 ══════════════════════════════════════════════════════════════════
 
 ⚠️ 손으로 지키는 목록은 언제나 한 발 늦는다(CLAUDE.md #1). 그래서 이 계약은
-   `docs/fable/inbox/2026-10-04_v5_solar.md` 의 §8-6 줄을 **읽어** 코드와 대조한다.
+   `docs/fable/archive/2026-10-04_v5_solar.md` 의 §8-6 줄을 **읽어** 코드와 대조한다.
 🔴 문서가 사유를 하나 더하면 **이 계약이 먼저 빨개진다.**
 
 🔴 **§10-4 M38** — 거짓 사유(10-03) — 사유 enum · 추정 문자열 금지
@@ -24,7 +24,7 @@ import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-V5 = ROOT / "docs" / "fable" / "inbox" / "2026-10-04_v5_solar.md"
+V5 = ROOT / "docs" / "fable" / "archive" / "2026-10-04_v5_solar.md"
 
 #: 🔴 §8-6 목록이 적힌 자리를 **글자로** 찾는다. ⚠️ 쪽 번호로 찾지 않는다 —
 #   PDF 를 다시 뽑으면 줄 번호가 바뀐다.
@@ -163,7 +163,7 @@ def test_v5_8_6_enum_밖_사유가_없다_M38():
     # 🔴 그 조항이 **v5 본문 또는 작업 지시서**에 있어야 한다. ⚠️ §3-8 은
     #    작업 지시서 §1 이 **신설**한 절이다(v5 본문에는 없다).
     import pathlib as _pl
-    base = _pl.Path(__file__).resolve().parents[2] / "docs" / "fable" / "inbox"
+    base = _pl.Path(__file__).resolve().parents[2] / "docs" / "fable" / "archive"
     doc = _doc()
     for extra in ("2026-10-04_workorder_gate2_deepseek.md",
                   "2026-10-04_v5A_deepseek.md",
