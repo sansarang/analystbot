@@ -13,7 +13,7 @@
    재생한다 — 검색·fetch·LLM 은 **전부 카세트**다(망에 안 나간다).
 ⚠️ s1 은 `tests/unit_v6_s1_s2.py` 가 따로 센다(철자 단계·확정 기준·창).
 
-🔴 **녹화본**: `tests/fixtures/cassettes/nomatch/kor_uzb_v6_6` — 2026-10-06
+🔴 **녹화본**: `tests/fixtures/cassettes/nomatch/kor_uzb_v7_final2` — 2026-10-06
    한국 vs 우즈베키스탄(친선)을 라이브 1회 돌려 받은 것이다($0.0044 · 호출 7).
 """
 from __future__ import annotations
@@ -29,7 +29,7 @@ from app.core import pipeline, render
 from app.core.schema import Card, MatchRef
 from app.core.state import RunState
 
-RUN_ID = "kor_uzb_v6_6"
+RUN_ID = "kor_uzb_v7_final2"
 HOME, AWAY = "team:000129", "team:000245"
 KICK = datetime(2026, 10, 6, 11, 0, tzinfo=timezone.utc)
 #: 🔴 카드를 **킥오프 전**에 만든 것으로 센다 — 지난 뒤면 등급이 거둬진다(M97).
@@ -163,12 +163,12 @@ def _from_docs(card: Card) -> list:
 
 def test_불변식2_인용이_그_문서_본문에_글자_그대로_있다(card: Card, docs_by_id: dict):
     """2. 모든 `Variable` 의 `quote` 가 `doc_ids` 중 하나의 본문에 정규화 후 그대로."""
-    from app import verifylayer
+    from app.core.stages import s5_verify
     assert _from_docs(card), "기사 변수가 0개면 이 불변식은 아무것도 세지 않는다"
     for v in _from_docs(card):
         bodies = [docs_by_id[d].body for d in v.doc_ids if d in docs_by_id]
         assert bodies, (v.id, v.doc_ids, sorted(docs_by_id))
-        assert any(verifylayer.quote_ok(v.quote, b)[0] for b in bodies), v.id
+        assert any(s5_verify.quote_ok(v.quote, b)[0] for b in bodies), v.id
 
 
 def test_불변식3_주체가_그_경기_두_열쇠이고_방향이_열거값_안이다(card: Card):
@@ -288,7 +288,7 @@ def test_카드_전문_스냅샷(card: Card):
     """
     import pathlib
     said = render.card_text(card)
-    path = pathlib.Path(__file__).with_name("snapshot_kor_uzb_v6_6.md")
+    path = pathlib.Path(__file__).with_name("snapshot_kor_uzb_v7_final2.md")
     if not path.exists() or os.environ.get("V6_SNAPSHOT_UPDATE") == "1":
         path.write_text(said, encoding="utf-8")
         pytest.skip(f"스냅샷을 새로 적었다: {path.name}")

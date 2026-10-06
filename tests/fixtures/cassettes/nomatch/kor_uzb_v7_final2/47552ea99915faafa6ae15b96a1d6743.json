@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T06:23:41.433467+00:00",
+ "order": [
+  "South Korea, under interim head coach Roberto Moreno, will play two October friendlies against Venezuela and Uzbekistan, with captain Son Heung-min of LAFC chasing the all-time men's international scoring record.",
+  "The national team went 1-1 in Moreno's first two matches in September. Korea cruised past Ecuador 3-0 on consecutive goals from Oh Hyeon-gyu of Besiktas, Son and Lee Dong-gyeong of Ulsan HD, but then suffered a heavy 1-4 defeat to Uruguay. Both matches were played in a 4-4-2 formation, and attention will be on what changes Moreno makes across these two fixtures.",
+  "The first opponent, Venezuela, ranked 48th by FIFA, will be facing Korea for the first time since 2014 — a gap of 12 years. In that lone previous meeting, Korea won 3-1. Against Uzbekistan, ranked 60th, Korea hold an all-time record of 11 wins, four draws and one loss. The two matches also offer a chance to assess a regional rival ahead of next year's Asian Cup.",
+  "Son's tally rose to 58 international goals after a touch from Lee Kang-in's (Atletico Madrid) cross in the Uruguay match was credited as a goal. That figure draws him level with former head coach Cha Bum-kun at the top of the all-time men's scoring chart, and a single goal in either upcoming match would give Son the record outright.",
+  "Coupang Play analyst Lee Geun-ho said the September double-header produced contrasting results despite the same 4-4-2 setup. \"It will be worth watching whether the coaching staff opts to change the tactics, the personnel, or both,\" he said.",
+  "Korea will face Venezuela on Friday at 8 p.m. at Munsu Football Stadium in Ulsan, then take on Uzbekistan at the same time Tuesday at Yongin Mir Stadium in Yongin, Gyeonggi Province.",
+  "Coupang Play will broadcast both matches live. Announcer Yang Dong-seok and analyst Lee Geun-ho will call the Venezuela match, while announcer Yun Jang-hyeon and analyst Im Hyeong-cheol will handle the Uzbekistan fixture.",
+  "Matches set for Friday in Ulsan, Tuesday in Yongin; tactical changes under Moreno draw attention"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 8문단 → 재정렬 상위 8"
+}
