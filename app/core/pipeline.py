@@ -52,6 +52,19 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     if isinstance(ref, Ambiguous):
         return ref
     st.match_key = ref.id
+    # 🔴🔴 **보드를 먼저 읽는다** — 사용자 보드가 ④(s2c)의 **입력**이다(§2-6).
+    #    ⚠️ 실측 2026-10-06: s2c 를 먼저 돌려 사용자 보드 열이 통째로 비었다.
+    got_board, extra, bad, ocr_text = board, [], [], ""
+    if board_image.strip() and not board_text.strip():
+        from app.core import ocr as _ocr
+        got_board, extra, bad, ocr_text = _ocr.board_of(board_image.strip())
+        st.note(f"보드 캡처 — 로컬 OCR {len(ocr_text)}자 · "
+                f"{len(getattr(got_board, 'lines', []) or [])}줄 · 못 읽음 {len(bad)}")
+    elif board_text.strip():
+        from app.core import board as _board
+        got_board, extra, bad = _board.parse(board_text)
+        st.note(f"보드 {len(got_board.lines)}줄 · 추가 {len(extra)} · "
+                f"못 읽음 {len(bad)}")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **네 층**(네 층 지시서 §1) — ①② 는 s2b, ④ 는 s2c(s2 와 병렬)
     # ══════════════════════════════════════════════════════════════════
@@ -60,7 +73,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #     나란히 돌리고 **사유를 들고 빈 층**이 지나간다.
     facts, (feed_mk, user_mk) = await asyncio.gather(
         s2_facts.run(ref, state=st, net=net),
-        s2c_market.run(ref, pool=pool, net=net, state=st, board=board))
+        s2c_market.run(ref, pool=pool, net=net, state=st, board=got_board))
     base_p, adj_p = await s2b_base.run(ref, facts, state=st, net=net)
     cache: dict[str, Doc] = {}
     docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
@@ -71,18 +84,6 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     docs = list(cache.values()) or docs
     variables = s5_verify.run(ref, facts, docs, cands, state=st)
     hypo = s6_hypo.run(ref, facts, variables, state=st)
-    got_board, extra, bad = board, [], []
-    ocr_text = ""
-    if board_image.strip() and not board_text.strip():
-        from app.core import ocr as _ocr
-        got_board, extra, bad, ocr_text = _ocr.board_of(board_image.strip())
-        st.note(f"보드 캡처 — 로컬 OCR {len(ocr_text)}자 · "
-                f"{len(getattr(got_board, 'lines', []) or [])}줄 · 못 읽음 {len(bad)}")
-    if board_text.strip():
-        from app.core import board as _board
-        got_board, extra, bad = _board.parse(board_text)
-        st.note(f"보드 {len(got_board.lines)}줄 · 추가 {len(extra)} · "
-                f"못 읽음 {len(bad)}")
     if ocr_text and got_board is not None:
         from app.core import odds as _odds
         user_mk = _odds.from_board(got_board, source="user_board(ocr)")

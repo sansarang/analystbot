@@ -39,8 +39,9 @@ async def main(argv: list[str]) -> int:
     from app import search as _search
     from app.config import get_settings
     from app.core.schema import Ambiguous, Question
-    from app.core.stages import (s1_resolve, s2_facts, s3_docs, s4_extract,
-                                 s5_verify, s6_hypo, s7_judge)
+    # ⚠️ 카드 경로는 `pipeline.analyze` 가 돈다 — s4~s7 을 여기서 **들여오지 않는다**
+    #    (들여오면 또 손으로 이을 유혹이 생긴다 · CLAUDE.md #12)
+    from app.core.stages import s1_resolve, s2_facts, s3_docs
     from app.core.state import RunState
     from app.db import get_pool
     from app.core import rank
@@ -127,33 +128,37 @@ async def main(argv: list[str]) -> int:
         for n in state.notes[-12:]:
             print("  ·", n[:160])
         return 0
-    cands = await s4_extract.run(ref, docs, state=state, chain=chain, net=net,
-                                 cache=cache)
-    print(f"\n[s4] 후보 {len(cands)}개", flush=True)
-    for c in cands:
-        print(f"  [{c.subtask}] {c.type:18} {c.subject} ← {c.doc_id} "
-              f"· {c.claim[:60]}")
-    docs = list(cache.values()) or docs
-    variables = s5_verify.run(ref, facts, docs, cands, state=state)
-    print(f"\n[s5] 변수 {len(variables)}개 "
-          f"(근거 가능 {sum(1 for v in variables if v.usable_as_basis)})")
-    for v in variables:
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **입구는 `pipeline.analyze` 하나다**(CLAUDE.md #12 프로브 금지)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전 이 실행기는 s4~s7 을 **손으로 다시 이었다** — 그래서 네 층(①②④)이
+    #     붙은 뒤에도 실행기 카드에는 *"① 을 안 돌렸다"* 가 찍혔다(실측 2026-10-06).
+    #  🔴 운영이 타는 길과 같은 길로만 돈다. 단계별 수는 `state` 의 자취가 든다.
+    board_text = ""
+    if "--board" in argv:
+        board_text = argv[argv.index("--board") + 1]
+        print(f"[v6] 사용자 보드 — {board_text}", flush=True)
+    image = argv[argv.index("--image") + 1] if "--image" in argv else ""
+    if image:
+        print(f"[v6] 보드 캡처 — {image}(로컬 OCR)", flush=True)
+    got = await pipeline.analyze(arg, pool=pool, net=net, chain=chain,
+                                state=state, board_text=board_text,
+                                board_image=image)
+    if isinstance(got, Ambiguous):
+        print("🔴 경기를 확정하지 못했다:", got.why)
+        return 1
+    card = got
+    print(f"\n[s5] 변수 {len(card.variables)}개 "
+          f"(근거 가능 {sum(1 for v in card.variables if v.usable_as_basis)})")
+    for v in card.variables:
         print(f"  {v.id} [{v.type:18}] {v.favors:10} {v.hardness:5} "
               f"{v.weight} · {v.claim[:60]}")
-    hypo = s6_hypo.run(ref, facts, variables, state=state)
-    print(f"\n[s6] 가설 {len(hypo.hypotheses)}팀 · 시나리오 "
-          f"{len(hypo.scenarios)}개 · 반증 {len(hypo.redteam)}줄 · "
-          f"버린 줄 {len(hypo.drops)}개")
-    said = s7_judge.run(ref, facts, variables, hypo, state=state)
-    print(f"[s7] 마켓 {len(said.evals)}줄 · 등급 낸 줄 "
-          f"{sum(1 for e in said.evals if e.grade != '자료부족')}")
-    card = pipeline.card_of(ref, facts, variables, hypo, said, state=state)
-    # 🔴 **마지막 실행을 기억한다**(§4-1) — 재분석이 s3·s4 를 다시 돌지 않게.
-    #    ⚠️ 이 실행기는 단계를 손으로 이어 돌리므로 `analyze` 를 지나지 않는다 —
-    #       그래서 기억을 **여기서** 심는다(운영 봇은 `analyze` 가 심는다).
-    pipeline._LAST[ref.id] = {"at": datetime.now(timezone.utc), "ref": ref,
-                              "docs": docs, "cands": cands, "card": card,
-                              "board_text": ""}
+    scen = list(card.hypo.scenarios) if card.hypo is not None else []
+    print(f"\n[s6] 시나리오 {len(scen)}개"
+          + (f" · 반증 {len(card.hypo.redteam)}줄" if card.hypo is not None else ""))
+    print(f"[s7] 마켓 {len(card.evals)}줄 · 등급 낸 줄 "
+          f"{sum(1 for e in card.evals if e.grade != '자료부족')}")
     _funnel(state)
     print("\n" + "=" * 70 + "\n[카드]\n" + "=" * 70)
     print(render.card_text(card))

@@ -49,6 +49,8 @@ LEAGUES = "config/leagues.yaml"
 #: 🔴 **정규화된 이름 → 그 팀의 현지 표기**(`kashiwareysol` → `柏レイソル`).
 #   ⚠️ 받는 동안 채워지고 **캐시에 함께 저장된다** — 다시 받지 않으려고.
 _LOCALS: dict[str, str] = {}
+#: 🔴 캐시 파일을 **한 번은** 훑었나 — `_LOCALS` 가 일부만 찬 경우와 가른다
+_LOCALS_READ: set[int] = set()
 
 #: 🔴 **정규화된 이름 → 외부 id**(`kashiwareysol` → `tsdb:137708`).
 #   ⚠️ 받아 놓고 **버리던** 칸이다(실측 2026-10-03). 이름은 언어마다 달라지지만
@@ -579,7 +581,13 @@ def local_of_team(name: str) -> str:
     🔴 `entities.yaml` 선언이 **먼저**다 — 사용자가 적은 것이 받아 온 것보다 낫다.
        이것은 선언이 없을 때의 **대체**다.
     """
-    if not _LOCALS:
+    # 🔴🔴 **파일 훑기를 "비었을 때"로 가르지 않는다** — 실측 2026-10-06: 다른 호출이
+    #    `_LOCALS` 를 **일부만** 채워 두면(`build` 가 한 리그만 돌 때) 이 함수가
+    #    *"이미 있다"* 고 보고 파일을 안 읽어 `柏レイソル` 을 잃었다(전체 스위트에서만
+    #    빨개지는 흔들림이었다). 🔴 **못 찾았을 때 한 번 더 훑는다.**
+    got = _LOCALS.get(norm(name), "")
+    if not got and not _LOCALS_READ:
+        _LOCALS_READ.add(1)
         # 캐시 파일을 한 번 훑어 채운다(없으면 비어 있다)
         for lg in leagues():
             p = _cache_path(str(lg.get("key")))
@@ -591,4 +599,5 @@ def local_of_team(name: str) -> str:
                 continue
             for k, v in (box.get("locals") or {}).items():
                 _LOCALS.setdefault(str(k), str(v))
-    return _LOCALS.get(norm(name), "")
+        got = _LOCALS.get(norm(name), "")
+    return got
