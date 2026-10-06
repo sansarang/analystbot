@@ -233,24 +233,6 @@ def _required(ref: MatchRef, facts: Facts, scen: list[Scenario],
     out = list(scen)
     forms = rules.required_forms()
     names = _required_names(facts)
-    # ── ① 우세팀 실점 동반형 — `2-0` → `2-1`(이긴 쪽 점수 유지 · 실점 1)
-    if "우세팀_실점_동반형" in names:
-        add: list[tuple[int, int]] = []
-        for s in out:
-            for h, a in s.outcomes:
-                if h == a:
-                    continue
-                got = (h, 1) if h > a else (1, a)
-                if got[0] != got[1] and got not in _all_scores(out):
-                    add.append(got)
-        if add:
-            out.append(Scenario(
-                id=_next_id(out), outcomes=sorted(set(add))[:2],
-                driver_vars=[], type="conceding", added_by="code",
-                mechanism=("🔴 필수형(우세팀 실점 동반) — 우세팀이 이기면서 한 점을 "
-                           "준다. ⚠️ 이 갈래가 없으면 `언더`·`클린시트` 가 **공짜로** "
-                           "1.0 을 받는다(표: 우세팀_실점_동반형)")))
-            state.note(f"s6 필수형 보강 — 우세팀 실점 동반형 {sorted(set(add))[:2]}")
     # ── ⑦ 90분 무승부형 — **형식이 단판일 때만**(표의 `when_formats`)
     if "90분_무승부형" in names:
         want = [p for p in (_pair(x) for x in _sc.draw_scores())
@@ -293,6 +275,33 @@ def _required(ref: MatchRef, facts: Facts, scen: list[Scenario],
     if any("regression" in str(k) for k in rules.unmapped_types()):
         state.note("s6 필수형 회귀_반전형 — 🔴 `regression` 유형이 §4 표에 **없다**"
                    "(`trigger_conditions.unmapped`) → 이 줄은 발동하지 않는다")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **① 우세팀 실점 동반형은 맨 끝이다** — 실측 2026-10-06
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 처음엔 맨 앞에 뒀다 — 그래서 **코드가 뒤에 더한 승리 갈래**(핸디 대응형의
+    #     `2-0`·대량득점형)에는 실점 동반형이 **안 붙었다**. 표의 뜻은 *"우세팀 승
+    #     시나리오가 있으면 그 승리가 **실점을 동반하는 꼴**도 있어야 한다"* 이고,
+    #     그 승리가 누가 만든 것인지는 묻지 않는다.
+    #  🔴 그래서 **다 더한 뒤에** 한 번 본다.
+    # ── ① 우세팀 실점 동반형 — `2-0` → `2-1`(이긴 쪽 점수 유지 · 실점 1)
+    if "우세팀_실점_동반형" in names:
+        add: list[tuple[int, int]] = []
+        for s in out:
+            for h, a in s.outcomes:
+                if h == a:
+                    continue
+                got = (h, 1) if h > a else (1, a)
+                if got[0] != got[1] and got not in _all_scores(out):
+                    add.append(got)
+        if add:
+            out.append(Scenario(
+                id=_next_id(out), outcomes=sorted(set(add))[:2],
+                driver_vars=[], type="conceding", added_by="code",
+                mechanism=("🔴 필수형(우세팀 실점 동반) — 우세팀이 이기면서 한 점을 "
+                           "준다. ⚠️ 이 갈래가 없으면 `언더`·`클린시트` 가 **공짜로** "
+                           "1.0 을 받는다(표: 우세팀_실점_동반형)")))
+            state.note(f"s6 필수형 보강 — 우세팀 실점 동반형 {sorted(set(add))[:2]}")
     # ── ⑤ 반대 방향 · ⑥ 양방향 변수 — `on_missing: 실패` 다(만들지 않는다)
     for name in ("반대_방향", "양방향_변수"):
         said = _fail_form(name, out, variables)

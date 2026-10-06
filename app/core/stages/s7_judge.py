@@ -24,6 +24,9 @@ from app.core.schema import (Board, BoardLine, Facts, Grade, HypoSet,
 from app.core.state import RunState
 
 #: 🔴 옛 `market_type` → v6 `(Market, side)`. ⚠️ 표를 **한 번만** 적는다.
+#: 🔴 방아쇠 번호 — 규격이 `①~④` 라고 적었다(변수 번호와 섞이지 않게)
+_CIRCLED = ("①", "②", "③", "④")
+
 _MAP: dict[str, tuple[str, str]] = {
     "home": ("win", "home"), "away": ("win", "away"),
     "draw": ("draw", ""), "home_dc": ("unbeaten", "home"),
@@ -329,7 +332,10 @@ def _triggers(variables: list[Variable], ref: MatchRef) -> list[str]:
         said = checks.get(v.type)
         if not said:
             continue
-        out.append(f"{triggers.label_of(len(out))} {said} → `{v.id}`"
+        # 🔴 **번호는 ①~④ 다**(규격 블록 10). ⚠️ `triggers.label_of` 는 `R1` 꼴을
+        #    돌려주는데 그것은 **변수 번호**와 같은 글자다 — 실측 2026-10-06 카드가
+        #    `R3 … → R4` 로 찍혀 어느 것이 변수인지 안 보였다.
+        out.append(f"{_CIRCLED[len(out)]} {said} → `{v.id}`"
                    f"({v.type} · {v.claim[:40]}) 가 바뀌면 다시 센다 · "
                    f"{triggers.when_of(v.type, ref.kickoff_utc)}")
         if len(out) >= 4:

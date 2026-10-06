@@ -196,4 +196,4 @@ async def _narrow(sid: str, ref: MatchRef, mine: list[Doc], *,
         return []
     state.note(f"s4/{sid} 후보 0개 → 좁히기 낱말 {words}")
     return await s3_docs.regather(ref, sid, words, state=state, chain=chain,
-                                  net=net, cache=cache)
+                                  net=net, cache=cache, start=len(mine))

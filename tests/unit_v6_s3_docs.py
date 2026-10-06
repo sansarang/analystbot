@@ -140,11 +140,21 @@ def test_문지기가_하나다():
 # ══════════════════════════════════════════════════════════════════
 
 def _run_one(chain, net, *, ref=None, cache=None, sub=None):
+    """🔴 찾기(`_candidates`) → 받기(`_fetch`) 두 단을 **차례로** 돌린다.
+
+    ⚠️ s3 는 2026-10-06 에 두 단으로 갈렸다 — 받기가 하위 순서대로 돌아야 같은 URL
+       배분이 **타이밍으로 갈리지 않는다**(재생 조건). 이 도움함수가 그 순서다.
+    """
     st = RunState(match_key="fotmob:1")
     sub = sub or _Sub(["absence_def"])
-    got = asyncio.run(S3._one(sub, ref or _ref(), state=st, chain=chain,
-                              net=net, cache=cache if cache is not None else {}))
-    return got, st, sub
+    box = cache if cache is not None else {}
+    said = ref or _ref()
+
+    async def _go():
+        kept = await S3._candidates(sub, said, state=st, chain=chain)
+        return await S3._fetch(sub, said, kept, state=st, net=net, cache=box)
+
+    return asyncio.run(_go()), st, sub
 
 
 def test_열기_실패는_다음_후보로_간다():

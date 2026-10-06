@@ -33,6 +33,16 @@ def _window_days() -> int:
     return int(verifylayer.DATE_WINDOW_DAYS)
 
 
+#: 🔴 그 실행의 **칸별 계수기**. ⚠️ 모듈 전역이지만 `run` 이 **끝에서 비운다** —
+#   병렬 하위 8개가 같은 실행 안에 있으므로 실행 사이에 섞이지 않는다.
+#   🔴 실행 상태는 `RunState` 가 든다(§2) — 이것은 그 칸을 **모으는 임시 자리**다.
+_TALLY: dict[str, int] = {}
+
+
+def _count(stage: str, n: int = 1) -> None:
+    _TALLY[stage] = _TALLY.get(stage, 0) + int(n)
+
+
 def _sub_cfg() -> dict:
     from app.core.llm import cfg
     return dict((cfg().get("budget") or {}).get("per_subtask") or {})
@@ -127,23 +137,48 @@ def gate_ok(said: str) -> tuple[bool, str]:
 
 async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
               net: Any, cache: dict[str, Doc] | None = None) -> list[Doc]:
-    """🔴 하위 과제 **8개를 병렬로** 돌려 `Doc` 목록을 만든다(§5 s3)."""
+    """🔴 하위 과제 여덟 — **찾기는 동시에, 자리 잡기는 차례로**(§5 s3 · §7 재생).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **왜 두 단으로 갈랐나** — 실측 2026-10-06(재생이 안 맞았다)
+    ══════════════════════════════════════════════════════════════════
+
+    ⚠️ 하위 8개가 **받기까지** 동시에 돌면, 같은 URL 을 먼저 집는 하위가 **그때그때
+       다르다**(망이 느릴 때와 카세트에서 즉시 읽을 때가 다르다). 실측: 라이브에서
+       `C-홈` 이 1건, 재생에서 3건을 받아 **추출 요청이 달라졌고** LLM 카세트가 전부
+       빗나갔다(변수 14개 → 0개).
+    🔴 그래서 **찾기(검색·거르기·재정렬)는 동시에**, **자리 잡기와 받기는 하위
+       순서대로 차례로** 한다 — 그러면 같은 입력에 같은 배분이 나온다(재생이 재생이
+       되는 조건이다).
+    ⚠️ 느려지는 것은 받기뿐이다(검색이 느린 쪽이고, 그쪽은 그대로 동시다).
+    """
     from app.research import subtasks as _st
     cache = cache if cache is not None else {}
     subs = _st.split(_RefShim(ref))
+    # ── ① 찾기 — **동시에**(순서가 결과를 바꾸지 않는다)
+    found = await asyncio.gather(
+        *[_candidates(sub, ref, state=state, chain=chain) for sub in subs],
+        return_exceptions=True)
+    # ── ② 자리 잡고 받기 — 🔴 **하위 순서대로**(배분이 결정적이어야 한다)
     claimed: set[str] = set(cache)
-    jobs = [_one(s, ref, state=state, chain=chain, net=net, cache=cache,
-                 claimed=claimed) for s in subs]
-    got = await asyncio.gather(*jobs, return_exceptions=True)
     out: list[Doc] = []
-    for sub, row in zip(subs, got, strict=False):
+    for sub, row in zip(subs, found, strict=False):
         name = str(getattr(sub, "name", "?"))
         if isinstance(row, BaseException):
             state.drop(f"s3/{name}", DropReason.NO_DOC, f"터졌다: {row!r}")
             state.book[_sid(sub)] = "not_tried"
             continue
-        out += row
-        state.book[_sid(sub)] = "found" if row else "empty"
+        got = await _fetch(sub, ref, row, state=state, net=net, cache=cache,
+                           claimed=claimed)
+        out += got
+        state.book[_sid(sub)] = "found" if got else "empty"
+    # 🔴 **센 칸을 적는다** — 실측 2026-10-06: `queries`·`hits`·`kept_date` 가
+    #    `null` 로 남아 깔때기가 *"안 쟀다"* 라고 말했다(#3 은 그것을 허용하지만,
+    #    **잴 수 있는데 안 잰 것**은 게으름이다). 수는 `_tally` 가 모은다.
+    for stage, n in sorted(_TALLY.items()):
+        if n:
+            state.set(stage, n)
+    _TALLY.clear()
     # 🔴 같은 URL 은 **한 번만** — 캐시가 그것을 보장한다(§5 s3-4)
     state.set("docs", len(out))
     return out
@@ -174,23 +209,18 @@ class _RefShim:
         self.langs = tuple(ref.langs)
 
 
-async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
-               net: Any, cache: dict[str, Doc],
-               claimed: set[str] | None = None,
-               queries: list[tuple[str, str]] | None = None,
-               tag: str = "") -> list[Doc]:
-    """🔴 하위 하나 — 검색 → 거르기 → 재정렬 → 상위 N건 fetch → `Doc`.
+async def _candidates(sub: Any, ref: MatchRef, *, state: RunState,
+                      chain: Any,
+                      queries: list[tuple[str, str]] | None = None,
+                      tag: str = "") -> list[tuple[Any, str]]:
+    """🔴 ①~③ **찾기만** — 검색 → 도메인 등급 → 신원 → 날짜 힌트 → 재정렬.
 
-    🔴 `queries` 를 주면 **그 질의로** 돈다(좁히기 2차 · §5 s4). ⚠️ 거르기·재정렬·
-       받기는 **같은 코드**다 — 2차용 사본을 만들지 않는다(#1).
+    ⚠️ 여기서는 **아무것도 받지 않는다**(fetch 0회) — 받기는 `_fetch` 가 차례로
+       한다(위 `run` 의 까닭). 🔴 `queries` 를 주면 그 질의로 돈다(좁히기 2차).
     """
-    from app import datehint, domains, readtext
+    from app import datehint, domains
     from app.research import lead, rerank
-    sid, name = _sid(sub), (tag or str(getattr(sub, "name", "?")))
-    # 🔴 **자리를 잡은 URL** — 캐시와 따로 든다(캐시는 `Doc` 을, 이쪽은 **의도**를)
-    claimed = claimed if claimed is not None else set(cache)
-    cfg = _sub_cfg()
-    top = int(cfg.get("fetch_top") or 3)
+    name = (tag or str(getattr(sub, "name", "?")))
     hits: list[Any] = []
     for q, lang in (queries if queries is not None else queries_for(sub, ref)):
         if not sub.budget.may_search():
@@ -201,6 +231,7 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
             state.note(f"s3/{name} {why}")
             continue
         sub.budget.search_used += 1
+        _count("queries")
         try:
             async with lead.gate("searx"):
                 got = await chain.query(q, lang=lang)
@@ -208,6 +239,7 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
             state.note(f"s3/{name} 검색 실패 {q!r}: {exc}")
             continue
         state.note(f"s3/{name} 질의 {q!r}({lang}) → {len(got or [])}건")
+        _count("hits", len(got or []))
         hits += list(got or [])
     # ── ③ 거르기: 도메인 등급 → 날짜 힌트
     who = names_of(ref)
@@ -235,6 +267,7 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
         if old:
             state.drop(f"s3/{name}/{url[:40]}", DropReason.STALE, said_old[:80])
             continue
+        _count("kept_date")
         kept.append((h, str(tier)))
     # ── ③ 재정렬 1단
     if kept:
@@ -248,7 +281,24 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
         kept.sort(key=lambda row: rank.get(
             f"{getattr(row[0], 'title', '')} {getattr(row[0], 'snippet', '')}",
             999))
-    # ── ③ 상위 N건 fetch. 🔴 **실패는 다음 후보로 대체한다**(실측 2026-10-06)
+    return kept
+
+
+async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
+                 state: RunState, net: Any, cache: dict[str, Doc],
+                 claimed: set[str] | None = None, tag: str = "",
+                 start: int = 0) -> list[Doc]:
+    """🔴 ③ **자리 잡고 상위 N건 받기.** 실패는 **다음 후보로 대체한다**.
+
+    ⚠️ 이 함수는 `run` 이 **하위 순서대로** 부른다 — 그래야 같은 URL 을 누가
+       가져가는지가 **타이밍으로 갈리지 않는다**(재생 조건).
+    """
+    from app import readtext
+    from app.research import lead
+    sid, name = _sid(sub), (tag or str(getattr(sub, "name", "?")))
+    # 🔴 **자리를 잡은 URL** — 캐시와 따로 든다(캐시는 `Doc` 을, 이쪽은 **의도**를)
+    claimed = claimed if claimed is not None else set(cache)
+    top = int(_sub_cfg().get("fetch_top") or 3)
     floor = ref.kickoff_utc - timedelta(days=_window_days())
     out: list[Doc] = []
     for h, tier in kept:
@@ -304,7 +354,9 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
         src = "htmldate" if when else "none"
         # 🔴 **문서 id 는 경기 안에서 하나다** — 하위마다 `D1` 로 겹치면
         #    `doc_ids` 로 본문을 되찾을 수 없다(불변식 2가 그것을 센다).
-        doc = adapt.doc_of(doc_id=f"{sid}-D{len(out) + 1}", url=url,
+        #    ⚠️ 2차(좁히기)도 **이어서 번호를 붙인다** — `start` 가 없으면 2차가
+        #       `D1` 부터 다시 매겨 1차와 **같은 id 두 개**가 생긴다.
+        doc = adapt.doc_of(doc_id=f"{sid}-D{start + len(out) + 1}", url=url,
                            body=str(body),
                            subtask=sid,
                            title=str(getattr(h, "title", "") or ""),
@@ -323,7 +375,8 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
 
 async def regather(ref: MatchRef, sid: str, words: list[str], *,
                    state: RunState, chain: Any, net: Any,
-                   cache: dict[str, Doc] | None = None) -> list[Doc]:
+                   cache: dict[str, Doc] | None = None,
+                   start: int = 0) -> list[Doc]:
     """🔴🔴 **좁힌 질의로 ①~③ 을 한 번 더**(§5 s4). ⚠️ 한 번뿐이다.
 
     🔴 낱말은 **s4 가 1차 제목에서 뽑아** 넘긴다(지어내지 않는다 · #4).
@@ -340,8 +393,10 @@ async def regather(ref: MatchRef, sid: str, words: list[str], *,
             return []
         qs = [(_st.narrow_query(q, words), lang)
               for q, lang in queries_for(sub, ref)]
-        return await _one(sub, ref, state=state, chain=chain, net=net,
-                          cache=cache, claimed=set(cache), queries=qs,
-                          tag=f"{sub.name}(2차)")
+        tag = f"{sub.name}(2차)"
+        kept = await _candidates(sub, ref, state=state, chain=chain,
+                                 queries=qs, tag=tag)
+        return await _fetch(sub, ref, kept, state=state, net=net, cache=cache,
+                            claimed=set(cache), tag=tag, start=start)
     state.note(f"s3 2차 — `{sid}` 하위를 못 찾았다")
     return []
