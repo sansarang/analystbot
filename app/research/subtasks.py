@@ -306,3 +306,292 @@ def prompt_tail(task: Subtask) -> str:
         f"🔴 검색은 **{task.budget.search_cap}번**뿐이다: 씨앗 1 + 좁히기 1 + "
         f"(현지어 또는 각도 전환) 1. 네 번째는 없다.\n"
         f"⚠️ 네가 맡은 쪽은 **{task.team}**(상대 {task.opp})이다.\n")
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **하위 과제 하나 — 코드가 찾고, LLM 은 한 번 읽는다**
+# ══════════════════════════════════════════════════════════════════
+#
+# 지시서 2026-10-06 §1:
+#
+# > 에이전트 루프(LLM 이 검색어를 정하고 → 검색 → 다시 생각 → fetch → 다시 생각
+# > → done)는 턴마다 추론 토큰을 쓰고 **40~88초**가 걸린다. 하위 8개 × 7턴이
+# > 26분과 `budget_cut` 의 원인이다. 찾는 일은 **코드가**, 읽고 뽑는 일만
+# > **LLM 이 한 번에** 하게 바꾼다.
+#
+# 여섯 단계:
+#   1. 질의 생성(코드) — 씨앗 2개(영어 1 + 팀 현지어 1). 한국 리그는 한국어 2.
+#   2. 검색(코드) — 질의마다 SearXNG(week) 1회. 5건 미만이면 Bing 1회 추가.
+#   3. 거르기·재정렬(코드) — 도메인 등급 → 날짜 힌트 → 재정렬 → 상위 3건 fetch.
+#   4. 본문 문단(코드) — BM25 20 → 재정렬 6 → 최대 18문단 · `[D1-P3]` 머리표.
+#   5. 추출(LLM 1회) — 도구 없음 · max_tokens 4,000 · reasoning_effort=low.
+#   6. 좁히기 2차(조건부 1회) — 0개이고 예산이 남으면 고유명사로 한 번 더.
+#
+# 🔴 **에이전트 루프 코드는 삭제하지 않는다** — 오픈월드 ⑥단(경기 찾기)이 쓴다.
+#    ⚠️ 하위 과제 경로에서는 **부르지 않는다**(M128).
+
+
+def extract_prompt(task: Any, kinds: list) -> str:
+    """🔴 추출 한 번에 보내는 **규칙 글**(지시서 §1-5).
+
+    > "아래 문단에서 담당 유형(`{유형 목록}`)의 변수만 JSON 으로 뽑아라.
+    > `quote` 는 문단의 글자 그대로, `source` 는 머리표로"
+    """
+    return (
+        "너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\n"
+        "\n"
+        f"🔴 담당 유형: {', '.join(str(k) for k in kinds)} — **그 유형만** 뽑는다.\n"
+        "🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다). "
+        "지어낸 인용은 검증층이 잡아 버린다.\n"
+        "🔴 `source` 는 문단 머리표(`[D1-P3]`)를 그대로 적는다 — 그것으로 "
+        "URL·발행일을 되찾는다.\n"
+        "⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 "
+        "둔다 — 빈 것이 지어낸 것보다 낫다.\n"
+        "🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\n")
+
+
+def _seeds(task: Any, game: dict) -> list[tuple[str, str]]:
+    """🔴 ① 씨앗 질의 **2개** — `(질의, 언어)`(지시서 §1-1).
+
+    > 씨앗 질의 2개(영어 1 + 팀 현지어 1). KBO·K리그·한국 대표팀은 한국어 2개.
+    """
+    from app import queries
+    team = str(game.get("home") or "")
+    opp = str(game.get("away") or "")
+    if str(task.team_key or "") == str(game.get("away_id") or ""):
+        team, opp = opp, team
+    comp = queries.competition_short(game.get("league"))
+    words = [str(w) for w in (getattr(task, "kinds", None) or ())][:1]
+    word = words[0] if words else ""
+    base = f"{team} {comp}".strip()
+    out: list[tuple[str, str]] = [(f"{base} {word}".strip(), "en")]
+    lang = team_lang(team) or first_lang(league=str(game.get("league") or ""),
+                                        langs=tuple(game.get("langs") or ()))
+    if lang and lang != "en":
+        out.append((f"{team} {word}".strip(), lang))
+    else:
+        out.append((f"{team} {opp} {word}".strip(), "en"))
+    return [(queries.slot_value(q), lg) for q, lg in out if str(q).strip()]
+
+
+async def _find(task: Any, game: dict, *, chain, seen, net, seeds=None
+                ) -> tuple[list[dict], list[str]]:
+    """🔴 ②③④ — 검색·거르기·본문 문단. `(문단 묶음, 사유들)`.
+
+    ⚠️ 여기에 **LLM 이 없다** — 그것이 §1 의 요지다.
+    """
+    from app import cells, datehint, domains, readtext
+    from app.research import lead, rerank
+    cfg = dict(_sub_cfg())
+    why: list[str] = []
+    hits: list = []
+    for q, lang in (seeds if seeds is not None else _seeds(task, game)):
+        if not task.budget.may_search():
+            why.append(f"검색 상한({task.budget.search_cap})에 닿았다")
+            break
+        task.budget.search_used += 1
+        try:
+            async with lead.gate("searx"):
+                got = await chain.query(q, lang=lang)
+        except Exception as exc:                            # noqa: BLE001
+            why.append(f"검색 실패 {q!r}: {exc}")
+            continue
+        why.append(f"질의 {q!r}({lang}) → {len(got)}건")
+        hits += list(got or [])
+    # ── ③ 거르기: 도메인 등급 → 날짜 힌트
+    kept: list = []
+    for h in hits:
+        url = str(getattr(h, "url", "") or "")
+        if not url or any(url == str(getattr(k, "url", "")) for k in kept):
+            continue
+        ok_d, _tier, said = domains.verdict(url, sport=str(game.get("sport") or ""))
+        if not ok_d:
+            why.append(f"도메인 거부 {url[:50]} — {said[:40]}")
+            continue
+        old, said_old = datehint.too_old(url, str(getattr(h, "snippet", "") or ""))
+        if old:
+            why.append(f"②층 — 받지 않는다: {said_old[:40]}")
+            continue
+        kept.append(h)
+    # ── ③ 재정렬 1단 → 상위 N 건
+    top = int(cfg.get("fetch_top") or 3)
+    if kept:
+        pairs = [f"{getattr(h, 'title', '')} {getattr(h, 'snippet', '')}"
+                 for h in kept]
+        order, said_r = rerank.paragraphs(
+            " ".join(str(k) for k in (getattr(task, "kinds", None) or ())), pairs)
+        why.append(f"재정렬 — {said_r}")
+        rank = {t: i for i, t in enumerate(order)}
+        kept.sort(key=lambda h: rank.get(
+            f"{getattr(h, 'title', '')} {getattr(h, 'snippet', '')}", 999))
+    docs: list[dict] = []
+    for i, h in enumerate(kept[:top], 1):
+        if not task.budget.may_fetch():
+            why.append(f"열기 상한({task.budget.fetch_cap})에 닿았다")
+            break
+        task.budget.fetch_used += 1
+        url = str(getattr(h, "url", "") or "")
+        body = (seen.bodies.get(url) if seen is not None else "") or ""
+        when = cells.doc_date(seen, url) if seen is not None else None
+        if not body.strip():
+            try:
+                async with lead.gate("fetch"):
+                    got = await net.get(url)
+            except Exception as exc:                        # noqa: BLE001
+                why.append(f"열기 실패 {url[:50]}: {exc}")
+                continue
+            if not getattr(got, "ok", False):
+                why.append(f"열기 실패 {url[:50]}: ok=False")
+                continue
+            body, when = readtext.extract(getattr(got, "text", "") or "",
+                                          url=url)
+            # 🔴 저장은 **한 함수**다(§3) — 본문과 날짜를 같이 넣는다
+            cells.store_doc(seen, url, body, published_at=when,
+                            date_source="본문(하위 fetch · htmldate)")
+        if not str(body).strip():
+            why.append(f"본문을 못 얻었다 {url[:50]}")
+            continue
+        docs.append({"tag": f"D{i}", "url": url, "body": str(body),
+                     "published_at": when,
+                     "publisher": str(getattr(h, "publisher", "") or "")})
+    return docs, why
+
+
+def paragraph_block(docs: list, kinds: list, *, cap: int = 0) -> tuple[str, dict]:
+    """🔴 ④ 문단 묶음 + **머리표 → 출처** 표(지시서 §1-4).
+
+    > 문서마다 BM25 상위 20 → 재정렬 상위 6 → 하위당 최대 18문단. 문단마다
+    > `[D1-P3] (도메인, 발행일)` 머리표를 붙인다.
+    """
+    from app import readtext
+    from app.research import rerank
+    cap = cap or int(_sub_cfg().get("paras_max") or 18)
+    want = " ".join(str(k) for k in (kinds or ()))
+    lines: list[str] = []
+    where: dict[str, dict] = {}
+    for d in (docs or []):
+        paras = readtext.paragraphs(str(d.get("body") or ""))
+        got, _said = rerank.paragraphs(want, paras)
+        for j, para in enumerate(got[:6], 1):
+            if len(lines) >= cap:
+                break
+            tag = f"[{d['tag']}-P{j}]"
+            host = str(d.get("publisher") or "").strip() or _host(d.get("url"))
+            when = d.get("published_at")
+            lines.append(f"{tag} ({host}, {when or '발행일 없음'}) {para}")
+            where[tag] = {"url": d.get("url"), "published_at": when}
+    return "\n".join(lines), where
+
+
+def _host(url: object) -> str:
+    said = str(url or "")
+    return said.split("/")[2] if said.count("/") >= 2 else said
+
+
+def _sub_cfg() -> dict:
+    from app import rules
+    return dict((rules.llm_budget().get("per_subtask") or {}))
+
+
+async def run_subtask(task: Any, *, seen, chain, net, game: dict,
+                      match_key: str = "", budget: Any = None,
+                      funnel: Any = None) -> tuple[list, str]:
+    """🔴🔴 **하위 과제 하나** — 지시서 2026-10-06 §1. `(변수들, 사유)`.
+
+    🔴 **LLM 은 ⑤ 추출 한 번**(조건부 ⑥ 에서 한 번 더) — 루프가 없다.
+    ⚠️ `agentloop.run` 을 **부르지 않는다**(M128) — 그 코드는 오픈월드 ⑥단
+       (경기 찾기)에만 남는다.
+    """
+    from app import agentloop, solar
+    from app.reasons import Reason
+    cfg = dict(_sub_cfg())
+    kinds = [str(k) for k in (getattr(task, "kinds", None) or ())]
+    notes: list[str] = []
+
+    docs, why = await _find(task, game, chain=chain, seen=seen, net=net)
+    notes += why
+    if not docs:
+        return [], f"{task.name}: 받은 문서 0건 · " + " | ".join(notes[-4:])
+
+    block, where = paragraph_block(docs, kinds)
+    if not block.strip():
+        return [], f"{task.name}: 문단 0개(본문은 받았다) · " + " | ".join(notes[-3:])
+    notes.append(f"문단 {len(block.splitlines())}개 · 문서 {len(docs)}건")
+
+    # ── ⑤ 추출 — **LLM 한 번**. 🔴 도구 없음 · 스키마 강제.
+    got, said = await _extract(task, kinds, block, where, game=game,
+                              match_key=match_key, budget=budget, seen=seen)
+    notes.append(said)
+
+    # ── ⑥ 좁히기 2차(조건부 · 최대 1회) — 🔴 LLM 이 질의를 만들지 않는다
+    if not got and task.budget.may_search():
+        words = narrow_words([{"title": d.get("publisher"),
+                               "snippet": d.get("body", "")[:200]}
+                              for d in docs])
+        if words:
+            team = str(game.get("home") or "")
+            if str(task.team_key or "") == str(game.get("away_id") or ""):
+                team = str(game.get("away") or "")
+            seeds = [(narrow_query(team, words), "en")]
+            notes.append(f"⑥ 좁히기 2차 — 고유명사 {words[:2]} 로 한 번 더")
+            more, why2 = await _find(task, game, chain=chain, seen=seen,
+                                     net=net, seeds=seeds)
+            notes += why2
+            if more:
+                blk2, where2 = paragraph_block(more, kinds)
+                if blk2.strip():
+                    got, said2 = await _extract(
+                        task, kinds, blk2, where2, game=game,
+                        match_key=match_key, budget=budget, seen=seen)
+                    notes.append(f"2차 {said2}")
+    if funnel is not None and not got:
+        funnel.drop(Reason.AGENT_ZERO, "agent_vars")
+    return got, f"{task.name}: " + " | ".join(notes[-6:])
+
+
+async def _extract(task: Any, kinds: list, block: str, where: dict, *,
+                   game: dict, match_key: str, budget: Any, seen
+                   ) -> tuple[list, str]:
+    """🔴 ⑤ 추출 **한 번** — 지시서 §1-5. `(변수들, 사유)`.
+
+    > 출력은 `done` 스키마의 `variables` 배열과 같은 꼴(M47). **도구 없음.**
+    > `max_tokens` 4,000 · `reasoning_effort=low` · 타임아웃 120초 · 재시도 1회.
+    """
+    import asyncio
+
+    from app import agentloop, cells, solar
+    cfg = dict(_sub_cfg())
+    msgs = [{"role": "system", "content": extract_prompt(task, kinds)},
+            {"role": "user", "content": block}]
+    try:
+        got = await asyncio.to_thread(
+            solar.chat, msgs, schema=agentloop.output_schema(),
+            budget=budget, match=match_key,
+            max_tokens=int(cfg.get("extract_max_tokens") or 4_000),
+            timeout=int(cfg.get("extract_timeout_sec") or 120),
+            retries=int(cfg.get("extract_retries") or 1))
+    except solar.SolarUnavailable as exc:
+        return [], f"추출 실패 — {exc}"
+    text = str(((got.get("choices") or [{}])[0].get("message") or {})
+               .get("content") or "")
+    box, said = agentloop._json_in(text)
+    if box is None:
+        return [], f"추출 JSON 을 못 읽었다 — {said}"
+    # 🔴 **머리표로 URL·발행일을 되찾는다**(지시서 §1-4) — 모델이 URL 을 적지
+    #    않으므로 `source` 가 그 길이다. ⚠️ 모르는 머리표는 **버린다**.
+    rows, dropped = [], []
+    for raw in (box.get("variables") or []):
+        row = dict(raw or {})
+        tag = str(row.get("source") or row.get("url") or "").strip()
+        hit = where.get(tag) or where.get(f"[{tag}]")
+        if hit is None:
+            dropped.append(tag or "(빈 머리표)")
+            continue
+        row["url"] = hit.get("url")
+        rows.append(row)
+    dates = {str(v.get("url")): v.get("published_at")
+             for v in where.values() if v.get("url")}
+    out, why = agentloop._vars_from({"variables": rows}, dates=dates)
+    said_all = (f"추출 — 후보 {len(out)}개"
+                + (f" · 🔴 모르는 머리표 {dropped[:3]} 버렸다" if dropped else ""))
+    return out, f"{said_all} · {why}" if why else said_all

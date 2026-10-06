@@ -507,6 +507,10 @@ class SolarBudgetCut(SolarUnavailable):
 def chat(messages: list[dict], *, tools: list | None = None,
          schema: dict | None = None, budget: MatchBudget | None = None,
          match: str = "", now: datetime | None = None,
+         # 🔴🔴 **추출 호출이 자기 수를 쓴다** — 지시서 2026-10-06 §1-5
+         #    (`max_tokens` 4,000 · 타임아웃 120초 · 재시도 1회).
+         #    ⚠️ 주지 않으면 종전대로 `config/llm.yaml` 이 정한다.
+         max_tokens: int = 0, timeout: int = 0, retries: int = -1,
          _net=None) -> dict:
     """🔴 한 번 호출한다. **가드를 먼저 묻고**, 쓴 뒤 원장에 적는다.
 
@@ -531,8 +535,9 @@ def chat(messages: list[dict], *, tools: list | None = None,
     m = dict(c.get("model") or {})
     body = {"model": str(m.get("name") or "solar-pro4"),
             "messages": list(messages),
-            "max_tokens": int((budget_cfg().get("per_match") or {})
-                              .get("output_tokens") or 20_000)}
+            "max_tokens": int(max_tokens or (
+                (budget_cfg().get("per_match") or {})
+                .get("output_tokens") or 20_000))}
     if m.get("reasoning_effort"):
         body["reasoning_effort"] = str(m["reasoning_effort"])
     if tools:
@@ -542,8 +547,9 @@ def chat(messages: list[dict], *, tools: list | None = None,
                                    "json_schema": schema}
 
     got = (_net or _post)(str(m.get("base_url")), s.upstage_api_key, body,
-                          int(m.get("timeout_sec") or 120),
-                          int(m.get("retries") or 2))
+                          int(timeout or m.get("timeout_sec") or 120),
+                          int(retries if retries >= 0
+                              else (m.get("retries") or 2)))
     usage = dict(got.get("usage") or {})
     usd = budget.took(usage) if budget is not None else cost_usd(usage)
     # 🔴🔴 **M49** — `in`·`cache`·`out`·`usd` 를 **그 이름으로** 적는다.

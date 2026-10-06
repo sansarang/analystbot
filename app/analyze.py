@@ -197,23 +197,32 @@ async def _run_agent(game: dict, side: str, fun, seen,
         #  🔴 `share=0.5` 는 **쪽이 둘**이라는 사실에서 온다 — 손으로 고른
         #     계수가 아니다(홈·원정 둘이 각자 반을 쓴다).
         from app import solar as _solar
-        got, why = await _aio.to_thread(
-            agentloop.run, inp, ctx, funnel=fun, seen=seen,
-            # 🔴 쪽 상한 25k + **경기 합계 40k**(지시서 §1-4 · 2026-10-05).
-            #    ⚠️ 종전 `share=0.5`(20k 고정)는 상대가 쉬어도 그 몫을 못 쓰게
-            #       했다 — 25k 는 그 여유이고, 합계는 `pot` 이 막는다.
-            # 🔴 하위가 있으면 **하위 상한**(4,000)이 걸린다(M59) — 합계는
-            #    `pot` 이 그대로 막는다(§2: "합계는 기존 상한 그대로").
-            budget=_solar.MatchBudget(
-                side=True, pot=pot,
-                # 🔴 **하위 객체를 든다**(M59 집행) — 상한을 거기서 읽고 쓴 것을
-                #    거기에 적는다. ⚠️ 합계(`pot`)는 그대로 벽이다.
-                subtask=subtask,
-                subtask_out=(subtask.budget.out_cap if subtask is not None
-                             else 0)),
-            # 🔴 결정 ③ — 세포가 안 찾으니 **에이전트가 찾고 연다**
-            #    ⚠️ `fetcher=` 다 — `net=` 은 `solar.chat` 의 시험용 대역이다
-            chain=chain, fetcher=net)
+        _bud = _solar.MatchBudget(
+            side=True, pot=pot, subtask=subtask,
+            subtask_out=(subtask.budget.out_cap if subtask is not None else 0))
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **하위 과제는 루프를 돌지 않는다** — 지시서 2026-10-06 §1 (M128)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 찾는 일은 **코드가**, 읽고 뽑는 일만 **LLM 이 한 번에** 하게 바꾼다.
+        #  > 에이전트 루프 코드는 삭제하지 않고 **오픈월드 ⑥단**(경기 찾기)에서만
+        #  > 쓴다 — 하위 과제 경로에서는 호출하지 않는다.
+        #
+        #  ⚠️ 실측 2026-10-06: 하위 8개 × 7턴이 **26.8분**과 `budget_cut 11` 의
+        #     원인이었다(턴마다 40~88초).
+        if subtask is not None:
+            from app.research import subtasks as _subs
+            got, why = await _subs.run_subtask(
+                subtask, seen=seen, chain=chain, net=net, game=game,
+                match_key=str(game.get("ext_id") or ""), budget=_bud,
+                funnel=fun)
+        else:
+            got, why = await _aio.to_thread(
+                agentloop.run, inp, ctx, funnel=fun, seen=seen,
+                budget=_bud,
+                # 🔴 결정 ③ — 세포가 안 찾으니 **에이전트가 찾고 연다**
+                #    ⚠️ `fetcher=` 다 — `net=` 은 `solar.chat` 의 시험용 대역
+                chain=chain, fetcher=net)
     except Exception as exc:                            # noqa: BLE001
         logger.warning("[analyze] §3 에이전트 실패: %r", exc)
         # 🔴 **깔때기에도 남긴다**(⑭ · 실측 2026-10-05) — 세포 장부에만 적히면

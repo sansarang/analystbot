@@ -167,10 +167,18 @@ def test_M64_남은_예산_안에서만_돈다():
     from app.research import lead
     assert hasattr(lead, "second_budget"), (
         "🔴 `lead.second_budget(쓴 것들)` 이 없다 — 2차가 상한을 넘을 수 있다")
-    left = lead.second_budget([{"searched": 3, "fetched": 2, "out": 4000}] * 8)
-    assert left["search"] == 0 and left["fetch"] == 0, left
+    # 🔴 **하위당 쓴 것**을 표에서 읽는다(지시서 2026-10-06 §1-3: fetch 3)
+    from app import rules as _R
+    sub_cfg = _R.llm_budget()["per_subtask"]
+    used = [{"searched": int(sub_cfg["search"]),
+             "fetched": int(sub_cfg["fetch"]),
+             "out": int(sub_cfg["output_tokens"])}] * 8
+    left = lead.second_budget(used)
+    assert left["search"] == 0 and left["fetch"] == 0, (left, sub_cfg)
+    # 🔴 **덜 쓴 경우 — 남은 것이 표에서 자란다**(수를 박지 않는다)
     some = lead.second_budget([{"searched": 1, "fetched": 0, "out": 500}] * 8)
-    assert some["search"] == 16 and some["fetch"] == 16, some
+    assert some["search"] == (int(sub_cfg["search"]) - 1) * 8, (some, sub_cfg)
+    assert some["fetch"] == int(sub_cfg["fetch"]) * 8, (some, sub_cfg)
     assert some["out"] > 0
 
 

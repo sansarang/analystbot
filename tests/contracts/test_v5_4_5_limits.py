@@ -38,11 +38,22 @@ def test_v5_4_5_크기_상한이_선언돼_있다(kind, want):
         assert domains.max_chars(tier) == want
 
 
-def test_v5_4_5_경기당_fetch_상한이_열여섯이다():
-    """🔴 *"경기당 fetch 16건"* — §2 예산표가 그 수를 든다."""
-    from app import rules
-    per = rules.llm_budget().get("per_match") or {}
-    assert int((per.get("tool_calls") or {}).get("fetch")) == 16, per
+def test_v5_4_5_경기당_fetch_상한이_스물넷이다():
+    """🔴 수는 `config/llm.yaml` 이 든다 — 계약은 **표와 코드가 같은가**만 센다.
+
+    ⚠️ 종전 이름은 *"열여섯이다"* 였고 `16` 을 박아 뒀다. 🔴 지시서 2026-10-06
+       §1-3 이 **24** 로 올렸다(하위당 상위 3건 × 하위 8). 수를 계약에 박으면
+       표가 바뀔 때마다 빨개진다(#1 사본 금지).
+    """
+    from app import rules, solar
+    want = int((rules.llm_budget()["per_match"]["tool_calls"] or {})["fetch"])
+    assert want == 24, want          # 🔴 지시서가 준 수다(§1-3)
+    b = solar.MatchBudget()
+    b.tool_calls["fetch"] = want
+    ok, why = b.can_tool("fetch")
+    assert ok is False and "fetch" in why, (ok, why)
+    b.tool_calls["fetch"] = want - 1
+    assert b.can_tool("fetch")[0] is True
 
 
 def test_v5_4_6_깊이_소스가_follow_max를_선언한다():

@@ -46,7 +46,8 @@ def test_v5_2_한도가_yaml에_선언돼_있다():
     assert pm.get("input_tokens") == 300_000, pm
     assert int(pm.get("output_tokens") or 0) > 20_000, pm
     assert (pm.get("tool_calls") or {}).get("search") == 24, pm
-    assert (pm.get("tool_calls") or {}).get("fetch") == 16, pm
+    # 🔴 지시서 2026-10-06 §1-3 이 16 → **24** 로 올렸다(하위 3건 × 8)
+    assert (pm.get("tool_calls") or {}).get("fetch") == 24, pm
     # ⚠️ 수를 박지 않는다 — 사용자가 2026-10-05 에 $3 → $5 로 올렸다.
     #    🔴 계약이 보는 것은 *"그 칸이 있고 월 상한보다 작다"* 다.
     assert float(b.get("per_day_usd") or 0) > 0, b
@@ -141,7 +142,10 @@ def test_v5_2_도구_호출_상한():
     assert not ok and "search" in why and why.startswith(solar.BUDGET_CUT), why
     # 🔴 fetch 는 **따로** 센다(한쪽이 남의 몫을 먹지 않는다)
     assert mb.can_tool("fetch")[0]
-    for _ in range(16):
+    # 🔴 수는 **표가 든다**(지시서 2026-10-06 §1-3 이 16 → 24 로 올렸다)
+    from app import rules as _R
+    n_fetch = int((_R.llm_budget()["per_match"]["tool_calls"])["fetch"])
+    for _ in range(n_fetch):
         mb.took_tool("fetch")
     assert not mb.can_tool("fetch")[0]
 

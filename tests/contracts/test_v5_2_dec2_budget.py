@@ -34,8 +34,9 @@ def test_dec2_경기당_예산이_올랐다():
     assert int(got["input_tokens"]) == 300_000, got
     tot = int(got["output_tokens"])
     assert tot > 20_000, f"🔴 결정 ② 전(20k)으로 되돌아갔다: {tot}"
-    # 🔴 **하위 8개 × 하위 상한 = 경기 합계** — 수가 서로 맞아야 한다
-    assert tot == 8 * int(sub["output_tokens"]), (tot, sub["output_tokens"])
+    # 🔴 **하위 8개 × 하위 상한 + 2차 예비 = 경기 합계**(지시서 §1 표)
+    assert tot == 8 * int(sub["output_tokens"]) \
+        + int(sub.get("second_output_tokens") or 0), (tot, sub)
 
 
 def test_dec2_돈_상한은_그대로다():

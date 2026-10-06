@@ -136,9 +136,16 @@ def test_M59_예산_수가_표와_맞는다():
     calls = tot["tool_calls"]
     assert sum(s.budget.search_cap for s in got) == int(calls["search"])
     assert sum(s.budget.fetch_cap for s in got) == int(calls["fetch"])
-    assert sum(s.budget.out_cap for s in got) == int(tot["output_tokens"]), (
-        "🔴 하위 합계가 경기 출력 상한과 **안 맞는다** — 하나를 올리면 다른 "
-        "하나도 올려야 한다(사용자 지시 2026-10-06 ③: 8,000 × 8 = 64,000)")
+    # 🔴🔴 **하위 합계 + 2차 예비 = 경기 상한** — 지시서 §1 표가 그 셋을 줬다.
+    #    ⚠️ 종전 이 줄은 *"하위 합계 == 경기 상한"* 이었다. 🔴 지시서
+    #       2026-10-06 §1 이 하위 4,000(×8 = 32,000)과 2차 예비 8,000 으로
+    #       되돌렸다 — 둘을 더해 40,000 이다.
+    want_sum = int(want["output_tokens"]) * len(got)
+    spare = int(want.get("second_output_tokens") or 0)
+    assert want_sum + spare == int(tot["output_tokens"]), (
+        f"🔴 하위 합계({want_sum}) + 2차 예비({spare}) 가 경기 상한"
+        f"({tot['output_tokens']}) 과 안 맞는다 — 지시서 §1 표를 본다")
+    assert sum(s.budget.out_cap for s in got) == want_sum
 
 
 def test_M59_예산_수를_코드에_안_박았다():
