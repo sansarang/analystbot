@@ -88,7 +88,25 @@ def test_M135_추출_요청에_칸이_실린다(monkeypatch):
     _run_one(monkeypatch, subtasks, patch_solar=False)
     body = sent.get("body") or {}
     assert int(body.get("max_tokens") or 0) == 4_000, body.get("max_tokens")
-    assert str(body.get("reasoning_effort") or "") == "low", body
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **추출은 추론을 끈다** — 실측 2026-10-06
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  지시서 §1-5 는 `reasoning_effort=low` 라고 적었다. ⚠️ 그 값으로 돌려
+    #  보니 **구조적으로 0건**이었다(같은 입력 · 문단 4,510자):
+    #
+    #      low      finish=length  out=4000  reasoning=3999  content=🔴 **0**
+    #      minimal  finish=stop    out=1068  reasoning=0     content=3519
+    #
+    #  🔴 상한 4,000 을 **전부 추론에 쓰고** JSON 을 한 글자도 안 냈다 —
+    #     하위 8개 중 7개가 `추출 JSON 을 못 읽었다 — 빈 글이다` 였다.
+    #  ⚠️ 상한을 올리는 것은 §8 금지 목록 첫 줄이다. 고칠 곳은 **추론**이다.
+    from app import rules as _R
+    want = str((_R.llm_budget()["per_subtask"] or {})
+               .get("extract_reasoning_effort") or "")
+    assert want and want != "low", (
+        f"🔴 추출 추론 강도가 `{want}` 다 — `low` 는 상한을 전부 추론에 쓴다")
+    assert str(body.get("reasoning_effort") or "") == want, body
     # 🔴 **도구 없음** — 루프를 돌지 않는다
     assert "tools" not in body, body.keys()
     assert sent.get("timeout") == 120, sent.get("timeout")

@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Honduras Dialed Federación Honduras",
+ "recorded_at": "2026-10-06T01:34:53.974979+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Honduras' Manuel Zelaya says U.S.-backed deal to reinstate him has failed",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.latimes.com/archives/la-xpm-2009-nov-07-fg-honduras7-story.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latimes.com",
+    "/archives/la-xpm-2009-nov-07-fg-honduras7-story.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Dialed In’s Hiding in Honduras wins Mathis Mile (G2) in graded stakes debut | Darby Dan Farm",
+   "content": "Robert La Penta's Hiding in Honduras and jockey Antonio Fresu, outside, collar Tempus Volat and Mirco Demuro, inside, just in time to win the Grade II $100,000 Mathis Mile S",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.darbydan.com/dialed-ins-hiding-in-honduras-wins-mathis-mile-g2-in-graded-stakes-debut/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.darbydan.com",
+    "/dialed-ins-hiding-in-honduras-wins-mathis-mile-g2-in-graded-stakes-debut/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Decaf Single Origin Espresso: Honduras COMSA",
+   "content": "A decaf single origin espresso from Honduras. Washed espresso, Mountain Water processed presenting notes of cacao nib, citrus, strawberry and sencha tea.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://dose.coffee/products/decaf-single-origin-espresso-honduras-comsa",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "dose.coffee",
+    "/products/decaf-single-origin-espresso-honduras-comsa",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Single Origin Espresso: Honduras Marcala Black Honey",
+   "content": "A single origin espresso from Honduras. A jack of all trades for espresso shots and milk drinks, presenting notes of milk chocolate, lime, honey and black tea.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://dose.coffee/products/single-origin-espresso-honduras-marcala-black-honey",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "dose.coffee",
+    "/products/single-origin-espresso-honduras-marcala-black-honey",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras: COSMA Marcala",
+   "content": "08 We're thrilled to share our first offering from Honduras, a Central American country that has seen its coffee quality and popularity soar, in recent years.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://dose.coffee/products/honduras-cosma-marcala",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "dose.coffee",
+    "/products/honduras-cosma-marcala",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras Shoots Down DC-3 Tied to Drugs; American, 2 Others Die",
+   "content": "A U.S.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.latimes.com/archives/la-xpm-1987-03-11-mn-10087-story.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latimes.com",
+    "/archives/la-xpm-1987-03-11-mn-10087-story.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Fruity Decaf: Honduras COSMA",
+   "content": "27 This buzzworthy natural decaf hails from Honduras. This light roast mountain water process (MWP) fits our classic profile, presenting notes of black cherry …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://dose.coffee/products/buzzworthy-decaf-honduras-cosma",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "dose.coffee",
+    "/products/buzzworthy-decaf-honduras-cosma",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hiding in Honduras",
+   "content": "Dark Bay or Brown Gelding / February 24th, 2022 in KY / by Dialed In out of La Moneda $83,895 2026 earnings … speed figure … 2026 wins … 2026 Stats Career Stats",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.test.americasbestracing.net/horses/hiding-honduras",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.test.americasbestracing.net",
+    "/horses/hiding-honduras",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "More Central Americans are giving up on the U.S. and looking instead to a Mexican dream",
+   "content": "Growing numbers of Central American immigrants have decided to stay in Mexico, because it's too hard to reach the U.S.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.latimes.com/world/mexico-americas/la-fg-mexico-central-america-immigrants-20161114-story.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latimes.com",
+    "/world/mexico-americas/la-fg-mexico-central-america-immigrants-20161114-story.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Dialed In | Darby Dan Farm",
+   "content": "By Alan Porter Winner of a vintage renewal of the Florida Derby (G1). Dialed In is a son of Mineshaft–the only Horse of the Year by A.P. Indy …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.darbydan.com/horse/dialed-in/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.darbydan.com",
+    "/horse/dialed-in/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hiding in Honduras",
+   "content": "Hiding in Honduras romped in his career debut sprinting at Presque Isle Downs on Oct. 2, 2025, scoring by 7 ¾-lengths on an all-weather track.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.americasbestracing.net/horses/hiding-honduras",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.americasbestracing.net",
+    "/horses/hiding-honduras",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "HONDURAS COUNTRY CODE +504",
+   "content": "The Honduras country code 504 will allow you to call Honduras from another country. Honduras telephone code 504 is dialed after the IDD.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.nyongesasande.com/honduras-country-code-504/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nyongesasande.com",
+    "/honduras-country-code-504/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hiding In Honduras - Race Record & Horse Form | Sporting Life",
+   "content": "Get form, results, entries and race replays for Hiding In Honduras FREE on Sporting Life. Age: 4; Sex: g; Colour: … Dialed In - La Moneda (Freud) …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.sportinglife.com/racing/profiles/horse/1197874",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportinglife.com",
+    "/racing/profiles/horse/1197874",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "VERONA VICTORIOUS IN ENDURO2 AT GP OF SWEDEN | GASGAS Honduras",
+   "content": "With his EC 450F dialed in and confidence high, Andrea now sits just two points off the Enduro2 lead – and with three rounds to go, it’s game on!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.gasgas.com/es-hn/news/verona-victorious-in-enduro2-at-gp-of-sweden.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.gasgas.com",
+    "/es-hn/news/verona-victorious-in-enduro2-at-gp-of-sweden.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Everything You Need to Know About the +91 Country Code",
+   "content": "The +91 country code is specifically assigned to India, but some other countries, such as Bhutan, also share it, To call a phone number in India from outside the country …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://item.pandaremit.com/article/49962",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "item.pandaremit.com",
+    "/article/49962",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hiding In Honduras Catches Pacesetter Late In Mathis Mile",
+   "content": "Jockey Antonio Fresu coaxed the best from the Dialed In gelding, who reeled in front-runner Tempus Volat in the closing stages to get the win in Santa Anita's Grade 2 turf test for 3-year-olds",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://paulickreport.com/news/thoroughbred-racing/hiding-in-honduras-catches-pacesetter-late-in-mathis-mile",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "paulickreport.com",
+    "/news/thoroughbred-racing/hiding-in-honduras-catches-pacesetter-late-in-mathis-mile",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hiding In Honduras (USA) Horse Profile, Race Record and Form — 2 Runs, 1 Wins, 50% Strike | horse.bet",
+   "content": "Hiding In Honduras (USA) form, race record, ratings and breeding — 2 runs, 1 wins (50%). By Dialed In out of La Moneda. Updated after every official run.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://horse.bet/uk/racing-data/horse/hiding-in-honduras-hrs_58251606/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "horse.bet",
+    "/uk/racing-data/horse/hiding-in-honduras-hrs_58251606/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "My Pro Bike Fit will help you get dialed in! - Clipzag.com",
+   "content": "<br />Patreon: / ryanvanduzer <br />Or for one time payments: … 'The Long Way Home' (about my 1st adventure from Honduras to Boulder) <br /><br />Komoot Profile …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://clipzag.com/watch?v=cwPo9GHOrXM",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "clipzag.com",
+    "/watch",
+    "",
+    "v=cwPo9GHOrXM",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pl",
+   "content": "For Jurisdiction: REVERE, MA For Date: 02/03/2025 - Monday Call Number 25-6627 Call Taker: Location/Address: Narrative: Call Reason Fire Log Hydrants …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://files.aptuitivcdn.com/BK5ym7qdXR-1726/docs/MNRECC-PUBLIC-LOG-02.10.2025-02.17.2025-REDACTED.pdf",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "files.aptuitivcdn.com",
+    "/BK5ym7qdXR-1726/docs/MNRECC-PUBLIC-LOG-02.10.2025-02.17.2025-REDACTED.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Boxed Cold Brew",
+   "content": "We ship our cold brew cold in insulated packaging directly from our roasting and brewing facility where our delicious cold brew is produced.HONDURAS - MARCALA …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://biozipcode.org/products/boxed-cold-brew/248400475/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "biozipcode.org",
+    "/products/boxed-cold-brew/248400475/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

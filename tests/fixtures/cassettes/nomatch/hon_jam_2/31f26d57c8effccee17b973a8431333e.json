@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Jamaica CONCACAF Nations League absence_def",
+ "recorded_at": "2026-10-06T01:34:56.895759+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "2023–24 CONCACAF Nations League A",
+   "content": "2023–24 CONCACAF Nations League A Tournament details … Group phase: 7 September – 17 October 2023 Quarter-finals: 16–21 November 2023 Nations League Finals:",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/2023%E2%80%9324_CONCACAF_Nations_League_A",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/2023%E2%80%9324_CONCACAF_Nations_League_A",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Canada men's national soccer team",
+   "content": "119 120 121 Interim coach Mauro Biello was tasked with guiding the team through the quarter-finals of the 2023–24 CONCACAF Nations League A in November 2023 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Canada_men%27s_national_soccer_team",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Canada_men%27s_national_soccer_team",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "List of TT Pro League seasons",
+   "content": "Digicel Pro League … (as Professional Football League) … CONCACAF Champions League … 2016–17 TT Pro League … TT Pro League … Professional Football League … professional league for",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/List_of_TT_Pro_League_seasons",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/List_of_TT_Pro_League_seasons",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico women's national football team",
+   "content": "lo Ordóñez Sánchez 2022 CONCACAF W Championship Group stage 0–1 Jamaica 3–0 Haiti 1–0 United States",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Mexico_women%27s_national_football_team",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Mexico_women%27s_national_football_team",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2019 CONCACAF Gold Cup final",
+   "content": "New-Look Concacaf Unveils Format, Rules for Nations League Competition\" Sports Illustrated Retrieved July 7, 2019 \"Tata Martino Is Named Mexico's National Team Coach …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/2019_CONCACAF_Gold_Cup_final",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/2019_CONCACAF_Gold_Cup_final",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica 0-1 USMNT summary, score, goals, highlights CONCACAF Nations League",
+   "content": "Mauricio Pochettino’s side take a 1-0 aggregate lead into the second leg of their Nations League quarter-final.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://en.as.com/soccer/jamaica-usmnt-live-online-score-stats-and-updates-concacaf-nations-league-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/soccer/jamaica-usmnt-live-online-score-stats-and-updates-concacaf-nations-league-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USMNT 4-2 Jamaica: summary, score, goals, highlights CONCACAF Nations League",
+   "content": "A 4-2 win over Jamaica , securing their place in the semi-finals of the CONCACAF Nations League with a 5-2 aggregate victory A brace from Christian Pulisic got the ball rolling …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://en.as.com/soccer/usmnt-jamaica-live-online-score-stats-and-updates-concacaf-nations-league-n-2/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/soccer/usmnt-jamaica-live-online-score-stats-and-updates-concacaf-nations-league-n-2/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USA vs. Jamaica: How to watch, stream Concacaf Nations League quarterfinal | MLSSoccer.com",
+   "content": "The US men's national team carry a 1-0 aggregate lead into the second leg of the Concacaf Nations League quarterfinal against Jamaica, looking to close the tie at St.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/usa-vs-jamaica-how-to-watch-stream-concacaf-nations-league-quarterfinal",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/usa-vs-jamaica-how-to-watch-stream-concacaf-nations-league-quarterfinal",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico vs. Jamaica live stream: Concacaf Nations League prediction, how to watch online, time, news, odds",
+   "content": "El Tri look to make it two wins from two in this window By Mar 26, … 42 pm ET 1 min read Getty Images Group A in the Concacaf Nations League will be decided as Mexico and Jamaica clash at Estadio Azteca on Sunday.Mexico are coming off of a 2-0 victory over …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.cbssports.com/soccer/news/mexico-vs-jamaica-live-stream-concacaf-nations-league-prediction-how-to-watch-online-time-news-odds/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.cbssports.com",
+    "/soccer/news/mexico-vs-jamaica-live-stream-concacaf-nations-league-prediction-how-to-watch-online-time-news-odds/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Job to be done",
+   "content": "JAMAICA’S REGGAE Boyz go into their Concacaf Nations League semifinal against the United States today at the AT...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://past.jamaica-gleaner.com/article/sports/20240321/job-be-done",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "past.jamaica-gleaner.com",
+    "/article/sports/20240321/job-be-done",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "United States vs. Trinidad and Tobago: How to watch the USMNT's first 2025 CONCACAF Gold Cup match tonight",
+   "content": "The 2025 CONCACAF Gold Cup features 16 national teams: … who qualified through the latest edition of the CONCACAF Nations League or the 2025 Gold Cup Prelims …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://sports.yahoo.com/soccer/article/united-states-vs-trinidad-and-tobago-how-to-watch-the-usmnts-first-2025-concacaf-gold-cup-match-tonight-144544831.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "sports.yahoo.com",
+    "/soccer/article/united-states-vs-trinidad-and-tobago-how-to-watch-the-usmnts-first-2025-concacaf-gold-cup-match-tonight-144544831.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "'I miss Guillermo Ochoa' – Mexico legend Hugo Sanchez questions Javier Aguirre's decision to leave goalkeeper out of CONCACAF Nations League squad | Goal.com US",
+   "content": "The recent call-ups of the Mexican National Team for the CONCACAF Nations League Final Four have sparked various reactions from both the media and fans as head coach Javier Aguirre surprised many by leaving out key players such as Guillermo Ochoa …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.goal.com/en-us/lists/guillermo-ochoa-mexico-hugo-sanchez-javier-aguirre-goalkeeper-for-concacaf-nations-league-squad/bltb123217a448de5f9",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/en-us/lists/guillermo-ochoa-mexico-hugo-sanchez-javier-aguirre-goalkeeper-for-concacaf-nations-league-squad/bltb123217a448de5f9",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Jamaica vs Mexico: Live stream, TV channel, kick-off time & where to watch Gold Cup semi-final | Goal.com US",
+   "content": "Date Match Competition 27/3/23 Mexico 2-2 Jamaica CONCACAF Nations League 15/6/22 Jamaica 1-1 Mexico CONCACAF Nations League 28/1/22 Jamaica 1-2 Mexico WC Qualifiers (CONCACAF region) 3/9/21 Mexico 2-1 Jamaica WC Qualifiers (CONCACAF region) 24/7/17 Mexico 0- …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.goal.com/en-us/news/jamaica-vs-mexico-live-stream-tv-channel-kick-off-time-and-where-to-watch-gold-cup-semi-final/bltbb6cf9f1717c3d05",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/en-us/news/jamaica-vs-mexico-live-stream-tv-channel-kick-off-time-and-where-to-watch-gold-cup-semi-final/bltbb6cf9f1717c3d05",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USMNT dominate Mexico 3-0: Chaos reigns with four red cards as USA advances to Concacaf Nations League final",
+   "content": "A game that the Americans dominated ended in chaos with red cards and an early end thanks to a homophobic chant By Jun 16, … the Concacaf Nations League final is set as the United States will face Canada after defeating Mexico 3-0 in Las Vegas on Thursday night.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.cbssports.com/soccer/news/usmnt-dominate-mexico-3-0-chaos-reigns-with-four-red-cards-as-usa-advances-to-concacaf-nations-league-final/live/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.cbssports.com",
+    "/soccer/news/usmnt-dominate-mexico-3-0-chaos-reigns-with-four-red-cards-as-usa-advances-to-concacaf-nations-league-final/live/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Canada name 23-man roster for Nations League quarterfinals vs. Jamaica | MLSSoccer.com",
+   "content": "The Canadian men's national team have named their 23-man roster for this month's Concacaf Nations League quarterfinal away-and-home series against Jamaica …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/canada-roster-for-nations-league-quarterfinals-vs-jamaica",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/canada-roster-for-nations-league-quarterfinals-vs-jamaica",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Concacaf Nations League scenarios: USMNT and Panama have easy path; Mexico with reasons to worry",
+   "content": "We're halfway through the Concacaf Nations League quarterfinals as with Canada winning their rescheduled match versus Jamaica, the picture is becoming clearer of who will continue to compete for the title while it will also settle who automatically qualifies …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.cbssports.com/soccer/news/concacaf-nations-league-scenarios-usmnt-and-panama-have-easy-path-mexico-with-reasons-to-worry/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.cbssports.com",
+    "/soccer/news/concacaf-nations-league-scenarios-usmnt-and-panama-have-easy-path-mexico-with-reasons-to-worry/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pochettino explains surprise absence of key Premier League star from USMNT roster",
+   "content": "Pochettino’s spell as head coach of the United States continues with CONCACAF Nations League games against Jamaica , which captain Tyler Adams will miss.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://en.as.com/soccer/pochettino-explains-surprise-absence-of-key-premier-league-star-from-usmnt-roster-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/soccer/pochettino-explains-surprise-absence-of-key-premier-league-star-from-usmnt-roster-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Canada names 24-man roster for Concacaf Nations League | MLSSoccer.com",
+   "content": "UPDATE (MAY 30) — Toronto FC midfielder Jonathan Osorio has been ruled out for the Canadian men's national team's upcoming Concacaf Nations League matches after suffering an injury during Toronto's 3-2 victory against Chicago Fire FC on Saturday …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/canada-names-25-man-roster-for-june-friendly-concacaf-nations-league",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/canada-names-25-man-roster-for-june-friendly-concacaf-nations-league",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "A BRIDGE TOO ‘VAR’ - Jamaica Observer",
+   "content": "TWO contentious decisions in Jamaica's Concacaf Nations League games earlier this month have reopened the debate about having video assistant referee (VAR) decisions in the tournament.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.jamaicaobserver.com/2023/09/19/a-bridge-too-var/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.jamaicaobserver.com",
+    "/2023/09/19/a-bridge-too-var/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "MLS talent make their 2019 Concacaf Gold Cup picks | MLSSoccer.com",
+   "content": "Shamar Nicholson and Andre Blake are definitely ones to watch.Canada Honduras Jamaica Mexico United States CONCACAF Gold Cup Commentary Philadelphia Union hit historic form behind Milan Iloski hat trick Club legend!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/mls-talent-make-their-2019-concacaf-gold-cup-picks",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/mls-talent-make-their-2019-concacaf-gold-cup-picks",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

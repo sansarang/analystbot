@@ -568,6 +568,11 @@ async def _extract(task: Any, kinds: list, block: str, where: dict, *,
             solar.chat, msgs, schema=agentloop.output_schema(),
             budget=budget, match=match_key,
             max_tokens=int(cfg.get("extract_max_tokens") or 4_000),
+            # 🔴🔴 **추론을 끈다** — 실측 2026-10-06: `low` 는 상한 4,000 을
+            #    전부 추론에 쓰고 `content` 를 **0자** 냈다(하위 7/8 이 그래서
+            #    빈 글이었다). ⚠️ 상한을 올리는 것은 §8 금지다.
+            reasoning_effort=str(cfg.get("extract_reasoning_effort")
+                                 or "minimal"),
             timeout=int(cfg.get("extract_timeout_sec") or 120),
             retries=int(cfg.get("extract_retries") or 1))
     except solar.SolarUnavailable as exc:
