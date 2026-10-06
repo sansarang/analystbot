@@ -118,6 +118,11 @@ async def cmd_analyze(m: Message) -> None:
     #
     #  ⚠️ 지연 로드를 지웠으므로 **여기서 안 올리면 영원히 ③단**이다.
     #  🔴 두 번째 호출부터는 바로 돌아온다(`loads()` 가 1 이다).
+    # 🔴🔴 **기동 검사**(지시서 §2 · M129) — 걸리는 템플릿이 있으면 **터진다.**
+    #    ⚠️ 조용히 건너뛰면 그 유형이 구조적으로 0건인 채로 운영이 돈다
+    #       (실측 2026-10-06: squad_rotation·national_duty_return 이 그랬다).
+    from app.bot_boot import boot_checks
+    boot_checks()
     _warm = _rerank.warm()
     logger.info("[bot] 재정렬 예열 — %s (로드 %d회)", _warm, _rerank.loads())
     words = (m.text or "").split()[1:]

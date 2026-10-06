@@ -47,22 +47,18 @@ def test_유형이_자기_템플릿과_작동을_들고_있다():
         assert v.get("templates"), f"{t} 에 검색 템플릿이 없다"
         assert v.get("decides"), f"{t} 에 판정 기준이 없다"
         assert v.get("attaches_to"), f"{t} 에 작동(부착)이 없다"
-        # 🔴 자리표만 쓴다 — 지어낸 이름을 쓰면 영영 안 채워진다
+        # 🔴🔴 **자리표 목록은 `queries.TEMPLATE_SLOTS` 하나다**(사본 금지).
+        #    ⚠️ 종전엔 여기 손으로 박아 뒀다 — 지시서 2026-10-06 §2 가 이름을
+        #       바꾸자(`league`→`comp` · `star`→`player` · `date` 폐지) 이 계약이
+        #       **한 발 늦었다.** 🔴 원본에서 자라게 짠다(#1).
+        from app import queries as _Q
         import re as _re
         for tpl, lang in rules.type_templates_tagged(t):
             for slot in _re.findall(r"\{([a-z_]+)\}", tpl):
-                assert slot in ("team", "opponent", "league", "date", "coach",
-                                "star"), f"{t}: 모르는 자리표 {slot}"
-            # ══════════════════════════════════════════════════════════
-            # 🔴🔴 **언어 꼬리표가 있어야 한다** (실측 2026-10-02)
-            # ══════════════════════════════════════════════════════════
-            #
-            #  꼬리표가 없으면 코드가 **모든 언어로** 같은 문자열을 던진다. 그래서
-            #  NPB 경기에 `福岡ソフトバンクホークス 자선 경기 10月2日` 가 나갔다 —
-            #  팀명은 일본어, 낱말은 한국어다. 일본어 기사에 그 글자는 없으므로
-            #  **구조적으로 0건**이고, 그 질의가 열기 예산을 태운다.
-            assert lang, f"{t}: 템플릿 `{tpl}` 에 언어 꼬리표가 없다"
-            assert lang in ("en", "ko", "ja", "zh"), f"{t}: 모르는 언어 {lang}"
+                assert slot in _Q.TEMPLATE_SLOTS, (
+                    f"{t}: 모르는 자리표 {slot} — 허용 목록은 "
+                    f"{_Q.TEMPLATE_SLOTS} 다(지시서 §2)")
+
 
 
 def test_템플릿이_검색어가_되고_순서가_각도_순서다():

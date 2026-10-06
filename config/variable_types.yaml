@@ -149,7 +149,7 @@ types:
 # 사용자 설계 2026-10-02: *"내 '딥서치'의 8할은 이 경기에서 뭘 확인해야 하는지 아는 것"*.
 #
 #   templates    🔴 **검색어 꼴.** 순서가 곧 **각도 순서**다(프리뷰 → 회견 → 현지 매체).
-#                 자리표: {team} {opponent} {date} {league} {coach} {star}
+#                 자리표: {team} {opp} {comp} {coach} {player}
 #                 ⚠️ 개수·상한은 **실제 테스트로 정한다**(사용자 지시) — 지금 값은
 #                    출발점이고, 측정하면 숫자가 바뀐다. 바뀌면 여기만 고친다.
 #   decides      판정 기준 — 코드가 이 조건으로 변수를 세운다(모델이 아니라)
@@ -358,7 +358,7 @@ types:
       - {q: "{team} 선발 투수 평균자책", lang: ko}
       # 🔴 일본어 — 予告先発(예고 선발) · 防御率(방어율)
       - {q: "{team} 予告先発 防御率", lang: ja}
-      - {q: "{team} 先発 今季成績 {date}", lang: ja}
+      - {q: "{team} 先発 今季成績", lang: ja}
     asks: "이 경기 선발 투수의 평균자책점이나 승패 기록이 적혀 있나?"
     decides: 두 선발의 방어율을 둘 다 알고 차이가 era_gap_min 이상이다
     attaches_to: 5c-3      # 저득점 — 좋은 선발은 상대 득점을 낮춘다
@@ -584,9 +584,9 @@ types:
     decides: 그 팀이 승리 극대화가 아닌 기용을 한다고 보도됐다
     templates:
       - {q: "{team} retirement ceremony lineup", lang: en}
-      - {q: "{team} 은퇴식 선발 {date}", lang: ko}
+      - {q: "{team} 은퇴식 선발", lang: ko}
       - {q: "{team} 引退セレモニー スタメン", lang: ja}
-      - {q: "{team} 消化試合 {date}", lang: ja}
+      - {q: "{team} 消化試合", lang: ja}
     attaches_to: both
 
   strength_gap:
@@ -694,15 +694,19 @@ types:
     #     🔴 일본어 기사에 "자선 경기"라는 글자는 없다 — 구조적으로 0건이다.
     #  🔴 낱말을 코드가 번역하지 않는다(유료 · 품질 못 믿는다). 언어마다 따로 적는다.
     templates:
-      - {q: "{team} {star} leaves camp", lang: en}
-      - {q: "{team} {coach} {star} conflict", lang: en}
-      - {q: "{star} {coach} 갈등", lang: ko}
-      - {q: "{team} 대표팀 이탈 {date}", lang: ko}
+      - {q: "{team} {player} leaves camp", lang: en}
+      # 🔴 `{team}` 을 뺐다 — 자리표 셋이 다 여러 낱말이라 **구조적으로**
+      #    §12-b 상한(6낱말)을 넘었다(실측 2026-10-06: `Northern Ireland
+      #    Michael O Neill Conor Bradley conflict` = 8낱말).
+      #    ⚠️ 감독 이름이 이미 팀을 가린다 — 팀명을 또 넣을 필요가 없다.
+      - {q: "{coach} {player} conflict", lang: en}
+      - {q: "{player} {coach} 갈등", lang: ko}
+      - {q: "{team} 대표팀 이탈", lang: ko}
       # 🔴 일본어 — 不仲(불화) · 退団(퇴단) · 離脱(이탈)
-      - {q: "{team} {star} 退団 不仲", lang: ja}
-      - {q: "{team} 離脱 {date}", lang: ja}
+      - {q: "{team} {player} 退団 不仲", lang: ja}
+      - {q: "{team} 離脱", lang: ja}
       # 🔴 중국어
-      - {q: "{team} {star} 矛盾 離隊", lang: zh}
+      - {q: "{team} {player} 矛盾 離隊", lang: zh}
     # 🔴 **모델에게 던지는 질문**(③ 좁은 질문). `decides` 와 다르다 —
     #    `decides` 는 **코드**가 쓰는 판정 기준이고, `asks` 는 **기사에
     #    던지는 한 문장**이다. ⚠️ 실측 2026-10-02: `decides` 를 그대로
@@ -742,13 +746,13 @@ types:
     #     🔴 일본어 기사에 "자선 경기"라는 글자는 없다 — 구조적으로 0건이다.
     #  🔴 낱말을 코드가 번역하지 않는다(유료 · 품질 못 믿는다). 언어마다 따로 적는다.
     templates:
-      - {q: "{team} injury news {date}", lang: en}
-      - {q: "{team} defender out {opponent}", lang: en}
+      - {q: "{team} injury news", lang: en}
+      - {q: "{team} defender out {opp}", lang: en}
       - {q: "{team} unavailable players", lang: en}
-      - {q: "{team} 수비 결장 {date}", lang: ko}
-      - {q: "{team} 부상 결장 {date}", lang: ko}
+      - {q: "{team} 수비 결장", lang: ko}
+      - {q: "{team} 부상 결장", lang: ko}
       # 🔴 일본어 — 欠場(결장) · 離脱 · 故障者(부상자)
-      - {q: "{team} 欠場 {date}", lang: ja}
+      - {q: "{team} 欠場", lang: ja}
       - {q: "{team} 故障者 離脱", lang: ja}
       - {q: "{team} 登録抹消", lang: ja}
       - {q: "{team} 缺陣 傷兵", lang: zh}
@@ -789,11 +793,11 @@ types:
     templates:
       - {q: "{coach} rotation {team}", lang: en}
       - {q: "{team} debut starting lineup", lang: en}
-      - {q: "{team} squad 2 {league}", lang: en}
-      - {q: "{team} 로테이션 {date}", lang: ko}
-      - {q: "{team} 선발 라인업 변경 {date}", lang: ko}
+      - {q: "{team} squad {comp}", lang: en}
+      - {q: "{team} 로테이션", lang: ko}
+      - {q: "{team} 선발 라인업 변경", lang: ko}
       # 🔴 일본어 — スタメン(선발 타순) · 休養 · ベストメンバー
-      - {q: "{team} スタメン {date}", lang: ja}
+      - {q: "{team} スタメン", lang: ja}
       - {q: "{team} スタメン 変更 休養", lang: ja}
       - {q: "{team} ベストメンバー", lang: ja}
       - {q: "{team} 輪換 先發名單", lang: zh}
@@ -840,15 +844,15 @@ types:
     #  🔴 낱말을 코드가 번역하지 않는다(유료 · 품질 못 믿는다). 언어마다 따로 적는다.
     templates:
       - {q: "{team} friendly charity day", lang: en}
-      - {q: "{team} {opponent} exhibition match", lang: en}
+      - {q: "{team} {opp} exhibition match", lang: en}
       - {q: "{team} retirement ceremony game", lang: en}
-      - {q: "{team} 자선 경기 {date}", lang: ko}
-      - {q: "{team} 은퇴 경기 {date}", lang: ko}
+      - {q: "{team} 자선 경기", lang: ko}
+      - {q: "{team} 은퇴 경기", lang: ko}
       # 🔴🔴 일본어 — **引退試合(은퇴 경기)·引退登板(은퇴 등판)**.
       #    ⚠️ 실측 2026-10-02 이 요구했다: 사용자가 찾은 변수 둘(角中 은퇴 경기 ·
       #       다음 날 唐川 은퇴 등판)이 바로 이 낱말에 걸려 있었다. "자선 경기"로는
       #       절대 못 찾는다 — 은퇴 경기는 자선 경기가 아니다.
-      - {q: "{team} 引退試合 {date}", lang: ja}
+      - {q: "{team} 引退試合", lang: ja}
       - {q: "{team} 引退登板", lang: ja}
       - {q: "{team} セレモニー 最終戦", lang: ja}
       - {q: "{team} 引退 比賽", lang: zh}
@@ -889,11 +893,11 @@ types:
     #     🔴 일본어 기사에 "자선 경기"라는 글자는 없다 — 구조적으로 0건이다.
     #  🔴 낱말을 코드가 번역하지 않는다(유료 · 품질 못 믿는다). 언어마다 따로 적는다.
     templates:
-      - {q: "{team} national team return {date}", lang: en}
-      - {q: "{league} international break squad", lang: en}
-      - {q: "{team} 대표팀 복귀 {date}", lang: ko}
+      - {q: "{team} national team return", lang: en}
+      - {q: "{comp} international break squad", lang: en}
+      - {q: "{team} 대표팀 복귀", lang: ko}
       # 🔴 일본어 — 代表 合流/復帰
-      - {q: "{team} 代表 復帰 {date}", lang: ja}
+      - {q: "{team} 代表 復帰", lang: ja}
       - {q: "{team} 日本代表 合流", lang: ja}
       - {q: "{team} 國家隊 歸隊", lang: zh}
     # 🔴 **모델에게 던지는 질문**(③ 좁은 질문). `decides` 와 다르다 —

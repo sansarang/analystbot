@@ -902,6 +902,183 @@ async def _reject(pool, stage: str, reason: str, raw) -> None:
 # ⚠️ 템플릿 **개수·상한은 실제 테스트로 정한다**(사용자 지시) — 여기 숫자를 박지 않는다.
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **§2 질의 생성 규칙** — 지시서 2026-10-06
+# ══════════════════════════════════════════════════════════════════
+#
+# 실측 질의(카드 원문):
+#
+#     §12-b 위반 'Georgia squad 2 UEFA Nations League B Grp. 2'
+#     §12-b 위반 'Northern Ireland national team return Oct 5'
+#
+# 🔴 템플릿 변수에 **대회 전체명(조 포함)과 날짜**가 그대로 들어가 문지기에
+#    걸렸다. ⚠️ **문지기는 안 바꾼다** — 맞게 막았다. 고칠 곳은 만드는 쪽이다.
+
+#: 🔴 템플릿에 쓸 수 있는 **전부**다(지시서 §2). ⚠️ 날짜·숫자·조 번호·라운드는
+#   **금지** — `time_range=week` 가 날짜를 대신한다.
+TEMPLATE_SLOTS: tuple[str, ...] = ("team", "opp", "comp", "coach", "player",
+                                   "word")
+
+#: 🔴 대회명에서 **걷어 내는 꼬리** — 조·라운드·시즌·리그 등급.
+#   ⚠️ 매핑 표가 필요하면 `config/competition_short.yaml` 이 든다(데이터).
+#      표에 없으면 **꼬리 제거 규칙만** 적용한다(지시서 §2).
+_COMP_TAIL = re.compile(
+    r"\s*(?:"
+    r"grp\.?\s*[a-z0-9]*"            # Grp. 2 · Grp A
+    r"|group\s*[a-z0-9]*"            # Group A
+    r"|round\s+of\s+\d+"            # Round of 16
+    r"|matchday\s*\d*"
+    r"|quarter[- ]?finals?|semi[- ]?finals?|finals?"
+    r"|playoffs?|play-?offs?"
+    r"|\d{4}[-/]\d{2,4}"             # 2026-27
+    r"|\d{4}"                        # 2026
+    r"|premier\s+division|division\s*[a-z0-9]*"
+    r"|리그|시즌"
+    r")\s*$", re.I)
+
+#: 🔴 **리그 등급 한 글자**(`Nations League B`) — 꼬리를 걷은 뒤에 본다.
+_COMP_TIER = re.compile(r"\s+(?:league\s+)?[A-D]\s*$")
+
+#: 🔴 그 뒤에도 남는 **머리 수식** — `UEFA` 처럼 기구 이름. ⚠️ 전부 걷지 않는다:
+#   `CONCACAF Nations League` 는 `Nations League` 와 **다른 대회**다(지시서 예시가
+#   `UEFA …` 만 걷었다). 그래서 **UEFA 하나만** 선언으로 걷는다.
+_COMP_HEAD: tuple[str, ...] = ("UEFA",)
+
+
+def competition_short(full: object) -> str:
+    """🔴🔴 **대회 짧은 이름** — 정본 하나다(사본 금지 · 지시서 §2).
+
+    ```
+    UEFA Nations League B Grp. 2      → Nations League
+    CONCACAF Nations League A Grp. 2  → CONCACAF Nations League
+    FIFA ASEAN Cup Premier Division   → FIFA ASEAN Cup
+    KBO 리그                           → KBO
+    ```
+
+    ⚠️ 표가 먼저다(`config/competition_short.yaml`) — 없으면 꼬리 제거 규칙만.
+    🔴 **빈 글자를 돌려주지 않는다** — 다 걷혀 비면 원래 이름을 쓴다(그것이
+       질의를 못 만드는 것보다 낫고, §12-b 가 그 뒤를 다시 본다).
+    """
+    said = " ".join(str(full or "").split())
+    if not said:
+        return ""
+    from app import rules as _R
+    table = dict((_R._load("config/competition_short.yaml") or {}).get(
+        "short") or {})
+    if said in table:
+        return str(table[said])
+    out = said
+    for _ in range(4):                      # 🔴 꼬리가 겹쳐 붙는다(`B Grp. 2`)
+        cut = _COMP_TAIL.sub("", out).strip()
+        cut = _COMP_TIER.sub("", cut).strip()
+        if cut == out:
+            break
+        out = cut
+    for head in _COMP_HEAD:
+        if out.lower().startswith(head.lower() + " "):
+            out = out[len(head) + 1:].strip()
+    return out or said
+
+
+def slot_value(raw: object) -> str:
+    """🔴🔴 **자리표에 넣을 값을 질의에 쓸 수 있게** 다듬는다(지시서 §2 뒤 실측).
+
+    ⚠️ 실측 2026-10-06: `Michael O'Neill` 이 든 질의가 **전부** §12-b 에 걸렸다 —
+       `llm._BAD_QUERY` 가 `["\'()]` 를 막기 때문이다. 🔴 그래서 감독 이름에
+       어깻점이 있는 팀(북아일랜드·아일랜드…)은 `coach_conflict`·
+       `squad_rotation` 질의가 **구조적으로 0건**이었다.
+
+    🔴 **문지기를 완화하지 않는다**(§8 금지) — 어깻점이 연산자가 아닌 것은 맞지만,
+       그 판단은 문지기 몫이다. 여기서는 **값을 질의에 쓸 수 있는 글자로** 바꾼다.
+    ⚠️ 지우지 않고 **공백으로** 바꾼다 — 검색 엔진은 `O'Neill` 을 `o neill` 로
+       쪼개므로 `O Neill` 이 같은 기사를 찾는다. 🔴 `ONeill` 로 붙이면 아무
+       기사에도 없는 글자가 된다.
+    """
+    said = str(raw or "")
+    for ch in "\"'()":
+        said = said.replace(ch, " ")
+    return " ".join(said.split())
+
+
+def slots_in(tpl: object) -> list[str]:
+    """🔴 그 템플릿이 쓰는 자리표들 — `{team}` → `team`."""
+    return [m.strip("{}") for m in re.findall(r"\{[a-z_]+\}", str(tpl or ""))]
+
+
+#: 🔴🔴 **사전 검사용 고정물 3경기**(지시서 §2) — 실측에서 걸린 경기들이다.
+PRECHECK_GAMES: tuple[dict, ...] = (
+    {"team": "Indonesia", "opp": "Thailand",
+     "comp": "FIFA ASEAN Cup Premier Division",
+     "coach": "Patrick Kluivert", "player": "Ole Romeny", "word": "결장"},
+    {"team": "Northern Ireland", "opp": "Georgia",
+     "comp": "UEFA Nations League B Grp. 2",
+     "coach": "Michael O'Neill", "player": "Conor Bradley", "word": "결장"},
+    {"team": "KIA Tigers", "opp": "LG Twins", "comp": "KBO 리그",
+     "coach": "이범호", "player": "양현종", "word": "선발"},
+)
+
+
+def template_precheck(extra: object = None) -> list[str]:
+    """🔴🔴 **M129 — 모든 템플릿을 고정물 3경기로 렌더링해 문지기에 넣는다.**
+
+    > 봇 시작 시 … §12-b 문지기와 길이 규칙(3~10단어)을 통과하는지 확인한다.
+    > 하나라도 걸리면 **시작 실패**(조용히 건너뛰지 않는다).
+
+    돌려주는 것은 **걸린 것들의 사유 줄**이다 — 비면 통과다.
+    ⚠️ 자리표가 허용 목록 밖이면 그것도 걸린 것이다(날짜·숫자 금지).
+    """
+    from app import llm as _llm
+    from app import querygate
+    from app import rules as _R
+    rows: list[tuple[str, str, str]] = []
+    for vtype in sorted(_R.variable_types()):
+        for tpl, lang in _R.type_templates_tagged(vtype):
+            rows.append((vtype, tpl, lang))
+    for row in (extra or ()):
+        rows.append((str(row[0]), str(row[1]),
+                     str(row[2]) if len(row) > 2 else ""))
+    bad: list[str] = []
+    for vtype, tpl, _lang in rows:
+        off = [x for x in slots_in(tpl) if x not in TEMPLATE_SLOTS]
+        if off:
+            bad.append(f"{vtype}: 금지된 자리표 {off} — {tpl!r} "
+                       f"(날짜·숫자·조 번호는 `time_range=week` 가 대신한다)")
+            continue
+        for game in PRECHECK_GAMES:
+            box = dict(game)
+            box["comp"] = competition_short(box["comp"])
+            said = tpl
+            for k, v in box.items():
+                said = said.replace("{" + k + "}", slot_value(v))
+            said = " ".join(said.split())
+            # ══════════════════════════════════════════════════════
+            # 🔴🔴 **문지기가 둘이다** — 둘 다 본다(실측 2026-10-06)
+            # ══════════════════════════════════════════════════════
+            #
+            #  ⚠️ 나는 처음에 `querygate.gate`(상한 **10**낱말)만 봤다. 🔴 카탈로그
+            #     질의를 실제로 거르는 것은 `llm.query_ok`(§12-b · **1~6**낱말)다
+            #     — 그래서 9낱말 질의가 내 검사를 통과하고 운영에서 떨어졌다.
+            #  🔴 둘 다 넣는다. 사유에 **어느 문지기**인지 적는다(#3).
+            n = len(said.split())
+            if not _llm.query_ok(said):
+                bad.append(f"{vtype}: {said!r} — 🔴 §12-b(`llm.query_ok`) 가 "
+                           f"막는다(낱말 {n}개 · 1~6 · 연도·연산자 금지)")
+                continue
+            ok, _why_n, why = querygate.gate(said, seed=True)
+            if not ok:
+                bad.append(f"{vtype}: {said!r} — 🔴 `querygate` 가 막는다: {why}")
+    return bad
+
+
+def assert_templates_ok(extra: object = None) -> None:
+    """🔴 걸리면 **터진다** — 지시서 §2: *"하나라도 걸리면 시작 실패."*"""
+    bad = template_precheck(extra)
+    if bad:
+        raise ValueError(
+            "🔴 질의 템플릿 사전 검사 실패(지시서 §2 · M129) — 조용히 건너뛰지 "
+            "않는다:\n  " + "\n  ".join(bad))
+
+
 def catalog_variants(vtype: str, *, team: str, league: str = "", day=None,
                      opponent: str = "", coach: str = "", star: str = "",
                      local: str = "",
@@ -921,8 +1098,16 @@ def catalog_variants(vtype: str, *, team: str, league: str = "", day=None,
     #    `('en',)` 로 떨어지고, 그래서 현지어 템플릿 6종이 전부 건너뛰었다.
     if not langs:
         langs, _why = langs_for(league, team, opponent)
-    slots = {"team": team, "opponent": opponent, "league": league,
-             "coach": coach, "star": star}
+    # 🔴🔴 **자리표 이름은 `TEMPLATE_SLOTS` 하나다**(지시서 §2) — `league` 가
+    #    아니라 `comp` 이고, 그 값은 **짧은 이름**이다. ⚠️ 전체명을 넣으면
+    #    낱말이 상한을 넘어 §12-b 가 막는다(실측 2026-10-06).
+    #  🔴 `date` 는 **없다** — `time_range=week` 가 날짜를 대신한다.
+    # 🔴 **값을 질의에 쓸 수 있는 글자로**(`slot_value`) — 어깻점이 든 감독
+    #    이름이 §12-b 에 걸려 그 유형이 구조적으로 0건이었다(실측 2026-10-06).
+    slots = {k: slot_value(v) for k, v in (
+        ("team", team), ("opp", opponent),
+        ("comp", competition_short(league)),
+        ("coach", coach), ("player", star))}
     out: list[Variant] = []
     seen: set[str] = set()
     for i, (tpl, tlang) in enumerate(tpls):

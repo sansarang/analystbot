@@ -1,0 +1,386 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "fotmob Honduras Jamaica",
+ "recorded_at": "2026-10-06T00:54:07.398240+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Honduras vs Jamaica - marcador en vivo, alineaciones previstas ... - FotMob",
+   "content": "Honduras vs Jamaica el Tue, Oct 6, 2026, 02:00 UTC. Consulta los resultados en directo, H2H, estadísticas del partido, alineaciones, clasificaciones de jugadores, ideas, formas del equipo, mapa de tiros y momentos destacados.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.fotmob.com/es/matches/jamaica-vs-honduras/145rxd",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/es/matches/jamaica-vs-honduras/145rxd",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "El Salvador mot Jamaica - live resultater, forventede ... - FotMob",
+   "content": "El Salvador mot Jamaica den Sat, Oct 3, 2026, 02:00 UTC. Sjekk liveresultater, H2H, kampstatistikk, lagoppstillinger, spillerkarakteristikker, innsikter, lagenes form ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.fotmob.com/nb/matches/jamaica-vs-el-salvador/17tvfa",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/nb/matches/jamaica-vs-el-salvador/17tvfa",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras vs Jamaica: Últimas noticias, videos y fotos de ... - TUDN",
+   "content": "Últimas noticias de Honduras vs Jamaica. Mantente informado con las últimas noticias, videos y fotos de Honduras vs Jamaica que te brinda TUDN",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.tudn.com/futbol/concacaf-nations-league/honduras-vs-jamaica-concacaf-nations-league-2026-10-05",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/futbol/concacaf-nations-league/honduras-vs-jamaica-concacaf-nations-league-2026-10-05",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Marcador en vivo Honduras vs Jamaica | Fútbol - Flashscore",
+   "content": "BETSSON - Únete y gana hasta 100.000 CLP 29/9 Jamaica vs Honduras, 6/10 Honduras vs Jamaica en vivo, resultados, estadísticas",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.flashscore.cl/detalle-del-partido/futbol/honduras-fP8cJrsS/jamaica-CWmDb3zj/",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.flashscore.cl",
+    "/detalle-del-partido/futbol/honduras-fP8cJrsS/jamaica-CWmDb3zj/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "HON - JAM | Honduras vs Jamaica EN DIRECTO 06/10/2026 | Fútbol ...",
+   "content": "Sigue el Honduras vs Jamaica 06/10/2026 en directo - historial de enfrentamientos (H2H), últimos resultados y más información en Flashscore.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.flashscore.es/partido/futbol/honduras-fP8cJrsS/jamaica-CWmDb3zj/?mid=K2cRvMOE",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.flashscore.es",
+    "/partido/futbol/honduras-fP8cJrsS/jamaica-CWmDb3zj/",
+    "",
+    "mid=K2cRvMOE",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras vs Jamaica: Alineaciones y marcador en vivo - 365Scores",
+   "content": "Honduras vs Jamaica se enfrentarán el próximo martes, 6 de octubre de 2026, en el estadio Estadio Nacional Chelato Uclés por la fase de Fase de grupos de CONCACAF Liga de Naciones de Fútbol. Con 365Scores puedes seguir en vivo el resultado del partido, además de recibir actualizaciones en tiempo real de todas las estadísticas y alineaciones. Consulta el horario de Honduras vs Jamaica y ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.365scores.com/es-mx/football/match/concacaf-nations-league-7165/honduras-jamaica-2390-5421-7165",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.365scores.com",
+    "/es-mx/football/match/concacaf-nations-league-7165/honduras-jamaica-2390-5421-7165",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras vs Jamaica Live Stats, Lineups & Analysis | StatsHub",
+   "content": "Honduras vs Jamaica on 06 Oct 2026: live stats, lineups & analysis with head-to-head data, player stats, team trends.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.statshub.com/fixture/honduras-vs-jamaica-muve1l/418167",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.statshub.com",
+    "/fixture/honduras-vs-jamaica-muve1l/418167",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Liverpool star ecstatic with first international goal and winner",
+   "content": "Keyrol Figueroa Fires Honduras to Historic Win Over Jamaica Keyrol Figueroa took his chance, did his job and left Kingston with a landmark moment for both himself and Honduras.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://sports.yahoo.com/articles/liverpool-star-ecstatic-first-international-075500868.html",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "sports.yahoo.com",
+    "/articles/liverpool-star-ecstatic-first-international-075500868.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "HON - JAM | Honduras v Jamaica LIVE 06/10/2026 | Football - Flashscore ...",
+   "content": "Follow Honduras v Jamaica 06/10/2026 live, Honduras latest results, news, information, Honduras v Jamaica H2H statistics! Flashscore football coverage includes football scores and football news from more than 1000 competitions worldwide. Honduras, Jamaica, Real Madrid, Arsenal, Chelsea, Serie A, Copa Libertadores, Champions League, ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.flashscore.co.uk/match/football/honduras-fP8cJrsS/jamaica-CWmDb3zj/?mid=K2cRvMOE",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.flashscore.co.uk",
+    "/match/football/honduras-fP8cJrsS/jamaica-CWmDb3zj/",
+    "",
+    "mid=K2cRvMOE",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Honduras Vs Jamaica | Nations League | Concacaf",
+   "content": "Full match details for Honduras Vs Jamaica in the Nations League — lineups, score and match updates on Concacaf.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "duckduckgo"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.concacaf.com/competitions/nations-league/matches/31354f15d4f84abca7bb1fa6c2ce1983/honduras-vs-jamaica",
+   "engine": "duckduckgo",
+   "parsed_url": [
+    "https",
+    "www.concacaf.com",
+    "/competitions/nations-league/matches/31354f15d4f84abca7bb1fa6c2ce1983/honduras-vs-jamaica",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ]
+ ]
+}
