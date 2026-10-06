@@ -85,12 +85,41 @@ def system_prompt() -> str:
         "수로 정한다.")
 
 
+#: 🔴 폼에서 **보내는 칸만** — 이름을 적어 둔다(#1: 코드가 고르는 칸을 숨기지 않는다)
+_FORM_KEYS = ("last5", "recent_scored_avg", "recent_trimmed_avg",
+              "recent_avg_goals", "streak_scored", "streak_unbeaten",
+              "streak_winless", "streak_clean_sheet", "rest_days")
+#: 🔴 맞대결은 **요약만** — 경기 목록·URL 은 안 보낸다
+_H2H_KEYS = ("count", "summary", "window_avg_goals", "sample_weight")
+
+
 def _payload(ref: MatchRef, facts: Facts, basis: list[Variable],
              ctx: list[Variable]) -> str:
-    """🔴 보내는 입력 — **근거와 맥락이 갈려 있다**(§4-1)."""
+    """🔴 보내는 입력 — **근거와 맥락이 갈려 있다**(§4-1) · **얇게** 보낸다.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **왜 추려 보내나** — 실측 2026-10-06(원장)
+    ══════════════════════════════════════════════════════════════════
+
+    | 입력 토큰 | 결과 |
+    |---|---|
+    | 4,233 | `stop` · 출력 5,345(추론 4,093) |
+    | 3,845 | 🔴 **`length`** · 출력 8,000이 **전부 추론**(content 0자) |
+
+    🔴 상한을 올려 고치는 것은 **§9 금지**다. ⚠️ 그리고 DeepSeek 은
+       `reasoning_effort` 를 **무시한다**(실측: `''`·`minimal`·`low` 셋 다 같은
+       추론량으로 상한을 다 썼다 — 사소한 질문에서도 그랬다).
+    🔴 그래서 남은 지렛대는 **입력 크기**다. 폼 사실이 경기 목록(`sequence`)과
+       맞대결 **URL 까지** 실어 보내고 있었다 — 가설에 쓰이지 않는 것들이다.
+    """
     def row(v: Variable) -> dict:
         return {"id": v.id, "type": v.type, "subject": v.subject,
-                "favors": v.favors, "claim": v.claim, "weight": v.weight}
+                "favors": v.favors, "claim": v.claim[:200], "weight": v.weight}
+
+    def form(raw: object) -> dict:
+        box = dict(raw) if isinstance(raw, dict) else {}
+        return {k: box[k] for k in _FORM_KEYS if k in box}
+
     box = {
         "match": {"home": ref.home_name, "away": ref.away_name,
                   "home_key": ref.home, "away_key": ref.away,
@@ -98,8 +127,10 @@ def _payload(ref: MatchRef, facts: Facts, basis: list[Variable],
                   "match_format": facts.match_format, "sport": ref.sport},
         "variables": [row(v) for v in basis],
         "context_only": [row(v) for v in ctx],
-        "facts": {"standings": facts.standings, "recent": facts.recent,
-                  "h2h": facts.h2h},
+        "facts": {"standings": facts.standings,
+                  "recent": {k: form(v) for k, v in facts.recent.items()},
+                  "h2h": {k: v for k, v in facts.h2h.items()
+                          if k in _H2H_KEYS}},
         "required_types": sorted(_required_names(facts))}
     return json.dumps(box, ensure_ascii=False, default=str)
 
