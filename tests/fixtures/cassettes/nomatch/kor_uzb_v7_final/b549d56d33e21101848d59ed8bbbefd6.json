@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T06:19:38.784840+00:00",
+ "order": [
+  "Both teams have made significant rotations in their squads during this international window and approach their final match without any new injuries reported.",
+  "The Korea Football Association subsequently appointed Spanish coach Moreno on an interim basis, overseeing a six-match contract that will run until November 27, 2026.",
+  "Moreno is likely to continue with the 4-4-2 formation that he has employed in each of his three encounters at the helm, with Song Bum-kuen likely to stay in goal after taking over from Kim Seung-gyu last time out.",
+  "Manchester City defender Abdukodir Khusanov is expected to keep his spot in the back four, while captain Eldor Shomurodov could return to the starting lineup after starting their last match on the bench.",
+  "Song; Seol, H. Lee, Min-jae, Cho; K. Lee, Park, In-beom, Kim; Oh, Son",
+  "On the other hand, the visitors are presently under the guidance of Italian football great Fabio Cannavaro, who is set to celebrate one year in charge of Uzbequistão on the same day as this friendly match.",
+  "Following their exit in the group stage of the 2026 FIFA World Cup this past summer, South Korea parted ways with manager Hong Myung-bo, ending his second tenure after less than two years in charge.",
+  "South Korea continues its journey under interim head coach Robert Moreno as they host Uzbequistão at Daejeon World Cup Stadium on Tuesday, with both teams gearing up for their final match before the club season resumes."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T06:18:27.051511+00:00",
+ "order": [
+  "South Korea vs Uzbekistan - News and Probable Lineups South Korea vs Uzbekistan - News and Probable Lineups South Korea continues its journey under interim head coach Robert Moreno as they host Uzbequistão at Daejeon World Cup Stadium on Tuesday, with both teams gearing up for their final match before the club season resumes.",
+  "9 Medals, 5 Golds: Indian Archers Deliver Historic Asian Games Masterclass | Asian Games News 2일 전Kumkum defeated South Korea's reigning world champion and Olympic medallist Kang Chaeyoung 6-3 in the quarter... rotation with an eight, Neeraj responded with a 10 and carried a one-point advantage into the final arrow. Dhiraj finished with a 10, but Neeraj matched it to secure bronze. Dhiraj had earlier defeated Uzbekistan's...2일 전",
+  "South Korea vs Uzbekistan Live Stats, Lineups & Analysis | StatsHub South Korea vs Uzbekistan on 06 Oct 2026: live stats, lineups & analysis with head-to-head data, player stats, team trends.",
+  "Asian Games 2026 archery: Kumkum Mohod’s historic feat secures Olympic quota for India 3일 전Kumkum had beaten South Korea’s reigning world champion and Olympic medallist Kang Chaeyoung 6-3 in the... rotation with an eight, Neeraj responded with a 10 and maintained his one-point advantage heading into the final arrow. Dhiraj finished with a 10, but Neeraj matched it to seal the bronze. Dhiraj had beaten Uzbekistan...3일 전",
+  "South Korea vs Uzbekistan, Oct 6: Preview & Lineups South Korea vs Uzbekistan in Friendlies 2026 on October 6, 2026: kick-off time, match preview, recent form, head-to-head record and lineups once they are announced.",
+  "South Korea vs Uzbekistan Match Stats | Statz South Korea vs Uzbekistan stats: head-to-head record, predicted lineups, player shots, fouls and cards, plus a match prediction for this Friendly International match.",
+  "South Korea vs Uzbekistan - World Friendlies - October 06, 2026 South Korea vs Uzbekistan live score, match statistics, lineups, and player ratings. World Friendlies - October 06, 2026. Vote and rate players on HalaScore!",
+  "South Korea vs Uzbekistan: Friendlies stats & head-to-head Follow live text commentary, score updates and match stats from South Korea vs Uzbekistan in the Friendlies"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 14문단 → 재정렬 상위 8"
+}

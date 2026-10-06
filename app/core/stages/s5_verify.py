@@ -148,7 +148,7 @@ _TIER_ORDER = ("official", "national", "local", "aggregator", "tip", "dead")
 def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
          state: RunState, n: int) -> dict | None:
     """🔴 후보 하나 — 검사 순서는 **싼 것부터**다(문서 → 인용 → 날짜 → 신원 → 방향)."""
-    from app import verify, verifylayer
+    from app import verify
     what = f"s5/{c.subtask}/{c.type}/{n}"
     doc = by_id.get(c.doc_id)
     if doc is None:
@@ -225,7 +225,7 @@ def merge_key(subject: str, kind: str, target: str) -> tuple[str, str, str]:
     > 합치고 `doc_ids` 를 모은다 … **문장 유사도(MinHash)가 아니라** "누가·무엇" 열쇠로.
 
     🔴 대상 글자는 **정규화**해서 비교한다 — `Kim Min-jae`·`김민재`·`KIM MIN-JAE` 가
-       갈리면 열쇠가 쪼개진다. ⚠️ 정규화는 `verifylayer._norm` 하나다(사본 금지).
+       갈리면 열쇠가 쪼개진다. ⚠️ 정규화는 이 파일의 `norm` 하나다(사본 금지 · 옛 `verifylayer._norm`).
     """
     return (str(subject), str(kind), norm(str(target)))
 

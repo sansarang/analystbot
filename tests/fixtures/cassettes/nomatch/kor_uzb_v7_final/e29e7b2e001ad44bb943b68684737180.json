@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T06:19:52.117810+00:00",
+ "order": [
+  "Socceroos' style of play can hurt Uzbekistan says O’Neill “I would expect them to try press us a bit higher, but again, … he said.Touching on the squad rotation that is expected for the Uzbekistan match …",
+  "Socceroos' style of play can hurt Uzbekistan says O’Neill “I would expect them to try press us a bit higher, but again, … he said.Touching on the squad rotation that is expected for the Uzbekistan match …",
+  "WR Chess Miami: USA lead 5-3, Aronian scores 2½ out of 3 Hikaru Nakamura, Fabiano Caruana, … Levon Aronian and Leinier Dominguez were included in the American rotation, while Uzbekistan fielded Javokhir Sindarov …",
+  "Kasimov: Uzbekistan will beat Korea Republic in quarters Melbourne: Coach Mirdjalal Kasimov has promised Uzbekistan will beat Korea Republic in next week’s AFC Asian Cup Australia 2015 quarter-final having seen the 2011 semi-finalists claim second place in Group B with a 3-1 win over Saudi Arabia on Sunday.",
+  "South Korea vs Uzbekistan – News and Probable Lineups - Football Tips 365 South Korea continues its journey under interim head coach Robert Moreno as they host Uzbequistão at Daejeon World Cup Stadium on Tuesday, with both teams gearing up for their final match before the c",
+  "South Korea – Uzbekistan: Who will win this time? South Korea Uzbekistan : Who will win this time? Ahead of the friendly match between the national teams of South Korea and Uzbekistan to be held in 2026 …",
+  "South Korea – Uzbekistan: Who will win this time? South Korea Uzbekistan : Who will win this time? Ahead of the friendly match between the national teams of South Korea and Uzbekistan to be held in 2026 …",
+  "Kasimov: Uzbekistan aims to beat Korea Republic in quarters Home Sports Kasimov: Uzbekistan aims to beat Korea Republic in quarters Sports Kasimov: Uzbekistan aims to beat Korea Republic in quarters Tashkent …"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

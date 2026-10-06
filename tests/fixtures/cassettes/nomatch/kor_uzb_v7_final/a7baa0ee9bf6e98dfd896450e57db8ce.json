@@ -1,0 +1,14 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T06:19:49.387153+00:00",
+ "order": [
+  "Average per game across each team's last three matches in this competition",
+  "South Korea vs Uzbekistan: Live Score, H2H & Match Events — Friendlies 2026",
+  "The Football Stand covers South Korea vs Uzbekistan with live scores, line-ups, match events, statistics and the full head-to-head record.",
+  "South Korea play Uzbekistan in the Friendlies 2026 on October 6, 2026.",
+  "This is the first ever meeting between South Korea and Uzbekistan."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 5문단 → 재정렬 상위 8"
+}

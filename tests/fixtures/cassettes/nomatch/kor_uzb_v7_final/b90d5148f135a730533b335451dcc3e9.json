@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T06:18:33.030909+00:00",
+ "order": [
+  "SPORTSSouth Korea wins football gold but posts worst medal haul in 44 years at 2026 Asian Games - The Her.... 2일 전Archery, swimming underperform as Korea finishes third with 39 golds; Japan sets all-time record; China claims 12th straight overall title South Korea finished third at the 2026 Aichi-Nagoya Asian Games with 39 gold medals, 43 silvers and 68 bronzes, trailing China (169 golds, 89 silvers, 83 bronzes) and Japan (83 golds, 95 silvers, 91 bronzes). The haul fell short of the Korean Sport & Olympic Committee's target of 40 to 45 golds and marked the country's lowest gold-medal count since the 1982 N....2일 전",
+  "Song Da-bin Wins South Korea's First Taekwondo Sparring Gold 3일 전Advertisement Song’s victory also preserved South Korea’s unbroken record of winning gold medals in taekwondo sparring at every Asian Games since the event’s... Kang defeated Jack Mercer of Thailand 2-0 in the quarterfinals but fell 0-2 to Marat Mavlyanov of Uzbekistan in the semifinals, missing out on a final berth. In...3일 전",
+  "S. Korea shut out of gold in taekwondo 4일 전An Hyang-sik of South Korea reacts to his loss to Tamirlan Tleules of Kazakhstan in the semifinals of the men's -58-kilogram division in taekwondo at the Aichi-Nagoya Asian Games at Toyohashi Gymnasium in Toyohashi, Japan, on Friday. (Yonhap)4일 전",
+  "South Korea face Venezuela, Uzbekistan in October friendlies as Son eyes all-time scoring record South Korea, under interim head coach Roberto Moreno, will play two October friendlies against Venezuela and Uzbekistan, with captain Son Heung-min of LAFC chas ...",
+  "South Korea to battle familiar rival Japan men’s soccer final - BusinessWorld Online 5일 전OSAKA — South Korea’s Bae Jun-ho struck late as it came from behind to snatch a 2-1 victory over China on Wednesday and reach a record fourth successive Asian Games final in men’s soccer. The defending champion will bid for an unprecedented fourth straight gold medal in Saturday’s final at Toyota stadium against familiar foe Japan, who beat Uzbekistan, 9-8, on penalties after the match was locked at 1-1 at the end of extra time. Another South Korean gold would bring its players an exempt....5일 전",
+  "Ko Seung-beom Ko Seung-beom … Ko in 2024 Personal information Date of birth 24 April 1994 (age … 32) Place of birth … Jeju-do … South Korea … m (5 … ft 9 … in)",
+  "Japan Beats Uzbekistan on Penalties to Set Up Final Against Korea Japan beat Uzbekistan 9-8 on penalties to reach the Asian Games men's soccer final, setting up a third straight final against South Korea.",
+  "(Asiad) S. Korea shut out of gold in taekwondo | Yonhap News Agency 4일 전Moments later, Kwak Min-ju also grabbed bronze in the women's -67kg following her 2-0 loss to Ozoda Sobirjonova of Uzbekistan in the semifinals. An Hyang-sik of South Korea reacts to his loss to Tamirlan Tleules of Kazakhstan in the semifinals of the men's -58-kilogram division in taekwondo at the Aichi-Nagoya Asian Games at...4일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

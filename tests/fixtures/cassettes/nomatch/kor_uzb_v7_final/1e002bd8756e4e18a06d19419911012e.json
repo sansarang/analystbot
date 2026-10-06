@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T06:19:38.360127+00:00",
+ "order": [
+  "The squad, led by interim head coach Robert Moreno of Spain, faces Uzbekistan at 8 p.m. on the 6th at Yongin Mir Stadium in Yongin, Gyeonggi Province, in the final match of its four-game September-October friendly run.",
+  "For Moreno, who wants to shed the interim tag and be promoted to permanent head coach, the Uzbekistan match is not simply one game but a genuine test of whether he can lift the team out of its worst situation. If he can steady the mood, win handily against Uzbekistan and carry that momentum into two matches in November, his chances of being promoted to permanent head coach and leading the team at the 2027 Asian Cup would rise considerably.",
+  "Hwang In-beom of Porto, a key midfielder, grew tearful as he said: \"I'm in about my ninth year with the national team, and from then until now there are many things that need to change, in football and in other areas, but it doesn't seem to be working.\"",
+  "The run of poor performances has sent morale to rock bottom. After the Venezuela match, Kim Min-jae of Bayern Munich, the linchpin of Korea's defense, spoke out pointedly. \"This was a game where we needed a turnaround, and it was disappointing that we couldn't get the result. Many things need to improve. As a whole team, we all have to fight, compete and defend together. Today I felt sorry for the defenders. Overall, it didn't feel like we were all fighting together. Even if we had won 7-0 or 9-0 today, I wouldn't have felt good,\" Kim said. He added, with his voice rising: \"Rather than individuals shining, the team has to play as one to get results. To raise the team's level, every player has to put their head down and run hard.\"",
+  "Korea, ranked 32nd by FIFA, holds a clear edge on paper over 59th-ranked Uzbekistan. Korea dominates the all-time series with 11 wins, four draws and one loss, and has not lost to Uzbekistan in the past 32 years. In their most recent meeting, a 2018 friendly in Australia, Nam Tae-hee, Hwang Ui-jo, Moon Seon-min and Suk Hyun-jun struck in a flurry for a 4-0 rout.",
+  "The bigger question is the team's sharply declining form and morale. Korea has yet to show the improvement expected since Moreno took charge, posting one win, one draw and one loss. The team opened brightly with a 3-0 victory over Ecuador on Sept. 24 but has not won since. It was beaten 4-1 by Uruguay on Sept. 28 and drew 0-0 on the 2nd with Venezuela, a side that has never reached a World Cup finals.",
+  "Some analysts say leadership within the team has effectively collapsed.",
+  "Korea's national football team, which has disappointed in every match since its opening win over Ecuador, looks to turn things around at the expense of Uzbekistan."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 8문단 → 재정렬 상위 8"
+}

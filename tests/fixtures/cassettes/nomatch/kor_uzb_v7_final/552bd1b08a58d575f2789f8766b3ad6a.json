@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Asian Games South Korea Uzbekistan 기록",
+ "recorded_at": "2026-10-06T06:20:15.309481+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "SEA 게임",
+   "content": "SEA 게임 … Southeast Asian Games ) 또는 동남아시안 게임 … 11개국이 참가하는 종합 스포츠 대회로, 동남아시아안 게임 연맹이 주관하며, 국제 올림픽 위원회 … 아시아 올림픽 평의회 가 감독한다. … (South East Asian Peninsula Games)로,",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://ko.wikipedia.org/wiki/SEA_%EA%B2%8C%EC%9E%84",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/SEA_%EA%B2%8C%EC%9E%84",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "아시안 게임",
+   "content": "아시안 게임 하계 아시안 게임 동계 아시안 게임 실내 무도 아시안 게임 해변 아시안 게임 청소년 아시안 게임 동아시아 경기 대회 서아시아 경기 대회 남아시아 경기 대회 중앙아시아 경기 대회 … (Asian Games, … No place for Australia in Asian Games",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://ko.wikipedia.org/wiki/%EC%95%84%EC%8B%9C%EC%95%88_%EA%B2%8C%EC%9E%84",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/%EC%95%84%EC%8B%9C%EC%95%88_%EA%B2%8C%EC%9E%84",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "동남아시아 경기 대회",
+   "content": "동남아시아 경기 대회 … Southeast Asian Games ) 또는 SEA 게임 … 동남아시안 게임 … 11개국이 참가하는 종합 스포츠 대회로, 동남아시아안 게임 연맹이 주관하며, 국제 올림픽 위원회 … 아시아 올림픽 평의회 가 감독한다. … (South East Asian Peninsu",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://ko.wikipedia.org/wiki/%EB%8F%99%EB%82%A8%EC%95%84%EC%8B%9C%EC%95%84_%EA%B2%BD%EA%B8%B0_%EB%8C%80%ED%9A%8C",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/%EB%8F%99%EB%82%A8%EC%95%84%EC%8B%9C%EC%95%84_%EA%B2%BD%EA%B8%B0_%EB%8C%80%ED%9A%8C",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2022년 아시안 게임 e스포츠 리그 오브 레전드",
+   "content": "2022년 하계 아시안 게임 e스포츠 리그 오브 레전드 2022년 하계 … e스포츠 리그 오브 레전드 2022년 아시안 게임 e스포츠 리그 오브 레전드 Esports League of Legends at the 2022 Asian Games … 항저우 e스포츠 센터 개최 도시",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://ko.wikipedia.org/wiki/2022%EB%85%84_%EC%95%84%EC%8B%9C%EC%95%88_%EA%B2%8C%EC%9E%84_e%EC%8A%A4%ED%8F%AC%EC%B8%A0_%EB%A6%AC%EA%B7%B8_%EC%98%A4%EB%B8%8C_%EB%A0%88%EC%A0%84%EB%93%9C",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/2022%EB%85%84_%EC%95%84%EC%8B%9C%EC%95%88_%EA%B2%8C%EC%9E%84_e%EC%8A%A4%ED%8F%AC%EC%B8%A0_%EB%A6%AC%EA%B7%B8_%EC%98%A4%EB%B8%8C_%EB%A0%88%EC%A0%84%EB%93%9C",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "남아시아 경기 대회",
+   "content": "남아시아 경기 대회 … South Asian Games )는 … 7개국이 참가하는 종합 스포츠 대회로, … 에 창설된 남아시아 체육 평의회가 이 대회를 주관한다. … 남아시아 경기 대회",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://ko.wikipedia.org/wiki/%EB%82%A8%EC%95%84%EC%8B%9C%EC%95%84_%EA%B2%BD%EA%B8%B0_%EB%8C%80%ED%9A%8C",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/%EB%82%A8%EC%95%84%EC%8B%9C%EC%95%84_%EA%B2%BD%EA%B8%B0_%EB%8C%80%ED%9A%8C",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "KBS World Radio 17th Asian Games INCHEON 2014",
+   "content": "왼쪽 버튼 KBS World Radio 오른1쪽 버튼 Nachrichten Asienspiele … This website is sponsored by the Korea Communications Commission.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "http://m.world.kbs.co.kr/event/2014/incheon_2014/news/list.htm?lang=g&current_page=6",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "m.world.kbs.co.kr",
+    "/event/2014/incheon_2014/news/list.htm",
+    "",
+    "lang=g&current_page=6",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[SEA Games] 역대 동남아시안게임 마스코트 과 호돌이 (Hodori)",
+   "content": "마스코트 / 스포츠 [SEA Games] 역대 동남아시안게임 마스코트 과 호돌이 (Hodori) … 23:49 … 동남아시아 경기대회 [Southeast Asian Games / SEA Games … SEA Games … 동남아시아 경기 대회 (영어: Southeast Asian",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://m.blog.naver.com/dkmales/220751366611",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "m.blog.naver.com",
+    "/dkmales/220751366611",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "19회 항저우 아시안 게임 결과 기록 정리 주요 성적 종목 선수 메달수 일정 2022년 2023년 진행 이유 18회 자카르타 팔렘방 비교 MVP 금메달 은메달 동메달 갯수 개수",
+   "content": "제19회 항저우 아시안게임(2022 Hangzhou Asian Games)을 대한민국의 성적과 주요 종목·선수 중심으로 정리해보겠습니다. 항저우 아시안게임은 원래 2022년에 열릴 예정이었지만 코로나19 영향으로 1년 연기되어 2023년 9월 23일~10월 8일 개최됐습니다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://m.blog.naver.com/viewjw/224409210640",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "m.blog.naver.com",
+    "/viewjw/224409210640",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "아시안게임 Asian Games 기본 정보 역사 한국 개최 이력 사울 부산 인천 첫개최 인더 뉴델리 탄생 배경 제2차 세계대전 아시아올림픽평의회(OCA)",
+   "content": "🏅 아시안게임(Asian Games)이란? 아시안게임, 정식 명칭으로는 아시아경기대회(Asian Games)는 아시아 각국의 선수들이 참가하는 아시아 최대 규모의 국제 종합스포츠대회입니다. 흔히 “아시아의 올림픽”이라고 부르며, 원칙적으로 4년마다 개최됩니다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://m.blog.naver.com/viewjw/224403398137",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "m.blog.naver.com",
+    "/viewjw/224403398137",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "KBS World Radio 17th Asian Games INCHEON 2014",
+   "content": "This website is sponsored by the Korea Communications Commission.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "http://m.world.kbs.co.kr/event/2014/incheon_2014/special/list.htm?lang=g",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "m.world.kbs.co.kr",
+    "/event/2014/incheon_2014/special/list.htm",
+    "",
+    "lang=g",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "KBS World Radio 17th Asian Games INCHEON 2014",
+   "content": "1949년 2월 9개국 대표 11명은 다시 모여 제2차 회의를 갖고 당시 인도 IOC위원인 손디(G.D.Sondhi)의 제안으로 지금의 대회명칭으로 바꿨으며 국가올림픽위원회(NOC)가 조직하는 AGF(Asian Games Federation : 아시아경기연맹)를 창설했다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "http://m.world.kbs.co.kr/event/2014/incheon_2014/Introduction/history.htm?lang=k",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "m.world.kbs.co.kr",
+    "/event/2014/incheon_2014/Introduction/history.htm",
+    "",
+    "lang=k",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "제15회 2006년 도하 아시안게임 하계아시아경기대회 순위 랭킹 종합 메달 획득 수 금메달 은메달 동메달 금메달리스트 대한민국 국가대표 한국 선수",
+   "content": "🏟️ 대회 기본 정보 대회: 제15회 아시아경기대회 영문: 15th Asian Games 개최지: 카타르 도하(Doha) 기간: 2006년 12월 1일~12월 15일 참가 NOC: 45개 참가 선수: 약 9,520명 종목: 39개 스포츠 세부 종목: 46개 경기: 424개로 계획됐으며 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://m.blog.naver.com/viewjw/224422565475",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "m.blog.naver.com",
+    "/viewjw/224422565475",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "박재현·박준순이 쏘아 올린 만루포, 다음 무대는 추석 한일전",
+   "content": "사진 출처 : KBO 공식 인스타그램 20th Asian Games Aichi-Nagoya 2026 출처 : KBO 공식 인스타그램 한국 야구대표팀이 태국을 18-1, 5회 콜드게임으로 꺾고 3전 전승으로 슈퍼라운드에 … 9월 23일 조별리그 마지막 경기에서는",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://m.blog.naver.com/zsporchive/224421005978",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "m.blog.naver.com",
+    "/zsporchive/224421005978",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "KBS World Radio 17th Asian Games INCHEON 2014",
+   "content": "Select Language عربي 中国语 English Français Deutsch Bahasa Indonesia 日本語 한국어 Русский Español Tiếng Việt Menu 뉴스 포토 대회소개 개요 경기종목 … This website is sponsored by the Korea Communications Commission.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "http://m.world.kbs.co.kr/event/2014/incheon_2014/Introduction/Football.htm?lang=k",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "m.world.kbs.co.kr",
+    "/event/2014/incheon_2014/Introduction/Football.htm",
+    "",
+    "lang=k",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Southeast Asian Games Showcase 2026",
+   "content": "파노키2026-06-10 22:49조회:1,354추천:0%)/ 39,001파노키가방1레벨경험치36,202(6%)/ 39,001( 다음 레벨까지 2,799 / 마격까지 2,648 남음포인트이니754,123베니450제니274명성9,061획득스킬오픈이슈갤러리 게시판오픈이슈갤러리이미지제목글쓴이등록일조회추천[기타]하남자사진꿻뻵뗗08 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.inven.co.kr/board/webzine/2097/2677848",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.inven.co.kr",
+    "/board/webzine/2097/2677848",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[AsiaNet] 싼야, 경기장 준비 완료로 아시아 비치 게임 개최 준비 완료 | 연합뉴스",
+   "content": "Sanya ready to host Asian Beach Games as venues finalized … 싼야, 중국 2026년 4월 21일 /AsiaNet=연합뉴스/ -- 개막식이 며칠 앞으로 다가온 가운데, 중국 남부 하이난성 싼야에서 열리는 제6회 아시아 비치 게임(Asian Beach Games)의 8개 경기장",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.yna.co.kr/view/RPR20260421005100353",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.yna.co.kr",
+    "/view/RPR20260421005100353",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[나고야AG] 中도 인정한 대이변. 韓 여농, 어떻게 장쯔위 버틴 만리장성을 넘었나. 장쯔위를 '덫'으로 만든 역발상 게임 플랜",
+   "content": "21, 2026 (Xinhua) -- Zhang Ziyu (top) of China is blocked during the women's group A basketball match between China and Indonesia at the 20th Asian Games Aichi-Nagoya 2026 in",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://v.daum.net/v/20260926013054136",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "v.daum.net",
+    "/v/20260926013054136",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[스포츠박사 기자의 스포츠용어 산책 1748] 북한에선 왜 ‘아시안게임’을 ‘아시아경기대회’라고 말할까",
+   "content": "‘아시안게임’의 공식 영어 이름은 ‘Asian Games’이다. 이 말은 영어 ‘Asian’과 ‘Games ’의 합성어이다. Asian Games를 그대로 아시안게임이라고 하지 않고, 아시아 + 경기 + 대회로 바꾼 것은 외래어에 의존하지 않고 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://v.daum.net/v/20260408075726930",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "v.daum.net",
+    "/v/20260408075726930",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "평범한 인문학도가 '스포츠 외교관'으로…\"장애인 아시안게임 발전 위해 뛸 것\"",
+   "content": "평범한 인문학도가 '스포츠 외교관'으로…\"장애인 아시안게임 발전 위해 뛸 것\" … 01:23 … 기사 제목과 주요 문장을 기반으로 자동요약한 결과입니다. … 최근 아시아올림픽평의회(OCA) 파라 아시안게임위원회(Para Asian Games Committee) 위원으로",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://v.daum.net/v/20260504012333281",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "v.daum.net",
+    "/v/20260504012333281",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[취재] 'Febby' 김용민, 스타테일 도타 2 팀 합류 | 웹진 인벤",
+   "content": "fOu를 떠난 'Febby' 김용민이 스타테일에 합류했다. 김용민의 이번 합류는 아시안 사이버 게임즈 2013(Asian Cyber Games 2013) 도타 챔피언십에 참가하는 스타테일의 로스터가 공개되면서 알려졌다. 싱가포르에서 개최되는 아시안 사",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.inven.co.kr/webzine/news/?news=101001",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.inven.co.kr",
+    "/webzine/news/",
+    "",
+    "news=101001",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

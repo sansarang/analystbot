@@ -1,0 +1,14 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T06:19:32.001960+00:00",
+ "order": [
+  "All materials contained on this site are protected by Korean copyright law and may not be reproduced, distributed, transmitted, displayed, published or broadcast without the prior consent of the JoongAng Ilbo | Tel: 1577-0510",
+  "Business registration number: 110-81-00999 | CEO & Publisher: Park Chang-hee | Executive Editor: Choi Ji-young",
+  "Mail order business report number: 2020-Seoul Mapo-3838 | Online newspaper registration No: 서울,아55177",
+  "JoongAng Ilbo Co., Ltd. | Address: 48-6 Sangamsan-ro, Mapo-gu, Seoul, Republic of Korea",
+  "Date of Registration: 2023. 11. 21 | Juvenile Protection Manager: Park Hyunyoung"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 5문단 → 재정렬 상위 8"
+}
