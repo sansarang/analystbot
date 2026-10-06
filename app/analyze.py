@@ -312,6 +312,33 @@ def _formats_of(table: str) -> tuple[str, ...]:
     return ()
 
 
+def _hypo_row(i: int, c, *, tag: str = "R") -> dict:
+    """🔴 단계 3·4 입력의 변수 한 줄 — **번호는 카드와 같다**(사본 금지)."""
+    return {"id": f"{tag}{i + 1}", "type": c.type, "team": c.team,
+            "direction": c.direction, "favors": getattr(c, "favors", ""),
+            "hardness": 2 if c.hardness == "hard" else 1,
+            "claim": _clip(str(c.text or ""), 220)}
+
+
+def split_basis(varis: list) -> tuple[list, list]:
+    """🔴🔴 **근거로 쓸 수 있는 것 / 맥락 전용** — 지시서 2026-10-06 §4-1.
+
+    > `HypoInput.variables` 에는 가설 근거로 쓸 수 있는 변수만 넣는다. 표본
+    > 부족·검증 탈락·충돌 버림 변수는 `context_only` 목록으로 따로 보낸다.
+    > **반증 단계(단계 4)도 같은 분리.**
+
+    ⚠️ **검증 탈락은 애초에 여기 안 온다** — `is_variable` 이 그것을 걸렀다.
+       🔴 여기서 가르는 것은 **통과했지만 근거로는 약한** 것들이다:
+       표본 부족(`thin_sample`)과 충돌(hardness 가 `none` 으로 내려간 것).
+    """
+    basis, ctx = [], []
+    for c in (varis or []):
+        thin = bool(getattr(c, "thin_sample", ""))
+        zero = str(getattr(c, "hardness", "")) == "none"
+        (ctx if (thin or zero) else basis).append(c)
+    return basis, ctx
+
+
 def _run_hypo(card, game, items, st, sc):
     """🔴🔴 **단계 3 — DeepSeek 가설·시나리오**(v5-A §3). 지시 ②③ 2026-10-05.
 
@@ -326,6 +353,12 @@ def _run_hypo(card, game, items, st, sc):
     """
     from app import hypo
     from app.reasons import Reason
+    # 🔴 §4-1 — 근거/맥락을 가른다(번호는 전체 목록 순서를 지킨다)
+    _basis, _ctx = split_basis(list(card.variables or []))
+    if _ctx:
+        sc.notes.append(
+            f"§4-1 근거 불가 변수 {len(_ctx)}개를 `context_only` 로 보냈다 — "
+            f"표본 부족·충돌(그 번호를 인용한 문장은 버려진다)")
     inp = hypo.HypoInput(
         # 🔴 원장이 한 경기로 모이게 — solar 와 **같은 열쇠**다(⑫)
         match_key=str(getattr(card, "match_key", "") or ""),
@@ -333,11 +366,14 @@ def _run_hypo(card, game, items, st, sc):
         away=str(getattr(game, "away_id", "") or ""),
         sport=str(getattr(game, "sport", "") or ""),
         competition=str(getattr(game, "league", "") or ""),
-        variables=[{"id": f"R{i + 1}", "type": c.type, "team": c.team,
-                    "direction": c.direction, "favors": getattr(c, "favors", ""),
-                    "hardness": 2 if c.hardness == "hard" else 1,
-                    "claim": _clip(str(c.text or ""), 220)}
-                   for i, c in enumerate(card.variables)],
+        # 🔴🔴 **근거로 쓸 수 있는 것만 `variables` 다** — 지시서 §4-1.
+        #    ⚠️ 실측 2026-10-06: 근거에서 뺀 `R1`(h2h 표본 1경기)이 입력에 그대로
+        #       들어가 DeepSeek 문장이 그 번호를 인용했다. 🔴 **원인 제거**다.
+        #    🔴 번호는 **카드와 같아야** 한다 — 전체 목록으로 매기고 뒤에 가른다.
+        variables=[_hypo_row(i, c) for i, c in enumerate(card.variables)
+                   if c in _basis],
+        context_only=[_hypo_row(i, c) for i, c in enumerate(card.variables)
+                      if c in _ctx],
         facts=dict(card.form or {}),
         # ⚠️ `Result` 에 `required_types` 칸이 **없다**(재서 고쳤다) —
         #    필수형 목록은 `rules.required_forms()` 가 든다(사본 금지).
@@ -346,6 +382,23 @@ def _run_hypo(card, game, items, st, sc):
         lineup_state=dict(getattr(card, "xi", {}) or {}))
     got = hypo.run(inp)
     card.ds_why = got.why
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **안전망 — 출력에서 거른다**(지시서 §4-2)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 가설 문장은 **그 문장을 버리고** 사유 `cited_excluded:R1` 을 블록 5 에
+    #  > 적는다(문장을 고쳐 쓰지 않는다). 시나리오는 그 번호만 `driver_vars`
+    #  > 에서 빼고, 남은 driver 가 0개면 시나리오를 버린다.
+    #
+    #  ⚠️ 입력에서 뺐는데도 모델이 그 번호를 쓸 수 있다 — 그때를 위한 그물이다.
+    _ban = hypo.excluded_ids(inp)
+    if _ban:
+        got.hypotheses, _d1 = hypo.drop_cited(got.hypotheses or {},
+                                              excluded=_ban)
+        got.scenarios, _d2 = hypo.strip_cited(got.scenarios or [],
+                                              excluded=_ban)
+        for said in (_d1 + _d2):
+            sc.notes.append(f"§4-2 {said}")
     if got.reason is not Reason.OK or not got.scenarios:
         # 🔴 **0개면 그 사실을 이름으로** 남긴다(지시 ③)
         sc.notes.append(
@@ -470,6 +523,8 @@ def _run_redteam(card, game, sc, st, probs, board):
         return {_sv.name_of(m): float(m.survival or 0)
                 for m in (got.markets or [])}
 
+    # 🔴 §4-1 — 반증도 근거/맥락을 가른다
+    _rt_basis, _rt_ctx = split_basis(list(card.variables or []))
     inp = hypo.HypoInput(
         # 🔴 원장이 한 경기로 모이게 — solar 와 **같은 열쇠**다(⑫)
         match_key=str(getattr(card, "match_key", "") or ""),
@@ -477,13 +532,15 @@ def _run_redteam(card, game, sc, st, probs, board):
         away=str(getattr(game, "away_id", "") or ""),
         sport=str(getattr(game, "sport", "") or ""),
         competition=str(getattr(game, "league", "") or ""),
-        variables=[{"id": f"V{i + 1}", "type": c.type, "team": c.team,
-                    "direction": c.direction,
-                    "hardness": 2 if c.hardness == "hard" else 1,
-                    # 🔴 **표시 없이 자르지 않는다** — `_clip` 이 몇 자를
-                    #    줄였는지 적는다(계약이 그것을 검사한다).
-                    "claim": _clip(c.text, 200)}
-                   for i, c in enumerate(card.variables)],
+        # 🔴🔴 **반증 단계도 같은 분리다** — 지시서 2026-10-06 §4-1 마지막 줄.
+        #    ⚠️ 반증이 근거 불가 변수를 **반증 대상**으로 삼으면, 그 변수가
+        #       근거였던 적이 없는데 *"이 근거가 틀렸다"* 를 쓴다.
+        #    🔴 번호(`V1`…)는 단계 3 의 `R1`… 과 **다른 꼬리표**다 — 그 둘을
+        #       섞으면 블록 5 와 반증 블록이 다른 것을 같은 이름으로 부른다.
+        variables=[_hypo_row(i, c, tag="V")
+                   for i, c in enumerate(card.variables) if c in _rt_basis],
+        context_only=[_hypo_row(i, c, tag="V")
+                      for i, c in enumerate(card.variables) if c in _rt_ctx],
         facts={}, board=[], required_types=list(sc.incomplete_why or []))
     try:
         return judgeorder.run(inp, list(sc.drafts or []), grade=grade)

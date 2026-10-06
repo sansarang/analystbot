@@ -121,6 +121,20 @@ class HypoInput:
     #      적으므로 **같은 열쇠**여야 한 경기로 모인다.
     match_key: str = ""
     variables: list = field(default_factory=list)
+    # ══════════════════════════════════════════════════════════════
+    # 🔴🔴 **근거로 못 쓰는 변수** — 지시서 2026-10-06 §4-1
+    # ══════════════════════════════════════════════════════════════
+    #
+    #  > `HypoInput.variables` 에는 **가설 근거로 쓸 수 있는 변수만** 넣는다.
+    #  > 표본 부족·검증 탈락·충돌 버림 변수는 `context_only` 목록으로 따로
+    #  > 보내고, 프롬프트에 *"`context_only` 의 변수는 번호로 인용하지 마라.
+    #  > 근거로 쓰지 마라"* 를 적는다.
+    #
+    #  ⚠️ 실측 2026-10-06: 제외 표시가 **판정층에만** 있어서, 근거에서 뺀
+    #     `R1`(h2h 표본 1경기)을 DeepSeek 문장이 그대로 인용했다.
+    #  🔴 **맥락으로는 준다** — 모델이 그 사실을 아는 것과 **근거로 쓰는 것**은
+    #     다르다. 아예 숨기면 *"왜 그 변수를 안 썼나"* 를 모델이 모른다.
+    context_only: list = field(default_factory=list)
     facts: dict = field(default_factory=dict)
     board: list = field(default_factory=list)
     required_types: list = field(default_factory=list)
@@ -175,6 +189,8 @@ def to_payload(inp: HypoInput) -> dict:
         "board": [{"market": b.get("market"), "point": b.get("point"),
                    "side": b.get("side")} for b in (inp.board or [])],
         "required_types": [str(x) for x in (inp.required_types or [])],
+        # 🔴 **맥락 전용** — 번호로 인용하지 말라고 프롬프트가 말한다(§4-1)
+        "context_only": [dict(x) for x in (inp.context_only or [])],
         "solar_draft": inp.solar_draft or None,
     }
 
@@ -350,8 +366,9 @@ def run(inp: HypoInput, *, now=None, _net=None) -> HypoResult:
     import os as _os
     if _net is None and _os.environ.get("ANALYSTBOT_TEST"):
         _net = _test_net
-    got = deepseek.ask([{"role": "system", "content": system_prompt()},
-                        {"role": "user", "content": _dump(to_payload(inp))}],
+    # 🔴 **보내는 글은 `messages_of` 하나가 만든다**(사본 금지) — 계약이
+    #    *"금지를 말했나"* 를 보려면 **실제로 보내는 글**을 봐야 한다.
+    got = deepseek.ask(messages_of(inp),
                        match=(inp.match_key or f"{inp.home}|{inp.away}"),
                        stage="stage3",
                        now=now, _net=_net)
@@ -378,6 +395,78 @@ def _dump(box: dict) -> str:
     return json.dumps(box, ensure_ascii=False, default=str)
 
 
+def messages_of(inp: HypoInput) -> list[dict]:
+    """🔴🔴 **보내는 메시지 — 여기 하나가 만든다**(사본 금지).
+
+    ⚠️ 종전엔 `run` 안에서 조립했다. 그러면 계약이 *"프롬프트가 금지를 말했나"* 를
+       보려고 **같은 조립을 다시 해야** 하고, 그 사본은 늦는다.
+    """
+    return [{"role": "system", "content": system_prompt()},
+            {"role": "user", "content": _dump(to_payload(inp))}]
+
+
+def excluded_ids(inp: HypoInput) -> set[str]:
+    """🔴 **근거로 못 쓰는 번호들** — 출력 거르기(§4-2)가 이것을 본다."""
+    return {str(x.get("id") or "") for x in (inp.context_only or [])
+            if str(x.get("id") or "")}
+
+
+_CITE = re.compile(r"\b(R\d+)\b")
+
+
+def drop_cited(said: dict, *, excluded: set[str]) -> tuple[dict, list[str]]:
+    """🔴🔴 **제외 번호를 인용한 가설 문장을 버린다**(지시서 §4-2 안전망).
+
+    > 가설 문장은 **그 문장을 버리고** 사유 `cited_excluded:R1` 을 블록 5 에
+    > 적는다(**문장을 고쳐 쓰지 않는다**).
+
+    ⚠️ 고쳐 쓰면 그것은 **우리가 쓴 문장**이 된다 — 모델이 한 말과 우리가 한
+       말이 섞이면 누가 틀렸는지 못 가린다.
+    """
+    out: dict = {}
+    drops: list[str] = []
+    for side, box in (said or {}).items():
+        row = dict(box or {})
+        for field_ in ("reasons", "breaks"):
+            kept = []
+            for line in (row.get(field_) or []):
+                hit = sorted(set(_CITE.findall(str(line))) & set(excluded))
+                if hit:
+                    drops.append(f"{side}/{field_}: cited_excluded:"
+                                 f"{','.join(hit)} — 버렸다: "
+                                 f"{str(line)[:60]}")
+                    continue
+                kept.append(line)
+            row[field_] = kept
+        out[side] = row
+    return out, drops
+
+
+def strip_cited(rows: list, *, excluded: set[str]) -> tuple[list, list[str]]:
+    """🔴🔴 **시나리오는 번호만 뺀다 — 0개가 되면 버린다**(지시서 §4-2).
+
+    > 시나리오는 그 번호만 `driver_vars` 에서 빼고, 남은 driver 가 0개면
+    > 시나리오를 버린다(`unknown_var` 와 같은 처리).
+    """
+    kept: list = []
+    drops: list[str] = []
+    for raw in (rows or []):
+        row = dict(raw or {})
+        said = [str(x) for x in (row.get("driver_vars") or [])]
+        gone = [x for x in said if x in excluded]
+        left = [x for x in said if x not in excluded]
+        if gone and not left:
+            drops.append(f"{row.get('id')}: cited_excluded:{','.join(gone)} — "
+                         f"남은 근거 변수가 **0개**라 시나리오를 버렸다")
+            continue
+        if gone:
+            drops.append(f"{row.get('id')}: cited_excluded:{','.join(gone)} — "
+                         f"그 번호만 뺐다(남은 것 {left})")
+        row["driver_vars"] = left
+        kept.append(row)
+    return kept, drops
+
+
 def system_prompt() -> str:
     """🔴 v5-A §3 프롬프트 요지 — **여덟 줄 그대로**(고정 문자열 · 캐시 단가)."""
     return (
@@ -385,6 +474,12 @@ def system_prompt() -> str:
         "\n"
         "1. 🔴 너는 **사실을 만들지 않는다.** `variables` 와 `facts` 에 없는 "
         "사실은 쓰지 않는다. 모르면 시나리오에 넣지 않는다.\n"
+        # ══════════════════════════════════════════════════════════
+        # 🔴🔴 **근거 불가 변수** — 지시서 2026-10-06 §4-1
+        # ══════════════════════════════════════════════════════════
+        "1b. 🔴 `context_only` 의 변수는 **번호로 인용하지 마라. 근거로 쓰지 "
+        "마라.** 그 변수들은 표본이 모자라거나 검증을 통과하지 못했다 — 맥락으로 "
+        "알고만 있어라. ⚠️ 그 번호를 적은 문장·시나리오는 **버려진다.**\n"
         "2. 먼저 두 팀의 폼을 `facts.recent` 로 요약한다(최근 5경기·연속·"
         "직전 득실).\n"
         "3. 팀별 가설: 열쇠는 **`home`·`away` 두 글자**다(팀 이름이 아니다). "
