@@ -1,0 +1,38 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 1000, \"messages\": [{\"content\": \"너는 스포츠 팀 이름의 **철자 후보**만 낸다. 경기를 고르지 않는다.\\n사용자 문장에서 두 팀을 찾아 JSON 만 낸다:\\n{\\\"teams\\\":[{\\\"ko\\\":\\\"<사용자가 쓴 이름>\\\",\\\"latin_candidates\\\":[\\\"<라틴 표기1>\\\",\\\"<표기2>\\\"],\\\"country_guess\\\":\\\"<ISO 2글자 또는 \\\\\\\"\\\\\\\">\\\"}],\\\"date_hint\\\":\\\"\\\",\\\"competition_hint\\\":\\\"\\\"}\\n🔴 경기 URL·ID·킥오프를 **넣지 마라** — 코드가 공개 페이지로 확인한다.\\n🔴 모르면 빈 문자열로 둬라. 지어내지 마라.\", \"role\": \"system\"}, {\"content\": \"시카고 vs 밴쿠버\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"low\"}",
+ "recorded_at": "2026-10-06T23:16:46.244994+00:00",
+ "id": "379e3ad2-60c4-4d30-bf5f-847210a0e636",
+ "object": "chat.completion",
+ "created": 1791328606,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"teams\": [\n    {\n      \"ko\": \"시카고\",\n      \"latin_candidates\": [\n        \"Chicago Bulls\",\n        \"Chicago Bears\",\n        \"Chicago Cubs\",\n        \"Chicago White Sox\",\n        \"Chicago Fire\",\n        \"Chicago Blackhawks\"\n      ],\n      \"country_guess\": \"US\"\n    },\n    {\n      \"ko\": \"밴쿠버\",\n      \"latin_candidates\": [\n        \"Vancouver Canucks\",\n        \"Vancouver Whitecaps\",\n        \"Vancouver BC Lions\"\n      ],\n      \"country_guess\": \"CA\"\n    }\n  ],\n  \"date_hint\": \"\",\n  \"competition_hint\": \"\"\n}",
+    "reasoning": "Here, the user mentions \"시카고\" (Chicago) and \"밴쿠버\" (Vancouver). These are city names that could refer to various sports teams. I need to infer possible sports teams and provide Latin alphabet candidates for their names.\n\nChicago could refer to Chicago Bulls (NBA), Chicago Bears (NFL), Chicago Cubs (MLB), Chicago White Sox (MLB), Chicago Fire (MLS), Chicago Blackhawks (NHL), etc.\nVancouver could refer to Vancouver Canucks (NHL), Vancouver Whitecaps (MLS), Vancouver BC Lions (CFL - but they're in Canada so maybe not \"밴쿠버\" in Korean context, though they could be), etc.\n\nSince the prompt doesn't specify a sport, I should provide multiple possible candidates. Let me think of the most likely ones in Korean sports context.\n\nFor Chicago:\n- 시카고 불스 (Chicago Bulls)\n- 시카고 베어스 (Chicago Bears)\n- 시카고 컵스 (Chicago Cubs)\n- 시카고 화이트삭스 (Chicago White Sox)\n- 시카고 파이어 (Chicago Fire)\n- 시카고 블랙호크스 (Chicago Blackhawks)\n\nFor Vancouver:\n- 밴쿠버 캐넉스 (Vancouver Canucks)\n- 밴쿠버 화이트캡스 (Vancouver Whitecaps)\n- 밴쿠버 그리즐리스 (Vancouver Grizzlies - but they moved to Memphis in 2001, so probably not)\n\nSince I need to provide ISO country codes, Chicago teams would be \"US\" and Vancouver teams would be \"CA\".\n\nThe prompt says to provide only spelling candidates, not to choose games. I should output JSON with possible team name candidates.\n\nI'll provide multiple candidates for each city since the sport isn't specified."
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 166,
+  "completion_tokens": 468,
+  "total_tokens": 634,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 335,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

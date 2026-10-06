@@ -1,0 +1,11 @@
+{
+ "kind": "fetch",
+ "url": "https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=%EC%8B%9C%EC%B9%B4%EA%B3%A0",
+ "query": "",
+ "recorded_at": "2026-10-06T23:16:16.179104+00:00",
+ "headers": {},
+ "ok": true,
+ "status": 200,
+ "text": "{\"teams\":null}",
+ "reason": ""
+}

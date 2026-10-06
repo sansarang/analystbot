@@ -1,0 +1,1294 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "espn 시카고 밴쿠버 match",
+ "recorded_at": "2026-10-06T23:17:05.568539+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "시카고 파이어 FC vs 밴쿠버 화이트캡스 FC 분석 | MLS 솔저 필드 (10월 7일 09:30 한....",
+   "content": "1일 전경기장 솔저 필드 킥오프 10월 7일 (수) 09:30 (한국시간) 순위 시카고 파이어 FC 동부 5위 · 밴쿠버 화이트캡스 FC 서부 1위 승점 42 대 50 최근 5경기 승-패-패-무-무 대 무-승-패-승-패1일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://megainspiration.co.kr/mls-2026-10-06-chi-van/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "megainspiration.co.kr",
+    "/mls-2026-10-06-chi-van/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ESPN Chicago",
+   "content": "Thursday 2/26 ESPN Chicago LIVE! ESPN Chicago … ESPN Chicago is live from the brand new Jeff Dickerson Studio in The Chicago Board of Trade Building!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.youtube.com/channel/UC3tow0dDpOH8-NlFIb4cBgw",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/channel/UC3tow0dDpOH8-NlFIb4cBgw",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "데포르티보 알라베스 vs 발렌시아 분석 | 라리가 멘디소로차 (9월 16일 03:00 한국....",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://megainspiration.co.kr/laliga-2026-09-14-alaves-valencia/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "megainspiration.co.kr",
+    "/laliga-2026-09-14-alaves-valencia/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Buccaneers 38-35 Seahawks (Oct 5, 2025) Final Score - ESPN",
+   "content": "Game summary of the Tampa Bay Buccaneers vs. Seattle Seahawks NFL game, final score 38-35, from October 5, 2025 on ESPN.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.espn.com/nfl/game/_/gameId/401772746/buccaneers-seahawks",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/nfl/game/_/gameId/401772746/buccaneers-seahawks",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "MLS | 시카고 vs 밴쿠버",
+   "content": "FC Cincinnati vs. Vancouver Whitecaps FC | Full Match Highlights | WILD 7-GOAL THRILLER!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://waveflowsportslab.com/ko/football/guide.php?ref=4dLBkAqJuDlU6QviDf8tlA",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "waveflowsportslab.com",
+    "/ko/football/guide.php",
+    "",
+    "ref=4dLBkAqJuDlU6QviDf8tlA",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Reds vs. Cubs (Aug 30, 2026) Live Score - ESPN",
+   "content": "Live coverage of the Cincinnati Reds vs. Chicago Cubs MLB game on ESPN, including live score, highlights and updated stats.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.espn.com/mlb/game/_/gameId/401816741/reds-cubs",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/mlb/game/_/gameId/401816741/reds-cubs",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "MLS on TSN",
+   "content": "역사 ; 2011년 2월, CTVglobemedia는 캐나다에서 국가 MLS 방송권을 위한 6년 계약을 발표했다. TSN과 TSN2는 2011 시즌 동안 24경기를 방송하고 이후 5시즌 동안 시즌당 최소 30경기를 방송하며, 모두 최소 1명의 캐나다 팀이 출연한다. 프랑스어 자매 네트워크 RDS와 RDS2는 유사한 방송권을 가지고 있었다. 네트워크에는 MLS컵 과 플레이오프 선발전, MLS 올스타전, 그리고 캐나다 팀이 참여하지 ....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://yoda.wiki/wiki/MLS_on_TSN",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "yoda.wiki",
+    "/wiki/MLS_on_TSN",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2025-26 Playoffs NBA Power Index - ESPN",
+   "content": "View the 2025-26 Playoffs NBA power index on ESPN. The BPI is the best predictor of a team's performance of the season.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.espn.com/nba/bpi/_/view/playoffs",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/nba/bpi/_/view/playoffs",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "손흥민/클럽 경력/2025 시즌",
+   "content": "1. 개요 손흥민의 2025 시즌 활약상을 정리한 문서. 손흥민이 로스앤젤레스 FC에서 뛰는 첫 번째 시즌이다. 2. 이적 사가 저번 시즌 재계약이 아닌 1년 연장 발동으로 2026년 여름까지 토트넘에서 뛰게 된 손흥민이 과연 토트넘과 재계약을 하게 될지 귀추가 주목된다. 사미 목벨에 따르면 8월 초의 한국 투어 이후에 손흥민의 미래가 결정될 것으로...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://namu.wiki/w/%EC%86%90%ED%9D%A5%EB%AF%BC/%ED%81%B4%EB%9F%BD%20%EA%B2%BD%EB%A0%A5/2025%20%EC%8B%9C%EC%A6%8C",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EC%86%90%ED%9D%A5%EB%AF%BC/%ED%81%B4%EB%9F%BD%20%EA%B2%BD%EB%A0%A5/2025%20%EC%8B%9C%EC%A6%8C",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rhea Ripley & IYO SKY vs. The Kabuki Warriors | Full Match Highlights | WWE on ESPN",
+   "content": "Stream Crown Jewel exclusively on the ESPN App: www.stream.espn.comCheck out these highlights as Rhea Ripley and IYO SKY get a win over The Kabuki Warriors, ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=uJqES_CcMjg",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=uJqES_CcMjg",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "2017년 US 오픈컵 결승전",
+   "content": "^ Kovzan, Sam (September 20, 2017). \"Recap: Sporting KC crowned Open Cup champions with 2-1 win over New York Red Bulls\"",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://yoda.wiki/wiki/2017_U.S._Open_Cup_Final",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "yoda.wiki",
+    "/wiki/2017_U.S._Open_Cup_Final",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "FOX Sports News, Scores, Schedules, Odds, Shows, Streams & Videos",
+   "content": "Watch FOX Sports and view live scores, odds, team news, player news, streams, videos, stats, standings & schedules covering NFL, MLB, NASCAR …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.foxsports.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foxsports.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "WatchESPN - ESPN",
+   "content": "Stay connected to live sports and shows from ESPN - wherever and whenever you want them. … We're sorry, Watch ESPN is not available for your device at this time",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "http://m.espn.com/general/video/watchLanding",
+   "engine": "yep",
+   "parsed_url": [
+    "http",
+    "m.espn.com",
+    "/general/video/watchLanding",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "MLS | 밴쿠버 vs 시카고",
+   "content": "FC Cincinnati vs. Vancouver Whitecaps FC | Full Match Highlights | WILD 7-GOAL THRILLER!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://waveflowsportslab.com/ko/football/guide.php?ref=1p-Nvgr4G_dZ6Vs0IfJ23w",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "waveflowsportslab.com",
+    "/ko/football/guide.php",
+    "",
+    "ref=1p-Nvgr4G_dZ6Vs0IfJ23w",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ESPN - Serving Sports Fans. Anytime. Anywhere.",
+   "content": "Visit ESPN for live scores, highlights and sports news. Stream exclusive games on ESPN and play fantasy sports.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.espn.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[레슬매니아닷넷] WWE 프로레슬링 - [뉴스] 릴리안 가르시아, 존 모리슨／멜리나 ....",
+   "content": "2011.01.03.ESPN의 TV 프로그램 《스포츠네이션》은 (페이스북을 통해서) \"2010년 최고의 멋지고도 화끈한 운동선수\"를 인터넷 팬 투표로 뽑고 있습니다：후보들은 MLB 샌프란시스코... NHL 시카고 블랙호크스의 주전 공격수인 패트릭 케인, 토리노 동계올림픽과 밴쿠버 동계올림픽에서 연거푸 금메달을 따낸 스노보드 선수 숀 화이트, 올해 신인 드래프트 1번으로 NBA...2011.01.03.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://wmania.net/news/1430882",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "wmania.net",
+    "/news/1430882",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Watch ESPN online | YouTube TV (Free Trial)",
+   "content": "Start a Free Trial to watch ESPN on YouTube TV (and cancel anytime). Stream live TV from ABC, CBS, FOX, NBC, ESPN & popular cable networks.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://tv.youtube.com/browse/espn-UCakwQ1jKQnYJcUMghvnp-Yw",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "tv.youtube.com",
+    "/browse/espn-UCakwQ1jKQnYJcUMghvnp-Yw",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "The official site of the NBA for the latest NBA Scores, Stats & News. | NBA.com",
+   "content": "Follow the action on NBA scores, schedules, stats, news, teams, and players. Buy tickets or watch the games anywhere with NBA League Pass.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.nba.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nba.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NHL이란 무엇인가? 북미 아이스하키 리그 완벽 가이드 – 미디어킹",
+   "content": "2026.05.27.NHL: 북미 아이스하키 리그의 심장 ; 아이스하키, 하면 어떤 이미지가 떠오르시나요? 꽁꽁 언 얼음 위를 쉴 새 없이 질주하는 선수들, 퍽을 향한 치열한 몸싸움, 그리고 짜릿한 골! 이 모든 역동적인 재미를 한데 모아놓은 곳이 바로 NHL(National Hockey League)입니다. NHL은 단순히 북미 지역의 아이스하키 리그를 넘어, 전 세계 아이스하키 팬들이 열광하는 최고의 무대입니다. 하지만 아.....2026.05.27.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fflowsking.com%2Fwp-content%2Fuploads%2F2025%2F12%2FMEDIA-KING11.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://flowsking.com/nhl%EC%9D%B4%EB%9E%80-%EB%AC%B4%EC%97%87%EC%9D%B8%EA%B0%80-%EB%B6%81%EB%AF%B8-%EC%95%84%EC%9D%B4%EC%8A%A4%ED%95%98%ED%82%A4-%EB%A6%AC%EA%B7%B8-%EC%99%84%EB%B2%BD-%EA%B0%80%EC%9D%B4%EB%93%9C/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "flowsking.com",
+    "/nhl%EC%9D%B4%EB%9E%80-%EB%AC%B4%EC%97%87%EC%9D%B8%EA%B0%80-%EB%B6%81%EB%AF%B8-%EC%95%84%EC%9D%B4%EC%8A%A4%ED%95%98%ED%82%A4-%EB%A6%AC%EA%B7%B8-%EC%99%84%EB%B2%BD-%EA%B0%80%EC%9D%B4%EB%93%9C/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "케빈 가넷 - 나무위키",
+   "content": "당시 그를 담당한 지도자는 시카고의 패러깃 아카데미의 감독 윌리엄 \"울프\" 넬슨이었는데, 처음엔 너무나 비쩍 마른 가넷을 보고 \"장난하냐?\"고 했다고 한다. 빅맨을 담당하기로... 그는 나이키 캠프에서 친분을 갖게 된 넬슨 감독을 통해 시카고에 위치한 페러것 고등학교로 전학하게 되는데, 그곳에서 가넷은 자신의 농구실력을 유감없이 발휘했다. 평균 25.2점, 17....1976년 5월 19일 (50세), 사우스캐롤라이나 주 그린빌케빈 모리스 가넷 Kevin Maurice Garnett",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.namu.wiki%2Fi%2FHFz9EnwZfCGjelV-BSO219zT9YpoohXMAlId2dgVoLDuqyg7TuKbi9u66bgaIVs5fwbPMqhePsCLisGNr95j3A.webp&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://namu.wiki/w/%EC%BC%80%EB%B9%88%20%EA%B0%80%EB%84%B7",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/%EC%BC%80%EB%B9%88%20%EA%B0%80%EB%84%B7",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[오피셜] 말도 안 돼! MLS, '19분 4도움' 역사 쓴 손흥민 외면…POTM에 '해트트릭' 부....",
+   "content": "2026.04.08.[오피셜] 말도 안 돼! MLS, '19분 4도움' 역사 쓴 손흥민 외면…POTM에 '해트트릭' 부앙가 선정→'9경기 무득점' 여파 컸나2026.04.08.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fassets.goal.com%2Fimages%2Fv3%2Fblt862645852bbb0790%2Fcrop%2FMM5DKMBQGQ5DEOBRGU5G433XMU5DAORSGYYQ%3D%3D%3D%3D%2FGettyImages-2248020225%2520%281%29.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.goal.com/kr/%EB%89%B4%EC%8A%A4/%E1%84%8B%E1%85%A9%E1%84%91%E1%85%B5%E1%84%89%E1%85%A7%E1%86%AF-%E1%84%86%E1%85%A1%E1%86%AF%E1%84%83%E1%85%A9-%E1%84%8B%E1%85%A1%E1%86%AB-%E1%84%83%E1%85%AB-mls--19%E1%84%87%E1%85%AE%E1%86%AB-4%E1%84%83%E1%85%A9%E1%84%8B%E1%85%AE%E1%86%B7-%E1%84%8B%E1%85%A7%E1%86%A8%E1%84%89%E1%85%A1-%E1%84%8A%E1%85%B3%E1%86%AB-%E1%84%89%E1%85%A9%E1%86%AB%E1%84%92%E1%85%B3%E1%86%BC%E1%84%86%E1%85%B5%E1%86%AB-%E1%84%8B%E1%85%AC%E1%84%86%E1%85%A7%E1%86%AB--potm%E1%84%8B%E1%85%A6-%E1%84%92%E1%85%A2%E1%84%90%E1%85%B3%E1%84%90%E1%85%B3%E1%84%85%E1%85%B5%E1%86%A8-%E1%84%87%E1%85%AE%E1%84%8B%E1%85%A1%E1%86%BC%E1%84%80%E1%85%A1-%E1%84%89%E1%85%A5%E1%86%AB%E1%84%8C%E1%85%A5%E1%86%BC%E2%86%92-9%E1%84%80%E1%85%A7%E1%86%BC%E1%84%80%E1%85%B5-%E1%84%86%E1%85%AE%E1%84%83%E1%85%B3%E1%86%A8%E1%84%8C%E1%85%A5%E1%86%B7-%E1%84%8B%E1%85%A7%E1%84%91%E1%85%A1-%E1%84%8F%E1%85%A5%E1%86%BB%E1%84%82%E1%85%A1/blt5e3dd5a365d6de9a",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/kr/%EB%89%B4%EC%8A%A4/%E1%84%8B%E1%85%A9%E1%84%91%E1%85%B5%E1%84%89%E1%85%A7%E1%86%AF-%E1%84%86%E1%85%A1%E1%86%AF%E1%84%83%E1%85%A9-%E1%84%8B%E1%85%A1%E1%86%AB-%E1%84%83%E1%85%AB-mls--19%E1%84%87%E1%85%AE%E1%86%AB-4%E1%84%83%E1%85%A9%E1%84%8B%E1%85%AE%E1%86%B7-%E1%84%8B%E1%85%A7%E1%86%A8%E1%84%89%E1%85%A1-%E1%84%8A%E1%85%B3%E1%86%AB-%E1%84%89%E1%85%A9%E1%86%AB%E1%84%92%E1%85%B3%E1%86%BC%E1%84%86%E1%85%B5%E1%86%AB-%E1%84%8B%E1%85%AC%E1%84%86%E1%85%A7%E1%86%AB--potm%E1%84%8B%E1%85%A6-%E1%84%92%E1%85%A2%E1%84%90%E1%85%B3%E1%84%90%E1%85%B3%E1%84%85%E1%85%B5%E1%86%A8-%E1%84%87%E1%85%AE%E1%84%8B%E1%85%A1%E1%86%BC%E1%84%80%E1%85%A1-%E1%84%89%E1%85%A5%E1%86%AB%E1%84%8C%E1%85%A5%E1%86%BC%E2%86%92-9%E1%84%80%E1%85%A7%E1%86%BC%E1%84%80%E1%85%B5-%E1%84%86%E1%85%AE%E1%84%83%E1%85%B3%E1%86%A8%E1%84%8C%E1%85%A5%E1%86%B7-%E1%84%8B%E1%85%A7%E1%84%91%E1%85%A1-%E1%84%8F%E1%85%A5%E1%86%BB%E1%84%82%E1%85%A1/blt5e3dd5a365d6de9a",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[일반] [스포츠] 한 주간 스포츠 뉴스 올립니다..",
+   "content": "2012.03.19.박현준 불구속 기소, 김성현 구속 기소 ; 기다리 고기다리던 프로야구 시범경기가 시작되었습니다.. 불판도 슬슬 달구기 시작했으니 시간 나시면 놀러오세요.. 고통의 월요일(?) 마인드 컨트롤 잘 하시고, 좋은 하루 되시길 바랍니다.. ^_^ * 마지막으로 추억의 페드로 마르티네즈 17k 영상 올립니다.. 페드로 마르티네즈 vs 뉴욕 양키즈 k`2012.03.19.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=http%3A%2F%2Fcfile230.uf.daum.net%2Fimage%2F201BBD494F66936F03A7BB&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://pgr21.com/pb/pb.php?id=freedom&no=36031",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "pgr21.com",
+    "/pb/pb.php",
+    "",
+    "id=freedom&no=36031",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[레슬매니아닷넷] WWE 프로레슬링 - NHL 정규시즌이 점점 막바지로 가고 있군요",
+   "content": "오늘 NHL 홈페이지에 들어갔는데 'PLAYOFF PULSE'란이 생긴거 보고 \"이제 정규시즌이 얼마 안남았구나\"란걸 실감하게 되었습니다. 'PLAYOFF PULSE'란을 누르고 나오는게 제가 제일 좋아하는 애발란치가 8위로 올라섰다는 제목과 함께 현재 판세를 짐작해 볼 수 있는 기사가 뜹니다. 현재 디비전 리더는 동부 - 뉴욕 레인저스(애틀란틱), 보스턴(노스이스트), 플로리다(사우스이스트) 서부 - .....",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://wmania.net/free/1846799?category=0&search_target=tag&listStyle=list&page=6&sort_index=regdate&order_type=asc",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "wmania.net",
+    "/free/1846799",
+    "",
+    "category=0&search_target=tag&listStyle=list&page=6&sort_index=regdate&order_type=asc",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Brazil 4-1 South Korea (Dec 5, 2022) Final Score - ESPN",
+   "content": "Game summary of the Brazil vs. South Korea Fifa World Cup game, final score 4-1, from December 5, 2022 on ESPN.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.espn.com/soccer/match/_/gameId/633840/south-korea-brazil",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.espn.com",
+    "/soccer/match/_/gameId/633840/south-korea-brazil",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ESPN BET promo code: Bet $10 and get $100 in bonus bets",
+   "content": "If you place a $10 bet, … new bettors will receive a free 30-day subscription to ESPN+, … deposit match up to $500 on their first deposit on ESPN BET.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.cbssports.com/betting/news/espn-bet-promo-code/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.cbssports.com",
+    "/betting/news/espn-bet-promo-code/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ESPN BET",
+   "content": "@ESPN’s home for all things sport betting. Odds powered by DraftKings. Odds Subject to change. Must be 21+. Gambling problem? Call 1-800-GAMBLER",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.youtube.com/channel/UC9dg8mfTDjUXOReyCnWmcig",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/channel/UC9dg8mfTDjUXOReyCnWmcig",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "케빈 가넷 - 이승협",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://readonly.wiki/w/%EC%BC%80%EB%B9%88%20%EA%B0%80%EB%84%B7",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "readonly.wiki",
+    "/w/%EC%BC%80%EB%B9%88%20%EA%B0%80%EB%84%B7",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Taylor McGregor, Marquee’s Chicago Cubs sideline reporter, is leaving to join ESPN full time",
+   "content": "A staple of Chicago Cubs TV broadcasts since Marquee Sports Network launched in 2020, Taylor McGregor is leaving her sideline reporting role to work full time for ESPN.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.chicagotribune.com/2026/09/24/taylor-mcgregor-marquees-chicago-cubs-sideline-reporter-is-leaving-to-join-espn-full-time/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.chicagotribune.com",
+    "/2026/09/24/taylor-mcgregor-marquees-chicago-cubs-sideline-reporter-is-leaving-to-join-espn-full-time/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "케빈 가넷 - 더위키",
+   "content": "",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://thewiki.kr/w/%EC%BC%80%EB%B9%88%20%EA%B0%80%EB%84%B7",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "thewiki.kr",
+    "/w/%EC%BC%80%EB%B9%88%20%EA%B0%80%EB%84%B7",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ESPN College Football",
+   "content": "Relive the magic of the 2026 College Football Playoff in mini movie format! … ✔️ Subscribe to ESPN Unlimited:",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.youtube.com/channel/UCzRWWsFjqHk1an4OnVPsl9g",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/channel/UCzRWWsFjqHk1an4OnVPsl9g",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NBC TV Network - Live & Upcoming events",
+   "content": "Watch live events or check upcoming events.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.nbc.com/live-upcoming",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nbc.com",
+    "/live-upcoming",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Tennis on ESPN",
+   "content": "Tennis on ESPN Created by … Country of origin United States … of episodes N/A … Running time 120 minutes+ Original release … ESPN on ABC ESPN+",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Tennis_on_ESPN",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Tennis_on_ESPN",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ESPN Milwaukee",
+   "content": "YOUR HOME FOR ALL THINGS WISCONSIN SPORTS🔥",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.youtube.com/channel/UCmb-yBGaFMqy3qEHiDxLZ4g",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/channel/UCmb-yBGaFMqy3qEHiDxLZ4g",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NBA finalizes TV deals with ESPN, NBC, Amazon, but TNT could still match: Sources",
+   "content": "ESPN will have a conference final and the NBA Finals each season.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.nytimes.com/athletic/5629508/2024/07/10/nba-tv-deal-espn-nbc-amazon-tnt/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/athletic/5629508/2024/07/10/nba-tv-deal-espn-nbc-amazon-tnt/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "List of ESPN Major League Baseball broadcasters",
+   "content": "MLB broadcasters are as follows (including games broadcast only on ESPN currently and formerly): … Current broadcasts MLB on ESPN Play-by-play Jon Sciambi",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/List_of_ESPN_Major_League_Baseball_broadcasters",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/List_of_ESPN_Major_League_Baseball_broadcasters",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

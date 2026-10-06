@@ -136,16 +136,22 @@ def ref_from_row(row: dict, *, league: str = "", home_local: str = "",
     """
     from app import teamref
     home, away = str(row.get("home") or ""), str(row.get("away") or "")
-    hk, _ = teamref.key_of(home)
-    ak, _ = teamref.key_of(away)
+    sport = str(row.get("sport") or "")
+    comp = str(row.get("league") or "")
+    # 🔴🔴 **이름표가 모르면 임시 열쇠를 발급한다**(실사고 2026-10-07 · 오픈월드).
+    #    ⚠️ 종전엔 빈 열쇠가 그대로 올라가 `adapt.ref_of` 가 그 경기를 **거부했다**
+    #       (MLS 시카고–밴쿠버: 경기 페이지를 쥐고도 카드가 안 나왔다).
+    #    🔴 발급 번호는 `var/team_keys.json` 에 못 박혀 다음 실행도 **같은 번호**다.
+    hk, _ = teamref.key_or_issue(home, sport=sport, league=comp)
+    ak, _ = teamref.key_or_issue(away, sport=sport, league=comp)
     return MatchRef(
         key=str(row.get("ext_id") or ""),
         game_id=(int(row["id"]) if row.get("id") is not None else None),
         home=home, away=away, home_id=hk, away_id=ak,
         kickoff_utc=_utc(row.get("starts_kst") or row.get("starts_utc")),
-        competition=str(row.get("league") or ""),
+        competition=comp,
         league=league,
-        sport=str(row.get("sport") or ""),
+        sport=sport,
         venue=str(row.get("venue") or ""),
         status=str(row.get("status") or ""),
         round_note=str(row.get("round_note") or ""),

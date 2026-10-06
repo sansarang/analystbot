@@ -83,6 +83,8 @@ rules:
     #    리그 홈 이점을 대표팀 경기에 빌려 쓴 것이고, 그것은 근거가 아니다.
     # 🔴 그래서 **대표팀 표는 비어 있다** — 재지 않았으니 숫자를 적지 않는다.
     defaults:
+      # 🔴 열쇠는 `comp_kind()` 가 만드는 글자다 — `league_code()` 가 `Major League
+      #    Soccer` 를 `MLS` 로 줄이므로 이 줄이 **그 경기에 걸린다**(실측 2026-10-07).
       league:MLS:
         win_pct_delta: 16.8
         basis: MLS 실측(사용자 지시 2026-10-02 · app/classify.py:_dir_home_field 주석)

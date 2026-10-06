@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import pathlib
+import re
 
 import pytest
 
@@ -1114,3 +1115,39 @@ def test_오백은_무승부_쪽이고_두_번_세지_않는다():
     # 🔴 5백 판정은 **열쇠**로 센다 — claim 글자에 팀 이름이 없어도 ×2 가 돈다
     assert compare._low_block(ref.away_name, [five], ref=ref)
     assert not compare._low_block(ref.home_name, [five], ref=ref)
+
+
+def test_이름표가_모르면_임시_열쇠를_발급한다():
+    """🔴🔴 **오픈월드 열쇠 발급**(실사고 2026-10-07) — 미등록 리그 팀도 열쇠를 받는다.
+
+    ⚠️ MLS(시카고–밴쿠버): 봇이 경기 페이지를 쥐고도 `key_of` 가 빈 열쇠를 줘서
+       `adapt.ref_of` 가 그 경기를 **거부했다**. 카드는 *"팀 열쇠 임시 발급"* 이라고
+       적고 있었지만 **그 발급 코드가 없었다**.
+    🔴 발급 번호는 `name:<정규화>` 꼴로 `var/team_keys.json` 에 못 박힌다 — 다음
+       실행이 같은 번호를 써야 한다(번호가 돌면 쌓인 카드가 다른 팀 것이 된다).
+    돌연변이: `ref_from_row` 를 `key_of` 로 되돌리기.
+    """
+    import ast as _ast
+    from app import teamref
+    # ① 발급 — 이름표가 모르는 이름이 **열쇠 꼴**을 받는다
+    got, why = teamref.key_or_issue("Zzz Test United", sport="soccer",
+                                    league="Test League")
+    assert re.fullmatch(r"team:\d{6}", got), (got, why)
+    assert "임시 열쇠" in why, why
+    # ② **같은 이름은 같은 열쇠**다(두 번 물어도 번호가 안 바뀐다)
+    again, _ = teamref.key_or_issue("Zzz Test United", sport="soccer",
+                                    league="Test League")
+    assert again == got
+    # ③ 그 뒤에는 `key_of` 도 안다(이름이 이름표에 붙었다)
+    said, _ = teamref.key_of("Zzz Test United")
+    assert said == got
+    # ④ ⚠️ 빈 이름에는 **발급하지 않는다**
+    none, why4 = teamref.key_or_issue("  ")
+    assert none == "" and "이름이 비었다" in why4
+    # ⑤ 🔴 **배선** — `ref_from_row` 가 `key_or_issue` 를 부른다
+    tree = _ast.parse((ROOT / "app/matchref.py").read_text(encoding="utf-8"))
+    fn = next(n for n in _ast.walk(tree)
+              if isinstance(n, _ast.FunctionDef) and n.name == "ref_from_row")
+    calls = {c.func.attr for c in _ast.walk(fn)
+             if isinstance(c, _ast.Call) and isinstance(c.func, _ast.Attribute)}
+    assert "key_or_issue" in calls, "🔴 `ref_from_row` 가 발급을 안 부른다(배선 끊김)"

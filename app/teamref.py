@@ -937,3 +937,51 @@ def _cldr_label(ref: "TeamRef", lang: str) -> str:
 # ══════════════════════════════════════════════════════════════════
 
 
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **오픈월드 — 이름표에 없는 팀에 열쇠를 발급한다**(실측 2026-10-07)
+# ══════════════════════════════════════════════════════════════════
+#
+# ⚠️ 실사고 2026-10-07: MLS(시카고–밴쿠버)는 **등록 리그가 아니다**. 봇이 ⑥단으로
+#    경기 페이지를 찾아 `fotmob:5071211` 까지 쥐었는데, `ref_from_row` 가
+#    `key_of(이름)` 으로 **빈 열쇠**를 받아 `adapt.ref_of` 가 그 경기를 **거부했다**
+#    (*"열쇠나 킥오프가 비었다"*). 🔴 카드는 이미 *"오픈월드 — 팀 열쇠 임시 발급"*
+#    이라고 적고 있었는데 **그 발급이 어디에도 없었다**(없는 코드를 말하는 글이었다).
+#
+# 🔴 그래서 **여기서 발급한다.** 발급한 번호는 `name:<정규화 이름>` 꼴의 외부 id 로
+#    `var/team_keys.json` 에 못 박는다 — 다음 실행이 **같은 번호**를 쓴다(번호가 돌면
+#    쌓인 카드·원장이 다른 팀 것이 된다 · 그 파일 머리말이 경고하는 바로 그 병).
+# ⚠️ 발급은 **이름표가 모를 때만**이다. 알면 그 열쇠를 쓴다(새 팀을 만들지 않는다).
+
+
+def key_or_issue(text: str, *, sport: str = "", league: str = ""
+                 ) -> tuple[str, str]:
+    """🔴 이름 → 열쇠. 이름표가 모르면 **임시 열쇠를 발급**한다. `(열쇠, 사유)`.
+
+    ⚠️ 이름이 비면 발급하지 않는다(빈 이름에 번호를 주면 그 번호가 쓰레기가 된다).
+    """
+    name = str(text or "").strip()
+    if not name:
+        return "", "이름이 비었다 — 발급하지 않는다"
+    got, why = key_of(name, sport=sport, league=league)
+    if got:
+        return got, why
+    reg = registry()
+    ext = f"name:{norm(name)}"
+    key = reg.key_for(ext=ext, name=name, league=league, sport=sport)
+    ref = reg.teams.get(key)
+    if ref is not None:
+        # 🔴 **이름을 그 팀에 붙인다** — 안 붙이면 같은 실행 안에서도 다시 못 찾는다
+        lang = lang_of(name)
+        said = ref.names.setdefault(lang, [])
+        if name not in said:
+            said.append(name)
+        ref.by.setdefault(norm(name), "openworld")
+        reg.index.setdefault(norm(name), [])
+        if key not in reg.index[norm(name)]:
+            reg.index[norm(name)].append(key)
+        reg.bare_index.setdefault(bare(name), [])
+        if key not in reg.bare_index[bare(name)]:
+            reg.bare_index[bare(name)].append(key)
+    _save_keys(reg)
+    return key, (f"🔴 이름표에 `{name}` 이 없다 — **임시 열쇠 `{key}` 발급**"
+                 f"(오픈월드 · `{ext}` 로 못 박았다)")

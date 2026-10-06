@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 500, \"messages\": [{\"content\": \"너는 스포츠 팀·대표팀 이름의 **다른 표기**를 낸다.\\n🔴 같은 팀을 가리키는 **공식 표기·영어 표기·현지 표기**를 `candidates` 에 넣는다(많아도 5개).\\n⚠️ 다른 팀을 넣지 않는다. 설명·문장을 넣지 않는다 — 이름만.\", \"role\": \"system\"}, {\"content\": \"밴쿠버\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 오픈월드 ⑥-1 — 철자 후보. ⚠️ 이것도 구조화 출력이다(§5 s1).\", \"properties\": {\"candidates\": {\"items\": {\"type\": \"string\"}, \"title\": \"Candidates\", \"type\": \"array\"}}, \"required\": [\"candidates\"], \"title\": \"SpellOut\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}}",
+ "recorded_at": "2026-10-06T23:16:52.050214+00:00",
+ "id": "1148ac03-1b73-4a51-906d-9f8b4ba809bb",
+ "object": "chat.completion",
+ "created": 1791328611,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"candidates\": [\n    \"밴쿠버 화이트캡스 FC\",\n    \"Vancouver Whitecaps FC\",\n    \"밴쿠버 화이트캡스\",\n    \"Vancouver Whitecaps\",\n    \"화이트캡스 FC\"\n  ]\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 115,
+  "completion_tokens": 51,
+  "total_tokens": 166,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}
