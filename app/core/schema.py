@@ -84,9 +84,10 @@ Grade = Literal["낸다", "소액", "소액하단", "없음", "자료부족"]
 
 AddedBy = Literal["deepseek", "code", "redteam"]
 
+#: 🔴 `counter` 는 **역습 필수형**(7차 §4 · 8차 ③) — 이겨야 하는 팀의 상대가 찌르는 갈래
 ScenarioType = Literal["home_win", "away_win", "draw", "open", "lock",
                        "conceding", "blowout", "regression", "reverse",
-                       "draw_90", "other"]
+                       "draw_90", "counter", "other"]
 
 
 class DropReason(str, Enum):

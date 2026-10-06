@@ -241,18 +241,29 @@ def verdict_of(base: BaseProb, ours: ProbTriple | None, market: MarketProb,
     #  적는다. 🔴 그 둘은 **다른 상황**이다 — 무승부가 18%p 다른 것과 이기는 팀을
     #  반대로 보는 것을 한 글자로 묶으면 등급이 엉뚱하게 거둬진다.
     #  ⚠️ 그래서 **앞세우는 쪽**(`_leader`)을 따로 본다.
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **시장은 참고용이다**(사용자 지시 2026-10-06(8차) ① — 원칙 수정)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > §7 판정 규칙에서 *"시장만 반대 → 한 단계 내림"* 을 **삭제한다.** 시장 열은
+    # > **어떤 경우에도 등급·확률을 바꾸지 않는다.** *"우리만 반대"*(기준과 다름)
+    # > 규칙만 남긴다 — **기준은 시장이 아니라 우리 데이터다.**
+    #
+    # ⚠️ 종전 `우리만 반대` 는 *"기준·시장이 같은 쪽"* 일 때만 걸렸다 — 그 조건이
+    #    시장을 판정에 끼워 넣고 있었다. 🔴 지금은 **기준 대비**만 본다.
     lead_b, lead_o, lead_m = _leader(base.probs), _leader(ours), _leader(said)
-    if lead_o != lead_b and lead_b == lead_m:
-        return "우리만 반대", lines + [f"앞세우는 쪽 — 기준·시장 {lead_b} / 우리 {lead_o}"]
-    if lead_m != lead_o and lead_o == lead_b:
-        return "시장만 반대", lines + [f"앞세우는 쪽 — 기준·우리 {lead_b} / 시장 {lead_m}"]
-    if far_us and far_mk:
-        return "세 열 불일치", lines + [f"우리 치우침 {far_us} · 시장 치우침 {far_mk}"]
+    if lead_o != lead_b:
+        return "우리만 반대", lines + [
+            f"앞세우는 쪽 — **기준 {lead_b} / 우리 {lead_o}**"
+            f"(시장 {lead_m} 는 **참고용** · 판정에 안 쓴다)"]
     if far_us:
         return "우리만 튄다", lines + [f"기준 대비 우리 치우침 — {' · '.join(far_us)}"]
     if far_mk:
-        return "시장만 튄다", lines + [f"우리 대비 시장 치우침 — {' · '.join(far_mk)}"]
-    return "세 열 일치", lines
+        # 🔴 시장이 다른 것은 **우리 판정이 아니다** — 이유 후보만 적는다(②)
+        return "시장이 다르다", lines + [
+            f"시장이 우리와 다르다 — {' · '.join(far_mk)} · 🔴 등급·확률은 "
+            f"**그대로**(시장은 참고용)"]
+    return "기준과 맞는다", lines
 
 
 def _leader(p: ProbTriple | None) -> str:
@@ -318,14 +329,50 @@ def market_reasons(base: BaseProb, adj: AdjProb, market: MarketProb,
             return "무게 낮음" if any(k in weak for k in kinds) else "있음"
         return "없음"
 
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **이유 후보와 "우리 정보에 있나"만 적는다**(8차 ②)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > 시장과 차이가 나면 카드에 *"시장이 다르게 보는 이유 후보"* 와 *"우리 정보에
+    # > 있나(있음/없음)"* **만** 적는다. 이유를 찾았는데 **우리 판단 근거가 더 강하면**
+    # > *"우리 판단 유지 — 근거: …"* 로 적는다.
+    #
+    # 🔴 이 목록은 **설명**이고, 어떤 수도 바꾸지 않는다(①).
+    found: list[str] = []
     if base.dr is not None:
+        said_in = _in(("strength_gap",))
         out.append(f"Elo 차 {base.dr:+.0f}점({base.home_elo:.0f} vs "
-                   f"{base.away_elo:.0f}) — 우리 변수: {_in(('strength_gap',))}")
+                   f"{base.away_elo:.0f}) — 우리 정보에: **{said_in}**")
+        if said_in == "없음":
+            found.append("Elo 차")
     if adj.strength_pct:
         got = " · ".join(f"{k} {v:+.1f}%" for k, v in adj.strength_pct.items())
-        out.append(f"라인업 전력 {got} — 우리 변수: {_in(ABSENCE_TYPES)}")
-    out.append(f"홈 — 우리 변수: {_in(('home_field',))}")
-    return [f"시장은 **{name}** 쪽을 앞세운다({max(said.home, said.away):.0%})"] + out
+        said_in = _in(ABSENCE_TYPES)
+        out.append(f"라인업 전력 {got} — 우리 정보에: **{said_in}**")
+        if said_in == "없음":
+            found.append("라인업 전력")
+    said_in = _in(("home_field",))
+    out.append(f"홈 — 우리 정보에: **{said_in}**")
+    # 🔴 **우리 근거가 더 강한가** — 우리 쪽을 민 변수 중 `hard`·근거 가능한 것을 센다
+    strong = [v for v in variables
+              if v.hardness == "hard" and v.usable_as_basis
+              and v.favors in ("home", "away")]
+    if not found:
+        out.append("🔴 **우리 판단 유지** — 근거: 시장이 앞세우는 까닭이 우리 정보에 "
+                   "**다 들어 있다**(새 사실이 없다)")
+    elif strong:
+        out.append("🔴 **우리 판단 유지** — 근거: "
+                   + " · ".join(f"`{v.id}`({v.type}·{v.hardness}·무게 {v.weight})"
+                                for v in strong[:3])
+                   + f" — 시장이 다르게 보는 까닭({', '.join(found)})은 우리 "
+                     f"정보에 없지만, 위 근거가 **인용까지 검증된 사실**이다")
+    else:
+        out.append(f"⚠️ 시장이 다르게 보는 까닭({', '.join(found)})이 우리 정보에 "
+                   f"**없다** — 그리고 우리 쪽에 `hard` 근거도 없다. 🔴 그래도 "
+                   f"등급·확률은 **그대로 둔다**(시장은 참고용) · 다음 재분석에서 "
+                   f"그 사실을 찾아본다")
+    return [f"시장은 **{name}** 쪽을 앞세운다({max(said.home, said.away):.0%}) — "
+            f"🔴 **참고용**(판정에 안 쓴다)"] + out
 
 
 def grade_step(verdict: str, *, found_new: bool) -> tuple[int, str]:
@@ -342,18 +389,19 @@ def grade_step(verdict: str, *, found_new: bool) -> tuple[int, str]:
 
     🔴 돌아오는 수는 **0 이상**이다 — 올리는 길이 없다(계약이 그것을 센다).
     """
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **시장은 등급을 못 바꾼다**(사용자 지시 2026-10-06(8차) ①)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 남은 규칙은 **하나**다: *우리가 기준(우리 데이터)과 반대면 등급 없음*.
+    #  ⚠️ `시장이 다르다`·`시장만 튄다` 는 **0칸**이다 — 그 둘로 등급을 건드리면
+    #     "우리 판단을 시장에 맞추는" 것이 된다(원칙 수정으로 금지).
     if verdict == "우리만 반대":
-        return 99, "우리만 반대(기준·시장은 같은 쪽) — 등급 **없음**(§7)"
-    if verdict == "시장만 반대":
-        if found_new:
-            return 0, "시장 반대 → 새 사실을 반영해 다시 판정했다(§7)"
-        return 1, "시장만 반대 — 이유 못 찾음(한 단계 내림 · §7)"
-    if verdict == "세 열 불일치":
-        return 1, "세 열 불일치 — 두 이유 블록을 본다(§7)"
-    # 🔴 **"튄다"는 등급을 건드리지 않는다** — §6 은 이유를 찾으라 했고, §7 의 등급
-    #    표는 *"반대"* 일 때만 내린다. ⚠️ 이 구분이 없으면 무승부 18%p 차이로 등급이
-    #    사라진다(실측 2026-10-06 한국–우즈벡).
-    if verdict in ("우리만 튄다", "시장만 튄다", "세 열 일치"):
+        return 99, "우리만 반대(**기준**과 앞세우는 쪽이 다르다) — 등급 **없음**"
+    if verdict in ("시장이 다르다", "시장만 튄다", "세 열 불일치"):
+        return 0, (f"{verdict} — 🔴 **등급을 바꾸지 않는다**(시장은 참고용 · "
+                   f"이유 후보만 카드에 적는다)")
+    if verdict in ("우리만 튄다", "기준과 맞는다", "세 열 일치"):
         return 0, verdict
     return 0, verdict
 

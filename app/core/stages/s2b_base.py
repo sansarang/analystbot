@@ -410,6 +410,13 @@ def outlook(ref: MatchRef, facts: Facts, *, state: RunState) -> dict:
            "other": [f"{r['home']} vs {r['away']} ({str(r.get('kickoff_utc') or '')[:16]}Z)"
                      for r in other_rows],
            "zone_meaning": zone_doc}
+    # 🔴 s6 의 역습 필수형이 **상태**를 봐야 한다 — `Facts` 는 얼어 있어 고칠 수
+    #    없으므로 `standings` 표(같은 dict)에 칸을 더해 넘긴다.
+    #    ⚠️ 새 칸 이름은 `outlook_states` 다(기존 칸을 덮지 않는다).
+    try:
+        (facts.standings or {})["outlook_states"] = states
+    except Exception:                                       # noqa: BLE001
+        state.note("s2b §2 — 상태를 standings 에 못 실었다(s6 역습형이 안 돈다)")
     state.note(f"s2b §2 경우의 수 {len(cells)}칸 · 같은 라운드 다른 경기 "
                f"{len(other_rows)}개 · 남은 경기 {left} · 최종확정 {out['final']} · "
                f"동률규칙 {'확인' if verified else '**가정**'}")

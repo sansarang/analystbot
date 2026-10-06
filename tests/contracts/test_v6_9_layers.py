@@ -309,18 +309,25 @@ def test_2가_계산되면_결장_계열_무게가_0이다():
     assert "R1" not in none and none["R2"] == 0.5, none
 
 
-def test_세_열_규칙은_등급을_올리지_못한다():
-    """🔴 §7 금지 — 돌연변이: **세 열 일치면 한 단계 올리기** → 음수가 나와 빨개진다."""
+def test_시장은_등급을_못_바꾼다():
+    """🔴🔴 **원칙 수정**(사용자 지시 2026-10-06(8차) ①) — 시장 열은 등급·확률을
+    **어떤 경우에도** 바꾸지 않는다. 남은 규칙은 *"우리만 반대(기준과 다름)"* 뿐이다.
+
+    돌연변이: `시장이 다르다` 에 한 단계 내림을 되살리기 / 세 열 일치에 올림 주기.
+    """
     from app.core import compare
-    for verdict in ("세 열 일치", "우리만 반대", "시장만 반대", "세 열 불일치",
-                    "우리만 튄다", "시장만 튄다", "기준 없음", "시장 없음"):
+    for verdict in ("기준과 맞는다", "우리만 반대", "시장이 다르다", "시장만 튄다",
+                    "우리만 튄다", "기준 없음", "시장 없음", "세 열 불일치"):
         step, why = compare.grade_step(verdict, found_new=False)
         assert step >= 0, (verdict, step, why)
-    assert compare.grade_step("세 열 일치", found_new=False)[0] == 0
+    assert compare.grade_step("기준과 맞는다", found_new=False)[0] == 0
+    # 🔴 **기준**과 반대면 등급 없음(기준은 우리 데이터다)
     assert compare.grade_step("우리만 반대", found_new=False)[0] >= 3
-    assert compare.grade_step("시장만 반대", found_new=False)[0] == 1
-    # 🔴 새 사실을 찾았으면 **내리지 않는다**(재판정 결과를 쓴다)
-    assert compare.grade_step("시장만 반대", found_new=True)[0] == 0
+    # 🔴 시장이 반대·치우쳐도 **0칸**이다
+    for v in ("시장이 다르다", "시장만 튄다", "세 열 불일치"):
+        step, why = compare.grade_step(v, found_new=False)
+        assert step == 0, (v, step)
+        assert "바꾸지 않는다" in why, why
 
 
 def test_등급_내림이_사다리_아래로만_간다():
@@ -331,11 +338,12 @@ def test_등급_내림이_사다리_아래로만_간다():
     evals = [MarketEval(line=BoardLine(market="win", side="home"),
                         marks={}, survival=0.9, cap=1.0, grade="낸다")]
     said = Judgement(evals=evals, direction="d", conclusion="c")
-    got = pipeline._lower(said, {"compare": "시장만 반대"}, state=RunState())
-    assert got.evals[0].grade == "소액", got.evals[0].grade
+    # 🔴 시장이 달라도 **그대로**다(8차 ①)
+    got = pipeline._lower(said, {"compare": "시장이 다르다"}, state=RunState())
+    assert got.evals[0].grade == "낸다", got.evals[0].grade
     none = pipeline._lower(said, {"compare": "우리만 반대"}, state=RunState())
     assert none.evals[0].grade == "없음"
-    keep = pipeline._lower(said, {"compare": "세 열 일치"}, state=RunState())
+    keep = pipeline._lower(said, {"compare": "기준과 맞는다"}, state=RunState())
     assert keep.evals[0].grade == "낸다"
 
 
@@ -853,3 +861,130 @@ def test_동기_낱말에_이겨야_비겨도_골차가_있다():
     # ⚠️ 일정 안내는 그대로 **버린다**
     bad, why = stakes_ok("경기는 화요일 저녁에 열린다")
     assert not bad, why
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **시장은 참고용이다**(사용자 지시 2026-10-06(8차) ④) — AST 로 잠근다
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_시장_확률이_우리확률_등급_함수의_입력이_아니다():
+    """🔴🔴 ④ — `MarketProb`·시장 확률이 `our_prob`·등급 계산 함수의 **입력으로 들어가면
+    실패**다. 돌연변이: `our_prob(..., market=…)` 를 더하거나 `_lower` 에 시장을 넘기기.
+
+    🔴 세는 방법: **서명(signature)** 과 **본문**을 둘 다 AST 로 본다.
+      ① 금지 함수의 인자 이름에 `market`·`mkt`·`odds`·`price` 가 없다
+      ② 그 함수 본문에서 `MarketProb`·`market.probs`·`_market_triple` 을 안 읽는다
+    ⚠️ 글자 검사가 아니라 **AST** 다(주석에 그 말이 있는 것은 괜찮다 · D46).
+    """
+    import ast as _ast
+
+    banned_args = ("market", "mkt", "odds", "price", "vig", "book")
+    targets = {
+        "app/core/compare.py": ("our_prob", "_apply", "_from_scenarios",
+                                "grade_step", "weight_rules", "tilt_reasons"),
+        "app/core/pipeline.py": ("_lower",),
+        "app/core/stages/s7_judge.py": ("_grade", "_enough", "_cap",
+                                        "_same_direction_cap"),
+        "app/survive.py": ("verdict_word",),
+    }
+    bad: list[str] = []
+    for rel, names in targets.items():
+        p = ROOT / rel
+        if not p.is_file():
+            continue
+        tree = _ast.parse(p.read_text(encoding="utf-8"))
+        for node in _ast.walk(tree):
+            if not isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef)):
+                continue
+            if node.name not in names:
+                continue
+            args = [a.arg for a in (node.args.args + node.args.kwonlyargs)]
+            for a in args:
+                if any(w in a.lower() for w in banned_args):
+                    bad.append(f"{rel}:{node.name} 인자 `{a}`")
+            # ② 본문에서 시장 확률을 읽나
+            for sub in _ast.walk(node):
+                if isinstance(sub, _ast.Name) and sub.id in ("MarketProb",
+                                                             "_market_triple"):
+                    bad.append(f"{rel}:{node.name} 본문이 `{sub.id}` 를 쓴다")
+                if isinstance(sub, _ast.Attribute) and sub.attr == "probs" \
+                        and isinstance(sub.value, _ast.Name) \
+                        and sub.value.id in ("market", "mkt", "user_market"):
+                    bad.append(f"{rel}:{node.name} 본문이 `{sub.value.id}.probs`")
+    assert not bad, "🔴 시장이 판정 경로로 들어왔다: " + " · ".join(bad)
+
+
+def test_시장_확률은_설명_함수만_읽는다():
+    """🔴 ④ 반대 방향 — 시장을 읽는 곳은 **설명·표시 함수**뿐이어야 한다.
+
+    🔴 `_market_triple` 을 부르는 곳을 AST 로 센다: `verdict_of`(판정 **글자**만 만든다)
+       · `market_reasons`(이유 후보) · `direction_line`(세 열을 **적는다**) · `moved`.
+    ⚠️ 그 넷 밖에서 부르면 시장이 수에 닿을 길이 생긴 것이다.
+    """
+    import ast as _ast
+
+    allow = {"verdict_of", "market_reasons", "direction_line", "moved",
+             "_market_triple"}
+    tree = _ast.parse((ROOT / "app/core/compare.py").read_text(encoding="utf-8"))
+    for node in _ast.walk(tree):
+        if not isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef)):
+            continue
+        for sub in _ast.walk(node):
+            if isinstance(sub, _ast.Call) and isinstance(sub.func, _ast.Name) \
+                    and sub.func.id == "_market_triple":
+                assert node.name in allow, (
+                    f"🔴 `{node.name}` 이 시장 확률을 읽는다 — 설명 함수만 읽어야 한다")
+
+
+def test_역습_갈래가_필수형으로_들어온다():
+    """🔴 ③ — `must_win`·`margin_needed` 팀의 **상대 역습 갈래**가 생기고 driver·전개
+    문장이 맞는지 본다. ⚠️ 검수 기준은 **시장 거리와 무관**하다(8차 ③).
+    """
+    from app.core.schema import Facts, Scenario, Variable
+    from app.core.stages import s6_hypo
+    from app.core.state import RunState
+    import importlib
+    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
+    box = {"무승부": {"scores": ["1-1"]},
+           "역습": {"when_states": ["must_win", "margin_needed"],
+                   "scores_home_pusher": ["1-2", "0-1"],
+                   "scores_away_pusher": ["2-1", "1-0"],
+                   "mechanism": "{pusher} 가 {why} 라서 라인을 올리고 {other} 가 역습"}}
+    facts = Facts(standings={"outlook_states": {
+        ref.home_name: {"state": "margin_needed", "margin": 2, "why": "x"}}})
+    mine = Variable(id="R9", type="stakes", subject=ref.home, favors="home",
+                    goals="none", target="승격", hardness="hard", weight=2.0,
+                    claim="2골 차로 이겨야 한다", quote="q")
+    # 🔴 홈이 밀어붙이는데 **원정이 이기는 갈래가 없다** → 역습형이 들어와야 한다
+    scen = [Scenario(id="A", outcomes=[(2, 0)], mechanism="m", strength=1.0),
+            Scenario(id="B", outcomes=[(1, 1)], mechanism="m", strength=1.0)]
+    got = s6_hypo._counter(ref, facts, scen, [mine], box, state=RunState())
+    new = [s for s in got if s.type == "counter"]
+    assert new, "🔴 역습 갈래가 안 생겼다"
+    said = new[0]
+    assert said.added_by == "code" and "역습" in said.mechanism
+    # 🔴 **전개 문장**이 두 팀 이름과 까닭을 담는다
+    assert ref.home_name in said.mechanism and ref.away_name in said.mechanism
+    assert "2골" in said.mechanism, said.mechanism
+    # 🔴 **driver** 는 그 상태를 만든 동기 변수다
+    assert said.driver_vars == ["R9"], said.driver_vars
+    # 🔴 원정이 이기는 갈래가 **이미 있으면** 더하지 않는다
+    again = s6_hypo._counter(ref, facts,
+                            [*scen, Scenario(id="C", outcomes=[(0, 2)],
+                                             mechanism="m", strength=1.0)],
+                            [mine], box, state=RunState())
+    assert not [s for s in again if s.type == "counter"]
+    # ⚠️ 상태가 없으면 **안 만든다**(지어내지 않는다)
+    none = s6_hypo._counter(ref, Facts(), scen, [mine], box, state=RunState())
+    assert not [s for s in none if s.type == "counter"]
+    # 🔴🔴 **배선까지 센다** — `_soccer_forms` 가 `_counter` 를 부르는지 AST 로 본다.
+    #    ⚠️ 함수만 검사하면 그 호출을 지워도 초록이다(실측 2026-10-06 돌연변이 ③).
+    import ast as _ast
+    tree = _ast.parse((ROOT / "app/core/stages/s6_hypo.py")
+                      .read_text(encoding="utf-8"))
+    fn = next(n for n in _ast.walk(tree)
+              if isinstance(n, _ast.FunctionDef) and n.name == "_soccer_forms")
+    calls = {c.func.id for c in _ast.walk(fn)
+             if isinstance(c, _ast.Call) and isinstance(c.func, _ast.Name)}
+    assert "_counter" in calls, "🔴 `_soccer_forms` 가 역습형을 안 부른다(배선 끊김)"

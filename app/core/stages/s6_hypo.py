@@ -626,6 +626,10 @@ def _soccer_forms(ref: MatchRef, facts: Facts, scen: list[Scenario],
         out.append(got)
         state.note(f"s6 축구 필수형 보강 — 무승부({want[:2]}) · 근거 "
                    f"{len(basis)}개{' (무게를 그 변수에서 가져온다)' if basis else ''}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **역습 갈래 필수**(7차 §4 · 8차 ③) — `must_win`·`margin_needed` 상대 쪽
+    # ══════════════════════════════════════════════════════════════════
+    out = _counter(ref, facts, out, variables, box, state=state)
     # ── 회귀반전
     row = dict(box.get("회귀반전") or {})
     want_rules = {str(x) for x in (row.get("when_rules") or [])}
@@ -650,3 +654,56 @@ def _trimmed_sum(facts: Facts) -> float | None:
             return None
         got.append(float(val))
     return round(sum(got), 2) if len(got) >= 2 else None
+
+
+def _counter(ref: MatchRef, facts: Facts, scen: list[Scenario],
+             variables: list[Variable], box: dict, *,
+             state: RunState) -> list[Scenario]:
+    """🔴🔴 **이겨야 하는 팀의 상대에게 역습 갈래를 준다**(7차 §4 · 8차 ③).
+
+    🔴 검수 기준(8차 ③): *"`must_win` 팀의 **상대 역습 갈래**가 시나리오에 생겼고
+       **driver·전개 문장**이 맞나"* — 시장과의 거리로 재지 않는다.
+    ⚠️ 상태는 `Facts` 에 없다(s2b 가 센다) — 그래서 **경우의 수 표**를 인자로 받지 않고
+       `facts.standings["outlook_states"]` 를 본다. 🔴 그 칸이 없으면 **안 만든다**
+       (상태를 모르면 역습을 지어낼 까닭이 없다).
+    """
+    row = dict(box.get("역습") or {})
+    want = {str(x) for x in (row.get("when_states") or [])}
+    said = dict(((facts.standings or {}).get("outlook_states") or {}))
+    if not row or not want or not said:
+        if want:
+            state.note("s6 역습 필수형 — 경우의 수 상태가 없다(안 만든다)")
+        return scen
+    out = list(scen)
+    for team, got in said.items():
+        state_name = str(dict(got).get("state") or "")
+        if state_name not in want:
+            continue
+        is_home = str(team).strip().lower() == ref.home_name.strip().lower()
+        key = "scores_home_pusher" if is_home else "scores_away_pusher"
+        pairs = [p for p in (_pair(x) for x in (row.get(key) or [])) if p]
+        have = _all_scores(out)
+        # 🔴 **그 상대가 이기는 갈래가 이미 있나** — 있으면 더하지 않는다
+        other_wins = [(h, a) for h, a in have
+                      if (a > h if is_home else h > a)]
+        if other_wins:
+            state.note(f"s6 역습 필수형 — `{team}`({state_name}) 의 상대가 이기는 "
+                       f"갈래가 **이미 있다**{other_wins[:2]}")
+            continue
+        new = [p for p in pairs if p not in have]
+        if not new:
+            continue
+        other = ref.away_name if is_home else ref.home_name
+        why = (f"{dict(got).get('margin')}골 차가 필요해" if dict(got).get("margin")
+               else "이기지 않으면 구역이 나빠져")
+        mech = str(row.get("mechanism") or "").strip().replace("\n", " ")
+        mech = " ".join(mech.format(pusher=team, other=other, why=why).split())
+        # 🔴 driver — **그 상태를 만든 근거**를 적는다(동기 변수가 있으면 그것)
+        drivers = [v.id for v in variables
+                   if v.type in ("stakes", "match_format") and v.favors != "both"][:2]
+        out.append(Scenario(id=_next_id(out), outcomes=new[:2], type="counter",
+                            added_by="code", driver_vars=drivers,
+                            mechanism=f"🔴 필수형(역습) — {mech}"))
+        state.note(f"s6 역습 필수형 보강 — `{team}`({state_name}) → {other} 역습 "
+                   f"{new[:2]} · driver {drivers or '근거 없음'}")
+    return out
