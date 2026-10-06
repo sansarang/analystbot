@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 담당 유형: travel_schedule, venue_weather, event_match, match_type, national_duty_return — **그 유형만** 뽑는다.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다). 지어낸 인용은 검증층이 잡아 버린다.\\n🔴 `source` 는 문단 머리표(`[D1-P3]`)를 그대로 적는다 — 그것으로 URL·발행일을 되찾는다.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\\n🔴 `team` 칸에는 **이 두 열쇠 중 하나만** 적는다 — Honduras = `team:000103` · Jamaica = `team:000119`. ⚠️ 팀 **이름**을 적으면 그 줄은 **버려진다**(§8-1 · M48).\\n\", \"role\": \"system\"}, {\"content\": \"[D1-P1] (en.wikipedia.org, 2017-03-15) The CONCACAF Nations League (Spanish: Liga de Naciones de la CONCACAF, French: Ligue des Nations de la CONCACAF) is an association football competition organized by CONCACAF as its secondary continental tournament for men's senior national teams from North America, Central America, and the Caribbean. The tournament takes place on dates allocated for international friendlies on the FIFA International Match Calendar. A one-time qualifying tournament took place from September 2018 to March 2019, with its inaugural edition in 2019.[1][2]\\n[D1-P2] (en.wikipedia.org, 2017-03-15) Each season of the CONCACAF Nations League is typically played from September to November (league phase), and March or June of the following year (Nations League Finals of League A). An exception was made in the 2022–23 season when the league phase was played from June 2022 to March 2023, due to the 2022 FIFA World Cup played in Qatar at the end of the year.\\n[D1-P3] (en.wikipedia.org, 2017-03-15) The format proposals were first formally investigated at the XXXII CONCACAF Ordinary Congress in Oranjestad, Aruba on April 8, 2017[5][6] and confirmed by CONCACAF on November 16, 2017.[3] CONCACAF president Victor Montagliani stated that the purpose of the competition is to have a regular schedule of international fixtures for CONCACAF's national teams, noting that some teams play fewer than 10 games in a four-year period and needed more competitive games to assist the sport's development in those nations.[7][8]\\n[D1-P4] (en.wikipedia.org, 2017-03-15) The tournament was announced in November 2017.[3] It is divided into three tiered leagues, A, B, and C, of four groups each, with promotion and relegation between the leagues based on finishing position within groups. The group winners of League A enter a four-team knockout competition to be crowned champion, while the group winners of Leagues B and C are promoted to the next tier. In Leagues A and B, the four teams at the bottom of the groups are relegated to the next lower tier.[4] The tournament also determines which national teams qualify for the next edition of the CONCACAF Gold Cup.[3]\\n[D1-P5] (en.wikipedia.org, 2017-03-15) - ↑ \\\"USMNT beat Canada 2-0 to win second CONCACAF Nations League\\\". SoccerBrief. 18 June 2023. Retrieved 19 June 2023.\\n[D1-P6] (en.wikipedia.org, 2017-03-15) In February 2026, CONCACAF announced details for the next two editions of Nations League, to be held in 2026–27 and 2028–29. The format remains similar to previous editions however a League B and League C Finals will be added.[10]\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"analyst_output\", \"schema\": {\"additionalProperties\": false, \"properties\": {\"gaps\": {\"items\": {\"type\": \"string\"}, \"type\": \"array\"}, \"hypotheses\": {\"type\": \"string\"}, \"notes\": {\"type\": \"string\"}, \"scenarios\": {\"items\": {\"additionalProperties\": false, \"properties\": {\"driver_vars\": {\"items\": {\"type\": \"string\"}, \"type\": \"array\"}, \"id\": {\"type\": \"string\"}, \"mechanism\": {\"type\": \"string\"}, \"outcomes\": {\"items\": {\"items\": {\"type\": \"integer\"}, \"type\": \"array\"}, \"type\": \"array\"}, \"required_type\": {\"type\": \"string\"}, \"weak\": {\"type\": \"boolean\"}}, \"required\": [\"id\", \"driver_vars\", \"mechanism\", \"outcomes\", \"required_type\", \"weak\"], \"type\": \"object\"}, \"type\": \"array\"}, \"variables\": {\"items\": {\"additionalProperties\": false, \"properties\": {\"claim\": {\"type\": \"string\"}, \"conflict\": {\"type\": \"boolean\"}, \"direction_hint\": {\"enum\": [\"home\", \"away\", \"both\", \"goals_up\", \"goals_down\", \"opp_goals_up\", \"opp_goals_down\"], \"type\": \"string\"}, \"id\": {\"type\": \"string\"}, \"lang\": {\"type\": \"string\"}, \"published_at\": {\"type\": \"string\"}, \"quote\": {\"type\": \"string\"}, \"reverified\": {\"type\": \"boolean\"}, \"subject\": {\"type\": \"string\"}, \"team\": {\"type\": \"string\"}, \"type\": {\"enum\": [\"absence\", \"coach_change\", \"coach_conflict\", \"def_absence\", \"emotion\", \"event_match\", \"h2h_pattern\", \"home_field\", \"individual\", \"lineup_intent\", \"lineup_value\", \"match_type\", \"national_duty_return\", \"pitcher_state\", \"recent_pattern\", \"squad_rotation\", \"stakes\", \"strength_gap\", \"travel_schedule\", \"venue_weather\"], \"type\": \"string\"}, \"url\": {\"type\": \"string\"}}, \"required\": [\"id\", \"type\", \"team\", \"subject\", \"direction_hint\", \"claim\", \"quote\", \"url\", \"published_at\", \"lang\", \"conflict\", \"reverified\"], \"type\": \"object\"}, \"type\": \"array\"}}, \"required\": [\"variables\", \"hypotheses\", \"scenarios\", \"gaps\", \"notes\"], \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}}",
+ "recorded_at": "2026-10-06T02:07:00.798436+00:00",
+ "id": "100e73e2-dbfd-4af1-a34c-f641a800ad98",
+ "object": "chat.completion",
+ "created": 1791252420,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": []\n  ,\n  \"hypotheses\":\n  \"추출된 문단에서 특정 경기의 변수에 해당하는 정보를 찾지 못했습니다. 제공된 문단은 CONCACAF Nations League의 일반적인 대회 개요, 일정, 형식, 역사 등에 대한 내용이며, 경기 일정(travel_schedule), 경기장 날씨(venue_weather), 특정 경기(event_match), 경기 유형(match_type), 국가대표 임무 후 귀환(national_duty_return) 등 구체적인 경기 변수에 대한 정보는 포함되어 있지 않습니다.\",\n  \"scenarios\": []\n  ,\n  \"gaps\": [\n    \"특정 경기 일정 정보 없음\"\n    ,\n    \"경기장 및 날씨 정보 없음\"\n    ,\n    \"특정 경기(match) 정보 없음\"\n    ,\n    \"경기 유형(match_type) 정보 없음\"\n    ,\n    \"국가대표 의무 귀환(national_duty_return) 정보 없음\"\n  ],\n  \"notes\": \"meta 형식 요구: Hypotheses 변수는 빈 배열이어야 합니다. 추출 결과가 비어 있습니다.\"\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 956,
+  "completion_tokens": 192,
+  "total_tokens": 1148,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}
