@@ -121,6 +121,25 @@ def _clip(said: str, n: int) -> str:
     return said if len(said) <= n else said[:n] + f"…(+{len(said) - n}자)"
 
 
+def _drop_line(row: object) -> str:
+    """🔴 폐기 한 줄 — `dict` 든 `(id, 사유, 까닭)` 튜플이든 읽는다.
+
+    ⚠️ 실측 2026-10-06: 튜플이 와서 렌더러가 터지고 **카드가 통째로 안 나왔다**.
+    🔴 모르는 꼴이면 **그 사실을 적는다**(#3) — 조용히 빈칸으로 두지 않는다.
+    """
+    if isinstance(row, dict):
+        said = str(row.get("why") or "까닭 미상")
+        return f"{row.get('id') or '?'}({_clip(said, 90)})"
+    if isinstance(row, (tuple, list)):
+        sid = str(row[0]) if row else "?"
+        why = ""
+        for x in list(row)[1:]:
+            got = getattr(x, "value", None)
+            why = f"{why} {got or x}".strip()
+        return f"{sid}({_clip(why or '까닭 미상', 90)})"
+    return f"⚠️ 모르는 폐기 꼴 {type(row).__name__}"
+
+
 def card_block(out: Outcome) -> list[str]:
     """🔴 카드 하단 **`■ 반증`** 블록(v5-A §4 출력 예).
 
@@ -133,9 +152,17 @@ def card_block(out: Outcome) -> list[str]:
         rows = [f"  (추가 {len(out.added)}개)"]
     elif out.dropped:
         # 🔴 **냈는데 버렸다** — 무엇을 왜 버렸나가 고칠 곳을 가리킨다
-        말 = " · ".join(
-            f"{r.get('id') or '?'}({_clip(str(r.get('why') or '까닭 미상'), 90)})"
-            for r in out.dropped[:3])
+        # ══════════════════════════════════════════════════════════
+        # 🔴🔴 **꼴이 둘이다** — 실측 2026-10-06(카드 렌더러가 터졌다)
+        # ══════════════════════════════════════════════════════════
+        #
+        #  `hypo.check_scenarios` 는 `(id, 사유, 까닭)` **튜플**을 쌓고,
+        #  여기는 `dict` 로 읽었다 → `AttributeError: 'tuple' object has no
+        #  attribute 'get'` 으로 **카드 전체가 안 나왔다.**
+        #  ⚠️ 인계가 적어 둔 그 병이다: *"꼴 불일치로 봇이 두 번 죽었다."*
+        #  🔴 **둘 다 읽는다** — 렌더러가 분석을 죽이지 않는다(카드가 못 나오면
+        #     그 경기는 통째로 사라진다).
+        말 = " · ".join(_drop_line(r) for r in out.dropped[:3])
         rows = [f"  (추가 없음 — 제안 {len(out.dropped)}개를 **폐기**했다: {말})"]
     else:
         rows = ["  (추가 없음 — 모델이 제안을 **0개** 냈다 · 폐기 0개)"]

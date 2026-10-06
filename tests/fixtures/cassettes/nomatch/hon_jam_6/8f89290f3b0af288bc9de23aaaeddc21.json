@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 담당 유형: stakes, individual_title, regression, team_stats — **그 유형만** 뽑는다.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다). 지어낸 인용은 검증층이 잡아 버린다.\\n🔴 `source` 는 문단 머리표(`[D1-P3]`)를 그대로 적는다 — 그것으로 URL·발행일을 되찾는다.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\\n🔴 `team` 칸에는 **이 두 열쇠 중 하나만** 적는다 — Honduras = `team:000103` · Jamaica = `team:000119`. ⚠️ 팀 **이름**을 적으면 그 줄은 **버려진다**(§8-1 · M48).\\n\", \"role\": \"system\"}, {\"content\": \"[D1-P1] (www.usatoday.com, 2026-10-05) While Curacao managed a draw Sunday, Oct. 4 against Trinidad and Tobago and Haiti fell 2-0 to Costa Rica, the nations had enough points to finish in the top two and set up home-and-home series in the quarterfinals.\\n[D1-P2] (www.usatoday.com, 2026-10-05) Group B play concludes Monday, Oct. 5. Suriname currently tops the group with seven points, but faces off with a Guatemala team that has four points and could leapfrog the Natio with a win in Guatemala City. Jamaica is currently second with six points ahead of a match with Honduras.\\n[D1-P3] (www.usatoday.com, 2026-10-05) Those series are against the top four teams in the Concacaf rankings: Mexico, the United States, Canada and Panama, who played friendlies in this international break thanks to the bye they received to the quarterfinal stage.\\n[D1-P4] (www.usatoday.com, 2026-10-05) Martinique and El Salvador also remain in contention for the quarterfinals, though they would need a lot to break their way to secure a spot in the next round.\\n[D1-P5] (www.usatoday.com, 2026-10-05) The competition's rules specify that the winners of each group earn games against the lower-seeded teams, meaning Curacao likely will face Panama, the lowest-ranked seeded team – though Canada remains a potential opponent. Haiti would play either Mexico or the U.S. depending on the Concacaf ranking of the team that qualifies from the other group.\\n[D1-P6] (www.usatoday.com, 2026-10-05) The biggest stories, every morning. Stay up-to-date on all the key sports developments by subscribing to USA TODAY Sports' newsletter.\\n[D2-P1] (www.bbc.com, 2026-10-05) Please note: All times are UK. Some content is provided by third parties, is subject to change, and is unverified.\\n[D2-P2] (www.bbc.com, 2026-10-05) Please note: All times are UK. Some content is provided by third parties, is subject to change, and is unverified.\\n[D2-P3] (www.bbc.com, 2026-10-05) El Salvador 3 , Martinique 1 on the 26th of September 2026El SalvadorMartinique26th of September 2026\\n[D2-P4] (www.bbc.com, 2026-10-05) El Salvador 0 , Martinique 0 on the 18th of October 2023El SalvadorMartinique18th of October 2023\\n[D2-P5] (www.bbc.com, 2026-10-05) Martinique 0 , El Salvador 1 on the 29th of March 2026MartiniqueEl Salvador29th of March 2026\\n[D3-P1] (www.bbc.com, 2026-10-03) Please note: All times are UK. Some content is provided by third parties, is subject to change, and is unverified.\\n[D3-P2] (www.bbc.com, 2026-10-03) Please note: All times are UK. Some content is provided by third parties, is subject to change, and is unverified.\\n[D3-P3] (www.bbc.com, 2026-10-03) El Salvador 0 , Jamaica 0 on the 21st of June 2019El SalvadorJamaica21st of June 2019\\n[D3-P4] (www.bbc.com, 2026-10-03) Jamaica 1 , El Salvador 1 on the 24th of March 2022JamaicaEl Salvador24th of March 2022\\n[D3-P5] (www.bbc.com, 2026-10-03) El Salvador 1 , Jamaica 1 on the 13th of November 2021El SalvadorJamaica13th of November 2021\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"analyst_output\", \"schema\": {\"additionalProperties\": false, \"properties\": {\"gaps\": {\"items\": {\"type\": \"string\"}, \"type\": \"array\"}, \"hypotheses\": {\"type\": \"string\"}, \"notes\": {\"type\": \"string\"}, \"scenarios\": {\"items\": {\"additionalProperties\": false, \"properties\": {\"driver_vars\": {\"items\": {\"type\": \"string\"}, \"type\": \"array\"}, \"id\": {\"type\": \"string\"}, \"mechanism\": {\"type\": \"string\"}, \"outcomes\": {\"items\": {\"items\": {\"type\": \"integer\"}, \"type\": \"array\"}, \"type\": \"array\"}, \"required_type\": {\"type\": \"string\"}, \"weak\": {\"type\": \"boolean\"}}, \"required\": [\"id\", \"driver_vars\", \"mechanism\", \"outcomes\", \"required_type\", \"weak\"], \"type\": \"object\"}, \"type\": \"array\"}, \"variables\": {\"items\": {\"additionalProperties\": false, \"properties\": {\"claim\": {\"type\": \"string\"}, \"conflict\": {\"type\": \"boolean\"}, \"direction_hint\": {\"enum\": [\"home\", \"away\", \"both\", \"goals_up\", \"goals_down\", \"opp_goals_up\", \"opp_goals_down\"], \"type\": \"string\"}, \"id\": {\"type\": \"string\"}, \"lang\": {\"type\": \"string\"}, \"published_at\": {\"type\": \"string\"}, \"quote\": {\"type\": \"string\"}, \"reverified\": {\"type\": \"boolean\"}, \"subject\": {\"type\": \"string\"}, \"team\": {\"type\": \"string\"}, \"type\": {\"enum\": [\"absence\", \"coach_change\", \"coach_conflict\", \"def_absence\", \"emotion\", \"event_match\", \"h2h_pattern\", \"home_field\", \"individual\", \"lineup_intent\", \"lineup_value\", \"match_type\", \"national_duty_return\", \"pitcher_state\", \"recent_pattern\", \"squad_rotation\", \"stakes\", \"strength_gap\", \"travel_schedule\", \"venue_weather\"], \"type\": \"string\"}, \"url\": {\"type\": \"string\"}}, \"required\": [\"id\", \"type\", \"team\", \"subject\", \"direction_hint\", \"claim\", \"quote\", \"url\", \"published_at\", \"lang\", \"conflict\", \"reverified\"], \"type\": \"object\"}, \"type\": \"array\"}}, \"required\": [\"variables\", \"hypotheses\", \"scenarios\", \"gaps\", \"notes\"], \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}}",
+ "recorded_at": "2026-10-06T01:55:06.496005+00:00",
+ "id": "12ad44f5-0909-4d2d-9bad-2c703be17870",
+ "object": "chat.completion",
+ "created": 1791251698,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": []\n, \"hypotheses\": \" Hondur a s–Jamaica match/rel e vant variables not present in provided paragraphs. Jamaica posture and points only (no Honduras, no match diff, no stakes).\"\n, \"scenarios\": []\n, \"gaps\": [\"No Honduras–Jamaica match variable: [D1-P2] only mentions Jamaica second with six points ahead of a match with Honduras, but gives Honduras points/position, match diff, or stakes. [D2-P3..D3-P5] historical El Salvador–Jamaica not Honduras.\"]\n, \"notes\": \"Paragraphs do not carry `stakes`, `individual_title`, `regression`, or `team_stats` for this match. Only Jamaica group posture is mentionable.\"}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1240,
+  "completion_tokens": 165,
+  "total_tokens": 1405,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}
