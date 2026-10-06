@@ -38,10 +38,14 @@ NOW = KICK - timedelta(hours=3)
 
 def _ref() -> MatchRef:
     """🔴 그 라이브 실행이 확정한 경기 — 수는 DB 가 아니라 **녹화 때 적은 것**이다."""
-    from app.research import subtasks as _st
+    # 🔴 **라이브가 적은 값을 글자로** 든다 — 함수로 다시 계산하지 않는다.
+    #    ⚠️ 실측 2026-10-06: `comp_short("Friendlies")` 는 `friendlies`(소문자)를
+    #       주는데 라이브 s1 은 `Friendlies` 를 넣었다. 그 한 글자 차이로 가설 요청이
+    #       달라져 **DeepSeek 카세트 둘이 빗나갔다**(시나리오 6개 → 3개).
+    #    🔴 고정물은 **그 실행이 실제로 쓴 값**이어야 한다(재계산은 재생이 아니다).
     return MatchRef(
         id="fotmob:6368651", sport="soccer", competition="Friendlies",
-        competition_short=_st.comp_short("Friendlies"),
+        competition_short="Friendlies",
         home=HOME, away=AWAY, home_name="South Korea", away_name="Uzbekistan",
         kickoff_utc=KICK, venue="Yongin Mireu Stadium", langs=["ko", "uz"],
         # 🔴 이 경기는 오픈월드로 들어왔다(이름표가 `한국` 을 몰랐다)
