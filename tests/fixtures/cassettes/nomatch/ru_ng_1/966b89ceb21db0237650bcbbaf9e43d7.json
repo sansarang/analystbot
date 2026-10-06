@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T12:21:43.064183+00:00",
+ "order": [
+  "Russia vs Nigeria – Match preview and team news Nigeria travels to Sovcombank Arena on Tuesday as they face Russia in their final match of this international break.Eric Chelle’s men will look to end this window with a positive result after a ...",
+  "Nigeria's Super Eagles to face Russia in October friendly in Nizhny Novgorod Nigeria will return to Russia for the second time in 16 months after the Nigeria Football Federation announced on Tuesday that the Super Eagles will play the hosts in an international friendly in ...",
+  "Nigeria XI vs Russia – Predicted lineup and team news Nigeria will take on Russia at the Sovcombank Arena on Tuesday in the last game of this international window, with the Super Eagles arriving in difficult shape under head coach Eric ...",
+  "Wild Dogs rip Super Eagles apart in Bissau - Nigeria and World News 6일 전0-3 loss to ‘minnows’ raises posers It is early days yet in the 2027 Africa Cup of Nations qualifying series, but the signs are ominous for Nigerians, who agonised as their team, the Super Eagles, missed the 2026 World Cup hosted by the United States, Canada, and Mexico. Yesterday, fears were rife that if the Super Eagles remain lethargic and fails to rise to the occasion, it may miss the Africa Cup of Nations billed to hold in Kenya, Uganda and Tanzania next year. This follows the team’s ....6일 전",
+  "Russia vs Nigeria: Six players who could force their way into Eric Chelle’s Super Eagles plans 3일 전Russia vs Nigeria: Six players who could force their way into Eric Chelle’s Super Eagles plans While the result in Bissau has increased the pressure around the Super Eagles' competitive campaign, the Russia fixture presents a completely different challenge for Chelle3일 전",
+  "Super Eagles: 5 Nigeria players who can hurt Russia The Super Eagles will be looking to return to winning ways when they face Russia in an international friendly on ...",
+  "Russia vs Nigeria: Super Eagles bank on Iheanacho in Osimhen’s absence – Preview, tips, h2h Russia vs Nigeria takes centre stage again as the European and African giants lock horns in an international friendly for the second time in 16 months, ...",
+  "Russia vs Super Eagles: Preview, team news, predictions as Chelle faces fresh test in Nizhny Novgorod The Super Eagles will return to action on Tuesday when they face Russia in an international friendly at the Nizhny Novgorod Stadium, Soccernet.ng reports."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 19문단 → 재정렬 상위 8"
+}

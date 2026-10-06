@@ -1,0 +1,11 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T12:43:00.141243+00:00",
+ "order": [
+  "Faroe Islands vs Kazakhstan Prediction & Betting Tips – 26/09/2026 Get our expert prediction and best odds for this UEFA Nations League clash. Will the Faroe Islands hold strong on home turf?",
+  "Faroe Islands - Kazakhstan LIVE score When using text materials of the site hyperlink to UA-Football.com is mandatory. For printed publications the indication UA-Football.com is obligatory. The use of photo materials of the site without ..."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 2문단 → 재정렬 상위 8"
+}

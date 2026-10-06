@@ -286,8 +286,43 @@ our_prob:
   #  ⚠️ 목록에 **없는 유형은 안 움직인다** — `team_stats`·`regression` 처럼 "① 이
   #     모르는 것 같은데?" 싶은 것도 여기 넣지 않는다(사용자가 안 적었다). 🔴 그
   #     판단은 사용자가 한다(CLAUDE.md: 묻는 곳은 하나다).
+  # 🔴 `lineup_intent` 는 **7차 §4 에서 더했다**(6차에서 빠져 있었다)
   movers: [stakes, coach_intent, coach_conflict, match_type, fatigue,
-           match_format, individual_title, streak_psych, venue_weather]
+           match_format, individual_title, streak_psych, venue_weather,
+           lineup_intent]
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 **경우의 수 상태별 이동**(사용자 지시 2026-10-06(7차) §4)
+  # ══════════════════════════════════════════════════════════════════
+  #
+  # > `draw_enough` 팀 → **무승부 쪽** 이동(+k).
+  # > `draw_enough` 팀이 **5백·3센터백(IR01)** 으로 나오면 → 무승부 쪽 이동 **한 번 더**
+  # >   (+k), 총점 `goals_down`.
+  # > `must_win` 팀 → 총점 `goals_up`(이동은 1X2 가 아니라 **총점·양팀득점 쪽 시나리오
+  # >   무게**로).
+  # > `margin_needed` 팀 → 총점 `goals_up` + 그 팀 **상대 쪽 역습 시나리오 필수**
+  # >   (1골 차 승은 그 팀에 무의미).
+  # > `nothing` 팀 → 동기 하락(상대 쪽 +k **아님**, 이동 없음 — 로테이션 기사가 있을
+  # >   때만 `squad_rotation` 으로).
+  #
+  # 🔴 `k`·상한은 **그대로**다(지시 금지: `k`·상한 변경).
+  # ⚠️ `must_win`·`margin_needed` 는 **1X2 를 안 움직인다** — 총점 쪽이다. 그 뜻을
+  #    `goals` 로 적고 s6·s7 이 그것을 쓴다(확률 열을 흔들지 않는다).
+  outlook_moves:
+    draw_enough:
+      side: draw
+      steps: 1
+      with_low_block: 2        # IR01(5백·3센터백)이 함께 걸리면 두 번
+      goals_when_low_block: down
+    must_win:
+      side: null               # 🔴 1X2 이동 없음
+      goals: up
+    margin_needed:
+      side: null
+      goals: up
+      require_counter: true    # 🔴 상대 쪽 역습 시나리오 **필수**
+    nothing:
+      side: null               # 🔴 이동 없음(상대 쪽에 +k 를 주지 않는다)
+      note: 로테이션 기사가 있을 때만 `squad_rotation` 변수로 들어온다
   #: 🔴 **이동에 안 쓰는 유형** — ① 이 이미 머금은 것
   skip: [strength_gap, recent_pattern, home_field, h2h_pattern, h2h]
   #: 🔴 ② 가 **확률을 움직였을 때만** 결장 계열을 뺀다(그때는 ② 가 이미 셌다)

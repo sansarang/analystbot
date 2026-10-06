@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T12:41:59.408452+00:00",
+ "order": [
+  "Kazakhstan-Faroe Islands | Women's Under-17 2024 Kazakhstan vs Faroe Islands 2023/24. All European Women's Under-17 Championship 2027 match information including stats, goals, results, history, and more.",
+  "Lads' Euro 2020 qualifying opponents confirmed | Tottenham Hotspur 2018.12.02.his retirement from playing earlier this week, was involved in the draw ceremony. He's now part of the Republic... Romania, Faroe Islands, Malta. Group G: Poland, Austria, Israel, Slovenia, Macedonia, Latvia. Group H: France, Iceland, Turkey, Albania, Moldova, Andorra. Group I: Belgium, Russia, Scotland, Cyprus, Kazakhstan, San...2018.12.02.",
+  "Kazakhstan - Faroe Islands Related Videos: Live Football Updates Kazakhstan - Faroe Islands 06/09/2013",
+  "Faroe Islands national football team Faroe Islands … (The National Team) … Fótbóltssamband Føroya (FSF) … (Europe) Head coach Eyðun Klakstein … Hallur Hansson … Jóan Símun Edmund",
+  "Faroe Islands national football team Faroe Islands … (The National Team) … Fótbóltssamband Føroya (FSF) … (Europe) Head coach Eyðun Klakstein … Hallur Hansson … Jóan Símun Edmund",
+  "Kazakhstan-Faroe Islands | UEFA Nations League 2027 2주 전Kazakhstan vs Faroe Islands: all the latest UEFA Nations League 2027 League phase match information including stats, form, history, and more.2주 전",
+  "Faroe Islands Faroe Islands Føroyar (in Faroese) Færøerne (in Danish) Flag Coat of arms Motto: … my most beauteous land Location of the Faroe Islands in Northern Europe Capital and largest city Tórshavn 62°00 …",
+  "Faroe Islands [Amazing Places 4K] Faroe Islands offer to the traveler striking natural beauty of unique nature. The Faroe Islands are located in between Iceland, Scotland and Norway, they are..."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

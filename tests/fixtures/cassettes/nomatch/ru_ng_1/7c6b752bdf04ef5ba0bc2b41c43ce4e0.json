@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 네 담당은 `A-away` 의 유형들뿐이다: def_absence, absence_att, fatigue.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다) — 검증층이 본문에 대고 맞춰 보고, 없으면 그 줄을 버린다.\\n🔴 `quote` 에 **머리표를 넣지 마라** — `[A-home-D1-P2] (도메인, 날짜)` 는 우리가 붙인 표지이고 기사에 없는 글자다. **본문 글자만** 적는다(어느 문서인지는 `doc_id` 칸이 받는다).\\n🔴 `claim` 은 그 사실을 **한 문장**으로 적은 것이다.\\n🔴 `match_link` 는 **그 문단이 이 경기 이야기라는 근거**를 문단에서 **글자 그대로** 따온 것이다 — 상대팀 이름, 경기 날짜, 경기장, `Nigeria전` 같은 표현. ⚠️ 문단에 없는 말을 적으면 그 줄은 **버려진다**(코드가 문단에 대고 맞춰 본다).\\n⚠️ 이어지는 근거가 문단에 없으면 그 사실은 **적지 마라** — 다른 경기 이야기다(금메달 수·지난 대회·다른 팀 이야기가 그렇게 들어왔다).\\n🔴 `target` 은 그 사실의 **핵심 대상 하나**다 — 선수 이름(`Kim Min-jae`) 또는 사건 한 낱말(`record`·`travel`). ⚠️ 같은 사실을 여러 기사에서 봤다면 `target` 을 **같은 글자**로 적어라(그것으로 합친다). 문장을 넣지 마라.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n🔴 **누가 나온다/투입된다/선발로 나선다**는 말은 `lineup_intent` 다 — 감독의 **의도**(점검·전력 숨김)만 `coach_intent` 이고, 감독과 선수의 **갈등**만 `coach_conflict` 다.\\n⚠️ 이 경기는 Russia(홈) 대 Nigeria(원정)이다 — 다른 경기 이야기는 뽑지 않는다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"[A-away-D1-P1] (www.afrik-foot.com, 2026-10-05) Wilfred Ndidi’s withdrawal has created a leadership question for Éric Chelle as the Super Eagles prepare to face Russia in Tuesday’s international friendly at the Nizhny Novgorod Stadium, Afrik-Foot reports.\\n[A-away-D1-P2] (www.afrik-foot.com, 2026-10-05) The Besiktas midfielder was originally billed to captain a 24-man squad announced by the Nigeria Football Federation in September. However, a knock suffered during Nigeria’s 3-0 defeat against Guinea-Bissau in their 2027 Africa Cup of Nations qualifier has ruled him out of the trip.\\n[A-away-D1-P3] (www.afrik-foot.com, 2026-10-05) Simon is also one of the most experienced players in Chelle’s severely depleted group. The 31-year-old has been a regular member of Nigeria’s senior setup for more than a decade and is now one of only five players in history to earn at least 100 Super Eagles caps.\\n[A-away-D1-P4] (www.afrik-foot.com, 2026-10-05) The NFF confirmed that Wilfred Ndidi’s injury, alongside club restrictions and other problems, has helped reduce Chelle’s available squad to only 18 players.\\n[A-away-D1-P5] (www.afrik-foot.com, 2026-10-05) His case becomes even stronger because several players who would normally sit higher in the leadership order are unavailable. Victor Osimhen and Alex Iwobi are not part of the 18-man travelling group.\\n[A-away-D1-P6] (www.afrik-foot.com, 2026-10-05) Kelechi Iheanacho is another credible option. The Bursaspor forward is among the senior players available to Chelle and has been part of Nigeria’s setup since his international debut in 2015.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력은 **object 로만** 받는다 — 최상위 배열은 스키마가 못 받는다.\", \"properties\": {\"variables\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 s4 — 모델이 내는 변수 후보. ⚠️ **방향 칸이 없다**(코드가 정한다).\", \"properties\": {\"claim\": {\"title\": \"Claim\", \"type\": \"string\"}, \"doc_id\": {\"enum\": [\"A-away-D1\"], \"type\": \"string\"}, \"match_link\": {\"title\": \"Match Link\", \"type\": \"string\"}, \"quote\": {\"title\": \"Quote\", \"type\": \"string\"}, \"subject\": {\"enum\": [\"team:000199\", \"team:000171\"], \"type\": \"string\"}, \"subtask\": {\"enum\": [\"A-away\"], \"type\": \"string\"}, \"target\": {\"title\": \"Target\", \"type\": \"string\"}, \"type\": {\"enum\": [\"def_absence\", \"absence_att\", \"fatigue\"], \"type\": \"string\"}}, \"required\": [\"subtask\", \"type\", \"subject\", \"claim\", \"target\", \"match_link\", \"quote\", \"doc_id\"], \"title\": \"VarCandidate\", \"type\": \"object\"}, \"title\": \"Variables\", \"type\": \"array\"}}, \"required\": [\"variables\"], \"title\": \"VarCandidates\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-06T12:19:51.212795+00:00",
+ "id": "1c56006b-fb1c-4b8d-a842-9b78804f9ae8",
+ "object": "chat.completion",
+ "created": 1791289191,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": [\n    {\n      \"subtask\": \"A-away\",\n      \"type\": \"def_absence\",\n      \"subject\": \"team:000171\",\n      \"claim\": \"Wilfred Ndidi가 부상으로 인해 러시아와의 화요일 친선경기 원정 명단에서 제외되었다.\",\n      \"target\": \"Wilfred Ndidi\",\n      \"match_link\": \"Super Eagles prepare to face Russia in Tuesday’s international friendly at the Nizhny Novgorod Stadium\",\n      \"quote\": \"a knock suffered during Nigeria’s 3-0 defeat against Guinea-Bissau in their 2027 Africa Cup of Nations qualifier has ruled him out of the trip.\"\n    ,\n    \"doc_id\": \"A-away-D1\"\n    },\n    {\n      \"subtask\": \"A-away\",\n      \"type\": \"absence_att\",\n      \"subject\": \"team:000171\",\n      \"claim\": \"Victor Osimhen과 Alex Iwobi가 18명 원정 명단에 포함되지 않아 리더십 공백이 커졌다.\",\n      \"target\": \"Victor Osimhen\",\n      \"match_link\": \"Super Eagles prepare to face Russia in Tuesday’s international friendly at the Nizhny Novgorod Stadium\",\n      \"quote\": \"Victor Osimhen and Alex Iwobi are not part of the 18-man travelling group.\"\n    ,\n    \"doc_id\": \"A-away-D1\"\n    },\n    {\n      \"subtask\": \"A-away\",\n      \"type\": \"fatigue\",\n      \"subject\": \"team:000171\",\n      \"claim\": \"클럽 제한과 기타 문제 등으로 인해 에리크 첼레 감독의 가용 선수단이 18명으로 줄었다.\",\n      \"target\": \"squad\",\n      \"match_link\": \"Super Eagles prepare to face Russia in Tuesday’s international friendly at the Nizhny Novgorod Stadium\",\n      \"quote\": \"The NFF confirmed that Wilfred Ndidi’s injury, alongside club restrictions and other problems, has helped reduce Chelle’s available squad to only 18 players.\"\n    ,\n    \"doc_id\": \"A-away-D1\"\n    }\n  ]\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 928,
+  "completion_tokens": 450,
+  "total_tokens": 1378,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

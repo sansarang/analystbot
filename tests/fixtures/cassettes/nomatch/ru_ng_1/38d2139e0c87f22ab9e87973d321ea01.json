@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T12:20:07.794721+00:00",
+ "order": [
+  "Russia coach Valery Karpin is expected to rotate his squad following the Namibia victory. That could work in Nigeria’s favour.",
+  "Fresh players may mean less familiarity and cohesion in the Russian side, particularly if Karpin makes several changes at once. But rotation should not be mistaken for weakness.",
+  "A positive performance, even without a victory, would provide evidence that the coaching staff has learnt from the previous game. Another passive display would inevitably raise further questions.",
+  "Russia are also expected to make changes to their starting XI, meaning the side Nigeria will face could look considerably different from the team that dismantled Namibia.",
+  "If Nigeria struggle again, the focus will naturally shift towards tactical preparation, player selection and the team’s ability to adapt. If they respond strongly, Chelle will have evidence that his squad can absorb a setback and improve quickly.",
+  "Players coming into a team often have something to prove, and Nigeria could encounter an opponent with considerable motivation despite the friendly nature of the match.",
+  "For Éric Chelle, however, the friendly offers more than another fixture on the calendar. It presents an immediate opportunity to show how his team responds after a performance that exposed several weaknesses.",
+  "A friendly does not carry the same competitive consequences as an AFCON qualifier, and Chelle is likely to use the match to assess players and combinations. But the performance will still matter."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

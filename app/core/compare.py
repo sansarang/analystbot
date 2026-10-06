@@ -52,8 +52,8 @@ def move_rules() -> dict:
 
 def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
              variables: list[Variable] | None = None,
-             adjusted: bool = False, ref: MatchRef | None = None
-             ) -> tuple[ProbTriple | None, str]:
+             adjusted: bool = False, ref: MatchRef | None = None,
+             outlook: dict | None = None) -> tuple[ProbTriple | None, str]:
     """🔴🔴 ③ 우리 확률 — **기준에서 출발한다**(사용자 지시 2026-10-06(6차) ①).
 
     ══════════════════════════════════════════════════════════════════
@@ -99,6 +99,28 @@ def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
         # 🔴 카드 7b 의 *"③ 이 움직인 양"* 줄이 이 목록을 그대로 적는다(지시 ③)
         MOVES.append({"id": v.id, "type": v.type, "favors": v.favors,
                       "side": side, "weight": float(v.weight or 0.0),
+                      "logodds": round(step, 4)})
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **경우의 수 상태별 이동**(7차 §4) — 동기는 변수가 아니라 **표**에서 온다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 `draw_enough` 팀은 무승부 쪽으로 +k(5백이면 한 번 더). `must_win`·
+    #     `margin_needed` 는 **1X2 를 안 움직인다**(총점 쪽이고 s6·s7 이 쓴다).
+    #     `nothing` 은 **아무것도 안 움직인다**(상대에게 +k 를 주지 않는다).
+    for team, said in ((outlook or {}).get("states") or {}).items():
+        rule = dict((box.get("outlook_moves") or {}).get(str(said.get("state")))
+                    or {})
+        side = rule.get("side")
+        if not side:
+            continue
+        times = int(rule.get("steps") or 1)
+        if _low_block(team, variables or []) and rule.get("with_low_block"):
+            times = int(rule["with_low_block"])
+        step = k * times
+        shift[str(side)] += step
+        used.append(f"{team}:{said.get('state')}(×{times}·{step:+.3f})")
+        MOVES.append({"id": f"경우의수:{team}", "type": str(said.get("state")),
+                      "favors": "both", "side": str(side), "weight": float(times),
                       "logodds": round(step, 4)})
     # 🔴 **상한**(±0.5 로그 오즈) — 한 결과가 통째로 뒤집히지 않게
     capped = {k2: max(-cap, min(cap, val)) for k2, val in shift.items()}
@@ -390,3 +412,19 @@ def _market_triple(market: MarketProb) -> ProbTriple | None:
     home = round(float(got[0]) / tot, 6)                    # type: ignore[arg-type]
     draw = round(float(got[1]) / tot, 6)                    # type: ignore[arg-type]
     return ProbTriple(home=home, draw=draw, away=round(1.0 - home - draw, 6))
+
+
+def _low_block(team: str, variables: list[Variable]) -> bool:
+    """🔴 그 팀이 **5백·3센터백**으로 나오나(IR01) — 7차 §4 의 "한 번 더" 조건.
+
+    🔴 IR01 이 만든 `lineup_intent` 변수(또는 `formation` 이 5백인 사실)가 근거다.
+    ⚠️ 이름이 아니라 **열쇠**로 비교해야 할 자리인데, `outlook` 은 **이름**을 쓴다
+       (순위표가 이름으로 온다) — 그래서 변수의 `claim` 에 그 팀 이름이 있는지 본다.
+    """
+    low = str(team).strip().lower()
+    for v in variables:
+        if v.type != "lineup_intent" or str(v.from_rule or "")[:4] != "IR01":
+            continue
+        if low in (v.claim or "").lower() or low in (v.quote or "").lower():
+            return True
+    return False

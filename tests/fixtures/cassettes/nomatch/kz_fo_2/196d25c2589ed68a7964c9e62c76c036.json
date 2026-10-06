@@ -1,0 +1,11 @@
+{
+ "kind": "fetch",
+ "url": "https://www.ua-football.com/en/live/match/faroe-islands-2-kazakhstan-2-2026-09-26",
+ "query": "",
+ "recorded_at": "2026-10-06T12:42:25.173679+00:00",
+ "headers": {},
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

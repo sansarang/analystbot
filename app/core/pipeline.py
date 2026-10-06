@@ -75,6 +75,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         s2_facts.run(ref, state=st, net=net),
         s2c_market.run(ref, pool=pool, net=net, state=st, board=got_board))
     base_p, adj_p = await s2b_base.run(ref, facts, state=st, net=net)
+    # 🔴🔴 §2 경우의 수 — **코드만**(LLM 없음). 순위표가 없으면 빈 표다
+    look = s2b_base.outlook(ref, facts, state=st)
     cache: dict[str, Doc] = {}
     docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
                              cache=cache)
@@ -98,7 +100,7 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
                         now=now)
     layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
-                     user_mk, state=st)
+                     user_mk, state=st, outlook=look)
     layers["ocr_text"] = ocr_text
     said = _direction(_lower(said, layers, state=st), layers, ref)
     card = card_of(ref, facts, variables, hypo, said, state=st,
@@ -182,6 +184,7 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  🔴 피드 요청은 **1회**다(§2-2) — `reanalyze=True` 가 그 예산을 든다.
     base_p, adj_p = await s2b_base.run(ref, facts, state=st, net=net)
     adj_p = s2b_base.again(ref, facts, base_p, variables, state=st)
+    look = s2b_base.outlook(ref, facts, state=st)
     feed_mk, user_mk = await s2c_market.run(ref, pool=pool, net=net, state=st,
                                             board=got_board, reanalyze=True)
     if got_board is None and feed_mk.probs:
@@ -191,7 +194,7 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
                         now=now)
     layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
-                     user_mk, state=st)
+                     user_mk, state=st, outlook=look)
     said = _direction(_lower(said, layers, state=st), layers, ref)
     changed = _diff(before, facts, variables, said)
     changed += _market_moved(before, layers, state=st)
@@ -268,6 +271,7 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         market_why=[str(x) for x in (box.get("market_why") or [])],
         ocr_text=str(box.get("ocr_text") or ""),
         moves=[dict(x) for x in (box.get("moves") or [])],
+        outlook=dict(box.get("outlook") or {}),
         match=ref, facts=facts, variables=variables,
         drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,
         direction=said.direction, conclusion=said.conclusion,
@@ -318,7 +322,7 @@ def _same_vars(before: list[Variable], now: list[Variable]) -> bool:
 def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
             hypo: HypoSet, base_p: BaseProb, adj_p: AdjProb,
             feed_mk: MarketProb, user_mk: MarketProb, *,
-            state: RunState) -> dict:
+            state: RunState, outlook: dict | None = None) -> dict:
     """🔴 ③ 우리 확률 + §6 세 열 비교를 만든다. ⚠️ 못 만든 열은 **사유만** 남는다."""
     from app.core import compare
     from app.core.stages import s2c_market
@@ -326,7 +330,8 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
     #    ⚠️ ① 이 없으면 종전처럼 시나리오 비율이고, 카드가 그 사실을 적는다.
     start = adj_p.probs if adj_p.probs is not None else base_p.probs
     ours, why = compare.our_prob(hypo, start=start, variables=variables,
-                                 adjusted=bool(adj_p.moved), ref=ref)
+                                 adjusted=bool(adj_p.moved), ref=ref,
+                                 outlook=outlook)
     # 🔴 §6 은 *"기준(**②반영**)·우리·시장"* 을 나란히 놓으라고 했다 — 그래서 비교도
     #    ② 를 반영한 수로 한다(카드 표와 **같은 수**여야 설명이 맞는다).
     base_for_compare = (base_p.model_copy(update={"probs": start})
@@ -343,6 +348,7 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
     state.note(f"§6 세 열 판정 — **{verdict}**"
                + (f"(우리 {why})" if ours is not None else f"({why})"))
     return {"base": base_p, "adj": adj_p, "market": market,
+            "outlook": dict(outlook or {}),
             # 🔴 ③ 이 움직인 양 — `our_prob` 가 방금 적어 둔 그 목록이다
             "moves": list(compare.MOVES),
             "user_market": user_mk, "ours": ours, "compare": verdict,

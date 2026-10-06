@@ -52,8 +52,11 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     raw_value: list[dict] = []
     #: 🔴 팀별 **과거 경기 선발 여럿**(최신부터) — ② 가 평소 XI 를 여기서 만든다
     past: dict[str, list[XI]] = {}
+    #: 🔴 §1 — 깊이 소스가 받은 **경기 페이지 본문들**(조 순위표 주소의 재료)
+    raw_pages: list[str] = []
     try:
-        got = await _depth(ref, net=net, search=search, state=state)
+        got = await _depth(ref, net=net, search=search, state=state,
+                           pages=raw_pages)
     except Exception as exc:                                # noqa: BLE001
         state.drop("s2", DropReason.NO_DOC, f"깊이 소스가 터졌다: {exc!r}")
         got = []
@@ -99,9 +102,13 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
                 #    없어도 평소 XI 의 가치는 거기서 온다
                 raw_value.append(dict(val))
                 # 🔴 **일정**(IR11) — 직전 경기 날짜·상대를 적는다(가장 최근 것)
+                said_v = dict(val.get("venue") or {})
                 box.setdefault("schedule", {}).setdefault(key, {
                     "last_match": val.get("from_date"),
                     "last_opponent": val.get("from_match"),
+                    # 🔴 IR11(7차 §6) — 직전 경기 좌표와 **이 경기 좌표**
+                    "last_venue": said_v.get("name") or None,
+                    "last_lat": said_v.get("lat"), "last_lon": said_v.get("lon"),
                     "source_url": url})
         elif tail in ("lineup", "xi") and val.get("team"):
             key = _key_of(ref, str(val.get("team")))
@@ -126,6 +133,23 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
         got = adapt.names_of(val.get("squad"))
         if got:
             squad[key] = got
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **같은 조 순위표·잔여 경기**(사용자 지시 2026-10-06(7차) §1)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴 **이 경기 구장 좌표**(IR11 재료) — 경기 페이지에서 한 번만 읽는다
+    here = _venue(raw_pages)
+    if here:
+        for row in (box.get("schedule") or {}).values():
+            row.setdefault("lat", here.get("lat"))
+            row.setdefault("lon", here.get("lon"))
+            row.setdefault("venue", here.get("name"))
+        state.note(f"s2 §6 이 경기 구장 — {here.get('name')} "
+                   f"({here.get('lat')},{here.get('lon')})")
+    said = await _group(ref, state=state, net=net, pages=raw_pages)
+    if said:
+        # 🔴 `Facts.standings` 안의 **`group` 칸**이다 — 기존 칸(홈 이점·쪼갠 표)을
+        #    덮지 않는다(⚠️ `box["group"]` 에 두면 `facts_of` 가 안 싣는다 · 실측)
+        box.setdefault("standings", {})["group"] = said
     # 🔴🔴 **선수 → 시장가치 표**(② 라인업 전력 · 네 층 지시서 §4-3)
     #
     #  🔴 경기 페이지가 이미 들고 온다 — 새 출처를 붙이지 않는다(실측 2026-10-06:
@@ -225,7 +249,7 @@ def _format_of(ref: MatchRef) -> tuple[str, str]:
 
 
 async def _depth(ref: MatchRef, *, net: Any, search: Any,
-                 state: RunState) -> list:
+                 state: RunState, pages: list[str] | None = None) -> list:
     """🔴🔴 **공식 깊이 소스** — 어느 어댑터가 아나는 `ingest.context_of` 가 정한다.
 
     ⚠️ 주소를 여기 적지 않는다(§2 · 사본 금지) — 종목마다 다른 경로를 손으로 적으면
@@ -258,6 +282,11 @@ async def _depth(ref: MatchRef, *, net: Any, search: Any,
         got = await net.get(url)
         if not getattr(got, "ok", False):
             continue
+        # 🔴 §1 — **경기 페이지 본문을 모아 둔다**(조 순위표 주소를 거기서 만든다)
+        if pages is not None:
+            said_text = str(getattr(got, "text", "") or "")
+            if said_text:
+                pages.append(said_text)
         follow = getattr(src, "follow", None)
         parse_follow = getattr(src, "parse_follow", None)
         for name in (ref.home_name, ref.away_name):
@@ -369,3 +398,59 @@ async def _day_page(net: Any, url: str, *, state: RunState, team: str):
     except OSError as exc:
         state.note(f"s2 ⑦ 하루 캐시를 못 적었다 — {exc}")
     return page
+
+
+async def _group(ref: MatchRef, *, state: RunState, net: Any,
+                 pages: list[str]) -> dict:
+    """🔴🔴 §1 — **같은 조 순위표 + 조 전체 일정**. ⚠️ 못 받으면 빈 표(지어내지 않는다).
+
+    > 등록·미등록 대회 **모두**: 경기 페이지의 같은 조 순위표를 `Facts.standings` 로.
+    > 잔여 경기 · **같은 라운드 다른 경기의 킥오프 시각**도 받는다.
+
+    🔴 순위표는 **리그 표 페이지**에 있다(경기 페이지의 `content.table` 은 id 만 든다).
+       `fotmob.league_table_url()` 이 그 주소를 만들고, **하루 캐시**로 한 번만 받는다.
+    ⚠️ fotmob 이 아닌 어댑터에는 이 길이 없다 — 그때는 빈 표이고 카드가 `unknown` 이다.
+    """
+    from app.collect import fotmob as fm
+    for text in pages:
+        j = fm.payload(text)
+        if not j:
+            continue
+        url = fm.league_table_url(j)
+        if not url:
+            continue
+        page = await _day_page(net, url, state=state, team="조 순위표")
+        if page is None:
+            return {}
+        tj = fm.payload(getattr(page, "text", "") or "")
+        if not tj:
+            return {}
+        names = [ref.home_name, ref.away_name]
+        table = fm.group_table(tj, names)
+        if not table:
+            state.note(f"s2 §1 조 순위표 — 두 팀({names})이 든 표를 못 찾았다")
+            return {}
+        rows = [str(r.get("name") or "") for r in table.get("rows") or []]
+        fixtures = fm.group_fixtures(tj, rows)
+        left = [f for f in fixtures if not f.get("finished")]
+        table["fixtures"] = fixtures
+        table["remaining"] = len(left)
+        table["source_url"] = url
+        state.note(f"s2 §1 조 순위표 `{table.get('group')}` {len(rows)}팀 · 일정 "
+                   f"{len(fixtures)}경기(남은 {len(left)}) ← {url}")
+        return table
+    state.note("s2 §1 조 순위표 — 경기 페이지에서 표 주소를 못 만들었다(어댑터가 안 준다)")
+    return {}
+
+
+def _venue(pages: list[str]) -> dict:
+    """🔴 경기 페이지들에서 **구장 좌표**를 한 번 읽는다(IR11 · 7차 §6)."""
+    from app.collect import fotmob as fm
+    for text in pages:
+        j = fm.payload(text)
+        if not j:
+            continue
+        got = fm.venue_of(j)
+        if got:
+            return got
+    return {}

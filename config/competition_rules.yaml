@@ -1,0 +1,72 @@
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **대회별 순위 결정 순서와 구역의 뜻** — 사용자 지시 2026-10-06(7차) §1
+# ══════════════════════════════════════════════════════════════════
+#
+# > 동률 규칙: 대회별(UEFA NL·CONCACAF NL·각 리그) 순위 결정 순서와 구역 의미
+# > (강등/승격/플레이오프)를 **공식 규정 문서에서 확인해** 적는다.
+# > 모르면 *"승점→득실→다득점"* 가정 + **카드에 가정 표시.**
+#
+# 🔴 `verified: true` 는 **공식 문서를 열어 조문을 읽었다**는 뜻이고 `source` 가 그
+#    주소다. ⚠️ `verified: false` 는 **가정**이고, 그 경기 카드에 *"동률 규칙 가정"*
+#    이 찍힌다(`rules.tiebreak()` 가 그 표시를 함께 돌려준다).
+# 🔴 구역 **글자**는 우리가 짓지 않는다 — fotmob `legend` 의 글자를 그대로 쓰고
+#    (`zone`), 이 표는 그 글자가 **무슨 뜻인지**(승격/강등/플레이오프)만 잇는다.
+
+#: 🔴 표에 없는 대회의 **가정** — 승점 → 득실 → 다득점
+default:
+  order: [points, goal_diff, goals_for]
+  verified: false
+  why: 표에 없는 대회다 — 가장 흔한 순서를 가정한다(카드에 가정 표시)
+
+competitions:
+  - match: ["uefa nations league", "네이션스리그"]
+    name: UEFA Nations League
+    verified: true
+    source: https://documents.uefa.com/r/Regulations-of-the-UEFA-Nations-League-2026/27/Article-15-Equality-of-points-league-phase-Online
+    checked_at: 2026-10-06
+    # 🔴 제15조 — **조 내 맞대결이 먼저다**(득실보다 앞선다). 조문 순서 그대로:
+    order: [points, h2h_points, h2h_goal_diff, h2h_goals_for,
+            goal_diff, goals_for, away_goals_for, wins, away_wins,
+            disciplinary, access_list]
+    order_quote: |
+      a) Higher number of points obtained in the group matches played among the
+      teams in question · b) Superior goal difference from the group matches played
+      among the teams in question · c) Higher number of goals scored in the group
+      matches played among the teams in question · d) (a~c 재적용) ·
+      e) Superior goal difference in all group matches · f) Higher number of goals
+      scored in all group matches · g) away goals · h) wins · i) away wins ·
+      j) disciplinary points · k) access list 순위
+    # 🔴 구역 뜻 — 2026/27 은 **세 리그로 가는 과도기**다(공식 PDF 확인):
+    #    "The four group winners of League C are promoted to League B" ·
+    #    "The League B/C play-offs are contested by … the four runners-up from
+    #     League C" · "Since there will be no more League D, all league D teams
+    #     are promoted to League C"(= **League C 에 강등이 없다**).
+    zones_source: https://editorial.uefa.com/resources/02a9-21985b7e3370-3f0fda209606-1000/promotion_and_relegation_unl_website.pdf
+    zones:
+      Promotion: 승격 — 조 1위는 한 단계 위 리그로
+      "Promotion qualification": 승격 플레이오프 — 조 2위는 상위 리그 4위와 맞붙는다
+      Relegation: 강등
+      "Relegation round": 강등 플레이오프
+    note_2026_27: |
+      🔴 **League C 는 강등이 없다**(League D 가 없어진다 · 위 PDF). 그래서 C조
+      3·4위는 *"구역 없음"* 이고, 그것이 fotmob 표에 **구역 표시가 없는** 까닭이다
+      (실측 2026-10-06 C 3조: 1위 Promotion · 2위 Promotion qualification · 3·4위 없음).
+
+  - match: ["concacaf nations league"]
+    name: CONCACAF Nations League
+    verified: false
+    why: |
+      ⚠️ 공식 규정(Competition Regulations)을 **열어 확인하지 못했다** — 그래서
+      가정이다. 🔴 확인 전에는 카드가 *"동률 규칙 가정"* 을 찍는다(지시 금지 조항:
+      *"대회 규정을 확인 없이 단정"* 금지).
+    order: [points, goal_diff, goals_for]
+    zones: {}
+
+  - match: ["premier league", "epl", "프리미어"]
+    name: Premier League
+    verified: false
+    why: ⚠️ 규정 문서를 아직 안 열었다 — 득실 우선이라고 **널리 알려져** 있지만 확인 전이다
+    order: [points, goal_diff, goals_for]
+    zones:
+      "Champions League": UEFA 챔피언스리그 진출
+      Relegation: 강등

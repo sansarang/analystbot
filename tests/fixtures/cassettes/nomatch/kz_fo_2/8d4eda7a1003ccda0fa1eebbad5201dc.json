@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T12:43:00.872628+00:00",
+ "order": [
+  "Internationals | 99 caps for Robertson, Dubravka’s Slovakia beat Kazakhstan 6일 전Internationals | 99 caps for Robertson, Dubravka’s Slovakia beat Kazakhstan6일 전",
+  "Nations League: Italy earn draw against 10-man France, Northern Ireland stun Ukraine | Nations League 3일 전Romelu Lukaku, Belgium’s all-time record goalscorer, added a third in the 76th minute, skewing the ball... The Faroe Islands earned an impressive 1-1 home draw with Group C3 leaders Slovakia, Adrian Justinussen’s... Moldova moved up to second in the group with a 2-1 away victory over Kazakhstan. Elsewhere in the third tier...3일 전",
+  "Preview: Faroe Islands vs Slovakia - prediction, team news, lineups - Sports Mole 5일 전Preview: Faroe Islands vs Slovakia - prediction, team news, lineups By Anthony Nolan | 01 Oct 2026 01:56, Last updated: 01 Oct 2026 05:385일 전",
+  "Faroe Islands 1-1 Kazakhstan (Sep 26, 2026) Final Score - ESPN Live coverage of the Faroe Islands vs. Kazakhstan Uefa Nations League game on ESPN, including live score, highlights and updated stats.",
+  "Kazakhstan vs Faroe Islands Prediction and Betting Tips | October 6th 2026 Kazakhstan and Faroe Islands return to action in the UEFA Nations League when they go head-to-head at the Astana Arena on Tuesday.",
+  "Watch Kazakhstan vs Faroe Islands UEFA Nations League C soccer game LIVE: Online streams, TV channel, early teams news, start time Find out where to watch Kazakhstan vs Faroe Islands live, including TV channel options, live stream details, kick-off time, team news, form, and head-to-head record.",
+  "Preview: Faroe Islands vs Kazakhstan - prediction, team news, lineups Sports Mole previews Saturday's Nations League clash between Faroe Islands and Kazakhstan, including predictions, team news and possible lineups.",
+  "Preview: Kazakhstan vs Faroe Islands - prediction, team news, lineups - Sports Mole 2일 전Sports Mole previews Tuesday's Nations League clash between Kazakhstan and Faroe Islands, including predictions, team news and possible lineups.2일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 12문단 → 재정렬 상위 8"
+}

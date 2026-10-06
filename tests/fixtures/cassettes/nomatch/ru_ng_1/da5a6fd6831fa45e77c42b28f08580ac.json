@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T12:19:52.206989+00:00",
+ "order": [
+  "Karpin has already warned that he intends to make major changes against the Super Eagles, with the Russian coach admitting that Nigeria could provide an even tougher test.",
+  "Neither lineup has been confirmed. Chelle's experimental squad and Karpin's intention to rotate make the starting XIs particularly difficult to predict.",
+  "Russia coach Valery Karpin is expected to make several changes after the 6-0 victory over Namibia.",
+  "Aleksandr Golovin, Danil Prutsev, Maxim Glushenkov and Konstantin Tyukavin are among the players who could feature, although their inclusion will depend on the extent of Karpin's rotation. Dmitri Barinov and Nikita Krivtsov have been listed as injury concerns.",
+  "The squad also contains first-time invitees such as Michael Atata, Aderemi Adeoye, Chibuzo Nwoko, Stephen Michael, Suleiman Mubarak, Peter Edokpolor, Abubakar Umar and Abdullahi Umar.",
+  "Simon and Adams are among the more established attacking choices in the squad, while Iheanacho could lead the line or play off another forward.",
+  "Nigeria's squad has undergone two late changes since Chelle announced his original selection. Wilfred Ndidi and Basel defender Victory Akpe have both withdrawn.",
+  "Tromsø centre-back Vince Osuji was called up to replace Akpe, while Reims midfielder John Otomewo came in for Ndidi."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

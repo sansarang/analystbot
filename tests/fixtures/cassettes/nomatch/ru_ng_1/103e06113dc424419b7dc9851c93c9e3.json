@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T12:17:05.522215+00:00",
+ "order": [
+  "Super Eagles: Chelle makes two changes for Russia friendly Super Eagles head coach, Éric Chelle has made two changes to his squad ahead of Nigeria's international friendly against Russia.",
+  "Eric Chelle bullish about young squad for Russia friendly as ... - ESPN Nigeria coach Eric Chelle expects the Super Eagles to play with intensity and go for victory against Russia on Tuesday.",
+  "Confirmed: Nigeria coach Chelle hands late call-up to Rostov midfielder ... Super Eagles manager Eric Chelle has extended an invitation to Rostov midfielder Ibraheem Mahfus Ajasa ahead of Nigeria's international friendly against Russia on Tuesday, October 6. Ajasa, who joined the Russian club in 2025, is expected to link up with the Super Eagles squad as they continue ...",
+  "Super Eagles vs Russia: Latest Nigeria team news, injuries and expected ... Super Eagles vs Russia: Latest Nigeria team news, injuries and expected line-up Published on 4 Oct 2026 at 18:57 by Imhonlamhen",
+  "Osayi-Samuel Joins Ndidi OnNigeria's Injury Absentee List For Russia ... Nigeria have suffered another setback ahead of Tuesday's international friendly against Russia, with Bright Osayi-Samuel withdrawing from the Super Eagles squad. The Beşiktaş defender becomes ...",
+  "Super Eagles: Abdullahi Bewene’s 3 aims in Nigeria’s clash vs Russia Super Eagles and Banik Ostrava defender Abdullahi Bewene has outlined three personal targets ahead of Nigeria's friendly against Russia at the Nizhny Novgorod ...",
+  "SEE FULL LIST: 19 Super Eagles players available for Russia friendly ... The Super Eagles will have 19 players available for Tuesday's international friendly against Russia after seven players withdrew from the squad for various reasons. \"Refusal by some Clubs to release their players, coupled with injuries to notable names, have seriously weakened Nigeria's Super Eagles squad ahead of Tuesday's international friendly match against Russia's senior men […]",
+  "Russia vs Nigeria: Six players who could force their way into Eric ... Russia vs Nigeria: Six players who could force their way into Eric Chelle's Super Eagles plans While the result in Bissau has increased the pressure around the Super Eagles' competitive campaign ..."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 17문단 → 재정렬 상위 8"
+}

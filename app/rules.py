@@ -42,6 +42,8 @@ ODDS_SOURCES = "config/odds_sources.yaml"
 RATING_SOURCES = "config/rating_sources.yaml"
 #: 🔴 §3-2 순서형 로짓 계수 — **봇은 읽기만 한다**(실행 중 적합 금지)
 BASE_MODEL = "config/base_model.yaml"
+#: 🔴 대회별 순위 결정 순서·구역 뜻(7차 §1) — **공식 문서를 확인한 것만** verified
+COMPETITION_RULES = "config/competition_rules.yaml"
 
 
 @functools.lru_cache(maxsize=None)
@@ -805,3 +807,25 @@ def base_model(kind: str) -> dict:
     box = _load(BASE_MODEL).get("models") or {}
     got = box.get(str(kind))
     return dict(got) if isinstance(got, dict) else {}
+
+
+def tiebreak(competition: str) -> tuple[list[str], dict, bool, str]:
+    """🔴🔴 그 대회의 **순위 결정 순서·구역 뜻**. `(순서, 구역표, 확인됐나, 사유)`.
+
+    > 모르면 *"승점→득실→다득점"* 가정 + **카드에 가정 표시.**
+
+    🔴 `verified=False` 면 호출부가 카드에 *"동률 규칙 가정"* 을 적는다 — 금지 조항
+       (*"대회 규정을 확인 없이 단정"*)을 지키는 자리다.
+    """
+    box = _load(COMPETITION_RULES)
+    said = str(competition or "").lower()
+    for row in (box.get("competitions") or []):
+        for w in (row.get("match") or []):
+            if str(w).lower() in said:
+                return ([str(x) for x in (row.get("order") or [])],
+                        dict(row.get("zones") or {}),
+                        bool(row.get("verified")),
+                        str(row.get("source") or row.get("why") or ""))
+    d = dict(box.get("default") or {})
+    return ([str(x) for x in (d.get("order") or [])], {}, False,
+            str(d.get("why") or "표에 없는 대회 — 가정"))

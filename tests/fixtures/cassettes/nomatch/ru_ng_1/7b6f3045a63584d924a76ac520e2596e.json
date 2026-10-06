@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T12:18:29.839871+00:00",
+ "order": [
+  "Russia vs Nigeria – Match preview and team news Nigeria travels to Sovcombank Arena on Tuesday as they face Russia in their final match of this international break.Eric Chelle’s men will look to end this window with a positive result after a ...",
+  "Nigeria XI vs Russia – Predicted lineup and team news Nigeria will take on Russia at the Sovcombank Arena on Tuesday in the last game of this international window, with the Super Eagles arriving in difficult shape under head coach Eric ...",
+  "Wild Dogs rip Super Eagles apart in Bissau - Nigeria and World News 6일 전0-3 loss to ‘minnows’ raises posers It is early days yet in the 2027 Africa Cup of Nations qualifying series, but the signs are ominous for Nigerians, who agonised as their team, the Super Eagles, missed the 2026 World Cup hosted by the United States, Canada, and Mexico. Yesterday, fears were rife that if the Super Eagles remain lethargic and fails to rise to the occasion, it may miss the Africa Cup of Nations billed to hold in Kenya, Uganda and Tanzania next year. This follows the team’s ....6일 전",
+  "Russia vs Nigeria: Six players who could force their way into Eric Chelle’s Super Eagles plans 3일 전Russia vs Nigeria: Six players who could force their way into Eric Chelle’s Super Eagles plans While the result in Bissau has increased the pressure around the Super Eagles' competitive campaign, the Russia fixture presents a completely different challenge for Chelle3일 전",
+  "Russia vs Nigeria: Super Eagles bank on Iheanacho in Osimhen’s absence – Preview, tips, h2h Russia vs Nigeria takes centre stage again as the European and African giants lock horns in an international friendly for the second time in 16 months, ...",
+  "Russia vs Nigeria: The forgotten Super Eagles star who could steal the show in Nizhny Novgorod Russia vs Nigeria is a good time to recall that there was a time when Kelechi Iheanacho seemed almost impossible to leave out of the Super Eagles' attack, ...",
+  "Super Eagles vs Russia: Venue, Kick-Off Time and Where to Watch Friendly - Legit.ng 1일 전Nigeria’s Super Eagles face Russia in a Nizhny Novgorod friendly. Read about team form, their head-to-head record and where to watch live for Nigerian audiences.1일 전",
+  "Nigeria At 66: Taking Stock And Doing The Needful 6일 전Tomorrow, Thursday, October 1, 2026, Nigeria will celebrate its 66th anniversary. Is there anything at all to celebrate? I know opinion will be sharply divided on this. There are those who will say there is nothing really to celebrate while some others will say comme ci, comme ca! Neither good nor bad. There is still cause for cheers all the same. It can be better, but we should be careful not to throw the baby away with the bath water. In other words, we should appreciate whatever progress has ....6일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 15문단 → 재정렬 상위 8"
+}

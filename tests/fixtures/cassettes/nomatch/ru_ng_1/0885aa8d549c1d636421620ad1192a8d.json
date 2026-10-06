@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T12:21:47.202139+00:00",
+ "order": [
+  "Few players in the squad arrive with a louder recent club statement than Kelechi Iheanacho.",
+  "Yet his place in the current Super Eagles picture has become less certain. His last appearance for Nigeria came in the 2025 Unity Cup final against Jamaica, while he was left out of Chelle’s squad for the 2025 AFCON and had not featured in the Super Eagles’ matches in 2026 before receiving the Russia invitation.",
+  "Follow us on Google News and never miss breaking stories, investigations, and in-depth reporting.",
+  "Iheanacho at 29, is hardly an unknown quantity to Nigerian football. He has played at the highest level in England and Spain, won major honours and accumulated years of international experience.",
+  "The Franco-Malian coach has retained some experienced players, including Moses Simon, Stanley Nwabali and Akor Adams, but the squad also contains many players yet to establish themselves at senior international level. The Nigeria Football Federation confirmed that several players will enter the senior camp for the first time.",
+  "For some of those players, the trip to Nizhny Novgorod could be the difference between being a name on the fringes of the national team and becoming a regular part of Chelle’s plans.",
+  "The Super Eagles head coach has deliberately separated his squad for the September Africa Cup of Nations qualifiers from the group selected for Tuesday’s friendly against Russia, creating a rare opportunity for several players still fighting to establish themselves in his plans.",
+  "Akpe has started all seven of Basel’s Swiss Super League matches this season, accumulating 630 minutes, with one goal and one assist."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

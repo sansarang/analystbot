@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 네 담당은 `A-away` 의 유형들뿐이다: def_absence, absence_att, fatigue.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다) — 검증층이 본문에 대고 맞춰 보고, 없으면 그 줄을 버린다.\\n🔴 `quote` 에 **머리표를 넣지 마라** — `[A-home-D1-P2] (도메인, 날짜)` 는 우리가 붙인 표지이고 기사에 없는 글자다. **본문 글자만** 적는다(어느 문서인지는 `doc_id` 칸이 받는다).\\n🔴 `claim` 은 그 사실을 **한 문장**으로 적은 것이다.\\n🔴 `match_link` 는 **그 문단이 이 경기 이야기라는 근거**를 문단에서 **글자 그대로** 따온 것이다 — 상대팀 이름, 경기 날짜, 경기장, `Faroe Islands전` 같은 표현. ⚠️ 문단에 없는 말을 적으면 그 줄은 **버려진다**(코드가 문단에 대고 맞춰 본다).\\n⚠️ 이어지는 근거가 문단에 없으면 그 사실은 **적지 마라** — 다른 경기 이야기다(금메달 수·지난 대회·다른 팀 이야기가 그렇게 들어왔다).\\n🔴 `target` 은 그 사실의 **핵심 대상 하나**다 — 선수 이름(`Kim Min-jae`) 또는 사건 한 낱말(`record`·`travel`). ⚠️ 같은 사실을 여러 기사에서 봤다면 `target` 을 **같은 글자**로 적어라(그것으로 합친다). 문장을 넣지 마라.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n🔴 **누가 나온다/투입된다/선발로 나선다**는 말은 `lineup_intent` 다 — 감독의 **의도**(점검·전력 숨김)만 `coach_intent` 이고, 감독과 선수의 **갈등**만 `coach_conflict` 다.\\n🔴 `stakes` 는 **구체적 동기**다 — 강등·승격·탈락·진출, *\\\"이겨야 한다\\\"*, *\\\"비겨도 된다\\\"*, *\\\"n골 차 필요\\\"* 가 그것이다. ⚠️ 단순 일정 안내(*\\\"화요일에 열린다\\\"*)는 `stakes` 가 아니다.\\n🔴 그 팀이 **5백·스리백+윙백·back five·three centre-backs** 로 나온다는 말이 있으면 `formation` 칸에 그 꼴(`5-3-2`·`3-5-2`·`five at the back`)을 적고 `quote` 에 그 문장을 그대로 둔다. ⚠️ 없으면 **비워 둔다**.\\n⚠️ 이 경기는 Kazakhstan(홈) 대 Faroe Islands(원정)이다 — 다른 경기 이야기는 뽑지 않는다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"[A-away-D1-P1] (www.goal.com, 2026-10-05) - Clear Cache: Sometimes your browser holds onto your old location. Clear your cookies or refresh your browser to ensure the change takes effect.\\n[A-away-D1-P2] (www.goal.com, 2026-10-05) John van't Schip's Kazakhstan side have endured a difficult run of results in recent weeks. Back-to-back Nations League defeats — a 2-1 loss to Slovakia and a 1-2 home defeat to Moldova — have pushed them down to fourth in the group, and they need a result here to arrest that slide.\\n[A-away-D1-P3] (www.goal.com, 2026-10-05) Kazakhstan come into this match with one draw and three defeats from their last four competitive outings, alongside a draw in a friendly. Across their last five games, they have scored seven goals and conceded eight. Their most recent result was a 1-2 home loss to Moldova in the Nations League, following a 2-1 defeat to Slovakia. Earlier in the campaign they drew 1-1 with the Faroe Islands, and their friendly results include a 1-1 draw with Armenia and a 3-1 loss to Hungary.\\n[A-away-D1-P4] (www.goal.com, 2026-10-05) Kazakhstan are managed by John van't Schip, though no confirmed injury or suspension information is available for the home side ahead of this fixture. Updates will be added closer to kick-off.\\n[A-away-D1-P5] (www.goal.com, 2026-10-05) - Download & Install: Sign up to ExpressVPN or another reputable VPN service (check out GOAL's guide here) and download the app on your device.\\n[A-away-D1-P6] (www.goal.com, 2026-10-05) A VPN, such as ExpressVPN, allows you to establish a secure, encrypted connection online. By virtually changing your location to a country where the game is being broadcast, you can bypass blackout restrictions and watch your favourite team live. A step-by-step guide is described later in this article, or you can also check out our guide to the best VPNs for streaming sports.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력은 **object 로만** 받는다 — 최상위 배열은 스키마가 못 받는다.\", \"properties\": {\"variables\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 s4 — 모델이 내는 변수 후보. ⚠️ **방향 칸이 없다**(코드가 정한다).\", \"properties\": {\"claim\": {\"title\": \"Claim\", \"type\": \"string\"}, \"doc_id\": {\"enum\": [\"A-away-D1\"], \"type\": \"string\"}, \"formation\": {\"title\": \"Formation\", \"type\": \"string\"}, \"match_link\": {\"title\": \"Match Link\", \"type\": \"string\"}, \"quote\": {\"title\": \"Quote\", \"type\": \"string\"}, \"subject\": {\"enum\": [\"team:000132\", \"team:000080\"], \"type\": \"string\"}, \"subtask\": {\"enum\": [\"A-away\"], \"type\": \"string\"}, \"target\": {\"title\": \"Target\", \"type\": \"string\"}, \"type\": {\"enum\": [\"def_absence\", \"absence_att\", \"fatigue\"], \"type\": \"string\"}}, \"required\": [\"subtask\", \"type\", \"subject\", \"claim\", \"target\", \"match_link\", \"formation\", \"quote\", \"doc_id\"], \"title\": \"VarCandidate\", \"type\": \"object\"}, \"title\": \"Variables\", \"type\": \"array\"}}, \"required\": [\"variables\"], \"title\": \"VarCandidates\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-06T12:43:43.097336+00:00",
+ "id": "18bfbb0c-c3d9-4cf1-aaf0-8ca3ea1deaf0",
+ "object": "chat.completion",
+ "created": 1791290622,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": [\n    {\n      \"subtask\": \"A-away\",\n      \"type\": \"absence_att\",\n      \"subject\": \"team:000080\",\n      \"claim\": \"Kazakhstan는 John van't Schip이 관리하며, 이 경기 전에 홈 팀의 확인된 부상 또는 출전 정지 정보는 없다.\",\n      \"target\": \"injury\",\n      \"match_link\": \"Kazakhstan\",\n      \"formation\": \"\",\n      \"quote\": \"Kazakhstan are managed by John van't Schip, though no confirmed injury or suspension information is available for the home side ahead of this fixture. Updates will be added closer to kick-off.\",\n      \"doc_id\": \"A-away-D1\"\n    },\n    {\n      \"subtask\": \"A-away\",\n      \"type\": \"fatigue\",\n      \"subject\": \"team:000080\",\n      \"claim\": \"Kazakhstan는 최근 몇 주 동안 어려운 결과를 겪었고, 슬로바키아에 2-1로, 몰도바에 1-2로 패하며 조 4위로 내려앉아 이 경기에서 결과를 내야 그 추락을 멈출 수 있다.\",\n      \"target\": \"result\",\n      \"match_link\": \"Kazakhstan\",\n      \"formation\": \"\",\n      \"quote\": \"John van't Schip's Kazakhstan side have endured a difficult run of results in recent weeks. Back-to-back Nations League defeats — a 2-1 loss to Slovakia and a 1-2 home defeat to Moldova — have pushed them down to fourth in the group, and they need a result here to arrest that slide.\",\n      \"doc_id\": \"A-away-D1\"\n    }\n  ]\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1122,
+  "completion_tokens": 353,
+  "total_tokens": 1475,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

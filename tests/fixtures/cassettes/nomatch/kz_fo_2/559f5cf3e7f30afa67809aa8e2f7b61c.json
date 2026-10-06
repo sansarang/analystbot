@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T12:43:30.285020+00:00",
+ "order": [
+  "+18 or +21, depending on state | Commercial Content | T&C's Apply | Play Responsibly | Publishing Principles",
+  "This page contains affiliate links. When you purchase through the links provided, we may earn a commission.",
+  "Wales boss Craig Bellamy took a playful jibe at Wrexham after including three of their stars in the national team squad for their upcoming World Cup qualifiers next month. The Red Dragons have spent heavily in the summer transfer window following their third consecutive promotion to the Championship this season. The Ryan Reynolds and Rob McElhennery-owned club have added 10 new players to their roster.",
+  "Manchester City star Erling Haaland has turned up for Norway this month in style as the striker scored a hat-trick in their 5-0 win over Kazakhstan.",
+  "Manchester City's star winger Jeremy Doku launched a scathing attack on his Belgium team-mates after the Red Devils threw away a chance to secure an automatic World Cup qualification during the weekend. The European giants failed to register a win against a 10-man Kazakhstan side as they came back from behind to play out a 1-1 draw in Astana on Saturday.",
+  "Where to watch Kazakhstan today? Live soccer streams and TV channels for upcoming games",
+  "Everything you need to know about how to watch Kazakhstan in friendlies and all major competitions",
+  "How to watch the UEFA Nations League C match between Slovakia and Kazakhstan, as well as kick-off time and team news."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

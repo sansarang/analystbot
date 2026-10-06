@@ -53,6 +53,20 @@ def _head(card: Card) -> str:
     c = card.cost
     head += (f"\n💵 ${c.usd:.4f} · 호출 {c.calls}회 · 출력 {c.out_tokens} "
              f"(추론 {c.reasoning_tokens})")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **확정 XI 전 안내**(사용자 지시 2026-10-06(7차) §7)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > 킥오프 **90분 이내**인데 XI 가 `confirmed` 가 아니면 카드 머리에
+    # > *"확정 XI 전 — HH:MM KST 이후 /재분석"*.
+    #
+    # ⚠️ 그 시각은 **킥오프 60분 전**이다(확정 XI 는 보통 그때 나온다 · 축구 §2).
+    said_xi = {v.state for v in (card.facts.xi or {}).values()}
+    if said_xi and "confirmed" not in said_xi:
+        from datetime import timedelta
+        when = m.kickoff_utc - timedelta(minutes=60)
+        head += (f"\n⏳ **확정 XI 전** — {timefmt.kst_label(when)} 이후 `/재분석`"
+                 f"(지금 XI 는 {'·'.join(sorted(said_xi))})")
     if card.changed:
         # 🔴 **재분석 — 바뀐 것**(축구 완성 지시서 §4-4): 카드 **맨 위**다
         head += "\n\n🔁 **재분석 — 바뀐 것**\n" + "\n".join(
@@ -141,22 +155,73 @@ def _b2b(card: Card) -> str:
 
 
 def _b3b(card: Card) -> str:
-    """블록 3b 경우의 수 — **조별 리그에서만**(§3·§5).
+    """🔴🔴 블록 3b **경우의 수** — 사용자 지시 2026-10-06(7차) §2.
 
-    ⚠️ 순위표·잔여 경기가 없으면 **그 사실을 적는다**(#3) — 빈 블록은 거짓이다.
+    > 결과별 순위·구역, 그리고 **팀별 상태 한 줄**.
+    > 예) *"카자흐스탄: must_win(지면 4위 확정적, 비겨도 4위) · 페로: draw_enough"*
+
+    ⚠️ 순위표가 없으면 **그 사실을 적는다**(#3) — 빈 블록은 거짓이다.
+    🔴 동률 규칙이 **확인 안 된 대회**면 그 가정을 여기 적는다(금지 조항).
     """
-    box = dict(card.facts.standings or {})
-    rows = box.get("table") if isinstance(box.get("table"), list) else None
-    if not rows:
-        return ("- ⬜ 경우의 수를 못 센다 — 순위표·잔여 경기가 없다"
-                f"(형식 `{card.facts.match_format}`)")
-    out = ["| 팀 | 순위 | 승점 | 잔여 |", "|---|---|---|---|"]
-    for r in rows[:8]:
-        row = dict(r) if isinstance(r, dict) else {}
-        out.append(f"| {row.get('name', '?')} | {row.get('idx', row.get('rank', '?'))}"
-                   f" | {row.get('pts', '?')} | {row.get('played', '?')} |")
-    out.append("⚠️ 동률 규칙을 모르면 **승점 → 득실 → 다득점**으로 센다(그 가정을 "
-               "여기 적는다 · §3)")
+    look = dict(card.outlook or {})
+    cells = list(look.get("cells") or [])
+    if not cells:
+        box = dict(card.facts.standings or {})
+        rows = box.get("table") if isinstance(box.get("table"), list) else None
+        if not rows:
+            return ("- ⬜ 경우의 수를 못 센다 — **순위표가 없다**(`unknown`) · 형식 "
+                    f"`{card.facts.match_format}`")
+        out = ["| 팀 | 순위 | 승점 | 경기 |", "|---|---|---|---|"]
+        for r in rows[:8]:
+            row = dict(r) if isinstance(r, dict) else {}
+            out.append(f"| {row.get('name', '?')} | "
+                       f"{row.get('idx', row.get('rank', '?'))} | "
+                       f"{row.get('pts', '?')} | {row.get('played', '?')} |")
+        out.append("⚠️ 같은 조 전체 표를 못 받아 **결과별 순위**는 못 센다")
+        return "\n".join(out)
+    home, away = card.match.home_name, card.match.away_name
+    out: list[str] = []
+    group = look.get("group") or ""
+    out.append(f"- 조 `{group}` · 남은 경기 {look.get('remaining', '?')}개 · "
+               + ("**최종 확정 가능**" if look.get("final")
+                  else "⚠️ **최종 확정 아니다**(남은 경기가 더 있다)"))
+    if look.get("other"):
+        out.append("- 같은 라운드 다른 경기: " + " · ".join(look["other"]))
+    if not look.get("verified"):
+        out.append(f"- ⚠️ **동률 규칙 가정**(승점→득실→다득점) — {look.get('source', '')}")
+    else:
+        out.append(f"- 동률 규칙 **확인됨** — {look.get('source', '')}")
+    # 🔴 결과별 순위·구역 표 — 같은 라운드 다른 경기가 있으면 열이 셋이다
+    has_other = any(c.get("other") for c in cells)
+    head = (f"| 이 경기 | 다른 경기 | {home} | {away} |" if has_other
+            else f"| 이 경기 | {home} | {away} |")
+    out += ["", head, "|---|---|---|---|" if has_other else "|---|---|---|"]
+    word = {"home": f"{home} 승", "draw": "무승부", "away": f"{away} 승"}
+    for c in cells:
+        def _cell(team: str) -> str:
+            z = str(c["zones"].get(team, ""))
+            return f"{c['ranks'].get(team, '?')}위" + (f" ({z})" if z else "")
+        if has_other:
+            out.append(f"| {word.get(c['ours'], c['ours'])} | "
+                       f"{word.get(str(c.get('other')), str(c.get('other')))} | "
+                       f"{_cell(home)} | {_cell(away)} |")
+        else:
+            out.append(f"| {word.get(c['ours'], c['ours'])} | {_cell(home)} | "
+                       f"{_cell(away)} |")
+    # 🔴 팀별 상태 한 줄 — 이동 규칙이 **이 글자**를 본다
+    said = dict(look.get("states") or {})
+    for team in (home, away):
+        box = dict(said.get(team) or {})
+        if not box:
+            continue
+        out.append(f"- **{team}: {box.get('state')}** — {box.get('why')}"
+                   + (f" · {box.get('margin')}골 차" if box.get("margin") else ""))
+    if look.get("zone_meaning"):
+        out.append("- 구역 뜻: " + " · ".join(
+            f"`{k}` = {v}" for k, v in dict(look["zone_meaning"]).items()))
+    if not look.get("final"):
+        out.append("- ⚠️ 위 표는 **이번 경기만 보면** 이다 — 남은 경기가 "
+                   f"{look.get('remaining')}개라 최종 순위는 그 뒤에 정해진다")
     return "\n".join(out)
 
 

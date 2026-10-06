@@ -1315,7 +1315,9 @@ def parse_prev(got, q: Question) -> list[Fact]:
                 # 🔴 **어느 경기의 XI 인지** 적는다 — 없으면 카드가 거짓이 된다
                 "from_match": f"{g.get('homeTeam', {}).get('name')} vs "
                               f"{g.get('awayTeam', {}).get('name')}",
-                "from_date": when.date().isoformat() if when else None},
+                "from_date": when.date().isoformat() if when else None,
+                # 🔴 **직전 경기 구장 좌표**(IR11 · 7차 §6) — 이동·시차의 재료다
+                "venue": venue_of(j)},
             # 🔴 다른 경기의 선발이다 — **soft** 이고, 기사 검증기의 대상이 아니다
             #    (§12-c-1 신선도 검사가 *"4일 지난 기사"* 로 떨어뜨렸다)
             hardness="soft", from_past_match=True,
@@ -1770,3 +1772,104 @@ def parse_players(j: dict, q: Question, *, url: str, when,
                     tier=verify.TIER_PREVIEW,
                     extracted_by="rule:fotmob_player", step=1, team=name))
     return out
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **같은 조 순위표·잔여 경기**(사용자 지시 2026-10-06(7차) §1)
+# ══════════════════════════════════════════════════════════════════
+#
+# > 등록·미등록 대회 **모두**: 경기 페이지의 같은 조 순위표를 `Facts.standings` 로.
+# > 칸: 팀 열쇠·경기 수·승무패·득실·다득점·승점·**구역 표시**(fotmob 순위표의
+# > 승격/강등/플레이오프 표시 **글자 그대로**).
+#
+# 🔴 표는 **경기 페이지가 아니라 리그 표 페이지**에 있다 — 경기 페이지의
+#    `content.table` 은 `leagueId` 와 두 팀 id 만 든다(실측 2026-10-06).
+#    `league_table_url()` 이 그 주소를 만든다(`/api/*` 를 쓰지 않는다).
+# ⚠️ 한 페이지에 **조가 여럿**이다(네이션스리그 C 는 네 조) — 우리 두 팀이 든 표만
+#    고른다. 🔴 못 고르면 **빈 것**이다(아무 표나 쓰지 않는다).
+
+
+def group_table(j: dict, names: list[str]) -> dict:
+    """🔴 그 두 팀이 든 **조 순위표 전부**. 못 찾으면 빈 표.
+
+    돌려주는 꼴:
+    `{"group": 표 이름, "rows": [{rank,name,played,wins,draws,losses,
+      goals_for,goals_against,goal_diff,points,zone}], "zones": {구역: 마지막 순위}}`
+
+    🔴 `zone` 은 fotmob `legend` 의 **글자 그대로**다(`Promotion`·`Relegation`…) —
+       우리가 뜻을 지어내지 않는다. ⚠️ 없는 리그가 있다(그때 `zone` 은 빈 글자).
+    """
+    want = {str(n).strip().lower() for n in names if str(n).strip()}
+    for tb in _tables(j):
+        rows = (tb.get("table") or {}).get("all") or []
+        got = {str(r.get("name") or "").strip().lower() for r in rows}
+        if not want or not want <= got:
+            continue
+        zones = cut_lines(tb)
+        band: dict[int, str] = {}
+        for lg in (tb.get("legend") or []):
+            for i in (lg.get("indices") or []):
+                band[int(i) + 1] = str(lg.get("title") or lg.get("tKey") or "")
+        out = []
+        for r in rows:
+            gf, ga = _scores(r.get("scoresStr"))
+            rank = r.get("idx")
+            out.append({"rank": rank, "name": str(r.get("name") or ""),
+                        "played": r.get("played"), "wins": r.get("wins"),
+                        "draws": r.get("draws"), "losses": r.get("losses"),
+                        "goals_for": gf, "goals_against": ga,
+                        "goal_diff": r.get("goalConDiff"),
+                        "points": r.get("pts"),
+                        "zone": band.get(int(rank) if rank else 0, "")})
+        return {"group": str(tb.get("leagueName") or ""), "rows": out,
+                "zones": zones, "legend_raw": tb.get("legend") or []}
+    return {}
+
+
+def group_fixtures(j: dict, names: list[str]) -> list[dict]:
+    """🔴 같은 조의 **모든 일정**(치른 것·남은 것). 🔴 라운드·킥오프·결과를 그대로.
+
+    > 잔여 경기: 같은 조 남은 일정(상대·날짜·홈원정)을 …에서 받는다.
+    > 같은 라운드 다른 경기의 **킥오프 시각**도 받는다(먼저 끝나는 경기가 있는지).
+
+    ⚠️ 표 페이지가 `fixtures.allMatches` 로 **대회 전체**를 준다 — 우리 조 팀들만
+       남긴다(`group` 칸이 조를 말한다).
+    """
+    box = ((_props(j).get("fixtures") or {}).get("allMatches")
+           or (((_props(j).get("overview") or {}).get("matches") or {})
+               .get("allMatches")) or [])
+    want = {str(n).strip().lower() for n in names if str(n).strip()}
+    out: list[dict] = []
+    for m in box:
+        if not isinstance(m, dict):
+            continue
+        home = str((m.get("home") or {}).get("name") or "")
+        away = str((m.get("away") or {}).get("name") or "")
+        if home.lower() not in want and away.lower() not in want:
+            continue
+        st = m.get("status") or {}
+        out.append({"round": str(m.get("round") or m.get("roundName") or ""),
+                    "home": home, "away": away,
+                    "kickoff_utc": str(st.get("utcTime") or ""),
+                    "finished": bool(st.get("finished")),
+                    "score": str(st.get("scoreStr") or "") or None,
+                    "group": str(m.get("group") or "")})
+    return out
+
+
+def _props(j: dict) -> dict:
+    """🔴 `props.pageProps` — 표 페이지는 `content` 가 아니라 여기에 싣는다."""
+    return ((j.get("props") or {}).get("pageProps") or {}) if isinstance(j, dict) else {}
+
+def venue_of(j: dict) -> dict:
+    """🔴 그 경기의 **구장 좌표**(IR11 이동 계산의 재료 · 7차 §6).
+
+    실측 2026-10-06: `props.pageProps.seo.eventJSONLD.location` 에
+    `latitude`·`longitude`(그리고 이름)가 있다. ⚠️ 없으면 **빈 표**다.
+    """
+    seo = (((j.get("props") or {}).get("pageProps") or {}).get("seo") or {})
+    loc = ((seo.get("eventJSONLD") or {}).get("location") or {})
+    lat, lon = loc.get("latitude"), loc.get("longitude")
+    if lat is None or lon is None:
+        return {}
+    return {"name": str(loc.get("name") or ""), "lat": float(lat),
+            "lon": float(lon)}

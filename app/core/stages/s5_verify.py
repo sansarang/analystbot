@@ -115,9 +115,23 @@ def h2h_record(said: str) -> tuple[int, int, int] | None:
 #: 🔴 `stakes` 가 되려면 claim 에 **구체적 동기**가 있어야 한다(사용자 지시 ③)
 #
 #  > 진출·탈락·우승·기록·감독 거취·순위
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **동기 낱말**(사용자 지시 2026-10-06(7차) §3 이 넓혔다)
+# ══════════════════════════════════════════════════════════════════
+#
+# > 추출 스키마의 `stakes` 유형 설명에 *"강등·승격·탈락·진출, **이겨야 한다**,
+# > **비겨도 된다**, **n골 차 필요**"* 를 구체 동기로 명시한다. 이런 문장은
+# > `stakes_vague` 로 **버리지 않는다.**
+#
+# ⚠️ 종전 목록에는 *"이겨야 한다"·"비겨도 된다"* 가 없었다 — 그래서 경우의 수를
+#    그대로 적은 기사 문장이 `stakes_vague` 로 떨어졌다.
 _STAKE_WORDS = ("진출", "탈락", "우승", "기록", "거취", "순위", "승점", "플레이오프",
-                "강등", "qualif", "eliminat", "title", "record", "standings",
-                "relegat", "playoff", "sack", "contract", "points")
+                "강등", "승격", "이겨야", "반드시 이", "비겨도", "무승부면",
+                "골 차", "골차", "득점 차", "확정",
+                "qualif", "eliminat", "title", "record", "standings",
+                "relegat", "promot", "playoff", "play-off", "sack", "contract",
+                "points", "must win", "must-win", "need a win", "draw is enough",
+                "draw will do", "goal difference", "goals clear", "survive")
 
 
 def stakes_ok(claim: str) -> tuple[bool, str]:
@@ -1023,8 +1037,8 @@ def _ir_soccer(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         else:
             state.note(f"s5 {rid} — 형식이 `{facts.match_format}` 다"
                        f"(단판·1차전 아님)")
-    elif rid == "IR11":                     # 8일 3경기·시차
-        state.note(f"s5 {rid} — 일정 칸(`schedule`)을 받아야 돈다")
+    elif rid == "IR11":                     # 일정 피로 — 7차 §6 로 문턱이 바뀌었다
+        out += _ir_fatigue(rid, kind, row, ref, facts, state=state)
     elif rid == "IR12":                     # 연승·연패
         for key, raw in facts.recent.items():
             box = dict(raw) if isinstance(raw, dict) else {}
@@ -1305,3 +1319,97 @@ def _is_national(ref: MatchRef) -> bool:
                 if teamref.is_code(nm) and nm.split(":", 1)[0] in ("iso", "fa"):
                     return True
     return False
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **IR11 일정 피로**(사용자 지시 2026-10-06(7차) §6 로 문턱이 바뀌었다)
+# ══════════════════════════════════════════════════════════════════
+#
+# > *"직전 경기 후 **4일 이내** + (**시차 3시간 이상** 또는 **이동 3,000km 이상**)"*
+# > 으로 바꾼다. 직전 경기 장소는 2단계에서 받은 직전 경기 페이지에서.
+# > (페로: 10/2 토르스하운 → 10/6 아스타나, **시차 4시간**)
+#
+#: 🔴 문턱 — 표가 아니라 **지시서가 못 박은 수**다(여기 적고 주석으로 근거를 남긴다)
+FATIGUE_DAYS = 4
+FATIGUE_TZ_HOURS = 3
+FATIGUE_KM = 3000
+
+
+def _ir_fatigue(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
+                state: RunState) -> list[Variable]:
+    """🔴 §6 — 직전 경기 후 4일 이내 **그리고** (시차 3시간+ 또는 이동 3,000km+).
+
+    🔴 재료: `facts.schedule[팀]["last_match"]`(날짜)와 `last_venue`·`last_country`.
+    ⚠️ 하나라도 없으면 **안 돈다** — 사유를 이름으로 남긴다(#3 조용한 0 금지).
+    """
+    out: list[Variable] = []
+    box = dict(facts.schedule or {})
+    if not box:
+        state.note(f"s5 {rid} — 일정 칸(`schedule`)이 비었다 · 안 돈다")
+        return out
+    for key, raw in box.items():
+        said = dict(raw) if isinstance(raw, dict) else {}
+        days = _days_since(said.get("last_match"), ref.kickoff_utc)
+        if days is None:
+            state.note(f"s5 {rid} `{key}` — 직전 경기 날짜가 없다")
+            continue
+        if days > FATIGUE_DAYS:
+            state.note(f"s5 {rid} `{key}` — 직전 경기 {days}일 전"
+                       f"(문턱 {FATIGUE_DAYS}일) · 안 돈다")
+            continue
+        tz, km, why = _travel(said, ref, key)
+        if tz is None and km is None:
+            state.note(f"s5 {rid} `{key}` — 직전 경기 **장소를 모른다**({why})")
+            continue
+        hit = ((tz is not None and abs(tz) >= FATIGUE_TZ_HOURS)
+               or (km is not None and km >= FATIGUE_KM))
+        if not hit:
+            state.note(f"s5 {rid} `{key}` — {days}일 쉬었고 이동 부담이 문턱 아래다"
+                       f"({why})")
+            continue
+        out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
+                           f"{_name(ref, key)} 일정 피로 — 직전 경기 {days}일 전 · "
+                           f"{why}", ref))
+        state.note(f"s5 {rid} `{key}` **발동** — {days}일 · {why}")
+    return out
+
+
+def _days_since(said: object, kickoff) -> int | None:
+    """🔴 직전 경기와 이 경기의 **날짜 차**(일). 못 읽으면 `None`."""
+    from datetime import date, datetime
+    raw = str(said or "").strip()[:10]
+    if not raw:
+        return None
+    try:
+        then = date.fromisoformat(raw)
+    except ValueError:
+        return None
+    now = kickoff.date() if isinstance(kickoff, datetime) else kickoff
+    return (now - then).days
+
+
+def _travel(said: dict, ref: MatchRef, key: str) -> tuple[float | None,
+                                                          float | None, str]:
+    """🔴 직전 경기 장소 → **시차(시간)·거리(km)**. 못 구하면 `(None, None, 사유)`.
+
+    🔴 좌표는 경기 페이지가 준다(`eventJSONLD.location.latitude/longitude` ·
+       실측 2026-10-06). 시차는 두 좌표의 **시간대**로 센다(`timezonefinder` 가 없으면
+       경도 15°=1시간으로 어림한다 — 그 어림을 사유에 적는다).
+    ⚠️ 어림한 값을 **잰 값처럼** 적지 않는다.
+    """
+    import math
+
+    lat1, lon1 = said.get("last_lat"), said.get("last_lon")
+    lat2, lon2 = said.get("lat"), said.get("lon")
+    if None in (lat1, lon1, lat2, lon2):
+        return None, None, "직전 경기 좌표가 없다"
+    lat1, lon1, lat2, lon2 = (float(lat1), float(lon1),  # type: ignore[arg-type]
+                              float(lat2), float(lon2))  # type: ignore[arg-type]
+    # 🔴 대권 거리(하버사인) — 지구 반지름 6371km
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = p2 - p1, math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    km = 2 * 6371 * math.asin(min(1.0, math.sqrt(a)))
+    tz = (lon2 - lon1) / 15.0            # ⚠️ 경도 어림(시간대 표가 없다)
+    return (round(tz, 1), round(km, 0),
+            f"시차 약 {abs(tz):.1f}시간(경도 어림) · 이동 {km:,.0f}km")

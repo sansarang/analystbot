@@ -1,0 +1,138 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Faroe Islands Kazakhstan rotation",
+ "recorded_at": "2026-10-06T12:43:00.464392+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Cosmetics, Health & Beauty Fulfilment | J&J",
+   "content": "4일 전Sell direct-to-consumer with our specialist fulfilment for fast-moving cosmetics and beauty brands. Whether you sell makeup, skincare, haircare, or fragrances, your fulfilment partner needs to handle batch-controlled stock, assemble gift sets at speed, and scale with you when a TikTok post sends orders through the roof.4일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.ecommercefulfilment.com%2Fwp-content%2Fuploads%2F2025%2F12%2Fcosmetics-beauty.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.ecommercefulfilment.com/sectors/cosmetics-beauty-fulfilment/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ecommercefulfilment.com",
+    "/sectors/cosmetics-beauty-fulfilment/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "DevOps & Cloud Automation Services | ZAPTA",
+   "content": "1일 전Ship faster. Run cheaper. Stay up. We design and operate production cloud infrastructure CI/CD, Kubernetes, Infrastructure as Code, and full observability with senior engineers in the room from day one.1일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fzaptatech.com%2Fwp-content%2Fuploads%2F2026%2F09%2FBuilding-AI-Native-Products-6.webp&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://zaptatech.com/services/devops-cloud-automation/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "zaptatech.com",
+    "/services/devops-cloud-automation/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Software Support & Managed Services | 24/7 Application Maintenance",
+   "content": "1일 전Keep your software fast, secure, and improving every month, every release, every incident with senior engineers on retainer, predictable pricing, and SLA-backed response times.1일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fzaptatech.com%2Fwp-content%2Fuploads%2F2026%2F06%2Fd33d92de535d6c5c02babf8b0e76b880f113f5ef-1024x363.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://zaptatech.com/services/support-managed-services/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "zaptatech.com",
+    "/services/support-managed-services/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ]
+ ]
+}

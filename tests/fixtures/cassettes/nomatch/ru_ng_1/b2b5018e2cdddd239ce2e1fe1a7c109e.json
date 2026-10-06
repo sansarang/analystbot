@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T12:19:51.814898+00:00",
+ "order": [
+  "The original Super Eagles selection for the Russia clash already contained several unfamiliar faces, but the squad has changed again.",
+  "With Ndidi gone from the squad, Michael has a clearer route to minutes and a chance to convince Chelle that his development can continue at international level.",
+  "His physical frame, youth and regular competitive football make him a serious long-term project, although Stanley Nwabali’s presence means a starting place on Tuesday is far from guaranteed. A convincing cameo could, however, put James into Chelle’s future goalkeeper rotation.",
+  "Chibuzo “Chibby” Nwoko arrives with one of the most unusual international stories in the squad. The 20-year-old London-born midfielder came through Chelsea before joining Fulham at Under-12 level and can operate as a six, eight or 10. His father has roots in Umuahia South, Abia State.",
+  "Wilfred Ndidi, Bright Osayi-Samuel and Victory Akpe have withdrawn, opening the door for teenage midfielder John Otomewo and 20-year-old centre-back Vince Osuji. The updated group therefore gives Chelle a collection of players whose international reputations are still being written, from Finnish goalkeeping prospect Samuel James to Benfica forward Peter Edokpolor and Kristiansund midfielder Igor Wilfred.",
+  "Chelle’s decision nevertheless offers a window into what the coach sees in him. Ajasa has spent more than a year developing inside Russian football, and his familiarity with the country’s footballing environment could prove useful against a Russian side Nigeria will face in its own territory.",
+  "Suleiman Mubarak is one of the youngest names in the squad at 19. The midfielder joined Slavia Prague in 2025 from Nigerian academy Rigt 2 Win after impressing during a trial that included training with the Czech club’s first team.",
+  "His ability to play on either flank also gives Chelle another attacking option after Bright Osayi-Samuel became the latest player to withdraw from the squad."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

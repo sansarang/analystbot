@@ -1,0 +1,138 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Russia Nigeria retirement ceremony",
+ "recorded_at": "2026-10-06T12:18:30.736613+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Compt Balogun Bows Out At FOU Zone C, as Acting Comptroller Dadaniya Takes Over - Latest Nigerian News",
+   "content": "6일 전Compt Balogun Bows Out At FOU Zone C, as Acting Comptroller Dadaniya Takes Over The Nigeria Customs Service (NCS) Federal Operations Unit Zone 'C' Owerri, has witnessed a change of batton as a result6일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=http%3A%2F%2Ffreshangleng.com%2Farticleimg%2F39ccecf2-ffc1-4a9e-b58e-1467b6315188.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://freshangleng.com/42110/compt-balogun-bows-out-at-fou-zone-c--as-acting-comptroller-dadaniya-takes-over",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "freshangleng.com",
+    "/42110/compt-balogun-bows-out-at-fou-zone-c--as-acting-comptroller-dadaniya-takes-over",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Nigerian Army Honours Late Lt-Gen Obiakor as His Extraordinary UN Peacekeeping Legacy Is Remembered - TDP....",
+   "content": "2일 전Nigerian Army Honours Late Lt-Gen Obiakor as His Extraordinary UN Peacekeeping Legacy Is Remembered2일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://tdpelmedia.com/nigerian-army-honours-late-lt-gen-obiakor-as-his-extraordinary-un-peacekeeping-legacy-is-remembered/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "tdpelmedia.com",
+    "/nigerian-army-honours-late-lt-gen-obiakor-as-his-extraordinary-un-peacekeeping-legacy-is-remembered/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "tag - Gulf Times",
+   "content": "Ambassadors present credentials to HH the AmirIraq warns it might leave Opec if oil quota not raised, say sourcesOpec+ hikes oil production quotas but stays mum on UAE pull-out",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.gulf-times.com/tag?query=United+Arab+Emirates",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.gulf-times.com",
+    "/tag",
+    "",
+    "query=United+Arab+Emirates",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ]
+ ]
+}

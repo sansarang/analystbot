@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T12:19:38.850946+00:00",
+ "order": [
+  "Wilfred Ndidi’s withdrawal has created a leadership question for Éric Chelle as the Super Eagles prepare to face Russia in Tuesday’s international friendly at the Nizhny Novgorod Stadium, Afrik-Foot reports.",
+  "The Besiktas midfielder was originally billed to captain a 24-man squad announced by the Nigeria Football Federation in September. However, a knock suffered during Nigeria’s 3-0 defeat against Guinea-Bissau in their 2027 Africa Cup of Nations qualifier has ruled him out of the trip.",
+  "Simon is also one of the most experienced players in Chelle’s severely depleted group. The 31-year-old has been a regular member of Nigeria’s senior setup for more than a decade and is now one of only five players in history to earn at least 100 Super Eagles caps.",
+  "The NFF confirmed that Wilfred Ndidi’s injury, alongside club restrictions and other problems, has helped reduce Chelle’s available squad to only 18 players.",
+  "His case becomes even stronger because several players who would normally sit higher in the leadership order are unavailable. Victor Osimhen and Alex Iwobi are not part of the 18-man travelling group.",
+  "Kelechi Iheanacho is another credible option. The Bursaspor forward is among the senior players available to Chelle and has been part of Nigeria’s setup since his international debut in 2015.",
+  "Still, Simon therefore stands as the clearest candidate to lead the Super Eagles out at Nizhny Novgorod on Tuesday.",
+  "One of the assistant captains in the Super Eagles, the Paris FC winger has already experienced the responsibility of leading Nigeria. Simon captained the Super Eagles against Zimbabwe in November 2023, during a World Cup qualifier."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 14문단 → 재정렬 상위 8"
+}

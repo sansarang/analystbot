@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T12:43:02.788873+00:00",
+ "order": [
+  "Faroe Islands national football team Faroe Islands … (The National Team) … Fótbóltssamband Føroya (FSF) … (Europe) Head coach Eyðun Klakstein … Hallur Hansson … Jóan Símun Edmund",
+  "Faroe Islands national football team Faroe Islands … (The National Team) … Fótbóltssamband Føroya (FSF) … (Europe) Head coach Eyðun Klakstein … Hallur Hansson … Jóan Símun Edmund",
+  "Faroe Islands Faroe Islands Føroyar (in Faroese) Færøerne (in Danish) Flag Coat of arms Motto: … my most beauteous land Location of the Faroe Islands in Northern Europe Capital and largest city Tórshavn 62°00 …",
+  "Faroe Islands travel - Lonely Planet | Europe Explore the Faroe Islands travel guide for puffin spotting, turf-roofed villages, cliff hikes and scenic ferry rides. Find expert tips and top attractions.",
+  "Faroe Islands itineraries: 3 ways to see the archipelago - Lonely Planet Lonely Planet may earn a commission from affiliate links on our site. All recommendations and reviews reflect our own independent opinions. … Faroe Islands",
+  "Faroe Islands itineraries: 3 ways to see the archipelago - Lonely Planet Lonely Planet may earn a commission from affiliate links on our site. All recommendations and reviews reflect our own independent opinions. … Faroe Islands",
+  "Plan your stay in the Faroe Islands | Travel tips & accommodation Planning your trip to the Faroe Islands is easier than you think. … you’ll be ready to explore the Faroe Islands with confidence and ease.",
+  "Faroe Islands: Bleak, beautiful, bizarre | CNN Faroe Islands have up to 300 rainy days a year, but the landscape gives them special appeal Grass roofs in the Faroe Islands are the most conspicuous element of the local architecture"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

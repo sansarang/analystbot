@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T12:19:30.623621+00:00",
+ "order": [
+  "The Beşiktaş defender becomes the latest senior player to become unavailable for the October 6 encounter at the Nizhny Novgorod Stadium, following captain Wilfred Ndidi, who had earlier pulled out of the fixture.",
+  "Osayi-Samuel’s withdrawal leaves head coach Eric Chelle with another selection issue as he prepares for his first match since Nigeria’s disappointing 3-0 defeat to Guinea-Bissau in a 2027 Africa Cup of Nations qualifier.",
+  "FC Basel defender Akpe Victory has also been ruled out after sustaining an injury, further reducing Nigeria’s defensive options for the friendly.",
+  "In response to the withdrawals, the Nigeria Football Federation has drafted in replacements, with John Oromewo called up to take Ndidi’s place, while Vince Osuji has been added to the squad to replace Victory.",
+  "The fixture will also be an opportunity for Chelle to assess the team’s response following the heavy defeat in Guinea-Bissau, where the Super Eagles struggled to impose themselves and conceded three goals.",
+  "A number of players were handed their first call-ups for the fixture as Chelle looks to broaden his options ahead of Nigeria’s next competitive assignments.",
+  "We’ve got the edge. Get real-time reports, breaking scoops, and exclusive angles delivered straight to your phone. Don’t settle for stale news. Join LEADERSHIP NEWS on WhatsApp for 24/7 updates →",
+  "Nigeria have suffered another setback ahead of Tuesday’s international friendly against Russia, with Bright Osayi-Samuel withdrawing from the Super Eagles squad."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 11문단 → 재정렬 상위 8"
+}

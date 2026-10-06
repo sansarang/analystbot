@@ -214,6 +214,12 @@ types:
 #    못하는 판단이 그것이다(사용자 진단). 모델은 ③ 좁은 질문에만 쓴다.
 
   stakes:
+    # 🔴🔴 **구체 동기의 보기**(사용자 지시 2026-10-06(7차) §3) — 추출 프롬프트가 이 줄을
+    #    모델에 보여 준다. ⚠️ 이런 문장은 `stakes_vague` 로 **버리지 않는다**:
+    #      강등·승격·탈락·진출 · *"이겨야 한다"* · *"비겨도 된다"* · *"n골 차 필요"*
+    examples: ["이기지 못하면 강등이 확정된다", "비겨도 조 2위를 지킨다",
+               "2골 차로 이겨야 순위가 올라간다", "must win to stay in contention",
+               "a draw is enough to finish second"]
     # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
     #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
     sports: [soccer, baseball, hockey, basketball, volleyball]

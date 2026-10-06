@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T12:20:21.619813+00:00",
+ "order": [
+  "Nigeria: Nwabali; James, Fernandez, Benjamin, Igboke; Onyeka, Nwoko, Michael; Simon, Akor, Iheanacho",
+  "Russia enters this fixture in exceptional form, riding a strong wave of momentum in their recent friendlies. Sbornaya has registered dominant back-to-back home victories, crushing Namibia 6-0 and defeating Iran 2-0. Aside from a minor 1-0 slip against Egypt earlier in the year, Valery Karpin's team has been highly clinical, picking up comfortable 3-0 wins over both Trinidad and Tobago and Burkina Faso to cement their formidable status.",
+  "Russia: Agkatsev; Adamov, Melyokhin, Osipenko, Beveev; Karpukas, Prutsev, Umyarov; Miranchuk, Sadulayev, Tyukavin",
+  "Nigeria carries highly inconsistent form, struggling to find stability under head coach Eric Chelle. The Super Eagles recently suffered a heavy 3-0 defeat against Guinea-Bissau in their latest Africa Cup of Nations qualifier, following a narrow 2-1 victory over Madagascar. Their friendly campaign has yielded mixed results, featuring a 2-1 loss to Portugal, a 2-2 draw with Poland.",
+  "For Russia, Konstantin Tyukavin is a strong candidate to start up front after managing 78 minutes in the victory over Iran, having previously come off the bench in the big win against Namibia.",
+  "Wilfred Ndidi is officially ruled out after picking up a knock against Guinea-Bissau, while defender Victory Akpe and goalkeeper Maduka Okoye are also sidelined.",
+  "Read Also – Bundesliga Predictions Today – Expert Tips & Stats",
+  "Additionally, Slavia Prague's Suleiman Mubarak missed out due to an unprocessed residence permit. On a positive note, forward Kelechi Iheanacho has rejoined the squad and is fully available."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 17문단 → 재정렬 상위 8"
+}

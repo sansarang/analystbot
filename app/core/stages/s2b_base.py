@@ -353,3 +353,64 @@ def _same_player(name: str, pool: set[str]) -> bool:
         if mine and box and mine == box:
             return True
     return False
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **경우의 수**(사용자 지시 2026-10-06(7차) §2) — 코드만, LLM 없음
+# ══════════════════════════════════════════════════════════════════
+
+
+def outlook(ref: MatchRef, facts: Facts, *, state: RunState) -> dict:
+    """🔴 §2 — 결과 3 × 다른 경기 3 의 순위·구역과 **팀별 상태**.
+
+    > 남은 경기가 있으면 *"이번 경기만 보면"* 과 *"최종 확정"* 둘을 **구분해** 적는다.
+
+    🔴 순위표가 없으면 `{}` 이고 카드가 `unknown` 으로 적는다(지어내지 않는다).
+    """
+    from app import rules
+    from app.core import standing as st
+    box = dict((facts.standings or {}).get("group") or {})
+    rows = list(box.get("rows") or [])
+    if not rows:
+        state.note("s2b §2 경우의 수 — 조 순위표가 없다 → `unknown`")
+        return {}
+    order, zone_doc, verified, src = rules.tiebreak(ref.competition)
+    home, away = ref.home_name, ref.away_name
+    # 🔴 **같은 라운드 다른 경기** — 우리 경기와 같은 라운드의, 우리가 안 뛰는 경기
+    mine = {home.lower(), away.lower()}
+    ours = next((f for f in (box.get("fixtures") or [])
+                 if not f.get("finished")
+                 and {str(f.get("home", "")).lower(),
+                      str(f.get("away", "")).lower()} == mine), None)
+    rnd = str((ours or {}).get("round") or "")
+    other_rows = [f for f in (box.get("fixtures") or [])
+                  if str(f.get("round") or "") == rnd and not f.get("finished")
+                  and {str(f.get("home", "")).lower(),
+                       str(f.get("away", "")).lower()} != mine]
+    other = ((str(other_rows[0]["home"]), str(other_rows[0]["away"]))
+             if other_rows else None)
+    cells = st.grid(box, home=home, away=away, order=order, other=other)
+    states: dict[str, dict] = {}
+    for team, is_home in ((home, True), (away, False)):
+        said, why = st.state_of(cells, team, is_home=is_home,
+                                zones=dict(box.get("zones") or {}))
+        margin, mwhy = st.margin_for(box, team=team, rival=away if is_home else home,
+                                     order=order, home=home, away=away,
+                                     zones=dict(box.get("zones") or {}))
+        if margin:
+            said, why = "margin_needed", f"{margin}골 차 필요 — {mwhy}"
+        states[team] = {"state": said, "why": why, "margin": margin}
+        state.note(f"s2b §2 `{team}` **{said}** — {why}")
+    left = int(box.get("remaining") or 0)
+    out = {"group": box.get("group"), "cells": cells, "states": states,
+           "verified": verified, "source": src, "zones": dict(box.get("zones") or {}),
+           "remaining": left,
+           # 🔴 우리 경기 말고 **남은 경기가 또 있으면** 최종 확정이 아니다
+           "final": left <= (1 + (1 if other else 0)),
+           "other": [f"{r['home']} vs {r['away']} ({str(r.get('kickoff_utc') or '')[:16]}Z)"
+                     for r in other_rows],
+           "zone_meaning": zone_doc}
+    state.note(f"s2b §2 경우의 수 {len(cells)}칸 · 같은 라운드 다른 경기 "
+               f"{len(other_rows)}개 · 남은 경기 {left} · 최종확정 {out['final']} · "
+               f"동률규칙 {'확인' if verified else '**가정**'}")
+    return out

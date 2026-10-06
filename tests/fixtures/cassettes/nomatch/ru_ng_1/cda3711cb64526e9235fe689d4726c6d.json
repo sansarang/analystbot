@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T12:18:29.233168+00:00",
+ "order": [
+  "Nigeria XI vs Russia – Predicted lineup and team news Nigeria faces Russia in their next fixture. Find out the latest team news predicted lineups and TV channel in our predicted lineup.",
+  "Super Eagles: Abdullahi Bewene’s 3 aims in Nigeria’s clash vs Russia Super Eagles and Banik Ostrava defender Abdullahi Bewene has outlined three personal targets ahead of Nigeria's friendly against Russia at the Nizhny Novgorod ...",
+  "Nigeria's Super Eagles to face Russia in October friendly in Nizhny Novgorod Nigeria will return to Russia for the second time in 16 months after the Nigeria Football Federation announced on Tuesday that the Super Eagles will play the hosts in an international friendly in ...",
+  "Russia vs Nigeria: Meet 14 Super Eagles debutants Eric Chelle could unleash Super Eagles' trip to Nizhny Novgorod has the feel of a casting call as much as a football match, Afrik-Foot reports.",
+  "Russia vs Super Eagles: Preview, team news, predictions as Chelle faces fresh test in Nizhny Novgorod The Super Eagles will return to action on Tuesday when they face Russia in an international friendly at the Nizhny Novgorod Stadium, Soccernet.ng reports.",
+  "Russia’s 6–0 Warning: Why Nigeria Cannot Afford Another Passive Performance | Daily Times Nigeria New.... 1일 전Russia’s 6–0 Warning: Why Nigeria Cannot Afford Another Passive Performance1일 전",
+  "Stock Market Drops by N813bn on Profit-taking in BUA Foods – THISDAYLIVE 1일 전NOSC Selects Dear Ajayi as Nigeria’s Official Submission for 99th Oscars1일 전",
+  "Trump Is Winning The Iran War, And It Will Change The World - American Thinker 6일 전Victor Davis Hanson argues that we may be living through one of those rare moments when the world is changing so rapidly that people caught in the middle of it can barely see what is happening. Looking beyond the daily headlines, he surveys Russia, China, Latin America, Greenland, and the Middle East, contending that the geopolitical balance has shifted dramatically in ways that favor the United States and the West. His most consequential argument concerns Iran. Hanson believes the regime is und....6일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 9문단 → 재정렬 상위 8"
+}

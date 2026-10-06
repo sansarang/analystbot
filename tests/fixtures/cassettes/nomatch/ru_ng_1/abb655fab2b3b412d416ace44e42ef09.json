@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T12:18:28.605089+00:00",
+ "order": [
+  "Club Restrictions Weaken Eagles Ahead Of Russia Clash | Daily Times Nigeria News - Nigeria and World News.... 1일 전Nigeria’s Super Eagles will face Russia in Tuesday’s international friendly with a significantly depleted squad after injuries and club restrictions ruled several invited players out of the encounter. The absences have reduced Head Coach Éric Chelle’s options and placed greater emphasis on squad depth as Nigeria prepares for a demanding international assignment. Captain Wilfred Ndidi is among the notable absentees after sustaining a minor knock during Nigeria’s 2027 Africa Cup of Nation....1일 전",
+  "Osayi-Samuel Joins Ndidi OnNigeria’s Injury Absentee List For Russia Friendly Nigeria have suffered another setback ahead of Tuesday’s international friendly against Russia, with Bright Osayi-Samuel withdrawing from the Super Eagles ...",
+  "Club restrictions, injuries weaken Super Eagles for Russia friendly - The Eagle Online 1일 전Nigeria’s Super Eagles have been weakened by club restrictions and injuries ahead of Tuesday’s international friendly against Russia’s senior men’s national team. The News Agency of Nigeria reports that Captain Wilfred Ndidi was ruled out after sustaining a minor knock during last week’s 2027 Africa Cup of Nations (AFCON) qualifier against Guinea-Bissau. Midfielder Raphael Onyedika was also prevented from travelling to Russia after his German club, Eintracht Frankfurt, declined to rele....1일 전",
+  "Club restrictions, injuries weaken Super Eagles for Russia friendly NIGERIA's Super Eagles have been weakened by club restrictions and injuries ahead of Tuesday’s international friendly against Russia’s senior men’s national team. The News Agency of Nigeria (NAN) ...",
+  "NFF Explains Super Eagles’ Stars’ Withdrawals Ahead Of Russia Friendly The Nigeria Football Federation (NFF) has given reasons for the absence of captain Wilfred Ndidi, Raphael Onyedika and five other players from the Super ...",
+  "International Friendly: Club restrictions, injuries weaken Nigeria ahead of Russia clash 2일 전International Friendly: Club restrictions, injuries weaken Nigeria ahead of Russia clash2일 전",
+  "Club Restrictions, Injuries Weaken Super Eagles Ahead Of Russia Friendly – Arise News 1일 전Club Restrictions, Injuries Weaken Super Eagles Ahead Of Russia Friendly Nigeria’s Super Eagles face Russia with a depleted squad after clubs block players and injuries rule out several key names.1일 전",
+  "Eagles hope to bounce back from Guinea-Bissau loss - Punch newspapers 22시간 전The Super Eagles will look to end a mixed international break on a positive note when they take on Russia in Tuesday’s friendly at the Nizhny Novgorod Stadium, with kick-off scheduled for 6pm Nigerian time. Eric Chelle’s side opened the window with a 2-1 win over Madagascar before suffering a disappointing 3-0 defeat to Guinea-Bissau in their 2027 Africa Cup of Nations qualifying campaign, leaving Nigeria eager to regain momentum against the Sbornaya. Striker Akor Adams has disclosed that Ch....22시간 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

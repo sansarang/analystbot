@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T12:21:47.683863+00:00",
+ "order": [
+  "Super Eagles striker Victor Osimhen remains sidelined by the adductor strain that has already cost him three Galatasaray matches and both of Nigeria’s opening Africa Cup of Nations qualifiers. The late withdrawals of captain Wilfred Ndidi and uncapped defender Victory Akpe have also forced two further changes to the squad in the past two days.",
+  "Russia have their own gaps to fill, with captain Aleksandr Golovin and goalkeeper Matvey Safonov both out of the squad, but Valeri Karpin’s side arrive on the back of a six-nil rout of Namibia and will start this rematch of last year’s one-one draw as clear favourites.",
+  "Chelle’s team news has shifted by the day. Ndidi’s withdrawal removes the player many expected to wear the captain’s armband, with Reims midfielder John Otomewo, uncapped and signed from Hapoel Jerusalem in July, drafted in as cover.",
+  "Nigeria’s recent form tells a more complicated story. Chelle’s side beat Zimbabwe 2-0 in London on May 26, drew 2-2 away at Poland on June 3, lost 1-2 away at Portugal on June 10, then opened their 2027 Africa Cup of Nations qualifying campaign with a 2-1 win over Madagascar in Uyo on September 25 before collapsing to a three-nil defeat away at Guinea-Bissau four days later.",
+  "Russia have won four of their last five matches, scoring 14 goals and conceding just once across that run. The sequence reads a six-nil demolition of Namibia on October 3, a two-nil win over Iran in Kazan on September 29, a three-nil victory against Trinidad and Tobago on June 9, a three-nil win over Burkina Faso on June 5, and a one-nil defeat away at Egypt on May 28.",
+  "That run, capped by a brace in a come-from-behind win over Batman Petrolspor, forced Eric Chelle’s hand and earned Iheanacho a recall for Tuesday’s international friendly against Russia in Nizhny Novgorod.",
+  "Several of Nigeria’s Europe-based regulars, Ademola Lookman, Alex Iwobi, Ola Aina, Frank Onyeka, Calvin Bassey, Semi Ajayi, Bruno Onyemaechi and Bright Osayi-Samuel are not available for the encounter.",
+  "Kelechi Iheanacho has not kicked a ball for Nigeria since the 2025 Unity Cup final against Jamaica, but the striker’s return to the Super Eagles squad is no mere nostalgia pick."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

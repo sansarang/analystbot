@@ -529,13 +529,17 @@ def test_우리_확률이_기준에서_출발한다():
     assert said is not None and said.home > got.home, (said, why2)
 
 
-def test_이동에_쓰는_유형이_아홉뿐이다():
-    """🔴 ① — 목록 밖 유형은 **안 움직인다**. 돌연변이: 목록을 늘리기."""
+def test_이동에_쓰는_유형이_열뿐이다():
+    """🔴 ① — 목록 밖 유형은 **안 움직인다**. 돌연변이: 목록을 늘리기.
+
+    ⚠️ 7차 §4 가 `lineup_intent` **하나를 더했다**(6차에서 빠져 있었다).
+    """
     from app.core import compare
     box = compare.move_rules()
     assert sorted(box["movers"]) == sorted([
         "stakes", "coach_intent", "coach_conflict", "match_type", "fatigue",
-        "match_format", "individual_title", "streak_psych", "venue_weather"])
+        "match_format", "individual_title", "streak_psych", "venue_weather",
+        "lineup_intent"])
     assert float(box["k"]) == 0.15 and float(box["cap_logodds"]) == 0.5
     # 🔴 ① 이 머금은 유형은 **빠진다**
     for kind in ("strength_gap", "recent_pattern", "home_field", "h2h_pattern"):
@@ -693,3 +697,159 @@ def test_선수별_pp_는_상쇄되는_큰_항목에_안_적는다():
     said = base._share(big, -1.2, home="team:000129", away="team:000245",
                        delta_s={"team:000129": -1.07})
     assert all(d.delta_home_pct is None for d in said), said
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 지시 2026-10-06(7차)** — 순위표·경우의 수·상태별 이동·IR11
+# ══════════════════════════════════════════════════════════════════
+
+
+def _group_fixture() -> dict:
+    """🔴 실측 표(네이션스리그 C 3조 · 2026-10-06) — 지어낸 수가 아니다."""
+    return {
+        "group": "Grp. 3",
+        "zones": {"Promotion": 1, "Promotion qualification": 2},
+        "rows": [
+            {"rank": 1, "name": "Slovakia", "played": 3, "wins": 2, "draws": 1,
+             "losses": 0, "goals_for": 5, "goals_against": 2, "goal_diff": 3,
+             "points": 7, "zone": "Promotion"},
+            {"rank": 2, "name": "Moldova", "played": 3, "wins": 1, "draws": 1,
+             "losses": 1, "goals_for": 3, "goals_against": 4, "goal_diff": -1,
+             "points": 4, "zone": "Promotion qualification"},
+            {"rank": 3, "name": "Faroe Islands", "played": 3, "wins": 0,
+             "draws": 3, "losses": 0, "goals_for": 3, "goals_against": 3,
+             "goal_diff": 0, "points": 3, "zone": ""},
+            {"rank": 4, "name": "Kazakhstan", "played": 3, "wins": 0, "draws": 1,
+             "losses": 2, "goals_for": 3, "goals_against": 5, "goal_diff": -2,
+             "points": 1, "zone": ""}],
+        "fixtures": [], "remaining": 6}
+
+
+def test_경우의_수가_결과_아홉_칸을_센다():
+    """🔴 §2 — 이 경기 3 × 다른 경기 3. 돌연변이: 다른 경기를 무시(3칸만)."""
+    from app import rules
+    from app.core import standing as st
+    order, _, ok, _ = rules.tiebreak("UEFA Nations League C Grp. 3")
+    assert ok, "🔴 네이션스리그 동률 규칙이 확인 표시가 아니다"
+    assert order[:2] == ["points", "h2h_points"], order
+    cells = st.grid(_group_fixture(), home="Kazakhstan", away="Faroe Islands",
+                    order=order, other=("Moldova", "Slovakia"))
+    assert len(cells) == 9, len(cells)
+    # 🔴 실측과 같은 수 — 카자흐가 이기고 몰도바가 지면 **2위(승격 PO)**
+    got = next(c for c in cells if c["ours"] == "home" and c["other"] == "away")
+    assert got["ranks"]["Kazakhstan"] == 2
+    assert got["zones"]["Kazakhstan"] == "Promotion qualification"
+    # 🔴 비기면 4위다(구역 없음)
+    draw = next(c for c in cells if c["ours"] == "draw" and c["other"] == "home")
+    assert draw["ranks"]["Kazakhstan"] == 4 and draw["zones"]["Kazakhstan"] == ""
+
+
+def test_상태가_다섯_글자_중_하나다():
+    """🔴 §2 — `must_win`·`draw_enough`·`margin_needed`·`nothing`·`unknown`.
+
+    실측: 카자흐 **must_win** · 페로 **draw_enough**(사용자가 예상한 그 둘).
+    돌연변이: 구역만 보고 순위를 무시 → 3·4위가 같아 보여 `nothing` 이 된다.
+    """
+    from app import rules
+    from app.core import standing as st
+    order, _, _, _ = rules.tiebreak("UEFA Nations League")
+    box = _group_fixture()
+    cells = st.grid(box, home="Kazakhstan", away="Faroe Islands", order=order,
+                    other=("Moldova", "Slovakia"))
+    kz, why1 = st.state_of(cells, "Kazakhstan", is_home=True,
+                           zones=box["zones"])
+    fo, why2 = st.state_of(cells, "Faroe Islands", is_home=False,
+                           zones=box["zones"])
+    assert kz == "must_win", (kz, why1)
+    assert fo == "draw_enough", (fo, why2)
+    assert kz in st.STATES and fo in st.STATES
+    # 🔴 순위표가 없으면 **unknown** — 지어내지 않는다(금지 조항)
+    none, why3 = st.state_of([], "Kazakhstan", is_home=True, zones={})
+    assert none == "unknown" and "순위표" in why3
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **구역이 하나도 없는 조에서도 순위로 센다**
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 2026/27 네이션스리그 **League C 는 강등이 없다** — 3·4위에 구역 표시가
+    #     아예 없다. 🔴 구역만 보면 둘이 같아 보여 `must_win` 을 놓친다(실측).
+    #     그 함정을 이 검사가 잡는다(돌연변이: 순위를 무시하고 구역만 보기).
+    flat = {**box, "zones": {}}
+    said = st.grid(flat, home="Kazakhstan", away="Faroe Islands", order=order)
+    kz2, why4 = st.state_of(said, "Kazakhstan", is_home=True, zones={})
+    assert kz2 == "must_win", (kz2, why4)
+    assert "위" in why4, why4
+
+
+def test_상태별_이동이_표에서_온다():
+    """🔴 §4 — `draw_enough` → 무승부 +k(5백이면 ×2) · `must_win` → **이동 없음**.
+
+    돌연변이: `must_win` 에 1X2 이동을 주기 / `nothing` 에 상대 +k 를 주기.
+    """
+    from app.core import compare
+    from app.core.schema import ProbTriple, Variable
+    box = compare.move_rules()["outlook_moves"]
+    assert box["must_win"]["side"] is None and box["must_win"]["goals"] == "up"
+    assert box["nothing"]["side"] is None
+    assert box["draw_enough"]["side"] == "draw"
+    assert int(box["draw_enough"]["with_low_block"]) == 2
+    assert box["margin_needed"]["require_counter"] is True
+    start = ProbTriple(home=0.48, draw=0.33, away=0.19)
+    look = {"states": {"Faroe": {"state": "draw_enough"},
+                       "Kazakh": {"state": "must_win"}}}
+    got, why = compare.our_prob(None, start=start, variables=[], outlook=look)
+    assert got is not None and got.draw > 0.33, (got, why)
+    # 🔴 `must_win` 은 1X2 를 **안 움직인다**
+    only = {"states": {"Kazakh": {"state": "must_win"}}}
+    said, _ = compare.our_prob(None, start=start, variables=[], outlook=only)
+    assert said is not None and abs(said.draw - 0.33) < 0.005, said
+    # 🔴 5백(IR01)이 함께 걸리면 **두 번**이다
+    five = [Variable(id="IR01-away", type="lineup_intent",
+                     subject="team:000080", favors="away", goals="down",
+                     target="formation", hardness="soft", weight=0.7,
+                     claim="Faroe 5백으로 내려선다", quote="five at the back",
+                     from_rule="IR01-away")]
+    twice, why2 = compare.our_prob(None, start=start, variables=five,
+                                   outlook={"states": {"Faroe": {"state": "draw_enough"}}})
+    assert twice is not None
+    assert any(m["id"] == "경우의수:Faroe" and m["logodds"] == 0.3
+               for m in compare.MOVES), compare.MOVES
+
+
+def test_IR11_문턱이_4일과_시차3시간_거리3000km_다():
+    """🔴 §6 — 둘 다 필요하다(4일 이내 **그리고** 시차·거리). 돌연변이: 문턱 완화."""
+    from app.core.stages import s5_verify as s5
+    assert s5.FATIGUE_DAYS == 4 and s5.FATIGUE_TZ_HOURS == 3
+    assert s5.FATIGUE_KM == 3000
+    # 🔴 실측(페로): 토르스하운 → 아스타나 — 시차·거리가 문턱을 넘는다
+    tz, km, why = s5._travel({"last_lat": 62.01, "last_lon": -6.77,
+                              "lat": 51.13, "lon": 71.43}, None, "x")
+    assert km is not None and km > 3000, (km, why)
+    assert tz is not None and abs(tz) > 3, (tz, why)
+    # ⚠️ 좌표가 없으면 **안 돈다**(지어내지 않는다)
+    none = s5._travel({}, None, "x")
+    assert none[0] is None and "좌표" in none[2]
+
+
+def test_대회_규정은_확인한_것만_확인_표시다():
+    """🔴 §1 — `verified` 는 **공식 문서를 읽은 것만**. 돌연변이: 전부 true 로."""
+    from app import rules
+    order, zones, ok, src = rules.tiebreak("UEFA Nations League")
+    assert ok and src.startswith("https://documents.uefa.com"), src
+    assert "Promotion" in zones
+    # 🔴 CONCACAF 는 **확인 전**이다 — 가정이고 카드가 그 사실을 적는다
+    _, _, ok2, why2 = rules.tiebreak("CONCACAF Nations League")
+    assert ok2 is False and "확인" in why2, why2
+
+
+def test_동기_낱말에_이겨야_비겨도_골차가_있다():
+    """🔴 §3 — 그 문장을 `stakes_vague` 로 **버리지 않는다**. 돌연변이: 목록 축소."""
+    from app.core.stages.s5_verify import stakes_ok
+    for said in ("이기지 못하면 강등이 확정된다", "비겨도 조 2위를 지킨다",
+                 "2골 차로 이겨야 순위가 올라간다",
+                 "Kazakhstan must win to keep hopes alive",
+                 "a draw is enough for the Faroe Islands"):
+        ok, why = stakes_ok(said)
+        assert ok, (said, why)
+    # ⚠️ 일정 안내는 그대로 **버린다**
+    bad, why = stakes_ok("경기는 화요일 저녁에 열린다")
+    assert not bad, why

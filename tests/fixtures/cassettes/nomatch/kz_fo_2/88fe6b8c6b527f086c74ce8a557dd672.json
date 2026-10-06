@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T12:43:35.443212+00:00",
+ "order": [
+  "- Clear Cache: Sometimes your browser holds onto your old location. Clear your cookies or refresh your browser to ensure the change takes effect.",
+  "John van't Schip's Kazakhstan side have endured a difficult run of results in recent weeks. Back-to-back Nations League defeats — a 2-1 loss to Slovakia and a 1-2 home defeat to Moldova — have pushed them down to fourth in the group, and they need a result here to arrest that slide.",
+  "Kazakhstan come into this match with one draw and three defeats from their last four competitive outings, alongside a draw in a friendly. Across their last five games, they have scored seven goals and conceded eight. Their most recent result was a 1-2 home loss to Moldova in the Nations League, following a 2-1 defeat to Slovakia. Earlier in the campaign they drew 1-1 with the Faroe Islands, and their friendly results include a 1-1 draw with Armenia and a 3-1 loss to Hungary.",
+  "Kazakhstan are managed by John van't Schip, though no confirmed injury or suspension information is available for the home side ahead of this fixture. Updates will be added closer to kick-off.",
+  "- Download & Install: Sign up to ExpressVPN or another reputable VPN service (check out GOAL's guide here) and download the app on your device.",
+  "A VPN, such as ExpressVPN, allows you to establish a secure, encrypted connection online. By virtually changing your location to a country where the game is being broadcast, you can bypass blackout restrictions and watch your favourite team live. A step-by-step guide is described later in this article, or you can also check out our guide to the best VPNs for streaming sports.",
+  "The most recent meeting between these two sides came in this same Nations League C campaign, when the fixture ended 1-1 at Faroe Islands in September 2026. Prior to that, the Faroe Islands hosted Kazakhstan in a November 2025 friendly and won 1-0. The recorded head-to-head also includes two World Cup qualification meetings in 2013, with Kazakhstan winning 2-1 at home before the sides drew 1-1 in the Faroe Islands. Across the four documented meetings, each side has one win, with two draws.",
+  "With both sides separated only by goal difference at the bottom of the table, the stakes in Astana are clear. Read on for everything you need to know about how to watch Kazakhstan vs Faroe Islands live."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

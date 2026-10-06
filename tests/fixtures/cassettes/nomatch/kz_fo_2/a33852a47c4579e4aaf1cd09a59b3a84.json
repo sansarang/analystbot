@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T12:43:33.635337+00:00",
+ "order": [
+  "Nations League round-up: England win, Scotland trounced 1주 전Nico O’Reilly missed Tuesday’s trip to Czechia through injury but Man City team-mates Marc Guehi and Elliot Anderson had the chance to park Tuesday's blockbuster news in an ultimately comfortable Nations League... Moldova were held to a 1-1 draw at home to the Faroe Islands and Slovakia beat Kazakhstan 2-1 in Group C3 while...1주 전",
+  "[데일리 IL] 10월 6~7일 국가대표 A매치·UEFA 네이션스리그 경기별 부상자 명단 총.... 13시간 전10월 A매치 기간 마지막 날입니다. 한국시간 10월 6일(화) 저녁 8시 한국-우즈베키스탄 친선전과 밤 11시 카자흐스탄-페로 제도전, 그리고 10월 7일(수) 새벽 3시 45분(현지 10/6 저녁) 일제히 열리는 UEFA 네이션스리그 4차전을 정리했습니다. 해외 경기는 현지시간을 함께 적었습니다. 1. 우즈베키스탄 @ 대한민국 일시: 10월 6일(화) 20:00 KST 장소: 용인...13시간 전",
+  "Kazakhstan news Stay informed with the latest Kazakhstan news and stories. Explore match reports, club updates and transfers rumours with GOAL ...",
+  "Watch Kazakhstan vs Faroe Islands UEFA Nations League C soccer game LIVE: Online streams, TV channel, early teams news, start time Find out where to watch Kazakhstan vs Faroe Islands live, including TV channel options, live stream details, kick-off time, team news, form, and head-to-head record.",
+  "Preview: Kazakhstan vs Moldova - prediction, team news, lineups - Sports Mole 6일 전Two teams looking for their first UEFA Nations League victory of the campaign are set to lock horns at Astana Arena on Friday, when Group C3 rivals Kazakhstan face Moldova. The Hawks are aiming to end their four-match winless run, against a Tricolorii side that have not emerged triumphant from any of their games since 2024. Kazakhstan remain hopeful that new manager John van 't Schip can improve the national team, but this week's showdown is seen as a must-win. The Hawks - who are ranked 111th b....6일 전",
+  "Preview: Moldova vs Slovakia - prediction, team news, lineups - Sports Mole 2일 전Slovakia could take a significant step towards promotion from Nations League C on Tuesday, when they travel to face Moldova at Stadionul Zimbru. The hosts are second with four points, while Slovakia are first with seven points, and a win for the visitors could leave them one point from guaranteeing top spot. Moldova emerged as 2-1 victors against fourth-placed Kazakhstan on Friday, and though they had to survive early scares, they were dominant throughout the second half. That win means that ano....2일 전",
+  "Preview: Faroe Islands vs Kazakhstan - prediction, team news, lineups Sports Mole previews Saturday's Nations League clash between Faroe Islands and Kazakhstan, including predictions, team news and possible lineups.",
+  "Faroe Islands vs Slovakia Prediction, Odds & Betting Tips 10/02/2026 - Betimate 6일 전Faroe Islands vs Slovakia Prediction, Odds & Betting Tips 10/02/2026 [UEFA Nations League C Prediction] Who will reign supreme in the Faroe Islands vs Slovakia showdown? Our prediction analysts provide betting tips and current odds for this highly anticipated match.6일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 9문단 → 재정렬 상위 8"
+}

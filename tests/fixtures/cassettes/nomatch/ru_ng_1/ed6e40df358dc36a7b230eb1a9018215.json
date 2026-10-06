@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T12:20:07.415991+00:00",
+ "order": [
+  "Captain Wilfred Ndidi is officially unavailable after sustaining a knock in the match against Guinea-Bissau. Defender Victory Akpe and goalkeeper Maduka Okoye are also out of the squad.",
+  "Possible Nigeria starting XI: Nwabali; James, Fernandez, Benjamin, Igboke; Onyeka, Nwoko, Michael; Simon, Akor, Iheanacho",
+  "There is some positive news for Chelle, however, as forward Kelechi Iheanacho has returned to the camp and is fully fit to play.",
+  "On top of that, several clubs in Europe and the Middle East have blocked their players from joining the trip: Eintracht Frankfurt have held back Raphael Onyedika, Birmingham City have kept Bright Osayi-Samuel, LASK FC have refused to release Moses Usor, and Al-Wahda have retained Ridwan Abdulrasaq Popoola. Slavia Prague’s Suleiman Mubarak also missed out because his residence permit was not processed in time.",
+  "Read Also – Ezri Konsa returns to Arsenal after England injury setback",
+  "Ahead of this friendly against Russia, Nigeria is dealing with a major selection headache, as Chelle now has only an 18-player squad to work with. The Nigeria Football Federation (NFF) has confirmed that seven players have left the camp for various reasons, including injuries, travel issues, and clubs refusing to release them.",
+  "Nigeria will take on Russia at the Sovcombank Arena on Tuesday in the last game of this international window, with the Super Eagles arriving in difficult shape under head coach Eric Chelle.",
+  "Nigeria’s recent results have been uneven, and the team has struggled to settle into a consistent pattern under Chelle. In their latest Africa Cup of Nations qualifier, they were heavily beaten 3-0 by Guinea-Bissau, a result that came just after a tight 2-1 win over Madagascar. Their friendly schedule has also produced mixed outcomes, including a 2-1 loss to Portugal and a 2-2 draw with Poland."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 10문단 → 재정렬 상위 8"
+}

@@ -368,6 +368,12 @@ class VarCandidate(Frozen):
     #  🔴 예외는 **선수 개인 상태**다(부상·피로·기록 도전): 그 선수가 이번 소집
     #     명단에 있으면 경기 연결로 **인정**한다(s5 가 명단으로 센다).
     match_link: str
+    #: 🔴🔴 **기사가 말한 포메이션**(사용자 지시 2026-10-06(7차) §5 · 선택)
+    #
+    #  > 추출 스키마에 `formation`(선택)과 근거 문장. 경기 페이지에 **확정 XI 가
+    #  > 없을 때만** `XI.formation` 으로 쓴다(`source=article`, soft).
+    #  ⚠️ 비면 모른다는 뜻이다 — 지어내지 않는다.
+    formation: str = ""
     #: 🔴 본문의 글자 **그대로** — s5 가 Doc 본문에 대고 맞춰 본다
     quote: str
     #: 🔴 어느 Doc 인가 — 요청마다 **그 하위에 넘긴 id 만** `enum` 으로 박는다
@@ -749,6 +755,13 @@ class Card(Frozen):
     market_why: list[str] = Field(default_factory=list)
     #: 🔴 OCR 로 읽은 보드 **원문**(§2-6: 원문 그대로 보여 준다)
     ocr_text: str = ""
+    #: 🔴🔴 **경우의 수**(사용자 지시 2026-10-06(7차) §2) — 블록 3b 가 그린다
+    #
+    #  꼴: `{"cells": [...], "states": {팀: {state, why, margin}}, "verified": bool,
+    #        "source": 규정 주소, "group": 표 이름, "remaining": 남은 경기 수,
+    #        "other": [라운드 다른 경기], "final": 최종 확정인가}`
+    #  ⚠️ 비면 *"경우의 수를 못 센다"* 다(순위표가 없다 — 지어내지 않는다).
+    outlook: dict = Field(default_factory=dict)
     #: 🔴🔴 **③ 이 움직인 양**(사용자 지시 2026-10-06(6차) ③) — 변수별 로그 오즈 이동
     #
     #  ⚠️ 비면 *"③ 이동 없음 — 우리 열 = 기준"* 을 적는다(빈 줄은 "안 봤다"와 같다).

@@ -1,0 +1,11 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T12:18:30.903493+00:00",
+ "order": [
+  "Compt Balogun Bows Out At FOU Zone C, as Acting Comptroller Dadaniya Takes Over - Latest Nigerian News 6일 전Compt Balogun Bows Out At FOU Zone C, as Acting Comptroller Dadaniya Takes Over The Nigeria Customs Service (NCS) Federal Operations Unit Zone 'C' Owerri, has witnessed a change of batton as a result6일 전",
+  "Nigerian Army Honours Late Lt-Gen Obiakor as His Extraordinary UN Peacekeeping Legacy Is Remembered - TDP.... 2일 전Nigerian Army Honours Late Lt-Gen Obiakor as His Extraordinary UN Peacekeeping Legacy Is Remembered2일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 2문단 → 재정렬 상위 8"
+}
