@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T08:10:29.663098+00:00",
+ "order": [
+  "South Korea to battle familiar rivals Japan men's soccer final Bae Jun-ho struck late as South Korea came from behind to snatch a 2-1 victory over China ​on Wednesday and reach a record fourth successive Asian Games ‌final in the men's soccer.",
+  "Asian Games 2026 archery: Kumkum Mohod’s historic feat secures Olympic quota for India 3일 전LA Games depends on their NOC selecting them to represent their delegation at LA28. Kumkum had beaten South Korea’s reigning world champion and Olympic medallist Kang Chaeyoung 6-3 in the quarter-finals before... Dhiraj had beaten Uzbekistan’s Amirkhon Sadikov 6-2 in the quarter-finals, while Neeraj defeated Bhutan’s Lam...3일 전",
+  "아시안게임 남자 축구 한일전 결승, 최석현 '특별할 것 없다' — 4연속 금메달 .... 5일 전전무후무한 기록에 도전합니다. 한일전을 앞두고 측면 수비수 최석현은 '특별할 것 없다'는 담담한 각오를... Gold South Korea's U-23 men's football team has advanced to the final of the 2026 Aichi-Nagoya Asian Games, where they will face rival Japan on October... Japan advanced through a dramatic penalty shootout victory over Uzbekistan, winning 9-8 after a 1-1 draw in regular time. Defender Choi Seok-hyun of...5일 전",
+  "아시안게임 남자 축구 4연패 도전, 한국 vs 중국 준결승 총정리 6일 전함께 읽으면 좋은 글 아시안게임 여자 축구, 일본에 0-2 패…11년 무승 징크스의 벽 아시안게임 육상 한국 38초43 신기록, 실격 번복 극적 동메달까지 안세영 아시안게임 2연패·여자 복식 24년 만의 금메달, 한국 배드민턴의 역사를 다시 쓰다 English Summary Can South Korea Make Asian Games Football History? Korea vs. China Semi-Final Preview South Korea's men's football team...6일 전",
+  "South Korea edge China 2-1 to reach Asian Games men's football final South Korea's men's football team came from behind to defeat China and now stands one win away from a fourth consecutive Asian Games gold medal. The u ...",
+  "(VIDEO) South Korea vs Japan Asian Games Final 2026: Where to Watch, Kickoff Time and Live Stream for Gol.... 3일 전South Korea and Japan meet in the Asian Games men's football final in Toyota, with a fourth consecutive title, home advantage and military-service exemptions at stake.3일 전",
+  "Games-Bae fires South Korea into Asian Games soccer final with 2-1 win over China By Ian Ransom OSAKA, Sept 30 (Reuters) - South Korea's Bae Jun-ho struck late as they came from behind to snatch a 2-1 victory over China on Wednesday and reach a record fourth successive Asian Games ...",
+  "Asian Games 2026 final medal tally: India pips Uzbekistan to fourth on table, records second-best perform.... 2일 전Asian Games 2026 medal tally: Get the final gold, silver, and bronze medal count for India and other countries at Aichi-Nagoya.2일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

@@ -45,6 +45,20 @@ async def _spell(name: str, *, state: RunState) -> list[str]:
         return []
     got = [str(x).strip() for x in said.candidates if str(x).strip()]
     state.note(f"s1 ⑥-1 철자 후보 — {got[:5]}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **거른 뒤에 자른다** — 실측 2026-10-06(축구 §6 1회차)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전엔 `got[:3]` 으로 **먼저 자르고** 호출부가 이름표로 걸렀다. 그래서
+    #     후보가 `['한국', 'Korea', '한국 국가대표팀', '대한민국', …]` 로 오면
+    #     **이름표가 아는 `대한민국` 이 잘려 나갔고** 그 경기를 못 찾았다
+    #     (같은 경기를 전에는 찾았다 — 모델이 순서를 바꾼 것뿐이다).
+    #  🔴 그러니 **이름표가 아는 것만** 남기고 그 다음에 자른다.
+    from app import teamref
+    known = [c for c in got if teamref.key_of(c)[0]]
+    if known:
+        state.note(f"s1 ⑥-1 이름표가 아는 후보 — {known[:SPELL_TRIES]}")
+        return known[:SPELL_TRIES]
     return got[:SPELL_TRIES]
 
 

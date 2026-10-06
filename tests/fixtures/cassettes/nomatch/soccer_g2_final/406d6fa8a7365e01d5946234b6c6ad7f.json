@@ -1,0 +1,6 @@
+{
+ "kind": "search",
+ "url": "https://api.gdeltproject.org/api/v2/doc/doc",
+ "query": "format=json&maxrecords=20&mode=artlist&query=Peru Colombia retirement ceremony&sort=datedesc&timespan=7d",
+ "recorded_at": "2026-10-06T08:02:13.770299+00:00"
+}

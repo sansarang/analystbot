@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T08:02:07.104909+00:00",
+ "order": [
+  "Lorenzo confirma rotación en el arco de Colombia para el amistoso frente a Paraguay Néstor Lorenzo evaluará a Kevin Mier y Aldair Quintana en los próximos compromisos internacionales de la Selección Colombia.",
+  "¿Néstor Lorenzo rotará vs. Perú? Los que faltan por jugar con Colombia Recta final para la Selección Colombia, en lo que corresponde a la fecha FIFA de septiembre y octubre. Néstor Lorenzo y sus dirigidos ya tuvieron acción en los compromisos vs. México y Paraguay. Las c ...",
+  "Our Locations In The Dominican Republic tab) Colombia (Opens in a new tab) Cyprus (Opens in a new tab) Czechia Dominican Republic (Opens in a new... tab) Peru (Opens in a new tab) Philippines (Opens in a new tab) Poland (Opens in a new tab) Romania (Opens... Diseñada para la eficiencia, ofrece una rápida rotación de buques, manejo avanzado de contenedores y...",
+  "Ecuador revive el sueño de organizar un Mundial junto a Colombia y Perú en 2038 Ecuador podría tener una minima oportunidad de organizar el mundial de 2038 junto a Colombia y Perú, por el esquema de rotación ...",
+  "Alineaciones Colombia vs Perú: probables formaciones para el partido amistoso La Selección Colombia se mide ante su similar de Perú en un nuevo encuentro amistoso internacional correspondiente a la fecha FIFA de octubre. Ambos directores técnicos buscan ajustar piezas y dar ...",
+  "Penny pide a Córdova como arquero de Perú ante Colombia: \"Es buen momento\" Diego Penny pidió a Mano Menezes alinear a Matías Córdova, exarquero de Sporting Cristal, como titular de la selección peruana ante Colombia por fecha FIFA.",
+  "Esta sería la alineación titular de la selección Colombia contra Perú en el último partido amistoso de la fecha FIFA La Tricolor acumula un empate ante México y una derrota ante Paraguay en la gira por Estados Unidos, que marcó el inicio de la segunda era de Néstor Lorenzo ...",
+  "¿Quién será el arquero de Colombia para enfrentar a Perú? Néstor Lorenzo cambiaría al arquero titular de la selección de Colombia para enfrentar a Perú en el cierre de la triple fecha FIFA."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

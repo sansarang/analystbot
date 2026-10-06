@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 네 담당은 `A-home` 의 유형들뿐이다: def_absence, absence_att, fatigue.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다) — 검증층이 본문에 대고 맞춰 보고, 없으면 그 줄을 버린다.\\n🔴 `quote` 에 **머리표를 넣지 마라** — `[A-home-D1-P2] (도메인, 날짜)` 는 우리가 붙인 표지이고 기사에 없는 글자다. **본문 글자만** 적는다(어느 문서인지는 `doc_id` 칸이 받는다).\\n🔴 `claim` 은 그 사실을 **한 문장**으로 적은 것이다.\\n🔴 `target` 은 그 사실의 **핵심 대상 하나**다 — 선수 이름(`Kim Min-jae`) 또는 사건 한 낱말(`record`·`travel`). ⚠️ 같은 사실을 여러 기사에서 봤다면 `target` 을 **같은 글자**로 적어라(그것으로 합친다). 문장을 넣지 마라.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n⚠️ 이 경기는 South Korea(홈) 대 Uzbekistan(원정)이다 — 다른 경기 이야기는 뽑지 않는다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"[A-home-D1-P1] (www.koreajoongangdaily.com, 2026-10-05) The imposing center back, who expressed frustration with the side after the 0-0 draw with Venezuela, is dealing with fatigue, a team representative said.\\n[A-home-D1-P2] (www.koreajoongangdaily.com, 2026-10-05) “Kim has undergone separate recovery training for two straight days,” a national team representative said. “It’s not a serious injury that would require him to leave the squad. He seems to be dealing with fatigue from his recent matches.”\\n[A-home-D1-P3] (www.koreajoongangdaily.com, 2026-10-05) With Kim showing signs of physical and mental fatigue, he is likely to sit out the Uzbekistan match. Defender Kim Tae-hyeon of Kashima Antlers, who represented the players at Monday’s press conference, is likely to start alongside Lee Han-beom of Club Brugge.\\n[A-home-D1-P4] (www.koreajoongangdaily.com, 2026-10-05) Korea’s dominating defender, Kim Min-jae, is unlikely to play in Tuesday’s friendly against Uzbekistan after missing team training for a second consecutive day.\\n[A-home-D1-P5] (www.koreajoongangdaily.com, 2026-10-05) This article was originally written in Korean and translated by a bilingual reporter with the help of generative AI tools. It was then edited by a native English-speaking editor. All AI-assisted translations are reviewed and refined by our newsroom.\\n[A-home-D1-P6] (www.koreajoongangdaily.com, 2026-10-05) Kim Min-jae likely to sit out Uzbekistan friendly after missing training for second straight day\\n[A-home-D2-P1] (biz.chosun.com, 2026-10-05) There is no particular injury. An official warned against overinterpretation, saying, \\\"Kim Min-jae is not injured. He is fatigued.\\\"\\n[A-home-D2-P2] (biz.chosun.com, 2026-10-05) Coincidentally, in the final training held at Cheonan Korea Football Park on the afternoon of the 5th ahead of the Uzbekistan match, only Kim Min-jae was absent. The other 27 players trained on the ground.\\n[A-home-D2-P3] (biz.chosun.com, 2026-10-05) A team official said, \\\"Only Kim Min-jae is doing indoor weight training for recovery. He is not doing on-field training. This was decided after a meeting with the medical team. Kim Min-jae did not do on-field training yesterday either.\\\"\\n[A-home-D2-P4] (biz.chosun.com, 2026-10-05) It is not good news for the national team that Kim Min-jae, who made the resolute remarks, is not in normal condition. There is concern about whether the defensive linchpin Kim Min-jae can start normally against Uzbekistan.\\n[A-home-D2-P5] (biz.chosun.com, 2026-10-05) Kim Min-jae continued, \\\"I feel sorry only for the defenders. They have to put their heads down and run,\\\" urging his teammates to step up. He criticized that the forwards' and midfielders' pressing was insufficient, leaving defenders to shoulder that burden.\\n[A-home-D2-P6] (biz.chosun.com, 2026-10-05) The team atmosphere is not good either. After the Venezuela match, Kim Min-jae said, \\\"It's not about the back four; everyone has to fight together. It's not working. The game did not feel like everyone was fighting together. In such a game, whether it's a 7-0 win or a 9-0 win, I wouldn't be happy,\\\" he scolded.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력은 **object 로만** 받는다 — 최상위 배열은 스키마가 못 받는다.\", \"properties\": {\"variables\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 s4 — 모델이 내는 변수 후보. ⚠️ **방향 칸이 없다**(코드가 정한다).\", \"properties\": {\"claim\": {\"title\": \"Claim\", \"type\": \"string\"}, \"doc_id\": {\"enum\": [\"A-home-D1\", \"A-home-D2\"], \"type\": \"string\"}, \"quote\": {\"title\": \"Quote\", \"type\": \"string\"}, \"subject\": {\"enum\": [\"team:000129\", \"team:000245\"], \"type\": \"string\"}, \"subtask\": {\"enum\": [\"A-home\"], \"type\": \"string\"}, \"target\": {\"title\": \"Target\", \"type\": \"string\"}, \"type\": {\"enum\": [\"def_absence\", \"absence_att\", \"fatigue\"], \"type\": \"string\"}}, \"required\": [\"subtask\", \"type\", \"subject\", \"claim\", \"target\", \"quote\", \"doc_id\"], \"title\": \"VarCandidate\", \"type\": \"object\"}, \"title\": \"Variables\", \"type\": \"array\"}}, \"required\": [\"variables\"], \"title\": \"VarCandidates\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-06T08:10:21.640014+00:00",
+ "id": "cd97117a-b7b5-4484-813d-7b6fe280ef2f",
+ "object": "chat.completion",
+ "created": 1791274221,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": [\n    {\n      \"subtask\": \"A-home\",\n      \"type\": \"def_absence\",\n      \"subject\": \"team:000129\",\n      \"claim\": \"Kim Min-jae is likely to sit out the Uzbekistan friendly after missing team training for a second consecutive day.\",\n      \"target\": \"Kim Min-jae\",\n      \"quote\": \"Kim Min-jae likely to sit out Uzbekistan friendly after missing training for second straight day\"\n    ,\n    \"doc_id\": \"A-home-D1\"\n    },\n    {\n      \"subtask\": \"A-home\",\n      \"type\": \"absence_att\",\n      \"subject\": \"team:000129\",\n      \"claim\": \"Only Kim Min-jae was absent from the final training held at Cheonan Korea Football Park on the afternoon of the 5th ahead of the Uzbekistan match.\",\n      \"target\": \"Kim Min-jae\",\n      \"quote\": \"Coincidentally, in the final training held at Cheonan Korea Football Park on the afternoon of the 5th ahead of the Uzbekistan match, only Kim Min-jae was absent. The other 27 players trained on the ground.\"\n    ,\n    \"doc_id\": \"A-home-D2\"\n    },\n    {\n      \"subtask\": \"A-home\",\n      \"type\": \"fatigue\",\n      \"subject\": \"team:000129\",\n      \"claim\": \"Kim Min-jae is dealing with fatigue from his recent matches and is not injured.\",\n      \"target\": \"Kim Min-jae\",\n      \"quote\": \"Kim Min-jae is not injured. He is fatigued.\"\n    ,\n    \"doc_id\": \"A-home-D2\"\n    }\n  ]\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1186,
+  "completion_tokens": 376,
+  "total_tokens": 1562,
+  "prompt_tokens_details": {
+   "cached_tokens": 1088,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

@@ -1,0 +1,36 @@
+{
+ "kind": "llm",
+ "url": "https://api.deepseek.com/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 위 분석의 **반대편**을 쓴다. 각 줄은 어떤 마켓이 왜 위험한지 한 문장이다. 🔴 **여덟 줄을 넘기지 마라.**\\n🔴 시나리오를 **지우거나 고치지 않는다** — 네 말은 **추가**된다.\\n🔴 등급·확률·추천 단어를 쓰지 않는다. 사실을 만들지 않는다.\\n⚠️ `scenario_id` 는 위 목록의 글자이고, 해당 없으면 `null` 이다.\", \"role\": \"system\"}, {\"content\": \"{\\\"match\\\": {\\\"home\\\": \\\"South Korea\\\", \\\"away\\\": \\\"Uzbekistan\\\"}, \\\"scenarios\\\": [{\\\"id\\\": \\\"A\\\", \\\"outcomes\\\": [[1, 3], [2, 3]], \\\"mechanism\\\": \\\"최근 득점 흐름이 살아 있는 원정팀이 수비 핵심이 빠진 홈팀을 상대로 전방 압박과 측면 전개를 반복하고, 친선 경기의 잦은 교체로 수비 조직이 흐트러지면서 양 팀 골문이 모두 열린다.\\\"}, {\\\"id\\\": \\\"B\\\", \\\"outcomes\\\": [[1, 2], [2, 2]], \\\"mechanism\\\": \\\"원정팀이 경기 주도권을 잡고 득점을 쌓지만, 친선 경기에서 실험 라인업을 돌리는 과정에 수비 집중력이 떨어져 홈팀의 한 번의 마무리와 세트피스 상황에서 실점을 내준다.\\\"}, {\\\"id\\\": \\\"C\\\", \\\"outcomes\\\": [[1, 0], [2, 1]], \\\"mechanism\\\": \\\"홈팀이 최근 낮은 득점 흐름을 감안해 수비적으로 경기를 운영하면서 소수의 기회를 효율적으로 마무리하고, 원정팀은 친선 경기의 잦은 교체 속에서 마무리 정확도를 잃는다.\\\"}, {\\\"id\\\": \\\"D\\\", \\\"outcomes\\\": [[1, 0], [0, 0]], \\\"mechanism\\\": \\\"양 팀의 이상치 제거 보정 득점이 각각 1.25와 0.25로 낮아, 최근 기록의 득점이 한 경기에 몰려 있었음이 드러나며 경기 전체가 낮은 골 수로 흐른다.\\\"}, {\\\"id\\\": \\\"E\\\", \\\"outcomes\\\": [[1, 1], [2, 1]], \\\"mechanism\\\": \\\"친선 경기에서 양 팀이 실험 라인업과 다수 교체를 병행해 조직적인 압박이 오래 유지되지 못하고, 최근 흐름이 엇갈리는 두 팀이 서로 한 골씩 주고받는 형태로 전개된다.\\\"}, {\\\"id\\\": \\\"F\\\", \\\"outcomes\\\": [[0, 1]], \\\"mechanism\\\": \\\"🔴 축구 필수형(저득점) — IR04 발동\\\"}], \\\"variables\\\": [{\\\"id\\\": \\\"R1\\\", \\\"claim\\\": \\\"Kim Min-jae is likely to sit out the Uzbekistan friendly after missing team training for a second consecutive \\\"}, {\\\"id\\\": \\\"S01-home\\\", \\\"claim\\\": \\\"최근 5경기 L L W L D · 득점 평균 0.8(보정 0.25)\\\"}, {\\\"id\\\": \\\"S01-away\\\", \\\"claim\\\": \\\"최근 5경기 L L L W W · 득점 평균 1.8(보정 1.25)\\\"}, {\\\"id\\\": \\\"S04\\\", \\\"claim\\\": \\\"친선 — 실험 라인업·교체 다수 가능\\\"}, {\\\"id\\\": \\\"IR04-home\\\", \\\"claim\\\": \\\"South Korea 득점 평균 0.8 → 보정 0.25(이상치 한 경기를 뺐다)\\\"}, {\\\"id\\\": \\\"IR04-away\\\", \\\"claim\\\": \\\"Uzbekistan 득점 평균 1.8 → 보정 1.25(이상치 한 경기를 뺐다)\\\"}]}\", \"role\": \"user\"}, {\"content\": \"🔴 아래 JSON 스키마를 **정확히** 지켜 답한다(다른 칸을 더하지 않는다):\\n{\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴 DeepSeek 단계 4 출력.\\\", \\\"properties\\\": {\\\"lines\\\": {\\\"items\\\": {\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴 반증 한 줄 — **추가만** 한다(생존율 상승 금지 · §5 s6).\\\", \\\"properties\\\": {\\\"market\\\": {\\\"title\\\": \\\"Market\\\", \\\"type\\\": \\\"string\\\"}, \\\"says\\\": {\\\"title\\\": \\\"Says\\\", \\\"type\\\": \\\"string\\\"}, \\\"scenario_id\\\": {\\\"anyOf\\\": [{\\\"type\\\": \\\"string\\\"}, {\\\"type\\\": \\\"null\\\"}], \\\"title\\\": \\\"Scenario Id\\\"}}, \\\"required\\\": [\\\"market\\\", \\\"says\\\", \\\"scenario_id\\\"], \\\"title\\\": \\\"RedTeamLine\\\", \\\"type\\\": \\\"object\\\"}, \\\"title\\\": \\\"Lines\\\", \\\"type\\\": \\\"array\\\"}}, \\\"title\\\": \\\"RedTeamOut\\\", \\\"type\\\": \\\"object\\\", \\\"required\\\": [\\\"lines\\\"]}\", \"role\": \"user\"}], \"model\": \"deepseek-flash\", \"response_format\": {\"type\": \"json_object\"}}",
+ "recorded_at": "2026-10-06T08:12:31.276189+00:00",
+ "id": "d10dd83e-5ff9-4826-bbd4-d260bc5e29bb",
+ "object": "chat.completion",
+ "created": 1791274344,
+ "model": "deepseek-flash",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"lines\": [{\"market\": \"오버 2.5\", \"says\": \"시나리오 A·B는 양 팀 골문이 열리는 전제를 깔지만, 홈팀 보정 득점이 0.25로 낮아 최근 한 경기에 몰렸던 득점을 빼면 총 3골에 도달하지 못할 수 있다.\", \"scenario_id\": \"A\"}, {\"market\": \"양 팀 득점\", \"says\": \"홈팀 보정 득점 0.25는 홈팀이 아예 득점하지 못하는 0-1 흐름을 배제하지 못하며, 그 경우 양 팀 득점은 성립하지 않는다.\", \"scenario_id\": \"F\"}, {\"market\": \"원정 승\", \"says\": \"원정 우세를 전제한 시나리오들은 친선 경기의 잦은 교체로 마무리 정확도가 떨어지는 1-0·2-1 홈 승 형태에 그대로 뒤집힐 수 있다.\", \"scenario_id\": \"C\"}, {\"market\": \"홈 승\", \"says\": \"홈 승을 담은 시나리오는 홈팀 최근 5경기 득점 평균 0.8과 보정 0.25에 기대는데, 이 수치는 홈팀이 한 골도 넣지 못하는 흐름과 구분되지 않는다.\", \"scenario_id\": \"D\"}, {\"market\": \"언더 2.5\", \"says\": \"낮은 골 수를 전제한 시나리오는 실험 라인업과 다수 교체로 수비 조직이 흐트러지는 친선 경기 특성상 총 3골 이상으로 벌어질 여지를 남긴다.\", \"scenario_id\": \"D\"}, {\"market\": \"정확 스코어 1-0\", \"says\": \"한 골 차 마무리에 의존하는 시나리오는 세트피스 한 번이나 교체 투입 이후의 실점으로 스코어 자체가 어긋날 수 있다.\", \"scenario_id\": \"C\"}, {\"market\": \"무승부\", \"says\": \"무승부를 포함한 시나리오는 1-1과 2-1 두 갈래를 함께 담고 있어, 같은 전제 안에서도 무승부가 아닌 쪽이 절반을 차지한다.\", \"scenario_id\": \"E\"}, {\"market\": \"수비 핵심 결장 반영\", \"says\": \"Kim Min-jae 관련 변수는 훈련 이틀 연속 불참이라는 관찰에 근거한 것이지 출전 여부가 확정된 것이 아니어서, 그가 출전하면 홈 수비가 약하다는 전제가 흔들린다.\", \"scenario_id\": null}]}",
+    "reasoning_content": "Need to produce up to 8 lines, each a sentence about why a market is risky, adding counterpoints. No grades/probabilities/recommendations. scenario_id from list or null.\n\nMarkets implied: over 2.5 goals, both teams to score, under 2.5, home win, away win, draw, exact scores, etc.\n\nLet me write lines targeting markets in the scenarios.\n\nScenarios: A = 1-3, 2-3 (high scoring away win). B = 1-2, 2-2. C = 1-0, 2-1. D = 1-0, 0-0. E = 1-1, 2-1. F = 0-1.\n\nMarkets: 오버 2.5, BTTS, 언더 2.5, 원정 승, 홈 승, 무승부, 정확 스코어.\n\nWrite 8 lines max. Each line: market, says, scenario_id.\n\nFacts from variables: Kim Min-jae may miss training; home team scoring avg 0.8 (adjusted 0.25); away 1.8 (adjusted 1.25); friendly.\n\nLines:\n\n1. market \"오버 2.5\" — 시나리오 A/B는 양 팀 득점을 전제하지만, 홈팀 보정 득점이 0.25로 낮아 한 경기에 몰린 득점이 제거되면 총 골 수가 3골에 도달하지 못할 수 있다. scenario A? It applies to A. Actually risk to over 2.5. scenario_id \"A\".\n\n2. market \"양 팀 득점(BTTS)\" — scenario A/B, home adjusted 0.25 means home may not score at all — e.g., F 0-1. scenario \"F\".\n\n3. market \"원정 승\" — scenario A/B relies on away scoring flow, but friendly rotation and Kim Min-jae absence uncertainty... Actually risk: away win requires away to outscore; C/D scenarios give home win 1-0/2-1. scenario \"C\".\n\n4. market \"홈 승\" — scenario C/D rely on home efficiency, but home scoring avg 0.8 raw and 0.25 adjusted; away form L L L W W. scenario \"C\"? Use \"D\".\n\n5. market \"언더 2.5\" — scenario D relies on low scoring, but variability of friendly subs; scenario \"D\".\n\n6. market \"정확 스코어 1-0\" — depends on single goal margins; a single set piece flips it. scenario \"C\". Hmm no probabilities. Fine.\n\n7. market \"무승부\" — scenario E 1-1/2-1, only one of two outcomes is draw. scenario \"E\".\n\n8. market \"Kim Min-jae 결장\" related market? R1 variable — claim he is likely to sit out. Line: market \"수비 핵심 결장 반영 마켓\" — 그 변수는 확정이 아니라 훈련 불참 이틀 연속이라는 관찰에 근거하며, 출전 여부가 바뀌면 홈 수비 전제가 흔들린다. scenario_id null.\n\nEight lines max. Good."
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1198,
+  "completion_tokens": 1386,
+  "total_tokens": 2584,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 720
+  },
+  "prompt_cache_hit_tokens": 0,
+  "prompt_cache_miss_tokens": 1198
+ },
+ "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669"
+}

@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T08:02:53.615750+00:00",
+ "order": [
+  "Sin embargo, las alarmas se encendieron durante la más reciente sesión de entrenamiento previo al viaje para el último compromiso. El cuerpo médico nacional tuvo que evaluar de urgencia a uno de sus titulares habituales tras reportar intensas molestias físicas tras los ejercicios matutinos.",
+  "Sin la presencia de Oliver Sonne en la delegación, la Blanquirroja afina los últimos detalles tácticos para enfrentar a la Selección de Colombia. El equipo buscará reponerse de las bajas de última hora y cerrar la gira de partidos amistosos internacionales con una victoria.",
+  "A través de un pronunciamiento oficial emitido desde Miami, la Federación Peruana de Fútbol informó lo siguiente: “La Federación Peruana de Fútbol informa que, tras una evaluación médica y en coordinación permanente y cordial con el Burnley Football Club, el jugador Oliver Sonne ha sido desafectado de la presente convocatoria para el partido ante Colombia y retornará a Inglaterra. La FPF le desea a Oliver Sonne una pronta recuperación”.",
+  "Finalmente, en el reciente partido ante Canadá, el carrilero volvió al equipo titular y completó 66 minutos en cancha antes de ser sustituido. Con dos titularidades a sus espaldas, el jugador de 25 años se había establecido como una pieza clave dentro del esquema para el carril derecho.",
+  "La salida confirmada del carrilero altera drásticamente el mapa defensivo del estratega brasileño a muy pocos días del silbatazo inicial. Al perder a uno de sus titulares de mayor rodaje en esta fecha FIFA, el cuerpo técnico deberá improvisar variantes en la banda derecha.",
+  "La Selección Peruana atraviesa horas decisivas en el cierre de su gira internacional de partidos amistosos por Norteamérica, frente a Colombia. En el vestuario del equipo que dirige Mano Menezes se vivía relativa tranquilidad tras las últimas jornadas de trabajo táctico en la ciudad de Miami.",
+  "Durante esta serie de duelos de preparación, Oliver Sonne registró minutos en los tres compromisos previos disputados por la Blanquirroja. El técnico Mano Menezes apostó de manera clara por darle la confianza en la banda derecha para consolidar la variante táctica del equipo.",
+  "Oliver Sonne queda fuera del amistoso ante Colombia. (Foto: X)."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 12문단 → 재정렬 상위 8"
+}
