@@ -1385,6 +1385,9 @@ NOT_CLASSIFIED = {
     "team_stats": "v6 전용 — 기사가 말하는 팀 수치(어댑터 수치와 다른 자리다)",
     "regression": "v6 전용 — §6-2 ③ 필수형이 이름으로 가리키던 유형",
     "fatigue": "v6 전용 — 축구 피로(야구 `pitcher_state` 가 먹던 자리)",
+    # 🔴 축구 완성 지시서 §3 카탈로그 표가 더한 둘
+    "suspension": "v6 전용 — 징계 결장(구조 사실 `Missing.reason=suspension`)",
+    "returning": "v6 전용 — 복귀(결장의 거울 · 직전 경기 XI 가 재료다)",
 }
 
 

@@ -61,7 +61,11 @@ SUB_QUESTIONS = ("h2h", "form", "stats", "info", "player",
                  "h2h_half",
                  # 🔴 야구 깊이(2026-10-02~03): 월간 득점·예고 선발·투수 성적
                  "runs_month", "starter", "pitcher_table", "team_pitching",
-                 "roster_ids", "starter_stats")
+                 "roster_ids", "starter_stats",
+                 # 🔴🔴 **라인업**(축구 완성 지시서 §2) — 경기 페이지의 같은 JSON 에서
+                 #    XI·결장 명단·감독을 읽는다. ⚠️ 종전엔 `parse_context` 가 그
+                 #    블록을 **건너뛰어** 결장 명단이 통째로 없었다(실측 2026-10-06).
+                 "lineup")
 
 Q_TYPES = (Q_SLATE, Q_LINEUP, Q_ABSENCE, Q_STARTER_RECENT, Q_STANDINGS,
            Q_INTENT, Q_LIVE, Q_COUNTER)

@@ -391,14 +391,6 @@ def v5_names() -> dict[str, str]:
             (_load(TRIGGER_CONDITIONS).get("v5_names") or {}).items()}
 
 
-def unmapped_types() -> dict[str, str]:
-    """🔴🔴 **우리 유형이 없는 지시문 이름** — 그 사실을 이름으로 돌려준다.
-
-    ⚠️ `regression`(§6-2 ③)·`tactical_matchup`(§7-2)이 그 꼴이다. 🔴 적어 두지
-       않으면 그 규칙이 *"있는데 안 걸린다"* 로 영영 숨는다(#3 조용한 0 금지).
-    """
-    return {str(k): str(v) for k, v in
-            (_load(TRIGGER_CONDITIONS).get("unmapped") or {}).items()}
 
 
 
