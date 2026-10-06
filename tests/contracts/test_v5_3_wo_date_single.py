@@ -167,3 +167,45 @@ def _inp():
         home_names=("A",), away_names=("B",), competition="L", sport="soccer",
         kickoff_utc=dt.datetime(2026, 10, 5, 18, 45, tzinfo=dt.timezone.utc),
         venue="V", langs=("en",))
+
+
+def test_M131_검증층이_저장소_날짜로_변수를_살린다():
+    """🔴🔴 **행동 검사** — 변수에 날짜가 **없어도** 저장소에 있으면 살아야 한다.
+
+    ⚠️ 앞 계약들은 `doc_date` 를 **직접** 불러 봤다 — 그래서 검증층이 그것을
+       쓰지 않아도 초록이었다(돌연변이 M131 이 통과했다 · §9-5).
+    🔴 이번에는 `verifylayer` 를 **돌려서** 본다.
+    """
+    from app import cells, verifylayer
+    when = dt.datetime(2026, 10, 5, 9, tzinfo=dt.timezone.utc)
+    url = "https://news.test/a"
+    body = ("Conor Bradley is unavailable for Northern Ireland because of a "
+            "hamstring injury picked up last week in training.")
+    seen = cells.Seen()
+    cells.store_doc(seen, url, body, published_at=when, date_source="본문")
+
+    class _Var:
+        id = "v1"
+        type = "def_absence"
+        team = "team:000268"
+        subject = "team:000268"
+        claim = "Bradley unavailable"
+        quote = "Conor Bradley is unavailable for Northern Ireland"
+        url = "https://news.test/a"
+        published_at = None          # 🔴 **변수에는 날짜가 없다**
+        direction_hint = "goals_down"
+        lang = "en"
+        conflict = False
+        reverified = True
+
+    ctx = verifylayer.Context(
+        home="team:000268", away="team:000085",
+        home_names=["Northern Ireland"], away_names=["Georgia"],
+        competition="Nations League", roster=[],
+        kickoff=dt.datetime(2026, 10, 5, 18, 45, tzinfo=dt.timezone.utc),
+        bodies={url: body}, seen=seen)
+    ok, reason, why = verifylayer.verify_one(_Var(), ctx)
+    from app.reasons import Reason
+    assert reason is not Reason.DATE_MISSING, (
+        f"🔴 저장소에 날짜가 있는데 `date_missing` 으로 버린다 — 검증층이 "
+        f"`doc_date` 를 **안 본다**(지시서 §3): {why}")
