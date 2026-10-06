@@ -85,6 +85,12 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
                               missing=missing.get(key))
         if xi[key].conflicts:
             state.note(f"s2 예상 명단 충돌 — {', '.join(xi[key].conflicts)}")
+    # 🔴 **소집 명단**(선발+교체 전원) — ①-b 예외와 ② 가 이 표를 쓴다
+    squad: dict[str, list[str]] = {}
+    for key, val in raw_xi.items():
+        got = adapt.names_of(val.get("squad"))
+        if got:
+            squad[key] = got
     # 🔴 **선수 → 포지션 표**(경기 단위 · §2) — §1-1 결장 유형과 IR01·IR02 가 쓴다
     pos: dict[str, str] = {}
     for key, box_xi in xi.items():
@@ -103,7 +109,7 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
         state.note("s2 못 받은 칸 — " + " · ".join(gaps))
     return adapt.facts_of(box, xi=xi, match_format=fmt,
                           sources=sorted(set(sources)), missing=missing,
-                          coach=coach, player_pos=pos, gaps=gaps)
+                          coach=coach, player_pos=pos, gaps=gaps, squad=squad)
 
 
 def _gaps(*, xi: dict, missing: dict, coach: dict, box: dict,
@@ -115,6 +121,11 @@ def _gaps(*, xi: dict, missing: dict, coach: dict, box: dict,
     out: list[str] = []
     if not xi:
         out.append("XI 없음(경기 페이지에 라인업이 아직 없다)")
+    elif all(v.state == "none" or not v.lineup for v in xi.values()):
+        # 🔴 XI 칸은 **있는데 비어 있다**(결장·감독만 실려 왔다) — ⚠️ 이것을
+        #    *"예상만"* 이라고 적으면 **없는 라인업이 있는 것처럼** 읽힌다. 실측
+        #    2026-10-06: 그 오해가 IR02 에 빈 XI 를 견주게 해 거짓 변수를 냈다(②).
+        out.append("오늘 XI 없음(상태 none — IR02·IR03 이 안 돈다)")
     elif all(v.state != "confirmed" for v in xi.values()):
         out.append("확정 XI 아직 없음(예상만)")
     if not missing:

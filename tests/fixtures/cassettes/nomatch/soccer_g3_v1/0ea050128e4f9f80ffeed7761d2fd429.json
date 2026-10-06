@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T08:59:50.793466+00:00",
+ "order": [
+  "India at Asian Games 2026, Day 11: Compound swept, world record matched and Olympic quota secured - as it.... 6일 전India will face defending champions China in the final on Friday. This will be India’s fourth appearance... The winner of this semi-final will face defending champions China in the gold-medal match. Sunil Kumar... to China’s Jiang Fumin and Tianhui Zhang. India will be without midfielder Raj Kumar Pal for tomorrow’s semi...6일 전",
+  "China vs Tajikistan: Summary, H2H Stats, Lineups & Highlights Match summary, head-to-head stats, lineups, standings, and highlights for China vs Tajikistan. All in one place — only on ScoresFeed.",
+  "China PR vs Tajikistan prediction - Odds & stats - 6 October 2026 China PR vs Tajikistan prediction with best odds, stats, highlights, H2H analysis, and lineups for this match on 6 October 2026 in International Friendlies.",
+  "China vs Tajikistan live score, H2H and lineups | Sofascore China Tajikistan live score starts on 6 Oct 2026 at 11:35 UTC time at Longxing Football Stadium stadium, Chongqing city, China in International Friendly Games, World.",
+  "China vs Tajikistan — Friendlies - TheDatabetics AI prediction for China vs Tajikistan, backed by stats, form and head-to-head data. See the likely result and the reasoning behind every call. Updated before kick-off.",
+  "China - Tajikistan 6 Oct 2026 - en.24score.com China - Tajikistan 6 Oct 2026 Football Int. Friendlies 2026, match details, head-to-head statistics, team statistics.",
+  "China vs Tajikistan on 2026-10-06 - upcoming match China vs Tajikistan in the Friendlies 2026 kicks off on 2026-10-06 13:35. Preview with predictions, team form, head-to-head record and the table.",
+  "China vs Tajikistan - International Friendlies - October 6, 2026 ... Full coverage of China vs Tajikistan game on Tuesday 6th of October 2026 at 11:35 am including match guide, data analysis, probability analysis, standings"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 12문단 → 재정렬 상위 8"
+}

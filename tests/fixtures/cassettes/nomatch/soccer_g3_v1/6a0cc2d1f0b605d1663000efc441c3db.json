@@ -1,0 +1,11 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T08:59:27.401366+00:00",
+ "order": [
+  "India at Asian Games 2026, Day 11: Compound swept, world record matched and Olympic quota secured - as it.... 6일 전India will face defending champions China in the final on Friday. This will be India’s fourth appearance... The winner of this semi-final will face defending champions China in the gold-medal match. Sunil Kumar... to China’s Jiang Fumin and Tianhui Zhang. India will be without midfielder Raj Kumar Pal for tomorrow’s semi...6일 전",
+  "What’s Behind China’s Trouble on the Afghanistan-Tajikistan Border? In late November 2025, over the span of four days, there were two separate cross-border attacks targeting Chinese workers in Tajikistan near the Afghan border. At least five Chinese nationals were ..."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 2문단 → 재정렬 상위 8"
+}

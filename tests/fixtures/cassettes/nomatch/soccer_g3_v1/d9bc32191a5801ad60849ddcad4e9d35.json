@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T08:59:49.061843+00:00",
+ "order": [
+  "21st ASIAN ATHLETICS CHAMPIONSHIPS 2015 第21届亚洲田径锦标赛 84페이지581KB新纪录统计 赛次 姓名 / 代表队 国家/地区 成绩 风速 Type EVENT 类型 项目 Men's 100m FINAL 9.91FEMI... TJK - Tajikistan 1 1 塔吉克斯坦 12 KSA - Saudi Arabia 3 3 沙特阿拉伯 13 KUW - Kuwait 2 2 科威特 14 HKG - Hong Kong,China 1 1 中国香港 15 IRI - Islamic Rep. of Iran 2 2 伊朗 16 SRI - Sri Lanka 1 1 斯里兰卡 17 THA...84페이지581KB",
+  "AMLC matches Trillanes claim: Carpio firm got P319M from China 23시간 전There are other CTRs recorded by AMLC outside of China, including 13 from Ukraine, six each from Russia and Kazakhstan, four from Lithuania, two each from Tajikistan and South Africa, and one each from the United Arab Emirates and the United States. All in all, there are 178 CTRs and three STRs, representing a total amount of...23시간 전",
+  "China suffer 0-5 home defeat to Palestine 3일 전Before this match, China had never lost to Palestine, holding a record of five wins and two draws. But in this game they collapsed at home, conceding five goals.... After this news conference we will probably go straight to prepare for the next match.\" China will play Tajikistan (101st) on June 6 in the final match of this four...3일 전",
+  "Asian Games 2026: Aman Sehrawat’s gold, Antim Panghal’s silver help India record best wrestling campa.... 3일 전He then produced another comeback against Tajikistan’s Aiaal Belolyubskii in the semi-finals. Trailing 6-2 after the opening period, Aman stormed back to win 14... She then recovered from an early deficit to beat the People’s Republic of China’s Zhang Jin, the reigning Asian champion, 6-1 in the semi-finals. Earlier...3일 전",
+  "\"This kind of defeat is a first\" China's soccer disaster, legend bows his head in shock... Shocking 0-5 l.... 3일 전Chinese national football team. /Photo=Screenshot from the Chinese Football Association website3일 전",
+  "Asian Games 2026 Day 11 LIVE Updates: India Match World Record To Strike Archery Gold, Enter Another Fina.... 6일 전Asian Games 2026 Day 11 LIVE: India clinched gold medal in women's compound team archery, beating China while also matching the world record. Anahat Singh and Tanvi Khanna helped India qualify for...6일 전",
+  "Atlanta and its Olympic connection: Key facts about the host city of 1996 Olympic Games 6일 전Príncipe, Tajikistan and Turkmenistan made their Olympic debut. Armenia, Belarus, Czech Republic, Georgia, Kazakhstan, Kyrgyzstan, Moldova, Slovakia, Ukraine and... Now, Amy Van Dyken had the world champion and a world record holder Le Jingyi from China beside her lane for the 50 metres final. Amy Van Dyken says that, at this...6일 전",
+  "中国2019年人权报告 - 美国驻华大使馆和领事馆 2020.10.26.Afghanistan · Albania · Algeria · Angola · Argentina · Armenia · Australia · Austria · Azerbaijan · Bahamas · Bahrain · Bangladesh · Barbados · Belarus · Belgium · Belize · Benin · Bermuda · Bolivia · Bosnia & Herzegovina · Botswana · Brazil · Brunei · Bulgaria · Burkina Faso · Burma · Burundi · Cabo Verde · Cambodia · Cameroon · Canada · Central African Republic · Chad · Chile · China · Colombia · Comoros · Costa Rica · Côte d’Ivoire · Croatia · Cuba .....2020.10.26."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 19문단 → 재정렬 상위 8"
+}

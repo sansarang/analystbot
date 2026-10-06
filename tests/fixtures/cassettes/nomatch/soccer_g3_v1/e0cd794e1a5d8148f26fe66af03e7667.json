@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T08:59:24.782134+00:00",
+ "order": [
+  "Asian Games 2026 Highlights: India Ends 44 Year Asian Games Drought, Beats China To Clinch Gold Medal | R.... 4일 전News /SportFit /Asian Games 2026 Highlights: India Ends 44 Year Asian Games Drought, Beats China To Clinch Gold Medal4일 전",
+  "Three more golds help Thailand surpass target 4일 전off China in three sets to win beach volleyball gold, Thailand’s first in the discipline for 28 years.... The decider turned in Thailand’s favour as the Chinese pair were forced to take a lengthy injury break. On... against Tajikistan’s Fariza Qosimboeva to earn a spot in the bronze medal match. It was the team’s second...4일 전",
+  "China PR vs Tajikistan - Friendly International | WorldFootball China PR vs Tajikistan in Friendly International on 2026-10-06: lineups, events, stats and match information.",
+  "China PR vs Tajikistan prediction and tips Friendlies October 6, 2026 ... China is going head to head with Tajikistan on 6/10/2026 04:35 GMT for the International Friendlies. You can view the match information, lineups, odds, live score, result, goalscorers, cards, substitutions, standings, recent form, player ratings, injuries, tv channels, our users most predicted scores and China v Tajikistan H2H statistics!",
+  "China vs Tajikistan — Live Score, Result & Lineups | SokaScore China vs Tajikistan live score, result, lineups and match stats in the Friendlies. Follow every update on SokaScore.",
+  "China vs Tajikistan Live Score, Lineups, Stream, H2H | Surprise Sports China vs Tajikistan live score and streaming on 6 Oct, 2026. Get the latest updates, match events, lineups, player stats and team statistics.",
+  "China vs Tajikistan: Summary, H2H Stats, Lineups & Highlights Match summary, head-to-head stats, lineups, standings, and highlights for China vs Tajikistan. All in one place — only on ScoresFeed.",
+  "China vs Tajikistan: Friendlies stats & head-to-head - BBC Sport Follow live text commentary, score updates and match stats from China vs Tajikistan in the Friendlies"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 12문단 → 재정렬 상위 8"
+}

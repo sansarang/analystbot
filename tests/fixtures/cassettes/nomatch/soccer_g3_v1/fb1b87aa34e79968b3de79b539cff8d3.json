@@ -1,0 +1,10 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T09:01:06.816074+00:00",
+ "order": [
+  "Friendlies China 06/10/2026 Tue 11:35 Tajikistan China vs Tajikistan. Follow every moment as it happens. Longxing Football Stadium Who will win? Total votes: 0 33% X 34% 33% Details Form Stats News Form & H2H ChinaLLW TajikistanLL Match details China vs Tajikistan in Friendlies · Tue 6 Oct 2026, 11:35 UTC View Friendlies hub → More from Friendlies Date Match Competition Venue Time 06 Oct Colombia vs Peru Friendlies Hard Rock Stadium 23:45 06 Oct Argentina vs Benin Friendlies Estadio Monumental 23:00 06 Oct Algeria vs Niger Friendlies — 17:00 06 Oct Jordan vs Venezuela Friendlies — 17:00 06 Oct Russia vs Nigeria Friendlies Sovcombank Arena 16:00 06 Oct Ecuador U20 vs Peru U20 Friendlies — 15:00 06 Oct Portugal U19 vs Austria U19 Friendlies — 14:00 06 Oct India vs Uruguay Friendlies Vivekananda Yuba Bharati Krirangan 14:00 Full league hub → Related news Man City whizz kid’s meteoric rise: from cage football to Premier League at 15"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 1문단 → 재정렬 상위 8"
+}

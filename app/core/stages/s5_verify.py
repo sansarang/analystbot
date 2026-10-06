@@ -136,7 +136,7 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
     by_id = {d.id: d for d in docs}
     rows: list[dict] = []
     for i, c in enumerate(cands):
-        got = _one(c, ref, by_id, state=state, n=i)
+        got = _one(c, ref, by_id, state=state, n=i, facts=facts)
         if got is not None:
             rows.append(got)
     merged = _merge(rows, state=state, facts=facts)
@@ -214,6 +214,7 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
             id=f"R{i}", type=row["type"], subject=row["subject"],
             favors=row["favors"], goals=row.get("goals", "none"),
             target=str(row.get("target") or ""),
+            match_link=str(row.get("match_link") or ""),
             hardness=("hard" if level == 2 else "soft"),
             weight=float(WEIGHT_OF[name]), claim=row["claim"],
             quote=row["quote"], doc_ids=row["doc_ids"],
@@ -234,7 +235,7 @@ _TIER_ORDER = ("official", "national", "local", "aggregator", "tip", "dead")
 
 
 def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
-         state: RunState, n: int) -> dict | None:
+         state: RunState, n: int, facts: Facts) -> dict | None:
     """🔴 후보 하나 — 검사 순서는 **싼 것부터**다(문서 → 인용 → 날짜 → 신원 → 방향)."""
     from app import verify
     what = f"s5/{c.subtask}/{c.type}/{n}"
@@ -267,6 +268,13 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
     if not _mentions(c.subject, doc, ref):
         state.drop(what, DropReason.IDENTITY_MISMATCH,
                    f"{doc.id} 본문이 `{c.subject}` 를 말하지 않는다")
+        return None
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **이 경기 이야기인가**(사용자 지시 2026-10-06(4차) ①-b)
+    # ══════════════════════════════════════════════════════════════════
+    ok_m, said_m = match_link_ok(c, doc, ref, facts)
+    if not ok_m:
+        state.drop(what, DropReason.OFF_MATCH, said_m[:120])
         return None
     # ══════════════════════════════════════════════════════════════════
     # 🔴 ② **맞대결 기록은 유형과 상관없이 `h2h_pattern`**(사용자 지시 ②)
@@ -308,6 +316,7 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
         return None
     return {"type": kind, "subject": c.subject, "favors": fav,
             "goals": goals_of(kind), "target": target,
+            "match_link": str(c.match_link or ""),
             "claim": c.claim, "quote": quote, "doc_ids": [doc.id],
             # 🔴 유형이 바뀌면 방향을 다시 세야 한다 — 그 경기 맥락을 함께 든다
             "_ref": ref}
@@ -670,9 +679,21 @@ def _ir_home(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
     > 홈 이점: 표본이 없으면 버리지 말고 **기본값(국가대표/리그 홈 승률)** 으로 soft
     > 변수. `home_field` 가 **근거 불가로 빠지면 E2E 실패.**
 
-    🔴 기본값과 그 근거는 `config/interpret_rules.yaml` 의 `S03.default` 가 든다
-       (MLS 실측 +16.8%p · 사용자 지시 2026-10-02). ⚠️ 쪼갠 표가 생기면 그 수가
-       이것을 **덮는다** — 그때는 `claim` 에 잰 수가 들어간다.
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **같은 대회 유형에서만 빌린다**(사용자 지시 2026-10-06(4차) ③)
+    ══════════════════════════════════════════════════════════════════
+
+    > 홈 이점 기본값: **같은 대회 유형의 표에서만** 가져온다(국가대표 친선 / 국가대표
+    > 공식전 / 각 리그). 그 유형의 표가 없으면 **숫자 없이** *"홈 이점 — 수치 없음"*
+    > soft 변수로 두고, 다른 대회 숫자를 **빌려 쓰지 않는다.** 카드에 기본값의
+    > **출처 대회**를 적는다.
+
+    🔴 표는 `config/interpret_rules.yaml` 의 `S03.defaults` 가 들고, 열쇠는
+       `comp_kind()` 가 만든다(`national_friendly`·`national_official`·`league:…`).
+    ⚠️ 실측 2026-10-06: 대표팀 친선 카드에 **MLS 숫자(+16.8%p)** 가 들어가 있었다 —
+       리그 홈 이점을 대표팀에 빌린 것이고, 그래서 대표팀 칸은 **비워 뒀다**.
+    🔴 그래도 변수는 **만든다**(①) — 수치가 없다는 것도 카드가 말해야 하는 사실이다.
+    ⚠️ 쪼갠 표가 생기면 그 수가 기본값을 **덮는다**.
     """
     from app import rules
     neutral, why = rules.neutral_venue(ref.competition)
@@ -682,18 +703,25 @@ def _ir_home(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
     box = dict(facts.standings or {})
     ha = dict(box.get("home_advantage") or {})
     got = ha.get("win_pct_delta")
+    kind_of_comp = comp_kind(ref, facts)
     if got is not None:
         claim = (f"{ref.home_name} 홈 경기 — 홈 승률 +{got}%p"
-                 f"({ha.get('home_games', '?')}경기 · 쪼갠 표)")
+                 f"({ha.get('home_games', '?')}경기 · 쪼갠 표 · {kind_of_comp})")
     else:
-        row_def = dict(row.get("default") or {})
-        said = row_def.get("win_pct_delta")
+        # 🔴 **같은 대회 유형의 표에서만**(③) — 다른 대회 숫자를 빌리지 않는다
+        table = dict(row.get("defaults") or {})
+        mine = dict(table.get(kind_of_comp) or {})
+        said = mine.get("win_pct_delta")
         if said is None:
-            state.note(f"s5 {rid} — 기본값 선언이 표에 없다 · 변수 안 만든다")
-            return []
-        claim = (f"{ref.home_name} 홈 경기 — 홈 이점 **기본값** +{said}%p"
-                 f"({row_def.get('basis', '근거 미상')})")
-        state.note(f"s5 {rid} — 쪼갠 표가 없어 **기본값**을 썼다(+{said}%p)")
+            claim = (f"{ref.home_name} 홈 경기 — 홈 이점 **수치 없음**"
+                     f"(대회 유형 `{kind_of_comp}` 의 표가 없다 · 다른 대회 숫자를 "
+                     f"빌리지 않는다)")
+            state.note(f"s5 {rid} — `{kind_of_comp}` 표가 없다 → **수치 없이** "
+                       f"soft 변수로 둔다(③)")
+        else:
+            claim = (f"{ref.home_name} 홈 경기 — 홈 이점 **기본값** +{said}%p"
+                     f"(출처 대회 `{kind_of_comp}` · {mine.get('basis', '근거 미상')})")
+            state.note(f"s5 {rid} — `{kind_of_comp}` 기본값 +{said}%p 를 썼다")
     return [Variable(
         id=f"{rid}", type="home_field", subject=ref.home,
         favors=favors_of("home_field", ref.home, claim, ref),  # type: ignore[arg-type]
@@ -1020,19 +1048,46 @@ def _name(ref: MatchRef, key: str) -> str:
 
 def _ir_rotation(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
                  state: RunState) -> list[Variable]:
-    """IR02·IR03 — **직전 선발 ↔ 오늘 명단**을 견준다(§2 `last_xi` 가 재료다)."""
+    """IR02·IR03 — **직전 선발 ↔ 오늘 명단**을 견준다(§2 `last_xi` 가 재료다).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **오늘 XI 가 있을 때만 돈다**(사용자 지시 2026-10-06(4차) ②)
+    ══════════════════════════════════════════════════════════════════
+
+    > IR02: 오늘 XI 상태가 `confirmed` 또는 `predicted` 일 때만 돈다. `none` 이면
+    > 건너뛰고 사유 *"오늘 XI 없음"*. 비교 대상도 XI 가 아니라 **소집 명단**으로
+    > 바꿀 수 있으면 그쪽(**명단에 없음 = 결장, XI 에 없음 = 벤치**).
+
+    ⚠️ 실측 2026-10-06: 라인업이 **없는** 경기에서 IR02 가 *"직전 선발 Song·Seol·Lee
+       가 오늘 명단에 없다"* 를 냈다 — 오늘 명단 자체가 없었으니 **전원이 없다**고
+       적은 것이고, 그것은 거짓이다.
+    """
     out: list[Variable] = []
     for key, last in facts.last_xi.items():
         now = facts.xi.get(key)
-        if now is None or not last.players:
+        if now is None or now.state == "none":
+            state.note(f"s5 {rid} `{key}` 건너뜀 — **오늘 XI 없음**"
+                       f"(상태 {getattr(now, 'state', '없음')})")
             continue
-        gone = [n for n in last.players if n not in now.players]
+        if not last.players:
+            continue
+        # 🔴 **명단이 있으면 명단으로** 센다 — 그러면 `결장`과 `벤치`가 갈린다
+        pool = [str(x) for x in (facts.squad.get(key) or [])]
+        where = "소집 명단" if pool else f"{now.state} XI"
+        if not pool:
+            pool = list(now.players)
+        gone = [n for n in last.players if not _in(n, pool)]
         back = [m.name for m in facts.missing.get(key, [])
-                if m.name in now.players]
+                if _in(m.name, pool)]
+        if gone:
+            state.note(f"s5 {rid} `{key}` — {where} 기준으로 센다"
+                       f"({'명단에 없음 = 결장' if where == '소집 명단' else 'XI 에 없음 = 벤치일 수도 있다'})")
         if rid == "IR02" and gone:
+            said = ("명단에 없다(결장)" if where == "소집 명단"
+                    else f"{now.state} XI 에 없다(벤치일 수도 있다)")
             out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
                                f"{_name(ref, key)} 직전 선발 "
-                               f"{', '.join(gone[:3])} 가 오늘 명단에 없다", ref))
+                               f"{', '.join(gone[:3])} 가 오늘 {said}", ref))
         if rid == "IR03" and back:
             out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
                                f"{_name(ref, key)} {', '.join(back[:3])} 복귀",
@@ -1115,3 +1170,114 @@ def _xi_clash(target: str, subject: str, facts: Facts) -> str:
                     f"{xi.state} XI 에 **있다** → 그 변수를 soft 로 내린다"
                     f"(무엇이 맞는지는 킥오프가 말한다)")
     return ""
+
+#: 🔴 **개인 상태 유형** — 그 선수가 소집 명단에 있으면 경기 연결로 **인정**한다(①-b 예외)
+PERSONAL_KINDS = (*ABSENCE_KINDS, "individual_title", "returning",
+                  "lineup_value")
+
+
+def in_squad(target: str, subject: str, facts: Facts) -> bool:
+    """🔴 그 선수가 **이번 소집 명단**에 있나(①-b 예외 · ② 가 같은 표를 쓴다)."""
+    said = norm(target)
+    if not said:
+        return False
+    pool = list(facts.squad.get(subject) or [])
+    xi = facts.xi.get(subject)
+    if xi is not None:
+        pool += [*xi.players, *xi.bench, *[p.name for p in xi.lineup]]
+    for name in pool:
+        got = norm(name)
+        if got and (said in got or got in said):
+            return True
+    return False
+
+
+def match_link_ok(c: VarCandidate, doc: Doc, ref: MatchRef,
+                  facts: Facts) -> tuple[bool, str]:
+    """🔴🔴 **이 경기와 이어지나**(사용자 지시 2026-10-06(4차) ①-b). `(통과, 사유)`.
+
+    > 코드가 그 근거가 문단에 **실제로 있는지** 확인하고, 없으면 버린다(`off_match`).
+    > 예외: 선수 개인 상태(부상·피로·기록 도전)는 그 선수가 **이번 소집 명단에 있으면**
+    > 경기 연결로 인정.
+
+    🔴 모델이 적은 `match_link` 를 **본문에 대고** 맞춰 본다(인용 검사와 같은 방법) —
+       모델이 지어낸 근거는 통과하지 못한다.
+    ⚠️ 그리고 그 근거가 **이 경기를 가리키는지** 센다: 상대팀 이름·경기장·킥오프 날짜
+       중 하나와 겹쳐야 한다. 🔴 아무 글자나 따오는 것을 막는 자리다.
+    """
+    said = str(c.match_link or "").strip()
+    body = norm(f"{doc.title} {doc.body}")
+    # ── 예외: 개인 상태 + 소집 명단
+    if c.type in PERSONAL_KINDS and in_squad(str(c.target or ""), c.subject,
+                                             facts):
+        return True, f"개인 상태 · `{c.target}` 가 소집 명단에 있다"
+    if not said:
+        return False, "🔴 `match_link` 가 비었다 — 이 경기와 이어지는 근거가 없다"
+    if norm(said) not in body:
+        return False, (f"🔴 `match_link` 가 본문에 없다(지어낸 근거다): "
+                       f"{said[:50]!r}")
+    # ── 그 근거가 **이 경기**를 가리키나
+    low = norm(said)
+    marks: list[str] = []
+    from app.core.stages.s3_docs import names_of
+    home, away = names_of(ref)
+    for name in [*home, *away]:
+        got = norm(name)
+        if len(got) >= 3 and got in low:
+            marks.append(str(name))
+    if ref.venue and norm(ref.venue) in low:
+        marks.append(ref.venue)
+    for fmt in ("%Y-%m-%d", "%m-%d", "%d/%m", "%m/%d"):
+        if ref.kickoff_utc.strftime(fmt).lower() in low:
+            marks.append(ref.kickoff_utc.strftime(fmt))
+    if not marks:
+        return False, (f"🔴 `match_link` 가 이 경기를 가리키지 않는다"
+                       f"(상대팀·경기장·날짜가 없다): {said[:50]!r}")
+    return True, f"경기 연결 ✅ {marks[:2]}"
+
+def _in(name: str, pool: list[str]) -> bool:
+    """🔴 그 이름이 목록에 있나 — 정규화해서 본다(표기가 갈려도 같은 사람이다)."""
+    said = norm(name)
+    if not said:
+        return False
+    return any(said in norm(x) or norm(x) in said for x in pool if x)
+
+def comp_kind(ref: MatchRef, facts: Facts) -> str:
+    """🔴🔴 **대회 유형**(사용자 지시 2026-10-06(4차) ③) — 홈 이점 표의 열쇠다.
+
+    돌려주는 것: `national_friendly` · `national_official` · `league:<이름>`.
+
+    🔴 대표팀인지는 **이름표가 안다** — 열쇠가 나라 대표팀인지 구단인지. ⚠️ 그것을
+       못 가리면 대회명으로 떨어진다(친선이면 친선, 아니면 공식전).
+    """
+    said = str(ref.competition or "")
+    friendly = facts.match_format == "friendly" or "friendl" in said.lower() \
+        or "친선" in said
+    if _is_national(ref):
+        return "national_friendly" if friendly else "national_official"
+    return f"league:{said}" if said else "league"
+
+
+def _is_national(ref: MatchRef) -> bool:
+    """🔴 대표팀 경기인가 — **이름표에 나라 코드가 있나**(`iso:KR`·`fa:SCO`).
+
+    ⚠️ 나라 이름 목록을 여기 적지 않는다(사본 금지 · #1). 🔴 `_from_cldr` 이
+       대표팀 이름표에 `iso:KR` 을, `_from_nations` 이 `fa:SCO` 를 **이미 붙여
+       뒀다** — 구단 이름표에는 그 코드가 없다. 그래서 코드의 유무가 답이다.
+    ⚠️ 이름표를 못 읽으면 **대표팀이 아니라고 본다** — 그 쪽이 조용하다(리그
+       열쇠로 떨어지고, 리그 표가 비어 있으면 `수치 없음` 이 된다).
+    """
+    from app import teamref
+    try:
+        reg = teamref.registry()
+    except Exception:                                       # noqa: BLE001
+        return False
+    for key in (ref.home, ref.away):
+        box = reg.teams.get(str(key))
+        if box is None:
+            continue
+        for names in box.names.values():
+            for nm in names:
+                if teamref.is_code(nm) and nm.split(":", 1)[0] in ("iso", "fa"):
+                    return True
+    return False

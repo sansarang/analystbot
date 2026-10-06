@@ -186,6 +186,7 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
              missing: dict[str, list[Missing]] | None = None,
              coach: dict[str, Coach] | None = None,
              player_pos: dict[str, str] | None = None,
+             squad: dict[str, list[str]] | None = None,
              gaps: list[str] | None = None) -> Facts:
     """🔴 구조 사실 묶음 → `schema.Facts`. ⚠️ 없는 칸은 **빈 것**으로 둔다.
 
@@ -204,6 +205,7 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
         last_xi=dict(box.get("last_xi") or {}),
         schedule=dict(box.get("schedule") or {}),
         player_pos=dict(player_pos or {}),
+        squad={k: [str(x) for x in v] for k, v in (squad or {}).items()},
         match_format=(fmt if fmt in allowed else "unknown"),  # type: ignore[arg-type]
         extra_time=box.get("extra_time"),
         leg=box.get("leg"),

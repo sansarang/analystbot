@@ -157,6 +157,42 @@ words:
     ja: [疲労]
     ko: [피로, 체력]
     zh: [疲劳]
+  # ══════════════════════════════════════════════════════════════
+  # 🔴🔴 **팀 등급 낱말**(사용자 지시 2026-10-06(4차) ①-a)
+  # ══════════════════════════════════════════════════════════════
+  #
+  # > 축구 대표팀이면 **A대표/U-23/아시안게임/올림픽/여자/청소년**을 구분하는 낱말을
+  # > `search_words` 에 두고, 경기 팀과 **다른 등급 낱말이 주어로 쓰인 문단은 버린다**
+  # > (사유 `team_tier_mismatch`).
+  #
+  # ⚠️ 실측 2026-10-06: A대표 친선 카드에 *"한국 남자축구 4연속 금메달"*(아시안게임)
+  #    기사가 변수로 들어왔다 — 같은 나라지만 **다른 팀**이다.
+  # 🔴 `senior` 는 **기본값**이다 — 다른 등급 낱말이 없으면 A대표로 본다.
+  team_tier:
+    senior:
+      en: [senior, "a-team", "full international"]
+      ko: [A대표, 성인대표, 국가대표팀]
+      es: ["selección absoluta"]
+    u23:
+      en: [u23, "u-23", under-23, olympic team]
+      ko: [U-23, U23, 23세, 올림픽대표]
+      es: [sub-23]
+    asiad:
+      en: [asian games, asiad]
+      ko: [아시안게임, 아시아경기]
+      ja: [アジア大会]
+    olympic:
+      en: [olympic, olympics]
+      ko: [올림픽]
+    women:
+      en: [women, women's, female]
+      ko: [여자, 여성]
+      es: [femenina, femenino]
+    youth:
+      en: [u20, "u-20", u17, "u-17", youth, junior]
+      ko: [U-20, U20, U-17, U17, 청소년, 유소년]
+      es: [sub-20, sub-17, juvenil]
+
   sport:
     soccer:
       en: [football, soccer]

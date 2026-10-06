@@ -1,0 +1,12 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T09:01:08.792670+00:00",
+ "order": [
+  "Asian Games 2026 Highlights: India Ends 44 Year Asian Games Drought, Beats China To Clinch Gold Medal | R.... 4일 전News /SportFit /Asian Games 2026 Highlights: India Ends 44 Year Asian Games Drought, Beats China To Clinch Gold Medal4일 전",
+  "Three more golds help Thailand surpass target 4일 전off China in three sets to win beach volleyball gold, Thailand’s first in the discipline for 28 years.... The decider turned in Thailand’s favour as the Chinese pair were forced to take a lengthy injury break. On... against Tajikistan’s Fariza Qosimboeva to earn a spot in the bronze medal match. It was the team’s second...4일 전",
+  "Asian Games | Day 13 roundup: China's Wang Xiyu wins tennis gold, virtual sports make debut-Xinhua 4일 전Asian Games | Day 13 roundup: China's Wang Xiyu wins tennis gold, virtual sports make debut4일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 3문단 → 재정렬 상위 8"
+}

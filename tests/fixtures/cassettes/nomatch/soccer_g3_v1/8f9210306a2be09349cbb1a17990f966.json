@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T09:01:13.976146+00:00",
+ "order": [
+  "For Wang, the result marked a return to form after struggling with injuries and inconsistency in recent seasons. The victory also gave her an automatic berth at the 2028 Olympics in Los Angeles.",
+  "In the men's kayak cross, Japan's Yuuki Tanaka, who claimed silver in the kayak single, powered past Chinese rival Quan Xin after the first gate to take the gold medal. Quan took the silver while Hu Zhaoshan, who won the gold in the men's kayak single, had to settle for bronze this time.",
+  "In the men's doubles final, a pair of amateurs who juggle tennis with their day jobs at a local bank clinched Japan's first gold in this event since Tehran 1974. Yusuke Kusuhara and Shunsuke Nakagawa beat a South Korean pair 2-0 to win the gold.",
+  "On a day of fast and furious action at Yahagigawa Canoe Slalom Course, China grabbed a gold and a bronze in the women's kayak cross, while home favorite Kurumi Ito, winner of the women's kayak single, was knocked out in the quarterfinals. Chen Lin claimed the gold while 16-year-old Xu Linxi settled for bronze. Chang Chu-han of Chinese Taipei took silver.",
+  "China's Wu Yibing, 2018 Asian Games runner-up, advanced to the men's singles final after defeating Japan's Hayato Matsuoka 6-3, 6-2. Wu will meet Coleman Wong from Hong Kong, China in the final.",
+  "Wang reached the final on Thursday by defeating pre-tournament favorite Alexandra Eala of the Philippines 3-6, 6-3, 6-2. Eala, ranked No. 18 on the WTA Tour, picked up a bronze medal.",
+  "Jeus Gabriel Derick Yape from the Philippines grabbed the historical gold medal.",
+  "China failed to defend its women's hockey title after losing 1-0 to India, while China's men's volleyball team was eliminated in the semifinals after a 3-2 defeat to Japan."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

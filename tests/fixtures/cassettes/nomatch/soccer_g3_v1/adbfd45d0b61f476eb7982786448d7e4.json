@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 네 담당은 `C-away` 의 유형들뿐이다: stakes, individual_title, regression, team_stats.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다) — 검증층이 본문에 대고 맞춰 보고, 없으면 그 줄을 버린다.\\n🔴 `quote` 에 **머리표를 넣지 마라** — `[A-home-D1-P2] (도메인, 날짜)` 는 우리가 붙인 표지이고 기사에 없는 글자다. **본문 글자만** 적는다(어느 문서인지는 `doc_id` 칸이 받는다).\\n🔴 `claim` 은 그 사실을 **한 문장**으로 적은 것이다.\\n🔴 `match_link` 는 **그 문단이 이 경기 이야기라는 근거**를 문단에서 **글자 그대로** 따온 것이다 — 상대팀 이름, 경기 날짜, 경기장, `Tajikistan전` 같은 표현. ⚠️ 문단에 없는 말을 적으면 그 줄은 **버려진다**(코드가 문단에 대고 맞춰 본다).\\n⚠️ 이어지는 근거가 문단에 없으면 그 사실은 **적지 마라** — 다른 경기 이야기다(금메달 수·지난 대회·다른 팀 이야기가 그렇게 들어왔다).\\n🔴 `target` 은 그 사실의 **핵심 대상 하나**다 — 선수 이름(`Kim Min-jae`) 또는 사건 한 낱말(`record`·`travel`). ⚠️ 같은 사실을 여러 기사에서 봤다면 `target` 을 **같은 글자**로 적어라(그것으로 합친다). 문장을 넣지 마라.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n🔴 **누가 나온다/투입된다/선발로 나선다**는 말은 `lineup_intent` 다 — 감독의 **의도**(점검·전력 숨김)만 `coach_intent` 이고, 감독과 선수의 **갈등**만 `coach_conflict` 다.\\n⚠️ 이 경기는 China(홈) 대 Tajikistan(원정)이다 — 다른 경기 이야기는 뽑지 않는다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"[C-away-D1-P1] (www.starnewskorea.com, 2026-10-03) Their recent form has also been poor. On the 27th of last month, China also suffered a 0-3 crushing defeat in a home match against New Zealand (ranked 86th). They conceded eight goals in two matches and failed to score a single one.\\n[C-away-D1-P2] (www.starnewskorea.com, 2026-10-03) In terms of match performance, Palestine dominated China. While China trailed slightly in possession at 46%-54%, there was a significant gap in shots on target, with the score being 3-9. Total shots also favored Palestine at 12-16. The difference was evident from the quality of their attacks.\\n[C-away-D1-P3] (www.starnewskorea.com, 2026-10-03) China's Sina.com reported the shocking result as \\\"the first defeat in 60 years.\\\" After defeating Palestine 7-0 in their first encounter in 1966, China had not lost any of their head-to-head matches up until this game, holding a record of five wins and two draws.\\n[C-away-D1-P4] (www.starnewskorea.com, 2026-10-03) He also expressed regret over the team's overall focus. Coach Xiao Zai pointed out, \\\"It seems some players were still thinking about the league or the AFC Champions League.\\\"\\n[C-away-D1-P5] (www.starnewskorea.com, 2026-10-03) Coach Xiao Zai said, \\\"From 1998 to now, I have lived for almost 30 years as a player and coach, experiencing both victories and defeats. Defeat is part of football, so it must be accepted,\\\" but added, \\\"Honestly, I have never experienced this kind of defeat before.\\\"\\n[C-away-D1-P6] (www.starnewskorea.com, 2026-10-03) However, collapsing at home with a 0-5 loss, they suffered the humiliation of their first-ever defeat against Palestine.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력은 **object 로만** 받는다 — 최상위 배열은 스키마가 못 받는다.\", \"properties\": {\"variables\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 s4 — 모델이 내는 변수 후보. ⚠️ **방향 칸이 없다**(코드가 정한다).\", \"properties\": {\"claim\": {\"title\": \"Claim\", \"type\": \"string\"}, \"doc_id\": {\"enum\": [\"C-away-D1\"], \"type\": \"string\"}, \"match_link\": {\"title\": \"Match Link\", \"type\": \"string\"}, \"quote\": {\"title\": \"Quote\", \"type\": \"string\"}, \"subject\": {\"enum\": [\"team:000049\", \"team:000228\"], \"type\": \"string\"}, \"subtask\": {\"enum\": [\"C-away\"], \"type\": \"string\"}, \"target\": {\"title\": \"Target\", \"type\": \"string\"}, \"type\": {\"enum\": [\"stakes\", \"individual_title\", \"regression\", \"team_stats\"], \"type\": \"string\"}}, \"required\": [\"subtask\", \"type\", \"subject\", \"claim\", \"target\", \"match_link\", \"quote\", \"doc_id\"], \"title\": \"VarCandidate\", \"type\": \"object\"}, \"title\": \"Variables\", \"type\": \"array\"}}, \"required\": [\"variables\"], \"title\": \"VarCandidates\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-06T09:01:54.027219+00:00",
+ "id": "44041cf6-1784-4b58-9a27-f2c67e137784",
+ "object": "chat.completion",
+ "created": 1791277313,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": [\n    {\n      \"subtask\": \"C-away\",\n      \"type\": \"stakes\",\n      \"subject\": \"team:000049\",\n      \"claim\": \"China suffered a 0-3 crushing defeat in a home match against New Zealand on the 27th of last month.\",\n      \"target\": \"0-3\",\n      \"match_link\": \"China also suffered a 0-3 crushing defeat in a home match against New Zealand\",\n      \"quote\": \"On the 27th of last month, China also suffered a 0-3 crushing defeat in a home match against New Zealand (ranked 86th).\"\n   ,\n    \"doc_id\": \"C-away-D1\"\n    },\n    {\n      \"subtask\": \"C-away\",\n      \"type\": \"team_stats\",\n      \"subject\": \"team:000049\",\n      \"claim\": \"China trailed in possession at 46%-54% and had 3 shots on target compared to Palestine's 9.\",\n      \"target\": \"possession\",\n      \"match_link\": \"Palestine dominated China\",\n      \"quote\": \"While China trailed slightly in possession at 46%-54%, there was a significant gap in shots on target, with the score being 3-9.\"\n    ,\n    \"doc_id\": \"C-away-D1\"\n    },\n    {\n      \"subtask\": \"C-away\",\n      \"type\": \"individual_title\",\n      \"subject\": \"team:000049\",\n      \"claim\": \"China's Sina.com reported the result as the first defeat in 60 years.\",\n      \"target\": \"first defeat in 60 years\",\n      \"match_link\": \"China's Sina.com reported the shocking result as \\\"the first defeat in 60 years.\\\"\",\n      \"quote\": \"China's Sina.com reported the shocking result as \\\"the first defeat in 60 years.\\\"\"\n    ,\n    \"doc_id\": \"C-away-D1\"\n    },\n    {\n      \"subtask\": \"C-away\",\n      \"type\": \"regression\",\n      \"subject\": \"team:000049\",\n      \"claim\": \"China collapsed at home with a 0-5 loss and suffered their first-ever defeat against Palestine.\",\n      \"target\": \"0-5\",\n      \"match_link\": \"collapsing at home with a 0-5 loss\",\n      \"quote\": \"However, collapsing at home with a 0-5 loss, they suffered the humiliation of their first-ever defeat against Palestine.\"\n    ,\n    \"doc_id\": \"C-away-D1\"\n    }\n  ]\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 964,
+  "completion_tokens": 576,
+  "total_tokens": 1540,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

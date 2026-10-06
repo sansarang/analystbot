@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 네 담당은 `C-home` 의 유형들뿐이다: stakes, individual_title, regression, team_stats.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다) — 검증층이 본문에 대고 맞춰 보고, 없으면 그 줄을 버린다.\\n🔴 `quote` 에 **머리표를 넣지 마라** — `[A-home-D1-P2] (도메인, 날짜)` 는 우리가 붙인 표지이고 기사에 없는 글자다. **본문 글자만** 적는다(어느 문서인지는 `doc_id` 칸이 받는다).\\n🔴 `claim` 은 그 사실을 **한 문장**으로 적은 것이다.\\n🔴 `match_link` 는 **그 문단이 이 경기 이야기라는 근거**를 문단에서 **글자 그대로** 따온 것이다 — 상대팀 이름, 경기 날짜, 경기장, `Uzbekistan전` 같은 표현. ⚠️ 문단에 없는 말을 적으면 그 줄은 **버려진다**(코드가 문단에 대고 맞춰 본다).\\n⚠️ 이어지는 근거가 문단에 없으면 그 사실은 **적지 마라** — 다른 경기 이야기다(금메달 수·지난 대회·다른 팀 이야기가 그렇게 들어왔다).\\n🔴 `target` 은 그 사실의 **핵심 대상 하나**다 — 선수 이름(`Kim Min-jae`) 또는 사건 한 낱말(`record`·`travel`). ⚠️ 같은 사실을 여러 기사에서 봤다면 `target` 을 **같은 글자**로 적어라(그것으로 합친다). 문장을 넣지 마라.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n🔴 **누가 나온다/투입된다/선발로 나선다**는 말은 `lineup_intent` 다 — 감독의 **의도**(점검·전력 숨김)만 `coach_intent` 이고, 감독과 선수의 **갈등**만 `coach_conflict` 다.\\n⚠️ 이 경기는 South Korea(홈) 대 Uzbekistan(원정)이다 — 다른 경기 이야기는 뽑지 않는다.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"[C-home-D1-P4] (biz.heraldcorp.com, 2026-10-04) Kim Taek-soo, director of the national team training center, reflected on the results at a closing press conference Sunday. \\\"Despite the disadvantages brought by changes in the sport structure, there were meaningful achievements — a diversification of medal-winning disciplines and first-ever golds in new sports,\\\" he said.\\n[C-home-D1-P5] (biz.heraldcorp.com, 2026-10-04) That standing began to erode at the 2018 Jakarta-Palembang Games, when the gold count dropped sharply to 49 and Korea slipped to third behind China and Japan. The downward trend continued through the 2022 Hangzhou Games (42 golds, 59 silvers, 89 bronzes) and into the current edition, with a third-place finish appearing to become the new norm.\\n[C-home-D1-P6] (biz.heraldcorp.com, 2026-10-04) Gold-medal hopes in athletics, sepak takraw, wushu and jiu-jitsu also went unfulfilled, contributing to the overall assessment of a disappointing performance.\\n[C-home-D2-P1] (www.mk.co.kr, 2026-10-06) South Korea's national soccer team, led by interim coach Robert Moreno, will finish a harsh match against South American powerhouses and finish the final of the A-match warm-up match in October against Uzbekistan, an emerging Asian powerhouse. The match is drawing attention from soccer fans around the world as it checks the tactical completeness of the national team and whether \\\"captain\\\" Son Heung-min will achieve the highest goal record in Korean soccer history.\\n[C-home-D2-P2] (www.mk.co.kr, 2026-10-06) ① Ecuador (3-0 win): Perfect coordination of offense and defense, explosive firepower\\n[C-home-D2-P3] (www.mk.co.kr, 2026-10-06) ◆ Son Heung-min, who scored his 59th goal, surpassing Cha Bum-keun to rank No. 1 in the most A-match in Korea\\n[C-home-D2-P4] (www.mk.co.kr, 2026-10-06) The Korean national team, which started under the interim coach Moreno, is the last stage of the four-game series against Uzbekistan. The national team made a fresh start with a 3-0 victory in its first match against Ecuador, thanks to consecutive goals from Oh Hyun-kyu, Son Heung-min and Lee Dong-kyung.\\n[C-home-D2-P5] (www.mk.co.kr, 2026-10-06) ④ Uzbekistan (10/6): Final tactics completion test for Asian team\\n[C-home-D2-P6] (www.mk.co.kr, 2026-10-06) ▲ Participating game: 118th round of proto-match (winner loss, handicap, under-over, SUM), 28th round of soccer Toto match\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력은 **object 로만** 받는다 — 최상위 배열은 스키마가 못 받는다.\", \"properties\": {\"variables\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 s4 — 모델이 내는 변수 후보. ⚠️ **방향 칸이 없다**(코드가 정한다).\", \"properties\": {\"claim\": {\"title\": \"Claim\", \"type\": \"string\"}, \"doc_id\": {\"enum\": [\"C-home-D1\", \"C-home-D2\"], \"type\": \"string\"}, \"match_link\": {\"title\": \"Match Link\", \"type\": \"string\"}, \"quote\": {\"title\": \"Quote\", \"type\": \"string\"}, \"subject\": {\"enum\": [\"team:000129\", \"team:000245\"], \"type\": \"string\"}, \"subtask\": {\"enum\": [\"C-home\"], \"type\": \"string\"}, \"target\": {\"title\": \"Target\", \"type\": \"string\"}, \"type\": {\"enum\": [\"stakes\", \"individual_title\", \"regression\", \"team_stats\"], \"type\": \"string\"}}, \"required\": [\"subtask\", \"type\", \"subject\", \"claim\", \"target\", \"match_link\", \"quote\", \"doc_id\"], \"title\": \"VarCandidate\", \"type\": \"object\"}, \"title\": \"Variables\", \"type\": \"array\"}}, \"required\": [\"variables\"], \"title\": \"VarCandidates\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-06T09:03:36.993028+00:00",
+ "id": "aec74a7e-cc12-461f-985b-95aceb3ca051",
+ "object": "chat.completion",
+ "created": 1791277416,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": [\n    {\n      \"subtask\": \"C-home\",\n      \"type\": \"individual_title\",\n      \"subject\": \"team:000129\",\n      \"claim\": \"Son Heung-min scored his 59th goal, surpassing Cha Bum-keun to rank No. 1 in the most A-match in Korea.\",\n      \"target\": \"Son Heung-min\",\n      \"match_link\": \"Uzbekistan\",\n      \"quote\": \"◆ Son Heung-min, who scored his 59th goal, surpassing Cha Bum-keun to rank No. 1 in the most A-match in Korea\"\n   ,\n    \"doc_id\": \"C-home-D2\"\n    },\n    {\n      \"subtask\": \"C-home\",\n      \"type\": \"stakes\",\n      \"subject\": \"team:000129\",\n      \"claim\": \"The match against Uzbekistan is the final stage of the four-game series and serves as a final tactics completion test for the Asian team.\",\n      \"target\": \"Uzbekistan\",\n      \"match_link\": \"Uzbekistan\",\n      \"quote\": \"④ Uzbekistan (10/6): Final tactics completion test for Asian team\"\n    ,\n    \"doc_id\": \"C-home-D2\"\n    }\n  ]\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1158,
+  "completion_tokens": 276,
+  "total_tokens": 1434,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

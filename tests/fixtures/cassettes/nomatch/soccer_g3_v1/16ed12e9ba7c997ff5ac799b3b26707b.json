@@ -1,0 +1,106 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "China Tajikistan 輪換",
+ "recorded_at": "2026-10-06T08:59:34.477061+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "YES‐CEDICT Chinese Dictionary 一二三漢英大詞典",
+   "content": "1467페이지30MBProvince‐Level Divisions of China 1362 8. Pinyin‐Stroke Order Index 1363 4 Preface The YES‐CEDICT Chinese... of China 国家语委, 2014); All 13,000 plus characters in the latest version of Xinhua Zidian (新华字典，... of China and Pinyin‐Stroke Order Index. There are two versions of this dictionary. Version S is sorted by the...1467페이지30MB",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=5ea4297d_a5d68d94&type=ofullfill176_176_white_trim2",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.newlonkong.com/English/wp-content/uploads/2024/05/yes-cedictvt-JMCL4.pdf",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.newlonkong.com",
+    "/English/wp-content/uploads/2024/05/yes-cedictvt-JMCL4.pdf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "농업유산 보존 관리 및 연계 협력을 위한 한 중 일 Workshop",
+   "content": "335페이지74MBによる一年生 -多年生の輪換システム - 植林と焼畑農業の組み合わせ 6 - 16 - u7,096km2の範囲にある標高 300mから6500mの標高別土地 利用： • 農牧業(4000-6000 m) • 高い標高での自給的農業 (2500- 4000 m) • 丘陵地農業とアグロフォレスト リー (300–2500 m) • 棚田や谷での稲作 (300–1700 m) 引用: Sharma, 2007 伝統的な農業システム - シッキム...335페이지74MB",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=01dce3eb_8c314699&type=ofullfill176_176_white_trim2",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.jri.re.kr/presentation/file/180/1",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.jri.re.kr",
+    "/presentation/file/180/1",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "qwant",
+   "access denied"
+  ]
+ ]
+}

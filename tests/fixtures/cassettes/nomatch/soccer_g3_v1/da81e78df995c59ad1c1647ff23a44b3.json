@@ -1,0 +1,138 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "China Tajikistan retirement ceremony",
+ "recorded_at": "2026-10-06T08:59:27.732673+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "DABS, Tajikistan’s Pamir Energy sign agreement on electricity supply to Badakhshan | Ariana News | Afgh....",
+   "content": "2일 전Da Afghanistan Breshna Sherkat (DABS) and Tajikistan-based Pamir Energy Company have signed a cooperation agreement to provide electricity to border districts of Badakhshan province. The agreement was signed in Dushanbe, Tajikistan, by Abdul Haq Hamkar, Chief Executive Officer of DABS, and Amir Khan Rahim, President of Pamir Energy. The agreement is aimed at expanding cooperation, improving electricity supply and creating the necessary conditions for providing power services to residents of Bada....2일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.ariananews.af%2Fwp-content%2Fuploads%2F2026%2F10%2FDAB-1.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.ariananews.af/dabs-tajikistans-pamir-energy-sign-agreement-on-electricity-supply-to-badakhshan/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ariananews.af",
+    "/dabs-tajikistans-pamir-energy-sign-agreement-on-electricity-supply-to-badakhshan/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Afghan envoy in Moscow stresses economic cooperation with region | Ariana News | Afghanistan News",
+   "content": "2일 전Gul Hassan Hassan, Afghanistan’s ambassador to Moscow, attended and addressed the international forum “The North Caucasus: A Space of Dialogue, Traditions and Development.” In his speech, Hassan emphasized the importance of mutual respect, dialogue, economic cooperation and joint development between Afghanistan and countries in the region. On the sidelines of the forum, the Afghan ambassador met with Anton Borisovich Doronin, Minister of Economic Development of Russia’s Stavropol region.....2일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.ariananews.af%2Fwp-content%2Fuploads%2F2026%2F10%2FGul-Hassan.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.ariananews.af/afghan-envoy-in-moscow-stresses-economic-cooperation-with-region/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.ariananews.af",
+    "/afghan-envoy-in-moscow-stresses-economic-cooperation-with-region/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ayman Adly - Gulf Times",
+   "content": "4일 전Qatar, China enter new phase of co-operation across sectors ; Qatar and China are set to deepen their strategic partnership across energy, investment, infrastructure, artificial intelligence, finance, and people-to-people exchanges, Chinese ambassador to Qatar, Cao Xiaolin, said yesterday evening, highlighting growing political co-ordination between Doha and Beijing amid ongoing regional and global challenges. The envoy hosted a special reception on the occasion of the 77th anniversary of the fo....4일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fcdnx.premiumread.com%2F%3Furl%3Dhttps%3A%2F%2Fgulf-times.com%2Fgulftimes%2Fuploads%2Fimages%2F2026%2F09%2F30%2F497761.jpg%26w%3D400%26q%3D100%26f%3Dwebp%26v%3D1&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.gulf-times.com/author/50/ayman-adly",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.gulf-times.com",
+    "/author/50/ayman-adly",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ]
+ ]
+}

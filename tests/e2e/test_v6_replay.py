@@ -437,3 +437,70 @@ def test_불변식16_사실이_그대로면_등급도_그대로다(card: Card):
     assert [(e.line.market, e.line.side, e.grade) for e in got.evals] == \
            [(e.line.market, e.line.side, e.grade) for e in card.evals], \
         "🔴 사실이 그대로인데 등급이 바뀌었다(④)"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **변수 관련성 — 새 불변식 17~19**(사용자 지시 2026-10-06(4차) ④)
+# ══════════════════════════════════════════════════════════════════
+#
+# > ④ E2E 불변식 추가: 기사 출처 변수는 전부 `match_link` 근거가 문단에 있다 /
+# >   XI 상태가 `none` 이면 IR02 변수가 0개 / 홈 이점 숫자의 출처 대회 유형이
+# >   경기의 대회 유형과 같다.
+
+
+def test_불변식17_기사_변수는_전부_이_경기와_이어지는_근거를_가진다(
+        card: Card, docs_by_id: dict):
+    """17. 기사에서 온 변수는 `match_link` 가 있고, **그 말이 문단에 글자로** 있다.
+
+    🔴 왜: 실측 2026-10-06 — 아시안게임 문단에서 뽑은 말이 A대표 카드에 들어왔다.
+       그 줄들은 *"어느 경기 이야기인지"* 를 아무 데도 안 적고 있었다.
+    ⚠️ 규칙으로 지은 변수(`from_rule`)는 문단이 없다 — 검사 대상이 아니다.
+    """
+    said = [v for v in card.variables if v.doc_ids and not v.from_rule]
+    assert said, "🔴 기사에서 온 변수가 0개다 — 이 고정물이 검사할 것을 잃었다"
+    for v in said:
+        assert v.match_link, f"🔴 `{v.id}` 에 match_link 가 없다 — {v.claim}"
+        body = "\n".join(str(getattr(docs_by_id.get(d), "body", ""))
+                         for d in v.doc_ids)
+        if not body:
+            continue                    # 본문을 못 되찾은 문서는 2·9 가 잡는다
+        from app.core.stages.s5_verify import norm
+        assert norm(v.match_link) in norm(body), \
+            f"🔴 `{v.id}` 의 match_link 가 문단에 없다: {v.match_link!r}"
+
+
+def test_불변식18_오늘_XI_가_없으면_IR02_변수가_없다(card: Card):
+    """18. XI 상태가 `none` 이면 **IR02(로테이션) 변수는 0개**다.
+
+    🔴 왜: 실측 2026-10-06 — 오늘 XI 가 안 나온 경기에서 *"직전 XI 와 다르다"* 를
+       말했다. 비교 대상이 없는데 비교를 한 것이다(사용자 지시 ②).
+    """
+    now = card.facts.xi.get(card.match.home) if card.facts.xi else None
+    both = [card.facts.xi.get(k) for k in (card.match.home, card.match.away)] \
+        if card.facts.xi else []
+    states = {getattr(x, "state", "none") for x in both if x is not None}
+    mine = [v for v in card.variables if v.from_rule == "IR02"]
+    if not states or states <= {"none"}:
+        assert not mine, f"🔴 오늘 XI 가 없는데 IR02 변수가 {len(mine)}개다: " \
+                         f"{[v.claim for v in mine]}"
+    else:
+        assert now is not None or both, "XI 표가 비어 있다"
+
+
+def test_불변식19_홈_이점_숫자는_같은_대회_유형에서_왔다(card: Card):
+    """19. 홈 이점 변수의 숫자는 **그 경기의 대회 유형** 표에서 온 것이다.
+
+    🔴 왜: 실측 2026-10-06 — 대표팀 친선 카드에 **MLS**(리그) 숫자가 적혀 있었다.
+    ⚠️ 숫자가 없으면(`수치 없음`) 통과다 — 빌려 오지 않은 것이 요점이다(③).
+    """
+    from app.core.stages.s5_verify import comp_kind
+    kind = comp_kind(card.match, card.facts)
+    mine = [v for v in card.variables if v.type == "home_field"]
+    assert mine, "🔴 home_field 변수가 빠졌다(①)"
+    for v in mine:
+        if "수치 없음" in v.claim:
+            continue
+        if "쪼갠 표" in v.claim:
+            continue                    # 잰 수다 — 빌려 온 것이 아니다
+        assert f"`{kind}`" in v.claim, \
+            f"🔴 홈 이점 숫자의 출처 대회가 `{kind}` 가 아니다: {v.claim}"

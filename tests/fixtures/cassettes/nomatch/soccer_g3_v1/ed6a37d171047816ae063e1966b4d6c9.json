@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T08:59:46.870890+00:00",
+ "order": [
+  "Rybakina Makes Stunning Announcement After China Open Loss - HEAVY Elena Rybakina made a stunning announcement following her upset loss at the China Open as concerns emerge over a lingering injury.",
+  "Asian Games 2026 Highlights: India Ends 44 Year Asian Games Drought, Beats China To Clinch Gold Medal | R.... 4일 전News /SportFit /Asian Games 2026 Highlights: India Ends 44 Year Asian Games Drought, Beats China To Clinch Gold Medal4일 전",
+  "Three more golds help Thailand surpass target 4일 전off China in three sets to win beach volleyball gold, Thailand’s first in the discipline for 28 years.... The decider turned in Thailand’s favour as the Chinese pair were forced to take a lengthy injury break. On... against Tajikistan’s Fariza Qosimboeva to earn a spot in the bronze medal match. It was the team’s second...4일 전",
+  "China vs Tajikistan: Summary, H2H Stats, Lineups & Highlights Match summary, head-to-head stats, lineups, standings, and highlights for China vs Tajikistan. All in one place — only on ScoresFeed.",
+  "China vs Tajikistan live score, H2H and lineups | Sofascore China Tajikistan live score starts on 6 Oct 2026 at 11:35 UTC time at Longxing Football Stadium stadium, Chongqing city, China in International Friendly Games, World.",
+  "Tajikistan Newswire - EIN Presswire Tajikistan Performs First Liver Transplant on Two-Year-Old Child Tajikistan has performed its first liver transplant on a two-year-old child, with specialists at the National Scientific Centre for Organ and Tissue Transplantation carrying out the procedure, according to Tajik news agency Asia-Plus. In a statement …",
+  "China vs Tajikistan - World Friendlies - October 06, 2026 | HalaScore China vs Tajikistan live score, match statistics, lineups, and player ratings. World Friendlies - October 06, 2026. Vote and rate players on HalaScore!",
+  "China vs Tajikistan - International Friendlies - October 6, 2026 ... Full coverage of China vs Tajikistan game on Tuesday 6th of October 2026 at 11:35 am including match guide, data analysis, probability analysis, standings"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 11문단 → 재정렬 상위 8"
+}

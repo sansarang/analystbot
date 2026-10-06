@@ -89,6 +89,22 @@ def types_for_sport(sport: str) -> list[str]:
     return out
 
 
+def tier_words() -> dict[str, list[str]]:
+    """🔴🔴 **팀 등급 낱말**(사용자 지시 2026-10-06(4차) ①-a) — `등급 → 모든 언어 낱말`.
+
+    🔴 표는 `config/search_words.yaml` 의 `words.team_tier` 하나다(사본 금지).
+    ⚠️ `senior`(A대표)는 **기본값**이다 — 다른 등급 낱말이 없으면 그 등급으로 본다.
+    """
+    box = (_load(SEARCH_WORDS).get("words") or {}).get("team_tier") or {}
+    out: dict[str, list[str]] = {}
+    for tier, langs in box.items():
+        got: list[str] = []
+        for words in (langs or {}).values():
+            got += [str(w).lower() for w in (words or [])]
+        out[str(tier)] = sorted(set(got))
+    return out
+
+
 def sport_words(sport: str) -> list[str]:
     """🔴 그 종목을 가리키는 **모든 언어의 낱말**(`search_words.yaml`).
 

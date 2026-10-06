@@ -101,6 +101,13 @@ class DropReason(str, Enum):
     STALE = "stale"
     POST_MATCH = "post_match"
     IDENTITY_MISMATCH = "identity_mismatch"
+    #: 🔴🔴 **같은 등급의 팀이 아니다**(사용자 지시 2026-10-06(4차) ①-a)
+    #  ⚠️ 실측: A대표 경기 카드에 **아시안게임 금메달 수** 기사가 변수로 들어왔다.
+    #     축구 대표팀은 A대표·U-23·아시안게임·올림픽·여자·청소년이 **다른 팀**이다.
+    TEAM_TIER_MISMATCH = "team_tier_mismatch"
+    #: 🔴🔴 **이 경기와 이어지는 근거가 없다**(사용자 지시 2026-10-06(4차) ①-b)
+    #  ⚠️ 상대팀 이름·경기 날짜·경기장·"우즈벡전" 같은 표현이 문단에 있어야 한다.
+    OFF_MATCH = "off_match"
     #: 🔴 `stakes` 인데 **구체적 동기가 없다**(사용자 지시 2026-10-06(2차) ③)
     #  ⚠️ *"10월에 친선 둘을 치른다"* 는 동기가 아니다 — 진출·탈락·우승·기록·감독
     #     거취·순위 중 하나가 claim 에 있어야 그 유형이다.
@@ -276,6 +283,10 @@ class Facts(Frozen):
     schedule: dict = Field(default_factory=dict)
     #: 🔴🔴 **선수 → 포지션 표**(경기 단위 · §2) — §1-1 결장 유형과 IR01·IR02 가 쓴다
     player_pos: dict[str, str] = Field(default_factory=dict)
+    #: 🔴🔴 **소집 명단**(선발+교체 전원 · 사용자 지시 2026-10-06(4차) ①-b·②)
+    #
+    #  🔴 *"명단에 없음 = 결장, XI 에 없음 = 벤치"* — 그 둘을 가르는 자리다.
+    squad: dict[str, list[str]] = Field(default_factory=dict)
     match_format: MatchFormat = "unknown"
     extra_time: bool | None = None
     #: 🔴 1차전/2차전(§3 IR07) — 모르면 `None`
@@ -334,6 +345,17 @@ class VarCandidate(Frozen):
     #  ⚠️ 실측 2026-10-06: 김민재 결장이라는 **한 사실**이 변수 11개로 셌다 —
     #     문장이 저마다 달라 MinHash 가 묶지 못했다. 🔴 이 칸이 그 열쇠다.
     target: str
+    #: 🔴🔴 **이 경기와 이어지는 근거**(사용자 지시 2026-10-06(4차) ①-b)
+    #
+    #  > 추출 스키마에 `match_link` 칸(문단에서 이 경기와 이어지는 근거 — 상대팀
+    #  > 이름, 경기 날짜, 경기장, *"우즈벡전"* 같은 표현)을 **필수로** 넣는다.
+    #  > 코드가 그 근거가 문단에 **실제로 있는지** 확인하고, 없으면 버린다(`off_match`).
+    #
+    #  ⚠️ 실측 2026-10-06: *"한국 남자축구 4연속 금메달"*·*"금메달 수 49로 급감"* 이
+    #     A대표 친선 카드의 변수로 들어왔다 — 그 문단은 **이 경기 이야기가 아니다.**
+    #  🔴 예외는 **선수 개인 상태**다(부상·피로·기록 도전): 그 선수가 이번 소집
+    #     명단에 있으면 경기 연결로 **인정**한다(s5 가 명단으로 센다).
+    match_link: str
     #: 🔴 본문의 글자 **그대로** — s5 가 Doc 본문에 대고 맞춰 본다
     quote: str
     #: 🔴 어느 Doc 인가 — 요청마다 **그 하위에 넘긴 id 만** `enum` 으로 박는다
@@ -414,6 +436,8 @@ class Variable(Frozen):
     goals: Goals = "none"
     #: 🔴 그 사실의 핵심 대상 — **병합 열쇠**다(같은 subject·type·target = 한 사실)
     target: str = ""
+    #: 🔴 이 경기와 이어지는 근거(①-b) — 기사 변수는 **비어 있을 수 없다**
+    match_link: str = ""
     hardness: Hardness
     weight: float
     claim: str

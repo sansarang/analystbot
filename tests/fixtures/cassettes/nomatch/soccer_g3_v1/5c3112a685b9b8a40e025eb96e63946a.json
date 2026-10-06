@@ -1,0 +1,10 @@
+{
+ "kind": "fetch",
+ "url": "https://sports.ndtv.com/asian-games-2026/asian-games-2026-day-11-live-updates-12116809",
+ "query": "",
+ "recorded_at": "2026-10-06T09:01:02.737212+00:00",
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

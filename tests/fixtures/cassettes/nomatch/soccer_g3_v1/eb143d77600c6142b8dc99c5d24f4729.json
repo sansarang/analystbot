@@ -1,0 +1,11 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T08:59:54.633289+00:00",
+ "order": [
+  "Ayman Adly - Gulf Times 4일 전Qatar, China enter new phase of co-operation across sectors ; Qatar and China are set to deepen their strategic partnership across energy, investment, infrastructure, artificial intelligence, finance, and people-to-people exchanges, Chinese ambassador to Qatar, Cao Xiaolin, said yesterday evening, highlighting growing political co-ordination between Doha and Beijing amid ongoing regional and global challenges. The envoy hosted a special reception on the occasion of the 77th anniversary of the fo....4일 전",
+  "DABS, Tajikistan’s Pamir Energy sign agreement on electricity supply to Badakhshan | Ariana News | Afgh.... 2일 전Da Afghanistan Breshna Sherkat (DABS) and Tajikistan-based Pamir Energy Company have signed a cooperation agreement to provide electricity to border districts of Badakhshan province. The agreement was signed in Dushanbe, Tajikistan, by Abdul Haq Hamkar, Chief Executive Officer of DABS, and Amir Khan Rahim, President of Pamir Energy. The agreement is aimed at expanding cooperation, improving electricity supply and creating the necessary conditions for providing power services to residents of Bada....2일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 2문단 → 재정렬 상위 8"
+}

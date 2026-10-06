@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T09:01:43.497357+00:00",
+ "order": [
+  "Their recent form has also been poor. On the 27th of last month, China also suffered a 0-3 crushing defeat in a home match against New Zealand (ranked 86th). They conceded eight goals in two matches and failed to score a single one.",
+  "In terms of match performance, Palestine dominated China. While China trailed slightly in possession at 46%-54%, there was a significant gap in shots on target, with the score being 3-9. Total shots also favored Palestine at 12-16. The difference was evident from the quality of their attacks.",
+  "China's Sina.com reported the shocking result as \"the first defeat in 60 years.\" After defeating Palestine 7-0 in their first encounter in 1966, China had not lost any of their head-to-head matches up until this game, holding a record of five wins and two draws.",
+  "He also expressed regret over the team's overall focus. Coach Xiao Zai pointed out, \"It seems some players were still thinking about the league or the AFC Champions League.\"",
+  "Coach Xiao Zai said, \"From 1998 to now, I have lived for almost 30 years as a player and coach, experiencing both victories and defeats. Defeat is part of football, so it must be accepted,\" but added, \"Honestly, I have never experienced this kind of defeat before.\"",
+  "However, collapsing at home with a 0-5 loss, they suffered the humiliation of their first-ever defeat against Palestine.",
+  "The Chinese men's national football team suffered a 0-5 rout in a friendly match against Palestine held on the 2nd at Longxing Football Field in Chongqing, China.",
+  "At the press conference, Coach Xiao Zai bowed his head, saying, \"I am sorry for losing by such a score difference,\" and added, \"There is nothing more to explain. This kind of match is difficult for both me and the team to accept.\""
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

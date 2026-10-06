@@ -89,7 +89,8 @@ def unmapped_of(sid: str) -> list[str]:
 
 
 def paragraphs_of(docs: list[Doc], kinds: list[str], *, cap: int = 0,
-                  note: Any = None) -> tuple[str, dict[str, str]]:
+                  note: Any = None, tier: str = "",
+                  drop: Any = None) -> tuple[str, dict[str, str]]:
     """🔴 ④ 문단 묶음 + **머리표 → 문서 id** 표. `(글, 표)`.
 
     문단마다 `[D1-P3] (도메인, 발행일)` 머리표를 붙인다 — 모델은 `doc_id` 만
@@ -118,12 +119,55 @@ def paragraphs_of(docs: list[Doc], kinds: list[str], *, cap: int = 0,
         for j, para in enumerate(got[:6], 1):
             if len(lines) >= cap:
                 break
+            # 🔴 **등급 검사**(①-a) — 다른 등급 팀 이야기는 문단째로 버린다
+            if tier:
+                ok_t, said_t = tier_ok(para, tier)
+                if not ok_t:
+                    if drop is not None:
+                        drop(f"s4/{d.id}-P{j}", said_t[:100])
+                    continue
             tag = f"[{d.id}-P{j}]"
             when = (f"{d.published_at:%Y-%m-%d}" if d.published_at
                     else "발행일 없음")
             lines.append(f"{tag} ({d.domain}, {when}) {para}")
             where[tag] = d.id
     return "\n".join(lines), where
+
+
+def tier_of(ref: MatchRef) -> str:
+    """🔴🔴 **이 경기의 팀 등급**(사용자 지시 2026-10-06(4차) ①-a).
+
+    🔴 팀 이름·대회명에서 읽는다(`South Korea U23`·`Asian Games`·`Women`). ⚠️ 아무
+       낱말도 없으면 **`senior`**(A대표)다 — 그것이 표의 기본값이다.
+    """
+    from app import rules
+    said = f"{ref.home_name} {ref.away_name} {ref.competition}".lower()
+    box = rules.tier_words()
+    for tier in ("women", "youth", "u23", "asiad", "olympic"):
+        if any(w in said for w in box.get(tier, [])):
+            return tier
+    return "senior"
+
+
+def tier_ok(para: str, tier: str) -> tuple[bool, str]:
+    """🔴 그 문단이 **같은 등급**의 팀 이야기인가. `(통과, 사유)`.
+
+    > 경기 팀과 **다른 등급 낱말이 주어로 쓰인 문단은 버린다**(`team_tier_mismatch`).
+
+    🔴 **다른 등급 낱말이 있고 이 경기 등급 낱말은 없을 때만** 버린다 — 둘 다 있으면
+       비교 문장일 수 있다(*"A대표와 달리 U-23 은…"*). ⚠️ 한쪽만 보면 멀쩡한 문단을
+       버린다(0건보다 나쁜 것은 틀린 자료지만, 멀쩡한 것을 버리는 것도 손실이다).
+    """
+    from app import rules
+    box = rules.tier_words()
+    low = " ".join(str(para or "").lower().split())
+    mine = [w for w in box.get(tier, []) if w in low]
+    others = {t: [w for w in ws if w in low]
+              for t, ws in box.items() if t != tier}
+    hit = {t: ws for t, ws in others.items() if ws}
+    if hit and not mine:
+        return False, (f"🔴 다른 등급 낱말이 주어다({hit}) — 이 경기는 `{tier}` 다")
+    return True, ""
 
 
 def _system(sid: str, kinds: list[str], ref: MatchRef) -> str:
@@ -156,6 +200,15 @@ def _system(sid: str, kinds: list[str], ref: MatchRef) -> str:
         #     문장이 저마다 달라 문장 유사도로는 묶이지 않는다.
         #  🔴 그래서 **"누가·무엇"** 을 모델이 한 낱말로 적게 하고, 코드가 그
         #     열쇠로 합친다(같은 subject·type·target = 한 사실).
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **`match_link` — 이 경기와 이어지는 근거**(①-b)
+        # ══════════════════════════════════════════════════════════════
+        "🔴 `match_link` 는 **그 문단이 이 경기 이야기라는 근거**를 문단에서 "
+        "**글자 그대로** 따온 것이다 — 상대팀 이름, 경기 날짜, 경기장, "
+        f"`{ref.away_name}전` 같은 표현. ⚠️ 문단에 없는 말을 적으면 그 줄은 "
+        "**버려진다**(코드가 문단에 대고 맞춰 본다).\n"
+        "⚠️ 이어지는 근거가 문단에 없으면 그 사실은 **적지 마라** — 다른 경기 "
+        "이야기다(금메달 수·지난 대회·다른 팀 이야기가 그렇게 들어왔다).\n"
         "🔴 `target` 은 그 사실의 **핵심 대상 하나**다 — 선수 이름(`Kim Min-jae`) "
         "또는 사건 한 낱말(`record`·`travel`). ⚠️ 같은 사실을 여러 기사에서 봤다면 "
         "`target` 을 **같은 글자**로 적어라(그것으로 합친다). 문장을 넣지 마라.\n"
@@ -217,7 +270,11 @@ def _ask(sid: str, mine: list[Doc], ref: MatchRef, *, state: RunState,
         state.drop(tag, DropReason.TYPE_OFF_CATALOG,
                    f"`{sid}` 담당 유형을 표에서 못 찾았다")
         return []
-    block, _where = paragraphs_of(mine, kinds, note=state.note)
+    tier = tier_of(ref)
+    block, _where = paragraphs_of(
+        mine, kinds, note=state.note, tier=tier,
+        drop=lambda what, why: state.drop(what, DropReason.TEAM_TIER_MISMATCH,
+                                          why))
     if not block.strip():
         state.drop(tag, DropReason.BODY_MISSING,
                    f"문서 {len(mine)}건에서 문단을 못 뽑았다")

@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T08:59:32.441698+00:00",
+ "order": [
+  "AMLC matches Trillanes claim: Carpio firm got P319M from China 23시간 전There are other CTRs recorded by AMLC outside of China, including 13 from Ukraine, six each from Russia and Kazakhstan, four from Lithuania, two each from Tajikistan and South Africa, and one each from the United Arab Emirates and the United States. All in all, there are 178 CTRs and three STRs, representing a total amount of...23시간 전",
+  "China suffer 0-5 home defeat to Palestine 3일 전Before this match, China had never lost to Palestine, holding a record of five wins and two draws. But in this game they collapsed at home, conceding five goals.... After this news conference we will probably go straight to prepare for the next match.\" China will play Tajikistan (101st) on June 6 in the final match of this four...3일 전",
+  "Asian Games 2026: Aman Sehrawat’s gold, Antim Panghal’s silver help India record best wrestling campa.... 3일 전He then produced another comeback against Tajikistan’s Aiaal Belolyubskii in the semi-finals. Trailing 6-2 after the opening period, Aman stormed back to win 14... She then recovered from an early deficit to beat the People’s Republic of China’s Zhang Jin, the reigning Asian champion, 6-1 in the semi-finals. Earlier...3일 전",
+  "\"This kind of defeat is a first\" China's soccer disaster, legend bows his head in shock... Shocking 0-5 l.... 3일 전Chinese national football team. /Photo=Screenshot from the Chinese Football Association website3일 전",
+  "Asian Games 2026 Day 11 LIVE Updates: India Match World Record To Strike Archery Gold, Enter Another Fina.... 6일 전Asian Games 2026 Day 11 LIVE: India clinched gold medal in women's compound team archery, beating China while also matching the world record. Anahat Singh and Tanvi Khanna helped India qualify for...6일 전",
+  "Atlanta and its Olympic connection: Key facts about the host city of 1996 Olympic Games 6일 전Príncipe, Tajikistan and Turkmenistan made their Olympic debut. Armenia, Belarus, Czech Republic, Georgia, Kazakhstan, Kyrgyzstan, Moldova, Slovakia, Ukraine and... Now, Amy Van Dyken had the world champion and a world record holder Le Jingyi from China beside her lane for the 50 metres final. Amy Van Dyken says that, at this...6일 전",
+  "Road Freight from China to Tajikistan: Cost & Transit Time 24시간 전Road Freight from China to Tajikistan by truck and TIR. Compare costs, transit times, routes, customs clearance, and door-to-door delivery options.24시간 전",
+  "Akash air defence system reaches Turkmenistan: Check its capabilities as it joins Chinese systems to prot.... 1일 전China, reflecting the country’s mix of defence suppliers. Akash export expands India’s presence in Central Asia Armenia was the first foreign customer for Akash, while the confirmation of exports to Tajikistan and... Official figures from the Ministry of Defence show that defence exports reached a record Rs 38,424 crore in...1일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 14문단 → 재정렬 상위 8"
+}

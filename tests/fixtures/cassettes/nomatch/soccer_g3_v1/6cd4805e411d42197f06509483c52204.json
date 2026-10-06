@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T09:01:14.811412+00:00",
+ "order": [
+  "Finally, he added, \"It is very painful, but it can be a valuable experience for me and the team. I believe both the team and I have the ability to adjust. After this news conference we will probably go straight to prepare for the next match.\" China will play Tajikistan (101st) on June 6 in the final match of this four-game international series.",
+  "Xiao Zai, a former star of Chinese soccer, wore a very gloomy expression. He said, \"I am truly sorry to lose by this score. I have nothing more to explain. This kind of match is very hard for both me and the team to accept. Since we lost the match, there is nothing more to say,\" and added, \"I will accept all criticism. I hope we can play well in the next match.\"",
+  "The China men's national team, led by coach Xiao Zai, lost 0-5 to Palestine on June 2 at the Chongqing Longxing Football Stadium in an international friendly. It was literally a disaster. The Paper highlighted \"the first defeat in 60 years\" after they first met Palestine in 1966 and won 7-0.",
+  "Xiao Zai said, \"It is clear that neither the process nor the results of this losing streak can be satisfactory. But this is football,\" and emphasized, \"We must get out of this situation as quickly as possible. If we had scored in the first half it might have been a little better, but this is football. We will shake it off as soon as possible. I told the players that the match is not over and they must prepare well for the next game.\"",
+  "Palestine dominated both the result and the play. China only led slightly in possession but rarely created threatening attacks. They were also heavily outshot, 3-9 in shots on target.",
+  "On May 27 China also lost 0-3 to New Zealand, ranked 86th by FIFA, and they have now been routed by lower-ranked Palestine (95th) by five goals. Ranked 91st by FIFA, China conceded eight goals across two matches without scoring a single goal.",
+  "Before this match, China had never lost to Palestine, holding a record of five wins and two draws. But in this game they collapsed at home, conceding five goals. In the previous seven matches combined they had conceded only two goals, yet this time they conceded four goals within 54 minutes.",
+  "He could not hide the shock of the defeat. Xiao Zai said, \"I have been a professional since 1998, nearly 30 years now. As a player and a coach I have won and lost,\" and confessed, \"I am probably the most disheartened person. Honestly, I have never experienced such a defeat before. But this is also a process we must go through.\""
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 12문단 → 재정렬 상위 8"
+}
