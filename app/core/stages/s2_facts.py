@@ -77,20 +77,47 @@ def _format_of(ref: MatchRef) -> tuple[str, str]:
 
 
 async def _depth(ref: MatchRef, *, net: Any, search: Any) -> list:
-    """🔴 깊이 소스 — `ext_id` 가 가리키는 공식 경로. ⚠️ 없으면 빈 목록."""
-    from app import cells, matchkey
-    from app.collect import fotmob
-    src = matchkey.source_of(ref.id)
-    if src != "fotmob" or net is None:
+    """🔴🔴 **공식 깊이 소스** — 어느 어댑터가 아나는 `ingest.context_of` 가 정한다.
+
+    ⚠️ 주소를 여기 적지 않는다(§2 · 사본 금지) — 종목마다 다른 경로를 손으로 적으면
+       리그가 늘 때 한 발 늦는다. 🔴 `ingest.context_of(리그, ext_id)` 하나가 그
+       라우팅의 원본이다.
+    ⚠️ **어댑터가 깊이를 안 주는 리그가 있다**(KBO 는 `sources_context` 가 빈
+       목록이다 — 그 API 가 예고 선발·라인업을 안 준다). 그때는 빈 목록이 **정직한
+       상태**다(있는 척하는 함수를 두지 않는다 · CLAUDE.md #2).
+    """
+    from app import cells
+    from app.collect import ingest
+    if net is None:
         return []
-    url = f"{fotmob.BASE}/match/{matchkey.id_of(ref.id)}"
-    got = await net.get(url)
-    if not getattr(got, "ok", False):
+    fn = ingest.context_of(ref.competition, ref.id)
+    if not callable(fn):
         return []
+    try:
+        raw = fn(ref.id)
+    except Exception:                                       # noqa: BLE001
+        return []
+    # 🔴 **부품이 무엇을 돌려줄지 타입으로 모른다** — `Iterable` 인지 확인하고 센다.
+    #    ⚠️ 모르는 것을 `list()` 에 넣으면 strict 가 맞게 막는다(그 자리가 ① 결함의
+    #       뿌리다 — "받는 쪽이 꼴을 믿었다").
+    srcs: list[Any] = list(raw) if isinstance(raw, (list, tuple)) else []
     out: list = []
-    for name in (ref.home_name, ref.away_name):
-        q = cells.Question(cells.Q_LINEUP, ref.id, team=name,
-                           league=ref.competition,
-                           deadline=ref.kickoff_utc)
-        out += list(fotmob.parse_context(got, q) or [])
+    for src in srcs:
+        url = str(getattr(src, "url", "") or "")
+        parse = getattr(src, "parse", None)
+        if not (url and callable(parse)):
+            continue
+        got = await net.get(url)
+        if not getattr(got, "ok", False):
+            continue
+        for name in (ref.home_name, ref.away_name):
+            q = cells.Question(cells.Q_LINEUP, ref.id, team=name,
+                               league=ref.competition,
+                               deadline=ref.kickoff_utc)
+            try:
+                said = parse(got, q)
+            except Exception:                               # noqa: BLE001
+                continue
+            if isinstance(said, (list, tuple)):
+                out += list(said)
     return out

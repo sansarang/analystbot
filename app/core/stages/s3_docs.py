@@ -198,10 +198,19 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
             break
         url = str(getattr(h, "url", "") or "")
         if url in cache:
-            # 🔴 **경기 단위 캐시** — 같은 URL 은 한 번만 받는다(§5 s3-4)
-            got = cache[url]
-            out.append(got.model_copy(update={"subtask": sid,
-                                              "id": f"D{len(out) + 1}"}))
+            # ══════════════════════════════════════════════════════
+            # 🔴🔴 **같은 URL 은 목록에 한 번만** — §8 2단계 합격 조건
+            # ══════════════════════════════════════════════════════
+            #
+            #  > Doc 마다 발행일 또는 사유, **같은 URL 중복 0**
+            #
+            #  ⚠️ 처음엔 캐시에서 **사본을 떠서** 하위마다 넣었다 — 그러면 같은
+            #     URL 이 목록에 여러 번 들어간다(실측 2026-10-06: 2건).
+            #  🔴 **건너뛰고 다음 후보로 간다.** 그 URL 의 내용은 이미 다른
+            #     하위가 들고 있고, 이쪽은 **다른 문서**를 받는 것이 낫다
+            #     (덮는 범위가 넓어진다). ⚠️ 그 사실을 사유로 남긴다(#3).
+            state.note(f"s3/{name} 다른 하위가 이미 들고 있다 — 건너뛴다: "
+                       f"{url[:60]}")
             continue
         if not sub.budget.may_fetch():
             state.note(f"s3/{name} 열기 상한({sub.budget.fetch_cap})에 닿았다 — "

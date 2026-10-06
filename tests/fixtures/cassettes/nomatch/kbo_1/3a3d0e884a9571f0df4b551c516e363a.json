@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Kia Tigers Samsung Lions 은퇴 경기",
+ "recorded_at": "2026-10-06T02:48:00.643179+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "KIA Tigers shut out Samsung Lions, narrow gap to 5th place",
+   "content": "KIA Tigers shut out Samsung Lions, narrow gap to 5th place KIA Tigers shut out Samsung Lions, narrow gap to 5th place KIA Tigers shut out Samsung Lions …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.chosun.com/english/sports-en/2025/09/10/O2ZNHJ7E2NEOHC4VBQIHBAXIDY/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.chosun.com",
+    "/english/sports-en/2025/09/10/O2ZNHJ7E2NEOHC4VBQIHBAXIDY/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "KIA Tigers Cheerleader Kim Hanna Retires After Season",
+   "content": "KIA Tigers Cheerleader Kim Hanna Retires After Season Announced retirement alongside marriage to Suwon FC cheering squad head, thanked fans OSEN=Jang",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.chosun.com/english/kpop-culture-en/2025/10/11/QOCVYFI7OVB2BOYTS6YCLAHDH4/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.chosun.com",
+    "/english/kpop-culture-en/2025/10/11/QOCVYFI7OVB2BOYTS6YCLAHDH4/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[﻿DUGOUT Tigers] KIA 타이거즈 임기영",
+   "content": "새신랑, 입장!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://v.daum.net/v/cDwZvoC3yZ",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "v.daum.net",
+    "/v/cDwZvoC3yZ",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "김호령 예비 FA 가치 폭등, 결승타·도루·호수비까지…KIA가 서둘러야 하는 이유",
+   "content": "경기 후 김호령의 유니폼은 흙으로 뒤덮였고, 가슴에 새겨진 ‘TIGERS’ 글자 중 일부가 떨어져 나갈 정도였습니다. 끝까지 뛰고 몸을 던지는 그의 경기 스타일을 단적으로 보여준 장면이었습니다. … 경기 승리 확률도 49.7%에서 82.3%까지 치솟았습니다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://m.blog.naver.com/signature90/224351639977",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "m.blog.naver.com",
+    "/signature90/224351639977",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "\"정말로 감사했습니다\" 9년간 헌신하고 KIA 떠나는 임기영의 마지막 인사…\"한 팀에 너무 오래 있었다 보니 실감 안 나\"",
+   "content": "\"정말로 감사했습니다\" 9년간 헌신하고 KIA 떠나는 임기영의 마지막 인사…\"한 팀에 너무 오래 있었다 보니 실감 안 나\" 한휘 기자 … 사진=유튜브 '기아타이거즈 KIA TIGERS' 캡처, 뉴시스, KIA 타이거즈 제공 Copyright © 스포탈코리아. 무단전재 및 재배포 금지.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://v.daum.net/v/20251121112647098",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "v.daum.net",
+    "/v/20251121112647098",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "KIA의 2025 캐치프레이즈는 '압도하라! V13_Always KIA TIGERS' | 연합뉴스",
+   "content": "프로야구 KIA 타이거즈의 2025년 캐치프레이즈 [KIA 타이거즈 제공. … (서울=연합뉴스) 하남직 기자 = 2024년 한국프로야구 통합우승(정규시즌·한국시리즈 우승)을 일군 KIA 타이거즈가 2025년 캐치프레이즈를 '압도하라! V13_올웨이스 KIA 타이거즈'(Always KIA TIGERS)로 정했다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.yna.co.kr/view/AKR20250213088700007",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.yna.co.kr",
+    "/view/AKR20250213088700007",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "프로야구 KIA, 최형우 1천500타점 기념 유니폼 예약 판매 | 연합뉴스",
+   "content": "프로야구 KIA, 최형우 1천500타점 기념 유니폼 판매 [KIA 타이거즈 제공. … (서울=연합뉴스) 장현구 기자 = 프로야구 KIA 타이거즈가 최형우의 역대 최초 1천500타점 달성을 기념하는 유니폼, 모자, 기념구를 22일부터 예약 판매한다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.yna.co.kr/view/AKR20230621118100007",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.yna.co.kr",
+    "/view/AKR20230621118100007",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "기아차-기아타이거즈, 유소년 야구단에 7600만원 전달",
+   "content": "‘타이거즈 러브투게더’ 행사 통해 기부금 전달 기아타이거즈 선수단, 러브투게더 유니폼 착용…기부 문화 확산 기아자동차와 기아타이거즈(KIA TIGERS)는 올해 두 번째 ‘타이거즈 러브투게더 데이’를 개최했다고 8일 밝혔다. 지난 6일 기아 챔피언스 필드에서 진행된… 이브이라운지",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://evlounge.donga.com/FOREV/article/all/20190708/96380896/3",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "evlounge.donga.com",
+    "/FOREV/article/all/20190708/96380896/3",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "KIA 타이거즈",
+   "content": "KIA 타이거즈 KIA TIGERS 팀 로고 이니셜 로고 … 설립 연도 … (해태 타이거즈) … (KIA 타이거즈) … 호걸이, 호야, 호연이, 하랑이 소속 리그 … KBO 리그 … KBO 퓨처스리그 … 이전 구단명 해태 타이거즈 (1982년~2001년) 홈 구장",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://ko.wikipedia.org/wiki/KIA_%ED%83%80%EC%9D%B4%EA%B1%B0%EC%A6%88",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/KIA_%ED%83%80%EC%9D%B4%EA%B1%B0%EC%A6%88",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "해태 타이거즈 - 위키백과, 우리 모두의 백과사전",
+   "content": "이 구단의 2001년 이후의 내용에 대해서는 KIA 타이거즈 문서를 참고하십시오. 해태 타이거즈 (Haitai Tigers)는 대한민국 광주광역시 , 전라남도 와 전라북도 를 연고지로 하였던 프로 야구팀 이었다. 한국야구위원회 소속으로 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://ko.wikipedia.org/wiki/%ED%95%B4%ED%83%9C_%ED%83%80%EC%9D%B4%EA%B1%B0%EC%A6%88",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ko.wikipedia.org",
+    "/wiki/%ED%95%B4%ED%83%9C_%ED%83%80%EC%9D%B4%EA%B1%B0%EC%A6%88",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[FUTURE⭐️] 늦은만큼 간절하게, 군제대 후 드래프트 지명 ➡️이제는 선발투수를 꿈꾸는 최건희",
+   "content": "KIA Tigers Story <투수 최건희> 존재하지 않는 이미지입니다. 오늘 Future Star 5번째 주인공은 투수 최건희입니다. 최건희는 2025년 신인드래프트에서 6라운드 전체 55순위로 KIA 타이거즈 유니폼을 입었습니다. 2002년생 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://m.blog.naver.com/kiatigers-1982/224316766971",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "m.blog.naver.com",
+    "/kiatigers-1982/224316766971",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "[NC vs KIA] 4/29 경기 I 2025 신한 SOL뱅크 KBO 리그 I 하이라이트 I TVING",
+   "content": "[NC vs KIA] 4/29 경기 I 2025 신한 SOL뱅크 KBO 리그 하이라이트짜릿한 승부의 순간, TVING SPORTS: tving.com/kbo/home#KBO리그 #야구 #티빙야구하이라이트 #NC다이노스 #KIA타이거즈",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=ssy-XNROFZQ",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=ssy-XNROFZQ",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "KIA 타이거즈/2025년",
+   "content": "홍원빈 2025.06.28투수이도현2025.09.21외야수박헌2025 KIA 타이거즈 배번 변경 목록날짜포지션성명기존 배번변경된 배번2025.05.05내야수정해원016642025.05.20투수성영탁039652025.05.30투수홍원빈021302025.06.28투수이도현015662025.09.21외야수박헌036672025 KIA 타이거즈 웨이버 공시 목록날짜포지션성명비고2025.10.05투수김승현2025.10.05투수박준표2025.10.05내야수서건창2025 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://namu.wiki/w/KIA%20%ED%83%80%EC%9D%B4%EA%B1%B0%EC%A6%88/2025%EB%85%84",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "namu.wiki",
+    "/w/KIA%20%ED%83%80%EC%9D%B4%EA%B1%B0%EC%A6%88/2025%EB%85%84",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Samsung lions-kia tigers game postponed to october due to rain",
+   "content": "Samsung lions-kia tigers game postponed to october due to rain Third rain cancellation impacts playoff race as teams vie for top 5 OSEN=Gwangju, Repor",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.chosun.com/english/sports-en/2025/09/09/JQOW2YF5S5D6VDETVOIW2UPQXQ/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.chosun.com",
+    "/english/sports-en/2025/09/09/JQOW2YF5S5D6VDETVOIW2UPQXQ/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Choi Hyeong-woo Leaves KIA Tigers for Samsung Lions",
+   "content": "Choi Hyeong-woo Leaves KIA Tigers for Samsung Lions Nine-Year KIA Veteran Treats Juniors Amid Emotional Departure OSEN=Lee Sun-ho Reporter Ive been tr",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.chosun.com/english/sports-en/2025/12/15/P7CYZFJ6NBFRZCLH46M7QTAE3U/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.chosun.com",
+    "/english/sports-en/2025/12/15/P7CYZFJ6NBFRZCLH46M7QTAE3U/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "KIA Tigers edge Samsung Lions 4-0 in tight KBO clash",
+   "content": "KIA Tigers edge Samsung Lions 4-0 in tight KBO clash Park Chan-hos go-ahead RBI double and overturned call highlight KIAs victory OSEN=Lee Dae-seon, O",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.chosun.com/english/sports-en/2025/09/11/B76EX74IMNCCTLOSTLIS2TZJL4/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.chosun.com",
+    "/english/sports-en/2025/09/11/B76EX74IMNCCTLOSTLIS2TZJL4/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "KIA, 15일 NC전서 광복절 기념 유니폼 입고 출전 | 연합뉴스",
+   "content": "(서울=연합뉴스) 이대호 기자 = 프로야구 KIA 타이거즈가 15일 광주 KIA 챔피언스 필드에서 열릴 NC 다이노스전을 맞아 광복절 기념 특별 유니폼을 입고 출전한다. KIA 구단은 \"광복절을 맞아 순국선열과 애국지사의 숭고한 뜻을 기리기 위해 '815 저지'와 '815 야구 모자'를 출시한다 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.yna.co.kr/view/AKR20170814094900007",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.yna.co.kr",
+    "/view/AKR20170814094900007",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "프로야구 KIA 2023년 슬로건 '압도하라 KIA 타이거즈' | 연합뉴스",
+   "content": "[KIA 타이거즈 제공. … 여기에 '언제나 팬과 함께, 흩어지지 않는 ONE TEAM으로 나아간다'는 의미의 'Always KIA TIGERS' 합쳐, 팬 퍼스트를 바탕으로 한 지속적인 강팀으로 거듭나겠다는 목표를 표현했다고 덧붙였다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.yna.co.kr/view/AKR20230207086400007",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.yna.co.kr",
+    "/view/AKR20230207086400007",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "프로야구 KIA, 최형우 1천500타점 기념 유니폼 예약 판매 | 韓聯社",
+   "content": "(서울=연합뉴스) 장현구 기자 = 프로야구 KIA 타이거즈가 최형우의 역대 최초 1천500타점 달성을 기념하는 유니폼, 모자, 기념구를 22일부터 예약 판매한다. 기념 유니폼 전면에는 1천500타점을 나타내는 '1500RBI' 문구와 함께 최형우의 날카로운 타격과 강인함을 상징하는 TIGERS 워드마크가 새겨진다.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://cb.yna.co.kr/gate/big5/cn.yna.co.kr/view/AKR20230621118100007",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "cb.yna.co.kr",
+    "/gate/big5/cn.yna.co.kr/view/AKR20230621118100007",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "다음스포츠 | 테이블",
+   "content": "야구 테이블 야구테이블 도움말 나의 최애구단을 야구 테이블에서 가입과 등업없이 함께 응원해요. … KIA 타이거즈 손님 2,373,829 … V13❤️‍🔥ALWAYS KIA TIGERS🐯🐅 심재학 아웃 2분 전 기아는 이래서 안 되. 4분 전 미친 기더기 5분 전 최강 한화 내 사랑 이글스",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://sports.daum.net/table/kbo",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "sports.daum.net",
+    "/table/kbo",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: timeout"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

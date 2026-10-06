@@ -230,3 +230,24 @@ def test_같은_URL_은_경기_단위로_한_번만_받는다():
 def test_하위_이름이_열거값으로_바뀐다():
     for name, want in (("A-홈", "A-home"), ("D-원정", "D-away")):
         assert S3._sid(_Sub([], name=name)) == want
+
+
+def test_같은_URL_이_목록에_두_번_안_들어간다():
+    """🔴🔴 §8 2단계 합격 조건 — *"같은 URL 중복 0"*(실측 2026-10-06: 2건이었다).
+
+    🔴 둘째 하위는 **건너뛰고 다음 후보로** 간다 — 그 URL 내용은 이미 있고,
+       다른 문서를 받는 쪽이 덮는 범위가 넓다.
+    """
+    cache: dict = {}
+    same, other = "https://bbc.com/same", "https://bbc.com/other"
+    net = _Net()
+    d1, _s1, _b1 = _run_one(_Chain([_Hit(same), _Hit(other)]), net, cache=cache)
+    assert {d.url for d in d1} == {same, other}, [d.url for d in d1]
+    d2, st2, _b2 = _run_one(_Chain([_Hit(same), _Hit("https://bbc.com/new")]),
+                            net, cache=cache,
+                            sub=_Sub(["absence_def"], name="B-홈"))
+    urls2 = [d.url for d in d2]
+    assert same not in urls2, f"🔴 같은 URL 이 둘째 하위에도 들어갔다: {urls2}"
+    assert "https://bbc.com/new" in urls2, urls2
+    # 🔴 **그 사실이 사유로 남는다**(#3)
+    assert any("이미 들고 있다" in n for n in st2.notes), st2.notes
