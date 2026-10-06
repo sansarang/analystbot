@@ -53,7 +53,9 @@ class _Bud:
 
 
 class _Hit:
-    def __init__(self, url, title="t", snippet="s"):
+    # 🔴 **제목·스니펫이 두 팀 중 하나를 말해야** 신원 선필터를 지난다(§5 s3-3).
+    #    ⚠️ 종전 고정물은 `t`/`s` 였다 — 그 필터를 넣자 바로 걸렸다(맞게 걸렸다).
+    def __init__(self, url, title="Honduras team news", snippet="Jamaica squad"):
         self.url, self.title, self.snippet = url, title, snippet
         self.published_at = None
         self.lang = "en"
@@ -182,6 +184,27 @@ def test_전부_막히면_문서_0건이고_까닭이_전부_남는다():
                               _Net(bad=set(urls)))
     assert docs == []
     assert len([d for d in st.drops if d.reason.value == "body_missing"]) == 3
+
+
+def test_신원_선필터가_남의_글을_버린다():
+    """🔴🔴 §5 s3-3 — 제목·스니펫에 **두 팀 어느 이름도 없으면** 남의 글이다.
+
+    ⚠️ 실측 2026-10-06(한국–우즈베키스탄): 이 필터가 없어서 `gulf-times.com/
+       tag?query=AFC`(태그 목록) · `ch.atomy.com`(쇼핑) · `goal.com/kr/뉴스`
+       (뉴스 목록)가 문단으로 들어갔다.
+    """
+    ref = _ref()
+    who = S3.names_of(ref)
+    ok, why = S3.identity_ok("Honduras squad news", "", who)
+    assert ok, why
+    bad, why2 = S3.identity_ok("AFC tag list", "page 3", who)
+    assert not bad and "어느 이름도 없다" in why2, why2
+    # 🔴 **돌려서** 본다 — 그 글이 `Doc` 이 되지 않는다
+    chain = _Chain([_Hit("https://bbc.com/junk", title="AFC tag list",
+                         snippet="page 3")])
+    docs, st, _sub = _run_one(chain, _Net())
+    assert docs == [], [d.url for d in docs]
+    assert any(d.reason.value == "identity_mismatch" for d in st.drops), st.drops
 
 
 def test_상위_세건까지만_받는다():

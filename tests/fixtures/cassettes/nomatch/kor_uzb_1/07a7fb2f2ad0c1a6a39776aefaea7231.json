@@ -1,0 +1,38 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 1000, \"messages\": [{\"content\": \"너는 스포츠 팀 이름의 **철자 후보**만 낸다. 경기를 고르지 않는다.\\n사용자 문장에서 두 팀을 찾아 JSON 만 낸다:\\n{\\\"teams\\\":[{\\\"ko\\\":\\\"<사용자가 쓴 이름>\\\",\\\"latin_candidates\\\":[\\\"<라틴 표기1>\\\",\\\"<표기2>\\\"],\\\"country_guess\\\":\\\"<ISO 2글자 또는 \\\\\\\"\\\\\\\">\\\"}],\\\"date_hint\\\":\\\"\\\",\\\"competition_hint\\\":\\\"\\\"}\\n🔴 경기 URL·ID·킥오프를 **넣지 마라** — 코드가 공개 페이지로 확인한다.\\n🔴 모르면 빈 문자열로 둬라. 지어내지 마라.\", \"role\": \"system\"}, {\"content\": \"한국 vs Uzbekistan\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"low\"}",
+ "recorded_at": "2026-10-06T02:59:28.294603+00:00",
+ "id": "9ca16a3a-f710-44c3-a9ce-e893ae6889a0",
+ "object": "chat.completion",
+ "created": 1791255568,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"teams\":[{\"ko\":\"한국\",\"latin_candidates\":[\"South Korea\",\"Republic of Korea\",\"Korea\"],\"country_guess\":\"KR\"},{\"ko\":\"Uzbekistan\",\"latin_candidates\":[\"Uzbekistan\"],\"country_guess\":\"UZ\"}],\"date_hint\":\"\",\"competition_hint\":\"\"}",
+    "reasoning": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - Input: \"한국 vs Uzbekistan\"\n   - Task: Output ONLY a JSON object with spelling candidates for sports team names. Do NOT pick a match. Find two teams from the user's sentence.\n   - Output Format: `{\"teams\":[{\"ko\":\"<사용자가 쓴 이름>\",\"latin_candidates\":[\"<라틴 표기1>\",\"<표기2>\"],\"country_guess\":\"<ISO 2글자 또는 \\\"\\\">\"}],\"date_hint\":\"\",\"competition_hint\":\"\"}`\n   - Constraints: NO match URLs/IDs/kickoffs. If unknown, use empty strings. Do not invent.\n\n2.  **Identify Entities:**\n   - \"한국\" -> South Korea national team (often called \"대한민국\" or \"한국\" in Korean, Latin: \"South Korea\", \"Republic of Korea\", \"Korea\")\n   - \"Uzbekistan\" -> Uzbekistan national team (Latin: \"Uzbekistan\")\n\n3.  **Map to JSON Structure:**\n   - Team 1:\n     - `ko`: \"한국\"\n     - `latin_candidates`: [\"South Korea\", \"Republic of Korea\", \"Korea\"]\n     - `country_guess`: \"KR\" (ISO 2-letter for South Korea)\n   - Team 2:\n     - `ko`: \"Uzbekistan\"\n     - `latin_candidates`: [\"Uzbekistan\"]\n     - `country_guess`: \"UZ\" (ISO 2-letter for Uzbekistan)\n   - Note: The prompt says `ko` should be exactly what the user wrote. So for Uzbekistan, it's \"Uzbekistan\". For Korea, it's \"한국\".\n   - `date_hint`: \"\" (not provided)\n   - `competition_hint`: \"\" (not provided)\n\n4.  **Construct JSON:**\n   ```json\n   {\n     \"teams\": [\n       {\n         \"ko\": \"한국\",\n         \"latin_candidates\": [\"South Korea\", \"Republic of Korea\", \"Korea\"],\n         \"country_guess\": \"KR\"\n       },\n       {\n         \"ko\": \"Uzbekistan\",\n         \"latin_candidates\": [\"Uzbekistan\"],\n         \"country_guess\": \"UZ\"\n       }\n     ],\n     \"date_hint\": \"\",\n     \"competition_hint\": \"\"\n   }\n   ```\n\n5.  **Check Constraints:**\n   - Only JSON? Yes.\n   - Spelling candidates only? Yes.\n   - No match picking? Yes.\n   - Format matches exactly? Yes.\n   - Empty strings for unknown highlights? Yes.\n   - No invented data? Yes.\n   - Language: Korean prompt, but JSON keys/values are as specified. I'll keep it strictly JSON.\n\n   One minor point: The prompt says `ko` is `<사용자가 쓴 이름>`. So for Uzbekistan, it's \"Uzbekistan\". That's fine.\n   Country guess: KR for South Korea, UZ for Uzbekistan. ISO 2-letter codes.\n   Latin candidates: I'll provide standard football federation names or common variants. \"South Korea\", \"Republic of Korea\", \"Korea\" are fine. For Uzbekistan, just \"Uzbekistan\".\n\n   All good. Output matches requirement.✅"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 165,
+  "completion_tokens": 704,
+  "total_tokens": 869,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 647,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

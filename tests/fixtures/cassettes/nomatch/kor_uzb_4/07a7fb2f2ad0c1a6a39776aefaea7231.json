@@ -1,0 +1,38 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 1000, \"messages\": [{\"content\": \"너는 스포츠 팀 이름의 **철자 후보**만 낸다. 경기를 고르지 않는다.\\n사용자 문장에서 두 팀을 찾아 JSON 만 낸다:\\n{\\\"teams\\\":[{\\\"ko\\\":\\\"<사용자가 쓴 이름>\\\",\\\"latin_candidates\\\":[\\\"<라틴 표기1>\\\",\\\"<표기2>\\\"],\\\"country_guess\\\":\\\"<ISO 2글자 또는 \\\\\\\"\\\\\\\">\\\"}],\\\"date_hint\\\":\\\"\\\",\\\"competition_hint\\\":\\\"\\\"}\\n🔴 경기 URL·ID·킥오프를 **넣지 마라** — 코드가 공개 페이지로 확인한다.\\n🔴 모르면 빈 문자열로 둬라. 지어내지 마라.\", \"role\": \"system\"}, {\"content\": \"한국 vs Uzbekistan\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"low\"}",
+ "recorded_at": "2026-10-06T03:06:42.244900+00:00",
+ "id": "5af6a3d3-a9a0-4559-ac40-7d4add6efc10",
+ "object": "chat.completion",
+ "created": 1791256002,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"teams\":[{\"ko\":\"한국\",\"latin_candidates\":[\"Korea\",\"South Korea\"],\"country_guess\":\"KR\"},{\"ko\":\"Uzbekistan\",\"latin_candidates\":[\"Uzbekistan\"],\"country_guess\":\"UZ\"}],\"date_hint\":\"\",\"competition_hint\":\"\"}",
+    "reasoning": "Here the user provided two team names: \"한국\" (Korea) and \"Uzbekistan\". The task is to extract the team names and provide Latin spelling candidates and country guesses. I need to think about what league this likely refers to, but the instruction says not to assume — keep date_hint and competition_hint empty if unknown.\n\nFor \"한국\", typical Latin candidate: \"Korea\", \"South Korea\". Country guess: \"KR\".\n\nFor \"Uzbekistan\", Latin candidate: \"Uzbekistan\". Country guess: \"UZ\".\n\nOutput JSON:\n\n{\"teams\":[{\"ko\":\"한국\",\"latin_candidates\":[\"Korea\",\"South Korea\"],\"country_guess\":\"KR\"},{\"ko\":\"Uzbekistan\",\"latin_candidates\":[\"Uzbekistan\"],\"country_guess\":\"UZ\"}],\"date_hint\":\"\",\"competition_hint\":\"\"}\n\nNo need to overcomplicate."
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 165,
+  "completion_tokens": 221,
+  "total_tokens": 386,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 168,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

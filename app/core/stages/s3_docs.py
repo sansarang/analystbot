@@ -71,6 +71,40 @@ def queries_for(sub: Any, ref: MatchRef) -> list[tuple[str, str]]:
     return [(queries.slot_value(q), lg) for q, lg in out if str(q).strip()]
 
 
+def names_of(ref: MatchRef) -> tuple[list[str], list[str]]:
+    """🔴 두 팀을 가리키는 **모든 이름** — 신원 선필터가 이것으로 본다.
+
+    ⚠️ 인자는 **열쇠**다(§8-1) — 이름을 받으면 또 하나의 해석 지점이 된다.
+    """
+    from app import analyze
+    home = [n for n in analyze._names_of_key(ref.home) if n] or [ref.home_name]
+    away = [n for n in analyze._names_of_key(ref.away) if n] or [ref.away_name]
+    return home, away
+
+
+def identity_ok(title: str, snippet: str, names: tuple[list[str], list[str]]
+                ) -> tuple[bool, str]:
+    """🔴🔴 **신원 선필터**(§5 s3-3) — 제목·스니펫이 **두 팀 중 하나라도** 말하나.
+
+    ⚠️ 이 이름의 부품이 **한 함수로 존재하지 않았다**(실측 2026-10-06: `app/` 에
+       `신원 선필터` 가 없다 — `findgame._mentions` 가 비슷한 일을 하지만 그쪽은
+       경기 페이지 전용이다). 🔴 그래서 여기 짓고 그 사실을 적는다.
+    🔴 **두 팀 다**가 아니라 **하나라도**다 — 결장 기사는 한 팀만 말한다.
+    ⚠️ 그래도 이 검사가 실측에서 쓰레기를 걸렀다: `gulf-times.com/tag?query=AFC`
+       (태그 목록) · `ch.atomy.com/...`(쇼핑) · `goal.com/kr/뉴스`(뉴스 목록).
+    """
+    said = f"{title} {snippet}".lower()
+    if not said.strip():
+        return False, "🔴 제목·스니펫이 비었다 — 신원을 볼 글이 없다"
+    for side in names:
+        for n in side:
+            got = str(n or "").strip().lower()
+            if len(got) >= 3 and got in said:
+                return True, f"신원 ✅ `{n}`"
+    return False, (f"🔴 제목·스니펫에 **두 팀 어느 이름도 없다** — "
+                   f"{said[:60]!r}")
+
+
 def gate_ok(said: str) -> tuple[bool, str]:
     """🔴 ② **문지기 하나.** ⚠️ 두 번째 정의를 만들지 않는다(§9).
 
@@ -92,8 +126,9 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, chain: Any,
     from app.research import subtasks as _st
     cache = cache if cache is not None else {}
     subs = _st.split(_RefShim(ref))
-    jobs = [_one(s, ref, state=state, chain=chain, net=net, cache=cache)
-            for s in subs]
+    claimed: set[str] = set(cache)
+    jobs = [_one(s, ref, state=state, chain=chain, net=net, cache=cache,
+                 claimed=claimed) for s in subs]
     got = await asyncio.gather(*jobs, return_exceptions=True)
     out: list[Doc] = []
     for sub, row in zip(subs, got, strict=False):
@@ -135,11 +170,14 @@ class _RefShim:
 
 
 async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
-               net: Any, cache: dict[str, Doc]) -> list[Doc]:
+               net: Any, cache: dict[str, Doc],
+               claimed: set[str] | None = None) -> list[Doc]:
     """🔴 하위 하나 — 검색 → 거르기 → 재정렬 → 상위 N건 fetch → `Doc`."""
     from app import datehint, domains, readtext
     from app.research import lead, rerank
     sid, name = _sid(sub), str(getattr(sub, "name", "?"))
+    # 🔴 **자리를 잡은 URL** — 캐시와 따로 든다(캐시는 `Doc` 을, 이쪽은 **의도**를)
+    claimed = claimed if claimed is not None else set(cache)
     cfg = _sub_cfg()
     top = int(cfg.get("fetch_top") or 3)
     hits: list[Any] = []
@@ -161,6 +199,7 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
         state.note(f"s3/{name} 질의 {q!r}({lang}) → {len(got or [])}건")
         hits += list(got or [])
     # ── ③ 거르기: 도메인 등급 → 날짜 힌트
+    who = names_of(ref)
     kept: list[Any] = []
     seen_url: set[str] = set()
     for h in hits:
@@ -170,8 +209,15 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
         seen_url.add(url)
         ok_d, tier, said = domains.verdict(url, sport=ref.sport)
         if not ok_d:
+            state.drop(f"s3/{name}/{url[:40]}", DropReason.TYPE_OFF_CATALOG,
+                       f"도메인 등급 — {said[:70]}")
+            continue
+        # 🔴 **신원 선필터**(§5 s3-3) — 두 팀 어느 이름도 없으면 남의 글이다
+        ok_i, said_i = identity_ok(str(getattr(h, "title", "") or ""),
+                                   str(getattr(h, "snippet", "") or ""), who)
+        if not ok_i:
             state.drop(f"s3/{name}/{url[:40]}", DropReason.IDENTITY_MISMATCH,
-                       said[:80])
+                       said_i[:90])
             continue
         old, said_old = datehint.too_old(url, str(getattr(h, "snippet", "")
                                                  or ""))
@@ -197,7 +243,7 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
         if len(out) >= top:
             break
         url = str(getattr(h, "url", "") or "")
-        if url in cache:
+        if url in claimed:
             # ══════════════════════════════════════════════════════
             # 🔴🔴 **같은 URL 은 목록에 한 번만** — §8 2단계 합격 조건
             # ══════════════════════════════════════════════════════
@@ -216,6 +262,16 @@ async def _one(sub: Any, ref: MatchRef, *, state: RunState, chain: Any,
             state.note(f"s3/{name} 열기 상한({sub.budget.fetch_cap})에 닿았다 — "
                        f"받은 문서 {len(out)}건")
             break
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **받기 전에 자리를 잡는다** — 실측 2026-10-06(병렬 경합)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 하위 8개가 `asyncio.gather` 로 **동시에** 돈다. 캐시를 `await` 뒤에
+        #     쓰면 둘이 같은 URL 을 **동시에 통과**해 목록에 두 번 들어간다
+        #     (실측: 중복 2건 — §8 2단계 합격 조건은 0).
+        #  🔴 `claimed.add` 를 **`await` 앞**에 둔다 — asyncio 는 한 스레드라
+        #     그 사이에 다른 하위가 끼어들 수 없다.
+        claimed.add(url)
         sub.budget.fetch_used += 1
         try:
             async with lead.gate("fetch"):
