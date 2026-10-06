@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Spain Croatia injury news",
+ "recorded_at": "2026-10-06T10:53:44.599564+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Croatia beat Spain 3-2",
+   "content": "Spain passed up the chance to seal progress to the Nations League finals as they were beaten 3-2 by Croatia on Thursday, undone by a 93rd-minute winner from Tin Jedvaj.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.foxsports.com.au/news/live-croatia-vs-spain/news-story/232c21326cc7c8120766368286f197cd",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foxsports.com.au",
+    "/news/live-croatia-vs-spain/news-story/232c21326cc7c8120766368286f197cd",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Yamal vs Modric as Spain hosts Croatia in Nations League clash",
+   "content": "World champions Spain host Croatia in matchday two of the UEFA Nations League, with Yamal facing Modric.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.aljazeera.com/sports/2026/9/28/spain-croatia-uefa-nations-league-yamal-modric-teams-form",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.aljazeera.com",
+    "/sports/2026/9/28/spain-croatia-uefa-nations-league-yamal-modric-teams-form",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Where to watch Spain vs. Croatia live stream, TV channel, lineups, prediction for Euro 2024 match | Sporting News",
+   "content": "Spain will face Croatia in their Euro 2024 opening match on June 15 and here's the latest information on TV and streaming options, plus kickoff time and team news.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.sportingnews.com/us/soccer/news/watch-spain-croatia-stream-tv-channel-lineups-euro-2024/068e03f2b27fb1ee7ec9ee2a",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportingnews.com",
+    "/us/soccer/news/watch-spain-croatia-stream-tv-channel-lineups-euro-2024/068e03f2b27fb1ee7ec9ee2a",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Croatia vs England team news and predicted lineups",
+   "content": "Croatia team news Bilic has no fresh injury concerns from the defeat to Spain, but there may still be a change.Luka Modric came off the bench in midweek so may return to the starting lineup alongside Mateo Kovacic.He will be crucial in helping Croatia control …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.squawka.com/en/news/england-vs-croatia-team-news-predicted-lineups/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.squawka.com",
+    "/en/news/england-vs-croatia-team-news-predicted-lineups/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Football News, page 1 | Goal.com UK",
+   "content": "'It was an accident!' - De la Fuente warns Spain over Croatia trip Luis de la Fuente has told his Spain players to ignore recent results and prepare for a battle against a world-class Croatia side in the UEFA Nations League.The La Roja boss believes their …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.goal.com/en-gb/news",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/en-gb/news",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Luka Modrić",
+   "content": "327 Modrić was forced to miss the crucial fixture against Spain on 21 June because of a minor muscle injury. Modric injury in loss against Brazil not serious …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Luka_Modri%C4%87",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Luka_Modri%C4%87",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "News Archives - Total Croatia",
+   "content": "Categories Lifestyle News Politics Support for Young People in Croatia to Buy First Property Approved October 6, … 39 million euros in support measures have been approved for young people in Croatia to …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://total-croatia-news.com/news/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "total-croatia-news.com",
+    "/news/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "home",
+   "content": "England XI vs Czech Republic: … confirmed team news, injury latest for Nations League today Three Lions hit by two new blows as Harry Kane prepares for huge milestoneThomas Tuchel will ring the changes for England’s Nations League match against the Czech …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://onefootball.com/en/home",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "onefootball.com",
+    "/en/home",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Spain’s Nico Williams expected to be fit for World Cup after injury scare for Athletic Club",
+   "content": "Spain forward Nico Williams is set to miss the remainder of the season for Athletic Club but is expected to be fit for the World Cup following an injury scare at the weekend.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.nytimes.com/athletic/7270062/2026/05/11/nico-williams-spain-world-cup-injury-latest/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/athletic/7270062/2026/05/11/nico-williams-spain-world-cup-injury-latest/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Croatia–Spain relations",
+   "content": "Croatia–Spain relations … Croatia–Spain relations are the bilateral relations … Diplomatic relations between the two countries were established on March 9, 1992 f",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Croatia%E2%80%93Spain_relations",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Croatia%E2%80%93Spain_relations",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ramos, Ronaldo score as Portugal rallies to beat Croatia 2-1 and advance to round of 16",
+   "content": "Goncalo Ramos headed in the stoppage-time winner as Portugal beat Croatia 2-1 in a wild finish that also included a Croatian goal disallowed for offside just before the final whistle in a World Cup round of 32 match.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://apnews.com/article/world-cup-score-portugal-croatia-ad94f33ede5ada4c8fb63b3893ee2b8e",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/world-cup-score-portugal-croatia-ad94f33ede5ada4c8fb63b3893ee2b8e",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Spain host Modric’s Croatia in Seville, rotation expected",
+   "content": "Spain, with two stars on their shirt, make their home bow as world champions at the Ramón Sánchez Pizjuán on Tuesday against Modric’s Croatia.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://onefootball.com/en/news/spain-host-modrics-croatia-in-seville-rotation-expected-43534795",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "onefootball.com",
+    "/en/news/spain-host-modrics-croatia-in-seville-rotation-expected-43534795",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Croatia vs Spain, summary: Carvajal, penalties, score, goals & highlights | Nations League final",
+   "content": "Croatia and Spain went all the way to penalties in a fantastic show of endurance in Rotterdam, with Carvajal scoring the winner.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://en.as.com/soccer/croatia-vs-spain-live-online-score-stats-updates-nations-league-final-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/soccer/croatia-vs-spain-live-online-score-stats-updates-nations-league-final-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lamine Yamal scores twice as Spain thrash Croatia to top UEFA Nations League group",
+   "content": "Spain have secured a dominant 4-1 victory over Croatia in the UEFA Nations League, driven by a spectacular brace from Lamine Yamal.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://ca.sports.yahoo.com/news/lamine-yamal-scores-twice-spain-185925835.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "ca.sports.yahoo.com",
+    "/news/lamine-yamal-scores-twice-spain-185925835.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Spain vs Croatia predictions and betting tips: top-two clash in Seville",
+   "content": "Get Squawka predictions, best bets and odds for the Nations League match Spain vs Croatia at the Ramon Sanchez-Pizjuan on Tuesday 29 September.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.squawka.com/en/news/spain-vs-croatia-predictions-betting-tips-29-09-26/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.squawka.com",
+    "/en/news/spain-vs-croatia-predictions-betting-tips-29-09-26/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "France’s William Saliba forced off with injury in World Cup semi-final vs. Spain",
+   "content": "France trailed Spain 1-0 at the time of the injury, with Pedro Porro’s second-half goal sealing a 2-0 win.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.nytimes.com/athletic/7445680/2026/07/14/william-saliba-injury-france-spain-arsenal/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/athletic/7445680/2026/07/14/william-saliba-injury-france-spain-arsenal/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Spain - Croatia summary: score, goals and highlights | Euro 2024",
+   "content": "Spain vs Croatia as it happened Spain 3-0 Croatia: match summary … Croatia were not completely outclassed by Spain in this opening Group B game as the scoreline may suggest to those who weren't watching.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://en.as.com/soccer/spain-croatia-live-online-score-stats-and-updates-euro-2024-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/soccer/spain-croatia-live-online-score-stats-and-updates-euro-2024-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ronaldo and Modric seek to defy time as Portugal face Croatia in last 32",
+   "content": "Video Duration 2 minutes 31 seconds 2: … Indonesian boys turn football into hope and education Portugal’s team news The Selecao have no reported injury concerns.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.aljazeera.com/sports/2026/7/2/portugal-vs-croatia-world-cup-last-32-preview-prediction-team-news-ronald-modric",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.aljazeera.com",
+    "/sports/2026/7/2/portugal-vs-croatia-world-cup-last-32-preview-prediction-team-news-ronald-modric",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Luka Modric Set To Retire From Croatia Duty After AC Milan Extension",
+   "content": "His final appearance for his country will take place on October 6 when Croatia face Spain in a Nations League fixture in Split.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.foxsports.com/stories/soccer/luka-modric-set-to-retire-from-croatia-duty-after-agreeing-ac-milan-contract-extension",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foxsports.com",
+    "/stories/soccer/luka-modric-set-to-retire-from-croatia-duty-after-agreeing-ac-milan-contract-extension",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Croatia vs Spain: Lineups & LIVE updates | Goal.com",
+   "content": "Croatia and Spain will battle it out to decide who is crowned this year's Nations League champion",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.goal.com/en/news/croatia-vs-spain-lineups-and-live-updates/bltb6aaf41baf957fc2",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/en/news/croatia-vs-spain-lineups-and-live-updates/bltb6aaf41baf957fc2",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

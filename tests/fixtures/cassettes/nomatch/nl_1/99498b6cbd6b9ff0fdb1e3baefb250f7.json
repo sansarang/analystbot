@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T10:55:33.829763+00:00",
+ "order": [
+  "And Lamine likes to play and with that in mind, the coach managed his minutes wisely at the Carlos Tartiere. Starter or substitute, he will play. In three games he has scored four superb goals and provided an assist. It is hard not to see him in the starting XI. Pubill, Cubarsí, Huijsen, Cucurella, Zubimendi, Fermín and Oyarzabal could also regain spots in the XI.",
+  "Pubill, Cubarsí, Huijsen, Cucurella, Zubimendi, Fermín and Oyarzabal are all expected to start the fourth matchday of the Nations League campaign.",
+  "Amid that poisoned atmosphere, Spain will play the hosts with the World Cup winners living the very opposite to that of the Balkan side. These are days of wine and roses, a “honeymoon,” as Santi Denia said last Friday before the match against the Czech Republic. More than 40 matches unbeaten, world champions, winners of their first three games in the Nations League 2026-27, Luis de la Fuente has navigated the many absences from the long international break (Porro, Eric, Ferran, Grimaldo, Nico, Fabián) and has moved his pieces with mastery.",
+  "World champions Spain set to rotate for Croatia Nations League clash",
+  "Get closer to the game! Whether you like your soccer of the European variety or that of this side of the pond, our AS USA app has it all. Dive into live coverage, expert insights, breaking news, exclusive videos, and more. Plus, stay updated on NFL, NBA and all other big sports stories as well as the latest in current affairs and entertainment. Download now for all-access coverage, right at your fingertips – anytime, anywhere.",
+  "And there’s more: check out our TikTok and Instagram reels for bite-sized visual takes on all the biggest soccer news and insights.",
+  "Only Lamine has started the previous three matches. Because, although De la Fuente says he is just one more, Lamine is Lamine. And a global star of his stature already has special treatment. The same happens at Barça with Flick, and it is inevitable.",
+  "A point in Split on Tuesday will be enough for Spain to reach the quarterfinals of the 26/27 Nations League. A win would move them closer to first place but that that matter will likely have to be settled later against England at the Metropolitano in November."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 14문단 → 재정렬 상위 8"
+}

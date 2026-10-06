@@ -1,0 +1,11 @@
+{
+ "kind": "fetch",
+ "url": "https://api.football-data.org/v4/matches?dateFrom=2026-10-05&dateTo=2026-10-07",
+ "query": "",
+ "recorded_at": "2026-10-06T10:50:20.531091+00:00",
+ "headers": {},
+ "ok": true,
+ "status": 200,
+ "text": "{\"filters\":{\"dateFrom\":\"2026-10-05\",\"dateTo\":\"2026-10-07\",\"permission\":\"TIER_ONE\"},\"resultSet\":{\"count\":0},\"matches\":[]}",
+ "reason": ""
+}

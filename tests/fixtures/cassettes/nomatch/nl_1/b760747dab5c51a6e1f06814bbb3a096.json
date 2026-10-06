@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T10:53:49.269352+00:00",
+ "order": [
+  "Six-Goal Thriller! 🚨 England 4-2 Croatia | FIFA World Cup 2026 | England Vs Croatia | N18G England kicks off their 2026 World Cup campaign with a chaotic 4-2 win against heavyweights Croatia. england croatia rivalry, england croatia 2026 …",
+  "Six-Goal Thriller! 🚨 England 4-2 Croatia | FIFA World Cup 2026 | England Vs Croatia | N18G England kicks off their 2026 World Cup campaign with a chaotic 4-2 win against heavyweights Croatia. england croatia rivalry, england croatia 2026 …",
+  "Croatia for News, Travel, Sport, Business, Politics and Lifestyle Total Croatia News, your guide to news, views and events in English. Local reporting from Croatia and Croatian communities worldwide.",
+  "Spain Kingdom of Spain Reino de España … 4 other names … Regne d'Espanya … Espainiako Erresuma … Reino de España … Reiaume d'Espanha … Coat of arms",
+  "Spain Kingdom of Spain Reino de España … 4 other names … Regne d'Espanya … Espainiako Erresuma … Reino de España … Reiaume d'Espanha … Coat of arms",
+  "Luka Modrić 329 330 However, Croatia won and topped the group, … Golden Ball of the 2018 World Cup Modrić captaining Croatia at the 2018 FIFA World Cup For Croatia's 2018 World Cup qualifying campaign …",
+  "Luka Modrić 329 330 However, Croatia won and topped the group, … Golden Ball of the 2018 World Cup Modrić captaining Croatia at the 2018 FIFA World Cup For Croatia's 2018 World Cup qualifying campaign …",
+  "Celebrate New Year's Eve in Spain | spain.info In Spain, 31 December is a very special celebration, where the fun and partying go on into the early hours. Celebrate New Year’s Eve in Spain!"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

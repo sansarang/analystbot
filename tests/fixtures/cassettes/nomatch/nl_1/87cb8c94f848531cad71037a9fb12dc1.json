@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Spain Croatia récord",
+ "recorded_at": "2026-10-06T10:53:49.280860+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Marcador en directo, H2H y alineaciones del España – Croacia | Sofascore",
+   "content": "Spain marcador en directo, calendario y resultados … ¡Instala la aplicación Sofascore y sigue Spain Croatia en directo desde tu dispositivo móvil!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.sofascore.com/es/football/match/croatia-spain/YTbspUb",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sofascore.com",
+    "/es/football/match/croatia-spain/YTbspUb",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Los aeropuertos españoles marcan un nuevo récord con 67 millones de pasajeros internacionales hasta julio",
+   "content": "Las llegadas de visitantes extranjeros crecieron un 5,8% el mes pasado, lo que confirma las buenas previsiones de un sector que se beneficia del contexto geopolítico",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.elperiodico.com/es/economia/20260818/aeropuertos-espanoles-record-julio-turistas-extranjeros-133454215",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elperiodico.com",
+    "/es/economia/20260818/aeropuertos-espanoles-record-julio-turistas-extranjeros-133454215",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Spain v Croatia, 29 May 2000",
+   "content": "11v11.com match report - Spain v Croatia, UEFA Under-21 2000 Final round group A, 29 May 2000",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.11v11.com/matches/spain-v-croatia-29-may-2000-268603/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.11v11.com",
+    "/matches/spain-v-croatia-29-may-2000-268603/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "El número de centenarios en España bate un récord: ya son casi 16.000, un 80% mujeres",
+   "content": "La esperanza de vida a partir de los 65 años se mantiene en 9,7 años, según un estudio del CSIC que demuestra que envejecer saludablemente sigue siendo un reto pendiente",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.elperiodico.com/es/sociedad/20251024/centenarios-espana-record-envejecimiento-salud-mayores-122973825",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.elperiodico.com",
+    "/es/sociedad/20251024/centenarios-espana-record-envejecimiento-salud-mayores-122973825",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Los abortos en España siguen subiendo y rozan su récord histórico",
+   "content": "En términos relativos, es una tasa de 12,36 por 1.000 mujeres entre 15 y 44 años, rozando el récord histórico (12,47), en 2011.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://elpais.com/sociedad/2025-10-01/los-abortos-en-espana-siguen-subiendo-y-rozan-su-record-historico.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "elpais.com",
+    "/sociedad/2025-10-01/los-abortos-en-espana-siguen-subiendo-y-rozan-su-record-historico.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Marcador en directo, H2H y alineaciones del España U19 – Croacia U19 | Sofascore",
+   "content": "¡Instala la aplicación Sofascore y sigue Spain U19 Croatia U19 en directo desde tu dispositivo móvil! NOME: Spain U19 - Croatia U19 Spain U19 marcador en directo …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.sofascore.com/es/football/match/spain-u19-croatia-u19/ZZiskbj",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sofascore.com",
+    "/es/football/match/spain-u19-croatia-u19/ZZiskbj",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Telecinco registra el \"minuto de oro\" más visto en la historia de la televisión",
+   "content": "El último minuto del encuentro entre Croacia y España reunió a 18.136.000 telespectadores, con un 78,2% de media.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.formulatv.com/noticias/25541/telecinco-registra-minuto-oro-mas-visto-historia-television/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.formulatv.com",
+    "/noticias/25541/telecinco-registra-minuto-oro-mas-visto-historia-television/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "✅ CROACIA SORPRENDIÓ A COLOMBIA Y LO VENCIÓ 2 A 1 EN ORLANDO | La Casaca Fútbol 🏆",
+   "content": "#colombia #croacia #mundial COLOMBIA VS CROATIA FULL MATCH (26/03/2026)COLOMBIA x CROACIA ao vivo (26/03/26)COLOMBIA VS CROACIA EN VIVO (26/03/26)COLOMBIA VS...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=yNXNCoOIJmk",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=yNXNCoOIJmk",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de fútbol de España",
+   "content": "Consultado el 30 de septiembre de 2026 «Ferran Torres causa baja en la concentración y se incorpora Carlos Espí | … Spain - Record International Players …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Espa%C3%B1a",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Espa%C3%B1a",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "AS.com - Diario online deportivo. Fútbol, motor y mucho más",
+   "content": "Últimas noticias de deportes en el principal diario deportivo en español. Noticias y vídeos de fútbol, baloncesto, fórmula 1, retransmisiones en directo …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://as.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "as.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "El España-Austria, récord de audiencia del año con casi 11 millones de espectadores",
+   "content": "Televisión Dicho evento obtuvo un 69,5% … 12 CEST Los partidos de España en el Mundial están marcando cifras récord y lo ha vuelto a hacer el España-Austria Porque el partido con el que la selección española lograba el pase a octavos con un 3-0 se ha erigido lo …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.marca.com/tiramillas/television/2026/07/03/espana-austria-record-audiencia-ano-11-millones-espectadores.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.marca.com",
+    "/tiramillas/television/2026/07/03/espana-austria-record-audiencia-ano-11-millones-espectadores.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Marca - Diario online líder en información deportiva",
+   "content": "La mejor información deportiva en castellano actualizada minuto a minuto en noticias, vídeos, fotos, retransmisiones y resultados en directo.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.marca.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.marca.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La Polla Records: cómo unos pueblerinos crearon el grupo más grande del punk español",
+   "content": "El documental ‘No somos nada’, que se presenta en el festival de San Sebastián, cuenta la historia de la banda partiendo de su multitudinaria gira de 2019.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://elpais.com/cultura/2021-09-17/la-polla-records-como-unos-pueblerinos-crearon-el-grupo-mas-grande-del-punk-espanol.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "elpais.com",
+    "/cultura/2021-09-17/la-polla-records-como-unos-pueblerinos-crearon-el-grupo-mas-grande-del-punk-espanol.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Apple España",
+   "content": "El canal oficial de Apple en YouTube te da la bienvenida. Aquí encontrarás noticias sobre nuevos productos, tutoriales y otros contenidos que no te puedes pe...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.youtube.com/channel/UC2F7S7UWwpA10RBu-EwvTvw",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/channel/UC2F7S7UWwpA10RBu-EwvTvw",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Los 30 récords goleadores de la historia del fútbol",
+   "content": "le puso el broche a su año dorado (ganó el triplete con el Inter tras hacerlo con el Barça) con un récord mundial.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://as.com/futbol/2018/12/28/primera/1546011325_242995.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "as.com",
+    "/futbol/2018/12/28/primera/1546011325_242995.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Croacia – España marcadores y predicciones | Sofascore",
+   "content": "Sofascore también permite echar un vistazo a información diferente sobre el partido, … Caja de resultado (puntos y rebotes) Estadísticas detalladas para cada cuarto Estadísticas de jugador Rachas cara a cara Rachas de equipo Probabilidades y predicciones Los …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.sofascore.com/es/basketball/match/croatia-spain/jDcswuu",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sofascore.com",
+    "/es/basketball/match/croatia-spain/jDcswuu",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "NBA.com España | Tu hogar de la NBA en España | Sporting News",
+   "content": "Tu destino para ver resultados, calendarios, estadísticas, League Pass, resúmenes en vídeo, noticias, fantasy, ránkings y más de los jugadores y equipos de la NBA.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.sportingnews.com/es/nba",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportingnews.com",
+    "/es/nba",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Resultados en directo y enfrentamientos de Croatia Spain | Sofascore",
+   "content": "El marcador en directo del encuentro entre Croacia y España comenzará el 23 nov 2022 a las 15:00 UTC y se disputará en el estadio Palacio de Deportes José María Martín Carpena de Málaga (Spain) como parte del torneo Finals …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.sofascore.com/es/tennis/match/croatia-spain/MNfsRNf",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sofascore.com",
+    "/es/tennis/match/croatia-spain/MNfsRNf",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de fútbol de Croacia",
+   "content": "Footprint Croatia Footprint Travel Guides.ISBN 1-903471-79-6 Bellamy.J, Alex (2003). Croatia faces fresh Euro 2012 racism probe …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Croacia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Croacia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Compra Entradas Oficiales Para El Partido Spain vs Croatia. Mejores Precios Y Asientos Garantizados. - MARCA ENTRADAS",
+   "content": "Spain vs Croatia – Football on 2026-09-29. Secure & convenient online ticket buying. Book now.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://entradas.marca.com/futbol/nations-league-tickets/show-219772",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "entradas.marca.com",
+    "/futbol/nations-league-tickets/show-219772",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

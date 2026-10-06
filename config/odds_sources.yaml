@@ -35,7 +35,7 @@ feeds:
     key_env: ODDS_API_KEY
     allowed: true            # 🔴 쓸 수 있다 — ⚠️ **키가 있을 때만** 돈다
     needs_key: true
-    card_required: 미확인     # ⚠️ 가입 화면을 열어 보지 못했다 — 사용자가 확인한다
+    card_required: false     # 🔴 **실측** — 사용자가 카드 없이 발급했다(2026-10-06)
     monthly_limit: 500       # 실측 2026-10-06: 요금 페이지 "500 credits per month"
     quota_header: x-requests-remaining   # 실측: 응답 헤더로 남은 수를 준다
     quota_used_header: x-requests-used
@@ -45,7 +45,48 @@ feeds:
       event_odds: /v4/sports/{sport}/events/{event_id}/odds/
     key_in: query            # `?apiKey=…`
     markets: [h2h, spreads, totals]
-    scope: 미확인             # ⚠️ 국가대표 친선·AFC·K리그 포함 여부 — 키 없이는 못 본다
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **대회 범위 실측**(2026-10-06 · 키를 받은 뒤 바로 쟀다)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  축구 종목 **49개**(전부 `active: true`). 우리가 찾던 다섯:
+    scope:
+      epl: soccer_epl                      # ✅ 이벤트 20건
+      kleague1: soccer_korea_kleague1      # ✅ 이벤트 6건
+      jleague: soccer_japan_j_league       # ✅ 이벤트 10건
+      uefa_nations: soccer_uefa_nations_league   # ✅ 이벤트 9건
+      national_friendly: null   # 🔴 **없다** — 친선 키가 목록에 **아예 없다**
+      concacaf: null            # 🔴 **없다** — CONCACAF 대회가 목록에 없다
+      afc: null                 # 🔴 **없다** — 아시아 대표팀 대회가 목록에 없다
+    scope_note: |
+      🔴 그래서 **대표팀 친선·CONCACAF·AFC 경기는 이 피드로 못 받는다** — 한국–우즈벡 ·
+      온두라스–자메이카 · 중국–타지키스탄이 전부 거기 걸린다. 그 경기들의 시장 열은
+      **사용자 보드**(§2-6)뿐이다. ⚠️ 카드가 그 사실을 사유로 적는다.
+      ⚠️ 목록에서 `friend`·`concacaf`·`afc`·`asia` 를 훑어 걸린 것은 **크리켓
+         International T20 하나**였다(축구 아님).
+    # 🔴 **대회명 → 피드 종목 열쇠**(코드에 박지 않는다). ⚠️ 낱말이 대회명에 들어
+    #    있으면 그 열쇠를 쓴다. 🔴 걸리는 것이 없으면 **피드를 부르지 않는다** —
+    #    없는 대회를 물어 크레딧을 쓰는 것이 가장 아까운 호출이다.
+    sport_words:
+      soccer_epl: ["premier league", "epl", "프리미어"]
+      soccer_korea_kleague1: ["k league", "k리그", "kleague"]
+      soccer_japan_j_league: ["j1 league", "j league", "j리그"]
+      soccer_uefa_nations_league: ["uefa nations", "네이션스리그"]
+      soccer_spain_la_liga: ["la liga", "라리가", "laliga"]
+      soccer_italy_serie_a: ["serie a", "세리에"]
+      soccer_germany_bundesliga: ["bundesliga", "분데스리가"]
+      soccer_france_ligue_one: ["ligue 1", "리그앙"]
+      soccer_uefa_champs_league: ["champions league", "챔피언스리그"]
+      soccer_usa_mls: ["mls", "major league soccer"]
+      soccer_china_superleague: ["super league - china", "중국 슈퍼리그"]
+      soccer_saudi_arabia_pro_league: ["saudi pro", "사우디"]
+    credit_cost:
+      events: 0        # 🔴 **실측** — `x-requests-last: 0`(남은 수가 안 줄었다)
+      event_odds: 1    # 🔴 **실측** — 지역 1(eu) · 마켓 h2h 에서 1
+    bookmakers_seen: 22      # 🔴 실측(EPL 한 경기 · eu 지역) — **피나클 포함**
+    devig_example: |
+      실측 2026-10-06 Arsenal vs Leeds(EPL · 피나클 기준):
+      홈 0.6975 · 무 0.1858 · 원정 0.1167 · 업체 몫 3.89%
     cost_note: |
       실측 2026-10-06: 요청 1건당 크레딧 = (지역 수 × 마켓 수). 과거 배당은 10배.
       🔴 그래서 **지역 1개·마켓 1묶음**으로만 부른다.
@@ -81,7 +122,8 @@ feeds:
 
   - name: odds_api_net
     base_url: https://api.odds-api.net
-    key_env: ODDS_API_NET_KEY
+    # ⚠️ `key_env` 를 **적지 않는다** — 금지된 피드의 키 이름을 표에 두면 계약이
+    #    *"코드가 읽는 키"* 로 세고 `.env.example` 을 요구한다(실측 2026-10-06).
     allowed: false
     why: |
       🔴 `.env` 주석(2026-09-17)에 *"sandbox 월 1,000"* 로 적혀 있었지만 키가 없고,

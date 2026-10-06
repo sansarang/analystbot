@@ -1,0 +1,15 @@
+{
+ "kind": "fetch",
+ "url": "https://api.the-odds-api.com/v4/sports/soccer_uefa_nations_league/events/",
+ "query": "apiKey=…가림",
+ "recorded_at": "2026-10-06T10:53:38.262927+00:00",
+ "headers": {
+  "x-requests-remaining": "499",
+  "x-requests-used": "1",
+  "x-requests-last": "0"
+ },
+ "ok": true,
+ "status": 200,
+ "text": "[{\"id\":\"2b8ee7414d7336408e155d4f35599d8e\",\"sport_key\":\"soccer_uefa_nations_league\",\"sport_title\":\"UEFA Nations League\",\"commence_time\":\"2026-10-06T14:00:00Z\",\"home_team\":\"Kazakhstan\",\"away_team\":\"Faroe Islands\"},{\"id\":\"47bd936e6a94ddd84a6ad08926d0379b\",\"sport_key\":\"soccer_uefa_nations_league\",\"sport_title\":\"UEFA Nations League\",\"commence_time\":\"2026-10-06T18:45:00Z\",\"home_team\":\"Belarus\",\"away_team\":\"Finland\"},{\"id\":\"ed18949608b83e25d1556c5081e43ba8\",\"sport_key\":\"soccer_uefa_nations_league\",\"sport_title\":\"UEFA Nations League\",\"commence_time\":\"2026-10-06T18:45:00Z\",\"home_team\":\"Luxembourg\",\"away_team\":\"Bulgaria\"},{\"id\":\"5d9aac1a239e87ecc555aba2fe4426cf\",\"sport_key\":\"soccer_uefa_nations_league\",\"sport_title\":\"UEFA Nations League\",\"commence_time\":\"2026-10-06T18:45:00Z\",\"home_team\":\"Croatia\",\"away_team\":\"Spain\"},{\"id\":\"8012c0d9c6c0b99e57d9465837c5ae94\",\"sport_key\":\"soccer_uefa_nations_league\",\"sport_title\":\"UEFA Nations League\",\"commence_time\":\"2026-10-06T18:45:00Z\",\"home_team\":\"England\",\"away_team\":\"Czech Republic\"},{\"id\":\"2718bb0aea7bb7aa60419612ff9341ff\",\"sport_key\":\"soccer_uefa_nations_league\",\"sport_title\":\"UEFA Nations League\",\"commence_time\":\"2026-10-06T18:45:00Z\",\"home_team\":\"Estonia\",\"away_team\":\"Iceland\"},{\"id\":\"e32fea4406b5fdba3a733019ad3059ad\",\"sport_key\":\"soccer_uefa_nations_league\",\"sport_title\":\"UEFA Nations League\",\"commence_time\":\"2026-10-06T18:45:00Z\",\"home_team\":\"Moldova\",\"away_team\":\"Slovakia\"},{\"id\":\"fefdbdc59cf8fd0495796f9b372d0152\",\"sport_key\":\"soccer_uefa_nations_league\",\"sport_title\":\"UEFA Nations League\",\"commence_time\":\"2026-10-06T18:45:00Z\",\"home_team\":\"Switzerland\",\"away_team\":\"North Macedonia\"},{\"id\":\"bc11b98f6ba1da1f5d5d051fd14cd197\",\"sport_key\":\"soccer_uefa_nations_league\",\"sport_title\":\"UEFA Nations League\",\"commence_time\":\"2026-10-06T18:45:00Z\",\"home_team\":\"Scotland\",\"away_team\":\"Slovenia\"}]\n",
+ "reason": ""
+}

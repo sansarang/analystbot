@@ -93,7 +93,16 @@ def _lines(ref: MatchRef, facts: Facts, scen: list[Scenario],
     from app.core.stages.s5_verify import game_of
     if board is not None and board.lines:
         notes.append(f"보드 {len(board.lines)}줄을 받았다 — **보드 줄만** 센다")
-        return [(_old_of(line), line) for line in board.lines]
+        out: list[tuple[Any, BoardLine]] = []
+        for line in board.lines:
+            old = _old_of(line)
+            if old is None:
+                # 🔴 못 옮긴 줄은 **이름으로 남긴다**(#3 조용한 0 금지)
+                notes.append(f"🔴 보드 줄 `{line.market}/{line.side}` 를 대입 꼴로 "
+                             f"못 옮겼다 — 그 줄은 **세지 않았다**")
+                continue
+            out.append((old, line))
+        return out
     drafts = [_Draft(id=s.id, scores=[f"{h}-{a}" for h, a in s.outcomes])
               for s in scen]
     got, said = survive.our_board(game_of(ref), dict(facts.standings) or None,
@@ -128,11 +137,18 @@ def _old_of(line: BoardLine) -> Any:
     """🔴 `BoardLine` → 옛 `Market`(대입 산수가 그 타입을 받는다)."""
     from app.types import Market as OldMarket
     back = {("win", "home"): "home", ("win", "away"): "away",
-            ("draw", ""): "draw", ("unbeaten", "home"): "home_dc",
-            ("unbeaten", "away"): "away_dc"}
+            # 🔴🔴 **피드가 무승부를 `win/draw` 로 준다**(네 층 §2-5) — 보드 파서는
+            #    `draw/""` 로 적는다. ⚠️ 그 꼴을 안 적어 둬서 네이션스리그 라이브
+            #    실행이 통째로 죽었다(실측 2026-10-06: `market_type='win'` 거부).
+            ("win", "draw"): "draw", ("draw", ""): "draw",
+            ("draw", "draw"): "draw",
+            ("unbeaten", "home"): "home_dc", ("unbeaten", "away"): "away_dc"}
     mt = back.get((line.market, line.side))
     if mt:
         return OldMarket(market_type=mt)
+    if line.market == "win":
+        # 🔴 모르는 쪽 이름이 온 `win` 줄은 **버린다** — 옛 타입에 `win` 이 없다
+        return None
     return OldMarket(market_type=line.market, team=line.side,
                      line=line.point)
 

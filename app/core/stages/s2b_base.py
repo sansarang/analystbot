@@ -13,7 +13,10 @@ import logging
 from datetime import date
 
 from app.core import base
-from app.core.schema import AdjProb, BaseProb, Facts, LineupDelta, MatchRef
+#: 🔴 결장 계열 유형은 `compare` 가 든 **목록 하나**를 쓴다(사본 금지 · #1)
+from app.core.compare import ABSENCE_TYPES
+from app.core.schema import (XI, AdjProb, BaseProb, Facts, LineupDelta,
+                             MatchRef)
 from app.core.state import RunState
 
 logger = logging.getLogger(__name__)
@@ -28,6 +31,29 @@ async def run(ref: MatchRef, facts: Facts, *, state: RunState, net,
     got = await _base(ref, facts, state=state, net=net, when=when)
     said = _adjust(ref, facts, got, state=state)
     return got, said
+
+
+def again(ref: MatchRef, facts: Facts, base_p: BaseProb,
+          variables: list, *, state: RunState) -> AdjProb:
+    """🔴🔴 **검증된 결장 변수까지 넣어 ② 를 다시 센다**(§4-2 세 번째 줄).
+
+    > 오늘 XI — 확정 > 예상 > *"평소 XI − 결장 명단 − **검증된 결장 변수**"*
+    > (이 경우 카드에 "추정 XI").
+
+    ⚠️ s2b 는 s5 **앞**에서 돈다 — 그때는 기사에서 검증된 결장(`R1` 김민재 같은 것)을
+       아직 모른다. 🔴 그래서 s5 뒤에 **한 번 더** 센다. 네트워크를 안 쓴다(공짜다).
+    """
+    gone: dict[str, set[str]] = {}
+    for v in variables:
+        if v.type not in ABSENCE_TYPES or not v.target:
+            continue
+        gone.setdefault(str(v.subject), set()).add(str(v.target))
+    if not gone:
+        state.note("s2b ②(2차) — 검증된 결장 변수가 없다 · 1차 그대로 둔다")
+        return _adjust(ref, facts, base_p, state=state)
+    said = ", ".join(f"{k}:{sorted(v)}" for k, v in gone.items())
+    state.note(f"s2b ②(2차) — 검증된 결장 변수를 넣는다({said})")
+    return _adjust(ref, facts, base_p, state=state, absent=gone)
 
 
 async def _base(ref: MatchRef, facts: Facts, *, state: RunState, net,
@@ -53,9 +79,36 @@ async def _base(ref: MatchRef, facts: Facts, *, state: RunState, net,
         _CACHE[day] = table
         state.note(f"s2b ① 등급표 {why}")
     home, away = _code_of(ref.home), _code_of(ref.away)
-    got = base.base_prob(kind=kind,
-                         home_elo=table.get(home) if home else None,
-                         away_elo=table.get(away) if away else None,
+    home_elo = table.get(home) if home else None
+    away_elo = table.get(away) if away else None
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **리그 경기는 우리가 계산한 자체 Elo**(사용자 승인 2026-10-06(5차) ③)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 clubelo 는 죽었다(실측) — football-data 과거 결과로 **우리가 굴린** 등급을
+    #     쓴다(`app/collect/leagueelo.py` · 하루 1회 갱신 · `var/league_elo/`).
+    #  ⚠️ 대표팀 코드(`iso:`)가 없는 경기는 애초에 eloratings 표에 없다 — 그래서
+    #     이 길이 **유일한** 기준이다.
+    if home_elo is None or away_elo is None:
+        if kind.startswith("league:"):
+            from app.collect import leagueelo
+            comp = kind.split(":", 1)[1]
+            # 🔴 **하루 1회 갱신**(승인 ③) — 그날 파일이 없으면 여기서 만든다.
+            #    ⚠️ 그날 파일이 있으면 네트워크에 안 간다(`refresh` 가 그것을 본다).
+            if not leagueelo.load(comp, when=when):
+                await leagueelo.refresh(net, when=when, state=state)
+            a, how_a = leagueelo.rating_of(ref.home_name, comps=[comp],
+                                           when=when)
+            b, how_b = leagueelo.rating_of(ref.away_name, comps=[comp],
+                                           when=when)
+            if a is not None and b is not None:
+                home_elo, away_elo = a, b
+                source = f"football-data {comp} 자체 Elo"
+                state.note(f"s2b ① 리그 Elo — {ref.home_name} {a:.0f} · "
+                           f"{ref.away_name} {b:.0f}({how_a})")
+            else:
+                state.note(f"s2b ① 리그 Elo 를 못 찾았다 — {how_a} / {how_b}")
+    got = base.base_prob(kind=kind, home_elo=home_elo, away_elo=away_elo,
                          neutral=bool(neutral), source=source, data_date=day)
     if got.probs is None:
         state.note(f"s2b ① 기준 없음 — {got.why}"
@@ -85,18 +138,52 @@ def _code_of(key: str) -> str:
 
 
 def usual_sample(facts: Facts) -> int:
-    """🔴 §4-1 — 평소 XI 를 센 **경기 수**. ⚠️ 지금은 0 또는 1 이다.
+    """🔴 §4-1 — 평소 XI 를 센 **경기 수**(팀마다 센 뒤 **가장 적은 쪽**).
 
-    🔴 `facts.last_xi` 는 **직전 경기 하나**만 든다(`_follow_once` 가 링크를 한 번
-       따라간다 · 사용자 지시 2026-10-06(3차) ⑦). 그래서 §4-1 의 *"최근 5경기 선발
-       빈도 상위 11명"* 을 만들 재료가 아직 **모자란다**.
-    ⚠️ 그 사실을 숫자로 돌려주고, 판단은 `_adjust` 가 한다(조용히 넘기지 않는다).
+    🔴 사용자 승인 2026-10-06(5차) ②로 직전 경기를 **최대 5개** 따라간다 — 그래서
+       이 수가 3 이상이면 ② 가 돈다. ⚠️ 한 팀만 많아도 소용없다(비교가 안 된다).
+    ⚠️ `past_xi` 가 비면 옛 꼴(`last_xi` 하나)로 센다 — 1 이다.
     """
-    return 1 if any((v.lineup or v.players) for v in (facts.last_xi or {}).values()) else 0
+    box = facts.past_xi or {}
+    if box:
+        return min(len([x for x in v if (x.lineup or x.players)])
+                   for v in box.values()) if box else 0
+    return 1 if any((v.lineup or v.players)
+                    for v in (facts.last_xi or {}).values()) else 0
+
+
+def ranked(rows: list[XI]) -> list[str]:
+    """🔴 과거 경기들의 **선발 빈도 순 전체 명단**(동률은 최근 경기 순).
+
+    🔴 `usual_xi` 는 이 목록의 앞 11명이고, **추정 XI** 는 결장자를 뺀 앞 11명이다 —
+       그래야 빠진 자리에 **다음 선수가 들어간다**. ⚠️ 그 보충이 없으면 10명짜리
+       라인업이 되고 `ΔS` 가 *"한 명이 사라졌다"* 로 읽혀 전력 하락이 과장된다
+       (실측 2026-10-06: 김민재 한 명으로 `ΔS −3.78`(−10.4%)이 나왔다).
+    """
+    seen: dict[str, int] = {}
+    order: dict[str, int] = {}
+    for i, xi in enumerate(rows):
+        for nm in ([p.name for p in (xi.lineup or [])] or list(xi.players or [])):
+            seen[nm] = seen.get(nm, 0) + 1
+            order.setdefault(nm, i)
+    return sorted(seen, key=lambda nm: (-seen[nm], order.get(nm, 99), nm))
+
+
+def usual_xi(rows: list[XI], *, size: int = 11) -> tuple[list[str], str]:
+    """🔴🔴 §4-1 — 최근 N경기의 **선발 빈도 상위 11명**. `(이름들, 사유)`.
+
+    ⚠️ 동률은 **최근 경기에 나온 순서**로 가른다 — 무작위로 고르면 회차마다 평소 XI
+       가 흔들려 `ΔS` 가 거짓으로 움직인다.
+    """
+    said = ranked(rows)
+    got = said[:size]
+    return got, (f"{len(rows)}경기 선발 빈도 상위 {len(got)}명"
+                 f"(명단 {len(said)}명)")
 
 
 def _adjust(ref: MatchRef, facts: Facts, got: BaseProb, *,
-            state: RunState) -> AdjProb:
+            state: RunState,
+            absent: dict[str, set[str]] | None = None) -> AdjProb:
     """🔴 ② — 오늘 XI 가 평소 XI 보다 얼마나 약/강한가(§4).
 
     ⚠️ **평소 XI 표본이 3경기 미만이면 건너뛴다**(§4-1 원문) — 1경기를 "평소"라고
@@ -116,10 +203,39 @@ def _adjust(ref: MatchRef, facts: Facts, got: BaseProb, *,
                f"하나까지만 따라간다")
         state.note(f"s2b {why} · 선수 가치 {len(values)}명은 받았다")
         return AdjProb(why=why)
-    usual = {str(k): [p.name for p in (v.lineup or [])] or list(v.players or [])
-             for k, v in (facts.last_xi or {}).items()}
-    today = {str(k): [p.name for p in (v.lineup or [])] or list(v.players or [])
-             for k, v in (facts.xi or {}).items()}
+    # 🔴 §4-1 — 평소 XI 는 **선발 빈도 상위 11명**이다(직전 한 경기가 아니다)
+    usual: dict[str, list[str]] = {}
+    pool_of: dict[str, list[str]] = {}
+    for key, rows in (facts.past_xi or {}).items():
+        # ⚠️ 이름을 `got` 으로 쓰면 **인자 `got`(BaseProb)을 덮어쓴다** — 실측
+        #    2026-10-06: `'list' object has no attribute 'probs'` 로 터졌다.
+        names, how = usual_xi(list(rows))
+        if names:
+            usual[str(key)] = names
+            pool_of[str(key)] = ranked(list(rows))
+            state.note(f"s2b ② `{key}` 평소 XI — {how}")
+    # 🔴 오늘 XI — 확정 > 예상 > **평소 XI − 결장**(§4-2 "추정 XI")
+    today: dict[str, list[str]] = {}
+    for key in usual:
+        xi = (facts.xi or {}).get(key)
+        mine = ([p.name for p in (xi.lineup or [])] or list(xi.players or [])) \
+            if xi is not None else []
+        if mine:
+            today[key] = mine
+            continue
+        gone = {m.name for m in (facts.missing or {}).get(key, [])}
+        # 🔴 **검증된 결장 변수**(§4-2) — 기사에서 온 결장도 오늘 XI 에서 뺀다
+        gone |= set((absent or {}).get(key, set()))
+        # 🔴 결장자를 빼고 **다음 선수로 11명을 채운다**(§4-2 "추정 XI")
+        said = [nm for nm in pool_of.get(key, usual[key])
+                if not _same_player(nm, gone)][:len(usual[key])]
+        if gone and said:
+            came = [nm for nm in said if nm not in usual[key]]
+            today[key] = said
+            state.note(f"s2b ② `{key}` **추정 XI** — 평소 XI 에서 결장 "
+                       f"{len(gone)}명을 빼고({', '.join(sorted(gone))}) 다음 "
+                       f"선수 {len(came)}명을 채웠다"
+                       f"{'(' + ', '.join(came) + ')' if came else ''}")
     ds, pct, deltas, est = _deltas(usual, today, values)
     if est > base.MAX_ESTIMATED:
         why = (f"② 표시만 — 값 없는 선수를 {est}명 채웠다(>{base.MAX_ESTIMATED}) → "
@@ -170,3 +286,20 @@ def _deltas(usual: dict[str, list[str]], today: dict[str, list[str]],
                 delta_s=round(base.strength_of([v_in]) - base.strength_of([v_out]), 4),
                 estimated=nm not in values or (bool(to) and to not in values)))
     return ds, pct, out, est
+
+
+def _same_player(name: str, pool: set[str]) -> bool:
+    """🔴 그 이름이 결장 목록에 있나 — **표기가 갈린다**(`Kim Min-jae`·`Min-Jae Kim`).
+
+    ⚠️ 실측 2026-10-06: 기사는 `Kim Min-jae`, fotmob 은 `Min-Jae Kim` 이다. 글자
+       그대로 비교하면 **같은 선수를 못 맞춘다** — 그래서 **낱말 집합**으로 센다.
+    🔴 성·이름 순서만 다른 경우를 맞추는 것이고, 다른 선수를 같다고 하지 않는다
+       (낱말이 **전부** 같아야 한다).
+    """
+    from app.core.stages.s5_verify import norm
+    mine = {w for w in norm(name).replace("-", " ").split() if len(w) > 1}
+    for said in pool:
+        box = {w for w in norm(said).replace("-", " ").split() if len(w) > 1}
+        if mine and box and mine == box:
+            return True
+    return False

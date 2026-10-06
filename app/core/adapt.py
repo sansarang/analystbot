@@ -188,6 +188,7 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
              player_pos: dict[str, str] | None = None,
              squad: dict[str, list[str]] | None = None,
              player_value: dict[str, float] | None = None,
+             past_xi: dict[str, list[XI]] | None = None,
              gaps: list[str] | None = None) -> Facts:
     """🔴 구조 사실 묶음 → `schema.Facts`. ⚠️ 없는 칸은 **빈 것**으로 둔다.
 
@@ -208,6 +209,7 @@ def facts_of(raw: dict, *, xi: dict[str, XI] | None = None,
         player_pos=dict(player_pos or {}),
         player_value={str(k): float(v) for k, v in (player_value or {}).items()
                       if v and float(v) > 0},
+        past_xi={str(k): list(v) for k, v in (past_xi or {}).items() if v},
         squad={k: [str(x) for x in v] for k, v in (squad or {}).items()},
         match_format=(fmt if fmt in allowed else "unknown"),  # type: ignore[arg-type]
         extra_time=box.get("extra_time"),

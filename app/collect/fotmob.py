@@ -1212,11 +1212,24 @@ def parse_context(got, q: Question, *, day=None) -> list[Fact]:
 BASE = "https://www.fotmob.com"
 
 
-def prev_match_urls(j: dict, q: Question) -> list[str]:
-    """질문한 팀의 **직전 경기** 주소. 🔴 한 팀에 하나다(가장 최근 것).
+#: 🔴 한 팀에서 따라갈 **직전 경기 수**(네 층 지시서 §4-1 · 사용자 승인 2026-10-06(5차) ②)
+#
+#  > 경기 페이지에서 직전 경기 링크를 **최대 5개까지** 따라가 평소 XI 를 만든다.
+#  > 경기당 추가 fetch 상한 **5**, 캐시 **하루**.
+#
+#  ⚠️ 종전에는 **하나**였다 — 그래서 평소 XI 표본이 1경기였고 §4-1(최소 3경기)이
+#     ② 를 늘 건너뛰게 했다(실측 2026-10-06).
+PREV_MATCHES = 5
+
+
+def prev_match_urls(j: dict, q: Question, *, limit: int = PREV_MATCHES
+                    ) -> list[str]:
+    """질문한 팀의 **직전 경기 주소들** — 최신부터 최대 `limit` 개.
 
     ⚠️ 상대 팀 것도 함께 내지 않는다 — 세포는 **한 팀을 묻고** 있고, 상대 팀 기준
        XI 는 상대 팀 세포가 가져온다(§19-a: 세포 하나 = 질문 하나).
+    🔴 `teamForm` 이 과거 경기를 **여러 개** 들고 있다(실측) — 그중 날짜와 링크가
+       있는 것만, 최신 순으로 센다.
     """
     box = _box(j)
     tf = box.get("teamForm")
@@ -1232,13 +1245,19 @@ def prev_match_urls(j: dict, q: Question) -> list[str]:
         games = [g for g in (tf[which] or []) if isinstance(g, dict)]
         dated = sorted(((_when_of(g), g) for g in games),
                        key=lambda x: (x[0] is not None, x[0]))
+        got = 0
         for when, g in reversed(dated):
             link = str(g.get("linkToMatch") or "").strip()
             if when is None or not link:
                 continue
             # 🔴 `#5109918` 같은 앵커를 뗀다 — 같은 페이지다
-            out.append(BASE + link.split("#")[0])
-            break
+            said = BASE + link.split("#")[0]
+            if said in out:
+                continue
+            out.append(said)
+            got += 1
+            if got >= max(1, int(limit)):
+                break
     return out
 
 

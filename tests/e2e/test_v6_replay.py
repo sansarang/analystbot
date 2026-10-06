@@ -597,3 +597,23 @@ def test_불변식25_기준이나_시장이_없으면_사유와_함께_열이_�
     # 🔴 ② 가 못 돌면 그 사유가 블록 3c 에 있다
     if card.adj_prob.probs is None:
         assert card.adj_prob.why and card.adj_prob.why[:12] in said, card.adj_prob.why
+
+
+def test_불변식26_축구_카드의_우리_열_무승부가_0이_아니다(card: Card):
+    """26. **축구 시나리오에는 무승부 갈래가 있다** → 우리 열 무승부 > 0.
+
+    🔴 사용자 지시 2026-10-06(5차) ①: *"축구 시나리오 세트에 무승부(0-0 또는 1-1)
+       갈래가 하나도 없으면 코드가 보강한다(v4 `soccer_lock` 과 같은 역할).
+       E2E 불변식: 축구 카드의 우리 열 무승부 > 0."*
+    ⚠️ 실측 2026-10-06 온두라스–자메이카: 무승부가 **0%** 였고 `무`·`더블찬스` 가
+       그 0 을 그대로 받았다. 원인이 둘이었다 — 갈래가 없을 수 있다는 것과, 섞인
+       스코어의 무게가 통째로 사라진다는 것. 🔴 둘 다 고쳤다.
+    """
+    if card.match.sport != "soccer":
+        return
+    scen = list(card.hypo.scenarios) if card.hypo is not None else []
+    assert any(h == a for s in scen for h, a in s.outcomes), \
+        "🔴 무승부 스코어가 **하나도 없다**(필수형 보강이 안 돌았다)"
+    assert card.our_prob is not None, "우리 확률이 없다"
+    assert card.our_prob.draw > 0.0, \
+        f"🔴 우리 열 무승부가 0 이다 — 시나리오 {len(scen)}개"

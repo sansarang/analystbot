@@ -1255,7 +1255,31 @@ def comp_kind(ref: MatchRef, facts: Facts) -> str:
         or "친선" in said
     if _is_national(ref):
         return "national_friendly" if friendly else "national_official"
+    # 🔴🔴 리그는 **대회 코드**로 적는다(`league:PL`) — 사용자 승인 2026-10-06(5차) ③.
+    #    ⚠️ 대회 이름은 출처마다 다르게 쓴다(`Premier League`·`EPL`·`프리미어리그`) —
+    #       그걸 열쇠로 쓰면 같은 리그가 **여러 유형**으로 갈라져 계수를 못 찾는다.
+    #    🔴 표는 `config/league_elo.yaml` 의 `names` 다(코드에 박지 않는다).
+    code = league_code(said)
+    if code:
+        return f"league:{code}"
     return f"league:{said}" if said else "league"
+
+
+def league_code(competition: str) -> str:
+    """🔴 대회명 → football-data **대회 코드**(`Premier League` → `PL`). 모르면 `""`.
+
+    🔴 표는 `config/league_elo.yaml` 의 `names` 하나다(사본 금지 · #1).
+    """
+    from app import rules
+    said = str(competition or "").lower()
+    if not said:
+        return ""
+    box = dict((rules._load("config/league_elo.yaml") or {}).get("names") or {})
+    for code, words in box.items():
+        for w in (words or []):
+            if str(w).lower() in said:
+                return str(code)
+    return ""
 
 
 def _is_national(ref: MatchRef) -> bool:

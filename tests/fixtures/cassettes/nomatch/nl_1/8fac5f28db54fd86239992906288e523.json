@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T10:53:51.396694+00:00",
+ "order": [
+  "Selección de fútbol de Croacia Footprint Croatia Footprint Travel Guides.ISBN 1-903471-79-6 Bellamy.J, Alex (2003). Croatia faces fresh Euro 2012 racism probe …",
+  "Six-Goal Thriller! 🚨 England 4-2 Croatia | FIFA World Cup 2026 | England Vs Croatia | N18G England kicks off their 2026 World Cup campaign with a chaotic 4-2 win against heavyweights Croatia. england croatia rivalry, england croatia 2026 …",
+  "Croatia for News, Travel, Sport, Business, Politics and Lifestyle Total Croatia News, your guide to news, views and events in English. Local reporting from Croatia and Croatian communities worldwide.",
+  "King of Spain Juan Carlos I El espía que me llamó … Will Spain Give Disgraced King a Royal Homecoming? … Juan Carlos, Former King, Returns to Spain",
+  "Angy Fernández – “Sé Quien Soy” | Benidorm Fest 2024 | La Gran Final Pedro – “Dos Extraños (Cuarteto de Cuerda)” | Benidorm Fest 2024 | La Gran Final RTVE Música294K2y agoBaby Lasagna - Rim Tim Tagi Dim (LIVE) | Croatia 🇭🇷 | … Spain 🇪🇸 …",
+  "Luka Modrić 329 330 However, Croatia won and topped the group, … Golden Ball of the 2018 World Cup Modrić captaining Croatia at the 2018 FIFA World Cup For Croatia's 2018 World Cup qualifying campaign …",
+  "spain vs croatia revive un duelo con mucha historia spain vs croatia volvió a poner frente a frente a dos selecciones con estilos reconocibles y una rivalidad europea cada vez más interesante. El duelo, ...",
+  "How Spain eased past Croatia 3-0 to kick off their Euro 2024 tournament with victory Follow live reaction to Spain’s comfortable 3-0 victory against Croatia at the 2024 European Championship … Croatia with 53% of the ball today - and Spain with the 3-0 win. … Spain 3 Croatia 0 – The Briefing"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

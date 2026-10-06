@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T10:52:43.747606+00:00",
+ "order": [
+  "Spain vs Croatia: Confirmed team news as Spain aim to make it 42 games unbeaten Croatia host Spain at the Stadion Poljud on Tuesday night as they seek to bounce back from their 7-0 defeat. Back-to-back defeats and a total of 11 goals conceded leave Croatia third in the group, 3 ...",
+  "Croatia v Spain: Preview, expected line-ups, stats and where to watch Croatia will attempt to recover from a record-breaking defeat when they welcome world champions Spain to Split in the UEFA Nations League on Tuesday night. Slaven Bilic’s side were thrashed 7-0 by ...",
+  "Spain 4-1 Croatia: La Roja continue record run as Yamal contributes 2 goals and 1 assist 6일 전Spain are now unbeaten in a record-extending 40 matches inside 90 minutes (W30, D10) after a comfortable 4-1 win over Croatia, whose five-game undefeated away …6일 전",
+  "Spain on the verge of historic Nations League run against Croatia World champions Spain travel to Split on Tuesday with ten consecutive wins behind them and a chance to make it eleven against a Croatia side still absorbing the heaviest defeat in its history.",
+  "England crush Croatia 7-0 as Spain stay perfect with Czech victory - The Hindu 2일 전England 7-0 Croatia; Spain unbeaten as they beat Czech Republic 3-1; Kane, Bellingham star for England, Spain hold sole Group A lead.2일 전",
+  "Spain 4-1 Croatia (Sep 29, 2026) Game Analysis - ESPN Lamine Yamal fired a double as Spain cruised to a 4-1 win against Croatia in Seville on Tuesday to open up a three-point lead at the top of their Nations League group.",
+  "PREVIEW: De la Fuente’s Spain Chase 11th Consecutive Win with Croatia Up Next 5시간 전Croatia host Spain in Split for the reverse fixture in the UEFA Nations League, with La Roja sitting top of Group A3 and the Vatreni coming off back-to-back defeats.In their first meeting on 29 Sep...5시간 전",
+  "Preview of the Croatia-Spain match at Poljud, Sunday, October 6 4시간 전Spain, world champions and undefeated in 41 matches, face Croatia in Split on October 6. Find out the lineups, injuries, and predictions for the Nations League...4시간 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

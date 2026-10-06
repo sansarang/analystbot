@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T10:53:48.373395+00:00",
+ "order": [
+  "Luka Modrić 327 Modrić was forced to miss the crucial fixture against Spain on 21 June because of a minor muscle injury. Modric injury in loss against Brazil not serious …",
+  "Ferran Torres out of Spain squad with ankle injury and will miss Czech Republic, Croatia games OVIEDO, Spain (AP) — Spain striker Ferran Torres has withdrawn from the squad because of left ankle pain, ruling him out of the world champion's remaining Nations League games against the Czech ...",
+  "Ramos, Ronaldo score as Portugal rallies to beat Croatia 2-1 and advance to round of 16 Goncalo Ramos headed in the stoppage-time winner as Portugal beat Croatia 2-1 in a wild finish that also included a Croatian goal disallowed for offside just before the final whistle in a World Cup round of 32 match.",
+  "Spain host Modric’s Croatia in Seville, rotation expected Spain, with two stars on their shirt, make their home bow as world champions at the Ramón Sánchez Pizjuán on Tuesday against Modric’s Croatia.",
+  "Football News, page 1 | Goal.com UK 'It was an accident!' - De la Fuente warns Spain over Croatia trip Luis de la Fuente has told his Spain players to ignore recent results and prepare for a battle against a world-class Croatia side in the UEFA Nations League.The La Roja boss believes their …",
+  "Croatia beat Spain 3-2 Spain passed up the chance to seal progress to the Nations League finals as they were beaten 3-2 by Croatia on Thursday, undone by a 93rd-minute winner from Tin Jedvaj.",
+  "Croatia vs England team news and predicted lineups Croatia team news Bilic has no fresh injury concerns from the defeat to Spain, but there may still be a change.Luka Modric came off the bench in midweek so may return to the starting lineup alongside Mateo Kovacic.He will be crucial in helping Croatia control …",
+  "Spain on the verge of historic Nations League run against Croatia World champions Spain travel to Split on Tuesday with ten consecutive wins behind them and a chance to make it eleven against a Croatia side still absorbing the heaviest defeat in its history."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

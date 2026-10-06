@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T10:52:49.272924+00:00",
+ "order": [
+  "Selección de fútbol de Croacia Footprint Croatia Footprint Travel Guides.ISBN 1-903471-79-6 Bellamy.J, Alex (2003). Croatia faces fresh Euro 2012 racism probe …",
+  "Selección de fútbol de Croacia Footprint Croatia Footprint Travel Guides.ISBN 1-903471-79-6 Bellamy.J, Alex (2003). Croatia faces fresh Euro 2012 racism probe …",
+  "tag - Gulf Times Spain brush aside Croatia in Nations League, England down CzechsPremier League confirms Man City guilty of serious financial breachesZidane admits emotion on eve of first game as France coach",
+  "King of Spain Juan Carlos I El espía que me llamó … Will Spain Give Disgraced King a Royal Homecoming? … Juan Carlos, Former King, Returns to Spain",
+  "King of Spain Juan Carlos I El espía que me llamó … Will Spain Give Disgraced King a Royal Homecoming? … Juan Carlos, Former King, Returns to Spain",
+  "Angy Fernández – “Sé Quien Soy” | Benidorm Fest 2024 | La Gran Final Pedro – “Dos Extraños (Cuarteto de Cuerda)” | Benidorm Fest 2024 | La Gran Final RTVE Música294K2y agoBaby Lasagna - Rim Tim Tagi Dim (LIVE) | Croatia 🇭🇷 | … Spain 🇪🇸 …",
+  "Angy Fernández – “Sé Quien Soy” | Benidorm Fest 2024 | La Gran Final Pedro – “Dos Extraños (Cuarteto de Cuerda)” | Benidorm Fest 2024 | La Gran Final RTVE Música294K2y agoBaby Lasagna - Rim Tim Tagi Dim (LIVE) | Croatia 🇭🇷 | … Spain 🇪🇸 …",
+  "spain vs croatia revive un duelo con mucha historia spain vs croatia volvió a poner frente a frente a dos selecciones con estilos reconocibles y una rivalidad europea cada vez más interesante. El duelo, ..."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 17문단 → 재정렬 상위 8"
+}

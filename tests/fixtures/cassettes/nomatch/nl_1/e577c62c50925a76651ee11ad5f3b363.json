@@ -1,0 +1,11 @@
+{
+ "kind": "fetch",
+ "url": "https://tribuna.com/en/news/2026-10-05-nobody-will-play-more-than-270-minutes-de-la-fuente-sets-spain-rotation-plan-for-croatia/",
+ "query": "",
+ "recorded_at": "2026-10-06T10:53:56.284157+00:00",
+ "headers": {},
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

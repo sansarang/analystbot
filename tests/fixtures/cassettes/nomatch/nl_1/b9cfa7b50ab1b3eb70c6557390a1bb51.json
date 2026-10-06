@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T10:52:46.948494+00:00",
+ "order": [
+  "️ There'll be some changes: De La Fuente hints at rotation for Spain Spain coach Luis de la Fuente confirmed at a press conference that he will make changes to the starting lineup to face Croatia at the Ramón Sánchez-Pizjuán stadium in Seville.Adjustments in ...",
+  "Pickford: Being a substitute felt strange, but the coach explained the rotation to me 3일 전England will play Croatia away. Ahead of the match, Pickford attended a press conference and discussed topics such as the rotation of goalkeepers, and his futu…3일 전",
+  "'None of my players played three full matches!' – Luis de la Fuente reveals fitness strategy after Czec.... 2일 전Spain head coach Luis de la Fuente defended his heavy squad rotation after La Roja extended their unbeaten run to 41 matches with a 3-1 win over Czechia. The manager emphasized that player welfare...2일 전",
+  "De la Fuente on Spain rotation: ‘There are always players who bring freshness and energy’ The Spain head coach insists on the need to trust his rotation policy ahead of the Nations League meeting with Croatia.",
+  "'Nobody will play more than 270 minutes': De la Fuente sets Spain rotation plan for Croatia clash Spain head coach Luis de la Fuente has confirmed that player workload will remain a major consideration when his side face Croatia in Split on Tuesday.With Spain navigating four matches in 10 days, De ...",
+  "'Important at any point' - Luis de la Fuente remains tight-lipped on Lamine Yamal starting role as Spain .... 3일 전'Important at any point' - Luis de la Fuente remains tight-lipped on Lamine Yamal starting role as Spain prepare for rotation3일 전",
+  "Tuchel indicates he might need more aggressive rotation in final Nations League fixture - VAVEL Internati.... 3일 전The England manager feels he could run into selection problems after the Nations League trip to Croatia.3일 전",
+  "World champions Spain set to rotate for Croatia Nations League clash Pubill, Cubarsí, Huijsen, Cucurella, Zubimendi, Fermín and Oyarzabal are all expected to start the fourth matchday of the Nations League."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

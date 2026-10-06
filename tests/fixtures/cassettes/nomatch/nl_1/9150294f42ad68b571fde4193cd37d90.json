@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Spain Croatia lesión",
+ "recorded_at": "2026-10-06T10:53:47.889714+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "España tiene un problema extremo",
+   "content": "El canario, a falta de confirmación, tiene una seria lesión en la clavícula izquierda. … El recuerdo de la lesión que sufrió ante el Celta en abril reapareció por unos instantes.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.marca.com/futbol/seleccion/2026/06/27/espana-problema-extremo.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.marca.com",
+    "/futbol/seleccion/2026/06/27/espana-problema-extremo.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Otra lesión de cruzado para Adilson Mendes",
+   "content": "El jugador, que ya estuvo 10 meses de baja de marzo de 2025 a enero de 2026 por una afección en la rodilla derecha, se dañó ante el Mirandés la otra",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.marca.com/futbol/cordoba/2026/03/29/lesion-cruzado-adilson-mendes.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.marca.com",
+    "/futbol/cordoba/2026/03/29/lesion-cruzado-adilson-mendes.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Eli Ndiaye abandona la concentración de la selección española por lesión",
+   "content": "ALBERTO NEVADO (FOTO FEB) El jugador se someterá a pruebas para ver el alcance de la lesión y por precaución se ha decidido que abandone la concentración para centrarse en su recuperación.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.marca.com/baloncesto/eurobasket/2025/08/06/eli-ndiaye-abandona-concentracion-seleccion-espanola-lesion.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.marca.com",
+    "/baloncesto/eurobasket/2025/08/06/eli-ndiaye-abandona-concentracion-seleccion-espanola-lesion.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Alejandro Balde, lesionado: qué le pasa, qué lesión tiene, cuánto tiempo estará de baja y qué partidos se perderá con el FC Barcelona | DAZN News MX",
+   "content": "sobre la lesión de Balde y cómo podría afectar al Barça! Entró a los 10 minutos para sustituir a Jules Kounde, por lesión, y a los 70 minutos tuvo que pedir el cambio …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.dazn.com/es-MX/news/f%C3%BAtbol/alejandro-balde-lesionado-que-pasa-lesion-tiene-cuanto-tiempo-estara-baja-partidos-pierde/dxu220vmxtoi12tpyomt5x06d",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.dazn.com",
+    "/es-MX/news/f%C3%BAtbol/alejandro-balde-lesionado-que-pasa-lesion-tiene-cuanto-tiempo-estara-baja-partidos-pierde/dxu220vmxtoi12tpyomt5x06d",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ElDesmarque: Noticias deportivas de última hora",
+   "content": "Última hora en deportes con noticias y vídeos de fútbol, tenis, baloncesto y F1. Retransmisiones en directo, reportajes y crónicas en El Desmarque",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.eldesmarque.com/futbol/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eldesmarque.com",
+    "/futbol/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La lesión de Santi Cazorla: qué ha tenido y cuándo ha vuelto a jugar | Goal.com Espana",
+   "content": "Aunque la cirugía resolvió eso, el tiempo afuera le empeoró la lesión en el talón. ¿CUÁL FUE LA LESIÓN DE CAZORLA? Cazorla volvió de la lesión en la rodilla …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.goal.com/es/noticias/la-lesion-de-santi-cazorla-que-tiene-y-cuando-vuelve-a-jugar/tbkcjhwngr981hapz8xac698u",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/es/noticias/la-lesion-de-santi-cazorla-que-tiene-y-cuando-vuelve-a-jugar/tbkcjhwngr981hapz8xac698u",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ElDesmarque: Noticias deportivas de última hora",
+   "content": "Última hora de LaLiga EA Sports Primera División: clasificación resultados, goles, mejores jugadas, resúmenes, vídeos e imágenes en ElDesmarque.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.eldesmarque.com/futbol/liga-1a-division/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eldesmarque.com",
+    "/futbol/liga-1a-division/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¿Cuáles han sido las lesiones más importantes de Marc Márquez? | DAZN News ES",
+   "content": "¡F1, MotoGP y mucho más! Llama gratis al 900999823 ¡F1, MotoGP y mucho más! Llama gratis al 900999823 … en diciembre tuvo que volver a operarse por la misma lesión.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.dazn.com/es-ES/news/motor/cuales-han-sido-lesiones-mas-importantes-marc-marquez/bbmoxqg4l5im17hdtneain1g1",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.dazn.com",
+    "/es-ES/news/motor/cuales-han-sido-lesiones-mas-importantes-marc-marquez/bbmoxqg4l5im17hdtneain1g1",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de fútbol de España",
+   "content": "214 215 No fue así en los cuartos de final , en donde España, que no pudo contar con Raúl por una lesión que sufrió en el anterior encuentro …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Espa%C3%B1a",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Espa%C3%B1a",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lesiones - Últimas noticias de Lesiones",
+   "content": "u futuro Redacción: FERNANDO ÁLVAREZ 8 comentarios Radio MARCA Valdo avisa con Cabo Verde: \"Ha cambiado en los últimos años, … Ya me tocará hablar más adelante de mi lesión …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.marca.com/temas/lesiones.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.marca.com",
+    "/temas/lesiones.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pablo Barrios, lesionado: qué le pasa, qué lesión tiene, cuánto tiempo estará de baja y qué partidos se perderá con el Atlético de Madrid | DAZN News ES",
+   "content": "lesión de isquios … El centrocampista se retiró con molestias de la sesión y las pruebas realizadas por los servicios médicos confirmaron la lesión.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.dazn.com/es-ES/news/f%C3%BAtbol/pablo-barrios-lesionado-pasa-lesion-tiene-cuanto-tiempo-estara-baja-partidos-pierde/1f9sgjhhw411i17inpzgfhjf6e",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.dazn.com",
+    "/es-ES/news/f%C3%BAtbol/pablo-barrios-lesionado-pasa-lesion-tiene-cuanto-tiempo-estara-baja-partidos-pierde/1f9sgjhhw411i17inpzgfhjf6e",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Modric se lesiona y podría estar de tres a cinco semanas de baja",
+   "content": "El futbolista dijo tras el partido que desconocía el alcance de la lesión: \"No sé, mañana (por el lunes) me realizarán una resonancia magnética\".",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://as.com/futbol/2014/11/16/eurocopa/1416169300_967882.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "as.com",
+    "/futbol/2014/11/16/eurocopa/1416169300_967882.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ter Stegen se sincera tras su grave lesión que seguramente le aparte del Mundial: “Esto está siendo especialmente duro para mí”",
+   "content": "El guardameta alemán, que pasará por su tercera operación en un año y medio este viernes, ha emitido un comunicado explicando cómo se siente tras su infortunio en el segundo partido con el Girona",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://elpais.com/deportes/futbol/2026-02-05/ter-stegen-se-sincera-tras-su-grave-lesion-que-seguramente-le-aparte-del-mundial-esto-esta-siendo-especialmente-duro-para-mi.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "elpais.com",
+    "/deportes/futbol/2026-02-05/ter-stegen-se-sincera-tras-su-grave-lesion-que-seguramente-le-aparte-del-mundial-esto-esta-siendo-especialmente-duro-para-mi.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Grave lesión de rodilla de Aubameyang: al quirófano",
+   "content": "Pierre-Emerick Aubameyang, jugador del RC Deportivo de A Coruña, tendrá que pasar por quirófano debido a una lesión importante en la rodilla.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.eldesmarque.com/futbol/liga-1a-division/20260923/grave-lesion-rodilla-aubameyang-quirofano-deportivo-coruna_18_020251933.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.eldesmarque.com",
+    "/futbol/liga-1a-division/20260923/grave-lesion-rodilla-aubameyang-quirofano-deportivo-coruna_18_020251933.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lamine Yamal dice adiós a la temporada con el Barça pero estará recuperado para el Mundial",
+   "content": "Barça El extremo sufre una lesión en el bíceps femoral de la pierna izquierda Lamine Yamal se duele en el césped tras lesionarse al lanzar el penalti que supuso el 1-0 al Celta.M.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.marca.com/futbol/barcelona/2026/04/23/lamine-yamal-dice-adios-temporada-barca-estara-mundial.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.marca.com",
+    "/futbol/barcelona/2026/04/23/lamine-yamal-dice-adios-temporada-barca-estara-mundial.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "✅ CROACIA SORPRENDIÓ A COLOMBIA Y LO VENCIÓ 2 A 1 EN ORLANDO | La Casaca Fútbol 🏆",
+   "content": "#colombia #croacia #mundial COLOMBIA VS CROATIA FULL MATCH (26/03/2026)COLOMBIA x CROACIA ao vivo (26/03/26)COLOMBIA VS CROACIA EN VIVO (26/03/26)COLOMBIA VS...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=yNXNCoOIJmk",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=yNXNCoOIJmk",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "El cuerpo de Oyarzabal dice basta: lesión muscular por acumulación de minutos",
+   "content": "Concretamente su pierna izquierda, donde los servicios médicos del equipo vasco han detectado una lesión muscular en los isquiotibiales de la cual no se ha determinado aún el tiempo de baja.Más sobre la Real SociedadEsto se debe …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.mundodeportivo.com/futbol/real-sociedad/20251127/1002577092/cuerpo-oyarzabal-dice-basta-lesion-muscular-acumulacion-minutos.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mundodeportivo.com",
+    "/futbol/real-sociedad/20251127/1002577092/cuerpo-oyarzabal-dice-basta-lesion-muscular-acumulacion-minutos.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Dani Carvajal se rompe los ligamentos cruzado y colateral externo, y el tendón poplíteo de la pierna derecha",
+   "content": "El parte médico confirmó el pesimismo indisimulable que se extendió en el Real Madrid tras ver la lesión de Dani Carvajal … Esta es la lesión más grave en la carrera de Carvajal.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://elpais.com/deportes/futbol/2024-10-05/alerta-maxima-por-la-rodilla-derecha-de-dani-carvajal.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "elpais.com",
+    "/deportes/futbol/2024-10-05/alerta-maxima-por-la-rodilla-derecha-de-dani-carvajal.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Josh Nebo, otra lesión para el Barça",
+   "content": "El pívot, una de las incorporaciones de los azulgranas este verano, se perderá entre dos y tres semanas por una lesión en el sóleo. Tercera lesión.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://as.com/baloncesto/euroliga/josh-nebo-otra-lesion-para-el-barca-f202609-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "as.com",
+    "/baloncesto/euroliga/josh-nebo-otra-lesion-para-el-barca-f202609-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lesión",
+   "content": "Una lesión (del latín laesio 1 ) es cualquier daño o cambio anormal en el tejido de un organismo , generalmente causado por herida o enfermedades Las lesiones pueden producirse tanto en humanos como en plantas y animales.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Lesi%C3%B3n",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Lesi%C3%B3n",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

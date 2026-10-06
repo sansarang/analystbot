@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Spain Croatia rotación",
+ "recorded_at": "2026-10-06T10:53:49.279859+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Ruta Vía de la Plata | spain.info",
+   "content": "Recorre España de sur a norte, desde Sevilla hasta Gijón, siguiendo el camino de la antigua Vía de la Plata romana | spain.info",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.spain.info/es/ruta/via-plata/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.spain.info",
+    "/es/ruta/via-plata/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rotación del inventario - Wikipedia, la enciclopedia libre",
+   "content": "El cava y otros artículos, por su propia naturaleza, tienen una rotación baja. La rotación del inventario o rotación de existencias es uno de los parámetros utilizados para el control de gestió",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Rotaci%C3%B3n_del_inventario",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Rotaci%C3%B3n_del_inventario",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rutas turísticas de España | spain.info",
+   "content": "Descubre las rutas turísticas de España. Conocenos a través de sus principales rutas: Camino de Santiago, Ruta Vía de la Plata y otras rutas culturales …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.spain.info/es/rutas/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.spain.info",
+    "/es/rutas/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "España Verde, qué ver en una semana | spain.info",
+   "content": "Planes para recorrer esta zona del norte de España y conocer País Vasco, Cantabria, Asturias y Galicia en un recorrido de alrededor de siete días | spain.info",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.spain.info/es/ruta/planes-semana-espana-verde/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.spain.info",
+    "/es/ruta/planes-semana-espana-verde/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Spanish tourism site with an arabic approach | Spain.info GCC",
+   "content": "Spanish tourist information: cities, cuisine, routes, culture, shopping, families, practical information, visas, tourist trains in Spain | Spain.info GCC",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.spain.info/gcc/en/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.spain.info",
+    "/gcc/en/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Angy Fernández – “Sé Quien Soy” | Benidorm Fest 2024 | La Gran Final",
+   "content": "Pedro – “Dos Extraños (Cuarteto de Cuerda)” | Benidorm Fest 2024 | La Gran Final RTVE Música294K2y agoBaby Lasagna - Rim Tim Tagi Dim (LIVE) | Croatia 🇭🇷 | … Spain 🇪🇸 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=MdQFS0Tu-DA",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=MdQFS0Tu-DA",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Turismo en Córdoba. Qué ver | spain.info",
+   "content": "Encuentra información sobre todo lo que puedes hacer en Córdoba. Mejores planes, qué visitar, etc., para que disfrutes al máximo de tu estancia | spain.info",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.spain.info/es/destino/cordoba/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.spain.info",
+    "/es/destino/cordoba/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rotación trienal",
+   "content": "Este artículo o sección necesita … que aparezcan en una publicación acreditada … Busca fuentes: «Rotación trienal» … Este aviso fue puesto el 1",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Rotaci%C3%B3n_trienal",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Rotaci%C3%B3n_trienal",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rotación - Wikipedia, la enciclopedia libre",
+   "content": "movimiento de rotación movimiento de cambio de orientación de un cuerpo o un sistema de referencia de forma que una línea (llamada eje de rotación) o un punto permanece fijo respecto al cuerpo.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Rotaci%C3%B3n",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Rotaci%C3%B3n",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La Rotación del Sol",
+   "content": "La Rotación del Sol … Animación de la rotación del Sol donde se reproducen sus llamaradas y prominencias. … podemos estudiar la rotación de Sol.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://cesar.esa.int/index.php?Section=SSE_Sun_Rotation&ChangeLang=es",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "cesar.esa.int",
+    "/index.php",
+    "",
+    "Section=SSE_Sun_Rotation&ChangeLang=es",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Apple España",
+   "content": "El canal oficial de Apple en YouTube te da la bienvenida. Aquí encontrarás noticias sobre nuevos productos, tutoriales y otros contenidos que no te puedes pe...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.youtube.com/channel/UC2F7S7UWwpA10RBu-EwvTvw",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/channel/UC2F7S7UWwpA10RBu-EwvTvw",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rotación (empleo)",
+   "content": "Representación humorística de la sustitución de un empleado de cuello blanco En recursos humanos , la rotación es el acto de reemplazar a un empleado por un nuevo empleado.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Rotaci%C3%B3n_(empleo)",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Rotaci%C3%B3n_(empleo)",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de fútbol de Croacia",
+   "content": "Footprint Croatia Footprint Travel Guides.ISBN 1-903471-79-6 Bellamy.J, Alex (2003). Croatia faces fresh Euro 2012 racism probe …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Croacia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Croacia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Autofacturas: qué son y cómo se emiten | Stripe",
+   "content": "Descubre qué es una autofactura, los requisitos legales en España y cuándo el cliente puede emitir facturas en tu nombre.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://stripe.com/es/resources/more/self-billing-invoices-in-spain",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "stripe.com",
+    "/es/resources/more/self-billing-invoices-in-spain",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La dana en España, en imágenes",
+   "content": "Al menos 95 personas han muerto a causa de las inundaciones en la provincia de Valencia",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://elpais.com/espana/2024-10-29/la-dana-en-espana-en-imagenes.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "elpais.com",
+    "/espana/2024-10-29/la-dana-en-espana-en-imagenes.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Brutalismo “Made in Spain”: las paradas que no te puedes perder en la geografía española",
+   "content": "Desde Madrid a Cuenca, hay edificios que, hasta hace poco, eran considerados moles de hormigón, pero que esconden un concepto artístico y que hoy son hitos arquitectónicos",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://elpais.com/elviajero/lonely-planet/2025-07-31/brutalismo-made-in-spain-las-paradas-que-no-te-puedes-perder-en-la-geografia-espanola.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "elpais.com",
+    "/elviajero/lonely-planet/2025-07-31/brutalismo-made-in-spain-las-paradas-que-no-te-puedes-perder-en-la-geografia-espanola.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Así son las nuevas plazas SER de aparcamiento de alta rotación de Madrid: lo que necesitas saber",
+   "content": "El último capítulo lo escriben las nuevas plazas SER de alta rotación Señalizadas con franjas azules y blancas, con un tiempo máximo de 45 minutos y una tarifa específica …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.motorpasion.com/industria/asi-nuevas-plazas-ser-aparcamiento-alta-rotacion-madrid-que-necesitas-saber",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.motorpasion.com",
+    "/industria/asi-nuevas-plazas-ser-aparcamiento-alta-rotacion-madrid-que-necesitas-saber",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "List of the busiest airports in Spain",
+   "content": "This is a list of the busiest airports in … , including airports in the Balearic Islands and the Canary Islands … Data is compiled from statistics published by",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/List_of_the_busiest_airports_in_Spain",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/List_of_the_busiest_airports_in_Spain",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "GTA Spano, 780 CV made in Spain",
+   "content": "El nombre de la versión definitiva del GTA Concept es Spano, que nos recuerda a Hispano-Suiza, una vieja gloria del Siglo XX. El recién llegado es el...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.motorpasion.com/superdeportivos/gta-spano-780-cv-made-in-spain",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.motorpasion.com",
+    "/superdeportivos/gta-spano-780-cv-made-in-spain",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "List of municipalities of Spain",
+   "content": "Municipalities of Spain. … In 2023, there were a total of 8,132 municipalities in Spain, including the autonomous cities of",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/List_of_municipalities_of_Spain",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/List_of_municipalities_of_Spain",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

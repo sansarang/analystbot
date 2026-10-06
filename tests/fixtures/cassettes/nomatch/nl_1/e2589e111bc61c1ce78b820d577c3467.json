@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T10:53:44.994540+00:00",
+ "order": [
+  "De la Fuente on Spain rotation: ‘There are always players who bring freshness and energy’ The Spain head coach insists on the need to trust his rotation policy ahead of the Nations League meeting with Croatia.",
+  "'Nobody will play more than 270 minutes': De la Fuente sets Spain rotation plan for Croatia clash Spain head coach Luis de la Fuente has confirmed that player workload will remain a major consideration when his side face Croatia in Split on Tuesday.With Spain navigating four matches in 10 days, De ...",
+  "Croatia vs Spain Prediction, Predicted Lineups & Team News Croatia vs Spain prediction, expected lineups, team news, injuries and tactical analysis for Tuesday's UEFA Nations League match in Split.",
+  "Croatia vs. Spain prediction, lineups, odds and bet builder tips for UEFA Nations League clash Croatia vs. Spain prediction, lineups, odds and bet builder tips for the UEFA Nations League clash on October 6. Get team news and our best bets for Poljud.",
+  "Croatia vs Spain: UEFA Nations League – Yamal, Modric, head-to-head Coming on the back of a 10-match winning streak, Spain face Croatia with sights set on the Nations League quarterfinals.",
+  "Spain on the verge of historic Nations League run against Croatia World champions Spain travel to Split on Tuesday with ten consecutive wins behind them and a chance to make it eleven against a Croatia side still absorbing the heaviest defeat in its history.",
+  "Croatia vs Spain Predictions, Picks & Odds – 06/10/2026 Get our expert prediction and best odds for this UEFA Nations League clash. Will X2 deliver value? Find out now!",
+  "Croatia vs. Spain—Nations League: Preview, Predictions and Lineups The world champion managed a rampant victory over Croatia only last week."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

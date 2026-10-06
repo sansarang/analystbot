@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T10:52:46.240489+00:00",
+ "order": [
+  "Ferran Torres out of Spain squad with ankle injury and will miss Czech Republic, Croatia games 4일 전Ferran Torres out of Spain squad with ankle injury and will miss Czech Republic, Croatia games Spain striker Ferran Torres has withdrawn from the squad because of left ankle pain4일 전",
+  "Ferran Torres out of Spain squad with ankle injury and will miss Czech Republic, Croatia games - Yahoo Sp.... 4일 전Ferran Torres out of Spain squad with ankle injury and will miss Czech Republic, Croatia games4일 전",
+  "Ferran Torres out of Spain squad with ankle injury and will miss Czech Republic, Croatia games OVIEDO, Spain (AP) — Spain striker Ferran Torres has withdrawn from the squad because of left ankle pain, ruling him out of the world champion's remaining Nations League games against the Czech ...",
+  "Spain’s Ferran Torres Withdraws from Nations League Camp with Ankle Injury - Kenya Today 2일 전Spain’s Ferran Torres Withdraws from Nations League Camp with Ankle Injury Spain’s forward Ferran Torres left the national team camp on medical advice after a lingering ankle problem, missing the upcoming Nations League games against the Czech Republic and Croatia.2일 전",
+  "England XI vs Croatia: Confirmed team news, predicted lineup, injury latest for Nations League | The Stan.... 4일 전England XI vs Croatia: Confirmed team news, predicted lineup, injury latest for Nations League Thomas Tuchel hit with injury blow, but is still expected to name a strong team4일 전",
+  "Soccer-Torres withdrawn from Spain squad due to injury, Espi called up - The Star ,Malaysia News 4일 전Soccer-Torres withdrawn from Spain squad due to injury, Espi called up4일 전",
+  "Arsenal injury news: Gunners receive Martin Zubimendi update after Spain win vs Croatia - Sports Mole 5일 전Arsenal receive major boost as midfielder Martin Zubimendi has not picked up a serious injury during Spain's win over Croatia.5일 전",
+  "Torres withdrawn from Spain squad due to injury, Espi called up - Latest News 3일 전The federation says Torres’ withdrawal is intended to give him time to recover fully from the ankle issue3일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

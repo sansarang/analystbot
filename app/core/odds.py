@@ -76,9 +76,14 @@ async def usage(pool, feed: str, *, when: date | None = None) -> tuple[int, int 
 
 
 async def note_call(pool, feed: str, *, remaining: int | None = None,
-                    limit_said: int | None = None,
+                    limit_said: int | None = None, used: int | None = None,
                     when: date | None = None) -> None:
-    """🔴 한 번 불렀다고 원장에 적는다. ⚠️ 피드가 남은 수를 주면 그것도 적는다."""
+    """🔴 한 번 불렀다고 원장에 적는다. ⚠️ 피드가 남은 수를 주면 그것도 적는다.
+
+    🔴 `used` 는 **피드가 말한 누적**이다(우리가 센 수와 다를 수 있다 — 다른 기계가
+       같은 키로 불렀을 때). 그 둘을 **따로** 쌓는다: `calls` 는 우리 수,
+       `remaining` 은 피드 수다.
+    """
     if pool is None:
         return
     month = (when or datetime.now(timezone.utc).date()).replace(day=1)
@@ -92,6 +97,8 @@ async def note_call(pool, feed: str, *, remaining: int | None = None,
                  remaining = COALESCE($4, odds_usage.remaining),
                  updated_at = now()""",
             feed, month, limit_said, remaining)
+    if used is not None and limit_said:
+        logger.info("[odds] 피드가 말한 누적 %s/%s", used, limit_said)
 
 
 def budget_left(calls: int, limit: int | None) -> tuple[bool, str]:
@@ -235,11 +242,13 @@ def pick_basis(quotes: list[MarketQuote]) -> tuple[list[str], str]:
     """
     names = books_of(quotes)
     ref = str(rules.odds_sources().get("reference_bookmaker") or "pinnacle")
+    # ⚠️ **"시장 = " 을 붙이지 않는다** — 카드가 그 말을 이미 적는다(실측 2026-10-06:
+    #    `시장 = 시장 = pinnacle(...)` 로 두 번 찍혔다).
     if ref in names:
-        return [ref], f"시장 = {ref}"
+        return [ref], ref
     if len(names) == 1:
-        return names, f"시장 = {names[0]}(단일 업체)"
-    return names, f"시장 = {len(names)}개 업체 중앙값"
+        return names, f"{names[0]}(단일 업체)"
+    return names, f"{len(names)}개 업체 중앙값"
 
 
 def probs_of(quotes: list[MarketQuote], *, basis: list[str]
@@ -359,20 +368,44 @@ async def from_feed(ref: MatchRef, *, pool, net, state: RunState,
     return MarketProb(why="시장 없음 — " + " · ".join(whys))
 
 
+def sport_key_of(feed: dict, ref: MatchRef) -> tuple[str, str]:
+    """🔴🔴 그 경기의 **피드 종목 열쇠**. `(열쇠, 사유)` — 없으면 빈 글자.
+
+    🔴 표는 `config/odds_sources.yaml` 의 `sport_words` 다(코드에 박지 않는다).
+    ⚠️ 실측 2026-10-06: 이 피드에는 **대표팀 친선·CONCACAF·AFC 가 없다**. 그 경기에
+       열쇠를 억지로 붙여 부르면 크레딧만 쓰고 0건이 온다 — 그래서 **안 부른다**.
+    """
+    said = f"{ref.competition} {ref.competition_short}".lower()
+    for skey, words in (feed.get("sport_words") or {}).items():
+        for w in (words or []):
+            if str(w).lower() in said:
+                return str(skey), f"대회명에 `{w}` 가 있다"
+    return "", (f"`{ref.competition}` 에 맞는 종목 열쇠가 표에 없다 — 이 피드는 "
+                f"대표팀 친선·CONCACAF·AFC 를 다루지 않는다(실측 2026-10-06)")
+
+
 async def _one_feed(feed: dict, ref: MatchRef, *, pool, net, state: RunState,
                     cap: int) -> tuple[MarketProb | None, str]:
     """🔴 피드 하나 — 이벤트 목록 → 매칭 → 그 경기 배당. 요청 수는 `cap` 이내."""
     base = str(feed.get("base_url") or "").rstrip("/")
     eps = dict(feed.get("endpoints") or {})
     key = feed_key(feed)
-    sport = "soccer"
+    sport, why_s = sport_key_of(feed, ref)
+    if not sport:
+        return None, why_s
     url = base + str(eps.get("events") or "").replace("{sport}", sport)
     if not str(eps.get("events") or ""):
         return None, "이벤트 목록 경로가 표에 없다"
     spent = 0
-    events, why = await _json(net, url, {"apiKey": key}, state=state)
+    events, why, head = await _json(net, url, {"apiKey": key}, state=state)
     spent += 1
-    await note_call(pool, str(feed.get("name")))
+    # 🔴 **크레딧이 든 요청만** 센다 — 실측 2026-10-06: `/events` 는 **0 크레딧**이고
+    #    `/events/{id}/odds` 가 1 크레딧이다(`x-requests-last` 가 그렇게 말한다).
+    cost = _last_cost(head)
+    if cost:
+        await note_call(pool, str(feed.get("name")), **_quota(head))
+    state.note(f"s2c 이벤트 목록 — 크레딧 {cost} · 남은 "
+               f"{head.get('x-requests-remaining', '?')}")
     if events is None:
         return None, f"이벤트 목록을 못 받았다 — {why}"
     ev, said = match_event(ref, list(events if isinstance(events, list) else []))
@@ -384,11 +417,12 @@ async def _one_feed(feed: dict, ref: MatchRef, *, pool, net, state: RunState,
         "{sport}", sport).replace("{event_id}", str(ev.get("id") or ""))
     markets = ",".join(k for k in ("h2h", "spreads", "totals")
                        if k in (feed.get("markets") or []))
-    got, why2 = await _json(net, odds_url, {"apiKey": key, "regions": "eu",
-                                            "markets": markets or "h2h",
-                                            "oddsFormat": "decimal"},
-                            state=state)
-    await note_call(pool, str(feed.get("name")))
+    got, why2, head2 = await _json(net, odds_url,
+                                   {"apiKey": key, "regions": "eu",
+                                    "markets": markets or "h2h",
+                                    "oddsFormat": "decimal"}, state=state)
+    if _last_cost(head2):
+        await note_call(pool, str(feed.get("name")), **_quota(head2))
     if not isinstance(got, dict):
         return None, f"그 경기 배당을 못 받았다 — {why2}"
     quotes, skipped = quotes_of(got)
@@ -398,28 +432,37 @@ async def _one_feed(feed: dict, ref: MatchRef, *, pool, net, state: RunState,
     probs, shin, vig, bad = probs_of(quotes, basis=basis)
     for line in skipped[:5]:
         state.note(f"s2c 버린 줄 — {line}")
+    said = _quota(head2)
     return MarketProb(probs=probs, shin=shin, vig=vig, quotes=quotes,
-                      basis=label, source=str(feed.get("name")),
+                      basis=f"{label}(피드 {feed.get('name')} · 업체 "
+                            f"{len(books_of(quotes))}곳)",
+                      source=str(feed.get("name")),
                       captured_at=datetime.now(timezone.utc),
+                      used=said.get("used"), limit=said.get("limit_said"),
                       why=" · ".join(bad)), ""
 
 
 async def _json(net, url: str, params: dict, *, state: RunState
-                ) -> tuple[object | None, str]:
-    """🔴 피드 한 번 — `app.net` 으로만 간다(robots·UA·카세트). ⚠️ 키는 로그에 안 남긴다."""
+                ) -> tuple[object | None, str, dict]:
+    """🔴 피드 한 번 — `app.net` 으로만 간다(robots·UA·카세트). `(값, 사유, 머리말)`.
+
+    ⚠️ 키는 로그에 안 남긴다. 🔴 머리말에 **남은 요청 수**가 온다(§2-2 · 실측
+       2026-10-06: `x-requests-remaining: 499` · `x-requests-last: 1`).
+    """
     ok, why = await net.allowed(url)
     if not ok:
-        return None, f"robots 가 막았다 — {why}"
+        return None, f"robots 가 막았다 — {why}", {}
     got = await net.get(url, params=params)
     body = getattr(got, "text", "") or ""
     status = getattr(got, "status", 0)
+    head = dict(getattr(got, "headers", {}) or {})
     if not body:
-        return None, f"빈 응답(HTTP {status})"
+        return None, f"빈 응답(HTTP {status})", head
     try:
-        return json.loads(body), ""
+        return json.loads(body), "", head
     except json.JSONDecodeError:
         state.note(f"s2c JSON 이 아니다(HTTP {status}) — {body[:80]}")
-        return None, f"JSON 이 아니다(HTTP {status})"
+        return None, f"JSON 이 아니다(HTTP {status})", head
 
 
 def lines_from(probs: MarketProb, *, extra: list[BoardLine] | None = None
@@ -439,4 +482,35 @@ def lines_from(probs: MarketProb, *, extra: list[BoardLine] | None = None
         if k not in seen:
             seen.add(k)
             out.append(ln)
+    return out
+
+
+def _last_cost(head: dict) -> int:
+    """🔴 그 요청이 **크레딧 몇 개**를 썼나(`x-requests-last`). 모르면 1 로 본다.
+
+    ⚠️ 실측 2026-10-06: `/v4/sports/{키}/events/` 는 **0** 이고
+       `/v4/sports/{키}/events/{id}/odds/` 는 **1** 이었다(지역 1 · 마켓 1묶음).
+    🔴 모를 때 0 으로 보면 한도를 **조용히 넘는다** — 그래서 1 로 본다.
+    """
+    try:
+        return int(str(head.get("x-requests-last") or "1").strip())
+    except ValueError:
+        return 1
+
+
+def _quota(head: dict) -> dict:
+    """🔴 머리말 → 원장 칸(`remaining`·`limit_said`·`used`). 모르면 `None`."""
+    out: dict[str, int | None] = {"remaining": None, "limit_said": None,
+                                  "used": None}
+    try:
+        left = int(str(head.get("x-requests-remaining") or "").strip())
+    except ValueError:
+        return out
+    out["remaining"] = left
+    try:
+        used = int(str(head.get("x-requests-used") or "").strip())
+    except ValueError:
+        return out
+    out["used"] = used
+    out["limit_said"] = used + left          # 🔴 피드가 말한 **한도**다(우리 추측 아님)
     return out

@@ -1,0 +1,11 @@
+{
+ "kind": "fetch",
+ "url": "https://apnews.com/article/world-cup-score-portugal-croatia-ad94f33ede5ada4c8fb63b3893ee2b8e",
+ "query": "",
+ "recorded_at": "2026-10-06T10:53:54.758765+00:00",
+ "headers": {},
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

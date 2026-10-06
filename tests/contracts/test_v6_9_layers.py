@@ -350,8 +350,145 @@ def test_우리_확률은_시나리오_무게_비율이다():
     assert got is not None
     assert round(got.home, 3) == 0.5 and round(got.draw, 3) == 0.25
     assert "무게" in why
-    # 🔴 섞인 스코어(난타전)는 **안 센다** — 어느 쪽인지 모른다
+    # 🔴🔴 **섞인 스코어는 나눠 센다**(2026-10-06(5차) ① 실측) — 종전에는 그 무게가
+    #    통째로 사라져 무승부가 0% 로 나왔다. `2-2`·`2-3` 은 무/원정 반반이다.
     mixed = [Scenario(id="A", outcomes=[(2, 2), (2, 3)], mechanism="m",
                       strength=0.8)]
     said, why2 = compare.our_prob(HypoSet(scenarios=mixed))
-    assert said is None and "무게가 0" in why2, why2
+    assert said is not None, why2
+    assert round(said.draw, 3) == 0.5 and round(said.away, 3) == 0.5, said
+    # ⚠️ 스코어가 아예 없으면 **그때는** 못 센다
+    empty = [Scenario(id="A", outcomes=[], mechanism="m", strength=0.8)]
+    none, why3 = compare.our_prob(HypoSet(scenarios=empty))
+    assert none is None and "무게가 0" in why3, why3
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 지시 2026-10-06(5차)** — ① 무승부 필수 · ② 다섯 경기 · ③ 리그 Elo
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_축구_시나리오에_무승부_갈래가_보강된다():
+    """🔴 ① — 무승부 갈래가 **하나도 없으면** 코드가 넣는다. 돌연변이: 보강 제거.
+
+    🔴 근거 변수가 있으면 **그 무게**를 쓴다(없으면 바닥값 = `[보강]` 기본값).
+    """
+    from app.core.schema import Facts, Scenario, Variable
+    from app.core.stages import s6_hypo
+    from app.core.state import RunState
+    import importlib
+    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
+    scen = [Scenario(id="A", outcomes=[(2, 0)], mechanism="m", strength=1.0),
+            Scenario(id="B", outcomes=[(0, 1)], mechanism="m", strength=1.0)]
+    mine = Variable(id="S04", type="match_type", subject=ref.home, favors="both",
+                    goals="none", target="match_type", hardness="soft",
+                    weight=0.4, claim="친선", quote="친선", from_rule="S04")
+    got = s6_hypo._soccer_forms(ref, Facts(match_format="friendly"), scen,
+                                [mine], state=RunState())
+    draws = [s for s in got if any(h == a for h, a in s.outcomes)]
+    assert draws, "🔴 무승부 갈래가 안 들어왔다"
+    said = draws[0]
+    assert said.added_by == "code" and "무승부" in said.mechanism
+    # 🔴 근거 변수를 driver 로 들어야 `_strength` 가 그 무게를 센다
+    assert said.driver_vars == ["S04"], said.driver_vars
+    # ⚠️ 이미 무승부가 있으면 **더하지 않는다**
+    again = s6_hypo._soccer_forms(
+        ref, Facts(match_format="friendly"),
+        [*scen, Scenario(id="C", outcomes=[(1, 1)], mechanism="m", strength=1.0)],
+        [mine], state=RunState())
+    assert len([s for s in again if any(h == a for h, a in s.outcomes)]) == 1
+
+
+def test_직전_경기를_다섯까지_따라간다():
+    """🔴 ② — 링크 상한 5 · 경기당 fetch 상한 5. 돌연변이: 상한 제거/1 로 되돌리기."""
+    from app.collect import fotmob
+    from app.core.stages import s2_facts
+    assert fotmob.PREV_MATCHES == 5
+    assert s2_facts.FOLLOW_CAP == 5
+    # 🔴 **하루 캐시**다 — 자리 이름에 날짜가 들어간다
+    assert s2_facts.FOLLOW_DIR.name == "follow"
+
+
+def test_평소_XI_는_선발_빈도_상위_열한명이다():
+    """🔴 §4-1 — 빈도 순. 돌연변이: 직전 한 경기만 쓰기 → 11명을 못 고른다."""
+    from app.core.schema import XI, Player
+    from app.core.stages.s2b_base import ranked, usual_xi
+    def _xi(names):
+        return XI(team="team:000129", state="none",
+                  lineup=[Player(name=n) for n in names])
+    rows = [_xi([f"P{i}" for i in range(11)]),
+            _xi([f"P{i}" for i in range(1, 12)]),
+            _xi([f"P{i}" for i in range(1, 12)])]
+    got, how = usual_xi(rows)
+    assert len(got) == 11 and "3경기" in how, (got, how)
+    # 🔴 세 경기 중 세 번 나온 P1~P10 이 **한 번 나온 P0 보다 앞**이다
+    assert "P0" not in got and "P11" in got, got
+    # 🔴 `ranked` 는 **전원**을 순위로 든다 — 결장자를 빼고 채울 재료다
+    assert len(ranked(rows)) == 12
+
+
+def test_리그_Elo_는_우리가_계산하고_clubelo_는_dead_다():
+    """🔴 ③ — football-data 결과로 **우리가** 굴린다. 돌연변이: clubelo 를 다시 켜기."""
+    from app import rules
+    from app.collect import leagueelo
+    said = rules.rating_source("clubelo")
+    assert said and said.get("allowed") is False, said
+    box = leagueelo.table()
+    assert float(box["k"]) == 20.0 and float(box["start"]) == 1500.0
+    assert "PL" in [str(c) for c in box["competitions"]]
+    # 🔴 Elo 는 **시간 순**으로 굴린다 — 경기 전 등급이 적합 입력이다
+    matches = [{"utcDate": "2026-01-01T12:00:00Z", "homeTeam": {"name": "A"},
+                "awayTeam": {"name": "B"},
+                "score": {"fullTime": {"home": 1, "away": 0}}},
+               {"utcDate": "2026-01-08T12:00:00Z", "homeTeam": {"name": "B"},
+                "awayTeam": {"name": "A"},
+                "score": {"fullTime": {"home": 0, "away": 0}}}]
+    rate, rows = leagueelo.compute(matches, k=20.0, start=1500.0)
+    assert rate["A"] > 1500.0 > rate["B"], rate
+    assert rows[0]["home_elo"] == 1500.0, rows[0]
+    # 🔴 두 번째 줄의 **경기 전** 등급이 첫 경기 결과를 담고 있다(누설 없음)
+    assert rows[1]["home_elo"] < 1500.0 < rows[1]["away_elo"], rows[1]
+
+
+def test_리그_경기의_계수도_같은_대회_유형만_쓴다():
+    """🔴 ③ — `league:PL` 계수는 **PL 경기에만**. 돌연변이: 리그 하나로 뭉치기."""
+    from app.core import base
+    from app.core.stages.s5_verify import league_code
+    assert league_code("Premier League") == "PL"
+    got, why = base.triple_of("league:PL", 100.0)
+    assert got is not None, why
+    assert "league:PL" in why
+    none, why2 = base.triple_of("league:K리그1", 100.0)
+    assert none is None and "계수가 없다" in why2, why2
+
+
+def test_피드_종목_열쇠는_표에서_온다():
+    """🔴 ④ — 대회명 → 피드 열쇠. 돌연변이: 모르는 대회에 아무 열쇠나 붙이기.
+
+    ⚠️ 실측 2026-10-06: 이 피드에 **대표팀 친선·CONCACAF·AFC 가 없다**.
+    """
+    import importlib
+    from app import rules
+    from app.core import odds
+    feed = [f for f in rules.odds_feeds() if f["name"] == "the_odds_api"][0]
+    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
+    got, why = odds.sport_key_of(feed, ref)       # Friendlies
+    assert got == "" and "친선" in why, (got, why)
+    said, _ = odds.sport_key_of(feed, ref.model_copy(
+        update={"competition": "Premier League"}))
+    assert said == "soccer_epl"
+    # 🔴 표가 측정값을 든다 — 친선·CONCACAF·AFC 는 `null` 이다
+    scope = dict(feed.get("scope") or {})
+    assert scope["national_friendly"] is None and scope["concacaf"] is None
+    assert scope["epl"] == "soccer_epl"
+
+
+def test_크레딧이_든_요청만_센다():
+    """🔴 §2-2 — `/events` 는 0 크레딧이다(실측). 돌연변이: 늘 1 로 세기."""
+    from app.core import odds
+    assert odds._last_cost({"x-requests-last": "0"}) == 0
+    assert odds._last_cost({"x-requests-last": "1"}) == 1
+    # 🔴 모르면 **1 로 본다** — 0 으로 보면 한도를 조용히 넘는다
+    assert odds._last_cost({}) == 1
+    said = odds._quota({"x-requests-remaining": "499", "x-requests-used": "1"})
+    assert said == {"remaining": 499, "used": 1, "limit_said": 500}, said

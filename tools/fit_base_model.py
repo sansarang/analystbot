@@ -1,7 +1,8 @@
 """🔴🔴 **① 기준 확률의 순서형 로짓 적합** — 네 층 지시서 §3-2 · 단계 5.
 
 ```
-PYTHONPATH=. python tools/fit_base_model.py --years 2010-2026
+PYTHONPATH=. python tools/fit_base_model.py --years 2010-2026        # 대표팀
+PYTHONPATH=. python tools/fit_base_model.py --league                 # 리그(승인 ③)
 ```
 
 > 무승부를 나누려면 **순서형 로짓**을 한 번 적합한다: 입력 dr → 승/무/패.
@@ -36,6 +37,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import pathlib
 import sys
 from datetime import date, datetime, timezone
 
@@ -122,8 +124,13 @@ def _nll(beta: np.ndarray, x: np.ndarray, y: np.ndarray) -> float:
 
 def fit(rows: list[Row]) -> dict:
     """🔴 한 대회 유형을 적합한다. ⚠️ 표본이 적으면 **그 사실을 함께** 돌려준다."""
-    x = np.array([[(r.home_elo - r.away_elo) / 100.0] for r in rows], dtype=float)
-    y = np.array([r.outcome for r in rows], dtype=int)
+    return _fit_rows([(r.home_elo - r.away_elo, r.outcome) for r in rows])
+
+
+def _fit_rows(pairs: list[tuple[float, int]]) -> dict:
+    """🔴 `(Elo 차, 결과)` 목록을 적합한다 — 대표팀·리그가 **같은 함수**를 쓴다."""
+    x = np.array([[dr / 100.0] for dr, _ in pairs], dtype=float)
+    y = np.array([o for _, o in pairs], dtype=int)
     start = np.array([-0.8, 0.6, 0.3])
     got = minimize(_nll, start, args=(x, y), method="Nelder-Mead",
                    options={"maxiter": 20000, "xatol": 1e-8, "fatol": 1e-10})
@@ -141,7 +148,56 @@ def fit(rows: list[Row]) -> dict:
             "converged": bool(got.success)}
 
 
+async def league(argv: list[str]) -> int:
+    """🔴🔴 **리그 경기 적합**(사용자 승인 2026-10-06(5차) ③).
+
+    > football-data.org 과거 결과로 리그별 **자체 Elo** 를 계산해 저장, 같은 순서형
+    > 로짓을 **리그 경기**로 적합.
+
+    🔴 입력은 `app/collect/leagueelo.py` 가 저장한 **경기 전 등급**이다(누설 없음).
+    🔴 대회마다 **따로** 적합한다 — §3 *"다른 대회 값 금지"* 가 리그에도 걸린다.
+    ⚠️ 표본이 적은 대회는 **적합하지 않는다**(그 리그는 "기준 없음"으로 남는다).
+    """
+    from app import net as _net_mod
+    from app.collect import leagueelo
+    net = _net_mod.Net()
+    out, _ = await leagueelo.refresh(net)
+    models: dict[str, dict] = {}
+    for comp, box in out.items():
+        rows = [r for r in (box.get("fit_rows") or [])
+                if isinstance(r, dict) and r.get("outcome") is not None]
+        if len(rows) < 200:
+            print(f"[fit] league:{comp} 표본 {len(rows)}경기 — **적합하지 않는다**")
+            continue
+        # 🔴 `Row` 를 다시 만들지 않는다 — `fit()` 이 보는 칸만 들려 보낸다
+        said = [Row(when=date.fromisoformat(str(r["when"])),
+                    home=str(r["home"]), away=str(r["away"]),
+                    home_score=1 if int(r["outcome"]) == 2 else 0,
+                    away_score=1 if int(r["outcome"]) == 0 else 0,
+                    tournament="L", host="",
+                    home_elo=float(r["home_elo"]), away_elo=float(r["away_elo"]))
+                for r in rows]
+        # ⚠️ 무승부는 위 꼴로 못 적는다(1-0/0-1 로 바뀐다) — 그래서 **직접** 센다
+        got = _fit_rows([(float(r["home_elo"]) - float(r["away_elo"]),
+                          int(r["outcome"])) for r in rows])
+        got["source"] = f"football-data {comp} 자체 Elo"
+        got["matches"] = box.get("matches")
+        models[f"league:{comp}"] = got
+        print(f"[fit] league:{comp} n={got['n']} logloss={got['logloss']} "
+              f"(기준선 {got['logloss_base']}) b_dr={got['b_dr']}")
+        del said
+    if not models:
+        print("🔴 적합한 리그가 없다 — 등급 파일을 먼저 만들어라")
+        return 1
+    _write(models, head_extra=(
+        "# 🔴 `league:*` 는 **우리가 계산한 자체 Elo**로 적합했다(clubelo 는 dead).\n"
+        "#    등급은 `var/league_elo/{날짜}/{대회}.json` 이 들고, 하루 1회 갱신된다.\n"))
+    return 0
+
+
 async def main(argv: list[str]) -> int:
+    if "--league" in argv:
+        return await league(argv)
     span = "2010-2026"
     if "--years" in argv:
         span = argv[argv.index("--years") + 1]
@@ -197,16 +253,43 @@ async def main(argv: list[str]) -> int:
         "#    그때는 모형이 자료보다 못한 것이다.\n"
         f"# 적합 자료: eloratings.net `{{연}}_results.tsv` {span} · 경기 {len(rows)}건\n"
         f"# 적합 시각: {datetime.now(timezone.utc).isoformat(timespec='seconds')}\n"
-        "\nmodels:\n")
-    body_lines = []
-    for kind, m in models.items():
-        body_lines.append(f"  {kind}:")
-        for k, v in m.items():
-            body_lines.append(f"    {k}: {json.dumps(v, ensure_ascii=False)}")
-    with open(OUT, "w", encoding="utf-8") as fh:
-        fh.write(head + "\n".join(body_lines) + "\n")
-    print(f"[fit] 적었다 — {OUT} ({len(models)}개 유형)")
+        "")
+    _write(models, head=head)
     return 0
+
+
+def _write(models: dict[str, dict], *, head: str = "",
+           head_extra: str = "") -> None:
+    """🔴🔴 계수 파일을 적는다 — **있는 유형은 지우지 않는다**(대표팀·리그가 공존한다).
+
+    ⚠️ 리그 적합을 돌릴 때 대표팀 계수를 날리면 ① 이 대표팀 경기에서 죽는다. 🔴 그래서
+       **읽어서 합친 뒤** 적는다.
+    """
+    import yaml as _yaml
+
+    keep: dict[str, dict] = {}
+    old_head = ""
+    p = pathlib.Path(OUT)
+    if p.is_file():
+        said = p.read_text(encoding="utf-8")
+        old_head = "".join(ln for ln in said.splitlines(True)
+                           if ln.startswith("#"))
+        try:
+            keep = dict((_yaml.safe_load(said) or {}).get("models") or {})
+        except Exception:                                   # noqa: BLE001
+            keep = {}
+    keep.update(models)
+    body_lines = []
+    for kind, m in keep.items():
+        body_lines.append(f"  {kind}:")
+        for k, v in dict(m).items():
+            body_lines.append(f"    {k}: {json.dumps(v, ensure_ascii=False)}")
+    top = (head or old_head) + head_extra
+    if not top.endswith("\n"):
+        top += "\n"
+    p.write_text(top + "\nmodels:\n" + "\n".join(body_lines) + "\n",
+                 encoding="utf-8")
+    print(f"[fit] 적었다 — {OUT} ({len(keep)}개 유형 · 이번에 {len(models)}개)")
 
 
 if __name__ == "__main__":

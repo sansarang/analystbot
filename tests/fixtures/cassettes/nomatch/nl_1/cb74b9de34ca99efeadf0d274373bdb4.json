@@ -1,0 +1,11 @@
+{
+ "kind": "fetch",
+ "url": "https://www.nytimes.com/topic/person/king-of-spain-juan-carlos-i",
+ "query": "",
+ "recorded_at": "2026-10-06T10:55:05.059520+00:00",
+ "headers": {},
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

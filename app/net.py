@@ -52,6 +52,11 @@ class Fetched:
     #  **구조적으로 전부 떨어진다.** §19-b-2 가 *"숫자·인용은 본문을 연다"* 고 한
     #  이유가 이것이다 — 날짜도 본문에 있다.
     published_at: datetime | None = None
+    #: 🔴🔴 **응답 머리말 몇 칸**(네 층 지시서 §2-2) — 배당 피드가 *"남은 요청"* 을
+    #  머리말로 준다(실측: `x-requests-remaining`·`x-requests-used`). ⚠️ 그걸 못 읽으면
+    #  월 한도를 **우리가 센 수**로만 알고, 그 수는 다른 기계의 호출을 모른다.
+    #  🔴 담는 것은 **소문자 이름의 몇 칸뿐**이다 — 쿠키·인증 머리말은 담지 않는다.
+    headers: dict[str, str] = field(default_factory=dict)
 
     @property
     def dead(self) -> bool:
@@ -213,15 +218,18 @@ class Net:
         ms = int((time.time() - t0) * 1000)
         if r.status_code >= 400:
             out = Fetched(url, False, r.status_code,
-                          reason=f"HTTP {r.status_code}", elapsed_ms=ms)
+                          reason=f"HTTP {r.status_code}", elapsed_ms=ms,
+                          headers=_kept_headers(r))
         else:
             out = Fetched(url, True, r.status_code, r.text, elapsed_ms=ms,
-                          published_at=published_at_of(r.text, url))
+                          published_at=published_at_of(r.text, url),
+                          headers=_kept_headers(r))
         if cassette.mode() in (cassette.RECORD, cassette.REPLAY):
             # ⚠️ **실패도 저장한다.** 404·robots 거부가 재현되지 않으면 §19-b-4
             #    ("막히면 대체")를 카세트로 시험할 수 없다.
             cassette.save("fetch", url, q,
-                          {"ok": out.ok, "status": out.status,
+                          {"headers": out.headers,
+                           "ok": out.ok, "status": out.status,
                            "text": out.text, "reason": out.reason})
         # 🔴 **성공만 담는다.** 실패를 담으면 한 번의 일시 오류가 그 분석 내내
         #    같은 주소를 죽은 것으로 만든다(§19-b-4 는 그날 dead 지, 영구가 아니다).
@@ -239,7 +247,9 @@ class Net:
         text = str(got.get("text") or "")
         return Fetched(url, bool(got.get("ok")), int(got.get("status") or 0),
                        text, reason=str(got.get("reason") or ""),
-                       published_at=published_at_of(text, url))
+                       published_at=published_at_of(text, url),
+                       headers={str(k): str(v) for k, v in
+                                (got.get("headers") or {}).items()})
 
     # ── §19-e 영속 — 죽은 호스트를 하루 넘겨 기억한다 ──────────────
     async def load_state(self, pool, *, when: date | None = None) -> int:
@@ -286,6 +296,31 @@ class Net:
 
 #: 🔴 DB 에서 되살린 dead 표시. **한 번만** 붙는다(위 `load_state` 참조).
 _LOADED = "(DB 기록)"
+
+
+#: 🔴 담아 두는 머리말 — **이 넷뿐이다**(§2-2 할당량). ⚠️ 목록을 늘리지 않는다
+KEPT_HEADERS = ("x-requests-remaining", "x-requests-used", "x-requests-last",
+                "retry-after")
+
+
+def _kept_headers(resp) -> dict[str, str]:
+    """🔴 응답 머리말에서 **할당량 칸만** 꺼낸다(쿠키·인증은 담지 않는다).
+
+    ⚠️ 머리말이 **없는 응답 객체**도 온다(테스트의 대역·일부 전송 계층) — 그때는
+       빈 표다(실측 2026-10-06: `'_R' object has no attribute 'headers'`).
+    """
+    box = getattr(resp, "headers", None)
+    if box is None:
+        return {}
+    out: dict[str, str] = {}
+    for name in KEPT_HEADERS:
+        try:
+            got = box.get(name)
+        except Exception:                                   # noqa: BLE001
+            got = None
+        if got is not None:
+            out[name] = str(got)
+    return out
 
 
 def _host(url: str) -> str:

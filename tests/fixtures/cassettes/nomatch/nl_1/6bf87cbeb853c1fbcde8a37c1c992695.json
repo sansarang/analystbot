@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T10:55:09.685462+00:00",
+ "order": [
+  "Lamine Yamal has scored in all three games, four goals in total, and has played the most minutes in the squad. Rodri scored on Saturday after starting alongside Pedri, and Mikel Merino came off the bench to score the third. The XI above leans towards the side that won in Sevilla, which is the rotation pattern de la Fuente has followed so far, but with this many absences it's hard to read.",
+  "Luis de la Fuente's answer has been to rotate. He made eight or nine changes for Saturday's 3-1 win over Czechia in Oviedo and explained it simply: \"It was all about protecting the footballers.\" He was also honest about the cost: \"When you make many changes, you cut the rhythm.\"",
+  "Spain can secure a place in the quarter-finals with a win, while Croatia need a response after collapsing in Rijeka. Slaven Bilic has promised changes, but illness, rotation and uncertainty around several senior players make this a difficult spot against the most settled team in the group.",
+  "Expect changes after a 7-0 defeat. Modric started in Rijeka, came off after 57 minutes and is 41. Bilic has already said he won't play all four games in this window, so whether he starts at Poljud is open. Josip Misic replaced him in Sevilla, when Modric only came off the bench. Budimir could lead the line thanks to his experience in Spain.",
+  "For squad news and injury updates through the international window, see RotoWire's soccer news feed and injury report.",
+  "Spain have lost a front line since the window started. Ferran Torres, who scored the World Cup final winner, withdrew on Friday with a left ankle problem, and Real Madrid's Carlos Espi was called up in his place. Nico Williams has gone back to Athletic Club injured. Alejandro Grimaldo was hurt in the warmup before the Croatia game in Sevilla and Eric Garcia in the warmup before Wembley, and Pedro Porro never joined. Fabian Ruiz left the camp on Saturday for the birth of his child, and it isn't clear whether he'll be back.",
+  "Croatia expected starting XI (4-3-3): Dominik Livakovic; Josip Stanisic, Josip Sutalo, Luka Vuskovic, Josko Gvardiol; Luka Modric, Josip Misic, Petar Sucic; Martin Baturina, Ante Budimir, Ivan Perisic",
+  "Illness is part of the picture. Bilic said a virus had gone through the squad, naming Modric, Baturina and Stanisic, and Modric was reported to have played with a fever. Ivan Smolcic missed Sunday's training with an illness of his own. Nine of Saturday's starters did only recovery work on Sunday."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

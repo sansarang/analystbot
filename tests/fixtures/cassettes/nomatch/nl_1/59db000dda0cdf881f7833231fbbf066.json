@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Spain Croatia retirement ceremony",
+ "recorded_at": "2026-10-06T10:53:48.383572+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Retirement in Europe",
+   "content": "Average effective age of retirement for men, 1970 to 2018. Estimates are based on a weighted average of changes in labour force participation rates by age … Retirement age",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Retirement_in_Europe",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Retirement_in_Europe",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Retirement In Spain: Why It’s A Top Choice For Expats",
+   "content": "Thinking about retirement in Spain? Here’s why this expat-friendly haven offers year-round sun, great food, low costs, and an unbeatable lifestyle.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.forbes.com/sites/kathleenpeddicord/2024/12/12/retirement-in-spain-one-of-the-worlds-top-expat-havens/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.forbes.com",
+    "/sites/kathleenpeddicord/2024/12/12/retirement-in-spain-one-of-the-worlds-top-expat-havens/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Spanish pensions: how to retire in Spain",
+   "content": "All Spanish residents make mandatory social security contributions, which pay for public healthcare, … retirement funds.If you’ve lived in Spain all your life …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.expatica.com/es/finance/retirement/spain-pension-846584/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.expatica.com",
+    "/es/finance/retirement/spain-pension-846584/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Retirement age",
+   "content": "Zakon o mirovinskom osiguranju Pension Insurance Act, … Retirement System - Expat In Croatia\" … Cuba Boosts Retirement Age as Population Goes Gray …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Retirement_age",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Retirement_age",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Retire in Spain: everything you need to know",
+   "content": "Discover how you can spend your golden years in Spain, including information on immigration, the most popular places to retire, and more.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.expatica.com/es/finance/retirement/retire-in-spain-166570/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.expatica.com",
+    "/es/finance/retirement/retire-in-spain-166570/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "History of Croatia",
+   "content": "Upon retirement, a popular plan was to return to live in Croatia (then Yugoslavia) to buy more expensive property. the people of Croatia were guaranteed free healthcare …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/History_of_Croatia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/History_of_Croatia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Luka Modrić",
+   "content": "329 330 However, Croatia won and topped the group, … Golden Ball of the 2018 World Cup Modrić captaining Croatia at the 2018 FIFA World Cup For Croatia's 2018 World Cup qualifying campaign …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Luka_Modri%C4%87",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Luka_Modri%C4%87",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Recognition of same-sex unions in Croatia",
+   "content": "has recognized … Minister Bauk was present at the ceremony, and presented the couple with two … Ministry of Administration of the Republic of Croatia",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Recognition_of_same-sex_unions_in_Croatia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Recognition_of_same-sex_unions_in_Croatia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Croatia",
+   "content": "But Croatia had also the highest cost prices of the whole … The average monthly salary/wages in Croatia standing on 739 euro or nearly US$1000.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://simple.wikipedia.org/wiki/Croatia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "simple.wikipedia.org",
+    "/wiki/Croatia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lamine Yamal double powers Spain to 4-1 win over Croatia",
+   "content": "Spain 4-1 Croatia – Nations League as it happened Published On 29 Sep 2026 This live page is now closed.You can find a recap of the action below or head to our match report here Thanls for joining us at Al Jazeera Sport.Goodbye for now That’s it for our live …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.aljazeera.com/sports/liveblog/2026/9/29/live-spain-vs-croatia-nations-league",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.aljazeera.com",
+    "/sports/liveblog/2026/9/29/live-spain-vs-croatia-nations-league",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Yamal vs Modric as Spain hosts Croatia in Nations League clash",
+   "content": ": Dominik Livakovic; Josip Stanisic, Luka Vuskovic, Josko Gvardiol, … Igor Matanovic Spain vs Croatia: … livestreaming Spain: RTVE PLAY Croatia …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.aljazeera.com/sports/2026/9/28/spain-croatia-uefa-nations-league-yamal-modric-teams-form",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.aljazeera.com",
+    "/sports/2026/9/28/spain-croatia-uefa-nations-league-yamal-modric-teams-form",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Croatia for News, Travel, Sport, Business, Politics and Lifestyle",
+   "content": "Total Croatia News, your guide to news, views and events in English. Local reporting from Croatia and Croatian communities worldwide.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://total-croatia-news.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "total-croatia-news.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "How Spain eased past Croatia 3-0 to kick off their Euro 2024 tournament with victory",
+   "content": "Follow live reaction to Spain’s comfortable 3-0 victory against Croatia at the 2024 European Championship … Croatia with 53% of the ball today - and Spain with the 3-0 win. … Spain 3 Croatia 0 – The Briefing",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.nytimes.com/athletic/live-blogs/spain-croatia-live-updates-euro-2024-score-result/BJzoBdgCYB8K/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/athletic/live-blogs/spain-croatia-live-updates-euro-2024-score-result/BJzoBdgCYB8K/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Joyous Croatia Joins Europe Amid a Crisis (Published 2013)",
+   "content": "PARIS … A Croatian teenager holds a flag during the opening ceremony of the European Union office in Zagreb, Croatia, on Monday.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.nytimes.com/2013/07/02/world/europe/croatia-joins-european-union.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/2013/07/02/world/europe/croatia-joins-european-union.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "10 Best Countries To Visit In 2025, Per European Best Destinations",
+   "content": "Croatia has officially been crowned the Best Country to Visit in Europe in 2025, ahead of Spain (2nd), Austria (3rd), Italy (4th) and Greece (5th).",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.forbes.com/sites/joanneshurvell/2025/03/04/croatia-chosen-as-best-european-country-to-visit-in-2025/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.forbes.com",
+    "/sites/joanneshurvell/2025/03/04/croatia-chosen-as-best-european-country-to-visit-in-2025/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Your Guide to Planning an Incredible Destination Wedding in Spain",
+   "content": "Planning a wedding in Spain? Find the best Spain wedding venues, resorts and locations, marriage license legal info, cost to get married, tips & more.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.theknot.com/content/spain-marriage-requirements",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.theknot.com",
+    "/content/spain-marriage-requirements",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Higher Price Growth in Greece, Spain and Cyprus Than Croatia - Total Croatia",
+   "content": "Despite the focus being on this country, it seems that there's been higher price growth in Greece, Spain and Cyprus than in Croatia.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://total-croatia-news.com/news/price-growth-croatia/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "total-croatia-news.com",
+    "/news/price-growth-croatia/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Eli Manning Reflects Ahead Of New York Giants Jersey Retirement Ceremony",
+   "content": "Former New York Giants quarterback Eli Manning reflected back on when he knew it was time to retire and what the fans' support has meant to him ahead of his jersey retirement ceremony Sunday at halftime when the Giants host the Atlanta Falcons.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.forbes.com/sites/patriciatraina/2021/09/25/eli-manning-reflects-ahead-of-new-york-giants-jersey-retirement-ceremony/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.forbes.com",
+    "/sites/patriciatraina/2021/09/25/eli-manning-reflects-ahead-of-new-york-giants-jersey-retirement-ceremony/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Six-Goal Thriller! 🚨 England 4-2 Croatia | FIFA World Cup 2026 | England Vs Croatia | N18G",
+   "content": "England kicks off their 2026 World Cup campaign with a chaotic 4-2 win against heavyweights Croatia. england croatia rivalry, england croatia 2026 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=jb0AjGGAzoc",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=jb0AjGGAzoc",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Croatia celebrates joining of controversial Adriatic Sea bridge",
+   "content": "A midnight opening ceremony featuring folk dancers, singing and a huge fireworks display was held on Wednesday on the Peljesac Bridge after the final segment of its span was installed.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.aljazeera.com/news/2021/7/29/croatia-celebrates-joining-of-controversial-adriatic-sea-bridge",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.aljazeera.com",
+    "/news/2021/7/29/croatia-celebrates-joining-of-controversial-adriatic-sea-bridge",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

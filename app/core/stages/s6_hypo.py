@@ -598,6 +598,34 @@ def _soccer_forms(ref: MatchRef, facts: Facts, scen: list[Scenario],
              f"{', '.join(hit)} 발동", "lock")
     else:
         state.note(f"s6 축구 필수형 저득점 — 걸린 규칙이 없다(필요 {sorted(want_rules)})")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **무승부 필수**(사용자 지시 2026-10-06(5차) ①) — v4 `soccer_lock` 의 일
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 축구 시나리오 세트에 **무승부(0-0 또는 1-1) 갈래가 하나도 없으면** 코드가
+    #  > 보강한다. 무게는 `[보강]` 기본값, **근거 변수가 있으면 그 무게.**
+    #
+    #  ⚠️ 실측 2026-10-06 온두라스–자메이카: 시나리오 셋이 전부 승/패여서 우리 열
+    #     무승부가 **0%** 였고, `무`·`더블찬스` 가 그 0 을 그대로 받았다.
+    row = dict(box.get("무승부") or {})
+    want = [p for p in (_pair(x) for x in (row.get("scores") or [])) if p]
+    if any(h == a for s in out for h, a in s.outcomes):
+        state.note("s6 축구 필수형 무승부 — **이미 있다**(보강하지 않는다)")
+    elif want:
+        kinds = {str(x) for x in (row.get("basis_types") or [])}
+        basis = [v for v in variables if v.type in kinds]
+        got = Scenario(
+            id=_next_id(out), outcomes=want[:2],
+            # 🔴 근거 변수가 있으면 **그 변수들을 driver 로** 적는다 → `_strength` 가
+            #    그 무게를 쓴다(없으면 바닥값 = `[보강]` 기본값)
+            driver_vars=[v.id for v in basis[:3]], type="lock",
+            added_by="code",
+            mechanism=("🔴 축구 필수형(무승부) — 무승부 갈래가 **하나도 없었다** · "
+                       + (f"근거 {', '.join(v.id for v in basis[:3])}"
+                          if basis else "근거 없음 — 보강 기본값")))
+        out.append(got)
+        state.note(f"s6 축구 필수형 보강 — 무승부({want[:2]}) · 근거 "
+                   f"{len(basis)}개{' (무게를 그 변수에서 가져온다)' if basis else ''}")
     # ── 회귀반전
     row = dict(box.get("회귀반전") or {})
     want_rules = {str(x) for x in (row.get("when_rules") or [])}

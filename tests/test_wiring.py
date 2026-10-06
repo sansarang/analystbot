@@ -128,6 +128,17 @@ def test_env_example_이_코드와_맞는다():
                 got = consts.get(n.args[0].id)
                 if got and got.isupper():
                     read.add(got)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **설정표가 이름을 드는 것도 "읽는 것"이다**(2026-10-06)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  네 층 지시서 §2-1 은 피드 이름·키 이름을 **코드에 박지 말고 표에** 두라고 했다:
+    #  `config/odds_sources.yaml` 의 `key_env: ODDS_API_KEY` 를 `odds.feed_key()` 가
+    #  `os.getenv(feed["key_env"])` 로 읽는다. 🔴 그래서 **표의 `key_env` 값**도
+    #  읽는 이름으로 센다 — 손 목록을 늘리지 않고 **원본에서 자라게** 한다(#1).
+    for path in sorted((ROOT / "config").glob("*.yaml")):
+        said = path.read_text(encoding="utf-8")
+        read |= set(re.findall(r"key_env:\s*([A-Z_0-9]+)", said))
     # 배포 플랫폼이 주입하는 것은 우리가 안 적는다 — 주석으로만 남는다
     platform = {"RAILWAY_GIT_COMMIT_SHA", "RAILWAY_GIT_COMMIT_MESSAGE",
                 "GIT_COMMIT_SHA", "SOURCE_COMMIT"}
@@ -166,8 +177,13 @@ def test_유료_키가_env에_없고_legacy에_있다():
     import re as _re
     env = (ROOT / ".env").read_text(encoding="utf-8")
     lg = ROOT / ".env.legacy"
+    # 🔴🔴 **`ODDS_API_KEY` 는 걷혔다** — 네 층 지시서 §2(사용자 결정 2026-10-06):
+    #    *"배당은 봇이 스스로 가져온다"*. 🔴 the-odds-api **무료 등급**이고 사용자가
+    #    **카드 등록 없이** 발급해 줬다(실측: 월 500 크레딧 · `/events` 0 크레딧).
+    #    ⚠️ 종전 금지는 **유료** 배당 API(odds-api.net 유료 등급) 때문이었다 — 그
+    #       까닭이 사라졌으므로 이름만 목록에서 뺀다. 나머지 일곱은 그대로 금지다.
     for bad in ("ANTHROPIC_API_KEY", "PPLX_API_KEY", "XAI_API_KEY",
-                "ODDS_API_KEY", "APIFOOTBALL_KEY", "GROQ_API_KEY",
+                "APIFOOTBALL_KEY", "GROQ_API_KEY",
                 "OPENROUTER_API_KEY", "NVIDIA_API_KEY"):
         assert not _re.search(rf"^{bad}=", env, _re.M), f".env 에 {bad}"
     assert lg.is_file(), ".env.legacy 가 없다 — 옮긴 것이 사라졌다"
@@ -188,10 +204,13 @@ def test_env_example에_유료_키가_없다():
     import re
     env = (ROOT / ".env.example").read_text(encoding="utf-8")
     declared = set(re.findall(r"^([A-Z_0-9]+)=", env, re.M))
+    # 🔴 배당 키 **둘만** 예외다(네 층 §2-1 · 무료 등급 · 카드 등록 없음) — 그 둘
+    #    말고 `ODDS` 가 든 이름이 새로 생기면 **그때는 빨개진다**(유료 피드 방지).
+    ALLOW_ODDS = {"ODDS_API_KEY", "ODDSPAPI_KEY"}
     for bad in ("ANTHROPIC", "PPLX", "PERPLEXITY", "XAI", "ODDS",
                 "APIFOOTBALL", "OPENROUTER", "GROQ", "NVIDIA", "GEMINI",
                 "JUDGE_MODEL", "MODEL_MATCHUP", "NARRATOR_MODEL"):
-        hit = [d for d in declared if bad in d]
+        hit = [d for d in declared if bad in d and d not in ALLOW_ODDS]
         assert hit == [], hit
 
 

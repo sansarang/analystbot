@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T10:53:46.546280+00:00",
+ "order": [
+  "Croatia national football team During the qualifying campaign of Euro 2016 , Croatia drew with Azerbaijan and lost to Norway 97 leading to Kovač's replacement with Ante Čačić 98 99 The team broke their record for most goals scored in a match with a friendly 10 …",
+  "Croatia national football team During the qualifying campaign of Euro 2016 , Croatia drew with Azerbaijan and lost to Norway 97 leading to Kovač's replacement with Ante Čačić 98 99 The team broke their record for most goals scored in a match with a friendly 10 …",
+  "Spain 3-0 Croatia Stats: Records Tumble as Spain Sacrifice Possession for Attacking Progression | Opta Analyst Spain got off to an excellent start at Euro 2024 as they brushed Croatia aside in Berlin. We look back with our Spain vs Croatia stats page.",
+  "Spain national football team results Spain national results in chronological order, and head-to-head record against all countries – RSSSF Spain national team matches from 1920 to 1999 …",
+  "Spain national football team results Spain national results in chronological order, and head-to-head record against all countries – RSSSF Spain national team matches from 1920 to 1999 …",
+  "Spain vs Croatia: Confirmed team news as Spain aim to make it 42 games unbeaten Croatia host Spain at the Stadion Poljud on Tuesday night as they seek to bounce back from their 7-0 defeat. Back-to-back defeats and a total of 11 goals conceded leave Croatia third in the group, 3 ...",
+  "Croatia v Spain: Preview, expected line-ups, stats and where to watch Croatia will attempt to recover from a record-breaking defeat when they welcome world champions Spain to Split in the UEFA Nations League on Tuesday night. Slaven Bilic’s side were thrashed 7-0 by ...",
+  "Spain on the verge of historic Nations League run against Croatia World champions Spain travel to Split on Tuesday with ten consecutive wins behind them and a chance to make it eleven against a Croatia side still absorbing the heaviest defeat in its history."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

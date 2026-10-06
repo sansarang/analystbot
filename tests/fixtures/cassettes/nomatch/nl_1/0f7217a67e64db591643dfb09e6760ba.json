@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Spain Croatia despedida",
+ "recorded_at": "2026-10-06T10:53:50.885061+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Angy Fernández – “Sé Quien Soy” | Benidorm Fest 2024 | La Gran Final",
+   "content": "Pedro – “Dos Extraños (Cuarteto de Cuerda)” | Benidorm Fest 2024 | La Gran Final RTVE Música294K2y agoBaby Lasagna - Rim Tim Tagi Dim (LIVE) | Croatia 🇭🇷 | … Spain 🇪🇸 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=MdQFS0Tu-DA",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=MdQFS0Tu-DA",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ideas despedida de soltera: planes y consejos para organizarla",
+   "content": "¿Tienes que organizar la despedida de soltera de una amiga y no sabes qué hacer? Te damos algunos consejos y las mejores ideas para despedida de soltera.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.bodas.net/articulos/actividades-para-una-despedida-de-soltera-inolvidable--c8630",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bodas.net",
+    "/articulos/actividades-para-una-despedida-de-soltera-inolvidable--c8630",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Turismo en Úbeda. Qué ver | spain.info",
+   "content": "Encuentra información sobre todo lo que puedes hacer en Úbeda. Mejores planes, qué visitar, etc., para que disfrutes al máximo de tu estancia | spain.info",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.spain.info/es/destino/ubeda/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.spain.info",
+    "/es/destino/ubeda/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "King of Spain Juan Carlos I",
+   "content": "El espía que me llamó … Will Spain Give Disgraced King a Royal Homecoming? … Juan Carlos, Former King, Returns to Spain",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.nytimes.com/topic/person/king-of-spain-juan-carlos-i",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/topic/person/king-of-spain-juan-carlos-i",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Encuentra todo lo que necesitas para tu boda",
+   "content": "Guía de bodas: banquetes de boda, vestidos de novia, organización de bodas, invitaciones de boda, bodas civiles, Consejos...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.bodas.net/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bodas.net",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "'In Spain we call it soledad', la canción que ha marcado 2020",
+   "content": "'In Spain we call it soledad', canción que se viralizó cuando C. In this deepness we belong to / In Spain we call it soledad / In Spain we say 'it's amargura' / In Spain we say 'ay …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://as.com/epik/2020/12/24/portada/1608803296_024303.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "as.com",
+    "/epik/2020/12/24/portada/1608803296_024303.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Spanish tourism site with an arabic approach | Spain.info GCC",
+   "content": "Spanish tourist information: cities, cuisine, routes, culture, shopping, families, practical information, visas, tourist trains in Spain | Spain.info GCC",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.spain.info/gcc/en/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.spain.info",
+    "/gcc/en/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Turismo en Córdoba. Qué ver | spain.info",
+   "content": "Encuentra información sobre todo lo que puedes hacer en Córdoba. Mejores planes, qué visitar, etc., para que disfrutes al máximo de tu estancia | spain.info",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.spain.info/es/destino/cordoba/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.spain.info",
+    "/es/destino/cordoba/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Apple España",
+   "content": "El canal oficial de Apple en YouTube te da la bienvenida. Aquí encontrarás noticias sobre nuevos productos, tutoriales y otros contenidos que no te puedes pe...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.youtube.com/channel/UC2F7S7UWwpA10RBu-EwvTvw",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/channel/UC2F7S7UWwpA10RBu-EwvTvw",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Los mejores 40 juegos para despedida de soltera",
+   "content": "Divertidos, originales … Si estás buscando juegos para despedida de soltera con los que animar la fiesta de principio a fin, ¡has llegado al mejor sitio!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.bodas.net/articulos/juegos-despedida-de-soltera--c9387",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bodas.net",
+    "/articulos/juegos-despedida-de-soltera--c9387",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Faunia | spain.info",
+   "content": "Infórmate sobre su localización y contacto. … Conoce los parques más visitados para toda la familia en Madrid | spain.info",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.spain.info/es/parques-ocio/faunia/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.spain.info",
+    "/es/parques-ocio/faunia/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de fútbol de Croacia",
+   "content": "Footprint Croatia Footprint Travel Guides.ISBN 1-903471-79-6 Bellamy.J, Alex (2003). Croatia faces fresh Euro 2012 racism probe …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Croacia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Croacia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "España renuncia a participar en Eurovisión tras la decisión del certamen de admitir a Israel",
+   "content": "La Asamblea General de la Unión Europea de Radiodifusión (UER) ha aprobado este jueves las nuevas normas en el concurso y, por tanto, la presencia de Israel.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://elpais.com/television/2025-12-04/eurovision-decide-que-israel-participe-en-la-edicion-de-2026.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "elpais.com",
+    "/television/2025-12-04/eurovision-decide-que-israel-participe-en-la-edicion-de-2026.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Turismo de España | Información turística de España | spain.info",
+   "content": "Información turística de España: arte, cultura, museos, monumentos, playas, ciudades, fiestas, rutas, gastronomía, espacios naturales en España | spain.info",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.spain.info/es/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.spain.info",
+    "/es/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Las mejores ideas para una despedida de soltero original y memorable",
+   "content": "Actividades originales para una despedida de soltero única: planes para un fin de semana, retos, textos humorísticos...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.bodas.net/articulos/5-ideas-para-una-despedida-de-soltero-diferente--c1914",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bodas.net",
+    "/articulos/5-ideas-para-una-despedida-de-soltero-diferente--c1914",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Broche de oro para la despedida de 'Isabel' (19,4%) que reúne a más de 3,8 millones",
+   "content": "'La que se avecina' se apunta un fantástico 23% tras rozar los 4 millones en Telecinco.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.formulatv.com/noticias/42247/audiencias-broche-oro-despedida-isabel-supera-19-por-ciento/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.formulatv.com",
+    "/noticias/42247/audiencias-broche-oro-despedida-isabel-supera-19-por-ciento/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "'Got Talent España' sube y lidera con su final y la despedida de Risto Mejide",
+   "content": "El segundo puesto de la noche es para la película de La 1 'Amor redentor' (9,8%), mientras que 'Atrapa un millón' (7,6%) queda en tercer puesto.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.formulatv.com/noticias/audiencias-sabado-2-mayo-got-talent-espana-137132/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.formulatv.com",
+    "/noticias/audiencias-sabado-2-mayo-got-talent-espana-137132/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "'La familia de la tele' se va de viaje para siempre: Esta es la fecha de su despedida de las tardes de La 1",
+   "content": "Tras numerosos intentos por intentar salvarlo, la corporación ha decidido cancelar el formato vespertino, que no ha sido capaz encontrar su lugar en La 1.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.formulatv.com/noticias/la-familia-de-la-tele-va-viaje-fecha-despedida-133581/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.formulatv.com",
+    "/noticias/la-familia-de-la-tele-va-viaje-fecha-despedida-133581/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Vuelos a Croacia | Croatia Airlines",
+   "content": "Croacia es un destino turístico impresionante en Europa, conocido por su costa adriática cristalina, sus encantadoras ciudades históricas y sus impresionantes parques nacionales.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.croatiaairlines.com/es/Ofertas/De-Barcelona-a-Croacia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.croatiaairlines.com",
+    "/es/Ofertas/De-Barcelona-a-Croacia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Despedida de soltero (película)",
+   "content": "Bachelor Party … Despedida de soltero Ficha técnica … Neal Israel … Bob Israel Ron Moler Raju Patel … Bob Israel Neal Israel Pat Proft … Robert Folk … Tom Walls",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Despedida_de_soltero_(pel%C3%ADcula)",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Despedida_de_soltero_(pel%C3%ADcula)",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

@@ -164,6 +164,9 @@ def adjust(base: BaseProb, *, kind: str, delta_s: dict[str, float],
     elif coef is None:
         why = (f"{why} · 🔴 ΔS→dr 환산 계수가 없다 — **확률을 움직이지 않았다**"
                f"(전력 변화율만 보인다)")
+    # 🔴🔴 `measured` 는 **움직였을 때만** 참이다 — §4 마지막 줄이 *"그 영향은 ② 의
+    #    확률 이동량이 대신한다"* 라고 적었다. ⚠️ 못 움직였는데 결장 무게를 0 으로
+    #    하면 그 영향이 **아무 데도 없어진다**(지우는 것이 아니라 옮기는 규칙이다).
     return AdjProb(probs=probs, why=why, deltas=deltas, delta_s=delta_s,
                    strength_pct=strength_pct, moved=moved,
-                   measured=bool(delta_s), estimated_players=estimated)
+                   measured=bool(moved), estimated_players=estimated)

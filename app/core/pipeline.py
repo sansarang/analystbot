@@ -83,6 +83,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴 s4 가 좁히기 2차로 문서를 더 받았을 수 있다 — **캐시가 전부를 든다**
     docs = list(cache.values()) or docs
     variables = s5_verify.run(ref, facts, docs, cands, state=st)
+    # 🔴 ②(2차) — **검증된 결장 변수**까지 넣어 다시 센다(§4-2 · 네트워크 0)
+    adj_p = s2b_base.again(ref, facts, base_p, variables, state=st)
     hypo = s6_hypo.run(ref, facts, variables, state=st)
     if ocr_text and got_board is not None:
         from app.core import odds as _odds
@@ -179,6 +181,7 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  > 피드 배당이 첫 실행보다 **5%p 이상** 움직였으면 *"시장 이동"* 을 적는다.
     #  🔴 피드 요청은 **1회**다(§2-2) — `reanalyze=True` 가 그 예산을 든다.
     base_p, adj_p = await s2b_base.run(ref, facts, state=st, net=net)
+    adj_p = s2b_base.again(ref, facts, base_p, variables, state=st)
     feed_mk, user_mk = await s2c_market.run(ref, pool=pool, net=net, state=st,
                                             board=got_board, reanalyze=True)
     if got_board is None and feed_mk.probs:

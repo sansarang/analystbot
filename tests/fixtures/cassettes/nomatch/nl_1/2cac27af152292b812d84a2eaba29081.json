@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T10:53:44.588990+00:00",
+ "order": [
+  "Luka Modrić 327 Modrić was forced to miss the crucial fixture against Spain on 21 June because of a minor muscle injury. Modric injury in loss against Brazil not serious …",
+  "Ferran Torres out of Spain squad with ankle injury and will miss Czech Republic, Croatia games OVIEDO, Spain (AP) — Spain striker Ferran Torres has withdrawn from the squad because of left ankle pain, ruling him out of the world champion's remaining Nations League games against the Czech ...",
+  "Spain vs. Croatia Euro 2024: TV channel, live stream, start time and how to watch the match from India | Sporting News Croatia lineups & team news Spain will miss Gavi at these finals due to his knee injury from last year.Pedri has also struggled with fitness …",
+  "Football News, page 1 | Goal.com UK 'It was an accident!' - De la Fuente warns Spain over Croatia trip Luis de la Fuente has told his Spain players to ignore recent results and prepare for a battle against a world-class Croatia side in the UEFA Nations League.The La Roja boss believes their …",
+  "Spain star leaves camp injured | Goal.com One of the players left the Spain national team camp after feeling discomfort in his left thigh, following the big 4-1 win over Croatia last Tuesday …",
+  "Croatia beat Spain 3-2 Spain passed up the chance to seal progress to the Nations League finals as they were beaten 3-2 by Croatia on Thursday, undone by a 93rd-minute winner from Tin Jedvaj.",
+  "Nations League draw: England to face Spain and Croatia, Wales meet holders Portugal England will face Spain, Croatia and the Czech Republic in the 2026-27 Uefa Nations League group stage, while Wales are drawn with holders Portugal.",
+  "Croatia vs Spain: UEFA Nations League – Yamal, Modric, head-to-head Coming on the back of a 10-match winning streak, Spain face Croatia with sights set on the Nations League quarterfinals."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

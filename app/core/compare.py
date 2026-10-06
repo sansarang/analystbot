@@ -50,24 +50,35 @@ def our_prob(hypo: HypoSet | None) -> tuple[ProbTriple | None, str]:
     from app import rules
     tot = {"home": 0.0, "draw": 0.0, "away": 0.0}
     seen = 0.0
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **스코어마다 센다**(사용자 지시 2026-10-06(5차) ①의 실측에서 왔다)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 처음엔 **시나리오 단위**로 방향을 물었다(`rules.direction_of`). 그러면 한
+    #     시나리오가 `2-2`·`3-2` 처럼 **섞인 스코어**를 들 때 `None` 이 되어 그 무게가
+    #     **통째로 사라졌다** — 실측 2026-10-06 온두라스–자메이카: 무승부 스코어가
+    #     두 갈래에 있는데 우리 열 무승부가 **0%** 였다.
+    #  🔴 그래서 **스코어 하나하나**를 세고, 한 시나리오의 무게를 그 스코어들에
+    #     **똑같이 나눈다**. ⚠️ 어느 스코어가 더 그럴듯한지는 **모른다** — 그래서
+    #     고르지 않고 나눈다(지어내지 않는다).
     for sc in rows:
-        said = rules.direction_of([f"{a}-{b}" for a, b in sc.outcomes])
         w = float(sc.strength or 0.0)
-        if said is None or w <= 0:
+        pairs = list(sc.outcomes or [])
+        if w <= 0 or not pairs:
             continue
-        # ⚠️ `rules.direction_of` 는 `home`·`draw`·`away` 를 돌려준다(실측 2026-10-06)
-        #    — `home_win` 같은 글자가 아니다. 🔴 섞인 스코어(`2-2`·`2-3`)는 `None`
-        #    이고 **세지 않는다**(어느 쪽인지 모르는 것을 한 쪽에 넣으면 거짓이다).
-        if said not in tot:
-            continue
-        tot[said] += w
+        share = w / len(pairs)
+        for h, a in pairs:
+            said = rules.direction_of([f"{h}-{a}"])
+            if said not in tot:
+                continue
+            tot[said] += share
         seen += w
     if seen <= 0:
         return None, "시나리오 무게가 0 이다"
     home = round(tot["home"] / seen, 6)
     draw = round(tot["draw"] / seen, 6)
     got = ProbTriple(home=home, draw=draw, away=round(1.0 - home - draw, 6))
-    return got, f"시나리오 {len(rows)}개의 무게 비율(합 {seen:.2f})"
+    return got, (f"시나리오 {len(rows)}개 · 스코어 단위 무게 비율(합 {seen:.2f})")
 
 
 def weight_rules(variables: list[Variable], *, measured: bool

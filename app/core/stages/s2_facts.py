@@ -8,11 +8,35 @@
 """
 from __future__ import annotations
 
+import logging
+import pathlib
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 from app.core import adapt
 from app.core.schema import XI, DropReason, Facts, MatchRef
 from app.core.state import RunState
+
+logger = logging.getLogger(__name__)
+
+#: 🔴 경기당 **추가 fetch 상한**(사용자 승인 2026-10-06(5차) ②) — 팀마다 이만큼
+#
+#  > 경기 페이지에서 직전 경기 링크를 **최대 5개까지** 따라가 평소 XI 를 만든다.
+#  > 경기당 추가 fetch 상한 **5**, 캐시 **하루**.
+FOLLOW_CAP = 5
+#: 🔴 하루 캐시 자리 — ⚠️ 저장소가 아니라 `var/` 다(커밋하지 않는다)
+FOLLOW_DIR = pathlib.Path(__file__).resolve().parents[3] / "var" / "follow"
+
+
+@dataclass
+class _Page:
+    """🔴 하루 캐시에서 꺼낸 쪽 — 어댑터가 보는 칸만 흉내 낸다(`url`·`text`·`ok`)."""
+
+    url: str
+    text: str
+    ok: bool = True
+    status: int = 200
 
 
 async def run(ref: MatchRef, *, state: RunState, net: Any = None,
@@ -26,6 +50,8 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     raw_xi: dict[str, dict] = {}
     #: 🔴 선수 **가치**를 담은 사실들(오늘 XI · 직전 경기) — ② 가 쓴다
     raw_value: list[dict] = []
+    #: 🔴 팀별 **과거 경기 선발 여럿**(최신부터) — ② 가 평소 XI 를 여기서 만든다
+    past: dict[str, list[XI]] = {}
     try:
         got = await _depth(ref, net=net, search=search, state=state)
     except Exception as exc:                                # noqa: BLE001
@@ -63,16 +89,20 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
             # 🔴 **직전 경기 선발**(⑦) — IR02·IR06 이 이것을 본다
             key = _key_of(ref, str(val.get("team")))
             if key:
-                box.setdefault("last_xi", {})[key] = adapt.xi_of(
-                    key, {**val, "lineup_state": "none"}, source_url=url)
+                mine = adapt.xi_of(key, {**val, "lineup_state": "none"},
+                                   source_url=url)
+                # 🔴 **여러 경기를 쌓는다**(② 평소 XI · 승인 ②). ⚠️ `last_xi` 는
+                #    **첫 번째**(가장 최근)만 쓴다 — IR02 가 그것을 본다.
+                past.setdefault(key, []).append(mine)
+                box.setdefault("last_xi", {}).setdefault(key, mine)
                 # 🔴 **직전 경기 페이지도 가치 출처다**(② · 네 층 §4-3) — 오늘 XI 가
                 #    없어도 평소 XI 의 가치는 거기서 온다
                 raw_value.append(dict(val))
-                # 🔴 **일정**(IR11) — 직전 경기 날짜·상대를 적는다
-                box.setdefault("schedule", {})[key] = {
+                # 🔴 **일정**(IR11) — 직전 경기 날짜·상대를 적는다(가장 최근 것)
+                box.setdefault("schedule", {}).setdefault(key, {
                     "last_match": val.get("from_date"),
                     "last_opponent": val.get("from_match"),
-                    "source_url": url}
+                    "source_url": url})
         elif tail in ("lineup", "xi") and val.get("team"):
             key = _key_of(ref, str(val.get("team")))
             if key:
@@ -124,7 +154,7 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
     return adapt.facts_of(box, xi=xi, match_format=fmt,
                           sources=sorted(set(sources)), missing=missing,
                           coach=coach, player_pos=pos, gaps=gaps, squad=squad,
-                          player_value=values)
+                          player_value=values, past_xi=past)
 
 
 def _gaps(*, xi: dict, missing: dict, coach: dict, box: dict,
@@ -248,8 +278,18 @@ async def _depth(ref: MatchRef, *, net: Any, search: Any,
 async def _follow_once(src: Any, got: Any, q: Any, team: str, *, net: Any,
                        state: RunState, follow: Any,
                        parse_follow: Any) -> list:
-    """🔴 그 팀의 **직전 경기 하나**를 따라가 기준 XI·일정을 받는다(⑦).
+    """🔴🔴 그 팀의 **직전 경기 최대 5개**를 따라가 평소 XI·일정 재료를 받는다(⑦).
 
+    ══════════════════════════════════════════════════════════════════
+    🔴 **다섯으로 늘렸다** — 사용자 승인 2026-10-06(5차) ②
+    ══════════════════════════════════════════════════════════════════
+
+    > 경기 페이지에서 직전 경기 링크를 **최대 5개까지** 따라가 평소 XI 를 만든다.
+    > **경기당 추가 fetch 상한 5**, 캐시 **하루**.
+
+    ⚠️ 종전에는 하나만 따라갔다 — 그래서 §4-1(평소 XI 최소 3경기)이 ② 를 늘
+       건너뛰게 했다(카드에 *"표본 1경기"* 가 찍혔다).
+    🔴 **캐시가 하루**다(`_day_cache`) — 재분석이 같은 다섯 쪽을 다시 받지 않는다.
     ⚠️ 못 열거나 파서가 없으면 **빈 목록 + 사유**다 — 조용히 0 을 내지 않는다(#3).
     """
     if not (callable(follow) and callable(parse_follow)):
@@ -266,21 +306,56 @@ async def _follow_once(src: Any, got: Any, q: Any, team: str, *, net: Any,
     if not urls:
         state.note(f"s2 ⑦ `{team}` 직전 경기 링크가 페이지에 없다")
         return []
-    url = str(urls[0])
+    out: list = []
+    spent = 0
+    for url in urls[:FOLLOW_CAP]:
+        if spent >= FOLLOW_CAP:
+            state.note(f"s2 ⑦ `{team}` fetch 상한 {FOLLOW_CAP} 에 닿았다")
+            break
+        page = await _day_page(net, str(url), state=state, team=team)
+        spent += 1
+        if page is None:
+            continue
+        try:
+            said = parse_follow(page, q)
+        except Exception as exc:                            # noqa: BLE001
+            state.note(f"s2 ⑦ `{team}` 직전 경기 파싱 실패 — {exc!r}")
+            continue
+        rows = list(said) if isinstance(said, (list, tuple)) else []
+        out += rows
+        state.note(f"s2 ⑦ `{team}` 직전 경기({str(url)[-40:]}) → 사실 {len(rows)}건")
+    state.note(f"s2 ⑦ `{team}` 직전 경기 {spent}쪽 따라갔다(상한 {FOLLOW_CAP}) → "
+               f"사실 {len(out)}건")
+    return out
+
+
+async def _day_page(net: Any, url: str, *, state: RunState, team: str):
+    """🔴 **하루 캐시**로 한 쪽 받는다(승인 ②). ⚠️ 못 받으면 `None` + 사유.
+
+    🔴 캐시는 `var/follow/{날짜}/{해시}.html` 다 — 재분석·두 번째 회차가 같은 다섯
+       쪽을 다시 받지 않는다. ⚠️ **날짜가 바뀌면 새로 받는다**(그 쪽의 사실이 바뀐다).
+    """
+    import hashlib
+
+    day = datetime.now(timezone.utc).date().isoformat()
+    box = FOLLOW_DIR / day
+    key = hashlib.sha256(url.encode("utf-8")).hexdigest()[:24]
+    mine = box / f"{key}.html"
+    if mine.is_file():
+        state.note(f"s2 ⑦ `{team}` 하루 캐시 적중 — {url[-40:]}")
+        return _Page(url=url, text=mine.read_text(encoding="utf-8"), ok=True)
     try:
         page = await net.get(url)
     except Exception as exc:                                # noqa: BLE001
         state.note(f"s2 ⑦ `{team}` 직전 경기 열기 실패 — {exc!r}")
-        return []
+        return None
     if not getattr(page, "ok", False):
         state.note(f"s2 ⑦ `{team}` 직전 경기 열기 실패 — 상태 "
                    f"{getattr(page, 'status', '?')}")
-        return []
+        return None
     try:
-        said = parse_follow(page, q)
-    except Exception as exc:                                # noqa: BLE001
-        state.note(f"s2 ⑦ `{team}` 직전 경기 파싱 실패 — {exc!r}")
-        return []
-    rows: list = list(said) if isinstance(said, (list, tuple)) else []
-    state.note(f"s2 ⑦ `{team}` 직전 경기({url[:50]}) → 사실 {len(rows)}건")
-    return rows
+        box.mkdir(parents=True, exist_ok=True)
+        mine.write_text(str(getattr(page, "text", "") or ""), encoding="utf-8")
+    except OSError as exc:
+        state.note(f"s2 ⑦ 하루 캐시를 못 적었다 — {exc}")
+    return page

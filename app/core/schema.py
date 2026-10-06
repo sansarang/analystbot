@@ -279,6 +279,12 @@ class Facts(Frozen):
     coach: dict[str, Coach] = Field(default_factory=dict)
     #: 🔴 직전 경기 선발(IR02·IR06 용) — 로테이션·주전 이탈을 보려면 이것이 필요하다
     last_xi: dict[str, XI] = Field(default_factory=dict)
+    #: 🔴🔴 **과거 경기 선발 여럿**(② 평소 XI · 사용자 승인 2026-10-06(5차) ②)
+    #
+    #  🔴 최신부터 최대 5경기다(`s2_facts.FOLLOW_CAP`). ⚠️ `last_xi` 는 그중 **첫
+    #     번째**이고, 그 둘을 **따로 둔다** — IR02 는 직전 한 경기를 보고 ② 는 여러
+    #     경기의 **선발 빈도**를 본다(§4-1). 섞으면 로테이션 한 번이 전력 급락이 된다.
+    past_xi: dict[str, list[XI]] = Field(default_factory=dict)
     #: 🔴 일정(IR11 용) — 직전 경기 날짜·장소, 다음 경기 날짜
     schedule: dict = Field(default_factory=dict)
     #: 🔴🔴 **선수 → 포지션 표**(경기 단위 · §2) — §1-1 결장 유형과 IR01·IR02 가 쓴다

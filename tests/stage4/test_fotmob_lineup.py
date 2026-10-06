@@ -325,12 +325,16 @@ def test_직전_경기_주소를_스스로_찾는다():
     urls = {}
     for team in ("Sacramento Republic", "Las Vegas Lights"):
         urls[team] = fotmob.follow_prev(got, Question(Q_LINEUP, "x", team=team))
-    assert len(urls["Sacramento Republic"]) == 1, urls
-    assert len(urls["Las Vegas Lights"]) == 1, urls
+    # 🔴🔴 **다섯까지**다(사용자 승인 2026-10-06(5차) ②) — 종전엔 한 팀에 하나였다.
+    #    ⚠️ 그 하나가 평소 XI 표본을 1경기로 만들어 ② 가 늘 건너뛰었다.
+    #    🔴 **가장 최근 것이 맨 앞**인 것은 그대로다 — 사용자가 본 그 경기다.
+    assert 1 <= len(urls["Sacramento Republic"]) <= fotmob.PREV_MATCHES, urls
+    assert 1 <= len(urls["Las Vegas Lights"]) <= fotmob.PREV_MATCHES, urls
     assert "new-mexico" in urls["Sacramento Republic"][0]
     assert "hartford" in urls["Las Vegas Lights"][0]
-    # 🔴 **한 팀에 하나다** — 상대 팀 것을 같이 내면 귀속이 섞인다(§19-a)
+    # 🔴 **팀마다 따로다** — 상대 팀 것을 같이 내면 귀속이 섞인다(§19-a)
     assert urls["Sacramento Republic"] != urls["Las Vegas Lights"]
+    assert not (set(urls["Sacramento Republic"]) & set(urls["Las Vegas Lights"]))
 
 
 def test_과거_경기_기록은_출처_경기를_반드시_든다():
