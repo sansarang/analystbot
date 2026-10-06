@@ -69,6 +69,40 @@ def catalog_policy() -> dict:
     return dict(got)
 
 
+def types_for_sport(sport: str) -> list[str]:
+    """🔴🔴 **그 종목의 유형만**(사용자 지시 2026-10-06 ③).
+
+    > 카탈로그에 `sports: [soccer|baseball|basketball|…]` 선언을 추가하고, 요청마다
+    > 그 종목 유형만 enum 에 넣는다.
+
+    ⚠️ 실측 2026-10-06: 축구 경기 enum 에 `pitcher_state`(야구)가 있어 피로 기사가
+       그 유형으로 붙고 방향이 **자기 쪽**이 됐다.
+    🔴 선언이 **없는 유형은 넣지 않는다** — 빠뜨린 것을 조용히 통과시키면 그 유형이
+       모든 종목에 다시 새어 든다(#3). 계약이 선언을 강제한다.
+    """
+    said = str(sport or "").strip()
+    out: list[str] = []
+    for name, spec in sorted(variable_types().items()):
+        got = [str(x) for x in (spec.get("sports") or [])]
+        if said and said in got:
+            out.append(name)
+    return out
+
+
+def sport_words(sport: str) -> list[str]:
+    """🔴 그 종목을 가리키는 **모든 언어의 낱말**(`search_words.yaml`).
+
+    사용자 지시 2026-10-06 ②: *"`Doc` 단계에서 그 종목 낱말(축구/football/fútbol 등,
+    `search_words.yaml`)이 본문에 없으면 버린다."*
+    """
+    box = (_load(SEARCH_WORDS).get("words") or {}).get("sport") or {}
+    got = box.get(str(sport or "").strip()) or {}
+    out: list[str] = []
+    for words in got.values():
+        out += [str(w) for w in (words or [])]
+    return sorted(set(out))
+
+
 def local_words(concept: str, lang: str) -> list[str]:
     """🔴 그 개념의 **그 언어 낱말들**. 없으면 빈 목록(그 단은 안 던진다).
 

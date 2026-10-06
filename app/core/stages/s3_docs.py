@@ -120,6 +120,31 @@ def identity_ok(title: str, snippet: str, names: tuple[list[str], list[str]]
                    f"{said[:60]!r}")
 
 
+def sport_ok(sport: str, title: str, body: str) -> tuple[bool, str]:
+    """🔴🔴 **종목 검사**(사용자 지시 2026-10-06 ②) — 그 종목 낱말이 본문에 있나.
+
+    > `Doc` 단계에서 그 종목 낱말(축구/football/fútbol 등, `search_words.yaml`)이
+    > 본문에 없으면 버린다.
+
+    ⚠️ 실측 2026-10-06: 권순우 **테니스** 기사(아시안게임 단식)가 결장 변수 둘로
+       들어왔다 — 기사에 `한국`·`우즈베키스탄`이 둘 다 있어 **신원 선필터를
+       통과했다**. 🔴 신원은 *"누구 이야기인가"* 고 이것은 *"무슨 종목인가"* 다.
+    🔴 낱말 목록은 `search_words.yaml` 의 `words.sport` 하나다(사본 금지).
+    ⚠️ 목록이 **비면 거르지 않는다** — 선언이 없는 종목에서 전부 버리면 그 종목이
+       통째로 0건이 된다(그 사실을 사유로 남긴다).
+    """
+    from app import rules
+    words = rules.sport_words(sport)
+    if not words:
+        return True, f"🔴 `{sport}` 종목 낱말이 표에 없다 — 거르지 않았다"
+    said = f"{title}\n{body}".lower()
+    for w in words:
+        if str(w).lower() in said:
+            return True, f"종목 ✅ `{w}`"
+    return False, (f"🔴 본문에 **{sport} 낱말이 없다**({', '.join(words[:4])} …) — "
+                   f"남의 종목 기사다")
+
+
 def gate_ok(said: str) -> tuple[bool, str]:
     """🔴 ② **문지기 하나.** ⚠️ 두 번째 정의를 만들지 않는다(§9).
 
@@ -347,6 +372,14 @@ async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
         if not str(body or "").strip():
             state.drop(f"s3/{name}/{url[:40]}", DropReason.BODY_MISSING,
                        "본문을 못 뽑았다")
+            continue
+        # 🔴 **종목 검사**(사용자 지시 2026-10-06 ②) — 받은 뒤 본문으로 본다
+        #    ⚠️ 제목·스니펫만으로는 모자랐다(테니스 기사가 통과했다).
+        ok_s, said_s = sport_ok(ref.sport, str(getattr(h, "title", "") or ""),
+                                str(body))
+        if not ok_s:
+            state.drop(f"s3/{name}/{url[:40]}", DropReason.SPORT_MISMATCH,
+                       said_s[:100])
             continue
         src = "htmldate" if when else "none"
         # 🔴 **문서 id 는 경기 안에서 하나다** — 하위마다 `D1` 로 겹치면

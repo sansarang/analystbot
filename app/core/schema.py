@@ -48,8 +48,23 @@ Tier = Literal["official", "national", "local", "aggregator", "tip", "dead"]
 #: 🔴 **발행일을 어디서 얻었나** — `none` 이면 그 Doc 은 근거가 못 된다(불변식 9)
 DateSource = Literal["meta", "jsonld", "time_tag", "engine", "htmldate", "none"]
 
-#: 🔴 **누구에게 유리한가** — 방향은 **코드가** 정한다(모델이 못 적는다)
-Favors = Literal["home", "away", "both", "goals_up", "goals_down"]
+#: 🔴 **누구에게 유리한가**(승패) — 방향은 **코드가** 정한다(모델이 못 적는다)
+#
+#  ══════════════════════════════════════════════════════════════════
+#  🔴🔴 **둘로 갈랐다** — 사용자 지시 2026-10-06 ④
+#  ══════════════════════════════════════════════════════════════════
+#
+#  > `Variable.favors`(승패: home/away/both)와 `Variable.goals`(득점: up/down/none)
+#  > 를 분리. 결장 → `favors=상대`, `goals=`수비 결장이면 `up` / 공격 결장이면 `down`.
+#  > *"자료 얇음"* 판정은 **`favors` 기준으로.**
+#
+#  ⚠️ 종전에는 `goals_up` 이 **승패 칸에** 들어 있었다 — 그래서 수비 결장 변수가
+#     *"어느 팀 쪽인가"* 를 말하지 못했고, §7 R5 가 *"방향 1종"* 으로 등급을 거뒀다
+#     (실측 2026-10-06: 변수 15개 전부 한 방향).
+Favors = Literal["home", "away", "both"]
+
+#: 🔴 **득점이 오르나 내리나** — 승패와 **따로** 센다(총점·양팀득점 마켓이 이것을 본다)
+Goals = Literal["up", "down", "none"]
 
 Hardness = Literal["hard", "soft"]
 
@@ -86,6 +101,10 @@ class DropReason(str, Enum):
     STALE = "stale"
     POST_MATCH = "post_match"
     IDENTITY_MISMATCH = "identity_mismatch"
+    #: 🔴 그 종목 낱말이 본문에 없다 — 남의 종목 기사다(사용자 지시 2026-10-06 ②)
+    #  ⚠️ 실측: 권순우 **테니스** 기사가 축구 결장 변수로 들어왔다(두 나라 이름이
+    #     둘 다 있어서 신원 선필터를 통과했다).
+    SPORT_MISMATCH = "sport_mismatch"
     SIDE_MISMATCH = "side_mismatch"
     TYPE_OFF_CATALOG = "type_off_catalog"
     THIN_SAMPLE = "thin_sample"
@@ -228,6 +247,15 @@ class VarCandidate(Frozen):
     #: 🔴 **그 경기 두 열쇠만** — 요청마다 `enum` 으로 박는다
     subject: TeamKey
     claim: str
+    #: 🔴🔴 **그 사실의 핵심 대상**(선수명 또는 사건 한 낱말) — 사용자 지시 2026-10-06 ①
+    #
+    #  > 같은 subject + 같은 type + 같은 **핵심 대상**(선수명·사건)이면 하나의
+    #  > `Variable` 로 합치고 `doc_ids` 를 모은다 … 문장 유사도(MinHash)가 아니라
+    #  > **"누가·무엇" 열쇠**로 묶는다.
+    #
+    #  ⚠️ 실측 2026-10-06: 김민재 결장이라는 **한 사실**이 변수 11개로 셌다 —
+    #     문장이 저마다 달라 MinHash 가 묶지 못했다. 🔴 이 칸이 그 열쇠다.
+    target: str
     #: 🔴 본문의 글자 **그대로** — s5 가 Doc 본문에 대고 맞춰 본다
     quote: str
     #: 🔴 어느 Doc 인가 — 요청마다 **그 하위에 넘긴 id 만** `enum` 으로 박는다
@@ -302,7 +330,12 @@ class Variable(Frozen):
     id: str
     type: str
     subject: TeamKey
+    #: 🔴 승패 방향(카탈로그 규칙이 정한다)
     favors: Favors
+    #: 🔴 득점 방향 — 승패와 **따로**다(사용자 지시 2026-10-06 ④)
+    goals: Goals = "none"
+    #: 🔴 그 사실의 핵심 대상 — **병합 열쇠**다(같은 subject·type·target = 한 사실)
+    target: str = ""
     hardness: Hardness
     weight: float
     claim: str

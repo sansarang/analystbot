@@ -198,6 +198,9 @@ def _enough(variables: list[Variable], scen: list[Scenario]) -> tuple[bool, str]
        자리가 없다"* 는 뜻이다 — 그 경기는 등급을 내지 않는다.
     """
     from app import scenarios, thresholds
+    # 🔴 **승패 방향으로만 센다**(사용자 지시 2026-10-06 ④) — `goals`(득점 방향)는
+    #    여기 들어오지 않는다. ⚠️ 종전엔 `goals_up` 이 승패 칸에 섞여 있어 수비 결장
+    #    변수가 어느 팀 쪽인지 말하지 못했고, 그래서 *"방향 1종"* 으로 등급이 거둬졌다.
     sides = {v.favors for v in variables if v.favors in ("home", "away")}
     if len(variables) < scenarios.MIN_VARIABLES or \
             len(sides) < scenarios.MIN_DIRECTIONS:

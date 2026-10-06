@@ -79,19 +79,65 @@ def _b2(card: Card) -> str:
 
 
 def _b3(card: Card) -> str:
+    """블록 3 폼 — 🔴 **사람이 읽는 꼴**(사용자 지시 2026-10-06 ⑦).
+
+    > 블록 3 을 사람이 읽는 형태로(최근 5경기·평균·보정 평균·휴식).
+
+    ⚠️ 실측 2026-10-06: 어댑터 dict 를 `str()` 로 찍어 `{'team': …, 'sequence': [{…}]}`
+       가 카드에 그대로 나갔다 — 맞대결은 `matchUrl` 까지 실려 있었다.
+    🔴 **없는 칸은 이름으로** 남긴다(#3) — 못 잰 것과 0 을 가른다.
+    """
     f = card.facts
     if not (f.recent or f.standings or f.h2h):
         return "- ⬜ 없다 — 구조 자료를 못 받았다(사유는 블록 1)"
-    out = []
-    for key, row in f.recent.items():
+    out: list[str] = []
+    for key, raw in f.recent.items():
+        box = dict(raw) if isinstance(raw, dict) else {}
         who = (card.match.home_name if key == card.match.home
                else card.match.away_name if key == card.match.away else key)
-        out.append(f"- **{who}** {row}")
+        last5 = " ".join(str(x) for x in (box.get("last5") or [])) or "못 쟀다"
+        got = box.get("recent_scored_avg")
+        trim = box.get("recent_trimmed_avg")
+        rest = box.get("rest_days")
+        bits = [f"최근5 **{last5}**"]
+        bits.append(f"득점 평균 {got}" if got is not None else "득점 평균 못 쟀다")
+        if trim is not None and got is not None and float(trim) != float(got):
+            # 🔴 **보정했으면 그 사실을 적는다** — 조용히 다른 수를 쓰지 않는다
+            bits.append(f"보정 평균 **{trim}**")
+        bits.append(f"휴식 {rest}일" if rest is not None else "휴식 못 쟀다")
+        for name, label in (("streak_unbeaten", "무패"), ("streak_scored", "연속 득점"),
+                            ("streak_winless", "무승")):
+            if box.get(name):
+                bits.append(f"{label} {box[name]}")
+        out.append(f"- **{who}** — " + " · ".join(bits))
+        seq = [x for x in (box.get("sequence") or []) if isinstance(x, dict)]
+        if seq:
+            said = " / ".join(
+                f"{x.get('date')} {'홈' if x.get('side') == 'home' else '원정'} "
+                f"{x.get('opponent')} {x.get('score')}" for x in seq[:5])
+            out.append(f"    {said}")
     if f.standings:
-        out.append(f"- 순위: {f.standings}")
+        out.append(f"- 순위 — {_short(f.standings)}")
     if f.h2h:
-        out.append(f"- 맞대결: {f.h2h}")
+        h = dict(f.h2h)
+        got = h.get("summary")
+        bits = []
+        if isinstance(got, (list, tuple)) and len(got) == 3:
+            bits.append(f"{got[0]}승 {got[1]}무 {got[2]}패")
+        if h.get("count") is not None:
+            bits.append(f"표본 {h['count']}경기")
+        if h.get("window_avg_goals") is not None:
+            bits.append(f"평균 {h['window_avg_goals']}골")
+        if h.get("sample_weight") is not None:
+            bits.append(f"표본 무게 {h['sample_weight']}")
+        out.append("- 맞대결 — " + (" · ".join(bits) or "못 쟀다"))
     return "\n".join(out)
+
+
+def _short(box: object, cap: int = 160) -> str:
+    """🔴 긴 사전을 **줄여** 적는다 — ⚠️ 줄였다는 사실을 함께 적는다(#3)."""
+    said = str(box)
+    return said if len(said) <= cap else f"{said[:cap]}… (줄였다 {len(said)}자)"
 
 
 def _b4(card: Card) -> str:
@@ -102,9 +148,15 @@ def _b4(card: Card) -> str:
 
 
 def _var_line(v: Variable) -> str:
+    """🔴 변수 한 줄 — **승패와 득점 방향을 둘 다** 적는다(사용자 지시 ④).
+
+    ⚠️ 종전엔 `goals_up` 이 승패 칸에 있어 *"어느 팀 쪽인가"* 가 안 보였다.
+    """
     tail = "" if v.usable_as_basis else " · ⚠️ **근거로는 못 쓴다**(맥락 전용)"
     rule = f" · {v.from_rule}" if v.from_rule else ""
-    return (f"- `{v.id}` [{v.type}] {v.claim} — 방향 **{v.favors}** · "
+    goals = {"up": " · 득점↑", "down": " · 득점↓"}.get(v.goals, "")
+    who = f" · 대상 `{v.target}`" if v.target else ""
+    return (f"- `{v.id}` [{v.type}] {v.claim} — 승패 **{v.favors}**{goals}{who} · "
             f"{v.hardness}({v.weight}) · 출처 {', '.join(v.doc_ids)}{rule}{tail}")
 
 

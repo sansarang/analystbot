@@ -150,11 +150,22 @@ def test_불변식1_카드가_나오고_블록_열_개가_있다(card: Card):
             or "반반" in card.direction), card.direction
 
 
+def _from_docs(card: Card) -> list:
+    """🔴 **기사에서 온 변수만** — 해석 규칙(IR01~)이 만든 사실 변수는 따로 센다.
+
+    ⚠️ s5 는 `Facts` 에서도 변수를 만든다(사용자 지시 2026-10-06 ⑥). 그것들은
+       기사가 아니라 **어댑터 수치**라 `doc_ids` 가 비어 있고, `from_rule` 이 어느
+       규칙인지 말한다. 🔴 불변식 2·9 는 **기사 변수**를 세는 것이다 — 사실 변수는
+       아래 `불변식9_…` 가 따로 본다(빈 `doc_ids` 를 조용히 통과시키지 않는다).
+    """
+    return [v for v in card.variables if v.from_rule is None]
+
+
 def test_불변식2_인용이_그_문서_본문에_글자_그대로_있다(card: Card, docs_by_id: dict):
     """2. 모든 `Variable` 의 `quote` 가 `doc_ids` 중 하나의 본문에 정규화 후 그대로."""
     from app import verifylayer
-    assert card.variables, "변수가 0개면 이 불변식은 아무것도 세지 않는다"
-    for v in card.variables:
+    assert _from_docs(card), "기사 변수가 0개면 이 불변식은 아무것도 세지 않는다"
+    for v in _from_docs(card):
         bodies = [docs_by_id[d].body for d in v.doc_ids if d in docs_by_id]
         assert bodies, (v.id, v.doc_ids, sorted(docs_by_id))
         assert any(verifylayer.quote_ok(v.quote, b)[0] for b in bodies), v.id
@@ -241,10 +252,18 @@ def test_불변식9_발행일_없는_문서를_근거로_한_변수가_없다(ca
     """9. `Doc` 마다 발행일 또는 `date_source="none"` 사유가 있고, `none` 은 근거가 아니다."""
     for d in docs_by_id.values():
         assert (d.published_at is not None) == (d.date_source != "none"), d.id
-    for v in card.variables:
+    for v in _from_docs(card):
+        assert v.doc_ids, v.id
         for did in v.doc_ids:
             got = docs_by_id.get(did)
             assert got is not None and got.published_at is not None, (v.id, did)
+    # 🔴 **사실 변수는 문서가 없다** — 그 사실을 조용히 넘기지 않고 센다:
+    #    규칙 이름이 있고 `doc_ids` 가 비어 있어야 한다(둘 중 하나만이면 결함이다).
+    for v in card.variables:
+        if v.from_rule is None:
+            continue
+        assert v.doc_ids == [], (v.id, v.doc_ids)
+        assert v.from_rule.startswith("IR"), v.from_rule
 
 
 def test_불변식10_깔때기_합계가_맞는다(card: Card):

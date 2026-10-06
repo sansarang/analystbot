@@ -117,6 +117,50 @@ added_by_user_instruction:
     why: §5-a 는 home 방향 변수 묶음에서 시나리오 A 를 만든다 — 홈 변수가 없으면
       홈으로 기울 변수가 없는 경기에서 A 가 아예 생성되지 않는다(실제로는 45%).
 
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 **유형 여섯** — 사용자 지시 2026-10-06 ③
+  # ══════════════════════════════════════════════════════════════════
+  #
+  # > 없던 유형 다섯(`absence_att`·`coach_intent`·`individual_title`·`team_stats`·
+  # > `regression`)은 카탈로그에 추가. 축구용 **피로 유형(`fatigue`)** 을 만들어
+  # > `favors=상대` 쪽.
+  #
+  # ⚠️ 다섯은 `subtask_groups.yaml` 이 **이미 이름으로 쓰던 것**이다 — 카탈로그에
+  #    없어서 방향 규칙을 못 찾고 enum 에서도 빠졌다(실측 2026-10-06: C 군 enum 이
+  #    `stakes` 하나뿐이라 맞대결 기록까지 `stakes` 로 적혔다).
+  # 🔴 `fatigue` 는 **그 자리를 `pitcher_state`(야구)가 먹고 있었다** — 축구 경기의
+  #    피로 기사가 `favors=subject`(자기 쪽)로 붙었다. 피로는 **상대에게 유리하다.**
+  - type: absence_att
+    date: 2026-10-06
+    instruction: 없던 유형 다섯은 카탈로그에 추가
+    doc: docs/fable/decisions/2026-10-06_user_decisions.md
+    why: 공격 결장. 🔴 `def_absence` 의 거울이다 — 결장 팀 반대 방향이고 **득점은 내려간다**(goals=down).
+  - type: coach_intent
+    date: 2026-10-06
+    instruction: 없던 유형 다섯은 카탈로그에 추가
+    doc: docs/fable/decisions/2026-10-06_user_decisions.md
+    why: 감독이 공개로 밝힌 의도(테스트·점검·전력 숨김). 🔴 양방향이다 — 어느 쪽으로 쓸지 모른다.
+  - type: individual_title
+    date: 2026-10-06
+    instruction: 없던 유형 다섯은 카탈로그에 추가
+    doc: docs/fable/decisions/2026-10-06_user_decisions.md
+    why: 개인 기록·타이틀 경쟁. 실측 2026-10-06 — 손흥민 58골 단독 기록이 `stakes` 로 섞여 들어갔다.
+  - type: team_stats
+    date: 2026-10-06
+    instruction: 없던 유형 다섯은 카탈로그에 추가
+    doc: docs/fable/decisions/2026-10-06_user_decisions.md
+    why: 팀 수치(득실·연속·홈원정 차). 🔴 기사가 말하는 수치를 변수로 받는 자리다.
+  - type: regression
+    date: 2026-10-06
+    instruction: 없던 유형 다섯은 카탈로그에 추가
+    doc: docs/fable/decisions/2026-10-06_user_decisions.md
+    why: 흐름이 평균으로 돌아온다. ⚠️ §6-2 ③ 필수형(회귀 반전형)이 이 유형을 이름으로 가리키는데 표에 없어 **한 번도 발동하지 않았다**.
+  - type: fatigue
+    date: 2026-10-06
+    instruction: 축구용 피로 유형을 만들어 favors=상대 쪽
+    doc: docs/fable/decisions/2026-10-06_user_decisions.md
+    why: 피로·체력 저하. 🔴 **상대에게 유리하다**(favors=opponent). ⚠️ 종전엔 야구 유형 `pitcher_state`(favors=subject)가 이 자리를 먹어 방향이 뒤집혔다.
+
 #: §4 전제 변수 표시 — 이 셋이 틀리면 시나리오가 통째로 무효다(STEP 2 재검증 대상)
 premise_types: [match_type, lineup_intent, travel_schedule]
 
@@ -159,6 +203,9 @@ types:
 #    못하는 판단이 그것이다(사용자 진단). 모델은 ③ 좁은 질문에만 쓴다.
 
   stakes:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '매직\s*넘버|우승\s*확정|탈락\s*확정|진출\s*확정|순위\s*결정전|\d+위[^.]{0,12}\d+경기\s*차'
@@ -169,6 +216,7 @@ types:
     direction_rule: 걸린 팀 쪽 승리 방향
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `걸린 팀 쪽 승리 방향` — ⚠️ **확정·탈락 확정이면 상대**
     favors: subject
+    goals: none
     # 🔴 **사용자 지시 2026-10-02** — 결함 ①. **양쪽이 다 걸렸을 때 두 항목으로 나눈다.**
     #
     #  실측: UEFA 네이션스리그 C 2그룹 — 몬테네그로 6점 **승격 경쟁** · 라트비아 1점
@@ -186,6 +234,9 @@ types:
     implemented: true
 
   coach_change:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '(감독|사령탑)[^.]{0,12}(사임|해임|경질|선임|부임|취임|물러)'
@@ -199,11 +250,15 @@ types:
     direction_rule: 새 감독 팀 쪽 + 무승부
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `새 감독 팀 쪽 + 무승부`
     favors: subject
+    goals: none
     # 🔴 §4 방향 배정 예외 — 두 방향을 밀면 두 항목으로 나눠 저장한다
     splits_direction: true
     implemented: true
 
   lineup_intent:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '총력전|필승\s*의지|반드시\s*이긴다|사활'
@@ -216,6 +271,7 @@ types:
     direction_rule: 발언 내용대로
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `발언 내용대로` — 말한 팀 쪽(코드가 못 가리면 both)
     favors: subject
+    goals: none
     # ══════════════════════════════════════════════════════════════
     # 🔴🔴 **구현했다** — "내용대로"를 **두 갈래로만** 읽는다
     # ══════════════════════════════════════════════════════════════
@@ -287,6 +343,9 @@ types:
     attaches_to: both
 
   absence:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '결장|말소|이탈|부상자? 명단|선발[^.]{0,8}제외|엔트리[^.]{0,4}제외|라인업[^.]{0,4}제외'
@@ -301,9 +360,13 @@ types:
     direction_rule: 결장 팀 반대 방향
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `결장 팀 반대 방향` — 주전이 빠지면 **상대**에 유리
     favors: opponent
+    goals: none
     implemented: true
 
   pitcher_state:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [baseball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '선발(\s*투수)?\s*예고|예고\s*선발|\d+이닝\s*무실점|노게임|불펜\s*데이'
@@ -317,6 +380,7 @@ types:
     direction_rule: 좋은 쪽 승리·언더, 불펜 데이 오버
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `좋은 쪽 승리·언더, 불펜 데이 오버`
     favors: subject
+    goals: none
     # 🔴 §4 예외 — 총점 방향은 스코어에서 계산하고 변수엔 붙이지 않는다.
     #    단 pitcher_state·venue_weather 는 over/under 힌트를 갖는다.
     total_hint: true
@@ -364,6 +428,9 @@ types:
     attaches_to: 5c-3      # 저득점 — 좋은 선발은 상대 득점을 낮춘다
 
   recent_pattern:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '\d+\s*연패|\d+\s*연승|끝내기\s*패|역전패|무승'
@@ -376,6 +443,7 @@ types:
     #    주인(노르웨이)의 패턴이 나쁘면 코드가 `subject` 로 받고 그 방향
     #    계산에서 상대 쪽이 된다(§5-4 가 세기를 본다).
     favors: subject
+    goals: none
     cell_question: 최근 5경기 W/L·득실·무득점/무승부 연속
     direction_rule: 패턴 방향
     implemented: true
@@ -395,6 +463,9 @@ types:
     stale_hardness: soft
 
   h2h_pattern:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '상대\s*전적|맞대결\s*\d+승|역대\s*전적'
@@ -405,6 +476,7 @@ types:
     direction_rule: 패턴 방향
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `패턴 방향` — 그 패턴의 주인 쪽
     favors: subject
+    goals: none
     # 🔴 **사용자 지시 2026-10-02** — 결함 ⑥. **표본 수가 weight 를 정한다.**
     #
     #  §7 **R7** 이 `recent_pattern` 에만 걸려 있었다(*"n_games<3 이면 weight 0.4"*).
@@ -460,6 +532,9 @@ types:
     #     만나는 표기만 적는다 — 그 밖의 것은 **못 걸러낸다고 사유에 남긴다**.
     forfeit_marks: ["몰수", "没収", "forfeit", "forfeited", "awarded"]
   travel_schedule:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '원정\s*\d+연전|이동\s*거리|\d+연전|강행군|더블헤더'
@@ -469,9 +544,13 @@ types:
     direction_rule: 피로 팀 반대
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `피로 팀 반대`
     favors: opponent
+    goals: none
     implemented: true
 
   venue_weather:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '우천|비\s*(예보|가능성|소식)|강수\s*확률|강풍|폭염|한파|돔\s*구장|최신\s*예보'
@@ -497,6 +576,7 @@ types:
     direction_rule: 상황별(우천→언더, 타자 구장→오버)
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `상황별(우천→언더, 타자 구장→오버)`
     favors: both
+    goals: none
     total_hint: true
     # ══════════════════════════════════════════════════════════════
     # 🔴🔴 **구현했다 — 단 "방향"이 아니라 "총점 힌트"다**
@@ -531,6 +611,9 @@ types:
     #    ⚠️ 지어내지 않는다: 우리가 실제로 받는 표기다(`mm`·`%`·`m/s`·`℃`).
     number_marks: ["mm", "%", "m/s", "℃", "도", "mph"]
   match_type:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '친선|연습\s*경기|소화\s*경기|순위\s*무관'
@@ -540,9 +623,13 @@ types:
     direction_rule: 친선→무동기·무승부, 단판→언더
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `친선→무동기·무승부, 단판→언더`
     favors: both
+    goals: none
     implemented: true
 
   individual:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '타이틀\s*경쟁|다승\s*(1위|선두)|방어율\s*1위|최고\s*승률|홈런\s*1위|득점왕'
@@ -553,9 +640,13 @@ types:
     direction_rule: 개인 팀 쪽
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `개인 팀 쪽`
     favors: subject
+    goals: none
     implemented: true
 
   emotion:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '동기\s*부여|복수전|설욕|자존심'
@@ -568,6 +659,7 @@ types:
     direction_rule: 상황별
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `상황별` — 코드가 못 가린다
     favors: both
+    goals: none
     # ══════════════════════════════════════════════════════════════
     # 🔴🔴 **구현했다** — "상황별"의 **한 상황만** 규칙으로 읽는다
     # ══════════════════════════════════════════════════════════════
@@ -590,6 +682,9 @@ types:
     attaches_to: both
 
   strength_gap:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '전력\s*차|객관적\s*열세|압도적'
@@ -599,6 +694,7 @@ types:
     direction_rule: 강팀 쪽
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `강팀 쪽`
     favors: subject
+    goals: none
     implemented: false
 
   # ══════════════════════════════════════════════════════════════
@@ -624,6 +720,9 @@ types:
   # 🔴 hardness: 순위표는 **공시**다 → hard. `strength_gap`(FIFA 랭킹 = 공시)과 같은
   #    꼴이다. ⚠️ 리그 홈/원정 기록을 못 구하면 이 변수를 **만들지 않는다**.
   home_field:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '홈\s*\d+연승|원정\s*\d+연패|홈\s*강세|원정\s*약세'
@@ -633,6 +732,7 @@ types:
     direction_rule: 홈 팀 쪽
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `홈 팀 쪽`
     favors: subject
+    goals: none
     measured_2026_10_02:
       MLS: 승률 +16.8%p · 득점 +0.46골 (홈 200경기)
       USL: 승률 +18.3%p · 득점 +0.50골 (홈 169경기)
@@ -641,6 +741,9 @@ types:
     implemented: true
   # ── 🔴 라인업 시장가치(딥서치 2026-10-03 · 위 선언)
   lineup_value:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '시장\s*가치|스쿼드\s*가치'
@@ -650,6 +753,7 @@ types:
     direction_rule: 가치가 떨어진 팀 반대 방향
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `가치가 떨어진 팀 반대 방향`
     favors: opponent
+    goals: none
     implemented: true
     # ══════════════════════════════════════════════════════════════
     # 🔴 **몇 % 떨어지면 변수인가**
@@ -668,6 +772,9 @@ types:
 
   # ── 🔴 카탈로그 5종(사용자 설계 2026-10-02 · 위 `added_by_user_instruction` 선언)
   coach_conflict:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '(감독|사령탑)[^.]{0,20}(갈등|불화|충돌|결별)|캠프\s*이탈|팀\s*이탈'
@@ -683,6 +790,7 @@ types:
     direction_rule: 양방향 — 코드가 한쪽으로 정하지 못하면 미결정
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `양방향 — 한쪽으로 정하지 못하면 미결정`
     favors: both
+    goals: none
     splits_direction: true
     implemented: false
     # 🔴🔴 **언어 꼬리표**(실측 2026-10-02). `lang` 이 없으면 아무 언어나 쓴다.
@@ -715,6 +823,9 @@ types:
     decides: 선수가 팀을 떠났거나 감독과 공개 갈등이 보도됐다
     attaches_to: both      # 🔴 두 방향 시나리오에 다 붙는다
   def_absence:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 **`absence` 를 좁힌 유형이다.** 같은 글이 둘 다에 맞으면 **좁은 쪽**이
     #    이긴다 — 넓은 쪽은 좁은 쪽을 **포함**하므로 둘이 모순이 아니다.
     #    ⚠️ 실측 2026-10-03: `Jamaica defender ruled out with injury` 가 둘 다에
@@ -731,7 +842,11 @@ types:
     cell_question: 수비수·골키퍼 결장
     direction_rule: 결장 팀 반대 방향 — 🔴 상대 득점 상향 시나리오에 붙는다
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `결장 팀 반대 방향 — 상대 득점 상향` → 득점↑
-    favors: goals_up
+    favors: opponent
+    #: 🔴 **득점 방향**(사용자 지시 2026-10-06 ④) — 승패와 **따로** 센다.
+    #    ⚠️ 종전 `goals_up` 은 승패 칸에 득점 방향을 넣은 것이라 그 변수가
+    #       **어느 팀 쪽인지** 말하지 못했다(자료 얇음 판정이 그래서 1종이었다).
+    goals: up
     # 🔴🔴 **구현했다**(사용자 지시 2026-10-02). ⚠️ 전에 적어 둔 사유
     #    (*"자리를 아는 길이 없다"*·*"직전 선발과 대조할 길이 없다"*·*"대표팀 일정
     #    종료일을 모른다"*)는 **오독이었다** — ③ 좁은 질문(`asks`)이 바로 그것을
@@ -764,6 +879,9 @@ types:
     decides: 결장 선수의 자리가 수비(DF·GK)다
     attaches_to: 5c-1      # 난타전 — 상대 득점 상향
   squad_rotation:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '로테이션|선발\s*(대폭\s*)?변경|주전\s*휴식|체력\s*안배'
@@ -777,6 +895,7 @@ types:
     direction_rule: 로테이션 하는 팀 반대 방향
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `로테이션 하는 팀 반대 방향` — 양쪽 시나리오에 붙인다
     favors: both
+    goals: none
     # 🔴🔴 **구현했다**(사용자 지시 2026-10-02). ⚠️ 전에 적어 둔 사유
     #    (*"자리를 아는 길이 없다"*·*"직전 선발과 대조할 길이 없다"*·*"대표팀 일정
     #    종료일을 모른다"*)는 **오독이었다** — ③ 좁은 질문(`asks`)이 바로 그것을
@@ -815,6 +934,9 @@ types:
     decides: 선발이 직전 경기에서 여러 명 바뀌었다고 보도됐다
     attaches_to: 5c-3      # 저득점 — 우세팀 하향 · 무득점 시나리오
   event_match:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '은퇴\s*(경기|식|등판)|매진|기념\s*경기|고별전|친선\s*경기'
@@ -829,6 +951,7 @@ types:
     direction_rule: 방향 없음 — 승패 마켓을 접는다
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `방향 없음 — 승패 마켓을 접는다`
     favors: both
+    goals: none
     # 🔴🔴 **구현했다**(사용자 지시 2026-10-02). ⚠️ "구현"이 *방향을 만든다*는 뜻이
     #    아니다 — 이 유형은 방향이 **없는 것이 규칙이다.** 구현한 것은 그 사실을
     #    **배경으로 적고 승패 마켓을 접는 것**이고, 전에는 *"자료가 없어 못 판단"*
@@ -864,6 +987,9 @@ types:
     decides: 대회가 행사·자선이고 결과에 걸린 것이 없다
     attaches_to: fold_win_markets
   national_duty_return:
+    # 🔴 **종목 선언**(사용자 지시 2026-10-06 ③) — 요청마다 그 종목 유형만 enum 에 들어간다.
+    #    ⚠️ 실측: 축구 경기에 `pitcher_state` 가 enum 에 있어 피로 기사가 그 유형으로 붙었다.
+    sports: [soccer, baseball, hockey, basketball, volleyball]
     # 🔴 산문 → 유형(위 머리글). ⚠️ 씨앗이고 실측으로 고친다.
     match:
       - '대표팀\s*(차출|소집|복귀|합류)|A매치\s*차출'
@@ -879,6 +1005,7 @@ types:
     direction_rule: 방향 없음 — recent_pattern 의 표본을 무효화한다
     # 🔴 **누구에게 유리한가**(지시 2026-10-05) — 위 `direction_rule` 의 글이 말하는 것을 **값으로** 옮겼다: `방향 없음 — recent_pattern 표본을 무효화`
     favors: none
+    goals: none
     # 🔴🔴 **구현했다**(사용자 지시 2026-10-02). ⚠️ 전에 적어 둔 사유
     #    (*"자리를 아는 길이 없다"*·*"직전 선발과 대조할 길이 없다"*·*"대표팀 일정
     #    종료일을 모른다"*)는 **오독이었다** — ③ 좁은 질문(`asks`)이 바로 그것을
@@ -930,3 +1057,104 @@ types:
 #    예보문이 감독 발언으로 들어왔다) 좁히면 0 이 된다.
 # 🔴 이 표는 **질문 경로가 유형을 못 줄 때만** 쓴다 — 세포가 유형을 알고 물었으면
 #    그쪽이 더 정확하다(그 세포는 자기가 뭘 묻는지 안다).
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴 유형 여섯(사용자 지시 2026-10-06 ③) — 선언은 위 `added_by_user_instruction`
+  # ══════════════════════════════════════════════════════════════════
+  absence_att:
+    refines: absence
+    match:
+      - '(공격수|윙어|스트라이커|포워드|에이스)[^.]{0,20}(결장|제외|이탈)'
+      - '\b(striker|forward|winger|top scorer)\b[^.]{0,30}\b(out|miss|injur)'
+    watch: absence
+    word: injury
+    sports: [soccer, baseball, hockey, basketball, volleyball]
+    cell_question: 공격수·윙어 결장
+    direction_rule: 결장 팀 반대 방향 — 🔴 득점은 **내려간다**(그 팀이 골을 못 낸다)
+    favors: opponent
+    goals: down
+    # 🔴 **옛 세포 경로는 이 유형을 분류하지 못한다**(`classify.DIRECTION_OF` 에
+    #    `_dir_` 함수가 없다) — 그래서 `false` 다. ⚠️ v6 는 이 유형을 뽑고 방향을
+    #    정할 수 있다(enum + 위 `favors`/`goals`) — 그 차이를 `classify.NOT_CLASSIFIED`
+    #    가 이름으로 든다(§8 5단계가 옛 경로를 지우면 이 칸의 뜻도 걷힌다).
+    implemented: false
+  coach_intent:
+    match:
+      - '(감독|사령탑)[^.]{0,20}(밝혔다|예고|의도|시험|점검)'
+      - '\b(coach|manager|boss)\b[^.]{0,30}\b(said|plans|will test|experiment)'
+    watch: lineup
+    word: presser
+    sports: [soccer, baseball, hockey, basketball, volleyball]
+    cell_question: 감독이 공개로 밝힌 의도(점검·시험·전력 숨김)
+    direction_rule: 🔴 양방향 — 어느 쪽으로 쓸지 모른다(두 시나리오에 다 붙는다)
+    favors: both
+    goals: none
+    # 🔴 **옛 세포 경로는 이 유형을 분류하지 못한다**(`classify.DIRECTION_OF` 에
+    #    `_dir_` 함수가 없다) — 그래서 `false` 다. ⚠️ v6 는 이 유형을 뽑고 방향을
+    #    정할 수 있다(enum + 위 `favors`/`goals`) — 그 차이를 `classify.NOT_CLASSIFIED`
+    #    가 이름으로 든다(§8 5단계가 옛 경로를 지우면 이 칸의 뜻도 걷힌다).
+    implemented: false
+  individual_title:
+    match:
+      - '(기록|타이틀|득점왕)[^.]{0,20}(경신|도전|선두)'
+      - '\b(record|milestone|golden boot|top scorer)\b[^.]{0,30}\b(chase|level|outright)'
+    watch: standings
+    word: title
+    sports: [soccer, baseball, hockey, basketball, volleyball]
+    cell_question: 개인 기록·타이틀 경쟁(그 선수가 숫자를 쫓는가)
+    direction_rule: 기록을 쫓는 팀 쪽 — 🔴 그 팀이 공격 숫자를 늘린다
+    favors: subject
+    goals: up
+    # 🔴 **옛 세포 경로는 이 유형을 분류하지 못한다**(`classify.DIRECTION_OF` 에
+    #    `_dir_` 함수가 없다) — 그래서 `false` 다. ⚠️ v6 는 이 유형을 뽑고 방향을
+    #    정할 수 있다(enum + 위 `favors`/`goals`) — 그 차이를 `classify.NOT_CLASSIFIED`
+    #    가 이름으로 든다(§8 5단계가 옛 경로를 지우면 이 칸의 뜻도 걷힌다).
+    implemented: false
+  team_stats:
+    match:
+      - '(득실|연승|연패|홈 ?성적|원정 ?성적)[^.]{0,20}(기록|이어)'
+      - '\b(form|unbeaten run|winless|goal difference)\b'
+    watch: standings
+    word: stats
+    sports: [soccer, baseball, hockey, basketball, volleyball]
+    cell_question: 기사가 말하는 팀 수치(득실·연속·홈원정 차)
+    direction_rule: 수치가 좋은 팀 쪽
+    favors: subject
+    goals: none
+    # 🔴 **옛 세포 경로는 이 유형을 분류하지 못한다**(`classify.DIRECTION_OF` 에
+    #    `_dir_` 함수가 없다) — 그래서 `false` 다. ⚠️ v6 는 이 유형을 뽑고 방향을
+    #    정할 수 있다(enum + 위 `favors`/`goals`) — 그 차이를 `classify.NOT_CLASSIFIED`
+    #    가 이름으로 든다(§8 5단계가 옛 경로를 지우면 이 칸의 뜻도 걷힌다).
+    implemented: false
+  regression:
+    match:
+      - '(평균|제자리)[^.]{0,20}(돌아|회귀)'
+      - '\b(regress|revert to the mean|unsustainable)\b'
+    watch: standings
+    word: stats
+    sports: [soccer, baseball, hockey, basketball, volleyball]
+    cell_question: 지금 흐름이 평균으로 돌아오는가
+    direction_rule: 🔴 양방향 — 회귀는 어느 방향인지 **말하지 않는다**(§6-2 ③ 이 둘 다 그리라고 한다)
+    favors: both
+    goals: none
+    # 🔴 **옛 세포 경로는 이 유형을 분류하지 못한다**(`classify.DIRECTION_OF` 에
+    #    `_dir_` 함수가 없다) — 그래서 `false` 다. ⚠️ v6 는 이 유형을 뽑고 방향을
+    #    정할 수 있다(enum + 위 `favors`/`goals`) — 그 차이를 `classify.NOT_CLASSIFIED`
+    #    가 이름으로 든다(§8 5단계가 옛 경로를 지우면 이 칸의 뜻도 걷힌다).
+    implemented: false
+  fatigue:
+    match:
+      - '(피로|체력|과부하)[^.]{0,20}(누적|호소|관리)'
+      - '\b(fatigue|tired|heavy workload|load management)\b'
+    watch: absence
+    word: fatigue
+    sports: [soccer, baseball, hockey, basketball, volleyball]
+    cell_question: 피로·체력 저하(부상은 아니지만 정상이 아니다)
+    direction_rule: 피로한 팀 **반대** 방향 — 🔴 상대에게 유리하다
+    favors: opponent
+    goals: none
+    # 🔴 **옛 세포 경로는 이 유형을 분류하지 못한다**(`classify.DIRECTION_OF` 에
+    #    `_dir_` 함수가 없다) — 그래서 `false` 다. ⚠️ v6 는 이 유형을 뽑고 방향을
+    #    정할 수 있다(enum + 위 `favors`/`goals`) — 그 차이를 `classify.NOT_CLASSIFIED`
+    #    가 이름으로 든다(§8 5단계가 옛 경로를 지우면 이 칸의 뜻도 걷힌다).
+    implemented: false
+

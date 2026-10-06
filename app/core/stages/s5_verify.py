@@ -53,14 +53,31 @@ def game_of(ref: MatchRef) -> Any:
 
 
 def favors_of(kind: str, subject: str, claim: str, ref: MatchRef) -> str:
-    """🔴🔴 **방향은 카탈로그 규칙이 정한다** — `classify.favors_of` 가 원본이다.
+    """🔴🔴 **승패 방향은 카탈로그 규칙이 정한다** — `classify.favors_of` 가 원본이다.
 
     ⚠️ 규칙표(`variable_types.yaml` 의 `favors`)를 여기 베끼지 않는다(#1) —
        `stakes` 의 확정 뒤집기까지 그 함수 안에 있다.
+    🔴 돌려주는 것은 `home`·`away`·`both` 뿐이다(사용자 지시 2026-10-06 ④) —
+       득점 방향은 `goals_of` 가 따로 낸다. ⚠️ 표가 `none` 이라 적은 유형
+       (`national_duty_return`)은 **어느 쪽도 아니다** → `both` 로 둔다(한쪽으로
+       밀지 않는다). 그 유형은 `_enough` 의 방향 셈에 들어가지 않는다(home/away 만 센다).
     """
     from app import classify
-    return str(classify.favors_of(kind, subject=subject, game=game_of(ref),
-                                  text=claim) or "")
+    got = str(classify.favors_of(kind, subject=subject, game=game_of(ref),
+                                 text=claim) or "")
+    return got if got in ("home", "away", "both") else "both"
+
+
+def goals_of(kind: str) -> str:
+    """🔴 **득점 방향** — 표의 `goals` 칸이 원본이다(사용자 지시 2026-10-06 ④).
+
+    ⚠️ 종전엔 이 값이 `favors` 칸에 `goals_up` 으로 들어 있어, 수비 결장 변수가
+       *"어느 팀 쪽인가"* 를 말하지 못했다(그래서 방향 1종으로 등급이 거둬졌다).
+    """
+    from app import rules
+    said = str((rules.variable_types().get(str(kind)) or {}).get("goals")
+               or "none")
+    return said if said in ("up", "down", "none") else "none"
 
 
 def run(ref: MatchRef, facts: Facts, docs: list[Doc],
@@ -96,7 +113,9 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
         from app.types import WEIGHT_OF
         out.append(Variable(
             id=f"R{i}", type=row["type"], subject=row["subject"],
-            favors=row["favors"], hardness=("hard" if level == 2 else "soft"),
+            favors=row["favors"], goals=row.get("goals", "none"),
+            target=str(row.get("target") or ""),
+            hardness=("hard" if level == 2 else "soft"),
             weight=float(WEIGHT_OF[name]), claim=row["claim"],
             quote=row["quote"], doc_ids=row["doc_ids"],
             # 🔴🔴 **근거로 쓸 수 있나** — 등급 0(단일 aggregator·충돌)은 못 쓴다.
@@ -157,6 +176,7 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
                    f"`{c.type}` 방향 규칙이 없다(받은 값 {fav!r})")
         return None
     return {"type": c.type, "subject": c.subject, "favors": fav,
+            "goals": goals_of(c.type), "target": str(c.target or ""),
             "claim": c.claim, "quote": quote, "doc_ids": [doc.id]}
 
 
@@ -187,43 +207,199 @@ def _mentions(subject: str, doc: Doc, ref: MatchRef) -> bool:
     return any(len(str(x)) >= 3 and str(x).lower() in said for x in names)
 
 
-def _merge(rows: list[dict], *, state: RunState) -> list[dict]:
-    """🔴 §5-7 — 같은 주장은 **하나로 묶고 출처를 더한다**(MinHash 병합).
+def merge_key(subject: str, kind: str, target: str) -> tuple[str, str, str]:
+    """🔴🔴 **사실 하나의 열쇠** — `(주체, 유형, 핵심 대상)`(사용자 지시 2026-10-06 ①).
 
-    ⚠️ 버리는 것이 아니다 — `doc_ids` 가 늘어나면 `independent_sources` 가 그것을
-       세고 등급이 올라간다(매체 2곳 이상이면 `hard`).
+    > 같은 subject + 같은 type + 같은 핵심 대상(선수명·사건)이면 하나의 Variable 로
+    > 합치고 `doc_ids` 를 모은다 … **문장 유사도(MinHash)가 아니라** "누가·무엇" 열쇠로.
+
+    🔴 대상 글자는 **정규화**해서 비교한다 — `Kim Min-jae`·`김민재`·`KIM MIN-JAE` 가
+       갈리면 열쇠가 쪼개진다. ⚠️ 정규화는 `verifylayer._norm` 하나다(사본 금지).
     """
     from app import verifylayer
+    return (str(subject), str(kind), verifylayer._norm(str(target)))
+
+
+def _merge(rows: list[dict], *, state: RunState) -> list[dict]:
+    """🔴 **사실 단위로 묶는다** — 같은 열쇠면 한 변수이고 `doc_ids` 가 쌓인다.
+
+    ⚠️ 실측 2026-10-06: 김민재 결장이라는 **한 사실**이 변수 11개로 셌다(문장이
+       저마다 달라 MinHash 가 못 묶었다). 🔴 열쇠로 묶으면 그 11개가 하나다.
+    🔴 묶는 것은 **버리는 것이 아니다** — 출처가 늘면 `independent_sources` 가 그것을
+       세고 등급이 `hard` 로 오른다(매체 2곳 이상).
+    ⚠️ `target` 이 **비어 있으면 묶지 않는다** — 빈 열쇠로 묶으면 서로 다른 사실이
+       한 변수가 된다(그쪽이 더 나쁘다). 그 사실을 사유로 남긴다.
+    """
     out: list[dict] = []
+    seen: dict[tuple[str, str, str], dict] = {}
     for row in rows:
-        for keep in out:
-            if keep["type"] != row["type"] or keep["subject"] != row["subject"]:
-                continue
-            if verifylayer.similarity(keep["claim"], row["claim"]) < _sim_same():
-                continue
-            for d in row["doc_ids"]:
-                if d not in keep["doc_ids"]:
-                    keep["doc_ids"].append(d)
-            state.drop(f"s5/{row['type']}/{row['subject']}",
-                       DropReason.DUPLICATE,
-                       f"같은 주장으로 묶었다 → 출처 {len(keep['doc_ids'])}곳")
-            break
-        else:
+        target = str(row.get("target") or "")
+        if not target.strip():
+            state.note(f"s5 `{row['type']}` 변수에 **대상이 비었다** — 묶지 않는다"
+                       f"(모델이 `target` 을 안 적었다)")
             out.append(row)
+            continue
+        key = merge_key(row["subject"], row["type"], target)
+        keep = seen.get(key)
+        if keep is None:
+            seen[key] = row
+            out.append(row)
+            continue
+        for d in row["doc_ids"]:
+            if d not in keep["doc_ids"]:
+                keep["doc_ids"].append(d)
+        state.drop(f"s5/{row['type']}/{target[:24]}", DropReason.DUPLICATE,
+                   f"같은 사실로 묶었다(열쇠 {key[1]}·{key[2][:20]}) → 출처 "
+                   f"{len(keep['doc_ids'])}곳")
     return out
+
+
+def interpret_rules() -> list[dict]:
+    """🔴 해석 규칙 표 — `config/interpret_rules.yaml` 하나가 원본이다(사본 금지)."""
+    from app import rules
+    box = rules._load("config/interpret_rules.yaml")
+    return [dict(r) for r in (box.get("rules") or [])]
+
+
+def _sample_weight(n: int) -> tuple[str, float]:
+    """🔴 표본 수 → `(hardness, weight)`. 수는 `league.h2h_weight` 하나가 든다.
+
+    ⚠️ 여기서 사다리를 다시 적지 않는다(#1) — 그 함수가 §4 `sample_weight` 의
+       원본이고, 실측 근거(3경기 창이 거짓을 말한 사고)가 그 독스트링에 있다.
+    """
+    from app import league
+    from app.types import WEIGHT_OF
+    w = float(league.h2h_weight(int(n)))
+    name = {1.0: "hard", 0.7: "likely", 0.4: "soft"}.get(w, "soft")
+    return name, float(WEIGHT_OF[name])
 
 
 def _from_facts(ref: MatchRef, facts: Facts, *, state: RunState
                 ) -> list[Variable]:
-    """🔴🔴 **해석 규칙(IR01~IR12)이 `Facts` 에서 변수를 더하는 자리**(§5 s5).
+    """🔴🔴 **해석 규칙이 `Facts` 에서 변수를 더한다**(§5 s5 · 사용자 지시 ⑥).
 
-    ⚠️ **그 표가 이 저장소에 없다**(위 모듈 설명의 실측) — 그래서 **빈 목록**이고
-       그 사실을 사유로 남긴다. 🔴 지어내 채우면 방향 규칙·검색 템플릿까지 지어내야
-       한다(#4). 표를 받으면 **이 함수 하나**를 채운다.
+    ══════════════════════════════════════════════════════════════════
+    ⚠️ **접목 문서 §2 표가 이 기계에 없다**(실측 2026-10-06)
+    ══════════════════════════════════════════════════════════════════
+
+    `~/Downloads` 와 `docs/` 를 다 봤고 `IR01`~`IR12` 는 v6 지시서 본문·주석에만
+    있다. 🔴 그래서 `config/interpret_rules.yaml` 은 **이 저장소에 이미 있는 규칙만**
+    담았고(그 파일 머리에 적었다), 이 함수는 **그 파일을 읽을 뿐**이다 — 표를 받으면
+    파일만 덮으면 된다(코드는 그대로).
+
+    🔴 못 돈 규칙은 **이름으로** 남긴다(#3) — *"규칙이 있는데 안 걸린다"* 를 숨기지
+       않는다.
     """
-    state.note("s5 해석 규칙(IR01~IR12) — 🔴 **표가 저장소에 없다**(실측 "
-               "2026-10-06: `app/`·`config/`·`docs/` 에 `IR01` 이 없다) → "
-               f"사실에서 더한 변수 0개 · 순위 {len(facts.standings)}칸 · "
-               f"폼 {len(facts.recent)}팀 · 맞대결 {len(facts.h2h)}칸이 **쓰이지 "
-               "않았다**")
-    return []
+    out: list[Variable] = []
+    for row in interpret_rules():
+        rid, kind = str(row.get("id") or ""), str(row.get("type") or "")
+        if row.get("off"):
+            state.note(f"s5 {rid}({kind}) **끈 규칙** — {row['off']}")
+            continue
+        if kind == "recent_pattern":
+            out += _ir_recent(rid, row, ref, facts, state=state)
+        elif kind == "h2h_pattern":
+            out += _ir_h2h(rid, row, ref, facts, state=state)
+        elif kind == "home_field":
+            out += _ir_home(rid, row, ref, facts, state=state)
+        else:
+            state.note(f"s5 {rid}({kind}) — **그 유형을 읽는 코드가 없다**"
+                       f"(규칙이 표에만 있다 · #2 배선)")
+    state.note(f"s5 해석 규칙 {len(interpret_rules())}줄 → 사실 변수 {len(out)}개")
+    return out
+
+
+def _min_games(row: dict, default: int = 0) -> int:
+    """🔴 문턱은 **이름으로** 적혀 있다(`recent_min_games` 등) — 표에서 읽는다."""
+    from app import thresholds
+    said = str(row.get("min_games") or "")
+    if not said:
+        return int(default)
+    try:
+        return int(thresholds.value(said))           # type: ignore[arg-type]
+    except (ValueError, TypeError):
+        return int(default)
+
+
+def _ir_recent(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
+               state: RunState) -> list[Variable]:
+    """IR01 — 최근 폼. 🔴 **양 팀 다** 만든다(한쪽만 만들면 방향이 한 종류다)."""
+    low = _min_games(row, 3)
+    out: list[Variable] = []
+    for key in (ref.home, ref.away):
+        box = facts.recent.get(key)
+        box = dict(box) if isinstance(box, dict) else {}
+        n = int(box.get("matches") or len(box.get("last5") or []) or 0)
+        if not n:
+            state.note(f"s5 {rid} — `{key}` 폼 자료가 없다(변수 안 만든다)")
+            continue
+        hard, weight = _sample_weight(n)
+        last5 = " ".join(str(x) for x in (box.get("last5") or [])) or "?"
+        avg, trim = box.get("recent_scored_avg"), box.get("recent_trimmed_avg")
+        claim = (f"최근 {n}경기 {last5} · 득점 평균 "
+                 f"{avg if avg is not None else '못 쟀다'}"
+                 + (f"(보정 {trim})" if trim is not None else ""))
+        out.append(Variable(
+            id=f"{rid}-{'home' if key == ref.home else 'away'}",
+            type="recent_pattern", subject=key,
+            favors=favors_of("recent_pattern", key, claim, ref),  # type: ignore[arg-type]
+            goals=goals_of("recent_pattern"),                     # type: ignore[arg-type]
+            target="recent", hardness=("hard" if hard == "hard" else "soft"),
+            weight=weight, claim=claim,
+            # 🔴 인용은 **어댑터 수치 그대로**다 — 기사가 아니라 구조 자료다
+            quote=claim, doc_ids=[], from_rule=rid,
+            # ⚠️ 표본이 문턱 미만이면 **근거로 쓰지 않는다**(§7 R7)
+            usable_as_basis=(n >= low)))
+        if n < low:
+            state.note(f"s5 {rid} `{key}` 표본 {n}경기 < {low} — 맥락 전용")
+    return out
+
+
+def _ir_h2h(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
+            state: RunState) -> list[Variable]:
+    """IR02 — 맞대결. 🔴 **기록이 가리키는 쪽**이 주체다(동률이면 만들지 않는다)."""
+    box = dict(facts.h2h or {})
+    got = box.get("summary")
+    n = int(box.get("count") or 0)
+    if not (isinstance(got, (list, tuple)) and len(got) == 3 and n):
+        state.note(f"s5 {rid} — 맞대결 요약이 없다(변수 안 만든다)")
+        return []
+    w, d, lose = (int(x) for x in got)
+    if w == lose:
+        state.note(f"s5 {rid} — 맞대결이 {w}승 {d}무 {lose}패로 **동률**이다 "
+                   f"(어느 쪽도 아니다 · 변수 안 만든다)")
+        return []
+    key = ref.home if w > lose else ref.away
+    hard, weight = _sample_weight(n)
+    claim = (f"맞대결 {n}경기 {w}승 {d}무 {lose}패"
+             + (f" · 평균 {box['window_avg_goals']}골"
+                if box.get("window_avg_goals") is not None else ""))
+    return [Variable(
+        id=f"{rid}", type="h2h_pattern", subject=key,
+        favors=favors_of("h2h_pattern", key, claim, ref),   # type: ignore[arg-type]
+        goals=goals_of("h2h_pattern"),                      # type: ignore[arg-type]
+        target="h2h", hardness=("hard" if hard == "hard" else "soft"),
+        weight=weight, claim=claim, quote=claim, doc_ids=[], from_rule=rid,
+        # 🔴 표본 무게가 1.0 미만이면 **근거로 쓰지 않는다**(실측: 3경기 창이 거짓을
+        #    말했고 그 수로 언더에 0.9 를 걸어 낙첨했다 — `league.h2h_weight` 독스트링)
+        usable_as_basis=(hard == "hard"))]
+
+
+def _ir_home(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
+             state: RunState) -> list[Variable]:
+    """IR03 — 홈 이점. ⚠️ **중립 구장이면 만들지 않는다**(거짓 변수가 된다)."""
+    from app import rules
+    neutral, why = rules.neutral_venue(ref.competition)
+    if neutral:
+        state.note(f"s5 {rid} — 중립 구장이다({why}) · 변수 안 만든다")
+        return []
+    claim = f"{ref.home_name} 홈 경기 — 홈 이점"
+    return [Variable(
+        id=f"{rid}", type="home_field", subject=ref.home,
+        favors=favors_of("home_field", ref.home, claim, ref),  # type: ignore[arg-type]
+        goals=goals_of("home_field"),                         # type: ignore[arg-type]
+        target="home_field", hardness="soft",
+        weight=_sample_weight(1)[1], claim=claim, quote=claim, doc_ids=[],
+        from_rule=rid,
+        # ⚠️ 장소별 표본을 **안 쟀다** — 그래서 근거로는 쓰지 않는다(맥락 전용)
+        usable_as_basis=False)]

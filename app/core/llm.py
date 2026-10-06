@@ -213,6 +213,17 @@ def _body(pv: dict, p: dict, messages: list[Message], schema: dict, *,
     eff = str(p.get("reasoning_effort") or "")
     if eff:
         body["reasoning_effort"] = eff
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **온도를 설정이 정한다** — 사용자 지시 2026-10-06 ⑤
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 추출 `temperature=0` 고정, 같은 입력이면 같은 출력인지 2회 실측해 보고.
+    #
+    #  ⚠️ 실측 2026-10-06: 같은 경기를 여섯 번 돌렸더니 변수가 14·5·18·19·15·19 로
+    #     갈렸다 — 그래서 등급이 서기도 안 서기도 했다(`자료부족` ↔ `소액하단`).
+    #  🔴 `0` 과 "안 보냄"은 다르다 — `None` 이면 보내지 않는다(공급자 기본값).
+    if p.get("temperature") is not None:
+        body["temperature"] = float(p["temperature"])
     mode = str(pv.get("structured") or "json_schema")
     if mode == "json_schema":
         # 🔴 Solar 실측 2026-10-04: `json_schema(strict)` 가 **듣는다**

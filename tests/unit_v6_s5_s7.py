@@ -34,8 +34,8 @@ def ref(**kw) -> MatchRef:
 
 def var(i: int, **kw) -> Variable:
     box = dict(id=f"R{i}", type="absence", subject=HOME, favors="away",
-               hardness="hard", weight=1.0, claim=f"주장 {i}", quote="인용",
-               doc_ids=["A-home-D1"])
+               goals="none", target=f"대상{i}", hardness="hard", weight=1.0,
+               claim=f"주장 {i}", quote="인용", doc_ids=["A-home-D1"])
     box.update(kw)
     return Variable(**box)                             # type: ignore[arg-type]
 
@@ -52,6 +52,15 @@ def scen(sid: str, outs: list[tuple[int, int]], **kw) -> Scenario:
 # ══════════════════════════════════════════════════════════════════
 
 
+def from_docs(got: list) -> list:
+    """🔴 **기사에서 온 변수만** — 해석 규칙(IR01~)이 만든 사실 변수는 센지 않는다.
+
+    ⚠️ s5 는 이제 `Facts` 에서도 변수를 만든다(사용자 지시 2026-10-06 ⑥) — 그것들은
+       `from_rule` 을 들고 `doc_ids` 가 **없다**(기사가 아니라 어댑터 수치다).
+    """
+    return [v for v in got if v.from_rule is None]
+
+
 def doc(body: str, *, did: str = "A-home-D1", when=KICK) -> Doc:
     return Doc(id=did, url=f"https://ex.com/{did}", domain="ex.com",
                tier="national", lang="en", title="South Korea news",
@@ -62,15 +71,17 @@ def doc(body: str, *, did: str = "A-home-D1", when=KICK) -> Doc:
 def cand(**kw) -> VarCandidate:
     box = dict(subtask="A-home", type="absence", subject=HOME,
                claim="수비수가 빠진다", quote="Kim is ruled out",
-               doc_id="A-home-D1")
+               # 🔴 **병합 열쇠**(사용자 지시 2026-10-06 ①) — 같은 대상이면 한 사실이다
+               target="Kim Min-jae", doc_id="A-home-D1")
     box.update(kw)
     return VarCandidate(**box)                         # type: ignore[arg-type]
 
 
 def test_인용이_본문에_없으면_버린다():
     st = RunState()
-    got = s5_verify.run(ref(), Facts(), [doc("Nothing about it. South Korea")],
-                        [cand()], state=st)
+    got = from_docs(s5_verify.run(ref(), Facts(),
+                                  [doc("Nothing about it. South Korea")],
+                                  [cand()], state=st))
     assert got == []
     assert [d.reason for d in st.drops] == [DropReason.QUOTE_NOT_FOUND]
 
@@ -79,9 +90,10 @@ def test_정규화_차이는_통과한다():
     """🔴 따옴표·대시·발음기호가 달라도 **같은 인용**이다(§5-1 정규화)."""
     body = ("South Korea coach said “Kim Min-jae is ruled out” — Ødegaard "
             "style absence.")
-    got = s5_verify.run(ref(), Facts(), [doc(body)],
-                        [cand(quote='"Kim Min-jae is ruled out" - Odegaard')],
-                        state=RunState())
+    got = from_docs(s5_verify.run(
+        ref(), Facts(), [doc(body)],
+        [cand(quote='"Kim Min-jae is ruled out" - Odegaard')],
+        state=RunState()))
     assert len(got) == 1, got
 
 
@@ -89,8 +101,8 @@ def test_발행일이_없으면_근거가_못_된다():
     """🔴 불변식 9 — `date_source="none"` 인 Doc 을 근거로 한 변수는 **없다**."""
     st = RunState()
     body = "South Korea: Kim is ruled out"
-    got = s5_verify.run(ref(), Facts(), [doc(body, when=None)],
-                        [cand()], state=st)
+    got = from_docs(s5_verify.run(ref(), Facts(), [doc(body, when=None)],
+                                  [cand()], state=st))
     assert got == []
     assert [d.reason for d in st.drops] == [DropReason.DATE_MISSING]
 
@@ -98,23 +110,26 @@ def test_발행일이_없으면_근거가_못_된다():
 def test_방향은_코드가_정한다_모델이_아니다():
     """🔴 `absence` 는 **상대**에게 유리하다 — 주체가 홈이면 `away`(카탈로그 규칙)."""
     body = "South Korea: Kim is ruled out"
-    got = s5_verify.run(ref(), Facts(), [doc(body)], [cand()],
-                        state=RunState())
+    got = from_docs(s5_verify.run(ref(), Facts(), [doc(body)], [cand()],
+                                  state=RunState()))
     assert got[0].favors == "away", got[0]
     # 🔴 주체를 원정으로 바꾸면 방향도 **뒤집힌다**(모델 입력은 그대로다)
     body2 = "Uzbekistan: Kim is ruled out"
-    got2 = s5_verify.run(ref(), Facts(),
-                         [doc(body2, did="A-away-D1")],
-                         [cand(subject=AWAY, subtask="A-away",
-                               doc_id="A-away-D1")], state=RunState())
+    got2 = from_docs(s5_verify.run(
+        ref(), Facts(), [doc(body2, did="A-away-D1")],
+        [cand(subject=AWAY, subtask="A-away", doc_id="A-away-D1")],
+        state=RunState()))
     assert got2[0].favors == "home", got2[0]
 
 
-def test_같은_주장은_묶고_출처를_더한다():
-    """🔴 §5-7 — 두 매체가 같은 말을 하면 **하나**이고 출처가 둘이다.
+def test_같은_사실은_묶고_출처를_더한다():
+    """🔴🔴 **사실 단위 병합**(사용자 지시 2026-10-06 ①) — 열쇠는 `(주체, 유형, 대상)`.
 
-    ⚠️ 본문이 **글자까지 같으면** 복사된 보도자료이고 그것은 **한 곳**이다
-       (`independent_sources` 의 규칙) — 그래서 다른 글 둘로 센다.
+    ⚠️ 실측 2026-10-06: 김민재 결장이라는 한 사실이 변수 **11개**로 셌다 — 문장이
+       저마다 달라 문장 유사도로는 묶이지 않았다. 🔴 그래서 **문장을 다르게** 적고도
+       묶이는지 센다.
+    ⚠️ 본문이 글자까지 같으면 복사된 보도자료라 **출처는 한 곳**이다
+       (`independent_sources`) — 그래서 다른 글 둘로 센다.
     """
     body = ("South Korea: Kim Min-jae is ruled out of the friendly, "
             "the federation said on Monday.")
@@ -123,9 +138,13 @@ def test_같은_주장은_묶고_출처를_더한다():
     d1, d2 = doc(body), doc(body2, did="A-home-D2")
     st = RunState()
     got = s5_verify.run(ref(), Facts(), [d1, d2],
-                        [cand(quote="Kim Min-jae is ruled out"),
+                        [cand(quote="Kim Min-jae is ruled out",
+                              claim="수비 핵심이 빠진다"),
+                         # 🔴 **문장이 다르다** — 그래도 `target` 이 같으면 한 사실이다
                          cand(quote="Kim Min-jae is ruled out",
-                              doc_id="A-home-D2")], state=st)
+                              claim="뒷공간이 열린다", doc_id="A-home-D2")],
+                        state=st)
+    got = from_docs(got)
     assert len(got) == 1, got
     assert got[0].doc_ids == ["A-home-D1", "A-home-D2"], got[0]
     # 🔴 매체 2곳이면 `hard` 다(§5-5 national 2매체)

@@ -45,17 +45,41 @@ def group_kinds(sid: str) -> list[str]:
     return []
 
 
-def kinds_of(sid: str) -> list[str]:
-    """🔴 그 하위에 **enum 으로 줄 유형** — 카탈로그 이름만이다.
+def kinds_of(sid: str, sport: str = "") -> list[str]:
+    """🔴 그 하위에 **enum 으로 줄 유형** — 카탈로그 이름 ∩ **그 종목**.
 
     🔴 옮기는 것은 `adapt.catalog_type` **하나**다(§2: 변환은 한 곳에서만) —
        s3 의 검색 낱말도 같은 함수를 지난다.
+    🔴 **종목으로 한 번 더 거른다**(사용자 지시 2026-10-06 ③) — 실측 2026-10-06:
+       축구 경기 enum 에 `pitcher_state`(야구)가 있어 피로 기사가 그 유형으로 붙고
+       방향이 **자기 쪽**이 됐다. ⚠️ 종목을 안 주면 거르지 않는다(옛 호출부 호환).
     """
+    ok = set(rules_types(sport)) if sport else None
     out: list[str] = []
     for kind in group_kinds(sid):
         got = adapt.catalog_type(kind)
-        if got and got not in out:
-            out.append(got)
+        if not got or got in out:
+            continue
+        if ok is not None and got not in ok:
+            continue
+        out.append(got)
+    return out
+
+
+def rules_types(sport: str) -> list[str]:
+    """🔴 그 종목의 카탈로그 유형 — 표가 원본이다(`rules.types_for_sport`)."""
+    from app import rules
+    return rules.types_for_sport(sport)
+
+
+def kinds_dropped(sid: str, sport: str) -> list[str]:
+    """🔴 **종목 때문에 빠진 유형** — 사유로 남긴다(#3 조용한 0 금지)."""
+    ok = set(rules_types(sport))
+    out = []
+    for kind in group_kinds(sid):
+        got = adapt.catalog_type(kind)
+        if got and got not in ok:
+            out.append(f"{got}(종목 밖)")
     return out
 
 
@@ -124,6 +148,17 @@ def _system(sid: str, kinds: list[str], ref: MatchRef) -> str:
         "우리가 붙인 표지이고 기사에 없는 글자다. **본문 글자만** 적는다"
         "(어느 문서인지는 `doc_id` 칸이 받는다).\n"
         "🔴 `claim` 은 그 사실을 **한 문장**으로 적은 것이다.\n"
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **`target` = 병합 열쇠** — 사용자 지시 2026-10-06 ①
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 실측 2026-10-06: 김민재 결장이라는 **한 사실**이 변수 11개로 셌다.
+        #     문장이 저마다 달라 문장 유사도로는 묶이지 않는다.
+        #  🔴 그래서 **"누가·무엇"** 을 모델이 한 낱말로 적게 하고, 코드가 그
+        #     열쇠로 합친다(같은 subject·type·target = 한 사실).
+        "🔴 `target` 은 그 사실의 **핵심 대상 하나**다 — 선수 이름(`Kim Min-jae`) "
+        "또는 사건 한 낱말(`record`·`travel`). ⚠️ 같은 사실을 여러 기사에서 봤다면 "
+        "`target` 을 **같은 글자**로 적어라(그것으로 합친다). 문장을 넣지 마라.\n"
         "⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 "
         "둔다 — 빈 것이 지어낸 것보다 낫다.\n"
         f"⚠️ 이 경기는 {ref.home_name}(홈) 대 {ref.away_name}(원정)이다 — "
@@ -156,13 +191,13 @@ def _ask(sid: str, mine: list[Doc], ref: MatchRef, *, state: RunState,
     """🔴 그 하위 추출 **한 번**. ⚠️ 실패해도 예외를 위로 던지지 않는다(§5)."""
     from app.core import llm
     tag = f"s4/{sid}" + ("(2차)" if second else "")
-    kinds = kinds_of(sid)
-    gone = unmapped_of(sid)
+    kinds = kinds_of(sid, ref.sport)
+    gone = unmapped_of(sid) + kinds_dropped(sid, ref.sport)
     if gone:
         # 🔴 **조용히 빠뜨리지 않는다** — 이 이름들은 카탈로그에 없어서 enum 에
         #    들어가지 못했다. ⚠️ 그래서 그 각도는 **이 경기에서 안 뽑힌다.**
-        state.note(f"{tag} 카탈로그에 없는 유형군 {gone} 은 enum 에서 **빠졌다** "
-                   f"— 그 각도의 변수는 뽑히지 않는다(사용자 결정 대기)")
+        state.note(f"{tag} enum 에서 빠진 유형 {gone} — 카탈로그에 없거나 **그 종목이 "
+                   f"아니다**(그 각도의 변수는 뽑히지 않는다)")
     if not mine:
         state.note(f"{tag} 문서 0건 — 추출을 돌리지 않았다")
         return []

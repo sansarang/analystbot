@@ -132,6 +132,31 @@ words:
   #
   # ⚠️ `soccer` 가 아니라 `football` 이다 — 영국·유럽 매체가 그 글자를 쓴다.
   #    🔴 미국 매체는 `soccer` 를 쓰므로 **둘 다 적는다**(호출부가 첫 것을 쓴다).
+  # ══════════════════════════════════════════════════════════════
+  # 🔴 **사용자 지시 2026-10-06 ③** — 새 유형 셋이 쓸 개념 낱말
+  #    (`docs/fable/decisions/2026-10-06_user_decisions.md`)
+  # ══════════════════════════════════════════════════════════════
+  #: `individual_title` — 개인 기록·타이틀 경쟁
+  title:
+    en: [record, milestone, golden boot]
+    es: [récord, pichichi]
+    ja: [記録, タイトル]
+    ko: [기록, 타이틀]
+    zh: [纪录]
+  #: `team_stats`·`regression` — 팀 수치·흐름
+  stats:
+    en: [form, stats, run]
+    es: [racha, estadísticas]
+    ja: [成績, 連勝]
+    ko: [성적, 연승]
+    zh: [战绩]
+  #: `fatigue` — 피로·체력(축구는 `pitcher_state` 가 없다)
+  fatigue:
+    en: [fatigue, tired, workload]
+    es: [fatiga, cansancio]
+    ja: [疲労]
+    ko: [피로, 체력]
+    zh: [疲劳]
   sport:
     soccer:
       en: [football, soccer]
