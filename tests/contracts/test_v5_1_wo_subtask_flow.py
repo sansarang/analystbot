@@ -156,3 +156,64 @@ def _ref():
         sport = "soccer"
         langs = ("en",)
     return _R()
+
+
+def test_M128_행동_analyze_가_하위에_루프를_안_쓴다(monkeypatch):
+    """🔴🔴 **실제 경로**(`analyze._run_agent`)를 돌린다 — 계약이 `run_subtask` 를
+    직접 부르면, `analyze` 가 그것을 **안 써도** 초록이다(돌연변이 M128 통과).
+
+    ⚠️ 그래서 여기서는 `agentloop.run` 을 **터지게** 두고 `_run_agent` 를
+       하위 과제로 돌린다. 🔴 하위 경로가 루프를 부르면 그 자리에서 터진다.
+    """
+    import asyncio
+
+    from app import agentloop, analyze, cells, net as _net_mod, search as _S
+    from app.research import subtasks
+
+    def _boom(*a, **k):
+        raise AssertionError("🔴 `analyze` 의 하위 경로가 `agentloop.run` 을 "
+                             "불렀다(M128) — 지시서 §1 은 오픈월드 ⑥단에만 "
+                             "남기라고 했다")
+
+    monkeypatch.setattr(agentloop, "run", _boom)
+    # 🔴 §3 스위치를 켠다 — 꺼져 있으면 그 앞에서 돌아가고 이 계약이 뜻을 잃는다.
+    #    ⚠️ **캐시를 되돌려 놓는다** — `get_settings` 는 캐시이고, 그 상태가
+    #       남으면 **다른 계약**이 켜진 봇을 본다(병렬 실행에서 실측됐다).
+    monkeypatch.setenv("AGENT_ENABLED", "1")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    monkeypatch.undo  # (명시용 — 아래 finally 가 캐시를 비운다)
+    calls = {"n": 0}
+
+    async def _fake_subtask(task, **kw):
+        calls["n"] += 1
+        return [], f"{task.name}: 대역"
+
+    monkeypatch.setattr(subtasks, "run_subtask", _fake_subtask)
+
+    class _Chain:
+        async def query(self, text, *, lang="en", engines=None, qtype=None):
+            return []
+
+    class _Net:
+        async def get(self, url):
+            return _net_mod.Fetched(url, True, 200, "<html></html>")
+
+    task = subtasks.split(_ref())[0]
+    game = {"home": "Northern Ireland", "away": "Georgia",
+            "league": "UEFA Nations League B Grp. 2", "sport": "soccer",
+            "home_id": "team:1", "away_id": "team:2", "ext_id": "fotmob:1",
+            "langs": ("en",)}
+    import datetime as _dt
+    kick = _dt.datetime(2026, 10, 5, 18, 45, tzinfo=_dt.timezone.utc)
+    try:
+        got, why = asyncio.run(analyze._run_agent(
+            game, "home", None, cells.Seen(), [], kick, ("en",),
+            chain=_Chain(), net=_Net(), pot=None, subtask=task))
+    finally:
+        # 🔴 **캐시를 비운다** — 안 비우면 다음 계약이 켜진 스위치를 본다
+        get_settings.cache_clear()
+    assert calls["n"] == 1, (
+        f"🔴 `analyze` 가 `run_subtask` 를 **안 불렀다**({calls['n']}회) — "
+        f"하위가 아직 루프를 돈다: {why}")
+    assert isinstance(got, list), why
