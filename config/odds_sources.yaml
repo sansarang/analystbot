@@ -95,6 +95,44 @@ feeds:
       실측 — `GET /v4/sports/?apiKey=` → 401 `{"error_code":"MISSING_KEY"}`.
       즉 **피드는 살아 있고 키만 없다.**
 
+  - name: odds_api_io
+    base_url: https://api.odds-api.io/v3
+    key_env: ODDS_API_IO_KEY
+    allowed: true
+    needs_key: true
+    # ⚠️ 🔴 **실측 2026-10-06**(문서 색인 `llms.txt`):
+    #    *"New free API keys are paused; existing free keys keep working at
+    #    100 requests/hour (500/day)."* → **새 무료 키 발급이 멈춰 있다.**
+    #    사용자가 발급을 받으면 그때 범위를 잰다(§5 측정 도구: `tools/odds_scope.py`).
+    card_required: 미확인
+    monthly_limit: null          # 시간당 100 · 하루 500(무료 등급 선언)
+    daily_limit: 500
+    hourly_limit: 100
+    quota_header: ""
+    shape: odds_api_io           # 🔴 응답 꼴이 the-odds-api 와 다르다(아래)
+    endpoints:
+      sports: /sports
+      markets: /markets
+      leagues: /leagues
+      events: /events
+      event_odds: /odds
+      bookmakers: /bookmakers
+    key_in: query
+    markets: [ML, Spread, Totals, "Both Teams To Score", "Double Chance"]
+    # 🔴 실측(키 없이 받은 것): `/sports` 200(축구 slug `football`) ·
+    #    `/markets?sport=football` 200 — `ML`·`Spread`·`Totals`·`Both Teams To
+    #    Score`·`Double Chance` 가 있다. `/leagues` 는 **401**(키 필요).
+    scope: 미확인 — 키 발급 뒤 `tools/odds_scope.py` 로 잰다
+    probe: |
+      실측 2026-10-06 — `/v3/sports` **200**(키 없이도 열린다) ·
+      `/v3/markets?sport=football` **200** · `/v3/leagues?sport=football` **401**
+      (`{"error":"You need to provide a valid apiKey"}`).
+      robots: `Allow: /`(AI 크롤러까지 명시 허용).
+    why_second: |
+      🔴 **두 번째 피드로 두는 까닭** — the-odds-api 에 **대표팀 친선·CONCACAF·AFC 가
+      없다**(실측). 이 피드가 그것을 덮으면 그 경기들의 시장 열이 생긴다.
+    checked_at: 2026-10-06
+
   - name: oddspapi
     base_url: https://api.oddspapi.io
     key_env: ODDSPAPI_KEY

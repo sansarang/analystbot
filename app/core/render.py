@@ -360,11 +360,22 @@ def _b3c(card: Card) -> str:
         got = " · ".join(f"{k} {v:+.1f}%" for k, v in a.strength_pct.items())
         out.append(f"- 라인업 보정: 평소 대비 {got}"
                    + ("" if a.moved else " — ⚠️ 확률은 **안 움직였다**(환산 계수 없음)"))
-        for d in a.deltas[:5]:
-            said = (f"{d.out_name} → {d.in_name}" if d.in_name
-                    else f"{d.out_name} 빠짐")
+        for d in a.deltas[:6]:
+            # 🔴 ③ — 같은 포지션끼리만 짝이다. 짝이 없으면 **구조 변경**이라고 적는다
+            tag = f"[{d.pos}]" if d.pos else "[포지션 미상]"
+            if d.structural:
+                # ⚠️ 구조 변경 줄의 수는 **짝의 차이가 아니다** — 그 선수 혼자의
+                #    로그 가치다. 그 말을 적지 않으면 팀 ΔS 와 섞여 읽힌다.
+                said = (f"{d.out_name} 빠짐 {tag} — **구조 변경**(같은 포지션 교체 없음)"
+                        if d.out_name else
+                        f"{d.in_name} 들어옴 {tag} — **구조 변경**")
+                out.append(f"    {said}: 그 선수 로그가치 {d.delta_s:+.2f}"
+                           + (" (추정값)" if d.estimated else ""))
+                continue
+            else:
+                said = f"{d.out_name} → {d.in_name} {tag}"
             out.append(f"    {said}: ΔS {d.delta_s:+.2f}"
-                       + (f" → 홈 승 {d.delta_home_pct:+.0f}%p"
+                       + (f" → 홈 승 {d.delta_home_pct:+.1f}%p"
                           if d.delta_home_pct is not None else "")
                        + (" (추정값)" if d.estimated else ""))
     else:

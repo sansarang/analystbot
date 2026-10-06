@@ -587,6 +587,13 @@ class LineupDelta(Frozen):
     delta_s: float = 0.0
     delta_home_pct: float | None = None
     estimated: bool = False
+    #: 🔴🔴 **포지션**(사용자 지시 2026-10-06(6차) ③) — 같은 포지션끼리만 짝짓는다
+    #
+    #  ⚠️ 실측 2026-10-06: 센터백 김민재가 **공격수 황희찬**과 짝지어졌다. 그 짝은
+    #     *"수비가 약해졌다"* 를 **공격 가치로** 재는 것이어서 뜻이 없다.
+    #  🔴 짝이 없으면 `structural=True` 로 *"구조 변경"* 이라고 적는다(지어내지 않는다).
+    pos: str = ""
+    structural: bool = False
 
 
 class AdjProb(Frozen):

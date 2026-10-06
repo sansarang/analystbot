@@ -141,6 +141,16 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
         for p in box_xi.lineup:
             if p.pos:
                 pos[p.name] = p.pos
+    # 🔴🔴 **과거 경기에서도 포지션을 모은다**(사용자 지시 2026-10-06(6차) ③)
+    #
+    #  ⚠️ 실측 2026-10-06: 오늘 XI 가 없는 경기에서는 포지션 표가 **통째로 비어** ②
+    #     기여표가 센터백과 공격수를 짝지었다. 🔴 같은 선수의 포지션은 직전 경기
+    #     페이지에 **이미 있다**(`players_of` 가 `usualPlayingPositionId` 를 읽는다).
+    for rows in past.values():
+        for box_xi in rows:
+            for p in box_xi.lineup:
+                if p.pos:
+                    pos.setdefault(p.name, p.pos)
     for rows in missing.values():
         for m in rows:
             if m.pos and m.name not in pos:

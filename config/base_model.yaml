@@ -28,6 +28,9 @@ models:
     share_home_draw_away: [0.5117, 0.2525, 0.2358]
     fitted_at: "2026-10-06"
     converged: true
+    ds_to_dr: 8.8669
+    ds_fit: {"n": 33, "r2": 0.6094, "intercept": 26.5851, "fitted_at": "2026-10-06", "x_std": 18.1069, "y_std": 205.6728}
+    ds_fit_note: "대표팀 경기 횡단 회귀(fotmob 선발 가치 vs eloratings 경기 전 Elo) — 대회 유형을 가르지 않았다"
   national_official:
     c1: -1.364561
     c2: 0.156278
@@ -39,6 +42,9 @@ models:
     share_home_draw_away: [0.503, 0.2151, 0.2819]
     fitted_at: "2026-10-06"
     converged: true
+    ds_to_dr: 8.8669
+    ds_fit: {"n": 33, "r2": 0.6094, "intercept": 26.5851, "fitted_at": "2026-10-06", "x_std": 18.1069, "y_std": 205.6728}
+    ds_fit_note: "대표팀 경기 횡단 회귀(fotmob 선발 가치 vs eloratings 경기 전 Elo) — 대회 유형을 가르지 않았다"
   league:PL:
     c1: -0.818032
     c2: 0.381007

@@ -492,3 +492,117 @@ def test_크레딧이_든_요청만_센다():
     assert odds._last_cost({}) == 1
     said = odds._quota({"x-requests-remaining": "499", "x-requests-used": "1"})
     assert said == {"remaining": 499, "used": 1, "limit_said": 500}, said
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 지시 2026-10-06(6차)** — ① 기준에서 출발 · ③ 포지션 짝
+# ══════════════════════════════════════════════════════════════════
+
+
+def _vars(*specs):
+    from app.core.schema import Variable
+    out = []
+    for i, (kind, favors, weight) in enumerate(specs):
+        out.append(Variable(id=f"V{i}", type=kind, subject="team:000129",
+                            favors=favors, goals="none", target="t",
+                            hardness="soft", weight=weight, claim="c",
+                            quote="q"))
+    return out
+
+
+def test_우리_확률이_기준에서_출발한다():
+    """🔴 ① — `OurProb` 는 ①②의 확률에서 **로그 오즈로** 움직인다.
+
+    돌연변이: 출발점을 무시하고 시나리오 비율로 돌아가기 → 기준과 멀어져 빨개진다.
+    """
+    from app.core import compare
+    from app.core.schema import ProbTriple
+    start = ProbTriple(home=0.54, draw=0.29, away=0.17)
+    got, why = compare.our_prob(None, start=start, variables=[], adjusted=False)
+    assert got is not None and "기준" in why
+    # 🔴 움직일 변수가 없으면 **기준 그대로**다
+    assert abs(got.home - 0.54) < 0.005 and abs(got.away - 0.17) < 0.005, got
+    # 🔴 `stakes`(홈 유리 · 무게 2.0)가 홈을 **올린다**
+    said, why2 = compare.our_prob(None, start=start,
+                                  variables=_vars(("stakes", "home", 2.0)),
+                                  adjusted=False)
+    assert said is not None and said.home > got.home, (said, why2)
+
+
+def test_이동에_쓰는_유형이_아홉뿐이다():
+    """🔴 ① — 목록 밖 유형은 **안 움직인다**. 돌연변이: 목록을 늘리기."""
+    from app.core import compare
+    box = compare.move_rules()
+    assert sorted(box["movers"]) == sorted([
+        "stakes", "coach_intent", "coach_conflict", "match_type", "fatigue",
+        "match_format", "individual_title", "streak_psych", "venue_weather"])
+    assert float(box["k"]) == 0.15 and float(box["cap_logodds"]) == 0.5
+    # 🔴 ① 이 머금은 유형은 **빠진다**
+    for kind in ("strength_gap", "recent_pattern", "home_field", "h2h_pattern"):
+        assert kind in box["skip"], kind
+
+
+def test_기준이_머금은_유형은_우리_열을_안_움직인다():
+    """🔴 ① — `recent_pattern`·`home_field`·`h2h` 와 ② 가 센 결장은 이동 0."""
+    from app.core import compare
+    from app.core.schema import ProbTriple
+    start = ProbTriple(home=0.5, draw=0.3, away=0.2)
+    rows = _vars(("recent_pattern", "home", 3.0), ("home_field", "home", 3.0),
+                 ("h2h_pattern", "home", 3.0))
+    got, why = compare.our_prob(None, start=start, variables=rows,
+                                adjusted=False)
+    assert got is not None and abs(got.home - 0.5) < 0.005, (got, why)
+    # 🔴 ② 가 움직였으면 결장 계열도 빠진다(두 번 세지 않는다)
+    absent = _vars(("def_absence", "away", 3.0))
+    with_adj, _ = compare.our_prob(None, start=start, variables=absent,
+                                   adjusted=True)
+    assert with_adj is not None and abs(with_adj.away - 0.2) < 0.005, with_adj
+    # ⚠️ ② 가 없으면 그 변수는 **움직이지도 않는다**(목록 밖이다)
+    без, _ = compare.our_prob(None, start=start, variables=absent,
+                              adjusted=False)
+    assert без is not None and abs(без.away - 0.2) < 0.005, без
+
+
+def test_한_결과_이동이_로그오즈_0_5_를_넘지_않는다():
+    """🔴 ① — 상한. 돌연변이: 상한 제거 → 큰 무게가 확률을 뒤집는다."""
+    from app.core import compare
+    from app.core.schema import ProbTriple
+    start = ProbTriple(home=0.5, draw=0.3, away=0.2)
+    many = _vars(*[("stakes", "home", 3.0)] * 8)      # 합 3.6 로그 오즈
+    got, why = compare.our_prob(None, start=start, variables=many,
+                                adjusted=False)
+    assert got is not None and "상한" in why, why
+    # 🔴 0.5 로그 오즈면 홈은 0.5 → 0.62 쯤이다(뒤집히지 않는다)
+    assert 0.55 < got.home < 0.68, got
+
+
+def test_기준이_없으면_시나리오_비율로_가고_그_말을_적는다():
+    """🔴 ① 마지막 줄 — *"기준 없음 — 시나리오 비율"* 이 사유에 들어간다."""
+    from app.core import compare
+    from app.core.schema import HypoSet, Scenario
+    rows = [Scenario(id="A", outcomes=[(2, 0)], mechanism="m", strength=1.0),
+            Scenario(id="B", outcomes=[(1, 1)], mechanism="m", strength=1.0)]
+    got, why = compare.our_prob(HypoSet(scenarios=rows), start=None)
+    assert got is not None and "기준 없음 — 시나리오 비율" in why, why
+    assert abs(got.home - 0.5) < 0.01 and abs(got.draw - 0.5) < 0.01, got
+
+
+def test_기여표는_같은_포지션끼리_짝짓는다():
+    """🔴 ③ — 다른 포지션은 **구조 변경**이다. 돌연변이: 순서대로 짝짓기."""
+    from app.core.stages.s2b_base import _deltas
+    values = {"DF1": 20e6, "DF2": 5e6, "FW1": 10e6}
+    pos = {"DF1": "DF", "DF2": "DF", "FW1": "FW"}
+    # ① 같은 포지션 교체 — 짝이 맺힌다
+    got = _deltas({"team:000129": ["DF1", "FW1"]}, {"team:000129": ["DF2", "FW1"]}, values,
+                  pos=pos)[2]
+    said = [d for d in got if d.out_name == "DF1"][0]
+    assert said.in_name == "DF2" and said.pos == "DF" and not said.structural
+    assert said.delta_s < 0, said
+    # ② 다른 포지션뿐 — **구조 변경**
+    other = _deltas({"team:000129": ["DF1", "FW1"]}, {"team:000129": ["FW1", "MFX"]},
+                    {**values, "MFX": 8e6}, pos={**pos, "MFX": "MF"})[2]
+    assert all(d.structural for d in other), other
+    assert {d.pos for d in other} == {"DF", "MF"}, other
+    # ③ 포지션을 모르면 짝을 **안 맺는다**
+    unknown = _deltas({"team:000129": ["DF1"]}, {"team:000129": ["DF2"]}, values, pos={})[2]
+    assert unknown and unknown[0].structural, unknown

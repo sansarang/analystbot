@@ -321,7 +321,11 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
     """🔴 ③ 우리 확률 + §6 세 열 비교를 만든다. ⚠️ 못 만든 열은 **사유만** 남는다."""
     from app.core import compare
     from app.core.stages import s2c_market
-    ours, why = compare.our_prob(hypo)
+    # 🔴🔴 ③ 우리 확률은 **①② 에서 출발한다**(사용자 지시 2026-10-06(6차) ①).
+    #    ⚠️ ① 이 없으면 종전처럼 시나리오 비율이고, 카드가 그 사실을 적는다.
+    start = adj_p.probs if adj_p.probs is not None else base_p.probs
+    ours, why = compare.our_prob(hypo, start=start, variables=variables,
+                                 adjusted=bool(adj_p.moved), ref=ref)
     market, label = s2c_market.column(feed_mk, user_mk)
     verdict, lines = compare.verdict_of(base_p, ours, market)
     tilt = compare.tilt_reasons(ours, base_p, hypo, variables,

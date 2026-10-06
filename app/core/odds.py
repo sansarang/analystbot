@@ -170,6 +170,76 @@ FEED_MARKETS: dict[str, Market] = {
 }
 
 
+#: 🔴 odds-api.io 마켓 이름 → 우리 `Market`(실측 `/markets?sport=football`)
+IO_MARKETS: dict[str, Market] = {
+    "ml": "win", "spread": "handicap", "totals": "total",
+    "goals over/under": "total", "both teams to score": "btts",
+    "double chance": "unbeaten",
+}
+
+
+def quotes_io(event: dict) -> tuple[list[MarketQuote], list[str]]:
+    """🔴🔴 **odds-api.io 꼴** → 배당 묶음(§2-1 두 번째 피드).
+
+    실측한 응답 꼴(문서 `llms-full.txt`):
+
+    ```
+    bookmakers: {"Bet365": [{"name": "ML", "odds": [{"home": "2.10",
+                 "draw": "3.40", "away": "3.20"}]},
+                            {"name": "Spread", "odds": [{"hdp": -0.5,
+                 "home": "1.95", "away": "1.85"}]}]}
+    ```
+
+    ⚠️ 배당이 **문자열**로 온다 — 숫자로 바꾸고 못 바꾸면 그 줄을 버린다.
+    🔴 `hdp`·`points` 가 기준선이다. `Double Chance` 는 쪽 이름이 `homeDraw` 꼴이라
+       **우리 `unbeaten`** 으로 옮긴다(없으면 버린다 — 지어내지 않는다).
+    """
+    out: list[MarketQuote] = []
+    skipped: list[str] = []
+    box = event.get("bookmakers")
+    if not isinstance(box, dict):
+        return out, ["`bookmakers` 가 표 꼴이 아니다"]
+    for bname, rows in box.items():
+        for mk in (rows or []):
+            if not isinstance(mk, dict):
+                continue
+            said = str(mk.get("name") or "").strip().lower()
+            mine = IO_MARKETS.get(said)
+            if mine is None:
+                skipped.append(f"{bname}/{mk.get('name')} — 모르는 마켓")
+                continue
+            for row in (mk.get("odds") or []):
+                if not isinstance(row, dict):
+                    continue
+                point = _point(row.get("hdp", row.get("points",
+                                                      row.get("total"))))
+                for side_key, side in (("home", "home"), ("draw", "draw"),
+                                       ("away", "away"), ("over", "over"),
+                                       ("under", "under"), ("yes", "yes"),
+                                       ("no", "no"), ("homeDraw", "home"),
+                                       ("awayDraw", "away")):
+                    got = row.get(side_key)
+                    if got is None:
+                        continue
+                    try:
+                        price = float(str(got))
+                    except (TypeError, ValueError):
+                        skipped.append(f"{bname}/{said}/{side_key} — 숫자가 아니다")
+                        continue
+                    if price < 1.01:
+                        continue
+                    out.append(MarketQuote(market=mine, side=side, point=point,
+                                           price=price, bookmaker=str(bname)))
+    return out, skipped
+
+
+def quotes_for(feed: dict, event: dict) -> tuple[list[MarketQuote], list[str]]:
+    """🔴 그 피드의 **응답 꼴**에 맞는 변환기를 고른다(`shape` 칸이 든다)."""
+    if str(feed.get("shape") or "") == "odds_api_io":
+        return quotes_io(event)
+    return quotes_of(event)
+
+
 def quotes_of(event: dict) -> tuple[list[MarketQuote], list[str]]:
     """🔴 피드 이벤트 → 배당 묶음. ⚠️ 모르는 마켓·쪽은 사유와 함께 **버린다**.
 
@@ -425,7 +495,7 @@ async def _one_feed(feed: dict, ref: MatchRef, *, pool, net, state: RunState,
         await note_call(pool, str(feed.get("name")), **_quota(head2))
     if not isinstance(got, dict):
         return None, f"그 경기 배당을 못 받았다 — {why2}"
-    quotes, skipped = quotes_of(got)
+    quotes, skipped = quotes_for(feed, got)
     if not quotes:
         return None, "배당 줄을 하나도 못 읽었다 · " + " · ".join(skipped[:3])
     basis, label = pick_basis(quotes)

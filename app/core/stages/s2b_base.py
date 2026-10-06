@@ -236,7 +236,9 @@ def _adjust(ref: MatchRef, facts: Facts, got: BaseProb, *,
                        f"{len(gone)}명을 빼고({', '.join(sorted(gone))}) 다음 "
                        f"선수 {len(came)}명을 채웠다"
                        f"{'(' + ', '.join(came) + ')' if came else ''}")
-    ds, pct, deltas, est = _deltas(usual, today, values)
+    # 🔴 포지션 표는 `facts.player_pos` 다(③) — 어댑터가 경기 페이지에서 긁어 둔다
+    ds, pct, deltas, est = _deltas(usual, today, values,
+                                   pos=dict(facts.player_pos or {}))
     if est > base.MAX_ESTIMATED:
         why = (f"② 표시만 — 값 없는 선수를 {est}명 채웠다(>{base.MAX_ESTIMATED}) → "
                f"**판정에 쓰지 않는다**(§4-3)")
@@ -249,13 +251,25 @@ def _adjust(ref: MatchRef, facts: Facts, got: BaseProb, *,
 
 
 def _deltas(usual: dict[str, list[str]], today: dict[str, list[str]],
-            values: dict[str, float]
+            values: dict[str, float], *, pos: dict[str, str] | None = None
             ) -> tuple[dict[str, float], dict[str, float], list[LineupDelta], int]:
     """🔴 §4-4·§4-6 — `ΔS` 와 **선수별 기여표**. `(ΔS, 변화율, 기여, 채운 수)`.
 
     🔴 `S = Σ log(가치)` 이고 `ΔS = S(오늘) − S(평소)` 다(포지션 가중 없이 시작 · §4-4).
     ⚠️ 값 없는 선수는 **그 팀 평소 XI 가치의 하위 25%** 로 채우고 채운 수를 센다(§4-3).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **짝은 같은 포지션끼리만**(사용자 지시 2026-10-06(6차) ③)
+    ══════════════════════════════════════════════════════════════════
+
+    > 기여표: 같은 포지션(GK/DF/MF/FW)끼리만 짝짓는다. 같은 포지션 교체가 없으면
+    > **"구조 변경"** 으로 표시.
+
+    ⚠️ 실측: 센터백(김민재)이 공격수(황희찬)와 짝지어져 *"−1.07"* 이 나왔다. 그 수는
+       수비 손실이 아니라 **다른 자리의 가치 차**였다. 🔴 팀 `ΔS` 는 그대로 쓰고
+       (전력 합의 변화는 포지션과 무관하다), **짝만** 포지션으로 묶는다.
     """
+    box = dict(pos or {})
     ds: dict[str, float] = {}
     pct: dict[str, float] = {}
     out: list[LineupDelta] = []
@@ -274,18 +288,54 @@ def _deltas(usual: dict[str, list[str]], today: dict[str, list[str]],
         ds[team] = round(s_now - s_usual, 4)
         pct[team] = base.pct_change(s_now, s_usual)
         est += est_a + est_b
+        floor = base.fill_values(["?"], {}, pool)[0]
         gone = [nm for nm in usual_names if nm not in now]
         came = [nm for nm in now if nm not in usual_names]
-        floor = base.fill_values(["?"], {}, pool)[0]
-        for i, nm in enumerate(gone):
-            to = came[i] if i < len(came) else ""
-            v_out = values.get(nm) or (floor[0] if floor else 0.0)
-            v_in = values.get(to) or (floor[0] if floor else 0.0)
-            out.append(LineupDelta(
-                team=team, out_name=nm, in_name=to,
-                delta_s=round(base.strength_of([v_in]) - base.strength_of([v_out]), 4),
-                estimated=nm not in values or (bool(to) and to not in values)))
+        out += _pairs(team, gone, came, values, box,
+                      floor[0] if floor else 0.0)
     return ds, pct, out, est
+
+
+def _pairs(team: str, gone: list[str], came: list[str],
+           values: dict[str, float], pos: dict[str, str],
+           floor: float) -> list[LineupDelta]:
+    """🔴 빠진 선수 ↔ 들어온 선수를 **같은 포지션끼리** 짝짓는다(③).
+
+    ⚠️ 포지션을 모르는 선수는 짝을 **못 맺는다** — 그것도 `structural` 이다(모르는
+       것을 같은 자리로 가정하지 않는다).
+    """
+    out: list[LineupDelta] = []
+    left = list(came)
+    for nm in gone:
+        mine = pos.get(nm, "")
+        mate = ""
+        for cand in left:
+            if mine and pos.get(cand, "") == mine:
+                mate = cand
+                break
+        if mate:
+            left.remove(mate)
+            v_out = values.get(nm) or floor
+            v_in = values.get(mate) or floor
+            out.append(LineupDelta(
+                team=team, out_name=nm, in_name=mate, pos=mine,
+                delta_s=round(base.strength_of([v_in])
+                              - base.strength_of([v_out]), 4),
+                estimated=nm not in values or mate not in values))
+            continue
+        # 🔴 같은 포지션 교체가 없다 — **구조 변경**이다(§③). 그 선수의 가치만 적는다
+        out.append(LineupDelta(
+            team=team, out_name=nm, in_name="", pos=mine, structural=True,
+            delta_s=round(-base.strength_of([values.get(nm) or floor]), 4),
+            estimated=nm not in values))
+    for cand in left:
+        # ⚠️ 짝 없이 **들어온** 선수도 구조 변경이다(어느 자리를 메웠는지 모른다)
+        out.append(LineupDelta(
+            team=team, out_name="", in_name=cand, pos=pos.get(cand, ""),
+            structural=True,
+            delta_s=round(base.strength_of([values.get(cand) or floor]), 4),
+            estimated=cand not in values))
+    return out
 
 
 def _same_player(name: str, pool: set[str]) -> bool:

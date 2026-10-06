@@ -204,9 +204,9 @@ def test_env_example에_유료_키가_없다():
     import re
     env = (ROOT / ".env.example").read_text(encoding="utf-8")
     declared = set(re.findall(r"^([A-Z_0-9]+)=", env, re.M))
-    # 🔴 배당 키 **둘만** 예외다(네 층 §2-1 · 무료 등급 · 카드 등록 없음) — 그 둘
+    # 🔴 배당 키 **셋만** 예외다(네 층 §2-1 · 무료 등급) — 그것들
     #    말고 `ODDS` 가 든 이름이 새로 생기면 **그때는 빨개진다**(유료 피드 방지).
-    ALLOW_ODDS = {"ODDS_API_KEY", "ODDSPAPI_KEY"}
+    ALLOW_ODDS = {"ODDS_API_KEY", "ODDSPAPI_KEY", "ODDS_API_IO_KEY"}
     for bad in ("ANTHROPIC", "PPLX", "PERPLEXITY", "XAI", "ODDS",
                 "APIFOOTBALL", "OPENROUTER", "GROQ", "NVIDIA", "GEMINI",
                 "JUDGE_MODEL", "MODEL_MATCHUP", "NARRATOR_MODEL"):

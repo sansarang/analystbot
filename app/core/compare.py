@@ -37,30 +37,98 @@ ABSENCE_TYPES = ("absence", "def_absence", "absence_att", "suspension")
 HALF_TYPES = ("strength_gap", "recent_pattern", "h2h_pattern")
 
 
-def our_prob(hypo: HypoSet | None) -> tuple[ProbTriple | None, str]:
-    """🔴 ③ — 시나리오 **무게 합의 비율**이 우리 확률이다(§5 "기존 계산 그대로").
+def move_rules() -> dict:
+    """🔴 ① 이동 규칙 표 — `config/interpret_rules.yaml` 의 `our_prob` 하나다."""
+    from app import rules
+    return dict((rules._load("config/interpret_rules.yaml")
+                 .get("our_prob") or {}))
 
-    ⚠️ 수식을 새로 만들지 않는다 — s7 이 쓰는 그 무게를 그대로 센다.
+
+def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
+             variables: list[Variable] | None = None,
+             adjusted: bool = False, ref: MatchRef | None = None
+             ) -> tuple[ProbTriple | None, str]:
+    """🔴🔴 ③ 우리 확률 — **기준에서 출발한다**(사용자 지시 2026-10-06(6차) ①).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 바뀐 것 — 시나리오 비율이 **출발점이 아니다**
+    ══════════════════════════════════════════════════════════════════
+
+    > OurProb = ①②의 `AdjProb` 를 **출발점**으로, ③ 변수 중 ① 이 이미 반영하지 않는
+    > 종류만 **로그 오즈**를 움직인다. 이동량 = **변수 무게 × k**(k=config, 초기 0.15),
+    > 한 결과의 총 이동은 **±0.5 로그 오즈** 상한.
+    > ①②가 없는 경기만 **지금의 시나리오 비율**을 쓰고 카드에 *"기준 없음 — 시나리오
+    > 비율"* 표시.
+
+    🔴 어느 쪽으로 움직이나 — 변수의 `favors` 가 말한다(`home`·`away`·`both`).
+       ⚠️ `both` 는 **무승부 쪽**으로 본다(양쪽에 다 유리하다는 말은 승자를 가리지
+          않는다는 뜻이다). 🔴 `goals` 는 승무패를 안 움직인다(총점 마켓의 말이다).
+    ⚠️ 시나리오 세트·생존 판정은 **그대로다** — 이 함수는 **카드의 우리 열**과 방향
+       판정에만 쓰인다(지시서 ① 마지막 줄).
+    """
+    box = move_rules()
+    if start is None:
+        got, why = _from_scenarios(hypo)
+        return got, (f"**기준 없음 — 시나리오 비율**({why})" if got else why)
+    k = float(box.get("k") or 0.15)
+    cap = float(box.get("cap_logodds") or 0.5)
+    movers = {str(x) for x in (box.get("movers") or [])}
+    skip = {str(x) for x in (box.get("skip") or [])}
+    if adjusted:
+        skip |= {str(x) for x in (box.get("skip_when_adjusted") or [])}
+    shift = {"home": 0.0, "draw": 0.0, "away": 0.0}
+    used: list[str] = []
+    for v in (variables or []):
+        if v.type in skip or v.type not in movers:
+            continue
+        step = float(v.weight or 0.0) * k
+        if step <= 0:
+            continue
+        side = {"home": "home", "away": "away", "both": "draw"}.get(v.favors)
+        if side is None:
+            continue
+        shift[side] += step
+        used.append(f"{v.id}({v.type}·{v.favors}·{step:+.3f})")
+    # 🔴 **상한**(±0.5 로그 오즈) — 한 결과가 통째로 뒤집히지 않게
+    capped = {k2: max(-cap, min(cap, val)) for k2, val in shift.items()}
+    hit = [k2 for k2, val in shift.items() if abs(val) > cap]
+    got = _apply(start, capped)
+    why = (f"기준({start.home:.0%}/{start.draw:.0%}/{start.away:.0%})에서 출발 · "
+           f"이동 {len(used)}개(k={k})"
+           + (f" · 🔴 상한 ±{cap} 에 닿은 결과 {hit}" if hit else "")
+           + (f" · {' '.join(used[:4])}" if used else " · **움직인 변수 없음**"))
+    return got, why
+
+
+def _apply(start: ProbTriple, shift: dict[str, float]) -> ProbTriple:
+    """🔴 로그 오즈를 더하고 다시 **합 1** 로 만든다(소프트맥스와 같은 꼴).
+
+    ⚠️ 확률에 바로 더하면 0 밖으로 나가거나 합이 깨진다 — 로그 오즈에서 움직인다.
+    """
+    import math
+
+    base = {"home": start.home, "draw": start.draw, "away": start.away}
+    raw = {}
+    for key, p in base.items():
+        lo = math.log(max(p, 1e-9) / max(1.0 - p, 1e-9)) + shift.get(key, 0.0)
+        raw[key] = math.exp(lo) / (1.0 + math.exp(lo))
+    tot = sum(raw.values()) or 1.0
+    home = round(raw["home"] / tot, 6)
+    draw = round(raw["draw"] / tot, 6)
+    return ProbTriple(home=home, draw=draw, away=round(1.0 - home - draw, 6))
+
+
+def _from_scenarios(hypo: HypoSet | None) -> tuple[ProbTriple | None, str]:
+    """🔴 ①② 가 **없는 경기**의 우리 확률 — 시나리오 무게 비율(종전 방식).
+
+    ⚠️ 스코어 단위로 센다(섞인 스코어의 무게를 버리지 않는다 · 5차 ① 실측).
     """
     rows = list(getattr(hypo, "scenarios", []) or [])
     if not rows:
         return None, "시나리오가 없다"
-    # ⚠️ 스코어 집합 → 방향은 **`rules.direction_of`** 다. 🔴 `survive.direction_of`
-    #    는 **마켓 줄**을 받는 다른 함수다(이름이 같아 한 번 헷갈렸다 · 실측 2026-10-06).
     from app import rules
     tot = {"home": 0.0, "draw": 0.0, "away": 0.0}
     seen = 0.0
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **스코어마다 센다**(사용자 지시 2026-10-06(5차) ①의 실측에서 왔다)
-    # ══════════════════════════════════════════════════════════════════
-    #
-    #  ⚠️ 처음엔 **시나리오 단위**로 방향을 물었다(`rules.direction_of`). 그러면 한
-    #     시나리오가 `2-2`·`3-2` 처럼 **섞인 스코어**를 들 때 `None` 이 되어 그 무게가
-    #     **통째로 사라졌다** — 실측 2026-10-06 온두라스–자메이카: 무승부 스코어가
-    #     두 갈래에 있는데 우리 열 무승부가 **0%** 였다.
-    #  🔴 그래서 **스코어 하나하나**를 세고, 한 시나리오의 무게를 그 스코어들에
-    #     **똑같이 나눈다**. ⚠️ 어느 스코어가 더 그럴듯한지는 **모른다** — 그래서
-    #     고르지 않고 나눈다(지어내지 않는다).
     for sc in rows:
         w = float(sc.strength or 0.0)
         pairs = list(sc.outcomes or [])
@@ -72,13 +140,13 @@ def our_prob(hypo: HypoSet | None) -> tuple[ProbTriple | None, str]:
             if said not in tot:
                 continue
             tot[said] += share
-        seen += w
+            seen += share
     if seen <= 0:
         return None, "시나리오 무게가 0 이다"
     home = round(tot["home"] / seen, 6)
     draw = round(tot["draw"] / seen, 6)
     got = ProbTriple(home=home, draw=draw, away=round(1.0 - home - draw, 6))
-    return got, (f"시나리오 {len(rows)}개 · 스코어 단위 무게 비율(합 {seen:.2f})")
+    return got, f"시나리오 {len(rows)}개 · 스코어 단위 무게 비율(합 {seen:.2f})"
 
 
 def weight_rules(variables: list[Variable], *, measured: bool

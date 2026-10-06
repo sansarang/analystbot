@@ -249,3 +249,37 @@ ir_table:
     claim: "{team} {streak}"
     favors: subject
     goals: none
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **③ 우리 확률의 이동량**(사용자 지시 2026-10-06(6차) ①)
+# ══════════════════════════════════════════════════════════════════
+#
+# > OurProb = ①②의 `AdjProb` 를 **출발점**으로, ③ 변수 중 ① 이 이미 반영하지 않는
+# > 종류만 **로그 오즈**를 움직인다. 이동량 = **변수 무게 × k**, k 는 config(초기 0.15),
+# > 한 결과의 총 이동은 **±0.5 로그 오즈** 상한.
+# > `strength_gap`·`recent_pattern`·`home_field`·`h2h`·결장 계열(② 가 있을 때)은 이동에
+# > 쓰지 않는다.
+#
+# 🔴 왜 이렇게 바뀌었나 — 종전 우리 열은 **시나리오 무게 비율**이었다. 그 수는 모델이
+#    몇 갈래를 썼는지에 흔들렸고(실측: 크로아티아 홈승 26% vs 기준 5% · 시장 10%),
+#    ① 이 아는 전력 차를 **아예 버리고** 있었다.
+# ⚠️ `k` 는 **우리가 고른 수**다(실측이 아니다) — 초기 0.15 이고, 원장이 쌓이면
+#    사용자가 정한다. 🔴 우리가 원장으로 고치지 않는다(CLAUDE.md 의 금지).
+our_prob:
+  k: 0.15
+  cap_logodds: 0.5
+  #: 🔴🔴 **이동에 쓰는 유형 — 사용자가 적은 아홉뿐이다**(지시서 ① 원문 그대로)
+  #
+  #  > ③ 변수 중 ① 이 이미 반영하지 않는 종류(stakes·coach_intent·coach_conflict·
+  #  > match_type·fatigue·match_format·individual_title·streak_psych·venue_weather)
+  #  > **만** 로그 오즈를 움직인다.
+  #
+  #  ⚠️ 목록에 **없는 유형은 안 움직인다** — `team_stats`·`regression` 처럼 "① 이
+  #     모르는 것 같은데?" 싶은 것도 여기 넣지 않는다(사용자가 안 적었다). 🔴 그
+  #     판단은 사용자가 한다(CLAUDE.md: 묻는 곳은 하나다).
+  movers: [stakes, coach_intent, coach_conflict, match_type, fatigue,
+           match_format, individual_title, streak_psych, venue_weather]
+  #: 🔴 **이동에 안 쓰는 유형** — ① 이 이미 머금은 것
+  skip: [strength_gap, recent_pattern, home_field, h2h_pattern, h2h]
+  #: 🔴 ② 가 **확률을 움직였을 때만** 결장 계열을 뺀다(그때는 ② 가 이미 셌다)
+  skip_when_adjusted: [absence, def_absence, absence_att, suspension]
