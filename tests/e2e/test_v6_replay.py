@@ -13,7 +13,7 @@
    재생한다 — 검색·fetch·LLM 은 **전부 카세트**다(망에 안 나간다).
 ⚠️ s1 은 `tests/unit_v6_s1_s2.py` 가 따로 센다(철자 단계·확정 기준·창).
 
-🔴 **녹화본**: `tests/fixtures/cassettes/nomatch/kor_uzb_v6_3` — 2026-10-06
+🔴 **녹화본**: `tests/fixtures/cassettes/nomatch/kor_uzb_v6_4` — 2026-10-06
    한국 vs 우즈베키스탄(친선)을 라이브 1회 돌려 받은 것이다($0.0044 · 호출 7).
 """
 from __future__ import annotations
@@ -29,7 +29,7 @@ from app.core import pipeline, render
 from app.core.schema import Card, MatchRef
 from app.core.state import RunState
 
-RUN_ID = "kor_uzb_v6_3"
+RUN_ID = "kor_uzb_v6_4"
 HOME, AWAY = "team:000129", "team:000245"
 KICK = datetime(2026, 10, 6, 11, 0, tzinfo=timezone.utc)
 #: 🔴 카드를 **킥오프 전**에 만든 것으로 센다 — 지난 뒤면 등급이 거둬진다(M97).
@@ -251,7 +251,7 @@ def test_카드_전문_스냅샷(card: Card):
     """
     import pathlib
     said = render.card_text(card)
-    path = pathlib.Path(__file__).with_name("snapshot_kor_uzb_v6_3.md")
+    path = pathlib.Path(__file__).with_name("snapshot_kor_uzb_v6_4.md")
     if not path.exists() or os.environ.get("V6_SNAPSHOT_UPDATE") == "1":
         path.write_text(said, encoding="utf-8")
         pytest.skip(f"스냅샷을 새로 적었다: {path.name}")

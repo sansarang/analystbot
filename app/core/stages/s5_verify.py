@@ -23,6 +23,7 @@
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.core.schema import (Doc, DropReason, Facts, Favors, MatchRef,
@@ -125,7 +126,12 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
         state.drop(what, DropReason.UNKNOWN_VAR,
                    f"`{c.doc_id}` 는 그 하위에 넘긴 문서가 아니다")
         return None
-    ok, why = verifylayer.quote_ok(c.quote, doc.body)
+    quote = _unhead(c.quote)
+    if quote != c.quote:
+        # 🔴 **우리가 붙인 표지는 우리가 떼어 낸다**(#3: 그 사실을 적는다)
+        state.note(f"s5 {what} 인용에서 **머리표를 떼어 냈다** — 모델이 붙인 "
+                   f"`{c.quote[:28]}…` 는 우리가 넣은 표지다")
+    ok, why = verifylayer.quote_ok(quote, doc.body)
     if not ok:
         state.drop(what, (DropReason.BODY_MISSING if "본문을 못" in why
                           else DropReason.QUOTE_NOT_FOUND), why[:110])
@@ -151,10 +157,22 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
                    f"`{c.type}` 방향 규칙이 없다(받은 값 {fav!r})")
         return None
     return {"type": c.type, "subject": c.subject, "favors": fav,
-            "claim": c.claim, "quote": c.quote, "doc_ids": [doc.id]}
+            "claim": c.claim, "quote": quote, "doc_ids": [doc.id]}
 
 
 _FAVORS = set(Favors.__args__)                        # type: ignore[attr-defined]
+
+#: 🔴 **우리가 붙인 문단 머리표** — `[A-home-D1-P2] (도메인, 2026-10-05) 본문…`
+#  ⚠️ 실측 2026-10-06: 후보 16개 중 11개가 이 표지를 `quote` 에 넣어 전부
+#     `quote_not_found` 가 됐다(변수 14 → 5). 🔴 **기사 탓이 아니라 우리 표지 탓**
+#     이므로 떼어 내고 대조한다 — 그 대신 **모델에게도 넣지 말라고 적는다**(s4).
+#  🔴 떼어 내는 것은 **이 꼴 하나**다(앞머리에서만) — 본문을 고치지 않는다.
+_HEAD = re.compile(r"^\s*\[[A-Za-z]-[a-z]+-D\d+-P\d+\]\s*(\([^)]*\))?\s*")
+
+
+def _unhead(said: str) -> str:
+    """🔴 인용 **앞머리의 머리표만** 떼어 낸다. ⚠️ 가운데 글자는 건드리지 않는다."""
+    return _HEAD.sub("", str(said or "")).strip()
 
 
 def _mentions(subject: str, doc: Doc, ref: MatchRef) -> bool:

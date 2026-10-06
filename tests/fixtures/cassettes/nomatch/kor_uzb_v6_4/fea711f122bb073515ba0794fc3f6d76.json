@@ -1,0 +1,10 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-06T04:16:09.441516+00:00",
+ "order": [
+  "S Korea-Uzbekistan summit South Korean President Lee Jae Myung (L) receives a guard of honor alongside Uzbek President Shavkat Mirziyoyev (R) during a welcome ceremony for the Uzbek leader at the presidential office Cheong Wa ..."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 1문단 → 재정렬 상위 8"
+}
