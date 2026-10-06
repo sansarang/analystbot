@@ -241,19 +241,49 @@ def test_자료_부족이면_시나리오를_적지_않는다():
 def test_봇이_분석을_부른다():
     """🔴 ★ 명령이 사슬을 **부르지** 않으면 사용자에게 아무것도 안 간다.
 
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **갈아끼웠다** — v6 §8 4단계(2026-10-06)
+    ══════════════════════════════════════════════════════════════════
+
+    `cmd_analyze` 가 부르는 것은 이제 **`pipeline.analyze`** 다(옛 `analyze.answer`
+    가 아니다). ⚠️ 같은 질문으로 둘을 돌려 본 실측이 그 까닭이다:
+    옛 경로는 `openworld_not_found` 로 **카드가 없었고**, v6 는 카드 열 블록을 냈다.
+
     ⚠️ 문자열로 보면 안 된다 — `import` 줄만 있어도 참이 된다(실측 2026-09-30 에
-       그 절제가 통과했다). **부르는 자리**를 본다.
+       그 절제가 통과했다). 🔴 **부르는 자리**를 본다.
     """
     tree = ast.parse(inspect.getsource(B))
-    # 🔴 **`m.answer(...)` 와 가려야 한다.** 전 판은 `attr == "answer"` 만 봤고,
-    #    아이오그램의 답장도 `answer` 라서 **호출을 지운 돌연변이가 통과했다.**
-    #    받는 쪽(`A`)까지 본다.
-    hit = [n for n in ast.walk(tree)
-           if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
-           and n.func.attr == "answer"
-           and isinstance(n.func.value, ast.Name)
-           and n.func.value.id == "A"]
-    assert hit, "봇이 `analyze.answer` 를 **부르지** 않는다"
+    funcs = {n.name: n for n in ast.walk(tree)
+             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+
+    def _calls(where: str, want: str, recv: str = "") -> list:
+        """🔴 **그 함수 안에서** 부르나 — 모듈 어딘가가 아니라 **거기서** 본다.
+
+        ⚠️ 실측 2026-10-06: 모듈 전체를 보면 `cmd_analyze` 의 호출을 지워도
+           `_v6_card` 안의 호출이 남아 **돌연변이가 통과했다.**
+        """
+        body = funcs.get(where)
+        assert body is not None, f"`{where}` 가 없다"
+        out = []
+        for n in ast.walk(body):
+            if not (isinstance(n, ast.Call)):
+                continue
+            f = n.func
+            if isinstance(f, ast.Attribute) and f.attr == want:
+                if not recv or (isinstance(f.value, ast.Name)
+                                and f.value.id == recv):
+                    out.append(n)
+            elif isinstance(f, ast.Name) and f.id == want and not recv:
+                out.append(n)
+        return out
+
+    # 🔴 사슬을 **고리마다** 센다: 명령 → v6 카드 → 파이프라인 → 렌더러
+    assert _calls("cmd_analyze", "_v6_card"), \
+        "`cmd_analyze` 가 v6 카드를 **부르지** 않는다"
+    assert _calls("_v6_card", "analyze", "pipeline"), \
+        "`_v6_card` 가 `pipeline.analyze` 를 **부르지** 않는다"
+    assert _calls("_v6_card", "card_text", "render"), \
+        "`_v6_card` 가 `render.card_text` 를 **부르지** 않는다"
 
 
 def test_경기가_여럿이면_고르지_않는다():

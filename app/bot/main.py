@@ -26,7 +26,6 @@ from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from app import analyze as A
 from app import timefmt
 from app.research import rerank as _rerank
 from app import slate as S
@@ -123,7 +122,9 @@ async def cmd_analyze(m: Message) -> None:
     #       (실측 2026-10-06: squad_rotation·national_duty_return 이 그랬다).
     from app.bot_boot import boot_checks
     boot_checks()
-    _warm = _rerank.warm()
+    # 🔴 예열도 **`rank` 를 지난다**(§8 3단계) — 재생에서는 모델을 올리지 않는다
+    from app.core import rank as _rank
+    _warm = _rank.warm()
     logger.info("[bot] 재정렬 예열 — %s (로드 %d회)", _warm, _rerank.loads())
     words = (m.text or "").split()[1:]
     arg = " ".join(words).strip()
@@ -150,10 +151,41 @@ async def cmd_analyze(m: Message) -> None:
         if len(words) == 2:
             team, opponent = words[0], words[1]
     pool = await get_pool(s.database_url)
-    body = await A.answer(pool, team=team, opponent=opponent or None,
-                          days=SLATE_DAYS)
+    body = await _v6_card(pool, team=team, opponent=opponent)
     for chunk in _split(body):
         await m.answer(chunk)
+
+
+async def _v6_card(pool, *, team: str, opponent: str) -> str:
+    """🔴🔴 **v6 경로** — `pipeline.analyze` → `render.card_text`(§8 4단계).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 갈아끼웠나 — 같은 질문으로 둘을 돌려 봤다(실측 2026-10-06)
+    ══════════════════════════════════════════════════════════════════
+
+    | 경로 | 결과 |
+    |---|---|
+    | 옛 `analyze.answer` | 🔴 **카드가 없다** — `openworld_not_found`(1.0분 · $0.0007) |
+    | v6 `pipeline.analyze` | ✅ 카드 열 블록 · 변수 19개 · 시나리오 6개($0.0048) |
+
+    ⚠️ 갈린 자리는 **철자 단계**다 — 이름표가 `한국` 을 모르고, 옛 ⑥-1 은 산문
+       파싱이라 돌지 않았다. v6 는 `llm.ask(purpose="spell")` 로 `South Korea` 를
+       받아 입구를 다시 돌린다.
+    🔴 옛 경로는 **지우지 않는다** — §8 5단계가 지운다(그때까지 되돌릴 자리가 있다).
+    """
+    from app import net as _net_mod
+    from app import search as _search
+    from app.core import pipeline, render
+    from app.core.schema import Ambiguous
+    said = f"{team} vs {opponent}".strip() if opponent else team
+    got = await pipeline.analyze(said, pool=pool, net=_net_mod.Net(),
+                                 chain=_search.build_chain())
+    if isinstance(got, Ambiguous):
+        # 🔴 **고르지 않는다** — 사용자가 지목한다(§17-g-3 · M14)
+        lines = [f"🔴 경기를 확정하지 못했다 — {got.why}"]
+        lines += [f"  · {c}" for c in got.candidates]
+        return "\n".join(lines)
+    return render.card_text(got)
 
 
 @dp.message(Command("health"))

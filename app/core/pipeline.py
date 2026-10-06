@@ -63,10 +63,17 @@ def _question(raw: str, *, now: datetime | None = None) -> Question:
     said = str(raw or "").strip()
     low = said.lower()
     team, opp = said, ""
-    for sep in (" vs ", " vs. ", " - ", " 대 "):
+    # 🔴 구분자 목록은 **옛 핸들러와 같다**(`app/bot/main.py`) — 4단계에서 입구를
+    #    갈아끼웠으니 받는 꼴이 좁아지면 그것은 **기능 퇴화**다.
+    for sep in (" vs ", " vs. ", " - ", " 대 ", " : "):
         if sep in low:
             i = low.index(sep)
             team, opp = said[:i].strip(), said[i + len(sep):].strip()
             break
+    else:
+        # ⚠️ `중국 팔레스타인` 처럼 **두 낱말**이면 둘째를 상대로 본다(옛 규칙).
+        words = said.split()
+        if len(words) == 2:
+            team, opp = words[0], words[1]
     return Question(raw=said, team=team, opponent=opp,
                     asked_at=(now or datetime.now(timezone.utc)))
