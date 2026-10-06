@@ -31,6 +31,12 @@ GAP_MOVE = 0.05
 #: 🔴 §7 방향 판정 — 세 열 중 둘 이상이 한 팀을 이만큼 앞세우면 그 팀
 LEAD = 0.15
 
+#: 🔴🔴 **③ 이 움직인 양**(사용자 지시 2026-10-06(6차) ③) — 마지막 `our_prob` 의 기록
+#
+#  ⚠️ 글자로 적어 둔 사유를 카드가 **다시 파싱하면** 그 글자가 계약이 된다. 🔴 그래서
+#     구조로 남긴다. 한 분석에 `our_prob` 는 한 번 돈다(카드가 그 결과를 쓴다).
+MOVES: list[dict] = []
+
 #: 🔴 §5 중복 금지 — ② 가 돌면 결장 계열 변수 무게는 **0**
 ABSENCE_TYPES = ("absence", "def_absence", "absence_att", "suspension")
 #: 🔴 §5 — ① 이 이미 머금은 성격의 변수는 무게 **절반**
@@ -78,6 +84,7 @@ def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
         skip |= {str(x) for x in (box.get("skip_when_adjusted") or [])}
     shift = {"home": 0.0, "draw": 0.0, "away": 0.0}
     used: list[str] = []
+    MOVES.clear()
     for v in (variables or []):
         if v.type in skip or v.type not in movers:
             continue
@@ -89,6 +96,10 @@ def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
             continue
         shift[side] += step
         used.append(f"{v.id}({v.type}·{v.favors}·{step:+.3f})")
+        # 🔴 카드 7b 의 *"③ 이 움직인 양"* 줄이 이 목록을 그대로 적는다(지시 ③)
+        MOVES.append({"id": v.id, "type": v.type, "favors": v.favors,
+                      "side": side, "weight": float(v.weight or 0.0),
+                      "logodds": round(step, 4)})
     # 🔴 **상한**(±0.5 로그 오즈) — 한 결과가 통째로 뒤집히지 않게
     capped = {k2: max(-cap, min(cap, val)) for k2, val in shift.items()}
     hit = [k2 for k2, val in shift.items() if abs(val) > cap]

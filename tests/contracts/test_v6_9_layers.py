@@ -606,3 +606,90 @@ def test_기여표는_같은_포지션끼리_짝짓는다():
     # ③ 포지션을 모르면 짝을 **안 맺는다**
     unknown = _deltas({"team:000129": ["DF1"]}, {"team:000129": ["DF2"]}, values, pos={})[2]
     assert unknown and unknown[0].structural, unknown
+
+
+def test_라인업_보정이_확률을_움직이고_신뢰도를_함께_적는다():
+    """🔴 ② 배선(6차 ②) — `ds_to_dr` 가 있으면 확률이 **움직인다**. 돌연변이: 계수 무시.
+
+    🔴 카드에 **R²·표본**이 함께 나와야 한다(계수 신뢰도를 숨기지 않는다).
+    """
+    from app import rules
+    from app.core import base
+    from app.core.schema import BaseProb, ProbTriple
+    box = rules.base_model("national_friendly")
+    assert box.get("ds_to_dr"), "🔴 환산 계수가 config 에 없다"
+    fit = dict(box.get("ds_fit") or {})
+    assert fit.get("n") and fit.get("r2"), fit
+    start = BaseProb(probs=ProbTriple(home=0.54, draw=0.29, away=0.17),
+                     home_elo=1722.0, away_elo=1653.0, dr=69.0,
+                     comp_kind="national_friendly")
+    got = base.adjust(start, kind="national_friendly",
+                      delta_s={"team:000129": -1.07}, strength_pct={},
+                      deltas=[], home="team:000129", away="team:000245",
+                      estimated=0, why="②")
+    assert got.moved and got.probs is not None
+    # 🔴 홈이 약해졌으니 홈 승이 **내려간다**
+    assert got.probs.home < 0.54, got.probs
+    assert "%p" in got.why and "R²" in got.why, got.why
+    # ⚠️ 계수가 없는 유형은 **안 움직인다**(리그는 아직 가치 적합이 없다)
+    none = base.adjust(start.model_copy(update={"comp_kind": "league:PL"}),
+                       kind="league:PL", delta_s={"team:000129": -1.07},
+                       strength_pct={}, deltas=[], home="team:000129",
+                       away="team:000245", estimated=0, why="②")
+    assert not none.moved and "환산 계수가 없다" in none.why
+
+
+def test_k_는_임시값이라고_표에_적혀_있다():
+    """🔴 6차 ④ — `k` 를 바꾸지 않는다 · 표에 *"임시값"* 이 적혀 있다."""
+    import pathlib
+    from app.core import compare
+    assert float(compare.move_rules()["k"]) == 0.15
+    said = pathlib.Path("config/interpret_rules.yaml").read_text(encoding="utf-8")
+    i = said.index("our_prob:")
+    assert "임시값" in said[i:i + 900], "🔴 `k` 가 임시값이라는 말이 표에 없다"
+
+
+def test_셋째층_이동량이_구조로_남는다():
+    """🔴 6차 ③ — 카드가 **글자를 다시 파싱하지 않는다**(`Card.moves`)."""
+    from app.core import compare
+    from app.core.schema import Card, ProbTriple
+    assert "moves" in Card.model_fields
+    start = ProbTriple(home=0.5, draw=0.3, away=0.2)
+    compare.our_prob(None, start=start, variables=_vars(("stakes", "home", 2.0)),
+                     adjusted=False)
+    assert compare.MOVES and compare.MOVES[0]["type"] == "stakes"
+    assert compare.MOVES[0]["logodds"] == 0.3, compare.MOVES
+    # 🔴 다음 호출이 **앞의 기록을 지운다**(묵은 이동량이 카드에 남으면 거짓이다)
+    compare.our_prob(None, start=start, variables=[], adjusted=False)
+    assert compare.MOVES == []
+
+
+def test_선수별_pp_는_상쇄되는_큰_항목에_안_적는다():
+    """🔴 6차 ② — 쪼갠 `%p` 는 **이동을 만든 식과 같은 식**으로 나눈다.
+
+    ⚠️ 몫이 1 을 크게 넘는 줄(서로 상쇄되는 큰 항목)에는 `%p` 를 **안 적는다** —
+       실측 2026-10-06: 김민재(−17.16)와 황희찬(+16.09)의 몫이 ±16 이었고 그것을
+       `−19%p`·`+18%p` 로 적으면 거짓으로 읽힌다.
+    """
+    from app.core import base
+    from app.core.schema import LineupDelta
+    rows = [LineupDelta(team="team:000129", out_name="A", in_name="B",
+                        delta_s=-0.5),
+            LineupDelta(team="team:000245", out_name="C", in_name="D",
+                        delta_s=-0.5)]
+    got = base._share(rows, -1.0, home="team:000129", away="team:000245",
+                      delta_s={"team:000129": -0.5, "team:000245": -0.5})
+    # 🔴 홈 −0.5, 원정 −0.5 → 분모 0 … 이동이 없으니 **아무 줄에도 안 적는다**
+    assert all(d.delta_home_pct is None for d in got), got
+    # 🔴 홈만 약해진 경우 — 그 줄에 `%p` 가 붙고 **부호가 이동과 같다**
+    one = base._share([rows[0]], -1.2, home="team:000129",
+                      away="team:000245", delta_s={"team:000129": -0.5})
+    assert one[0].delta_home_pct == -1.2, one[0]
+    # 🔴 상쇄되는 큰 항목(몫 16배)은 **비워 둔다**
+    big = [LineupDelta(team="team:000129", out_name="K", delta_s=-17.16,
+                       structural=True),
+           LineupDelta(team="team:000129", in_name="H", delta_s=16.09,
+                       structural=True)]
+    said = base._share(big, -1.2, home="team:000129", away="team:000245",
+                       delta_s={"team:000129": -1.07})
+    assert all(d.delta_home_pct is None for d in said), said

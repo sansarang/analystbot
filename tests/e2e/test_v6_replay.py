@@ -617,3 +617,43 @@ def test_불변식26_축구_카드의_우리_열_무승부가_0이_아니다(car
     assert card.our_prob is not None, "우리 확률이 없다"
     assert card.our_prob.draw > 0.0, \
         f"🔴 우리 열 무승부가 0 이다 — 시나리오 {len(scen)}개"
+
+
+def test_불변식27_라인업_보정의_pp_와_신뢰도가_카드에_있다(card: Card):
+    """27. ② 가 확률을 움직였으면 카드에 **%p 와 환산 R²·표본**이 적혀 있다.
+
+    🔴 사용자 지시 2026-10-06(6차) ②: *"카드 3c 에 '라인업 보정 −1.2%p (환산 R² 0.61
+       · 표본 33)' 형태로 **계수 신뢰도를 함께** 적는다."*
+    ⚠️ 못 움직였으면 그 사유가 적혀 있어야 한다(빈 줄 금지).
+    """
+    said = render.card_text(card)
+    if card.adj_prob.moved:
+        assert "%p" in said and "환산 R²" in said and "표본" in said
+        assert card.adj_prob.probs is not None
+    else:
+        assert card.adj_prob.why and ("안 움직였다" in said or "없음" in said)
+
+
+def test_불변식28_우리_열이_기준에서_출발한다(card: Card):
+    """28. ③ 이동량이 **기준(②반영) → 우리** 차이를 설명한다(6차 ①·③).
+
+    🔴 이동이 없으면 우리 열 = 기준이고, 카드가 *"③ 이동 없음"* 을 적는다.
+    """
+    said = render.card_text(card)
+    start = (card.adj_prob.probs if card.adj_prob.probs is not None
+             else card.base_prob.probs)
+    if start is None or card.our_prob is None:
+        assert "기준 없음" in said
+        return
+    if not card.moves:
+        assert "③ **이동 없음 — 우리 열 = 기준**" in said
+        for key in ("home", "draw", "away"):
+            assert abs(getattr(card.our_prob, key) - getattr(start, key)) < 0.005
+        return
+    assert "③ 이 움직인 양" in said
+    # 🔴 움직인 쪽은 **그 방향으로** 갔다(상한 안에서)
+    for m in card.moves:
+        side = str(m.get("side"))
+        if side not in ("home", "draw", "away"):
+            continue
+        assert float(m.get("logodds") or 0) != 0.0, m

@@ -358,8 +358,19 @@ def _b3c(card: Card) -> str:
                        f"(홈 {b.home_elo:.0f} · 원정 {b.away_elo:.0f})")
     if a.strength_pct:
         got = " · ".join(f"{k} {v:+.1f}%" for k, v in a.strength_pct.items())
-        out.append(f"- 라인업 보정: 평소 대비 {got}"
-                   + ("" if a.moved else " — ⚠️ 확률은 **안 움직였다**(환산 계수 없음)"))
+        # 🔴🔴 **%p 와 계수 신뢰도를 함께**(사용자 지시 2026-10-06(6차) ②)
+        #    꼴: `라인업 보정 −1.2%p (환산 R² 0.61 · 표본 33)`
+        head = f"- 라인업 보정: 평소 대비 {got}"
+        if a.moved and b.probs is not None and a.probs is not None:
+            pp = (a.probs.home - b.probs.home) * 100.0
+            fit = _ds_fit(b.comp_kind)
+            head += (f" → 홈 승 **{pp:+.1f}%p**"
+                     f"(환산 R² {fit.get('r2', '?')} · 표본 {fit.get('n', '?')})")
+            head += (f"\n    보정 후 승 {a.probs.home:.0%} · 무 {a.probs.draw:.0%} · "
+                     f"패 {a.probs.away:.0%}")
+        else:
+            head += " — ⚠️ 확률은 **안 움직였다**(환산 계수 없음)"
+        out.append(head)
         for d in a.deltas[:6]:
             # 🔴 ③ — 같은 포지션끼리만 짝이다. 짝이 없으면 **구조 변경**이라고 적는다
             tag = f"[{d.pos}]" if d.pos else "[포지션 미상]"
@@ -405,13 +416,20 @@ def _b7b(card: Card) -> str:
     same_col = bool(user.probs) and mk.basis == user.basis
     cols = ["| | 기준 | 우리 | 시장 |", "|---|---|---|---|"] if same_col else \
            ["| | 기준 | 우리 | 시장 | 사용자 보드 |", "|---|---|---|---|---|"]
+    # 🔴🔴 **기준 열은 "②반영" 이다**(네 층 지시서 §6 첫 줄: *"기준(②반영)·우리·시장"*).
+    #    ⚠️ ① 만 적으면 우리 열의 **출발점과 다른 수**가 기준 칸에 앉아, 이동량 줄이
+    #       설명하지 못하는 차이가 생긴다(실측 2026-10-06: 54% vs 출발 52%).
+    base_col = (card.adj_prob.probs if card.adj_prob.probs is not None
+                else card.base_prob.probs)
+    if card.adj_prob.moved:
+        cols[0] = cols[0].replace("| 기준 |", "| 기준(②반영) |")
     rows = [f"- {head}", ""] + cols
     names = ((f"{card.match.home_name} 승", "home"), ("무", "draw"),
              (f"{card.match.away_name} 승", "away"))
     for label, key in names:
         cells = [label]
-        cells.append(f"{getattr(card.base_prob.probs, key):.0%}"
-                     if card.base_prob.probs is not None else "—")
+        cells.append(f"{getattr(base_col, key):.0%}"
+                     if base_col is not None else "—")
         cells.append(f"{getattr(card.our_prob, key):.0%}"
                      if card.our_prob is not None else "—")
         for box in ((mk,) if same_col else (mk, user)):
@@ -426,6 +444,17 @@ def _b7b(card: Card) -> str:
             f"{nm} {shin.get(key_of('win', k), 0):.0%}"
             for nm, k in (("홈", "home"), ("무", "draw"), ("원정", "away")))
         rows.append(f"- Shin 방식(괄호 비교용): {said}")
+    # 🔴🔴 **③ 이 움직인 양**(사용자 지시 2026-10-06(6차) ③) — 없으면 그 사실을 적는다
+    if card.moves:
+        said = " · ".join(
+            f"`{m.get('id')}`({m.get('type')}→{m.get('side')}) "
+            f"{float(m.get('logodds') or 0):+.3f}" for m in card.moves[:6])
+        tot = sum(abs(float(m.get("logodds") or 0)) for m in card.moves)
+        rows.append(f"- ③ 이 움직인 양(로그 오즈 합 {tot:.3f}): {said}")
+    else:
+        rows.append("- ③ **이동 없음 — 우리 열 = 기준**"
+                    + ("" if card.base_prob.probs is not None else
+                       "(기준도 없어 시나리오 비율이다)"))
     if card.compare:
         rows.append(f"- 판정: **{card.compare}**")
     for line in card.compare_lines:
@@ -441,6 +470,12 @@ def _b7b(card: Card) -> str:
     if not mk.probs and not user.probs:
         rows.append(f"- ⬜ **시장 없음** — {mk.why or '피드·사용자 보드 모두 없다'}")
     return "\n".join(rows)
+
+
+def _ds_fit(kind: str) -> dict:
+    """🔴 `ΔS→dr` 계수의 **표본·R²** — 카드가 그 신뢰도를 숨기지 않는다(②)."""
+    from app import rules
+    return dict((rules.base_model(str(kind)) or {}).get("ds_fit") or {})
 
 
 def _price_of(box, side: str) -> float | None:

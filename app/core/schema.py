@@ -749,6 +749,10 @@ class Card(Frozen):
     market_why: list[str] = Field(default_factory=list)
     #: 🔴 OCR 로 읽은 보드 **원문**(§2-6: 원문 그대로 보여 준다)
     ocr_text: str = ""
+    #: 🔴🔴 **③ 이 움직인 양**(사용자 지시 2026-10-06(6차) ③) — 변수별 로그 오즈 이동
+    #
+    #  ⚠️ 비면 *"③ 이동 없음 — 우리 열 = 기준"* 을 적는다(빈 줄은 "안 봤다"와 같다).
+    moves: list[dict] = Field(default_factory=list)
 
 
 class LlmFail(Frozen):

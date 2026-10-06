@@ -267,6 +267,7 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         tilt=[str(x) for x in (box.get("tilt") or [])],
         market_why=[str(x) for x in (box.get("market_why") or [])],
         ocr_text=str(box.get("ocr_text") or ""),
+        moves=[dict(x) for x in (box.get("moves") or [])],
         match=ref, facts=facts, variables=variables,
         drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,
         direction=said.direction, conclusion=said.conclusion,
@@ -326,9 +327,13 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
     start = adj_p.probs if adj_p.probs is not None else base_p.probs
     ours, why = compare.our_prob(hypo, start=start, variables=variables,
                                  adjusted=bool(adj_p.moved), ref=ref)
+    # 🔴 §6 은 *"기준(**②반영**)·우리·시장"* 을 나란히 놓으라고 했다 — 그래서 비교도
+    #    ② 를 반영한 수로 한다(카드 표와 **같은 수**여야 설명이 맞는다).
+    base_for_compare = (base_p.model_copy(update={"probs": start})
+                        if start is not None else base_p)
     market, label = s2c_market.column(feed_mk, user_mk)
-    verdict, lines = compare.verdict_of(base_p, ours, market)
-    tilt = compare.tilt_reasons(ours, base_p, hypo, variables,
+    verdict, lines = compare.verdict_of(base_for_compare, ours, market)
+    tilt = compare.tilt_reasons(ours, base_for_compare, hypo, variables,
                                 measured=adj_p.measured)
     reasons = compare.market_reasons(base_p, adj_p, market, variables, ref)
     # 🔴 §5 중복 금지 — ② 가 돌았으면 결장 계열 무게 0 · 전력/폼 절반
@@ -338,6 +343,8 @@ def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],
     state.note(f"§6 세 열 판정 — **{verdict}**"
                + (f"(우리 {why})" if ours is not None else f"({why})"))
     return {"base": base_p, "adj": adj_p, "market": market,
+            # 🔴 ③ 이 움직인 양 — `our_prob` 가 방금 적어 둔 그 목록이다
+            "moves": list(compare.MOVES),
             "user_market": user_mk, "ours": ours, "compare": verdict,
             "compare_lines": [*lines, (f"시장 열 — {label}" if label else "")],
             "tilt": tilt, "market_why": reasons}

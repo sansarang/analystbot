@@ -148,19 +148,34 @@ def adjust(base: BaseProb, *, kind: str, delta_s: dict[str, float],
     > `ΔS` → `dr` 환산 계수는 §3 선수단 가치 모형에서 같이 추정. 추정 못 하면
     > *"평소 대비 전력 −x%"* 만 표시하고 **확률은 안 움직인다.**
 
-    🔴 그 계수는 `config/base_model.yaml` 의 `ds_to_dr` 다. 지금은 **없다** —
-       가치가 붙은 과거 경기 자료를 받은 적이 없다(§3 "가치 데이터가 없으면 이 모형은
-       만들지 않는다"). ⚠️ 그래서 `moved=False` 로 **표시만** 한다.
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **계수가 생겼다 — 이제 확률을 움직인다**(사용자 지시 2026-10-06(6차) ②)
+    ══════════════════════════════════════════════════════════════════
+
+    > `ds_to_dr`(8.87 · R² 0.61)로 라인업 보정이 **확률을 움직이게** 한다. 카드 3c 에
+    > *"라인업 보정 −1.2%p (환산 R² 0.61 · 표본 33)"* 형태로 **계수 신뢰도를 함께** 적는다.
+
+    🔴 계수는 `config/base_model.yaml` 의 `ds_to_dr` 이고 `ds_fit` 이 그 **표본·R²** 를
+       든다(`tools/fit_ds_to_dr.py` 가 적는다 — 실행 중 적합 금지).
+    ⚠️ R² 는 **0.61** 이다(반쯤 설명한다) — 그래서 카드가 그 수를 **숨기지 않는다**.
+       🔴 계수가 없으면 전처럼 *"전력 변화율만"* 이다.
     """
     m = rules.base_model(kind)
     coef = m.get("ds_to_dr")
+    fit = dict(m.get("ds_fit") or {})
     moved = False
     probs = base.probs
     if coef is not None and base.probs is not None and base.dr is not None:
         step = float(coef) * (delta_s.get(str(home), 0.0) - delta_s.get(str(away), 0.0))
         got, said = triple_of(kind, base.dr + step)
         if got is not None:
-            probs, moved, why = got, True, f"{why} · ΔS→dr {step:+.1f}점({said})"
+            # 🔴 **홈 승 %p 변화** — 카드가 적는 그 수다(기준 대비)
+            shift = (got.home - base.probs.home) * 100.0
+            probs, moved = got, True
+            why = (f"{why} · ΔS→dr {step:+.1f}점 → 홈 승 {shift:+.1f}%p"
+                   f"(환산 R² {fit.get('r2', '?')} · 표본 {fit.get('n', '?')})")
+            deltas = _share(deltas, shift, home=str(home), away=str(away),
+                            delta_s=delta_s)
     elif coef is None:
         why = (f"{why} · 🔴 ΔS→dr 환산 계수가 없다 — **확률을 움직이지 않았다**"
                f"(전력 변화율만 보인다)")
@@ -170,3 +185,33 @@ def adjust(base: BaseProb, *, kind: str, delta_s: dict[str, float],
     return AdjProb(probs=probs, why=why, deltas=deltas, delta_s=delta_s,
                    strength_pct=strength_pct, moved=moved,
                    measured=bool(moved), estimated_players=estimated)
+
+
+def _share(deltas: list[LineupDelta], shift: float, *, home: str, away: str,
+           delta_s: dict[str, float]) -> list[LineupDelta]:
+    """🔴🔴 팀 전체의 `%p` 를 **선수 줄마다** 나눠 적는다(지시서 ② 카드 꼴).
+
+    🔴 쪼개는 식은 이동을 만든 식과 **같다**:
+       `step = coef × (ΔS_home − ΔS_away)` 이므로 한 줄의 몫은
+       `(홈이면 +ΔS, 원정이면 −ΔS) ÷ (ΔS_home − ΔS_away)` 다. 그 몫에 `%p` 를 곱한다.
+
+    ⚠️ **몫이 1 을 크게 넘는 줄에는 `%p` 를 안 적는다.** 실측 2026-10-06: 김민재가
+       빠지고(ΔS −17.16) 황희찬이 들어온(+16.09) 경기에서 두 줄의 몫이 ±16 이었다 —
+       서로 **상쇄되는 큰 항목**이고, 그것을 `−19%p`·`+18%p` 로 적으면 거짓으로 읽힌다.
+       🔴 그때는 `ΔS` 만 적고 그 사실을 카드가 말한다.
+    """
+    denom = float(delta_s.get(home, 0.0)) - float(delta_s.get(away, 0.0))
+    out: list[LineupDelta] = []
+    for d in deltas:
+        key = str(d.team)
+        mine = float(d.delta_s) * (-1.0 if key == away else 1.0)
+        if abs(denom) < 1e-6 or shift == 0.0:
+            out.append(d)
+            continue
+        part = mine / denom
+        if abs(part) > 1.5:
+            # 🔴 상쇄되는 큰 항목 — 쪼개지 않는다(사실만 남긴다)
+            out.append(d)
+            continue
+        out.append(d.model_copy(update={"delta_home_pct": round(shift * part, 2)}))
+    return out
