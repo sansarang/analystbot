@@ -187,10 +187,12 @@ def _b3b(card: Card) -> str:
                   else "⚠️ **최종 확정 아니다**(남은 경기가 더 있다)"))
     if look.get("other"):
         out.append("- 같은 라운드 다른 경기: " + " · ".join(look["other"]))
+    # ⚠️ 사유가 **여러 줄**로 올 수 있다(yaml 블록) — 한 줄로 눌러 담는다(표가 깨진다)
+    src = " ".join(str(look.get("source") or "").split())[:150]
     if not look.get("verified"):
-        out.append(f"- ⚠️ **동률 규칙 가정**(승점→득실→다득점) — {look.get('source', '')}")
+        out.append(f"- ⚠️ **동률 규칙 가정**(승점→득실→다득점) — {src}")
     else:
-        out.append(f"- 동률 규칙 **확인됨** — {look.get('source', '')}")
+        out.append(f"- 동률 규칙 **확인됨** — {src}")
     # 🔴 결과별 순위·구역 표 — 같은 라운드 다른 경기가 있으면 열이 셋이다
     has_other = any(c.get("other") for c in cells)
     head = (f"| 이 경기 | 다른 경기 | {home} | {away} |" if has_other
