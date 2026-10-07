@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 600, \"messages\": [{\"content\": \"너는 **검열자**다. 아래 사실 목록과 논평 문장을 받아, 각 문장이 그 사실과 맞는지 **판정만** 한다.\\n🔴 **새 사실·새 예측을 만들지 마라** — 분석하지 않는다.\\n🔴 판정은 넷이다: `ok`(사실과 맞는다) · `contradicts`(사실과 반대다) · `unsupported`(사실에 없는 말이다) · `overclaim`(사실보다 세게 말한다).\\n🔴 `index` 는 문장 번호, `fact_ref` 는 근거가 된 사실의 대괄호 id(`[V:R1]` 처럼) 또는 빈 글자, `note` 는 **20자 이내**다.\\n⚠️ 문장 수만큼 줄을 낸다. 다른 말을 덧붙이지 않는다.\\n🔴 **`[예상 흐름 · 예측]` 줄은 예측이다** — 그 문장이 사실 목록에 그대로 없다고 `unsupported` 라 하지 마라. 사실·방향·양상과 **반대일 때만** `contradicts` 다(아니면 `ok`).\", \"role\": \"system\"}, {\"content\": \"## 사실\\n[M] USA(홈) vs Canada(원정) · Friendlies\\n[F:USA] 최근  · 득점 평균 ? · 보정 ? · 실점 평균 ?\\n[X:USA] predicted XI 4-2-3-1\\n[F:Canada] 최근  · 득점 평균 ? · 보정 ? · 실점 평균 ?\\n[A:Canada] 결장 Tajon Buchanan, Derek Cornelius, Alfie Jones, Ali Ahmed, Moïse Bombito, Alistair Johnston\\n[X:Canada] predicted XI 4-4-2\\n[H] 맞대결 {\\\"matches\\\": [{\\\"date\\\": \\\"2025-03-23\\\", \\\"home\\\": \\\"Canada\\\", \\\"away\\\": \\\"USA\\\", \\\"score\\\": \\\"2-1\\\", \\\"score_raw\\\": \\\"2 - 1\\\", \\\"home_score\\\": 2, \\\"away_score\\\": 1, \\\"matchUrl\\\": \\\"/match\\n[V:R1] absence_att · 승패 home · 득점 down · 실점 none · 무게 0.7 · Cyle Larin은 페루전에서 입은 허리 부상으로 인해 캐나다전에서 선발 명단에서 제외되었다.\\n[V:R3] coach_intent · 승패 both · 득점 none · 실점 none · 무게 0.7 · Pochettino is determined to manage the players’ load as best they can as together they seek the program’s first win over\\n[V:S01-home] recent_pattern · 승패 home · 득점 up · 실점 none · 무게 0.7 · 최근 5경기 W L W W W · 득점 평균 2.8(보정 2.0) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 많다 · 실점 평균 1.4(보통)\\n[V:S01-away] recent_pattern · 승패 away · 득점 down · 실점 down · 무게 0.7 · 최근 5경기 L W L W W · 득점 평균 1.0(보정 0.75) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 적다 · 실점 평균 1.0(적다)\\n[V:S03] home_field · 승패 home · 득점 none · 실점 none · 무게 0.4 · USA 홈 경기 — 홈 이점 **수치 없음**(대회 유형 `national_friendly` 의 표가 없다 · 다른 대회 숫자를 빌리지 않는다)\\n[V:S04] match_type · 승패 both · 득점 none · 실점 none · 무게 0.4 · 친선 — 실험 라인업·교체 다수 가능\\n[V:IR11-home] fatigue · 승패 away · 득점 none · 실점 none · 무게 0.7 · USA 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [3, 7]일 전)\\n[V:IR12-home] team_stats · 승패 home · 득점 none · 실점 none · 무게 0.7 · USA 무패 3경기\\n[S] 양상 저득점 — 2골 이하 64% · 4골 이상 18% · 2골 차 이상 13% · 한 골 안 87%\\n[P] 우리 확률 홈 39% · 무 35% · 원정 26%\\n[D] 방향 판정 방향: **USA** (세 열 중 2열이 0.15 이상 앞세운다) — 기준 홈 50%/원정 19% · 우리 홈 39%/원정 26% · 시장 홈 \\n[Q:A] 3-1 · 2-1 무게 1.0208\\n[Q:B] 1-1 무게 1.147\\n[Q:B2] 1-0 무게 0.7656\\n[Q:C] 0-1 · 1-2 무게 2.5312\\n[Q:D] 2-2 무게 0.7647\\n[Q:D2] 3-2 무게 0.5104\\n[Q:E] 2-0 · 1-0 무게 1.5311\\n[Q:F] 0-0 무게 1.5293\\n\\n## 논평 문장\\n0. USA는 8일 사이 이번이 세 번째 경기라 체력 부담이 크고, 그만큼 초반부터 템포를 끌어올리기 어렵다.\\n1. 벤치도 선수 부하 관리를 우선해 로테이션을 돌릴 뜻이 뚜렷해서, 양 팀 모두 공격 전개가 느슨해질 가능성이 크다.\\n2. 캐나다는 라린이 허리 부상으로 선발에서 빠지고 최근 실점이 없어, 골이 많이 나기보다 한 골 싸움으로 흐를 여지가 크다.\\n3. 그래도 USA는 무패 3경기 흐름을 안고 있어, 실점 없이 앞서가는 쪽은 결국 홈팀이다.\\n4. [예상 흐름 · **예측**] 전반은 양 팀이 서로 간을 보며 낮게 깔리고, 후반에 USA가 점유를 가져가면서 한 골을 만들어 1-0 또는 0-0으로 마무리된다.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력 — 최상위 배열은 스키마가 못 받는다(§4).\", \"properties\": {\"lines\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 문장 하나에 대한 **검열자 판정**(Solar). ⚠️ 새 사실을 쓰지 않는다.\", \"properties\": {\"fact_ref\": {\"title\": \"Fact Ref\", \"type\": \"string\"}, \"index\": {\"title\": \"Index\", \"type\": \"integer\"}, \"note\": {\"title\": \"Note\", \"type\": \"string\"}, \"verdict\": {\"enum\": [\"ok\", \"contradicts\", \"unsupported\", \"overclaim\"], \"title\": \"Verdict\", \"type\": \"string\"}}, \"required\": [\"index\", \"verdict\", \"fact_ref\", \"note\"], \"title\": \"AuditLine\", \"type\": \"object\"}, \"title\": \"Lines\", \"type\": \"array\"}}, \"required\": [\"lines\"], \"title\": \"AuditOut\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-07T04:09:46.028486+00:00",
+ "id": "fcac14a2-d14d-4d2d-8d20-07848ec39fd9",
+ "object": "chat.completion",
+ "created": 1791346185,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"lines\":[{\"index\":0,\"verdict\":\"ok\",\"fact_ref\":\"[V:IR11-home]\",\"note\":\"8일 내 3번째 경기\"},{\"index\":1,\"verdict\":\"ok\",\"fact_ref\":\"[V:R3]\",\"note\":\"부하 관리·로테이션\"},{\"index\":2,\"verdict\":\"ok\",\"fact_ref\":\"[V:R1]\",\"note\":\"라린 결장·저득점\"},{\"index\":3,\"verdict\":\"ok\",\"fact_ref\":\"[V:IR12-home]\",\"note\":\"USA 무패 3경기\"},{\"index\":4,\"verdict\":\"ok\",\"fact_ref\":\"[S]\",\"note\":\"저득점·한골안87%\"}]}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1279,
+  "completion_tokens": 152,
+  "total_tokens": 1431,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

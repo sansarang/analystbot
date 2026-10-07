@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 600, \"messages\": [{\"content\": \"너는 **검열자**다. 아래 사실 목록과 논평 문장을 받아, 각 문장이 그 사실과 맞는지 **판정만** 한다.\\n🔴 **새 사실·새 예측을 만들지 마라** — 분석하지 않는다.\\n🔴 판정은 넷이다: `ok`(사실과 맞는다) · `contradicts`(사실과 반대다) · `unsupported`(사실에 없는 말이다) · `overclaim`(사실보다 세게 말한다).\\n🔴 `index` 는 문장 번호, `fact_ref` 는 근거가 된 사실의 대괄호 id(`[V:R1]` 처럼) 또는 빈 글자, `note` 는 **20자 이내**다.\\n⚠️ 문장 수만큼 줄을 낸다. 다른 말을 덧붙이지 않는다.\", \"role\": \"system\"}, {\"content\": \"## 사실\\n[M] South Korea(홈) vs Uzbekistan(원정) · Friendlies\\n[F:South Korea] 최근  · 득점 평균 ? · 보정 ? · 실점 평균 ?\\n[A:South Korea] 결장 Jens Castrop\\n[X:South Korea] none XI 포메이션 미상\\n[F:Uzbekistan] 최근  · 득점 평균 ? · 보정 ? · 실점 평균 ?\\n[H] 맞대결 {\\\"matches\\\": [{\\\"date\\\": \\\"2018-11-20\\\", \\\"home\\\": \\\"South Korea\\\", \\\"away\\\": \\\"Uzbekistan\\\", \\\"score\\\": \\\"4-0\\\", \\\"score_raw\\\": \\\"4 - 0\\\", \\\"home_score\\\": 4, \\\"away_score\\\": 0, \\\"matchU\\n[V:R1] absence · 승패 away · 득점 none · 실점 none · 무게 1.0 · Kim Min-jae is unlikely to play in Tuesday's friendly against Uzbekistan after missing team training for a second consec\\n[V:R2] individual_title · 승패 home · 득점 up · 실점 none · 무게 0.7 · Son Heung-min은 58골로 차범근과 함께 남자 대표팀 최다 득점 공동 1위에 있으며, 다가오는 두 경기 중 한 골만 넣으면 단독 1위가 된다.\\n[V:R4] stakes · 승패 home · 득점 none · 실점 none · 무게 0.7 · 한국은 우즈베키스탄전에서 Son Heung-min이 한 골만 넣으면 남자 대표팀 최다 득점 단독 1위 기록을 달성할 수 있다.\\n[V:R5] regression · 승패 both · 득점 none · 실점 none · 무게 0.7 · 한국은 9월 두 경기에서 4-4-2로 1-1을 기록했으며, 로베르토 모레노 감독이 이번 두 경기에서 전술·선수 구성 또는 둘 다의 변화를 줄지 주목된다.\\n[V:S01-home] recent_pattern · 승패 home · 득점 down · 실점 none · 무게 0.7 · 최근 5경기 L L W L D · 득점 평균 0.8(보정 0.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 적다 · 실점 평균 1.2(보통)\\n[V:S01-away] recent_pattern · 승패 away · 득점 none · 실점 up · 무게 0.7 · 최근 5경기 L L L W W · 득점 평균 1.8(보정 1.25) · 기준 팀당 1.2662골(대회 national_friendly) 대비 득점 보통 · 실점 평균 2.6(많다)\\n[V:S03] home_field · 승패 home · 득점 none · 실점 none · 무게 0.4 · South Korea 홈 경기 — 홈 이점 **수치 없음**(대회 유형 `national_friendly` 의 표가 없다 · 다른 대회 숫자를 빌리지 않는다)\\n[V:S04] match_type · 승패 both · 득점 none · 실점 none · 무게 0.4 · 친선 — 실험 라인업·교체 다수 가능\\n[V:IR11-home] fatigue · 승패 away · 득점 none · 실점 none · 무게 0.7 · South Korea 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [4, 8]일 전)\\n[S] 양상 난타전 — 2골 이하 16% · 4골 이상 54% · 2골 차 이상 18% · 한 골 안 82%\\n[P] 우리 확률 홈 54% · 무 28% · 원정 17%\\n[D] 방향 판정 방향: **South Korea** (세 열 중 3열이 0.15 이상 앞세운다) — 기준 홈 54%/원정 17% · 우리 홈 54%/원정 17%\\n[Q:A] 2-2 무게 2.6299\\n[Q:A2] 3-2 무게 1.2158\\n[Q:B] 3-1 · 2-1 무게 2.4316\\n[Q:C] 1-0 · 2-1 무게 1.4184\\n[Q:D] 0-1 · 1-2 무게 0.7245\\n[Q:E] 0-2 · 1-2 무게 0.8797\\n\\n## 논평 문장\\n0. 김민재의 결장 가능성으로 한국의 수비 중심이 흔들리는 가운데, 우즈베키스탄도 최근 흐름에서 꾸준히 골을 만들어내며 양쪽 문이 모두 열려 있다.\\n1. 손흥민이 차범근과 함께 최다 득점 공동 1위에 올라 있어, 이 경기 한 골로 단독 1위가 되는 개인 기록 도전이 한국의 전진 의지를 끌어올린다.\\n2. 한국은 8일 안에 세 번째 경기를 치르는 일정 과부하가 걸려 있어 전반의 주도권이 후반 체력 저하로 이어지고, 그 틈에 한 골을 내주는 그림이 자연스럽다.\\n3. 결국 한국이 손흥민의 기록 도전을 앞세워 밀어붙이되 수비 불안과 누적 피로 때문에 깔끔한 무실점으로 끝나지는 못하고, 서로 골을 주고받는 접전이 된다.\\n4. [예상 흐름] 전반은 한국이 손흥민을 축으로 주도하며 앞서가고, 우즈베키스탄이 반격으로 한 골을 따라붙는다. 후반에는 한국의 누적 피로와 수비 중심 이탈이 겹쳐 실점을 주고받는 난타전 양상으로 흐르지만, 끝은 한국이 한 골 앞선 승부로 마무리된다.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력 — 최상위 배열은 스키마가 못 받는다(§4).\", \"properties\": {\"lines\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 문장 하나에 대한 **검열자 판정**(Solar). ⚠️ 새 사실을 쓰지 않는다.\", \"properties\": {\"fact_ref\": {\"title\": \"Fact Ref\", \"type\": \"string\"}, \"index\": {\"title\": \"Index\", \"type\": \"integer\"}, \"note\": {\"title\": \"Note\", \"type\": \"string\"}, \"verdict\": {\"enum\": [\"ok\", \"contradicts\", \"unsupported\", \"overclaim\"], \"title\": \"Verdict\", \"type\": \"string\"}}, \"required\": [\"index\", \"verdict\", \"fact_ref\", \"note\"], \"title\": \"AuditLine\", \"type\": \"object\"}, \"title\": \"Lines\", \"type\": \"array\"}}, \"required\": [\"lines\"], \"title\": \"AuditOut\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-07T04:05:47.788938+00:00",
+ "id": "17039da4-9ad4-4e09-bdcc-3b48f17660e3",
+ "object": "chat.completion",
+ "created": 1791345947,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"lines\":[{\"index\":0,\"verdict\":\"ok\",\"fact_ref\":\"[V:R1] [V:S01-away]\",\"note\":\"김민재 결장·우즈벡 실점 많다\"},{\"index\":1,\"verdict\":\"ok\",\"fact_ref\":\"[V:R2] [V:R4]\",\"note\":\"손흥민 공동1위·1골로 단독1위\"},{\"index\":2,\"verdict\":\"ok\",\"fact_ref\":\"[V:IR11-home]\",\"note\":\"8일 내 3번째 경기 과부하\"},{\"index\":3,\"verdict\":\"ok\",\"fact_ref\":\"[V:R1] [V:S01-home] [V:S01-away] [S]\",\"note\":\"수비 불안·실점·난타전\"},{\"index\":4,\"verdict\":\"unsupported\",\"fact_ref\":\"\",\"note\":\"전반 주도·후반 난타전 구체적 흐름\"}]}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1304,
+  "completion_tokens": 192,
+  "total_tokens": 1496,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

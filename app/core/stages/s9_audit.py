@@ -205,7 +205,12 @@ def model_check(got: Commentary, *, ref: MatchRef, facts: Facts,
     """
     from app.core import llm
     rows = [f"{i}. {x.text}" for i, x in enumerate(got.reasons)]
-    rows.append(f"{len(got.reasons)}. [예상 흐름] {got.flow}")
+    # 🔴🔴 **흐름 줄은 예측이다** — 실측 2026-10-07: 검열자가 네 경기 **전부**에서
+    #    *"전반 점유·후반 체력 저하는 사실에 없다"* 로 `unsupported` 를 매겨 논평이
+    #    통째로 템플릿으로 떨어졌다. ⚠️ 그것은 검열자가 **예측을 사실로 본** 것이다.
+    #    🔴 그래서 그 줄에 **표를 달아** 보낸다(검열 기준을 바꾸는 것이 아니라,
+    #       그 줄이 무엇인지 말해 주는 것이다 — 반대면 여전히 `contradicts` 다).
+    rows.append(f"{len(got.reasons)}. [예상 흐름 · **예측**] {got.flow}")
     text = facts_text(ref, facts, variables, hypo, shape, said, ours=ours)
     out = llm.ask(
         provider=AUDITOR, purpose="audit", out=AuditOut, state=state,
@@ -219,7 +224,10 @@ def model_check(got: Commentary, *, ref: MatchRef, facts: Facts,
                 "세게 말한다).\n"
                 "🔴 `index` 는 문장 번호, `fact_ref` 는 근거가 된 사실의 대괄호 "
                 "id(`[V:R1]` 처럼) 또는 빈 글자, `note` 는 **20자 이내**다.\n"
-                "⚠️ 문장 수만큼 줄을 낸다. 다른 말을 덧붙이지 않는다.")),
+                "⚠️ 문장 수만큼 줄을 낸다. 다른 말을 덧붙이지 않는다.\n"
+                "🔴 **`[예상 흐름 · 예측]` 줄은 예측이다** — 그 문장이 사실 목록에 "
+                "그대로 없다고 `unsupported` 라 하지 마라. 사실·방향·양상과 "
+                "**반대일 때만** `contradicts` 다(아니면 `ok`).")),
             llm.Message(role="user", content=(
                 f"## 사실\n{text}\n\n## 논평 문장\n" + "\n".join(rows)))])
     if not isinstance(out, AuditOut):
@@ -244,9 +252,11 @@ def _record(ref: MatchRef, audit: str, violations: list[str],
             shape: dict) -> None:
     """🔴 §4-4 — 경기마다 **결과와 위반 종류**를 남긴다(`/상태` 가 센다)."""
     from app import auditlog
+    # 🔴 **위반 줄만** 남긴다 — 메모(양상 낮춤·경고)는 종류 셈을 흐린다(#3: 그래도
+    #    카드 `/디버그` 에는 전부 남는다).
     auditlog.add(match=str(ref.id), audit=audit,
-                 violations=[x for x in violations if "위반" in x or audit
-                             == "템플릿"],
+                 violations=[x for x in violations
+                             if "위반" in x or x == "작성 실패"],
                  shape=str(shape.get("shape") or ""))
 
 

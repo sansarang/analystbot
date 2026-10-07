@@ -1,0 +1,36 @@
+{
+ "kind": "llm",
+ "url": "https://api.deepseek.com/chat/completions",
+ "query": "{\"max_tokens\": 6000, \"messages\": [{\"content\": \"너는 축구 분석 카드의 **종합 논평**을 쓴다. 한국어로 쓴다.\\n🔴 **숫자를 바꾸지 않는다** — 아래 수는 이미 센 것이고, 너는 그것을 **사람 말로** 설명한다.\\n🔴 `title` 한 줄은 **양상을 말한다** — 주어진 양상 글자를 그대로 넣어라.\\n🔴 `reasons` 는 3~4문장이고 **문장마다 근거 변수 번호**(`var_ids`)를 든다. 아래 목록에 **없는 번호는 쓰지 마라**.\\n🔴 번호는 `var_ids` **칸에만** 넣는다 — `text` 안에 `(var_ids: …)` 처럼 적지 마라(카드에 그 글자가 그대로 나온다).\\n🔴 `flow` 는 경기 흐름 한 줄이다 — 전반/후반 · 누가 주도 · 어떻게 끝나나.\\n🔴 **흐름과 스코어의 승자는 아래 `방향 판정` 팀이다** — 그 팀이 아닌 쪽이 이긴다고 쓰지 마라(무승부는 괜찮다). 방향이 *반반*이면 자유다.\\n🔴 `score_range` 는 **아래 시나리오 스코어 중에서** 1~3개를 고른다.\\n🔴 `lean` 은 **아래 보드 줄 중** 논평과 같은 방향 하나이고, 없으면 **빈 문자열**이다. ⚠️ 등급이 없으면 *추천*이라고 쓰지 마라(기울기만).\\n🔴 보드가 **없음**(등급이 전부 `보류`)이면 `lean` 은 반드시 **빈 문자열**이다 — 걸 수 없는 줄을 가리키지 마라.\\n🔴 **금지**: 기대값·손익분기·켈리·금액·시장 확률(배당)을 근거로 쓰는 문장.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"경기: USA(홈) vs Canada(원정) · Friendlies\\n양상 판정: **저득점** — 저득점 비중 64% ≥ 문턱 55%\\n비중: 2골 이하 64% · 4골 이상 18% · 2골 차 이상 13% · 한 골 안 87%\\n가장 무거운 스코어: 1-0(1.531) · 0-0(1.529) · 0-1(1.266)\\n\\n근거 변수(이 번호만 쓸 수 있다):\\n- `IR11-home`(fatigue · 무게 0.7 · soft) USA 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [3, 7]일 전)\\n- `IR12-home`(team_stats · 무게 0.7 · soft) USA 무패 3경기\\n- `R1`(absence_att · 무게 0.7 · soft) Cyle Larin은 페루전에서 입은 허리 부상으로 인해 캐나다전에서 선발 명단에서 제외되었다.\\n- `R3`(coach_intent · 무게 0.7 · soft) Pochettino is determined to manage the players’ load as best they can as together they seek the program’s first win over Canada since 2023.\\n\\n무게 상위 시나리오:\\n- `C` 무게 2.5312 · 스코어 0-1 · 1-2 — 미국의 일정 과부하가 후반 집중력 저하로 이어지고, 캐나다는 최근 승리를 쌓은 흐름대로 수비 후 전환에서 효율을 낸다. 캐나다가 한 골 차로 경기를 가져간다.\\n- `E` 무게 1.5311 · 스코어 2-0 · 1-0 — 양 팀이 선수 부하 관리를 위해 로테이션을 돌리면서 경기 템포가 낮아지고, 공격 자원이 빠진 캐나다가 득점 기회를 만들지 못한다. 미국이 무패 흐름을 바탕으로 실점 없이 앞선다.\\n- `F` 무게 1.5293 · 스코어 0-0 — 🔴 축구 필수형(저득점) — Cyle Larin은 페루전에서 입은 허리 부상으로 인해 캐나다전에서 선발 명단에서, 최근 5경기 L W L W W · 득점 평균 1.0(보정 0.75) · 기준 팀당 이 겹쳐 0-0 같은 저득점으로 끝난다(조건: Canada 무실점 2경기 연속, Canada 공격 자원 결장\\n\\n보드 줄과 등급(user_board): win home 생존 0.391 등급 없음 · draw  생존 0.351 등급 없음 · win away 생존 0.258 등급 없음 · total over 3.5 생존 0.182 등급 없음 · total under 3.5 생존 0.818 등급 소액하단 · handicap home -0.5 생존 0.391 등급 없음 · handicap away 0.5 생존 0.609 등급 없음\\n방향 판정: 방향: **USA** (세 열 중 2열이 0.15 이상 앞세운다) — 기준 홈 50%/원정 19% · 우리 홈 39%/원정 26% · 시장 홈 53%/원정 22%\\n\", \"role\": \"user\"}, {\"content\": \"🔴 아래 JSON 스키마를 **정확히** 지켜 답한다(다른 칸을 더하지 않는다):\\n{\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴🔴 **종합 논평**(사용자 지시 2026-10-07 ③) — DeepSeek 1회 · 구조화 출력.\\\\n\\\\n🔴 코드가 검사하는 것(어긋나면 그 칸을 버리고 **1회 재요청**, 또 어긋나면 템플릿):\\\\n  · `title` 의 양상 = `Card.shape` 의 양상 — **논평이 숫자와 반대로 말하면 안 된다**\\\\n  · `score_range` 의 스코어가 **무게 상위 시나리오 스코어 안**에 있다\\\\n  · `reasons` 의 `var_ids` 가 **근거 가능 변수**만\\\\n  · `lean` 은 **보드에 실제로 있는 줄**만 · 등급과 다른 말 금지\\\\n  · 기대값·금액·켈리·**시장 확률을 근거로 쓰는 문장 금지**\\\\n⚠️ `lean` 이 비면 *\\\\\\\"기울기 없음\\\\\\\"* 이다 — 빈 값을 **추천으로 읽지 않는다**.\\\", \\\"properties\\\": {\\\"title\\\": {\\\"title\\\": \\\"Title\\\", \\\"type\\\": \\\"string\\\"}, \\\"reasons\\\": {\\\"items\\\": {\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴 논평 한 문장 — **근거 변수 번호를 함께** 든다(지시 ③).\\\", \\\"properties\\\": {\\\"text\\\": {\\\"title\\\": \\\"Text\\\", \\\"type\\\": \\\"string\\\"}, \\\"var_ids\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Var Ids\\\", \\\"type\\\": \\\"array\\\"}}, \\\"required\\\": [\\\"text\\\", \\\"var_ids\\\"], \\\"title\\\": \\\"CommentLine\\\", \\\"type\\\": \\\"object\\\"}, \\\"title\\\": \\\"Reasons\\\", \\\"type\\\": \\\"array\\\"}, \\\"flow\\\": {\\\"title\\\": \\\"Flow\\\", \\\"type\\\": \\\"string\\\"}, \\\"score_range\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Score Range\\\", \\\"type\\\": \\\"array\\\"}, \\\"lean\\\": {\\\"title\\\": \\\"Lean\\\", \\\"type\\\": \\\"string\\\"}}, \\\"required\\\": [\\\"title\\\", \\\"reasons\\\", \\\"flow\\\", \\\"score_range\\\", \\\"lean\\\"], \\\"title\\\": \\\"Commentary\\\", \\\"type\\\": \\\"object\\\"}\", \"role\": \"user\"}], \"model\": \"deepseek-flash\", \"response_format\": {\"type\": \"json_object\"}}",
+ "recorded_at": "2026-10-07T04:04:08.171873+00:00",
+ "id": "0f649597-d360-4453-b14d-1e9e3cb71210",
+ "object": "chat.completion",
+ "created": 1791345843,
+ "model": "deepseek-flash",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"title\": \"저득점 — 2골 이하 64%, 한 골 안 87%로 좁게 끝나는 양상\", \"reasons\": [{\"text\": \"미국은 8일 안에 이번이 3번째 경기라 후반으로 갈수록 압박 강도와 전진 템포가 떨어질 수밖에 없다.\", \"var_ids\": [\"IR11-home\"]}, {\"text\": \"그럼에도 미국은 최근 3경기 무패 흐름을 타고 있어 실점을 최소화하며 경기를 통제할 여지가 크다.\", \"var_ids\": [\"IR12-home\"]}, {\"text\": \"캐나다는 페루전 허리 부상으로 Cyle Larin이 선발에서 빠지면서 최전방 마무리 자원이 약해졌다.\", \"var_ids\": [\"R1\"]}, {\"text\": \"포체티노가 선수 부하 관리를 최우선으로 두고 로테이션을 돌리려 하기에 양 팀 모두 공격 템포가 낮아질 가능성이 크다.\", \"var_ids\": [\"R3\"]}], \"flow\": \"전반은 서로 탐색하며 템포를 낮추고, 미국이 볼을 쥐고 주도하지만 결정적인 마무리가 부족해 한 골 싸움 또는 무득점 접전으로 마무리된다.\", \"score_range\": [\"1-0\", \"0-0\"], \"lean\": \"total under 3.5\"}",
+    "reasoning_content": "Need JSON. Title must include 양상 \"저득점\" 그대로. score_range from scenario scores: C 0-1,1-2; E 2-0,1-0; F 0-0. Choose 1-3. Direction USA — flow must not say Canada wins. But scenario C says Canada wins. Direction 판정 USA. So flow should say USA 주도, 무승부 or USA 승. We can pick scores 1-0, 0-0 maybe. Direction USA but draw allowed.\n\nLow scoring shape — lean: board has \"total under 3.5\" 등급 소액하단. That's the only graded line. lean = \"total under 3.5\" (with 소액하단 grade). Lean must be a board line with same direction as commentary. Low-scoring commentary → under 3.5.\n\nreasons: 3-4 sentences, each with var_ids from list only.\n\nvar_ids available: IR11-home, IR12-home, R1, R3.\n\nWrite:\n\n1. IR11-home: USA 8일 안에 3번째 경기 → 후반 체력 부담, 템포 낮아짐 → 저득점.\n2. IR12-home: USA 무패 3경기 → 실점 억제, 앞선 운영.\n3. R1: Larin 결장 → 캐나다 공격 자원 약화 → 득점 어려움.\n4. R3: Pochettino 부하 관리 의도 → 로테이션, 템포 저하.\n\nflow: 한 줄 — 전반 탐색전, USA 주도, 저득점, 무승부나 한 골 차 USA.\n\nscore_range: 1-0, 0-0, 1-2? Direction USA... 1-2 is Canada win, avoid. Use [\"1-0\",\"0-0\"] maybe add \"2-0\". Scenario E includes 2-0 and 1-0. F includes 0-0. Choose [\"1-0\",\"0-0\"].\n\nlean: \"total under 3.5\"."
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1907,
+  "completion_tokens": 802,
+  "total_tokens": 2709,
+  "prompt_tokens_details": {
+   "cached_tokens": 384
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 455
+  },
+  "prompt_cache_hit_tokens": 384,
+  "prompt_cache_miss_tokens": 1523
+ },
+ "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669"
+}

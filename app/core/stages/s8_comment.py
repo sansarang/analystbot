@@ -53,7 +53,8 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
         return None
     basis = _basis(variables)
     scen = top_scen(hypo)
-    prompt = _prompt(ref, shape, basis, scen, said, board_source)
+    prompt = _prompt(ref, shape, basis, scen, said, board_source,
+                     spots=spots5(hypo))
     if bad:
         from app.core import llm as _llm
         prompt = prompt + [_llm.Message(
@@ -207,7 +208,8 @@ def check(got: Commentary, *, shape: dict, basis: list[Variable], scen,
 
 
 def _prompt(ref: MatchRef, shape: dict, basis: list[Variable], scen,
-            said: Judgement, board_source: str) -> list[Any]:
+            said: Judgement, board_source: str,
+            spots: set[str] | None = None) -> list[Any]:
     """🔴 입력은 **이미 센 수**다 — 시장 확률은 넣지 않는다(참고용 원칙).
 
     ⚠️ 경계에 **사전을 넘기지 않는다**(§9) — `llm.Message` 로 싼다.
@@ -236,7 +238,8 @@ def _prompt(ref: MatchRef, shape: dict, basis: list[Variable], scen,
              "🔴 `flow` 는 경기 흐름 한 줄이다 — 전반/후반 · 누가 주도 · 어떻게 끝나나.\n"
              "🔴 **흐름과 스코어의 승자는 아래 `방향 판정` 팀이다** — 그 팀이 아닌 "
              "쪽이 이긴다고 쓰지 마라(무승부는 괜찮다). 방향이 *반반*이면 자유다.\n"
-             "🔴 `score_range` 는 **아래 시나리오 스코어 중에서** 1~3개를 고른다.\n"
+             "🔴 `score_range` 는 **아래 `고를 수 있는 스코어`** 에서 1~3개를 "
+             "고른다(그 밖은 검열에서 걸린다).\n"
              "🔴 `lean` 은 **아래 보드 줄 중** 논평과 같은 방향 하나이고, 없으면 "
              "**빈 문자열**이다. ⚠️ 등급이 없으면 *추천*이라고 쓰지 마라(기울기만).\n"
              "🔴 보드가 **없음**(등급이 전부 `보류`)이면 `lean` 은 반드시 "
@@ -253,10 +256,23 @@ def _prompt(ref: MatchRef, shape: dict, basis: list[Variable], scen,
              f"{shape.get('close', 0):.0%}\n"
              f"가장 무거운 스코어: "
              + " · ".join(f"{a}({b})" for a, b in shape.get("top_scores") or [])
+             + "\n고를 수 있는 스코어(무게 상위 5): "
+             + " · ".join(sorted(spots or set()))
              + f"\n\n근거 변수(이 번호만 쓸 수 있다):\n{rows or '- 없다'}\n\n"
              f"무게 상위 시나리오:\n{spots or '- 없다'}\n\n"
              f"보드 줄과 등급({board_source}): {grades or '없다'}\n"
              f"방향 판정: {said.direction}\n"))]
+
+
+def spots5(hypo: HypoSet | None) -> set[str]:
+    """🔴 **무게 상위 5 스코어** — 검열 (g) 가 보는 그 목록이다(사본 금지).
+
+    ⚠️ 작성자에게 **같은 목록**을 줘야 한다 — 안 주면 매번 (g) 로 걸리고 논평이
+       템플릿으로 떨어진다(실측 2026-10-07 미국–캐나다).
+    🔴 **갈래 전부**를 센다(상위 3개가 아니다) — 검열과 같은 입력이어야 한다.
+    """
+    from app.core.stages.s9_audit import _top_spots
+    return _top_spots(hypo, 5)
 
 
 def _ask(messages: list[Any], *, state: RunState) -> Commentary | None:

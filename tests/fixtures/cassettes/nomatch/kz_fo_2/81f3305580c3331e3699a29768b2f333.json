@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 600, \"messages\": [{\"content\": \"너는 **검열자**다. 아래 사실 목록과 논평 문장을 받아, 각 문장이 그 사실과 맞는지 **판정만** 한다.\\n🔴 **새 사실·새 예측을 만들지 마라** — 분석하지 않는다.\\n🔴 판정은 넷이다: `ok`(사실과 맞는다) · `contradicts`(사실과 반대다) · `unsupported`(사실에 없는 말이다) · `overclaim`(사실보다 세게 말한다).\\n🔴 `index` 는 문장 번호, `fact_ref` 는 근거가 된 사실의 대괄호 id(`[V:R1]` 처럼) 또는 빈 글자, `note` 는 **20자 이내**다.\\n⚠️ 문장 수만큼 줄을 낸다. 다른 말을 덧붙이지 않는다.\\n🔴 **`[예상 흐름 · 예측]` 줄은 예측이다** — 그 문장이 사실 목록에 그대로 없다고 `unsupported` 라 하지 마라. 사실·방향·양상과 **반대일 때만** `contradicts` 다(아니면 `ok`).\", \"role\": \"system\"}, {\"content\": \"## 사실\\n[M] Kazakhstan(홈) vs Faroe Islands(원정) · UEFA Nations League C Grp. 3\\n[F:Kazakhstan] 최근  · 득점 평균 ? · 보정 ? · 실점 평균 ?\\n[A:Kazakhstan] 결장 Dastan Satpaev\\n[X:Kazakhstan] predicted XI 4-2-3-1\\n[F:Faroe Islands] 최근  · 득점 평균 ? · 보정 ? · 실점 평균 ?\\n[X:Faroe Islands] predicted XI 5-4-1\\n[H] 맞대결 {\\\"matches\\\": [{\\\"date\\\": \\\"2026-09-26\\\", \\\"home\\\": \\\"Faroe Islands\\\", \\\"away\\\": \\\"Kazakhstan\\\", \\\"score\\\": \\\"1-1\\\", \\\"score_raw\\\": \\\"1 - 1\\\", \\\"home_score\\\": 1, \\\"away_score\\\": 1, \\\"matc\\n[V:S01-home] recent_pattern · 승패 home · 득점 down · 실점 up · 무게 0.7 · 최근 5경기 D L D L L · 득점 평균 1.0(보정 1.0) · 기준 팀당 1.3724골(대회 national_official) 대비 득점 적다 · 실점 평균 1.8(많다)\\n[V:S01-away] recent_pattern · 승패 away · 득점 down · 실점 down · 무게 0.7 · 최근 5경기 L W D D D · 득점 평균 0.8(보정 0.8) · 기준 팀당 1.3724골(대회 national_official) 대비 득점 적다 · 실점 평균 0.8(적다)\\n[V:S03] home_field · 승패 home · 득점 none · 실점 none · 무게 0.4 · Kazakhstan 홈 경기 — 홈 이점 **수치 없음**(대회 유형 `national_official` 의 표가 없다 · 다른 대회 숫자를 빌리지 않는다)\\n[V:IR01-away] lineup_intent · 승패 away · 득점 down · 실점 none · 무게 0.7 · Faroe Islands 5-4-1 — 5백으로 내려앉는 운영\\n[V:IR11-home] fatigue · 승패 away · 득점 none · 실점 none · 무게 0.7 · Kazakhstan 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [4, 7]일 전)\\n[V:IR11-away] fatigue · 승패 home · 득점 none · 실점 none · 무게 0.7 · Faroe Islands 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [4, 7]일 전)\\n[V:IR12-home] team_stats · 승패 home · 득점 none · 실점 none · 무게 0.7 · Kazakhstan 무승 5경기\\n[V:IR12-away] team_stats · 승패 away · 득점 none · 실점 none · 무게 0.7 · Faroe Islands 무패 4경기\\n[S] 양상 저득점 — 2골 이하 59% · 4골 이상 11% · 2골 차 이상 6% · 한 골 안 94%\\n[P] 우리 확률 홈 46% · 무 34% · 원정 21%\\n[D] 방향 판정 방향: **Kazakhstan** (세 열 중 2열이 0.15 이상 앞세운다) — 기준 홈 46%/원정 20% · 우리 홈 46%/원정 21% \\n[Q:A] 3-2 무게 0.3848\\n[Q:A2] 2-2 무게 0.3744\\n[Q:B] 2-1 무게 0.7695\\n[Q:B2] 1-1 무게 0.7488\\n[Q:C] 1-0 · 2-1 무게 1.5391\\n[Q:D] 2-0 · 1-0 무게 0.7695\\n[Q:E] 0-1 · 1-2 무게 1.6064\\n[Q:F] 1-1 · 0-0 무게 1.4976\\n\\n## 논평 문장\\n0. Faroe Islands가 5-4-1로 내려앉는 운영을 들고 나오면서 경기의 총 득점 자체가 낮게 묶이는 그림이 가장 무겁다.\\n1. 양 팀 모두 8일 안에 세 번째 경기를 치르는 일정이라 전반의 주도권과 별개로 후반 압박 강도와 마무리 정확도가 함께 떨어진다.\\n2. Faroe Islands는 무패 4경기의 흐름으로 블록을 끝까지 유지하는 힘이 있고, 그만큼 큰 점수 차보다 한 골 차 승부로 좁혀진다.\\n3. 결국 Kazakhstan이 좁은 차이를 가져가되, 2골 이하 쪽에 무게가 실리는 저득점 양상으로 정리된다.\\n4. [예상 흐름 · **예측**] 전반은 Kazakhstan이 공을 쥐고 Faroe Islands가 5-4-1 블록으로 내려앉으며 득점 없이 잘게 끊기고, 후반 원정팀의 체력 저하 속에 한 골이 나오면서 좁은 차이로 끝난다.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력 — 최상위 배열은 스키마가 못 받는다(§4).\", \"properties\": {\"lines\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 문장 하나에 대한 **검열자 판정**(Solar). ⚠️ 새 사실을 쓰지 않는다.\", \"properties\": {\"fact_ref\": {\"title\": \"Fact Ref\", \"type\": \"string\"}, \"index\": {\"title\": \"Index\", \"type\": \"integer\"}, \"note\": {\"title\": \"Note\", \"type\": \"string\"}, \"verdict\": {\"enum\": [\"ok\", \"contradicts\", \"unsupported\", \"overclaim\"], \"title\": \"Verdict\", \"type\": \"string\"}}, \"required\": [\"index\", \"verdict\", \"fact_ref\", \"note\"], \"title\": \"AuditLine\", \"type\": \"object\"}, \"title\": \"Lines\", \"type\": \"array\"}}, \"required\": [\"lines\"], \"title\": \"AuditOut\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-07T04:11:11.984832+00:00",
+ "id": "e5c00e03-2816-4017-80bf-102651b980cb",
+ "object": "chat.completion",
+ "created": 1791346271,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"lines\": [{\"index\": 0, \"verdict\": \"ok\", \"fact_ref\": \"[V:IR01-away] [S]\", \"note\": \"5-4-1 내려앉음·저득점 일치\"}, {\"index\": 1, \"verdict\": \"ok\", \"fact_ref\": \"[V:IR11-home] [V:IR11-away]\", \"note\": \"양팀 8일 내 3번째 경기\"}, {\"index\": 2, \"verdict\": \"ok\", \"fact_ref\": \"[V:IR12-away] [P] [D]\", \"note\": \"무패 4경기·한골차 방향\"}, {\"index\": 3, \"verdict\": \"ok\", \"fact_ref\": \"[D] [S]\", \"note\": \"Kazakhstan 방향·2골 이하\"}, {\"index\": 4, \"verdict\": \"ok\", \"fact_ref\": \"[V:IR01-away] [V:IR11-away] [D] [S]\", \"note\": \"예측 흐름과 사실 부합\"}]}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1306,
+  "completion_tokens": 227,
+  "total_tokens": 1533,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

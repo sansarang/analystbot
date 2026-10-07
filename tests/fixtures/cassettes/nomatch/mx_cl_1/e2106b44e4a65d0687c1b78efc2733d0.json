@@ -1,0 +1,36 @@
+{
+ "kind": "llm",
+ "url": "https://api.deepseek.com/chat/completions",
+ "query": "{\"max_tokens\": 6000, \"messages\": [{\"content\": \"너는 축구 분석 카드의 **종합 논평**을 쓴다. 한국어로 쓴다.\\n🔴 **숫자를 바꾸지 않는다** — 아래 수는 이미 센 것이고, 너는 그것을 **사람 말로** 설명한다.\\n🔴 `title` 한 줄은 **양상을 말한다** — 주어진 양상 글자를 그대로 넣어라.\\n🔴 `reasons` 는 3~4문장이고 **문장마다 근거 변수 번호**(`var_ids`)를 든다. 아래 목록에 **없는 번호는 쓰지 마라**.\\n🔴 번호는 `var_ids` **칸에만** 넣는다 — `text` 안에 `(var_ids: …)` 처럼 적지 마라(카드에 그 글자가 그대로 나온다).\\n🔴 `flow` 는 경기 흐름 한 줄이다 — 전반/후반 · 누가 주도 · 어떻게 끝나나.\\n🔴 **흐름과 스코어의 승자는 아래 `방향 판정` 팀이다** — 그 팀이 아닌 쪽이 이긴다고 쓰지 마라(무승부는 괜찮다). 방향이 *반반*이면 자유다.\\n🔴 `score_range` 는 **아래 시나리오 스코어 중에서** 1~3개를 고른다.\\n🔴 `lean` 은 **아래 보드 줄 중** 논평과 같은 방향 하나이고, 없으면 **빈 문자열**이다. ⚠️ 등급이 없으면 *추천*이라고 쓰지 마라(기울기만).\\n🔴 보드가 **없음**(등급이 전부 `보류`)이면 `lean` 은 반드시 **빈 문자열**이다 — 걸 수 없는 줄을 가리키지 마라.\\n🔴 **금지**: 기대값·손익분기·켈리·금액·시장 확률(배당)을 근거로 쓰는 문장.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"경기: Mexico(홈) vs Chile(원정) · Friendlies\\n양상 판정: **접전** — 문턱을 넘은 양상이 없다(저득점 26%<55% · 난타전 39%<40% · 한쪽 우세 6%<45%)\\n비중: 2골 이하 26% · 4골 이상 39% · 2골 차 이상 6% · 한 골 안 94%\\n가장 무거운 스코어: 2-1(3.52) · 3-2(2.137) · 1-0(1.76)\\n\\n근거 변수(이 번호만 쓸 수 있다):\\n- `S02`(h2h_pattern · 무게 1.0 · hard) 맞대결 10경기 3승 3무 4패 · 평균 3.0골\\n- `IR11-home`(fatigue · 무게 0.7 · soft) Mexico 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [3, 7]일 전)\\n- `IR12-home`(team_stats · 무게 0.7 · soft) Mexico 무승 4경기\\n- `R1`(absence · 무게 0.7 · soft) Teenage midfielder Gilberto Mora will miss Mexico's friendly against Chile due to injury.\\n\\n무게 상위 시나리오:\\n- `C` 무게 3.5203 · 스코어 1-0 · 2-1 — 홈팀의 4경기 무승이 반등 압박으로 바뀌어 초반부터 압박 강도를 높이고, 원정팀의 낮은 최근 득점 흐름이 이를 버티지 못한다. 한 골 차로 홈팀이 앞서며 경기가 잠긴다.\\n- `A` 무게 2.1373 · 스코어 3-2 — 맞대결 평균 3.0골의 열린 흐름과 양 팀 모두 낮은 최근 득점 보정치가 겹쳐, 수비 라인이 서로 벌어진 채 전환 공격이 반복된다. 양 팀이 번갈아 득점하며 골 수가 크게 늘어난다. · ⚠️ 이 갈래는 **home** 쪽만 센다(섞인 스코어를 결과별로 쪼갰다)\\n- `D` 무게 1.7601 · 스코어 2-1 — 무승 4경기의 홈팀과 1승 4패의 원정팀이 각각 자기 흐름을 되돌리려는 경기로, 양 팀 모두 실점 뒤 반응이 빨라진다. 접전에서 한 골씩 주고받거나 홈팀이 한 골 차로 뒤집는다. · ⚠️ 이 갈래는 **home** 쪽만 센다(섞인 스코어를 결과별로 쪼갰다)\\n\\n보드 줄과 등급(): win home 생존 0.730 등급 보류 · draw  생존 0.187 등급 보류 · win away 생존 0.083 등급 보류 · unbeaten home 생존 0.917 등급 보류 · unbeaten away 생존 0.270 등급 보류 · handicap Mexico -0.5 생존 0.730 등급 보류 · handicap Chile 0.5 생존 0.270 등급 보류 · handicap Mexico -1.5 생존 0.024 등급 보류\\n방향 판정: 방향: **Mexico** (세 열 중 2열이 0.15 이상 앞세운다) — 기준 홈 68%/원정 10% · 우리 홈 73%/원정 8%\\n\", \"role\": \"user\"}, {\"content\": \"🔴 아래 JSON 스키마를 **정확히** 지켜 답한다(다른 칸을 더하지 않는다):\\n{\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴🔴 **종합 논평**(사용자 지시 2026-10-07 ③) — DeepSeek 1회 · 구조화 출력.\\\\n\\\\n🔴 코드가 검사하는 것(어긋나면 그 칸을 버리고 **1회 재요청**, 또 어긋나면 템플릿):\\\\n  · `title` 의 양상 = `Card.shape` 의 양상 — **논평이 숫자와 반대로 말하면 안 된다**\\\\n  · `score_range` 의 스코어가 **무게 상위 시나리오 스코어 안**에 있다\\\\n  · `reasons` 의 `var_ids` 가 **근거 가능 변수**만\\\\n  · `lean` 은 **보드에 실제로 있는 줄**만 · 등급과 다른 말 금지\\\\n  · 기대값·금액·켈리·**시장 확률을 근거로 쓰는 문장 금지**\\\\n⚠️ `lean` 이 비면 *\\\\\\\"기울기 없음\\\\\\\"* 이다 — 빈 값을 **추천으로 읽지 않는다**.\\\", \\\"properties\\\": {\\\"title\\\": {\\\"title\\\": \\\"Title\\\", \\\"type\\\": \\\"string\\\"}, \\\"reasons\\\": {\\\"items\\\": {\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴 논평 한 문장 — **근거 변수 번호를 함께** 든다(지시 ③).\\\", \\\"properties\\\": {\\\"text\\\": {\\\"title\\\": \\\"Text\\\", \\\"type\\\": \\\"string\\\"}, \\\"var_ids\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Var Ids\\\", \\\"type\\\": \\\"array\\\"}}, \\\"required\\\": [\\\"text\\\", \\\"var_ids\\\"], \\\"title\\\": \\\"CommentLine\\\", \\\"type\\\": \\\"object\\\"}, \\\"title\\\": \\\"Reasons\\\", \\\"type\\\": \\\"array\\\"}, \\\"flow\\\": {\\\"title\\\": \\\"Flow\\\", \\\"type\\\": \\\"string\\\"}, \\\"score_range\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Score Range\\\", \\\"type\\\": \\\"array\\\"}, \\\"lean\\\": {\\\"title\\\": \\\"Lean\\\", \\\"type\\\": \\\"string\\\"}}, \\\"required\\\": [\\\"title\\\", \\\"reasons\\\", \\\"flow\\\", \\\"score_range\\\", \\\"lean\\\"], \\\"title\\\": \\\"Commentary\\\", \\\"type\\\": \\\"object\\\"}\", \"role\": \"user\"}], \"model\": \"deepseek-flash\", \"response_format\": {\"type\": \"json_object\"}}",
+ "recorded_at": "2026-10-07T04:03:22.649494+00:00",
+ "id": "251b042f-0e9b-4c58-92e9-fb73dbd08ea9",
+ "object": "chat.completion",
+ "created": 1791345798,
+ "model": "deepseek-flash",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"title\": \"접전 — 문턱을 넘은 양상이 없어 골 차가 좁게 갈리는 승부\", \"reasons\": [{\"text\": \"맞대결 10경기에서 3승 3무 4패로 우열이 갈리지 않고 평균 3.0골이 나온 만큼, 어느 한쪽으로 흐름이 쏠릴 근거가 약하다.\", \"var_ids\": [\"S02\"]}, {\"text\": \"Mexico는 8일 안에 이번이 3번째 경기라 체력 부담이 누적돼 있어, 초반 압박 이후 템포가 떨어질 위험이 있다.\", \"var_ids\": [\"IR11-home\"]}, {\"text\": \"그럼에도 Mexico는 최근 4경기 무승으로 반등 압박이 크고, 홈에서 주도권을 잡으려는 의지가 강하게 나타날 수 있다.\", \"var_ids\": [\"IR12-home\"]}, {\"text\": \"중원의 Gilberto Mora가 부상으로 빠지면서 공격 전개의 연결고리가 약해져, 많은 골이 오가는 열린 경기보다 한 골 승부 쪽으로 기울 가능성이 있다.\", \"var_ids\": [\"R1\"]}], \"flow\": \"전반은 Mexico가 공을 쥐고 밀어붙이지만 마무리가 날카롭지 않아 팽팽하게 흐르고, 후반 들어 양 팀이 체력이 떨어진 가운데 한 골 차로 승부가 좁혀지며 Mexico가 근소하게 앞선 채 끝난다.\", \"score_range\": [\"1-0\", \"2-1\"], \"lean\": \"\"}",
+    "reasoning_content": "The board has all grades as \"보류\" (hold). So lean must be empty string.\n\nDirection: Mexico. Flow should say Mexico leads/dominates... but direction is Mexico, so I shouldn't say Chile wins.\n\nShape: 접전 (close match). Title must include 접전.\n\nReasons: 3-4 sentences with var_ids from S02, IR11-home, IR12-home, R1.\n\nscore_range from scenario scores: 1-0, 2-1, 3-2.\n\nLet me write.\n\nTitle: \"접전 — 문턱을 넘은 양상이 없어 한 골 차 승부로 좁혀진다\" — should include 양상 글자 \"접전\".\n\nReasons:\n1. 맞대결 10경기 3승 3무 4패 평균 3.0골로 양 팀 간 우열이 뚜렷하지 않다 — S02\n2. Mexico는 8일 안에 3번째 경기로 일정 과부하 — IR11-home\n3. Mexico 무승 4경기로 반등 압박 — IR12-home\n4. Gilberto Mora 결장 — R1\n\nFlow: 전반에는 Mexico가 주도하지만 결정력 부족, 후반 들어 한 골 차로 갈리며 Mexico가 좁게 앞선다.\n\nscore_range: [\"1-0\", \"2-1\"] or include 3-2. Let's pick [\"1-0\",\"2-1\"].\n\nlean: \"\" (empty since all grades 보류).\n\nCareful: numbers in reasons must match given ones. Fine.\n\nWrite reasons without putting var_ids in text."
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1954,
+  "completion_tokens": 759,
+  "total_tokens": 2713,
+  "prompt_tokens_details": {
+   "cached_tokens": 384
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 362
+  },
+  "prompt_cache_hit_tokens": 384,
+  "prompt_cache_miss_tokens": 1570
+ },
+ "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669"
+}
