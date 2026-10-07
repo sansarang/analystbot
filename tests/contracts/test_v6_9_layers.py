@@ -1378,42 +1378,133 @@ def test_근거_있는_보강_갈래는_바닥값_무게를_받지_않는다():
 
     실측 2026-10-07(미국–캐나다): 저득점 갈래 `G` 가 무실점 2연속·공격수 결장을
     근거로 생겼는데 `driver_vars=[]` → `strength` 가 **바닥값 0.1** 이었다.
-    돌연변이: `_add` 에서 `driver_vars=said[:4]` 를 `[]` 로 되돌리면 빨개진다.
+    그래서 언더 3.5 생존이 0.5963 으로 눌렸다(고친 뒤 0.6393).
+
+    ⚠️ `run` 을 부르지 않는다 — 그 길은 **DeepSeek 을 부른다**(계약은 실 API 를
+       쓰지 않는다 · 사용자 지시 2026-10-05). 보강 단계와 무게 함수를 직접 본다.
+    돌연변이: `_add` 의 `driver_vars=said[:4]` 를 `[]` 로 되돌리면 빨개진다.
     """
     import importlib
     from app.core.schema import Facts, Variable
     from app.core.stages import s6_hypo
+    from app.core.state import RunState
     from app.survive import WEIGHT_FLOOR
     ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
     att = Variable(id="R9", type="absence_att", subject=ref.away,
                    favors="home", goals="down", target="Striker",
                    hardness="hard", weight=3.0, claim="c", quote="q")
     facts = Facts(recent={str(ref.away): {"streak_clean_sheet": 2}})
-    st = s6_hypo.RunState()
-    got = s6_hypo.run(ref, facts, [att], state=st)
-    low = [s for s in got.scenarios
-           if s.added_by == "code" and "저득점" in s.mechanism]
-    # ⚠️ driver 가 비면 이 갈래는 **살아남지 못한다**(바닥값 → 쳐냄) — 그래서
-    #    돌연변이는 여기서 먼저 빨개진다. 둘 다 같은 병을 가리킨다.
-    assert low, "🔴 저득점 보강 갈래가 없다 — driver 가 비어 쳐냈나?"
+    got = s6_hypo._soccer_forms(ref, facts, [], [att], state=RunState())
+    low = [s for s in got if "저득점" in s.mechanism]
+    assert low, "🔴 저득점 보강 갈래가 안 생겼다(앞 조건 계약을 먼저 봐라)"
     one = low[0]
     assert one.driver_vars, "🔴 조건에 쓴 변수를 driver 로 안 달았다"
     assert set(one.driver_vars) <= {"R9", "recent_pattern"}, one.driver_vars
     # 🔴 무게 = 유형별 최댓값 합 → 바닥값(0.1)이 아니다
-    assert one.strength > float(WEIGHT_FLOOR), (
-        f"🔴 근거가 있는데 바닥값이다: {one.strength}")
+    said = s6_hypo._strength(one, [att])
+    assert said > float(WEIGHT_FLOOR), f"🔴 근거가 있는데 바닥값이다: {said}"
     # 🔴 설명도 그 driver 로 쓴다 — *"근거 변수 없음"* 이 아니다
     assert "근거 변수 없음" not in one.mechanism, one.mechanism
     # ⚠️ 반대로 **근거가 하나도 없으면** 바닥값이고 그렇게 적는다
     bare = s6_hypo._mech("저득점", [(0, 0)], "왜", [], [])
     assert "근거 변수 없음" in bare and "바닥값" in bare, bare
-    # 🔴🔴 **배선** — 네 보강 갈래가 전부 `drivers=` 를 넘긴다
-    fn = next(n for n in ast.walk(ast.parse(
-        (ROOT / "app/core/stages/s6_hypo.py").read_text(encoding="utf-8")))
-        if isinstance(n, ast.FunctionDef) and n.name == "_soccer_forms")
+    src = (ROOT / "app/core/stages/s6_hypo.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    # 🔴🔴 **배선 ①** — 네 보강 갈래가 전부 `drivers=` 를 넘긴다
+    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)
+              and n.name == "_soccer_forms")
     adds = [c for c in ast.walk(fn) if isinstance(c, ast.Call)
             and isinstance(c.func, ast.Name) and c.func.id == "_add"]
     assert len(adds) >= 4, f"보강 갈래가 {len(adds)}개뿐이다"
     for c in adds:
         assert any(k.arg == "drivers" for k in c.keywords), (
             f"🔴 `drivers=` 없이 보강한다 — 줄 {c.lineno}")
+    # 🔴🔴 **배선 ②** — `run` 이 그 무게 함수를 모든 갈래에 먹인다
+    runner = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)
+                  and n.name == "run")
+    used = {c.func.id for c in ast.walk(runner)
+            if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
+    assert "_strength" in used, "🔴 `run` 이 무게를 다시 세지 않는다"
+
+
+def test_논평_본문에_변수_번호가_남지_않는다():
+    """🔴 ④ — `text` 에 번호가 섞여도 **카드에는 사람 말만** 남는다.
+
+    실측 2026-10-07(카자흐–페로): DeepSeek 이 *"…운영(var_ids: IR01-away)이라…"*
+    를 적어 그 글자가 카드에 그대로 나왔다. 돌연변이: `plain` 의 괄호 지움 제거.
+    """
+    from app.core.schema import CommentLine, Commentary
+    from app.core.stages import s8_comment
+    got = Commentary(
+        title="저득점", flow="흐름", score_range=["1-0"], lean="",
+        reasons=[CommentLine(text="내려앉는 운영(var_ids: IR01-away)이라 좁다",
+                             var_ids=["IR01-away"]),
+                 CommentLine(text="과부하(var_ids: IR11-home, IR11-away)라 얇다",
+                             var_ids=["IR11-home", "IR11-away"]),
+                 CommentLine(text="주포 결장(R1) 이 겹친다", var_ids=["R1"])])
+    said = s8_comment.plain(got)
+    for bad in ("var_ids", "IR01-away", "IR11-home", "(R1)"):
+        assert bad not in said, (bad, said)
+    assert "내려앉는 운영이라 좁다" in said, said
+    # 🔴🔴 **배선** — 카드 렌더러가 그 함수를 쓴다(원문을 그대로 찍지 않는다)
+    fn = next(n for n in ast.walk(ast.parse(
+        (ROOT / "app/core/render.py").read_text(encoding="utf-8")))
+        if isinstance(n, ast.FunctionDef) and n.name == "_comment")
+    calls = {c.func.id for c in ast.walk(fn)
+             if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
+    assert "plain" in calls, "🔴 카드가 논평 원문을 그대로 찍는다"
+
+
+def test_논평이_LLM_에_사전을_넘기지_않는다():
+    """🔴 §9(경계에 dict 금지) — **두 호출 경로 다** `llm.Message` 다.
+
+    ⚠️ 실사고 2026-10-07: 1차는 `Message` 였는데 **재요청 경로**만 사전이어서
+    `'dict' object has no attribute 'model_dump'` 로 터졌다(온두라스–자메이카
+    재생이 거기서 멈췄다). 돌연변이: 그 자리를 다시 사전으로.
+    """
+    src = (ROOT / "app/core/stages/s8_comment.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Dict):
+            continue
+        keys = {k.value for k in node.keys
+                if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+        assert "role" not in keys, (
+            f"🔴 사전을 LLM 에 넘긴다 — 줄 {node.lineno}(`llm.Message` 로 싸라)")
+    # 🔴 쓰는 자리가 **둘 다** 있다(1차 · 재요청)
+    said = sum(1 for n in ast.walk(tree)
+               if isinstance(n, ast.Call)
+               and isinstance(n.func, ast.Attribute)
+               and n.func.attr == "Message")
+    assert said >= 3, f"`llm.Message` 호출이 {said}개뿐이다(계통 2곳 + 재요청)"
+
+
+def test_보드가_없으면_논평도_줄을_가리키지_않는다():
+    """🔴 ③ — 등급이 전부 `보류`(보드 없음)면 `lean` 은 **빈 문자열**이다.
+
+    실측 2026-10-07(온두라스–자메이카): 보드가 없어 17줄이 전부 `보류` 인데 논평이
+    `handicap Honduras -0.5` 를 기울기로 가리켰다 — **걸 수 없는 줄**이다.
+    돌연변이: `check` 의 그 검사 제거.
+    """
+    from app.core.schema import (BoardLine, Commentary, Judgement,
+                                 MarketEval)
+    from app.core.stages import s8_comment
+    line = BoardLine(market="handicap", side="home", point=-0.5)
+    held = Judgement(evals=[MarketEval(line=line, marks={}, survival=0.45,
+                                 cap=0.85, grade="보류", why="보드 없음")])
+    got = Commentary(title="접전", flow="흐름", score_range=[],
+                     reasons=[], lean="handicap home -0.5")
+    ok, bad = s8_comment.check(got, shape={"shape": "접전"}, basis=[], scen=[],
+                               said=held)
+    assert not ok and any("보류" in x for x in bad), bad
+    # ⚠️ 빈 문자열이면 통과한다
+    ok2, bad2 = s8_comment.check(got.model_copy(update={"lean": ""}),
+                                 shape={"shape": "접전"}, basis=[], scen=[],
+                                 said=held)
+    assert ok2, bad2
+    # 🔴 반대로 **사용자 보드**가 있으면 그 줄을 가리켜도 된다
+    real = Judgement(evals=[MarketEval(line=line, marks={}, survival=0.45, cap=0.85,
+                                 grade="없음", why="")])
+    ok3, bad3 = s8_comment.check(got, shape={"shape": "접전"}, basis=[],
+                                 scen=[], said=real)
+    assert ok3, bad3

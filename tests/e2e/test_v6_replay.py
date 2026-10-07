@@ -86,8 +86,10 @@ def card(replaying) -> Card:
     from app import net as _net_mod
     from app import search as _search
     from app.core import board as _board
+    from app.core import shape as _shape
     from app.core.stages import (s2_facts, s2b_base, s2c_market, s3_docs,
-                                 s4_extract, s5_verify, s6_hypo, s7_judge)
+                                 s4_extract, s5_verify, s6_hypo, s7_judge,
+                                 s8_comment)
     BOARD, _extra, _bad = _board.parse(BOARD_TEXT)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **재정렬을 예열한다** — 실측 2026-10-06
@@ -124,6 +126,15 @@ def card(replaying) -> Card:
                                  feed_mk, user_mk, state=state)
         said = pipeline._direction(pipeline._lower(said, layers, state=state),
                                   layers, ref)
+        # 🔴🔴 **양상·논평도 재생이 센다**(사용자 지시 2026-10-07 ②③) — ⚠️ 논평
+        #    호출은 녹화본에 없다(미스 → `None`) → **코드 템플릿**으로 간다. 그
+        #    템플릿은 수를 이어 붙이는 것뿐이라 **결정적**이다(스냅샷이 그것을 센다).
+        got_shape = _shape.of(hypo)
+        out = s8_comment.run(ref, facts, variables, hypo, said, got_shape,
+                             state=state, board_source="user_board")
+        layers.update({"shape": got_shape, "commentary": out.said,
+                       "comment_notes": out.notes,
+                       "board_source": "user_board"})
         return pipeline.card_of(ref, facts, variables, hypo, said, state=state,
                                 layers=layers)
 

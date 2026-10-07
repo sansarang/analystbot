@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Any
 
 from app.core.schema import (CommentOut, Commentary, CommentLine, Facts,
                              HypoSet, Judgement, MatchRef, Variable)
@@ -63,9 +64,11 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
     # 🔴 **1회 재요청** — 어긋난 칸을 말해 주고 다시 받는다
     notes += [f"1차 어긋남: {x}" for x in bad]
     state.note(f"s8 논평 1차 어긋남 {bad} → **한 번만** 다시 묻는다")
-    again = _ask(prompt + [{"role": "user", "content":
-                            "🔴 아래가 어긋났다 — 그 칸만 고쳐 **다시** 내라:\n"
-                            + "\n".join(f"- {x}" for x in bad)}], state=state)
+    from app.core import llm as _llm
+    again = _ask(prompt + [_llm.Message(
+        role="user",
+        content=("🔴 아래가 어긋났다 — 그 칸만 고쳐 **다시** 내라:\n"
+                 + "\n".join(f"- {x}" for x in bad)))], state=state)
     if again is not None:
         ok2, bad2 = check(again, shape=shape, basis=basis, scen=scen, said=said)
         if ok2:
@@ -114,7 +117,12 @@ def check(got: Commentary, *, shape: dict, basis: list[Variable], scen,
              + (f" {e.line.point:g}" if e.line.point is not None else "")
              for e in said.evals}
     if got.lean:
-        if got.lean.strip() not in lines:
+        # 🔴🔴 **보드가 없으면 기울기도 없다**(지시 ①: 등급은 걸 수 있는 줄에만)
+        #    ⚠️ 실측 2026-10-07(온두라스–자메이카): 보드가 없어 전부 `보류` 인데
+        #       논평이 `handicap Honduras -0.5` 를 가리켰다 — 걸 수 없는 줄이다.
+        if {e.grade for e in said.evals} == {"보류"}:
+            bad.append("보드가 없다(전부 `보류`) — lean 은 **빈 문자열**이어야 한다")
+        elif got.lean.strip() not in lines:
             bad.append(f"lean `{got.lean}` 이 보드에 없는 줄이다({sorted(lines)[:4]}…)")
         graded = {e.grade for e in said.evals}
         if graded <= {"없음", "자료부족", "보류"} and "추천" in str(got.lean):
@@ -127,8 +135,12 @@ def check(got: Commentary, *, shape: dict, basis: list[Variable], scen,
 
 
 def _prompt(ref: MatchRef, shape: dict, basis: list[Variable], scen,
-            said: Judgement, board_source: str) -> list[dict]:
-    """🔴 입력은 **이미 센 수**다 — 시장 확률은 넣지 않는다(참고용 원칙)."""
+            said: Judgement, board_source: str) -> list[Any]:
+    """🔴 입력은 **이미 센 수**다 — 시장 확률은 넣지 않는다(참고용 원칙).
+
+    ⚠️ 경계에 **사전을 넘기지 않는다**(§9) — `llm.Message` 로 싼다.
+    """
+    from app.core import llm
     rows = "\n".join(
         f"- `{v.id}`({v.type} · 무게 {v.weight} · {v.hardness}) {v.claim[:150]}"
         for v in basis)
@@ -140,20 +152,24 @@ def _prompt(ref: MatchRef, shape: dict, basis: list[Variable], scen,
         f"{e.line.market} {e.line.side}"
         + (f" {e.line.point:g}" if e.line.point is not None else "")
         + f" 생존 {e.survival:.3f} 등급 {e.grade}" for e in said.evals[:8])
-    return [{"role": "system", "content":
+    return [llm.Message(role="system", content=(
              "너는 축구 분석 카드의 **종합 논평**을 쓴다. 한국어로 쓴다.\n"
              "🔴 **숫자를 바꾸지 않는다** — 아래 수는 이미 센 것이고, 너는 그것을 "
              "**사람 말로** 설명한다.\n"
              "🔴 `title` 한 줄은 **양상을 말한다** — 주어진 양상 글자를 그대로 넣어라.\n"
              "🔴 `reasons` 는 3~4문장이고 **문장마다 근거 변수 번호**(`var_ids`)를 "
              "든다. 아래 목록에 **없는 번호는 쓰지 마라**.\n"
+             "🔴 번호는 `var_ids` **칸에만** 넣는다 — `text` 안에 "
+             "`(var_ids: …)` 처럼 적지 마라(카드에 그 글자가 그대로 나온다).\n"
              "🔴 `flow` 는 경기 흐름 한 줄이다 — 전반/후반 · 누가 주도 · 어떻게 끝나나.\n"
              "🔴 `score_range` 는 **아래 시나리오 스코어 중에서** 1~3개를 고른다.\n"
              "🔴 `lean` 은 **아래 보드 줄 중** 논평과 같은 방향 하나이고, 없으면 "
              "**빈 문자열**이다. ⚠️ 등급이 없으면 *추천*이라고 쓰지 마라(기울기만).\n"
+             "🔴 보드가 **없음**(등급이 전부 `보류`)이면 `lean` 은 반드시 "
+             "**빈 문자열**이다 — 걸 수 없는 줄을 가리키지 마라.\n"
              "🔴 **금지**: 기대값·손익분기·켈리·금액·시장 확률(배당)을 근거로 쓰는 문장.\n"
-             "🔴 도구는 없다. **한 번에** JSON 으로만 답한다."},
-            {"role": "user", "content":
+             "🔴 도구는 없다. **한 번에** JSON 으로만 답한다.")),
+            llm.Message(role="user", content=(
              f"경기: {ref.home_name}(홈) vs {ref.away_name}(원정) · "
              f"{ref.competition}\n"
              f"양상 판정: **{shape.get('shape')}** — {shape.get('why')}\n"
@@ -166,15 +182,14 @@ def _prompt(ref: MatchRef, shape: dict, basis: list[Variable], scen,
              + f"\n\n근거 변수(이 번호만 쓸 수 있다):\n{rows or '- 없다'}\n\n"
              f"무게 상위 시나리오:\n{spots or '- 없다'}\n\n"
              f"보드 줄과 등급({board_source}): {grades or '없다'}\n"
-             f"방향 판정: {said.direction}\n"}]
+             f"방향 판정: {said.direction}\n"))]
 
 
-def _ask(messages: list[dict], *, state: RunState) -> Commentary | None:
+def _ask(messages: list[Any], *, state: RunState) -> Commentary | None:
     """🔴 DeepSeek **1회**. ⚠️ 실패하면 `None`(사유는 `state` 에 남는다)."""
     from app.core import llm
     got = llm.ask(provider="deepseek", purpose="commentary",
-                  messages=messages,                      # type: ignore[arg-type]
-                  out=Commentary, state=state)
+                  messages=messages, out=Commentary, state=state)
     if isinstance(got, Commentary):
         return got
     state.note(f"s8 논평 — LLM 실패({getattr(got, 'reason', '?')} · "
@@ -216,5 +231,11 @@ def plain(said: Commentary) -> str:
     """🔴 카드에 들어가는 **사람 말 한 문단** — 변수 번호·코드를 **지운다**(지시 ④)."""
     body = " ".join(x.text.strip() for x in said.reasons)
     body = re.sub(r"`[^`]+`", "", body)
-    body = re.sub(r"\(([A-Z]{1,3}\d{1,2}[^)]*)\)", "", body)
+    # 🔴 `(IR11-home)` 같은 번호 괄호 — ⚠️ `IR01-away` 처럼 **꼬리가 붙은** 번호도
+    #    같이 지운다(실측 2026-10-07 카자흐–페로: 본문에 그 글자가 그대로 나왔다).
+    body = re.sub(r"\(\s*(?:var_ids?\s*[:：]\s*)?"
+                  r"[A-Z]{1,3}\d{1,2}[A-Za-z0-9_\-]*"
+                  r"(?:\s*[,·]\s*[A-Z]{1,3}\d{1,2}[A-Za-z0-9_\-]*)*\s*\)",
+                  "", body)
+    body = re.sub(r"\(\s*var_ids?\s*[:：][^)]*\)", "", body)
     return " ".join(body.split())

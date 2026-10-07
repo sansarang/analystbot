@@ -1,0 +1,36 @@
+{
+ "kind": "llm",
+ "url": "https://api.deepseek.com/chat/completions",
+ "query": "{\"max_tokens\": 6000, \"messages\": [{\"content\": \"너는 축구 분석 카드의 **종합 논평**을 쓴다. 한국어로 쓴다.\\n🔴 **숫자를 바꾸지 않는다** — 아래 수는 이미 센 것이고, 너는 그것을 **사람 말로** 설명한다.\\n🔴 `title` 한 줄은 **양상을 말한다** — 주어진 양상 글자를 그대로 넣어라.\\n🔴 `reasons` 는 3~4문장이고 **문장마다 근거 변수 번호**(`var_ids`)를 든다. 아래 목록에 **없는 번호는 쓰지 마라**.\\n🔴 `flow` 는 경기 흐름 한 줄이다 — 전반/후반 · 누가 주도 · 어떻게 끝나나.\\n🔴 `score_range` 는 **아래 시나리오 스코어 중에서** 1~3개를 고른다.\\n🔴 `lean` 은 **아래 보드 줄 중** 논평과 같은 방향 하나이고, 없으면 **빈 문자열**이다. ⚠️ 등급이 없으면 *추천*이라고 쓰지 마라(기울기만).\\n🔴 **금지**: 기대값·손익분기·켈리·금액·시장 확률(배당)을 근거로 쓰는 문장.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"경기: USA(홈) vs Canada(원정) · Friendlies\\n양상 판정: **한쪽 우세** — 한쪽 우세 비중 53% ≥ 문턱 45%\\n비중: 2골 이하 42% · 4골 이상 36% · 2골 차 이상 53% · 한 골 안 47%\\n가장 무거운 스코어: 3-1(2.5) · 2-0(1.95) · 3-0(1.05)\\n\\n근거 변수(이 번호만 쓸 수 있다):\\n- `IR11-home`(fatigue · 무게 0.7 · soft) USA 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [3, 7]일 전)\\n- `IR12-home`(team_stats · 무게 0.7 · soft) USA 무패 3경기\\n- `R1`(absence_att · 무게 0.7 · soft) Cyle Larin은 페루전에서 입은 허리 부상으로 인해 대표팀 명단에서 제외되었다.\\n- `S01-away`(recent_pattern · 무게 0.7 · soft) 최근 5경기 L W L W W · 득점 평균 1.0(보정 0.75)\\n\\n무게 상위 시나리오:\\n- `C` 무게 2.1 · 스코어 3-0 · 2-0 — 원정팀이 주포 Larin을 잃어 최전방 마무리 루트가 줄어든 가운데, 홈팀의 높은 득점 생산과 무패 흐름이 겹치며 격차가 벌어지는 구도다.\\n- `A` 무게 1.8 · 스코어 3-1 · 4-2 — 홈팀이 최근 경기당 2.8골의 공격 생산과 3경기 무패 흐름을 홈 환경에서 그대로 이어가며 전반부터 주도권을 잡고, 원정팀은 실점 후 반격으로 한 골을 만회하는 구도다.\\n- `D` 무게 1.8 · 스코어 0-1 · 1-2 — 홈팀이 8일 안에 세 번째 경기를 치르는 과부하로 후반 움직임이 둔해지고, 친선 경기의 실험 라인업·교체로 리듬이 끊긴 틈을 원정팀이 최근 상승 흐름으로 마무리한다.\\n\\n보드 줄과 등급(user): win home 생존 0.647 등급 없음 · draw  생존 0.205 등급 없음 · win away 생존 0.147 등급 없음 · total over 3.5 생존 0.361 등급 없음 · total under 3.5 생존 0.639 등급 없음 · handicap home -0.5 생존 0.647 등급 없음 · handicap away 0.5 생존 0.352 등급 없음\\n방향 판정: 방향: **USA** (세 열 중 2열이 0.15 이상 앞세운다) — 기준 홈 50%/원정 19% · 우리 홈 40%/원정 26% · 시장 홈 53%/원정 22%\\n\", \"role\": \"user\"}, {\"content\": \"🔴 아래 JSON 스키마를 **정확히** 지켜 답한다(다른 칸을 더하지 않는다):\\n{\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴🔴 **종합 논평**(사용자 지시 2026-10-07 ③) — DeepSeek 1회 · 구조화 출력.\\\\n\\\\n🔴 코드가 검사하는 것(어긋나면 그 칸을 버리고 **1회 재요청**, 또 어긋나면 템플릿):\\\\n  · `title` 의 양상 = `Card.shape` 의 양상 — **논평이 숫자와 반대로 말하면 안 된다**\\\\n  · `score_range` 의 스코어가 **무게 상위 시나리오 스코어 안**에 있다\\\\n  · `reasons` 의 `var_ids` 가 **근거 가능 변수**만\\\\n  · `lean` 은 **보드에 실제로 있는 줄**만 · 등급과 다른 말 금지\\\\n  · 기대값·금액·켈리·**시장 확률을 근거로 쓰는 문장 금지**\\\\n⚠️ `lean` 이 비면 *\\\\\\\"기울기 없음\\\\\\\"* 이다 — 빈 값을 **추천으로 읽지 않는다**.\\\", \\\"properties\\\": {\\\"title\\\": {\\\"title\\\": \\\"Title\\\", \\\"type\\\": \\\"string\\\"}, \\\"reasons\\\": {\\\"items\\\": {\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴 논평 한 문장 — **근거 변수 번호를 함께** 든다(지시 ③).\\\", \\\"properties\\\": {\\\"text\\\": {\\\"title\\\": \\\"Text\\\", \\\"type\\\": \\\"string\\\"}, \\\"var_ids\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Var Ids\\\", \\\"type\\\": \\\"array\\\"}}, \\\"required\\\": [\\\"text\\\", \\\"var_ids\\\"], \\\"title\\\": \\\"CommentLine\\\", \\\"type\\\": \\\"object\\\"}, \\\"title\\\": \\\"Reasons\\\", \\\"type\\\": \\\"array\\\"}, \\\"flow\\\": {\\\"title\\\": \\\"Flow\\\", \\\"type\\\": \\\"string\\\"}, \\\"score_range\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Score Range\\\", \\\"type\\\": \\\"array\\\"}, \\\"lean\\\": {\\\"title\\\": \\\"Lean\\\", \\\"type\\\": \\\"string\\\"}}, \\\"required\\\": [\\\"title\\\", \\\"reasons\\\", \\\"flow\\\", \\\"score_range\\\", \\\"lean\\\"], \\\"title\\\": \\\"Commentary\\\", \\\"type\\\": \\\"object\\\"}\", \"role\": \"user\"}], \"model\": \"deepseek-flash\", \"response_format\": {\"type\": \"json_object\"}}",
+ "recorded_at": "2026-10-07T01:13:11.527437+00:00",
+ "id": "90dbbc7d-a5ca-4156-a767-74649df4e47d",
+ "object": "chat.completion",
+ "created": 1791335587,
+ "model": "deepseek-flash",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"title\": \"한쪽 우세 — USA가 홈에서 Canada를 앞서는 구도\", \"reasons\": [{\"text\": \"USA는 최근 3경기 무패 흐름을 이어오며 홈에서 주도권을 잡을 재료를 갖췄다.\", \"var_ids\": [\"IR12-home\"]}, {\"text\": \"Canada는 주포 Cyle Larin이 허리 부상으로 명단에서 빠져 최전방 마무리 루트가 줄어든 상태다.\", \"var_ids\": [\"R1\"]}, {\"text\": \"Canada의 최근 5경기 성적은 L W L W W에 득점 평균 1.0으로, 득점 생산이 꾸준하지 못해 한 골 안에서 눌릴 여지가 크다.\", \"var_ids\": [\"S01-away\"]}, {\"text\": \"다만 USA는 8일 안에 이번이 세 번째 경기라 후반 체력 부담이 격차를 좁히는 변수로 남는다.\", \"var_ids\": [\"IR11-home\"]}], \"flow\": \"전반은 USA가 무패 흐름을 앞세워 주도하고, 후반에는 USA의 일정 과부하로 리듬이 잠시 끊기며 Canada가 만회를 시도하지만 USA 우위로 끝난다.\", \"score_range\": [\"3-1\", \"2-0\", \"3-0\"], \"lean\": \"win home\"}",
+    "reasoning_content": "Let me write the commentary.\n\nShape: 한쪽 우세 (one-sided). Title must contain 양상 글자 그대로 — \"한쪽 우세\".\n\nreasons: 3-4 sentences, each with var_ids from the allowed list: IR11-home, IR12-home, R1, S01-away.\n\nflow: one line about match flow.\n\nscore_range: from scenarios' scores: 3-0, 2-0, 3-1, 4-2, 0-1, 1-2. Pick 1-3.\n\nlean: board lines: \"win home\", \"draw\", \"win away\", \"total over 3.5\", \"total under 3.5\", \"handicap home -0.5\", \"handicap away 0.5\". Direction: USA. No grades, so lean just the line — e.g., \"win home\". Should be same direction as commentary. USA leaning → \"win home\" (or handicap home -0.5). Pick one: \"win home\".\n\nWrite reasons:\n\n1. USA 무패 3경기 흐름 (IR12-home) — 홈에서 주도권.\n2. Canada 주포 Larin 결장 (R1) — 최전방 마무리 루트 감소.\n3. Canada 최근 5경기 L W L W W, 득점 평균 1.0 → 득점 생산 제한 (S01-away).\n4. USA 8일 안에 3번째 경기 과부하 (IR11-home) — 후반 리듬 변수, 격차 축소 가능성.\n\nThat's 4. Good.\n\nScore range: 3-1, 2-0, 3-0. Maybe include 3-1, 2-0, 3-0.\n\nFlow: 전반 USA 주도 → 후반 체력 부담 속 Canada 만회골 시도, USA 우위 마무리.\n\nAvoid market probabilities/expectation. Fine.\n\nlean: \"win home\"."
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1698,
+  "completion_tokens": 777,
+  "total_tokens": 2475,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 439
+  },
+  "prompt_cache_hit_tokens": 0,
+  "prompt_cache_miss_tokens": 1698
+ },
+ "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669"
+}

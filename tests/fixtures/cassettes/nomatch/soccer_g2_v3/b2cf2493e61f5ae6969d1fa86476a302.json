@@ -1,0 +1,36 @@
+{
+ "kind": "llm",
+ "url": "https://api.deepseek.com/chat/completions",
+ "query": "{\"max_tokens\": 6000, \"messages\": [{\"content\": \"너는 축구 분석 카드의 **종합 논평**을 쓴다. 한국어로 쓴다.\\n🔴 **숫자를 바꾸지 않는다** — 아래 수는 이미 센 것이고, 너는 그것을 **사람 말로** 설명한다.\\n🔴 `title` 한 줄은 **양상을 말한다** — 주어진 양상 글자를 그대로 넣어라.\\n🔴 `reasons` 는 3~4문장이고 **문장마다 근거 변수 번호**(`var_ids`)를 든다. 아래 목록에 **없는 번호는 쓰지 마라**.\\n🔴 `flow` 는 경기 흐름 한 줄이다 — 전반/후반 · 누가 주도 · 어떻게 끝나나.\\n🔴 `score_range` 는 **아래 시나리오 스코어 중에서** 1~3개를 고른다.\\n🔴 `lean` 은 **아래 보드 줄 중** 논평과 같은 방향 하나이고, 없으면 **빈 문자열**이다. ⚠️ 등급이 없으면 *추천*이라고 쓰지 마라(기울기만).\\n🔴 **금지**: 기대값·손익분기·켈리·금액·시장 확률(배당)을 근거로 쓰는 문장.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"경기: Honduras(홈) vs Jamaica(원정) · CONCACAF Nations League A Grp. 2\\n양상 판정: **접전** — 문턱을 넘은 양상이 없다(저득점 46%<55% · 난타전 29%<40% · 한쪽 우세 27%<45%)\\n비중: 2골 이하 46% · 4골 이상 29% · 2골 차 이상 27% · 한 골 안 73%\\n가장 무거운 스코어: 2-1(1.25) · 2-0(1.25) · 1-2(1.05)\\n\\n근거 변수(이 번호만 쓸 수 있다):\\n- `IR02-away`(def_absence · 무게 0.7 · soft) Jamaica 직전 선발 Joel Latibeaudiere, Bailey Cadamarteri 가 오늘 명단에 없다(결장)\\n- `IR02-home`(def_absence · 무게 0.7 · soft) Honduras 직전 선발 Alenis Vargas 가 오늘 명단에 없다(결장)\\n- `IR11-away`(fatigue · 무게 0.7 · soft) Jamaica 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [3, 7]일 전)\\n- `IR11-home`(fatigue · 무게 0.7 · soft) Honduras 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [3, 7]일 전)\\n\\n무게 상위 시나리오:\\n- `D` 무게 2.5 · 스코어 2-1 · 2-0 — Honduras는 최근 득점 평균 1.2(보정 0.667)로 실제 생산에 비해 마무리가 눌려 있었고, 홈 경기에서 그 억눌린 마무리가 평소 수준으로 되돌아온다. Jamaica는 수비진 결장과 일정 과부하가 겹쳐 원정에서 실점을 안고 간다.\\n- `B` 무게 2.1 · 스코어 1-2 · 1-3 — Honduras는 전방 자원 결손과 일정 과부하로 수비 전환 속도가 떨어지고, Jamaica는 승패가 교차하는 최근 흐름에서 한 골 이상을 꾸준히 만들어내 앞서 나간다. 다만 Honduras 홈 관중 앞에서 한 골은 따라붙어 실점을 동반한 점수 차가 된다.\\n- `A` 무게 1.4 · 스코어 2-2 · 3-2 — 양 팀 모두 8일 안에 세 번째 경기라 중반 이후 압박 강도와 수비 라인 간격이 함께 벌어지고, 최근 득점 흐름이 살아 있는 양쪽이 서로의 느슨해진 간격을 반복해서 파고들어 골이 여러 개 나온다.\\n\\n보드 줄과 등급(): win home 생존 0.449 등급 보류 · draw  생존 0.236 등급 보류 · win away 생존 0.315 등급 보류 · unbeaten home 생존 0.685 등급 보류 · unbeaten away 생존 0.551 등급 보류 · handicap Honduras -0.5 생존 0.449 등급 보류 · handicap Jamaica 0.5 생존 0.551 등급 보류 · handicap Honduras -1.5 생존 0.152 등급 보류\\n방향 판정: 방향: **Honduras** (세 열 중 2열이 0.15 이상 앞세운다) — 기준 홈 44%/원정 22% · 우리 홈 45%/원정 23%\\n\", \"role\": \"user\"}, {\"content\": \"🔴 아래 JSON 스키마를 **정확히** 지켜 답한다(다른 칸을 더하지 않는다):\\n{\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴🔴 **종합 논평**(사용자 지시 2026-10-07 ③) — DeepSeek 1회 · 구조화 출력.\\\\n\\\\n🔴 코드가 검사하는 것(어긋나면 그 칸을 버리고 **1회 재요청**, 또 어긋나면 템플릿):\\\\n  · `title` 의 양상 = `Card.shape` 의 양상 — **논평이 숫자와 반대로 말하면 안 된다**\\\\n  · `score_range` 의 스코어가 **무게 상위 시나리오 스코어 안**에 있다\\\\n  · `reasons` 의 `var_ids` 가 **근거 가능 변수**만\\\\n  · `lean` 은 **보드에 실제로 있는 줄**만 · 등급과 다른 말 금지\\\\n  · 기대값·금액·켈리·**시장 확률을 근거로 쓰는 문장 금지**\\\\n⚠️ `lean` 이 비면 *\\\\\\\"기울기 없음\\\\\\\"* 이다 — 빈 값을 **추천으로 읽지 않는다**.\\\", \\\"properties\\\": {\\\"title\\\": {\\\"title\\\": \\\"Title\\\", \\\"type\\\": \\\"string\\\"}, \\\"reasons\\\": {\\\"items\\\": {\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴 논평 한 문장 — **근거 변수 번호를 함께** 든다(지시 ③).\\\", \\\"properties\\\": {\\\"text\\\": {\\\"title\\\": \\\"Text\\\", \\\"type\\\": \\\"string\\\"}, \\\"var_ids\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Var Ids\\\", \\\"type\\\": \\\"array\\\"}}, \\\"required\\\": [\\\"text\\\", \\\"var_ids\\\"], \\\"title\\\": \\\"CommentLine\\\", \\\"type\\\": \\\"object\\\"}, \\\"title\\\": \\\"Reasons\\\", \\\"type\\\": \\\"array\\\"}, \\\"flow\\\": {\\\"title\\\": \\\"Flow\\\", \\\"type\\\": \\\"string\\\"}, \\\"score_range\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Score Range\\\", \\\"type\\\": \\\"array\\\"}, \\\"lean\\\": {\\\"title\\\": \\\"Lean\\\", \\\"type\\\": \\\"string\\\"}}, \\\"required\\\": [\\\"title\\\", \\\"reasons\\\", \\\"flow\\\", \\\"score_range\\\", \\\"lean\\\"], \\\"title\\\": \\\"Commentary\\\", \\\"type\\\": \\\"object\\\"}\", \"role\": \"user\"}], \"model\": \"deepseek-flash\", \"response_format\": {\"type\": \"json_object\"}}",
+ "recorded_at": "2026-10-07T01:19:39.646859+00:00",
+ "id": "c386d6b6-2e40-4209-8cd7-0bddaa950b11",
+ "object": "chat.completion",
+ "created": 1791335973,
+ "model": "deepseek-flash",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"title\":\"접전 — 어느 쪽도 문턱을 넘지 못한, 한 골 안에서 갈리는 승부\",\"reasons\":[{\"text\":\"양 팀 모두 8일 안에 이번이 세 번째 경기라 체력 부담이 같은 조건으로 걸려 있고, 그만큼 전반보다 후반에 압박 강도와 수비 라인 간격이 함께 벌어질 가능성이 크다.\",\"var_ids\":[\"IR11-home\",\"IR11-away\"]},{\"text\":\"Honduras는 직전 선발 Alenis Vargas가 명단에서 빠져 전방 자원이 얇아졌고, Jamaica는 Joel Latibeaudiere와 Bailey Cadamarteri가 동시에 결장해 원정에서 수비진 정리가 흔들릴 수 있다.\",\"var_ids\":[\"IR02-home\",\"IR02-away\"]},{\"text\":\"그래서 총합 2골 이하가 46%, 한 골 안에서 끝나는 비중이 73%로 저득점 쪽에 무게가 실리면서도, 가장 무거운 스코어가 2-1·2-0·1-2로 홈 쪽 한 골 우세에 몰려 있다.\",\"var_ids\":[\"IR02-home\",\"IR02-away\"]},{\"text\":\"결국 양 팀의 결손과 과부하가 서로 상쇄되어 한쪽이 크게 앞서기보다, 홈에서 마무리가 평소 수준으로 돌아오는 Honduras가 한 골 차로 앞서고 Jamaica가 따라붙는 접전으로 좁혀진다.\",\"var_ids\":[\"IR11-home\",\"IR02-away\"]}],\"flow\":\"전반은 양 팀이 서로 간격을 지키며 탐색하고, 후반 들어 8일 3경기 체력 부담이 드러나면서 Honduras가 홈에서 주도권을 쥐지만 한 골 안의 접전으로 끝난다.\",\"score_range\":[\"2-1\",\"2-0\",\"1-2\"],\"lean\":\"unbeaten home 생존\"}",
+    "reasoning_content": "Let me write the commentary in Korean.\n\nShape: 접전 (close match). Title must say the 양상 = 접전.\n\nReasons 3-4 sentences each with var_ids from the allowed list: IR02-away, IR02-home, IR11-away, IR11-home.\n\nScore range from the top scenarios: D (2-1, 2-0), B (1-2, 1-3), A (2-2, 3-2).\n\nLean: board lines all 등급 보류. Direction 판정: Honduras. Lean should be a board line matching commentary direction — but 등급이 없으면 \"추천\"이라 쓰지 말고 기울기만. So lean could be \"win home 생존\" or \"unbeaten home 생존\". Commentary direction: Honduras 근소 우세 but 접전. Hmm, must be one line from the board, same direction as commentary, without grading. I'll pick \"unbeaten home 생존\". Actually the direction is Honduras; \"handicap Honduras -0.5 생존\" also 0.449. Let's use \"unbeaten home 생존\" since 접전 양상이니 무패 쪽이 안전. Hmm, but the board line must be \"실제로 있는 줄\" — those exist as strings. I'll write \"unbeaten home 생존\".\n\nActually scores lean 2-1, 2-0 → Honduras win. \"win home 생존\" might be more aligned. But 접전 판정이고 문턱을 넘은 양상이 없다 → 무패 쪽. I'll go with \"unbeaten home 생존\".\n\nFlow: 전반/후반 · 누가 주도 · 어떻게 끝나나.\n\nLet me write.\n\nTitle: \"접전 — 어느 쪽도 문턱을 넘지 못한 저득점·한 골 안 승부\" — must contain 양상 그대로 \"접전\". Fine.\n\nReasons:\n1. 양 팀 모두 8일 안에 세 번째 경기 — IR11-home, IR11-away — 후반 압박 강도 저하, 간격 벌어짐.\n2. 결장: IR02-home (Alenis Vargas), IR02-away (Latibeaudiere, Cadamarteri) — Jamaica 수비진 결손이 원정 실점 부담.\n3. 비중: 2골 이하 46%, 한 골 안 73% — 가장 무거운 스코어 2-1/2-0/1-2 → Honduras 홈에서 근소 우세.\n\nKeep 3-4 sentences with var_ids.\n\nLet me write text carefully, no market odds, no EV.\n\nScore range: [\"2-1\", \"2-0\", \"1-2\"].\n\nWait — score_range must be among the top scenario scores: 2-1, 2-0, 1-2, 1-3, 2-2, 3-2. Good.\n\nLean: \"unbeaten home 생존\"."
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1785,
+  "completion_tokens": 1125,
+  "total_tokens": 2910,
+  "prompt_tokens_details": {
+   "cached_tokens": 128
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 652
+  },
+  "prompt_cache_hit_tokens": 128,
+  "prompt_cache_miss_tokens": 1657
+ },
+ "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669"
+}

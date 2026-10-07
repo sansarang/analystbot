@@ -1,0 +1,36 @@
+{
+ "kind": "llm",
+ "url": "https://api.deepseek.com/chat/completions",
+ "query": "{\"max_tokens\": 6000, \"messages\": [{\"content\": \"너는 축구 분석 카드의 **종합 논평**을 쓴다. 한국어로 쓴다.\\n🔴 **숫자를 바꾸지 않는다** — 아래 수는 이미 센 것이고, 너는 그것을 **사람 말로** 설명한다.\\n🔴 `title` 한 줄은 **양상을 말한다** — 주어진 양상 글자를 그대로 넣어라.\\n🔴 `reasons` 는 3~4문장이고 **문장마다 근거 변수 번호**(`var_ids`)를 든다. 아래 목록에 **없는 번호는 쓰지 마라**.\\n🔴 `flow` 는 경기 흐름 한 줄이다 — 전반/후반 · 누가 주도 · 어떻게 끝나나.\\n🔴 `score_range` 는 **아래 시나리오 스코어 중에서** 1~3개를 고른다.\\n🔴 `lean` 은 **아래 보드 줄 중** 논평과 같은 방향 하나이고, 없으면 **빈 문자열**이다. ⚠️ 등급이 없으면 *추천*이라고 쓰지 마라(기울기만).\\n🔴 **금지**: 기대값·손익분기·켈리·금액·시장 확률(배당)을 근거로 쓰는 문장.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"경기: Kazakhstan(홈) vs Faroe Islands(원정) · UEFA Nations League C Grp. 3\\n양상 판정: **저득점** — 저득점 비중 56% ≥ 문턱 55%\\n비중: 2골 이하 56% · 4골 이상 26% · 2골 차 이상 21% · 한 골 안 79%\\n가장 무거운 스코어: 1-0(1.95) · 2-2(1.4) · 3-1(1.05)\\n\\n근거 변수(이 번호만 쓸 수 있다):\\n- `IR01-away`(lineup_intent · 무게 0.7 · soft) Faroe Islands 5-4-1 — 5백으로 내려앉는 운영\\n- `IR11-away`(fatigue · 무게 0.7 · soft) Faroe Islands 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [4, 7]일 전)\\n- `IR11-home`(fatigue · 무게 0.7 · soft) Kazakhstan 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [4, 7]일 전)\\n- `IR12-away`(team_stats · 무게 0.7 · soft) Faroe Islands 무패 4경기\\n\\n무게 상위 시나리오:\\n- `A` 무게 2.1 · 스코어 3-1 · 2-1 — Faroe Islands가 5-4-1로 내려앉지만 8일 3경기 일정 과부하로 후반에 블록 간격이 벌어지고, Kazakhstan이 홈에서 반복 공격으로 그 틈을 연달아 파고든다. 양 팀 모두 실점이 나오는 열린 후반이 된다.\\n- `C` 무게 2.1 · 스코어 1-0 · 0-1 — Faroe Islands의 5-4-1과 최근 0.8득점 흐름, Kazakhstan의 8일 3경기 체력 부담이 겹쳐 경기가 좁고 느리게 흐른다. 한 골 차이로만 갈린다.\\n- `D` 무게 1.8 · 스코어 2-0 · 1-0 — 홈에서 무승 5경기를 끊어야 하는 Kazakhstan이 초반부터 강하게 밀어붙이고, 원정팀의 일정 과부하로 후반 수비 집중력이 떨어지면서 실점 없이 경기를 닫는다.\\n\\n보드 줄과 등급(feed): win away 생존 0.184 등급 없음 · win home 생존 0.521 등급 없음 · win draw 생존 0.295 등급 없음 · handicap away 0 생존 0.184 등급 없음 · handicap home 0 생존 0.521 등급 없음 · total over 2.5 생존 0.442 등급 없음 · total under 2.5 생존 0.558 등급 없음\\n방향 판정: 방향: **Kazakhstan** (세 열 중 2열이 0.15 이상 앞세운다) — 기준 홈 46%/원정 20% · 우리 홈 46%/원정 21% · 시장 홈 37%/원정 32%\\n\", \"role\": \"user\"}, {\"content\": \"🔴 아래 JSON 스키마를 **정확히** 지켜 답한다(다른 칸을 더하지 않는다):\\n{\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴🔴 **종합 논평**(사용자 지시 2026-10-07 ③) — DeepSeek 1회 · 구조화 출력.\\\\n\\\\n🔴 코드가 검사하는 것(어긋나면 그 칸을 버리고 **1회 재요청**, 또 어긋나면 템플릿):\\\\n  · `title` 의 양상 = `Card.shape` 의 양상 — **논평이 숫자와 반대로 말하면 안 된다**\\\\n  · `score_range` 의 스코어가 **무게 상위 시나리오 스코어 안**에 있다\\\\n  · `reasons` 의 `var_ids` 가 **근거 가능 변수**만\\\\n  · `lean` 은 **보드에 실제로 있는 줄**만 · 등급과 다른 말 금지\\\\n  · 기대값·금액·켈리·**시장 확률을 근거로 쓰는 문장 금지**\\\\n⚠️ `lean` 이 비면 *\\\\\\\"기울기 없음\\\\\\\"* 이다 — 빈 값을 **추천으로 읽지 않는다**.\\\", \\\"properties\\\": {\\\"title\\\": {\\\"title\\\": \\\"Title\\\", \\\"type\\\": \\\"string\\\"}, \\\"reasons\\\": {\\\"items\\\": {\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴 논평 한 문장 — **근거 변수 번호를 함께** 든다(지시 ③).\\\", \\\"properties\\\": {\\\"text\\\": {\\\"title\\\": \\\"Text\\\", \\\"type\\\": \\\"string\\\"}, \\\"var_ids\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Var Ids\\\", \\\"type\\\": \\\"array\\\"}}, \\\"required\\\": [\\\"text\\\", \\\"var_ids\\\"], \\\"title\\\": \\\"CommentLine\\\", \\\"type\\\": \\\"object\\\"}, \\\"title\\\": \\\"Reasons\\\", \\\"type\\\": \\\"array\\\"}, \\\"flow\\\": {\\\"title\\\": \\\"Flow\\\", \\\"type\\\": \\\"string\\\"}, \\\"score_range\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Score Range\\\", \\\"type\\\": \\\"array\\\"}, \\\"lean\\\": {\\\"title\\\": \\\"Lean\\\", \\\"type\\\": \\\"string\\\"}}, \\\"required\\\": [\\\"title\\\", \\\"reasons\\\", \\\"flow\\\", \\\"score_range\\\", \\\"lean\\\"], \\\"title\\\": \\\"Commentary\\\", \\\"type\\\": \\\"object\\\"}\", \"role\": \"user\"}], \"model\": \"deepseek-flash\", \"response_format\": {\"type\": \"json_object\"}}",
+ "recorded_at": "2026-10-07T01:18:55.953554+00:00",
+ "id": "b9cbe528-b516-4b87-b71f-27d703d3ad53",
+ "object": "chat.completion",
+ "created": 1791335930,
+ "model": "deepseek-flash",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"title\": \"저득점 — 2골 이하 56% 우위 양상\", \"reasons\": [{\"text\": \"Faroe Islands가 5-4-1로 내려앉는 운영(var_ids: IR01-away)이라 Kazakhstan이 홈에서 주도하더라도 페널티 박스 안쪽 공간을 좀처럼 열지 못한다.\", \"var_ids\": [\"IR01-away\"]}, {\"text\": \"양 팀 모두 8일 안에 3번째 경기를 치르는 일정 과부하(var_ids: IR11-home, IR11-away)라 전반보다 후반에 템포와 압박 강도가 떨어지며 골이 얇아진다.\", \"var_ids\": [\"IR11-home\", \"IR11-away\"]}, {\"text\": \"Faroe Islands의 무패 4경기(var_ids: IR12-away)가 보여주듯 원정팀은 낮게 서서 버티는 데 익숙하고, 이는 한 골 안에서 갈리는 좁은 경기로 이어진다.\", \"var_ids\": [\"IR12-away\"]}, {\"text\": \"그래서 4골 이상은 26%에 그치고 2골 이하가 56%, 한 골 안이 79%로 무게가 실리며 Kazakhstan 쪽으로만 살짝 기운다.\", \"var_ids\": [\"IR01-away\", \"IR11-home\"]}], \"flow\": \"전반은 Kazakhstan이 점유와 반복 공격으로 주도하지만 5백 블록 앞에서 마무리가 막히고, 후반 체력이 떨어진 원정팀을 상대로 한 골을 만들어 그 한 골로 끝나는 느린 흐름이다.\", \"score_range\": [\"1-0\", \"2-0\"], \"lean\": \"win home\"}",
+    "reasoning_content": "Let me write the commentary.\n\nShape: 저득점 (low scoring). title must state 저득점.\n\nreasons: 3-4 sentences each with var_ids from the allowed list: IR01-away, IR11-away, IR11-home, IR12-away.\n\nscore_range: from top scenarios: A(3-1, 2-1), C(1-0, 0-1), D(2-0, 1-0). Pick 1-3.\n\nlean: board lines — direction Kazakhstan. \"win home\" or \"handicap home 0\" — but no grade, so just 기울기. Use \"win home\" — that's the board line. Actually lean must be one of board lines exactly. \"win home\" 생존 0.521. That's Kazakhstan direction.\n\nflow: 한 줄.\n\nLet me write.\n\ntitle: \"저득점 — 2골 이하 56%\"\n\nreasons:\n1. Faroe Islands 5-4-1로 내려앉는 운영(IR01-away)이라 Kazakhstan이 홈에서도 쉽게 공간을 못 만든다.\n2. 양 팀 모두 8일 3경기(IR11-home, IR11-away) 일정 과부하로 후반 템포가 떨어지며 골 수가 억제된다.\n3. Faroe Islands 무패 4경기(IR12-away)로 수비 조직이 버티는 흐름.\n4. 그럼에도 한 골 안 79%로 좁게 갈린다 — Kazakhstan 홈 기울기.\n\nflow: 전반은 Kazakhstan이 주도하지만 5백 블록 앞에서 답답하고, 후반 체력 저하 속 한 골로 갈린다.\n\nscore_range: [\"1-0\",\"2-0\",\"2-1\"]? Weights: A 3-1, 2-1; C 1-0, 0-1; D 2-0, 1-0. 저득점 강조 → 1-0, 2-0 (and maybe 2-1). But 2-1 is 3골 — shape 저득점 says 2골 이하 56%. Safer: 1-0, 2-0. Those are in scenarios. Add 1-0 from both C and D.\n\nscore_range: [\"1-0\",\"2-0\"]\n\nlean: \"win home\""
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1698,
+  "completion_tokens": 964,
+  "total_tokens": 2662,
+  "prompt_tokens_details": {
+   "cached_tokens": 128
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 536
+  },
+  "prompt_cache_hit_tokens": 128,
+  "prompt_cache_miss_tokens": 1570
+ },
+ "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669"
+}
