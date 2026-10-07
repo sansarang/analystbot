@@ -39,48 +39,44 @@ TOP_SCEN = 3
 
 def run(ref: MatchRef, facts: Facts, variables: list[Variable],
         hypo: HypoSet | None, said: Judgement, shape: dict, *,
-        state: RunState, board_source: str = "none") -> CommentOut:
-    """🔴 논평과 **버린 칸 사유들**(`CommentOut`). ⚠️ 못 만들면 `said=None` — 카드는 나온다.
+        state: RunState, board_source: str = "none",
+        bad: list[str] | None = None) -> Commentary | None:
+    """🔴🔴 **작성자(DeepSeek) 1회** — 논평 하나(못 받으면 `None`).
 
-    🔴 **느슨한 꼴을 안 돌려준다**(§7 정적 검사) — 단계 사이는 타입 하나다.
+    🔴 **검사하지 않는다** — 검열은 `s9_audit` 이 한다(사용자 지시 2026-10-07 §4).
+       ⚠️ 작성자와 검열자를 한 함수에 두면 *"자기 글을 자기가 통과시키는"* 자리가
+          생긴다. 🔴 그래서 이 함수는 **쓰기만** 한다.
+    🔴 `bad` 가 있으면 **재작성**이다(§4-3) — 위반 목록을 붙여 다시 묻는다.
     """
-    notes: list[str] = []
     if not shape or not hypo or not hypo.scenarios:
-        notes.append("논평 없음 — 양상이나 시나리오가 없다")
         state.note("s8 논평 — 양상·시나리오가 없다(안 부른다)")
-        return CommentOut(said=None, notes=notes)
+        return None
     basis = _basis(variables)
-    scen = sorted(hypo.scenarios, key=lambda s: -float(s.strength or 0.0))[:TOP_SCEN]
+    scen = top_scen(hypo)
     prompt = _prompt(ref, shape, basis, scen, said, board_source)
+    if bad:
+        from app.core import llm as _llm
+        prompt = prompt + [_llm.Message(
+            role="user",
+            content=("🔴 아래가 **검열에서 어긋났다** — 그 칸만 고쳐 다시 내라:\n"
+                     + "\n".join(f"- {x}" for x in bad[:10])))]
+        state.note(f"s8 논평 **재작성** — 위반 {len(bad)}건을 붙여 다시 묻는다")
     got = _ask(prompt, state=state)
-    if got is None:
-        notes.append("논평 없음 — LLM 이 답을 못 줬다")
-        return CommentOut(said=_template(ref, shape, basis, scen, said),
-                          notes=notes)
-    ok, bad = check(got, shape=shape, basis=basis, scen=scen, said=said,
-                    ref=ref)
-    if ok:
-        state.note(f"s8 논평 ✅ `{got.title[:40]}` · 근거 {len(got.reasons)}줄")
-        return CommentOut(said=got, notes=notes)
-    # 🔴 **1회 재요청** — 어긋난 칸을 말해 주고 다시 받는다
-    notes += [f"1차 어긋남: {x}" for x in bad]
-    state.note(f"s8 논평 1차 어긋남 {bad} → **한 번만** 다시 묻는다")
-    from app.core import llm as _llm
-    again = _ask(prompt + [_llm.Message(
-        role="user",
-        content=("🔴 아래가 어긋났다 — 그 칸만 고쳐 **다시** 내라:\n"
-                 + "\n".join(f"- {x}" for x in bad)))], state=state)
-    if again is not None:
-        ok2, bad2 = check(again, shape=shape, basis=basis, scen=scen,
-                          said=said, ref=ref)
-        if ok2:
-            state.note("s8 논평 ✅ 2차에서 맞았다")
-            return CommentOut(said=again, notes=notes)
-        notes += [f"2차 어긋남: {x}" for x in bad2]
-    state.note("s8 논평 — 두 번 어긋났다 → **코드 템플릿**으로 쓴다")
-    notes.append("코드 템플릿으로 썼다(LLM 두 번 어긋남)")
-    return CommentOut(said=_template(ref, shape, basis, scen, said),
-                      notes=notes)
+    if got is not None:
+        state.note(f"s8 논평 받았다 — `{got.title[:40]}` · 근거 {len(got.reasons)}줄")
+    return got
+
+
+def top_scen(hypo: HypoSet | None) -> list:
+    """🔴 무게 상위 시나리오 — 작성자와 검열자가 **같은 목록**을 본다."""
+    rows = list(getattr(hypo, "scenarios", None) or [])
+    return sorted(rows, key=lambda s: -float(s.strength or 0.0))[:TOP_SCEN]
+
+
+def template(ref: MatchRef, shape: dict, variables: list[Variable],
+             hypo: HypoSet | None, said: Judgement) -> Commentary:
+    """🔴 **코드 템플릿** — 검열이 두 번 어긋났을 때 쓰는 논평(§4-3)."""
+    return _template(ref, shape, _basis(variables), top_scen(hypo), said)
 
 
 def _basis(variables: list[Variable]) -> list[Variable]:

@@ -123,16 +123,15 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     # 🔴🔴 **먼저 숫자를 고치고, 그 숫자에서 논평을 만든다**(2026-10-07 ②③)
     # ══════════════════════════════════════════════════════════════════
     from app.core import shape as _shape
-    from app.core.stages import s8_comment
+    from app.core.stages import s9_audit
     got_shape = _shape.of(hypo)
     if got_shape:
         st.note(f"s8 양상 — **{got_shape['shape']}** · {got_shape['why']}")
-    got_note = s8_comment.run(ref, facts, variables, hypo, said, got_shape,
-                              state=st, board_source=board_src)
-    note, comment_notes = got_note.said, list(got_note.notes)
-    layers["shape"] = got_shape
-    layers["commentary"] = note
-    layers["comment_notes"] = comment_notes
+    # 🔴🔴 **검열까지 끝낸 논평**(2026-10-07 §4) — 작성자 DeepSeek · 검열자 Solar
+    got_note = s9_audit.run(ref, facts, variables, hypo, said, got_shape,
+                            state=st, board_source=board_src,
+                            ours=layers.get("ours"))
+    layers.update(_comment_layers(got_note, got_shape))
     card = card_of(ref, facts, variables, hypo, said, state=st,
                    board_extra=extra, board_bad=bad, layers=layers)
     # 🔴 **마지막 실행을 기억한다** — 재분석이 s3·s4 를 다시 돌지 않게(§4-1)
@@ -233,19 +232,22 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
     said = _direction(_lower(said, layers, state=st), layers, ref)
     # 🔴🔴 논평 — **양상·근거 변수가 바뀐 경우에만** 다시 부른다(비용 · 지시 ③)
     from app.core import shape as _shape
-    from app.core.stages import s8_comment
+    from app.core.stages import s8_comment, s9_audit
     got_shape = _shape.of(hypo)
     if s8_comment.same_input(before.shape, got_shape, before.variables,
                              variables) and before.commentary is not None:
-        st.note("s8 논평 — 양상·근거 변수가 **그대로다** → 다시 부르지 않는다")
-        note, comment_notes = before.commentary, list(before.comment_notes)
+        st.note("s8 논평 — 양상·근거 변수가 **그대로다** → 다시 부르지 않는다"
+                "(검열도 다시 돌지 않는다 — 같은 글이다)")
+        layers["shape"] = got_shape
+        layers["commentary"] = before.commentary
+        layers["comment_notes"] = list(before.comment_notes)
+        layers["comment_audit"] = before.comment_audit
+        layers["comment_violations"] = list(before.comment_violations)
     else:
-        got_note = s8_comment.run(ref, facts, variables, hypo, said, got_shape,
-                                  state=st, board_source=board_src)
-        note, comment_notes = got_note.said, list(got_note.notes)
-    layers["shape"] = got_shape
-    layers["commentary"] = note
-    layers["comment_notes"] = comment_notes
+        got_note = s9_audit.run(ref, facts, variables, hypo, said, got_shape,
+                                state=st, board_source=board_src,
+                                ours=layers.get("ours"))
+        layers.update(_comment_layers(got_note, got_shape))
     changed = _diff(before, facts, variables, said)
     changed += _market_moved(before, layers, state=st)
     card = card_of(ref, facts, variables, hypo, said, state=st,
@@ -325,6 +327,10 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         shape=dict(box.get("shape") or {}),
         commentary=box.get("commentary"),
         comment_notes=[str(x) for x in (box.get("comment_notes") or [])],
+        # 🔴🔴 **검열 결과**(2026-10-07 §4-3) — 1겹 카드에는 안 나간다(`/디버그` 만)
+        comment_audit=str(box.get("comment_audit") or "안 돌았다"),
+        comment_violations=[str(x) for x in
+                            (box.get("comment_violations") or [])],
         outlook=dict(box.get("outlook") or {}),
         match=ref, facts=facts, variables=variables,
         drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,
@@ -371,6 +377,17 @@ def _same_vars(before: list[Variable], now: list[Variable]) -> bool:
 # ══════════════════════════════════════════════════════════════════
 # 🔴🔴 **네 층 비교와 등급 내림**(네 층 지시서 §5·§6·§7)
 # ══════════════════════════════════════════════════════════════════
+
+
+def _comment_layers(got, shape: dict) -> dict:
+    """🔴 논평·검열 결과를 카드 칸으로. ⚠️ **한 곳**이다(두 입구가 같은 것을 쓴다).
+
+    🔴 `shape_used` 가 있으면 **그것이 카드의 양상**이다(§4-1 (d) 가 낮춘 값) —
+       논평과 카드가 서로 다른 양상을 말하면 그 자체가 모순이다.
+    """
+    return {"shape": (got.shape_used or shape), "commentary": got.said,
+            "comment_notes": list(got.notes), "comment_audit": got.audit,
+            "comment_violations": list(got.violations)}
 
 
 def _layers(ref: MatchRef, facts: Facts, variables: list[Variable],

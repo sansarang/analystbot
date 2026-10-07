@@ -1,0 +1,85 @@
+# 🔴🔴 **대회 유형별 경기당 평균 득점** — 실측(사용자 지시 2026-10-07 §3)
+#
+# ⚠️ **손으로 고치지 않는다** — `tools/measure_goal_baselines.py` 가 쓴다.
+# 🔴 쓰는 곳: `s5_verify` 가 폼 변수(`recent_pattern`)의 **득점 방향**을 이
+#    기준의 **팀당 몫**(경기당 평균 ÷ 2)과 견줘 정한다(±0.2).
+# 측정일: 2026-10-07
+#
+# | 칸 | 뜻 |
+# |---|---|
+# | `goals_per_match` | 두 팀 득점 **합**의 평균 |
+# | `home_share` | 홈 개최 경기의 **홈 팀** 평균 득점(중립 줄은 뺐다) |
+# | `n` | 표본 경기 수 |
+
+measured_at: 2026-10-07
+kinds:
+  league:
+    goals_per_match: 2.7458
+    n: 7348
+    source: "football-data ['PL', 'PD', 'SA', 'BL1', 'FL1', 'DED', 'PPL', 'ELC', 'BSA'] ['2024', '2025', '2026'] 합계"
+  league:BL1:
+    goals_per_match: 3.221
+    home_share: 1.745
+    n: 647
+    n_home: 647
+    source: "football-data BL1 ['2024', '2025', '2026']"
+  league:BSA:
+    goals_per_match: 2.5322
+    home_share: 1.4812
+    n: 1039
+    n_home: 1039
+    source: "football-data BSA ['2024', '2025', '2026']"
+  league:DED:
+    goals_per_match: 3.1496
+    home_share: 1.7452
+    n: 675
+    n_home: 675
+    source: "football-data DED ['2024', '2025', '2026']"
+  league:ELC:
+    goals_per_match: 2.5542
+    home_share: 1.4309
+    n: 1209
+    n_home: 1209
+    source: "football-data ELC ['2024', '2025', '2026']"
+  league:FL1:
+    goals_per_match: 2.9008
+    home_share: 1.5969
+    n: 655
+    n_home: 655
+    source: "football-data FL1 ['2024', '2025', '2026']"
+  league:PD:
+    goals_per_match: 2.6888
+    home_share: 1.5296
+    n: 829
+    n_home: 829
+    source: "football-data PD ['2024', '2025', '2026']"
+  league:PL:
+    goals_per_match: 2.8407
+    home_share: 1.5198
+    n: 810
+    n_home: 810
+    source: "football-data PL ['2024', '2025', '2026']"
+  league:PPL:
+    goals_per_match: 2.6365
+    home_share: 1.4377
+    n: 674
+    n_home: 674
+    source: "football-data PPL ['2024', '2025', '2026']"
+  league:SA:
+    goals_per_match: 2.5185
+    home_share: 1.3185
+    n: 810
+    n_home: 810
+    source: "football-data SA ['2024', '2025', '2026']"
+  national_friendly:
+    goals_per_match: 2.5324
+    home_share: 1.6177
+    n: 5274
+    n_home: 3848
+    source: "eloratings.net {연}_results.tsv 2010-2026"
+  national_official:
+    goals_per_match: 2.7449
+    home_share: 1.6747
+    n: 11147
+    n_home: 7623
+    source: "eloratings.net {연}_results.tsv 2010-2026"

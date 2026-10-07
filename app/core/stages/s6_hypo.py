@@ -67,6 +67,8 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable], *,
     scen = _required(ref, facts, scen, variables, state=state)
     # 🔴 **없는 변수 인용을 떨군다**(불변식 5) — 변수 목록이 바뀐 뒤 남은 번호
     scen = _keep_drivers(scen, variables, state=state)
+    # 🔴🔴 **득점 방향이 반대인 driver 를 뺀다**(사용자 지시 2026-10-07 §3)
+    scen = _goal_fit(scen, variables, state=state)
     scen = [s.model_copy(update={"strength": _strength(s, variables)})
             for s in scen]
     red = _redteam(ref, scen, basis, state=state)
@@ -507,6 +509,47 @@ def _keep_drivers(scen: list[Scenario], variables: list[Variable], *,
         out.append(sc.model_copy(update={
             "driver_vars": [x for x in sc.driver_vars if x in ids]}))
     return out
+
+
+def _goal_fit(scen: list[Scenario], variables: list[Variable], *,
+              state: RunState) -> list[Scenario]:
+    """🔴🔴 **스코어와 득점 방향이 반대인 driver 를 뺀다**(사용자 지시 2026-10-07 §3).
+
+    > 총골 **3골 이상** 갈래에 `goals=down` 변수가 driver 면 그 driver 를 빼고,
+    > **2골 이하** 갈래에 `goals=up` 이면 뺀다. driver 가 다 빠지면 **바닥값**.
+
+    ⚠️ 실측 2026-10-07(멕시코–칠레): 두 팀 보정 득점이 0.667(`goals=down`)인데
+       `3-2`·`2-3` 갈래가 그 폼 변수를 근거로 들고 무게 상위에 섰다 — 그 갈래의
+       근거가 **반대 방향**이었다.
+    🔴 갈래를 **지우지 않는다** — 근거만 뺀다(그 모양이 아예 못 나온다는 말은 아니다).
+    """
+    by_id = {v.id: v for v in variables}
+    out: list[Scenario] = []
+    for sc in scen:
+        pairs = list(sc.outcomes or [])
+        if not pairs:
+            out.append(sc)
+            continue
+        tot = sum(h + a for h, a in pairs) / len(pairs)
+        want = "up" if tot >= 3 else "down" if tot <= 2 else ""
+        if not want:
+            out.append(sc)
+            continue
+        bad = [i for i in sc.driver_vars
+               if (v := by_id.get(i)) is not None
+               and {str(v.goals), str(v.goals_against)} & {_OTHER[want]}
+               and want not in {str(v.goals), str(v.goals_against)}]
+        if not bad:
+            out.append(sc)
+            continue
+        kept = [i for i in sc.driver_vars if i not in bad]
+        state.note(f"s6 `{sc.id}`(평균 총골 {tot:.1f}) — 득점 방향이 반대인 driver "
+                   f"{bad} 를 **뺐다**" + ("" if kept else " → 근거 0개(바닥값)"))
+        out.append(sc.model_copy(update={"driver_vars": kept}))
+    return out
+
+
+_OTHER = {"up": "down", "down": "up"}
 
 
 def _strength(s: Scenario, variables: list[Variable]) -> float:

@@ -465,11 +465,39 @@ class Commentary(Frozen):
     lean: str = ""
 
 
+#: 🔴 검열 판정 — 사용자 지시 2026-10-07 §4-2 의 네 값 그대로
+AuditVerdict = Literal["ok", "contradicts", "unsupported", "overclaim"]
+
+
+class AuditLine(Frozen):
+    """🔴 문장 하나에 대한 **검열자 판정**(Solar). ⚠️ 새 사실을 쓰지 않는다."""
+
+    #: 🔴 몇 번째 문장인가(0 부터)
+    index: int = 0
+    verdict: AuditVerdict = "ok"
+    #: 🔴 근거가 된 **사실 id**(없으면 빈 글자 — `null` 자리)
+    fact_ref: str = ""
+    #: ⚠️ 20자 이내(지시 §4-2) — 길면 코드가 자른다
+    note: str = ""
+
+
+class AuditOut(Frozen):
+    """🔴 구조화 출력 — 최상위 배열은 스키마가 못 받는다(§4)."""
+
+    lines: list[AuditLine] = Field(default_factory=list)
+
+
 class CommentOut(Frozen):
     """🔴 s8 산출 — 논평과 **버린 칸 사유**. ⚠️ 단계 사이는 **타입 하나**다(§7)."""
 
     said: Commentary | None = None
     notes: list[str] = Field(default_factory=list)
+    #: 🔴🔴 **검열 결과**(§4-3) — `통과`·`재작성 후 통과`·`템플릿`·`안 돌았다`
+    audit: str = "안 돌았다"
+    #: 🔴 검열이 **낮춘 양상**(§4-1 (d)) — 카드·논평이 같은 양상을 봐야 한다
+    shape_used: dict = Field(default_factory=dict)
+    #: 🔴 위반 종류들 — 카드에는 안 나간다(`/디버그` 와 기록용 · §4-4)
+    violations: list[str] = Field(default_factory=list)
 
 
 class HypoOut(Frozen):
@@ -514,6 +542,12 @@ class Variable(Frozen):
     favors: Favors
     #: 🔴 득점 방향 — 승패와 **따로**다(사용자 지시 2026-10-06 ④)
     goals: Goals = "none"
+    #: 🔴🔴 **실점 방향**(사용자 지시 2026-10-07 §3) — 득점과 **따로** 단다.
+    #
+    #  ⚠️ 폼 변수는 *"이 팀이 넣는 골"* 과 *"먹는 골"* 을 **둘 다** 말한다 — 한 칸에
+    #     뭉치면 저득점 판정이 거짓이 된다(실측 2026-10-07 멕시코–칠레: 두 팀 보정
+    #     득점이 0.667 인데 양상이 **난타전**으로 섰다).
+    goals_against: Goals = "none"
     #: 🔴 그 사실의 핵심 대상 — **병합 열쇠**다(같은 subject·type·target = 한 사실)
     target: str = ""
     #: 🔴 이 경기와 이어지는 근거(①-b) — 기사 변수는 **비어 있을 수 없다**
@@ -835,6 +869,10 @@ class Card(Frozen):
     commentary: Commentary | None = None
     #: 🔴 논평이 코드 검사에서 **버린 칸**과 사유(디버그 카드가 적는다)
     comment_notes: list[str] = Field(default_factory=list)
+    #: 🔴🔴 **총평 검열 결과**(사용자 지시 2026-10-07 §4-3) — 카드 1겹에는 **통과한
+    #  논평만** 나가고, 이 칸과 위반 목록은 `/디버그` 에만 보인다.
+    comment_audit: str = "안 돌았다"
+    comment_violations: list[str] = Field(default_factory=list)
     #: 🔴🔴 **경우의 수**(사용자 지시 2026-10-06(7차) §2) — 블록 3b 가 그린다
     #
     #  꼴: `{"cells": [...], "states": {팀: {state, why, margin}}, "verified": bool,

@@ -1907,3 +1907,257 @@ def test_결과가_섞인_갈래는_결과별로_쪼갠다():
     same = [s for s in got.scenarios if s.id.startswith("A")]
     assert all(s.driver_vars == ["X1"] for s in same), same
     assert all("그래서 그렇게 된다" in s.mechanism for s in same)
+
+
+def test_쪼개기는_스코어를_바꾸지_않는다():
+    """🔴🔴 지시 1(2026-10-07 총평 검열) — **뒤집기·좌우 반전·새 스코어 금지**.
+
+    ⚠️ 쪼개기는 스코어를 **결과로 나누기만** 한다. 보강(결과 덮기)만 새 스코어를
+       넣을 수 있고 그것은 `added_by="code"` 로 표시된다.
+    돌연변이: 쪼개면서 스코어를 뒤집으면(`(a, h)`) 빨개진다.
+    """
+    from app.core import reweight
+    from app.core.schema import ProbTriple
+    from app.core.state import RunState
+    ref = _ref_mx_cl()
+    hypo = _hypo([("A", "open", [(3, 2), (2, 2)], 1.7),
+                  ("B", "away_win", [(1, 3), (2, 3)], 2.4),
+                  ("C", "open", [(1, 0), (0, 1)], 1.4),
+                  ("D", "home_win", [(2, 0), (2, 1)], 1.4)])
+    before = {(h, a) for s in hypo.scenarios for h, a in s.outcomes}
+    ours = ProbTriple(home=0.73, draw=0.19, away=0.08)
+    got = reweight.of(hypo, ours, ref=ref, state=RunState())
+    # 🔴 보강으로 **더해진** 갈래만 새 스코어를 가질 수 있다
+    kept = {(h, a) for s in got.scenarios for h, a in s.outcomes
+            if "결과 덮기" not in s.mechanism}
+    assert kept == before, (f"🔴 스코어가 바뀌었다 — 생긴 것 {sorted(kept - before)} "
+                            f"· 사라진 것 {sorted(before - kept)}")
+
+
+def test_쪼갠_조각의_무게_합이_원래_무게다():
+    """🔴 지시 2 — 스코어 무게 = 갈래 무게 ÷ 스코어 수. 조각이 전체를 **들고 가지 않는다**.
+
+    ⚠️ 비례 조정 **전**의 합이다 — 조정은 결과별로 따로 곱한다(그 뒤 합은 달라진다).
+    """
+    from app.core import reweight
+    from app.core.schema import ProbTriple
+    from app.core.state import RunState
+    ref = _ref_mx_cl()
+    hypo = _hypo([("A", "open", [(3, 2), (2, 2)], 1.7),
+                  ("B", "home_win", [(2, 0), (2, 1)], 1.4)])
+    # 🔴 **비례 조정이 1 이 되는 우리 열**을 준다 — 그러면 조정 전 무게가 그대로다
+    #    (A 가 홈 0.85·무 0.85 · B 가 홈 1.4 → 홈 2.25 · 무 0.85 · 합 3.1)
+    ours = ProbTriple(home=2.25 / 3.1, draw=0.85 / 3.1, away=0.0)
+    got = reweight.of(hypo, ours, ref=ref, state=RunState())
+    by_src: dict[str, float] = {}
+    for sc in got.scenarios:
+        if "결과 덮기" in sc.mechanism:
+            continue
+        by_src[sc.id[0]] = by_src.get(sc.id[0], 0.0) + float(sc.strength)
+    assert abs(by_src["A"] - 1.7) < 1e-3, by_src
+    assert abs(by_src["B"] - 1.4) < 1e-3, by_src
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **총평 검열**(사용자 지시 2026-10-07 §4·§5)
+# ══════════════════════════════════════════════════════════════════
+
+
+def _audit_box():
+    """🔴 검열 고정물 — 멕시코–칠레의 **실측 사실**(두 팀 보정 득점 0.667)."""
+    from app.core.schema import Facts, HypoSet, Judgement, Scenario, Variable
+    ref = _ref_mx_cl()
+    facts = Facts(recent={
+        ref.home: {"matches": 5, "last5": ["W", "L", "D", "D", "L"],
+                   "recent_scored_avg": 1.2, "recent_trimmed_avg": 0.667,
+                   "sequence": [{"goals_for": 0, "goals_against": 3},
+                                {"goals_for": 1, "goals_against": 1}]},
+        ref.away: {"matches": 5, "last5": ["L", "L", "W", "L", "L"],
+                   "recent_scored_avg": 1.2, "recent_trimmed_avg": 0.667,
+                   "sequence": [{"goals_for": 2, "goals_against": 4}]}})
+    down = Variable(id="S01-home", type="recent_pattern", subject=ref.home,
+                    favors="home", goals="down", goals_against="none",
+                    target="recent", hardness="soft", weight=0.7,
+                    claim="최근 5경기 W L D D L · 득점 평균 1.2(보정 0.667)",
+                    quote="x", from_rule="S01")
+    up = Variable(id="S02", type="h2h_pattern", subject=ref.away, favors="away",
+                  goals="up", target="h2h", hardness="hard", weight=1.0,
+                  claim="맞대결 10경기 3승 3무 4패 · 평균 3.0골", quote="y",
+                  from_rule="S02")
+    hypo = HypoSet(scenarios=[
+        Scenario(id="A", outcomes=[(3, 2)], type="home_win", strength=1.85,
+                 driver_vars=["S01-home"], mechanism="주고받는다"),
+        Scenario(id="D", outcomes=[(2, 0)], type="home_win", strength=3.05,
+                 driver_vars=["S01-home"], mechanism="닫는다"),
+        Scenario(id="C", outcomes=[(1, 0)], type="home_win", strength=1.52,
+                 driver_vars=["S01-home"], mechanism="한 골")])
+    said = Judgement(direction="방향: **Mexico** (세 열 중 2열이 앞세운다)")
+    return ref, facts, [down, up], hypo, said
+
+
+def _comment(**kw):
+    from app.core.schema import CommentLine, Commentary
+    box = {"title": "접전 — Mexico 쪽에 무게", "flow": "Mexico가 한 골 차로 지킨다",
+           "score_range": ["2-0"],
+           "reasons": [CommentLine(text="홈팀 득점이 눌려 있다",
+                                   var_ids=["S01-home"])],
+           "lean": ""}
+    box.update(kw)
+    return Commentary(**box)
+
+
+def test_검열_코드검사_여덟칸이_각각_잡는다():
+    """🔴🔴 §4-1 (a)~(h) — 위반 고정물 1건·통과 고정물 1건씩.
+
+    🔴 고정물: **지금 멕시코–칠레 논평**(난타전 · 3-2 · S01 을 다득점 근거로) →
+       **(d)(e)(g)** 로 잡혀야 한다(지시 §5 원문).
+    """
+    from app.core.schema import CommentLine
+    from app.core.stages import s9_audit
+    ref, facts, variables, hypo, said = _audit_box()
+    shape = {"shape": "접전", "low": 0.5, "high": 0.2, "one_sided": 0.2,
+             "close": 0.8, "top_scores": [["2-0", 3.05]]}
+
+    def run(got, **kw):
+        box = {"ref": ref, "facts": facts, "variables": variables,
+               "hypo": hypo, "shape": shape, "said": said}
+        box.update(kw)
+        return s9_audit.code_check(got, **box)
+
+    # ✅ 통과 고정물
+    assert run(_comment()) == [], run(_comment())
+    # (a) 근거 — 맥락·없는 번호
+    bad = run(_comment(reasons=[CommentLine(text="x", var_ids=["R9"])]))
+    assert any("근거 불가/없는 변수" in x for x in bad), bad
+    # (b) 승자 — 방향(Mexico)과 반대인 스코어
+    assert any("예상 스코어" in x for x in run(_comment(score_range=["0-2"])))
+    # (c) 양상 — 제목이 shape 를 말하지 않는다
+    assert any("title" in x for x in run(_comment(title="난타전 — 골 잔치")))
+    # (d) 양상 근거 — 난타전인데 득점 방향 다수결이 `down`
+    #     ⚠️ S01-home(down·0.7) + S02(up·**soft 로 센다** 0.7) → 비겼다 → 안 잡힌다.
+    #        🔴 그래서 폼 변수 **둘**(양 팀)로 센다 — 실측과 같은 꼴이다.
+    two = [*variables, variables[0].model_copy(update={"id": "S01-away"})]
+    hot = {**shape, "shape": "난타전"}
+    got_d = run(_comment(title="난타전 — 골이 오간다"), variables=two, shape=hot)
+    assert any(x.startswith("(d)") for x in got_d), got_d
+    # (e) 인용 방향 — `goals=down` 변수로 다득점을 말한다
+    bad_e = run(_comment(reasons=[CommentLine(text="서로를 열어두고 주고받는다",
+                                              var_ids=["S01-home"])]))
+    assert any(x.startswith("(e)") for x in bad_e), bad_e
+    # (f) 숫자 — 카드에 없는 수
+    bad_f = run(_comment(reasons=[CommentLine(text="최근 47경기 흐름이다",
+                                              var_ids=["S01-home"])]))
+    assert any(x.startswith("(f)") for x in bad_f), bad_f
+    # (g) 예상 스코어 — 무게 상위 5개 밖
+    bad_g = run(_comment(score_range=["5-4"]))
+    assert any(x.startswith("(g)") for x in bad_g), bad_g
+    # (h) 금지어
+    bad_h = run(_comment(flow="기대값이 좋아 보인다"))
+    assert any("금지어" in x for x in bad_h), bad_h
+
+
+def test_지금_멕시코_칠레_논평이_검열에_걸린다():
+    """🔴🔴 §5 고정물 — *"난타전·3-2·S01 을 다득점 근거로"* → (d)(e)(g) 위반."""
+    from app.core.schema import CommentLine
+    from app.core.stages import s9_audit
+    ref, facts, variables, hypo, said = _audit_box()
+    two = [*variables, variables[0].model_copy(update={"id": "S01-away"})]
+    shape = {"shape": "난타전", "low": 0.36, "high": 0.45, "one_sided": 0.23,
+             "close": 0.77, "top_scores": [["2-0", 3.05]]}
+    got = _comment(
+        title="난타전 — 골이 주고받아지는 양상",
+        score_range=["3-2", "2-2", "2-1"],
+        flow="전반부터 양팀이 주고받으며 골이 오가고 홈팀이 리드를 지킨다",
+        reasons=[CommentLine(text="양팀은 서로를 열어두고 부딪혀 왔다",
+                             var_ids=["S01-home"])])
+    bad = s9_audit.code_check(got, ref=ref, facts=facts, variables=two,
+                              hypo=hypo, shape=shape, said=said)
+    kinds = {x[:3] for x in bad}
+    assert "(d)" in kinds, bad
+    assert "(e)" in kinds, bad
+    assert "(g)" in kinds, bad
+
+
+def test_검열자는_작성자와_다른_모델이다():
+    """🔴🔴 §4-2 — *"작성자와 검열자를 같은 모델로 두지 않는다"*. 돌연변이: 같게."""
+    from app.core.stages import s9_audit
+    assert s9_audit.AUDITOR != s9_audit.WRITER, (s9_audit.AUDITOR,
+                                                 s9_audit.WRITER)
+    # 🔴 코드가 **실제로** 그 둘을 쓴다 — 글자만 다른 상수가 아니다
+    audit_src = (ROOT / "app/core/stages/s9_audit.py").read_text(encoding="utf-8")
+    write_src = (ROOT / "app/core/stages/s8_comment.py").read_text(
+        encoding="utf-8")
+    assert "provider=AUDITOR" in audit_src, "🔴 검열이 그 상수를 안 쓴다"
+    assert f'provider="{s9_audit.WRITER}"' in write_src, "🔴 작성자가 다른 모델이다"
+    # 🔴 검열 호출 상한 — 출력 600 토큰(§4-4)
+    import yaml
+    box = yaml.safe_load((ROOT / "config/llm.yaml").read_text(encoding="utf-8"))
+    assert int(box["v6"]["purposes"]["audit"]["max_tokens"]) == 600
+
+
+def test_검열이_파이프라인에_이어져_있다():
+    """🔴 §4 — 논평 **바로 뒤·렌더 전**이다. 돌연변이: 검열 단계 건너뛰기 → 빨강."""
+    src = (ROOT / "app/core/pipeline.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    for name in ("analyze", "reanalyze"):
+        fn = next(n for n in ast.walk(tree)
+                  if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                  and n.name == name)
+        calls = [n for n in ast.walk(fn) if isinstance(n, ast.Call)
+                 and isinstance(n.func, ast.Attribute)
+                 and isinstance(n.func.value, ast.Name)]
+        who = {f"{c.func.value.id}.{c.func.attr}" for c in calls}
+        assert "s9_audit.run" in who, f"🔴 {name} 가 검열을 안 부른다: {sorted(who)}"
+        # 🔴 **작성자를 직접 부르지 않는다** — 검열을 지나지 않는 길이 생긴다
+        assert "s8_comment.run" not in who, (
+            f"🔴 {name} 가 작성자를 직접 부른다(검열을 건너뛴다)")
+    # 🔴 카드에 검열 결과 칸이 있다(§4-3: 과정은 `/디버그` 만)
+    from app.core.schema import Card
+    assert "comment_audit" in Card.model_fields
+    assert "comment_violations" in Card.model_fields
+
+
+def test_폼_변수에_득점_방향이_붙는다():
+    """🔴 §3 — 기준(실측)의 팀당 몫과 ±0.2 로 `goals`·`goals_against`.
+
+    돌연변이: 그 계산을 끄면(`none` 고정) 빨개진다.
+    """
+    from app import rules
+    from app.core.stages.s5_verify import _form_goal_dirs, GOAL_GAP
+    assert GOAL_GAP == 0.2
+    share = rules.goal_share("national_friendly")
+    assert share and 1.0 < share < 1.6, share      # 🔴 실측값(2.5324 ÷ 2)
+    box = {"sequence": [{"goals_for": 0, "goals_against": 3},
+                        {"goals_for": 1, "goals_against": 1}]}
+    got, ga, why = _form_goal_dirs(box, 0.667, "national_friendly")
+    assert got == "down", (got, why)               # 0.667 ≤ 1.266 − 0.2
+    assert ga == "up", (ga, why)                   # 실점 평균 2.0 ≥ 1.266 + 0.2
+    assert "기준 팀당" in why
+    # ⚠️ 기준이 없는 종목은 **매기지 않는다**
+    assert _form_goal_dirs(box, 0.667, "baseball") == ("none", "none", "")
+    # 🔴 표는 실측 도구가 쓴다 — 측정일·표본이 함께 있다
+    import yaml
+    said = yaml.safe_load((ROOT / "config/goal_baselines.yaml")
+                          .read_text(encoding="utf-8"))
+    assert said.get("measured_at")
+    for kind in ("national_friendly", "national_official", "league"):
+        row = said["kinds"][kind]
+        assert int(row["n"]) > 1000 and 1.5 < float(row["goals_per_match"]) < 4
+
+
+def test_득점_방향이_반대인_driver_를_뺀다():
+    """🔴 §3 마지막 — 3골 이상 갈래의 `goals=down` driver 를 뺀다(다 빠지면 바닥값)."""
+    from app.core.schema import Scenario
+    from app.core.stages import s6_hypo
+    from app.core.state import RunState
+    from app.survive import WEIGHT_FLOOR
+    _ref, _facts, variables, _hypo, _said = _audit_box()
+    down = variables[0]                      # S01-home · goals=down
+    hot = Scenario(id="A", outcomes=[(3, 2)], type="home_win",
+                   driver_vars=["S01-home"], mechanism="주고받는다")
+    cold = Scenario(id="B", outcomes=[(1, 0)], type="home_win",
+                   driver_vars=["S01-home"], mechanism="한 골")
+    got = s6_hypo._goal_fit([hot, cold], [down], state=RunState())
+    assert got[0].driver_vars == [], "🔴 3골 갈래에서 `down` driver 를 안 뺐다"
+    assert got[1].driver_vars == ["S01-home"], "🔴 2골 갈래는 그대로여야 한다"
+    assert s6_hypo._strength(got[0], [down]) == float(WEIGHT_FLOOR)

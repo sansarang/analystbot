@@ -829,3 +829,36 @@ def tiebreak(competition: str) -> tuple[list[str], dict, bool, str]:
     d = dict(box.get("default") or {})
     return ([str(x) for x in (d.get("order") or [])], {}, False,
             str(d.get("why") or "표에 없는 대회 — 가정"))
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **대회 유형별 경기당 평균 득점**(사용자 지시 2026-10-07 §3)
+# ══════════════════════════════════════════════════════════════════
+#
+#  🔴 값은 `config/goal_baselines.yaml` 이고 **측정 도구가 쓴다**
+#     (`tools/measure_goal_baselines.py`) — 코드·대화로 숫자를 적지 않는다.
+#  ⚠️ 리그는 그 리그 값 → 없으면 `league` 합계 → 그것도 없으면 **없다**(None).
+GOAL_BASELINES = "config/goal_baselines.yaml"
+
+
+def goal_baseline(kind: str) -> dict:
+    """🔴 그 대회 유형의 기준 — `{goals_per_match, n, …}` 또는 **빈 사전**.
+
+    ⚠️ 빈 사전은 *"기준이 없다"* 는 뜻이고, 그러면 득점 방향을 **매기지 않는다**
+       (지어내지 않는다 · #4).
+    """
+    box = dict((_load(GOAL_BASELINES) or {}).get("kinds") or {})
+    said = str(kind or "")
+    for key in (said, said.split(":")[0] if ":" in said else ""):
+        if key and isinstance(box.get(key), dict):
+            return dict(box[key])
+    return {}
+
+
+def goal_share(kind: str) -> float | None:
+    """🔴 **팀당 몫** = 경기당 평균 ÷ 2(§3 원문). ⚠️ 기준이 없으면 `None`."""
+    got = goal_baseline(kind).get("goals_per_match")
+    try:
+        return round(float(got) / 2.0, 4)
+    except (TypeError, ValueError):
+        return None

@@ -731,14 +731,29 @@ def _ir_recent(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         hard, weight = _sample_weight(n)
         last5 = " ".join(str(x) for x in (box.get("last5") or [])) or "?"
         avg, trim = box.get("recent_scored_avg"), box.get("recent_trimmed_avg")
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **폼 변수에 득점 방향을 단다**(사용자 지시 2026-10-07 §3)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > `recent_pattern`(S01)의 **보정 평균 득점**이 그 기준의 팀당 몫(평균
+        #  > 득점÷2)보다 **0.2 이상 낮으면 `goals=down`**, 0.2 이상 높으면 `up`,
+        #  > 그 사이면 `none`. **실점 평균도 같은 방식으로 따로** 단다.
+        #
+        #  ⚠️ 실측 2026-10-07(멕시코–칠레): 두 팀 보정 득점이 **0.667** 인데 폼
+        #     변수의 `goals` 가 `none` 이어서 양상이 **난타전**으로 섰고, 논평이
+        #     *"서로를 열어두고 주고받는다"* 를 그 변수로 근거 삼았다.
+        kind = comp_kind(ref, facts)
+        got_dir, got_against, why_dir = _form_goal_dirs(box, trim, kind)
         claim = (f"최근 {n}경기 {last5} · 득점 평균 "
                  f"{avg if avg is not None else '못 쟀다'}"
-                 + (f"(보정 {trim})" if trim is not None else ""))
+                 + (f"(보정 {trim})" if trim is not None else "")
+                 + (f" · {why_dir}" if why_dir else ""))
         out.append(Variable(
             id=f"{rid}-{'home' if key == ref.home else 'away'}",
             type="recent_pattern", subject=key,
             favors=favors_of("recent_pattern", key, claim, ref),  # type: ignore[arg-type]
-            goals=goals_of("recent_pattern"),                     # type: ignore[arg-type]
+            goals=got_dir,                                        # type: ignore[arg-type]
+            goals_against=got_against,                            # type: ignore[arg-type]
             target="recent", hardness=("hard" if hard == "hard" else "soft"),
             weight=weight, claim=claim,
             # 🔴 인용은 **어댑터 수치 그대로**다 — 기사가 아니라 구조 자료다
@@ -748,6 +763,49 @@ def _ir_recent(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         if n < low:
             state.note(f"s5 {rid} `{key}` 표본 {n}경기 < {low} — 맥락 전용")
     return out
+
+
+#: 🔴 **기준에서 얼마나 떨어져야 방향을 매기나**(§3 원문: 0.2). ⚠️ 코드의 수는 이 한 곳
+GOAL_GAP = 0.2
+
+
+def _form_goal_dirs(box: dict, trim, kind: str) -> tuple[str, str, str]:
+    """🔴🔴 폼의 **득점·실점 방향** — `(goals, goals_against, 사유 글)`.
+
+    🔴 기준은 `config/goal_baselines.yaml` 의 그 대회 유형 **팀당 몫**이다(실측).
+    ⚠️ 기준이 없거나 보정 평균을 못 쟀으면 **`none`** 이다(지어내지 않는다 · #4).
+    """
+    from app import rules
+    share = rules.goal_share(kind)
+    if share is None:
+        return "none", "none", ""
+    got = _side_of_avg(trim, share)
+    # 🔴 실점은 **수열에서** 센다 — `goals_against` 가 경기마다 들어 있다
+    seq = [g for g in (box.get("sequence") or []) if isinstance(g, dict)]
+    vals = [float(g["goals_against"]) for g in seq
+            if str(g.get("goals_against")).isdigit()]
+    ga_avg = round(sum(vals) / len(vals), 3) if vals else None
+    ga = _side_of_avg(ga_avg, share)
+    why = (f"기준 팀당 {share}골(대회 {kind}) 대비 득점 "
+           f"{_KO_DIR[got]}" + (f" · 실점 평균 {ga_avg}({_KO_DIR[ga]})"
+                                if ga_avg is not None else ""))
+    return got, ga, why
+
+
+_KO_DIR = {"up": "많다", "down": "적다", "none": "보통"}
+
+
+def _side_of_avg(avg, share: float) -> str:
+    """🔴 그 평균이 기준 몫보다 **0.2 이상** 낮으면 `down` · 높으면 `up`."""
+    try:
+        got = float(avg)
+    except (TypeError, ValueError):
+        return "none"
+    if got <= share - GOAL_GAP:
+        return "down"
+    if got >= share + GOAL_GAP:
+        return "up"
+    return "none"
 
 
 def _ir_h2h(rid: str, row: dict, ref: MatchRef, facts: Facts, *,

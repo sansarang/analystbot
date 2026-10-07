@@ -483,8 +483,14 @@ def _comment(card: Card, *, debug: bool = False) -> str:
                    f"{box.get('close', 0):.0%} · {box.get('why')}")
         for line in said.reasons:
             out.append(f"    [근거] {line.text} ← {', '.join(line.var_ids) or '없음'}")
+        # 🔴🔴 **검열 과정은 `/디버그` 에만**(사용자 지시 2026-10-07 §4-3)
+        out.append(f"    [검열] {card.comment_audit}"
+                   + (f" · 위반 {len(card.comment_violations)}건"
+                      if card.comment_violations else ""))
+        for x in card.comment_violations[:6]:
+            out.append(f"      · {x}")
         if card.comment_notes:
-            out.append("    [검사] " + " · ".join(card.comment_notes))
+            out.append("    [검사] " + " · ".join(card.comment_notes[:8]))
     return "\n".join(out)
 
 

@@ -191,6 +191,16 @@ async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
     return render.debug_text(got) if debug else render.card_text(got)
 
 
+@dp.message(Command("status", "상태"))
+async def cmd_status(m: Message) -> None:
+    """`/상태` — 🔴 **총평 검열 통과율과 위반 상위 3종**(사용자 지시 2026-10-07 §4-4).
+
+    ⚠️ 운영자용이다 — 카드에는 검열 과정이 나가지 않는다(§4-3).
+    """
+    from app import auditlog
+    await m.answer(auditlog.stats())
+
+
 @dp.message(Command("health"))
 async def cmd_health(m: Message) -> None:
     from app.version import boot_info, staleness_line
