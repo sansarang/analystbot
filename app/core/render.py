@@ -61,6 +61,15 @@ def _head(card: Card) -> str:
     # > *"확정 XI 전 — HH:MM KST 이후 /재분석"*.
     #
     # ⚠️ 그 시각은 **킥오프 60분 전**이다(확정 XI 는 보통 그때 나온다 · 축구 §2).
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **피드에 없는 경기면 보드를 달라고 한다**(사용자 지시 2026-10-07 ③)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > 피드에 경기가 없을 때(대표팀 친선 등): 카드 머리에
+    # > *"시장 피드에 없는 경기 — 보드 캡처를 보내 달라"* 한 줄.
+    if not card.market.probs and not card.user_market.probs:
+        head += ("\n📋 **시장 피드에 없는 경기 — 보드 캡처를 보내 달라**"
+                 "(보드가 없으면 등급을 못 붙인다)")
     said_xi = {v.state for v in (card.facts.xi or {}).values()}
     if said_xi and "confirmed" not in said_xi:
         from datetime import timedelta
@@ -366,13 +375,25 @@ def _b6(card: Card) -> str:
     return "\n".join(out)
 
 
+#: 🔴 보드 출처 → 사람이 읽는 말(사용자 지시 2026-10-07 ①)
+_SRC_KO = {"user_board": "사용자 보드", "feed": "피드 메인 라인", "none": ""}
+
+
 def _b7(card: Card) -> str:
     if not card.evals:
         return "- ⬜ 대입한 줄이 없다"
     ids = [s.id for s in (card.hypo.scenarios if card.hypo else [])]
     head = "| 마켓 | " + " | ".join(ids) + " | 생존 | 상한 | 등급 |"
     bar = "|---" * (len(ids) + 4) + "|"
-    rows = [head, bar]
+    rows: list[str] = []
+    # 🔴🔴 **출처를 적는다** — 보드가 없으면 *"참고 — 보드 없음"*(지시 ②)
+    src = str(card.board_source or "none")
+    if src == "none":
+        rows.append("⏸ **참고 — 보드 없음**(기준선 목록이다 · 등급은 전부 `보류`)")
+    else:
+        rows.append(f"출처: **{_SRC_KO.get(src, src)}**")
+    rows.append("")
+    rows += [head, bar]
     extra = set(card.board_extra)
     tail: list[str] = []
     for e in card.evals:

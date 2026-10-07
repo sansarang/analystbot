@@ -1257,3 +1257,98 @@ def test_맞대결_집계가_안_맞으면_그_숫자를_안_쓴다():
     ok = Facts(h2h={"count": 9, "summary": [6, 3, 0], "window_avg_goals": 3.0})
     said2 = s5._ir_h2h("S02", row, ref, ok, state=RunState())
     assert said2 and said2[0].type == "h2h_pattern"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **등급은 걸 수 있는 줄에만**(사용자 지시 2026-10-07 ①②③)
+# ══════════════════════════════════════════════════════════════════
+
+
+def _judge(board, source: str):
+    from app.core.schema import Facts, HypoSet, Scenario
+    from app.core.stages import s7_judge
+    from app.core.state import RunState
+    from datetime import timedelta
+    import importlib
+    t = importlib.import_module("tests.e2e.test_v6_replay")
+    ref = t._ref()
+    from app.core.schema import Variable
+    rows = [Variable(id=f"V{i}", type="recent_pattern", subject=ref.home,
+                     favors=("home" if i % 2 else "away"), goals="none",
+                     target="recent", hardness="hard", weight=2.0, claim="c",
+                     quote="q") for i in range(4)]
+    scen = [Scenario(id="A", outcomes=[(2, 0)], mechanism="m", strength=1.0,
+                     driver_vars=["V0"]),
+            Scenario(id="B", outcomes=[(1, 1)], mechanism="m", strength=1.0,
+                     driver_vars=["V1"]),
+            Scenario(id="C", outcomes=[(0, 2)], mechanism="m", strength=1.0,
+                     driver_vars=["V2"])]
+    return s7_judge.run(ref, Facts(), rows, HypoSet(scenarios=scen),
+                        state=RunState(), board=board, board_source=source,
+                        now=ref.kickoff_utc - timedelta(hours=2))
+
+
+def test_보드가_없으면_등급이_전부_보류다():
+    """🔴 ② — 기준선에 **등급을 붙이면 계약 실패**다. 돌연변이: 보류 덮기 제거."""
+    said = _judge(None, "")
+    assert said.board_source == "none", said.board_source
+    assert said.evals, "기준선 표는 **참고로** 나와야 한다"
+    assert {e.grade for e in said.evals} == {"보류"}, \
+        sorted({e.grade for e in said.evals})
+    for e in said.evals:
+        assert "보드 없음" in e.why, e.why
+    # 🔴 결론은 *"보드를 주면 판정"* 으로 끝난다
+    assert "보드를 주면 판정" in said.conclusion, said.conclusion
+    # ⚠️ 생존·상한은 **그대로 보인다**(참고표로 쓸 수 있게)
+    assert any(e.survival > 0 for e in said.evals)
+
+
+def test_보드가_있으면_그_줄만_등급을_받는다():
+    """🔴 ① — 사용자 보드가 **첫 출처**다. 돌연변이: 기준선과 섞기."""
+    from app.core import board as _b
+    got, _, _ = _b.parse("보드: 승무패 2.0 3.2 3.5 / 언더오버 3.5 1.90")
+    said = _judge(got, "user_board")
+    assert said.board_source == "user_board"
+    kinds = {(e.line.market, e.line.side, e.line.point) for e in said.evals}
+    assert ("total", "over", 3.5) in kinds and ("total", "under", 3.5) in kinds
+    # 🔴 보드에 없는 기준선(총점 2.5·핸디)은 **표에 없다**
+    assert not [e for e in said.evals
+                if e.line.market == "total" and e.line.point != 3.5]
+    assert "보류" not in {e.grade for e in said.evals}
+
+
+def test_피드_메인_라인만_평가한다():
+    """🔴 ① — 피드 기준선은 **그대로** 쓰고 **메인 라인 하나**만 센다.
+
+    ⚠️ 실측 2026-10-07(MLS): 업체마다 달라 핸디 0.25·0.5·1.0·1.5 가 한꺼번에 왔고
+       같은 마켓이 네 줄로 서서 등급이 네 번 나왔다.
+    돌연변이: 모든 기준선을 평가 줄로 넣기.
+    """
+    from app.core import odds
+    from app.core.schema import MarketProb, MarketQuote
+    q = []
+    for book in ("a", "b", "c"):
+        q.append(MarketQuote(market="total", side="over", point=3.5, price=1.9,
+                             bookmaker=book))
+        q.append(MarketQuote(market="total", side="under", point=3.5, price=1.9,
+                             bookmaker=book))
+    q.append(MarketQuote(market="total", side="over", point=2.5, price=1.5,
+                         bookmaker="d"))
+    probs = MarketProb(quotes=q)
+    assert odds.main_points(probs)["total"] == 3.5
+    lines = odds.lines_from(probs)
+    said = {(x.market, x.point) for x in lines}
+    assert ("total", 3.5) in said and ("total", 2.5) not in said, said
+    # 🔴 **우리가 수를 고르지 않는다** — 업체 수를 센 것뿐이다(2.5 가 다수면 2.5 다)
+    more = MarketProb(quotes=q + [
+        MarketQuote(market="total", side="over", point=2.5, price=1.5,
+                    bookmaker=b) for b in ("e", "f", "g", "h")])
+    assert odds.main_points(more)["total"] == 2.5
+
+
+def test_등급_글자에_보류가_있다():
+    """🔴 ② — `없음`(문턱 미달)과 `보류`(걸 줄 없음)는 **다른 말**이다."""
+    from app.core.schema import Grade
+    import typing
+    assert "보류" in typing.get_args(Grade)
+    assert "없음" in typing.get_args(Grade)

@@ -91,14 +91,21 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     if ocr_text and got_board is not None:
         from app.core import odds as _odds
         user_mk = _odds.from_board(got_board, source="user_board(ocr)")
-    # 🔴 §2-6 — 사용자 보드가 없으면 **피드가 준 마켓**이 평가 줄이 된다
-    if got_board is None and feed_mk.probs:
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **평가 줄의 출처 순서**(사용자 지시 2026-10-07 ①)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > 사용자 보드 **>** 피드의 메인 라인(총점·핸디 `point` 그대로) **>** 없음.
+    board_src = "user_board" if (got_board is not None and got_board.lines) else ""
+    if not board_src and feed_mk.probs:
         from app.core import odds as _odds
         from app.core.schema import Board as _Board
         got_board = _Board(lines=_odds.lines_from(feed_mk))
-        st.note(f"보드 없음 → **피드 마켓 {len(got_board.lines)}줄**로 평가한다(§2-6)")
+        board_src = "feed"
+        st.note(f"보드 없음 → **피드 메인 라인 {len(got_board.lines)}줄**로 평가한다"
+                f"(기준선은 피드가 적은 그대로 · 메인 {_odds.main_points(feed_mk)})")
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
-                        now=now)
+                        board_source=board_src, now=now)
     layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
                      user_mk, state=st, outlook=look)
     layers["ocr_text"] = ocr_text
@@ -187,12 +194,14 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
     look = s2b_base.outlook(ref, facts, state=st)
     feed_mk, user_mk = await s2c_market.run(ref, pool=pool, net=net, state=st,
                                             board=got_board, reanalyze=True)
-    if got_board is None and feed_mk.probs:
+    board_src = "user_board" if (got_board is not None and got_board.lines) else ""
+    if not board_src and feed_mk.probs:
         from app.core import odds as _odds
         from app.core.schema import Board as _Board
         got_board = _Board(lines=_odds.lines_from(feed_mk))
+        board_src = "feed"
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
-                        now=now)
+                        board_source=board_src, now=now)
     layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
                      user_mk, state=st, outlook=look)
     said = _direction(_lower(said, layers, state=st), layers, ref)
@@ -270,6 +279,7 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         tilt=[str(x) for x in (box.get("tilt") or [])],
         market_why=[str(x) for x in (box.get("market_why") or [])],
         ocr_text=str(box.get("ocr_text") or ""),
+        board_source=str(said.board_source or "none"),
         moves=[dict(x) for x in (box.get("moves") or [])],
         outlook=dict(box.get("outlook") or {}),
         match=ref, facts=facts, variables=variables,

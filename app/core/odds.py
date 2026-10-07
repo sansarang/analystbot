@@ -537,10 +537,27 @@ async def _json(net, url: str, params: dict, *, state: RunState
 
 def lines_from(probs: MarketProb, *, extra: list[BoardLine] | None = None
                ) -> list[BoardLine]:
-    """🔴 §2-6 마지막 — 사용자 보드가 없으면 **피드가 준 마켓**이 평가 줄이 된다."""
+    """🔴🔴 §2-6·(2026-10-07 ①) — 피드가 준 마켓이 평가 줄이 된다.
+    **총점·핸디의 기준선(`point`)은 피드가 적은 그대로** 쓴다.
+
+    > 피드는 총점·핸디의 기준선(point)을 **그대로** 쓴다 — 봇이 1.5/2.5 같은 값을
+    > **고르지 않는다.**
+
+    🔴 그런데 업체마다 기준선이 다르다(실측 2026-10-07 MLS: 핸디 0.25·0.5·1.0·1.5 ·
+       총점 2.5·3.25·3.5 가 한꺼번에 왔다). ⚠️ 그 전부를 평가하면 **같은 마켓이 네 줄**로
+       서서 등급이 네 번 나온다. 🔴 그래서 **메인 라인 하나**만 남긴다 —
+       *"업체가 가장 많이 내건 기준선"*(최빈값)이다. 그 수 역시 **우리가 고른 것이
+       아니라 피드가 적은 것**이다. ⚠️ 동률이면 **0 에 가까운 쪽**(핸디)·**작은 쪽**
+       (총점)을 쓰고 그 사실을 사유에 남긴다.
+    """
     out: list[BoardLine] = []
     seen: set[str] = set()
+    main = main_points(probs)
     for q in probs.quotes:
+        if q.market in ("handicap", "total") and q.point is not None \
+                and main.get(q.market) is not None \
+                and abs(float(q.point)) != abs(float(main[q.market])):
+            continue                 # 🔴 메인 라인이 아니다 — 평가 줄에서 뺀다
         k = key_of(q.market, q.side, q.point)
         if k in seen:
             continue
@@ -552,6 +569,28 @@ def lines_from(probs: MarketProb, *, extra: list[BoardLine] | None = None
         if k not in seen:
             seen.add(k)
             out.append(ln)
+    return out
+
+
+def main_points(probs: MarketProb) -> dict[str, float]:
+    """🔴 마켓마다 **메인 기준선** — 업체가 가장 많이 내건 값(최빈값). 없으면 빈 표.
+
+    ⚠️ 우리가 1.5·2.5 를 **고르는 것이 아니다** — 업체 수를 세는 것뿐이다.
+    """
+    # 🔴 **업체 수**로 센다 — 줄 수로 세면 쪽이 둘인 마켓이 두 배로 세진다
+    #    (실측 2026-10-07: over/under 가 각각 세져 3업체가 6으로 보였다).
+    box: dict[str, dict[float, set[str]]] = {}
+    for q in probs.quotes:
+        if q.market not in ("handicap", "total") or q.point is None:
+            continue
+        said = abs(float(q.point))
+        box.setdefault(q.market, {}).setdefault(said, set())
+        box[q.market][said].add(str(q.bookmaker or ""))
+    out: dict[str, float] = {}
+    for market, counts in box.items():
+        # 🔴 (업체 수 많은 것 · 그다음 0 에 가까운 것) 순
+        out[market] = sorted(counts.items(),
+                             key=lambda kv: (-len(kv[1]), kv[0]))[0][0]
     return out
 
 

@@ -50,14 +50,15 @@ class _Draft:
 
 def run(ref: MatchRef, facts: Facts, variables: list[Variable],
         hypo: HypoSet, *, state: RunState, board: Board | None = None,
-        now: Any = None) -> Judgement:
+        board_source: str = "", now: Any = None) -> Judgement:
     """🔴 마켓마다 대입하고 등급을 매긴다. ⚠️ 등급이 없어도 **카드는 나온다**."""
     from app import survive
     notes: list[str] = []
     started, started_why = survive.started(ref.kickoff_utc, now)
     scen = list(hypo.scenarios)
     w = {s.id: float(s.strength) for s in scen}
-    lines = _lines(ref, facts, scen, w, board=board, notes=notes)
+    lines, src = _lines(ref, facts, scen, w, board=board, notes=notes,
+                        source=board_source)
     enough, thin_why = _enough(variables, scen)
     if not enough:
         notes.append(f"🔴 §7 R5 **자료 얇음 — 등급 없음**({thin_why}) · "
@@ -71,11 +72,22 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
         if got is not None:
             evals.append(got)
     evals = _same_direction_cap(evals, notes=notes)
-    state.set("markets_graded", sum(1 for e in evals if e.grade != "자료부족"))
+    if src == "none":
+        # 🔴🔴 **보드가 없으면 등급을 안 붙인다**(지시 ②) — `보류(보드 없음)`
+        #    ⚠️ 생존·상한·마크는 **그대로 보인다**(참고표로 쓸 수 있게).
+        evals = [e.model_copy(update={
+            "grade": "보류",
+            "why": (f"{e.why} · 보드 없음 — 걸 줄이 없어 **보류**").strip(" ·")})
+            for e in evals]
+        notes.append("🔴 등급 **전부 보류** — 사용자 보드도 피드 메인 라인도 없다")
+    state.set("markets_graded", sum(1 for e in evals
+                                    if e.grade not in ("자료부족", "보류")))
     direction = _direction(ref, scen, w)
     return Judgement(evals=evals, direction=direction,
+                     board_source=src,
                      conclusion=_conclusion(evals, started=started,
-                                            enough=enough, thin_why=thin_why),
+                                            enough=enough, thin_why=thin_why,
+                                            source=src),
                      triggers=_triggers(variables, ref),
                      started=started, started_why=started_why, notes=notes)
 
@@ -86,13 +98,25 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
 
 
 def _lines(ref: MatchRef, facts: Facts, scen: list[Scenario],
-           w: dict[str, float], *, board: Board | None,
-           notes: list[str]) -> list[tuple[Any, BoardLine]]:
-    """🔴 `(옛 Market, v6 BoardLine)` 짝 목록. ⚠️ 변환을 **한 곳**에 둔다."""
+           w: dict[str, float], *, board: Board | None, notes: list[str],
+           source: str = "") -> tuple[list[tuple[Any, BoardLine]], str]:
+    """🔴 `(옛 Market, v6 BoardLine)` 짝 목록과 **출처**. ⚠️ 변환을 한 곳에 둔다.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **출처 순서**(사용자 지시 2026-10-07 ①)
+    ══════════════════════════════════════════════════════════════════
+
+    > 사용자 보드 **>** 피드의 메인 라인(총점·핸디 `point` 그대로) **>** 없음.
+
+    🔴 돌려주는 둘째 값이 그 출처다(`user_board`·`feed`·`none`). ⚠️ `none` 이면
+       기준선 표는 **참고**이고 등급은 전부 `보류` 다(지시 ②) — 그 판단은 `_one` 이
+       아니라 `run` 이 한다(한 가지 일은 한 곳).
+    """
     from app import survive
     from app.core.stages.s5_verify import game_of
     if board is not None and board.lines:
-        notes.append(f"보드 {len(board.lines)}줄을 받았다 — **보드 줄만** 센다")
+        notes.append(f"보드 {len(board.lines)}줄을 받았다({source or '출처 미상'})"
+                     f" — **보드 줄만** 센다")
         out: list[tuple[Any, BoardLine]] = []
         for line in board.lines:
             old = _old_of(line, ref)
@@ -102,7 +126,10 @@ def _lines(ref: MatchRef, facts: Facts, scen: list[Scenario],
                              f"못 옮겼다 — 그 줄은 **세지 않았다**")
                 continue
             out.append((old, line))
-        return out
+        return out, (source or "user_board")
+    # 🔴 보드가 **없다** — 기준선 목록은 **참고용**으로만 만든다(등급을 붙이지 않는다)
+    notes.append("🔴 **보드가 없다** — 기준선 대입표는 **참고**이고 등급은 "
+                 "전부 `보류` 다(사용자 지시 2026-10-07 ②)")
     drafts = [_Draft(id=s.id, scores=[f"{h}-{a}" for h, a in s.outcomes])
               for s in scen]
     got, said = survive.our_board(game_of(ref), dict(facts.standings) or None,
@@ -116,7 +143,7 @@ def _lines(ref: MatchRef, facts: Facts, scen: list[Scenario],
         else:
             notes.append(f"🔴 마켓 `{getattr(m, 'market_type', '?')}` 를 v6 "
                          f"꼴로 못 옮겼다 — 그 줄은 **세지 않았다**(#3)")
-    return out
+    return out, "none"
 
 
 def _new_of(m: Any) -> BoardLine | None:
@@ -340,9 +367,19 @@ def _direction(ref: MatchRef, scen: list[Scenario], w: dict[str, float]) -> str:
 
 
 def _conclusion(evals: list[MarketEval], *, started: bool, enough: bool,
-                thin_why: str) -> str:
-    """🔴 결론 — **죽는 시나리오를 함께** 적는다(`✗` 와 `△` 둘 다 · §2-1)."""
+                thin_why: str, source: str = "") -> str:
+    """🔴 결론 — **죽는 시나리오를 함께** 적는다(`✗` 와 `△` 둘 다 · §2-1).
+
+    🔴 보드가 없으면(출처 `none`) 결론은 *"보드를 주면 판정"* 으로 끝난다(지시 ②).
+    """
     from app import survive
+    if source == "none":
+        best = max(evals, key=lambda e: e.survival, default=None)
+        return ("⏸ **보류 — 보드가 없다.** 평가할 마켓 줄이 없어 등급을 붙이지 "
+                "않는다(아래 표는 **참고**다"
+                + (f" · 가장 두꺼운 줄 {best.line.market} {best.line.side} "
+                   f"{best.survival:.3f}" if best else "")
+                + ") → 🔴 **보드를 주면 판정**한다")
     if started:
         return ("🔴 **이미 시작한 경기다 — 등급 없음.** 분석은 그대로 낸다"
                 "(예측이 아니라 사후 설명이 되기 때문이다)")

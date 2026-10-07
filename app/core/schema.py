@@ -80,7 +80,14 @@ Mark = Literal["○", "△", "✗"]
 #  `없음`      재 봤는데 **안 섰다**(수가 문턱 아래다)
 #  `자료부족`  **애초에 등급을 매길 수 없었다**(변수가 모자라다 · §7 R5)
 #  ⚠️ 둘을 한 글자로 적으면 *"우리가 안 했다"* 와 *"해 봤는데 없다"* 가 같아진다.
-Grade = Literal["낸다", "소액", "소액하단", "없음", "자료부족"]
+#: 🔴🔴 `보류` 가 생겼다(사용자 지시 2026-10-07 ②) — **보드가 없으면 등급을 안 붙인다**
+#
+#  > 둘 다 없으면 기준선 대입표는 *"참고 — 보드 없음"* 으로만 보이고, 등급 칸은 전부
+#  > *"보류(보드 없음)"*. 🔴 기준선에 등급을 붙이면 **계약 실패**다.
+#
+#  ⚠️ `없음`(문턱 미달)과 `보류`(걸 줄이 없다)는 **다른 말**이다 — 섞으면 *"판정했는데
+#     안 된다"* 와 *"판정할 줄이 없다"* 가 한 글자가 된다.
+Grade = Literal["낸다", "소액", "소액하단", "없음", "자료부족", "보류"]
 
 AddedBy = Literal["deepseek", "code", "redteam"]
 
@@ -686,6 +693,11 @@ class Judgement(Frozen):
     """
 
     evals: list[MarketEval] = Field(default_factory=list)
+    #: 🔴🔴 **평가 줄의 출처**(사용자 지시 2026-10-07 ①) — `user_board`·`feed`·`none`
+    #
+    #  > 출처 순서: **사용자 보드 > 피드의 메인 라인 > 없음.**
+    #  ⚠️ `none` 이면 그 표는 **참고**이고 등급은 전부 `보류` 다.
+    board_source: str = "none"
     #: 🔴 블록 9 — **등급과 무관하게 매 경기 한 줄**(지시서 §2-2)
     direction: str = ""
     conclusion: str = ""
@@ -724,6 +736,11 @@ class Card(Frozen):
     drops: list[Drop] = Field(default_factory=list)
     hypo: HypoSet | None = None
     evals: list[MarketEval] = Field(default_factory=list)
+    #: 🔴🔴 **평가 줄의 출처**(사용자 지시 2026-10-07 ①) — `user_board`·`feed`·`none`
+    #
+    #  > 출처 순서: **사용자 보드 > 피드의 메인 라인 > 없음.**
+    #  ⚠️ `none` 이면 그 표는 **참고**이고 등급은 전부 `보류` 다.
+    board_source: str = "none"
     direction: str = ""
     conclusion: str = ""
     triggers: list[str] = Field(default_factory=list)
@@ -758,6 +775,8 @@ class Card(Frozen):
     market_why: list[str] = Field(default_factory=list)
     #: 🔴 OCR 로 읽은 보드 **원문**(§2-6: 원문 그대로 보여 준다)
     ocr_text: str = ""
+    #: 🔴🔴 **평가 줄의 출처**(2026-10-07 ①) — `user_board`·`feed`·`none`
+    board_source: str = "none"
     #: 🔴🔴 **경우의 수**(사용자 지시 2026-10-06(7차) §2) — 블록 3b 가 그린다
     #
     #  꼴: `{"cells": [...], "states": {팀: {state, why, margin}}, "verified": bool,
