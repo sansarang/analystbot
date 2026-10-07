@@ -86,6 +86,7 @@ def card(replaying) -> Card:
     from app import net as _net_mod
     from app import search as _search
     from app.core import board as _board
+    from app.core import reweight as _reweight
     from app.core import shape as _shape
     from app.core.stages import (s2_facts, s2b_base, s2c_market, s3_docs,
                                  s4_extract, s5_verify, s6_hypo, s7_judge,
@@ -120,10 +121,13 @@ def card(replaying) -> Card:
         docs = list(cache.values()) or docs
         variables = s5_verify.run(ref, facts, docs, cands, state=state)
         hypo = s6_hypo.run(ref, facts, variables, state=state)
-        said = s7_judge.run(ref, facts, variables, hypo, state=state, now=NOW,
-                            board=BOARD)
+        # 🔴🔴 **파이프라인과 같은 순서**(2026-10-07 재가중 ①) — 우리 열 → 재가중 →
+        #    생존. ⚠️ 순서가 다르면 재생이 운영을 흉내낸 것이 아니다.
         layers = pipeline._layers(ref, facts, variables, hypo, base_p, adj_p,
                                  feed_mk, user_mk, state=state)
+        hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=state)
+        said = s7_judge.run(ref, facts, variables, hypo, state=state, now=NOW,
+                            board=BOARD, board_source="user_board")
         said = pipeline._direction(pipeline._lower(said, layers, state=state),
                                   layers, ref)
         # 🔴🔴 **양상·논평도 재생이 센다**(사용자 지시 2026-10-07 ②③) — ⚠️ 논평

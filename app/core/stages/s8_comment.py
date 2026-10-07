@@ -57,7 +57,8 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
         notes.append("논평 없음 — LLM 이 답을 못 줬다")
         return CommentOut(said=_template(ref, shape, basis, scen, said),
                           notes=notes)
-    ok, bad = check(got, shape=shape, basis=basis, scen=scen, said=said)
+    ok, bad = check(got, shape=shape, basis=basis, scen=scen, said=said,
+                    ref=ref)
     if ok:
         state.note(f"s8 논평 ✅ `{got.title[:40]}` · 근거 {len(got.reasons)}줄")
         return CommentOut(said=got, notes=notes)
@@ -70,7 +71,8 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
         content=("🔴 아래가 어긋났다 — 그 칸만 고쳐 **다시** 내라:\n"
                  + "\n".join(f"- {x}" for x in bad)))], state=state)
     if again is not None:
-        ok2, bad2 = check(again, shape=shape, basis=basis, scen=scen, said=said)
+        ok2, bad2 = check(again, shape=shape, basis=basis, scen=scen,
+                          said=said, ref=ref)
         if ok2:
             state.note("s8 논평 ✅ 2차에서 맞았다")
             return CommentOut(said=again, notes=notes)
@@ -92,8 +94,65 @@ def _scores_of(scen) -> list[str]:
     return [f"{h}-{a}" for s in scen for h, a in (s.outcomes or [])]
 
 
+def dir_side(said: Judgement, ref: MatchRef | None) -> str:
+    """🔴 방향 판정이 **어느 쪽**인가 — `home`·`away`·`""`(반반·없음).
+
+    ⚠️ 방향 줄은 사람 글이다(*"방향: **Mexico** (세 열 중 2열이…)"*) — 그 글에 팀
+       이름이 있으면 그 쪽이다. 🔴 *"반반"* 이면 빈 글자(제한 없음)다.
+    """
+    low = str(getattr(said, "direction", "") or "")
+    if not low or ref is None or "반반" in low:
+        return ""
+    for key, name in (("home", ref.home_name), ("away", ref.away_name)):
+        if name and name in low:
+            return key
+    return ""
+
+
+def _winner(spot: str) -> str:
+    """🔴 `2-1` → `home`. ⚠️ 판정은 `reweight.side_of` **하나**다(사본 금지)."""
+    from app.core import reweight
+    bits = str(spot).split("-")
+    if len(bits) != 2 or not (bits[0].strip().isdigit()
+                              and bits[1].strip().isdigit()):
+        return ""
+    return reweight.side_of(int(bits[0]), int(bits[1]))
+
+
+def win_words() -> list[str]:
+    """🔴 *"이 팀이 이긴다"* 를 뜻하는 낱말 — 표는 config 하나다(사본 금지)."""
+    from app import rules
+    said = (rules._load("config/interpret_rules.yaml")
+            .get("commentary_win_words") or [])
+    return [str(x) for x in said]
+
+
+def flow_conflict(flow: str, side: str, ref: MatchRef | None) -> str:
+    """🔴🔴 **예상 흐름의 승자가 방향과 어긋나나** — 어긋나면 사유 글(아니면 "").
+
+    ⚠️ 실측 2026-10-07(멕시코–칠레): 방향은 **Mexico** 인데 흐름이 *"원정팀 Chile가
+       한 골 차 승부로 가져간다"* 였다. 🔴 같은 카드가 두 말을 했다.
+    🔴 센다 — 흐름을 **구절로 쪼개** 그 구절에 **반대 팀 이름 + 이김 낱말**이 같이
+       있고 우리 쪽 이름이 없으면 어긋남이다(글자 검사의 한계는 그 구절 안으로 묶는다).
+    """
+    if not side or ref is None:
+        return ""
+    other = ref.away_name if side == "home" else ref.home_name
+    mine = ref.home_name if side == "home" else ref.away_name
+    if not other:
+        return ""
+    for part in re.split(r"[,.;·]|그러나|하지만|다만", str(flow or "")):
+        if other not in part or (mine and mine in part):
+            continue
+        hit = [w for w in win_words() if w in part]
+        if hit:
+            return (f"예상 흐름이 **{other}** 가 이긴다고 말한다({hit[:2]}) — "
+                    f"방향 판정은 **{mine}** 다")
+    return ""
+
+
 def check(got: Commentary, *, shape: dict, basis: list[Variable], scen,
-          said: Judgement) -> tuple[bool, list[str]]:
+          said: Judgement, ref: MatchRef | None = None) -> tuple[bool, list[str]]:
     """🔴🔴 **코드 검사**(지시 ③) — `(맞았나, 어긋난 것들)`.
 
     ⚠️ 글자 검사가 아니라 **값 대조**다: 양상 글자·스코어 목록·변수 번호·보드 줄.
@@ -127,6 +186,23 @@ def check(got: Commentary, *, shape: dict, basis: list[Variable], scen,
         graded = {e.grade for e in said.evals}
         if graded <= {"없음", "자료부족", "보류"} and "추천" in str(got.lean):
             bad.append("등급이 없는데 lean 이 **추천**이라고 말한다(기울기만 써라)")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **흐름·스코어의 승자 = 방향 판정 팀**(사용자 지시 2026-10-07 재가중 ②)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 예상 흐름·예상 스코어의 승자 = 방향 판정 팀(방향이 "반반"이면 제한 없음).
+    #
+    #  ⚠️ 무승부 스코어는 **어느 쪽도 아니다** — 막지 않는다(방향이 승자를 고른 것이고
+    #     무승부를 배제한 것은 아니다).
+    side = dir_side(said, ref)
+    if side:
+        other = "away" if side == "home" else "home"
+        who = (ref.away_name if side == "home" else ref.home_name) if ref else ""
+        bad += [f"예상 스코어 `{x}` 의 승자가 **{who}** 다 — 방향 판정과 반대다"
+                for x in got.score_range if _winner(str(x).strip()) == other]
+        got_flow = flow_conflict(got.flow, side, ref)
+        if got_flow:
+            bad.append(got_flow)
     low = " ".join([got.title, got.flow, *[x.text for x in got.reasons]]).lower()
     for w in banned():
         if w in low:
@@ -162,6 +238,8 @@ def _prompt(ref: MatchRef, shape: dict, basis: list[Variable], scen,
              "🔴 번호는 `var_ids` **칸에만** 넣는다 — `text` 안에 "
              "`(var_ids: …)` 처럼 적지 마라(카드에 그 글자가 그대로 나온다).\n"
              "🔴 `flow` 는 경기 흐름 한 줄이다 — 전반/후반 · 누가 주도 · 어떻게 끝나나.\n"
+             "🔴 **흐름과 스코어의 승자는 아래 `방향 판정` 팀이다** — 그 팀이 아닌 "
+             "쪽이 이긴다고 쓰지 마라(무승부는 괜찮다). 방향이 *반반*이면 자유다.\n"
              "🔴 `score_range` 는 **아래 시나리오 스코어 중에서** 1~3개를 고른다.\n"
              "🔴 `lean` 은 **아래 보드 줄 중** 논평과 같은 방향 하나이고, 없으면 "
              "**빈 문자열**이다. ⚠️ 등급이 없으면 *추천*이라고 쓰지 마라(기울기만).\n"
@@ -197,20 +275,42 @@ def _ask(messages: list[Any], *, state: RunState) -> Commentary | None:
     return None
 
 
+def _cut(said: str, n: int = 90) -> str:
+    """🔴 글을 **낱말 경계에서** 자른다 — 가운데서 끊긴 글은 카드에 못 쓴다."""
+    text = " ".join(str(said or "").split())
+    if len(text) <= n:
+        return text
+    head = text[:n]
+    if " " in head[n // 2:]:
+        head = head[:head.rfind(" ")]
+    return head.rstrip(" ,·") + "…"
+
+
 def _template(ref: MatchRef, shape: dict, basis: list[Variable], scen,
               said: Judgement) -> Commentary:
     """🔴🔴 **코드 템플릿** — LLM 이 두 번 어긋났을 때. ⚠️ 수를 **그대로** 적는다.
 
     🔴 지어내지 않는다 — 양상·비중·변수 claim·스코어를 **이어 붙이는 것**뿐이다.
+    ⚠️ 템플릿도 **검사를 지나야** 한다 — 방향과 반대인 스코어는 넣지 않고(재가중 ②),
+       글은 **낱말 경계**에서 자른다(실측 2026-10-07: *"for a sec"* 로 끊겼다).
     """
-    spots = [f"{h}-{a}" for s in scen[:2] for h, a in (s.outcomes or [])][:3]
-    lines = [CommentLine(text=f"{v.claim[:110]}", var_ids=[v.id])
+    side = dir_side(said, ref)
+    other = ("away" if side == "home" else "home") if side else ""
+    who = ("" if not side else
+           (ref.home_name if side == "home" else ref.away_name))
+    spots = [f"{h}-{a}" for s in scen[:3] for h, a in (s.outcomes or [])
+             if not other or _winner(f"{h}-{a}") != other][:3]
+    tops = [str(a) for a, _ in (shape.get("top_scores") or [])
+            if not other or _winner(str(a)) != other][:2]
+    lines = [CommentLine(text=f"{_cut(v.claim)}", var_ids=[v.id])
              for v in basis[:3]]
-    flow = (f"가장 무거운 갈래는 "
-            + " · ".join(f"{a}" for a, _ in (shape.get("top_scores") or [])[:2])
-            + f" 이고, 양상은 {shape.get('shape')} 다")
+    kind = str(shape.get("shape") or "")
+    flow = (f"무게가 가장 두꺼운 스코어는 {' · '.join(tops) or '못 쟀다'} 이고, "
+            + (f"{who} 쪽이 앞서는 " if who else "어느 쪽도 앞세우지 못한 ")
+            + f"{kind} 모양이다")
     return Commentary(
-        title=f"{shape.get('shape')} — {ref.home_name} vs {ref.away_name}",
+        title=(f"{kind} — " + (f"{who} 쪽에 무게가 실린다" if who
+                               else "어느 쪽도 앞세우지 못한다")),
         reasons=lines, flow=flow, score_range=spots, lean="")
 
 

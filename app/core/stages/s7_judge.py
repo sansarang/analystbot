@@ -429,7 +429,10 @@ def _triggers(variables: list[Variable], ref: MatchRef) -> list[str]:
         #
         #  ⚠️ 실측 2026-10-06 카드가 그 내부 표기를 그대로 찍었다.
         who = str(v.target or "그 선수")
-        when = triggers.when_of(v.type, ref.kickoff_utc)
+        # 🔴 **확정 XI 기준 T-60** — 머리글 재분석 시각과 **같은 기준**이다
+        #    (사용자 지시 2026-10-07 재가중 ③). ⚠️ 세포가 깨는 시각(T-360)이 아니다 —
+        #    그것은 *"검색을 도는 때"* 이고 이 줄은 *"확정 XI 를 보는 때"* 다.
+        when = triggers.xi_when(ref.kickoff_utc)
         out.append(f"{_CIRCLED[len(out)]} 확정 XI 에 **{who}** 가 "
                    f"{'있으면' if v.type in _ABSENT else '없으면'} `{v.id}` 가 "
                    f"사라져 → 다시 센다 · {when}")

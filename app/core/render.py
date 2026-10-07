@@ -81,7 +81,9 @@ def _head(card: Card) -> str:
     said_xi = {v.state for v in (card.facts.xi or {}).values()}
     if said_xi and "confirmed" not in said_xi:
         from datetime import timedelta
-        when = m.kickoff_utc - timedelta(minutes=60)
+        from app.triggers import XI_MINS
+        # 🔴 그 수는 `triggers.XI_MINS` **하나**다 — 블록 10 방아쇠가 같은 수를 쓴다
+        when = m.kickoff_utc - timedelta(minutes=XI_MINS)
         head += (f"\n⏳ **확정 XI 전** — {timefmt.kst_label(when)} 이후 `/재분석`"
                  f"(지금 XI 는 {'·'.join(sorted(said_xi))})")
     if card.changed:

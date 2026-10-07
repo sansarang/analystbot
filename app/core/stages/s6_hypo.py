@@ -29,12 +29,21 @@ from app.core.compare import ABSENCE_TYPES
 #     읽어** 빨개졌다(실측 2026-10-06: `ABCDEFGHIJKLMNOPQRSTUVWXYZ` 를 키로 봤다).
 _LETTERS = string.ascii_uppercase
 
-#: 🔴 가설에 보낼 **근거 변수 상한** — 실측 2026-10-06: 32개를 보내면 잘린다
-#   (입력 3,548 → 출력 8,000이 전부 추론 · `length`). 16개면 돈다(그 회차 실측).
-#   ⚠️ 이 수는 **실측으로 정했다** — 늘리려면 다시 재야 한다(§9).
-BASIS_CAP = 16
-#: 🔴 맥락 변수 상한 — 근거가 아니므로 더 짧게
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **입력을 더 줄인다**(사용자 지시 2026-10-07 재가중 ④)
+# ══════════════════════════════════════════════════════════════════
+#
+# > 한국–우즈벡 `llm_truncated`: **상한을 올리지 말고 s6 입력을 줄인다** — 근거 변수
+# > 상위 6개(무게 순)만, claim 은 80자로 자르고, 맥락 변수는 **이름만**.
+#
+# ⚠️ 실측 2026-10-07: 변수 10개(claim 200자)를 보내자 가설 호출이 **두 번 다**
+#    `length` 로 잘렸다(출력이 전부 추론). 🔴 상한을 올리는 것은 §9 금지다.
+#: 🔴 가설에 보낼 **근거 변수 상한** — 무게 순 상위 6개
+BASIS_CAP = 6
+#: 🔴 맥락 변수 상한 — **이름만** 보낸다(claim 을 안 보낸다)
 CTX_CAP = 6
+#: 🔴 claim 을 자르는 길이 — 80자
+CLAIM_CUT = 80
 
 
 def run(ref: MatchRef, facts: Facts, variables: list[Variable], *,
@@ -127,8 +136,18 @@ def _payload(ref: MatchRef, facts: Facts, basis: list[Variable],
        맞대결 **URL 까지** 실어 보내고 있었다 — 가설에 쓰이지 않는 것들이다.
     """
     def row(v: Variable) -> dict:
+        """🔴 근거 변수 한 줄 — claim 은 **80자**(재가중 ④)."""
         return {"id": v.id, "type": v.type, "subject": v.subject,
-                "favors": v.favors, "claim": v.claim[:200], "weight": v.weight}
+                "favors": v.favors, "claim": v.claim[:CLAIM_CUT],
+                "weight": v.weight}
+
+    def bare(v: Variable) -> dict:
+        """🔴 맥락 변수 한 줄 — **이름만**이다(claim 을 안 보낸다 · 재가중 ④).
+
+        ⚠️ 맥락은 근거가 못 된다 — 가설이 그것을 인용할 수 없으므로 글을 보낼 까닭이
+           없다. 🔴 유형·주체만 보내 *"그런 종류의 말이 있다"* 만 알린다.
+        """
+        return {"id": v.id, "type": v.type, "subject": v.subject}
 
     def form(raw: object) -> dict:
         box = dict(raw) if isinstance(raw, dict) else {}
@@ -152,7 +171,7 @@ def _payload(ref: MatchRef, facts: Facts, basis: list[Variable],
                   "competition": ref.competition_short,
                   "match_format": facts.match_format, "sport": ref.sport},
         "variables": [row(v) for v in keep_basis],
-        "context_only": [row(v) for v in keep_ctx],
+        "context_only": [bare(v) for v in keep_ctx],
         "facts": {"standings": facts.standings,
                   "recent": {k: form(v) for k, v in facts.recent.items()},
                   "h2h": {k: v for k, v in facts.h2h.items()
@@ -172,7 +191,8 @@ def _ask(ref: MatchRef, facts: Facts, basis: list[Variable],
     if len(basis) > BASIS_CAP or len(ctx) > CTX_CAP:
         state.note(f"s6 입력을 묶었다 — 근거 {len(basis)}→{min(len(basis), BASIS_CAP)}개"
                    f"(무게 큰 것부터) · 맥락 {len(ctx)}→{min(len(ctx), CTX_CAP)}개 "
-                   f"(실측 2026-10-06: 32개를 보내면 잘린다)")
+                   f"(**이름만**) · claim {CLAIM_CUT}자 "
+                   f"(실측 2026-10-07: 10개·200자면 `length` 로 잘린다)")
     said = llm.ask(provider="deepseek", purpose="hypo", out=HypoOut,
                    state=state,
                    messages=[llm.Message(role="system",

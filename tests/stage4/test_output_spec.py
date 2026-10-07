@@ -102,9 +102,11 @@ def test_방아쇠가_확인_시각을_시계로_적는다():
 
     from app import triggers
     kick = datetime(2026, 10, 3, 2, 0, tzinfo=timezone.utc)   # = 11:00 KST
-    got = triggers.when_of("recent_pattern", kick)
-    # 🔴 T-70분 → 09:50 KST. **변환을 거쳐야** 한다(절대규칙 2)
-    assert got.startswith("10-03 09:50 KST"), got
-    assert "T-70분" in got, "상대 시각도 함께 남아야 한다 — 둘은 쓰임이 다르다"
+    # 🔴 **확정 XI 기준 T-60**(사용자 지시 2026-10-07 재가중 ③) → 10:00 KST.
+    #    ⚠️ 종전엔 세포가 깨는 시각(T-70·T-360)을 적었다 — 그것은 *"검색이 도는 때"*
+    #       이고 사람이 **확정 XI 를 보는 때가 아니다**.
+    got = triggers.xi_when(kick)
+    assert got.startswith("10-03 10:00 KST"), got
+    assert "T-60분" in got, "상대 시각도 함께 남아야 한다 — 둘은 쓰임이 다르다"
     # ⚠️ 킥오프를 모르면 **시계 시각을 짓지 않는다**
-    assert "KST" not in triggers.when_of("recent_pattern")
+    assert "KST" not in triggers.xi_when(None)

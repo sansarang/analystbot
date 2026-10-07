@@ -1706,3 +1706,168 @@ def test_s5_가_그_기사의_귀속을_고치고_카드에_적는다():
     calls = {c.func.id for c in ast.walk(fn)
              if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
     assert "team_of_player" in calls, "🔴 s5 가 명단 대조를 부르지 않는다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **시나리오 재가중**(사용자 지시 2026-10-07 재가중 ①②)
+# ══════════════════════════════════════════════════════════════════
+
+
+def _hypo(rows):
+    """🔴 `(id, type, [(h,a)…], 무게)` 목록 → `HypoSet`."""
+    from app.core.schema import HypoSet, Scenario
+    return HypoSet(scenarios=[
+        Scenario(id=i, type=t, outcomes=list(sc), strength=w,
+                 driver_vars=["X1"], added_by="deepseek",
+                 mechanism="그래서 그렇게 된다")
+        for i, t, sc, w in rows])
+
+
+def _side_sums(hypo):
+    """🔴 결과별 무게 합 — 스코어 단위로 쪼개 센다(`our_prob` 와 같은 규칙)."""
+    from app.core.reweight import side_of
+    box = {"home": 0.0, "draw": 0.0, "away": 0.0}
+    for sc in hypo.scenarios:
+        for h, a in sc.outcomes:
+            box[side_of(h, a)] += float(sc.strength) / len(sc.outcomes)
+    return box
+
+
+def test_시나리오_무게가_우리_열에_묶인다():
+    """🔴🔴 ① — 결과별 합 = OurProb. 같은 결과 안의 비율은 **그대로**.
+
+    실측 2026-10-07(멕시코–칠레): 우리 열 홈 73% 인데 시나리오 무게는 원정·개방
+    쪽에 몰려(C 2.4 · A 2.1) 양상·논평·예상 스코어가 **원정 승**을 그렸고
+    핸디 Mexico −1.5 생존이 0.1935 였다. 돌연변이: 재가중 호출 제거.
+    """
+    from app.core import reweight
+    from app.core.schema import ProbTriple
+    from app.core.state import RunState
+    ref = _ref_mx_cl()
+    hypo = _hypo([("A", "home_win", [(2, 0)], 1.0),
+                  ("B", "home_win", [(2, 1)], 3.0),
+                  ("C", "away_win", [(1, 2)], 4.0),
+                  ("D", "draw", [(1, 1)], 2.0)])
+    ours = ProbTriple(home=0.70, draw=0.20, away=0.10)
+    got = reweight.of(hypo, ours, ref=ref, state=RunState())
+    box = _side_sums(got)
+    tot = sum(box.values())
+    for key in ("home", "draw", "away"):
+        assert abs(box[key] / tot - getattr(ours, key)) < 1e-6, (key, box, tot)
+    # 🔴 **총량은 그대로**(10.0) — 생존은 비율이지만 표가 읽을 수 있어야 한다
+    assert abs(tot - 10.0) < 1e-6, tot
+    # 🔴 같은 결과 안의 비율은 **그대로** — A:B 가 1:3 이었다
+    kept = {s.id: s.strength for s in got.scenarios}
+    assert abs(kept["B"] / kept["A"] - 3.0) < 1e-6, kept
+
+
+def test_갈래가_없는_결과는_보강으로_덮는다():
+    """🔴 ① — 우리 열이 확률을 주는데 그 결과 갈래가 없으면 **필수형 스코어로** 넣는다."""
+    from app.core import reweight
+    from app.core.schema import ProbTriple
+    from app.core.state import RunState
+    ref = _ref_mx_cl()
+    # ⚠️ 무승부 갈래가 **하나도 없다**
+    hypo = _hypo([("A", "home_win", [(2, 0)], 2.0),
+                  ("B", "away_win", [(0, 1)], 2.0)])
+    ours = ProbTriple(home=0.50, draw=0.30, away=0.20)
+    got = reweight.of(hypo, ours, ref=ref, state=RunState())
+    draws = [s for s in got.scenarios if s.type == "draw"]
+    assert draws, "🔴 무승부 결과를 덮지 않았다"
+    # 🔴 스코어는 **기존 필수형 표**의 것이다(지어내지 않는다)
+    import yaml
+    box = yaml.safe_load((ROOT / "config/scenario_required.yaml")
+                         .read_text(encoding="utf-8"))["soccer_forms"]
+    want = {tuple(int(x) for x in str(s).split("-"))
+            for s in box["무승부"]["scores"]}
+    assert set(draws[0].outcomes) <= want, (draws[0].outcomes, want)
+    assert "근거" in draws[0].mechanism and draws[0].driver_vars == []
+    box2 = _side_sums(got)
+    tot = sum(box2.values())
+    assert abs(box2["draw"] / tot - 0.30) < 1e-6, box2
+    # 🔴🔴 **배선** — 파이프라인이 s7 **앞에서** 재가중한다(두 입구 다)
+    src = (ROOT / "app/core/pipeline.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    for name in ("analyze", "reanalyze"):
+        fn = next(n for n in ast.walk(tree)
+                  if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                  and n.name == name)
+        order = [n.lineno for n in ast.walk(fn) if isinstance(n, ast.Call)
+                 and isinstance(n.func, ast.Attribute)
+                 and n.func.attr in ("of", "run")
+                 and isinstance(n.func.value, ast.Name)
+                 and n.func.value.id in ("_reweight", "s7_judge")]
+        calls = [(n.lineno, n.func.value.id) for n in ast.walk(fn)
+                 if isinstance(n, ast.Call)
+                 and isinstance(n.func, ast.Attribute)
+                 and ((n.func.value.id if isinstance(n.func.value, ast.Name)
+                       else "") in ("_reweight", "s7_judge"))]
+        got_rw = [ln for ln, who in calls if who == "_reweight"]
+        got_s7 = [ln for ln, who in calls if who == "s7_judge"]
+        assert got_rw and got_s7, (name, calls)
+        assert min(got_rw) < min(got_s7), (
+            f"🔴 {name}: 재가중이 s7 **뒤**에 있다(생존이 옛 무게로 선다)")
+        assert order  # 🔴 두 호출이 같은 함수 안에 있다
+
+
+def test_논평_승자가_방향과_어긋나면_잡는다():
+    """🔴 ② — 예상 흐름·스코어의 승자 = 방향 판정 팀. 돌연변이: 그 검사 제거.
+
+    실측 2026-10-07(멕시코–칠레): 방향 **Mexico** 인데 흐름이 *"원정팀 Chile가 한
+    골 차 승부로 가져간다"* 였고 예상 스코어가 `1-2 · 0-1 · 2-1` 이었다.
+    """
+    from app.core.schema import Commentary, Judgement
+    from app.core.stages import s8_comment
+    ref = _ref_mx_cl()
+    said = Judgement(direction="방향: **Mexico** (세 열 중 2열이 앞세운다)")
+    bad = Commentary(
+        title="접전", score_range=["1-2", "0-1", "2-1"],
+        flow=("전반에는 홈팀 Mexico가 공을 쥐지만, 후반에 원정팀 Chile가 한 골 차 "
+              "승부로 가져간다."), lean="", reasons=[])
+    # ⚠️ 스코어 목록 검사와 섞이지 않게 — 네 스코어를 **다 가진** 갈래를 준다
+    scen = _hypo([("A", "home_win", [(2, 1)], 1.0),
+                  ("B", "away_win", [(1, 2), (0, 1)], 1.0),
+                  ("C", "draw", [(1, 1)], 1.0)]).scenarios
+    ok, why = s8_comment.check(bad, shape={"shape": "접전"}, basis=[],
+                               scen=scen, said=said, ref=ref)
+    assert not ok
+    assert any("예상 흐름" in x for x in why), why
+    assert sum(1 for x in why if "예상 스코어" in x) == 2, why   # 1-2 · 0-1
+    # 🔴 방향과 같은 쪽이면 통과한다(무승부는 막지 않는다)
+    fine = bad.model_copy(update={
+        "score_range": ["2-1", "1-1"],
+        "flow": "Mexico가 전반에 앞서고 Chile가 따라붙지만 Mexico가 리드를 지킨다."})
+    ok2, why2 = s8_comment.check(fine, shape={"shape": "접전"}, basis=[],
+                                 scen=scen, said=said, ref=ref)
+    assert ok2, why2
+    # ⚠️ 방향이 **반반**이면 제한이 없다
+    half = Judgement(direction="방향: **반반** — 앞세운 열이 없다")
+    ok3, _ = s8_comment.check(bad, shape={"shape": "접전"}, basis=[],
+                              scen=scen, said=half, ref=ref)
+    assert ok3
+    # 🔴 낱말표는 config 에 있다(코드에 박지 않는다)
+    import yaml
+    said_words = yaml.safe_load((ROOT / "config/interpret_rules.yaml")
+                                .read_text(encoding="utf-8"))
+    assert said_words.get("commentary_win_words"), "표가 없다"
+
+
+def test_s6_입력을_여섯개_80자로_줄였다():
+    """🔴 ④ — 상한을 올리지 않고 **입력**을 줄인다(한국–우즈벡 `llm_truncated`)."""
+    from app.core.stages import s6_hypo
+    assert s6_hypo.BASIS_CAP == 6 and s6_hypo.CLAIM_CUT == 80
+    # 🔴 맥락 변수는 **이름만** — `claim` 을 안 보낸다
+    fn = next(n for n in ast.walk(ast.parse(
+        (ROOT / "app/core/stages/s6_hypo.py").read_text(encoding="utf-8")))
+        if isinstance(n, ast.FunctionDef) and n.name == "bare")
+    # 🔴 D46 — **독스트링을 뺀 코드만** 본다(설명이 금지어를 말하는 것과 코드가
+    #    그것을 부르는 것은 다르다)
+    body = [n for n in fn.body
+            if not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant)
+                    and isinstance(n.value.value, str))]
+    said = " ".join(ast.dump(n) for n in body)
+    assert "claim" not in said, "🔴 맥락 변수에 claim 을 싣는다"
+    # ⚠️ LLM 상한은 **그대로다**(§9: 상한을 올려 잘림을 고치지 않는다)
+    import yaml
+    box = yaml.safe_load((ROOT / "config/llm.yaml").read_text(encoding="utf-8"))
+    assert int(box["v6"]["purposes"]["hypo"]["max_tokens"]) <= 8000

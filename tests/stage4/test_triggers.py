@@ -53,16 +53,32 @@ def test_모든_유형에_뒤집는_세포가_적혀_있다():
     assert not bad, f"`cells.Q_TYPES` 에 없는 이름 {bad}"
 
 
-def test_언제_보나를_세포_시각에서_계산한다():
-    """🔴 시각을 방아쇠에 적지 않는다 — `cells.WAKE` 가 원본이다(사본 금지)."""
-    got = triggers.when_of("individual")
-    q = rules.variable_types()["individual"]["watch"]
-    mins = cells.WAKE[q][0]
-    assert str(mins) in got and q in got, (got, q, mins)
-    # 🔴 창이 없는 질문(아침 1회)은 분을 **지어내지 않는다**
-    assert "하루 1회" in triggers.when_of("stakes")
-    # 🔴 모르는 유형은 **모른다고** 적는다
-    assert "모른다" in triggers.when_of("없는유형")
+def test_방아쇠_시각은_확정_XI_기준_T60_이다():
+    """🔴🔴 사용자 지시 2026-10-07(재가중 ③) — **머리글과 같은 기준**이다.
+
+    ⚠️ 종전 `when_of` 는 *"그 변수를 지켜보는 **세포가 깨는 시각**"*(absence 는
+       T-360)을 적었다 — 검색이 도는 때이고 **확정 XI 가 나오는 때가 아니다**.
+       실측 2026-10-07(멕시코–칠레): 머리글 `10:30 KST`(T-60) 옆에 방아쇠가
+       `05:30 KST (absence 세포가 깨는 T-360분)` 으로 찍혔다.
+    🔴 그 수는 `triggers.XI_MINS` **한 곳**이고 카드 머리글이 같은 것을 쓴다.
+    """
+    from datetime import datetime, timezone
+    assert triggers.XI_MINS == 60
+    kick = datetime(2026, 10, 3, 2, 0, tzinfo=timezone.utc)   # = 11:00 KST
+    got = triggers.xi_when(kick)
+    assert got.startswith("10-03 10:00 KST"), got
+    assert f"T-{triggers.XI_MINS}분" in got, got
+    # ⚠️ 킥오프를 모르면 **시계 시각을 짓지 않는다**
+    assert "KST" not in triggers.xi_when(None)
+    # 🔴🔴 **머리글과 같은 수를 쓴다** — 렌더러가 그 상수를 들여온다(사본 금지)
+    import ast
+    import pathlib
+    src = (pathlib.Path(__file__).resolve().parents[2]
+           / "app/core/render.py").read_text(encoding="utf-8")
+    names = {a.name for n in ast.walk(ast.parse(src))
+             if isinstance(n, ast.ImportFrom) and n.module == "app.triggers"
+             for a in n.names}
+    assert "XI_MINS" in names, "🔴 카드 머리글이 그 수를 따로 들고 있다(사본)"
 
 
 # ══════════════════════════════════════════════════════════════════

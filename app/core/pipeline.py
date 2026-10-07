@@ -104,11 +104,20 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         board_src = "feed"
         st.note(f"보드 없음 → **피드 메인 라인 {len(got_board.lines)}줄**로 평가한다"
                 f"(기준선은 피드가 적은 그대로 · 메인 {_odds.main_points(feed_mk)})")
-    said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
-                        board_source=board_src, now=now)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **우리 열을 먼저 세고, 시나리오 무게를 그 열에 묶는다**(2026-10-07 재가중 ①)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전 순서는 s7(생존) → `_layers`(우리 열)였다. 그래서 **생존·양상·논평이
+    #     우리 열과 다른 수**에서 나왔다(실측: 홈 73% 인데 논평이 원정 승).
+    #  🔴 재가중은 **한 곳**이다(`reweight.of`) — 아래 모두가 그 결과를 쓴다.
     layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
                      user_mk, state=st, outlook=look)
     layers["ocr_text"] = ocr_text
+    from app.core import reweight as _reweight
+    hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
+    said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
+                        board_source=board_src, now=now)
     said = _direction(_lower(said, layers, state=st), layers, ref)
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **먼저 숫자를 고치고, 그 숫자에서 논평을 만든다**(2026-10-07 ②③)
@@ -214,10 +223,13 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
         from app.core.schema import Board as _Board
         got_board = _Board(lines=_odds.lines_from(feed_mk))
         board_src = "feed"
-    said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
-                        board_source=board_src, now=now)
+    # 🔴 재분석도 **같은 순서**다 — 우리 열 → 재가중 → 생존(재가중 ①)
     layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
                      user_mk, state=st, outlook=look)
+    from app.core import reweight as _reweight
+    hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
+    said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
+                        board_source=board_src, now=now)
     said = _direction(_lower(said, layers, state=st), layers, ref)
     # 🔴🔴 논평 — **양상·근거 변수가 바뀐 경우에만** 다시 부른다(비용 · 지시 ③)
     from app.core import shape as _shape
