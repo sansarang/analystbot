@@ -1202,25 +1202,28 @@ def test_저득점_필수형이_무실점_연속과_공격수_결장으로도_�
     import importlib
     ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
     row = {"when_clean_sheet": 2, "when_striker_absent": True}
-    # ① 무실점 2연속
-    said = s6_hypo._low_score_why(
+    # ① 무실점 2연속 — ⚠️ 돌려주는 것은 `(사유들, 변수 id들)` 이다(지시 1)
+    said, ids = s6_hypo._low_score_why(
         ref, Facts(recent={str(ref.away): {"streak_clean_sheet": 2}}), [], row)
     assert said and "무실점 2경기" in said[0], said
     # ⚠️ 1경기면 안 걸린다
     assert not s6_hypo._low_score_why(
-        ref, Facts(recent={str(ref.away): {"streak_clean_sheet": 1}}), [], row)
+        ref, Facts(recent={str(ref.away): {"streak_clean_sheet": 1}}), [],
+        row)[0]
     # ② 공격 자원 결장(`absence_att` 또는 포지션 FW)
     att = Variable(id="R9", type="absence_att", subject=ref.away, favors="home",
                    goals="down", target="Striker", hardness="hard", weight=3.0,
                    claim="c", quote="q")
-    got = s6_hypo._low_score_why(ref, Facts(), [att], row)
+    got, ids2 = s6_hypo._low_score_why(ref, Facts(), [att], row)
     assert got and "공격 자원 결장" in got[0], got
     # 🔴 *"최근 득점자"* 는 **확인 못 했다**고 적는다(지어내지 않는다)
     assert "확인 못 했다" in got[0], got[0]
+    # 🔴 그 변수를 **driver 로 넘긴다**(지시 1 — 무게가 바닥값이 되지 않게)
+    assert ids2 == ["R9"], ids2
     # ⚠️ 수비 결장은 안 걸린다(포지션이 DF 다)
     df = att.model_copy(update={"type": "def_absence", "target": "CB"})
     assert not s6_hypo._low_score_why(
-        ref, Facts(player_pos={"CB": "DF"}), [df], row)
+        ref, Facts(player_pos={"CB": "DF"}), [df], row)[0]
     # 🔴🔴 **배선** — `_soccer_forms` 가 그 까닭 함수를 부른다
     fn = next(n for n in ast.walk(ast.parse(
         (ROOT / "app/core/stages/s6_hypo.py").read_text(encoding="utf-8")))
@@ -1363,3 +1366,54 @@ def test_등급_글자에_보류가_있다():
     import typing
     assert "보류" in typing.get_args(Grade)
     assert "없음" in typing.get_args(Grade)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 지시 2026-10-07(종합 논평)** ① — 보강 갈래의 무게
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_근거_있는_보강_갈래는_바닥값_무게를_받지_않는다():
+    """🔴 ① — 발동 조건에 **쓴 변수**가 driver 로 달리고, 무게는 일반 규칙이다.
+
+    실측 2026-10-07(미국–캐나다): 저득점 갈래 `G` 가 무실점 2연속·공격수 결장을
+    근거로 생겼는데 `driver_vars=[]` → `strength` 가 **바닥값 0.1** 이었다.
+    돌연변이: `_add` 에서 `driver_vars=said[:4]` 를 `[]` 로 되돌리면 빨개진다.
+    """
+    import importlib
+    from app.core.schema import Facts, Variable
+    from app.core.stages import s6_hypo
+    from app.survive import WEIGHT_FLOOR
+    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
+    att = Variable(id="R9", type="absence_att", subject=ref.away,
+                   favors="home", goals="down", target="Striker",
+                   hardness="hard", weight=3.0, claim="c", quote="q")
+    facts = Facts(recent={str(ref.away): {"streak_clean_sheet": 2}})
+    st = s6_hypo.RunState()
+    got = s6_hypo.run(ref, facts, [att], state=st)
+    low = [s for s in got.scenarios
+           if s.added_by == "code" and "저득점" in s.mechanism]
+    # ⚠️ driver 가 비면 이 갈래는 **살아남지 못한다**(바닥값 → 쳐냄) — 그래서
+    #    돌연변이는 여기서 먼저 빨개진다. 둘 다 같은 병을 가리킨다.
+    assert low, "🔴 저득점 보강 갈래가 없다 — driver 가 비어 쳐냈나?"
+    one = low[0]
+    assert one.driver_vars, "🔴 조건에 쓴 변수를 driver 로 안 달았다"
+    assert set(one.driver_vars) <= {"R9", "recent_pattern"}, one.driver_vars
+    # 🔴 무게 = 유형별 최댓값 합 → 바닥값(0.1)이 아니다
+    assert one.strength > float(WEIGHT_FLOOR), (
+        f"🔴 근거가 있는데 바닥값이다: {one.strength}")
+    # 🔴 설명도 그 driver 로 쓴다 — *"근거 변수 없음"* 이 아니다
+    assert "근거 변수 없음" not in one.mechanism, one.mechanism
+    # ⚠️ 반대로 **근거가 하나도 없으면** 바닥값이고 그렇게 적는다
+    bare = s6_hypo._mech("저득점", [(0, 0)], "왜", [], [])
+    assert "근거 변수 없음" in bare and "바닥값" in bare, bare
+    # 🔴🔴 **배선** — 네 보강 갈래가 전부 `drivers=` 를 넘긴다
+    fn = next(n for n in ast.walk(ast.parse(
+        (ROOT / "app/core/stages/s6_hypo.py").read_text(encoding="utf-8")))
+        if isinstance(n, ast.FunctionDef) and n.name == "_soccer_forms")
+    adds = [c for c in ast.walk(fn) if isinstance(c, ast.Call)
+            and isinstance(c.func, ast.Name) and c.func.id == "_add"]
+    assert len(adds) >= 4, f"보강 갈래가 {len(adds)}개뿐이다"
+    for c in adds:
+        assert any(k.arg == "drivers" for k in c.keywords), (
+            f"🔴 `drivers=` 없이 보강한다 — 줄 {c.lineno}")

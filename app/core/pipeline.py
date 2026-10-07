@@ -110,6 +110,20 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
                      user_mk, state=st, outlook=look)
     layers["ocr_text"] = ocr_text
     said = _direction(_lower(said, layers, state=st), layers, ref)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **먼저 숫자를 고치고, 그 숫자에서 논평을 만든다**(2026-10-07 ②③)
+    # ══════════════════════════════════════════════════════════════════
+    from app.core import shape as _shape
+    from app.core.stages import s8_comment
+    got_shape = _shape.of(hypo)
+    if got_shape:
+        st.note(f"s8 양상 — **{got_shape['shape']}** · {got_shape['why']}")
+    got_note = s8_comment.run(ref, facts, variables, hypo, said, got_shape,
+                              state=st, board_source=board_src)
+    note, comment_notes = got_note.said, list(got_note.notes)
+    layers["shape"] = got_shape
+    layers["commentary"] = note
+    layers["comment_notes"] = comment_notes
     card = card_of(ref, facts, variables, hypo, said, state=st,
                    board_extra=extra, board_bad=bad, layers=layers)
     # 🔴 **마지막 실행을 기억한다** — 재분석이 s3·s4 를 다시 돌지 않게(§4-1)
@@ -205,6 +219,21 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
                      user_mk, state=st, outlook=look)
     said = _direction(_lower(said, layers, state=st), layers, ref)
+    # 🔴🔴 논평 — **양상·근거 변수가 바뀐 경우에만** 다시 부른다(비용 · 지시 ③)
+    from app.core import shape as _shape
+    from app.core.stages import s8_comment
+    got_shape = _shape.of(hypo)
+    if s8_comment.same_input(before.shape, got_shape, before.variables,
+                             variables) and before.commentary is not None:
+        st.note("s8 논평 — 양상·근거 변수가 **그대로다** → 다시 부르지 않는다")
+        note, comment_notes = before.commentary, list(before.comment_notes)
+    else:
+        got_note = s8_comment.run(ref, facts, variables, hypo, said, got_shape,
+                                  state=st, board_source=board_src)
+        note, comment_notes = got_note.said, list(got_note.notes)
+    layers["shape"] = got_shape
+    layers["commentary"] = note
+    layers["comment_notes"] = comment_notes
     changed = _diff(before, facts, variables, said)
     changed += _market_moved(before, layers, state=st)
     card = card_of(ref, facts, variables, hypo, said, state=st,
@@ -281,6 +310,9 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         ocr_text=str(box.get("ocr_text") or ""),
         board_source=str(said.board_source or "none"),
         moves=[dict(x) for x in (box.get("moves") or [])],
+        shape=dict(box.get("shape") or {}),
+        commentary=box.get("commentary"),
+        comment_notes=[str(x) for x in (box.get("comment_notes") or [])],
         outlook=dict(box.get("outlook") or {}),
         match=ref, facts=facts, variables=variables,
         drops=[*state.drops, *hypo.drops], hypo=hypo, evals=said.evals,

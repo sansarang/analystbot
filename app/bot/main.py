@@ -134,8 +134,29 @@ async def cmd_reanalyze(m: Message) -> None:
         await m.answer(chunk)
 
 
+@dp.message(Command("debug", "디버그"))
+async def cmd_debug(m: Message) -> None:
+    """`/디버그 <팀> vs <상대>` — 🔴 **같은 카드에 근거 번호·양상 비중**(지시 ④).
+
+    ⚠️ 숫자는 **똑같다** — 보이는 줄만 늘어난다(`render.debug_text`).
+    🔴 **마지막 실행을 다시 쓴다**(`reanalyze` 입구) — 디버그를 보려고 s3·s4 를
+       다시 돌려 돈을 쓰지 않는다. 실행이 없으면 그 입구가 전체를 새로 돈다(§4-5).
+    """
+    s = get_settings()
+    from app.bot_boot import boot_checks
+    boot_checks()
+    arg = " ".join((m.text or "").split()[1:]).strip()
+    if not arg:
+        await m.answer("`/디버그 <팀> vs <상대>` — 어느 경기인지 적어라")
+        return
+    pool = await get_pool(s.database_url)
+    for chunk in _split(await _v6_card(pool, said=arg, again=True, debug=True)):
+        await m.answer(chunk)
+
+
 async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
-                   again: bool = False, board_text: str = "") -> str:
+                   again: bool = False, board_text: str = "",
+                   debug: bool = False) -> str:
     """🔴🔴 **v6 경로** — `pipeline.analyze` → `render.card_text`(§8 4단계).
 
     ══════════════════════════════════════════════════════════════════
@@ -167,7 +188,7 @@ async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
         lines = [f"🔴 경기를 확정하지 못했다 — {got.why}"]
         lines += [f"  · {c}" for c in got.candidates]
         return "\n".join(lines)
-    return render.card_text(got)
+    return render.debug_text(got) if debug else render.card_text(got)
 
 
 @dp.message(Command("health"))

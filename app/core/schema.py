@@ -420,6 +420,39 @@ class ScenarioOut(Frozen):
     mechanism: str
 
 
+class CommentLine(Frozen):
+    """🔴 논평 한 문장 — **근거 변수 번호를 함께** 든다(지시 ③)."""
+
+    text: str
+    var_ids: list[str] = Field(default_factory=list)
+
+
+class Commentary(Frozen):
+    """🔴🔴 **종합 논평**(사용자 지시 2026-10-07 ③) — DeepSeek 1회 · 구조화 출력.
+
+    🔴 코드가 검사하는 것(어긋나면 그 칸을 버리고 **1회 재요청**, 또 어긋나면 템플릿):
+      · `title` 의 양상 = `Card.shape` 의 양상 — **논평이 숫자와 반대로 말하면 안 된다**
+      · `score_range` 의 스코어가 **무게 상위 시나리오 스코어 안**에 있다
+      · `reasons` 의 `var_ids` 가 **근거 가능 변수**만
+      · `lean` 은 **보드에 실제로 있는 줄**만 · 등급과 다른 말 금지
+      · 기대값·금액·켈리·**시장 확률을 근거로 쓰는 문장 금지**
+    ⚠️ `lean` 이 비면 *"기울기 없음"* 이다 — 빈 값을 **추천으로 읽지 않는다**.
+    """
+
+    title: str
+    reasons: list[CommentLine] = Field(default_factory=list)
+    flow: str = ""
+    score_range: list[str] = Field(default_factory=list)
+    lean: str = ""
+
+
+class CommentOut(Frozen):
+    """🔴 s8 산출 — 논평과 **버린 칸 사유**. ⚠️ 단계 사이는 **타입 하나**다(§7)."""
+
+    said: Commentary | None = None
+    notes: list[str] = Field(default_factory=list)
+
+
 class HypoOut(Frozen):
     """🔴 DeepSeek 단계 3 출력."""
 
@@ -777,6 +810,12 @@ class Card(Frozen):
     ocr_text: str = ""
     #: 🔴🔴 **평가 줄의 출처**(2026-10-07 ①) — `user_board`·`feed`·`none`
     board_source: str = "none"
+    #: 🔴🔴 **경기 양상**(2026-10-07 ②) — 양상·비중·가장 무거운 스코어 셋
+    shape: dict = Field(default_factory=dict)
+    #: 🔴🔴 **종합 논평**(2026-10-07 ③) — 없으면 `None`(그 사실을 카드가 적는다)
+    commentary: Commentary | None = None
+    #: 🔴 논평이 코드 검사에서 **버린 칸**과 사유(디버그 카드가 적는다)
+    comment_notes: list[str] = Field(default_factory=list)
     #: 🔴🔴 **경우의 수**(사용자 지시 2026-10-06(7차) §2) — 블록 3b 가 그린다
     #
     #  꼴: `{"cells": [...], "states": {팀: {state, why, margin}}, "verified": bool,

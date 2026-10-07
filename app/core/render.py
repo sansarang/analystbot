@@ -27,7 +27,7 @@ NUMBERS: tuple[str, ...] = ("1", "2", "2b", "3", "3c", "3b", "4", "5", "6",
                             "7b", "7", "8", "9", "10")
 
 
-def card_text(card: Card) -> str:
+def card_text(card: Card, *, debug: bool = False) -> str:
     """🔴 카드 전문. ⚠️ 블록이 **늘 전부 있다** — 비면 사유가 들어간다.
 
     🔴 축구 완성 지시서 §5 가 블록 **2b(결장)**·**3b(경우의 수)** 를 더했다.
@@ -38,7 +38,15 @@ def card_text(card: Card) -> str:
               _b7(card), _b8(card), _b9(card), _b10(card))
     for num, title, body in zip(NUMBERS, TITLES, bodies, strict=True):
         out.append(f"\n**{num}. {title}**\n{body}")
+        # 🔴 **결론 바로 아래**가 논평 자리다(지시 ④)
+        if num == "8":
+            out.append(_comment(card, debug=debug))
     return "\n".join(out)
+
+
+def debug_text(card: Card) -> str:
+    """🔴 긴 카드(`/디버그`) — 같은 블록에 **근거 번호·양상 비중**이 붙는다(지시 ④)."""
+    return card_text(card, debug=True)
 
 
 def _head(card: Card) -> str:
@@ -423,6 +431,52 @@ def _b7(card: Card) -> str:
         # 🔴 **못 읽은 줄은 그대로 보인다**(조용히 버리지 않는다 · §4)
         rows.append(f"- 🔴 보드 줄 못 읽음: {said}")
     return "\n".join(rows)
+
+
+def _comment(card: Card, *, debug: bool = False) -> str:
+    """🔴🔴 **종합 논평 블록**(사용자 지시 2026-10-07 ④) — 결론 줄 **바로 아래**.
+
+    ```
+    🧭 종합 논평 — {title}
+    {reasons 를 한 문단으로 · 변수 번호·코드 없이 사람 말}
+    📈 예상 흐름: {flow}
+    🎯 예상 스코어: {score_range}
+    ```
+
+    🔴 1겹(텔레그램) 카드는 **번호를 지운다**. ⚠️ 긴 카드(`debug=True`)는 같은 블록에
+       **근거 `var_ids`·양상 비중 숫자**를 붙인다.
+    """
+    from app.core.stages.s8_comment import plain
+    said = card.commentary
+    if said is None:
+        box = dict(card.shape or {})
+        return ("\n🧭 **종합 논평 — 없다**"
+                + (f"(양상 {box.get('shape')} · {box.get('why')})" if box else
+                   "(양상을 못 쟀다 — 시나리오가 없다)")
+                + ("" if not card.comment_notes else
+                   "\n    ⚠️ " + " · ".join(card.comment_notes[:3])))
+    out = [f"\n🧭 **종합 논평 — {said.title}**"]
+    body = plain(said)
+    if body:
+        out.append(body)
+    if said.flow:
+        out.append(f"📈 **예상 흐름**: {said.flow}")
+    if said.score_range:
+        out.append(f"🎯 **예상 스코어**: {' · '.join(said.score_range)}")
+    if said.lean:
+        # ⚠️ 등급이 없으면 *"추천"* 이 아니라 **기울기**다(코드가 그것을 검사했다)
+        out.append(f"↗️ **기울기**: {said.lean}")
+    if debug:
+        box = dict(card.shape or {})
+        out.append(f"    [양상] {box.get('shape')} — 2골 이하 "
+                   f"{box.get('low', 0):.0%} · 4골 이상 {box.get('high', 0):.0%} · "
+                   f"2골 차 이상 {box.get('one_sided', 0):.0%} · 한 골 안 "
+                   f"{box.get('close', 0):.0%} · {box.get('why')}")
+        for line in said.reasons:
+            out.append(f"    [근거] {line.text} ← {', '.join(line.var_ids) or '없음'}")
+        if card.comment_notes:
+            out.append("    [검사] " + " · ".join(card.comment_notes))
+    return "\n".join(out)
 
 
 def _b8(card: Card) -> str:

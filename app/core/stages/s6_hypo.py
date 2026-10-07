@@ -21,6 +21,8 @@ from app.core.schema import (Drop, DropReason, Facts, Hypothesis, HypoLine,
                              HypoOut, HypoSet, LlmFail, MatchRef, RedTeamLine,
                              RedTeamOut, Scenario, ScenarioOut, Variable)
 from app.core.state import RunState
+#: 🔴 결장 계열 유형은 `compare` 가 든 **목록 하나**를 쓴다(사본 금지 · #1)
+from app.core.compare import ABSENCE_TYPES
 
 #: 🔴 시나리오 글자 — `A`, `B`, … ⚠️ 모델이 적은 id 는 **쓰지 않는다**(겹친다).
 #  🔴 글자를 손으로 적지 않는다 — `.env` 계약이 **대문자 글자열을 환경변수 이름으로
@@ -587,17 +589,28 @@ def _soccer_forms(ref: MatchRef, facts: Facts, scen: list[Scenario],
          for key in (ref.home, ref.away)] or [0])
 
     def _add(name: str, scores: list[tuple[int, int]], why: str,
-             kind: str) -> None:
+             kind: str, drivers: list[str] | None = None) -> None:
+        """🔴🔴 보강 갈래 하나. **발동 조건에 쓴 변수를 driver 로 단다**(지시 1).
+
+        ⚠️ 실측 2026-10-07: 저득점 갈래 `G` 가 근거(무실점 2연속 · 공격수 결장)를
+           가지고도 `driver_vars=[]` 여서 **바닥값 0.1** 을 받았다 — 그래서 언더 3.5
+           생존이 0.596 으로 눌렸다. 🔴 무게는 일반 갈래와 **같은 규칙**(유형별
+           최댓값 합)이고, 근거가 **하나도 없을 때만** 바닥값이다.
+        🔴 `mechanism` 도 그 driver 로 다시 쓴다 — 템플릿은 `_mech()` 하나다.
+        """
         have = _all_scores(out)
         want = [p for p in scores if p not in have]
         if not want:
             state.note(f"s6 축구 필수형 `{name}` — 이미 그 갈래가 있다")
             return
+        said = [x for x in (drivers or []) if x in {v.id for v in variables}]
         out.append(Scenario(id=_next_id(out), outcomes=want[:2],
-                            driver_vars=[], type=kind,  # type: ignore[arg-type]
+                            driver_vars=said[:4], type=kind,  # type: ignore[arg-type]
                             added_by="code",
-                            mechanism=f"🔴 축구 필수형({name}) — {why}"))
-        state.note(f"s6 축구 필수형 보강 — {name}({why})")
+                            mechanism=_mech(name, want[:2], why, said,
+                                            variables)))
+        state.note(f"s6 축구 필수형 보강 — {name}({why}) · driver "
+                   f"{said or '없음(바닥값)'}")
 
     # ── 대량득점
     row = dict(box.get("대량득점형") or {})
@@ -607,7 +620,12 @@ def _soccer_forms(ref: MatchRef, facts: Facts, scen: list[Scenario],
         state.note("s6 축구 필수형 대량득점 — 보정 평균을 **못 쟀다**(폼 없음)")
     elif (at and trimmed >= at) or (need and hard_miss >= need):
         _add("대량득점", [(3, 1), (1, 3)],
-             f"보정 평균 합 {trimmed} · 결장 hard {hard_miss}개", "blowout")
+             f"보정 평균 합 {trimmed} · 결장 hard {hard_miss}개", "blowout",
+             # 🔴 조건에 쓴 것: 폼(보정 평균)과 **결장 hard** 변수다
+             drivers=[v.id for v in variables
+                      if v.type == "recent_pattern"][:2]
+             + [v.id for v in variables
+                if v.hardness == "hard" and v.type in ABSENCE_TYPES][:2])
     else:
         state.note(f"s6 축구 필수형 대량득점 — 조건 미달(합 {trimmed} < {at} · "
                    f"결장 hard {hard_miss} < {need})")
@@ -616,17 +634,23 @@ def _soccer_forms(ref: MatchRef, facts: Facts, scen: list[Scenario],
     at = float(row.get("trimmed_sum_at") or 0)
     if trimmed is not None and at and trimmed >= at:
         _add("난타전", [_pair(x) or (0, 0) for x in (row.get("scores") or [])],
-             f"보정 평균 합 {trimmed} ≥ {at}", "open")
+             f"보정 평균 합 {trimmed} ≥ {at}", "open",
+             drivers=[v.id for v in variables
+                      if v.type == "recent_pattern"][:2])
     # ── 저득점·0-0
     row = dict(box.get("저득점") or {})
     want_rules = {str(x) for x in (row.get("when_rules") or [])}
     hit = sorted({r.split("-")[0] for r in fired} & want_rules)
     # 🔴🔴 **조건 둘을 더했다**(사용자 지시 2026-10-07 ②) — 무실점 연속·공격수 결장
-    hit += _low_score_why(ref, facts, variables, row)
+    said_low, ids_low = _low_score_why(ref, facts, variables, row)
+    hit += said_low
     if hit:
+        # 🔴 규칙(IR01·IR04·IR07)으로 걸린 것도 **그 규칙이 만든 변수**를 driver 로
+        ids_low += [v.id for v in variables
+                    if str(v.from_rule or "").split("-")[0] in want_rules]
         _add("저득점", [p for p in (_pair(x) for x in (row.get("scores") or []))
                       if p is not None],
-             f"{', '.join(hit)}", "lock")
+             f"{', '.join(hit)}", "lock", drivers=ids_low)
     else:
         state.note(f"s6 축구 필수형 저득점 — 걸린 조건이 없다"
                    f"(규칙 {sorted(want_rules)} · 무실점 연속 · 공격수 결장)")
@@ -669,7 +693,9 @@ def _soccer_forms(ref: MatchRef, facts: Facts, scen: list[Scenario],
     if hit:
         _add("회귀반전", [p for p in (_pair(x) for x in (row.get("scores") or []))
                         if p is not None],
-             f"{', '.join(hit)} 발동 — 방향을 고르지 않는다(양쪽)", "regression")
+             f"{', '.join(hit)} 발동 — 방향을 고르지 않는다(양쪽)", "regression",
+             drivers=[v.id for v in variables
+                      if str(v.from_rule or "").split("-")[0] in want_rules])
     else:
         state.note(f"s6 축구 필수형 회귀반전 — 걸린 규칙이 없다"
                    f"(필요 {sorted(want_rules)})")
@@ -741,8 +767,29 @@ def _counter(ref: MatchRef, facts: Facts, scen: list[Scenario],
     return out
 
 
+def _mech(name: str, scores: list[tuple[int, int]], why: str,
+          drivers: list[str], variables: list[Variable]) -> str:
+    """🔴 보강 갈래의 **전개 문장** — driver 로 다시 쓴다(지시 1 템플릿).
+
+    꼴: *"{driver 요약}이 겹쳐 {스코어} 같은 저득점으로 끝난다"*.
+    ⚠️ driver 가 없으면 **그 사실을 적는다**(근거 없이 그린 갈래다).
+    """
+    said = ", ".join(f"{v.claim[:46]}" for v in variables
+                     if v.id in set(drivers))
+    spot = " · ".join(f"{h}-{a}" for h, a in scores)
+    tail = {"저득점": "저득점으로 끝난다", "대량득점": "다득점으로 벌어진다",
+            "난타전": "서로 주고받는 난타전이 된다",
+            "회귀반전": "평균 쪽으로 되돌아간다",
+            "무승부": "무승부로 끝난다"}.get(name, "그렇게 끝난다")
+    if not drivers:
+        return (f"🔴 축구 필수형({name}) — {why} · ⚠️ **근거 변수 없음**(바닥값) — "
+                f"{spot} 같은 꼴을 **자리만** 비워 둔다")
+    return (f"🔴 축구 필수형({name}) — {said}이 겹쳐 {spot} 같은 {tail}"
+            f"(조건: {why})")
+
+
 def _low_score_why(ref: MatchRef, facts: Facts, variables: list[Variable],
-                   row: dict) -> list[str]:
+                   row: dict) -> tuple[list[str], list[str]]:
     """🔴 저득점 갈래를 **넣을 까닭**(사용자 지시 2026-10-07 ②). 없으면 빈 목록.
 
     ① 한 팀이 최근 **n경기 이상 연속 무실점**(`recent.streak_clean_sheet`).
@@ -751,12 +798,16 @@ def _low_score_why(ref: MatchRef, facts: Facts, variables: list[Variable],
        사유에 적는다(*"최근 득점자"* 를 확인했다고 적지 않는다).
     """
     out: list[str] = []
+    ids: list[str] = []
     need = int(row.get("when_clean_sheet") or 0)
     if need:
         for key, raw in (facts.recent or {}).items():
             got = int(dict(raw).get("streak_clean_sheet") or 0)
             if got >= need:
                 out.append(f"{_who(ref, key)} 무실점 {got}경기 연속")
+                # 🔴 그 사실을 든 변수는 **그 팀의 폼 변수**다(S01)
+                ids += [v.id for v in variables
+                        if v.type == "recent_pattern" and str(v.subject) == str(key)]
     if row.get("when_striker_absent"):
         pos = dict(facts.player_pos or {})
         for v in variables:
@@ -769,7 +820,8 @@ def _low_score_why(ref: MatchRef, facts: Facts, variables: list[Variable],
                            f"(`{v.id}` {v.target}"
                            + (f" · 포지션 {spot}" if spot else " · 포지션 미상")
                            + ") ⚠️ 최근 득점자인지는 **확인 못 했다**")
-    return out
+                ids.append(v.id)
+    return out, ids
 
 
 def _who(ref: MatchRef, key: str) -> str:
