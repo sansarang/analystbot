@@ -112,6 +112,17 @@ def of(hypo: HypoSet | None, ours: ProbTriple | None, *, ref: MatchRef,
         return hypo
     tot_want = sum(want[k] for k in live) or 1.0
     factor = {k: (want[k] / tot_want) * before / share[k] for k in live}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **결과가 섞인 갈래는 결과별로 쪼갠다** — 지시 ①의 *"결과로 나누고"*
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 왜 쪼개야 하나: 하류(생존·양상·논평)는 **갈래 단위**로 무게를 쓴다. `2-2 ·
+    #     2-3` 처럼 한 갈래가 무승부와 원정승을 함께 들면, 그 갈래의 무게 하나를
+    #     어떻게 나눠도 **결과별 합이 우리 열과 어긋난다**(실측 2026-10-07: 재가중을
+    #     했는데도 홈 64% / 우리 열 73% 였다).
+    #  🔴 쪼갠 갈래는 **같은 이야기**다 — `mechanism`·`driver_vars` 를 그대로 물려받고
+    #     이름만 `A`·`A2` 로 갈린다(무거운 쪽이 본래 이름을 지킨다 — 반증 줄이 그
+    #     이름을 가리킨다).
     out: list[Scenario] = []
     for sc in rows:
         w = float(sc.strength or 0.0)
@@ -119,11 +130,25 @@ def of(hypo: HypoSet | None, ours: ProbTriple | None, *, ref: MatchRef,
         if w <= 0 or not pairs:
             out.append(sc)
             continue
-        got = 0.0
+        box: dict[str, list[tuple[int, int]]] = {}
         for h, a in pairs:
-            side = side_of(h, a)
-            got += (w / len(pairs)) * factor.get(side, 0.0)
-        out.append(sc.model_copy(update={"strength": round(max(got, 0.0), 4)}))
+            box.setdefault(side_of(h, a), []).append((h, a))
+        got = {k: (w / len(pairs)) * len(v) * factor.get(k, 0.0)
+               for k, v in box.items()}
+        order = sorted(box, key=lambda k: (-got[k], k))
+        for n, side in enumerate(order):
+            kind = {"home": "home_win", "draw": "draw",
+                    "away": "away_win"}.get(side, sc.type)
+            tail = ("" if len(order) == 1 else
+                    f" · ⚠️ 이 갈래는 **{side}** 쪽만 센다"
+                    f"(섞인 스코어를 결과별로 쪼갰다)")
+            out.append(sc.model_copy(update={
+                "id": sc.id if n == 0 else f"{sc.id}{n + 1}",
+                "outcomes": box[side],
+                # 🔴 쪼갠 뒤에는 그 갈래의 **결과가 하나**다 — 유형도 그 결과다
+                "type": sc.type if len(order) == 1 else kind,
+                "strength": round(max(got[side], 0.0), 4),
+                "mechanism": sc.mechanism + tail}))
     said = " · ".join(f"{k} {share[k]:.2f}→{want[k] / tot_want * before:.2f}"
                       f"({want[k] / tot_want:.0%})" for k in SIDES
                       if k in factor)

@@ -1871,3 +1871,39 @@ def test_s6_입력을_여섯개_80자로_줄였다():
     import yaml
     box = yaml.safe_load((ROOT / "config/llm.yaml").read_text(encoding="utf-8"))
     assert int(box["v6"]["purposes"]["hypo"]["max_tokens"]) <= 8000
+
+
+def test_결과가_섞인_갈래는_결과별로_쪼갠다():
+    """🔴🔴 ① *"각 시나리오 스코어를 결과로 나누고"* — 쪼개야 **합이 맞는다**.
+
+    ⚠️ 실측 2026-10-07: 재가중을 했는데도 결과별 합이 홈 64%(우리 열 73%)였다 —
+    `2-2 · 2-3` 처럼 한 갈래가 두 결과를 들면 **갈래 단위 무게 하나**로는 맞출 수가
+    없다(하류는 갈래 단위로 센다). 돌연변이: 쪼개기 제거 → 합이 어긋난다.
+    """
+    from app.core import reweight
+    from app.core.schema import ProbTriple
+    from app.core.state import RunState
+    ref = _ref_mx_cl()
+    hypo = _hypo([("A", "open", [(2, 2), (2, 3)], 4.0),      # 무 + 원정
+                  ("B", "home_win", [(2, 1)], 2.0),
+                  ("C", "open", [(1, 0), (1, 1)], 2.0)])     # 홈 + 무
+    ours = ProbTriple(home=0.60, draw=0.25, away=0.15)
+    got = reweight.of(hypo, ours, ref=ref, state=RunState())
+    # 🔴 쪼갠 갈래는 **결과가 하나**다
+    for sc in got.scenarios:
+        sides = {reweight.side_of(h, a) for h, a in sc.outcomes}
+        assert len(sides) == 1, (sc.id, sc.outcomes)
+    # 🔴 **갈래 단위로 세도** 결과별 합이 우리 열과 같다(하류가 그렇게 센다)
+    box = {"home": 0.0, "draw": 0.0, "away": 0.0}
+    for sc in got.scenarios:
+        box[reweight.side_of(*sc.outcomes[0])] += float(sc.strength)
+    tot = sum(box.values())
+    for key in ("home", "draw", "away"):
+        assert abs(box[key] / tot - getattr(ours, key)) < 1e-3, (key, box, tot)
+    # 🔴 무거운 쪽이 **본래 이름**을 지킨다(반증 줄이 그 이름을 가리킨다)
+    ids = {s.id for s in got.scenarios}
+    assert {"A", "B", "C"} <= ids and "A2" in ids, ids
+    # 🔴 이야기는 그대로다 — driver 와 mechanism 을 물려받는다
+    same = [s for s in got.scenarios if s.id.startswith("A")]
+    assert all(s.driver_vars == ["X1"] for s in same), same
+    assert all("그래서 그렇게 된다" in s.mechanism for s in same)
