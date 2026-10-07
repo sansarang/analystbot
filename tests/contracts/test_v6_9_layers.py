@@ -1257,6 +1257,17 @@ def test_맞대결_집계가_안_맞으면_그_숫자를_안_쓴다():
     ok = Facts(h2h={"count": 9, "summary": [6, 3, 0], "window_avg_goals": 3.0})
     said2 = s5._ir_h2h("S02", row, ref, ok, state=RunState())
     assert said2 and said2[0].type == "h2h_pattern"
+    # 🔴🔴 **카드도 그 수를 안 적는다** — 보이는 것도 **쓰는 것**이다
+    #    ⚠️ 실측 2026-10-07: s5 는 변수를 안 만들었는데 **블록 3 이 계속 찍고**
+    #       있었다(*"5승 4무 4패 · 표본 10경기"*).
+    from app.core import render
+    from app.core.schema import Card
+    bad_card = Card(match=ref, facts=bad)
+    said3 = render._b3(bad_card)
+    assert "5승 4무 4패" not in said3, said3
+    assert "집계 불일치" in said3, said3
+    good = render._b3(Card(match=ref, facts=ok))
+    assert "6승 3무 0패" in good, good
 
 
 # ══════════════════════════════════════════════════════════════════

@@ -298,10 +298,20 @@ def _b3(card: Card) -> str:
         h = dict(f.h2h)
         got = h.get("summary")
         bits = []
-        if isinstance(got, (list, tuple)) and len(got) == 3:
+        n = h.get("count")
+        # 🔴🔴 **집계가 안 맞으면 그 수를 안 적는다**(사용자 지시 2026-10-07 ③).
+        #    ⚠️ s5 는 변수를 안 만들고 블록 1에 적는데, **블록 3 은 그 수를 계속
+        #       찍고 있었다**(실측 2026-10-07: *"5승 4무 4패 · 표본 10경기"*).
+        #       🔴 보이는 것도 **쓰는 것**이다 — 사람이 그 수로 판단한다.
+        ok3 = (isinstance(got, (list, tuple)) and len(got) == 3
+               and (n is None or sum(int(x) for x in got) == int(n)))
+        if ok3:
             bits.append(f"{got[0]}승 {got[1]}무 {got[2]}패")
-        if h.get("count") is not None:
-            bits.append(f"표본 {h['count']}경기")
+        elif isinstance(got, (list, tuple)) and len(got) == 3:
+            bits.append(f"⚠️ **전적 안 적는다**(집계 불일치 — 합 "
+                        f"{sum(int(x) for x in got)} ≠ 표본 {n})")
+        if n is not None:
+            bits.append(f"표본 {n}경기")
         if h.get("window_avg_goals") is not None:
             bits.append(f"평균 {h['window_avg_goals']}골")
         if h.get("sample_weight") is not None:
