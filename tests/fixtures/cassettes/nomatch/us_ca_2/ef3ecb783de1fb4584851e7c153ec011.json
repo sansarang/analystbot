@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T23:45:06.060887+00:00",
+ "order": [
+  "Riding Three Straight Wins at Start of New Cycle, USMNT Closes Window Against Canada in St. Paul - U.S,US.... 1일 전The U.S. Men's National Team will close out its fall international window against northern neighbor Canada on October 6 at Allianz Field in St. Paul, Minn. at 7 p.m. CT (8 p.m. ET), with live cover...1일 전",
+  "USA vs Canada live updates, lineups, score and more from friendly match The U.S. men's national team wraps up its four-game window Tuesday, Oct. 6 against Canada at Allianz Field in St. Paul, Minnesota.",
+  "USMNT youngsters tackle \"another challenge\" with Canada rivalry 1일 전Over the past half-decade, Canada have become the US men’s national team ’s proverbial noisy neighbors, and the volume has dialed up several notches since Jesse Marsch, a USMNTer during his own playing career, took charge of Les Rouges two-plus years ago.1일 전",
+  "USA vs Canada predictions: Hosts out to avoid unwanted history 11시간 전Expert USA vs Canada predictions, including 3 tips for their friendly clash on 7 October 2026 at 5.30 AM.11시간 전",
+  "USMNT vs. Canada—International Friendly: Preview, Predictions and Lineups 22시간 전USMNT vs. Canada—International Friendly: Preview, Predictions and Lineups The North American neighbors have each won all of their friendly fixtures this international break.22시간 전",
+  "USMNT v Canada live – updates, analysis and more from international friendly 1시간 이내The US will look to make it four wins in four this international window, with a final test coming against northern rivals Canada1시간 이내",
+  "Starting XI & Lineup Notes: USMNT vs. Canada 2시간 전Kickoff for the international match at Allianz Field is 7:00 p.m. CT on TNT, truTV, Universo, HBO Max, Peacock2시간 전",
+  "How to watch today's USA vs Canada Friendlies game: Live stream, TV channel, and start time Find out where to watch USA vs Canada live, including TV channel, live stream options and kick-off time for this international friendly."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 13문단 → 재정렬 상위 8"
+}

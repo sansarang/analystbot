@@ -1,0 +1,13 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T23:43:40.902311+00:00",
+ "order": [
+  "Mauricio Pochettino on Closing USMNT Fall Camp: ‘We Built a Journey Together’ 1일 전Mauricio Pochettino on Closing USMNT Fall Camp: ‘We Built a Journey Together’ The U.S. Men’s National Team faces Canada on Tuesday, Oct. 6 at Allianz Field in St. Paul, Minn. to finish a four-match slate1일 전",
+  "USMNT projected lineup vs. Canada: Who starts final game of window? - Yahoo Sports 12시간 전USMNT projected lineup vs. Canada: Who starts final game of window?12시간 전",
+  "Ohtani shaking off injuries as Dodgers launch MLB post-season 5일 전Los Angeles (United States) (AFP) – The Los Angeles Dodgers expect superstar Shohei Ohtani to be nearing full strength when they take on the Atlanta Braves in the National League Division Series with an eye on a third straight World Series title.5일 전",
+  "핑거, 2차전지 장비업체 제일엠앤에스 인수 프로젝트분석 4일 전2022 미국법인 설립 → 2022 캐나다법인 설립 → 김해공장 증설 → 2023 삼성SDI 제조혁신상 → 2024 삼성SDI SSP 선정 → 2024.4 코스닥 상장 → 2024.12 2억불 수출의 탑... 해외 설치·서비스를 위해 Sweden Hungary USA Canada 법인도 구축했습니다. 2026년 상반기 제품 매출 가운데 2차전지가 99.3%를 차지합니다. 따라서 이름상으로는 방산·제약·식품도...4일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 4문단 → 재정렬 상위 8"
+}

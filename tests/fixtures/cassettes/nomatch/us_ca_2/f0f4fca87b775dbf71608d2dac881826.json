@@ -1,0 +1,13 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T23:43:40.223612+00:00",
+ "order": [
+  "Mauricio Pochettino on Closing USMNT Fall Camp: ‘We Built a Journey Together’ 1일 전Mauricio Pochettino on Closing USMNT Fall Camp: ‘We Built a Journey Together’ The U.S. Men’s National Team faces Canada on Tuesday, Oct. 6 at Allianz Field in St. Paul, Minn. to finish a four-match slate1일 전",
+  "WNBA semis: Dream pull away, take opener vs Liberty 2일 전the rotation and forced her into more action. She played every second of the fourth quarter and all but two minutes of the second half, making crucial plays at both ends of the floor and in the locker room after Atlanta went into the intermission trailing 40-37. “DB got into us,” Jordin Canada said about the message at...2일 전",
+  "USMNT projected lineup vs. Canada: Who starts final game of window? - Yahoo Sports 12시간 전USMNT projected lineup vs. Canada: Who starts final game of window?12시간 전",
+  "Ohtani shaking off injuries as Dodgers launch MLB post-season 5일 전Los Angeles (United States) (AFP) – The Los Angeles Dodgers expect superstar Shohei Ohtani to be nearing full strength when they take on the Atlanta Braves in the National League Division Series with an eye on a third straight World Series title.5일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 4문단 → 재정렬 상위 8"
+}

@@ -1,0 +1,570 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "United States Canada fotmob match",
+ "recorded_at": "2026-10-06T23:36:40.805959+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "England forward Packer to miss North America tour",
+   "content": "14시간 전Two-time World Cup winner Marlie Packer will not travel with England to North America this month for Tests against Canada and the United States.14시간 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fichef.bbci.co.uk%2Face%2Fbranded_sport%2F1200%2Fcpsprodpb%2Fc318%2Flive%2F78cc2090-c164-11f1-ae7b-cfc528a6c828.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.bbc.com/sport/rugby-union/articles/cmkgql5917y1o",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.bbc.com",
+    "/sport/rugby-union/articles/cmkgql5917y1o",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Canada seek Concacaf statement in USMNT rivalry test",
+   "content": "22시간 전It may not always seem like it, but Canada men’s national team head coach Jesse Marsch thinks about every word.22시간 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimages.mlssoccer.com%2Fimage%2Fprivate%2Ft_editorial_landscape_3_4_desktop%2Fmls%2Fhixtddytzgiihnc0rt3y.png&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/canada-seek-concacaf-statement-in-usmnt-rivalry-test",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/canada-seek-concacaf-statement-in-usmnt-rivalry-test",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "“Should Americans receive different treatment? That is why the world dislikes the United States” Coac....",
+   "content": "2일 전“Should Americans receive different treatment? That is why the world dislikes the United States” Coach Jesse Marsch takes direct aim at his homeland, the United States2일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimg.khan.co.kr%2Fnews%2F2026%2F10%2F05%2Frcv.YNA.20260927.PAP20260927179801009_P1.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.khan.co.kr/en/article/202610050950037",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.khan.co.kr",
+    "/en/article/202610050950037",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USMNT vs. Canada—International Friendly: Preview, Predictions and Lineups",
+   "content": "22시간 전USMNT vs. Canada—International Friendly: Preview, Predictions and Lineups The North American neighbors have each won all of their friendly fixtures this international break.22시간 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimages2.minutemediacdn.com%2Fimage%2Fupload%2Fc_crop%2Cx_0%2Cy_0%2Cw_1920%2Ch_1080%2Fc_fill%2Cw_1440%2Car_1440%3A810%2Cf_auto%2Cq_auto%2Cg_auto%2Fimages%2FvoltaxMediaLibrary%2Fmmsport%2Fsi%2F01m469wwegaz9fj3457m.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.si.com/soccer/usmnt-vs-canada-international-friendly-preview-predictions-lineups-10-6-26",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.si.com",
+    "/soccer/usmnt-vs-canada-international-friendly-preview-predictions-lineups-10-6-26",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Forward Marcus Caldeira Called Up to Canada Men's National Team Camp | Minnesota United FC",
+   "content": "1일 전Forward Marcus Caldeira Called Up to Canada Men's National Team Camp1일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimages.mlssoccer.com%2Fimage%2Fprivate%2Ft_editorial_landscape_3_4_desktop%2Fmls-min%2Fvphien6rdne4owh3yu79.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.mnufc.com/news/forward-marcus-caldeira-called-up-to-canada-men-s-national-team-camp",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.mnufc.com",
+    "/news/forward-marcus-caldeira-called-up-to-canada-men-s-national-team-camp",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "England vs. Czechia—Nations League: Preview, Predictions and Lineups",
+   "content": "23시간 전England vs. Czechia—Nations League: Preview, Predictions and Lineups The Three Lions have lost just one of seven past meetings with Czechia.23시간 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimages2.minutemediacdn.com%2Fimage%2Fupload%2Fc_crop%2Cx_0%2Cy_0%2Cw_1919%2Ch_1079%2Fc_fill%2Cw_1440%2Car_1440%3A810%2Cf_auto%2Cq_auto%2Cg_auto%2Fimages%2FvoltaxMediaLibrary%2Fmmsport%2Fsi%2F01m45vbke7t8zs4jzenv.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.si.com/soccer/england-vs-czechia-nations-league-preview-predictions-lineups-10-6-26",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.si.com",
+    "/soccer/england-vs-czechia-nations-league-preview-predictions-lineups-10-6-26",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mauricio Pochettino delivering on promises as USMNT set for Mexico, Canada tests - NBC Sports",
+   "content": "1주 전Mauricio Pochettino delivering on promises as USMNT set for Mexico, Canada tests1주 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fnbcsports.brightspotcdn.com%2Fdims4%2Fdefault%2F5bcf351%2F2147483647%2Fstrip%2Ftrue%2Fcrop%2F3147x1770%2B0%2B164%2Fresize%2F1440x810%21%2Fquality%2F90%2F%3Furl%3Dhttps%253A%252F%252Fnbc-sports-production-nbc-sports.s3.us-east-1.amazonaws.com%252Fbrightspot%252F0f%252F5a%252F15c7750e44a8bce86c8bc874f1b7%252F2297000513.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.nbcsports.com/soccer/news/mauricio-pochettino-delivering-on-promises-as-usmnt-set-for-mexico-canada-tests",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.nbcsports.com",
+    "/soccer/news/mauricio-pochettino-delivering-on-promises-as-usmnt-set-for-mexico-canada-tests",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Canada vs. United States is more than just an international friendly – TSN",
+   "content": "2일 전On Tuesday, the Canadian men's national team will play an exhibition match against the United States, but if history tells us anything, this encounter won't be a regular friendly.2일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fwww.tsn.ca%2Fresizer%2Fv2%2Fhttps%253A%252F%252Fd3g70guqh4mw9g.cloudfront.net%252F10-05-2026%252Ft_a960edf27e79401cb8c38a21a0771384_name_2026_10_5_e1f3a8f6_d7a0_44bb_b22c_b2e1fc444fc4_jpg_1200x675.jpg%3Fsmart%3Dtrue%26auth%3Da79f58618a94d3fbcaccd1ff9121768e55a3e6dcfd0ebcc34f0ff8e1872b31de%26width%3D1200%26height%3D630&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.tsn.ca/soccer/video/2026/10/05/canada-vs-united-states-is-more-than-just-an-international-friendly/",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.tsn.ca",
+    "/soccer/video/2026/10/05/canada-vs-united-states-is-more-than-just-an-international-friendly/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "France vs. Belgium—Nations League: Preview, Predictions and Lineups - Jingletree",
+   "content": "2일 전Age-old rivals France and Belgium collide in the fourth round of UEFA Nations League fixtures in Saint-Denis on Monday. Les Bleus currently lead the standings in Group 1 of League A after an unbeaten start to Zinédine Zidane’s reign. The 1–0 win over Türkiye in his dugout debut was followed by victory by the same scoreline against Belgium, although a first home match for the ex-Real Madrid manager then ended in a 1–1 draw with Italy. The Red Devils are just one point behind their rivals ....2일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fimages2.minutemediacdn.com%2Fimage%2Fupload%2Fc_crop%2Cx_0%2Cy_0%2Cw_1919%2Ch_1079%2Fc_fill%2Cw_1440%2Car_1440%3A810%2Cf_auto%2Cq_auto%2Cg_auto%2Fimages%2FvoltaxMediaLibrary%2Fmmsport%2Fsi%2F01m439pzmw2jzgvc2qdm.jpg&type=fff208_208_ar",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://jingletree.com/france-vs-belgium-nations-league-preview-predictions-and-lineups-282032.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "jingletree.com",
+    "/france-vs-belgium-nations-league-preview-predictions-and-lineups-282032.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USA vs. Canada: How to watch, stream international friendly",
+   "content": "2일 전Two of Concacaf's elite teams clash Tuesday evening when the United States host Canada at Allianz Field, home of Minnesota United FC.2일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/usa-vs-canada-how-to-watch-stream-international-friendly-2026",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/usa-vs-canada-how-to-watch-stream-international-friendly-2026",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USMNT vs. Canada: How & Where to Watch Live on TV, Streaming",
+   "content": "18시간 전The United States and Canada face off in another international clash at Allianz Field in Saint Paul. This FIFA international break match serves as a testing ground for both national teams after the...18시간 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://sports.yahoo.com/articles/usmnt-vs-canada-where-watch-055554093.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sports.yahoo.com",
+    "/articles/usmnt-vs-canada-where-watch-055554093.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "American-born Canada soccer coach Jesse Marsch takes aim at home country before USMNT friendly",
+   "content": "16시간 전Letitia James' AG opponent promises to end 'catch and release' policies16시간 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.foxnews.com/outkick-sports/american-born-canada-soccer-coach-jesse-marsch-takes-aim-home-country-usmnt-friendly",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.foxnews.com",
+    "/outkick-sports/american-born-canada-soccer-coach-jesse-marsch-takes-aim-home-country-usmnt-friendly",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USA vs. Canada, 2026 Friendly: Time, TV schedule, streaming and lineups",
+   "content": "10시간 전USA vs. Canada, 2026 Friendly: Time, TV schedule, streaming and lineups10시간 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://sports.yahoo.com/articles/usa-vs-canada-2026-friendly-140000563.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "sports.yahoo.com",
+    "/articles/usa-vs-canada-2026-friendly-140000563.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": ".USA vs UAE predictions for ICC CWC League 2 2026 Match 129 - Cricket World",
+   "content": "3일 전CWC League 2 2026 - Match 129 - USA vs UAE - Cricket Match Predictions - October 53일 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.cricketworld.com/cwc-league-2-2026-match-129-usa-vs-uae-cricket-match-predictions-october-5/113649.htm",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "www.cricketworld.com",
+    "/cwc-league-2-2026-match-129-usa-vs-uae-cricket-match-predictions-october-5/113649.htm",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "USMNT vs. Canada—International Friendly: Preview, Predictions and Lineups - Jingletree",
+   "content": "24시간 전The U.S. men’s national team takes on back-to-back North American rivals when hosting Canada on Tuesday in its fourth friendly of the current international window. The Stars and Stripes were emphatic 3–0 victors over Mexico at the weekend as manager Mauricio Pochettino finally broke his curse against El Tri. Young guns shone once again as teenagers Cavan Sullivan and Julian Hall were among the goalscorers, before Malik Tillman added the cherry on top late into proceedings. The triumph in Gle....24시간 전",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "naver"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://jingletree.com/usmnt-vs-canada-international-friendly-preview-predictions-and-lineups-282709.html",
+   "engine": "naver",
+   "parsed_url": [
+    "https",
+    "jingletree.com",
+    "/usmnt-vs-canada-international-friendly-preview-predictions-and-lineups-282709.html",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: access denied"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ]
+ ]
+}

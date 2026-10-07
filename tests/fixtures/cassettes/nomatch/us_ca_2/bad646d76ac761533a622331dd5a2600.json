@@ -1,0 +1,36 @@
+{
+ "kind": "llm",
+ "url": "https://api.deepseek.com/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 위 분석의 **반대편**을 쓴다. 각 줄은 어떤 마켓이 왜 위험한지 한 문장이다. 🔴 **여덟 줄을 넘기지 마라.**\\n🔴 시나리오를 **지우거나 고치지 않는다** — 네 말은 **추가**된다.\\n🔴 등급·확률·추천 단어를 쓰지 않는다. 사실을 만들지 않는다.\\n⚠️ `scenario_id` 는 위 목록의 글자이고, 해당 없으면 `null` 이다.\", \"role\": \"system\"}, {\"content\": \"{\\\"match\\\": {\\\"home\\\": \\\"USA\\\", \\\"away\\\": \\\"Canada\\\"}, \\\"scenarios\\\": [{\\\"id\\\": \\\"A\\\", \\\"outcomes\\\": [[3, 1], [4, 2]], \\\"mechanism\\\": \\\"홈팀의 최근 득점 산출 2.8과 무패 흐름이 유지되고, 상대 전방 자원 이탈로 수비 부담이 줄어든 상대를 향해 공격 숫자를 계속 올린다. 전방 압박으로 볼을 되찾는 구간이 길어지며 골이 여러 번 나온다.\\\"}, {\\\"id\\\": \\\"B\\\", \\\"outcomes\\\": [[3, 2], [2, 1]], \\\"mechanism\\\": \\\"홈팀이 득점 산출에서 앞서 리드를 잡지만, 상대도 최근 흐름이 위로 올라와 있고 친선 특성상 교체가 많아 수비 집중력이 떨어지는 구간이 생긴다. 앞서면서도 한두 골을 내주는 형태로 전개된다.\\\"}, {\\\"id\\\": \\\"C\\\", \\\"outcomes\\\": [[1, 2], [2, 2]], \\\"mechanism\\\": \\\"맞대결 표본에서 격차가 근소하고 평균 2.5골로 난타전이 아니어서 원정팀이 간격을 좁힌 블록을 세우면 홈팀의 공격이 정체된다. 실험 라인업으로 양 팀 모두 조직이 흐트러진 틈에 원정팀이 한 번의 전환으로 앞선다.\\\"}, {\\\"id\\\": \\\"D\\\", \\\"outcomes\\\": [[1, 1], [0, 1]], \\\"mechanism\\\": \\\"홈팀의 최근 득점 평균 2.8은 보정치 2.0과 차이가 커서 산출이 평균 쪽으로 내려오고, 원정팀의 1.0(보정 0.75)도 낮은 구간에서 위로 되돌아온다. 양 팀 득점이 각자의 평균 쪽으로 수렴하며 홈팀의 무패 흐름이 끊기는 방향으로 간다.\\\"}, {\\\"id\\\": \\\"E\\\", \\\"outcomes\\\": [[2, 1], [1, 1]], \\\"mechanism\\\": \\\"친선 경기 특성상 양 팀이 실험 라인업과 잦은 교체를 쓰면서 전력 차가 좁혀지고, 홈 이점은 수치 근거 없이 운영 편의 정도로만 작동한다. 상대 전방 자원 이탈로 결정력이 낮아진 원정팀을 상대로 홈팀이 한 골 차로 정리한다.\\\"}, {\\\"id\\\": \\\"F\\\", \\\"outcomes\\\": [[4, 1]], \\\"mechanism\\\": \\\"🔴 필수형(우세팀 실점 동반) — 우세팀이 이기면서 한 점을 준다. ⚠️ 이 갈래가 없으면 `언더`·`클린시트` 가 **공짜로** 1.0 을 받는다(표: 우세팀_실점_동반형)\\\"}], \\\"variables\\\": [{\\\"id\\\": \\\"R1\\\", \\\"claim\\\": \\\"Cyle Larin은 페루전에서 입은 허리 부상으로 인해 대표팀 명단에서 제외되었다.\\\"}, {\\\"id\\\": \\\"S01-home\\\", \\\"claim\\\": \\\"최근 5경기 W L W W W · 득점 평균 2.8(보정 2.0)\\\"}, {\\\"id\\\": \\\"S01-away\\\", \\\"claim\\\": \\\"최근 5경기 L W L W W · 득점 평균 1.0(보정 0.75)\\\"}, {\\\"id\\\": \\\"S02\\\", \\\"claim\\\": \\\"맞대결 10경기 5승 4무 4패 · 평균 2.5골\\\"}, {\\\"id\\\": \\\"S03\\\", \\\"claim\\\": \\\"USA 홈 경기 — 홈 이점 **수치 없음**(대회 유형 `national_friendly` 의 표가 없다 · 다른 대회 숫자를 빌리지 않는다)\\\"}, {\\\"id\\\": \\\"S04\\\", \\\"claim\\\": \\\"친선 — 실험 라인업·교체 다수 가능\\\"}, {\\\"id\\\": \\\"IR12-home\\\", \\\"claim\\\": \\\"USA 무패 3경기\\\"}]}\", \"role\": \"user\"}, {\"content\": \"🔴 아래 JSON 스키마를 **정확히** 지켜 답한다(다른 칸을 더하지 않는다):\\n{\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴 DeepSeek 단계 4 출력.\\\", \\\"properties\\\": {\\\"lines\\\": {\\\"items\\\": {\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴 반증 한 줄 — **추가만** 한다(생존율 상승 금지 · §5 s6).\\\", \\\"properties\\\": {\\\"market\\\": {\\\"title\\\": \\\"Market\\\", \\\"type\\\": \\\"string\\\"}, \\\"says\\\": {\\\"title\\\": \\\"Says\\\", \\\"type\\\": \\\"string\\\"}, \\\"scenario_id\\\": {\\\"anyOf\\\": [{\\\"type\\\": \\\"string\\\"}, {\\\"type\\\": \\\"null\\\"}], \\\"title\\\": \\\"Scenario Id\\\"}}, \\\"required\\\": [\\\"market\\\", \\\"says\\\", \\\"scenario_id\\\"], \\\"title\\\": \\\"RedTeamLine\\\", \\\"type\\\": \\\"object\\\"}, \\\"title\\\": \\\"Lines\\\", \\\"type\\\": \\\"array\\\"}}, \\\"title\\\": \\\"RedTeamOut\\\", \\\"type\\\": \\\"object\\\", \\\"required\\\": [\\\"lines\\\"]}\", \"role\": \"user\"}], \"model\": \"deepseek-flash\", \"response_format\": {\"type\": \"json_object\"}}",
+ "recorded_at": "2026-10-06T23:45:47.566344+00:00",
+ "id": "b0d93009-c123-4e18-a0c0-da6ae2c01171",
+ "object": "chat.completion",
+ "created": 1791330339,
+ "model": "deepseek-flash",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"lines\": [{\"market\": \"홈팀 승\", \"says\": \"S01-home의 득점 평균 2.8은 보정치 2.0과 차이가 커서 산출이 평균 쪽으로 내려올 수 있고, D 갈래가 바로 그 수렴을 결과로 담고 있다.\", \"scenario_id\": \"D\"}, {\"market\": \"오버 2.5\", \"says\": \"S02의 맞대결 평균 2.5골은 기준선에 걸쳐 있어 3골 이상을 보장하지 못하며, C 갈래의 1-2·2-2와 D 갈래의 0-1이 그 아래에 놓인다.\", \"scenario_id\": \"C\"}, {\"market\": \"언더\", \"says\": \"F 갈래가 4-1을 명시적으로 담고 있어 다득점 한 줄이 배제되지 않고, E 갈래의 2-1도 기준선 위쪽이다.\", \"scenario_id\": \"F\"}, {\"market\": \"클린시트·무실점\", \"says\": \"F 갈래가 우세팀 실점 동반형으로 규정되어 있어 실점 0을 전제로 한 조건이 그 갈래에서 곧바로 깨진다.\", \"scenario_id\": \"F\"}, {\"market\": \"원정팀 무득점\", \"says\": \"B 갈래가 앞서면서도 한두 골을 내주는 형태를, C와 F 갈래도 원정팀 득점을 각각 포함하고 있어 원정팀 0골이 담보되지 않는다.\", \"scenario_id\": \"B\"}, {\"market\": \"홈팀 대승 핸디캡\", \"says\": \"C·D·E 갈래가 한 골 차 이하 결과와 1-1·0-1·1-1을 담고 있어 두 골 이상 격차가 어느 갈래에서도 강제되지 않는다.\", \"scenario_id\": \"E\"}, {\"market\": \"원정팀 전방 화력 약화 전제\", \"says\": \"A·E 갈래의 메커니즘이 상대 전방 자원 이탈에 기대고 있는데, R1의 라린 제외가 확정 사실이 아니라면 그 전제 자체가 흔들린다.\", \"scenario_id\": \"A\"}, {\"market\": \"홈 이점 기반 마켓\", \"says\": \"S03이 national_friendly 대회 유형의 홈 이점 수치가 없다고 밝히고 있어, 홈 승 쪽 근거는 수치가 아니라 운영 편의 가정에만 놓인다.\", \"scenario_id\": null}]}",
+    "reasoning_content": "Need produce up to 8 lines, each a sentence on why a market is risky. Don't delete/modify scenarios; add. No grades/probabilities/recommendation words. Don't invent facts. scenario_id from list or null.\n\nMarkets implied: 홈 승, 오버, 언더, 클린시트, 핸디캡, 정확 스코어 etc. Red team against the scenarios above — pointing out risk.\n\nLet me write 8 lines.\n\n1. 홈팀 승 — S01-home 득점 평균 2.8은 보정 2.0과 차이가 커서 산출이 내려올 수 있고, D 갈래가 그 경우를 이미 담고 있다. scenario_id: D\n2. 오버 2.5 — S02 맞대결 평균 2.5골은 기준선에 걸쳐 있어 3골 이상을 보장하지 않고, C·D 갈래의 1-2, 1-1, 0-1이 그 아래에 있다. scenario null? or C/D. Single scenario_id only. Use \"C\".\n3. 언더 — F 갈래 4-1 등 다득점이 배제되지 않으며 E도 2-1. scenario F.\n4. 클린시트/무실점 — F가 우세팀 실점 동반형으로 명시되어 있어 무실점 조건이 걸린다. F.\n5. 원정팀 득점 없음 — B·C·F 모두 원정팀 득점을 포함. B.\n6. 핸디캡 -2 이상 — C·D·E 갈래는 한 골 차 이하 결과를 담고 있어 큰 격차가 담보되지 않는다. E.\n7. 홈팀 무패(IR12-home) — D 갈래가 무패 흐름이 끊기는 방향을 명시. D... already used D. fine to reuse? Better vary. Use D for line 1 and line 7? Acceptable but let's assign D to line 1 and null elsewhere.\n8. S03 홈 이점 수치 없음 → 홈 이점 근거가 없어 홈 승/홈 관련 마켓이 운영 편의 가정에만 기댄다. null.\n9. S04 친선 실험 라인업 → 교체 다수로 전력 관계가 흔들려 어느 마켓도 라인업 확정 전에는 근거가 약하다. null.\n\nAlso R1 Larin 결장 — 캐나다 전방 자원 이탈이 이미 A/E 메커니즘에 반영; 반대로 그 이탈이 확정 사실이 아니면 A/E 근거가 약해진다. Use variable R1. That's a good point. scenario A.\n\nPick 8 lines:\n\n1. Home win — D (보정)\n2. Over 2.5 — C\n3. Under — F\n4. Clean sheet — F\n5. Away no goal — B\n6. Handicap -2 — E\n7. Home unbeaten run market — D? reuse. Instead: 캐나다 득점(원정팀 득점) 관련 R1 — if Larin absence unconfirmed, A/E premise weak. scenario A.\n8. S03 홈 이점 수치 없음 → null.\n\nCheck no probability/grade/recommendation words. Avoid \"위험\" is fine? It's describing why risky — okay, \"위험하다/취약하다\" statements. Avoid \"추천\", \"등급\", \"확률\". Avoid numbers like 0.75? Those are facts from given data, fine.\n\nWrite sentences in Korean, each one line."
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1411,
+  "completion_tokens": 1452,
+  "total_tokens": 2863,
+  "prompt_tokens_details": {
+   "cached_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 820
+  },
+  "prompt_cache_hit_tokens": 0,
+  "prompt_cache_miss_tokens": 1411
+ },
+ "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669"
+}

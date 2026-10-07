@@ -54,6 +54,8 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable], *,
         scen = _clean_scenarios(said.scenarios, basis=basis, ctx=ctx,
                                drops=drops, variables=variables)
     scen = _required(ref, facts, scen, variables, state=state)
+    # 🔴 **없는 변수 인용을 떨군다**(불변식 5) — 변수 목록이 바뀐 뒤 남은 번호
+    scen = _keep_drivers(scen, variables, state=state)
     scen = [s.model_copy(update={"strength": _strength(s, variables)})
             for s in scen]
     red = _redteam(ref, scen, basis, state=state)
@@ -458,6 +460,33 @@ def _next_id(scen: list[Scenario]) -> str:
     return f"Z{len(scen)}"
 
 
+
+def _keep_drivers(scen: list[Scenario], variables: list[Variable], *,
+                  state: RunState) -> list[Scenario]:
+    """🔴🔴 **없는 변수 번호를 인용한 driver 를 떨군다**(실측 2026-10-07).
+
+    ⚠️ 변수 목록이 바뀌면(맞대결 집계 불일치로 `S02` 가 빠지는 등) 모델이 적어 둔
+       `driver_vars` 에 **없는 번호**가 남는다 — 카드가 그 번호를 적으면 *"무엇으로
+       그렇게 봤나"* 가 거짓이 된다(불변식 5 가 그것을 잡는다).
+    🔴 **근거로 못 쓰는 변수**(`usable_as_basis=False`)도 떨군다 — §4-1 은 그 번호를
+       인용한 줄을 버리라고 했다. ⚠️ 실측 2026-10-07: 표본 무게가 낮은 `S02`(맞대결
+       9경기)를 시나리오가 driver 로 적어 불변식 5 가 빨개졌다.
+    🔴 떨군 번호는 **사유로 남긴다**(조용히 지우지 않는다 · #3).
+    """
+    ids = {v.id for v in variables if v.usable_as_basis}
+    out: list[Scenario] = []
+    for sc in scen:
+        bad = [x for x in (sc.driver_vars or []) if x not in ids]
+        if not bad:
+            out.append(sc)
+            continue
+        state.note(f"s6 시나리오 `{sc.id}` — 인용 {bad} 를 떨궜다"
+                   f"(없는 변수이거나 **근거 불가**다 · §4-1)")
+        out.append(sc.model_copy(update={
+            "driver_vars": [x for x in sc.driver_vars if x in ids]}))
+    return out
+
+
 def _strength(s: Scenario, variables: list[Variable]) -> float:
     """🔴🔴 `strength` = **유형별 최댓값 합**(§5 s6 · weights).
 
@@ -592,12 +621,15 @@ def _soccer_forms(ref: MatchRef, facts: Facts, scen: list[Scenario],
     row = dict(box.get("저득점") or {})
     want_rules = {str(x) for x in (row.get("when_rules") or [])}
     hit = sorted({r.split("-")[0] for r in fired} & want_rules)
+    # 🔴🔴 **조건 둘을 더했다**(사용자 지시 2026-10-07 ②) — 무실점 연속·공격수 결장
+    hit += _low_score_why(ref, facts, variables, row)
     if hit:
         _add("저득점", [p for p in (_pair(x) for x in (row.get("scores") or []))
                       if p is not None],
-             f"{', '.join(hit)} 발동", "lock")
+             f"{', '.join(hit)}", "lock")
     else:
-        state.note(f"s6 축구 필수형 저득점 — 걸린 규칙이 없다(필요 {sorted(want_rules)})")
+        state.note(f"s6 축구 필수형 저득점 — 걸린 조건이 없다"
+                   f"(규칙 {sorted(want_rules)} · 무실점 연속 · 공격수 결장)")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **무승부 필수**(사용자 지시 2026-10-06(5차) ①) — v4 `soccer_lock` 의 일
     # ══════════════════════════════════════════════════════════════════
@@ -707,3 +739,43 @@ def _counter(ref: MatchRef, facts: Facts, scen: list[Scenario],
         state.note(f"s6 역습 필수형 보강 — `{team}`({state_name}) → {other} 역습 "
                    f"{new[:2]} · driver {drivers or '근거 없음'}")
     return out
+
+
+def _low_score_why(ref: MatchRef, facts: Facts, variables: list[Variable],
+                   row: dict) -> list[str]:
+    """🔴 저득점 갈래를 **넣을 까닭**(사용자 지시 2026-10-07 ②). 없으면 빈 목록.
+
+    ① 한 팀이 최근 **n경기 이상 연속 무실점**(`recent.streak_clean_sheet`).
+    ② **상대 팀 주전 공격수 결장** — ⚠️ 우리는 선수별 득점 이력을 안 받는다.
+       🔴 그래서 `absence_att` 또는 **포지션이 `FW`** 인 결장 변수로 센다. 그 한계를
+       사유에 적는다(*"최근 득점자"* 를 확인했다고 적지 않는다).
+    """
+    out: list[str] = []
+    need = int(row.get("when_clean_sheet") or 0)
+    if need:
+        for key, raw in (facts.recent or {}).items():
+            got = int(dict(raw).get("streak_clean_sheet") or 0)
+            if got >= need:
+                out.append(f"{_who(ref, key)} 무실점 {got}경기 연속")
+    if row.get("when_striker_absent"):
+        pos = dict(facts.player_pos or {})
+        for v in variables:
+            if v.type not in ("absence_att", "absence", "def_absence",
+                              "suspension"):
+                continue
+            spot = str(pos.get(str(v.target), "")).upper()
+            if v.type == "absence_att" or spot == "FW":
+                out.append(f"{_who(ref, str(v.subject))} 공격 자원 결장"
+                           f"(`{v.id}` {v.target}"
+                           + (f" · 포지션 {spot}" if spot else " · 포지션 미상")
+                           + ") ⚠️ 최근 득점자인지는 **확인 못 했다**")
+    return out
+
+
+def _who(ref: MatchRef, key: str) -> str:
+    """🔴 열쇠 → 보일 이름(사유에 열쇠를 적지 않는다)."""
+    if str(key) == str(ref.home):
+        return ref.home_name
+    if str(key) == str(ref.away):
+        return ref.away_name
+    return str(key)

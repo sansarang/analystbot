@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T23:44:52.020947+00:00",
+ "order": [
+  "USA Roster Prediction: Will Christian Pulisic Make The First Post-World Cup Roster? Diego Luna and Tanner Tessmann out! — but by and large, the players Mauricio Pochettino selected for the eventual round of 16 run were no-brainers for anyone who had been paying attention … Canada and historic rival Mexico.Who makes this one is far less clear …",
+  "USMNT roster: Cavan Sullivan leads 13 MLS call-ups as 2030 World Cup cycle begins | MLSSoccer.com Mexico Julian Hall scores AGAIN as USMNT stun Mexico Canada find dominant form ahead of USMNT clash WATCH: Late drama!",
+  "Three USMNT World Cup Stars Mauricio Pochettino Could Leave Off Fall Friendly Roster Set to face Chile, … Canada and Mexico in the first games since falling out of the round of 16 at the World Cup, the USMNT will look to usher in a new era …",
+  "Mauricio Pochettino on Closing USMNT Fall Camp: ‘We Built a Journey Together’ 1일 전Mauricio Pochettino on Closing USMNT Fall Camp: ‘We Built a Journey Together’ The U.S. Men’s National Team faces Canada on Tuesday, Oct. 6 at Allianz Field in St. Paul, Minn. to finish a four-match slate1일 전",
+  "USMNT roster: Cavan Sullivan, Julian Hall named to youthful USA squad as embrace of young talent begins 26: USMNT vs. … 29: USMNT vs. … 3: USMNT vs. … 6: USMNT vs. Canada (8 p.m., TNT) Player development with Olympics, World Cup in mind",
+  "USMNT roster: Cavan Sullivan, Julian Hall named to youthful USA squad as embrace of young talent begins 26: USMNT vs. … 29: USMNT vs. … 3: USMNT vs. … 6: USMNT vs. Canada (8 p.m., TNT) Player development with Olympics, World Cup in mind",
+  "USA roster for 2026 FIFA World Cup: 8 MLS players called | MLSSoccer.com Cavan Sullivan scores first USMNT goal vs.Mexico Julian Hall scores AGAIN as USMNT stun Mexico Canada find dominant form ahead of USMNT clash WATCH: Late drama!",
+  "USMNT projected lineup vs. Canada: Who starts final game of window? The U.S. men's national team looks to make it a perfect four-for-four in the international window when it faces Canada on Tuesday, Oct. 6."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

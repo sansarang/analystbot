@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T23:44:05.636922+00:00",
+ "order": [
+  "Inter Miami’s Dayne St. Clair appears likely to reside in goal, while Richie Laryea should come back into the team at left back. In midfield, Stephen Eustáquio could once again partner the impressive Nathan Saliba.",
+  "Jonathan David is aiming to get back on the scoresheet as he makes his 85th international appearance—which puts him all by himself as the fifth-most capped player for the men’s team. Cyle Larin. however, won’t be his strike partner after withdrawing from the squad due to a back injury suffered against Peru.",
+  "Pochettino has willingly experimented with his team during the current break, reaping the rewards of a hungry and talented generation desperate to shine. More youngsters will be fielded in Minnesota, with Sullivan and Hall potentially joined by Albert and Peyton Miller down the left wing.",
+  "The USMNT has dazzled without many of its leading protagonists in recent matches, and its youthful revolution will continue against Canada. Expect Pochettino’s band of teenagers to play a major part in the outcome of the duel.",
+  "USMNT predicted lineup vs. Canada (4-2-3-1): Brady; Freeman, Richards, Trusty, Miller; Adams, Musah; Sullivan, Tillman, Albert; Hall.",
+  "It’s worth remembering that the likes of Christian Pulisic, Folarin Balogun and Weston McKennie have all been omitted from a new-look roster.",
+  "Yunus Musah and Tyler Adams could anchor the midfield, meaning Sebastian Berhalter will be forced to drop out for the former. Tillman should start just in front of the double pivot as he seeks to add to goals scored against Peru and Mexico.",
+  "Form, home advantage and roster depth are all advantages the Stars and Stripes have, and they should edge to victory against an admittedly formidable and stubborn foe."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

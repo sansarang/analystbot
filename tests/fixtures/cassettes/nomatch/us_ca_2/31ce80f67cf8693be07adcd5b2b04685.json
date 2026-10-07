@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T23:44:08.428858+00:00",
+ "order": [
+  "A four-match set also allows Pochettino to employ heavy rotation in his lineups. Pochettino made 10 changes to the starting XI against Chile on Sept. 29 from the opener against Peru on Sept. 26. The same applied to Mexico with midfielder Sebastian Berhalter, forward Julian Hall and midfielder Gio Reyna as the only three holdovers from the previous match.",
+  "The objective, according to Pochettino, remains for his team to keep building an identity. In the first camp of the 2030 FIFA World Cup cycle, Pochettino’s aims are rooted in player development and roster depth after calling 13 players into their first camp.",
+  "This kind of truncated schedule isn't new to players. Weeks in Major League Soccer, for example, sometimes feature Saturday-Wednesday-Saturday matches. Still, Pochettino and his coaching staff are determined to manage the players’ load as best they can as together they seek the program’s first win over Canada since 2023.",
+  "ST. PAUL, Minn. – Heading into its fourth match in the span of 11 days, the U.S. Men’s National Team is ready to compete for its fourth straight win to wrap the first camp in a new era under head coach Mauricio Pochettino.",
+  "“Even if we are competing a lot and traveling, and that can affect [them], we are going to be ready for tomorrow,” Pochettino said. “Fresh energy, and I think it's a good opportunity for continuous growing in that camp.”",
+  "“That is in the way that we need to keep going, to build that chemistry between the senior players with the new players,” Pochettino said. “I think that is one of the most important things that happened in this window, to have three weeks to build this relationship.”",
+  "In turn, the team has produced three victories so far this window, each by a margin of at least two goals or more.",
+  "“Coming off three-for-three wins, especially against a rival like Mexico, my first one to experience with the team, it’s a really good feeling,” Mehmeti said. “This game [against Canada] is going to be similar, of course. We’re probably going to go after it and go out and try to get the win and play the best football we can.”"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

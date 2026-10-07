@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-06T23:44:08.805131+00:00",
+ "order": [
+  "That has led to plenty of rotation on Tuesday in a rivalry game Pochettino will still be keen to win.",
+  "Mauricio Pochettino has enjoyed plenty of success with a youthful roster in this window, the first after the 2026 World Cup. The USMNT coach has already given 12 players their first caps, eight of whom are teenagers.",
+  "US defender #21 Frankie Westfield (L) and Chile's defender #26 Diego Ulloa run behind the ball during the international friendly football match between USA and Chile at Energizer Park in St. Louis, Missouri, on September 29, 2026.",
+  "Sep 29, 2026; St. Louis, Missouri, USA; United States head coach Mauricio Pochettino looks on before a match against Chile at Energizer Park.",
+  "Sep 29, 2026; St. Louis, Missouri, USA; United States head coach Mauricio Pochettino looks on before a match against Chile at Energizer Park.",
+  "Pochettino has been consistently trotting out lineups with a mix of newcomers and stalwarts, and that is likely to continue at Allianz Field in St. Paul, Minnesota.",
+  "ORLANDO, FLORIDA - SEPTEMBER 26: Giovanni Reyna #7 of United States is challenged by Renzo Garces #15 of Peru during the International Friendly match between United States and Peru at Inter.co Stadium on September 26, 2026 in Orlando, Florida.",
+  "ORLANDO, FLORIDA - SEPTEMBER 26: Cavan Sullivan #8 of United States controls the ball whilst under pressure from Marcos Lopez #4 of Peru during the International Friendly match between United States and Peru at Inter.co Stadium on September 26, 2026 in Orlando, Florida."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

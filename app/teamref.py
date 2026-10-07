@@ -277,9 +277,19 @@ def _save_keys(reg: "Registry") -> None:
 
 
 def _new_key(reg: "Registry") -> str:
-    """🔴 다음 번호. ⚠️ **뜻을 담지 않는다** — 리그도 이름도 들어가지 않는다."""
-    reg._seq += 1
-    return f"{TEAM_KEY_PREFIX}{reg._seq:06d}"
+    """🔴 다음 번호. ⚠️ **뜻을 담지 않는다** — 리그도 이름도 들어가지 않는다.
+
+    🔴🔴 **이미 쓰인 번호를 건너뛴다**(실사고 2026-10-07). ⚠️ 종전엔 `_seq+1` 을
+       그냥 줬다 — 그래서 못 박아 둔 번호(`var/team_keys.json`)와 **충돌**했다:
+       `USA` 에 발급한 번호가 어제 시카고 파이어에 준 `team:000573` 이었다.
+       🔴 그 충돌은 *"한 팀의 기록이 다른 팀 것이 되는"* 바로 그 병이다.
+    """
+    taken = set(reg.teams) | set(reg.ext.values())
+    while True:
+        reg._seq += 1
+        got = f"{TEAM_KEY_PREFIX}{reg._seq:06d}"
+        if got not in taken:
+            return got
 
 
 @dataclass
@@ -844,6 +854,44 @@ def _from_entities(reg: Registry) -> str:
     return f"사용자 별칭 {n}개 붙임 · 정식명을 못 찾아 건너뜀 {miss}개"
 
 
+def _from_pins(reg: Registry) -> str:
+    """🔴🔴 **못 박아 둔 번호**(`var/team_keys.json`)를 이름표에 되살린다.
+
+    🔴 `name:<정규화 이름>` 꼴 못은 **오픈월드가 발급한 팀**이다(미등록 리그). 그
+       이름을 아는 팀이 이미 있으면 **그 팀을 쓴다**(새로 만들지 않는다) — 없으면
+       그 번호로 팀을 되살린다. ⚠️ 그래야 다음 실행도 **같은 번호**를 쓴다.
+    ⚠️ 이 출처는 **맨 끝**이다 — 진짜 출처(CLDR·명단·별칭)가 먼저 이긴다.
+    """
+    pins = _load_keys()
+    back, kept = 0, 0
+    for ext, key in pins.items():
+        if not ext.startswith("name:"):
+            reg.ext.setdefault(ext, key)
+            continue
+        name = ext.split(":", 1)[1]
+        got = reg.index.get(name) or reg.bare_index.get(name)
+        if got:
+            # 🔴 그 이름을 **이미 아는 팀**이 있다 — 못을 그 팀으로 옮긴다
+            reg.ext[ext] = got[0]
+            kept += 1
+            continue
+        reg.ext.setdefault(ext, key)
+        if key not in reg.teams:
+            reg.teams[key] = TeamRef(key=key)
+        reg.index.setdefault(name, [])
+        if key not in reg.index[name]:
+            reg.index[name].append(key)
+        back += 1
+    # 🔴 **번호 자리를 비워 둔다** — 다음 발급이 못 박힌 번호를 덮지 않게
+    for key in list(reg.teams) + list(reg.ext.values()):
+        try:
+            num = int(str(key).split(":", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        reg._seq = max(reg._seq, num)
+    return f"못 박은 번호 {len(pins)}개(오픈월드 되살림 {back} · 진짜 팀으로 {kept})"
+
+
 def build() -> tuple[Registry, list[str]]:
     """🔴 이름표를 만든다. 돌려주는 것은 `(이름표, 출처마다의 사유)`.
 
@@ -855,7 +903,12 @@ def build() -> tuple[Registry, list[str]]:
     #    만들지 않게(위 `_from_54` 주석).
     whys = [_from_cldr(reg), _from_fifa(reg), _from_nations(reg), _from_54(reg),
             _from_league_index(reg), _from_eu(reg), _from_aliases(reg),
-            _from_entities(reg), _from_learned(reg)]
+            _from_entities(reg), _from_learned(reg),
+            # 🔴🔴 **못 박아 둔 오픈월드 팀을 되살린다**(실사고 2026-10-07)
+            #    ⚠️ `_load_keys` 는 **아무도 안 부르는 죽은 코드**였다 — 그래서
+            #       미등록 리그 팀의 번호가 실행마다 **다시 발급**됐다(그 파일
+            #       머리말이 경고하는 "번호가 돈다"가 실제로 일어나고 있었다).
+            _from_pins(reg)]
     _save_keys(reg)
     logger.info("[teamref] 팀 %d개 · 이름 %d개 · 못 박은 번호 %d개 — %s",
                 len(reg.teams), len(reg.index), len(reg.ext), " · ".join(whys))
@@ -966,6 +1019,32 @@ def key_or_issue(text: str, *, sport: str = "", league: str = ""
     if got:
         return got, why
     reg = registry()
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **짧은 이름은 코드로 찾아본다**(실사고 2026-10-07)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ fotmob 은 대표팀을 `USA`·`KOR` 처럼 **FIFA 세 글자**로 적는 자리가 있다.
+    #     그걸 모르는 이름으로 보고 발급하면 **United States 가 두 열쇠로 갈린다**
+    #     (실측: `USA` 가 새 번호를 받았고 그 번호는 어제 시카고 파이어 것이었다).
+    #  🔴 코드는 **이름표에 이미 있다**(`fa:USA`·`iso:US`) — 그것으로 찾는다.
+    said = name.strip().upper()
+    if 2 <= len(said) <= 3 and said.isalpha():
+        # 🔴 **세 글자 코드는 CLDR 이 두 글자로 바꿔 준다**(`USA`→`US`·`KOR`→`KR`).
+        #    ⚠️ 손으로 적지 않는다 — `babel` 의 `territory_aliases` 가 원본이다
+        #       (실측 2026-10-07: `CHI` 는 **없다** — 칠레 약칭을 지어내지 않는다).
+        codes = [said]
+        try:
+            from babel.core import get_global
+            codes += [str(x) for x in (get_global("territory_aliases").get(said)
+                                       or [])]
+        except Exception:                                   # noqa: BLE001
+            pass
+        for code in codes:
+            for pre in ("iso", "fa"):
+                keys = reg.index.get(norm(f"{pre}:{code}")) or []
+                if len(keys) == 1:
+                    return keys[0], (f"`{name}` → 코드 `{pre}:{code}` 로 찾았다"
+                                     f"(CLDR 가 세 글자를 두 글자로 바꿨다)")
     ext = f"name:{norm(name)}"
     key = reg.key_for(ext=ext, name=name, league=league, sport=sport)
     ref = reg.teams.get(key)

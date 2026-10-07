@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T23:43:52.052549+00:00",
+ "order": [
+  "There will be no hardware on offer Tuesday night but there’s still plenty at stake. Of all Marsch’s achievements in two-and-a-half years at the helm, turning this fixture into a legitimate and heated rivalry already felt consequential. As he endeavours to drive his team continually upward in this cycle, adding fresh layers to these duels with his homeland will only help.",
+  "Breakout Minnesota attacker Marcus Caldeira joined the squad here and could see a rapid debut. If so, he’ll swap his loon crest for a maple leaf. Familiarity and symbols everywhere.",
+  "You may unsubscribe at any time. By signing up, you agree to our terms of use and privacy policy. This site is protected by reCAPTCHA and the Google privacy policy and terms of service apply.",
+  "Want more of the latest from us? Sign up for more at our newsletter page.",
+  "Back-to-back victories over Chile and Peru made the World Cup homecoming a very gratifying one. That they were achieved without Alphonso Davies, Moïse Bombito, Ismaël Koné, Alistair Johnston and Max Crépeau — nearly half of a first-choice XI — is even more impressive.",
+  "Marsch was joined by Dayne St. Clair and Tani Oluwaseyi for the pre-match chat. Afterward, as Canada began training, both were presented with jackets honouring them as members of Minnesota United’s team of the decade, the club’s loon logo in bright sky blue. Canada’s squad is speckled with players who represent American MLS sides. More are European club teammates with U.S. players. Yet threads that bind both squads loosen on days like these.",
+  "Marsch will likely go as strong as possible in Saint Paul against a youthful, experimental home side. Nathan Saliba has had a stellar window in the heart of midfield, with Jacob Shaffelburg revitalized outside him. Luc de Fougerolles and Ralph Priso have grown into their unexpected defensive partnership. Oluwaseyi looks likely to join Jonathan David in attack.",
+  "Unlike any predecessor, Marsch does it off the field, too. He caused a fresh stir over the weekend when he told The Guardian that the Folarin Balogun affair, when U.S. President Donald Trump intervened to help persuade FIFA to inexplicably lift a World Cup ban on the striker, “is why everyone around the world hates America.” This fixture’s familiarity doesn’t need to breed contempt. Marsch already provides plenty, even if he looked for more diplomatic tones Monday."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 17문단 → 재정렬 상위 8"
+}

@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T23:43:51.509926+00:00",
+ "order": [
+  "Kawhi Leonard, rookie Allen Graves, newly signed veteran Kyle Anderson, and young contributors Jamison Battle and Alijah Martin all didn't play.",
+  "The Toronto Raptors had a good week at training camp in Quebec City but opened the preseason with a 129-105 defeat at the hands of the Giannis Antetokounmpo-led Miami Heat.",
+  "Shaffelburg, who had to race against time to be fit for the World Cup, didn't quite look up to speed during the tournament but certainly looks back to his best now. Playing on his preferred left wing, Shaffelburg has now provided the key cross leading to the goal in the 1-0 win over Chile and had a left-footed volley and header in this one.",
+  "Over in Toronto, early optimism has been splashed with cold water with a 1-2 start (losses to the Ottawa Senators and Montreal Canadiens) with all three games on home ice. Positivity was initially boosted when the Leafs acquired Kirill Marchenko from the Columbus Blue Jackets with Matthew Knies going the other way.",
+  "FIRST CONNOR MCDAVID GOAL OF THE SEASON AND IT WAS GROSS 🤢 pic.twitter.com/5Zn0XN3XOy",
+  "Top overall pick Gavin McKenna has yet to register a point through about 43 minutes of action across the three games.",
+  "There was a Canadian barnstormer of a game on Thursday night as the Oilers defeated the Vancouver Canucks 9-7, in which McDavid collected a goal and four assists. Edmonton looked to have had the game settled after taking a commanding 8-2 lead midway through the second period but the Canucks then scored four unanswered to get up a wild finish.",
+  "With two wins on the bounce, Canada has moved up from 30th in the FIFA rankings to 27th heading into a final match of this window against the U.S.A. With all that is going on in the political landscape, and American Jesse Marsch at the helm for the red and white, this match on Tuesday night is sure to have some fireworks."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

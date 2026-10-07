@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T23:45:09.470190+00:00",
+ "order": [
+  "- USA vs Canada Betting Tip 1: BTTS - Yes at odds of 1.65 on Stake",
+  "- USA vs Canada Betting Tip 2: Totals - Over 2.5 goals at odds of 1.71 on Stake",
+  "The home side have been quite potent during this international break, scoring 11 goals in three games. That average of 3.7 goals per 90 is encouraging, especially for a youthful team. Sunday’s clash against Mexico saw them record their first clean sheet after conceding in three straight matches.",
+  "USA expected lineup: Schwake, Freeman, G. Campbell, A. Robinson, Miller, Berhalter, Musah, Reyna, Sullivan, Tillman, Hall",
+  "Picking a winner from in-form teams is a difficult task, where small details are the ones that determine the winner. The USA have a three-game unbeaten record at Allianz Field, winning those matches by a combined 11-0. Their recent 10 matches at any venue, including friendlies, saw the hosts win seven, while three ended in defeat.",
+  "We’ve established that the likelihood of both teams scoring in this match is high. The goal count is also likely to exceed the 2.5 goal line. The home side have scored at least three goals in each match during this international window.",
+  "Canada expected lineup: Pantemis, Sigur, De Fougerolles, Knight-Lebel, Petrasso, Buchanan, Eustaquio, Choiniere, Shaffelburg, J. David, Larin",
+  "The USA have been perfect during this international break, winning three out of three. More so, their future looks set with the young squad they have been fielding. Mauricio Pochettino’s men kicked off their friendly batch of games against Peru, beating them 4-1. The Stars and Stripes then followed that up with a 4-2 triumph over Chile and then a 3-0 victory over Mexico."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

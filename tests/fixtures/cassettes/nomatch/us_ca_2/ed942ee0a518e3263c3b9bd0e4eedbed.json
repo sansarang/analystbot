@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T23:45:08.980911+00:00",
+ "order": [
+  "Les Rouges have compiled a winning record against the Yanks in the ensuing years, including a higher finish in the final round of 2022 World Cup qualifying and back-to-back wins under Marsch in their last two meetings.",
+  "Poch has ample reason for this outlook. The USMNT are riding high at the moment, elevated out of the post-World Cup doldrums by a vibrant youth movement headlined by MLS phenoms Cavan Sullivan and Julian Hall, with 11 goals scored in their three friendly wins over Peru, Chile and El Tri.",
+  "Over the past half-decade, Canada have become the US men’s national team’s proverbial noisy neighbors, and the volume has dialed up several notches since Jesse Marsch, a USMNTer during his own playing career, took charge of Les Rouges two-plus years ago.",
+  "As an ascendant program rising from obscurity and underachievement to one of Concacaf’s elite, the CanMNT in many ways used their southern neighbors as a measuring stick. The USMNT maintained a 34-year, 17-match unbeaten streak against Canada until Alphonso Davies & Co. finally broke through with a 2-0 Concacaf Nations League at Toronto FC’s BMO Field in 2019.",
+  "“It's obvious that there are times that we play against teams like Canada or Mexico, always the competitiveness is there, and the fans want to win,” he added. “It's a thing that we cannot solve. But it's important in that moment for us is to keep building our identity. That is the most important thing, and that is in the way that we want to grow.”",
+  "Yet his counterpart Mauricio Pochettino took a very different tone as he addressed the media on Monday morning. Poch was seemingly set on steering his team above the fray as they look to cinch up a perfect FIFA international window with a fourth consecutive victory, just three days after an emotional 3-0 drubbing of their oldest rivals, Mexico.",
+  "According to reporters on site for the small portion of the USMNT’s Monday training session open to media, all 28 players on the roster were taking part.",
+  "As if to avoid providing any bulletin-board material for the traditional underdogs in this fixture, Pochettino expressed his respect for Marsch; the two managers also faced off in the English Premier League when in charge of Tottenham Hotspur and Leeds United, respectively."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 17문단 → 재정렬 상위 8"
+}

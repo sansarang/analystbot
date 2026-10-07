@@ -1130,16 +1130,19 @@ def test_이름표가_모르면_임시_열쇠를_발급한다():
     import ast as _ast
     from app import teamref
     # ① 발급 — 이름표가 모르는 이름이 **열쇠 꼴**을 받는다
-    got, why = teamref.key_or_issue("Zzz Test United", sport="soccer",
-                                    league="Test League")
+    #    ⚠️ 이 검사는 **못 박은 번호가 남아 있으면** 두 번째 실행부터 `key_of` 가
+    #       먼저 찾는다(그것이 설계다 · 번호가 돌지 않게). 🔴 그래서 **매번 다른
+    #       이름**으로 센다 — 같은 이름으로 세면 어제 실행이 이 검사를 바꾼다.
+    import uuid
+    name = f"Zzz {uuid.uuid4().hex[:8]} United"
+    got, why = teamref.key_or_issue(name, sport="soccer", league="Test League")
     assert re.fullmatch(r"team:\d{6}", got), (got, why)
     assert "임시 열쇠" in why, why
     # ② **같은 이름은 같은 열쇠**다(두 번 물어도 번호가 안 바뀐다)
-    again, _ = teamref.key_or_issue("Zzz Test United", sport="soccer",
-                                    league="Test League")
+    again, _ = teamref.key_or_issue(name, sport="soccer", league="Test League")
     assert again == got
     # ③ 그 뒤에는 `key_of` 도 안다(이름이 이름표에 붙었다)
-    said, _ = teamref.key_of("Zzz Test United")
+    said, _ = teamref.key_of(name)
     assert said == got
     # ④ ⚠️ 빈 이름에는 **발급하지 않는다**
     none, why4 = teamref.key_or_issue("  ")
@@ -1151,3 +1154,106 @@ def test_이름표가_모르면_임시_열쇠를_발급한다():
     calls = {c.func.attr for c in _ast.walk(fn)
              if isinstance(c, _ast.Call) and isinstance(c.func, _ast.Attribute)}
     assert "key_or_issue" in calls, "🔴 `ref_from_row` 가 발급을 안 부른다(배선 끊김)"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 지시 2026-10-07** — IR11 OR · 저득점 조건 · 맞대결 집계 검사
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_IR11_은_8일_3경기로도_발동한다():
+    """🔴 ① — 조건이 **OR** 다. 돌연변이: 두 번째 조건 지우기(내가 지웠던 그것).
+
+    실측(미국 · 킥오프 10-07): 09-26·09-30·10-04 → 8일 안에 **이번이 3번째**.
+    """
+    from app.core.schema import Facts
+    from app.core.stages import s5_verify as s5
+    import importlib
+    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
+    assert s5.FATIGUE_WINDOW_DAYS == 8 and s5.FATIGUE_WINDOW_GAMES == 3
+    day = ref.kickoff_utc.date()
+    from datetime import timedelta
+    seq = [{"date": str(day - timedelta(days=3))},
+           {"date": str(day - timedelta(days=7))},
+           {"date": str(day - timedelta(days=40))}]
+    got = s5._three_in_window(ref, Facts(recent={str(ref.home): {"sequence": seq}}))
+    assert str(ref.home) in got and "3번째" in got[str(ref.home)], got
+    # ⚠️ 창 안에 한 경기뿐이면 **안 돈다**(이번이 2번째다)
+    few = [{"date": str(day - timedelta(days=3))}]
+    assert not s5._three_in_window(ref, Facts(recent={str(ref.home):
+                                                      {"sequence": few}}))
+    # 🔴 날짜를 못 읽은 줄은 **세지 않는다**
+    bad = [{"date": ""}, {"date": "모름"}, {"date": str(day - timedelta(days=2))}]
+    assert not s5._three_in_window(ref, Facts(recent={str(ref.home):
+                                                      {"sequence": bad}}))
+    # 🔴🔴 **배선** — `_ir_fatigue`(IR11)가 그 조건을 부른다
+    fn = next(n for n in ast.walk(ast.parse(
+        (ROOT / "app/core/stages/s5_verify.py").read_text(encoding="utf-8")))
+        if isinstance(n, ast.FunctionDef) and n.name == "_ir_fatigue")
+    calls = {c.func.id for c in ast.walk(fn)
+             if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
+    assert "_three_in_window" in calls, "🔴 IR11 이 8일 3경기 조건을 안 부른다"
+
+
+def test_저득점_필수형이_무실점_연속과_공격수_결장으로도_걸린다():
+    """🔴 ② — 무실점 2연속 **또는** 상대 공격 자원 결장. 돌연변이: 조건 지우기."""
+    from app.core.schema import Facts, Variable
+    from app.core.stages import s6_hypo
+    import importlib
+    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
+    row = {"when_clean_sheet": 2, "when_striker_absent": True}
+    # ① 무실점 2연속
+    said = s6_hypo._low_score_why(
+        ref, Facts(recent={str(ref.away): {"streak_clean_sheet": 2}}), [], row)
+    assert said and "무실점 2경기" in said[0], said
+    # ⚠️ 1경기면 안 걸린다
+    assert not s6_hypo._low_score_why(
+        ref, Facts(recent={str(ref.away): {"streak_clean_sheet": 1}}), [], row)
+    # ② 공격 자원 결장(`absence_att` 또는 포지션 FW)
+    att = Variable(id="R9", type="absence_att", subject=ref.away, favors="home",
+                   goals="down", target="Striker", hardness="hard", weight=3.0,
+                   claim="c", quote="q")
+    got = s6_hypo._low_score_why(ref, Facts(), [att], row)
+    assert got and "공격 자원 결장" in got[0], got
+    # 🔴 *"최근 득점자"* 는 **확인 못 했다**고 적는다(지어내지 않는다)
+    assert "확인 못 했다" in got[0], got[0]
+    # ⚠️ 수비 결장은 안 걸린다(포지션이 DF 다)
+    df = att.model_copy(update={"type": "def_absence", "target": "CB"})
+    assert not s6_hypo._low_score_why(
+        ref, Facts(player_pos={"CB": "DF"}), [df], row)
+    # 🔴🔴 **배선** — `_soccer_forms` 가 그 까닭 함수를 부른다
+    fn = next(n for n in ast.walk(ast.parse(
+        (ROOT / "app/core/stages/s6_hypo.py").read_text(encoding="utf-8")))
+        if isinstance(n, ast.FunctionDef) and n.name == "_soccer_forms")
+    calls = {c.func.id for c in ast.walk(fn)
+             if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
+    assert "_low_score_why" in calls, "🔴 저득점 필수형이 새 조건을 안 부른다"
+    # 🔴 표에도 그 조건이 적혀 있다(코드에 수를 박지 않는다)
+    import yaml
+    box = yaml.safe_load((ROOT / "config/scenario_required.yaml")
+                         .read_text(encoding="utf-8"))["soccer_forms"]["저득점"]
+    assert int(box["when_clean_sheet"]) == 2 and box["when_striker_absent"]
+
+
+def test_맞대결_집계가_안_맞으면_그_숫자를_안_쓴다():
+    """🔴 ③ — 승+무+패 ≠ 표본이면 변수를 안 만들고 **블록 1**에 적는다.
+
+    실측 2026-10-07(미국–캐나다): `count=10`(창) · `summary=[5,4,4]`(전체 13) —
+    두 창이 한 줄에 섞여 있었다. 돌연변이: 검사 제거.
+    """
+    from app.core.schema import Facts
+    from app.core.stages import s5_verify as s5
+    from app.core.state import RunState
+    import importlib
+    ref = importlib.import_module("tests.e2e.test_v6_replay")._ref()
+    row = {"id": "S02", "type": "h2h_pattern"}
+    st = RunState()
+    bad = Facts(h2h={"count": 10, "summary": [5, 4, 4], "all_games": 13})
+    got = s5._ir_h2h("S02", row, ref, bad, state=st)
+    assert got == [], got
+    said = [d for d in st.drops if d.reason.value == "conflict"]
+    assert said and "맞대결 집계 불일치" in said[0].detail, st.drops
+    # 🔴 합이 맞으면 **그대로 쓴다**
+    ok = Facts(h2h={"count": 9, "summary": [6, 3, 0], "window_avg_goals": 3.0})
+    said2 = s5._ir_h2h("S02", row, ref, ok, state=RunState())
+    assert said2 and said2[0].type == "h2h_pattern"

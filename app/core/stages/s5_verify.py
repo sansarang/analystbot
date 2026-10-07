@@ -717,6 +717,25 @@ def _ir_h2h(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
         state.note(f"s5 {rid} — 맞대결 요약이 없다(변수 안 만든다)")
         return []
     w, d, lose = (int(x) for x in got)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **집계 검사**(사용자 지시 2026-10-07 ③) — 승+무+패 = 표본 수여야 한다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > 승+무+패 = 표본 수가 아니면 **그 숫자를 쓰지 말고** 블록 1에
+    # > *"맞대결 집계 불일치"* 로 적는다.
+    #
+    # 🔴 원인(실측 2026-10-07 미국–캐나다): `count` 는 **창을 자른** 경기 수(10)인데
+    #    `summary` 는 fotmob 의 **전체 전적**(5-4-4 = 13)이다 — 두 창이 한 줄에
+    #    섞여 있었다. ⚠️ 그 수로 방향을 정하면 창 밖 경기가 방향을 정하는 것이다.
+    if w + d + lose != n:
+        said = (f"맞대결 집계 불일치 — 전적 {w}승 {d}무 {lose}패(합 "
+                f"{w + d + lose})인데 표본은 {n}경기다"
+                + (f" · 전체 {box['all_games']}경기" if box.get("all_games")
+                   else "")
+                + " → 🔴 **그 숫자를 쓰지 않는다**(창이 섞였다)")
+        state.drop(f"{rid}/h2h", DropReason.CONFLICT, said)
+        state.note(f"s5 {rid} — {said}")
+        return []
     if w == lose:
         state.note(f"s5 {rid} — 맞대결이 {w}승 {d}무 {lose}패로 **동률**이다 "
                    f"(어느 쪽도 아니다 · 변수 안 만든다)")
@@ -1398,11 +1417,29 @@ def _ir_fatigue(rid: str, kind: str, row: dict, ref: MatchRef, facts: Facts, *,
     ⚠️ 하나라도 없으면 **안 돈다** — 사유를 이름으로 남긴다(#3 조용한 0 금지).
     """
     out: list[Variable] = []
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **조건은 OR 이다**(사용자 지시 2026-10-07 ①) — 내가 지운 것을 되살린다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > (직전 경기 후 4일 이내 + 시차 3시간 이상 **또는** 이동 3,000km 이상)
+    # > **OR** (최근 8일 안에 이번이 **3번째** 경기).
+    #
+    # ⚠️ 7차 §6 에서 문턱을 고칠 때 내가 **두 번째 조건을 지웠다**(종전 조항은
+    #    *"8일에 3경기"* 였다). 🔴 실측 2026-10-07 미국: 09-26·09-30·10-04 로
+    #    8일 안에 두 경기를 치르고 이번이 **세 번째**인데 IR11 이 안 돌았다.
+    for key, said in _three_in_window(ref, facts).items():
+        out.append(_ir_var(_rid_for(rid, key, ref), kind, row, key,
+                           f"{_name(ref, key)} 일정 과부하 — {said}", ref))
+        state.note(f"s5 {rid} `{key}` **발동**(8일 3경기) — {said}")
+    done = {v.subject for v in out}
     box = dict(facts.schedule or {})
     if not box:
-        state.note(f"s5 {rid} — 일정 칸(`schedule`)이 비었다 · 안 돈다")
+        if not out:
+            state.note(f"s5 {rid} — 일정 칸(`schedule`)이 비었다 · 안 돈다")
         return out
     for key, raw in box.items():
+        if key in done:
+            continue            # 🔴 이미 8일 3경기로 걸렸다 — 두 번 세지 않는다
         said = dict(raw) if isinstance(raw, dict) else {}
         days = _days_since(said.get("last_match"), ref.kickoff_utc)
         if days is None:
@@ -1468,3 +1505,40 @@ def _travel(said: dict, ref: MatchRef, key: str) -> tuple[float | None,
     tz = (lon2 - lon1) / 15.0            # ⚠️ 경도 어림(시간대 표가 없다)
     return (round(tz, 1), round(km, 0),
             f"시차 약 {abs(tz):.1f}시간(경도 어림) · 이동 {km:,.0f}km")
+
+
+#: 🔴 두 번째 조건의 창(일)과 경기 수 — 지시서 원문 *"최근 8일 안에 이번이 3번째"*
+FATIGUE_WINDOW_DAYS = 8
+FATIGUE_WINDOW_GAMES = 3
+
+
+def _three_in_window(ref: MatchRef, facts: Facts) -> dict[str, str]:
+    """🔴 **8일 안에 이번이 3번째 경기**인 팀들. `{열쇠: 사유}` — 아니면 빈 표.
+
+    🔴 재료는 `facts.recent[팀]["sequence"]` 의 **날짜**다(폼 표가 이미 들고 있다).
+    ⚠️ 날짜를 못 읽은 줄은 **세지 않는다**(0 으로 때우지 않는다 · #3).
+    """
+    from datetime import date
+
+    out: dict[str, str] = {}
+    when = ref.kickoff_utc.date()
+    for key, raw in (facts.recent or {}).items():
+        box = dict(raw) if isinstance(raw, dict) else {}
+        days: list[int] = []
+        for row in (box.get("sequence") or []):
+            said = str(dict(row).get("date") or "")[:10]
+            if not said:
+                continue
+            try:
+                then = date.fromisoformat(said)
+            except ValueError:
+                continue
+            gap = (when - then).days
+            if 0 <= gap <= FATIGUE_WINDOW_DAYS:
+                days.append(gap)
+        # 🔴 **이번 경기를 포함해** 센다 — 앞선 경기가 (3-1)개면 이번이 3번째다
+        if len(days) >= FATIGUE_WINDOW_GAMES - 1:
+            out[str(key)] = (f"{FATIGUE_WINDOW_DAYS}일 안에 이번이 "
+                             f"{len(days) + 1}번째 경기"
+                             f"(직전 {sorted(days)}일 전)")
+    return out

@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T23:43:39.778755+00:00",
+ "order": [
+  "England forward Packer to miss North America tour - Yahoo News Singapore 14시간 전England will play Canada in Toronto and Ottawa before facing the United States in New Jersey [Getty Images]14시간 전",
+  "This Week In Sports: McDavid sizzles, Maple Leafs spill; Canada tops Peru after anthem blunder; Raptors o.... 1일 전This Week In Sports: McDavid sizzles, Maple Leafs spill; Canada tops Peru after anthem blunder; Raptors open preseason in Quebec City It's been another busy week for Canadians in sport with plenty of highs and lows. We've got all the good, bad and viral ready for you.1일 전",
+  "Canada vs. USA rivalry is real. Marsch isn’t shying away - The Star,Breaking News 1일 전The Canada-U.S. rivalry is real — and Jesse Marsch isn’t shying away from it With much of the world moving away from friendlies, these two teams will meet an awful lot.1일 전",
+  "USA vs Canada Prediction, Picks & Odds for Tuesday's International Friendly Match Get Chris Vasile's USA vs. Canada predictions, picks, odds, and best bets for Tuesday's international friendly, including the moneyline and top combo.",
+  "How to watch USA vs Canada live: Stream, TV channel, team news, prediction Pochettino's young stars are aiming to make it four wins from four during a brilliant international break.",
+  "USMNT vs. Canada—International Friendly: Preview, Predictions and Lineups 22시간 전USMNT vs. Canada—International Friendly: Preview, Predictions and Lineups The North American neighbors have each won all of their friendly fixtures this international break.22시간 전",
+  "How to watch USA vs Canada live: Stream, TV channel, team news, prediction - NBC Sports 3일 전How to watch USA vs Canada live: Stream, TV channel, team news, prediction3일 전",
+  "USA vs Canada: Where to watch, live stream, TV channel and kick-off time | Goal.com Canada 12시간 전This page contains affiliate links. When you purchase through the links provided, we may earn a commission. 19 | Please play responsibly | T&C's Apply | Commercial Content | Advertising Disclosure | Publishing Principles12시간 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 11문단 → 재정렬 상위 8"
+}

@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T23:43:41.425523+00:00",
+ "order": [
+  "Riding Three Straight Wins at Start of New Cycle, USMNT Closes Window Against Canada in St. Paul - U.S,US.... 1일 전Riding Three Straight Wins at Start of New Cycle, USMNT Closes Window Against Canada in St. Paul The U.S. Men's National Team will close out its fall international window against northern neighbor Canada on October 6 at Allianz Field in St. Paul, Minn.1일 전",
+  "USMNT v Canada live – updates, analysis and more from international friendly 1시간 이내USMNT v Canada live – updates, analysis and more from international friendly1시간 이내",
+  "20261004 안녕하세요........엘피카페블루입니다!... Helen Reddy [Helen Reddy](1971년) 3일 전특히 'I Believe in Music'의 B면 수록곡이었던 'I Don't Know How to Love Him'은 캐나다 잡지 'RPM'의 팝 차트에서 8위까지 올랐습니다. 그로부터 1년 뒤, 그녀는 캐피톨 레코드(Capitol Records)와 계약을 맺었습니다. 1970년대에 레디는 국제적인 성공을 거두었는데, 특히 미국에서 큰 인기를 누리며 '빌보드 핫 100(Billboard Hot 100)' 차트의...3일 전",
+  "프로그레시브록 Klaatu 캐나다초반 희귀 LP | CD/DVD/LP 3일 전이 상품과 비슷해요 80년대 이태리 아트락 프로그레시브 록 밴드 크리스탈 피닉스 Crystal Phoenix 시완레코드 음반 국내 라이센스 초판 CD 시디 100,000원 Eagles Hotel California 일본 1981년 LP 16,000원 빙 크로스비(Bing Crosby)가 1956년에 발표고전 웨스턴/컨트리 명반 Home on the Range(언덕 위의 집)의 오리지널 미국반...3일 전4.9/5135 참여",
+  "Nasdaq notches record high close as investors focus on earnings | MarketScreener Canada 2일 전Nasdaq Composite Hits All-Time High While Treasury Yields Touch Highest in Two Decades MT2일 전",
+  "USA vs. Canada: How to watch, stream international friendly 2일 전Two of Concacaf's elite teams clash Tuesday evening when the United States host Canada at Allianz Field, home of Minnesota United FC.2일 전",
+  "[K-원전 50년만 유턴] ② 서방이 멈춘 반세기, 韓 뚝심이 만든 ‘APR1400’…美 전.... 1일 전1978년 기술 도입국서 미국 본토 전력망 재건 주역으로 美 94기 운영 중이나…공급망 붕괴 ‘건설 중 0기’ 한미 원전 협력 넘어 동맹으로 발전 가능 대미 수주 트랙레코드 확보... 고리 1호기를 준공한 이후, 특정 국가에 대한 기술 종속을 해소하기 위해 캐나다의 중수로 노형(CANDU)인 월성 원전을 도입하며 다변화된 기술 체계를 구축했다. 1979년 미국 스리마일섬...1일 전",
+  "닐 다이아몬드 Neil Diamond - Rainbow (1973 미국 MCA 초반) | CD/DVD/LP 1일 전이 상품과 비슷해요1일 전CD미개봉/다이아몬드 브릿지(DIAMOND BRIDGE)1집 10,000원Pink Floyd 캐나다 초반 1969년 LP 48,000원(수입중고LP-재즈) Count Basie, Featuring Joe Williams -Breakfast Dance And Barbecue 13,000원"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 13문단 → 재정렬 상위 8"
+}

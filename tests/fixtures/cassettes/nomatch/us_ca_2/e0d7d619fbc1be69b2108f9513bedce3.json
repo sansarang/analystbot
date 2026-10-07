@@ -1,0 +1,11 @@
+{
+ "kind": "fetch",
+ "url": "https://sports.inquirer.net/700131/wnba-semis-dream-pull-away-take-opener-vs-liberty",
+ "query": "",
+ "recorded_at": "2026-10-06T23:43:46.762793+00:00",
+ "headers": {},
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

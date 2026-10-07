@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T23:43:40.747126+00:00",
+ "order": [
+  "Riding Three Straight Wins at Start of New Cycle, USMNT Closes Window Against Canada in St. Paul - U.S,US.... 1일 전Riding Three Straight Wins at Start of New Cycle, USMNT Closes Window Against Canada in St. Paul The U.S. Men's National Team will close out its fall international window against northern neighbor Canada on October 6 at Allianz Field in St. Paul, Minn.1일 전",
+  "USMNT v Canada live – updates, analysis and more from international friendly 1시간 이내USMNT v Canada live – updates, analysis and more from international friendly1시간 이내",
+  "USA vs Canada Prediction and Odds, 7 October 2026 - Betimate 3일 전USA vs Canada prediction, October 7, 2026 (International Match): 1X2 pick, expected score and over/under goals from Betimate's statistical model, with current odds. Estimates, not guarantees.3일 전",
+  "Nasdaq notches record high close as investors focus on earnings | MarketScreener Canada 2일 전Nasdaq Composite Hits All-Time High While Treasury Yields Touch Highest in Two Decades MT2일 전",
+  "S&P 500, Nasdaq reach record closing highs as focus pivots to earnings | MarketScreener Canada 17시간 전Published on 10/06/2026 at 04:01 pm EDT - Modified on 10/06/2026 at 04:25 pm EDT17시간 전",
+  "Horizon Dash - Las Vegas, NV USA | De Havilland Canada Dash-… 5일 전추가 정보 ; 라이선스 (내역) : 모든 권리 보유, 개인 정보 보기 : 공개, 보안 수준 : 안전함, 컨텐츠 유형 : 사진5일 전",
+  "USA vs. Canada: How to watch, stream international friendly 2일 전Two of Concacaf's elite teams clash Tuesday evening when the United States host Canada at Allianz Field, home of Minnesota United FC.2일 전",
+  "USA & Canada Intelligence Brief — Saturday, October 3, 2026 USA & Canada Intelligence Brief for October 3: the G7 releases 100 million barrels, hiring falls to 29,000 and Quebec votes Monday."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 12문단 → 재정렬 상위 8"
+}

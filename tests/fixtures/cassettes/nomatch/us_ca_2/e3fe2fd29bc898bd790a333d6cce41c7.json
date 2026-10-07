@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T23:44:04.617551+00:00",
+ "order": [
+  "Grant missed the first four games of the regular season after being placed on IR on August 30, but he's now eligible to return to game action.",
+  "Hafley also put safety Dante Trader Jr. in the day-to-day category after he injured a knee against the Vikings but later returned to the game, and said special teams cornerback Reece Taylor would be week to week with his quad injury.",
+  "Head coach Jeff Hafley offered some injury updates Monday, the best news being that defensive tackle Kenneth Grant will be back at practice Wednesday for the first time in the regular season.",
+  "Alain Poupart is the publisher/editor of Miami Dolphins On SI, host of the All Dolphins Podcast, and co-host of the Dolphins Collective. Alain has covered the Miami Dolphins on a full-time basis since 1989 for various publications and media outlets, including Dolphin Digest, The Associated Press and the Dolphins team website. In addition to being a credentialed member of the Miami Dolphins press corps, Alain has covered three Super Bowls (for NFL.com, Football News and the Montreal Gazette), the annual NFL draft, the Senior Bowl, and the NFL Scouting Combine. During his almost 40 years in journalism, which began at the now-defunct Miami News, Alain has covered practically every sport at one time or another, from tennis to golf, baseball, basketball and everything in between. The career also included time as a copy editor, including work on several books, such as \"Still Perfect,\" an inside look at the Miami Dolphins' 1972 perfect season. A native of Montreal, Canada, whose first language is French, Alain grew up a huge hockey fan but soon developed a love for all sports, including NFL football. He has lived in South Florida since the 1980s.",
+  "The news wasn't quite as encouraging when it comes to wide receiver Caleb Douglas, who missed the past two games because of an ankle injury.",
+  "If Grant can get through the week of practice without any issues, he should be in line to make his 2026 season debut against the Cincinnati Bengals next Sunday and his addition could prove valuable to an interior D-line group — Zach Sieler, Jordan Phillips, Zeek Biggers — coming off its best performance of the season.",
+  "Keeping in mind that the Dolphins have their bye following this game against Cincinnati, don't be surprised if they err on the side of caution and keep Douglas out one more game, which would give him two more weeks to get back to 100 percent or close to it.",
+  "The Dolphins announced they had waived running back Carlos Washington Jr., two days after they signed him to the active roster off their practice squad. And the best guess is that Washington will be right back on the practice squad by Wednesday, assuming he doesn't get claimed off waivers."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 15문단 → 재정렬 상위 8"
+}

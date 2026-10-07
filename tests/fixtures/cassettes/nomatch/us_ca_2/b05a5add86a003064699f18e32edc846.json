@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-06T23:44:58.596612+00:00",
+ "order": [
+  "FORWARDS (5): Marcus Caldeira (Minnesota United; 0/0), Jonathan David (Atlético Madrid/ESP; 84/43), Promise David (Brighton and Hove Albion/ENG; 16/4), Daniel Jebbison (AFC Bournemouth/ENG; 8/0), Tani Oluwaseyi (Villareal/ESP; 30/2), Jacen Russell-Rowe (FC Toulouse/FRA; 11/1)",
+  "MIDFIELDERS (9): Tyler Adams (AFC Bournemouth/ENG; 61/2), Mathis Albert (Borussia Dortmund/GER; 3/1), Sebastian Berhalter (Middlesbrough/ENG; 21/4), Zavier Gozo (Crystal Palace/ENG; 1/0), Adri Mehmeti (Red Bull New York; 2/0), Yunus Musah (AC Milan/ITA; 49/1), Brooklyn Raines (New England Revolution; 3/0), Gio Reyna (RC Strasbourg Alsace/FRA; 46/10), Malik Tillman (Bayer Leverkusen/GER; 38/7)",
+  "DEFENDERS (10): George Campbell (West Bromwich Albion FC/ENG; 2/0), Sergiño Dest (PSV Eindhoven/NED; 45/3), Alex Freeman (Villarreal/ESP; 25/3), Peyton Miller (New England Revolution; 2/0), Neil Pierre (Philadelphia Union; 2/0), Chris Richards (Crystal Palace/ENG; 42/4), Antonee Robinson (Fulham/ENG; 61/5), Miles Robinson (FC Cincinnati; 42/3), Auston Trusty (Celtic/SCO; 13/1), Frankie Westfield (Philadelphia Union; 2/0)",
+  "FORWARDS (5): Cole Campbell (SV Elversberg/GER; 0/0), Damion Downs (St. Louis City SC; 7/0), Justin Ellis (Orlando City SC; 2/1), Julian Hall (Red Bull New York; 3/3), Cavan Sullivan (Philadelphia Union; 3/1)",
+  "MIDFIELDERS (9): Jeevan Badwal (Vancouver Whitecaps FC; 1/0), Mathieu Choinière (Los Angeles FC; 27/0), Theo Corbeanu (Toronto FC; 7/2), Stephen Eustáquio (Swansea City/ENG; 63/5), Junior Hoilett (70/17), Liam Millar (Birmingham City/ENG; 46/1), Samuel Piette (CF Montréal; 70/0), Nathan Saliba (Villareal/ESP; 20/3), Jacob Shaffelburg (Los Angeles FC; 38/8)",
+  "DEFENDERS (8): Derek Cornelius (Olympique de Marseille/FRA; 48/1), Richard Chukwu (Toronto FC; 2/0), Luc de Fougerolles (Real Salt Lake; 20/0), Jovan Ivanisevic (FK Sarajevo/BIH; 2/0), Richie Laryea (Toronto FC; 83/1), Alfie Jones (Middlesbrough/ENG; 2/0), Ralph Priso (Vancouver Whitecaps FC; 6/0), Niko Sigur (FC Toulouse/FRA; 24/2)",
+  "The USMNT’s 3-0 victory over Mexico is the team’s third consecutive win at the start of the new cycle following FIFA World Cup 2026. All three of the USA’s victories have featured at least three goals with three different goal scorers and two of the matches had four different goal scorers. The most recent victory ended a streak in which Mexico had scored in 11 straight matches and 15 of the last 16. Saturday’s win against Mexico is also the USMNT’s first victory against a FIFA/Coca-Cola top-10 opponent since Nov. 12, 2021, in a 2-0 victory against then ninth-ranked Mexico. The U.S. ended 2025 with a three-game winning streak against Australia, Paraguay and Uruguay and begin the new cycle with three victories against Peru, Chile and Mexico.",
+  "GOALKEEPERS (4): Chris Brady (Chicago Fire; 2/0), Matt Freese (New York City FC; 20/0), Diego Kochen (Lyngby Boldklub/DEN; 2/0), Brian Schwake (Nashville SC; 1/0)"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

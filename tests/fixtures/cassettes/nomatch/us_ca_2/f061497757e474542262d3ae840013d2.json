@@ -1,0 +1,16 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-06T23:44:03.633366+00:00",
+ "order": [
+  "Veteran Canadian defender Vanessa Gilles will miss a pair of upcoming women's soccer friendlies against Denmark after suffering a muscle injury with Bayern Munich.",
+  "Washington Spirit defender Élisabeth Tsé has been called up to replace Gilles.",
+  "This report by The Canadian Press was first published Oct. 2, 2026.",
+  "The 30-year-old Olympic champion has made 63 appearances for Canada and was named Canada Soccer's women's player of the year in 2024.",
+  "The ninth-ranked Canadians host No. 12 Denmark next Friday at Stade Saputo in Montreal before the teams meet again Oct. 12 at BMO Field in Toronto.",
+  "The matches are Canada's final preparation window before the CONCACAF W Championship, where it will face Panama in the quarterfinals on Nov. 28.",
+  "The tournament serves as a qualifier for both the 2027 Women's World Cup in Brazil and the 2028 Los Angeles Olympics."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 7문단 → 재정렬 상위 8"
+}

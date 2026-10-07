@@ -1,0 +1,16 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-06T23:43:58.965198+00:00",
+ "order": [
+  "Veteran defender Gilles to miss Canada friendlies against Denmark with injury - Yahoo Sports 4일 전Veteran defender Gilles to miss Canada friendlies against Denmark with injury4일 전",
+  "Breaking the Dolphins Monday Roster Move and Injury Updates 1일 전GRANT PRACTICING, DOUGLAS A MAYBE Head coach Jeff Hafley offered some injury updates Monday, the best news being that defensive tackle Kenneth Grant will be back... A native of Montreal, Canada, whose first language is French, Alain grew up a huge hockey fan but soon developed a love for all sports, including NFL football. He...1일 전",
+  "England forward Packer to miss North America tour - Yahoo Sports 14시간 전England will play Canada in Toronto and Ottawa before facing the United States in New Jersey [Getty Images]14시간 전",
+  "Canada vs. USA rivalry is real. Marsch isn’t shying away - The Star,Breaking News 1일 전The Canada-U.S. rivalry is real — and Jesse Marsch isn’t shying away from it With much of the world moving away from friendlies, these two teams will meet an awful lot.1일 전",
+  "Bonded truck held up at Canada-U.S. border was carrying over 1,000 bottles of spirits: U.S. CBP 5일 전The St. Stephen, N.B., border crossing is pictured. (Source: Avery MacRae/CTV News Atlantic)5일 전",
+  "Delta, Air Canada planes collide at LAX: What happened? 1시간 이내Delta and Air Canada planes collided at LAX, but no injuries were reported as federal officials investigate what happened.1시간 이내",
+  "Air Canada flight from Toronto struck by Delta plane at LAX, no injuries reported - Breaking News ,Top Lo.... 20시간 전Air Canada flight from Toronto struck by Delta plane at LAX, no injuries reported20시간 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 7문단 → 재정렬 상위 8"
+}
