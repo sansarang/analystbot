@@ -240,6 +240,11 @@ def run(ref: MatchRef, facts: Facts, docs: list[Doc],
             name = _LEVEL_NAME.get(level, "soft")
             state.drop(f"s5/xi/{row['target'][:20]}", DropReason.CONFLICT,
                        clash)
+        # 🔴 **팀 귀속을 못 가린 결장 변수는 근거로 못 쓴다**(지시 2 · 맥락만)
+        if row.get("_basis_off"):
+            usable = False
+            state.note(f"s5 R{i} 결장 귀속 미확정 → **근거 불가**"
+                       f"({str(row['_basis_off'])[:70]})")
         out.append(Variable(
             id=f"R{i}", type=row["type"], subject=row["subject"],
             favors=row["favors"], goals=row.get("goals", "none"),
@@ -348,13 +353,38 @@ def _one(c: VarCandidate, ref: MatchRef, by_id: dict[str, Doc], *,
             state.drop(what, DropReason.STAKES_VAGUE,
                        f"🔴 기록 도전인데 **수치가 없다** — {str(c.claim)[:60]}")
             return None
-    fav = favors_of(kind, c.subject, c.claim, ref)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **결장 선수 → 팀 대조는 코드가 한다**(사용자 지시 2026-10-07)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-07(멕시코–칠레): **멕시코** 선수 `Gilberto Mora` 의 결장이
+    #     s4 출력에서 `team:000047`(칠레)로 붙어 `favors=home`·`득점↑` 로 뒤집혔다.
+    #     가설·시나리오 B·E 가 그것을 *"상대 결장"* 으로 읽었다.
+    #  🔴 그래서 **방향을 세기 전에** 주체를 고친다 — `favors` 는 고친 주체로 센다.
+    subject, basis_off = c.subject, ""
+    if kind in ABSENCE_KINDS and target:
+        got, how, why = team_of_player(target, ref, facts, doc)
+        if got and got != c.subject:
+            # 🔴 **정정한다 — 조용히 버리지 않는다**(카드 블록 1 에 적는다)
+            subject = got
+            state.drop(what, DropReason.TEAM_REATTACHED,
+                       f"결장 귀속 정정: {target} "
+                       f"{_who(c.subject, ref)}→{_who(got, ref)} ({why})")
+        elif not got:
+            basis_off = why
+            state.drop(what, (DropReason.TEAM_AMBIGUOUS if how == "ambiguous"
+                              else DropReason.TEAM_UNRESOLVED), why[:120])
+        else:
+            state.note(f"s5 {what} 결장 귀속 확인 — {why}(길 {how})")
+    fav = favors_of(kind, subject, c.claim, ref)
     if fav not in _FAVORS:
         # 🔴 **방향 규칙이 없는 유형**이다 — 한쪽으로 밀지 않는다(지어내지 않는다)
         state.drop(what, DropReason.TYPE_OFF_CATALOG,
                    f"`{kind}` 방향 규칙이 없다(받은 값 {fav!r})")
         return None
-    return {"type": kind, "subject": c.subject, "favors": fav,
+    return {"type": kind, "subject": subject, "favors": fav,
+            # 🔴 대조를 통과하지 못했으면 **근거로 쓰지 않는다**(맥락만 · 지시 2)
+            "_basis_off": basis_off,
             "goals": goals_of(kind), "target": target,
             "match_link": str(c.match_link or ""),
             "claim": c.claim, "quote": quote, "doc_ids": [doc.id],
@@ -375,6 +405,15 @@ _HEAD = re.compile(r"^\s*\[[A-Za-z]-[a-z]+-D\d+-P\d+\]\s*(\([^)]*\))?\s*")
 def _unhead(said: str) -> str:
     """🔴 인용 **앞머리의 머리표만** 떼어 낸다. ⚠️ 가운데 글자는 건드리지 않는다."""
     return _HEAD.sub("", str(said or "")).strip()
+
+
+def _who(key: str, ref: MatchRef) -> str:
+    """🔴 열쇠 → **사람이 읽는 팀 이름**(정정 줄에 쓴다). ⚠️ 모르면 열쇠 그대로."""
+    if key == ref.home:
+        return ref.home_name or key
+    if key == ref.away:
+        return ref.away_name or key
+    return key
 
 
 def _mentions(subject: str, doc: Doc, ref: MatchRef) -> bool:
@@ -551,6 +590,10 @@ def _merge(rows: list[dict], *, state: RunState,
                 keep["doc_ids"].append(d)
         # 🔴 **모델이 단 유형을 모아 둔다** — 묶인 뒤 포지션·다수결로 하나를 고른다
         keep.setdefault("kinds", [keep["type"]]).append(row["type"])
+        # 🔴 귀속을 **가린 쪽이 이긴다** — 한 기사가 팀을 못 말했어도 다른 기사가
+        #    말했으면 그 사실은 가려진 것이다(지시 2).
+        if not row.get("_basis_off"):
+            keep["_basis_off"] = ""
         state.drop(f"s5/{row['type']}/{target[:24]}", DropReason.DUPLICATE,
                    f"같은 사실로 묶었다(열쇠 {key[1]}·{key[2][:20]}) → 출처 "
                    f"{len(keep['doc_ids'])}곳")
@@ -1246,14 +1289,11 @@ def _xi_clash(target: str, subject: str, facts: Facts) -> str:
     xi = facts.xi.get(subject)
     if xi is None or xi.state == "none":
         return ""
-    said = norm(target)
-    if not said:
+    if not str(target or "").strip():
         return ""
     for name in [*xi.players, *[p.name for p in xi.lineup]]:
-        got = norm(name)
-        if not got:
-            continue
-        if said in got or got in said:
+        # ⚠️ 이름 비교는 `same_person` **하나**다(#1) — 글자 포함으로 묶지 않는다
+        if same_person(target, name):
             return (f"충돌: 기사가 **결장**이라 한 `{target}` 가 "
                     f"{xi.state} XI 에 **있다** → 그 변수를 soft 로 내린다"
                     f"(무엇이 맞는지는 킥오프가 말한다)")
@@ -1264,20 +1304,132 @@ PERSONAL_KINDS = (*ABSENCE_KINDS, "individual_title", "returning",
                   "lineup_value")
 
 
-def in_squad(target: str, subject: str, facts: Facts) -> bool:
-    """🔴 그 선수가 **이번 소집 명단**에 있나(①-b 예외 · ② 가 같은 표를 쓴다)."""
-    said = norm(target)
-    if not said:
+def _squash(said: str) -> str:
+    """🔴 글자만 남긴다 — `Kim Min-jae` → `kimminjae`(붙여 쓴 표기를 맞추려고)."""
+    return re.sub(r"[^0-9a-z가-힣ぁ-んァ-ヶ一-龥]", "", said)
+
+
+def _parts(said: str) -> list[str]:
+    """🔴 이름을 **낱말로** 쪼갠다 — 공백·쉼표·점·하이픈·따옴표."""
+    return [t for t in re.split(r"[\s,.\-'\u00b7]+", said) if t]
+
+
+def same_person(a: str, b: str) -> bool:
+    """🔴🔴 **두 이름이 같은 사람인가** — 비교는 **여기 한 곳**이다(사본 금지).
+
+    ⚠️ 매체와 명단이 같은 선수를 다르게 적는다(실측): `Gilberto Mora Ortega` /
+       `G. Mora` / `Mora, Gilberto` / `Ødegaard` ↔ `Odegaard`.
+    🔴 `norm` 이 NFKC·합자·발음기호·대소문자를 이미 걷는다 — 여기서 더하는 것은
+       **낱말 단위** 비교다:
+         ① 글자 포함(한쪽이 다른 쪽을 품는다 — `Mora` ⊂ `Gilberto Mora`)
+         ② 낱말 집합이 같다(**성·이름 순서 무관** — `Mora Gilberto` = `Gilberto Mora`)
+         ③ 머리글자 + 성(`G. Mora` = `Gilberto Mora`)
+    🔴 ③ 은 **성이 같고** 머리글자가 같을 때만이다 — 성만 같은 다른 선수를 묶지
+       않는다. ⚠️ 그래도 동명이인은 남는다 — 그 경우는 `team_ambiguous` 로 센다.
+    """
+    x, y = norm(a), norm(b)
+    if not x or not y:
         return False
-    pool = list(facts.squad.get(subject) or [])
-    xi = facts.xi.get(subject)
+    if x == y:
+        return True
+    # ⚠️ **글자 포함으로 묶지 않는다** — `Mora` 가 `Morales` 에 들어 있다(실측
+    #    2026-10-07: 그래서 멕시코 선수가 칠레 선수와 같은 사람이 됐다).
+    #    🔴 비교는 **낱말 단위**다.
+    if _squash(x) == _squash(y):            # `Kim Minjae` = `Kim Min-jae`
+        return True
+    xs, ys = _parts(x), _parts(y)
+    if not xs or not ys:
+        return False
+    if set(xs) == set(ys):                  # 성·이름 **순서 무관**
+        return True
+    short, long = (xs, ys) if len(xs) <= len(ys) else (ys, xs)
+    if set(short) <= set(long):             # `Mora` ⊂ `Gilberto Mora`
+        return True
+    # ③ 머리글자 + 성 — 짧은 쪽이 `G Mora` 꼴일 때만
+    if len(short) == 2 and len(short[0]) == 1 and short[-1] == long[-1]:
+        return short[0] == long[0][:1]
+    return False
+
+
+def roster_of(key: str, facts: Facts) -> list[str]:
+    """🔴 그 팀의 **이름 풀** — 예상/확정 XI·벤치·결장 명단·소집 명단·평소 XI.
+
+    🔴 `s2` 가 받은 칸을 **전부** 본다(지시 2: 어느 칸에 있어도 그 팀 선수다).
+    ⚠️ 직전 5경기 선발(`past_xi`)도 넣는다 — 소집 명단이 없는 대회가 있다.
+    """
+    pool: list[str] = list(facts.squad.get(key) or [])
+    xi = facts.xi.get(key)
     if xi is not None:
         pool += [*xi.players, *xi.bench, *[p.name for p in xi.lineup]]
-    for name in pool:
-        got = norm(name)
-        if got and (said in got or got in said):
-            return True
-    return False
+    pool += [m.name for m in (facts.missing.get(key) or [])]
+    for old in (facts.past_xi.get(key) or []):
+        pool += [*old.players, *old.bench, *[p.name for p in old.lineup]]
+    return [x for x in pool if str(x).strip()]
+
+
+def team_of_player(target: str, ref: MatchRef, facts: Facts,
+                   doc: Doc | None = None) -> tuple[str, str, str]:
+    """🔴🔴 **그 선수는 어느 팀인가 — 코드가 대조한다.** `(팀 열쇠, 길, 사유)`.
+
+    🔴 열쇠가 `""` 면 **못 가렸다**는 뜻이고, `길` 이 `ambiguous`·`unknown` 중
+       어느 쪽인지 말한다. ⚠️ **LLM 에게 다시 묻지 않는다**(사용자 지시 금지 ①).
+
+    순서:
+      ① 두 팀 **명단**에서 찾는다 → 한 팀에서만 나오면 그 팀이다.
+      ② 두 팀 다 나오면 `ambiguous`(동명이인) — 방향을 정할 수 없다.
+      ③ 둘 다 없으면 **기사 문장**을 본다: 선수 이름이 든 문장과 그 앞뒤 한 문장에
+         팀 이름이 한쪽만 나오면 그 팀이다.
+      ④ 그래도 모르면 `unknown`.
+    """
+    said = str(target or "").strip()
+    if not said:
+        return "", "unknown", "대상(선수 이름)이 비었다"
+    hit = [k for k in (ref.home, ref.away)
+           if any(same_person(said, n) for n in roster_of(k, facts))]
+    if len(hit) == 1:
+        return hit[0], "roster", f"`{said}` 를 그 팀 명단에서 찾았다"
+    if len(hit) == 2:
+        return "", "ambiguous", f"`{said}` 가 **두 팀 명단에** 다 있다(동명이인)"
+    if doc is None:
+        return "", "unknown", f"`{said}` 가 두 팀 명단에 없다(기사도 못 봤다)"
+    got, why = _team_in_text(said, doc, ref)
+    if got:
+        return got, "text", why
+    return "", "unknown", why
+
+
+def _team_in_text(target: str, doc: Doc, ref: MatchRef) -> tuple[str, str]:
+    """🔴 기사에서 그 선수 이름 **앞뒤 한 문장 안**에 팀 이름이 한쪽만 나오나."""
+    from app.core.stages.s3_docs import names_of
+    sents = [x for x in re.split(r"(?<=[.!?。])\s+|\n+",
+                                 f"{doc.title}. {doc.body}") if x.strip()]
+    low = norm(target)
+    where = [i for i, x in enumerate(sents) if low and low in norm(x)]
+    if not where:
+        return "", f"`{target}` 가 본문에 없다 — 팀을 가릴 수 없다"
+    home, away = names_of(ref)
+    seen: set[str] = set()
+    for i in where:
+        window = " ".join(sents[max(0, i - 1):i + 2])
+        said = norm(window)
+        for key, names in ((ref.home, home), (ref.away, away)):
+            if any(len(str(x)) >= 3 and norm(str(x)) in said for x in names):
+                seen.add(key)
+    if len(seen) == 1:
+        got = seen.pop()
+        return got, f"`{target}` 문장 앞뒤에 그 팀 이름만 나온다"
+    if len(seen) == 2:
+        return "", (f"`{target}` 문장에 **두 팀 이름이 다** 나온다 — 소속을 "
+                    f"가릴 수 없다")
+    return "", f"`{target}` 문장에 팀 이름이 없다"
+
+
+def in_squad(target: str, subject: str, facts: Facts) -> bool:
+    """🔴 그 선수가 **이번 소집 명단**에 있나(①-b 예외 · ② 가 같은 표를 쓴다).
+
+    ⚠️ 이름 비교는 `same_person` 하나다 — 여기 다시 적지 않는다(#1).
+    """
+    return any(same_person(target, n) for n in roster_of(subject, facts))
 
 
 def match_link_ok(c: VarCandidate, doc: Doc, ref: MatchRef,

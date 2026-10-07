@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Chile Mexico récord",
+ "recorded_at": "2026-10-07T01:44:14.680630+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "México vs. Chile: Resultados, estadísticas e historial | Goal.com Chile",
+   "content": "México y Chile se volverán a ver las caras este viernes, en el marco de la fecha FIFA de marzo. México 0-0 Chile San Francisco 15/06/2015 Chile 3-3 México Copa América …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.goal.com/es-cl/noticias/m%C3%A9xico-vs-chile-resultados-estad%C3%ADsticas-e-historial/blt1364add5efa1e67e",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/es-cl/noticias/m%C3%A9xico-vs-chile-resultados-estad%C3%ADsticas-e-historial/blt1364add5efa1e67e",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Oro histórico, México gana a Chile en futbol femenil de Panamericanos",
+   "content": "Con un gol de Rebeca Bernal, México derrotó a una Chile sin porteras en la Final de los Juegos Panamericanos Santiago 2023 para colgarse su primera medalla de oro en la historia.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.tudn.com/futbol/mexico/mexico-vs-chile-seleccion-mexicana-gana-oro-futbol-femenil-juegos-panamericanos",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/futbol/mexico/mexico-vs-chile-seleccion-mexicana-gana-oro-futbol-femenil-juegos-panamericanos",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "El 7-0 de Chile a México, ¿fue un accidente del fútbol o reflejó la realidad de ambas selecciones?",
+   "content": "Action phto during the match Mexico vs Chile, Corresponding to the quarterfinals of the America Cup Centenary 2016 at Levis Stadium.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.tudn.com/futbol/mexico/fue-accidental-el-7-0-de-chile-sobre-mexico-en-la-copa-america",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/futbol/mexico/fue-accidental-el-7-0-de-chile-sobre-mexico-en-la-copa-america",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mira los tantos de México y el golazo con que descontó Chile en el Mundial Sub 20",
+   "content": "Chile perdió 4-1 ante México por el paso a cuartos de final del Mundial Sub 20. Cuando Chile jugaba mejor, pasaba su mejor momento …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/Deportes/2025/10/07/1179819/goles-chile-mexico-octavos-mundialsub20.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/Deportes/2025/10/07/1179819/goles-chile-mexico-octavos-mundialsub20.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de fútbol de Chile",
+   "content": "hile Buenos Aires Argentina — 27 de mayo de 1910 Partido amistoso Último partido Estados Unidos 4:2 Chile San Luis Estados Unidos — 29 de septiembre de 2026 Partido amistoso Mejor(es) resultado(s) Chile 7 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Chile",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Chile",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "México vs. Chequia 2026: El fantasma de Chile 1962 y la primera victoria histórica del Tri",
+   "content": "Chequia: la vez que ambos escribieron historia en Chile 1962 México se enfrentará a Chequia en la última jornada del grupo A del Mundial 2026",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.tudn.com/mundial-2026/chequia-vs-mexico/mexico-vs-chequia-2026-el-fantasma-de-chile-1962-y-la-primera-victoria-historica-del-tri",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/mundial-2026/chequia-vs-mexico/mexico-vs-chequia-2026-el-fantasma-de-chile-1962-y-la-primera-victoria-historica-del-tri",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "REsumen YT México vs Chile",
+   "content": "Luis: me parece justo en la forma como chile ha mantenido la pelota en el sector de éxico. … Chile sigue molesto por ese gol que recibieron. … ¡de chile!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.tudn.com/futbol/mexico/resumen-yt-mexico-vs-chile-video",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/futbol/mexico/resumen-yt-mexico-vs-chile-video",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Santiago de Chile",
+   "content": "«Impacto de la variabilidad de la línea de nieve en crecidas invernales en cuencas pluvio-nivales de Chile central» … Eventos de nieve en Santiago de Chile …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Santiago_de_Chile",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Santiago_de_Chile",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Alexis Sánchez: el crack de Chile que se apagó tras el 7-0 a México",
+   "content": "21/28 Chile se deshizo con suma facilidad de México en Cuartos de Final con un gol de Alexis Sánchez.Mexsport y Getty Images.PUBLICIDAD 22/28 Eduardo Vargas y Edson Puch también se dieron un festín de goles con la defensa de México.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.tudn.com/futbol/alexis-sanchez-el-crack-de-chile-que-se-apago-tras-el-7-0-a-mexico-fotos",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/futbol/alexis-sanchez-el-crack-de-chile-que-se-apago-tras-el-7-0-a-mexico-fotos",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Previa México vs. Corea del Sur en la Copa Mundial de la FIFA 2026: todo lo que necesitas saber | Goal.com Chile",
+   "content": "Clasificación Copa del Mundo - Grupo A Formulario P W D L F A Puntos Formulario 1 Mexico MEX 3 3 0 0 6 0 +6 9 W W W 2 Sudáfrica RSA 3 1 1 1 2 3 -1 4 W",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.goal.com/es-cl/noticias/previa-del-partido-mexico-vs-corea-del-sur-en-la-copa-mundial-de-la-fifa-2026-todo-lo-que-necesitas-saber/blt8005f425257b98f0",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/es-cl/noticias/previa-del-partido-mexico-vs-corea-del-sur-en-la-copa-mundial-de-la-fifa-2026-todo-lo-que-necesitas-saber/blt8005f425257b98f0",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Goles y resumen México vs. Chile: Exquisita asistencia de Gilberto Mora abre el camino para el pase a cuartos de final del Mundial Sub-20",
+   "content": "Hugo Camberos confía en Gilberto Mora para el Mundial Sub-20: … Chile se mantuvo como dominador claro del segundo tiempo y se quedaron muy cerca del empate cuando el defensor de Talleres de Córdoba de Argentina …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.marca.com/mx/futbol/mundial-sub-20/cronica/2025/10/08/68e5b5fa46163f75298b4616.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.marca.com",
+    "/mx/futbol/mundial-sub-20/cronica/2025/10/08/68e5b5fa46163f75298b4616.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TABLA DE POSICIONES DEL MUNDIAL SUB 20 CHILE 2025 FECHA 3 | MÉXICO VS CHILE EN OCTAVOS",
+   "content": "🗓️ RONDA: Jornada 3 – Fase de grupos 📅 FECHAS: Viernes 3 de octubre – Domingo 5 de octubre … 🔥 RESULTADOS DISPUTADOS: … ✅ Panamá 1-2 Corea del Sur … ✅ Egipto 2-1 Chile",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=Gmay20ll5zo",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=Gmay20ll5zo",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Tras México vs Chile: así quedó el Mundial Sub 20 2025",
+   "content": "PUBLICIDAD En octavos de final goleó por 4-1 a Chile y sacó boleto a la próxima ronda, y aún no tiene rival.El duelo entre Argentina y Nigeria definirá el próximo contrincante en cuartos de final.Es importante recordar que México debutó en el Mundial Sub 20",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://juanfutbol.com/seleccion-mexicana/tras-mexico-vs-chile-asi-quedo-el-mundial-sub-20-2025",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "juanfutbol.com",
+    "/seleccion-mexicana/tras-mexico-vs-chile-asi-quedo-el-mundial-sub-20-2025",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Ciudad de México",
+   "content": "0.908 España 2 Miguel Hidalgo 0.873 Arabia Saudita 3 Cuauhtémoc 0.852 Chile 4 Coyoacán 0.849 Eslovaquia 5 Iztacalco 0.835 Andorra 6 Azcapotzalco 0.834 Montenegro Ciudad de México 0.817 Omán 7 Gustavo A.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Ciudad_de_M%C3%A9xico",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Ciudad_de_M%C3%A9xico",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Revive la goleada que sufrió Chile ante México en octavos de final del Mundial Sub 20",
+   "content": "Se jugó en el Elías Figueroa Brander de Valparaíso.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/Deportes/2025/10/07/1179792/chile-mexico-mundialsub20-octavos-relato.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/Deportes/2025/10/07/1179792/chile-mexico-mundialsub20-octavos-relato.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La Tercera - Noticias de Chile y el Mundo",
+   "content": "Noticias de última hora de Chile, América Latina y el mundo. Contenidos exclusivos de política, internacional, economía, opinión, cultura …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.latercera.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Terremoto de México de 1985",
+   "content": "104 2010 - 8.8: El miedo en el espejo En esta crónica, Juan Villoro compara la intensidad de dos de los terremotos más intensos que ha sufrido América Latina: … Chile.2005 - Opening Mexico …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Terremoto_de_M%C3%A9xico_de_1985",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Terremoto_de_M%C3%A9xico_de_1985",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "México vs Chile en vivo | Retransmisión de partido por TV Azteca",
+   "content": "Ver en vivo la retransmisión del partido de México vs Chile por TV Azteca",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.tvazteca.com/aztecadeportes/seleccion-mexicana/envivo",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tvazteca.com",
+    "/aztecadeportes/seleccion-mexicana/envivo",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de fútbol de México",
+   "content": "1 2 1 8 -7 1 16.6% Jaime Belmonte : 1 Chile 1962 Fase de grupos 11.º 3 1 0 2 3 4 -1 2 33.3% Díaz Del Águila y Hernández : 1 Inglaterra 1966 Fase de grupos 12 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_M%C3%A9xico",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_M%C3%A9xico",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¿Por qué los edificios en México se desploman y en Chile no? - La Tercera",
+   "content": "Terremoto que afectó a este país fue intraplaca y no de subducción para los cuales está diseñada su norma. En Chile, expertos debaten sobre modificar normativa local.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.latercera.com/noticia/los-edificios-mexico-se-desploman-chile-no/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/noticia/los-edificios-mexico-se-desploman-chile-no/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

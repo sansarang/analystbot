@@ -668,3 +668,28 @@ def test_불변식28_우리_열이_기준에서_출발한다(card: Card):
         if side not in ("home", "draw", "away"):
             continue
         assert float(m.get("logodds") or 0) != 0.0, m
+
+
+def test_불변식29_결장_변수는_그_팀_명단에_있다(card: Card):
+    """29. 🔴🔴 **결장 계열 변수의 팀 귀속**(사용자 지시 2026-10-07 §결장-귀속-5).
+
+    > 결장 계열 변수의 target 이 subject 팀 명단에 있거나, **근거 불가로 내려가**
+    > 있다.
+
+    ⚠️ 실측 2026-10-07(멕시코–칠레): 멕시코 선수 결장이 **칠레**에 붙어 `favors` 가
+       뒤집혔고 가설·시나리오가 *"상대 결장"* 으로 읽었다. 🔴 그 거짓은 카드 어디에도
+       표시가 없었다 — 이 불변식이 그 자리를 막는다.
+    """
+    from app.core.stages.s5_verify import ABSENCE_KINDS, in_squad
+    facts = card.facts
+    for v in card.variables:
+        if v.type not in ABSENCE_KINDS or not v.target:
+            continue
+        # 🔴 **규칙 변수**(IR11 피로 등)는 선수가 아니라 팀 사실이다 — 명단에 없다
+        if v.from_rule:
+            continue
+        if in_squad(v.target, v.subject, facts):
+            continue
+        assert not v.usable_as_basis, (
+            f"🔴 `{v.target}` 가 {v.subject} 명단에 없는데 **근거로 쓴다** — "
+            f"팀 귀속이 뒤집혔을 수 있다(`team_unresolved` 로 내려야 한다)")

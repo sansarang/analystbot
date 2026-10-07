@@ -116,6 +116,13 @@ def _b1(card: Card) -> str:
     for d in card.drops:
         if d.reason.value == "conflict":
             out.append(f"🔴 {d.detail}")
+    # 🔴🔴 **결장 귀속 정정**(사용자 지시 2026-10-07) — 고친 것을 카드에 적는다
+    #    ⚠️ 조용히 고치면 사용자가 *"모델이 틀렸다"* 를 못 본다(#3).
+    for d in card.drops:
+        if d.reason.value == "team_reattached":
+            out.append(f"🔴 {d.detail}")
+        elif d.reason.value in ("team_unresolved", "team_ambiguous"):
+            out.append(f"⚠️ 결장 귀속 미확정 → 근거 불가 — {d.detail}")
     return "\n".join(f"- {x}" for x in out)
 
 

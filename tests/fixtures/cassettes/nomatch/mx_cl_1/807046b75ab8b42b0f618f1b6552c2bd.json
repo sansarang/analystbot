@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Chile Mexico retirement ceremony",
+ "recorded_at": "2026-10-07T01:44:11.419908+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Chile bids final farewell to former President Pinera in state funeral",
+   "content": "Sebastian Pinera died on Tuesday in a helicopter crash in southern Chile. Recommended Stories list of 3 items list 1 of 3 Palestinians welcome Chile and Mexico’s call for ICC probe into Gaza war list 2 of 3 Photos …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.aljazeera.com/news/2024/2/9/chile-bids-final-farewell-to-former-president-pinera-in-state-funeral",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.aljazeera.com",
+    "/news/2024/2/9/chile-bids-final-farewell-to-former-president-pinera-in-state-funeral",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Fiestas Patrias (Chile)",
+   "content": "\"Las gestiones de Desbordes para que Parada Militar sea declarada patrimonio cultural inmaterial de Chile\" … the parade was replaced by a reduced ceremony held in the Alpatacal Courtyard of the Military Academy …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Fiestas_Patrias_(Chile)",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Fiestas_Patrias_(Chile)",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Merida Yucatan Mexico is Replacing Florida as Top Retirement Destination",
+   "content": "chieve.With the rising inflation, … and many other factors more and more people are looking elsewhere for their final retirement desti . … more Shop the Jose Arteaga Living in Mexico store From The Arteaga Collection New American Dream $21.50",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=TPEcaBT-MwM",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=TPEcaBT-MwM",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Salvador Allende",
+   "content": "In this Chilean name , the first or paternal … and the second or maternal family name is … Salvador Allende Official portrait, 1970 … President of Chile",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Salvador_Allende",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Salvador_Allende",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chilean Army",
+   "content": "Chilean Army Ejército de Chile Chilean Army emblem Active 1603, … present Country Chile Type Army Role Land warfare Size 80,000 2 Part of Chilean Armed Forces Headquarters Edificio Ejército Bicentenario 3 Santiago Patron Our Lady of Mount Carmel Mottos Siempre …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Chilean_Army",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Chilean_Army",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Grito de Dolores",
+   "content": "This article is about about the historical event that led Mexico to independence. For the commemorative date, see Independence Day (Mexico) … Cry of Dolores",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Grito_de_Dolores",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Grito_de_Dolores",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "‘I don’t see meaning in football without Mexico’: Guillermo Ochoa eying retirement post-World Cup",
+   "content": "Mexico goalkeeper Guillermo Ochoa has said he doesn’t see meaning in football without the national team. and he has previously suggested he will hang up his gloves for Mexico once the co-hosts …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.nytimes.com/athletic/7364888/2026/06/15/mexico-guillermo-ochoa-retire-world-cup/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/athletic/7364888/2026/06/15/mexico-guillermo-ochoa-retire-world-cup/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Retirement in New Mexico: Your Guide to Living and Enjoying the Land of Enchantment",
+   "content": "Explore the benefits of retiring in New Mexico—enjoy sunny skies, scenic landscapes, rich culture, and vibrant communities perfect for your next chapter.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.newmexicomagazine.org/new-mexico-retirement-guide/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.newmexicomagazine.org",
+    "/new-mexico-retirement-guide/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pablo Neruda",
+   "content": "A month later, a different edition of 5,000 copies was boldly published in Chile by the outlawed Communist Party, based on a manuscript Neruda had left behind.In Mexico …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Pablo_Neruda",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Pablo_Neruda",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico and Chile Renew Ties (Published 1990)",
+   "content": "A ceremony here marking the restoration of relations was attended by President Carlos Salinas de Gortari of Mexico and his Chilean counterpart, Patricio Aylwin.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.nytimes.com/1990/03/25/world/mexico-and-chile-renew-ties.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/1990/03/25/world/mexico-and-chile-renew-ties.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile U20 vs Mexico U20: FIFA U20 World Cup stats & head-to-head",
+   "content": "Key, Chile v Mexico … Chile U20 38.5% Mexico U20 61.5% … Chile U20 16 Mexico U20 19 … Chile U20 6 Mexico U20 6 … Chile U20 25 Mexico U20 25 … Chile U20 2 Mexico U20 5",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.bbc.com/sport/football/live/ce324xyqdwwt",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bbc.com",
+    "/sport/football/live/ce324xyqdwwt",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Certified Retirement Communities as a Marketing Strategy to Attract Retirees to New Mexico | New Mexico State University - BE BOLD. Shape the Future.",
+   "content": "gricultural Business, New Mexico State University.( Print Friendly PDF) Economic development stakeholders in New Mexico, including local governments …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://pubs.nmsu.edu/_circulars/CR692/index.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "pubs.nmsu.edu",
+    "/_circulars/CR692/index.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "The Ultimate New Mexico Chile Tasting Guide",
+   "content": "1,500 SHU NuMex Española Improved DeWitt: This cultivar resulted from a hybridization between Sandía and a northern New Mexico strain of chile.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.newmexicomagazine.org/blog/post/ultimate-new-mexico-chile-tasting-guide/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.newmexicomagazine.org",
+    "/blog/post/ultimate-new-mexico-chile-tasting-guide/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile X Mexico",
+   "content": "Find and save ideas about chile x mexico on Pinterest.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://es.pinterest.com/ideas/chile-x-mexico/947111707199/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.pinterest.com",
+    "/ideas/chile-x-mexico/947111707199/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile Terminology | New Mexico State University | BE BOLD. Shape the Future.",
+   "content": "Adobo Sauce Tomato based sauce used to can chipotles … South American term for chile … a pre-Columbian pod type from Mexico maturing to red (dried",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://cpi.nmsu.edu/chile-info/nutrition-and-food-science-pages/chile-terminology.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "cpi.nmsu.edu",
+    "/chile-info/nutrition-and-food-science-pages/chile-terminology.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico World Cup Kits 2018 Dream League Soccer | Chile dls kits 2015, Mexico soccer jersey png, Dream league soccer pakistan kit",
+   "content": "Get the Mexico World Cup Kits 2018 Dream League Soccer in 512x512 size. … Mexico 2018, Dream league soccer 2024 kits, Dream league soccer kits logo",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.pinterest.com/pin/mexico-world-cup-kits-2018-dream-league-soccer--674906694158042562/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.pinterest.com",
+    "/pin/mexico-world-cup-kits-2018-dream-league-soccer--674906694158042562/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "New Mexico Chefs Are Reinventing the Chile Relleno",
+   "content": "The New Mexico–grown Hatch chile reigns supreme in the Land of Enchantment’s rellenos, which are traditionally stuffed with Monterey Jack or asadero cheese and served with red or green chile sauce.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.newmexicomagazine.org/blog/post/new-mexico-chefs-reinventing-the-chile-relleno/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.newmexicomagazine.org",
+    "/blog/post/new-mexico-chefs-reinventing-the-chile-relleno/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Flag Retirement Ceremony 2024 - Visit Angel Fire New Mexico",
+   "content": "A flag retirement ceremony is a solemn and dignified event held to respectfully dispose of old, worn, or damaged American flags.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://visitangelfirenm.com/event/flag-retirement-ceremony-2024-2/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "visitangelfirenm.com",
+    "/event/flag-retirement-ceremony-2024-2/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "All Things NM Chile",
+   "content": "All Things New Mexico Chile Welcome to New Mexico Chile! New Mexico Chile Facts New Mexico produces roughly 77% of chile peppers in the United States and is ranked No …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://nmdeptag.nmsu.edu/chile/all-things-new-mexico-chile.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "nmdeptag.nmsu.edu",
+    "/chile/all-things-new-mexico-chile.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "BUENO® Signature Red Chile Sauce Recipe | Buenou00ae signature red chile sauce, New mexico red chile sauce ingredients, Bueno red chile recipe",
+   "content": "Experience the traditional and authentic taste of BUENO® Signature Red Chile Sauce, a staple in New Mexican cuisine. Create flavorful dishes with our signature sauce recipe.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.pinterest.com/pin/407012885081039611/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.pinterest.com",
+    "/pin/407012885081039611/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

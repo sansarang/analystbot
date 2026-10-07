@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-07T01:43:33.543692+00:00",
+ "order": [
+  "Gilberto Mora ruled out for Mexico and will miss the Chile match The match against Chile will be Mexico 's final fixture of this FIFA international window and another opportunity for Márquez to secure his first win in charge of the team. The former defender's tenure has begun with two draws and one defeat, making the game in Los Angeles an important test before preparations continue for the 2026 World Cup.",
+  "Mexico loses Mora to ankle injury-Xinhua - 新华网 MEXICO CITY, Oct. 5 (Xinhua) -- Teenage midfielder Gilberto Mora will miss Mexico's friendly against Chile due to injury, the Mexican Football Federation (FMF) said on Monday. Mora suffered an ankle injury in Mexico's 1-1 draw with Colombia on Sept. 26 and subsequently missed Mexico's friendlies against Peru and the United States.",
+  "Gilberto Mora sets off alarms inside Mexico camp at the worst possible time Gilberto Mora suffers an ankle injury in Mexico training, putting his status in doubt for the upcoming match against the USA.",
+  "The U.S.-Mexico rivalry needs a jolt. From Cavan to Chris Richards, this USMNT can give it one 5일 전The U.S.-Mexico rivalry needs a jolt. From Cavan to Chris Richards, this USMNT can give it one5일 전",
+  "Why is Gilberto Mora not playing for Mexico vs Chile tonight? - Yahoo Sports 9시간 전Gilberto Mora will once again be forced to watch as Mexico faces Chile in a friendly on Tuesday, Oct. 6. The 17-year-old midfielder has returned to Club Tijuana with an ankle injury, making him ineligible to play as El Tri continues searching for its first win under new manager Rafa Marquez. Mora only managed to play once in the extended four-game international window, scoring his first-ever international goal in Mexico's 1-1 draw with Colombia. From there, the teenage star's ankle issues flared....9시간 전",
+  "Pierde México a Luis Romo por lesión para duelo ante Chile Luis Romo se sumó a las bajas de la Selección Mexicana para el último partido de la fecha FIFA, ante Chile. El combinado tricolor informó que el mediocampista de Chivas abandonó la ...",
+  "Mexico vs Chile prediction after El Tri loses three key players Bad news keeps piling up for Mexico as three key absences change the outlook against Chile Mexican national team management confirms three roster departures prior to the international friendly against Chile. Head coach Rafael Marquez seeks his first victory following a winless start featuring two draws and a loss.",
+  "Gilberto Mora injury: Why is Mexico star not playing vs Chile? Gilberto Mora will once again be forced to watch as Mexico faces Chile in a friendly on Tuesday, Oct. 6. The 17-year-old midfielder has returned to Club Tijuana with an ankle injury, making him ..."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

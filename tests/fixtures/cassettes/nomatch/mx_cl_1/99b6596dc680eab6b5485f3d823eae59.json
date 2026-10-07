@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-07T01:44:12.939732+00:00",
+ "order": [
+  "Luis Romo Injury: Will miss match for Mexico Romo (thigh) will not be available for Mexico's match against Chile on Tuesday, and his status for the match against Atlas on Saturday is uncertain, ClaroSports reports.",
+  "Mexico goalkeeper Luis Angel Malagon tears Achilles and will miss World Cup America confirmed the injury Wednesday and said the 29-year-old Malagon needs surgery, meaning he'll be sidelined when Mexico, the United States and Canada co-host the World Cup starting June 11.",
+  "Mexico injury report: Who’s out of El Tri’s LA clash with Chile? Mexico is set to face Chile in its fourth and final match of the fall international window, … who left the squad with an injury The youngster will return to his club to continue his recovery and undergo further medical evaluation.",
+  "Mexico loses Mora to ankle injury Mora suffered an ankle injury in Mexico's 1-1 draw with Colombia on Sept. 26 and subsequently missed Mexico's friendlies against Peru and the United States. The FMF did not provide details of the ...",
+  "Why is Gilberto Mora not playing for Mexico vs Chile tonight? Gilberto Mora will once again be forced to watch as Mexico faces Chile in a friendly on Tuesday, Oct. 6. The 17-year-old midfielder has returned to Club Tijuana with an ankle injury, making him ...",
+  "Will Gilberto Mora play against the USMNT? Mexico star’s injury status The 17-year-old standout has aggravated an ankle injury and is being evaluated to determine whether he can continue with the 'Tricolor'.",
+  "Mexico goalkeeper Luis Angel Malagon tears Achilles and will miss World Cup MEXICO CITY (AP) — Mexico goalkeeper Luis Angel Malagon ruptured his Achilles tendon while playing for Club America and will miss the World Cup.America confirmed the injury Wednesday and said the 29-year-old Malagon needs surgery …",
+  "Chile - squad, coach, injuries and positions View the full Chile squad with player positions, shirt numbers, ages, nationalities, injury updates and most valuable players."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Chile Live Mexico Chile rotación",
+ "recorded_at": "2026-10-07T01:44:59.199091+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Fútbol en vivo Chile | Partidos de Hoy por TV",
+   "content": "Futbol en vivo. Partidos de Fútbol EN VIVO hoy en Chile. Horarios y TV del Fútbol chileno, liga española y fútbol internacional. Cuándo …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.futbolenvivochile.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.futbolenvivochile.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "México vs Chile en vivo | Retransmisión de partido por TV Azteca",
+   "content": "Ver en vivo la retransmisión del partido de México vs Chile por TV Azteca",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.tvazteca.com/aztecadeportes/seleccion-mexicana/envivo",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tvazteca.com",
+    "/aztecadeportes/seleccion-mexicana/envivo",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Fútbol en vivo México | Partidos de Hoy por TV",
+   "content": "12: … 00 México Chile ViX Premium Canal 5 Azteca Deportes App Amazon Prime Video (Míralo en vivo) Claro Sports Claro Sports Premium YouTube Azteca 7 17 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.futbolenvivomexico.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.futbolenvivomexico.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de fútbol de Chile",
+   "content": "hile Buenos Aires Argentina — 27 de mayo de 1910 Partido amistoso Último partido Estados Unidos 4:2 Chile San Luis Estados Unidos — 29 de septiembre de 2026 Partido amistoso Mejor(es) resultado(s) Chile 7 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Chile",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Chile",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "En vivo",
+   "content": "¿Qué películas ver hoy en Canal 5 antes del partido de México vs Chile? Disfruta las dos películas que forman parte de la programación de Canal 5 hoy 6 de octubre previo al encuentro entre México y Chile.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.televisa.com/canal5/en-vivo",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.televisa.com",
+    "/canal5/en-vivo",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "A qué hora y dónde ver a Chile vs. Canadá por el amistoso internacional - La Tercera",
+   "content": "Oporto 26 SEPTIEMBRE 2026 A qué hora y dónde ver a Chile vs. en el marco del partido amistoso de Chile contra Canadá La selección adulta dirigida por Nicolás Córdova afronta su primer desafío por la Fecha FIFA …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.latercera.com/servicios/noticia/a-que-hora-y-donde-ver-a-chile-vs-canada-por-el-amistoso-internacional/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/servicios/noticia/a-que-hora-y-donde-ver-a-chile-vs-canada-por-el-amistoso-internacional/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Oro histórico, México gana a Chile en futbol femenil de Panamericanos",
+   "content": "Con un gol de Rebeca Bernal, México derrotó a una Chile sin porteras en la Final de los Juegos Panamericanos Santiago 2023 para colgarse su primera medalla de oro en la historia.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.tudn.com/futbol/mexico/mexico-vs-chile-seleccion-mexicana-gana-oro-futbol-femenil-juegos-panamericanos",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/futbol/mexico/mexico-vs-chile-seleccion-mexicana-gana-oro-futbol-femenil-juegos-panamericanos",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "‘Tuca’ Ferretti: “Antes del juego de México con Chile todo el mundo alababa la rotación”",
+   "content": "La selección y escuchemos lo que dijo yo creo que la participación que tuvo vino una persona , seguimos con el mismo problema de siempre exageramos hoy todo el mundo quiere criticar la rotación pero antes del partido de chile la gente alababa la rotación …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.tudn.com/futbol/copa-oro/tuca-ferretti-antes-del-juego-de-mexico-con-chile-todo-el-mundo-alababa-la-rotacion-video",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/futbol/copa-oro/tuca-ferretti-antes-del-juego-de-mexico-con-chile-todo-el-mundo-alababa-la-rotacion-video",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile vs Brasil EN VIVO. Partido hoy Eliminatorias Sudamericanas 2024 | Marca",
+   "content": "Final del partido, Chile 1, Brasil 2. Final segunda parte, Chile 1, Brasil 2. Raphinha (Brasil) ha recibido una falta en la zona defensiva. Falta de G",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.marca.com/mx/futbol/eliminatorias-conmebol/chile-brasil/2024/10/11/01_0190_20241011_831_614-directo.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.marca.com",
+    "/mx/futbol/eliminatorias-conmebol/chile-brasil/2024/10/11/01_0190_20241011_831_614-directo.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "El 7-0 de Chile a México, ¿fue un accidente del fútbol o reflejó la realidad de ambas selecciones?",
+   "content": "Action phto during the match Mexico vs Chile, Corresponding to the quarterfinals of the America Cup Centenary 2016 at Levis Stadium.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.tudn.com/futbol/mexico/fue-accidental-el-7-0-de-chile-sobre-mexico-en-la-copa-america",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/futbol/mexico/fue-accidental-el-7-0-de-chile-sobre-mexico-en-la-copa-america",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La Roja: ¿Cuándo son los amistosos de Chile ante Canadá, Estados Unidos y México?",
+   "content": "Chile vs. … Leandro Hernández (Colo Colo) Agustín Arce (U. de Chile) Delanteros: Maximiliano Gutiérrez (Dínamo de Moscú/RUS) Darío Osorio (Crystal Palace/ING)",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.cnnchile.com/deportes/la-roja-cuando-son-los-amistosos-de-chile-ante-canada-estados-unidos-y-mexico/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.cnnchile.com",
+    "/deportes/la-roja-cuando-son-los-amistosos-de-chile-ante-canada-estados-unidos-y-mexico/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Emol.com - El sitio de noticias online de Chile",
+   "content": "Todas las noticias de Chile y el Mundo. Entra e informate de los últimos acontecimientos ocurridos en nuestro país en Emol.com",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.emol.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Escuchar Radio Caricia en vivo",
+   "content": "Escucha Radio Caricia online e más de 400 radios chilenas. La mejor música, programas y las últimas noticias. Escucha radios de Chile gratis!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.radios-chilenas.com/radio-caricia",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.radios-chilenas.com",
+    "/radio-caricia",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TUDN",
+   "content": "Información del fútbol, beisbol, boxeo, NFL, NBA, MLS, fórmula 1, tenis, y demás deportes. Detalles de la Liga MX, Champions League, El TRI y El Team USA de fútbol …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.tudn.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Escuchar Radio La Clave en Vivo - 92.9 FM Online",
+   "content": "Escucha Radio La Clave en vivo y gratis. Sintoniza el 92.9 FM online para disfrutar de la mejor variedad de noticias, opinión y deportes de Chile.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.radios-chilenas.com/radio-la-clave",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.radios-chilenas.com",
+    "/radio-la-clave",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Radios Online Chile: Todas las Emisoras en Vivo",
+   "content": "Escucha las mejores radios de Chile en un solo lugar. Disfruta de todas las emisoras de radios chilenas en vivo y radio online gratis. ¡Sintoniza ahora!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.radios-chilenas.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.radios-chilenas.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La Tercera - Noticias de Chile y el Mundo",
+   "content": "Noticias de última hora de Chile, América Latina y el mundo. Contenidos exclusivos de política, internacional, economía, opinión, cultura …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.latercera.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Los 10 mejores casinos online en Chile para 2026 - La Tercera",
+   "content": "Top 10 mejores casinos online de Chile Casino online Bono Enlace seguro 1. una versión innovadora que proponen los mejores casinos online de Chile …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.latercera.com/publirreportajes/noticia/los-10-mejores-casinos-online-en-chile-para-2025/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/publirreportajes/noticia/los-10-mejores-casinos-online-en-chile-para-2025/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TV Azteca HOME",
+   "content": "OFICIAL: Rafa Márquez confirma la alineación de México para enfrentar a Chile HOY martes 6 de octubre Paso a paso para hacer uñas en casa al estilo …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.tvazteca.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tvazteca.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Radio Online — Emisoras de Chile en vivo | Online Radio Box",
+   "content": "Emisoras de radio de Chile en línea. Disfruta de cientos de radios chilenas en vivo en Onlineradiobox.com o un teléfono inteligente.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://onlineradiobox.com/cl/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "onlineradiobox.com",
+    "/cl/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Chile Mexico rotación",
+ "recorded_at": "2026-10-07T01:44:15.230999+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Baja rotación laboral: solo 26% de los trabajadores lleva menos de un año con su actual empleador - La Tercera",
+   "content": "Ese es el primer análisis que se hace al conocer el informe del INE, pero también hay otras mediciones que permiten tomar la temperatura de cómo está el mercado laboral.Uno de ellos es la rotación laboral.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.latercera.com/pulso/noticia/baja-rotacion-laboral-solo-26-de-los-trabajadores-lleva-menos-de-un-ano-con-su-actual-empleador/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/pulso/noticia/baja-rotacion-laboral-solo-26-de-los-trabajadores-lleva-menos-de-un-ano-con-su-actual-empleador/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Corriente marina",
+   "content": "que se producen en las costas de Chile y Perú al ascender allí por efecto del movimiento de rotación terrestre son desviadas hacia el ecuador terrestre por la curvatura de las costas del continente sudamericano.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Corriente_marina",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Corriente_marina",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rankmi | Software de HR con IA para Chile, México, Perú y Latam",
+   "content": "… Identifica a tus top performers y anticipa la rotación Con alertas de IA basadas en señales reales de desempeño de tu equipo.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.rankmi.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.rankmi.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Recorre Chile en auto: 3 roadtrips completamente mágicos - Chile Travel",
+   "content": "Tres rutas para recorrer Chile en auto 1. un viaje histórico En esta ruta por la costa tendrás la oportunidad particular de conocer algunos de los pueblos más tradicionales y pintorescos de Chile …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://chile.travel/blog/recorre-chile-en-auto-3-roadtrips-completamente-magicos/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "chile.travel",
+    "/blog/recorre-chile-en-auto-3-roadtrips-completamente-magicos/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Siete destinos naturales imperdibles de Chile - Chile Travel",
+   "content": "Desierto de Atacama Valle de la Luna, desierto de Atacama, norte de Chile. y el primero de los siete destinos naturales imperdibles de Chile es el famoso y espectacular desierto de Atacama y su pueblo San Pedro …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://chile.travel/blog/siete-destinos-naturales-imperdibles-de-chile/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "chile.travel",
+    "/blog/siete-destinos-naturales-imperdibles-de-chile/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de fútbol de Chile",
+   "content": "hile Buenos Aires Argentina — 27 de mayo de 1910 Partido amistoso Último partido Estados Unidos 4:2 Chile San Luis Estados Unidos — 29 de septiembre de 2026 Partido amistoso Mejor(es) resultado(s) Chile 7 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Chile",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Chile",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Santiago de Chile",
+   "content": "5.ª fila: Palacio de La Moneda , sede del poder ejecutivo de Chile. Bandera Escudo Santiago Localización de Santiago en Chile Mapa interactivo Coordenadas 33°26 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Santiago_de_Chile",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Santiago_de_Chile",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Tradicional Chile en Nogada",
+   "content": "Los chiles en nogada son uno de los platillos más emblemáticos de México que solo se cocinan alrededor del mes de septiembre ya que esta es la temporada de los chiles en nogada.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.kiwilimon.com/receta/guarniciones/verduras/chiles/chiles-rellenos/tradicional-chile-en-nogada",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.kiwilimon.com",
+    "/receta/guarniciones/verduras/chiles/chiles-rellenos/tradicional-chile-en-nogada",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Cinco ciudades mágicas del sur de Chile que debes conocer",
+   "content": "Valdivia, Frutillar, Cochamó, Caleta Tortel y Puerto Natales son cinco ciudades del sur de Chile que destacan por su hermosura y actividades.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://chile.travel/blog/cinco-ciudades-magicas-del-sur-de-chile-que-debes-conocer/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "chile.travel",
+    "/blog/cinco-ciudades-magicas-del-sur-de-chile-que-debes-conocer/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¿Por qué los edificios en México se desploman y en Chile no? - La Tercera",
+   "content": "Terremoto que afectó a este país fue intraplaca y no de subducción para los cuales está diseñada su norma. En Chile, expertos debaten sobre modificar normativa local.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.latercera.com/noticia/los-edificios-mexico-se-desploman-chile-no/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/noticia/los-edificios-mexico-se-desploman-chile-no/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TikTok inicia operación directa en Chile: ya tiene 13 millones de usuarios en el país - La Tercera",
+   "content": "“Iniciamos la operación directa de TikTok en Chile en el último trimestre de 2025\", cuenta la gerente general del Cono Sur y México de TikTok, Astrid Mirkin.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.latercera.com/pulso/noticia/tiktok-inicia-operacion-directa-en-chile-ya-tiene-13-millones-de-usuarios-en-el-pais/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/pulso/noticia/tiktok-inicia-operacion-directa-en-chile-ya-tiene-13-millones-de-usuarios-en-el-pais/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Información de Chile, Clima, Población, Economía, Superficie, Gastronomía",
+   "content": "Sobre Chile Chile está situado a lo largo de la costa occidental del cono sur de Sudamérica, entre el segmento más alto de la Cordillera de los Andes y el Océano Pacífico.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.visitchile.com/es/guias-chile/guia-de-viaje/sobre-chile/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.visitchile.com",
+    "/es/guias-chile/guia-de-viaje/sobre-chile/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Influencer y radicada en México: Quién es María Ignacia Moll, la nueva Miss Universo Chile 2025",
+   "content": "Se acabó el reinado de Emilia Dides.Anoche el jurado eligió a María Ignacia Moll como la nueva Miss Universo Chile 2025, quien representará al país en Tailandia en noviembre próximo …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/Tendencias/2025/08/02/1173902/quien-es-moll-miss-universo.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/Tendencias/2025/08/02/1173902/quien-es-moll-miss-universo.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Viajes al sur de Chile: 4 lugares que tienes que conocer - Chile Travel",
+   "content": "Descubre 4 destinos imperdibles para tus viajes al sur de Chile: Pucón, Corralco, Puerto Varas e Isla de Chiloé. Vive la aventura …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://chile.travel/blog/viajes-al-sur-de-chile-4-lugares-que-tienes-que-conocer/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "chile.travel",
+    "/blog/viajes-al-sur-de-chile-4-lugares-que-tienes-que-conocer/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Carretera Austral - Chile Travel",
+   "content": "Más de 1.200 km de belleza natural te esperan en la Carretera Austral, una impresionante ruta escénica a través de la Patagonia.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://chile.travel/destinos/carretera-austral/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "chile.travel",
+    "/destinos/carretera-austral/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Guía Turística y Viaje de la Isla de Chiloé",
+   "content": "Reseña La Isla Grande de Chiloé y su archipiélago se ubican al sur de Chile y posee una superficie de más de 9.000 kms2. varias consideradas Monumentos Nacionales de Chile …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.visitchile.com/es/guias-turisticas/chiloe/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.visitchile.com",
+    "/es/guias-turisticas/chiloe/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "El grupo de la muerte: México será el rival de Chile en octavos de final del Mundial Sub 20 y España elimina a Brasil - La Tercera",
+   "content": "Además del evidente atractivo al tratarse de potencias, … era clave para el devenir de Chile porque se conocería al rival de los pupilos de Nicolás Córdova Luego de la agónica derrota con Egipto y la increíble definición del grupo A",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.latercera.com/el-deportivo/noticia/el-grupo-de-la-muerte-mexico-sera-el-rival-de-chile-en-octavos-del-mundial-y-espana-elimina-a-brasil/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/el-deportivo/noticia/el-grupo-de-la-muerte-mexico-sera-el-rival-de-chile-en-octavos-del-mundial-y-espana-elimina-a-brasil/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La Tercera - Noticias de Chile y el Mundo",
+   "content": "Noticias de última hora de Chile, América Latina y el mundo. Contenidos exclusivos de política, internacional, economía, opinión, cultura …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.latercera.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rotación de cultivos - Wikipedia, la enciclopedia libre",
+   "content": "De Wikipedia, la enciclopedia libre Imagen de campos de cultivo circulares en … , fin de junio de 2001. … También se debe introducir regularmente en la rotación una",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Rotaci%C3%B3n_de_cultivos",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Rotaci%C3%B3n_de_cultivos",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "ROTACIÓN Super facil - YouTube",
+   "content": "Enjoy the videos and music you love, upload original content, and share it all with friends, family, and the world on YouTube.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=kXwJOefEjJs",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=kXwJOefEjJs",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "access denied"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

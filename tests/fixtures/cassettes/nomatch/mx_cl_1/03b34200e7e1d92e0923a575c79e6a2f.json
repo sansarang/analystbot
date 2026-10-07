@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Mexico Chile rotación",
+ "recorded_at": "2026-10-07T01:44:11.873075+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Barbacoa (México)",
+   "content": "Platillo de barbacoa. … Gastronomía mexicana … Centro de México Datos generales … carne de borrego",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Barbacoa_(M%C3%A9xico)",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Barbacoa_(M%C3%A9xico)",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Baja rotación laboral: solo 26% de los trabajadores lleva menos de un año con su actual empleador - La Tercera",
+   "content": "Ese es el primer análisis que se hace al conocer el informe del INE, pero también hay otras mediciones que permiten tomar la temperatura de cómo está el mercado laboral.Uno de ellos es la rotación laboral.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.latercera.com/pulso/noticia/baja-rotacion-laboral-solo-26-de-los-trabajadores-lleva-menos-de-un-ano-con-su-actual-empleador/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/pulso/noticia/baja-rotacion-laboral-solo-26-de-los-trabajadores-lleva-menos-de-un-ano-con-su-actual-empleador/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Empalmes, desayuno norteño - México en mi cocina",
+   "content": "Esta salsa lleva chile piquín seco, ajo, cebolla y especias tales como pimienta, comino y orégano. … Salsa de Chile Piquín",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.mexicoenmicocina.com/receta-de-empalmes/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mexicoenmicocina.com",
+    "/receta-de-empalmes/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Corriente marina",
+   "content": "que se producen en las costas de Chile y Perú al ascender allí por efecto del movimiento de rotación terrestre son desviadas hacia el ecuador terrestre por la curvatura de las costas del continente sudamericano.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Corriente_marina",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Corriente_marina",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Emol.com - El sitio de noticias online de Chile",
+   "content": "Todas las noticias de Chile y el Mundo. Entra e informate de los últimos acontecimientos ocurridos en nuestro país en Emol.com",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.emol.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rankmi | Software de HR con IA para Chile, México, Perú y Latam",
+   "content": "… Identifica a tus top performers y anticipa la rotación Con alertas de IA basadas en señales reales de desempeño de tu equipo.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.rankmi.com/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.rankmi.com",
+    "/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile Ancho Relleno de Frijol",
+   "content": "Un platillo típico mexicano ideal para ofrecer como entrada. Este plato consiste en chiles rellenos de frijol, bañados en una salsa de achiote y jitomate.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.kiwilimon.com/receta/platos-fuertes/mexicanos/chile-ancho-relleno-de-frijol",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.kiwilimon.com",
+    "/receta/platos-fuertes/mexicanos/chile-ancho-relleno-de-frijol",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Enchiladas de Cacahuate y Chile Poblano - Recetas de comida mexicana | México en mi Cocina",
+   "content": "Estas deliciosas enchiladas de cacahuate y chile poblano son una increible combinación de sabores. … pero puedes agregar chile jalapeño o Serrano para agregar algo de picor a la salsa.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.mexicoenmicocina.com/enchiladas-de-cacahuate-y-chile-poblano/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mexicoenmicocina.com",
+    "/enchiladas-de-cacahuate-y-chile-poblano/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección de fútbol de Chile",
+   "content": "hile Buenos Aires Argentina — 27 de mayo de 1910 Partido amistoso Último partido Estados Unidos 4:2 Chile San Luis Estados Unidos — 29 de septiembre de 2026 Partido amistoso Mejor(es) resultado(s) Chile 7 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Chile",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Selecci%C3%B3n_de_f%C3%BAtbol_de_Chile",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "TikTok inicia operación directa en Chile: ya tiene 13 millones de usuarios en el país - La Tercera",
+   "content": "“Iniciamos la operación directa de TikTok en Chile en el último trimestre de 2025\", cuenta la gerente general del Cono Sur y México de TikTok, Astrid Mirkin.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.latercera.com/pulso/noticia/tiktok-inicia-operacion-directa-en-chile-ya-tiene-13-millones-de-usuarios-en-el-pais/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/pulso/noticia/tiktok-inicia-operacion-directa-en-chile-ya-tiene-13-millones-de-usuarios-en-el-pais/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Santiago de Chile",
+   "content": "5.ª fila: Palacio de La Moneda , sede del poder ejecutivo de Chile. Bandera Escudo Santiago Localización de Santiago en Chile Mapa interactivo Coordenadas 33°26 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Santiago_de_Chile",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Santiago_de_Chile",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Nuevo single de Madonna debuta en Chile con la más alta rotación radial",
+   "content": "La fórmula al parecer no deja de rendir frutos en la cantante, … y Chile no ha sido la excepción: … fue la que alcanzó la más alta rotación en radios con su nuevo tema.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/magazine/2009/08/04/370161/nuevo-single-de-madonna-debuta-en-chile-con-la-mas-alta-rotacion-radial.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/magazine/2009/08/04/370161/nuevo-single-de-madonna-debuta-en-chile-con-la-mas-alta-rotacion-radial.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Infografía: Estudio revela que Chile es uno de los países de la OCDE con mayor rotación laboral",
+   "content": "Un análisis del Observatorio del Contexto Económico de la Universidad Diego Portales, evidenció que el 31,1% de los trabajadores dependientes permanecen un año o menos con su empleador actual …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/Economia/2024/06/21/1134389/rotacion-laboral-en-chile.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/Economia/2024/06/21/1134389/rotacion-laboral-en-chile.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "El grupo de la muerte: México será el rival de Chile en octavos de final del Mundial Sub 20 y España elimina a Brasil - La Tercera",
+   "content": "Además del evidente atractivo al tratarse de potencias, … era clave para el devenir de Chile porque se conocería al rival de los pupilos de Nicolás Córdova Luego de la agónica derrota con Egipto y la increíble definición del grupo A",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.latercera.com/el-deportivo/noticia/el-grupo-de-la-muerte-mexico-sera-el-rival-de-chile-en-octavos-del-mundial-y-espana-elimina-a-brasil/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/el-deportivo/noticia/el-grupo-de-la-muerte-mexico-sera-el-rival-de-chile-en-octavos-del-mundial-y-espana-elimina-a-brasil/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile Poblano Hojaldrado",
+   "content": "Disfruta de esta deliciosa receta de chile poblano relleno de picadillo cubierto de una crujiente pasta hojaldre, la combinación de texturas …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.kiwilimon.com/receta/pollo-y-carne/chile-poblano-hojaldrado",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.kiwilimon.com",
+    "/receta/pollo-y-carne/chile-poblano-hojaldrado",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chiles Frescos Mexicanos, encuentra aquí las variedades y tipos de chiles",
+   "content": "Salsa de Chile Habanero con Jitomate … Chile Manzano Es un chile bastante picoso, y su uso común es en salsa, aunque también se cocina en rajas con cremas y papas en el Estado de México.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.mexicoenmicocina.com/chiles-frescos-mexicanos/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mexicoenmicocina.com",
+    "/chiles-frescos-mexicanos/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¿Por qué los edificios en México se desploman y en Chile no? - La Tercera",
+   "content": "Terremoto que afectó a este país fue intraplaca y no de subducción para los cuales está diseñada su norma. En Chile, expertos debaten sobre modificar normativa local.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.latercera.com/noticia/los-edificios-mexico-se-desploman-chile-no/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/noticia/los-edificios-mexico-se-desploman-chile-no/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Rotación de cultivos - Wikipedia, la enciclopedia libre",
+   "content": "De Wikipedia, la enciclopedia libre Imagen de campos de cultivo circulares en … , fin de junio de 2001. … También se debe introducir regularmente en la rotación una",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Rotaci%C3%B3n_de_cultivos",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Rotaci%C3%B3n_de_cultivos",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "10 recetas con chile pasilla",
+   "content": "El chile pasilla es uno de los ingredientes favoritos en los platillos de comida mexicana, ¡simplemente no puede faltar en tu cocina!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.kiwilimon.com/tips/cocina/tips-de-platillos/10-recetas-faciles-y-rendidoras-con-chile-pasilla",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.kiwilimon.com",
+    "/tips/cocina/tips-de-platillos/10-recetas-faciles-y-rendidoras-con-chile-pasilla",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chiles Rellenos de Picadillo, receta con imágenes paso a paso",
+   "content": "*Compra chiles poblanos pequeños o medianos, especialmente si es la primera vez que los preparas, ya que los chiles muy grandes no son fácil de freirlos y carecen un poco de sabor.Si puedes compra en los mercados pequeños donde los 1 Chile relleno Calorías …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.mexicoenmicocina.com/chiles-rellenos-de-picadillo/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mexicoenmicocina.com",
+    "/chiles-rellenos-de-picadillo/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

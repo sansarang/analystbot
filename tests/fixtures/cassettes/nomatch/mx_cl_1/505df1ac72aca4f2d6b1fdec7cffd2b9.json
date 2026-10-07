@@ -1,0 +1,11 @@
+{
+ "kind": "fetch",
+ "url": "https://www.nytimes.com/athletic/7648542/2026/10/02/usmnt-mexico-rivalry-friendly-cavan-sullivan-rafa-marquez/",
+ "query": "",
+ "recorded_at": "2026-10-07T01:43:42.665918+00:00",
+ "headers": {},
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

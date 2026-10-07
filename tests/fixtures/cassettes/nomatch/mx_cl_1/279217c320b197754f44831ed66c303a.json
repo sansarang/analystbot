@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-07T01:44:21.235155+00:00",
+ "order": [
+  "Mexico World Cup Kits 2018 Dream League Soccer | Chile dls kits 2015, Mexico soccer jersey png, Dream league soccer pakistan kit Get the Mexico World Cup Kits 2018 Dream League Soccer in 512x512 size. … Mexico 2018, Dream league soccer 2024 kits, Dream league soccer kits logo",
+  "Flag Retirement Ceremony 2024 - Visit Angel Fire New Mexico A flag retirement ceremony is a solemn and dignified event held to respectfully dispose of old, worn, or damaged American flags.",
+  "Partidos de hoy 6 de octubre: México vs. Chile, despedida de Messi y UEFA Nations League UEFA Nations League - Croacia vs. España - El partido inicia a las 12:45 pm tiempo del centro de México. Mientras en los Estados Unidos a las 2:45 pm ET, a la 1:45 pm CT y a las 11:45 am PT. El juego ...",
+  "All Things NM Chile All Things New Mexico Chile Welcome to New Mexico Chile! New Mexico Chile Facts New Mexico produces roughly 77% of chile peppers in the United States and is ranked No …",
+  "🔥🏆 MÉXICO le ganó 4-1 a CHILE y se metió en los CUARTOS DE FINAL del MUNDIAL SUB 20 #chile #mundial #mexico CHILE VS MEXICO LIVE MATCH (7/10/2025)CHILE VS MEXICO ao vivo (7/10/2025)CHILE VS MEXICO (7/10/25)CHILE vs MEXICO EN VIVOCHILE vs ...",
+  "México vs Chile Alineaciones: Posible XI y todas las bajas de Rafa Márquez para el último partido de Fecha FIFA Conoce el posible cuadro titular que usará el DT de la Selección Mexicana en su último compromiso de este periodo de fecha FIFA ...",
+  "Chile X Mexico Find and save ideas about chile x mexico on Pinterest.",
+  "Grito de Dolores This article is about about the historical event that led Mexico to independence. For the commemorative date, see Independence Day (Mexico) … Cry of Dolores"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

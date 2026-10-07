@@ -43,9 +43,24 @@ def again(ref: MatchRef, facts: Facts, base_p: BaseProb,
     ⚠️ s2b 는 s5 **앞**에서 돈다 — 그때는 기사에서 검증된 결장(`R1` 김민재 같은 것)을
        아직 모른다. 🔴 그래서 s5 뒤에 **한 번 더** 센다. 네트워크를 안 쓴다(공짜다).
     """
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **②에 넣기 전에 명단 대조를 지난다**(사용자 지시 2026-10-07 §3)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 검증된 결장 변수를 라인업 보정에 넣을 때 대조 결과(정정된 subject)만 쓴다.
+    #  > 대조를 통과하지 못한 변수는 ②에 넣지 않는다.
+    #
+    #  ⚠️ 실측 2026-10-07(멕시코–칠레): **멕시코** 선수 `Gilberto Mora` 가 칠레에
+    #     붙어 들어왔다 — 그러면 ②가 **없는 선수를 칠레에서 뺀다**.
+    #  🔴 대조 함수는 `s5_verify.in_squad` **하나**다(사본 금지 · 같은 이름 비교).
+    from app.core.stages.s5_verify import in_squad
     gone: dict[str, set[str]] = {}
     for v in variables:
         if v.type not in ABSENCE_TYPES or not v.target:
+            continue
+        if not in_squad(str(v.target), str(v.subject), facts):
+            state.note(f"s2b ②(2차) — `{v.target}` 는 그 팀 명단에 없다 → "
+                       f"**넣지 않는다**(귀속 미확인 · {v.id})")
             continue
         gone.setdefault(str(v.subject), set()).add(str(v.target))
     if not gone:

@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-07T01:43:30.736490+00:00",
+ "order": [
+  "Predicted Lineups: Mexico vs Chile - 7 Oct 2026 | Tips.GG Mexico and Chile meet in an International Friendly on Wednesday 7 October 2026, and ahead of kickoff this page sets out the predicted lineups for both sides. The headline contrast is in rotation: Rafa Márquez has kept his group largely consistent across the matches used here, while Nicolás Córdova's side has shuffled slightly more despite a shorter sample. Before kickoff on 7 October ...",
+  "México vs. Chile hoy, por un amistoso internacional: horario, formaciones y cómo ver en vivo El “Tri” busca afinar su propuesta futbolística ante “La Roja” en un choque marcado por la rotación de nombres y la prueba de variantes tácticas.",
+  "Mexico vs Chile prediction after El Tri loses three key players Mexico faces key roster departures as Rafael Marquez aims for his first win against Chile in October friendly.",
+  "Alex Padilla apunta a ser titular ante Chile con la Selección Mexicana Alex Padilla apunta a ser titular con México ante Chile y debutar con el Tri mayor; Rafa Márquez también analiza cambios por la carga de minutos.",
+  "Mexico vs Chile — Friendlies - TheDatabetics AI prediction for Mexico vs Chile, backed by stats, form and head-to-head data. See the likely result and the reasoning behind every call. Updated before kick-off.",
+  "México vs Chile: La alineación que prepara Rafa Márquez, ¿Tala Rangel o Álex Padilla? Rafa Márquez tendría lista su alineación de esta noche, con algunas novedades tras las bajas y actuaciones ante Estados Unidos ...",
+  "La formación de Chile vs. México: El equipo titular de la selección ... La formación titular de Chile vs. México: Los 11 para el partido amistoso Chile se enfrenta a México en el último amistoso de esta fecha FIFA, con bajas como Francisco Sierralta, Guillermo ...",
+  "México vs Chile Alineaciones: Posible XI y todas las bajas de ... - MARCA México vs Chile Alineaciones: Posible XI y todas las bajas de Rafa Márquez para el último partido de Fecha FIFA Conoce el posible cuadro titular que usará el DT de la Selección Mexicana en su ..."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

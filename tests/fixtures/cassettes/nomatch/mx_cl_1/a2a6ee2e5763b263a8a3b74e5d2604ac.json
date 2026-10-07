@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-07T01:44:15.723675+00:00",
+ "order": [
+  "Chile vs. Mexico - Live Score - October 22, 2026 Live coverage of Chile vs. Mexico game on FOX Sports including live score, highlights, updated stats, odds and more - played on October 22, 2026.",
+  "Chile vs. Mexico: How to Watch, Odds, U-20 Preview 3 1 Chile and Mexico face off to start Round of 16 action in the FIFA U-20 World Cup Host nation, Chile, … while Mexico finished in second place in Group B.",
+  "Mexico vs Chile LIVE: Start time and where to watch! 2026 international friendly in Los Angeles Mexico face Chile in the 2026 international friendly. Follow our live coverage for minute-by-minute updates. Want to know how to watch and when it kicks off? Stay with us for full broadcast details ...",
+  "Alarma de EMERGENCIA 🚨 SIMULACRO de Evacuacion ( COLOMBIA, MEXICO, CHILE)+ Efecto de Sonido Alarma de EMERGENCIA 🚨 SIMULACRO de Evacuacion ( COLOMBIA, MEXICO, CHILE)+ Efecto de Sonido - YouTube About Press Copyright Contact us Creators Advertise Developers Terms Privacy Policy …",
+  "Chile vs. Mexico - Final Score - October 07, 2025 AY CHI 1 MEX 4 Corner awarded to Chile. CHI 0 MEX 0 A shot on goal has been taken by Chile. … MEX KEY PLAY CHI 0 MEX 0 Mexico have been awarded a corner by Joao Pedro Pinheiro.",
+  "🔥🏆 MÉXICO le ganó 4-1 a CHILE y se metió en los CUARTOS DE FINAL del MUNDIAL SUB 20 #chile #mundial #mexico CHILE VS MEXICO LIVE MATCH (7/10/2025)CHILE VS MEXICO ao vivo (7/10/2025)CHILE VS MEXICO (7/10/25)CHILE vs MEXICO EN VIVOCHILE vs ...",
+  "Chile in EL PAÍS English All the news about Chile published in EL PAÍS. Information, articles and breaking news about Chile",
+  "The History of Hatch Chile — How New Mexico Became the Chile Capital How the Hatch Valley became the world chile capital: the volcanic Rio Grande terroir, the work of Dr. and the legal protection of the Hatch chile name."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

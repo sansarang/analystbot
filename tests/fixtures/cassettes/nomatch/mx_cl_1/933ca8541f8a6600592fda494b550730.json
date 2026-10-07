@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Mexico Chile injury news",
+ "recorded_at": "2026-10-07T01:44:08.657195+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Chile v Mexico: Levi's Stadium to host first international | Sporting News",
+   "content": "Mexico and Chile made their presence felt in the World Cup and will be eager to put on a show in Friday’s friendly in Santa Clara.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.sportingnews.com/au/other-sports/news/chile-v-mexico-levis-stadium-to-host-first-international/f4qizg6e39c71qo9u445u4ca6",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportingnews.com",
+    "/au/other-sports/news/chile-v-mexico-levis-stadium-to-host-first-international/f4qizg6e39c71qo9u445u4ca6",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico injury report: Who’s out of El Tri’s LA clash with Chile?",
+   "content": "Mexico is set to face Chile in its fourth and final match of the fall international window, … who left the squad with an injury The youngster will return to his club to continue his recovery and undergo further medical evaluation.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://en.as.com/soccer/mexico-injury-report-whos-out-of-el-tris-la-clash-with-chile-f202610-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/soccer/mexico-injury-report-whos-out-of-el-tris-la-clash-with-chile-f202610-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile vs Mexico - live score, predicted lineups and H2H stats",
+   "content": "at on Thu, Dec 9, 2021, 02:05 UTC. … Unavailable players for Mexico: … (injury). … Unavailable players for Chile: … (injury), … (injury), … (injury), … (injury).",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.fotmob.com/en-GB/matches/mexico-vs-chile/28s4fi",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/en-GB/matches/mexico-vs-chile/28s4fi",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Copa America: Chile vs Mexico – Team News and Predicted Lineups",
+   "content": "Copa America: Chile vs Mexico – Team News and Predicted LineupsChile take on Mexico in the second round of fixtures in Group A knowing that a victory could see them through to the knockout phase of the 2015Copa Americawith a game to spare.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://worldsoccertalk.com/news/copa-america-chile-vs-mexico-team-news-and-predicted-lineups-20150615-CMS-142244.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "worldsoccertalk.com",
+    "/news/copa-america-chile-vs-mexico-team-news-and-predicted-lineups-20150615-CMS-142244.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico vs Chile: TV channel, live stream, squad news & preview | Goal.com UK",
+   "content": "Gerardo Martino commences his career as Mexico coach this weekend when his side take on Chile in the first friendly of their USA tour.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.goal.com/en-gb/news/mexico-vs-chile-tv-channel-live-stream-squad-news--preview/cued8csb0z741lgrir2ymbjvh",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/en-gb/news/mexico-vs-chile-tv-channel-live-stream-squad-news--preview/cued8csb0z741lgrir2ymbjvh",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico goalkeeper Luis Angel Malagon tears Achilles and will miss World Cup",
+   "content": "MEXICO CITY (AP) — Mexico goalkeeper Luis Angel Malagon ruptured his Achilles tendon while playing for Club America and will miss the World Cup.America confirmed the injury Wednesday and said the 29-year-old Malagon needs surgery …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://apnews.com/article/malagon-injury-world-cup-mexico-dce27b7c9d5b39ebdea9c7efd252292d",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/malagon-injury-world-cup-mexico-dce27b7c9d5b39ebdea9c7efd252292d",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Bolivia v Mexico: Herrera encouraged by Chile stalemate | Sporting News",
+   "content": "Mexico held Chile to a goalless draw in a friendly in California at the weekend, which was their first game since bowing out of the World Cup in the second round.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.sportingnews.com/au/other-sports/news/bolivia-v-mexico-herrera-encouraged-by-chile-stalemate/p07tsrk1dg501ietfqvow4pkw",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.sportingnews.com",
+    "/au/other-sports/news/bolivia-v-mexico-herrera-encouraged-by-chile-stalemate/p07tsrk1dg501ietfqvow4pkw",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Argentina vs. Chile | Copa America Centenario Final Match Preview | MLSSoccer.com",
+   "content": "Chile Copa America Centenario – Final June 26 | 8 pm ET | MetLife Stadium, East Rutherford, New Jersey TV: FS1, Univision, UDN One year on, and it seems little has changed in the South American soccer scene.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/argentina-vs-chile-copa-america-centenario-final-match-preview",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/argentina-vs-chile-copa-america-centenario-final-match-preview",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile - squad, coach, injuries and positions",
+   "content": "View the full Chile squad with player positions, shirt numbers, ages, nationalities, injury updates and most valuable players.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.fotmob.com/teams/9762/squad/chile",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.fotmob.com",
+    "/teams/9762/squad/chile",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico extradites ex-guerrilla kidnapper to Chile",
+   "content": "SANTIAGO, Chile (AP) — A former Chilean guerrilla convicted of kidnappings in Mexico has been extradited to his homeland and was formally notified Thursday of possible murder charges in the death of a right-wing senator.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://apnews.com/article/mexico-caribbean-kidnapping-chile-augusto-pinochet-c7d6cde7991e22699f1cdebd8f2d8b18",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "apnews.com",
+    "/article/mexico-caribbean-kidnapping-chile-augusto-pinochet-c7d6cde7991e22699f1cdebd8f2d8b18",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile U20 vs Mexico U20: FIFA U20 World Cup stats & head-to-head",
+   "content": "Key, Chile v Mexico … Chile U20 38.5% Mexico U20 61.5% … Chile U20 16 Mexico U20 19 … Chile U20 6 Mexico U20 6 … Chile U20 25 Mexico U20 25 … Chile U20 2 Mexico U20 5",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.bbc.com/sport/football/live/ce324xyqdwwt",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.bbc.com",
+    "/sport/football/live/ce324xyqdwwt",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico goalkeeper Luis Angel Malagon tears Achilles and will miss World Cup",
+   "content": "America confirmed the injury Wednesday and said the 29-year-old Malagon needs surgery, meaning he'll be sidelined when Mexico, the United States and Canada co-host the World Cup starting June 11.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://sports.yahoo.com/articles/mexico-goalkeeper-luis-angel-malagon-235127196.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "sports.yahoo.com",
+    "/articles/mexico-goalkeeper-luis-angel-malagon-235127196.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico vs. Chile | Copa America Centenario Quarterfinal Match Preview | MLSSoccer.com",
+   "content": "Mexico vs.Chile Copa America Centenario – … UDN Group C winner Mexico will look to continue their hot start to the tournament when they take on a Chile side that locked up the final quarterfinal berth.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.mlssoccer.com/news/mexico-vs-chile-copa-america-centenario-quarterfinal-match-preview",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.mlssoccer.com",
+    "/news/mexico-vs-chile-copa-america-centenario-quarterfinal-match-preview",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lionel Messi injury update: Leo speaks about his injury after another hard tackle against Chile",
+   "content": "If in the opening match it was Canada's Moise Bombito who caught the Argentine captain in a very hard tackle that soon went viral, against Chile it was Gabriel Suazo who left him a little message that he would suffer for the whole match.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.marca.com/en/football/copa-america/2024/06/26/667bf6d4ca4741b6698b45a6.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.marca.com",
+    "/en/football/copa-america/2024/06/26/667bf6d4ca4741b6698b45a6.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Lozano reveals he could have died from eye injury as Mexico star admits to ‘a lot of fear’ | Goal.com",
+   "content": "Hirving ‘Chucky’ Lozano has revealed that the eye injury he suffered on Gold Cup duty with Mexico over the summer could have killed him, with the Napoli forward admitting to experiencing …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.goal.com/en/news/lozano-could-have-died-eye-injury-mexico-lot-of-fear/1r5xrb4jj9a2i1bd7deqgcsl2b",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/en/news/lozano-could-have-died-eye-injury-mexico-lot-of-fear/1r5xrb4jj9a2i1bd7deqgcsl2b",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile - News, Schedule, Scores, Roster, and Stats - The Athletic",
+   "content": "Breaking Chile news and in-depth analysis from the best newsroom in sports. … Get the latest injury updates, player news and more from around the league.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.nytimes.com/athletic/football/team/chile/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/athletic/football/team/chile/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "América condemn Chile for Diego Valdés injury",
+   "content": "but limped off after just 22 minutes after injuring his left calf muscle.I feel disrespected by what Chile did They were notified, they were sent a detailed medical report of what Diego had been doing.He was still recovering from the previous FIFA window.We …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://en.as.com/soccer/america-condemn-chile-for-diego-valdes-injury-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.as.com",
+    "/soccer/america-condemn-chile-for-diego-valdes-injury-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico midfielder Luis Montes out of World Cup with fractured right leg",
+   "content": "The devastating injury is a bitter setback for Mexico ahead of its trip to Brazil next month.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.foxsports.com/stories/soccer/mexico-midfielder-luis-montes-out-of-world-cup-with-fractured-right-leg",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foxsports.com",
+    "/stories/soccer/mexico-midfielder-luis-montes-out-of-world-cup-with-fractured-right-leg",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile vs Argentina: Confirmed lineups for 2026 World Cup Qualifiers",
+   "content": "Argentina visit Chile this Thursday for the South American 2026 FIFA World Cup Qualifiers. Find out here the confirmed lineups for this game.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://bolavip.com/en/soccer/chile-vs-argentina-lineups-for-2026-world-cup-qualifiers",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "bolavip.com",
+    "/en/soccer/chile-vs-argentina-lineups-for-2026-world-cup-qualifiers",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Hirving 'Chucky' Lozano Excluded From Mexico's Preliminary World Cup Roster",
+   "content": "Mexico manager Javier Aguirre has released his 55-man preliminary World Cup roster, notably excluding Hirving \"Chucky\" Lozano.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.foxsports.com/stories/soccer/javier-aguirre-excludes-chucky-lozano-from-mexicos-world-cup-roster",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.foxsports.com",
+    "/stories/soccer/javier-aguirre-excludes-chucky-lozano-from-mexicos-world-cup-roster",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

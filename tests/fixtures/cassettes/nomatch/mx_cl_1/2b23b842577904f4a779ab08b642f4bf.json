@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-07T01:43:34.019768+00:00",
+ "order": [
+  "Borussia Dortmund wonderkid Mathis Albert makes USMNT history as youngest-ever goalscorer in 4-2 Chile th.... 1주 전Borussia Dortmund wonderkid Mathis Albert makes USMNT history as youngest-ever goalscorer in 4-2 Chile thriller to surpass Christian Pulisic's recor1주 전",
+  "Partidos de hoy 6 de octubre: México vs. Chile, despedida de Messi y UEFA Nations League UEFA Nations League - Croacia vs. España - El partido inicia a las 12:45 pm tiempo del centro de México. Mientras en los Estados Unidos a las 2:45 pm ET, a la 1:45 pm CT y a las 11:45 am PT. El juego ...",
+  "Okuribito (España) Final de partida (Argentina, Uruguay, Chile) La felicidad de vivir (Perú) Violines en el cielo (México) Ficha técnica … Yōjirō Takita … Toshiaki N",
+  "México vs Chile Alineaciones: Posible XI y todas las bajas de Rafa Márquez para el último partido de Fecha FIFA Conoce el posible cuadro titular que usará el DT de la Selección Mexicana en su último compromiso de este periodo de fecha FIFA ...",
+  "México vs Chile: el Tri busca dejar atrás el 3-0 contra Estados Unidos La Selección Mexicana tendrá este martes 6 de octubre una nueva oportunidad para buscar su primer triunfo bajo la dirección de Rafael Márquez, cuando enfrente a Chile en el Los Ángeles Memorial Colise ...",
+  "México vs. Chile EN VIVO. Dónde VER partido GRATIS Amistoso 2026 HOY Conoce a qué hora y dónde ver en vivo el partido amistoso de México vs. Chile este martes 6 de octubre de 2026 ...",
+  "México (0-1) Chile: Resumen del partido Sigue el minuto a minuto las acciones del México vs Chile este lunes 23 de octubre a las 17:00 hrs.",
+  "Guillermo Ochoa tendrá homenaje en el México vs. Chile en Los Ángeles Con Ochoa presente en el estadio ante Chile, los organizadores del MexTour y la Federación Mexicana de Fútbol realizarán antes del silbatazo inicial la ceremonia …"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

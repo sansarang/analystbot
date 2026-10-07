@@ -1,0 +1,14 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att fatigue",
+ "recorded_at": "2026-10-07T01:44:55.391440+00:00",
+ "order": [
+  "MEXICO CITY, Oct. 5 (Xinhua) -- Teenage midfielder Gilberto Mora will miss Mexico's friendly against Chile due to injury, the Mexican Football Federation (FMF) said on Monday.",
+  "Mora suffered an ankle injury in Mexico's 1-1 draw with Colombia on Sept. 26 and subsequently missed Mexico's friendlies against Peru and the United States.",
+  "It added that suspended left-back Mateo Chavez would return to Dutch club AZ Alkmaar.",
+  "The FMF did not provide details of the injury but confirmed in a social media post that the 17-year-old would return to his club Tijuana earlier than planned.",
+  "Mexico and Chile will meet in Los Angeles on Tuesday in their final match of the European transfer window. ■"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 5문단 → 재정렬 상위 8"
+}

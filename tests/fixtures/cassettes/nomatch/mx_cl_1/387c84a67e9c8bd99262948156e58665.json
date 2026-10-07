@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-07T01:44:16.167884+00:00",
+ "order": [
+  "Chile U20 vs Mexico U20: FIFA U20 World Cup stats & head-to-head Key, Chile v Mexico … Chile U20 38.5% Mexico U20 61.5% … Chile U20 16 Mexico U20 19 … Chile U20 6 Mexico U20 6 … Chile U20 25 Mexico U20 25 … Chile U20 2 Mexico U20 5",
+  "Chile U20 vs Mexico U20: FIFA U20 World Cup stats & head-to-head Key, Chile v Mexico … Chile U20 38.5% Mexico U20 61.5% … Chile U20 16 Mexico U20 19 … Chile U20 6 Mexico U20 6 … Chile U20 25 Mexico U20 25 … Chile U20 2 Mexico U20 5",
+  "Chile - Record against...? This overview shows the results of the club Chile since season Overall statistics of current season",
+  "Portugal national football team: record v Chile Portugal national football team record against Chile including all match details.",
+  "Honduras national football team: record v Chile Honduras national football team record against Chile including all match details.",
+  "Colombia national football team: record v Chile Colombia national football team record against Chile including all match details.",
+  "All matches Mexico / Chile Diese Statistik zeigt in der Übersicht alle Aufeinandertreffen zwischen Mexico und Chile.",
+  "Mexico vs. Chile—International friendly: Preview, predictions and lineups El Tri is winless in its last four games, with its last victory coming in the World Cup round of 32."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

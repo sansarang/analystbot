@@ -1508,3 +1508,201 @@ def test_보드가_없으면_논평도_줄을_가리키지_않는다():
     ok3, bad3 = s8_comment.check(got, shape={"shape": "접전"}, basis=[],
                                  scen=[], said=real)
     assert ok3, bad3
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **결장 변수의 팀 귀속**(사용자 지시 2026-10-07 · §결장-귀속-5)
+# ══════════════════════════════════════════════════════════════════
+
+
+def _facts_two_squads(home_names, away_names):
+    """🔴 두 팀 **소집 명단**만 든 `Facts` — 명단 대조의 재료다."""
+    from app.core.schema import Facts
+    return Facts(squad={"team:000164": list(home_names),
+                        "team:000047": list(away_names)})
+
+
+def _ref_mx_cl():
+    """🔴 멕시코–칠레 — 라이브 s1 이 적은 값 그대로(실측 2026-10-07)."""
+    from datetime import datetime, timezone
+    from app.core.schema import MatchRef
+    return MatchRef(id="fotmob:6368654", sport="soccer",
+                    competition="Friendlies", competition_short="Friendlies",
+                    home="team:000164", away="team:000047",
+                    home_name="Mexico", away_name="Chile",
+                    kickoff_utc=datetime(2026, 10, 7, 2, 30,
+                                         tzinfo=timezone.utc),
+                    langs=["es", "en"])
+
+
+def test_결장_선수의_팀을_명단으로_고친다():
+    """🔴🔴 §결장-귀속-2 — 모델이 **상대 팀**을 적었으면 명단이 고친다.
+
+    실측 2026-10-07(mx_cl_1): *"Teenage midfielder Gilberto Mora will miss
+    **Mexico's** friendly against **Chile**"* 에서 s4 가 `subject=team:000047`
+    (칠레)를 냈다 → `favors=home`·득점↑ 로 뒤집혔고 시나리오 B·E 가 *"상대 결장"*
+    으로 읽었다. 돌연변이: `_one` 의 명단 대조 호출을 지우면 빨개진다.
+    """
+    from app.core.stages import s5_verify as V
+    ref = _ref_mx_cl()
+    facts = _facts_two_squads(["Gilberto Mora", "Santiago Giménez"],
+                              ["Ben Brereton", "Marcelo Morales"])
+    got, how, why = V.team_of_player("Gilberto Mora", ref, facts)
+    assert (got, how) == (ref.home, "roster"), (got, how, why)
+    # 🔴 `Mora` 가 `Morales` 에 **글자로** 들어 있다 — 그래도 칠레로 가지 않는다
+    assert not V.in_squad("Gilberto Mora", ref.away, facts)
+    # 🔴 **방향** — 결장은 상대 쪽이다: 멕시코 결장 → `away`(칠레 쪽)
+    assert V.favors_of("def_absence", ref.home, "결장", ref) == "away"
+    assert V.favors_of("def_absence", ref.away, "결장", ref) == "home"
+
+
+def test_이름_꼴이_달라도_같은_선수로_본다():
+    """🔴 §결장-귀속-2 — 정규화(합자·악센트)+**성/이름 순서 무관**·머리글자.
+
+    ⚠️ 글자 포함으로 묶지 않는다 — `Mora` ⊄ `Morales` 여야 한다(실측에서 그 하나가
+    멕시코 선수를 칠레 명단에 넣었다).
+    """
+    from app.core.stages.s5_verify import same_person
+    same = [("Gilberto Mora", "Gilberto Mora Ortega"),
+            ("Gilberto Mora", "Mora, Gilberto"),
+            ("G. Mora", "Gilberto Mora"),
+            ("Mora", "Gilberto Mora"),
+            ("Kim Minjae", "Kim Min-jae"),
+            ("Heung-Min Son", "Son Heung-min"),
+            ("Ødegaard", "Odegaard")]
+    for a, b in same:
+        assert same_person(a, b), (a, b)
+    other = [("Mora", "Marcelo Morales"), ("Gilberto Mora", "Marcelo Morales"),
+             ("Cyle Larin", "Cyle Lewis"), ("G. Mora", "Gonzalo Montiel")]
+    for a, b in other:
+        assert not same_person(a, b), (a, b)
+
+
+def test_같은_문장에_상대팀이_있어도_소속_팀으로_귀속된다():
+    """🔴🔴 §결장-귀속-5 — 고정물 셋(Mora · 김민재 · Larin).
+
+    세 기사 다 **같은 문장에 두 팀 이름**이 있다 — 그래서 문장만 보면 못 가린다.
+    🔴 명단이 가린다. ⚠️ 모델이 어느 쪽을 적었든 결과는 **소속 팀**이다.
+    """
+    from app.core.schema import Facts, MatchRef
+    from app.core.stages import s5_verify as V
+    from datetime import datetime, timezone
+    rows = [
+        # (경기, 선수, 소속, 홈 명단, 원정 명단)
+        (_ref_mx_cl(), "Gilberto Mora", "team:000164",
+         ["Gilberto Mora"], ["Marcelo Morales"]),
+        (MatchRef(id="fotmob:6368651", sport="soccer", competition="Friendlies",
+                  competition_short="Friendlies", home="team:000129",
+                  away="team:000245", home_name="South Korea",
+                  away_name="Uzbekistan",
+                  kickoff_utc=datetime(2026, 10, 6, 11, tzinfo=timezone.utc)),
+         "Kim Min-jae", "team:000129", ["Kim Min-jae"], ["Eldor Shomurodov"]),
+        (MatchRef(id="fotmob:5991876", sport="soccer",
+                  competition="Friendlies", competition_short="Friendlies",
+                  home="team:000243", away="team:000039", home_name="USA",
+                  away_name="Canada",
+                  kickoff_utc=datetime(2026, 10, 7, 0, tzinfo=timezone.utc)),
+         "Cyle Larin", "team:000039", ["Christian Pulisic"], ["Cyle Larin"]),
+    ]
+    for ref, who, mine, home_sq, away_sq in rows:
+        facts = Facts(squad={ref.home: home_sq, ref.away: away_sq})
+        got, how, _why = V.team_of_player(who, ref, facts)
+        assert (got, how) == (mine, "roster"), (who, got, how)
+
+
+def test_명단에도_문장에도_없으면_근거로_쓰지_않는다():
+    """🔴 §결장-귀속-2 — `team_unresolved`·`team_ambiguous` 는 **근거 불가**다."""
+    from app.core.schema import Doc, Facts
+    from app.core.stages import s5_verify as V
+    ref = _ref_mx_cl()
+    # ① 두 팀 다 없다 + 기사 문장에도 팀이 없다 → 모른다
+    bare = Doc(id="D1", url="https://x.test/1", subtask="A-home",
+               domain="x.test", lang="en",
+               title="Injury update", body="Someone got hurt in training.",
+               tier="national")
+    got, how, why = V.team_of_player("John Doe", ref, Facts(), bare)
+    assert got == "" and how == "unknown", (got, how, why)
+    # ② 문장에 **한 팀만** 나오면 그 팀이다
+    one = bare.model_copy(update={
+        "body": "John Doe trained alone. Mexico will be without him tonight."})
+    got2, how2, _ = V.team_of_player("John Doe", ref, Facts(), one)
+    assert (got2, how2) == (ref.home, "text"), (got2, how2)
+    # ③ 두 팀 명단에 다 있으면 동명이인이다
+    both = Facts(squad={ref.home: ["John Doe"], ref.away: ["John Doe"]})
+    got3, how3, _ = V.team_of_player("John Doe", ref, both, bare)
+    assert got3 == "" and how3 == "ambiguous", (got3, how3)
+
+
+def test_s2b_2차는_명단_대조를_지난_결장만_넣는다():
+    """🔴 §결장-귀속-3 — 대조를 통과하지 못한 결장은 ② 에 넣지 않는다.
+
+    돌연변이: `s2b_base.again` 의 `in_squad` 검사를 지우면 빨개진다.
+    """
+    fn = next(n for n in ast.walk(ast.parse(
+        (ROOT / "app/core/stages/s2b_base.py").read_text(encoding="utf-8")))
+        if isinstance(n, ast.FunctionDef) and n.name == "again")
+    calls = {c.func.id for c in ast.walk(fn)
+             if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
+    assert "in_squad" in calls, "🔴 ②(2차)가 명단 대조 없이 결장을 넣는다"
+
+
+#: 🔴 mx_cl_1 의 **그 문장 그대로**(실측 2026-10-07 · 신화통신 영문)
+MORA_LINE = ("Teenage midfielder Gilberto Mora will miss Mexico's friendly "
+             "against Chile due to injury, the Mexican Football Federation "
+             "(FMF) said on Monday.")
+
+
+def _doc_mora():
+    """🔴 그 기사 한 건 — s5 의 앞 검사(인용·발행일·신원·경기 연결)를 지나게."""
+    from datetime import datetime, timezone
+    from app.core.schema import Doc
+    return Doc(id="A-home-D1", url="https://english.news.cn/20261006/mora",
+               domain="english.news.cn", lang="en", subtask="A-home",
+               title="Mexico midfielder Mora out of Chile friendly",
+               body=(MORA_LINE + " The football friendly against Chile is set "
+                     "for Tuesday at Allianz Field. Mora has been a regular "
+                     "for Mexico this year."),
+               tier="national",
+               published_at=datetime(2026, 10, 6, 12, tzinfo=timezone.utc))
+
+
+def test_s5_가_그_기사의_귀속을_고치고_카드에_적는다():
+    """🔴🔴 §결장-귀속-5 고정물 — mx_cl_1 의 Mora 기사 → subject=멕시코.
+
+    모델이 적은 `subject` 는 **칠레**다(실측 s4 출력). s5 가 명단으로 고치고
+    `favors` 를 **칠레 쪽**(`away`)으로 다시 센다.
+    🔴 돌연변이: `_one` 의 명단 대조(`team_of_player` 호출)를 끄면 빨개진다.
+    """
+    from app.core.schema import Facts, VarCandidate
+    from app.core.state import RunState
+    from app.core.stages import s5_verify as V
+    ref, doc = _ref_mx_cl(), _doc_mora()
+    facts = Facts(squad={ref.home: ["Gilberto Mora", "Santiago Giménez"],
+                         ref.away: ["Ben Brereton", "Marcelo Morales"]})
+    cand = VarCandidate(subtask="A-home", type="def_absence",
+                        subject=ref.away,          # 🔴 **모델이 적은 그대로**(칠레)
+                        claim=MORA_LINE, target="Gilberto Mora",
+                        match_link="Chile", quote=MORA_LINE, doc_id=doc.id)
+    st = RunState(match_key=ref.id)
+    got = [v for v in V.run(ref, facts, [doc], [cand], state=st)
+           if v.target == "Gilberto Mora"]
+    assert got, f"변수가 안 섰다 — 버린 사유 {[d.reason.value for d in st.drops]}"
+    one = got[0]
+    assert one.subject == ref.home, f"🔴 귀속을 안 고쳤다: {one.subject}"
+    assert one.favors == "away", f"🔴 방향을 다시 안 셌다: {one.favors}"
+    # 🔴 **카드에 적는다** — 조용히 고치지 않는다(블록 1)
+    said = [d for d in st.drops if d.reason.value == "team_reattached"]
+    assert said, [d.reason.value for d in st.drops]
+    assert "결장 귀속 정정: Gilberto Mora Chile→Mexico" in said[0].detail
+    from app.core import render
+    from app.core.schema import Card, Funnel
+    card = Card(match=ref, facts=facts, variables=got, drops=list(st.drops),
+                funnel=Funnel())
+    assert "결장 귀속 정정: Gilberto Mora Chile→Mexico" in render.card_text(card)
+    # 🔴🔴 **배선** — `_one` 이 그 대조 함수를 부른다
+    fn = next(n for n in ast.walk(ast.parse(
+        (ROOT / "app/core/stages/s5_verify.py").read_text(encoding="utf-8")))
+        if isinstance(n, ast.FunctionDef) and n.name == "_one")
+    calls = {c.func.id for c in ast.walk(fn)
+             if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
+    assert "team_of_player" in calls, "🔴 s5 가 명단 대조를 부르지 않는다"

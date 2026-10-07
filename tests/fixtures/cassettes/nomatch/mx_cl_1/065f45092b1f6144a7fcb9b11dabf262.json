@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Mexico Chile despedida",
+ "recorded_at": "2026-10-07T01:44:17.036959+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "México vs Chile (0-7): Resumen del Partido, resultado y goles",
+   "content": "Chile propinó a México una de las goleadas históricas del Fútbol Mundial. El Tri eliminado de la Copa América Centenario.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://mexico.as.com/mexico/2016/06/18/futbol/1466226849_894586.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "mexico.as.com",
+    "/mexico/2016/06/18/futbol/1466226849_894586.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Vicente Fernández debuta en Chile con su gira de despedida - La Tercera",
+   "content": "Por La Tercera 9 MAYO 2012 Comentarios El cantante mexicano Vicente Fernández, programó su debut en Chile con su gira de despedida, para el domingo 8 de julio …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://www.latercera.com/noticia/vicente-fernandez-debuta-en-chile-con-su-gira-de-despedida/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/noticia/vicente-fernandez-debuta-en-chile-con-su-gira-de-despedida/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Paula ('GH 15') y el Chile ('GH México') desatan su amor en el primer edredoning de su intercambio",
+   "content": "No te pierdas nuestro vídeo Paula ('GH 15') y el Chile ('GH México') desatan su amor en el primer edredoning de su intercambio en FormulaTV.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://www.formulatv.com/videos/9818/paula-chile-video-amor-edredoning-gran-hermano-mexico/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.formulatv.com",
+    "/videos/9818/paula-chile-video-amor-edredoning-gran-hermano-mexico/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mira los tantos de México y el golazo con que descontó Chile en el Mundial Sub 20",
+   "content": "Chile perdió 4-1 ante México por el paso a cuartos de final del Mundial Sub 20. Cuando Chile jugaba mejor, pasaba su mejor momento …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/Deportes/2025/10/07/1179819/goles-chile-mexico-octavos-mundialsub20.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/Deportes/2025/10/07/1179819/goles-chile-mexico-octavos-mundialsub20.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "A 31 años del único partido de Manuel Pellegrini en la Roja",
+   "content": "A Chile le ofrecieron participar del partido de despedida del Scratch y la Asociación Central de Fútbol aceptó la invitación, que incluía también dinero para las alicaídas arcas del fútbol nacional.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://chile.as.com/chile/2017/05/06/futbol/1494026806_761416.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "chile.as.com",
+    "/chile/2017/05/06/futbol/1494026806_761416.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Okuribito",
+   "content": "(España) Final de partida (Argentina, Uruguay, Chile) La felicidad de vivir (Perú) Violines en el cielo (México) Ficha técnica … Yōjirō Takita … Toshiaki N",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Okuribito",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Okuribito",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "México eliminó al anfitrión Chile y podría ser rival de la Selección Argentina en el Mundial Sub 20 - TyC Sports",
+   "content": "México vapuleó sin atenuantes este martes a Chile por 4-1 y lo sacó de su propio Mundial Sub 20 … ⏱️ 17' 1T: Córner para Chile … Deberá reponer desde la esquina Chile.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.tycsports.com/mundial-sub-20/fifa-mundial-sub-20-chile-2025-2a-vs-2c-llave-1-id690662.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tycsports.com",
+    "/mundial-sub-20/fifa-mundial-sub-20-chile-2025-2a-vs-2c-llave-1-id690662.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Telefónica en proceso de despedida: La historia y controversias detrás de su simbólica torre",
+   "content": "\"Vamos a salir de Hispanoamérica y los tres países que tenemos ahí son México, Chile y Venezuela\" … reafirmando la decisión de la compañía de retirarse de Chile.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/Economia/2025/11/06/1182431/torre-telefonica-chile.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/Economia/2025/11/06/1182431/torre-telefonica-chile.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "¡AQUÍ MANDA MÉXICO! Goleada ante Chile en el Mundial",
+   "content": "Ciudad: Valparaíso, Chile … En una noche llena de intensidad en la Copa Mundial Sub-20 de la 2025, México demostró su poder ofensivo con una contundente victoria sobre Chile.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=dDyiOZsoJ1I",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=dDyiOZsoJ1I",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile destroza 7-0 a México en una paliza histórica en cuartos de la Copa América",
+   "content": "Pablo Ximénez, Pablo de Llano y un servidor les agradecemos que nos hayan seguido en la goleada histórica de Chile contra México.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://elpais.com/deportes/2016/06/19/actualidad/1466294984_269111.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "elpais.com",
+    "/deportes/2016/06/19/actualidad/1466294984_269111.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sin Bandera brindó la primera de sus tres noches de despedida en Santiago",
+   "content": "SANTIAGO.- Con imágenes del trío mexicano Camila, música de Camila y gritos ensordecedores para Camila partió anoche el primero de los tres conciertos que dará en Santiago el dúo argentino mexicano Sin Bandera, en su gira de despedida …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/magazine/2008/03/15/296367/sin-bandera-brindo-la-primera-de-sus-tres-noches-de-despedida-en-santiago.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/magazine/2008/03/15/296367/sin-bandera-brindo-la-primera-de-sus-tres-noches-de-despedida-en-santiago.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile 7-0 México: crónica, resumen y ficha del partido",
+   "content": "Así finalizamos la retransmisión del duelo entre Chile y México que selló la clasificación de la Roja a semifinales. … Minuto 44: ¡Goooooool de Chile!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://chile.as.com/chile/2016/06/18/futbol/1466257573_316570.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "chile.as.com",
+    "/chile/2016/06/18/futbol/1466257573_316570.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "México (0-1) Chile: Resumen del partido",
+   "content": "Sigue el minuto a minuto las acciones del México vs Chile este lunes 23 de octubre a las 17:00 hrs.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://mexico.as.com/futbol/mexico-vs-chile-en-vivo-juegos-panamericanos-en-directo-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "mexico.as.com",
+    "/futbol/mexico-vs-chile-en-vivo-juegos-panamericanos-en-directo-n/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Un ex goleador de la U y la Roja es despedido de su equipo con este emotivo video: ¡imposible no llorar!",
+   "content": "Felipe Mora dejó Portland Timbers durante este mercado de pases y el club estadounidense lo despidió con este emotivo compilado. El ‘9′ chileno se despide c",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://chile.as.com/videos/un-ex-goleador-de-la-u-y-la-roja-es-despedido-de-su-equipo-con-este-emotivo-video-para-emocionarse-f202607-v/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "chile.as.com",
+    "/videos/un-ex-goleador-de-la-u-y-la-roja-es-despedido-de-su-equipo-con-este-emotivo-video-para-emocionarse-f202607-v/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Guillermo Ochoa tendrá homenaje en el México vs. Chile en Los Ángeles",
+   "content": "Con Ochoa presente en el estadio ante Chile, los organizadores del MexTour y la Federación Mexicana de Fútbol realizarán antes del silbatazo inicial la ceremonia …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.latimes.com/espanol/deportes/articulo/2026-10-01/guillermo-ochoa-tendra-un-homenaje-por-el-chile-vs-mexico-en-el-coliseo-de-los-angeles",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latimes.com",
+    "/espanol/deportes/articulo/2026-10-01/guillermo-ochoa-tendra-un-homenaje-por-el-chile-vs-mexico-en-el-coliseo-de-los-angeles",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Tras México vs Chile: así quedó el Mundial Sub 20 2025",
+   "content": "PUBLICIDAD En octavos de final goleó por 4-1 a Chile y sacó boleto a la próxima ronda, y aún no tiene rival.El duelo entre Argentina y Nigeria definirá el próximo contrincante en cuartos de final.Es importante recordar que México debutó en el Mundial Sub 20",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://juanfutbol.com/seleccion-mexicana/tras-mexico-vs-chile-asi-quedo-el-mundial-sub-20-2025",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "juanfutbol.com",
+    "/seleccion-mexicana/tras-mexico-vs-chile-asi-quedo-el-mundial-sub-20-2025",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Megadeth anuncia segundo show en Chile para su gira de despedida - La Tercera",
+   "content": "Por Equipo de Culto 6 NOVIEMBRE 2025 Megadeth anuncia segundo show en Chile para su gira despedida FOTO PEDRO RODRIGUEZ PEDRO RODRIGUEZ Comentarios El rugido fue tan ensordecedor que no hubo otra opción …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.latercera.com/culto/noticia/megadeth-anuncia-segundo-show-en-chile-para-su-gira-despedida/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/culto/noticia/megadeth-anuncia-segundo-show-en-chile-para-su-gira-despedida/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La despedida de Ana Botín al saliente presidente de Santander Chile: \"Un ejemplo de meritocracia y esfuerzo\"",
+   "content": "Empezó como ejecutivo de empresas en una sucursal de Santander Chile y fue ascendiendo y asumiendo responsabilidades cada vez más amplias y complejas",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/Economia/2026/03/25/1195350/banco-santander-presidente-chile-cambio.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/Economia/2026/03/25/1195350/banco-santander-presidente-chile-cambio.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Golpe de Estado en Chile de 1973",
+   "content": "El último 11 de septiembre con Pinochet al mando de Chile fue el de 1989, en donde a modo de despedida, se dirigió al país diciendo que seguiría luchando …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Golpe_de_Estado_en_Chile_de_1973",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Golpe_de_Estado_en_Chile_de_1973",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "“Quería retirarme de otra forma en Chile... No se dio, pero tampoco me quedé llorando en el piso, hoy estoy en México”",
+   "content": "En Concón National, su último club, lo desvincularon y usted terminó desilusionado. … Mi familia se quedó en Chile porque tiene sus actividades, los chicos el colegio...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://chile.as.com/futbol/queria-retirarme-de-otra-forma-en-chile-no-se-dio-pero-tampoco-me-quede-llorando-en-el-piso-hoy-estoy-en-mexico-f202603-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "chile.as.com",
+    "/futbol/queria-retirarme-de-otra-forma-en-chile-no-se-dio-pero-tampoco-me-quede-llorando-en-el-piso-hoy-estoy-en-mexico-f202603-n/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "Suspended: access denied"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

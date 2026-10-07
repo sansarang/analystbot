@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-07T01:43:36.072228+00:00",
+ "order": [
+  "Rafael Marquez in search of first win as Mexico national team face Chile 2일 전to record a win in his first three games since Manuel Lapuente in 1997. Marquez replaced Javier Aguirre after Mexico’s Round of 16 exit at the 2026 FIFA World Cup. He was a five-time World Cup participant with El Tri and began his coaching career at Barcelona Atletic, the reserve team of FC Barcelona. Chile finished last in...2일 전",
+  "Mexico vs. Chile—International friendly: Preview, predictions and lineups El Tri is winless in its last four games, with its last victory coming in the World Cup round of 32.",
+  "Two for two! USMNT down Chile to maintain momentum 1주 전The US men's national team made it back-to-back wins against South American foes, defeating Chile, 4-2, at St. Louis CITY SC 's Energizer Park Tuesday night. It is the second of four international friendlies during the extended September/October window, following a 4-1 victory over Peru on Saturday at Orlando City's Inter.co Stadium.1주 전",
+  "USMNT Faces Off Against Mexico in Rivalry Match in Glendale - U.S,USWNT & USMNT 4일 전The U.S. Men's National Team will take on its longtime rival, Mexico, tomorrow in Glendale, Arizona, in the penultimate match of the team's fall international schedule.4일 전",
+  "Watch Mexico vs Chile Friendlies soccer game LIVE: Online streams, TV channel, confirmed teams news, start time Find out how to watch Mexico vs Chile live, including TV channel options, live stream details, kick-off time, team news, form guide, and head-to-head record.",
+  "Mexico vs. Chile—International Friendly: Preview, Predictions and Lineups 23시간 전Mexico vs. Chile—International Friendly: Preview, Predictions and Lineups El Tri is winless in its last four games, with its last victory coming in the World Cup round of 32.23시간 전",
+  "Mexico vs Chile Predictions: Hopes to end the window positively Check out our soccer expert’s Mexico vs Chile predictions and betting tips, prior to Tuesday’s 22:30PM ET Friendlies clash (10/06).",
+  "Speaker records set at general conference – Deseret News 1일 전Yep, that makes it a record for the most talks at a four-session general conference. And a record for the most different speakers. How’d they manage that? Well... 1 Chile 1 Czech Republic 1 Dem. Rep. of the Congo 1 France 1 Mexico 1 Nigeria 1 Philippines 1 South Africa 1 Tonga 1 United Kingdom (England) 1 American Samoa (U.S....1일 전"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

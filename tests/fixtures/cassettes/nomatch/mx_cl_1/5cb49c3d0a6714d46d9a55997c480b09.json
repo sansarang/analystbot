@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "def_absence absence_att pitcher_state fatigue",
+ "recorded_at": "2026-10-07T01:44:13.356490+00:00",
+ "order": [
+  "Milan forward Gimenez suffers injury in Mexico’s World Cup defeat to England Milan have a fresh injury concern on their hands after Santiago Gimenez was forced off during Mexico’s World Cup … Gimenez ankle injury a worry for",
+  "How to watch today's Chile vs Uruguay World Cup qualification game: Live stream, TV channel, and start time | Goal.com US No sidelined players No sidelined players Chile team news Chile are dealing with several notable injury absences for this match.Center-back Benjamin Kuscevic is out with a thigh injury …",
+  "Mexico injury report: Who’s out of El Tri’s LA clash with Chile? Mexico is set to face Chile in its fourth and final match of the fall international window, … who left the squad with an injury The youngster will return to his club to continue his recovery and undergo further medical evaluation.",
+  "Mexico loses Mora to ankle injury Mora suffered an ankle injury in Mexico's 1-1 draw with Colombia on Sept. 26 and subsequently missed Mexico's friendlies against Peru and the United States. The FMF did not provide details of the ...",
+  "Will Gilberto Mora play against the USMNT? Mexico star’s injury status With his situation now looking increasingly concerning, … there are doubts over whether he will remain with the Mexico squad El Tri also has a game against Chile on the horizon next Tuesday …",
+  "Chile - News, Schedule, Scores, Roster, and Stats - The Athletic Breaking Chile news and in-depth analysis from the best newsroom in sports. … Get the latest injury updates, player news and more from around the league.",
+  "Why is Gilberto Mora not playing for Mexico vs Chile tonight? Gilberto Mora will once again be forced to watch as Mexico faces Chile in a friendly on Tuesday, Oct. 6. The 17-year-old midfielder has returned to Club Tijuana with an ankle injury, making him ...",
+  "Mexico lose Javier \"Chicharito\" Hernandez to injury in dour 0-0 friendly draw with Honduras in Houston | MLSSoccer.com Chicharito perdido? Star striker injures shoulder as Mexico draw Honduras"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

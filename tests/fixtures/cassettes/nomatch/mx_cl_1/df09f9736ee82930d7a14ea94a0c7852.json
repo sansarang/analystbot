@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "stakes individual_title regression team_stats",
+ "recorded_at": "2026-10-07T01:44:15.220865+00:00",
+ "order": [
+  "Chile U20 vs Mexico U20: FIFA U20 World Cup stats & head-to-head Key, Chile v Mexico … Chile U20 38.5% Mexico U20 61.5% … Chile U20 16 Mexico U20 19 … Chile U20 6 Mexico U20 6 … Chile U20 25 Mexico U20 25 … Chile U20 2 Mexico U20 5",
+  "Chile U20 vs Mexico U20: FIFA U20 World Cup stats & head-to-head Key, Chile v Mexico … Chile U20 38.5% Mexico U20 61.5% … Chile U20 16 Mexico U20 19 … Chile U20 6 Mexico U20 6 … Chile U20 25 Mexico U20 25 … Chile U20 2 Mexico U20 5",
+  "England national football team: record v Mexico England national football team record against Mexico including all match details.",
+  "Germany national football team: record v Mexico Germany national football team record against Mexico including all match details.",
+  "USMNT warns Mexico of its firepower with 4-2 win over Chile Mauricio Pochettino made 10 changes from the Peru game, but his young squad still had enough to overcome Chile with Mexico up next.",
+  "Chile at the FIFA World Cup This is a record of the results of the Chile national team at the FIFA World Cup … \"1930 FIFA World Cup Uruguay – Matches – Chile v Mexico\"",
+  "Chile at the FIFA World Cup This is a record of the results of the Chile national team at the FIFA World Cup … \"1930 FIFA World Cup Uruguay – Matches – Chile v Mexico\"",
+  "Chile vs. Mexico - Live Score - October 22, 2026 Live coverage of Chile vs. Mexico game on FOX Sports including live score, highlights, updated stats, odds and more - played on October 22, 2026."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

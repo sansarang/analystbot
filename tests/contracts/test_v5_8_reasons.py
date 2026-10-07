@@ -159,6 +159,12 @@ def test_v5_8_6_enum_밖_사유가_없다_M38():
         "llm_timeout": "§3 — 전송 실패 사유 분리(2026-10-06 · M136)",
         "llm_http_5xx": "§3 — 전송 실패 사유 분리(2026-10-06 · M136)",
         "llm_429": "§3 — 전송 실패 사유 분리(2026-10-06 · M136)",
+        # 🔴🔴 **결장 귀속**(사용자 지시 2026-10-07) — 그 글이 세 사유를 **이름으로**
+        #    요구한다: 고친 것(`team_reattached`)·못 가린 것(`team_unresolved`)·
+        #    동명이인(`team_ambiguous`).
+        "team_reattached": "§결장-귀속-2 — 선수 → 팀 대조(2026-10-07)",
+        "team_unresolved": "§결장-귀속-2 — 선수 → 팀 대조(2026-10-07)",
+        "team_ambiguous": "§결장-귀속-2 — 선수 → 팀 대조(2026-10-07)",
     }
     # 🔴 그 조항이 **v5 본문 또는 작업 지시서**에 있어야 한다. ⚠️ §3-8 은
     #    작업 지시서 §1 이 **신설**한 절이다(v5 본문에는 없다).
@@ -170,6 +176,11 @@ def test_v5_8_6_enum_밖_사유가_없다_M38():
                   # 🔴 북아일랜드–조지아 결함 전체 수정(§0: 이 문서가 이긴다)
                   "2026-10-06_workorder_nir_geo_fixes.md"):
         doc += (base / extra).read_text(encoding="utf-8")
+    # 🔴 **오늘 받은 지시서도 원본이다** — `inbox/` 에 글자로 들어온 것만 본다(§11-1)
+    for extra in ("2026-10-07_absence_team_attribution.md",):
+        got = base.parent / "inbox" / extra
+        assert got.exists(), f"🔴 지시서가 없다: {got}"
+        doc += got.read_text(encoding="utf-8")
     # 🔴 **사용자 결정도 원본이다** — 대화로만 아는 지시는 인용하지 않는다(§11-1)
     dec = base.parent / "decisions"
     for f in sorted(dec.glob("*.md")) if dec.exists() else []:

@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-07T01:44:59.823321+00:00",
+ "order": [
+  "Jordan Chiles However, Simone Biles withdrew from the competition after the first rotation and Chiles replaced her on uneven bars and balance beam.She hit both of those routines despite not having warmed up on either …",
+  "Jordan Chiles However, Simone Biles withdrew from the competition after the first rotation and Chiles replaced her on uneven bars and balance beam.She hit both of those routines despite not having warmed up on either …",
+  "Fútbol en vivo Chile | Partidos de Hoy por TV Futbol en vivo. Partidos de Fútbol EN VIVO hoy en Chile. Horarios y TV del Fútbol chileno, liga española y fútbol internacional. Cuándo …",
+  "Chile vs. Mexico: How to Watch, Odds, U-20 Preview 3 1 Chile and Mexico face off to start Round of 16 action in the FIFA U-20 World Cup Host nation, Chile, … while Mexico finished in second place in Group B.",
+  "México vs Chile en vivo | Retransmisión de partido por TV Azteca Ver en vivo la retransmisión del partido de México vs Chile por TV Azteca",
+  "Mexico vs Chile LIVE: Start time and where to watch! 2026 international friendly in Los Angeles Mexico face Chile in the 2026 international friendly. Follow our live coverage for minute-by-minute updates. Want to know how to watch and when it kicks off? Stay with us for full broadcast details ...",
+  "Chile Republic of Chile República de Chile … Coat of arms … Por la razón o la fuerza (\"By reason or by force\") … Himno Nacional de Chile (\"National Anthem of Chile\")",
+  "Chile in EL PAÍS English All the news about Chile published in EL PAÍS. Information, articles and breaking news about Chile"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Mexico Chile retirement ceremony",
+ "recorded_at": "2026-10-07T01:44:11.066667+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Chile bids final farewell to former President Pinera in state funeral",
+   "content": "Sebastian Pinera died on Tuesday in a helicopter crash in southern Chile. Recommended Stories list of 3 items list 1 of 3 Palestinians welcome Chile and Mexico’s call for ICC probe into Gaza war list 2 of 3 Photos …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.aljazeera.com/news/2024/2/9/chile-bids-final-farewell-to-former-president-pinera-in-state-funeral",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.aljazeera.com",
+    "/news/2024/2/9/chile-bids-final-farewell-to-former-president-pinera-in-state-funeral",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Pensions in Chile",
+   "content": "Velasco during the ceremony of assumption as Finance Minister of Chile in March 2006 … The first pension system of Chile was designed during the first presidency of",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Pensions_in_Chile",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Pensions_in_Chile",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Grito de Dolores",
+   "content": "This article is about about the historical event that led Mexico to independence. For the commemorative date, see Independence Day (Mexico) … Cry of Dolores",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Grito_de_Dolores",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Grito_de_Dolores",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "🔥🏆 MÉXICO le ganó 4-1 a CHILE y se metió en los CUARTOS DE FINAL del MUNDIAL SUB 20",
+   "content": "#chile #mundial #mexico CHILE VS MEXICO LIVE MATCH (7/10/2025)CHILE VS MEXICO ao vivo (7/10/2025)CHILE VS MEXICO (7/10/25)CHILE vs MEXICO EN VIVOCHILE vs ...",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.youtube.com/watch?v=lRjv6cYP5Do",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.youtube.com",
+    "/watch",
+    "",
+    "v=lRjv6cYP5Do",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Fiestas Patrias (Chile)",
+   "content": "\"Las gestiones de Desbordes para que Parada Militar sea declarada patrimonio cultural inmaterial de Chile\" … the parade was replaced by a reduced ceremony held in the Alpatacal Courtyard of the Military Academy …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Fiestas_Patrias_(Chile)",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Fiestas_Patrias_(Chile)",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chilean Army",
+   "content": "Chilean Army Ejército de Chile Chilean Army emblem Active 1603, … present Country Chile Type Army Role Land warfare Size 80,000 2 Part of Chilean Armed Forces Headquarters Edificio Ejército Bicentenario 3 Santiago Patron Our Lady of Mount Carmel Mottos Siempre …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Chilean_Army",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Chilean_Army",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Salvador Allende",
+   "content": "In this Chilean name , the first or paternal … and the second or maternal family name is … Salvador Allende Official portrait, 1970 … President of Chile",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://en.wikipedia.org/wiki/Salvador_Allende",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "en.wikipedia.org",
+    "/wiki/Salvador_Allende",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico and Chile Renew Ties (Published 1990)",
+   "content": "A ceremony here marking the restoration of relations was attended by President Carlos Salinas de Gortari of Mexico and his Chilean counterpart, Patricio Aylwin.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.nytimes.com/1990/03/25/world/mexico-and-chile-renew-ties.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/1990/03/25/world/mexico-and-chile-renew-ties.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Flag Retirement Ceremony 2024 - Visit Angel Fire New Mexico",
+   "content": "A flag retirement ceremony is a solemn and dignified event held to respectfully dispose of old, worn, or damaged American flags.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://visitangelfirenm.com/event/flag-retirement-ceremony-2024-2/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "visitangelfirenm.com",
+    "/event/flag-retirement-ceremony-2024-2/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico | History, Map, Flag, Population, & Facts | Britannica",
+   "content": "What are the major ethnic groups of Mexico? Around Mexico City the weak, structurally unstable soils that remain have caused the colonial-era Metropolitan Cathedral and other buildings to shift on their foundations and …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.britannica.com/place/Mexico",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.britannica.com",
+    "/place/Mexico",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico World Cup Kits 2018 Dream League Soccer | Chile dls kits 2015, Mexico soccer jersey png, Dream league soccer pakistan kit",
+   "content": "Get the Mexico World Cup Kits 2018 Dream League Soccer in 512x512 size. … Mexico 2018, Dream league soccer 2024 kits, Dream league soccer kits logo",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.pinterest.com/pin/mexico-world-cup-kits-2018-dream-league-soccer--674906694158042562/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.pinterest.com",
+    "/pin/mexico-world-cup-kits-2018-dream-league-soccer--674906694158042562/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Eli Manning Reflects Ahead Of New York Giants Jersey Retirement Ceremony",
+   "content": "Former New York Giants quarterback Eli Manning reflected back on when he knew it was time to retire and what the fans' support has meant to him ahead of his jersey retirement ceremony Sunday at halftime when the Giants host the Atlanta Falcons.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.forbes.com/sites/patriciatraina/2021/09/25/eli-manning-reflects-ahead-of-new-york-giants-jersey-retirement-ceremony/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.forbes.com",
+    "/sites/patriciatraina/2021/09/25/eli-manning-reflects-ahead-of-new-york-giants-jersey-retirement-ceremony/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile Terminology | New Mexico State University | BE BOLD. Shape the Future.",
+   "content": "Adobo Sauce Tomato based sauce used to can chipotles … South American term for chile … a pre-Columbian pod type from Mexico maturing to red (dried",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://cpi.nmsu.edu/chile-info/nutrition-and-food-science-pages/chile-terminology.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "cpi.nmsu.edu",
+    "/chile-info/nutrition-and-food-science-pages/chile-terminology.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Thousands Protest Outside World Cup Opening Ceremony in Mexico City",
+   "content": "Luis Antonio Rojas for The New York TimesJune 11, 2026Thousands of protesters descended on Mexico City on Thursday as the country’s capital planned to celebrate the World Cup opening ceremony …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://www.nytimes.com/2026/06/11/world/americas/world-cup-mexico-city-protests.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.nytimes.com",
+    "/2026/06/11/world/americas/world-cup-mexico-city-protests.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile X Mexico",
+   "content": "Find and save ideas about chile x mexico on Pinterest.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://es.pinterest.com/ideas/chile-x-mexico/947111707199/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.pinterest.com",
+    "/ideas/chile-x-mexico/947111707199/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Cmsgt Air Force Retirement Ceremony Program Canva Template Retirement Party Celebration Military Retirement, Army, Navy, Marine, Coast Guard - Etsy",
+   "content": "CMSgt. in US Air Force Retirement Ceremony Program Template is a digital template for use in Canva. … You can adjust the sequence of events to suit your ceremony.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://www.etsy.com/listing/1379851111/cmsgt-air-force-retirement-ceremony",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.etsy.com",
+    "/listing/1379851111/cmsgt-air-force-retirement-ceremony",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "All Things NM Chile",
+   "content": "All Things New Mexico Chile Welcome to New Mexico Chile! New Mexico Chile Facts New Mexico produces roughly 77% of chile peppers in the United States and is ranked No …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://nmdeptag.nmsu.edu/chile/all-things-new-mexico-chile.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "nmdeptag.nmsu.edu",
+    "/chile/all-things-new-mexico-chile.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mexico City, Mexico: All You Must Know Before You Go (2026) - Tripadvisor",
+   "content": "Plan Your Trip to Mexico City: Best of Mexico City Tourism … Venezuela Explore more from our sponsorsMexico City Travel GuideTravelers' pro tips for experiencing Mexico CityCarolina BAvoid rush hours.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.tripadvisor.com/Tourism-g150800-Mexico_City_Central_Mexico_and_Gulf_Coast-Vacations.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tripadvisor.com",
+    "/Tourism-g150800-Mexico_City_Central_Mexico_and_Gulf_Coast-Vacations.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Major Air Force Retirement Ceremony Program Digital Template Maj Retirement Party Military Retirement O4 - Etsy",
+   "content": "Major in US Air Force Retirement Ceremony Program Template is a digital template for use in Canva. … You can adjust the sequence of events to suit your ceremony.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.etsy.com/listing/1426951480/major-air-force-retirement-ceremony",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.etsy.com",
+    "/listing/1426951480/major-air-force-retirement-ceremony",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "BUENO® Signature Red Chile Sauce Recipe | Buenou00ae signature red chile sauce, New mexico red chile sauce ingredients, Bueno red chile recipe",
+   "content": "Experience the traditional and authentic taste of BUENO® Signature Red Chile Sauce, a staple in New Mexican cuisine. Create flavorful dishes with our signature sauce recipe.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://www.pinterest.com/pin/407012885081039611/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.pinterest.com",
+    "/pin/407012885081039611/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

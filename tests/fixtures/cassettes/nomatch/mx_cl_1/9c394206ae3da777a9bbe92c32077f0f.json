@@ -1,0 +1,36 @@
+{
+ "kind": "llm",
+ "url": "https://api.deepseek.com/chat/completions",
+ "query": "{\"max_tokens\": 6000, \"messages\": [{\"content\": \"너는 축구 분석 카드의 **종합 논평**을 쓴다. 한국어로 쓴다.\\n🔴 **숫자를 바꾸지 않는다** — 아래 수는 이미 센 것이고, 너는 그것을 **사람 말로** 설명한다.\\n🔴 `title` 한 줄은 **양상을 말한다** — 주어진 양상 글자를 그대로 넣어라.\\n🔴 `reasons` 는 3~4문장이고 **문장마다 근거 변수 번호**(`var_ids`)를 든다. 아래 목록에 **없는 번호는 쓰지 마라**.\\n🔴 번호는 `var_ids` **칸에만** 넣는다 — `text` 안에 `(var_ids: …)` 처럼 적지 마라(카드에 그 글자가 그대로 나온다).\\n🔴 `flow` 는 경기 흐름 한 줄이다 — 전반/후반 · 누가 주도 · 어떻게 끝나나.\\n🔴 `score_range` 는 **아래 시나리오 스코어 중에서** 1~3개를 고른다.\\n🔴 `lean` 은 **아래 보드 줄 중** 논평과 같은 방향 하나이고, 없으면 **빈 문자열**이다. ⚠️ 등급이 없으면 *추천*이라고 쓰지 마라(기울기만).\\n🔴 보드가 **없음**(등급이 전부 `보류`)이면 `lean` 은 반드시 **빈 문자열**이다 — 걸 수 없는 줄을 가리키지 마라.\\n🔴 **금지**: 기대값·손익분기·켈리·금액·시장 확률(배당)을 근거로 쓰는 문장.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"경기: Mexico(홈) vs Chile(원정) · Friendlies\\n양상 판정: **접전** — 문턱을 넘은 양상이 없다(저득점 34%<55% · 난타전 33%<40% · 한쪽 우세 20%<45%)\\n비중: 2골 이하 34% · 4골 이상 33% · 2골 차 이상 20% · 한 골 안 80%\\n가장 무거운 스코어: 2-1(1.8) · 1-2(1.2) · 0-1(1.2)\\n\\n근거 변수(이 번호만 쓸 수 있다):\\n- `S02`(h2h_pattern · 무게 1.0 · hard) 맞대결 10경기 3승 3무 4패 · 평균 3.0골\\n- `IR11-home`(fatigue · 무게 0.7 · soft) Mexico 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [3, 7]일 전)\\n- `IR12-home`(team_stats · 무게 0.7 · soft) Mexico 무승 4경기\\n- `R1`(absence · 무게 0.7 · soft) Teenage midfielder Gilberto Mora will miss Mexico's friendly against Chile due to injury.\\n\\n무게 상위 시나리오:\\n- `C` 무게 2.4 · 스코어 1-2 · 0-1 — 8일 안에 3경기를 소화하는 일정과 중원 자원 이탈로 홈팀의 연결이 끊기고, 양 팀 맞대결에서 나온 열린 전개 속에 원정팀이 한 골 차로 앞서간다.\\n- `A` 무게 2.1 · 스코어 2-2 · 2-3 — 맞대결 10경기 평균 3.0골이고 양 팀 모두 최근 실점이 이어지는 가운데, 친선 경기라 수비 조직을 조이는 시간이 짧아 양쪽이 계속 득점을 주고받는다.\\n- `B` 무게 1.8 · 스코어 2-1 — 홈에서 경기를 운영하는 쪽이 주도권을 잡고 경기당 1.2골 흐름을 살려 두 골을 만든다. 다만 상대가 일정 부담을 안고 후반에 내려앉으면서 한 골은 내준다.\\n\\n보드 줄과 등급(): win home 생존 0.387 등급 보류 · draw  생존 0.231 등급 보류 · win away 생존 0.382 등급 보류 · unbeaten home 생존 0.618 등급 보류 · unbeaten away 생존 0.613 등급 보류 · handicap Mexico -0.5 생존 0.387 등급 보류 · handicap Chile 0.5 생존 0.613 등급 보류 · handicap Mexico -1.5 생존 0.194 등급 보류\\n방향 판정: 방향: **Mexico** (세 열 중 2열이 0.15 이상 앞세운다) — 기준 홈 68%/원정 10% · 우리 홈 73%/원정 8%\\n\", \"role\": \"user\"}, {\"content\": \"🔴 아래 JSON 스키마를 **정확히** 지켜 답한다(다른 칸을 더하지 않는다):\\n{\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴🔴 **종합 논평**(사용자 지시 2026-10-07 ③) — DeepSeek 1회 · 구조화 출력.\\\\n\\\\n🔴 코드가 검사하는 것(어긋나면 그 칸을 버리고 **1회 재요청**, 또 어긋나면 템플릿):\\\\n  · `title` 의 양상 = `Card.shape` 의 양상 — **논평이 숫자와 반대로 말하면 안 된다**\\\\n  · `score_range` 의 스코어가 **무게 상위 시나리오 스코어 안**에 있다\\\\n  · `reasons` 의 `var_ids` 가 **근거 가능 변수**만\\\\n  · `lean` 은 **보드에 실제로 있는 줄**만 · 등급과 다른 말 금지\\\\n  · 기대값·금액·켈리·**시장 확률을 근거로 쓰는 문장 금지**\\\\n⚠️ `lean` 이 비면 *\\\\\\\"기울기 없음\\\\\\\"* 이다 — 빈 값을 **추천으로 읽지 않는다**.\\\", \\\"properties\\\": {\\\"title\\\": {\\\"title\\\": \\\"Title\\\", \\\"type\\\": \\\"string\\\"}, \\\"reasons\\\": {\\\"items\\\": {\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴 논평 한 문장 — **근거 변수 번호를 함께** 든다(지시 ③).\\\", \\\"properties\\\": {\\\"text\\\": {\\\"title\\\": \\\"Text\\\", \\\"type\\\": \\\"string\\\"}, \\\"var_ids\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Var Ids\\\", \\\"type\\\": \\\"array\\\"}}, \\\"required\\\": [\\\"text\\\", \\\"var_ids\\\"], \\\"title\\\": \\\"CommentLine\\\", \\\"type\\\": \\\"object\\\"}, \\\"title\\\": \\\"Reasons\\\", \\\"type\\\": \\\"array\\\"}, \\\"flow\\\": {\\\"title\\\": \\\"Flow\\\", \\\"type\\\": \\\"string\\\"}, \\\"score_range\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Score Range\\\", \\\"type\\\": \\\"array\\\"}, \\\"lean\\\": {\\\"title\\\": \\\"Lean\\\", \\\"type\\\": \\\"string\\\"}}, \\\"required\\\": [\\\"title\\\", \\\"reasons\\\", \\\"flow\\\", \\\"score_range\\\", \\\"lean\\\"], \\\"title\\\": \\\"Commentary\\\", \\\"type\\\": \\\"object\\\"}\", \"role\": \"user\"}], \"model\": \"deepseek-flash\", \"response_format\": {\"type\": \"json_object\"}}",
+ "recorded_at": "2026-10-07T02:14:26.462818+00:00",
+ "id": "b928da39-8e1d-4ff6-b6c8-4cc31cdb1cb5",
+ "object": "chat.completion",
+ "created": 1791339262,
+ "model": "deepseek-flash",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"title\": \"접전 — 문턱을 넘은 양상이 없어 한 골 안에서 갈리는 승부\", \"reasons\": [{\"text\": \"맞대결 10경기에서 3승 3무 4패로 우열이 갈리지 않고 평균 3.0골이 나온 만큼, 한쪽이 흐름을 독점하기보다 서로 주고받는 전개가 기본값이다.\", \"var_ids\": [\"S02\"]}, {\"text\": \"Mexico는 8일 안에 이번이 세 번째 경기라 체력 부담이 누적돼 후반으로 갈수록 압박 강도를 유지하기 어렵다.\", \"var_ids\": [\"IR11-home\"]}, {\"text\": \"여기에 Mexico가 최근 4경기 무승으로 결과를 만들어내지 못하고 있어, 홈에서도 주도권을 끝까지 붙잡지 못하는 흐름이다.\", \"var_ids\": [\"IR12-home\"]}, {\"text\": \"중원의 Gilberto Mora가 부상으로 빠지면서 연결 고리가 하나 줄어든 점도 저득점·한 골 차 양상에 무게를 싣는다.\", \"var_ids\": [\"R1\"]}], \"flow\": \"전반에는 홈팀 Mexico가 공을 쥐고 운영하지만, 누적된 일정 부담과 중원 이탈로 후반에 템포가 떨어지며 원정팀 Chile가 한 골 차 승부로 가져간다.\", \"score_range\": [\"1-2\", \"0-1\", \"2-1\"], \"lean\": \"\"}",
+    "reasoning_content": "Let me write the commentary.\n\nShape: 접전 (tight, no threshold crossed).\n\nTitle must include 양상 = 접전.\n\nReasons 3-4 sentences each with var_ids from the allowed list: S02, IR11-home, IR12-home, R1.\n\nScore range: from scenarios C (1-2, 0-1), A (2-2, 2-3), B (2-1). Pick 1-3.\n\nLean: board all 보류 → lean must be empty string.\n\nFlow: one line, 전반/후반, who dominates, how it ends.\n\nLet me write.\n\nTitle: \"접전 — 문턱을 넘은 양상이 없어 한 골 안에서 갈리는 승부\"\n\nReasons:\n1. 맞대결 10경기 3승 3무 4패, 평균 3.0골로 양 팀이 주고받는 전개 (S02)\n2. Mexico는 8일 안에 3번째 경기 — 일정 과부하 (IR11-home)\n3. Mexico 무승 4경기 (IR12-home)\n4. Mora 이탈로 중원 연결 끊김 (R1)\n\nFlow: 전반엔 홈팀이 주도하나 후반 체력 부담으로 내려앉고, 원정팀이 한 골 차로 마무리.\n\nScore range: 1-2, 0-1, 2-1 — maybe all three.\n\nLean: \"\""
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1769,
+  "completion_tokens": 698,
+  "total_tokens": 2467,
+  "prompt_tokens_details": {
+   "cached_tokens": 384
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 326
+  },
+  "prompt_cache_hit_tokens": 384,
+  "prompt_cache_miss_tokens": 1385
+ },
+ "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669"
+}

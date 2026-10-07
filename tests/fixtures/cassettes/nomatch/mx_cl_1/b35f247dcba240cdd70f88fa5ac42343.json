@@ -1,0 +1,11 @@
+{
+ "kind": "fetch",
+ "url": "https://www.squawka.com/us/news/internationals/match-preview-mexico-vs-chile-10-06-26-friendly/",
+ "query": "",
+ "recorded_at": "2026-10-07T01:44:29.540230+00:00",
+ "headers": {},
+ "ok": false,
+ "status": 403,
+ "text": "",
+ "reason": "HTTP 403"
+}

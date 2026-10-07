@@ -1,0 +1,758 @@
+{
+ "kind": "search",
+ "url": "http://127.0.0.1:8888/search",
+ "query": "Chile Mexico lesión",
+ "recorded_at": "2026-10-07T01:44:12.523626+00:00",
+ "results": [
+  {
+   "template": "default.html",
+   "title": "Chile ante un México golpeado por baja de Márquez",
+   "content": "SANTIAGO, Chile (AP) — Si algo no necesitaba México de cara a su crucial partido del lunes contra Chile era que se lesionase su jugador más emblemático.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    1
+   ],
+   "score": 1.0,
+   "category": "general",
+   "url": "https://www.rpctv.com/copaamerica/noticias/America-Chile-Mexico-golpeado-Marquez_0_816218730.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.rpctv.com",
+    "/copaamerica/noticias/America-Chile-Mexico-golpeado-Marquez_0_816218730.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "México vs Chile (0-7): Resumen del Partido, resultado y goles",
+   "content": "Chile propinó a México una de las goleadas históricas del Fútbol Mundial. El Tri eliminado de la Copa América Centenario.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    2
+   ],
+   "score": 0.5,
+   "category": "general",
+   "url": "https://mexico.as.com/mexico/2016/06/18/futbol/1466226849_894586.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "mexico.as.com",
+    "/mexico/2016/06/18/futbol/1466226849_894586.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Así se dio la lesión de Raúl Jiménez con el Wolverhampton... ¡alarmas encendidas en Selección Mexicana!",
+   "content": "PUBLICIDAD ¿Cómo se dio la lesión de Raúl Jiménez? | M&T Bank Stadium México vs Perú | Partido amistoso | … Sports Illustrated Stadium México vs Chile …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    3
+   ],
+   "score": 0.3333333333333333,
+   "category": "general",
+   "url": "https://juanfutbol.com/seleccion-mexicana/asi-se-dio-la-lesion-de-raul-jimenez-con-el-wolverhampton-alarmas-encendidas-en-seleccion-mexicana",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "juanfutbol.com",
+    "/seleccion-mexicana/asi-se-dio-la-lesion-de-raul-jimenez-con-el-wolverhampton-alarmas-encendidas-en-seleccion-mexicana",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "REsumen YT México vs Chile",
+   "content": "Luis: me parece justo en la forma como chile ha mantenido la pelota en el sector de éxico. … Chile sigue molesto por ese gol que recibieron. … ¡de chile!",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    4
+   ],
+   "score": 0.25,
+   "category": "general",
+   "url": "https://www.tudn.com/futbol/mexico/resumen-yt-mexico-vs-chile-video",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/futbol/mexico/resumen-yt-mexico-vs-chile-video",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Sufre Nicolás Córdova de cara al hexagonal: la Roja Sub 20 libera a una de sus figuras del Sudamericano por lesión - La Tercera",
+   "content": "El cuerpo médico de la Selección Chilena informó la salida de un futbolista producto de una lesión muscular del cuádriceps izquierdo.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    5
+   ],
+   "score": 0.2,
+   "category": "general",
+   "url": "https://www.latercera.com/el-deportivo/noticia/sufre-nicolas-cordova-de-cara-al-hexagonal-la-roja-sub-20-libera-a-una-de-sus-figuras-del-sudamericano-por-lesion/M6NG4WR3GNFAZMVTFXIMXUYOEI/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/el-deportivo/noticia/sufre-nicolas-cordova-de-cara-al-hexagonal-la-roja-sub-20-libera-a-una-de-sus-figuras-del-sudamericano-por-lesion/M6NG4WR3GNFAZMVTFXIMXUYOEI/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "La escandalosa pelea entre Chile y Uruguay en el Americas Rugby Championship que terminó con expulsados y una grave lesión",
+   "content": "Al final, el árbitro también mostró la roja a Lucas Bianchi en los uruguayos y a Clemente Saavedra en los nacionales Tras el duelo, Chile Rugby confirmó que Shea \"",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    6
+   ],
+   "score": 0.16666666666666666,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/Deportes/2026/08/29/1209962/chile-uruguay-pelea-rugby.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/Deportes/2026/08/29/1209962/chile-uruguay-pelea-rugby.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "El 7-0 de Chile a México, ¿fue un accidente del fútbol o reflejó la realidad de ambas selecciones?",
+   "content": "Action phto during the match Mexico vs Chile, Corresponding to the quarterfinals of the America Cup Centenary 2016 at Levis Stadium.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    7
+   ],
+   "score": 0.14285714285714285,
+   "category": "general",
+   "url": "https://www.tudn.com/futbol/mexico/fue-accidental-el-7-0-de-chile-sobre-mexico-en-la-copa-america",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/futbol/mexico/fue-accidental-el-7-0-de-chile-sobre-mexico-en-la-copa-america",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Selección Mexicana",
+   "content": "Todo lo que necesitas saber de la selección mexicana de fútbol lo puedes ver aquí. Resultados, partidos, videos, plantel, director técnico …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    8
+   ],
+   "score": 0.125,
+   "category": "general",
+   "url": "https://www.tudn.com/futbol/mexico",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/futbol/mexico",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Diagnóstico de la lesión de Santiago Giménez tras eliminación de México del Mundial",
+   "content": "PUBLICIDAD Copa Mundial de Futbol 2026 Se estima que el delantero esté fuera dos meses.Por: … 15 min Diagnóstico de la lesión de Santiago Giménez tras eliminación de México del Mundial Copa Mundial de Futbol 2026 1 …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    9
+   ],
+   "score": 0.1111111111111111,
+   "category": "general",
+   "url": "https://www.tudn.com/mundial-2026/santiago-gimenez-presenta-esguince-de-segundo-grado-en-el-tobillo-derecho-tras-mexico-vs-inglaterra-video",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/mundial-2026/santiago-gimenez-presenta-esguince-de-segundo-grado-en-el-tobillo-derecho-tras-mexico-vs-inglaterra-video",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chucky Lozano queda fuera del México vs Paraguay por lesión muscular",
+   "content": "Hirving “Chucky” Lozano causa baja del México vs Paraguay tras confirmarse una lesión muscular. El delantero no verá acción y se espera su regreso en una o dos semanas …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    10
+   ],
+   "score": 0.1,
+   "category": "general",
+   "url": "https://www.wdeportes.com/2025/11/18/chucky-lozano-queda-fuera-del-mexico-vs-paraguay-por-lesion-muscular/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.wdeportes.com",
+    "/2025/11/18/chucky-lozano-queda-fuera-del-mexico-vs-paraguay-por-lesion-muscular/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile espera sanciones contra Uruguay tras pelea en el Americas Rugby Championship - La Tercera",
+   "content": "El triunfo de Chile sobre Uruguay por 33-12 , … quedó empañado por una violenta batalla campal y la grave lesión sufrida por Emilio Shea El incidente se produjo en el segundo tiempo del encuentro disputado en el estadio CAP de Talcahuano.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    11
+   ],
+   "score": 0.09090909090909091,
+   "category": "general",
+   "url": "https://www.latercera.com/el-deportivo/noticia/chile-espera-sanciones-contra-uruguay-tras-pelea-en-el-americas-rugby-championship/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.latercera.com",
+    "/el-deportivo/noticia/chile-espera-sanciones-contra-uruguay-tras-pelea-en-el-americas-rugby-championship/",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Mira los tantos de México y el golazo con que descontó Chile en el Mundial Sub 20",
+   "content": "Chile perdió 4-1 ante México por el paso a cuartos de final del Mundial Sub 20. Cuando Chile jugaba mejor, pasaba su mejor momento …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    12
+   ],
+   "score": 0.08333333333333333,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/Deportes/2025/10/07/1179819/goles-chile-mexico-octavos-mundialsub20.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/Deportes/2025/10/07/1179819/goles-chile-mexico-octavos-mundialsub20.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Todas las noticias de Deportes | Emol.com",
+   "content": "Liga de Primera 2026 + vistas en deportes A qué hora es este martes el amistoso entre Chile y México, … Sinner da por terminada la temporada por lesión en una rodilla El descargo de Medvedev tras ser descalificado en Beijing y lo que dijo Djokovic Tras contar …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    13
+   ],
+   "score": 0.07692307692307693,
+   "category": "general",
+   "url": "https://www.emol.com/movil/Deportes/index.aspx",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/movil/Deportes/index.aspx",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "México: Malagón, Marcel, Onofre y otras lesiones antes del Mundial",
+   "content": "La lesión le representó fractura de tibia y peroné, por lo que se perdió el Mundial en México.Francisco ‘Abuelo’ CruzEn 1994 era considerado uno de los elementos más destacados del futbol mexicano.Su anotación ante Canadá le dio la clasificación aMéxico",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    14
+   ],
+   "score": 0.07142857142857142,
+   "category": "general",
+   "url": "https://espndeportes.espn.com/futbol/mundial/nota/_/id/16425419/mexico-luis-malagon-otras-lesiones-bajas-copa-del-mundo",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "espndeportes.espn.com",
+    "/futbol/mundial/nota/_/id/16425419/mexico-luis-malagon-otras-lesiones-bajas-copa-del-mundo",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "México sufre otra baja para amistoso ante Chile: Jorge Torres fue descartado por lesión",
+   "content": "CIUDAD DE MÉXICO.- El defensa Jorge Torres Nilo fue descartado de la selección de México por lesión y en su lugar fue llamado Miguel Layún para los amistosos ante Chile y Bolivia del 6 y 9 de septiembre …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    15
+   ],
+   "score": 0.06666666666666667,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/deportes/2014/09/01/677985/mexico-anuncia-que-jorge-torres-queda-descartado-por-lesion-para-amistoso-ante-chile.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/deportes/2014/09/01/677985/mexico-anuncia-que-jorge-torres-queda-descartado-por-lesion-para-amistoso-ante-chile.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Marcelo Díaz (futbolista)",
+   "content": "Datos personales Nombre completo Marcelo Alfonso Díaz Rojas Apodo(s) Chelo 1 Nacimiento Padre Hurtado Chile 30 de diciembre de 1986 (39 años) Nacionalidad(es) Chilena Altura 1,66 m (5 5 Pareja Karen Santa María matr.",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    16
+   ],
+   "score": 0.0625,
+   "category": "general",
+   "url": "https://es.wikipedia.org/wiki/Marcelo_D%C3%ADaz_(futbolista)",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "es.wikipedia.org",
+    "/wiki/Marcelo_D%C3%ADaz_(futbolista)",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "México vs. Chile: Resultados, estadísticas e historial | Goal.com México",
+   "content": "México y Chile se volverán a ver las caras este viernes, en el marco de la fecha FIFA de marzo. México 0-0 Chile San Francisco 15/06/2015 Chile 3-3 México Copa América …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    17
+   ],
+   "score": 0.058823529411764705,
+   "category": "general",
+   "url": "https://www.goal.com/es-mx/noticias/m%C3%A9xico-vs-chile-resultados-estad%C3%ADsticas-e-historial/blt1364add5efa1e67e",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.goal.com",
+    "/es-mx/noticias/m%C3%A9xico-vs-chile-resultados-estad%C3%ADsticas-e-historial/blt1364add5efa1e67e",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "México vs Chile, amistoso. Partido completo",
+   "content": "En el debut de Gerardo Martino, la Selección Mexicana golea a su similar de Chile en duelo amistoso de fecha FIFA | TUDN Más Deportes | TUDN",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    18
+   ],
+   "score": 0.05555555555555555,
+   "category": "general",
+   "url": "https://www.tudn.com/mas-deportes/mexico-vs-chile-amistoso-partido-completo-video",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.tudn.com",
+    "/mas-deportes/mexico-vs-chile-amistoso-partido-completo-video",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "México también tiene bajas para amistoso ante Chile: Portero Talavera no estará por lesión",
+   "content": "CIUDAD DE MEXICO.- El portero Alfredo Talavera, … será baja en la convocatoria para los amistosos de México con Chile y Bolivia y en su lugar fue llamado Moisés Muñoz …",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    19
+   ],
+   "score": 0.05263157894736842,
+   "category": "general",
+   "url": "https://www.emol.com/noticias/deportes/2014/08/31/677809/mexico-tambien-tiene-bajas-para-amistoso-ante-chile-portero-talavera-no-estara-por-lesion.html",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "www.emol.com",
+    "/noticias/deportes/2014/08/31/677809/mexico-tambien-tiene-bajas-para-amistoso-ante-chile-portero-talavera-no-estara-por-lesion.html",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "template": "default.html",
+   "title": "Chile 1-0 México Sub 23: crónica, resumen y resultado de la Roja en los Panamericanos Santiago 2023",
+   "content": "Chile - México Sub 23 en vivo: fútbol en los Panamericanos Santiago 2023, en directo",
+   "img_src": "",
+   "iframe_src": "",
+   "audio_src": "",
+   "thumbnail": "",
+   "publishedDate": null,
+   "pubdate": "",
+   "length": null,
+   "views": "",
+   "author": "",
+   "metadata": "",
+   "priority": "",
+   "engines": [
+    "yep"
+   ],
+   "open_group": false,
+   "close_group": false,
+   "positions": [
+    20
+   ],
+   "score": 0.05,
+   "category": "general",
+   "url": "https://chile.as.com/futbol/chile-mexico-sub-23-en-vivo-futbol-en-los-panamericanos-santiago-2023-en-directo-n/",
+   "engine": "yep",
+   "parsed_url": [
+    "https",
+    "chile.as.com",
+    "/futbol/chile-mexico-sub-23-en-vivo-futbol-en-los-panamericanos-santiago-2023-en-directo-n/",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "answers": [],
+ "corrections": [],
+ "infoboxes": [],
+ "suggestions": [],
+ "unresponsive_engines": [
+  [
+   "brave",
+   "Suspended: too many requests"
+  ],
+  [
+   "duckduckgo",
+   "CAPTCHA"
+  ],
+  [
+   "google",
+   "Suspended: CAPTCHA"
+  ],
+  [
+   "google cse",
+   "Suspended: too many requests"
+  ],
+  [
+   "naver",
+   "Suspended: access denied"
+  ],
+  [
+   "qwant",
+   "CAPTCHA"
+  ]
+ ]
+}

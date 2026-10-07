@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-07T01:44:12.511642+00:00",
+ "order": [
+  "Chile vs. Mexico - Live Score - October 22, 2026 Live coverage of Chile vs. Mexico game on FOX Sports including live score, highlights, updated stats, odds and more - played on October 22, 2026.",
+  "Mexico vs Chile: Prediction, Best Bets & How to Watch Our Mexico vs Chile prediction, best bets and odds for Tuesday's friendly at the LA Memorial Coliseum, plus how to watch on TUDN and ViX. Kick-off 10:30 PM ET.",
+  "Chile vs. Mexico: How to Watch, Odds, U-20 Preview 3 1 Chile and Mexico face off to start Round of 16 action in the FIFA U-20 World Cup Host nation, Chile, … while Mexico finished in second place in Group B.",
+  "Mexico vs Chile LIVE: Start time and where to watch! 2026 international friendly in Los Angeles Mexico face Chile in the 2026 international friendly. Follow our live coverage for minute-by-minute updates. Want to know how to watch and when it kicks off? Stay with us for full broadcast details ...",
+  "Chile vs. Mexico - Final Score - October 07, 2025 AY CHI 1 MEX 4 Corner awarded to Chile. CHI 0 MEX 0 A shot on goal has been taken by Chile. … MEX KEY PLAY CHI 0 MEX 0 Mexico have been awarded a corner by Joao Pedro Pinheiro.",
+  "Chiles en Nogada Fill each poblano chile with enough filling so that it will just close. You don’t want the filling to spill out the side of the chile onto the plate.",
+  "🔥🏆 MÉXICO le ganó 4-1 a CHILE y se metió en los CUARTOS DE FINAL del MUNDIAL SUB 20 #chile #mundial #mexico CHILE VS MEXICO LIVE MATCH (7/10/2025)CHILE VS MEXICO ao vivo (7/10/2025)CHILE VS MEXICO (7/10/25)CHILE vs MEXICO EN VIVOCHILE vs ...",
+  "New Mexico Los Roast Sauce Chile Green Traditional Style - Pack of 6 - 16 oz Shop New Mexico Los Roast Sauce Chile Green Traditional Style - Pack of 6 - 16 oz at Target. Choose from Same Day Delivery, Drive Up or Order Pickup."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

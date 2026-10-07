@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-07T01:44:18.125277+00:00",
+ "order": [
+  "Chile U20 vs Mexico U20: FIFA U20 World Cup stats & head-to-head Key, Chile v Mexico … Chile U20 38.5% Mexico U20 61.5% … Chile U20 16 Mexico U20 19 … Chile U20 6 Mexico U20 6 … Chile U20 25 Mexico U20 25 … Chile U20 2 Mexico U20 5",
+  "Mexico World Cup Kits 2018 Dream League Soccer | Chile dls kits 2015, Mexico soccer jersey png, Dream league soccer pakistan kit Get the Mexico World Cup Kits 2018 Dream League Soccer in 512x512 size. … Mexico 2018, Dream league soccer 2024 kits, Dream league soccer kits logo",
+  "Flag Retirement Ceremony 2024 - Visit Angel Fire New Mexico A flag retirement ceremony is a solemn and dignified event held to respectfully dispose of old, worn, or damaged American flags.",
+  "Chile X Mexico Find and save ideas about chile x mexico on Pinterest.",
+  "Grito de Dolores This article is about about the historical event that led Mexico to independence. For the commemorative date, see Independence Day (Mexico) … Cry of Dolores",
+  "Grito de Dolores This article is about about the historical event that led Mexico to independence. For the commemorative date, see Independence Day (Mexico) … Cry of Dolores",
+  "Retirement in New Mexico: Your Guide to Living and Enjoying the Land of Enchantment Explore the benefits of retiring in New Mexico—enjoy sunny skies, scenic landscapes, rich culture, and vibrant communities perfect for your next chapter.",
+  "Chilean Army Chilean Army Ejército de Chile Chilean Army emblem Active 1603, … present Country Chile Type Army Role Land warfare Size 80,000 2 Part of Chilean Armed Forces Headquarters Edificio Ejército Bicentenario 3 Santiago Patron Our Lady of Mount Carmel Mottos Siempre …"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 4000, \"messages\": [{\"content\": \"너는 아래 문단들에서 **그 경기의 변수만** 뽑는다. 웹에 닿을 수 없다.\\n\\n🔴 네 담당은 `A-home` 의 유형들뿐이다: def_absence, absence_att, fatigue.\\n🔴 `quote` 는 **문단의 글자 그대로**다(한 글자도 바꾸지 않는다) — 검증층이 본문에 대고 맞춰 보고, 없으면 그 줄을 버린다.\\n🔴 `quote` 에 **머리표를 넣지 마라** — `[A-home-D1-P2] (도메인, 날짜)` 는 우리가 붙인 표지이고 기사에 없는 글자다. **본문 글자만** 적는다(어느 문서인지는 `doc_id` 칸이 받는다).\\n🔴 `claim` 은 그 사실을 **한 문장**으로 적은 것이다.\\n🔴 `match_link` 는 **그 문단이 이 경기 이야기라는 근거**를 문단에서 **글자 그대로** 따온 것이다 — 상대팀 이름, 경기 날짜, 경기장, `Canada전` 같은 표현. ⚠️ 문단에 없는 말을 적으면 그 줄은 **버려진다**(코드가 문단에 대고 맞춰 본다).\\n⚠️ 이어지는 근거가 문단에 없으면 그 사실은 **적지 마라** — 다른 경기 이야기다(금메달 수·지난 대회·다른 팀 이야기가 그렇게 들어왔다).\\n🔴 `target` 은 그 사실의 **핵심 대상 하나**다 — 선수 이름(`Kim Min-jae`) 또는 사건 한 낱말(`record`·`travel`). ⚠️ 같은 사실을 여러 기사에서 봤다면 `target` 을 **같은 글자**로 적어라(그것으로 합친다). 문장을 넣지 마라.\\n⚠️ 문단에 없는 사실은 **쓰지 않는다.** 없으면 `variables` 를 빈 배열로 둔다 — 빈 것이 지어낸 것보다 낫다.\\n🔴 **누가 나온다/투입된다/선발로 나선다**는 말은 `lineup_intent` 다 — 감독의 **의도**(점검·전력 숨김)만 `coach_intent` 이고, 감독과 선수의 **갈등**만 `coach_conflict` 다.\\n🔴 `stakes` 는 **구체적 동기**다 — 강등·승격·탈락·진출, *\\\"이겨야 한다\\\"*, *\\\"비겨도 된다\\\"*, *\\\"n골 차 필요\\\"* 가 그것이다. ⚠️ 단순 일정 안내(*\\\"화요일에 열린다\\\"*)는 `stakes` 가 아니다.\\n🔴 그 팀이 **5백·스리백+윙백·back five·three centre-backs** 로 나온다는 말이 있으면 `formation` 칸에 그 꼴(`5-3-2`·`3-5-2`·`five at the back`)을 적고 `quote` 에 그 문장을 그대로 둔다. ⚠️ 없으면 **비워 둔다**.\\n⚠️ 이 경기는 USA(홈) 대 Canada(원정)이다 — 다른 경기 이야기는 뽑지 않는다.\\n🔴 `subject` 는 **그 선수가 뛰는 팀**이다 — 기사가 함께 언급한 **상대 팀이 아니다**. ⚠️ *\\\"A 선수가 X팀의 Y팀전에 결장한다\\\"* 면 그 선수의 팀은 **X** 다.\\n🔴 한 기사에 **두 팀이 다 나오면**, 그 선수의 소속을 말하는 문장을 `quote` 에 **함께** 담아라(소속 근거가 없으면 우리가 그 변수를 근거로 쓰지 못한다).\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"[A-home-D1-P1] (ca.news.yahoo.com, 2026-10-05) Kawhi Leonard, rookie Allen Graves, newly signed veteran Kyle Anderson, and young contributors Jamison Battle and Alijah Martin all didn't play.\\n[A-home-D1-P2] (ca.news.yahoo.com, 2026-10-05) The Toronto Raptors had a good week at training camp in Quebec City but opened the preseason with a 129-105 defeat at the hands of the Giannis Antetokounmpo-led Miami Heat.\\n[A-home-D1-P3] (ca.news.yahoo.com, 2026-10-05) Shaffelburg, who had to race against time to be fit for the World Cup, didn't quite look up to speed during the tournament but certainly looks back to his best now. Playing on his preferred left wing, Shaffelburg has now provided the key cross leading to the goal in the 1-0 win over Chile and had a left-footed volley and header in this one.\\n[A-home-D1-P4] (ca.news.yahoo.com, 2026-10-05) Over in Toronto, early optimism has been splashed with cold water with a 1-2 start (losses to the Ottawa Senators and Montreal Canadiens) with all three games on home ice. Positivity was initially boosted when the Leafs acquired Kirill Marchenko from the Columbus Blue Jackets with Matthew Knies going the other way.\\n[A-home-D1-P5] (ca.news.yahoo.com, 2026-10-05) FIRST CONNOR MCDAVID GOAL OF THE SEASON AND IT WAS GROSS 🤢 pic.twitter.com/5Zn0XN3XOy\\n[A-home-D1-P6] (ca.news.yahoo.com, 2026-10-05) Top overall pick Gavin McKenna has yet to register a point through about 43 minutes of action across the three games.\\n[A-home-D2-P1] (www.thestar.com, 2026-10-06) There will be no hardware on offer Tuesday night but there’s still plenty at stake. Of all Marsch’s achievements in two-and-a-half years at the helm, turning this fixture into a legitimate and heated rivalry already felt consequential. As he endeavours to drive his team continually upward in this cycle, adding fresh layers to these duels with his homeland will only help.\\n[A-home-D2-P2] (www.thestar.com, 2026-10-06) Breakout Minnesota attacker Marcus Caldeira joined the squad here and could see a rapid debut. If so, he’ll swap his loon crest for a maple leaf. Familiarity and symbols everywhere.\\n[A-home-D2-P3] (www.thestar.com, 2026-10-06) You may unsubscribe at any time. By signing up, you agree to our terms of use and privacy policy. This site is protected by reCAPTCHA and the Google privacy policy and terms of service apply.\\n[A-home-D2-P4] (www.thestar.com, 2026-10-06) Want more of the latest from us? Sign up for more at our newsletter page.\\n[A-home-D2-P5] (www.thestar.com, 2026-10-06) Back-to-back victories over Chile and Peru made the World Cup homecoming a very gratifying one. That they were achieved without Alphonso Davies, Moïse Bombito, Ismaël Koné, Alistair Johnston and Max Crépeau — nearly half of a first-choice XI — is even more impressive.\\n[A-home-D2-P6] (www.thestar.com, 2026-10-06) Marsch was joined by Dayne St. Clair and Tani Oluwaseyi for the pre-match chat. Afterward, as Canada began training, both were presented with jackets honouring them as members of Minnesota United’s team of the decade, the club’s loon logo in bright sky blue. Canada’s squad is speckled with players who represent American MLS sides. More are European club teammates with U.S. players. Yet threads that bind both squads loosen on days like these.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력은 **object 로만** 받는다 — 최상위 배열은 스키마가 못 받는다.\", \"properties\": {\"variables\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 s4 — 모델이 내는 변수 후보. ⚠️ **방향 칸이 없다**(코드가 정한다).\", \"properties\": {\"claim\": {\"title\": \"Claim\", \"type\": \"string\"}, \"doc_id\": {\"enum\": [\"A-home-D1\", \"A-home-D2\"], \"type\": \"string\"}, \"formation\": {\"title\": \"Formation\", \"type\": \"string\"}, \"match_link\": {\"title\": \"Match Link\", \"type\": \"string\"}, \"quote\": {\"title\": \"Quote\", \"type\": \"string\"}, \"subject\": {\"enum\": [\"team:000243\", \"team:000039\"], \"type\": \"string\"}, \"subtask\": {\"enum\": [\"A-home\"], \"type\": \"string\"}, \"target\": {\"title\": \"Target\", \"type\": \"string\"}, \"type\": {\"enum\": [\"def_absence\", \"absence_att\", \"fatigue\"], \"type\": \"string\"}}, \"required\": [\"subtask\", \"type\", \"subject\", \"claim\", \"target\", \"match_link\", \"formation\", \"quote\", \"doc_id\"], \"title\": \"VarCandidate\", \"type\": \"object\"}, \"title\": \"Variables\", \"type\": \"array\"}}, \"required\": [\"variables\"], \"title\": \"VarCandidates\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-07T02:18:14.139912+00:00",
+ "id": "20e26520-f92b-4ffd-9b3b-3540b0f6fd67",
+ "object": "chat.completion",
+ "created": 1791339494,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\n  \"variables\": []\n}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1630,
+  "completion_tokens": 8,
+  "total_tokens": 1638,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

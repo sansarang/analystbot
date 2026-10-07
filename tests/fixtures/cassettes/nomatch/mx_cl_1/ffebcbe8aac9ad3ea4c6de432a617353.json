@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-07T01:43:31.134074+00:00",
+ "order": [
+  "Rankmi | Software de HR con IA para Chile, México, Perú y Latam … Identifica a tus top performers y anticipa la rotación Con alertas de IA basadas en señales reales de desempeño de tu equipo.",
+  "México vs. Chile hoy, por un amistoso internacional: horario, formaciones y cómo ver en vivo El “Tri” busca afinar su propuesta futbolística ante “La Roja” en un choque marcado por la rotación de nombres y la prueba de variantes tácticas.",
+  "México vs Chile: Dónde Ver HOY EN VIVO por Televisión y Streaming México vs Chile se enfrentan HOY por la Fecha FIFA. Conozca los horarios, canales TV y plataformas streaming EN VIVO.",
+  "México vs. Chile EN VIVO. Horario y dónde VER partido amistoso 2026 HOY GRATIS Conoce a qué hora y dónde ver en vivo el partido amistoso de México vs. Chile este martes 6 de octubre de 2026 ...",
+  "Mexico vs Chile LIVE: Start time and where to watch! 2026 international friendly in Los Angeles Mexico face Chile in the 2026 international friendly. Follow our live coverage for minute-by-minute updates. Want to know how to watch and when it kicks off? Stay with us for full broadcast details ...",
+  "Emol.com - El sitio de noticias online de Chile Todas las noticias de Chile y el Mundo. Entra e informate de los últimos acontecimientos ocurridos en nuestro país en Emol.com",
+  "¿Quién transmite juego de México vs. Chile HOY? Horario y canal EN VIVO partido amistoso 2026 Conoce a qué hora y en qué canal transmitirán en vivo el partido amistoso de México vs. Chile este martes 6 de octubre de 2026 ...",
+  "Recorre Chile en auto: 3 roadtrips completamente mágicos - Chile Travel Tres rutas para recorrer Chile en auto 1. un viaje histórico En esta ruta por la costa tendrás la oportunidad particular de conocer algunos de los pueblos más tradicionales y pintorescos de Chile …"
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

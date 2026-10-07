@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "travel_schedule venue_weather event_match match_type national_duty_return",
+ "recorded_at": "2026-10-07T01:43:36.541962+00:00",
+ "order": [
+  "Borussia Dortmund wonderkid Mathis Albert makes USMNT history as youngest-ever goalscorer in 4-2 Chile th.... 1주 전Borussia Dortmund wonderkid Mathis Albert makes USMNT history as youngest-ever goalscorer in 4-2 Chile thriller to surpass Christian Pulisic's recor1주 전",
+  "Borussia Dortmund wonderkid Mathis Albert makes USMNT history as youngest-ever goalscorer in 4-2 Chile th.... 1주 전Borussia Dortmund wonderkid Mathis Albert makes USMNT history as youngest-ever goalscorer in 4-2 Chile thriller to surpass Christian Pulisic's recor1주 전",
+  "Partidos de hoy 6 de octubre: México vs. Chile, despedida de Messi y UEFA Nations League UEFA Nations League - Croacia vs. España - El partido inicia a las 12:45 pm tiempo del centro de México. Mientras en los Estados Unidos a las 2:45 pm ET, a la 1:45 pm CT y a las 11:45 am PT. El juego ...",
+  "Okuribito (España) Final de partida (Argentina, Uruguay, Chile) La felicidad de vivir (Perú) Violines en el cielo (México) Ficha técnica … Yōjirō Takita … Toshiaki N",
+  "Okuribito (España) Final de partida (Argentina, Uruguay, Chile) La felicidad de vivir (Perú) Violines en el cielo (México) Ficha técnica … Yōjirō Takita … Toshiaki N",
+  "México vs. Chile EN VIVO. Dónde VER partido GRATIS Amistoso 2026 HOY Conoce a qué hora y dónde ver en vivo el partido amistoso de México vs. Chile este martes 6 de octubre de 2026 ...",
+  "México (0-1) Chile: Resumen del partido Sigue el minuto a minuto las acciones del México vs Chile este lunes 23 de octubre a las 17:00 hrs.",
+  "¡AQUÍ MANDA MÉXICO! Goleada ante Chile en el Mundial Ciudad: Valparaíso, Chile … En una noche llena de intensidad en la Copa Mundial Sub-20 de la 2025, México demostró su poder ofensivo con una contundente victoria sobre Chile."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 20문단 → 재정렬 상위 8"
+}

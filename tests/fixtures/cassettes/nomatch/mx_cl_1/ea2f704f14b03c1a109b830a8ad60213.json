@@ -1,0 +1,36 @@
+{
+ "kind": "llm",
+ "url": "https://api.deepseek.com/chat/completions",
+ "query": "{\"max_tokens\": 6000, \"messages\": [{\"content\": \"너는 축구 분석 카드의 **종합 논평**을 쓴다. 한국어로 쓴다.\\n🔴 **숫자를 바꾸지 않는다** — 아래 수는 이미 센 것이고, 너는 그것을 **사람 말로** 설명한다.\\n🔴 `title` 한 줄은 **양상을 말한다** — 주어진 양상 글자를 그대로 넣어라.\\n🔴 `reasons` 는 3~4문장이고 **문장마다 근거 변수 번호**(`var_ids`)를 든다. 아래 목록에 **없는 번호는 쓰지 마라**.\\n🔴 번호는 `var_ids` **칸에만** 넣는다 — `text` 안에 `(var_ids: …)` 처럼 적지 마라(카드에 그 글자가 그대로 나온다).\\n🔴 `flow` 는 경기 흐름 한 줄이다 — 전반/후반 · 누가 주도 · 어떻게 끝나나.\\n🔴 `score_range` 는 **아래 시나리오 스코어 중에서** 1~3개를 고른다.\\n🔴 `lean` 은 **아래 보드 줄 중** 논평과 같은 방향 하나이고, 없으면 **빈 문자열**이다. ⚠️ 등급이 없으면 *추천*이라고 쓰지 마라(기울기만).\\n🔴 보드가 **없음**(등급이 전부 `보류`)이면 `lean` 은 반드시 **빈 문자열**이다 — 걸 수 없는 줄을 가리키지 마라.\\n🔴 **금지**: 기대값·손익분기·켈리·금액·시장 확률(배당)을 근거로 쓰는 문장.\\n🔴 도구는 없다. **한 번에** JSON 으로만 답한다.\", \"role\": \"system\"}, {\"content\": \"경기: Mexico(홈) vs Chile(원정) · Friendlies\\n양상 판정: **접전** — 문턱을 넘은 양상이 없다(저득점 50%<55% · 난타전 17%<40% · 한쪽 우세 2%<45%)\\n비중: 2골 이하 50% · 4골 이상 17% · 2골 차 이상 2% · 한 골 안 98%\\n가장 무거운 스코어: 0-1(1.95) · 2-1(1.65) · 1-1(1.6)\\n\\n근거 변수(이 번호만 쓸 수 있다):\\n- `S02`(h2h_pattern · 무게 1.0 · hard) 맞대결 10경기 3승 3무 4패 · 평균 3.0골\\n- `IR11-home`(fatigue · 무게 0.7 · soft) Mexico 일정 과부하 — 8일 안에 이번이 3번째 경기(직전 [3, 7]일 전)\\n- `IR12-home`(team_stats · 무게 0.7 · soft) Mexico 무승 4경기\\n- `R1`(def_absence · 무게 0.7 · soft) Teenage midfielder Gilberto Mora will miss Mexico's friendly against Chile due to injury.\\n\\n무게 상위 시나리오:\\n- `C` 무게 2.4 · 스코어 1-2 · 0-1 — 상대의 8일 3경기 과부하(IR11-home)로 후반 체력이 빠지고, 원정팀이 직전 경기 득점 흐름(S01-away)과 맞대결에서 나온 골 감각(S02)을 살려 역전 또는 리드를 가져간다.\\n- `B` 무게 1.8 · 스코어 2-1 · 1-1 — 홈 경기 환경(S03)과 상대 결장 변수(R1)로 홈팀이 주도권을 쥐지만, 4경기 무승으로 마무리가 아쉬운 흐름(IR12-home) 탓에 한 골을 내주며 쫓기는 형태가 된다.\\n- `E` 무게 1.5 · 스코어 0-1 · 2-1 — 친선 경기의 실험적 라인업과 다수 교체(S04)에 결장 변수(R1)까지 겹쳐 양 팀 전력이 평소와 달라지고, 홈 환경(S03)이 어느 쪽으로든 흐름을 한 번 뒤집는다.\\n\\n보드 줄과 등급(): win home 생존 0.374 등급 보류 · draw  생존 0.264 등급 보류 · win away 생존 0.362 등급 보류 · unbeaten home 생존 0.638 등급 보류 · unbeaten away 생존 0.626 등급 보류 · handicap Mexico -0.5 생존 0.374 등급 보류 · handicap Chile 0.5 생존 0.626 등급 보류 · handicap Mexico -1.5 생존 0.023 등급 보류\\n방향 판정: 방향: **Mexico** (세 열 중 2열이 0.15 이상 앞세운다) — 기준 홈 68%/원정 10% · 우리 홈 73%/원정 8%\\n\", \"role\": \"user\"}, {\"content\": \"🔴 아래 JSON 스키마를 **정확히** 지켜 답한다(다른 칸을 더하지 않는다):\\n{\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴🔴 **종합 논평**(사용자 지시 2026-10-07 ③) — DeepSeek 1회 · 구조화 출력.\\\\n\\\\n🔴 코드가 검사하는 것(어긋나면 그 칸을 버리고 **1회 재요청**, 또 어긋나면 템플릿):\\\\n  · `title` 의 양상 = `Card.shape` 의 양상 — **논평이 숫자와 반대로 말하면 안 된다**\\\\n  · `score_range` 의 스코어가 **무게 상위 시나리오 스코어 안**에 있다\\\\n  · `reasons` 의 `var_ids` 가 **근거 가능 변수**만\\\\n  · `lean` 은 **보드에 실제로 있는 줄**만 · 등급과 다른 말 금지\\\\n  · 기대값·금액·켈리·**시장 확률을 근거로 쓰는 문장 금지**\\\\n⚠️ `lean` 이 비면 *\\\\\\\"기울기 없음\\\\\\\"* 이다 — 빈 값을 **추천으로 읽지 않는다**.\\\", \\\"properties\\\": {\\\"title\\\": {\\\"title\\\": \\\"Title\\\", \\\"type\\\": \\\"string\\\"}, \\\"reasons\\\": {\\\"items\\\": {\\\"additionalProperties\\\": false, \\\"description\\\": \\\"🔴 논평 한 문장 — **근거 변수 번호를 함께** 든다(지시 ③).\\\", \\\"properties\\\": {\\\"text\\\": {\\\"title\\\": \\\"Text\\\", \\\"type\\\": \\\"string\\\"}, \\\"var_ids\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Var Ids\\\", \\\"type\\\": \\\"array\\\"}}, \\\"required\\\": [\\\"text\\\", \\\"var_ids\\\"], \\\"title\\\": \\\"CommentLine\\\", \\\"type\\\": \\\"object\\\"}, \\\"title\\\": \\\"Reasons\\\", \\\"type\\\": \\\"array\\\"}, \\\"flow\\\": {\\\"title\\\": \\\"Flow\\\", \\\"type\\\": \\\"string\\\"}, \\\"score_range\\\": {\\\"items\\\": {\\\"type\\\": \\\"string\\\"}, \\\"title\\\": \\\"Score Range\\\", \\\"type\\\": \\\"array\\\"}, \\\"lean\\\": {\\\"title\\\": \\\"Lean\\\", \\\"type\\\": \\\"string\\\"}}, \\\"required\\\": [\\\"title\\\", \\\"reasons\\\", \\\"flow\\\", \\\"score_range\\\", \\\"lean\\\"], \\\"title\\\": \\\"Commentary\\\", \\\"type\\\": \\\"object\\\"}\", \"role\": \"user\"}], \"model\": \"deepseek-flash\", \"response_format\": {\"type\": \"json_object\"}}",
+ "recorded_at": "2026-10-07T01:45:42.924668+00:00",
+ "id": "1bcd1ec0-733b-485d-80c4-de50540d662d",
+ "object": "chat.completion",
+ "created": 1791337538,
+ "model": "deepseek-flash",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"title\": \"접전 — 문턱을 넘은 양상이 없어 한 골 안에서 갈리는 승부(98%)\", \"reasons\": [{\"text\": \"맞대결 10경기에서 3승 3무 4패, 평균 3.0골로 어느 쪽도 우위를 점하지 못해 승부가 한 골 차로 좁혀질 여지가 크다.\", \"var_ids\": [\"S02\"]}, {\"text\": \"Mexico는 8일 안에 이번이 3번째 경기라 후반 체력 저하가 예상되고, 그만큼 리드를 지키는 힘이 떨어진다.\", \"var_ids\": [\"IR11-home\"]}, {\"text\": \"Mexico가 4경기 무승으로 마무리가 풀리지 않아 주도권을 쥐고도 한 골을 내주며 쫓기는 형태가 나올 수 있다.\", \"var_ids\": [\"IR12-home\"]}, {\"text\": \"중원 Gilberto Mora의 결장으로 홈팀 전력이 평소와 달라져 득점 흐름이 끊기고 골 수가 억제될 수 있다.\", \"var_ids\": [\"R1\"]}], \"flow\": \"전반은 홈 Mexico가 볼을 쥐고 주도하지만 결정력이 아쉽고, 후반 들어 체력이 빠지며 원정 Chile가 한 골을 주고받는 접전으로 마무리된다.\", \"score_range\": [\"0-1\", \"1-1\", \"2-1\"], \"lean\": \"\"}",
+    "reasoning_content": "Let me write the commentary in Korean.\n\nShape: 접전 (close match). No threshold crossed. 2골 이하 50%, 한 골 안 98%. Heaviest scores: 0-1(1.95), 2-1(1.65), 1-1(1.6).\n\nBoard: all 보류 → lean must be empty string.\n\nReasons: 3-4 sentences, each with var_ids from allowed list: S02, IR11-home, IR12-home, R1. Note scenarios mention S01-away, S03, S04 but those aren't in the allowed list — don't use them.\n\nscore_range: pick from scenario scores: C: 1-2, 0-1; B: 2-1, 1-1; E: 0-1, 2-1. So pick 1-3 of {0-1, 1-1, 2-1, 1-2}. Choose 0-1, 1-1, 2-1 perhaps.\n\ntitle: 양상 = 접전 — \"접전\" literally included.\n\nlean: \"\" since all 보류.\n\nflow: 전반/후반 · 누가 주도 · 어떻게 끝나나.\n\nWrite:\n\ntitle: \"접전 — 문턱을 넘은 양상이 없어 한 골 안에서 갈리는 승부(98%)\"\n\nreasons:\n1. 맞대결 10경기 3승3무4패에 평균 3.0골로 양 팀 간 우열이 뚜렷하지 않고, 최근 흐름도 한쪽으로 기울지 않는다 (S02)\n2. Mexico는 8일 안에 3번째 경기를 치르는 일정 과부하라 후반 체력 저하가 예상된다 (IR11-home)\n3. Mexico는 4경기 무승으로 마무리가 풀리지 않아 주도하고도 한 골을 내주는 형태가 나올 수 있다 (IR12-home)\n4. 중원 Gilberto Mora의 결장으로 홈팀 전력이 평소와 달라져 득점 흐름이 끊길 수 있다 (R1)\n\nflow: \"전반에는 홈 Mexico가 주도하지만 결정력이 아쉽고, 후반 들어 체력이 빠지며 원정 Chile가 한 골을 주고받는 접전으로 끝난다.\"\n\nscore_range: [\"0-1\", \"1-1\", \"2-1\"]"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1797,
+  "completion_tokens": 920,
+  "total_tokens": 2717,
+  "prompt_tokens_details": {
+   "cached_tokens": 256
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 552
+  },
+  "prompt_cache_hit_tokens": 256,
+  "prompt_cache_miss_tokens": 1541
+ },
+ "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669"
+}

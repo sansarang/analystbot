@@ -1,0 +1,17 @@
+{
+ "kind": "rerank",
+ "url": "local://rerank",
+ "query": "squad_rotation coach_intent coach_conflict coach_change",
+ "recorded_at": "2026-10-07T01:45:07.419759+00:00",
+ "order": [
+  "Además de la interfaz principal, la aplicación contiene más funcionalidades a las que se puede acceder a través del menú desplegable. Para abrirlo, hay que pulsar en el símbolo con tres rayas horizontales ubicado en la parte superior izquierda del dispositivo:",
+  "Está disponible para descargar en tu dispositivo tanto en Android (WOSTI Guía TV de Fútbol en Google Play) como en iOS (WOSTI Fútbol TV en la App Store).",
+  "Valora esta app te lleva a la tienda de aplicaciones compatible con tu móvil para que puedas dejar tu puntuación y opiniones. Las reseñas nos ayuden a crecer para llegar a más aficionados y, por supuesto, estamos atentos a todos vuestros comentarios para seguir mejorando el contenido y el servicio.",
+  "Por último, en la parte inferior del menú desplegable está el enlace directo a las cuentas de WOSTI FutbolenlaTV en Twitter y Facebook. Te recomendamos seguir nuestros perfiles en ambas redes sociales para estar al día de las últimas noticias del mundo del deporte en televisión y que no se te escape ningún detalle.",
+  "WOSTI Guía TV de Fútbol, la App gratuita para seguir todo el fútbol en televisión.",
+  "Mi Agenda permite personalizar la programación filtrando solo los eventos que sean de tu interés. Puedes incluir equipos, competiciones y cadenas de televisión. Por ejemplo, puedes elaborar tu propia agenda con los canales y plataformas a las que tienes acceso, una compuesta solo por tus clubes favoritos, etc... A este apartado se puede acceder directamente desde la pantalla principal pulsando en el icono con la estrella que sale en la zona superior derecha del terminal.",
+  "¿Cansado de no saber a qué hora juega tu equipo y dónde lo puedes ver? ¿Eres de los que pasan mucho tiempo cambiando de canal con el mando a distancia sin encontrar el partido que buscas? ¿Te gustaría tener en tu móvil una guía con todo el fútbol televisado? Si tu respuesta a cualquiera de estas preguntas es afirmativa, te presentamos la solución: la aplicación de WOSTI Guía TV.",
+  "Con Buscar tienes la posibilidad de elegir los partidos de entre todos los equipos y las competiciones que figuran en nuestra base de datos. Permite agilizar el proceso de conocer la agenda de emisiones de un club o un torneo en concreto durante los siguientes 14 días a la búsqueda."
+ ],
+ "why": "✅ bge-reranker-v2-m3 (mps) · BM25 13문단 → 재정렬 상위 8"
+}
