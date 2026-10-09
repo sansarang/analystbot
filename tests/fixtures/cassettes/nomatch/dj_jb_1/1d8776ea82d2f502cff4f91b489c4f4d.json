@@ -1,0 +1,37 @@
+{
+ "kind": "llm",
+ "url": "https://api.upstage.ai/v1/chat/completions",
+ "query": "{\"max_tokens\": 600, \"messages\": [{\"content\": \"너는 **검열자**다. 아래 사실 목록과 논평 문장을 받아, 각 문장이 그 사실과 맞는지 **판정만** 한다.\\n🔴 **새 사실·새 예측을 만들지 마라** — 분석하지 않는다.\\n🔴 판정은 넷이다: `ok`(사실과 맞는다) · `contradicts`(사실과 반대다) · `unsupported`(사실에 없는 말이다) · `overclaim`(사실보다 세게 말한다).\\n🔴 `index` 는 문장 번호, `fact_ref` 는 근거가 된 사실의 대괄호 id(`[V:R1]` 처럼) 또는 빈 글자, `note` 는 **20자 이내**다.\\n⚠️ 문장 수만큼 줄을 낸다. 다른 말을 덧붙이지 않는다.\\n🔴 **`[예상 흐름 · 예측]` 줄은 예측이다** — 그 문장이 사실 목록에 그대로 없다고 `unsupported` 라 하지 마라. 사실·방향·양상과 **반대일 때만** `contradicts` 다(아니면 `ok`).\", \"role\": \"system\"}, {\"content\": \"## 사실\\n[M] Daejeon Hana Citizen(홈) vs Jeonbuk Hyundai Motors FC(원정) · K-League 1\\n[F:Daejeon Hana Citizen] 최근  · 득점 평균 ? · 보정 ? · 실점 평균 ?\\n[X:Daejeon Hana Citizen] predicted XI 4-2-3-1\\n[F:Jeonbuk Hyundai Motors FC] 최근  · 득점 평균 ? · 보정 ? · 실점 평균 ?\\n[X:Jeonbuk Hyundai Motors FC] predicted XI 4-2-3-1\\n[H] 맞대결 {\\\"matches\\\": [{\\\"date\\\": \\\"2026-07-21\\\", \\\"home\\\": \\\"Jeonbuk Hyundai Motors FC\\\", \\\"away\\\": \\\"Daejeon Hana Citizen\\\", \\\"score\\\": \\\"0-0\\\", \\\"score_raw\\\": \\\"0 - 0\\\", \\\"home_score\\\": 0, \\n[V:S01-home] recent_pattern · 승패 home · 득점 up · 실점 down · 무게 0.7 · 최근 5경기 W W D W D · 득점 평균 2.4(보정 1.75) · 기준 팀당 1.3729골(대회 league:KL1) 대비 득점 많다 · 실점 평균 1.0(적다)\\n[V:S01-away] recent_pattern · 승패 away · 득점 down · 실점 none · 무게 0.7 · 최근 5경기 W D L W D · 득점 평균 1.6(보정 1.0) · 기준 팀당 1.3729골(대회 league:KL1) 대비 득점 적다 · 실점 평균 1.2(보통)\\n[V:S02] h2h_pattern · 승패 away · 득점 none · 실점 none · 무게 1.0 · 맞대결 10경기 Daejeon Hana Citizen 1승 4무 5패(상대 5승) · 평균 2.1골\\n[V:S03] home_field · 승패 home · 득점 none · 실점 none · 무게 0.4 · Daejeon Hana Citizen 홈 경기 — 홈 이점 **수치 없음**(대회 유형 `league:KL1` 의 표가 없다 · 다른 대회 숫자를 빌리지 않는다)\\n[V:IR02-home] def_absence · 승패 away · 득점 none · 실점 none · 무게 0.7 · Daejeon Hana Citizen 직전 선발 Anton Krivotsyuk, Jae-Hee Jeong 가 오늘 명단에 없다(결장)\\n[V:IR02-away] def_absence · 승패 home · 득점 none · 실점 none · 무게 0.7 · Jeonbuk Hyundai Motors FC 직전 선발 Young-Bin Kim 가 오늘 명단에 없다(결장)\\n[V:IR12-home] team_stats · 승패 home · 득점 none · 실점 none · 무게 0.7 · Daejeon Hana Citizen 무패 5경기\\n[S] 양상 접전 — 2골 이하 54% · 4골 이상 19% · 2골 차 이상 19% · 한 골 안 81%\\n[P] 우리 확률 홈 38% · 무 27% · 원정 35%\\n[D] 방향 판정 방향: **반반**(0.15 이상 앞세운 열이 2개 미만) — 기울기: 기준 홈 38%/원정 34% · 우리 홈 38%/원정 35%\\n[Q:A] 3-2 · 2-1 무게 1.8759\\n[Q:B] 1-2 · 1-3 무게 1.7506\\n[Q:C] 0-1 · 1-2 무게 1.7506\\n[Q:D] 1-0 · 2-0 무게 1.8759\\n[Q:E] 1-1 · 0-0 무게 2.713\\n[Q:F] 3-1 무게 0.134\\n\\n## 논평 문장\\n0. 맞대결 10경기에서 대전이 1승 4무 5패로 전북에 5배 밀렸고 경기당 평균 2.1골에 그쳐, 상성 자체는 전북 쪽으로 기울어 있으면서도 총득점은 낮게 묶여 왔다.\\n1. 여기에 양 팀 모두 수비 자원을 한 자리씩 잃어, 전북은 Young-Bin Kim이, 대전은 Anton Krivotsyuk과 Jae-Hee Jeong이 오늘 명단에 없어 서로 뒷문이 완전하지 않다.\\n2. 그래도 대전은 무패 5경기 흐름을 타고 있어 홈에서 쉽게 무너지지 않고, 전북의 맞대결 우위가 그대로 반복되기도 어려운 맞물림이다.\\n3. 결국 어느 쪽도 문턱을 넘지 못하는 접전으로, 2골 이하 쪽 무게가 가장 두껍고 한 골 안에서 승부가 갈리는 그림이다.\\n4. [예상 흐름 · **예측**] 전반은 서로 탐색하며 낮게 깔리고, 맞대결에서 5배 우위인 전북이 후반 결정적 한 방을 노리지만 대전의 무패 흐름이 버티며 한 골 안 접전으로 끝난다.\", \"role\": \"user\"}], \"model\": \"solar-pro4\", \"reasoning_effort\": \"minimal\", \"response_format\": {\"json_schema\": {\"name\": \"out\", \"schema\": {\"additionalProperties\": false, \"description\": \"🔴 구조화 출력 — 최상위 배열은 스키마가 못 받는다(§4).\", \"properties\": {\"lines\": {\"items\": {\"additionalProperties\": false, \"description\": \"🔴 문장 하나에 대한 **검열자 판정**(Solar). ⚠️ 새 사실을 쓰지 않는다.\", \"properties\": {\"fact_ref\": {\"title\": \"Fact Ref\", \"type\": \"string\"}, \"index\": {\"title\": \"Index\", \"type\": \"integer\"}, \"note\": {\"title\": \"Note\", \"type\": \"string\"}, \"verdict\": {\"enum\": [\"ok\", \"contradicts\", \"unsupported\", \"overclaim\"], \"title\": \"Verdict\", \"type\": \"string\"}}, \"required\": [\"index\", \"verdict\", \"fact_ref\", \"note\"], \"title\": \"AuditLine\", \"type\": \"object\"}, \"title\": \"Lines\", \"type\": \"array\"}}, \"required\": [\"lines\"], \"title\": \"AuditOut\", \"type\": \"object\"}, \"strict\": true}, \"type\": \"json_schema\"}, \"temperature\": 0.0}",
+ "recorded_at": "2026-10-09T05:22:33.313658+00:00",
+ "id": "ba757043-69a4-4619-be8c-ec4282a7bb31",
+ "object": "chat.completion",
+ "created": 1791523353,
+ "model": "solar-pro4-260806",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "{\"lines\":[{\"index\":0,\"verdict\":\"ok\",\"fact_ref\":\"[V:S02]\",\"note\":\"10경기 1승4무5패·평균2.1골 일치\"},{\"index\":1,\"verdict\":\"ok\",\"fact_ref\":\"[V:IR02-home][V:IR02-away]\",\"note\":\"양팀 수비자원 결장 사실 일치\"},{\"index\":2,\"verdict\":\"ok\",\"fact_ref\":\"[V:IR12-home][V:S02]\",\"note\":\"대전 무패5경기·전북 맞대결 우위\"},{\"index\":3,\"verdict\":\"ok\",\"fact_ref\":\"[S]\",\"note\":\"2골이하54%·한골안81% 접전\"},{\"index\":4,\"verdict\":\"ok\",\"fact_ref\":\"\",\"note\":\"예측 흐름, 사실과 반대 없음\"}]}"
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 1296,
+  "completion_tokens": 182,
+  "total_tokens": 1478,
+  "prompt_tokens_details": {
+   "cached_tokens": 0,
+   "audio_tokens": 0
+  },
+  "completion_tokens_details": {
+   "reasoning_tokens": 0,
+   "audio_tokens": 0,
+   "accepted_prediction_tokens": 0,
+   "rejected_prediction_tokens": 0
+  }
+ },
+ "system_fingerprint": null
+}

@@ -240,7 +240,11 @@ def facts_catalog(card: Card) -> dict[str, dict]:
                        ("실점", "conceded_avg")):
             if box.get(k) is not None:
                 bits.append(f"{lab} {box[k]}")
-        out[f"FORM:{side}"] = {"kind": "form", "text": f"{nm} " + " · ".join(bits)}
+        # 🔴 **수치가 없으면 싣지 않는다** — 이름만 든 사실은 글이 못 된다(#3:
+        #    못 잰 칸은 블록 1 이 이름으로 적는다 · 여기서 빈 글을 만들지 않는다)
+        if any(c.isdigit() for c in " ".join(bits)):
+            out[f"FORM:{side}"] = {"kind": "form",
+                                   "text": f"{nm} " + " · ".join(x for x in bits if x)}
         if box.get("rest_days") is not None:
             out[f"REST:{side}"] = {"kind": "fatigue",
                                    "text": f"{nm} 휴식 {box['rest_days']}일"}
@@ -289,10 +293,21 @@ def player_pool(card: Card) -> set[str]:
     for v in (card.variables or []):
         if v.target:
             out.add(str(v.target))
-        # 🔴 결장 변수는 claim 에 이름을 여럿 적는다(`A, B 가 오늘 명단에 없다`)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **변수 claim 에서 이름을 뽑는다**(실사고 2026-10-09)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 종전에는 claim 을 `·` 로 쪼개 **조각째** 담고 40자 상한을 뒀다.
+        #     🔴 `"Daejeon Hana Citizen 직전 선발 Anton Krivotsyuk"` 은 **45자**라
+        #        버려졌고, 그래서 검열 (l) 이 `Anton Krivotsyuk` 을 *"없는 선수"*
+        #        로 잡았다 — **거짓 위반**이다.
+        #  🔴 이제 이름 모양으로 **뽑는다**(`s9_audit._names_in` 과 같은 그물).
+        from app.core.stages.s9_audit import _names_in
+        out |= set(_names_in(str(v.claim or "")))
+        # ⚠️ 한글 이름은 조사가 붙어 그물에 안 걸린다 — 조각도 **함께** 담는다
         for piece in str(v.claim or "").replace(",", " · ").split("·"):
             said = piece.strip()
-            if 2 <= len(said) <= 40 and any(c.isalpha() for c in said):
+            if 2 <= len(said) <= 80 and any(c.isalpha() for c in said):
                 out.add(said)
     return {x for x in out if x}
 
@@ -302,8 +317,65 @@ def reason_text(card: Card) -> str:
     said = card.reason
     if said is None or not said.sentences:
         return template_reason(card)
-    out = " ".join(str(x.text).strip() for x in said.sentences if x.text)
-    return _cap(out, CAP_REASON)
+    box = facts_catalog(card)
+    rows = [(str(x.text).strip(),
+             {str((box.get(str(f)) or {}).get("kind") or "")
+              for f in (x.fact_refs or [])} & set(SPECIFIC_KINDS))
+            for x in said.sentences if str(x.text).strip()]
+    return join_cap(rows, CAP_REASON)
+
+
+#: 🔴 §4(i) 가 세는 **고유 사실의 종류** — 줄일 때도 이 종류를 지킨다
+SPECIFIC_KINDS: tuple[str, ...] = ("player", "absence", "rank", "h2h", "form")
+
+
+def join_cap(rows: list[tuple[str, set[str]]], cap: int) -> str:
+    """🔴🔴 문장들을 상한 안에 담는다 — **종류가 겹치는 문장부터** 버린다.
+
+    `rows` 는 `(문장, 그 문장이 든 사실 종류)` 다.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 **무엇을 지키나** — ① 첫 문장 ② 마지막 문장 ③ **사실 종류의 다양성**
+    ══════════════════════════════════════════════════════════════════
+
+    ⚠️ 실사고 2026-10-09(둘): ① 꼬리를 자르니 **방향을 맺는 마지막 문장**이 잘렸다
+       (§3 이 못 박은 자리 · 검열 (k) 가 본다). ② 그래서 가운데를 버리게 고치니
+       이번엔 **맞대결 문장**이 날아갔다 — §6 이 대전–전북에서 요구한 셋 중 하나다.
+    🔴 그래서 버릴 문장을 **종류로** 고른다: 그 문장을 빼도 **남은 문장들이 같은
+       종류를 들고 있는** 문장부터 버린다. ⚠️ 버렸다는 사실은 글자로 남긴다(#3).
+    """
+    rows = [(t, k) for t, k in rows if t]
+    if not rows:
+        return ""
+    if len(" ".join(t for t, _ in rows)) <= cap:
+        return " ".join(t for t, _ in rows)
+    keep = list(rows)
+    dropped = 0
+    while len(keep) > 2 and len(" ".join(t for t, _ in keep)) > cap:
+        # 🔴 가운데 후보들 중 **빼도 종류가 안 줄어드는** 문장을 고른다
+        mid = list(range(1, len(keep) - 1))
+        best, best_loss = None, None
+        for i in mid:
+            others: set[str] = set()
+            for j, (_t, k) in enumerate(keep):
+                if j != i:
+                    others |= k
+            loss = len(keep[i][1] - others)      # 이 문장만 가진 종류 수
+            if best_loss is None or loss < best_loss:
+                best, best_loss = i, loss
+        keep.pop(best if best is not None else len(keep) // 2)
+        dropped += 1
+    said = " ".join(t for t, _ in keep)
+    if dropped:
+        said += f" (문장 {dropped}개는 길어서 `📖 자세히` 로 넘겼다)"
+    if len(said) <= cap:
+        return said
+    # ⚠️ 두 문장만 남아도 넘치면 **첫 문장만** 자른다(마지막은 그대로 둔다)
+    tail = keep[-1][0]
+    room = cap - len(tail) - 1
+    if room > 40:
+        return _cap(keep[0][0], room) + " " + tail
+    return _cap(tail, cap)
 
 
 def template_reason(card: Card) -> str:
@@ -328,9 +400,62 @@ def template_reason(card: Card) -> str:
     if not picked:
         return ("이 경기의 고유 사실을 하나도 못 받았다 — 이유 문단을 쓰지 않는다"
                 "(블록 1 의 사유를 보라).")
-    head = "·".join(picked)
-    return _cap(f"코드 템플릿 — {head}. 방향은 {direction_words(card)} 다.",
-                CAP_REASON)
+    return _cap(" ".join(template_lines(card)[0]), CAP_REASON)
+
+
+def plain(said: str) -> str:
+    """🔴 사실 글에서 **마크다운·군더더기를 뺀다** — 템플릿 문장에 쓸 꼴.
+
+    ⚠️ 사실 글은 카드 블록용으로 `**굵게**` 와 `·` 를 쓴다 — 문단에 그대로 넣으면
+       글이 아니라 표처럼 읽힌다.
+    """
+    out = " ".join(str(said or "").replace("**", "").split())
+    return out.rstrip(" ·,.")
+
+
+def template_lines(card: Card) -> tuple[list[str], list[list[str]]]:
+    """🔴🔴 **코드 템플릿 — 세 문장**(§4 마지막 줄 *"핵심 사실 셋을 고정 틀에"*).
+
+    `(문장들, 문장별 fact_refs)`.
+
+    🔴 **세 문장**이어야 한다 — 종전 템플릿은 한 문장이라 검열 (i)(문장 3~5개)를
+       **스스로 어겼다**(실측 2026-10-09: 템플릿이 다시 위반으로 잡혔다).
+    ⚠️ 종류가 다른 사실을 고른다 — 그것이 (i) 구체성이 세는 것이다.
+    """
+    box = facts_catalog(card)
+    want = ("absence", "rank", "h2h", "form", "player", "fatigue")
+    rows: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for kind in want:
+        for fid, row in box.items():
+            if row["kind"] != kind or kind in seen:
+                continue
+            text = plain(row["text"])
+            # ⚠️ **속 빈 사실은 뺀다** — 팀 이름만 남은 글은 문장이 안 된다
+            #    (실측: 폼을 못 받은 경기의 `FORM:home` 이 *"South Korea 최근5"*)
+            body = text
+            for nm in (card.match.home_name, card.match.away_name):
+                body = body.replace(nm, "")
+            if len(body.strip(" ·-—")) < 8:
+                continue
+            rows.append((fid, text))
+            seen.add(kind)
+            break
+        if len(rows) >= 3:
+            break
+    # 🔴 **틀은 사실 글 + 마침표**다 — ` 다.` 를 붙이면 *"최근5 다."* 처럼
+    #    조각으로 읽힌다(실측 2026-10-09 한국–우즈벡 템플릿).
+    said = [(text if text.endswith((".", "!", "?")) else text + ".")
+            for _fid, text in rows]
+    refs = [[fid] for fid, _text in rows]
+    # 🔴 **마지막 문장은 방향으로 맺는다**(§3 마지막 줄 · 검열 (k))
+    tail = direction_words(card)
+    if tail == "반반":
+        said.append("세 열이 갈라지지 않아 **어느 쪽도 확신할 근거가 없다**.")
+    else:
+        said.append(f"우리 열은 {tail} 로 잡힌다.")
+    refs.append(["DIR"] if "DIR" in box else [])
+    return said, refs
 
 
 def _cap(said: str, n: int) -> str:

@@ -388,7 +388,9 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
 #  ⚠️ (i)~(l) 은 이 문단에만 쓴다. 총평은 (a)~(h)·(m) 이 본다(다른 글이다).
 
 #: 🔴 §4(i) — **종류가 다른 셋**. ⚠️ 같은 종류 셋은 하나로 센다
-SPECIFIC_KINDS = ("player", "absence", "rank", "h2h", "form")
+#  🔴 목록은 `layer1.SPECIFIC_KINDS` **하나**다(사본 금지 · #1) — 줄일 때도 같은
+#     종류를 지켜야 하므로 두 곳이 같은 값을 봐야 한다.
+from app.core.layer1 import SPECIFIC_KINDS  # noqa: E402
 #: 🔴 §4(i) — 최소 개수
 NEED_KINDS = 3
 

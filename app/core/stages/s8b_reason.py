@@ -104,17 +104,6 @@ def template(card: Card) -> ReasonPara:
     """
     from app.core import layer1
     from app.core.schema import ReasonLine
-    box = layer1.facts_catalog(card)
-    want = ("absence", "rank", "h2h", "form", "player")
-    refs: list[str] = []
-    seen: set[str] = set()
-    for kind in want:
-        for fid, row in box.items():
-            if row["kind"] == kind and kind not in seen:
-                refs.append(fid)
-                seen.add(kind)
-                break
-        if len(refs) >= 3:
-            break
+    said, refs = layer1.template_lines(card)
     return ReasonPara(sentences=[
-        ReasonLine(text=layer1.template_reason(card), fact_refs=refs)])
+        ReasonLine(text=t, fact_refs=r) for t, r in zip(said, refs)])

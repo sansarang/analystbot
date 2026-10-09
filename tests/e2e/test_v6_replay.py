@@ -141,8 +141,11 @@ def card(replaying) -> Card:
                            ours=layers.get("ours"))
         layers.update(pipeline._comment_layers(out, got_shape))
         layers["board_source"] = "user_board"
-        return pipeline.card_of(ref, facts, variables, hypo, said, state=state,
-                                layers=layers)
+        got_card = pipeline.card_of(ref, facts, variables, hypo, said,
+                                    state=state, layers=layers)
+        # 🔴🔴 **1겹 이유 문단**(지시 2026-10-09(3차)) — 라이브 입구와 **같은 순서**
+        #    여야 재생이 재생이다(`pipeline.analyze` 도 카드 뒤에 이것을 부른다).
+        return pipeline.with_reason(got_card, state=state)
 
     got = asyncio.run(_go())
     # 🔴 **비용 0** — 재생은 지갑에 닿지 않는다(§7)
@@ -730,3 +733,109 @@ def test_불변식30_카드의_논평은_검열_통과본이거나_템플릿이�
         assert word not in text, f"🔴 1겹 카드에 `{word}` 가 나갔다"
     # 🔴 `/디버그` 에는 나간다
     assert "[검열]" in render.debug_text(card)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **1겹 카드** — 사용자 지시 2026-10-09(3차) §1·§2·§4·§5
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_1겹_카드가_새_순서와_상한을_지킨다(card):
+    """🔴🔴 §1·§5 — 돌연변이: 블록 순서를 되돌린다 · 상한을 뺀다.
+
+    🔴 이 고정물은 **s1 을 건너뛴다**(`_ref()` 가 녹화 당시 `MatchRef` 를 글자로
+       든다) — 지난 경기는 s1 의 창 검사가 벽시계로 거부하므로 그 길뿐이다.
+    """
+    from app.core import layer1, render
+    said = render.layer1_text(card)
+    # ── §1 순서 — 머리 두 줄 뒤에 헤드라인·이유가 **먼저** 온다
+    lines = [x for x in said.splitlines() if x.strip()]
+    assert lines[0].startswith("⚽"), lines[0]
+    assert lines[1].startswith("📋"), lines[1]
+    assert lines[2].startswith("【헤드라인】"), lines[2]
+    assert lines[3].startswith("【이유】"), lines[3]
+    # ⚠️ `⚠️` 는 **두 코드포인트**다(U+26A0 U+FE0F) — `x[0]` 으로 세면 깨진다
+    want = ("📊", "🎯", "🎯", "⚠")
+    got = tuple(x[:1] for x in lines[4:4 + len(want)])
+    assert got == want, got
+    assert lines[-1].startswith("[📖 자세히]"), lines[-1]
+    # ── §5 상한
+    assert len(said) <= layer1.CAP_ALL, len(said)
+    assert len(layer1.reason_text(card)) <= layer1.CAP_REASON
+    # ── §2 단정어 금지 — 1겹 **전체**에 없다
+    hit = [w for w in layer1.SURE_WORDS if w in said]
+    assert not hit, hit
+
+
+def test_1겹_헤드라인은_코드가_정한다(card):
+    """🔴 §2 — 돌연변이: LLM 글로 방향을 말한다 · 문턱을 지운다."""
+    from app.core import layer1
+    said = layer1.direction_words(card)
+    ours = card.our_prob
+    if ours is None:
+        assert "기준이 없다" in said, said
+        return
+    gap = abs(ours.home - ours.away)
+    if gap >= layer1.LEAD_STRONG:
+        assert said.endswith("우세") and "근소" not in said, (said, gap)
+    elif gap >= layer1.LEAD_SLIGHT:
+        assert said.endswith("근소 우세"), (said, gap)
+    else:
+        assert said == "반반", (said, gap)
+    # 🔴 걸지 여부 — 네 갈래 중 하나다
+    bet = layer1.bet_words(card)
+    assert (bet in ("이미 시작 — 예측 아님", "보드를 주면 판정",
+                    "이 경기는 걸지 않는다")
+            or any(str(e.grade) in bet for e in layer1.graded(card))), bet
+
+
+def test_1겹_이유_문단이_검열을_지난다(card):
+    """🔴🔴 §3·§4 — 돌연변이: 검열 (i)~(l) 을 끄면 일반론이 통과한다."""
+    from app.core import layer1
+    from app.core.stages import s9_audit
+    assert card.reason is not None, "이유 문단이 없다"
+    bad = s9_audit.reason_check(card.reason, card=card)
+    assert not bad, bad
+    assert card.reason_audit in ("통과", "재작성 후 통과", "템플릿"), \
+        card.reason_audit
+    # 🔴 문장마다 `fact_refs` 가 **카드 사실 id** 여야 한다
+    box = layer1.facts_catalog(card)
+    for line in card.reason.sentences:
+        assert line.fact_refs, f"근거 없는 문장: {line.text[:40]}"
+        unknown = [r for r in line.fact_refs if str(r) not in box]
+        assert not unknown, (unknown, line.text[:40])
+
+
+def test_1겹_검열이_일반론과_단정과_없는_선수를_잡는다(card):
+    """🔴🔴 §4 (i)~(l) — **잡는지** 본다(통과만 보면 검사가 죽어도 모른다)."""
+    from app.core.schema import CommentLine, Commentary, ReasonLine, ReasonPara
+    from app.core.stages import s9_audit
+    # (j) 범용 문장 — 고유 사실이 없다
+    flat = ReasonPara(sentences=[
+        ReasonLine(text="측면 전환이 살아나면 유리하다.", fact_refs=[]),
+        ReasonLine(text="역습이 통하면 흐름을 가져간다.", fact_refs=[]),
+        ReasonLine(text="어느 쪽도 확신할 근거가 없다.", fact_refs=[])])
+    bad = s9_audit.reason_check(flat, card=card)
+    assert any(x.startswith("(j)") for x in bad), bad
+    assert any(x.startswith("(i)") for x in bad), bad
+    # (k) 단정어
+    sure = ReasonPara(sentences=[
+        ReasonLine(text="홈이 반드시 승리할 것이다.", fact_refs=["DIR"]),
+        ReasonLine(text="두 번째 문장.", fact_refs=["DIR"]),
+        ReasonLine(text="어느 쪽도 확신할 근거가 없다.", fact_refs=["DIR"])])
+    bad2 = s9_audit.reason_check(sure, card=card)
+    assert any(x.startswith("(k)") for x in bad2), bad2
+    # (l) 없는 선수
+    ghost = ReasonPara(sentences=[
+        ReasonLine(text="Lionel Messi 가 중앙을 흔든다.", fact_refs=["DIR"]),
+        ReasonLine(text="두 번째 문장.", fact_refs=["DIR"]),
+        ReasonLine(text="어느 쪽도 확신할 근거가 없다.", fact_refs=["DIR"])])
+    bad3 = s9_audit.reason_check(ghost, card=card)
+    assert any(x.startswith("(l)") for x in bad3), bad3
+    # 🔴 **(m) 은 총평이 본다** — (i)~(l) 과 섞이지 않는다
+    got = Commentary(title="접전",
+                     reasons=[CommentLine(text="격차가 좁게 유지돼 왔다",
+                                          var_ids=[])],
+                     flow="", score_range=[])
+    assert isinstance(s9_audit.h2h_direction_check(
+        got, ref=card.match, facts=card.facts), list)
