@@ -322,7 +322,20 @@ def _b3(card: Card) -> str:
         #       🔴 보이는 것도 **쓰는 것**이다 — 사람이 그 수로 판단한다.
         ok3 = (isinstance(got, (list, tuple)) and len(got) == 3
                and (n is None or sum(int(x) for x in got) == int(n)))
-        if ok3:
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **다시 센 수가 있으면 그것을 적는다**(사용자 지시 2026-10-09 ①)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  🔴 s5 가 집계 불일치를 만나면 **목록에서 다시 세어** 이 칸에 넣는다.
+        #     ⚠️ 그러면 블록 3 도 **같은 수**를 적어야 한다 — 다른 수를 적으면
+        #        사람이 어느 쪽을 믿을지 모른다(#3 조용한 0 금지의 형제 문제).
+        again = dict(h.get("recounted") or {})
+        if again.get("n"):
+            bits.append(f"{again['w']}승 {again['d']}무 {again['l']}패")
+            bits.append(f"표본 {again['n']}경기(**목록에서 다시 셌다** · "
+                        f"{again.get('basis') or '홈'} 기준)")
+            n = None
+        elif ok3:
             bits.append(f"{got[0]}승 {got[1]}무 {got[2]}패")
         elif isinstance(got, (list, tuple)) and len(got) == 3:
             bits.append(f"⚠️ **전적 안 적는다**(집계 불일치 — 합 "
@@ -334,6 +347,17 @@ def _b3(card: Card) -> str:
         if h.get("sample_weight") is not None:
             bits.append(f"표본 무게 {h['sample_weight']}")
         out.append("- 맞대결 — " + (" · ".join(bits) or "못 쟀다"))
+        # 🔴🔴 **올 시즌 맞대결은 따로 적는다**(같은 지시 ① 둘째 줄)
+        #    > 올 시즌 맞대결은 **따로 표시**(이 경우 0-1·0-0)
+        #    ⚠️ 창(최근 10경기)에 올 시즌이 섞여 있어도 **사람은 올 시즌을 따로**
+        #       본다 — 같은 감독·같은 명단이 뛴 경기다.
+        season = list(h.get("season_matches") or [])
+        if season:
+            said = " · ".join(f"{m.get('date')} {m.get('home')} "
+                              f"{m.get('score')} {m.get('away')}" for m in season)
+            out.append(f"- 올 시즌 맞대결 {len(season)}경기 — {said}")
+        elif h.get("season_checked"):
+            out.append("- 올 시즌 맞대결 — ⬜ **없다**(올 시즌 첫 대결이다)")
     return "\n".join(out)
 
 

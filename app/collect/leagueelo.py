@@ -90,6 +90,97 @@ def compute(matches: list[dict], *, k: float, start: float
     return {t: round(v, 2) for t, v in rate.items()}, rows
 
 
+def fotmob_table() -> dict:
+    """🔴 fotmob 으로 받을 리그 표 — `config/league_elo.yaml` 의 `fotmob` 칸."""
+    return dict(table().get("fotmob") or {})
+
+
+async def fetch_fotmob(net, comp: str, *, state=None
+                       ) -> tuple[list[dict], str]:
+    """🔴🔴 **fotmob 결과로 그 리그를 받는다**(사용자 지시 2026-10-09 ③).
+
+    > K리그1·J1 자체 Elo: football-data 에 **없는 리그**는 fotmob 경기 결과로
+    > 자체 Elo 를 굴린다.
+
+    `(football-data 와 같은 꼴의 경기들, 사유)`.
+
+    🔴 **꼴을 맞춰 돌려준다** — `_rows()`·`compute()` 를 **그대로** 쓴다(사본 금지
+       · #1). 그래서 Elo 계산 규칙이 리그마다 갈리지 않는다.
+    ⚠️ 끝난 경기만 싣는다(`finished` · 스코어가 있는 줄).
+    🔴 시즌은 주소 인자다 — 실측 2026-10-09: `?season=2025` 가 228경기를 줬고
+       인자 없이는 **현재 시즌**(198경기 · 끝난 180)을 준다.
+    """
+    from app.collect import fotmob as fm
+    box = fotmob_table()
+    said = dict((box.get("competitions") or {}).get(comp) or {})
+    lid, slug = said.get("id"), str(said.get("slug") or "")
+    if not lid or not slug:
+        return [], f"`{comp}` 가 fotmob 표에 없다"
+    seasons = [str(x) for x in (box.get("seasons") or [])]
+    out: list[dict] = []
+    hows: list[str] = []
+    for season in seasons:
+        url = f"{fm.BASE}/leagues/{lid}/matches/{slug}"
+        got = await net.get(url, params={"season": season})
+        if not getattr(got, "ok", False):
+            hows.append(f"{season}: HTTP {getattr(got, 'status', '?')}")
+            continue
+        j = fm.payload(getattr(got, "text", "") or "")
+        if not j:
+            hows.append(f"{season}: 페이로드가 없다")
+            continue
+        rows = _fotmob_matches(j)
+        out += rows
+        hows.append(f"{season}: {len(rows)}경기")
+    # 🔴 **같은 경기가 두 번 올 수 있다** — 시즌 인자가 안 먹는 해는 현재 시즌을
+    #    되돌려준다(실측: 인자 없는 호출과 겹친다). ⚠️ 겹치면 Elo 가 그 경기를 두
+    #    번 세어 등급이 부풀어 오른다 → **경기 번호로 하나만 남긴다**.
+    seen: set[str] = set()
+    uniq = []
+    for m in out:
+        mid = str(m.get("id") or "")
+        if mid and mid in seen:
+            continue
+        if mid:
+            seen.add(mid)
+        uniq.append(m)
+    if len(uniq) != len(out):
+        hows.append(f"중복 {len(out) - len(uniq)}경기 뺐다")
+    if state is not None:
+        state.note(f"리그Elo(fotmob) `{comp}` {len(uniq)}경기 — {' · '.join(hows)}")
+    return uniq, " · ".join(hows)
+
+
+def _fotmob_matches(j: dict) -> list[dict]:
+    """🔴 fotmob 리그 페이지 → **football-data 꼴**의 끝난 경기들.
+
+    ⚠️ 칸 이름을 football-data 에 맞춘다(`utcDate`·`score.fullTime`·`homeTeam`) —
+       그래야 `_rows()` 가 분기 없이 읽는다(#1 사본 금지 · #2 배선).
+    """
+    import re as _re
+    box = ((j.get("props") or {}).get("pageProps") or {})
+    rows = ((box.get("fixtures") or {}).get("allMatches")
+            or ((box.get("overview") or {}).get("matches") or {}).get("allMatches")
+            or [])
+    out = []
+    for m in rows:
+        if not isinstance(m, dict):
+            continue
+        st = m.get("status") or {}
+        if not st.get("finished") or st.get("cancelled"):
+            continue
+        got = _re.match(r"\s*(\d+)\s*-\s*(\d+)\s*$", str(st.get("scoreStr") or ""))
+        if not got:
+            continue
+        out.append({"id": str(m.get("id") or ""),
+                    "utcDate": str(st.get("utcTime") or ""),
+                    "score": {"fullTime": {"home": int(got.group(1)),
+                                           "away": int(got.group(2))}},
+                    "homeTeam": {"name": str((m.get("home") or {}).get("name") or "")},
+                    "awayTeam": {"name": str((m.get("away") or {}).get("name") or "")}})
+    return out
+
+
 def path_of(comp: str, *, when: date | None = None) -> Path:
     """🔴 그 대회의 **그날** 파일. ⚠️ 날짜가 바뀌면 새로 받는다(하루 1회 갱신)."""
     day = (when or datetime.now(timezone.utc).date()).isoformat()
@@ -169,7 +260,13 @@ async def refresh(net, *, when: date | None = None, state=None
     seasons = [str(s) for s in (box.get("seasons") or [])]
     out: dict[str, dict] = {}
     rows: list[dict] = []
-    for comp in [str(c) for c in (box.get("competitions") or [])]:
+    # 🔴🔴 **통로가 둘이다**(사용자 지시 2026-10-09 ③) — football-data 가 주는
+    #    리그와, 그것이 **안 주는** 리그(fotmob 으로 받는다). ⚠️ 표가 어느 쪽인지
+    #    말한다 — 코드에 리그 이름을 박지 않는다.
+    via_fotmob = {str(c) for c in
+                  ((fotmob_table().get("competitions") or {}).keys())}
+    for comp in ([str(c) for c in (box.get("competitions") or [])]
+                 + sorted(via_fotmob)):
         got = load(comp, when=when)
         if got.get("ratings"):
             out[comp] = got
@@ -178,14 +275,23 @@ async def refresh(net, *, when: date | None = None, state=None
                 state.note(f"리그Elo `{comp}` 그날 파일 적중 — "
                            f"{len(got['ratings'])}팀")
             continue
-        matches, how = await fetch(net, comp, seasons, state=state)
+        if comp in via_fotmob:
+            matches, how = await fetch_fotmob(net, comp, state=state)
+        else:
+            matches, how = await fetch(net, comp, seasons, state=state)
         if not matches:
             if state is not None:
                 state.note(f"리그Elo `{comp}` 못 받았다 — {how}")
             continue
         rate, fit_rows = compute(matches, k=k, start=start)
         said = {"competition": comp, "ratings": rate, "fit_rows": fit_rows,
-                "matches": len(matches), "seasons": seasons, "k": k,
+                "matches": len(matches),
+                # 🔴 어느 통로로 받았는지 **파일에 남긴다** — 카드의 출처 줄이
+                #    이것을 적는다(`football-data` 와 `fotmob` 을 섞어 말하지 않는다)
+                "via": ("fotmob" if comp in via_fotmob else "football-data"),
+                "seasons": ([str(x) for x in (fotmob_table().get("seasons") or [])]
+                            if comp in via_fotmob else seasons),
+                "k": k,
                 "start": start, "built_at": datetime.now(timezone.utc).isoformat()}
         save(comp, said, when=when)
         out[comp] = said

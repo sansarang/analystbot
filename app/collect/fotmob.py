@@ -728,6 +728,19 @@ def parse_h2h(j: dict, q: Question, *, url: str, when) -> list[Fact]:
     #  🔴 창 안의 경기 수로 weight 가 정해진다 — 단계 5 가 그 값을 쓴다.
     win = league.h2h_window(rows)
     used = win or rows
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **올 시즌 맞대결은 따로 센다**(사용자 지시 2026-10-09 ①)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 올 시즌 맞대결은 **따로 표시**(이 경우 0-1·0-0)
+    #
+    #  🔴 **창이 아니라 전체 목록**에서 고른다 — 창(최근 10경기)이 올 시즌을
+    #     자를 수 있다(실측 2026-10-09 대전–전북: 전체 25경기 중 올 시즌 2경기).
+    #  ⚠️ 시즌 경계는 **표**가 든다(`league.season_cut_month`) — 코드에 달을
+    #     안 박는다. 대회 열쇠가 없으면 역년이다.
+    season, year = league.h2h_season(rows, when=(when.date().isoformat()
+                                                 if when else ""),
+                                     comp=str(getattr(q, "league", "") or ""))
     tot = sum((m["home_score"] or 0) + (m["away_score"] or 0) for m in used
               if m.get("home_score") is not None)
     n_scored = sum(1 for m in used if m.get("home_score") is not None)
@@ -747,6 +760,10 @@ def parse_h2h(j: dict, q: Question, *, url: str, when) -> list[Fact]:
                         "matches": used, "count": len(used),
                         "all_games": len(rows),
                         "sample_weight": league.h2h_weight(len(used)),
+                        # 🔴 올 시즌 맞대결(지시 ①) — `season_checked` 는
+                        #    *"봤는데 없다"* 와 *"안 봤다"* 를 가른다(#3)
+                        "season_matches": season, "season_year": year,
+                        "season_checked": bool(year),
                         "window_avg_goals": (round(tot / n_scored, 3)
                                              if n_scored else None),
                         "summary": h.get("summary")},
@@ -1441,12 +1458,35 @@ def is_table_page(url: str) -> bool:
 
 
 def _tables(j: dict) -> list[dict]:
-    """응답의 표들. 🔴 **몇 개인지 가정하지 않는다** — 콘퍼런스가 여럿일 수 있다."""
+    """응답의 표들. 🔴 **몇 개인지 가정하지 않는다** — 콘퍼런스가 여럿일 수 있다.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **꼴이 둘이다**(사용자 지시 2026-10-09 ② · 실측으로 찾았다)
+    ══════════════════════════════════════════════════════════════════
+
+    | 꼴 | 어디 | 어느 리그 |
+    |---|---|---|
+    | 여러 조 | `table[].data.tables[]` | 네이션스리그(네 조) · 월드컵 예선 |
+    | **조 하나** | `table[].data` **자체** | 🔴 **K리그1 · J1 · 대부분의 단일 표 리그** |
+
+    ⚠️ 실사고 2026-10-09(대전–전북): 종전 코드는 `data.tables` **하나만** 봤다.
+       K리그1 표 페이지는 `200` 이고 일정 63건까지 읽혔는데 `_tables` 가 **0** 을
+       돌려줘 카드가 *"순위표가 없다"* 로 나왔다 — **등록 리그인데 매번 빠졌다.**
+    🔴 받아서 확인했다: `props.pageProps.table[0].data` 가 `leagueName`·`legend`·
+       `table.all`(12줄)을 **직접** 든다. `data.tables` 는 `None` 이다.
+    """
     out = []
     for blk in ((_page(j).get("table") or []) or []):
-        for tb in (((blk.get("data") or {}).get("tables")) or []):
-            if isinstance(tb, dict) and isinstance(tb.get("table"), dict):
-                out.append(tb)
+        box = blk.get("data") or {}
+        many = box.get("tables")
+        if many:
+            for tb in many:
+                if isinstance(tb, dict) and isinstance(tb.get("table"), dict):
+                    out.append(tb)
+            continue
+        # 🔴 조가 하나인 리그 — `data` 자체가 표다(`table.all` 이 줄을 든다)
+        if isinstance(box.get("table"), dict) and (box["table"].get("all")):
+            out.append(box)
     return out
 
 

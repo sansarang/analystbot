@@ -36,3 +36,38 @@ names:
   #    `comp_kind` 가 **대회 유형 열쇠**를 짧게 만들 수 있게 이름만 적는다.
   #    🔴 그 열쇠로 홈 이점 표(`S03.defaults`)를 찾는다 — MLS 실측값이 거기 있다.
   MLS: ["major league soccer", "mls"]
+  # 🔴🔴 **fotmob 결과로 Elo 를 굴리는 리그**(사용자 지시 2026-10-09 ③).
+  #    ⚠️ football-data 는 이 둘을 **안 준다**(실측 404) — 아래 `fotmob:` 표가
+  #       대신 받는다. 코드는 그 표의 열쇠와 **같아야 한다**.
+  KL1: ["k league 1", "k-league 1", "k리그1", "k리그 1"]
+  J1: ["j. league", "j1 league", "j1리그", "j리그1"]
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **fotmob 결과로 굴리는 리그** — 사용자 지시 2026-10-09 ③
+# ══════════════════════════════════════════════════════════════════
+#
+# > K리그1·J1 자체 Elo: football-data 에 **없는 리그**는 fotmob 경기 결과로
+# > 자체 Elo 를 굴린다.
+#
+# 🔴 왜 — football-data 무료 티어는 유럽·브라질만 준다(실측: K리그·J리그 404).
+#    그런데 fotmob 리그 페이지는 `fixtures.allMatches` 로 **그 시즌 전체**를
+#    스코어와 함께 준다(실측 2026-10-09: K리그1 2026 198경기·끝난 180 ·
+#    2025 228경기 전부). 결과가 있으면 Elo 는 **계산할 수 있다**.
+# ⚠️ `k`·`start` 는 위 football-data 리그와 **같은 값**을 쓴다 — 리그마다 다른
+#    수를 고르면 그 수를 우리가 재지 않은 것이 된다.
+# 🔴 `id`·`slug` 는 fotmob 주소의 조각이고 **받아서 확인한 값**이다(2026-10-09):
+#    K리그1 `9080/k-league-1` → `leagueName: "K League 1"` ·
+#    J1    `223/j-league`    → `leagueName: "J. League"`.
+# ⚠️ 실사고: 처음에 J1 을 `9134` 로 **추측해** 적었는데 그 번호는 **NWSL** 이었다.
+#    🔴 번호는 경기 페이지의 `content.table.parentLeagueId` 에서 읽는다(CLAUDE.md #4).
+fotmob:
+  seasons: ["2024", "2025", "2026"]
+  competitions:
+    KL1:
+      id: 9080
+      slug: k-league-1
+      name: K League 1
+    J1:
+      id: 223
+      slug: j-league
+      name: J. League

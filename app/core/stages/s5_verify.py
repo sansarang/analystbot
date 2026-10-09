@@ -811,6 +811,7 @@ def _side_of_avg(avg, share: float) -> str:
 def _ir_h2h(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
             state: RunState) -> list[Variable]:
     """IR02 — 맞대결. 🔴 **기록이 가리키는 쪽**이 주체다(동률이면 만들지 않는다)."""
+    from app import league
     box = dict(facts.h2h or {})
     got = box.get("summary")
     n = int(box.get("count") or 0)
@@ -829,14 +830,38 @@ def _ir_h2h(rid: str, row: dict, ref: MatchRef, facts: Facts, *,
     #    `summary` 는 fotmob 의 **전체 전적**(5-4-4 = 13)이다 — 두 창이 한 줄에
     #    섞여 있었다. ⚠️ 그 수로 방향을 정하면 창 밖 경기가 방향을 정하는 것이다.
     if w + d + lose != n:
-        said = (f"맞대결 집계 불일치 — 전적 {w}승 {d}무 {lose}패(합 "
-                f"{w + d + lose})인데 표본은 {n}경기다"
-                + (f" · 전체 {box['all_games']}경기" if box.get("all_games")
-                   else "")
-                + " → 🔴 **그 숫자를 쓰지 않는다**(창이 섞였다)")
-        state.drop(f"{rid}/h2h", DropReason.CONFLICT, said)
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **버리지 않는다 — 목록에서 다시 센다**(사용자 지시 2026-10-09 ①)
+        # ══════════════════════════════════════════════════════════════
+        #
+        # > 맞대결 집계 불일치일 때 **버리지 말고**, 경기 페이지의 맞대결 경기
+        # > 목록(날짜·스코어)을 **직접 세어 다시 만든다.**
+        #
+        # 🔴 왜 셀 수 있나 — `matches` 가 **창 안의 줄 전부**를 날짜·스코어와 함께
+        #    들고 있다(`fotmob.parse_h2h`). 종전 코드는 그것을 보고도 버렸다.
+        # ⚠️ 그래도 **못 세면** 버린다 — 스코어가 없는 자료(야구 일부)가 있다.
+        said0 = (f"맞대결 집계 불일치 — 전적 {w}승 {d}무 {lose}패(합 "
+                 f"{w + d + lose})인데 표본은 {n}경기다"
+                 + (f" · 전체 {box['all_games']}경기" if box.get("all_games")
+                    else ""))
+        counted = league.h2h_tally(list(box.get("matches") or []), ref.home_name)
+        if counted is None:
+            said = said0 + " → 🔴 **그 숫자를 쓰지 않는다**(스코어가 없어 셀 수 없다)"
+            state.drop(f"{rid}/h2h", DropReason.CONFLICT, said)
+            state.note(f"s5 {rid} — {said}")
+            return []
+        w, d, lose = counted
+        n = w + d + lose
+        said = (said0 + f" → 🔴 **목록에서 다시 셌다**(창 {n}경기 · "
+                f"{ref.home_name} 기준 {w}승 {d}무 {lose}패)")
         state.note(f"s5 {rid} — {said}")
-        return []
+        # 🔴 카드가 같은 수를 찍어야 한다 — 블록 3 이 `facts.h2h` 를 그대로 읽는다
+        #    (실측 2026-10-07: s5 가 버렸는데 블록 3 은 옛 수를 계속 찍었다).
+        try:
+            facts.h2h["recounted"] = {"w": w, "d": d, "l": lose, "n": n,
+                                      "basis": ref.home_name, "why": said0}
+        except (TypeError, AttributeError):
+            state.note(f"s5 {rid} — 다시 센 수를 facts 에 못 실었다(카드가 옛 수를 찍는다)")
     if w == lose:
         state.note(f"s5 {rid} — 맞대결이 {w}승 {d}무 {lose}패로 **동률**이다 "
                    f"(어느 쪽도 아니다 · 변수 안 만든다)")
