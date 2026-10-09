@@ -562,7 +562,11 @@ def test_이동에_쓰는_유형이_열뿐이다():
 
 
 def test_기준이_머금은_유형은_우리_열을_안_움직인다():
-    """🔴 ① — `recent_pattern`·`home_field`·`h2h` 와 ② 가 센 결장은 이동 0."""
+    """🔴 ① — `recent_pattern`·`home_field`·`h2h` 는 이동 0.
+
+    🔴 결장 계열은 **② 가 움직였을 때만** 0 이다(지시 2026-10-09 ③ — ② 가 못 쓰면
+       ③ 이 센다). ⚠️ 그 둘이 **동시에** 세면 이중 계산이다.
+    """
     from app.core import compare
     from app.core.schema import ProbTriple
     start = ProbTriple(home=0.5, draw=0.3, away=0.2)
@@ -576,10 +580,21 @@ def test_기준이_머금은_유형은_우리_열을_안_움직인다():
     with_adj, _ = compare.our_prob(None, start=start, variables=absent,
                                    adjusted=True)
     assert with_adj is not None and abs(with_adj.away - 0.2) < 0.005, with_adj
-    # ⚠️ ② 가 없으면 그 변수는 **움직이지도 않는다**(목록 밖이다)
-    без, _ = compare.our_prob(None, start=start, variables=absent,
-                              adjusted=False)
-    assert без is not None and abs(без.away - 0.2) < 0.005, без
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **②가 못 쓰면 ③이 센다**(사용자 지시 2026-10-09 ③)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > 라인업 보정 환산 계수가 없는 리그에서는 결장 계열 변수를 ③ 무게표로
+    # > 센다(②에 넘겼는데 ②가 **못 쓰면 0 이 되는 구멍**).
+    #
+    # ⚠️ 종전 계약은 *"② 가 없으면 그 변수는 움직이지도 않는다"* 였다 — 그것이
+    #    바로 구멍이었다(실측 2026-10-09 대전–전북: 결장 둘이 어디서도 안 세졌다).
+    # 🔴 **둘이 동시에 세지는 않는다** — 위 `adjusted=True` 줄이 그것을 지킨다.
+    moved, why2 = compare.our_prob(None, start=start, variables=absent,
+                                   adjusted=False)
+    assert moved is not None, why2
+    assert moved.away > 0.2 + 0.005, (moved, why2)
+    assert "def_absence" in why2 or "IR" in why2, why2
 
 
 def test_한_결과_이동이_로그오즈_0_5_를_넘지_않는다():
@@ -759,14 +774,21 @@ def test_경우의_수가_결과_아홉_칸을_센다():
     assert ok, "🔴 네이션스리그 동률 규칙이 확인 표시가 아니다"
     assert order[:2] == ["points", "h2h_points"], order
     cells = st.grid(_group_fixture(), home="Kazakhstan", away="Faroe Islands",
-                    order=order, other=("Moldova", "Slovakia"))
+                    order=order, others=[("Moldova", "Slovakia")])
     assert len(cells) == 9, len(cells)
     # 🔴 실측과 같은 수 — 카자흐가 이기고 몰도바가 지면 **2위(승격 PO)**
-    got = next(c for c in cells if c["ours"] == "home" and c["other"] == "away")
+    # 🔴 둘째 칸은 **그 경기의 말**이다(지시 2026-10-09 ①) — 이름이 실려 와야 한다
+    def _pick(ours: str, them: str) -> dict:
+        return next(c for c in cells if c["ours"] == ours
+                    and c["others"][0]["result"] == them)
+
+    assert cells[0]["others"][0]["home"] == "Moldova", cells[0]["others"]
+    assert cells[0]["others"][0]["away"] == "Slovakia", cells[0]["others"]
+    got = _pick("home", "away")
     assert got["ranks"]["Kazakhstan"] == 2
     assert got["zones"]["Kazakhstan"] == "Promotion qualification"
     # 🔴 비기면 4위다(구역 없음)
-    draw = next(c for c in cells if c["ours"] == "draw" and c["other"] == "home")
+    draw = _pick("draw", "home")
     assert draw["ranks"]["Kazakhstan"] == 4 and draw["zones"]["Kazakhstan"] == ""
 
 
@@ -781,7 +803,7 @@ def test_상태가_다섯_글자_중_하나다():
     order, _, _, _ = rules.tiebreak("UEFA Nations League")
     box = _group_fixture()
     cells = st.grid(box, home="Kazakhstan", away="Faroe Islands", order=order,
-                    other=("Moldova", "Slovakia"))
+                    others=[("Moldova", "Slovakia")])
     kz, why1 = st.state_of(cells, "Kazakhstan", is_home=True,
                            zones=box["zones"])
     fo, why2 = st.state_of(cells, "Faroe Islands", is_home=False,
@@ -2325,3 +2347,211 @@ def test_fotmob_로_받은_리그에_계수가_있고_출처를_속이지_않는
     src = pathlib.Path("app/core/stages/s2b_base.py").read_text(encoding="utf-8")
     assert 'f"football-data {comp} 자체 Elo"' not in src, "출처가 박혀 있다"
     assert '.get("via")' in src, "통로를 등급 파일에서 안 읽는다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 지시 2026-10-09(2차)** — 대전–전북 카드에서 나온 넷
+# ══════════════════════════════════════════════════════════════════
+
+
+def _kl1_table() -> dict:
+    """🔴 실측 2026-10-09 K리그1 표(31라운드 전) — 승점·일정 그대로."""
+    names = [("FC Seoul", 62), ("Ulsan HD FC", 47), ("Jeju SK", 46),
+             ("Jeonbuk Hyundai Motors FC", 44), ("Gangwon FC", 43),
+             ("Daejeon Hana Citizen", 40), ("Pohang Steelers", 40),
+             ("Incheon United", 39), ("FC Anyang", 38),
+             ("Gimcheon Sangmu", 33), ("Bucheon FC 1995", 32),
+             ("Gwangju FC", 15)]
+    rows = [{"rank": i, "name": n, "points": p, "played": 30,
+             "wins": 0, "draws": 0, "losses": 0,
+             "goals_for": 0, "goals_against": 0, "goal_diff": 0,
+             "zone": ("Championship playoff" if i <= 6
+                      else "Relegation qualification")}
+            for i, (n, p) in enumerate(names, start=1)]
+    fx = [{"round": "31", "home": "Daejeon Hana Citizen",
+           "away": "Jeonbuk Hyundai Motors FC", "finished": False},
+          {"round": "31", "home": "Incheon United",
+           "away": "Pohang Steelers", "finished": False},
+          {"round": "31", "home": "Gangwon FC",
+           "away": "Bucheon FC 1995", "finished": False},
+          {"round": "31", "home": "FC Seoul", "away": "Jeju SK",
+           "finished": False},
+          {"round": "31", "home": "Gimcheon Sangmu", "away": "FC Anyang",
+           "finished": False},
+          {"round": "31", "home": "Gwangju FC", "away": "Ulsan HD FC",
+           "finished": False}]
+    return {"group": "K League 1", "rows": rows, "fixtures": fx,
+            "zones": {"Championship playoff": 6,
+                      "Relegation qualification": 12}}
+
+
+def test_다른_경기_칸은_그_경기_팀_이름으로_적는다():
+    """🔴 ① — 돌연변이: 둘째 칸을 우리 팀 이름으로 푼다(종전 동작).
+
+    실사고 2026-10-09: 카드가 *"대전 승 | 대전 승"* 으로 찍었다 — 둘째 칸은
+    **인천–포항**의 말이어야 한다.
+    """
+    from app import rules
+    from app.core import standing as st
+    box = _kl1_table()
+    order, _, _, _ = rules.tiebreak("K-League 1")
+    cells = st.grid(box, home="Daejeon Hana Citizen",
+                    away="Jeonbuk Hyundai Motors FC", order=order,
+                    others=[("Incheon United", "Pohang Steelers")])
+    assert len(cells) == 9, len(cells)
+    one = cells[0]["others"][0]
+    assert one["home"] == "Incheon United" and one["away"] == "Pohang Steelers"
+    # 🔴 우리 팀 이름이 **둘째 칸에 섞이면** 안 된다
+    assert "Daejeon" not in one["home"] and "Daejeon" not in one["away"]
+
+
+def test_순위에_닿는_경기를_승점차로_고르고_뺀_것을_적는다():
+    """🔴 ① — 돌연변이: 첫 경기 하나만 쓴다 · 뺀 경기를 말없이 버린다.
+
+    🔴 사용자가 지목한 둘(인천–포항·강원–부천)이 **승점 차가 가장 작은 둘**이다:
+       포항 40(차 0) · 강원 43(차 1) · 제주 46·안양 38(차 2) · 울산 47(차 3).
+    """
+    from app.core import standing as st
+    box = _kl1_table()
+    keep, drop = st.touching(box, home="Daejeon Hana Citizen",
+                             away="Jeonbuk Hyundai Motors FC",
+                             round_no="31", cap=2)
+    got = {f"{r['home']}–{r['away']}" for r in keep}
+    assert got == {"Incheon United–Pohang Steelers",
+                   "Gangwon FC–Bucheon FC 1995"}, got
+    assert [r["gap"] for r in keep] == [0, 1], keep
+    # 🔴 **뺀 것을 돌려줘야** 카드가 이름으로 적을 수 있다(#3 조용한 0 금지)
+    assert len(drop) == 3, drop
+    assert all(r.get("gap") is not None for r in drop), drop
+    # ⚠️ 우리 경기는 다른 경기에 **섞이지 않는다**
+    assert not any("Daejeon" in f"{r['home']}{r['away']}" for r in keep + drop)
+
+
+def test_분할_리그는_컷_안밖으로_상태를_센다():
+    """🔴 ① — 돌연변이: 순위 쌍으로 센다(종전 동작 · 거짓 `must_win`).
+
+    실측 2026-10-09: 대전은 어떤 결과든 5·6위로 **컷 안이 안 바뀌는데** 순위
+    쌍으로 세면 `5위 ≠ 6위` 라 `must_win` 이 찍혔다.
+    """
+    from app import rules
+    from app.core import standing as st
+    split = rules.split_rule("K-League 1")
+    assert split, "competition_rules 에 K리그1 분할 규칙이 없다"
+    box = _kl1_table()
+    cut = st.cut_rank(box["zones"],
+                      titles=[str(x) for x in split["cut_zones"]])
+    assert cut == 6, cut
+    assert int(split["cut_rank_fallback"]) == 6, split
+    order, _, _, _ = rules.tiebreak("K-League 1")
+    cells = st.grid(box, home="Daejeon Hana Citizen",
+                    away="Jeonbuk Hyundai Motors FC", order=order,
+                    others=[("Incheon United", "Pohang Steelers"),
+                            ("Gangwon FC", "Bucheon FC 1995")])
+    assert len(cells) == 27, len(cells)
+    # 🔴 전북은 44점으로 **어떤 결과든 컷 안**이다
+    jb, why = st.state_of(cells, "Jeonbuk Hyundai Motors FC", is_home=False,
+                          zones=box["zones"], cut=cut)
+    assert jb == "nothing" and "컷" in why, (jb, why)
+    # 🔴 사유 글이 **순위가 아니라 컷**을 말해야 한다
+    dj, why2 = st.state_of(cells, "Daejeon Hana Citizen", is_home=True,
+                           zones=box["zones"], cut=cut)
+    assert "컷" in why2 and "위" not in why2.replace("컷", ""), why2
+    assert dj in st.STATES
+
+
+def test_확정_여부를_도달_가능_최대_승점으로_센다():
+    """🔴 ① 마지막 줄 — 돌연변이: 현재 승점으로만 센다."""
+    from app.core import standing as st
+    box = _kl1_table()
+    # 🔴 대전 40점 + 남은 2라운드(이 경기 뺀) × 3 = 46
+    assert st.reachable(box, team="Daejeon Hana Citizen", rounds_left=2) == 46
+    assert st.reachable(box, team="Jeonbuk Hyundai Motors FC",
+                        rounds_left=2) == 50
+    # ⚠️ 모르는 팀은 **0** 이다(지어내지 않는다)
+    assert st.reachable(box, team="없는팀", rounds_left=2) == 0
+
+
+def test_올시즌_맞대결이_저득점이면_필수형이_걸린다():
+    """🔴 ② — 돌연변이: 올 시즌 맞대결을 안 본다(종전 동작).
+
+    실측 2026-10-09: 올 시즌 `0-1`·`0-0` = 2경기 **총 1골**(경기당 0.5)인데
+    저득점 갈래가 **하나도 없었다**(창 10경기 평균 2.1골이 덮었다).
+    """
+    import yaml
+    import pathlib
+    box = yaml.safe_load(
+        pathlib.Path("config/scenario_required.yaml").read_text(encoding="utf-8"))
+    row = dict((box.get("soccer_forms") or {}).get("저득점") or {})
+    assert int(row["when_season_h2h_games"]) == 2, row
+    assert float(row["when_season_h2h_goals_per_game"]) == 1.0, row
+    assert "0-0" in row["scores"] and "1-0" in row["scores"], row
+    # 🔴 코드가 그 칸을 **읽나** — 안 이으면 없는 규칙이다(CLAUDE.md #2)
+    src = pathlib.Path("app/core/stages/s6_hypo.py").read_text(encoding="utf-8")
+    assert "when_season_h2h_games" in src, "s6 가 그 조건을 안 읽는다"
+    assert 'get("season_matches")' in src, "s6 가 올 시즌 맞대결을 안 본다"
+
+
+def test_총점_줄은_등급_보류다():
+    """🔴 ② 둘째 줄 — 돌연변이: 총점에 등급을 준다.
+
+    > 결과 대조 지시 1번(총골 기준 층)을 이어서 진행 — **그 전까지 총점 줄은
+    > 등급 보류 유지.**
+
+    ⚠️ 그 지시 문서는 저장소에 **없다** — 실행 가능한 절만 넣었다(v4 §11-1).
+    """
+    import pathlib
+    src = pathlib.Path("app/survive.py").read_text(encoding="utf-8")
+    assert "총점 줄 등급 보류" in src, "총점 보류가 코드에 없다"
+    # 🔴 **글자가 아니라 마켓 객체**로 센다(표기가 바뀌면 조용히 빠진다)
+    assert 'getattr(mkt, "market_type", "") == "total"' in src, src[:0]
+
+
+def test_맞대결은_한_번만_팀_이름을_붙여_적는다():
+    """🔴 ④ — 돌연변이: 기준 없이 숫자만 적는다(한 카드에 두 숫자가 보였다)."""
+    import pathlib
+    s5 = pathlib.Path("app/core/stages/s5_verify.py").read_text(encoding="utf-8")
+    assert 'f"맞대결 {n}경기 {ref.home_name} {w}승 {d}무 {lose}패"' in s5, \
+        "s5 의 맞대결 claim 에 팀 이름이 없다"
+    assert '(상대 {lose}승)' in s5, "상대 승수를 괄호에 안 적는다"
+    rd = pathlib.Path("app/core/render.py").read_text(encoding="utf-8")
+    assert "(상대 {again['l']}승)" in rd or "상대 {again['l']}승" in rd, \
+        "카드가 상대 승수를 안 적는다"
+
+
+def test_총평_검열이_맞대결_해석_방향을_잡는다():
+    """🔴🔴 ④ 둘째 줄 — 돌연변이: 검사를 빼면 *"격차가 좁다"* 가 통과한다.
+
+    > 한쪽 승이 다른 쪽의 **2배 이상**이면 "대등·좁다" 류 표현은 **위반**.
+
+    실측 2026-10-09: 대전 **1승 4무 5패**(상대 5배)인데 총평이 *"좀처럼 크게
+    벌어지지 않아 양 팀 간 격차가 좁게 유지돼 왔다"* 고 적었다.
+    """
+    from datetime import datetime, timezone
+
+    from app.core.schema import CommentLine, Commentary, Facts, MatchRef
+    from app.core.stages.s9_audit import h2h_direction_check
+    ref = MatchRef(id="x", sport="soccer", competition="K-League 1",
+                   competition_short="K-League 1",
+                   kickoff_utc=datetime(2026, 10, 9, 5, 0, tzinfo=timezone.utc),
+                   home="team:000316", away="team:000582",
+                   home_name="Daejeon Hana Citizen",
+                   away_name="Jeonbuk Hyundai Motors FC")
+    facts = Facts(h2h={"recounted": {"w": 1, "d": 4, "l": 5, "n": 10,
+                                     "basis": "Daejeon Hana Citizen"}})
+    bad_text = "맞대결에서 좀처럼 크게 벌어지지 않아 양 팀 간 격차가 좁게 유지돼 왔다"
+    got = Commentary(title="접전",
+                     reasons=[CommentLine(text=bad_text, var_ids=[])],
+                     flow="", score_range=[])
+    bad = h2h_direction_check(got, ref=ref, facts=facts)
+    assert bad and "(i)" in bad[0], bad
+    assert "기울었다" in bad[0], bad
+    # 🔴 **기울지 않았으면 안 잡는다**(없는 위반을 만들지 않는다)
+    even = Facts(h2h={"recounted": {"w": 4, "d": 2, "l": 4, "n": 10,
+                                    "basis": "Daejeon Hana Citizen"}})
+    assert h2h_direction_check(got, ref=ref, facts=even) == []
+    # ⚠️ 전적을 못 세면 **검사하지 않는다**
+    assert h2h_direction_check(got, ref=ref, facts=Facts()) == []
+    # 🔴 코드 검사 묶음이 이것을 **부르나**(안 이으면 없는 검사다)
+    import pathlib
+    src = pathlib.Path("app/core/stages/s9_audit.py").read_text(encoding="utf-8")
+    assert "bad += h2h_direction_check(" in src, "code_check 가 안 부른다"

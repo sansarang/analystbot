@@ -82,8 +82,20 @@ def test_변수_다섯이면_막지_않는다():
     res = survive.run(_thin_drafts(), _game(), variables=[_var() for _ in range(5)])
     ones = [m for m in res.markets if float(m.survival or 0) >= NAME_AT]
     assert ones
-    assert any(m.verdict != "none" for m in ones), [
-        (m.market_type, m.survival, m.verdict) for m in ones]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **이 세트의 1.0 은 총점 줄뿐이다** — 지시 2026-10-09 ② 로 보류다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 그래서 *"등급이 하나는 살아남는다"* 로는 더 못 검사한다. 🔴 이 계약이
+    #     지키려던 것은 **얇은 세트 가드가 문턱을 넘으면 안 돈다**는 것이므로
+    #     그 말을 **직접** 검사한다(가드 글이 없어야 한다).
+    assert not any("시나리오 세트 불완전" in n for n in res.notes), res.notes
+    # 🔴 거둔 사유가 **총점 보류**임을 못 박는다 — 다른 가드가 몰래 거두면 빨개진다
+    held = [m for m in ones if m.verdict == "none"]
+    if held:
+        assert all(m.market_type == "total" for m in held), [
+            (m.market_type, m.survival) for m in held]
+        assert any("총점 줄 등급 보류" in n for n in res.notes), res.notes
 
 
 def test_변수를_안_주면_막지_않는다():

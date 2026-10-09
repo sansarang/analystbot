@@ -103,6 +103,21 @@ def our_prob(hypo: HypoSet | None, *, start: ProbTriple | None = None,
     skip = {str(x) for x in (box.get("skip") or [])}
     if adjusted:
         skip |= {str(x) for x in (box.get("skip_when_adjusted") or [])}
+    else:
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **②가 못 쓰면 ③이 센다**(사용자 지시 2026-10-09 ③)
+        # ══════════════════════════════════════════════════════════════
+        #
+        # > 라인업 보정 환산 계수가 없는 리그에서는 결장 계열 변수를 ③ 무게표로
+        # > 센다(②에 넘겼는데 ②가 못 쓰면 **0 이 되는 구멍**).
+        #
+        # 🔴 실측 2026-10-09(대전–전북): ② 가 *"확률은 안 움직였다(환산 계수 없음)"*
+        #    인데 `IR02-home`·`IR02-away` 는 `movers` 목록에 없어 ③ 도 세지 않았다.
+        #    즉 결장 두 건이 **어디에서도 안 세졌다** — 카드에 보이기만 했다.
+        # ⚠️ `adjusted` 는 *"② 가 확률을 **움직였나**"* 다(`adj_p.moved`) — 계수가
+        #    없으면 거짓이므로 그때만 이 길이 열린다. 🔴 둘이 **동시에** 세는 일은
+        #    없다(이중 계산 금지 · 9차 ③ 점검표).
+        movers |= {str(x) for x in (box.get("movers_when_not_adjusted") or [])}
     shift = {"home": 0.0, "draw": 0.0, "away": 0.0}
     used: list[str] = []
     MOVES.clear()

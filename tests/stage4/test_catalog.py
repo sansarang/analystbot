@@ -546,7 +546,10 @@ def test_죽는_갈래가_다른_추천이_여럿이면_하나만_고른다():
         # 🔴 **승패 쪽을 먼저 고른다**(선언 순서대로 · 사용자 *"무패 우선"*)
         # 🔴 **v5 §6-6** — 선언 순서(`prefer`)가 아니라 **생존율 → 주장 강도**다.
         #    ⚠️ 이 세트에서는 `언더 4.5`(1.0)가 이긴다 — 승패 줄보다 생존이 높다.
-        best = max(float(r["survival"]) for r in res.rows)
+        # 🔴 **총점 줄은 뺀다** — 지시 2026-10-09 ② 로 총점은 등급 보류라 등급을
+        #    받을 수 없다. ⚠️ 섞어 세면 *"가장 높은 줄을 안 골랐다"* 로 잘못 빨개진다.
+        best = max(float(r["survival"]) for r in res.rows
+                   if getattr(r.get("market"), "market_type", "") != "total")
         assert float(named[0]["survival"]) >= best - 1e-9, (named[0], best)
         assert any("하나만 고른다" in n for n in res.notes), res.notes
 
@@ -695,7 +698,14 @@ def test_죽는_시나리오가_0건이면_상한이_가드를_뚫지_않는다(
     u35 = next(r for r in res.rows if r["name"] == "언더 3.5")
     # 🔴 **둘 중 하나도 안 죽었다** — 그 사실이 등급으로 남아야 한다
     assert u35["survival"] == 1.0, u35
-    assert u35["verdict"] == "small", u35
+    # 🔴🔴 **총점 줄은 등급 보류**(사용자 지시 2026-10-09 ②) — 총골 기준 층이
+    #    생기기 전까지 `언더 3.5` 는 등급을 못 받는다.
+    #    ⚠️ 이 계약이 지키려던 것은 *"상한이 `small` 을 지운다"* 가 **아님**을
+    #       보이는 것이다 — 그래서 거둔 사유가 **총점 보류**인지 못 박는다.
+    #       🔴 상한 가드가 몰래 거두면 아래 글자가 없어 빨개진다.
+    assert u35["verdict"] == "none", u35
+    assert "총점 줄 등급 보류" in str(u35.get("why") or ""), u35
+    assert any("총점 줄 등급 보류" in n for n in res.notes), res.notes
     # ⚠️ 걷힌 가드의 사유가 **다시 나타나면** 안 된다
     assert not any("확률이 아니다" in n for n in res.notes), res.notes
     # ⚠️ 그래도 **이름은 못 적는다** — ①의 의심이 남아 있다

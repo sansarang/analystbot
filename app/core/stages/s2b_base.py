@@ -404,17 +404,29 @@ def outlook(ref: MatchRef, facts: Facts, *, state: RunState) -> dict:
                  and {str(f.get("home", "")).lower(),
                       str(f.get("away", "")).lower()} == mine), None)
     rnd = str((ours or {}).get("round") or "")
-    other_rows = [f for f in (box.get("fixtures") or [])
-                  if str(f.get("round") or "") == rnd and not f.get("finished")
-                  and {str(f.get("home", "")).lower(),
-                       str(f.get("away", "")).lower()} != mine]
-    other = ((str(other_rows[0]["home"]), str(other_rows[0]["away"]))
-             if other_rows else None)
-    cells = st.grid(box, home=home, away=away, order=order, other=other)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **순위에 닿는 경기는 전부 넣는다**(사용자 지시 2026-10-09 ①)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 고르는 규칙은 `standing.touching` 이 든다(승점 차가 가까운 순). ⚠️ 표가
+    #     `3 × 3^k` 로 커지므로 `rules.OUTLOOK_MAX_OTHER` 가 수를 막고, **뺀 경기는
+    #     이름으로** 카드에 남는다(#3 조용한 0 금지).
+    other_rows, dropped = st.touching(box, home=home, away=away, round_no=rnd,
+                                      cap=rules.OUTLOOK_MAX_OTHER)
+    pairs = [(str(r["home"]), str(r["away"])) for r in other_rows]
+    cells = st.grid(box, home=home, away=away, order=order, others=pairs)
+    # 🔴🔴 **분할 컷** — 있으면 상태를 **컷 안/밖**으로 센다(지시 ① 셋째 줄)
+    split = rules.split_rule(ref.competition)
+    cut = 0
+    if split:
+        cut = st.cut_rank(dict(box.get("zones") or {}),
+                          titles=[str(x) for x in (split.get("cut_zones") or [])]) \
+            or int(split.get("cut_rank_fallback") or 0)
+        state.note(f"s2b §2 분할 컷 **{cut}위** — {split.get('why')}")
     states: dict[str, dict] = {}
     for team, is_home in ((home, True), (away, False)):
         said, why = st.state_of(cells, team, is_home=is_home,
-                                zones=dict(box.get("zones") or {}))
+                                zones=dict(box.get("zones") or {}), cut=cut)
         margin, mwhy = st.margin_for(box, team=team, rival=away if is_home else home,
                                      order=order, home=home, away=away,
                                      zones=dict(box.get("zones") or {}))
@@ -423,13 +435,37 @@ def outlook(ref: MatchRef, facts: Facts, *, state: RunState) -> dict:
         states[team] = {"state": said, "why": why, "margin": margin}
         state.note(f"s2b §2 `{team}` **{said}** — {why}")
     left = int(box.get("remaining") or 0)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **확정 여부는 도달 가능한 최대 승점으로**(지시 ① 마지막 줄)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 남은 라운드에서 **도달 가능한 최대 승점**으로 확정 여부를 따진다.
+    #
+    #  🔴 우리 두 팀의 남은 라운드 수를 센다(이 경기를 **뺀** 수). ⚠️ `remaining` 은
+    #     조 전체 남은 경기 수라 팀별 라운드가 아니다 — 일정에서 팀별로 센다.
+    fx = list(box.get("fixtures") or [])
+    rounds = {t: sum(1 for f in fx
+                     if not f.get("finished")
+                     and t.lower() in (str(f.get("home", "")).lower(),
+                                       str(f.get("away", "")).lower()))
+              for t in (home, away)}
+    reach = {t: st.reachable(box, team=t, rounds_left=max(0, n - 1))
+             for t, n in rounds.items()}
     out = {"group": box.get("group"), "cells": cells, "states": states,
            "verified": verified, "source": src, "zones": dict(box.get("zones") or {}),
            "remaining": left,
-           # 🔴 우리 경기 말고 **남은 경기가 또 있으면** 최종 확정이 아니다
-           "final": left <= (1 + (1 if other else 0)),
+           # 🔴 **우리 두 팀에게** 이 경기가 마지막인가(조 전체가 아니다)
+           "final": all(n <= 1 for n in rounds.values()),
+           "rounds_left": rounds, "reachable": reach,
+           "cut": cut, "cut_why": str(split.get("why") or "") if split else "",
            "other": [f"{r['home']} vs {r['away']} ({str(r.get('kickoff_utc') or '')[:16]}Z)"
+                     + (f" · 승점차 {r['gap']}" if r.get("gap") is not None else "")
                      for r in other_rows],
+           # 🔴 **뺀 경기도 적는다** — 말없이 자르면 "전부 셌다"로 읽힌다
+           "other_dropped": [f"{r['home']} vs {r['away']}"
+                             + (f" (승점차 {r['gap']})" if r.get("gap") is not None
+                                else "")
+                             for r in dropped],
            "zone_meaning": zone_doc}
     # 🔴 s6 의 역습 필수형이 **상태**를 봐야 한다 — `Facts` 는 얼어 있어 고칠 수
     #    없으므로 `standings` 표(같은 dict)에 칸을 더해 넘긴다.

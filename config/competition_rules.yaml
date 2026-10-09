@@ -19,6 +19,37 @@ default:
   why: 표에 없는 대회다 — 가장 흔한 순서를 가정한다(카드에 가정 표시)
 
 competitions:
+  # ══════════════════════════════════════════════════════════════════
+  # 🔴🔴 **K리그1 — 분할(스플릿) 규칙** · 사용자 지시 2026-10-09 ①
+  # ══════════════════════════════════════════════════════════════════
+  #
+  # > 리그 분할(K리그1 파이널A=6위 컷)이 있는 리그는 *"이번 경기 직후 순위"* 가
+  # > 아니라 **"컷 안/밖"** 으로 상태를 판정하고, 남은 라운드에서 **도달 가능한
+  # > 최대 승점**으로 확정 여부를 따진다. `competition_rules` 에 적는다.
+  #
+  # 🔴 구역 **글자는 우리가 짓지 않는다** — fotmob `legend` 가 주는 그대로
+  #    `Championship playoff`(1~6위) · `Relegation qualification`(7~12위)이다
+  #    (실측 2026-10-09 표 페이지: `l_champ_playoff="1,2,3,4,5,6"`).
+  #    ⚠️ 이 표는 그 글자가 **분할 컷**이라는 뜻만 잇는다.
+  # 🔴 `verified: false` — 연맹 공식 규정 PDF 를 **열지 않았다.** 컷 순위는
+  #    fotmob legend 실측이고, 동률 순서는 가정이다. 카드가 가정 표시를 찍는다.
+  #    ⚠️ 규정을 확인하면 `verified: true` 와 `source` 를 적는다(사본 금지 — 여기
+  #       숫자를 늘리지 말고 원본 주소를 적는다).
+  - match: ["k league 1", "k-league 1", "k리그1", "k리그 1"]
+    name: K League 1
+    verified: false
+    why: 분할 컷은 fotmob legend 실측(1~6위) · 동률 순서는 가정이다
+    order: [points, wins, goal_diff, goals_for]
+    # 🔴 **분할** — 정규 라운드가 끝나면 상·하위로 쪼갠다. 그 컷이 상태 판정의 기준
+    split:
+      # 🔴 컷으로 쓸 **구역 글자**(fotmob legend 그대로) — 여러 개면 먼저 맞는 것
+      cut_zones: ["Championship playoff"]
+      cut_rank_fallback: 6
+      why: 파이널A(1~6위) · 파이널B(7~12위) — 정규 33라운드 뒤 분할
+    zones:
+      Championship playoff: 파이널A(상위 분할) — 우승·ACL 경쟁
+      Relegation qualification: 파이널B(하위 분할) — 강등 경쟁
+
   - match: ["uefa nations league", "네이션스리그"]
     name: UEFA Nations League
     verified: true

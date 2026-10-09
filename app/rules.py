@@ -831,6 +831,29 @@ def tiebreak(competition: str) -> tuple[list[str], dict, bool, str]:
             str(d.get("why") or "표에 없는 대회 — 가정"))
 
 
+def split_rule(competition: str) -> dict:
+    """🔴🔴 그 대회의 **분할(스플릿) 규칙** — 없으면 빈 표(사용자 지시 2026-10-09 ①).
+
+    돌려주는 칸: `{"cut_zones": [구역 글자], "cut_rank_fallback": n, "why": 글}`.
+
+    🔴 **코드에 컷 순위를 박지 않는다** — K리그1 6위 컷은
+       `config/competition_rules.yaml` 의 `split` 이 든다. ⚠️ 리그가 늘면 그 표만
+       늘고 코드는 그대로다(#1 사본 금지).
+    """
+    box = _load(COMPETITION_RULES)
+    said = str(competition or "").lower()
+    for row in (box.get("competitions") or []):
+        for w in (row.get("match") or []):
+            if str(w).lower() in said:
+                return dict(row.get("split") or {})
+    return {}
+
+
+#: 🔴 **표가 커지는 것을 막는 수**(지시 ① — 다른 경기가 여럿이다). 줄은 `3 × 3^k` 다.
+#   ⚠️ 뺀 경기는 카드가 **이름으로** 적는다(#3 조용한 0 금지).
+OUTLOOK_MAX_OTHER = 2
+
+
 # ══════════════════════════════════════════════════════════════════
 # 🔴🔴 **대회 유형별 경기당 평균 득점**(사용자 지시 2026-10-07 §3)
 # ══════════════════════════════════════════════════════════════════

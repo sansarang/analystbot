@@ -786,6 +786,39 @@ def run(drafts: list, game, *, board: list[Market] | None = None,
             if str(getattr(mk, "verdict", "")) in ("name", "small", "low"):
                 mk.verdict = "none"
 
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **총점 줄은 등급 보류**(사용자 지시 2026-10-09 ②)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > 결과 대조 지시 1번(총골 기준 층)을 이어서 진행 — **그 전까지 총점 줄은
+    # > 등급 보류 유지.**
+    #
+    # 🔴 그 지시 문서가 **저장소에 없다**(`docs/fable/inbox/` 에 `결과 대조` 가
+    #    없다 · 2026-10-09 확인). ⚠️ 파일에 없는 지시는 인용하지 않는다(v4 §11-1)
+    #    — 그래서 **지금 실행 가능한 절만** 넣는다: 총점 줄의 등급을 거둔다.
+    # 🔴 대입·생존 수는 **그대로 보인다** — `gone`·`thin` 과 같은 길이다.
+    #    ⚠️ 총골 기준 층이 생기면 이 자리를 걷는다(그때 계약도 함께 고친다).
+    said_tot = ("🔴 **총점 줄 등급 보류** — 총골 기준 층(결과 대조 지시 1번)이 "
+                "아직 없다 · 생존 수는 그대로 낸다(지시 2026-10-09 ②)")
+    hit_tot = False
+    # ⚠️ **글자로 맞추지 않는다** — `row["name"]` 은 `name_of` 가 지은 한국어
+    #    (`오버 2.5`)다. 🔴 줄이 든 **마켓 객체**의 `market_type` 으로 센다
+    #    (글자를 보면 번역·표기가 바뀔 때 조용히 빠진다 · D46 의 형제 문제).
+    for row in res.rows:
+        mkt = row.get("market")
+        if getattr(mkt, "market_type", "") == "total" \
+                and row.get("verdict") in ("name", "small", "low"):
+            row["verdict"] = "none"
+            row["why"] = str(row.get("why") or "") + " · " + said_tot
+            hit_tot = True
+    for mk in (res.markets or []):
+        if getattr(mk, "market_type", "") == "total" \
+                and str(getattr(mk, "verdict", "")) in ("name", "small", "low"):
+            mk.verdict = "none"
+            hit_tot = True
+    if hit_tot:
+        res.notes.append(said_tot)
+
     _mirror_guard(res)
     # 🔴 **순서가 뜻이다**: ① 여집합 쌍을 거두고 ② 같은 방향을 3줄로 줄인 뒤
     #    ③ 서로 다른 방향이 남으면 하나로 고른다. ②를 ③보다 뒤에 두면 ③이 이미

@@ -176,6 +176,58 @@ def code_check(got: Commentary, *, ref: MatchRef, facts: Facts,
         if spots and str(x).strip() not in spots:
             bad.append(f"(g) 예상 스코어 `{x}` 가 무게 상위 5개 {sorted(spots)} "
                        f"밖이다")
+    bad += h2h_direction_check(got, ref=ref, facts=facts)
+    return bad
+
+
+#: 🔴 "대등·좁다" 류 — 맞대결이 한쪽으로 기울었는데 쓰면 **위반**(지시 2026-10-09 ④)
+#
+#  ⚠️ 글자 목록을 코드에 두는 까닭: 이것은 **우리 글의 금지어**이지 자료가 아니다
+#     (자료 쪽 표는 yaml 이 든다). 🔴 늘어나면 여기 한 곳이다.
+H2H_EVEN_WORDS = ("대등", "비슷", "팽팽", "좁게", "좁은", "좁다", "호각",
+                  "우열을 가리기", "격차가 좁", "크게 벌어지지", "밀리지 않")
+
+
+def h2h_direction_check(got: Commentary, *, ref: MatchRef,
+                        facts: Facts) -> list[str]:
+    """🔴🔴 **(i) 맞대결 해석 방향**(사용자 지시 2026-10-09 ④).
+
+    > 총평 검열에 "맞대결 해석 방향" 검사 추가 — 한쪽 승이 다른 쪽의 **2배 이상**
+    > 이면 "대등·좁다" 류 표현은 **위반**.
+
+    🔴 왜 — 실측 2026-10-09(대전–전북): 맞대결이 대전 **1승 4무 5패**(상대 5승 =
+       5배)인데 총평이 *"좀처럼 크게 벌어지지 않아 양 팀 간 격차가 좁게 유지돼
+       왔다"* 고 적었다. ⚠️ 무승부가 많은 것과 **대등한 것**은 다르다 — 이기는
+       쪽이 한쪽뿐이면 그 상성은 기울어 있다.
+    ⚠️ 전적을 못 세면 **검사하지 않는다**(없는 것으로 위반을 만들지 않는다).
+    """
+    box = dict(facts.h2h or {})
+    again = dict(box.get("recounted") or {})
+    if again.get("n"):
+        w, lose = int(again.get("w") or 0), int(again.get("l") or 0)
+    else:
+        said = box.get("summary")
+        n = int(box.get("count") or 0)
+        if not (isinstance(said, (list, tuple)) and len(said) == 3 and n
+                and sum(int(x) for x in said) == n):
+            return []
+        w, lose = int(said[0]), int(said[2])
+    hi, lo = max(w, lose), min(w, lose)
+    # 🔴 **2배 이상**이 문턱이다. ⚠️ 적은 쪽이 0 이면(한쪽이 한 번도 못 이겼다)
+    #    그것은 2배보다 더 기운 것이다 — 0 으로 나누지 않고 그 자리를 따로 센다.
+    tilted = hi >= 2 * lo if lo else hi > 0
+    if not tilted:
+        return []
+    lead = ref.home_name if w > lose else ref.away_name
+    bad: list[str] = []
+    for line in [*[x.text for x in got.reasons], got.flow, got.title]:
+        said_line = str(line or "")
+        hit = [x for x in H2H_EVEN_WORDS if x in said_line]
+        if hit:
+            bad.append(f"(i) 맞대결 해석 방향 — 전적이 {w}승 {lose}패로 "
+                       f"**{lead} 쪽으로 기울었다**(한쪽이 다른 쪽의 "
+                       f"{'∞' if not lo else f'{hi / lo:.1f}'}배)인데 문장이 "
+                       f"{hit[:2]} 라고 적었다 — {said_line[:50]}")
     return bad
 
 

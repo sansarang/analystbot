@@ -871,6 +871,31 @@ def _low_score_why(ref: MatchRef, facts: Facts, variables: list[Variable],
                 # 🔴 그 사실을 든 변수는 **그 팀의 폼 변수**다(S01)
                 ids += [v.id for v in variables
                         if v.type == "recent_pattern" and str(v.subject) == str(key)]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **올 시즌 맞대결이 저득점이면 필수**(사용자 지시 2026-10-09 ②)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > 올 시즌 맞대결이 **2경기 이상**이고 **경기당 1골 이하**면 `0-0`/`1-0` 필수.
+    #
+    # 🔴 실측 2026-10-09(대전–전북): 올 시즌 `0-1`·`0-0` = 2경기 **총 1골**
+    #    (경기당 0.5). ⚠️ 창 10경기 평균은 2.1골이라 그 신호를 **덮었다**.
+    need_n = int(row.get("when_season_h2h_games") or 0)
+    cap_gpg = row.get("when_season_h2h_goals_per_game")
+    if need_n and cap_gpg is not None:
+        season = list((facts.h2h or {}).get("season_matches") or [])
+        scored = [m for m in season
+                  if m.get("home_score") is not None
+                  and m.get("away_score") is not None]
+        if len(scored) >= need_n:
+            tot = sum(int(m["home_score"]) + int(m["away_score"]) for m in scored)
+            gpg = tot / len(scored)
+            if gpg <= float(cap_gpg):
+                out.append(f"올 시즌 맞대결 {len(scored)}경기 총 {tot}골"
+                           f"(경기당 {gpg:.2f} ≤ {float(cap_gpg):g})")
+                # 🔴 그 사실을 든 변수는 **맞대결 변수**다(S02)
+                ids += [v.id for v in variables if v.type == "h2h_pattern"]
+            # ⚠️ 넘으면 **안 센다** — 그 사실은 아래 `state.note` 가 아니라 이
+            #    함수를 부른 자리가 적는다(이 함수는 사유만 모은다)
     if row.get("when_striker_absent"):
         pos = dict(facts.player_pos or {})
         for v in variables:

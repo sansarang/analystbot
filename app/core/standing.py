@@ -100,25 +100,44 @@ def zone_of(rank: int, zones: dict) -> str:
 
 
 def grid(standings: dict, *, home: str, away: str, order: list[str],
-         other: tuple[str, str] | None = None) -> list[dict]:
-    """🔴🔴 §2 — **결과 3 × 다른 경기 결과 3** 의 순위·구역 표.
+         others: list[tuple[str, str]] | None = None) -> list[dict]:
+    """🔴🔴 §2 — **결과 3 × 다른 경기들의 결과** 의 순위·구역 표.
 
-    돌려주는 줄: `{"ours": 결과, "other": 결과|None, "ranks": {팀: 순위},
-                  "zones": {팀: 구역}}`
+    돌려주는 줄:
+    `{"ours": 결과, "others": [{"home","away","result"}], "ranks": {팀: 순위},
+      "zones": {팀: 구역}}`
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **다른 경기는 여럿일 수 있다**(사용자 지시 2026-10-09 ①)
+    ══════════════════════════════════════════════════════════════════
+
+    > 같은 라운드에서 이 두 팀 순위에 **닿는 경기는 전부** 넣는다
+    > (대전–전북이면 인천–포항, 강원–부천).
+
+    ⚠️ 실사고 2026-10-09: 종전은 `other` **한 경기**만 받았고, 그 결과 칸을
+       `home`·`draw`·`away` 로만 돌려줬다. 🔴 그 글자를 카드가 **우리 팀 이름**으로
+       풀어 적어 *"대전 승 | 대전 승"* 같은 거짓 줄이 나왔다 — 둘째 칸은 **그 경기
+       팀**(인천–포항)의 말이어야 한다.
+    🔴 그래서 줄마다 **그 경기의 팀 이름**을 함께 싣는다(카드가 이름을 지어내지
+       않는다).
     """
     rows = list(standings.get("rows") or [])
     zones = dict(standings.get("zones") or {})
     if not rows:
         return []
+    pairs = list(others or [])
     out: list[dict] = []
-    others = RESULTS if other else (None,)
-    for ours, them in product(RESULTS, others):
+    # 🔴 경기 수만큼 결과를 곱한다 — 경기 k 개면 줄은 `3 × 3^k` 다
+    for combo in product(RESULTS, *([RESULTS] * len(pairs))):
+        ours, rest = combo[0], combo[1:]
         said = _apply(rows, home, away, ours)
-        if other and them:
-            said = _apply(said, other[0], other[1], them)
+        for (h, a), res in zip(pairs, rest):
+            said = _apply(said, h, a, res)
         ranked = rank_of(said, order)
         out.append({
-            "ours": ours, "other": them,
+            "ours": ours,
+            "others": [{"home": h, "away": a, "result": res}
+                       for (h, a), res in zip(pairs, rest)],
             "ranks": {str(r.get("name")): int(r.get("rank") or 0)
                       for r in ranked},
             "zones": {str(r.get("name")): zone_of(int(r.get("rank") or 0), zones)
@@ -126,8 +145,81 @@ def grid(standings: dict, *, home: str, away: str, order: list[str],
     return out
 
 
+def touching(standings: dict, *, home: str, away: str, round_no: str,
+             cap: int) -> tuple[list[dict], list[dict]]:
+    """🔴🔴 같은 라운드에서 **우리 두 팀 순위에 닿는** 경기들(지시 2026-10-09 ①).
+
+    `(넣은 경기들, 넣지 않은 경기들)` — ⚠️ **뺀 것을 함께 돌려준다**(#3 조용한 0
+    금지 · 말없이 자르면 카드가 *"전부 셌다"* 로 읽힌다).
+
+    🔴 **무엇이 "닿나"** — 그 경기 두 팀 중 하나의 **현재 승점이 우리 두 팀의 승점에
+       가장 가까운** 경기다. 승점이 가까운 팀이 이 라운드 결과로 우리를 지나갈 수
+       있기 때문이다.
+    ⚠️ 실측 2026-10-09(대전 40점 · 전북 44점)으로 이 규칙을 맞췄다:
+
+    | 같은 라운드 경기 | 가장 가까운 승점 차 |
+    |---|---|
+    | 인천(39)–포항(40) | **0** |
+    | 강원(43)–부천(32) | **1** |
+    | 서울(62)–제주(46) | 2 |
+    | 김천(33)–안양(38) | 2 |
+    | 광주(15)–울산(47) | 3 |
+
+    🔴 사용자가 지목한 둘(인천–포항·강원–부천)이 **차가 가장 작은 둘**이다.
+    ⚠️ `cap` 은 표가 `3 × 3^k` 로 커지는 것을 막는다 — 설정표가 든다.
+    """
+    rows = list(standings.get("rows") or [])
+    pts = {str(r.get("name") or "").strip().lower(): int(r.get("points") or 0)
+           for r in rows}
+    ours = {str(home).strip().lower(), str(away).strip().lower()}
+    mine = [pts[t] for t in ours if t in pts]
+    said: list[dict] = []
+    for f in (standings.get("fixtures") or []):
+        if str(f.get("round") or "") != str(round_no) or f.get("finished"):
+            continue
+        h, a = str(f.get("home") or ""), str(f.get("away") or "")
+        if {h.strip().lower(), a.strip().lower()} == ours:
+            continue
+        gaps = [abs(pts[t] - m) for t in (h.strip().lower(), a.strip().lower())
+                if t in pts for m in mine]
+        if not gaps or not mine:
+            # ⚠️ 승점을 모르는 경기는 **끝에 둔다**(버리지 않는다)
+            said.append({**dict(f), "gap": None})
+            continue
+        said.append({**dict(f), "gap": min(gaps)})
+    said.sort(key=lambda r: (r["gap"] is None, r["gap"] if r["gap"] is not None else 0))
+    return said[:max(0, int(cap))], said[max(0, int(cap)):]
+
+
+def cut_rank(zones: dict, *, titles: list[str]) -> int:
+    """🔴 **분할 컷의 마지막 순위**(K리그1 파이널A = 6위). 모르면 `0`.
+
+    🔴 구역 **글자는 fotmob 이 준 것**이고(`Championship playoff`), 그 글자가
+       *"분할 컷"* 이라는 뜻은 `config/competition_rules.yaml` 이 든다(사본 금지).
+    """
+    low = {str(k).strip().lower(): int(v) for k, v in (zones or {}).items()}
+    for t in (titles or []):
+        got = low.get(str(t).strip().lower())
+        if got:
+            return int(got)
+    return 0
+
+
+def reachable(standings: dict, *, team: str, rounds_left: int) -> int:
+    """🔴 그 팀이 **남은 라운드로 닿을 수 있는 최대 승점**(지시 ① 마지막 줄).
+
+    > 남은 라운드에서 **도달 가능한 최대 승점**으로 확정 여부를 따진다.
+
+    ⚠️ 이 경기를 **뺀** 남은 라운드다 — 호출부가 그 수를 넘긴다.
+    """
+    row = _row_of(list(standings.get("rows") or []), team)
+    if not row:
+        return 0
+    return int(row.get("points") or 0) + 3 * max(0, int(rounds_left))
+
+
 def state_of(cells: list[dict], team: str, *, is_home: bool,
-             zones: dict) -> tuple[str, str]:
+             zones: dict, cut: int = 0) -> tuple[str, str]:
     """🔴🔴 §2 — 그 팀의 **상태 한 줄**. `(상태, 사유)`.
 
     | 상태 | 뜻(지시서 원문) |
@@ -149,20 +241,44 @@ def state_of(cells: list[dict], team: str, *, is_home: bool,
         return "unknown", "순위표를 못 받았다"
     win = "home" if is_home else "away"
     lose = "away" if is_home else "home"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **분할 리그는 "컷 안/밖"으로 센다**(사용자 지시 2026-10-09 ①)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > 리그 분할(K리그1 파이널A=6위 컷)이 있는 리그는 *"이번 경기 직후 순위"* 가
+    # > 아니라 **"컷 안/밖"** 으로 상태를 판정한다.
+    #
+    # 🔴 왜 — 실측 2026-10-09(대전–전북): 대전은 어떤 결과든 **6위 아니면 5위**로
+    #    컷 안이 안 바뀌는데, 순위 쌍으로 세면 `5위 ≠ 6위` 라 `must_win` 이 찍혔다.
+    #    ⚠️ 그 글자가 `our_prob` 의 이동 규칙까지 흔든다 — 거짓이 번진다.
+    # 🔴 컷이 **없는 대회는 종전처럼** (구역, 순위) 쌍으로 센다(분할이 없으니 순위가
+    #    곧 뜻이다).
 
     def _pick(res: str) -> set[tuple[str, int]]:
+        if cut:
+            # 🔴 컷 안이면 `1`, 밖이면 `0` — **순위는 뜻을 안 가린다**
+            return {(("안" if int(c["ranks"].get(team, 0)) <= int(cut)
+                      else "밖"), 0)
+                    for c in cells if c["ours"] == res}
         return {(str(c["zones"].get(team, "")), int(c["ranks"].get(team, 0)))
                 for c in cells if c["ours"] == res}
 
     def _say(box: set[tuple[str, int]]) -> str:
+        if cut:
+            return " / ".join(f"컷 {z}" for z, _ in sorted(box))
         return " / ".join(f"{rank}위{'(' + z + ')' if z else ''}"
                           for z, rank in sorted(box, key=lambda x: x[1]))
 
     w, d, lo = _pick(win), _pick("draw"), _pick(lose)
     if w == d == lo:
         return "nothing", f"어떤 결과든 {_say(w)} — 바뀌는 것이 없다"
-    best_w = min(r for _, r in w) if w else 99
-    best_d = min(r for _, r in d) if d else 99
+    if cut:
+        # 🔴 컷 모드의 "좋다" = **컷 안이 되는 경우가 있다**(순위 크기가 아니다)
+        best_w = 0 if any(z == "안" for z, _ in w) else 99
+        best_d = 0 if any(z == "안" for z, _ in d) else 99
+    else:
+        best_w = min(r for _, r in w) if w else 99
+        best_d = min(r for _, r in d) if d else 99
     if w == d:
         return "draw_enough", f"비겨도 {_say(d)} — 이긴 것과 같다"
     if best_d >= best_w and d == lo:

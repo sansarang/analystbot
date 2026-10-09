@@ -212,30 +212,63 @@ def _b3b(card: Card) -> str:
                + ("**최종 확정 가능**" if look.get("final")
                   else "⚠️ **최종 확정 아니다**(남은 경기가 더 있다)"))
     if look.get("other"):
-        out.append("- 같은 라운드 다른 경기: " + " · ".join(look["other"]))
+        out.append("- 같은 라운드 다른 경기(순위에 닿는 순): "
+                   + " · ".join(look["other"]))
+    # 🔴 **뺀 경기도 적는다**(지시 2026-10-09 ① · #3 조용한 0 금지)
+    if look.get("other_dropped"):
+        out.append("- ⚠️ 표에 **넣지 않은** 같은 라운드 경기: "
+                   + " · ".join(look["other_dropped"])
+                   + f" — 표가 커져 {len(look['other'])}경기까지만 곱했다")
+    # 🔴🔴 **분할 컷**이 있으면 그 사실과 도달 가능한 최대 승점을 적는다(지시 ①)
+    if look.get("cut"):
+        reach = dict(look.get("reachable") or {})
+        left = dict(look.get("rounds_left") or {})
+        said = " · ".join(f"{t} 최대 {reach.get(t, '?')}점"
+                          f"(남은 {max(0, int(left.get(t, 0)) - 1)}라운드)"
+                          for t in (home, away))
+        out.append(f"- 🔴 **분할 컷 {look['cut']}위** — {look.get('cut_why') or ''}")
+        out.append(f"- 도달 가능 최대 승점: {said} "
+                   + ("· **이 경기가 마지막이다**" if look.get("final")
+                      else "· 남은 라운드가 더 있어 **확정 아니다**"))
     # ⚠️ 사유가 **여러 줄**로 올 수 있다(yaml 블록) — 한 줄로 눌러 담는다(표가 깨진다)
     src = " ".join(str(look.get("source") or "").split())[:150]
     if not look.get("verified"):
         out.append(f"- ⚠️ **동률 규칙 가정**(승점→득실→다득점) — {src}")
     else:
         out.append(f"- 동률 규칙 **확인됨** — {src}")
-    # 🔴 결과별 순위·구역 표 — 같은 라운드 다른 경기가 있으면 열이 셋이다
-    has_other = any(c.get("other") for c in cells)
-    head = (f"| 이 경기 | 다른 경기 | {home} | {away} |" if has_other
-            else f"| 이 경기 | {home} | {away} |")
-    out += ["", head, "|---|---|---|---|" if has_other else "|---|---|---|"]
-    word = {"home": f"{home} 승", "draw": "무승부", "away": f"{away} 승"}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **다른 경기 칸은 그 경기 팀 이름으로**(사용자 지시 2026-10-09 ①)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-09: 종전은 둘째 칸의 `home`·`away` 를 **우리 팀 이름**으로
+    #     풀어 *"대전 승 | 대전 승"* 으로 찍었다 — 둘째 칸은 **인천–포항**의 말이다.
+    #  🔴 이제 줄마다 그 경기의 팀 이름이 실려 온다(`cells[*]["others"]`).
+    others0 = list((cells[0].get("others") or []) if cells else [])
+    cols = [f"{o['home']}–{o['away']}" for o in others0]
+    head = "| 이 경기 | " + "".join(f"{c} | " for c in cols) \
+        + f"{home} | {away} |"
+    out += ["", head, "|---|" + "---|" * (len(cols) + 2)]
+
+    def _word(team_home: str, team_away: str, res: str) -> str:
+        return {"home": f"{team_home} 승", "draw": "무승부",
+                "away": f"{team_away} 승"}.get(res, res)
+
     for c in cells:
         def _cell(team: str) -> str:
+            # 🔴 분할 컷이 있으면 **컷 안/밖**을 함께 적는다(상태 판정과 같은 눈)
+            rank = c["ranks"].get(team, "?")
             z = str(c["zones"].get(team, ""))
-            return f"{c['ranks'].get(team, '?')}위" + (f" ({z})" if z else "")
-        if has_other:
-            out.append(f"| {word.get(c['ours'], c['ours'])} | "
-                       f"{word.get(str(c.get('other')), str(c.get('other')))} | "
-                       f"{_cell(home)} | {_cell(away)} |")
-        else:
-            out.append(f"| {word.get(c['ours'], c['ours'])} | {_cell(home)} | "
-                       f"{_cell(away)} |")
+            said = f"{rank}위"
+            if look.get("cut") and isinstance(rank, int):
+                said += " **컷 안**" if rank <= int(look["cut"]) else " **컷 밖**"
+            elif z:
+                said += f" ({z})"
+            return said
+        cells_txt = [_word(home, away, str(c["ours"]))]
+        cells_txt += [_word(str(o["home"]), str(o["away"]), str(o["result"]))
+                      for o in (c.get("others") or [])]
+        cells_txt += [_cell(home), _cell(away)]
+        out.append("| " + " | ".join(cells_txt) + " |")
     # 🔴 팀별 상태 한 줄 — 이동 규칙이 **이 글자**를 본다
     said = dict(look.get("states") or {})
     for team in (home, away):
@@ -331,12 +364,16 @@ def _b3(card: Card) -> str:
         #        사람이 어느 쪽을 믿을지 모른다(#3 조용한 0 금지의 형제 문제).
         again = dict(h.get("recounted") or {})
         if again.get("n"):
-            bits.append(f"{again['w']}승 {again['d']}무 {again['l']}패")
-            bits.append(f"표본 {again['n']}경기(**목록에서 다시 셌다** · "
-                        f"{again.get('basis') or '홈'} 기준)")
+            # 🔴 **팀 이름을 붙여 한 번만**(지시 2026-10-09 ④) — 기준을 글에 박아
+            #    두면 읽는 쪽이 뒤집을 일이 없다
+            who = again.get("basis") or card.match.home_name
+            bits.append(f"**{who}** {again['w']}승 {again['d']}무 "
+                        f"{again['l']}패(상대 {again['l']}승)")
+            bits.append(f"표본 {again['n']}경기(**목록에서 다시 셌다**)")
             n = None
         elif ok3:
-            bits.append(f"{got[0]}승 {got[1]}무 {got[2]}패")
+            bits.append(f"**{card.match.home_name}** {got[0]}승 {got[1]}무 "
+                        f"{got[2]}패(상대 {got[2]}승)")
         elif isinstance(got, (list, tuple)) and len(got) == 3:
             bits.append(f"⚠️ **전적 안 적는다**(집계 불일치 — 합 "
                         f"{sum(int(x) for x in got)} ≠ 표본 {n})")
