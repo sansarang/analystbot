@@ -752,11 +752,14 @@ def test_1겹_카드가_새_순서와_상한을_지킨다(card):
     lines = [x for x in said.splitlines() if x.strip()]
     assert lines[0].startswith("⚽"), lines[0]
     assert lines[1].startswith("📋"), lines[1]
-    assert lines[2].startswith("【헤드라인】"), lines[2]
-    assert lines[3].startswith("【이유】"), lines[3]
+    # ⚠️ 경고 줄(🔴)이 머리 두 줄 **뒤**에 끼어들 수 있다(지시 (4차) §2·§3) —
+    #    그 줄들을 지나 헤드라인·이유를 찾는다. 🔴 순서는 그대로 지킨다.
+    rest = [x for x in lines[2:] if not x.startswith("🔴")]
+    assert rest[0].startswith("【헤드라인】"), rest[0]
+    assert rest[1].startswith("【이유】"), rest[1]
     # ⚠️ `⚠️` 는 **두 코드포인트**다(U+26A0 U+FE0F) — `x[0]` 으로 세면 깨진다
     want = ("📊", "🎯", "🎯", "⚠")
-    got = tuple(x[:1] for x in lines[4:4 + len(want)])
+    got = tuple(x[:1] for x in rest[2:2 + len(want)])
     assert got == want, got
     assert lines[-1].startswith("[📖 자세히]"), lines[-1]
     # ── §5 상한

@@ -574,7 +574,28 @@ def our_board(game, standings: dict | None, *, drafts: list | None = None,
         out.append(Market(market_type="btts", team=side))
     notes.append("§6-c-3 보드 없음 · 양팀득점 두 쪽을 센다(기준선이 없는 마켓이다)")
     cfg = rules.total_baseline_cfg()
-    base = (standings or {}).get("total_baseline")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **이 경기의 총골 기준이 리그 평균보다 먼저다**(지시 2026-10-09(5차) ③)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > 총골 기준 층(결과 대조 지시 1번)을 이 경기로 먼저 확인: **경기당 총골
+    # > 실측**(가시마 4.1, 감바 2.75)이 들어간 뒤 …
+    #
+    # 🔴 리그 평균은 **스무 팀의 평균**이고, 이 두 팀은 그보다 높거나 낮다. 실측
+    #    2026-10-09 J1: 리그 평균 ≈3.0 인데 가시마 4.12 · 감바 2.75 → 이 경기
+    #    기준은 **3.44** 다. ⚠️ 리그 평균으로 총점 줄을 세우면 그 차이를 버린다.
+    # 🔴 두 팀 값이 **둘 다 있어야** 쓴다(한쪽만으로 경기 기준을 만들지 않는다).
+    base = (standings or {}).get("match_total_baseline")
+    if base is not None:
+        notes.append(
+            f"🔴 §3 **이 경기 총골 기준 {base}** 로 총점 줄을 세운다 — 두 팀 "
+            f"경기당 총골의 평균이다("
+            + " · ".join(f"{k} {v.get('total_per_game')}"
+                         for k, v in ((standings or {}).get("team_totals")
+                                      or {}).items())
+            + f") · 리그 평균은 {(standings or {}).get('total_baseline')} 였다")
+    else:
+        base = (standings or {}).get("total_baseline")
     if base is None:
         # ══════════════════════════════════════════════════════════════
         # 🔴🔴 **분석 과정 9단계** — *"보드 줄만, **없으면 일반 마켓**"*

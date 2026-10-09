@@ -464,6 +464,25 @@ def reason_check(said, *, card) -> list[str]:
                                      "가리기 어렵", "단정할 수 없")):
         bad.append(f"(k) 방향이 **반반**인데 마지막 문장이 그 말을 안 한다 — "
                    f"{tail[:50]}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **(n) `must_win` 은 조건을 만족했을 때만**(지시 2026-10-09(5차) ①)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > `must_win` 문장이 이유 문단에 들어가면 **그 조건을 만족했는지** 검열에서
+    #  > 확인.
+    #
+    #  🔴 게이트가 닫혀 있으면(시즌 초) 그 글자는 **거짓**이다 — 실사고
+    #     2026-10-09(가시마–감바 8라운드)에서 그 문장이 이유 문단에 들어갔다.
+    look = dict(getattr(card, "outlook", None) or {})
+    if not look.get("gate_open", True):
+        for line in rows:
+            low = str(line.text or "")
+            hit = [w for w in ("must_win", "이겨야", "반드시 이겨", "승점이 급한",
+                               "경우의 수") if w in low]
+            if hit:
+                bad.append(f"(n) 경우의 수 문장 — 게이트가 닫혔다"
+                           f"({look.get('gate_why')})인데 {hit[:2]} 라고 적었다 — "
+                           f"{low[:50]}")
     # ── (l) 선수 사실 — 사실 목록의 선수 id 로 대조한다
     known = {str(k)[2:] for k in box if str(k).startswith("P:")}
     known |= {str(k)[4:] for k in box if str(k).startswith("ABS:")}

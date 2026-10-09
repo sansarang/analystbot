@@ -150,6 +150,18 @@ async def run(ref: MatchRef, *, state: RunState, net: Any = None,
         # 🔴 `Facts.standings` 안의 **`group` 칸**이다 — 기존 칸(홈 이점·쪼갠 표)을
         #    덮지 않는다(⚠️ `box["group"]` 에 두면 `facts_of` 가 안 싣는다 · 실측)
         box.setdefault("standings", {})["group"] = said
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **폼 보완**(사용자 지시 2026-10-09(5차) ②) — 세 가지를 더 받는다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > `facts.recent` 가 비면 경기 페이지가 아니라 **팀 페이지**에서 최근 5경기
+    #  > 스코어를 받는다. 동시에 **리그 표**에서 경기당 총골을 구조 사실로 둔다.
+    #  > 팀 **핵심 선수**(시즌 득점·도움 상위 2명)도 받는다.
+    #
+    #  🔴 실사고 2026-10-09(가시마–감바): 경기 페이지가 폼을 안 줘 `recent` 가
+    #     **0건**이었다 — 득점 흐름 변수가 하나도 없었고 이유 문단이 템플릿이 됐다.
+    #  ⚠️ **폼이 이미 있으면 팀 페이지를 안 받는다**(통신 예산 · §19-b).
+    await _fill_form(ref, box, state=state, net=net, pages=raw_pages)
     # 🔴🔴 **선수 → 시장가치 표**(② 라인업 전력 · 네 층 지시서 §4-3)
     #
     #  🔴 경기 페이지가 이미 들고 온다 — 새 출처를 붙이지 않는다(실측 2026-10-06:
@@ -398,6 +410,122 @@ async def _day_page(net: Any, url: str, *, state: RunState, team: str):
     except OSError as exc:
         state.note(f"s2 ⑦ 하루 캐시를 못 적었다 — {exc}")
     return page
+
+
+async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
+                     pages: list[str]) -> None:
+    """🔴🔴 §2 — **폼·총골·핵심 선수**를 보완한다. ⚠️ `box` 를 제자리에서 채운다.
+
+    🔴 셋 다 **리그 표에서 시작한다** — 팀 번호가 거기 있다(우리가 짓지 않는다).
+    ⚠️ 하나라도 못 받으면 그 사실을 `gaps` 가 이름으로 남긴다(#3) — 그리고 블록 3
+       의 셋이 비면 카드 머리에 *"자료 부족 카드"* 가 붙는다(§2 마지막 줄).
+    """
+    from app.collect import fotmob as fm
+    # ① 리그 표 페이지 — 팀 번호·경기당 총골이 거기 있다
+    url = None
+    for text in pages:
+        j = fm.payload(text)
+        if j:
+            url = fm.league_table_url(j)
+            if url:
+                break
+    if not url:
+        state.note("s2 §2 폼 보완 — 리그 표 주소를 못 만들었다(어댑터가 안 준다)")
+        return
+    page = await _day_page(net, url, state=state, team="폼 보완")
+    tj = fm.payload(getattr(page, "text", "") or "") if page is not None else None
+    if not tj:
+        state.note("s2 §2 폼 보완 — 리그 표 페이지를 못 받았다")
+        return
+    ids = fm.team_ids(tj)
+    totals = fm.team_totals(tj)
+    want = {ref.home_name: ref.home, ref.away_name: ref.away}
+    got_tot = {key: totals[name] for name, key in want.items() if name in totals}
+    if got_tot:
+        std = box.setdefault("standings", {})
+        std["team_totals"] = got_tot
+        # 🔴🔴 **이 경기의 총골 기준**(§3 총골 기준 층) — 두 팀 평균이다
+        vals = [float(v["total_per_game"]) for v in got_tot.values()]
+        if len(vals) == 2:
+            std["match_total_baseline"] = round(sum(vals) / 2, 3)
+            state.note(f"s2 §3 경기당 총골 — "
+                       + " · ".join(f"{n} {totals[n]['total_per_game']}"
+                                    for n in want if n in totals)
+                       + f" → 이 경기 기준 {std['match_total_baseline']}")
+    else:
+        state.note("s2 §2 경기당 총골 — 리그 표에 두 팀이 없다")
+    # ② 폼 — **비었을 때만** 팀 페이지를 받는다
+    if not box.get("recent"):
+        for name, key in want.items():
+            tid = ids.get(name)
+            if tid is None:
+                state.note(f"s2 §2 폼 보완 — `{name}` 팀 번호를 못 찾았다")
+                continue
+            tp = await _day_page(net, fm.team_fixtures_url(tid, "x"),
+                                 state=state, team=f"{name} 팀 페이지")
+            if tp is None:
+                continue
+            rows = fm.team_recent(getattr(tp, "text", "") or "", tid, n=5,
+                                  before=ref.kickoff_utc)
+            if not rows:
+                continue
+            box.setdefault("recent", {})[key] = _recent_of(rows)
+            state.note(f"s2 §2 폼 보완 — `{name}` 최근 {len(rows)}경기 "
+                       f"← 팀 페이지(대회 섞임: "
+                       f"{sorted({r['tournament'] for r in rows})})")
+    # ③ 핵심 선수 — 리그 통계 페이지 + 전체 목록
+    lid = str((((fm._page(fm.payload(pages[0]) or {}).get("content") or {})
+                .get("table") or {}).get("parentLeagueId")) or "") if pages else ""
+    if not lid:
+        return
+    sp = await _day_page(net, fm.league_stats_url(lid, "x"), state=state,
+                         team="리그 득점 순위")
+    if sp is None:
+        return
+    all_url = fm.key_players_url(getattr(sp, "text", "") or "")
+    ap = await _day_page(net, all_url, state=state,
+                         team="득점+도움 전체") if all_url else None
+    for name, key in want.items():
+        tid = ids.get(name)
+        if tid is None:
+            continue
+        got = (fm.key_players_all(getattr(ap, "text", "") or "", team_id=tid, n=2)
+               if ap is not None else [])
+        if not got:
+            got = fm.key_players(getattr(sp, "text", "") or "", team_id=tid, n=2)
+        if got:
+            box.setdefault("standings", {}).setdefault("key_players", {})[key] = got
+            state.note(f"s2 §2 핵심 선수 — `{name}` "
+                       + " · ".join(f"{x['name']} {x['value']}" for x in got))
+
+
+def _recent_of(rows: list[dict]) -> dict:
+    """🔴 팀 페이지 줄들 → `facts.recent` 꼴. ⚠️ 칸 이름을 경기 페이지와 맞춘다.
+
+    🔴 그래야 `s5_verify` 의 폼 변수(S01)가 **분기 없이** 읽는다(#1 사본 금지).
+    ⚠️ 대회가 섞여 있다(리그·컵·ACL) — 그 글자를 `sequence` 에 남겨 카드가 적는다.
+    """
+    # 🔴 `trimmed_avg` 는 **`fotmob` 이 든다**(`league` 가 아니다 — 추측해 쓰면
+    #    터진다 · 실사고 2026-10-09: `AttributeError: module 'app.league' has no
+    #    attribute 'trimmed_avg'` 로 카드가 통째로 죽었다).
+    from app.collect import fotmob as _fm
+    seq = [{"date": r["date"], "side": r["side"], "score": r["score"],
+            "opponent": (r["away"] if r["side"] == "home" else r["home"]),
+            "tournament": r["tournament"],
+            "scored": (r["home_score"] if r["side"] == "home"
+                       else r["away_score"]),
+            "conceded": (r["away_score"] if r["side"] == "home"
+                         else r["home_score"])}
+           for r in rows]
+    got = [float(x["scored"]) for x in seq]
+    con = [float(x["conceded"]) for x in seq]
+    trimmed, _why = _fm.trimmed_avg(got) if got else (None, "")
+    return {"last5": [r["result"] for r in rows],
+            "sequence": seq,
+            "recent_scored_avg": round(sum(got) / len(got), 3) if got else None,
+            "recent_trimmed_avg": trimmed,
+            "recent_conceded_avg": round(sum(con) / len(con), 3) if con else None,
+            "source": "fotmob 팀 페이지(대회 섞임)"}
 
 
 async def _group(ref: MatchRef, *, state: RunState, net: Any,

@@ -1945,3 +1945,195 @@ def venue_of(j: dict) -> dict:
         return {}
     return {"name": str(loc.get("name") or ""), "lat": float(lat),
             "lon": float(lon)}
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **폼 보완 통로** — 사용자 지시 2026-10-09(5차) ②
+# ══════════════════════════════════════════════════════════════════
+#
+#  > `facts.recent` 가 비면 경기 페이지가 아니라 **팀 페이지**에서 최근 5경기
+#  > 스코어를 받는다. 동시에 **리그 표**에서 시즌 득점·실점·경기 수를 받아
+#  > *"경기당 총골"* 을 구조 사실로 둔다. 팀 **핵심 선수**(시즌 득점·도움 상위
+#  > 2명)도 리그 득점 순위·팀 페이지에서 받는다.
+#
+#  🔴 실사고 2026-10-09(가시마–감바): 경기 페이지가 폼을 안 줘서 `facts.recent` 가
+#     **0건**이었다. 그래서 득점 흐름 변수가 하나도 없었고 이유 문단이 코드
+#     템플릿으로 떨어졌다(검열 (i) 구체성이 종류 셋을 못 채웠다).
+#  🔴 팀 번호는 **리그 표 줄**이 준다(`id`) — 우리가 짓지 않는다.
+
+
+def team_fixtures_url(team_id: object, slug: str = "x") -> str:
+    """🔴 팀 일정 페이지 주소. ⚠️ 슬러그는 아무 글자나 받는다(실측: `x` 도 200)."""
+    return f"{BASE}/teams/{team_id}/fixtures/{slug}"
+
+
+def team_ids(tb_json: dict) -> dict[str, int]:
+    """🔴 리그 표에서 `{팀 이름: fotmob 팀 번호}`. ⚠️ 번호를 지어내지 않는다."""
+    out: dict[str, int] = {}
+    for tb in _tables(tb_json):
+        for r in ((tb.get("table") or {}).get("all") or []):
+            name, tid = str(r.get("name") or ""), r.get("id")
+            if name and tid is not None:
+                out[name] = int(tid)
+    return out
+
+
+def team_totals(tb_json: dict) -> dict[str, dict]:
+    """🔴🔴 **경기당 총골**(§2 둘째 줄) — 리그 표의 시즌 득점·실점·경기 수로 센다.
+
+    `{팀: {"goals_for", "goals_against", "played", "total_per_game"}}`.
+
+    🔴 실측 2026-10-09 J1 로 사용자 수와 대조했다: 가시마 17득 16실 8경기 →
+       **4.12**(사용자 4.1) · 감바 8득 14실 8경기 → **2.75**(사용자 2.75).
+    ⚠️ 경기 수가 0 이면 그 팀은 **안 싣는다**(0 으로 나누지 않고 지어내지 않는다).
+    """
+    out: dict[str, dict] = {}
+    for tb in _tables(tb_json):
+        for r in ((tb.get("table") or {}).get("all") or []):
+            name = str(r.get("name") or "")
+            gf, ga = _scores(r.get("scoresStr"))
+            played = r.get("played")
+            if not name or gf is None or ga is None or not played:
+                continue
+            out[name] = {"goals_for": int(gf), "goals_against": int(ga),
+                         "played": int(played),
+                         "total_per_game": round((int(gf) + int(ga))
+                                                 / int(played), 3)}
+    return out
+
+
+def team_recent(page_text: str, team_id: object, *, n: int = 5,
+                before=None) -> list[dict]:
+    """🔴🔴 **팀 페이지의 최근 n경기**(§2 첫째 줄) — 끝난 경기만, 최신순.
+
+    돌려주는 줄: `{date, home, away, score, home_score, away_score,
+                  tournament, side, result}`.
+
+    ⚠️ `before` 를 주면 **그 시각보다 앞선** 경기만 센다(이 경기 자신을 안 센다).
+    🔴 대회를 섞어 싣는다(리그·컵·ACL) — 그 글자를 함께 주므로 읽는 쪽이 가른다.
+       ⚠️ 실측 2026-10-09 가시마: 최근 6경기에 J리그·ACL·컵이 섞여 있었다.
+    """
+    j = payload(page_text)
+    if not j:
+        return []
+    pp = ((j.get("props") or {}).get("pageProps") or {})
+    box = (((pp.get("fallback") or {}).get(f"team-{team_id}") or {})
+           .get("fixtures") or {})
+    rows = ((box.get("allFixtures") or {}).get("fixtures") or [])
+    out: list[dict] = []
+    for r in rows:
+        st = r.get("status") or {}
+        if not st.get("finished") or st.get("cancelled"):
+            continue
+        got = re.match(r"\s*(\d+)\s*-\s*(\d+)\s*$", str(st.get("scoreStr") or ""))
+        if not got:
+            continue
+        when = str(st.get("utcTime") or "")
+        if before is not None and when and when[:19] >= str(before)[:19]:
+            continue
+        home = str((r.get("home") or {}).get("name") or "")
+        away = str((r.get("away") or {}).get("name") or "")
+        hs, as_ = int(got.group(1)), int(got.group(2))
+        tour = r.get("tournament")
+        side = ("home" if str((r.get("home") or {}).get("id") or "")
+                == str(team_id) else "away")
+        mine, theirs = (hs, as_) if side == "home" else (as_, hs)
+        out.append({"date": when[:10], "home": home, "away": away,
+                    "score": f"{hs}-{as_}", "home_score": hs, "away_score": as_,
+                    "tournament": (str(tour.get("name") or "")
+                                   if isinstance(tour, dict) else str(tour or "")),
+                    "side": side,
+                    "result": ("W" if mine > theirs
+                               else "D" if mine == theirs else "L")})
+    out.sort(key=lambda r: str(r["date"]), reverse=True)
+    return out[:max(0, int(n))]
+
+
+def league_stats_url(league_id: object, slug: str = "x") -> str:
+    """🔴 리그 통계 페이지 주소 — 핵심 선수(득점·도움)가 여기 있다."""
+    return f"{BASE}/leagues/{league_id}/stats/{slug}"
+
+
+def key_players_url(stats_text: str) -> str:
+    """🔴 리그 통계 페이지가 적어 둔 **전체 목록 주소**(득점+도움). 없으면 `""`.
+
+    🔴 실측 2026-10-09 J1: `data.fotmob.com/stats/223/season/37300/
+       _goals_and_goal_assist.json` 에 **190줄**이 있다. ⚠️ 페이지에 실린 것은
+       블록마다 **1위 하나**뿐이라, 리그 1위가 없는 팀은 그 목록으로만 찾을 수 있다
+       (실측: 감바는 페이지만으로 **0건**이었다).
+    """
+    j = payload(stats_text)
+    if not j:
+        return ""
+    rows = (((j.get("props") or {}).get("pageProps") or {})
+            .get("stats") or {}).get("players") or []
+    for block in rows:
+        if isinstance(block, dict) \
+                and str(block.get("name") or "") == "_goals_and_goal_assist":
+            return str(block.get("fetchAllUrl") or "")
+    return ""
+
+
+def key_players_all(list_text: str, *, team_id: object = None,
+                    n: int = 2) -> list[dict]:
+    """🔴 **전체 목록**(위 주소의 JSON)에서 그 팀 상위 n명. ⚠️ 없으면 빈 목록."""
+    try:
+        box = json.loads(list_text or "{}")
+    except ValueError:
+        return []
+    out: list[dict] = []
+    for top in (box.get("TopLists") or box.get("topLists") or []):
+        for r in (top.get("StatList") or top.get("statList") or []):
+            if not isinstance(r, dict):
+                continue
+            if team_id is not None and str(r.get("TeamId") or "") != str(team_id):
+                continue
+            out.append({"name": str(r.get("ParticipantName") or ""),
+                        "team_id": r.get("TeamId"),
+                        "stat": "goals+assists",
+                        "value": r.get("StatValue"),
+                        "matches": r.get("MatchesPlayed")})
+    out.sort(key=lambda r: -float(r.get("value") or 0))
+    return [x for x in out if x["name"]][:max(0, int(n))]
+
+
+def key_players(stats_text: str, *, team_id: object = None,
+                n: int = 2) -> list[dict]:
+    """🔴🔴 **핵심 선수**(§2 셋째 줄) — 시즌 **득점+도움** 상위.
+
+    `[{name, team_id, value, matches}]`. `team_id` 를 주면 **그 팀만**.
+
+    🔴 목록은 리그 통계 페이지의 `fetchAllUrl`(`_goals_and_goal_assist.json`)이
+       가장 길지만(190줄), 그 주소를 **따로 받지 않고** 페이지가 이미 들고 있는
+       상위 목록을 쓴다. ⚠️ 통신을 한 번 더 하지 않는다(예산 · §19-b).
+    🔴 실측 2026-10-09 J1: 1위가 가시마 `Léo` 10골이다.
+    """
+    j = payload(stats_text)
+    if not j:
+        return []
+    rows = (((j.get("props") or {}).get("pageProps") or {})
+            .get("stats") or {}).get("players") or []
+    want = {"_goals_and_goal_assist", "goals", "goal_assist"}
+    out: list[dict] = []
+    for block in rows:
+        if not isinstance(block, dict):
+            continue
+        if str(block.get("name") or "") not in want:
+            continue
+        for p in ([block.get("participant")]
+                  + list(block.get("participants") or [])):
+            if not isinstance(p, dict):
+                continue
+            if team_id is not None and str(p.get("teamId") or "") != str(team_id):
+                continue
+            said = {"name": str(p.get("name") or ""),
+                    "team_id": p.get("teamId"),
+                    "team": str(p.get("teamName") or ""),
+                    "stat": str(block.get("name") or ""),
+                    "value": p.get("value")}
+            # ⚠️ **같은 선수가 블록마다** 온다(득점·득점+도움) — 이름으로 하나만
+            #    (실측 2026-10-09: `Léo` 가 두 번 나왔다)
+            if said["name"] and said["name"] not in {x["name"] for x in out}:
+                out.append(said)
+    out.sort(key=lambda r: -float(r.get("value") or 0))
+    return out[:max(0, int(n))]

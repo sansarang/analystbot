@@ -2826,3 +2826,206 @@ def test_남은_경기_줄이_조_전체와_팀별을_가른다():
     src = pathlib.Path("app/core/render.py").read_text(encoding="utf-8")
     assert "조 전체 남은 경기" in src, "조 전체임을 안 밝힌다"
     assert "이 두 팀 남은 라운드" in src, "팀별 라운드를 안 적는다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 지시 2026-10-09(5차)** — 경우의 수 게이트 · 폼 보완 · 총골 기준
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_경우의_수는_시즌_막판에만_판정한다():
+    """🔴🔴 §1 — 돌연변이: 게이트를 빼면 8라운드에 `must_win` 이 찍힌다.
+
+    실사고 2026-10-09(가시마–감바 8라운드): 남은 라운드 30경기에 `must_win` 이
+    찍혔고 그 글자가 이유 문단과 ③ 이동까지 흔들었다.
+    """
+    from app.core.competition import outlook_gate, outlook_open
+    box = outlook_gate()
+    assert int(box["league_rounds_left_at"]) == 5, box
+    assert int(box["split_rounds_left_at"]) == 3, box
+    assert int(box["group_rounds_left_at"]) == 2, box
+    # 🔴 시즌 초는 **닫힌다**
+    shut, why = outlook_open(rounds_left=30, is_group=False)
+    assert shut is False and "시즌 초" in why, why
+    # 🔴 막판은 열린다
+    assert outlook_open(rounds_left=5, is_group=False)[0] is True
+    # 🔴 분할 컷까지 3 이하면 남은 라운드가 많아도 열린다
+    assert outlook_open(rounds_left=8, is_group=False,
+                        cut_rounds_left=3)[0] is True
+    # 🔴 조별 리그는 **마지막 2라운드만**
+    assert outlook_open(rounds_left=3, is_group=True)[0] is False
+    assert outlook_open(rounds_left=2, is_group=True)[0] is True
+    # ⚠️ 라운드를 못 세면 **닫는다**(모르는 것으로 상태를 말하지 않는다)
+    assert outlook_open(rounds_left=-1, is_group=False)[0] is False
+    # 🔴 s2b 가 그 게이트를 **부르나**
+    import pathlib
+    src = pathlib.Path("app/core/stages/s2b_base.py").read_text(encoding="utf-8")
+    assert "rules_comp_open(" in src and '"gate_open"' in src
+
+
+def test_시즌_초면_블록3b_가_한_줄이고_검열이_must_win_을_잡는다():
+    """🔴 §1 — 돌연변이: 표 27줄을 그대로 그린다 · 검열 (n) 을 뺀다."""
+    from app.core import render
+    from app.core.schema import (BaseProb, Card, CommentLine, Facts, MatchRef,
+                                 ReasonLine, ReasonPara)
+    from app.core.stages import s9_audit
+    from datetime import datetime, timezone
+    ref = MatchRef(id="x", sport="soccer", competition="J. League",
+                   competition_short="J. League",
+                   kickoff_utc=datetime(2026, 10, 9, 10, tzinfo=timezone.utc),
+                   home="team:000316", away="team:000582",
+                   home_name="Kashima Antlers", away_name="Gamba Osaka")
+    look = {"group": "J. League", "gate_open": False,
+            "gate_why": "**시즌 초** — 남은 라운드 30(판정은 5 이하부터)",
+            "cells": [], "states": {}}
+    card = Card(match=ref, facts=Facts(), base_prob=BaseProb(why="x"),
+                outlook=look)
+    said = render._b3b(card)
+    assert "시즌 초 — 경우의 수 해당 없음" in said, said
+    assert said.count("\n") == 0, "표를 그렸다(한 줄이어야 한다)"
+    # 🔴 **(n)** — 게이트가 닫혔는데 그 글자를 쓰면 위반이다
+    para = ReasonPara(sentences=[
+        ReasonLine(text="가시마는 must_win 이라 이겨야 올라간다.", fact_refs=["DIR"]),
+        ReasonLine(text="두 번째 문장 17골.", fact_refs=["DIR"]),
+        ReasonLine(text="어느 쪽도 확신할 근거가 없다.", fact_refs=["DIR"])])
+    bad = s9_audit.reason_check(para, card=card)
+    assert any(x.startswith("(n)") for x in bad), bad
+    # 🔴 게이트가 **열려 있으면** 안 잡는다
+    ok_card = card.model_copy(update={"outlook": {**look, "gate_open": True}})
+    assert not any(x.startswith("(n)")
+                   for x in s9_audit.reason_check(para, card=ok_card))
+    # ⚠️ 사실 목록에서도 **상태를 주지 않는다**(애초에 못 쓰게)
+    from app.core import layer1
+    assert not [k for k in layer1.facts_catalog(card) if k.startswith("RANK:")]
+    del CommentLine
+
+
+def test_경기당_총골을_리그_표에서_센다():
+    """🔴🔴 §2·§3 — 돌연변이: 리그 평균으로 때운다.
+
+    🔴 실측 2026-10-09 J1 로 사용자 수와 대조했다: 가시마 17득 16실 8경기 →
+       **4.125**(사용자 4.1) · 감바 8득 14실 8경기 → **2.75**(사용자 2.75).
+    """
+    from app.collect.fotmob import team_ids, team_totals
+    tj = {"props": {"pageProps": {"table": [{"data": {
+        "leagueName": "J. League",
+        "table": {"all": [
+            {"name": "Kashima Antlers", "id": 4397, "idx": 8, "played": 8,
+             "scoresStr": "17-16", "pts": 13},
+            {"name": "Gamba Osaka", "id": 6582, "idx": 16, "played": 8,
+             "scoresStr": "8-14", "pts": 6}]}}}]}}}
+    tot = team_totals(tj)
+    assert tot["Kashima Antlers"]["total_per_game"] == 4.125, tot
+    assert tot["Gamba Osaka"]["total_per_game"] == 2.75, tot
+    assert team_ids(tj) == {"Kashima Antlers": 4397, "Gamba Osaka": 6582}
+    # ⚠️ 경기 수가 0 이면 **안 싣는다**(0 으로 나누지 않는다)
+    zero = {"props": {"pageProps": {"table": [{"data": {"table": {"all": [
+        {"name": "A", "id": 1, "played": 0, "scoresStr": "0-0"}]}}}]}}}
+    assert team_totals(zero) == {}
+
+
+def test_이_경기_총골_기준이_리그_평균보다_먼저다():
+    """🔴 §3 — 돌연변이: `match_total_baseline` 을 무시한다."""
+    import pathlib
+    src = pathlib.Path("app/survive.py").read_text(encoding="utf-8")
+    assert 'get("match_total_baseline")' in src, "경기 기준을 안 본다"
+    # 🔴 **리그 평균은 그 뒤**다(둘의 순서가 뜻이다)
+    head = src.split('get("match_total_baseline")')[1][:900]
+    assert 'get("total_baseline")' in head, head[:200]
+    assert "이 경기 총골 기준" in src, "무엇을 썼는지 카드에 안 적는다"
+
+
+def test_블록3_의_셋이_빠지면_머리표가_붙는다():
+    """🔴 §2 마지막 줄 — 돌연변이: 조용히 내보낸다(가시마–감바가 그랬다)."""
+    from app.core import render
+    from app.core.schema import BaseProb, Card, Facts, MatchRef
+    from datetime import datetime, timezone
+    ref = MatchRef(id="x", sport="soccer", competition="J. League",
+                   competition_short="J. League",
+                   kickoff_utc=datetime(2026, 10, 9, 10, tzinfo=timezone.utc),
+                   home="team:000316", away="team:000582",
+                   home_name="A", away_name="B")
+    empty = Card(match=ref, facts=Facts(), base_prob=BaseProb(why="x"))
+    assert render.block3_gaps(empty) == ["폼(최근 5경기)", "경기당 총골", "핵심 선수"]
+    # 🔴 셋을 다 받으면 머리표가 **없다**
+    full = Card(match=ref, base_prob=BaseProb(why="x"), facts=Facts(
+        recent={"team:000316": {"last5": ["W"]}},
+        standings={"team_totals": {"team:000316": {"total_per_game": 4.1}},
+                   "key_players": {"team:000316": [{"name": "Léo"}]}}))
+    assert render.block3_gaps(full) == []
+    assert any("블록 3 에" in x for x in render.warn_lines(empty)), \
+        render.warn_lines(empty)
+
+
+def test_핵심선수와_총골이_작성자_입력과_카드에_이어진다():
+    """🔴🔴 §2 — 돌연변이: 받아 두고 **안 쓴다**(CLAUDE.md #2 고아 코드).
+
+    🔴 실사고 2026-10-09: `key_players` 를 세 통로로 받아 놓고 **아무 데서도
+       안 썼다** — 머리표 검사만 그 이름을 보고 있었다.
+    """
+    from app.core import layer1, render
+    from app.core.schema import BaseProb, Card, Facts, MatchRef
+    from datetime import datetime, timezone
+    ref = MatchRef(id="x", sport="soccer", competition="J. League",
+                   competition_short="J. League",
+                   kickoff_utc=datetime(2026, 10, 9, 10, tzinfo=timezone.utc),
+                   home="team:000316", away="team:000582",
+                   home_name="Kashima Antlers", away_name="Gamba Osaka")
+    std = {
+        "team_totals": {
+            "team:000316": {"total_per_game": 4.125, "goals_for": 17,
+                            "goals_against": 16, "played": 8},
+            "team:000582": {"total_per_game": 2.75, "goals_for": 8,
+                            "goals_against": 14, "played": 8}},
+        "match_total_baseline": 3.438,
+        "key_players": {
+            "team:000316": [{"name": "Léo", "value": 10, "matches": 7,
+                             "stat": "goals+assists"}],
+            "team:000582": [{"name": "Issam Jebali", "value": 3, "matches": 6,
+                             "stat": "goals+assists"}]}}
+    card = Card(match=ref, facts=Facts(standings=std),
+                base_prob=BaseProb(why="x"))
+    # 🔴 ① **작성자 입력**(사실 목록)에 들어간다
+    box = layer1.facts_catalog(card)
+    assert "KEY:Léo" in box and box["KEY:Léo"]["kind"] == "player", box.keys()
+    assert "KEY:Issam Jebali" in box
+    assert "TOTAL" in box and "4.125" in box["TOTAL"]["text"], box.get("TOTAL")
+    assert "3.438" in box["TOTAL"]["text"]
+    # 🔴 ② **검열 (l)** 이 그 이름을 막지 않는다(있는 선수다)
+    assert "Léo" in layer1.player_pool(card)
+    # 🔴 ③ **카드 블록 3** 이 적는다
+    said = render._standings_line(card)
+    assert "경기당 총골" in said and "4.125" in said, said
+    assert "이 경기 기준 3.438" in said, said
+    assert "핵심 선수" in said and "Léo 10" in said, said
+    # 🔴 ④ 머리표가 **안 붙는다**(셋을 다 받았으면)
+    assert render.block3_gaps(card) == ["폼(최근 5경기)"], render.block3_gaps(card)
+
+
+def test_폼_보완_꼴이_경기_페이지와_같은_칸을_쓴다():
+    """🔴 §2 — 돌연변이: 칸 이름을 새로 짓는다 → S01 이 못 읽는다.
+
+    🔴 실사고 2026-10-09: `trimmed_avg` 가 `app.league` 에 있다고 **추측해 써서**
+       `AttributeError` 로 카드가 통째로 죽었다. 이 계약이 그것을 잡는다.
+    """
+    from app.core.stages.s2_facts import _recent_of
+    rows = [{"date": "2026-09-23", "side": "home", "score": "3-1",
+             "home": "Kashima Antlers", "away": "Ventforet Kofu",
+             "home_score": 3, "away_score": 1, "tournament": "Cup",
+             "result": "W"},
+            {"date": "2026-09-19", "side": "away", "score": "3-3",
+             "home": "Kawasaki", "away": "Kashima Antlers",
+             "home_score": 3, "away_score": 3, "tournament": "J. League",
+             "result": "D"}]
+    got = _recent_of(rows)
+    # 🔴 **경기 페이지와 같은 칸 이름**이어야 S01 이 분기 없이 읽는다
+    for key in ("last5", "sequence", "recent_scored_avg",
+                "recent_trimmed_avg", "recent_conceded_avg"):
+        assert key in got, (key, sorted(got))
+    assert got["last5"] == ["W", "D"]
+    assert got["recent_scored_avg"] == 3.0
+    assert got["recent_conceded_avg"] == 2.0
+    assert got["recent_trimmed_avg"] is not None
+    # 🔴 대회 글자를 **함께** 싣는다(리그·컵·ACL 이 섞인다)
+    assert {x["tournament"] for x in got["sequence"]} == {"Cup", "J. League"}
+    assert "팀 페이지" in str(got.get("source"))

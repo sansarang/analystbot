@@ -225,6 +225,46 @@ def pick_one(rows: list[dict]) -> tuple[list[dict], list[str]]:
     return [*best.values(), *loose], notes
 
 
+def outlook_gate() -> dict:
+    """🔴 §1 — **경우의 수를 언제 판정하나**. 표는 `competitions.yaml` 하나다."""
+    return dict(table().get("outlook_gate") or {})
+
+
+def outlook_open(*, rounds_left: int, is_group: bool,
+                 cut_rounds_left: int | None = None) -> tuple[bool, str]:
+    """🔴🔴 §1 — 경우의 수를 **판정해도 되나**. `(열렸나, 사유)`.
+
+    | 무엇 | 문턱 |
+    |---|---|
+    | 리그 남은 라운드 | `league_rounds_left_at` 이하 |
+    | 분할·플레이오프 컷까지 | `split_rounds_left_at` 이하 |
+    | 조별 리그 | `group_rounds_left_at` 이하 |
+
+    🔴 실사고 2026-10-09(가시마–감바 8라운드): 남은 라운드 30경기에 `must_win` 이
+       찍혔다 — 그 글자가 이유 문단과 ③ 이동까지 흔들었다.
+    ⚠️ 라운드를 **못 세면 닫는다**(모르는 것으로 상태를 말하지 않는다 · #3).
+    """
+    box = outlook_gate()
+    if rounds_left is None or int(rounds_left) < 0:
+        return False, "남은 라운드를 못 셌다 — 경우의 수를 판정하지 않는다"
+    left = int(rounds_left)
+    if is_group:
+        at = int(box.get("group_rounds_left_at") or 2)
+        if left <= at:
+            return True, f"조별 리그 마지막 {at}라운드 안(남은 {left})"
+        return False, (f"조별 리그인데 남은 라운드가 {left} 다 — 마지막 {at}라운드"
+                       f"부터 판정한다")
+    at = int(box.get("league_rounds_left_at") or 5)
+    if left <= at:
+        return True, f"리그 남은 라운드 {left} ≤ {at}"
+    cut_at = int(box.get("split_rounds_left_at") or 3)
+    if cut_rounds_left is not None and int(cut_rounds_left) <= cut_at:
+        return True, (f"분할 컷까지 남은 라운드 {int(cut_rounds_left)} ≤ {cut_at}")
+    return False, (f"**시즌 초** — 남은 라운드 {left}(판정은 {at} 이하부터"
+                   + (f" · 분할 컷까지 {cut_at} 이하부터" if cut_rounds_left
+                      is not None else "") + ")")
+
+
 def short_key(key: str) -> str:
     """🔴 `league:J1` → `J1`. ⚠️ 대표팀 유형은 그대로 돌려준다."""
     said = str(key or "")

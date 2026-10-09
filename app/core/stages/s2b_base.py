@@ -385,6 +385,20 @@ def _same_player(name: str, pool: set[str]) -> bool:
 # ══════════════════════════════════════════════════════════════════
 
 
+def rules_comp_open(*, rounds_left: int, is_group: bool, cut: int,
+                    rows: list[dict], home: str, away: str) -> tuple[bool, str]:
+    """🔴 §1 게이트 — **분할 컷까지 남은 라운드**까지 세서 `competition` 에 묻는다.
+
+    🔴 컷까지 남은 라운드는 *"우리 팀이 컷을 넘나들 수 있는 라운드 수"* 가 아니라
+       **정규 라운드가 끝나기까지**다(분할은 그때 갈린다). ⚠️ 그래서 분할 리그에서는
+       `rounds_left` 와 같다 — 그 사실을 적어 둔다(다른 뜻으로 읽히지 않게).
+    """
+    from app.core import competition as _comp
+    cut_left = int(rounds_left) if cut else None
+    return _comp.outlook_open(rounds_left=rounds_left, is_group=is_group,
+                              cut_rounds_left=cut_left)
+
+
 def outlook(ref: MatchRef, facts: Facts, *, state: RunState) -> dict:
     """🔴 §2 — 결과 3 × 다른 경기 3 의 순위·구역과 **팀별 상태**.
 
@@ -427,8 +441,35 @@ def outlook(ref: MatchRef, facts: Facts, *, state: RunState) -> dict:
                           titles=[str(x) for x in (split.get("cut_zones") or [])]) \
             or int(split.get("cut_rank_fallback") or 0)
         state.note(f"s2b §2 분할 컷 **{cut}위** — {split.get('why')}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **시즌 막판에만 판정한다**(사용자 지시 2026-10-09(5차) ①)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 실사고 2026-10-09(가시마–감바 8라운드): 남은 라운드 30경기에 `must_win`
+    #     이 찍혔고 그 글자가 이유 문단과 ③ 이동까지 흔들었다.
+    #  ⚠️ 라운드는 **팀별**로 센다(조 전체 남은 경기 수가 아니다).
+    fx0 = list(box.get("fixtures") or [])
+    rounds0 = {t: sum(1 for f in fx0
+                      if not f.get("finished")
+                      and t.lower() in (str(f.get("home", "")).lower(),
+                                        str(f.get("away", "")).lower()))
+               for t in (home, away)}
+    left0 = max(rounds0.values()) if rounds0 else -1
+    is_group = bool(str(facts.match_format or "") == "group"
+                    or "grp" in str(ref.competition or "").lower())
+    open_now, gate_why = rules_comp_open(rounds_left=left0, is_group=is_group,
+                                         cut=cut, rows=rows, home=home,
+                                         away=away)
+    state.note(f"s2b §2 경우의 수 게이트 — {'열렸다' if open_now else '닫혔다'}"
+               f"({gate_why})")
     states: dict[str, dict] = {}
     for team, is_home in ((home, True), (away, False)):
+        if not open_now:
+            # 🔴 **상태는 `nothing`** 이다(시즌 초) — 없는 확정을 말하지 않는다
+            states[team] = {"state": "nothing", "why": gate_why,
+                            "margin": 0,
+                            "side": ("home" if is_home else "away")}
+            continue
         said, why = st.state_of(cells, team, is_home=is_home,
                                 zones=dict(box.get("zones") or {}), cut=cut)
         margin, mwhy = st.margin_for(box, team=team, rival=away if is_home else home,
@@ -465,6 +506,8 @@ def outlook(ref: MatchRef, facts: Facts, *, state: RunState) -> dict:
            "final": all(n <= 1 for n in rounds.values()),
            "rounds_left": rounds, "reachable": reach,
            "cut": cut, "cut_why": str(split.get("why") or "") if split else "",
+           # 🔴 게이트 — 카드가 *"시즌 초 — 경우의 수 해당 없음"* 을 적는다(§1)
+           "gate_open": open_now, "gate_why": gate_why,
            "other": [f"{r['home']} vs {r['away']} ({str(r.get('kickoff_utc') or '')[:16]}Z)"
                      + (f" · 승점차 {r['gap']}" if r.get("gap") is not None else "")
                      for r in other_rows],

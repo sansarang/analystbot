@@ -78,6 +78,13 @@ def warn_lines(card: Card) -> list[str]:
     said, why = thin_card(card)
     if said:
         out.append(f"🔴 **자료 부족 카드 — 판단에 쓰지 말 것**({why})")
+    # 🔴🔴 §2 마지막 줄 — 블록 3 의 셋이 빠지면 **머리표**다(지시 (5차) ②)
+    # ⚠️ `thin_card` 가 걸렸어도 **함께 적는다** — 무엇이 없는지는 다른 말이다
+    #    (실측: thin 문구가 블록 3 문구를 가려 사람이 셋 중 무엇이 빠졌는지 못 봤다)
+    gaps3 = block3_gaps(card)
+    if gaps3:
+        out.append(f"🔴 **자료 부족 카드 — 판단에 쓰지 말 것**"
+                   f"(블록 3 에 {'·'.join(gaps3)} 가 없다)")
     return out
 
 
@@ -118,6 +125,31 @@ def thin_card(card: Card) -> tuple[bool, str]:
     if len(miss) < 2:
         return False, ""
     return True, (f"변수 {n_var}개 · 기준 없음 · " + "·".join(miss) + " 없음")
+
+
+#: 🔴 §2 마지막 줄 — 블록 3 이 들어야 하는 셋(사용자 지시 2026-10-09(5차))
+#  `recent`(최근 5경기) · `standings.team_totals`(경기당 총골) · `key_players`
+BLOCK3_NEED: tuple[tuple[str, str], ...] = (
+    ("폼(최근 5경기)", "recent"),
+    ("경기당 총골", "team_totals"),
+    ("핵심 선수", "key_players"))
+
+
+def block3_gaps(card: Card) -> list[str]:
+    """🔴🔴 §2 — 블록 3 의 **셋 중 빠진 것**(없으면 빈 목록).
+
+    > 카드 블록 3 에 이 셋이 빠지면 *"자료 부족 카드"* 머리표.
+
+    🔴 실사고 2026-10-09(가시마–감바): 폼이 **0건**이라 득점 흐름 변수가 하나도
+       없었는데 카드는 아무 표시 없이 나갔다.
+    """
+    std = dict(card.facts.standings or {})
+    out: list[str] = []
+    for label, key in BLOCK3_NEED:
+        got = (card.facts.recent if key == "recent" else std.get(key))
+        if not got:
+            out.append(label)
+    return out
 
 
 def _head(card: Card) -> str:
@@ -286,6 +318,12 @@ def _b3b(card: Card) -> str:
     🔴 동률 규칙이 **확인 안 된 대회**면 그 가정을 여기 적는다(금지 조항).
     """
     look = dict(card.outlook or {})
+    # 🔴🔴 **게이트가 먼저다**(지시 2026-10-09(5차) ①) — 시즌 초면 한 줄로 끝난다.
+    #    ⚠️ 순위표 검사보다 **앞**에 둔다: 게이트가 닫히면 `cells` 가 비어 있고
+    #       그러면 아래 *"순위표가 없다"* 로 잘못 적힌다(실측).
+    if look and not look.get("gate_open", True):
+        return (f"- ⬜ **시즌 초 — 경우의 수 해당 없음**({look.get('gate_why')})"
+                f" · 조 `{look.get('group') or '?'}`")
     cells = list(look.get("cells") or [])
     if not cells:
         box = dict(card.facts.standings or {})
@@ -510,7 +548,8 @@ def _b3(card: Card) -> str:
 
 #: 🔴 블록 3 이 **적는 칸** — 홈 이점과 쪼갠 표뿐이다(허용 목록 · 지시 2026-10-09)
 #  ⚠️ 칸 이름은 `s5_verify._ir_home` 이 읽는 것과 **같다**(`home_advantage`).
-STANDINGS_SHOW: tuple[str, ...] = ("home_advantage", "venue", "venue_averages")
+STANDINGS_SHOW: tuple[str, ...] = ("home_advantage", "venue", "venue_averages",
+                                   "team_totals", "key_players")
 
 
 def _standings_line(card: Card) -> str:
@@ -523,12 +562,34 @@ def _standings_line(card: Card) -> str:
         if box.get("group"):
             return "- 순위 — 조 순위표는 **블록 3b** 에 있다(홈/원정 쪼갠 표는 못 받았다)"
         return ""
+    out: list[str] = []
+    # 🔴🔴 **경기당 총골**(지시 2026-10-09(5차) ②·③) — 블록 3 이 적을 칸이다
+    tot = dict(said.get("team_totals") or {})
+    if tot:
+        base = box.get("match_total_baseline")
+        out.append("- 경기당 총골 — "
+                   + " · ".join(f"**{_who(card, k)}** {v.get('total_per_game')}"
+                                f"({v.get('goals_for')}득 {v.get('goals_against')}실"
+                                f" {v.get('played')}경기)"
+                                for k, v in tot.items())
+                   + (f" → **이 경기 기준 {base}**" if base else ""))
+    # 🔴 **핵심 선수** — 시즌 득점·도움 상위(§2 셋째 줄)
+    kp = dict(said.get("key_players") or {})
+    for key, rows in kp.items():
+        bits = " · ".join(f"{dict(r).get('name')} {dict(r).get('value')}"
+                          + (f"({dict(r).get('matches')}경기)"
+                             if dict(r).get("matches") else "")
+                          for r in (rows or []))
+        if bits:
+            out.append(f"- 핵심 선수 **{_who(card, key)}** — {bits}")
     ha = dict(said.get("home_advantage") or {})
     got = ha.get("win_pct_delta")
     if got is not None:
-        return (f"- 홈 이점(쪼갠 표) — 홈 승률 {float(got):+g}%p · "
-                f"홈 {ha.get('home_games', '?')}경기 · 원정 "
-                f"{ha.get('away_games', '?')}경기")
+        out.append(f"- 홈 이점(쪼갠 표) — 홈 승률 {float(got):+g}%p · "
+                   f"홈 {ha.get('home_games', '?')}경기 · 원정 "
+                   f"{ha.get('away_games', '?')}경기")
+    if out:
+        return "\n".join(out)
     return f"- 순위 — {_short(said)}"
 
 

@@ -172,6 +172,39 @@ def facts_catalog(card: Card) -> dict[str, dict]:
         for nm in names:
             out[f"P:{nm}"] = {"kind": "player", "text": f"{name} 선발 {nm}"}
 
+    # ①-b 🔴🔴 **핵심 선수**(지시 2026-10-09(5차) ②) — 시즌 득점·도움 상위 2명
+    #    ⚠️ 받아 두고 **안 쓰면 없는 코드**다(CLAUDE.md #2) — 작성자 입력이 그 자리다.
+    #    🔴 실측 2026-10-09 J1: 가시마 `Léo` 10 · `Aleksandar Čavrić` 5 ·
+    #       감바 `Issam Jebali` 3 · `Deniz Hümmet` 2.
+    for key, rows_kp in ((f.standings or {}).get("key_players") or {}).items():
+        who = _nm(card, key)
+        for p_kp in (rows_kp or []):
+            nm_kp = str(dict(p_kp).get("name") or "")
+            if not nm_kp:
+                continue
+            out[f"KEY:{nm_kp}"] = {
+                "kind": "player",
+                "text": (f"{who} 핵심 선수 {nm_kp} — 시즌 "
+                         f"{dict(p_kp).get('stat') or '기록'} "
+                         f"{dict(p_kp).get('value')}"
+                         + (f"({dict(p_kp).get('matches')}경기)"
+                            if dict(p_kp).get("matches") else ""))}
+
+    # ①-c 🔴 **경기당 총골**(§3 총골 기준 층) — 이 경기 기준이 어디서 왔나
+    tot = dict((f.standings or {}).get("team_totals") or {})
+    if tot:
+        out["TOTAL"] = {
+            "kind": "form",
+            "text": ("경기당 총골 — "
+                     + " · ".join(f"{_nm(card, k)} {v.get('total_per_game')}"
+                                  f"({v.get('goals_for')}득 {v.get('goals_against')}실 "
+                                  f"{v.get('played')}경기)"
+                                  for k, v in tot.items())
+                     + (f" → 이 경기 기준 "
+                        f"{(f.standings or {}).get('match_total_baseline')}"
+                        if (f.standings or {}).get("match_total_baseline")
+                        else ""))}
+
     # ② 결장·징계 — 구조 사실과 검증 변수 둘 다
     for team, rows in (f.missing or {}).items():
         for row in (rows or []):
@@ -189,6 +222,10 @@ def facts_catalog(card: Card) -> dict[str, dict]:
 
     # ③ 순위·컷·동기
     look = dict(card.outlook or {})
+    # 🔴 게이트가 닫혔으면(시즌 초) **상태를 사실로 주지 않는다**(지시 (5차) ①) —
+    #    작성자가 그 글자를 쓰면 검열 (n) 이 잡는다. 애초에 안 주는 것이 맞다.
+    if look and not look.get("gate_open", True):
+        look = {}
     if look:
         cut = look.get("cut")
         for team, box in dict(look.get("states") or {}).items():
@@ -290,6 +327,9 @@ def player_pool(card: Card) -> set[str]:
         out |= {str(x) for x in ((card.facts.squad or {}).get(key) or [])}
     for rows in (card.facts.missing or {}).values():
         out |= {str(getattr(r, "name", "") or "") for r in (rows or [])}
+    # 🔴 **핵심 선수도 "있는 선수"** 다 — 검열 (l) 이 그 이름을 막으면 안 된다
+    for rows in ((card.facts.standings or {}).get("key_players") or {}).values():
+        out |= {str(dict(r).get("name") or "") for r in (rows or [])}
     for v in (card.variables or []):
         if v.target:
             out.add(str(v.target))
@@ -478,11 +518,13 @@ def text(card: Card, *, buttons: bool = True) -> str:
     out: list[str] = []
     out.append(f"⚽ {m.home_name} vs {m.away_name} · {m.competition_short} · "
                f"{_when(card)}")
+    out.append(f"📋 라인업 {_xi(card)} — {_again(card)}")
     # 🔴🔴 **경고는 1겹에도 올라온다**(지시 2026-10-09(4차) §2·§3) — 1겹이 기본
     #    카드이므로 여기 없으면 사람이 그 사실을 **못 본다**.
+    #    ⚠️ 자리는 **머리 두 줄 뒤**다 — 그 두 줄은 *무슨 경기인가*이고 §1 의 순서가
+    #       그것을 먼저 둔다(경고가 끼면 그 순서가 깨진다).
     from app.core.render import warn_lines
     out += list(warn_lines(card))
-    out.append(f"📋 라인업 {_xi(card)} — {_again(card)}")
     out.append("")
     out.append(f"【헤드라인】 {headline(card)}")
     out.append(f"【이유】 {reason_text(card)}")
