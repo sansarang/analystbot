@@ -2924,15 +2924,28 @@ def test_경기당_총골을_리그_표에서_센다():
     assert team_totals(zero) == {}
 
 
-def test_이_경기_총골_기준이_리그_평균보다_먼저다():
-    """🔴 §3 — 돌연변이: `match_total_baseline` 을 무시한다."""
+def test_참고_총점_줄은_관례_줄이다():
+    """🔴🔴 §3(6차) — 돌연변이: 경기 총골로 줄을 만든다(걸 수 없는 줄이 나온다).
+
+    > 참고 줄은 **1.5/2.5/3.5 로 되돌린다**(1.2·2.2·3.2 는 실제로 걸 수 없는
+    > 줄이다). 기준 총골(2.25)은 **블록 3 에 숫자로만** 적고, 줄 판정은 실제
+    > 보드·피드 줄에만.
+
+    ⚠️ 실사고 2026-10-09(강원–부천): 기준 2.25 가 `over 1.2 / 2.2 / 3.2` 를
+       만들었다 — 북에 없는 줄이다.
+    """
     import pathlib
+    from app import rules
+    assert rules.common_total_lines("soccer") == [1.5, 2.5, 3.5]
     src = pathlib.Path("app/survive.py").read_text(encoding="utf-8")
-    assert 'get("match_total_baseline")' in src, "경기 기준을 안 본다"
-    # 🔴 **리그 평균은 그 뒤**다(둘의 순서가 뜻이다)
-    head = src.split('get("match_total_baseline")')[1][:900]
-    assert 'get("total_baseline")' in head, head[:200]
-    assert "이 경기 총골 기준" in src, "무엇을 썼는지 카드에 안 적는다"
+    # 🔴 **줄을 만들 때 그 수를 쓰지 않는다** — 주석 말고 코드에 없어야 한다
+    code = "\n".join(ln for ln in src.splitlines()
+                      if not ln.strip().startswith("#"))
+    assert 'get("match_total_baseline")' not in code, \
+        "경기 총골로 다시 줄을 만든다"
+    # 🔴 **사실은 그대로 남는다** — 블록 3 이 숫자로 적는다
+    rd = pathlib.Path("app/core/render.py").read_text(encoding="utf-8")
+    assert "경기당 총골" in rd and "이 경기 기준" in rd, "블록 3 이 안 적는다"
 
 
 def test_블록3_의_셋이_빠지면_머리표가_붙는다():
@@ -3037,3 +3050,137 @@ def test_폼_보완_꼴이_경기_페이지와_같은_칸을_쓴다():
     # 🔴 대회 글자를 **함께** 싣는다(리그·컵·ACL 이 섞인다)
     assert {x["tournament"] for x in got["sequence"]} == {"Cup", "J. League"}
     assert "팀 페이지" in str(got.get("source"))
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 지시 2026-10-09(6차)** — 강원–부천 카드에서 나온 넷
+# ══════════════════════════════════════════════════════════════════
+
+
+def _scen(sid, outcomes, strength, mech="m", drivers=(), added_by="deepseek"):
+    from app.core.schema import Scenario
+    return Scenario(id=sid, outcomes=list(outcomes), mechanism=mech,
+                    strength=strength, driver_vars=list(drivers),
+                    added_by=added_by)
+
+
+def test_예상_스코어는_무게_상위_셋을_그대로_쓴다():
+    """🔴🔴 §1 — 돌연변이: 작성자가 고른다(무게 1위가 빠진다).
+
+    실사고 2026-10-09(강원–부천): 무게 1위 `1-2`(away 1.3525)가 빠지고
+    `3-0 · 2-0 · 0-0` 이 나갔다.
+    """
+    from app.core.schema import HypoSet
+    from app.core.stages.s9_audit import score_drivers, top_scores
+    hypo = HypoSet(scenarios=[
+        _scen("C", [(1, 2), (0, 1)], 1.3525, drivers=["S02", "S01-home"]),
+        _scen("D", [(3, 0), (2, 0)], 1.2158, drivers=["S01-home"]),
+        _scen("E", [(0, 0), (1, 1)], 0.7799, drivers=["S01-home", "S01-away"])])
+    got = top_scores(hypo, 3)
+    # 🔴 **무게 1위 갈래의 스코어가 들어간다**
+    assert [k for k, _w in got][:1] == ["0-1"] or "1-2" in [k for k, _w in got], got
+    assert len(got) == 3, got
+    # 🔴 `0-0` 의 **근거 변수 id** 를 돌려준다(지시 ① 마지막 줄)
+    assert score_drivers(hypo, "0-0") == ["S01-home", "S01-away"]
+    assert score_drivers(hypo, "9-9") == []
+
+
+def test_1겹_예상_스코어_줄이_근거와_어긋남을_적는다():
+    """🔴 §1 — 돌연변이: `0-0` 을 근거 없이 적는다 · 어긋남을 숨긴다."""
+    from app.core import layer1
+    from app.core.schema import (BaseProb, Card, Facts, HypoSet, MatchRef,
+                                 ProbTriple)
+    from datetime import datetime, timezone
+    ref = MatchRef(id="x", sport="soccer", competition="K-League 1",
+                   competition_short="K-League 1",
+                   kickoff_utc=datetime(2026, 10, 9, 7, 30, tzinfo=timezone.utc),
+                   home="team:000316", away="team:000582",
+                   home_name="Gangwon FC", away_name="Bucheon FC 1995")
+    hypo = HypoSet(scenarios=[
+        _scen("E", [(0, 0)], 2.0, drivers=["S01-home", "S01-away"]),
+        _scen("C", [(0, 1)], 1.0, drivers=["S02"]),
+        _scen("D", [(2, 0)], 0.5, drivers=["S03"])])
+    card = Card(match=ref, facts=Facts(), hypo=hypo,
+                base_prob=BaseProb(why="x"),
+                our_prob=ProbTriple(home=0.45, draw=0.27, away=0.28))
+    said = layer1._scores(card)
+    assert "0-0(근거 S01-home, S01-away)" in said, said
+    # 🔴 방향이 **홈**(45 vs 28 = 17%p)인데 상위 셋에 홈승이 있으니 경고는 없다
+    assert "어긋난다" not in said, said
+    # 🔴 **반대쪽만** 남으면 경고가 붙는다
+    away_only = HypoSet(scenarios=[_scen("C", [(0, 1), (1, 2)], 2.0,
+                                         drivers=["S02"])])
+    said2 = layer1._scores(card.model_copy(update={"hypo": away_only}))
+    assert "방향(home)과 어긋난다" in said2, said2
+
+
+def test_반등_주장은_해석_규칙을_요구한다():
+    """🔴🔴 §2 — 돌연변이: *"최근 폼 < 시즌 평균"* 만으로 반등 갈래를 만든다.
+
+    실사고 2026-10-09(강원–부천): `D 3-0·2-0`(무게 1.2158)의 까닭이 *"0.6 은
+    시즌 득점 수준에서 **크게 벗어난 값**이라 홈에서 **반등** 여지"* 였다.
+    ⚠️ 그 말의 반대 해석(지금 안 좋다)과 **같은 무게**다.
+    """
+    from app.core.stages.s6_hypo import (REGRESSION_RULES, REGRESSION_WORDS,
+                                         _regression_fit)
+    from app.core.schema import Variable
+    from app.core.state import RunState
+    assert set(REGRESSION_RULES) == {"IR04", "IR06", "IR10", "IR12"}
+    assert "반등" in REGRESSION_WORDS and "크게 벗어난 값" in REGRESSION_WORDS
+
+    def _v(vid, rule):
+        return Variable(id=vid, type="recent_pattern", subject="team:000316",
+                        favors="home", goals="none", target="recent",
+                        hardness="soft", weight=1.0, claim="c", quote="c",
+                        doc_ids=[], from_rule=rule)
+
+    mech = "0.6 은 시즌 수준에서 크게 벗어난 값이라 홈에서 반등 여지가 있다"
+    st = RunState(match_key="x")
+    # 🔴 규칙이 **없으면** driver 가 빠지고 바닥 출처가 된다
+    got = _regression_fit([_scen("D", [(3, 0)], 1.2, mech=mech,
+                                 drivers=["S01-home"])], [_v("S01-home", "S01")],
+                          state=st)
+    assert got[0].driver_vars == [], got[0].driver_vars
+    assert got[0].added_by == "required", got[0].added_by
+    assert any("해석 규칙" in n for n in st.notes), st.notes
+    # 🔴 규칙이 **있으면** 그대로 둔다
+    st2 = RunState(match_key="x")
+    ok = _regression_fit([_scen("D", [(3, 0)], 1.2, mech=mech,
+                                drivers=["IR12-home"])],
+                         [_v("IR12-home", "IR12-home")], state=st2)
+    assert ok[0].driver_vars == ["IR12-home"], ok[0].driver_vars
+    # ⚠️ 반등 말이 **없으면** 손대지 않는다
+    plain = _regression_fit([_scen("A", [(1, 1)], 1.0, mech="서로 주고받는다",
+                                   drivers=["S02"])], [], state=RunState(match_key="x"))
+    assert plain[0].driver_vars == ["S02"]
+
+
+def test_총평_템플릿이_나열이_아니라_문장이다():
+    """🔴🔴 §4 — 돌연변이: `v.claim` 을 그대로 쓴다(네 번 그렇게 나갔다)."""
+    from app.core.schema import MatchRef, Variable
+    from app.core.stages.s8_comment import _sentence, listy
+    from datetime import datetime, timezone
+    ref = MatchRef(id="x", sport="soccer", competition="K-League 1",
+                   competition_short="K-League 1",
+                   kickoff_utc=datetime(2026, 10, 9, 7, 30, tzinfo=timezone.utc),
+                   home="team:000316", away="team:000582",
+                   home_name="Gangwon FC", away_name="Bucheon FC 1995")
+    claim = ("최근 5경기 D L D D D · 득점 평균 0.6(보정 0.25) · 기준 팀당 "
+             "1.3729골(대회 league:KL1) 대비 득점 적다 · 실점 평균…")
+    v = Variable(id="S01-home", type="recent_pattern", subject="team:000316",
+                 favors="home", goals="down", target="recent", hardness="soft",
+                 weight=1.0, claim=claim, quote=claim, doc_ids=[],
+                 from_rule="S01")
+    said = _sentence(v, ref)
+    # 🔴 **나열이 아니다**
+    assert not listy(said), said
+    assert said.endswith("."), said
+    assert "Gangwon FC" in said and "D L D D D" in said, said
+    assert "…" not in said, said
+    # 🔴 `listy` 가 나열을 **잡는다**
+    assert listy("a · b · c · d") and listy("끊긴 글…")
+    assert not listy("한 문장이다.")
+    # 🔴 1겹이 그 검사를 **부른다**
+    import pathlib
+    src = pathlib.Path("app/core/layer1.py").read_text(encoding="utf-8")
+    assert "listy(" in src, "1겹이 나열을 안 거른다"

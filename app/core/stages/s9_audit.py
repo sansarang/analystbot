@@ -171,7 +171,10 @@ def code_check(got: Commentary, *, ref: MatchRef, facts: Facts,
             if n not in pool:
                 bad.append(f"(f) 카드에 없는 숫자 `{n}` 를 적었다 — {str(line)[:40]}")
     # (g) 예상 스코어 — **재가중된 무게 상위 5개** 안
-    spots = _top_spots(hypo, 5)
+    #  🔴 1겹은 `top_scores(…, 3)` 로 **코드가 고른다**(지시 2026-10-09(6차) ①) —
+    #     검열은 그보다 **넓은 5개**를 허용한다(작성자가 쓴 글을 보는 자리다).
+    #     ⚠️ 두 목록은 같은 함수에서 나온다(사본 금지).
+    spots = {k for k, _w in top_scores(hypo, 5)}
     for x in got.score_range:
         if spots and str(x).strip() not in spots:
             bad.append(f"(g) 예상 스코어 `{x}` 가 무게 상위 5개 {sorted(spots)} "
@@ -233,6 +236,44 @@ def h2h_direction_check(got: Commentary, *, ref: MatchRef,
                        f"{'∞' if not lo else f'{hi / lo:.1f}'}배)인데 문장이 "
                        f"{hit[:2]} 라고 적었다 — {said_line[:50]}")
     return bad
+
+
+def top_scores(hypo: HypoSet | None, n: int = 3) -> list[tuple[str, float]]:
+    """🔴🔴 **무게 상위 스코어 n개**(사용자 지시 2026-10-09(6차) ①) — 순서 그대로.
+
+    > 예상 스코어: **재가중된 스코어 무게 상위 3개를 그대로 쓴다**(지금은 무게 1위
+    > 갈래를 빼고 고른다).
+
+    ⚠️ 실사고 2026-10-09(강원–부천): 무게 1위가 `C 1-2·0-1`(away 1.3525)인데 예상
+       스코어가 `3-0 · 2-0 · 0-0` 이었다 — **1위 갈래가 빠졌다**(작성자가 골랐다).
+    🔴 그래서 **코드가 고른다** — 작성자는 그 목록을 받아서 글만 쓴다.
+    """
+    box: dict[str, float] = {}
+    for sc in (hypo.scenarios if hypo else []):
+        pairs = list(sc.outcomes or [])
+        if not pairs:
+            continue
+        share = float(sc.strength or 0.0) / len(pairs)
+        for h, a in pairs:
+            key = f"{h}-{a}"
+            box[key] = box.get(key, 0.0) + share
+    return sorted(box.items(), key=lambda kv: (-kv[1], kv[0]))[:max(0, int(n))]
+
+
+def score_drivers(hypo: HypoSet | None, spot: str) -> list[str]:
+    """🔴 그 스코어를 그린 갈래들의 **근거 변수 id**(지시 ① 마지막 줄).
+
+    > `0-0` 이 들어가면 **근거 변수 id 를 옆에 적는다**.
+    """
+    out: list[str] = []
+    for sc in (hypo.scenarios if hypo else []):
+        if spot not in {f"{h}-{a}" for h, a in (sc.outcomes or [])}:
+            continue
+        # 🔴 칸 이름은 `driver_vars` 다(`drivers` 가 아니다 — 추측하면 조용히 빈다)
+        for vid in (getattr(sc, "driver_vars", None) or []):
+            if str(vid) not in out:
+                out.append(str(vid))
+    return out
 
 
 def _top_spots(hypo: HypoSet | None, n: int) -> set[str]:

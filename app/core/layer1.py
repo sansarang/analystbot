@@ -357,6 +357,19 @@ def reason_text(card: Card) -> str:
     said = card.reason
     if said is None or not said.sentences:
         return template_reason(card)
+    # 🔴🔴 **나열은 1겹에 못 나간다**(사용자 지시 2026-10-09(6차) ④)
+    #    > 이어 붙인 나열(`·` 구분 3개 이상, 말줄임표)이 1겹에 나가면 계약 실패로.
+    #    ⚠️ 그래서 **나가기 전에** 거른다 — 계약은 그것이 지켜지는지 본다.
+    from app.core.stages.s8_comment import listy
+    flat = [x for x in said.sentences if listy(str(x.text or ""))]
+    if flat and len(flat) == len(said.sentences):
+        return template_reason(card)
+    if flat:
+        rows = [(str(x.text).strip(),
+                 {str((facts_catalog(card).get(str(f)) or {}).get("kind") or "")
+                  for f in (x.fact_refs or [])} & set(SPECIFIC_KINDS))
+                for x in said.sentences if not listy(str(x.text or ""))]
+        return join_cap(rows, CAP_REASON)
     box = facts_catalog(card)
     rows = [(str(x.text).strip(),
              {str((box.get(str(f)) or {}).get("kind") or "")
@@ -599,21 +612,37 @@ def _probs(card: Card) -> str:
 
 
 def _scores(card: Card) -> str:
-    """🔴 예상 스코어 2~3개 — **카드가 이미 고른 것**을 쓴다(새로 안 고른다)."""
-    said = card.commentary
-    got = [str(x) for x in (getattr(said, "score_range", None) or [])][:3]
-    if got:
-        return " · ".join(got)
-    rows = sorted(list(getattr(card.hypo, "scenarios", None) or []),
-                  key=lambda s: -float(s.strength or 0.0))
-    out: list[str] = []
-    for s in rows:
-        for h, a in (s.outcomes or []):
-            if f"{h}-{a}" not in out:
-                out.append(f"{h}-{a}")
-            if len(out) >= 3:
-                return " · ".join(out)
-    return " · ".join(out) if out else "못 골랐다 — 시나리오가 없다"
+    """🔴🔴 **무게 상위 3개를 그대로**(사용자 지시 2026-10-09(6차) ①).
+
+    > 재가중된 스코어 무게 **상위 3개를 그대로** 쓴다. 방향 판정과 어긋나는
+    > 스코어만 있으면 **그 사실을 표시**. `0-0` 이 들어가면 **근거 변수 id** 를
+    > 옆에 적는다.
+
+    ⚠️ 실사고 2026-10-09(강원–부천): 무게 1위 `1-2`(away 1.3525)가 빠지고
+       `3-0 · 2-0 · 0-0` 이 나갔다 — 작성자가 골랐기 때문이다. 🔴 코드가 고른다.
+    """
+    from app.core import reweight
+    from app.core.stages.s9_audit import score_drivers, top_scores
+    rows = top_scores(card.hypo, 3)
+    if not rows:
+        return "못 골랐다 — 시나리오가 없다"
+    side = dir_side(card)
+    bits: list[str] = []
+    for spot, _w in rows:
+        said = spot
+        if spot == "0-0":
+            # 🔴 `0-0` 은 **근거를 옆에 적는다**(지시 ① 마지막 줄)
+            ids = score_drivers(card.hypo, spot)
+            said += f"(근거 {', '.join(ids) if ids else '**없다**'})"
+        bits.append(said)
+    out = " · ".join(bits)
+    # 🔴 방향과 **어긋나는 것만** 남았으면 그 사실을 적는다
+    if side:
+        agree = [s for s, _w in rows
+                 if reweight.side_of(*(int(x) for x in s.split("-"))) == side]
+        if not agree:
+            out += f" ⚠️ **방향({side})과 어긋난다** — 무게가 반대쪽에 있다"
+    return out
 
 
 def _board(card: Card) -> str:

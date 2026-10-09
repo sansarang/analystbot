@@ -314,7 +314,19 @@ def _template(ref: MatchRef, shape: dict, basis: list[Variable], scen,
              if not other or _winner(f"{h}-{a}") != other][:3]
     tops = [str(a) for a, _ in (shape.get("top_scores") or [])
             if not other or _winner(str(a)) != other][:2]
-    lines = [CommentLine(text=f"{_cut(v.claim)}", var_ids=[v.id])
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **템플릿은 완결 문장이다**(사용자 지시 2026-10-09(6차) ④)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    # > 템플릿은 *"양상 + 근거 셋을 **고정 문장 틀**에 넣은 **완결 문장**"* 만.
+    # > 이어 붙인 나열(`·` 구분 3개 이상, 말줄임표)이 1겹에 나가면 **계약 실패**.
+    #
+    # ⚠️ 종전엔 `v.claim` 을 **그대로** 썼다 — claim 은 카드 블록용 나열이라
+    #    (`최근 5경기 D L D D D · 득점 평균 0.6(보정 0.25) · 기준 팀당 …`)
+    #    문장이 되지 않았다. 🔴 네 번 같은 꼴로 나갔다(가와사키·FC도쿄·토론토·강원).
+    # 🔴 그래서 claim 을 **틀에 담는다** — 나열 기호와 말줄임표를 걷고, 유형별
+    #    한 문장으로 맺는다. ⚠️ 수는 claim 에 있는 것만 쓴다(지어내지 않는다).
+    lines = [CommentLine(text=_sentence(v, ref), var_ids=[v.id])
              for v in basis[:3]]
     kind = str(shape.get("shape") or "")
     flow = (f"무게가 가장 두꺼운 스코어는 {' · '.join(tops) or '못 쟀다'} 이고, "
@@ -324,6 +336,45 @@ def _template(ref: MatchRef, shape: dict, basis: list[Variable], scen,
         title=(f"{kind} — " + (f"{who} 쪽에 무게가 실린다" if who
                                else "어느 쪽도 앞세우지 못한다")),
         reasons=lines, flow=flow, score_range=spots, lean="")
+
+
+#: 🔴 §4 — 유형별 **고정 문장 틀**. ⚠️ 글은 여기 한 곳이다(사본 금지)
+SENTENCE_FRAME: dict[str, str] = {
+    "recent_pattern": "{who}의 최근 흐름은 {body}로 잡힌다.",
+    "h2h_pattern": "두 팀 맞대결은 {body}다.",
+    "home_field": "홈 이점은 {body}로 잡힌다.",
+    "def_absence": "{who}는 {body}.",
+    "absence": "{who}는 {body}.",
+    "team_stats": "{who}는 {body}.",
+    "fatigue": "{who}의 일정은 {body}.",
+}
+#: 🔴 나열 기호를 **문장 하나**로 줄일 때 쓰는 이음말
+_JOIN = "이고 "
+
+
+def _sentence(v: Variable, ref: MatchRef) -> str:
+    """🔴🔴 §4 — 변수 claim 하나 → **완결 문장 하나**.
+
+    🔴 claim 의 나열(`A · B · C`)에서 **앞 두 토막만** 쓰고 문장으로 맺는다.
+       ⚠️ 세 토막 이상을 그대로 이으면 그것이 바로 지시가 금지한 나열이다.
+    """
+    said = " ".join(str(v.claim or "").split())
+    # 🔴 **말줄임표를 걷는다** — 잘린 글은 문장이 아니다
+    said = said.replace("…", "").strip()
+    bits = [x.strip(" ,") for x in said.split("·") if x.strip(" ,")]
+    body = _JOIN.join(bits[:2]) if len(bits) > 1 else (bits[0] if bits else "")
+    body = body.rstrip(" .")
+    who = (ref.home_name if str(v.subject) == str(ref.home)
+           else ref.away_name if str(v.subject) == str(ref.away) else "")
+    frame = SENTENCE_FRAME.get(str(v.type), "{who} {body}.")
+    out = frame.format(who=who or "이 경기", body=body or "수치를 못 쟀다")
+    return " ".join(out.replace("  ", " ").split())
+
+
+def listy(said: str) -> bool:
+    """🔴🔴 §4 — **나열인가**(`·` 3개 이상 또는 말줄임표). 계약이 이것을 본다."""
+    low = str(said or "")
+    return low.count("·") >= 3 or "…" in low
 
 
 def same_input(before: dict, now: dict, before_vars: list[Variable],

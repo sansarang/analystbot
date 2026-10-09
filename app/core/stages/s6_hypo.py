@@ -69,6 +69,8 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable], *,
     scen = _keep_drivers(scen, variables, state=state)
     # 🔴🔴 **득점 방향이 반대인 driver 를 뺀다**(사용자 지시 2026-10-07 §3)
     scen = _goal_fit(scen, variables, state=state)
+    # 🔴🔴 **반등·회귀 주장은 해석 규칙을 요구한다**(지시 2026-10-09(6차) ②)
+    scen = _regression_fit(scen, variables, state=state)
     scen = [s.model_copy(update={"strength": _strength(s, variables)})
             for s in scen]
     red = _redteam(ref, scen, basis, state=state)
@@ -483,6 +485,64 @@ def _next_id(scen: list[Scenario]) -> str:
             return ch
     return f"Z{len(scen)}"
 
+
+
+#: 🔴 §2 — *"반등·회귀·평균으로 돌아온다"* 류 낱말(우리 글의 검사어다)
+REGRESSION_WORDS: tuple[str, ...] = (
+    "반등", "회귀", "평균으로 돌아", "평균 회귀", "되돌아", "크게 벗어난 값",
+    "제자리로", "원래 수준")
+#: 🔴 §2 — 그 주장을 받쳐야 하는 **해석 규칙 id**(사용자가 적은 넷 그대로)
+REGRESSION_RULES: tuple[str, ...] = ("IR04", "IR06", "IR10", "IR12")
+
+
+def _regression_fit(scen: list, variables: list[Variable], *,
+                    state: RunState) -> list:
+    """🔴🔴 §2 — **반등 주장에는 규칙이 있어야 한다**(지시 2026-10-09(6차) ②).
+
+    > 시나리오 `mechanism` 이 *"반등·회귀·평균으로 돌아온다"* 류를 말하면, 발동한
+    > 해석 규칙(**IR04·IR06·IR10·IR12**) id 가 `driver` 에 있어야 한다. 없으면 그
+    > driver 를 빼고, driver 가 다 빠지면 **바닥값**.
+    > *"최근 폼 < 시즌 평균"* 만으로 반등 갈래를 만들지 않는다.
+
+    🔴 왜 — 실사고 2026-10-09(강원–부천): `D 3-0·2-0`(무게 1.2158)의 까닭이
+       *"0.6 은 시즌 득점 수준에서 크게 벗어난 값이라 홈에서 반등 여지"* 였다.
+       ⚠️ 그 말의 **반대 해석**(지금 안 좋다)과 **같은 무게**다 — 어느 쪽도 자료가
+       고르지 않는다. 🔴 규칙이 발동했을 때만 한쪽을 고른다.
+    """
+    from app import scenarios as _sc
+    by_id = {v.id: v for v in variables}
+    out = []
+    for s_ in scen:
+        said = str(getattr(s_, "mechanism", "") or "")
+        hit = [w for w in REGRESSION_WORDS if w in said]
+        if not hit:
+            out.append(s_)
+            continue
+        keep, dropped = [], []
+        for vid in (getattr(s_, "driver_vars", None) or []):
+            v = by_id.get(str(vid))
+            rule = str(getattr(v, "from_rule", "") or "").split("-")[0]
+            if rule in REGRESSION_RULES:
+                keep.append(str(vid))
+            else:
+                dropped.append(str(vid))
+        if not dropped:
+            out.append(s_)
+            continue
+        origin = ("required" if not keep
+                  else str(getattr(s_, "added_by", "") or ""))
+        state.note(
+            f"s6 §2 반등 주장 — `{s_.id}` 가 {hit[:2]} 를 말하는데 근거 "
+            f"{dropped} 에 해석 규칙({'·'.join(REGRESSION_RULES)})이 없다 → "
+            + (f"그 근거를 뺀다(남은 {keep})" if keep
+               else f"근거가 다 빠져 **바닥값**으로 둔다(`{origin}`)"))
+        out.append(s_.model_copy(update={
+            "driver_vars": keep,
+            # 🔴 근거가 다 빠지면 **바닥 출처**로 바꾼다 — `_strength` 가 그때
+            #    yaml 의 바닥값을 쓴다(우리가 수를 짓지 않는다)
+            "added_by": (origin if origin in _sc.FLOOR_ORIGINS
+                         else getattr(s_, "added_by", "deepseek"))}))
+    return out
 
 
 def _keep_drivers(scen: list[Scenario], variables: list[Variable], *,
