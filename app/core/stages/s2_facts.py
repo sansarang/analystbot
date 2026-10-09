@@ -469,7 +469,8 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
                                   before=ref.kickoff_utc)
             if not rows:
                 continue
-            box.setdefault("recent", {})[key] = _recent_of(rows)
+            box.setdefault("recent", {})[key] = _recent_of(
+                rows, kickoff=ref.kickoff_utc)
             state.note(f"s2 §2 폼 보완 — `{name}` 최근 {len(rows)}경기 "
                        f"← 팀 페이지(대회 섞임: "
                        f"{sorted({r['tournament'] for r in rows})})")
@@ -499,7 +500,7 @@ async def _fill_form(ref: MatchRef, box: dict, *, state: RunState, net: Any,
                        + " · ".join(f"{x['name']} {x['value']}" for x in got))
 
 
-def _recent_of(rows: list[dict]) -> dict:
+def _recent_of(rows: list[dict], *, kickoff=None) -> dict:
     """🔴 팀 페이지 줄들 → `facts.recent` 꼴. ⚠️ 칸 이름을 경기 페이지와 맞춘다.
 
     🔴 그래야 `s5_verify` 의 폼 변수(S01)가 **분기 없이** 읽는다(#1 사본 금지).
@@ -520,8 +521,26 @@ def _recent_of(rows: list[dict]) -> dict:
     got = [float(x["scored"]) for x in seq]
     con = [float(x["conceded"]) for x in seq]
     trimmed, _why = _fm.trimmed_avg(got) if got else (None, "")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **휴식일을 센다**(실측 2026-10-09 강원) — 직전 경기와 킥오프의 차
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 종전엔 `휴식 못 쟀다` 로 비었다. 🔴 그런데 강원은 직전 경기가 **09-27**
+    #     이고 이 경기가 10-09 다 — **12일 공백**(A매치 휴식기)이 이 경기의 사실이다.
+    #     그 수를 비워 두면 IR11(일정 과부하)도 반대쪽(장기 휴식)도 못 센다.
+    #  🔴 날짜만 있으므로 **일 단위**다(시각을 지어내지 않는다).
+    rest = None
+    if kickoff is not None and seq:
+        from datetime import date as _date
+        try:
+            last = max(_date.fromisoformat(str(x["date"])) for x in seq
+                       if x.get("date"))
+            rest = (kickoff.date() - last).days
+        except (ValueError, TypeError, AttributeError):
+            rest = None
     return {"last5": [r["result"] for r in rows],
             "sequence": seq,
+            "rest_days": rest,
             "recent_scored_avg": round(sum(got) / len(got), 3) if got else None,
             "recent_trimmed_avg": trimmed,
             "recent_conceded_avg": round(sum(con) / len(con), 3) if con else None,

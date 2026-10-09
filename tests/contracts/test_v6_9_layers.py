@@ -3026,6 +3026,14 @@ def test_폼_보완_꼴이_경기_페이지와_같은_칸을_쓴다():
     assert got["recent_scored_avg"] == 3.0
     assert got["recent_conceded_avg"] == 2.0
     assert got["recent_trimmed_avg"] is not None
+    # 🔴🔴 **휴식일**(실측 2026-10-09 강원: 직전 09-27 · 이 경기 10-09 = **12일**)
+    #    ⚠️ 종전엔 비어 있었다 — 그러면 장기 휴식도 과부하도 못 센다.
+    from datetime import datetime, timezone
+    said = _recent_of(rows, kickoff=datetime(2026, 10, 9, 7, 30,
+                                             tzinfo=timezone.utc))
+    assert said["rest_days"] == 16, said["rest_days"]
+    # ⚠️ 킥오프를 모르면 **비운다**(0 으로 때우지 않는다 · #3)
+    assert _recent_of(rows)["rest_days"] is None
     # 🔴 대회 글자를 **함께** 싣는다(리그·컵·ACL 이 섞인다)
     assert {x["tournament"] for x in got["sequence"]} == {"Cup", "J. League"}
     assert "팀 페이지" in str(got.get("source"))
