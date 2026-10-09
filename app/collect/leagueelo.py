@@ -263,8 +263,15 @@ async def refresh(net, *, when: date | None = None, state=None
     # 🔴🔴 **통로가 둘이다**(사용자 지시 2026-10-09 ③) — football-data 가 주는
     #    리그와, 그것이 **안 주는** 리그(fotmob 으로 받는다). ⚠️ 표가 어느 쪽인지
     #    말한다 — 코드에 리그 이름을 박지 않는다.
+    # 🔴🔴 **통로는 대회 표가 말한다**(사용자 지시 2026-10-09(4차) §1) —
+    #    `baseline.elo` 가 `fotmob` 인 리그가 fotmob 통로다. ⚠️ 종전에는 이 파일의
+    #    `fotmob:` 칸만 봤다 — 그러면 통로 목록이 **두 곳**에 산다(#1 사본 금지).
+    from app.core import competition as _comp
     via_fotmob = {str(c) for c in
                   ((fotmob_table().get("competitions") or {}).keys())}
+    for _key, _row in _comp.rows().items():
+        if str(_comp.elo_source(_key).get("elo") or "") == "fotmob":
+            via_fotmob.add(_comp.short_key(_key))
     for comp in ([str(c) for c in (box.get("competitions") or [])]
                  + sorted(via_fotmob)):
         got = load(comp, when=when)
@@ -317,10 +324,16 @@ def rating_of(team: str, *, comps: list[str] | None = None,
         if box is not None:
             names |= {n.lower() for v in box.names.values() for n in v}
     for comp in (comps or [str(c) for c in (table().get("competitions") or [])]):
-        said = load(comp, when=when).get("ratings") or {}
+        box_file = load(comp, when=when)
+        said = box_file.get("ratings") or {}
+        # 🔴 **통로를 지어내지 않는다** — 등급 파일의 `via` 가 말한다(지시
+        #    2026-10-09 ③). ⚠️ 종전엔 `football-data 결과로 계산` 이 **박혀** 있어
+        #    fotmob 으로 받은 J1·K리그1 카드에 거짓 출처가 찍혔다(실측 2026-10-09:
+        #    가시마 1671.66 의 사유가 `football-data` 라고 적혔다).
+        via = str(box_file.get("via") or "football-data")
         for nm, val in said.items():
             if nm.lower() in names or nm.lower().replace(" fc", "") in names:
-                return float(val), f"{comp} 자체 Elo(football-data 결과로 계산)"
+                return float(val), f"{comp} 자체 Elo({via} 결과로 계산)"
     return None, f"`{team}` 이 리그 Elo 표에 없다(대회 파일을 받았나 보라)"
 
 

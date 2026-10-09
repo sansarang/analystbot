@@ -762,6 +762,24 @@ async def match_of(pool, *, team: str, opponent: str = "", day=None,
         if lookup is not None:
             got.candidates = list(lookup.rows)
         return got
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **같은 경기가 두 출처로 왔으면 하나로 묶는다**(지시 2026-10-09(4차) §1)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실사고 2026-10-09(가시마–감바): `games` 표에 `fotmob:5803602`(J. League)
+    #     와 `espn:401877610`(jpn.1)이 **같은 경기**로 들어 있었다(유일 제약이
+    #     `(sport, ext_id)` 라 출처가 다르면 못 막는다). 후보 2건 → `ambiguous`
+    #     → **카드가 아예 안 나왔다.**
+    #  🔴 묶는 규칙과 출처 우선순위는 `competition.pick_one` **하나**가 든다.
+    #  ⚠️ 이것은 §17-g-3(*"남의 경기를 분석하지 않는다"*)을 **어기지 않는다** —
+    #     두 팀과 킥오프가 **같은** 줄만 묶는다(다른 경기는 그대로 둘이다).
+    if len(found.games) > 1:
+        from app.core import competition as _comp
+        kept, merged = _comp.pick_one(list(found.games))
+        for said in merged:
+            got.steps.append(f"🔴 {said}")
+        if len(kept) < len(found.games):
+            found.games = kept
     if len(found.games) > 1:
         # 🔴 §17-g-3 · M14 — **남의 경기를 분석하면 그 카드는 통째로 거짓이다.**
         #    ⚠️ 여럿이면 **고르지 않는다** — 고르는 것은 사용자 몫이다.

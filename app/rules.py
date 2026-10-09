@@ -817,6 +817,16 @@ def tiebreak(competition: str) -> tuple[list[str], dict, bool, str]:
     🔴 `verified=False` 면 호출부가 카드에 *"동률 규칙 가정"* 을 적는다 — 금지 조항
        (*"대회 규정을 확인 없이 단정"*)을 지키는 자리다.
     """
+    # 🔴 **대회 표가 먼저다**(§1) — 등록 리그의 동률 규칙은 `competitions.yaml` 이다
+    from app.core import competition as _comp
+    key, _why = _comp.key_of(competition=competition)
+    if key:
+        got = _comp.tiebreak_of(key)
+        if got:
+            return ([str(x) for x in (got.get("order") or [])],
+                    dict(got.get("zones") or {}),
+                    bool(got.get("verified")),
+                    str(got.get("source") or got.get("why") or ""))
     box = _load(COMPETITION_RULES)
     said = str(competition or "").lower()
     for row in (box.get("competitions") or []):
@@ -840,6 +850,14 @@ def split_rule(competition: str) -> dict:
        `config/competition_rules.yaml` 의 `split` 이 든다. ⚠️ 리그가 늘면 그 표만
        늘고 코드는 그대로다(#1 사본 금지).
     """
+    # 🔴 **대회 표가 먼저다**(사용자 지시 2026-10-09(4차) §1) — 등록 리그의 형식은
+    #    `config/competitions.yaml` 이 든다. ⚠️ 두 표에 같은 값을 두지 않는다(#1).
+    from app.core import competition as _comp
+    key, _why = _comp.key_of(competition=competition)
+    if key:
+        got = _comp.split_of(key)
+        if got:
+            return got
     box = _load(COMPETITION_RULES)
     said = str(competition or "").lower()
     for row in (box.get("competitions") or []):

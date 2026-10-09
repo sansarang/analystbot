@@ -107,7 +107,11 @@ async def _base(ref: MatchRef, facts: Facts, *, state: RunState, net,
     if home_elo is None or away_elo is None:
         if kind.startswith("league:"):
             from app.collect import leagueelo
-            comp = kind.split(":", 1)[1]
+            from app.core import competition as _comp
+            # 🔴 코드는 **대회 표**가 든다(§1) — 키에서 글자를 떼어 쓰지 않는다.
+            #    ⚠️ `league:PL` 처럼 키와 코드가 같은 리그도 있지만, 같다는 보장을
+            #       코드에 박으면 다른 리그에서 조용히 틀린다.
+            comp = _comp.fd_code(kind) or _comp.short_key(kind)
             # 🔴 **하루 1회 갱신**(승인 ③) — 그날 파일이 없으면 여기서 만든다.
             #    ⚠️ 그날 파일이 있으면 네트워크에 안 간다(`refresh` 가 그것을 본다).
             if not leagueelo.load(comp, when=when):

@@ -478,6 +478,10 @@ def text(card: Card, *, buttons: bool = True) -> str:
     out: list[str] = []
     out.append(f"⚽ {m.home_name} vs {m.away_name} · {m.competition_short} · "
                f"{_when(card)}")
+    # 🔴🔴 **경고는 1겹에도 올라온다**(지시 2026-10-09(4차) §2·§3) — 1겹이 기본
+    #    카드이므로 여기 없으면 사람이 그 사실을 **못 본다**.
+    from app.core.render import warn_lines
+    out += list(warn_lines(card))
     out.append(f"📋 라인업 {_xi(card)} — {_again(card)}")
     out.append("")
     out.append(f"【헤드라인】 {headline(card)}")

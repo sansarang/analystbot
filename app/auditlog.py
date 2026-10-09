@@ -74,7 +74,51 @@ def stats(limit: int = RECENT) -> str:
             tally[k] = tally.get(k, 0) + 1
     top = sorted(tally.items(), key=lambda kv: (-kv[1], kv[0]))[:3]
     first = sum(1 for r in got if r.get("audit") == "통과")
-    return (f"🧭 총평 검열 — 최근 {len(got)}경기 통과율 **{ok / len(got):.0%}**"
+    said = (f"🧭 총평 검열 — 최근 {len(got)}경기 통과율 **{ok / len(got):.0%}**"
             f"(1회차 {first} · 재작성 후 {ok - first} · 템플릿 {len(got) - ok})\n"
             f"   위반 상위: "
             + (" · ".join(f"`{k}` {v}건" for k, v in top) or "없다"))
+    # 🔴🔴 **못 알아본 대회 표기**(지시 2026-10-09(4차) §2) — 운영자가 표에 넣을 것
+    miss = unknown_competitions()
+    if miss:
+        said += ("\n🔴 **대회를 못 알아본 표기** — `config/competitions.yaml` 에 "
+                 "넣어라: " + " · ".join(f"`{x}`" for x in miss))
+    return said
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **못 알아본 대회 표기** — 사용자 지시 2026-10-09(4차) §2
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 운영자 알림에 **받은 표기를 보낸다**(다음에 표에 넣을 수 있게).
+#
+#  🔴 이름을 모아 두는 까닭은 하나다 — `config/competitions.yaml` 에 **무엇을
+#     넣어야 하는지** 사람이 알아야 한다. ⚠️ 카드에만 찍고 지나가면 그 표기는
+#     다음 경기에서 또 터진다(실사고 2026-10-09 가시마–감바).
+
+UNKNOWN_COMP = "unknown_competition"
+
+
+def unknown_competition(said: str, *, match: str = "") -> None:
+    """🔴 못 알아본 대회 표기를 남긴다. ⚠️ 실패해도 **카드를 막지 않는다**."""
+    got = str(said or "").strip()
+    if not got:
+        return
+    add(match=match or "?", audit=UNKNOWN_COMP,
+        violations=[f"대회 표기를 알아보지 못했다: `{got}`"])
+
+
+def unknown_competitions(limit: int = 20) -> list[str]:
+    """🔴 최근 못 알아본 표기들 — 운영자 `/상태` 가 적는다. ⚠️ 없으면 빈 목록."""
+    out: list[str] = []
+    for row in rows(200):
+        if str(row.get("audit") or "") != UNKNOWN_COMP:
+            continue
+        for x in (row.get("violations") or []):
+            said = str(x).split("`")
+            got = said[1] if len(said) > 2 else str(x)
+            if got not in out:
+                out.append(got)
+        if len(out) >= limit:
+            break
+    return out[:limit]

@@ -1,0 +1,173 @@
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **대회 식별 표** — 사용자 지시 2026-10-09(4차) §1
+# ══════════════════════════════════════════════════════════════════
+#
+# > 매핑 표 `config/competitions.yaml`: 키마다 **출처별 표기 목록**, 리그 형식
+# > (분할·플레이오프 컷), 기준 모델(Elo 출처·적합 이름), 동률 규칙.
+#
+# 🔴 읽는 곳은 `app/core/competition.py` **하나**다. 코드에 표기를 적지 않는다.
+# 🔴 `espn_slugs`·`fotmob_ids`·`football_data` 는 **받아서 이름으로 대조한 값**이다
+#    (`checked_at` 가 그 날짜다). ⚠️ 대조에 실패한 후보는 **적지 않았다** — 적으면
+#    그것이 추측이 되고, 추측은 다음 출처에서 조용히 틀린다(CLAUDE.md #4).
+# ⚠️ 표에 없는 표기를 만나면 봇은 **크게 실패**한다(§2) — 카드 머리에 받은 표기를
+#    찍고 등급을 전부 보류하며 운영자 알림으로 그 글자를 보낸다. 그때 여기 넣는다.
+#
+# 🔴 **왜 이 표가 생겼나** — 실사고 2026-10-09(가시마–감바): ESPN 이 대회명을
+#    `jpn.1` 로 줬고 이름표가 그 글자를 몰라 `league:jpn.1` 로 떨어졌다. 그러자
+#    자체 Elo·기준 모델·홈 이점 표·리그 평균이 **한꺼번에** 비어 카드가 변수 1개로
+#    나갔다. 별칭 하나를 더하는 것으로는 다음 출처에서 또 터진다.
+
+#: 🔴 표기를 받아서 확인한 날 — `tools/check_competitions.py` 가 적는다
+checked_at: "2026-10-09"
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴 **받아서 확인한 표** (2026-10-09) — `tools/check_competitions.py` 가 다시 잰다
+# ══════════════════════════════════════════════════════════════════
+#
+#  대조 방법: 그 출처의 페이지/응답을 **받아** 리그 이름이 맞는지 본다.
+#  · espn   `www.espn.com/soccer/scoreboard/_/league/{슬러그}` 본문의 리그 이름
+#  · fotmob `www.fotmob.com/leagues/{id}/table/x` 의 `leagueName`(+`ccode`)
+#  · fd     `api.football-data.org/v4/competitions/{코드}` 의 `name`
+#
+#  🔴 `baseline.fit` 은 `config/base_model.yaml` 의 **모형 이름**이다 — 그 이름이
+#     없으면 기준이 안 선다(카드가 "기준 없음"으로 적는다).
+#  🔴 `baseline.elo` 는 등급을 **어디서 받나**다: `football_data`(과거 결과로 우리가
+#     굴린다) · `fotmob`(같은 방식 · football-data 가 안 주는 리그) · `eloratings`
+#     (대표팀). ⚠️ 표는 `config/league_elo.yaml` 이 든다(여기 숫자를 안 적는다).
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **출처 우선순위** — 같은 경기가 두 출처로 들어왔을 때 **무엇을 남기나**
+# ══════════════════════════════════════════════════════════════════
+#
+#  ⚠️ 실사고 2026-10-09(가시마–감바): `games` 표에 같은 경기가 **두 줄**이었다
+#     (`fotmob:5803602` · `espn:401877610`). 유일 제약이 `(sport, ext_id)` 라
+#     출처가 다르면 막지 못한다 → 후보 2건 → `ambiguous` 로 카드가 안 나왔다.
+#  🔴 `fotmob` 이 먼저인 까닭은 **경기 페이지가 가장 많은 칸을 준다**는 실측이다
+#     (라인업·맞대결·폼·순위표 주소를 한 장에서 받는다). ESPN 은 그 다음이다.
+#  🔴 글자는 `ext_id` 의 **접두사**다(`fotmob:…`·`espn:…`).
+source_priority: [fotmob, espn, fdorg, kbo, npb, nhl, mlb, kleague]
+
+keys:
+  league:PL:
+    names: ["premier league", "epl", "프리미어"]
+    sources:
+      espn_slugs: ["eng.1"]
+      fotmob_ids: [47]
+      fotmob_names: ["Premier League"]
+      football_data: PL
+      football_data_names: ["Premier League"]
+    baseline: {elo: football_data, fit: "league:PL"}
+  league:PD:
+    names: ["laliga", "la liga", "라리가"]
+    sources:
+      espn_slugs: ["esp.1"]
+      fotmob_ids: [87]
+      fotmob_names: ["LaLiga"]
+      football_data: PD
+      # ⚠️ football-data 는 `Primera Division` 으로 적는다(받아서 확인)
+      football_data_names: ["Primera Division", "primera división"]
+    baseline: {elo: football_data, fit: "league:PD"}
+  league:SA:
+    names: ["세리에 a", "세리에a"]
+    sources:
+      espn_slugs: ["ita.1"]
+      fotmob_ids: [55]
+      fotmob_names: ["Serie A"]
+      football_data: SA
+      football_data_names: ["Serie A"]
+    baseline: {elo: football_data, fit: "league:SA"}
+  league:BL1:
+    names: ["bundesliga", "분데스리가"]
+    sources:
+      espn_slugs: ["ger.1"]
+      fotmob_ids: [54]
+      fotmob_names: ["Bundesliga"]
+      football_data: BL1
+      football_data_names: ["Bundesliga"]
+    baseline: {elo: football_data, fit: "league:BL1"}
+  league:FL1:
+    names: ["ligue 1", "리그앙", "리그 1"]
+    sources:
+      espn_slugs: ["fra.1"]
+      fotmob_ids: [53]
+      fotmob_names: ["Ligue 1"]
+      football_data: FL1
+      football_data_names: ["Ligue 1"]
+    baseline: {elo: football_data, fit: "league:FL1"}
+  league:DED:
+    names: ["eredivisie", "에레디비시"]
+    sources:
+      espn_slugs: ["ned.1"]
+      fotmob_ids: [57]
+      fotmob_names: ["Eredivisie"]
+      football_data: DED
+      football_data_names: ["Eredivisie"]
+    baseline: {elo: football_data, fit: "league:DED"}
+  league:PPL:
+    names: ["liga portugal", "primeira liga", "프리메이라"]
+    sources:
+      espn_slugs: ["por.1"]
+      fotmob_ids: [61]
+      fotmob_names: ["Liga Portugal"]
+      football_data: PPL
+      football_data_names: ["Primeira Liga"]
+    baseline: {elo: football_data, fit: "league:PPL"}
+  league:ELC:
+    names: ["championship", "챔피언십"]
+    sources:
+      espn_slugs: ["eng.2"]
+      fotmob_ids: [48]
+      fotmob_names: ["Championship"]
+      football_data: ELC
+      football_data_names: ["Championship"]
+    baseline: {elo: football_data, fit: "league:ELC"}
+  league:BSA:
+    # 🔴 **이탈리아 세리에A 와 가른다** — fotmob 268 은 `Série A`(악센트)이고
+    #    `ccode: BRA` 이며 표에 Flamengo·Palmeiras 가 있다(받아서 확인).
+    names: ["brasileir", "브라질", "serie a - brazil", "série a"]
+    sources:
+      espn_slugs: ["bra.1"]
+      fotmob_ids: [268]
+      fotmob_names: ["Série A"]
+      football_data: BSA
+      football_data_names: ["Campeonato Brasileiro Série A"]
+    baseline: {elo: football_data, fit: "league:BSA"}
+  league:KL1:
+    names: ["k league 1", "k-league 1", "k리그1", "k리그 1"]
+    sources:
+      # 🔴🔴 **`kor.1` 은 확인하지 못했다** — ESPN 세 경로가 모두 `503` 이다
+      #    (scoreboard·standings·fixtures · 2026-10-09 · `jpn.1` 은 같은 자리에서
+      #    200 이다). ⚠️ 그래서 **확인된 칸에 적지 않는다.**
+      #    🔴 그래도 **알아보기는 한다** — 사용자 지시 2026-10-09(4차) §1 이
+      #       *"kor.1 포함"* 이라고 못 박았고, 모르는 채로 두면 바로 그 실사고
+      #       (jpn.1)가 K리그에서 되풀이된다. 아는 것과 확인한 것을 **칸으로 가른다**.
+      espn_slugs_unverified: ["kor.1"]
+      espn_unverified_why: "ESPN scoreboard·standings·fixtures 모두 503(2026-10-09)"
+      fotmob_ids: [9080]
+      fotmob_names: ["K League 1"]
+    baseline: {elo: fotmob, fit: "league:KL1"}
+    # 🔴 **분할**(지시 2026-10-09 ①) — 파이널A 컷. 구역 글자는 fotmob legend 그대로
+    split:
+      cut_zones: ["Championship playoff"]
+      cut_rank_fallback: 6
+      why: 파이널A(1~6위) · 파이널B(7~12위) — 정규 33라운드 뒤 분할
+    tiebreak:
+      order: [points, wins, goal_diff, goals_for]
+      verified: false
+      why: 분할 컷은 fotmob legend 실측(1~6위) · 동률 순서는 가정이다
+  league:J1:
+    names: ["j1 league", "j. league", "j리그1", "j1리그"]
+    sources:
+      espn_slugs: ["jpn.1"]
+      fotmob_ids: [223]
+      fotmob_names: ["J. League"]
+    baseline: {elo: fotmob, fit: "league:J1"}
+  league:MLS:
+    names: ["major league soccer", "mls"]
+    sources:
+      espn_slugs: ["usa.1"]
+      fotmob_ids: [130]
+      fotmob_names: ["MLS"]
+    # ⚠️ **기준 모형이 없다** — 자체 Elo 도 적합도 안 돌렸다. 그래서 기준 열은
+    #    비고 카드가 그 사실을 적는다(지어내지 않는다).
+    baseline: {}

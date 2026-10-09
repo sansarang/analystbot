@@ -468,8 +468,10 @@ def test_리그_Elo_는_우리가_계산하고_clubelo_는_dead_다():
 def test_리그_경기의_계수도_같은_대회_유형만_쓴다():
     """🔴 ③ — `league:PL` 계수는 **PL 경기에만**. 돌연변이: 리그 하나로 뭉치기."""
     from app.core import base
-    from app.core.stages.s5_verify import league_code
-    assert league_code("Premier League") == "PL"
+    # 🔴 판정점은 `competition.key_of` **하나**다(지시 2026-10-09(4차) §1) —
+    #    `s5_verify.league_code` 는 그 겉옷이라 지웠다.
+    from app.core.competition import key_of, short_key
+    assert short_key(key_of(competition="Premier League")[0]) == "PL"
     got, why = base.triple_of("league:PL", 100.0)
     assert got is not None, why
     assert "league:PL" in why
@@ -2556,3 +2558,190 @@ def test_총평_검열이_맞대결_해석_방향을_잡는다():
     import pathlib
     src = pathlib.Path("app/core/stages/s9_audit.py").read_text(encoding="utf-8")
     assert "bad += h2h_direction_check(" in src, "code_check 가 안 부른다"
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **대회 식별 한 곳** — 사용자 지시 2026-10-09(4차) §1·§2·§3·§4
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_여러_출처_표기가_같은_키로_모인다():
+    """🔴🔴 §4 — `jpn.1`·`kor.1`·이름·코드·fotmob id → **같은 키**.
+
+    🔴 돌연변이: `competitions.yaml` 에서 `espn_slugs` 를 지우면 `jpn.1` 이
+       키를 잃고 — 그것이 실사고 2026-10-09(가시마–감바)의 모습이다.
+    """
+    from app.core.competition import key_of
+    want = {
+        "league:J1": ["jpn.1", "J1 League", "J. League", "j리그1"],
+        "league:KL1": ["kor.1", "K League 1", "K-League 1", "k리그1"],
+        "league:PPL": ["por.1", "Liga Portugal", "Primeira Liga"],
+        "league:PL": ["eng.1", "Premier League"],
+        "league:BSA": ["bra.1", "Campeonato Brasileiro Série A"],
+    }
+    for key, says in want.items():
+        for said in says:
+            got, why = key_of(competition=said)
+            assert got == key, (said, got, key, why)
+    # 🔴 fotmob 리그 id 와 football-data 코드도 **같은 키**를 가리킨다
+    assert key_of(league_id=223)[0] == "league:J1"
+    assert key_of(league_id=9080)[0] == "league:KL1"
+    assert key_of(code="PPL")[0] == "league:PPL"
+    # 🔴 **이탈리아 세리에A 와 브라질이 갈린다**(표기가 겹친다)
+    assert key_of(league_id=55)[0] == "league:SA"
+    assert key_of(league_id=268)[0] == "league:BSA"
+    # ⚠️ 슬러그는 **전체 일치**다 — `jpn.10` 을 `jpn.1` 로 읽지 않는다
+    assert key_of(competition="jpn.10")[0] == "", key_of(competition="jpn.10")
+
+
+def test_모르는_표기면_키가_없고_사유에_받은_글자가_있다():
+    """🔴 §2 — 돌연변이: 모르는 표기를 `league:{받은 글자}` 로 **그냥 쓴다**.
+
+    🔴 그 돌연변이가 바로 종전 동작이다 — `league:jpn.1` 이 만들어져 기준·홈
+       이점·리그 평균이 **조용히** 비었다.
+    """
+    from app.core.competition import UNKNOWN_HEAD, key_of
+    got, why = key_of(competition="zzz.9")
+    assert got == "", got
+    assert UNKNOWN_HEAD in why and "zzz.9" in why, why
+    # ⚠️ 빈 입력도 **키가 없다**(없는 것을 키로 만들지 않는다)
+    assert key_of()[0] == ""
+
+
+def test_확인_못_한_표기는_알아보되_그_사실을_적는다():
+    """🔴 §1 — `kor.1` 은 ESPN 세 경로가 503 이라 **확인 못 했다**.
+
+    🔴 그래도 **알아본다**(지시가 *"kor.1 포함"*). ⚠️ 사유에 그 사실이 남아야
+       사람이 확인된 표기와 **구분**할 수 있다.
+    """
+    from app.core.competition import key_of
+    got, why = key_of(competition="kor.1")
+    assert got == "league:KL1", (got, why)
+    assert "확인 못 한 표기" in why, why
+    # 🔴 확인된 표기에는 그 말이 **없다**
+    assert "확인 못 한 표기" not in key_of(competition="jpn.1")[1]
+
+
+def test_판정점이_하나다():
+    """🔴🔴 §1 — 돌연변이: 두 번째 판정점을 되살린다.
+
+    🔴 종전에는 `s5_verify.league_code` 가 `league_elo.yaml` 이름표를 **따로**
+       읽었다 — 한 곳만 고치면 다른 곳이 조용히 틀린다.
+    """
+    import pathlib
+    src = pathlib.Path("app/core/stages/s5_verify.py").read_text(encoding="utf-8")
+    assert "def league_code" not in src, "두 번째 판정점이 되살아났다"
+    assert "competition as _comp" in src and "_comp.kind_of(" in src, src[:0]
+    # 🔴 `comp_kind` 는 **그 함수만** 부른다(이름표를 다시 읽지 않는다)
+    assert "league_elo.yaml" not in src.split("def comp_kind")[1][:1200]
+
+
+def test_대회_미식별이면_등급이_전부_보류다():
+    """🔴🔴 §2 — 돌연변이: 미식별인데 등급을 준다."""
+    import pathlib
+    src = pathlib.Path("app/core/stages/s7_judge.py").read_text(encoding="utf-8")
+    assert "대회 미식별 — 등급 전부 보류" in src, "s7 이 보류시키지 않는다"
+    # 🔴 `enough=False` 로 **같은 길**을 탄다(대입·방향은 그대로 낸다)
+    said = src.split("대회를 알아보지 못했다")[0][-700:]
+    assert "enough = False" in said, said[-200:]
+    # 🔴 운영자 알림이 **이어져** 있다
+    assert "_tell_operator(ref)" in src
+    from app import auditlog
+    assert hasattr(auditlog, "unknown_competition")
+    assert hasattr(auditlog, "unknown_competitions")
+
+
+def test_빈_카드를_감지해_머리에_찍는다():
+    """🔴🔴 §3 — 돌연변이: 조용히 내보낸다(가시마–감바가 그랬다).
+
+    > 변수 2개 이하 + 기준 없음 + 폼·XI·순위 중 둘 이상 없음.
+    """
+    from app.core import render
+    from app.core.schema import BaseProb, Card, Facts, MatchRef
+    from datetime import datetime, timezone
+    ref = MatchRef(id="x", sport="soccer", competition="zzz.9",
+                   competition_short="zzz.9",
+                   kickoff_utc=datetime(2026, 10, 9, 10, tzinfo=timezone.utc),
+                   home="team:000316", away="team:000582",
+                   home_name="A", away_name="B")
+    thin = Card(match=ref, facts=Facts(), variables=[],
+                base_prob=BaseProb(why="기준 없음"))
+    said, why = render.thin_card(thin)
+    assert said and "변수 0개" in why, (said, why)
+    lines = render.warn_lines(thin)
+    assert any("자료 부족 카드 — 판단에 쓰지 말 것" in x for x in lines), lines
+    assert any("대회를 알아보지 못했다" in x for x in lines), lines
+    # 🔴 **카드 머리와 블록 1 둘 다**에 들어간다
+    body = render.card_text(thin)
+    assert body.count("자료 부족 카드") >= 2, body.count("자료 부족 카드")
+    assert body.count("대회를 알아보지 못했다") >= 2
+    # ⚠️ 변수가 셋이면 **얇지 않다**(흔한 일을 경고로 만들지 않는다)
+    from app.core.schema import Variable
+    v = Variable(id="S03", type="home_field", subject="team:000316",
+                 favors="home", goals="none", target="home_field",
+                 hardness="soft", weight=1.0, claim="홈", quote="홈",
+                 doc_ids=[], from_rule="S03")
+    fat = thin.model_copy(update={"variables": [v, v, v]})
+    assert render.thin_card(fat)[0] is False
+
+
+def test_같은_경기가_다른_출처로_와도_하나로_묶인다():
+    """🔴🔴 §1 — 돌연변이: 경기 id 로만 묶는다(출처가 다르면 id 가 다르다).
+
+    실사고 2026-10-09(가시마–감바): fotmob `J. League` · ESPN `jpn.1` 로 **같은
+    경기**가 둘 왔고 `ambiguous` 로 멈췄다 — 카드가 아예 안 나왔다.
+    """
+    from app.findgame import _same_match
+    a = {"home": "Kashima Antlers", "away": "Gamba Osaka",
+         "league": "J. League", "starts_utc": "2026-10-09T10:00:00+00:00"}
+    b = {"home": "Kashima Antlers", "away": "Gamba Osaka",
+         "league": "jpn.1", "starts_utc": "2026-10-09T10:00:00+00:00"}
+    assert _same_match([a], b) is a, "같은 경기를 못 묶는다"
+    # 🔴 홈·원정이 **뒤집혀도** 같은 경기다(출처가 순서를 바꿔 준다)
+    flip = {**b, "home": "Gamba Osaka", "away": "Kashima Antlers"}
+    assert _same_match([a], flip) is a
+    # ⚠️ **다른 경기는 묶지 않는다** — 시각이 다르면 다른 경기다
+    later = {**b, "starts_utc": "2026-10-17T06:00:00+00:00"}
+    assert _same_match([a], later) is None
+    other = {**b, "away": "V-Varen Nagasaki"}
+    assert _same_match([a], other) is None
+    # ⚠️ 시각을 못 재면 **묶지 않는다**(모르는 것을 같다고 하지 않는다 · #3)
+    blind = {k: v for k, v in b.items() if k != "starts_utc"}
+    assert _same_match([a], blind) is None
+
+
+def test_DB_에_같은_경기가_두_줄이면_하나를_고른다():
+    """🔴🔴 §1 — 돌연변이: `pick_one` 을 빼면 `ambiguous` 로 카드가 안 나온다.
+
+    실사고 2026-10-09(가시마–감바): `games` 표에 `fotmob:5803602`(J. League) ·
+    `espn:401877610`(jpn.1)이 **같은 경기**로 있었다(유일 제약 `(sport, ext_id)`
+    가 출처 차이를 못 막는다).
+    """
+    from app.core.competition import pick_one, source_rank
+    rows = [
+        {"ext_id": "espn:401877610", "league": "jpn.1",
+         "home": "Kashima Antlers", "away": "Gamba Osaka",
+         "starts_utc": "2026-10-09 10:00:00+00:00"},
+        {"ext_id": "fotmob:5803602", "league": "J. League",
+         "home": "Kashima Antlers", "away": "Gamba Osaka",
+         "starts_utc": "2026-10-09 10:00:00+00:00"},
+    ]
+    kept, notes = pick_one(rows)
+    assert len(kept) == 1, kept
+    # 🔴 **출처 우선순위**가 고른다 — 표가 `fotmob` 을 먼저로 적었다
+    assert kept[0]["ext_id"] == "fotmob:5803602", kept
+    assert notes and "같은 경기를 묶었다" in notes[0], notes
+    assert source_rank("fotmob:1") < source_rank("espn:1")
+    # ⚠️ **다른 경기는 묶지 않는다**(§17-g-3 을 어기지 않는다)
+    two = [rows[0], {**rows[1], "starts_utc": "2026-10-17 06:00:00+00:00"}]
+    assert len(pick_one(two)[0]) == 2
+    # 🔴 **대회를 알아보는 줄이 먼저다** — 순위보다 그것이 앞선다
+    mixed = [{"ext_id": "fotmob:1", "league": "zzz.9",
+              "home": "A", "away": "B", "starts_utc": "2026-10-09 10:00:00+00:00"},
+             {"ext_id": "espn:2", "league": "jpn.1",
+              "home": "A", "away": "B", "starts_utc": "2026-10-09 10:00:00+00:00"}]
+    assert pick_one(mixed)[0][0]["ext_id"] == "espn:2", pick_one(mixed)[0]
+    # 🔴 `resolve` 가 그것을 **부르나**(안 이으면 없는 코드다 · CLAUDE.md #2)
+    import pathlib
+    src = pathlib.Path("app/resolve.py").read_text(encoding="utf-8")
+    assert "_comp.pick_one(list(found.games))" in src

@@ -60,6 +60,66 @@ def debug_text(card: Card) -> str:
     return card_text(card, debug=True)
 
 
+def warn_lines(card: Card) -> list[str]:
+    """🔴🔴 §2·§3 — 카드 머리의 **경고 줄들**(없으면 빈 목록).
+
+    | 언제 | 무엇 |
+    |---|---|
+    | 대회를 못 알아봤다 | `🔴 대회를 알아보지 못했다 — {받은 표기}` |
+    | 자료가 얇다 | `🔴 자료 부족 카드 — 판단에 쓰지 말 것` |
+
+    🔴 **판정을 하지 않는다** — 세는 규칙은 `thin_card` 하나이고 여기서는 글만 짓는다.
+    """
+    out: list[str] = []
+    if not comp_key(card):
+        out.append(f"{_comp_mod().UNKNOWN_HEAD} — 받은 표기 "
+                   f"`{card.match.competition or '없음'}` · 기준·경우의 수·리그 "
+                   f"평균이 **비었다** · 등급은 전부 **보류**")
+    said, why = thin_card(card)
+    if said:
+        out.append(f"🔴 **자료 부족 카드 — 판단에 쓰지 말 것**({why})")
+    return out
+
+
+def _comp_mod():
+    from app.core import competition
+    return competition
+
+
+def comp_key(card: Card) -> str:
+    """🔴 그 카드의 `competition_key` — 못 알아봤으면 `""`.
+
+    ⚠️ `BaseProb.comp_kind` 에 **이미 적혀 있다**(s2b 가 넣는다) — 다시 판정하지
+       않는다(판정점은 `competition.py` 하나다).
+    """
+    return str(card.base_prob.comp_kind or "")
+
+
+def thin_card(card: Card) -> tuple[bool, str]:
+    """🔴🔴 §3 **빈 카드 감지** — `(얇은가, 사유)`.
+
+    > 변수 **2개 이하** + 기준 **없음** + 폼·XI·순위 중 **둘 이상 없음**.
+
+    🔴 세 조건이 **모두** 맞아야 한다 — 하나만으로는 흔한 일이고, 셋이 겹치면
+       카드가 말할 것이 없다는 뜻이다.
+    """
+    n_var = len(card.variables or [])
+    if n_var > 2:
+        return False, ""
+    if card.base_prob.probs is not None:
+        return False, ""
+    miss = []
+    if not (card.facts.xi or {}):
+        miss.append("XI")
+    if not (card.facts.recent or {}):
+        miss.append("폼")
+    if not ((card.facts.standings or {}).get("group") or {}).get("rows"):
+        miss.append("순위")
+    if len(miss) < 2:
+        return False, ""
+    return True, (f"변수 {n_var}개 · 기준 없음 · " + "·".join(miss) + " 없음")
+
+
 def _head(card: Card) -> str:
     from app import timefmt
     m = card.match
@@ -69,6 +129,18 @@ def _head(card: Card) -> str:
     if m.openworld:
         # 🔴 **처음 보는 리그라는 것을 한눈에**(오픈월드 §4 표기)
         head += f"\n🌐 **오픈월드** — 리그: {m.competition} · 팀 열쇠 임시 발급"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **못 알아본 대회·빈 카드는 머리에 찍는다**(지시 2026-10-09(4차) §2·§3)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 못 알아보면 **크게 실패**: 카드 머리에 *"🔴 대회를 알아보지 못했다 —
+    #  > {받은 표기}"* · 그 상태로 등급은 전부 보류.
+    #  > 빈 카드 감지: … 카드 머리에 *"자료 부족 카드 — 판단에 쓰지 말 것"*.
+    #
+    #  🔴 **조용히 나가지 않는다** — 실사고 2026-10-09(가시마–감바)는 변수 1개 ·
+    #     기준 없음 · 폼·XI·순위 전무인 카드가 **아무 표시도 없이** 나간 일이다.
+    for line in warn_lines(card):
+        head += f"\n{line}"
     c = card.cost
     head += (f"\n💵 ${c.usd:.4f} · 호출 {c.calls}회 · 출력 {c.out_tokens} "
              f"(추론 {c.reasoning_tokens})")
@@ -105,8 +177,21 @@ def _head(card: Card) -> str:
 
 
 def _b1(card: Card) -> str:
-    """블록 1 — 🔴 **이 블록이 비면 그것이 거짓이다.**"""
+    """블록 1 — 🔴 **이 블록이 비면 그것이 거짓이다.**
+
+    🔴 §2 — 대회를 못 알아봤으면 *"기준·경우의 수·리그 평균이 비었다"* 를 이 블록
+       **맨 위**에 적는다(사용자 지시 2026-10-09(4차) §2).
+    """
     out: list[str] = []
+    # 🔴🔴 §2 — **맨 위**다(아래 줄들보다 먼저 읽혀야 한다)
+    if not comp_key(card):
+        out.append(f"🔴🔴 **{_comp_mod().UNKNOWN_HEAD}** — 받은 표기 "
+                   f"`{card.match.competition or '없음'}` → **기준(①)·경우의 수·"
+                   f"리그 평균이 비었다**. 등급은 전부 **보류**이고, 이 표기는 "
+                   f"운영자 알림으로 보냈다(표에 넣어야 한다)")
+    said_thin, why_thin = thin_card(card)
+    if said_thin:
+        out.append(f"🔴🔴 **자료 부족 카드 — 판단에 쓰지 말 것**({why_thin})")
     if card.started:
         out.append("🔴 **이미 시작한 경기다 — 예측이 아니다**(등급을 내지 않는다)")
     by: dict[str, int] = {}

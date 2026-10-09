@@ -60,6 +60,24 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
     lines, src = _lines(ref, facts, scen, w, board=board, notes=notes,
                         source=board_source)
     enough, thin_why = _enough(variables, scen)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **대회를 못 알아보면 등급을 전부 보류**(사용자 지시 2026-10-09(4차) §2)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 못 알아보면 … 그 상태로 **등급은 전부 보류.**
+    #
+    #  🔴 기준·리그 평균·홈 이점 표가 다 비어 있으므로 생존 수의 뜻이 달라진다 —
+    #     그 수에 등급을 붙이면 **없는 기준 위에 이름을 적는 것**이다.
+    #  ⚠️ 생존·대입·방향은 **그대로 낸다**(`enough=False` 와 같은 길이다).
+    from app.core.stages.s5_verify import comp_kind
+    if not comp_kind(ref, facts):
+        enough = False
+        thin_why = (f"대회를 알아보지 못했다 — 받은 표기 "
+                    f"`{ref.competition or '없음'}`"
+                    + (f" · {thin_why}" if thin_why else ""))
+        notes.append(f"🔴🔴 **대회 미식별 — 등급 전부 보류**(받은 표기 "
+                     f"`{ref.competition or '없음'}`) · 운영자 알림으로 보냈다")
+        _tell_operator(ref)
     if not enough:
         notes.append(f"🔴 §7 R5 **자료 얇음 — 등급 없음**({thin_why}) · "
                      f"시나리오·대입·방향은 그대로 낸다")
@@ -248,6 +266,19 @@ def _grade(survival: float, *, cap: float, enough: bool, started: bool,
     words = {survive.WORD_NAME: "낸다", survive.WORD_SMALL: "소액",
              survive.WORD_SMALL_LOW: "소액하단", survive.WORD_NONE: "없음"}
     return words.get(got, "없음")                     # type: ignore[return-value]
+
+
+def _tell_operator(ref) -> None:
+    """🔴 §2 마지막 줄 — **운영자 알림에 받은 표기를 보낸다**(다음에 표에 넣게).
+
+    ⚠️ 실패해도 **카드를 막지 않는다** — 알림은 곁딸린 일이다.
+    """
+    try:
+        from app import auditlog
+        auditlog.unknown_competition(str(ref.competition or ""),
+                                     match=str(ref.id or ""))
+    except Exception:                                       # noqa: BLE001
+        pass
 
 
 def _enough(variables: list[Variable], scen: list[Scenario]) -> tuple[bool, str]:

@@ -234,6 +234,23 @@ async def find(*, team: str, opponent: str = "", day: date | None = None,
                     continue
             if mid:
                 seen_ids.add(mid)
+            # ══════════════════════════════════════════════════════════
+            # 🔴🔴 **같은 경기는 출처가 달라도 하나다**(지시 2026-10-09(4차) §1)
+            # ══════════════════════════════════════════════════════════
+            #
+            #  ⚠️ 실사고 2026-10-09(가시마–감바): fotmob 이 `J. League` 로,
+            #     ESPN 이 `jpn.1` 로 **같은 경기**를 줬고 경기 id 가 달라
+            #     `seen_ids` 가 못 걸렀다 → 후보 2건 → `ambiguous` 로 멈췄다.
+            #  🔴 같은 경기인지는 **두 팀과 킥오프 순간**이 말한다 — 대회 글자가
+            #     아니다(글자는 출처마다 다르다 · 그래서 이 지시가 왔다).
+            twin = _same_match(got.rows, row)
+            if twin is not None:
+                got.tried.append(
+                    f"{url} 묶었다 — 같은 경기가 다른 출처로 왔다"
+                    f"(`{twin.get('league')}` ↔ `{row.get('league')}`)")
+                logger.info("[findgame] 같은 경기 묶음 — %s ↔ %s",
+                            twin.get("league"), row.get("league"))
+                continue
             got.rows.append(row)
             logger.info("[findgame] 찾았다 — %s @ %s · %s · %s KST (%s)",
                         row["away"], row["home"], row["league"],
@@ -255,6 +272,27 @@ def _reader_for(url: str):
     for mod in READERS:
         if mod.is_match_page(url):
             return mod
+    return None
+
+
+def _same_match(rows: list[dict], row: dict) -> dict | None:
+    """🔴 이미 담은 줄 중 **같은 경기**가 있나 — 두 팀과 킥오프 순간으로 센다.
+
+    ⚠️ 대회 글자로 세지 않는다 — 출처마다 다르다(`J. League` ↔ `jpn.1`).
+    🔴 킥오프는 **분까지** 본다(출처가 초를 다르게 줄 수 있다).
+    """
+    def _sig(r: dict):
+        pair = tuple(sorted(" ".join(str(r.get(k) or "").lower().split())
+                            for k in ("home", "away")))
+        when = str(r.get("starts_utc") or r.get("starts_kst") or "")[:16]
+        return pair, when
+
+    mine = _sig(row)
+    if not all(mine[0]) or not mine[1]:
+        return None            # ⚠️ 못 재는 줄은 **묶지 않는다**(#3)
+    for got in rows:
+        if _sig(got) == mine:
+            return got
     return None
 
 
