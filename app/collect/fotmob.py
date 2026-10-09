@@ -1564,6 +1564,34 @@ def cut_lines(tb: dict) -> dict:
     return out
 
 
+def zone_bands(tb: dict) -> dict:
+    """🔴🔴 **구역의 구간 전체** — `{구역: [첫 순위, 마지막 순위]}`.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 `cut_lines` 로 모자라나 — 실사고 2026-10-09(가시마–감바)
+    ══════════════════════════════════════════════════════════════════
+
+    `cut_lines` 는 구간의 **마지막 순위만** 든다(`{'Relegation': 20}`). 그 수로
+    `rank <= last` 를 세면 **6위가 `Relegation`** 이 된다 — 카드 경우의 수에
+    *"6위(Relegation)"* 가 찍혔다.
+
+    🔴 J1 실측 legend: `AFC Champions League Elite indices [0,1]`(1~2위) ·
+       `Relegation indices [17,18,19]`(18~20위). 🔴 **첫 순위가 1 이 아닌 구역**이
+       있으면 마지막 순위만으로는 가를 수 없다.
+    ⚠️ `cut_lines` 는 그대로 둔다 — `stakes` 가 *"경계 순위"* 로 쓰고 있고 그 뜻은
+       맞다(사본 금지로 둘을 한 파일에 둔다).
+    """
+    out: dict[str, list[int]] = {}
+    for lg in (tb.get("legend") or []):
+        if not isinstance(lg, dict):
+            continue
+        idx = [int(i) for i in (lg.get("indices") or []) if i is not None]
+        title = str(lg.get("title") or lg.get("tKey") or "").strip()
+        if idx and title:
+            out[title] = [min(idx) + 1, max(idx) + 1]
+    return out
+
+
 def table_as_of(j: dict) -> datetime | None:
     """🔴 **순위표가 "언제"의 표인가** — 표가 스스로 말해 준다.
 
@@ -1861,7 +1889,11 @@ def group_table(j: dict, names: list[str]) -> dict:
                         "points": r.get("pts"),
                         "zone": band.get(int(rank) if rank else 0, "")})
         return {"group": str(tb.get("leagueName") or ""), "rows": out,
-                "zones": zones, "legend_raw": tb.get("legend") or []}
+                "zones": zones,
+                # 🔴 **구간 전체**도 싣는다(지시 2026-10-09(4차) 곁딸림) —
+                #    마지막 순위만으로는 1위에서 시작하지 않는 구역을 못 가른다
+                "zone_bands": zone_bands(tb),
+                "legend_raw": tb.get("legend") or []}
     return {}
 
 

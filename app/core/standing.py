@@ -89,8 +89,24 @@ def rank_of(rows: list[dict], order: list[str]) -> list[dict]:
     return out
 
 
-def zone_of(rank: int, zones: dict) -> str:
-    """🔴 그 순위의 **구역 글자** — fotmob legend 의 `{구역: 마지막 순위}` 로 센다."""
+def zone_of(rank: int, zones: dict, bands: dict | None = None) -> str:
+    """🔴 그 순위의 **구역 글자**.
+
+    🔴 `bands`(`{구역: [첫, 마지막]}`)가 있으면 **그것이 먼저**다 — 구간 전체를
+       알아야 1위에서 시작하지 않는 구역(강등)을 가를 수 있다.
+    ⚠️ 실사고 2026-10-09(가시마–감바): `zones`(마지막 순위만)로 세어 **6위가
+       `Relegation`** 으로 찍혔다(J1 강등은 18~20위다).
+    ⚠️ `bands` 가 없으면 종전처럼 `zones` 로 센다 — 그 리그는 **그 수밖에 없다**.
+    """
+    for title, pair in (bands or {}).items():
+        try:
+            first, last = int(pair[0]), int(pair[1])
+        except (TypeError, ValueError, IndexError):
+            continue
+        if first <= rank <= last:
+            return str(title)
+    if bands:
+        return ""          # 🔴 구간을 아는데 안 걸렸다 — **구역이 없는 순위**다
     best = ""
     for title, last in sorted(zones.items(), key=lambda kv: int(kv[1])):
         if rank <= int(last):
@@ -123,6 +139,8 @@ def grid(standings: dict, *, home: str, away: str, order: list[str],
     """
     rows = list(standings.get("rows") or [])
     zones = dict(standings.get("zones") or {})
+    # 🔴 **구간 전체**가 있으면 그것으로 구역을 센다(마지막 순위만으로는 틀린다)
+    bands = dict(standings.get("zone_bands") or {})
     if not rows:
         return []
     pairs = list(others or [])
@@ -140,7 +158,8 @@ def grid(standings: dict, *, home: str, away: str, order: list[str],
                        for (h, a), res in zip(pairs, rest)],
             "ranks": {str(r.get("name")): int(r.get("rank") or 0)
                       for r in ranked},
-            "zones": {str(r.get("name")): zone_of(int(r.get("rank") or 0), zones)
+            "zones": {str(r.get("name")): zone_of(int(r.get("rank") or 0),
+                                                  zones, bands)
                       for r in ranked}})
     return out
 

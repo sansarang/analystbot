@@ -2745,3 +2745,84 @@ def test_DB_에_같은_경기가_두_줄이면_하나를_고른다():
     import pathlib
     src = pathlib.Path("app/resolve.py").read_text(encoding="utf-8")
     assert "_comp.pick_one(list(found.games))" in src
+
+
+def test_구역은_구간_전체로_센다():
+    """🔴🔴 돌연변이: 마지막 순위만으로 센다(종전 동작 — 6위가 `Relegation` 이었다).
+
+    실측 2026-10-09 J1 legend: `AFC Champions League Elite indices [0,1]`(1~2위) ·
+    `Relegation indices [17,18,19]`(18~20위). 🔴 `cut_lines` 는 구간의 **마지막
+    순위만** 들어서 `rank <= 20` 인 모든 순위가 강등으로 찍혔다 — 경우의 수 표
+    27줄이 그 거짓을 반복했다.
+    """
+    from app.collect.fotmob import cut_lines, zone_bands
+    from app.core.standing import zone_of
+    tb = {"legend": [
+        {"title": "AFC Champions League Elite", "indices": [0, 1]},
+        {"title": "Relegation", "indices": [17, 18, 19]}]}
+    bands = zone_bands(tb)
+    assert bands == {"AFC Champions League Elite": [1, 2],
+                     "Relegation": [18, 20]}, bands
+    # 🔴 `cut_lines` 는 **그대로 둔다**(`stakes` 가 경계 순위로 쓴다)
+    assert cut_lines(tb) == {"AFC Champions League Elite": 2, "Relegation": 20}
+    zones = cut_lines(tb)
+    # 🔴 구간으로 세면 6·8·17위는 **구역이 없다**
+    for rank in (3, 6, 8, 17):
+        assert zone_of(rank, zones, bands) == "", rank
+        # ⚠️ 종전 방식은 그 순위를 강등으로 말했다 — 돌연변이의 모습이다
+        assert zone_of(rank, zones) == "Relegation", rank
+    assert zone_of(1, zones, bands) == "AFC Champions League Elite"
+    assert zone_of(18, zones, bands) == "Relegation"
+    assert zone_of(20, zones, bands) == "Relegation"
+    # 🔴 `grid` 가 **구간을 쓰나** — 안 쓰면 표가 다시 거짓이 된다
+    import pathlib
+    src = pathlib.Path("app/core/standing.py").read_text(encoding="utf-8")
+    assert 'standings.get("zone_bands")' in src
+    assert "zone_of(int(r.get(\"rank\") or 0),\n" in src or \
+        "zones, bands)" in src, src[:0]
+    fm = pathlib.Path("app/collect/fotmob.py").read_text(encoding="utf-8")
+    assert '"zone_bands": zone_bands(tb)' in fm, "group_table 이 구간을 안 싣는다"
+
+
+def test_블록3_은_허용_목록으로만_순위를_적는다():
+    """🔴🔴 돌연변이: 거부 목록으로 되돌린다 — 새 칸이 생기면 또 샌다.
+
+    실측: 2026-10-07 MLS 85,682자 → `group` 을 뺐다. 2026-10-09 가시마–감바
+    3,983자 → 팀별 줄이 그 목록에 없었다. 🔴 그래서 **허용 목록**이다.
+    """
+    from app.core import render
+    from app.core.schema import BaseProb, Card, Facts, MatchRef
+    from datetime import datetime, timezone
+    ref = MatchRef(id="x", sport="soccer", competition="J. League",
+                   competition_short="J. League",
+                   kickoff_utc=datetime(2026, 10, 9, 10, tzinfo=timezone.utc),
+                   home="team:000316", away="team:000582",
+                   home_name="A", away_name="B")
+    # 🔴 **모르는 칸은 안 나간다** — 팀별 줄이 통째로 들어와도
+    noisy = {"team": "B", "table": "J. League", "rank": 16, "played": 8,
+             "wins": 1, "draws": 3, "losses": 4, "points": 6,
+             "goals_for": 8, "goals_against": 14}
+    card = Card(match=ref, facts=Facts(standings=noisy),
+                base_prob=BaseProb(why="x"))
+    said = render._standings_line(card)
+    assert said == "", said
+    assert "'rank'" not in render.card_text(card), "dict 원문이 카드에 나갔다"
+    # 🔴 **홈 이점은 나간다**(블록 3 이 적을 칸이다)
+    ha = Card(match=ref, base_prob=BaseProb(why="x"),
+              facts=Facts(standings={"home_advantage": {
+                  "win_pct_delta": -6.1, "home_games": 180,
+                  "away_games": 180}}))
+    got = render._standings_line(ha)
+    assert "홈 이점(쪼갠 표)" in got and "-6.1%p" in got, got
+    # ⚠️ 조 순위표만 있으면 **어디 있는지** 가리킨다(조용히 빠지지 않는다)
+    grp = Card(match=ref, base_prob=BaseProb(why="x"),
+               facts=Facts(standings={"group": {"rows": [{"name": "A"}]}}))
+    assert "블록 3b" in render._standings_line(grp)
+
+
+def test_남은_경기_줄이_조_전체와_팀별을_가른다():
+    """🔴 돌연변이: 조 전체 수만 적는다 — *"남은 경기 300개"* 로 읽힌다."""
+    import pathlib
+    src = pathlib.Path("app/core/render.py").read_text(encoding="utf-8")
+    assert "조 전체 남은 경기" in src, "조 전체임을 안 밝힌다"
+    assert "이 두 팀 남은 라운드" in src, "팀별 라운드를 안 적는다"

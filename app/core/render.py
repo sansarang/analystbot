@@ -304,9 +304,17 @@ def _b3b(card: Card) -> str:
     home, away = card.match.home_name, card.match.away_name
     out: list[str] = []
     group = look.get("group") or ""
-    out.append(f"- 조 `{group}` · 남은 경기 {look.get('remaining', '?')}개 · "
+    # 🔴 `remaining` 은 **조 전체**의 남은 경기 수다 — 우리 두 팀 것이 아니다.
+    #    ⚠️ 실사고 2026-10-09(가시마–감바): *"남은 경기 300개"* 가 찍혀 마치 두
+    #       팀에게 300경기가 남은 것처럼 읽혔다. 🔴 팀별 라운드를 함께 적는다.
+    left_t = dict(look.get("rounds_left") or {})
+    mine = (" · 이 두 팀 남은 라운드 "
+            + " / ".join(f"{t} {max(0, int(n))}" for t, n in left_t.items())
+            if left_t else "")
+    out.append(f"- 조 `{group}` · 조 전체 남은 경기 {look.get('remaining', '?')}개"
+               + mine + " · "
                + ("**최종 확정 가능**" if look.get("final")
-                  else "⚠️ **최종 확정 아니다**(남은 경기가 더 있다)"))
+                  else "⚠️ **최종 확정 아니다**(남은 라운드가 더 있다)"))
     if look.get("other"):
         out.append("- 같은 라운드 다른 경기(순위에 닿는 순): "
                    + " · ".join(look["other"]))
@@ -431,15 +439,21 @@ def _b3(card: Card) -> str:
             out.append(f"    {x.get('date')} "
                        f"{'홈' if x.get('side') == 'home' else '원정'} "
                        f"{x.get('opponent')}{tail} {x.get('score')}")
-    if f.standings:
-        # 🔴🔴 **조 순위표는 블록 3b 가 그린다** — 여기서 그 dict 를 찍지 않는다.
-        #    ⚠️ 실측 2026-10-07(MLS): `standings["group"]` 이 들어오자 이 줄이
-        #       **85,682자**를 쏟아 카드가 읽을 수 없게 됐다(`_short` 가 줄여도
-        #       한 줄에 수백 자다). 🔴 블록 3 은 **쪼갠 표·홈 이점**만 적는다.
-        said = {k: v for k, v in dict(f.standings).items()
-                if k not in ("group", "outlook_states")}
-        if said:
-            out.append(f"- 순위 — {_short(said)}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **허용 목록이다 — 거부 목록이 아니다**(실사고 2026-10-09)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-07(MLS): `standings["group"]` 이 들어오자 이 줄이 **85,682자**
+    #     를 쏟았다. 그때 `group`·`outlook_states` 를 **빼는** 식으로 막았다.
+    #  🔴 그 거부 목록이 또 뚫렸다 — 실측 2026-10-09(가시마–감바): 순위표가 채워지자
+    #     팀별 줄(`rank`·`played`·`points`…)이 그 목록에 없어서 **3,983자**가 나갔다.
+    #  🔴 그래서 **뒤집는다**: 블록 3 이 적을 칸을 **이름으로 고른다**. 새 칸이
+    #     생겨도 여기 없으면 안 나간다(사본 금지의 형제 규칙 — 손으로 유지하는
+    #     거부 목록은 언제나 한 발 늦는다 · CLAUDE.md #1).
+    #  ⚠️ 조 순위표는 **블록 3b** 가 그린다(그 블록이 그 일을 한다).
+    said_std = _standings_line(card)
+    if said_std:
+        out.append(said_std)
     if f.h2h:
         h = dict(f.h2h)
         got = h.get("summary")
@@ -492,6 +506,30 @@ def _b3(card: Card) -> str:
         elif h.get("season_checked"):
             out.append("- 올 시즌 맞대결 — ⬜ **없다**(올 시즌 첫 대결이다)")
     return "\n".join(out)
+
+
+#: 🔴 블록 3 이 **적는 칸** — 홈 이점과 쪼갠 표뿐이다(허용 목록 · 지시 2026-10-09)
+#  ⚠️ 칸 이름은 `s5_verify._ir_home` 이 읽는 것과 **같다**(`home_advantage`).
+STANDINGS_SHOW: tuple[str, ...] = ("home_advantage", "venue", "venue_averages")
+
+
+def _standings_line(card: Card) -> str:
+    """🔴 블록 3 의 순위 줄 — **허용 목록**의 칸만. 없으면 빈 글자."""
+    box = dict(card.facts.standings or {})
+    said = {k: box[k] for k in STANDINGS_SHOW if box.get(k)}
+    if not said:
+        # ⚠️ 표가 **있는데** 보일 칸이 없으면 그 사실을 적는다(#3) — 조용히 빠지면
+        #    사람이 *"순위를 못 받았다"* 로 읽는다.
+        if box.get("group"):
+            return "- 순위 — 조 순위표는 **블록 3b** 에 있다(홈/원정 쪼갠 표는 못 받았다)"
+        return ""
+    ha = dict(said.get("home_advantage") or {})
+    got = ha.get("win_pct_delta")
+    if got is not None:
+        return (f"- 홈 이점(쪼갠 표) — 홈 승률 {float(got):+g}%p · "
+                f"홈 {ha.get('home_games', '?')}경기 · 원정 "
+                f"{ha.get('away_games', '?')}경기")
+    return f"- 순위 — {_short(said)}"
 
 
 def _short(box: object, cap: int = 160) -> str:

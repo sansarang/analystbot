@@ -110,8 +110,15 @@ async def main(argv: list[str]) -> int:
     import os as _os2
     _os2.environ.setdefault(cassette.MATCH_ENV, arg)
     t0 = time.monotonic()
-    msg = _Msg(f"/analyze {arg}")
-    await cmd_analyze(msg)                      # 🔴 **실제 핸들러**다
+    # 🔴 `--deep` 이면 **긴 카드**(열네 블록)를 낸다 — 1겹은 `/analyze` 가 기본이고
+    #    긴 카드는 `/자세히` 다(지시 2026-10-09(3차) §1). ⚠️ 같은 핸들러를 쓴다.
+    if "--deep" in argv:
+        from app.bot.main import cmd_deep
+        msg = _Msg(f"/자세히 {arg}")
+        await cmd_deep(msg)
+    else:
+        msg = _Msg(f"/analyze {arg}")
+        await cmd_analyze(msg)                  # 🔴 **실제 핸들러**다
     secs = time.monotonic() - t0
     mo1, d1 = solar.spent()
     used = d1 - d0
