@@ -432,7 +432,10 @@ def outlook(ref: MatchRef, facts: Facts, *, state: RunState) -> dict:
                                      zones=dict(box.get("zones") or {}))
         if margin:
             said, why = "margin_needed", f"{margin}골 차 필요 — {mwhy}"
-        states[team] = {"state": said, "why": why, "margin": margin}
+        # 🔴 **쪽을 함께 싣는다**(지시 2026-10-09(3차) §3 배선) — 읽는 쪽이 이름을
+        #    이름과 견주어 홈/원정을 **추측하지 않게** 한다(신원 계약).
+        states[team] = {"state": said, "why": why, "margin": margin,
+                        "side": ("home" if is_home else "away")}
         state.note(f"s2b §2 `{team}` **{said}** — {why}")
     left = int(box.get("remaining") or 0)
     # ══════════════════════════════════════════════════════════════════

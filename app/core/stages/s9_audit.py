@@ -190,7 +190,11 @@ H2H_EVEN_WORDS = ("대등", "비슷", "팽팽", "좁게", "좁은", "좁다", "�
 
 def h2h_direction_check(got: Commentary, *, ref: MatchRef,
                         facts: Facts) -> list[str]:
-    """🔴🔴 **(i) 맞대결 해석 방향**(사용자 지시 2026-10-09 ④).
+    """🔴🔴 **(m) 맞대결 해석 방향**(사용자 지시 2026-10-09 ④).
+
+    ⚠️ **번호가 (i) 에서 (m) 으로 바뀌었다** — 2026-10-09(3차) §4 가 (i)~(l) 을
+       구체성·범용 문장·단정·선수 사실로 **못 박았다.** 🔴 번호는 사용자 지시가
+       든다(그 글자로 사람이 말한다).
 
     > 총평 검열에 "맞대결 해석 방향" 검사 추가 — 한쪽 승이 다른 쪽의 **2배 이상**
     > 이면 "대등·좁다" 류 표현은 **위반**.
@@ -224,7 +228,7 @@ def h2h_direction_check(got: Commentary, *, ref: MatchRef,
         said_line = str(line or "")
         hit = [x for x in H2H_EVEN_WORDS if x in said_line]
         if hit:
-            bad.append(f"(i) 맞대결 해석 방향 — 전적이 {w}승 {lose}패로 "
+            bad.append(f"(m) 맞대결 해석 방향 — 전적이 {w}승 {lose}패로 "
                        f"**{lead} 쪽으로 기울었다**(한쪽이 다른 쪽의 "
                        f"{'∞' if not lo else f'{hi / lo:.1f}'}배)인데 문장이 "
                        f"{hit[:2]} 라고 적었다 — {said_line[:50]}")
@@ -371,3 +375,119 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable],
     return CommentOut(said=s8.template(ref, kept, variables, hypo, said),
                       notes=notes, shape_used=kept, audit="템플릿",
                       violations=bad_all)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **1겹 이유 문단 검열 (i)~(l)** — 사용자 지시 2026-10-09(3차) §4
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 기존 총평 검열 4-1 에 **붙인다**. 위반 시 기존처럼 재작성 1회 → 실패하면
+#  > 코드 템플릿 문단.
+#
+#  🔴 검열은 **코드**다(모델 아님) — 같은 문단이면 같은 판정이다.
+#  ⚠️ (i)~(l) 은 이 문단에만 쓴다. 총평은 (a)~(h)·(m) 이 본다(다른 글이다).
+
+#: 🔴 §4(i) — **종류가 다른 셋**. ⚠️ 같은 종류 셋은 하나로 센다
+SPECIFIC_KINDS = ("player", "absence", "rank", "h2h", "form")
+#: 🔴 §4(i) — 최소 개수
+NEED_KINDS = 3
+
+
+def reason_check(said, *, card) -> list[str]:
+    """🔴🔴 **(i)~(l)** — 1겹 이유 문단의 코드 검열. 위반 목록(비면 통과).
+
+    | 번호 | 무엇 |
+    |---|---|
+    | (i) | **구체성** — 이 경기 고유 사실이 **종류가 다른 셋** 이상 |
+    | (j) | **범용 문장** — 문장마다 고유 사실이 하나 이상 |
+    | (k) | **단정** — 단정어 금지 · 마지막 문장 방향 = 헤드라인 방향 |
+    | (l) | **선수 사실** — 글에 나온 선수가 XI·결장·변수 대상에 있어야 한다 |
+    """
+    import re as _re
+
+    from app.core import layer1
+    if said is None or not getattr(said, "sentences", None):
+        return ["(i) 이유 문단이 없다"]
+    rows = list(said.sentences)
+    bad: list[str] = []
+    box = layer1.facts_catalog(card)
+    # ── 문장 수(§3) — 3~5개
+    from app.core.stages import s8b_reason as s8b
+    if not (s8b.MIN_SENT <= len(rows) <= s8b.MAX_SENT):
+        bad.append(f"(i) 문장이 {len(rows)}개다 — "
+                   f"{s8b.MIN_SENT}~{s8b.MAX_SENT}개여야 한다")
+    # ── (i) 구체성 — `fact_refs` 가 가리킨 사실의 **종류**를 센다
+    kinds: set[str] = set()
+    for line in rows:
+        for fid in (line.fact_refs or []):
+            kind = str((box.get(str(fid)) or {}).get("kind") or "")
+            if kind in SPECIFIC_KINDS:
+                kinds.add(kind)
+    if len(kinds) < NEED_KINDS:
+        bad.append(f"(i) 구체성 — 고유 사실 종류가 {sorted(kinds) or '없음'} "
+                   f"({len(kinds)}종)뿐이다 · {NEED_KINDS}종 이상이어야 한다")
+    # ── (j) 범용 문장 — 팀 이름 말고 고유 사실이 하나도 없으면 위반
+    pool = layer1.player_pool(card)
+    teams = {card.match.home_name, card.match.away_name}
+    for line in rows:
+        low = str(line.text or "")
+        said_no_team = low
+        for t in teams:
+            said_no_team = said_no_team.replace(t, "")
+        has_num = bool(_re.search(r"\d", said_no_team))
+        has_player = any(nm and nm in low for nm in pool)
+        has_ref = bool([f for f in (line.fact_refs or [])
+                        if str(f) in box
+                        and box[str(f)]["kind"] in SPECIFIC_KINDS])
+        if not (has_num or has_player or has_ref):
+            bad.append(f"(j) 범용 문장 — 이 경기 고유 사실이 없다: {low[:50]}")
+    # ── (k) 단정어 · 마지막 문장 방향
+    for line in rows:
+        low = str(line.text or "")
+        hit = [w for w in layer1.SURE_WORDS if w in low]
+        if hit:
+            bad.append(f"(k) 단정어 {hit[:2]} — {low[:40]}")
+    side = layer1.dir_side(card)
+    tail = str(rows[-1].text or "")
+    if side:
+        who = (card.match.home_name if side == "home"
+               else card.match.away_name)
+        other = (card.match.away_name if side == "home"
+                 else card.match.home_name)
+        # 🔴 **마지막 문장이 반대 팀만** 앞세우면 위반이다(방향이 어긋난다)
+        if other in tail and who not in tail:
+            bad.append(f"(k) 마지막 문장이 방향({who})과 다른 쪽을 말한다 — "
+                       f"{tail[:50]}")
+    elif not any(w in tail for w in ("어느 쪽도", "반반", "확신할 근거",
+                                     "가리기 어렵", "단정할 수 없")):
+        bad.append(f"(k) 방향이 **반반**인데 마지막 문장이 그 말을 안 한다 — "
+                   f"{tail[:50]}")
+    # ── (l) 선수 사실 — 사실 목록의 선수 id 로 대조한다
+    known = {str(k)[2:] for k in box if str(k).startswith("P:")}
+    known |= {str(k)[4:] for k in box if str(k).startswith("ABS:")}
+    known |= pool
+    for line in rows:
+        for nm in _names_in(str(line.text or "")):
+            if nm in teams:
+                continue
+            if not any(nm in k or k in nm for k in known if k):
+                bad.append(f"(l) 선수 사실 — `{nm}` 은 XI·결장 명단·변수 대상에 "
+                           f"없다(없는 선수 언급)")
+    return bad
+
+
+#: 🔴 사람 이름으로 **볼 수 있는** 조각 — 라틴 문자 두 낱말 이상이거나 한글 2~4자
+#  ⚠️ 이것은 **느슨한 그물**이다 — 느슨해야 (l) 이 거짓 통과를 안 만든다. 그래서
+#     잡힌 조각이 사실 목록에 있으면 통과이고, 없으면 사람이 보고 판단할 위반 글이다.
+_LATIN_NAME = __import__("re").compile(
+    r"\b[A-Z][a-zA-ZÀ-ɏ'’\-]+(?:\s+[A-Z][a-zA-ZÀ-ɏ'’\-]+)+")
+
+
+def _names_in(said: str) -> list[str]:
+    """🔴 문장에서 **선수 이름일 수 있는 조각**을 뽑는다.
+
+    ⚠️ 한글 이름은 조사가 붙어(`안톤이`) 글자만으로는 못 가른다 — 🔴 그래서
+       라틴 문자 이름만 뽑고, 한글은 (l) 대신 (j)·(i) 가 사실 id 로 센다.
+       그 한계를 여기 적어 둔다(#3 · 지어내지 않는다).
+    """
+    return [m.group(0).strip() for m in _LATIN_NAME.finditer(str(said or ""))]

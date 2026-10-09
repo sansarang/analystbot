@@ -134,6 +134,25 @@ async def cmd_reanalyze(m: Message) -> None:
         await m.answer(chunk)
 
 
+@dp.message(Command("deep", "자세히"))
+async def cmd_deep(m: Message) -> None:
+    """`/자세히 <팀> vs <상대>` — 🔴 **열네 블록 긴 카드**(1겹의 `📖 자세히`).
+
+    🔴 **마지막 실행을 다시 쓴다**(`reanalyze` 입구) — 긴 카드를 보려고 s3·s4 를
+       다시 돌려 돈을 쓰지 않는다. 실행이 없으면 그 입구가 전체를 새로 돈다(§4-5).
+    """
+    s = get_settings()
+    from app.bot_boot import boot_checks
+    boot_checks()
+    arg = " ".join((m.text or "").split()[1:]).strip()
+    if not arg:
+        await m.answer("`/자세히 <팀> vs <상대>` — 어느 경기인지 적어라")
+        return
+    pool = await get_pool(s.database_url)
+    for chunk in _split(await _v6_card(pool, said=arg, again=True, deep=True)):
+        await m.answer(chunk)
+
+
 @dp.message(Command("debug", "디버그"))
 async def cmd_debug(m: Message) -> None:
     """`/디버그 <팀> vs <상대>` — 🔴 **같은 카드에 근거 번호·양상 비중**(지시 ④).
@@ -156,7 +175,7 @@ async def cmd_debug(m: Message) -> None:
 
 async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
                    again: bool = False, board_text: str = "",
-                   debug: bool = False) -> str:
+                   debug: bool = False, deep: bool = False) -> str:
     """🔴🔴 **v6 경로** — `pipeline.analyze` → `render.card_text`(§8 4단계).
 
     ══════════════════════════════════════════════════════════════════
@@ -188,7 +207,17 @@ async def _v6_card(pool, *, team: str = "", opponent: str = "", said: str = "",
         lines = [f"🔴 경기를 확정하지 못했다 — {got.why}"]
         lines += [f"  · {c}" for c in got.candidates]
         return "\n".join(lines)
-    return render.debug_text(got) if debug else render.card_text(got)
+    if debug:
+        return render.debug_text(got)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **1겹이 기본이다**(사용자 지시 2026-10-09(3차) §1)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 읽는 사람이 **첫 세 줄**에서 결론과 이유를 얻게 한다.
+    #
+    #  🔴 긴 카드는 **버튼 뒤**다(`📖 자세히` → `deep=True`). ⚠️ 종전에는 1겹이
+    #     없어서 열네 블록이 한꺼번에 나갔다.
+    return render.card_text(got) if deep else render.layer1_text(got)
 
 
 @dp.message(Command("status", "상태"))

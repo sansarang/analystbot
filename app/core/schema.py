@@ -487,6 +487,36 @@ class AuditOut(Frozen):
     lines: list[AuditLine] = Field(default_factory=list)
 
 
+class ReasonLine(Frozen):
+    """🔴🔴 1겹 **이유 문단의 한 문장**(사용자 지시 2026-10-09(3차) §3).
+
+    > 출력: `{sentences: 3~5개, 각 문장 fact_refs(사실 id 1개 이상)}`
+
+    🔴 `fact_refs` 는 **카드 사실의 id** 다 — 변수 id(`S02`·`IR02-home`)이거나
+       `layer1.facts_catalog()` 가 짓는 id(`ABS:…`·`RANK:home`·`H2H`·`XI:home`…).
+    ⚠️ 하나도 없으면 검열 (j) 가 **위반**으로 잡는다(근거 없는 문장 금지).
+    """
+
+    text: str
+    fact_refs: list[str] = Field(default_factory=list)
+
+
+class ReasonPara(Frozen):
+    """🔴 1겹 【이유】 문단 — 문장 3~5개. ⚠️ 400자 상한은 렌더러가 센다(§5)."""
+
+    sentences: list[ReasonLine] = Field(default_factory=list)
+
+
+class ReasonOut(Frozen):
+    """🔴 s8b 산출 — 이유 문단과 **검열 결과**. ⚠️ 단계 사이는 타입 하나다(§7)."""
+
+    said: ReasonPara | None = None
+    notes: list[str] = Field(default_factory=list)
+    #: 🔴 `통과`·`재작성 후 통과`·`템플릿`·`안 돌았다`
+    audit: str = "안 돌았다"
+    violations: list[str] = Field(default_factory=list)
+
+
 class CommentOut(Frozen):
     """🔴 s8 산출 — 논평과 **버린 칸 사유**. ⚠️ 단계 사이는 **타입 하나**다(§7)."""
 
@@ -873,6 +903,16 @@ class Card(Frozen):
     #  논평만** 나가고, 이 칸과 위반 목록은 `/디버그` 에만 보인다.
     comment_audit: str = "안 돌았다"
     comment_violations: list[str] = Field(default_factory=list)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **1겹 【이유】 문단**(사용자 지시 2026-10-09(3차) §1·§3)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 총평(`commentary`)과 **다른 글**이다 — 총평은 깊은 카드(📖 자세히)의
+    #     것이고, 이것은 1겹의 첫 세 줄에서 읽히는 글이다.
+    #  ⚠️ 비면 1겹이 **코드 템플릿 문단**을 쓴다(§4 마지막 줄).
+    reason: ReasonPara | None = None
+    reason_audit: str = "안 돌았다"
+    reason_violations: list[str] = Field(default_factory=list)
     #: 🔴🔴 **경우의 수**(사용자 지시 2026-10-06(7차) §2) — 블록 3b 가 그린다
     #
     #  꼴: `{"cells": [...], "states": {팀: {state, why, margin}}, "verified": bool,

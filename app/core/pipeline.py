@@ -134,6 +134,9 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers.update(_comment_layers(got_note, got_shape))
     card = card_of(ref, facts, variables, hypo, said, state=st,
                    board_extra=extra, board_bad=bad, layers=layers)
+    # 🔴🔴 **1겹 이유 문단**(사용자 지시 2026-10-09(3차) §3·§4) — 카드가 다 선 뒤다
+    #    ⚠️ 작성자 입력이 **카드의 사실 목록**이라 카드보다 **뒤**에 와야 한다.
+    card = with_reason(card, state=st)
     # 🔴 **마지막 실행을 기억한다** — 재분석이 s3·s4 를 다시 돌지 않게(§4-1)
     _LAST[ref.id] = {"at": (now or datetime.now(timezone.utc)), "ref": ref,
                      "docs": docs, "cands": cands, "card": card,
@@ -377,6 +380,46 @@ def _same_vars(before: list[Variable], now: list[Variable]) -> bool:
 # ══════════════════════════════════════════════════════════════════
 # 🔴🔴 **네 층 비교와 등급 내림**(네 층 지시서 §5·§6·§7)
 # ══════════════════════════════════════════════════════════════════
+
+
+def with_reason(card, *, state: RunState):
+    """🔴🔴 **1겹 이유 문단을 카드에 붙인다** — 작성 → 검열 → (재작성 1회) → 템플릿.
+
+    사용자 지시 2026-10-09(3차) §4 마지막 줄:
+
+    > 위반 시 기존처럼 **재작성 1회** → 실패하면 **코드 템플릿 문단**.
+
+    🔴 **아무 수도 안 바꾼다** — 카드의 글 칸 셋만 채운다(`reason`·`reason_audit`·
+       `reason_violations`). ⚠️ `Card` 는 얼어 있으므로 `model_copy` 로 갈아낀다.
+    """
+    from app.core.stages import s8b_reason, s9_audit
+    said = s8b_reason.run(card, state=state)
+    audit, bad = "안 돌았다", []
+    if said is not None:
+        bad = s9_audit.reason_check(said, card=card)
+        if not bad:
+            audit = "통과"
+        else:
+            state.note(f"s8b 검열 위반 {len(bad)}건 → **재작성 1회** — "
+                       f"{'; '.join(bad[:3])}")
+            again = s8b_reason.run(card, state=state, bad=bad)
+            bad2 = (s9_audit.reason_check(again, card=card)
+                    if again is not None else ["(i) 재작성이 안 왔다"])
+            if again is not None and not bad2:
+                said, audit, bad = again, "재작성 후 통과", []
+            else:
+                # 🔴 두 번 어긋났다 — **코드 템플릿 문단**이다(지어내지 않는다)
+                said = s8b_reason.template(card)
+                audit, bad = "템플릿", list(bad) + list(bad2)
+                state.note(f"s8b 검열 두 번 어긋났다 → **코드 템플릿 문단** — "
+                           f"{'; '.join(bad2[:3])}")
+    else:
+        said = s8b_reason.template(card)
+        audit = "템플릿"
+        state.note("s8b 이유 문단을 못 받았다 → **코드 템플릿 문단**")
+    return card.model_copy(update={
+        "reason": said, "reason_audit": audit,
+        "reason_violations": [str(x) for x in bad]})
 
 
 def _comment_layers(got, shape: dict) -> dict:

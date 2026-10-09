@@ -2543,7 +2543,8 @@ def test_총평_검열이_맞대결_해석_방향을_잡는다():
                      reasons=[CommentLine(text=bad_text, var_ids=[])],
                      flow="", score_range=[])
     bad = h2h_direction_check(got, ref=ref, facts=facts)
-    assert bad and "(i)" in bad[0], bad
+    # 🔴 번호가 **(m)** 이다 — 2026-10-09(3차) §4 가 (i)~(l) 을 가져갔다
+    assert bad and "(m)" in bad[0], bad
     assert "기울었다" in bad[0], bad
     # 🔴 **기울지 않았으면 안 잡는다**(없는 위반을 만들지 않는다)
     even = Facts(h2h={"recounted": {"w": 4, "d": 2, "l": 4, "n": 10,

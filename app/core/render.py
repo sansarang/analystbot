@@ -27,6 +27,17 @@ NUMBERS: tuple[str, ...] = ("1", "2", "2b", "3", "3c", "3b", "4", "5", "6",
                             "7b", "7", "8", "9", "10")
 
 
+def layer1_text(card: Card, *, buttons: bool = True) -> str:
+    """🔴🔴 **1겹 카드**(사용자 지시 2026-10-09(3차) §1) — 글은 `layer1` 이 짠다.
+
+    🔴 여기 베끼지 않는다(#1) — 순서·문구·상한이 **한 곳**(`app/core/layer1.py`)에
+       있어야 지시가 바뀔 때 한 번만 고친다.
+    ⚠️ 깊은 카드는 `card_text` 그대로다 — 버튼 `📖 자세히` 가 그것을 낸다.
+    """
+    from app.core import layer1
+    return layer1.text(card, buttons=buttons)
+
+
 def card_text(card: Card, *, debug: bool = False) -> str:
     """🔴 카드 전문. ⚠️ 블록이 **늘 전부 있다** — 비면 사유가 들어간다.
 
