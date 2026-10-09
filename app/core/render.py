@@ -650,9 +650,12 @@ def _b7b(card: Card) -> str:
         tot = sum(abs(float(m.get("logodds") or 0)) for m in card.moves)
         rows.append(f"- ③ 이 움직인 양(로그 오즈 합 {tot:.3f}): {said}")
     else:
+        # 🔴 기준이 없으면 우리 열도 **비어 있다**(지시 2026-10-09 ③) — 종전 문구
+        #    *"기준도 없어 시나리오 비율이다"* 는 그 방식을 걷은 뒤로 **거짓**이다.
         rows.append("- ③ **이동 없음 — 우리 열 = 기준**"
-                    + ("" if card.base_prob.probs is not None else
-                       "(기준도 없어 시나리오 비율이다)"))
+                    if card.base_prob.probs is not None else
+                    "- ③ **우리 열이 비었다 — 기준이 없다**"
+                    "(시나리오 비율을 우리 열로 쓰지 않는다 · 지시 ③)")
     if card.compare:
         rows.append(f"- 판정: **{card.compare}**")
     for line in card.compare_lines:

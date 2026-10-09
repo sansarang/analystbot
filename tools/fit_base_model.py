@@ -180,7 +180,11 @@ async def league(argv: list[str]) -> int:
         # ⚠️ 무승부는 위 꼴로 못 적는다(1-0/0-1 로 바뀐다) — 그래서 **직접** 센다
         got = _fit_rows([(float(r["home_elo"]) - float(r["away_elo"]),
                           int(r["outcome"])) for r in rows])
-        got["source"] = f"football-data {comp} 자체 Elo"
+        # 🔴 **통로 이름을 지어내지 않는다**(사용자 지시 2026-10-09 ③) — 등급
+        #    파일이 `via` 로 어디서 받았는지 적어 둔다(`football-data`·`fotmob`).
+        #    ⚠️ 실사고 2026-10-09: 이 줄이 `football-data` 로 **박혀 있어**
+        #       fotmob 으로 받은 K리그1·J1 계수에 거짓 출처가 적혔다.
+        got["source"] = f"{box.get('via') or 'football-data'} {comp} 자체 Elo"
         got["matches"] = box.get("matches")
         models[f"league:{comp}"] = got
         print(f"[fit] league:{comp} n={got['n']} logloss={got['logloss']} "

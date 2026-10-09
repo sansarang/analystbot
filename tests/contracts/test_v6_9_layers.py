@@ -348,14 +348,20 @@ def test_등급_내림이_사다리_아래로만_간다():
     assert keep.evals[0].grade == "낸다"
 
 
-def test_우리_확률은_시나리오_무게_비율이다():
-    """🔴 §5 — 새 수식을 만들지 않는다. 돌연변이: 단순 개수 비율."""
+def test_시나리오_비율은_무게로_세고_섞인_스코어를_나눈다():
+    """🔴 §5 — 새 수식을 만들지 않는다. 돌연변이: 단순 개수 비율.
+
+    ⚠️ **`our_prob` 이 아니라 `_from_scenarios` 를 부른다** — 사용자 지시
+       2026-10-09 ③ 이 *"기준이 없을 때 시나리오 비율을 그대로 우리 열로 쓰지
+       않는다"* 로 바꿨기 때문이다. 🔴 비율을 **세는 규칙**은 그대로 지킨다(참고로
+       카드 사유에 적히고, 돌연변이가 들어오면 그 수가 조용히 틀린다).
+    """
     from app.core import compare
     from app.core.schema import HypoSet, Scenario
     rows = [Scenario(id="A", outcomes=[(2, 0)], mechanism="m", strength=0.8),
             Scenario(id="B", outcomes=[(1, 1)], mechanism="m", strength=0.4),
             Scenario(id="C", outcomes=[(0, 1)], mechanism="m", strength=0.4)]
-    got, why = compare.our_prob(HypoSet(scenarios=rows))
+    got, why = compare._from_scenarios(HypoSet(scenarios=rows))
     assert got is not None
     assert round(got.home, 3) == 0.5 and round(got.draw, 3) == 0.25
     assert "무게" in why
@@ -363,12 +369,12 @@ def test_우리_확률은_시나리오_무게_비율이다():
     #    통째로 사라져 무승부가 0% 로 나왔다. `2-2`·`2-3` 은 무/원정 반반이다.
     mixed = [Scenario(id="A", outcomes=[(2, 2), (2, 3)], mechanism="m",
                       strength=0.8)]
-    said, why2 = compare.our_prob(HypoSet(scenarios=mixed))
+    said, why2 = compare._from_scenarios(HypoSet(scenarios=mixed))
     assert said is not None, why2
     assert round(said.draw, 3) == 0.5 and round(said.away, 3) == 0.5, said
     # ⚠️ 스코어가 아예 없으면 **그때는** 못 센다
     empty = [Scenario(id="A", outcomes=[], mechanism="m", strength=0.8)]
-    none, why3 = compare.our_prob(HypoSet(scenarios=empty))
+    none, why3 = compare._from_scenarios(HypoSet(scenarios=empty))
     assert none is None and "무게가 0" in why3, why3
 
 
@@ -589,15 +595,26 @@ def test_한_결과_이동이_로그오즈_0_5_를_넘지_않는다():
     assert 0.55 < got.home < 0.68, got
 
 
-def test_기준이_없으면_시나리오_비율로_가고_그_말을_적는다():
-    """🔴 ① 마지막 줄 — *"기준 없음 — 시나리오 비율"* 이 사유에 들어간다."""
+def test_기준이_없으면_우리_열을_비우고_그_말을_적는다():
+    """🔴🔴 **사용자 지시 2026-10-09 ③** — 돌연변이: 시나리오 비율을 우리 열로 쓴다.
+
+    > 기준이 없을 때 **시나리오 비율을 그대로 우리 열로 쓰지 않는다**
+    > (앞 지시 5번 그대로).
+
+    🔴 왜 계약으로 박나 — 실측 2026-10-08(마리노스–교토산업대): 변수가 `S03`
+       **하나**(그마저 수치 없음)인데 우리 열이 40/29/31 로 찍혀 **대학팀 원정승
+       31%** 가 나왔다. 그 수는 분석이 아니라 **갈래를 센 수**다.
+    ⚠️ 그래도 비율은 **버리지 않는다** — 사유에 참고로 남는다(#3 조용한 0 금지).
+    """
     from app.core import compare
     from app.core.schema import HypoSet, Scenario
     rows = [Scenario(id="A", outcomes=[(2, 0)], mechanism="m", strength=1.0),
             Scenario(id="B", outcomes=[(1, 1)], mechanism="m", strength=1.0)]
     got, why = compare.our_prob(HypoSet(scenarios=rows), start=None)
-    assert got is not None and "기준 없음 — 시나리오 비율" in why, why
-    assert abs(got.home - 0.5) < 0.01 and abs(got.draw - 0.5) < 0.01, got
+    assert got is None, f"기준이 없는데 우리 열에 수가 찍혔다: {got}"
+    assert "우리 열을 비운다" in why, why
+    # 🔴 참고 수는 **남아 있어야** 한다 — 그 수를 없애면 자료가 사라진다
+    assert "참고로 시나리오 비율" in why and "50%" in why, why
 
 
 def test_기여표는_같은_포지션끼리_짝짓는다():
@@ -2161,3 +2178,150 @@ def test_득점_방향이_반대인_driver_를_뺀다():
     assert got[0].driver_vars == [], "🔴 3골 갈래에서 `down` driver 를 안 뺐다"
     assert got[1].driver_vars == ["S01-home"], "🔴 2골 갈래는 그대로여야 한다"
     assert s6_hypo._strength(got[0], [down]) == float(WEIGHT_FLOOR)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **사용자 지시 2026-10-09** — 대전–전북에서 나온 셋
+# ══════════════════════════════════════════════════════════════════
+
+
+def test_맞대결_집계가_안_맞으면_목록에서_다시_센다():
+    """🔴 ① — 돌연변이: 불일치면 버린다(종전 동작).
+
+    > 맞대결 집계 불일치일 때 **버리지 말고**, 경기 페이지의 맞대결 경기 목록
+    > (날짜·스코어)을 **직접 세어 다시 만든다.**
+
+    실측 2026-10-09(대전–전북): fotmob `summary` 는 전체 25경기의 `[3, 9, 13]`
+    인데 `count` 는 창 10경기였다 — 종전 코드는 변수를 통째로 버렸다.
+    """
+    from app import league
+    rows = [
+        {"date": "2026-07-21", "home": "Jeonbuk", "away": "Daejeon",
+         "home_score": 0, "away_score": 0},
+        {"date": "2026-03-21", "home": "Daejeon", "away": "Jeonbuk",
+         "home_score": 0, "away_score": 1},
+        {"date": "2025-11-08", "home": "Jeonbuk", "away": "Daejeon",
+         "home_score": 3, "away_score": 1},
+        {"date": "2024-10-19", "home": "Jeonbuk", "away": "Daejeon",
+         "home_score": 0, "away_score": 2},
+    ]
+    assert league.h2h_tally(rows, "Daejeon") == (1, 1, 2)
+    # 🔴 **반대쪽 기준도 뒤집혀야** 한다 — 한쪽으로 박아 두면 홈/원정이 바뀔 때 거짓
+    assert league.h2h_tally(rows, "Jeonbuk") == (2, 1, 1)
+    # ⚠️ 스코어가 없으면 **센 척하지 않는다**
+    assert league.h2h_tally([{"date": "2026-01-01", "home": "A", "away": "B"}],
+                            "A") is None
+    # 🔴 s5 가 그 길로 가나 — 버리는 코드가 남아 있으면 이 글자가 없다
+    import pathlib
+    src = pathlib.Path("app/core/stages/s5_verify.py").read_text(encoding="utf-8")
+    assert "league.h2h_tally(" in src, "s5 가 다시 세지 않는다"
+    assert 'facts.h2h["recounted"]' in src, "다시 센 수를 카드에 안 넘긴다"
+
+
+def test_올_시즌_맞대결을_따로_센다():
+    """🔴 ① 둘째 줄 — 돌연변이: 창 안에서만 고른다 · 시즌 경계를 코드에 박는다."""
+    from app import league
+    rows = [
+        {"date": "2026-07-21", "home": "Jeonbuk", "away": "Daejeon",
+         "home_score": 0, "away_score": 0, "score": "0-0"},
+        {"date": "2026-03-21", "home": "Daejeon", "away": "Jeonbuk",
+         "home_score": 0, "away_score": 1, "score": "0-1"},
+        {"date": "2025-11-08", "home": "Jeonbuk", "away": "Daejeon",
+         "home_score": 3, "away_score": 1, "score": "3-1"},
+    ]
+    got, year = league.h2h_season(rows, when="2026-10-09", comp="KL1")
+    assert year == 2026 and len(got) == 2, (year, got)
+    # 🔴 **오래된 것부터** — 사용자가 적은 순서(0-1 · 0-0)와 같아야 한다
+    assert [m["score"] for m in got] == ["0-1", "0-0"], got
+    # 🔴 시즌 경계는 **표**가 든다 — 유럽은 8월 시작이라 2026-03 은 **지난 시즌**이다
+    assert league.season_cut_month("KL1") == 1
+    assert league.season_cut_month("PL") == 8
+    # 🔴 8월 경계에서는 2026-07·2026-03 이 **지난 시즌**이다 — 역년과 갈린다
+    euro, yr = league.h2h_season(rows, when="2026-10-09", comp="PL")
+    assert yr == 2026 and euro == [], (yr, euro)
+    past, yr2 = league.h2h_season(rows, when="2026-03-01", comp="PL")
+    assert yr2 == 2025 and [m["score"] for m in past] == ["3-1", "0-1", "0-0"], past
+
+
+def test_조가_하나인_리그도_순위표를_읽는다():
+    """🔴 ② — 돌연변이: `data.tables` 만 본다(종전 동작 · K리그1 이 매번 빠졌다).
+
+    실측 2026-10-09: K리그1 표 페이지는 `table[0].data` **자체**가 표이고
+    `data.tables` 는 `None` 이다. 종전 `_tables` 는 **0** 을 돌려줬다.
+    """
+    from app.collect import fotmob
+    one = {"props": {"pageProps": {"table": [{"data": {
+        "leagueName": "K League 1",
+        "legend": [{"title": "Championship playoff",
+                    "indices": [0, 1, 2, 3, 4, 5]}],
+        "table": {"all": [
+            {"name": "Daejeon Hana Citizen", "idx": 6, "played": 30,
+             "wins": 10, "draws": 10, "losses": 10, "pts": 40,
+             "scoresStr": "46-37", "goalConDiff": 9},
+            {"name": "Jeonbuk Hyundai Motors FC", "idx": 4, "played": 30,
+             "wins": 11, "draws": 11, "losses": 8, "pts": 44,
+             "scoresStr": "38-28", "goalConDiff": 10}]}}}]}}}
+    assert len(fotmob._tables(one)) == 1, "조가 하나인 표를 못 읽는다"
+    got = fotmob.group_table(one, ["Daejeon Hana Citizen",
+                                   "Jeonbuk Hyundai Motors FC"])
+    assert got.get("group") == "K League 1", got
+    assert len(got.get("rows") or []) == 2, got
+    # 🔴 **파이널A 컷**이 글자 그대로 와야 한다(우리가 뜻을 지어내지 않는다)
+    assert got["zones"].get("Championship playoff") == 6, got["zones"]
+    # ⚠️ 여러 조 꼴도 **그대로** 읽혀야 한다(고치면서 깨면 네이션스리그가 죽는다)
+    many = {"props": {"pageProps": {"table": [{"data": {"tables": [
+        {"leagueName": "Grp. 3", "table": {"all": [
+            {"name": "A", "idx": 1, "pts": 3}]}}]}}]}}}
+    assert len(fotmob._tables(many)) == 1, "여러 조 꼴이 깨졌다"
+
+
+def test_football_data_없는_리그는_fotmob_결과로_Elo_를_굴린다():
+    """🔴 ③ — 돌연변이: K리그1·J1 을 football-data 로만 찾는다(404 라 기준이 없다).
+
+    🔴 리그 번호는 **받아서 확인한 값**이다 — 추측하면 다른 리그가 온다(실사고
+       2026-10-09: J1 을 `9134` 로 적었는데 그 번호는 **NWSL** 이었다).
+    """
+    from app.collect import leagueelo
+    box = leagueelo.fotmob_table()
+    comps = dict(box.get("competitions") or {})
+    assert {"KL1", "J1"} <= set(comps), comps
+    assert int(comps["KL1"]["id"]) == 9080 and comps["KL1"]["slug"] == "k-league-1"
+    assert int(comps["J1"]["id"]) == 223 and comps["J1"]["slug"] == "j-league"
+    # 🔴 `refresh` 가 그 통로를 **부르나** — 안 이으면 없는 코드다(CLAUDE.md #2)
+    import pathlib
+    src = pathlib.Path("app/collect/leagueelo.py").read_text(encoding="utf-8")
+    assert "fetch_fotmob(net, comp" in src, "refresh 가 fotmob 통로를 안 부른다"
+    # 🔴 **꼴을 맞춰** 돌려줘야 `_rows`·`compute` 가 분기 없이 읽는다(#1 사본 금지)
+    said = leagueelo._fotmob_matches({"props": {"pageProps": {"fixtures": {
+        "allMatches": [
+            {"id": "1", "home": {"name": "A"}, "away": {"name": "B"},
+             "status": {"finished": True, "scoreStr": "2 - 1",
+                        "utcTime": "2026-03-01T05:00:00Z"}},
+            {"id": "2", "home": {"name": "C"}, "away": {"name": "D"},
+             "status": {"finished": False, "utcTime": "2026-10-09T05:00:00Z"}},
+        ]}}}})
+    assert len(said) == 1 and said[0]["score"]["fullTime"] == {"home": 2, "away": 1}
+    assert leagueelo._rows(said), "football-data 꼴로 안 맞춰 `_rows` 가 못 읽는다"
+
+
+def test_fotmob_로_받은_리그에_계수가_있고_출처를_속이지_않는다():
+    """🔴 ③ — 계수가 없으면 Elo 가 있어도 기준이 안 선다. 돌연변이: 출처 글자 박기."""
+    from app.core import base
+    for kind in ("league:KL1", "league:J1"):
+        got, why = base.triple_of(kind, 0.0)
+        assert got is not None, f"{kind} 계수가 없다 — `--league` 적합을 돌려라"
+        assert abs(got.home + got.draw + got.away - 1.0) < 1e-6, got
+    import pathlib
+    import yaml
+    box = yaml.safe_load(
+        pathlib.Path("config/base_model.yaml").read_text(encoding="utf-8"))
+    for kind in ("league:KL1", "league:J1"):
+        m = (box.get("models") or {})[kind]
+        # 🔴 **통로를 속이지 않는다** — fotmob 으로 받았으면 그렇게 적힌다
+        assert str(m.get("source", "")).startswith("fotmob "), m.get("source")
+        # ⚠️ 모형이 자료보다 못하면 **쓸 수 없다**(yaml 머리글)
+        assert float(m["logloss"]) < float(m["logloss_base"]), m
+    # 🔴 s2b 도 출처를 **파일에서 읽어야** 한다(박아 두면 거짓이 찍힌다)
+    src = pathlib.Path("app/core/stages/s2b_base.py").read_text(encoding="utf-8")
+    assert 'f"football-data {comp} 자체 Elo"' not in src, "출처가 박혀 있다"
+    assert '.get("via")' in src, "통로를 등급 파일에서 안 읽는다"

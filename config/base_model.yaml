@@ -15,6 +15,10 @@
 # 적합 시각: 2026-10-06T09:58:14+00:00
 # 🔴 `league:*` 는 **우리가 계산한 자체 Elo**로 적합했다(clubelo 는 dead).
 #    등급은 `var/league_elo/{날짜}/{대회}.json` 이 들고, 하루 1회 갱신된다.
+# 🔴 `league:*` 는 **우리가 계산한 자체 Elo**로 적합했다(clubelo 는 dead).
+#    등급은 `var/league_elo/{날짜}/{대회}.json` 이 들고, 하루 1회 갱신된다.
+# 🔴 `league:*` 는 **우리가 계산한 자체 Elo**로 적합했다(clubelo 는 dead).
+#    등급은 `var/league_elo/{날짜}/{대회}.json` 이 들고, 하루 1회 갱신된다.
 
 models:
   national_friendly:
@@ -54,7 +58,7 @@ models:
     logloss: 1.021385
     logloss_base: 1.081485
     share_home_draw_away: [0.4136, 0.263, 0.3235]
-    fitted_at: "2026-10-06"
+    fitted_at: "2026-10-09"
     converged: true
     source: "football-data PL 자체 Elo"
     matches: 810
@@ -67,7 +71,7 @@ models:
     logloss: 0.990546
     logloss_base: 1.060039
     share_home_draw_away: [0.4656, 0.2497, 0.2847]
-    fitted_at: "2026-10-06"
+    fitted_at: "2026-10-09"
     converged: true
     source: "football-data PD 자체 Elo"
     matches: 829
@@ -80,7 +84,7 @@ models:
     logloss: 0.996974
     logloss_base: 1.085826
     share_home_draw_away: [0.3963, 0.2667, 0.337]
-    fitted_at: "2026-10-06"
+    fitted_at: "2026-10-09"
     converged: true
     source: "football-data SA 자체 Elo"
     matches: 810
@@ -93,7 +97,7 @@ models:
     logloss: 1.006056
     logloss_base: 1.075797
     share_home_draw_away: [0.4189, 0.2457, 0.3354]
-    fitted_at: "2026-10-06"
+    fitted_at: "2026-10-09"
     converged: true
     source: "football-data BL1 자체 Elo"
     matches: 647
@@ -106,7 +110,7 @@ models:
     logloss: 1.003648
     logloss_base: 1.057103
     share_home_draw_away: [0.4611, 0.2275, 0.3115]
-    fitted_at: "2026-10-06"
+    fitted_at: "2026-10-09"
     converged: true
     source: "football-data FL1 자체 Elo"
     matches: 655
@@ -119,7 +123,7 @@ models:
     logloss: 1.000134
     logloss_base: 1.073941
     share_home_draw_away: [0.4356, 0.2578, 0.3067]
-    fitted_at: "2026-10-06"
+    fitted_at: "2026-10-09"
     converged: true
     source: "football-data DED 자체 Elo"
     matches: 675
@@ -132,7 +136,7 @@ models:
     logloss: 0.963632
     logloss_base: 1.080966
     share_home_draw_away: [0.4184, 0.2671, 0.3145]
-    fitted_at: "2026-10-06"
+    fitted_at: "2026-10-09"
     converged: true
     source: "football-data PPL 자체 Elo"
     matches: 674
@@ -145,20 +149,46 @@ models:
     logloss: 1.057184
     logloss_base: 1.076472
     share_home_draw_away: [0.4342, 0.2763, 0.2895]
-    fitted_at: "2026-10-06"
+    fitted_at: "2026-10-09"
     converged: true
     source: "football-data ELC 자체 Elo"
     matches: 1209
   league:BSA:
-    c1: -1.163512
-    c2: 0.060161
-    b_dr: 0.66477
+    c1: -1.172075
+    c2: 0.059842
+    b_dr: 0.669893
     venue: "home_only"
-    n: 1039
-    logloss: 1.019689
-    logloss_base: 1.050569
-    share_home_draw_away: [0.4832, 0.2666, 0.2502]
-    fitted_at: "2026-10-06"
+    n: 1049
+    logloss: 1.019015
+    logloss_base: 1.050376
+    share_home_draw_away: [0.4833, 0.2679, 0.2488]
+    fitted_at: "2026-10-09"
     converged: true
     source: "football-data BSA 자체 Elo"
-    matches: 1039
+    matches: 1049
+  league:J1:
+    c1: -0.771216
+    c2: 0.375467
+    b_dr: 0.586731
+    venue: "home_only"
+    n: 960
+    logloss: 1.064788
+    logloss_base: 1.083875
+    share_home_draw_away: [0.4083, 0.2687, 0.3229]
+    fitted_at: "2026-10-09"
+    converged: true
+    source: "fotmob J1 자체 Elo"
+    matches: 960
+  league:KL1:
+    c1: -0.742054
+    c2: 0.418333
+    b_dr: 0.325511
+    venue: "home_only"
+    n: 636
+    logloss: 1.08261
+    logloss_base: 1.088111
+    share_home_draw_away: [0.3962, 0.2783, 0.3255]
+    fitted_at: "2026-10-09"
+    converged: true
+    source: "fotmob KL1 자체 Elo"
+    matches: 636

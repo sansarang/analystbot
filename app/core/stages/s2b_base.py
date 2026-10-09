@@ -118,7 +118,13 @@ async def _base(ref: MatchRef, facts: Facts, *, state: RunState, net,
                                            when=when)
             if a is not None and b is not None:
                 home_elo, away_elo = a, b
-                source = f"football-data {comp} 자체 Elo"
+                # 🔴 **통로를 지어내지 않는다**(사용자 지시 2026-10-09 ③) — 등급
+                #    파일의 `via` 가 어디서 받았는지 말한다. ⚠️ 종전엔 이 줄이
+                #    `football-data` 로 **박혀 있어** fotmob 으로 받은 K리그1·J1
+                #    카드에 거짓 출처가 찍혔다(#4 추측 금지).
+                via = str((leagueelo.load(comp, when=when) or {}).get("via")
+                          or "football-data")
+                source = f"{via} {comp} 자체 Elo"
                 state.note(f"s2b ① 리그 Elo — {ref.home_name} {a:.0f} · "
                            f"{ref.away_name} {b:.0f}({how_a})")
             else:
