@@ -836,11 +836,20 @@ def test_v7_두_낱말_한_팀_이름을_가르지_않는다():
     assert _d.one_team("올랜도 크루") is False
     assert _d.one_team("중국 팔레스타인") is False
     assert _d.one_team("강원 서울") is False
-    # 🔴 입구가 그 검사를 **부른다**
-    said = inspect.getsource(_m.cmd_analyze)
-    assert "one_team" in said, "🔴 입구가 한 팀 검사를 안 부른다"
+    # 🔴🔴 **가름 규칙은 한 곳**이다(사본 금지 · #1) — ⚠️ 실사고 2026-10-11:
+    #    같은 규칙이 입구와 `pipeline._question` 에 **사본**으로 있어 한쪽만
+    #    고쳤고 `--deep` 경로는 그대로 깨져 있었다.
+    from app.core import pipeline as _pl
+    said = inspect.getsource(_pl.split_asked)
+    assert "one_team" in said, "🔴 가름이 한 팀 검사를 안 부른다"
     i = said.index("one_team")
     assert "words[0], words[1]" in said[i:], "🔴 가름이 그 검사 뒤에 와야 한다"
+    assert _pl.split_asked("시애틀 사운더스") == ("시애틀 사운더스", "")
+    assert _pl.split_asked("올랜도 크루") == ("올랜도", "크루")
+    # 🔴 입구는 **그 한 곳을 부른다** — 자기 사본을 들지 않는다
+    door = inspect.getsource(_m.cmd_analyze)
+    assert "split_asked" in door, "🔴 입구가 한 곳을 안 부른다"
+    assert "words[0], words[1]" not in door, "🔴 입구에 사본이 남았다"
 
 
 def test_v7_긴_팀_이름이_질의를_통째로_막지_않는다():

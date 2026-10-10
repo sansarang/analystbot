@@ -558,23 +558,50 @@ def card_of(ref: MatchRef, facts: Facts, variables: list[Variable],
         cost=state.wallet.snapshot(), started=said.started)
 
 
-def _question(raw: str, *, now: datetime | None = None) -> Question:
-    """🔴 `"A vs B"` 를 가른다. ⚠️ 못 가르면 **통째로** 한 이름으로 둔다(s1 이 본다)."""
+#: 🔴 두 팀을 가르는 **구분자** — 한 곳이다
+SEPS: tuple[str, ...] = (" vs ", " vs. ", " - ", " 대 ", " : ")
+
+
+def split_asked(raw: str) -> tuple[str, str]:
+    """🔴🔴 `"A vs B"` 를 **가르는 한 곳** — `(팀, 상대)`.
+
+    ══════════════════════════════════════════════════════════════════
+    🔴 왜 한 곳인가 — 실사고 2026-10-11 (시애틀 사운더스)
+    ══════════════════════════════════════════════════════════════════
+
+    같은 규칙이 `app/bot/main.py`(입구)와 여기 **두 곳에 사본**으로 있었고,
+    사용자가 `시애틀 사운더스` 로 물었을 때 **한쪽만 고쳤더니 버그가 그대로**였다
+    (`--deep` 은 이쪽을 지난다). 🔴 CLAUDE.md #1 — 사본 금지. 규칙은 여기다.
+
+    🔴 두 낱말이어도 **이름표가 통째로 아는 이름**이면 한 팀이다
+    (`시애틀 사운더스`·`맨체스터 시티`). ⚠️ `중국 팔레스타인`·`올랜도 크루` 처럼
+    통째로는 모르면 종전처럼 **둘째를 상대로** 본다.
+    """
     said = str(raw or "").strip()
     low = said.lower()
-    team, opp = said, ""
-    # 🔴 구분자 목록은 **옛 핸들러와 같다**(`app/bot/main.py`) — 4단계에서 입구를
-    #    갈아끼웠으니 받는 꼴이 좁아지면 그것은 **기능 퇴화**다.
-    for sep in (" vs ", " vs. ", " - ", " 대 ", " : "):
+    for sep in SEPS:
         if sep in low:
             i = low.index(sep)
-            team, opp = said[:i].strip(), said[i + len(sep):].strip()
-            break
-    else:
-        # ⚠️ `중국 팔레스타인` 처럼 **두 낱말**이면 둘째를 상대로 본다(옛 규칙).
-        words = said.split()
-        if len(words) == 2:
-            team, opp = words[0], words[1]
+            return said[:i].strip(), said[i + len(sep):].strip()
+    words = said.split()
+    if len(words) == 2:
+        try:
+            from app.core import discover as _disc
+            whole = _disc.one_team(said)
+        except Exception:                                   # noqa: BLE001
+            whole = False
+        if not whole:
+            return words[0], words[1]
+    return said, ""
+
+
+def _question(raw: str, *, now: datetime | None = None) -> Question:
+    """🔴 `"A vs B"` 를 가른다. ⚠️ 못 가르면 **통째로** 한 이름으로 둔다(s1 이 본다).
+
+    🔴 규칙은 `split_asked` 하나다(사본 금지).
+    """
+    said = str(raw or "").strip()
+    team, opp = split_asked(said)
     return Question(raw=said, team=team, opponent=opp,
                     asked_at=(now or datetime.now(timezone.utc)))
 
