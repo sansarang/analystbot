@@ -98,8 +98,29 @@ async def cmd_analyze(m: Message) -> None:
             team, opponent = arg[:i].strip(), arg[i + len(sep):].strip()
             break
     else:
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **두 낱말이 한 팀 이름일 수 있다** — 실사고 2026-10-11
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  사용자가 `시애틀 사운더스` 라고 물었고 봇은 그것을
+        #  **팀 `시애틀` vs 상대 `사운더스`** 로 갈랐다(로그: 팀 ['시애틀',
+        #  '사운더스']) → 상대가 안 맞아 ② 사다리가 비고 검색 단으로 떨어졌다.
+        #  🔴 가르기 전에 **이름표에 통째로 있는지** 본다 — 있으면 한 팀이다.
+        #     `discover.aliases_of` 가 물은 이름 말고 **다른 이름을 더 주면**
+        #     그 이름표가 그 팀을 아는 것이다(`시애틀 사운더스` →
+        #     `Seattle Sounders FC` …). ⚠️ `중국 팔레스타인` 처럼 통째로는 모르는
+        #     글자는 그대로 **두 팀으로** 가른다(종전 동작).
         if len(words) == 2:
-            team, opponent = words[0], words[1]
+            from app.core import discover as _disc
+            try:
+                whole = _disc.one_team(arg)
+            except Exception:                               # noqa: BLE001
+                whole = False
+            if whole:
+                logger.info("[analyze] `%s` 는 **한 팀 이름**이다(이름표가 안다)"
+                            " — 두 팀으로 가르지 않는다", arg)
+            else:
+                team, opponent = words[0], words[1]
     pool = await get_pool(s.database_url)
     # 🔴 **보드 글**(§4) — 질문 아래 줄에 `보드:`·`추가:` 가 오면 그 글을 넘긴다.
     #    ⚠️ 배당 숫자는 파서가 **받지 않는다**(`app/core/board.py`).

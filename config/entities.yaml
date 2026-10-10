@@ -60,6 +60,15 @@ teams:
       실측 2026-10-11 — fotmob 팀 색인 슬러그 `orlando-city` · id 267810
       ⚠️ 같은 색인에 `orlando-city-b`(722266 · 2군)·`orlando-pride`(여자)가 있다
 
+  Seattle Sounders FC:
+    aliases:
+      ko: [시애틀, 시애틀 사운더스, 시애틀 사운더스 FC]
+      en: [Seattle Sounders, Sounders]
+    source: |
+      사용자 지시 2026-10-11 — 사용자가 `시애틀 사운더스` 로 물었다(MLS)
+      실측 2026-10-11 — fotmob 팀 색인 슬러그 `seattle-sounders-fc` · id 130394
+      ⚠️ 같은 색인에 `seattle-reign-fc`(433031 · NWSL 여자)가 있다
+
   Columbus Crew:
     aliases:
       ko: [컬럼버스, 컬럼버스 크루, 콜럼버스 크루, 크루]

@@ -308,6 +308,36 @@ def aliases_of(name: str, *, spell: dict | None = None) -> list[str]:
     return out
 
 
+def one_team(said: str) -> bool:
+    """🔴🔴 그 글자가 **한 팀 이름 그대로**인가 — 두 팀으로 가르기 전에 본다.
+
+    ⚠️ 실사고 2026-10-11: 사용자가 `시애틀 사운더스` 라고 물었고 입구가 그것을
+       **팀 `시애틀` vs 상대 `사운더스`** 로 갈랐다(두 낱말이면 가른다).
+    🔴 **정확 일치로만** 본다 — 품는 일치를 쓰면 `올랜도 크루`(두 팀!)가
+       `올랜도` 를 품어 **한 팀**이 된다(실측: 그 질문이 바로 깨졌다).
+    """
+    want = norm_name(said)
+    if not want:
+        return False
+    names: list[str] = []
+    try:
+        from app import teamref
+        key, _why = teamref.key_of(said)
+        ref = teamref.registry().teams.get(key) if key else None
+        for _lang, got in ((getattr(ref, "names", None) or {}).items()
+                           if ref is not None else ()):
+            names += [str(x) for x in (got or [])]
+    except Exception:                                       # noqa: BLE001
+        pass
+    try:
+        from app import entities
+        for team in entities._table():
+            names += [str(team), *[str(x) for x in entities.names_of(team)]]
+    except Exception:                                       # noqa: BLE001
+        pass
+    return any(norm_name(x) == want for x in names if x)
+
+
 def _entity_aliases(said: str, *, skip: list[str]) -> list[str]:
     """🔴 `config/entities.yaml` 에서 그 이름이 걸리는 줄의 **다른 이름들**.
 

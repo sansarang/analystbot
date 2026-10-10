@@ -813,3 +813,31 @@ def test_v7_한_낱말_이름은_성으로만_맞춘다():
     # 🔴 mononym ↔ mononym · 여러 낱말 ↔ 여러 낱말은 종전 그대로
     assert _in("Rafael", ["Rafael"]) is True
     assert _in("Stephan El Shaarawy", ["Stephan El Shaarawy"]) is True
+
+
+def test_v7_두_낱말_한_팀_이름을_가르지_않는다():
+    """🔴🔴 **실사고 2026-10-11** — 사용자가 `시애틀 사운더스` 라고 물었고 입구가
+    그것을 **팀 `시애틀` vs 상대 `사운더스`** 로 갈랐다(로그: 팀 ['시애틀',
+    '사운더스']) → 상대가 안 맞아 ② 사다리가 비고 검색 단으로 떨어졌다.
+
+    🔴 가르기 전에 `discover.one_team` 으로 **이름표에 통째로 있는지** 본다.
+    ⚠️ 그 검사는 **정확 일치**여야 한다 — 품는 일치로 하면 `올랜도 크루`(두 팀!)가
+       `올랜도` 를 품어 한 팀이 되고, 한 시간 전 사용자 질문이 깨진다(실측).
+    ⚠️ 돌연변이: `one_team` 호출을 지우면 두 낱말 팀 이름이 다시 갈라진다.
+    """
+    import inspect
+
+    from app.bot import main as _m
+    from app.core import discover as _d
+
+    assert _d.one_team("시애틀 사운더스") is True
+    assert _d.one_team("맨체스터 시티") is True
+    # 🔴 **두 팀은 그대로 갈라야 한다**
+    assert _d.one_team("올랜도 크루") is False
+    assert _d.one_team("중국 팔레스타인") is False
+    assert _d.one_team("강원 서울") is False
+    # 🔴 입구가 그 검사를 **부른다**
+    said = inspect.getsource(_m.cmd_analyze)
+    assert "one_team" in said, "🔴 입구가 한 팀 검사를 안 부른다"
+    i = said.index("one_team")
+    assert "words[0], words[1]" in said[i:], "🔴 가름이 그 검사 뒤에 와야 한다"
