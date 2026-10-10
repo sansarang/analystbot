@@ -89,6 +89,51 @@ def test_v6_공격기여표가_선수단_전원을_든다():
 # ② 포지션 분류
 # ══════════════════════════════════════════════════════════════════
 
+def test_v6_선수_이름을_순서_없이_맞춘다():
+    """🔴🔴 ① 뿌리 — **실사고**: fotmob 이 같은 선수를 두 꼴로 준다.
+
+    선수단 페이지 `Park Man-Ho`(성 먼저) ↔ 경기 라인업 `Man-Ho Park`.
+    ⚠️ 실측 2026-10-10: 겹치는 이름이 **0명**이어서 선수단 기록이 통째로
+       버려지고 카드가 *"기록 없음"* 만 적었다 — ① 의 고침이 한국 선수에게는
+       **죽은 코드**였다.
+    ⚠️ 돌연변이: `name_key` 를 지우고 글자로 맞추면 이 줄이 빨개진다.
+    """
+    from app.core import discover as _d
+    from app.core import strategy as _st
+    from app.core.schema import Facts
+    assert _d.name_key("Park Man-Ho") == _d.name_key("Man-Ho Park")
+    assert _d.name_key("Si-Hoo Hong") != _d.name_key("Min-Seo Park")
+    facts = Facts(player_stats={"Park Man-Ho": {"goals": 2, "assists": 1,
+                                                "rating": 7.0}})
+    got = _st.stat_of(facts, "Man-Ho Park")
+    assert got.get("goals") == 2, "🔴 성 먼저 꼴을 못 찾는다"
+    # 🔴 기여표도 같은 열쇠로 맞춘다 — 수축이 아니라 **실제 기록**이 잡힌다
+    total, gone = _st._shrunk(["Man-Ho Park"], {"Park Man-Ho": 3.0}, {})
+    assert (total, gone) == (3.0, 0), (total, gone)
+    # 🔴 사실 묶음도 같은 한 곳을 쓴다(사본 금지)
+    src = (ROOT / "app" / "core" / "saybundle.py").read_text(encoding="utf-8")
+    assert "_st.stat_of" in src, "🔴 묶음이 자기 식으로 이름을 맞춘다"
+
+
+def test_v6_평소XI가_없으면_헛_교체를_만들지_않는다():
+    """🔴🔴 ③ 뒤처리 — ⚠️ 실측 2026-10-10(재현): 전역으로 평소 XI 가 **0경기**가
+    됐는데 카드가 `CB 자리 — 빠짐 [] · 들어옴 [...]` 로 적어 **아무도 안 나간
+    것처럼** 읽혔다. 🔴 없는 비교를 사실처럼 내지 않는다.
+    """
+    from app.core import strategy as _st
+    from app.core.schema import Facts, XI
+    ref = _ref()
+    now = [_p(f"New {i}", "CB") for i in range(11)]
+    facts = Facts(xi={ref.home: XI(team=ref.home, state="confirmed",
+                                   formation="4-4-2",
+                                   players=[x.name for x in now],
+                                   lineup=now)},
+                  past_xi={ref.home: []})      # 🔴 과거 선발이 없다
+    got = _st.read(ref, facts, side="home")
+    assert got.swaps == {}, f"🔴 헛 교체를 만들었다 — {got.swaps}"
+    assert got.changed is None and got.da is None
+
+
 def test_v6_풀백을_중앙수비로_세지_않는다():
     """🔴🔴 ② — *"중앙 수비 수가 3을 넘거나 GK가 1이 아니면 분류 오류"*.
 

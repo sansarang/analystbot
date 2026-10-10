@@ -224,7 +224,11 @@ def read(ref, facts, *, side: str) -> TeamRead:
     got.st_now = front_line(got.formation_now)
     got.st_usual = front_line(got.formation_usual)
     pos = dict(facts.player_pos or {})
-    got.swaps = _swaps(now, usual, pos)
+    # 🔴🔴 **평소 XI 가 없으면 자리별 교체를 만들지 않는다**(지적 ③ 뒤처리).
+    #    ⚠️ 실측 2026-10-10(재현): 전역으로 평소 XI 가 **0경기**가 됐는데 카드가
+    #       `CB 자리 — 빠짐 [] · 들어옴 [...]` 로 적어 **아무도 안 나간 것처럼**
+    #       읽혔다. 🔴 없는 비교를 사실처럼 내지 않는다(#3·#4).
+    got.swaps = _swaps(now, usual, pos) if usual else {}
     got.changed = len([x for x in now if x not in usual]) if usual else None
     got.da, got.dd, got.no_stat = _contrib(now, usual, facts)
     # 🔴🔴 **±60% 를 넘으면 그 지표를 쓰지 않는다**(사용자 지시 2026-10-10) —
@@ -356,18 +360,59 @@ def _shrunk(names: list[str], table: dict, pos: dict) -> tuple[float, int]:
        자료가 없으면 **표 전체 평균**이다. ⚠️ 둘 다 없으면(표가 비었으면) 0 이지만
        그때는 `_contrib` 가 애초에 `None` 을 돌려준다.
     """
-    hit = [float(table[nm]) for nm in names if nm in table]
-    gone = [nm for nm in names if nm not in table]
+    from app.core import discover as _d
+    # 🔴 **이름 열쇠로 맞춘다** — 성 먼저·이름 먼저가 출처마다 다르다(실사고 2026-10-10)
+    keyed = _keyed(table)
+    slots = {_d.name_key(nm): (slot_of(pos.get(nm)) or "?")
+             for nm in dict(table or {})}
+    slots.update({_d.name_key(nm): (slot_of(pos.get(nm)) or "?")
+                  for nm in names})
+    want = [_d.name_key(nm) for nm in names]
+    hit = [keyed[k] for k in want if k in keyed]
+    gone = [k for k in want if k not in keyed]
     by_slot: dict[str, list[float]] = {}
-    for nm, v in table.items():
-        by_slot.setdefault(slot_of(pos.get(nm)) or "?", []).append(float(v))
-    whole = (sum(float(v) for v in table.values()) / len(table)
-             if table else 0.0)
+    for k, v in keyed.items():
+        by_slot.setdefault(slots.get(k, "?"), []).append(float(v))
+    whole = (sum(keyed.values()) / len(keyed)) if keyed else 0.0
     total = sum(hit)
-    for nm in gone:
-        rows = by_slot.get(slot_of(pos.get(nm)) or "?") or []
+    for k in gone:
+        rows = by_slot.get(slots.get(k, "?")) or []
         total += (sum(rows) / len(rows)) if rows else whole
     return total, len(gone)
+
+
+def stat_of(facts, name: object) -> dict:
+    """🔴🔴 그 선수의 **시즌 기록** — `facts.player_stats` 가 원본. 없으면 빈 표.
+
+    🔴 이름은 `discover.name_key` 로 맞춘다(성 먼저·이름 먼저가 섞인다).
+       ⚠️ 이 함수가 **그 조회의 한 곳**이다 — 카드·사실 묶음·ΔA 가 다 여기로 온다.
+    """
+    from app.core import discover as _d
+    box = dict(getattr(facts, "player_stats", None) or {})
+    said = _d.name_key(name)
+    if not said:
+        return {}
+    for nm, one in box.items():
+        if _d.name_key(nm) == said:
+            return dict(one)
+    return {}
+
+
+def _keyed(table: dict) -> dict:
+    """🔴 이름 표를 **열쇠 표**로(순서 없는 이름 열쇠). ⚠️ 겹치면 큰 값을 둔다."""
+    from app.core import discover as _d
+    out: dict[str, float] = {}
+    for nm, v in dict(table or {}).items():
+        key = _d.name_key(nm)
+        if not key:
+            continue
+        try:
+            said = float(v)
+        except (TypeError, ValueError):
+            continue
+        if said > out.get(key, float("-inf")):
+            out[key] = said
+    return out
 
 
 def _att_table(facts) -> dict:
@@ -468,6 +513,9 @@ def _facts_of(got: TeamRead, *, name: str, how: str) -> list:
         out.append(Fact(id=f"L{len(out) + 1}", kind=kind, text=text,
                         value=value))
 
+    # 🔴 평소 XI 가 없으면 **그것이 첫 사실**이다(비교가 불가능하다는 뜻)
+    if "평소 XI 없음" in str(how or ""):
+        add("no_usual_xi", f"{name} {how}")
     if got.formation_now and got.formation_usual \
             and got.formation_now != got.formation_usual:
         add("formation", f"{name} 포메이션 {got.formation_usual}→"

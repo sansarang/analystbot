@@ -118,8 +118,13 @@ def _usual_of(card, key: str) -> tuple[list, str]:
 
 
 def _stat_of(card, name: str) -> dict:
-    """🔴 그 선수의 시즌 기록 — `facts.player_stats` 가 원본. 없으면 빈 표."""
-    return dict((card.facts.player_stats or {}).get(str(name)) or {})
+    """🔴 그 선수의 시즌 기록 — 조회는 `strategy.stat_of` **한 곳**이다.
+
+    ⚠️ 글자로 맞추면 안 된다 — 선수단 페이지는 `Park Man-Ho`, 라인업은
+       `Man-Ho Park` 이다(실사고 2026-10-10: 겹치는 이름 **0명**).
+    """
+    from app.core import strategy as _st
+    return _st.stat_of(card.facts, name)
 
 
 def _who(card, name: str) -> str:

@@ -99,6 +99,19 @@ def norm_name(said: object) -> str:
     return "".join(tokens(said))
 
 
+def name_key(said: object) -> str:
+    """🔴🔴 **사람 이름 열쇠 — 낱말 순서를 지운다**(정렬해 붙인다).
+
+    ⚠️ 실사고 2026-10-10: fotmob 이 **같은 선수를 두 꼴로** 준다 —
+       선수단 페이지는 `Park Man-Ho`(성 먼저), 경기 라인업은 `Man-Ho Park`.
+       🔴 글자로 맞추니 **겹치는 이름이 0명**이었고, 선수단 기록이 통째로 버려져
+       카드가 *"기록 없음"* 만 적었다(사용자가 잡은 `공격 기여 −100%` 의 뿌리다).
+    🔴 팀 이름에는 쓰지 않는다(`Adelaide City` ↔ `City Adelaide` 는 다른 얘기다) —
+       **사람 이름 전용**이다.
+    """
+    return "".join(sorted(tokens(said)))
+
+
 def tokens(said: object) -> list[str]:
     """🔴 정규화한 **낱말들** — `covers` 가 이것으로 센다."""
     low = unicodedata.normalize("NFKD", str(said or ""))
