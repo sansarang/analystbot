@@ -1728,11 +1728,41 @@ def match_link_ok(c: VarCandidate, doc: Doc, ref: MatchRef,
     return True, f"경기 연결 ✅ {marks[:2]}"
 
 def _in(name: str, pool: list[str]) -> bool:
-    """🔴 그 이름이 목록에 있나 — 정규화해서 본다(표기가 갈려도 같은 사람이다)."""
+    """🔴 그 이름이 목록에 있나 — 정규화해서 본다(표기가 갈려도 같은 사람이다).
+
+    ══════════════════════════════════════════════════════════════════
+    🔴🔴 **한 낱말 이름은 성으로만 맞춘다** — 실사고 2026-10-11(상파울루)
+    ══════════════════════════════════════════════════════════════════
+
+    카드가 `Rafael — 부상 · 복귀 Doubtful`(GK)이라고 적고, 동시에
+    `IR03-home São Paulo FC **Rafael 복귀**` 를 **축0·축2 근거로** 썼다.
+    🔴 명단에 있던 사람은 **`Rafael Tolói`**(수비수, 오늘 선발)였다 — **다른
+       사람**이다. 품는 일치(`said in norm(x)`)가 *이름(given name)* 에서 맞아
+       버렸다.
+    🔴 그래서 한쪽이 **한 낱말**이면(브라질 선수는 mononym 이 흔하다) 상대의
+       **마지막 낱말(성)** 과 같을 때만 같은 사람으로 본다 —
+       `Griezmann` ↔ `Antoine Griezmann` 은 맞고, `Rafael` ↔ `Rafael Tolói` 는
+       아니다. ⚠️ 두 이름이 **둘 다 여러 낱말**이면 종전처럼 품는 일치를 쓴다
+       (표기 차이가 거기서 나온다 — `Stephan El Shaarawy`).
+    """
     said = norm(name)
     if not said:
         return False
-    return any(said in norm(x) or norm(x) in said for x in pool if x)
+    for one in pool:
+        if not one:
+            continue
+        got = norm(one)
+        if not got or not (said in got or got in said):
+            continue
+        a, b = str(name).split(), str(one).split()
+        if (len(a) == 1) != (len(b) == 1):
+            # 🔴 한쪽만 한 낱말 — **성**이 같아야 한다
+            lone = norm(a[0] if len(a) == 1 else b[0])
+            many = b if len(a) == 1 else a
+            if norm(many[-1]) != lone:
+                continue
+        return True
+    return False
 
 def comp_kind(ref: MatchRef, facts: Facts) -> str:
     """🔴🔴 **대회 유형**(사용자 지시 2026-10-06(4차) ③) — 홈 이점 표의 열쇠다.

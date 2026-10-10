@@ -788,3 +788,28 @@ def test_v7_전역을_안_박는다_그리고_바뀐_자리_0개면_그렇게_�
     assert "평소 XI " in said and "그 선수들이 빠진 뒤의 것" in said
     # 🔴 `reads` 를 **받아야** 그 수를 안다
     assert "reads" in inspect.signature(_s2d._turn_lines).parameters
+
+
+def test_v7_한_낱말_이름은_성으로만_맞춘다():
+    """🔴🔴 **실사고 2026-10-11**(상파울루 vs 비토리아) — 카드가 **모순**을 냈다.
+
+        2b. 결장 — `Rafael`(GK) — 부상 · 복귀 **Doubtful**
+        🔢 변수 — `IR03-home` [returning] São Paulo FC **Rafael 복귀**
+                  · 자리 ['axis0', 'axis2', 'hypo']   ← **확률에 닿는 자리**다
+
+    🔴 명단에 있던 사람은 **`Rafael Tolói`**(수비수, 오늘 선발)로 **다른 사람**이다.
+       품는 일치가 *이름(given name)* 에서 맞아 버렸다.
+    🔴 브라질 선수는 mononym 이 흔하다 — 한쪽이 한 낱말이면 **성**이 같을 때만
+       같은 사람으로 본다. ⚠️ 돌연변이: 그 가름을 지우면 `Rafael` 이 다시
+       `Rafael Tolói` 로 맞아 **없는 복귀**가 축0·축2 근거가 된다.
+    """
+    from app.core.stages.s5_verify import _in
+    # 🔴 **이것이 그 사고다**
+    assert _in("Rafael", ["Rafael Tolói", "Carlos Coronel"]) is False
+    # 🔴 성으로 부르는 것은 **맞아야 한다**(그 길을 막으면 진짜 복귀를 놓친다)
+    assert _in("Griezmann", ["Antoine Griezmann"]) is True
+    assert _in("Antoine Griezmann", ["Griezmann"]) is True
+    assert _in("Sow", ["Djibril Sow"]) is True
+    # 🔴 mononym ↔ mononym · 여러 낱말 ↔ 여러 낱말은 종전 그대로
+    assert _in("Rafael", ["Rafael"]) is True
+    assert _in("Stephan El Shaarawy", ["Stephan El Shaarawy"]) is True
