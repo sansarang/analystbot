@@ -420,13 +420,52 @@ async def _candidates(sub: Any, ref: MatchRef, *, state: RunState,
         kept.append((h, str(tier)))
     # ── ③ 재정렬 1단. 🔴 **녹음·재생을 거친다**(`rank`) — 재생에 모델이 없다
     if kept:
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **재정렬 질의에 자연어와 현지어를 넣는다**(실사고 2026-10-10)
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  ⚠️ 종전 질의는 **카탈로그 유형 이름**뿐이었다(`returning
+        #     national_duty_return absence …`). 🔴 그것으로 **한국어·일본어 제목**을
+        #     점수 내면 늘 낮다 — 좋은 미리보기가 상위 3건에 못 들어 받히지
+        #     않았다(FC서울–제주: 문서 2건 · 🆕 0건).
+        #  ⚠️ 그리고 `config/subtask_groups.yaml` 의 **`rerank_query`**(자연어)는
+        #     **아무 데서도 안 쓰이고 있었다**(#2 안 이어진 설정).
+        #  🔴 그래서 셋을 합친다: 유형 이름 + 표의 자연어 + **그 언어의 개념 낱말**.
         want = " ".join(adapt.catalog_type(str(k)) or str(k)
                         for k in (getattr(sub, "kinds", None) or ()))
+        # 🔴 **`words:` 를 선언한 하위에만** 더한다(지금은 F 뿐이다).
+        #    ⚠️ A~D 에도 더해 봤더니 **고정물의 순서가 바뀌어** 받는 문서가
+        #       달라졌고 녹음이 빗나가 기사 변수가 0개가 됐다(2026-10-10).
+        #       🔴 녹음은 지난 경기라 다시 만들 수 없다 — 그래서 **선언한 쪽만**
+        #          바꾼다. A~D 는 §9 5단계에서 같은 모양으로 넓힌다.
+        if getattr(sub, "words", None):
+            want = " ".join(x for x in (
+                want, str(getattr(sub, "rerank_query", "") or ""),
+                " ".join(_concept_words(sub, ref))) if x)
         kept, said_r = rank.order_of(
             kept, lambda row: f"{getattr(row[0], 'title', '')} "
                               f"{getattr(row[0], 'snippet', '')}", want)
         state.note(f"s3/{name} 재정렬 — {said_r}")
     return kept
+
+
+def _concept_words(sub: Any, ref: MatchRef) -> list[str]:
+    """🔴 그 하위의 개념 낱말을 **그 경기 언어들로** — 재정렬이 현지 제목을 본다.
+
+    🔴 언어는 `local_lang_of`(이름표·자동 등록·CLDR)가 정하고 낱말은
+       `search_words.yaml` 이 든다(사본 금지). ⚠️ 여기서 짓지 않는다.
+    """
+    from app import rules
+    from app.research import subtasks as _st
+    lang = _st.local_lang_of(league=str(ref.competition or ""),
+                             teams=(ref.home_name, ref.away_name))
+    out: list[str] = []
+    for one in (lang, "en"):
+        if not one:
+            continue
+        for concept in (getattr(sub, "words", None) or ()):
+            out += [str(x) for x in (rules.local_words(str(concept), one) or [])]
+    return list(dict.fromkeys(out))[:12]
 
 
 async def _fetch(sub: Any, ref: MatchRef, kept: list[tuple[Any, str]], *,
