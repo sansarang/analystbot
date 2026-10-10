@@ -107,7 +107,7 @@ def _queries(team: str, opponent: str, day: date, league: str = "") -> list[str]
 
 async def find(*, team: str, opponent: str = "", day: date | None = None,
                league: str = "", net: Net | None = None, search=None,
-               board_text: str = "") -> Found:
+               board_text: str = "", spell: dict | None = None) -> Found:
     """🔴 **봇이 검색으로 경기 페이지를 찾아 슬레이트 행을 만든다.** 저장은 안 한다.
 
     ⚠️ 경기를 **고르지 않는다** — 맞는 것이 여럿이면 전부 돌려주고 고르는 것은
@@ -169,7 +169,8 @@ async def find(*, team: str, opponent: str = "", day: date | None = None,
     #  ⚠️ 색인이 찾아도 **행은 같은 곳에서 만든다**(`reader.slate_row`) — 행 만드는
     #     길을 둘로 두면 한쪽만 고쳐진다(사본 금지).
     found = await _by_index(net, team=team, opponent=opponent, day=day,
-                           league=league, got=got, board_text=board_text)
+                           league=league, got=got, board_text=board_text,
+                           spell=spell)
     if found is not None:
         got.rows.append(found)
         return got
@@ -395,14 +396,16 @@ def _mentions(name: str, want: str) -> bool:
 async def find_and_store(pool, *, team: str, opponent: str = "",
                          day: date | None = None, league: str = "",
                          net: Net | None = None, search=None,
-                         board_text: str = "") -> Found:
+                         board_text: str = "",
+                         spell: dict | None = None) -> Found:
     """찾아서 **`games` 표에 적는다.** 🔴 적는 SQL 은 `ingest` 가 원본이다.
 
     ⚠️ 한 행만 적지 않는다 — 여럿이면 전부 적는다. 고르는 것은 사용자 몫이고,
        표에 있으면 `slate.find` 가 그 목록을 보여 준다.
     """
     got = await find(team=team, opponent=opponent, day=day, league=league,
-                     net=net, search=search, board_text=board_text)
+                     net=net, search=search, board_text=board_text,
+                     spell=spell)
     if not got.rows:
         return got
     from app.collect.ingest import _UPSERT_GAME
@@ -425,8 +428,8 @@ async def find_and_store(pool, *, team: str, opponent: str = "",
 
 
 async def _by_index(net, *, team: str, opponent: str, day: date,
-                    got: Found, league: str = "",
-                    board_text: str = "") -> dict | None:
+                    got: Found, league: str = "", board_text: str = "",
+                    spell: dict | None = None) -> dict | None:
     """🔴🔴 §2 ②③ — **색인으로 찾는다**. 찾으면 슬레이트 한 줄, 못 찾으면 `None`.
 
     🔴 자동 등록도 **여기서 건다**(§2 마지막 줄: *"경기를 찾으면 그 경기의 리그
@@ -437,7 +440,8 @@ async def _by_index(net, *, team: str, opponent: str, day: date,
     from app.core import discover
     try:
         out = await discover.find(net, home=team, away=opponent, day=None,
-                                  league=league, board_text=board_text)
+                                  league=league, board_text=board_text,
+                                  spell=spell)
     except Exception as exc:                            # noqa: BLE001
         got.tried.append(f"색인 사다리가 죽었다(검색 단으로 간다) — {exc!r}")
         return None

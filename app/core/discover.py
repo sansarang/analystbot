@@ -168,23 +168,92 @@ def window(day: date | None, *, today: date | None = None) -> list[date]:
     return [base + timedelta(days=i) for i in range(WINDOW_DAYS + 1)]
 
 
+#: 🔴🔴 **다른 등급 팀을 가리키는 슬러그 조각**(실측 2026-10-10)
+#
+#  ⚠️ 실사고가 될 자리였다: `Gil Vicente` 를 물었는데 색인이 **`gil-vicente-u23`**
+#     을 먼저 줬고, `Faroe Islands` 는 **`faroe-islands-u17`** 을 줬다. 🔴 남의
+#     경기를 분석하면 그 카드는 통째로 거짓이다(M14).
+#  🔴 그래서 **사용자가 그 등급을 적지 않았으면 뺀다**. 적었으면 그대로 본다.
+TIER_WORDS: tuple[str, ...] = (
+    "u15", "u16", "u17", "u18", "u19", "u20", "u21", "u22", "u23",
+    "women", "womens", "feminino", "femenino", "femminile", "frauen",
+    "reserves", "reserve", "youth", "juniors", "academy", "sub20", "sub23",
+)
+
+
+def tier_of(said: object) -> set[str]:
+    """🔴 그 이름이 말하는 **등급 낱말들**(없으면 빈 집합)."""
+    low = {w for w in tokens(said)}
+    said_s = "".join(low)
+    return {w for w in TIER_WORDS if w in low or w in said_s}
+
+
 def _slug_hit(index: dict[str, str], name: str) -> list[tuple[str, str]]:
     """🔴 색인(`{id: 슬러그}`)에서 그 이름에 맞는 줄 — **정확 일치가 먼저**다.
 
     ⚠️ 품는 일치를 먼저 쓰면 `adelaide-city` 를 물을 때 `adelaide-united` 가
        앞에 설 수 있다. 🔴 정확 → 품음 순서로 돌려준다.
+    🔴🔴 **등급이 다른 팀은 뺀다** — 사용자가 `U23`·`여자`를 적지 않았는데
+       `gil-vicente-u23` 를 열면 **남의 경기**다(실측 2026-10-10).
     """
     want = norm_name(name)
     if not want:
         return []
+    asked = tier_of(name)
     exact = [(i, s) for i, s in index.items() if norm_name(s) == want]
     loose = [(i, s) for i, s in index.items()
              if norm_name(s) != want and same_team(s, name)]
-    return [*sorted(exact), *sorted(loose)]
+    out = [*sorted(exact), *sorted(loose)]
+    # 🔴 사용자가 등급을 적지 않았으면 등급 팀을 **뺀다**(뒤로 미루지 않는다 —
+    #    상한에 걸려 열리는 일이 있다)
+    return [(i, s) for i, s in out if asked or not tier_of(s)]
+
+
+def aliases_of(name: str, *, spell: dict | None = None) -> list[str]:
+    """🔴🔴 §1-1 ② — *"팀 이름 한국어·영어·현지어 아무거나"*. **이름표가 안다.**
+
+    `강원` → `['강원', 'Gangwon FC', '강원 FC']`. 🔴 fotmob 색인의 슬러그는
+    **로마자**이므로 한글로는 닿지 않는다(실측 2026-10-10: `부천` → 0건).
+
+    🔴 이름을 **여기서 짓지 않는다** — `app/teamref.py` 의 이름표가 원본이고
+       (CLDR·리그 명부·사용자 별칭이 거기서 자란다) 우리는 **읽기만** 한다.
+    ⚠️ 이름표가 모르면 **물은 이름 하나**다(그 사실이 `tried` 에 남는다).
+    """
+    said = str(name or "").strip()
+    out = [said] if said else []
+    if not said:
+        return out
+    # 🔴🔴 **철자 후보도 별칭이다**(§1-1 ②) — 이름표가 모르는 외국 구단의 한글
+    #    음차(`우니온`)는 s1 의 철자 단계(로컬 LLM)가 로마자로 바꿔 준다.
+    #  ⚠️ s1 의 `_respell` 은 **이름표가 아는 철자만** 받는다(그 경로의 규율이다).
+    #     🔴 색인은 이름표와 **무관한 출처**이므로 그 가림이 필요 없다 — 그래서
+    #        철자 후보를 여기로 따로 받는다(실측 2026-10-10: `우니온` 이 그래서
+    #        끝까지 안 풀렸다).
+    for one in (dict(spell or {}).get(said) or []):
+        got = str(one).strip()
+        if got and got not in out:
+            out.append(got)
+    try:
+        from app import teamref
+        key, _why = teamref.key_of(said)
+        ref = teamref.registry().teams.get(key) if key else None
+    except Exception:                                       # noqa: BLE001
+        return out
+    for lang, names in ((getattr(ref, "names", None) or {}).items()
+                        if ref is not None else ()):
+        for one in (names or []):
+            got = str(one)
+            # ⚠️ 이름표에는 **출처 열쇠**도 이름으로 들어 있다(`tsdb:138108`) —
+            #    그것으로 색인을 뒤지면 늘 0건이다. 🔴 콜론이 든 것은 뺀다.
+            if ":" in got or got in out:
+                continue
+            out.append(got)
+    return out
 
 
 async def find(net, *, home: str, away: str, day: date | None = None,
                league: str = "", board_text: str = "",
+               spell: dict | None = None,
                today: date | None = None) -> Found:
     """🔴🔴 §1-1 — 사다리 ①②③. ⚠️ **리그를 묻지 않는다**.
 
@@ -213,11 +282,12 @@ async def find(net, *, home: str, away: str, day: date | None = None,
         day = hint.day or day
     days = window(day, today=today)
     at = got.hint.hhmm if got.hint else ""
-    out = await _by_team(net, home=home, away=away, days=days, got=got, at=at)
+    out = await _by_team(net, home=home, away=away, days=days, got=got, at=at,
+                         spell=spell)
     if out.match:
         return out
     out = await _by_league(net, home=home, away=away, days=days, got=got,
-                           league=league, at=at)
+                           league=league, at=at, spell=spell)
     if out.match:
         return out
     got.why = miss_line(got)
@@ -263,7 +333,8 @@ def miss_line(got: Found) -> str:
 
 
 async def _by_team(net, *, home: str, away: str, days: list[date],
-                   got: Found, at: str = "") -> Found:
+                   got: Found, at: str = "", spell: dict | None = None
+                   ) -> Found:
     """🔴 §2 ② — 팀 색인에서 id 를 풀고, **그 팀 일정**에서 상대를 맞춘다.
 
     🔴 **한쪽만 풀려도 된다** — 실측 2026-10-10: `Union de Santa Fe` 는 색인에
@@ -279,8 +350,18 @@ async def _by_team(net, *, home: str, away: str, days: list[date],
     for term, other in ((home, away), (away, home)):
         if not str(term or "").strip():
             continue
-        hits = _slug_hit(index, term)
-        got.tried.append(f"색인에서 `{term}` → {len(hits)}건")
+        # 🔴 §1-1 ② — **한국어·영어·현지어 아무거나**. 이름표가 로마자 이름을 안다
+        names = aliases_of(term, spell=spell)
+        # 🔴 **상대도 별칭으로** 본다 — 원문자만 보면 한글 상대가 안 맞는다
+        theirs = aliases_of(other, spell=spell)
+        hits: list[tuple[str, str]] = []
+        for one in names:
+            for row in _slug_hit(index, one):
+                if row not in hits:
+                    hits.append(row)
+        got.tried.append(f"색인에서 `{term}`"
+                         + (f"(별칭 {names[1:]})" if len(names) > 1 else "(별칭 없음)")
+                         + f" → {len(hits)}건")
         if len(hits) > MAX_TEAMS:
             got.tried.append(f"⚠️ `{term}` 후보 {len(hits)}건 중 {MAX_TEAMS}건만 "
                              f"열었다(상한)")
@@ -295,8 +376,8 @@ async def _by_team(net, *, home: str, away: str, days: list[date],
             fit = [m for m in rows
                    if str(m.get("utc") or "")[:10] in want
                    and near_time(str(m.get("utc") or ""), at)
-                   and (same_team(m["home"], other, loose=True)
-                        or same_team(m["away"], other, loose=True))]
+                   and (same_any(m["home"], theirs, loose=True)
+                        or same_any(m["away"], theirs, loose=True))]
             for m in fit:
                 got.candidates.append({"team": slug, "id": tid,
                                        "match": f"{m['home']} vs {m['away']}",
@@ -347,7 +428,8 @@ def team_fixtures(text: str, team_id: str) -> list[dict]:
 
 
 async def _by_league(net, *, home: str, away: str, days: list[date],
-                     got: Found, league: str = "", at: str = "") -> Found:
+                     got: Found, league: str = "", at: str = "",
+                     spell: dict | None = None) -> Found:
     """🔴 §2 ③ 대체 — **리그 색인**에서 이름이 걸리는 리그의 일정을 본다.
 
     ⚠️ 리그 색인은 431개다 — 전부 열지 않는다. 🔴 질문의 **두 팀 이름 조각**이
@@ -374,6 +456,9 @@ async def _by_league(net, *, home: str, away: str, days: list[date],
         got.tried.append("리그 색인에 걸리는 이름이 없다 — ③ 을 건너뛴다")
         return got
     want = {d.isoformat() for d in days}
+    # 🔴 별칭으로 본다(§1-1 ②) — 한글로 물어도 로마자 일정과 맞는다
+    ours = aliases_of(home, spell=spell)
+    yours = aliases_of(away, spell=spell)
     for lid, slug in hits[:MAX_LEAGUES]:
         rows = await fm.league_matches(net, lid)
         got.tried.append(f"fotmob 리그일정 `{slug}` {len(rows)}경기")
@@ -381,9 +466,9 @@ async def _by_league(net, *, home: str, away: str, days: list[date],
         #    쓴다. ⚠️ 느슨하게 보면 같은 도시·같은 이름의 다른 팀이 붙는다.
         fit = [m for m in rows if str(m.get("utc") or "")[:10] in want
                and near_time(str(m.get("utc") or ""), at)
-               and ((same_team(m["home"], home) and same_team(m["away"], away))
-                    or (same_team(m["home"], away)
-                        and same_team(m["away"], home)))]
+               and ((same_any(m["home"], ours) and same_any(m["away"], yours))
+                    or (same_any(m["home"], yours)
+                        and same_any(m["away"], ours)))]
         if len(fit) > 1:
             got.tried.append(f"🔴 `{slug}` 에서 후보 {len(fit)}건 — 고르지 않는다")
             continue
@@ -496,3 +581,14 @@ def same_team(said: object, want: object, *, loose: bool = False) -> bool:
        규율은 부르는 쪽(`_by_team`)이 지킨다.
     """
     return alike(said, want) if loose else covers(said, want)
+
+
+def same_any(said: object, names: list[str], *, loose: bool = False) -> bool:
+    """🔴🔴 §1-1 ② — 출처 이름이 그 팀의 **별칭 중 하나**와 맞나.
+
+    ⚠️ 실사고가 될 자리였다(실측 2026-10-10): 상대 이름을 **원문자만** 대조해
+       `부천`(한글)과 fotmob 의 `Bucheon FC 1995` 가 안 맞았고, 그래서 K리그·J리그
+       경기를 **하나도 못 찾았다**. 🔴 질문은 *"한국어·영어·현지어 아무거나"* 다.
+    🔴 별칭은 `aliases_of`(이름표)가 준다 — 여기서 짓지 않는다.
+    """
+    return any(same_team(said, one, loose=loose) for one in (names or []))

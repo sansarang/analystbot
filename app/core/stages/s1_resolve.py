@@ -103,6 +103,27 @@ def _trimmed(name: str) -> list[str]:
     return out
 
 
+async def _spell_hints(q: Question, *, state: RunState) -> dict:
+    """🔴 §1-1 ② — **이름표가 모르는 쪽의 철자 후보**(`{물은 이름: [후보…]}`).
+
+    🔴 철자는 `_spell`(로컬 LLM · `purpose="spell"`)이 낸다 — ⚠️ 모델이 경기를
+       **고르지 않는다**(철자만 낸다 · 절대규칙 5).
+    ⚠️ 이름표가 **아는** 이름은 묻지 않는다(통신·시간 낭비).
+    """
+    from app import teamref
+    out: dict[str, list[str]] = {}
+    for name in (q.team or q.raw, q.opponent or ""):
+        said = str(name or "").strip()
+        if not said or teamref.key_of(said)[0]:
+            continue
+        got = await _spell(said, state=state)
+        if got:
+            out[said] = got
+    if out:
+        state.note(f"s1 ⑥-1 철자 후보(색인용) — {out}")
+    return out
+
+
 async def _respell(pool: Any, q: Question, *, state: RunState,
                    net: Any) -> MatchRef | None:
     """🔴 **이름표가 모르는 쪽만** 철자를 바꿔 입구를 다시 돌린다(§5 s1 ⑥-1).
@@ -160,11 +181,20 @@ async def _openworld(pool: Any, q: Question, *, state: RunState,
     🔴 못 찾으면 `None` — 호출부가 `Ambiguous` 를 낸다.
     """
     from app import findgame, queries, resolve
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **철자 후보를 색인 쪽으로도 넘긴다**(§1-1 ② · 2026-10-10 재작성)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ `_respell` 은 **이름표가 아는 철자만** 받는다(그 경로의 규율이다).
+    #     🔴 그런데 fotmob 팀 색인은 **이름표와 무관한 출처**다 — 이름표가 모르는
+    #        외국 구단의 한글 음차(`우니온`)도 그 색인에서는 풀린다.
+    #     실측 2026-10-10: 그 가림 때문에 `우니온 vs 데펜사` 가 끝까지 안 풀렸다.
+    said = await _spell_hints(q, state=state)
     try:
         found = await findgame.find_and_store(
             pool, team=q.team or q.raw, opponent=q.opponent or "", net=net,
             # 🔴 §1-1 ① — **보드가 가장 정확한 단서**다(날짜·시각·두 팀·리그)
-            board_text=board_text)
+            board_text=board_text, spell=said)
     except Exception as exc:                                # noqa: BLE001
         state.note(f"s1 ⑥(findgame) 터졌다 — {exc!r}")
         return None
