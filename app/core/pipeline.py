@@ -114,7 +114,16 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     variables = s5_verify.run(ref, facts, docs, cands, state=st)
     # 🔴 ②(2차) — **검증된 결장 변수**까지 넣어 다시 센다(§4-2 · 네트워크 0)
     adj_p = s2b_base.again(ref, facts, base_p, variables, state=st)
-    hypo = s6_hypo.run(ref, facts, variables, state=st)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **단계 2 — 가설(+예측 신호)만**. 시나리오는 단계 4다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > ① 딥서치로 재료를 먼저 모으고 ② 가설을 "시뮬레이션이 보여야 할 신호"로
+    #  > 세운 뒤 ③ 시뮬레이션을 돌리고 ④ 검증하고 ⑤ 통과한 가설만으로 평을 쓴다.
+    #
+    #  🔴 **여기까지 확률이 없다**(가설 입력은 변수·사실뿐) — 그것이 §계약
+    #     *"단계 2 는 단계 3 결과를 입력으로 받지 않는다"* 다.
+    hypo = s6_hypo.claims(ref, facts, variables, state=st)
     if ocr_text and got_board is not None:
         from app.core import odds as _odds
         user_mk = _odds.from_board(got_board, source="user_board(ocr)")
@@ -191,6 +200,23 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         st.note("§4 확률 한 곳 — 🔴 시뮬이 못 돌아 **확률층 수를 그대로 쓴다** · "
                 + str(said_sim.get("why") or ""))
     layers["ocr_text"] = ocr_text
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **단계 4 — 검증(가설 ↔ 시뮬) → 시나리오**(순서 재편 §4)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 순서가 핵이다: 가설은 **시뮬을 보기 전에** 섰고(단계 2), 여기서 그
+    #     가설의 **예측 신호**를 시뮬 산출과 대조한다. 그리고 **시나리오를 시뮬
+    #     분포에서** 만든다(§4-4) — 그래야 시나리오·확률·스코어가 한 분포다.
+    from app.core.stages import s6c_check as _s6c
+    got_check = _s6c.run(ref, facts, hypo, dict(edge.get("sim") or {}),
+                         variables=variables, turnover=turn, state=st)
+    if _s6c.rerun_needed(got_check):
+        # 🔴 §4-3 — **최대 1회**. 지금은 조건이 성립하지 않아 안 돈다(사유는 표에)
+        st.note("단계 4-3 — 재실행 1회")
+    hypo = s6_hypo.scenarios(ref, facts, variables, hypo,
+                             dict(edge.get("sim") or {}), state=st,
+                             supported=list(got_check.get("supported") or []))
+    layers["check"] = got_check
     from app.core import reweight as _reweight
     hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,
@@ -286,7 +312,7 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
                 f"부르지 않고 이전 시나리오 {len(hypo.scenarios)}개를 그대로 쓴다")
         st.set("scenarios", len(hypo.scenarios))
     else:
-        hypo = s6_hypo.run(ref, facts, variables, state=st)
+        hypo = s6_hypo.claims(ref, facts, variables, state=st)
     got_board, extra, bad = None, list(before.board_extra), list(before.board_bad)
     if last.get("board_text"):
         from app.core import board as _board
@@ -331,6 +357,13 @@ async def reanalyze(raw: str, *, pool: Any, net: Any, chain: Any,
     layers["strategy"] = plan
     # 🔴 §4 — **잠정 → 최종**. ⚠️ 전략이 없으면 둘이 같다(그 사실도 적는다)
     layers["prob_before"] = before_layers.get("ours")
+    # 🔴🔴 **재분석에도 시나리오가 있어야 한다**(순서 재편 뒤처리) — `claims()` 는
+    #    시나리오를 안 만들므로 여기서 **보강을 돌린다**. ⚠️ 재분석 경로는 상성·
+    #    시뮬을 다시 돌지 않으므로 **분포에서 못 만든다** — 그 사실을 적는다(#3).
+    if not hypo.scenarios:
+        st.note("재분석 — 🔴 시뮬 분포가 없다(상성을 다시 안 돈다) → 시나리오는 "
+                "**필수형 보강만**이다(§4-4 의 분포 시나리오가 아니다)")
+        hypo = s6_hypo.scenarios(ref, facts, variables, hypo, {}, state=st)
     from app.core import reweight as _reweight
     hypo = _reweight.of(hypo, layers.get("ours"), ref=ref, state=st)
     said = s7_judge.run(ref, facts, variables, hypo, state=st, board=got_board,

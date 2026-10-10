@@ -52,10 +52,25 @@ def test_v6_단계_함수는_dict_any_tuple_을_돌려주지_않는다():
 
 
 def test_v6_단계_마다_run_이_하나다():
-    """🔴 단계는 **함수 하나**다(§5) — 입구가 둘이면 어느 것이 단계인지 모른다."""
+    """🔴 단계는 **함수 하나**다(§5) — 입구가 둘이면 어느 것이 단계인지 모른다.
+
+    🔴🔴 **예외는 선언해야 한다**(2026-10-10 순서 재편): 한 파일이 **두 단계**를
+       맡으면 `STAGES = ("claims", "scenarios")` 처럼 **입구를 글자로 적는다**.
+       ⚠️ 선언이 없으면 그것은 *"입구가 둘인데 아무도 모르는"* 상태다 — 빨개진다.
+    """
+    import re as _re
     for p in sorted((CORE / "stages").glob("s?_*.py")):
         got = [fn.name for fn in _funcs(p) if fn.name == "run"]
-        assert len(got) == 1, (p.name, got)
+        if len(got) == 1:
+            continue
+        said = p.read_text(encoding="utf-8")
+        m = _re.search(r"^STAGES\s*=\s*\(([^)]*)\)", said, _re.M)
+        assert m, (f"🔴 `{p.name}` 에 `run` 이 {len(got)}개인데 `STAGES` 선언이 "
+                   f"없다")
+        names = [x.strip().strip("\"'") for x in m.group(1).split(",")
+                 if x.strip()]
+        have = {fn.name for fn in _funcs(p)}
+        assert names and set(names) <= have, (p.name, names, sorted(have))
 
 
 def test_v6_core_는_망에_직접_나가지_않는다():

@@ -46,9 +46,25 @@ CTX_CAP = 6
 CLAIM_CUT = 80
 
 
-def run(ref: MatchRef, facts: Facts, variables: list[Variable], *,
-        state: RunState) -> HypoSet:
-    """🔴 가설·시나리오. ⚠️ LLM 이 안 돌아도 **필수형 보강은 돈다**(카드는 나온다)."""
+#: 🔴🔴 **이 파일은 두 단계를 맡는다**(순서 재편 지시서 2026-10-10 다섯째):
+#  `claims` = 단계 2(가설·신호 · **시뮬 전**) · `scenarios` = 단계 4-4(시나리오 ·
+#  **시뮬 뒤**). ⚠️ 입구를 글자로 적어 둔다 — 계약이 이 선언을 본다.
+STAGES = ("claims", "scenarios")
+
+
+def claims(ref: MatchRef, facts: Facts, variables: list[Variable], *,
+           state: RunState) -> HypoSet:
+    """🔴🔴 **단계 2 — 가설만 세운다**(순서 재편 지시서 2026-10-10 다섯째).
+
+    > 단계 2-2 가설(LLM 1회): 팀마다 *"이긴다면 왜"* 2~3개, *"무너지는 조건"*
+    > 2~3개. 각 가설은 반드시 **시뮬레이션으로 확인할 수 있는 신호**를 단다.
+    > 2-3 **시나리오는 여기서 만들지 않는다**(단계 4에서 시뮬 결과로 만든다).
+
+    🔴 **입력에 확률이 없다** — 변수·사실뿐이다(`_payload`). 그것이 §계약
+       *"단계 2 는 단계 3 결과를 입력으로 받지 않는다"* 다.
+    ⚠️ 돌려주는 `HypoSet` 의 `scenarios` 는 **빈 목록**이다 — `scenarios()` 가
+       시뮬 뒤에 채운다.
+    """
     basis = [v for v in variables if v.usable_as_basis]
     ctx = [v for v in variables if not v.usable_as_basis]
     if ctx:
@@ -58,12 +74,66 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable], *,
     said = _ask(ref, facts, basis, ctx, state=state)
     drops: list[Drop] = []
     hypos: list[Hypothesis] = []
-    scen: list[Scenario] = []
     if said is not None:
         hypos = _clean_hypos(said.hypotheses, basis=basis, ctx=ctx,
                              drops=drops)
-        scen = _clean_scenarios(said.scenarios, basis=basis, ctx=ctx,
-                               drops=drops, variables=variables)
+        hypos = _clean_signals(hypos, drops=drops, state=state)
+        if said.scenarios:
+            # 🔴 §2-3 — 시나리오를 여기서 **안 쓴다**. ⚠️ 모델이 보내도 버리고
+            #    그 사실을 적는다(#3 조용히 버리지 않는다).
+            state.note(f"s6 §2-3 — 모델이 보낸 시나리오 {len(said.scenarios)}개를 "
+                       f"**버렸다**(시나리오는 단계 4 에서 시뮬 분포로 만든다)")
+    n_sig = sum(1 for h in hypos for line in [*h.reasons, *h.breaks]
+                if line.signal is not None)
+    state.note(f"s6 단계 2 — 가설 {len(hypos)}팀 · 신호 붙은 줄 {n_sig}개")
+    return HypoSet(hypotheses=hypos, scenarios=[], redteam=[], drops=drops)
+
+
+def _clean_signals(rows: list[Hypothesis], *, drops: list[Drop],
+                   state: RunState) -> list[Hypothesis]:
+    """🔴🔴 §2-2 계약 — **신호가 없거나 목록 밖 지표면 그 신호를 버린다**.
+
+    🔴 줄 자체는 **남긴다** — 단계 4 가 `판단 불가` 로 세고 최종 평이 못 쓴다(§5).
+       ⚠️ 줄을 지우면 *"가설이 없었다"* 와 *"검증 못 했다"* 가 섞인다(#3).
+    """
+    from app.core import signals as _sg
+    out: list[Hypothesis] = []
+    bad = 0
+    for one in rows:
+        box = {}
+        for key in ("reasons", "breaks"):
+            kept = []
+            for line in (getattr(one, key, None) or []):
+                said = _sg.bad_signal(line.signal)
+                if said:
+                    bad += 1
+                    drops.append(Drop(where="s6/signal", reason="schema",
+                                      detail=f"{said} · `{line.text[:40]}`"))
+                    kept.append(line.model_copy(update={"signal": None}))
+                else:
+                    kept.append(line)
+            box[key] = kept
+        out.append(one.model_copy(update=box))
+    if bad:
+        state.note(f"s6 §2-2 — 신호가 **없거나 목록 밖**인 줄 {bad}개 — 그 줄은 "
+                   f"단계 4 에서 `판단 불가` 다")
+    return out
+
+
+def scenarios(ref: MatchRef, facts: Facts, variables: list[Variable],
+              hypo: HypoSet, sim: dict, *, state: RunState,
+              supported: list | None = None) -> HypoSet:
+    """🔴🔴 **단계 4-4 — 시나리오를 시뮬 분포에서 만든다**.
+
+    > 시뮬레이션 **스코어 분포 상위 묶음**(승·무·패별로 1~2개)을 시나리오로 삼고,
+    > 각 시나리오에 그 결과를 **지지하는 검증된 가설과 변수**를 붙인다(전개 문장은
+    > LLM, 근거는 **지지된 가설·변수 id만**).
+
+    🔴 판정 계산 로직은 **그대로** 둔다 — 아래 보강·검사·무게는 종전 함수들이다.
+    ⚠️ 시뮬이 없으면 **빈 시나리오**로 보강만 돈다(카드는 나온다).
+    """
+    drops: list[Drop] = list(hypo.drops or [])
+    scen = _from_sim(sim, hypo, supported or [], state=state)
     scen = _required(ref, facts, scen, variables, state=state)
     # 🔴 **없는 변수 인용을 떨군다**(불변식 5) — 변수 목록이 바뀐 뒤 남은 번호
     scen = _keep_drivers(scen, variables, state=state)
@@ -73,9 +143,75 @@ def run(ref: MatchRef, facts: Facts, variables: list[Variable], *,
     scen = _regression_fit(scen, variables, state=state)
     scen = [s.model_copy(update={"strength": _strength(s, variables)})
             for s in scen]
+    basis = [v for v in variables if v.usable_as_basis]
     red = _redteam(ref, scen, basis, state=state)
     state.set("scenarios", len(scen))
-    return HypoSet(hypotheses=hypos, scenarios=scen, redteam=red, drops=drops)
+    return HypoSet(hypotheses=list(hypo.hypotheses), scenarios=scen,
+                   redteam=red, drops=drops)
+
+
+#: 🔴 §4-4 — 결과마다 몇 개를 시나리오로 삼나(지시서가 적은 1~2)
+PER_OUTCOME = 2
+
+
+def _from_sim(sim: dict, hypo: HypoSet, supported: list, *,
+              state: RunState) -> list[Scenario]:
+    """🔴🔴 §4-4 — **스코어 분포 상위 묶음**(승·무·패별 1~2개) → 시나리오.
+
+    🔴 근거(`driver_vars`)는 **지지된 가설의 변수 id 만** 붙인다 — 그 결과를
+       지지하는 가설(그 팀이 이기는 쪽)에서 가져온다.
+    ⚠️ 전개 문장은 지금 **코드가** 적는다(무게·스코어·지지 가설). §4-4 가 말한
+       LLM 전개는 `s8_comment`·최종 평이 이미 쓰고 있다 — 같은 말을 두 번 만들지
+       않는다(사본 금지).
+    """
+    rows = dict(dict(sim or {}).get("scores") or {})
+    if not rows:
+        state.note("s6 §4-4 — 🔴 시뮬 스코어 분포가 없다 — 시나리오를 "
+                   "**분포에서 못 만들었다**(필수형 보강만 돈다)")
+        return []
+    by: dict[str, list] = {"home": [], "draw": [], "away": []}
+    for (h, a), p in sorted(rows.items(), key=lambda kv: -float(kv[1])):
+        key = "home" if h > a else ("draw" if h == a else "away")
+        if len(by[key]) < PER_OUTCOME:
+            by[key].append(((int(h), int(a)), float(p)))
+    out: list[Scenario] = []
+    for key, got in by.items():
+        for (h, a), p in got:
+            ids = _ids_for(key, hypo, supported)
+            out.append(Scenario(
+                id=f"S{len(out) + 1}", outcomes=[(h, a)],
+                driver_vars=ids, type=_kind_of([(h, a)]),
+                added_by="deepseek",
+                mechanism=(f"시뮬 분포 무게 {p:.1%} 의 {h}-{a} — "
+                           + (f"지지된 가설의 근거 {ids}" if ids
+                              else "🔴 지지된 가설이 없다(무게만 있다)"))))
+    state.note("s6 §4-4 — 시나리오 "
+               + " · ".join(f"{k} {len(v)}개" for k, v in by.items())
+               + f" ← 시뮬 분포 상위(결과마다 {PER_OUTCOME}개까지)")
+    return out
+
+
+def _ids_for(key: str, hypo: HypoSet, supported: list) -> list[str]:
+    """🔴 그 결과를 **지지하는 검증된 가설**의 변수 id 들(없으면 빈 목록).
+
+    `supported` 는 단계 4 가 `지지` 로 판정한 줄들이다 —
+    `[{"side": "home", "kind": "reasons", "var_ids": [...]}, …]`.
+    """
+    want = {"home": "home", "away": "away"}.get(key)
+    out: list[str] = []
+    for one in (supported or []):
+        box = dict(one)
+        if want is None:
+            # 🔴 무승부 — *"무너지는 조건"* 이 지지된 쪽이 근거다
+            if str(box.get("kind")) != "breaks":
+                continue
+        elif not (str(box.get("side")) == want
+                  and str(box.get("kind")) == "reasons"):
+            continue
+        for x in (box.get("var_ids") or []):
+            if str(x) not in out:
+                out.append(str(x))
+    return out[:6]
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -101,15 +237,30 @@ def system_prompt() -> str:
         "`reasons` 는 **이긴다면 왜**, `breaks` 는 **무너지는 조건**이다. 항목마다 "
         "**한 문장**(`text`)과 **근거 변수 번호**(`var_ids`)를 함께 적는다 — "
         "⚠️ 번호만 적으면 안 된다.\n"
-        "3. 시나리오 4~6개. 각각 `driver_vars`(변수 번호), `mechanism`(그 변수들이 "
-        "어떻게 작동해 그 결과가 나오는지 1~2문장), `outcomes`(스코어 1~2개를 "
-        "`[홈, 원정]` 꼴로).\n"
-        "4. 전부 같은 방향이면 안 된다 — 각 팀이 이기는 시나리오가 **적어도 "
-        "하나씩** 있어야 한다.\n"
-        "5. 맞대결 기록은 메커니즘(세트피스·역습 방식)이 있을 때만 driver 로 쓰고, "
-        "**다른 시나리오를 누르는 근거로 쓰지 않는다.**\n"
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **시나리오 조항을 걷었다** — 순서 재편 지시서 §2-3
+        # ══════════════════════════════════════════════════════════════
+        #
+        #  > 시나리오는 **여기서 만들지 않는다**(단계 4에서 시뮬레이션 결과로
+        #  > 만든다).
+        #
+        #  🔴 대신 **예측 신호**를 요구한다(§2-2) — 지표 목록은 **코드가 준다**.
+        "3. 🔴🔴 가설 줄마다 **예측 신호**(`signal`)를 단다 — 그 가설이 맞다면 "
+        "시뮬레이션에서 **보여야 하는 것**이다. 칸은 `metric`(지표) · "
+        "`direction`(방향) · `ref`(기준) · `side`(팀) · `arg`(인자)다.\n"
+        "   🔴 **쓸 수 있는 지표는 아래 목록뿐**이다(목록 밖은 버려진다):\n"
+        + _menu_block()
+        + "\n4. 🔴 **시나리오를 쓰지 마라** — `scenarios` 는 **빈 목록**으로 둔다"
+        "(시나리오는 코드가 시뮬레이션 분포에서 만든다).\n"
+        "5. 팀마다 `reasons` **2~3개** · `breaks` **2~3개**다.\n"
         "6. 🔴 **등급·확률·승자·배당·추천 단어를 쓰지 않는다** — 그것은 코드가 "
         "수로 정한다.")
+
+
+def _menu_block() -> str:
+    """🔴 지표 목록 — `signals.menu()` **하나**가 든다(사본 금지)."""
+    from app.core import signals as _sg
+    return "\n".join(f"   {x}" for x in _sg.menu().splitlines())
 
 
 #: 🔴 폼에서 **보내는 칸만** — 이름을 적어 둔다(#1: 코드가 고르는 칸을 숨기지 않는다)

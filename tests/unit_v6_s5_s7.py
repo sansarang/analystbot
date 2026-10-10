@@ -288,8 +288,8 @@ def test_근거_변수가_0개면_LLM_을_부르지_않는다(monkeypatch):
 
     monkeypatch.setattr("app.core.llm.ask", _spy)
     st = RunState()
-    got = s6_hypo.run(ref(), Facts(), [var(1, usable_as_basis=False)],
-                      state=st)
+    got = s6_hypo.claims(ref(), Facts(), [var(1, usable_as_basis=False)],
+                         state=st)
     assert calls == [], calls
     assert got.hypotheses == []
 

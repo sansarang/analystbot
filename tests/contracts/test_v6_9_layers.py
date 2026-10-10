@@ -1460,12 +1460,14 @@ def test_근거_있는_보강_갈래는_바닥값_무게를_받지_않는다():
     for c in adds:
         assert any(k.arg == "drivers" for k in c.keywords), (
             f"🔴 `drivers=` 없이 보강한다 — 줄 {c.lineno}")
-    # 🔴🔴 **배선 ②** — `run` 이 그 무게 함수를 모든 갈래에 먹인다
+    # 🔴🔴 **배선 ②** — 시나리오 단계가 그 무게 함수를 모든 갈래에 먹인다
+    #    ⚠️ 2026-10-10(순서 재편): 그 단계 이름이 `run` → **`scenarios`** 다
+    #       (가설은 시뮬 **전**, 시나리오는 시뮬 **뒤**로 갈렸다).
     runner = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)
-                  and n.name == "run")
+                  and n.name == "scenarios")
     used = {c.func.id for c in ast.walk(runner)
             if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
-    assert "_strength" in used, "🔴 `run` 이 무게를 다시 세지 않는다"
+    assert "_strength" in used, "🔴 시나리오 단계가 무게를 다시 세지 않는다"
 
 
 def test_논평_본문에_변수_번호가_남지_않는다():

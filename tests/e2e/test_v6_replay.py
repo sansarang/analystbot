@@ -137,7 +137,12 @@ def card(replaying) -> Card:
         #    XI 는 `none` 이므로 `확정 XI 전` 이 나와야 한다(§1). 그것이 바로
         #    *"예상 XI 로는 전략을 추론하지 않는다"* 를 재생이 세는 자리다.
         plan = s2d_strategy.run(ref, facts, state=state)
-        hypo = s6_hypo.run(ref, facts, variables, state=state)
+        # 🔴🔴 **새 순서**(순서 재편 지시서 2026-10-10 다섯째) — 단계 2 는 가설만
+        #    내고, 시나리오는 단계 4 가 시뮬 분포에서 만든다. ⚠️ 이 고정물은 상성·
+        #    시뮬을 돌리지 않으므로(`matchup` 이 없다) 시나리오는 **필수형 보강**
+        #    만이고, 그 사실이 재생과 운영의 차이로 남는다.
+        hypo = s6_hypo.claims(ref, facts, variables, state=state)
+        hypo = s6_hypo.scenarios(ref, facts, variables, hypo, {}, state=state)
         # 🔴🔴 **파이프라인과 같은 순서**(2026-10-07 재가중 ①) — 우리 열 → 재가중 →
         #    생존. ⚠️ 순서가 다르면 재생이 운영을 흉내낸 것이 아니다.
         before_layers = pipeline._layers(ref, facts, variables, hypo, base_p,
