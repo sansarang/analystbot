@@ -399,12 +399,38 @@ async def _by_team(net, *, home: str, away: str, days: list[date],
             page = await net.get(fm.team_fixtures_url(tid, slug))
             rows = team_fixtures(getattr(page, "text", "") or "", tid)
             got.tried.append(f"fotmob 팀일정 `{slug}` {len(rows)}경기")
-            # 🔴 날짜 창 **안에서** 상대가 맞는 경기를 **전부** 모은다
-            fit = [m for m in rows
-                   if str(m.get("utc") or "")[:10] in want
-                   and near_time(str(m.get("utc") or ""), at)
-                   and (same_any(m["home"], theirs, loose=True)
-                        or same_any(m["away"], theirs, loose=True))]
+            # 🔴 날짜 창 **안** 경기를 먼저 모은다(상대 조건은 그 다음)
+            in_win = [m for m in rows
+                      if str(m.get("utc") or "")[:10] in want
+                      and near_time(str(m.get("utc") or ""), at)]
+            # 🔴🔴 **상대를 모르면 상대로 걸러내지 않는다** — ⚠️ 실사고 2026-10-10:
+            #    사용자가 `제노아` **한 팀만** 물었다. `theirs` 가 빈 목록이라
+            #    `same_any(…, [])` 는 **언제나 거짓**이고, 그래서 ② 가 통째로
+            #    막혀 `match_not_found` 로 끝났다(일정 45경기를 받아 놓고도).
+            #    🔴 한쪽만 물으면 그 팀의 **다음 경기**를 찾는 것이 질문의 뜻이다.
+            if theirs:
+                fit = [m for m in in_win
+                       if same_any(m["home"], theirs, loose=True)
+                       or same_any(m["away"], theirs, loose=True)]
+            else:
+                # 🔴 한쪽만 물었으면 **킥오프가 지난 경기는 뺀다** — "다음 경기"를
+                #    묻는 것이고, 시작한 경기는 분석(확정 XI·평소 XI)이 뜻이 없다.
+                fit = [m for m in in_win if not _kicked(m)]
+                if in_win and not fit:
+                    got.tried.append(
+                        f"🔴 `{slug}` 창 안 {len(in_win)}경기가 **전부 킥오프가 "
+                        f"지났다** — " + " · ".join(
+                            f"{x['home']} vs {x['away']} {str(x.get('utc'))[:16]}"
+                            for x in in_win[:3]))
+            # 🔴 **조용한 0 금지**(#3) — 창 안에 아무것도 없으면 그 사실과
+            #    **다음 경기 날짜**를 적는다("못 찾았다"와 "창 밖이다"는 다른 일이다)
+            if not in_win:
+                nxt = _next_fixture(rows)
+                got.tried.append(
+                    f"🔴 `{slug}` 일정에 창({min(want)}~{max(want)}) 안 경기가 "
+                    f"**0건**이다"
+                    + (f" — 다음 경기는 {nxt['home']} vs {nxt['away']} "
+                       f"{str(nxt.get('utc'))[:16]}" if nxt else " — 남은 경기도 없다"))
             for m in fit:
                 got.candidates.append({"team": slug, "id": tid,
                                        "match": f"{m['home']} vs {m['away']}",
@@ -425,6 +451,28 @@ async def _by_team(net, *, home: str, away: str, days: list[date],
                            f"{str(m.get('utc'))[:10]} 경기")
                 return got
     return got
+
+
+def _kicked(m: dict) -> bool:
+    """🔴 그 경기는 **이미 킥오프가 지났나**. ⚠️ 시각을 못 읽으면 `False`(안 버린다).
+
+    🔴 "지금"은 `app/window.now_utc` 하나다(사본 금지 · §4 `--as-of`).
+    """
+    from datetime import datetime, timezone
+    from app import window as _w
+    try:
+        when = datetime.fromisoformat(str(m.get("utc") or "").replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return False
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return when <= _w.now_utc()
+
+
+def _next_fixture(rows: list[dict]) -> dict | None:
+    """🔴 #3 — 창 안이 0건일 때 **다음 경기**를 사유에 적기 위해서다."""
+    later = [m for m in rows if m.get("utc") and not _kicked(m)]
+    return min(later, key=lambda m: str(m.get("utc"))) if later else None
 
 
 def team_fixtures(text: str, team_id: str) -> list[dict]:

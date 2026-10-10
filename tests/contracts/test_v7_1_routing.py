@@ -538,3 +538,74 @@ def test_v7_슬러그_색인이_별칭표를_지난다():
     assert ("9999", "adelaide-united") not in got, "🔴 다른 팀이 섞였다"
     # 🔴 별칭표에 `제노아` 가 **있다**(그 다리가 이 파일이다)
     assert "Genoa" in _d.aliases_of("제노아"), _d.aliases_of("제노아")
+
+
+def _stub_ladder(monkeypatch, rows):
+    """🔴 ② 사다리의 **바깥 둘만** 세운다(팀 색인·일정 파싱) — 거르는 규칙이 과녁."""
+    import asyncio
+
+    from app.collect import fotmob as fm
+    from app.core import discover as _d
+
+    async def _idx(_net):
+        return {"10233": "genoa"}
+
+    class _Net:
+        async def get(self, _url):
+            return type("P", (), {"text": "<html></html>"})()
+
+    monkeypatch.setattr(fm, "team_index", _idx)
+    monkeypatch.setattr(_d, "team_fixtures", lambda _t, _i: rows)
+    got = _d.Found()
+    out = asyncio.run(_d._by_team(_Net(), home="제노아", away="",
+                                  days=_d.window(None), got=got, at=""))
+    return out
+
+
+def test_v7_한_팀만_물어도_찾는다(monkeypatch):
+    """🔴🔴 **실사고 2026-10-10** — 사용자가 `제노아` **한 팀만** 물었고 봇은
+    일정 45경기를 받아 놓고 `match_not_found` 로 끝났다.
+
+    🔴 원인: 상대가 빈 글자라 `theirs == []` → `same_any(…, [])` 가 **언제나
+       거짓** → 창 안 경기가 전부 떨어졌다.
+    ⚠️ 돌연변이: `if theirs:` 가름을 지우면 한 팀 질문이 다시 **0건**이 된다.
+    """
+    from app import window as _w
+    from app.core import discover as _d
+    soon = (_w.now_utc() + __import__("datetime").timedelta(hours=5))
+    rows = [{"id": "1", "home": "Genoa", "away": "Fiorentina",
+             "utc": soon.strftime("%Y-%m-%dT%H:%M:%S.000Z"), "finished": False,
+             "league_name": "Serie A", "league_id": 55, "page": ""}]
+    out = _stub_ladder(monkeypatch, rows)
+    assert out.match, out.tried
+    assert out.match["away"] == "Fiorentina"
+    assert out.rung.startswith("②"), out.rung
+    # 🔴 **킥오프가 지난 경기는 "다음 경기"가 아니다** — 사유를 **이름으로** 남긴다(#3)
+    past = dict(rows[0])
+    past["utc"] = (_w.now_utc()
+                   - __import__("datetime").timedelta(minutes=20)
+                   ).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    out2 = _stub_ladder(monkeypatch, [past])
+    assert not out2.match
+    assert any("킥오프가 지났다" in t for t in out2.tried), out2.tried
+    assert isinstance(_d._next_fixture([past]), type(None))
+
+
+def test_v7_창_안이_0건이면_다음_경기를_적는다(monkeypatch):
+    """🔴 **조용한 0 금지**(#3) — "못 찾았다"와 "창 밖이다"는 **다른 일**이다.
+
+    ⚠️ 돌연변이: `if not in_win:` 사유 줄을 지우면 사용자는 *"봇이 제노아를
+       모른다"* 로 읽는다 — 실제로는 **다음 경기가 일주일 뒤**다.
+    """
+    import datetime as dt
+
+    from app import window as _w
+    far = (_w.now_utc() + dt.timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    rows = [{"id": "9", "home": "Roma", "away": "Genoa", "utc": far,
+             "finished": False, "league_name": "Serie A", "league_id": 55,
+             "page": ""}]
+    out = _stub_ladder(monkeypatch, rows)
+    assert not out.match
+    said = " · ".join(out.tried)
+    assert "창" in said and "0건" in said, said
+    assert "Roma vs Genoa" in said, "🔴 다음 경기를 안 적었다"
