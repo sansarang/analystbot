@@ -101,10 +101,10 @@ def read(ref, facts, *, side: str) -> dict:
     if not got.confirmed:
         return {"on": False, "why": f"확정 XI 전 — 안 센다({got.why})",
                 "kind": "", "off_squad": [], "since": ""}
+    from app.core import discover as _d
     xi = (facts.xi or {}).get(key)
     now = {str(x) for x in (getattr(xi, "players", None) or [])}
     bench = {str(x) for x in (getattr(xi, "bench", None) or [])}
-    squad = {str(x) for x in ((facts.squad or {}).get(key) or [])}
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **거르지 않은 과거 XI 로 센다** — ⚠️ 실측 2026-10-10(재현): `strategy.
     #    read` 가 이미 *"교체 이후 경기만"* 으로 걸러 평소 XI 를 만들므로, 그
@@ -112,13 +112,17 @@ def read(ref, facts, *, side: str) -> dict:
     #    (김천이 `평소 그대로` 로 나왔다 — 그러면 `기준 약함` 표시도 사라진다).
     # 🔴 깃발은 **원본 이력**(`facts.past_xi`)과 **오늘 명단**만 본다.
     # ══════════════════════════════════════════════════════════════════
-    known = now | bench | squad
+    # 🔴🔴 **선수단 명부**가 기준이다(경기 명단 20명이 아니다 — 실사고 2026-10-10:
+    #    그날 안 뽑힌 선수가 전부 "팀에 없는 선수"가 됐다).
+    roster = {_d.name_key(nm) for nm in
+              dict(getattr(facts, "player_stats", None) or {})}
     gone: list[str] = []
     rows = list((facts.past_xi or {}).get(key) or [])
-    if known:
+    if roster:
+        known = roster | {_d.name_key(x) for x in (now | bench)}
         for one in rows:
             for nm in (getattr(one, "players", None) or []):
-                if str(nm) not in known:
+                if _d.name_key(nm) not in known:
                     gone.append(str(nm))
     # 🔴 바뀐 자리 수도 **원본 기준**으로 다시 센다(평소 XI 필터 이전의 수)
     from app.core.stages import s2b_base as _b
@@ -130,17 +134,18 @@ def read(ref, facts, *, side: str) -> dict:
         return {"on": True, "kind": "cycle", "off_squad": sorted(set(gone)),
                 "since": "", "changed_raw": changed_raw,
                 "why": (f"**전역 주기 팀**({row.get('why')}) · 원본 평소 XI 대비 "
-                        f"바뀐 자리 {changed_raw}개 · 과거 선발 중 오늘 명단에 "
-                        f"**아예 없는** 선수 {len(set(gone))}명 "
-                        f"{sorted(set(gone))[:4]}")}
+                        f"바뀐 자리 {changed_raw}개 · 과거 선발 중 **선수단 명부에 "
+                        f"없는** 선수 {len(set(gone))}명 {sorted(set(gone))[:4]}"
+                        + ("" if roster else " ⚠️ 명부를 못 받아 그 수는 못 셌다"))}
     said = suspect(changed=changed_raw, off_squad=len(set(gone)))
     if said:
         return {"on": True, "kind": "suspect", "off_squad": sorted(set(gone)),
                 "since": "", "why": f"**선수단 교체 의심** — {said}"}
     return {"on": False, "kind": "", "off_squad": sorted(set(gone)),
             "since": "", "changed_raw": changed_raw,
-            "why": (f"원본 기준 바뀐 자리 {changed_raw}개 · 오늘 명단에 없는 "
-                    f"과거 선발 {len(set(gone))}명 — 문턱 아래다")}
+            "why": (f"원본 기준 바뀐 자리 {changed_raw}개 · **선수단 명부에 없는** "
+                    f"과거 선발 {len(set(gone))}명 — 문턱 아래다"
+                    + ("" if roster else " ⚠️ 선수단 명부를 못 받아 **못 셌다**"))}
 
 
 def past_since(rows: list, *, names: set[str]) -> tuple[list, str]:

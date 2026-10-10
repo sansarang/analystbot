@@ -144,19 +144,33 @@ def _side(lines: list, side: str) -> str:
     return ""
 
 
-def check(lines: list, reads: dict) -> list[str]:
+def check(lines: list, reads: dict, *, turnover: dict | None = None,
+          ) -> list[str]:
     """🔴🔴 §2-2 코드 검사 — **판정이 2-1 수치와 반대면 버린다**. 위반 목록.
 
     > 예: ΔA −15%·3백 전환인데 *"공격 위주"* → 위반. **근거 없는 판정 금지.**
 
-    🔴 세는 것 넷:
+    🔴 세는 것 다섯:
       ① 근거 사실 id **2개 이상**이고 그 id 가 **실제로 있다**
       ② `공격 위주` 인데 ΔA 가 크게 음수거나 수비 수가 늘었다 → 위반
       ③ `수비 위주` 인데 ΔA 가 크게 양수거나 수비 수가 줄었다 → 위반
       ④ `로테이션·체력 관리` 인데 **바뀐 자리가 0** → 위반
+      ⑤ 🔴🔴 `squad_turnover` 는 **코드만 쓰는 값**이다 — 모델이 고르면 위반
     ⚠️ 못 잰 칸(`None`)은 **안 센다** — 없는 수로 판정을 버리면 그쪽이 더 나쁘다.
     """
+    from app.core import turnover as _turn
     out: list[str] = []
+    # ⑤ ⚠️ 실사고 2026-10-10: 열거값에 `squad_turnover` 를 더하자 **모델이 그것을
+    #    골랐다**(FC 안양 — 전역 주기 팀이 아니다). 그 값은 깃발이 켜진 팀에만
+    #    코드가 붙인다(`_turn_lines`). 🔴 주석으로 막은 줄 알았던 것을 계약으로 막는다.
+    box_t = dict(turnover or {})
+    for one in (lines or []):
+        if str(getattr(one, "strategy", "")) != _turn.VERDICT:
+            continue
+        side = str(getattr(one, "side", ""))
+        if not dict(box_t.get(side) or {}).get("on"):
+            out.append(f"🔴 모델이 **코드만 쓰는 판정값**(`{_turn.VERDICT}`)을 "
+                       f"골랐다({side}) — 그 팀은 선수단 교체 깃발이 **꺼져 있다**")
     for one in (lines or []):
         side = str(getattr(one, "side", ""))
         got = reads.get(side)

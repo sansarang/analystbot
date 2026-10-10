@@ -252,22 +252,27 @@ def read(ref, facts, *, side: str) -> TeamRead:
 
 
 def _off_squad(facts, key: str, xi, rows: list) -> set:
-    """🔴🔴 지적 ③ — **과거 선발 중 오늘 명단에 아예 없는 선수**들.
+    """🔴🔴 지적 ③ — **과거 선발 중 이제 이 팀에 없는 선수**들(전역·이적·방출).
 
-    오늘 명단 = 선발 + 벤치 + 팀 명단(`facts.squad`). 🔴 그 어디에도 없으면
-    *"이제 이 팀에 없다"* 는 뜻이다(전역·이적·방출).
-    ⚠️ 명단 자료가 **없으면 빈 집합**이다 — 모르는 것을 교체로 읽지 않는다(#4).
+    🔴🔴 **선수단 명부**(`facts.player_stats` — 팀 선수단 페이지 전원)로 센다.
+       ⚠️ 실사고 2026-10-10: `facts.squad` 로 셌는데 그것은 **경기 명단 20명**
+          (선발 11 + 벤치 9)이다. 그래서 **그날 안 뽑힌 선수가 전부 "팀에 없는
+          선수"** 가 됐고, 로테이션뿐인 FC 안양이 `선수단 교체` 판정을 받았으며
+          김천의 수도 부풀었다(실측: 안양 6명 · 김천 12명).
+    ⚠️ 명부가 **없으면 빈 집합**이다 — 모르는 것을 교체로 읽지 않는다(#4).
     """
-    squad = {str(x) for x in ((facts.squad or {}).get(key) or [])}
-    bench = {str(x) for x in (getattr(xi, "bench", None) or [])}
-    now = set(_names(xi))
-    if not squad and not bench:
+    from app.core import discover as _d
+    roster = {_d.name_key(nm) for nm in
+              dict(getattr(facts, "player_stats", None) or {})}
+    if not roster:
         return set()
-    known = now | bench | squad
+    # 🔴 오늘 뛰는 선수는 당연히 **있는** 선수다(명부가 늦게 갱신될 수 있다)
+    roster |= {_d.name_key(x) for x in
+               [*_names(xi), *(getattr(xi, "bench", None) or [])]}
     out: set = set()
     for one in (rows or []):
         for nm in (getattr(one, "players", None) or []):
-            if str(nm) not in known:
+            if _d.name_key(nm) not in roster:
                 out.add(str(nm))
     return out
 
@@ -592,12 +597,17 @@ def shape_of(home: str, away: str, *, home_name: str = "홈",
         return f"{who} 로테이션"
     # 🔴🔴 **선수단 교체는 그 말로** 적는다(지적 ③) — ⚠️ 실측 2026-10-10: 양상
     #    줄에 열거값 `squad_turnover` 가 **그대로 새어 나왔다**.
+    # ⚠️ 실측 2026-10-10: **양쪽 다** 교체일 때 반대쪽 글자가 열거값
+    #    (`squad_turnover`)으로 그대로 새어 나왔다 — 둘 다 옮긴다.
     from app.core import turnover as _turn
+    a_ko, b_ko = _turn.verdict_ko(a), _turn.verdict_ko(b)
     if _turn.VERDICT in (a, b):
+        if a == b == _turn.VERDICT:
+            return f"양 팀 {_turn.VERDICT_KO}"
         who = home_name if a == _turn.VERDICT else away_name
-        other = b if a == _turn.VERDICT else a
+        other = b_ko if a == _turn.VERDICT else a_ko
         return f"{who} {_turn.VERDICT_KO} vs {other}"
-    return f"{a} vs {b}"
+    return f"{a_ko} vs {b_ko}"
 
 
 # ══════════════════════════════════════════════════════════════════

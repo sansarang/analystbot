@@ -249,6 +249,68 @@ def test_v6_전역팀_판정은_로테이션이_아니다():
     assert StrategyOut(lines=got).lines[0].strategy == "squad_turnover"
 
 
+def test_v6_팀에_없다는_선수단_명부로_센다():
+    """🔴🔴 **실사고 2026-10-10** — `facts.squad` 는 **경기 명단 20명**(선발 11 +
+    벤치 9)이다. 그것으로 *"이 팀에 없는 선수"* 를 세니 **그날 안 뽑힌 선수가
+    전부** 이적·전역으로 잡혔고, 로테이션뿐인 FC 안양이 `선수단 교체` 판정을
+    받았다(실측: 안양 6명 · 김천 12명).
+
+    🔴 기준은 **선수단 명부**(`facts.player_stats` — 선수단 페이지 전원)다.
+    ⚠️ 돌연변이: `facts.squad` 로 되돌리면 이 줄이 빨개진다.
+    """
+    from app.core import strategy as _st
+    from app.core.schema import Facts, XI
+    ref = _ref()
+    now = [_p("Man-Ho Park", "GK"), _p("Si-Hoo Hong", "RB")]
+    past = [XI(team=ref.home, state="confirmed",
+               players=["Man-Ho Park", "Rotated Out", "Discharged Guy"])]
+    # 🔴 명부에 `Rotated Out` 이 **있다** → 그는 팀에 있는 선수다(그날만 안 뽑혔다)
+    facts = Facts(xi={ref.home: XI(team=ref.home, state="confirmed",
+                                   players=[p.name for p in now],
+                                   lineup=now)},
+                  past_xi={ref.home: past},
+                  squad={ref.home: [p.name for p in now]},
+                  player_stats={"Park Man-Ho": {"goals": 0, "assists": 0},
+                                "Out Rotated": {"goals": 1, "assists": 0}})
+    got = _st._off_squad(facts, ref.home, facts.xi[ref.home], past)
+    assert got == {"Discharged Guy"}, f"🔴 로테이션을 이적으로 셌다 — {got}"
+    # 🔴 명부가 **없으면 빈 집합**이다(모르면 교체로 읽지 않는다 · #4)
+    thin = facts.model_copy(update={"player_stats": {}})
+    assert _st._off_squad(thin, ref.home, thin.xi[ref.home], past) == set()
+
+
+def test_v6_모델은_코드값을_고를_수_없다():
+    """🔴🔴 **실사고 2026-10-10** — 열거값에 `squad_turnover` 를 더하자 **모델이
+    그것을 골랐다**(FC 안양 — 전역 주기 팀이 아니다).
+
+    🔴 그 값은 깃발이 켜진 팀에만 **코드가** 붙인다. 주석으로 막은 줄 알았던 것을
+       계약과 검사로 막는다.
+    """
+    from app.core.schema import StrategyLine
+    from app.core.stages.s2d_strategy import check
+    lines = [StrategyLine(side="away", strategy="squad_turnover",
+                          fact_refs=["A1", "A2"], why="모델이 골랐다")]
+    bad = check(lines, {}, turnover={"away": {"on": False}})
+    assert any("코드만 쓰는 판정값" in x for x in bad), bad
+    # 🔴 깃발이 켜졌으면 **코드가 붙인 것**이므로 위반이 아니다
+    assert not [x for x in check(lines, {}, turnover={"away": {"on": True}})
+                if "코드만 쓰는" in x]
+
+
+def test_v6_양쪽_다_교체면_양상도_사람_말이다():
+    """🔴 ⚠️ 실측 2026-10-10: 양쪽 다 교체일 때 반대쪽이 열거값으로 새어 나왔다
+    (`… vs squad_turnover`)."""
+    from app.core import strategy as _st
+    from app.core import turnover as _turn
+    said = _st.shape_of("squad_turnover", "squad_turnover",
+                        home_name="김천", away_name="안양")
+    assert _turn.VERDICT not in said, said
+    assert said == f"양 팀 {_turn.VERDICT_KO}"
+    one = _st.shape_of("squad_turnover", "평소 그대로", home_name="김천",
+                       away_name="안양")
+    assert _turn.VERDICT not in one and "김천" in one
+
+
 def test_v6_일반화_문턱이_표에_있다():
     """🔴 ③ 일반화 — *"7자리 이상 바뀌고 빠진 선수가 명단에도 없으면"*."""
     from app.core import turnover as _turn
