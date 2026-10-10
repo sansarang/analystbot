@@ -203,7 +203,7 @@ def run(ref: MatchRef, facts: Facts, hypo: HypoSet, sim: dict, *,
        돈다(시뮬 함수는 한 곳이다 · 사본 금지).
     """
     from app.core import signals as _sg
-    league = _sg.league_of(facts)
+    league = _sg.league_of(facts, ref=ref)
     rows: list[Row] = []
     for one in (hypo.hypotheses or []):
         side = str(getattr(one, "team", "") or "")

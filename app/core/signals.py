@@ -251,14 +251,27 @@ def _say(sig) -> str:
             + f" {sig.direction} {sig.ref}")
 
 
-def league_of(facts) -> dict:
+def league_of(facts, *, ref=None) -> dict:
     """🔴 리그 평균 재료 — **이 경기 총골 기준의 절반**(한 팀 몫).
 
-    🔴 기준은 `facts.standings["match_total_baseline"]` 하나다(새 기준선을
-       만들지 않는다). ⚠️ 없으면 **빈 표**이고 `리그평균` 기준은 `판단 불가` 다.
+    🔴 1순위는 `facts.standings["match_total_baseline"]`(그 경기 리그의 표)다.
+    🔴🔴 **없으면 S3 가 쓰는 그 수를 쓴다** — ⚠️ 실사고 2026-10-10(제노아):
+       순위표가 없어 이 표가 비었고, 가설 넷이 *"🔴 리그 평균을 **모른다** — 이
+       경기 총골 기준이 없다"* 로 `판단 불가` 가 됐다. **그런데 같은 카드가**
+       `[S3] 대회 유형 league:SA 실측 평균 2.5185(표본 810)` 을 적고 블록 4 도
+       `기준 팀당 1.2592골(대회 league:SA)` 을 적었다 — 한 카드가 **같은 수를
+       알면서 모른다고** 했다.
+    🔴 그 수를 여기서 다시 세지 않는다 — `probmodel.league_mean` 을 부른다(사본 금지).
+    ⚠️ 둘 다 없으면 **빈 표**이고 `리그평균` 기준은 `판단 불가` 다(지어내지 않는다).
     """
     got = dict(getattr(facts, "standings", None) or {}).get(
         "match_total_baseline")
-    if got is None:
+    if got is not None:
+        return {"per_team": float(got) / 2.0, "total": float(got),
+                "why": "순위표의 그 리그 총골 기준"}
+    from app.core import probmodel as _pm
+    per, why = _pm.league_mean(facts, ref=ref)
+    if per is None:
         return {}
-    return {"per_team": float(got) / 2.0, "total": float(got)}
+    return {"per_team": float(per), "total": float(per) * 2.0,
+            "why": f"S3 와 같은 수 — {why}"}

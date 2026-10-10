@@ -698,3 +698,27 @@ def test_v7_홈_배율이_리그_평균과_같은_열쇠를_본다():
         "🔴 `home_mul` 을 `ref` 없이 부르는 자리가 남았다 — 그 자리는 대회 이름이 "
         "빈 글자가 되어 홈 이점을 **조용히 버린다**")
     assert "_kind(ref, facts)" in inspect.getsource(_pm.home_mul)
+
+
+def test_v7_리그_평균은_한_곳이다():
+    """🔴🔴 **실사고 2026-10-10**(제노아) — 한 카드가 **같은 수를 알면서 모른다**고 했다.
+
+        [S3] 대회 유형 `league:SA` 실측 평균 2.5185(표본 810)
+        블록 4 — 기준 팀당 1.2592골(대회 league:SA)
+        가설 4줄 — 🔴 리그 평균을 **모른다** — 이 경기 총골 기준이 없다
+
+    🔴 `signals.league_of` 는 **순위표**만 봤고 순위표가 없었다. S3 가 쓰는 수는
+       `probmodel.league_mean` 이다. ⚠️ 돌연변이: 그 되물음을 지우면 가설 넷이
+       다시 `판단 불가` 로 떨어진다.
+    """
+    import inspect
+
+    from app.core import signals as _sg
+    from app.core.stages import s6c_check as _s6c
+
+    said = inspect.getsource(_sg.league_of)
+    assert "league_mean" in said, "🔴 S3 가 쓰는 수를 되묻지 않는다"
+    assert "ref" in inspect.signature(_sg.league_of).parameters
+    # 🔴 부르는 쪽이 `ref` 를 **넘겨야** 대회 열쇠가 산다(안 넘기면 또 빈 글자다)
+    assert "league_of(facts, ref=ref)" in inspect.getsource(_s6c), (
+        "🔴 `s6c` 가 `ref` 를 안 넘긴다 — 대회 유형을 모르면 평균도 못 찾는다")
