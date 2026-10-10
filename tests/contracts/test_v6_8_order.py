@@ -59,15 +59,14 @@ def test_v6_가설_단계가_시뮬_결과를_안_받는다():
     said = ast.unparse(fn)
     for bad in ("probmodel", "our_prob", "\"sim\"", "'sim'"):
         assert bad not in said, f"🔴 가설 단계가 `{bad}` 를 읽는다"
+    # 🔴🔴 **순서가 바뀌었다**(상성 엔진 지시서 §1): S2 상성 → S3 확률 → S4 가설
+    #    → S5 검증 → S6 시나리오. ⚠️ C3 이 금지하는 것은 *"가설이 S3 **출력을
+    #    입력으로** 받는 것"* 이고, 그것은 위 ①② 가 센다(인자·본문).
     src = (CORE / "pipeline.py").read_text(encoding="utf-8")
-    i, j = src.find("s6_hypo.claims("), src.find("_pm.run(")
-    assert 0 <= i < j, f"🔴 가설이 시뮬보다 뒤다(i={i} j={j})"
-    # 🔴 시나리오는 **시뮬 뒤**다(§2-3·§4-4)
-    k = src.find("s6_hypo.scenarios(")
-    assert j < k, f"🔴 시나리오가 시뮬보다 앞이다(j={j} k={k})"
-    # 🔴 검증도 시뮬 뒤다
-    m = src.find("_s6c.run(")
-    assert j < m, f"🔴 검증이 시뮬보다 앞이다"
+    s2, claims = src.find("_mu.report("), src.find("s6_hypo.claims(")
+    chk, scen = src.find("_s6c.run("), src.find("s6_hypo.scenarios(")
+    assert 0 <= s2 < claims, f"🔴 가설이 상성(S2)보다 앞이다({s2} {claims})"
+    assert claims < chk < scen, f"🔴 검증·시나리오 순서가 어긋났다({chk} {scen})"
 
 
 def test_v6_가설_입력에_확률이_없다():
@@ -389,7 +388,9 @@ def test_v6_카드_순서가_지시서대로다():
                          "sim": {"home": 0.5, "draw": 0.3, "away": 0.2}},
                 our_prob=ProbTriple(home=0.5, draw=0.3, away=0.2))
     said = layer1.text(card)
-    spots = [said.find(x) for x in ("📊", "⚔️", "🧪", "🧑‍🏫", "🎯 보드 판정")]
+    # 🔴🔴 **여섯째 지시서 §3 이 순서를 다시 정했다** — ⚔️ 상성이 📊 확률 **앞**이다
+    #    (확률의 출처가 상성이기 때문이다 · P1). 보드 판정은 **맨 끝**이다.
+    spots = [said.find(x) for x in ("⚔️", "📊", "🧪", "🧑‍🏫", "🎯 보드 판정")]
     assert all(x >= 0 for x in spots), spots
     assert spots == sorted(spots), f"🔴 카드 순서가 어긋났다 — {spots}"
     # 🔴 긴 카드에 **표 전체**와 재실행 여부가 있다

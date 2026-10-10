@@ -53,7 +53,7 @@ STAGES = ("claims", "scenarios")
 
 
 def claims(ref: MatchRef, facts: Facts, variables: list[Variable], *,
-           state: RunState) -> HypoSet:
+           state: RunState, mr=None, varset=None) -> HypoSet:
     """🔴🔴 **단계 2 — 가설만 세운다**(순서 재편 지시서 2026-10-10 다섯째).
 
     > 단계 2-2 가설(LLM 1회): 팀마다 *"이긴다면 왜"* 2~3개, *"무너지는 조건"*
@@ -71,7 +71,7 @@ def claims(ref: MatchRef, facts: Facts, variables: list[Variable], *,
         state.note(f"s6 §4-1 — 근거 불가 변수 {len(ctx)}개를 `context_only` 로 "
                    f"보냈다({', '.join(v.id for v in ctx)}) · 그 번호를 인용한 "
                    f"줄은 **버려진다**")
-    said = _ask(ref, facts, basis, ctx, state=state)
+    said = _ask(ref, facts, basis, ctx, state=state, mr=mr, varset=varset)
     drops: list[Drop] = []
     hypos: list[Hypothesis] = []
     if said is not None:
@@ -274,7 +274,7 @@ _H2H_KEYS = ("count", "summary", "window_avg_goals", "sample_weight")
 
 
 def _payload(ref: MatchRef, facts: Facts, basis: list[Variable],
-             ctx: list[Variable]) -> str:
+             ctx: list[Variable], *, mr=None) -> str:
     """🔴 보내는 입력 — **근거와 맥락이 갈려 있다**(§4-1) · **얇게** 보낸다.
 
     ══════════════════════════════════════════════════════════════════
@@ -334,11 +334,32 @@ def _payload(ref: MatchRef, facts: Facts, basis: list[Variable],
                   "h2h": {k: v for k, v in facts.h2h.items()
                           if k in _H2H_KEYS}},
         "required_types": sorted(_required_names(facts))}
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **상성 판정을 입력에 넣는다**(상성 엔진 지시서 4-1·4-2)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 4-1 입력: **MatchupReport** + VariableSet(③ 배치 변수 전부, ② 검증 출처
+    #  > 변수 포함 — 반대 가설 재료).
+    #  > 4-2 상성 우위가 있으면 **주 가설**(우위 팀이 이 경로로 이긴다) 2~3개 ·
+    #  >     **반대 가설**(열세 팀이 이 변수로 뒤집는다) 2~3개.
+    #
+    #  🔴 **확률은 넣지 않는다**(C3) — 축의 값·우위·강도·근거 변수만이다.
+    if mr is not None:
+        box["matchup"] = {
+            "verdict": dict(getattr(mr, "verdict", None) or {}),
+            "axes": {k: {"home": v.home, "away": v.away, "edge": v.edge,
+                         "strength": v.strength, "refs": list(v.refs),
+                         "why": v.why}
+                     for k, v in dict(getattr(mr, "axes", None) or {}).items()},
+            "off_weapons": dict(getattr(mr, "off_weapons", None) or {}),
+            "late_weapons": dict(getattr(mr, "late_weapons", None) or {}),
+            "r": dict(getattr(mr, "r", None) or {})}
     return json.dumps(box, ensure_ascii=False, default=str)
 
 
 def _ask(ref: MatchRef, facts: Facts, basis: list[Variable],
-         ctx: list[Variable], *, state: RunState) -> HypoOut | None:
+         ctx: list[Variable], *, state: RunState, mr=None,
+         varset=None) -> HypoOut | None:
     from app.core import llm
     if not basis:
         # 🔴 **근거 변수가 0개면 부르지 않는다** — 부르면 모델이 지어낸다(§4-1)
@@ -356,7 +377,7 @@ def _ask(ref: MatchRef, facts: Facts, basis: list[Variable],
                                          content=system_prompt()),
                              llm.Message(role="user",
                                          content=_payload(ref, facts, basis,
-                                                          ctx))])
+                                                          ctx, mr=mr))])
     if isinstance(said, LlmFail):
         state.drop("s6/hypo", said.reason, said.detail[:120])
         return None

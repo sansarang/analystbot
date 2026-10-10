@@ -55,8 +55,141 @@ class Row:
                 "verdict": self.verdict, "cause": self.cause, "why": self.why}
 
 
+#: 🔴🔴 S5-1 검증 출처 — 지시서가 적은 일곱(V7 은 가설 신호다)
+SOURCES = {"V1": "Elo 기준 확률", "V2": "동기", "V3": "일정·피로",
+           "V4": "감독 발언·기타", "V5": "맞대결", "V6": "시장(표시만)",
+           "V7": "가설 신호"}
+#: 🔴 S5-3 — 등급 조정 문턱(config 가 든다 · 적합 전 임시값)
+CONF = "config/verify_rules.yaml"
+
+
+def rules_table() -> dict:
+    from app import rules
+    return dict(rules._load(CONF) or {})
+
+
+def sources(ref: MatchRef, facts: Facts, mr, varset, *, layers: dict | None,
+            turnover: dict | None) -> list[dict]:
+    """🔴🔴 S5-1 — **검증 출처 표**. 한 줄 꼴:
+
+    ```
+    {"src": "V2", "name": "동기", "dir": "같음"|"반대"|"중립",
+     "size": "강"|"중"|"약", "trust": "…", "refs": [변수 id…],
+     "cause": "낡음"|"이미 반영"|"상성 사각"|"", "why": "…"}
+    ```
+
+    🔴 **확률을 바꾸지 않는다**(S5 머리줄) — 방향을 견주고 등급만 움직인다.
+    🔴 방향 비교의 기준은 **상성 결론**(`mr.verdict["edge"]`)이다.
+    """
+    from app.core import matchup as _mu
+    box = dict(rules_table().get("size") or {})
+    edge = str(dict(getattr(mr, "verdict", None) or {}).get("edge") or "")
+    out: list[dict] = []
+    # ── V1 Elo 기준 확률 — **기준 낡음**이면 신뢰도를 낮춘다
+    base = (layers or {}).get("base")
+    probs = getattr(base, "probs", None)
+    stale = _stale(ref, facts, turnover)
+    if probs is not None:
+        side = ("home" if float(probs.home) > float(probs.away) else "away")
+        gap = abs(float(probs.home) - float(probs.away))
+        out.append({
+            "src": "V1", "name": SOURCES["V1"],
+            "dir": _dir(side, edge), "size": _size(gap, box),
+            "trust": ("🔴 **기준 낡음**" if stale else "그대로"),
+            "refs": [], "cause": (MISS_STALE if stale else ""),
+            "why": (f"① 기준 홈 {float(probs.home):.0%} · 원정 "
+                    f"{float(probs.away):.0%}" + (f" · {stale}" if stale
+                                                  else ""))})
+    # ── V2~V5 — **변수 배치표가 보낸 것**(②) 그대로
+    for src in ("V2", "V3", "V4", "V5"):
+        for one in (varset.of(src) if varset else []):
+            side = ("home" if str(one.favors) == "home"
+                    else "away" if str(one.favors) == "away" else "")
+            said = _dir(side, edge) if side else "중립"
+            axes = [x for x in one.places if x in _mu_axes()]
+            out.append({
+                "src": src, "name": SOURCES[src], "dir": said,
+                "size": ("강" if one.hardness == "hard" and one.weight >= 2.0
+                         else "중" if one.weight >= 1.0 else "약"),
+                "trust": str(one.hardness), "refs": [one.id],
+                "cause": ("" if said != "반대" else
+                          (CAUSE_IN if axes else CAUSE_BLIND)),
+                "why": f"`{one.id}` {one.claim[:60]}"})
+    # ── V6 시장 — **표시만**(C12: 등급 영향 없음)
+    # 🔴 V6 — `MarketProb.probs` 는 **배당 열쇠 사전**이다(ProbTriple 이 아니다)
+    from app.core import odds as _odds
+    mk = dict(getattr((layers or {}).get("market"), "probs", None) or {})
+    h = mk.get(_odds.key_of("win", "home"))
+    a = mk.get(_odds.key_of("win", "away"))
+    if h is not None and a is not None:
+        side = "home" if float(h) > float(a) else "away"
+        out.append({"src": "V6", "name": SOURCES["V6"], "dir": _dir(side, edge),
+                    "size": "—", "trust": "표시만", "refs": [], "cause": "",
+                    "why": (f"시장 홈 {float(h):.0%} · 원정 {float(a):.0%}"
+                            " — **등급 영향 없음**")})
+    return out
+
+
+def _mu_axes() -> tuple:
+    from app.core import routing
+    return routing.AXES
+
+
+def _dir(side: str, edge: str) -> str:
+    if not side or not edge:
+        return "중립"
+    return "같음" if side == edge else "반대"
+
+
+def _size(gap: float, box: dict) -> str:
+    strong = float(box.get("strong_gap") or 0.15)
+    mid = float(box.get("mid_gap") or 0.05)
+    return "강" if gap >= strong else "중" if gap >= mid else "약"
+
+
+#: 🔴 S5-2 원인 글자
+MISS_STALE, CAUSE_IN, CAUSE_BLIND = "낡음", "이미 반영", "상성 사각"
+
+
+def grade_move(rows: list[dict], claims: dict) -> dict:
+    """🔴🔴 S5-3 — **등급 조정**(확률은 그대로). 돌려주는 표:
+
+    `{"steps": 내릴 단계 수, "none": 등급 없음인가, "why": […]}`
+
+    > · (c) 중 **hard·크기 "강"** 반대 1개 이상 → 한 단계 내림
+    > · (c) 반대 **2개 이상** → 등급 없음
+    > · V7 주 가설 지지 **0개** → 한 단계 내림
+    > · (a)(b)·V6 은 등급 영향 **없음**
+    """
+    blind = [r for r in rows if r.get("dir") == "반대"
+             and r.get("cause") == CAUSE_BLIND]
+    said: list[str] = []
+    steps, none = 0, False
+    hard_strong = [r for r in blind
+                   if str(r.get("trust")) == "hard" and r.get("size") == "강"]
+    if hard_strong:
+        steps += 1
+        said.append(f"🔴 (c) 상성 사각 hard·강 {len(hard_strong)}건 → 한 단계 "
+                    f"내림 · {[r['refs'] for r in hard_strong][:3]}")
+    if len(blind) >= 2:
+        none = True
+        said.append(f"🔴 (c) 상성 사각 반대 {len(blind)}건 → **등급 없음**")
+    if dict(claims or {}).get("counts", {}).get("지지", 0) == 0 \
+            and dict(claims or {}).get("rows"):
+        steps += 1
+        said.append("🔴 V7 주 가설 **지지 0개** → 한 단계 내림")
+    skipped = [r["src"] for r in rows if r.get("dir") == "반대"
+               and r.get("cause") in (MISS_STALE, CAUSE_IN)]
+    if skipped:
+        said.append(f"⬜ (a)(b) 반대 {sorted(set(skipped))} — 등급 영향 없다")
+    if any(r.get("src") == "V6" for r in rows):
+        said.append("⬜ V6 시장 — **등급 영향 없다**(C12)")
+    return {"steps": steps, "none": none, "why": said}
+
+
 def run(ref: MatchRef, facts: Facts, hypo: HypoSet, sim: dict, *,
         variables: list | None = None, turnover: dict | None = None,
+        mr=None, varset=None, layers: dict | None = None,
         state: RunState) -> dict:
     """🔴🔴 §4 — 검증표를 만든다. 돌려주는 표:
 
@@ -92,11 +225,24 @@ def run(ref: MatchRef, facts: Facts, hypo: HypoSet, sim: dict, *,
     state.note(f"s6c 단계 4 — {said}"
                + (f" · 🔴 재실행 사유: {rerun}" if rerun else ""))
     logger.info("[s6c] %s · 재실행 %s", said, rerun or "없다")
-    return {"rows": [r.as_dict() for r in rows],
-            "supported": [r.as_dict() for r in rows if r.verdict == _sg.OK],
-            "counts": counts, "stale": stale, "rerun": rerun,
-            # 🔴 **못 센 칸**은 따로 든다(카드가 적는다 · 모델 글에는 안 섞인다)
-            "gaps": [GAP_COACH], "why": said}
+    got = {"rows": [r.as_dict() for r in rows],
+           "supported": [r.as_dict() for r in rows if r.verdict == _sg.OK],
+           "counts": counts, "stale": stale, "rerun": rerun,
+           # 🔴 **못 센 칸**은 따로 든다(카드가 적는다 · 모델 글에는 안 섞인다)
+           "gaps": [GAP_COACH], "why": said}
+    # 🔴🔴 S5-1·S5-3 — **검증 출처 표**와 **등급 조정**(확률은 그대로)
+    if mr is not None:
+        got["sources"] = sources(ref, facts, mr, varset, layers=layers,
+                                 turnover=turnover)
+        got["grade"] = grade_move(got["sources"], got)
+        same = len([r for r in got["sources"] if r["dir"] == "같음"])
+        against = len([r for r in got["sources"] if r["dir"] == "반대"])
+        got["why"] = (f"{said} · 검증 같은 방향 {same} · 반대 {against}"
+                      + (f" · 등급 {got['grade']['why']}"
+                         if got["grade"]["why"] else ""))
+        state.note(f"S5 검증 — 같은 방향 {same} · 반대 {against} · "
+                   + (" / ".join(got["grade"]["why"]) or "등급 조정 없다"))
+    return got
 
 
 def _one(line, *, side: str, kind: str, sim: dict, league: dict) -> Row:

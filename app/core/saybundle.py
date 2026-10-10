@@ -86,6 +86,7 @@ def build(card) -> Bundle:
     _absence(card, got)         # 1-6
     _probs(card, got)           # 1-7
     _checked(card, got)         # 🔴 단계 5 — 지지/반박된 가설
+    _s7(card, got)              # 🔴 S7 — 상성 판정·검증 요약·상성 사각
     _names_item(card, got)      # 🔴 팀 이름 표기(음역 금지)
     return got
 
@@ -538,6 +539,46 @@ def _absence(card, got: Bundle) -> None:
 # ══════════════════════════════════════════════════════════════════
 # 🔴🔴 §1-7 — **확률**
 # ══════════════════════════════════════════════════════════════════
+
+def _s7(card, got: Bundle) -> None:
+    """🔴🔴 S7 — 최종 평의 **첫 줄 재료**와 **상성 사각 문장**.
+
+    > 첫 줄: 상성 판정(우위 팀·강도) + 검증 요약(같은 방향 n · 반대 n — 원인).
+    > **상성 사각(c)이 있으면 반드시 한 문장.**
+    """
+    box = dict(getattr(card, "matchup", None) or {})
+    mr = box.get("report")
+    if mr is not None:
+        verdict = dict(getattr(mr, "verdict", None) or {})
+        who = {"home": card.match.home_name,
+               "away": card.match.away_name}.get(str(verdict.get("edge") or ""),
+                                                 "가리지 못함")
+        _put(got, Item(id="M0", kind="matchup_verdict",
+                       text=(f"상성 판정 — **{who}** {verdict.get('strength')}"
+                             f" · {verdict.get('why')}")))
+    chk = dict(getattr(card, "check", None) or {})
+    rows = list(chk.get("sources") or [])
+    if rows:
+        same = [r for r in rows if dict(r).get("dir") == "같음"]
+        against = [r for r in rows if dict(r).get("dir") == "반대"]
+        _put(got, Item(id="M00", kind="verify_sum",
+                       text=(f"검증 요약 — 같은 방향 {len(same)} · 반대 "
+                             f"{len(against)}"
+                             + (" · 반대 원인 "
+                                + ", ".join(f"{dict(r)['src']}:{dict(r)['cause']}"
+                                            for r in against[:3])
+                                if against else ""))))
+        # 🔴 **상성 사각(c)** — 있으면 평이 **반드시 한 문장** 적는다
+        from app.core.stages import s6c_check as _chk
+        blind = [r for r in against
+                 if dict(r).get("cause") == _chk.CAUSE_BLIND]
+        for i, one in enumerate(blind[:3], 1):
+            said = dict(one)
+            _put(got, Item(id=f"B{i}", kind="blind",
+                           text=(f"**상성 사각** — {said.get('src')} "
+                                 f"{said.get('name')}이 상성과 **반대**다 · "
+                                 f"{said.get('why')}")))
+
 
 def _names_item(card, got: Bundle) -> None:
     """🔴🔴 **팀 이름의 한국어 표기**를 사실로 넣는다.

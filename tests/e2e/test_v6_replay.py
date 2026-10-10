@@ -817,12 +817,25 @@ def test_1겹_카드가_새_순서와_상한을_지킨다(card):
     # 🔴🔴 **§4 블록 둘이 확률 줄 뒤에 끼어들 수 있다**(2026-10-10(둘째)):
     #    `🧠 라인업 전략` · `📊 확률 변화`. **확정 XI 일 때만** 나온다.
     #    🔴 등뼈는 그대로다 — 확률 → 스코어 → 보드 → 뒤집히는 길.
+    # 🔴🔴 **새 등뼈**(상성 엔진 지시서 §3 카드 · 2026-10-10 여섯째):
+    #    ⚔️ 상성 → 📊 확률(상성) → 🔎 검증 → 🧪 가설 → 🧑‍🏫 평 → 🎯 예상·보드.
+    #    ⚠️ 블록은 **있을 때만** 나온다(검증·가설·평이 없으면 건너뛴다) — 그래서
+    #       **나온 것들의 순서**를 센다(없는 것을 요구하지 않는다 · #3).
     spine = [x for x in rest[2:]
              if not x.startswith("🧠") and not x.startswith("📊 **확률 변화")
              and not x.startswith(" ")]
-    want = ("📊", "🎯", "🎯", "⚠")
-    got = tuple(x[:1] for x in spine[:len(want)])
-    assert got == want, got
+    # ⚠️ `🎯` 로 시작하는 줄이 **둘**이다(예상 스코어 · 보드 판정) — 글자로 가른다.
+    def rank(line: str) -> int | None:
+        for i, head in enumerate(("⚔", "📊", "🎯 예상", "🔎", "🧪", "🧑",
+                                  "🔄", "🆕", "🎯 보드")):
+            if line.startswith(head):
+                return i
+        return None
+
+    spots = [r for r in (rank(x) for x in spine) if r is not None]
+    assert spots == sorted(spots), (spine[:8], spots)
+    # 🔴 확률 줄은 **반드시** 있다(그것이 카드의 수다)
+    assert any(x.startswith("📊") for x in spine), spine[:6]
     # 🔴 전략 블록이 있으면 **확률 줄 바로 뒤**다(떨어져 있으면 못 잇는다)
     heads = [i for i, x in enumerate(rest) if x.startswith("🧠")]
     if heads:

@@ -213,6 +213,20 @@ def check(got: SayOut, *, card: Card, box: Bundle) -> list[str]:
         if bad_ref:
             out.append(f"🔴 **반박된 가설을 근거로 썼다**({bad_ref[:3]}) — "
                        f"그것은 뒤집히는 조건 자리다: `{kp.claim[:30]}`")
+    # 🔴🔴 S7 — **상성 사각이 있으면 반드시 한 문장**
+    blind = [k for k in box.items if str(k).startswith("B")]
+    if blind:
+        said_all2 = " ".join([str(got.one_line or "")]
+                             + [f"{kp.claim} {kp.mechanism}" for kp in rows])
+        if not any(str(k) in said_all2 or "상성 사각" in said_all2
+                   for k in blind):
+            out.append(f"🔴 **상성 사각이 있는데 평이 그 말을 안 했다**({blind}) "
+                       "— S7 은 그것을 **반드시 한 문장**으로 요구한다")
+    # 🔴 S7 — 첫 줄에 **상성 판정**이 든다
+    if box.items.get("M0") is not None:
+        head = str(got.one_line or "")
+        if "상성" not in head:
+            out.append("🔴 **첫 줄에 상성 판정이 없다**(S7) — 우위 팀·강도를 적는다")
     # 🔴 §5 — 기준 낡음은 **첫 줄에** 적는다
     if box.items.get("H0") is not None and "기준 낡음" not in str(
             got.one_line or ""):
@@ -428,6 +442,13 @@ def _prompt(card: Card, box: Bundle) -> list:
         "`flip_condition`(뒤집히는 조건)에만 쓸 수 있다. 판단 불가 가설은 "
         "**묶음에 없다**(그러니 쓸 수 없다).\n"
         "🔴 `H0`(기준 낡음 의심)이 있으면 **`one_line` 첫머리에** 그 사실을 적는다.\n"
+        # ══════════════════════════════════════════════════════════════
+        # 🔴🔴 **S7**(상성 엔진 지시서 2026-10-10 여섯째)
+        # ══════════════════════════════════════════════════════════════
+        "🔴🔴 **첫 줄(`one_line`)에 상성 판정(`M0`)과 검증 요약(`M00`)을** 함께 "
+        "적는다 — *우위 팀·강도*와 *같은 방향 n · 반대 n*.\n"
+        "🔴🔴 **`B*`(상성 사각)이 있으면 주장 중 한 줄을 그 얘기로** 쓴다 — "
+        "그 정보는 확률에 **안 들어갔다**(상성 밖이다).\n"
         "⚠️ 아래 **`없음` 칸은 말하지 않는다**:\n" + empty)
     return [
         llm.Message(role="system", content=(

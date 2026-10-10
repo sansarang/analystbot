@@ -258,3 +258,146 @@ def test_v7_상대_기준은_팀_지정_지표에만():
     # 🔴 팀 지정 지표에는 그대로 쓴다
     ok = Signal(metric="기대득점", direction=">", ref="상대", side="home")
     assert _sg.bad_signal(ok) == ""
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 S5 검증·S7 평·S8 보드 — 상성 엔진 지시서 §5-1·5-3 · S7 · C12
+# ══════════════════════════════════════════════════════════════════
+
+def _mr(edge: str = "home", strength: str = "중"):
+    from app.core import matchup as _mu
+    return _mu.MatchupReport(axes={"axis0": _mu.Axis(name="axis0", home=1.0,
+                                                     away=0.0, gap=0.5,
+                                                     edge=edge,
+                                                     strength=strength)},
+                             verdict={"edge": edge, "strength": strength,
+                                      "score": 0.15, "why": "시험"})
+
+
+def test_v7_검증_출처가_일곱_자리에서_온다():
+    """🔴 S5-1 — V1 Elo · V2 동기 · V3 일정 · V4 감독·기타 · V5 맞대결 ·
+    V6 시장(표시만) · V7 가설 신호."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.core import odds as _odds
+    from app.core import routing
+    from app.core.schema import (BaseProb, Facts, HypoSet, MarketProb,
+                                 MatchRef, ProbTriple)
+    from app.core.stages import s6c_check as _chk
+    from app.core.state import RunState
+    ref = MatchRef(id="x:1", sport="soccer", competition="K-League 1",
+                   competition_short="K리그1", home="team:000318",
+                   away="team:000320", home_name="H", away_name="A",
+                   kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2))
+    rows = [_var("R9", "stakes"), _var("IR11", "fatigue"),
+            _var("S02", "h2h_pattern"), _var("R3", "coach_quote")]
+    vs = routing.place(rows)
+    layers = {"base": BaseProb(probs=ProbTriple(home=0.6, draw=0.2, away=0.2)),
+              "market": MarketProb(probs={_odds.key_of("win", "home"): 0.3,
+                                          _odds.key_of("win", "draw"): 0.3,
+                                          _odds.key_of("win", "away"): 0.4})}
+    got = _chk.run(ref, Facts(), HypoSet(), {}, variables=rows, mr=_mr(),
+                   varset=vs, layers=layers, state=RunState(match_key="x"))
+    srcs = {dict(r)["src"] for r in got["sources"]}
+    assert {"V1", "V2", "V3", "V4", "V5", "V6"} <= srcs, srcs
+    # 🔴 C12 — 시장은 **표시만**이고 등급에 영향이 없다
+    mk = [dict(r) for r in got["sources"] if dict(r)["src"] == "V6"][0]
+    assert mk["cause"] == "" and "등급 영향 없음" in mk["why"]
+    assert any("V6" in x and "등급 영향 없다" in x
+               for x in got["grade"]["why"]), got["grade"]
+
+
+def test_v7_S5_3_등급은_상성_사각만_내린다():
+    """🔴🔴 S5-3 — (c) 상성 사각만 등급을 내린다. (a)(b)·V6 은 **영향 없음**."""
+    from app.core.stages import s6c_check as _chk
+    blind_hard = {"src": "V2", "name": "동기", "dir": "반대", "size": "강",
+                  "trust": "hard", "refs": ["R9"], "cause": _chk.CAUSE_BLIND,
+                  "why": "강등권"}
+    got = _chk.grade_move([blind_hard], {})
+    assert got["steps"] == 1 and not got["none"], got
+    # 🔴 (c) 둘이면 **등급 없음**
+    two = _chk.grade_move([blind_hard, {**blind_hard, "src": "V5",
+                                        "refs": ["S02"]}], {})
+    assert two["none"], two
+    # 🔴 (a) 낡음 · (b) 이미 반영은 **안 내린다**
+    for cause in (_chk.MISS_STALE, _chk.CAUSE_IN):
+        said = _chk.grade_move([{**blind_hard, "cause": cause}], {})
+        assert said["steps"] == 0 and not said["none"], (cause, said)
+    # 🔴 V7 주 가설 지지 0개면 한 단계
+    none_sup = _chk.grade_move([], {"rows": [{"x": 1}],
+                                    "counts": {"지지": 0}})
+    assert none_sup["steps"] == 1, none_sup
+    # 🔴 배선 — 내리는 길은 `_lower` 하나다
+    src = (ROOT / "app" / "core" / "pipeline.py").read_text(encoding="utf-8")
+    assert 'dict(layers.get("check") or {}).get("grade")' in src
+
+
+def test_v7_S7_첫줄과_상성사각_문장을_요구한다():
+    """🔴 S7 — 첫 줄에 상성 판정 + 검증 요약 · **상성 사각이 있으면 한 문장**."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.core import saybundle
+    from app.core.schema import (Card, Facts, KeyPoint, MatchRef, ProbTriple,
+                                 SayOut)
+    from app.core.stages import s6c_check as _chk
+    from app.core.stages import s9_say
+    ref = MatchRef(id="x:1", sport="soccer", competition="K-League 1",
+                   competition_short="K리그1", home="team:000318",
+                   away="team:000320", home_name="H", away_name="A",
+                   kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2))
+    chk = {"rows": [], "counts": {"지지": 0, "반박": 0, "판단 불가": 0},
+           "stale": "", "rerun": "", "why": "x",
+           "sources": [{"src": "V2", "name": "동기", "dir": "반대",
+                        "size": "강", "trust": "hard", "refs": ["R9"],
+                        "cause": _chk.CAUSE_BLIND, "why": "강등권 탈출"}],
+           "grade": {"steps": 1, "none": False, "why": ["내림"]}}
+    card = Card(match=ref, facts=Facts(), check=chk,
+                matchup={"report": _mr()},
+                our_prob=ProbTriple(home=0.5, draw=0.3, away=0.2))
+    box = saybundle.build(card)
+    assert box.items.get("M0") is not None, "🔴 상성 판정이 묶음에 없다"
+    assert box.items.get("M00") is not None, "🔴 검증 요약이 묶음에 없다"
+    assert box.items.get("B1") is not None, "🔴 상성 사각이 묶음에 없다"
+    base = {"verdict": "H", "flow_first": "a", "flow_second": "b",
+            "decisive_moment": "c", "flip_condition": "d",
+            "key_points": [KeyPoint(claim="주장", mechanism="메커니즘",
+                                    refs=["M0", "P1"])] * 3}
+    bad = SayOut(**base, one_line="H 가 가져간다")
+    said = s9_say.check(bad, card=card, box=box)
+    assert any("상성 사각" in x for x in said), said
+    assert any("첫 줄에 상성 판정" in x for x in said), said
+    ok = SayOut(**{**base,
+                   "key_points": [KeyPoint(claim="상성 사각 — 동기가 반대다",
+                                           mechanism="B1", refs=["B1", "M0"])]
+                                  * 3},
+                one_line="상성은 H 중 · 검증 같은 방향 0 · 반대 1")
+    said2 = s9_say.check(ok, card=card, box=box)
+    assert not any("상성 사각" in x or "첫 줄에 상성" in x for x in said2), said2
+
+
+def test_v7_카드가_검증_블록을_낸다():
+    """🔴 §3 카드 — `🔎 검증 — 같은 방향 n · 반대 n — 반대: {출처 — 원인}`."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.core import layer1
+    from app.core.schema import Card, Facts, MatchRef, ProbTriple
+    from app.core.stages import s6c_check as _chk
+    ref = MatchRef(id="x:1", sport="soccer", competition="K-League 1",
+                   competition_short="K리그1", home="team:000318",
+                   away="team:000320", home_name="H", away_name="A",
+                   kickoff_utc=datetime.now(timezone.utc) + timedelta(hours=2))
+    chk = {"sources": [{"src": "V1", "name": "Elo 기준 확률", "dir": "같음",
+                        "size": "강", "trust": "그대로", "refs": [],
+                        "cause": "", "why": "① 기준 홈 60%"},
+                       {"src": "V2", "name": "동기", "dir": "반대",
+                        "size": "강", "trust": "hard", "refs": ["R9"],
+                        "cause": _chk.CAUSE_BLIND, "why": "강등권"}],
+           "grade": {"steps": 1, "none": False,
+                     "why": ["🔴 (c) 상성 사각 hard·강 1건 → 한 단계 내림"]},
+           "rows": [], "counts": {}}
+    card = Card(match=ref, facts=Facts(), check=chk,
+                our_prob=ProbTriple(home=0.5, draw=0.3, away=0.2))
+    said = layer1.verify_block(card)
+    assert "같은 방향 1 · 반대 1" in said, said
+    assert "V2" in said and _chk.CAUSE_BLIND in said
+    assert "등급 영향" in said

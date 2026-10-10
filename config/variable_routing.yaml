@@ -125,6 +125,14 @@ types:
     places: [V1, V4, hypo]
     why: "감독 교체 직후 → V1 기준 낡음 · V4"
 
+  # │ coach_quote(새 사실) │ — │ V4 │ 근거 │
+  #  ⚠️ 우리 카탈로그에는 `coach_quote` 가 **없다**(감독 발언은 `coach_intent`·
+  #     `coach_conflict` 로 들어온다). 🔴 그래도 **표에 둔다** — 지시서가 그 이름을
+  #     적었고, 새 사실 B 가 그 이름으로 오면 배치 실패가 되지 않게.
+  coach_quote:
+    places: [V4, hypo]
+    why: "V4 — 감독 발언(상성 밖)"
+
   # │ h2h_pattern(S02) │ — │ V5 맞대결 │ 근거 │
   h2h_pattern:
     places: [V5, hypo]

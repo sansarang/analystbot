@@ -15,7 +15,17 @@ from __future__ import annotations
 from app.core.schema import Card
 
 #: 🔴 §5 — 1겹 전체·이유 문단 글자 상한
-CAP_ALL = 900
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **900 → 1400** — 상성 엔진 지시서 §3 이 블록을 늘렸다(2026-10-10 여섯째)
+# ══════════════════════════════════════════════════════════════════
+#
+#  §3 의 1겹 목록은 **열한 덩이**다: ⚽ · 📋 · 헤드라인 · ⚔️ 상성(축 넷 + 기여 +
+#  주요 변수) · 📊 확률 · 🔎 검증 · 🧪 가설 · 🧑‍🏫 평 · 🔄 조건 · 🆕 · 🎯 보드.
+#  🔴 실측 2026-10-10: 그 카드가 **967자**다(이유 문단을 바닥값 80자로 줄인 뒤에도).
+#     900 을 지키려면 지시서가 요구한 블록을 **빼야** 하므로 상한을 올린다.
+#  ⚠️ 텔레그램 한 메시지 상한은 4,096자다 — 1,400 은 그 안이다.
+#  🔴 줄이는 순서는 그대로다: **이유 문단 → (그래도 넘치면) 상성 축 줄**.
+CAP_ALL = 1400
 CAP_REASON = 400
 
 #: 🔴 §1 — 버튼 넷(순서 그대로). ⚠️ 글자를 바꾸면 사용자가 누르던 것이 달라진다
@@ -644,6 +654,17 @@ def text(card: Card, *, buttons: bool = True) -> str:
     out.append("")
     out.append(f"【헤드라인】 {headline(card)}")
     out.append(f"【이유】 {reason_text(card)}")
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **§3 카드 순서**(상성 엔진 지시서 2026-10-10 여섯째)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚔️ 상성 → 📊 확률(상성) → 🔎 검증 → 🧪 가설 → 🧑‍🏫 평 → 🔄 조건 → 🆕 → 🎯 보드
+    #
+    #  🔴 **상성이 확률보다 앞**이다 — 확률의 **출처**가 상성이기 때문이다(P1).
+    #     ⚠️ 종전에는 확률이 먼저였다(세 열이 출발점이던 시절의 자리).
+    said_edge = edge_block(card)
+    if said_edge:
+        out.append(said_edge)
     out.append(_probs(card))
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 §4 — **확정 XI 일 때만** 전략·확률 변화 블록
@@ -653,13 +674,18 @@ def text(card: Card, *, buttons: bool = True) -> str:
     #     떨어져 있으면 읽는 사람이 둘을 잇지 못한다.
     #  ⚠️ **빈 글자는 넣지 않는다** — 넣으면 빈 줄이 생기고 §1 순서 계약이
     #     그것을 센다(실측 2026-10-10: `('📊','🎯','📊',' ')` 로 빨개졌다).
-    # 🔴🔴 §5(셋째 지시) — **⚔️ 상성 블록은 결론 바로 아래**다
-    for said_block in (edge_block(card), plan_block(card), move_block(card)):
+    # 🔴 전략·확률 변화 블록은 **확률 줄 뒤**다(확정 XI 일 때만)
+    for said_block in (plan_block(card), move_block(card)):
         if said_block:
             out.append(said_block)
     out.append(f"🎯 예상 {_scores(card)}")
-    # 🔴🔴 **🧪 가설 검증**(순서 재편 지시서 2026-10-10 다섯째) — 카드 순서:
-    #    헤드라인 → 📊 확률(시뮬) → ⚔️ 상성 → **🧪 가설 검증** → 🧑‍🏫 최종 평 → 보드
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **🔎 검증**(상성 엔진 지시서 §3 카드) — 상성 밖 정보는 여기 선다
+    # ══════════════════════════════════════════════════════════════════
+    said_ver = verify_block(card)
+    if said_ver:
+        out.append(said_ver)
+    # 🔴🔴 **🧪 가설 검증** — 카드 순서: ⚔️ 상성 → 📊 확률 → 🔎 검증 → 🧪 가설
     said_chk = check_block(card)
     if said_chk:
         out.append(said_chk)
@@ -667,8 +693,12 @@ def text(card: Card, *, buttons: bool = True) -> str:
     said_say = say_block(card)
     if said_say:
         out.append(said_say)
-    out.append(f"🎯 보드 판정: {_board(card)}")
-    out.append(f"⚠️ 뒤집히는 길: {_flip(card)}")
+    # 🔴🔴 §2 — *"⚠️ 뒤집히는 길" 과 "🔄 뒤집히는 조건" 중복 → **하나로**"*.
+    #    그 하나는 최종 평의 `🔄 뒤집히는 조건` 이다(지지·반박된 가설이 든다).
+    #    ⚠️ 최종 평이 없으면(평을 못 돌린 경기) **그때만** 옛 줄을 쓴다 —
+    #       그러지 않으면 뒤집히는 길이 **아예 사라진다**(#3).
+    if not say_block(card):
+        out.append(f"⚠️ 뒤집히는 길: {_flip(card)}")
     # 🔴🔴 §3-4 — **🆕 새 사실(72시간)** 은 1겹에도 올라온다
     #
     #  > 새 뉴스(72시간)는 **판단에 반드시 들어간다**(지시서 원칙 ③).
@@ -677,6 +707,8 @@ def text(card: Card, *, buttons: bool = True) -> str:
     #  ⚠️ 0건일 때도 적는다(그 사실이 §3-4 가 요구한 보고다). 🔴 다만 1겹은
     #     900자 상한이라 **항목 둘까지**만 보이고 나머지는 긴 카드가 든다.
     out.append(_new_facts(card))
+    # 🔴 §3 — **보드 판정이 맨 끝**이다(새 사실 뒤)
+    out.append(f"🎯 보드 판정: {_board(card)}")
     if buttons:
         out.append(" ".join(f"[{lab}]" for lab, _ in BUTTONS))
     said = "\n".join(x for x in out if x is not None)
@@ -725,6 +757,17 @@ def _again(card: Card) -> str:
     return f"{at:%H:%M} 이후 `/재분석`"
 
 
+def _probs_tag(card: Card) -> str:
+    """🔴 C10 — 확률 줄 꼬리: **출처(상성)**와 임시 표시."""
+    box = dict(getattr(card, "matchup", None) or {})
+    got = box.get("prob")
+    if got is None:
+        return ""
+    from app.core import matchup as _mu
+    return ("(상성)" + (f" {_mu.PROVISIONAL}" if getattr(got, "provisional",
+                                                         False) else ""))
+
+
 def _probs(card: Card) -> str:
     """🔴 §1 `📊` 줄 — **우리 열**이다. 시장 열이 있으면 **괄호로** 함께."""
     m = card.match
@@ -738,9 +781,16 @@ def _probs(card: Card) -> str:
         got = box.get(odds.key_of("win", key))
         return f" ({got:.0%})" if got is not None else ""
 
-    return (f"📊 {m.home_name} {_pct(ours.home)}{_m('home')} · "
+    # 🔴🔴 §3 카드 — 확률 줄에 **출처(상성)** 와 `🔴 임시` 를 적는다(C10)
+    said = _probs_tag(card)
+    over = dict(dict(getattr(card, "matchup", None) or {})
+                .get("sim") or {}).get("over") or {}
+    tail = ("  오버 " + "/".join(f"{float(over[str(x)]):.0%}"
+                                 for x in OVER_LINES if str(x) in over)
+            if over else "")
+    return (f"📊 {said} {m.home_name} {_pct(ours.home)}{_m('home')} · "
             f"무 {_pct(ours.draw)}{_m('draw')} · "
-            f"{m.away_name} {_pct(ours.away)}{_m('away')}")
+            f"{m.away_name} {_pct(ours.away)}{_m('away')}{tail}")
 
 
 def _scores(card: Card) -> str:
@@ -999,6 +1049,59 @@ EDGE_HEAD = "⚔️ **상성**"
 
 
 def edge_block(card: Card) -> str:
+    """🔴🔴 §3 카드 — **상성 블록**(상성 엔진 지시서 2026-10-10 여섯째).
+
+    > ⚔️ 상성 — {우위 팀} {강도}
+    >   축0 전력 · 축1 폼 · 축2 전술(꺼진 무기·후반 무기) · 축3 골 내용(분모)
+    >   기여: 축0 x · 축1 y · 축2 z · 축3 w %p — 주요 변수: {축별 상위 변수}
+
+    🔴 `MatchupReport` 가 있으면 **그것으로** 적는다(S2 산출이 원본이다).
+       ⚠️ 없으면 옛 세 축 글(아래 `_edge_old`)로 떨어지고 그 사실이 보인다.
+    """
+    box = dict(getattr(card, "matchup", None) or {})
+    mr = box.get("report")
+    if mr is None:
+        return _edge_old(card)
+    m = card.match
+    verdict = dict(getattr(mr, "verdict", None) or {})
+    who = {"home": m.home_name, "away": m.away_name}.get(
+        str(verdict.get("edge") or ""), "")
+    out = [f"{EDGE_HEAD} — "
+           + (f"**{who}** {verdict.get('strength')}" if who
+              else f"⬜ **가리지 못했다**({verdict.get('strength')})")]
+    names = {"axis0": "축0 전력", "axis1": "축1 폼", "axis2": "축2 전술",
+             "axis3": "축3 골 내용"}
+    # 🔴 1겹은 **900자 상한**(§5)이다 — 축 줄을 짧게 적고 전문은 긴 카드가 든다
+    for key, label in names.items():
+        one = mr.axis(key)
+        if one.gap is None:
+            out.append(f" {label}: ⬜ {_cap(one.why, 34)}")
+            continue
+        out.append(f" {label}: {one.gap:+.2f}({one.strength}) · "
+                   f"{_cap(one.why, 44)}")
+    share = dict(box.get("share") or {})
+    refs = dict(box.get("share_refs") or {})
+    if share:
+        out.append(" 기여(리그 평균 대비): "
+                   + " · ".join(f"{k} {float(v):+.1f}%p"
+                                for k, v in share.items()))
+        said = [f"{k[-1]}:{','.join(list(v)[:2])}" for k, v in refs.items()
+                if v]
+        if said:
+            out.append(" 주요 변수 " + _cap(" · ".join(said), 80))
+    offs = dict(getattr(mr, "off_weapons", None) or {})
+    late = dict(getattr(mr, "late_weapons", None) or {})
+    if any(offs.values()) or any(late.values()):
+        out.append(" 꺼진 무기 "
+                   + _cap(" · ".join(f"{k} {len(list(v or []))}"
+                                     for k, v in offs.items()), 40)
+                   + " · 후반 무기 "
+                   + _cap(" · ".join(f"{k} {len(list(v or []))}"
+                                     for k, v in late.items()), 40))
+    return "\n".join(out)
+
+
+def _edge_old(card: Card) -> str:
     """🔴🔴 §5 — 상성 블록. **세 축을 못 모았으면 빈 글자**(사유는 긴 카드가 적는다).
 
     🔴 수는 `s2e_matchup` 이 센 것을 그대로 적는다 — 여기서 다시 세지 않는다.
@@ -1322,4 +1425,37 @@ def check_block(card: Card) -> str:
                    f" — {_cap(str(said.get('signal') or ''), 40)}"
                    f" · 시뮬 {said.get('value')}"
                    + (f" · {said.get('cause')}" if said.get("cause") else ""))
+    return "\n".join(out)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **🔎 검증 블록** — 상성 엔진 지시서(2026-10-10 여섯째) §3 카드
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 🔎 검증 — 같은 방향 n · 반대 n — 반대: {출처 — 원인} · 등급 영향
+#
+#  🔴 **확률을 안 바꾼다**(S5) — 등급만 움직이고 그 사실을 적는다.
+
+VERIFY_HEAD = "🔎 **검증**"
+
+
+def verify_block(card: Card) -> str:
+    """🔴 §3 — 검증 요약 한 줄 + 반대 출처(둘까지) + 등급 영향."""
+    box = dict(getattr(card, "check", None) or {})
+    rows = list(box.get("sources") or [])
+    if not rows:
+        return ""
+    same = [r for r in rows if dict(r).get("dir") == "같음"]
+    against = [r for r in rows if dict(r).get("dir") == "반대"]
+    out = [f"{VERIFY_HEAD} — 같은 방향 {len(same)} · 반대 {len(against)}"]
+    for one in against[:2]:
+        said = dict(one)
+        out.append(f" ✖ {said.get('src')} {said.get('name')} — "
+                   f"{said.get('cause') or '원인 미분류'} · 크기 "
+                   f"{said.get('size')} · {_cap(str(said.get('why') or ''), 60)}")
+    grade = dict(box.get("grade") or {})
+    if grade.get("why"):
+        out.append(" 등급 영향: " + _cap(" / ".join(grade["why"]), 120))
+    else:
+        out.append(" 등급 영향: ⬜ 없다")
     return "\n".join(out)

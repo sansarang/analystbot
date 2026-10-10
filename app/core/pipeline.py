@@ -138,7 +138,6 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #
     #  🔴 **여기까지 확률이 없다**(가설 입력은 변수·사실뿐) — 그것이 §계약
     #     *"단계 2 는 단계 3 결과를 입력으로 받지 않는다"* 다.
-    hypo = s6_hypo.claims(ref, facts, variables, state=st)
     if ocr_text and got_board is not None:
         from app.core import odds as _odds
         user_mk = _odds.from_board(got_board, source="user_board(ocr)")
@@ -172,13 +171,15 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #    ⚠️ 축2(T1~T8)는 스타일 프로필 자료가 없어 아직 안 돈다(사유가 들어온다)
     from app.core.stages import s2e_matchup as _s2e
     edge = await _s2e.run(ref, facts, state=st, net=net)
-    before_layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
-                            user_mk, state=st, outlook=look)
+    # 🔴 **가설은 S2 뒤에 선다**(C3) — 그래서 여기서는 **빈 묶음**으로 열을 만든다.
+    #    ⚠️ `_layers` 는 시나리오를 **읽지 않는다**(확률을 S3 가 낸다) — 빈 묶음이
+    #       뜻을 바꾸지 않는다.
+    from app.core.schema import HypoSet as _HS
+    hypo = _HS()
     layers = _layers(ref, facts, variables, hypo, base_p, adj_p, feed_mk,
                      user_mk, state=st, outlook=look, strategy=plan)
     layers["strategy"] = plan
     layers["matchup"] = edge
-    layers["prob_before"] = before_layers.get("ours")
     # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **확률은 한 곳이다 — 최종 = 시뮬레이션**(사용자 지시 2026-10-10 ④)
     # ══════════════════════════════════════════════════════════════════
@@ -233,9 +234,18 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  🔴 순서가 핵이다: 가설은 **시뮬을 보기 전에** 섰고(단계 2), 여기서 그
     #     가설의 **예측 신호**를 시뮬 산출과 대조한다. 그리고 **시나리오를 시뮬
     #     분포에서** 만든다(§4-4) — 그래야 시나리오·확률·스코어가 한 분포다.
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **S4 가설** — 입력은 **MatchupReport + VariableSet** 이다(4-1·C3)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  🔴 S2 **뒤**이고 S3 숫자를 **보지 않는다**(C3) — `claims()` 는 확률을
+    #     인자로도 본문으로도 안 받는다(계약이 센다).
+    hypo = s6_hypo.claims(ref, facts, variables, state=st, mr=mr,
+                          varset=varset)
     from app.core.stages import s6c_check as _s6c
     got_check = _s6c.run(ref, facts, hypo, dict(edge.get("sim") or {}),
-                         variables=variables, turnover=turn, state=st)
+                         variables=variables, turnover=turn, mr=mr,
+                         varset=varset, layers=layers, state=st)
     if _s6c.rerun_needed(got_check):
         # 🔴 §4-3 — **최대 1회**. 지금은 조건이 성립하지 않아 안 돈다(사유는 표에)
         st.note("단계 4-3 — 재실행 1회")
@@ -681,11 +691,29 @@ def _lower(said: Judgement, layers: dict, *, state: RunState,
     from app.core import compare
     step, why = compare.grade_step(str(layers.get("compare") or ""),
                                    found_new=found_new)
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **S5-3 등급 조정**(상성 엔진 지시서 2026-10-10 여섯째) — 여기 더한다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > (c) 중 hard·강 반대 1개 이상 → **한 단계 내림** · (c) 반대 2개 이상 →
+    #  > **등급 없음** · V7 주 가설 지지 0개 → 한 단계 내림 ·
+    #  > (a)(b)·V6 은 등급 영향 **없음**.
+    #
+    #  🔴 내리는 길은 **이 함수 하나**다(사본 금지) — 세 열 규칙과 같은 사다리다.
+    #  ⚠️ **확률은 안 바뀐다**(S5 머리줄) — 등급만 움직인다.
+    box = dict(dict(layers.get("check") or {}).get("grade") or {})
+    if box.get("none"):
+        step, why = 99, " · ".join([why, *box.get("why", [])]).strip(" ·")
+    elif int(box.get("steps") or 0) > 0:
+        step += int(box["steps"])
+        why = " · ".join([why, *box.get("why", [])]).strip(" ·")
     if step <= 0:
         if why:
             state.note(f"§7 등급 유지 — {why}")
         return said
     ladder: list[str] = ["낸다", "소액", "소액하단", "없음"]
+    if step >= 99:
+        step = len(ladder)                 # 🔴 `없음` 까지 내린다
     out: list[MarketEval] = []
     for ev in said.evals:
         grade = ev.grade
