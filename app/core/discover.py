@@ -216,13 +216,20 @@ def _slug_hit(index: dict[str, str], name: str) -> list[tuple[str, str]]:
     🔴🔴 **등급이 다른 팀은 뺀다** — 사용자가 `U23`·`여자`를 적지 않았는데
        `gil-vicente-u23` 를 열면 **남의 경기**다(실측 2026-10-10).
     """
-    want = norm_name(name)
-    if not want:
+    # 🔴🔴 **별칭표를 지난다** — ⚠️ 실사고 2026-10-10: 사용자가 `제노아` 로 물었는데
+    #    색인 슬러그는 `genoa` 다. `norm_name` 은 **한글↔로마자를 일부러 안 잇는다**
+    #    (이으면 엉뚱한 팀이 섞인다) → 슬러그를 **못 찾아** `match_not_found` 로
+    #    끝났다. 🔴 그 다리는 `config/entities.yaml`(별칭표)이고 `aliases_of` 가
+    #    그것을 읽는다. 여기서 **별칭 전부**로 색인을 본다.
+    names = [str(name), *aliases_of(name)]
+    wants = {norm_name(x) for x in names if norm_name(x)}
+    if not wants:
         return []
     asked = tier_of(name)
-    exact = [(i, s) for i, s in index.items() if norm_name(s) == want]
+    exact = [(i, s) for i, s in index.items() if norm_name(s) in wants]
     loose = [(i, s) for i, s in index.items()
-             if norm_name(s) != want and same_team(s, name)]
+             if norm_name(s) not in wants
+             and any(same_team(s, x) for x in names)]
     out = [*sorted(exact), *sorted(loose)]
     # 🔴 사용자가 등급을 적지 않았으면 등급 팀을 **뺀다**(뒤로 미루지 않는다 —
     #    상한에 걸려 열리는 일이 있다)

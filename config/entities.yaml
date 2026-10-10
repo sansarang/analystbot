@@ -39,6 +39,18 @@ teams:
       en: [Urawa Red Diamonds]
     source: 실측 2026-10-10 — fotmob 경기 페이지가 `Urawa Red Diamonds` 로 적는다
 
+  # ⚠️ 실사고 2026-10-10: 사용자가 **`제노아`** 로 물었는데 봇이 `match_not_found`
+  #    로 끝났다. 🔴 `norm_name` 은 **한글↔로마자를 잇지 않는다**(일부러 그렇다 —
+  #    이으면 엉뚱한 팀이 섞인다) → fotmob 팀 색인에서 슬러그 `genoa`(id 10233)를
+  #    **못 찾았다**. 이 파일이 그 다리를 놓는 **designated 자리**다.
+  Genoa:
+    aliases:
+      ko: [제노아, 제노아 CFC]
+      en: [Genoa CFC]
+    source: |
+      사용자 지시 2026-10-10 — 사용자가 `제노아` 로 물었다
+      실측 2026-10-10 — fotmob 팀 색인 슬러그 `genoa` · id 10233
+
   # ── 🔴 사용자가 직접 준 것 (지시 2026-10-03)
   Jamaica:
     aliases:

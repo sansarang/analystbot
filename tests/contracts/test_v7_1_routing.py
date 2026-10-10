@@ -516,3 +516,25 @@ def test_v7_C10_임시값이면_카드에_보인다():
     # 🔴 긴 카드의 **적합 정보**도 그 사실을 적는다
     long = render.fit_long(card)
     assert "임시값" in long and "tools/fit_matchup_model.py" in long
+
+
+def test_v7_슬러그_색인이_별칭표를_지난다():
+    """🔴🔴 **실사고 2026-10-10** — 사용자가 `제노아` 로 물었는데 봇이
+    `match_not_found` 로 끝났다.
+
+    색인 슬러그는 `genoa` 이고 `norm_name` 은 **한글↔로마자를 일부러 안 잇는다**
+    (이으면 엉뚱한 팀이 섞인다). 🔴 그 다리는 **별칭표**(`config/entities.yaml`)
+    이고 `_slug_hit` 이 이제 그것을 지난다.
+    ⚠️ 돌연변이: `aliases_of` 를 빼면 한글 클럽 이름이 다시 **0건**이 된다.
+    """
+    from app.core import discover as _d
+    idx = {"10233": "genoa", "133901": "gimcheon-sangmu",
+           "162276": "adelaide-city", "9999": "adelaide-united"}
+    assert _d._slug_hit(idx, "제노아") == [("10233", "genoa")]
+    assert _d._slug_hit(idx, "김천상무") == [("133901", "gimcheon-sangmu")]
+    # 🔴 **느슨해지지 않았다** — 비슷한 이름이 섞이지 않는다
+    got = _d._slug_hit(idx, "Adelaide City")
+    assert got and got[0] == ("162276", "adelaide-city"), got
+    assert ("9999", "adelaide-united") not in got, "🔴 다른 팀이 섞였다"
+    # 🔴 별칭표에 `제노아` 가 **있다**(그 다리가 이 파일이다)
+    assert "Genoa" in _d.aliases_of("제노아"), _d.aliases_of("제노아")
