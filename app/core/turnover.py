@@ -55,87 +55,157 @@ def cycle_team(name: str) -> dict:
     return {}
 
 
-def suspect(*, changed: int | None, off_squad: int) -> str:
-    """🔴 §③ 일반화 — **7자리 이상 + 명단에도 없는 선수**면 의심 사유를 돌려준다.
+def flags() -> dict:
+    """🔴 깃발 문턱 — `config/squad_turnover.yaml` 의 `flags`."""
+    return dict(table().get("flags") or {})
 
-    ⚠️ 못 센 칸(`changed is None`)은 의심하지 않는다(#4 추측 금지).
+
+def off_matchday(facts, key: str, xi) -> tuple[list, str]:
+    """🔴🔴 ① **오늘 경기 명단(선발+벤치) 기준** — 최근 N경기 선발 중 없는 선수들.
+
+    > ① 오늘 경기 명단(선발+벤치) 기준: 최근 5경기 선발 중 오늘 명단에 없는 선수
+    >   **≥ 5명** · r 도 **오늘 경기 명단 기준**으로 계산한다. 명부는 **이름
+    >   매칭용으로만**.
+
+    🔴 이름은 `discover.name_key` 로 맞춘다(성 먼저·이름 먼저가 섞인다 — 그것이
+       *"명부는 이름 매칭용으로만"* 의 뜻이다).
+    ⚠️ 오늘 명단이 비면 **셀 수 없다**(빈 목록 + 사유) — 모르는 것을 교체로 읽지
+       않는다(#4).
     """
-    box = dict(table().get("suspect") or {})
-    want_c = int(box.get("changed") or 7)
-    want_o = int(box.get("off_squad") or 2)
-    if changed is None or int(changed) < want_c:
-        return ""
-    if int(off_squad) < want_o:
-        return ""
-    return (f"바뀐 자리 {int(changed)}개(문턱 {want_c}) · 빠진 선수 중 **명단에도 "
-            f"없는** 선수 {int(off_squad)}명(문턱 {want_o})")
+    from app.core import discover as _d
+    box = flags()
+    look = int(box.get("look_back") or 5)
+    now = {_d.name_key(x) for x in (getattr(xi, "players", None) or [])}
+    bench = {_d.name_key(x) for x in (getattr(xi, "bench", None) or [])}
+    today = now | bench
+    if not today:
+        return [], "🔴 오늘 경기 명단이 없다 — 못 센다"
+    rows = list((getattr(facts, "past_xi", None) or {}).get(key) or [])[-look:]
+    if not rows:
+        return [], "🔴 최근 경기 선발을 못 받았다 — 못 센다"
+    out: list[str] = []
+    for one in rows:
+        for nm in (getattr(one, "players", None) or []):
+            if _d.name_key(nm) not in today and str(nm) not in out:
+                out.append(str(nm))
+    return out, (f"최근 {len(rows)}경기 선발 중 오늘 명단(선발+벤치 {len(today)}명)"
+                 f"에 **없는 선수 {len(out)}명**")
+
+
+def r_matchday(facts, key: str, xi) -> tuple[float, str]:
+    """🔴🔴 ① — **r 가중도 오늘 경기 명단 기준**이다.
+
+    > r = 그 경기 선발 중 **오늘 명단에 있는 비율**(과거 경기마다 센 뒤 평균).
+
+    ⚠️ 못 세면 `(1.0, 사유)` — 깎지 않는다(모르는 것으로 과거를 버리지 않는다).
+    """
+    from app.core import discover as _d
+    box = flags()
+    look = int(box.get("look_back") or 5)
+    today = {_d.name_key(x) for x in
+             [*(getattr(xi, "players", None) or []),
+              *(getattr(xi, "bench", None) or [])]}
+    rows = list((getattr(facts, "past_xi", None) or {}).get(key) or [])[-look:]
+    if not today or not rows:
+        return 1.0, "🔴 오늘 명단이나 과거 선발이 없다 — r 을 안 깎는다(1.0)"
+    said: list[float] = []
+    for one in rows:
+        names = [str(x) for x in (getattr(one, "players", None) or [])]
+        if not names:
+            continue
+        hit = sum(1 for nm in names if _d.name_key(nm) in today)
+        said.append(hit / len(names))
+    if not said:
+        return 1.0, "🔴 과거 선발 이름이 비었다 — r 1.0"
+    got = sum(said) / len(said)
+    return round(got, 3), (f"과거 {len(said)}경기 선발 중 오늘 명단에 있는 비율 "
+                           f"평균 **{got:.2f}**(경기별 {[round(x, 2) for x in said]})")
 
 
 def read(ref, facts, *, side: str) -> dict:
-    """🔴🔴 §③ — 그 팀이 **선수단 교체 상태인가**. 돌려주는 표:
+    """🔴🔴 **깃발 판정**(사용자 결정 2026-10-10 (a)) — 셋 중 하나면 켠다.
 
     ```
-    {"on": True/False, "why": "...", "kind": "cycle"|"suspect"|"",
-     "off_squad": [이름…], "since": "YYYY-MM-DD"|""}
+    {"on": True/False, "why": "...", "kind": "matchday"|"cycle_news"|"no_usual",
+     "off_squad": [이름…], "r": 0.0~1.0, "r_why": "...", "reasons": ["①"…]}
     ```
 
-    🔴 두 길로 켠다:
-      ① **전역 주기 팀**이고 평소 XI 대비 바뀐 자리가 문턱 이상이다
-      ② 어느 팀이든 **7자리 이상 + 명단에도 없는 선수 2명 이상**
+    > ① 오늘 경기 명단(선발+벤치) 기준: 최근 5경기 선발 중 오늘 명단에 없는 선수
+    >    **≥ 5명**
+    > ② **전역 주기 팀**이고 최근 30일 안에 전역(새 사실·구단 발표)이 있다
+    > ③ **평소 XI 를 만들 수 없다**(교체 이후 경기 0건)
+
+    🔴 ② 는 **새 사실**이 있어야 판정할 수 있다 — 변수가 생긴 뒤에
+       `with_news()` 가 그 깃발을 덮는다(여기서는 ①③ 만 본다).
+    🔴 **구단 명부 기준은 삭제됐다** — 명부는 이름 매칭용으로만 쓴다.
     ⚠️ 확정 XI 가 아니면 **켜지 않는다**(비교할 오늘 명단이 없다).
     """
     from app.core import strategy as _st
     name = str(getattr(ref, f"{side}_name", "") or "")
     key = str(getattr(ref, side))
-    got = _st.read(ref, facts, side=side)
-    if not got.confirmed:
-        return {"on": False, "why": f"확정 XI 전 — 안 센다({got.why})",
-                "kind": "", "off_squad": [], "since": ""}
-    from app.core import discover as _d
     xi = (facts.xi or {}).get(key)
-    now = {str(x) for x in (getattr(xi, "players", None) or [])}
-    bench = {str(x) for x in (getattr(xi, "bench", None) or [])}
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **거르지 않은 과거 XI 로 센다** — ⚠️ 실측 2026-10-10(재현): `strategy.
-    #    read` 가 이미 *"교체 이후 경기만"* 으로 걸러 평소 XI 를 만들므로, 그
-    #    산출(`swaps`)로 세면 **바뀐 자리가 0 에 가까워져 깃발이 영원히 안 켜진다**
-    #    (김천이 `평소 그대로` 로 나왔다 — 그러면 `기준 약함` 표시도 사라진다).
-    # 🔴 깃발은 **원본 이력**(`facts.past_xi`)과 **오늘 명단**만 본다.
-    # ══════════════════════════════════════════════════════════════════
-    # 🔴🔴 **선수단 명부**가 기준이다(경기 명단 20명이 아니다 — 실사고 2026-10-10:
-    #    그날 안 뽑힌 선수가 전부 "팀에 없는 선수"가 됐다).
-    roster = {_d.name_key(nm) for nm in
-              dict(getattr(facts, "player_stats", None) or {})}
-    gone: list[str] = []
-    rows = list((facts.past_xi or {}).get(key) or [])
-    if roster:
-        known = roster | {_d.name_key(x) for x in (now | bench)}
-        for one in rows:
-            for nm in (getattr(one, "players", None) or []):
-                if _d.name_key(nm) not in known:
-                    gone.append(str(nm))
-    # 🔴 바뀐 자리 수도 **원본 기준**으로 다시 센다(평소 XI 필터 이전의 수)
-    from app.core.stages import s2b_base as _b
-    raw_usual, _how = _b.usual_xi(rows) if rows else ([], "")
-    changed_raw = (len([x for x in now if x not in raw_usual])
-                   if raw_usual else None)
+    if xi is None or str(getattr(xi, "state", "") or "") != "confirmed":
+        return {"on": False, "kind": "", "off_squad": [], "r": 1.0,
+                "r_why": "확정 XI 전 — r 을 안 깎는다", "reasons": [],
+                "why": f"확정 XI 전 — 안 센다(상태 "
+                       f"{getattr(xi, 'state', '없음')})"}
+    gone, why1 = off_matchday(facts, key, xi)
+    r, why_r = r_matchday(facts, key, xi)
+    want = int(flags().get("off_matchday") or 5)
+    reasons: list[str] = []
+    if len(gone) >= want:
+        reasons.append(f"① {why1}(문턱 {want}명) — {sorted(gone)[:5]}")
+    # 🔴 ③ 평소 XI 를 만들 수 없나 — `strategy.read` 가 그 사실을 사유로 든다
+    got = _st.read(ref, facts, side=side)
+    if "평소 XI 없음" in str(got.why or ""):
+        reasons.append(f"③ {got.why}")
     row = cycle_team(name)
-    if row and (changed_raw or 0) >= 4:
-        return {"on": True, "kind": "cycle", "off_squad": sorted(set(gone)),
-                "since": "", "changed_raw": changed_raw,
-                "why": (f"**전역 주기 팀**({row.get('why')}) · 원본 평소 XI 대비 "
-                        f"바뀐 자리 {changed_raw}개 · 과거 선발 중 **선수단 명부에 "
-                        f"없는** 선수 {len(set(gone))}명 {sorted(set(gone))[:4]}"
-                        + ("" if roster else " ⚠️ 명부를 못 받아 그 수는 못 셌다"))}
-    said = suspect(changed=changed_raw, off_squad=len(set(gone)))
-    if said:
-        return {"on": True, "kind": "suspect", "off_squad": sorted(set(gone)),
-                "since": "", "why": f"**선수단 교체 의심** — {said}"}
-    return {"on": False, "kind": "", "off_squad": sorted(set(gone)),
-            "since": "", "changed_raw": changed_raw,
-            "why": (f"원본 기준 바뀐 자리 {changed_raw}개 · **선수단 명부에 없는** "
-                    f"과거 선발 {len(set(gone))}명 — 문턱 아래다"
-                    + ("" if roster else " ⚠️ 선수단 명부를 못 받아 **못 셌다**"))}
+    said = (f"**전역 주기 팀**({row.get('why')}) · " if row else "")
+    if reasons:
+        return {"on": True, "kind": ("matchday" if reasons[0][0] == "①"
+                                     else "no_usual"),
+                "off_squad": sorted(gone), "r": r, "r_why": why_r,
+                "reasons": reasons,
+                "why": said + " · ".join(reasons)}
+    return {"on": False, "kind": "", "off_squad": sorted(gone), "r": r,
+            "r_why": why_r, "reasons": [],
+            "why": (said + f"{why1} · 문턱 {want}명 아래다"
+                    + (" · 평소 XI 는 있다" if got.confirmed else ""))}
+
+
+def with_news(ref, got: dict, variables: list, *, side: str) -> dict:
+    """🔴🔴 ② **전역 주기 팀 + 최근 30일 전역 새 사실**이면 깃발을 켠다.
+
+    🔴 새 사실은 **변수**로 온다(`returning`·`squad_rotation` 유형의 글에 전역
+       낱말이 있나). ⚠️ 날짜 칸이 없는 변수는 **창을 못 본다** — 그때는 72시간
+       하위(F)가 나른 것만 센다(그 하위의 창이 이미 72시간이다).
+    ⚠️ 전역 주기 팀이 아니면 **아무것도 하지 않는다**(②는 그 팀만의 조항이다).
+    """
+    from app import rules
+    name = str(getattr(ref, f"{side}_name", "") or "")
+    if not cycle_team(name) or dict(got or {}).get("on"):
+        return got
+    key = str(getattr(ref, side))
+    words = [str(x) for x in (rules.local_words("squad_turnover", "ko") or [])
+             if str(x) in ("전역", "입대", "소집 해제")]
+    hit = []
+    for v in (variables or []):
+        if str(getattr(v, "subject", "")) != key:
+            continue
+        said = f"{getattr(v, 'claim', '')} {getattr(v, 'quote', '')}"
+        if any(w in said for w in words):
+            hit.append(str(getattr(v, "id", "")))
+    if not hit:
+        return got
+    box = dict(got or {})
+    box["on"] = True
+    box["kind"] = "cycle_news"
+    box["reasons"] = [*box.get("reasons", []),
+                      f"② 전역 주기 팀 + **전역 새 사실** {hit[:3]}"
+                      f"(창 {int(flags().get('news_days') or 30)}일 — ⚠️ 변수에 "
+                      "날짜 칸이 없어 하위 F 의 72시간 창으로 본다)"]
+    box["why"] = " · ".join(box["reasons"])
+    return box
 
 
 def past_since(rows: list, *, names: set[str]) -> tuple[list, str]:

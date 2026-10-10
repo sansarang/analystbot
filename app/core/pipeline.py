@@ -102,8 +102,15 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
         st.note(f"s2 선수단 교체({side}) — "
                 + ("🔴 **켜졌다** · " if one.get("on") else "")
                 + str(one.get("why") or ""))
+    # 🔴🔴 사용자 결정 (3) — **전역 주기 팀이면 깃발과 무관하게** 그 개념을 넣는다
+    #    (`전역`·`신병 합류` 가 그 개념의 맨 앞 둘이다). ⚠️ 실측 2026-10-10: 김천
+    #    카드의 새 사실이 **0건**이었다 — 깃발이 꺼진 사이 질의도 안 나갔다.
+    cycle = any(_turn.cycle_team(str(getattr(ref, f"{s}_name", "") or ""))
+                for s in ("home", "away"))
     more = ({"F": ("squad_turnover",)}
-            if any(one.get("on") for one in turn.values()) else None)
+            if cycle or any(one.get("on") for one in turn.values()) else None)
+    if cycle:
+        st.note("s3 전역 주기 팀 — **고정 질의**를 넣는다(`전역`·`신병 합류`)")
     docs = await s3_docs.run(ref, facts, state=st, chain=chain, net=net,
                              extra_words=more,
                              cache=cache)
@@ -113,6 +120,13 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     docs = list(cache.values()) or docs
     variables = s5_verify.run(ref, facts, docs, cands, state=st,
                               turnover=turn)
+    # 🔴🔴 **② 전역 새 사실로 깃발을 덮는다**(사용자 결정 2026-10-10 (a)②) —
+    #    변수가 생긴 **뒤**에만 볼 수 있다(새 사실이 변수로 온다).
+    for side in ("home", "away"):
+        turn[side] = _turn.with_news(ref, turn[side], variables, side=side)
+        if dict(turn[side]).get("kind") == "cycle_news":
+            st.note(f"s2 선수단 교체({side}) — ② **전역 새 사실로 켜졌다** · "
+                    + str(turn[side].get("why") or ""))
     # 🔴 ②(2차) — **검증된 결장 변수**까지 넣어 다시 센다(§4-2 · 네트워크 0)
     adj_p = s2b_base.again(ref, facts, base_p, variables, state=st)
     # ══════════════════════════════════════════════════════════════════
@@ -203,7 +217,8 @@ async def analyze(raw: str, *, pool: Any, net: Any, chain: Any,
     #  🔴 입력은 `FactBundle`(=`facts`) + `VariableSet` 의 ① 배치 변수뿐이다.
     from app.core import matchup as _mu
     from app.core import probmodel as _pm
-    mr = _mu.report(ref, facts, edge, varset, strategy=plan)
+    mr = _mu.report(ref, facts, edge, varset, strategy=plan,
+                    turnover=turn)
     st.note(f"S2 상성 — {mr.why} · {mr.verdict.get('why')}")
     prob = _pm.run(ref, facts, mr, varset, edge=edge, state=st)
     edge["report"] = mr

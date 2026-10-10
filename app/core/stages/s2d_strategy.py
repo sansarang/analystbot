@@ -97,13 +97,25 @@ def _turn_lines(lines: list, ref: MatchRef, turnover: dict | None, *,
     """
     from app.core import turnover as _turn
     box_t = dict(turnover or {})
-    if not any(dict(v).get("on") for v in box_t.values()):
-        return list(lines or [])
+    # 🔴 **깃발이 다 꺼져도 돈다** — (b) 가 *"모델이 코드 전용 값을 골랐으면 그 줄을
+    #    덮으라"* 고 했고, 그 일은 깃발이 꺼진 팀에서 일어난다(실측 2026-10-10).
     out: list = []
     for one in (lines or []):
         side = str(getattr(one, "side", ""))
         got = dict(box_t.get(side) or {})
         if not got.get("on"):
+            # 🔴 (b) — 깃발이 **꺼진** 팀이 코드 전용 값을 들고 있으면 그 줄만
+            #    **덮는다**(버리는 것이 아니다 · 다른 팀 판정은 그대로).
+            if str(getattr(one, "strategy", "")) == _turn.VERDICT:
+                out.append(one.model_copy(update={
+                    "strategy": "평소 그대로",
+                    "why": (f"🔴 모델이 코드 전용 값(`{_turn.VERDICT}`)을 "
+                            f"골랐다 — 깃발이 **꺼져 있어** `평소 그대로` 로 "
+                            f"덮었다(원래 이유: "
+                            f"{str(getattr(one, 'why', ''))[:60]})")}))
+                state.note(f"s2d (b) — {side} 의 코드 전용 판정값을 "
+                           f"`평소 그대로` 로 **덮었다**(깃발 꺼짐)")
+                continue
             out.append(one)
             continue
         name = str(getattr(ref, f"{side}_name", "") or "")
@@ -163,14 +175,20 @@ def check(lines: list, reads: dict, *, turnover: dict | None = None,
     # ⑤ ⚠️ 실사고 2026-10-10: 열거값에 `squad_turnover` 를 더하자 **모델이 그것을
     #    골랐다**(FC 안양 — 전역 주기 팀이 아니다). 그 값은 깃발이 켜진 팀에만
     #    코드가 붙인다(`_turn_lines`). 🔴 주석으로 막은 줄 알았던 것을 계약으로 막는다.
+    # 🔴🔴 **(b) 안전장치**(사용자 결정 2026-10-10): *"LLM 이 코드 전용 값을
+    #    고르면 **그 팀 줄만 버리고** 코드 깃발 값으로 덮는다. **다른 팀 판정은
+    #    살린다**"*. 🔴 그래서 이것은 **위반이 아니다** — 아래 `_turn_lines` 가
+    #    그 줄을 덮는다. ⚠️ 종전에는 위반으로 세서 **양 팀 판정이 다 버려졌다**
+    #    (실측 2026-10-10: 카드에 *"판정을 버렸다"* 만 남았다).
     box_t = dict(turnover or {})
     for one in (lines or []):
         if str(getattr(one, "strategy", "")) != _turn.VERDICT:
             continue
         side = str(getattr(one, "side", ""))
         if not dict(box_t.get(side) or {}).get("on"):
-            out.append(f"🔴 모델이 **코드만 쓰는 판정값**(`{_turn.VERDICT}`)을 "
-                       f"골랐다({side}) — 그 팀은 선수단 교체 깃발이 **꺼져 있다**")
+            logger.info("[s2d] 모델이 `%s` 를 골랐다(%s) — 깃발이 꺼졌으니 "
+                        "**그 줄만** 덮는다(다른 팀은 살린다)",
+                        _turn.VERDICT, side)
     for one in (lines or []):
         side = str(getattr(one, "side", ""))
         got = reads.get(side)

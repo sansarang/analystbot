@@ -279,24 +279,6 @@ def test_v6_팀에_없다는_선수단_명부로_센다():
     assert _st._off_squad(thin, ref.home, thin.xi[ref.home], past) == set()
 
 
-def test_v6_모델은_코드값을_고를_수_없다():
-    """🔴🔴 **실사고 2026-10-10** — 열거값에 `squad_turnover` 를 더하자 **모델이
-    그것을 골랐다**(FC 안양 — 전역 주기 팀이 아니다).
-
-    🔴 그 값은 깃발이 켜진 팀에만 **코드가** 붙인다. 주석으로 막은 줄 알았던 것을
-       계약과 검사로 막는다.
-    """
-    from app.core.schema import StrategyLine
-    from app.core.stages.s2d_strategy import check
-    lines = [StrategyLine(side="away", strategy="squad_turnover",
-                          fact_refs=["A1", "A2"], why="모델이 골랐다")]
-    bad = check(lines, {}, turnover={"away": {"on": False}})
-    assert any("코드만 쓰는 판정값" in x for x in bad), bad
-    # 🔴 깃발이 켜졌으면 **코드가 붙인 것**이므로 위반이 아니다
-    assert not [x for x in check(lines, {}, turnover={"away": {"on": True}})
-                if "코드만 쓰는" in x]
-
-
 def test_v6_양쪽_다_교체면_양상도_사람_말이다():
     """🔴 ⚠️ 실측 2026-10-10: 양쪽 다 교체일 때 반대쪽이 열거값으로 새어 나왔다
     (`… vs squad_turnover`)."""
@@ -311,16 +293,100 @@ def test_v6_양쪽_다_교체면_양상도_사람_말이다():
     assert _turn.VERDICT not in one and "김천" in one
 
 
-def test_v6_일반화_문턱이_표에_있다():
-    """🔴 ③ 일반화 — *"7자리 이상 바뀌고 빠진 선수가 명단에도 없으면"*."""
-    from app.core import turnover as _turn
-    box = dict(_turn.table().get("suspect") or {})
-    assert int(box.get("changed")) == 7 and int(box.get("off_squad")) == 2
-    assert _turn.suspect(changed=7, off_squad=2)
-    assert not _turn.suspect(changed=6, off_squad=5)
-    assert not _turn.suspect(changed=9, off_squad=1)
-    assert not _turn.suspect(changed=None, off_squad=9), "🔴 못 센 칸을 의심했다"
+def test_v7_깃발은_오늘_경기_명단_기준이다():
+    """🔴🔴 **사용자 결정 2026-10-10 (a)** — 구단 명부 기준 **삭제**. 셋 중 하나:
 
+    > ① 오늘 경기 명단(선발+벤치) 기준: 최근 5경기 선발 중 없는 선수 **≥ 5명**
+    > ② 전역 주기 팀 + 최근 30일 전역 새 사실 · ③ 평소 XI 를 만들 수 없다
+    > r 도 **오늘 경기 명단 기준**이다. 명부는 **이름 매칭용으로만**.
+
+    ⚠️ 돌연변이: 명부(`player_stats`) 기준으로 되돌리면 — 전역한 선수가 명부에
+       남아 있어 깃발이 **꺼지고**(실측 2026-10-10 김천) 이 줄이 빨개진다.
+    """
+    from app.core import turnover as _turn
+    from app.core.schema import Facts, XI
+    ref = _ref()
+    box = _turn.flags()
+    assert int(box["off_matchday"]) == 5 and int(box["look_back"]) == 5
+    assert int(box["news_days"]) == 30
+    assert "suspect" not in _turn.table(), "🔴 옛 명부 기준이 남아 있다"
+    now = [f"New {i}" for i in range(11)]
+    past = [XI(team=ref.home, state="confirmed",
+               players=[f"Old {i}" for i in range(11)]) for _ in range(5)]
+    facts = Facts(xi={ref.home: XI(team=ref.home, state="confirmed",
+                                   players=now, bench=["Bench 1"])},
+                  past_xi={ref.home: past},
+                  # 🔴 명부에 옛 선수가 **그대로 있어도** 깃발은 켜진다
+                  player_stats={f"Old {i}": {"goals": 0} for i in range(11)})
+    got = _turn.read(ref, facts, side="home")
+    assert got["on"] is True, got["why"]
+    assert got["reasons"] and got["reasons"][0].startswith("①"), got["reasons"]
+    # 🔴 r 은 **오늘 명단 기준**이고 0 쪽이다(옛 선발이 하나도 없다)
+    assert got["r"] == 0.0, (got["r"], got["r_why"])
+    assert "오늘 명단에 있는 비율" in got["r_why"]
+    # 🔴 그대로인 팀은 r 1.0 이고 깃발이 꺼진다
+    same = Facts(xi={ref.home: XI(team=ref.home, state="confirmed",
+                                  players=[f"Old {i}" for i in range(11)])},
+                 past_xi={ref.home: past})
+    off = _turn.read(ref, same, side="home")
+    assert off["on"] is False and off["r"] == 1.0, off
+
+
+def test_v7_모델이_코드값을_골라도_그_줄만_덮는다():
+    """🔴🔴 **(b) 안전장치**(사용자 결정) — *"그 팀 줄만 버리고 코드 깃발 값으로
+    덮는다. **다른 팀 판정은 살린다**"*.
+
+    ⚠️ 실측 2026-10-10: 그것을 **위반**으로 셌더니 양 팀 판정이 **다 버려졌다**.
+    """
+    from app.core.schema import StrategyLine
+    from app.core.stages.s2d_strategy import _turn_lines, check
+    from app.core.state import RunState
+    ref = _ref()
+    lines = [StrategyLine(side="home", strategy="squad_turnover",
+                          fact_refs=["L1", "L2"], why="모델이 골랐다"),
+             StrategyLine(side="away", strategy="공격 위주",
+                          fact_refs=["A1", "A2"], why="살아야 한다")]
+    turn = {"home": {"on": False}, "away": {"on": False}}
+    # 🔴 이제 **위반이 아니다**(검사가 통과한다)
+    assert not [x for x in check(lines, {}, turnover=turn)
+                if "코드만 쓰는" in x]
+    got = _turn_lines(lines, ref, turn, state=RunState(match_key="x"), box={})
+    assert got[0].strategy == "평소 그대로", got[0].strategy
+    assert "덮었다" in got[0].why
+    assert got[1].strategy == "공격 위주", "🔴 다른 팀 판정을 죽였다"
+
+
+def test_v7_전역_주기_팀은_고정_질의를_받는다():
+    """🔴 사용자 결정 (3) — *"전역 주기 팀은 **고정 질의**를 추가한다 — `{팀} 전역`,
+    `{팀} 신병 합류`, 구단·리그 공식 공지"*.
+
+    ⚠️ 실측 2026-10-10: 김천 카드의 새 사실이 **0건**이었다 — 깃발이 꺼진 사이
+       질의도 안 나갔다. 🔴 이제 **깃발과 무관하게** 그 팀이면 넣는다.
+    """
+    from app import rules
+    got = [str(x) for x in rules.local_words("squad_turnover", "ko")]
+    assert got[:2] == ["전역", "신병 합류"], got
+    src = (ROOT / "app" / "core" / "pipeline.py").read_text(encoding="utf-8")
+    assert "_turn.cycle_team(" in src and "cycle or any(" in src, (
+        "🔴 전역 주기 팀일 때 고정 질의를 안 넣는다")
+
+
+def test_v7_전역_새사실이_깃발을_켠다():
+    """🔴 (a)② — 전역 주기 팀 + **전역 새 사실**이면 켠다. ⚠️ 다른 팀은 아니다."""
+    from app.core import turnover as _turn
+    from app.core.schema import Variable
+    ref = _ref()
+    var = Variable(id="R7", type="returning", subject=ref.home, favors="home",
+                   hardness="hard", weight=2.0,
+                   claim="김천 상무 선수 셋이 전역했다", quote="전역", doc_ids=[])
+    off = {"on": False, "reasons": [], "why": "문턱 아래", "r": 1.0}
+    got = _turn.with_news(ref, off, [var], side="home")
+    assert got["on"] is True and got["kind"] == "cycle_news", got
+    assert any(x.startswith("②") for x in got["reasons"]), got["reasons"]
+    # 🔴 전역 주기 팀이 **아니면** 아무것도 안 한다
+    other = _turn.with_news(_ref(home="FC Anyang"), dict(off), [var],
+                            side="home")
+    assert other["on"] is False, other
 
 def test_v6_교체_의심이면_새사실을_찾는다():
     """🔴 ③ — *"`squad_turnover` 의심으로 **새 사실 검색**(이적·전역·징계)"*."""

@@ -186,7 +186,7 @@ def combine(axes: dict) -> dict:
                        if fit.get("provisional") else f" → 합 {total:+.3f}"))}
 
 
-def r_of(varset, ref) -> dict:
+def r_of(varset, ref, *, turnover: dict | None = None) -> dict:
     """🔴🔴 **r 가중**(C8) — 선수단 교체 팀의 과거 경기를 얼마나 믿나.
 
     > squad_turnover: 과거 경기 가중 = **그 경기 선발 중 오늘 명단에 있는 비율 r**.
@@ -196,15 +196,24 @@ def r_of(varset, ref) -> dict:
        상태인가**를 말하는 요약이다(교체 아니면 1.0).
     """
     out = {"home": 1.0, "away": 1.0}
-    if varset is None:
+    # 🔴🔴 **깃발이 센 r 을 쓴다**(사용자 결정 2026-10-10 (a)): *"r 도 **오늘 경기
+    #    명단 기준**으로 계산한다"*. ⚠️ 종전에는 표의 고정값(0.5)이었다 — 그것은
+    #    §2 가 지운 *"고정 배율"* 과 같은 병이다.
+    box_t = dict(turnover or {})
+    for side in ("home", "away"):
+        one = dict(box_t.get(side) or {})
+        if one.get("on") and one.get("r") is not None:
+            out[side] = float(one["r"])
+    if any(v != 1.0 for v in out.values()) or varset is None:
         return out
+    # ⚠️ 깃발 표가 없을 때만 변수로 떨어진다(표 기본값 · 그 사실이 사유에 남는다)
     for one in varset.of("axis1"):
         if str(one.type) != "squad_rotation":
             continue
         side = "home" if str(one.subject) == str(getattr(ref, "home", "")) \
             else "away"
-        box = dict(table().get("axis1") or {})
-        out[side] = float(box.get("turnover_r") or 0.5)
+        out[side] = float(dict(table().get("axis1") or {})
+                          .get("turnover_r") or 0.5)
     return out
 
 
@@ -302,13 +311,14 @@ def axis3(box: dict, varset, *, r: dict) -> Axis:
     return _settle(got, scale=1.0)
 
 
-def report(ref, facts, box: dict, varset, *, strategy=None) -> MatchupReport:
+def report(ref, facts, box: dict, varset, *, strategy=None,
+           turnover: dict | None = None) -> MatchupReport:
     """🔴🔴 **S2 산출** — 축 넷 + 전략 판정 + 종합 판정.
 
     `box` 는 `s2e_matchup` 이 모은 재료다(폼·스타일·프로필·발동 규칙).
     🔴 **확률을 세지 않는다** — S3 가 `gaps()` 를 받아 λ 를 만든다.
     """
-    r = r_of(varset, ref)
+    r = r_of(varset, ref, turnover=turnover)
     axes = {"axis0": axis0(ref, facts, varset, r=r),
             "axis1": axis1(box, varset, r=r),
             "axis2": axis2(box, varset),
