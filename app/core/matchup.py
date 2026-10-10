@@ -250,6 +250,18 @@ def axis2(box: dict, varset) -> Axis:
         return got
     per = float(conf.get("per_rule") or 0.0)
     per_off = float(conf.get("per_off_weapon") or 0.0)
+    # 🔴🔴 **발동 0건 + 꺼진 무기 0개면 "못 셌다"** 다(값 0 이 아니다 · #3).
+    #    ⚠️ 실측 2026-10-10(K리그1 백필 123경기 · 라이브 김천–안양): 축2 가 **늘
+    #       0.000** 이었다 — 스타일 여섯 축은 6/6 으로 재는데 T1~T6 의 문턱
+    #       (`tactical_rules.yaml: matchup_gap` 0.25)을 넘은 축 차가 **한 번도**
+    #       없었다. 🔴 그것을 `0.0` 으로 적으면 *"차이가 없다"* 로 읽히지만 실은
+    #       *"규칙이 아무 말도 안 했다"* 다. 문턱을 감으로 낮추지 않는다(적합 전).
+    if not fired and not any(offs.values()):
+        from app.core import goals as _g
+        got.why = ("🔴 **발동 0건** — T1~T6 의 문턱"
+                   f"({float(dict(_g.table()).get('matchup_gap') or 0.25):g})을"
+                   " 넘은 축 차가 없다(스타일 6축은 쟀다) · 문턱은 적합 전이다")
+        return got
     val = {"home": 0.0, "away": 0.0}
     for f in fired:
         val[str(f.side)] = val.get(str(f.side), 0.0) + per

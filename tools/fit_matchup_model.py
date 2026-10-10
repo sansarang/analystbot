@@ -192,33 +192,99 @@ def fit() -> None:
         return
     cut = int(len(rows) * SPLIT)
     train, test = rows[:cut], rows[cut:]
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **홈 상수를 백필에서 잰다**(3-5 적합 대상: 대회 유형 상수)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-10: `config/goal_baselines.yaml` 에 **K리그 `home_share`
+    #     가 없다** → 운영이 홈 배율 1.0 으로 돌았고, 백필 123경기의 실제 홈 승이
+    #     **46%** 인데 모형은 35% 를 줬다(보정표가 그것을 보였다).
+    #  🔴 학습 구간의 **홈 득점 ÷ 원정 득점**이 그 배율이다(검증 구간은 안 본다 —
+    #     누설 금지).
+    gh = sum(int(r["goals_home"]) for r in train) / max(1, len(train))
+    ga = sum(int(r["goals_away"]) for r in train) / max(1, len(train))
+    mul = (gh / ga) if ga > 0 else 1.0
+    for row in rows:
+        row["home_mul"] = mul
+        row["mean"] = (gh + ga) / 2.0
+    _say(f"[적합] 홈 상수(학습 구간 실측) — 홈 {gh:.3f}골 · 원정 {ga:.3f}골 → "
+         f"배율 ×{mul:.3f} · 한 팀 평균 {(gh + ga) / 2:.3f}")
     conf = dict(_mu.table().get("lambda_model") or {})
     cap = float(conf.get("cap_pct") or 35.0) / 100.0
     base_w = dict(_mu.table().get("weights") or {})
     _say(f"[적합] 줄 {len(rows)}건 — 학습 {len(train)} · 검증 {len(test)}"
          f"(시간순 {SPLIT:.0%} 분할)")
-    # ── β 를 **격자**로 찾는다(한 변수라 격자가 충분하다)
-    best = (None, -1e18)
-    for i in range(0, 121):
-        beta = i * 0.01
-        ll = _poisson_ll(train, beta, base_w, cap)
-        if ll > best[1]:
-            best = (beta, ll)
-    beta = float(best[0])
-    _say(f"[적합] β = {beta:.3f}(격자 0~1.20 · 포아송 로그 가능도 {best[1]:.1f})")
-    # ── 축 비중을 **좌표 하강**으로 다듬는다(합을 1 로 둔다)
-    weights = dict(base_w)
-    for _round in range(3):
-        for key in ("axis0", "axis1", "axis2", "axis3"):
-            best_w = (weights[key], _poisson_ll(train, beta, weights, cap))
-            for cand in (0.0, 0.1, 0.2, 0.3, 0.4, 0.5):
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **β 와 축 비중을 함께** 찾는다 — 좌표 하강 안에서 β 를 다시 맞춘다
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  ⚠️ 실측 2026-10-10: β 를 **먼저** 고정하고 비중을 다듬었더니 β 가 0 으로
+    #     떨어져 비중이 **움직일 수 없었다**(0 × 무엇이든 0). 🔴 비중을 바꿀 때마다
+    #     β 를 다시 맞춰야 한다.
+    def _best_beta(w: dict) -> tuple[float, float]:
+        got = (0.0, _poisson_ll(train, 0.0, w, cap))
+        for i in range(1, 121):
+            b = i * 0.01
+            ll = _poisson_ll(train, b, w, cap)
+            if ll > got[1]:
+                got = (b, ll)
+        return got
+
+    # 🔴🔴 **분산이 0 인 축은 적합에서 뺀다** — ⚠️ 실측 2026-10-10: 축2 가 모든
+    #    줄에서 **0.000** 이라(T1~T6 발동 0건) 비중을 1.0 으로 올려도 수가 안
+    #    바뀌었다. 그 비중은 **뜻이 없는 수**이므로 보고에 남기면 거짓이 된다.
+    import statistics as _stat
+    live: list[str] = []
+    for key in ("axis0", "axis1", "axis2", "axis3"):
+        vals = [float(dict(r["gaps"]).get(key) or 0.0) for r in rows
+                if key in dict(r["gaps"])]
+        sd = _stat.pstdev(vals) if len(vals) > 1 else 0.0
+        if sd < 1e-6:
+            _say(f"[적합] {key} — **분산 0**(줄 {len(vals)}건) → 적합에서 뺀다"
+                 f"(비중 0 으로 고정) · 사유: 그 축이 아무 값도 안 낸다")
+        else:
+            live.append(key)
+            _say(f"[적합] {key} — 표준편차 {sd:.3f}(줄 {len(vals)}건)")
+    weights = {k: (base_w.get(k, 0.0) if k in live else 0.0)
+               for k in ("axis0", "axis1", "axis2", "axis3")}
+    beta, score = _best_beta(weights)
+    for _round in range(4):
+        for key in live:
+            for cand in (0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0):
                 said = dict(weights)
                 said[key] = cand
-                ll = _poisson_ll(train, beta, said, cap)
-                if ll > best_w[1]:
-                    best_w = (cand, ll)
-            weights[key] = best_w[0]
-    _say(f"[적합] 축 비중 = {weights}")
+                b2, ll = _best_beta(said)
+                if ll > score:
+                    weights, beta, score = said, b2, ll
+    _say(f"[적합] β = {beta:.3f} · 축 비중 = {weights}"
+         f"(학습 포아송 로그 가능도 {score:.1f})")
+    # 🔴 **축마다 홀로** — 어느 축이 설명력을 갖는지 본다(보고 항목: 축별 기여 비중)
+    # 🔴🔴 **비중 그대로 읽으면 속는다** — 그 축이 실제로 λ 를 얼마나 움직이나는
+    #    `β × 비중 × 표준편차` 다. ⚠️ 실측 2026-10-10: 축2 의 비중이 1.0 으로
+    #    적합됐지만 표준편차가 **0.011** 이라 λ 를 1% 쯤만 움직인다(뜻이 거의 없다).
+    import statistics as _st2
+    _say("[적합] 축이 **실제로 움직이는 폭**(β × 비중 × 표준편차 → λ 배율):")
+    for key in ("axis0", "axis1", "axis2", "axis3"):
+        vals = [float(dict(r["gaps"]).get(key) or 0.0) for r in rows
+                if key in dict(r["gaps"])]
+        sd = _st2.pstdev(vals) if len(vals) > 1 else 0.0
+        eff = beta * float(weights.get(key) or 0.0) * sd
+        _say(f"   {key}: 비중 {weights.get(key)} × σ {sd:.3f} × β {beta:.2f} "
+             f"→ ±{eff:.3f}(λ ×{math.exp(eff):.3f})"
+             + ("  ⬜ **거의 안 움직인다**" if eff < 0.02 else ""))
+    _say("[적합] 축 홀로 재기(그 축만 비중 1.0 · β 격자):")
+    for key in live:
+        solo = {k: (1.0 if k == key else 0.0) for k in weights}
+        best_s = (0.0, _poisson_ll(train, 0.0, solo, cap))
+        for i in range(1, 121):
+            b = i * 0.01
+            ll = _poisson_ll(train, b, solo, cap)
+            if ll > best_s[1]:
+                best_s = (b, ll)
+        got_ll, _br = _logloss(test, best_s[0], solo, cap)
+        n_have = sum(1 for r in rows if key in dict(r.get("gaps") or {}))
+        _say(f"   {key}: β* {best_s[0]:.3f} · 검증 로그 손실 {got_ll:.4f}"
+             f" · 그 축이 있는 줄 {n_have}/{len(rows)}")
     ll_t, br_t = _logloss(test, beta, weights, cap)
     ll_b, br_b = _elo_baseline(test)
     _say("")
@@ -227,10 +293,18 @@ def fit() -> None:
     _say(f" 기준 모형 — 로그 손실 {ll_b:.4f} · 브라이어 {br_b:.4f}"
          "  ⚠️ 이 기준은 **리그 평균만**이다(과거 Elo 를 되돌릴 통로가 없다)")
     _say(_calib(test, beta, weights, cap))
-    adopt = ll_t <= ll_b
+    # 🔴🔴 **동률·β 0 은 채택이 아니다** — ⚠️ 실측 2026-10-10: β 가 0 으로 적합돼
+    #    모형이 기준과 **같은 수**를 냈는데 `≤` 라서 *"적합 모드"* 라고 찍었다.
+    #    그것은 *"축이 아무 것도 설명하지 못했다"* 는 뜻이다(채택할 것이 없다).
+    adopt = (ll_t < ll_b - 1e-6) and beta > 0.0
     _say("")
-    _say(f" 채택 판정 — {'✅ **적합 모드**' if adopt else '🔴 **임시 모드 유지**'}"
-         f"(검증 로그 손실 {ll_t:.4f} {'≤' if adopt else '>'} 기준 {ll_b:.4f})")
+    if beta <= 0.0:
+        _say(" 채택 판정 — 🔴 **임시 모드 유지** · β 가 **0 으로 적합됐다** — 축이 "
+             "검증 자료에서 설명력을 **못 보였다**(채택할 계수가 없다)")
+    else:
+        _say(f" 채택 판정 — "
+             f"{'✅ **적합 모드**' if adopt else '🔴 **임시 모드 유지**'}"
+             f"(검증 로그 손실 {ll_t:.4f} {'<' if adopt else '≥'} 기준 {ll_b:.4f})")
     _say(" 🔴 값은 **자동으로 쓰지 않는다** — 사용자가 "
          "`config/matchup_model.yaml` 에 넣을지 정한다(P4·§6).")
     _say(" ⚠️ 한계 — 백필에 **기사 변수·새 사실이 없다**(과거 기사를 다시 모으는 "
