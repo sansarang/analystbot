@@ -90,28 +90,83 @@ def test_wo3_2_실측_결과가_questions_에_있다():
         assert want in said, f"🔴 실측 기록에 `{want}` 가 없다"
 
 
-#: 🔴 선언된 리그 수 — **불변**이다(지시서 금지 1번).
-#  ⚠️ 늘리려면 **사용자 결정**이 먼저다(`config/leagues.yaml` 은 사용자 영역).
-LEAGUE_COUNT = 7
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **상한 계약을 걷었다 — 사용자 결정 2026-10-10 §1**
+# ══════════════════════════════════════════════════════════════════
+#
+#  > 모든 경기를 찾아 분석까지 해야 한다. **리그 수동 선언·상한 방식을 자동
+#  > 등록으로 바꾼다.** `questions/2026-10-10_register_leagues_for_findgame.md`
+#  > 는 이 지시로 닫는다.
+#
+#  ⚠️ 여기 있던 `test_wo3_2_슬러그_표는_리그_선언이_아니다`(선언된 리그 **7개
+#     불변**)를 **지웠다**. 그 계약이 막던 것은 *"리그를 넣어 인수 테스트를
+#     우회하는 것"* 이고, 🔴 **금지 자체는 사라지지 않았다** — 바뀐 것은 막는
+#     방법이다(아래 두 계약).
+#  🔴 실사고 2026-10-10: 그 계약이 빨개져서 아르헨티나 경기를 못 넣었고, 나는
+#     `questions/` 에 적고 멈췄다. 사용자가 **자동 등록으로 바꾸라**고 답했다.
 
 
-def test_wo3_2_슬러그_표는_리그_선언이_아니다():
-    """🔴 *"이 표에 리그를 넣는 것은 **데이터 추가이지 리그 선언이 아니다**"*.
+def test_v6_자동등록_리그는_data_에만_쌓인다():
+    """🔴🔴 §1 — 자동 등록 리그는 **`data/leagues_auto/*.json` 에만** 있다.
 
-    ⚠️ `leagues.yaml` 은 **불변**이다 — 그것을 건드려 인수 테스트를 우회하는
-       것이 지시서 **금지 1번**이다.
+    > 코드도 config 도 아니다.
+
+    ⚠️ 돌연변이: 자동 등록한 리그를 `config/leagues.yaml` 에 적으면 — 그것이
+       **수동 선언으로 테스트를 우회하는 것**이고, 이 계약이 잡는다.
     """
-    # 🔴 **금지의 뜻으로 본다** — *"리그를 넣어 인수 테스트를 우회"* 다.
-    #    ⚠️ 종전엔 `git diff HEAD~12` 를 봤다. 커밋이 쌓이자 그 고정 창이
-    #       **옛 변경**을 잡아 거짓 양성이 났다(실측 2026-10-05) — 창이 커밋
-    #       수에 따라 뜻이 변하는 **사본**이었다(#1).
-    #    🔴 그래서 **리그 수**를 본다: 그것이 늘지 않았으면 우회가 없다.
+    from app.core import autoleague
     from app import league_index
-    said = league_index.leagues()
-    assert len(said) == LEAGUE_COUNT, (
-        f"🔴 선언된 리그가 **{len(said)}개**다(기준 {LEAGUE_COUNT}) — 리그를 "
-        f"넣어 인수 테스트를 우회하는 것이 지시서 금지 1번이다. 늘리려면 "
-        f"사용자 결정이 먼저다")
+    hand = {str(dict(x).get("key") or "") for x in league_index.leagues()}
+    auto = set(autoleague.registered())
+    both = sorted(x for x in auto
+                  if autoleague.short_of(x) in hand or x in hand)
+    assert not both, (
+        f"🔴 자동 등록한 리그가 **손 선언에도** 있다 {both} — §1 이 금지한 "
+        f"*수동 선언*이다. `config/leagues.yaml` 은 기준 모델·분할 규칙이 "
+        f"필요한 리그만 남긴다")
+
+
+def test_v6_자동등록_파일은_필수칸이_다_있다():
+    """🔴🔴 §1 — *"필수 칸이 하나라도 없으면 **등록 실패**"*.
+
+    출처(리그 id·URL) · 확인일 · 나라 · 팀 목록 출처 · 언어 · 팀.
+
+    ⚠️ 돌연변이: `langs` 를 빈 목록으로 두고 저장하면 — `save` 가 막아야 하고
+       이미 쌓인 파일에도 빈 칸이 없어야 한다. 🔴 **둘 다** 본다.
+    """
+    from app.core import autoleague as al
+    bad: list[str] = []
+    for key in al.registered():
+        box = al.load(key)
+        miss = [k for k in al.NEED if not box.get(k)]
+        if miss:
+            bad.append(f"{key} — 없는 칸 {miss}")
+    assert not bad, ("🔴 자동 등록 파일에 필수 칸이 없다(§1):\n  "
+                     + "\n  ".join(bad))
+    # 🔴 `save` 가 **막는지**를 돌연변이로 본다 — 한 칸을 비워 넣어 본다
+    for drop in al.NEED:
+        box = {k: (["x"] if k in ("langs", "teams") else "x") for k in al.NEED}
+        box[drop] = [] if drop in ("langs", "teams") else ""
+        p, why = al.save(box)
+        assert p is None and drop in why, (
+            f"🔴 `{drop}` 가 비었는데 `save` 가 받았다 — §1 위반")
+
+
+def test_v6_인수테스트는_자동등록_경로를_지난다():
+    """🔴 §1 — *"인수 테스트는 **자동 등록 경로를 통과**해야 한다"*.
+
+    ⚠️ 돌연변이: `findgame` 이 색인 사다리를 안 부르고 검색 단만 쓰면 — 그러면
+       리그 등록이 **안 걸리고** 그 사실을 아무도 모른다. 🔴 호출을 AST 로 본다.
+    """
+    import ast
+    said = ast.parse((ROOT / "app" / "findgame.py").read_text(encoding="utf-8"))
+    calls = {ast.unparse(n.func) for n in ast.walk(said)
+             if isinstance(n, ast.Call)}
+    assert "discover.find" in calls, (
+        "🔴 `findgame` 이 색인 사다리(`discover.find`)를 안 부른다 — §2 ②③ 이 "
+        "없으면 리그 자동 등록도 안 걸린다")
+    assert "discover.register" in calls, (
+        "🔴 `findgame` 이 자동 등록(`discover.register`)을 안 건다 — §2 마지막 줄")
 
 
 def test_wo3_2_슬러그_표가_있으면_모양이_맞다():

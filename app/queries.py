@@ -231,6 +231,23 @@ def langs_for(league: str, *teams: str) -> tuple[tuple[str, ...], str]:
         return ("en", *rest), (f"영어 + **리그 명부** `{league}` 현지어 → "
                                f"{['en'] + rest}")
     # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **자동 등록된 리그의 언어**(사용자 결정 2026-10-10 §3)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 나라 코드 → **CLDR 공식 언어**(그 언어 + 영어)로 검색 언어 세팅.
+    #
+    #  🔴 등록 파일이 그 언어를 **이미 들고 있다**(`data/leagues_auto/*.json` 의
+    #     `langs`) — 여기서 나라→언어를 다시 계산하지 않는다(사본 금지).
+    #  ⚠️ 손 표(`LANGS`·`leagues.yaml`)가 먼저다 — 더 오래 측정된 표다.
+    from app.core import autoleague as _AL
+    from app.core import competition as _CP
+    _key, _ = _CP.key_of(competition=league)
+    _auto = _AL.load(_key) if _key else {}
+    if _auto.get("langs"):
+        rest = [x for x in _auto["langs"] if x != "en"]
+        return ("en", *rest), (f"영어 + **자동 등록** `{_key}`"
+                               f"({_auto.get('ccode')}) 현지어 → {['en'] + rest}")
+    # ══════════════════════════════════════════════════════════════════
     # 🔴🔴 **리그를 모르면 팀으로 되묻는다**(사용자 지시 2026-10-03)
     # ══════════════════════════════════════════════════════════════════
     #

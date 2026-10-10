@@ -105,6 +105,22 @@ def key_of(*, competition: str = "", league_id: object = None,
                 return key, (f"표기 `{word}` — ⚠️ **출처에서 확인 못 한 표기**"
                              + (f"({why})" if why else ""))
             return key, f"표기 `{word}`"
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **자동 등록된 리그도 "아는 대회"다** — 사용자 결정 2026-10-10 §1
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 리그 **수동 선언·상한 방식을 자동 등록으로 바꾼다.**
+    #
+    #  ⚠️ 종전엔 `config/competitions.yaml` 에 없으면 곧바로 `UNKNOWN_HEAD` 였다
+    #     — 그러면 봇이 **자기가 등록한 리그를 모른다**고 말한다(실사고가 될
+    #     자리). 🔴 `data/leagues_auto/` 를 본다.
+    #  🔴 손 표(`competitions.yaml`)가 **먼저**다 — 거기엔 기준 모델·분할 규칙이
+    #     달려 있고 자동 등록은 그만큼 못 안다.
+    if lid:
+        from app.core import autoleague
+        key = f"league:fotmob{lid}"
+        if autoleague.load(key):
+            return key, f"**자동 등록** 리그 — fotmob 리그 id `{lid}`"
     got = str(competition or code or lid or "")
     return "", f"{UNKNOWN_HEAD} — 받은 표기 `{got or '없음'}`"
 

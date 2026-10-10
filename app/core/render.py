@@ -85,6 +85,16 @@ def warn_lines(card: Card) -> list[str]:
     if gaps3:
         out.append(f"🔴 **자료 부족 카드 — 판단에 쓰지 말 것**"
                    f"(블록 3 에 {'·'.join(gaps3)} 가 없다)")
+    # 🔴🔴 §4 — **자동 등록 리그면 그 상태를 카드가 적는다**(2026-10-10)
+    #
+    #  > 각 경기마다: 자동 등록 파일 · 검색 언어 · 라인업 출처 · **기준 상태**.
+    #
+    #  ⚠️ 손 표에 있는 리그(기준 모델이 달린 리그)는 이 줄이 없다 — 그것이
+    #     *"자동 등록으로 열린 리그"* 와 다른 상태임을 사람이 알아야 한다.
+    key = comp_key(card)
+    if key.startswith("league:fotmob"):
+        from app.core import autoleague
+        out.append(autoleague.line(key))
     return out
 
 

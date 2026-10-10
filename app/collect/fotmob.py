@@ -49,6 +49,7 @@ import json
 import logging
 import re
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 from app import league, timefmt, verify, window
 from app import matchkey
@@ -2137,3 +2138,157 @@ def key_players(stats_text: str, *, team_id: object = None,
                 out.append(said)
     out.sort(key=lambda r: -float(r.get("value") or 0))
     return out[:max(0, int(n))]
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🔴🔴 **리그를 몰라도 찾는 통로** — 사용자 지시 2026-10-10 §2
+# ══════════════════════════════════════════════════════════════════
+#
+#  🔴🔴 **`/api/*` 는 쓰지 않는다 — robots 가 막는다.** 실측 2026-10-10:
+#     `www.fotmob.com/robots.txt` → `User-agent: *` 에 `Disallow: /api/*`
+#     (열어 준 것은 Googlebot·Bingbot·Qwantbot·AmazonAdBot 넷뿐이다).
+#     ⚠️ 나는 2026-10-10 에 `/api/data/search/suggest`·`/api/data/matches` 로
+#        이 통로를 짰다 — **금지 조항("robots 막힌 출처")을 어긴 것**이고 지웠다.
+#        사용자 결정 2026-10-04 가 이미 *"API 경로는 dead 처리"* 라고 적어 뒀다
+#        (`app/findgame.py` 머리글).
+#
+#  🔴 **그래서 robots 가 직접 광고하는 길로 간다** — 같은 robots.txt 의
+#     `Sitemap:` 줄이다(실측 2026-10-10):
+#        `/sitemap/en/teams.xml`   → 하위 13쪽 · **팀 6,028개**(id + 슬러그)
+#        `/sitemap/en/leagues.xml` → 하위 11쪽 · **리그 431개**(id + 슬러그)
+#     ⚠️ 이것은 **부분 색인**이다 — 실측으로 `defensa-y-justicia`·`adelaide-city`·
+#        `lion-city-sailors-fc` 는 있고 `yesilyurt`·`terranuova`·`prato`·
+#        `union-santa-fe` 는 **0건**이다. 🔴 그 경기들은 사다리의 **검색 단**으로
+#        내려간다(`app/core/discover.py`). 색인에 없다고 조용히 끝내지 않는다.
+#
+#  🔴 쪽마다 1.8MB 다 — **하루 캐시**를 쓴다(`var/fotmob_index/{날짜}/`).
+#     ⚠️ 질문마다 24MB 를 받으면 그 호스트에 실례다.
+
+#: 🔴 sitemap 색인 — robots 의 `Sitemap:` 줄이 원본이다(주소를 지어내지 않는다)
+SITEMAP = BASE + "/sitemap/en/{what}.xml"
+#: 🔴 색인을 하루 보관하는 자리
+INDEX_DIR = "var/fotmob_index"
+
+
+def _index_path(what: str, day: date) -> Path:
+    return Path(INDEX_DIR) / f"{day:%Y-%m-%d}" / f"{what}.json"
+
+
+async def _sitemap_index(net, what: str, *, day: date | None = None,
+                         ) -> dict[str, str]:
+    """🔴 `teams`·`leagues` 색인 — `{id: 슬러그}`. **하루 한 번만** 받는다.
+
+    ⚠️ 하위 쪽 하나라도 못 받으면 **그만큼만** 돌려준다 — 그리고 그 사실이
+       로그에 남는다(#3 조용한 0 금지). 받은 쪽 수를 세어 적는다.
+    """
+    day = day or date.today()
+    p = _index_path(what, day)
+    if p.is_file():
+        try:
+            return dict(json.loads(p.read_text(encoding="utf-8")))
+        except (ValueError, OSError):
+            pass
+    got = await net.get(SITEMAP.format(what=what))
+    pages = re.findall(r"<loc>([^<]+)</loc>", getattr(got, "text", "") or "")
+    out: dict[str, str] = {}
+    ok = 0
+    for url in pages:
+        one = await net.get(url)
+        text = getattr(one, "text", "") or ""
+        if not text:
+            continue
+        ok += 1
+        for tid, slug in re.findall(
+                rf"<loc>{re.escape(BASE)}/{what}/(\d+)/[^/]+/([^<?\"]+)", text):
+            out.setdefault(tid, slug)
+    logger.info("[fotmob] %s 색인 — 하위 %d쪽 중 %d쪽 · %d건",
+                what, len(pages), ok, len(out))
+    if out:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+    return out
+
+
+async def team_index(net, *, day: date | None = None) -> dict[str, str]:
+    """🔴🔴 §2 ② — **팀 색인**(`{team_id: 슬러그}`). `/api/*` 대신 sitemap 이다.
+
+    🔴 실측 2026-10-10: 6,028팀. 슬러그는 로마자·소문자·하이픈이라 이름 정규화와
+       바로 맞는다(`discover.norm_name`).
+    """
+    return await _sitemap_index(net, "teams", day=day)
+
+
+async def league_index(net, *, day: date | None = None) -> dict[str, str]:
+    """🔴 §2 — **리그 색인**(`{league_id: 슬러그}`) · 실측 2026-10-10 431개."""
+    return await _sitemap_index(net, "leagues", day=day)
+
+
+async def league_matches(net, league_id: object) -> list[dict]:
+    """🔴 그 리그의 **전 일정**(끝난 것·남은 것) — `/leagues/{id}/matches/x` HTML.
+
+    ⚠️ robots 가 허용한 경로다(`/` Allow). 🔴 리그 id 를 알면 날짜 창으로 고른다.
+    """
+    got = await net.get(f"{BASE}/leagues/{league_id}/matches/x")
+    j = payload(getattr(got, "text", "") or "")
+    if not j:
+        return []
+    rows = (((j.get("props") or {}).get("pageProps") or {})
+            .get("fixtures", {}).get("allMatches") or [])
+    out: list[dict] = []
+    for m in rows:
+        st = m.get("status") or {}
+        out.append({"id": str(m.get("id") or ""),
+                    "home": str((m.get("home") or {}).get("name") or ""),
+                    "away": str((m.get("away") or {}).get("name") or ""),
+                    "utc": str(st.get("utcTime") or ""),
+                    "finished": bool(st.get("finished")),
+                    "league_id": league_id,
+                    "page": str(m.get("pageUrl") or "")})
+    return out
+
+
+async def league_meta(net, league_id: object) -> dict:
+    """🔴 §3 — 그 리그의 **나라·이름·형식**. 표 페이지가 `ccode` 를 준다.
+
+    🔴 실측 2026-10-10: `112` → `Liga Profesional` · `ccode ARG` · 표 4개(조별).
+    """
+    got = await net.get(f"{BASE}/leagues/{league_id}/table/x")
+    j = payload(getattr(got, "text", "") or "")
+    if not j:
+        return {}
+    blk = (_page(j).get("table") or [])
+    box = (blk[0].get("data") or {}) if blk else {}
+    tabs = _tables(j)
+    return {"league_id": league_id,
+            "name": str(box.get("leagueName") or ""),
+            "ccode": str(box.get("ccode") or ""),
+            "season": str(box.get("selectedSeason") or ""),
+            "groups": len(tabs),
+            "zones": zone_bands(box) if box else {},
+            "url": f"{BASE}/leagues/{league_id}/table/x"}
+
+
+async def league_season_rows(net, league_id: object) -> list[dict]:
+    """🔴🔴 §3 — 그 리그 **이번 시즌 끝난 경기**(기준 열의 출발점).
+
+    > 자체 Elo 가 없으면 그 리그 이번 시즌 경기 결과로 홈승·무·원정승 비율과
+    > 경기당 총골을 계산해 출발점으로.
+    """
+    got = await net.get(f"{BASE}/leagues/{league_id}/matches/x")
+    j = payload(getattr(got, "text", "") or "")
+    if not j:
+        return []
+    rows = (((j.get("props") or {}).get("pageProps") or {})
+            .get("fixtures", {}).get("allMatches") or [])
+    out: list[dict] = []
+    for m in rows:
+        st = (m.get("status") or {})
+        if not st.get("finished"):
+            continue
+        hit = re.match(r"\s*(\d+)\s*-\s*(\d+)\s*$", str(st.get("scoreStr") or ""))
+        if not hit:
+            continue
+        out.append({"home_score": int(hit.group(1)),
+                    "away_score": int(hit.group(2)),
+                    "utc": str(st.get("utcTime") or "")})
+    return out

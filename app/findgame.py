@@ -47,6 +47,9 @@ MAX_OPEN = 6
 #: 🔴 던질 질의 상한. 각 질의가 SearXNG 한 번이다.
 MAX_QUERIES = 4
 
+#: 🔴🔴 §2 ④ — 못 찾았을 때 **시도한 출처를 몇 줄 보일까**. 숫자만 적지 않는다.
+SHOW_TRIED = 8
+
 #: 🔴🔴 **경기 페이지를 읽는 어댑터들** — 순서가 곧 시도 순서다(§19-b-4 대체).
 #
 #  ⚠️ 하나로 두면 그 호스트가 막히는 날 봇이 경기를 **아예 못 찾는다.** 둘 다 같은
@@ -154,6 +157,22 @@ async def find(*, team: str, opponent: str = "", day: date | None = None,
     #     없이도 *"검색 → 결과 주소의 `/matches/…` 를 읽기"* 로 같은 id 를 얻는다.
     #  ⚠️ 종전에 여기 있던 자동완성 단(`app/namefind.py`)은 **지웠다** —
     #     꺼 두는 것이 아니라 지운다(안 이어진 코드는 없는 코드보다 나쁘다).
+    # ══════════════════════════════════════════════════════════════════
+    # 🔴🔴 **먼저 색인으로 찾는다 — 리그를 몰라도**(사용자 결정 2026-10-10 §2)
+    # ══════════════════════════════════════════════════════════════════
+    #
+    #  > 리그 수동 선언·상한 방식을 **자동 등록으로 바꾼다.** … 모든 경기를 찾아
+    #  > 분석까지 해야 한다.
+    #
+    #  🔴 사다리 ②③ 은 `app/core/discover.py` 다(팀 색인 → 팀 일정 · 리그 색인 →
+    #     리그 일정 · 전부 robots 허용 경로). 🔴 **여기 아래의 검색 단이 ④** 다.
+    #  ⚠️ 색인이 찾아도 **행은 같은 곳에서 만든다**(`reader.slate_row`) — 행 만드는
+    #     길을 둘로 두면 한쪽만 고쳐진다(사본 금지).
+    found = await _by_index(net, team=team, opponent=opponent, day=day, got=got)
+    if found is not None:
+        got.rows.append(found)
+        return got
+
     opened = 0
     seen_ids: set[str] = set()
     from app import rules
@@ -260,10 +279,15 @@ async def find(*, team: str, opponent: str = "", day: date | None = None,
     if not got.rows:
         from app.matchref import Reason as _R2
         got.reason = _R2.MATCH_NOT_FOUND
-        got.why = (f"`{team}`"
+        # 🔴🔴 §2 ④ — **"못 찾음 — 시도한 출처·후보 3개"를 카드 대신** 보낸다.
+        #    ⚠️ 전에는 *"시도 N건"* 숫자만 적었다 — 사용자가 **무엇을 돌았는지**
+        #       보게 하라고 했다(#3 조용한 0 금지).
+        got.why = (f"🔴 **못 찾음** — `{team}`"
                    + (f" vs `{opponent}`" if opponent else "")
-                   + f" 의 {day} 경기 페이지를 못 찾았다 — 시도 "
-                   + f"{len(got.tried)}건")
+                   + f" · {day} 창\n"
+                   + "\n".join(f"· {x}" for x in got.tried[:SHOW_TRIED])
+                   + (f"\n⚠️ 시도 {len(got.tried)}건 중 {SHOW_TRIED}건만 적었다"
+                      if len(got.tried) > SHOW_TRIED else ""))
     return got
 
 
@@ -331,3 +355,53 @@ async def find_and_store(pool, *, team: str, opponent: str = "",
     logger.info("[findgame] %d경기를 슬레이트에 적었다 — id %s",
                 len(got.ids), got.ids)
     return got
+
+
+async def _by_index(net, *, team: str, opponent: str, day: date,
+                    got: Found) -> dict | None:
+    """🔴🔴 §2 ②③ — **색인으로 찾는다**. 찾으면 슬레이트 한 줄, 못 찾으면 `None`.
+
+    🔴 자동 등록도 **여기서 건다**(§2 마지막 줄: *"경기를 찾으면 그 경기의 리그
+       id로 자동 등록을 건다 — 이미 있으면 갱신만"*).
+    ⚠️ 등록이 실패하면 **경기를 버리지 않는다** — 사유만 `tried` 에 적는다.
+       (리그를 못 등록한 것과 경기를 못 찾은 것은 다른 일이다 · #3)
+    """
+    from app.core import discover
+    try:
+        out = await discover.find(net, home=team, away=opponent, day=None)
+    except Exception as exc:                            # noqa: BLE001
+        got.tried.append(f"색인 사다리가 죽었다(검색 단으로 간다) — {exc!r}")
+        return None
+    got.tried.extend(out.tried)
+    if not out.match:
+        got.tried.append("색인 사다리 ②③ 에 없다 — 검색 단(④)으로 간다")
+        return None
+    page_url = str(out.match.get("page") or "")
+    if page_url.startswith("/"):
+        page_url = fotmob.BASE + page_url
+    if not fotmob.is_match_page(page_url):
+        got.tried.append(f"색인이 준 주소가 경기 페이지가 아니다 — `{page_url}`")
+        return None
+    page = await net.get(page_url)
+    row = fotmob.slate_row(page, day=day) if page.ok else None
+    if row is None:
+        got.tried.append(f"{page_url} 슬레이트 행을 못 만들었다({page.reason})")
+        return None
+    logger.info("[findgame] 색인으로 찾았다(%s) — %s @ %s · %s",
+                out.rung, row["away"], row["home"], row["league"])
+    # 🔴 §2 마지막 줄 — **리그 자동 등록**
+    box, why = await _register(net, out)
+    got.tried.append(f"자동 등록 — {why}")
+    if box:
+        row["auto_league"] = box.get("competition_key")
+    return row
+
+
+async def _register(net, out) -> tuple[dict, str]:
+    """🔴 자동 등록을 건다 — **등록 규칙은 `core.discover.register` 가 원본**이다."""
+    from app.core import discover
+    try:
+        return await discover.register(net, league_id=out.league_id,
+                                       league_name=out.league_name)
+    except Exception as exc:                            # noqa: BLE001
+        return {}, f"🔴 등록 중 죽었다 — {exc!r}"

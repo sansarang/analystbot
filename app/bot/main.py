@@ -227,7 +227,10 @@ async def cmd_status(m: Message) -> None:
     ⚠️ 운영자용이다 — 카드에는 검열 과정이 나가지 않는다(§4-3).
     """
     from app import auditlog
-    await m.answer(auditlog.stats())
+    from app.core import autoleague
+    # 🔴 §1 — 리그 **상한을 걷었다**(사용자 결정 2026-10-10). 그래서 자동 등록
+    #    목록이 운영자의 **유일한 눈**이다 — 여기 함께 적는다.
+    await m.answer(auditlog.stats() + "\n\n" + autoleague.report())
 
 
 @dp.message(Command("health"))
